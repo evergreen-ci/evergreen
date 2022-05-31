@@ -1016,7 +1016,11 @@ func FindUniqueBuildVariantNamesByTask(projectId string, taskName string, repoOr
 	if err := Aggregate(pipeline, &tasksWithoutLookup); err != nil {
 		return nil, errors.Wrap(err, "getting build variant tasks")
 	}
-	pipeline = variantByTaskPipelineWithLookup(projectId, taskName, repoOrderNumber)
+	variantsToSkip := []string{}
+	for _, bvt := range tasksWithoutLookup {
+		variantsToSkip = append(variantsToSkip, bvt.BuildVariant)
+	}
+	pipeline = variantByTaskPipelineWithLookup(projectId, taskName, repoOrderNumber, variantsToSkip)
 	tasksWithLookup := []*BuildVariantTuple{}
 	if err := Aggregate(pipeline, &tasksWithLookup); err != nil {
 		return nil, errors.Wrap(err, "getting build variant tasks")
@@ -1062,7 +1066,7 @@ func variantByTaskPipeline(projectId string, taskName string, repoOrderNumber in
 	return pipeline
 }
 
-func variantByTaskPipelineWithLookup(projectId string, taskName string, repoOrderNumber int) []bson.M {
+func variantByTaskPipelineWithLookup(projectId string, taskName string, repoOrderNumber int, variantsToSkip []string) []bson.M {
 	pipeline := []bson.M{
 		{"$match": bson.M{
 			ProjectKey:     projectId,
@@ -1071,6 +1075,7 @@ func variantByTaskPipelineWithLookup(projectId string, taskName string, repoOrde
 			"$and": []bson.M{
 				{RevisionOrderNumberKey: bson.M{"$gte": repoOrderNumber - VersionLimit}},
 				{RevisionOrderNumberKey: bson.M{"$lte": repoOrderNumber}},
+				{BuildVariantKey: bson.M{"$nin": variantsToSkip}},
 				{"$or": []bson.M{
 					{BuildVariantDisplayNameKey: bson.M{"$exists": false}},
 					{BuildVariantDisplayNameKey: bson.M{"$eq": ""}},
