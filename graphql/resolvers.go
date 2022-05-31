@@ -3205,11 +3205,15 @@ func (r *taskResolver) PatchNumber(ctx context.Context, obj *restModel.APITask) 
 }
 
 func (r *taskResolver) CanRestart(ctx context.Context, obj *restModel.APITask) (bool, error) {
-	canRestart, err := canRestartTask(ctx, obj)
+	i, err := obj.ToService()
 	if err != nil {
-		return false, err
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to service", *obj.Id))
 	}
-	return *canRestart, nil
+	t, ok := i.(*task.Task)
+	if !ok {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("converting APITask '%s' to Task", *obj.Id))
+	}
+	return canRestartTask(t), nil
 }
 
 func (r *taskResolver) CanAbort(ctx context.Context, obj *restModel.APITask) (bool, error) {
@@ -3217,11 +3221,15 @@ func (r *taskResolver) CanAbort(ctx context.Context, obj *restModel.APITask) (bo
 }
 
 func (r *taskResolver) CanSchedule(ctx context.Context, obj *restModel.APITask) (bool, error) {
-	canRestart, err := canRestartTask(ctx, obj)
+	i, err := obj.ToService()
 	if err != nil {
-		return false, err
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to service", *obj.Id))
 	}
-	return !utility.FromBoolPtr(canRestart) && !obj.Aborted, nil
+	t, ok := i.(*task.Task)
+	if !ok {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("converting APITask '%s' to Task", *obj.Id))
+	}
+	return canScheduleTask(t), nil
 }
 
 func (r *taskResolver) CanUnschedule(ctx context.Context, obj *restModel.APITask) (bool, error) {

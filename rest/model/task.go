@@ -424,6 +424,8 @@ func (ad *APITask) ToService() (interface{}, error) {
 			Id:     utility.FromStringPtr(ad.BaseTask.Id),
 			Status: utility.FromStringPtr(ad.BaseTask.Status),
 		},
+		DisplayTaskId: utility.ToStringPtr(ad.ParentTaskId),
+		Aborted:       ad.Aborted,
 	}
 	catcher := grip.NewBasicCatcher()
 	serviceDetails, err := ad.Details.ToService()
