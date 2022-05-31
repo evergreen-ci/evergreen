@@ -1,8 +1,5 @@
 {
-  yes: task(taskId: "finished_task") {
-    canRestart
-  }
-  no: task(taskId: "some_task") {
+  finishedTask: task(taskId: "finished_task") {
     canRestart
   }
   executionTask: task(taskId: "execution_task"){

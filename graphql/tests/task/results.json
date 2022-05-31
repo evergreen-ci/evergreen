@@ -230,10 +230,10 @@
       "query_file": "canSchedule.graphql",
       "result": {
         "data": {
-          "yes": {
+          "unscheduledTask": {
             "canSchedule": true
           },
-          "no": {
+          "finishedTask": {
             "canSchedule": false
           },
           "runningTask": {
@@ -252,11 +252,8 @@
       "query_file": "canRestart.graphql",
       "result": {
         "data": {
-          "yes": {
+          "finishedTask": {
             "canRestart": true
-          },
-          "no": {
-            "canRestart": false
           },
           "executionTask": {
             "canRestart": false
