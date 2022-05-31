@@ -293,7 +293,7 @@ func (c *hostCommunicator) Heartbeat(ctx context.Context, taskData TaskData) (st
 		return "", err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusConflict {
+	if resp.StatusCode == http.StatusBadRequest {
 		return evergreen.TaskConflict, errors.Errorf("Unauthorized - wrong secret")
 	}
 	if resp.StatusCode != http.StatusOK {

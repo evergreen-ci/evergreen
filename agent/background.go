@@ -31,7 +31,8 @@ func (a *Agent) startHeartbeat(ctx context.Context, cancel context.CancelFunc, t
 				if err != nil {
 					tc.logger.Task().Error(err.Error())
 				}
-				cancel()
+				heartbeat <- signalBeat
+				return
 			}
 			if signalBeat == evergreen.TaskFailed {
 				tc.logger.Task().Error("Heartbeat received signal to abort task")
