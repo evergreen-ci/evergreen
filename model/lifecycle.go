@@ -62,37 +62,78 @@ func SetVersionActivation(versionId string, active bool, caller string) error {
 	if version == nil {
 		return errors.Wrapf(err, "version '%s' not found", versionId)
 	}
-	if active {
-		if err = version.SetActivated(); err != nil {
-			return errors.Wrapf(err, "setting activated for version '%s'", versionId)
-		}
+	if err = version.SetActivated(active); err != nil {
+		return errors.Wrapf(err, "setting activated for version '%s'", versionId)
+	}
+	changed, err := setTaskActivationForVersion(versionId, active, false, nil, caller)
+	if err != nil {
+		return errors.Wrapf(err, "setting activation for tasks in version '%s'", versionId)
+	}
+	if active && changed && evergreen.IsFinishedVersionStatus(version.Status) {
 		if err = version.UpdateStatus(evergreen.VersionCreated); err != nil {
 			return errors.Wrapf(err, "setting status for version '%s'", versionId)
 		}
+	}
+	return nil
+}
+
+func setTaskActivationForVersion(versionId string, active, withDependencies bool, ignoreTasks []string, caller string) (bool, error) {
+	// If activating a task, set the ActivatedBy field to be the caller
+	if active {
+		q := bson.M{
+			task.VersionKey: versionId,
+			task.StatusKey:  evergreen.TaskUndispatched,
+		}
+		if len(ignoreTasks) > 0 {
+			q[task.IdKey] = bson.M{"$nin": ignoreTasks}
+		}
+		tasksToActivate, err := task.FindAll(db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey, task.BuildIdKey))
+		if err != nil {
+			return false, errors.Wrap(err, "getting tasks to activate")
+		}
+		if withDependencies {
+			dependOn, err := task.GetRecursiveDependenciesUp(tasksToActivate, nil)
+			if err != nil {
+				return false, errors.Wrap(err, "getting recursive dependencies")
+			}
+			tasksToActivate = append(tasksToActivate, dependOn...)
+		}
+		if len(tasksToActivate) > 0 {
+			var buildIds []string
+			for _, task := range tasksToActivate {
+				if !utility.StringSliceContains(buildIds, task.BuildId) {
+					buildIds = append(buildIds, task.BuildId)
+				}
+			}
+			if err = build.UpdateActivationAndStatus(buildIds, active, caller); err != nil {
+				return false, errors.Wrapf(err, "setting activation for builds in version '%s'", versionId)
+			}
+			if err = task.ActivateTasks(tasksToActivate, time.Now(), withDependencies, caller); err != nil {
+				return false, errors.Wrap(err, "updating tasks for activation")
+			}
+			return true, nil
+		}
 	} else {
-		if err = version.SetNotActivated(); err != nil {
-			return errors.Wrapf(err, "setting activated for version '%s'", versionId)
+		query := bson.M{
+			task.VersionKey: versionId,
+			task.StatusKey:  evergreen.TaskUndispatched,
+		}
+		// if the caller is the default task activator only deactivate tasks that have not been activated by a user
+		if evergreen.IsSystemActivator(caller) {
+			query[task.ActivatedByKey] = bson.M{"$in": evergreen.SystemActivators}
+		}
+
+		tasks, err := task.FindAll(db.Query(query).WithFields(task.IdKey, task.ExecutionKey))
+		if err != nil {
+			return false, errors.Wrap(err, "getting tasks to deactivate")
+		}
+		if len(tasks) > 0 {
+			if err = task.DeactivateTasks(tasks, withDependencies, caller); err != nil {
+				return true, errors.Wrap(err, "deactivating tasks")
+			}
 		}
 	}
-	builds, err := build.Find(
-		build.ByVersion(versionId).WithFields(build.IdKey),
-	)
-	if err != nil {
-		return errors.Wrapf(err, "getting builds for version '%s'", versionId)
-	}
-	buildIDs := make([]string, 0, len(builds))
-	for _, build := range builds {
-		buildIDs = append(buildIDs, build.Id)
-	}
-
-	// Update activation for all builds before updating their tasks so the version won't spend
-	// time in an intermediate state where only some builds are updated
-	if err = build.UpdateActivation(buildIDs, active, caller); err != nil {
-		return errors.Wrapf(err, "setting activation for builds in version '%s'", versionId)
-	}
-
-	return errors.Wrapf(setTaskActivationForBuilds(buildIDs, active, false, nil, caller),
-		"setting activation for tasks in version '%s'", versionId)
+	return false, nil
 }
 
 // SetBuildActivation updates the "active" state of this build and all associated tasks.
@@ -122,7 +163,7 @@ func setTaskActivationForBuilds(buildIds []string, active, withDependencies bool
 		}
 		tasksToActivate, err := task.FindAll(db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey))
 		if err != nil {
-			return errors.Wrap(err, "getting tasks to deactivate")
+			return errors.Wrap(err, "getting tasks to activate")
 		}
 		if withDependencies {
 			dependOn, err := task.GetRecursiveDependenciesUp(tasksToActivate, nil)
@@ -1748,7 +1789,7 @@ func addNewTasks(ctx context.Context, activationInfo specificActivationInfo, v *
 			"version": v.Id,
 		}))
 	}
-	if err = v.SetActivated(); err != nil {
+	if err = v.SetActivated(true); err != nil {
 		return nil, errors.Wrap(err, "setting version activation to true")
 	}
 
