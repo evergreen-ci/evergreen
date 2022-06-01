@@ -103,17 +103,6 @@ func (vh *versionPatchHandler) Parse(ctx context.Context, r *http.Request) error
 
 // Run calls the data model.VersionFindOneId function
 func (vh *versionPatchHandler) Run(ctx context.Context) gimlet.Responder {
-	foundVersion, err := dbModel.VersionFindOneId(vh.versionId)
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding version '%s' in database", vh.versionId))
-	}
-	if foundVersion == nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("version with id %s not found", vh.versionId),
-		})
-	}
-
 	u := MustHaveUser(ctx)
 	if err := dbModel.SetVersionActivation(vh.versionId, utility.FromBoolPtr(vh.Activated), u.Id); err != nil {
 		state := "inactive"

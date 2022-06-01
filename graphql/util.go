@@ -653,11 +653,7 @@ func setVersionActivationStatus(version *model.Version) error {
 	if err != nil {
 		return errors.Wrapf(err, "error getting tasks for version %s", version.Id)
 	}
-	if !task.AnyActiveTasks(tasks) {
-		return errors.Wrapf(version.SetNotActivated(), "Error updating version activated status for `%s`", version.Id)
-	} else {
-		return errors.Wrapf(version.SetActivated(), "Error updating version activated status for `%s`", version.Id)
-	}
+	return errors.Wrapf(version.SetActivated(task.AnyActiveTasks(tasks)), "Error updating version activated status for `%s`", version.Id)
 }
 
 func isPopulated(buildVariantOptions *BuildVariantOptions) bool {
