@@ -1000,6 +1000,10 @@ func FindByExecutionTasksAndMaxExecution(taskIds []*string, execution int) ([]Ta
 	return result, nil
 }
 
+type buildVariantTupleResult struct {
+	BuildVariantTuples []*BuildVariantTuple `bson:"build_variants"`
+}
+
 type BuildVariantTuple struct {
 	BuildVariant string `bson:"build_variant"`
 	DisplayName  string `bson:"display_name"`
@@ -1011,25 +1015,26 @@ const VersionLimit = 50
 // It attempts to return the most recent display name for each build variant to avoid returning duplicates caused by display names changing.
 // It only checks the last 50 versions that ran for a given task name.
 func FindUniqueBuildVariantNamesByTask(projectId string, taskName string, repoOrderNumber int) ([]*BuildVariantTuple, error) {
-	pipeline := variantByTaskPipeline(projectId, taskName, repoOrderNumber)
-	tasksWithoutLookup := []*BuildVariantTuple{}
-	if err := Aggregate(pipeline, &tasksWithoutLookup); err != nil {
+	noLookupPipeline := variantByTaskPipeline(projectId, taskName, repoOrderNumber)
+	lookupPipeline := variantByTaskPipelineWithLookup(projectId, taskName, repoOrderNumber)
+	facet := bson.M{
+		"$facet": bson.M{
+			"noLookup": noLookupPipeline,
+			"lookup":   lookupPipeline,
+		},
+	}
+	result := []*buildVariantTupleResult{}
+	if err := Aggregate([]bson.M{facet, {"$project": bson.M{
+		"build_variants": bson.M{
+			"$setUnion": []string{"$lookup", "$noLookup"},
+		}},
+	}}, &result); err != nil {
 		return nil, errors.Wrap(err, "getting build variant tasks")
 	}
-	variantsToSkip := []string{}
-	for _, bvt := range tasksWithoutLookup {
-		variantsToSkip = append(variantsToSkip, bvt.BuildVariant)
-	}
-	pipeline = variantByTaskPipelineWithLookup(projectId, taskName, repoOrderNumber, variantsToSkip)
-	tasksWithLookup := []*BuildVariantTuple{}
-	if err := Aggregate(pipeline, &tasksWithLookup); err != nil {
-		return nil, errors.Wrap(err, "getting build variant tasks")
-	}
-	result := append(tasksWithoutLookup, tasksWithLookup...)
-	if len(result) == 0 {
+	if len(result) == 0 || len(result[0].BuildVariantTuples) == 0 {
 		return nil, nil
 	}
-	return result, nil
+	return result[0].BuildVariantTuples, nil
 }
 
 func variantByTaskPipeline(projectId string, taskName string, repoOrderNumber int) []bson.M {
@@ -1066,7 +1071,7 @@ func variantByTaskPipeline(projectId string, taskName string, repoOrderNumber in
 	return pipeline
 }
 
-func variantByTaskPipelineWithLookup(projectId string, taskName string, repoOrderNumber int, variantsToSkip []string) []bson.M {
+func variantByTaskPipelineWithLookup(projectId string, taskName string, repoOrderNumber int) []bson.M {
 	pipeline := []bson.M{
 		{"$match": bson.M{
 			ProjectKey:     projectId,
@@ -1075,7 +1080,6 @@ func variantByTaskPipelineWithLookup(projectId string, taskName string, repoOrde
 			"$and": []bson.M{
 				{RevisionOrderNumberKey: bson.M{"$gte": repoOrderNumber - VersionLimit}},
 				{RevisionOrderNumberKey: bson.M{"$lte": repoOrderNumber}},
-				{BuildVariantKey: bson.M{"$nin": variantsToSkip}},
 				{"$or": []bson.M{
 					{BuildVariantDisplayNameKey: bson.M{"$exists": false}},
 					{BuildVariantDisplayNameKey: bson.M{"$eq": ""}},

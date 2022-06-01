@@ -92,7 +92,7 @@ func TestFindUniqueBuildVariantNamesByTask(t *testing.T) {
 	assert.Equal(t, []*task.BuildVariantTuple{
 		{DisplayName: "OSX", BuildVariant: "osx"},
 		{DisplayName: "Race Detector", BuildVariant: "race-detector"},
-		{DisplayName: "Windows 64 bit", BuildVariant: "windows"},
 		{DisplayName: "Ubuntu 16.04", BuildVariant: "ubuntu1604"},
+		{DisplayName: "Windows 64 bit", BuildVariant: "windows"},
 	}, taskBuildVariants)
 }
