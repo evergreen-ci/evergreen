@@ -310,10 +310,10 @@ func TestFindTestsByDisplayTaskId(t *testing.T) {
 		ExecutionTasks: []string{},
 	}
 	assert.NoError(displayTaskWithoutTasks.Insert())
-	foundTests, err := serviceContext.FindTestsByTaskId(FindTestsByTaskIdOpts{TaskID: "with_tasks"})
+	foundTests, err := serviceContext.FindTestsByTaskId(FindTestsByTaskIdOpts{TaskID: "with_tasks", ExecutionTasks: displayTaskWithTasks.ExecutionTasks})
 	assert.NoError(err)
 	assert.Len(foundTests, 20)
-	foundTests, err = serviceContext.FindTestsByTaskId(FindTestsByTaskIdOpts{TaskID: "without_tasks"})
+	foundTests, err = serviceContext.FindTestsByTaskId(FindTestsByTaskIdOpts{TaskID: "without_tasks", ExecutionTasks: displayTaskWithoutTasks.ExecutionTasks})
 	assert.Error(err)
 	assert.Len(foundTests, 0)
 }

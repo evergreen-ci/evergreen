@@ -1796,7 +1796,11 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 
 	baseTestStatusMap := map[string]string{}
 	if baseTask != nil {
-		baseTestResults, _ := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{TaskID: baseTask.Id, Execution: baseTask.Execution})
+		baseTestResults, _ := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{
+			TaskID:         baseTask.Id,
+			Execution:      baseTask.Execution,
+			ExecutionTasks: baseTask.ExecutionTasks,
+		})
 		for _, t := range baseTestResults {
 			baseTestStatusMap[t.TestFile] = t.Status
 		}
@@ -1806,15 +1810,16 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		sortDir = -1
 	}
 	filteredTestResults, err := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{
-		TaskID:    taskID,
-		Execution: dbTask.Execution,
-		TestName:  utility.FromStringPtr(testName),
-		Statuses:  statuses,
-		SortBy:    sortBy,
-		SortDir:   sortDir,
-		GroupID:   utility.FromStringPtr(groupID),
-		Limit:     limitNum,
-		Page:      utility.FromIntPtr(page),
+		TaskID:         taskID,
+		Execution:      dbTask.Execution,
+		ExecutionTasks: dbTask.ExecutionTasks,
+		TestName:       utility.FromStringPtr(testName),
+		Statuses:       statuses,
+		SortBy:         sortBy,
+		SortDir:        sortDir,
+		GroupID:        utility.FromStringPtr(groupID),
+		Limit:          limitNum,
+		Page:           utility.FromIntPtr(page),
 	})
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
@@ -1891,14 +1896,15 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, test
 		regexFilter := strings.Join(filters, "|")
 		for _, t := range dbTasks {
 			filteredTestResults, err := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{
-				TaskID:    t.Id,
-				Execution: t.Execution,
-				TestName:  regexFilter,
-				Statuses:  []string{evergreen.TestFailedStatus},
-				SortBy:    testresult.TaskIDKey,
-				Limit:     testSampleLimit,
-				SortDir:   1,
-				Page:      0,
+				TaskID:         t.Id,
+				Execution:      t.Execution,
+				ExecutionTasks: t.ExecutionTasks,
+				TestName:       regexFilter,
+				Statuses:       []string{evergreen.TestFailedStatus},
+				SortBy:         testresult.TaskIDKey,
+				Limit:          testSampleLimit,
+				SortDir:        1,
+				Page:           0,
 			})
 			if err != nil {
 				return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting test results sample: %s", err))
