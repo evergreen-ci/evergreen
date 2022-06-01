@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -422,6 +423,13 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		}))
 		grip.Error(message.WrapError(h.Remove(), message.Fields{
 			"message":       "error removing intent host",
+			"host_id":       h.Id,
+			"host_provider": h.Distro.Provider,
+			"distro":        h.Distro.Id,
+		}))
+		detailErr := task.AddHostCreateDetails(h.StartedBy, h.Id, h.SpawnOptions.TaskExecutionNumber, err)
+		grip.ErrorWhen(detailErr != nil, message.WrapError(detailErr, message.Fields{
+			"message":       "adding host create error details",
 			"host_id":       h.Id,
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
