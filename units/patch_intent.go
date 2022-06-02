@@ -889,6 +889,7 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(ctx context.Context, patchDo
 				patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{
 					ModuleName: intent.ParentAsModule,
 					PatchSet:   p.PatchSet,
+					Githash:    parentPatch.Githash,
 				})
 				break
 			}
