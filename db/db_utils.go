@@ -3,6 +3,7 @@ package db
 import (
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
@@ -408,6 +409,21 @@ func AggregateWithHint(collection string, pipeline interface{}, hint interface{}
 	// operations had a 90s timeout, which is no longer specified)
 
 	pipe := db.C(collection).Pipe(pipeline).Hint(hint)
+
+	return errors.WithStack(pipe.All(out))
+}
+
+// AggregateWithMaxTime runs aggregate and specifies a max quert time which ensures the query won't go on indefinitely when the request is cancelled.
+func AggregateWithMaxTime(collection string, pipeline interface{}, out interface{}, maxTime time.Duration) error {
+	session, db, err := GetGlobalSessionFactory().GetSession()
+	if err != nil {
+		err = errors.Wrap(err, "error establishing db connection")
+		grip.Error(err)
+		return err
+	}
+	defer session.Close()
+
+	pipe := db.C(collection).Pipe(pipeline).MaxTime(maxTime)
 
 	return errors.WithStack(pipe.All(out))
 }

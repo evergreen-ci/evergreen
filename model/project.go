@@ -37,7 +37,8 @@ const (
 )
 
 type GetProjectTasksOpts struct {
-	Limit        int    `json:"num_versions"`
+	NumVersions  int    `json:"num_versions"`
+	Limit        int    `json:"limit"`
 	BuildVariant string `json:"build_variant"`
 	StartAt      int    `json:"start_at"`
 }
