@@ -430,7 +430,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		if h.SpawnOptions.SpawnedByTask {
 			detailErr := task.AddHostCreateDetails(h.StartedBy, h.Id, h.SpawnOptions.TaskExecutionNumber, err)
 			grip.Error(message.WrapError(detailErr, message.Fields{
-				"message":       "Error adding host create error details.",
+				"message":       "error adding host create error details",
 				"host_id":       h.Id,
 				"host_provider": h.Distro.Provider,
 				"distro":        h.Distro.Id,
