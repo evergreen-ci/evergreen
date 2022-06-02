@@ -69,7 +69,7 @@
         "data": null,
         "errors": [
           {
-            "message": "cannot reuse 'logkeeper' for project",
+            "message": "cannot use existing project name 'logkeeper'",
             "path": [
               "copyProject"
             ],
@@ -86,7 +86,7 @@
         "data": null,
         "errors": [
           {
-            "message": "cannot reuse 'keeperOfLogs' for project",
+            "message": "cannot use existing project name 'keeperOfLogs'",
             "path": [
               "copyProject"
             ],
@@ -158,7 +158,7 @@
       "result": {
         "errors": [
           {
-            "message": "Error finding project by id not a real project: 404 (Not Found): project with id 'not a real project' not found",
+            "message": "Error finding project by id not a real project: 404 (Not Found): project 'not a real project' not found",
             "path": ["project"],
             "extensions": {
               "code": "INTERNAL_SERVER_ERROR"

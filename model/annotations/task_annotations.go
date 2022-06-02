@@ -32,7 +32,7 @@ type IssueLink struct {
 	// Text to be displayed
 	IssueKey        string  `bson:"issue_key,omitempty" json:"issue_key,omitempty"`
 	Source          *Source `bson:"source,omitempty" json:"source,omitempty"`
-	ConfidenceScore float32 `bson:"confidence_score,omitempty" json:"confidence_score,omitempty"`
+	ConfidenceScore float64 `bson:"confidence_score,omitempty" json:"confidence_score,omitempty"`
 }
 
 type Source struct {
@@ -110,9 +110,6 @@ func UpdateAnnotationNote(taskId string, execution int, originalMessage, newMess
 	annotation, err := FindOneByTaskIdAndExecution(taskId, execution)
 	if err != nil {
 		return errors.Wrap(err, "finding task annotation")
-	}
-	if annotation == nil {
-		return errors.Errorf("annotation for task '%s' and execution %d not found", taskId, execution)
 	}
 
 	if annotation != nil && annotation.Note != nil && annotation.Note.Message != originalMessage {

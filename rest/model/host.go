@@ -92,7 +92,7 @@ func (apiHost *APIHost) BuildFromService(h interface{}) error {
 	case task.Task:
 		apiHost.RunningTask = getTaskInfo(&v)
 	default:
-		return errors.New("incorrect type when fetching converting host type")
+		return errors.Errorf("programmatic error: expected host or task but got type %T", h)
 	}
 	return nil
 }
@@ -110,14 +110,13 @@ func getTaskInfo(t *task.Task) TaskInfo {
 
 func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 	var v *host.Host
-	switch h.(type) {
+	switch t := h.(type) {
 	case host.Host:
-		t := h.(host.Host)
 		v = &t
 	case *host.Host:
-		v = h.(*host.Host)
+		v = t
 	default:
-		return errors.New("incorrect type when fetching converting host type")
+		return errors.Errorf("programmatic error: expected host but got type %T", h)
 	}
 	apiHost.Id = utility.ToStringPtr(v.Id)
 	apiHost.HostURL = utility.ToStringPtr(v.Host)
@@ -220,20 +219,19 @@ func (apiVolume *APIVolume) BuildFromService(volume interface{}) error {
 	case host.Volume, *host.Volume:
 		return apiVolume.buildFromVolumeStruct(volume)
 	default:
-		return errors.Errorf("%T is not a supported type", volume)
+		return errors.Errorf("programmatic error: expected host volume but got type %T", volume)
 	}
 }
 
 func (apiVolume *APIVolume) buildFromVolumeStruct(volume interface{}) error {
 	var v *host.Volume
-	switch volume.(type) {
+	switch t := volume.(type) {
 	case host.Volume:
-		t := volume.(host.Volume)
 		v = &t
 	case *host.Volume:
-		v = volume.(*host.Volume)
+		v = t
 	default:
-		return errors.New("incorrect type when converting volume type")
+		return errors.Errorf("programmatic error: expected host volume but got type %T", volume)
 	}
 	apiVolume.ID = utility.ToStringPtr(v.ID)
 	apiVolume.DisplayName = utility.ToStringPtr(v.DisplayName)
@@ -252,7 +250,7 @@ func (apiVolume *APIVolume) buildFromVolumeStruct(volume interface{}) error {
 func (apiVolume *APIVolume) ToService() (interface{}, error) {
 	expiration, err := FromTimePtr(apiVolume.Expiration)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't get expiration time")
+		return nil, errors.Wrap(err, "getting expiration time")
 	}
 
 	return host.Volume{

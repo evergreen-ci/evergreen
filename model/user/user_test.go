@@ -15,7 +15,9 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-var userTestConfig = testutil.TestConfig()
+func init() {
+	testutil.Setup()
+}
 
 type UserTestSuite struct {
 	suite.Suite

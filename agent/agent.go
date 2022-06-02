@@ -539,10 +539,10 @@ func (a *Agent) wait(ctx, taskCtx context.Context, tc *taskContext, heartbeat ch
 			tc.logger.Execution().Errorf("error checking for OOM killed processes: %s", err)
 		}
 		if lines, _ := tc.oomTracker.Report(); len(lines) > 0 {
-			tc.logger.Execution().Debugf("found an OOM kill (in %.3f seconds)", time.Now().Sub(startTime).Seconds())
+			tc.logger.Execution().Debugf("found an OOM kill (in %.3f seconds)", time.Since(startTime).Seconds())
 			tc.logger.Execution().Debug(strings.Join(lines, "\n"))
 		} else {
-			tc.logger.Execution().Debugf("found no OOM kill (in %.3f seconds)", time.Now().Sub(startTime).Seconds())
+			tc.logger.Execution().Debugf("found no OOM kill (in %.3f seconds)", time.Since(startTime).Seconds())
 		}
 	}
 

@@ -45,7 +45,7 @@ func TestGetLatestExecutions(t *testing.T) {
 
 func TestAddIssueToAnnotation(t *testing.T) {
 	assert.NoError(t, db.Clear(Collection))
-	issue := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", ConfidenceScore: float32(91.23)}
+	issue := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", ConfidenceScore: float64(91.23)}
 	assert.NoError(t, AddIssueToAnnotation("t1", 0, issue, "annie.black"))
 
 	annotation, err := FindOneByTaskIdAndExecution("t1", 0)
@@ -56,7 +56,7 @@ func TestAddIssueToAnnotation(t *testing.T) {
 	assert.NotNil(t, annotation.Issues[0].Source)
 	assert.Equal(t, UIRequester, annotation.Issues[0].Source.Requester)
 	assert.Equal(t, "annie.black", annotation.Issues[0].Source.Author)
-	assert.Equal(t, float32(91.23), annotation.Issues[0].ConfidenceScore)
+	assert.Equal(t, float64(91.23), annotation.Issues[0].ConfidenceScore)
 
 	assert.NoError(t, AddIssueToAnnotation("t1", 0, issue, "not.annie.black"))
 	annotation, err = FindOneByTaskIdAndExecution("t1", 0)
@@ -64,7 +64,7 @@ func TestAddIssueToAnnotation(t *testing.T) {
 	assert.NotNil(t, annotation)
 	assert.Len(t, annotation.Issues, 2)
 	assert.NotNil(t, annotation.Issues[1].Source)
-	assert.Equal(t, float32(91.23), annotation.Issues[0].ConfidenceScore)
+	assert.Equal(t, float64(91.23), annotation.Issues[0].ConfidenceScore)
 	assert.Equal(t, "not.annie.black", annotation.Issues[1].Source.Author)
 }
 
@@ -163,7 +163,7 @@ func TestMoveSuspectedIssueToIssue(t *testing.T) {
 
 func TestPatchIssue(t *testing.T) {
 	assert.NoError(t, db.Clear(Collection))
-	issue1 := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", ConfidenceScore: float32(91.23)}
+	issue1 := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", ConfidenceScore: float64(91.23)}
 	assert.NoError(t, AddIssueToAnnotation("t1", 0, issue1, "bynn.lee"))
 	issue2 := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-2345"}
 	a := TaskAnnotation{TaskId: "t1", TaskExecution: 0, SuspectedIssues: []IssueLink{issue2}}
@@ -178,7 +178,7 @@ func TestPatchIssue(t *testing.T) {
 	assert.Equal(t, UIRequester, annotation.Issues[0].Source.Requester)
 	assert.Equal(t, "bynn.lee", annotation.Issues[0].Source.Author)
 	assert.Equal(t, "EVG-1234", annotation.Issues[0].IssueKey)
-	assert.Equal(t, float32(91.23), annotation.Issues[0].ConfidenceScore)
+	assert.Equal(t, float64(91.23), annotation.Issues[0].ConfidenceScore)
 	assert.Len(t, annotation.SuspectedIssues, 1)
 	assert.NotNil(t, annotation.SuspectedIssues[0].Source)
 	assert.Equal(t, APIRequester, annotation.SuspectedIssues[0].Source.Requester)

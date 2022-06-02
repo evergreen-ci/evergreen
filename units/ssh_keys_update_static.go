@@ -20,7 +20,6 @@ type staticUpdateSSHKeysJob struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
 	HostID   string `bson:"host_id" json:"host_id" yaml:"host_id"`
 
-	env  evergreen.Environment
 	host *host.Host
 }
 
@@ -96,6 +95,4 @@ func (j *staticUpdateSSHKeysJob) Run(ctx context.Context) {
 			return
 		}
 	}
-
-	return
 }

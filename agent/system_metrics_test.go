@@ -409,8 +409,7 @@ func TestSystemMetricsCollectorWithMetricCollectorImplementation(t *testing.T) {
 	require.NoError(t, coll.Start(ctx))
 
 	timer := time.NewTimer(3 * time.Second)
-	select {
-	case <-timer.C:
+	if <-timer.C; true {
 		require.NoError(t, coll.Close())
 	}
 

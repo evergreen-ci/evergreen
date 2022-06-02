@@ -57,7 +57,7 @@
         "data": null,
         "errors": [
           {
-            "message": "error finding commit queue for no_queue: no commit queue found for 'no_queue'",
+            "message": "error finding commit queue for no_queue: commit queue not found for project 'no_queue'",
             "path": ["commitQueue"],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"

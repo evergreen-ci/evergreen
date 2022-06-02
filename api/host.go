@@ -36,6 +36,7 @@ const (
 var (
 	validUpdateToStatuses = []string{
 		evergreen.HostRunning,
+		evergreen.HostStopped,
 		evergreen.HostQuarantined,
 		evergreen.HostDecommissioned,
 		evergreen.HostTerminated,
@@ -105,9 +106,13 @@ func ModifyHostStatus(ctx context.Context, env evergreen.Environment, queue ambo
 			return "", http.StatusInternalServerError, errors.New(HostTerminationQueueingError)
 		}
 
+		reason := notes
+		if reason == "" {
+			reason = fmt.Sprintf("terminated by user '%s'", u.Username())
+		}
 		if err := amboy.EnqueueUniqueJob(ctx, queue, units.NewHostTerminationJob(env, h, units.HostTerminationOptions{
 			TerminateIfBusy:   true,
-			TerminationReason: fmt.Sprintf("terminated by %s", u.Username()),
+			TerminationReason: reason,
 		})); err != nil {
 			return "", http.StatusInternalServerError, errors.New(HostTerminationQueueingError)
 		}

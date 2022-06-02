@@ -239,6 +239,7 @@ func (bvt *BuildVariantTaskUnit) SkipOnRequester(requester string) bool {
 		evergreen.IsGitTagRequester(requester) && bvt.SkipOnGitTagBuild() ||
 		!evergreen.IsGitTagRequester(requester) && bvt.SkipOnNonGitTagBuild()
 }
+
 func (bvt *BuildVariantTaskUnit) SkipOnPatchBuild() bool {
 	return !utility.FromBoolTPtr(bvt.Patchable)
 }
@@ -257,6 +258,20 @@ func (bvt *BuildVariantTaskUnit) SkipOnNonGitTagBuild() bool {
 
 func (bvt *BuildVariantTaskUnit) IsDisabled() bool {
 	return utility.FromBoolPtr(bvt.Disable)
+}
+
+func (bvt *BuildVariantTaskUnit) toTaskNode() task.TaskNode {
+	return task.TaskNode{
+		Name:    bvt.Name,
+		Variant: bvt.Variant,
+	}
+}
+
+func (bvt *BuildVariantTaskUnit) ToTVPair() TVPair {
+	return TVPair{
+		TaskName: bvt.Name,
+		Variant:  bvt.Variant,
+	}
 }
 
 type BuildVariant struct {
@@ -307,15 +322,16 @@ type Container struct {
 	WorkingDir string              `yaml:"working_dir,omitempty" bson:"working_dir"`
 	Image      string              `yaml:"image" bson:"image"`
 	Size       string              `yaml:"size,omitempty" bson:"size"`
+	Credential string              `yaml:"credential,omitempty" bson:"credential"`
 	Resources  *ContainerResources `yaml:"resources,omitempty" bson:"resources"`
 	System     ContainerSystem     `yaml:"system,omitempty" bson:"system"`
 }
 
 // ContainerSystem specifies the architecture and OS for the running container to use.
 type ContainerSystem struct {
-	CPUArchitecture evergreen.CPUArchitecture `yaml:"cpu_architecture,omitempty" bson:"cpu_architecture"`
-	OperatingSystem evergreen.ContainerOS     `yaml:"operating_system,omitempty" bson:"operating_system"`
-	WindowsVersion  evergreen.WindowsVersion  `yaml:"windows_version,omitempty" bson:"windows_version"`
+	CPUArchitecture evergreen.ContainerArch  `yaml:"cpu_architecture,omitempty" bson:"cpu_architecture"`
+	OperatingSystem evergreen.ContainerOS    `yaml:"operating_system,omitempty" bson:"operating_system"`
+	WindowsVersion  evergreen.WindowsVersion `yaml:"windows_version,omitempty" bson:"windows_version"`
 }
 
 type Module struct {
@@ -1431,36 +1447,64 @@ func (p *Project) FindAllVariants() []string {
 // for all variants of a project.
 func (p *Project) FindAllBuildVariantTasks() []BuildVariantTaskUnit {
 	tasksByName := map[string]ProjectTask{}
-	taskGroups := map[string]TaskGroup{}
 	for _, t := range p.Tasks {
 		tasksByName[t.Name] = t
-	}
-	for _, tg := range p.TaskGroups {
-		taskGroups[tg.Name] = tg
 	}
 	allBVTs := []BuildVariantTaskUnit{}
 	for _, b := range p.BuildVariants {
 		for _, t := range b.Tasks {
-			tasksToPopulate := []ProjectTask{}
+			t.Variant = b.Name
 			if t.IsGroup {
-				group, exists := taskGroups[t.Name]
-				if !exists {
-					continue
-				}
-				for _, groupTask := range group.Tasks {
-					tasksToPopulate = append(tasksToPopulate, tasksByName[groupTask])
-				}
+				allBVTs = append(allBVTs, p.tasksFromGroup(t)...)
 			} else {
-				tasksToPopulate = append(tasksToPopulate, tasksByName[t.Name])
-			}
-			for _, pTask := range tasksToPopulate {
-				t.Populate(pTask)
-				t.Variant = b.Name
+				t.Populate(tasksByName[t.Name])
 				allBVTs = append(allBVTs, t)
 			}
 		}
 	}
 	return allBVTs
+}
+
+// tasksFromGroup returns a slice of the task group's tasks.
+// Settings missing from the group task are populated from the task definition.
+func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVariantTaskUnit {
+	tg := p.FindTaskGroup(bvTaskGroup.Name)
+	if tg == nil {
+		return nil
+	}
+
+	tasks := []BuildVariantTaskUnit{}
+	taskMap := map[string]ProjectTask{}
+	for _, projTask := range p.Tasks {
+		taskMap[projTask.Name] = projTask
+	}
+
+	for _, t := range tg.Tasks {
+		bvt := BuildVariantTaskUnit{
+			Name: t,
+			// IsGroup is not persisted, and indicates here that the
+			// task is a member of a task group.
+			IsGroup:          true,
+			Variant:          bvTaskGroup.Variant,
+			GroupName:        bvTaskGroup.Name,
+			Patchable:        bvTaskGroup.Patchable,
+			PatchOnly:        bvTaskGroup.PatchOnly,
+			Disable:          bvTaskGroup.Disable,
+			AllowForGitTag:   bvTaskGroup.AllowForGitTag,
+			GitTagOnly:       bvTaskGroup.GitTagOnly,
+			Priority:         bvTaskGroup.Priority,
+			DependsOn:        bvTaskGroup.DependsOn,
+			RunOn:            bvTaskGroup.RunOn,
+			ExecTimeoutSecs:  bvTaskGroup.ExecTimeoutSecs,
+			Stepback:         bvTaskGroup.Stepback,
+			Activate:         bvTaskGroup.Activate,
+			CommitQueueMerge: bvTaskGroup.CommitQueueMerge,
+		}
+		// Default to project task settings when unspecified
+		bvt.Populate(taskMap[t])
+		tasks = append(tasks, bvt)
+	}
+	return tasks
 }
 
 func (p *Project) FindAllTasksMap() map[string]ProjectTask {
@@ -1897,6 +1941,50 @@ func (p *Project) GetDisplayTask(variant, name string) *patch.DisplayTask {
 	}
 
 	return nil
+}
+
+// DependencyGraph returns a task.DependencyGraph populated with the tasks in the project.
+func (p *Project) DependencyGraph() task.DependencyGraph {
+	tasks := p.FindAllBuildVariantTasks()
+	g := task.NewDependencyGraph(false)
+
+	for _, t := range tasks {
+		g.AddTaskNode(t.toTaskNode())
+	}
+
+	for _, dependencyEdge := range dependenciesForTaskUnit(tasks) {
+		g.AddEdge(dependencyEdge.From, dependencyEdge.To, dependencyEdge.Status)
+	}
+
+	return g
+
+}
+
+// dependenciesForTaskUnit returns a slice of dependencies between tasks in the project.
+func dependenciesForTaskUnit(taskUnits []BuildVariantTaskUnit) []task.DependencyEdge {
+	var dependencies []task.DependencyEdge
+	for _, dependentTask := range taskUnits {
+		for _, dep := range dependentTask.DependsOn {
+			// Use the current variant if none is specified.
+			if dep.Variant == "" {
+				dep.Variant = dependentTask.Variant
+			}
+
+			for _, dependedOnTask := range taskUnits {
+				if dependedOnTask.ToTVPair() != dependentTask.ToTVPair() &&
+					(dep.Variant == AllVariants || dependedOnTask.Variant == dep.Variant) &&
+					(dep.Name == AllDependencies || dependedOnTask.Name == dep.Name) {
+					dependencies = append(dependencies, task.DependencyEdge{
+						Status: dep.Status,
+						From:   dependentTask.toTaskNode(),
+						To:     dependedOnTask.toTaskNode(),
+					})
+				}
+			}
+		}
+	}
+
+	return dependencies
 }
 
 // FetchVersionsBuildsAndTasks is a helper function to fetch a group of versions and their associated builds and tasks.

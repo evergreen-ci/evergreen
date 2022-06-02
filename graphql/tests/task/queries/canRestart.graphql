@@ -1,14 +1,20 @@
 {
-  yes: task(taskId: "taskity_task") {
-    canRestart
-  }
-  no: task(taskId: "some_task") {
+  finishedTask: task(taskId: "finished_task") {
     canRestart
   }
   executionTask: task(taskId: "execution_task"){
     canRestart
   }
   displayTask: task(taskId: "display_task"){
+    canRestart
+  }
+  blockedDisplayTask: task(taskId: "blocked_display_task"){
+    canRestart
+  }
+  runningTask: task(taskId: "running_task"){
+    canRestart
+  }
+  abortedTask: task(taskId: "aborted_task"){
     canRestart
   }
 }

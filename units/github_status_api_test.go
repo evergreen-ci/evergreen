@@ -24,11 +24,10 @@ import (
 )
 
 type githubStatusUpdateSuite struct {
-	env        *mock.Environment
-	patchDoc   *patch.Patch
-	buildDoc   *build.Build
-	cancel     context.CancelFunc
-	testConfig *evergreen.Settings
+	env      *mock.Environment
+	patchDoc *patch.Patch
+	buildDoc *build.Build
+	cancel   context.CancelFunc
 
 	suite.Suite
 }
@@ -166,7 +165,7 @@ func (s *githubStatusUpdateSuite) TestForDeleteFromCommitQueue() {
 
 func (s *githubStatusUpdateSuite) TestForProcessingError() {
 	intent, err := patch.NewGithubIntent("1", "", "", testutil.NewGithubPR(448,
-		"evergreen-ci/evergreen", "tychoish/evergreen", "776f608b5b12cd27b8d931c8ee4ca0c13f857299", "tychoish", "Title"))
+		"evergreen-ci/evergreen", "7c38f3f63c05675329518c148d3a176e1da6ec2d", "tychoish/evergreen", "776f608b5b12cd27b8d931c8ee4ca0c13f857299", "tychoish", "Title"))
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
@@ -253,9 +252,10 @@ func (s *githubStatusUpdateSuite) TestWithGithub() {
 	s.cancel = cancel
 
 	env := testutil.NewEnvironment(ctx, s.T())
+	settings := testutil.TestConfig()
 
-	testutil.ConfigureIntegrationTest(s.T(), s.testConfig, "TestWithGithub")
-	env.Settings().Credentials = s.testConfig.Credentials
+	testutil.ConfigureIntegrationTest(s.T(), settings, "TestWithGithub")
+	env.Settings().Credentials = settings.Credentials
 	env.Settings().Ui.Url = "http://example.com"
 
 	s.patchDoc.GithubPatchData.BaseRepo = "sample"

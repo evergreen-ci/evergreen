@@ -121,7 +121,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 				"task_id": j.TaskID,
 				"attempt": j.RetryInfo().CurrentAttempt,
 				"job":     j.ID(),
-				"message": "could not find host",
+				"message": "host intent has been removed",
 			})
 			return
 		}
@@ -216,7 +216,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 	defer func() {
 		if j.RetryInfo().GetRemainingAttempts() == 0 && j.HasErrors() && (j.host.Status == evergreen.HostUninitialized || j.host.Status == evergreen.HostBuilding) && j.host.SpawnOptions.SpawnedByTask {
 			if err := task.AddHostCreateDetails(j.host.StartedBy, j.host.Id, j.host.SpawnOptions.TaskExecutionNumber, j.Error()); err != nil {
-				j.AddError(errors.Wrapf(err, "error adding host create error details"))
+				j.AddError(errors.Wrapf(err, "adding host create error details"))
 			}
 		}
 	}()
@@ -387,7 +387,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	}
 
 	if hostReplaced {
-		event.LogHostStartFinished(j.host.Id, true)
+		event.LogHostStartSucceeded(j.host.Id)
 	}
 
 	grip.Info(message.Fields{

@@ -12,14 +12,14 @@ func GetTestStats(filter stats.StatsFilter) ([]restModel.APITestStats, error) {
 	if filter.Project != "" {
 		projectID, err := model.GetIdForProject(filter.Project)
 		if err != nil {
-			return nil, errors.Wrapf(err, "getting project id for '%s'", filter.Project)
+			return nil, errors.Wrapf(err, "getting project ID for project identifier '%s'", filter.Project)
 		}
 		filter.Project = projectID
 	}
 
 	serviceStatsResult, err := stats.GetTestStats(filter)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to get test stats from service API")
+		return nil, errors.Wrap(err, "getting test stats")
 	}
 
 	apiStatsResult := make([]restModel.APITestStats, len(serviceStatsResult))
@@ -27,7 +27,7 @@ func GetTestStats(filter stats.StatsFilter) ([]restModel.APITestStats, error) {
 		ats := restModel.APITestStats{}
 		err = ats.BuildFromService(&serviceStats)
 		if err != nil {
-			return nil, errors.Wrap(err, "Model error")
+			return nil, errors.Wrap(err, "converting test stats to API model")
 		}
 		apiStatsResult[i] = ats
 	}
@@ -39,14 +39,14 @@ func GetTaskStats(filter stats.StatsFilter) ([]restModel.APITaskStats, error) {
 	if filter.Project != "" {
 		projectID, err := model.GetIdForProject(filter.Project)
 		if err != nil {
-			return nil, errors.Wrapf(err, "getting project id for '%s'", filter.Project)
+			return nil, errors.Wrapf(err, "getting project ID for project identifier '%s'", filter.Project)
 		}
 		filter.Project = projectID
 	}
 
 	serviceStatsResult, err := stats.GetTaskStats(filter)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to get task stats from service API")
+		return nil, errors.Wrap(err, "getting task stats")
 	}
 
 	apiStatsResult := make([]restModel.APITaskStats, len(serviceStatsResult))
@@ -54,7 +54,7 @@ func GetTaskStats(filter stats.StatsFilter) ([]restModel.APITaskStats, error) {
 		ats := restModel.APITaskStats{}
 		err = ats.BuildFromService(&serviceStats)
 		if err != nil {
-			return nil, errors.Wrap(err, "Model error")
+			return nil, errors.Wrap(err, "converting task stats to API model")
 		}
 		apiStatsResult[i] = ats
 	}

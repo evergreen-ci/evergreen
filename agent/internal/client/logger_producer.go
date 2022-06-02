@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"io"
 	"sync"
 
 	"github.com/mongodb/grip"
@@ -22,7 +21,6 @@ type logHarness struct {
 	task                      grip.Journaler
 	system                    grip.Journaler
 	mu                        sync.RWMutex
-	writers                   []io.WriteCloser
 	underlyingBufferedSenders []send.Sender
 	closed                    bool
 }

@@ -20,7 +20,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/google/go-github/v34/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -375,100 +374,15 @@ func (m *TaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 }
 
 func NewCommitQueueItemOwnerMiddleware() gimlet.Middleware {
-	return &CommitQueueItemOwnerMiddleware{}
+	return &CommitQueueItemOwnerMiddleware{
+		sc: &data.DBConnector{},
+	}
 }
 
 func NewMockCommitQueueItemOwnerMiddleware() gimlet.Middleware {
-	return &MockCommitQueueItemOwnerMiddleware{}
-}
-
-type MockCommitQueueItemOwnerMiddleware struct{}
-
-func (m *MockCommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	ctx := r.Context()
-	user := MustHaveUser(ctx)
-	opCtx := MustHaveProjectContext(ctx)
-	projRef, err := opCtx.GetProjectRef()
-	if err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    err.Error(),
-		}))
-		return
+	return &CommitQueueItemOwnerMiddleware{
+		sc: &data.MockGitHubConnector{},
 	}
-
-	if !projRef.CommitQueue.IsEnabled() {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "Commit queue is not enabled for project",
-		}))
-		return
-	}
-
-	// A superuser or project admin is authorized
-	isAdmin := user.HasPermission(gimlet.PermissionOpts{
-		Resource:      opCtx.ProjectRef.Id,
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionProjectSettings,
-		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
-	})
-	if isAdmin {
-		next(rw, r)
-		return
-	}
-
-	// The owner of the patch can also pass
-	vars := gimlet.GetVars(r)
-	itemId, ok := vars["item"]
-	if !ok {
-		itemId, ok = vars["patch_id"]
-	}
-	if !ok || itemId == "" {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "No item provided",
-		}))
-		return
-	}
-
-	if bson.IsObjectIdHex(itemId) {
-		patch, err := data.FindPatchById(itemId)
-		if err != nil {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't find item")))
-			return
-		}
-		if user.Id != *patch.Author {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusUnauthorized,
-				Message:    "Not authorized",
-			}))
-			return
-		}
-	} else if _, err := strconv.Atoi(itemId); err == nil {
-		pr := &github.PullRequest{
-			Base: &github.PullRequestBranch{
-				SHA: github.String("abcdef"),
-			},
-			User: &github.User{
-				ID: github.Int64(0),
-			},
-			Number:         github.Int(1),
-			MergeCommitSHA: github.String("abcdef"),
-		}
-
-		var githubUID int
-		if pr.User != nil && pr.User.ID != nil {
-			githubUID = int(*pr.User.ID)
-		}
-		if githubUID == 0 || user.Settings.GithubUser.UID != githubUID {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusUnauthorized,
-				Message:    "Not authorized",
-			}))
-			return
-		}
-	}
-	next(rw, r)
 }
 
 type CommitQueueItemOwnerMiddleware struct {
@@ -496,14 +410,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		return
 	}
 
-	// A superuser or project admin is authorized
-	isAdmin := user.HasPermission(gimlet.PermissionOpts{
-		Resource:      opCtx.ProjectRef.Id,
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionProjectSettings,
-		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
-	})
-	if isAdmin {
+	if canAlwaysSubmitPatchesForProject(user, opCtx.ProjectRef.Id) {
 		next(rw, r)
 		return
 	}
@@ -531,7 +438,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		if user.Id != *patch.Author {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusUnauthorized,
-				Message:    "Not authorized",
+				Message:    "Not authorized to patch on behalf of author",
 			}))
 			return
 		}
@@ -552,7 +459,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		if githubUID == 0 || user.Settings.GithubUser.UID != githubUID {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusUnauthorized,
-				Message:    "Not authorized",
+				Message:    "Not authorized to patch on behalf of Github user",
 			}))
 			return
 		}
@@ -565,6 +472,26 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 	}
 
 	next(rw, r)
+}
+
+// canAlwaysSubmitPatchesForProject returns true if the user is a superuser or project admin,
+// or is authorized specifically to patch on behalf of other users.
+func canAlwaysSubmitPatchesForProject(user *user.DBUser, projectId string) bool {
+	isAdmin := user.HasPermission(gimlet.PermissionOpts{
+		Resource:      projectId,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
+		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+	})
+	if isAdmin {
+		return true
+	}
+	return user.HasPermission(gimlet.PermissionOpts{
+		Resource:      projectId,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionPatches,
+		RequiredLevel: evergreen.PatchSubmitAdmin.Value,
+	})
 }
 
 func RequiresProjectPermission(permission string, level evergreen.PermissionLevel) gimlet.Middleware {
@@ -744,7 +671,6 @@ func urlVarsToDistroScopes(r *http.Request) ([]string, int, error) {
 	resourceType := strings.ToUpper(util.CoalesceStrings(query["resource_type"], vars["resource_type"]))
 	if resourceType != "" {
 		switch resourceType {
-		case event.ResourceTypeScheduler:
 		case event.ResourceTypeDistro:
 			vars["distro_id"] = vars["resource_id"]
 		case event.ResourceTypeHost:
@@ -816,8 +742,6 @@ func (m *EventLogPermissionsMiddleware) ServeHTTP(rw http.ResponseWriter, r *htt
 		opts.Permission = evergreen.PermissionProjectSettings
 		opts.RequiredLevel = evergreen.ProjectSettingsView.Value
 	case event.ResourceTypeDistro:
-		fallthrough
-	case event.ResourceTypeScheduler:
 		resources, status, err = urlVarsToDistroScopes(r)
 		opts.ResourceType = evergreen.DistroResourceType
 		opts.Permission = evergreen.PermissionHosts

@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/evergreen-ci/evergreen/model/task"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -21,16 +23,16 @@ import (
 // GET /tasks/{task_id}/tests
 
 type testGetHandler struct {
-	taskID        string
-	displayTask   bool
-	cedarResults  bool
-	testStatus    []string
-	testID        string
-	testName      string
-	testExecution int
-	key           string
-	limit         int
-	sc            data.Connector
+	taskID     string
+	testStatus []string
+	testID     string
+	testName   string
+	key        string
+	limit      int
+	sc         data.Connector
+	latest     bool
+
+	task *task.Task
 }
 
 func makeFetchTestsForTask(sc data.Connector) gimlet.RouteHandler {
@@ -49,26 +51,49 @@ func (tgh *testGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	projCtx := MustHaveProjectContext(ctx)
 	if projCtx.Task == nil {
 		return gimlet.ErrorResponse{
-			Message:    "task not found",
 			StatusCode: http.StatusNotFound,
 		}
 	}
-	tgh.taskID = projCtx.Task.Id
-	tgh.displayTask = projCtx.Task.DisplayOnly
-	tgh.cedarResults = projCtx.Task.HasCedarResults
+	tgh.taskID = gimlet.GetVars(r)["task_id"]
 
 	var err error
 	vals := r.URL.Query()
-	execution := vals.Get("execution")
+	executionStr := vals.Get("execution")
+	tgh.latest = vals.Get("latest") == "true"
 
-	if execution != "" {
-		tgh.testExecution, err = strconv.Atoi(execution)
-		if err != nil {
-			return gimlet.ErrorResponse{
-				Message:    "invalid execution",
-				StatusCode: http.StatusBadRequest,
+	if tgh.latest && executionStr != "" {
+		return gimlet.ErrorResponse{
+			Message:    "cannot specify both latest and execution",
+			StatusCode: http.StatusBadRequest,
+		}
+	} else if tgh.latest {
+		tgh.task = projCtx.Task
+	} else {
+
+		execution := 0 // Default to first execution unless latest is specified to maintain backwards compatibility.
+		if executionStr != "" {
+			execution, err = strconv.Atoi(executionStr)
+			if err != nil {
+				return gimlet.ErrorResponse{
+					Message:    "invalid execution",
+					StatusCode: http.StatusBadRequest,
+				}
 			}
 		}
+		taskByExecution, err := task.FindOneIdAndExecution(tgh.taskID, execution)
+		if err != nil {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    errors.Wrapf(err, "finding execution '%d' for task '%s'", execution, tgh.taskID).Error(),
+			}
+		}
+		if taskByExecution == nil {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("task '%s' not found", tgh.taskID),
+			}
+		}
+		tgh.task = taskByExecution
 	}
 
 	if status := vals.Get("status"); status != "" {
@@ -88,7 +113,7 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 	var err error
 	var key string
 
-	if tgh.cedarResults {
+	if tgh.task.HasCedarResults {
 		var page int
 		if tgh.key != "" {
 			page, err = strconv.Atoi(tgh.key)
@@ -100,8 +125,8 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 		cedarTestResults, status, err := apimodels.GetCedarTestResults(ctx, apimodels.GetCedarTestResultsOptions{
 			BaseURL:     evergreen.GetEnvironment().Settings().Cedar.BaseURL,
 			TaskID:      tgh.taskID,
-			Execution:   utility.ToIntPtr(tgh.testExecution),
-			DisplayTask: tgh.displayTask,
+			Execution:   utility.ToIntPtr(tgh.task.Execution),
+			DisplayTask: tgh.task.DisplayOnly,
 			TestName:    tgh.testName,
 			Statuses:    tgh.testStatus,
 			Limit:       tgh.limit,
@@ -130,14 +155,16 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "database error"))
 		}
 	} else {
+
 		// we're going in here, and we've provided nothing so the limit is 101
 		tests, err = tgh.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{
-			Execution: tgh.testExecution,
-			Limit:     tgh.limit + 1,
-			Statuses:  tgh.testStatus, // we haven't provided a status or execution or test name
-			TaskID:    tgh.taskID,
-			TestID:    tgh.key, // TESTID IS KEY
-			TestName:  tgh.testName,
+			Execution:      tgh.task.Execution,
+			Limit:          tgh.limit + 1,
+			Statuses:       tgh.testStatus, // we haven't provided a status or execution or test name
+			TaskID:         tgh.taskID,
+			TestID:         tgh.key, // TESTID IS KEY
+			TestName:       tgh.testName,
+			ExecutionTasks: tgh.task.ExecutionTasks,
 		})
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "database error"))

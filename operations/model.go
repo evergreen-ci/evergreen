@@ -10,6 +10,7 @@ import (
 	"runtime"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/kardianos/osext"
@@ -22,13 +23,14 @@ import (
 const localConfigPath = ".evergreen.local.yml"
 
 type ClientProjectConf struct {
-	Name           string            `json:"name" yaml:"name,omitempty"`
-	Default        bool              `json:"default" yaml:"default,omitempty"`
-	Alias          string            `json:"alias" yaml:"alias,omitempty"`
-	Variants       []string          `json:"variants" yaml:"variants,omitempty"`
-	Tasks          []string          `json:"tasks" yaml:"tasks,omitempty"`
-	Parameters     map[string]string `json:"parameters" yaml:"parameters,omitempty"`
-	TriggerAliases []string          `json:"trigger_aliases" yaml:"trigger_aliases"`
+	Name           string               `json:"name" yaml:"name,omitempty"`
+	Default        bool                 `json:"default" yaml:"default,omitempty"`
+	Alias          string               `json:"alias" yaml:"alias,omitempty"`
+	Variants       []string             `json:"variants" yaml:"variants,omitempty"`
+	Tasks          []string             `json:"tasks" yaml:"tasks,omitempty"`
+	Parameters     map[string]string    `json:"parameters" yaml:"parameters,omitempty"`
+	TriggerAliases []string             `json:"trigger_aliases" yaml:"trigger_aliases"`
+	LocalAliases   []model.ProjectAlias `json:"local_aliases,omitempty" yaml:"local_aliases,omitempty"`
 }
 
 func findConfigFilePath(fn string) (string, error) {
@@ -293,14 +295,6 @@ func parametersFromMap(params map[string]string) []patch.Parameter {
 	res := []patch.Parameter{}
 	for key, val := range params {
 		res = append(res, patch.Parameter{Key: key, Value: val})
-	}
-	return res
-}
-
-func parametersToMap(params []patch.Parameter) map[string]string {
-	res := map[string]string{}
-	for _, param := range params {
-		res[param.Key] = param.Value
 	}
 	return res
 }

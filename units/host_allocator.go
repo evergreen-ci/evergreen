@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/scheduler"
 	"github.com/evergreen-ci/utility"
@@ -182,17 +181,6 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		return
 	}
 
-	eventInfo := event.TaskQueueInfo{
-		TaskQueueLength:  distroQueueInfo.Length,
-		NumHostsRunning:  len(upHosts),
-		ExpectedDuration: distroQueueInfo.ExpectedDuration,
-	}
-
-	event.LogSchedulerEvent(event.SchedulerEventData{
-		TaskQueueInfo: eventInfo,
-		DistroId:      distro.Id,
-	})
-
 	grip.Info(message.Fields{
 		"runner":        hostAllocatorJobName,
 		"distro":        distro.Id,
@@ -270,7 +258,8 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		"max_hosts":                    distro.HostAllocatorSettings.MaximumHosts,
 		"num_new_hosts":                len(hostsSpawned),
 		"pool_info":                    existingHosts.Stats(),
-		"queue":                        eventInfo,
+		"task_queue_length":            distroQueueInfo.Length,
+		"num_hosts_running":            len(upHosts),
 		"overdue_tasks":                distroQueueInfo.CountWaitOverThreshold,
 		"overdue_tasks_in_groups":      totalOverdueInTaskGroups,
 		"total_runtime":                distroQueueInfo.ExpectedDuration.String(),

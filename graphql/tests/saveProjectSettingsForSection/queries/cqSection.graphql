@@ -8,6 +8,18 @@ mutation {
                     requireSigned: true
                 }
             }
+            aliases: [
+            {
+                id: "5ffe393097b1d3759dd3c1aa"
+                alias: "__commit_queue"
+                task : "unit_tests"
+                variant : "ubuntu1604"
+                gitTag : ""
+                taskTags: []
+                variantTags: []
+                remotePath: ""
+            }
+        ]
         },
         section: GITHUB_AND_COMMIT_QUEUE
     ) {

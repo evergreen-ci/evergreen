@@ -93,8 +93,6 @@ type TaskQueue struct {
 	GeneratedAt     time.Time       `bson:"generated_at" json:"generated_at"`
 	Queue           []TaskQueueItem `bson:"queue" json:"queue"`
 	DistroQueueInfo DistroQueueInfo `bson:"distro_queue_info" json:"distro_queue_info"`
-
-	useModerDequeueOp bool
 }
 
 type TaskDep struct {
@@ -754,8 +752,7 @@ outer:
 	// only no longer be present after the TTL has passed, and each app server
 	// has re-created its in-memory queue.
 
-	var err error
-	err = dequeue(taskId, self.Distro)
+	err := dequeue(taskId, self.Distro)
 	if adb.ResultsNotFound(err) {
 		return nil
 	}

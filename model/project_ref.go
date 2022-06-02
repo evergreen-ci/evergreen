@@ -108,7 +108,8 @@ type ProjectRef struct {
 	PerfEnabled        *bool                        `bson:"perf_enabled,omitempty" json:"perf_enabled,omitempty" yaml:"perf_enabled,omitempty"`
 
 	// Container settings
-	ContainerSizes map[string]ContainerResources `bson:"container_sizes,omitempty" json:"container_sizes,omitempty" yaml:"container_sizes,omitempty"`
+	ContainerSizes       map[string]ContainerResources  `bson:"container_sizes,omitempty" json:"container_sizes,omitempty" yaml:"container_sizes,omitempty"`
+	ContainerCredentials map[string]ContainerCredential `bson:"container_credentials,omitempty" json:"container_credentials,omitempty" yaml:"container_credentials,omitempty"`
 
 	RepoRefId string `bson:"repo_ref_id" json:"repo_ref_id" yaml:"repo_ref_id"`
 
@@ -154,6 +155,14 @@ type AlertConfig struct {
 type ContainerResources struct {
 	MemoryMB int `bson:"memory_mb,omitempty" json:"memory_mb" yaml:"memory_mb"`
 	CPU      int `bson:"cpu,omitempty" json:"cpu" yaml:"cpu"`
+}
+
+// ContainerCredential specifies the username and password required for authentication
+// on a private image repository. The credential is saved in AWS Secrets Manager upon
+// saving to the ProjectRef
+type ContainerCredential struct {
+	Username string `bson:"username,omitempty" json:"username" yaml:"username"`
+	Password string `bson:"password,omitempty" json:"password" yaml:"password"`
 }
 
 type TriggerDefinition struct {
@@ -233,7 +242,6 @@ var (
 	ProjectRefAdminsKey                  = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
 	ProjectRefGitTagAuthorizedUsersKey   = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedUsers")
 	ProjectRefGitTagAuthorizedTeamsKey   = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedTeams")
-	projectRefTracksPushEventsKey        = bsonutil.MustHaveTag(ProjectRef{}, "TracksPushEvents")
 	projectRefDefaultLoggerKey           = bsonutil.MustHaveTag(ProjectRef{}, "DefaultLogger")
 	projectRefCedarTestResultsEnabledKey = bsonutil.MustHaveTag(ProjectRef{}, "CedarTestResultsEnabled")
 	projectRefPRTestingEnabledKey        = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
@@ -411,6 +419,8 @@ func (p *ProjectRef) Add(creator *user.DBUser) error {
 	if p.Id == "" {
 		p.Id = mgobson.NewObjectId().Hex()
 	}
+	// Ensure that any new project is originally explicitly disabled.
+	p.Enabled = utility.FalsePtr()
 
 	// if a hidden project exists for this configuration, use that ID
 	if p.Owner != "" && p.Repo != "" && p.Branch != "" {
@@ -436,7 +446,7 @@ func (p *ProjectRef) Add(creator *user.DBUser) error {
 	if err != nil {
 		return errors.Wrap(err, "inserting project ref")
 	}
-	return p.AddPermissions(creator)
+	return p.addPermissions(creator)
 }
 
 func (p *ProjectRef) GetPatchTriggerAlias(aliasName string) (patch.PatchTriggerDefinition, bool) {
@@ -481,35 +491,14 @@ func (p *ProjectRef) MergeWithProjectConfig(version string) (err error) {
 		}
 		reflectedRef := reflect.ValueOf(p).Elem()
 		reflectedConfig := reflect.ValueOf(pRefToMerge)
-		recursivelySetUndefinedFields(reflectedRef, reflectedConfig)
+		util.RecursivelySetUndefinedFields(reflectedRef, reflectedConfig)
 	}
 	return err
 }
 
-// AttachToRepo adds the branch to the relevant repo scopes, and updates the project to point to the repo.
-// Any values that previously were unset will now use the repo value.
-// If no repo ref currently exists, the user attaching it will be added as the repo ref admin.
-func (p *ProjectRef) AttachToRepo(u *user.DBUser) error {
-	before, err := GetProjectSettingsById(p.Id, false)
-	if err != nil {
-		return errors.Wrap(err, "getting before project settings event")
-	}
-	if err := p.AddToRepoScope(u); err != nil {
-		return err
-	}
-	err = db.UpdateId(ProjectRefCollection, p.Id, bson.M{
-		"$set": bson.M{
-			ProjectRefRepoRefIdKey: p.RepoRefId, // this is set locally in AddToRepoScope
-		},
-	})
-	if err != nil {
-		return errors.Wrap(err, "attaching repo to scope")
-	}
-	return GetAndLogProjectModified(p.Id, u.Id, false, before)
-}
-
-// AddToRepoScope adds the branch to the unrestricted branches under repo scope, adds repo view permission for
-// branch admins, and adds branch edit access for repo admins.
+// AddToRepoScope validates that the branch can be attached to the matching repo,
+// adds the branch to the unrestricted branches under repo scope, and
+// adds repo view permission for branch admins, and adds branch edit access for repo admins.
 func (p *ProjectRef) AddToRepoScope(u *user.DBUser) error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	repoRef, err := FindRepoRefByOwnerAndRepo(p.Owner, p.Repo)
@@ -526,17 +515,17 @@ func (p *ProjectRef) AddToRepoScope(u *user.DBUser) error {
 		p.RepoRefId = repoRef.Id
 	}
 
-	// add the project to the repo admin scope
+	// Add the project to the repo admin scope.
 	if err := rm.AddResourceToScope(GetRepoAdminScope(p.RepoRefId), p.Id); err != nil {
 		return errors.Wrapf(err, "adding resource to repo '%s' admin scope", p.RepoRefId)
 	}
-	// only give branch admins view access if the repo isn't restricted
+	// Only give branch admins view access if the repo isn't restricted.
 	if !repoRef.IsRestricted() {
 		if err := addViewRepoPermissionsToBranchAdmins(p.RepoRefId, p.Admins); err != nil {
 			return errors.Wrapf(err, "giving branch '%s' admins view permission for repo '%s'", p.Id, p.RepoRefId)
 		}
 	}
-	// if the branch is unrestricted, add it to this scope so users who requested all-repo permissions have access
+	// If the branch is unrestricted, add it to this scope so users who requested all-repo permissions have access.
 	if !p.IsRestricted() {
 		if err := rm.AddResourceToScope(GetUnrestrictedBranchProjectsScope(p.RepoRefId), p.Id); err != nil {
 			return errors.Wrap(err, "adding resource to unrestricted branches scope")
@@ -635,6 +624,34 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 	return catcher.Resolve()
 }
 
+// AttachToRepo adds the branch to the relevant repo scopes, and updates the project to point to the repo.
+// Any values that previously were unset will now use the repo value, unless this would introduce
+// a Github project conflict. If no repo ref currently exists, the user attaching it will be added as the repo ref admin.
+func (p *ProjectRef) AttachToRepo(u *user.DBUser) error {
+	before, err := GetProjectSettingsById(p.Id, false)
+	if err != nil {
+		return errors.Wrap(err, "getting before project settings event")
+	}
+	if err := p.AddToRepoScope(u); err != nil {
+		return err
+	}
+	update := bson.M{
+		ProjectRefRepoRefIdKey: p.RepoRefId, // This is set locally in AddToRepoScope
+	}
+	update = p.addGithubConflictsToUpdate(update)
+	err = db.UpdateId(ProjectRefCollection, p.Id, bson.M{
+		"$set": update,
+	})
+	if err != nil {
+		return errors.Wrap(err, "attaching repo to scope")
+	}
+
+	return GetAndLogProjectModified(p.Id, u.Id, false, before)
+}
+
+// AttachToNewRepo modifies the project's owner/repo, updates the old and new repo scopes (if relevant), and
+// updates the project to point to the new repo. Any Github project conflicts are disabled.
+// If no repo ref currently exists for the new repo, the user attaching it will be added as the repo ref admin.
 func (p *ProjectRef) AttachToNewRepo(u *user.DBUser) error {
 	before, err := GetProjectSettingsById(p.Id, false)
 	if err != nil {
@@ -654,17 +671,58 @@ func (p *ProjectRef) AttachToNewRepo(u *user.DBUser) error {
 			return errors.Wrap(err, "adding project to new repo scope")
 		}
 	}
+
 	update := bson.M{
-		"$set": bson.M{
-			ProjectRefOwnerKey:     p.Owner,
-			ProjectRefRepoKey:      p.Repo,
-			ProjectRefRepoRefIdKey: p.RepoRefId,
-		},
+		ProjectRefOwnerKey:     p.Owner,
+		ProjectRefRepoKey:      p.Repo,
+		ProjectRefRepoRefIdKey: p.RepoRefId,
 	}
-	if err := db.UpdateId(ProjectRefCollection, p.Id, update); err != nil {
+	update = p.addGithubConflictsToUpdate(update)
+	err = db.UpdateId(ProjectRefCollection, p.Id, bson.M{
+		"$set": update,
+	})
+	if err != nil {
 		return errors.Wrap(err, "updating owner/repo in the DB")
 	}
 	return GetAndLogProjectModified(p.Id, u.Id, false, before)
+}
+
+// addGithubConflictsToUpdate turns off any settings that may introduce conflicts by
+// adding fields to the given update and returning them.
+func (p *ProjectRef) addGithubConflictsToUpdate(update bson.M) bson.M {
+	// If the project ref doesn't default to repo, will just return the original project.
+	mergedProject, err := GetProjectRefMergedWithRepo(*p)
+	if err != nil {
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message":            "unable to merge project with attached repo",
+			"project_id":         p.Id,
+			"project_identifier": p.Identifier,
+			"repo_id":            p.RepoRefId,
+		}))
+		return update
+	}
+	if mergedProject.IsEnabled() {
+		conflicts, err := mergedProject.GetGithubProjectConflicts()
+		if err != nil {
+			grip.Debug(message.WrapError(err, message.Fields{
+				"message":            "unable to get github project conflicts",
+				"project_id":         p.Id,
+				"project_identifier": p.Identifier,
+				"repo_id":            mergedProject.RepoRefId,
+			}))
+			return update
+		}
+		if len(conflicts.CommitQueueIdentifiers) > 0 {
+			update[bsonutil.GetDottedKeyName(projectRefCommitQueueKey, commitQueueEnabledKey)] = false
+		}
+		if len(conflicts.CommitCheckIdentifiers) > 0 {
+			update[projectRefGithubChecksEnabledKey] = false
+		}
+		if len(conflicts.PRTestingIdentifiers) > 0 {
+			update[projectRefPRTestingEnabledKey] = false
+		}
+	}
+	return update
 }
 
 // RemoveFromRepoScope removes the branch from the unrestricted branches under repo scope, removes repo view permission
@@ -689,7 +747,9 @@ func (p *ProjectRef) RemoveFromRepoScope() error {
 	return nil
 }
 
-func (p *ProjectRef) AddPermissions(creator *user.DBUser) error {
+// addPermissions adds the project ref to the general scope (and repo scope if applicable) and
+// gives the inputted creator admin permissions.
+func (p *ProjectRef) addPermissions(creator *user.DBUser) error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	parentScope := evergreen.UnrestrictedProjectsScope
 	if p.IsRestricted() {
@@ -788,7 +848,7 @@ func FindMergedProjectRef(identifier string, version string, includeProjectConfi
 		}
 		pRef, err = mergeBranchAndRepoSettings(pRef, repoRef)
 		if err != nil {
-			return nil, errors.Wrapf(err, "merging repo ref '%s' for project '%s'", repoRef.RepoRefId, pRef.Identifier)
+			return nil, errors.Wrapf(err, "merging repo ref '%s' for project '%s'", repoRef.RepoRefId, identifier)
 		}
 	}
 	if includeProjectConfig && pRef.IsVersionControlEnabled() {
@@ -800,30 +860,19 @@ func FindMergedProjectRef(identifier string, version string, includeProjectConfi
 	return pRef, nil
 }
 
-// GetProjectRefMergedWithRepo merges the project with the repo that matches it, if one exists.
+// GetProjectRefMergedWithRepo merges the project with the repo, if one exists.
 // Otherwise, it will return the project as given.
 func GetProjectRefMergedWithRepo(pRef ProjectRef) (*ProjectRef, error) {
 	if !pRef.UseRepoSettings() {
 		return &pRef, nil
 	}
-	if pRef.RepoRefId != "" {
-		repoRef, err := FindOneRepoRef(pRef.RepoRefId)
-		if err != nil {
-			return nil, errors.Wrapf(err, "finding repo ref '%s'", pRef.RepoRefId)
-		}
-		if repoRef == nil {
-			return nil, errors.Errorf("repo ref '%s' does not exist", pRef.RepoRefId)
-		}
-		return mergeBranchAndRepoSettings(&pRef, repoRef)
-	}
-	repoRef, err := FindRepoRefByOwnerAndRepo(pRef.Owner, pRef.Repo)
+	repoRef, err := FindOneRepoRef(pRef.RepoRefId)
 	if err != nil {
-		return nil, errors.Wrapf(err, "finding repo ref for repo '%s/%s'", pRef.Owner, pRef.Repo)
+		return nil, errors.Wrapf(err, "finding repo ref '%s'", pRef.RepoRefId)
 	}
 	if repoRef == nil {
-		return &pRef, nil
+		return nil, errors.Errorf("repo ref '%s' does not exist", pRef.RepoRefId)
 	}
-	pRef.RepoRefId = repoRef.Id
 	return mergeBranchAndRepoSettings(&pRef, repoRef)
 }
 
@@ -836,27 +885,8 @@ func mergeBranchAndRepoSettings(pRef *ProjectRef, repoRef *RepoRef) (*ProjectRef
 	reflectedBranch := reflect.ValueOf(pRef).Elem()
 	reflectedRepo := reflect.ValueOf(repoRef).Elem().Field(0) // specifically references the ProjectRef part of RepoRef
 
-	recursivelySetUndefinedFields(reflectedBranch, reflectedRepo)
+	util.RecursivelySetUndefinedFields(reflectedBranch, reflectedRepo)
 	return pRef, err
-}
-
-func recursivelySetUndefinedFields(structToSet, structToDefaultFrom reflect.Value) {
-	// Iterate through each field of the struct.
-	for i := 0; i < structToSet.NumField(); i++ {
-		branchField := structToSet.Field(i)
-
-		// If the field isn't set, use the default field.
-		// Note for pointers and maps, we consider the field undefined if the item is nil or empty length,
-		// and we don't check for subfields. This allows us to group some settings together as defined or undefined.
-		if util.IsFieldUndefined(branchField) {
-			reflectedField := structToDefaultFrom.Field(i)
-			branchField.Set(reflectedField)
-
-			// If the field is a struct and isn't undefined, then we check each subfield recursively.
-		} else if branchField.Kind() == reflect.Struct {
-			recursivelySetUndefinedFields(branchField, structToDefaultFrom.Field(i))
-		}
-	}
 }
 
 func setRepoFieldsFromProjects(repoRef *RepoRef, projectRefs []ProjectRef) {
@@ -2013,8 +2043,8 @@ func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit) (time.Tim
 	return defaultRes, nil
 }
 
-// GetGithubProjectConflicts returns any potential conflicts; i.e. regardless of whether or not p has something enabled,
-// returns the project identifiers that it _would_ conflict with if it did.
+// GetGithubProjectConflicts returns any potential conflicts; i.e. regardless of whether or not
+// p has something enabled, returns the project identifiers that it _would_ conflict with if it did.
 func (p *ProjectRef) GetGithubProjectConflicts() (GithubProjectConflicts, error) {
 	res := GithubProjectConflicts{}
 	// return early for projects that don't need to consider conflicts
@@ -2473,14 +2503,16 @@ func ValidateContainers(pRef *ProjectRef, containers []Container) error {
 	catcher := grip.NewSimpleCatcher()
 	for _, container := range containers {
 		catcher.Add(container.System.Validate())
+		if container.Resources != nil {
+			catcher.Add(container.Resources.Validate())
+		}
 		size, ok := pRef.ContainerSizes[container.Size]
 		if ok {
 			catcher.Add(size.Validate())
 		}
-		if container.Resources != nil {
-			catcher.Add(container.Resources.Validate())
-		}
 		catcher.ErrorfWhen(container.Size != "" && !ok, "size '%s' is not defined anywhere", container.Size)
+		_, ok = pRef.ContainerCredentials[container.Credential]
+		catcher.ErrorfWhen(container.Credential != "" && !ok, "credential '%s' is not defined anywhere", container.Credential)
 		catcher.NewWhen(container.Size != "" && container.Resources != nil, "size and resources cannot both be defined")
 		catcher.NewWhen(container.Size == "" && container.Resources == nil, "either size or resources must be defined")
 		catcher.NewWhen(container.Image == "", "image must be defined")
@@ -2510,6 +2542,14 @@ func (c ContainerResources) Validate() error {
 	catcher := grip.NewSimpleCatcher()
 	catcher.NewWhen(c.CPU <= 0, "container resource CPU must be a positive integer")
 	catcher.NewWhen(c.MemoryMB <= 0, "container resource memory MB must be a positive integer")
+	return catcher.Resolve()
+}
+
+// Validate that essential ContainerCredential fields are properly defined.
+func (c ContainerCredential) Validate() error {
+	catcher := grip.NewSimpleCatcher()
+	catcher.NewWhen(c.Username == "", "container credential username must be a non empty string")
+	catcher.NewWhen(c.Password == "", "container credential password must be a non empty string")
 	return catcher.Resolve()
 }
 

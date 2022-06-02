@@ -16,7 +16,9 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-var buildTestConfig = testutil.TestConfig()
+func init() {
+	testutil.Setup()
+}
 
 func buildIdInSlice(builds []Build, id string) bool {
 	for _, build := range builds {

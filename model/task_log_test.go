@@ -7,13 +7,10 @@ import (
 
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
 )
-
-var taskLogTestConfig = testutil.TestConfig()
 
 func cleanUpLogDB() error {
 	session, _, err := db.GetGlobalSessionFactory().GetSession()

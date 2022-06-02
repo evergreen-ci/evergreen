@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -16,8 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -119,115 +116,6 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 	taskModel.EstimatedStart = model.NewAPIDuration(start)
 
 	return gimlet.NewJSONResponse(taskModel)
-}
-
-////////////////////////////////////////////////////////////////////////
-//
-// Handler for the tasks for a project
-//
-//    /projects/{project_id}/versions/tasks
-type projectTaskGetHandler struct {
-	startedAfter   time.Time
-	finishedBefore time.Time
-	projectId      string
-	statuses       []string
-}
-
-func makeFetchProjectTasks() gimlet.RouteHandler {
-	return &projectTaskGetHandler{}
-}
-
-func (h *projectTaskGetHandler) Factory() gimlet.RouteHandler {
-	return &projectTaskGetHandler{}
-}
-
-func (h *projectTaskGetHandler) Parse(ctx context.Context, r *http.Request) error {
-	// Parse project_id
-	h.projectId = gimlet.GetVars(r)["project_id"]
-
-	var err error
-	vals := r.URL.Query()
-	startedAfter := vals.Get("started_after")
-	finishedBefore := vals.Get("finished_before")
-	statuses := vals["status"]
-
-	// Parse started-after
-	if startedAfter != "" {
-		h.startedAfter, err = time.ParseInLocation(time.RFC3339, startedAfter, time.UTC)
-		if err != nil {
-			return gimlet.ErrorResponse{
-				Message:    fmt.Sprintf("problem parsing time from '%s' (%s)", startedAfter, err.Error()),
-				StatusCode: http.StatusBadRequest,
-			}
-		}
-	} else {
-		// Default is 7 days before now
-		h.startedAfter = time.Now().AddDate(0, 0, -7)
-	}
-
-	// Parse finished-before
-	if finishedBefore != "" {
-		h.finishedBefore, err = time.ParseInLocation(time.RFC3339, finishedBefore, time.UTC)
-		if err != nil {
-			return gimlet.ErrorResponse{
-				Message:    fmt.Sprintf("problem parsing time from '%s' (%s)", finishedBefore, err.Error()),
-				StatusCode: http.StatusBadRequest,
-			}
-		}
-	}
-
-	// Parse status
-	if len(statuses) > 0 {
-		h.statuses = statuses
-	}
-
-	return nil
-}
-
-func (h *projectTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
-	resp := gimlet.NewResponseBuilder()
-	if err := resp.SetFormat(gimlet.JSON); err != nil {
-		return gimlet.MakeJSONErrorResponder(err)
-	}
-	tasks, err := findTaskWithinTimePeriod(h.startedAfter, h.finishedBefore, h.projectId, h.statuses)
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
-	}
-
-	for _, task := range tasks {
-		taskModel := &model.APITask{}
-		err = taskModel.BuildFromArgs(&task, &model.APITaskArgs{IncludeProjectIdentifier: true, IncludeAMI: true})
-		if err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
-		}
-		if err = resp.AddData(taskModel); err != nil {
-			return gimlet.MakeJSONErrorResponder(err)
-		}
-	}
-
-	return resp
-}
-
-func findTaskWithinTimePeriod(startedAfter, finishedBefore time.Time,
-	project string, statuses []string) ([]task.Task, error) {
-	id, err := dbModel.GetIdForProject(project)
-	if err != nil {
-		grip.Debug(message.WrapError(err, message.Fields{
-			"func":    "FindTaskWithinTimePeriod",
-			"message": "error getting id for project",
-			"project": project,
-		}))
-		// don't return an error here to preserve existing behavior
-		return nil, nil
-	}
-
-	tasks, err := task.Find(task.WithinTimePeriod(startedAfter, finishedBefore, id, statuses))
-
-	if err != nil {
-		return nil, err
-	}
-
-	return tasks, nil
 }
 
 // TaskExecutionPatchHandler implements the route PATCH /task/{task_id}. It
@@ -475,9 +363,7 @@ func (rh *taskSetHasCedarResultsHandler) Run(ctx context.Context) gimlet.Respond
 
 // GET /task/sync_read_credentials
 
-type taskSyncReadCredentialsGetHandler struct {
-	taskID string
-}
+type taskSyncReadCredentialsGetHandler struct{}
 
 func makeTaskSyncReadCredentialsGetHandler() gimlet.RouteHandler {
 	return &taskSyncReadCredentialsGetHandler{}

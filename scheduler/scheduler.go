@@ -181,7 +181,7 @@ func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold
 				if task.DependenciesMetTime.After(startTime) {
 					startTime = task.DependenciesMetTime
 				}
-				task.WaitSinceDependenciesMet = time.Now().Sub(startTime)
+				task.WaitSinceDependenciesMet = time.Since(startTime)
 
 				// actual wait time allows us to independently check that the threshold is working
 				if task.WaitSinceDependenciesMet > maxDurationThreshold {

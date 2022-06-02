@@ -24,14 +24,14 @@ func FindTestById(id string) ([]testresult.TestResult, error) {
 	if !bson.IsObjectIdHex(id) {
 		return []testresult.TestResult{}, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("invalid test id %s", id),
+			Message:    fmt.Sprintf("test ID '%s' is invalid because it must be an ObjectId", id),
 		}
 	}
-	results, err := testresult.Find(db.Query(bson.M{"_id": bson.ObjectIdHex(id)}))
+	results, err := testresult.Find(db.Query(bson.M{testresult.IDKey: bson.ObjectIdHex(id)}))
 	if err != nil {
 		return []testresult.TestResult{}, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("test result not found %s", err.Error()),
+			Message:    errors.Wrapf(err, "test result '%s' not found", id).Error(),
 		}
 	}
 
@@ -39,26 +39,10 @@ func FindTestById(id string) ([]testresult.TestResult, error) {
 }
 
 func (tc *DBTestConnector) FindTestsByTaskId(opts FindTestsByTaskIdOpts) ([]testresult.TestResult, error) {
-	t, err := task.FindOneIdNewOrOld(opts.TaskID)
-	if err != nil {
-		return []testresult.TestResult{}, gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("task not found %s", err.Error()),
-		}
+	taskIDs := []string{opts.TaskID}
+	if len(opts.ExecutionTasks) > 0 {
+		taskIDs = opts.ExecutionTasks
 	}
-	if t == nil {
-		return []testresult.TestResult{}, gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("task not found %s", opts.TaskID),
-		}
-	}
-	var taskIDs []string
-	if t.DisplayOnly {
-		taskIDs = t.ExecutionTasks
-	} else {
-		taskIDs = []string{opts.TaskID}
-	}
-
 	res, err := testresult.TestResultsFilterSortPaginate(testresult.TestResultsFilterSortPaginateOpts{
 		TestID:    opts.TestID,
 		TaskIDs:   taskIDs,

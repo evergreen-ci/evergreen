@@ -34,7 +34,7 @@ func TestDataConnectorSuite(t *testing.T) {
 func (s *AdminDataSuite) SetupSuite() {
 	s.env = &mock.Environment{}
 	s.Require().NoError(s.env.Configure(context.Background()))
-	s.NoError(db.ClearCollections(evergreen.ConfigCollection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, event.AllLogCollection, model.ProjectRefCollection), "clearing collections")
+	s.NoError(db.ClearCollections(evergreen.ConfigCollection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, event.AllLogCollection, model.ProjectRefCollection))
 	b := &build.Build{
 		Id:      "buildtest",
 		Status:  evergreen.BuildStarted,
@@ -77,12 +77,12 @@ func (s *AdminDataSuite) SetupSuite() {
 	p := &model.ProjectRef{
 		Id: "sample",
 	}
-	s.NoError(b.Insert(), "error inserting documents")
-	s.NoError(v.Insert(), "error inserting documents")
-	s.NoError(testTask1.Insert(), "error inserting documents")
-	s.NoError(testTask2.Insert(), "error inserting documents")
-	s.NoError(testTask3.Insert(), "error inserting documents")
-	s.NoError(p.Insert(), "error inserting documents")
+	s.Require().NoError(b.Insert())
+	s.Require().NoError(v.Insert())
+	s.Require().NoError(testTask1.Insert())
+	s.Require().NoError(testTask2.Insert())
+	s.Require().NoError(testTask3.Insert())
+	s.Require().NoError(p.Insert())
 }
 
 func (s *AdminDataSuite) TestSetAndGetSettings() {
@@ -155,6 +155,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.ServiceFlags.HostInitDisabled, settingsFromConnector.ServiceFlags.HostInitDisabled)
 	s.EqualValues(testSettings.ServiceFlags.PodInitDisabled, settingsFromConnector.ServiceFlags.PodInitDisabled)
 	s.EqualValues(testSettings.ServiceFlags.PodAllocatorDisabled, settingsFromConnector.ServiceFlags.PodAllocatorDisabled)
+	s.EqualValues(testSettings.ServiceFlags.UnrecognizedPodCleanupDisabled, settingsFromConnector.ServiceFlags.UnrecognizedPodCleanupDisabled)
 	s.EqualValues(testSettings.ServiceFlags.S3BinaryDownloadsDisabled, settingsFromConnector.ServiceFlags.S3BinaryDownloadsDisabled)
 	s.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, settingsFromConnector.ServiceFlags.CloudCleanupDisabled)
 	s.EqualValues(testSettings.ServiceFlags.ContainerConfigurationsDisabled, settingsFromConnector.ServiceFlags.ContainerConfigurationsDisabled)
@@ -282,6 +283,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.ServiceFlags.PodAllocatorDisabled, settingsFromConnector.ServiceFlags.PodAllocatorDisabled)
 	s.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, settingsFromConnector.ServiceFlags.CloudCleanupDisabled)
 	s.EqualValues(testSettings.ServiceFlags.ContainerConfigurationsDisabled, settingsFromConnector.ServiceFlags.ContainerConfigurationsDisabled)
+	s.EqualValues(testSettings.ServiceFlags.UnrecognizedPodCleanupDisabled, settingsFromConnector.ServiceFlags.UnrecognizedPodCleanupDisabled)
 	s.EqualValues(testSettings.Slack.Level, settingsFromConnector.Slack.Level)
 	s.EqualValues(testSettings.Slack.Options.Channel, settingsFromConnector.Slack.Options.Channel)
 	s.EqualValues(testSettings.Splunk.Channel, settingsFromConnector.Splunk.Channel)

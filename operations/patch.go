@@ -43,7 +43,7 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 			},
 			cli.StringFlag{
 				Name:  joinFlagNames(patchAliasFlagName, "a"),
-				Usage: "patch alias (set by project admin)",
+				Usage: "patch alias (set by project admin) or local alias (set individually in evergreen.yml)",
 			},
 			cli.StringFlag{
 				Name:  joinFlagNames(patchDescriptionFlagName, "d"),
@@ -144,9 +144,6 @@ func Patch() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
-			if (params.RepeatDefinition || params.RepeatFailed) && (len(params.Tasks) > 0 || len(params.Variants) > 0) {
-				return errors.Errorf("can't define tasks/variants when reusing previous patch's tasks and variants")
-			}
 
 			params.PreserveCommits = params.PreserveCommits || conf.PreserveCommits
 			if !params.SkipConfirm {
@@ -176,6 +173,14 @@ func Patch() cli.Command {
 				return err
 			}
 			params.Description = params.getDescription()
+
+			if err = params.setLocalAliases(conf); err != nil {
+				return errors.Wrap(err, "setting local aliases")
+			}
+
+			if (params.RepeatDefinition || params.RepeatFailed) && (len(params.Tasks) > 0 || len(params.Variants) > 0) {
+				return errors.Errorf("can't define tasks/variants when reusing previous patch's tasks and variants")
+			}
 
 			diffData, err := loadGitData(ref.Branch, params.Ref, "", params.PreserveCommits, args...)
 			if err != nil {

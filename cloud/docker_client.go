@@ -427,8 +427,7 @@ func (c *dockerClientImpl) GetDockerStatus(ctx context.Context, containerID stri
 	}
 	container, err := c.GetContainer(ctx, parent, containerID)
 	if err != nil {
-		if strings.Contains(err.Error(), "No such container") ||
-			strings.Contains(err.Error(), "Is the docker daemon running?") {
+		if docker.IsErrNotFound(err) || docker.IsErrConnectionFailed(err) {
 			return &ContainerStatus{HasStarted: false}, nil
 		}
 		return nil, errors.Wrapf(err, "Error getting container %s", containerID)

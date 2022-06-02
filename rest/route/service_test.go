@@ -305,13 +305,14 @@ func TestHostPaginator(t *testing.T) {
 
 func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 	numTasks := 300
-	projectName := "project_1"
+	projectId := "project_1"
+	projectName := "project_identifier"
 	commit := "commit_1"
 	Convey("When paginating with a Connector", t, func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, serviceModel.ProjectRefCollection))
 		p := &serviceModel.ProjectRef{
-			Id:         "project_1",
-			Identifier: "project_1",
+			Id:         projectId,
+			Identifier: projectName,
 		}
 		assert.NoError(t, p.Insert())
 		Convey("and there are tasks to be found", func() {
@@ -324,7 +325,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 				nextTask := task.Task{
 					Id:       fmt.Sprintf("%dtask_%d", prefix, i),
 					Revision: commit,
-					Project:  projectName,
+					Project:  projectId,
 				}
 				cachedTasks = append(cachedTasks, nextTask)
 			}
@@ -345,7 +346,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					serviceTask := &task.Task{
 						Id:       fmt.Sprintf("%dtask_%d", prefix, i),
 						Revision: commit,
-						Project:  projectName,
+						Project:  projectId,
 					}
 					nextModelTask := &model.APITask{}
 					err := nextModelTask.BuildFromArgs(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
@@ -364,7 +365,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					},
 				}
 				handler := &tasksByProjectHandler{
-					project:    projectName,
+					project:    projectId,
 					commitHash: commit,
 					key:        fmt.Sprintf("%dtask_%d", prefix, taskToStartAt),
 					limit:      limit,
@@ -386,7 +387,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					serviceTask := &task.Task{
 						Id:       fmt.Sprintf("%dtask_%d", prefix, i),
 						Revision: commit,
-						Project:  projectName,
+						Project:  projectId,
 					}
 					nextModelTask := &model.APITask{}
 					err := nextModelTask.BuildFromArgs(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
@@ -427,7 +428,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					serviceTask := &task.Task{
 						Id:       fmt.Sprintf("%dtask_%d", prefix, i),
 						Revision: commit,
-						Project:  projectName,
+						Project:  projectId,
 					}
 					nextModelTask := &model.APITask{}
 					err := nextModelTask.BuildFromArgs(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
@@ -447,7 +448,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 				}
 				prefix = int(math.Log10(float64(taskToStartAt)))
 				handler := &tasksByProjectHandler{
-					project:    projectName,
+					project:    projectId,
 					commitHash: commit,
 					key:        fmt.Sprintf("%dtask_%d", prefix, taskToStartAt),
 					limit:      limit,
@@ -469,7 +470,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					serviceTask := &task.Task{
 						Id:       fmt.Sprintf("%dtask_%d", prefix, i),
 						Revision: commit,
-						Project:  projectName,
+						Project:  projectId,
 					}
 					nextModelTask := &model.APITask{}
 					err := nextModelTask.BuildFromArgs(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
@@ -741,9 +742,13 @@ func TestTestPaginator(t *testing.T) {
 				}
 				nextTest := testresult.TestResult{
 					ID:     mgobson.ObjectId(fmt.Sprintf("object_id_%d_", i)),
+					TaskID: "myTask",
 					Status: status,
 				}
 				cachedTests = append(cachedTests, nextTest)
+			}
+			myTask := task.Task{
+				Id: "myTask",
 			}
 			serviceContext.CachedTests = cachedTests
 			Convey("then finding a key in the middle of the set should produce"+
@@ -772,6 +777,7 @@ func TestTestPaginator(t *testing.T) {
 					limit: limit,
 					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
 					sc:    &serviceContext,
+					task:  &myTask,
 				}
 
 				validatePaginatedResponse(t, handler, expectedTests, expectedPages)
@@ -802,6 +808,7 @@ func TestTestPaginator(t *testing.T) {
 					limit: 50,
 					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
 					sc:    &serviceContext,
+					task:  &myTask,
 				}
 
 				validatePaginatedResponse(t, handler, expectedTests, expectedPages)
@@ -832,6 +839,7 @@ func TestTestPaginator(t *testing.T) {
 					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
 					limit: limit,
 					sc:    &serviceContext,
+					task:  &myTask,
 				}
 
 				validatePaginatedResponse(t, handler, expectedTests, expectedPages)
@@ -862,6 +870,7 @@ func TestTestPaginator(t *testing.T) {
 					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
 					sc:    &serviceContext,
 					limit: limit,
+					task:  &myTask,
 				}
 
 				validatePaginatedResponse(t, handler, expectedTests, expectedPages)
@@ -1264,8 +1273,7 @@ func TestOptionsRequest(t *testing.T) {
 
 	tbh := &optionsHandler{}
 	resp := tbh.Run(ctx)
-	data, ok := resp.Data().(interface{})
-	assert.True(t, ok)
+	data := resp.Data()
 	assert.Equal(t, data, struct{}{})
 	assert.Equal(t, resp.Status(), http.StatusOK)
 

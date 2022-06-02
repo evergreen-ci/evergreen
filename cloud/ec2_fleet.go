@@ -237,10 +237,6 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 	return statuses, nil
 }
 
-// ErrInstanceNotFound indicates that no matching instance could be found for a
-// particular host.
-var ErrInstanceNotFound = errors.New("no such instance")
-
 func (m *ec2FleetManager) GetInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {
 	status := StatusUnknown
 
@@ -258,7 +254,7 @@ func (m *ec2FleetManager) GetInstanceStatus(ctx context.Context, h *host.Host) (
 			"distro":        h.Distro.Id,
 		}))
 		if ec2err, ok := err.(awserr.Error); ok && ec2err.Code() == EC2ErrorNotFound {
-			return status, ErrInstanceNotFound
+			return StatusNonExistent, nil
 		}
 		return status, errors.Wrap(err, "error getting instance info")
 	}
