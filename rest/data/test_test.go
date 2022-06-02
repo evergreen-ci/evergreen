@@ -16,7 +16,6 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -193,11 +192,8 @@ func TestFindTestsByTaskId(t *testing.T) {
 	assert.Len(foundTests, 1)
 
 	foundTests, err = serviceContext.FindTestsByTaskId(FindTestsByTaskIdOpts{TaskID: "fake_task", TestName: "", Statuses: []string{}, SortBy: "duration", GroupID: "", SortDir: 1, Page: 0, Limit: 0, Execution: 0})
-	assert.Error(err)
+	assert.NoError(err)
 	assert.Len(foundTests, 0)
-	apiErr, ok := err.(gimlet.ErrorResponse)
-	assert.True(ok)
-	assert.Equal(http.StatusNotFound, apiErr.StatusCode)
 
 	foundTests, err = serviceContext.FindTestsByTaskId(FindTestsByTaskIdOpts{TaskID: "task_0", TestName: "", Statuses: []string{"pass", "fail"}, SortBy: "duration", GroupID: "group_0", SortDir: 1, Page: 0, Limit: 0, Execution: 0})
 	assert.NoError(err)
@@ -305,7 +301,7 @@ func TestFindTestsByDisplayTaskId(t *testing.T) {
 	}
 	assert.NoError(displayTaskWithTasks.Insert())
 	displayTaskWithoutTasks := &task.Task{
-		Id:             "no_tasks",
+		Id:             "without_tasks",
 		DisplayOnly:    true,
 		ExecutionTasks: []string{},
 	}
@@ -313,8 +309,9 @@ func TestFindTestsByDisplayTaskId(t *testing.T) {
 	foundTests, err := serviceContext.FindTestsByTaskId(FindTestsByTaskIdOpts{TaskID: "with_tasks", ExecutionTasks: displayTaskWithTasks.ExecutionTasks})
 	assert.NoError(err)
 	assert.Len(foundTests, 20)
+
 	foundTests, err = serviceContext.FindTestsByTaskId(FindTestsByTaskIdOpts{TaskID: "without_tasks", ExecutionTasks: displayTaskWithoutTasks.ExecutionTasks})
-	assert.Error(err)
+	assert.NoError(err)
 	assert.Len(foundTests, 0)
 }
 
