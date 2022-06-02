@@ -168,7 +168,6 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/projects/{project_id}/test_stats").Version(2).Get().Wrap(requireUser, viewTasks, cedarTestStats).RouteHandler(makeGetProjectTestStats(opts.URL))
 	app.AddRoute("/projects/{project_id}/versions").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetProjectVersionsHandler(opts.URL))
 	app.AddRoute("/projects/{project_id}/tasks/{task_id}").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetProjectTasksHandler(opts.URL))
-	app.AddRoute("/projects/{project_id}/versions/tasks").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeFetchProjectTasks())
 	app.AddRoute("/projects/{project_id}/patch_trigger_aliases").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeFetchPatchTriggerAliases())
 	app.AddRoute("/projects/{project_id}/parameters").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeFetchParameters())
 	app.AddRoute("/projects/variables/rotate").Version(2).Put().Wrap(requireUser, createProject).RouteHandler(makeProjectVarsPut())
