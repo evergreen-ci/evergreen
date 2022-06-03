@@ -3710,9 +3710,10 @@ func (r *versionResolver) TaskStatuses(ctx context.Context, v *restModel.APIVers
 func (r *versionResolver) BaseTaskStatuses(ctx context.Context, v *restModel.APIVersion) ([]string, error) {
 	var baseVersion *model.Version
 	var err error
-	if !evergreen.IsPatchRequester(utility.FromStringPtr(v.Requester)) {
+
+	if !evergreen.IsPatchRequester(utility.FromStringPtr(v.Requester)) { // Get base commit if patch.
 		baseVersion, err = model.VersionFindOne(model.VersionByProjectIdAndOrder(utility.FromStringPtr(v.Project), v.Order-1))
-	} else {
+	} else { // Get previous commit if mainline commit.
 		baseVersion, err = model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(utility.FromStringPtr(v.Project), utility.FromStringPtr(v.Revision)))
 	}
 	if baseVersion == nil || err != nil {
@@ -3722,6 +3723,11 @@ func (r *versionResolver) BaseTaskStatuses(ctx context.Context, v *restModel.API
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting base version tasks: %s", err.Error()))
 	}
+
+	// sort to guarantee the order of statuses
+	sort.SliceStable(statuses, func(i, j int) bool {
+		return statuses[i] < statuses[j]
+	})
 	return statuses, nil
 }
 

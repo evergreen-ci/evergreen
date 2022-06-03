@@ -3536,7 +3536,7 @@ func TestArchive(t *testing.T) {
 	}
 }
 
-func TestGetMatchingBaseTasks(t *testing.T) {
+func TestGetMatchingBaseTaskStatuses(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
 	t1 := Task{
 		Id:            "t1",
@@ -3565,7 +3565,7 @@ func TestGetMatchingBaseTasks(t *testing.T) {
 	t4 := Task{
 		Id:            "t2_base",
 		Version:       "v1_base",
-		Status:        evergreen.TaskSucceeded,
+		Status:        evergreen.TaskStarted,
 		ActivatedTime: time.Time{},
 		DisplayName:   "task_2",
 		BuildVariant:  "bv_2",
@@ -3579,17 +3579,17 @@ func TestGetMatchingBaseTasks(t *testing.T) {
 		BuildVariant:  "bv_2",
 	}
 	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5))
-	tasks, err := GetMatchingBaseTasks("v1", "v1_base")
+	statuses, err := GetMatchingBaseTaskStatuses("v1", "v1_base")
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(tasks))
-	assert.Equal(t, tasks[0].Id, "t1_base")
-	assert.Equal(t, tasks[1].Id, "t2_base")
+	assert.Equal(t, 2, len(statuses))
+	assert.Equal(t, statuses[0], evergreen.TaskStarted)
+	assert.Equal(t, statuses[1], evergreen.TaskSucceeded)
 
 	assert.NoError(t, db.ClearCollections(Collection))
 	assert.NoError(t, db.InsertMany(Collection, t1, t2, t5))
-	tasks, err = GetMatchingBaseTasks("v1", "v1_base")
+	statuses, err = GetMatchingBaseTaskStatuses("v1", "v1_base")
 	assert.NoError(t, err)
-	assert.Equal(t, 0, len(tasks))
+	assert.Equal(t, 0, len(statuses))
 }
 
 func TestGetTaskStatsByVersion(t *testing.T) {

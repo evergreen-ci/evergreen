@@ -3709,111 +3709,58 @@ func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOption
 
 }
 
-// GetMatchingBaseTasks returns the corresponding base tasks for tasks on a version.
-// If a task ran on the base version but was not scheduled on the version, then it won't be returned.
+// GetMatchingBaseTaskStatuses returns the corresponding base task statuses for tasks on a version.
+// If a task ran on the base version but was not scheduled on the version, then its status won't be returned.
 func GetMatchingBaseTaskStatuses(versionID string, baseVersionID string) ([]string, error) {
 	pipeline := []bson.M{}
 	taskField := "tasks"
 
-	// Match on versionIDs and activated
-	// The activated time key should only apply to version tasks because we are interested in unscheduled tasks
-	// on the base version.
-	facet := bson.M{
-		"$facet": bson.M{
-			"base_tasks": []bson.M{
-				{
-					"$match": bson.M{
-						VersionKey: baseVersionID,
-					},
-				},
+	// Fetch all ACTIVATED tasks from version, and all tasks from base version.
+	pipeline = append(pipeline, bson.M{
+		"$match": bson.M{
+			"$or": []bson.M{
+				{VersionKey: baseVersionID},
+				{VersionKey: versionID, ActivatedTimeKey: bson.M{"$ne": utility.ZeroTime}},
 			},
-			"version_tasks": []bson.M{
-				{
-					"$match": bson.M{
-						VersionKey: versionID,
-						ActivatedTimeKey: bson.M{
-							"$ne": utility.ZeroTime,
-						},
-					},
-				},
-			},
-		},
-	}
-	pipeline = append(pipeline, facet)
-
-	// Recombine the tasks so that we can continue the pipeline on the joined tasks
-	recombineTasks := []bson.M{
-		{"$project": bson.M{
-			taskField: bson.M{
-				"$setUnion": []string{"$base_tasks", "$version_tasks"},
+		}})
+	// Add display status, then group by display name and build variant
+	pipeline = append(pipeline, addDisplayStatus)
+	pipeline = append(pipeline, bson.M{
+		"$group": bson.M{
+			"_id": bson.M{DisplayNameKey: "$" + DisplayNameKey, BuildVariantKey: "$" + BuildVariantKey},
+			taskField: bson.M{"$push": bson.M{
+				DisplayStatusKey: "$" + DisplayStatusKey,
+				VersionKey:       "$" + VersionKey,
 			}},
 		},
-		{"$unwind": "$tasks"},
-		{"$replaceRoot": bson.M{"newRoot": taskField}},
-	}
-	pipeline = append(pipeline, recombineTasks...)
-
-	// Group by display name and build variant and accumulate tasks
-	// We need to accumulate all tasks because $$first or $$last gives no guarantee about being a version/base task.
-	// Using a cond to only include the base tasks also wouldn't work because we only want to get base tasks that
-	// also exist on the version. (it's possible there are more base tasks than tasks on the version)
-	pipeline = append(pipeline, bson.M{
-		"$group": bson.M{
-			"_id":     bson.M{DisplayNameKey: "$" + DisplayNameKey, BuildVariantKey: "$" + BuildVariantKey},
-			taskField: bson.M{"$push": "$$ROOT"},
-			"count":   bson.M{"$sum": 1},
-		},
 	})
-
-	// Only keep records that have corresponding tasks on the version & base version (i.e. there are two copies
-	// of the task)
+	// Only keep records that exist both on the version & base version (i.e. there are 2 copies)
 	pipeline = append(pipeline, bson.M{
-		"$match": bson.M{"count": 2},
+		"$match": bson.M{taskField: bson.M{"$size": 2}},
 	})
-
-	// Unwind tasks
 	pipeline = append(pipeline, bson.M{
 		"$unwind": bson.M{
-			"path":                       "$" + taskField,
-			"preserveNullAndEmptyArrays": false,
+			"path": "$" + taskField,
 		},
 	})
-
-	// Need to set as root to be able to add the display task statuses later
+	// Filter out tasks that aren't from base version, then group to get rid of duplicate statuses
 	pipeline = append(pipeline, bson.M{
-		"$replaceRoot": bson.M{"newRoot": "$" + taskField},
+		"$match": bson.M{bsonutil.GetDottedKeyName(taskField, VersionKey): baseVersionID},
 	})
-
-	// Filter out tasks that aren't from base version
-	pipeline = append(pipeline, bson.M{
-		"$match": bson.M{VersionKey: baseVersionID},
-	})
-
-	// Add display task statuses
-	pipeline = append(pipeline, addDisplayStatus)
-
-	// Group to get rid of duplicates
 	pipeline = append(pipeline, bson.M{
 		"$group": bson.M{
-			"_id": "$" + DisplayStatusKey,
+			"_id": "$" + bsonutil.GetDottedKeyName(taskField, DisplayStatusKey),
 		},
 	})
 
-	// Sort by display status before returning
-	pipeline = append(pipeline, addStatusColorSort(IdKey))
-	pipeline = append(pipeline, bson.M{
-		"$sort": bson.D{
-			bson.E{Key: "__" + IdKey, Value: 1},
-		},
-	})
-
-	tasks := []Task{}
-	if err := Aggregate(pipeline, &tasks); err != nil {
+	res := []map[string]string{}
+	err := Aggregate(pipeline, &res)
+	if err != nil {
 		return nil, errors.Wrap(err, "aggregating base task statuses")
 	}
 	statuses := []string{}
-	for _, t := range tasks {
-		statuses = append(statuses, t.Id)
+	for _, r := range res {
+		statuses = append(statuses, r["_id"])
 	}
 	return statuses, nil
 }
