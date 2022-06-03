@@ -3752,6 +3752,11 @@ func GetMatchingBaseTaskStatuses(versionID string, baseVersionID string) ([]stri
 			"_id": "$" + bsonutil.GetDottedKeyName(taskField, DisplayStatusKey),
 		},
 	})
+	pipeline = append(pipeline, bson.M{
+		"$sort": bson.D{
+			bson.E{Key: "_id", Value: 1},
+		},
+	})
 
 	res := []map[string]string{}
 	err := Aggregate(pipeline, &res)

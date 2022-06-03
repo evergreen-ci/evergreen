@@ -3723,11 +3723,6 @@ func (r *versionResolver) BaseTaskStatuses(ctx context.Context, v *restModel.API
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting base version tasks: %s", err.Error()))
 	}
-
-	// sort to guarantee the order of statuses
-	sort.SliceStable(statuses, func(i, j int) bool {
-		return statuses[i] < statuses[j]
-	})
 	return statuses, nil
 }
 
