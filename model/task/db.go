@@ -160,47 +160,6 @@ var (
 		},
 	}
 
-	// Reusable pipeline stages when finding build variant display names
-
-	// sort build variant display names alphabetically
-	sortBvDisplayName = bson.M{
-		"$sort": bson.M{
-			"build_variant_display_name": 1,
-		},
-	}
-
-	// cleanup the results
-	projectBvResults = bson.M{
-		"$project": bson.M{
-			"_id":                        0,
-			"build_variant":              "$" + BuildVariantKey,
-			"build_variant_display_name": "$" + BuildVariantDisplayNameKey,
-		},
-	}
-
-	// reorganize the results to get the build variant names and a corresponding build id
-	projectBuildIdAndVariant = bson.M{
-		"$project": bson.M{
-			"_id":                      0,
-			BuildVariantKey:            bsonutil.GetDottedKeyName("$_id", BuildVariantKey),
-			BuildVariantDisplayNameKey: bsonutil.GetDottedKeyName("$_id", BuildVariantDisplayNameKey),
-			BuildIdKey:                 "$" + BuildIdKey,
-		},
-	}
-
-	// group the build variants by unique build variant names and get a build id for each
-	groupByBuildVariant = bson.M{
-		"$group": bson.M{
-			"_id": bson.M{
-				BuildVariantKey:            "$" + BuildVariantKey,
-				BuildVariantDisplayNameKey: "$" + BuildVariantDisplayNameKey,
-			},
-			BuildIdKey: bson.M{
-				"$first": "$" + BuildIdKey,
-			},
-		},
-	}
-
 	addDisplayStatus = bson.M{
 		"$addFields": bson.M{
 			DisplayStatusKey: displayStatusExpression,
@@ -1026,6 +985,48 @@ type BuildVariantTuple struct {
 
 const VersionLimit = 50
 
+// Reusable pipeline stages when finding build variant display names
+var (
+	// sort build variant display names alphabetically
+	sortByVariantDisplayName = bson.M{
+		"$sort": bson.M{
+			"build_variant_display_name": 1,
+		},
+	}
+
+	// cleanup the results
+	projectBvResults = bson.M{
+		"$project": bson.M{
+			"_id":                        0,
+			"build_variant":              "$" + BuildVariantKey,
+			"build_variant_display_name": "$" + BuildVariantDisplayNameKey,
+		},
+	}
+
+	// reorganize the results to get the build variant names and a corresponding build id
+	projectBuildIdAndVariant = bson.M{
+		"$project": bson.M{
+			"_id":                      0,
+			BuildVariantKey:            bsonutil.GetDottedKeyName("$_id", BuildVariantKey),
+			BuildVariantDisplayNameKey: bsonutil.GetDottedKeyName("$_id", BuildVariantDisplayNameKey),
+			BuildIdKey:                 "$" + BuildIdKey,
+		},
+	}
+
+	// group the build variants by unique build variant names and get a build id for each
+	groupByBuildVariant = bson.M{
+		"$group": bson.M{
+			"_id": bson.M{
+				BuildVariantKey:            "$" + BuildVariantKey,
+				BuildVariantDisplayNameKey: "$" + BuildVariantDisplayNameKey,
+			},
+			BuildIdKey: bson.M{
+				"$first": "$" + BuildIdKey,
+			},
+		},
+	}
+)
+
 // FindUniqueBuildVariantNamesByTask returns a list of unique build variants names and their display names for a given task name.
 // It attempts to return the most recent display name for each build variant to avoid returning duplicates caused by display names changing.
 // It only checks the last 50 versions that ran for a given task name.
@@ -1034,14 +1035,14 @@ func FindUniqueBuildVariantNamesByTask(projectId string, taskName string, repoOr
 	lookupPipeline := variantByTaskPipelineWithLookup(projectId, taskName, repoOrderNumber)
 	facet := bson.M{
 		"$facet": bson.M{
-			"noLookup": noLookupPipeline,
-			"lookup":   lookupPipeline,
+			"bvDisplayNameExists":  noLookupPipeline,
+			"bvDisplayNameIsEmpty": lookupPipeline,
 		},
 	}
 	result := []*buildVariantTupleResult{}
 	if err := Aggregate([]bson.M{facet, {"$project": bson.M{
 		"build_variants": bson.M{
-			"$setUnion": []string{"$lookup", "$noLookup"},
+			"$setUnion": []string{"$bvDisplayNameIsEmpty", "$bvDisplayNameExists"},
 		}},
 	}}, &result); err != nil {
 		return nil, errors.Wrap(err, "getting build variant tasks")
@@ -1069,7 +1070,7 @@ func variantByTaskPipeline(projectId string, taskName string, repoOrderNumber in
 	pipeline = append(pipeline, groupByBuildVariant)
 	pipeline = append(pipeline, projectBuildIdAndVariant)
 	pipeline = append(pipeline, projectBvResults)
-	pipeline = append(pipeline, sortBvDisplayName)
+	pipeline = append(pipeline, sortByVariantDisplayName)
 	return pipeline
 }
 
@@ -1095,7 +1096,7 @@ func variantByTaskPipelineWithLookup(projectId string, taskName string, repoOrde
 	// get the display name for each build variant
 	pipeline = append(pipeline, AddBuildVariantDisplayName...)
 	pipeline = append(pipeline, projectBvResults)
-	pipeline = append(pipeline, sortBvDisplayName)
+	pipeline = append(pipeline, sortByVariantDisplayName)
 	return pipeline
 }
 
