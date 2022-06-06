@@ -1042,7 +1042,7 @@ func FindUniqueBuildVariantNamesByTask(projectId string, taskName string, repoOr
 	result := []*buildVariantTupleResult{}
 	if err := Aggregate([]bson.M{facet, {"$project": bson.M{
 		"build_variants": bson.M{
-			"$setUnion": []string{"$bvDisplayNameIsEmpty", "$bvDisplayNameExists"},
+			"$setUnion": []string{"$bvDisplayNameExists", "$bvDisplayNameIsEmpty"},
 		}},
 	}}, &result); err != nil {
 		return nil, errors.Wrap(err, "getting build variant tasks")
