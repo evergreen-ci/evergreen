@@ -160,20 +160,35 @@ var (
 		},
 	}
 
-	sortDisplayName = bson.M{
+	// Reusable pipeline stages when finding build variant display names
+
+	// sort build variant display names alphabetically
+	sortBvDisplayName = bson.M{
 		"$sort": bson.M{
-			"display_name": 1,
+			"build_variant_display_name": 1,
 		},
 	}
 
-	project = bson.M{
+	// cleanup the results
+	projectBvResults = bson.M{
 		"$project": bson.M{
-			"_id":           0,
-			"build_variant": "$" + BuildVariantKey,
-			"display_name":  "$" + BuildVariantDisplayNameKey,
+			"_id":                        0,
+			"build_variant":              "$" + BuildVariantKey,
+			"build_variant_display_name": "$" + BuildVariantDisplayNameKey,
 		},
 	}
 
+	// reorganize the results to get the build variant names and a corresponding build id
+	projectBuildIdAndVariant = bson.M{
+		"$project": bson.M{
+			"_id":                      0,
+			BuildVariantKey:            bsonutil.GetDottedKeyName("$_id", BuildVariantKey),
+			BuildVariantDisplayNameKey: bsonutil.GetDottedKeyName("$_id", BuildVariantDisplayNameKey),
+			BuildIdKey:                 "$" + BuildIdKey,
+		},
+	}
+
+	// group the build variants by unique build variant names and get a build id for each
 	groupByBuildVariant = bson.M{
 		"$group": bson.M{
 			"_id": bson.M{
@@ -1006,7 +1021,7 @@ type buildVariantTupleResult struct {
 
 type BuildVariantTuple struct {
 	BuildVariant string `bson:"build_variant"`
-	DisplayName  string `bson:"display_name"`
+	DisplayName  string `bson:"build_variant_display_name"`
 }
 
 const VersionLimit = 50
@@ -1051,23 +1066,10 @@ func variantByTaskPipeline(projectId string, taskName string, repoOrderNumber in
 		},
 		},
 	}
-
-	// group the build variants by unique build variant names and get a build id for each
 	pipeline = append(pipeline, groupByBuildVariant)
-
-	// reorganize the results to get the build variant names
-	projectBuildVariant := bson.M{
-		"$project": bson.M{
-			"_id":                      0,
-			BuildVariantKey:            bsonutil.GetDottedKeyName("$_id", BuildVariantKey),
-			BuildVariantDisplayNameKey: bsonutil.GetDottedKeyName("$_id", BuildVariantDisplayNameKey),
-		},
-	}
-	pipeline = append(pipeline, projectBuildVariant)
-
-	// cleanup the results
-	pipeline = append(pipeline, project)
-	pipeline = append(pipeline, sortDisplayName)
+	pipeline = append(pipeline, projectBuildIdAndVariant)
+	pipeline = append(pipeline, projectBvResults)
+	pipeline = append(pipeline, sortBvDisplayName)
 	return pipeline
 }
 
@@ -1088,24 +1090,12 @@ func variantByTaskPipelineWithLookup(projectId string, taskName string, repoOrde
 		},
 		},
 	}
-
-	// group the build variants by unique build variant names and get a build id for each
 	pipeline = append(pipeline, groupByBuildVariant)
-
-	// reorganize the results to get the build variant names and a corresponding build id
-	projectBuildId := bson.M{
-		"$project": bson.M{
-			"_id":           0,
-			BuildVariantKey: bsonutil.GetDottedKeyName("$_id", BuildVariantKey),
-			BuildIdKey:      "$" + BuildIdKey,
-		},
-	}
-	pipeline = append(pipeline, projectBuildId)
+	pipeline = append(pipeline, projectBuildIdAndVariant)
 	// get the display name for each build variant
 	pipeline = append(pipeline, AddBuildVariantDisplayName...)
-	// cleanup the results
-	pipeline = append(pipeline, project)
-	pipeline = append(pipeline, sortDisplayName)
+	pipeline = append(pipeline, projectBvResults)
+	pipeline = append(pipeline, sortBvDisplayName)
 	return pipeline
 }
 
