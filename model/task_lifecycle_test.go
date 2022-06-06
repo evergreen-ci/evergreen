@@ -3251,7 +3251,7 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 	assert.Len(e, 4)
 }
 
-func TestClearAndResetStrandedTask(t *testing.T) {
+func TestClearAndResetStrandedHostTask(t *testing.T) {
 	require.NoError(t, db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection, VersionCollection))
 	assert := assert.New(t)
 
@@ -3281,7 +3281,7 @@ func TestClearAndResetStrandedTask(t *testing.T) {
 	}
 	assert.NoError(v.Insert())
 
-	assert.NoError(ClearAndResetStrandedTask(h))
+	assert.NoError(ClearAndResetStrandedHostTask(h))
 	runningTask, err := task.FindOne(db.Query(task.ById("t")))
 	assert.NoError(err)
 	assert.Equal(evergreen.TaskUndispatched, runningTask.Status)
@@ -3367,7 +3367,7 @@ func TestClearAndResetStaleStrandedTask(t *testing.T) {
 	b := build.Build{Id: "b"}
 	assert.NoError(b.Insert())
 
-	assert.NoError(ClearAndResetStrandedTask(h))
+	assert.NoError(ClearAndResetStrandedHostTask(h))
 	runningTask, err := task.FindOne(db.Query(task.ById("t")))
 	assert.NoError(err)
 	assert.Equal(evergreen.TaskFailed, runningTask.Status)
@@ -3415,7 +3415,7 @@ func TestClearAndResetExecTask(t *testing.T) {
 	}
 	assert.NoError(t, v.Insert())
 
-	assert.NoError(t, ClearAndResetStrandedTask(h))
+	assert.NoError(t, ClearAndResetStrandedHostTask(h))
 	restartedDisplayTask, err := task.FindOne(db.Query(task.ById("dt")))
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.TaskUndispatched, restartedDisplayTask.Status)

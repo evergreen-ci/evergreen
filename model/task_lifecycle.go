@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/utility"
@@ -1393,7 +1394,34 @@ func doRestartFailedTasks(tasks []string, user string, results RestartResults) R
 	return results
 }
 
-func ClearAndResetStrandedTask(h *host.Host) error {
+// ClearAndResetStrandedContainerTask clears the runnig task from a pod and
+// resets the task so that it is marked complete and is given a new execution.
+// kim: TODO: test
+func ClearAndResetStrandedContainerTask(p *pod.Pod) error {
+	if p.RunningTask == "" {
+		return nil
+	}
+
+	if err := p.ClearRunningTask(); err != nil {
+		return errors.Wrapf(err, "clearing running task '%s' from pod '%s'", p.RunningTask, p.ID)
+	}
+
+	t, err := task.FindOneId(p.RunningTask)
+	if err != nil {
+		return errors.Wrapf(err, "finding running task '%s' from pod '%s'", p.RunningTask, p.ID)
+	}
+	if t == nil {
+		return nil
+	}
+
+	if err := resetStrandedTask(t); err != nil {
+		return errors.Wrapf(err, "resetting stranded task '%s'", t.Id)
+	}
+
+	return nil
+}
+
+func ClearAndResetStrandedHostTask(h *host.Host) error {
 	if h.RunningTask == "" {
 		return nil
 	}
@@ -1424,26 +1452,36 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 		return errors.Wrapf(err, "clearing running task from host '%s'", h.Id)
 	}
 
+	if err := resetStrandedTask(t); err != nil {
+		return errors.Wrapf(err, "resetting stranded task '%s'", t.Id)
+	}
+
+	return nil
+}
+
+func resetStrandedTask(t *task.Task) error {
 	if t.IsFinished() {
 		return nil
 	}
 
-	if err = t.MarkSystemFailed(evergreen.TaskDescriptionStranded); err != nil {
+	if err := t.MarkSystemFailed(evergreen.TaskDescriptionStranded); err != nil {
 		return errors.Wrap(err, "marking task failed")
 	}
 
 	if time.Since(t.ActivatedTime) > task.UnschedulableThreshold {
+		// If the task has already exceeded the unschedulable threshold, we
+		// don't want to reset it for re-run, so just mark it as finished.
 		if t.DisplayOnly {
 			for _, etID := range t.ExecutionTasks {
 				var execTask *task.Task
-				execTask, err = task.FindOneId(etID)
+				execTask, err := task.FindOneId(etID)
 				if err != nil {
 					return errors.Wrap(err, "finding execution task")
 				}
 				if execTask == nil {
 					return errors.New("execution task not found")
 				}
-				if err = MarkEnd(execTask, evergreen.MonitorPackage, time.Now(), &t.Details, false); err != nil {
+				if err := MarkEnd(execTask, evergreen.MonitorPackage, time.Now(), &t.Details, false); err != nil {
 					return errors.Wrap(err, "marking execution task as ended")
 				}
 			}

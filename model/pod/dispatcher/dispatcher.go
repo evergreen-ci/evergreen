@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/utility"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -203,6 +204,36 @@ func (pd *PodDispatcher) dequeue(ctx context.Context, env evergreen.Environment)
 			pd.TaskIDs = oldTaskIDs
 		}
 	}()
+
+	res, err := env.DB().Collection(Collection).UpdateOne(ctx, pd.atomicUpsertQuery(), pd.atomicUpsertUpdate())
+	if err != nil {
+		return errors.Wrap(err, "upserting dispatcher")
+	}
+	if res.ModifiedCount == 0 {
+		return errors.New("dispatcher was not updated")
+	}
+
+	pd.ModificationCount++
+
+	return nil
+}
+
+// removePodsAndTasks removes the given pods and tasks from the dispatcher. If
+// a pod or task is given as a parameter but is not present in the dispatcher,
+// it is ignored.
+// kim: TODO: test
+func (pd *PodDispatcher) removePodsAndTasks(ctx context.Context, env evergreen.Environment, podIDs []string, taskIDs []string) (err error) {
+	oldPodIDs := pd.PodIDs
+	oldTaskIDs := pd.TaskIDs
+	pd.PodIDs, _ = utility.StringSliceSymmetricDifference(pd.PodIDs, podIDs)
+	pd.TaskIDs, _ = utility.StringSliceSymmetricDifference(pd.TaskIDs, taskIDs)
+	defer func() {
+		if err != nil {
+			pd.PodIDs = oldPodIDs
+			pd.TaskIDs = oldTaskIDs
+		}
+	}()
+
 	res, err := env.DB().Collection(Collection).UpdateOne(ctx, pd.atomicUpsertQuery(), pd.atomicUpsertUpdate())
 	if err != nil {
 		return errors.Wrap(err, "upserting dispatcher")
@@ -230,6 +261,38 @@ func (pd *PodDispatcher) dequeueUndispatchableTask(ctx context.Context, env ever
 
 	if err := pd.dequeue(ctx, env); err != nil {
 		return errors.Wrap(err, "dequeueing task")
+	}
+
+	return nil
+}
+
+// RemovePod removes a pod from the dispatcher. If it's the last remaining pod
+// in the dispatcher, it also removes all tasks from the dispatcher and marks
+// those tasks as no longer allocated containers.
+// kim: TODO: test
+func (pd *PodDispatcher) RemovePod(ctx context.Context, env evergreen.Environment, podID string) error {
+	// kim: TODO: make removeUndispatchableTasks for bulk-updating tasks +
+	// clearing the dispatch queue
+
+	if !utility.StringSliceContains(pd.PodIDs, podID) {
+		return errors.Errorf("cannot remove pod '%s' from dispatcher because the pod is not associated with the dispatcher", podID)
+	}
+
+	var tasksToRemove []string
+	if len(pd.PodIDs) == 1 && len(pd.TaskIDs) > 0 {
+		// The last pod is about to be removed, so there will be no pod
+		// remaining to run the tasks still in the dispatch queue. Mark all the
+		// tasks as no longer allocated any container to run them so that they
+		// can be re-allocated.
+		if err := task.MarkContainerDeallocated(ctx, env, pd.TaskIDs); err != nil {
+			return errors.Wrap(err, "marking all tasks in dispatcher as container deallocated")
+		}
+
+		tasksToRemove = pd.TaskIDs
+	}
+
+	if err := pd.removePodsAndTasks(ctx, env, []string{podID}, tasksToRemove); err != nil {
+		return errors.Wrap(err, "removing pod and tasks from dispatcher")
 	}
 
 	return nil

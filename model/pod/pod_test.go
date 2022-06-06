@@ -581,6 +581,75 @@ func TestSetRunningTask(t *testing.T) {
 	}
 }
 
+func TestClearRunningTask(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
+
+	for tName, tCase := range map[string]func(t *testing.T, p Pod){
+		"Succeeds": func(t *testing.T, p Pod) {
+			p.RunningTask = "task_id"
+			require.NoError(t, p.Insert())
+			require.NoError(t, p.ClearRunningTask())
+
+			dbPod, err := FindOneByID(p.ID)
+			require.NoError(t, err)
+			require.NotZero(t, dbPod)
+			assert.Zero(t, dbPod.RunningTask)
+		},
+		"SucceedsWhenNotRunningAnyTask": func(t *testing.T, p Pod) {
+			p.RunningTask = ""
+			require.NoError(t, p.Insert())
+			require.NoError(t, p.ClearRunningTask())
+
+			dbPod, err := FindOneByID(p.ID)
+			require.NoError(t, err)
+			require.NotZero(t, dbPod)
+			assert.Zero(t, dbPod.RunningTask)
+		},
+		"DoesNotUpdateDBWhenInMemoryPodDoesNotHaveRunningTask": func(t *testing.T, p Pod) {
+			p.RunningTask = "task_id"
+			require.NoError(t, p.Insert())
+			p.RunningTask = ""
+			require.NoError(t, p.ClearRunningTask())
+
+			dbPod, err := FindOneByID(p.ID)
+			require.NoError(t, err)
+			require.NotZero(t, dbPod)
+			assert.NotZero(t, dbPod.RunningTask)
+		},
+		"FailsWithNonexistentPod": func(t *testing.T, p Pod) {
+			p.RunningTask = "task_id"
+			assert.Error(t, p.ClearRunningTask())
+
+			dbPod, err := FindOneByID(p.ID)
+			assert.NoError(t, err)
+			assert.Zero(t, dbPod)
+		},
+		"FailsWhenInMemoryPodHasDifferentRunningTaskFromDB": func(t *testing.T, p Pod) {
+			p.RunningTask = "task_id"
+			require.NoError(t, p.Insert())
+			p.RunningTask = "some_other_task_id"
+			assert.Error(t, p.ClearRunningTask())
+
+			dbPod, err := FindOneByID(p.ID)
+			require.NoError(t, err)
+			require.NotZero(t, dbPod)
+			assert.Equal(t, "task_id", dbPod.RunningTask)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(Collection))
+
+			p := Pod{
+				ID:     "pod_id",
+				Status: StatusRunning,
+			}
+			tCase(t, p)
+		})
+	}
+}
+
 func TestSetAgentStartTime(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

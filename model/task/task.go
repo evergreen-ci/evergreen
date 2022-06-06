@@ -1080,6 +1080,20 @@ func (t *Task) MarkAsContainerAllocated(ctx context.Context, env evergreen.Envir
 	return nil
 }
 
+func containerDeallocatedUpdate() bson.M {
+	return bson.M{
+		"$set": bson.M{
+			ContainerAllocatedKey: false,
+			DispatchTimeKey:       utility.ZeroTime,
+			LastHeartbeatKey:      utility.ZeroTime,
+		},
+		"$unset": bson.M{
+			AgentVersionKey:           1,
+			ContainerAllocatedTimeKey: 1,
+		},
+	}
+}
+
 // MarkAsContainerDeallocated marks a container task that was allocated as no
 // longer allocated a container.
 func (t *Task) MarkAsContainerDeallocated(ctx context.Context, env evergreen.Environment) error {
@@ -1090,17 +1104,7 @@ func (t *Task) MarkAsContainerDeallocated(ctx context.Context, env evergreen.Env
 	res, err := env.DB().Collection(Collection).UpdateOne(ctx, bson.M{
 		IdKey:                 t.Id,
 		ContainerAllocatedKey: true,
-	}, bson.M{
-		"$set": bson.M{
-			ContainerAllocatedKey: false,
-			DispatchTimeKey:       utility.ZeroTime,
-			LastHeartbeatKey:      utility.ZeroTime,
-		},
-		"$unset": bson.M{
-			AgentVersionKey:           1,
-			ContainerAllocatedTimeKey: 1,
-		},
-	})
+	}, containerDeallocatedUpdate())
 	if err != nil {
 		return errors.Wrap(err, "updating task")
 	}
@@ -1113,6 +1117,25 @@ func (t *Task) MarkAsContainerDeallocated(ctx context.Context, env evergreen.Env
 	t.LastHeartbeat = utility.ZeroTime
 	t.ContainerAllocatedTime = time.Time{}
 	t.AgentVersion = ""
+
+	return nil
+}
+
+// MarkContainerDeallocated marks multiple container tasks as no longer
+// allocated containers.
+// kim: TODO: test
+func MarkContainerDeallocated(ctx context.Context, env evergreen.Environment, taskIDs []string) error {
+	if len(taskIDs) == 0 {
+		return nil
+	}
+
+	_, err := env.DB().Collection(Collection).UpdateMany(ctx, bson.M{
+		IdKey:                 bson.M{"$in": taskIDs},
+		ContainerAllocatedKey: true,
+	}, containerDeallocatedUpdate())
+	if err != nil {
+		return errors.Wrap(err, "updating tasks")
+	}
 
 	return nil
 }
