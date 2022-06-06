@@ -592,6 +592,7 @@ func TestClearRunningTask(t *testing.T) {
 			require.NoError(t, p.Insert())
 			require.NoError(t, p.ClearRunningTask())
 
+			assert.Zero(t, p.RunningTask)
 			dbPod, err := FindOneByID(p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
@@ -602,6 +603,7 @@ func TestClearRunningTask(t *testing.T) {
 			require.NoError(t, p.Insert())
 			require.NoError(t, p.ClearRunningTask())
 
+			assert.Zero(t, p.RunningTask)
 			dbPod, err := FindOneByID(p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
@@ -613,6 +615,7 @@ func TestClearRunningTask(t *testing.T) {
 			p.RunningTask = ""
 			require.NoError(t, p.ClearRunningTask())
 
+			assert.Zero(t, p.RunningTask)
 			dbPod, err := FindOneByID(p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)

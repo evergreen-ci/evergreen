@@ -2357,10 +2357,7 @@ func TestMarkAsContainerDeallocated(t *testing.T) {
 		require.NoError(t, err)
 		require.NotZero(t, dbTask)
 		assert.False(t, dbTask.ContainerAllocated)
-		assert.True(t, utility.IsZeroTime(dbTask.DispatchTime))
-		assert.True(t, utility.IsZeroTime(dbTask.LastHeartbeat))
 		assert.True(t, utility.IsZeroTime(dbTask.ContainerAllocatedTime))
-		assert.Zero(t, dbTask.AgentVersion)
 	}
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task){
@@ -2372,6 +2369,12 @@ func TestMarkAsContainerDeallocated(t *testing.T) {
 		},
 		"FailsWithUnallocatedTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
 			tsk.ContainerAllocated = false
+			require.NoError(t, tsk.Insert())
+
+			assert.Error(t, tsk.MarkAsContainerDeallocated(ctx, env))
+		},
+		"FailsWithHostTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
+			tsk.ExecutionPlatform = ExecutionPlatformHost
 			require.NoError(t, tsk.Insert())
 
 			assert.Error(t, tsk.MarkAsContainerDeallocated(ctx, env))
@@ -2403,12 +2406,123 @@ func TestMarkAsContainerDeallocated(t *testing.T) {
 				Status:                 evergreen.TaskUndispatched,
 				ContainerAllocated:     true,
 				ContainerAllocatedTime: time.Now(),
-				DispatchTime:           time.Now(),
-				LastHeartbeat:          time.Now(),
 				ExecutionPlatform:      ExecutionPlatformContainer,
 			}
 
 			tCase(tctx, t, env, tsk)
+		})
+	}
+}
+
+func TestMarkManyContainerDeallocated(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.Clear(Collection))
+	}()
+
+	checkTasksUnallocated := func(t *testing.T, taskIDs []string) {
+		for _, taskID := range taskIDs {
+			dbTask, err := FindOneId(taskID)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.False(t, dbTask.ContainerAllocated)
+			assert.True(t, utility.IsZeroTime(dbTask.ContainerAllocatedTime))
+		}
+	}
+
+	for tName, tCase := range map[string]func(t *testing.T, tasks []Task){
+		"Succeeds": func(t *testing.T, tasks []Task) {
+			var taskIDs []string
+			for _, tsk := range tasks {
+				require.NoError(t, tsk.Insert())
+				taskIDs = append(taskIDs, tsk.Id)
+			}
+
+			require.NoError(t, MarkManyContainerDeallocated(taskIDs))
+			checkTasksUnallocated(t, taskIDs)
+		},
+		"NoopsWithHostTask": func(t *testing.T, tasks []Task) {
+			tasks[0].ExecutionPlatform = ExecutionPlatformHost
+			var taskIDs []string
+			for _, tsk := range tasks {
+				require.NoError(t, tsk.Insert())
+				taskIDs = append(taskIDs, tsk.Id)
+			}
+
+			require.NoError(t, MarkManyContainerDeallocated(taskIDs))
+			checkTasksUnallocated(t, taskIDs[1:])
+			dbHostTask, err := FindOneId(tasks[0].Id)
+			require.NoError(t, err)
+			assert.Equal(t, tasks[0].ContainerAllocated, dbHostTask.ContainerAllocated, "host task should not be updated")
+			assert.NotZero(t, dbHostTask.LastHeartbeat, "host task should not be updated")
+			assert.NotZero(t, dbHostTask.DispatchTime, "host task should not be updated")
+		},
+		"UpdatesTaskThatIsAlreadyContainerUnallocated": func(t *testing.T, tasks []Task) {
+			tasks[0].ContainerAllocated = false
+			var taskIDs []string
+			for _, tsk := range tasks {
+				require.NoError(t, tsk.Insert())
+				taskIDs = append(taskIDs, tsk.Id)
+			}
+
+			require.NoError(t, MarkManyContainerDeallocated(taskIDs))
+			checkTasksUnallocated(t, taskIDs)
+		},
+		"DoesNotUpdateNonexistentTask": func(t *testing.T, tasks []Task) {
+			taskIDs := []string{tasks[0].Id}
+			for _, tsk := range tasks[1:] {
+				require.NoError(t, tsk.Insert())
+				taskIDs = append(taskIDs, tsk.Id)
+			}
+
+			require.NoError(t, MarkManyContainerDeallocated(taskIDs))
+			checkTasksUnallocated(t, taskIDs[1:])
+
+			dbTask, err := FindOneId(tasks[0].Id)
+			assert.NoError(t, err)
+			assert.Zero(t, dbTask)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection))
+			ts := utility.BSONTime(time.Now())
+			tasks := []Task{
+				{
+					Id:                     utility.RandomString(),
+					Activated:              true,
+					ActivatedTime:          time.Now(),
+					Status:                 evergreen.TaskUndispatched,
+					ContainerAllocated:     true,
+					ContainerAllocatedTime: ts,
+					DispatchTime:           ts,
+					LastHeartbeat:          ts,
+					ExecutionPlatform:      ExecutionPlatformContainer,
+				},
+				{
+					Id:                     utility.RandomString(),
+					Activated:              true,
+					ActivatedTime:          ts,
+					Status:                 evergreen.TaskDispatched,
+					ContainerAllocated:     true,
+					ContainerAllocatedTime: ts,
+					DispatchTime:           ts,
+					LastHeartbeat:          ts,
+					ExecutionPlatform:      ExecutionPlatformContainer,
+				},
+				{
+					Id:                     utility.RandomString(),
+					Activated:              true,
+					ActivatedTime:          ts,
+					Status:                 evergreen.TaskStarted,
+					ContainerAllocated:     true,
+					ContainerAllocatedTime: ts,
+					DispatchTime:           ts,
+					StartTime:              ts,
+					LastHeartbeat:          ts,
+					ExecutionPlatform:      ExecutionPlatformContainer,
+				},
+			}
+
+			tCase(t, tasks)
 		})
 	}
 }

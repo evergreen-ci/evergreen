@@ -195,18 +195,11 @@ func (j *podTerminationJob) populateIfUnset(ctx context.Context) error {
 	return nil
 }
 
-// kim: TODO: check if this pod is currently running a task or is part of a
-// pod group to decide if the tasks need resetting.
-// If it's the last pod running in a dispatch queue and there are still
-// tasks in the dispatch queue, reset all tasks in the dispatch queue to
-// need reallocation. If it's running a task, reset that one task to need
-// reallocation.
-
 // fixStrandedTasks fixes tasks that are in an invalid state due to termination
 // of this pod. If the pod is already running a task, that task is reset so that
-// it can re-run. If the pod is part of a dispatcher that will have no pods left
-// to run tasks after this one is terminated, it marks the tasks in the
-// dispatcher as needing re-allocation.
+// it can re-run if possible. If the pod is part of a dispatcher that will have
+// no pods remaining to run tasks after this one is terminated, it marks the
+// tasks in the dispatcher as needing re-allocation.
 func (j *podTerminationJob) fixStrandedTasks(ctx context.Context) error {
 	if j.pod.RunningTask != "" {
 		if err := model.ClearAndResetStrandedContainerTask(j.pod); err != nil {
@@ -222,16 +215,6 @@ func (j *podTerminationJob) fixStrandedTasks(ctx context.Context) error {
 		return nil
 	}
 
-	// kim: TODO: update dispatcher to remove pod and tasks, and mark tasks as
-	// needing re-allocation. Maybe need transaction to do this safely. But
-	// given that the task re-allocation update just sets
-	// ContainerAllocated=false, it might not be necessary? It might be
-	// sufficient to use an atomic update on the task collection with the IDs
-	// and possibly check the other keys to make sure that they're still in a
-	// needs-dispatch state. Since ContainerAllocated can only be set by pod
-	// allocation and a pod allocation should not be happening right now (since
-	// we have only one pod in the dispatch queue for now), it should be safe to
-	// clear the field since there cannot be a race.
 	if err := disp.RemovePod(ctx, j.env, j.pod.ID); err != nil {
 		return errors.Wrap(err, "removing pod from dispatcher")
 	}

@@ -416,13 +416,11 @@ func (sns *ecsSNS) handleNotification(ctx context.Context, notification ecsEvent
 			}
 		}
 	case ecsContainerInstanceStateChangeType:
-		// kim: TODO: test
 		detail, ok := notification.Detail.(ecsContainerInstanceEventDetail)
 		if !ok {
 			return errors.New("notification details should be ECS task event details")
 		}
-		// kim: TODO: replace with Cocoa constant.
-		if detail.Status != "DRAINING" {
+		if ecs.ContainerInstanceStatus(detail.Status) != ecs.ContainerInstanceStatusDraining {
 			return nil
 		}
 

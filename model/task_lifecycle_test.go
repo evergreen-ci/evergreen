@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -3287,65 +3288,7 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 	assert.Equal(evergreen.TaskUndispatched, runningTask.Status)
 }
 
-func TestMarkEndWithNoResults(t *testing.T) {
-	require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.AllLogCollection, testresult.Collection))
-	testTask1 := task.Task{
-		Id:              "t1",
-		Status:          evergreen.TaskStarted,
-		Activated:       true,
-		ActivatedTime:   time.Now(),
-		BuildId:         "b",
-		Version:         "v",
-		MustHaveResults: true,
-	}
-	assert.NoError(t, testTask1.Insert())
-	testTask2 := task.Task{
-		Id:              "t2",
-		Status:          evergreen.TaskStarted,
-		Activated:       true,
-		ActivatedTime:   time.Now(),
-		BuildId:         "b",
-		Version:         "v",
-		MustHaveResults: true,
-	}
-	assert.NoError(t, testTask2.Insert())
-	b := build.Build{
-		Id:      "b",
-		Version: "v",
-	}
-	assert.NoError(t, b.Insert())
-	v := &Version{
-		Id:        "v",
-		Requester: evergreen.RepotrackerVersionRequester,
-		Status:    evergreen.VersionStarted,
-		Config:    "identifier: sample",
-	}
-	assert.NoError(t, v.Insert())
-	details := &apimodels.TaskEndDetail{
-		Status: evergreen.TaskSucceeded,
-		Type:   "test",
-	}
-
-	err := MarkEnd(&testTask1, "", time.Now(), details, false)
-	assert.NoError(t, err)
-	dbTask, err := task.FindOneId(testTask1.Id)
-	assert.NoError(t, err)
-	assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
-	assert.Equal(t, evergreen.TaskDescriptionNoResults, dbTask.Details.Description)
-
-	results := testresult.TestResult{
-		ID:     mgobson.NewObjectId(),
-		TaskID: testTask2.Id,
-	}
-	assert.NoError(t, results.Insert())
-	err = MarkEnd(&testTask2, "", time.Now(), details, false)
-	assert.NoError(t, err)
-	dbTask, err = task.FindOneId(testTask2.Id)
-	assert.NoError(t, err)
-	assert.Equal(t, evergreen.TaskSucceeded, dbTask.Status)
-}
-
-func TestClearAndResetStaleStrandedTask(t *testing.T) {
+func TestClearAndResetStaleStrandedHostTask(t *testing.T) {
 	require.NoError(t, db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection))
 	assert := assert.New(t)
 
@@ -3422,6 +3365,302 @@ func TestClearAndResetExecTask(t *testing.T) {
 	restartedExecutionTask, err := task.FindOne(db.Query(task.ById("et")))
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.TaskUndispatched, restartedExecutionTask.Status)
+}
+
+func TestClearAndResetStrandedContainerTask(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(pod.Collection, task.Collection, task.OldCollection, build.Collection, VersionCollection))
+	}()
+
+	for tName, tCase := range map[string]func(t *testing.T, p pod.Pod, tsk task.Task){
+		"SuccessfullyUpdatesPodAndRestartsTask": func(t *testing.T, p pod.Pod, tsk task.Task) {
+			require.NoError(t, p.Insert())
+			require.NoError(t, tsk.Insert())
+
+			require.NoError(t, ClearAndResetStrandedContainerTask(&p))
+
+			dbPod, err := pod.FindOneByID(p.ID)
+			require.NoError(t, err)
+			require.NotZero(t, dbPod)
+			assert.Zero(t, dbPod.RunningTask)
+
+			dbArchivedTask, err := task.FindOneOldByIdAndExecution(tsk.Id, 1)
+			require.NoError(t, err)
+			require.NotZero(t, dbArchivedTask, "should have archived the old task execution")
+			assert.Equal(t, evergreen.TaskFailed, dbArchivedTask.Status)
+			assert.Equal(t, evergreen.CommandTypeSystem, dbArchivedTask.Details.Type)
+			assert.Equal(t, evergreen.TaskDescriptionStranded, dbArchivedTask.Details.Description)
+			assert.False(t, utility.IsZeroTime(dbArchivedTask.FinishTime))
+
+			dbTask, err := task.FindOneId(tsk.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask, "should have created a new task execution")
+			assert.Equal(t, evergreen.TaskUndispatched, dbTask.Status)
+			assert.True(t, dbTask.Activated)
+
+			dbBuild, err := build.FindOneId(tsk.BuildId)
+			require.NoError(t, err)
+			require.NotZero(t, dbBuild)
+			assert.Equal(t, evergreen.BuildCreated, dbBuild.Status, "build status should be updated for restarted task")
+
+			dbVersion, err := VersionFindOneId(tsk.Version)
+			require.NoError(t, err)
+			require.NotZero(t, dbVersion)
+			assert.Equal(t, evergreen.VersionCreated, dbVersion.Status, "version status should be updated for restarted task")
+		},
+		"ResetsParentDisplayTaskForStrandedExecutionTask": func(t *testing.T, p pod.Pod, tsk task.Task) {
+			otherExecTask := task.Task{
+				Id:        "execution_task_id",
+				Status:    evergreen.TaskStarted,
+				Activated: true,
+			}
+			require.NoError(t, otherExecTask.Insert())
+			dt := task.Task{
+				Id:             "display_task_id",
+				DisplayOnly:    true,
+				ExecutionTasks: []string{tsk.Id, otherExecTask.Id},
+				Status:         evergreen.TaskStarted,
+				BuildId:        tsk.BuildId,
+				Version:        tsk.Version,
+			}
+			require.NoError(t, dt.Insert())
+			tsk.DisplayTaskId = utility.ToStringPtr(dt.Id)
+			require.NoError(t, tsk.Insert())
+			require.NoError(t, p.Insert())
+
+			require.NoError(t, ClearAndResetStrandedContainerTask(&p))
+
+			dbDisplayTask, err := task.FindOneId(dt.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbDisplayTask)
+			assert.True(t, dbDisplayTask.ResetWhenFinished, "display task should reset when other exec task finishes running")
+
+			dbArchivedTask, err := task.FindOneOldByIdAndExecution(tsk.Id, 1)
+			assert.NoError(t, err)
+			assert.Zero(t, dbArchivedTask, "execution task should not be archived until display task can reset")
+
+			dbTask, err := task.FindOneId(tsk.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.Equal(t, 1, dbTask.Execution, "current task execution should still be the stranded one")
+			assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
+			assert.Equal(t, evergreen.CommandTypeSystem, dbTask.Details.Type)
+			assert.Equal(t, evergreen.TaskDescriptionStranded, dbTask.Details.Description)
+			assert.False(t, utility.IsZeroTime(dbTask.FinishTime))
+
+			dbOtherExecTask, err := task.FindOneId(otherExecTask.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbOtherExecTask)
+			assert.Equal(t, dbOtherExecTask.Status, evergreen.TaskStarted, "other execution task should still be running")
+		},
+		"ClearsAlreadyFinishedTaskFromPod": func(t *testing.T, p pod.Pod, tsk task.Task) {
+			const status = evergreen.TaskSucceeded
+			tsk.Status = status
+			require.NoError(t, tsk.Insert())
+			require.NoError(t, p.Insert())
+
+			require.NoError(t, ClearAndResetStrandedContainerTask(&p))
+
+			dbPod, err := pod.FindOneByID(p.ID)
+			require.NoError(t, err)
+			require.NotZero(t, dbPod)
+			assert.Zero(t, dbPod.RunningTask)
+
+			dbTask, err := task.FindOneId(tsk.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.Equal(t, status, dbTask.Status)
+		},
+		"FailsWithConflictingDBAndInMemoryRunningTasks": func(t *testing.T, p pod.Pod, tsk task.Task) {
+			const runningTask = "some_other_task"
+			p.RunningTask = runningTask
+			require.NoError(t, p.Insert())
+			p.RunningTask = tsk.Id
+			require.NoError(t, tsk.Insert())
+
+			assert.Error(t, ClearAndResetStrandedContainerTask(&p))
+		},
+		"ClearsNonexistentTaskFromPod": func(t *testing.T, p pod.Pod, tsk task.Task) {
+			p.RunningTask = "nonexistent_task"
+			require.NoError(t, p.Insert())
+
+			require.NoError(t, ClearAndResetStrandedContainerTask(&p))
+
+			dbPod, err := pod.FindOneByID(p.ID)
+			require.NoError(t, err)
+			require.NotZero(t, dbPod)
+			assert.Zero(t, dbPod.RunningTask)
+		},
+		"NoopsForPodNotRunningAnyTask": func(t *testing.T, p pod.Pod, tsk task.Task) {
+			p.RunningTask = ""
+			require.NoError(t, p.Insert())
+
+			require.NoError(t, ClearAndResetStrandedContainerTask(&p))
+			dbPod, err := pod.FindOneByID(p.ID)
+			require.NoError(t, err)
+			require.NotZero(t, dbPod)
+			assert.Zero(t, dbPod.RunningTask)
+		},
+		"FailsTaskThatHitsUnschedulableThresholdWithoutRestartingIt": func(t *testing.T, p pod.Pod, tsk task.Task) {
+			require.NoError(t, p.Insert())
+			tsk.ActivatedTime = time.Now().Add(-10 * task.UnschedulableThreshold)
+			require.NoError(t, tsk.Insert())
+
+			require.NoError(t, ClearAndResetStrandedContainerTask(&p))
+
+			dbPod, err := pod.FindOneByID(p.ID)
+			require.NoError(t, err)
+			require.NotZero(t, dbPod)
+			assert.Zero(t, dbPod.RunningTask)
+
+			dbTask, err := task.FindOneId(tsk.Id)
+			require.NoError(t, err)
+			assert.Equal(t, 1, dbTask.Execution, "current task execution should still be the stranded one")
+			assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
+			assert.Equal(t, evergreen.CommandTypeSystem, dbTask.Details.Type)
+			assert.Equal(t, evergreen.TaskDescriptionStranded, dbTask.Details.Description)
+			assert.False(t, utility.IsZeroTime(dbTask.FinishTime))
+
+			// TODO (EVG-17033): if a stranded task hits the unschedulable
+			// threshold, it should refuse to restart the task, but the build
+			// and version statuses should still be updated to reflect the
+			// stranded task. The portion of the test below this checking the
+			// updated build and version should pass.
+
+			// dbBuild, err := build.FindOneId(tsk.BuildId)
+			// require.NoError(t, err)
+			// require.NotZero(t, dbBuild)
+			// assert.Equal(t, evergreen.BuildFailed, dbBuild.Status, "build status should be updated for unrestartable stranded task")
+			//
+			// dbVersion, err := VersionFindOneId(tsk.Version)
+			// require.NoError(t, err)
+			// require.NotZero(t, dbVersion)
+			// assert.Equal(t, evergreen.VersionFailed, dbVersion.Status, "version status should be updated for unrestartable stranded task")
+		},
+		"FailsTaskThatHitsMaxExecutionRestartsWithoutRestartingIt": func(t *testing.T, p pod.Pod, tsk task.Task) {
+			const execNum = evergreen.MaxTaskExecution + 1
+			require.NoError(t, p.Insert())
+			tsk.Execution = execNum
+			require.NoError(t, tsk.Insert())
+
+			require.NoError(t, ClearAndResetStrandedContainerTask(&p))
+
+			dbPod, err := pod.FindOneByID(p.ID)
+			require.NoError(t, err)
+			require.NotZero(t, dbPod)
+			assert.Zero(t, dbPod.RunningTask)
+
+			dbTask, err := task.FindOneId(tsk.Id)
+			require.NoError(t, err)
+			assert.Equal(t, execNum, dbTask.Execution, "current task execution should still be the stranded one")
+			assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
+			assert.Equal(t, evergreen.CommandTypeSystem, dbTask.Details.Type)
+			assert.Equal(t, evergreen.TaskDescriptionStranded, dbTask.Details.Description)
+			assert.False(t, utility.IsZeroTime(dbTask.FinishTime))
+
+			// TODO (EVG-17033): if a stranded task hits the max execution, it
+			// should refuse to restart the task, but the build and version
+			// statuses should still be updated to reflect the stranded task.
+			// The portion of the test below this checking the updated build and
+			// version should pass.
+
+			// dbBuild, err := build.FindOneId(tsk.BuildId)
+			// require.NoError(t, err)
+			// require.NotZero(t, dbBuild)
+			// assert.Equal(t, evergreen.BuildFailed, dbBuild.Status, "build status should be updated for unrestartable stranded task")
+			//
+			// dbVersion, err := VersionFindOneId(tsk.Version)
+			// require.NoError(t, err)
+			// require.NotZero(t, dbVersion)
+			// assert.Equal(t, evergreen.VersionFailed, dbVersion.Status, "version status should be updated for unrestartable stranded task")
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			assert.NoError(t, db.ClearCollections(pod.Collection, task.Collection, task.OldCollection, build.Collection, VersionCollection))
+			b := build.Build{
+				Id:     "build_id",
+				Status: evergreen.BuildStarted,
+			}
+			require.NoError(t, b.Insert())
+			v := Version{
+				Id:     "version_id",
+				Status: evergreen.VersionStarted,
+			}
+			require.NoError(t, v.Insert())
+			tsk := task.Task{
+				Id:            "task_id",
+				Execution:     1,
+				Status:        evergreen.TaskStarted,
+				Activated:     true,
+				ActivatedTime: time.Now(),
+				BuildId:       b.Id,
+				Version:       v.Id,
+			}
+			p := pod.Pod{
+				ID:          "pod_id",
+				RunningTask: tsk.Id,
+			}
+			tCase(t, p, tsk)
+		})
+	}
+}
+
+func TestMarkEndWithNoResults(t *testing.T) {
+	require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.AllLogCollection, testresult.Collection))
+	testTask1 := task.Task{
+		Id:              "t1",
+		Status:          evergreen.TaskStarted,
+		Activated:       true,
+		ActivatedTime:   time.Now(),
+		BuildId:         "b",
+		Version:         "v",
+		MustHaveResults: true,
+	}
+	assert.NoError(t, testTask1.Insert())
+	testTask2 := task.Task{
+		Id:              "t2",
+		Status:          evergreen.TaskStarted,
+		Activated:       true,
+		ActivatedTime:   time.Now(),
+		BuildId:         "b",
+		Version:         "v",
+		MustHaveResults: true,
+	}
+	assert.NoError(t, testTask2.Insert())
+	b := build.Build{
+		Id:      "b",
+		Version: "v",
+	}
+	assert.NoError(t, b.Insert())
+	v := &Version{
+		Id:        "v",
+		Requester: evergreen.RepotrackerVersionRequester,
+		Status:    evergreen.VersionStarted,
+		Config:    "identifier: sample",
+	}
+	assert.NoError(t, v.Insert())
+	details := &apimodels.TaskEndDetail{
+		Status: evergreen.TaskSucceeded,
+		Type:   "test",
+	}
+
+	err := MarkEnd(&testTask1, "", time.Now(), details, false)
+	assert.NoError(t, err)
+	dbTask, err := task.FindOneId(testTask1.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
+	assert.Equal(t, evergreen.TaskDescriptionNoResults, dbTask.Details.Description)
+
+	results := testresult.TestResult{
+		ID:     mgobson.NewObjectId(),
+		TaskID: testTask2.Id,
+	}
+	assert.NoError(t, results.Insert())
+	err = MarkEnd(&testTask2, "", time.Now(), details, false)
+	assert.NoError(t, err)
+	dbTask, err = task.FindOneId(testTask2.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, evergreen.TaskSucceeded, dbTask.Status)
 }
 
 func TestDisplayTaskUpdates(t *testing.T) {

@@ -536,6 +536,9 @@ func (p *Pod) ClearRunningTask() error {
 	}); err != nil {
 		return errors.Wrap(err, "clearing running task")
 	}
+
+	p.RunningTask = ""
+
 	return nil
 }
 
