@@ -19,18 +19,28 @@ import (
 )
 
 type Communicator interface {
-	// Method to release resources used by the communicator.
-	Close()
 
-	// Updates the clients local concept of it's last updated
+	// The following operations are not implemented at the base level
+	// and require either a host or pod-specific implementation.
+	// EndTask marks the task as finished with the given status
+	EndTask(context.Context, *apimodels.TaskEndDetail, TaskData) (*apimodels.EndTaskResponse, error)
+	// GetNextTask returns a next task response by getting the next task for a given host.
+	GetNextTask(context.Context, *apimodels.GetNextTaskDetails) (*apimodels.NextTaskResponse, error)
+	// GetCedarConfig returns the cedar service information including the
+	// base URL, RPC port, and credentials.
+	GetCedarConfig(context.Context) (*apimodels.CedarConfig, error)
+	// GetAgentSetupData populates an agent with the necessary data, including secrets.
+	GetAgentSetupData(context.Context) (*apimodels.AgentSetupData, error)
+
+	// Close is a method to release resources used by the communicator.
+	Close()
+	// UpdateLastMessageTime Updates the clients local concept of it's last updated
 	// time; used by agents to determine timeouts.
 	UpdateLastMessageTime()
 	LastMessageAt() time.Time
 
 	// StartTask marks the task as started.
 	StartTask(context.Context, TaskData) error
-	// EndTask marks the task as finished with the given status
-	EndTask(context.Context, *apimodels.TaskEndDetail, TaskData) (*apimodels.EndTaskResponse, error)
 	// GetTask returns the active task.
 	GetTask(context.Context, TaskData) (*task.Task, error)
 	// GetDisplayTaskInfoFromExecution returns the display task info of an
@@ -54,11 +64,6 @@ type Communicator interface {
 	Heartbeat(context.Context, TaskData) (string, error)
 	// FetchExpansionVars loads expansions for a communicator's task from the API server.
 	FetchExpansionVars(context.Context, TaskData) (*apimodels.ExpansionVars, error)
-	// GetNextTask returns a next task response by getting the next task for a given host.
-	GetNextTask(context.Context, *apimodels.GetNextTaskDetails) (*apimodels.NextTaskResponse, error)
-	// GetCedarConfig returns the cedar service information including the
-	// base URL, RPC port, and credentials.
-	GetCedarConfig(context.Context) (*apimodels.CedarConfig, error)
 	// GetCedarGRPCConn returns the client connection to cedar if it exists, or
 	// creates it if it doesn't exist.
 	GetCedarGRPCConn(context.Context) (*grpc.ClientConn, error)
@@ -69,15 +74,11 @@ type Communicator interface {
 	// DisableHost signals to the app server that the host should be disabled.
 	DisableHost(context.Context, string, apimodels.DisableInfo) error
 
-	// GetAgentSetupData populates an agent with the necessary data, including
-	// secrets.
-	GetAgentSetupData(context.Context) (*apimodels.AgentSetupData, error)
-
 	// GetLoggerProducer constructs a new LogProducer instance for use by tasks.
 	GetLoggerProducer(context.Context, TaskData, *LoggerConfig) (LoggerProducer, error)
 	GetLoggerMetadata() LoggerMetadata
 
-	// Sends a group of log messages to the API Server
+	// SendLogMessages sends a group of log messages to the API Server
 	SendLogMessages(context.Context, TaskData, []apimodels.LogMessage) error
 
 	// The following operations use the legacy API server and are
@@ -94,7 +95,7 @@ type Communicator interface {
 	GetManifest(context.Context, TaskData) (*manifest.Manifest, error)
 	KeyValInc(context.Context, TaskData, *model.KeyVal) error
 
-	// these are for the taskdata/json plugin that saves perf data
+	// These are for the taskdata/json plugin that saves perf data
 	PostJSONData(context.Context, TaskData, string, interface{}) error
 	GetJSONData(context.Context, TaskData, string, string, string) ([]byte, error)
 	GetJSONHistory(context.Context, TaskData, bool, string, string) ([]byte, error)

@@ -62,6 +62,22 @@ func newBaseCommunicator(serverURL string, reqHeaders map[string]string) baseCom
 	}
 }
 
+func (c *baseCommunicator) EndTask(ctx context.Context, detail *apimodels.TaskEndDetail, data TaskData) (*apimodels.EndTaskResponse, error) {
+	return nil, errors.New("unrecognized agent mode")
+}
+
+func (c *baseCommunicator) GetNextTask(ctx context.Context, details *apimodels.GetNextTaskDetails) (*apimodels.NextTaskResponse, error) {
+	return nil, errors.New("unrecognized agent mode")
+}
+
+func (c *baseCommunicator) GetAgentSetupData(ctx context.Context) (*apimodels.AgentSetupData, error) {
+	return nil, errors.New("unrecognized agent mode")
+}
+
+func (c *baseCommunicator) GetCedarConfig(ctx context.Context) (*apimodels.CedarConfig, error) {
+	return nil, errors.New("unrecognized agent mode")
+}
+
 // Close cleans up the resources being used by the communicator.
 func (c *baseCommunicator) Close() {
 	if c.httpClient != nil {
@@ -365,33 +381,6 @@ func (c *baseCommunicator) FetchExpansionVars(ctx context.Context, taskData Task
 		return nil, err
 	}
 	return resultVars, err
-}
-
-// GetCedarConfig returns the cedar service information including the base URL,
-// URL, RPC port, and credentials.
-func (c *baseCommunicator) GetCedarConfig(ctx context.Context) (*apimodels.CedarConfig, error) {
-	cc := &apimodels.CedarConfig{}
-
-	info := requestInfo{
-		method:  http.MethodGet,
-		version: apiVersion1,
-		path:    "agent/cedar_config",
-	}
-
-	resp, err := c.retryRequest(ctx, info, nil)
-	if err != nil {
-		err = utility.RespErrorf(resp, "failed to get cedar config: %s", err.Error())
-		grip.Critical(err)
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if err = utility.ReadJSON(resp.Body, cc); err != nil {
-		err = errors.Wrap(err, "reading cedar config from response")
-		return nil, err
-	}
-
-	return cc, nil
 }
 
 // GetCedarGRPCConn returns the client connection to cedar if it exists, or
