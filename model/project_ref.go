@@ -1114,10 +1114,8 @@ func GetTasksWithOptions(projectName string, taskName string, opts GetProjectTas
 	if opts.BuildVariant != "" {
 		match[task.BuildVariantKey] = opts.BuildVariant
 	}
-	var startingRevision int
-	if opts.StartAt > 0 {
-		startingRevision = opts.StartAt
-	} else {
+	startingRevision := opts.StartAt
+	if startingRevision == 0 {
 		repo, err := FindRepository(projectId)
 		if err != nil {
 			return nil, err
