@@ -1031,6 +1031,7 @@ var (
 // It attempts to return the most recent display name for each build variant to avoid returning duplicates caused by display names changing.
 // It only checks the last 50 versions that ran for a given task name.
 func FindUniqueBuildVariantNamesByTask(projectId string, taskName string, repoOrderNumber int) ([]*BuildVariantTuple, error) {
+	//TODO: EVG-17040 remove lookup pipeline
 	noLookupPipeline := variantByTaskPipeline(projectId, taskName, repoOrderNumber)
 	lookupPipeline := variantByTaskPipelineWithLookup(projectId, taskName, repoOrderNumber)
 	facet := bson.M{
