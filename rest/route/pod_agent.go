@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -18,6 +20,157 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
+
+/////////////////////////////////////////////////
+//
+// GET /rest/v2/pods/{pod_id}/provisioning_script
+
+type podProvisioningScript struct {
+	settings *evergreen.Settings
+	podID    string
+}
+
+func makePodProvisioningScript(settings *evergreen.Settings) gimlet.RouteHandler {
+	return &podProvisioningScript{settings: settings}
+}
+
+func (h *podProvisioningScript) Factory() gimlet.RouteHandler {
+	return &podProvisioningScript{settings: h.settings}
+}
+
+func (h *podProvisioningScript) Parse(ctx context.Context, r *http.Request) error {
+	h.podID = gimlet.GetVars(r)["pod_id"]
+	return nil
+}
+
+// Run returns the script to provision this pod. Unlike the typical REST routes
+// that return JSON responses, this returns text responses for simplicity and
+// because the pod's containers unlikely to be equipped with the tooling to
+// parse JSON output.
+func (h *podProvisioningScript) Run(ctx context.Context) gimlet.Responder {
+	p, err := pod.FindOneByID(h.podID)
+	if err != nil {
+		return gimlet.NewTextInternalErrorResponse(errors.Wrap(err, "finding pod"))
+	}
+	if p == nil {
+		return gimlet.NewTextErrorResponse(errors.Errorf("pod '%s' not found", h.podID))
+	}
+
+	grip.Info(message.Fields{
+		"message":                   "pod requested its provisioning script",
+		"pod":                       p.ID,
+		"external_id":               p.Resources.ExternalID,
+		"secs_since_pod_allocation": time.Since(p.TimeInfo.Initializing).Seconds(),
+		"secs_since_pod_creation":   time.Since(p.TimeInfo.Starting).Seconds(),
+	})
+
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		gimlet.NewTextInternalErrorResponse(errors.Wrap(err, "getting service flags"))
+	}
+
+	script := h.agentScript(p, !flags.S3BinaryDownloadsDisabled)
+
+	return gimlet.NewTextResponse(script)
+}
+
+// agentScript returns the script to provision and run the agent in the pod's
+// container. On Linux, this is a shell script. On Windows, this is a cmd.exe
+// batch script.
+func (h *podProvisioningScript) agentScript(p *pod.Pod, downloadFromS3 bool) string {
+	scriptCmds := []string{h.downloadAgentCommands(p, downloadFromS3)}
+	if p.TaskContainerCreationOpts.OS == pod.OSLinux {
+		scriptCmds = append(scriptCmds, fmt.Sprintf("chmod +x %s", h.clientName(p)))
+	}
+	agentCmd := strings.Join(h.agentCommand(p), " ")
+	scriptCmds = append(scriptCmds, agentCmd)
+
+	return strings.Join(scriptCmds, " && ")
+}
+
+// agentCommand returns the arguments to start the agent in the pod's container.
+func (h *podProvisioningScript) agentCommand(p *pod.Pod) []string {
+	var pathSep string
+	if p.TaskContainerCreationOpts.OS == pod.OSWindows {
+		pathSep = "\\"
+	} else {
+		pathSep = "/"
+	}
+
+	return []string{
+		fmt.Sprintf(".%s%s", pathSep, h.clientName(p)),
+		"agent",
+		fmt.Sprintf("--api_server=%s", h.settings.ApiUrl),
+		"--mode=pod",
+		fmt.Sprintf("--log_prefix=%s", filepath.Join(p.TaskContainerCreationOpts.WorkingDir, "agent")),
+		fmt.Sprintf("--working_directory=%s", p.TaskContainerCreationOpts.WorkingDir),
+	}
+}
+
+// downloadAgentCommands returns the commands to download the agent in the pod's
+// container.
+func (h *podProvisioningScript) downloadAgentCommands(p *pod.Pod, downloadFromS3 bool) string {
+	const (
+		curlDefaultNumRetries = 10
+		curlDefaultMaxSecs    = 100
+	)
+	retryArgs := h.curlRetryArgs(curlDefaultNumRetries, curlDefaultMaxSecs)
+
+	var curlCmd string
+	if downloadFromS3 && h.settings.PodInit.S3BaseURL != "" {
+		// Attempt to download the agent from S3, but fall back to downloading
+		// from the app server if it fails.
+		// Include -f to return an error code from curl if the HTTP request
+		// fails (e.g. it receives 403 Forbidden or 404 Not Found).
+		curlCmd = fmt.Sprintf("(curl -fLO %s %s || curl -fLO %s %s)", h.s3ClientURL(p), retryArgs, h.evergreenClientURL(p), retryArgs)
+	} else {
+		curlCmd = fmt.Sprintf("curl -fLO %s %s", h.evergreenClientURL(p), retryArgs)
+	}
+
+	return curlCmd
+}
+
+// evergreenClientURL returns the URL used to get the latest Evergreen client
+// version directly from the Evergreen server.
+func (h *podProvisioningScript) evergreenClientURL(p *pod.Pod) string {
+	return strings.Join([]string{
+		strings.TrimSuffix(h.settings.ApiUrl, "/"),
+		strings.TrimSuffix(h.settings.ClientBinariesDir, "/"),
+		h.clientURLSubpath(p),
+	}, "/")
+}
+
+// s3ClientURL returns the URL in S3 where the Evergreen client version can be
+// retrieved for this server's particular Evergreen build version.
+func (h *podProvisioningScript) s3ClientURL(p *pod.Pod) string {
+	return strings.Join([]string{
+		strings.TrimSuffix(h.settings.PodInit.S3BaseURL, "/"),
+		evergreen.BuildRevision,
+		h.clientURLSubpath(p),
+	}, "/")
+}
+
+// clientURLSubpath returns the URL path to the compiled agent.
+func (h *podProvisioningScript) clientURLSubpath(p *pod.Pod) string {
+	return strings.Join([]string{
+		fmt.Sprintf("%s_%s", p.TaskContainerCreationOpts.OS, p.TaskContainerCreationOpts.Arch),
+		h.clientName(p),
+	}, "/")
+}
+
+// clientName returns the file name of the agent binary.
+func (h *podProvisioningScript) clientName(p *pod.Pod) string {
+	name := "evergreen"
+	if p.TaskContainerCreationOpts.OS == pod.OSWindows {
+		return name + ".exe"
+	}
+	return name
+}
+
+// curlRetryArgs constructs options to configure the curl retry behavior.
+func (h *podProvisioningScript) curlRetryArgs(numRetries, maxSecs int) string {
+	return fmt.Sprintf("--retry %d --retry-max-time %d", numRetries, maxSecs)
+}
 
 /////////////////////////////////////////
 //

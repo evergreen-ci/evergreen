@@ -427,46 +427,31 @@ func mapHTTPStatusToGqlError(ctx context.Context, httpStatus int, err error) *gq
 	}
 }
 
-func isTaskBlocked(ctx context.Context, at *restModel.APITask) (*bool, error) {
-	t, err := task.FindOneIdNewOrOld(*at.Id)
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, err.Error())
+func canRestartTask(t *task.Task) bool {
+	// Cannot restart execution tasks.
+	if t.IsPartOfDisplay() {
+		return false
 	}
-	if t == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task %s not found", *at.Id))
+	// It is possible to restart blocked display tasks. Later tasks in a display task could be blocked on
+	// earlier tasks in the display task, in which case restarting the entire display task may unblock them.
+	if t.DisplayStatus == evergreen.TaskStatusBlocked && t.DisplayOnly {
+		return true
 	}
-	isBlocked := t.Blocked()
-	return &isBlocked, nil
+	if !utility.StringSliceContains(evergreen.TaskUncompletedStatuses, t.Status) {
+		return true
+	}
+	return t.Aborted
 }
 
-func isExecutionTask(ctx context.Context, at *restModel.APITask) (*bool, error) {
-	i, err := at.ToService()
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while converting task %s to service", *at.Id))
+func canScheduleTask(t *task.Task) bool {
+	// Cannot schedule execution tasks or aborted tasks.
+	if t.IsPartOfDisplay() || t.Aborted {
+		return false
 	}
-	t, ok := i.(*task.Task)
-	if !ok {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *at.Id))
+	if t.DisplayStatus != evergreen.TaskUnscheduled {
+		return false
 	}
-	isExecutionTask := t.IsPartOfDisplay()
-
-	return &isExecutionTask, nil
-}
-
-func canRestartTask(ctx context.Context, at *restModel.APITask) (*bool, error) {
-	taskBlocked, err := isTaskBlocked(ctx, at)
-	if err != nil {
-		return nil, err
-	}
-	canRestart := !utility.StringSliceContains(evergreen.TaskUncompletedStatuses, *at.Status) || at.Aborted || (at.DisplayOnly && *taskBlocked)
-	isExecTask, err := isExecutionTask(ctx, at) // Cant restart execution tasks.
-	if err != nil {
-		return nil, err
-	}
-	if *isExecTask {
-		canRestart = false
-	}
-	return &canRestart, nil
+	return true
 }
 
 func getAllTaskStatuses(tasks []task.Task) []string {

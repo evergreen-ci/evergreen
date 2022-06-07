@@ -322,6 +322,7 @@ type Container struct {
 	WorkingDir string              `yaml:"working_dir,omitempty" bson:"working_dir"`
 	Image      string              `yaml:"image" bson:"image"`
 	Size       string              `yaml:"size,omitempty" bson:"size"`
+	Credential string              `yaml:"credential,omitempty" bson:"credential"`
 	Resources  *ContainerResources `yaml:"resources,omitempty" bson:"resources"`
 	System     ContainerSystem     `yaml:"system,omitempty" bson:"system"`
 }

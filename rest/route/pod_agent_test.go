@@ -2,8 +2,10 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -19,6 +21,132 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestPodProvisioningScript(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Since the tests depend on the global service flags, reset it to its
+	// initial state afterwards.
+	originalFlags, err := evergreen.GetServiceFlags()
+	require.NoError(t, err)
+	if originalFlags.S3BinaryDownloadsDisabled {
+		defer func() {
+			assert.NoError(t, originalFlags.Set())
+		}()
+		s3ClientDownloadsEnabled := *originalFlags
+		s3ClientDownloadsEnabled.S3BinaryDownloadsDisabled = false
+		require.NoError(t, s3ClientDownloadsEnabled.Set())
+	}
+
+	getRoute := func(t *testing.T, settings *evergreen.Settings, podID string) *podProvisioningScript {
+		rh := makePodProvisioningScript(settings)
+		r, err := http.NewRequest(http.MethodGet, "https://example.com", nil)
+		require.NoError(t, err)
+		r = gimlet.SetURLVars(r, map[string]string{"pod_id": podID})
+		require.NoError(t, rh.Parse(ctx, r))
+		pps, ok := rh.(*podProvisioningScript)
+		require.True(t, ok, "route should be pod provisioning script route")
+		return pps
+	}
+
+	t.Run("RunFailsWithNonexistentPod", func(t *testing.T) {
+		settings := &evergreen.Settings{
+			ApiUrl:            "www.test.com",
+			ClientBinariesDir: "clients",
+		}
+		rh := getRoute(t, settings, "nonexistent")
+		resp := rh.Run(ctx)
+		assert.NotEqual(t, http.StatusOK, resp.Status())
+	})
+
+	t.Run("RunGeneratesScriptSuccessfully", func(t *testing.T) {
+		for tName, tCase := range map[string]func(t *testing.T, settings *evergreen.Settings, p *pod.Pod){
+			"EvergreenClientDownloadsWithLinuxPod": func(t *testing.T, settings *evergreen.Settings, p *pod.Pod) {
+				require.NoError(t, p.Insert())
+				rh := getRoute(t, settings, p.ID)
+				resp := rh.Run(ctx)
+				assert.Equal(t, http.StatusOK, resp.Status())
+
+				script, ok := resp.Data().(string)
+				require.True(t, ok, "route should return plaintext response")
+
+				expected := "curl -fLO www.test.com/clients/linux_amd64/evergreen --retry 10 --retry-max-time 100 && " +
+					"chmod +x evergreen && " +
+					"./evergreen agent --api_server=www.test.com --mode=pod --log_prefix=/working/dir/agent --working_directory=/working/dir"
+				assert.Equal(t, expected, script)
+			},
+			"EvergreenClientDownloadsWithWindowsPod": func(t *testing.T, settings *evergreen.Settings, p *pod.Pod) {
+				p.TaskContainerCreationOpts.OS = pod.OSWindows
+				require.NoError(t, p.Insert())
+				rh := getRoute(t, settings, p.ID)
+				resp := rh.Run(ctx)
+				assert.Equal(t, http.StatusOK, resp.Status())
+
+				script, ok := resp.Data().(string)
+				require.True(t, ok, "route should return plaintext response")
+
+				expected := "curl -fLO www.test.com/clients/windows_amd64/evergreen.exe --retry 10 --retry-max-time 100 && " +
+					".\\evergreen.exe agent --api_server=www.test.com --mode=pod --log_prefix=/working/dir/agent --working_directory=/working/dir"
+				assert.Equal(t, expected, script)
+			},
+			"S3ClientDownloadsWithLinuxPod": func(t *testing.T, settings *evergreen.Settings, p *pod.Pod) {
+				require.NoError(t, p.Insert())
+				settings.PodInit.S3BaseURL = "https://foo.com"
+
+				rh := getRoute(t, settings, p.ID)
+				resp := rh.Run(ctx)
+				assert.Equal(t, http.StatusOK, resp.Status())
+
+				script, ok := resp.Data().(string)
+				require.True(t, ok, "route should return plaintext response")
+
+				expected := fmt.Sprintf("(curl -fLO https://foo.com/%s/linux_amd64/evergreen --retry 10 --retry-max-time 100 || curl -fLO www.test.com/clients/linux_amd64/evergreen --retry 10 --retry-max-time 100) && "+
+					"chmod +x evergreen && "+
+					"./evergreen agent --api_server=www.test.com --mode=pod --log_prefix=/working/dir/agent --working_directory=/working/dir", evergreen.BuildRevision)
+				assert.Equal(t, expected, script)
+			},
+			"S3ClientDownloadsWithWindowsPod": func(t *testing.T, settings *evergreen.Settings, p *pod.Pod) {
+				p.TaskContainerCreationOpts.OS = pod.OSWindows
+				require.NoError(t, p.Insert())
+				settings.PodInit.S3BaseURL = "https://foo.com"
+
+				rh := getRoute(t, settings, p.ID)
+				resp := rh.Run(ctx)
+				assert.Equal(t, http.StatusOK, resp.Status())
+
+				script, ok := resp.Data().(string)
+				require.True(t, ok, "route should return plaintext response")
+
+				expected := fmt.Sprintf("(curl -fLO https://foo.com/%s/windows_amd64/evergreen.exe --retry 10 --retry-max-time 100 || curl -fLO www.test.com/clients/windows_amd64/evergreen.exe --retry 10 --retry-max-time 100) && "+
+					".\\evergreen.exe agent --api_server=www.test.com --mode=pod --log_prefix=/working/dir/agent --working_directory=/working/dir", evergreen.BuildRevision)
+				assert.Equal(t, expected, script)
+			},
+		} {
+			t.Run(tName, func(t *testing.T) {
+				require.NoError(t, db.ClearCollections(pod.Collection))
+				p := &pod.Pod{
+					ID: "id",
+					TaskContainerCreationOpts: pod.TaskContainerCreationOptions{
+						OS:         pod.OSLinux,
+						Arch:       pod.ArchAMD64,
+						WorkingDir: "/working/dir",
+					},
+					Status: pod.StatusStarting,
+					TimeInfo: pod.TimeInfo{
+						Initializing: time.Now().Add(-2 * time.Minute),
+						Starting:     time.Now().Add(-time.Minute),
+					},
+				}
+				settings := &evergreen.Settings{
+					ApiUrl:            "www.test.com",
+					ClientBinariesDir: "clients",
+				}
+				tCase(t, settings, p)
+			})
+		}
+	})
+}
 
 func TestPodAgentSetup(t *testing.T) {
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *podAgentSetup, s *evergreen.Settings){

@@ -1,11 +1,9 @@
 package route
 
 import (
-	"bytes"
 	"context"
 	"net/http"
 	"testing"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -156,45 +154,6 @@ func TestFetchArtifacts(t *testing.T) {
 	apiTask = resp.Data().(*model.APITask)
 	require.Len(apiTask.PreviousExecutions, 1)
 	assert.NotZero(apiTask.PreviousExecutions[0])
-}
-
-type ProjectTaskWithinDatesSuite struct {
-	h *projectTaskGetHandler
-
-	suite.Suite
-}
-
-func TestProjectTaskWithinDatesSuite(t *testing.T) {
-	suite.Run(t, new(ProjectTaskWithinDatesSuite))
-}
-
-func (s *ProjectTaskWithinDatesSuite) SetupTest() {
-	s.h = &projectTaskGetHandler{}
-}
-
-func (s *ProjectTaskWithinDatesSuite) TestParseAllArguments() {
-	url := "https://evergreen.mongodb.com/rest/v2/projects/none/versions/tasks" +
-		"?status=A" +
-		"&status=B" +
-		"&started_after=2018-01-01T00%3A00%3A00Z" +
-		"&finished_before=2018-02-02T00%3A00%3A00Z"
-	r, err := http.NewRequest(http.MethodGet, url, &bytes.Buffer{})
-	s.Require().NoError(err)
-	err = s.h.Parse(context.Background(), r)
-	s.NoError(err)
-	s.Subset([]string{"A", "B"}, s.h.statuses)
-	s.Equal(s.h.startedAfter, time.Date(2018, time.January, 1, 0, 0, 0, 0, time.UTC))
-	s.Equal(s.h.finishedBefore, time.Date(2018, time.February, 2, 0, 0, 0, 0, time.UTC))
-}
-
-func (s *ProjectTaskWithinDatesSuite) TestHasDefaultValues() {
-	r, err := http.NewRequest(http.MethodGet, "https://evergreen.mongodb.com/rest/v2/projects/none/versions/tasks", &bytes.Buffer{})
-	s.Require().NoError(err)
-	err = s.h.Parse(context.Background(), r)
-	s.NoError(err)
-	s.Equal([]string(nil), s.h.statuses)
-	s.True(s.h.startedAfter.Unix()-time.Now().AddDate(0, 0, -7).Unix() <= 0)
-	s.Equal(time.Time{}, s.h.finishedBefore)
 }
 
 func TestGetDisplayTask(t *testing.T) {

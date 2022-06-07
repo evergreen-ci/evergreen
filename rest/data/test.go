@@ -39,26 +39,10 @@ func FindTestById(id string) ([]testresult.TestResult, error) {
 }
 
 func (tc *DBTestConnector) FindTestsByTaskId(opts FindTestsByTaskIdOpts) ([]testresult.TestResult, error) {
-	t, err := task.FindOneIdNewOrOld(opts.TaskID)
-	if err != nil {
-		return []testresult.TestResult{}, gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    errors.Wrapf(err, "finding task '%s'", opts.TaskID).Error(),
-		}
+	taskIDs := []string{opts.TaskID}
+	if len(opts.ExecutionTasks) > 0 {
+		taskIDs = opts.ExecutionTasks
 	}
-	if t == nil {
-		return []testresult.TestResult{}, gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("task '%s' not found", opts.TaskID),
-		}
-	}
-	var taskIDs []string
-	if t.DisplayOnly {
-		taskIDs = t.ExecutionTasks
-	} else {
-		taskIDs = []string{opts.TaskID}
-	}
-
 	res, err := testresult.TestResultsFilterSortPaginate(testresult.TestResultsFilterSortPaginateOpts{
 		TestID:    opts.TestID,
 		TaskIDs:   taskIDs,

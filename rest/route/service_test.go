@@ -742,9 +742,13 @@ func TestTestPaginator(t *testing.T) {
 				}
 				nextTest := testresult.TestResult{
 					ID:     mgobson.ObjectId(fmt.Sprintf("object_id_%d_", i)),
+					TaskID: "myTask",
 					Status: status,
 				}
 				cachedTests = append(cachedTests, nextTest)
+			}
+			myTask := task.Task{
+				Id: "myTask",
 			}
 			serviceContext.CachedTests = cachedTests
 			Convey("then finding a key in the middle of the set should produce"+
@@ -773,6 +777,7 @@ func TestTestPaginator(t *testing.T) {
 					limit: limit,
 					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
 					sc:    &serviceContext,
+					task:  &myTask,
 				}
 
 				validatePaginatedResponse(t, handler, expectedTests, expectedPages)
@@ -803,6 +808,7 @@ func TestTestPaginator(t *testing.T) {
 					limit: 50,
 					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
 					sc:    &serviceContext,
+					task:  &myTask,
 				}
 
 				validatePaginatedResponse(t, handler, expectedTests, expectedPages)
@@ -833,6 +839,7 @@ func TestTestPaginator(t *testing.T) {
 					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
 					limit: limit,
 					sc:    &serviceContext,
+					task:  &myTask,
 				}
 
 				validatePaginatedResponse(t, handler, expectedTests, expectedPages)
@@ -863,6 +870,7 @@ func TestTestPaginator(t *testing.T) {
 					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
 					sc:    &serviceContext,
 					limit: limit,
+					task:  &myTask,
 				}
 
 				validatePaginatedResponse(t, handler, expectedTests, expectedPages)

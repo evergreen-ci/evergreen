@@ -10,6 +10,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/cloud"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -77,12 +78,14 @@ func (h *hostsChangeStatusesHandler) Run(ctx context.Context) gimlet.Responder {
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding host '%s' with owner '%s'", id, user.Id))
 		}
-		if foundHost.Status == evergreen.HostTerminated {
-			return gimlet.MakeJSONErrorResponder(errors.Errorf("host '%s' is already terminated so its status cannot be changed", foundHost.Id))
+		switch status.Status {
+		case evergreen.HostTerminated:
+			err = errors.WithStack(cloud.TerminateSpawnHost(ctx, evergreen.GetEnvironment(), foundHost, user.Id, "terminated via REST API"))
+		default:
+			err = foundHost.SetStatus(status.Status, user.Id, fmt.Sprintf("changed by %s from API", user.Id))
 		}
-
-		if err = foundHost.SetStatus(status.Status, user.Id, fmt.Sprintf("changed by user '%s' from API", user.Id)); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting host '%s' to status '%s'", id, status))
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
 
 		host := &model.APIHost{}

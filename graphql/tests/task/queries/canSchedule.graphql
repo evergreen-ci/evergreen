@@ -1,8 +1,17 @@
 {
-  yes: task(taskId: "some_task") {
+  unscheduledTask: task(taskId: "unscheduled_task") {
     canSchedule
   }
-  no: task(taskId: "taskity_task") {
+  finishedTask: task(taskId: "finished_task") {
+    canSchedule
+  }
+  runningTask: task(taskId: "running_task"){
+    canSchedule
+  }
+  abortedTask: task(taskId: "aborted_task"){
+    canSchedule
+  }
+  executionTask: task(taskId: "execution_task"){
     canSchedule
   }
 }
