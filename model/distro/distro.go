@@ -310,6 +310,60 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
+func (s *PlannerSettings) ShouldGroupVersions() bool {
+	return utility.FromBoolPtr(s.GroupVersions)
+}
+
+func (s *PlannerSettings) GetPatchFactor() int64 {
+	if s.PatchFactor <= 0 {
+		return 1
+	}
+	return s.PatchFactor
+}
+
+func (s *PlannerSettings) GetPatchTimeInQueueFactor() int64 {
+	if s.PatchTimeInQueueFactor <= 0 {
+		return 1
+	}
+	return s.PatchTimeInQueueFactor
+}
+
+func (s *PlannerSettings) GetCommitQueueFactor() int64 {
+	if s.CommitQueueFactor <= 0 {
+		return 1
+	}
+	return s.CommitQueueFactor
+}
+
+func (s *PlannerSettings) GetGenerateTaskFactor() int64 {
+	if s.GenerateTaskFactor <= 0 {
+		return 1
+	}
+	return s.GenerateTaskFactor
+}
+
+func (s *PlannerSettings) GetMainlineTimeInQueueFactor() int64 {
+	if s.MainlineTimeInQueueFactor <= 0 {
+		return 1
+	}
+	return s.MainlineTimeInQueueFactor
+}
+
+func (s *PlannerSettings) GetStepbackTaskFactor() int64 {
+	if s.StepbackTaskFactor <= 0 {
+		return 1
+	}
+	return s.StepbackTaskFactor
+}
+
+func (s *PlannerSettings) GetExpectedRuntimeFactor() int64 {
+	if s.ExpectedRuntimeFactor <= 0 {
+		return 1
+	}
+
+	return s.ExpectedRuntimeFactor
+}
+
 // GenerateName generates a unique instance name for a host in a distro.
 func (d *Distro) GenerateName() string {
 	switch d.Provider {
@@ -336,64 +390,6 @@ func (d *Distro) GenerateName() string {
 	}
 
 	return name
-}
-
-func (d *Distro) ShouldGroupVersions() bool {
-	if d.PlannerSettings.GroupVersions == nil {
-		return false
-	}
-
-	return *d.PlannerSettings.GroupVersions
-}
-
-func (d *Distro) GetPatchFactor() int64 {
-	if d.PlannerSettings.PatchFactor <= 0 {
-		return 1
-	}
-	return d.PlannerSettings.PatchFactor
-}
-
-func (d *Distro) GetPatchTimeInQueueFactor() int64 {
-	if d.PlannerSettings.PatchTimeInQueueFactor <= 0 {
-		return 1
-	}
-	return d.PlannerSettings.PatchTimeInQueueFactor
-}
-
-func (d *Distro) GetCommitQueueFactor() int64 {
-	if d.PlannerSettings.CommitQueueFactor <= 0 {
-		return 1
-	}
-	return d.PlannerSettings.CommitQueueFactor
-}
-
-func (d *Distro) GetGenerateTaskFactor() int64 {
-	if d.PlannerSettings.GenerateTaskFactor <= 0 {
-		return 1
-	}
-	return d.PlannerSettings.GenerateTaskFactor
-}
-
-func (d *Distro) GetMainlineTimeInQueueFactor() int64 {
-	if d.PlannerSettings.MainlineTimeInQueueFactor <= 0 {
-		return 1
-	}
-	return d.PlannerSettings.MainlineTimeInQueueFactor
-}
-
-func (d *Distro) GetStepbackTaskFactor() int64 {
-	if d.PlannerSettings.StepbackTaskFactor <= 0 {
-		return 1
-	}
-	return d.PlannerSettings.StepbackTaskFactor
-}
-
-func (d *Distro) GetExpectedRuntimeFactor() int64 {
-	if d.PlannerSettings.ExpectedRuntimeFactor <= 0 {
-		return 1
-	}
-
-	return d.PlannerSettings.ExpectedRuntimeFactor
 }
 
 func (d *Distro) MaxDurationPerHost() time.Duration {

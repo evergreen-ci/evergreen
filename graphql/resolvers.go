@@ -2047,6 +2047,7 @@ func (r *taskLogsResolver) EventLogs(ctx context.Context, obj *TaskLogs) ([]*res
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to find EventLogs for task %s: %s", obj.TaskID, err.Error()))
 	}
 
+	// TODO (EVG-16969) remove once TaskScheduled events TTL
 	// remove all scheduled events except the youngest and push to filteredEvents
 	filteredEvents := []event.EventLogEntry{}
 	foundScheduled := false
