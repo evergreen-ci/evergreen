@@ -389,15 +389,8 @@ func Aggregate(collection string, pipeline interface{}, out interface{}) error {
 	// socket timeout, which isn't really an option here. (other
 	// operations had a 90s timeout, which is no longer specified)
 
-	pipe := ConstructPipe(db, collection, pipeline)
-	return unmarshalPipelineResults(pipe, out)
-}
+	pipe := db.C(collection).Pipe(pipeline)
 
-func ConstructPipe(db db.Database, collection string, pipeline interface{}) db.Aggregation {
-	return db.C(collection).Pipe(pipeline)
-}
-
-func unmarshalPipelineResults(pipe db.Aggregation, out interface{}) error {
 	return errors.WithStack(pipe.All(out))
 }
 
@@ -415,27 +408,23 @@ func AggregateWithHint(collection string, pipeline interface{}, hint interface{}
 	// socket timeout, which isn't really an option here. (other
 	// operations had a 90s timeout, which is no longer specified)
 
-	pipe := ConstructPipeWithHint(db, collection, pipeline, hint)
-	return unmarshalPipelineResults(pipe, out)
-}
+	pipe := db.C(collection).Pipe(pipeline).Hint(hint)
 
-func ConstructPipeWithHint(db db.Database, collection string, pipeline interface{}, hint interface{}) db.Aggregation {
-	return db.C(collection).Pipe(pipeline).Hint(hint)
+	return errors.WithStack(pipe.All(out))
 }
 
 // AggregateWithMaxTime runs aggregate and specifies a max query time which ensures the query won't go on indefinitely when the request is cancelled.
-func AggregateWithMaxTime(collection string, pipeline interface{}, out interface{}, maxTime time.Duration) error {
-	session, db, err := GetGlobalSessionFactory().GetSession()
+func AggregateWithMaxTime(collection string, pipeline interface{}, out interface{}, maxTime time.Duration) (db.Aggregation, error) {
+	session, database, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		err = errors.Wrap(err, "establishing db connection")
 		grip.Error(err)
-		return err
+		return nil, err
 	}
 	defer session.Close()
-	pipe := ConstructPipeWithMaxTime(db, collection, pipeline, maxTime)
-	return unmarshalPipelineResults(pipe, out)
-}
 
-func ConstructPipeWithMaxTime(db db.Database, collection string, pipeline interface{}, maxTime time.Duration) db.Aggregation {
-	return db.C(collection).Pipe(pipeline).MaxTime(maxTime)
+	pipe := database.C(collection).Pipe(pipeline).MaxTime(maxTime)
+
+	err = errors.WithStack(pipe.All(out))
+	return pipe, err
 }
