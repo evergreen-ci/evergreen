@@ -405,7 +405,8 @@ const (
 )
 
 const (
-	tasksByProjectQueryMaxTime = 90 * time.Second
+	tasksByProjectQueryMaxTime   = 90 * time.Second
+	tasksByProjectMaxNumVersions = 1000
 )
 
 var adminPermissions = gimlet.Permissions{
@@ -1110,39 +1111,33 @@ func GetTasksWithOptions(projectName string, taskName string, opts GetProjectTas
 		task.DisplayNameKey: taskName,
 		task.StatusKey:      bson.M{"$in": finishedStatuses},
 	}
-	var repo *Repository
-	var revisionMatch []bson.M
-	if opts.NumVersions > 0 {
-		repo, err = FindRepository(projectId)
+	if opts.BuildVariant != "" {
+		match[task.BuildVariantKey] = opts.BuildVariant
+	}
+	var startingRevision int
+	if opts.StartAt > 0 {
+		startingRevision = opts.StartAt
+	} else {
+		repo, err := FindRepository(projectId)
 		if err != nil {
 			return nil, err
 		}
 		if repo == nil {
 			return nil, errors.Errorf("finding repository '%s'", projectId)
 		}
-		revisionMatch = []bson.M{
-			{task.RevisionOrderNumberKey: bson.M{"$gte": repo.RevisionOrderNumber - opts.NumVersions}},
-		}
+		startingRevision = repo.RevisionOrderNumber
 	}
-	if opts.StartAt > 0 {
-		revisionMatch = append(revisionMatch, []bson.M{
-			{task.RevisionOrderNumberKey: bson.M{"$lte": opts.StartAt}},
-		}...)
-	}
-	if opts.BuildVariant != "" {
-		match[task.BuildVariantKey] = opts.BuildVariant
-	}
-	if len(revisionMatch) > 0 {
-		match["$and"] = revisionMatch
+	match["$and"] = []bson.M{
+		{task.RevisionOrderNumberKey: bson.M{"$lte": startingRevision}},
+		{task.RevisionOrderNumberKey: bson.M{"$gte": startingRevision - tasksByProjectMaxNumVersions}},
 	}
 	pipeline := []bson.M{{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{task.RevisionOrderNumberKey: -1}})
 	pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
 
 	res := []task.Task{}
-
-	if err := db.AggregateWithMaxTime(task.Collection, pipeline, &res, tasksByProjectQueryMaxTime); err != nil {
-		return nil, errors.Wrapf(err, "error aggregating tasks")
+	if err = db.AggregateWithMaxTime(task.Collection, pipeline, &res, tasksByProjectQueryMaxTime); err != nil {
+		return nil, errors.Wrapf(err, "aggregating tasks")
 	}
 	return res, nil
 }

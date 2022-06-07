@@ -249,7 +249,7 @@ func (iter *taskHistoryIterator) findAllVersions(v *Version, numRevisions int, b
 	return versions, exhausted, err
 }
 
-// Returns tasks grouped by their versions, and sorted with the most
+// GetChunk Returns tasks grouped by their versions, and sorted with the most
 // recent first (i.e. descending commit order number).
 func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, include bool) (TaskHistoryChunk, error) {
 	chunk := TaskHistoryChunk{
@@ -336,7 +336,7 @@ func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, i
 		{"$group": groupStage},
 		{"$sort": bson.M{task.RevisionOrderNumberKey: -1}},
 	}
-	agg := database.C(task.Collection).Pipe(pipeline).MaxTime(taskHistoryMaxTime)
+	agg := db.ConstructPipeWithMaxTime(database, task.Collection, pipeline, taskHistoryMaxTime)
 	var aggregatedTasks []bson.M
 	if err = agg.All(&aggregatedTasks); err != nil {
 		return chunk, errors.WithStack(err)
@@ -359,46 +359,44 @@ func (self *taskHistoryIterator) GetDistinctTestNames(ctx context.Context, numCo
 	}
 	defer session.Close()
 
-	pipeline := mdb.C(task.Collection).Pipe(
-		[]bson.M{
-			{
-				"$match": bson.M{
-					task.ProjectKey:     self.ProjectName,
-					task.RequesterKey:   evergreen.RepotrackerVersionRequester,
-					task.DisplayNameKey: self.TaskName,
-				},
+	pipeline := []bson.M{
+		{
+			"$match": bson.M{
+				task.ProjectKey:     self.ProjectName,
+				task.RequesterKey:   evergreen.RepotrackerVersionRequester,
+				task.DisplayNameKey: self.TaskName,
 			},
-			{"$sort": bson.D{{Key: task.CreateTimeKey, Value: -1}}},
-			{"$limit": numCommits},
-			{"$lookup": bson.M{
-				"from":         testresult.Collection,
-				"localField":   task.IdKey,
-				"foreignField": testresult.TaskIDKey,
-				"as":           testResultsKey},
-			},
-			{"$project": bson.M{
-				testResultsKey: bson.M{
-					"$filter": bson.M{
-						// Filter off non-matching executions. This should be replaced once
-						// multi-key $lookups are supported in 3.6
-						"input": "$" + testResultsKey,
-						"as":    "tr",
-						"cond": bson.M{
-							"$eq": []string{"$$tr.task_execution", "$execution"}},
-					},
-				},
-				task.IdKey:                 1,
-				task.TestResultTestFileKey: 1,
-			}},
-			{"$unwind": fmt.Sprintf("$%v", testResultsKey)},
-			{"$group": bson.M{"_id": fmt.Sprintf("$%v.%v", testResultsKey, task.TestResultTestFileKey)}},
 		},
-	)
-	pipeline.MaxTime(taskHistoryMaxTime)
+		{"$sort": bson.D{{Key: task.CreateTimeKey, Value: -1}}},
+		{"$limit": numCommits},
+		{"$lookup": bson.M{
+			"from":         testresult.Collection,
+			"localField":   task.IdKey,
+			"foreignField": testresult.TaskIDKey,
+			"as":           testResultsKey},
+		},
+		{"$project": bson.M{
+			testResultsKey: bson.M{
+				"$filter": bson.M{
+					// Filter off non-matching executions. This should be replaced once
+					// multi-key $lookups are supported in 3.6
+					"input": "$" + testResultsKey,
+					"as":    "tr",
+					"cond": bson.M{
+						"$eq": []string{"$$tr.task_execution", "$execution"}},
+				},
+			},
+			task.IdKey:                 1,
+			task.TestResultTestFileKey: 1,
+		}},
+		{"$unwind": fmt.Sprintf("$%v", testResultsKey)},
+		{"$group": bson.M{"_id": fmt.Sprintf("$%v.%v", testResultsKey, task.TestResultTestFileKey)}},
+	}
 
+	agg := db.ConstructPipeWithMaxTime(mdb, task.Collection, pipeline, taskHistoryMaxTime)
 	var names []string
 	res := bson.M{}
-	iter := pipeline.Iter()
+	iter := agg.Iter()
 	for iter.Next(&res) {
 		names = append(names, res["_id"].(string))
 		if ctx.Err() != nil {

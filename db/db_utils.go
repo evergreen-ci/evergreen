@@ -379,7 +379,7 @@ func ClearGridCollections(fsPrefix string) error {
 func Aggregate(collection string, pipeline interface{}, out interface{}) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		err = errors.Wrap(err, "error establishing db connection")
+		err = errors.Wrap(err, "establishing db connection")
 		grip.Error(err)
 		return err
 	}
@@ -389,8 +389,15 @@ func Aggregate(collection string, pipeline interface{}, out interface{}) error {
 	// socket timeout, which isn't really an option here. (other
 	// operations had a 90s timeout, which is no longer specified)
 
-	pipe := db.C(collection).Pipe(pipeline)
+	pipe := ConstructPipe(db, collection, pipeline)
+	return unmarshalPipelineResults(pipe, out)
+}
 
+func ConstructPipe(db db.Database, collection string, pipeline interface{}) db.Aggregation {
+	return db.C(collection).Pipe(pipeline)
+}
+
+func unmarshalPipelineResults(pipe db.Aggregation, out interface{}) error {
 	return errors.WithStack(pipe.All(out))
 }
 
@@ -398,7 +405,7 @@ func Aggregate(collection string, pipeline interface{}, out interface{}) error {
 func AggregateWithHint(collection string, pipeline interface{}, hint interface{}, out interface{}) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		err = errors.Wrap(err, "error establishing db connection")
+		err = errors.Wrap(err, "establishing db connection")
 		grip.Error(err)
 		return err
 	}
@@ -408,22 +415,27 @@ func AggregateWithHint(collection string, pipeline interface{}, hint interface{}
 	// socket timeout, which isn't really an option here. (other
 	// operations had a 90s timeout, which is no longer specified)
 
-	pipe := db.C(collection).Pipe(pipeline).Hint(hint)
-
-	return errors.WithStack(pipe.All(out))
+	pipe := ConstructPipeWithHint(db, collection, pipeline, hint)
+	return unmarshalPipelineResults(pipe, out)
 }
 
-// AggregateWithMaxTime runs aggregate and specifies a max quert time which ensures the query won't go on indefinitely when the request is cancelled.
+func ConstructPipeWithHint(db db.Database, collection string, pipeline interface{}, hint interface{}) db.Aggregation {
+	return db.C(collection).Pipe(pipeline).Hint(hint)
+}
+
+// AggregateWithMaxTime runs aggregate and specifies a max query time which ensures the query won't go on indefinitely when the request is cancelled.
 func AggregateWithMaxTime(collection string, pipeline interface{}, out interface{}, maxTime time.Duration) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		err = errors.Wrap(err, "error establishing db connection")
+		err = errors.Wrap(err, "establishing db connection")
 		grip.Error(err)
 		return err
 	}
 	defer session.Close()
+	pipe := ConstructPipeWithMaxTime(db, collection, pipeline, maxTime)
+	return unmarshalPipelineResults(pipe, out)
+}
 
-	pipe := db.C(collection).Pipe(pipeline).MaxTime(maxTime)
-
-	return errors.WithStack(pipe.All(out))
+func ConstructPipeWithMaxTime(db db.Database, collection string, pipeline interface{}, maxTime time.Duration) db.Aggregation {
+	return db.C(collection).Pipe(pipeline).MaxTime(maxTime)
 }
