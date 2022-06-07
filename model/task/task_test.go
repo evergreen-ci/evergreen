@@ -3536,7 +3536,7 @@ func TestArchive(t *testing.T) {
 	}
 }
 
-func TestGetMatchingBaseTaskStatuses(t *testing.T) {
+func TestGetBaseStatusesForActivatedTasks(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
 	t1 := Task{
 		Id:            "t1",
@@ -3579,7 +3579,7 @@ func TestGetMatchingBaseTaskStatuses(t *testing.T) {
 		BuildVariant:  "bv_2",
 	}
 	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5))
-	statuses, err := GetMatchingBaseTaskStatuses("v1", "v1_base")
+	statuses, err := GetBaseStatusesForActivatedTasks("v1", "v1_base")
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(statuses))
 	assert.Equal(t, statuses[0], evergreen.TaskStarted)
@@ -3587,7 +3587,7 @@ func TestGetMatchingBaseTaskStatuses(t *testing.T) {
 
 	assert.NoError(t, db.ClearCollections(Collection))
 	assert.NoError(t, db.InsertMany(Collection, t1, t2, t5))
-	statuses, err = GetMatchingBaseTaskStatuses("v1", "v1_base")
+	statuses, err = GetBaseStatusesForActivatedTasks("v1", "v1_base")
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(statuses))
 }

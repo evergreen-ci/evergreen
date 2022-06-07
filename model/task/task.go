@@ -3709,13 +3709,12 @@ func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOption
 
 }
 
-// GetMatchingBaseTaskStatuses returns the corresponding base task statuses for tasks on a version.
-// If a task ran on the base version but was not scheduled on the version, then its status won't be returned.
-func GetMatchingBaseTaskStatuses(versionID string, baseVersionID string) ([]string, error) {
+// GetBaseStatusesForActivatedTasks returns the base task statuses for activated tasks on a version.
+func GetBaseStatusesForActivatedTasks(versionID string, baseVersionID string) ([]string, error) {
 	pipeline := []bson.M{}
 	taskField := "tasks"
 
-	// Fetch all ACTIVATED tasks from version, and all tasks from base version.
+	// Fetch all activated tasks from version, and all tasks from base version.
 	pipeline = append(pipeline, bson.M{
 		"$match": bson.M{
 			"$or": []bson.M{
@@ -3723,8 +3722,9 @@ func GetMatchingBaseTaskStatuses(versionID string, baseVersionID string) ([]stri
 				{VersionKey: versionID, ActivatedTimeKey: bson.M{"$ne": utility.ZeroTime}},
 			},
 		}})
-	// Add display status, then group by display name and build variant
+	// Add display status
 	pipeline = append(pipeline, addDisplayStatus)
+	// Group by display name and build variant
 	pipeline = append(pipeline, bson.M{
 		"$group": bson.M{
 			"_id": bson.M{DisplayNameKey: "$" + DisplayNameKey, BuildVariantKey: "$" + BuildVariantKey},
@@ -3738,20 +3738,23 @@ func GetMatchingBaseTaskStatuses(versionID string, baseVersionID string) ([]stri
 	pipeline = append(pipeline, bson.M{
 		"$match": bson.M{taskField: bson.M{"$size": 2}},
 	})
+	// Unwind to put tasks in a state where it's easier to filter
 	pipeline = append(pipeline, bson.M{
 		"$unwind": bson.M{
 			"path": "$" + taskField,
 		},
 	})
-	// Filter out tasks that aren't from base version, then group to get rid of duplicate statuses
+	// Filter out tasks that aren't from base version
 	pipeline = append(pipeline, bson.M{
 		"$match": bson.M{bsonutil.GetDottedKeyName(taskField, VersionKey): baseVersionID},
 	})
+	// Group to get rid of duplicate statuses
 	pipeline = append(pipeline, bson.M{
 		"$group": bson.M{
 			"_id": "$" + bsonutil.GetDottedKeyName(taskField, DisplayStatusKey),
 		},
 	})
+	// Sort to guarantee order
 	pipeline = append(pipeline, bson.M{
 		"$sort": bson.D{
 			bson.E{Key: "_id", Value: 1},

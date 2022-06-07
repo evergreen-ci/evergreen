@@ -3711,15 +3711,15 @@ func (r *versionResolver) BaseTaskStatuses(ctx context.Context, v *restModel.API
 	var baseVersion *model.Version
 	var err error
 
-	if !evergreen.IsPatchRequester(utility.FromStringPtr(v.Requester)) { // Get base commit if patch.
+	if !evergreen.IsPatchRequester(utility.FromStringPtr(v.Requester)) { // Get previous commit if mainline commit.
 		baseVersion, err = model.VersionFindOne(model.VersionByProjectIdAndOrder(utility.FromStringPtr(v.Project), v.Order-1))
-	} else { // Get previous commit if mainline commit.
+	} else { // Get base commit if patch.
 		baseVersion, err = model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(utility.FromStringPtr(v.Project), utility.FromStringPtr(v.Revision)))
 	}
 	if baseVersion == nil || err != nil {
 		return nil, nil
 	}
-	statuses, err := task.GetMatchingBaseTaskStatuses(*v.Id, baseVersion.Id)
+	statuses, err := task.GetBaseStatusesForActivatedTasks(*v.Id, baseVersion.Id)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting base version tasks: %s", err.Error()))
 	}
