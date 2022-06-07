@@ -143,9 +143,9 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	if err != nil {
 		return errors.Wrap(err, "error merging generated projects")
 	}
-	start = time.Now()
-	g.TaskID = j.TaskID
+	g.Task = t
 
+	start = time.Now()
 	p, pp, v, err := g.NewVersion(projectInfo.Project, projectInfo.IntermediateProject, v)
 	if err != nil {
 		return j.handleError(pp, v, errors.WithStack(err))
@@ -179,11 +179,27 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 		"job":           j.ID(),
 		"version":       t.Version,
 	})
+
+	start = time.Now()
+	if err := g.CheckForCycles(v, p, pref); err != nil {
+		return errors.Wrap(err, "checking new dependency graph for cycles")
+	}
+
+	grip.Debug(message.Fields{
+		"message":       "generate.tasks timing",
+		"function":      "generate",
+		"operation":     "SimulateNewDependencyGraph",
+		"duration_secs": time.Since(start).Seconds(),
+		"task":          t.Id,
+		"job":           j.ID(),
+		"version":       t.Version,
+	})
+
 	start = time.Now()
 
 	// Don't use the job's context, because it's better to finish than to exit early after a
 	// SIGTERM from a deploy. This should maybe be a context with timeout.
-	err = g.Save(context.Background(), p, pp, v, t)
+	err = g.Save(context.Background(), p, pp, v)
 
 	// If the version or parser project has changed there was a race. Another generator will try again.
 	if adb.ResultsNotFound(err) || db.IsDuplicateKey(err) {
