@@ -3709,12 +3709,12 @@ func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOption
 
 }
 
-// GetBaseStatusesForActivatedTasks returns the base task statuses for activated tasks on a version.
+// GetBaseStatusesForActivatedTasks returns the base statuses for activated tasks on a version.
 func GetBaseStatusesForActivatedTasks(versionID string, baseVersionID string) ([]string, error) {
 	pipeline := []bson.M{}
 	taskField := "tasks"
 
-	// Fetch all activated tasks from version, and all tasks from base version.
+	// Fetch all activated tasks from version, and all tasks from base version
 	pipeline = append(pipeline, bson.M{
 		"$match": bson.M{
 			"$or": []bson.M{
@@ -3738,7 +3738,7 @@ func GetBaseStatusesForActivatedTasks(versionID string, baseVersionID string) ([
 	pipeline = append(pipeline, bson.M{
 		"$match": bson.M{taskField: bson.M{"$size": 2}},
 	})
-	// Unwind to put tasks in a state where it's easier to filter
+	// Unwind to put tasks into a state where it's easier to filter
 	pipeline = append(pipeline, bson.M{
 		"$unwind": bson.M{
 			"path": "$" + taskField,

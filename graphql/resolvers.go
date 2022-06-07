@@ -3721,7 +3721,7 @@ func (r *versionResolver) BaseTaskStatuses(ctx context.Context, v *restModel.API
 	}
 	statuses, err := task.GetBaseStatusesForActivatedTasks(*v.Id, baseVersion.Id)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting base version tasks: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting base version tasks: '%s'", err.Error()))
 	}
 	return statuses, nil
 }
