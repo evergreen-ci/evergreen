@@ -3711,10 +3711,12 @@ func (r *versionResolver) BaseTaskStatuses(ctx context.Context, v *restModel.API
 	var baseVersion *model.Version
 	var err error
 
-	if !evergreen.IsPatchRequester(utility.FromStringPtr(v.Requester)) { // Get previous commit if mainline commit.
-		baseVersion, err = model.VersionFindOne(model.VersionByProjectIdAndOrder(utility.FromStringPtr(v.Project), v.Order-1))
-	} else { // Get base commit if patch.
+	if evergreen.IsPatchRequester(utility.FromStringPtr(v.Requester)) || utility.FromStringPtr(v.Requester) == evergreen.AdHocRequester {
+		// Get base commit if patch or periodic build.
 		baseVersion, err = model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(utility.FromStringPtr(v.Project), utility.FromStringPtr(v.Revision)))
+	} else {
+		// Get previous commit if mainline commit.
+		baseVersion, err = model.VersionFindOne(model.VersionByProjectIdAndOrder(utility.FromStringPtr(v.Project), v.Order-1))
 	}
 	if baseVersion == nil || err != nil {
 		return nil, nil

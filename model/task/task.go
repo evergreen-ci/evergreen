@@ -3724,7 +3724,7 @@ func GetBaseStatusesForActivatedTasks(versionID string, baseVersionID string) ([
 		}})
 	// Add display status
 	pipeline = append(pipeline, addDisplayStatus)
-	// Group by display name and build variant
+	// Group by display name and build variant, and keep track of DisplayStatus and Version fields
 	pipeline = append(pipeline, bson.M{
 		"$group": bson.M{
 			"_id": bson.M{DisplayNameKey: "$" + DisplayNameKey, BuildVariantKey: "$" + BuildVariantKey},
