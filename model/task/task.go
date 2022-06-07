@@ -3709,6 +3709,70 @@ func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOption
 
 }
 
+// GetBaseStatusesForActivatedTasks returns the base statuses for activated tasks on a version.
+func GetBaseStatusesForActivatedTasks(versionID string, baseVersionID string) ([]string, error) {
+	pipeline := []bson.M{}
+	taskField := "tasks"
+
+	// Fetch all activated tasks from version, and all tasks from base version
+	pipeline = append(pipeline, bson.M{
+		"$match": bson.M{
+			"$or": []bson.M{
+				{VersionKey: baseVersionID},
+				{VersionKey: versionID, ActivatedTimeKey: bson.M{"$ne": utility.ZeroTime}},
+			},
+		}})
+	// Add display status
+	pipeline = append(pipeline, addDisplayStatus)
+	// Group by display name and build variant, and keep track of DisplayStatus and Version fields
+	pipeline = append(pipeline, bson.M{
+		"$group": bson.M{
+			"_id": bson.M{DisplayNameKey: "$" + DisplayNameKey, BuildVariantKey: "$" + BuildVariantKey},
+			taskField: bson.M{"$push": bson.M{
+				DisplayStatusKey: "$" + DisplayStatusKey,
+				VersionKey:       "$" + VersionKey,
+			}},
+		},
+	})
+	// Only keep records that exist both on the version & base version (i.e. there are 2 copies)
+	pipeline = append(pipeline, bson.M{
+		"$match": bson.M{taskField: bson.M{"$size": 2}},
+	})
+	// Unwind to put tasks into a state where it's easier to filter
+	pipeline = append(pipeline, bson.M{
+		"$unwind": bson.M{
+			"path": "$" + taskField,
+		},
+	})
+	// Filter out tasks that aren't from base version
+	pipeline = append(pipeline, bson.M{
+		"$match": bson.M{bsonutil.GetDottedKeyName(taskField, VersionKey): baseVersionID},
+	})
+	// Group to get rid of duplicate statuses
+	pipeline = append(pipeline, bson.M{
+		"$group": bson.M{
+			"_id": "$" + bsonutil.GetDottedKeyName(taskField, DisplayStatusKey),
+		},
+	})
+	// Sort to guarantee order
+	pipeline = append(pipeline, bson.M{
+		"$sort": bson.D{
+			bson.E{Key: "_id", Value: 1},
+		},
+	})
+
+	res := []map[string]string{}
+	err := Aggregate(pipeline, &res)
+	if err != nil {
+		return nil, errors.Wrap(err, "aggregating base task statuses")
+	}
+	statuses := []string{}
+	for _, r := range res {
+		statuses = append(statuses, r["_id"])
+	}
+	return statuses, nil
+}
+
 type HasMatchingTasksOptions struct {
 	TaskNames []string
 	Variants  []string
