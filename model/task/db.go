@@ -974,17 +974,87 @@ func FindByExecutionTasksAndMaxExecution(taskIds []*string, execution int) ([]Ta
 	return result, nil
 }
 
+type buildVariantTupleResult struct {
+	BuildVariantTuples []*BuildVariantTuple `bson:"build_variants"`
+}
+
 type BuildVariantTuple struct {
 	BuildVariant string `bson:"build_variant"`
-	DisplayName  string `bson:"display_name"`
+	DisplayName  string `bson:"build_variant_display_name"`
 }
 
 const VersionLimit = 50
+
+// Reusable pipeline stages when finding build variant display names
+var (
+	// sort build variant display names alphabetically
+	sortByVariantDisplayName = bson.M{
+		"$sort": bson.M{
+			"build_variant_display_name": 1,
+		},
+	}
+
+	// cleanup the results
+	projectBvResults = bson.M{
+		"$project": bson.M{
+			"_id":                        0,
+			"build_variant":              "$" + BuildVariantKey,
+			"build_variant_display_name": "$" + BuildVariantDisplayNameKey,
+		},
+	}
+
+	// reorganize the results to get the build variant names and a corresponding build id
+	projectBuildIdAndVariant = bson.M{
+		"$project": bson.M{
+			"_id":                      0,
+			BuildVariantKey:            bsonutil.GetDottedKeyName("$_id", BuildVariantKey),
+			BuildVariantDisplayNameKey: bsonutil.GetDottedKeyName("$_id", BuildVariantDisplayNameKey),
+			BuildIdKey:                 "$" + BuildIdKey,
+		},
+	}
+
+	// group the build variants by unique build variant names and get a build id for each
+	groupByBuildVariant = bson.M{
+		"$group": bson.M{
+			"_id": bson.M{
+				BuildVariantKey:            "$" + BuildVariantKey,
+				BuildVariantDisplayNameKey: "$" + BuildVariantDisplayNameKey,
+			},
+			BuildIdKey: bson.M{
+				"$first": "$" + BuildIdKey,
+			},
+		},
+	}
+)
 
 // FindUniqueBuildVariantNamesByTask returns a list of unique build variants names and their display names for a given task name.
 // It attempts to return the most recent display name for each build variant to avoid returning duplicates caused by display names changing.
 // It only checks the last 50 versions that ran for a given task name.
 func FindUniqueBuildVariantNamesByTask(projectId string, taskName string, repoOrderNumber int) ([]*BuildVariantTuple, error) {
+	//TODO: EVG-17040 remove lookup pipeline
+	noLookupPipeline := variantByTaskPipeline(projectId, taskName, repoOrderNumber)
+	lookupPipeline := variantByTaskPipelineWithLookup(projectId, taskName, repoOrderNumber)
+	facet := bson.M{
+		"$facet": bson.M{
+			"bvDisplayNameExists":  noLookupPipeline,
+			"bvDisplayNameIsEmpty": lookupPipeline,
+		},
+	}
+	result := []*buildVariantTupleResult{}
+	if err := Aggregate([]bson.M{facet, {"$project": bson.M{
+		"build_variants": bson.M{
+			"$setUnion": []string{"$bvDisplayNameExists", "$bvDisplayNameIsEmpty"},
+		}},
+	}}, &result); err != nil {
+		return nil, errors.Wrap(err, "getting build variant tasks")
+	}
+	if len(result) == 0 || len(result[0].BuildVariantTuples) == 0 {
+		return nil, nil
+	}
+	return result[0].BuildVariantTuples, nil
+}
+
+func variantByTaskPipeline(projectId string, taskName string, repoOrderNumber int) []bson.M {
 	pipeline := []bson.M{
 		{"$match": bson.M{
 			ProjectKey:     projectId,
@@ -993,64 +1063,42 @@ func FindUniqueBuildVariantNamesByTask(projectId string, taskName string, repoOr
 			"$and": []bson.M{
 				{RevisionOrderNumberKey: bson.M{"$gte": repoOrderNumber - VersionLimit}},
 				{RevisionOrderNumberKey: bson.M{"$lte": repoOrderNumber}},
+				{BuildVariantDisplayNameKey: bson.M{"$exists": true, "$ne": ""}},
 			},
 		},
 		},
 	}
-
-	// group the build variants by unique build variant names and get a build id for each
-	groupByBuildVariant := bson.M{
-		"$group": bson.M{
-			"_id": bson.M{
-				BuildVariantKey: "$" + BuildVariantKey,
-			},
-			BuildIdKey: bson.M{
-				"$first": "$" + BuildIdKey,
-			},
-		},
-	}
-
 	pipeline = append(pipeline, groupByBuildVariant)
+	pipeline = append(pipeline, projectBuildIdAndVariant)
+	pipeline = append(pipeline, projectBvResults)
+	pipeline = append(pipeline, sortByVariantDisplayName)
+	return pipeline
+}
 
-	// reorganize the results to get the build variant names and a corresponding build id
-	projectBuildId := bson.M{
-		"$project": bson.M{
-			"_id":           0,
-			BuildVariantKey: bsonutil.GetDottedKeyName("$_id", BuildVariantKey),
-			BuildIdKey:      "$" + BuildIdKey,
+func variantByTaskPipelineWithLookup(projectId string, taskName string, repoOrderNumber int) []bson.M {
+	pipeline := []bson.M{
+		{"$match": bson.M{
+			ProjectKey:     projectId,
+			DisplayNameKey: taskName,
+			RequesterKey:   bson.M{"$in": evergreen.SystemVersionRequesterTypes},
+			"$and": []bson.M{
+				{RevisionOrderNumberKey: bson.M{"$gte": repoOrderNumber - VersionLimit}},
+				{RevisionOrderNumberKey: bson.M{"$lte": repoOrderNumber}},
+				{"$or": []bson.M{
+					{BuildVariantDisplayNameKey: bson.M{"$exists": false}},
+					{BuildVariantDisplayNameKey: bson.M{"$eq": ""}},
+				}},
+			},
+		},
 		},
 	}
-
-	pipeline = append(pipeline, projectBuildId)
-
+	pipeline = append(pipeline, groupByBuildVariant)
+	pipeline = append(pipeline, projectBuildIdAndVariant)
 	// get the display name for each build variant
 	pipeline = append(pipeline, AddBuildVariantDisplayName...)
-
-	// cleanup the results
-	project := bson.M{
-		"$project": bson.M{
-			"_id":           0,
-			"build_variant": "$" + BuildVariantKey,
-			"display_name":  "$" + BuildVariantDisplayNameKey,
-		},
-	}
-	pipeline = append(pipeline, project)
-
-	sort := bson.M{
-		"$sort": bson.M{
-			"display_name": 1,
-		},
-	}
-	pipeline = append(pipeline, sort)
-
-	result := []*BuildVariantTuple{}
-	if err := Aggregate(pipeline, &result); err != nil {
-		return nil, errors.Wrap(err, "getting build variant tasks")
-	}
-	if len(result) == 0 {
-		return nil, nil
-	}
-	return result, nil
+	pipeline = append(pipeline, projectBvResults)
+	pipeline = append(pipeline, sortByVariantDisplayName)
+	return pipeline
 }
 
 // FindTaskNamesByBuildVariant returns a list of unique task names for a given build variant
