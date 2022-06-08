@@ -54,25 +54,3 @@ func (c *podCommunicator) GetNextTask(ctx context.Context, details *apimodels.Ge
 
 	return &nextTask, nil
 }
-
-// GetCedarConfig returns the cedar service information including the base URL,
-// URL, RPC port, and credentials.
-func (c *podCommunicator) GetCedarConfig(ctx context.Context) (*apimodels.CedarConfig, error) {
-	info := requestInfo{
-		method:  http.MethodGet,
-		version: apiVersion2,
-		path:    fmt.Sprintf("pods/%s/agent/cedar_config", c.podID),
-	}
-
-	resp, err := c.retryRequest(ctx, info, nil)
-	if err != nil {
-		return nil, utility.RespErrorf(resp, "getting cedar config: %s", err.Error())
-	}
-
-	var cc apimodels.CedarConfig
-	if err := utility.ReadJSON(resp.Body, &cc); err != nil {
-		return nil, errors.Wrap(err, "reading cedar config from response")
-	}
-
-	return &cc, nil
-}

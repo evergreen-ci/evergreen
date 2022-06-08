@@ -7,7 +7,7 @@ import (
 
 type timeoutLogSender struct {
 	send.Sender
-	comm Communicator
+	comm SharedCommunicator
 }
 
 func (s *timeoutLogSender) Send(m message.Composer) {
@@ -15,7 +15,7 @@ func (s *timeoutLogSender) Send(m message.Composer) {
 	s.comm.UpdateLastMessageTime()
 }
 
-func makeTimeoutLogSender(sender send.Sender, comm Communicator) send.Sender {
+func makeTimeoutLogSender(sender send.Sender, comm SharedCommunicator) send.Sender {
 	return &timeoutLogSender{
 		Sender: sender,
 		comm:   comm,

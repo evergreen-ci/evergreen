@@ -4,6 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"os"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -14,24 +22,16 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/juniper/gopb"
+	"github.com/evergreen-ci/timber"
 	"github.com/evergreen-ci/timber/buildlogger"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/grip/send"
-	"io/ioutil"
-	"net/http"
-	"os"
-	"strconv"
-	"strings"
-	"sync"
-	"time"
-
-	"github.com/evergreen-ci/juniper/gopb"
-	"github.com/evergreen-ci/timber"
-	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
@@ -60,22 +60,6 @@ func newBaseCommunicator(serverURL string, reqHeaders map[string]string) baseCom
 		serverURL:  serverURL,
 		reqHeaders: reqHeaders,
 	}
-}
-
-func (c *baseCommunicator) EndTask(ctx context.Context, detail *apimodels.TaskEndDetail, data TaskData) (*apimodels.EndTaskResponse, error) {
-	return nil, errors.New("unrecognized agent mode")
-}
-
-func (c *baseCommunicator) GetNextTask(ctx context.Context, details *apimodels.GetNextTaskDetails) (*apimodels.NextTaskResponse, error) {
-	return nil, errors.New("unrecognized agent mode")
-}
-
-func (c *baseCommunicator) GetAgentSetupData(ctx context.Context) (*apimodels.AgentSetupData, error) {
-	return nil, errors.New("unrecognized agent mode")
-}
-
-func (c *baseCommunicator) GetCedarConfig(ctx context.Context) (*apimodels.CedarConfig, error) {
-	return nil, errors.New("unrecognized agent mode")
 }
 
 // Close cleans up the resources being used by the communicator.
@@ -130,7 +114,7 @@ func (c *baseCommunicator) resetClient() {
 	c.httpClient.Timeout = heartbeatTimeout
 }
 
-func (c *baseCommunicator) createCedarGRPCConn(ctx context.Context, comm Communicator) error {
+func (c *baseCommunicator) createCedarGRPCConn(ctx context.Context, comm SharedCommunicator) error {
 	if c.cedarGRPCClient == nil {
 		cc, err := comm.GetCedarConfig(ctx)
 		if err != nil {
@@ -651,6 +635,28 @@ func (c *baseCommunicator) GetTaskPatch(ctx context.Context, taskData TaskData, 
 	}
 
 	return &patch, nil
+}
+
+// GetCedarConfig returns the cedar service information including the base URL,
+// URL, RPC port, and credentials.
+func (c *baseCommunicator) GetCedarConfig(ctx context.Context) (*apimodels.CedarConfig, error) {
+	info := requestInfo{
+		method:  http.MethodGet,
+		version: apiVersion2,
+		path:    "agent/cedar_config",
+	}
+
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return nil, utility.RespErrorf(resp, "getting cedar config: %s", err.Error())
+	}
+
+	var cc apimodels.CedarConfig
+	if err := utility.ReadJSON(resp.Body, &cc); err != nil {
+		return nil, errors.Wrap(err, "reading cedar config from response")
+	}
+
+	return &cc, nil
 }
 
 // GetPatchFiles is used by the git.get_project plugin and fetches

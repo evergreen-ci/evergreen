@@ -19,19 +19,21 @@ import (
 )
 
 type Communicator interface {
-
+	SharedCommunicator
+	TypedCommunicator
+}
+type TypedCommunicator interface {
 	// The following operations are not implemented at the base level
 	// and require either a host or pod-specific implementation.
 	// EndTask marks the task as finished with the given status
 	EndTask(context.Context, *apimodels.TaskEndDetail, TaskData) (*apimodels.EndTaskResponse, error)
 	// GetNextTask returns a next task response by getting the next task for a given host.
 	GetNextTask(context.Context, *apimodels.GetNextTaskDetails) (*apimodels.NextTaskResponse, error)
-	// GetCedarConfig returns the cedar service information including the
-	// base URL, RPC port, and credentials.
-	GetCedarConfig(context.Context) (*apimodels.CedarConfig, error)
 	// GetAgentSetupData populates an agent with the necessary data, including secrets.
 	GetAgentSetupData(context.Context) (*apimodels.AgentSetupData, error)
+}
 
+type SharedCommunicator interface {
 	// Close is a method to release resources used by the communicator.
 	Close()
 	// UpdateLastMessageTime Updates the clients local concept of it's last updated
@@ -64,6 +66,9 @@ type Communicator interface {
 	Heartbeat(context.Context, TaskData) (string, error)
 	// FetchExpansionVars loads expansions for a communicator's task from the API server.
 	FetchExpansionVars(context.Context, TaskData) (*apimodels.ExpansionVars, error)
+	// GetCedarConfig returns the cedar service information including the
+	// base URL, RPC port, and credentials.
+	GetCedarConfig(context.Context) (*apimodels.CedarConfig, error)
 	// GetCedarGRPCConn returns the client connection to cedar if it exists, or
 	// creates it if it doesn't exist.
 	GetCedarGRPCConn(context.Context) (*grpc.ClientConn, error)
