@@ -620,7 +620,7 @@ func (h *distroGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding all distros"))
 	}
 	if len(distros) == 0 {
-		gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    "no distros found",
 		})
