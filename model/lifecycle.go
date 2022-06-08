@@ -78,12 +78,12 @@ func SetVersionActivation(versionId string, active bool, caller string) error {
 }
 
 func setTaskActivationForVersion(versionId string, active, withDependencies bool, ignoreTasks []string, caller string) (bool, error) {
-	// If activating a task, set the ActivatedBy field to be the caller
+	q := bson.M{
+		task.VersionKey: versionId,
+		task.StatusKey:  evergreen.TaskUndispatched,
+	}
+	// If activating a task, set the ActivatedBy field to be the caller.
 	if active {
-		q := bson.M{
-			task.VersionKey: versionId,
-			task.StatusKey:  evergreen.TaskUndispatched,
-		}
 		if len(ignoreTasks) > 0 {
 			q[task.IdKey] = bson.M{"$nin": ignoreTasks}
 		}
@@ -114,16 +114,12 @@ func setTaskActivationForVersion(versionId string, active, withDependencies bool
 			return true, nil
 		}
 	} else {
-		query := bson.M{
-			task.VersionKey: versionId,
-			task.StatusKey:  evergreen.TaskUndispatched,
-		}
-		// if the caller is the default task activator only deactivate tasks that have not been activated by a user
+		// If the caller is the default task activator, only deactivate tasks that have not been activated by a user.
 		if evergreen.IsSystemActivator(caller) {
-			query[task.ActivatedByKey] = bson.M{"$in": evergreen.SystemActivators}
+			q[task.ActivatedByKey] = bson.M{"$in": evergreen.SystemActivators}
 		}
 
-		tasks, err := task.FindAll(db.Query(query).WithFields(task.IdKey, task.ExecutionKey))
+		tasks, err := task.FindAll(db.Query(q).WithFields(task.IdKey, task.ExecutionKey))
 		if err != nil {
 			return false, errors.Wrap(err, "getting tasks to deactivate")
 		}

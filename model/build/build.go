@@ -171,18 +171,16 @@ func UpdateActivationAndStatus(buildIds []string, active bool, caller string) er
 		query[ActivatedByKey] = bson.M{"$in": evergreen.SystemActivators}
 	}
 	update := bson.M{
-		"$set": bson.M{
-			ActivatedKey:     active,
-			ActivatedTimeKey: time.Now(),
-			ActivatedByKey:   caller,
-		},
+		ActivatedKey:     active,
+		ActivatedTimeKey: time.Now(),
+		ActivatedByKey:   caller,
 	}
 	if active {
 		update[StatusKey] = evergreen.BuildCreated
 	}
 	_, err := UpdateAllBuilds(
 		query,
-		update,
+		bson.M{"$set": update},
 	)
 
 	return errors.Wrapf(err, "setting build activation to %t", active)

@@ -88,6 +88,7 @@ func (s *VersionSuite) SetupSuite() {
 	tasks := []task.Task{
 		{Id: "task1", Version: versionId, Aborted: false, Status: evergreen.TaskStarted},
 		{Id: "task2", Version: versionId, Aborted: false, Status: evergreen.TaskDispatched},
+		{Id: "task3", Version: versionId, Aborted: false, Status: evergreen.TaskUndispatched, BuildId: testBuild1.Id},
 	}
 
 	builds := []build.Build{testBuild1, testBuild2}
@@ -147,7 +148,7 @@ func (s *VersionSuite) TestPatchVersionVersion() {
 	s.Equal(author, v.Author)
 	s.Equal(authorEmail, v.AuthorEmail)
 	s.Equal(msg, v.Message)
-	s.Equal(evergreen.VersionCreated, v.Status)
+	s.Equal(status, v.Status)
 	s.Equal(repo, v.Repo)
 	s.Equal(branch, v.Branch)
 	s.Equal(utility.TruePtr(), v.Activated)
@@ -211,7 +212,9 @@ func (s *VersionSuite) TestAbortVersion() {
 	for _, t := range tasks {
 		foundTask, err := task.FindOneId(t)
 		s.NoError(err)
-		s.Equal(foundTask.Aborted, true)
+		if utility.StringSliceContains(evergreen.TaskAbortableStatuses, foundTask.Status) {
+			s.Equal(foundTask.Aborted, true)
+		}
 	}
 }
 
