@@ -152,7 +152,7 @@ func addSyncStatusesFlag(flags ...cli.Flag) []cli.Flag {
 func addVariantsFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.StringSliceFlag{
 		Name:  joinFlagNames(variantsFlagName, "v"),
-		Usage: "variant names",
+		Usage: "variant names (\"all\" for all variants)",
 	})
 }
 

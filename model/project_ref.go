@@ -591,7 +591,7 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 		}
 	}
 
-	// Handle each category of aliases as it's own case
+	// Handle each category of aliases as its own case
 	repoAliases, err := FindAliasesForRepo(before.ProjectRef.RepoRefId)
 	catcher.Wrap(err, "finding repo aliases")
 

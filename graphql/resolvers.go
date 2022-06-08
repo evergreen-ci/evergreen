@@ -2047,6 +2047,7 @@ func (r *taskLogsResolver) EventLogs(ctx context.Context, obj *TaskLogs) ([]*res
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to find EventLogs for task %s: %s", obj.TaskID, err.Error()))
 	}
 
+	// TODO (EVG-16969) remove once TaskScheduled events TTL
 	// remove all scheduled events except the youngest and push to filteredEvents
 	filteredEvents := []event.EventLogEntry{}
 	foundScheduled := false
@@ -3708,24 +3709,24 @@ func (r *versionResolver) TaskStatuses(ctx context.Context, v *restModel.APIVers
 }
 
 func (r *versionResolver) BaseTaskStatuses(ctx context.Context, v *restModel.APIVersion) ([]string, error) {
-	baseVersion, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(*v.Project, *v.Revision).WithFields(model.VersionIdentifierKey))
+	var baseVersion *model.Version
+	var err error
+
+	if evergreen.IsPatchRequester(utility.FromStringPtr(v.Requester)) || utility.FromStringPtr(v.Requester) == evergreen.AdHocRequester {
+		// Get base commit if patch or periodic build.
+		baseVersion, err = model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(utility.FromStringPtr(v.Project), utility.FromStringPtr(v.Revision)))
+	} else {
+		// Get previous commit if mainline commit.
+		baseVersion, err = model.VersionFindOne(model.VersionByProjectIdAndOrder(utility.FromStringPtr(v.Project), v.Order-1))
+	}
 	if baseVersion == nil || err != nil {
 		return nil, nil
 	}
-	defaultSort := []task.TasksSortOrder{
-		{Key: task.DisplayNameKey, Order: 1},
-	}
-	opts := task.GetTasksByVersionOptions{
-		Sorts:                          defaultSort,
-		IncludeBaseTasks:               false,
-		FieldsToProject:                []string{task.DisplayStatusKey},
-		IncludeBuildVariantDisplayName: false,
-	}
-	tasks, _, err := task.GetTasksByVersion(baseVersion.Id, opts)
+	statuses, err := task.GetBaseStatusesForActivatedTasks(*v.Id, baseVersion.Id)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version tasks: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting base version tasks: '%s'", err.Error()))
 	}
-	return getAllTaskStatuses(tasks), nil
+	return statuses, nil
 }
 
 // Returns task status counts (a mapping between status and the number of tasks with that status) for a version.

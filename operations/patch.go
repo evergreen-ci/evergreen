@@ -39,7 +39,7 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 		addPreserveCommitsFlag(
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(tasksFlagName, "t"),
-				Usage: "task names",
+				Usage: "task names (\"all\" for all tasks)",
 			},
 			cli.StringFlag{
 				Name:  joinFlagNames(patchAliasFlagName, "a"),
