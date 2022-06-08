@@ -1753,12 +1753,16 @@ func TestUpdateAdminRolesError(t *testing.T) {
 }
 
 func TestGetProjectTasksWithOptions(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(task.Collection, ProjectRefCollection))
+	assert.NoError(t, db.ClearCollections(task.Collection, ProjectRefCollection, RepositoriesCollection))
 	p := ProjectRef{
 		Id:         "my_project",
 		Identifier: "my_ident",
 	}
 	assert.NoError(t, p.Insert())
+	assert.NoError(t, db.Insert(RepositoriesCollection, Repository{
+		Project:             "my_project",
+		RevisionOrderNumber: 100,
+	}))
 
 	// total of 50 tasks eligible to be found
 	for i := 0; i < 100; i++ {

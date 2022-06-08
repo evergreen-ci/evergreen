@@ -703,13 +703,17 @@ func TestGetProjectTasks(t *testing.T) {
 	assert := assert.New(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	assert.NoError(db.ClearCollections(task.Collection, serviceModel.ProjectRefCollection))
+	assert.NoError(db.ClearCollections(task.Collection, serviceModel.ProjectRefCollection, serviceModel.RepositoriesCollection))
 	const projectId = "proj"
 	project := serviceModel.ProjectRef{
 		Id:         projectId,
 		Identifier: "p1",
 	}
 	assert.NoError(project.Insert())
+	assert.NoError(db.Insert(serviceModel.RepositoriesCollection, serviceModel.Repository{
+		Project:             projectId,
+		RevisionOrderNumber: 20,
+	}))
 	for i := 0; i <= 20; i++ {
 		myTask := task.Task{
 			Id:                  fmt.Sprintf("t%d", i),

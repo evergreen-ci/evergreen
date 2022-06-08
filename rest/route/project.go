@@ -999,7 +999,7 @@ func (h *getProjectTasksHandler) Factory() gimlet.RouteHandler {
 
 func (h *getProjectTasksHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.projectName = gimlet.GetVars(r)["project_id"]
-	h.taskName = gimlet.GetVars(r)["task_id"]
+	h.taskName = gimlet.GetVars(r)["task_name"]
 	// body is optional
 	b, _ := ioutil.ReadAll(r.Body)
 	if len(b) > 0 {
