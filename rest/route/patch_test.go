@@ -158,7 +158,7 @@ func (s *PatchesByProjectSuite) TestPaginatorShouldFailIfNoProject() {
 
 	resp := s.route.Run(context.Background())
 	s.NotNil(resp)
-	s.Equal(http.StatusBadRequest, resp.Status())
+	s.Equal(http.StatusInternalServerError, resp.Status())
 }
 
 func (s *PatchesByProjectSuite) TestPaginatorShouldReturnResultsIfDataExists() {

@@ -152,7 +152,7 @@ func (h *legacyVersionsGetHandler) Parse(ctx context.Context, r *http.Request) e
 func (h *legacyVersionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 	projRefId, err := dbModel.GetIdForProject(h.project)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "getting ID for project '%s'", h.project))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting ID for project '%s'", h.project))
 	}
 
 	_, proj, err := dbModel.FindLatestVersionWithValidProject(projRefId)
@@ -315,11 +315,17 @@ func (h *projectIDPatchHandler) Parse(ctx context.Context, r *http.Request) erro
 
 	i, err := requestProjectRef.ToService()
 	if err != nil {
-		return errors.Wrap(err, "converting updated project to service emodel")
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "converting updated project to service model").Error(),
+		}
 	}
 	newProjectRef, ok := i.(*dbModel.ProjectRef)
 	if !ok {
-		return errors.Errorf("programmatic error: expected project ref but got type %T", i)
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    fmt.Sprintf("programmatic error: expected project ref but got type %T", i),
+		}
 	}
 	newProjectRef.RepoRefId = oldProject.RepoRefId // this can't be modified by users
 
@@ -342,7 +348,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	before, err := dbModel.GetProjectSettings(h.newProjectRef)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting original project settings"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting original project settings for project '%s'", h.newProjectRef.Identifier))
 	}
 
 	adminsToDelete := utility.FromStringPtrSlice(h.apiNewProjectRef.DeleteAdmins)
@@ -362,21 +368,21 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	// Used to verify that if something is set to nil in the request, we properly validate using the merged project ref.
 	mergedProjectRef, err := dbModel.GetProjectRefMergedWithRepo(*h.newProjectRef)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "merging project ref with repo settings"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "merging project ref '%s' with repo settings", h.newProjectRef.Identifier))
 	}
 
 	if h.newProjectRef.IsEnabled() {
 		var hasHook bool
 		hasHook, err = dbModel.EnableWebhooks(ctx, h.newProjectRef)
 		if err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "enabling webhooks for project ref '%s'", h.project))
+			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "enabling webhooks for project '%s'", h.project))
 		}
 
 		var allAliases []model.APIProjectAlias
 		if mergedProjectRef.AliasesNeeded() {
 			allAliases, err = data.FindProjectAliases(utility.FromStringPtr(h.apiNewProjectRef.Id), mergedProjectRef.RepoRefId, h.apiNewProjectRef.Aliases, false)
 			if err != nil {
-				return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "checking existing patch definitions"))
+				return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "checking existing patch definitions for project '%s'", h.project))
 			}
 		}
 
@@ -391,7 +397,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 			}
 
 			if err = canEnablePRTesting(h.newProjectRef); err != nil {
-				return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "enabling PR testing for project '%s'", h.project))
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "enabling PR testing for project '%s'", h.project))
 			}
 		}
 
@@ -437,7 +443,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		catcher.Wrapf(buildDef.Validate(), "invalid periodic build definition")
 	}
 	if catcher.HasErrors() {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "validating triggers"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "invalid triggers"))
 	}
 
 	err = dbModel.ValidateBbProject(h.newProjectRef.Id, h.newProjectRef.BuildBaronSettings, &h.newProjectRef.TaskAnnotationSettings.FileTicketWebhook)
@@ -483,10 +489,10 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating project '%s'", h.newProjectRef.Id))
 	}
 	if err = data.UpdateProjectVars(h.newProjectRef.Id, &h.apiNewProjectRef.Variables, false); err != nil { // destructively modifies h.apiNewProjectRef.Variables
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "updating variables for project '%s'", h.project))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating variables for project '%s'", h.project))
 	}
 	if err = data.UpdateProjectAliases(h.newProjectRef.Id, h.apiNewProjectRef.Aliases); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "updating aliases for project '%s'", h.project))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating aliases for project '%s'", h.project))
 	}
 
 	if err = dbModel.UpdateAdminRoles(h.newProjectRef, adminsToAdd, adminsToDelete); err != nil {
@@ -496,7 +502,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	// Don't use Save to delete subscriptions, since we aren't checking the
 	// delete subscriptions list against the inputted list of subscriptions.
 	if err = data.SaveSubscriptions(h.newProjectRef.Id, h.apiNewProjectRef.Subscriptions, true); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "saving subscriptions for project '%s'", h.project))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "saving subscriptions for project '%s'", h.project))
 	}
 
 	toDelete := []string{}
@@ -504,15 +510,15 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		toDelete = append(toDelete, utility.FromStringPtr(deleteSub))
 	}
 	if err = data.DeleteSubscriptions(h.newProjectRef.Id, toDelete); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "deleting subscriptions for project '%s'", h.project))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "deleting subscriptions for project '%s'", h.project))
 	}
 
 	after, err := dbModel.GetProjectSettings(h.newProjectRef)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "getting project settings after update for project '%s'", h.project))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting project settings after update for project '%s'", h.project))
 	}
 	if err = dbModel.LogProjectModified(h.newProjectRef.Id, h.user.Username(), before, after); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "logging modification event for project '%s'", h.project))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "logging modification event for project '%s'", h.project))
 	}
 
 	// run the repotracker for the project
@@ -522,7 +528,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 		queue := evergreen.GetEnvironment().RemoteQueue()
 		if err = amboy.EnqueueUniqueJob(ctx, queue, j); err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "enqueueing catchup job"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "enqueueing catchup job"))
 		}
 	}
 
@@ -548,7 +554,7 @@ func canEnableCommitQueue(projectRef *dbModel.ProjectRef) error {
 	if ok, err := projectRef.CanEnableCommitQueue(); err != nil {
 		return errors.Wrap(err, "checking if commit queue can be enabled")
 	} else if !ok {
-		return errors.Errorf("enable commit queue in this repo, must disable in other projects first")
+		return errors.Errorf("cannot enable commit queue in this repo, must disable in other projects first")
 	}
 
 	return commitqueue.EnsureCommitQueueExistsForProject(projectRef.Id)
@@ -558,7 +564,7 @@ func canEnableCommitQueue(projectRef *dbModel.ProjectRef) error {
 func canEnablePRTesting(projectRef *dbModel.ProjectRef) error {
 	conflicts, err := projectRef.GetGithubProjectConflicts()
 	if err != nil {
-		return errors.Wrap(err, "finding project refs")
+		return errors.Wrap(err, "finding project refs with conflicting GitHub settings")
 	}
 	if len(conflicts.PRTestingIdentifiers) > 0 {
 		return errors.Errorf("cannot enable PR testing in this repo, must disable in other projects first")
@@ -611,7 +617,7 @@ func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 
 	apiProjectRef := &model.APIProjectRef{}
 	if err = json.Unmarshal(h.body, apiProjectRef); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "unmarshalling JSON request body into project ref"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "unmarshalling JSON request body into project ref"))
 	}
 
 	i, err := apiProjectRef.ToService()
@@ -668,7 +674,7 @@ func (h *projectRepotrackerHandler) Run(ctx context.Context) gimlet.Responder {
 
 	queue := evergreen.GetEnvironment().RemoteQueue()
 	if err := queue.Put(ctx, j); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "enqueueing catchup job"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "enqueueing catchup job"))
 	}
 	return gimlet.NewJSONResponse(struct{}{})
 }
@@ -697,7 +703,7 @@ func (h *projectDeleteHandler) Parse(ctx context.Context, r *http.Request) error
 func (h *projectDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 	project, err := dbModel.FindBranchProjectRef(h.projectName)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding project '%s'", h.projectName))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project '%s'", h.projectName))
 	}
 	if project == nil {
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' not found", h.projectName))
@@ -725,7 +731,7 @@ func (h *projectDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating project '%s'", project.Id))
 	}
 	if err = dbModel.UpdateAdminRoles(project, nil, project.Admins); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "removing project auth for admins"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "removing project admin roles"))
 	}
 
 	projectAliases, err := dbModel.FindAliasesForProjectFromDb(project.Id)
@@ -786,7 +792,7 @@ func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 	projectModel := &model.APIProjectRef{}
 	if err = projectModel.BuildFromService(project); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting project to API model"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting project '%s' to API model", h.projectName))
 	}
 
 	// we pass the repoId through so we don't have to re-look up the project
@@ -796,14 +802,14 @@ func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	variables, err := data.FindProjectVarsById(project.Id, repoId, true)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding project vars"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding vars for project '%s'", project.Id))
 	}
 	projectModel.Variables = *variables
 	if projectModel.Aliases, err = data.FindProjectAliases(project.Id, repoId, nil, h.includeProjectConfig); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding project aliases"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding aliases for project '%s'", project.Id))
 	}
 	if projectModel.Subscriptions, err = data.GetSubscriptions(project.Id, event.OwnerTypeProject); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting project subscriptions"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting subscriptions for project '%s'", project.Id))
 	}
 	return gimlet.NewJSONResponse(projectModel)
 }
@@ -885,7 +891,7 @@ func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) 
 func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
 	versions, err := data.GetProjectVersionsWithOptions(h.projectName, h.opts)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting versions"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting versions for project '%s'", h.projectName))
 	}
 
 	resp, err := gimlet.NewBasicResponder(http.StatusOK, gimlet.JSON, versions)
@@ -958,7 +964,7 @@ func (h *getProjectTasksHandler) Parse(ctx context.Context, r *http.Request) err
 func (h *getProjectTasksHandler) Run(ctx context.Context) gimlet.Responder {
 	versions, err := data.GetProjectTasksWithOptions(h.projectName, h.taskName, h.opts)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting versions"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting versions for project '%s' and task '%s'", h.projectName, h.taskName))
 	}
 
 	return gimlet.NewJSONResponse(versions)
@@ -1000,11 +1006,11 @@ func (p *GetProjectAliasResultsHandler) Run(ctx context.Context) gimlet.Responde
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error getting project for version",
 		}))
-		return gimlet.MakeJSONInternalErrorResponder(errors.New("getting project for version"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("getting project for version '%s'", p.version))
 	}
 	variantTasks, err := data.GetProjectAliasResults(proj, p.alias, p.includeDependencies)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "getting variants/tasks from project aliases"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting variants/tasks from for project '%s' and alias '%s'", proj.Identifier, p.alias))
 	}
 
 	return gimlet.NewJSONResponse(variantTasks)
@@ -1078,7 +1084,7 @@ func (h *projectParametersGetHandler) Parse(ctx context.Context, r *http.Request
 func (h *projectParametersGetHandler) Run(ctx context.Context) gimlet.Responder {
 	id, err := dbModel.GetIdForProject(h.projectName)
 	if err != nil {
-		return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "finding project '%s'", id))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "getting ID for project '%s'", h.projectName))
 	}
 	_, p, err := dbModel.FindLatestVersionWithValidProject(id)
 	if err != nil {
@@ -1147,7 +1153,7 @@ func (h *projectVarsPutHandler) Parse(ctx context.Context, r *http.Request) erro
 func (h *projectVarsPutHandler) Run(ctx context.Context) gimlet.Responder {
 	res, err := dbModel.UpdateProjectVarsByValue(h.replaceVars.ToReplace, h.replaceVars.Replacement, h.user.Username(), h.replaceVars.DryRun)
 	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "updating projects variables"))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "updating projects vars"))
 	}
 	if h.replaceVars.RotateFiles {
 		_, err = artifact.RotateSecrets(h.replaceVars.ToReplace, h.replaceVars.Replacement, h.replaceVars.DryRun)

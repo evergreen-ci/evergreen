@@ -32,12 +32,12 @@ func (t *taskAbortHandler) Parse(ctx context.Context, r *http.Request) error {
 func (t *taskAbortHandler) Run(ctx context.Context) gimlet.Responder {
 	err := serviceModel.AbortTask(t.taskId, MustHaveUser(ctx).Id)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "aborting task"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "aborting task '%s'", t.taskId))
 	}
 
 	foundTask, err := task.FindOneId(t.taskId)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding updated task"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding updated task '%s'", t.taskId))
 	}
 	if foundTask == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
@@ -51,7 +51,7 @@ func (t *taskAbortHandler) Run(ctx context.Context) gimlet.Responder {
 		IncludeProjectIdentifier: true,
 		IncludeAMI:               true,
 	}); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting task to API model"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting task '%s' to API model", t.taskId))
 	}
 	return gimlet.NewJSONResponse(taskModel)
 }

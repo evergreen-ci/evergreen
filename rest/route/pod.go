@@ -106,7 +106,7 @@ func (h *podGetHandler) Parse(ctx context.Context, r *http.Request) error {
 func (h *podGetHandler) Run(ctx context.Context) gimlet.Responder {
 	p, err := data.FindPodByID(h.podID)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding pod '%s'", h.podID))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding pod '%s'", h.podID))
 	}
 	if p == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{

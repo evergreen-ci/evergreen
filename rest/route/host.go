@@ -76,7 +76,7 @@ func (h *hostsChangeStatusesHandler) Run(ctx context.Context) gimlet.Responder {
 	for id, status := range h.HostToStatus {
 		foundHost, err := data.FindHostByIdWithOwner(id, user)
 		if err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding host '%s' with owner '%s'", id, user.Id))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host '%s' with owner '%s'", id, user.Id))
 		}
 		switch status.Status {
 		case evergreen.HostTerminated:
@@ -128,7 +128,7 @@ func (h *hostIDGetHandler) Parse(ctx context.Context, r *http.Request) error {
 func (h *hostIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 	foundHost, err := host.FindOneId(h.hostID)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding host '%s'", h.hostID))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host '%s'", h.hostID))
 	}
 	if foundHost == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
@@ -145,7 +145,7 @@ func (h *hostIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if foundHost.RunningTask != "" {
 		runningTask, err := task.FindOneId(foundHost.RunningTask)
 		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host's currently running task '%s'", foundHost.RunningTask))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host's running task '%s'", foundHost.RunningTask))
 		}
 		if runningTask == nil {
 			return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
@@ -280,7 +280,7 @@ func (hgh *hostGetHandler) Run(ctx context.Context) gimlet.Responder {
 			}
 		}
 		if err = resp.AddData(apiHost); err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "adding host data to response"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "adding host data to response"))
 		}
 	}
 
@@ -383,7 +383,7 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 
 	volumes, err := host.FindVolumesByUser(ch.user)
 	if err != nil {
-		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "finding user volumes"))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "finding user volumes"))
 	}
 
 	toTerminate := model.APIOffboardUserResults{
@@ -498,7 +498,7 @@ func (h *hostFilterGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 	hosts, err := data.FindHostsInRange(h.params, username)
 	if err != nil {
-		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "finding hosts matching parameters"))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "finding hosts matching parameters"))
 	}
 
 	resp := gimlet.NewResponseBuilder()
@@ -549,7 +549,7 @@ func (rh *hostProvisioningOptionsGetHandler) Parse(ctx context.Context, r *http.
 func (rh *hostProvisioningOptionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 	script, err := data.GenerateHostProvisioningScript(ctx, rh.env, rh.hostID)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(err)
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "generating host provisioning script"))
 	}
 	apiOpts := model.APIHostProvisioningOptions{
 		Content: script,

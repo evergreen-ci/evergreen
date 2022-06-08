@@ -62,18 +62,18 @@ func (h *versionCreateHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	projectInfo.IntermediateProject, err = model.LoadProjectInto(ctx, h.Config, opts, projectInfo.Ref.Id, p)
 	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "loading project from config"))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "loading project '%s' from config", h.ProjectID))
 	}
 	if projectInfo.Ref.IsVersionControlEnabled() {
 		projectInfo.Config, err = model.CreateProjectConfig(h.Config, projectInfo.Ref.Id)
 		if err != nil {
-			return gimlet.NewJSONErrorResponse(errors.Wrap(err, "creating project config"))
+			return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "creating config for project '%s'", h.ProjectID))
 		}
 	}
 	projectInfo.Project = p
 	newVersion, err := h.sc.CreateVersionFromConfig(ctx, projectInfo, metadata, h.Active)
 	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "creating version from project config"))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "creating version from config for project '%s'", h.ProjectID))
 	}
 	return gimlet.NewJSONResponse(newVersion)
 }

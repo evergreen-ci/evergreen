@@ -847,14 +847,14 @@ func (h *distroIcecreamConfigHandler) Run(ctx context.Context) gimlet.Responder 
 		script := d.IcecreamSettings.GetUpdateConfigScript()
 		ts := utility.RoundPartOfMinute(0).Format(units.TSFormat)
 		if err = h.env.RemoteQueue().Put(ctx, units.NewHostExecuteJob(h.env, host, script, true, "root", ts)); err != nil {
-			catcher.Wrapf(err, "enqueueing job to update icecream config file on host '%s'", host.Id)
+			catcher.Wrapf(err, "enqueueing job to update Icecream config file on host '%s'", host.Id)
 			continue
 		}
 		hostIDs = append(hostIDs, host.Id)
 	}
 
 	if catcher.HasErrors() {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "bulk enqueueing jobs to update icecream config on hosts"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "bulk enqueueing jobs to update Icecream config on hosts"))
 	}
 
 	return gimlet.NewJSONResponse(struct {

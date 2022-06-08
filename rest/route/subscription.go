@@ -39,9 +39,10 @@ func (s *subscriptionPostHandler) Parse(ctx context.Context, r *http.Request) er
 }
 
 func (s *subscriptionPostHandler) Run(ctx context.Context) gimlet.Responder {
-	err := data.SaveSubscriptions(MustHaveUser(ctx).Username(), *s.Subscriptions, false)
+	u := MustHaveUser(ctx)
+	err := data.SaveSubscriptions(u.Username(), *s.Subscriptions, false)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "saving subscriptions"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "saving subscriptions for user '%s'", u.Username()))
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
@@ -94,7 +95,7 @@ func (s *subscriptionGetHandler) Parse(ctx context.Context, r *http.Request) err
 func (s *subscriptionGetHandler) Run(ctx context.Context) gimlet.Responder {
 	subs, err := data.GetSubscriptions(s.owner, event.OwnerType(s.ownerType))
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting subscriptions"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting subscriptions for owner '%s' and owner type '%s'", s.owner, s.ownerType))
 	}
 
 	return gimlet.NewJSONResponse(subs)
@@ -127,8 +128,9 @@ func (s *subscriptionDeleteHandler) Parse(ctx context.Context, r *http.Request) 
 }
 
 func (s *subscriptionDeleteHandler) Run(ctx context.Context) gimlet.Responder {
-	if err := data.DeleteSubscriptions(MustHaveUser(ctx).Username(), []string{s.id}); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "deleting subscription"))
+	u := MustHaveUser(ctx)
+	if err := data.DeleteSubscriptions(u.Username(), []string{s.id}); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "deleting subscription '%s' for user '%s'", s.id, u.Username()))
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})

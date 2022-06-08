@@ -226,7 +226,7 @@ func (trh *taskReliabilityHandler) Parse(ctx context.Context, r *http.Request) e
 	}
 	err = trh.filter.ValidateForTaskReliability()
 	if err != nil {
-		return errors.Wrap(err, "validating task reliability parameters")
+		return errors.Wrap(err, "invalid task reliability parameters")
 	}
 	return nil
 }
@@ -234,7 +234,7 @@ func (trh *taskReliabilityHandler) Parse(ctx context.Context, r *http.Request) e
 func (trh *taskReliabilityHandler) Run(ctx context.Context) gimlet.Responder {
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "retrieving service flags"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving service flags"))
 	}
 	if flags.TaskReliabilityDisabled {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{

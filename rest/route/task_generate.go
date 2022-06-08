@@ -57,7 +57,7 @@ func (h *generateHandler) Run(ctx context.Context) gimlet.Responder {
 			"message": "error generating tasks",
 			"task_id": h.taskID,
 		}))
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "generating tasks"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "generating tasks for task '%s'", h.taskID))
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
@@ -93,7 +93,7 @@ func (h *generatePollHandler) Run(ctx context.Context) gimlet.Responder {
 			"message": "error polling for generated tasks",
 			"task_id": h.taskID,
 		}))
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "polling generate tasks"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "polling generate tasks for task '%s'", h.taskID))
 	}
 	shouldExit := false
 	if len(jobErrs) > 0 { // exit early if we know the error will keep recurring

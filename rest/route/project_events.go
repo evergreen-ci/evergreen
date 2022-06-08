@@ -57,7 +57,7 @@ func (h *projectEventsGet) Parse(ctx context.Context, r *http.Request) error {
 func (h *projectEventsGet) Run(ctx context.Context) gimlet.Responder {
 	events, err := data.GetProjectEventLog(h.Id, h.Timestamp, h.Limit+1)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting project event log"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting event log for project '%s'", h.Id))
 	}
 
 	resp := gimlet.NewResponseBuilder()

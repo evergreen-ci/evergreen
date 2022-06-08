@@ -141,7 +141,7 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 
 	modifyJob := units.NewSpawnhostModifyJob(foundHost, *h.options, utility.RoundPartOfMinute(1).Format(units.TSFormat))
 	if err = h.env.RemoteQueue().Put(ctx, modifyJob); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "enqueueing spawn host modification job"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "enqueueing spawn host modification job"))
 	}
 
 	if h.options.SubscriptionType != "" {
@@ -195,10 +195,16 @@ func checkInstanceTypeHostStopped(h *host.Host) error {
 func CheckUnexpirableHostLimitExceeded(userId string, maxHosts int) error {
 	count, err := host.CountSpawnhostsWithNoExpirationByUser(userId)
 	if err != nil {
-		return errors.Wrapf(err, "counting number of existing non-expiring hosts for user '%s'", userId)
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrapf(err, "counting number of existing non-expiring hosts for user '%s'", userId).Error(),
+		}
 	}
 	if count >= maxHosts {
-		return errors.Errorf("cannot exceed total unexpirable hosts limit %d", maxHosts)
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("cannot exceed user total unexpirable host limit %d", maxHosts),
+		}
 	}
 	return nil
 }
@@ -206,10 +212,16 @@ func CheckUnexpirableHostLimitExceeded(userId string, maxHosts int) error {
 func checkVolumeLimitExceeded(user string, newSize int, maxSize int) error {
 	totalSize, err := host.FindTotalVolumeSizeByUser(user)
 	if err != nil {
-		return errors.Wrap(err, "finding total volume size")
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrapf(err, "counting total volume size for user '%s'", user).Error(),
+		}
 	}
 	if totalSize+newSize > maxSize {
-		return errors.Errorf("cannot exceed user total volume size limit %d", maxSize)
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("cannot exceed user total volume size limit %d", maxSize),
+		}
 	}
 	return nil
 }
@@ -335,7 +347,7 @@ func (h *hostStartHandler) Run(ctx context.Context) gimlet.Responder {
 
 	statusCode, err := data.StartSpawnHost(ctx, h.env, user, host)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+		return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
 			StatusCode: statusCode,
 			Message:    errors.Wrap(err, "stopping spawn host").Error(),
 		})
@@ -607,7 +619,7 @@ func (h *createVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	volumeModel := &model.APIVolume{}
 	err = volumeModel.BuildFromService(res)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "converting created volume to API model"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting created volume to API model"))
 	}
 
 	return gimlet.NewJSONResponse(volumeModel)
@@ -732,9 +744,8 @@ func (h *modifyVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
 	volume, err := host.FindVolumeByID(h.volumeID)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding volume '%s'", h.volumeID))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding volume '%s'", h.volumeID))
 	}
-	// Volume does not exist
 	if volume == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
@@ -863,8 +874,6 @@ func (h *getVolumesHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	return gimlet.NewJSONResponse(volumeDocs)
 }
-
-// kim: TODO: continue here
 
 ////////////////////////////////////////////////////////////////////////
 //
@@ -1081,7 +1090,7 @@ func (h *hostExtendExpirationHandler) Parse(ctx context.Context, r *http.Request
 
 	addHours, err := strconv.Atoi(utility.FromStringPtr(hostModify.AddHours))
 	if err != nil {
-		return errors.New("additional hours to expiration is not a valid integer")
+		return errors.Wrapf(err, "additional hours to expiration '%s' is not a valid integer", utility.FromStringPtr(hostModify.AddHours))
 	}
 	h.addHours = time.Duration(addHours) * time.Hour
 
@@ -1108,7 +1117,7 @@ func (h *hostExtendExpirationHandler) Run(ctx context.Context) gimlet.Responder 
 	var newExp time.Time
 	newExp, err = cloud.MakeExtendedSpawnHostExpiration(host, h.addHours)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "extending cloud host expiration"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "extending cloud host expiration"))
 	}
 
 	if err := host.SetExpirationTime(newExp); err != nil {
@@ -1184,7 +1193,7 @@ func (hs *hostStartProcesses) Run(ctx context.Context) gimlet.Responder {
 
 		logger, err := jasper.NewInMemoryLogger(host.OutputBufferSize)
 		if err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "creating new in-memory logger for process output"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "creating new in-memory logger for process output"))
 		}
 		bashPath := h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.ShellPath)
 		opts := &options.Create{

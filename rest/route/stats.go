@@ -113,7 +113,7 @@ func (sh *StatsHandler) parseStatsFilter(vals url.Values) error {
 	sh.filter.Tasks = sh.readStringList(vals["tasks"])
 	if len(sh.filter.Tasks) > statsAPIMaxNumTasks {
 		return gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("number of tasks given (%d) exceeds maximum number of allowed tasks (%d)", len(sh.filter.Tasks), statsAPIMaxNumTasks),
+			Message:    fmt.Sprintf("number of tasks given must not exceed %d", statsAPIMaxNumTasks),
 			StatusCode: http.StatusBadRequest,
 		}
 	}
@@ -128,7 +128,7 @@ func (sh *StatsHandler) parseStatsFilter(vals url.Values) error {
 	sh.filter.BeforeDate, err = time.ParseInLocation(statsAPIDateFormat, beforeDate, time.UTC)
 	if err != nil {
 		return gimlet.ErrorResponse{
-			Message:    errors.Wrap(err, "parsing 'before' date in expected format").Error(),
+			Message:    errors.Wrapf(err, "parsing 'before' date in expected format (%s)", statsAPIDateFormat).Error(),
 			StatusCode: http.StatusBadRequest,
 		}
 	}
@@ -143,7 +143,7 @@ func (sh *StatsHandler) parseStatsFilter(vals url.Values) error {
 	sh.filter.AfterDate, err = time.ParseInLocation(statsAPIDateFormat, afterDate, time.UTC)
 	if err != nil {
 		return gimlet.ErrorResponse{
-			Message:    errors.Wrap(err, "parsing 'after' date in expected format").Error(),
+			Message:    errors.Wrapf(err, "parsing 'after' date in expected format (%s)", statsAPIDateFormat).Error(),
 			StatusCode: http.StatusBadRequest,
 		}
 	}
@@ -151,7 +151,7 @@ func (sh *StatsHandler) parseStatsFilter(vals url.Values) error {
 	sh.filter.Tests = sh.readStringList(vals["tests"])
 	if len(sh.filter.Tests) > statsAPIMaxNumTests {
 		return gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("number of tests given (%d) exceeds maximum number of allowed tests (%d)", len(sh.filter.Tests), statsAPIMaxNumTests),
+			Message:    fmt.Sprintf("number of tests given must not exceed %d", statsAPIMaxNumTests),
 			StatusCode: http.StatusBadRequest,
 		}
 	}
@@ -287,7 +287,7 @@ func (sh *StatsHandler) readStartAt(startAtValue string) (*stats.StartAt, error)
 	date, err := time.ParseInLocation(statsAPIDateFormat, elements[0], time.UTC)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
-			Message:    errors.Wrap(err, "parsing date in expected format").Error(),
+			Message:    errors.Wrapf(err, "parsing date in expected format (%s)", statsAPIDateFormat).Error(),
 			StatusCode: http.StatusBadRequest,
 		}
 	}
@@ -326,7 +326,7 @@ func (tsh *testStatsHandler) Parse(ctx context.Context, r *http.Request) error {
 	}
 	err = tsh.filter.ValidateForTests()
 	if err != nil {
-		return errors.Wrap(err, "validating filter")
+		return errors.Wrap(err, "invalid filter")
 	}
 	return nil
 }
@@ -334,7 +334,7 @@ func (tsh *testStatsHandler) Parse(ctx context.Context, r *http.Request) error {
 func (tsh *testStatsHandler) Run(ctx context.Context) gimlet.Responder {
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "getting service flags"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting service flags"))
 	}
 	if flags.CacheStatsEndpointDisabled {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
@@ -412,7 +412,7 @@ func (tsh *taskStatsHandler) Parse(ctx context.Context, r *http.Request) error {
 	}
 	err = tsh.filter.ValidateForTasks()
 	if err != nil {
-		return errors.Wrap(err, "validating filter")
+		return errors.Wrap(err, "invalid filter")
 	}
 	return nil
 }
@@ -420,7 +420,7 @@ func (tsh *taskStatsHandler) Parse(ctx context.Context, r *http.Request) error {
 func (tsh *taskStatsHandler) Run(ctx context.Context) gimlet.Responder {
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "getting service flags"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting service flags"))
 	}
 	if flags.CacheStatsEndpointDisabled {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
@@ -438,7 +438,7 @@ func (tsh *taskStatsHandler) Run(ctx context.Context) gimlet.Responder {
 	if len(taskStatsResult) == 0 {
 		statsStatus, err := stats.GetStatsStatus(tsh.filter.Project)
 		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting project stats status"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting stats status for project '%s'", tsh.filter.Project))
 		}
 		if statsStatus.ProcessedTasksUntil.Before(tsh.filter.AfterDate) {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{

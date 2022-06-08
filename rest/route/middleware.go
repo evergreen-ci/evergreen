@@ -48,7 +48,7 @@ func (m *projCtxMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 
 	opCtx, err := model.LoadContext(taskId, buildId, versionId, patchId, projectId)
 	if err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "loading resources from context")))
+		gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "loading resources from context")))
 		return
 	}
 
@@ -252,7 +252,7 @@ func (m *TaskHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 	}
 	t, err := task.FindOneId(h.StartedBy)
 	if err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding task '%s' started by host '%s'", h.StartedBy, h.Id)))
+		gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s' started by host '%s'", h.StartedBy, h.Id)))
 		return
 	}
 	if t == nil {
@@ -325,7 +325,7 @@ func (m *podAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 		return
 	}
 	if err := data.CheckPodSecret(id, secret); err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "checking pod secret")))
+		gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "checking pod secret")))
 		return
 	}
 
@@ -391,7 +391,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 	opCtx := MustHaveProjectContext(ctx)
 	projRef, err := opCtx.GetProjectRef()
 	if err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
+		gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting project ref")))
 		return
 	}
 
@@ -583,7 +583,7 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 		var test *model.TestLog
 		test, err = model.FindOneTestLogById(testLog)
 		if err != nil {
-			return nil, http.StatusNotFound, errors.Wrapf(err, "finding test log '%s'", testLog)
+			return nil, http.StatusInternalServerError, errors.Wrapf(err, "finding test log '%s'", testLog)
 		}
 		if test == nil {
 			return nil, http.StatusNotFound, errors.Errorf("test log '%s' not found", testLog)
@@ -607,7 +607,7 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 		var repoRef *model.RepoRef
 		repoRef, err = model.FindOneRepoRef(repoID)
 		if err != nil {
-			return nil, http.StatusInternalServerError, errors.WithStack(err)
+			return nil, http.StatusInternalServerError, errors.Wrap(err, "finding repo")
 		}
 		if repoRef == nil {
 			return nil, http.StatusNotFound, errors.Errorf("repo '%s' not found", repoID)
@@ -617,7 +617,7 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 
 	projectRef, err := model.FindMergedProjectRef(projectID, versionID, true)
 	if err != nil {
-		return nil, http.StatusNotFound, errors.WithStack(err)
+		return nil, http.StatusNotFound, errors.Wrap(err, "finding project")
 	}
 	if projectRef == nil {
 		return nil, http.StatusNotFound, errors.Errorf("project '%s' not found", projectID)

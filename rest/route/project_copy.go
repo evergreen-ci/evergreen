@@ -43,7 +43,7 @@ func (p *projectCopyHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	apiProjectRef, err := data.CopyProject(ctx, opts)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "copying project"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "copying source project '%s' to target project '%s'", p.oldProject, p.newProject))
 	}
 	return gimlet.NewJSONResponse(apiProjectRef)
 }
@@ -99,7 +99,7 @@ func (p *copyVariablesHandler) Run(ctx context.Context) gimlet.Responder {
 
 	varsToCopy, err := data.FindProjectVarsById(copyFromProject.Id, "", p.opts.DryRun) //dont redact private variables unless it's a dry run
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding variables for source project '%s'", p.copyFrom))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding vars for source project '%s'", p.copyFrom))
 	}
 	if !p.opts.IncludePrivate {
 		for key, isPrivate := range varsToCopy.PrivateVars {

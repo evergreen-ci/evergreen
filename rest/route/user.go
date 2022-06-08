@@ -43,11 +43,11 @@ func (h *userSettingsPostHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
 	userSettings, err := model.UpdateUserSettings(ctx, u, h.settings)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "updating user settings"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating user settings for user '%s'", u.Username()))
 	}
 
 	if err = data.UpdateSettings(u, *userSettings); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "saving user settings"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "saving updated settings for user '%s'", u.Username()))
 	}
 
 	if h.settings.SpruceFeedback != nil {
@@ -79,7 +79,7 @@ func (h *userSettingsGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 	apiSettings := model.APIUserSettings{}
 	if err := apiSettings.BuildFromService(u.Settings); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting user settings to API model"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting settings for user '%s' to API model", u.Username()))
 	}
 
 	return gimlet.NewJSONResponse(apiSettings)
@@ -216,20 +216,14 @@ func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder
 	if h.resourceType == allResourceType {
 		err = u.DeleteAllRoles()
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "error deleting roles",
-			}))
-			return gimlet.MakeJSONInternalErrorResponder(errors.New("deleting all roles for user"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "deleting all roles for user '%s'", u.Username()))
 		}
 		return gimlet.NewJSONResponse(struct{}{})
 	}
 
 	roles, err := h.rm.GetRoles(u.Roles())
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "error getting roles",
-		}))
-		return gimlet.MakeJSONInternalErrorResponder(errors.New("getting current roles for user"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting current roles for user '%s'", u.Username()))
 	}
 	rolesToCheck := []gimlet.Role{}
 	// don't remove basic access, just special access
@@ -259,10 +253,7 @@ func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder
 	})
 	err = u.DeleteRoles(rolesToRemove)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "error deleting roles for user",
-		}))
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "deleting roles for user"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "deleting roles for user '%s'", u.Username()))
 	}
 	return gimlet.NewJSONResponse(struct{}{})
 }
@@ -319,7 +310,7 @@ func (h *allUsersPermissionsGetHandler) Run(ctx context.Context) gimlet.Responde
 
 	roles, err := h.rm.FilterForResource(allRoles, h.input.ResourceId, h.input.ResourceType)
 	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "finding roles for resource"))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding roles for resource '%s'", h.input.ResourceId))
 	}
 	roleIds := []string{}
 	permissionsMap := map[string]gimlet.Permissions{}
@@ -402,17 +393,13 @@ func (h *userPermissionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding user '%s'", h.userID))
 	}
 	if u == nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.New("user not found"))
+		return gimlet.NewJSONInternalErrorResponse(errors.Errorf("user '%s' not found", h.userID))
 	}
 	rolesToSearch, _ := utility.StringSliceSymmetricDifference(u.SystemRoles, evergreen.BasicAccessRoles)
 	// filter out the roles that everybody has automatically
 	permissions, err := rolemanager.PermissionSummaryForRoles(ctx, rolesToSearch, h.rm)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "error getting permission summary",
-			"route":   "userPermissionsGetHandler",
-		}))
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "getting permissions for user"))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "getting permissions for user '%s'", h.userID))
 	}
 	return gimlet.NewJSONResponse(permissions)
 }
@@ -471,7 +458,7 @@ func (h *userRolesPostHandler) Run(ctx context.Context) gimlet.Responder {
 			}
 			_, err = um.GetOrCreateUser(&newUser)
 			if err != nil {
-				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "creating new user"))
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating new user '%s'", h.userID))
 			}
 			return gimlet.NewJSONResponse(struct{}{})
 		} else {
@@ -483,11 +470,8 @@ func (h *userRolesPostHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	dbRoles, err := h.rm.GetRoles(h.roles)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "error finding roles",
-		}))
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			Message:    "no roles found",
+			Message:    errors.Wrapf(err, "finding roles for user '%s'", u.Username()).Error(),
 			StatusCode: http.StatusNotFound,
 		})
 	}
@@ -504,11 +488,7 @@ func (h *userRolesPostHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	for _, toAdd := range h.roles {
 		if err = u.AddRole(toAdd); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "unable to add role",
-				"role":    toAdd,
-			}))
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "adding role"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding role '%s' to user '%s'", toAdd, u.Username()))
 		}
 	}
 
@@ -582,7 +562,7 @@ func (h *serviceUserPostHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	err := data.AddOrUpdateServiceUser(*h.u)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "adding/updating service user"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding/updating service user '%s'", utility.FromStringPtr(h.u.UserID)))
 	}
 	return gimlet.NewJSONResponse(struct{}{})
 }
@@ -611,7 +591,7 @@ func (h *serviceUserDeleteHandler) Parse(ctx context.Context, r *http.Request) e
 func (h *serviceUserDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 	err := user.DeleteServiceUser(h.username)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "deleting service user"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "deleting service user '%s'", h.username))
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})

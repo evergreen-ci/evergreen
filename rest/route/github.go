@@ -152,7 +152,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 					"user":      *event.Sender.Login,
 					"message":   "can't add intent",
 				}))
-				return gimlet.NewJSONErrorResponse(errors.Wrap(err, "adding patch intent"))
+				return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "adding patch intent"))
 			}
 		} else if *event.Action == githubActionClosed {
 			grip.Info(message.Fields{
@@ -171,7 +171,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 					"action":  *event.Action,
 					"message": "failed to abort patches",
 				}))
-				return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "aborting patches"))
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "aborting patches"))
 			}
 
 			// if the item is on a commit queue, remove it
@@ -183,7 +183,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 					"action":  *event.Action,
 					"message": "commit queue item not dequeued",
 				}))
-				return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "dequeueing item from commit queue"))
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "dequeueing item from commit queue"))
 			}
 
 			return gimlet.NewJSONResponse(struct{}{})
@@ -200,12 +200,12 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		})
 		if isTag(event.GetRef()) {
 			if err := gh.handleGitTag(ctx, event); err != nil {
-				return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "handling git tag"))
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "handling git tag"))
 			}
 			return gimlet.NewJSONResponse(struct{}{})
 		}
 		if err := data.TriggerRepotracker(gh.queue, gh.msgID, event); err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "triggering repotracker"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "triggering repotracker"))
 		}
 
 	case *github.IssueCommentEvent:
@@ -231,7 +231,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 						"user":      *event.Sender.Login,
 						"message":   "can't enqueue on commit queue",
 					}))
-					return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "enqueueing in commit queue"))
+					return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "enqueueing in commit queue"))
 				}
 			}
 			triggerPatch, callerType := triggersPatch(*event.Action, *event.Comment.Body)
@@ -256,7 +256,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 						"user":      *event.Sender.Login,
 						"message":   fmt.Sprintf("can't create PR for '%s'", *event.Comment.Body),
 					}))
-					return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "creating patch"))
+					return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "creating patch"))
 				}
 			}
 		}
@@ -273,10 +273,10 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 					"action": event.Action,
 					"hook":   event.Hook,
 				}))
-				return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "handling deleted event"))
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "handling deleted event"))
 			}
 			if err := model.RemoveGithubHook(int(hookID)); err != nil {
-				return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "removing hook"))
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "removing hook"))
 			}
 		}
 	}
@@ -291,12 +291,12 @@ func (gh *githubHookApi) createPRPatch(ctx context.Context, owner, repo, calledB
 	}
 	githubToken, err := settings.GetGithubOauthToken()
 	if err != nil {
-		return errors.Wrap(err, "gettin GitHub OAuth token from admin settings")
+		return errors.Wrap(err, "getting GitHub OAuth token from admin settings")
 	}
 
 	pr, err := thirdparty.GetGithubPullRequest(ctx, githubToken, owner, repo, prNumber)
 	if err != nil {
-		return errors.Wrapf(err, "getting PR for repo %s:%s, PR #%d", owner, repo, prNumber)
+		return errors.Wrapf(err, "getting PR for repo '%s:%s', PR #%d", owner, repo, prNumber)
 	}
 
 	return gh.AddIntentForPR(pr, pr.User.GetLogin(), calledBy)
@@ -518,7 +518,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 		// use the standard project config with the git tag alias
 		projectInfo, err = model.LoadProjectForVersion(existingVersion, pRef.Id, false)
 		if err != nil {
-			return nil, errors.Wrapf(err, "getting project  '%s'", pRef.Identifier)
+			return nil, errors.Wrapf(err, "getting project '%s'", pRef.Identifier)
 		}
 		metadata.Alias = evergreen.GitTagAlias
 	}

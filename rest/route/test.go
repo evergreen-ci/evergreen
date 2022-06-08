@@ -212,7 +212,7 @@ func (tgh *testGetHandler) buildResponse(cedarTestResults []apimodels.CedarTestR
 	}
 	for i, testResult := range testResults {
 		if err := tgh.addDataToResponse(resp, &testResult); err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "adding test result at index %d", i))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding test result at index %d", i))
 		}
 	}
 

@@ -139,7 +139,7 @@ func (s *HostsChangeStatusesSuite) TestRunTerminatedOnTerminatedHost() {
 	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 	res := h.Run(ctx)
-	s.Equal(http.StatusBadRequest, res.Status())
+	s.Equal(http.StatusInternalServerError, res.Status())
 }
 
 func (s *HostsChangeStatusesSuite) TestRunHostRunningOnTerminatedHost() {
@@ -152,7 +152,7 @@ func (s *HostsChangeStatusesSuite) TestRunHostRunningOnTerminatedHost() {
 	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 	res := h.Run(ctx)
-	s.Equal(http.StatusBadRequest, res.Status())
+	s.Equal(http.StatusInternalServerError, res.Status())
 }
 
 func (s *HostsChangeStatusesSuite) TestRunHostQuarantinedOnTerminatedHost() {
@@ -165,7 +165,7 @@ func (s *HostsChangeStatusesSuite) TestRunHostQuarantinedOnTerminatedHost() {
 	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 	res := h.Run(ctx)
-	s.Equal(http.StatusBadRequest, res.Status())
+	s.Equal(http.StatusInternalServerError, res.Status())
 }
 
 func (s *HostsChangeStatusesSuite) TestRunHostDecommissionedOnTerminatedHost() {
@@ -178,7 +178,7 @@ func (s *HostsChangeStatusesSuite) TestRunHostDecommissionedOnTerminatedHost() {
 	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 	res := h.Run(ctx)
-	s.Equal(http.StatusBadRequest, res.Status())
+	s.Equal(http.StatusInternalServerError, res.Status())
 }
 
 func (s *HostsChangeStatusesSuite) TestRunWithInvalidHost() {
@@ -702,7 +702,7 @@ func (s *hostExtendExpirationHandlerSuite) TestExecuteWithLargeExpirationFails()
 	resp := h.Run(ctx)
 	s.NotEqual(http.StatusOK, resp.Status())
 	apiErr := resp.Data().(gimlet.ErrorResponse)
-	s.Equal(http.StatusBadRequest, apiErr.StatusCode)
+	s.Equal(http.StatusInternalServerError, apiErr.StatusCode)
 }
 
 func (s *hostExtendExpirationHandlerSuite) TestExecute() {

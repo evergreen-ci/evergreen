@@ -243,7 +243,7 @@ func TestAnnotationByTaskGetHandlerParse(t *testing.T) {
 	r = gimlet.SetURLVars(r, vars)
 	err = h.Parse(ctx, r)
 
-	assert.Contains(t, err.Error(), "cannot both fetch all executions and also request a specific execution")
+	assert.Contains(t, err.Error(), "cannot both fetch all executions and request a specific execution")
 }
 
 func TestAnnotationByTaskGetHandlerRun(t *testing.T) {

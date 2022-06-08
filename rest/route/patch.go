@@ -60,7 +60,7 @@ func (p *patchChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
 	foundPatch, err := data.FindPatchById(p.patchId)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding patch '%s'", p.patchId))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding patch '%s'", p.patchId))
 	}
 
 	if p.Priority != nil {
@@ -276,7 +276,7 @@ func (p *patchesByProjectHandler) Parse(ctx context.Context, r *http.Request) er
 func (p *patchesByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 	patches, err := data.FindPatchesByProject(p.projectId, p.key, p.limit+1)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding patches for project '%s'", p.projectId))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding patches for project '%s'", p.projectId))
 	}
 
 	resp := gimlet.NewResponseBuilder()
@@ -469,7 +469,10 @@ func (p *schedulePatchHandler) Parse(ctx context.Context, r *http.Request) error
 	}
 	dbPatch, err := apiPatch.ToService()
 	if err != nil {
-		return errors.Wrap(err, "converting patch to service model")
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "converting patch to service model").Error(),
+		}
 	}
 	p.patch = dbPatch.(patch.Patch)
 	body := utility.NewRequestReader(r)
@@ -499,12 +502,12 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if dbVersion == nil {
 		project, _, err = dbModel.GetPatchedProject(ctx, &p.patch, token)
 		if err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding project for patch '%s'", p.patchId))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project for patch '%s'", p.patchId))
 		}
 	} else {
 		project, err = dbModel.FindProjectFromVersionID(dbVersion.Id)
 		if err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding project for version '%s'", dbVersion.Id))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project for version '%s'", dbVersion.Id))
 		}
 	}
 	patchUpdateReq := dbModel.PatchUpdate{
@@ -547,10 +550,10 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	dbVersion, err = dbModel.VersionFindOneId(p.patchId)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding patch '%s'", p.patchId))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding version for patch '%s'", p.patchId))
 	}
 	if dbVersion == nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("patch '%s' not found", p.patchId))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("version for patch '%s' not found", p.patchId))
 	}
 	restVersion := model.APIVersion{}
 	if err = restVersion.BuildFromService(dbVersion); err != nil {

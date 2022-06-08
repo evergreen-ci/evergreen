@@ -38,7 +38,7 @@ func (h *keysGetHandler) Run(ctx context.Context) gimlet.Responder {
 	for _, key := range user.PubKeys {
 		apiKey := &model.APIPubKey{}
 		if err := apiKey.BuildFromService(key); err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "converting public key to API model"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting public key to API model"))
 		}
 		if err := resp.AddData(apiKey); err != nil {
 			return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "adding public keys to response"))
@@ -119,11 +119,11 @@ func validateKeyValue(keyValue string) error {
 func (h *keysPostHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
 	if _, err := u.GetPublicKey(h.keyName); err == nil {
-		return gimlet.MakeJSONErrorResponder(errors.Errorf("public key '%s' already exists for user", h.keyName))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("public key '%s' already exists for user '%s'", h.keyName, u.Username()))
 	}
 
 	if err := u.AddPublicKey(h.keyName, h.keyValue); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "add public key"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "adding public key"))
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
@@ -161,7 +161,7 @@ func (h *keysDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if err := user.DeletePublicKey(h.keyName); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "deleting public key '%s'", h.keyName))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "deleting public key '%s'", h.keyName))
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})

@@ -39,7 +39,7 @@ func (cq *commitQueueGetHandler) Parse(ctx context.Context, r *http.Request) err
 func (cq *commitQueueGetHandler) Run(ctx context.Context) gimlet.Responder {
 	commitQueue, err := data.FindCommitQueueForProject(cq.project)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "getting commit queue for project '%s'", cq.project))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting commit queue for project '%s'", cq.project))
 	}
 	if commitQueue == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
@@ -93,7 +93,7 @@ func (cq *commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responde
 	if removed == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("no matching commit queue item '%s' for project '%s'", cq.item, cq.project),
+			Message:    fmt.Sprintf("commit queue item '%s' for project '%s' not found", cq.item, cq.project),
 		})
 	}
 
@@ -101,7 +101,7 @@ func (cq *commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responde
 	if utility.FromStringPtr(removed.Source) == commitqueue.SourcePullRequest {
 		projectRef, err := data.FindProjectById(cq.project, true, false)
 		if err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "can't find project '%s'", cq.project))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project '%s'", cq.project))
 		}
 		if projectRef == nil {
 			return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' doesn't exist", cq.project))
@@ -121,7 +121,7 @@ func (cq *commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responde
 		q := cq.env.LocalQueue()
 		err = q.Put(ctx, pushJob)
 		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "can't enqueue a job to update the GitHub status"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "enqueueing GitHub status update job"))
 		}
 	}
 

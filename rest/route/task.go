@@ -69,7 +69,7 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 		foundTask, err = task.FindOneIdAndExecution(tgh.taskID, tgh.execution)
 	}
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding task"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", tgh.taskID))
 	}
 	if foundTask == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
@@ -86,24 +86,24 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 		LogURL:                   tgh.url,
 	})
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting task to API model"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting task '%s' to API model", tgh.taskID))
 	}
 
 	if tgh.fetchAllExecutions {
 		var tasks []task.Task
 		tasks, err = task.FindOldWithDisplayTasks(task.ByOldTaskID(tgh.taskID))
 		if err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "finding archived tasks"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding archived executions for task '%s'", tgh.taskID))
 		}
 
 		if err = taskModel.BuildPreviousExecutions(tasks, tgh.url); err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "adding previous task executions to API model"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding previous task executions to API model for task '%s'", tgh.taskID))
 		}
 	}
 
 	start, err := dbModel.GetEstimatedStartTime(*foundTask)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "getting estimated start time"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting estimated start time for task '%s'", tgh.taskID))
 	}
 	taskModel.EstimatedStart = model.NewAPIDuration(start)
 
@@ -175,13 +175,13 @@ func (tep *taskExecutionPatchHandler) Run(ctx context.Context) gimlet.Responder 
 			}
 		}
 		if err := dbModel.SetTaskPriority(*tep.task, priority, tep.user.Username()); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting task priority"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting priority for task '%s'", tep.task.Id))
 		}
 	}
 	if tep.Activated != nil {
 		activated := *tep.Activated
 		if err := dbModel.SetActiveStateById(tep.task.Id, tep.user.Username(), activated); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting task activation state"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting activation state for task '%s'", tep.task.Id))
 		}
 	}
 	refreshedTask, err := task.FindOneId(tep.task.Id)
@@ -201,7 +201,7 @@ func (tep *taskExecutionPatchHandler) Run(ctx context.Context) gimlet.Responder 
 		IncludeAMI:               true,
 	})
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting task to API model"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting task '%s' to API model", tep.task.Id))
 	}
 
 	return gimlet.NewJSONResponse(taskModel)
@@ -231,7 +231,7 @@ func (rh *displayTaskGetHandler) Parse(ctx context.Context, r *http.Request) err
 func (rh *displayTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 	t, err := task.FindOneId(rh.taskID)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding task '%s'", rh.taskID))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", rh.taskID))
 	}
 	if t == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{

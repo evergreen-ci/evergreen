@@ -56,12 +56,12 @@ func (trh *taskRestartHandler) Parse(ctx context.Context, r *http.Request) error
 func (trh *taskRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	err := resetTask(trh.taskId, trh.username)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "restarting task"))
+		return gimlet.MakeJSONErrorResponder(err)
 	}
 
 	refreshedTask, err := task.FindOneId(trh.taskId)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding updated task"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding updated task '%s'", trh.taskId))
 	}
 	if refreshedTask == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
@@ -73,7 +73,7 @@ func (trh *taskRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	taskModel := &model.APITask{}
 	err = taskModel.BuildFromArgs(refreshedTask, &model.APITaskArgs{IncludeProjectIdentifier: true, IncludeAMI: true})
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting task to API model"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting task '%s' to API model", trh.taskId))
 	}
 	return gimlet.NewJSONResponse(taskModel)
 }
@@ -83,10 +83,16 @@ func (trh *taskRestartHandler) Run(ctx context.Context) gimlet.Responder {
 func resetTask(taskId, username string) error {
 	t, err := task.FindOneId(taskId)
 	if err != nil {
-		return errors.Wrapf(err, "finding task '%s'", t)
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrapf(err, "finding task '%s'", t).Error(),
+		}
 	}
 	if t == nil {
-		return errors.Errorf("task '%s' not found", t.Id)
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task '%s' not found", taskId),
+		}
 	}
-	return errors.Wrap(serviceModel.ResetTaskOrDisplayTask(t, username, evergreen.RESTV2Package, nil), "resetting task")
+	return errors.Wrapf(serviceModel.ResetTaskOrDisplayTask(t, username, evergreen.RESTV2Package, nil), "resetting task '%s'", taskId)
 }

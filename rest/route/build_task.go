@@ -65,7 +65,7 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 	// by two to fetch the next page.
 	tasks, err := data.FindTasksByBuildId(tbh.buildId, tbh.key, tbh.status, tbh.limit+1, 1)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding tasks for build '%s'", tbh.buildId))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding tasks for build '%s'", tbh.buildId))
 	}
 
 	resp := gimlet.NewResponseBuilder()
@@ -101,7 +101,7 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 			IncludeProjectIdentifier: true,
 			LogURL:                   tbh.url,
 		}); err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "converting task '%s' to API model", tasks[i].Id))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting task '%s' to API model", tasks[i].Id))
 		}
 
 		if tbh.fetchAllExecutions {
@@ -113,7 +113,7 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 			}
 
 			if err = taskModel.BuildPreviousExecutions(oldTasks, tbh.url); err != nil {
-				return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "adding previous task executions to API model"))
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "adding previous task executions to API model"))
 			}
 		}
 
@@ -124,7 +124,7 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 
 		if err = resp.AddData(taskModel); err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "adding response data"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "adding response data"))
 		}
 	}
 
