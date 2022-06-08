@@ -1796,7 +1796,11 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 
 	baseTestStatusMap := map[string]string{}
 	if baseTask != nil {
-		baseTestResults, _ := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{TaskID: baseTask.Id, Execution: baseTask.Execution})
+		baseTestResults, _ := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{
+			TaskID:         baseTask.Id,
+			Execution:      baseTask.Execution,
+			ExecutionTasks: baseTask.ExecutionTasks,
+		})
 		for _, t := range baseTestResults {
 			baseTestStatusMap[t.TestFile] = t.Status
 		}
@@ -1806,15 +1810,16 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		sortDir = -1
 	}
 	filteredTestResults, err := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{
-		TaskID:    taskID,
-		Execution: dbTask.Execution,
-		TestName:  utility.FromStringPtr(testName),
-		Statuses:  statuses,
-		SortBy:    sortBy,
-		SortDir:   sortDir,
-		GroupID:   utility.FromStringPtr(groupID),
-		Limit:     limitNum,
-		Page:      utility.FromIntPtr(page),
+		TaskID:         taskID,
+		Execution:      dbTask.Execution,
+		ExecutionTasks: dbTask.ExecutionTasks,
+		TestName:       utility.FromStringPtr(testName),
+		Statuses:       statuses,
+		SortBy:         sortBy,
+		SortDir:        sortDir,
+		GroupID:        utility.FromStringPtr(groupID),
+		Limit:          limitNum,
+		Page:           utility.FromIntPtr(page),
 	})
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
@@ -1891,14 +1896,15 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, test
 		regexFilter := strings.Join(filters, "|")
 		for _, t := range dbTasks {
 			filteredTestResults, err := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{
-				TaskID:    t.Id,
-				Execution: t.Execution,
-				TestName:  regexFilter,
-				Statuses:  []string{evergreen.TestFailedStatus},
-				SortBy:    testresult.TaskIDKey,
-				Limit:     testSampleLimit,
-				SortDir:   1,
-				Page:      0,
+				TaskID:         t.Id,
+				Execution:      t.Execution,
+				ExecutionTasks: t.ExecutionTasks,
+				TestName:       regexFilter,
+				Statuses:       []string{evergreen.TestFailedStatus},
+				SortBy:         testresult.TaskIDKey,
+				Limit:          testSampleLimit,
+				SortDir:        1,
+				Page:           0,
 			})
 			if err != nil {
 				return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting test results sample: %s", err))
@@ -2041,6 +2047,7 @@ func (r *taskLogsResolver) EventLogs(ctx context.Context, obj *TaskLogs) ([]*res
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to find EventLogs for task %s: %s", obj.TaskID, err.Error()))
 	}
 
+	// TODO (EVG-16969) remove once TaskScheduled events TTL
 	// remove all scheduled events except the youngest and push to filteredEvents
 	filteredEvents := []event.EventLogEntry{}
 	foundScheduled := false
@@ -3205,11 +3212,15 @@ func (r *taskResolver) PatchNumber(ctx context.Context, obj *restModel.APITask) 
 }
 
 func (r *taskResolver) CanRestart(ctx context.Context, obj *restModel.APITask) (bool, error) {
-	canRestart, err := canRestartTask(ctx, obj)
+	i, err := obj.ToService()
 	if err != nil {
-		return false, err
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to service", *obj.Id))
 	}
-	return *canRestart, nil
+	t, ok := i.(*task.Task)
+	if !ok {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("converting APITask '%s' to Task", *obj.Id))
+	}
+	return canRestartTask(t), nil
 }
 
 func (r *taskResolver) CanAbort(ctx context.Context, obj *restModel.APITask) (bool, error) {
@@ -3217,11 +3228,15 @@ func (r *taskResolver) CanAbort(ctx context.Context, obj *restModel.APITask) (bo
 }
 
 func (r *taskResolver) CanSchedule(ctx context.Context, obj *restModel.APITask) (bool, error) {
-	canRestart, err := canRestartTask(ctx, obj)
+	i, err := obj.ToService()
 	if err != nil {
-		return false, err
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to service", *obj.Id))
 	}
-	return !utility.FromBoolPtr(canRestart) && !obj.Aborted, nil
+	t, ok := i.(*task.Task)
+	if !ok {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("converting APITask '%s' to Task", *obj.Id))
+	}
+	return canScheduleTask(t), nil
 }
 
 func (r *taskResolver) CanUnschedule(ctx context.Context, obj *restModel.APITask) (bool, error) {
@@ -3694,24 +3709,24 @@ func (r *versionResolver) TaskStatuses(ctx context.Context, v *restModel.APIVers
 }
 
 func (r *versionResolver) BaseTaskStatuses(ctx context.Context, v *restModel.APIVersion) ([]string, error) {
-	baseVersion, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(*v.Project, *v.Revision).WithFields(model.VersionIdentifierKey))
+	var baseVersion *model.Version
+	var err error
+
+	if evergreen.IsPatchRequester(utility.FromStringPtr(v.Requester)) || utility.FromStringPtr(v.Requester) == evergreen.AdHocRequester {
+		// Get base commit if patch or periodic build.
+		baseVersion, err = model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(utility.FromStringPtr(v.Project), utility.FromStringPtr(v.Revision)))
+	} else {
+		// Get previous commit if mainline commit.
+		baseVersion, err = model.VersionFindOne(model.VersionByProjectIdAndOrder(utility.FromStringPtr(v.Project), v.Order-1))
+	}
 	if baseVersion == nil || err != nil {
 		return nil, nil
 	}
-	defaultSort := []task.TasksSortOrder{
-		{Key: task.DisplayNameKey, Order: 1},
-	}
-	opts := task.GetTasksByVersionOptions{
-		Sorts:                          defaultSort,
-		IncludeBaseTasks:               false,
-		FieldsToProject:                []string{task.DisplayStatusKey},
-		IncludeBuildVariantDisplayName: false,
-	}
-	tasks, _, err := task.GetTasksByVersion(baseVersion.Id, opts)
+	statuses, err := task.GetBaseStatusesForActivatedTasks(*v.Id, baseVersion.Id)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version tasks: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting base version tasks: '%s'", err.Error()))
 	}
-	return getAllTaskStatuses(tasks), nil
+	return statuses, nil
 }
 
 // Returns task status counts (a mapping between status and the number of tasks with that status) for a version.
