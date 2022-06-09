@@ -207,7 +207,7 @@ func (s *GithubWebhookRouteSuite) TestParseAndValidate() {
 }
 
 func makeRequest(uid, event string, body, secret []byte) (*http.Request, error) {
-	req, err := http.NewRequest("POST", "http://example.com/rest/v2/hooks/github", bytes.NewReader(body))
+	req, err := http.NewRequest(http.MethodPost, "http://example.com/rest/v2/hooks/github", bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}

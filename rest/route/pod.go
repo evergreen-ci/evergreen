@@ -2,6 +2,7 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
@@ -43,7 +44,7 @@ func (h *podPostHandler) Parse(ctx context.Context, r *http.Request) error {
 	defer body.Close()
 
 	if err := utility.ReadJSON(r.Body, &h.p); err != nil {
-		return errors.Wrap(err, "reading payload body")
+		return errors.Wrap(err, "reading pod creation options from JSON request body")
 	}
 
 	return nil
@@ -105,12 +106,12 @@ func (h *podGetHandler) Parse(ctx context.Context, r *http.Request) error {
 func (h *podGetHandler) Run(ctx context.Context) gimlet.Responder {
 	p, err := data.FindPodByID(h.podID)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding pod"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding pod '%s'", h.podID))
 	}
 	if p == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    "pod not found",
+			Message:    fmt.Sprintf("pod '%s' not found", h.podID),
 		})
 	}
 

@@ -41,10 +41,7 @@ func (tbh *tasksByBuildHandler) Parse(ctx context.Context, r *http.Request) erro
 	vals := r.URL.Query()
 	tbh.buildId = gimlet.GetVars(r)["build_id"]
 	if tbh.buildId == "" {
-		return gimlet.ErrorResponse{
-			Message:    "buildId cannot be empty",
-			StatusCode: http.StatusBadRequest,
-		}
+		return errors.New("build ID cannot be empty")
 	}
 
 	tbh.status = vals.Get("status")
@@ -53,7 +50,7 @@ func (tbh *tasksByBuildHandler) Parse(ctx context.Context, r *http.Request) erro
 	var err error
 	tbh.limit, err = getLimit(vals)
 	if err != nil {
-		return errors.WithStack(err)
+		return errors.Wrap(err, "getting limit")
 	}
 
 	tbh.fetchAllExecutions = vals.Get("fetch_all_executions") == "true"
@@ -68,12 +65,12 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 	// by two to fetch the next page.
 	tasks, err := data.FindTasksByBuildId(tbh.buildId, tbh.key, tbh.status, tbh.limit+1, 1)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding tasks for build '%s'", tbh.buildId))
 	}
 
 	resp := gimlet.NewResponseBuilder()
 	if err = resp.SetFormat(gimlet.JSON); err != nil {
-		return gimlet.MakeJSONErrorResponder(err)
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "setting JSON response format"))
 	}
 
 	lastIndex := len(tasks)
@@ -90,8 +87,7 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 			},
 		})
 		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err,
-				"problem paginating response"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "paginating response"))
 		}
 	}
 
@@ -105,7 +101,7 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 			IncludeProjectIdentifier: true,
 			LogURL:                   tbh.url,
 		}); err != nil {
-			return gimlet.MakeJSONErrorResponder(err)
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting task '%s' to API model", tasks[i].Id))
 		}
 
 		if tbh.fetchAllExecutions {
@@ -113,11 +109,11 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 
 			oldTasks, err = task.FindOldWithDisplayTasks(task.ByOldTaskID(tasks[i].Id))
 			if err != nil {
-				return gimlet.MakeJSONErrorResponder(err)
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding archived task '%s'", tasks[i].Id))
 			}
 
 			if err = taskModel.BuildPreviousExecutions(oldTasks, tbh.url); err != nil {
-				return gimlet.MakeJSONErrorResponder(err)
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "adding previous task executions to API model"))
 			}
 		}
 
@@ -128,7 +124,7 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 
 		if err = resp.AddData(taskModel); err != nil {
-			return gimlet.MakeJSONErrorResponder(err)
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "adding response data"))
 		}
 	}
 
