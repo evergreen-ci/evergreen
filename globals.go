@@ -1088,22 +1088,6 @@ const (
 	LogTypeSystem = "system_log"
 )
 
-type ECSClusterPlatform string
-
-const (
-	ECSClusterPlatformLinux   = "linux"
-	ECSClusterPlatformWindows = "windows"
-)
-
-func (p ECSClusterPlatform) Validate() error {
-	switch p {
-	case ECSClusterPlatformLinux, ECSClusterPlatformWindows:
-		return nil
-	default:
-		return errors.Errorf("unrecognized ECS cluster platform '%s'", p)
-	}
-}
-
 // LogViewer represents recognized viewers for rendering logs.
 type LogViewer string
 

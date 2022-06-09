@@ -165,9 +165,15 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Providers.AWS.Pod.ECS.AWSVPC.SecurityGroups, apiSettings.Providers.AWS.Pod.ECS.AWSVPC.SecurityGroups)
 	assert.EqualValues(testSettings.Providers.AWS.Pod.ECS.ExecutionRole, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.ECS.ExecutionRole))
 	require.Len(apiSettings.Providers.AWS.Pod.ECS.Clusters, len(testSettings.Providers.AWS.Pod.ECS.Clusters))
-	for i := 0; i < len(testSettings.Providers.AWS.Pod.ECS.Clusters); i++ {
-		assert.EqualValues(testSettings.Providers.AWS.Pod.ECS.Clusters[i].Name, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.ECS.Clusters[i].Name))
-		assert.EqualValues(testSettings.Providers.AWS.Pod.ECS.Clusters[i].Platform, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.ECS.Clusters[i].Platform))
+	for i, cluster := range testSettings.Providers.AWS.Pod.ECS.Clusters {
+		assert.EqualValues(cluster.Name, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.ECS.Clusters[i].Name))
+		assert.EqualValues(cluster.OS, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.ECS.Clusters[i].OS))
+	}
+	require.Len(apiSettings.Providers.AWS.Pod.ECS.CapacityProviders, len(testSettings.Providers.AWS.Pod.ECS.CapacityProviders))
+	for i, cp := range testSettings.Providers.AWS.Pod.ECS.CapacityProviders {
+		assert.Equal(cp.Name, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.ECS.CapacityProviders[i].Name))
+		assert.EqualValues(cp.OS, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.ECS.CapacityProviders[i].OS))
+		assert.EqualValues(cp.Arch, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.ECS.CapacityProviders[i].Arch))
 	}
 	assert.EqualValues(testSettings.Providers.AWS.Pod.SecretsManager.SecretPrefix, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.SecretsManager.SecretPrefix))
 	assert.EqualValues(testSettings.Providers.Docker.APIVersion, utility.FromStringPtr(apiSettings.Providers.Docker.APIVersion))
