@@ -276,7 +276,7 @@ func (c *baseCommunicator) GetProject(ctx context.Context, taskData TaskData) (*
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
-		version:  apiVersion2,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix("parser_project")
 	resp, err := c.retryRequest(ctx, info, nil)
