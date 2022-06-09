@@ -732,15 +732,6 @@ func (as *APIServer) GetSettings() evergreen.Settings {
 	return as.Settings
 }
 
-func (as *APIServer) Cedar(w http.ResponseWriter, r *http.Request) {
-	gimlet.WriteJSON(w, &apimodels.CedarConfig{
-		BaseURL:  as.Settings.Cedar.BaseURL,
-		RPCPort:  as.Settings.Cedar.RPCPort,
-		Username: as.Settings.Cedar.User,
-		APIKey:   as.Settings.Cedar.APIKey,
-	})
-}
-
 // NewRouter returns the root router for all APIServer endpoints.
 func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	requireProject := gimlet.WrapperMiddleware(as.requireProject)
