@@ -114,9 +114,9 @@ func (c *baseCommunicator) resetClient() {
 	c.httpClient.Timeout = heartbeatTimeout
 }
 
-func (c *baseCommunicator) createCedarGRPCConn(ctx context.Context, comm SharedCommunicator) error {
+func (c *baseCommunicator) createCedarGRPCConn(ctx context.Context) error {
 	if c.cedarGRPCClient == nil {
-		cc, err := comm.GetCedarConfig(ctx)
+		cc, err := c.GetCedarConfig(ctx)
 		if err != nil {
 			return errors.Wrap(err, "getting cedar config")
 		}
@@ -370,7 +370,7 @@ func (c *baseCommunicator) FetchExpansionVars(ctx context.Context, taskData Task
 // GetCedarGRPCConn returns the client connection to cedar if it exists, or
 // creates it if it doesn't exist.
 func (c *baseCommunicator) GetCedarGRPCConn(ctx context.Context) (*grpc.ClientConn, error) {
-	if err := c.createCedarGRPCConn(ctx, c); err != nil {
+	if err := c.createCedarGRPCConn(ctx); err != nil {
 		return nil, errors.Wrap(err, "setting up cedar grpc connection")
 	}
 	return c.cedarGRPCClient, nil
@@ -494,7 +494,7 @@ func (c *baseCommunicator) makeSender(ctx context.Context, td TaskData, opts []L
 				return nil, nil, errors.Wrap(err, "setting up buildlogger sender")
 			}
 
-			if err = c.createCedarGRPCConn(ctx, c); err != nil {
+			if err = c.createCedarGRPCConn(ctx); err != nil {
 				return nil, nil, errors.Wrap(err, "setting up cedar grpc connection")
 			}
 

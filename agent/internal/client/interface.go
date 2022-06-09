@@ -19,10 +19,11 @@ import (
 )
 
 type Communicator interface {
+	// SharedCommunicator contains operations that do not depend on the task’s
+	// runtime environment (i.e. host or container). They will only have a
+	// single non-mock implementation.
 	SharedCommunicator
-	TypedCommunicator
-}
-type TypedCommunicator interface {
+
 	// The following operations are not implemented at the base level
 	// and require either a host or pod-specific implementation.
 	// EndTask marks the task as finished with the given status
