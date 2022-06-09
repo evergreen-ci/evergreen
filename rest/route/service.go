@@ -74,7 +74,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/admin/service_users").Version(2).Post().Wrap(adminSettings).RouteHandler(makeUpdateServiceUser())
 	app.AddRoute("/admin/service_users").Version(2).Delete().Wrap(adminSettings).RouteHandler(makeDeleteServiceUser())
 	//TODO host or pod requiring
-	app.AddRoute("/agent/cedar_config").Version(2).Get().Wrap(requireHost).RouteHandler(makeAgentCedarConfig(env.Settings()))
+	//app.AddRoute("/agent/cedar_config").Version(2).Get().Wrap(requireHost).RouteHandler(makeAgentCedarConfig(env.Settings()))
 	app.AddRoute("/alias/{name}").Version(2).Get().RouteHandler(makeFetchAliases())
 	app.AddRoute("/auth").Version(2).Get().Wrap(requireUser).RouteHandler(&authPermissionGetHandler{})
 	app.AddRoute("/builds/{build_id}").Version(2).Get().Wrap(viewTasks).RouteHandler(makeGetBuildByID())
