@@ -308,29 +308,29 @@ func (m *hostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 
 type podOrHostAuthMiddleware struct{}
 
-// NewPodOrHostAuthMiddleWare returns a middleware that verifies the request's pod ID
-// and secret.
+// NewPodOrHostAuthMiddleWare returns a middleware that verifies that the request comes from a valid pod or host based
+// on its ID and shared secret.
 func NewPodOrHostAuthMiddleWare() gimlet.Middleware {
 	return &podOrHostAuthMiddleware{}
 }
 
 func (m *podOrHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	podId, ok := gimlet.GetVars(r)["pod_id"]
+	podID, ok := gimlet.GetVars(r)["pod_id"]
 	if !ok {
-		podId = r.Header.Get(evergreen.PodHeader)
+		podID = r.Header.Get(evergreen.PodHeader)
 	}
 	hostID, ok := gimlet.GetVars(r)["host_id"]
 	if !ok {
 		hostID = r.Header.Get(evergreen.HostHeader)
 	}
-	if hostID == "" && podId == "" {
+	if hostID == "" && podID == "" {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,
 			Message:    "either host ID or pod ID must be set",
 		}))
 		return
 	}
-	if hostID != "" && podId != "" {
+	if hostID != "" && podID != "" {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			Message: "host ID and pod ID cannot both be set",
 		}))
@@ -361,18 +361,25 @@ func (m *podOrHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Requ
 		if h.NeedsNewAgentMonitor {
 			grip.Warning(message.WrapError(h.SetNeedsNewAgentMonitor(false), "problem clearing host needs new agent monitor"))
 		}
-	} else {
-		secret := r.Header.Get(evergreen.PodSecretHeader)
-		if secret == "" {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.New("missing pod secret")))
-			return
-		}
-		if err := data.CheckPodSecret(podId, secret); err != nil {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
-			return
-		}
+		next(rw, r)
+		return
+	}
+	if err := checkPodSecret(r, podID); err != nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
+		return
 	}
 	next(rw, r)
+}
+
+func checkPodSecret(r *http.Request, podID string) error {
+	secret := r.Header.Get(evergreen.PodSecretHeader)
+	if secret == "" {
+		return errors.New("missing pod secret")
+	}
+	if err := data.CheckPodSecret(podID, secret); err != nil {
+		return err
+	}
+	return nil
 }
 
 type podAuthMiddleware struct{}
@@ -392,12 +399,7 @@ func (m *podAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 		}
 	}
 
-	secret := r.Header.Get(evergreen.PodSecretHeader)
-	if secret == "" {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.New("missing pod secret")))
-		return
-	}
-	if err := data.CheckPodSecret(id, secret); err != nil {
+	if err := checkPodSecret(r, id); err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
 		return
 	}

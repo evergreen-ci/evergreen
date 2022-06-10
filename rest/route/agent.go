@@ -9,8 +9,6 @@ import (
 	"github.com/evergreen-ci/gimlet"
 )
 
-////////////////////////////////////////////////
-//
 // GET /rest/v2/agent/cedar_config
 
 type agentCedarConfig struct {
