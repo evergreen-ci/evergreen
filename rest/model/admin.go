@@ -1629,11 +1629,12 @@ func (a *APIAWSPodConfig) ToService() (*evergreen.AWSPodConfig, error) {
 
 // APIECSConfig represents configuration options for AWS ECS.
 type APIECSConfig struct {
-	TaskDefinitionPrefix *string               `json:"task_definition_prefix"`
-	TaskRole             *string               `json:"task_role"`
-	ExecutionRole        *string               `json:"execution_role"`
-	AWSVPC               *APIAWSVPCConfig      `json:"awsvpc"`
-	Clusters             []APIECSClusterConfig `json:"clusters"`
+	TaskDefinitionPrefix *string                  `json:"task_definition_prefix"`
+	TaskRole             *string                  `json:"task_role"`
+	ExecutionRole        *string                  `json:"execution_role"`
+	AWSVPC               *APIAWSVPCConfig         `json:"awsvpc"`
+	Clusters             []APIECSClusterConfig    `json:"clusters"`
+	CapacityProviders    []APIECSCapacityProvider `json:"capacity_providers"`
 }
 
 func (a *APIECSConfig) BuildFromService(conf evergreen.ECSConfig) {
@@ -1647,6 +1648,11 @@ func (a *APIECSConfig) BuildFromService(conf evergreen.ECSConfig) {
 		var apiCluster APIECSClusterConfig
 		apiCluster.BuildFromService(cluster)
 		a.Clusters = append(a.Clusters, apiCluster)
+	}
+	for _, cp := range conf.CapacityProviders {
+		var apiProvider APIECSCapacityProvider
+		apiProvider.BuildFromService(cp)
+		a.CapacityProviders = append(a.CapacityProviders, apiProvider)
 	}
 }
 
@@ -1663,6 +1669,14 @@ func (a *APIECSConfig) ToService() (*evergreen.ECSConfig, error) {
 		}
 		clusters = append(clusters, *cluster)
 	}
+	var providers []evergreen.ECSCapacityProvider
+	for _, apiProvider := range a.CapacityProviders {
+		cp, err := apiProvider.ToService()
+		if err != nil {
+			return nil, errors.Wrap(err, "converting capacity provider to service model")
+		}
+		providers = append(providers, *cp)
+	}
 
 	return &evergreen.ECSConfig{
 		TaskDefinitionPrefix: utility.FromStringPtr(a.TaskDefinitionPrefix),
@@ -1670,6 +1684,7 @@ func (a *APIECSConfig) ToService() (*evergreen.ECSConfig, error) {
 		ExecutionRole:        utility.FromStringPtr(a.ExecutionRole),
 		AWSVPC:               a.AWSVPC.ToService(),
 		Clusters:             clusters,
+		CapacityProviders:    providers,
 	}, nil
 }
 
@@ -1698,26 +1713,56 @@ func (a *APIAWSVPCConfig) ToService() evergreen.AWSVPCConfig {
 // APIECSClusterConfig represents configuration options for a cluster in AWS
 // ECS.
 type APIECSClusterConfig struct {
-	Name     *string `json:"name"`
-	Platform *string `json:"platform"`
+	Name *string `json:"name"`
+	OS   *string `json:"os"`
 }
 
 func (a *APIECSClusterConfig) BuildFromService(conf evergreen.ECSClusterConfig) {
 	a.Name = utility.ToStringPtr(conf.Name)
-	a.Platform = utility.ToStringPtr(string(conf.Platform))
+	a.OS = utility.ToStringPtr(string(conf.OS))
 }
 
 func (a *APIECSClusterConfig) ToService() (*evergreen.ECSClusterConfig, error) {
 	if a == nil {
 		return nil, nil
 	}
-	p := evergreen.ECSClusterPlatform(utility.FromStringPtr(a.Platform))
-	if err := p.Validate(); err != nil {
-		return nil, errors.Wrap(err, "invalid platform")
+	os := evergreen.ECSOS(utility.FromStringPtr(a.OS))
+	if err := os.Validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid OS")
 	}
 	return &evergreen.ECSClusterConfig{
-		Name:     utility.FromStringPtr(a.Name),
-		Platform: p,
+		Name: utility.FromStringPtr(a.Name),
+		OS:   os,
+	}, nil
+}
+
+// APIECSCapacityProvider represents configuration options for a capacity
+// provider within an ECS cluster.
+type APIECSCapacityProvider struct {
+	Name *string `json:"name"`
+	OS   *string `json:"os"`
+	Arch *string `json:"arch"`
+}
+
+func (a *APIECSCapacityProvider) BuildFromService(cp evergreen.ECSCapacityProvider) {
+	a.Name = utility.ToStringPtr(cp.Name)
+	a.OS = utility.ToStringPtr(string(cp.OS))
+	a.Arch = utility.ToStringPtr(string(cp.Arch))
+}
+
+func (a *APIECSCapacityProvider) ToService() (*evergreen.ECSCapacityProvider, error) {
+	os := evergreen.ECSOS(utility.FromStringPtr(a.OS))
+	if err := os.Validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid OS")
+	}
+	arch := evergreen.ECSArch(utility.FromStringPtr(a.Arch))
+	if err := arch.Validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid arch")
+	}
+	return &evergreen.ECSCapacityProvider{
+		Name: utility.FromStringPtr(a.Name),
+		OS:   os,
+		Arch: arch,
 	}, nil
 }
 
