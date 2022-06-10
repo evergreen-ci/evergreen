@@ -19,9 +19,6 @@ import (
 )
 
 type Communicator interface {
-	// SharedCommunicator contains operations that do not depend on the task’s
-	// runtime environment (i.e. host or container). They will only have a
-	// single non-mock implementation.
 	SharedCommunicator
 
 	// The following operations are not implemented at the base level
@@ -34,6 +31,9 @@ type Communicator interface {
 	GetAgentSetupData(context.Context) (*apimodels.AgentSetupData, error)
 }
 
+// SharedCommunicator contains operations that do not depend on the task’s
+// runtime environment (i.e. host or container). They will only have a
+// single non-mock implementation.
 type SharedCommunicator interface {
 	// Close is a method to release resources used by the communicator.
 	Close()
