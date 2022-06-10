@@ -93,7 +93,7 @@ func (s *ProjectPatchByIDSuite) TestParse() {
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
 
 	json := []byte(`{"private" : false}`)
-	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(json))
+	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(json))
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
 	err := s.rm.Parse(ctx, req)
 	s.NoError(err)
@@ -107,11 +107,11 @@ func (s *ProjectPatchByIDSuite) TestRunInValidIdentifierChange() {
 	json := []byte(`{"id": "Verboten"}`)
 	h := s.rm.(*projectIDPatchHandler)
 	h.user = &user.DBUser{Id: "me"}
-	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(json))
+	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(json))
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
 	err := s.rm.Parse(ctx, req)
 	s.Error(err)
-	s.Contains(err.Error(), "A project's id is immutable")
+	s.Contains(err.Error(), "project ID is immutable")
 }
 
 func (s *ProjectPatchByIDSuite) TestRunInvalidNonExistingId() {
@@ -119,11 +119,11 @@ func (s *ProjectPatchByIDSuite) TestRunInvalidNonExistingId() {
 	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
 	json := []byte(`{"display_name": "This is a display name"}`)
-	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/non-existent", bytes.NewBuffer(json))
+	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/non-existent", bytes.NewBuffer(json))
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "non-existent"})
 	err := s.rm.Parse(ctx, req)
 	s.Require().Error(err)
-	s.Contains(err.Error(), "error finding original project")
+	s.Contains(err.Error(), "finding original project")
 }
 
 func (s *ProjectPatchByIDSuite) TestRunValid() {
@@ -131,7 +131,7 @@ func (s *ProjectPatchByIDSuite) TestRunValid() {
 	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	json := []byte(`{"enabled": true, "revision": "my_revision", "variables": {"vars_to_delete": ["apple"]} }`)
-	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(json))
+	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(json))
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
 	err := s.rm.Parse(ctx, req)
 	s.NoError(err)
@@ -153,7 +153,7 @@ func (s *ProjectPatchByIDSuite) TestRunWithCommitQueueEnabled() {
 	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
 	jsonBody := []byte(`{"enabled": true, "commit_queue": {"enabled": true}}`)
-	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
+	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
 	err := s.rm.Parse(ctx, req)
 	s.NoError(err)
@@ -164,7 +164,7 @@ func (s *ProjectPatchByIDSuite) TestRunWithCommitQueueEnabled() {
 	s.NotNil(resp.Data())
 	s.Require().Equal(http.StatusBadRequest, resp.Status())
 	errResp := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal("cannot enable commit queue without a commit queue patch definition", errResp.Message)
+	s.Equal("cannot enable commit queue without first enabling GitHub webhooks", errResp.Message)
 }
 
 func (s *ProjectPatchByIDSuite) TestRunWithValidBbConfig() {
@@ -172,7 +172,7 @@ func (s *ProjectPatchByIDSuite) TestRunWithValidBbConfig() {
 	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
 	jsonBody := []byte(`{"enabled": true, "build_baron_settings": {"ticket_create_project": "EVG", "ticket_search_projects": ["EVG"]}}`)
-	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
+	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
 	err := s.rm.Parse(ctx, req)
 	s.NoError(err)
@@ -192,7 +192,7 @@ func (s *ProjectPatchByIDSuite) TestRunWithInvalidBbConfig() {
 	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
 	jsonBody := []byte(`{"enabled": true, "build_baron_settings": {"ticket_create_project": "EVG"}}`)
-	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
+	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
 	err := s.rm.Parse(ctx, req)
 	s.NoError(err)
@@ -211,7 +211,7 @@ func (s *ProjectPatchByIDSuite) TestGitTagVersionsEnabled() {
 	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
 	jsonBody := []byte(`{"enabled": true, "git_tag_versions_enabled": true, "aliases": [{"alias": "__git_tag", "git_tag": "my_git_tag", "variant": ".*", "task": ".*", "tag": ".*"}]}`)
-	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
+	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
 	err := s.rm.Parse(ctx, req)
 	s.NoError(err)
@@ -228,7 +228,7 @@ func (s *ProjectPatchByIDSuite) TestGitTagVersionsEnabled() {
 	s.NoError(repoRef.Add(nil))
 
 	jsonBody = []byte(`{"enabled": true, "git_tag_versions_enabled": true, "aliases": [{"alias": "__git_tag", "git_tag": "my_git_tag", "variant": ".*", "task": ".*", "tag": ".*"}]}`)
-	req, _ = http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
+	req, _ = http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
 	err = s.rm.Parse(ctx, req)
 	s.NoError(err)
@@ -254,7 +254,7 @@ func (s *ProjectPatchByIDSuite) TestFilesIgnoredFromCache() {
 	h.user = &user.DBUser{Id: "me"}
 
 	jsonBody := []byte(`{"files_ignored_from_cache": []}`)
-	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
+	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
 	err := s.rm.Parse(ctx, req)
 	s.NoError(err)
@@ -279,7 +279,7 @@ func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
 	h.user = &user.DBUser{Id: "me"}
 
 	jsonBody := []byte(`{"patch_trigger_aliases": [{"child_project_identifier": "child", "task_specifiers": [ {"task_regex": ".*", "variant_regex": ".*" }]}]}`)
-	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
+	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
 	s.NoError(s.rm.Parse(ctx, req))
 	s.NotNil(s.rm.(*projectIDPatchHandler).user)
@@ -306,7 +306,7 @@ func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
 	s.Equal(p.PatchTriggerAliases[0].ChildProject, "firstborn") // saves ID
 
 	jsonBody = []byte(`{"patch_trigger_aliases": []}`) // empty list isn't nil
-	req, _ = http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
+	req, _ = http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
 	s.NoError(s.rm.Parse(ctx, req))
 	s.NotNil(s.rm.(*projectIDPatchHandler).user)
@@ -322,7 +322,7 @@ func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
 	s.Len(p.PatchTriggerAliases, 0)
 
 	jsonBody = []byte(`{"patch_trigger_aliases": null}`)
-	req, _ = http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
+	req, _ = http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
 	s.NoError(s.rm.Parse(ctx, req))
 	s.NotNil(s.rm.(*projectIDPatchHandler).user)
@@ -380,7 +380,7 @@ func (s *ProjectPutSuite) TestParse() {
 				"notify_on_failure": true
 		}`)
 
-	req, _ := http.NewRequest("PUT", "http://example.com/api/rest/v2/projects/nutsandgum", bytes.NewBuffer(json))
+	req, _ := http.NewRequest(http.MethodPut, "http://example.com/api/rest/v2/projects/nutsandgum", bytes.NewBuffer(json))
 	err := s.rm.Parse(ctx, req)
 	s.NoError(err)
 }
@@ -618,19 +618,23 @@ func (s *ProjectGetSuite) TestGetRecentVersions() {
 	defer cancel()
 
 	// valid request with defaults
-	request, err := http.NewRequest("GET", "/projects/projectA/recent_versions", bytes.NewReader(nil))
+	request, err := http.NewRequest(http.MethodGet, "/projects/projectA/recent_versions", bytes.NewReader(nil))
 	s.NoError(err)
 	s.NoError(getVersions.Parse(ctx, request))
 
 	// invalid limit
-	request, err = http.NewRequest("GET", "/projects/projectA/recent_versions?limit=asdf", bytes.NewReader(nil))
+	request, err = http.NewRequest(http.MethodGet, "/projects/projectA/recent_versions?limit=asdf", bytes.NewReader(nil))
 	s.NoError(err)
-	s.EqualError(getVersions.Parse(ctx, request), "400 (Bad Request): Invalid limit")
+	err = getVersions.Parse(ctx, request)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "invalid limit")
 
 	// invalid offset
-	request, err = http.NewRequest("GET", "/projects/projectA/recent_versions?offset=idk", bytes.NewReader(nil))
+	request, err = http.NewRequest(http.MethodGet, "/projects/projectA/recent_versions?offset=idk", bytes.NewReader(nil))
 	s.NoError(err)
-	s.EqualError(getVersions.Parse(ctx, request), "400 (Bad Request): Invalid offset")
+	err = getVersions.Parse(ctx, request)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "invalid offset")
 }
 
 func getTestVar() *serviceModel.ProjectVars {
@@ -703,13 +707,17 @@ func TestGetProjectTasks(t *testing.T) {
 	assert := assert.New(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	assert.NoError(db.ClearCollections(task.Collection, serviceModel.ProjectRefCollection))
+	assert.NoError(db.ClearCollections(task.Collection, serviceModel.ProjectRefCollection, serviceModel.RepositoriesCollection))
 	const projectId = "proj"
 	project := serviceModel.ProjectRef{
 		Id:         projectId,
 		Identifier: "p1",
 	}
 	assert.NoError(project.Insert())
+	assert.NoError(db.Insert(serviceModel.RepositoriesCollection, serviceModel.Repository{
+		Project:             projectId,
+		RevisionOrderNumber: 20,
+	}))
 	for i := 0; i <= 20; i++ {
 		myTask := task.Task{
 			Id:                  fmt.Sprintf("t%d", i),
@@ -941,7 +949,7 @@ func TestAttachProjectToRepo(t *testing.T) {
 	}
 	assert.NoError(t, projVars.Insert())
 
-	req, _ := http.NewRequest("POST", "http://example.com/api/rest/v2/projects/project1/attach_to_repo", nil)
+	req, _ := http.NewRequest(http.MethodPost, "http://example.com/api/rest/v2/projects/project1/attach_to_repo", nil)
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "project1"})
 
 	h := attachProjectToRepoHandler{}
@@ -1015,7 +1023,7 @@ func TestDetachProjectFromRepo(t *testing.T) {
 	// assert that user _did_ have the right roles
 	assert.Contains(t, u.Roles(), serviceModel.GetRepoAdminRole(repoRef.Id))
 
-	req, _ := http.NewRequest("POST", "http://example.com/api/rest/v2/projects/project1/detach_from_repo", nil)
+	req, _ := http.NewRequest(http.MethodPost, "http://example.com/api/rest/v2/projects/project1/detach_from_repo", nil)
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "project1"})
 
 	h := detachProjectFromRepoHandler{}
@@ -1086,7 +1094,7 @@ func (s *ProjectPutRotateSuite) TestRotateProjectVars() {
 				"replacement": "brown"
 		}`)
 
-	req, _ := http.NewRequest("PUT", "http://example.com/api/rest/v2/projects/variables/rotate", bytes.NewBuffer(dryRunTrue))
+	req, _ := http.NewRequest(http.MethodPut, "http://example.com/api/rest/v2/projects/variables/rotate", bytes.NewBuffer(dryRunTrue))
 	err := s.rm.Parse(ctx, req)
 	s.NoError(err)
 	resp := s.rm.Run(ctx)
@@ -1099,7 +1107,7 @@ func (s *ProjectPutRotateSuite) TestRotateProjectVars() {
 	s.Contains(respMap["dimoxinil"], "lemon")
 	s.Equal(resp.Status(), http.StatusOK)
 
-	req, _ = http.NewRequest("PUT", "http://example.com/api/rest/v2/projects/variables/rotate", bytes.NewBuffer(dryRunFalse))
+	req, _ = http.NewRequest(http.MethodPut, "http://example.com/api/rest/v2/projects/variables/rotate", bytes.NewBuffer(dryRunFalse))
 	err = s.rm.Parse(ctx, req)
 	s.NoError(err)
 	resp = s.rm.Run(ctx)

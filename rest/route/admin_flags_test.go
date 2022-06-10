@@ -36,7 +36,7 @@ func TestAdminFlagsRouteSuite(t *testing.T) {
 	jsonBody, err := json.Marshal(&body)
 	assert.NoError(err)
 	buffer := bytes.NewBuffer(jsonBody)
-	request, err := http.NewRequest("POST", "/admin/service_flags", buffer)
+	request, err := http.NewRequest(http.MethodPost, "/admin/service_flags", buffer)
 	assert.NoError(err)
 	assert.NoError(postHandler.Parse(ctx, request))
 	h := postHandler.(*flagsPostHandler)

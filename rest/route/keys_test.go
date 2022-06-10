@@ -144,7 +144,7 @@ func TestKeyValidationFailsWithInvalidKeys(t *testing.T) {
 
 	err3 := validateKeyValue("ssh-rsa notvalidbase64")
 	assert.Error(err3)
-	assert.Equal("invalid public key: key contents invalid", err3.Error())
+	assert.Equal("public key contents are invalid", err3.Error())
 }
 
 func TestKeyValidation(t *testing.T) {

@@ -2,9 +2,7 @@ package route
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"strconv"
 
@@ -42,20 +40,14 @@ func (tgh *taskGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	execution := r.URL.Query().Get("execution")
 
 	if execution != "" && tgh.fetchAllExecutions {
-		return gimlet.ErrorResponse{
-			Message:    "fetch_all_executions=true cannot be combined with execution={task_execution}",
-			StatusCode: http.StatusBadRequest,
-		}
+		return errors.New("cannot both fetch all executions and also fetch a specific execution")
 	}
 
 	if execution != "" {
 		var err error
 		tgh.execution, err = strconv.Atoi(execution)
 		if err != nil {
-			return gimlet.ErrorResponse{
-				Message:    fmt.Sprintf("Invalid execution: '%s'", err.Error()),
-				StatusCode: http.StatusBadRequest,
-			}
+			return errors.Wrap(err, "invalid execution")
 		}
 	} else {
 		// since an int in go defaults to 0, we won't know if the user
@@ -77,12 +69,12 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 		foundTask, err = task.FindOneIdAndExecution(tgh.taskID, tgh.execution)
 	}
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", tgh.taskID))
 	}
 	if foundTask == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("task with id %s not found", tgh.taskID),
+			Message:    fmt.Sprintf("task '%s' not found", tgh.taskID),
 		})
 	}
 
@@ -94,24 +86,24 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 		LogURL:                   tgh.url,
 	})
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting task '%s' to API model", tgh.taskID))
 	}
 
 	if tgh.fetchAllExecutions {
 		var tasks []task.Task
 		tasks, err = task.FindOldWithDisplayTasks(task.ByOldTaskID(tgh.taskID))
 		if err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding archived executions for task '%s'", tgh.taskID))
 		}
 
 		if err = taskModel.BuildPreviousExecutions(tasks, tgh.url); err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding previous task executions to API model for task '%s'", tgh.taskID))
 		}
 	}
 
 	start, err := dbModel.GetEstimatedStartTime(*foundTask)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error getting estimated start time"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting estimated start time for task '%s'", tgh.taskID))
 	}
 	taskModel.EstimatedStart = model.NewAPIDuration(start)
 
@@ -141,38 +133,17 @@ func (tep *taskExecutionPatchHandler) Factory() gimlet.RouteHandler {
 // It fetches the task and user from the request context and fetches the changes
 // in activation and priority from the request body.
 func (tep *taskExecutionPatchHandler) Parse(ctx context.Context, r *http.Request) error {
-	body := utility.NewRequestReader(r)
-	defer body.Close()
-
-	decoder := json.NewDecoder(body)
-	if err := decoder.Decode(tep); err != nil {
-		if err == io.EOF {
-			return gimlet.ErrorResponse{
-				Message:    "No request body sent",
-				StatusCode: http.StatusBadRequest,
-			}
-		}
-		if e, ok := err.(*json.UnmarshalTypeError); ok {
-			return gimlet.ErrorResponse{
-				Message: fmt.Sprintf("Incorrect type given, expecting '%s' "+
-					"but receieved '%s'",
-					e.Type, e.Value),
-				StatusCode: http.StatusBadRequest,
-			}
-		}
-		return errors.Wrap(err, "JSON unmarshal error")
+	if err := utility.ReadJSON(r.Body, tep); err != nil {
+		return errors.Wrap(err, "reading task modification options from JSON request body")
 	}
 
 	if tep.Activated == nil && tep.Priority == nil {
-		return gimlet.ErrorResponse{
-			Message:    "Must set 'activated' or 'priority'",
-			StatusCode: http.StatusBadRequest,
-		}
+		return errors.New("must set activated or priority")
 	}
 	projCtx := MustHaveProjectContext(ctx)
 	if projCtx.Task == nil {
 		return gimlet.ErrorResponse{
-			Message:    "Task not found",
+			Message:    "task not found",
 			StatusCode: http.StatusNotFound,
 		}
 	}
@@ -197,30 +168,30 @@ func (tep *taskExecutionPatchHandler) Run(ctx context.Context) gimlet.Responder 
 			}
 			if !tep.user.HasPermission(requiredPermission) {
 				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-					Message: fmt.Sprintf("Insufficient privilege to set priority to %d, "+
+					Message: fmt.Sprintf("insufficient privilege to set priority to %d, "+
 						"non-superusers can only set priority at or below %d", priority, evergreen.MaxTaskPriority),
 					StatusCode: http.StatusUnauthorized,
 				})
 			}
 		}
 		if err := dbModel.SetTaskPriority(*tep.task, priority, tep.user.Username()); err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting priority for task '%s'", tep.task.Id))
 		}
 	}
 	if tep.Activated != nil {
 		activated := *tep.Activated
 		if err := dbModel.SetActiveStateById(tep.task.Id, tep.user.Username(), activated); err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting activation state for task '%s'", tep.task.Id))
 		}
 	}
 	refreshedTask, err := task.FindOneId(tep.task.Id)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", tep.task.Id))
 	}
 	if refreshedTask == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("task with id %s not found", tep.task.Id),
+			Message:    fmt.Sprintf("task '%s' not found", tep.task.Id),
 		})
 	}
 
@@ -230,7 +201,7 @@ func (tep *taskExecutionPatchHandler) Run(ctx context.Context) gimlet.Responder 
 		IncludeAMI:               true,
 	})
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting task '%s' to API model", tep.task.Id))
 	}
 
 	return gimlet.NewJSONResponse(taskModel)
@@ -260,18 +231,18 @@ func (rh *displayTaskGetHandler) Parse(ctx context.Context, r *http.Request) err
 func (rh *displayTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 	t, err := task.FindOneId(rh.taskID)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding task with ID %s", rh.taskID))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", rh.taskID))
 	}
 	if t == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("task with id %s not found", rh.taskID),
+			Message:    fmt.Sprintf("task '%s' not found", rh.taskID),
 		})
 	}
 
 	dt, err := t.GetDisplayTask()
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding display task for task %s", rh.taskID))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding display task for task '%s'", rh.taskID))
 	}
 
 	info := &apimodels.DisplayTaskInfo{}
@@ -307,12 +278,12 @@ func (rh *taskSyncPathGetHandler) Parse(ctx context.Context, r *http.Request) er
 func (rh *taskSyncPathGetHandler) Run(ctx context.Context) gimlet.Responder {
 	t, err := task.FindOneId(rh.taskID)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "could not find task with ID '%s'", rh.taskID))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", rh.taskID))
 	}
 	if t == nil {
 		return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("task with id %s not found", rh.taskID),
+			Message:    fmt.Sprintf("task '%s' not found", rh.taskID),
 		})
 	}
 	return gimlet.NewTextResponse(t.S3Path(t.BuildVariant, t.DisplayName))
@@ -337,7 +308,7 @@ func (rh *taskSetHasCedarResultsHandler) Parse(ctx context.Context, r *http.Requ
 	rh.taskID = gimlet.GetVars(r)["task_id"]
 
 	if err := gimlet.GetJSON(r.Body, &rh.info); err != nil {
-		return errors.Wrap(err, "unmarshaling the request body")
+		return errors.Wrap(err, "reading Cedar test results info from JSON request body")
 	}
 
 	return nil
@@ -346,17 +317,17 @@ func (rh *taskSetHasCedarResultsHandler) Parse(ctx context.Context, r *http.Requ
 func (rh *taskSetHasCedarResultsHandler) Run(ctx context.Context) gimlet.Responder {
 	t, err := task.FindOneId(rh.taskID)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "could not find task with ID '%s'", rh.taskID))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", rh.taskID))
 	}
 	if t == nil {
 		return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("task with id %s not found", rh.taskID),
+			Message:    fmt.Sprintf("task '%s' not found", rh.taskID),
 		})
 	}
 
 	if err = t.SetHasCedarResults(true, rh.info.Failed); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "failed to set HasCedarResults flag for task with ID '%s'", rh.taskID))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting HasCedarResults flag for task '%s'", rh.taskID))
 	}
 	return gimlet.NewTextResponse("HasCedarResults flag set in task")
 }

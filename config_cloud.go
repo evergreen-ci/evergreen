@@ -146,6 +146,8 @@ type ECSConfig struct {
 	AWSVPC AWSVPCConfig `bson:"awsvpc" json:"awsvpc" yaml:"awsvpc"`
 	// Clusters specify the configuration of each particular ECS cluster.
 	Clusters []ECSClusterConfig `bson:"clusters" json:"clusters" yaml:"clusters"`
+	// CapacityProviders specify the available capacity provider configurations.
+	CapacityProviders []ECSCapacityProvider `bson:"capacity_providers" json:"capacity_providers" yaml:"capacity_providers"`
 }
 
 // AWSVPCConfig represents configuration when using AWSVPC networking in ECS.
@@ -160,6 +162,9 @@ func (c *ECSConfig) Validate() error {
 	for _, clusterConf := range c.Clusters {
 		catcher.Add(clusterConf.Validate())
 	}
+	for i, cp := range c.CapacityProviders {
+		catcher.Wrapf(cp.Validate(), "invalid capacity provider at index %d", i)
+	}
 	return catcher.Resolve()
 }
 
@@ -168,8 +173,64 @@ func (c *ECSConfig) Validate() error {
 type ECSClusterConfig struct {
 	// Name is the ECS cluster name.
 	Name string `bson:"name" json:"name" yaml:"name"`
-	// Platform is the platform supported by the cluster.
-	Platform ECSClusterPlatform `bson:"platform" json:"platform" yaml:"platform"`
+	// OS is the OS of the container instances supported by the cluster.
+	OS ECSOS `bson:"os" json:"os" yaml:"os"`
+}
+
+// ECSOS represents an OS that can run containers in ECS.
+type ECSOS string
+
+const (
+	ECSOSLinux   = "linux"
+	ECSOSWindows = "windows"
+)
+
+func (p ECSOS) Validate() error {
+	switch p {
+	case ECSOSLinux, ECSOSWindows:
+		return nil
+	default:
+		return errors.Errorf("unrecognized ECS OS '%s'", p)
+	}
+}
+
+// ECSCapacityProvider represents a capacity provider in ECS.
+type ECSCapacityProvider struct {
+	// Name is the capacity provider name.
+	Name string `bson:"name" json:"name" yaml:"name"`
+	// OS is the kind of OS that the container instances in this capacity
+	// provider can run.
+	OS ECSOS `bson:"os" json:"os" yaml:"os"`
+	// Arch is the type of CPU architecture that the container instances in this
+	// capacity provider can run.
+	Arch ECSArch `bson:"arch" json:"arch" yaml:"arch"`
+}
+
+// Validate checks that the required settings are given for the capacity
+// provider.
+func (p *ECSCapacityProvider) Validate() error {
+	catcher := grip.NewBasicCatcher()
+	catcher.NewWhen(p.Name == "", "must provide a capacity provider name")
+	catcher.Add(p.OS.Validate())
+	catcher.Add(p.Arch.Validate())
+	return catcher.Resolve()
+}
+
+// ECSArch represents a CPU architecture that can run containers in ECS.
+type ECSArch string
+
+const (
+	ECSArchAMD64 = "amd64"
+	ECSArchARM64 = "arm64"
+)
+
+func (a ECSArch) Validate() error {
+	switch a {
+	case ECSArchAMD64, ECSArchARM64:
+		return nil
+	default:
+		return errors.Errorf("unrecognized ECS capacity provider arch '%s'", a)
+	}
 }
 
 // Validate checks that the ECS cluster configuration has the required fields
@@ -177,7 +238,7 @@ type ECSClusterConfig struct {
 func (c *ECSClusterConfig) Validate() error {
 	catcher := grip.NewBasicCatcher()
 	catcher.NewWhen(c.Name == "", "must specify a cluster name")
-	catcher.Wrap(c.Platform.Validate(), "invalid platform")
+	catcher.Wrap(c.OS.Validate(), "invalid OS")
 	return catcher.Resolve()
 }
 

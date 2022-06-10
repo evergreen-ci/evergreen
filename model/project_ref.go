@@ -404,6 +404,11 @@ const (
 	ProjectPagePluginSection         = "PLUGINS"
 )
 
+const (
+	tasksByProjectQueryMaxTime   = 90 * time.Second
+	tasksByProjectMaxNumVersions = 1000
+)
+
 var adminPermissions = gimlet.Permissions{
 	evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
 	evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
@@ -1106,20 +1111,31 @@ func GetTasksWithOptions(projectName string, taskName string, opts GetProjectTas
 		task.DisplayNameKey: taskName,
 		task.StatusKey:      bson.M{"$in": finishedStatuses},
 	}
-	if opts.StartAt > 0 {
-		match[task.RevisionOrderNumberKey] = bson.M{"$lte": opts.StartAt}
-	}
 	if opts.BuildVariant != "" {
 		match[task.BuildVariantKey] = opts.BuildVariant
 	}
-	pipeline := []bson.M{bson.M{"$match": match}}
+	startingRevision := opts.StartAt
+	if startingRevision == 0 {
+		repo, err := FindRepository(projectId)
+		if err != nil {
+			return nil, err
+		}
+		if repo == nil {
+			return nil, errors.Errorf("finding repository '%s'", projectId)
+		}
+		startingRevision = repo.RevisionOrderNumber
+	}
+	match["$and"] = []bson.M{
+		{task.RevisionOrderNumberKey: bson.M{"$lte": startingRevision}},
+		{task.RevisionOrderNumberKey: bson.M{"$gte": startingRevision - tasksByProjectMaxNumVersions}},
+	}
+	pipeline := []bson.M{{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{task.RevisionOrderNumberKey: -1}})
 	pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
 
 	res := []task.Task{}
-
-	if err := db.Aggregate(task.Collection, pipeline, &res); err != nil {
-		return nil, errors.Wrapf(err, "error aggregating tasks")
+	if _, err = db.AggregateWithMaxTime(task.Collection, pipeline, &res, tasksByProjectQueryMaxTime); err != nil {
+		return nil, errors.Wrapf(err, "aggregating tasks")
 	}
 	return res, nil
 }

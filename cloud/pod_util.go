@@ -288,12 +288,12 @@ func exportECSPodExecutionOptions(ecsConfig evergreen.ECSConfig, containerOpts p
 	opts.SetPlacementOptions(*placementOpts)
 
 	for _, cluster := range ecsConfig.Clusters {
-		if string(containerOpts.OS) == string(cluster.Platform) {
+		if string(containerOpts.OS) == string(cluster.OS) {
 			return opts.SetCluster(cluster.Name), nil
 		}
 	}
 
-	return nil, errors.Errorf("pod OS ('%s') did not match any ECS cluster platforms", string(containerOpts.OS))
+	return nil, errors.Errorf("pod OS '%s' did not match any ECS cluster OS", string(containerOpts.OS))
 }
 
 // podAWSOptions creates options to initialize an AWS client for pod management.

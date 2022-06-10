@@ -3,7 +3,6 @@ package route
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -51,7 +50,7 @@ func (h *annotationsByBuildHandler) Parse(ctx context.Context, r *http.Request) 
 func (h *annotationsByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 	taskIds, err := task.FindAllTaskIDsFromBuild(h.buildId)
 	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "error finding task IDs for build '%s'", h.buildId))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding task IDs for build '%s'", h.buildId))
 	}
 
 	return getAPIAnnotationsForTaskIds(taskIds, h.fetchAllExecutions)
@@ -90,7 +89,7 @@ func (h *annotationsByVersionHandler) Parse(ctx context.Context, r *http.Request
 func (h *annotationsByVersionHandler) Run(ctx context.Context) gimlet.Responder {
 	taskIds, err := task.FindAllTaskIDsFromVersion(h.versionId)
 	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "error finding task IDs for version '%s'", h.versionId))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding task IDs for version '%s'", h.versionId))
 	}
 	return getAPIAnnotationsForTaskIds(taskIds, h.fetchAllExecutions)
 }
@@ -98,7 +97,7 @@ func (h *annotationsByVersionHandler) Run(ctx context.Context) gimlet.Responder 
 func getAPIAnnotationsForTaskIds(taskIds []string, allExecutions bool) gimlet.Responder {
 	allAnnotations, err := annotations.FindByTaskIds(taskIds)
 	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "error finding task annotations"))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "finding task annotations"))
 	}
 	annotationsToReturn := allAnnotations
 	if !allExecutions {
@@ -136,10 +135,7 @@ func (h *annotationByTaskGetHandler) Parse(ctx context.Context, r *http.Request)
 
 	h.taskId = gimlet.GetVars(r)["task_id"]
 	if h.taskId == "" {
-		return gimlet.ErrorResponse{
-			Message:    "task ID cannot be empty",
-			StatusCode: http.StatusBadRequest,
-		}
+		return errors.New("task ID cannot be empty")
 	}
 
 	vals := r.URL.Query()
@@ -147,19 +143,13 @@ func (h *annotationByTaskGetHandler) Parse(ctx context.Context, r *http.Request)
 	execution := vals.Get("execution")
 
 	if execution != "" && h.fetchAllExecutions {
-		return gimlet.ErrorResponse{
-			Message:    "fetchAllExecutions=true cannot be combined with execution={execution}",
-			StatusCode: http.StatusBadRequest,
-		}
+		return errors.New("cannot both fetch all executions and request a specific execution")
 	}
 
 	if execution != "" {
 		h.execution, err = strconv.Atoi(execution)
 		if err != nil {
-			return gimlet.ErrorResponse{
-				Message:    fmt.Sprintf("Invalid execution: '%s'", err.Error()),
-				StatusCode: http.StatusBadRequest,
-			}
+			return errors.Wrap(err, "parsing task execution number")
 		}
 	} else {
 		// since an int in go defaults to 0, we won't know if the user
@@ -175,7 +165,7 @@ func (h *annotationByTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if h.execution != -1 {
 		a, err := annotations.FindOneByTaskIdAndExecution(h.taskId, h.execution)
 		if err != nil {
-			return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "error finding task annotation"))
+			return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding task annotation for execution %d of task '%s'", h.execution, h.taskId))
 		}
 		if a == nil {
 			return gimlet.NewJSONResponse([]restModel.APITaskAnnotation{})
@@ -186,7 +176,7 @@ func (h *annotationByTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 	allAnnotations, err := annotations.FindByTaskId(h.taskId)
 	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "error finding task annotations"))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding task annotation for task '%s'", h.taskId))
 	}
 	// get the latest execution
 	annotationsToReturn := allAnnotations
@@ -230,29 +220,23 @@ func (h *bulkPatchAnnotationHandler) Parse(ctx context.Context, r *http.Request)
 	defer body.Close()
 	err = json.NewDecoder(body).Decode(&h.opts)
 	if err != nil {
-		return gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("API error while unmarshalling JSON: '%s'", err.Error()),
-			StatusCode: http.StatusBadRequest,
-		}
+		return errors.Wrap(err, "reading bulk annotation creation options from JSON request body")
 	}
 	for _, update := range h.opts.TaskUpdates {
 		for _, t := range update.TaskData {
 			// check if the task exists
 			foundTask, err := task.FindOneIdAndExecution(t.TaskId, t.Execution)
 			if err != nil {
-				return errors.Wrapf(err, "finding task with id '%s' and execution '%d'", t.TaskId, t.Execution)
+				return gimlet.ErrorResponse{
+					StatusCode: http.StatusInternalServerError,
+					Message:    errors.Wrapf(err, "finding task '%s' with execution %d", t.TaskId, t.Execution).Error(),
+				}
 			}
 			if foundTask == nil {
-				return gimlet.ErrorResponse{
-					Message:    fmt.Sprintf("the task '%s' execution '%d' does not exist", t.TaskId, t.Execution),
-					StatusCode: http.StatusBadRequest,
-				}
+				return errors.Errorf("task '%s' with execution %d not found", t.TaskId, t.Execution)
 			}
 			if !evergreen.IsFailedTaskStatus(foundTask.Status) {
-				return gimlet.ErrorResponse{
-					Message:    fmt.Sprintf("cannot create annotation when task status is '%s'", foundTask.Status),
-					StatusCode: http.StatusBadRequest,
-				}
+				return errors.Errorf("cannot create annotation when task status is '%s'", foundTask.Status)
 			}
 		}
 	}
@@ -263,14 +247,10 @@ func (h *bulkPatchAnnotationHandler) Parse(ctx context.Context, r *http.Request)
 
 func (h *bulkPatchAnnotationHandler) Run(ctx context.Context) gimlet.Responder {
 	if err := annotations.InsertManyAnnotations(h.opts.TaskUpdates); err != nil {
-		return gimlet.NewJSONInternalErrorResponse(err)
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "bulk inserting annotations"))
 	}
 
-	responder := gimlet.NewJSONResponse(struct{}{})
-	if err := responder.SetStatus(http.StatusOK); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Cannot set HTTP status code to %d", http.StatusOK))
-	}
-	return responder
+	return gimlet.NewJSONResponse(struct{}{})
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -295,34 +275,22 @@ func annotationByTaskPutOrPatchParser(ctx context.Context, r *http.Request) (str
 	defer body.Close()
 	err = json.NewDecoder(body).Decode(&annotation)
 	if err != nil {
-		return "", nil, gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("API error while unmarshalling JSON: '%s'", err.Error()),
-			StatusCode: http.StatusBadRequest,
-		}
+		return "", nil, errors.Wrap(err, "reading annotation from JSON request body")
 	}
 
 	if taskExecutionsAsString != "" {
 		taskExecution, err := strconv.Atoi(taskExecutionsAsString)
 		if err != nil {
-			return "", nil, gimlet.ErrorResponse{
-				Message:    "cannot convert execution to integer value",
-				StatusCode: http.StatusBadRequest,
-			}
+			return "", nil, errors.Wrap(err, "converting execution to integer value")
 		}
 
 		if annotation.TaskExecution == nil {
 			annotation.TaskExecution = &taskExecution
 		} else if *annotation.TaskExecution != taskExecution {
-			return "", nil, gimlet.ErrorResponse{
-				Message:    "Task execution must equal the task execution specified in the annotation",
-				StatusCode: http.StatusBadRequest,
-			}
+			return "", nil, errors.Errorf("task execution number from query parameter (%d) must equal the task execution number specified in the annotation (%d)", taskExecution, *annotation.TaskExecution)
 		}
 	} else if annotation.TaskExecution == nil {
-		return "", nil, gimlet.ErrorResponse{
-			Message:    "task execution must be specified in the url or request body",
-			StatusCode: http.StatusBadRequest,
-		}
+		return "", nil, errors.New("task execution must be specified in the request query parameter or the request body's annotation")
 	}
 
 	// check if the task exists
@@ -331,35 +299,23 @@ func annotationByTaskPutOrPatchParser(ctx context.Context, r *http.Request) (str
 		return "", nil, errors.Wrap(err, "finding task")
 	}
 	if t == nil {
-		return "", nil, gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("the task '%s' does not exist", taskId),
-			StatusCode: http.StatusBadRequest,
-		}
+		return "", nil, errors.Errorf("task '%s' not found", taskId)
 	}
 	if !evergreen.IsFailedTaskStatus(t.Status) {
-		return "", nil, gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("cannot create annotation when task status is '%s'", t.Status),
-			StatusCode: http.StatusBadRequest,
-		}
+		return "", nil, errors.Errorf("cannot create annotation when task status is '%s'", t.Status)
 	}
 
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(restModel.ValidateIssues(annotation.Issues))
 	catcher.Add(restModel.ValidateIssues(annotation.SuspectedIssues))
 	if catcher.HasErrors() {
-		return "", nil, gimlet.ErrorResponse{
-			Message:    catcher.Resolve().Error(),
-			StatusCode: http.StatusBadRequest,
-		}
+		return "", nil, errors.Wrap(catcher.Resolve(), "invalid issue")
 	}
 
 	if annotation.TaskId == nil {
 		annotation.TaskId = &taskId
 	} else if *annotation.TaskId != taskId {
-		return "", nil, gimlet.ErrorResponse{
-			Message:    "TaskID must equal the taskId specified in the annotation",
-			StatusCode: http.StatusBadRequest,
-		}
+		return "", nil, errors.Errorf("task ID parameter '%s' must equal the task ID specified in the annotation '%s'", taskId, *annotation.TaskId)
 	}
 	return taskId, annotation, nil
 }
@@ -399,14 +355,10 @@ func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request)
 func (h *annotationByTaskPutHandler) Run(ctx context.Context) gimlet.Responder {
 	err := annotations.UpdateAnnotation(restModel.APITaskAnnotationToService(*h.annotation), h.user.DisplayName())
 	if err != nil {
-		gimlet.NewJSONInternalErrorResponse(err)
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "updating annotation"))
 	}
 
-	responder := gimlet.NewJSONResponse(struct{}{})
-	if err = responder.SetStatus(http.StatusOK); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Cannot set HTTP status code to %d", http.StatusOK))
-	}
-	return responder
+	return gimlet.NewJSONResponse(struct{}{})
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -449,11 +401,7 @@ func (h *annotationByTaskPatchHandler) Run(ctx context.Context) gimlet.Responder
 		gimlet.NewJSONInternalErrorResponse(err)
 	}
 
-	responder := gimlet.NewJSONResponse(struct{}{})
-	if err = responder.SetStatus(http.StatusOK); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Cannot set HTTP status code to %d", http.StatusOK))
-	}
-	return responder
+	return gimlet.NewJSONResponse(struct{}{})
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -482,57 +430,37 @@ func (h *createdTicketByTaskPutHandler) Parse(ctx context.Context, r *http.Reque
 	var err error
 	h.taskId = gimlet.GetVars(r)["task_id"]
 	if h.taskId == "" {
-		return gimlet.ErrorResponse{
-			Message:    "task ID cannot be empty",
-			StatusCode: http.StatusBadRequest,
-		}
+		return errors.New("task ID cannot be empty")
 	}
 	// for now, tickets will be created for a specific task execution only
 	// and will not be visible on other executions
 	executionString := r.URL.Query().Get("execution")
 	if executionString == "" {
-		return gimlet.ErrorResponse{
-			Message:    "the task execution must be specified",
-			StatusCode: http.StatusBadRequest,
-		}
+		return errors.New("task execution must be specified")
 	}
 	execution, err := strconv.Atoi(executionString)
 	if err != nil {
-		return gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("cannot convert '%s' to int: '%s'", executionString, err.Error()),
-			StatusCode: http.StatusBadRequest,
-		}
+		return errors.Wrap(err, "parsing task execution")
 	}
 	h.execution = execution
 
-	// check if the task exists
 	t, err := task.FindOneId(h.taskId)
 	if err != nil {
-		return errors.Wrap(err, "error finding task")
+		return errors.Wrapf(err, "finding task '%s'", h.taskId)
 	}
 	if t == nil {
-		return gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("the task '%s' does not exist", h.taskId),
-			StatusCode: http.StatusBadRequest,
-		}
+		return errors.Errorf("task '%s' not found", h.taskId)
 	}
 
 	body := utility.NewRequestReader(r)
 	defer body.Close()
 	err = json.NewDecoder(body).Decode(&h.ticket)
 	if err != nil {
-		return gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("API error while unmarshalling JSON: '%s'", err.Error()),
-			StatusCode: http.StatusBadRequest,
-		}
+		return errors.Wrap(err, "unmarshalling ticket from JSON request body")
 	}
 
-	//validate the url
 	if err = util.CheckURL(utility.FromStringPtr(h.ticket.URL)); err != nil {
-		return gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("the url is not valid: '%s' ", err.Error()),
-			StatusCode: http.StatusBadRequest,
-		}
+		return errors.Wrap(err, "invalid ticket URL")
 	}
 
 	u := MustHaveUser(ctx)
@@ -543,12 +471,8 @@ func (h *createdTicketByTaskPutHandler) Parse(ctx context.Context, r *http.Reque
 func (h *createdTicketByTaskPutHandler) Run(ctx context.Context) gimlet.Responder {
 	err := annotations.AddCreatedTicket(h.taskId, h.execution, *restModel.APIIssueLinkToService(*h.ticket), h.user.DisplayName())
 	if err != nil {
-		gimlet.NewJSONInternalErrorResponse(err)
+		return gimlet.NewJSONInternalErrorResponse(err)
 	}
 
-	responder := gimlet.NewJSONResponse(struct{}{})
-	if err = responder.SetStatus(http.StatusOK); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Cannot set HTTP status code to %d", http.StatusOK))
-	}
-	return responder
+	return gimlet.NewJSONResponse(struct{}{})
 }
