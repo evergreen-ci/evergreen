@@ -79,15 +79,26 @@ func (j *collectHostIdleDataJob) Run(ctx context.Context) {
 
 	if j.host == nil {
 		j.host, err = host.FindOneId(j.HostID)
-		j.AddError(err)
+		if err != nil {
+			j.AddError(errors.Wrapf(err, "finding host '%s'", j.HostID))
+			return
+		}
 		if j.host == nil {
-			j.AddError(errors.Errorf("unable to retrieve host %s", j.HostID))
+			j.AddError(errors.Errorf("host '%s' not found", j.HostID))
+			return
 		}
 	}
 
 	if j.task == nil && j.TaskID != "" {
 		j.task, err = task.FindOneId(j.TaskID)
-		j.AddError(err)
+		if err != nil {
+			j.AddError(errors.Wrapf(err, "finding task '%s'", j.TaskID))
+			return
+		}
+		if j.task == nil {
+			j.AddError(errors.Errorf("task '%s' not found", j.TaskID))
+			return
+		}
 	}
 
 	if j.HasErrors() {

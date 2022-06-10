@@ -83,7 +83,7 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 	// Check for degraded mode flag.
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
-		j.AddError(errors.Wrap(err, "error retrieving service flags"))
+		j.AddError(errors.Wrap(err, "retrieving service flags"))
 		return
 	}
 	if flags.CacheStatsJobDisabled {
@@ -95,7 +95,7 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 	timingMsg["status_check"] = reportTiming(func() {
 		// Lookup last sync date for project
 		statsStatus, err = stats.GetStatsStatus(j.ProjectID)
-		j.AddError(errors.Wrap(err, "error retrieving last sync date"))
+		j.AddError(errors.Wrap(err, "retrieving last sync date"))
 	}).Seconds()
 	if j.HasErrors() {
 		return
@@ -104,7 +104,7 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 	var tasksToIgnore []*regexp.Regexp
 	timingMsg["tasks_to_ignore_lookup"] = reportTiming(func() {
 		tasksToIgnore, err = getTasksToIgnore(j.ProjectID)
-		j.AddError(errors.Wrap(err, "error retrieving project settings"))
+		j.AddError(errors.Wrap(err, "getting tasks to ignore"))
 	}).Seconds()
 	if j.HasErrors() {
 		return
@@ -133,7 +133,7 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 			Start:      syncFromTime,
 			End:        syncToTime,
 		})
-		j.AddError(errors.Wrap(err, "error finding tasks to update"))
+		j.AddError(errors.Wrap(err, "finding tasks to update"))
 	}).Seconds()
 	if j.HasErrors() {
 		return
@@ -168,7 +168,7 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 	timingMsg["save_stats_status"] = reportTiming(func() {
 		// update last sync
 		err = stats.UpdateStatsStatus(j.ProjectID, jobContext.JobTime, syncToTime, time.Since(startAt))
-		j.AddError(errors.Wrap(err, "error updating last synced date"))
+		j.AddError(errors.Wrap(err, "updating last synced date"))
 	}).Seconds()
 	j.AddError(jobContext.catcher.Resolve())
 	if j.HasErrors() {
@@ -193,7 +193,7 @@ func reportTiming(fn func()) time.Duration {
 func getTasksToIgnore(projectId string) ([]*regexp.Regexp, error) {
 	ref, err := model.FindMergedProjectRef(projectId, "", true)
 	if err != nil {
-		return nil, errors.Wrap(err, "Could not get project ref")
+		return nil, errors.Wrapf(err, "finding project ref '%s'", projectId)
 	}
 	if ref == nil {
 		return nil, errors.Errorf("project ref '%s' not found", projectId)
@@ -211,8 +211,7 @@ func createRegexpFromStrings(filePatterns []string) ([]*regexp.Regexp, error) {
 		if pattern != "" {
 			regexp, err := regexp.Compile(pattern)
 			if err != nil {
-				grip.Warningf("Could not compile regexp from '%s'", pattern)
-				return nil, errors.Wrap(err, "Could not compile regexp")
+				return nil, errors.Wrapf(err, "compiling regexp '%s'", pattern)
 			}
 			tasksToIgnore = append(tasksToIgnore, regexp)
 		}
@@ -230,7 +229,7 @@ func (c *cacheHistoricalJobContext) updateHourlyAndDailyStats(ctx context.Contex
 			c.catcher.Add(err)
 		})
 		if err != nil {
-			c.catcher.Wrap(err, "error iterating over hourly stats")
+			c.catcher.Wrapf(err, "iterating over hourly stats function '%s'", name)
 		}
 	}
 
@@ -242,7 +241,7 @@ func (c *cacheHistoricalJobContext) updateHourlyAndDailyStats(ctx context.Contex
 			c.catcher.Add(err)
 		})
 		if err != nil {
-			c.catcher.Wrap(err, "error iterating over daily stats")
+			c.catcher.Wrapf(err, "iterating over daily stats function '%s'", name)
 		}
 	}
 
@@ -260,7 +259,7 @@ func (c *cacheHistoricalJobContext) iteratorOverDailyStats(ctx context.Context, 
 					Window:    day,
 					Tasks:     taskList,
 					Runtime:   c.JobTime,
-				}), "Could not sync daily stats")
+				}), "syncing daily stats")
 				grip.Warning(message.WrapError(err, message.Fields{
 					"project_id": c.ProjectID,
 					"sync_date":  day,
@@ -287,7 +286,7 @@ func (c *cacheHistoricalJobContext) iteratorOverHourlyStats(ctx context.Context,
 				Window:    s.Hour,
 				Tasks:     taskList,
 				Runtime:   c.JobTime,
-			}), "Could not sync hourly stats")
+			}), "syncing hourly stats")
 			grip.Warning(message.WrapError(err, message.Fields{
 				"project_id": s.ProjectId,
 				"sync_date":  s.Hour,

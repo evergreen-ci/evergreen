@@ -75,16 +75,16 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 	var err error
 	if j.task == nil {
 		j.task, err = task.FindOneIdAndExecution(j.TaskID, j.Execution)
-		j.AddError(err)
 		if err != nil {
+			j.AddError(errors.Wrapf(err, "finding task '%s' with execution '%s'", j.TaskID, j.Execution))
 			return
 		}
 	}
 	// The task was restarted before the job ran.
 	if j.task == nil {
 		j.task, err = task.FindOneOldByIdAndExecution(j.TaskID, j.Execution)
-		j.AddError(err)
 		if err != nil {
+			j.AddError(errors.Wrapf(err, "finding old task '%s' with execution %d", j.TaskID, j.Execution))
 			return
 		}
 	}
@@ -159,8 +159,8 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		}
 	} else {
 		j.pod, err = pod.FindOneByID(j.RuntimeEnvID)
-		j.AddError(err)
 		if err != nil {
+			j.AddError(errors.Wrapf(err, "finding pod '%s'", j.RuntimeEnvID))
 			return
 		}
 		if j.pod == nil {

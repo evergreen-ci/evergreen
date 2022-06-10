@@ -89,11 +89,11 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 
 	t, err := task.FindOneId(j.Task)
 	if err != nil {
-		j.AddError(errors.Wrap(err, "error finding task"))
+		j.AddError(errors.Wrapf(err, "finding task '%s'", j.Task))
 		return
 	}
 	if t == nil {
-		j.AddError(errors.New("no task found"))
+		j.AddError(errors.Errorf("task '%s' not found", j.Task))
 		return
 	}
 
@@ -144,8 +144,7 @@ func cleanUpTimedOutTask(ctx context.Context, env evergreen.Environment, id stri
 	// get the host for the task
 	host, err := host.FindOne(host.ById(t.HostId))
 	if err != nil {
-		return errors.Wrapf(err, "error finding host %s for task %s",
-			t.HostId, t.Id)
+		return errors.Wrapf(err, "finding host '%s' for task '%s'", t.HostId, t.Id)
 	}
 
 	// if there's no relevant host and the task is not a display task, something went wrong
@@ -184,13 +183,13 @@ func cleanUpTimedOutTask(ctx context.Context, env evergreen.Environment, id stri
 		var terminated bool
 		terminated, err = handleExternallyTerminatedHost(ctx, id, env, host)
 		if err != nil {
-			return errors.Wrap(err, "could not check host with timed out task for external termination")
+			return errors.Wrapf(err, "checking host '%s 'with timed out task '%s' for external termination", host.Id, t.Id)
 		}
 		if terminated {
 			return nil
 		}
 		if err = host.ClearRunningAndSetLastTask(t); err != nil {
-			return errors.Wrapf(err, "error clearing running task %s from host %s", t.Id, host.Id)
+			return errors.Wrapf(err, "clearing running task '%s' from host '%s'", t.Id, host.Id)
 		}
 	}
 
@@ -205,15 +204,15 @@ func cleanUpTimedOutTask(ctx context.Context, env evergreen.Environment, id stri
 	if t.IsPartOfDisplay() {
 		dt, err := t.GetDisplayTask()
 		if err != nil {
-			return errors.Wrapf(err, "error getting display task")
+			return errors.Wrapf(err, "getting display task")
 		}
 		if err = dt.SetResetWhenFinished(); err != nil {
-			return errors.Wrap(err, "can't mark display task for reset")
+			return errors.Wrap(err, "marking display task for reset when finished")
 		}
-		return errors.Wrap(model.MarkEnd(t, "monitor", time.Now(), detail, false), "error marking execution task ended")
+		return errors.Wrap(model.MarkEnd(t, "monitor", time.Now(), detail, false), "marking execution task ended")
 	}
 
-	return errors.Wrapf(model.TryResetTask(t.Id, "", "monitor", detail), "error trying to reset task %s", t.Id)
+	return errors.Wrapf(model.TryResetTask(t.Id, "", "monitor", detail), "trying to reset task '%s'", t.Id)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -265,7 +264,7 @@ func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
 	taskIDs := map[string]int{}
 	tasks, err := host.FindStaleRunningTasks(heartbeatTimeoutThreshold, host.TaskHeartbeatPastCutoff)
 	if err != nil {
-		j.AddError(errors.Wrap(err, "error finding tasks with timed-out or stale heartbeats"))
+		j.AddError(errors.Wrap(err, "finding tasks with timed-out or stale heartbeats"))
 		return
 	}
 	for _, t := range tasks {
@@ -274,7 +273,7 @@ func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
 	j.logTasks(tasks, "heartbeat past cutoff, on running host")
 	tasks, err = host.FindStaleRunningTasks(heartbeatTimeoutThreshold, host.TaskNoHeartbeatSinceDispatch)
 	if err != nil {
-		j.AddError(errors.Wrap(err, "error finding tasks with timed-out or stale heartbeats"))
+		j.AddError(errors.Wrap(err, "finding tasks with timed-out or stale heartbeats"))
 		return
 	}
 	for _, t := range tasks {
@@ -283,7 +282,7 @@ func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
 	j.logTasks(tasks, "no heartbeat since dispatch, on running host")
 	tasks, err = host.FindStaleRunningTasks(heartbeatTimeoutThreshold, host.TaskUndispatchedHasHeartbeat)
 	if err != nil {
-		j.AddError(errors.Wrap(err, "error finding tasks with timed-out or stale heartbeats"))
+		j.AddError(errors.Wrap(err, "finding tasks with timed-out or stale heartbeats"))
 		return
 	}
 	for _, t := range tasks {
@@ -293,7 +292,7 @@ func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
 
 	tasks, err = task.FindWithFields(task.ByStaleRunningTask(heartbeatTimeoutThreshold, task.HeartbeatPastCutoff), task.IdKey, task.ExecutionKey)
 	if err != nil {
-		j.AddError(errors.Wrap(err, "error finding tasks with timed-out or stale heartbeats"))
+		j.AddError(errors.Wrap(err, "finding tasks with timed-out or stale heartbeats"))
 		return
 	}
 	for _, t := range tasks {
@@ -302,7 +301,7 @@ func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
 	j.logTasks(tasks, "heartbeat past cutoff")
 	tasks, err = task.FindWithFields(task.ByStaleRunningTask(heartbeatTimeoutThreshold, task.NoHeartbeatSinceDispatch), task.IdKey, task.ExecutionKey)
 	if err != nil {
-		j.AddError(errors.Wrap(err, "error finding tasks with timed-out or stale heartbeats"))
+		j.AddError(errors.Wrap(err, "finding tasks with timed-out or stale heartbeats"))
 		return
 	}
 	for _, t := range tasks {

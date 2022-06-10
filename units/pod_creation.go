@@ -77,10 +77,10 @@ func (j *podCreationJob) Run(ctx context.Context) {
 
 	defer func() {
 		if j.smClient != nil {
-			j.AddError(j.smClient.Close(ctx))
+			j.AddError(errors.Wrap(j.smClient.Close(ctx), "closing Secrets Manager client"))
 		}
 		if j.ecsClient != nil {
-			j.AddError(j.ecsClient.Close(ctx))
+			j.AddError(errors.Wrap(j.ecsClient.Close(ctx), "closing ECS client"))
 		}
 
 		if j.pod != nil && j.pod.Status == pod.StatusInitializing && (j.RetryInfo().GetRemainingAttempts() == 0 || !j.RetryInfo().ShouldRetry()) {

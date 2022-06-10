@@ -79,14 +79,14 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 
 	v, err := model.VersionFindOneId(t.Version)
 	if err != nil {
-		return errors.Wrapf(err, "error finding version %s", t.Version)
+		return errors.Wrapf(err, "finding version '%s'", t.Version)
 	}
 	if v == nil {
-		return errors.Errorf("unable to find version %s", t.Version)
+		return errors.Errorf("version '%s' not found", t.Version)
 	}
 	projectInfo, err := model.LoadProjectForVersion(v, t.Project, false)
 	if err != nil {
-		return errors.Wrapf(err, "error getting project for version %s", t.Version)
+		return errors.Wrapf(err, "loading project for version '%s'", t.Version)
 	}
 
 	// Get task again, to exit early if another generator finished while we looked for a
@@ -96,10 +96,10 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	// of this race as close to zero as possible.
 	t, err = task.FindOneId(t.Id)
 	if err != nil {
-		return errors.Wrapf(err, "error finding task %s", t.Id)
+		return errors.Wrapf(err, "finding task '%s'", t.Id)
 	}
 	if t == nil {
-		return errors.Errorf("unable to find task %s", t.Id)
+		return errors.Errorf("task '%s' not found", t.Id)
 	}
 	if t.GeneratedTasks {
 		grip.Debug(message.Fields{
@@ -117,7 +117,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 		projects, err = parseProjects(t.GeneratedJSON)
 	}
 	if err != nil {
-		return errors.Wrap(err, "error parsing JSON from `generate.tasks`")
+		return errors.Wrap(err, "parsing JSON from `generate.tasks`")
 	}
 	grip.Debug(message.Fields{
 		"message":       "generate.tasks timing",
@@ -141,7 +141,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 		"version":       t.Version,
 	})
 	if err != nil {
-		return errors.Wrap(err, "error merging generated projects")
+		return errors.Wrap(err, "merging generated projects")
 	}
 	g.Task = t
 
@@ -232,14 +232,14 @@ func (j *generateTasksJob) handleError(pp *model.ParserProject, v *model.Version
 	// save the config and set the task's boolean.
 	t, err := task.FindOneId(j.TaskID)
 	if err != nil {
-		return errors.Wrapf(err, "error finding task %s", j.TaskID)
+		return errors.Wrapf(err, "finding task '%s'", j.TaskID)
 	}
 	if t == nil {
-		return errors.Errorf("unable to find task %s", j.TaskID)
+		return errors.Errorf("task '%s' not found", j.TaskID)
 	}
 	if t.GeneratedTasks {
 		grip.Debug(message.Fields{
-			"message": "handledError encountered task that already generating, nooping",
+			"message": "handleError encountered task that is already generating, nooping",
 			"task":    t.Id,
 			"version": t.Version,
 		})
@@ -251,14 +251,14 @@ func (j *generateTasksJob) handleError(pp *model.ParserProject, v *model.Version
 	}
 	versionFromDB, err := model.VersionFindOne(model.VersionById(v.Id).WithFields(model.VersionConfigNumberKey))
 	if err != nil {
-		return errors.Wrapf(err, "problem finding version %s", v.Id)
+		return errors.Wrapf(err, "finding version '%s'", v.Id)
 	}
 	if versionFromDB == nil {
-		return errors.Errorf("could not find version %s", v.Id)
+		return errors.Errorf("version '%s' not found", v.Id)
 	}
 	ppFromDB, err := model.ParserProjectFindOne(model.ParserProjectById(v.Id).WithFields(model.ParserProjectConfigNumberKey))
 	if err != nil {
-		return errors.Wrapf(err, "problem finding parser project %s", v.Id)
+		return errors.Wrapf(err, "finding parser project '%s'", v.Id)
 	}
 	// If the config update number has been updated, then another task has raced with us.
 	// The error is therefore not an actual configuration problem but instead a symptom
@@ -276,11 +276,11 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 
 	t, err := task.FindOneId(j.TaskID)
 	if err != nil {
-		j.AddError(errors.Wrapf(err, "problem finding task %s", j.TaskID))
+		j.AddError(errors.Wrapf(err, "finding task '%s'", j.TaskID))
 		return
 	}
 	if t == nil {
-		j.AddError(errors.Errorf("task %s does not exist", j.TaskID))
+		j.AddError(errors.Errorf("task '%s' not found", j.TaskID))
 		return
 	}
 

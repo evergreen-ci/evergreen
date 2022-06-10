@@ -42,7 +42,7 @@ func (m *CloudHostModification) modifyHost(ctx context.Context, op func(mgr clou
 			return errors.Wrap(err, "finding host")
 		}
 		if m.host == nil {
-			return errors.New("host not found")
+			return errors.Errorf("host '%s' not found", m.HostID)
 		}
 	}
 
@@ -63,8 +63,9 @@ const (
 )
 
 func init() {
-	registry.AddJobType(spawnhostModifyName,
-		func() amboy.Job { return makeSpawnhostModifyJob() })
+	registry.AddJobType(spawnhostModifyName, func() amboy.Job {
+		return makeSpawnhostModifyJob()
+	})
 }
 
 type spawnhostModifyJob struct {

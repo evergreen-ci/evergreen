@@ -68,7 +68,7 @@ func (j *hostMonitorContainerStateJob) Run(ctx context.Context) {
 		j.host, err = host.FindOneId(j.HostID)
 		j.AddError(err)
 		if j.host == nil {
-			j.AddError(errors.Errorf("unable to retrieve host %s", j.HostID))
+			j.AddError(errors.Errorf("host '%s' not found", j.HostID))
 		}
 	}
 	if j.env == nil {
@@ -85,24 +85,24 @@ func (j *hostMonitorContainerStateJob) Run(ctx context.Context) {
 	// get containers on parent
 	containersFromDB, err := j.host.GetContainers()
 	if err != nil {
-		j.AddError(errors.Wrapf(err, "error getting containers on parent %s from DB", j.HostID))
+		j.AddError(errors.Wrapf(err, "finding containers on parent host '%s'", j.HostID))
 		return
 	}
 
 	// list containers using Docker provider
 	mgr, err := cloud.GetManager(ctx, j.env, cloud.ManagerOpts{Provider: j.Provider})
 	if err != nil {
-		j.AddError(errors.Wrap(err, "error getting Docker manager"))
+		j.AddError(errors.Wrap(err, "getting Docker manager"))
 		return
 	}
 	containerMgr, err := cloud.ConvertContainerManager(mgr)
 	if err != nil {
-		j.AddError(errors.Wrap(err, "error getting Docker manager"))
+		j.AddError(errors.Wrap(err, "converting manager to container manager"))
 		return
 	}
 	containerIdsFromDocker, err := containerMgr.GetContainers(ctx, j.host)
 	if err != nil {
-		j.AddError(errors.Wrapf(err, "error getting containers on parent %s from Docker", j.HostID))
+		j.AddError(errors.Wrapf(err, "getting containers on parent '%s' from Docker", j.HostID))
 		return
 	}
 
@@ -117,9 +117,9 @@ func (j *hostMonitorContainerStateJob) Run(ctx context.Context) {
 	for _, container := range containersFromDB {
 		if container.Status == evergreen.HostRunning || container.Status == evergreen.HostDecommissioned {
 			if !container.SpawnOptions.SpawnedByTask && !isRunningInDocker[container.Id] {
-				if err := containerMgr.TerminateInstance(ctx, &container, evergreen.User, "container not actually running"); err != nil {
-					j.AddError(errors.Wrap(err, "error terminating instance on Docker"))
-					j.AddError(container.SetTerminated(evergreen.User, "container not actually running"))
+				if err := containerMgr.TerminateInstance(ctx, &container, evergreen.User, "container is not actually running"); err != nil {
+					j.AddError(errors.Wrap(err, "terminating Docker instance"))
+					j.AddError(container.SetTerminated(evergreen.User, "container is not actually running"))
 				}
 			}
 		}

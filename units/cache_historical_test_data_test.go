@@ -582,20 +582,20 @@ func (s *cacheHistoryTestDataSuite) createTestData(baseTime time.Time) {
 
 func clearStatsData() error {
 	collectionsToClear := [...]string{
-		"hourly_test_stats",
-		"daily_test_stats",
-		"daily_task_stats",
-		"tasks",
-		"old_tasks",
-		"testresults",
-		"daily_stats_status",
+		stats.HourlyTestStatsCollection,
+		stats.DailyTestStatsCollection,
+		stats.DailyTaskStatsCollection,
+		stats.DailyStatsStatusCollection,
+		task.Collection,
+		task.OldCollection,
+		testresult.Collection,
 		model.ProjectRefCollection,
 	}
 
 	for _, coll := range collectionsToClear {
 		err := db.Clear(coll)
 		if err != nil {
-			return errors.Wrap(err, "Could not clear db")
+			return errors.Wrapf(err, "clearing collection '%s'", coll)
 		}
 	}
 

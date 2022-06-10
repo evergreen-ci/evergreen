@@ -86,15 +86,15 @@ func (j *hostSetupScriptJob) Run(ctx context.Context) {
 		var err error
 		j.host, err = host.FindOneByIdOrTag(j.HostID)
 		if err != nil {
-			j.AddRetryableError(err)
+			j.AddRetryableError(errors.Wrapf(err, "finding host '%s'", j.HostID))
 			return
 		}
 		if j.host == nil {
-			j.AddRetryableError(fmt.Errorf("could not find host '%s' for job '%s'", j.HostID, j.ID()))
+			j.AddRetryableError(errors.Errorf("host '%s' not found", j.HostID))
 			return
 		}
 		if j.host.ProvisionOptions == nil || j.host.ProvisionOptions.SetupScript == "" {
-			j.AddError(fmt.Errorf("host doesn't contain a setup script"))
+			j.AddError(errors.Errorf("host '%s' does not have a setup script", j.host.Id))
 			return
 		}
 	}
@@ -117,5 +117,5 @@ func runSpawnHostSetupScript(ctx context.Context, env evergreen.Environment, h *
 	j := NewHostExecuteJob(env, *h, script, false, "", ts)
 	j.Run(ctx)
 
-	return errors.Wrapf(j.Error(), "error running setup script for spawn host")
+	return errors.Wrapf(j.Error(), "running setup script for spawn host")
 }

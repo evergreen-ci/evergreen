@@ -90,12 +90,14 @@ func (j *restartJasperJob) Run(ctx context.Context) {
 			// Static hosts should be quarantined if they've run out of attempts
 			// to restart jasper.
 			if j.RetryInfo().GetRemainingAttempts() == 0 && j.host.Provider == evergreen.ProviderNameStatic {
-				j.AddError(j.host.SetStatusAtomically(evergreen.HostQuarantined, evergreen.User, "static host has run out of attempts to reprovision"))
+				if err := j.host.SetStatusAtomically(evergreen.HostQuarantined, evergreen.User, "static host has run out of attempts to restart Jasper"); err != nil {
+					j.AddError(errors.Wrap(err, "quarantining static host that could not restart Jasper"))
+				}
 			}
 
 			event.LogHostJasperRestartError(j.host.Id, j.Error())
 			grip.Error(message.WrapError(j.Error(), message.Fields{
-				"message":  "failed to restart jasper",
+				"message":  "failed to restart Jasper",
 				"host_id":  j.host.Id,
 				"host_tag": j.host.Tag,
 				"distro":   j.host.Distro.Id,
@@ -107,12 +109,12 @@ func (j *restartJasperJob) Run(ctx context.Context) {
 	// The host cannot be reprovisioned until the host's agent monitor has been
 	// stopped.
 	if j.host.StartedBy == evergreen.User && (!j.host.NeedsNewAgentMonitor || j.host.RunningTask != "") {
-		j.AddRetryableError(errors.New("cannot reprovision the host while the host's agent monitor is still running"))
+		j.AddRetryableError(errors.Errorf("cannot reprovision host '%s' while the host's agent monitor is still running", j.host.Id))
 		return
 	}
 
 	if err := j.host.UpdateLastCommunicated(); err != nil {
-		j.AddError(errors.Wrap(err, "updating host last communication time"))
+		j.AddError(errors.Wrapf(err, "updating last communication time for host '%s'", j.host.Id))
 	}
 
 	creds, err := j.host.GenerateJasperCredentials(ctx, j.env)
@@ -190,7 +192,10 @@ func (j *restartJasperJob) populateIfUnset(ctx context.Context) error {
 	if j.host == nil {
 		h, err := host.FindOneId(j.HostID)
 		if err != nil {
-			return errors.Wrapf(err, "could not find host '%s'", j.HostID)
+			return errors.Wrapf(err, "finding host '%s'", j.HostID)
+		}
+		if h == nil {
+			return errors.Errorf("host '%s' not found", j.HostID)
 		}
 		j.host = h
 	}

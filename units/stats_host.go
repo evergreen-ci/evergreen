@@ -18,8 +18,9 @@ import (
 const hostStatsCollectorJobName = "host-stats-collector"
 
 func init() {
-	registry.AddJobType(hostStatsCollectorJobName,
-		func() amboy.Job { return makeHostStatsCollector() })
+	registry.AddJobType(hostStatsCollectorJobName, func() amboy.Job {
+		return makeHostStatsCollector()
+	})
 }
 
 type hostStatsCollector struct {
@@ -85,7 +86,7 @@ type hostCountStats struct {
 func collectHostCountStats() (*hostCountStats, error) {
 	hosts, err := host.GetStatsByDistro()
 	if err != nil {
-		return nil, errors.Wrap(err, "problem getting stats by distro")
+		return nil, errors.Wrap(err, "getting host stats by distro")
 	}
 
 	tasks := 0
@@ -138,7 +139,7 @@ func (j *hostStatsCollector) statsByDistro() error {
 func (j *hostStatsCollector) statsByProvider() error {
 	providers, err := host.GetProviderCounts()
 	if err != nil {
-		return errors.Wrap(err, "problem getting stats by provider")
+		return errors.Wrap(err, "getting host stats by provider")
 	}
 
 	j.logger.Info(message.Fields{

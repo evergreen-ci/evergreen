@@ -49,7 +49,7 @@ func (j *restartTasksJob) Run(_ context.Context) {
 	defer j.MarkComplete()
 	results, err := model.RestartFailedTasks(j.Opts)
 	if err != nil {
-		j.AddError(errors.Wrap(err, "error restarting failed tasks"))
+		j.AddError(errors.Wrap(err, "restarting failed tasks"))
 		return
 	}
 

@@ -68,7 +68,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			Id:       "distro1",
 			Provider: evergreen.ProviderNameMock,
 		}
-		require.NoError(t, distro1.Insert(), "error inserting distro '%s'", distro1.Id)
+		require.NoError(t, distro1.Insert())
 		// insert a host that is currently running a task - but whose
 		// creation time would otherwise indicate it has been idle a while
 		host1 := host.Host{
@@ -80,7 +80,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			Status:       evergreen.HostRunning,
 			StartedBy:    evergreen.User,
 		}
-		require.NoError(t, host1.Insert(), "error inserting host '%s'", host1.Id)
+		require.NoError(t, host1.Insert())
 
 		// finding idle hosts should not return the host
 		num, hosts := numIdleHostsFound(ctx, env, t)
@@ -92,12 +92,11 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		testFlaggingIdleHostsSetupTest(t)
 		defer testFlaggingIdleHostsTeardownTest(t)
 
-		// insert a reference distro.Distro
 		distro1 := distro.Distro{
 			Id:       "distro1",
 			Provider: evergreen.ProviderNameMock,
 		}
-		require.NoError(t, distro1.Insert(), "error inserting distro '%s'", distro1.Id)
+		require.NoError(t, distro1.Insert())
 
 		host1 := host.Host{
 			Id:                    "h1",
@@ -109,9 +108,8 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			LastCommunicationTime: time.Now().Add(-30 * time.Minute),
 			StartedBy:             evergreen.User,
 		}
-		require.NoError(t, host1.Insert(), "error inserting host '%s'", host1.Id)
+		require.NoError(t, host1.Insert())
 
-		// finding idle hosts should not return the host
 		num, hosts := numIdleHostsFound(ctx, env, t)
 		assert.Equal(t, 0, num)
 		assert.Empty(t, hosts)
@@ -121,15 +119,12 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		testFlaggingIdleHostsSetupTest(t)
 		defer testFlaggingIdleHostsTeardownTest(t)
 
-		// insert a reference distro.Distro
 		distro1 := distro.Distro{
 			Id:       "distro1",
 			Provider: evergreen.ProviderNameMock,
 		}
-		require.NoError(t, distro1.Insert(), "error inserting distro '%s'", distro1.Id)
+		require.NoError(t, distro1.Insert())
 
-		// insert two hosts - one whose last task was more than 15 minutes
-		// ago, one whose last task was less than 15 minutes ago
 		host1 := host.Host{
 			Id:                    "h1",
 			Distro:                distro1,
@@ -152,10 +147,9 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			StartedBy:             evergreen.User,
 			Provisioned:           true,
 		}
-		require.NoError(t, host1.Insert(), "error inserting host '%s'", host1.Id)
-		require.NoError(t, host2.Insert(), "error inserting host '%s'", host2.Id)
+		require.NoError(t, host1.Insert())
+		require.NoError(t, host2.Insert())
 
-		// finding idle hosts should only return the first host
 		num, hosts := numIdleHostsFound(ctx, env, t)
 		assert.Equal(t, 1, num)
 		assert.Equal(t, hosts[0], "h1")
@@ -165,15 +159,12 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		testFlaggingIdleHostsSetupTest(t)
 		defer testFlaggingIdleHostsTeardownTest(t)
 
-		// insert a reference distro.Distro
 		distro1 := distro.Distro{
 			Id:       "distro1",
 			Provider: evergreen.ProviderNameMock,
 		}
-		require.NoError(t, distro1.Insert(), "error inserting distro '%s'", distro1.Id)
+		require.NoError(t, distro1.Insert())
 
-		// insert two hosts - one whose last task was more than 15 minutes
-		// ago, one whose last task was less than 15 minutes ago
 		host1 := host.Host{
 			Id:                    "h1",
 			Distro:                distro1,
@@ -196,10 +187,9 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			StartedBy:             evergreen.User,
 			Provisioned:           true,
 		}
-		require.NoError(t, host1.Insert(), "error inserting host '%s'", host1.Id)
-		require.NoError(t, host2.Insert(), "error inserting host '%s'", host2.Id)
+		require.NoError(t, host1.Insert())
+		require.NoError(t, host2.Insert())
 
-		// finding idle hosts should only return the first host 'h1'
 		num, hosts := numIdleHostsFound(ctx, env, t)
 		assert.Equal(t, 1, num)
 		assert.Equal(t, hosts[0], "h1")
@@ -209,12 +199,11 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		testFlaggingIdleHostsSetupTest(t)
 		defer testFlaggingIdleHostsTeardownTest(t)
 
-		// insert our reference distro.Distro
 		distro1 := distro.Distro{
 			Id:       "distro1",
 			Provider: evergreen.ProviderNameMock,
 		}
-		require.NoError(t, distro1.Insert(), "error inserting distro '%s'", distro1.Id)
+		require.NoError(t, distro1.Insert())
 
 		h5 := host.Host{
 			Id:                    "h5",
@@ -226,9 +215,8 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			CreationTime:          time.Now().Add(-10 * time.Minute), // created before the cutoff
 			ProvisionTime:         time.Now().Add(-2 * time.Minute),  // provisioned after the cutoff
 		}
-		require.NoError(t, h5.Insert(), "error inserting host '%s'", h5.Id)
+		require.NoError(t, h5.Insert())
 
-		// 'h5' should not be flagged as idle
 		num, hosts := numIdleHostsFound(ctx, env, t)
 		assert.Equal(t, 0, num)
 		assert.Empty(t, hosts)
@@ -238,7 +226,6 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		testFlaggingIdleHostsSetupTest(t)
 		defer testFlaggingIdleHostsTeardownTest(t)
 
-		// insert a reference distro.Distro
 		distro1 := distro.Distro{
 			Id:       "distro1",
 			Provider: evergreen.ProviderNameMock,
@@ -247,7 +234,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 				Communication: distro.CommunicationMethodLegacySSH,
 			},
 		}
-		require.NoError(t, distro1.Insert(), "error inserting distro '%s'", distro1.Id)
+		require.NoError(t, distro1.Insert())
 
 		host1 := host.Host{
 			Id:                    "h1",
@@ -259,9 +246,8 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			StartedBy:             evergreen.User,
 			NeedsNewAgent:         true,
 		}
-		require.NoError(t, host1.Insert(), "error inserting host '%s'", host1.Id)
+		require.NoError(t, host1.Insert())
 
-		// finding idle hosts should not return the host
 		num, hosts := numIdleHostsFound(ctx, env, t)
 		assert.Equal(t, 0, num)
 		assert.Empty(t, hosts)
@@ -271,7 +257,6 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		testFlaggingIdleHostsSetupTest(t)
 		defer testFlaggingIdleHostsTeardownTest(t)
 
-		// insert a reference distro.Distro
 		distro1 := distro.Distro{
 			Id:       "distro1",
 			Provider: evergreen.ProviderNameMock,
@@ -280,7 +265,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 				Communication: distro.CommunicationMethodSSH,
 			},
 		}
-		require.NoError(t, distro1.Insert(), "error inserting distro '%s'", distro1.Id)
+		require.NoError(t, distro1.Insert())
 
 		host1 := host.Host{
 			Id:                    "h1",
@@ -292,9 +277,8 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			StartedBy:             evergreen.User,
 			NeedsNewAgentMonitor:  true,
 		}
-		require.NoError(t, host1.Insert(), "error inserting host '%s'", host1.Id)
+		require.NoError(t, host1.Insert())
 
-		// finding idle hosts should not return the host
 		num, hosts := numIdleHostsFound(ctx, env, t)
 		assert.Equal(t, 0, num)
 		assert.Empty(t, hosts)
@@ -304,7 +288,6 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		testFlaggingIdleHostsSetupTest(t)
 		defer testFlaggingIdleHostsTeardownTest(t)
 
-		// insert a reference distro.Distro
 		distro1 := distro.Distro{
 			Id:       "distro1",
 			Provider: evergreen.ProviderNameMock,
@@ -313,7 +296,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 				Communication: distro.CommunicationMethodSSH,
 			},
 		}
-		require.NoError(t, distro1.Insert(), "error inserting distro '%s'", distro1.Id)
+		require.NoError(t, distro1.Insert())
 
 		host1 := host.Host{
 			Id:                    "host1",
@@ -325,7 +308,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			StartedBy:             evergreen.User,
 			NeedsNewAgent:         true,
 		}
-		require.NoError(t, host1.Insert(), "error inserting host '%s'", host1.Id)
+		require.NoError(t, host1.Insert())
 
 		// finding idle hosts should not return the host
 		num, hosts := numIdleHostsFound(ctx, env, t)
@@ -347,8 +330,6 @@ func TestFlaggingIdleHostsWithMissingDistroIDs(t *testing.T) {
 		testFlaggingIdleHostsSetupTest(t)
 		defer testFlaggingIdleHostsTeardownTest(t)
 
-		// insert two reference distro.Distro
-
 		distro1 := distro.Distro{
 			Id:       "distro1",
 			Provider: evergreen.ProviderNameMock,
@@ -363,10 +344,9 @@ func TestFlaggingIdleHostsWithMissingDistroIDs(t *testing.T) {
 				MinimumHosts: 1,
 			},
 		}
-		require.NoError(t, distro1.Insert(), "error inserting distro '%s'", distro1.Id)
-		require.NoError(t, distro2.Insert(), "error inserting distro '%s'", distro2.Id)
+		require.NoError(t, distro1.Insert())
+		require.NoError(t, distro2.Insert())
 
-		// insert a gaggle of hosts, some of which reference a host.Distro that doesn't exist in the distro collection
 		host1 := host.Host{
 			Id:           "h1",
 			Distro:       distro2,
@@ -416,11 +396,11 @@ func TestFlaggingIdleHostsWithMissingDistroIDs(t *testing.T) {
 			Status:       evergreen.HostRunning,
 			StartedBy:    evergreen.User,
 		}
-		require.NoError(t, host1.Insert(), "error inserting host '%s'", host1.Id)
-		require.NoError(t, host2.Insert(), "error inserting host '%s'", host2.Id)
-		require.NoError(t, host3.Insert(), "error inserting host '%s'", host3.Id)
-		require.NoError(t, host4.Insert(), "error inserting host '%s'", host4.Id)
-		require.NoError(t, host5.Insert(), "error inserting host '%s'", host5.Id)
+		require.NoError(t, host1.Insert())
+		require.NoError(t, host2.Insert())
+		require.NoError(t, host3.Insert())
+		require.NoError(t, host4.Insert())
+		require.NoError(t, host5.Insert())
 
 		// If we encounter missing distros, we decommission hosts from those
 		// distros.
@@ -446,7 +426,6 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 		testFlaggingIdleHostsSetupTest(t)
 		defer testFlaggingIdleHostsTeardownTest(t)
 
-		// insert a reference distro.Distro
 		distro1 := distro.Distro{
 			Id:       "distro1",
 			Provider: evergreen.ProviderNameMock,
@@ -454,7 +433,7 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 				MinimumHosts: 2,
 			},
 		}
-		require.NoError(t, distro1.Insert(), "error inserting distro '%s'", distro1.Id)
+		require.NoError(t, distro1.Insert())
 
 		host1 := host.Host{
 			Id:           "h1",
@@ -472,10 +451,9 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 			Status:       evergreen.HostRunning,
 			StartedBy:    evergreen.User,
 		}
-		require.NoError(t, host1.Insert(), "error inserting host '%s'", host1.Id)
-		require.NoError(t, host2.Insert(), "error inserting host '%s'", host2.Id)
+		require.NoError(t, host1.Insert())
+		require.NoError(t, host2.Insert())
 
-		// Nither host should be returned
 		num, hosts := numIdleHostsFound(ctx, env, t)
 		assert.Equal(t, 0, num)
 		assert.Empty(t, hosts)
@@ -485,7 +463,6 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 		testFlaggingIdleHostsSetupTest(t)
 		defer testFlaggingIdleHostsTeardownTest(t)
 
-		// insert a reference distro.Distro (which has a non-zero value for its HostAllocatorSettings.MinimumHosts field)
 		distro1 := distro.Distro{
 			Id:       "distro1",
 			Provider: evergreen.ProviderNameMock,
@@ -493,7 +470,7 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 				MinimumHosts: 2,
 			},
 		}
-		require.NoError(t, distro1.Insert(), "error inserting distro '%s'", distro1.Id)
+		require.NoError(t, distro1.Insert())
 
 		host1 := host.Host{
 			Id:           "h1",
@@ -520,11 +497,11 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 			StartedBy:    evergreen.User,
 			RunningTask:  "t1",
 		}
-		require.NoError(t, host1.Insert(), "error inserting host '%s'", host1.Id)
-		require.NoError(t, host2.Insert(), "error inserting host '%s'", host2.Id)
-		require.NoError(t, host3.Insert(), "error inserting host '%s'", host3.Id)
+		require.NoError(t, host1.Insert())
+		require.NoError(t, host2.Insert())
+		require.NoError(t, host3.Insert())
 
-		// Only the oldest host not running a task should be flagged as idle - leaving 2 running hosts.
+		// Only the oldest host not running a task should be flagged as idle.
 		num, hosts := numIdleHostsFound(ctx, env, t)
 		assert.Equal(t, 1, num)
 		assert.Equal(t, "h1", hosts[0])

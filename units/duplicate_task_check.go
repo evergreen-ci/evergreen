@@ -10,6 +10,7 @@ import (
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -49,7 +50,7 @@ func (j *duplicateTaskCheckJob) Run(ctx context.Context) {
 
 	dups, err := model.FindDuplicateEnqueuedTasks(model.TaskQueuesCollection)
 	if err != nil {
-		j.AddError(err)
+		j.AddError(errors.Wrap(err, "finding task queues with duplicate enqueued tasks"))
 		return
 	}
 	dupTaskToDistros := map[string][]string{}
