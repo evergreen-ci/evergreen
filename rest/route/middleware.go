@@ -306,6 +306,75 @@ func (m *hostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 	next(rw, r)
 }
 
+type podOrHostAuthMiddleware struct{}
+
+// NewPodOrHostAuthMiddleWare returns a middleware that verifies the request's pod ID
+// and secret.
+func NewPodOrHostAuthMiddleWare() gimlet.Middleware {
+	return &podOrHostAuthMiddleware{}
+}
+
+func (m *podOrHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	podId, ok := gimlet.GetVars(r)["pod_id"]
+	if !ok {
+		podId = r.Header.Get(evergreen.PodHeader)
+	}
+	hostID, ok := gimlet.GetVars(r)["host_id"]
+	if !ok {
+		hostID = r.Header.Get(evergreen.HostHeader)
+	}
+	if hostID == "" && podId == "" {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusUnauthorized,
+			Message:    "either host ID or pod ID must be set",
+		}))
+		return
+	}
+	if hostID != "" && podId != "" {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message: "host ID and pod ID cannot both be set",
+		}))
+		return
+	}
+
+	isHostMode := hostID != ""
+	if isHostMode {
+		h, statusCode, err := model.ValidateHost(gimlet.GetVars(r)["host_id"], r)
+		if err != nil {
+			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: statusCode,
+				Message:    err.Error(),
+			}))
+			return
+		}
+		// update host access time
+		if err := h.UpdateLastCommunicated(); err != nil {
+			grip.Warningf("Could not update host last communication time for %s: %+v", h.Id, err)
+		}
+		// Since the host has contacted the app server, we should prevent the
+		// app server from attempting to deploy agents or agent monitors.
+		// Deciding whether we should redeploy agents or agent monitors
+		// is handled within the REST route handler.
+		if h.NeedsNewAgent {
+			grip.Warning(message.WrapError(h.SetNeedsNewAgent(false), "problem clearing host needs new agent"))
+		}
+		if h.NeedsNewAgentMonitor {
+			grip.Warning(message.WrapError(h.SetNeedsNewAgentMonitor(false), "problem clearing host needs new agent monitor"))
+		}
+	} else {
+		secret := r.Header.Get(evergreen.PodSecretHeader)
+		if secret == "" {
+			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.New("missing pod secret")))
+			return
+		}
+		if err := data.CheckPodSecret(podId, secret); err != nil {
+			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
+			return
+		}
+	}
+	next(rw, r)
+}
+
 type podAuthMiddleware struct{}
 
 // NewPodAuthMiddleware returns a middleware that verifies the request's pod ID

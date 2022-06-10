@@ -212,40 +212,6 @@ func (h *podAgentSetup) Run(ctx context.Context) gimlet.Responder {
 
 ////////////////////////////////////////////////
 //
-// GET /rest/v2/pods/{pod_id}/agent/cedar_config
-
-type podAgentCedarConfig struct {
-	settings *evergreen.Settings
-}
-
-func makePodAgentCedarConfig(settings *evergreen.Settings) gimlet.RouteHandler {
-	return &podAgentCedarConfig{
-		settings: settings,
-	}
-}
-
-func (h *podAgentCedarConfig) Factory() gimlet.RouteHandler {
-	return &podAgentCedarConfig{
-		settings: h.settings,
-	}
-}
-
-func (h *podAgentCedarConfig) Parse(ctx context.Context, r *http.Request) error {
-	return nil
-}
-
-func (h *podAgentCedarConfig) Run(ctx context.Context) gimlet.Responder {
-	data := apimodels.CedarConfig{
-		BaseURL:  h.settings.Cedar.BaseURL,
-		RPCPort:  h.settings.Cedar.RPCPort,
-		Username: h.settings.Cedar.User,
-		APIKey:   h.settings.Cedar.APIKey,
-	}
-	return gimlet.NewJSONResponse(data)
-}
-
-////////////////////////////////////////////////
-//
 // GET /rest/v2/pods/{pod_id}/agent/next_task
 
 type podAgentNextTask struct {

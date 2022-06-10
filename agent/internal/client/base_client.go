@@ -640,28 +640,23 @@ func (c *baseCommunicator) GetTaskPatch(ctx context.Context, taskData TaskData, 
 // GetCedarConfig returns the cedar service information including the base URL,
 // URL, RPC port, and credentials.
 func (c *baseCommunicator) GetCedarConfig(ctx context.Context) (*apimodels.CedarConfig, error) {
-	cc := &apimodels.CedarConfig{}
-
 	info := requestInfo{
 		method:  http.MethodGet,
-		version: apiVersion1,
+		version: apiVersion2,
 		path:    "agent/cedar_config",
 	}
 
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		err = utility.RespErrorf(resp, "failed to get cedar config: %s", err.Error())
-		grip.Critical(err)
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if err = utility.ReadJSON(resp.Body, cc); err != nil {
-		err = errors.Wrap(err, "reading cedar config from response")
-		return nil, err
+		return nil, utility.RespErrorf(resp, "getting cedar config: %s", err.Error())
 	}
 
-	return cc, nil
+	var cc apimodels.CedarConfig
+	if err := utility.ReadJSON(resp.Body, &cc); err != nil {
+		return nil, errors.Wrap(err, "reading cedar config from response")
+	}
+
+	return &cc, nil
 }
 
 // GetPatchFiles is used by the git.get_project plugin and fetches
