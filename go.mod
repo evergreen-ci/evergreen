@@ -5,14 +5,14 @@ go 1.16
 require (
 	github.com/99designs/gqlgen v0.14.0
 	github.com/PuerkitoBio/rehttp v1.1.0
-	github.com/aws/aws-sdk-go v1.44.4
+	github.com/aws/aws-sdk-go v1.44.25
 	github.com/cheynewallace/tabby v1.1.1
 	github.com/docker/docker v20.10.12+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/dustin/go-humanize v1.0.0
 	github.com/evergreen-ci/birch v0.0.0-20211025210128-7f3409c2b515
 	github.com/evergreen-ci/certdepot v0.0.0-20211117185134-dbedb3d79a10
-	github.com/evergreen-ci/cocoa v0.0.0-20220524172555-fbc120d1cbf8
+	github.com/evergreen-ci/cocoa v0.0.0-20220610175551-2ddb1b6e0758
 	github.com/evergreen-ci/gimlet v0.0.0-20220419172609-b882e01673e7
 	github.com/evergreen-ci/go-test2json v0.0.0-20180702150328-5b6cfd2e8cb0
 	github.com/evergreen-ci/juniper v0.0.0-20220118233332-0813edc78908
