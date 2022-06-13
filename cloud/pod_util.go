@@ -282,7 +282,7 @@ func exportECSPodExecutionOptions(ecsConfig evergreen.ECSConfig, containerOpts p
 	}
 
 	for _, cluster := range ecsConfig.Clusters {
-		if string(containerOpts.OS) == string(cluster.OS) {
+		if containerOpts.OS.Matches(cluster.OS) {
 			return opts.SetCluster(cluster.Name), nil
 		}
 	}
