@@ -634,8 +634,9 @@ func TestBuildMarkFinished(t *testing.T) {
 
 		startTime := time.Now()
 		b := &build.Build{
-			Id:        "build",
-			StartTime: startTime,
+			Id:            "build",
+			StartTime:     startTime,
+			ActivatedTime: startTime,
 		}
 		So(b.Insert(), ShouldBeNil)
 

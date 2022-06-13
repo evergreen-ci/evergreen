@@ -267,7 +267,11 @@ func TryMarkStarted(buildId string, startTime time.Time) error {
 func (b *Build) MarkFinished(status string, finishTime time.Time) error {
 	b.Status = status
 	b.FinishTime = finishTime
-	b.TimeTaken = finishTime.Sub(b.StartTime)
+	if b.ActivatedTime.Before(b.StartTime) {
+		b.TimeTaken = finishTime.Sub(b.StartTime)
+	} else {
+		b.TimeTaken = finishTime.Sub(b.ActivatedTime)
+	}
 	return UpdateOne(
 		bson.M{IdKey: b.Id},
 		bson.M{
