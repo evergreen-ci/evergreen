@@ -1,4 +1,4 @@
-package graphql
+package util
 
 import (
 	"github.com/evergreen-ci/evergreen"
@@ -6,7 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 )
 
-func bbGetCreatedTicketsPointers(taskId string) ([]*thirdparty.JiraTicket, error) {
+func BBGetCreatedTicketsPointers(taskId string) ([]*thirdparty.JiraTicket, error) {
 	events, err := event.Find(event.AllLogCollection, event.TaskEventsForId(taskId))
 	if err != nil {
 		return nil, err

@@ -1,0 +1,109 @@
+# This file lists all of the queries. The query definitions can be found in the corresponding files in the resolvers folder.
+type Query {
+  # annotations
+  bbGetCreatedTickets(taskId: String!): [JiraTicket!]!
+  buildBaron(taskId: String!, execution: Int!): BuildBaron!
+
+  # config
+  awsRegions: [String!]
+  clientConfig: ClientConfig
+  instanceTypes: [String!]!
+  spruceConfig: SpruceConfig
+  subnetAvailabilityZones: [String!]!
+
+  # hosts
+  distros(onlySpawnable: Boolean!): [Distro]!
+  distroTaskQueue(distroId: String!): [TaskQueueItem!]!
+  host(hostId: String!): Host
+  hostEvents(
+    hostId: String!
+    hostTag: String = ""
+    limit: Int = 0
+    page: Int = 0
+  ): HostEvents!
+  hosts(
+    hostId: String = ""
+    distroId: String = ""
+    currentTaskId: String = ""
+    statuses: [String!] = []
+    startedBy: String = ""
+    sortBy: HostSortBy = STATUS
+    sortDir: SortDirection = ASC
+    page: Int = 0
+    limit: Int = 10
+  ): HostsResponse!
+  taskQueueDistros: [TaskQueueDistro!]!
+
+  # patch
+  patch(id: String!): Patch!
+  patchTasks(
+    patchId: String!
+    sorts: [SortOrder!]
+    page: Int = 0
+    limit: Int = 0
+    statuses: [String!] = []
+    baseStatuses: [String!] = []
+    variant: String
+    taskName: String
+    includeEmptyActivation: Boolean = false
+  ): PatchTasks!
+
+  # project
+  githubProjectConflicts(projectId: String!): GithubProjectConflicts!
+  project(projectId: String!): Project!
+  projects: [GroupedProjects]!
+  projectEvents(
+    identifier: String!
+    limit: Int = 0
+    before: Time
+    @requireProjectAccess(access: VIEW)
+  ): ProjectEvents!
+  projectSettings(identifier: String! @requireProjectAccess(access: VIEW)): ProjectSettings!
+  repoEvents(
+    id: String!
+    limit: Int = 0
+    before: Time
+    @requireProjectAccess(access: VIEW)
+  ): ProjectEvents!
+  repoSettings(id: String! @requireProjectAccess(access: VIEW)): RepoSettings!
+  viewableProjectRefs: [GroupedProjects]!
+
+  # spawn
+  myHosts: [Host!]!
+  myVolumes: [Volume!]!
+
+  # task
+  task(taskId: String!, execution: Int): Task
+  taskAllExecutions(taskId: String!): [Task!]!
+  taskFiles(taskId: String!, execution: Int): TaskFiles!
+  taskLogs(taskId: String!, execution: Int): TaskLogs!
+  taskTests(
+    taskId: String!
+    execution: Int
+    sortCategory: TestSortCategory = TEST_NAME
+    sortDirection: SortDirection = ASC
+    page: Int = 0
+    limit: Int = 0
+    testName: String = ""
+    statuses: [String!]! = []
+    groupId: String = ""
+  ): TaskTestResult!
+  taskTestSample(
+    tasks: [String!]!
+    filters: [TestFilter!]!
+  ): [TaskTestResultSample!]
+
+  # user
+  myPublicKeys: [PublicKey!]!
+  user(userId: String): User! 
+  userConfig: UserConfig
+  userSettings: UserSettings
+
+  # version
+  buildVariantsForTaskName(projectId: String!, taskName: String!): [BuildVariantTuple]
+  commitQueue(id: String!): CommitQueue!
+  hasVersion(id: String!): Boolean!
+  mainlineCommits(options: MainlineCommitsOptions!, buildVariantOptions: BuildVariantOptions): MainlineCommits
+  taskNamesForBuildVariant(projectId: String!, buildVariant: String!): [String!]
+  version(id: String!): Version!
+}

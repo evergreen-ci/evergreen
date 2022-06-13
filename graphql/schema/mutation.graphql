@@ -1,0 +1,93 @@
+# This file lists all of the mutations. The mutation definitions can be found in the corresponding files in the resolvers folder.
+type Mutation {
+  # annotations
+  bbCreateTicket(taskId: String!, execution: Int): Boolean!
+  addAnnotationIssue(
+    taskId: String!
+    execution: Int!
+    apiIssue: IssueLinkInput!
+    isIssue: Boolean!
+  ): Boolean!
+  editAnnotationNote(
+    taskId: String!
+    execution: Int!
+    originalMessage: String!
+    newMessage: String!
+  ): Boolean!
+  moveAnnotationIssue(
+    taskId: String!
+    execution: Int!
+    apiIssue: IssueLinkInput!
+    isIssue: Boolean!
+  ): Boolean!
+  removeAnnotationIssue(
+    taskId: String!
+    execution: Int!
+    apiIssue: IssueLinkInput!
+    isIssue: Boolean!
+  ): Boolean!
+
+  # hosts
+  reprovisionToNew(hostIds: [String!]!): Int!
+  restartJasper(hostIds: [String!]!): Int!
+  updateHostStatus(
+    hostIds: [String!]!
+    status: String!
+    notes: String = ""
+  ): Int!
+
+  # patch
+  enqueuePatch(patchId: String!, commitMessage: String): Patch!
+  schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
+  schedulePatchTasks(patchId: String!): String
+  scheduleUndispatchedBaseTasks(patchId: String!): [Task!]
+  setPatchPriority(patchId: String!, priority: Int!): String
+  unschedulePatchTasks(patchId: String!, abort: Boolean!): String
+
+  # project
+  addFavoriteProject(identifier: String!): Project!
+  attachProjectToNewRepo(project: MoveProjectInput!): Project!
+  attachProjectToRepo(projectId: String! @requireProjectAccess(access: EDIT)): Project!
+  createProject(project: CreateProjectInput!): Project! @requireSuperUser
+  copyProject(project: CopyProjectInput!): Project! @requireSuperUser
+  defaultSectionToRepo(projectId: String! @requireProjectAccess(access: EDIT), section: ProjectSettingsSection!): String
+  detachProjectFromRepo(projectId: String! @requireProjectAccess(access: EDIT)): Project!
+  forceRepotrackerRun(projectId: String! @requireProjectAccess(access: EDIT)): Boolean!
+  removeFavoriteProject(identifier: String!): Project!
+  saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: ProjectSettingsSection!): ProjectSettings!
+  saveRepoSettingsForSection(repoSettings: RepoSettingsInput, section: ProjectSettingsSection!): RepoSettings!
+  deactivateStepbackTasks(projectId: String! @requireProjectAccess(access: EDIT)): Boolean!
+
+  # spawn
+  attachVolumeToHost(volumeAndHost: VolumeHost!): Boolean!
+  detachVolumeFromHost(volumeId: String!): Boolean!
+  editSpawnHost(spawnHost: EditSpawnHostInput): Host!
+  spawnHost(spawnHostInput: SpawnHostInput): Host!
+  spawnVolume(spawnVolumeInput: SpawnVolumeInput!): Boolean!
+  removeVolume(volumeId: String!): Boolean!
+  updateSpawnHostStatus(hostId: String!, action: SpawnHostStatusActions!): Host!
+  updateVolume(updateVolumeInput: UpdateVolumeInput!): Boolean!
+
+  # task
+  abortTask(taskId: String!): Task!
+  overrideTaskDependencies(taskId: String!): Task!
+  restartTask(taskId: String!): Task!
+  scheduleTasks(taskIds: [String!]!): [Task!]!
+  setTaskPriority(taskId: String!, priority: Int!): Task!
+  unscheduleTask(taskId: String!): Task!
+
+  # user
+  clearMySubscriptions: Int!
+  createPublicKey(publicKeyInput: PublicKeyInput!): [PublicKey!]!
+  removePublicKey(keyName: String!): [PublicKey!]!
+  saveSubscription(subscription: SubscriptionInput!): Boolean!
+  updatePublicKey(
+    targetKeyName: String!
+    updateInfo: PublicKeyInput!
+  ): [PublicKey!]!
+  updateUserSettings(userSettings: UserSettingsInput): Boolean!
+
+  # version
+  removeItemFromCommitQueue(commitQueueId: String!, issue: String!): String
+  restartVersions(versionId: String!, abort: Boolean!, versionsToRestart: [VersionToRestart!]!): [Version!]
+}

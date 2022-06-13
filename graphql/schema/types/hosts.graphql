@@ -1,0 +1,180 @@
+enum HostSortBy {
+  ID
+  CURRENT_TASK
+  DISTRO
+  ELAPSED
+  IDLE_TIME
+  OWNER
+  STATUS
+  UPTIME
+}
+
+enum SortDirection {
+  ASC
+  DESC
+}
+
+enum TaskQueueItemType {
+  COMMIT
+  PATCH
+}
+
+###### TYPES ######
+""" 
+Host models a host, which are used for things like running tasks or as virtual workstations.
+"""
+type Host {
+  id: ID!
+  availabilityZone: String
+  displayName: String
+  distro: DistroInfo
+  distroId: String
+  elapsed: Time # running task start time
+  expiration: Time
+  hostUrl: String!
+  homeVolume: Volume
+  homeVolumeID: String
+  instanceType: String
+  instanceTags: [InstanceTag!]!
+  lastCommunicationTime: Time
+  noExpiration: Boolean!
+  provider: String!
+  runningTask: TaskInfo
+  startedBy: String!
+  status: String!
+  tag: String!
+  totalIdleTime: Duration
+  uptime: Time # host creation time
+  user: String
+  volumes: [Volume!]!
+}
+
+type Volume {
+  id: String!
+  availabilityZone: String!
+  createdBy: String!
+  creationTime: Time
+  deviceName: String
+  displayName: String!
+  expiration: Time
+  homeVolume: Boolean!
+  host: Host
+  hostID: String!
+  noExpiration: Boolean!
+  size: Int!
+  type: String!
+}
+
+type TaskInfo {
+  id: ID
+  name: String
+}
+
+type DistroInfo {
+  id: String
+  bootstrapMethod: String
+  isVirtualWorkStation: Boolean
+  isWindows: Boolean
+  user: String
+  workDir: String
+}
+
+type InstanceTag {
+  canBeModified: Boolean!
+  key: String!
+  value: String!
+}
+
+"""
+HostsResponse is the return value for the hosts query.
+It contains an array of Hosts matching the filter conditions, as well as some count information.
+"""
+type HostsResponse {
+  filteredHostsCount: Int
+  hosts: [Host!]!
+  totalHostsCount: Int!
+}
+
+"""
+HostEvents is the return value for the hostEvents query.
+It contains the event log entries for a given host.
+"""
+type HostEvents {
+  count: Int!
+  eventLogEntries: [HostEventLogEntry!]!
+}
+
+type HostEventLogEntry {
+  id: String!
+  data: HostEventLogData!
+  eventType: String
+  processedAt: Time!
+  resourceId: String!
+  resourceType: String!
+  timestamp: Time
+}
+
+type HostEventLogData {
+  agentBuild: String!
+  agentRevision: String!
+  duration: Duration!
+  execution: String!
+  hostname: String!
+  jasperRevision: String!
+  logs: String!
+  monitorOp: String!
+  newStatus: String!
+  oldStatus: String!
+  provisioningMethod: String!
+  successful: Boolean!
+  taskId: String!
+  taskPid: String!
+  taskStatus: String!
+  user: String!
+}
+
+"""
+Distro[] is the return value for the distros query.
+It models an environment configuration for a host.
+"""
+type Distro {
+  isVirtualWorkStation: Boolean!
+  name: String
+  user: String
+  userSpawnAllowed: Boolean
+  workDir: String
+}
+
+"""
+TaskQueueItem[] is the return value for the distroTaskQueue query.
+It contains information about any particular item on the task queue, such as the name of the task, the build variant of the task,
+and how long it's expected to take to finish running.
+"""
+type TaskQueueItem {
+  id: ID!
+  buildVariant: String!
+  displayName: String!
+  expectedDuration: Duration!
+  priority: Int!
+  project: String!
+  requester: TaskQueueItemType!
+  revision: String!
+  version: String!
+}
+
+"""
+TaskQueueDistro[] is the return value for the taskQueueDistros query.
+It contains information about how many tasks and hosts are running on on a particular distro.
+"""
+type TaskQueueDistro {
+  id: ID!
+  hostCount: Int!
+  taskCount: Int!
+}
+
+
+
+
+
+
+

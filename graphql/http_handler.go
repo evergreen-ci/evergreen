@@ -9,6 +9,8 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/handler/apollotracing"
+	generated "github.com/evergreen-ci/evergreen/graphql/generated"
+	"github.com/evergreen-ci/evergreen/graphql/resolvers"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -17,7 +19,7 @@ import (
 
 // Handler returns a gimlet http handler func used as the gql route handler
 func Handler(apiURL string) func(w http.ResponseWriter, r *http.Request) {
-	srv := handler.NewDefaultServer(NewExecutableSchema(New(apiURL)))
+	srv := handler.NewDefaultServer(generated.NewExecutableSchema(resolvers.New(apiURL)))
 	// Apollo tracing support https://github.com/apollographql/apollo-tracing
 	srv.Use(apollotracing.Tracer{})
 

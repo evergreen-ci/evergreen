@@ -1,0 +1,200 @@
+enum TaskSortCategory {
+  NAME
+  STATUS
+  BASE_STATUS
+  VARIANT
+  DURATION
+}
+
+###### INPUTS ######
+"""
+PatchesInput is the input value to the patches field for the User and Project types.
+Based on the information in PatchesInput, we return a list of Patches for either an individual user or a project.
+"""
+input PatchesInput {
+  includeCommitQueue: Boolean = false
+  limit: Int! = 0
+  onlyCommitQueue: Boolean = false
+  page: Int! = 0
+  patchName: String! = ""
+  statuses: [String!]! = []
+}
+
+"""
+SortOrder[] is an input value for the patchTasks query. It is used to define where to sort by ASC/DEC for a given sort key.
+"""
+input SortOrder {
+  Direction: SortDirection!
+  Key: TaskSortCategory!
+}
+
+"""
+PatchConfigure is the input to the schedulePatch mutation.
+It contains information about how a user has configured their patch (e.g. name, tasks to run, etc).
+"""
+input PatchConfigure {
+  description: String!
+  parameters: [ParameterInput]
+  patchTriggerAliases: [String!]
+  variantsTasks: [VariantTasks!]!
+}
+
+input VariantTasks {
+  displayTasks: [DisplayTask!]!
+  tasks: [String!]!
+  variant: String!
+}
+
+input DisplayTask {
+  ExecTasks: [String!]!
+  Name: String!
+}
+
+input ParameterInput {
+  key: String!
+  value: String!
+}
+
+###### TYPES ######
+"""
+Patch is a manually initiated version submitted to test local code changes.
+"""
+type Patch {
+  id: ID!
+  activated: Boolean!
+  alias: String
+  author: String!
+  authorDisplayName: String!
+  baseTaskStatuses: [String!]!
+  baseVersionID: String @deprecated(reason: "Use versionFull.baseVersion.id instead")
+  builds: [Build!]!
+  canEnqueueToCommitQueue: Boolean!
+  childPatchAliases: [ChildPatchAlias!]
+  childPatches: [Patch!]
+  commitQueuePosition: Int
+  createTime: Time
+  description: String!
+  duration: PatchDuration
+  githash: String!
+  moduleCodeChanges: [ModuleCodeChange!]!
+  parameters: [Parameter!]!
+  patchNumber: Int!
+  patchTriggerAliases: [PatchTriggerAlias!]!
+  project: PatchProject
+  projectID: String!
+  projectIdentifier: String!
+  status: String!
+  taskCount: Int
+  tasks: [String!]!
+  taskStatuses: [String!]!
+  time: PatchTime
+  variants: [String!]!
+  variantsTasks: [VariantTask]!
+  versionFull: Version
+}
+
+type ChildPatchAlias {
+  alias: String!
+  patchId: String!
+}
+
+# This is also used by the Project type
+type PatchTriggerAlias {
+  alias: String!
+  childProjectId: String!
+  childProjectIdentifier: String!
+  parentAsModule: String
+  status: String
+  taskSpecifiers: [TaskSpecifier!]
+  variantsTasks: [VariantTask!]!
+}
+
+# This is also used by the Project type
+type VariantTask {
+  name: String!
+  tasks: [String!]!
+}
+
+# This is also used by the Project type
+type TaskSpecifier {
+  patchAlias: String!
+  taskRegex: String!
+  variantRegex: String!
+}
+
+type PatchProject {
+  variants: [ProjectBuildVariant!]!
+}
+
+type ProjectBuildVariant {
+  displayName: String!
+  name: String!
+  tasks: [String!]!
+}
+
+type ModuleCodeChange {
+  branchName: String!
+  fileDiffs: [FileDiff!]!
+  htmlLink: String!
+  rawLink: String!
+}
+
+type FileDiff {
+  additions: Int!
+  deletions: Int!
+  description: String!
+  diffLink: String!
+  fileName: String!
+}
+
+type Parameter {
+  key: String!
+  value: String!
+}
+
+type PatchDuration {
+  makespan: String
+  time: PatchTime
+  timeTaken: String
+}
+
+type PatchTime {
+  finished: String
+  started: String
+  submittedAt: String!
+}
+
+type Build {
+  id: String!
+  actualMakespan: Duration!
+  buildVariant: String!
+  predictedMakespan: Duration!
+  status: String!
+}
+
+"""
+Patches is the return value of the patches field for the User and Project types.
+It contains an array Patches for either an individual user or a project.
+"""
+type Patches {
+  filteredPatchCount: Int!
+  patches: [Patch!]!
+}
+
+extend type User {
+  patches(patchesInput: PatchesInput!): Patches! # user patches
+}
+
+extend type Project {
+  patches(patchesInput: PatchesInput!): Patches! # project patches
+}
+
+"""
+PatchTasks is the return value of the PatchTasks query.
+It contains an array of Tasks based on filter criteria, as well as a count for the number of Tasks in that array.
+"""
+type PatchTasks {
+  count: Int!
+  tasks: [Task!]!
+}
+

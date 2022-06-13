@@ -1,4 +1,4 @@
-package graphql
+package errors
 
 import (
 	"context"

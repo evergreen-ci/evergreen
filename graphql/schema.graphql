@@ -1,3 +1,4 @@
+# THIS FILE IS BEING KEPT FOR BACKWARDS COMPATABILITY.
 directive @requireSuperUser on FIELD_DEFINITION 
 directive @requireProjectAccess(access: ProjectSettingsAccess!) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION
 
