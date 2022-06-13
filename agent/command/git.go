@@ -752,12 +752,12 @@ func (c *gitFetchProject) getPatchContents(ctx context.Context, comm client.Comm
 // patch, it uses git-am (see https://git-scm.com/docs/git-am), otherwise
 // it uses git apply
 func (c *gitFetchProject) getApplyCommand(patchFile string, conf *internal.TaskConfig) (string, error) {
-	isMBP, err := patch.IsMailbox(patchFile)
+	useGitAm, err := isMailboxPatch(patchFile, conf)
 	if err != nil {
-		return "", errors.Wrap(err, "can't check patch type")
+		return "", err
 	}
 
-	if isMBP && conf.Task.DisplayName == evergreen.MergeTaskName {
+	if useGitAm {
 		committerName := defaultCommitterName
 		committerEmail := defaultCommitterEmail
 		if len(c.CommitterName) > 0 {
@@ -770,6 +770,14 @@ func (c *gitFetchProject) getApplyCommand(patchFile string, conf *internal.TaskC
 	}
 
 	return fmt.Sprintf("git apply --binary --index < '%s'", patchFile), nil
+}
+
+func isMailboxPatch(patchFile string, conf *internal.TaskConfig) (bool, error) {
+	isMBP, err := patch.IsMailbox(patchFile)
+	if err != nil {
+		return false, errors.Wrap(err, "checking patch type")
+	}
+	return isMBP && conf.Task.DisplayName == evergreen.MergeTaskName, nil
 }
 
 // getPatchCommands, given a module patch of a patch, will return the appropriate list of commands that

@@ -663,6 +663,11 @@ func (s *GitGetProjectSuite) TestGetApplyCommand() {
 	s.Equal(fmt.Sprintf("git apply --binary --index < '%s'", patchPath), applyCommand)
 
 	// mbox patch
+	tc = &internal.TaskConfig{
+		Task: &task.Task{
+			DisplayName: evergreen.MergeTaskName,
+		},
+	}
 	patchPath = filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test_mbox.patch")
 	applyCommand, err = c.getApplyCommand(patchPath, tc)
 	s.NoError(err)
