@@ -16,7 +16,7 @@ import (
 type evergreenLogSender struct {
 	logTaskData         TaskData
 	logChannel          string
-	comm                Communicator
+	comm                SharedCommunicator
 	cancel              context.CancelFunc
 	pipe                chan message.Composer
 	signalFlush         chan struct{}
@@ -30,7 +30,7 @@ type evergreenLogSender struct {
 	*send.Base
 }
 
-func newEvergreenLogSender(ctx context.Context, comm Communicator, channel string, taskData TaskData, bufferSize int, bufferTime time.Duration) send.Sender {
+func newEvergreenLogSender(ctx context.Context, comm SharedCommunicator, channel string, taskData TaskData, bufferSize int, bufferTime time.Duration) send.Sender {
 	s := &evergreenLogSender{
 		comm:                comm,
 		logChannel:          channel,

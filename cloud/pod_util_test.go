@@ -374,8 +374,8 @@ func TestExportECSPodCreationOptions(t *testing.T) {
 							},
 							Clusters: []evergreen.ECSClusterConfig{
 								{
-									Platform: "linux",
-									Name:     "cluster",
+									OS:   evergreen.ECSOSLinux,
+									Name: "cluster",
 								},
 							},
 						},

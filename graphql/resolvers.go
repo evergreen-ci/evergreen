@@ -2483,6 +2483,14 @@ func (r *mutationResolver) ForceRepotrackerRun(ctx context.Context, projectID st
 	return true, nil
 }
 
+func (r *mutationResolver) DeactivateStepbackTasks(ctx context.Context, projectID string) (bool, error) {
+	usr := mustHaveUser(ctx)
+	if err := task.DeactivateStepbackTasksForProject(projectID, usr.Username()); err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("deactivating current stepback tasks: %s", err.Error()))
+	}
+	return true, nil
+}
+
 func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, priority int) (*restModel.APITask, error) {
 	t, err := task.FindOneId(taskID)
 	if err != nil {
