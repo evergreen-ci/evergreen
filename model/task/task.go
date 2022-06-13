@@ -3318,7 +3318,7 @@ func (t *Task) FindAllMarkedUnattainableDependencies() ([]Task, error) {
 	return FindAll(query)
 }
 
-func (t *Task) toTaskNode() TaskNode {
+func (t *Task) ToTaskNode() TaskNode {
 	return TaskNode{
 		Name:    t.DisplayName,
 		Variant: t.BuildVariant,
