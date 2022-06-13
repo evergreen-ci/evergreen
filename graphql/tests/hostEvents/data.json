@@ -162,21 +162,6 @@
             "r_type": "HOST"
         },
         {
-            "_id": "5419fd1bb17ed89d1464abff",
-            "ts": {
-                "$date": "2014-09-12T14:03:07.838Z"
-            },
-            "r_id": "i-0f81a2d39744003dd",
-            "e_type": "HOST_TASK_PID_SET",
-            "data": {
-                "t_pid": "123"
-            },
-            "processed_at": {
-                "$date": "2015-10-21T23:29:00Z"
-            },
-            "r_type": "HOST"
-        },
-        {
             "_id": "58aded494a1426f25c051955",
             "r_type": "HOST",
             "processed_at": {

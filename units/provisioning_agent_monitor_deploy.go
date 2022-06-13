@@ -120,6 +120,14 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 			return
 		}
 		event.LogHostAgentMonitorDeployFailed(j.host.Id, j.Error())
+		grip.Error(message.WrapError(j.Error(), message.Fields{
+			"message":  "agent monitor deploy failed",
+			"host_id":  j.host.Id,
+			"host_tag": j.host.Tag,
+			"distro":   j.host.Distro.Id,
+			"provider": j.host.Provider,
+		}))
+
 		if j.host.Status != evergreen.HostRunning {
 			return
 		}
@@ -146,10 +154,10 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 	}
 	if alive {
 		grip.Info(message.Fields{
-			"message":   "not deploying a new agent monitor because it is still alive",
-			"host_id":   j.host.Id,
-			"distro_id": j.host.Distro.Id,
-			"job_id":    j.ID(),
+			"message": "not deploying a new agent monitor because it is still alive",
+			"host_id": j.host.Id,
+			"distro":  j.host.Distro.Id,
+			"job_id":  j.ID(),
 		})
 		j.AddRetryableError(j.host.SetNeedsNewAgentMonitor(false))
 		return
@@ -309,6 +317,13 @@ func (j *agentMonitorDeployJob) startAgentMonitor(ctx context.Context, settings 
 	}
 
 	event.LogHostAgentMonitorDeployed(j.host.Id)
+	grip.Info(message.Fields{
+		"message":  "agent monitor deployed",
+		"host_id":  j.host.Id,
+		"host_tag": j.host.Tag,
+		"distro":   j.host.Distro.Id,
+		"provider": j.host.Provider,
+	})
 
 	return nil
 }

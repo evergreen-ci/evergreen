@@ -238,10 +238,6 @@ func LogHostRunningTaskCleared(hostId string, taskId string) {
 		HostEventData{TaskId: taskId})
 }
 
-func LogHostTaskPidSet(hostId string, taskPid string) {
-	LogHostEvent(hostId, EventHostTaskPidSet, HostEventData{TaskPid: taskPid})
-}
-
 // LogHostProvisionFailed is used when Evergreen gives up on provisioning a host
 // after several retries.
 func LogHostProvisionFailed(hostId string, setupLogs string) {

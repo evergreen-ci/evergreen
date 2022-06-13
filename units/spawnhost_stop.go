@@ -10,6 +10,8 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -56,10 +58,24 @@ func (j *spawnhostStopJob) Run(ctx context.Context) {
 	stopCloudHost := func(mgr cloud.Manager, h *host.Host, user string) error {
 		if err := mgr.StopInstance(ctx, h, user); err != nil {
 			event.LogHostStopError(h.Id, err.Error())
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":  "error stopping spawn host",
+				"host_id":  h.Id,
+				"host_tag": h.Tag,
+				"distro":   h.Distro.Id,
+				"user":     user,
+			}))
 			return errors.Wrap(err, "stopping spawn host")
 		}
 
 		event.LogHostStopSucceeded(h.Id)
+		grip.Info(message.Fields{
+			"message":  "stopped spawn host",
+			"host_id":  h.Id,
+			"host_tag": h.Tag,
+			"distro":   h.Distro.Id,
+			"user":     user,
+		})
 
 		return nil
 	}
