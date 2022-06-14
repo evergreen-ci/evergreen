@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/pod/dispatcher"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -87,6 +88,15 @@ func (j *podAllocatorJob) Run(ctx context.Context) {
 		return
 	}
 
+	if j.task.RemainingContainerAllocationAttempts() == 0 {
+		// A task that has used up all of its container allocation attempts
+		// should not try to allocate again.
+		if err := model.MarkUnallocatableContainerTasksSystemFailed([]string{j.TaskID}); err != nil {
+			j.AddRetryableError(errors.Wrap(err, "marking container task as unable to allocate"))
+		}
+
+		return
+	}
 	if !j.task.ShouldAllocateContainer() {
 		return
 	}
