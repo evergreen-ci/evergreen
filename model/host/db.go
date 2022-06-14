@@ -964,6 +964,11 @@ func MarkStaleBuildingAsFailed(distroID string) error {
 
 	for _, id := range ids {
 		event.LogHostStartError(id, "stale building host took too long to start")
+		grip.Info(message.Fields{
+			"message": "stale building host took too long to start",
+			"host_id": id,
+			"distro":  distroID,
+		})
 	}
 
 	return nil
@@ -1423,18 +1428,26 @@ func UnsafeReplace(ctx context.Context, env evergreen.Environment, idToRemove st
 
 	txnStart := time.Now()
 	_, err = sess.WithTransaction(ctx, replaceHost)
-	grip.Info(message.Fields{
-		"error":       err,
-		"message":     "attempted to replace old host with new host in a transaction",
-		"jira_ticket": "EVG-15022",
-		"old_host_id": idToRemove,
-		"new_host_id": toInsert.Id,
-		"distro_id":   toInsert.Distro.Id,
-		"duration":    time.Since(txnStart),
-	})
 	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":     "replacing old host with new host in a transaction",
+			"jira_ticket": "EVG-15022",
+			"old_host_id": idToRemove,
+			"new_host_id": toInsert.Id,
+			"distro_id":   toInsert.Distro.Id,
+			"duration":    time.Since(txnStart),
+		}))
 		return errors.Wrap(err, "atomic removal of old host and insertion of new host")
 	}
+
+	grip.Info(message.Fields{
+		"message":              "replaced host document",
+		"host_id":              toInsert.Id,
+		"host_tag":             toInsert.Tag,
+		"distro":               toInsert.Distro.Id,
+		"old_host_id":          idToRemove,
+		"transaction_duration": time.Since(txnStart),
+	})
 
 	return nil
 }

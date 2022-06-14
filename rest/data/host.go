@@ -14,6 +14,8 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -83,6 +85,14 @@ func NewIntentHost(ctx context.Context, options *restmodel.HostRequestOptions, u
 	if err := intentHost.Insert(); err != nil {
 		return nil, err
 	}
+
+	grip.Info(message.Fields{
+		"message":  "inserted intent host",
+		"host_tag": intentHost.Tag,
+		"distro":   intentHost.Distro.Id,
+		"user":     user.Username(),
+	})
+
 	return intentHost, nil
 }
 

@@ -1387,6 +1387,14 @@ func (t *Task) MarkSystemFailed(description string) error {
 	}
 
 	event.LogTaskFinished(t.Id, t.Execution, t.HostId, evergreen.TaskSystemFailed)
+	grip.Info(message.Fields{
+		"message":     "marking task system failed",
+		"task_id":     t.Id,
+		"execution":   t.Execution,
+		"status":      t.Status,
+		"host_id":     t.HostId,
+		"description": description,
+	})
 
 	return UpdateOne(
 		bson.M{

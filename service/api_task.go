@@ -431,6 +431,8 @@ func (as *APIServer) transitionIntentHostToStarting(ctx context.Context, h *host
 	grip.Notice(message.Fields{
 		"message":     "DB-EC2 state mismatch - found EC2 instance running an agent, but Evergreen believes the host still an intent host",
 		"host_id":     h.Id,
+		"host_tag":    h.Tag,
+		"distro":      h.Distro.Id,
 		"instance_id": instanceID,
 		"host_status": h.Status,
 	})
@@ -467,6 +469,13 @@ func (as *APIServer) transitionIntentHostToDecommissioned(ctx context.Context, h
 	}
 
 	event.LogHostStatusChanged(h.Id, oldStatus, h.Status, evergreen.User, "host started agent but intent host is already considered a failure")
+	grip.Info(message.Fields{
+		"message":    "intent host decommissioned",
+		"host_id":    h.Id,
+		"host_tag":   h.Tag,
+		"distro":     h.Distro.Id,
+		"old_status": oldStatus,
+	})
 
 	return nil
 }
@@ -1233,26 +1242,38 @@ func handleOldAgentRevision(response apimodels.NextTaskResponse, details *apimod
 	// yet to be updated.
 	if !h.Distro.LegacyBootstrap() && details.AgentRevision != h.AgentRevision {
 		err := h.SetAgentRevision(details.AgentRevision)
-		if err == nil {
-			event.LogHostAgentDeployed(h.Id)
-			return response, false
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":        "problem updating host agent revision",
+				"operation":      "NextTask",
+				"host_id":        h.Id,
+				"host_tag":       h.Tag,
+				"source":         "database error",
+				"host_revision":  details.AgentRevision,
+				"agent_version":  evergreen.AgentVersion,
+				"build_revision": evergreen.BuildRevision,
+			}))
 		}
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":        "problem updating host agent revision",
-			"operation":      "next_task",
+
+		event.LogHostAgentDeployed(h.Id)
+		grip.Info(message.Fields{
+			"message":        "updated host agent revision",
+			"operation":      "NextTask",
 			"host_id":        h.Id,
+			"host_tag":       h.Tag,
 			"source":         "database error",
 			"host_revision":  details.AgentRevision,
 			"agent_version":  evergreen.AgentVersion,
 			"build_revision": evergreen.BuildRevision,
-		}))
+		})
+		return response, false
 	}
 
 	if details.TaskGroup == "" {
 		if err := h.SetNeedsNewAgent(true); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"host_id":        h.Id,
-				"operation":      "next_task",
+				"operation":      "NextTask",
 				"message":        "problem indicating that host needs new agent",
 				"source":         "database error",
 				"build_revision": evergreen.BuildRevision,

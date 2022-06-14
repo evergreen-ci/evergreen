@@ -331,6 +331,14 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	if _, err = cloudManager.SpawnHost(ctx, j.host); err != nil {
 		if strings.Contains(err.Error(), cloud.EC2InsufficientCapacity) && j.host.ShouldFallbackToOnDemand() {
 			event.LogHostFallback(j.host.Id)
+			grip.Info(message.Fields{
+				"message":  "fallback to on-demand",
+				"host_id":  j.host.Id,
+				"host_tag": j.host.Tag,
+				"distro":   j.host.Distro.Id,
+				"provider": j.host.Provider,
+			})
+
 			// create a new cloud manager for on demand, and re-attempt to spawn
 			j.host.Provider = evergreen.ProviderNameEc2OnDemand
 			j.host.Distro.Provider = evergreen.ProviderNameEc2OnDemand
@@ -393,6 +401,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	grip.Info(message.Fields{
 		"message":      "successfully started host",
 		"host_id":      j.host.Id,
+		"host_tag":     j.host.Tag,
 		"distro":       j.host.Distro.Id,
 		"provider":     j.host.Provider,
 		"job":          j.ID(),
