@@ -34,7 +34,7 @@ func whatChanged() ([]string, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting merge-base")
 	}
-	diffCmd := exec.Command("git", "diff", strings.TrimSpace(string(base)), "--name-only")
+	diffCmd := exec.Command("git", "diff", strings.TrimSpace(string(base)), "--name-only", "--diff-filter=d")
 	files, err := diffCmd.Output()
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting diff")
