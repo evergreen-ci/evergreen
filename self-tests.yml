@@ -666,3 +666,13 @@ buildvariants:
     tasks:
       - name: ".agent .test"
       - name: ".cli .test"
+
+## Patch alias testing
+
+patch_aliases:
+  - alias: "test_patch_1"
+    variant: "^ubuntu1604$"
+    task: "^test.*$"
+    variant_tags: ["pr_check", "pr_check_all"]
+    tags: ["pr_check"]
+    description: "Hey I am a string"

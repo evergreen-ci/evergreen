@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"os"
 	"sort"
-	"strings"
 	"text/tabwriter"
 
 	"github.com/cheynewallace/tabby"
@@ -306,9 +305,15 @@ func listPatchAliases(ctx context.Context, confPath, project string) error {
 	}
 
 	for _, alias := range aliases {
+		fmt.Printf("%+v\n", alias)
 		if !utility.StringSliceContains(evergreen.InternalAliases, alias.Alias) {
-			fmt.Printf("%s\t%s\t%s\t%s\t%s\n", alias.Alias, alias.Variant, strings.Join(alias.VariantTags, ","),
-				alias.Task, strings.Join(alias.TaskTags, ", "))
+			// OG printing:
+			//fmt.Printf("%s\t%s\t%s\t%s\t%s\n", alias.Alias, alias.Variant, strings.Join(alias.VariantTags, ","),
+			//	alias.Task, strings.Join(alias.TaskTags, ", "))
+
+			// Debug printing
+			fmt.Printf("HEYHEYHEY ---- test")
+			fmt.Printf("\n\n%s\n\n%s\n\n", alias.Alias, alias.Description)
 		}
 	}
 
