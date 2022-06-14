@@ -34,8 +34,7 @@ func LogBuildStateChangeEvent(id, status string) {
 		ResourceType: ResourceTypeBuild,
 	}
 
-	logger := NewDBEventLogger(AllLogCollection)
-	if err := logger.LogEvent(&event); err != nil {
+	if err := event.Log(); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": event.ResourceType,
 			"event_type":    BuildStateChange,
@@ -55,8 +54,7 @@ func LogBuildGithubCheckFinishedEvent(id, status string) {
 		},
 		ResourceType: ResourceTypeBuild,
 	}
-	logger := NewDBEventLogger(AllLogCollection)
-	if err := logger.LogEvent(&event); err != nil {
+	if err := event.Log(); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": event.ResourceType,
 			"event_type":    BuildGithubCheckFinished,

@@ -36,7 +36,7 @@ func TestHostTerminationJob(t *testing.T) {
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
 
-			events, err := event.Find(event.AllLogCollection, event.MostRecentHostEvents(h.Id, "", 50))
+			events, err := event.Find(event.LegacyEventLogCollection, event.MostRecentHostEvents(h.Id, "", 50))
 			require.NoError(t, err)
 			require.NotEmpty(t, events)
 			assert.Equal(t, event.EventHostStatusChanged, events[0].EventType)
@@ -68,7 +68,7 @@ func TestHostTerminationJob(t *testing.T) {
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
 
-			events, err := event.Find(event.AllLogCollection, event.MostRecentHostEvents(h.Id, "", 50))
+			events, err := event.Find(event.LegacyEventLogCollection, event.MostRecentHostEvents(h.Id, "", 50))
 			require.NoError(t, err)
 			require.NotEmpty(t, events)
 			assert.Equal(t, event.EventHostStatusChanged, events[0].EventType)
@@ -191,7 +191,7 @@ func TestHostTerminationJob(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(host.Collection, event.AllLogCollection), "error clearing host collection")
+			require.NoError(t, db.ClearCollections(host.Collection, event.LegacyEventLogCollection), "error clearing host collection")
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 

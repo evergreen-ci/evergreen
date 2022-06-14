@@ -21,7 +21,7 @@ func init() {
 func TestLoggingTaskEvents(t *testing.T) {
 	Convey("Test task event logging", t, func() {
 
-		require.NoError(t, db.Clear(AllLogCollection))
+		require.NoError(t, db.Clear(LegacyEventLogCollection))
 
 		Convey("All task events should be logged correctly", func() {
 			taskId := "task_id"
@@ -37,7 +37,7 @@ func TestLoggingTaskEvents(t *testing.T) {
 			time.Sleep(1 * time.Millisecond)
 			LogTaskFinished(taskId, 1, hostId, evergreen.TaskSucceeded)
 
-			eventsForTask, err := Find(AllLogCollection, TaskEventsInOrder(taskId))
+			eventsForTask, err := Find(LegacyEventLogCollection, TaskEventsInOrder(taskId))
 			So(err, ShouldEqual, nil)
 
 			event := eventsForTask[0]
@@ -111,9 +111,9 @@ func TestLoggingTaskEvents(t *testing.T) {
 func TestLogManyTestEvents(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
-	require.NoError(db.ClearCollections(AllLogCollection))
+	require.NoError(db.ClearCollections(LegacyEventLogCollection))
 	LogManyTaskAbortRequests([]string{"task_1", "task_2"}, "example_user")
 	events := []EventLogEntry{}
-	assert.NoError(db.FindAllQ(AllLogCollection, db.Query(bson.M{}), &events))
+	assert.NoError(db.FindAllQ(LegacyEventLogCollection, db.Query(bson.M{}), &events))
 	assert.Len(events, 2)
 }

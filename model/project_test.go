@@ -1445,11 +1445,10 @@ func TestFindProjectsSuite(t *testing.T) {
 				},
 			}
 
-		s.Require().NoError(db.ClearCollections(event.AllLogCollection))
-		logger := event.NewDBEventLogger(event.AllLogCollection)
+		s.Require().NoError(db.ClearCollections(event.LegacyEventLogCollection))
 		for i := 0; i < projEventCount; i++ {
 			eventShallowCpy := h
-			s.NoError(logger.LogEvent(&eventShallowCpy))
+			s.NoError(eventShallowCpy.Log())
 		}
 
 		return nil

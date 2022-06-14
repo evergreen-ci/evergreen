@@ -14,7 +14,7 @@ import (
 )
 
 func TestVolumeExpiration(t *testing.T) {
-	require.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection, event.AllLogCollection, alertrecord.Collection))
+	require.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection, event.LegacyEventLogCollection, alertrecord.Collection))
 	volumes := []host.Volume{
 		{ID: "v0", Expiration: time.Now().Add(2 * time.Hour)},
 		{ID: "v1", Expiration: time.Now().Add(10 * time.Hour)},

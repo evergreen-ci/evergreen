@@ -25,7 +25,7 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 	switch resourceType {
 	case event.ResourceTypeTask:
 		eventQuery := event.MostRecentTaskEvents(resourceID, 100)
-		loggedEvents, err = event.Find(event.AllLogCollection, eventQuery)
+		loggedEvents, err = event.Find(event.LegacyEventLogCollection, eventQuery)
 	case event.ResourceTypeHost:
 		if u == nil {
 			uis.RedirectToLogin(w, r)
@@ -42,7 +42,7 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		eventQuery := event.MostRecentHostEvents(h.Id, h.Tag, 5000)
-		loggedEvents, err = event.Find(event.AllLogCollection, eventQuery)
+		loggedEvents, err = event.Find(event.LegacyEventLogCollection, eventQuery)
 	case event.ResourceTypeDistro:
 		if u == nil {
 			uis.RedirectToLogin(w, r)
@@ -55,7 +55,7 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		eventQuery := event.RecentAdminEvents(100)
-		loggedEvents, err = event.Find(event.AllLogCollection, eventQuery)
+		loggedEvents, err = event.Find(event.LegacyEventLogCollection, eventQuery)
 	case model.EventResourceTypeProject:
 		if u == nil {
 			uis.RedirectToLogin(w, r)

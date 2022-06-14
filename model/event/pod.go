@@ -44,8 +44,7 @@ func LogPodEvent(id string, kind PodEventType, data podData) {
 		Data:         data,
 	}
 
-	logger := NewDBEventLogger(AllLogCollection)
-	if err := logger.LogEvent(&e); err != nil {
+	if err := e.Log(); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":    "failed to log pod event",
 			"pod":        id,

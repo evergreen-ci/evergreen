@@ -80,7 +80,7 @@ func bbGetNote(w http.ResponseWriter, r *http.Request) {
 func (uis *UIServer) bbGetCreatedTickets(w http.ResponseWriter, r *http.Request) {
 	taskId := gimlet.GetVars(r)["task_id"]
 
-	events, err := event.Find(event.AllLogCollection, event.TaskEventsForId(taskId))
+	events, err := event.Find(event.LegacyEventLogCollection, event.TaskEventsForId(taskId))
 	if err != nil {
 		gimlet.WriteJSONInternalError(w, err.Error())
 		return

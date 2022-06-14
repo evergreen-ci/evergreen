@@ -62,8 +62,7 @@ func logTaskEvent(taskId string, eventType string, eventData TaskEventData) {
 		ResourceType: ResourceTypeTask,
 	}
 
-	logger := NewDBEventLogger(AllLogCollection)
-	if err := logger.LogEvent(&event); err != nil {
+	if err := event.Log(); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeTask,
 			"message":       "error logging event",
@@ -94,8 +93,7 @@ func logManyTaskEvents(taskIds []string, eventType string, eventData TaskEventDa
 		}
 		events = append(events, event)
 	}
-	logger := NewDBEventLogger(AllLogCollection)
-	if err := logger.LogManyEvents(events); err != nil {
+	if err := LogManyEvents(events); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeTask,
 			"message":       "error logging event",

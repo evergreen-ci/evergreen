@@ -16,7 +16,7 @@ func TestPodEvents(t *testing.T) {
 			newStatus := "starting"
 			LogPodStatusChanged(id, oldStatus, newStatus)
 
-			events, err := Find(AllLogCollection, MostRecentPodEvents(id, 10))
+			events, err := Find(LegacyEventLogCollection, MostRecentPodEvents(id, 10))
 			require.NoError(t, err)
 			require.Len(t, events, 1)
 
@@ -33,7 +33,7 @@ func TestPodEvents(t *testing.T) {
 			execution := 5
 			LogPodAssignedTask(podID, taskID, 5)
 
-			events, err := Find(AllLogCollection, MostRecentPodEvents(podID, 10))
+			events, err := Find(LegacyEventLogCollection, MostRecentPodEvents(podID, 10))
 			require.NoError(t, err)
 			require.Len(t, events, 1)
 
@@ -46,9 +46,9 @@ func TestPodEvents(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.Clear(AllLogCollection))
+			require.NoError(t, db.Clear(LegacyEventLogCollection))
 			defer func() {
-				assert.NoError(t, db.Clear(AllLogCollection))
+				assert.NoError(t, db.Clear(LegacyEventLogCollection))
 			}()
 			tCase(t)
 		})

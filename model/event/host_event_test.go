@@ -12,7 +12,7 @@ import (
 func TestLoggingHostEvents(t *testing.T) {
 	Convey("When logging host events", t, func() {
 
-		So(db.Clear(AllLogCollection), ShouldBeNil)
+		So(db.Clear(LegacyEventLogCollection), ShouldBeNil)
 
 		Convey("all events logged should be persisted to the database, and"+
 			" fetching them in order should sort by the time they were"+
@@ -40,7 +40,7 @@ func TestLoggingHostEvents(t *testing.T) {
 			// fetch all the events from the database, make sure they are
 			// persisted correctly
 
-			eventsForHost, err := Find(AllLogCollection, MostRecentHostEvents(hostId, hostTag, 50))
+			eventsForHost, err := Find(LegacyEventLogCollection, MostRecentHostEvents(hostId, hostTag, 50))
 			So(err, ShouldBeNil)
 
 			So(eventsForHost, ShouldHaveLength, 6)
@@ -120,7 +120,7 @@ func TestLoggingHostEvents(t *testing.T) {
 			err = UpdateHostTaskExecutions(hostId, taskId, 0)
 			So(err, ShouldBeNil)
 
-			eventsForHost, err = Find(AllLogCollection, MostRecentHostEvents(hostId, "", 50))
+			eventsForHost, err = Find(LegacyEventLogCollection, MostRecentHostEvents(hostId, "", 50))
 			So(err, ShouldBeNil)
 			So(len(eventsForHost), ShouldBeGreaterThan, 0)
 			for _, event = range eventsForHost {

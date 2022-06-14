@@ -147,11 +147,10 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 				},
 			}
 
-		s.Require().NoError(db.ClearCollections(event.AllLogCollection))
-		logger := event.NewDBEventLogger(event.AllLogCollection)
+		s.Require().NoError(db.ClearCollections(event.LegacyEventLogCollection))
 		for i := 0; i < projEventCount; i++ {
 			eventShallowCpy := h
-			s.NoError(logger.LogEvent(&eventShallowCpy))
+			s.NoError(eventShallowCpy.Log())
 		}
 
 		return nil
@@ -256,7 +255,7 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 }
 
 func TestUpdateProjectVarsByValue(t *testing.T) {
-	require.NoError(t, db.ClearCollections(model.ProjectVarsCollection, event.AllLogCollection))
+	require.NoError(t, db.ClearCollections(model.ProjectVarsCollection, event.LegacyEventLogCollection))
 
 	vars := &model.ProjectVars{
 		Id:          projectId,

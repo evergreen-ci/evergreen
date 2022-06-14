@@ -7,7 +7,7 @@ import (
 )
 
 func bbGetCreatedTicketsPointers(taskId string) ([]*thirdparty.JiraTicket, error) {
-	events, err := event.Find(event.AllLogCollection, event.TaskEventsForId(taskId))
+	events, err := event.Find(event.LegacyEventLogCollection, event.TaskEventsForId(taskId))
 	if err != nil {
 		return nil, err
 	}

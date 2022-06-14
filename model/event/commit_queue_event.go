@@ -37,8 +37,7 @@ func logCommitQueueEvent(patchID, eventType string, data *CommitQueueEventData) 
 		Data:         data,
 	}
 
-	logger := NewDBEventLogger(AllLogCollection)
-	if err := logger.LogEvent(&event); err != nil {
+	if err := event.Log(); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeCommitQueue,
 			"message":       "error logging event",

@@ -95,8 +95,7 @@ func LogHostEvent(hostId string, eventType string, eventData HostEventData) {
 		ResourceType: ResourceTypeHost,
 	}
 
-	logger := NewDBEventLogger(AllLogCollection)
-	if err := logger.LogEvent(&event); err != nil {
+	if err := event.Log(); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeHost,
 			"message":       "error logging event",
@@ -263,7 +262,7 @@ func UpdateHostTaskExecutions(hostId, taskId string, execution int) error {
 			bsonutil.GetDottedKeyName(DataKey, hostDataTaskExecutionKey): strconv.Itoa(execution),
 		},
 	}
-	_, err := db.UpdateAll(AllLogCollection, query, update)
+	_, err := db.UpdateAll(LegacyEventLogCollection, query, update)
 	return err
 }
 

@@ -9,30 +9,52 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-const notSubscribableTimeString = "2015-10-21T16:29:01-07:00"
+var eventCollections = []string{LegacyEventLogCollection, EventCollection}
 
-type EventLogger interface {
-	LogEvent(event *EventLogEntry) error
-}
-
-type DBEventLogger struct {
-	collection string
-}
-
-func NewDBEventLogger(collection string) *DBEventLogger {
-	return &DBEventLogger{
-		collection: collection,
-	}
-}
-
-func (l *DBEventLogger) LogEvent(e *EventLogEntry) error {
+func (e *EventLogEntry) Log() error {
 	if err := e.validateEvent(); err != nil {
 		return errors.Wrap(err, "not logging event, event is invalid")
 	}
-	return db.Insert(l.collection, e)
+
+	catcher := grip.NewBasicCatcher()
+	for _, col := range eventCollections {
+		catcher.Add(db.Insert(col, e))
+	}
+
+	return catcher.Resolve()
 }
 
-func (l *DBEventLogger) LogManyEvents(events []EventLogEntry) error {
+func (e *EventLogEntry) MarkProcessed() error {
+	if e.ID == "" {
+		return errors.New("event has no ID")
+	}
+	processedAt := time.Now()
+
+	filter := bson.M{
+		idKey: e.ID,
+		processedAtKey: bson.M{
+			"$eq": time.Time{},
+		},
+	}
+	update := bson.M{
+		"$set": bson.M{
+			processedAtKey: processedAt,
+		},
+	}
+
+	catcher := grip.NewBasicCatcher()
+	for _, col := range eventCollections {
+		catcher.Add(errors.Wrap(db.Update(col, filter, update), "updating 'processed at' time"))
+	}
+	if catcher.HasErrors() {
+		return catcher.Resolve()
+	}
+
+	e.ProcessedAt = processedAt
+	return nil
+}
+
+func LogManyEvents(events []EventLogEntry) error {
 	catcher := grip.NewBasicCatcher()
 	interfaces := make([]interface{}, len(events))
 	for i := range events {
@@ -46,29 +68,10 @@ func (l *DBEventLogger) LogManyEvents(events []EventLogEntry) error {
 	if catcher.HasErrors() {
 		return errors.Wrap(catcher.Resolve(), "invalid events")
 	}
-	return db.InsertMany(l.collection, interfaces...)
-}
 
-func (l *DBEventLogger) MarkProcessed(event *EventLogEntry) error {
-	if event.ID == "" {
-		return errors.New("event has no ID")
-	}
-	event.ProcessedAt = time.Now()
-
-	err := db.Update(l.collection, bson.M{
-		idKey: event.ID,
-		processedAtKey: bson.M{
-			"$eq": time.Time{},
-		},
-	}, bson.M{
-		"$set": bson.M{
-			processedAtKey: event.ProcessedAt,
-		},
-	})
-	if err != nil {
-		event.ProcessedAt = time.Time{}
-		return errors.Wrap(err, "updating 'processed at' time")
+	for _, col := range eventCollections {
+		catcher.Add(db.InsertMany(col, events))
 	}
 
-	return nil
+	return catcher.Resolve()
 }

@@ -34,7 +34,7 @@ func (s *buildSuite) SetupSuite() {
 }
 
 func (s *buildSuite) SetupTest() {
-	s.NoError(db.ClearCollections(event.AllLogCollection, build.Collection, event.SubscriptionsCollection))
+	s.NoError(db.ClearCollections(event.LegacyEventLogCollection, build.Collection, event.SubscriptionsCollection))
 
 	s.build = build.Build{
 		Id:                  "test",

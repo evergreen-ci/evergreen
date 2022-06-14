@@ -66,8 +66,7 @@ func LogAdminEvent(section string, before, after evergreen.ConfigSection, user s
 		ResourceType: ResourceTypeAdmin,
 	}
 
-	logger := NewDBEventLogger(AllLogCollection)
-	if err := logger.LogEvent(&event); err != nil {
+	if err := event.Log(); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeAdmin,
 			"message":       "error logging event",
@@ -99,7 +98,7 @@ func stripInteriorSections(config *evergreen.Settings) *evergreen.Settings {
 }
 
 func FindAdmin(query db.Q) ([]EventLogEntry, error) {
-	eventsRaw, err := Find(AllLogCollection, query)
+	eventsRaw, err := Find(LegacyEventLogCollection, query)
 	if err != nil {
 		return nil, err
 	}

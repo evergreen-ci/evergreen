@@ -34,7 +34,7 @@ func TestDataConnectorSuite(t *testing.T) {
 func (s *AdminDataSuite) SetupSuite() {
 	s.env = &mock.Environment{}
 	s.Require().NoError(s.env.Configure(context.Background()))
-	s.NoError(db.ClearCollections(evergreen.ConfigCollection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, event.AllLogCollection, model.ProjectRefCollection))
+	s.NoError(db.ClearCollections(evergreen.ConfigCollection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, event.LegacyEventLogCollection, model.ProjectRefCollection))
 	b := &build.Build{
 		Id:      "buildtest",
 		Status:  evergreen.BuildStarted,

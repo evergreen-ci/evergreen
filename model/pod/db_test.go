@@ -255,7 +255,7 @@ func TestUpdateOneStatus(t *testing.T) {
 	}
 
 	checkEventLog := func(t *testing.T, p Pod) {
-		events, err := event.Find(event.AllLogCollection, event.MostRecentPodEvents(p.ID, 10))
+		events, err := event.Find(event.LegacyEventLogCollection, event.MostRecentPodEvents(p.ID, 10))
 		require.NoError(t, err)
 		require.Len(t, events, 1)
 		assert.Equal(t, p.ID, events[0].ResourceId)
@@ -326,9 +326,9 @@ func TestUpdateOneStatus(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
+			require.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
 			defer func() {
-				assert.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
+				assert.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
 			}()
 
 			p := Pod{

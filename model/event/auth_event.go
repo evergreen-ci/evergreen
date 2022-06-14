@@ -53,8 +53,7 @@ func LogUserEvent(user string, eventType UserEventType, before, after interface{
 		Data:         data,
 		ResourceType: ResourceTypeUser,
 	}
-	logger := NewDBEventLogger(AllLogCollection)
-	if err := logger.LogEvent(&event); err != nil {
+	if err := event.Log(); err != nil {
 		return errors.Wrapf(err, "logging user event for user '%s'", user)
 	}
 

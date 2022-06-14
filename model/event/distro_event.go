@@ -34,7 +34,7 @@ func LogDistroEvent(distroId string, eventType string, eventData DistroEventData
 		ResourceType: ResourceTypeDistro,
 	}
 
-	if err := NewDBEventLogger(AllLogCollection).LogEvent(&event); err != nil {
+	if err := event.Log(); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeDistro,
 			"message":       "error logging event",

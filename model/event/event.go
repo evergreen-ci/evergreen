@@ -9,7 +9,12 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-const AllLogCollection = "event_log"
+const (
+	LegacyEventLogCollection = "event_log"
+	EventCollection          = "events"
+)
+
+var notSubscribableTime = time.Date(2015, time.October, 21, 23, 29, 1, 0, time.UTC)
 
 type EventLogEntry struct {
 	ID           string    `bson:"_id" json:"-"`
@@ -104,12 +109,8 @@ func (e *EventLogEntry) validateEvent() error {
 		e.ID = mgobson.NewObjectId().Hex()
 	}
 	if !registry.IsSubscribable(e.ResourceType, e.EventType) {
-		loc, _ := time.LoadLocation("UTC")
-		notSubscribableTime, err := time.ParseInLocation(time.RFC3339, notSubscribableTimeString, loc)
-		if err != nil {
-			return errors.Wrap(err, "setting processed at time")
-		}
 		e.ProcessedAt = notSubscribableTime
 	}
+
 	return nil
 }

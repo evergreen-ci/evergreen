@@ -99,7 +99,7 @@ func MostRecentProjectEvents(id string, n int) (ProjectChangeEvents, error) {
 
 	query := db.Query(filter).Sort([]string{"-" + event.TimestampKey}).Limit(n)
 	events := ProjectChangeEvents{}
-	err := db.FindAllQ(event.AllLogCollection, query, &events)
+	err := db.FindAllQ(event.LegacyEventLogCollection, query, &events)
 
 	return events, err
 }
@@ -113,7 +113,7 @@ func ProjectEventsBefore(id string, before time.Time, n int) (ProjectChangeEvent
 
 	query := db.Query(filter).Sort([]string{"-" + event.TimestampKey}).Limit(n)
 	events := ProjectChangeEvents{}
-	err := db.FindAllQ(event.AllLogCollection, query, &events)
+	err := db.FindAllQ(event.LegacyEventLogCollection, query, &events)
 
 	return events, err
 }
@@ -127,8 +127,7 @@ func LogProjectEvent(eventType string, projectId string, eventData ProjectChange
 		Data:         eventData,
 	}
 
-	logger := event.NewDBEventLogger(event.AllLogCollection)
-	if err := logger.LogEvent(&projectEvent); err != nil {
+	if err := projectEvent.Log(); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": EventResourceTypeProject,
 			"message":       "error logging event",
