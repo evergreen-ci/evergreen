@@ -185,7 +185,8 @@ func resetManyTasks(tasks []task.Task, caller string, logIDs bool) error {
 	return catcher.Resolve()
 }
 
-// reset task finds a task, attempts to archive it, and resets the task and resets the TaskCache in the build as well.
+// resetTask finds a task, attempts to archive it, and resets the task and
+// resets the TaskCache in the build as well.
 func resetTask(taskId, caller string, logIDs bool) error {
 	t, err := task.FindOneId(taskId)
 	if err != nil {
@@ -195,7 +196,7 @@ func resetTask(taskId, caller string, logIDs bool) error {
 		return errors.Errorf("cannot restart execution task '%s' because it is part of a display task", t.Id)
 	}
 	if err = t.Archive(); err != nil {
-		return errors.Wrap(err, "can't restart task because it can't be archived")
+		return errors.Wrap(err, "archiving old task execution")
 	}
 
 	if err = MarkOneTaskReset(t, logIDs); err != nil {
@@ -1589,6 +1590,9 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 	return nil
 }
 
+// checkResetSingleHostTaskGroup attempts to reset all tasks that are part of
+// the same single-host task group as t once all tasks in the task group are
+// finished running.
 func checkResetSingleHostTaskGroup(t *task.Task, caller string) error {
 	if !t.IsPartOfSingleHostTaskGroup() {
 		return nil
@@ -1605,7 +1609,7 @@ func checkResetSingleHostTaskGroup(t *task.Task, caller string) error {
 		if tgTask.ResetWhenFinished {
 			shouldReset = true
 		}
-		if !tgTask.IsFinished() && !tgTask.Blocked() && tgTask.Activated { // task in group still needs to  run
+		if !tgTask.IsFinished() && !tgTask.Blocked() && tgTask.Activated { // task in group still needs to run
 			return nil
 		}
 	}
@@ -1641,6 +1645,9 @@ func checkResetSingleHostTaskGroup(t *task.Task, caller string) error {
 	return nil
 }
 
+// checkResetSingleHostTaskGroup attempts to reset all tasks that are under the
+// same parent display task as t once all tasks under the display task are
+// finished running.
 func checkResetDisplayTask(t *task.Task) error {
 	if !t.ResetWhenFinished {
 		return nil

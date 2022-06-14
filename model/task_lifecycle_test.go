@@ -1541,9 +1541,42 @@ func TestTryResetTask(t *testing.T) {
 				So(dbDependentTask.DependsOn[0].TaskId, ShouldEqual, testTask.Id)
 				So(dbDependentTask.DependsOn[0].Finished, ShouldBeFalse)
 			})
+			Convey("with a container task", func() {
+				containerTask := &task.Task{
+					Id:                          "container_task",
+					DisplayName:                 displayName,
+					Activated:                   false,
+					BuildId:                     b.Id,
+					Execution:                   1,
+					Project:                     "sample",
+					Status:                      evergreen.TaskSucceeded,
+					Version:                     b.Version,
+					ExecutionPlatform:           task.ExecutionPlatformContainer,
+					ContainerAllocationAttempts: 2,
+				}
+				So(containerTask.Insert(), ShouldBeNil)
 
+				Convey("should reset task state specific to containers", func() {
+					So(TryResetTask(containerTask.Id, userName, "source", detail), ShouldBeNil)
+
+					dbTask, err := task.FindOneId(containerTask.Id)
+					So(err, ShouldBeNil)
+					So(dbTask.Details, ShouldResemble, apimodels.TaskEndDetail{})
+					So(dbTask.Status, ShouldEqual, evergreen.TaskUndispatched)
+					So(dbTask.FinishTime, ShouldResemble, utility.ZeroTime)
+					So(dbTask.Activated, ShouldBeTrue)
+					So(dbTask.ContainerAllocationAttempts, ShouldEqual, 0)
+					oldTask, err := task.FindOneOldByIdAndExecution(dbTask.Id, 1)
+					So(err, ShouldBeNil)
+					So(oldTask, ShouldNotBeNil)
+					So(oldTask.Execution, ShouldEqual, 1)
+					So(oldTask.Details, ShouldResemble, *detail)
+					So(oldTask.FinishTime, ShouldNotResemble, utility.ZeroTime)
+					So(oldTask.ContainerAllocationAttempts, ShouldEqual, 2)
+				})
+			})
 		})
-		Convey("resetting a task with a max number of excutions", func() {
+		Convey("resetting a task with a max number of executions", func() {
 			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection))
 			displayName := "testName"
 			userName := "testUser"
