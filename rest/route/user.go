@@ -358,8 +358,9 @@ func getMaxPermissions(p1, p2 gimlet.Permissions) gimlet.Permissions {
 // GET /users/{user_id}/permissions
 
 type userPermissionsGetHandler struct {
-	rm     gimlet.RoleManager
-	userID string
+	rm         gimlet.RoleManager
+	userID     string
+	includeAll bool
 }
 
 func makeGetUserPermissions(rm gimlet.RoleManager) gimlet.RouteHandler {
@@ -380,6 +381,8 @@ func (h *userPermissionsGetHandler) Parse(ctx context.Context, r *http.Request) 
 	if h.userID == "" {
 		return errors.New("no user found")
 	}
+	h.includeAll = r.URL.Query().Get("all") == "true"
+
 	return nil
 }
 
@@ -395,7 +398,10 @@ func (h *userPermissionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if u == nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Errorf("user '%s' not found", h.userID))
 	}
-	rolesToSearch, _ := utility.StringSliceSymmetricDifference(u.SystemRoles, evergreen.GeneralAccessRoles)
+	rolesToSearch := u.SystemRoles
+	if !h.includeAll {
+		rolesToSearch, _ = utility.StringSliceSymmetricDifference(u.SystemRoles, evergreen.GeneralAccessRoles)
+	}
 	// filter out the roles that everybody has automatically
 	permissions, err := rolemanager.PermissionSummaryForRoles(ctx, rolesToSearch, h.rm)
 	if err != nil {
