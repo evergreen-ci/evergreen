@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
@@ -479,6 +480,72 @@ func (s *EC2Suite) TestSpawnHostClassicSpot() {
 	s.Nil(requestInput.LaunchSpecification.SecurityGroupIds)
 	s.Nil(requestInput.LaunchSpecification.SubnetId)
 	s.Equal(base64OfSomeUserData, *requestInput.LaunchSpecification.UserData)
+}
+
+// Test that the ec2 spot instance cloud manager falls back to on demand when it receives
+// an InsufficientCapacity error.
+func (s *EC2Suite) TestSpawnHostClassicSpotFallback() {
+	h := &host.Host{}
+	h.Distro.Id = "distro_id"
+	h.Distro.Provider = evergreen.ProviderNameEc2Spot
+	h.Distro.ProviderSettingsList = []*birch.Document{birch.NewDocument(
+		birch.EC.String("ami", "ami"),
+		birch.EC.String("instance_type", "instanceType"),
+		birch.EC.String("key_name", "keyName"),
+		birch.EC.String("subnet_id", "subnet-123456"),
+		birch.EC.String("user_data", someUserData),
+		birch.EC.String("region", evergreen.DefaultEC2Region),
+		birch.EC.SliceString("security_group_ids", []string{"sg-123456"}),
+		birch.EC.Array("mount_points", birch.NewArray(
+			birch.VC.Document(birch.NewDocument(
+				birch.EC.String("device_name", "device"),
+				birch.EC.String("virtual_name", "virtual"),
+			)),
+		)),
+		birch.EC.Boolean("fallback", true),
+	)}
+	s.Require().NoError(h.Insert())
+
+	ctx, cancel := context.WithCancel(s.ctx)
+	defer cancel()
+
+	manager, ok := s.spotManager.(*ec2Manager)
+	s.True(ok)
+	mock, ok := manager.client.(*awsClientMock)
+	s.True(ok)
+
+	// Ensure that the mock for requesting a spot instance returns an InsufficientCapacity error.
+	mock.requestSpotInstancesError = awserr.New(EC2InsufficientCapacity, "Test error for Insufficient Capacity", nil)
+
+	_, err := s.spotManager.SpawnHost(ctx, h)
+	s.NoError(err)
+
+	// Check that we have made a request for a spot instance
+	s.Require().NotNil(mock.RequestSpotInstancesInput)
+	requestInput := *mock.RequestSpotInstancesInput
+	s.Equal("ami", *requestInput.LaunchSpecification.ImageId)
+	s.Equal("instanceType", *requestInput.LaunchSpecification.InstanceType)
+	s.Equal("keyName", *requestInput.LaunchSpecification.KeyName)
+	s.Equal("virtual", *requestInput.LaunchSpecification.BlockDeviceMappings[0].VirtualName)
+	s.Equal("device", *requestInput.LaunchSpecification.BlockDeviceMappings[0].DeviceName)
+	s.Equal("sg-123456", *requestInput.LaunchSpecification.SecurityGroups[0])
+	s.Nil(requestInput.LaunchSpecification.SecurityGroupIds)
+	s.Nil(requestInput.LaunchSpecification.SubnetId)
+	s.Equal(base64OfSomeUserData, *requestInput.LaunchSpecification.UserData)
+
+	// Check that we have made a fallback request for an on demand instance
+	s.Require().NotNil(mock.RunInstancesInput, "On Demand Instance Fallback was not called")
+	runInput := *mock.RunInstancesInput
+	s.Equal("ami", *runInput.ImageId)
+	s.Equal("instanceType", *runInput.InstanceType)
+	s.Equal("keyName", *runInput.KeyName)
+	s.Require().Len(runInput.BlockDeviceMappings, 1)
+	s.Equal("virtual", *runInput.BlockDeviceMappings[0].VirtualName)
+	s.Equal("device", *runInput.BlockDeviceMappings[0].DeviceName)
+	s.Equal("sg-123456", *runInput.SecurityGroups[0])
+	s.Nil(runInput.SecurityGroupIds)
+	s.Nil(runInput.SubnetId)
+	s.Equal(base64OfSomeUserData, *runInput.UserData)
 }
 
 func (s *EC2Suite) TestSpawnHostVPCSpot() {
