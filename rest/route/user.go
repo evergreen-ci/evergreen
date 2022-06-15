@@ -226,9 +226,9 @@ func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting current roles for user '%s'", u.Username()))
 	}
 	rolesToCheck := []gimlet.Role{}
-	// don't remove basic access, just special access
+	// We don't check basic/superuser access since those are internally maintained.
 	for _, r := range roles {
-		if !utility.StringSliceContains(evergreen.BasicAccessRoles, r.ID) {
+		if !utility.StringSliceContains(evergreen.GeneralAccessRoles, r.ID) {
 			rolesToCheck = append(rolesToCheck, r)
 		}
 	}
@@ -302,7 +302,7 @@ func (h *allUsersPermissionsGetHandler) Parse(ctx context.Context, r *http.Reque
 }
 
 func (h *allUsersPermissionsGetHandler) Run(ctx context.Context) gimlet.Responder {
-	// get roles for resource ID
+	// Get roles for resource ID.
 	allRoles, err := h.rm.GetAllRoles()
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "getting all roles"))
@@ -315,18 +315,18 @@ func (h *allUsersPermissionsGetHandler) Run(ctx context.Context) gimlet.Responde
 	roleIds := []string{}
 	permissionsMap := map[string]gimlet.Permissions{}
 	for _, role := range roles {
-		// don't include basic roles
-		if !utility.StringSliceContains(evergreen.BasicAccessRoles, role.ID) {
+		// Don't return internal roles.
+		if !utility.StringSliceContains(evergreen.GeneralAccessRoles, role.ID) {
 			roleIds = append(roleIds, role.ID)
 			permissionsMap[role.ID] = role.Permissions
 		}
 	}
-	// get users with roles
+	// Get users with roles.
 	usersWithRoles, err := user.FindHumanUsersByRoles(roleIds)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding users for roles %v", roleIds))
 	}
-	// map from users to their highest permissions
+	// Map from users to their highest permissions.
 	res := UsersPermissionsResult{}
 	for _, u := range usersWithRoles {
 		for _, userRole := range u.SystemRoles {
@@ -395,7 +395,7 @@ func (h *userPermissionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if u == nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Errorf("user '%s' not found", h.userID))
 	}
-	rolesToSearch, _ := utility.StringSliceSymmetricDifference(u.SystemRoles, evergreen.BasicAccessRoles)
+	rolesToSearch, _ := utility.StringSliceSymmetricDifference(u.SystemRoles, evergreen.GeneralAccessRoles)
 	// filter out the roles that everybody has automatically
 	permissions, err := rolemanager.PermissionSummaryForRoles(ctx, rolesToSearch, h.rm)
 	if err != nil {
