@@ -644,13 +644,13 @@ func (uis *UIServer) mainlineCommitsRedirect(w http.ResponseWriter, r *http.Requ
 	if u != nil {
 		user, ok := u.(*user.DBUser)
 		if ok {
+			// If the user is opted in to the new UI, redirect to the new UI.
 			if user.Settings.UseSpruceOptions.SpruceV1 {
-				evergreen.GetEnvironment().Settings().Ui.UIv2Url = ""
 				http.Redirect(w, r, fmt.Sprintf("%s/commits/", uis.Settings.Ui.UIv2Url), http.StatusSeeOther)
 			}
 		}
 	}
-
+	// fallback and redirect to the old UI waterfall.
 	http.Redirect(w, r, "/waterfall", http.StatusSeeOther)
 
 }
