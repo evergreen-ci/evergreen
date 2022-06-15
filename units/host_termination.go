@@ -319,6 +319,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			"message":     "provisioning failure",
 			"status":      prevStatus,
 			"host_id":     j.HostID,
+			"host_tag":    j.host.Tag,
 			"distro":      j.host.Distro.Id,
 			"uptime_secs": time.Since(j.host.StartTime).Seconds(),
 			"provider":    j.host.Provider,

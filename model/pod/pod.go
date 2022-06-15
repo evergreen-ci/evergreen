@@ -301,6 +301,19 @@ func (os OS) Validate() error {
 	}
 }
 
+// Matches returns whether or not the pod OS matches the given Evergreen ECS
+// config OS.
+func (os OS) Matches(other evergreen.ECSOS) bool {
+	switch os {
+	case OSLinux:
+		return other == evergreen.ECSOSLinux
+	case OSWindows:
+		return other == evergreen.ECSOSWindows
+	default:
+		return false
+	}
+}
+
 // ImportOS converts the container OS into its equivalent pod OS.
 func ImportOS(os evergreen.ContainerOS) (OS, error) {
 	switch os {
@@ -331,6 +344,19 @@ func (a Arch) Validate() error {
 		return nil
 	default:
 		return errors.Errorf("unrecognized pod architecture '%s'", a)
+	}
+}
+
+// Matches returns whether or not the pod CPU architecture matches the given
+// Evergreen ECS config CPU architecture.
+func (a Arch) Matches(arch evergreen.ECSArch) bool {
+	switch a {
+	case ArchAMD64:
+		return arch == evergreen.ECSArchAMD64
+	case ArchARM64:
+		return arch == evergreen.ECSArchARM64
+	default:
+		return false
 	}
 }
 

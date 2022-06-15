@@ -121,7 +121,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 				"task_id": j.TaskID,
 				"attempt": j.RetryInfo().CurrentAttempt,
 				"job":     j.ID(),
-				"message": "could not find host",
+				"message": "host intent has been removed",
 			})
 			return
 		}
@@ -216,7 +216,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 	defer func() {
 		if j.RetryInfo().GetRemainingAttempts() == 0 && j.HasErrors() && (j.host.Status == evergreen.HostUninitialized || j.host.Status == evergreen.HostBuilding) && j.host.SpawnOptions.SpawnedByTask {
 			if err := task.AddHostCreateDetails(j.host.StartedBy, j.host.Id, j.host.SpawnOptions.TaskExecutionNumber, j.Error()); err != nil {
-				j.AddError(errors.Wrapf(err, "error adding host create error details"))
+				j.AddError(errors.Wrapf(err, "adding host create error details"))
 			}
 		}
 	}()
@@ -331,6 +331,14 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	if _, err = cloudManager.SpawnHost(ctx, j.host); err != nil {
 		if strings.Contains(err.Error(), cloud.EC2InsufficientCapacity) && j.host.ShouldFallbackToOnDemand() {
 			event.LogHostFallback(j.host.Id)
+			grip.Info(message.Fields{
+				"message":  "fallback to on-demand",
+				"host_id":  j.host.Id,
+				"host_tag": j.host.Tag,
+				"distro":   j.host.Distro.Id,
+				"provider": j.host.Provider,
+			})
+
 			// create a new cloud manager for on demand, and re-attempt to spawn
 			j.host.Provider = evergreen.ProviderNameEc2OnDemand
 			j.host.Distro.Provider = evergreen.ProviderNameEc2OnDemand
@@ -393,6 +401,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	grip.Info(message.Fields{
 		"message":      "successfully started host",
 		"host_id":      j.host.Id,
+		"host_tag":     j.host.Tag,
 		"distro":       j.host.Distro.Id,
 		"provider":     j.host.Provider,
 		"job":          j.ID(),

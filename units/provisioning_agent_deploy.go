@@ -211,17 +211,23 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 	if logs, err := j.startAgentOnRemote(ctx, settings); err != nil {
 		event.LogHostAgentDeployFailed(j.host.Id, err)
 		grip.Info(message.WrapError(err, message.Fields{
-			"message": "error starting agent on remote",
-			"logs":    logs,
-			"host_id": j.HostID,
-			"job":     j.ID(),
+			"message":  "error starting agent on remote",
+			"logs":     logs,
+			"host_id":  j.host.Id,
+			"host_tag": j.host.Tag,
+			"distro":   j.host.Distro.Id,
+			"provider": j.host.Provider,
+			"job":      j.ID(),
 		}))
 		return errors.Wrap(err, "could not start agent on remote")
 	}
 	grip.Info(message.Fields{
-		"message": "agent successfully started for host",
-		"host_id": j.host.Id,
-		"job":     j.ID(),
+		"message":  "agent successfully started for host",
+		"host_id":  j.host.Id,
+		"host_tag": j.host.Tag,
+		"distro":   j.host.Distro.Id,
+		"provider": j.host.Provider,
+		"job":      j.ID(),
 	})
 
 	if err := j.host.SetAgentRevision(evergreen.AgentVersion); err != nil {
@@ -249,6 +255,15 @@ func (j *agentDeployJob) prepRemoteHost(ctx context.Context, settings *evergreen
 	output, err := j.host.RunSSHCommand(curlCtx, curlCmd)
 	if err != nil {
 		event.LogHostAgentDeployFailed(j.host.Id, err)
+		grip.Info(message.WrapError(err, message.Fields{
+			"message":  "error prepping remote host",
+			"logs":     output,
+			"host_id":  j.host.Id,
+			"host_tag": j.host.Tag,
+			"distro":   j.host.Distro.Id,
+			"provider": j.host.Provider,
+			"job":      j.ID(),
+		}))
 		return errors.Wrapf(err, "error downloading agent binary on remote host: %s", output)
 	}
 	if curlCtx.Err() != nil {
@@ -261,13 +276,15 @@ func (j *agentDeployJob) prepRemoteHost(ctx context.Context, settings *evergreen
 
 	if output, err = j.host.RunSSHCommand(ctx, j.host.SetupCommand()); err != nil {
 		event.LogHostProvisionFailed(j.host.Id, output)
-
 		grip.Error(message.WrapError(err, message.Fields{
-			"message": "error running setup script",
-			"host_id": j.host.Id,
-			"distro":  j.host.Distro.Id,
-			"logs":    output,
-			"job":     j.ID(),
+			"message":   "provisioning failed",
+			"operation": "running setup script",
+			"host_id":   j.host.Id,
+			"host_tag":  j.host.Tag,
+			"distro":    j.host.Distro.Id,
+			"provider":  j.host.Provider,
+			"reason":    output,
+			"job":       j.ID(),
 		}))
 
 		// there is no guarantee setup scripts are idempotent, so we terminate the host if the setup script fails
@@ -297,6 +314,15 @@ func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *everg
 	}
 
 	event.LogHostAgentDeployed(j.host.Id)
+	grip.Info(message.Fields{
+		"message":        "started the agent on a remote host",
+		"operation":      "agentDeployJob",
+		"host_id":        j.host.Id,
+		"host_tag":       j.host.Tag,
+		"source":         "database error",
+		"agent_version":  evergreen.AgentVersion,
+		"build_revision": evergreen.BuildRevision,
+	})
 
 	return logs, nil
 }

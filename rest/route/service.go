@@ -1,6 +1,8 @@
 package route
 
 import (
+	"net/http"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
@@ -33,6 +35,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	requireTaskHost := NewTaskHostAuthMiddleware()
 	requireHost := NewHostAuthMiddleware()
 	requirePod := NewPodAuthMiddleware()
+	requirePodOrHost := NewPodOrHostAuthMiddleWare()
 	addProject := NewProjectContextMiddleware()
 	requireProjectAdmin := NewProjectAdminMiddleware()
 	requireRepoAdmin := NewRepoAdminMiddleware()
@@ -56,7 +59,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddWrapper(gimlet.WrapperMiddleware(allowCORS))
 
 	// Routes
-	app.AddRoute("/").Version(2).Get().RouteHandler(makePlaceHolderManger())
+	app.AddRoute("/").Version(2).Get().RouteHandler(makePlaceHolder())
 	app.AddRoute("/admin/banner").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchAdminBanner())
 	app.AddRoute("/admin/banner").Version(2).Post().Wrap(adminSettings).RouteHandler(makeSetAdminBanner())
 	app.AddRoute("/admin/uiv2_url").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchAdminUIV2Url())
@@ -73,6 +76,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/admin/service_users").Version(2).Get().Wrap(adminSettings).RouteHandler(makeGetServiceUsers())
 	app.AddRoute("/admin/service_users").Version(2).Post().Wrap(adminSettings).RouteHandler(makeUpdateServiceUser())
 	app.AddRoute("/admin/service_users").Version(2).Delete().Wrap(adminSettings).RouteHandler(makeDeleteServiceUser())
+	app.AddRoute("/agent/cedar_config").Version(2).Get().Wrap(requirePodOrHost).RouteHandler(makeAgentCedarConfig(env.Settings()))
 	app.AddRoute("/alias/{name}").Version(2).Get().RouteHandler(makeFetchAliases())
 	app.AddRoute("/auth").Version(2).Get().Wrap(requireUser).RouteHandler(&authPermissionGetHandler{})
 	app.AddRoute("/builds/{build_id}").Version(2).Get().Wrap(viewTasks).RouteHandler(makeGetBuildByID())
@@ -142,7 +146,6 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/patches/{patch_id}/raw").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makePatchRawHandler())
 	app.AddRoute("/patches/{patch_id}/restart").Version(2).Post().Wrap(requireUser, submitPatches).RouteHandler(makeRestartPatch())
 	app.AddRoute("/patches/{patch_id}/merge_patch").Version(2).Put().Wrap(requireUser, addProject, submitPatches, requireCommitQueueItemOwner).RouteHandler(makeMergePatch())
-	app.AddRoute("/pods/{pod_id}/agent/cedar_config").Version(2).Get().Wrap(requirePod).RouteHandler(makePodAgentCedarConfig(env.Settings()))
 	app.AddRoute("/pods/{pod_id}/agent/setup").Version(2).Get().Wrap(requirePod).RouteHandler(makePodAgentSetup(env.Settings()))
 	app.AddRoute("/pods/{pod_id}/agent/next_task").Version(2).Get().Wrap(requirePod).RouteHandler(makePodAgentNextTask(env))
 	app.AddRoute("/pods").Version(2).Post().Wrap(adminSettings).RouteHandler(makePostPod(env))
@@ -167,8 +170,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/projects/{project_id}/task_stats").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetProjectTaskStats(opts.URL))
 	app.AddRoute("/projects/{project_id}/test_stats").Version(2).Get().Wrap(requireUser, viewTasks, cedarTestStats).RouteHandler(makeGetProjectTestStats(opts.URL))
 	app.AddRoute("/projects/{project_id}/versions").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetProjectVersionsHandler(opts.URL))
-	app.AddRoute("/projects/{project_id}/tasks/{task_id}").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetProjectTasksHandler(opts.URL))
-	app.AddRoute("/projects/{project_id}/versions/tasks").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeFetchProjectTasks())
+	app.AddRoute("/projects/{project_id}/tasks/{task_name}").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetProjectTasksHandler(opts.URL))
 	app.AddRoute("/projects/{project_id}/patch_trigger_aliases").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeFetchPatchTriggerAliases())
 	app.AddRoute("/projects/{project_id}/parameters").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeFetchParameters())
 	app.AddRoute("/projects/variables/rotate").Version(2).Put().Wrap(requireUser, createProject).RouteHandler(makeProjectVarsPut())
@@ -225,7 +227,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	// These requests must not check for credentials and just validate whether a route exists
 	// And allows requests from a origin.
 	for _, route := range app.Routes() {
-		if route.HasMethod("POST") {
+		if route.HasMethod(http.MethodPost) {
 			app.AddRoute(route.GetRoute()).Version(2).Options().RouteHandler(makeOptionsHandler())
 		}
 	}

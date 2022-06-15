@@ -105,6 +105,7 @@ type Mutation {
   attachProjectToRepo(projectId: String! @requireProjectAccess(access: EDIT)): Project!
   detachProjectFromRepo(projectId: String! @requireProjectAccess(access: EDIT)): Project!
   forceRepotrackerRun(projectId: String! @requireProjectAccess(access: EDIT)): Boolean!
+  deactivateStepbackTasks(projectId: String! @requireProjectAccess(access: EDIT)): Boolean!
   schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
   schedulePatchTasks(patchId: String!): String
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String

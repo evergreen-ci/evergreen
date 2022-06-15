@@ -3,12 +3,12 @@ package route
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -39,11 +39,7 @@ func (h *generateHandler) Factory() gimlet.RouteHandler {
 func (h *generateHandler) Parse(ctx context.Context, r *http.Request) error {
 	var err error
 	if h.files, err = parseJson(r); err != nil {
-		failedJson := []byte{}
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("error reading JSON from body (%s):\n%s", err, string(failedJson)),
-		}
+		return errors.Wrap(err, "reading raw JSON from request body")
 	}
 	h.taskID = gimlet.GetVars(r)["task_id"]
 
@@ -62,7 +58,7 @@ func (h *generateHandler) Run(ctx context.Context) gimlet.Responder {
 			"message": "error generating tasks",
 			"task_id": h.taskID,
 		}))
-		return gimlet.MakeJSONErrorResponder(err)
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "generating tasks for task '%s'", h.taskID))
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
@@ -92,22 +88,29 @@ func (h *generatePollHandler) Parse(ctx context.Context, r *http.Request) error 
 }
 
 func (h *generatePollHandler) Run(ctx context.Context) gimlet.Responder {
-	finished, jobErrs, err := data.GeneratePoll(ctx, h.taskID, h.queue)
+	finished, jobErr, err := data.GeneratePoll(ctx, h.taskID, h.queue)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error polling for generated tasks",
 			"task_id": h.taskID,
 		}))
-		return gimlet.MakeJSONInternalErrorResponder(err)
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "polling generate tasks for task '%s'", h.taskID))
 	}
-	shouldExit := false
-	if len(jobErrs) > 0 { // exit early if we know the error will keep recurring
-		jobErr := errors.New(strings.Join(jobErrs, ", "))
-		shouldExit = db.IsDocumentLimit(jobErr)
+
+	// Exit early if we know the error will keep recurring.
+	// If the parser project is already too big it's not going to get smaller.
+	// If new tasks create a dependency cycle it's going to persist across retries.
+	shouldExit := db.IsDocumentLimit(errors.New(jobErr)) || strings.Contains(jobErr, model.DependencyCycleError.Error())
+
+	var errors []string
+	if len(jobErr) > 0 {
+		errors = append(errors, jobErr)
 	}
+
 	return gimlet.NewJSONResponse(&apimodels.GeneratePollResponse{
 		Finished:   finished,
 		ShouldExit: shouldExit,
-		Errors:     jobErrs,
+		Errors:     errors,
+		Error:      jobErr,
 	})
 }

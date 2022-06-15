@@ -42,19 +42,19 @@ func (h *restartHandler) Factory() gimlet.RouteHandler {
 
 func (h *restartHandler) Parse(ctx context.Context, r *http.Request) error {
 	if err := gimlet.GetJSON(r.Body, h); err != nil {
-		return errors.Wrap(err, "problem parsing request body")
+		return errors.Wrap(err, "parsing request body")
 	}
 
 	if h.EndTime.Before(h.StartTime) {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    "End time cannot be before start time",
+			Message:    "end time cannot be before start time",
 		}
 	}
 	if h.restartType != evergreen.RestartTasks && h.restartType != evergreen.RestartVersions {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    "RestartAction type must be tasks or versions",
+			Message:    "restart type must be tasks or versions",
 		}
 	}
 
@@ -75,14 +75,14 @@ func (h *restartHandler) Run(ctx context.Context) gimlet.Responder {
 	if h.restartType == evergreen.RestartVersions {
 		resp, err := data.RestartFailedCommitQueueVersions(opts)
 		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "error restarting versions"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "restarting failed commit queue versions"))
 		}
 		return gimlet.NewJSONResponse(resp)
 	}
 
 	resp, err := data.RestartFailedTasks(h.queue, opts)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Error restarting tasks"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "restarting failed tasks"))
 	}
 	return gimlet.NewJSONResponse(resp)
 }

@@ -10,6 +10,8 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -56,10 +58,24 @@ func (j *spawnhostStartJob) Run(ctx context.Context) {
 	startCloudHost := func(mgr cloud.Manager, h *host.Host, user string) error {
 		if err := mgr.StartInstance(ctx, h, user); err != nil {
 			event.LogHostStartError(h.Id, err.Error())
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":  "error starting spawn host",
+				"host_id":  h.Id,
+				"host_tag": h.Tag,
+				"distro":   h.Distro.Id,
+				"user":     user,
+			}))
 			return errors.Wrap(err, "starting spawn host")
 		}
 
 		event.LogHostStartSucceeded(h.Id)
+		grip.Info(message.Fields{
+			"message":  "started spawn host",
+			"host_id":  h.Id,
+			"host_tag": h.Tag,
+			"distro":   h.Distro.Id,
+			"user":     user,
+		})
 
 		return nil
 	}

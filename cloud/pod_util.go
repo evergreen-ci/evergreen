@@ -247,21 +247,7 @@ func exportECSPodContainerDef(settings *evergreen.Settings, p *pod.Pod) (*cocoa.
 	return def, nil
 }
 
-// podArchToECSArch exports a pod container CPU architecture to an ECS
-// CPU architecture.
-func exportECSPodArch(arch pod.Arch) string {
-	switch arch {
-	case pod.ArchAMD64:
-		return "x86_64"
-	case pod.ArchARM64:
-		return "arm64"
-	default:
-		return ""
-	}
-}
-
 const (
-	ecsCPUArchConstraint           = "attribute:ecs.cpu-architecture"
 	ecsWindowsVersionTagConstraint = "attribute:WindowsVersion"
 )
 
@@ -281,19 +267,27 @@ func exportECSPodExecutionOptions(ecsConfig evergreen.ECSConfig, containerOpts p
 		windowsVersionConstraint := fmt.Sprintf("%s == %s", ecsWindowsVersionTagConstraint, containerOpts.WindowsVersion)
 		placementOpts.AddInstanceFilters(windowsVersionConstraint)
 	}
-	if arch := exportECSPodArch(containerOpts.Arch); arch != "" {
-		archConstraint := fmt.Sprintf("%s == %s", ecsCPUArchConstraint, arch)
-		placementOpts.AddInstanceFilters(archConstraint)
-	}
 	opts.SetPlacementOptions(*placementOpts)
 
+	var foundCapacityProvider bool
+	for _, cp := range ecsConfig.CapacityProviders {
+		if containerOpts.OS.Matches(cp.OS) && containerOpts.Arch.Matches(cp.Arch) {
+			opts.SetCapacityProvider(cp.Name)
+			foundCapacityProvider = true
+			break
+		}
+	}
+	if !foundCapacityProvider {
+		return nil, errors.Errorf("container OS '%s' and arch '%s' did not match any recognized capacity provider", containerOpts.OS, containerOpts.Arch)
+	}
+
 	for _, cluster := range ecsConfig.Clusters {
-		if string(containerOpts.OS) == string(cluster.Platform) {
+		if containerOpts.OS.Matches(cluster.OS) {
 			return opts.SetCluster(cluster.Name), nil
 		}
 	}
 
-	return nil, errors.Errorf("pod OS ('%s') did not match any ECS cluster platforms", string(containerOpts.OS))
+	return nil, errors.Errorf("container OS '%s' did not match any recognized ECS cluster", containerOpts.OS)
 }
 
 // podAWSOptions creates options to initialize an AWS client for pod management.

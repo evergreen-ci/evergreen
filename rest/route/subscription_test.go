@@ -245,7 +245,9 @@ func (s *SubscriptionRouteSuite) TestDeleteValidation() {
 	d := &subscriptionDeleteHandler{}
 	r, err := http.NewRequest(http.MethodDelete, "/subscriptions", nil)
 	s.NoError(err)
-	s.EqualError(d.Parse(ctx, r), "400 (Bad Request): Must specify an ID to delete")
+	err = d.Parse(ctx, r)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "must specify a subscription ID to delete")
 
 	r, err = http.NewRequest(http.MethodDelete, "/subscriptions?id=5949645c9acd9704fdd202da", nil)
 	s.NoError(err)

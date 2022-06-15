@@ -144,7 +144,7 @@ func (s *BuildChangeStatusSuite) TestSetPriorityPrivilegeFail() {
 	s.rm.(*buildChangeStatusHandler).Priority = &tmpInt
 	resp := s.rm.Run(ctx)
 	s.NotEqual(http.StatusOK, resp.Status())
-	s.Contains(fmt.Sprint(resp.Data()), "Insufficient privilege to set priority")
+	s.Contains(fmt.Sprint(resp.Data()), "insufficient privilege to set priority")
 }
 
 ////////////////////////////////////////////////////////////////////////

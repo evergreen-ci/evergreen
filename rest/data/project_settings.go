@@ -46,13 +46,11 @@ func CopyProject(ctx context.Context, opts CopyProjectOpts) (*restModel.APIProje
 		projectToCopy.Id = ""
 	}
 
-	// copy project, disable necessary settings
+	// Copy project and disable necessary settings.
 	oldIdentifier := projectToCopy.Identifier
 	projectToCopy.Identifier = opts.NewProjectIdentifier
-	projectToCopy.Enabled = utility.FalsePtr()
-	projectToCopy.PRTestingEnabled = utility.FalsePtr()
-	projectToCopy.ManualPRTestingEnabled = utility.FalsePtr()
-	projectToCopy.CommitQueue.Enabled = nil
+	disableStartingSettings(projectToCopy)
+
 	u := gimlet.GetUser(ctx).(*user.DBUser)
 	if err := CreateProject(projectToCopy, u); err != nil {
 		return nil, err
@@ -79,6 +77,14 @@ func CopyProject(ctx context.Context, opts CopyProjectOpts) (*restModel.APIProje
 	}
 	// Since the errors above are nonfatal and still permit copying the project, return both the new project and any errors that were encountered.
 	return apiProjectRef, catcher.Resolve()
+}
+
+func disableStartingSettings(p *model.ProjectRef) {
+	p.Enabled = utility.FalsePtr()
+	p.PRTestingEnabled = utility.FalsePtr()
+	p.ManualPRTestingEnabled = utility.FalsePtr()
+	p.GithubChecksEnabled = utility.FalsePtr()
+	p.CommitQueue.Enabled = utility.FalsePtr()
 }
 
 // SaveProjectSettingsForSection saves the given UI page section and logs it for the given user. If isRepo is true, uses
@@ -123,9 +129,10 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			}
 		}
 
-		// only need to check Github conflicts once so we use else if statements to handle this
+		// Only need to check Github conflicts once so we use else if statements to handle this.
+		// Handle conflicts using the ref from the DB, since only general section settings are passed in from the UI.
 		if mergedProjectRef.Owner != mergedBeforeRef.Owner || mergedProjectRef.Repo != mergedBeforeRef.Repo {
-			if err = handleGithubConflicts(mergedProjectRef, "Changing owner/repo"); err != nil {
+			if err = handleGithubConflicts(mergedBeforeRef, "Changing owner/repo"); err != nil {
 				return nil, err
 			}
 			// check if webhook is enabled if the owner/repo has changed
@@ -135,11 +142,11 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			}
 			modified = true
 		} else if mergedProjectRef.IsEnabled() && !mergedBeforeRef.IsEnabled() {
-			if err = handleGithubConflicts(mergedProjectRef, "Enabling project"); err != nil {
+			if err = handleGithubConflicts(mergedBeforeRef, "Enabling project"); err != nil {
 				return nil, err
 			}
 		} else if mergedProjectRef.Branch != mergedBeforeRef.Branch {
-			if err = handleGithubConflicts(mergedProjectRef, "Changing branch"); err != nil {
+			if err = handleGithubConflicts(mergedBeforeRef, "Changing branch"); err != nil {
 				return nil, err
 			}
 		}
@@ -295,7 +302,6 @@ func handleGithubConflicts(pRef *model.ProjectRef, reason string) error {
 	if err != nil {
 		return errors.Wrapf(err, "getting GitHub project conflicts")
 	}
-
 	if pRef.IsPRTestingEnabled() && len(conflicts.PRTestingIdentifiers) > 0 {
 		conflictMsgs = append(conflictMsgs, "PR testing")
 	}

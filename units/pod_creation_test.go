@@ -198,11 +198,18 @@ func TestPodCreationJob(t *testing.T) {
 			var envClusters []evergreen.ECSClusterConfig
 			for name := range cocoaMock.GlobalECSService.Clusters {
 				envClusters = append(envClusters, evergreen.ECSClusterConfig{
-					Name:     name,
-					Platform: evergreen.ECSClusterPlatformLinux,
+					Name: name,
+					OS:   evergreen.ECSOSLinux,
 				})
 			}
 			env.EvergreenSettings.Providers.AWS.Pod.ECS.Clusters = envClusters
+			env.EvergreenSettings.Providers.AWS.Pod.ECS.CapacityProviders = []evergreen.ECSCapacityProvider{
+				{
+					Name: "capacity_provider",
+					OS:   evergreen.ECSOSLinux,
+					Arch: evergreen.ECSArchAMD64,
+				},
+			}
 
 			j, ok := NewPodCreationJob(p.ID, utility.RoundPartOfMinute(0).Format(TSFormat)).(*podCreationJob)
 			require.True(t, ok)

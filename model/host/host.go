@@ -511,6 +511,14 @@ func (h *Host) setStatusAndFields(newStatus string, query, setFields, unsetField
 	}
 
 	event.LogHostStatusChanged(h.Id, h.Status, newStatus, user, logs)
+	grip.Info(message.Fields{
+		"message":    "host status changed",
+		"host_id":    h.Id,
+		"host_tag":   h.Tag,
+		"distro":     h.Distro.Id,
+		"old_status": h.Status,
+		"new_status": newStatus,
+	})
 	h.Status = newStatus
 
 	return nil
@@ -545,6 +553,14 @@ func (h *Host) SetStatusAtomically(newStatus, user string, logs string) error {
 	}
 
 	event.LogHostStatusChanged(h.Id, h.Status, newStatus, user, logs)
+	grip.Info(message.Fields{
+		"message":    "host status changed atomically",
+		"host_id":    h.Id,
+		"host_tag":   h.Tag,
+		"distro":     h.Distro.Id,
+		"old_status": h.Status,
+		"new_status": newStatus,
+	})
 	h.Status = newStatus
 
 	return nil
@@ -631,6 +647,13 @@ func (h *Host) SetStopped(user string) error {
 	}
 
 	event.LogHostStatusChanged(h.Id, h.Status, evergreen.HostStopped, user, "")
+	grip.Info(message.Fields{
+		"message":    "host stopped",
+		"host_id":    h.Id,
+		"host_tag":   h.Tag,
+		"distro":     h.Distro.Id,
+		"old_status": h.Status,
+	})
 
 	h.Status = evergreen.HostStopped
 	h.Host = ""
@@ -866,6 +889,12 @@ func (h *Host) SetDNSName(dnsName string) error {
 	if err == nil {
 		h.Host = dnsName
 		event.LogHostDNSNameSet(h.Id, dnsName)
+		grip.Info(message.Fields{
+			"message":  "set host DNS name",
+			"host_id":  h.Id,
+			"host_tag": h.Tag,
+			"dns_name": dnsName,
+		})
 	}
 	if adb.ResultsNotFound(err) {
 		return nil
@@ -951,11 +980,19 @@ func (h *Host) MarkAsProvisioned() error {
 		return err
 	}
 
+	event.LogHostProvisioned(h.Id)
+	grip.Info(message.Fields{
+		"message":    "host marked provisioned",
+		"host_id":    h.Id,
+		"host_tag":   h.Tag,
+		"distro":     h.Distro.Id,
+		"old_status": h.Status,
+		"operation":  "MarkAsProvisioned",
+	})
+
 	h.Status = evergreen.HostRunning
 	h.Provisioned = true
 	h.ProvisionTime = now
-
-	event.LogHostProvisioned(h.Id)
 
 	return nil
 }
@@ -1007,6 +1044,13 @@ func (h *Host) UpdateStartingToRunning() error {
 	h.Status = evergreen.HostRunning
 
 	event.LogHostProvisioned(h.Id)
+	grip.Info(message.Fields{
+		"message":   "host marked provisioned",
+		"host_id":   h.Id,
+		"host_tag":  h.Tag,
+		"distro":    h.Distro.Id,
+		"operation": "UpdateStartingToRunning",
+	})
 
 	return nil
 }
@@ -1073,9 +1117,18 @@ func (h *Host) setAwaitingJasperRestart(user string) error {
 		return err
 	}
 
-	h.NeedsReprovision = ReprovisionRestartJasper
-
 	event.LogHostJasperRestarting(h.Id, user)
+	grip.Info(message.Fields{
+		"message":               "set needs reprovision",
+		"host_id":               h.Id,
+		"host_tag":              h.Tag,
+		"distro":                h.Distro.Id,
+		"provider":              h.Provider,
+		"old_needs_reprovision": h.NeedsReprovision,
+		"new_needs_reprovision": ReprovisionRestartJasper,
+	})
+
+	h.NeedsReprovision = ReprovisionRestartJasper
 
 	return nil
 }
@@ -1139,9 +1192,19 @@ func (h *Host) setAwaitingReprovisionToNew(user string) error {
 		return err
 	}
 
-	h.NeedsReprovision = ReprovisionToNew
-
 	event.LogHostConvertingProvisioning(h.Id, h.Distro.BootstrapSettings.Method, user)
+	grip.Info(message.Fields{
+		"message":               "set needs reprovision",
+		"host_id":               h.Id,
+		"host_tag":              h.Tag,
+		"distro":                h.Distro.Id,
+		"provider":              h.Provider,
+		"user":                  user,
+		"old_needs_reprovision": h.NeedsReprovision,
+		"new_needs_reprovision": ReprovisionToNew,
+	})
+
+	h.NeedsReprovision = ReprovisionToNew
 
 	return nil
 }
@@ -1258,6 +1321,15 @@ func (h *Host) ClearRunningAndSetLastTask(t *task.Task) error {
 	}
 
 	event.LogHostRunningTaskCleared(h.Id, h.RunningTask)
+	grip.Info(message.Fields{
+		"message":         "cleared host running task and set last task",
+		"host_id":         h.Id,
+		"host_tag":        h.Tag,
+		"distro":          h.Distro.Id,
+		"running_task_id": h.RunningTask,
+		"last_task_id":    t.Id,
+	})
+
 	h.RunningTask = ""
 	h.RunningTaskBuildVariant = ""
 	h.RunningTaskVersion = ""
@@ -1297,7 +1369,15 @@ func (h *Host) ClearRunningTask() error {
 
 	if h.RunningTask != "" {
 		event.LogHostRunningTaskCleared(h.Id, h.RunningTask)
+		grip.Info(message.Fields{
+			"message":  "cleared host running task",
+			"host_id":  h.Id,
+			"host_tag": h.Tag,
+			"distro":   h.Distro.Id,
+			"task_id":  h.RunningTask,
+		})
 	}
+
 	h.RunningTask = ""
 	h.RunningTaskBuildVariant = ""
 	h.RunningTaskVersion = ""
@@ -1356,6 +1436,13 @@ func (h *Host) UpdateRunningTask(t *task.Task) (bool, error) {
 		return false, errors.Wrapf(err, "setting running task to '%s' for host '%s'", t.Id, h.Id)
 	}
 	event.LogHostRunningTaskSet(h.Id, t.Id)
+	grip.Info(message.Fields{
+		"message":  "host running task set",
+		"host_id":  h.Id,
+		"host_tag": h.Tag,
+		"task_id":  t.Id,
+		"distro":   h.Distro.Id,
+	})
 
 	return true, nil
 }
@@ -1460,6 +1547,13 @@ func (h *Host) MarkReachable() error {
 	}
 
 	event.LogHostStatusChanged(h.Id, h.Status, evergreen.HostRunning, evergreen.User, "")
+	grip.Info(message.Fields{
+		"message":    "host marked reachable",
+		"host_id":    h.Id,
+		"host_tag":   h.Tag,
+		"distro":     h.Distro.Id,
+		"old_status": h.Status,
+	})
 	h.Status = evergreen.HostRunning
 
 	return nil
@@ -1532,6 +1626,12 @@ func (h *Host) CacheHostData() error {
 
 func (h *Host) Insert() error {
 	event.LogHostCreated(h.Id)
+	grip.Info(message.Fields{
+		"message":  "host created",
+		"host_id":  h.Id,
+		"host_tag": h.Tag,
+		"distro":   h.Distro.Id,
+	})
 	return db.Insert(Collection, h)
 }
 

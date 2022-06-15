@@ -732,31 +732,6 @@
                                 "resourceId": "i-0f81a2d39744003dd"
                             },
                             {
-                                "id": "5419fd1bb17ed89d1464abff",
-                                "resourceType": "HOST",
-                                "processedAt": "2015-10-21T19:29:00-04:00",
-                                "timestamp": "2014-09-12T10:03:07-04:00",
-                                "eventType": "HOST_TASK_PID_SET",
-                                "data": {
-                                    "agentRevision": "",
-                                    "agentBuild": "",
-                                    "oldStatus": "",
-                                    "newStatus": "",
-                                    "logs": "",
-                                    "hostname": "",
-                                    "provisioningMethod": "",
-                                    "taskId": "",
-                                    "taskPid": "123",
-                                    "taskStatus": "",
-                                    "execution": "",
-                                    "monitorOp": "",
-                                    "user": "",
-                                    "successful": false,
-                                    "duration": 0
-                                },
-                                "resourceId": "i-0f81a2d39744003dd"
-                            },
-                            {
                                 "id": "8912kcddj14td81d8454c8dn",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-10-21T19:29:00-04:00",
@@ -807,7 +782,7 @@
                                 "resourceId": "i-0f81a2d39744003dd"
                             }
                         ],
-                        "count": 32
+                        "count": 31
                     }
                 }
             }

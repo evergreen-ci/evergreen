@@ -35,7 +35,7 @@ func (vh *versionHandler) Parse(ctx context.Context, r *http.Request) error {
 	vh.versionId = gimlet.GetVars(r)["version_id"]
 
 	if vh.versionId == "" {
-		return errors.New("request data incomplete")
+		return errors.New("missing version ID")
 	}
 
 	return nil
@@ -46,19 +46,19 @@ func (vh *versionHandler) Parse(ctx context.Context, r *http.Request) error {
 func (vh *versionHandler) Run(ctx context.Context) gimlet.Responder {
 	foundVersion, err := dbModel.VersionFindOneId(vh.versionId)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding version '%s'", vh.versionId))
 	}
 	if foundVersion == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("version with id %s not found", vh.versionId),
+			Message:    fmt.Sprintf("version '%s' not found", vh.versionId),
 		})
 	}
 
 	versionModel := &model.APIVersion{}
 
 	if err = versionModel.BuildFromService(foundVersion); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API model error"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting version '%s' to API model", foundVersion.Id))
 	}
 	return gimlet.NewJSONResponse(versionModel)
 }
@@ -87,7 +87,7 @@ func (h *buildsForVersionHandler) Parse(ctx context.Context, r *http.Request) er
 	h.versionId = gimlet.GetVars(r)["version_id"]
 
 	if h.versionId == "" {
-		return errors.New("request data incomplete")
+		return errors.New("missing version ID")
 	}
 	vars := r.URL.Query()
 	h.variant = vars.Get("variant")
@@ -100,12 +100,12 @@ func (h *buildsForVersionHandler) Run(ctx context.Context) gimlet.Responder {
 	// First, find the version by its ID.
 	foundVersion, err := dbModel.VersionFindOneId(h.versionId)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error in finding the version"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding version '%s'", h.versionId))
 	}
 	if foundVersion == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("version with id %s not found", h.versionId),
+			Message:    fmt.Sprintf("version '%s' not found", h.versionId),
 		})
 	}
 
@@ -118,18 +118,18 @@ func (h *buildsForVersionHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 		foundBuild, err := build.FindOneId(buildStatus.BuildId)
 		if err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error in finding the build"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding build '%s'", buildStatus.BuildId))
 		}
 		if foundBuild == nil {
 			return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusNotFound,
-				Message:    fmt.Sprintf("build with id %s not found", buildStatus.BuildId),
+				Message:    fmt.Sprintf("build '%s' not found", buildStatus.BuildId),
 			})
 		}
 		buildModel := &model.APIBuild{}
 		err = buildModel.BuildFromService(*foundBuild)
 		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API model error"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting build '%s' to API model", foundBuild.Id))
 		}
 
 		buildModels = append(buildModels, buildModel)
@@ -157,7 +157,7 @@ func (h *versionAbortHandler) Parse(ctx context.Context, r *http.Request) error 
 	h.versionId = gimlet.GetVars(r)["version_id"]
 
 	if h.versionId == "" {
-		return errors.New("request data incomplete")
+		return errors.New("missing version ID")
 	}
 
 	if u := gimlet.GetUser(ctx); u != nil {
@@ -170,23 +170,23 @@ func (h *versionAbortHandler) Parse(ctx context.Context, r *http.Request) error 
 // Execute calls the data AbortVersion function to abort all tasks of a version.
 func (h *versionAbortHandler) Run(ctx context.Context) gimlet.Responder {
 	if err := task.AbortVersion(h.versionId, task.AbortInfo{User: h.userId}); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error in aborting version"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "aborting version '%s'", h.versionId))
 	}
 
 	foundVersion, err := dbModel.VersionFindOneId(h.versionId)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error in finding version"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding version '%s'", h.versionId))
 	}
 	if foundVersion == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("version with id %s not found", h.versionId),
+			Message:    fmt.Sprintf("version '%s' not found", h.versionId),
 		})
 	}
 
 	versionModel := &model.APIVersion{}
 	if err = versionModel.BuildFromService(foundVersion); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting version '%s' to API model", foundVersion.Id))
 	}
 
 	return gimlet.NewJSONResponse(versionModel)
@@ -212,7 +212,7 @@ func (h *versionRestartHandler) Parse(ctx context.Context, r *http.Request) erro
 	h.versionId = gimlet.GetVars(r)["version_id"]
 
 	if h.versionId == "" {
-		return errors.New("request data incomplete")
+		return errors.New("missing version ID")
 	}
 
 	return nil
@@ -223,25 +223,25 @@ func (h *versionRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	// RestartAction the version
 	err := dbModel.RestartTasksInVersion(h.versionId, true, MustHaveUser(ctx).Id)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error in restarting version"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "restarting tasks in version '%s'", h.versionId))
 	}
 
 	// Find the version to return updated status.
 	foundVersion, err := dbModel.VersionFindOneId(h.versionId)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error in finding version:"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding version '%s'", h.versionId))
 	}
 	if foundVersion == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("version with id %s not found", h.versionId),
+			Message:    fmt.Sprintf("version '%s' not found", h.versionId),
 		})
 	}
 
 	versionModel := &model.APIVersion{}
 	err = versionModel.BuildFromService(foundVersion)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting version '%s' to API model", foundVersion.Id))
 	}
 
 	return gimlet.NewJSONResponse(versionModel)

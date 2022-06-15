@@ -531,6 +531,14 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 
 	status := t.GetDisplayStatus()
 	event.LogTaskFinished(t.Id, t.Execution, t.HostId, status)
+	grip.Info(message.Fields{
+		"message":   "marking task finished",
+		"task_id":   t.Id,
+		"execution": t.Execution,
+		"status":    status,
+		"operation": "MarkEnd",
+		"host_id":   t.HostId,
+	})
 
 	if t.IsPartOfDisplay() {
 		if err = UpdateDisplayTaskForTask(t); err != nil {
@@ -1630,6 +1638,12 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 	dt.TimeTaken = timeTaken
 	if !wasFinished && dt.IsFinished() {
 		event.LogTaskFinished(dt.Id, dt.Execution, "", dt.GetDisplayStatus())
+		grip.Info(message.Fields{
+			"message":   "display task finished",
+			"task_id":   dt.Id,
+			"status":    dt.Status,
+			"operation": "UpdateDisplayTaskForTask",
+		})
 	}
 	return nil
 }

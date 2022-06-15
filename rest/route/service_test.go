@@ -742,9 +742,13 @@ func TestTestPaginator(t *testing.T) {
 				}
 				nextTest := testresult.TestResult{
 					ID:     mgobson.ObjectId(fmt.Sprintf("object_id_%d_", i)),
+					TaskID: "myTask",
 					Status: status,
 				}
 				cachedTests = append(cachedTests, nextTest)
+			}
+			myTask := task.Task{
+				Id: "myTask",
 			}
 			serviceContext.CachedTests = cachedTests
 			Convey("then finding a key in the middle of the set should produce"+
@@ -773,6 +777,7 @@ func TestTestPaginator(t *testing.T) {
 					limit: limit,
 					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
 					sc:    &serviceContext,
+					task:  &myTask,
 				}
 
 				validatePaginatedResponse(t, handler, expectedTests, expectedPages)
@@ -803,6 +808,7 @@ func TestTestPaginator(t *testing.T) {
 					limit: 50,
 					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
 					sc:    &serviceContext,
+					task:  &myTask,
 				}
 
 				validatePaginatedResponse(t, handler, expectedTests, expectedPages)
@@ -833,6 +839,7 @@ func TestTestPaginator(t *testing.T) {
 					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
 					limit: limit,
 					sc:    &serviceContext,
+					task:  &myTask,
 				}
 
 				validatePaginatedResponse(t, handler, expectedTests, expectedPages)
@@ -863,6 +870,7 @@ func TestTestPaginator(t *testing.T) {
 					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
 					sc:    &serviceContext,
 					limit: limit,
+					task:  &myTask,
 				}
 
 				validatePaginatedResponse(t, handler, expectedTests, expectedPages)
@@ -887,17 +895,13 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 		}
 		ctx := context.Background()
 		Convey("then should error on empty body", func() {
-			req, err := http.NewRequest("PATCH", "task/testTaskId", &bytes.Buffer{})
+			req, err := http.NewRequest(http.MethodPatch, "task/testTaskId", &bytes.Buffer{})
 			So(err, ShouldBeNil)
 			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = tep.Parse(ctx, req)
 			So(err, ShouldNotBeNil)
-			expectedErr := gimlet.ErrorResponse{
-				Message:    "No request body sent",
-				StatusCode: http.StatusBadRequest,
-			}
-			So(err, ShouldResemble, expectedErr)
+			So(err.Error(), ShouldContainSubstring, "reading task modification options from JSON request body")
 		})
 		Convey("then should error on body with wrong type", func() {
 			str := "nope"
@@ -910,19 +914,13 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 			So(err, ShouldBeNil)
 			buf := bytes.NewBuffer(res)
 
-			req, err := http.NewRequest("PATCH", "task/testTaskId", buf)
+			req, err := http.NewRequest(http.MethodPatch, "task/testTaskId", buf)
 			So(err, ShouldBeNil)
 			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = tep.Parse(ctx, req)
 			So(err, ShouldNotBeNil)
-			expectedErr := gimlet.ErrorResponse{
-				Message: fmt.Sprintf("Incorrect type given, expecting '%s' "+
-					"but receieved '%s'",
-					"bool", "string"),
-				StatusCode: http.StatusBadRequest,
-			}
-			So(err, ShouldResemble, expectedErr)
+			So(err.Error(), ShouldContainSubstring, "reading task modification options from JSON request body")
 		})
 		Convey("then should error when fields not set", func() {
 			badBod := &struct {
@@ -932,17 +930,13 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 			So(err, ShouldBeNil)
 			buf := bytes.NewBuffer(res)
 
-			req, err := http.NewRequest("PATCH", "task/testTaskId", buf)
+			req, err := http.NewRequest(http.MethodPatch, "task/testTaskId", buf)
 			So(err, ShouldBeNil)
 			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = tep.Parse(ctx, req)
 			So(err, ShouldNotBeNil)
-			expectedErr := gimlet.ErrorResponse{
-				Message:    "Must set 'activated' or 'priority'",
-				StatusCode: http.StatusBadRequest,
-			}
-			So(err, ShouldResemble, expectedErr)
+			So(err.Error(), ShouldContainSubstring, "must set activated or priority")
 		})
 		Convey("then should set it's Activated and Priority field when set", func() {
 			goodBod := &struct {
@@ -956,7 +950,7 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 			So(err, ShouldBeNil)
 			buf := bytes.NewBuffer(res)
 
-			req, err := http.NewRequest("PATCH", "task/testTaskId", buf)
+			req, err := http.NewRequest(http.MethodPatch, "task/testTaskId", buf)
 			So(err, ShouldBeNil)
 			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
@@ -1036,25 +1030,25 @@ func TestTaskResetPrepare(t *testing.T) {
 		ctx := context.Background()
 
 		Convey("should error on empty project", func() {
-			req, err := http.NewRequest("POST", "task/testTaskId/restart", &bytes.Buffer{})
+			req, err := http.NewRequest(http.MethodPost, "task/testTaskId/restart", &bytes.Buffer{})
 			So(err, ShouldBeNil)
 			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = trh.Parse(ctx, req)
 			So(err, ShouldNotBeNil)
-			expectedErr := "Project not found"
+			expectedErr := "project not found"
 			So(err.Error(), ShouldContainSubstring, expectedErr)
 		})
 		Convey("then should error on empty task", func() {
 			projCtx.Task = nil
-			req, err := http.NewRequest("POST", "task/testTaskId/restart", &bytes.Buffer{})
+			req, err := http.NewRequest(http.MethodPost, "task/testTaskId/restart", &bytes.Buffer{})
 			So(err, ShouldBeNil)
 			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = trh.Parse(ctx, req)
 			So(err, ShouldNotBeNil)
 			expectedErr := gimlet.ErrorResponse{
-				Message:    "Task not found",
+				Message:    "task not found",
 				StatusCode: http.StatusNotFound,
 			}
 
@@ -1090,7 +1084,7 @@ func TestTaskGetHandler(t *testing.T) {
 
 			Convey("a request with a user should then return no error and a task should"+
 				" should be returned", func() {
-				req, err := http.NewRequest("GET", "/rest/v2/tasks/testTaskId", nil)
+				req, err := http.NewRequest(http.MethodGet, "/rest/v2/tasks/testTaskId", nil)
 				So(err, ShouldBeNil)
 
 				rr := httptest.NewRecorder()
@@ -1106,7 +1100,7 @@ func TestTaskGetHandler(t *testing.T) {
 			})
 			Convey("and old tasks are available", func() {
 				Convey("a test that requests old executions should receive them", func() {
-					req, err := http.NewRequest("GET", "/rest/v2/tasks/testTaskId?fetch_all_executions=", nil)
+					req, err := http.NewRequest(http.MethodGet, "/rest/v2/tasks/testTaskId?fetch_all_executions=", nil)
 					So(err, ShouldBeNil)
 
 					rr := httptest.NewRecorder()
@@ -1119,7 +1113,7 @@ func TestTaskGetHandler(t *testing.T) {
 					So(len(res.PreviousExecutions), ShouldEqual, 1)
 				})
 				Convey("a test that doesn't request old executions should not receive them", func() {
-					req, err := http.NewRequest("GET", "/rest/v2/tasks/testTaskId", nil)
+					req, err := http.NewRequest(http.MethodGet, "/rest/v2/tasks/testTaskId", nil)
 					So(err, ShouldBeNil)
 
 					rr := httptest.NewRecorder()
@@ -1233,7 +1227,7 @@ func TestParentTaskInfo(t *testing.T) {
 		url:   "http://evergreen.example.net",
 	}
 	route := "/rest/v2/builds/test/tasks?fetch_all_executions=false&fetch_parent_ids=true&start_at=execTask0"
-	r, err := http.NewRequest("GET", route, nil)
+	r, err := http.NewRequest(http.MethodGet, route, nil)
 	assert.NoError(t, err)
 	r = gimlet.SetURLVars(r, map[string]string{"build_id": "test"})
 
