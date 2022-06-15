@@ -1441,7 +1441,6 @@ func (h *Host) UpdateRunningTask(t *task.Task) (bool, error) {
 		}
 		return false, errors.Wrapf(err, "setting running task to '%s' for host '%s'", t.Id, h.Id)
 	}
-<<<<<<< HEAD
 	event.LogHostRunningTaskSet(h.Id, t.Id, t.Execution)
 	grip.Info(message.Fields{
 		"message":  "host running task set",
@@ -1450,9 +1449,6 @@ func (h *Host) UpdateRunningTask(t *task.Task) (bool, error) {
 		"task_id":  t.Id,
 		"distro":   h.Distro.Id,
 	})
-=======
-	event.LogHostRunningTaskSet(h.Id, t.Id, t.Execution)
->>>>>>> handle task execution in host events
 
 	return true, nil
 }
