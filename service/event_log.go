@@ -56,7 +56,7 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 		}
 		eventQuery := event.RecentAdminEvents(100)
 		loggedEvents, err = event.Find(event.LegacyEventLogCollection, eventQuery)
-	case model.EventResourceTypeProject:
+	case event.EventResourceTypeProject:
 		if u == nil {
 			uis.RedirectToLogin(w, r)
 			return

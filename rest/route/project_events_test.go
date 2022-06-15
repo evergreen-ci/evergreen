@@ -78,7 +78,7 @@ func (s *ProjectEventsTestSuite) SetupSuite() {
 	}
 	s.NoError(projectRef.Insert())
 
-	s.NoError(model.LogProjectEvent(model.EventTypeProjectAdded, "mci2", s.event))
+	s.NoError(model.LogProjectEvent(event.EventTypeProjectAdded, "mci2", s.event))
 }
 
 func (s *ProjectEventsTestSuite) TestGetProjectEvents() {

@@ -3485,8 +3485,8 @@ func TestArchive(t *testing.T) {
 			require.NoError(t, tsk.Insert())
 
 			hostID := "hostID"
-			event.LogHostRunningTaskSet(hostID, tsk.Id)
-			event.LogHostRunningTaskCleared(hostID, tsk.Id)
+			event.LogHostRunningTaskSet(hostID, tsk.Id, 0)
+			event.LogHostRunningTaskCleared(hostID, tsk.Id, 0)
 
 			require.NoError(t, tsk.Archive())
 
@@ -3503,8 +3503,8 @@ func TestArchive(t *testing.T) {
 			require.NoError(t, execTask.Insert())
 
 			hostID := "hostID"
-			event.LogHostRunningTaskSet(hostID, execTask.Id)
-			event.LogHostRunningTaskCleared(hostID, execTask.Id)
+			event.LogHostRunningTaskSet(hostID, execTask.Id, 0)
+			event.LogHostRunningTaskCleared(hostID, execTask.Id, 0)
 
 			dt.DisplayOnly = true
 			dt.ExecutionTasks = []string{execTask.Id}

@@ -160,7 +160,7 @@ func (s *eventSuite) TestEventWithNilData() {
 
 func (s *eventSuite) TestGlobalEventRegistryItemsAreSane() {
 	for k := range registry.types {
-		event := NewEventFromType(k)
+		event := registry.newEventFromType(k)
 		s.NotNil(event)
 		found, rTypeTag := findResourceTypeIn(event)
 
@@ -251,7 +251,7 @@ func (s *eventSuite) TestFindByID() {
 		ResourceId:   "TEST1",
 		EventType:    "TEST2",
 		Timestamp:    time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
-		Data:         NewEventFromType(ResourceTypeHost),
+		Data:         registry.newEventFromType(ResourceTypeHost),
 	}
 	s.Require().NoError(e.Log())
 	dbEvent, err := FindByID(e.ID)
@@ -267,7 +267,7 @@ func (s *eventSuite) TestMarkProcessed() {
 		ResourceId:   "TEST1",
 		EventType:    "TEST2",
 		Timestamp:    time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
-		Data:         NewEventFromType(ResourceTypeHost),
+		Data:         registry.newEventFromType(ResourceTypeHost),
 	}
 	processed, ptime := event.Processed()
 	s.False(processed)
@@ -490,7 +490,7 @@ func (s *eventSuite) TestLogManyEvents() {
 		ResourceId:   "resource_id_1",
 		EventType:    "some_type",
 		Timestamp:    time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
-		Data:         NewEventFromType(ResourceTypeTask),
+		Data:         registry.newEventFromType(ResourceTypeTask),
 		ResourceType: "TASK",
 	}
 	event2 := EventLogEntry{
@@ -498,7 +498,7 @@ func (s *eventSuite) TestLogManyEvents() {
 		ResourceId:   "resource_id_1",
 		EventType:    "some_type",
 		Timestamp:    time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
-		Data:         NewEventFromType(ResourceTypeTask),
+		Data:         registry.newEventFromType(ResourceTypeTask),
 		ResourceType: "TASK",
 	}
 	s.NoError(LogManyEvents([]EventLogEntry{event1, event2}))

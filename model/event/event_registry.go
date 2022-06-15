@@ -3,7 +3,6 @@ package event
 import (
 	"fmt"
 	"sync"
-	"time"
 )
 
 type eventDataFactory func() interface{}
@@ -13,7 +12,7 @@ type eventRegistry struct {
 
 	types          map[string]eventDataFactory
 	isSubscribable map[EventLogEntry]bool
-	ttlForType     map[EventLogEntry]time.Duration
+	neverExpires   map[EventLogEntry]bool
 }
 
 var registry *eventRegistry
@@ -82,23 +81,13 @@ func (r *eventRegistry) setNeverExpire(resourceType, eventType string) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	if r.ttlForType == nil {
-		r.ttlForType = make(map[EventLogEntry]time.Duration)
+	if r.neverExpires == nil {
+		r.neverExpires = make(map[EventLogEntry]bool)
 	}
-	r.ttlForType[EventLogEntry{ResourceType: resourceType, EventType: eventType}] = 0
+	r.neverExpires[EventLogEntry{ResourceType: resourceType, EventType: eventType}] = true
 }
 
-func (r *eventRegistry) setTTL(resourceType, eventType string, ttl time.Duration) {
-	r.lock.Lock()
-	defer r.lock.Unlock()
-
-	if r.ttlForType == nil {
-		r.ttlForType = make(map[EventLogEntry]time.Duration)
-	}
-	r.ttlForType[EventLogEntry{ResourceType: resourceType, EventType: eventType}] = ttl
-}
-
-func (r *eventRegistry) ttl(resourceType, eventType string) time.Duration {
+func (r *eventRegistry) isExpirable(resourceType, eventType string) bool {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 
@@ -107,12 +96,7 @@ func (r *eventRegistry) ttl(resourceType, eventType string) time.Duration {
 		EventType:    eventType,
 	}
 
-	ttl, ok := r.ttlForType[e]
-	if ok {
-		return ttl
-	}
-
-	return defaultTTL
+	return !r.neverExpires[e]
 }
 
 func (r *eventRegistry) newEventFromType(resourceType string) interface{} {

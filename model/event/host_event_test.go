@@ -32,9 +32,9 @@ func TestLoggingHostEvents(t *testing.T) {
 			time.Sleep(1 * time.Millisecond)
 			LogHostProvisioned(hostTag)
 			time.Sleep(1 * time.Millisecond)
-			LogHostRunningTaskSet(hostId, taskId)
+			LogHostRunningTaskSet(hostId, taskId, 0)
 			time.Sleep(1 * time.Millisecond)
-			LogHostRunningTaskCleared(hostId, taskId)
+			LogHostRunningTaskCleared(hostId, taskId, 0)
 			time.Sleep(1 * time.Millisecond)
 
 			// fetch all the events from the database, make sure they are

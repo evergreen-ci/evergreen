@@ -1435,8 +1435,8 @@ func TestFindProjectsSuite(t *testing.T) {
 		h :=
 			event.EventLogEntry{
 				Timestamp:    time.Now(),
-				ResourceType: EventResourceTypeProject,
-				EventType:    EventTypeProjectModified,
+				ResourceType: event.EventResourceTypeProject,
+				EventType:    event.EventTypeProjectModified,
 				ResourceId:   projectId,
 				Data: &ProjectChangeEvent{
 					User:   username,
