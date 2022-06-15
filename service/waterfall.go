@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -637,13 +638,16 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 	}{newUILink, uis.Settings.Jira.Host, uis.GetCommonViewData(w, r, false, true)}, "base", "waterfall.html", "base_angular.html", "menu.html")
 }
 
-// Create and return a redirect to the spruce waterfall page. If the user is opted in to the new UI,
-func (uis *UIServer) waterfallRedirect(w http.ResponseWriter, r *http.Request) {
-	user := MustHaveUser(r)
-	if user != nil {
-		if user.Settings.UseSpruceOptions.SpruceV1 {
-			evergreen.GetEnvironment().Settings().Ui.UIv2Url = ""
-			http.Redirect(w, r, fmt.Sprintf("%s/commits/", uis.Settings.Ui.UIv2Url), http.StatusSeeOther)
+// Create and return a redirect to the spruce waterfall page if the user is opted in to the new UI.
+func (uis *UIServer) mainlineCommitsRedirect(w http.ResponseWriter, r *http.Request) {
+	u := gimlet.GetUser(r.Context())
+	if u != nil {
+		user, ok := u.(*user.DBUser)
+		if ok {
+			if user.Settings.UseSpruceOptions.SpruceV1 {
+				evergreen.GetEnvironment().Settings().Ui.UIv2Url = ""
+				http.Redirect(w, r, fmt.Sprintf("%s/commits/", uis.Settings.Ui.UIv2Url), http.StatusSeeOther)
+			}
 		}
 	}
 

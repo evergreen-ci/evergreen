@@ -303,7 +303,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/graphql/query").Wrap(allowsCORS).Handler(func(_ http.ResponseWriter, _ *http.Request) {}).Options()
 
 	// Waterfall pages
-	app.AddRoute("/").Wrap(needsContext).Handler(uis.waterfallRedirect).Get().Head()
+	app.AddRoute("/").Wrap(needsContext).Handler(uis.mainlineCommitsRedirect).Get().Head()
 	app.AddRoute("/waterfall").Wrap(needsContext).Handler(uis.waterfallPage).Get()
 	app.AddRoute("/waterfall/{project_id}").Wrap(needsContext, viewTasks).Handler(uis.waterfallPage).Get()
 
