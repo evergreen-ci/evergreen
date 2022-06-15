@@ -431,8 +431,8 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			)
 			rh.env.Settings().Providers.AWS.Pod.ECS.Clusters = []evergreen.ECSClusterConfig{
 				{
-					Name:     clusterID,
-					Platform: evergreen.ECSClusterPlatformLinux,
+					Name: clusterID,
+					OS:   evergreen.ECSOSLinux,
 				},
 			}
 			cocoaMock.GlobalECSService.Clusters[clusterID] = cocoaMock.ECSCluster{
