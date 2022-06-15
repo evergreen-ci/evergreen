@@ -637,6 +637,20 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 	}{newUILink, uis.Settings.Jira.Host, uis.GetCommonViewData(w, r, false, true)}, "base", "waterfall.html", "base_angular.html", "menu.html")
 }
 
+// Create and return a redirect to the spruce waterfall page. If the user is opted in to the new UI,
+func (uis *UIServer) waterfallRedirect(w http.ResponseWriter, r *http.Request) {
+	user := MustHaveUser(r)
+	if user != nil {
+		if user.Settings.UseSpruceOptions.SpruceV1 {
+			evergreen.GetEnvironment().Settings().Ui.UIv2Url = ""
+			http.Redirect(w, r, fmt.Sprintf("%s/commits/", uis.Settings.Ui.UIv2Url), http.StatusSeeOther)
+		}
+	}
+
+	http.Redirect(w, r, "/waterfall", http.StatusSeeOther)
+
+}
+
 func (restapi restAPI) getWaterfallData(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
 	project, err := projCtx.GetProject()
