@@ -592,7 +592,12 @@ func (sns *ecsSNS) listECSTasks(ctx context.Context, details ecsContainerInstanc
 	var token *string
 	var taskARNs []string
 
-	for {
+	// The app server shouldn't be able to loop infinitely here since it's tied
+	// to the request context, but just to be extra safe and ensure the loop has
+	// a guaranteed exit condition, put a reasonable cap on the max number of
+	// pages of tasks that a container instance could possibly return.
+	const maxRealisticTaskPages = 100
+	for i := 0; i < maxRealisticTaskPages; i++ {
 		resp, err := c.ListTasks(ctx, &awsECS.ListTasksInput{
 			Cluster:           aws.String(details.ClusterARN),
 			ContainerInstance: aws.String(details.ContainerInstanceARN),
@@ -617,4 +622,6 @@ func (sns *ecsSNS) listECSTasks(ctx context.Context, details ecsContainerInstanc
 			return taskARNs, nil
 		}
 	}
+
+	return nil, errors.Errorf("hit max realistic number of pages of tasks (%d) for a single container instance, refusing to iterate through any more pages", maxRealisticTaskPages)
 }
