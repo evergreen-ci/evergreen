@@ -638,14 +638,14 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 	}{newUILink, uis.Settings.Jira.Host, uis.GetCommonViewData(w, r, false, true)}, "base", "waterfall.html", "base_angular.html", "menu.html")
 }
 
-// Create and return a redirect to the spruce waterfall page if the user is opted in to the new UI.
+// Create and return a redirect to the spruce mainline commits page if the user is opted in to the new UI.
 func (uis *UIServer) mainlineCommitsRedirect(w http.ResponseWriter, r *http.Request) {
 	u := gimlet.GetUser(r.Context())
 	if u != nil {
-		user, ok := u.(*user.DBUser)
+		usr, ok := u.(*user.DBUser)
 		if ok {
 			// If the user is opted in to the new UI, redirect to the new UI.
-			if user.Settings.UseSpruceOptions.SpruceV1 {
+			if usr.Settings.UseSpruceOptions.SpruceV1 {
 				http.Redirect(w, r, fmt.Sprintf("%s/commits/", uis.Settings.Ui.UIv2Url), http.StatusSeeOther)
 			}
 		}
