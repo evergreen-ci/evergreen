@@ -108,41 +108,29 @@ type ApiTaskEndDetail struct {
 	OOMTracker  APIOomTrackerInfo `json:"oom_tracker_info"`
 }
 
-func (at *ApiTaskEndDetail) BuildFromService(t interface{}) error {
-	v, ok := t.(apimodels.TaskEndDetail)
-	if !ok {
-		return errors.Errorf("programmatic error: expected task end detail but got type %T", t)
-	}
-	at.Status = utility.ToStringPtr(v.Status)
-	at.Type = utility.ToStringPtr(v.Type)
-	at.Description = utility.ToStringPtr(v.Description)
-	at.TimedOut = v.TimedOut
-	at.TimeoutType = utility.ToStringPtr(v.TimeoutType)
+func (at *ApiTaskEndDetail) BuildFromService(t apimodels.TaskEndDetail) error {
+	at.Status = utility.ToStringPtr(t.Status)
+	at.Type = utility.ToStringPtr(t.Type)
+	at.Description = utility.ToStringPtr(t.Description)
+	at.TimedOut = t.TimedOut
+	at.TimeoutType = utility.ToStringPtr(t.TimeoutType)
 
 	apiOomTracker := APIOomTrackerInfo{}
-	if err := apiOomTracker.BuildFromService(v.OOMTracker); err != nil {
-		return errors.Wrap(err, "converting OOM tracker info to API model")
-	}
+	apiOomTracker.BuildFromService(t.OOMTracker)
 	at.OOMTracker = apiOomTracker
 
 	return nil
 }
 
-func (ad *ApiTaskEndDetail) ToService() (interface{}, error) {
-	detail := apimodels.TaskEndDetail{
+func (ad *ApiTaskEndDetail) ToService() apimodels.TaskEndDetail {
+	return apimodels.TaskEndDetail{
 		Status:      utility.FromStringPtr(ad.Status),
 		Type:        utility.FromStringPtr(ad.Type),
 		Description: utility.FromStringPtr(ad.Description),
 		TimedOut:    ad.TimedOut,
 		TimeoutType: utility.FromStringPtr(ad.TimeoutType),
+		OOMTracker:  ad.OOMTracker.ToService(),
 	}
-	oomTrackerIface, err := ad.OOMTracker.ToService()
-	if err != nil {
-		return nil, errors.Wrap(err, "converting OOM tracker info to service model")
-	}
-	detail.OOMTracker = oomTrackerIface.(*apimodels.OOMTrackerInfo)
-
-	return detail, nil
 }
 
 type APIOomTrackerInfo struct {
@@ -150,24 +138,18 @@ type APIOomTrackerInfo struct {
 	Pids     []int `json:"pids"`
 }
 
-func (at *APIOomTrackerInfo) BuildFromService(t interface{}) error {
-	v, ok := t.(*apimodels.OOMTrackerInfo)
-	if !ok {
-		return errors.Errorf("programmatic error: expected OOM tracker info but got type %T", t)
+func (at *APIOomTrackerInfo) BuildFromService(t *apimodels.OOMTrackerInfo) {
+	if t != nil {
+		at.Detected = t.Detected
+		at.Pids = t.Pids
 	}
-	if v != nil {
-		at.Detected = v.Detected
-		at.Pids = v.Pids
-	}
-
-	return nil
 }
 
-func (ad *APIOomTrackerInfo) ToService() (interface{}, error) {
+func (ad *APIOomTrackerInfo) ToService() *apimodels.OOMTrackerInfo {
 	return &apimodels.OOMTrackerInfo{
 		Detected: ad.Detected,
 		Pids:     ad.Pids,
-	}, nil
+	}
 }
 
 func (at *APITask) BuildPreviousExecutions(tasks []task.Task, url string) error {
@@ -186,125 +168,118 @@ func (at *APITask) BuildPreviousExecutions(tasks []task.Task, url string) error 
 	return nil
 }
 
-// Deprecated: BuildFromArgs should be used instead to add fields that aren't from the task collection
-//
 // BuildFromService converts from a service level task by loading the data
 // into the appropriate fields of the APITask.
-func (at *APITask) BuildFromService(t interface{}) error {
-	switch v := t.(type) {
-	case *task.Task:
-		id := v.Id
-		// Old tasks are stored in a separate collection with ID set to
-		// "old_task_ID" + "_" + "execution_number". This ID is not exposed to the user,
-		// however. Instead in the UI executions are represented with a "/" and could be
-		// represented in other ways elsewhere. The correct way to represent an old task is
-		// with the same ID as the last execution, since semantically the tasks differ in
-		// their execution number, not in their ID.
-		if v.OldTaskId != "" {
-			id = v.OldTaskId
-		}
-		(*at) = APITask{
-			Id:                      utility.ToStringPtr(id),
-			ProjectId:               utility.ToStringPtr(v.Project),
-			CreateTime:              ToTimePtr(v.CreateTime),
-			DispatchTime:            ToTimePtr(v.DispatchTime),
-			ScheduledTime:           ToTimePtr(v.ScheduledTime),
-			ContainerAllocatedTime:  ToTimePtr(v.ContainerAllocatedTime),
-			StartTime:               ToTimePtr(v.StartTime),
-			FinishTime:              ToTimePtr(v.FinishTime),
-			IngestTime:              ToTimePtr(v.IngestTime),
-			ActivatedTime:           ToTimePtr(v.ActivatedTime),
-			Version:                 utility.ToStringPtr(v.Version),
-			Revision:                utility.ToStringPtr(v.Revision),
-			Priority:                v.Priority,
-			Activated:               v.Activated,
-			ActivatedBy:             utility.ToStringPtr(v.ActivatedBy),
-			BuildId:                 utility.ToStringPtr(v.BuildId),
-			DistroId:                utility.ToStringPtr(v.DistroId),
-			Container:               utility.ToStringPtr(v.Container),
-			BuildVariant:            utility.ToStringPtr(v.BuildVariant),
-			BuildVariantDisplayName: utility.ToStringPtr(v.BuildVariantDisplayName),
-			DisplayName:             utility.ToStringPtr(v.DisplayName),
-			HostId:                  utility.ToStringPtr(v.HostId),
-			Tags:                    utility.ToStringPtrSlice(v.Tags),
-			Execution:               v.Execution,
-			Order:                   v.RevisionOrderNumber,
-			Status:                  utility.ToStringPtr(v.Status),
-			DisplayStatus:           utility.ToStringPtr(v.GetDisplayStatus()),
-			ExpectedDuration:        NewAPIDuration(v.ExpectedDuration),
-			GenerateTask:            v.GenerateTask,
-			GeneratedBy:             v.GeneratedBy,
-			DisplayOnly:             v.DisplayOnly,
-			Mainline:                (v.Requester == evergreen.RepotrackerVersionRequester),
-			TaskGroup:               v.TaskGroup,
-			TaskGroupMaxHosts:       v.TaskGroupMaxHosts,
-			Blocked:                 v.Blocked(),
-			Requester:               utility.ToStringPtr(v.Requester),
-			Aborted:                 v.Aborted,
-			CanSync:                 v.CanSync,
-			HasCedarResults:         v.HasCedarResults,
-			CedarResultsFailed:      v.CedarResultsFailed,
-			MustHaveResults:         v.MustHaveResults,
-			ParentTaskId:            utility.FromStringPtr(v.DisplayTaskId),
-			SyncAtEndOpts: APISyncAtEndOptions{
-				Enabled:  v.SyncAtEndOpts.Enabled,
-				Statuses: v.SyncAtEndOpts.Statuses,
-				Timeout:  v.SyncAtEndOpts.Timeout,
-			},
-			AbortInfo: APIAbortInfo{
-				NewVersion: v.AbortInfo.NewVersion,
-				TaskID:     v.AbortInfo.TaskID,
-				User:       v.AbortInfo.User,
-				PRClosed:   v.AbortInfo.PRClosed,
-			},
-		}
-		if v.BaseTask.Id != "" {
-			at.BaseTask = APIBaseTaskInfo{
-				Id:     utility.ToStringPtr(v.BaseTask.Id),
-				Status: utility.ToStringPtr(v.BaseTask.Status),
-			}
-		}
-
-		if v.TimeTaken != 0 {
-			at.TimeTaken = NewAPIDuration(v.TimeTaken)
-		} else if v.Status == evergreen.TaskStarted {
-			at.TimeTaken = NewAPIDuration(time.Since(v.StartTime))
-		}
-
-		if v.ParentPatchID != "" {
-			at.Version = utility.ToStringPtr(v.ParentPatchID)
-			if v.ParentPatchNumber != 0 {
-				at.Order = v.ParentPatchNumber
-			}
-		}
-
-		if err := at.Details.BuildFromService(v.Details); err != nil {
-			return errors.Wrap(err, "converting task end details to API model")
-		}
-
-		if len(v.ExecutionTasks) > 0 {
-			ets := []*string{}
-			for _, t := range v.ExecutionTasks {
-				ets = append(ets, utility.ToStringPtr(t))
-			}
-			at.ExecutionTasks = ets
-		}
-
-		if len(v.DependsOn) > 0 {
-			dependsOn := make([]APIDependency, len(v.DependsOn))
-			for i, dep := range v.DependsOn {
-				apiDep := APIDependency{}
-				apiDep.BuildFromService(dep)
-				dependsOn[i] = apiDep
-			}
-			at.DependsOn = dependsOn
-		}
-
-		at.OverrideDependencies = v.OverrideDependencies
-		at.Archived = v.Archived
-	default:
-		return errors.New(fmt.Sprintf("Incorrect type %T when unmarshalling task", t))
+func (at *APITask) buildTask(t *task.Task) error {
+	id := t.Id
+	// Old tasks are stored in a separate collection with ID set to
+	// "old_task_ID" + "_" + "execution_number". This ID is not exposed to the user,
+	// however. Instead in the UI executions are represented with a "/" and could be
+	// represented in other ways elsewhere. The correct way to represent an old task is
+	// with the same ID as the last execution, since semantically the tasks differ in
+	// their execution number, not in their ID.
+	if t.OldTaskId != "" {
+		id = t.OldTaskId
 	}
+	*at = APITask{
+		Id:                      utility.ToStringPtr(id),
+		ProjectId:               utility.ToStringPtr(t.Project),
+		CreateTime:              ToTimePtr(t.CreateTime),
+		DispatchTime:            ToTimePtr(t.DispatchTime),
+		ScheduledTime:           ToTimePtr(t.ScheduledTime),
+		ContainerAllocatedTime:  ToTimePtr(t.ContainerAllocatedTime),
+		StartTime:               ToTimePtr(t.StartTime),
+		FinishTime:              ToTimePtr(t.FinishTime),
+		IngestTime:              ToTimePtr(t.IngestTime),
+		ActivatedTime:           ToTimePtr(t.ActivatedTime),
+		Version:                 utility.ToStringPtr(t.Version),
+		Revision:                utility.ToStringPtr(t.Revision),
+		Priority:                t.Priority,
+		Activated:               t.Activated,
+		ActivatedBy:             utility.ToStringPtr(t.ActivatedBy),
+		BuildId:                 utility.ToStringPtr(t.BuildId),
+		DistroId:                utility.ToStringPtr(t.DistroId),
+		Container:               utility.ToStringPtr(t.Container),
+		BuildVariant:            utility.ToStringPtr(t.BuildVariant),
+		BuildVariantDisplayName: utility.ToStringPtr(t.BuildVariantDisplayName),
+		DisplayName:             utility.ToStringPtr(t.DisplayName),
+		HostId:                  utility.ToStringPtr(t.HostId),
+		Tags:                    utility.ToStringPtrSlice(t.Tags),
+		Execution:               t.Execution,
+		Order:                   t.RevisionOrderNumber,
+		Status:                  utility.ToStringPtr(t.Status),
+		DisplayStatus:           utility.ToStringPtr(t.GetDisplayStatus()),
+		ExpectedDuration:        NewAPIDuration(t.ExpectedDuration),
+		GenerateTask:            t.GenerateTask,
+		GeneratedBy:             t.GeneratedBy,
+		DisplayOnly:             t.DisplayOnly,
+		Mainline:                (t.Requester == evergreen.RepotrackerVersionRequester),
+		TaskGroup:               t.TaskGroup,
+		TaskGroupMaxHosts:       t.TaskGroupMaxHosts,
+		Blocked:                 t.Blocked(),
+		Requester:               utility.ToStringPtr(t.Requester),
+		Aborted:                 t.Aborted,
+		CanSync:                 t.CanSync,
+		HasCedarResults:         t.HasCedarResults,
+		CedarResultsFailed:      t.CedarResultsFailed,
+		MustHaveResults:         t.MustHaveResults,
+		ParentTaskId:            utility.FromStringPtr(t.DisplayTaskId),
+		SyncAtEndOpts: APISyncAtEndOptions{
+			Enabled:  t.SyncAtEndOpts.Enabled,
+			Statuses: t.SyncAtEndOpts.Statuses,
+			Timeout:  t.SyncAtEndOpts.Timeout,
+		},
+		AbortInfo: APIAbortInfo{
+			NewVersion: t.AbortInfo.NewVersion,
+			TaskID:     t.AbortInfo.TaskID,
+			User:       t.AbortInfo.User,
+			PRClosed:   t.AbortInfo.PRClosed,
+		},
+	}
+	if t.BaseTask.Id != "" {
+		at.BaseTask = APIBaseTaskInfo{
+			Id:     utility.ToStringPtr(t.BaseTask.Id),
+			Status: utility.ToStringPtr(t.BaseTask.Status),
+		}
+	}
+
+	if t.TimeTaken != 0 {
+		at.TimeTaken = NewAPIDuration(t.TimeTaken)
+	} else if t.Status == evergreen.TaskStarted {
+		at.TimeTaken = NewAPIDuration(time.Since(t.StartTime))
+	}
+
+	if t.ParentPatchID != "" {
+		at.Version = utility.ToStringPtr(t.ParentPatchID)
+		if t.ParentPatchNumber != 0 {
+			at.Order = t.ParentPatchNumber
+		}
+	}
+
+	if err := at.Details.BuildFromService(t.Details); err != nil {
+		return errors.Wrap(err, "converting task end details to API model")
+	}
+
+	if len(t.ExecutionTasks) > 0 {
+		ets := []*string{}
+		for _, t := range t.ExecutionTasks {
+			ets = append(ets, utility.ToStringPtr(t))
+		}
+		at.ExecutionTasks = ets
+	}
+
+	if len(t.DependsOn) > 0 {
+		dependsOn := make([]APIDependency, len(t.DependsOn))
+		for i, dep := range t.DependsOn {
+			apiDep := APIDependency{}
+			apiDep.BuildFromService(dep)
+			dependsOn[i] = apiDep
+		}
+		at.DependsOn = dependsOn
+	}
+
+	at.OverrideDependencies = t.OverrideDependencies
+	at.Archived = t.Archived
 
 	return nil
 }
@@ -316,11 +291,27 @@ type APITaskArgs struct {
 	LogURL                   string
 }
 
+// Deprecated: BuildFromArgs should be used instead to add fields that aren't from the task collection.
+// BuildFromService converts from a service level task by loading the data
+// into the appropriate fields of the APITask. Needed to support the model interface used by triggers.
+func (at *APITask) BuildFromService(t interface{}) error {
+	var st *task.Task
+	switch v := t.(type) {
+	case *task.Task:
+		st = v
+	case task.Task:
+		st = &v
+	default:
+		return errors.Errorf("programmatic error: expected task but got type %T", v)
+	}
+	return at.BuildFromArgs(st, nil)
+}
+
 // BuildFromArgs converts from a service level task by loading the data
 // into the appropriate fields of the APITask. It takes optional arguments to populate
 // additional fields.
-func (at *APITask) BuildFromArgs(t interface{}, args *APITaskArgs) error {
-	err := at.BuildFromService(t)
+func (at *APITask) BuildFromArgs(t *task.Task, args *APITaskArgs) error {
+	err := at.buildTask(t)
 	if err != nil {
 		return err
 	}
@@ -343,7 +334,7 @@ func (at *APITask) BuildFromArgs(t interface{}, args *APITaskArgs) error {
 		}
 	}
 	if args.IncludeArtifacts {
-		if err := at.GetArtifacts(); err != nil {
+		if err := at.getArtifacts(); err != nil {
 			return errors.Wrap(err, "getting artifacts")
 		}
 	}
@@ -386,101 +377,92 @@ func (at *APITask) GetProjectIdentifier() {
 }
 
 // ToService returns a service layer task using the data from the APITask.
-func (ad *APITask) ToService() (interface{}, error) {
+// Wraps ToServiceTask to maintain the model interface.
+func (at *APITask) ToService() (*task.Task, error) {
 	st := &task.Task{
-		Id:                  utility.FromStringPtr(ad.Id),
-		Project:             utility.FromStringPtr(ad.ProjectId),
-		Version:             utility.FromStringPtr(ad.Version),
-		Revision:            utility.FromStringPtr(ad.Revision),
-		Priority:            ad.Priority,
-		Activated:           ad.Activated,
-		ActivatedBy:         utility.FromStringPtr(ad.ActivatedBy),
-		BuildId:             utility.FromStringPtr(ad.BuildId),
-		DistroId:            utility.FromStringPtr(ad.DistroId),
-		Container:           utility.FromStringPtr(ad.Container),
-		BuildVariant:        utility.FromStringPtr(ad.BuildVariant),
-		DisplayName:         utility.FromStringPtr(ad.DisplayName),
-		HostId:              utility.FromStringPtr(ad.HostId),
-		Execution:           ad.Execution,
-		RevisionOrderNumber: ad.Order,
-		Status:              utility.FromStringPtr(ad.Status),
-		DisplayStatus:       utility.FromStringPtr(ad.DisplayStatus),
-		TimeTaken:           ad.TimeTaken.ToDuration(),
-		ExpectedDuration:    ad.ExpectedDuration.ToDuration(),
-		GenerateTask:        ad.GenerateTask,
-		GeneratedBy:         ad.GeneratedBy,
-		DisplayOnly:         ad.DisplayOnly,
-		Requester:           utility.FromStringPtr(ad.Requester),
-		CanSync:             ad.CanSync,
-		HasCedarResults:     ad.HasCedarResults,
-		CedarResultsFailed:  ad.CedarResultsFailed,
-		MustHaveResults:     ad.MustHaveResults,
+		Id:                  utility.FromStringPtr(at.Id),
+		Project:             utility.FromStringPtr(at.ProjectId),
+		Version:             utility.FromStringPtr(at.Version),
+		Revision:            utility.FromStringPtr(at.Revision),
+		Priority:            at.Priority,
+		Activated:           at.Activated,
+		ActivatedBy:         utility.FromStringPtr(at.ActivatedBy),
+		BuildId:             utility.FromStringPtr(at.BuildId),
+		DistroId:            utility.FromStringPtr(at.DistroId),
+		Container:           utility.FromStringPtr(at.Container),
+		BuildVariant:        utility.FromStringPtr(at.BuildVariant),
+		DisplayName:         utility.FromStringPtr(at.DisplayName),
+		HostId:              utility.FromStringPtr(at.HostId),
+		Execution:           at.Execution,
+		RevisionOrderNumber: at.Order,
+		Status:              utility.FromStringPtr(at.Status),
+		DisplayStatus:       utility.FromStringPtr(at.DisplayStatus),
+		TimeTaken:           at.TimeTaken.ToDuration(),
+		ExpectedDuration:    at.ExpectedDuration.ToDuration(),
+		GenerateTask:        at.GenerateTask,
+		GeneratedBy:         at.GeneratedBy,
+		DisplayOnly:         at.DisplayOnly,
+		Requester:           utility.FromStringPtr(at.Requester),
+		CanSync:             at.CanSync,
+		HasCedarResults:     at.HasCedarResults,
+		CedarResultsFailed:  at.CedarResultsFailed,
+		MustHaveResults:     at.MustHaveResults,
 		SyncAtEndOpts: task.SyncAtEndOptions{
-			Enabled:  ad.SyncAtEndOpts.Enabled,
-			Statuses: ad.SyncAtEndOpts.Statuses,
-			Timeout:  ad.SyncAtEndOpts.Timeout,
+			Enabled:  at.SyncAtEndOpts.Enabled,
+			Statuses: at.SyncAtEndOpts.Statuses,
+			Timeout:  at.SyncAtEndOpts.Timeout,
 		},
 		BaseTask: task.BaseTaskInfo{
-			Id:     utility.FromStringPtr(ad.BaseTask.Id),
-			Status: utility.FromStringPtr(ad.BaseTask.Status),
+			Id:     utility.FromStringPtr(at.BaseTask.Id),
+			Status: utility.FromStringPtr(at.BaseTask.Status),
 		},
-		DisplayTaskId: utility.ToStringPtr(ad.ParentTaskId),
-		Aborted:       ad.Aborted,
+		DisplayTaskId:        utility.ToStringPtr(at.ParentTaskId),
+		Aborted:              at.Aborted,
+		Details:              at.Details.ToService(),
+		Archived:             at.Archived,
+		OverrideDependencies: at.OverrideDependencies,
 	}
+
 	catcher := grip.NewBasicCatcher()
-	serviceDetails, err := ad.Details.ToService()
+	var err error
+	st.CreateTime, err = FromTimePtr(at.CreateTime)
 	catcher.Add(err)
-	st.Details = serviceDetails.(apimodels.TaskEndDetail)
-	createTime, err := FromTimePtr(ad.CreateTime)
+	st.DispatchTime, err = FromTimePtr(at.DispatchTime)
 	catcher.Add(err)
-	dispatchTime, err := FromTimePtr(ad.DispatchTime)
+	st.ScheduledTime, err = FromTimePtr(at.ScheduledTime)
 	catcher.Add(err)
-	scheduledTime, err := FromTimePtr(ad.ScheduledTime)
+	st.ContainerAllocatedTime, err = FromTimePtr(at.ContainerAllocatedTime)
 	catcher.Add(err)
-	containerAllocatedTime, err := FromTimePtr(ad.ContainerAllocatedTime)
+	st.StartTime, err = FromTimePtr(at.StartTime)
 	catcher.Add(err)
-	startTime, err := FromTimePtr(ad.StartTime)
+	st.FinishTime, err = FromTimePtr(at.FinishTime)
 	catcher.Add(err)
-	finishTime, err := FromTimePtr(ad.FinishTime)
+	st.IngestTime, err = FromTimePtr(at.IngestTime)
 	catcher.Add(err)
-	ingestTime, err := FromTimePtr(ad.IngestTime)
-	catcher.Add(err)
-	activatedTime, err := FromTimePtr(ad.ActivatedTime)
+	st.ActivatedTime, err = FromTimePtr(at.ActivatedTime)
 	catcher.Add(err)
 	if catcher.HasErrors() {
 		return nil, catcher.Resolve()
 	}
 
-	st.CreateTime = createTime
-	st.DispatchTime = dispatchTime
-	st.ScheduledTime = scheduledTime
-	st.ContainerAllocatedTime = containerAllocatedTime
-	st.StartTime = startTime
-	st.FinishTime = finishTime
-	st.IngestTime = ingestTime
-	st.ActivatedTime = activatedTime
-	if len(ad.ExecutionTasks) > 0 {
+	if len(at.ExecutionTasks) > 0 {
 		ets := []string{}
-		for _, t := range ad.ExecutionTasks {
+		for _, t := range at.ExecutionTasks {
 			ets = append(ets, utility.FromStringPtr(t))
 		}
 		st.ExecutionTasks = ets
 	}
 
-	dependsOn := make([]task.Dependency, len(ad.DependsOn))
-
-	for i, dep := range ad.DependsOn {
+	dependsOn := make([]task.Dependency, len(at.DependsOn))
+	for i, dep := range at.DependsOn {
 		dependsOn[i].TaskId = dep.TaskId
 		dependsOn[i].Status = dep.Status
 	}
-
 	st.DependsOn = dependsOn
-	st.OverrideDependencies = ad.OverrideDependencies
-	st.Archived = ad.Archived
-	return interface{}(st), nil
+	return st, nil
 }
 
-func (at *APITask) GetArtifacts() error {
+func (at *APITask) getArtifacts() error {
 	var err error
 	var entries []artifact.Entry
 	if at.DisplayOnly {
@@ -506,10 +488,7 @@ func (at *APITask) GetArtifacts() error {
 		}
 		for _, file := range strippedFiles {
 			apiFile := APIFile{}
-			err := apiFile.BuildFromService(file)
-			if err != nil {
-				return err
-			}
+			apiFile.BuildFromService(file)
 			at.Artifacts = append(at.Artifacts, apiFile)
 		}
 	}
@@ -531,8 +510,4 @@ type APIDependency struct {
 func (ad *APIDependency) BuildFromService(dep task.Dependency) {
 	ad.TaskId = dep.TaskId
 	ad.Status = dep.Status
-}
-
-func (ad *APIDependency) ToService() (interface{}, error) {
-	return nil, errors.New("ToService() is not implemented for APIDependency")
 }
