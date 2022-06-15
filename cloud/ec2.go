@@ -718,6 +718,7 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 					"host_provider": h.Distro.Provider,
 					"distro":        h.Distro.Id,
 				})
+				return h, nil
 			}
 			return nil, errors.Wrap(err, msg)
 		}

@@ -517,8 +517,10 @@ func (s *EC2Suite) TestSpawnHostClassicSpotInsufficientCapacityFallback() {
 	// Ensure that the mock for requesting a spot instance returns an InsufficientCapacity error.
 	mock.requestSpotInstancesError = awserr.New(EC2InsufficientCapacity, "Test error for Insufficient Capacity", nil)
 
-	_, err := s.spotManager.SpawnHost(ctx, h)
+	returnedHost, err := s.spotManager.SpawnHost(ctx, h)
 	s.NoError(err)
+	s.Equal(evergreen.ProviderNameEc2OnDemand, returnedHost.Provider, "Provider should have been changed to OnDemand on fallback")
+	s.Equal(evergreen.ProviderNameEc2OnDemand, returnedHost.Distro.Provider, "Provider should have been changed to OnDemand on fallback")
 
 	// Check that we have made a request for a spot instance
 	s.Require().NotNil(mock.RequestSpotInstancesInput)
@@ -583,8 +585,10 @@ func (s *EC2Suite) TestSpawnHostClassicSpotUnfulfillableCapacityFallback() {
 	// Ensure that the mock for requesting a spot instance returns an InsufficientCapacity error.
 	mock.requestSpotInstancesError = awserr.New(EC2UnfulfillableCapacity, "Test error for Unfulfillable Capacity", nil)
 
-	_, err := s.spotManager.SpawnHost(ctx, h)
+	returnedHost, err := s.spotManager.SpawnHost(ctx, h)
 	s.NoError(err)
+	s.Equal(evergreen.ProviderNameEc2OnDemand, returnedHost.Provider, "Provider should have been changed to OnDemand on fallback")
+	s.Equal(evergreen.ProviderNameEc2OnDemand, returnedHost.Distro.Provider, "Provider should have been changed to OnDemand on fallback")
 
 	// Check that we have made a request for a spot instance
 	s.Require().NotNil(mock.RequestSpotInstancesInput)
