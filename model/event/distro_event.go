@@ -7,6 +7,14 @@ import (
 	"github.com/mongodb/grip/message"
 )
 
+func init() {
+	registry.AddType(ResourceTypeDistro, func() interface{} { return &DistroEventData{} })
+	registry.setNeverExpire(ResourceTypeDistro, EventDistroAdded)
+	registry.setNeverExpire(ResourceTypeDistro, EventDistroModified)
+	registry.setNeverExpire(ResourceTypeDistro, EventDistroAMIModfied)
+	registry.setNeverExpire(ResourceTypeDistro, EventDistroRemoved)
+}
+
 const (
 	// resource type
 	ResourceTypeDistro = "DISTRO"

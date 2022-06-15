@@ -6,6 +6,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+func init() {
+	registry.AddType(ResourceTypeUser, func() interface{} { return &userData{} })
+}
+
 const (
 	ResourceTypeUser = "USER"
 )

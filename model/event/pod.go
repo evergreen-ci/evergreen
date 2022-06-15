@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	registry.AddType(ResourceTypePod, podEventDataFactory)
+	registry.AddType(ResourceTypePod, func() interface{} { return &podData{} })
 }
 
 // PodEventType represents a type of event related to a pod.

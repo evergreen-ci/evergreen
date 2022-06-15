@@ -12,6 +12,8 @@ import (
 const (
 	LegacyEventLogCollection = "event_log"
 	EventCollection          = "events"
+
+	defaultTTL = 90 * 24 * time.Hour
 )
 
 var notSubscribableTime = time.Date(2015, time.October, 21, 23, 29, 1, 0, time.UTC)
@@ -22,6 +24,7 @@ type EventLogEntry struct {
 	ProcessedAt  time.Time `bson:"processed_at" json:"processed_at"`
 
 	Timestamp  time.Time   `bson:"ts" json:"timestamp"`
+	Expiration time.Time   `bson:"expiration" json:"expiration"`
 	ResourceId string      `bson:"r_id" json:"resource_id"`
 	EventType  string      `bson:"e_type" json:"event_type"`
 	Data       interface{} `bson:"data" json:"data"`
@@ -43,6 +46,7 @@ type UnmarshalEventLogEntry struct {
 	ProcessedAt  time.Time   `bson:"processed_at" json:"processed_at"`
 
 	Timestamp  time.Time   `bson:"ts" json:"timestamp"`
+	Expiration time.Time   `bson:"expiration,omitempty" json:"expiration,omitempty"`
 	ResourceId string      `bson:"r_id" json:"resource_id"`
 	EventType  string      `bson:"e_type" json:"event_type"`
 	Data       mgobson.Raw `bson:"data" json:"data"`
@@ -52,6 +56,7 @@ var (
 	// bson fields for the event struct
 	idKey           = bsonutil.MustHaveTag(EventLogEntry{}, "ID")
 	TimestampKey    = bsonutil.MustHaveTag(EventLogEntry{}, "Timestamp")
+	ExpirationKey   = bsonutil.MustHaveTag(EventLogEntry{}, "Expiration")
 	ResourceIdKey   = bsonutil.MustHaveTag(EventLogEntry{}, "ResourceId")
 	ResourceTypeKey = bsonutil.MustHaveTag(EventLogEntry{}, "ResourceType")
 	processedAtKey  = bsonutil.MustHaveTag(EventLogEntry{}, "ProcessedAt")
@@ -70,7 +75,7 @@ func (e *EventLogEntry) SetBSON(raw mgobson.Raw) error {
 		return errors.Wrap(err, "unmarshalling event into generic event log entry")
 	}
 
-	e.Data = NewEventFromType(temp.ResourceType)
+	e.Data = registry.newEventFromType(temp.ResourceType)
 	if e.Data == nil {
 		return errors.Errorf("unknown resource type '%s'", temp.ResourceType)
 	}
@@ -79,6 +84,7 @@ func (e *EventLogEntry) SetBSON(raw mgobson.Raw) error {
 	}
 
 	// IDs for events were ObjectIDs previously, so we need to do this
+	// TODO (EVG-16650): Remove once old events are TTLed and/or migrated.
 	switch v := temp.ID.(type) {
 	case string:
 		e.ID = v
@@ -94,6 +100,7 @@ func (e *EventLogEntry) SetBSON(raw mgobson.Raw) error {
 	e.EventType = temp.EventType
 	e.ProcessedAt = temp.ProcessedAt
 	e.ResourceType = temp.ResourceType
+	e.Expiration = temp.Expiration
 
 	return nil
 }
@@ -111,6 +118,7 @@ func (e *EventLogEntry) validateEvent() error {
 	if !registry.IsSubscribable(e.ResourceType, e.EventType) {
 		e.ProcessedAt = notSubscribableTime
 	}
+	e.Expiration = time.Now().Add(registry.ttl(e.ResourceType, e.EventType))
 
 	return nil
 }

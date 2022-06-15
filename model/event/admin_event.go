@@ -13,6 +13,11 @@ import (
 	"github.com/pkg/errors"
 )
 
+func init() {
+	registry.AddType(ResourceTypeAdmin, func() interface{} { return &rawAdminEventData{} })
+	registry.setNeverExpire(ResourceTypeAdmin, EventTypeValueChanged)
+}
+
 const (
 	ResourceTypeAdmin     = "ADMIN"
 	EventTypeValueChanged = "CONFIG_VALUE_CHANGED"
