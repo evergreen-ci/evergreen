@@ -3,6 +3,7 @@ package task
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"testing"
 	"time"
 
@@ -3474,7 +3475,7 @@ func TestArchive(t *testing.T) {
 			hostEventData, ok := e.Data.(*event.HostEventData)
 			require.True(t, ok)
 			require.Equal(t, hostEventData.TaskId, dbTask.OldTaskId)
-			require.Equal(t, hostEventData.TaskExecution, dbTask.Execution)
+			require.Equal(t, hostEventData.Execution, strconv.Itoa(dbTask.Execution))
 		}
 	}
 	for tName, tCase := range map[string]func(t *testing.T, tsk Task){

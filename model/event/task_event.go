@@ -1,6 +1,7 @@
 package event
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -143,7 +144,7 @@ func LogTaskStarted(taskId string, execution int) {
 func LogTaskFinished(taskId string, execution int, hostId, status string) {
 	logTaskEvent(taskId, TaskFinished, TaskEventData{Execution: execution, Status: status})
 	if hostId != "" {
-		LogHostEvent(hostId, EventTaskFinished, HostEventData{TaskExecution: execution, TaskStatus: status, TaskId: taskId})
+		LogHostEvent(hostId, EventTaskFinished, HostEventData{Execution: strconv.Itoa(execution), TaskStatus: status, TaskId: taskId})
 	}
 }
 

@@ -70,7 +70,6 @@ type HostEventData struct {
 	Hostname           string        `bson:"hn,omitempty" json:"hostname,omitempty"`
 	ProvisioningMethod string        `bson:"prov_method" json:"provisioning_method,omitempty"`
 	TaskId             string        `bson:"t_id,omitempty" json:"task_id,omitempty"`
-	TaskExecution      int           `bson:"t_execution,omitempty" json:"task_execution,omitempty"`
 	TaskPid            string        `bson:"t_pid,omitempty" json:"task_pid,omitempty"`
 	TaskStatus         string        `bson:"t_st,omitempty" json:"task_status,omitempty"`
 	Execution          string        `bson:"execution,omitempty" json:"execution,omitempty"`
@@ -226,14 +225,20 @@ func LogHostProvisioned(hostId string) {
 	LogHostEvent(hostId, EventHostProvisioned, HostEventData{})
 }
 
-func LogHostRunningTaskSet(hostId string, taskId string) {
+func LogHostRunningTaskSet(hostId string, taskId string, taskExecution int) {
 	LogHostEvent(hostId, EventHostRunningTaskSet,
-		HostEventData{TaskId: taskId})
+		HostEventData{
+			TaskId:    taskId,
+			Execution: strconv.Itoa(taskExecution),
+		})
 }
 
-func LogHostRunningTaskCleared(hostId string, taskId string) {
+func LogHostRunningTaskCleared(hostId string, taskId string, taskExecution int) {
 	LogHostEvent(hostId, EventHostRunningTaskCleared,
-		HostEventData{TaskId: taskId})
+		HostEventData{
+			TaskId:    taskId,
+			Execution: strconv.Itoa(taskExecution),
+		})
 }
 
 // LogHostProvisionFailed is used when Evergreen gives up on provisioning a host
@@ -252,6 +257,7 @@ func LogVolumeExpirationWarningSent(volumeID string) {
 
 // UpdateHostTaskExecutions updates host events to track multiple executions of
 // the same host task.
+// TODO (EVG-16650): Stop using UpdateHostTaskExecutions once all hosts running tasks have a running task execution set.
 func UpdateHostTaskExecutions(hostId, taskId string, execution int) error {
 	query := bson.M{
 		ResourceIdKey: hostId,
@@ -262,8 +268,14 @@ func UpdateHostTaskExecutions(hostId, taskId string, execution int) error {
 			bsonutil.GetDottedKeyName(DataKey, hostDataTaskExecutionKey): strconv.Itoa(execution),
 		},
 	}
-	_, err := db.UpdateAll(LegacyEventLogCollection, query, update)
-	return err
+
+	catcher := grip.NewBasicCatcher()
+	for _, col := range eventCollections {
+		_, err := db.UpdateAll(col, query, update)
+		catcher.Add(err)
+	}
+
+	return catcher.Resolve()
 }
 
 func LogHostScriptExecuted(hostID string, logs string) {
