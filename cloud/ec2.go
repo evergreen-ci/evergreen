@@ -689,7 +689,7 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 				"host_provider": h.Distro.Provider,
 				"distro":        h.Distro.Id,
 			}))
-			if strings.Contains(err.Error(), EC2InsufficientCapacity) && h.ShouldFallbackToOnDemand() {
+			if h.ShouldFallbackToOnDemand() && (strings.Contains(err.Error(), EC2InsufficientCapacity) || strings.Contains(err.Error(), EC2UnfulfillableCapacity)) {
 				// Spot creation failed due to an InsufficientCapacity error.
 				// Try to spawn the host as OnDemand instead of Spot
 				event.LogHostFallback(h.Id)
