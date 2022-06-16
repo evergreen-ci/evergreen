@@ -11,7 +11,6 @@ import (
 const (
 	confFlagName              = "conf"
 	overwriteConfFlagName     = "overwrite"
-	adminFlagsFlagName        = "flags"
 	pathFlagName              = "path"
 	projectFlagName           = "project"
 	patchIDFlagName           = "patch"
@@ -71,13 +70,6 @@ func addPathFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.StringFlag{
 		Name:  joinFlagNames(pathFlagName, "filename", "file", "f"),
 		Usage: "path to an evergreen project configuration file",
-	})
-}
-
-func addOutputPath(flags ...cli.Flag) []cli.Flag {
-	return append(flags, cli.StringFlag{
-		Name:  joinFlagNames(pathFlagName, "filename", "file", "f"),
-		Usage: "path to the output file",
 	})
 }
 
@@ -157,17 +149,10 @@ func addSyncStatusesFlag(flags ...cli.Flag) []cli.Flag {
 	})
 }
 
-func adminFlagFlag(flags ...cli.Flag) []cli.Flag {
-	return append(flags, cli.StringSliceFlag{
-		Name:  adminFlagsFlagName,
-		Usage: "specify a flag to disable; may specify more than once",
-	})
-}
-
 func addVariantsFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.StringSliceFlag{
 		Name:  joinFlagNames(variantsFlagName, "v"),
-		Usage: "variant names",
+		Usage: "variant names (\"all\" for all variants)",
 	})
 }
 

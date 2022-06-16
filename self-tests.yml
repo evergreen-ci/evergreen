@@ -12,10 +12,7 @@ post:
     params:
       aws_key: ${aws_key}
       aws_secret: ${aws_secret}
-      local_files_include_filter:
-        [
-          "evergreen/bin/output.*.coverage.html",
-        ]
+      local_files_include_filter: ["evergreen/bin/output.*.coverage.html"]
       remote_file: evergreen/${task_id}/
       bucket: mciuploads
       content_type: text/html
@@ -26,8 +23,7 @@ post:
     params:
       aws_key: ${aws_key}
       aws_secret: ${aws_secret}
-      local_files_include_filter:
-        ["evergreen/bin/output.*.coverage"]
+      local_files_include_filter: ["evergreen/bin/output.*.coverage"]
       remote_file: evergreen/${task_id}/
       bucket: mciuploads
       content_type: text/plain
@@ -445,9 +441,6 @@ tasks:
     name: test-model-event
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
-    name: test-model-global
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
     name: test-model-host
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
@@ -565,7 +558,7 @@ tasks:
       - func: get-project-and-modules
       - func: setup-credentials
       - func: setup-mongodb
-        vars: { with_auth: "1"}
+        vars: { with_auth: "1" }
       - func: run-make
         vars:
           target: "test-evergreen"
@@ -596,6 +589,7 @@ buildvariants:
       RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.2.18.tgz
       notary_client_url: https://macos-notary-1628249594.s3.amazonaws.com/releases/client/v3.1.2/linux_amd64.zip
+      sign_macos: true
     tasks:
       - name: "dist-and-upload-clis"
       - name: "dist-staging"

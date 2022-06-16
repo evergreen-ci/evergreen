@@ -22,6 +22,8 @@ type FindTestsByTaskIdOpts struct {
 	Statuses []string
 	// TaskID is the only required field.
 	TaskID string
+	// ExecutionTasks is required for display tasks.
+	ExecutionTasks []string
 	// TestID matches all IDs >= TestID.
 	TestID   string
 	TestName string

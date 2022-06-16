@@ -4,13 +4,14 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -26,9 +27,6 @@ func init() {
 type spawnhostStartJob struct {
 	CloudHostModification `bson:"cloud_host_modification" json:"cloud_host_modification" yaml:"cloud_host_modification"`
 	job.Base              `bson:"job_base" json:"job_base" yaml:"job_base"`
-
-	host *host.Host
-	env  evergreen.Environment
 }
 
 func makeSpawnhostStartJob() *spawnhostStartJob {
@@ -59,11 +57,25 @@ func (j *spawnhostStartJob) Run(ctx context.Context) {
 
 	startCloudHost := func(mgr cloud.Manager, h *host.Host, user string) error {
 		if err := mgr.StartInstance(ctx, h, user); err != nil {
-			event.LogHostStartFinished(h.Id, false)
-			return errors.Wrapf(err, "starting spawn host '%s'", h.Id)
+			event.LogHostStartError(h.Id, err.Error())
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":  "error starting spawn host",
+				"host_id":  h.Id,
+				"host_tag": h.Tag,
+				"distro":   h.Distro.Id,
+				"user":     user,
+			}))
+			return errors.Wrap(err, "starting spawn host")
 		}
 
-		event.LogHostStartFinished(h.Id, true)
+		event.LogHostStartSucceeded(h.Id)
+		grip.Info(message.Fields{
+			"message":  "started spawn host",
+			"host_id":  h.Id,
+			"host_tag": h.Tag,
+			"distro":   h.Distro.Id,
+			"user":     user,
+		})
 
 		return nil
 	}

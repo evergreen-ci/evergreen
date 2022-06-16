@@ -299,7 +299,7 @@ func GetOrCreateUser(userId, displayName, email, accessToken, refreshToken strin
 		APIKeyKey: utility.RandomString(),
 		bsonutil.GetDottedKeyName(SettingsKey, UseSpruceOptionsKey, SpruceV1Key): true,
 	}
-	if roles != nil && len(roles) > 0 {
+	if len(roles) > 0 {
 		setOnInsertFields[RolesKey] = roles
 	}
 	res := env.DB().Collection(Collection).FindOneAndUpdate(ctx,

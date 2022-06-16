@@ -393,7 +393,7 @@ func shouldContainPair(actual interface{}, expected ...interface{}) string {
 	actualPairsList, ok := actual.([]TVPair)
 
 	if !ok {
-		return fmt.Sprintf("Assertion requires a list of TVPair objects")
+		return "Assertion requires a list of TVPair objects"
 	}
 
 	if len(expected) != 1 {
@@ -402,7 +402,7 @@ func shouldContainPair(actual interface{}, expected ...interface{}) string {
 
 	expectedPair, ok := expected[0].(TVPair)
 	if !ok {
-		return fmt.Sprintf("Assertion requires expected value to be an instance of TVPair")
+		return "Assertion requires expected value to be an instance of TVPair"
 	}
 
 	for _, ap := range actualPairsList {
@@ -695,7 +695,7 @@ func TestAddNewPatch(t *testing.T) {
 	assert.NotNil(dbBuild)
 	assert.Len(dbBuild.Tasks, 2)
 
-	_, err = addNewTasks(context.Background(), specificActivationInfo{}, v, proj, tasks, []build.Build{*dbBuild}, p.SyncAtEndOpts, ref.Identifier, "")
+	_, err = addNewTasks(context.Background(), specificActivationInfo{}, v, proj, &ref, tasks, []build.Build{*dbBuild}, p.SyncAtEndOpts, "")
 	assert.NoError(err)
 	dbTasks, err := task.FindAll(db.Query(task.ByBuildId(dbBuild.Id)))
 	assert.NoError(err)
@@ -775,7 +775,7 @@ func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 	assert.NotNil(dbBuild)
 	assert.Len(dbBuild.Tasks, 2)
 
-	_, err = addNewTasks(context.Background(), specificActivationInfo{}, v, proj, tasks, []build.Build{*dbBuild}, p.SyncAtEndOpts, ref.Identifier, "")
+	_, err = addNewTasks(context.Background(), specificActivationInfo{}, v, proj, &ref, tasks, []build.Build{*dbBuild}, p.SyncAtEndOpts, "")
 	assert.NoError(err)
 	dbTasks, err := task.FindAll(db.Query(task.ByBuildId(dbBuild.Id)))
 	assert.NoError(err)

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/amboy"
@@ -37,7 +36,6 @@ type collectHostIdleDataJob struct {
 	host     *host.Host
 	task     *task.Task
 	settings *evergreen.Settings
-	manager  cloud.Manager
 	env      evergreen.Environment
 }
 
@@ -50,17 +48,6 @@ func newHostIdleJob() *collectHostIdleDataJob {
 			},
 		},
 	}
-	return j
-}
-
-func newHostIdleJobForTermination(env evergreen.Environment, settings *evergreen.Settings, manager cloud.Manager,
-	h *host.Host, startTime, finishTime time.Time) amboy.Job {
-
-	j := NewCollectHostIdleDataJob(h, nil, startTime, finishTime).(*collectHostIdleDataJob)
-	j.env = env
-	j.settings = settings
-	j.manager = manager
-
 	return j
 }
 

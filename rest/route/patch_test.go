@@ -158,7 +158,7 @@ func (s *PatchesByProjectSuite) TestPaginatorShouldFailIfNoProject() {
 
 	resp := s.route.Run(context.Background())
 	s.NotNil(resp)
-	s.Equal(http.StatusBadRequest, resp.Status())
+	s.Equal(http.StatusInternalServerError, resp.Status())
 }
 
 func (s *PatchesByProjectSuite) TestPaginatorShouldReturnResultsIfDataExists() {
@@ -205,7 +205,7 @@ func (s *PatchesByProjectSuite) TestInvalidTimesAsKeyShouldError() {
 
 	for _, i := range inputs {
 		for limit := 0; limit < 3; limit++ {
-			req, err := http.NewRequest("GET", "https://example.net/foo/?limit=10&start_at="+i, nil)
+			req, err := http.NewRequest(http.MethodGet, "https://example.net/foo/?limit=10&start_at="+i, nil)
 			s.Require().NoError(err)
 			err = s.route.Parse(context.Background(), req)
 			s.Error(err)
@@ -214,7 +214,7 @@ func (s *PatchesByProjectSuite) TestInvalidTimesAsKeyShouldError() {
 }
 
 func (s *PatchesByProjectSuite) TestEmptyTimeShouldSetNow() {
-	req, err := http.NewRequest("GET", "https://example.net/foo/?limit=10", nil)
+	req, err := http.NewRequest(http.MethodGet, "https://example.net/foo/?limit=10", nil)
 	s.Require().NoError(err)
 	s.NoError(s.route.Parse(context.Background(), req))
 	s.InDelta(time.Now().UnixNano(), s.route.key.UnixNano(), float64(time.Second))
@@ -554,19 +554,17 @@ func (s *PatchesByUserSuite) TestInvalidTimesAsKeyShouldError() {
 
 	for _, i := range inputs {
 		for limit := 0; limit < 3; limit++ {
-			req, err := http.NewRequest("GET", "https://example.net/foo/?limit=10&start_at="+i, nil)
+			req, err := http.NewRequest(http.MethodGet, "https://example.net/foo/?limit=10&start_at="+i, nil)
 			s.Require().NoError(err)
 			err = s.route.Parse(context.Background(), req)
-			s.Error(err)
-			apiErr, ok := err.(gimlet.ErrorResponse)
-			s.True(ok)
-			s.Contains(apiErr.Message, i)
+			s.Require().Error(err)
+			s.Contains(err.Error(), i)
 		}
 	}
 }
 
 func (s *PatchesByUserSuite) TestEmptyTimeShouldSetNow() {
-	req, err := http.NewRequest("GET", "https://example.net/foo/?limit=10", nil)
+	req, err := http.NewRequest(http.MethodGet, "https://example.net/foo/?limit=10", nil)
 	s.Require().NoError(err)
 	s.NoError(s.route.Parse(context.Background(), req))
 	s.InDelta(time.Now().UnixNano(), s.route.key.UnixNano(), float64(time.Second))

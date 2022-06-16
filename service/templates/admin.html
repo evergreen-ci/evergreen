@@ -342,6 +342,17 @@ Admin Settings
 												</td>
 											</tr>
 											<tr>
+												<td>Clean up unrecognized pods</td>
+												<td colspan="2">
+													<md-radio-group
+														data-ng-model="Settings.service_flags.unrecognized_pod_cleanup_disabled"
+														layout="row">
+														<md-radio-button data-ng-value="false"></md-radio-button>
+														<md-radio-button data-ng-value="true"></md-radio-button>
+													</md-radio-group>
+												</td>
+											</tr>
+											<tr>
 												<td>Background reauthorization</td>
 												<td colspan="2">
 													<md-radio-group
@@ -457,6 +468,35 @@ Admin Settings
 										</tbody>
 									</table>
 
+								</md-card-content>
+								<md-card-title>
+									<md-card-title-text>
+										<span>Disabled GQL Queries</span>
+									</md-card-title-text>
+								</md-card-title>
+								<md-card-content>
+									<div>
+										<section style="height: 70px;" layout="row" flex>
+											<md-input-container class="control"  style="width: 200px;">
+												<label>Operation name to disable</label>
+												<input type="text" default="ABC" ng-model="queryMapping.newQuery" />
+											</md-input-container>
+											<div style="margin-top: 1%;">
+												<button class="plus-button btn btn-primary" type="button"
+													 ng-click="addDisabledGQLQuery()">
+													<i class="fa fa-plus"></i>
+												</button>
+											</div>
+										</section>
+										<div id="ec2-list" class="form-group" ng-repeat="(index, queryName) in Settings.disabled_gql_queries">
+											<section layout="row" flex>
+												<span style="width: 200px;">[[queryName]]</span>
+												<button class="btn btn-default btn-danger" type="button" ng-click="removeDisabledGQLQuery(queryName)">
+													<i class="fa fa-trash"></i>
+												</button>
+											</section>
+										</div>
+									</div> 
 								</md-card-content>
 							</md-card>
 
@@ -1517,7 +1557,7 @@ Admin Settings
 													style="float:left" ng-click="addAmboyNamedQueue()">
 													<i class="fa fa-plus"></i>
 												</button>
-												<label class="control">[[ invalidECSCluster ]]</label>
+												<label class="control">[[ invalidAmboyNamedQueue ]]</label>
 											</div>
 										</md-card-content>
 									</md-card>
@@ -1870,10 +1910,11 @@ Admin Settings
 													</md-input-container>
 													<br />
 													<md-input-container class="control" flex=25>
-														<md-select ng-model="cluster.platform" placeholder="Platform">
-															<md-option ng-repeat="platform in validECSPlatforms" value="[[platform]]">[[platform]]</md-option>
+														<md-select ng-model="cluster.os" placeholder="OS">
+															<md-option ng-repeat="os in validECSOSes" value="[[os]]">[[os]]</md-option>
 														</md-select>
 													</md-input-container>
+
 													<div style="margin-top: 1%;">
 														<button class="btn btn-default btn-danger" type="button"
 															style="float: left" ng-click="deleteECSCluster(index)">
@@ -1889,8 +1930,8 @@ Admin Settings
 												</md-input-container>
 												<br />
 												<md-input-container class="control" flex=25>
-													<md-select ng-model="new_ecs_cluster.platform" placeholder="Platform">
-														<md-option ng-repeat="platform in validECSPlatforms" value="[[platform]]">[[platform]]</md-option>
+													<md-select ng-model="new_ecs_cluster.os" placeholder="OS">
+														<md-option ng-repeat="os in validECSOSes" value="[[os]]">[[os]]</md-option>
 													</md-select>
 												</md-input-container>
 												<div style="margin-top: 1%;">
@@ -1900,6 +1941,68 @@ Admin Settings
 														<i class="fa fa-plus"></i>
 													</button>
 													<label class="control">[[ invalidECSCluster ]]</label>
+												</div>
+											</section>
+										</md-card-content>
+									</md-card>
+
+									<md-card>
+										<md-card-title>
+											<md-card-title-text>
+												<span>Pod ECS Capacity Providers</span>
+											</md-card-title-text>
+										</md-card-title>
+										<md-card-content>
+											<div id="ecs-capacity-providers" class="form-group" ng-repeat="(index, capacityProvider) in Settings.providers.aws.pod.ecs.capacity_providers">
+												<section layout="row" flex>
+													<md-input-container class="control" flex=25>
+														<input class="control" type="text" ng-model="capacityProvider.name" placeholder="Name">
+													</md-input-container>
+													<br />
+													<md-input-container class="control" flex=25>
+														<md-select ng-model="capacityProvider.os" placeholder="OS">
+															<md-option ng-repeat="os in validECSOSes" value="[[os]]">[[os]]</md-option>
+														</md-select>
+													</md-input-container>
+													<br />
+													<md-input-container class="control" flex=25>
+														<md-select ng-model="capacityProvider.arch" placeholder="Arch">
+															<md-option ng-repeat="arch in validECSArches" value="[[arch]]">[[arch]]</md-option>
+														</md-select>
+													</md-input-container>
+
+													<div style="margin-top: 1%;">
+														<button class="btn btn-default btn-danger" type="button"
+															style="float: left" ng-click="deleteECSCapacityProvider(index)">
+															<i class="fa fa-trash"></i>
+														</button>
+													</div>
+												</section>
+											</div>
+											<section layout="row" flex>
+												<md-input-container class="control" flex=25>
+													<input class="control" type="text" ng-model="new_ecs_capacity_provider.name"
+														placeholder="Name">
+												</md-input-container>
+												<br />
+												<md-input-container class="control" flex=25>
+													<md-select ng-model="new_ecs_capacity_provider.os" placeholder="OS">
+														<md-option ng-repeat="os in validECSOSes" value="[[os]]">[[os]]</md-option>
+													</md-select>
+												</md-input-container>
+												<br />
+												<md-input-container class="control" flex=25>
+													<md-select ng-model="new_ecs_capacity_provider.arch" placeholder="Arch">
+														<md-option ng-repeat="arch in validECSArches" value="[[arch]]">[[arch]]</md-option>
+													</md-select>
+												</md-input-container>
+												<div style="margin-top: 1%;">
+													<button class="plus-button btn btn-primary"
+														ng-disabled="!validECSCapacityProvider(new_ecs_capacity_provider)" type="button"
+														style="float: left" ng-click="addECSCapacityProvider()">
+														<i class="fa fa-plus"></i>
+													</button>
+													<label class="control">[[ invalidECSCapacityProvider ]]</label>
 												</div>
 											</section>
 										</md-card-content>

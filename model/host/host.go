@@ -241,10 +241,10 @@ func (opts *DockerOptions) FromDistroSettings(d distro.Distro, _ string) error {
 	if len(d.ProviderSettingsList) != 0 {
 		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
 		if err != nil {
-			return errors.Wrap(err, "error marshalling provider setting into bson")
+			return errors.Wrap(err, "marshalling provider settings into BSON")
 		}
 		if err := bson.Unmarshal(bytes, opts); err != nil {
-			return errors.Wrap(err, "error unmarshalling bson into provider settings")
+			return errors.Wrap(err, "unmarshalling BSON into Docker provider settings")
 		}
 	}
 	return nil
@@ -435,15 +435,12 @@ func (h *Host) NeedsPortBindings() bool {
 // CanUpdateSpawnHost is a shared utility function to determine a users permissions to modify a spawn host
 func CanUpdateSpawnHost(h *Host, usr *user.DBUser) bool {
 	if usr.Username() != h.StartedBy {
-		if !usr.HasPermission(gimlet.PermissionOpts{
+		return usr.HasPermission(gimlet.PermissionOpts{
 			Resource:      h.Distro.Id,
 			ResourceType:  evergreen.DistroResourceType,
 			Permission:    evergreen.PermissionHosts,
 			RequiredLevel: evergreen.HostsEdit.Value,
-		}) {
-			return false
-		}
-		return true
+		})
 	}
 	return true
 }
@@ -456,13 +453,25 @@ func IsIntentHostId(id string) bool {
 }
 
 // SetStatus updates a host's status on behalf of the given user.
+// Clears last running task for hosts that are being moved to running, since this information is likely outdated.
 func (h *Host) SetStatus(newStatus, user, logs string) error {
-	return h.setStatusAndFields(newStatus, nil, nil, user, logs)
+	var unset bson.M
+	if newStatus == evergreen.HostRunning {
+		unset = bson.M{
+			LTCTimeKey:    1,
+			LTCTaskKey:    1,
+			LTCGroupKey:   1,
+			LTCBVKey:      1,
+			LTCVersionKey: 1,
+			LTCProjectKey: 1,
+		}
+	}
+	return h.setStatusAndFields(newStatus, nil, nil, unset, user, logs)
 }
 
 // setStatusAndFields sets the status as well as any of the other given fields.
 // Accepts fields to query in addition to host status.
-func (h *Host) setStatusAndFields(newStatus string, query, setFields bson.M, user, logs string) error {
+func (h *Host) setStatusAndFields(newStatus string, query, setFields, unsetFields bson.M, user, logs string) error {
 	if h.Status == newStatus {
 		return nil
 	}
@@ -480,21 +489,36 @@ func (h *Host) setStatusAndFields(newStatus string, query, setFields bson.M, use
 	if query == nil {
 		query = bson.M{}
 	}
+	query[IdKey] = h.Id
+
 	if setFields == nil {
 		setFields = bson.M{}
 	}
-	query[IdKey] = h.Id
 	setFields[StatusKey] = newStatus
+
+	update := bson.M{
+		"$set": setFields,
+	}
+	if unsetFields != nil {
+		update["$unset"] = unsetFields
+	}
+
 	if err := UpdateOne(
 		query,
-		bson.M{
-			"$set": setFields,
-		},
+		update,
 	); err != nil {
 		return err
 	}
 
 	event.LogHostStatusChanged(h.Id, h.Status, newStatus, user, logs)
+	grip.Info(message.Fields{
+		"message":    "host status changed",
+		"host_id":    h.Id,
+		"host_tag":   h.Tag,
+		"distro":     h.Distro.Id,
+		"old_status": h.Status,
+		"new_status": newStatus,
+	})
 	h.Status = newStatus
 
 	return nil
@@ -529,6 +553,14 @@ func (h *Host) SetStatusAtomically(newStatus, user string, logs string) error {
 	}
 
 	event.LogHostStatusChanged(h.Id, h.Status, newStatus, user, logs)
+	grip.Info(message.Fields{
+		"message":    "host status changed atomically",
+		"host_id":    h.Id,
+		"host_tag":   h.Tag,
+		"distro":     h.Distro.Id,
+		"old_status": h.Status,
+		"new_status": newStatus,
+	})
 	h.Status = newStatus
 
 	return nil
@@ -566,7 +598,7 @@ func (h *Host) SetDecommissioned(user string, checkTaskGroup bool, logs string) 
 		catcher := grip.NewBasicCatcher()
 		failedContainerIds := []string{}
 		for _, c := range containers {
-			err = c.setStatusAndFields(evergreen.HostDecommissioned, query, nil, user, "parent is being decommissioned")
+			err = c.setStatusAndFields(evergreen.HostDecommissioned, query, nil, nil, user, "parent is being decommissioned")
 			if err != nil && err.Error() != ErrorHostAlreadyTerminated {
 				catcher.Add(err)
 				failedContainerIds = append(failedContainerIds, c.Id)
@@ -577,7 +609,7 @@ func (h *Host) SetDecommissioned(user string, checkTaskGroup bool, logs string) 
 			"host_ids": failedContainerIds,
 		}))
 	}
-	err := h.setStatusAndFields(evergreen.HostDecommissioned, query, nil, user, logs)
+	err := h.setStatusAndFields(evergreen.HostDecommissioned, query, nil, nil, user, logs)
 	// Shouldn't consider it an error if the host isn't found when checking task group,
 	// because a task group may have been set for the host.
 	if err != nil && checkTaskGroup && adb.ResultsNotFound(err) {
@@ -615,6 +647,13 @@ func (h *Host) SetStopped(user string) error {
 	}
 
 	event.LogHostStatusChanged(h.Id, h.Status, evergreen.HostStopped, user, "")
+	grip.Info(message.Fields{
+		"message":    "host stopped",
+		"host_id":    h.Id,
+		"host_tag":   h.Tag,
+		"distro":     h.Distro.Id,
+		"old_status": h.Status,
+	})
 
 	h.Status = evergreen.HostStopped
 	h.Host = ""
@@ -824,7 +863,7 @@ func (h *Host) Terminate(user, reason string) error {
 	if err := h.setStatusAndFields(evergreen.HostTerminated, nil, bson.M{
 		TerminationTimeKey: terminatedAt,
 		VolumesKey:         nil,
-	}, user, reason); err != nil {
+	}, nil, user, reason); err != nil {
 		return err
 	}
 
@@ -850,6 +889,12 @@ func (h *Host) SetDNSName(dnsName string) error {
 	if err == nil {
 		h.Host = dnsName
 		event.LogHostDNSNameSet(h.Id, dnsName)
+		grip.Info(message.Fields{
+			"message":  "set host DNS name",
+			"host_id":  h.Id,
+			"host_tag": h.Tag,
+			"dns_name": dnsName,
+		})
 	}
 	if adb.ResultsNotFound(err) {
 		return nil
@@ -935,11 +980,19 @@ func (h *Host) MarkAsProvisioned() error {
 		return err
 	}
 
+	event.LogHostProvisioned(h.Id)
+	grip.Info(message.Fields{
+		"message":    "host marked provisioned",
+		"host_id":    h.Id,
+		"host_tag":   h.Tag,
+		"distro":     h.Distro.Id,
+		"old_status": h.Status,
+		"operation":  "MarkAsProvisioned",
+	})
+
 	h.Status = evergreen.HostRunning
 	h.Provisioned = true
 	h.ProvisionTime = now
-
-	event.LogHostProvisioned(h.Id)
 
 	return nil
 }
@@ -991,6 +1044,13 @@ func (h *Host) UpdateStartingToRunning() error {
 	h.Status = evergreen.HostRunning
 
 	event.LogHostProvisioned(h.Id)
+	grip.Info(message.Fields{
+		"message":   "host marked provisioned",
+		"host_id":   h.Id,
+		"host_tag":  h.Tag,
+		"distro":    h.Distro.Id,
+		"operation": "UpdateStartingToRunning",
+	})
 
 	return nil
 }
@@ -1057,9 +1117,18 @@ func (h *Host) setAwaitingJasperRestart(user string) error {
 		return err
 	}
 
-	h.NeedsReprovision = ReprovisionRestartJasper
-
 	event.LogHostJasperRestarting(h.Id, user)
+	grip.Info(message.Fields{
+		"message":               "set needs reprovision",
+		"host_id":               h.Id,
+		"host_tag":              h.Tag,
+		"distro":                h.Distro.Id,
+		"provider":              h.Provider,
+		"old_needs_reprovision": h.NeedsReprovision,
+		"new_needs_reprovision": ReprovisionRestartJasper,
+	})
+
+	h.NeedsReprovision = ReprovisionRestartJasper
 
 	return nil
 }
@@ -1123,9 +1192,19 @@ func (h *Host) setAwaitingReprovisionToNew(user string) error {
 		return err
 	}
 
-	h.NeedsReprovision = ReprovisionToNew
-
 	event.LogHostConvertingProvisioning(h.Id, h.Distro.BootstrapSettings.Method, user)
+	grip.Info(message.Fields{
+		"message":               "set needs reprovision",
+		"host_id":               h.Id,
+		"host_tag":              h.Tag,
+		"distro":                h.Distro.Id,
+		"provider":              h.Provider,
+		"user":                  user,
+		"old_needs_reprovision": h.NeedsReprovision,
+		"new_needs_reprovision": ReprovisionToNew,
+	})
+
+	h.NeedsReprovision = ReprovisionToNew
 
 	return nil
 }
@@ -1242,6 +1321,15 @@ func (h *Host) ClearRunningAndSetLastTask(t *task.Task) error {
 	}
 
 	event.LogHostRunningTaskCleared(h.Id, h.RunningTask)
+	grip.Info(message.Fields{
+		"message":         "cleared host running task and set last task",
+		"host_id":         h.Id,
+		"host_tag":        h.Tag,
+		"distro":          h.Distro.Id,
+		"running_task_id": h.RunningTask,
+		"last_task_id":    t.Id,
+	})
+
 	h.RunningTask = ""
 	h.RunningTaskBuildVariant = ""
 	h.RunningTaskVersion = ""
@@ -1281,7 +1369,15 @@ func (h *Host) ClearRunningTask() error {
 
 	if h.RunningTask != "" {
 		event.LogHostRunningTaskCleared(h.Id, h.RunningTask)
+		grip.Info(message.Fields{
+			"message":  "cleared host running task",
+			"host_id":  h.Id,
+			"host_tag": h.Tag,
+			"distro":   h.Distro.Id,
+			"task_id":  h.RunningTask,
+		})
 	}
+
 	h.RunningTask = ""
 	h.RunningTaskBuildVariant = ""
 	h.RunningTaskVersion = ""
@@ -1340,6 +1436,13 @@ func (h *Host) UpdateRunningTask(t *task.Task) (bool, error) {
 		return false, errors.Wrapf(err, "setting running task to '%s' for host '%s'", t.Id, h.Id)
 	}
 	event.LogHostRunningTaskSet(h.Id, t.Id)
+	grip.Info(message.Fields{
+		"message":  "host running task set",
+		"host_id":  h.Id,
+		"host_tag": h.Tag,
+		"task_id":  t.Id,
+		"distro":   h.Distro.Id,
+	})
 
 	return true, nil
 }
@@ -1444,6 +1547,13 @@ func (h *Host) MarkReachable() error {
 	}
 
 	event.LogHostStatusChanged(h.Id, h.Status, evergreen.HostRunning, evergreen.User, "")
+	grip.Info(message.Fields{
+		"message":    "host marked reachable",
+		"host_id":    h.Id,
+		"host_tag":   h.Tag,
+		"distro":     h.Distro.Id,
+		"old_status": h.Status,
+	})
 	h.Status = evergreen.HostRunning
 
 	return nil
@@ -1516,6 +1626,12 @@ func (h *Host) CacheHostData() error {
 
 func (h *Host) Insert() error {
 	event.LogHostCreated(h.Id)
+	grip.Info(message.Fields{
+		"message":  "host created",
+		"host_id":  h.Id,
+		"host_tag": h.Tag,
+		"distro":   h.Distro.Id,
+	})
 	return db.Insert(Collection, h)
 }
 
@@ -1666,10 +1782,10 @@ func FindHostsToTerminate() ([]Host, error) {
 			{
 				// Either:
 				// - Host that does not provision with user data is taking too
-				//   long to provision
+				//   long to provision.
 				// - Host that provisions with user data is taking too long to
-				//   provision, but has already started running tasks and not
-				//   checked in recently.
+				//   provision. In addition, it is not currently running a task
+				//   and has not checked in recently.
 				"$and": []bson.M{
 					// Host is not yet done provisioning
 					{"$or": []bson.M{
@@ -1680,8 +1796,11 @@ func FindHostsToTerminate() ([]Host, error) {
 						{
 							// Host is a user data host and either has not run a
 							// task yet or has not started its agent monitor -
-							// both are indicators that the host failed to start
-							// the agent in a reasonable amount of time.
+							// both are indicators that the host's agent is not
+							// up. The host has either 1. failed to start the
+							// agent or 2. failed to prove the agent's
+							// liveliness by continuously pinging the app server
+							// with requests.
 							"$or": []bson.M{
 								{RunningTaskKey: bson.M{"$exists": false}},
 								{LTCTaskKey: ""},
@@ -1864,7 +1983,7 @@ func (h *Host) IsIdleParent() (bool, error) {
 	if !h.HasContainers {
 		return false, nil
 	}
-	// sanity check so that hosts not immediately decommissioned
+	// Verify that hosts are not immediately decommissioned.
 	if h.IdleTime() < idleTimeCutoff {
 		return false, nil
 	}
@@ -2695,9 +2814,7 @@ func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses [
 	defer cancel()
 
 	countPipeline := []bson.M{}
-	for _, stage := range runningHostsPipeline {
-		countPipeline = append(countPipeline, stage)
-	}
+	countPipeline = append(countPipeline, runningHostsPipeline...)
 	countPipeline = append(countPipeline, bson.M{"$count": "count"})
 
 	tmp := []counter{}
@@ -2771,9 +2888,7 @@ func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses [
 
 	if hasFilters {
 		countPipeline = []bson.M{}
-		for _, stage := range runningHostsPipeline {
-			countPipeline = append(countPipeline, stage)
-		}
+		countPipeline = append(countPipeline, runningHostsPipeline...)
 		countPipeline = append(countPipeline, bson.M{"$count": "count"})
 
 		tmp = []counter{}

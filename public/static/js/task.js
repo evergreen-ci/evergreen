@@ -744,6 +744,7 @@ mciModule.controller('TaskLogCtrl', ['$scope', '$timeout', '$http', '$location',
     $http.get('/json/task_log/' + $scope.taskId + '/' + $scope.task.execution + '?type=' + $scope.currentLogs).then(
       function (resp) {
         $scope.buildlogger = false;
+        // TODO (EVG-16969) remove once TaskScheduled events TTL
         var taskScheduledStatus = "TASK_SCHEDULED";
         var data = resp.data;
         if ($scope.currentLogs == $scope.eventLogs) {

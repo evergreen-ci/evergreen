@@ -34,7 +34,7 @@ func TestDataConnectorSuite(t *testing.T) {
 func (s *AdminDataSuite) SetupSuite() {
 	s.env = &mock.Environment{}
 	s.Require().NoError(s.env.Configure(context.Background()))
-	s.NoError(db.ClearCollections(evergreen.ConfigCollection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, event.AllLogCollection, model.ProjectRefCollection), "clearing collections")
+	s.NoError(db.ClearCollections(evergreen.ConfigCollection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, event.AllLogCollection, model.ProjectRefCollection))
 	b := &build.Build{
 		Id:      "buildtest",
 		Status:  evergreen.BuildStarted,
@@ -77,12 +77,12 @@ func (s *AdminDataSuite) SetupSuite() {
 	p := &model.ProjectRef{
 		Id: "sample",
 	}
-	s.NoError(b.Insert(), "error inserting documents")
-	s.NoError(v.Insert(), "error inserting documents")
-	s.NoError(testTask1.Insert(), "error inserting documents")
-	s.NoError(testTask2.Insert(), "error inserting documents")
-	s.NoError(testTask3.Insert(), "error inserting documents")
-	s.NoError(p.Insert(), "error inserting documents")
+	s.Require().NoError(b.Insert())
+	s.Require().NoError(v.Insert())
+	s.Require().NoError(testTask1.Insert())
+	s.Require().NoError(testTask2.Insert())
+	s.Require().NoError(testTask3.Insert())
+	s.Require().NoError(p.Insert())
 }
 
 func (s *AdminDataSuite) TestSetAndGetSettings() {
@@ -102,6 +102,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	// read the settings and spot check values
 	settingsFromConnector, err := evergreen.GetConfig()
 	s.Require().NoError(err)
+	s.EqualValues(testSettings.DisabledGQLQueries, settingsFromConnector.DisabledGQLQueries)
 	s.EqualValues(testSettings.Banner, settingsFromConnector.Banner)
 	s.EqualValues(testSettings.ServiceFlags, settingsFromConnector.ServiceFlags)
 	s.EqualValues(evergreen.Important, testSettings.BannerTheme)
@@ -154,6 +155,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.ServiceFlags.HostInitDisabled, settingsFromConnector.ServiceFlags.HostInitDisabled)
 	s.EqualValues(testSettings.ServiceFlags.PodInitDisabled, settingsFromConnector.ServiceFlags.PodInitDisabled)
 	s.EqualValues(testSettings.ServiceFlags.PodAllocatorDisabled, settingsFromConnector.ServiceFlags.PodAllocatorDisabled)
+	s.EqualValues(testSettings.ServiceFlags.UnrecognizedPodCleanupDisabled, settingsFromConnector.ServiceFlags.UnrecognizedPodCleanupDisabled)
 	s.EqualValues(testSettings.ServiceFlags.S3BinaryDownloadsDisabled, settingsFromConnector.ServiceFlags.S3BinaryDownloadsDisabled)
 	s.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, settingsFromConnector.ServiceFlags.CloudCleanupDisabled)
 	s.EqualValues(testSettings.ServiceFlags.ContainerConfigurationsDisabled, settingsFromConnector.ServiceFlags.ContainerConfigurationsDisabled)
@@ -205,6 +207,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 
 	// test that updating the model with nil values does not change them
 	newBanner := "new banner"
+	newDisabledQueries := []string{"DisabledGQLOperationName"}
 	newExpansions := map[string]string{"newkey": "newval"}
 	newHostInit := restModel.APIHostInitConfig{
 		HostThrottle:         64,
@@ -214,9 +217,10 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 		S3BaseURL:            utility.ToStringPtr("new_s3_base_url"),
 	}
 	updatedSettings := restModel.APIAdminSettings{
-		Banner:     &newBanner,
-		Expansions: newExpansions,
-		HostInit:   &newHostInit,
+		Banner:             &newBanner,
+		Expansions:         newExpansions,
+		HostInit:           &newHostInit,
+		DisabledGQLQueries: newDisabledQueries,
 	}
 	oldSettings, err = evergreen.GetConfig()
 	s.NoError(err)
@@ -226,6 +230,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.Require().NoError(err)
 	// new values should be set
 	s.EqualValues(newBanner, settingsFromConnector.Banner)
+	s.EqualValues(newDisabledQueries, settingsFromConnector.DisabledGQLQueries)
 	s.EqualValues(newExpansions, settingsFromConnector.Expansions)
 	s.EqualValues(newHostInit.HostThrottle, settingsFromConnector.HostInit.HostThrottle)
 	s.EqualValues(newHostInit.ProvisioningThrottle, settingsFromConnector.HostInit.ProvisioningThrottle)
@@ -278,6 +283,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.ServiceFlags.PodAllocatorDisabled, settingsFromConnector.ServiceFlags.PodAllocatorDisabled)
 	s.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, settingsFromConnector.ServiceFlags.CloudCleanupDisabled)
 	s.EqualValues(testSettings.ServiceFlags.ContainerConfigurationsDisabled, settingsFromConnector.ServiceFlags.ContainerConfigurationsDisabled)
+	s.EqualValues(testSettings.ServiceFlags.UnrecognizedPodCleanupDisabled, settingsFromConnector.ServiceFlags.UnrecognizedPodCleanupDisabled)
 	s.EqualValues(testSettings.Slack.Level, settingsFromConnector.Slack.Level)
 	s.EqualValues(testSettings.Slack.Options.Channel, settingsFromConnector.Slack.Options.Channel)
 	s.EqualValues(testSettings.Splunk.Channel, settingsFromConnector.Splunk.Channel)

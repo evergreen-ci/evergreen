@@ -41,12 +41,12 @@ func (b *buildGetHandler) Parse(ctx context.Context, r *http.Request) error {
 func (b *buildGetHandler) Run(ctx context.Context) gimlet.Responder {
 	foundBuild, err := build.FindOneId(b.buildId)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Database error"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding build '%s'", b.buildId))
 	}
 	if foundBuild == nil {
 		return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("build with id %s not found", b.buildId),
+			Message:    fmt.Sprintf("build '%s' not found", b.buildId),
 		})
 	}
 	taskIDs := make([]string, 0, len(foundBuild.Tasks))
@@ -57,17 +57,17 @@ func (b *buildGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if len(taskIDs) > 0 {
 		tasks, err = task.Find(task.ByIds(taskIDs))
 		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Database error"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding tasks in build '%s'", b.buildId))
 		}
 		if len(tasks) == 0 {
-			return gimlet.MakeJSONInternalErrorResponder(errors.New("no tasks found"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("no tasks found in build '%s'", b.buildId))
 		}
 	}
 
 	buildModel := &model.APIBuild{}
 	err = buildModel.BuildFromService(*foundBuild)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "converting build to API model"))
 	}
 	buildModel.SetTaskCache(tasks)
 
@@ -76,7 +76,7 @@ func (b *buildGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 ////////////////////////////////////////////////////////////////////////
 //
-// PATH /builds/{build_id}
+// PATCH /builds/{build_id}
 
 type buildChangeStatusHandler struct {
 	Activated *bool  `json:"activated"`
@@ -100,12 +100,12 @@ func (b *buildChangeStatusHandler) Parse(ctx context.Context, r *http.Request) e
 	defer body.Close()
 
 	if err := utility.ReadJSON(body, b); err != nil {
-		return errors.Wrap(err, "Argument read error")
+		return errors.Wrap(err, "parsing JSON request body")
 	}
 
 	if b.Activated == nil && b.Priority == nil {
 		return gimlet.ErrorResponse{
-			Message:    "Must set 'activated' or 'priority'",
+			Message:    "must set 'activated' or 'priority'",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
@@ -117,12 +117,12 @@ func (b *buildChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 	user := gimlet.GetUser(ctx)
 	foundBuild, err := build.FindOneId(b.buildId)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding build '%s'", b.buildId))
 	}
 	if foundBuild == nil {
 		return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("build with id %s not found", b.buildId),
+			Message:    fmt.Sprintf("build '%s' not found", b.buildId),
 		})
 	}
 
@@ -130,27 +130,37 @@ func (b *buildChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 		priority := *b.Priority
 		if ok := validPriority(priority, foundBuild.Project, user); !ok {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				Message: fmt.Sprintf("Insufficient privilege to set priority to %d, "+
+				Message: fmt.Sprintf("insufficient privilege to set priority to %d, "+
 					"non-superusers can only set priority at or below %d", priority, evergreen.MaxTaskPriority),
 				StatusCode: http.StatusForbidden,
 			})
 		}
 
 		if err = serviceModel.SetBuildPriority(b.buildId, priority, user.Username()); err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting build priority"))
 		}
 	}
 
 	if b.Activated != nil {
 		if err = serviceModel.SetBuildActivation(b.buildId, *b.Activated, user.Username()); err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting build activation"))
 		}
 	}
 
-	buildModel := &model.APIBuild{}
+	updatedBuild, err := build.FindOneId(b.buildId)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding updated build '%s'", b.buildId))
+	}
+	if updatedBuild == nil {
+		return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("build '%s' not found", b.buildId),
+		})
+	}
 
-	if err = buildModel.BuildFromService(*foundBuild); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+	buildModel := &model.APIBuild{}
+	if err = buildModel.BuildFromService(*updatedBuild); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting build to API model"))
 	}
 
 	return gimlet.NewJSONResponse(buildModel)
@@ -182,24 +192,24 @@ func (b *buildAbortHandler) Parse(ctx context.Context, r *http.Request) error {
 func (b *buildAbortHandler) Run(ctx context.Context) gimlet.Responder {
 	usr := MustHaveUser(ctx)
 	if err := serviceModel.AbortBuild(b.buildId, usr.Id); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Abort error"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "aborting build '%s'", b.buildId))
 	}
 
 	foundBuild, err := build.FindOneId(b.buildId)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding updated build '%s'", b.buildId))
 	}
 	if foundBuild == nil {
 		return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("build with id %s not found", b.buildId),
+			Message:    fmt.Sprintf("build '%s' not found", b.buildId),
 		})
 	}
 
 	buildModel := &model.APIBuild{}
 
 	if err = buildModel.BuildFromService(*foundBuild); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting build to API model"))
 	}
 
 	return gimlet.NewJSONResponse(buildModel)
@@ -232,23 +242,23 @@ func (b *buildRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	usr := MustHaveUser(ctx)
 	err := serviceModel.RestartAllBuildTasks(b.buildId, usr.Id)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Restart error"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "restarting all tasks in build '%s'", b.buildId))
 	}
 
 	foundBuild, err := build.FindOneId(b.buildId)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding build '%s'", b.buildId))
 	}
 	if foundBuild == nil {
 		return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("build with id %s not found", b.buildId),
+			Message:    fmt.Sprintf("build '%s' not found", b.buildId),
 		})
 	}
 
 	buildModel := &model.APIBuild{}
 	if err = buildModel.BuildFromService(*foundBuild); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting build to API model"))
 	}
 
 	return gimlet.NewJSONResponse(buildModel)

@@ -1,6 +1,7 @@
 package data
 
 import (
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
@@ -34,7 +35,7 @@ func FindProjectAliases(projectId, repoId string, aliasesToAdd []restModel.APIPr
 	if len(aliases) == 0 && repoId != "" {
 		aliases, err = model.FindAliasesForRepo(repoId)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error finding aliases for repo '%s'", repoId)
+			return nil, errors.Wrapf(err, "finding project aliases for repo '%s'", repoId)
 		}
 	}
 	if projectId != "" && includeProjectConfig {
@@ -70,11 +71,12 @@ func UpdateProjectAliases(projectId string, aliases []restModel.APIProjectAlias)
 			aliasesToDelete = append(aliasesToDelete, utility.FromStringPtr(aliasModel.ID))
 		} else {
 			v, err := aliasModel.ToService()
-			catcher.Add(errors.Wrap(err, "problem converting to project variable model"))
+			catcher.Wrap(err, "converting API project alias to DB model")
 
 			alias, ok := v.(model.ProjectAlias)
 			if !ok {
-				catcher.Add(errors.New("problem converting to project alias"))
+				catcher.Errorf("programmatic error: expected DB project alias but actual type is %T", v)
+				continue
 			}
 			alias.ProjectID = projectId
 			aliasesToUpsert = append(aliasesToUpsert, alias)
@@ -82,24 +84,24 @@ func UpdateProjectAliases(projectId string, aliases []restModel.APIProjectAlias)
 	}
 	errStrs := model.ValidateProjectAliases(aliasesToUpsert, "All Aliases")
 	for _, err := range errStrs {
-		catcher.Add(errors.Errorf("error validating project alias: %s", err))
+		catcher.Wrap(errors.New(err), "invalid project alias")
 	}
 	if catcher.HasErrors() {
 		return catcher.Resolve()
 	}
 	if err := model.UpsertAliasesForProject(aliasesToUpsert, projectId); err != nil {
-		return errors.Wrap(err, "problem upserting aliases")
+		return errors.Wrap(err, "upserting project aliases")
 	}
 	for _, aliasId := range aliasesToDelete {
-		catcher.Add(model.RemoveProjectAlias(aliasId))
+		catcher.Wrapf(model.RemoveProjectAlias(aliasId), "deleting project alias '%s'", aliasId)
 	}
 	return catcher.Resolve()
 }
 
-// UpdateAliasesForSection, given a project, a list of current aliases, a list of previous aliases, and a project page section,
+// updateAliasesForSection, given a project, a list of current aliases, a list of previous aliases, and a project page section,
 // upserts any current aliases, and deletes any aliases that existed previously but not anymore (only
 // considers the aliases that are relevant for the section). Returns if any aliases have been modified.
-func UpdateAliasesForSection(projectId string, updatedAliases []restModel.APIProjectAlias,
+func updateAliasesForSection(projectId string, updatedAliases []restModel.APIProjectAlias,
 	originalAliases []model.ProjectAlias, section model.ProjectPageSection) (bool, error) {
 	aliasesIdMap := map[string]bool{}
 	aliasesToUpdate := []restModel.APIProjectAlias{}
@@ -112,7 +114,7 @@ func UpdateAliasesForSection(projectId string, updatedAliases []restModel.APIPro
 		aliasesIdMap[utility.FromStringPtr(a.ID)] = true
 	}
 	if err := UpdateProjectAliases(projectId, aliasesToUpdate); err != nil {
-		return false, errors.Wrap(err, "error updating project aliases")
+		return false, errors.Wrap(err, "updating project aliases")
 	}
 	modified := len(aliasesToUpdate) > 0
 	catcher := grip.NewBasicCatcher()
@@ -129,6 +131,47 @@ func UpdateAliasesForSection(projectId string, updatedAliases []restModel.APIPro
 		}
 	}
 	return modified, catcher.Resolve()
+}
+
+// validateFeaturesHaveAliases returns an error if project/repo aliases are not defined for a Github/CQ feature.
+// Does not error if version control is enabled.
+func validateFeaturesHaveAliases(pRef *model.ProjectRef, aliases []restModel.APIProjectAlias) error {
+	if pRef.IsVersionControlEnabled() {
+		return nil
+	}
+
+	aliasesMap := map[string]bool{}
+	for _, a := range aliases {
+		aliasesMap[utility.FromStringPtr(a.Alias)] = true
+	}
+
+	if pRef.UseRepoSettings() {
+		repoAliases, err := model.FindAliasesForRepo(pRef.RepoRefId)
+		if err != nil {
+			return err
+		}
+		for _, a := range repoAliases {
+			aliasesMap[a.Alias] = true
+		}
+
+	}
+
+	msg := "%s cannot be enabled without aliases"
+	catcher := grip.NewBasicCatcher()
+	if pRef.IsPRTestingEnabled() && !aliasesMap[evergreen.GithubPRAlias] {
+		catcher.Errorf(msg, "PR testing")
+	}
+	if pRef.CommitQueue.IsEnabled() && !aliasesMap[evergreen.CommitQueueAlias] {
+		catcher.Errorf(msg, "Commit queue")
+	}
+	if pRef.IsGitTagVersionsEnabled() && !aliasesMap[evergreen.GitTagAlias] {
+		catcher.Errorf(msg, "Git tag versions")
+	}
+	if pRef.IsGithubChecksEnabled() && !aliasesMap[evergreen.GithubChecksAlias] {
+		catcher.Errorf(msg, "Github checks")
+	}
+
+	return catcher.Resolve()
 }
 
 func shouldSkipAliasForSection(section model.ProjectPageSection, alias string) bool {

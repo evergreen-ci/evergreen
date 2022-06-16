@@ -54,7 +54,7 @@
         "data": null,
         "errors": [
           {
-            "message": "Identifier is already being used for another project",
+            "message": "identifier 'sandbox_project_id' is already being used for another project",
             "path": [
               "saveProjectSettingsForSection"
             ],

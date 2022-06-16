@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -32,7 +31,7 @@ func TestConfigModelHasMatchingFieldNames(t *testing.T) {
 		configFieldName := apiConfigRef.Field(i).Name
 		v, ok := matched[configFieldName]
 		assert.True(v)
-		assert.True(ok, fmt.Sprintf("%s is missing from evergreen.Settings", configFieldName))
+		assert.True(ok, "config field '%s' is missing from evergreen.Settings", configFieldName)
 		if ok {
 			matched[configFieldName] = false
 		}
@@ -41,7 +40,7 @@ func TestConfigModelHasMatchingFieldNames(t *testing.T) {
 	exclude := []string{"Id", "CredentialsNew", "Database", "KeysNew", "ExpansionsNew", "PluginsNew", "Presto"}
 	for k, v := range matched {
 		if !utility.StringSliceContains(exclude, k) {
-			assert.False(v, fmt.Sprintf("%s is missing from APIAdminSettings", k))
+			assert.False(v, "config field '%s' is missing from APIAdminSettings", k)
 		}
 	}
 }
@@ -166,9 +165,15 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Providers.AWS.Pod.ECS.AWSVPC.SecurityGroups, apiSettings.Providers.AWS.Pod.ECS.AWSVPC.SecurityGroups)
 	assert.EqualValues(testSettings.Providers.AWS.Pod.ECS.ExecutionRole, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.ECS.ExecutionRole))
 	require.Len(apiSettings.Providers.AWS.Pod.ECS.Clusters, len(testSettings.Providers.AWS.Pod.ECS.Clusters))
-	for i := 0; i < len(testSettings.Providers.AWS.Pod.ECS.Clusters); i++ {
-		assert.EqualValues(testSettings.Providers.AWS.Pod.ECS.Clusters[i].Name, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.ECS.Clusters[i].Name))
-		assert.EqualValues(testSettings.Providers.AWS.Pod.ECS.Clusters[i].Platform, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.ECS.Clusters[i].Platform))
+	for i, cluster := range testSettings.Providers.AWS.Pod.ECS.Clusters {
+		assert.EqualValues(cluster.Name, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.ECS.Clusters[i].Name))
+		assert.EqualValues(cluster.OS, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.ECS.Clusters[i].OS))
+	}
+	require.Len(apiSettings.Providers.AWS.Pod.ECS.CapacityProviders, len(testSettings.Providers.AWS.Pod.ECS.CapacityProviders))
+	for i, cp := range testSettings.Providers.AWS.Pod.ECS.CapacityProviders {
+		assert.Equal(cp.Name, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.ECS.CapacityProviders[i].Name))
+		assert.EqualValues(cp.OS, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.ECS.CapacityProviders[i].OS))
+		assert.EqualValues(cp.Arch, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.ECS.CapacityProviders[i].Arch))
 	}
 	assert.EqualValues(testSettings.Providers.AWS.Pod.SecretsManager.SecretPrefix, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.SecretsManager.SecretPrefix))
 	assert.EqualValues(testSettings.Providers.Docker.APIVersion, utility.FromStringPtr(apiSettings.Providers.Docker.APIVersion))
@@ -180,6 +185,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ServiceFlags.HostInitDisabled, apiSettings.ServiceFlags.HostInitDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.PodInitDisabled, apiSettings.ServiceFlags.PodInitDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.PodAllocatorDisabled, apiSettings.ServiceFlags.PodAllocatorDisabled)
+	assert.EqualValues(testSettings.ServiceFlags.UnrecognizedPodCleanupDisabled, apiSettings.ServiceFlags.UnrecognizedPodCleanupDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.S3BinaryDownloadsDisabled, apiSettings.ServiceFlags.S3BinaryDownloadsDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.ContainerConfigurationsDisabled, apiSettings.ServiceFlags.ContainerConfigurationsDisabled)
 	assert.EqualValues(testSettings.Slack.Level, utility.FromStringPtr(apiSettings.Slack.Level))
@@ -265,6 +271,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ServiceFlags.S3BinaryDownloadsDisabled, dbSettings.ServiceFlags.S3BinaryDownloadsDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, dbSettings.ServiceFlags.CloudCleanupDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.ContainerConfigurationsDisabled, dbSettings.ServiceFlags.ContainerConfigurationsDisabled)
+	assert.EqualValues(testSettings.ServiceFlags.UnrecognizedPodCleanupDisabled, dbSettings.ServiceFlags.UnrecognizedPodCleanupDisabled)
 	require.Len(dbSettings.SSHKeyPairs, len(testSettings.SSHKeyPairs))
 	for i := 0; i < len(testSettings.SSHKeyPairs); i++ {
 		assert.Equal(dbSettings.SSHKeyPairs[i].Name, testSettings.SSHKeyPairs[i].Name)
@@ -334,7 +341,7 @@ func TestAPIServiceFlagsModelInterface(t *testing.T) {
 				assert.True(f.Bool())
 			}
 		}
-	}, "error setting all fields to true")
+	})
 
 	apiFlags := APIServiceFlags{}
 	assert.NoError(apiFlags.BuildFromService(flags))

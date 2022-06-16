@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
@@ -26,7 +25,6 @@ import (
 )
 
 var (
-	conf  = testutil.TestConfig()
 	oneMs = time.Millisecond
 )
 
@@ -3538,6 +3536,62 @@ func TestArchive(t *testing.T) {
 	}
 }
 
+func TestGetBaseStatusesForActivatedTasks(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	t1 := Task{
+		Id:            "t1",
+		Version:       "v1",
+		Status:        evergreen.TaskStarted,
+		ActivatedTime: time.Time{},
+		DisplayName:   "task_1",
+		BuildVariant:  "bv_1",
+	}
+	t2 := Task{
+		Id:            "t2",
+		Version:       "v1",
+		Status:        evergreen.TaskSetupFailed,
+		ActivatedTime: time.Time{},
+		DisplayName:   "task_2",
+		BuildVariant:  "bv_2",
+	}
+	t3 := Task{
+		Id:            "t1_base",
+		Version:       "v1_base",
+		Status:        evergreen.TaskSucceeded,
+		ActivatedTime: time.Time{},
+		DisplayName:   "task_1",
+		BuildVariant:  "bv_1",
+	}
+	t4 := Task{
+		Id:            "t2_base",
+		Version:       "v1_base",
+		Status:        evergreen.TaskStarted,
+		ActivatedTime: time.Time{},
+		DisplayName:   "task_2",
+		BuildVariant:  "bv_2",
+	}
+	t5 := Task{
+		Id:            "only_on_base",
+		Version:       "v1_base",
+		Status:        evergreen.TaskFailed,
+		ActivatedTime: time.Time{},
+		DisplayName:   "only_on_base",
+		BuildVariant:  "bv_2",
+	}
+	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5))
+	statuses, err := GetBaseStatusesForActivatedTasks("v1", "v1_base")
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(statuses))
+	assert.Equal(t, statuses[0], evergreen.TaskStarted)
+	assert.Equal(t, statuses[1], evergreen.TaskSucceeded)
+
+	assert.NoError(t, db.ClearCollections(Collection))
+	assert.NoError(t, db.InsertMany(Collection, t1, t2, t5))
+	statuses, err = GetBaseStatusesForActivatedTasks("v1", "v1_base")
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(statuses))
+}
+
 func TestGetTaskStatsByVersion(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
 	t1 := Task{
@@ -3734,41 +3788,64 @@ func compareGroupedTaskStatusCounts(t *testing.T, expected, actual []*GroupedTas
 func TestHasMatchingTasks(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
 	t1 := Task{
-		Id:        "t1",
-		Version:   "v1",
-		Execution: 0,
-		Status:    evergreen.TaskSucceeded,
+		Id:           "t1",
+		Version:      "v1",
+		BuildVariant: "bv1",
+		Execution:    0,
+		Status:       evergreen.TaskSucceeded,
 	}
 	t2 := Task{
-		Id:        "t2",
-		Version:   "v1",
-		Execution: 0,
-		Status:    evergreen.TaskFailed,
+		Id:           "t2",
+		Version:      "v1",
+		BuildVariant: "bv1",
+		Execution:    0,
+		Status:       evergreen.TaskFailed,
 	}
+	// TODO: Reenable this test once https://jira.mongodb.org/browse/EVG-16918 is complete
+	// bv1 := build.Build{
+	// 	Id:           "bv1",
+	// 	BuildVariant: "bv1",
+	// 	DisplayName:  "Build Variant 1",
+	// }
 	t3 := Task{
-		Id:        "t3",
-		Version:   "v1",
-		Execution: 1,
-		Status:    evergreen.TaskSucceeded,
+		Id:           "t3",
+		Version:      "v1",
+		BuildVariant: "bv2",
+		Execution:    1,
+		Status:       evergreen.TaskSucceeded,
 	}
 	t4 := Task{
-		Id:        "t4",
-		Version:   "v1",
-		Execution: 1,
-		Status:    evergreen.TaskFailed,
+		Id:           "t4",
+		Version:      "v1",
+		BuildVariant: "bv2",
+		Execution:    1,
+		Status:       evergreen.TaskFailed,
 	}
+	// bv2 := build.Build{
+	// 	Id:           "bv2",
+	// 	BuildVariant: "bv2",
+	// 	DisplayName:  "Build Variant 2",
+	// }
 	t5 := Task{
-		Id:        "t5",
-		Version:   "v1",
-		Execution: 2,
-		Status:    evergreen.TaskStatusPending,
+		Id:           "t5",
+		Version:      "v1",
+		BuildVariant: "bv3",
+		Execution:    2,
+		Status:       evergreen.TaskStatusPending,
 	}
 	t6 := Task{
-		Id:        "t6",
-		Version:   "v1",
-		Execution: 2,
-		Status:    evergreen.TaskFailed,
+		Id:           "t6",
+		Version:      "v1",
+		BuildVariant: "bv3",
+		Execution:    2,
+		Status:       evergreen.TaskFailed,
 	}
+	// bv3 := build.Build{
+	// 	Id:           "bv3",
+	// 	BuildVariant: "bv3",
+	// 	DisplayName:  "Build Variant 3",
+	// }
+	// assert.NoError(t, db.InsertMany("build", bv1, bv2, bv3))
 	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5, t6))
 	opts := HasMatchingTasksOptions{
 		Statuses: []string{evergreen.TaskFailed},
@@ -3779,6 +3856,24 @@ func TestHasMatchingTasks(t *testing.T) {
 
 	opts.Statuses = []string{evergreen.TaskWillRun}
 
+	hasMatchingTasks, err = HasMatchingTasks("v1", opts)
+	assert.NoError(t, err)
+	assert.False(t, hasMatchingTasks)
+
+	opts = HasMatchingTasksOptions{
+		Variants: []string{"bv1"},
+	}
+	hasMatchingTasks, err = HasMatchingTasks("v1", opts)
+	assert.NoError(t, err)
+	assert.True(t, hasMatchingTasks)
+
+	// TODO: Reenable this test once https://jira.mongodb.org/browse/EVG-16918 is complete
+	// opts.Variants = []string{"Build Variant 2"}
+	// hasMatchingTasks, err = HasMatchingTasks("v1", opts)
+	// assert.NoError(t, err)
+	// assert.True(t, hasMatchingTasks)
+
+	opts.Variants = []string{"DNE"}
 	hasMatchingTasks, err = HasMatchingTasks("v1", opts)
 	assert.NoError(t, err)
 	assert.False(t, hasMatchingTasks)
@@ -3858,8 +3953,10 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 		assertTasksAreEqual(t, t1, tasks[0], 2)
 		assertTasksAreEqual(t, t2, tasks[1], 1)
 	})
-	t.Run("Fetching older executions with same execution", func(t *testing.T) {
+	t.Run("Fetching old executions when there are even older executions", func(t *testing.T) {
 		require.NoError(t, db.ClearCollections(Collection, OldCollection))
+
+		// Both tasks have 2 previous executions.
 		t1 := Task{
 			Id:        "t1",
 			Version:   "v1",
@@ -3873,6 +3970,7 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 		ot1 = *ot1.makeArchivedTask()
 		assert.NoError(t, db.Insert(OldCollection, ot1))
 
+		ot1 = t1
 		ot1.Execution = 0
 		ot1 = *ot1.makeArchivedTask()
 		assert.NoError(t, db.Insert(OldCollection, ot1))
@@ -3881,7 +3979,7 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 			Id:        "t2",
 			Version:   "v1",
 			Execution: 2,
-			Status:    evergreen.TaskSucceeded,
+			Status:    evergreen.TaskFailed,
 		}
 		assert.NoError(t, db.Insert(Collection, t2))
 
@@ -3890,6 +3988,7 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 		ot2 = *ot2.makeArchivedTask()
 		assert.NoError(t, db.Insert(OldCollection, ot2))
 
+		ot2 = t2
 		ot2.Execution = 0
 		ot2 = *ot2.makeArchivedTask()
 		assert.NoError(t, db.Insert(OldCollection, ot2))
@@ -3898,10 +3997,9 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 		tasks = convertOldTasksIntoTasks(tasks)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, len(tasks))
-		assertTasksAreEqual(t, t1, tasks[0], 1)
-		assertTasksAreEqual(t, t2, tasks[1], 1)
+		assert.Equal(t, tasks[0].Execution, 1)
+		assert.Equal(t, tasks[1].Execution, 1)
 	})
-
 }
 
 type TaskConnectorFetchByIdSuite struct {

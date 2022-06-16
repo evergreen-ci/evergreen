@@ -1,6 +1,7 @@
 package data
 
 import (
+	"sort"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -9,6 +10,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -22,7 +25,7 @@ func TestAliasSuite(t *testing.T) {
 
 func (a *AliasSuite) SetupTest() {
 	session, _, _ := db.GetGlobalSessionFactory().GetSession()
-	a.Require().NoError(session.DB(testConfig.Database.DB).DropDatabase(), "Error dropping database")
+	a.Require().NoError(session.DB(testConfig.Database.DB).DropDatabase())
 
 	aliases := []model.ProjectAlias{
 		{
@@ -103,11 +106,14 @@ func (a *AliasSuite) TestFindProjectAliasesMergedWithProjectConfig() {
 	found, err := FindProjectAliases("project_id", "", nil, true)
 	a.Require().NoError(err)
 	a.Require().Len(found, 5)
+	sort.Slice(found, func(i, j int) bool {
+		return utility.FromStringPtr(found[i].Alias) < utility.FromStringPtr(found[j].Alias)
+	})
 	a.Equal(utility.FromStringPtr(found[0].Alias), evergreen.CommitQueueAlias)
 	a.Equal(utility.FromStringPtr(found[1].Alias), evergreen.GithubChecksAlias)
-	a.Equal(utility.FromStringPtr(found[2].Alias), "foo")
+	a.Equal(utility.FromStringPtr(found[2].Alias), "bar")
 	a.Equal(utility.FromStringPtr(found[3].Alias), "foo")
-	a.Equal(utility.FromStringPtr(found[4].Alias), "bar")
+	a.Equal(utility.FromStringPtr(found[4].Alias), "foo")
 }
 
 func (a *AliasSuite) TestFindProjectAliases() {
@@ -210,7 +216,7 @@ func (a *AliasSuite) TestUpdateAliasesForSection() {
 	}
 
 	updatedAliases := []restModel.APIProjectAlias{aliasToKeep, aliasToModify, newAlias, newInternalAlias}
-	modified, err := UpdateAliasesForSection("project_id", updatedAliases, originalAliases, model.ProjectPagePatchAliasSection)
+	modified, err := updateAliasesForSection("project_id", updatedAliases, originalAliases, model.ProjectPagePatchAliasSection)
 	a.NoError(err)
 	a.True(modified)
 
@@ -225,10 +231,51 @@ func (a *AliasSuite) TestUpdateAliasesForSection() {
 		}
 	}
 
-	modified, err = UpdateAliasesForSection("project_id", updatedAliases, originalAliases, model.ProjectPageGithubAndCQSection)
+	modified, err = updateAliasesForSection("project_id", updatedAliases, originalAliases, model.ProjectPageGithubAndCQSection)
 	a.NoError(err)
 	a.True(modified)
 	aliasesFromDb, err = model.FindAliasesForProjectFromDb("project_id")
 	a.NoError(err)
 	a.Len(aliasesFromDb, 4) // adds internal alias
+}
+
+func TestValidateFeaturesHaveAliases(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(model.ProjectAliasCollection))
+
+	pRef := &model.ProjectRef{
+		Id:                  "p1",
+		PRTestingEnabled:    utility.TruePtr(),
+		GithubChecksEnabled: utility.TruePtr(),
+	}
+
+	aliases := []restModel.APIProjectAlias{
+		{
+			Alias: utility.ToStringPtr(evergreen.GithubPRAlias),
+		},
+	}
+
+	// Errors when there aren't aliases for all enabled features.
+	err := validateFeaturesHaveAliases(pRef, aliases)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "Github checks")
+
+	pRef.RepoRefId = "r1"
+	repoAlias1 := model.ProjectAlias{
+		ProjectID: pRef.RepoRefId,
+		Alias:     evergreen.GithubChecksAlias,
+	}
+	assert.NoError(t, repoAlias1.Upsert())
+	// No error when there are aliases in the repo.
+	assert.NoError(t, validateFeaturesHaveAliases(pRef, aliases))
+
+	pRef.GitTagVersionsEnabled = utility.TruePtr()
+	pRef.CommitQueue.Enabled = utility.TruePtr()
+	err = validateFeaturesHaveAliases(pRef, aliases)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "Git tag")
+	assert.Contains(t, err.Error(), "Commit queue")
+
+	// No error when version control is enabled.
+	pRef.VersionControlEnabled = utility.TruePtr()
+	assert.NoError(t, validateFeaturesHaveAliases(pRef, aliases))
 }

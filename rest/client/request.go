@@ -13,7 +13,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/utility"
-	"github.com/jpillora/backoff"
 	"github.com/pkg/errors"
 )
 
@@ -25,13 +24,13 @@ type requestInfo struct {
 
 // AuthError is a special error when the CLI receives 401 Unauthorized to
 // suggest logging in again as a possible solution to the error.
-var AuthError = errors.New("401 Unauthorized: User credentials are likely expired, try logging in again via the Evergreen web UI.")
+var AuthError = "Possibly user credentials are expired, try logging in again via the Evergreen web UI."
 
 func (c *communicatorImpl) newRequest(method, path string, data interface{}) (*http.Request, error) {
 	url := c.getPath(path)
 	r, err := http.NewRequest(method, url, nil)
 	if err != nil {
-		return nil, errors.New("Error building request")
+		return nil, errors.New("building request")
 	}
 	if data != nil {
 		if rc, ok := data.(io.ReadCloser); ok {
@@ -60,7 +59,7 @@ func (c *communicatorImpl) newRequest(method, path string, data interface{}) (*h
 
 func (c *communicatorImpl) createRequest(info requestInfo, data interface{}) (*http.Request, error) {
 	if info.method == http.MethodPost && data == nil {
-		return nil, errors.New("Attempting to post a nil body")
+		return nil, errors.New("cannot make a POST request without a body")
 	}
 	if err := info.validateRequestInfo(); err != nil {
 		return nil, errors.WithStack(err)
@@ -68,7 +67,7 @@ func (c *communicatorImpl) createRequest(info requestInfo, data interface{}) (*h
 
 	r, err := c.newRequest(info.method, info.path, data)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error creating request")
+		return nil, errors.Wrap(err, "creating request")
 	}
 
 	return r, nil
@@ -135,20 +134,11 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 		MaxDelay:    c.timeoutMax,
 	})
 	if resp != nil && resp.StatusCode == http.StatusUnauthorized {
-		return resp, AuthError
+		return resp, utility.RespErrorf(resp, AuthError)
 	} else if err != nil {
 		return resp, err
 	}
 	return resp, nil
-}
-
-func (c *communicatorImpl) getBackoff() *backoff.Backoff {
-	return &backoff.Backoff{
-		Min:    c.timeoutStart,
-		Max:    c.timeoutMax,
-		Factor: 2,
-		Jitter: true,
-	}
 }
 
 func (c *communicatorImpl) getPath(path string) string {

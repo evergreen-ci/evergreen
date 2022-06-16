@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -233,8 +234,9 @@ const (
 )
 
 const (
-	checkSuccessAttempts   = 10
+	checkSuccessAttempts   = 12
 	checkSuccessInitPeriod = 2 * time.Second
+	checkSuccessMaxDelay   = 2 * time.Minute
 )
 
 const (
@@ -426,6 +428,15 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
 		}))
+		if h.SpawnOptions.SpawnedByTask {
+			detailErr := task.AddHostCreateDetails(h.StartedBy, h.Id, h.SpawnOptions.TaskExecutionNumber, err)
+			grip.Error(message.WrapError(detailErr, message.Fields{
+				"message":       "error adding host create error details",
+				"host_id":       h.Id,
+				"host_provider": h.Distro.Provider,
+				"distro":        h.Distro.Id,
+			}))
+		}
 		if err != nil {
 			return errors.Wrap(err, msg)
 		}
@@ -1027,14 +1038,8 @@ func (m *ec2Manager) GetInstanceStatus(ctx context.Context, h *host.Host) (Cloud
 
 	instance, err := m.client.GetInstanceInfo(ctx, id)
 	if err != nil {
-		// terminate an unknown host in the db
 		if err == noReservationError {
-			grip.Error(message.WrapError(h.Terminate(evergreen.User, "host is unknown to AWS"), message.Fields{
-				"message":       "can't mark instance as terminated",
-				"host_id":       h.Id,
-				"host_provider": h.Distro.Provider,
-				"distro":        h.Distro.Id,
-			}))
+			return StatusNonExistent, nil
 		}
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "error getting instance info",
@@ -1227,6 +1232,7 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 		}, utility.RetryOptions{
 			MaxAttempts: checkSuccessAttempts,
 			MinDelay:    checkSuccessInitPeriod,
+			MaxDelay:    checkSuccessMaxDelay,
 		})
 	if err != nil {
 		return errors.Wrap(err, "checking if spawn host stopped")

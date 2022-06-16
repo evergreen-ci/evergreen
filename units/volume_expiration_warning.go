@@ -119,6 +119,13 @@ func tryVolumeNotification(v host.Volume, numHours int) (bool, error) {
 		return false, nil
 	}
 	event.LogVolumeExpirationWarningSent(v.ID)
+	grip.Info(message.Fields{
+		"message":    "sent volume expiration warning",
+		"volume_id":  v.ID,
+		"host_id":    v.Host,
+		"owner":      v.CreatedBy,
+		"expiration": v.Expiration,
+	})
 	if err = alertrecord.InsertNewVolumeExpirationRecord(v.ID, numHours); err != nil {
 		return false, err
 	}
@@ -126,7 +133,7 @@ func tryVolumeNotification(v host.Volume, numHours int) (bool, error) {
 }
 
 func shouldNotifyForVolumeExpiration(v host.Volume, numHours int) (bool, error) {
-	numHoursLeft := v.Expiration.Sub(time.Now())
+	numHoursLeft := time.Until(v.Expiration)
 	// say we have 15 hours left. if 15 > 12, quit. if 15 > 2,  quit.
 	// say we have 10 hours left. 10 > 12 nope, so send. 12 > 2 so quit.
 	// say we have 30 days left. greater than everything, send no notices.

@@ -140,7 +140,6 @@ func agentRevisionIsOld(h *host.Host) bool {
 // If the task is a patch, it will alert the users based on failures
 // It also updates the expected task duration of the task for scheduling.
 func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
-	const slowThreshold = 1 * time.Second
 	finishTime := time.Now()
 
 	t := MustHaveTask(r)
@@ -179,7 +178,26 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// clear the running task on the host startPhaseAt that the task has finished
+	// For a single-host task group, if a task fails, block and dequeue later tasks in that group.
+	// Call before MarkEnd so the version is marked finished when this is the last task in the version to finish,
+	// and before clearing the running task from the host so later tasks in the group aren't picked up by the host.
+	if t.IsPartOfSingleHostTaskGroup() && details.Status != evergreen.TaskSucceeded {
+		// BlockTaskGroups is a recursive operation, which
+		// includes updating a large number of task
+		// documents.
+		if err := model.BlockTaskGroupTasks(t.Id); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "problem blocking task group tasks",
+				"task_id": t.Id,
+			}))
+		}
+		grip.Debug(message.Fields{
+			"message": "blocked task group tasks for task",
+			"task_id": t.Id,
+		})
+	}
+
+	// Clear the running task on the host now that the task has finished.
 	if err := currentHost.ClearRunningAndSetLastTask(t); err != nil {
 		err = errors.Wrapf(err, "error clearing running task %s for host %s", t.Id, currentHost.Id)
 		grip.Errorf(err.Error())
@@ -194,25 +212,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	if projectRef == nil {
 		as.LoggedError(w, r, http.StatusNotFound, fmt.Errorf("empty projectRef for task"))
 		return
-	}
-
-	// For a single-host task group, if a task fails, block and dequeue later tasks in that group.
-	// Call before MarkEnd so the version is marked finished when this is the last task in the version
-	// to finish
-	if t.IsPartOfSingleHostTaskGroup() && details.Status != evergreen.TaskSucceeded {
-		// BlockTaskGroups is a recursive operation, which
-		// includes updating a large number of task
-		// documents.
-		if err = model.BlockTaskGroupTasks(t.Id); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "problem blocking task group tasks",
-				"task_id": t.Id,
-			}))
-		}
-		grip.Debug(message.Fields{
-			"message": "blocked task group tasks for task",
-			"task_id": t.Id,
-		})
 	}
 
 	// mark task as finished
@@ -432,6 +431,8 @@ func (as *APIServer) transitionIntentHostToStarting(ctx context.Context, h *host
 	grip.Notice(message.Fields{
 		"message":     "DB-EC2 state mismatch - found EC2 instance running an agent, but Evergreen believes the host still an intent host",
 		"host_id":     h.Id,
+		"host_tag":    h.Tag,
+		"distro":      h.Distro.Id,
 		"instance_id": instanceID,
 		"host_status": h.Status,
 	})
@@ -443,7 +444,7 @@ func (as *APIServer) transitionIntentHostToStarting(ctx context.Context, h *host
 		return errors.Wrap(err, "replacing intent host with real host")
 	}
 
-	event.LogHostStartFinished(h.Id, true)
+	event.LogHostStartSucceeded(h.Id)
 
 	return nil
 }
@@ -468,6 +469,13 @@ func (as *APIServer) transitionIntentHostToDecommissioned(ctx context.Context, h
 	}
 
 	event.LogHostStatusChanged(h.Id, oldStatus, h.Status, evergreen.User, "host started agent but intent host is already considered a failure")
+	grip.Info(message.Fields{
+		"message":    "intent host decommissioned",
+		"host_id":    h.Id,
+		"host_tag":   h.Tag,
+		"distro":     h.Distro.Id,
+		"old_status": oldStatus,
+	})
 
 	return nil
 }
@@ -510,7 +518,7 @@ func (as *APIServer) prepareHostForAgentExit(ctx context.Context, params agentEx
 		//    There are some cases where the agent is still checking in for a
 		//    long time after the cloud provider says the instance is already
 		//    terminated. There's no bug on our side, so this log is harmless.
-		if time.Now().Sub(params.host.TerminationTime) > 10*time.Minute {
+		if time.Since(params.host.TerminationTime) > 10*time.Minute {
 			msg := message.Fields{
 				"message":    "DB-cloud state mismatch - host has been marked terminated in the DB but the host's agent is still running",
 				"host_id":    params.host.Id,
@@ -593,7 +601,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 	grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 		"message":     "assignNextAvailableTask performance",
 		"step":        "distro.FindOne",
-		"duration_ns": time.Now().Sub(stepStart),
+		"duration_ns": time.Since(stepStart),
 		"run_id":      runId,
 	})
 	stepStart = time.Now()
@@ -644,7 +652,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 			"message":     "assignNextAvailableTask performance",
 			"step":        "RefreshFindNextTask",
-			"duration_ns": time.Now().Sub(stepStart),
+			"duration_ns": time.Since(stepStart),
 			"run_id":      runId,
 		})
 		stepStart = time.Now()
@@ -673,7 +681,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 			"message":     "assignNextAvailableTask performance",
 			"step":        "find task",
-			"duration_ns": time.Now().Sub(stepStart),
+			"duration_ns": time.Since(stepStart),
 			"run_id":      runId,
 		})
 		stepStart = time.Now()
@@ -724,7 +732,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 			"message":     "assignNextAvailableTask performance",
 			"step":        "FindMergedProjectRef",
-			"duration_ns": time.Now().Sub(stepStart),
+			"duration_ns": time.Since(stepStart),
 			"run_id":      runId,
 		})
 		stepStart = time.Now()
@@ -745,6 +753,29 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 				"project_identifier":   projectRef.Identifier,
 				"enabled":              projectRef.Enabled,
 				"dispatching_disabled": projectRef.DispatchingDisabled,
+			}))
+			continue
+		}
+
+		// If the top task on the queue is blocked, the scheduler task queue may be out of date.
+		if nextTask.Blocked() {
+			grip.Debug(message.Fields{
+				"message":            "top task queue task is blocked, dequeuing task",
+				"host_id":            currentHost.Id,
+				"distro_id":          nextTask.DistroId,
+				"task_id":            nextTask.Id,
+				"task_group":         nextTask.TaskGroup,
+				"project":            projectRef.Id,
+				"project_identifier": projectRef.Enabled,
+			})
+			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
+				"message":            "top task queue task is blocked, but there was an issue dequeuing the task",
+				"host_id":            currentHost.Id,
+				"distro_id":          nextTask.DistroId,
+				"task_id":            nextTask.Id,
+				"task_group":         nextTask.TaskGroup,
+				"project":            projectRef.Id,
+				"project_identifier": projectRef.Enabled,
 			}))
 			continue
 		}
@@ -772,7 +803,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 			"message":     "assignNextAvailableTask performance",
 			"step":        "UpdateRunningTask",
-			"duration_ns": time.Now().Sub(stepStart),
+			"duration_ns": time.Since(stepStart),
 			"run_id":      runId,
 		})
 		stepStart = time.Now()
@@ -835,7 +866,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 				"message":     "assignNextAvailableTask performance",
 				"step":        "find task group",
-				"duration_ns": time.Now().Sub(stepStart),
+				"duration_ns": time.Since(stepStart),
 				"run_id":      runId,
 			})
 			stepStart = time.Now()
@@ -852,7 +883,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 				"message":     "assignNextAvailableTask performance",
 				"step":        "get host number",
-				"duration_ns": time.Now().Sub(stepStart),
+				"duration_ns": time.Since(stepStart),
 				"run_id":      runId,
 			})
 			stepStart = time.Now()
@@ -888,7 +919,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 				"message":     "assignNextAvailableTask performance",
 				"step":        "ClearRunningTask",
-				"duration_ns": time.Now().Sub(stepStart),
+				"duration_ns": time.Since(stepStart),
 				"run_id":      runId,
 			})
 			stepStart = time.Now()
@@ -904,13 +935,13 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 			"message":     "assignNextAvailableTask performance",
 			"step":        "DequeueTask",
-			"duration_ns": time.Now().Sub(stepStart),
+			"duration_ns": time.Since(stepStart),
 			"run_id":      runId,
 		})
 		grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 			"message":     "assignNextAvailableTask performance",
 			"step":        "total",
-			"duration_ns": time.Now().Sub(funcStart),
+			"duration_ns": time.Since(funcStart),
 			"run_id":      runId,
 		})
 
@@ -1130,7 +1161,6 @@ func setAgentFirstContactTime(h *host.Host) {
 		"provisioning":              h.Distro.BootstrapSettings.Method,
 		"agent_start_duration_secs": time.Since(h.CreationTime).Seconds(),
 	})
-	return
 }
 
 func getDetails(response apimodels.NextTaskResponse, h *host.Host, w http.ResponseWriter, r *http.Request) (*apimodels.GetNextTaskDetails, bool) {
@@ -1212,26 +1242,38 @@ func handleOldAgentRevision(response apimodels.NextTaskResponse, details *apimod
 	// yet to be updated.
 	if !h.Distro.LegacyBootstrap() && details.AgentRevision != h.AgentRevision {
 		err := h.SetAgentRevision(details.AgentRevision)
-		if err == nil {
-			event.LogHostAgentDeployed(h.Id)
-			return response, false
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":        "problem updating host agent revision",
+				"operation":      "NextTask",
+				"host_id":        h.Id,
+				"host_tag":       h.Tag,
+				"source":         "database error",
+				"host_revision":  details.AgentRevision,
+				"agent_version":  evergreen.AgentVersion,
+				"build_revision": evergreen.BuildRevision,
+			}))
 		}
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":        "problem updating host agent revision",
-			"operation":      "next_task",
+
+		event.LogHostAgentDeployed(h.Id)
+		grip.Info(message.Fields{
+			"message":        "updated host agent revision",
+			"operation":      "NextTask",
 			"host_id":        h.Id,
+			"host_tag":       h.Tag,
 			"source":         "database error",
 			"host_revision":  details.AgentRevision,
 			"agent_version":  evergreen.AgentVersion,
 			"build_revision": evergreen.BuildRevision,
-		}))
+		})
+		return response, false
 	}
 
 	if details.TaskGroup == "" {
 		if err := h.SetNeedsNewAgent(true); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"host_id":        h.Id,
-				"operation":      "next_task",
+				"operation":      "NextTask",
 				"message":        "problem indicating that host needs new agent",
 				"source":         "database error",
 				"build_revision": evergreen.BuildRevision,
@@ -1306,7 +1348,6 @@ func sendBackRunningTask(h *host.Host, response apimodels.NextTaskResponse, w ht
 		"task_id": t.Id,
 	})
 	gimlet.WriteJSON(w, response)
-	return
 }
 
 func setNextTask(t *task.Task, response *apimodels.NextTaskResponse) {

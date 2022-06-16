@@ -26,7 +26,6 @@ var (
 	ProjectKey             = bsonutil.MustHaveTag(Build{}, "Project")
 	RevisionKey            = bsonutil.MustHaveTag(Build{}, "Revision")
 	BuildVariantKey        = bsonutil.MustHaveTag(Build{}, "BuildVariant")
-	BuildNumberKey         = bsonutil.MustHaveTag(Build{}, "BuildNumber")
 	StatusKey              = bsonutil.MustHaveTag(Build{}, "Status")
 	GithubCheckStatusKey   = bsonutil.MustHaveTag(Build{}, "GithubCheckStatus")
 	ActivatedKey           = bsonutil.MustHaveTag(Build{}, "Activated")
@@ -41,6 +40,7 @@ var (
 	ActualMakespanKey      = bsonutil.MustHaveTag(Build{}, "ActualMakespan")
 	IsGithubCheckKey       = bsonutil.MustHaveTag(Build{}, "IsGithubCheck")
 	AbortedKey             = bsonutil.MustHaveTag(Build{}, "Aborted")
+	AllTasksBlockedKey     = bsonutil.MustHaveTag(Build{}, "AllTasksBlocked")
 
 	TaskCacheIdKey = bsonutil.MustHaveTag(TaskCache{}, "Id")
 )

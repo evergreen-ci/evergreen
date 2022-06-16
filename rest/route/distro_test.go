@@ -93,7 +93,7 @@ func (s *DistroPatchSetupByIDSuite) SetupSuite() {
 func (s *DistroPatchSetupByIDSuite) TestParseValidJSON() {
 	ctx := context.Background()
 	json := []byte(`{"setup": "New set-up script"}`)
-	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/distros/fedora8/setup", bytes.NewBuffer(json))
+	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/distros/fedora8/setup", bytes.NewBuffer(json))
 
 	err := s.rm.Parse(ctx, req)
 	s.NoError(err)
@@ -103,7 +103,7 @@ func (s *DistroPatchSetupByIDSuite) TestParseValidJSON() {
 func (s *DistroPatchSetupByIDSuite) TestParseInvalidJSON() {
 	ctx := context.Background()
 	json := []byte(`{"malform": "ed}`)
-	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/distros/fedora8/setup", bytes.NewBuffer(json))
+	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/distros/fedora8/setup", bytes.NewBuffer(json))
 
 	err := s.rm.Parse(ctx, req)
 	s.Error(err)
@@ -250,7 +250,7 @@ func TestDistroAMIHandler(t *testing.T) {
 	h := makeGetDistroAMI().(*distroAMIHandler)
 
 	// default region
-	r, err := http.NewRequest("GET", "/distros/d1/ami", nil)
+	r, err := http.NewRequest(http.MethodGet, "/distros/d1/ami", nil)
 	assert.NoError(t, err)
 	r = gimlet.SetURLVars(r, map[string]string{"distro_id": "d1"})
 	assert.NoError(t, h.Parse(context.TODO(), r))
@@ -264,7 +264,7 @@ func TestDistroAMIHandler(t *testing.T) {
 	assert.Equal(t, "ami-1234", ami)
 
 	// provided region
-	r, err = http.NewRequest("GET", "/distros/d1/ami?region=us-west-1", nil)
+	r, err = http.NewRequest(http.MethodGet, "/distros/d1/ami?region=us-west-1", nil)
 	assert.NoError(t, err)
 	r = gimlet.SetURLVars(r, map[string]string{"distro_id": "d1"})
 	assert.NoError(t, h.Parse(context.TODO(), r))
@@ -310,14 +310,14 @@ func TestUpdateDistrosSettingsHandlerParse(t *testing.T) {
 
 	jsonChanges := `{"region": ""}`
 	body := bytes.NewBuffer([]byte(jsonChanges))
-	r, err := http.NewRequest("PATCH", "/distros/settings", body)
+	r, err := http.NewRequest(http.MethodPatch, "/distros/settings", body)
 	assert.NoError(t, err)
 	assert.Error(t, h.Parse(context.TODO(), r))
 
 	h = makeModifyDistrosSettings().(*modifyDistrosSettingsHandler)
 	jsonChanges = `{"region": "us-east-1", "ami": "ami-new"}`
 	body = bytes.NewBuffer([]byte(jsonChanges))
-	r, err = http.NewRequest("PATCH", "/distros/settings", body)
+	r, err = http.NewRequest(http.MethodPatch, "/distros/settings", body)
 	assert.NoError(t, err)
 
 	assert.NoError(t, h.Parse(context.TODO(), r))
@@ -414,8 +414,7 @@ func TestUpdateDistrosSettingsHandlerRun(t *testing.T) {
 // Tests for PUT /rest/v2/distros/{distro_id}
 
 type DistroPutSuite struct {
-	rm       gimlet.RouteHandler
-	settings *evergreen.Settings
+	rm gimlet.RouteHandler
 
 	suite.Suite
 }
@@ -460,28 +459,28 @@ func (s *DistroPutSuite) SetupTest() {
 func (s *DistroPutSuite) TestParse() {
 	ctx := context.Background()
 	json := []byte(`
-  	{
+	{
 		"arch": "linux_amd64",
-    	"work_dir": "/data/mci",
-    	"ssh_key": "SSH key",
-    	"provider": "mock",
-    	"user": "tibor",
-    	"planner_settings": {
-      	"version": "tunable",
-    		"minimum_hosts": 10,
-    		"maximum_hosts": 20,
-    		"target_time": 30000000000,
-    		"acceptable_host_idle_time": 5000000000,
-    		"group_versions": false,
-    		"patch_factor": 2,
-    		"patch_first": false
-  		},
+		"work_dir": "/data/mci",
+		"ssh_key": "SSH key",
+		"provider": "mock",
+		"user": "tibor",
+		"planner_settings": {
+		"version": "tunable",
+			"minimum_hosts": 10,
+			"maximum_hosts": 20,
+			"target_time": 30000000000,
+			"acceptable_host_idle_time": 5000000000,
+			"group_versions": false,
+			"patch_factor": 2,
+			"patch_first": false
+		},
 		"bootstrap_settings": {"method": "legacy-ssh", "communication": "legacy-ssh"},
 		"clone_method": "legacy-ssh",
-    }`,
+	}`,
 	)
 
-	req, _ := http.NewRequest("PUT", "http://example.com/api/rest/v2/distros/distro4", bytes.NewBuffer(json))
+	req, _ := http.NewRequest(http.MethodPut, "http://example.com/api/rest/v2/distros/distro4", bytes.NewBuffer(json))
 	err := s.rm.Parse(ctx, req)
 	s.NoError(err)
 }
@@ -540,8 +539,8 @@ func (s *DistroPutSuite) TestRunNewConflictingName() {
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusForbidden)
-	error := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal(error.Message, fmt.Sprintf("A distro's name is immutable; cannot rename distro '%s'", h.distroID))
+	err := resp.Data().(gimlet.ErrorResponse)
+	s.Equal(fmt.Sprintf("distro name 'distro5' is immutable so it cannot be renamed to '%s'", h.distroID), err.Message)
 }
 
 func (s *DistroPutSuite) TestRunExistingWithValidEntity() {
@@ -585,8 +584,8 @@ func (s *DistroPutSuite) TestRunExistingConflictingName() {
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusForbidden)
-	error := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal(fmt.Sprintf("A distro's name is immutable; cannot rename distro '%s'", h.distroID), error.Message)
+	err := (resp.Data()).(gimlet.ErrorResponse)
+	s.Equal(fmt.Sprintf("distro name 'distro5' is immutable so it cannot be renamed to '%s'", h.distroID), err.Message)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -626,7 +625,7 @@ func (s *DistroDeleteByIDSuite) SetupTest() {
 func (s *DistroDeleteByIDSuite) TestParse() {
 	ctx := context.Background()
 
-	req, _ := http.NewRequest("DELETE", "http://example.com/api/rest/v2/distros/distro1", nil)
+	req, _ := http.NewRequest(http.MethodDelete, "http://example.com/api/rest/v2/distros/distro1", nil)
 	err := s.rm.Parse(ctx, req)
 	s.NoError(err)
 }
@@ -656,8 +655,8 @@ func (s *DistroDeleteByIDSuite) TestRunInvalidDistroId() {
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusNotFound)
-	error := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal(error.Message, fmt.Sprintf("distro with id '%s' not found", h.distroID))
+	err := (resp.Data()).(gimlet.ErrorResponse)
+	s.Equal(fmt.Sprintf("distro '%s' not found", h.distroID), err.Message)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -665,8 +664,7 @@ func (s *DistroDeleteByIDSuite) TestRunInvalidDistroId() {
 // Tests for PATCH /rest/v2/distros/{distro_id}
 
 type DistroPatchByIDSuite struct {
-	rm       gimlet.RouteHandler
-	settings *evergreen.Settings
+	rm gimlet.RouteHandler
 
 	suite.Suite
 }
@@ -754,7 +752,7 @@ func (s *DistroPatchByIDSuite) TestParse() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	json := []byte(`{"ssh_options":["StrictHostKeyChecking=no","BatchMode=yes","ConnectTimeout=10"]}`)
-	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/distros/fedora8", bytes.NewBuffer(json))
+	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/distros/fedora8", bytes.NewBuffer(json))
 
 	err := s.rm.Parse(ctx, req)
 	s.NoError(err)
@@ -1458,8 +1456,8 @@ func (s *DistroPatchByIDSuite) TestRunInvalidNameChange() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusForbidden)
 
-	gimlet := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal(gimlet.Message, fmt.Sprintf("A distro's name is immutable; cannot rename distro '%s'", h.distroID))
+	err := resp.Data().(gimlet.ErrorResponse)
+	s.Equal(fmt.Sprintf("distro name 'Updated distro name' is immutable so it cannot be renamed to '%s'", h.distroID), err.Message)
 }
 
 func getMockDistrosdata() error {
@@ -1567,7 +1565,7 @@ func (s *distroExecuteSuite) TestParse() {
 	ctx, _ := s.env.Context()
 
 	body := []byte(`
-  	{
+	{
 		"script": "echo foobar",
 		"include_spawn_hosts": true,
 		"include_task_hosts": true

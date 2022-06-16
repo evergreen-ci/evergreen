@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
@@ -130,8 +131,8 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		"version":              j.task.Version,
 	}
 
-	if j.task.DisplayTask != nil {
-		msg["display_task_id"] = j.task.DisplayTask.Id
+	if utility.FromStringPtr(j.task.DisplayTaskId) != "" {
+		msg["display_task_id"] = j.task.DisplayTaskId
 	}
 
 	pRef, err := model.FindBranchProjectRef(j.task.Project)

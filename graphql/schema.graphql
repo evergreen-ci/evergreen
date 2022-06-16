@@ -82,12 +82,14 @@ type Query {
     identifier: String!
     limit: Int = 0
     before: Time
+    @requireProjectAccess(access: VIEW)
   ): ProjectEvents!
   repoEvents(
     id: String!
     limit: Int = 0
     before: Time
-  ): RepoEvents!
+    @requireProjectAccess(access: VIEW)
+  ): ProjectEvents!
   hasVersion(id: String!): Boolean!
 }
 
@@ -103,6 +105,7 @@ type Mutation {
   attachProjectToRepo(projectId: String! @requireProjectAccess(access: EDIT)): Project!
   detachProjectFromRepo(projectId: String! @requireProjectAccess(access: EDIT)): Project!
   forceRepotrackerRun(projectId: String! @requireProjectAccess(access: EDIT)): Boolean!
+  deactivateStepbackTasks(projectId: String! @requireProjectAccess(access: EDIT)): Boolean!
   schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
   schedulePatchTasks(patchId: String!): String
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String
@@ -213,6 +216,7 @@ type Version {
   repo: String!
   project: String!
   projectIdentifier: String!
+  projectMetadata: Project
   branch: String!
   requester: String!
   activated: Boolean
@@ -423,6 +427,7 @@ input SubscriberInput {
 
 input UseSpruceOptionsInput {
   hasUsedSpruceBefore: Boolean
+  hasUsedMainlineCommitsBefore: Boolean
   spruceV1: Boolean
 }
 
@@ -479,6 +484,7 @@ input ProjectInput {
   dispatchingDisabled: Boolean
   versionControlEnabled: Boolean
   prTestingEnabled: Boolean
+  manualPrTestingEnabled: Boolean
   githubChecksEnabled: Boolean
   batchTime: Int
   deactivatePrevious: Boolean
@@ -530,6 +536,7 @@ input RepoRefInput {
   dispatchingDisabled: Boolean
   versionControlEnabled: Boolean
   prTestingEnabled: Boolean
+  manualPrTestingEnabled: Boolean
   githubChecksEnabled: Boolean
   batchTime: Int
   deactivatePrevious: Boolean
@@ -712,6 +719,7 @@ input UpdateVolumeInput {
 input IssueLinkInput {
   url: String!
   issueKey: String!
+  confidenceScore: Float
 }
 
 input SortOrder {
@@ -1151,14 +1159,6 @@ type ProjectEventSettings{
   subscriptions: [ProjectSubscription!]
 }
 
-type RepoEventSettings{
-  githubWebhooksEnabled: Boolean!
-  projectRef: RepoRef
-  vars: ProjectVars
-  aliases: [ProjectAlias!]
-  subscriptions: [ProjectSubscription!]
-}
-
 type RepoSettings {
   githubWebhooksEnabled: Boolean!
   projectRef: RepoRef ## use the repo ref here in order to have stronger types
@@ -1167,6 +1167,9 @@ type RepoSettings {
   subscriptions: [ProjectSubscription!]
 }
 
+## ProjectEvents is used for any event that has the PROJECT type.
+## Although RepoSettings uses RepoRef in practice to have stronger types, this can't be enforced
+## for event logs because new fields could always be introduced that don't exist in the old event logs.
 type ProjectEvents {
   eventLogEntries: [ProjectEventLogEntry!]!
   count: Int!
@@ -1177,17 +1180,6 @@ type ProjectEventLogEntry {
   user: String!
   before: ProjectEventSettings
   after: ProjectEventSettings
-}
-
-type RepoEvents {
-  eventLogEntries: [RepoEventLogEntry!]!
-  count: Int!
-}
-type RepoEventLogEntry {
-  timestamp: Time!
-  user: String!
-  before: RepoEventSettings
-  after: RepoEventSettings
 }
 
 type ProjectVars {
@@ -1284,6 +1276,7 @@ type Project {
   dispatchingDisabled: Boolean
   versionControlEnabled: Boolean
   prTestingEnabled: Boolean
+  manualPrTestingEnabled: Boolean
   githubChecksEnabled: Boolean
   batchTime: Int!
   deactivatePrevious: Boolean
@@ -1336,6 +1329,7 @@ type RepoRef {
   dispatchingDisabled: Boolean!
   versionControlEnabled: Boolean!
   prTestingEnabled: Boolean!
+  manualPrTestingEnabled: Boolean!
   githubChecksEnabled: Boolean!
   batchTime: Int!
   deactivatePrevious: Boolean!
@@ -1542,6 +1536,7 @@ type UserSettings {
 
 type UseSpruceOptions {
   hasUsedSpruceBefore: Boolean
+  hasUsedMainlineCommitsBefore: Boolean
   spruceV1: Boolean
 }
 
@@ -1718,6 +1713,7 @@ type IssueLink {
   url: String
   source: Source
   jiraTicket: JiraTicket
+  confidenceScore: Float
 }
 
 type Source {

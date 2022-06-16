@@ -39,12 +39,12 @@ func (cq *commitQueueGetHandler) Parse(ctx context.Context, r *http.Request) err
 func (cq *commitQueueGetHandler) Run(ctx context.Context) gimlet.Responder {
 	commitQueue, err := data.FindCommitQueueForProject(cq.project)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't get commit queue"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting commit queue for project '%s'", cq.project))
 	}
 	if commitQueue == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("no matching project for ID %s", cq.project),
+			Message:    fmt.Sprintf("commit queue for project '%s' not found", cq.project),
 		})
 	}
 
@@ -71,38 +71,44 @@ func (cq commitQueueDeleteItemHandler) Factory() gimlet.RouteHandler {
 
 func (cq *commitQueueDeleteItemHandler) Parse(ctx context.Context, r *http.Request) error {
 	vars := gimlet.GetVars(r)
-	cq.project = vars["project_id"]
-	cq.item = vars["item"]
-
+	cq.item = vars["patch_id"]
+	requestedPatch, err := patch.FindOneId(cq.item)
+	if err != nil {
+		return errors.Wrapf(err, "finding commit queue item '%s'", cq.item)
+	}
+	if requestedPatch == nil {
+		return errors.New("commit queue item not found")
+	}
+	cq.project = requestedPatch.Project
 	return nil
 }
 
 func (cq *commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responder {
 	dc := data.DBCommitQueueConnector{}
-	projectRef, err := data.FindProjectById(cq.project, true, false)
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "can't find project '%s'", cq.project))
-	}
-	if projectRef == nil {
-		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' doesn't exist", cq.project))
-	}
 
-	removed, err := data.CommitQueueRemoveItem(projectRef.Id, cq.item, gimlet.GetUser(ctx).DisplayName())
+	removed, err := data.CommitQueueRemoveItem(cq.project, cq.item, gimlet.GetUser(ctx).DisplayName())
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't delete item"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "deleting commit queue item '%s' from commit queue for project '%s'", cq.item, cq.project))
 	}
 	if removed == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("no matching item for project ID '%s', item '%s'", cq.project, cq.item),
+			Message:    fmt.Sprintf("commit queue item '%s' for project '%s' not found", cq.item, cq.project),
 		})
 	}
 
 	// Send GitHub status
 	if utility.FromStringPtr(removed.Source) == commitqueue.SourcePullRequest {
+		projectRef, err := data.FindProjectById(cq.project, true, false)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project '%s'", cq.project))
+		}
+		if projectRef == nil {
+			return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' doesn't exist", cq.project))
+		}
 		itemInt, err := strconv.Atoi(cq.item)
 		if err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "item '%s' is not an int", cq.item))
+			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "item '%s' is not an integer", cq.item))
 		}
 		pr, err := dc.GetGitHubPR(ctx, projectRef.Owner, projectRef.Repo, itemInt)
 		if err != nil {
@@ -115,13 +121,13 @@ func (cq *commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responde
 		q := cq.env.LocalQueue()
 		err = q.Put(ctx, pushJob)
 		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Can't enqueue a GitHub status update"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "enqueueing GitHub status update job"))
 		}
 	}
 
 	response := gimlet.NewJSONResponse(struct{}{})
 	if err := response.SetStatus(http.StatusNoContent); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Cannot set HTTP status code to %d", http.StatusNoContent))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting HTTP status code to %d", http.StatusNoContent))
 	}
 	return response
 }
@@ -143,7 +149,7 @@ func (cq *commitQueueClearAllHandler) Parse(ctx context.Context, r *http.Request
 func (cq *commitQueueClearAllHandler) Run(ctx context.Context) gimlet.Responder {
 	clearedCount, err := commitqueue.ClearAllCommitQueues()
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't clear commit queues"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "clearing all commit queues"))
 	}
 
 	return gimlet.NewJSONResponse(struct {
@@ -170,7 +176,7 @@ func (cq *commitQueueEnqueueItemHandler) Parse(ctx context.Context, r *http.Requ
 	cq.item = vars["patch_id"]
 	patch, err := data.FindPatchById(cq.item)
 	if err != nil {
-		return errors.Wrap(err, "can't find item")
+		return errors.Wrapf(err, "finding commit queue item '%s'", cq.item)
 	}
 	cq.project = *patch.ProjectId
 
@@ -184,15 +190,15 @@ func (cq *commitQueueEnqueueItemHandler) Parse(ctx context.Context, r *http.Requ
 func (cq *commitQueueEnqueueItemHandler) Run(ctx context.Context) gimlet.Responder {
 	patchEmpty, err := patch.IsPatchEmpty(cq.item)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't find patch to enqueue"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "checking if patch is empty for commit queue item '%s'", cq.item))
 	}
 	if patchEmpty {
-		return gimlet.MakeJSONErrorResponder(errors.New("can't enqueue item, patch is empty"))
+		return gimlet.MakeJSONErrorResponder(errors.New("cannot enqueue commit queue item when its patch is empty"))
 	}
 	patchId := utility.ToStringPtr(cq.item)
 	position, err := data.EnqueueItem(cq.project, model.APICommitQueueItem{Issue: patchId, PatchId: patchId, Source: utility.ToStringPtr(commitqueue.SourceDiff)}, cq.force)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't enqueue item"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "enqueueing commit queue item '%s'", cq.item))
 	}
 
 	return gimlet.NewJSONResponse(model.APICommitQueuePosition{Position: position})
@@ -251,7 +257,7 @@ func (p *commitQueueConcludeMerge) Parse(ctx context.Context, r *http.Request) e
 	}
 
 	if err := utility.ReadJSON(body, p); err != nil {
-		return errors.Wrap(err, "unable to parse request body")
+		return errors.Wrap(err, "reading commit queue parameters from request body")
 	}
 	if p.Status == "" {
 		return errors.New("status must be specified")
@@ -263,7 +269,7 @@ func (p *commitQueueConcludeMerge) Parse(ctx context.Context, r *http.Request) e
 func (p *commitQueueConcludeMerge) Run(ctx context.Context) gimlet.Responder {
 	err := data.ConcludeMerge(p.patchId, p.Status)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(err)
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "concluding merge"))
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
@@ -284,7 +290,7 @@ func (p *commitQueueAdditionalPatches) Factory() gimlet.RouteHandler {
 func (p *commitQueueAdditionalPatches) Parse(ctx context.Context, r *http.Request) error {
 	p.patchId = gimlet.GetVars(r)["patch_id"]
 	if p.patchId == "" {
-		return errors.New("patch_id must be specified")
+		return errors.New("patch ID must be specified")
 	}
 	return nil
 }
@@ -292,7 +298,7 @@ func (p *commitQueueAdditionalPatches) Parse(ctx context.Context, r *http.Reques
 func (p *commitQueueAdditionalPatches) Run(ctx context.Context) gimlet.Responder {
 	additional, err := data.GetAdditionalPatches(p.patchId)
 	if err != nil {
-		gimlet.NewJSONErrorResponse(err)
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "getting additional patches"))
 	}
 	return gimlet.NewJSONResponse(additional)
 }

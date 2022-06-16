@@ -32,7 +32,6 @@ type CmpBasedTaskComparator struct {
 	errsDuringSort []error
 	setupFuncs     []sortSetupFunc
 	comparators    []taskComparer
-	projects       map[string]project
 	orderingLogic  map[string]map[string]string
 }
 

@@ -157,8 +157,8 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 			"job_id":       j.ID(),
 			"item_id":      nextItem.Issue,
 			"project_id":   cq.ProjectID,
-			"time_waiting": time.Now().Sub(nextItem.EnqueueTime).Seconds(),
-			"time_elapsed": time.Now().Sub(nextItem.ProcessingStartTime).Seconds(),
+			"time_waiting": time.Since(nextItem.EnqueueTime).Seconds(),
+			"time_elapsed": time.Since(nextItem.ProcessingStartTime).Seconds(),
 			"queue_length": len(cq.Queue),
 			"message":      "started testing commit queue item",
 		})
@@ -314,8 +314,6 @@ func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQ
 			"message":               "patch done and dequeued",
 		})
 	}
-
-	return
 }
 
 func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueue.CommitQueue, nextItem commitqueue.CommitQueueItem, projectRef *model.ProjectRef, githubToken string) {

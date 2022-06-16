@@ -703,11 +703,12 @@ func (as *APIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 	}
 
 	grip.Error(message.WrapError(err, message.Fields{
-		"method":  r.Method,
-		"url":     r.URL.String(),
-		"code":    code,
-		"len":     r.ContentLength,
-		"request": gimlet.GetRequestID(r.Context()),
+		"method":     r.Method,
+		"url":        r.URL.String(),
+		"code":       code,
+		"len":        r.ContentLength,
+		"spawn_host": r.Host,
+		"request":    gimlet.GetRequestID(r.Context()),
 	}))
 
 	var resp gimlet.Responder
@@ -724,6 +725,15 @@ func (as *APIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 	}
 
 	gimlet.WriteResponse(w, resp)
+}
+
+func (as *APIServer) Cedar(w http.ResponseWriter, r *http.Request) {
+	gimlet.WriteJSON(w, &apimodels.CedarConfig{
+		BaseURL:  as.Settings.Cedar.BaseURL,
+		RPCPort:  as.Settings.Cedar.RPCPort,
+		Username: as.Settings.Cedar.User,
+		APIKey:   as.Settings.Cedar.APIKey,
+	})
 }
 
 // GetSettings returns the global evergreen settings.

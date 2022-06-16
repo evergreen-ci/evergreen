@@ -26,17 +26,14 @@ type TaskCache struct {
 // 	e.g. one build might be "Ubuntu with Python 2.4" and
 //  another might be "OSX with Python 3.0", etc.
 type Build struct {
-	Id           string    `bson:"_id" json:"_id"`
-	CreateTime   time.Time `bson:"create_time" json:"create_time,omitempty"`
-	StartTime    time.Time `bson:"start_time" json:"start_time,omitempty"`
-	FinishTime   time.Time `bson:"finish_time" json:"finish_time,omitempty"`
-	Version      string    `bson:"version" json:"version,omitempty"`
-	Project      string    `bson:"branch" json:"branch,omitempty"`
-	Revision     string    `bson:"gitspec" json:"gitspec,omitempty"`
-	BuildVariant string    `bson:"build_variant" json:"build_variant,omitempty"`
-	// TODO (EVG-16009): remove BuildNumber, since it is an unused and
-	// deprecated field.
-	BuildNumber         string        `bson:"build_number" json:"build_number,omitempty"`
+	Id                  string        `bson:"_id" json:"_id"`
+	CreateTime          time.Time     `bson:"create_time" json:"create_time,omitempty"`
+	StartTime           time.Time     `bson:"start_time" json:"start_time,omitempty"`
+	FinishTime          time.Time     `bson:"finish_time" json:"finish_time,omitempty"`
+	Version             string        `bson:"version" json:"version,omitempty"`
+	Project             string        `bson:"branch" json:"branch,omitempty"`
+	Revision            string        `bson:"gitspec" json:"gitspec,omitempty"`
+	BuildVariant        string        `bson:"build_variant" json:"build_variant,omitempty"`
 	Status              string        `bson:"status" json:"status,omitempty"`
 	Activated           bool          `bson:"activated" json:"activated,omitempty"`
 	ActivatedBy         string        `bson:"activated_by" json:"activated_by,omitempty"`
@@ -72,6 +69,10 @@ type Build struct {
 	TriggerID    string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`
 	TriggerType  string `bson:"trigger_type,omitempty" json:"trigger_type,omitempty"`
 	TriggerEvent string `bson:"trigger_event,omitempty" json:"trigger_event,omitempty"`
+
+	// Set to true if all tasks in the build are blocked.
+	// Should not be exposed, only for internal use.
+	AllTasksBlocked bool `bson:"all_tasks_blocked"`
 }
 
 func (b *Build) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(b) }
@@ -115,8 +116,6 @@ func (b *Build) AllUnblockedTasksFinished(tasks []task.Task) (bool, string, erro
 
 	return allFinished, status, nil
 }
-
-// Find
 
 // FindBuildOnBaseCommit returns the build that a patch build is based on.
 func (b *Build) FindBuildOnBaseCommit() (*Build, error) {
@@ -176,6 +175,7 @@ func (b *Build) UpdateStatus(status string) error {
 	)
 }
 
+// SetAborted sets the build aborted field to the given boolean.
 func (b *Build) SetAborted(aborted bool) error {
 	if b.Aborted == aborted {
 		return nil
@@ -184,6 +184,18 @@ func (b *Build) SetAborted(aborted bool) error {
 	return UpdateOne(
 		bson.M{IdKey: b.Id},
 		bson.M{"$set": bson.M{AbortedKey: aborted}},
+	)
+}
+
+// SetAllTasksBlocked sets the build AllTasksBlocked field to the given boolean.
+func (b *Build) SetAllTasksBlocked(blocked bool) error {
+	if b.AllTasksBlocked == blocked {
+		return nil
+	}
+	b.AllTasksBlocked = blocked
+	return UpdateOne(
+		bson.M{IdKey: b.Id},
+		bson.M{"$set": bson.M{AllTasksBlockedKey: blocked}},
 	)
 }
 

@@ -8,16 +8,14 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestSpawnhostStartJob(t *testing.T) {
-	config := testutil.TestConfig()
-	assert.NoError(t, evergreen.UpdateConfig(config))
-	assert.NoError(t, db.ClearCollections(host.Collection))
+	assert.NoError(t, db.ClearCollections(host.Collection, event.AllLogCollection))
 	mock := cloud.GetMockProvider()
 	t.Run("NewSpawnhostStartJobHostNotStopped", func(t *testing.T) {
 		h := host.Host{
@@ -37,6 +35,8 @@ func TestSpawnhostStartJob(t *testing.T) {
 
 		j.Run(context.Background())
 		assert.Error(t, j.Error())
+
+		checkSpawnHostModificationEvent(t, h.Id, event.EventHostStarted, false)
 	})
 	t.Run("NewSpawnhostStartJobOK", func(t *testing.T) {
 		h := host.Host{
@@ -61,5 +61,7 @@ func TestSpawnhostStartJob(t *testing.T) {
 		startedHost, err := host.FindOneId(h.Id)
 		assert.NoError(t, err)
 		assert.Equal(t, evergreen.HostRunning, startedHost.Status)
+
+		checkSpawnHostModificationEvent(t, h.Id, event.EventHostStarted, true)
 	})
 }

@@ -16,7 +16,8 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     $scope.restartLavender = true;
     $scope.ValidThemes = ["announcement", "information", "warning", "important"];
     $scope.validAuthKinds = ["ldap", "okta", "naive", "only_api", "allow_service_users", "github"];
-    $scope.validECSPlatforms = ["linux", "windows"];
+    $scope.validECSOSes = ["linux", "windows"];
+    $scope.validECSArches = ["amd64", "arm64"];
     $("#restart-modal").on("hidden.bs.modal", $scope.enableSubmit);
   }
 
@@ -418,7 +419,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     }
 
     if (!$scope.validECSCluster($scope.new_ecs_cluster)) {
-      $scope.invalidECSCluster = "ECS cluster name and platform are required.";
+      $scope.invalidECSCluster = "ECS cluster name and OS are required.";
       return
     }
 
@@ -428,11 +429,67 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
   }
 
   $scope.validECSCluster = function (item) {
-    return item && item.name && item.platform;
+    return item && item.name && item.os;
   }
 
   $scope.deleteECSCluster = function (index) {
     $scope.Settings.providers.aws.pod.ecs.clusters.splice(index, 1);
+  }
+
+  $scope.addECSCapacityProvider = function () {
+    if ($scope.Settings.providers == null) {
+      $scope.Settings.providers = {
+        "aws": {
+          "pod": {
+            "ecs": {
+              "capacity_providers": []
+            }
+          }
+        }
+      };
+    }
+    if ($scope.Settings.providers.aws == null) {
+      $scope.Settings.providers.aws = {
+        "pod": {
+          "ecs": {
+            "capacity_providers": []
+          }
+        }
+      };
+    }
+    if ($scope.Settings.providers.aws.pod == null) {
+      $scope.Settings.providers.aws.pod = {
+        "ecs": {
+          "capacity_providers": []
+        }
+      };
+    }
+    if ($scope.Settings.providers.aws.pod.ecs == null) {
+      $scope.Settings.providers.aws.pod.ecs = {
+        "capacity_providers": []
+      };
+    }
+
+    if ($scope.Settings.providers.aws.pod.ecs.capacity_providers == null) {
+      $scope.Settings.providers.aws.pod.ecs.capacity_providers = [];
+    }
+
+    if (!$scope.validECSCapacityProvider($scope.new_ecs_capacity_provider)) {
+      $scope.invalidECSCapacityProvider = "ECS capacity provider name, os, and arch are required.";
+      return
+    }
+
+    $scope.Settings.providers.aws.pod.ecs.capacity_providers.push($scope.new_ecs_capacity_provider);
+    $scope.new_ecs_capacity_provider = {};
+    $scope.invalidECSCapacityProvider = "";
+  }
+
+  $scope.validECSCapacityProvider = function (item) {
+    return item && item.name && item.os && item.arch;
+  }
+
+  $scope.deleteECSCapacityProvider = function (index) {
+    $scope.Settings.providers.aws.pod.ecs.capacity_providers.splice(index, 1);
   }
 
   $scope.addAmboyNamedQueue = function () {
@@ -737,6 +794,17 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     }
     delete $scope.jiraMapping.newProject;
   }
+  $scope.addDisabledGQLQuery = function () {
+    var value = $scope.queryMapping.newQuery
+    if (!value) {
+      return;
+    }
+    $scope.Settings.disabled_gql_queries = [...($scope.Settings.disabled_gql_queries || []), value]
+    delete $scope.queryMapping.newQuery;
+  }
+  $scope.removeDisabledGQLQuery = function (queryName) {
+    $scope.Settings.disabled_gql_queries = ($scope.Settings.disabled_gql_queries || []).filter(v => v !== queryName)
+  }
   $scope.addJIRAFieldToProject = function (project) {
     var field = $scope.jiraMapping.newField[project];
 
@@ -779,6 +847,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
   }
 
   $scope.jiraMapping = {};
+  $scope.queryMapping = {}
 
   $scope.load();
 }]);

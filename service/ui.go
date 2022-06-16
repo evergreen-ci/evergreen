@@ -87,13 +87,16 @@ func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo T
 		Functions:    MakeTemplateFuncs(fo),
 	}
 
+	cookieStore := sessions.NewCookieStore([]byte(settings.Ui.Secret))
+	cookieStore.Options.HttpOnly = true
+
 	uis := &UIServer{
 		Settings:     *settings,
 		env:          env,
 		queue:        queue,
 		Home:         home,
 		clientConfig: evergreen.GetEnvironment().ClientConfig(),
-		CookieStore:  sessions.NewCookieStore([]byte(settings.Ui.Secret)),
+		CookieStore:  cookieStore,
 		render:       gimlet.NewHTMLRenderer(ropts),
 		renderText:   gimlet.NewTextRenderer(ropts),
 		jiraHandler:  thirdparty.NewJiraHandler(*settings.Jira.Export()),

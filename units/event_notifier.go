@@ -172,7 +172,7 @@ func (j *eventNotifierJob) processEventTriggers(e *event.EventLogEntry) (n []not
 		"event_id":      e.ID,
 		"event_type":    e.ResourceType,
 		"notifications": len(n),
-		"duration_secs": time.Now().Sub(startDebug).Seconds(),
+		"duration_secs": time.Since(startDebug).Seconds(),
 		"stat":          "notifications-from-event",
 	})
 
@@ -193,7 +193,7 @@ func (j *eventNotifierJob) processEventTriggers(e *event.EventLogEntry) (n []not
 		"message":       "project triggers evaluated",
 		"event_id":      e.ID,
 		"event_type":    e.ResourceType,
-		"duration_secs": time.Now().Sub(startDebug).Seconds(),
+		"duration_secs": time.Since(startDebug).Seconds(),
 		"stat":          "eval-project-triggers",
 	})
 	versions := []string{}

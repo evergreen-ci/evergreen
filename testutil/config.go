@@ -282,8 +282,15 @@ func MockConfig() *evergreen.Settings {
 						},
 						Clusters: []evergreen.ECSClusterConfig{
 							{
-								Name:     "cluster_name",
-								Platform: evergreen.ECSClusterPlatformLinux,
+								Name: "cluster_name",
+								OS:   evergreen.ECSOSLinux,
+							},
+						},
+						CapacityProviders: []evergreen.ECSCapacityProvider{
+							{
+								Name: "capacity_provider_name",
+								OS:   evergreen.ECSOSLinux,
+								Arch: evergreen.ECSArchAMD64,
 							},
 						},
 					},
@@ -345,6 +352,7 @@ func MockConfig() *evergreen.Settings {
 			GithubStatusAPIDisabled:         true,
 			BackgroundReauthDisabled:        true,
 			PodAllocatorDisabled:            true,
+			UnrecognizedPodCleanupDisabled:  true,
 			CloudCleanupDisabled:            true,
 			ContainerConfigurationsDisabled: true,
 		},

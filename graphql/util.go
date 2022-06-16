@@ -22,6 +22,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -51,7 +52,7 @@ func getGroupedFiles(ctx context.Context, name string, taskID string, execution 
 		apiFile := restModel.APIFile{}
 		err := apiFile.BuildFromService(file)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error stripping hidden files"))
+			return nil, InternalServerError.Send(ctx, "error stripping hidden files")
 		}
 		apiFileList = append(apiFileList, &apiFile)
 	}
@@ -426,46 +427,31 @@ func mapHTTPStatusToGqlError(ctx context.Context, httpStatus int, err error) *gq
 	}
 }
 
-func isTaskBlocked(ctx context.Context, at *restModel.APITask) (*bool, error) {
-	t, err := task.FindOneIdNewOrOld(*at.Id)
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, err.Error())
+func canRestartTask(t *task.Task) bool {
+	// Cannot restart execution tasks.
+	if t.IsPartOfDisplay() {
+		return false
 	}
-	if t == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task %s not found", *at.Id))
+	// It is possible to restart blocked display tasks. Later tasks in a display task could be blocked on
+	// earlier tasks in the display task, in which case restarting the entire display task may unblock them.
+	if t.DisplayStatus == evergreen.TaskStatusBlocked && t.DisplayOnly {
+		return true
 	}
-	isBlocked := t.Blocked()
-	return &isBlocked, nil
+	if !utility.StringSliceContains(evergreen.TaskUncompletedStatuses, t.Status) {
+		return true
+	}
+	return t.Aborted
 }
 
-func isExecutionTask(ctx context.Context, at *restModel.APITask) (*bool, error) {
-	i, err := at.ToService()
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while converting task %s to service", *at.Id))
+func canScheduleTask(t *task.Task) bool {
+	// Cannot schedule execution tasks or aborted tasks.
+	if t.IsPartOfDisplay() || t.Aborted {
+		return false
 	}
-	t, ok := i.(*task.Task)
-	if !ok {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *at.Id))
+	if t.DisplayStatus != evergreen.TaskUnscheduled {
+		return false
 	}
-	isExecutionTask := t.IsPartOfDisplay()
-
-	return &isExecutionTask, nil
-}
-
-func canRestartTask(ctx context.Context, at *restModel.APITask) (*bool, error) {
-	taskBlocked, err := isTaskBlocked(ctx, at)
-	if err != nil {
-		return nil, err
-	}
-	canRestart := !utility.StringSliceContains(evergreen.TaskUncompletedStatuses, *at.Status) || at.Aborted || (at.DisplayOnly && *taskBlocked)
-	isExecTask, err := isExecutionTask(ctx, at) // Cant restart execution tasks.
-	if err != nil {
-		return nil, err
-	}
-	if *isExecTask {
-		canRestart = false
-	}
-	return &canRestart, nil
+	return true
 }
 
 func getAllTaskStatuses(tasks []task.Task) []string {
@@ -548,7 +534,7 @@ func savePublicKey(ctx context.Context, publicKeyInput PublicKeyInput) error {
 
 func verifyPublicKey(ctx context.Context, publicKey PublicKeyInput) error {
 	if publicKey.Name == "" {
-		return InputValidationError.Send(ctx, fmt.Sprintf("Provided public key name cannot be empty."))
+		return InputValidationError.Send(ctx, "Provided public key name cannot be empty.")
 	}
 	_, _, _, _, err := ssh.ParseAuthorizedKey([]byte(publicKey.Key))
 	if err != nil {
@@ -629,7 +615,7 @@ func mustHaveUser(ctx context.Context) *user.DBUser {
 }
 
 func validateVolumeExpirationInput(ctx context.Context, expirationTime *time.Time, noExpiration *bool) error {
-	if expirationTime != nil && noExpiration != nil && *noExpiration == true {
+	if expirationTime != nil && noExpiration != nil && *noExpiration {
 		return InputValidationError.Send(ctx, "Cannot apply an expiration time AND set volume as non-expirable")
 	}
 	return nil
@@ -847,4 +833,42 @@ func getValidTaskStatusesFilter(statuses []string) []string {
 	}
 	filteredStatuses = utility.StringSliceIntersection(evergreen.TaskStatuses, statuses)
 	return filteredStatuses
+}
+
+func getCollectiveStatusArray(v restModel.APIVersion) ([]string, error) {
+	status, err := evergreen.VersionStatusToPatchStatus(*v.Status)
+	if err != nil {
+		return nil, errors.Wrap(err, "converting a version status")
+	}
+	isAborted := utility.FromBoolPtr(v.Aborted)
+	allStatuses := []string{}
+	if isAborted {
+		allStatuses = append(allStatuses, evergreen.PatchAborted)
+
+	} else {
+		allStatuses = append(allStatuses, status)
+	}
+	if evergreen.IsPatchRequester(*v.Requester) {
+		p, err := data.FindPatchById(*v.Id)
+		if err != nil {
+			return nil, errors.Wrapf(err, "fetching patch '%s'", *v.Id)
+		}
+		if len(p.ChildPatches) > 0 {
+			for _, cp := range p.ChildPatches {
+				cpVersion, err := model.VersionFindOneId(*cp.Version)
+				if err != nil {
+					return nil, errors.Wrapf(err, "fetching version for patch '%s'", *v.Id)
+				}
+				if cpVersion == nil {
+					continue
+				}
+				if cpVersion.Aborted {
+					allStatuses = append(allStatuses, evergreen.PatchAborted)
+				} else {
+					allStatuses = append(allStatuses, *cp.Status)
+				}
+			}
+		}
+	}
+	return allStatuses, nil
 }

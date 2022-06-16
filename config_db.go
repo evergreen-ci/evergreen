@@ -50,6 +50,7 @@ var (
 	pprofPortKey          = bsonutil.MustHaveTag(Settings{}, "PprofPort")
 	githubPRCreatorOrgKey = bsonutil.MustHaveTag(Settings{}, "GithubPRCreatorOrg")
 	githubOrgsKey         = bsonutil.MustHaveTag(Settings{}, "GithubOrgs")
+	disabledGQLQueriesKey = bsonutil.MustHaveTag(Settings{}, "DisabledGQLQueries")
 	containerPoolsKey     = bsonutil.MustHaveTag(Settings{}, "ContainerPools")
 	commitQueueKey        = bsonutil.MustHaveTag(Settings{}, "CommitQueue")
 	ldapRoleMapKey        = bsonutil.MustHaveTag(Settings{}, "LDAPRoleMap")
@@ -92,6 +93,7 @@ var (
 	backgroundCleanupDisabledKey       = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundCleanupDisabled")
 	cloudCleanupDisabledKey            = bsonutil.MustHaveTag(ServiceFlags{}, "CloudCleanupDisabled")
 	containerConfigurationsDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "ContainerConfigurationsDisabled")
+	unrecognizedPodCleanupDisabledKey  = bsonutil.MustHaveTag(ServiceFlags{}, "UnrecognizedPodCleanupDisabled")
 
 	// ContainerPoolsConfig keys
 	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")

@@ -202,6 +202,14 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 			}
 			for _, h := range hosts {
 				event.LogHostStatusChanged(h.Id, h.Status, evergreen.HostDecommissioned, u.Username(), "distro page")
+				grip.Info(message.Fields{
+					"message":    "host decommissioned",
+					"operation":  "distro update",
+					"host_id":    h.Id,
+					"host_tag":   h.Tag,
+					"distro":     h.Distro.Id,
+					"old_status": h.Status,
+				})
 			}
 		} else if shouldReprovisionToNew {
 			catcher := grip.NewBasicCatcher()
@@ -384,7 +392,7 @@ func (uis *UIServer) addDistro(w http.ResponseWriter, r *http.Request) {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error adding distro",
 		}))
-		errMsg := fmt.Sprintf("error adding distro")
+		errMsg := "error adding distro"
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(errMsg))
 		gimlet.WriteJSONInternalError(w, err)
 		return

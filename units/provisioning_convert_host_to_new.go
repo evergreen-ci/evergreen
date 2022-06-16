@@ -62,7 +62,7 @@ func NewConvertHostToNewProvisioningJob(env evergreen.Environment, h host.Host, 
 	j.SetEnqueueAllScopes(true)
 	j.UpdateRetryInfo(amboy.JobRetryOptions{
 		Retryable:   utility.TruePtr(),
-		MaxAttempts: utility.ToIntPtr(15),
+		MaxAttempts: utility.ToIntPtr(maxProvisioningConversionAttempts),
 		WaitUntil:   utility.ToTimeDurationPtr(time.Minute),
 	})
 	j.SetID(fmt.Sprintf("%s.%s.%s", convertHostToNewProvisioningJobName, j.HostID, id))
@@ -90,6 +90,13 @@ func (j *convertHostToNewProvisioningJob) Run(ctx context.Context) {
 			}
 
 			event.LogHostConvertingProvisioningError(j.host.Id, j.Error())
+			grip.Info(message.WrapError(j.Error(), message.Fields{
+				"message":  "failed to convert host to new provisioning",
+				"host_id":  j.host.Id,
+				"host_tag": j.host.Tag,
+				"distro":   j.host.Distro.Id,
+				"provider": j.host.Provider,
+			}))
 		}
 	}()
 

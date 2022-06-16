@@ -249,7 +249,7 @@ func (iter *taskHistoryIterator) findAllVersions(v *Version, numRevisions int, b
 	return versions, exhausted, err
 }
 
-// Returns tasks grouped by their versions, and sorted with the most
+// GetChunk Returns tasks grouped by their versions, and sorted with the most
 // recent first (i.e. descending commit order number).
 func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, include bool) (TaskHistoryChunk, error) {
 	chunk := TaskHistoryChunk{
@@ -257,12 +257,6 @@ func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, i
 		Versions:    []Version{},
 		FailedTests: map[string][]task.TestResult{},
 	}
-
-	session, database, err := db.GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		return chunk, errors.Wrap(err, "getting database session")
-	}
-	defer session.Close()
 
 	versionsBefore, exhausted, err := iter.findAllVersions(v, numBefore, true, include)
 	if err != nil {
@@ -336,13 +330,12 @@ func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, i
 		{"$group": groupStage},
 		{"$sort": bson.M{task.RevisionOrderNumberKey: -1}},
 	}
-	agg := database.C(task.Collection).Pipe(pipeline).MaxTime(taskHistoryMaxTime)
 	var aggregatedTasks []bson.M
-	if err = agg.All(&aggregatedTasks); err != nil {
+	var agg adb.Aggregation
+	if agg, err = db.AggregateWithMaxTime(task.Collection, pipeline, &aggregatedTasks, taskHistoryMaxTime); err != nil {
 		return chunk, errors.WithStack(err)
 	}
 	chunk.Tasks = aggregatedTasks
-
 	failedTests, err := iter.GetFailedTests(agg)
 	if err != nil {
 		return chunk, errors.WithStack(err)

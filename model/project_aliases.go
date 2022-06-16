@@ -231,9 +231,7 @@ func getFullProjectConfigAliases(projectConfig *ProjectConfig) []ProjectAlias {
 			gitHubCheckAlias.Alias = evergreen.GithubChecksAlias
 			projectConfigAliases = append(projectConfigAliases, gitHubCheckAlias)
 		}
-		for _, patchAlias := range projectConfig.PatchAliases {
-			projectConfigAliases = append(projectConfigAliases, patchAlias)
-		}
+		projectConfigAliases = append(projectConfigAliases, projectConfig.PatchAliases...)
 	}
 	return projectConfigAliases
 }

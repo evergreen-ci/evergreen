@@ -654,14 +654,22 @@ func (s *GitGetProjectSuite) TestGetApplyCommand() {
 	}
 
 	// regular patch
+	tc := &internal.TaskConfig{
+		Task: &task.Task{},
+	}
 	patchPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test.patch")
-	applyCommand, err := c.getApplyCommand(patchPath)
+	applyCommand, err := c.getApplyCommand(patchPath, tc)
 	s.NoError(err)
 	s.Equal(fmt.Sprintf("git apply --binary --index < '%s'", patchPath), applyCommand)
 
 	// mbox patch
+	tc = &internal.TaskConfig{
+		Task: &task.Task{
+			DisplayName: evergreen.MergeTaskName,
+		},
+	}
 	patchPath = filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test_mbox.patch")
-	applyCommand, err = c.getApplyCommand(patchPath)
+	applyCommand, err = c.getApplyCommand(patchPath, tc)
 	s.NoError(err)
 	s.Equal(fmt.Sprintf(`GIT_COMMITTER_NAME="%s" GIT_COMMITTER_EMAIL="%s" git am --keep-cr --keep < "%s"`, c.CommitterName, c.CommitterEmail, patchPath), applyCommand)
 }
@@ -953,7 +961,7 @@ index edc0c34..8e82862 100644
 		}
 	}
 
-	successMessage := "applied changes from previous commit queue patch '555555555555555555555555'"
+	successMessage := "Applied changes from previous commit queue patch '555555555555555555555555'"
 	foundSuccessMessage := false
 	for msg, ok := sender.GetMessageSafe(); ok; msg, ok = sender.GetMessageSafe() {
 		if strings.Contains(msg.Message.String(), successMessage) {

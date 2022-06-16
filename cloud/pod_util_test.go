@@ -374,8 +374,15 @@ func TestExportECSPodCreationOptions(t *testing.T) {
 							},
 							Clusters: []evergreen.ECSClusterConfig{
 								{
-									Platform: "linux",
-									Name:     "cluster",
+									OS:   evergreen.ECSOSLinux,
+									Name: "cluster",
+								},
+							},
+							CapacityProviders: []evergreen.ECSCapacityProvider{
+								{
+									Name: "capacity_provider",
+									OS:   evergreen.ECSOSLinux,
+									Arch: evergreen.ECSArchAMD64,
 								},
 							},
 						},
@@ -405,8 +412,7 @@ func TestExportECSPodCreationOptions(t *testing.T) {
 		assert.Equal(t, settings.Providers.AWS.Pod.ECS.AWSVPC.Subnets, opts.ExecutionOpts.AWSVPCOpts.Subnets)
 		assert.Equal(t, settings.Providers.AWS.Pod.ECS.AWSVPC.SecurityGroups, opts.ExecutionOpts.AWSVPCOpts.SecurityGroups)
 		require.NotZero(t, opts.ExecutionOpts.PlacementOpts)
-		require.Len(t, opts.ExecutionOpts.PlacementOpts.InstanceFilters, 1)
-		assert.Equal(t, "attribute:ecs.cpu-architecture == x86_64", opts.ExecutionOpts.PlacementOpts.InstanceFilters[0])
+		assert.Equal(t, settings.Providers.AWS.Pod.ECS.CapacityProviders[0].Name, utility.FromStringPtr(opts.ExecutionOpts.CapacityProvider))
 
 		assert.True(t, strings.HasPrefix(utility.FromStringPtr(opts.Name), settings.Providers.AWS.Pod.ECS.TaskDefinitionPrefix))
 		assert.Contains(t, utility.FromStringPtr(opts.Name), p.ID)
@@ -487,9 +493,16 @@ func TestExportECSPodCreationOptions(t *testing.T) {
 		require.NotZero(t, err)
 		assert.Zero(t, opts)
 	})
-	t.Run("FailsWithNoClusters", func(t *testing.T) {
+	t.Run("FailsWithNoMatchingCluster", func(t *testing.T) {
 		settings := validSettings()
-		settings.Providers.AWS.Pod.ECS.Clusters = nil
+		settings.Providers.AWS.Pod.ECS.Clusters[0].OS = evergreen.ECSOSWindows
+		opts, err := ExportECSPodCreationOptions(settings, &pod.Pod{})
+		assert.Error(t, err)
+		assert.Zero(t, opts)
+	})
+	t.Run("FailsWithNoMatchingCapacityProvider", func(t *testing.T) {
+		settings := validSettings()
+		settings.Providers.AWS.Pod.ECS.CapacityProviders[0].Arch = evergreen.ECSArchARM64
 		opts, err := ExportECSPodCreationOptions(settings, &pod.Pod{})
 		assert.Error(t, err)
 		assert.Zero(t, opts)

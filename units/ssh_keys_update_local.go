@@ -50,7 +50,6 @@ func (j *localUpdateSSHKeysJob) Run(ctx context.Context) {
 	for _, pair := range settings.SSHKeyPairs {
 		j.AddError(errors.Wrap(writeFileWithPerm(pair.PrivatePath(settings), []byte(pair.Private), 0600), "could not make private key file"))
 	}
-	return
 }
 
 // writeFileWithPerm writes the contents to the file path if it does not exist

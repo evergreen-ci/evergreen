@@ -1,7 +1,6 @@
 package model
 
 import (
-	"log"
 	"net/url"
 	"path"
 	"time"
@@ -40,7 +39,7 @@ type APIIssueLink struct {
 	URL             *string    `bson:"url" json:"url"`
 	IssueKey        *string    `bson:"issue_key,omitempty" json:"issue_key,omitempty"`
 	Source          *APISource `bson:"source,omitempty" json:"source,omitempty"`
-	ConfidenceScore *float32   `bson:"confidence_score,omitempty" json:"confidence_score,omitempty"`
+	ConfidenceScore *float64   `bson:"confidence_score,omitempty" json:"confidence_score,omitempty"`
 }
 
 // APISourceBuildFromService takes the annotations.Source DB struct and
@@ -80,7 +79,7 @@ func APIIssueLinkBuildFromService(t annotations.IssueLink) *APIIssueLink {
 	m.URL = StringStringPtr(t.URL)
 	m.IssueKey = StringStringPtr(t.IssueKey)
 	m.Source = APISourceBuildFromService(t.Source)
-	m.ConfidenceScore = utility.ToFloat32Ptr(t.ConfidenceScore)
+	m.ConfidenceScore = utility.ToFloat64Ptr(t.ConfidenceScore)
 	return &m
 }
 
@@ -91,7 +90,7 @@ func APIIssueLinkToService(m APIIssueLink) *annotations.IssueLink {
 	out.URL = StringPtrString(m.URL)
 	out.IssueKey = StringPtrString(m.IssueKey)
 	out.Source = APISourceToService(m.Source)
-	out.ConfidenceScore = utility.FromFloat32Ptr(m.ConfidenceScore)
+	out.ConfidenceScore = utility.FromFloat64Ptr(m.ConfidenceScore)
 	return out
 }
 
@@ -171,25 +170,21 @@ func ArrAPIIssueLinkArrtaskannotationsIssueLink(t []APIIssueLink) []annotations.
 	return m
 }
 
-func GetJiraTicketFromURL(URL string) (*thirdparty.JiraTicket, error) {
+func GetJiraTicketFromURL(jiraURL string) (*thirdparty.JiraTicket, error) {
 	settings := evergreen.GetEnvironment().Settings()
 	jiraHandler := thirdparty.NewJiraHandler(*settings.Jira.Export())
 
-	urlObject, err := url.Parse(URL)
+	parsedURL, err := url.Parse(jiraURL)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem parsing the issue url")
+		return nil, errors.Wrap(err, "parsing Jira issue URL")
 	}
 
-	if urlObject != nil && urlObject.Host == "jira.mongodb.org" {
-		myUrl, err := url.Parse(URL)
-		if err != nil {
-			log.Fatal(err)
-		}
-		jiraKey := path.Base(myUrl.Path)
+	if parsedURL.Host == "jira.mongodb.org" {
+		jiraKey := path.Base(parsedURL.Path)
 
 		jiraTicket, err := jiraHandler.GetJIRATicket(jiraKey)
 		if err != nil {
-			return nil, errors.Wrap(err, "error getting Jira ticket")
+			return nil, errors.Wrapf(err, "getting Jira ticket for key '%s'", jiraKey)
 		}
 		return jiraTicket, nil
 	}
@@ -201,7 +196,7 @@ func ValidateIssues(issues []APIIssueLink) error {
 	catcher := grip.NewBasicCatcher()
 	for _, issue := range issues {
 		catcher.Add(util.CheckURL(utility.FromStringPtr(issue.URL)))
-		score := utility.FromFloat32Ptr(issue.ConfidenceScore)
+		score := utility.FromFloat64Ptr(issue.ConfidenceScore)
 		if score < 0 || score > 100 {
 			catcher.Errorf("confidence score '%f' must be between 0 and 100", score)
 		}

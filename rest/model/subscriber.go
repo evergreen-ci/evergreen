@@ -50,7 +50,6 @@ type APIWebhookHeader struct {
 
 func (s *APISubscriber) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
-
 	case event.Subscriber:
 		s.Type = utility.ToStringPtr(v.Type)
 		var target interface{}
@@ -92,13 +91,13 @@ func (s *APISubscriber) BuildFromService(h interface{}) error {
 			target = v.Target
 
 		default:
-			return errors.Errorf("unknown subscriber type: '%s'", v.Type)
+			return errors.Errorf("unknown subscriber type '%s'", v.Type)
 		}
 
 		s.Target = target
 
 	default:
-		return errors.New("unknown type for APISubscriber")
+		return errors.Errorf("programmatic error: expected event subscriber but got type %T", h)
 	}
 
 	return nil
@@ -124,7 +123,7 @@ func (s *APISubscriber) ToService() (interface{}, error) {
 		if err != nil {
 			return nil, gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
-				Message:    errors.Wrap(err, "can't read subscriber target from API model").Error(),
+				Message:    errors.Wrap(err, "converting GitHub PR subscriber to service model").Error(),
 			}
 		}
 	case event.GithubCheckSubscriberType:
@@ -132,14 +131,14 @@ func (s *APISubscriber) ToService() (interface{}, error) {
 		if err = mapstructure.Decode(s.Target, &apiModel); err != nil {
 			return nil, gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
-				Message:    errors.Wrap(err, "Github check subscriber target is malformed").Error(),
+				Message:    errors.Wrap(err, "GitHub check subscriber target is malformed").Error(),
 			}
 		}
 		target, err = apiModel.ToService()
 		if err != nil {
 			return nil, gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
-				Message:    errors.Wrap(err, "can't read subscriber target from API model").Error(),
+				Message:    errors.Wrap(err, "converting GitHub check subscriber to service model").Error(),
 			}
 		}
 
@@ -155,7 +154,7 @@ func (s *APISubscriber) ToService() (interface{}, error) {
 		if err != nil {
 			return nil, gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
-				Message:    errors.Wrap(err, "can't read subscriber target from API model").Error(),
+				Message:    errors.Wrap(err, "converting webhook subscriber to service model").Error(),
 			}
 		}
 
@@ -164,14 +163,14 @@ func (s *APISubscriber) ToService() (interface{}, error) {
 		if err = mapstructure.Decode(s.Target, &apiModel); err != nil {
 			return nil, gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
-				Message:    errors.Wrap(err, "JIRA issue subscriber target is malformed").Error(),
+				Message:    errors.Wrap(err, "Jira issue subscriber target is malformed").Error(),
 			}
 		}
 		target, err = apiModel.ToService()
 		if err != nil {
 			return nil, gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
-				Message:    errors.Wrap(err, "can't read subscriber target from API model").Error(),
+				Message:    errors.Wrap(err, "converting Jira issue subscriber to service model").Error(),
 			}
 		}
 
@@ -182,7 +181,7 @@ func (s *APISubscriber) ToService() (interface{}, error) {
 	default:
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("unknown subscriber type: '%s'", utility.FromStringPtr(s.Type)),
+			Message:    fmt.Sprintf("unknown subscriber type '%s'", utility.FromStringPtr(s.Type)),
 		}
 	}
 
@@ -199,7 +198,7 @@ func (s *APIGithubPRSubscriber) BuildFromService(h interface{}) error {
 		s.PRNumber = v.PRNumber
 
 	default:
-		return errors.Errorf("type '%T' does not match subscriber type APIGithubPRSubscriber", v)
+		return errors.Errorf("programmatic error: expected GitHub PR subscriber but got type %T", h)
 	}
 
 	return nil
@@ -221,7 +220,7 @@ func (s *APIGithubCheckSubscriber) BuildFromService(h interface{}) error {
 		s.Ref = utility.ToStringPtr(v.Ref)
 
 	default:
-		return errors.Errorf("type '%T' does not match subscriber type APIGithubCheckSubscriber", v)
+		return errors.Errorf("programmatic error: expected GitHub check subscriber but got type %T", h)
 	}
 
 	return nil
@@ -272,7 +271,7 @@ func (s *APIWebhookSubscriber) BuildFromService(h interface{}) error {
 		}
 
 	default:
-		return errors.Errorf("type '%T' does not match subscriber type APIWebhookSubscriber", v)
+		return errors.Errorf("programmatic error: expected webhook subscriber but got type %T", v)
 	}
 
 	return nil
@@ -314,7 +313,7 @@ func (s *APIJIRAIssueSubscriber) BuildFromService(h interface{}) error {
 		s.IssueType = utility.ToStringPtr(v.IssueType)
 
 	default:
-		return errors.Errorf("type '%T' does not match subscriber type APIJIRAIssueSubscriber", v)
+		return errors.Errorf("programmatic error: expected Jira issue subscriber but got type %T", h)
 	}
 
 	return nil

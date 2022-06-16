@@ -141,6 +141,16 @@ clientsLoop:
 				j.AddError(errors.Wrapf(err, "error checking instance status of host %s", h.Id))
 				continue clientsLoop
 			}
+			if cloudStatus == cloud.StatusNonExistent {
+				// Terminate unknown host in the DB.
+				grip.Error(message.WrapError(h.Terminate(evergreen.User, "host does not exist"), message.Fields{
+					"message":       "can't mark instance as terminated",
+					"host_id":       h.Id,
+					"host_provider": h.Distro.Provider,
+					"distro":        h.Distro.Id,
+				}))
+				continue clientsLoop
+			}
 			j.AddError(errors.Wrapf(j.setCloudHostStatus(ctx, m, h, cloudStatus), "setting instance status for host '%s'", h.Id))
 		}
 	}
@@ -185,6 +195,15 @@ func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, m cloud.Mana
 		j.logHostStatusMessage(&h, cloudStatus)
 
 		event.LogHostTerminatedExternally(h.Id, h.Status)
+		grip.Info(message.Fields{
+			"message":   "host terminated externally",
+			"operation": "setCloudHostStatus",
+			"host_id":   h.Id,
+			"host_tag":  h.Tag,
+			"distro":    h.Distro.Id,
+			"provider":  h.Provider,
+			"status":    h.Status,
+		})
 
 		catcher := grip.NewBasicCatcher()
 		catcher.Wrap(handleTerminatedHostSpawnedByTask(&h), "handling task host that was terminating before it was running")
@@ -269,7 +288,6 @@ func (j *cloudHostReadyJob) setDNSName(ctx context.Context, cloudMgr cloud.Manag
 		return errors.Wrapf(err, "error checking DNS name for host %s", h.Id)
 	}
 
-	// sanity check for the host DNS name
 	if hostDNS == "" {
 		// DNS name not required if IP address set
 		if h.IP != "" {

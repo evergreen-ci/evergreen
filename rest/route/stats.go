@@ -69,31 +69,20 @@ type StatsHandler struct {
 func (sh *StatsHandler) ParseCommonFilter(vals url.Values) error {
 	var err error
 
-	// requesters
 	sh.filter.Requesters, err = sh.readRequesters(sh.readStringList(vals["requesters"]))
 	if err != nil {
-		return gimlet.ErrorResponse{
-			Message:    "Invalid requesters value",
-			StatusCode: http.StatusBadRequest,
-		}
+		return errors.Wrap(err, "invalid requesters")
 	}
 
-	// variants
 	sh.filter.BuildVariants = sh.readStringList(vals["variants"])
 
-	// distros
 	sh.filter.Distros = sh.readStringList(vals["distros"])
 
-	// group_num_days
 	sh.filter.GroupNumDays, err = sh.readInt(vals.Get("group_num_days"), 1, statsAPIMaxGroupNumDays, 1)
 	if err != nil {
-		return gimlet.ErrorResponse{
-			Message:    "Invalid group_num_days value",
-			StatusCode: http.StatusBadRequest,
-		}
+		return errors.Wrap(err, "invalid grouping by number of days")
 	}
 
-	// start_at
 	sh.filter.StartAt, err = sh.readStartAt(vals.Get("start_at"))
 	return err
 }
@@ -107,77 +96,73 @@ func (sh *StatsHandler) parseStatsFilter(vals url.Values) error {
 		return err
 	}
 
-	// group_by
 	sh.filter.GroupBy, err = sh.readGroupBy(vals.Get("group_by"))
 	if err != nil {
 		return err
 	}
 
-	// limit
 	sh.filter.Limit, err = sh.readInt(vals.Get("limit"), 1, statsAPIMaxLimit, statsAPIMaxLimit)
 	if err != nil {
 		return gimlet.ErrorResponse{
-			Message:    "Invalid limit value",
+			Message:    errors.Wrap(err, "invalid limit").Error(),
 			StatusCode: http.StatusBadRequest,
 		}
 	}
 	// Add 1 for pagination
 	sh.filter.Limit++
 
-	// tasks
 	sh.filter.Tasks = sh.readStringList(vals["tasks"])
 	if len(sh.filter.Tasks) > statsAPIMaxNumTasks {
 		return gimlet.ErrorResponse{
-			Message:    "Too many tasks values",
+			Message:    fmt.Sprintf("number of tasks given must not exceed %d", statsAPIMaxNumTasks),
 			StatusCode: http.StatusBadRequest,
 		}
 	}
 
-	// before_date
 	beforeDate := vals.Get("before_date")
 	if beforeDate == "" {
 		return gimlet.ErrorResponse{
-			Message:    "Missing before_date parameter",
+			Message:    "missing 'before' date",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
 	sh.filter.BeforeDate, err = time.ParseInLocation(statsAPIDateFormat, beforeDate, time.UTC)
 	if err != nil {
 		return gimlet.ErrorResponse{
-			Message:    "Invalid before_date value",
+			Message:    errors.Wrapf(err, "parsing 'before' date in expected format (%s)", statsAPIDateFormat).Error(),
 			StatusCode: http.StatusBadRequest,
 		}
 	}
 
-	// after_date
 	afterDate := vals.Get("after_date")
 	if afterDate == "" {
 		return gimlet.ErrorResponse{
-			Message:    "Missing after_date parameter",
+			Message:    "missing 'after' date",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
 	sh.filter.AfterDate, err = time.ParseInLocation(statsAPIDateFormat, afterDate, time.UTC)
 	if err != nil {
 		return gimlet.ErrorResponse{
-			Message:    "Invalid after_date value",
+			Message:    errors.Wrapf(err, "parsing 'after' date in expected format (%s)", statsAPIDateFormat).Error(),
 			StatusCode: http.StatusBadRequest,
 		}
 	}
 
-	// tests
 	sh.filter.Tests = sh.readStringList(vals["tests"])
 	if len(sh.filter.Tests) > statsAPIMaxNumTests {
 		return gimlet.ErrorResponse{
-			Message:    "Too many tests values",
+			Message:    fmt.Sprintf("number of tests given must not exceed %d", statsAPIMaxNumTests),
 			StatusCode: http.StatusBadRequest,
 		}
 	}
 
-	// sort
 	sh.filter.Sort, err = sh.readSort(vals.Get("sort"))
 	if err != nil {
-		return err
+		return gimlet.ErrorResponse{
+			Message:    errors.Wrap(err, "invalid sort").Error(),
+			StatusCode: http.StatusBadRequest,
+		}
 	}
 
 	return err
@@ -202,7 +187,7 @@ func (sh *StatsHandler) readRequesters(requesters []string) ([]string, error) {
 		case statsAPIRequesterAdhoc:
 			requesterValues = append(requesterValues, evergreen.AdHocRequester)
 		default:
-			return nil, errors.Errorf("Invalid requester value %v", requester)
+			return nil, errors.Errorf("invalid requester '%s'", requester)
 		}
 	}
 	return requesterValues, nil
@@ -229,7 +214,10 @@ func (sh *StatsHandler) readInt(intString string, min, max, defaultValue int) (i
 	}
 
 	if value < min || value > max {
-		return 0, errors.New("Invalid int parameter value")
+		return 0, gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("integer value %d must be between %d and %d", value, min, max),
+			StatusCode: http.StatusBadRequest,
+		}
 	}
 	return value, nil
 }
@@ -245,7 +233,7 @@ func (sh *StatsHandler) readSort(sortValue string) (stats.Sort, error) {
 		return stats.SortEarliestFirst, nil
 	default:
 		return stats.Sort(""), gimlet.ErrorResponse{
-			Message:    "Invalid sort value",
+			Message:    fmt.Sprintf("invalid sort '%s'", sortValue),
 			StatusCode: http.StatusBadRequest,
 		}
 	}
@@ -279,7 +267,7 @@ func (sh *StatsHandler) readGroupBy(groupByValue string) (stats.GroupBy, error) 
 
 	default:
 		return stats.GroupBy(""), gimlet.ErrorResponse{
-			Message:    "Invalid group_by value",
+			Message:    fmt.Sprintf("invalid grouping '%s'", groupByValue),
 			StatusCode: http.StatusBadRequest,
 		}
 	}
@@ -293,14 +281,14 @@ func (sh *StatsHandler) readStartAt(startAtValue string) (*stats.StartAt, error)
 	elements := strings.Split(startAtValue, "|")
 	if len(elements) != 5 {
 		return nil, gimlet.ErrorResponse{
-			Message:    "Invalid start_at value",
+			Message:    "invalid 'start' time",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
 	date, err := time.ParseInLocation(statsAPIDateFormat, elements[0], time.UTC)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
-			Message:    "Invalid start_at value",
+			Message:    errors.Wrapf(err, "parsing date in expected format (%s)", statsAPIDateFormat).Error(),
 			StatusCode: http.StatusBadRequest,
 		}
 	}
@@ -350,14 +338,11 @@ func (tsh *testStatsHandler) Parse(ctx context.Context, r *http.Request) error {
 	tsh.filter = stats.StatsFilter{Project: project}
 	err := tsh.StatsHandler.parseStatsFilter(vals)
 	if err != nil {
-		return errors.Wrap(err, "Invalid query parameters")
+		return errors.Wrap(err, "invalid query parameters")
 	}
 	err = tsh.filter.ValidateForTests()
 	if err != nil {
-		return gimlet.ErrorResponse{
-			Message:    err.Error(),
-			StatusCode: http.StatusBadRequest,
-		}
+		return errors.Wrap(err, "invalid filter")
 	}
 
 	return nil
@@ -442,7 +427,7 @@ func (tsh *testStatsHandler) parsePrestoStatsFilter(project string, vals url.Val
 func (tsh *testStatsHandler) Run(ctx context.Context) gimlet.Responder {
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Error retrieving service flags"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting service flags"))
 	}
 	if flags.CacheStatsEndpointDisabled {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
@@ -458,7 +443,7 @@ func (tsh *testStatsHandler) Run(ctx context.Context) gimlet.Responder {
 		testStatsResult, err = data.GetTestStats(tsh.filter)
 	}
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting test stats"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting filtered test stats"))
 	}
 
 	resp := gimlet.NewJSONResponse(nil)
@@ -520,14 +505,11 @@ func (tsh *taskStatsHandler) Parse(ctx context.Context, r *http.Request) error {
 
 	err := tsh.StatsHandler.parseStatsFilter(r.URL.Query())
 	if err != nil {
-		return errors.Wrap(err, "Invalid query parameters")
+		return errors.Wrap(err, "invalid query parameters")
 	}
 	err = tsh.filter.ValidateForTasks()
 	if err != nil {
-		return gimlet.ErrorResponse{
-			Message:    err.Error(),
-			StatusCode: http.StatusBadRequest,
-		}
+		return errors.Wrap(err, "invalid filter")
 	}
 	return nil
 }
@@ -535,7 +517,7 @@ func (tsh *taskStatsHandler) Parse(ctx context.Context, r *http.Request) error {
 func (tsh *taskStatsHandler) Run(ctx context.Context) gimlet.Responder {
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Error retrieving service flags"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting service flags"))
 	}
 	if flags.CacheStatsEndpointDisabled {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
@@ -548,12 +530,12 @@ func (tsh *taskStatsHandler) Run(ctx context.Context) gimlet.Responder {
 
 	taskStatsResult, err = data.GetTaskStats(tsh.filter)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Failed to retrieve the task stats"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting task stats"))
 	}
 	if len(taskStatsResult) == 0 {
 		statsStatus, err := stats.GetStatsStatus(tsh.filter.Project)
 		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Failed to retrieve stats status"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting stats status for project '%s'", tsh.filter.Project))
 		}
 		if statsStatus.ProcessedTasksUntil.Before(tsh.filter.AfterDate) {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
@@ -565,7 +547,7 @@ func (tsh *taskStatsHandler) Run(ctx context.Context) gimlet.Responder {
 
 	resp := gimlet.NewResponseBuilder()
 	if err = resp.SetFormat(gimlet.JSON); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(err)
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting"))
 	}
 
 	requestLimit := tsh.filter.Limit - 1
@@ -585,14 +567,14 @@ func (tsh *taskStatsHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err,
-				"Problem paginating response"))
+				"paginating response"))
 		}
 	}
 	taskStatsResult = taskStatsResult[:lastIndex]
 
-	for _, apiTaskStats := range taskStatsResult {
+	for i, apiTaskStats := range taskStatsResult {
 		if err = resp.AddData(apiTaskStats); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(err)
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding task stats at index %d", i))
 		}
 	}
 
@@ -646,7 +628,7 @@ func (m *cedarTestStatsMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Req
 			_, err = io.Copy(rw, resp.Body)
 			grip.Error(message.WrapError(err, message.Fields{
 				"route":      "/projects/{project_id}/test_stats",
-				"message":    "problem copying cedar test stats",
+				"message":    "problem copying Cedar test stats",
 				"project_id": gimlet.GetVars(r)["project_id"],
 			}))
 			return

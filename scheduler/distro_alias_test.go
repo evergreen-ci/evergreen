@@ -8,9 +8,14 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
 )
+
+func init() {
+	testutil.Setup()
+}
 
 func TestDistroAliases(t *testing.T) {
 	tasks := []task.Task{

@@ -11,6 +11,8 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -69,8 +71,6 @@ type spawnhostModifyJob struct {
 	ModifyOptions         host.HostModifyOptions `bson:"modify_options" json:"modify_options" yaml:"modify_options"`
 	CloudHostModification `bson:"cloud_host_modification" json:"cloud_host_modification" yaml:"cloud_host_modification"`
 	job.Base              `bson:"job_base" json:"job_base" yaml:"job_base"`
-
-	env evergreen.Environment
 }
 
 func makeSpawnhostModifyJob() *spawnhostModifyJob {
@@ -98,11 +98,25 @@ func (j *spawnhostModifyJob) Run(ctx context.Context) {
 
 	modifyCloudHost := func(mgr cloud.Manager, h *host.Host, user string) error {
 		if err := mgr.ModifyHost(ctx, h, j.ModifyOptions); err != nil {
-			event.LogHostModifyFinished(h.Id, false)
-			return errors.Wrapf(err, "modifying spawn host '%s'", h.Id)
+			event.LogHostModifyError(h.Id, err.Error())
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":  "error modifying spawn host",
+				"host_id":  h.Id,
+				"host_tag": h.Tag,
+				"distro":   h.Distro.Id,
+				"options":  j.ModifyOptions,
+			}))
+			return errors.Wrap(err, "modifying spawn host")
 		}
 
-		event.LogHostModifyFinished(h.Id, true)
+		event.LogHostModifySucceeded(h.Id)
+		grip.Info(message.Fields{
+			"message":  "modified spawn host",
+			"host_id":  h.Id,
+			"host_tag": h.Tag,
+			"distro":   h.Distro.Id,
+			"options":  j.ModifyOptions,
+		})
 		return nil
 	}
 	if err := j.CloudHostModification.modifyHost(ctx, modifyCloudHost); err != nil {

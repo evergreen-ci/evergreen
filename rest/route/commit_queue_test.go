@@ -54,7 +54,7 @@ func (s *CommitQueueSuite) TestParse() {
 	projectID := "proj"
 	p1 := patch.Patch{Id: patch.NewId(patchID), Project: projectID}
 	s.NoError(p1.Insert())
-	req, _ := http.NewRequest("PUT", fmt.Sprintf("http://example.com/api/rest/v2/commit_queue/%s?force=true", patchID), nil)
+	req, _ := http.NewRequest(http.MethodPut, fmt.Sprintf("http://example.com/api/rest/v2/commit_queue/%s?force=true", patchID), nil)
 	req = gimlet.SetURLVars(req, map[string]string{"patch_id": patchID})
 	s.NoError(route.Parse(ctx, req))
 	s.True(route.force)
@@ -120,7 +120,7 @@ func (s *CommitQueueSuite) TestDeleteItem() {
 	route.project = "not_here"
 	route.item = "2"
 	response = route.Run(ctx)
-	s.Equal(404, response.Status())
+	s.Equal(500, response.Status())
 }
 
 func (s *CommitQueueSuite) TestClearAll() {

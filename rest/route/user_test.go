@@ -174,7 +174,7 @@ func (s *userPermissionPostSuite) TestNoResourceType() {
 	request, err := http.NewRequest(http.MethodPost, "", bytes.NewBuffer([]byte(invalidBody)))
 	request = gimlet.SetURLVars(request, map[string]string{"user_id": s.u.Id})
 	s.NoError(err)
-	s.EqualError(s.h.Parse(context.Background(), request), "'' is not a valid resource_type")
+	s.EqualError(s.h.Parse(context.Background(), request), "invalid resource type ''")
 }
 
 func (s *userPermissionPostSuite) TestNoResource() {

@@ -46,3 +46,40 @@ func IsFieldUndefined(v reflect.Value) bool {
 		return false
 	}
 }
+
+// IsFieldPtr returns a boolean indicating whether the reflected value is a pointer.
+func IsFieldPtr(v reflect.Value) bool {
+	return v.Kind() == reflect.Ptr
+}
+
+// RecursivelySetUndefinedFields sets all fields that are not set in structToSet to the value of the corresponding field in structToDefaultFrom.
+func RecursivelySetUndefinedFields(structToSet, structToDefaultFrom reflect.Value) {
+	// If either struct is a pointer we need to dereference it to get the actual struct.
+	if structToSet.Kind() == reflect.Ptr {
+		structToSet = structToSet.Elem()
+	}
+	if structToDefaultFrom.Kind() == reflect.Ptr {
+		structToDefaultFrom = structToDefaultFrom.Elem()
+	}
+
+	// Iterate through each field of the struct.
+	for i := 0; i < structToSet.NumField(); i++ {
+		// If the field we are defaulting from is undefined we can skip it.
+		if IsFieldUndefined(structToDefaultFrom.Field(i)) {
+			continue
+		}
+		branchField := structToSet.Field(i)
+
+		// If the field isn't set, use the default field.
+		if IsFieldUndefined(branchField) {
+			reflectedField := structToDefaultFrom.Field(i)
+			branchField.Set(reflectedField)
+			// If the field is a struct and isn't undefined, then we check each subfield recursively.
+		} else if branchField.Kind() == reflect.Struct {
+			RecursivelySetUndefinedFields(branchField, structToDefaultFrom.Field(i))
+			// If the field is a pointer to a struct, we check each subfield recursively.
+		} else if IsFieldPtr(branchField) && branchField.Elem().Kind() == reflect.Struct {
+			RecursivelySetUndefinedFields(branchField.Elem(), structToDefaultFrom.Field(i).Elem())
+		}
+	}
+}

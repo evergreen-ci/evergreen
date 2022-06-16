@@ -41,10 +41,10 @@ func (h *recentTasksGetHandler) Parse(ctx context.Context, r *http.Request) erro
 		return err
 	}
 	if minutesInt > maxDurationStatusQueryMinutes {
-		return errors.Errorf("Cannot query for more than %d minutes", maxDurationStatusQueryMinutes)
+		return errors.Errorf("cannot query for more than %d minutes", maxDurationStatusQueryMinutes)
 	}
 	if minutesInt <= 0 {
-		return errors.Errorf("Minutes must be positive")
+		return errors.Errorf("minutes must be positive")
 	}
 	h.minutes = minutesInt
 
@@ -69,7 +69,7 @@ func (h *recentTasksGetHandler) Parse(ctx context.Context, r *http.Request) erro
 	}
 
 	if h.byDistro && h.byProject || h.byProject && h.byAgentVersion || h.byDistro && h.byAgentVersion {
-		return errors.New("only one of the following can be true: by_distro by_project by_agent_version")
+		return errors.New("only one of the following can be true: by_distro, by_project, by_agent_version")
 	}
 
 	h.taskType = r.URL.Query().Get("status")
@@ -80,7 +80,7 @@ func (h *recentTasksGetHandler) Parse(ctx context.Context, r *http.Request) erro
 func (h *recentTasksGetHandler) Run(ctx context.Context) gimlet.Responder {
 	tasks, stats, err := data.FindRecentTasks(h.minutes)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding recent tasks"))
 	}
 
 	if h.taskType != "" {
@@ -97,7 +97,7 @@ func (h *recentTasksGetHandler) Run(ctx context.Context) gimlet.Responder {
 				IncludeAMI:               true,
 			})
 			if err != nil {
-				return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting task '%s' to API model", t.Id))
 			}
 			response[i] = &taskModel
 		}
@@ -115,7 +115,7 @@ func (h *recentTasksGetHandler) Run(ctx context.Context) gimlet.Responder {
 			stats, err = data.FindRecentTaskListAgentVersion(h.minutes)
 		}
 		if err != nil {
-			return gimlet.MakeJSONErrorResponder(err)
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding recent task list by filter"))
 		}
 
 		return gimlet.NewJSONResponse(stats)
@@ -123,15 +123,13 @@ func (h *recentTasksGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 	statsModel := &model.APIRecentTaskStats{}
 	if err := statsModel.BuildFromService(stats); err != nil {
-		return gimlet.MakeJSONErrorResponder(err)
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting recent task stats to API model"))
 	}
 	return gimlet.NewJSONResponse(statsModel)
 }
 
 // this is the route manager for /status/hosts/distros, which returns a count of up hosts grouped by distro
-type hostStatsByDistroHandler struct {
-	sc data.Connector
-}
+type hostStatsByDistroHandler struct{}
 
 func makeHostStatusByDistroRoute() gimlet.RouteHandler {
 	return &hostStatsByDistroHandler{}
@@ -148,12 +146,12 @@ func (h *hostStatsByDistroHandler) Parse(ctx context.Context, r *http.Request) e
 func (h *hostStatsByDistroHandler) Run(ctx context.Context) gimlet.Responder {
 	stats, err := host.GetStatsByDistro()
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting distro host stats"))
 	}
 
 	statsModel := &model.APIHostStatsByDistro{}
 	if err := statsModel.BuildFromService(stats); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(err)
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting distro host stats to API model"))
 	}
 
 	return gimlet.NewJSONResponse(statsModel)
