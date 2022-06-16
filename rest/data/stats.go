@@ -1,6 +1,8 @@
 package data
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/stats"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -31,6 +33,35 @@ func GetTestStats(filter stats.StatsFilter) ([]restModel.APITestStats, error) {
 		}
 		apiStatsResult[i] = ats
 	}
+	return apiStatsResult, nil
+}
+
+// GetPrestoTestStats queries the Presto cluster to retrieve the test stats
+// that match the given filter.
+func GetPrestoTestStats(ctx context.Context, filter stats.PrestoTestStatsFilter) ([]restModel.APITestStats, error) {
+	if filter.Project != "" {
+		projectID, err := model.GetIdForProject(filter.Project)
+		if err != nil {
+			return nil, errors.Wrapf(err, "getting project ID for project identifier '%s'", filter.Project)
+		}
+		filter.Project = projectID
+	}
+
+	serviceStatsResult, err := stats.GetPrestoTestStats(ctx, filter)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting Presto test stats")
+	}
+
+	apiStatsResult := make([]restModel.APITestStats, len(serviceStatsResult))
+	for i, serviceStats := range serviceStatsResult {
+		ats := restModel.APITestStats{}
+		err = ats.BuildFromService(&serviceStats)
+		if err != nil {
+			return nil, errors.Wrap(err, "converting test stats to API model")
+		}
+		apiStatsResult[i] = ats
+	}
+
 	return apiStatsResult, nil
 }
 
