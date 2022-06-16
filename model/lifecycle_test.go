@@ -1976,7 +1976,9 @@ func TestDisplayTaskRestart(t *testing.T) {
 
 	// test that restarting a task correctly resets the task and archives it
 	assert.NoError(resetTaskData())
-	assert.NoError(resetTask("displayTask", "caller", false))
+	dt, err := task.FindOneId("displayTask")
+	assert.NoError(err)
+	assert.NoError(resetTask(dt, "caller", false))
 	archivedTasks, err := task.FindOldWithDisplayTasks(nil)
 	assert.NoError(err)
 	assert.Len(archivedTasks, 3)
@@ -1993,6 +1995,23 @@ func TestDisplayTaskRestart(t *testing.T) {
 	for _, dbTask := range tasks {
 		assert.Equal(evergreen.TaskUndispatched, dbTask.Status, dbTask.Id)
 		assert.True(dbTask.Activated, dbTask.Id)
+	}
+
+	// Test that restarting a display task with restartFailed correctly resets failed tasks.
+	assert.NoError(resetTaskData())
+	dt, err = task.FindOneId("displayTask")
+	assert.NoError(err)
+	dt.RestartFailed = utility.TruePtr()
+	assert.NoError(resetTask(dt, "caller", false))
+	tasks, err = task.FindAll(db.Query(task.ByIds(allTasks)))
+	assert.NoError(err)
+	assert.Len(tasks, 3)
+	for _, dbTask := range tasks {
+		if dbTask.Activated {
+			assert.Equal(evergreen.TaskUndispatched, dbTask.Status, dbTask.Id)
+		} else {
+			assert.Equal(evergreen.TaskSucceeded, dbTask.Status, dbTask.Id)
+		}
 	}
 
 	// test that execution tasks cannot be restarted

@@ -55,7 +55,7 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 					for _, dep := range deps {
 						// reset any already finished tasks in the same task group
 						if dep.TaskGroup == t.TaskGroup && t.TaskGroup != "" && dep.IsFinished() {
-							catcher.Wrapf(resetTask(dep.Id, caller, false), "resetting dependency '%s'", dep.Id)
+							catcher.Wrapf(resetTask(&dep, caller, false), "resetting dependency '%s'", dep.Id)
 						} else {
 							tasksToActivate = append(tasksToActivate, dep)
 						}
@@ -67,7 +67,7 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 
 			// Investigating strange dispatch state as part of EVG-13144
 			if t.IsHostTask() && !utility.IsZeroTime(t.DispatchTime) && t.Status == evergreen.TaskUndispatched {
-				catcher.Wrapf(resetTask(t.Id, caller, false), "resetting task '%s'", t.Id)
+				catcher.Wrapf(resetTask(&t, caller, false), "resetting task '%s'", t.Id)
 			} else {
 				tasksToActivate = append(tasksToActivate, originalTasks...)
 			}
@@ -180,34 +180,9 @@ func activatePreviousTask(taskId, caller string, originalStepbackTask *task.Task
 func resetManyTasks(tasks []task.Task, caller string, logIDs bool) error {
 	catcher := grip.NewBasicCatcher()
 	for _, t := range tasks {
-		catcher.Add(resetTask(t.Id, caller, logIDs))
+		catcher.Add(resetTask(&t, caller, logIDs))
 	}
 	return catcher.Resolve()
-}
-
-// reset task finds a task, attempts to archive it, and resets the task and resets the TaskCache in the build as well.
-func resetTask(taskId, caller string, logIDs bool) error {
-	t, err := task.FindOneId(taskId)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	if t.IsPartOfDisplay() {
-		return errors.Errorf("cannot restart execution task '%s' because it is part of a display task", t.Id)
-	}
-	if err = t.Archive(); err != nil {
-		return errors.Wrap(err, "can't restart task because it can't be archived")
-	}
-
-	if err = MarkOneTaskReset(t, logIDs); err != nil {
-		return errors.WithStack(err)
-	}
-	event.LogTaskRestarted(t.Id, t.Execution, caller)
-
-	if err = t.ActivateTask(caller); err != nil {
-		return errors.WithStack(err)
-	}
-
-	return errors.WithStack(UpdateBuildAndVersionStatusForTask(t))
 }
 
 // TryResetTask resets a task
@@ -303,7 +278,28 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 		return errors.Wrap(checkResetSingleHostTaskGroup(t, caller), "resetting single host task group")
 	}
 
-	return errors.WithStack(resetTask(t.Id, caller, false))
+	return errors.WithStack(resetTask(t, caller, false))
+}
+
+// resetTask attempts to archive the task, resets it, and resets the TaskCache in the build as well.
+func resetTask(t *task.Task, caller string, logIDs bool) error {
+	if t.IsPartOfDisplay() {
+		return errors.Errorf("cannot restart execution task '%s' because it is part of a display task", t.Id)
+	}
+	if err := t.Archive(); err != nil {
+		return errors.Wrap(err, "can't restart task because it can't be archived")
+	}
+
+	if err := MarkOneTaskReset(t, logIDs); err != nil {
+		return errors.WithStack(err)
+	}
+	event.LogTaskRestarted(t.Id, t.Execution, caller)
+
+	if err := t.ActivateTask(caller); err != nil {
+		return errors.WithStack(err)
+	}
+
+	return errors.WithStack(UpdateBuildAndVersionStatusForTask(t))
 }
 
 func AbortTask(taskId, caller string) error {
@@ -1245,6 +1241,10 @@ func MarkOneTaskReset(t *task.Task, logIDs bool) error {
 			if err != nil {
 				return errors.Wrap(err, "retrieving execution task")
 			}
+			// Ignore succeeded execution tasks if we only want to restart failed.
+			if utility.FromBoolPtr(t.RestartFailed) && !evergreen.IsFailedTaskStatus(execTask.Status) {
+				continue
+			}
 			if err = MarkOneTaskReset(execTask, logIDs); err != nil {
 				return errors.Wrap(err, "resetting execution task")
 			}
@@ -1458,21 +1458,14 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 // from sources separate from marking the task finished. If an execution task, attempts to restart the display task instead.
 // Marks display tasks as reset when finished and then check if it can be reset immediately.
 func ResetTaskOrDisplayTask(t *task.Task, user, origin string, detail *apimodels.TaskEndDetail) error {
-	taskToReset := *t
-	if taskToReset.IsPartOfDisplay() { // if given an execution task, attempt to restart the full display task
-		dt, err := taskToReset.GetDisplayTask()
-		if err != nil {
-			return errors.Wrap(err, "getting display task")
-		}
-		if dt != nil {
-			taskToReset = *dt
-		}
+	if t.IsPartOfDisplay() {
+		return errors.New("cannot restart individual execution task")
 	}
-	if taskToReset.DisplayOnly {
-		if err := taskToReset.SetResetWhenFinished(); err != nil {
+	if t.DisplayOnly {
+		if err := t.SetResetWhenFinished(); err != nil {
 			return errors.Wrap(err, "marking display task for reset")
 		}
-		return errors.Wrap(checkResetDisplayTask(&taskToReset), "checking display task reset")
+		return errors.Wrap(checkResetDisplayTask(t), "checking display task reset")
 	}
 
 	return errors.Wrap(TryResetTask(t.Id, user, origin, detail),
