@@ -2003,6 +2003,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	assert.NoError(err)
 	dt.RestartFailed = utility.TruePtr()
 	assert.NoError(resetTask(dt, "caller", false))
+	assert.Nil(dt.RestartFailed)
 	tasks, err = task.FindAll(db.Query(task.ByIds(allTasks)))
 	assert.NoError(err)
 	assert.Len(tasks, 3)
