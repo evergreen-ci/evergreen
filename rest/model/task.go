@@ -488,7 +488,10 @@ func (at *APITask) getArtifacts() error {
 		}
 		for _, file := range strippedFiles {
 			apiFile := APIFile{}
-			apiFile.BuildFromService(file)
+			err := apiFile.BuildFromService(file)
+			if err != nil {
+				return err
+			}
 			at.Artifacts = append(at.Artifacts, apiFile)
 		}
 	}
