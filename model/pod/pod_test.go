@@ -321,7 +321,7 @@ func TestUpdateStatus(t *testing.T) {
 	}
 
 	checkEventLog := func(t *testing.T, p Pod) {
-		events, err := event.Find(event.LegacyEventLogCollection, event.MostRecentPodEvents(p.ID, 10))
+		events, err := event.Find(event.MostRecentPodEvents(p.ID, 10))
 		require.NoError(t, err)
 		require.Len(t, events, 1)
 		assert.Equal(t, p.ID, events[0].ResourceId)

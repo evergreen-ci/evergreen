@@ -529,7 +529,7 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 	logType := r.FormValue("type")
 	if logType == "EV" {
 		var loggedEvents []event.EventLogEntry
-		loggedEvents, err = event.Find(event.LegacyEventLogCollection, event.MostRecentTaskEvents(projCtx.Task.Id, DefaultLogMessages))
+		loggedEvents, err = event.Find(event.MostRecentTaskEvents(projCtx.Task.Id, DefaultLogMessages))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

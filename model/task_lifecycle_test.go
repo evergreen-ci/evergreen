@@ -3564,10 +3564,10 @@ func TestDisplayTaskUpdates(t *testing.T) {
 	assert.Zero(dbTask.FinishTime)
 
 	// check that the updates above logged an event for the first one
-	events, err := event.Find(event.LegacyEventLogCollection, event.TaskEventsForId(dt.Id))
+	events, err := event.Find(event.TaskEventsForId(dt.Id))
 	assert.NoError(err)
 	assert.Len(events, 1)
-	events, err = event.Find(event.LegacyEventLogCollection, event.TaskEventsForId(dt2.Id))
+	events, err = event.Find(event.TaskEventsForId(dt2.Id))
 	assert.NoError(err)
 	assert.Len(events, 0)
 
@@ -3627,7 +3627,7 @@ func TestDisplayTaskUpdateNoUndispatched(t *testing.T) {
 	assert.NotNil(dbTask)
 	assert.Equal(evergreen.TaskStarted, dbTask.Status)
 
-	events, err := event.Find(event.LegacyEventLogCollection, event.TaskEventsForId(dt.Id))
+	events, err := event.Find(event.TaskEventsForId(dt.Id))
 	assert.NoError(err)
 	assert.Len(events, 0)
 }
@@ -4301,7 +4301,7 @@ func TestUpdateBlockedDependencies(t *testing.T) {
 	assert.True(dbExecTask.DependsOn[0].Unattainable)
 
 	// one event inserted for every updated task
-	events, err := event.Find(event.LegacyEventLogCollection, db.Q{})
+	events, err := event.Find(db.Q{})
 	assert.NoError(err)
 	assert.Len(events, 4)
 

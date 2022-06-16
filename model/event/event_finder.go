@@ -29,9 +29,9 @@ func ResourceTypeKeyIs(key string) bson.M {
 
 // Find takes a collection storing events and a query, generated
 // by one of the query functions, and returns a slice of events.
-func Find(coll string, query db.Q) ([]EventLogEntry, error) {
+func Find(query db.Q) ([]EventLogEntry, error) {
 	events := []EventLogEntry{}
-	err := db.FindAllQ(coll, query, &events)
+	err := db.FindAllQ(LegacyEventLogCollection, query, &events)
 	if err != nil || adb.ResultsNotFound(err) {
 		return nil, errors.WithStack(err)
 	}
@@ -39,7 +39,7 @@ func Find(coll string, query db.Q) ([]EventLogEntry, error) {
 	return events, nil
 }
 
-func FindPaginated(hostID, hostTag, coll string, limit, page int) ([]EventLogEntry, error) {
+func FindPaginated(hostID, hostTag string, limit, page int) ([]EventLogEntry, error) {
 	query := MostRecentHostEvents(hostID, hostTag, limit)
 	events := []EventLogEntry{}
 	skip := page * limit
@@ -47,7 +47,7 @@ func FindPaginated(hostID, hostTag, coll string, limit, page int) ([]EventLogEnt
 		query = query.Skip(skip)
 	}
 
-	err := db.FindAllQ(coll, query, &events)
+	err := db.FindAllQ(LegacyEventLogCollection, query, &events)
 	if err != nil || adb.ResultsNotFound(err) {
 		return nil, errors.WithStack(err)
 	}
@@ -216,7 +216,7 @@ func AdminEventsBefore(before time.Time, n int) db.Q {
 }
 
 func FindAllByResourceID(resourceID string) ([]EventLogEntry, error) {
-	return Find(LegacyEventLogCollection, db.Query(bson.M{ResourceIdKey: resourceID}))
+	return Find(db.Query(bson.M{ResourceIdKey: resourceID}))
 }
 
 // Pod events

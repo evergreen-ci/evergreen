@@ -36,7 +36,7 @@ func TestHostTerminationJob(t *testing.T) {
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
 
-			events, err := event.Find(event.LegacyEventLogCollection, event.MostRecentHostEvents(h.Id, "", 50))
+			events, err := event.Find(event.MostRecentHostEvents(h.Id, "", 50))
 			require.NoError(t, err)
 			require.NotEmpty(t, events)
 			assert.Equal(t, event.EventHostStatusChanged, events[0].EventType)
@@ -68,7 +68,7 @@ func TestHostTerminationJob(t *testing.T) {
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
 
-			events, err := event.Find(event.LegacyEventLogCollection, event.MostRecentHostEvents(h.Id, "", 50))
+			events, err := event.Find(event.MostRecentHostEvents(h.Id, "", 50))
 			require.NoError(t, err)
 			require.NotEmpty(t, events)
 			assert.Equal(t, event.EventHostStatusChanged, events[0].EventType)

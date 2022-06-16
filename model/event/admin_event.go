@@ -103,7 +103,7 @@ func stripInteriorSections(config *evergreen.Settings) *evergreen.Settings {
 }
 
 func FindAdmin(query db.Q) ([]EventLogEntry, error) {
-	eventsRaw, err := Find(LegacyEventLogCollection, query)
+	eventsRaw, err := Find(query)
 	if err != nil {
 		return nil, err
 	}

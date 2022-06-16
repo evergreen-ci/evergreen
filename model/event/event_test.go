@@ -75,7 +75,7 @@ func (s *eventSuite) TestWithRealData() {
 		},
 	}
 	s.NoError(db.Insert(LegacyEventLogCollection, data))
-	entries, err := Find(LegacyEventLogCollection, db.Query(bson.M{idKey: mgobson.ObjectIdHex("5949645c9acd9604fdd202d8")}))
+	entries, err := Find(db.Query(bson.M{idKey: mgobson.ObjectIdHex("5949645c9acd9604fdd202d8")}))
 	s.NoError(err)
 	s.Len(entries, 1)
 	s.NotPanics(func() {
@@ -110,7 +110,7 @@ func (s *eventSuite) TestWithRealData() {
 		},
 	}
 	s.NoError(db.Insert(LegacyEventLogCollection, data))
-	entries, err = Find(LegacyEventLogCollection, db.Query(bson.M{idKey: mgobson.ObjectIdHex("5949645c9acd9604fdd202d9")}))
+	entries, err = Find(db.Query(bson.M{idKey: mgobson.ObjectIdHex("5949645c9acd9604fdd202d9")}))
 	s.NoError(err)
 	s.Len(entries, 1)
 	s.NotPanics(func() {
@@ -134,7 +134,7 @@ func (s *eventSuite) TestWithRealData() {
 	// check that string IDs are preserved in the DB
 	data[idKey] = "elephant"
 	s.NoError(db.Insert(LegacyEventLogCollection, data))
-	entries, err = Find(LegacyEventLogCollection, db.Query(bson.M{idKey: "elephant"}))
+	entries, err = Find(db.Query(bson.M{idKey: "elephant"}))
 	s.NoError(err)
 	s.Len(entries, 1)
 	s.Equal("elephant", entries[0].ID)
@@ -153,7 +153,7 @@ func (s *eventSuite) TestEventWithNilData() {
 	s.NotPanics(func() {
 		// But reading this back should not panic, if it somehow got into the db
 		s.NoError(db.Insert(LegacyEventLogCollection, event))
-		fetchedEvents, err := Find(LegacyEventLogCollection, db.Query(bson.M{}))
+		fetchedEvents, err := Find(db.Query(bson.M{}))
 		s.Require().Error(err)
 		s.Nil(fetchedEvents)
 	})

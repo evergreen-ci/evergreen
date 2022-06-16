@@ -1382,7 +1382,7 @@ func TestDeactivateStepbackTasksForProject(t *testing.T) {
 	assert.NoError(t, db.InsertMany(Collection, activatedStepbackTask, taskDependingOnStepbackTask, wrongProjectTask, runningStepbackTask, notStepbackTask))
 	assert.NoError(t, DeactivateStepbackTasksForProject("p1", "me"))
 
-	events, err := event.Find(event.LegacyEventLogCollection, db.Q{})
+	events, err := event.Find(db.Q{})
 	assert.NoError(t, err)
 	assert.Len(t, events, 4)
 	var numDeactivated, numAborted int
