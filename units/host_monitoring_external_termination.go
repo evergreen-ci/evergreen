@@ -145,6 +145,15 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 		}
 
 		event.LogHostTerminatedExternally(h.Id, h.Status)
+		grip.Info(message.Fields{
+			"message":   "host terminated externally",
+			"operation": "handleExternallyTerminatedHost",
+			"host_id":   h.Id,
+			"host_tag":  h.Tag,
+			"distro":    h.Distro.Id,
+			"provider":  h.Provider,
+			"status":    h.Status,
+		})
 
 		err = amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewHostTerminationJob(env, h, HostTerminationOptions{
 			TerminateIfBusy:          true,

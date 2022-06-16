@@ -195,6 +195,15 @@ func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, m cloud.Mana
 		j.logHostStatusMessage(&h, cloudStatus)
 
 		event.LogHostTerminatedExternally(h.Id, h.Status)
+		grip.Info(message.Fields{
+			"message":   "host terminated externally",
+			"operation": "setCloudHostStatus",
+			"host_id":   h.Id,
+			"host_tag":  h.Tag,
+			"distro":    h.Distro.Id,
+			"provider":  h.Provider,
+			"status":    h.Status,
+		})
 
 		catcher := grip.NewBasicCatcher()
 		catcher.Wrap(handleTerminatedHostSpawnedByTask(&h), "handling task host that was terminating before it was running")

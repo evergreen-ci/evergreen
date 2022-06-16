@@ -108,13 +108,19 @@ func shouldNotifyForSpawnhostExpiration(h *host.Host, numHours int) (bool, error
 	return rec == nil, nil
 }
 
-func tryHostNotifcation(h *host.Host, numHours int) error {
+func tryHostNotification(h *host.Host, numHours int) error {
 	shouldExec, err := shouldNotifyForSpawnhostExpiration(h, numHours)
 	if err != nil {
 		return err
 	}
 	if shouldExec {
 		event.LogSpawnhostExpirationWarningSent(h.Id)
+		grip.Info(message.Fields{
+			"message":    "sent host expiration warning",
+			"host_id":    h.Id,
+			"owner":      h.StartedBy,
+			"expiration": h.ExpirationTime,
+		})
 		if err = alertrecord.InsertNewSpawnHostExpirationRecord(h.Id, numHours); err != nil {
 			return err
 		}
@@ -124,7 +130,7 @@ func tryHostNotifcation(h *host.Host, numHours int) error {
 
 func runSpawnWarningTriggers(h *host.Host) error {
 	catcher := grip.NewSimpleCatcher()
-	catcher.Add(tryHostNotifcation(h, 2))
-	catcher.Add(tryHostNotifcation(h, 12))
+	catcher.Add(tryHostNotification(h, 2))
+	catcher.Add(tryHostNotification(h, 12))
 	return catcher.Resolve()
 }

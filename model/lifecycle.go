@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -13,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/model/global"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
@@ -690,14 +688,6 @@ func CreateBuildFromVersionNoInsert(args BuildCreateArgs) (*build.Build, task.Ta
 		Tags:                buildVariant.Tags,
 	}
 
-	// get a new build number for the build
-	buildNumber, err := global.GetNewBuildVariantBuildNumber(args.BuildName)
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "getting build number for build variant"+
-			" %s in %s project file", args.BuildName, args.Project.Identifier)
-	}
-	b.BuildNumber = strconv.FormatUint(buildNumber, 10)
-
 	// create all of the necessary tasks for the build
 	tasksForBuild, err := createTasksForBuild(&args.Project, &args.ProjectRef, buildVariant, b, &args.Version, args.TaskIDs,
 		args.TaskNames, args.DisplayNames, args.ActivationInfo, args.GeneratedBy,
@@ -1184,37 +1174,38 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 	}
 
 	t := &task.Task{
-		Id:                  id,
-		Secret:              utility.RandomString(),
-		DisplayName:         buildVarTask.Name,
-		BuildId:             b.Id,
-		BuildVariant:        buildVariant.Name,
-		CreateTime:          createTime,
-		IngestTime:          time.Now(),
-		ScheduledTime:       utility.ZeroTime,
-		StartTime:           utility.ZeroTime, // Certain time fields must be initialized
-		FinishTime:          utility.ZeroTime, // to our own utility.ZeroTime value (which is
-		DispatchTime:        utility.ZeroTime, // Unix epoch 0, not Go's time.Time{})
-		LastHeartbeat:       utility.ZeroTime,
-		Status:              evergreen.TaskUndispatched,
-		Activated:           activateTask,
-		ActivatedTime:       activatedTime,
-		RevisionOrderNumber: v.RevisionOrderNumber,
-		Requester:           v.Requester,
-		ParentPatchID:       b.ParentPatchID,
-		ParentPatchNumber:   b.ParentPatchNumber,
-		Version:             v.Id,
-		Revision:            v.Revision,
-		MustHaveResults:     utility.FromBoolPtr(project.GetSpecForTask(buildVarTask.Name).MustHaveResults),
-		Project:             project.Identifier,
-		Priority:            buildVarTask.Priority,
-		GenerateTask:        project.IsGenerateTask(buildVarTask.Name),
-		TriggerID:           v.TriggerID,
-		TriggerType:         v.TriggerType,
-		TriggerEvent:        v.TriggerEvent,
-		CommitQueueMerge:    buildVarTask.CommitQueueMerge,
-		IsGithubCheck:       isGithubCheck,
-		DisplayTaskId:       utility.ToStringPtr(""), // this will be overridden if the task is an execution task
+		Id:                      id,
+		Secret:                  utility.RandomString(),
+		DisplayName:             buildVarTask.Name,
+		BuildId:                 b.Id,
+		BuildVariant:            buildVariant.Name,
+		BuildVariantDisplayName: buildVariant.DisplayName,
+		CreateTime:              createTime,
+		IngestTime:              time.Now(),
+		ScheduledTime:           utility.ZeroTime,
+		StartTime:               utility.ZeroTime, // Certain time fields must be initialized
+		FinishTime:              utility.ZeroTime, // to our own utility.ZeroTime value (which is
+		DispatchTime:            utility.ZeroTime, // Unix epoch 0, not Go's time.Time{})
+		LastHeartbeat:           utility.ZeroTime,
+		Status:                  evergreen.TaskUndispatched,
+		Activated:               activateTask,
+		ActivatedTime:           activatedTime,
+		RevisionOrderNumber:     v.RevisionOrderNumber,
+		Requester:               v.Requester,
+		ParentPatchID:           b.ParentPatchID,
+		ParentPatchNumber:       b.ParentPatchNumber,
+		Version:                 v.Id,
+		Revision:                v.Revision,
+		MustHaveResults:         utility.FromBoolPtr(project.GetSpecForTask(buildVarTask.Name).MustHaveResults),
+		Project:                 project.Identifier,
+		Priority:                buildVarTask.Priority,
+		GenerateTask:            project.IsGenerateTask(buildVarTask.Name),
+		TriggerID:               v.TriggerID,
+		TriggerType:             v.TriggerType,
+		TriggerEvent:            v.TriggerEvent,
+		CommitQueueMerge:        buildVarTask.CommitQueueMerge,
+		IsGithubCheck:           isGithubCheck,
+		DisplayTaskId:           utility.ToStringPtr(""), // this will be overridden if the task is an execution task
 	}
 
 	t.ExecutionPlatform = shouldRunOnContainer(buildVarTask.RunOn, buildVariant.RunOn, project.Containers)
@@ -1358,32 +1349,33 @@ func createDisplayTask(id string, displayName string, execTasks []string, bv *Bu
 	}
 
 	t := &task.Task{
-		Id:                  id,
-		DisplayName:         displayName,
-		BuildVariant:        bv.Name,
-		BuildId:             b.Id,
-		CreateTime:          createTime,
-		RevisionOrderNumber: v.RevisionOrderNumber,
-		Version:             v.Id,
-		Revision:            v.Revision,
-		Project:             p.Identifier,
-		Requester:           v.Requester,
-		ParentPatchID:       b.ParentPatchID,
-		ParentPatchNumber:   b.ParentPatchNumber,
-		DisplayOnly:         true,
-		ExecutionTasks:      execTasks,
-		Status:              evergreen.TaskUndispatched,
-		IngestTime:          time.Now(),
-		StartTime:           utility.ZeroTime,
-		FinishTime:          utility.ZeroTime,
-		Activated:           displayTaskActivated,
-		ActivatedTime:       activatedTime,
-		DispatchTime:        utility.ZeroTime,
-		ScheduledTime:       utility.ZeroTime,
-		TriggerID:           v.TriggerID,
-		TriggerType:         v.TriggerType,
-		TriggerEvent:        v.TriggerEvent,
-		DisplayTaskId:       utility.ToStringPtr(""),
+		Id:                      id,
+		DisplayName:             displayName,
+		BuildVariant:            bv.Name,
+		BuildVariantDisplayName: bv.DisplayName,
+		BuildId:                 b.Id,
+		CreateTime:              createTime,
+		RevisionOrderNumber:     v.RevisionOrderNumber,
+		Version:                 v.Id,
+		Revision:                v.Revision,
+		Project:                 p.Identifier,
+		Requester:               v.Requester,
+		ParentPatchID:           b.ParentPatchID,
+		ParentPatchNumber:       b.ParentPatchNumber,
+		DisplayOnly:             true,
+		ExecutionTasks:          execTasks,
+		Status:                  evergreen.TaskUndispatched,
+		IngestTime:              time.Now(),
+		StartTime:               utility.ZeroTime,
+		FinishTime:              utility.ZeroTime,
+		Activated:               displayTaskActivated,
+		ActivatedTime:           activatedTime,
+		DispatchTime:            utility.ZeroTime,
+		ScheduledTime:           utility.ZeroTime,
+		TriggerID:               v.TriggerID,
+		TriggerType:             v.TriggerType,
+		TriggerEvent:            v.TriggerEvent,
+		DisplayTaskId:           utility.ToStringPtr(""),
 	}
 	return t, nil
 }
