@@ -11,7 +11,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"github.com/prestodb/presto-go-client/presto"
+	"github.com/trinodb/trino-go-client/trino"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -89,8 +89,8 @@ func (*PrestoConfig) ValidateAndDefault() error { return nil }
 func (c *PrestoConfig) DB() *sql.DB { return c.db }
 
 func (c *PrestoConfig) setupDB(ctx context.Context) error {
-	dsnConfig := presto.Config{
-		PrestoURI:         c.formatURI(),
+	dsnConfig := trino.Config{
+		ServerURI:         c.formatURI(),
 		Source:            c.Source,
 		Catalog:           c.Catalog,
 		Schema:            c.Schema,
@@ -101,7 +101,7 @@ func (c *PrestoConfig) setupDB(ctx context.Context) error {
 		return errors.Wrap(err, "formatting Presto DSN")
 	}
 
-	c.db, err = sql.Open("presto", dsn)
+	c.db, err = sql.Open("trino", dsn)
 	if err != nil {
 		return errors.Wrap(err, "opening Presto connection")
 	}
