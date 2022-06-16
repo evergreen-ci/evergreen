@@ -8,7 +8,6 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
@@ -29,7 +28,7 @@ type FailingTaskData struct {
 // BbFileTicket creates a JIRA ticket for a task with the given test failures.
 func BbFileTicket(context context.Context, taskId string, execution int) (int, error) {
 	// Find information about the task
-	t, err := task.FindOne(db.Query(task.ById(taskId)))
+	t, err := task.FindOneIdAndExecution(taskId, execution)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
