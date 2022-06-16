@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	amboyRegistry "github.com/mongodb/amboy/registry"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -513,4 +514,18 @@ func (s *eventSuite) TestLogManyEvents() {
 	s.Equal(events[1].EventType, "some_type")
 	_, ok = events[1].Data.(*TaskEventData)
 	s.True(ok)
+}
+
+func TestEventExpiration(t *testing.T) {
+	for event, isExpirable := range map[EventLogEntry]bool{
+		{ResourceType: EventResourceTypeProject, EventType: EventTypeProjectModified, Data: ""}: false,
+		{ResourceType: ResourceTypeAdmin, EventType: EventTypeValueChanged, Data: ""}:           false,
+		{ResourceType: ResourceTypeDistro, EventType: EventDistroAdded, Data: ""}:               false,
+		{ResourceType: ResourceTypeCommitQueue, EventType: CommitQueueConcludeTest, Data: ""}:   true,
+		{ResourceType: ResourceTypeTask, EventType: EventTaskFinished, Data: ""}:                true,
+		{ResourceType: ResourceTypeHost, EventType: EventHostCreated, Data: ""}:                 true,
+	} {
+		assert.NoError(t, event.validateEvent())
+		assert.Equal(t, isExpirable, event.Expirable)
+	}
 }

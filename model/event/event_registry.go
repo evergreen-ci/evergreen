@@ -15,7 +15,7 @@ type eventRegistry struct {
 	neverExpires   map[EventLogEntry]bool
 }
 
-var registry *eventRegistry
+var registry eventRegistry
 
 // AddType adds an event data factory to the registry with the given resource
 // type. AddType will panic if you attempt to add the same resourceType more
