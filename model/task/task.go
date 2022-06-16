@@ -2654,20 +2654,20 @@ func (t *Task) SetResetWhenFinished() error {
 	)
 }
 
-// SetResetFailedWhenFinished requests that a display task
-// restart failed tasks when finished.
-func (t *Task) SetRestartFailed(restartFailed bool) error {
-	if utility.FromBoolPtr(t.RestartFailed) == restartFailed {
+// SetRestartFailed requests that a display task
+// only restarts failed tasks.
+func (t *Task) SetRestartFailed() error {
+	if !utility.FromBoolPtr(t.RestartFailed) {
 		return nil
 	}
-	t.RestartFailed = utility.ToBoolPtr(restartFailed)
+	t.RestartFailed = utility.TruePtr()
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				RestartFailedKey: restartFailed,
+				RestartFailedKey: true,
 			},
 		},
 	)

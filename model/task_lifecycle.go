@@ -1451,6 +1451,8 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 		return errors.WithStack(MarkEnd(t, evergreen.MonitorPackage, time.Now(), &t.Details, false))
 	}
 
+	// Only restart failed tasks for stranded tasks.
+	t.SetRestartFailed()
 	return errors.Wrap(ResetTaskOrDisplayTask(t, evergreen.User, evergreen.MonitorPackage, &t.Details), "resetting task")
 }
 
