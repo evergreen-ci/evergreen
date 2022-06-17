@@ -690,8 +690,8 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 				"distro":        h.Distro.Id,
 			}))
 			if h.ShouldFallbackToOnDemand() && (strings.Contains(err.Error(), EC2InsufficientCapacity) || strings.Contains(err.Error(), EC2UnfulfillableCapacity)) {
-				// Spot creation failed due to an InsufficientCapacity error.
-				// Try to spawn the host as OnDemand instead of Spot
+				// Spot creation fails relatively frequently due to InsufficientCapacity or UnfulfillableCapacity,
+				// so we fall back to OnDemand if requested since that is more consistently reliable.
 				event.LogHostFallback(h.Id)
 				grip.Info(message.Fields{
 					"message":  "could not spawn spot instance, falling back to on-demand",
@@ -709,7 +709,7 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 						"host_provider": h.Distro.Provider,
 						"distro":        h.Distro.Id,
 					}))
-					return nil, errors.Wrapf(err, "fallback to on-demand failed for host '%s'", h.Id)
+					return nil, errors.Wrapf(err, "spawning on-demand host '%s'", h.Id)
 				}
 				grip.Debug(message.Fields{
 					"message":       "spawned on-demand host",

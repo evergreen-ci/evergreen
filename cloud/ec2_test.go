@@ -548,8 +548,6 @@ func (s *EC2Suite) TestSpawnHostClassicSpotInsufficientCapacityFallback() {
 	s.Equal(base64OfSomeUserData, *runInput.UserData)
 }
 
-// Test that the ec2 spot instance cloud manager falls back to on demand when it receives
-// an UnfulfillableCapacity error.
 func (s *EC2Suite) TestSpawnHostClassicSpotUnfulfillableCapacityFallback() {
 	h := &host.Host{}
 	h.Distro.Id = "distro_id"
