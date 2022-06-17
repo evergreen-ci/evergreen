@@ -1432,6 +1432,13 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 		return errors.Wrap(err, "marking task failed")
 	}
 
+	if t.IsPartOfDisplay() {
+		err = UpdateDisplayTaskForTask(t)
+		if err != nil {
+			return err
+		}
+	}
+
 	if time.Since(t.ActivatedTime) > task.UnschedulableThreshold {
 		if t.DisplayOnly {
 			for _, etID := range t.ExecutionTasks {
