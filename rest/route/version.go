@@ -96,12 +96,12 @@ func (vh *versionPatchHandler) Parse(ctx context.Context, r *http.Request) error
 
 	vh.versionId = gimlet.GetVars(r)["version_id"]
 	if vh.versionId == "" {
-		return errors.New("request data incomplete")
+		return errors.New("missing version id")
 	}
 	return nil
 }
 
-// Run calls the data model.VersionFindOneId function
+// Run calls the data model.SetVersionActivation function
 func (vh *versionPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
 	if err := dbModel.SetVersionActivation(vh.versionId, utility.FromBoolPtr(vh.Activated), u.Id); err != nil {
@@ -109,10 +109,9 @@ func (vh *versionPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		if utility.FromBoolPtr(vh.Activated) {
 			state = "active"
 		}
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    fmt.Sprintf("marking version '%v' as '%v'", vh.versionId, state),
-		})
+		return gimlet.MakeJSONErrorResponder(
+			errors.Wrapf(err, "marking version '%v' as '%v'", vh.versionId, state),
+		)
 	}
 	return gimlet.NewJSONResponse(struct{}{})
 }

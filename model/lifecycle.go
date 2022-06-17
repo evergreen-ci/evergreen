@@ -65,7 +65,7 @@ func SetVersionActivation(versionId string, active bool, caller string) error {
 	if err = version.SetActivated(active); err != nil {
 		return errors.Wrapf(err, "setting activated for version '%s'", versionId)
 	}
-	changed, err := setTaskActivationForVersion(versionId, active, false, nil, caller)
+	changed, err := setTaskActivationForVersion(versionId, active, caller)
 	if err != nil {
 		return errors.Wrapf(err, "setting activation for tasks in version '%s'", versionId)
 	}
@@ -77,26 +77,18 @@ func SetVersionActivation(versionId string, active bool, caller string) error {
 	return nil
 }
 
-func setTaskActivationForVersion(versionId string, active, withDependencies bool, ignoreTasks []string, caller string) (bool, error) {
+// setTaskActivationForVersion activates all tasks in a version.
+// Returns true if at least one task has been updated.
+func setTaskActivationForVersion(versionId string, active bool, caller string) (bool, error) {
 	q := bson.M{
 		task.VersionKey: versionId,
 		task.StatusKey:  evergreen.TaskUndispatched,
 	}
 	// If activating a task, set the ActivatedBy field to be the caller.
 	if active {
-		if len(ignoreTasks) > 0 {
-			q[task.IdKey] = bson.M{"$nin": ignoreTasks}
-		}
 		tasksToActivate, err := task.FindAll(db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey, task.BuildIdKey))
 		if err != nil {
 			return false, errors.Wrap(err, "getting tasks to activate")
-		}
-		if withDependencies {
-			dependOn, err := task.GetRecursiveDependenciesUp(tasksToActivate, nil)
-			if err != nil {
-				return false, errors.Wrap(err, "getting recursive dependencies")
-			}
-			tasksToActivate = append(tasksToActivate, dependOn...)
 		}
 		if len(tasksToActivate) > 0 {
 			var buildIds []string
@@ -108,7 +100,7 @@ func setTaskActivationForVersion(versionId string, active, withDependencies bool
 			if err = build.UpdateActivationAndStatus(buildIds, active, caller); err != nil {
 				return false, errors.Wrapf(err, "setting activation for builds in version '%s'", versionId)
 			}
-			if err = task.ActivateTasks(tasksToActivate, time.Now(), withDependencies, caller); err != nil {
+			if err = task.ActivateTasks(tasksToActivate, time.Now(), false, caller); err != nil {
 				return false, errors.Wrap(err, "updating tasks for activation")
 			}
 			return true, nil
@@ -124,7 +116,7 @@ func setTaskActivationForVersion(versionId string, active, withDependencies bool
 			return false, errors.Wrap(err, "getting tasks to deactivate")
 		}
 		if len(tasks) > 0 {
-			if err = task.DeactivateTasks(tasks, withDependencies, caller); err != nil {
+			if err = task.DeactivateTasks(tasks, false, caller); err != nil {
 				return true, errors.Wrap(err, "deactivating tasks")
 			}
 		}

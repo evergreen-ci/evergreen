@@ -129,7 +129,7 @@ func (v *Version) UpdateBuildVariants() error {
 
 // SetActivated sets version activated field to specified boolean.
 func (v *Version) SetActivated(activated bool) error {
-	if v.Activated != nil && *v.Activated == activated {
+	if utility.FromBoolPtr(v.Activated) == activated {
 		return nil
 	}
 	v.Activated = utility.ToBoolPtr(activated)

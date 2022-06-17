@@ -165,6 +165,7 @@ func UpdateActivation(buildIds []string, active bool, caller string) error {
 
 // UpdateActivationAndStatus updates builds with the given ids
 // to the given activation setting and marks builds as created if active.
+// Should only be used to activate/deactivate all builds in a version.
 func UpdateActivationAndStatus(buildIds []string, active bool, caller string) error {
 	query := bson.M{IdKey: bson.M{"$in": buildIds}}
 	if !active && evergreen.IsSystemActivator(caller) {
