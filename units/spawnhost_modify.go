@@ -11,6 +11,8 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -97,10 +99,24 @@ func (j *spawnhostModifyJob) Run(ctx context.Context) {
 	modifyCloudHost := func(mgr cloud.Manager, h *host.Host, user string) error {
 		if err := mgr.ModifyHost(ctx, h, j.ModifyOptions); err != nil {
 			event.LogHostModifyError(h.Id, err.Error())
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":  "error modifying spawn host",
+				"host_id":  h.Id,
+				"host_tag": h.Tag,
+				"distro":   h.Distro.Id,
+				"options":  j.ModifyOptions,
+			}))
 			return errors.Wrap(err, "modifying spawn host")
 		}
 
 		event.LogHostModifySucceeded(h.Id)
+		grip.Info(message.Fields{
+			"message":  "modified spawn host",
+			"host_id":  h.Id,
+			"host_tag": h.Tag,
+			"distro":   h.Distro.Id,
+			"options":  j.ModifyOptions,
+		})
 		return nil
 	}
 	if err := j.CloudHostModification.modifyHost(ctx, modifyCloudHost); err != nil {

@@ -1387,6 +1387,14 @@ func (t *Task) MarkSystemFailed(description string) error {
 	}
 
 	event.LogTaskFinished(t.Id, t.Execution, t.HostId, evergreen.TaskSystemFailed)
+	grip.Info(message.Fields{
+		"message":     "marking task system failed",
+		"task_id":     t.Id,
+		"execution":   t.Execution,
+		"status":      t.Status,
+		"host_id":     t.HostId,
+		"description": description,
+	})
 
 	return UpdateOne(
 		bson.M{
@@ -3318,7 +3326,7 @@ func (t *Task) FindAllMarkedUnattainableDependencies() ([]Task, error) {
 	return FindAll(query)
 }
 
-func (t *Task) toTaskNode() TaskNode {
+func (t *Task) ToTaskNode() TaskNode {
 	return TaskNode{
 		Name:    t.DisplayName,
 		Variant: t.BuildVariant,
