@@ -14,10 +14,5 @@ mciModule.factory('ApiV2', function(ApiUtil, API_V2) {
     getRecentVersions: function(projectId, getParms) {
       return get(API_V2.RECENT_VERSIONS, {project_id: projectId}, getParms)
     },
-
-    // TASKS API
-    getProjectTasks: function(projectId, getParms) {
-      return get(API_V2.PROJECT_TASKS, {project_id: projectId}, getParms)
-    },
   }
 })
