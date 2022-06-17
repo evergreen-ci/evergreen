@@ -694,7 +694,7 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 				// Try to spawn the host as OnDemand instead of Spot
 				event.LogHostFallback(h.Id)
 				grip.Info(message.Fields{
-					"message":  "fallback to on-demand",
+					"message":  "could not spawn spot instance, falling back to on-demand",
 					"host_id":  h.Id,
 					"host_tag": h.Tag,
 					"distro":   h.Distro.Id,
@@ -703,14 +703,13 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 				h.Provider = evergreen.ProviderNameEc2OnDemand
 				h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
 				if err = m.spawnOnDemandHost(ctx, h, ec2Settings, blockDevices); err != nil {
-					msg := "error spawning on-demand host"
 					grip.Error(message.WrapError(err, message.Fields{
-						"message":       msg,
+						"message":       "spawning on-demand host",
 						"host_id":       h.Id,
 						"host_provider": h.Distro.Provider,
 						"distro":        h.Distro.Id,
 					}))
-					return nil, errors.Wrapf(err, "error falling back to on-demand for host '%s'", h.Id)
+					return nil, errors.Wrapf(err, "fallback to on-demand failed for host '%s'", h.Id)
 				}
 				grip.Debug(message.Fields{
 					"message":       "spawned on-demand host",

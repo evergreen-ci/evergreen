@@ -328,7 +328,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	}
 
 	if _, err = cloudManager.SpawnHost(ctx, j.host); err != nil {
-		return errors.Wrapf(err, "error spawning host '%s'", j.host.Id)
+		return errors.Wrapf(err, "spawning host '%s'", j.host.Id)
 	}
 	// Don't mark containers as starting. SpawnHost already marks containers as
 	// running.
