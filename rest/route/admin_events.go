@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/rest/data"
-	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -80,7 +79,7 @@ func (h *adminEventsGet) Run(ctx context.Context) gimlet.Responder {
 	events = events[:lastIndex]
 	catcher := grip.NewBasicCatcher()
 	for i := range events {
-		catcher.Wrapf(resp.AddData(model.Model(&events[i])), "adding data for event at index %d", i)
+		catcher.Wrapf(resp.AddData(&events[i]), "adding data for event at index %d", i)
 	}
 
 	if catcher.HasErrors() {
