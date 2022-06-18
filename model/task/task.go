@@ -195,11 +195,11 @@ type Task struct {
 	LocalTestResults []TestResult `bson:"-" json:"test_results"`
 
 	// display task fields
-	DisplayOnly       bool     `bson:"display_only,omitempty" json:"display_only,omitempty"`
-	ExecutionTasks    []string `bson:"execution_tasks,omitempty" json:"execution_tasks,omitempty"`
-	ResetWhenFinished bool     `bson:"reset_when_finished,omitempty" json:"reset_when_finished,omitempty"`
-	RestartFailed     *bool    `bson:"restart_failed,omitempty" json:"restart_failed,omitempty"`
-	DisplayTask       *Task    `bson:"-" json:"-"` // this is a local pointer from an exec to display task
+	DisplayOnly             bool     `bson:"display_only,omitempty" json:"display_only,omitempty"`
+	ExecutionTasks          []string `bson:"execution_tasks,omitempty" json:"execution_tasks,omitempty"`
+	ResetWhenFinished       bool     `bson:"reset_when_finished,omitempty" json:"reset_when_finished,omitempty"`
+	ResetFailedWhenFinished bool     `bson:"reset_failed_when_finished,omitempty" json:"reset_failed_when_finished,omitempty"`
+	DisplayTask             *Task    `bson:"-" json:"-"` // this is a local pointer from an exec to display task
 
 	// DisplayTaskId is set to the display task ID if the task is an execution task, the empty string if it's not an execution task,
 	// and is nil if we haven't yet checked whether or not this task has a display task.
@@ -1935,7 +1935,7 @@ func resetTaskUpdate(t *Task) bson.M {
 		t.Details = apimodels.TaskEndDetail{}
 		t.HasCedarResults = false
 		t.ResetWhenFinished = false
-		t.RestartFailed = nil
+		t.ResetFailedWhenFinished = false
 		t.AgentVersion = ""
 		t.HostCreateDetails = []HostCreateDetail{}
 		t.OverrideDependencies = false
@@ -1955,15 +1955,15 @@ func resetTaskUpdate(t *Task) bson.M {
 			LastHeartbeatKey:       utility.ZeroTime,
 		},
 		"$unset": bson.M{
-			DetailsKey:              "",
-			HasCedarResultsKey:      "",
-			CedarResultsFailedKey:   "",
-			ResetWhenFinishedKey:    "",
-			RestartFailedKey:        "",
-			AgentVersionKey:         "",
-			HostIdKey:               "",
-			HostCreateDetailsKey:    "",
-			OverrideDependenciesKey: "",
+			DetailsKey:                 "",
+			HasCedarResultsKey:         "",
+			CedarResultsFailedKey:      "",
+			ResetWhenFinishedKey:       "",
+			ResetFailedWhenFinishedKey: "",
+			AgentVersionKey:            "",
+			HostIdKey:                  "",
+			HostCreateDetailsKey:       "",
+			OverrideDependenciesKey:    "",
 		},
 	}
 	return update
@@ -2641,6 +2641,9 @@ func (t *Task) populateTestResultsForDisplayTask() error {
 // SetResetWhenFinished requests that a display task or single-host task group
 // reset itself when finished. Will mark itself as system failed.
 func (t *Task) SetResetWhenFinished() error {
+	if t.ResetWhenFinished {
+		return nil
+	}
 	t.ResetWhenFinished = true
 	return UpdateOne(
 		bson.M{
@@ -2654,20 +2657,20 @@ func (t *Task) SetResetWhenFinished() error {
 	)
 }
 
-// SetRestartFailed requests that a display task
+// SetResetFailedWhenFinished requests that a display task
 // only restarts failed tasks.
-func (t *Task) SetRestartFailed() error {
-	if !utility.FromBoolPtr(t.RestartFailed) {
+func (t *Task) SetResetFailedWhenFinished() error {
+	if t.ResetFailedWhenFinished {
 		return nil
 	}
-	t.RestartFailed = utility.TruePtr()
+	t.ResetFailedWhenFinished = true
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				RestartFailedKey: true,
+				ResetFailedWhenFinishedKey: true,
 			},
 		},
 	)

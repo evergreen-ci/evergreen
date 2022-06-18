@@ -55,7 +55,7 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 					for _, dep := range deps {
 						// reset any already finished tasks in the same task group
 						if dep.TaskGroup == t.TaskGroup && t.TaskGroup != "" && dep.IsFinished() {
-							catcher.Wrapf(resetTask(&dep, caller, false), "resetting dependency '%s'", dep.Id)
+							catcher.Wrapf(resetTask(dep.Id, caller, false), "resetting dependency '%s'", dep.Id)
 						} else {
 							tasksToActivate = append(tasksToActivate, dep)
 						}
@@ -67,7 +67,7 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 
 			// Investigating strange dispatch state as part of EVG-13144
 			if t.IsHostTask() && !utility.IsZeroTime(t.DispatchTime) && t.Status == evergreen.TaskUndispatched {
-				catcher.Wrapf(resetTask(&t, caller, false), "resetting task '%s'", t.Id)
+				catcher.Wrapf(resetTask(t.Id, caller, false), "resetting task '%s'", t.Id)
 			} else {
 				tasksToActivate = append(tasksToActivate, originalTasks...)
 			}
@@ -180,7 +180,7 @@ func activatePreviousTask(taskId, caller string, originalStepbackTask *task.Task
 func resetManyTasks(tasks []task.Task, caller string, logIDs bool) error {
 	catcher := grip.NewBasicCatcher()
 	for _, t := range tasks {
-		catcher.Add(resetTask(&t, caller, logIDs))
+		catcher.Add(resetTask(t.Id, caller, logIDs))
 	}
 	return catcher.Resolve()
 }
@@ -278,11 +278,15 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 		return errors.Wrap(checkResetSingleHostTaskGroup(t, caller), "resetting single host task group")
 	}
 
-	return errors.WithStack(resetTask(t, caller, false))
+	return errors.WithStack(resetTask(t.Id, caller, false))
 }
 
 // resetTask attempts to archive the task, resets it, and resets the TaskCache in the build as well.
-func resetTask(t *task.Task, caller string, logIDs bool) error {
+func resetTask(taskId, caller string, logIDs bool) error {
+	t, err := task.FindOneId(taskId)
+	if err != nil {
+		return errors.WithStack(err)
+	}
 	if t.IsPartOfDisplay() {
 		return errors.Errorf("cannot restart execution task '%s' because it is part of a display task", t.Id)
 	}
@@ -564,7 +568,7 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		return errors.Wrap(err, "updating build/version status")
 	}
 
-	if t.ResetWhenFinished && !t.IsPartOfDisplay() && !t.IsPartOfSingleHostTaskGroup() {
+	if (t.ResetWhenFinished || t.ResetFailedWhenFinished) && !t.IsPartOfDisplay() && !t.IsPartOfSingleHostTaskGroup() {
 		return TryResetTask(t.Id, evergreen.APIServerTaskActivator, "", detail)
 	}
 
@@ -1236,17 +1240,21 @@ func MarkHostTaskDispatched(t *task.Task, h *host.Host) error {
 
 func MarkOneTaskReset(t *task.Task, logIDs bool) error {
 	if t.DisplayOnly {
-		for _, et := range t.ExecutionTasks {
-			execTask, err := task.FindOneId(et)
+		if !t.ResetFailedWhenFinished {
+			if err := MarkTasksReset(t.ExecutionTasks); err != nil {
+				return errors.Wrap(err, "resetting execution tasks")
+			}
+		} else {
+			failedExecTasks, err := task.Find(task.FailedTasksByIds(t.ExecutionTasks))
 			if err != nil {
-				return errors.Wrap(err, "retrieving execution task")
+				return errors.Wrap(err, "retrieving failed execution tasks")
 			}
-			// Ignore succeeded execution tasks if we only want to restart failed.
-			if utility.FromBoolPtr(t.RestartFailed) && !evergreen.IsFailedTaskStatus(execTask.Status) {
-				continue
+			failedExecTaskIds := []string{}
+			for _, et := range failedExecTasks {
+				failedExecTaskIds = append(failedExecTaskIds, et.Id)
 			}
-			if err = MarkOneTaskReset(execTask, logIDs); err != nil {
-				return errors.Wrap(err, "resetting execution task")
+			if err := MarkTasksReset(failedExecTaskIds); err != nil {
+				return errors.Wrap(err, "resetting failed execution tasks")
 			}
 		}
 	}
@@ -1451,23 +1459,25 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 		return errors.WithStack(MarkEnd(t, evergreen.MonitorPackage, time.Now(), &t.Details, false))
 	}
 
-	// Only restart failed tasks for stranded tasks.
-	if err := t.SetRestartFailed(); err != nil {
-		return errors.Wrap(err, "setting restart failed")
-	}
-	return errors.Wrap(ResetTaskOrDisplayTask(t, evergreen.User, evergreen.MonitorPackage, &t.Details), "resetting task")
+	return errors.Wrap(ResetTaskOrDisplayTask(t, evergreen.User, evergreen.MonitorPackage, true, &t.Details), "resetting task")
 }
 
 // ResetTaskOrDisplayTask is a wrapper for TryResetTask that handles execution and display tasks that are restarted
 // from sources separate from marking the task finished. If an execution task, attempts to restart the display task instead.
 // Marks display tasks as reset when finished and then check if it can be reset immediately.
-func ResetTaskOrDisplayTask(t *task.Task, user, origin string, detail *apimodels.TaskEndDetail) error {
+func ResetTaskOrDisplayTask(t *task.Task, user, origin string, failedOnly bool, detail *apimodels.TaskEndDetail) error {
 	if t.IsPartOfDisplay() {
 		return errors.New("cannot restart individual execution task")
 	}
 	if t.DisplayOnly {
-		if err := t.SetResetWhenFinished(); err != nil {
-			return errors.Wrap(err, "marking display task for reset")
+		if failedOnly {
+			if err := t.SetResetFailedWhenFinished(); err != nil {
+				return errors.Wrap(err, "marking display task for reset")
+			}
+		} else {
+			if err := t.SetResetWhenFinished(); err != nil {
+				return errors.Wrap(err, "marking display task for reset")
+			}
 		}
 		return errors.Wrap(checkResetDisplayTask(t), "checking display task reset")
 	}
