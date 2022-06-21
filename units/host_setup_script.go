@@ -11,6 +11,8 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -66,6 +68,12 @@ func (j *hostSetupScriptJob) Run(ctx context.Context) {
 
 	defer func() {
 		if j.HasErrors() && (j.RetryInfo().GetRemainingAttempts() == 0 || !j.RetryInfo().ShouldRetry()) {
+			grip.Error(message.WrapError(j.Error(), message.Fields{
+				"message": "setup script failed during execution",
+				"host_id": j.host.Id,
+				"distro":  j.host.Distro.Id,
+				"job":     j.ID(),
+			}))
 			event.LogHostScriptExecuteFailed(j.HostID, j.Error())
 		}
 	}()

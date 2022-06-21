@@ -50,7 +50,6 @@ const (
 	EventHostProvisioned                 = "HOST_PROVISIONED"
 	EventHostRunningTaskSet              = "HOST_RUNNING_TASK_SET"
 	EventHostRunningTaskCleared          = "HOST_RUNNING_TASK_CLEARED"
-	EventHostTaskPidSet                  = "HOST_TASK_PID_SET"
 	EventHostMonitorFlag                 = "HOST_MONITOR_FLAG"
 	EventTaskFinished                    = "HOST_TASK_FINISHED"
 	EventHostTerminatedExternally        = "HOST_TERMINATED_EXTERNALLY"
@@ -236,10 +235,6 @@ func LogHostRunningTaskSet(hostId string, taskId string) {
 func LogHostRunningTaskCleared(hostId string, taskId string) {
 	LogHostEvent(hostId, EventHostRunningTaskCleared,
 		HostEventData{TaskId: taskId})
-}
-
-func LogHostTaskPidSet(hostId string, taskPid string) {
-	LogHostEvent(hostId, EventHostTaskPidSet, HostEventData{TaskPid: taskPid})
 }
 
 // LogHostProvisionFailed is used when Evergreen gives up on provisioning a host

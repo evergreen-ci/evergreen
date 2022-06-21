@@ -69,7 +69,7 @@ func (j *taskStrandedCleanupJob) Run(ctx context.Context) {
 		taskIDs = append(taskIDs, h.RunningTask)
 		hostIDs = append(hostIDs, h.Id)
 
-		j.AddError(model.ClearAndResetStrandedTask(&h))
+		j.AddError(model.ClearAndResetStrandedHostTask(&h))
 	}
 
 	tasks, err := task.FindStuckDispatching()

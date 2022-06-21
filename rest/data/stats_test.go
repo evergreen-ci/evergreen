@@ -1,17 +1,21 @@
 package data
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/stats"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -191,4 +195,120 @@ func TestGetTestStats(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	require.Len(t, stats, 1)
+}
+
+func TestGetPrestoTestStats(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	assert.NoError(t, db.ClearCollections(model.ProjectRefCollection))
+	defer func() {
+		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection))
+	}()
+
+	proj := model.ProjectRef{Id: "project"}
+	require.NoError(t, proj.Insert())
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+
+	for _, test := range []struct {
+		name           string
+		setup          func(*testing.T, stats.PrestoTestStatsFilter, []restModel.APITestStats)
+		filter         stats.PrestoTestStatsFilter
+		expectedResult []restModel.APITestStats
+		hasErr         bool
+	}{
+		{
+			name: "ProjectDNE",
+			filter: stats.PrestoTestStatsFilter{
+				Project:    "DNE",
+				Variant:    "variant",
+				TaskName:   "task",
+				TestName:   "test",
+				AfterDate:  time.Now().Add(-48 * time.Hour),
+				BeforeDate: time.Now().Add(24 * time.Hour),
+				DB:         db,
+			},
+			hasErr: true,
+		},
+		{
+			name: "PrestoError",
+			setup: func(t *testing.T, filter stats.PrestoTestStatsFilter, _ []restModel.APITestStats) {
+				query, _, err := filter.GenerateQuery()
+				require.NoError(t, err)
+
+				mock.ExpectQuery(query).WillReturnError(errors.New("query error"))
+			},
+			filter: stats.PrestoTestStatsFilter{
+				Project:    "project",
+				Variant:    "variant",
+				TaskName:   "task",
+				TestName:   "test",
+				AfterDate:  time.Now().Add(-48 * time.Hour),
+				BeforeDate: time.Now().Add(24 * time.Hour),
+				DB:         db,
+			},
+			hasErr: true,
+		},
+		{
+			name: "SuccessfulPrestoCall",
+			setup: func(t *testing.T, filter stats.PrestoTestStatsFilter, expected []restModel.APITestStats) {
+				query, _, err := filter.GenerateQuery()
+				require.NoError(t, err)
+
+				rows := sqlmock.NewRows([]string{"test_name", "task_name", "date", "num_pass", "num_fail", "average_duration"})
+				for _, row := range expected {
+					date, err := time.Parse("2006-01-02", utility.FromStringPtr(row.Date))
+					require.NoError(t, err)
+					rows.AddRow(row.TestFile, row.TaskName, date, row.NumPass, row.NumFail, row.AvgDurationPass*1e9)
+				}
+				mock.ExpectQuery(query).WillReturnRows(rows)
+			},
+			filter: stats.PrestoTestStatsFilter{
+				Project:    "project",
+				Variant:    "variant",
+				TaskName:   "task",
+				TestName:   "test",
+				AfterDate:  time.Now().Add(-48 * time.Hour),
+				BeforeDate: time.Now().Add(24 * time.Hour),
+				DB:         db,
+			},
+			expectedResult: []restModel.APITestStats{
+				{
+					TestFile:        utility.ToStringPtr("test1"),
+					TaskName:        utility.ToStringPtr("task1"),
+					BuildVariant:    utility.ToStringPtr("variant"),
+					Distro:          utility.ToStringPtr(""),
+					Date:            utility.ToStringPtr("2022-01-01"),
+					NumPass:         100,
+					NumFail:         50,
+					AvgDurationPass: 100,
+				},
+				{
+					TestFile:        utility.ToStringPtr("test2"),
+					TaskName:        utility.ToStringPtr("task2"),
+					BuildVariant:    utility.ToStringPtr("variant"),
+					Distro:          utility.ToStringPtr(""),
+					Date:            utility.ToStringPtr("2022-01-02"),
+					NumPass:         50,
+					NumFail:         100,
+					AvgDurationPass: 20,
+				},
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if test.setup != nil {
+				test.setup(t, test.filter, test.expectedResult)
+			}
+			result, err := GetPrestoTestStats(ctx, test.filter)
+			if test.hasErr {
+				require.Error(t, err)
+				assert.Nil(t, result)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, test.expectedResult, result)
+			}
+		})
+	}
 }

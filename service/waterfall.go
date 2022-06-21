@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -635,6 +636,23 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 		JiraHost  string
 		ViewData
 	}{newUILink, uis.Settings.Jira.Host, uis.GetCommonViewData(w, r, false, true)}, "base", "waterfall.html", "base_angular.html", "menu.html")
+}
+
+// Create and return a redirect to the spruce mainline commits page if the user is opted in to the new UI.
+func (uis *UIServer) mainlineCommitsRedirect(w http.ResponseWriter, r *http.Request) {
+	u := gimlet.GetUser(r.Context())
+	if u != nil {
+		usr, ok := u.(*user.DBUser)
+		if ok {
+			// If the user is opted in to the new UI, redirect to the new UI.
+			if usr.Settings.UseSpruceOptions.SpruceV1 {
+				http.Redirect(w, r, fmt.Sprintf("%s/commits/", uis.Settings.Ui.UIv2Url), http.StatusSeeOther)
+			}
+		}
+	}
+	// fallback and redirect to the old UI waterfall.
+	http.Redirect(w, r, "/waterfall", http.StatusSeeOther)
+
 }
 
 func (restapi restAPI) getWaterfallData(w http.ResponseWriter, r *http.Request) {

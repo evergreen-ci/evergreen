@@ -185,7 +185,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 				"task":     j.host.RunningTask,
 			})
 
-			j.AddError(model.ClearAndResetStrandedTask(j.host))
+			j.AddError(model.ClearAndResetStrandedHostTask(j.host))
 		} else {
 			return
 		}
@@ -252,7 +252,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 				"task":     j.host.RunningTask,
 			})
 
-			j.AddError(model.ClearAndResetStrandedTask(j.host))
+			j.AddError(model.ClearAndResetStrandedHostTask(j.host))
 		} else {
 			return
 		}
@@ -319,6 +319,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			"message":     "provisioning failure",
 			"status":      prevStatus,
 			"host_id":     j.HostID,
+			"host_tag":    j.host.Tag,
 			"distro":      j.host.Distro.Id,
 			"uptime_secs": time.Since(j.host.StartTime).Seconds(),
 			"provider":    j.host.Provider,

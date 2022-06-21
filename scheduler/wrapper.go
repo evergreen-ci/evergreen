@@ -177,6 +177,14 @@ func doStaticHostUpdate(d distro.Distro) ([]string, error) {
 			}
 			if dbHost != nil {
 				event.LogHostStatusChanged(dbHost.Id, dbHost.Status, staticHost.Status, evergreen.User, "host status changed by host allocator")
+				grip.Info(message.Fields{
+					"message":    "static host status updated",
+					"operation":  "doStaticHostUpdate",
+					"host_id":    dbHost.Id,
+					"distro":     dbHost.Distro.Id,
+					"old_status": dbHost.Status,
+					"new_status": staticHost.Status,
+				})
 			}
 		} else if provisioned && dbHost.Status == evergreen.HostProvisioning {
 			staticHost.Status = evergreen.HostRunning
@@ -191,6 +199,16 @@ func doStaticHostUpdate(d distro.Distro) ([]string, error) {
 			case host.ReprovisionToLegacy, host.ReprovisionToNew:
 				event.LogHostConvertingProvisioning(staticHost.Id, staticHost.Distro.BootstrapSettings.Method, evergreen.User)
 			}
+
+			grip.Info(message.Fields{
+				"message":               "set needs reprovision",
+				"host_id":               dbHost.Id,
+				"distro":                dbHost.Distro.Id,
+				"provider":              dbHost.Provider,
+				"user":                  evergreen.User,
+				"old_needs_reprovision": dbHost.NeedsReprovision,
+				"new_needs_reprovision": provisionChange,
+			})
 		}
 
 		if d.Provider == evergreen.ProviderNameStatic {

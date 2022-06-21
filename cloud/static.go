@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -84,7 +85,12 @@ func (staticMgr *staticManager) TerminateInstance(ctx context.Context, host *hos
 	// a decommissioned static host will be removed from the database
 	if host.Status == evergreen.HostDecommissioned {
 		event.LogHostStatusChanged(host.Id, host.Status, evergreen.HostDecommissioned, evergreen.User, reason)
-		grip.Debugf("Removing decommissioned %s static host (%s)", host.Distro, host.Host)
+		grip.Debug(message.Fields{
+			"message":  "removing decommissioned static host",
+			"distro":   host.Distro.Id,
+			"host_id":  host.Id,
+			"hostname": host.Host,
+		})
 		if err := host.Remove(); err != nil {
 			grip.Errorf("Error removing decommissioned %s static host (%s): %+v",
 				host.Distro, host.Host, err)
