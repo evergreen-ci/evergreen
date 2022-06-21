@@ -547,31 +547,25 @@ func (p *Pod) SetRunningTask(ctx context.Context, env evergreen.Environment, tas
 	return nil
 }
 
-// ClearRunningTask unsets the running task on the pod.
+// ClearRunningTask clears the current task dispatched to the pod.
 func (p *Pod) ClearRunningTask() error {
-	err := UpdateOne(
-		bson.M{
-			IDKey: p.ID,
-		},
-		bson.M{
-			"$unset": bson.M{
-				RunningTaskKey: 1,
-			},
-		})
-
-	if err != nil {
-		return err
+	if p.RunningTask == "" {
+		return nil
 	}
 
-	if p.RunningTask != "" {
-		grip.Info(message.Fields{
-			"message": "cleared pod running task",
-			"host_id": p.ID,
-			"task_id": p.RunningTask,
-		})
+	if err := UpdateOne(bson.M{
+		IDKey:          p.ID,
+		RunningTaskKey: p.RunningTask,
+	}, bson.M{
+		"$unset": bson.M{
+			RunningTaskKey: 1,
+		},
+	}); err != nil {
+		return errors.Wrap(err, "clearing running task")
 	}
 
 	p.RunningTask = ""
+
 	return nil
 }
 

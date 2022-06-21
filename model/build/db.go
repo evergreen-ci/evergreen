@@ -298,7 +298,10 @@ func SetBuildStartedForTasks(tasks []task.Task, caller string) error {
 	// Set the build status for all the builds containing the tasks that we touched
 	_, err := UpdateAllBuilds(
 		bson.M{IdKey: bson.M{"$in": buildIdList}},
-		bson.M{"$set": bson.M{StatusKey: evergreen.BuildStarted}},
+		bson.M{"$set": bson.M{
+			StatusKey:    evergreen.BuildStarted,
+			StartTimeKey: time.Now(),
+		}},
 	)
 	catcher.Wrap(err, "setting builds to started")
 	// update activation for all the builds

@@ -8,14 +8,15 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	awsECS "github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/cocoa/ecs"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/rest/data"
-	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -36,7 +37,8 @@ const (
 	interruptionWarningType = "EC2 Spot Instance Interruption Warning"
 	instanceStateChangeType = "EC2 Instance State-change Notification"
 
-	ecsTaskStateChangeType = "ECS Task State Change"
+	ecsTaskStateChangeType              = "ECS Task State Change"
+	ecsContainerInstanceStateChangeType = "ECS Container Instance State Change"
 )
 
 type baseSNS struct {
@@ -298,16 +300,23 @@ type ecsSNS struct {
 }
 
 type ecsEventBridgeNotification struct {
-	DetailType string         `json:"detail-type"`
-	Detail     ecsEventDetail `json:"detail"`
+	DetailType string      `json:"detail-type"`
+	Detail     interface{} `json:"detail"`
 }
 
-type ecsEventDetail struct {
+type ecsTaskEventDetail struct {
 	TaskARN       string `json:"taskArn"`
 	ClusterARN    string `json:"clusterArn"`
 	LastStatus    string `json:"lastStatus"`
 	DesiredStatus string `json:"desiredStatus"`
 	StoppedReason string `json:"stoppedReason"`
+}
+
+type ecsContainerInstanceEventDetail struct {
+	ContainerInstanceARN string `json:"containerInstanceArn"`
+	ClusterARN           string `json:"clusterArn"`
+	Status               string `json:"status"`
+	StatusReason         string `json:"statusReason"`
 }
 
 func makeECSSNS(env evergreen.Environment, queue amboy.Queue) gimlet.RouteHandler {
@@ -362,27 +371,31 @@ func (sns *ecsSNS) Run(ctx context.Context) gimlet.Responder {
 func (sns *ecsSNS) handleNotification(ctx context.Context, notification ecsEventBridgeNotification) error {
 	switch notification.DetailType {
 	case ecsTaskStateChangeType:
-		p, err := data.FindPodByExternalID(notification.Detail.TaskARN)
+		detail, ok := notification.Detail.(ecsTaskEventDetail)
+		if !ok {
+			return errors.New("notification details should be ECS task event details")
+		}
+		p, err := pod.FindOneByExternalID(detail.TaskARN)
 		if err != nil {
 			return err
 		}
 		if p == nil {
 			grip.Info(message.Fields{
 				"message":        "found unexpected ECS task that did not match any known pod in Evergreen",
-				"task":           notification.Detail.TaskARN,
-				"cluster":        notification.Detail.ClusterARN,
-				"last_status":    notification.Detail.LastStatus,
-				"desired_status": notification.Detail.DesiredStatus,
+				"task":           detail.TaskARN,
+				"cluster":        detail.ClusterARN,
+				"last_status":    detail.LastStatus,
+				"desired_status": detail.DesiredStatus,
 				"route":          "/hooks/aws/ecs",
 			})
-			if err := sns.cleanupUnrecognizedPod(ctx, notification.Detail); err != nil {
-				return errors.Wrapf(err, "cleaning up unrecognized pod '%s'", notification.Detail.TaskARN)
+			if err := sns.cleanupUnrecognizedPod(ctx, detail); err != nil {
+				return errors.Wrapf(err, "cleaning up unrecognized pod '%s'", detail.TaskARN)
 			}
 
 			return nil
 		}
 
-		status := ecs.TaskStatus(notification.Detail.LastStatus).ToCocoaStatus()
+		status := ecs.TaskStatus(detail.LastStatus).ToCocoaStatus()
 		switch status {
 		case cocoa.StatusStarting, cocoa.StatusRunning:
 			// No-op because the pod is not considered running until the agent
@@ -393,7 +406,7 @@ func (sns *ecsSNS) handleNotification(ctx context.Context, notification ecsEvent
 			// stopped.
 			return nil
 		case cocoa.StatusStopped:
-			reason := notification.Detail.StoppedReason
+			reason := detail.StoppedReason
 			if reason == "" {
 				reason = "stopped due to unknown reason"
 			}
@@ -401,9 +414,55 @@ func (sns *ecsSNS) handleNotification(ctx context.Context, notification ecsEvent
 		default:
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
-				Message:    fmt.Sprintf("unrecognized status '%s'", notification.Detail.LastStatus),
+				Message:    fmt.Sprintf("unrecognized status '%s'", detail.LastStatus),
 			}
 		}
+	case ecsContainerInstanceStateChangeType:
+		detail, ok := notification.Detail.(ecsContainerInstanceEventDetail)
+		if !ok {
+			return errors.New("notification details should be ECS task event details")
+		}
+		if ecs.ContainerInstanceStatus(detail.Status) != ecs.ContainerInstanceStatusDraining {
+			return nil
+		}
+
+		grip.Info(message.Fields{
+			"message":            "got notification for draining container instance",
+			"container_instance": detail.ContainerInstanceARN,
+			"cluster":            detail.ClusterARN,
+			"reason":             detail.StatusReason,
+		})
+
+		taskARNs, err := sns.listECSTasks(ctx, detail)
+		if err != nil {
+			return errors.Wrapf(err, "listing ECS tasks associated with container instance '%s'", detail.ContainerInstanceARN)
+		}
+		for _, taskARN := range taskARNs {
+			p, err := pod.FindOneByExternalID(taskARN)
+			if err != nil {
+				return errors.Wrapf(err, "finding pod with external ID '%s'", taskARN)
+			}
+			if p == nil {
+				grip.Error(message.Fields{
+					"message": "Found an ECS task running in a draining container instance, but it's not associated with any known pod." +
+						" This isn't supposed to happen, so this may be due to a race (i.e. the ECS task started before we could track it in the DB) or a bug (i.e. failing to properly track a pod that we started).",
+					"task":               taskARN,
+					"container_instance": detail.ContainerInstanceARN,
+					"cluster":            detail.ClusterARN,
+				})
+				continue
+			}
+			var reason string
+			if detail.StatusReason != "" {
+				reason = detail.StatusReason
+			} else {
+				reason = "container instance is draining"
+			}
+			if err := sns.handleStoppedPod(ctx, p, reason); err != nil {
+				return errors.Wrapf(err, "handling pods on draining container instance '%s'", detail.ContainerInstanceARN)
+			}
+		}
+		return nil
 	default:
 		grip.Error(message.Fields{
 			"message":         "received an unknown notification detail type",
@@ -423,20 +482,19 @@ func (sns *ecsSNS) handleNotification(ctx context.Context, notification ecsEvent
 
 // handleStoppedPod handles an SNS notification that a pod has been stopped in
 // ECS.
-func (sns *ecsSNS) handleStoppedPod(ctx context.Context, p *model.APIPod, reason string) error {
-	if p.Status == model.PodStatusDecommissioned || p.Status == model.PodStatusTerminated {
+func (sns *ecsSNS) handleStoppedPod(ctx context.Context, p *pod.Pod, reason string) error {
+	if p.Status == pod.StatusDecommissioned || p.Status == pod.StatusTerminated {
 		return nil
 	}
-	id := utility.FromStringPtr(p.ID)
 
-	if err := data.UpdatePodStatus(id, p.Status, model.PodStatusDecommissioned); err != nil {
+	if err := p.UpdateStatus(pod.StatusDecommissioned); err != nil {
 		return err
 	}
 
-	if err := amboy.EnqueueUniqueJob(ctx, sns.queue, units.NewPodTerminationJob(id, reason, utility.RoundPartOfMinute(0))); err != nil {
+	if err := amboy.EnqueueUniqueJob(ctx, sns.queue, units.NewPodTerminationJob(p.ID, reason, utility.RoundPartOfMinute(0))); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":    "could not enqueue job to terminate pod from SNS notification",
-			"pod_id":     id,
+			"pod_id":     p.ID,
 			"pod_status": p.Status,
 			"route":      "/hooks/aws/ecs",
 		}))
@@ -445,8 +503,8 @@ func (sns *ecsSNS) handleStoppedPod(ctx context.Context, p *model.APIPod, reason
 	return nil
 }
 
-func (sns *ecsSNS) cleanupUnrecognizedPod(ctx context.Context, details ecsEventDetail) error {
-	status := ecs.TaskStatus(details.DesiredStatus).ToCocoaStatus()
+func (sns *ecsSNS) cleanupUnrecognizedPod(ctx context.Context, detail ecsTaskEventDetail) error {
+	status := ecs.TaskStatus(detail.DesiredStatus).ToCocoaStatus()
 	if status == cocoa.StatusStopping || status == cocoa.StatusStopped {
 		// The unrecognized pod is already cleaning up, so no-op.
 		return nil
@@ -464,7 +522,7 @@ func (sns *ecsSNS) cleanupUnrecognizedPod(ctx context.Context, details ecsEventD
 	// Evergreen-owned cluster.
 	var isInManagedCluster bool
 	for _, c := range sns.env.Settings().Providers.AWS.Pod.ECS.Clusters {
-		if strings.Contains(details.ClusterARN, c.Name) {
+		if strings.Contains(detail.ClusterARN, c.Name) {
 			isInManagedCluster = true
 			break
 		}
@@ -480,8 +538,8 @@ func (sns *ecsSNS) cleanupUnrecognizedPod(ctx context.Context, details ecsEventD
 	defer c.Close(ctx)
 
 	resources := cocoa.NewECSPodResources().
-		SetCluster(details.ClusterARN).
-		SetTaskID(details.TaskARN)
+		SetCluster(detail.ClusterARN).
+		SetTaskID(detail.TaskARN)
 
 	statusInfo := cocoa.NewECSPodStatusInfo().SetStatus(status)
 
@@ -501,12 +559,71 @@ func (sns *ecsSNS) cleanupUnrecognizedPod(ctx context.Context, details ecsEventD
 
 	grip.Info(message.Fields{
 		"message":        "successfully cleaned up unrecognized pod",
-		"task":           details.TaskARN,
-		"cluster":        details.ClusterARN,
-		"last_status":    details.LastStatus,
-		"desired_status": details.DesiredStatus,
+		"task":           detail.TaskARN,
+		"cluster":        detail.ClusterARN,
+		"last_status":    detail.LastStatus,
+		"desired_status": detail.DesiredStatus,
 		"route":          "/hooks/aws/ecs",
 	})
 
 	return nil
+}
+
+// listECSTasks returns the ARNs of all ECS tasks running in the container
+// instance associated with the event.
+func (sns *ecsSNS) listECSTasks(ctx context.Context, details ecsContainerInstanceEventDetail) ([]string, error) {
+	// Spot check that the notification is actually for a pod in an
+	// Evergreen-owned cluster.
+	var isInManagedCluster bool
+	for _, c := range sns.env.Settings().Providers.AWS.Pod.ECS.Clusters {
+		if strings.Contains(details.ClusterARN, c.Name) {
+			isInManagedCluster = true
+			break
+		}
+	}
+	if !isInManagedCluster {
+		return nil, nil
+	}
+
+	c, err := sns.makeECSClient(sns.env.Settings())
+	if err != nil {
+		return nil, errors.Wrap(err, "getting ECS client")
+	}
+	defer c.Close(ctx)
+
+	var token *string
+	var taskARNs []string
+
+	// The app server shouldn't be able to loop infinitely here since it's tied
+	// to the request context, but just to be extra safe and ensure the loop has
+	// a guaranteed exit condition, put a reasonable cap on the max number of
+	// pages of tasks that a container instance could possibly return.
+	const maxRealisticTaskPages = 100
+	for i := 0; i < maxRealisticTaskPages; i++ {
+		resp, err := c.ListTasks(ctx, &awsECS.ListTasksInput{
+			Cluster:           aws.String(details.ClusterARN),
+			ContainerInstance: aws.String(details.ContainerInstanceARN),
+			NextToken:         token,
+		})
+		if err != nil {
+			return nil, errors.Wrap(err, "listing ECS tasks")
+		}
+		if resp == nil {
+			return nil, errors.New("listing ECS tasks returned no response")
+		}
+
+		for _, arn := range resp.TaskArns {
+			if arn == nil {
+				continue
+			}
+			taskARNs = append(taskARNs, utility.FromStringPtr(arn))
+		}
+
+		token = resp.NextToken
+		if token == nil {
+			return taskARNs, nil
+		}
+	}
+
+	return nil, errors.Errorf("hit max realistic number of pages of tasks (%d) for a single container instance, refusing to iterate through any more pages", maxRealisticTaskPages)
 }
