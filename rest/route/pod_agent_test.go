@@ -1,7 +1,9 @@
 package route
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
@@ -11,6 +13,8 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/pod/dispatcher"
@@ -295,6 +299,132 @@ func TestPodAgentNextTask(t *testing.T) {
 			require.NoError(t, db.ClearCollections(task.Collection, pod.Collection, dispatcher.Collection, event.AllLogCollection))
 
 			rh, ok := makePodAgentNextTask(env).(*podAgentNextTask)
+			require.True(t, ok)
+
+			tCase(ctx, t, rh, env)
+		})
+	}
+}
+
+func TestPodAgentEndTask(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(task.Collection, pod.Collection, event.AllLogCollection, model.ProjectRefCollection, build.Collection, model.VersionCollection))
+	}()
+	td := &apimodels.TaskEndDetail{
+		Status: evergreen.TaskSucceeded,
+	}
+	jsonBody, err := json.Marshal(td)
+	require.NoError(t, err)
+	buffer := bytes.NewBuffer(jsonBody)
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *podAgentEndTask, env evergreen.Environment){
+		"ParseSetsPodAndTaskID": func(ctx context.Context, t *testing.T, rh *podAgentEndTask, env evergreen.Environment) {
+			r, err := http.NewRequest(http.MethodPost, "/url", buffer)
+			require.NoError(t, err)
+			podID := "some_pod_id"
+			taskID := "some_task_id"
+			r = gimlet.SetURLVars(r, map[string]string{"pod_id": podID, "task_id": taskID})
+			require.NoError(t, rh.Parse(ctx, r))
+			assert.Equal(t, podID, rh.podID)
+			assert.Equal(t, taskID, rh.taskID)
+		},
+		"ParseFailsWithoutPodIDOrTaskID": func(ctx context.Context, t *testing.T, rh *podAgentEndTask, env evergreen.Environment) {
+			r, err := http.NewRequest(http.MethodPost, "/url", nil)
+			require.NoError(t, err)
+			podID := "some_pod_id"
+			taskID := "some_task_id"
+			r = gimlet.SetURLVars(r, map[string]string{"task_id": taskID})
+			assert.Error(t, rh.Parse(ctx, r))
+			assert.Zero(t, rh.podID)
+			r = gimlet.SetURLVars(r, map[string]string{"pod_id": podID})
+			assert.Error(t, rh.Parse(ctx, r))
+			assert.Zero(t, rh.taskID)
+		},
+		"RunFailsWithNonexistentPodOrTask": func(ctx context.Context, t *testing.T, rh *podAgentEndTask, env evergreen.Environment) {
+			const podID = "foo1"
+			const taskID = "foo1"
+			rh.podID = podID
+			rh.taskID = taskID
+			resp := rh.Run(ctx)
+			assert.Equal(t, http.StatusNotFound, resp.Status())
+			podToInsert := &pod.Pod{
+				ID: podID,
+			}
+			require.NoError(t, podToInsert.Insert())
+			resp = rh.Run(ctx)
+			assert.Equal(t, http.StatusNotFound, resp.Status())
+		},
+		"RunReturnsShouldExitWithNilRunningTaskAndInvalidStatus": func(ctx context.Context, t *testing.T, rh *podAgentEndTask, env evergreen.Environment) {
+			const podID = "foo2"
+			const taskID = "foo2"
+			podToInsert := &pod.Pod{
+				ID:          podID,
+				RunningTask: "",
+			}
+			require.NoError(t, podToInsert.Insert())
+			taskToInsert := &task.Task{
+				Id: taskID,
+			}
+			require.NoError(t, taskToInsert.Insert())
+			rh.podID = podID
+			rh.taskID = taskID
+			resp := rh.Run(ctx)
+			endTaskResp := resp.Data().(*apimodels.EndTaskResponse)
+			assert.Equal(t, endTaskResp.ShouldExit, true)
+			require.NoError(t, podToInsert.UpdateStatus(pod.StatusStarting))
+			resp = rh.Run(ctx)
+			endTaskResp = resp.Data().(*apimodels.EndTaskResponse)
+			assert.Equal(t, endTaskResp.ShouldExit, true)
+		},
+		"RunSuccessfullyFinishesTask": func(ctx context.Context, t *testing.T, rh *podAgentEndTask, env evergreen.Environment) {
+			const podID = "foo3"
+			const taskID = "foo3"
+			const buildID = "foo3"
+			const versionID = "foo3"
+			podToInsert := &pod.Pod{
+				ID:          podID,
+				RunningTask: taskID,
+				Status:      pod.StatusRunning,
+			}
+			require.NoError(t, podToInsert.Insert())
+			taskToInsert := &task.Task{
+				Id:      taskID,
+				BuildId: buildID,
+				Version: versionID,
+			}
+			require.NoError(t, taskToInsert.Insert())
+			buildToInsert := &build.Build{
+				Id: buildID,
+			}
+			require.NoError(t, buildToInsert.Insert())
+			versionToInsert := &model.Version{
+				Id: versionID,
+			}
+			require.NoError(t, versionToInsert.Insert())
+			projectToInsert := model.ProjectRef{
+				Identifier: taskID,
+			}
+			require.NoError(t, projectToInsert.Insert())
+			rh.podID = podID
+			rh.taskID = taskID
+			rh.details = *td
+			resp := rh.Run(ctx)
+			endTaskResp := resp.Data().(*apimodels.EndTaskResponse)
+			assert.Equal(t, endTaskResp.ShouldExit, false)
+			foundTask, err := task.FindOneId(taskID)
+			require.NoError(t, err)
+			assert.Equal(t, foundTask.Status, evergreen.TaskSucceeded)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(ctx))
+
+			require.NoError(t, db.ClearCollections(task.Collection, pod.Collection, event.AllLogCollection, model.ProjectRefCollection, build.Collection, model.VersionCollection))
+
+			rh, ok := makePodAgentEndTask(env).(*podAgentEndTask)
 			require.True(t, ok)
 
 			tCase(ctx, t, rh, env)

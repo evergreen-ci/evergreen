@@ -473,7 +473,7 @@ func (h *podAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "getting display task"))
 	}
-	queue := evergreen.GetEnvironment().RemoteQueue()
+	queue := h.env.RemoteQueue()
 	job := units.NewCollectTaskEndDataJob(t, nil, p)
 	if err = queue.Put(ctx, job); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "couldn't queue job to update task stats accounting"))
