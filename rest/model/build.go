@@ -120,7 +120,7 @@ func (apiBuild *APIBuild) SetTaskCache(tasks []task.Task) {
 			StatusDetails: t.Details,
 			StartTime:     ToTimePtr(t.StartTime),
 			TimeTaken:     t.TimeTaken,
-			TimeTakenMs:   APIDuration(t.TimeTaken.Nanoseconds() / 1000),
+			TimeTakenMs:   APIDuration(t.TimeTaken.Milliseconds()),
 			Activated:     t.Activated,
 		})
 		apiBuild.StatusCounts.IncrementStatus(t.Status, t.Details)
