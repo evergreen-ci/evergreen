@@ -2264,6 +2264,7 @@ func TestMarkAsContainerAllocated(t *testing.T) {
 		assert.True(t, dbTask.ContainerAllocated)
 		assert.False(t, utility.IsZeroTime(dbTask.ContainerAllocatedTime))
 		assert.Zero(t, dbTask.AgentVersion)
+		assert.NotZero(t, dbTask.ContainerAllocationAttempts)
 	}
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task){
@@ -2283,6 +2284,19 @@ func TestMarkAsContainerAllocated(t *testing.T) {
 			tsk.ContainerAllocated = true
 			require.NoError(t, tsk.Insert())
 			tsk.ContainerAllocated = false
+
+			assert.Error(t, tsk.MarkAsContainerAllocated(ctx, env))
+		},
+		"FailsWithTaskWithNoRemainingAllocationAttempts": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
+			tsk.ContainerAllocationAttempts = maxContainerAllocationAttempts
+			require.NoError(t, tsk.Insert())
+
+			assert.Error(t, tsk.MarkAsContainerAllocated(ctx, env))
+		},
+		"FailsWithDBTaskWithNoRemainingAllocationAttempts": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
+			tsk.ContainerAllocationAttempts = maxContainerAllocationAttempts
+			require.NoError(t, tsk.Insert())
+			tsk.ContainerAllocationAttempts = 0
 
 			assert.Error(t, tsk.MarkAsContainerAllocated(ctx, env))
 		},
@@ -2690,6 +2704,10 @@ func TestShouldAllocateContainer(t *testing.T) {
 		},
 		"ReturnsFalseForTaskAlreadyAllocatedContainer": func(t *testing.T, tsk Task) {
 			tsk.ContainerAllocated = true
+			assert.False(t, tsk.ShouldAllocateContainer())
+		},
+		"ReturnsFalseForTaskWithNoRemainingAllocationAttempts": func(t *testing.T, tsk Task) {
+			tsk.ContainerAllocationAttempts = maxContainerAllocationAttempts
 			assert.False(t, tsk.ShouldAllocateContainer())
 		},
 		"ReturnsFalseForHostTask": func(t *testing.T, tsk Task) {
