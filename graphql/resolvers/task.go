@@ -80,16 +80,9 @@ func (r *taskResolver) Annotation(ctx context.Context, obj *restModel.APITask) (
 }
 
 func (r *taskResolver) BaseStatus(ctx context.Context, obj *restModel.APITask) (*string, error) {
-	i, err := obj.ToService()
+	t, err := obj.ToService()
 	if err != nil {
 		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *obj.Id, err.Error()))
-	}
-	t, ok := i.(*task.Task)
-	if !ok {
-		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *obj.Id))
-	}
-	if err != nil {
-		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s on base commit", *obj.Id))
 	}
 	baseStatus := t.BaseTask.Status
 	if baseStatus == "" {
@@ -99,13 +92,9 @@ func (r *taskResolver) BaseStatus(ctx context.Context, obj *restModel.APITask) (
 }
 
 func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*restModel.APITask, error) {
-	i, err := obj.ToService()
+	t, err := obj.ToService()
 	if err != nil {
 		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *obj.Id, err.Error()))
-	}
-	t, ok := i.(*task.Task)
-	if !ok {
-		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *obj.Id))
 	}
 
 	var baseTask *task.Task
@@ -219,25 +208,17 @@ func (r *taskResolver) CanOverrideDependencies(ctx context.Context, obj *restMod
 }
 
 func (r *taskResolver) CanRestart(ctx context.Context, obj *restModel.APITask) (bool, error) {
-	i, err := obj.ToService()
+	t, err := obj.ToService()
 	if err != nil {
 		return false, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to service", *obj.Id))
-	}
-	t, ok := i.(*task.Task)
-	if !ok {
-		return false, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("converting APITask '%s' to Task", *obj.Id))
 	}
 	return util.CanRestartTask(t), nil
 }
 
 func (r *taskResolver) CanSchedule(ctx context.Context, obj *restModel.APITask) (bool, error) {
-	i, err := obj.ToService()
+	t, err := obj.ToService()
 	if err != nil {
 		return false, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to service", *obj.Id))
-	}
-	t, ok := i.(*task.Task)
-	if !ok {
-		return false, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("converting APITask '%s' to Task", *obj.Id))
 	}
 	return util.CanScheduleTask(t), nil
 }
@@ -271,13 +252,9 @@ func (r *taskResolver) DependsOn(ctx context.Context, obj *restModel.APITask) ([
 		taskMap[dependencyTasks[i].Id] = &dependencyTasks[i]
 	}
 
-	i, err := obj.ToService()
+	t, err := obj.ToService()
 	if err != nil {
 		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *obj.Id, err.Error()))
-	}
-	t, ok := i.(*task.Task)
-	if !ok {
-		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *obj.Id))
 	}
 
 	for _, dep := range obj.DependsOn {
@@ -335,13 +312,9 @@ func (r *taskResolver) DisplayTask(ctx context.Context, obj *restModel.APITask) 
 }
 
 func (r *taskResolver) EstimatedStart(ctx context.Context, obj *restModel.APITask) (*restModel.APIDuration, error) {
-	i, err := obj.ToService()
+	t, err := obj.ToService()
 	if err != nil {
 		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error while converting task %s to service", *obj.Id))
-	}
-	t, ok := i.(*task.Task)
-	if !ok {
-		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *obj.Id))
 	}
 	start, err := model.GetEstimatedStartTime(*t)
 	if err != nil {
