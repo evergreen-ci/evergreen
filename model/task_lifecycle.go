@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/utility"
@@ -210,7 +211,9 @@ func resetTask(taskId, caller string, logIDs bool) error {
 	return errors.WithStack(UpdateBuildAndVersionStatusForTask(t))
 }
 
-// TryResetTask resets a task
+// TryResetTask resets a task. Individual execution tasks cannot be reset - to
+// reset an execution task, the given task ID must be that of its parent display
+// task.
 func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) error {
 	t, err := task.FindOneId(taskId)
 	if err != nil {
@@ -1401,7 +1404,40 @@ func doRestartFailedTasks(tasks []string, user string, results RestartResults) R
 	return results
 }
 
-func ClearAndResetStrandedTask(h *host.Host) error {
+// ClearAndResetStrandedContainerTask clears the container task dispatched to a
+// pod. It also resets the task so that the current task execution is marked as
+// finished and, if necessary, a new execution is created to restart the task.
+// TODO (PM-2618): should probably block single host task groups once they're
+// supported.
+func ClearAndResetStrandedContainerTask(p *pod.Pod) error {
+	runningTaskID := p.RunningTask
+	if runningTaskID == "" {
+		return nil
+	}
+
+	if err := p.ClearRunningTask(); err != nil {
+		return errors.Wrapf(err, "clearing running task '%s' from pod '%s'", runningTaskID, p.ID)
+	}
+
+	t, err := task.FindOneId(runningTaskID)
+	if err != nil {
+		return errors.Wrapf(err, "finding running task '%s' from pod '%s'", runningTaskID, p.ID)
+	}
+	if t == nil {
+		return nil
+	}
+
+	if err := resetStrandedTask(t); err != nil {
+		return errors.Wrapf(err, "resetting stranded task '%s'", t.Id)
+	}
+
+	return nil
+}
+
+// ClearAndResetStrandedHostTask clears the host task dispatched to the host. It
+// also resets the task so that the current task execution is marked as finished
+// and, if necessary, a new execution is created to restart the task.
+func ClearAndResetStrandedHostTask(h *host.Host) error {
 	if h.RunningTask == "" {
 		return nil
 	}
@@ -1432,26 +1468,36 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 		return errors.Wrapf(err, "clearing running task from host '%s'", h.Id)
 	}
 
+	if err := resetStrandedTask(t); err != nil {
+		return errors.Wrapf(err, "resetting stranded task '%s'", t.Id)
+	}
+
+	return nil
+}
+
+func resetStrandedTask(t *task.Task) error {
 	if t.IsFinished() {
 		return nil
 	}
 
-	if err = t.MarkSystemFailed(evergreen.TaskDescriptionStranded); err != nil {
-		return errors.Wrap(err, "marking task failed")
+	if err := t.MarkSystemFailed(evergreen.TaskDescriptionStranded); err != nil {
+		return errors.Wrap(err, "marking task as system failed")
 	}
 
 	if time.Since(t.ActivatedTime) > task.UnschedulableThreshold {
+		// If the task has already exceeded the unschedulable threshold, we
+		// don't want to restart it, so just mark it as finished.
 		if t.DisplayOnly {
 			for _, etID := range t.ExecutionTasks {
 				var execTask *task.Task
-				execTask, err = task.FindOneId(etID)
+				execTask, err := task.FindOneId(etID)
 				if err != nil {
 					return errors.Wrap(err, "finding execution task")
 				}
 				if execTask == nil {
 					return errors.New("execution task not found")
 				}
-				if err = MarkEnd(execTask, evergreen.MonitorPackage, time.Now(), &t.Details, false); err != nil {
+				if err := MarkEnd(execTask, evergreen.MonitorPackage, time.Now(), &t.Details, false); err != nil {
 					return errors.Wrap(err, "marking execution task as ended")
 				}
 			}
@@ -1483,8 +1529,7 @@ func ResetTaskOrDisplayTask(t *task.Task, user, origin string, detail *apimodels
 		return errors.Wrap(checkResetDisplayTask(&taskToReset), "checking display task reset")
 	}
 
-	return errors.Wrap(TryResetTask(t.Id, user, origin, detail),
-		"reset task error")
+	return errors.Wrap(TryResetTask(t.Id, user, origin, detail), "resetting task")
 }
 
 // UpdateDisplayTaskForTask updates the status of the given execution task's display task
