@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"testing"
 
@@ -42,11 +43,34 @@ func TestDownstreamExpansions(t *testing.T) {
 				ctx, cancel := context.WithCancel(context.Background())
 				defer cancel()
 				comm := client.NewMock("http://localhost.com")
-				conf := &internal.TaskConfig{Expansions: &util.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}
+				conf := &internal.TaskConfig{Expansions: &util.Expansions{}, Task: &task.Task{Requester: "patch_request"}, Project: &model.Project{}}
 				logger, _ := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 				cwd := testutil.GetDirectoryOfFile()
 				testCase(t, ctx, comm, conf, logger, cwd)
 			})
 		}
+
+		t.Run("OnlyOpForPatches", func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			comm := client.NewMock("http://localhost.com")
+			conf := &internal.TaskConfig{Expansions: &util.Expansions{}, Task: &task.Task{Requester: "gitter_request"}, Project: &model.Project{}}
+			logger, _ := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+			cwd := testutil.GetDirectoryOfFile()
+
+			path := filepath.Join(cwd, "testdata", "git", "test_expansions.yml")
+			cmd := &setDownstream{YamlFile: path}
+			assert.Nil(t, cmd.Execute(ctx, comm, logger, conf))
+			params := map[string]string{}
+			for i := range cmd.downstreamParams {
+				params[cmd.downstreamParams[i].Key] = cmd.downstreamParams[i].Value
+			}
+			fmt.Println(params)
+			assert.NotEqual(t, "value_1", params["key_1"])
+			assert.NotEqual(t, "my_image", params["my_docker_image"])
+			assert.NotEqual(t, "value_1", params["key_1"])
+			assert.NotEqual(t, "my_image", params["my_docker_image"])
+			assert.NotNil(t, comm.DownstreamParams)
+		})
 	})
 }
