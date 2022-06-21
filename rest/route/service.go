@@ -148,6 +148,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/patches/{patch_id}/merge_patch").Version(2).Put().Wrap(requireUser, addProject, submitPatches, requireCommitQueueItemOwner).RouteHandler(makeMergePatch())
 	app.AddRoute("/pods/{pod_id}/agent/setup").Version(2).Get().Wrap(requirePod).RouteHandler(makePodAgentSetup(env.Settings()))
 	app.AddRoute("/pods/{pod_id}/agent/next_task").Version(2).Get().Wrap(requirePod).RouteHandler(makePodAgentNextTask(env))
+	app.AddRoute("/pods/{pod_id}/task/{task_id}/end").Version(2).Post().Wrap(requirePod, requireTask).RouteHandler(makePodAgentEndTask(env))
 	app.AddRoute("/pods").Version(2).Post().Wrap(adminSettings).RouteHandler(makePostPod(env))
 	app.AddRoute("/pods/{pod_id}").Version(2).Get().Wrap(adminSettings).RouteHandler(makeGetPod(env))
 	app.AddRoute("/pods/{pod_id}/provisioning_script").Version(2).Get().Wrap(requirePod).RouteHandler(makePodProvisioningScript(env.Settings()))

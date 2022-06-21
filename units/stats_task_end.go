@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
@@ -29,11 +30,13 @@ type collectTaskEndDataJob struct {
 	TaskID    string `bson:"task_id" json:"task_id" yaml:"task_id"`
 	Execution int    `bson:"execution" json:"execution" yaml:"execution"`
 	HostID    string `bson:"host_id" json:"host_id" yaml:"host_id"`
+	PodID     string `bson:"pod_id" json:"pod_id" yaml:"host_id"`
 	job.Base  `bson:"metadata" json:"metadata" yaml:"metadata"`
 
 	// internal cache
 	task *task.Task
 	host *host.Host
+	pod  *pod.Pod
 	env  evergreen.Environment
 }
 
@@ -52,14 +55,20 @@ func newTaskEndJob() *collectTaskEndDataJob {
 // NewCollectTaskEndDataJob logs information a task after it
 // completes. It also logs information about the total runtime and instance
 // type, which can be used to measure the cost of running a task.
-func NewCollectTaskEndDataJob(t *task.Task, h *host.Host) amboy.Job {
+func NewCollectTaskEndDataJob(t *task.Task, h *host.Host, p *pod.Pod) amboy.Job {
 	j := newTaskEndJob()
 	j.TaskID = t.Id
 	j.Execution = t.Execution
-	j.HostID = h.Id
+	var id string
+	if h != nil {
+		id = h.Id
+	} else {
+		id = p.ID
+	}
+	j.pod = p
 	j.task = t
 	j.host = h
-	j.SetID(fmt.Sprintf("%s.%s.%s.%d", collectTaskEndDataJobName, j.TaskID, j.HostID, job.GetNumber()))
+	j.SetID(fmt.Sprintf("%s.%s.%s.%d", collectTaskEndDataJobName, j.TaskID, id, job.GetNumber()))
 	j.SetPriority(-2)
 	return j
 }
@@ -67,36 +76,9 @@ func NewCollectTaskEndDataJob(t *task.Task, h *host.Host) amboy.Job {
 func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	var err error
-	if j.task == nil {
-		j.task, err = task.FindOneIdAndExecution(j.TaskID, j.Execution)
-		j.AddError(err)
-		if err != nil {
-			return
-		}
-	}
-	// The task was restarted before the job ran.
-	if j.task == nil {
-		j.task, err = task.FindOneOldByIdAndExecution(j.TaskID, j.Execution)
-		j.AddError(err)
-		if err != nil {
-			return
-		}
-	}
-	if j.task == nil {
-		j.AddError(errors.Errorf("Could not find task '%s'", j.TaskID))
-		return
-	}
-
-	if j.host == nil {
-		j.host, err = host.FindOneId(j.HostID)
-		j.AddError(err)
-		if err != nil {
-			return
-		}
-	}
-	if j.host == nil {
-		j.AddError(errors.Errorf("Could not find host '%s'", j.HostID))
+	isHostMode := j.host != nil
+	if !isHostMode && j.pod == nil {
+		j.AddError(errors.New("Could not find host or pod"))
 		return
 	}
 
@@ -110,15 +92,12 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		"build":                j.task.BuildId,
 		"current_runtime_secs": j.task.FinishTime.Sub(j.task.StartTime).Seconds(),
 		"display_task":         j.task.DisplayOnly,
-		"distro":               j.host.Distro.Id,
 		"execution":            j.task.Execution,
 		"generator":            j.task.GenerateTask,
 		"group":                j.task.TaskGroup,
 		"group_max_hosts":      j.task.TaskGroupMaxHosts,
-		"host_id":              j.host.Id,
 		"priority":             j.task.Priority,
 		"project":              j.task.Project,
-		"provider":             j.host.Distro.Provider,
 		"requester":            j.task.Requester,
 		"stat":                 "task-end-stats",
 		"status":               j.task.GetDisplayStatus(),
@@ -141,11 +120,18 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 	}
 	j.AddError(err)
 
-	if cloud.IsEc2Provider(j.host.Distro.Provider) && len(j.host.Distro.ProviderSettingsList) > 0 {
-		instanceType, ok := j.host.Distro.ProviderSettingsList[0].Lookup("instance_type").StringValueOK()
-		if ok {
-			msg["instance_type"] = instanceType
+	if isHostMode {
+		msg["host_id"] = j.host.Id
+		msg["distro"] = j.host.Distro.Id
+		msg["provider"] = j.host.Distro.Provider
+		if cloud.IsEc2Provider(j.host.Distro.Provider) && len(j.host.Distro.ProviderSettingsList) > 0 {
+			instanceType, ok := j.host.Distro.ProviderSettingsList[0].Lookup("instance_type").StringValueOK()
+			if ok {
+				msg["instance_type"] = instanceType
+			}
 		}
+	} else {
+		msg["pod_id"] = j.pod.ID
 	}
 
 	if !j.task.DependenciesMetTime.IsZero() {

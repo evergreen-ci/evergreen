@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -543,6 +544,34 @@ func (p *Pod) SetRunningTask(ctx context.Context, env evergreen.Environment, tas
 
 	p.RunningTask = taskID
 
+	return nil
+}
+
+// ClearRunningTask unsets the running task on the pod.
+func (p *Pod) ClearRunningTask() error {
+	err := UpdateOne(
+		bson.M{
+			IDKey: p.ID,
+		},
+		bson.M{
+			"$unset": bson.M{
+				RunningTaskKey: 1,
+			},
+		})
+
+	if err != nil {
+		return err
+	}
+
+	if p.RunningTask != "" {
+		grip.Info(message.Fields{
+			"message": "cleared pod running task",
+			"host_id": p.ID,
+			"task_id": p.RunningTask,
+		})
+	}
+
+	p.RunningTask = ""
 	return nil
 }
 
