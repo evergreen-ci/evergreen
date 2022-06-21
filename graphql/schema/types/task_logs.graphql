@@ -1,0 +1,43 @@
+###### TYPES ######
+"""
+TaskLogs is the return value for the taskLogs query.
+It contains the logs for a given task on a given execution.
+"""
+type TaskLogs {
+  agentLogs: [LogMessage!]!
+  allLogs: [LogMessage!]!
+  defaultLogger: String!
+  eventLogs: [TaskEventLogEntry!]!
+  execution: Int!
+  systemLogs: [LogMessage!]!
+  taskId: String!
+  taskLogs: [LogMessage!]!
+}
+
+type TaskEventLogEntry {
+  id: String!
+  data: TaskEventLogData!
+  eventType: String
+  processedAt: Time!
+  resourceId: String!
+  resourceType: String!
+  timestamp: Time
+}
+
+type TaskEventLogData {
+  hostId: String
+  jiraIssue: String
+  jiraLink: String
+  priority: Int
+  status: String
+  timestamp: Time
+  userId: String
+}
+
+type LogMessage {
+  message: String
+  severity: String
+  timestamp: Time
+  type: String
+  version: Int
+}

@@ -161,49 +161,6 @@ type File {
 }
 
 """
-TaskLogs is the return value for the taskLogs query.
-It contains the logs for a given task on a given execution.
-"""
-type TaskLogs {
-  agentLogs: [LogMessage!]!
-  allLogs: [LogMessage!]!
-  defaultLogger: String!
-  eventLogs: [TaskEventLogEntry!]!
-  execution: Int!
-  systemLogs: [LogMessage!]!
-  taskId: String!
-  taskLogs: [LogMessage!]!
-}
-
-type TaskEventLogEntry {
-  id: String!
-  data: TaskEventLogData!
-  eventType: String
-  processedAt: Time!
-  resourceId: String!
-  resourceType: String!
-  timestamp: Time
-}
-
-type TaskEventLogData {
-  hostId: String
-  jiraIssue: String
-  jiraLink: String
-  priority: Int
-  status: String
-  timestamp: Time
-  userId: String
-}
-
-type LogMessage {
-  message: String
-  severity: String
-  timestamp: Time
-  type: String
-  version: Int
-}
-
-"""
 TaskTestResult is the return value for the taskTests query.
 It contains the test results for a task. For example, if there is a task to run all unit tests, then the test results
 could be the result of each individual unit test.

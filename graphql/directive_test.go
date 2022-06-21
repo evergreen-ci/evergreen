@@ -7,7 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	gqlModel "github.com/evergreen-ci/evergreen/graphql/model"
-	resolvers "github.com/evergreen-ci/evergreen/graphql/resolvers"
+	"github.com/evergreen-ci/evergreen/graphql/resolvers"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"

@@ -1,13 +1,3 @@
-###### INPUTS ######
-""" 
-IssueLinkInput is an input parameter to the annotation mutations.
-"""
-input IssueLinkInput {
-  confidenceScore: Float
-  issueKey: String!
-  url: String!
-}
-
 ###### TYPES ######
 """ 
 Annotation models the metadata that a user can add to a task.
@@ -22,14 +12,6 @@ type Annotation {
   taskId: String!
   taskExecution: Int!
   webhookConfigured: Boolean!
-}
-
-type IssueLink {
-  confidenceScore: Float
-  issueKey: String
-  jiraTicket: JiraTicket
-  source: Source
-  url: String
 }
 
 type Note {
@@ -65,20 +47,4 @@ type JiraTicket {
   fields: TicketFields!
   key: String!
 }
-
-type TicketFields {
-  assignedTeam: String
-  assigneeDisplayName: String
-  created: String!
-  resolutionName: String
-  status: JiraStatus!
-  summary: String!
-  updated: String!
-}
-
-type JiraStatus {
-  id: String!
-  name: String!
-}
-
 

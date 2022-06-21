@@ -12,9 +12,10 @@ model:
   filename: graphql/model/models_gen.go
   package: model
 resolver:
+  layout: follow-schema
   dir: graphql/resolvers
   package: resolvers
-  filename: graphql/resolvers/resolver.go
+  filename_template: "{name}.go"
 models:
   Annotation:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskAnnotation

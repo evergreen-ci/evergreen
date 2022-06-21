@@ -1,0 +1,18 @@
+###### INPUTS ######
+""" 
+IssueLinkInput is an input parameter to the annotation mutations.
+"""
+input IssueLinkInput {
+  confidenceScore: Float
+  issueKey: String!
+  url: String!
+}
+
+###### TYPES ######
+type IssueLink {
+  confidenceScore: Float
+  issueKey: String
+  jiraTicket: JiraTicket
+  source: Source
+  url: String
+}

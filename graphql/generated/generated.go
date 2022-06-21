@@ -7554,17 +7554,7 @@ scalar StringMap
 scalar Map
 
 `, BuiltIn: false},
-	{Name: "graphql/schema/types/annotations.graphql", Input: `###### INPUTS ######
-""" 
-IssueLinkInput is an input parameter to the annotation mutations.
-"""
-input IssueLinkInput {
-  confidenceScore: Float
-  issueKey: String!
-  url: String!
-}
-
-###### TYPES ######
+	{Name: "graphql/schema/types/annotation.graphql", Input: `###### TYPES ######
 """ 
 Annotation models the metadata that a user can add to a task.
 It is used as a field within the Task type.
@@ -7578,14 +7568,6 @@ type Annotation {
   taskId: String!
   taskExecution: Int!
   webhookConfigured: Boolean!
-}
-
-type IssueLink {
-  confidenceScore: Float
-  issueKey: String
-  jiraTicket: JiraTicket
-  source: Source
-  url: String
 }
 
 type Note {
@@ -7621,22 +7603,6 @@ type JiraTicket {
   fields: TicketFields!
   key: String!
 }
-
-type TicketFields {
-  assignedTeam: String
-  assigneeDisplayName: String
-  created: String!
-  resolutionName: String
-  status: JiraStatus!
-  summary: String!
-  updated: String!
-}
-
-type JiraStatus {
-  id: String!
-  name: String!
-}
-
 
 `, BuiltIn: false},
 	{Name: "graphql/schema/types/config.graphql", Input: `###### TYPES ######
@@ -7693,7 +7659,7 @@ type ClientBinary {
   url: String
 }
 `, BuiltIn: false},
-	{Name: "graphql/schema/types/hosts.graphql", Input: `enum HostSortBy {
+	{Name: "graphql/schema/types/host.graphql", Input: `enum HostSortBy {
   ID
   CURRENT_TASK
   DISTRO
@@ -7742,22 +7708,6 @@ type Host {
   uptime: Time # host creation time
   user: String
   volumes: [Volume!]!
-}
-
-type Volume {
-  id: String!
-  availabilityZone: String!
-  createdBy: String!
-  creationTime: Time
-  deviceName: String
-  displayName: String!
-  expiration: Time
-  homeVolume: Boolean!
-  host: Host
-  hostID: String!
-  noExpiration: Boolean!
-  size: Int!
-  type: String!
 }
 
 type TaskInfo {
@@ -7828,51 +7778,27 @@ type HostEventLogData {
   user: String!
 }
 
+
+
+`, BuiltIn: false},
+	{Name: "graphql/schema/types/issue_link.graphql", Input: `###### INPUTS ######
+""" 
+IssueLinkInput is an input parameter to the annotation mutations.
 """
-Distro[] is the return value for the distros query.
-It models an environment configuration for a host.
-"""
-type Distro {
-  isVirtualWorkStation: Boolean!
-  name: String
-  user: String
-  userSpawnAllowed: Boolean
-  workDir: String
+input IssueLinkInput {
+  confidenceScore: Float
+  issueKey: String!
+  url: String!
 }
 
-"""
-TaskQueueItem[] is the return value for the distroTaskQueue query.
-It contains information about any particular item on the task queue, such as the name of the task, the build variant of the task,
-and how long it's expected to take to finish running.
-"""
-type TaskQueueItem {
-  id: ID!
-  buildVariant: String!
-  displayName: String!
-  expectedDuration: Duration!
-  priority: Int!
-  project: String!
-  requester: TaskQueueItemType!
-  revision: String!
-  version: String!
+###### TYPES ######
+type IssueLink {
+  confidenceScore: Float
+  issueKey: String
+  jiraTicket: JiraTicket
+  source: Source
+  url: String
 }
-
-"""
-TaskQueueDistro[] is the return value for the taskQueueDistros query.
-It contains information about how many tasks and hosts are running on on a particular distro.
-"""
-type TaskQueueDistro {
-  id: ID!
-  hostCount: Int!
-  taskCount: Int!
-}
-
-
-
-
-
-
-
 `, BuiltIn: false},
 	{Name: "graphql/schema/types/patch.graphql", Input: `enum TaskSortCategory {
   NAME
@@ -8075,24 +8001,13 @@ type PatchTasks {
 }
 
 `, BuiltIn: false},
-	{Name: "graphql/schema/types/project.graphql", Input: `enum ProjectSettingsAccess {
-  EDIT
-  VIEW
+	{Name: "graphql/schema/types/permissions.graphql", Input: `###### TYPES ######
+type Permissions {
+  canCreateProject: Boolean!
+  userId: String!
 }
-
-enum ProjectSettingsSection {
-  GENERAL
-  ACCESS
-  VARIABLES
-  GITHUB_AND_COMMIT_QUEUE
-  NOTIFICATIONS
-  PATCH_ALIASES
-  WORKSTATION
-  TRIGGERS
-  PERIODIC_BUILDS
-  PLUGINS
-}
-
+`, BuiltIn: false},
+	{Name: "graphql/schema/types/project.graphql", Input: `
 ###### INPUTS ######
 """
 CreateProjectInput is the input to the createProject mutation.
@@ -8124,123 +8039,6 @@ input MoveProjectInput {
   newOwner: String!
   newRepo: String!
   projectId: String! @requireProjectAccess(access: EDIT)
-}
-
-"""
-ProjectSettingsInput is the input to the saveProjectSettingsForSection mutation.
-It contains information about project settings (e.g. Build Baron configurations, subscriptions, etc) and is used to
-update the settings for a given project.
-"""
-input ProjectSettingsInput {
-  aliases: [ProjectAliasInput!]
-  githubWebhooksEnabled: Boolean
-  projectRef: ProjectInput
-  subscriptions: [SubscriptionInput!]
-  vars: ProjectVarsInput
-}
-
-input ProjectInput {
-  id: String! @requireProjectAccess(access: EDIT)
-  admins: [String!]
-  batchTime: Int
-  branch: String
-  buildBaronSettings: BuildBaronSettingsInput
-  cedarTestResultsEnabled: Boolean
-  commitQueue: CommitQueueParamsInput
-  deactivatePrevious: Boolean
-  defaultLogger: String
-  disabledStatsCache: Boolean
-  dispatchingDisabled: Boolean
-  displayName: String
-  enabled: Boolean
-  filesIgnoredFromCache: [String!]
-  githubChecksEnabled: Boolean
-  githubTriggerAliases: [String]
-  gitTagAuthorizedTeams: [String!]
-  gitTagAuthorizedUsers: [String!]
-  gitTagVersionsEnabled: Boolean
-  identifier: String
-  manualPrTestingEnabled: Boolean
-  notifyOnBuildFailure: Boolean
-  owner: String
-  patchingDisabled: Boolean
-  patchTriggerAliases: [PatchTriggerAliasInput!]
-  perfEnabled: Boolean
-  periodicBuilds: [PeriodicBuildInput!]
-  private: Boolean
-  prTestingEnabled: Boolean
-  remotePath: String
-  repo: String
-  repotrackerDisabled: Boolean
-  restricted: Boolean
-  spawnHostScriptPath: String
-  taskAnnotationSettings: TaskAnnotationSettingsInput
-  taskSync: TaskSyncOptionsInput
-  tracksPushEvents: Boolean
-  triggers: [TriggerAliasInput!]
-  versionControlEnabled: Boolean
-  workstationConfig: WorkstationConfigInput
-}
-
-"""
-RepoSettingsInput is the input to the saveRepoSettingsForSection mutation.
-It contains information about repo settings (e.g. Build Baron configurations, subscriptions, etc) and is used to
-update the settings for a given project.
-"""
-input RepoSettingsInput {
-  aliases: [ProjectAliasInput!]
-  githubWebhooksEnabled: Boolean
-  projectRef: RepoRefInput ## use the repo ref here in order to have stronger types
-  subscriptions: [SubscriptionInput!]
-  vars: ProjectVarsInput
-}
-
-input RepoRefInput {
-  id: String! @requireProjectAccess(access: EDIT)
-  admins: [String!]
-  batchTime: Int
-  branch: String
-  buildBaronSettings: BuildBaronSettingsInput
-  cedarTestResultsEnabled: Boolean
-  commitQueue: CommitQueueParamsInput
-  deactivatePrevious: Boolean
-  defaultLogger: String
-  disabledStatsCache: Boolean
-  dispatchingDisabled: Boolean
-  displayName: String
-  enabled: Boolean
-  filesIgnoredFromCache: [String!]
-  githubChecksEnabled: Boolean
-  githubTriggerAliases: [String!]
-  gitTagAuthorizedTeams: [String!]
-  gitTagAuthorizedUsers: [String!]
-  gitTagVersionsEnabled: Boolean
-  manualPrTestingEnabled: Boolean
-  notifyOnBuildFailure: Boolean
-  owner: String
-  patchingDisabled: Boolean
-  patchTriggerAliases: [PatchTriggerAliasInput!]
-  perfEnabled: Boolean
-  periodicBuilds: [PeriodicBuildInput!]
-  private: Boolean
-  prTestingEnabled: Boolean
-  remotePath: String
-  repo: String
-  repotrackerDisabled: Boolean
-  restricted: Boolean
-  spawnHostScriptPath: String
-  taskAnnotationSettings: TaskAnnotationSettingsInput
-  taskSync: TaskSyncOptionsInput
-  tracksPushEvents: Boolean
-  triggers: [TriggerAliasInput!]
-  versionControlEnabled: Boolean
-  workstationConfig: WorkstationConfigInput
-}
-
-input ProjectVarsInput {
-  adminOnlyVarsList: [String]
-  privateVarsList: [String]
-  vars: StringMap
 }
 
 input ProjectAliasInput {
@@ -8424,7 +8222,83 @@ type WorkstationConfig {
   gitClone: Boolean
   setupCommands: [WorkstationSetupCommand!]
 }
+`, BuiltIn: false},
+	{Name: "graphql/schema/types/project_settings.graphql", Input: `enum ProjectSettingsAccess {
+  EDIT
+  VIEW
+}
 
+enum ProjectSettingsSection {
+  GENERAL
+  ACCESS
+  VARIABLES
+  GITHUB_AND_COMMIT_QUEUE
+  NOTIFICATIONS
+  PATCH_ALIASES
+  WORKSTATION
+  TRIGGERS
+  PERIODIC_BUILDS
+  PLUGINS
+}
+
+###### INPUTS ######
+"""
+ProjectSettingsInput is the input to the saveProjectSettingsForSection mutation.
+It contains information about project settings (e.g. Build Baron configurations, subscriptions, etc) and is used to
+update the settings for a given project.
+"""
+input ProjectSettingsInput {
+  aliases: [ProjectAliasInput!]
+  githubWebhooksEnabled: Boolean
+  projectRef: ProjectInput
+  subscriptions: [SubscriptionInput!]
+  vars: ProjectVarsInput
+}
+
+input ProjectInput {
+  id: String! @requireProjectAccess(access: EDIT)
+  admins: [String!]
+  batchTime: Int
+  branch: String
+  buildBaronSettings: BuildBaronSettingsInput
+  cedarTestResultsEnabled: Boolean
+  commitQueue: CommitQueueParamsInput
+  deactivatePrevious: Boolean
+  defaultLogger: String
+  disabledStatsCache: Boolean
+  dispatchingDisabled: Boolean
+  displayName: String
+  enabled: Boolean
+  filesIgnoredFromCache: [String!]
+  githubChecksEnabled: Boolean
+  githubTriggerAliases: [String]
+  gitTagAuthorizedTeams: [String!]
+  gitTagAuthorizedUsers: [String!]
+  gitTagVersionsEnabled: Boolean
+  identifier: String
+  manualPrTestingEnabled: Boolean
+  notifyOnBuildFailure: Boolean
+  owner: String
+  patchingDisabled: Boolean
+  patchTriggerAliases: [PatchTriggerAliasInput!]
+  perfEnabled: Boolean
+  periodicBuilds: [PeriodicBuildInput!]
+  private: Boolean
+  prTestingEnabled: Boolean
+  remotePath: String
+  repo: String
+  repotrackerDisabled: Boolean
+  restricted: Boolean
+  spawnHostScriptPath: String
+  taskAnnotationSettings: TaskAnnotationSettingsInput
+  taskSync: TaskSyncOptionsInput
+  tracksPushEvents: Boolean
+  triggers: [TriggerAliasInput!]
+  versionControlEnabled: Boolean
+  workstationConfig: WorkstationConfigInput
+}
+
+###### TYPES ######
 """
 ProjectSettings models the settings for a given Project.
 """
@@ -8436,6 +8310,7 @@ type ProjectSettings {
   vars: ProjectVars
 }
 
+# shared by Project and RepoRef
 type ProjectSubscription {
   id: String!
   ownerType: String!
@@ -8452,6 +8327,200 @@ type Selector {
   type: String!
 }
 
+# shared by Project and RepoRef
+type TriggerAlias {
+  alias: String!
+  buildVariantRegex: String!
+  configFile: String!
+  dateCutoff: Int!
+  level: String!
+  project: String!
+  status: String!
+  taskRegex: String!
+}
+
+# shared by Project and RepoRef
+type PeriodicBuild {
+  id: String!
+  alias: String!
+  configFile: String!
+  intervalHours: Int!
+  message: String!
+  nextRunTime: Time!
+}
+
+# shared by Project and RepoRef
+type BuildBaronSettings {
+  bfSuggestionFeaturesURL: String
+  bfSuggestionPassword: String
+  bfSuggestionServer: String
+  bfSuggestionTimeoutSecs: Int
+  bfSuggestionUsername: String
+  ticketCreateProject: String!
+  ticketSearchProjects: [String!]
+}
+
+# shared by Project and RepoRef
+type TaskAnnotationSettings {
+  fileTicketWebhook: Webhook!
+  jiraCustomFields: [JiraField!]
+}
+
+type JiraField {
+  displayText: String!
+  field: String!
+}
+
+type Webhook {
+  endpoint: String!
+  secret: String!
+}
+
+"""
+ProjectEvents contains project event log entries that concern the history of changes related to project
+settings.
+Although RepoSettings uses RepoRef in practice to have stronger types, this can't be enforced
+or event logs because new fields could always be introduced that don't exist in the old event logs.
+"""
+type ProjectEvents {
+  count: Int!
+  eventLogEntries: [ProjectEventLogEntry!]!
+}
+
+type ProjectEventLogEntry {
+  after: ProjectEventSettings
+  before: ProjectEventSettings
+  timestamp: Time!
+  user: String!
+}
+
+type ProjectEventSettings{
+  aliases: [ProjectAlias!]
+  githubWebhooksEnabled: Boolean!
+  projectRef: Project
+  subscriptions: [ProjectSubscription!]
+  vars: ProjectVars
+}
+
+type ProjectAlias {
+  id: String!
+  alias: String!
+  gitTag: String!
+  remotePath: String!
+  task: String!
+  taskTags: [String!]!
+  variant: String!
+  variantTags: [String!]!
+}
+
+`, BuiltIn: false},
+	{Name: "graphql/schema/types/project_subscriber.graphql", Input: `##### TYPES #####
+"""
+ProjectSubscriber defines the subscriptions for a given Project. For example, a project could have Slack notifications
+enabled that trigger whenever any version finishes.
+"""
+type ProjectSubscriber {
+  subscriber: Subscriber!
+  type: String!
+}
+
+type Subscriber {
+  emailSubscriber: String
+  githubCheckSubscriber: GithubCheckSubscriber
+  githubPRSubscriber: GithubPRSubscriber
+  jiraCommentSubscriber: String
+  jiraIssueSubscriber: JiraIssueSubscriber
+  slackSubscriber: String
+  webhookSubscriber: WebhookSubscriber
+}
+
+type GithubPRSubscriber {
+  owner: String!
+  prNumber: Int
+  ref: String!
+  repo: String!
+}
+
+type GithubCheckSubscriber {
+  owner: String!
+  ref: String!
+  repo: String!
+}
+
+type WebhookSubscriber {
+  headers: [WebhookHeader]!
+  secret: String!
+  url: String!
+}
+
+type WebhookHeader {
+  key: String!
+  value: String!
+}
+
+type JiraIssueSubscriber {
+  issueType: String!
+  project: String!
+}
+`, BuiltIn: false},
+	{Name: "graphql/schema/types/project_vars.graphql", Input: `###### INPUTS ######
+input ProjectVarsInput {
+  adminOnlyVarsList: [String]
+  privateVarsList: [String]
+  vars: StringMap
+}
+
+###### TYPES ######
+type ProjectVars {
+  adminOnlyVars: [String]
+  privateVars: [String]
+  vars: StringMap
+}
+`, BuiltIn: false},
+	{Name: "graphql/schema/types/repo_ref.graphql", Input: `###### INPUTS ######
+input RepoRefInput {
+  id: String! @requireProjectAccess(access: EDIT)
+  admins: [String!]
+  batchTime: Int
+  branch: String
+  buildBaronSettings: BuildBaronSettingsInput
+  cedarTestResultsEnabled: Boolean
+  commitQueue: CommitQueueParamsInput
+  deactivatePrevious: Boolean
+  defaultLogger: String
+  disabledStatsCache: Boolean
+  dispatchingDisabled: Boolean
+  displayName: String
+  enabled: Boolean
+  filesIgnoredFromCache: [String!]
+  githubChecksEnabled: Boolean
+  githubTriggerAliases: [String!]
+  gitTagAuthorizedTeams: [String!]
+  gitTagAuthorizedUsers: [String!]
+  gitTagVersionsEnabled: Boolean
+  manualPrTestingEnabled: Boolean
+  notifyOnBuildFailure: Boolean
+  owner: String
+  patchingDisabled: Boolean
+  patchTriggerAliases: [PatchTriggerAliasInput!]
+  perfEnabled: Boolean
+  periodicBuilds: [PeriodicBuildInput!]
+  private: Boolean
+  prTestingEnabled: Boolean
+  remotePath: String
+  repo: String
+  repotrackerDisabled: Boolean
+  restricted: Boolean
+  spawnHostScriptPath: String
+  taskAnnotationSettings: TaskAnnotationSettingsInput
+  taskSync: TaskSyncOptionsInput
+  tracksPushEvents: Boolean
+  triggers: [TriggerAliasInput!]
+  versionControlEnabled: Boolean
+  workstationConfig: WorkstationConfigInput
+}
+
+###### TYPES ######
 """
 RepoRef is technically a special kind of Project.
 Repo types have booleans defaulted, which is why it is necessary to redeclare the types despite them matching nearly
@@ -8520,57 +8589,22 @@ type RepoWorkstationConfig {
 type WorkstationSetupCommand {
   command: String!
   directory: String!
+}`, BuiltIn: false},
+	{Name: "graphql/schema/types/repo_settings.graphql", Input: `###### INPUTS ######
+"""
+RepoSettingsInput is the input to the saveRepoSettingsForSection mutation.
+It contains information about repo settings (e.g. Build Baron configurations, subscriptions, etc) and is used to
+update the settings for a given project.
+"""
+input RepoSettingsInput {
+  aliases: [ProjectAliasInput!]
+  githubWebhooksEnabled: Boolean
+  projectRef: RepoRefInput ## use the repo ref here in order to have stronger types
+  subscriptions: [SubscriptionInput!]
+  vars: ProjectVarsInput
 }
 
-# shared by Project and RepoRef
-type TriggerAlias {
-  alias: String!
-  buildVariantRegex: String!
-  configFile: String!
-  dateCutoff: Int!
-  level: String!
-  project: String!
-  status: String!
-  taskRegex: String!
-}
-
-# shared by Project and RepoRef
-type PeriodicBuild {
-  id: String!
-  alias: String!
-  configFile: String!
-  intervalHours: Int!
-  message: String!
-  nextRunTime: Time!
-}
-
-# shared by Project and RepoRef
-type BuildBaronSettings {
-  bfSuggestionFeaturesURL: String
-  bfSuggestionPassword: String
-  bfSuggestionServer: String
-  bfSuggestionTimeoutSecs: Int
-  bfSuggestionUsername: String
-  ticketCreateProject: String!
-  ticketSearchProjects: [String!]
-}
-
-# shared by Project and RepoRef
-type TaskAnnotationSettings {
-  fileTicketWebhook: Webhook!
-  jiraCustomFields: [JiraField!]
-}
-
-type JiraField {
-  displayText: String!
-  field: String!
-}
-
-type Webhook {
-  endpoint: String!
-  secret: String!
-}
-
+###### TYPES ######
 """
 RepoSettings models the settings for a given RepoRef.
 """
@@ -8580,98 +8614,6 @@ type RepoSettings {
   projectRef: RepoRef ## use the repo ref here in order to have stronger types
   subscriptions: [ProjectSubscription!]
   vars: ProjectVars
-}
-
-"""
-ProjectSubscriber defines the subscriptions for a given Project. For example, a project could have Slack notifications
-enabled that trigger whenever any version finishes.
-"""
-type ProjectSubscriber {
-  subscriber: Subscriber!
-  type: String!
-}
-
-type Subscriber {
-  emailSubscriber: String
-  githubCheckSubscriber: GithubCheckSubscriber
-  githubPRSubscriber: GithubPRSubscriber
-  jiraCommentSubscriber: String
-  jiraIssueSubscriber: JiraIssueSubscriber
-  slackSubscriber: String
-  webhookSubscriber: WebhookSubscriber
-}
-
-type GithubPRSubscriber {
-  owner: String!
-  prNumber: Int
-  ref: String!
-  repo: String!
-}
-
-type GithubCheckSubscriber {
-  owner: String!
-  ref: String!
-  repo: String!
-}
-
-type WebhookSubscriber {
-  headers: [WebhookHeader]!
-  secret: String!
-  url: String!
-}
-
-type WebhookHeader {
-  key: String!
-  value: String!
-}
-
-type JiraIssueSubscriber {
-  issueType: String!
-  project: String!
-}
-
-
-"""
-ProjectEvents contains project event log entries that concern the history of changes related to project
-settings.
-Although RepoSettings uses RepoRef in practice to have stronger types, this can't be enforced
-or event logs because new fields could always be introduced that don't exist in the old event logs.
-"""
-type ProjectEvents {
-  count: Int!
-  eventLogEntries: [ProjectEventLogEntry!]!
-}
-
-type ProjectEventLogEntry {
-  after: ProjectEventSettings
-  before: ProjectEventSettings
-  timestamp: Time!
-  user: String!
-}
-
-type ProjectEventSettings{
-  aliases: [ProjectAlias!]
-  githubWebhooksEnabled: Boolean!
-  projectRef: Project
-  subscriptions: [ProjectSubscription!]
-  vars: ProjectVars
-}
-
-type ProjectVars {
-  adminOnlyVars: [String]
-  privateVars: [String]
-  vars: StringMap
-}
-
-type ProjectAlias {
-  id: String!
-  alias: String!
-  gitTag: String!
-  remotePath: String!
-  task: String!
-  taskTags: [String!]!
-  variant: String!
-  variantTags: [String!]!
 }
 `, BuiltIn: false},
 	{Name: "graphql/schema/types/spawn.graphql", Input: `enum SpawnHostStatusActions {
@@ -8925,49 +8867,6 @@ type File {
 }
 
 """
-TaskLogs is the return value for the taskLogs query.
-It contains the logs for a given task on a given execution.
-"""
-type TaskLogs {
-  agentLogs: [LogMessage!]!
-  allLogs: [LogMessage!]!
-  defaultLogger: String!
-  eventLogs: [TaskEventLogEntry!]!
-  execution: Int!
-  systemLogs: [LogMessage!]!
-  taskId: String!
-  taskLogs: [LogMessage!]!
-}
-
-type TaskEventLogEntry {
-  id: String!
-  data: TaskEventLogData!
-  eventType: String
-  processedAt: Time!
-  resourceId: String!
-  resourceType: String!
-  timestamp: Time
-}
-
-type TaskEventLogData {
-  hostId: String
-  jiraIssue: String
-  jiraLink: String
-  priority: Int
-  status: String
-  timestamp: Time
-  userId: String
-}
-
-type LogMessage {
-  message: String
-  severity: String
-  timestamp: Time
-  type: String
-  version: Int
-}
-
-"""
 TaskTestResult is the return value for the taskTests query.
 It contains the test results for a task. For example, if there is a task to run all unit tests, then the test results
 could be the result of each individual unit test.
@@ -9009,6 +8908,107 @@ type TaskTestResultSample {
   matchingFailedTestNames: [String!]!
   taskId: String!
   totalTestCount: Int!
+}
+
+`, BuiltIn: false},
+	{Name: "graphql/schema/types/task_logs.graphql", Input: `###### TYPES ######
+"""
+TaskLogs is the return value for the taskLogs query.
+It contains the logs for a given task on a given execution.
+"""
+type TaskLogs {
+  agentLogs: [LogMessage!]!
+  allLogs: [LogMessage!]!
+  defaultLogger: String!
+  eventLogs: [TaskEventLogEntry!]!
+  execution: Int!
+  systemLogs: [LogMessage!]!
+  taskId: String!
+  taskLogs: [LogMessage!]!
+}
+
+type TaskEventLogEntry {
+  id: String!
+  data: TaskEventLogData!
+  eventType: String
+  processedAt: Time!
+  resourceId: String!
+  resourceType: String!
+  timestamp: Time
+}
+
+type TaskEventLogData {
+  hostId: String
+  jiraIssue: String
+  jiraLink: String
+  priority: Int
+  status: String
+  timestamp: Time
+  userId: String
+}
+
+type LogMessage {
+  message: String
+  severity: String
+  timestamp: Time
+  type: String
+  version: Int
+}`, BuiltIn: false},
+	{Name: "graphql/schema/types/task_queue.graphql", Input: `"""
+Distro[] is the return value for the distros query.
+It models an environment configuration for a host.
+"""
+type Distro {
+  isVirtualWorkStation: Boolean!
+  name: String
+  user: String
+  userSpawnAllowed: Boolean
+  workDir: String
+}
+
+
+"""
+TaskQueueItem[] is the return value for the distroTaskQueue query.
+It contains information about any particular item on the task queue, such as the name of the task, the build variant of the task,
+and how long it's expected to take to finish running.
+"""
+type TaskQueueItem {
+  id: ID!
+  buildVariant: String!
+  displayName: String!
+  expectedDuration: Duration!
+  priority: Int!
+  project: String!
+  requester: TaskQueueItemType!
+  revision: String!
+  version: String!
+}
+
+"""
+TaskQueueDistro[] is the return value for the taskQueueDistros query.
+It contains information about how many tasks and hosts are running on on a particular distro.
+"""
+type TaskQueueDistro {
+  id: ID!
+  hostCount: Int!
+  taskCount: Int!
+}
+
+`, BuiltIn: false},
+	{Name: "graphql/schema/types/ticket_fields.graphql", Input: `##### TYPES #####
+type TicketFields {
+  assignedTeam: String
+  assigneeDisplayName: String
+  created: String!
+  resolutionName: String
+  status: JiraStatus!
+  summary: String!
+  updated: String!
+}
+
+type JiraStatus {
+  id: String!
+  name: String!
 }
 
 `, BuiltIn: false},
@@ -9092,13 +9092,8 @@ type User {
   userId: String!
 }
 
-type Permissions {
-  canCreateProject: Boolean!
-  userId: String!
-}
-
 """
-PublicKey models a public key. User's can save/modify/delete their public keys.
+PublicKey models a public key. Users can save/modify/delete their public keys.
 """
 type PublicKey {
   key: String!
@@ -9327,6 +9322,21 @@ type Module {
 
 
 `, BuiltIn: false},
+	{Name: "graphql/schema/types/volume.graphql", Input: `type Volume {
+  id: String!
+  availabilityZone: String!
+  createdBy: String!
+  creationTime: Time
+  deviceName: String
+  displayName: String!
+  expiration: Time
+  homeVolume: Boolean!
+  host: Host
+  hostID: String!
+  noExpiration: Boolean!
+  size: Int!
+  type: String!
+}`, BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
 

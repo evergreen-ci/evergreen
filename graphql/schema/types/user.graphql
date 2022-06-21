@@ -78,13 +78,8 @@ type User {
   userId: String!
 }
 
-type Permissions {
-  canCreateProject: Boolean!
-  userId: String!
-}
-
 """
-PublicKey models a public key. User's can save/modify/delete their public keys.
+PublicKey models a public key. Users can save/modify/delete their public keys.
 """
 type PublicKey {
   key: String!
