@@ -9,7 +9,6 @@ import (
 
 	gqlError "github.com/evergreen-ci/evergreen/graphql/errors"
 	"github.com/evergreen-ci/evergreen/graphql/generated"
-	"github.com/evergreen-ci/evergreen/graphql/resolvers/util"
 	"github.com/evergreen-ci/evergreen/model"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
@@ -20,7 +19,7 @@ func (r *projectResolver) IsFavorite(ctx context.Context, obj *restModel.APIProj
 	if err != nil || p == nil {
 		return false, gqlError.ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s : %s", *obj.Identifier, err))
 	}
-	usr := util.MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	if utility.StringSliceContains(usr.FavoriteProjects, *obj.Identifier) {
 		return true, nil
 	}

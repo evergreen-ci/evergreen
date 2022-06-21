@@ -17,7 +17,6 @@ import (
 	gqlError "github.com/evergreen-ci/evergreen/graphql/errors"
 	"github.com/evergreen-ci/evergreen/graphql/generated"
 	gqlModel "github.com/evergreen-ci/evergreen/graphql/model"
-	"github.com/evergreen-ci/evergreen/graphql/resolvers/util"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -36,7 +35,7 @@ import (
 )
 
 func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskID string) ([]*thirdparty.JiraTicket, error) {
-	createdTickets, err := util.BBGetCreatedTicketsPointers(taskID)
+	createdTickets, err := bbGetCreatedTicketsPointers(taskID)
 	if err != nil {
 		return nil, err
 	}
@@ -353,7 +352,7 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 				tasks = append(tasks, childPatchTasks...)
 			}
 		}
-		statuses := util.GetAllTaskStatuses(tasks)
+		statuses := getAllTaskStatuses(tasks)
 
 		// If theres an aborted task we should set the patch status to aborted if there are no other failures
 		if utility.StringSliceContains(statuses, evergreen.TaskAborted) {
@@ -418,8 +417,8 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 	}
 
 	opts := task.GetTasksByVersionOptions{
-		Statuses:                       util.GetValidTaskStatusesFilter(statuses),
-		BaseStatuses:                   util.GetValidTaskStatusesFilter(baseStatuses),
+		Statuses:                       getValidTaskStatusesFilter(statuses),
+		BaseStatuses:                   getValidTaskStatusesFilter(baseStatuses),
 		Variants:                       []string{variantParam},
 		TaskNames:                      []string{taskNameParam},
 		Page:                           pageParam,
@@ -492,7 +491,7 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*gqlModel.GroupedProjec
 			enabledProjects = append(enabledProjects, p)
 		}
 	}
-	groupedProjects, err := util.GroupProjects(enabledProjects, false)
+	groupedProjects, err := groupProjects(enabledProjects, false)
 	if err != nil {
 		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("error grouping project: %s", err.Error()))
 	}
@@ -506,7 +505,7 @@ func (r *queryResolver) ProjectEvents(ctx context.Context, identifier string, li
 	}
 	events, err := data.GetProjectEventLog(identifier, timestamp, utility.FromIntPtr(limit))
 	res := &gqlModel.ProjectEvents{
-		EventLogEntries: util.GetPointerEventList(events),
+		EventLogEntries: getPointerEventList(events),
 		Count:           len(events),
 	}
 	return res, err
@@ -541,7 +540,7 @@ func (r *queryResolver) RepoEvents(ctx context.Context, id string, limit *int, b
 	}
 	events, err := data.GetEventsById(id, timestamp, utility.FromIntPtr(limit))
 	res := &gqlModel.ProjectEvents{
-		EventLogEntries: util.GetPointerEventList(events),
+		EventLogEntries: getPointerEventList(events),
 		Count:           len(events),
 	}
 	return res, err
@@ -569,7 +568,7 @@ func (r *queryResolver) RepoSettings(ctx context.Context, id string) (*restModel
 }
 
 func (r *queryResolver) ViewableProjectRefs(ctx context.Context) ([]*gqlModel.GroupedProjects, error) {
-	usr := util.MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	projectIds, err := usr.GetViewableProjectSettings()
 	if err != nil {
 		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("error getting viewable projects for '%s': '%s'", usr.DispName, err.Error()))
@@ -580,7 +579,7 @@ func (r *queryResolver) ViewableProjectRefs(ctx context.Context) ([]*gqlModel.Gr
 		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error getting projects: %v", err.Error()))
 	}
 
-	groupedProjects, err := util.GroupProjects(projects, true)
+	groupedProjects, err := groupProjects(projects, true)
 	if err != nil {
 		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("error grouping project: %s", err.Error()))
 	}
@@ -588,7 +587,7 @@ func (r *queryResolver) ViewableProjectRefs(ctx context.Context) ([]*gqlModel.Gr
 }
 
 func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, error) {
-	usr := util.MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	hosts, err := host.Find(host.ByUserWithRunningStatus(usr.Username()))
 	if err != nil {
 		return nil, gqlError.InternalServerError.Send(ctx,
@@ -616,12 +615,12 @@ func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, erro
 }
 
 func (r *queryResolver) MyVolumes(ctx context.Context) ([]*restModel.APIVolume, error) {
-	usr := util.MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	volumes, err := host.FindSortedVolumesByUser(usr.Username())
 	if err != nil {
 		return nil, gqlError.InternalServerError.Send(ctx, err.Error())
 	}
-	return util.GetAPIVolumeList(volumes)
+	return getAPIVolumeList(volumes)
 }
 
 func (r *queryResolver) Task(ctx context.Context, taskID string, execution *int) (*restModel.APITask, error) {
@@ -632,7 +631,7 @@ func (r *queryResolver) Task(ctx context.Context, taskID string, execution *int)
 	if dbTask == nil {
 		return nil, werrors.Errorf("unable to find task %s", taskID)
 	}
-	apiTask, err := util.GetAPITaskFromTask(ctx, r.sc.GetURL(), *dbTask)
+	apiTask, err := getAPITaskFromTask(ctx, r.sc.GetURL(), *dbTask)
 	if err != nil {
 		return nil, gqlError.InternalServerError.Send(ctx, "error converting task")
 	}
@@ -658,13 +657,13 @@ func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([
 			return nil, werrors.Errorf("unable to find task %s", taskID)
 		}
 		var apiTask *restModel.APITask
-		apiTask, err = util.GetAPITaskFromTask(ctx, r.sc.GetURL(), *dbTask)
+		apiTask, err = getAPITaskFromTask(ctx, r.sc.GetURL(), *dbTask)
 		if err != nil {
 			return nil, gqlError.InternalServerError.Send(ctx, "error converting task")
 		}
 		allTasks = append(allTasks, apiTask)
 	}
-	apiTask, err := util.GetAPITaskFromTask(ctx, r.sc.GetURL(), *latestTask)
+	apiTask, err := getAPITaskFromTask(ctx, r.sc.GetURL(), *latestTask)
 	if err != nil {
 		return nil, gqlError.InternalServerError.Send(ctx, "error converting task")
 	}
@@ -692,7 +691,7 @@ func (r *queryResolver) TaskFiles(ctx context.Context, taskID string, execution 
 			return &emptyTaskFiles, gqlError.ResourceNotFound.Send(ctx, err.Error())
 		}
 		for _, execTask := range execTasks {
-			groupedFiles, err := util.GetGroupedFiles(ctx, execTask.DisplayName, execTask.Id, t.Execution)
+			groupedFiles, err := getGroupedFiles(ctx, execTask.DisplayName, execTask.Id, t.Execution)
 			if err != nil {
 				return &emptyTaskFiles, err
 			}
@@ -700,7 +699,7 @@ func (r *queryResolver) TaskFiles(ctx context.Context, taskID string, execution 
 			groupedFilesList = append(groupedFilesList, groupedFiles)
 		}
 	} else {
-		groupedFiles, err := util.GetGroupedFiles(ctx, t.DisplayName, taskID, t.Execution)
+		groupedFiles, err := getGroupedFiles(ctx, t.DisplayName, taskID, t.Execution)
 		if err != nil {
 			return &emptyTaskFiles, err
 		}
@@ -898,7 +897,7 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, filt
 			failingTests = append(failingTests, f.TestName)
 		}
 
-		results, err := util.GetCedarFailedTestResultsSample(ctx, dbTasks, failingTests)
+		results, err := getCedarFailedTestResultsSample(ctx, dbTasks, failingTests)
 		if err != nil {
 			return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("getting test results sample: %s", err))
 		}
@@ -953,12 +952,12 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, filt
 }
 
 func (r *queryResolver) MyPublicKeys(ctx context.Context) ([]*restModel.APIPubKey, error) {
-	publicKeys := util.GetMyPublicKeys(ctx)
+	publicKeys := getMyPublicKeys(ctx)
 	return publicKeys, nil
 }
 
 func (r *queryResolver) User(ctx context.Context, userID *string) (*restModel.APIDBUser, error) {
-	usr := util.MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	var err error
 	if userID != nil {
 		usr, err = user.FindOneById(*userID)
@@ -981,7 +980,7 @@ func (r *queryResolver) User(ctx context.Context, userID *string) (*restModel.AP
 }
 
 func (r *queryResolver) UserConfig(ctx context.Context) (*gqlModel.UserConfig, error) {
-	usr := util.MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	settings := evergreen.GetEnvironment().Settings()
 	config := &gqlModel.UserConfig{
 		User:          usr.Username(),
@@ -993,7 +992,7 @@ func (r *queryResolver) UserConfig(ctx context.Context) (*gqlModel.UserConfig, e
 }
 
 func (r *queryResolver) UserSettings(ctx context.Context) (*restModel.APIUserSettings, error) {
-	usr := util.MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	userSettings := restModel.APIUserSettings{}
 	err := userSettings.BuildFromService(usr.Settings)
 	if err != nil {
@@ -1156,7 +1155,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options gqlModel.Ma
 
 		// If the version was created before we started caching activation status we must manually verify it and cache that value.
 		if v.Activated == nil {
-			err = util.SetVersionActivationStatus(&v)
+			err = setVersionActivationStatus(&v)
 			if err != nil {
 				return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error setting version activation status: %s", err.Error()))
 			}
@@ -1165,11 +1164,11 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options gqlModel.Ma
 		shouldCollapse := false
 		if !utility.FromBoolPtr(v.Activated) {
 			shouldCollapse = true
-		} else if util.IsPopulated(buildVariantOptions) && utility.FromBoolPtr(options.ShouldCollapse) {
+		} else if isPopulated(buildVariantOptions) && utility.FromBoolPtr(options.ShouldCollapse) {
 			opts := task.HasMatchingTasksOptions{
 				TaskNames: buildVariantOptions.Tasks,
 				Variants:  buildVariantOptions.Variants,
-				Statuses:  util.GetValidTaskStatusesFilter(buildVariantOptions.Statuses),
+				Statuses:  getValidTaskStatusesFilter(buildVariantOptions.Statuses),
 			}
 			hasTasks, err := task.HasMatchingTasks(v.Id, opts)
 			if err != nil {

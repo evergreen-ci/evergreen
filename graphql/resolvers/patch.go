@@ -14,7 +14,6 @@ import (
 	gqlError "github.com/evergreen-ci/evergreen/graphql/errors"
 	"github.com/evergreen-ci/evergreen/graphql/generated"
 	gqlModel "github.com/evergreen-ci/evergreen/graphql/model"
-	"github.com/evergreen-ci/evergreen/graphql/resolvers/util"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -39,11 +38,11 @@ func (r *patchResolver) AuthorDisplayName(ctx context.Context, obj *restModel.AP
 }
 
 func (r *patchResolver) BaseTaskStatuses(ctx context.Context, obj *restModel.APIPatch) ([]string, error) {
-	baseTasks, err := util.GetVersionBaseTasks(*obj.Id)
+	baseTasks, err := getVersionBaseTasks(*obj.Id)
 	if err != nil {
 		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error getting version base tasks: %s", err.Error()))
 	}
-	return util.GetAllTaskStatuses(baseTasks), nil
+	return getAllTaskStatuses(baseTasks), nil
 }
 
 func (r *patchResolver) BaseVersionID(ctx context.Context, obj *restModel.APIPatch) (*string, error) {
@@ -101,13 +100,13 @@ func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (
 	t := timeTaken.Round(time.Second).String()
 	var tPointer *string
 	if t != "0s" {
-		tFormated := util.FormatDuration(t)
+		tFormated := formatDuration(t)
 		tPointer = &tFormated
 	}
 	m := makespan.Round(time.Second).String()
 	var mPointer *string
 	if m != "0s" {
-		mFormated := util.FormatDuration(m)
+		mFormated := formatDuration(m)
 		mPointer = &mFormated
 	}
 
@@ -169,7 +168,7 @@ func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *restModel.
 }
 
 func (r *patchResolver) Project(ctx context.Context, obj *restModel.APIPatch) (*gqlModel.PatchProject, error) {
-	patchProject, err := util.GetPatchProjectVariantsAndTasksForUI(ctx, obj)
+	patchProject, err := getPatchProjectVariantsAndTasksForUI(ctx, obj)
 	if err != nil {
 		return nil, err
 	}
@@ -197,21 +196,21 @@ func (r *patchResolver) TaskStatuses(ctx context.Context, obj *restModel.APIPatc
 	if err != nil {
 		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error getting version tasks: %s", err.Error()))
 	}
-	return util.GetAllTaskStatuses(tasks), nil
+	return getAllTaskStatuses(tasks), nil
 }
 
 func (r *patchResolver) Time(ctx context.Context, obj *restModel.APIPatch) (*gqlModel.PatchTime, error) {
-	usr := util.MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 
-	started, err := util.GetFormattedDate(obj.StartTime, usr.Settings.Timezone)
+	started, err := getFormattedDate(obj.StartTime, usr.Settings.Timezone)
 	if err != nil {
 		return nil, gqlError.InternalServerError.Send(ctx, err.Error())
 	}
-	finished, err := util.GetFormattedDate(obj.FinishTime, usr.Settings.Timezone)
+	finished, err := getFormattedDate(obj.FinishTime, usr.Settings.Timezone)
 	if err != nil {
 		return nil, gqlError.InternalServerError.Send(ctx, err.Error())
 	}
-	submittedAt, err := util.GetFormattedDate(obj.CreateTime, usr.Settings.Timezone)
+	submittedAt, err := getFormattedDate(obj.CreateTime, usr.Settings.Timezone)
 	if err != nil {
 		return nil, gqlError.InternalServerError.Send(ctx, err.Error())
 	}

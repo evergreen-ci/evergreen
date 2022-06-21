@@ -13,7 +13,6 @@ import (
 	gqlError "github.com/evergreen-ci/evergreen/graphql/errors"
 	"github.com/evergreen-ci/evergreen/graphql/generated"
 	gqlModel "github.com/evergreen-ci/evergreen/graphql/model"
-	"github.com/evergreen-ci/evergreen/graphql/resolvers/util"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -182,7 +181,7 @@ func (r *taskResolver) CanModifyAnnotation(ctx context.Context, obj *restModel.A
 }
 
 func (r *taskResolver) CanOverrideDependencies(ctx context.Context, obj *restModel.APITask) (bool, error) {
-	currentUser := util.MustHaveUser(ctx)
+	currentUser := mustHaveUser(ctx)
 	if obj.OverrideDependencies {
 		return false, nil
 	}
@@ -212,7 +211,7 @@ func (r *taskResolver) CanRestart(ctx context.Context, obj *restModel.APITask) (
 	if err != nil {
 		return false, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to service", *obj.Id))
 	}
-	return util.CanRestartTask(t), nil
+	return canRestartTask(t), nil
 }
 
 func (r *taskResolver) CanSchedule(ctx context.Context, obj *restModel.APITask) (bool, error) {
@@ -220,7 +219,7 @@ func (r *taskResolver) CanSchedule(ctx context.Context, obj *restModel.APITask) 
 	if err != nil {
 		return false, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to service", *obj.Id))
 	}
-	return util.CanScheduleTask(t), nil
+	return canScheduleTask(t), nil
 }
 
 func (r *taskResolver) CanSetPriority(ctx context.Context, obj *restModel.APITask) (bool, error) {

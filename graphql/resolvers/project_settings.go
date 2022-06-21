@@ -9,14 +9,13 @@ import (
 
 	gqlError "github.com/evergreen-ci/evergreen/graphql/errors"
 	"github.com/evergreen-ci/evergreen/graphql/generated"
-	"github.com/evergreen-ci/evergreen/graphql/resolvers/util"
 	"github.com/evergreen-ci/evergreen/model"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 )
 
 func (r *projectSettingsResolver) Aliases(ctx context.Context, obj *restModel.APIProjectSettings) ([]*restModel.APIProjectAlias, error) {
-	return util.GetAPIAliasesForProject(ctx, utility.FromStringPtr(obj.ProjectRef.Id))
+	return getAPIAliasesForProject(ctx, utility.FromStringPtr(obj.ProjectRef.Id))
 }
 
 func (r *projectSettingsResolver) GithubWebhooksEnabled(ctx context.Context, obj *restModel.APIProjectSettings) (bool, error) {
@@ -28,11 +27,11 @@ func (r *projectSettingsResolver) GithubWebhooksEnabled(ctx context.Context, obj
 }
 
 func (r *projectSettingsResolver) Subscriptions(ctx context.Context, obj *restModel.APIProjectSettings) ([]*restModel.APISubscription, error) {
-	return util.GetAPISubscriptionsForProject(ctx, utility.FromStringPtr(obj.ProjectRef.Id))
+	return getAPISubscriptionsForProject(ctx, utility.FromStringPtr(obj.ProjectRef.Id))
 }
 
 func (r *projectSettingsResolver) Vars(ctx context.Context, obj *restModel.APIProjectSettings) (*restModel.APIProjectVars, error) {
-	return util.GetRedactedAPIVarsForProject(ctx, utility.FromStringPtr(obj.ProjectRef.Id))
+	return getRedactedAPIVarsForProject(ctx, utility.FromStringPtr(obj.ProjectRef.Id))
 }
 
 // ProjectSettings returns generated.ProjectSettingsResolver implementation.

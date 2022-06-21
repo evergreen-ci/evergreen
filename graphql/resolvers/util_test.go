@@ -1,4 +1,4 @@
-package util
+package resolvers
 
 import (
 	"testing"
@@ -34,7 +34,7 @@ func TestFilterGeneralSubscriptions(t *testing.T) {
 			{ID: "123455"},
 			{ID: "abcdef"},
 		}
-		filteredSubIDs := RemoveGeneralSubscriptions(usr, subs)
+		filteredSubIDs := removeGeneralSubscriptions(usr, subs)
 		assert.ElementsMatch(t, []string{"123455", "abcdef"}, filteredSubIDs)
 	})
 
@@ -43,7 +43,7 @@ func TestFilterGeneralSubscriptions(t *testing.T) {
 			{ID: "patch_finish_id"},
 			{ID: "commit_queue_id"},
 		}
-		filteredSubIDs := RemoveGeneralSubscriptions(usr, subs)
+		filteredSubIDs := removeGeneralSubscriptions(usr, subs)
 		assert.Empty(t, filteredSubIDs)
 	})
 
@@ -52,7 +52,7 @@ func TestFilterGeneralSubscriptions(t *testing.T) {
 			{ID: "patch_finish_id"},
 			{ID: "123456"},
 		}
-		filteredSubIDs := RemoveGeneralSubscriptions(usr, subs)
+		filteredSubIDs := removeGeneralSubscriptions(usr, subs)
 		assert.ElementsMatch(t, []string{"123456"}, filteredSubIDs)
 	})
 }
@@ -75,7 +75,7 @@ func TestCollectiveStatusArray(t *testing.T) {
 	}
 	require.NoError(t, p.Insert())
 
-	statusArray, err := GetCollectiveStatusArray(*version)
+	statusArray, err := getCollectiveStatusArray(*version)
 	require.NoError(t, err)
 	assert.Equal(t, evergreen.PatchAborted, statusArray[0])
 }
@@ -90,7 +90,7 @@ func TestCanRestartTask(t *testing.T) {
 		Status:        evergreen.TaskUndispatched,
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
-	canRestart := CanRestartTask(blockedTask)
+	canRestart := canRestartTask(blockedTask)
 	assert.Equal(t, canRestart, false)
 
 	blockedDisplayTask := &task.Task{
@@ -101,7 +101,7 @@ func TestCanRestartTask(t *testing.T) {
 		DisplayOnly:    true,
 		ExecutionTasks: []string{"exec1", "exec2"},
 	}
-	canRestart = CanRestartTask(blockedDisplayTask)
+	canRestart = canRestartTask(blockedDisplayTask)
 	assert.Equal(t, canRestart, true)
 
 	executionTask := &task.Task{
@@ -109,7 +109,7 @@ func TestCanRestartTask(t *testing.T) {
 		Status:        evergreen.TaskUndispatched,
 		DisplayTaskId: utility.ToStringPtr("display task"),
 	}
-	canRestart = CanRestartTask(executionTask)
+	canRestart = canRestartTask(executionTask)
 	assert.Equal(t, canRestart, false)
 
 	runningTask := &task.Task{
@@ -117,7 +117,7 @@ func TestCanRestartTask(t *testing.T) {
 		Status:        evergreen.TaskStarted,
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
-	canRestart = CanRestartTask(runningTask)
+	canRestart = canRestartTask(runningTask)
 	assert.Equal(t, canRestart, false)
 
 	finishedTask := &task.Task{
@@ -125,7 +125,7 @@ func TestCanRestartTask(t *testing.T) {
 		Status:        evergreen.TaskSucceeded,
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
-	canRestart = CanRestartTask(finishedTask)
+	canRestart = canRestartTask(finishedTask)
 	assert.Equal(t, canRestart, true)
 
 	abortedTask := &task.Task{
@@ -134,7 +134,7 @@ func TestCanRestartTask(t *testing.T) {
 		DisplayTaskId: utility.ToStringPtr(""),
 		Aborted:       true,
 	}
-	canRestart = CanRestartTask(abortedTask)
+	canRestart = canRestartTask(abortedTask)
 	assert.Equal(t, canRestart, true)
 }
 
@@ -145,7 +145,7 @@ func TestCanScheduleTask(t *testing.T) {
 		DisplayTaskId: utility.ToStringPtr(""),
 		Aborted:       true,
 	}
-	canSchedule := CanScheduleTask(abortedTask)
+	canSchedule := canScheduleTask(abortedTask)
 	assert.Equal(t, canSchedule, false)
 
 	executionTask := &task.Task{
@@ -154,7 +154,7 @@ func TestCanScheduleTask(t *testing.T) {
 		DisplayStatus: evergreen.TaskUnscheduled,
 		DisplayTaskId: utility.ToStringPtr("display task"),
 	}
-	canSchedule = CanScheduleTask(executionTask)
+	canSchedule = canScheduleTask(executionTask)
 	assert.Equal(t, canSchedule, false)
 
 	finishedTask := &task.Task{
@@ -163,7 +163,7 @@ func TestCanScheduleTask(t *testing.T) {
 		DisplayStatus: evergreen.TaskSucceeded,
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
-	canSchedule = CanScheduleTask(finishedTask)
+	canSchedule = canScheduleTask(finishedTask)
 	assert.Equal(t, canSchedule, false)
 
 	unscheduledTask := &task.Task{
@@ -172,6 +172,6 @@ func TestCanScheduleTask(t *testing.T) {
 		DisplayStatus: evergreen.TaskUnscheduled,
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
-	canSchedule = CanScheduleTask(unscheduledTask)
+	canSchedule = canScheduleTask(unscheduledTask)
 	assert.Equal(t, canSchedule, true)
 }

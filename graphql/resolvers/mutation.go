@@ -19,7 +19,6 @@ import (
 	gqlError "github.com/evergreen-ci/evergreen/graphql/errors"
 	"github.com/evergreen-ci/evergreen/graphql/generated"
 	gqlModel "github.com/evergreen-ci/evergreen/graphql/model"
-	"github.com/evergreen-ci/evergreen/graphql/resolvers/util"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -32,7 +31,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
-	evgUtil "github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	adb "github.com/mongodb/anser/db"
@@ -44,15 +43,15 @@ import (
 func (r *mutationResolver) BbCreateTicket(ctx context.Context, taskID string, execution *int) (bool, error) {
 	httpStatus, err := data.BbFileTicket(ctx, taskID, *execution)
 	if err != nil {
-		return false, util.MapHTTPStatusToGqlError(ctx, httpStatus, err)
+		return false, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
 	return true, nil
 }
 
 func (r *mutationResolver) AddAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue restModel.APIIssueLink, isIssue bool) (bool, error) {
-	usr := util.MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	issue := restModel.APIIssueLinkToService(apiIssue)
-	if err := evgUtil.CheckURL(issue.URL); err != nil {
+	if err := util.CheckURL(issue.URL); err != nil {
 		return false, gqlError.InputValidationError.Send(ctx, fmt.Sprintf("issue does not have valid URL: %s", err.Error()))
 	}
 	if isIssue {
@@ -69,7 +68,7 @@ func (r *mutationResolver) AddAnnotationIssue(ctx context.Context, taskID string
 }
 
 func (r *mutationResolver) EditAnnotationNote(ctx context.Context, taskID string, execution int, originalMessage string, newMessage string) (bool, error) {
-	usr := util.MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	if err := annotations.UpdateAnnotationNote(taskID, execution, originalMessage, newMessage, usr.Username()); err != nil {
 		return false, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("couldn't update note: %s", err.Error()))
 	}
@@ -77,7 +76,7 @@ func (r *mutationResolver) EditAnnotationNote(ctx context.Context, taskID string
 }
 
 func (r *mutationResolver) MoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue restModel.APIIssueLink, isIssue bool) (bool, error) {
-	usr := util.MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	issue := restModel.APIIssueLinkToService(apiIssue)
 	if isIssue {
 		if err := annotations.MoveIssueToSuspectedIssue(taskID, execution, *issue, usr.Username()); err != nil {
@@ -108,66 +107,66 @@ func (r *mutationResolver) RemoveAnnotationIssue(ctx context.Context, taskID str
 }
 
 func (r *mutationResolver) ReprovisionToNew(ctx context.Context, hostIds []string) (int, error) {
-	user := util.MustHaveUser(ctx)
+	user := mustHaveUser(ctx)
 
 	hosts, permissions, httpStatus, err := api.GetHostsAndUserPermissions(user, hostIds)
 	if err != nil {
-		return 0, util.MapHTTPStatusToGqlError(ctx, httpStatus, err)
+		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
 
 	hostsUpdated, httpStatus, err := api.ModifyHostsWithPermissions(hosts, permissions, api.GetReprovisionToNewCallback(ctx, evergreen.GetEnvironment(), user.Username()))
 	if err != nil {
-		return 0, util.MapHTTPStatusToGqlError(ctx, httpStatus, werrors.Errorf("Error marking selected hosts as needing to reprovision: %s", err.Error()))
+		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, werrors.Errorf("Error marking selected hosts as needing to reprovision: %s", err.Error()))
 	}
 
 	return hostsUpdated, nil
 }
 
 func (r *mutationResolver) RestartJasper(ctx context.Context, hostIds []string) (int, error) {
-	user := util.MustHaveUser(ctx)
+	user := mustHaveUser(ctx)
 
 	hosts, permissions, httpStatus, err := api.GetHostsAndUserPermissions(user, hostIds)
 	if err != nil {
-		return 0, util.MapHTTPStatusToGqlError(ctx, httpStatus, err)
+		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
 
 	hostsUpdated, httpStatus, err := api.ModifyHostsWithPermissions(hosts, permissions, api.GetRestartJasperCallback(ctx, evergreen.GetEnvironment(), user.Username()))
 	if err != nil {
-		return 0, util.MapHTTPStatusToGqlError(ctx, httpStatus, werrors.Errorf("Error marking selected hosts as needing Jasper service restarted: %s", err.Error()))
+		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, werrors.Errorf("Error marking selected hosts as needing Jasper service restarted: %s", err.Error()))
 	}
 
 	return hostsUpdated, nil
 }
 
 func (r *mutationResolver) UpdateHostStatus(ctx context.Context, hostIds []string, status string, notes *string) (int, error) {
-	user := util.MustHaveUser(ctx)
+	user := mustHaveUser(ctx)
 
 	hosts, permissions, httpStatus, err := api.GetHostsAndUserPermissions(user, hostIds)
 	if err != nil {
-		return 0, util.MapHTTPStatusToGqlError(ctx, httpStatus, err)
+		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
 
 	rq := evergreen.GetEnvironment().RemoteQueue()
 	hostsUpdated, httpStatus, err := api.ModifyHostsWithPermissions(hosts, permissions, api.GetUpdateHostStatusCallback(ctx, evergreen.GetEnvironment(), rq, status, *notes, user))
 	if err != nil {
-		return 0, util.MapHTTPStatusToGqlError(ctx, httpStatus, err)
+		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
 
 	return hostsUpdated, nil
 }
 
 func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, commitMessage *string) (*restModel.APIPatch, error) {
-	user := util.MustHaveUser(ctx)
+	user := mustHaveUser(ctx)
 	existingPatch, err := data.FindPatchById(patchID)
 	if err != nil {
 		gimletErr, ok := err.(gimlet.ErrorResponse)
 		if ok {
-			return nil, util.MapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
+			return nil, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
 		}
 		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("error getting patch '%s'", patchID))
 	}
 
-	if !util.HasEnqueuePatchPermission(user, existingPatch) {
+	if !hasEnqueuePatchPermission(user, existingPatch) {
 		return nil, gqlError.Forbidden.Send(ctx, "can't enqueue another user's patch")
 	}
 
@@ -191,14 +190,14 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, com
 }
 
 func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, configure gqlModel.PatchConfigure) (*restModel.APIPatch, error) {
-	patchUpdateReq := util.BuildFromGqlInput(configure)
+	patchUpdateReq := buildFromGqlInput(configure)
 	version, err := model.VersionFindOneId(patchID)
 	if err != nil && !adb.ResultsNotFound(err) {
 		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error occurred fetching patch `%s`: %s", patchID, err.Error()))
 	}
 	statusCode, err := units.SchedulePatch(ctx, patchID, version, patchUpdateReq)
 	if err != nil {
-		return nil, util.MapHTTPStatusToGqlError(ctx, statusCode, werrors.Errorf("Error scheduling patch `%s`: %s", patchID, err.Error()))
+		return nil, mapHTTPStatusToGqlError(ctx, statusCode, werrors.Errorf("Error scheduling patch `%s`: %s", patchID, err.Error()))
 	}
 	scheduledPatch, err := data.FindPatchById(patchID)
 	if err != nil {
@@ -213,7 +212,7 @@ func (r *mutationResolver) SchedulePatchTasks(ctx context.Context, patchID strin
 		Active: true,
 		Abort:  false,
 	}
-	err := util.ModifyVersionHandler(ctx, patchID, modifications)
+	err := modifyVersionHandler(ctx, patchID, modifications)
 	if err != nil {
 		return nil, err
 	}
@@ -275,7 +274,7 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 	for taskId := range tasksToSchedule {
 		taskIDs = append(taskIDs, taskId)
 	}
-	scheduled, err := util.SetManyTasksScheduled(ctx, r.sc.GetURL(), true, taskIDs...)
+	scheduled, err := setManyTasksScheduled(ctx, r.sc.GetURL(), true, taskIDs...)
 	if err != nil {
 		return nil, err
 	}
@@ -293,7 +292,7 @@ func (r *mutationResolver) SetPatchPriority(ctx context.Context, patchID string,
 		Action:   evergreen.SetPriorityAction,
 		Priority: int64(priority),
 	}
-	err := util.ModifyVersionHandler(ctx, patchID, modifications)
+	err := modifyVersionHandler(ctx, patchID, modifications)
 	if err != nil {
 		return nil, err
 	}
@@ -306,7 +305,7 @@ func (r *mutationResolver) UnschedulePatchTasks(ctx context.Context, patchID str
 		Active: false,
 		Abort:  abort,
 	}
-	err := util.ModifyVersionHandler(ctx, patchID, modifications)
+	err := modifyVersionHandler(ctx, patchID, modifications)
 	if err != nil {
 		return nil, err
 	}
@@ -319,7 +318,7 @@ func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier st
 		return nil, gqlError.ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", identifier))
 	}
 
-	usr := util.MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	err = usr.AddFavoritedProject(identifier)
 	if err != nil {
 		return nil, gqlError.InternalServerError.Send(ctx, err.Error())
@@ -333,7 +332,7 @@ func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier st
 }
 
 func (r *mutationResolver) AttachProjectToNewRepo(ctx context.Context, project gqlModel.MoveProjectInput) (*restModel.APIProjectRef, error) {
-	usr := util.MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	pRef, err := data.FindProjectById(project.ProjectID, false, false)
 	if err != nil || pRef == nil {
 		return nil, gqlError.ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s : %s", project.ProjectID, err.Error()))
@@ -353,7 +352,7 @@ func (r *mutationResolver) AttachProjectToNewRepo(ctx context.Context, project g
 }
 
 func (r *mutationResolver) AttachProjectToRepo(ctx context.Context, projectID string) (*restModel.APIProjectRef, error) {
-	usr := util.MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	pRef, err := data.FindProjectById(projectID, false, false)
 	if err != nil {
 		return nil, gqlError.ResourceNotFound.Send(ctx, fmt.Sprintf("error finding project %s: %s", projectID, err.Error()))
@@ -433,7 +432,7 @@ func (r *mutationResolver) CopyProject(ctx context.Context, project data.CopyPro
 }
 
 func (r *mutationResolver) DefaultSectionToRepo(ctx context.Context, projectID string, section gqlModel.ProjectSettingsSection) (*string, error) {
-	usr := util.MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	if err := model.DefaultSectionToRepo(projectID, model.ProjectPageSection(section), usr.Username()); err != nil {
 		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("error defaulting to repo for section: %s", err.Error()))
 	}
@@ -441,7 +440,7 @@ func (r *mutationResolver) DefaultSectionToRepo(ctx context.Context, projectID s
 }
 
 func (r *mutationResolver) DetachProjectFromRepo(ctx context.Context, projectID string) (*restModel.APIProjectRef, error) {
-	usr := util.MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	pRef, err := data.FindProjectById(projectID, false, false)
 	if err != nil {
 		return nil, gqlError.ResourceNotFound.Send(ctx, fmt.Sprintf("error finding project %s: %s", projectID, err.Error()))
@@ -475,7 +474,7 @@ func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier
 		return nil, gqlError.ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s", identifier))
 	}
 
-	usr := util.MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	err = usr.RemoveFavoriteProject(identifier)
 	if err != nil {
 		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error removing project : %s : %s", identifier, err))
@@ -490,7 +489,7 @@ func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier
 
 func (r *mutationResolver) SaveProjectSettingsForSection(ctx context.Context, projectSettings *restModel.APIProjectSettings, section gqlModel.ProjectSettingsSection) (*restModel.APIProjectSettings, error) {
 	projectId := utility.FromStringPtr(projectSettings.ProjectRef.Id)
-	usr := util.MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	changes, err := data.SaveProjectSettingsForSection(ctx, projectId, projectSettings, model.ProjectPageSection(section), false, usr.Username())
 	if err != nil {
 		return nil, gqlError.InternalServerError.Send(ctx, err.Error())
@@ -500,7 +499,7 @@ func (r *mutationResolver) SaveProjectSettingsForSection(ctx context.Context, pr
 
 func (r *mutationResolver) SaveRepoSettingsForSection(ctx context.Context, repoSettings *restModel.APIProjectSettings, section gqlModel.ProjectSettingsSection) (*restModel.APIProjectSettings, error) {
 	projectId := utility.FromStringPtr(repoSettings.ProjectRef.Id)
-	usr := util.MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	changes, err := data.SaveProjectSettingsForSection(ctx, projectId, repoSettings, model.ProjectPageSection(section), true, usr.Username())
 	if err != nil {
 		return nil, gqlError.InternalServerError.Send(ctx, err.Error())
@@ -509,7 +508,7 @@ func (r *mutationResolver) SaveRepoSettingsForSection(ctx context.Context, repoS
 }
 
 func (r *mutationResolver) DeactivateStepbackTasks(ctx context.Context, projectID string) (bool, error) {
-	usr := util.MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	if err := task.DeactivateStepbackTasksForProject(projectID, usr.Username()); err != nil {
 		return false, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("deactivating current stepback tasks: %s", err.Error()))
 	}
@@ -519,7 +518,7 @@ func (r *mutationResolver) DeactivateStepbackTasks(ctx context.Context, projectI
 func (r *mutationResolver) AttachVolumeToHost(ctx context.Context, volumeAndHost gqlModel.VolumeHost) (bool, error) {
 	statusCode, err := cloud.AttachVolume(ctx, volumeAndHost.VolumeID, volumeAndHost.HostID)
 	if err != nil {
-		return false, util.MapHTTPStatusToGqlError(ctx, statusCode, err)
+		return false, mapHTTPStatusToGqlError(ctx, statusCode, err)
 	}
 	return statusCode == http.StatusOK, nil
 }
@@ -527,14 +526,14 @@ func (r *mutationResolver) AttachVolumeToHost(ctx context.Context, volumeAndHost
 func (r *mutationResolver) DetachVolumeFromHost(ctx context.Context, volumeID string) (bool, error) {
 	statusCode, err := cloud.DetachVolume(ctx, volumeID)
 	if err != nil {
-		return false, util.MapHTTPStatusToGqlError(ctx, statusCode, err)
+		return false, mapHTTPStatusToGqlError(ctx, statusCode, err)
 	}
 	return statusCode == http.StatusOK, nil
 }
 
 func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *gqlModel.EditSpawnHostInput) (*restModel.APIHost, error) {
 	var v *host.Volume
-	usr := util.MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	h, err := host.FindOneByIdOrTag(spawnHost.HostID)
 	if err != nil {
 		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error finding host by id: %s", err))
@@ -596,7 +595,7 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *gqlMode
 	}
 	if spawnHost.PublicKey != nil {
 		if utility.FromBoolPtr(spawnHost.SavePublicKey) {
-			if err = util.SavePublicKey(ctx, *spawnHost.PublicKey); err != nil {
+			if err = savePublicKey(ctx, *spawnHost.PublicKey); err != nil {
 				return nil, err
 			}
 		}
@@ -627,9 +626,9 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *gqlMode
 }
 
 func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *gqlModel.SpawnHostInput) (*restModel.APIHost, error) {
-	usr := util.MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	if spawnHostInput.SavePublicKey {
-		if err := util.SavePublicKey(ctx, *spawnHostInput.PublicKey); err != nil {
+		if err := savePublicKey(ctx, *spawnHostInput.PublicKey); err != nil {
 			return nil, err
 		}
 	}
@@ -711,7 +710,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *gqlMod
 }
 
 func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput gqlModel.SpawnVolumeInput) (bool, error) {
-	err := util.ValidateVolumeExpirationInput(ctx, spawnVolumeInput.Expiration, spawnVolumeInput.NoExpiration)
+	err := validateVolumeExpirationInput(ctx, spawnVolumeInput.Expiration, spawnVolumeInput.NoExpiration)
 	if err != nil {
 		return false, err
 	}
@@ -719,11 +718,11 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput gql
 		AvailabilityZone: spawnVolumeInput.AvailabilityZone,
 		Size:             spawnVolumeInput.Size,
 		Type:             spawnVolumeInput.Type,
-		CreatedBy:        util.MustHaveUser(ctx).Id,
+		CreatedBy:        mustHaveUser(ctx).Id,
 	}
 	vol, statusCode, err := cloud.RequestNewVolume(ctx, volumeRequest)
 	if err != nil {
-		return false, util.MapHTTPStatusToGqlError(ctx, statusCode, err)
+		return false, mapHTTPStatusToGqlError(ctx, statusCode, err)
 	}
 	if vol == nil {
 		return false, gqlError.InternalServerError.Send(ctx, "Unable to create volume")
@@ -741,14 +740,14 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput gql
 		// this value should only ever be true or nil
 		additionalOptions.NoExpiration = true
 	}
-	err = util.ApplyVolumeOptions(ctx, *vol, additionalOptions)
+	err = applyVolumeOptions(ctx, *vol, additionalOptions)
 	if err != nil {
 		return false, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Unable to apply expiration options to volume %s: %s", vol.ID, err.Error()))
 	}
 	if spawnVolumeInput.Host != nil {
 		statusCode, err := cloud.AttachVolume(ctx, vol.ID, *spawnVolumeInput.Host)
 		if err != nil {
-			return false, util.MapHTTPStatusToGqlError(ctx, statusCode, werrors.Wrapf(err, errorTemplate, vol.ID))
+			return false, mapHTTPStatusToGqlError(ctx, statusCode, werrors.Wrapf(err, errorTemplate, vol.ID))
 		}
 	}
 	return true, nil
@@ -757,7 +756,7 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput gql
 func (r *mutationResolver) RemoveVolume(ctx context.Context, volumeID string) (bool, error) {
 	statusCode, err := cloud.DeleteVolume(ctx, volumeID)
 	if err != nil {
-		return false, util.MapHTTPStatusToGqlError(ctx, statusCode, err)
+		return false, mapHTTPStatusToGqlError(ctx, statusCode, err)
 	}
 	return statusCode == http.StatusOK, nil
 }
@@ -767,7 +766,7 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, hostID str
 	if err != nil {
 		return nil, gqlError.ResourceNotFound.Send(ctx, fmt.Sprintf("Error finding host by id: %s", err))
 	}
-	usr := util.MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	env := evergreen.GetEnvironment()
 
 	if !host.CanUpdateSpawnHost(h, usr) {
@@ -797,7 +796,7 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, hostID str
 				"stack":   string(debug.Stack()),
 			}))
 		}
-		return nil, util.MapHTTPStatusToGqlError(ctx, httpStatus, err)
+		return nil, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
 	apiHost := restModel.APIHost{}
 	err = apiHost.BuildFromService(h)
@@ -815,11 +814,11 @@ func (r *mutationResolver) UpdateVolume(ctx context.Context, updateVolumeInput g
 	if volume == nil {
 		return false, gqlError.ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find volume %s", volume.ID))
 	}
-	err = util.ValidateVolumeExpirationInput(ctx, updateVolumeInput.Expiration, updateVolumeInput.NoExpiration)
+	err = validateVolumeExpirationInput(ctx, updateVolumeInput.Expiration, updateVolumeInput.NoExpiration)
 	if err != nil {
 		return false, err
 	}
-	err = util.ValidateVolumeName(ctx, updateVolumeInput.Name)
+	err = validateVolumeName(ctx, updateVolumeInput.Name)
 	if err != nil {
 		return false, err
 	}
@@ -844,7 +843,7 @@ func (r *mutationResolver) UpdateVolume(ctx context.Context, updateVolumeInput g
 	if updateVolumeInput.Name != nil {
 		updateOptions.NewName = *updateVolumeInput.Name
 	}
-	err = util.ApplyVolumeOptions(ctx, *volume, updateOptions)
+	err = applyVolumeOptions(ctx, *volume, updateOptions)
 	if err != nil {
 		return false, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Unable to update volume %s: %s", volume.ID, err.Error()))
 	}
@@ -872,12 +871,12 @@ func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restM
 	if t == nil {
 		return nil, gqlError.ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
-	apiTask, err := util.GetAPITaskFromTask(ctx, r.sc.GetURL(), *t)
+	apiTask, err := getAPITaskFromTask(ctx, r.sc.GetURL(), *t)
 	return apiTask, err
 }
 
 func (r *mutationResolver) OverrideTaskDependencies(ctx context.Context, taskID string) (*restModel.APITask, error) {
-	currentUser := util.MustHaveUser(ctx)
+	currentUser := mustHaveUser(ctx)
 	t, err := task.FindByIdExecution(taskID, nil)
 	if err != nil {
 		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("error finding task %s: %s", taskID, err.Error()))
@@ -889,11 +888,11 @@ func (r *mutationResolver) OverrideTaskDependencies(ctx context.Context, taskID 
 		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("error overriding dependencies for task %s: %s", taskID, err.Error()))
 	}
 	t.DisplayStatus = t.GetDisplayStatus()
-	return util.GetAPITaskFromTask(ctx, r.sc.GetURL(), *t)
+	return getAPITaskFromTask(ctx, r.sc.GetURL(), *t)
 }
 
 func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
-	usr := util.MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	username := usr.Username()
 	if err := model.TryResetTask(taskID, username, evergreen.UIPackage, nil); err != nil {
 		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("error restarting task %s: %s", taskID, err.Error()))
@@ -905,13 +904,13 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*res
 	if t == nil {
 		return nil, gqlError.ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
-	apiTask, err := util.GetAPITaskFromTask(ctx, r.sc.GetURL(), *t)
+	apiTask, err := getAPITaskFromTask(ctx, r.sc.GetURL(), *t)
 	return apiTask, err
 }
 
 func (r *mutationResolver) ScheduleTasks(ctx context.Context, taskIds []string) ([]*restModel.APITask, error) {
 	scheduledTasks := []*restModel.APITask{}
-	scheduled, err := util.SetManyTasksScheduled(ctx, r.sc.GetURL(), true, taskIds...)
+	scheduled, err := setManyTasksScheduled(ctx, r.sc.GetURL(), true, taskIds...)
 	if err != nil {
 		return scheduledTasks, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Failed to schedule tasks : %s", err.Error()))
 	}
@@ -951,12 +950,12 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 	if t == nil {
 		return nil, gqlError.ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
-	apiTask, err := util.GetAPITaskFromTask(ctx, r.sc.GetURL(), *t)
+	apiTask, err := getAPITaskFromTask(ctx, r.sc.GetURL(), *t)
 	return apiTask, err
 }
 
 func (r *mutationResolver) UnscheduleTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
-	scheduled, err := util.SetManyTasksScheduled(ctx, r.sc.GetURL(), false, taskID)
+	scheduled, err := setManyTasksScheduled(ctx, r.sc.GetURL(), false, taskID)
 	if err != nil {
 		return nil, err
 	}
@@ -967,13 +966,13 @@ func (r *mutationResolver) UnscheduleTask(ctx context.Context, taskID string) (*
 }
 
 func (r *mutationResolver) ClearMySubscriptions(ctx context.Context) (int, error) {
-	usr := util.MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	username := usr.Username()
 	subs, err := event.FindSubscriptionsByOwner(username, event.OwnerTypePerson)
 	if err != nil {
 		return 0, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error retrieving subscriptions %s", err.Error()))
 	}
-	subIDs := util.RemoveGeneralSubscriptions(usr, subs)
+	subIDs := removeGeneralSubscriptions(usr, subs)
 	err = data.DeleteSubscriptions(username, subIDs)
 	if err != nil {
 		return 0, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error deleting subscriptions %s", err.Error()))
@@ -982,30 +981,30 @@ func (r *mutationResolver) ClearMySubscriptions(ctx context.Context) (int, error
 }
 
 func (r *mutationResolver) CreatePublicKey(ctx context.Context, publicKeyInput gqlModel.PublicKeyInput) ([]*restModel.APIPubKey, error) {
-	err := util.SavePublicKey(ctx, publicKeyInput)
+	err := savePublicKey(ctx, publicKeyInput)
 	if err != nil {
 		return nil, err
 	}
-	myPublicKeys := util.GetMyPublicKeys(ctx)
+	myPublicKeys := getMyPublicKeys(ctx)
 	return myPublicKeys, nil
 }
 
 func (r *mutationResolver) RemovePublicKey(ctx context.Context, keyName string) ([]*restModel.APIPubKey, error) {
-	if !util.DoesPublicKeyNameAlreadyExist(ctx, keyName) {
+	if !doesPublicKeyNameAlreadyExist(ctx, keyName) {
 		return nil, gqlError.InputValidationError.Send(ctx, fmt.Sprintf("Error deleting public key. Provided key name, %s, does not exist.", keyName))
 	}
-	err := util.MustHaveUser(ctx).DeletePublicKey(keyName)
+	err := mustHaveUser(ctx).DeletePublicKey(keyName)
 	if err != nil {
 		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error deleting public key: %s", err.Error()))
 	}
-	myPublicKeys := util.GetMyPublicKeys(ctx)
+	myPublicKeys := getMyPublicKeys(ctx)
 	return myPublicKeys, nil
 }
 
 func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription restModel.APISubscription) (bool, error) {
-	usr := util.MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	username := usr.Username()
-	idType, id, err := util.GetResourceTypeAndIdFromSubscriptionSelectors(ctx, subscription.Selectors)
+	idType, id, err := getResourceTypeAndIdFromSubscriptionSelectors(ctx, subscription.Selectors)
 	if err != nil {
 		return false, err
 	}
@@ -1053,27 +1052,27 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 }
 
 func (r *mutationResolver) UpdatePublicKey(ctx context.Context, targetKeyName string, updateInfo gqlModel.PublicKeyInput) ([]*restModel.APIPubKey, error) {
-	if !util.DoesPublicKeyNameAlreadyExist(ctx, targetKeyName) {
+	if !doesPublicKeyNameAlreadyExist(ctx, targetKeyName) {
 		return nil, gqlError.InputValidationError.Send(ctx, fmt.Sprintf("Error updating public key. The target key name, %s, does not exist.", targetKeyName))
 	}
-	if updateInfo.Name != targetKeyName && util.DoesPublicKeyNameAlreadyExist(ctx, updateInfo.Name) {
+	if updateInfo.Name != targetKeyName && doesPublicKeyNameAlreadyExist(ctx, updateInfo.Name) {
 		return nil, gqlError.InputValidationError.Send(ctx, fmt.Sprintf("Error updating public key. The updated key name, %s, already exists.", targetKeyName))
 	}
-	err := util.VerifyPublicKey(ctx, updateInfo)
+	err := verifyPublicKey(ctx, updateInfo)
 	if err != nil {
 		return nil, err
 	}
-	usr := util.MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	err = usr.UpdatePublicKey(targetKeyName, updateInfo.Name, updateInfo.Key)
 	if err != nil {
 		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error updating public key, %s: %s", targetKeyName, err.Error()))
 	}
-	myPublicKeys := util.GetMyPublicKeys(ctx)
+	myPublicKeys := getMyPublicKeys(ctx)
 	return myPublicKeys, nil
 }
 
 func (r *mutationResolver) UpdateUserSettings(ctx context.Context, userSettings *restModel.APIUserSettings) (bool, error) {
-	usr := util.MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 
 	updatedUserSettings, err := restModel.UpdateUserSettings(ctx, usr, *userSettings)
 	if err != nil {
@@ -1107,7 +1106,7 @@ func (r *mutationResolver) RestartVersions(ctx context.Context, versionID string
 		Abort:             abort,
 		VersionsToRestart: versionsToRestart,
 	}
-	err := util.ModifyVersionHandler(ctx, versionID, modifications)
+	err := modifyVersionHandler(ctx, versionID, modifications)
 	if err != nil {
 		return nil, err
 	}

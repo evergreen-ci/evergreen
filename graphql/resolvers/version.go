@@ -14,7 +14,6 @@ import (
 	gqlError "github.com/evergreen-ci/evergreen/graphql/errors"
 	"github.com/evergreen-ci/evergreen/graphql/generated"
 	gqlModel "github.com/evergreen-ci/evergreen/graphql/model"
-	"github.com/evergreen-ci/evergreen/graphql/resolvers/util"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/manifest"
@@ -67,7 +66,7 @@ func (r *versionResolver) BuildVariants(ctx context.Context, obj *restModel.APIV
 		if err != nil {
 			return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error fetching version: %s : %s", *obj.Id, err.Error()))
 		}
-		if err = util.SetVersionActivationStatus(version); err != nil {
+		if err = setVersionActivationStatus(version); err != nil {
 			return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error setting version activation status: %s", err.Error()))
 		}
 		obj.Activated = version.Activated
@@ -76,7 +75,7 @@ func (r *versionResolver) BuildVariants(ctx context.Context, obj *restModel.APIV
 	if !utility.FromBoolPtr(obj.Activated) {
 		return nil, nil
 	}
-	groupedBuildVariants, err := util.GenerateBuildVariants(utility.FromStringPtr(obj.Id), *options)
+	groupedBuildVariants, err := generateBuildVariants(utility.FromStringPtr(obj.Id), *options)
 	if err != nil {
 		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error generating build variants for version %s : %s", *obj.Id, err.Error()))
 	}
@@ -222,7 +221,7 @@ func (r *versionResolver) ProjectMetadata(ctx context.Context, obj *restModel.AP
 }
 
 func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion) (string, error) {
-	collectiveStatusArray, err := util.GetCollectiveStatusArray(*obj)
+	collectiveStatusArray, err := getCollectiveStatusArray(*obj)
 	if err != nil {
 		return "", gqlError.InternalServerError.Send(ctx, fmt.Sprintf("getting collective status array: %s", err.Error()))
 	}
@@ -244,7 +243,7 @@ func (r *versionResolver) TaskStatusCounts(ctx context.Context, obj *restModel.A
 		IncludeExecutionTasks: false,
 		TaskNames:             options.Tasks,
 		Variants:              options.Variants,
-		Statuses:              util.GetValidTaskStatusesFilter(options.Statuses),
+		Statuses:              getValidTaskStatusesFilter(options.Statuses),
 	}
 	if len(options.Variants) != 0 {
 		opts.IncludeBuildVariantDisplayName = true // we only need the buildVariantDisplayName if we plan on filtering on it.
@@ -275,7 +274,7 @@ func (r *versionResolver) TaskStatuses(ctx context.Context, obj *restModel.APIVe
 	if err != nil {
 		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error getting version tasks: %s", err.Error()))
 	}
-	return util.GetAllTaskStatuses(tasks), nil
+	return getAllTaskStatuses(tasks), nil
 }
 
 func (r *versionResolver) TaskStatusStats(ctx context.Context, obj *restModel.APIVersion, options *gqlModel.BuildVariantOptions) (*task.TaskStats, error) {
@@ -284,7 +283,7 @@ func (r *versionResolver) TaskStatusStats(ctx context.Context, obj *restModel.AP
 		IncludeExecutionTasks: false,
 		TaskNames:             options.Tasks,
 		Variants:              options.Variants,
-		Statuses:              util.GetValidTaskStatusesFilter(options.Statuses),
+		Statuses:              getValidTaskStatusesFilter(options.Statuses),
 	}
 	if len(options.Variants) != 0 {
 		opts.IncludeBuildVariantDisplayName = true // we only need the buildVariantDisplayName if we plan on filtering on it.

@@ -12,7 +12,7 @@ import (
 	gqlError "github.com/evergreen-ci/evergreen/graphql/errors"
 	"github.com/evergreen-ci/evergreen/graphql/generated"
 	gqlModel "github.com/evergreen-ci/evergreen/graphql/model"
-	"github.com/evergreen-ci/evergreen/graphql/resolvers/util"
+
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
@@ -60,15 +60,15 @@ func New(apiURL string) generated.Config {
 		}
 
 		if id, hasId := args["id"].(string); hasId {
-			return util.HasProjectPermission(ctx, id, next, permissionLevel)
+			return hasProjectPermission(ctx, id, next, permissionLevel)
 		} else if projectId, hasProjectId := args["projectId"].(string); hasProjectId {
-			return util.HasProjectPermission(ctx, projectId, next, permissionLevel)
+			return hasProjectPermission(ctx, projectId, next, permissionLevel)
 		} else if identifier, hasIdentifier := args["identifier"].(string); hasIdentifier {
 			pid, err := model.GetIdForProject(identifier)
 			if err != nil {
 				return nil, gqlError.ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with identifier: %s", identifier))
 			}
-			return util.HasProjectPermission(ctx, pid, next, permissionLevel)
+			return hasProjectPermission(ctx, pid, next, permissionLevel)
 		}
 		return nil, gqlError.ResourceNotFound.Send(ctx, "Could not find project")
 	}
