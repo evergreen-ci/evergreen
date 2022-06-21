@@ -1645,9 +1645,9 @@ func checkResetSingleHostTaskGroup(t *task.Task, caller string) error {
 	return nil
 }
 
-// checkResetSingleHostTaskGroup attempts to reset all tasks that are under the
-// same parent display task as t once all tasks under the display task are
-// finished running.
+// checkResetDisplayTask attempts to reset all tasks that are under the same
+// parent display task as t once all tasks under the display task are finished
+// running.
 func checkResetDisplayTask(t *task.Task) error {
 	if !t.ResetWhenFinished {
 		return nil
