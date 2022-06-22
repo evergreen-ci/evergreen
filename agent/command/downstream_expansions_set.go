@@ -2,7 +2,6 @@ package command
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"os"
 
@@ -74,12 +73,9 @@ func (c *setDownstream) Execute(ctx context.Context,
 		return nil
 	}
 
-	fmt.Println("--")
-	fmt.Println(conf.Task.Requester)
 	if conf.Task.Requester != "patch_request" {
 		return nil
 	}
-	fmt.Println("--")
 
 	err = comm.SetDownstreamParams(ctx, c.downstreamParams, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret})
 	if err != nil {
