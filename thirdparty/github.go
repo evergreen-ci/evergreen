@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	NumGithubAttempts   = 5
+	NumGithubAttempts   = 3
 	GithubRetryMinDelay = time.Second
 	GithubStatusBase    = "https://status.github.com"
 	GithubAccessURL     = "https://github.com/login/oauth/access_token"
@@ -60,72 +60,110 @@ var (
 	GithubPatchBaseRepoKey  = bsonutil.MustHaveTag(GithubPatch{}, "BaseRepo")
 )
 
-func githubShouldRetry(index int, req *http.Request, resp *http.Response, err error) bool {
-	if index >= NumGithubAttempts {
+func githubShouldRetry(caller string) utility.HTTPRetryFunction {
+	return func(index int, req *http.Request, resp *http.Response, err error) bool {
+		if index >= NumGithubAttempts {
+			return false
+		}
+
+		url := req.URL.String()
+
+		if err != nil {
+			temporary := utility.IsTemporaryError(err)
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":   "failed trying to call github",
+				"method":    req.Method,
+				"url":       url,
+				"temporary": temporary,
+			}))
+			if temporary {
+				grip.Info(message.Fields{
+					"ticket":    "EVG-14603",
+					"message":   "error is temporary",
+					"caller":    caller,
+					"retry_num": index,
+				})
+			}
+			return temporary
+		}
+
+		if resp == nil {
+			grip.Info(message.Fields{
+				"ticket":    "EVG-14603",
+				"message":   "resp is nil in githubShouldRetry",
+				"caller":    caller,
+				"retry_num": index,
+			})
+			return true
+		}
+
+		if resp.StatusCode >= http.StatusBadRequest {
+			grip.Error(message.Fields{
+				"message": "bad response code from github",
+				"method":  req.Method,
+				"url":     url,
+				"outcome": resp.StatusCode,
+			})
+		}
+
+		limit := parseGithubRateLimit(resp.Header)
+		if limit.Remaining == 0 {
+			return false
+		}
+		logGitHubRateLimit(limit)
+
+		if resp.StatusCode == http.StatusBadGateway {
+			grip.Info(message.Fields{
+				"ticket":    "EVG-14603",
+				"message":   fmt.Sprintf("hit %d in githubShouldRetry", http.StatusBadGateway),
+				"caller":    caller,
+				"retry_num": index,
+			})
+			return true
+		}
+
 		return false
 	}
-
-	url := req.URL.String()
-
-	if err != nil {
-		temporary := utility.IsTemporaryError(err)
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":   "failed trying to call github",
-			"method":    req.Method,
-			"url":       url,
-			"temporary": temporary,
-		}))
-		return temporary
-	}
-
-	if resp == nil {
-		return true
-	}
-
-	if resp.StatusCode >= http.StatusBadRequest {
-		grip.Error(message.Fields{
-			"message": "bad response code from github",
-			"method":  req.Method,
-			"url":     url,
-			"outcome": resp.StatusCode,
-		})
-	}
-
-	limit := parseGithubRateLimit(resp.Header)
-	if limit.Remaining == 0 {
-		return false
-	}
-
-	if resp.StatusCode == http.StatusBadGateway {
-		return true
-	}
-
-	logGitHubRateLimit(limit)
-
-	return false
 }
 
 // githubShouldRetryWith404s allows HTTP requests to respond event when 404s
 // are returned.
-func githubShouldRetryWith404s(index int, req *http.Request, resp *http.Response, err error) bool {
-	if index >= NumGithubAttempts {
-		return false
-	}
 
-	if resp == nil {
-		return true
-	}
+func githubShouldRetryWith404s(caller string) utility.HTTPRetryFunction {
+	return func(index int, req *http.Request, resp *http.Response, err error) bool {
+		if index >= NumGithubAttempts {
+			return false
+		}
 
-	limit := parseGithubRateLimit(resp.Header)
-	if limit.Remaining == 0 {
-		return false
-	}
+		if resp == nil {
+			grip.Info(message.Fields{
+				"ticket":    "EVG-14603",
+				"message":   "resp is nil in githubShouldRetryWith404s",
+				"caller":    caller,
+				"retry_num": index,
+			})
+			return true
+		}
 
-	if resp.StatusCode == http.StatusNotFound {
-		return true
-	}
+		limit := parseGithubRateLimit(resp.Header)
+		if limit.Remaining == 0 {
+			return false
+		}
 
-	return githubShouldRetry(index, req, resp, err)
+		if resp.StatusCode == http.StatusNotFound {
+			logGitHubRateLimit(limit)
+			grip.Info(message.Fields{
+				"ticket":    "EVG-14603",
+				"message":   fmt.Sprintf("hit %d in githubShouldRetryWith404s", http.StatusNotFound),
+				"caller":    caller,
+				"retry_num": index,
+			})
+			return true
+		}
+
+		retryFn := githubShouldRetry(caller)
+		return retryFn(index, req, resp, err)
+	}
 }
 
 func getGithubClientRetryWith404s(token, caller string) *http.Client {
@@ -136,7 +174,7 @@ func getGithubClientRetryWith404s(token, caller string) *http.Client {
 	})
 	return utility.GetOauth2CustomHTTPRetryableClient(
 		token,
-		githubShouldRetryWith404s,
+		githubShouldRetryWith404s(caller),
 		utility.RetryHTTPDelay(utility.RetryOptions{
 			MaxAttempts: NumGithubAttempts,
 			MinDelay:    GithubRetryMinDelay,
@@ -152,7 +190,7 @@ func getGithubClient(token, caller string) *http.Client {
 	})
 	return utility.GetOauth2CustomHTTPRetryableClient(
 		token,
-		githubShouldRetry,
+		githubShouldRetry(caller),
 		utility.RetryHTTPDelay(utility.RetryOptions{
 			MaxAttempts: NumGithubAttempts,
 			MinDelay:    GithubRetryMinDelay,
