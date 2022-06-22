@@ -33,14 +33,14 @@ func BbFileTicket(context context.Context, taskId string, execution int) (int, e
 		return http.StatusInternalServerError, err
 	}
 	if t == nil {
-		return http.StatusNotFound, errors.Wrapf(err, "task '%s' not found", taskId)
+		return http.StatusNotFound, errors.Wrapf(err, "task '%s' not found with execution '%d'", taskId, execution)
 	}
 	env := evergreen.GetEnvironment()
 	settings := env.Settings()
 	queue := env.RemoteQueue()
 	bbProject, ok := model.GetBuildBaronSettings(t.Project, t.Version)
 	if !ok {
-		return http.StatusInternalServerError, errors.Errorf("could not find build baron plugin for task '%s'", taskId)
+		return http.StatusInternalServerError, errors.Errorf("could not find build baron plugin for task '%s' with execution '%d'", taskId, execution)
 	}
 
 	webHook, ok, err := model.IsWebhookConfigured(t.Project, t.Version)
