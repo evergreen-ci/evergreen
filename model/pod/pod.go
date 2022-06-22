@@ -546,6 +546,28 @@ func (p *Pod) SetRunningTask(ctx context.Context, env evergreen.Environment, tas
 	return nil
 }
 
+// ClearRunningTask clears the current task dispatched to the pod.
+func (p *Pod) ClearRunningTask() error {
+	if p.RunningTask == "" {
+		return nil
+	}
+
+	if err := UpdateOne(bson.M{
+		IDKey:          p.ID,
+		RunningTaskKey: p.RunningTask,
+	}, bson.M{
+		"$unset": bson.M{
+			RunningTaskKey: 1,
+		},
+	}); err != nil {
+		return errors.Wrap(err, "clearing running task")
+	}
+
+	p.RunningTask = ""
+
+	return nil
+}
+
 // SetAgentStartTime sets the time when the pod's agent started.
 func (p *Pod) SetAgentStartTime() error {
 	ts := utility.BSONTime(time.Now())

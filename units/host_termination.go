@@ -185,7 +185,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 				"task":     j.host.RunningTask,
 			})
 
-			j.AddError(model.ClearAndResetStrandedTask(j.host))
+			j.AddError(model.ClearAndResetStrandedHostTask(j.host))
 		} else {
 			return
 		}
@@ -252,7 +252,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 				"task":     j.host.RunningTask,
 			})
 
-			j.AddError(model.ClearAndResetStrandedTask(j.host))
+			j.AddError(model.ClearAndResetStrandedHostTask(j.host))
 		} else {
 			return
 		}

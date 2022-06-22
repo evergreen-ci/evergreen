@@ -64,53 +64,6 @@ func TestPodConnector(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Zero(t, apiPod)
 		},
-		"FindPodByExternalIDSucceeds": func(t *testing.T) {
-			p := pod.Pod{
-				ID:     "id",
-				Type:   pod.TypeAgent,
-				Status: pod.StatusRunning,
-				Resources: pod.ResourceInfo{
-					ExternalID: "external_id",
-				},
-			}
-			require.NoError(t, p.Insert())
-
-			apiPod, err := FindPodByExternalID(p.Resources.ExternalID)
-			require.NoError(t, err)
-			require.NotZero(t, apiPod)
-
-			assert.Equal(t, p.ID, utility.FromStringPtr(apiPod.ID))
-			assert.EqualValues(t, p.Type, apiPod.Type)
-			assert.EqualValues(t, p.Status, apiPod.Status)
-		},
-		"FindPodByExternalIDReturnsNilWithNonexistentPod": func(t *testing.T) {
-			apiPod, err := FindPodByExternalID("nonexistent")
-			assert.NoError(t, err)
-			assert.Zero(t, apiPod)
-		},
-		"UpdatePodStatusSucceeds": func(t *testing.T) {
-			p := pod.Pod{
-				ID:     "id",
-				Type:   pod.TypeAgent,
-				Status: pod.StatusRunning,
-			}
-			require.NoError(t, p.Insert())
-
-			var current model.APIPodStatus
-			require.NoError(t, current.BuildFromService(p.Status))
-			updated := model.PodStatusTerminated
-			require.NoError(t, UpdatePodStatus(p.ID, current, updated))
-
-			apiPod, err := FindPodByID(p.ID)
-			require.NoError(t, err)
-			require.NotZero(t, apiPod)
-
-			require.NotZero(t, apiPod.Status)
-			assert.Equal(t, updated, apiPod.Status)
-		},
-		"UpdatePodStatusFailsWithNonexistentPod": func(t *testing.T) {
-			assert.Error(t, UpdatePodStatus("nonexistent", model.PodStatusRunning, model.PodStatusTerminated))
-		},
 		"CheckPodSecret": func(t *testing.T) {
 			secretVal := "secret_value"
 			p := pod.Pod{

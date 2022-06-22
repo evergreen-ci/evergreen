@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/rest/data"
-	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -84,7 +83,7 @@ func (h *projectEventsGet) Run(ctx context.Context) gimlet.Responder {
 	events = events[:lastIndex]
 	catcher := grip.NewBasicCatcher()
 	for i := range events {
-		catcher.Wrapf(resp.AddData(restModel.Model(&events[i])), "adding response data for event at index %d", i)
+		catcher.Wrapf(resp.AddData(&events[i]), "adding response data for event at index %d", i)
 	}
 
 	if catcher.HasErrors() {

@@ -176,11 +176,11 @@ func (s *StatusSuite) TestExecuteVerbose() {
 	s.h.verbose = true
 
 	resp := s.h.Run(context.Background())
-	s.Equal(http.StatusOK, resp.Status())
 	s.NotNil(resp)
-	s.Len(resp.Data().([]model.Model), 5)
-	for i, result := range resp.Data().([]model.Model) {
-		t := result.(*model.APITask)
+	s.Equal(http.StatusOK, resp.Status())
+	tasks := resp.Data().([]model.APITask)
+	s.Len(tasks, 5)
+	for i, t := range tasks {
 		s.Equal(utility.ToStringPtr(fmt.Sprintf("task%d", i+1)), t.Id)
 	}
 }

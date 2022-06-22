@@ -89,7 +89,7 @@ func (h *recentTasksGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if h.verbose {
-		response := make([]model.Model, len(tasks))
+		response := make([]model.APITask, len(tasks))
 		for i, t := range tasks {
 			taskModel := model.APITask{}
 			err = taskModel.BuildFromArgs(&t, &model.APITaskArgs{
@@ -99,7 +99,7 @@ func (h *recentTasksGetHandler) Run(ctx context.Context) gimlet.Responder {
 			if err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting task '%s' to API model", t.Id))
 			}
-			response[i] = &taskModel
+			response[i] = taskModel
 		}
 		return gimlet.NewJSONResponse(response)
 	}

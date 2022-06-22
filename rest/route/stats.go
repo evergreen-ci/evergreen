@@ -4,6 +4,7 @@ package route
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"io"
 	"net/http"
@@ -307,20 +308,35 @@ func (sh *StatsHandler) readStartAt(startAtValue string) (*stats.StartAt, error)
 type testStatsHandler struct {
 	StatsHandler
 	url string
+
+	prestoFilter *stats.PrestoTestStatsFilter
+	db           *sql.DB
 }
 
 func (tsh *testStatsHandler) Factory() gimlet.RouteHandler {
-	return &testStatsHandler{url: tsh.url}
+	return &testStatsHandler{
+		url: tsh.url,
+		db:  tsh.db,
+	}
 }
 
-func makeGetProjectTestStats(url string) gimlet.RouteHandler {
-	return &testStatsHandler{url: url}
+func makeGetProjectTestStats(url string, db *sql.DB) gimlet.RouteHandler {
+	return &testStatsHandler{
+		url: url,
+		db:  db,
+	}
 }
 
 func (tsh *testStatsHandler) Parse(ctx context.Context, r *http.Request) error {
-	tsh.filter = stats.StatsFilter{Project: gimlet.GetVars(r)["project_id"]}
+	project := gimlet.GetVars(r)["project_id"]
+	vals := r.URL.Query()
 
-	err := tsh.StatsHandler.parseStatsFilter(r.URL.Query())
+	if vals.Get("presto") == "true" {
+		return tsh.parsePrestoStatsFilter(project, vals)
+	}
+
+	tsh.filter = stats.StatsFilter{Project: project}
+	err := tsh.StatsHandler.parseStatsFilter(vals)
 	if err != nil {
 		return errors.Wrap(err, "invalid query parameters")
 	}
@@ -328,7 +344,84 @@ func (tsh *testStatsHandler) Parse(ctx context.Context, r *http.Request) error {
 	if err != nil {
 		return errors.Wrap(err, "invalid filter")
 	}
+
 	return nil
+}
+
+func (tsh *testStatsHandler) parsePrestoStatsFilter(project string, vals url.Values) error {
+	var err error
+
+	tsh.prestoFilter = &stats.PrestoTestStatsFilter{
+		Project:  project,
+		Variant:  vals.Get("variants"),
+		TaskName: vals.Get("tasks"),
+		TestName: vals.Get("tests"),
+		SortDesc: vals.Get("sort") == statsAPISortLatest,
+		DB:       tsh.db,
+	}
+	for _, requester := range vals["requesters"] {
+		switch requester {
+		case statsAPIRequesterMainline:
+			tsh.prestoFilter.Requesters = append(tsh.prestoFilter.Requesters, evergreen.RepotrackerVersionRequester)
+		case statsAPIRequesterPatch:
+			tsh.prestoFilter.Requesters = append(tsh.prestoFilter.Requesters, evergreen.PatchRequesters...)
+		case statsAPIRequesterTrigger:
+			tsh.prestoFilter.Requesters = append(tsh.prestoFilter.Requesters, evergreen.TriggerRequester)
+		case statsAPIRequesterGitTag:
+			tsh.prestoFilter.Requesters = append(tsh.prestoFilter.Requesters, evergreen.GitTagRequester)
+		case statsAPIRequesterAdhoc:
+			tsh.prestoFilter.Requesters = append(tsh.prestoFilter.Requesters, evergreen.AdHocRequester)
+		default:
+			return errors.Errorf("invalid requester value '%s'", requester)
+		}
+	}
+	if groupBy := vals.Get("group_by"); groupBy != "" {
+		if groupBy != statsAPITestGroupByTest {
+			return errors.New("invalid group by value")
+		}
+		tsh.prestoFilter.GroupByTest = true
+	}
+	if afterDate := vals.Get("after_date"); afterDate != "" {
+		tsh.prestoFilter.AfterDate, err = time.ParseInLocation(statsAPIDateFormat, afterDate, time.UTC)
+		if err != nil {
+			return errors.Wrap(err, "invalid after date value")
+		}
+	}
+	if beforeDate := vals.Get("before_date"); beforeDate != "" {
+		tsh.prestoFilter.BeforeDate, err = time.ParseInLocation(statsAPIDateFormat, beforeDate, time.UTC)
+		if err != nil {
+			return errors.Wrap(err, "invalid before date value")
+		}
+	}
+	if groupNumDays := vals.Get("group_num_days"); groupNumDays != "" {
+		numDays, err := strconv.Atoi(groupNumDays)
+		if err != nil {
+			return errors.Wrap(err, "invalid group num days value")
+		}
+
+		totalDays := int(tsh.prestoFilter.BeforeDate.Sub(tsh.prestoFilter.AfterDate).Hours() / 24)
+		if numDays == totalDays {
+			tsh.prestoFilter.GroupDays = true
+		} else if numDays != 1 {
+			return errors.New("invalid group num days value: must be either 1 or number of days in the given date range")
+		}
+	}
+	if offset := vals.Get("start_at"); offset != "" {
+		tsh.prestoFilter.Offset, err = strconv.Atoi(offset)
+		if err != nil {
+			return errors.Wrap(err, "invalid start at value")
+		}
+	}
+	if limit := vals.Get("limit"); limit != "" {
+		tsh.prestoFilter.Limit, err = strconv.Atoi(limit)
+		if err != nil {
+			return errors.Wrap(err, "invalid limit")
+		}
+		// Increment limit by one for pagination.
+		tsh.prestoFilter.Limit++
+	}
+
+	return errors.Wrap(tsh.prestoFilter.Validate(), "invalid query parameters")
 }
 
 func (tsh *testStatsHandler) Run(ctx context.Context) gimlet.Responder {
@@ -344,21 +437,30 @@ func (tsh *testStatsHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	var testStatsResult []model.APITestStats
-
-	testStatsResult, err = data.GetTestStats(tsh.filter)
+	if tsh.prestoFilter != nil {
+		testStatsResult, err = data.GetPrestoTestStats(ctx, *tsh.prestoFilter)
+	} else {
+		testStatsResult, err = data.GetTestStats(tsh.filter)
+	}
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting filtered test stats"))
 	}
 
-	resp := gimlet.NewResponseBuilder()
-	if err = resp.SetFormat(gimlet.JSON); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(err)
-	}
-
+	resp := gimlet.NewJSONResponse(nil)
 	requestLimit := tsh.filter.Limit - 1
+	if tsh.prestoFilter != nil {
+		requestLimit = tsh.prestoFilter.Limit - 1
+	}
 	lastIndex := len(testStatsResult)
 	if len(testStatsResult) > requestLimit {
 		lastIndex = requestLimit
+
+		var key string
+		if tsh.prestoFilter != nil {
+			key = strconv.Itoa(tsh.prestoFilter.Offset + requestLimit)
+		} else {
+			key = testStatsResult[requestLimit].StartAtKey()
+		}
 
 		err = resp.SetPages(&gimlet.ResponsePages{
 			Next: &gimlet.Page{
@@ -366,21 +468,16 @@ func (tsh *testStatsHandler) Run(ctx context.Context) gimlet.Responder {
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
 				BaseURL:         tsh.url,
-				Key:             testStatsResult[requestLimit].StartAtKey(),
+				Key:             key,
 				Limit:           requestLimit,
 			},
 		})
 		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err,
-				"paginating response"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "paginating response"))
 		}
 	}
-	testStatsResult = testStatsResult[:lastIndex]
-
-	for i, apiTestStats := range testStatsResult {
-		if err = resp.AddData(apiTestStats); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding data for test stat at index %d", i))
-		}
+	if err := resp.AddData(testStatsResult[:lastIndex]); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "adding response data"))
 	}
 
 	return resp
@@ -497,43 +594,45 @@ func checkCedarTestStats(settings *evergreen.Settings) gimlet.Middleware {
 func (m *cedarTestStatsMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	ctx := r.Context()
 
-	newURL := fmt.Sprintf(
-		"https://%s/rest/v1/historical_test_data/%s?%s",
-		m.settings.Cedar.BaseURL,
-		gimlet.GetVars(r)["project_id"],
-		r.URL.RawQuery,
-	)
-	req, err := http.NewRequest(http.MethodGet, newURL, nil)
-	if err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "creating Cedar test stats request")))
-		return
-	}
-	req = req.WithContext(ctx)
-
-	c := utility.GetHTTPClient()
-	defer utility.PutHTTPClient(c)
-
-	resp, err := c.Do(req)
-	if err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "sending test stats request to Cedar")))
-		return
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-	if resp.StatusCode == http.StatusOK {
-		for key, vals := range resp.Header {
-			for _, val := range vals {
-				rw.Header().Add(key, val)
-			}
+	if r.URL.Query().Get("presto") != "true" {
+		newURL := fmt.Sprintf(
+			"https://%s/rest/v1/historical_test_data/%s?%s",
+			m.settings.Cedar.BaseURL,
+			gimlet.GetVars(r)["project_id"],
+			r.URL.RawQuery,
+		)
+		req, err := http.NewRequest(http.MethodGet, newURL, nil)
+		if err != nil {
+			gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "creating Cedar test stats request")))
+			return
 		}
-		_, err = io.Copy(rw, resp.Body)
-		grip.Error(message.WrapError(err, message.Fields{
-			"route":      "/projects/{project_id}/test_stats",
-			"message":    "problem copying Cedar test stats",
-			"project_id": gimlet.GetVars(r)["project_id"],
-		}))
-		return
+		req = req.WithContext(ctx)
+
+		c := utility.GetHTTPClient()
+		defer utility.PutHTTPClient(c)
+
+		resp, err := c.Do(req)
+		if err != nil {
+			gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "sending test stats request to Cedar")))
+			return
+		}
+		defer func() {
+			_ = resp.Body.Close()
+		}()
+		if resp.StatusCode == http.StatusOK {
+			for key, vals := range resp.Header {
+				for _, val := range vals {
+					rw.Header().Add(key, val)
+				}
+			}
+			_, err = io.Copy(rw, resp.Body)
+			grip.Error(message.WrapError(err, message.Fields{
+				"route":      "/projects/{project_id}/test_stats",
+				"message":    "problem copying Cedar test stats",
+				"project_id": gimlet.GetVars(r)["project_id"],
+			}))
+			return
+		}
 	}
 
 	next(rw, r)

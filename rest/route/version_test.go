@@ -130,15 +130,12 @@ func (s *VersionSuite) TestFindAllBuildsForVersion() {
 	s.Equal(http.StatusOK, res.Status())
 	s.NotNil(res)
 
-	builds, ok := res.Data().([]model.Model)
+	builds, ok := res.Data().([]model.APIBuild)
 	s.True(ok)
 
 	s.Len(builds, 2)
 
-	for idx, build := range builds {
-		b, ok := (build).(*model.APIBuild)
-		s.True(ok)
-
+	for idx, b := range builds {
 		s.Equal(utility.ToStringPtr(s.bi[idx]), b.Id)
 		s.Equal(utility.ToStringPtr(versionId), b.Version)
 		s.Equal(utility.ToStringPtr(s.bv[idx]), b.BuildVariant)
@@ -154,16 +151,13 @@ func (s *VersionSuite) TestFindBuildsForVersionByVariant() {
 		s.Equal(http.StatusOK, res.Status())
 		s.NotNil(res)
 
-		builds, ok := res.Data().([]model.Model)
+		builds, ok := res.Data().([]model.APIBuild)
 		s.True(ok)
 
 		s.Require().Len(builds, 1)
-		b, ok := (builds[0]).(*model.APIBuild)
-		s.True(ok)
-
-		s.Equal(versionId, utility.FromStringPtr(b.Version))
-		s.Equal(s.bi[i], utility.FromStringPtr(b.Id))
-		s.Equal(variant, utility.FromStringPtr(b.BuildVariant))
+		s.Equal(versionId, utility.FromStringPtr(builds[0].Version))
+		s.Equal(s.bi[i], utility.FromStringPtr(builds[0].Id))
+		s.Equal(variant, utility.FromStringPtr(builds[0].BuildVariant))
 	}
 }
 
