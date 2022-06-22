@@ -53,6 +53,7 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 	variantsAndTasksFromProject, err := model.GetVariantsAndTasksFromProject(r.Context(), projCtx.Patch.PatchedParserProject, projCtx.Patch.Project)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
 	}
 
 	commitQueuePosition := 0
