@@ -27,6 +27,7 @@ const (
 	GithubRetryMinDelay = time.Second
 	GithubStatusBase    = "https://status.github.com"
 	GithubAccessURL     = "https://github.com/login/oauth/access_token"
+	githubHookURL       = "%s/rest/v2/hooks/github"
 
 	GithubAPIStatusMinor = "minor"
 	GithubAPIStatusMajor = "major"
@@ -188,6 +189,16 @@ func getGithubClient(token, caller string) *http.Client {
 		"message": "called getGithubClient",
 		"caller":  caller,
 	})
+
+	return utility.GetOAuth2HTTPClient(token)
+}
+
+func getGithubClientRetry(token, caller string) *http.Client {
+	grip.Info(message.Fields{
+		"ticket":  "EVG-14603",
+		"message": "called getGithubClientRetry",
+		"caller":  caller,
+	})
 	return utility.GetOauth2CustomHTTPRetryableClient(
 		token,
 		githubShouldRetry(caller),
@@ -201,7 +212,7 @@ func getGithubClient(token, caller string) *http.Client {
 // GetGithubCommits returns a slice of GithubCommit objects from
 // the given commitsURL when provided a valid oauth token
 func GetGithubCommits(ctx context.Context, oauthToken, owner, repo, ref string, until time.Time, commitPage int) ([]*github.RepositoryCommit, int, error) {
-	httpClient := getGithubClient(oauthToken, "GetGithubCommits")
+	httpClient := getGithubClientRetry(oauthToken, "GetGithubCommits")
 	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 	options := github.CommitsListOptions{
@@ -244,7 +255,7 @@ func parseGithubErrorResponse(resp *github.Response) error {
 // GetGithubFile returns a struct that contains the contents of files within
 // a repository as Base64 encoded content. Ref should be the commit hash or branch (defaults to master).
 func GetGithubFile(ctx context.Context, oauthToken, owner, repo, path, ref string) (*github.RepositoryContent, error) {
-	httpClient := getGithubClient(oauthToken, "GetGithubFile")
+	httpClient := getGithubClientRetry(oauthToken, "GetGithubFile")
 	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
@@ -281,7 +292,7 @@ func GetGithubMergeBaseRevision(ctx context.Context, oauthToken, repoOwner, repo
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	httpClient := getGithubClient(oauthToken, "GetGithubMergeBaseRevision")
+	httpClient := getGithubClientRetry(oauthToken, "GetGithubMergeBaseRevision")
 	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
@@ -306,7 +317,7 @@ func GetGithubMergeBaseRevision(ctx context.Context, oauthToken, repoOwner, repo
 }
 
 func GetCommitEvent(ctx context.Context, oauthToken, repoOwner, repo, githash string) (*github.RepositoryCommit, error) {
-	httpClient := getGithubClient(oauthToken, "GetCommitEvent")
+	httpClient := getGithubClientRetry(oauthToken, "GetCommitEvent")
 	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
@@ -353,7 +364,7 @@ func GetCommitEvent(ctx context.Context, oauthToken, repoOwner, repo, githash st
 
 // GetCommitDiff gets the diff of the specified commit via an API call to GitHub
 func GetCommitDiff(ctx context.Context, oauthToken, repoOwner, repo, sha string) (string, error) {
-	httpClient := getGithubClient(oauthToken, "GetCommitDiff")
+	httpClient := getGithubClientRetry(oauthToken, "GetCommitDiff")
 	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
@@ -379,7 +390,7 @@ func GetCommitDiff(ctx context.Context, oauthToken, repoOwner, repo, sha string)
 
 // GetBranchEvent gets the head of the a given branch via an API call to GitHub
 func GetBranchEvent(ctx context.Context, oauthToken, repoOwner, repo, branch string) (*github.Branch, error) {
-	httpClient := getGithubClient(oauthToken, "GetBranchEvent")
+	httpClient := getGithubClientRetry(oauthToken, "GetBranchEvent")
 	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
@@ -534,7 +545,7 @@ func GithubAuthenticate(ctx context.Context, code, clientId, clientSecret string
 
 // GetTaggedCommitFromGithub gets the commit SHA for the given tag name.
 func GetTaggedCommitFromGithub(ctx context.Context, oauthToken, owner, repo, tag string) (string, error) {
-	client := getGithubClient(oauthToken, "GetTaggedCommitFromGithub")
+	client := getGithubClientRetry(oauthToken, "GetTaggedCommitFromGithub")
 	defer utility.PutHTTPClient(client)
 
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/git/refs/tags/%s", owner, repo, tag)
@@ -584,7 +595,7 @@ func GetTaggedCommitFromGithub(ctx context.Context, oauthToken, owner, repo, tag
 }
 
 func IsUserInGithubTeam(ctx context.Context, teams []string, org, user, oauthToken string) bool {
-	httpClient := getGithubClient(oauthToken, "IsUserInGithubTeam")
+	httpClient := getGithubClientRetry(oauthToken, "IsUserInGithubTeam")
 	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
@@ -608,7 +619,7 @@ func IsUserInGithubTeam(ctx context.Context, teams []string, org, user, oauthTok
 // Returns user object, if it was a member of the specified org (or false if not specified),
 // and error
 func GetGithubTokenUser(ctx context.Context, token string, requiredOrg string) (*GithubLoginUser, bool, error) {
-	httpClient := getGithubClient(fmt.Sprintf("token %s", token), "GetGithubTokenUser")
+	httpClient := getGithubClientRetry(fmt.Sprintf("token %s", token), "GetGithubTokenUser")
 	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
@@ -652,7 +663,7 @@ func GetGithubTokenUser(ctx context.Context, token string, requiredOrg string) (
 
 // CheckGithubAPILimit queries Github for the number of API requests remaining
 func CheckGithubAPILimit(ctx context.Context, oauthToken string) (int64, error) {
-	httpClient := getGithubClient(oauthToken, "CheckGithubAPILimit")
+	httpClient := getGithubClientRetry(oauthToken, "CheckGithubAPILimit")
 	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
@@ -677,7 +688,7 @@ func CheckGithubAPILimit(ctx context.Context, oauthToken string) (int64, error) 
 
 // GetGithubUser fetches the github user with the given login name
 func GetGithubUser(ctx context.Context, oauthToken, loginName string) (*github.User, error) {
-	httpClient := getGithubClient(oauthToken, "GetGithubUser")
+	httpClient := getGithubClientRetry(oauthToken, "GetGithubUser")
 	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
@@ -697,7 +708,7 @@ func GetGithubUser(ctx context.Context, oauthToken, loginName string) (*github.U
 // given organization. The user with the attached token must have
 // visibility into organization membership, including private members
 func GithubUserInOrganization(ctx context.Context, token, requiredOrganization, username string) (bool, error) {
-	httpClient := getGithubClient(token, "GithubUserInOrganization")
+	httpClient := getGithubClientRetry(token, "GithubUserInOrganization")
 	defer utility.PutHTTPClient(httpClient)
 
 	client := github.NewClient(httpClient)
@@ -953,4 +964,82 @@ func GetPullRequest(ctx context.Context, issue int, githubToken, owner, repo str
 	}
 
 	return pr, nil
+}
+
+func CreateGithubHook(ctx context.Context, settings evergreen.Settings, owner string, repo string) (*github.Hook, error) {
+	token, err := settings.GetGithubOauthToken()
+	if err != nil {
+		return nil, err
+	}
+	if settings.Api.GithubWebhookSecret == "" {
+		return nil, errors.New("Evergreen is not configured for GitHub Webhooks")
+	}
+
+	httpClient := getGithubClient(token, "CreateGithubHook")
+	defer utility.PutHTTPClient(httpClient)
+	client := github.NewClient(httpClient)
+	hookObj := github.Hook{
+		Active: github.Bool(true),
+		Events: []string{"*"},
+		Config: map[string]interface{}{
+			"url":          github.String(fmt.Sprintf(githubHookURL, settings.ApiUrl)),
+			"content_type": github.String("json"),
+			"secret":       github.String(settings.Api.GithubWebhookSecret),
+			"insecure_ssl": github.String("0"),
+		},
+	}
+	newCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	respHook, resp, err := client.Repositories.CreateHook(newCtx, owner, repo, &hookObj)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated || respHook == nil || respHook.ID == nil {
+		return nil, errors.New("unexpected data from GitHub")
+	}
+	return respHook, nil
+}
+
+func GetExistingGithubHook(ctx context.Context, settings evergreen.Settings, owner, repo string) (*github.Hook, error) {
+	token, err := settings.GetGithubOauthToken()
+	if err != nil {
+		return nil, errors.Wrap(err, "getting GitHub token")
+	}
+
+	httpClient := getGithubClient(token, "ListGithubHooks")
+	defer utility.PutHTTPClient(httpClient)
+	client := github.NewClient(httpClient)
+	newCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	respHooks, _, err := client.Repositories.ListHooks(newCtx, owner, repo, nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "getting hooks for owner '%s', repo '%s'", owner, repo)
+	}
+
+	url := fmt.Sprintf(githubHookURL, settings.ApiUrl)
+	for _, hook := range respHooks {
+		if hook.Config["url"] == url {
+			return hook, nil
+		}
+	}
+
+	return nil, errors.Errorf("no matching hooks found")
+}
+
+func MergePullRequest(ctx context.Context, token, owner, repo, commitMessage string, prNum int, mergeOpts *github.PullRequestOptions) error {
+	httpClient := getGithubClient(token, "MergePullRequest")
+	defer utility.PutHTTPClient(httpClient)
+	githubClient := github.NewClient(httpClient)
+	res, _, err := githubClient.PullRequests.Merge(ctx, owner, repo,
+		prNum, commitMessage, mergeOpts)
+	if err != nil {
+		return errors.Wrap(err, "can't access GitHub merge API")
+	}
+	if !res.GetMerged() {
+		return errors.Errorf("Github refused to merge PR '%s/%s:%d': '%s'", owner, repo, prNum, res.GetMessage())
+	}
+	return nil
 }
