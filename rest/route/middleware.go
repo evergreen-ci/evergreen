@@ -327,9 +327,7 @@ func (m *podOrHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Requ
 		return
 	}
 	if hostID != "" && podID != "" {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			Message: "host ID and pod ID cannot both be set",
-		}))
+		gimlet.WriteResponse(rw, gimlet.NewJSONErrorResponse("host ID and pod ID cannot both be set"))
 		return
 	}
 
