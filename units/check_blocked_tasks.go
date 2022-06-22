@@ -126,7 +126,7 @@ func checkUnmarkedBlockingTasks(t *task.Task, dependencyCaches map[string]task.T
 
 	dependenciesMet, err := t.DependenciesMet(dependencyCaches)
 	if err != nil {
-		grip.Error(message.Fields{
+		grip.Debug(message.Fields{
 			"message":      "checking if dependencies met for task",
 			"task_id":      t.Id,
 			"activated_by": t.ActivatedBy,
