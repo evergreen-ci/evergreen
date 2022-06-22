@@ -36,6 +36,8 @@ const (
 	Github502Error   = "502 Server Error"
 	commitObjectType = "commit"
 	tagObjectType    = "tag"
+
+	githubInvestigation = "Github API Limit Investigation"
 )
 
 // GithubPatch stores patch data for patches create from GitHub pull requests
@@ -79,7 +81,7 @@ func githubShouldRetry(caller string) utility.HTTPRetryFunction {
 			}))
 			if temporary {
 				grip.Info(message.Fields{
-					"ticket":    "EVG-14603",
+					"ticket":    githubInvestigation,
 					"message":   "error is temporary",
 					"caller":    caller,
 					"retry_num": index,
@@ -90,7 +92,7 @@ func githubShouldRetry(caller string) utility.HTTPRetryFunction {
 
 		if resp == nil {
 			grip.Info(message.Fields{
-				"ticket":    "EVG-14603",
+				"ticket":    githubInvestigation,
 				"message":   "resp is nil in githubShouldRetry",
 				"caller":    caller,
 				"retry_num": index,
@@ -115,7 +117,7 @@ func githubShouldRetry(caller string) utility.HTTPRetryFunction {
 
 		if resp.StatusCode == http.StatusBadGateway {
 			grip.Info(message.Fields{
-				"ticket":    "EVG-14603",
+				"ticket":    githubInvestigation,
 				"message":   fmt.Sprintf("hit %d in githubShouldRetry", http.StatusBadGateway),
 				"caller":    caller,
 				"retry_num": index,
@@ -138,7 +140,7 @@ func githubShouldRetryWith404s(caller string) utility.HTTPRetryFunction {
 
 		if resp == nil {
 			grip.Info(message.Fields{
-				"ticket":    "EVG-14603",
+				"ticket":    githubInvestigation,
 				"message":   "resp is nil in githubShouldRetryWith404s",
 				"caller":    caller,
 				"retry_num": index,
@@ -154,7 +156,7 @@ func githubShouldRetryWith404s(caller string) utility.HTTPRetryFunction {
 		if resp.StatusCode == http.StatusNotFound {
 			logGitHubRateLimit(limit)
 			grip.Info(message.Fields{
-				"ticket":    "EVG-14603",
+				"ticket":    githubInvestigation,
 				"message":   fmt.Sprintf("hit %d in githubShouldRetryWith404s", http.StatusNotFound),
 				"caller":    caller,
 				"retry_num": index,
@@ -169,7 +171,7 @@ func githubShouldRetryWith404s(caller string) utility.HTTPRetryFunction {
 
 func getGithubClientRetryWith404s(token, caller string) *http.Client {
 	grip.Info(message.Fields{
-		"ticket":  "EVG-14603",
+		"ticket":  githubInvestigation,
 		"message": "called getGithubClientRetryWith404s",
 		"caller":  caller,
 	})
@@ -185,7 +187,7 @@ func getGithubClientRetryWith404s(token, caller string) *http.Client {
 
 func getGithubClient(token, caller string) *http.Client {
 	grip.Info(message.Fields{
-		"ticket":  "EVG-14603",
+		"ticket":  githubInvestigation,
 		"message": "called getGithubClient",
 		"caller":  caller,
 	})
@@ -195,7 +197,7 @@ func getGithubClient(token, caller string) *http.Client {
 
 func getGithubClientRetry(token, caller string) *http.Client {
 	grip.Info(message.Fields{
-		"ticket":  "EVG-14603",
+		"ticket":  githubInvestigation,
 		"message": "called getGithubClientRetry",
 		"caller":  caller,
 	})
@@ -600,7 +602,7 @@ func IsUserInGithubTeam(ctx context.Context, teams []string, org, user, oauthTok
 	client := github.NewClient(httpClient)
 
 	grip.Info(message.Fields{
-		"ticket":  "EVG-14603",
+		"ticket":  githubInvestigation,
 		"message": "number of teams in IsUserInGithubTeam",
 		"teams":   len(teams),
 	})
