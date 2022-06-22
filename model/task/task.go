@@ -3881,14 +3881,14 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	}
 	match[VersionKey] = versionID
 	pipeline := []bson.M{}
+	pipeline = append(pipeline,
+		bson.M{"$match": match},
+	)
 	// Add BuildVariantDisplayName to all the results if it we need to match on the entire set of results
 	// This is an expensive operation so we only want to do it if we have to
 	if len(opts.Variants) > 0 && opts.IncludeBuildVariantDisplayName {
 		pipeline = append(pipeline, AddBuildVariantDisplayName...)
 	}
-	pipeline = append(pipeline,
-		bson.M{"$match": match},
-	)
 
 	if !opts.IncludeExecutionTasks {
 		const tempParentKey = "_parent"
