@@ -79,14 +79,12 @@ func githubShouldRetry(caller string) utility.HTTPRetryFunction {
 				"url":       url,
 				"temporary": temporary,
 			}))
-			if temporary {
-				grip.Info(message.Fields{
-					"ticket":    githubInvestigation,
-					"message":   "error is temporary",
-					"caller":    caller,
-					"retry_num": index,
-				})
-			}
+			grip.InfoWhen(temporary, message.Fields{
+				"ticket":    githubInvestigation,
+				"message":   "error is temporary",
+				"caller":    caller,
+				"retry_num": index,
+			})
 			return temporary
 		}
 
