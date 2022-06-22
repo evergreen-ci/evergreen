@@ -1072,13 +1072,20 @@ var SuperuserPermissions = []string{
 }
 
 const (
-	BasicProjectAccessRole = "basic_project_access"
-	BasicDistroAccessRole  = "basic_distro_access"
+	BasicProjectAccessRole     = "basic_project_access"
+	BasicDistroAccessRole      = "basic_distro_access"
+	SuperUserRole              = "superuser"
+	SuperUserProjectAccessRole = "admin_project_access"
+	SuperUserDistroAccessRole  = "superuser_distro_access"
 )
 
-var BasicAccessRoles = []string{
+// Contains both general and superuser access.
+var GeneralAccessRoles = []string{
 	BasicProjectAccessRole,
 	BasicDistroAccessRole,
+	SuperUserRole,
+	SuperUserProjectAccessRole,
+	SuperUserDistroAccessRole,
 }
 
 // Constants for Evergreen log types.
