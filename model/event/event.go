@@ -22,7 +22,7 @@ type EventLogEntry struct {
 	ProcessedAt  time.Time `bson:"processed_at" json:"processed_at"`
 
 	Timestamp  time.Time   `bson:"ts" json:"timestamp"`
-	Expirable  bool        `bson:"expirable" json:"expirable"`
+	Expirable  bool        `bson:"expirable,omitempty" json:"expirable,omitempty"`
 	ResourceId string      `bson:"r_id" json:"resource_id"`
 	EventType  string      `bson:"e_type" json:"event_type"`
 	Data       interface{} `bson:"data" json:"data"`
