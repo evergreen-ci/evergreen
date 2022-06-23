@@ -4,6 +4,5 @@
 { "_id" : "localhostRemove", "name" : "localhost_role", "scope" : "localhost", "permissions" : { "distro_settings": 30, "distro_hosts": 10} }
 { "_id" : "localhostEdit", "name" : "localhost_role", "scope" : "localhost", "permissions" : { "distro_settings": 20, "distro_hosts": 10} }
 { "_id" : "localhost2", "name" : "localhost2_role", "scope" : "localhost2", "permissions" : { "distro_settings": 10} }
-{ "_id" : "admin_super", "name" : "admin_role", "scope" : "super", "permissions" : { "admin_settings": 10} }
-{ "_id" : "project_super", "name" : "project_create", "scope" : "super", "permissions" : { "project_create": 10} }
-{ "_id" : "distro_super", "name" : "distro_create", "scope" : "super", "permissions" : { "distro_create": 10} }
+{ "_id" : "superuser", "name" : "superuser", "scope" : "super", "permissions" : { "project_create": 10,  "admin_settings": 10} }
+{ "_id" : "superuser_distro_access", "name" : "distro_create", "scope" : "super", "permissions" : { "distro_create": 10} }

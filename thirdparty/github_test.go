@@ -67,18 +67,19 @@ func (s *githubSuite) TestGithubShouldRetry() {
 		},
 	}
 
-	s.False(githubShouldRetry(0, req, resp, nil))
-	s.True(githubShouldRetry(0, req, resp, &net.DNSError{IsTimeout: true}))
-	s.False(githubShouldRetry(0, req, resp, net.InvalidAddrError("wrong address")))
+	retryFn := githubShouldRetry("")
+	s.False(retryFn(0, req, resp, nil))
+	s.True(retryFn(0, req, resp, &net.DNSError{IsTimeout: true}))
+	s.False(retryFn(0, req, resp, net.InvalidAddrError("wrong address")))
 
 	resp.StatusCode = http.StatusBadGateway
-	s.True(githubShouldRetry(0, req, resp, nil))
+	s.True(retryFn(0, req, resp, nil))
 
 	resp.Header = http.Header{
 		"X-Ratelimit-Limit":     []string{"10"},
 		"X-Ratelimit-Remaining": []string{"0"},
 	}
-	s.False(githubShouldRetry(0, req, resp, nil))
+	s.False(retryFn(0, req, resp, nil))
 }
 
 func (s *githubSuite) TestCheckGithubAPILimit() {

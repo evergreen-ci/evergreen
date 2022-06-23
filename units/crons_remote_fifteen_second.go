@@ -73,6 +73,13 @@ func (j *cronsRemoteFifteenSecondJob) Run(ctx context.Context) {
 		catcher.Wrap(PopulatePodAllocatorJobs(j.env)(ctx, podAllocationQueue), "populating pod allocator jobs")
 	}
 
+	podCreationQueue, err := j.env.RemoteQueueGroup().Get(appCtx, "service.pod.create")
+	if err != nil {
+		catcher.Wrap(err, "getting pod creation queue")
+	} else {
+		catcher.Wrap(PopulatePodCreationJobs(j.env)(ctx, podCreationQueue), "populating pod creation jobs")
+	}
+
 	j.ErrorCount = catcher.Len()
 
 	grip.Debug(message.Fields{
