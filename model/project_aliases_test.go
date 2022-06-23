@@ -27,10 +27,11 @@ func (s *ProjectAliasSuite) SetupTest() {
 	s.aliases = []ProjectAlias{}
 	for i := 0; i < 10; i++ {
 		s.aliases = append(s.aliases, ProjectAlias{
-			ProjectID: fmt.Sprintf("project-%d", i),
-			Alias:     fmt.Sprintf("alias-%d", i),
-			Variant:   fmt.Sprintf("variant-%d", i),
-			Task:      fmt.Sprintf("task-%d", i),
+			ProjectID:   fmt.Sprintf("project-%d", i),
+			Alias:       fmt.Sprintf("alias-%d", i),
+			Variant:     fmt.Sprintf("variant-%d", i),
+			Task:        fmt.Sprintf("task-%d", i),
+			Description: fmt.Sprintf("description-%d", i),
 		})
 	}
 }
@@ -48,6 +49,7 @@ func (s *ProjectAliasSuite) TestInsertTaskAndVariantWithNoTags() {
 		s.Equal(a.Alias, out.Alias)
 		s.Equal(a.Variant, out.Variant)
 		s.Equal(a.Task, out.Task)
+		s.Equal(a.Description, out.Description)
 	}
 }
 
@@ -70,6 +72,7 @@ func (s *ProjectAliasSuite) TestInsertTagsAndNoTask() {
 		s.Empty(out.VariantTags)
 		s.Equal("", out.Task)
 		s.Equal(tags, out.TaskTags)
+		s.Equal(a.Description, out.Description)
 	}
 }
 
@@ -138,6 +141,7 @@ func (s *ProjectAliasSuite) TestInsertTagsAndNoVariant() {
 		s.Empty(out.TaskTags)
 		s.Equal("", out.Variant)
 		s.Equal(tags, out.VariantTags)
+		s.Equal(a.Description, out.Description)
 	}
 }
 
