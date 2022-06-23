@@ -8,7 +8,9 @@ import (
 	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/pod"
+	"github.com/evergreen-ci/evergreen/model/pod/dispatcher"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
@@ -83,6 +85,11 @@ func (j *podTerminationJob) Run(ctx context.Context) {
 	}()
 	if err := j.populateIfUnset(ctx); err != nil {
 		j.AddError(err)
+		return
+	}
+
+	if err := j.fixStrandedTasks(ctx); err != nil {
+		j.AddError(errors.Wrapf(err, "fixing tasks stranded by termination of pod '%s'", j.pod.ID))
 		return
 	}
 
@@ -184,6 +191,33 @@ func (j *podTerminationJob) populateIfUnset(ctx context.Context) error {
 		return errors.Wrap(err, "exporting pod")
 	}
 	j.ecsPod = ecsPod
+
+	return nil
+}
+
+// fixStrandedTasks fixes tasks that are in an invalid state due to termination
+// of this pod. If the pod is already running a task, that task is reset so that
+// it can re-run if possible. If the pod is part of a dispatcher that will have
+// no pods remaining to run tasks after this one is terminated, it marks the
+// tasks in the dispatcher as needing re-allocation.
+func (j *podTerminationJob) fixStrandedTasks(ctx context.Context) error {
+	if j.pod.RunningTask != "" {
+		if err := model.ClearAndResetStrandedContainerTask(j.pod); err != nil {
+			return errors.Wrap(err, "resetting stranded container task running on pod")
+		}
+	}
+
+	disp, err := dispatcher.FindOneByPodID(j.pod.ID)
+	if err != nil {
+		return errors.Wrap(err, "finding dispatcher associated with pod")
+	}
+	if disp == nil {
+		return nil
+	}
+
+	if err := disp.RemovePod(ctx, j.env, j.pod.ID); err != nil {
+		return errors.Wrap(err, "removing pod from dispatcher")
+	}
 
 	return nil
 }

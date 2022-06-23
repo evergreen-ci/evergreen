@@ -2,13 +2,10 @@ package data
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -86,49 +83,4 @@ func FindPodByID(id string) (*model.APIPod, error) {
 		}
 	}
 	return &apiPod, nil
-}
-
-// FindPodByExternalID finds a pod by its external identifier. It returns a nil
-// result if no such pod is found.
-func FindPodByExternalID(id string) (*model.APIPod, error) {
-	p, err := pod.FindOneByExternalID(id)
-	if err != nil {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "finding pod with external ID '%s'", id).Error(),
-		}
-	}
-	if p == nil {
-		return nil, nil
-	}
-
-	var apiPod model.APIPod
-	if err := apiPod.BuildFromService(p); err != nil {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrap(err, "converting pod to API model").Error(),
-		}
-	}
-	return &apiPod, nil
-}
-
-// UpdatePodStatus updates the pod status from the current status to the updated
-// one.
-func UpdatePodStatus(id string, apiCurrent, apiUpdated restModel.APIPodStatus) error {
-	current, err := apiCurrent.ToService()
-	if err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrap(err, "converting current status to service model").Error(),
-		}
-	}
-	updated, err := apiUpdated.ToService()
-	if err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrap(err, "converting current status to service model").Error(),
-		}
-	}
-
-	return pod.UpdateOneStatus(id, *current, *updated, utility.BSONTime(time.Now()))
 }
