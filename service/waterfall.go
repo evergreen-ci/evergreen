@@ -623,6 +623,17 @@ func waterfallDataAdaptor(vvData versionVariantData, project *model.Project, ski
 func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 	project, err := projCtx.GetProject()
+
+	if r.FormValue("redirect_spruce_users") == "true" {
+		if u := gimlet.GetUser(r.Context()); u != nil {
+			usr, ok := u.(*user.DBUser)
+			if ok && usr != nil && usr.Settings.UseSpruceOptions.SpruceV1 {
+				http.Redirect(w, r, fmt.Sprintf("%s/commits/%s", uis.Settings.Ui.UIv2Url, project.Identifier), http.StatusTemporaryRedirect)
+				return
+			}
+		}
+	}
+
 	if err != nil || project == nil {
 		uis.ProjectNotFound(w, r)
 		return

@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -69,6 +70,17 @@ type taskBlurb struct {
 func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 	project, err := projCtx.GetProject()
+
+	if r.FormValue("redirect_spruce_users") == "true" {
+		if u := gimlet.GetUser(r.Context()); u != nil {
+			usr, ok := u.(*user.DBUser)
+			if ok && usr != nil && usr.Settings.UseSpruceOptions.SpruceV1 {
+				http.Redirect(w, r, fmt.Sprintf("%s/task-history/%s/%s", uis.Settings.Ui.UIv2Url, project.Identifier, projCtx.Task.DisplayName), http.StatusTemporaryRedirect)
+				return
+			}
+		}
+	}
+
 	if err != nil || project == nil {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
