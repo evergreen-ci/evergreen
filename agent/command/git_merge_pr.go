@@ -4,12 +4,13 @@ import (
 	"context"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/thirdparty"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v34/github"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip/recovery"
@@ -64,9 +65,6 @@ func (c *gitMergePr) Execute(ctx context.Context, comm client.Communicator, logg
 	if token == "" {
 		token = conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion)
 	}
-	httpClient := utility.GetOAuth2HTTPClient(token)
-	defer utility.PutHTTPClient(httpClient)
-	githubClient := github.NewClient(httpClient)
 
 	c.statusSender, err = send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
 		Token: token,
@@ -96,16 +94,6 @@ func (c *gitMergePr) Execute(ctx context.Context, comm client.Communicator, logg
 	}
 
 	// do the merge
-	var res *github.PullRequestMergeResult
-	res, _, err = githubClient.PullRequests.Merge(githubCtx, conf.ProjectRef.Owner, conf.ProjectRef.Repo,
-		patchDoc.GithubPatchData.PRNumber, patchDoc.GithubPatchData.CommitMessage, mergeOpts)
-	if err != nil {
-		return errors.Wrap(err, "can't access GitHub merge API")
-	}
-
-	if !res.GetMerged() {
-		return errors.Errorf("Github refused to merge PR '%s/%s:%d': '%s'", conf.ProjectRef.Owner, conf.ProjectRef.Repo, patchDoc.GithubPatchData.PRNumber, res.GetMessage())
-	}
-
-	return nil
+	return thirdparty.MergePullRequest(githubCtx, token, conf.ProjectRef.Owner, conf.ProjectRef.Repo,
+		patchDoc.GithubPatchData.CommitMessage, patchDoc.GithubPatchData.PRNumber, mergeOpts)
 }
