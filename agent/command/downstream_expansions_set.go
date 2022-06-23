@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -73,7 +74,7 @@ func (c *setDownstream) Execute(ctx context.Context,
 		return nil
 	}
 
-	if conf.Task.Requester != "patch_request" {
+	if evergreen.IsPatchRequester(conf.Task.Requester) {
 		return nil
 	}
 
