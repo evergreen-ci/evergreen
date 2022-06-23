@@ -1,4 +1,4 @@
-package resolvers
+package graphql
 
 // This file will always be generated when running gqlgen.
 // It contains the definitions for the Query & Mutation resolver, which are used by the other files in this folder.
@@ -9,10 +9,6 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
-	gqlError "github.com/evergreen-ci/evergreen/graphql/errors"
-	"github.com/evergreen-ci/evergreen/graphql/generated"
-	gqlModel "github.com/evergreen-ci/evergreen/graphql/model"
-
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
@@ -22,8 +18,8 @@ type Resolver struct {
 	sc data.Connector
 }
 
-func New(apiURL string) generated.Config {
-	c := generated.Config{
+func New(apiURL string) Config {
+	c := Config{
 		Resolvers: &Resolver{
 			sc: &data.DBConnector{URL: apiURL},
 		},
@@ -31,7 +27,7 @@ func New(apiURL string) generated.Config {
 	c.Directives.RequireSuperUser = func(ctx context.Context, obj interface{}, next graphql.Resolver) (interface{}, error) {
 		user := gimlet.GetUser(ctx)
 		if user == nil {
-			return nil, gqlError.Forbidden.Send(ctx, "user not logged in")
+			return nil, Forbidden.Send(ctx, "user not logged in")
 		}
 		opts := gimlet.PermissionOpts{
 			Resource:      evergreen.SuperUserPermissionsID,
@@ -42,21 +38,21 @@ func New(apiURL string) generated.Config {
 		if user.HasPermission(opts) {
 			return next(ctx)
 		}
-		return nil, gqlError.Forbidden.Send(ctx, fmt.Sprintf("user %s does not have permission to access this resolver", user.Username()))
+		return nil, Forbidden.Send(ctx, fmt.Sprintf("user %s does not have permission to access this resolver", user.Username()))
 	}
-	c.Directives.RequireProjectAccess = func(ctx context.Context, obj interface{}, next graphql.Resolver, access gqlModel.ProjectSettingsAccess) (res interface{}, err error) {
+	c.Directives.RequireProjectAccess = func(ctx context.Context, obj interface{}, next graphql.Resolver, access ProjectSettingsAccess) (res interface{}, err error) {
 		var permissionLevel int
-		if access == gqlModel.ProjectSettingsAccessEdit {
+		if access == ProjectSettingsAccessEdit {
 			permissionLevel = evergreen.ProjectSettingsEdit.Value
-		} else if access == gqlModel.ProjectSettingsAccessView {
+		} else if access == ProjectSettingsAccessView {
 			permissionLevel = evergreen.ProjectSettingsView.Value
 		} else {
-			return nil, gqlError.Forbidden.Send(ctx, "Permission not specified")
+			return nil, Forbidden.Send(ctx, "Permission not specified")
 		}
 
 		args, isStringMap := obj.(map[string]interface{})
 		if !isStringMap {
-			return nil, gqlError.ResourceNotFound.Send(ctx, "Project not specified")
+			return nil, ResourceNotFound.Send(ctx, "Project not specified")
 		}
 
 		if id, hasId := args["id"].(string); hasId {
@@ -66,11 +62,11 @@ func New(apiURL string) generated.Config {
 		} else if identifier, hasIdentifier := args["identifier"].(string); hasIdentifier {
 			pid, err := model.GetIdForProject(identifier)
 			if err != nil {
-				return nil, gqlError.ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with identifier: %s", identifier))
+				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with identifier: %s", identifier))
 			}
 			return hasProjectPermission(ctx, pid, next, permissionLevel)
 		}
-		return nil, gqlError.ResourceNotFound.Send(ctx, "Could not find project")
+		return nil, ResourceNotFound.Send(ctx, "Could not find project")
 	}
 	return c
 }

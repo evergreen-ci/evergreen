@@ -1,4 +1,4 @@
-package resolvers
+package graphql
 
 // This file will be automatically regenerated based on the schema, any resolver implementations
 // will be copied through when generating and any unknown code will be moved to the end.
@@ -6,7 +6,6 @@ package resolvers
 import (
 	"context"
 
-	"github.com/evergreen-ci/evergreen/graphql/generated"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 )
@@ -31,7 +30,7 @@ func (r *projectVarsResolver) PrivateVars(ctx context.Context, obj *restModel.AP
 	return res, nil
 }
 
-// ProjectVars returns generated.ProjectVarsResolver implementation.
-func (r *Resolver) ProjectVars() generated.ProjectVarsResolver { return &projectVarsResolver{r} }
+// ProjectVars returns ProjectVarsResolver implementation.
+func (r *Resolver) ProjectVars() ProjectVarsResolver { return &projectVarsResolver{r} }
 
 type projectVarsResolver struct{ *Resolver }

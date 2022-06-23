@@ -1,4 +1,4 @@
-package resolvers
+package graphql
 
 // This file will be automatically regenerated based on the schema, any resolver implementations
 // will be copied through when generating and any unknown code will be moved to the end.
@@ -6,7 +6,6 @@ package resolvers
 import (
 	"context"
 
-	"github.com/evergreen-ci/evergreen/graphql/generated"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 )
 
@@ -34,7 +33,7 @@ func (r *ticketFieldsResolver) ResolutionName(ctx context.Context, obj *thirdpar
 	return &obj.Resolution.Name, nil
 }
 
-// TicketFields returns generated.TicketFieldsResolver implementation.
-func (r *Resolver) TicketFields() generated.TicketFieldsResolver { return &ticketFieldsResolver{r} }
+// TicketFields returns TicketFieldsResolver implementation.
+func (r *Resolver) TicketFields() TicketFieldsResolver { return &ticketFieldsResolver{r} }
 
 type ticketFieldsResolver struct{ *Resolver }

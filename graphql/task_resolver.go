@@ -1,4 +1,4 @@
-package resolvers
+package graphql
 
 // This file will be automatically regenerated based on the schema, any resolver implementations
 // will be copied through when generating and any unknown code will be moved to the end.
@@ -10,9 +10,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	gqlError "github.com/evergreen-ci/evergreen/graphql/errors"
-	"github.com/evergreen-ci/evergreen/graphql/generated"
-	gqlModel "github.com/evergreen-ci/evergreen/graphql/model"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -25,12 +22,12 @@ import (
 	"github.com/evergreen-ci/utility"
 )
 
-func (r *taskResolver) AbortInfo(ctx context.Context, obj *restModel.APITask) (*gqlModel.AbortInfo, error) {
+func (r *taskResolver) AbortInfo(ctx context.Context, obj *restModel.APITask) (*AbortInfo, error) {
 	if !obj.Aborted {
 		return nil, nil
 	}
 
-	info := gqlModel.AbortInfo{
+	info := AbortInfo{
 		User:       obj.AbortInfo.User,
 		TaskID:     obj.AbortInfo.TaskID,
 		NewVersion: obj.AbortInfo.NewVersion,
@@ -40,17 +37,17 @@ func (r *taskResolver) AbortInfo(ctx context.Context, obj *restModel.APITask) (*
 	if len(obj.AbortInfo.TaskID) > 0 {
 		abortedTask, err := task.FindOneId(obj.AbortInfo.TaskID)
 		if err != nil {
-			return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Problem getting aborted task %s: %s", *obj.Id, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Problem getting aborted task %s: %s", *obj.Id, err.Error()))
 		}
 		if abortedTask == nil {
-			return nil, gqlError.ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find aborted task %s: %s", obj.AbortInfo.TaskID, err.Error()))
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find aborted task %s: %s", obj.AbortInfo.TaskID, err.Error()))
 		}
 		abortedTaskBuild, err := build.FindOneId(abortedTask.BuildId)
 		if err != nil {
-			return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Problem getting build for aborted task %s: %s", abortedTask.BuildId, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Problem getting build for aborted task %s: %s", abortedTask.BuildId, err.Error()))
 		}
 		if abortedTaskBuild == nil {
-			return nil, gqlError.ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find build %s for aborted task: %s", abortedTask.BuildId, err.Error()))
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find build %s for aborted task: %s", abortedTask.BuildId, err.Error()))
 		}
 		info.TaskDisplayName = abortedTask.DisplayName
 		info.BuildVariantDisplayName = abortedTaskBuild.DisplayName
@@ -61,7 +58,7 @@ func (r *taskResolver) AbortInfo(ctx context.Context, obj *restModel.APITask) (*
 func (r *taskResolver) Ami(ctx context.Context, obj *restModel.APITask) (*string, error) {
 	err := obj.GetAMI()
 	if err != nil {
-		return nil, gqlError.InternalServerError.Send(ctx, err.Error())
+		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 	return obj.AMI, nil
 }
@@ -69,7 +66,7 @@ func (r *taskResolver) Ami(ctx context.Context, obj *restModel.APITask) (*string
 func (r *taskResolver) Annotation(ctx context.Context, obj *restModel.APITask) (*restModel.APITaskAnnotation, error) {
 	annotation, err := annotations.FindOneByTaskIdAndExecution(*obj.Id, obj.Execution)
 	if err != nil {
-		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("error finding annotation: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding annotation: %s", err.Error()))
 	}
 	if annotation == nil {
 		return nil, nil
@@ -81,7 +78,7 @@ func (r *taskResolver) Annotation(ctx context.Context, obj *restModel.APITask) (
 func (r *taskResolver) BaseStatus(ctx context.Context, obj *restModel.APITask) (*string, error) {
 	t, err := obj.ToService()
 	if err != nil {
-		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *obj.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *obj.Id, err.Error()))
 	}
 	baseStatus := t.BaseTask.Status
 	if baseStatus == "" {
@@ -93,7 +90,7 @@ func (r *taskResolver) BaseStatus(ctx context.Context, obj *restModel.APITask) (
 func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*restModel.APITask, error) {
 	t, err := obj.ToService()
 	if err != nil {
-		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *obj.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *obj.Id, err.Error()))
 	}
 
 	var baseTask *task.Task
@@ -101,7 +98,7 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 	if t.BaseTask.Id != "" {
 		baseTask, err = task.FindOneId(t.BaseTask.Id)
 		if err != nil {
-			return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s: %s", t.BaseTask.Id, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s: %s", t.BaseTask.Id, err.Error()))
 		}
 		if baseTask == nil {
 			return nil, gimlet.ErrorResponse{
@@ -113,12 +110,12 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 		if evergreen.IsPatchRequester(t.Requester) {
 			baseTask, err = t.FindTaskOnBaseCommit()
 			if err != nil {
-				return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s on base commit: %s", *obj.Id, err.Error()))
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s on base commit: %s", *obj.Id, err.Error()))
 			}
 		} else {
 			baseTask, err = t.FindTaskOnPreviousCommit()
 			if err != nil {
-				return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s on previous commit: %s", *obj.Id, err.Error()))
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s on previous commit: %s", *obj.Id, err.Error()))
 			}
 		}
 	}
@@ -129,7 +126,7 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 	apiTask := &restModel.APITask{}
 	err = apiTask.BuildFromArgs(baseTask, nil)
 	if err != nil {
-		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert baseTask %s to APITask : %s", baseTask.Id, err))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert baseTask %s to APITask : %s", baseTask.Id, err))
 	}
 	return apiTask, nil
 }
@@ -141,10 +138,10 @@ func (r *taskResolver) BuildVariantDisplayName(ctx context.Context, obj *restMod
 	buildID := utility.FromStringPtr(obj.BuildId)
 	b, err := build.FindOneId(buildID)
 	if err != nil {
-		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Unable to find build id: %s for task: %s, '%s'", buildID, utility.FromStringPtr(obj.Id), err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to find build id: %s for task: %s, '%s'", buildID, utility.FromStringPtr(obj.Id), err.Error()))
 	}
 	if b == nil {
-		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Unable to find build id: %s for task: %s", buildID, utility.FromStringPtr(obj.Id)))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to find build id: %s for task: %s", buildID, utility.FromStringPtr(obj.Id)))
 	}
 	displayName := b.DisplayName
 	return &displayName, nil
@@ -168,10 +165,10 @@ func (r *taskResolver) CanModifyAnnotation(ctx context.Context, obj *restModel.A
 	if utility.StringSliceContains(evergreen.PatchRequesters, utility.FromStringPtr(obj.Requester)) {
 		p, err := patch.FindOneId(utility.FromStringPtr(obj.Version))
 		if err != nil {
-			return false, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("error finding patch for task: %s", err.Error()))
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding patch for task: %s", err.Error()))
 		}
 		if p == nil {
-			return false, gqlError.InternalServerError.Send(ctx, "patch for task doesn't exist")
+			return false, InternalServerError.Send(ctx, "patch for task doesn't exist")
 		}
 		if p.Author == authUser.Username() {
 			return true, nil
@@ -209,7 +206,7 @@ func (r *taskResolver) CanOverrideDependencies(ctx context.Context, obj *restMod
 func (r *taskResolver) CanRestart(ctx context.Context, obj *restModel.APITask) (bool, error) {
 	t, err := obj.ToService()
 	if err != nil {
-		return false, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to service", *obj.Id))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to service", *obj.Id))
 	}
 	return canRestartTask(t), nil
 }
@@ -217,7 +214,7 @@ func (r *taskResolver) CanRestart(ctx context.Context, obj *restModel.APITask) (
 func (r *taskResolver) CanSchedule(ctx context.Context, obj *restModel.APITask) (bool, error) {
 	t, err := obj.ToService()
 	if err != nil {
-		return false, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to service", *obj.Id))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to service", *obj.Id))
 	}
 	return canScheduleTask(t), nil
 }
@@ -230,8 +227,8 @@ func (r *taskResolver) CanUnschedule(ctx context.Context, obj *restModel.APITask
 	return (obj.Activated && *obj.Status == evergreen.TaskUndispatched), nil
 }
 
-func (r *taskResolver) DependsOn(ctx context.Context, obj *restModel.APITask) ([]*gqlModel.Dependency, error) {
-	dependencies := []*gqlModel.Dependency{}
+func (r *taskResolver) DependsOn(ctx context.Context, obj *restModel.APITask) ([]*Dependency, error) {
+	dependencies := []*Dependency{}
 	if len(obj.DependsOn) == 0 {
 		return nil, nil
 	}
@@ -243,7 +240,7 @@ func (r *taskResolver) DependsOn(ctx context.Context, obj *restModel.APITask) ([
 	dependencyTasks, err := task.FindWithFields(task.ByIds(depIds), task.DisplayNameKey, task.StatusKey,
 		task.ActivatedKey, task.BuildVariantKey, task.DetailsKey, task.DependsOnKey)
 	if err != nil {
-		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Cannot find dependency tasks for task %s: %s", *obj.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Cannot find dependency tasks for task %s: %s", *obj.Id, err.Error()))
 	}
 
 	taskMap := map[string]*task.Task{}
@@ -253,7 +250,7 @@ func (r *taskResolver) DependsOn(ctx context.Context, obj *restModel.APITask) ([
 
 	t, err := obj.ToService()
 	if err != nil {
-		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *obj.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *obj.Id, err.Error()))
 	}
 
 	for _, dep := range obj.DependsOn {
@@ -261,7 +258,7 @@ func (r *taskResolver) DependsOn(ctx context.Context, obj *restModel.APITask) ([
 		if !ok {
 			continue
 		}
-		var metStatus gqlModel.MetStatus
+		var metStatus MetStatus
 		if depTask.Status == evergreen.TaskStarted {
 			metStatus = "STARTED"
 		} else if !depTask.IsFinished() {
@@ -271,7 +268,7 @@ func (r *taskResolver) DependsOn(ctx context.Context, obj *restModel.APITask) ([
 		} else {
 			metStatus = "UNMET"
 		}
-		var requiredStatus gqlModel.RequiredStatus
+		var requiredStatus RequiredStatus
 		switch dep.Status {
 		case model.AllStatuses:
 			requiredStatus = "MUST_FINISH"
@@ -281,7 +278,7 @@ func (r *taskResolver) DependsOn(ctx context.Context, obj *restModel.APITask) ([
 			requiredStatus = "MUST_SUCCEED"
 		}
 
-		dependency := gqlModel.Dependency{
+		dependency := Dependency{
 			Name:           depTask.DisplayName,
 			BuildVariant:   depTask.BuildVariant,
 			MetStatus:      metStatus,
@@ -297,7 +294,7 @@ func (r *taskResolver) DependsOn(ctx context.Context, obj *restModel.APITask) ([
 func (r *taskResolver) DisplayTask(ctx context.Context, obj *restModel.APITask) (*restModel.APITask, error) {
 	t, err := task.FindOneId(*obj.Id)
 	if err != nil || t == nil {
-		return nil, gqlError.ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find task with id: %s", *obj.Id))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find task with id: %s", *obj.Id))
 	}
 	dt, err := t.GetDisplayTask()
 	if dt == nil || err != nil {
@@ -305,7 +302,7 @@ func (r *taskResolver) DisplayTask(ctx context.Context, obj *restModel.APITask) 
 	}
 	apiTask := &restModel.APITask{}
 	if err = apiTask.BuildFromArgs(dt, nil); err != nil {
-		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert display task: %s to APITask", dt.Id))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert display task: %s to APITask", dt.Id))
 	}
 	return apiTask, nil
 }
@@ -313,11 +310,11 @@ func (r *taskResolver) DisplayTask(ctx context.Context, obj *restModel.APITask) 
 func (r *taskResolver) EstimatedStart(ctx context.Context, obj *restModel.APITask) (*restModel.APIDuration, error) {
 	t, err := obj.ToService()
 	if err != nil {
-		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error while converting task %s to service", *obj.Id))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while converting task %s to service", *obj.Id))
 	}
 	start, err := model.GetEstimatedStartTime(*t)
 	if err != nil {
-		return nil, gqlError.InternalServerError.Send(ctx, "error getting estimated start time")
+		return nil, InternalServerError.Send(ctx, "error getting estimated start time")
 	}
 	duration := restModel.NewAPIDuration(start)
 	return &duration, nil
@@ -329,14 +326,14 @@ func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.AP
 	}
 	tasks, err := task.FindByExecutionTasksAndMaxExecution(obj.ExecutionTasks, obj.Execution)
 	if err != nil {
-		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error finding execution tasks for task: %s : %s", *obj.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding execution tasks for task: %s : %s", *obj.Id, err.Error()))
 	}
 	apiTasks := []*restModel.APITask{}
 	for _, t := range tasks {
 		apiTask := &restModel.APITask{}
 		err = apiTask.BuildFromArgs(&t, nil)
 		if err != nil {
-			return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert task %s to APITask : %s", t.Id, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert task %s to APITask : %s", t.Id, err.Error()))
 		}
 		apiTasks = append(apiTasks, apiTask)
 	}
@@ -353,14 +350,14 @@ func (r *taskResolver) FailedTestCount(ctx context.Context, obj *restModel.APITa
 		}
 		stats, err := apimodels.GetCedarTestResultsStatsWithStatusError(ctx, opts)
 		if err != nil {
-			return 0, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("getting failed test count: %s", err))
+			return 0, InternalServerError.Send(ctx, fmt.Sprintf("getting failed test count: %s", err))
 		}
 		return stats.FailedCount, nil
 	}
 
 	failedTestCount, err := task.GetTestCountByTaskIdAndFilters(*obj.Id, "", []string{evergreen.TestFailedStatus}, obj.Execution)
 	if err != nil {
-		return 0, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("getting failed test count: %s", err))
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("getting failed test count: %s", err))
 	}
 	return failedTestCount, nil
 }
@@ -371,7 +368,7 @@ func (r *taskResolver) GeneratedByName(ctx context.Context, obj *restModel.APITa
 	}
 	generator, err := task.FindOneIdWithFields(obj.GeneratedBy, task.DisplayNameKey)
 	if err != nil {
-		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("unable to find generator: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("unable to find generator: %s", err.Error()))
 	}
 	if generator == nil {
 		return nil, nil
@@ -398,7 +395,7 @@ func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.A
 	}
 	result, err := apimodels.CedarPerfResultsCount(ctx, opts)
 	if err != nil {
-		return false, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("error requesting perf data from cedar: %s", err))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("error requesting perf data from cedar: %s", err))
 	}
 	if result.NumberOfResults == 0 {
 		return false, nil
@@ -413,7 +410,7 @@ func (r *taskResolver) LatestExecution(ctx context.Context, obj *restModel.APITa
 func (r *taskResolver) MinQueuePosition(ctx context.Context, obj *restModel.APITask) (int, error) {
 	position, err := model.FindMinimumQueuePositionForTask(*obj.Id)
 	if err != nil {
-		return 0, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("error queue position for task: %s", err.Error()))
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("error queue position for task: %s", err.Error()))
 	}
 	if position < 0 {
 		return 0, nil
@@ -427,7 +424,7 @@ func (r *taskResolver) Patch(ctx context.Context, obj *restModel.APITask) (*rest
 	}
 	apiPatch, err := data.FindPatchById(*obj.Version)
 	if err != nil {
-		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Couldn't find a patch with id: `%s` %s", *obj.Version, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Couldn't find a patch with id: `%s` %s", *obj.Version, err.Error()))
 	}
 	return apiPatch, nil
 }
@@ -440,14 +437,14 @@ func (r *taskResolver) PatchNumber(ctx context.Context, obj *restModel.APITask) 
 func (r *taskResolver) Project(ctx context.Context, obj *restModel.APITask) (*restModel.APIProjectRef, error) {
 	pRef, err := data.FindProjectById(*obj.ProjectId, true, false)
 	if err != nil {
-		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error finding project ref for project %s: %s", *obj.ProjectId, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding project ref for project %s: %s", *obj.ProjectId, err.Error()))
 	}
 	if pRef == nil {
-		return nil, gqlError.ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find a ProjectRef for project %s", *obj.ProjectId))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find a ProjectRef for project %s", *obj.ProjectId))
 	}
 	apiProjectRef := restModel.APIProjectRef{}
 	if err = apiProjectRef.BuildFromService(pRef); err != nil {
-		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error building APIProject from service: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIProject from service: %s", err.Error()))
 	}
 	return &apiProjectRef, nil
 }
@@ -460,7 +457,7 @@ func (r *taskResolver) ProjectIdentifier(ctx context.Context, obj *restModel.API
 func (r *taskResolver) SpawnHostLink(ctx context.Context, obj *restModel.APITask) (*string, error) {
 	host, err := host.FindOne(host.ById(*obj.HostId))
 	if err != nil {
-		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("error finding host for task %s", *obj.Id))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding host for task %s", *obj.Id))
 	}
 	if host == nil {
 		return nil, nil
@@ -486,14 +483,14 @@ func (r *taskResolver) TotalTestCount(ctx context.Context, obj *restModel.APITas
 		}
 		stats, err := apimodels.GetCedarTestResultsStatsWithStatusError(ctx, opts)
 		if err != nil {
-			return 0, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("getting test count: %s", err))
+			return 0, InternalServerError.Send(ctx, fmt.Sprintf("getting test count: %s", err))
 		}
 
 		return stats.TotalCount, nil
 	}
 	testCount, err := task.GetTestCountByTaskIdAndFilters(*obj.Id, "", nil, obj.Execution)
 	if err != nil {
-		return 0, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("getting test count: %s", err))
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("getting test count: %s", err))
 	}
 
 	return testCount, nil
@@ -502,19 +499,19 @@ func (r *taskResolver) TotalTestCount(ctx context.Context, obj *restModel.APITas
 func (r *taskResolver) VersionMetadata(ctx context.Context, obj *restModel.APITask) (*restModel.APIVersion, error) {
 	v, err := model.VersionFindOneId(utility.FromStringPtr(obj.Version))
 	if err != nil {
-		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Unable to find version id: %s for task: %s", *obj.Version, utility.FromStringPtr(obj.Id)))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to find version id: %s for task: %s", *obj.Version, utility.FromStringPtr(obj.Id)))
 	}
 	if v == nil {
-		return nil, gqlError.ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find version with id: `%s`", *obj.Version))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find version with id: `%s`", *obj.Version))
 	}
 	apiVersion := &restModel.APIVersion{}
 	if err = apiVersion.BuildFromService(v); err != nil {
-		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert version: %s to APIVersion", v.Id))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert version: %s to APIVersion", v.Id))
 	}
 	return apiVersion, nil
 }
 
-// Task returns generated.TaskResolver implementation.
-func (r *Resolver) Task() generated.TaskResolver { return &taskResolver{r} }
+// Task returns TaskResolver implementation.
+func (r *Resolver) Task() TaskResolver { return &taskResolver{r} }
 
 type taskResolver struct{ *Resolver }

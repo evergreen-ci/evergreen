@@ -1,4 +1,4 @@
-package resolvers
+package graphql
 
 // This file will be automatically regenerated based on the schema, any resolver implementations
 // will be copied through when generating and any unknown code will be moved to the end.
@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"time"
 
-	gqlError "github.com/evergreen-ci/evergreen/graphql/errors"
-	"github.com/evergreen-ci/evergreen/graphql/generated"
 	"github.com/evergreen-ci/evergreen/model/host"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
@@ -31,7 +29,7 @@ func (r *hostResolver) HomeVolume(ctx context.Context, obj *restModel.APIHost) (
 		volId := utility.FromStringPtr(obj.HomeVolumeID)
 		volume, err := host.FindVolumeByID(volId)
 		if err != nil {
-			return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error getting volume %s: %s", volId, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting volume %s: %s", volId, err.Error()))
 		}
 		if volume == nil {
 			grip.Error(message.Fields{
@@ -45,7 +43,7 @@ func (r *hostResolver) HomeVolume(ctx context.Context, obj *restModel.APIHost) (
 		apiVolume := &restModel.APIVolume{}
 		err = apiVolume.BuildFromService(volume)
 		if err != nil {
-			return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error building volume '%s' from service: %s", volId, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building volume '%s' from service: %s", volId, err.Error()))
 		}
 		return apiVolume, nil
 	}
@@ -61,7 +59,7 @@ func (r *hostResolver) Volumes(ctx context.Context, obj *restModel.APIHost) ([]*
 	for _, volId := range obj.AttachedVolumeIDs {
 		volume, err := host.FindVolumeByID(volId)
 		if err != nil {
-			return volumes, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error getting volume %s", volId))
+			return volumes, InternalServerError.Send(ctx, fmt.Sprintf("Error getting volume %s", volId))
 		}
 		if volume == nil {
 			continue
@@ -69,7 +67,7 @@ func (r *hostResolver) Volumes(ctx context.Context, obj *restModel.APIHost) ([]*
 		apiVolume := &restModel.APIVolume{}
 		err = apiVolume.BuildFromService(volume)
 		if err != nil {
-			return nil, gqlError.InternalServerError.Send(ctx, werrors.Wrapf(err, "error building volume '%s' from service", volId).Error())
+			return nil, InternalServerError.Send(ctx, werrors.Wrapf(err, "error building volume '%s' from service", volId).Error())
 		}
 		volumes = append(volumes, apiVolume)
 	}
@@ -77,7 +75,7 @@ func (r *hostResolver) Volumes(ctx context.Context, obj *restModel.APIHost) ([]*
 	return volumes, nil
 }
 
-// Host returns generated.HostResolver implementation.
-func (r *Resolver) Host() generated.HostResolver { return &hostResolver{r} }
+// Host returns HostResolver implementation.
+func (r *Resolver) Host() HostResolver { return &hostResolver{r} }
 
 type hostResolver struct{ *Resolver }

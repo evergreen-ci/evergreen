@@ -5,7 +5,6 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
-	gqlError "github.com/evergreen-ci/evergreen/graphql/errors"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -29,7 +28,7 @@ func (DisableQuery) MutateOperationContext(ctx context.Context, rc *graphql.Oper
 	if err != nil {
 		grip.Error(errors.Wrap(err, "getting Evergreen admin settings"))
 	} else if utility.StringSliceContains(settings.DisabledGQLQueries, rc.Operation.Name) {
-		return gqlError.ServiceUnavailable.Send(ctx, "Query is disabled by admin")
+		return ServiceUnavailable.Send(ctx, "Query is disabled by admin")
 	}
 	return nil
 }

@@ -1,4 +1,4 @@
-package resolvers
+package graphql
 
 // This file will be automatically regenerated based on the schema, any resolver implementations
 // will be copied through when generating and any unknown code will be moved to the end.
@@ -9,16 +9,13 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	gqlError "github.com/evergreen-ci/evergreen/graphql/errors"
-	"github.com/evergreen-ci/evergreen/graphql/generated"
-	gqlModel "github.com/evergreen-ci/evergreen/graphql/model"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 )
 
-func (r *taskLogsResolver) AgentLogs(ctx context.Context, obj *gqlModel.TaskLogs) ([]*apimodels.LogMessage, error) {
+func (r *taskLogsResolver) AgentLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error) {
 	const logMessageCount = 100
 
 	var agentLogs []apimodels.LogMessage
@@ -35,7 +32,7 @@ func (r *taskLogsResolver) AgentLogs(ctx context.Context, obj *gqlModel.TaskLogs
 		// agent logs
 		agentLogReader, err := apimodels.GetBuildloggerLogs(ctx, opts)
 		if err != nil {
-			return nil, gqlError.InternalServerError.Send(ctx, err.Error())
+			return nil, InternalServerError.Send(ctx, err.Error())
 		}
 		agentLogs = apimodels.ReadBuildloggerToSlice(ctx, obj.TaskID, agentLogReader)
 	} else {
@@ -44,7 +41,7 @@ func (r *taskLogsResolver) AgentLogs(ctx context.Context, obj *gqlModel.TaskLogs
 		agentLogs, err = model.FindMostRecentLogMessages(obj.TaskID, obj.Execution, logMessageCount, []string{},
 			[]string{apimodels.AgentLogPrefix})
 		if err != nil {
-			return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error finding agent logs for task %s: %s", obj.TaskID, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding agent logs for task %s: %s", obj.TaskID, err.Error()))
 		}
 	}
 
@@ -56,7 +53,7 @@ func (r *taskLogsResolver) AgentLogs(ctx context.Context, obj *gqlModel.TaskLogs
 	return agentLogPointers, nil
 }
 
-func (r *taskLogsResolver) AllLogs(ctx context.Context, obj *gqlModel.TaskLogs) ([]*apimodels.LogMessage, error) {
+func (r *taskLogsResolver) AllLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error) {
 	const logMessageCount = 100
 
 	var allLogs []apimodels.LogMessage
@@ -76,7 +73,7 @@ func (r *taskLogsResolver) AllLogs(ctx context.Context, obj *gqlModel.TaskLogs) 
 		// all logs
 		allLogReader, err := apimodels.GetBuildloggerLogs(ctx, opts)
 		if err != nil {
-			return nil, gqlError.InternalServerError.Send(ctx, err.Error())
+			return nil, InternalServerError.Send(ctx, err.Error())
 		}
 
 		allLogs = apimodels.ReadBuildloggerToSlice(ctx, obj.TaskID, allLogReader)
@@ -86,7 +83,7 @@ func (r *taskLogsResolver) AllLogs(ctx context.Context, obj *gqlModel.TaskLogs) 
 		// all logs
 		allLogs, err = model.FindMostRecentLogMessages(obj.TaskID, obj.Execution, logMessageCount, []string{}, []string{})
 		if err != nil {
-			return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error finding all logs for task %s: %s", obj.TaskID, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding all logs for task %s: %s", obj.TaskID, err.Error()))
 		}
 	}
 
@@ -97,13 +94,13 @@ func (r *taskLogsResolver) AllLogs(ctx context.Context, obj *gqlModel.TaskLogs) 
 	return allLogPointers, nil
 }
 
-func (r *taskLogsResolver) EventLogs(ctx context.Context, obj *gqlModel.TaskLogs) ([]*restModel.TaskAPIEventLogEntry, error) {
+func (r *taskLogsResolver) EventLogs(ctx context.Context, obj *TaskLogs) ([]*restModel.TaskAPIEventLogEntry, error) {
 	const logMessageCount = 100
 	var loggedEvents []event.EventLogEntry
 	// loggedEvents is ordered ts descending
 	loggedEvents, err := event.Find(event.AllLogCollection, event.MostRecentTaskEvents(obj.TaskID, logMessageCount))
 	if err != nil {
-		return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Unable to find EventLogs for task %s: %s", obj.TaskID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to find EventLogs for task %s: %s", obj.TaskID, err.Error()))
 	}
 
 	// TODO (EVG-16969) remove once TaskScheduled events TTL
@@ -131,14 +128,14 @@ func (r *taskLogsResolver) EventLogs(ctx context.Context, obj *gqlModel.TaskLogs
 		apiEventLog := restModel.TaskAPIEventLogEntry{}
 		err = apiEventLog.BuildFromService(&e)
 		if err != nil {
-			return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Unable to build APIEventLogEntry from EventLog: %s", err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to build APIEventLogEntry from EventLog: %s", err.Error()))
 		}
 		apiEventLogPointers = append(apiEventLogPointers, &apiEventLog)
 	}
 	return apiEventLogPointers, nil
 }
 
-func (r *taskLogsResolver) SystemLogs(ctx context.Context, obj *gqlModel.TaskLogs) ([]*apimodels.LogMessage, error) {
+func (r *taskLogsResolver) SystemLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error) {
 	const logMessageCount = 100
 
 	var systemLogs []apimodels.LogMessage
@@ -158,7 +155,7 @@ func (r *taskLogsResolver) SystemLogs(ctx context.Context, obj *gqlModel.TaskLog
 		opts.LogType = apimodels.SystemLogPrefix
 		systemLogReader, err := apimodels.GetBuildloggerLogs(ctx, opts)
 		if err != nil {
-			return nil, gqlError.InternalServerError.Send(ctx, err.Error())
+			return nil, InternalServerError.Send(ctx, err.Error())
 		}
 		systemLogs = apimodels.ReadBuildloggerToSlice(ctx, obj.TaskID, systemLogReader)
 	} else {
@@ -167,7 +164,7 @@ func (r *taskLogsResolver) SystemLogs(ctx context.Context, obj *gqlModel.TaskLog
 		systemLogs, err = model.FindMostRecentLogMessages(obj.TaskID, obj.Execution, logMessageCount, []string{},
 			[]string{apimodels.SystemLogPrefix})
 		if err != nil {
-			return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error finding system logs for task %s: %s", obj.TaskID, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding system logs for task %s: %s", obj.TaskID, err.Error()))
 		}
 	}
 	systemLogPointers := []*apimodels.LogMessage{}
@@ -178,7 +175,7 @@ func (r *taskLogsResolver) SystemLogs(ctx context.Context, obj *gqlModel.TaskLog
 	return systemLogPointers, nil
 }
 
-func (r *taskLogsResolver) TaskLogs(ctx context.Context, obj *gqlModel.TaskLogs) ([]*apimodels.LogMessage, error) {
+func (r *taskLogsResolver) TaskLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error) {
 	const logMessageCount = 100
 
 	var taskLogs []apimodels.LogMessage
@@ -198,7 +195,7 @@ func (r *taskLogsResolver) TaskLogs(ctx context.Context, obj *gqlModel.TaskLogs)
 		taskLogReader, err := apimodels.GetBuildloggerLogs(ctx, opts)
 
 		if err != nil {
-			return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Encountered an error while fetching build logger logs: %s", err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Encountered an error while fetching build logger logs: %s", err.Error()))
 		}
 
 		taskLogs = apimodels.ReadBuildloggerToSlice(ctx, obj.TaskID, taskLogReader)
@@ -210,7 +207,7 @@ func (r *taskLogsResolver) TaskLogs(ctx context.Context, obj *gqlModel.TaskLogs)
 		taskLogs, err = model.FindMostRecentLogMessages(obj.TaskID, obj.Execution, logMessageCount, []string{},
 			[]string{apimodels.TaskLogPrefix})
 		if err != nil {
-			return nil, gqlError.InternalServerError.Send(ctx, fmt.Sprintf("Error finding task logs for task %s: %s", obj.TaskID, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task logs for task %s: %s", obj.TaskID, err.Error()))
 		}
 	}
 
@@ -222,7 +219,7 @@ func (r *taskLogsResolver) TaskLogs(ctx context.Context, obj *gqlModel.TaskLogs)
 	return taskLogPointers, nil
 }
 
-// TaskLogs returns generated.TaskLogsResolver implementation.
-func (r *Resolver) TaskLogs() generated.TaskLogsResolver { return &taskLogsResolver{r} }
+// TaskLogs returns TaskLogsResolver implementation.
+func (r *Resolver) TaskLogs() TaskLogsResolver { return &taskLogsResolver{r} }
 
 type taskLogsResolver struct{ *Resolver }

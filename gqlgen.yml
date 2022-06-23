@@ -6,16 +6,13 @@
 schema:
   - graphql/schema/**/*.graphql
 exec:
-  filename: graphql/generated/generated.go
-  package: generated
+  filename: graphql/generated.go
 model:
-  filename: graphql/model/models_gen.go
-  package: model
+  filename: graphql/models_gen.go
 resolver:
   layout: follow-schema
-  dir: graphql/resolvers
-  package: resolvers
-  filename_template: "{name}.go"
+  dir: graphql
+  filename_template: "{name}_resolver.go"
 models:
   Annotation:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskAnnotation
@@ -221,7 +218,7 @@ models:
   StatusCount:
     model: github.com/evergreen-ci/evergreen/model/task.StatusCount
   StringMap:
-    model: github.com/evergreen-ci/evergreen/graphql/generated.StringMap
+    model: github.com/evergreen-ci/evergreen/graphql.StringMap
   SubscriberInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APISubscriber
   SubscriptionInput:
