@@ -634,8 +634,9 @@ func TestBuildMarkFinished(t *testing.T) {
 
 		startTime := time.Now()
 		b := &build.Build{
-			Id:        "build",
-			StartTime: startTime,
+			Id:            "build",
+			StartTime:     startTime,
+			ActivatedTime: startTime,
 		}
 		So(b.Insert(), ShouldBeNil)
 
@@ -1893,10 +1894,14 @@ func TestVersionRestart(t *testing.T) {
 
 	// test that restarting a version restarts its tasks
 	taskIds := []string{"task1", "task3", "task4"}
+	buildIds := []string{"build1", "build2"}
 	assert.NoError(RestartVersion("version", taskIds, false, "test"))
 	tasks, err := task.Find(task.ByIds(taskIds))
 	assert.NoError(err)
 	assert.NotEmpty(tasks)
+	builds, err := build.Find(build.ByIds(buildIds))
+	assert.NoError(err)
+	assert.NotEmpty(builds)
 	for _, t := range tasks {
 		assert.Equal(evergreen.TaskUndispatched, t.Status)
 		assert.True(t.Activated)
@@ -1906,6 +1911,9 @@ func TestVersionRestart(t *testing.T) {
 			assert.Equal("task1", t.DependsOn[0].TaskId)
 			assert.False(t.DependsOn[0].Finished, "restarting task1 should have marked dependency as unfinished")
 		}
+	}
+	for _, b := range builds {
+		assert.False(b.StartTime.IsZero())
 	}
 	dbTask5, err := task.FindOneId("task5")
 	require.NoError(err)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -13,6 +14,7 @@ import (
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -687,6 +689,36 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 				"host_provider": h.Distro.Provider,
 				"distro":        h.Distro.Id,
 			}))
+			if h.ShouldFallbackToOnDemand() && (strings.Contains(err.Error(), EC2InsufficientCapacity) || strings.Contains(err.Error(), EC2UnfulfillableCapacity)) {
+				// Spot creation fails relatively frequently due to InsufficientCapacity or UnfulfillableCapacity,
+				// so we fall back to OnDemand if requested since that is more consistently reliable.
+				event.LogHostFallback(h.Id)
+				grip.Info(message.Fields{
+					"message":  "could not spawn spot instance, falling back to on-demand",
+					"host_id":  h.Id,
+					"host_tag": h.Tag,
+					"distro":   h.Distro.Id,
+					"provider": h.Provider,
+				})
+				h.Provider = evergreen.ProviderNameEc2OnDemand
+				h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
+				if err = m.spawnOnDemandHost(ctx, h, ec2Settings, blockDevices); err != nil {
+					grip.Error(message.WrapError(err, message.Fields{
+						"message":       "spawning on-demand host",
+						"host_id":       h.Id,
+						"host_provider": h.Distro.Provider,
+						"distro":        h.Distro.Id,
+					}))
+					return nil, errors.Wrapf(err, "spawning on-demand host '%s'", h.Id)
+				}
+				grip.Debug(message.Fields{
+					"message":       "spawned on-demand host",
+					"host_id":       h.Id,
+					"host_provider": h.Distro.Provider,
+					"distro":        h.Distro.Id,
+				})
+				return h, nil
+			}
 			return nil, errors.Wrap(err, msg)
 		}
 		grip.Debug(message.Fields{

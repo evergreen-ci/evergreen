@@ -244,7 +244,6 @@ func SpawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 	}
 
 	// if distro is container distro, check if there are enough parent hosts to support new containers
-	var newParentHosts []host.Host
 	if pool != nil {
 		hostOptions, err := getCreateOptionsFromDistro(d)
 		if err != nil {
@@ -287,7 +286,6 @@ func SpawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 		"duration_secs": time.Since(startTime).Seconds(),
 		"num_hosts":     len(hostsSpawned),
 	})
-	hostsSpawned = append(newParentHosts, hostsSpawned...)
 	return hostsSpawned, nil
 }
 

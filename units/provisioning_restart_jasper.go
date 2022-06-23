@@ -94,6 +94,13 @@ func (j *restartJasperJob) Run(ctx context.Context) {
 			}
 
 			event.LogHostJasperRestartError(j.host.Id, j.Error())
+			grip.Error(message.WrapError(j.Error(), message.Fields{
+				"message":  "failed to restart jasper",
+				"host_id":  j.host.Id,
+				"host_tag": j.host.Tag,
+				"distro":   j.host.Distro.Id,
+				"provider": j.host.Provider,
+			}))
 		}
 	}()
 
@@ -159,10 +166,11 @@ func (j *restartJasperJob) Run(ctx context.Context) {
 	event.LogHostJasperRestarted(j.host.Id, j.settings.HostJasper.Version)
 
 	grip.Info(message.Fields{
-		"message": "restarted Jasper service with new credentials",
-		"host_id": j.host.Id,
-		"distro":  j.host.Distro.Id,
-		"version": j.settings.HostJasper.Version,
+		"message":  "restarted Jasper service with new credentials",
+		"host_id":  j.host.Id,
+		"distro":   j.host.Distro.Id,
+		"provider": j.host.Provider,
+		"version":  j.settings.HostJasper.Version,
 	})
 
 	if j.host.StartedBy != evergreen.User {

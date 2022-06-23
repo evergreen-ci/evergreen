@@ -75,6 +75,17 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 	defer func() {
 		if j.HasErrors() && (!j.RetryInfo().ShouldRetry() || j.RetryInfo().GetRemainingAttempts() == 0) {
 			event.LogHostProvisionFailed(j.HostID, j.Error().Error())
+			grip.Error(message.WrapError(j.Error(), message.Fields{
+				"message":         "provisioning failed",
+				"operation":       "user-data-done",
+				"current_attempt": j.RetryInfo().CurrentAttempt,
+				"distro":          j.host.Distro.Id,
+				"provider":        j.host.Provider,
+				"job":             j.ID(),
+				"host_id":         j.host.Id,
+				"host_tag":        j.host.Tag,
+				"reason":          j.Error().Error(),
+			}))
 		}
 	}()
 

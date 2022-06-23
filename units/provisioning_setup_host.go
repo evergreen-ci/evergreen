@@ -126,6 +126,16 @@ func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settin
 	defer func() {
 		if j.host.Status != evergreen.HostRunning && (j.RetryInfo().GetRemainingAttempts() == 0 || !j.RetryInfo().ShouldRetry()) {
 			event.LogHostProvisionFailed(j.host.Id, "host has used up all attempts to provision")
+			grip.Info(message.Fields{
+				"message":         "provisioning failed",
+				"reason":          "host has used up all attempts to provision",
+				"current_attempt": j.RetryInfo().CurrentAttempt,
+				"distro":          j.host.Distro.Id,
+				"job":             j.ID(),
+				"host_id":         j.host.Id,
+				"host_tag":        j.host.Tag,
+			})
+
 			grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
 				"operation":       "setting host unprovisioned",
 				"current_attempt": j.RetryInfo().CurrentAttempt,
@@ -167,7 +177,9 @@ func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settin
 			grip.Info(message.WrapError(err, message.Fields{
 				"current_attempt": j.RetryInfo().CurrentAttempt,
 				"host_id":         j.host.Id,
+				"host_tag":        j.host.Tag,
 				"distro":          j.host.Distro.Id,
+				"provider":        j.host.Provider,
 				"job":             j.ID(),
 				"message":         "retrying provisioning",
 			}))
@@ -177,7 +189,9 @@ func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settin
 				"message":         "provisioning host encountered error",
 				"job":             j.ID(),
 				"distro":          j.host.Distro.Id,
+				"provider":        j.host.Provider,
 				"host_id":         j.host.Id,
+				"host_tag":        j.host.Tag,
 				"current_attempt": j.RetryInfo().CurrentAttempt,
 			}))
 			j.AddError(err)
@@ -190,6 +204,7 @@ func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settin
 		"host_id":         j.host.Id,
 		"DNS":             j.host.Host,
 		"distro":          j.host.Distro.Id,
+		"provider":        j.host.Provider,
 		"job":             j.ID(),
 		"current_attempt": j.RetryInfo().CurrentAttempt,
 		"runtime_secs":    time.Since(setupStartTime).Seconds(),
@@ -470,6 +485,16 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 			catcher.Wrapf(err, "running distro setup script on remote host: %s", logs)
 			catcher.Wrap(j.host.SetUnprovisioned(), "setting host unprovisioned after distro setup script failed")
 			event.LogHostProvisionFailed(j.host.Id, logs)
+			grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
+				"message":         "provisioning failed",
+				"operation":       "running setup script on spawn host",
+				"current_attempt": j.RetryInfo().CurrentAttempt,
+				"distro":          j.host.Distro.Id,
+				"reason":          logs,
+				"job":             j.ID(),
+				"host_id":         j.host.Id,
+				"host_tag":        j.host.Tag,
+			}))
 			return catcher.Resolve()
 		}
 
@@ -498,10 +523,12 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 	}
 
 	grip.Info(message.Fields{
-		"message": "setup complete for host",
-		"host_id": j.host.Id,
-		"job":     j.ID(),
-		"distro":  j.host.Distro.Id,
+		"message":  "setup complete for host",
+		"host_id":  j.host.Id,
+		"host_tag": j.host.Tag,
+		"distro":   j.host.Distro.Id,
+		"provider": j.host.Provider,
+		"job":      j.ID(),
 	})
 
 	if err := j.host.MarkAsProvisioned(); err != nil {
@@ -510,6 +537,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 
 	grip.Info(message.Fields{
 		"host_id":                 j.host.Id,
+		"host_tag":                j.host.Tag,
 		"distro":                  j.host.Distro.Id,
 		"provider":                j.host.Provider,
 		"current_attempt":         j.RetryInfo().CurrentAttempt,

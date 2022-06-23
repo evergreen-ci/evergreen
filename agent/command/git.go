@@ -22,7 +22,6 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v34/github"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -290,16 +289,14 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, conf *internal.
 
 func (c *gitFetchProject) waitForMergeableCheck(ctx context.Context, logger client.LoggerProducer, opts cloneOpts, prNum int) (string, error) {
 	var mergeSHA string
-	httpClient := utility.GetOAuth2HTTPClient(opts.token)
-	defer utility.PutHTTPClient(httpClient)
-	githubClient := github.NewClient(httpClient)
+
 	const (
-		getPRAttempts      = 8
+		getPRAttempts      = 3
 		getPRRetryMinDelay = time.Second
 		getPRRetryMaxDelay = 15 * time.Second
 	)
 	err := utility.Retry(ctx, func() (bool, error) {
-		pr, _, err := githubClient.PullRequests.Get(ctx, opts.owner, opts.repo, prNum)
+		pr, err := thirdparty.GetGithubPullRequest(ctx, opts.token, opts.owner, opts.repo, prNum)
 		if err != nil {
 			return false, errors.Wrap(err, "error getting pull request data from Github")
 		}
@@ -321,7 +318,7 @@ func (c *gitFetchProject) waitForMergeableCheck(ctx context.Context, logger clie
 		MaxAttempts: getPRAttempts,
 		MinDelay:    getPRRetryMinDelay,
 		MaxDelay:    getPRRetryMaxDelay,
-	}) // Retry roughly after 1, 2, 4, 8, 15, 15, 15, seconds, or 1 minute.
+	})
 
 	return mergeSHA, err
 }

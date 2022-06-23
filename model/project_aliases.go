@@ -22,6 +22,7 @@ var (
 	gitTagKey      = bsonutil.MustHaveTag(ProjectAlias{}, "GitTag")
 	remotePathKey  = bsonutil.MustHaveTag(ProjectAlias{}, "RemotePath")
 	variantKey     = bsonutil.MustHaveTag(ProjectAlias{}, "Variant")
+	descriptionKey = bsonutil.MustHaveTag(ProjectAlias{}, "Description")
 	taskKey        = bsonutil.MustHaveTag(ProjectAlias{}, "Task")
 	variantTagsKey = bsonutil.MustHaveTag(ProjectAlias{}, "VariantTags")
 	taskTagsKey    = bsonutil.MustHaveTag(ProjectAlias{}, "TaskTags")
@@ -61,6 +62,7 @@ type ProjectAlias struct {
 	ProjectID   string           `bson:"project_id" json:"project_id" yaml:"project_id"`
 	Alias       string           `bson:"alias" json:"alias" yaml:"alias"`
 	Variant     string           `bson:"variant,omitempty" json:"variant" yaml:"variant"`
+	Description string           `bson:"description" json:"description" yaml:"description"`
 	GitTag      string           `bson:"git_tag" json:"git_tag" yaml:"git_tag"`
 	RemotePath  string           `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
 	VariantTags []string         `bson:"variant_tags,omitempty" json:"variant_tags" yaml:"variant_tags"`
@@ -374,6 +376,7 @@ func (p *ProjectAlias) Upsert() error {
 		remotePathKey:  p.RemotePath,
 		projectIDKey:   p.ProjectID,
 		variantKey:     p.Variant,
+		descriptionKey: p.Description,
 		variantTagsKey: p.VariantTags,
 		taskTagsKey:    p.TaskTags,
 		taskKey:        p.Task,

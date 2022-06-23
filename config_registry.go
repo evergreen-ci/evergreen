@@ -46,6 +46,7 @@ func resetRegistry() error {
 		&NewRelicConfig{},
 		&NotifyConfig{},
 		&PodInitConfig{},
+		&PrestoConfig{},
 		&RepoTrackerConfig{},
 		&SchedulerConfig{},
 		&ServiceFlags{},

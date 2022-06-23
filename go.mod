@@ -20,7 +20,7 @@ require (
 	github.com/evergreen-ci/poplar v0.0.0-20220119144730-b220d71c0330
 	github.com/evergreen-ci/shrub v0.0.0-20211025143051-a8d91b2e29fd
 	github.com/evergreen-ci/timber v0.0.0-20220119202616-544be15f3b95
-	github.com/evergreen-ci/utility v0.0.0-20220302205728-cc3b646a92d7
+	github.com/evergreen-ci/utility v0.0.0-20220622184037-b63c011983c2
 	github.com/google/go-github/v34 v34.0.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/gophercloud/gophercloud v0.1.0
@@ -33,7 +33,7 @@ require (
 	github.com/mongodb/amboy v0.0.0-20220209145213-c1c572da4472
 	github.com/mongodb/anser v0.0.0-20220318141853-005b8ead5b8f
 	github.com/mongodb/ftdc v0.0.0-20211028165431-67f017692185
-	github.com/mongodb/grip v0.0.0-20220210164115-898ba2888109
+	github.com/mongodb/grip v0.0.0-20220401165023-6a1d9bb90c21
 	github.com/pkg/errors v0.9.1
 	github.com/robbiet480/go.sns v0.0.0-20210223081447-c7c9eb6836cb
 	github.com/robfig/cron v1.2.0
@@ -60,10 +60,12 @@ require (
 )
 
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/evergreen-ci/aviation v0.0.0-20211123195311-5ddfd75b3753 // indirect
 	github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57
 	github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826
 	github.com/mongodb/jasper v0.0.0-20220214215554-82e5a72cff6b
-	github.com/shirou/gopsutil/v3 v3.21.12
+	github.com/shirou/gopsutil/v3 v3.22.3
+	github.com/trinodb/trino-go-client v0.300.0
 	google.golang.org/genproto v0.0.0-20211129164237-f09f9a12af12 // indirect
 )

@@ -1089,6 +1089,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 			expansions.Put("github_commit", p.GithubPatchData.HeadHash)
 		}
 	} else {
+		expansions.Put("is_patch", "")
 		expansions.Put("revision_order_id", strconv.Itoa(v.RevisionOrderNumber))
 	}
 
