@@ -36,7 +36,7 @@ var (
 	ClientVersion = "2022-06-07"
 
 	// Agent version to control agent rollover.
-	AgentVersion = "2022-07-22"
+	AgentVersion = "2022-06-22"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -92,6 +92,7 @@ type Settings struct {
 	PluginsNew          util.KeyValuePairSlice    `yaml:"plugins_new" bson:"plugins_new" json:"plugins_new"`
 	PodInit             PodInitConfig             `yaml:"pod_init" bson:"pod_init" json:"pod_init" id:"pod_init"`
 	PprofPort           string                    `yaml:"pprof_port" bson:"pprof_port" json:"pprof_port"`
+	Presto              PrestoConfig              `yaml:"presto" bson:"presto" json:"presto" id:"presto"`
 	Providers           CloudProviders            `yaml:"providers" bson:"providers" json:"providers" id:"providers"`
 	RepoTracker         RepoTrackerConfig         `yaml:"repotracker" bson:"repotracker" json:"repotracker" id:"repotracker"`
 	Scheduler           SchedulerConfig           `yaml:"scheduler" bson:"scheduler" json:"scheduler" id:"scheduler"`

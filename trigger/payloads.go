@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/task"
-	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -53,7 +52,7 @@ type commonTemplateData struct {
 	ProjectRef *model.ProjectRef
 	Build      *build.Build
 
-	apiModel restModel.Model
+	apiModel interface{}
 	slack    []message.SlackAttachment
 
 	githubContext     string
@@ -266,7 +265,7 @@ func emailPayload(t *commonTemplateData) (*message.Email, error) {
 	return &m, nil
 }
 
-func webhookPayload(api restModel.Model, headers http.Header) (*util.EvergreenWebhook, error) {
+func webhookPayload(api interface{}, headers http.Header) (*util.EvergreenWebhook, error) {
 	bytes, err := json.Marshal(api)
 	if err != nil {
 		return nil, errors.Wrap(err, "error building json model")

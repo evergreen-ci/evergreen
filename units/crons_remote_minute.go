@@ -60,7 +60,6 @@ func (j *cronsRemoteMinuteJob) Run(ctx context.Context) {
 		PopulateParentDecommissionJobs(),
 		PopulatePeriodicNotificationJobs(1),
 		PopulateUserDataDoneJobs(j.env),
-		PopulatePodCreationJobs(j.env),
 		PopulatePodTerminationJobs(j.env),
 	}
 

@@ -118,7 +118,6 @@ mciModule
     PATCH_BY_ID: 'patches/{patch_id}',
     VERSION_BY_ID: 'versions/{version_id}',
     RECENT_VERSIONS: 'projects/{project_id}/recent_versions',
-    PROJECT_TASKS: 'projects/{project_id}/versions/tasks',
   })
 
   .constant('API_TASKDATA', {

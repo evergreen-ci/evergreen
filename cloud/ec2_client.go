@@ -1203,6 +1203,7 @@ type awsClientMock struct { //nolint
 	*ec2.StopInstancesInput
 	*ec2.StartInstancesInput
 	*ec2.RequestSpotInstancesInput
+	requestSpotInstancesError error
 	*ec2.DescribeSpotInstanceRequestsInput
 	*ec2.CancelSpotInstanceRequestsInput
 	*ec2.CreateVolumeInput
@@ -1357,6 +1358,11 @@ func (c *awsClientMock) StartInstances(ctx context.Context, input *ec2.StartInst
 // RequestSpotInstances is a mock for ec2.RequestSpotInstances.
 func (c *awsClientMock) RequestSpotInstances(ctx context.Context, input *ec2.RequestSpotInstancesInput) (*ec2.RequestSpotInstancesOutput, error) {
 	c.RequestSpotInstancesInput = input
+
+	if c.requestSpotInstancesError != nil {
+		return nil, c.requestSpotInstancesError
+	}
+
 	return &ec2.RequestSpotInstancesOutput{
 		SpotInstanceRequests: []*ec2.SpotInstanceRequest{
 			&ec2.SpotInstanceRequest{

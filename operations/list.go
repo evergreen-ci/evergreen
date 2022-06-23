@@ -307,7 +307,7 @@ func listPatchAliases(ctx context.Context, confPath, project string) error {
 
 	for _, alias := range aliases {
 		if !utility.StringSliceContains(evergreen.InternalAliases, alias.Alias) {
-			fmt.Printf("%s\t%s\t%s\t%s\t%s\n", alias.Alias, alias.Variant, strings.Join(alias.VariantTags, ","),
+			fmt.Printf("%s\t%s\t%s\t%s\t%s\t%s\n", alias.Alias, alias.Description, alias.Variant, strings.Join(alias.VariantTags, ","),
 				alias.Task, strings.Join(alias.TaskTags, ", "))
 		}
 	}

@@ -110,7 +110,7 @@ func (h *buildsForVersionHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// Then, find each build variant in the found version by its ID.
-	buildModels := []model.Model{}
+	buildModels := []model.APIBuild{}
 	for _, buildStatus := range foundVersion.BuildVariants {
 		// If a variant was specified, only retrieve that variant
 		if h.variant != "" && buildStatus.BuildVariant != h.variant {
@@ -126,7 +126,7 @@ func (h *buildsForVersionHandler) Run(ctx context.Context) gimlet.Responder {
 				Message:    fmt.Sprintf("build '%s' not found", buildStatus.BuildId),
 			})
 		}
-		buildModel := &model.APIBuild{}
+		buildModel := model.APIBuild{}
 		err = buildModel.BuildFromService(*foundBuild)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting build '%s' to API model", foundBuild.Id))

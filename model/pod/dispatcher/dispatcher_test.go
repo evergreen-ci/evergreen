@@ -432,3 +432,133 @@ func TestAssignNextTask(t *testing.T) {
 		})
 	}
 }
+
+func TestRemovePod(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection))
+	}()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
+	for tName, tCase := range map[string]func(ctx context.Context, env evergreen.Environment, t *testing.T){
+		"SucceedsWithSomePodsRemaining": func(ctx context.Context, env evergreen.Environment, t *testing.T) {
+			const podID = "pod_id"
+			pd := NewPodDispatcher("group_id", nil, []string{podID, "other_pod_id", "another_pod_id"})
+			require.NoError(t, pd.Insert())
+
+			require.NoError(t, pd.RemovePod(ctx, env, podID))
+
+			dbDisp, err := FindOneByID(pd.ID)
+			require.NoError(t, err)
+			require.NotZero(t, dbDisp)
+			assert.Empty(t, dbDisp.TaskIDs)
+			assert.Equal(t, dbDisp.PodIDs, []string{"other_pod_id", "another_pod_id"})
+		},
+		"SucceedsWhenTheLastPodIsBeingRemovedWithoutAnyTasks": func(ctx context.Context, env evergreen.Environment, t *testing.T) {
+			const podID = "pod_id"
+			pd := NewPodDispatcher("group_id", nil, []string{podID})
+			require.NoError(t, pd.Insert())
+
+			require.NoError(t, pd.RemovePod(ctx, env, podID))
+
+			dbDisp, err := FindOneByID(pd.ID)
+			require.NoError(t, err)
+			require.NotZero(t, dbDisp)
+			assert.Empty(t, dbDisp.TaskIDs)
+			assert.Empty(t, dbDisp.PodIDs)
+		},
+		"SucceedsAndFixesTasksWhenTheLastPodIsBeingRemoved": func(ctx context.Context, env evergreen.Environment, t *testing.T) {
+			t0 := task.Task{
+				Id:                     "task_id0",
+				ExecutionPlatform:      task.ExecutionPlatformContainer,
+				Status:                 evergreen.TaskUndispatched,
+				Activated:              true,
+				ContainerAllocated:     true,
+				ContainerAllocatedTime: time.Now(),
+			}
+			require.NoError(t, t0.Insert())
+			t1 := task.Task{
+				Id:                     "task_id1",
+				ExecutionPlatform:      task.ExecutionPlatformContainer,
+				Status:                 evergreen.TaskUndispatched,
+				Activated:              true,
+				ContainerAllocated:     true,
+				ContainerAllocatedTime: time.Now(),
+			}
+			require.NoError(t, t1.Insert())
+
+			const podID = "pod_id"
+			pd := NewPodDispatcher("group_id", []string{t0.Id, t1.Id}, []string{podID})
+			require.NoError(t, pd.Insert())
+
+			require.NoError(t, pd.RemovePod(ctx, env, podID))
+
+			dbDisp, err := FindOneByID(pd.ID)
+			require.NoError(t, err)
+			require.NotZero(t, dbDisp)
+			assert.Empty(t, dbDisp.TaskIDs)
+			assert.Empty(t, dbDisp.PodIDs)
+
+			dbTask0, err := task.FindOneId(t0.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask0)
+			assert.False(t, dbTask0.ContainerAllocated)
+
+			dbTask1, err := task.FindOneId(t1.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask1)
+			assert.False(t, dbTask1.ContainerAllocated)
+		},
+		"FailsWhenPodIsNotInTheDispatcher": func(ctx context.Context, env evergreen.Environment, t *testing.T) {
+			pd := NewPodDispatcher("group_id", []string{"task_id"}, []string{"pod_id"})
+			require.NoError(t, pd.Insert())
+
+			assert.Error(t, pd.RemovePod(ctx, env, "nonexistent"))
+
+			dbDisp, err := FindOneByID(pd.ID)
+			require.NoError(t, err)
+			require.NotZero(t, dbDisp)
+			assert.Equal(t, pd.TaskIDs, []string{"task_id"})
+			assert.Equal(t, pd.PodIDs, []string{"pod_id"})
+		},
+		"FailsWhenDBDispatcherIsModified": func(ctx context.Context, env evergreen.Environment, t *testing.T) {
+			tsk := task.Task{
+				Id:                     "task_id",
+				ExecutionPlatform:      task.ExecutionPlatformContainer,
+				Status:                 evergreen.TaskUndispatched,
+				Activated:              true,
+				ContainerAllocated:     true,
+				ContainerAllocatedTime: time.Now(),
+			}
+			const (
+				podID    = "pod_id"
+				modCount = 10
+			)
+			pd := NewPodDispatcher("group_id", []string{tsk.Id}, []string{podID})
+			pd.ModificationCount = modCount
+			require.NoError(t, pd.Insert())
+			pd.ModificationCount = 0
+
+			assert.Error(t, pd.RemovePod(ctx, env, podID))
+
+			dbDisp, err := FindOneByID(pd.ID)
+			require.NoError(t, err)
+			require.NotZero(t, dbDisp)
+			assert.Equal(t, pd.TaskIDs, []string{tsk.Id})
+			assert.Equal(t, pd.PodIDs, []string{podID})
+			assert.Equal(t, modCount, dbDisp.ModificationCount)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			tctx, tcancel := context.WithTimeout(ctx, 5*time.Second)
+			defer tcancel()
+
+			require.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection))
+
+			tCase(tctx, env, t)
+		})
+	}
+}
