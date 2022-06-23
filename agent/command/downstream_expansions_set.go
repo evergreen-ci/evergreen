@@ -74,7 +74,7 @@ func (c *setDownstream) Execute(ctx context.Context,
 		return nil
 	}
 
-	if evergreen.IsPatchRequester(conf.Task.Requester) {
+	if !evergreen.IsPatchRequester(conf.Task.Requester) {
 		return nil
 	}
 
