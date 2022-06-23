@@ -53,7 +53,7 @@ func getHostMetadata(data *jiraTemplateData) string {
 		return "N/A"
 	}
 
-	return fmt.Sprintf("[%s|%s/host/%s]", data.Host.Host, data.UIRoot, url.PathEscape(data.Host.Id))
+	return fmt.Sprintf("[%s|%s/host/%s?redirect_spruce_users=true]", data.Host.Host, data.UIRoot, url.PathEscape(data.Host.Id))
 }
 
 func getTaskURL(data *jiraTemplateData) (string, error) {
