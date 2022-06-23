@@ -163,30 +163,6 @@ func UpdateActivation(buildIds []string, active bool, caller string) error {
 	return errors.Wrapf(err, "setting build activation to %t", active)
 }
 
-// UpdateActivationAndStatus updates builds with the given ids
-// to the given activation setting and marks builds as created if active.
-// Should only be used to activate/deactivate all builds in a version.
-func UpdateActivationAndStatus(buildIds []string, active bool, caller string) error {
-	query := bson.M{IdKey: bson.M{"$in": buildIds}}
-	if !active && evergreen.IsSystemActivator(caller) {
-		query[ActivatedByKey] = bson.M{"$in": evergreen.SystemActivators}
-	}
-	update := bson.M{
-		ActivatedKey:     active,
-		ActivatedTimeKey: time.Now(),
-		ActivatedByKey:   caller,
-	}
-	if active {
-		update[StatusKey] = evergreen.BuildCreated
-	}
-	_, err := UpdateAllBuilds(
-		query,
-		bson.M{"$set": update},
-	)
-
-	return errors.Wrapf(err, "setting build activation to %t", active)
-}
-
 // UpdateStatus sets the build status to the given string.
 func (b *Build) UpdateStatus(status string) error {
 	if b.Status == status {
