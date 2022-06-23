@@ -91,34 +91,40 @@ func setTaskActivationForVersion(versionId string, active bool, caller string) (
 			return false, errors.Wrap(err, "getting tasks to activate")
 		}
 		if len(tasksToActivate) > 0 {
+			if err = task.ActivateTasks(tasksToActivate, time.Now(), false, caller); err != nil {
+				return false, errors.Wrap(err, "updating tasks for activation")
+			}
 			var buildIds []string
 			for _, task := range tasksToActivate {
 				if !utility.StringSliceContains(buildIds, task.BuildId) {
 					buildIds = append(buildIds, task.BuildId)
 				}
 			}
-			if err = build.UpdateActivationAndStatus(buildIds, active, caller); err != nil {
-				return false, errors.Wrapf(err, "setting activation for builds in version '%s'", versionId)
+			builds, err := build.Find(build.ByIds(buildIds))
+			if err != nil {
+				return false, errors.Wrap(err, "fetching builds")
 			}
-			if err = task.ActivateTasks(tasksToActivate, time.Now(), false, caller); err != nil {
-				return false, errors.Wrap(err, "updating tasks for activation")
+			for _, b := range builds {
+				_, err := updateBuildStatus(&b)
+				if err != nil {
+					return false, errors.Wrapf(err, "updating status for build '%s'", b.Id)
+				}
 			}
 			return true, nil
 		}
-	} else {
-		// If the caller is the default task activator, only deactivate tasks that have not been activated by a user.
-		if evergreen.IsSystemActivator(caller) {
-			q[task.ActivatedByKey] = bson.M{"$in": evergreen.SystemActivators}
-		}
+	}
+	// If the caller is the default task activator, only deactivate tasks that have not been activated by a user.
+	if evergreen.IsSystemActivator(caller) {
+		q[task.ActivatedByKey] = bson.M{"$in": evergreen.SystemActivators}
+	}
 
-		tasks, err := task.FindAll(db.Query(q).WithFields(task.IdKey, task.ExecutionKey))
-		if err != nil {
-			return false, errors.Wrap(err, "getting tasks to deactivate")
-		}
-		if len(tasks) > 0 {
-			if err = task.DeactivateTasks(tasks, false, caller); err != nil {
-				return true, errors.Wrap(err, "deactivating tasks")
-			}
+	tasks, err := task.FindAll(db.Query(q).WithFields(task.IdKey, task.ExecutionKey))
+	if err != nil {
+		return false, errors.Wrap(err, "getting tasks to deactivate")
+	}
+	if len(tasks) > 0 {
+		if err = task.DeactivateTasks(tasks, false, caller); err != nil {
+			return true, errors.Wrap(err, "deactivating tasks")
 		}
 	}
 	return false, nil
