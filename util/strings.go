@@ -61,28 +61,6 @@ func EscapeJQLReservedChars(in string) string {
 	return in
 }
 
-// GetSetDifference returns the elements in A that are not in B
-func GetSetDifference(a, b []string) []string {
-	setB := make(map[string]struct{})
-	setDifference := make(map[string]struct{})
-
-	for _, e := range b {
-		setB[e] = struct{}{}
-	}
-	for _, e := range a {
-		if _, ok := setB[e]; !ok {
-			setDifference[e] = struct{}{}
-		}
-	}
-
-	d := make([]string, 0, len(setDifference))
-	for k := range setDifference {
-		d = append(d, k)
-	}
-
-	return d
-}
-
 func CoalesceString(in ...string) string {
 	for _, str := range in {
 		if str != "" {
@@ -94,15 +72,4 @@ func CoalesceString(in ...string) string {
 
 func CoalesceStrings(inArray []string, inStrs ...string) string {
 	return CoalesceString(CoalesceString(inArray...), CoalesceString(inStrs...))
-}
-
-// StringContainsSliceRegex determines if a string matches a regex in a slice
-func StringContainsSliceRegex(slice []string, item string) bool {
-	for _, sliceItem := range slice {
-		matched, err := regexp.MatchString(sliceItem, item)
-		if err == nil && matched {
-			return true
-		}
-	}
-	return false
 }

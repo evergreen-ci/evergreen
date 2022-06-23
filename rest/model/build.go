@@ -120,6 +120,7 @@ func (apiBuild *APIBuild) SetTaskCache(tasks []task.Task) {
 			StatusDetails: t.Details,
 			StartTime:     ToTimePtr(t.StartTime),
 			TimeTaken:     t.TimeTaken,
+			TimeTakenMS:   APIDuration(t.TimeTaken.Milliseconds()),
 			Activated:     t.Activated,
 		})
 		apiBuild.StatusCounts.IncrementStatus(t.Status, t.Details)
@@ -138,6 +139,7 @@ type APITaskCache struct {
 	StatusDetails   apimodels.TaskEndDetail `json:"task_end_details"`
 	StartTime       *time.Time              `json:"start_time"`
 	TimeTaken       time.Duration           `json:"time_taken"`
+	TimeTakenMS     APIDuration             `json:"time_taken_ms"`
 	Activated       bool                    `json:"activated"`
 	FailedTestNames []string                `json:"failed_test_names,omitempty"`
 }

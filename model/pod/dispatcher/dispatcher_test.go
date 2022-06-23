@@ -455,7 +455,7 @@ func TestRemovePod(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbDisp)
 			assert.Empty(t, dbDisp.TaskIDs)
-			assert.Equal(t, dbDisp.PodIDs, []string{"other_pod_id", "another_pod_id"})
+			assert.ElementsMatch(t, dbDisp.PodIDs, []string{"other_pod_id", "another_pod_id"})
 		},
 		"SucceedsWhenTheLastPodIsBeingRemovedWithoutAnyTasks": func(ctx context.Context, env evergreen.Environment, t *testing.T) {
 			const podID = "pod_id"

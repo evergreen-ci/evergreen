@@ -1677,31 +1677,7 @@ func checkResetSingleHostTaskGroup(t *task.Task, caller string) error {
 		return nil
 	}
 
-	if err = resetManyTasks(tasks, caller, true); err != nil {
-		return errors.Wrap(err, "resetting task group tasks")
-	}
-
-	tasks, err = task.FindTaskGroupFromBuild(t.BuildId, t.TaskGroup)
-	if err != nil {
-		return errors.Wrapf(err, "getting task group for task '%s'", t.Id)
-	}
-	taskSet := map[string]bool{}
-	for _, tgTask := range tasks {
-		taskSet[tgTask.Id] = true
-		for _, dep := range tgTask.DependsOn {
-			if taskSet[dep.TaskId] && dep.Unattainable {
-				grip.Debug(message.WrapError(errors.New(
-					"task group task was blocked on an earlier task group task after reset"), message.Fields{
-					"blocked_task":            tgTask.Id,
-					"new_execution":           tgTask.Execution,
-					"unattainable_dependency": dep.TaskId,
-					"ticket":                  "EVG-12923",
-				}))
-			}
-		}
-	}
-
-	return nil
+	return errors.Wrap(resetManyTasks(tasks, caller, true), "resetting task group tasks")
 }
 
 // checkResetDisplayTask attempts to reset all tasks that are under the same
