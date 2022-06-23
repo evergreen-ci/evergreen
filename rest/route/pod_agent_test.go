@@ -3,6 +3,9 @@ package route
 import (
 	"context"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/utility"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"net/http"
 	"testing"
 	"time"
@@ -16,7 +19,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/pod/dispatcher"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -226,12 +228,36 @@ func TestPodAgentSetup(t *testing.T) {
 
 func TestPodAgentNextTask(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(task.Collection, pod.Collection, dispatcher.Collection, event.AllLogCollection))
+		assert.NoError(t, db.ClearCollections(task.Collection, pod.Collection, dispatcher.Collection, event.AllLogCollection, model.ProjectRefCollection))
 	}()
 	getPod := func() pod.Pod {
 		return pod.Pod{
-			ID:     utility.RandomString(),
-			Status: pod.StatusStarting,
+			ID:     "pod1",
+			Status: pod.StatusRunning,
+		}
+	}
+	getTask := func() task.Task {
+		return task.Task{
+			Id:                 "t1",
+			Project:            "proj",
+			ContainerAllocated: true,
+			ExecutionPlatform:  task.ExecutionPlatformContainer,
+			Status:             evergreen.TaskUndispatched,
+			Activated:          true,
+		}
+	}
+	getProject := func() model.ProjectRef {
+		return model.ProjectRef{
+			Id:      "proj",
+			Enabled: utility.ToBoolPtr(true),
+		}
+	}
+	getDispatcher := func() dispatcher.PodDispatcher {
+		return dispatcher.PodDispatcher{
+			ID:                primitive.NewObjectID().Hex(),
+			PodIDs:            []string{"pod1"},
+			TaskIDs:           []string{"t1"},
+			ModificationCount: 0,
 		}
 	}
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment){
@@ -250,10 +276,9 @@ func TestPodAgentNextTask(t *testing.T) {
 			assert.Zero(t, rh.podID)
 		},
 		"RunFailsWithNonexistentPod": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
-			const podID = "foo"
-			pd := dispatcher.NewPodDispatcher("group", []string{"task"}, []string{podID})
-			require.NoError(t, pd.Insert())
-			rh.podID = podID
+			d := getDispatcher()
+			require.NoError(t, d.Insert())
+			rh.podID = "pod1"
 			resp := rh.Run(ctx)
 			assert.Equal(t, http.StatusNotFound, resp.Status())
 		},
@@ -265,13 +290,44 @@ func TestPodAgentNextTask(t *testing.T) {
 			resp := rh.Run(ctx)
 			assert.Equal(t, http.StatusNotFound, resp.Status())
 		},
+		"RunShouldExitWithNonRunningPod": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
+			p := getPod()
+			p.Status = pod.StatusStarting
+			require.NoError(t, p.Insert())
+			rh.podID = p.ID
+
+			resp := rh.Run(ctx)
+			assert.Equal(t, http.StatusOK, resp.Status())
+			nextTaskResp := resp.Data().(*apimodels.NextTaskResponse)
+			assert.Equal(t, nextTaskResp.ShouldExit, true)
+		},
+		"RunCorrectlyMarksContainerTaskDispatched": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
+			p := getPod()
+			require.NoError(t, p.Insert())
+			d := getDispatcher()
+			require.NoError(t, d.Insert())
+			proj := getProject()
+			require.NoError(t, proj.Insert())
+			tsk := getTask()
+			require.NoError(t, tsk.Insert())
+			rh.podID = p.ID
+
+			resp := rh.Run(ctx)
+			assert.Equal(t, http.StatusOK, resp.Status())
+			nextTaskResp := resp.Data().(*apimodels.NextTaskResponse)
+			assert.Equal(t, nextTaskResp.ShouldExit, false)
+			assert.Equal(t, nextTaskResp.TaskId, "t1")
+			foundTask, err := task.FindOneId("t1")
+			require.NoError(t, err)
+			assert.Equal(t, foundTask.Status, evergreen.TaskDispatched)
+		},
 		"RunEnqueuesTerminationJobWhenThereAreNoTasksToDispatch": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
 			p := getPod()
 			require.NoError(t, p.Insert())
 			rh.podID = p.ID
 
-			pd := dispatcher.NewPodDispatcher("group", []string{"task"}, []string{p.ID})
-			require.NoError(t, pd.Insert())
+			d := getDispatcher()
+			require.NoError(t, d.Insert())
 
 			resp := rh.Run(ctx)
 			assert.Equal(t, http.StatusOK, resp.Status())
@@ -292,7 +348,7 @@ func TestPodAgentNextTask(t *testing.T) {
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
 
-			require.NoError(t, db.ClearCollections(task.Collection, pod.Collection, dispatcher.Collection, event.AllLogCollection))
+			require.NoError(t, db.ClearCollections(task.Collection, pod.Collection, dispatcher.Collection, event.AllLogCollection, model.ProjectRefCollection))
 
 			rh, ok := makePodAgentNextTask(env).(*podAgentNextTask)
 			require.True(t, ok)

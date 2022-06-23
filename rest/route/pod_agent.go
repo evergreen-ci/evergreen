@@ -10,14 +10,17 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/pod/dispatcher"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 )
 
@@ -245,7 +248,63 @@ func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 
+	nextTaskResp := &apimodels.NextTaskResponse{}
 	h.setAgentFirstContactTime(p)
+
+	if p.Status != pod.StatusRunning {
+		nextTaskResp.ShouldExit = true
+		return gimlet.NewJSONResponse(nextTaskResp)
+	}
+
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "error retrieving admin settings").Error(),
+		})
+	}
+	if flags.TaskDispatchDisabled {
+		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), "task dispatch is disabled, returning no task")
+		return gimlet.NewJSONResponse(nextTaskResp)
+	}
+
+	if p.RunningTask != "" {
+		var t *task.Task
+		t, err = task.FindOneId(p.RunningTask)
+		if err != nil {
+			err = errors.Wrapf(err, "getting running task %s", p.RunningTask)
+			return gimlet.MakeJSONErrorResponder(err)
+		}
+
+		// if the task can be dispatched and activated dispatch it
+		if t.IsDispatchable() {
+			err = errors.WithStack(model.MarkContainerTaskDispatched(ctx, h.env, t, p))
+			if err != nil {
+				grip.Error(errors.Wrapf(err, "error while marking task %s as dispatched for host %s", t.Id, p.ID))
+				return gimlet.MakeJSONErrorResponder(err)
+			}
+		}
+		// if the task is activated return that task
+		if t.Activated {
+			task.SetNextTask(t, nextTaskResp)
+			return gimlet.NewJSONResponse(nextTaskResp)
+		}
+		// the task is not activated so the pod's running task should be unset
+		// so it can retrieve a new task.
+		if err = p.ClearRunningTask(); err != nil {
+			err = errors.WithStack(err)
+			return gimlet.MakeJSONErrorResponder(err)
+		}
+
+		// return an empty
+		grip.Info(message.Fields{
+			"op":      "next_task",
+			"message": "unset running task field for inactive task on pod",
+			"pod_id":  p.ID,
+			"task_id": t.Id,
+		})
+		return gimlet.NewJSONResponse(nextTaskResp)
+	}
 
 	pd, err := h.findDispatcher()
 	if err != nil {
@@ -267,9 +326,11 @@ func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 				Message:    errors.Wrap(err, "enqueueing job to terminate pod").Error(),
 			})
 		}
+		return gimlet.NewJSONResponse(nextTaskResp)
 	}
 
-	return gimlet.NewJSONResponse(apimodels.NextTaskResponse{})
+	task.SetNextTask(nextTask, nextTaskResp)
+	return gimlet.NewJSONResponse(nextTaskResp)
 }
 
 func (h *podAgentNextTask) findPod() (*pod.Pod, error) {

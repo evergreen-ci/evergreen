@@ -1136,7 +1136,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 		return
 	}
-	setNextTask(nextTask, &response)
+	task.SetNextTask(nextTask, &response)
 	gimlet.WriteJSON(w, response)
 }
 
@@ -1327,7 +1327,7 @@ func sendBackRunningTask(h *host.Host, response apimodels.NextTaskResponse, w ht
 	}
 	// if the task is activated return that task
 	if t.Activated {
-		setNextTask(t, &response)
+		task.SetNextTask(t, &response)
 		gimlet.WriteJSON(w, response)
 		return
 	}
@@ -1348,12 +1348,4 @@ func sendBackRunningTask(h *host.Host, response apimodels.NextTaskResponse, w ht
 		"task_id": t.Id,
 	})
 	gimlet.WriteJSON(w, response)
-}
-
-func setNextTask(t *task.Task, response *apimodels.NextTaskResponse) {
-	response.TaskId = t.Id
-	response.TaskSecret = t.Secret
-	response.TaskGroup = t.TaskGroup
-	response.Version = t.Version
-	response.Build = t.BuildId
 }

@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"time"
@@ -1242,6 +1243,22 @@ func MarkHostTaskDispatched(t *task.Task, h *host.Host) error {
 	}
 
 	event.LogHostTaskDispatched(t.Id, t.Execution, h.Id)
+
+	if t.IsPartOfDisplay() {
+		return UpdateDisplayTaskForTask(t)
+	}
+
+	return nil
+}
+
+// MarkContainerTaskDispatched marks a task as being dispatched to the pod. If it's
+// part of a display task, update the display task as necessary.
+func MarkContainerTaskDispatched(ctx context.Context, env evergreen.Environment, t *task.Task, p *pod.Pod) error {
+	if err := t.MarkAsContainerDispatched(ctx, env, p.AgentVersion); err != nil {
+		return errors.Wrapf(err, "marking task '%s' as dispatched on pod '%s'", t.Id, p.ID)
+	}
+
+	event.LogContainerTaskDispatched(t.Id, t.Execution, p.ID)
 
 	if t.IsPartOfDisplay() {
 		return UpdateDisplayTaskForTask(t)
