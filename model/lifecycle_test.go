@@ -2042,9 +2042,18 @@ func TestResetTaskOrDisplayTask(t *testing.T) {
 	assert.NoError(t, err)
 	require.NotNil(t, et)
 
-	// restarting execution tasks should restart the whole display task if it's complete
-	assert.NoError(t, ResetTaskOrDisplayTask(et, "me", evergreen.StepbackTaskActivator, nil))
+	// restarting execution tasks should return an error
+	assert.Error(t, ResetTaskOrDisplayTask(et, "me", evergreen.StepbackTaskActivator, false, nil))
 	dt, err := task.FindOneId("displayTask")
+	assert.NoError(t, err)
+	require.NotNil(t, dt)
+	assert.Equal(t, dt.Status, evergreen.TaskFailed)
+	assert.Equal(t, dt.Execution, 0)
+	assert.False(t, dt.ResetWhenFinished)
+
+	// restarting display task
+	assert.NoError(t, ResetTaskOrDisplayTask(dt, "me", evergreen.StepbackTaskActivator, false, nil))
+	dt, err = task.FindOneId("displayTask")
 	assert.NoError(t, err)
 	require.NotNil(t, dt)
 	assert.Equal(t, dt.Status, evergreen.TaskUndispatched)
@@ -2052,13 +2061,14 @@ func TestResetTaskOrDisplayTask(t *testing.T) {
 	assert.False(t, dt.ResetWhenFinished)
 
 	// restarting display task should mark the display task for restart if it's not complete
-	assert.NoError(t, ResetTaskOrDisplayTask(dt, "me", evergreen.StepbackTaskActivator, nil))
+	// ResetFailedWhenFinished should be set to true if failedOnly is passed in
+	assert.NoError(t, ResetTaskOrDisplayTask(dt, "me", evergreen.StepbackTaskActivator, true, nil))
 	dt, err = task.FindOneId("displayTask")
 	assert.NoError(t, err)
 	require.NotNil(t, dt)
 	assert.Equal(t, dt.Status, evergreen.TaskUndispatched)
 	assert.Equal(t, dt.Execution, 1)
-	assert.True(t, dt.ResetWhenFinished)
+	assert.True(t, dt.ResetFailedWhenFinished)
 }
 
 func resetTaskData() error {

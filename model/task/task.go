@@ -198,14 +198,14 @@ type Task struct {
 	LocalTestResults []TestResult `bson:"-" json:"test_results"`
 
 	// display task fields
-	DisplayOnly             bool     `bson:"display_only,omitempty" json:"display_only,omitempty"`
-	ExecutionTasks          []string `bson:"execution_tasks,omitempty" json:"execution_tasks,omitempty"`
-  // ResetWhenFinished indicates that a task should be reset once it is
+	DisplayOnly    bool     `bson:"display_only,omitempty" json:"display_only,omitempty"`
+	ExecutionTasks []string `bson:"execution_tasks,omitempty" json:"execution_tasks,omitempty"`
+	// ResetWhenFinished indicates that a task should be reset once it is
 	// finished running. This is typically to deal with tasks that should be
 	// reset but cannot do so yet because they're currently running.
-	ResetWhenFinished       bool     `bson:"reset_when_finished,omitempty" json:"reset_when_finished,omitempty"`
-	ResetFailedWhenFinished bool     `bson:"reset_failed_when_finished,omitempty" json:"reset_failed_when_finished,omitempty"`
-	DisplayTask             *Task    `bson:"-" json:"-"` // this is a local pointer from an exec to display task
+	ResetWhenFinished       bool  `bson:"reset_when_finished,omitempty" json:"reset_when_finished,omitempty"`
+	ResetFailedWhenFinished bool  `bson:"reset_failed_when_finished,omitempty" json:"reset_failed_when_finished,omitempty"`
+	DisplayTask             *Task `bson:"-" json:"-"` // this is a local pointer from an exec to display task
 
 	// DisplayTaskId is set to the display task ID if the task is an execution task, the empty string if it's not an execution task,
 	// and is nil if we haven't yet checked whether or not this task has a display task.

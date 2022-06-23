@@ -1257,7 +1257,7 @@ func MarkOneTaskReset(t *task.Task, logIDs bool) error {
 				return errors.Wrap(err, "resetting execution tasks")
 			}
 		} else {
-			failedExecTasks, err := task.Find(task.FailedTasksByIds(t.ExecutionTasks))
+			failedExecTasks, err := task.FindWithFields(task.FailedTasksByIds(t.ExecutionTasks), task.IdKey)
 			if err != nil {
 				return errors.Wrap(err, "retrieving failed execution tasks")
 			}
@@ -1715,7 +1715,7 @@ func checkResetSingleHostTaskGroup(t *task.Task, caller string) error {
 // parent display task as t once all tasks under the display task are finished
 // running.
 func checkResetDisplayTask(t *task.Task) error {
-	if !t.ResetWhenFinished {
+	if !t.ResetWhenFinished && !t.ResetFailedWhenFinished {
 		return nil
 	}
 	execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
