@@ -1480,6 +1480,7 @@ func (t *Task) SetAborted(reason AbortInfo) error {
 	)
 }
 
+// SetNextTask constructs a NextTaskResponse from a task that has been assigned to run next.
 func SetNextTask(t *Task, response *apimodels.NextTaskResponse) {
 	response.TaskId = t.Id
 	response.TaskSecret = t.Secret
