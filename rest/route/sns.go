@@ -300,8 +300,11 @@ type ecsSNS struct {
 }
 
 type ecsEventBridgeNotification struct {
-	DetailType string      `json:"detail-type"`
-	Detail     interface{} `json:"detail"`
+	// DetailType is the type of ECS Event Bridge notification.
+	DetailType string `json:"detail-type"`
+	// Detail is the detailed contents of the notification. The actual contents
+	// depend on the DetailType.
+	Detail json.RawMessage `json:"detail"`
 }
 
 type ecsTaskEventDetail struct {
@@ -371,9 +374,9 @@ func (sns *ecsSNS) Run(ctx context.Context) gimlet.Responder {
 func (sns *ecsSNS) handleNotification(ctx context.Context, notification ecsEventBridgeNotification) error {
 	switch notification.DetailType {
 	case ecsTaskStateChangeType:
-		detail, ok := notification.Detail.(ecsTaskEventDetail)
-		if !ok {
-			return errors.New("notification details should be ECS task event details")
+		var detail ecsTaskEventDetail
+		if err := json.Unmarshal(notification.Detail, &detail); err != nil {
+			return errors.Wrap(err, "unmarshalling event details as ECS task event details")
 		}
 		p, err := pod.FindOneByExternalID(detail.TaskARN)
 		if err != nil {
@@ -418,9 +421,9 @@ func (sns *ecsSNS) handleNotification(ctx context.Context, notification ecsEvent
 			}
 		}
 	case ecsContainerInstanceStateChangeType:
-		detail, ok := notification.Detail.(ecsContainerInstanceEventDetail)
-		if !ok {
-			return errors.New("notification details should be ECS task event details")
+		var detail ecsContainerInstanceEventDetail
+		if err := json.Unmarshal(notification.Detail, &detail); err != nil {
+			return errors.Wrap(err, "unmarshalling event details as ECS container instance event details")
 		}
 		if ecs.ContainerInstanceStatus(detail.Status) != ecs.ContainerInstanceStatusDraining {
 			return nil
