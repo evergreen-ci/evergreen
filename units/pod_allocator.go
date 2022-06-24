@@ -92,7 +92,7 @@ func (j *podAllocatorJob) Run(ctx context.Context) {
 		// A task that has used up all of its container allocation attempts
 		// should not try to allocate again.
 		if err := model.MarkUnallocatableContainerTasksSystemFailed([]string{j.TaskID}); err != nil {
-			j.AddRetryableError(errors.Wrap(err, "marking container task as unable to allocate"))
+			j.AddRetryableError(errors.Wrap(err, "marking unallocatable container task as system-failed"))
 		}
 
 		return
