@@ -188,8 +188,40 @@ func TestPodTerminationJob(t *testing.T) {
 			assert.Equal(t, dbDisp.PodIDs, []string{"another_pod_id"}, "pod should have been removed from dispatcher's set of pods")
 			assert.Equal(t, dbDisp.TaskIDs, []string{"task_id"}, "tasks being dispatched should be unaffected")
 		},
-		"ClearsDispatcherTasksWhenPodIsOnlyRemainingOne": func(ctx context.Context, t *testing.T, j *podTerminationJob) {
-			pd := dispatcher.NewPodDispatcher("group_id", []string{"task_id"}, []string{j.pod.ID})
+		"FixesDispatcherTasksWhenPodIsOnlyRemainingOne": func(ctx context.Context, t *testing.T, j *podTerminationJob) {
+			t0 := task.Task{
+				Id:                     "task_id0",
+				Activated:              true,
+				Status:                 evergreen.TaskUndispatched,
+				ExecutionPlatform:      task.ExecutionPlatformContainer,
+				ContainerAllocated:     true,
+				ContainerAllocatedTime: time.Now(),
+			}
+			require.NoError(t, t0.Insert())
+			v := model.Version{
+				Id:     "version_id",
+				Status: evergreen.VersionCreated,
+			}
+			require.NoError(t, v.Insert())
+			b := build.Build{
+				Id:      "build_id",
+				Version: v.Id,
+				Status:  evergreen.BuildCreated,
+			}
+			require.NoError(t, b.Insert())
+			t1 := task.Task{
+				Id:                          "task_id1",
+				BuildId:                     b.Id,
+				Version:                     v.Id,
+				Activated:                   true,
+				ExecutionPlatform:           task.ExecutionPlatformContainer,
+				Status:                      evergreen.TaskUndispatched,
+				ContainerAllocated:          true,
+				ContainerAllocatedTime:      time.Now(),
+				ContainerAllocationAttempts: 100,
+			}
+			require.NoError(t, t1.Insert())
+			pd := dispatcher.NewPodDispatcher("group_id", []string{t0.Id, t1.Id}, []string{j.pod.ID})
 			require.NoError(t, pd.Insert())
 			require.NoError(t, j.pod.Insert())
 
@@ -207,6 +239,27 @@ func TestPodTerminationJob(t *testing.T) {
 			require.NotZero(t, dbDisp)
 			assert.Empty(t, dbDisp.PodIDs, "terminated pod should have been removed from dispatcher")
 			assert.Empty(t, dbDisp.TaskIDs, "tasks should have been cleared from the dispatcher since there are no remaining pods to run them")
+
+			dbTask0, err := task.FindOneId(t0.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask0)
+			assert.True(t, dbTask0.ShouldAllocateContainer(), "task should be able to allocate a new container after being removed from the dispatcher")
+
+			dbTask1, err := task.FindOneId(t1.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask1)
+			assert.False(t, dbTask1.ShouldAllocateContainer(), "task that has used up all container allocation attempts should not be able to allocate a new container")
+			assert.True(t, dbTask1.IsFinished(), "task that has used up all container allocation attempts should be finished")
+
+			dbBuild, err := build.FindOneId(b.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbBuild)
+			assert.True(t, dbBuild.IsFinished(), "build should be updated after its task has run out of container allocation attempts")
+
+			dbVersion, err := model.VersionFindOneId(v.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbVersion)
+			assert.Equal(t, evergreen.VersionFailed, dbVersion.Status, "version should be updated after its task has run out of container allocation attempts")
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {

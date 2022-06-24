@@ -1705,3 +1705,44 @@ func checkResetDisplayTask(t *task.Task) error {
 	}
 	return errors.Wrap(TryResetTask(t.Id, evergreen.User, evergreen.User, details), "resetting display task")
 }
+
+// MarkUnallocatableContainerTasksSystemFailed marks any container task within
+// the candidate task IDs that needs to re-allocate a container but has used up
+// all of its container allocation attempts as finished due to system failure.
+func MarkUnallocatableContainerTasksSystemFailed(candidateTaskIDs []string) error {
+	var unallocatableTasks []task.Task
+	for _, taskID := range candidateTaskIDs {
+		tsk, err := task.FindOneId(taskID)
+		if err != nil {
+			return errors.Wrapf(err, "finding task '%s'", taskID)
+		}
+		if tsk == nil {
+			continue
+		}
+		if !tsk.IsContainerTask() {
+			continue
+		}
+		if !tsk.ContainerAllocated {
+			continue
+		}
+		if tsk.RemainingContainerAllocationAttempts() > 0 {
+			continue
+		}
+
+		unallocatableTasks = append(unallocatableTasks, *tsk)
+	}
+
+	catcher := grip.NewBasicCatcher()
+	for _, tsk := range unallocatableTasks {
+		details := apimodels.TaskEndDetail{
+			Status:      evergreen.TaskFailed,
+			Type:        evergreen.CommandTypeSystem,
+			Description: evergreen.TaskDescriptionContainerUnallocatable,
+		}
+		if err := MarkEnd(&tsk, evergreen.APIServerTaskActivator, time.Now(), &details, false); err != nil {
+			catcher.Wrapf(err, "marking task '%s' as a failure due to inability to allocate", tsk.Id)
+		}
+	}
+
+	return catcher.Resolve()
+}
