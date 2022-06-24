@@ -986,7 +986,7 @@ func TestManifestLoad(t *testing.T) {
 
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestManifestFetch")
 
-	// Skiping: this test runs the manifest command and then
+	// Skipping: this test runs the manifest command and then
 	// checks that the database records were properly changed, and
 	// therefore it's impossible to separate these tests from the
 	// service/database.
