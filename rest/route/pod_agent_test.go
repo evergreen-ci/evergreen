@@ -3,9 +3,6 @@ package route
 import (
 	"context"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/utility"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"net/http"
 	"testing"
 	"time"
@@ -14,14 +11,17 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/pod/dispatcher"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestPodProvisioningScript(t *testing.T) {
