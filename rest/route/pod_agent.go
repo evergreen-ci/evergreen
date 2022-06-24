@@ -387,22 +387,22 @@ func (h *podAgentEndTask) Parse(ctx context.Context, r *http.Request) error {
 
 	// Check that status is either finished or aborted (i.e. undispatched)
 	if !evergreen.IsValidTaskEndStatus(details.Status) && details.Status != evergreen.TaskUndispatched {
-		return errors.Errorf("invalid end status '%s' for task %s", details.Status, h.taskID)
+		return errors.Errorf("invalid end status '%s' for task '%s'", details.Status, h.taskID)
 	}
 	return nil
 }
 
 // Run finishes the given task and generates a job to collect task end stats.
-// It then marks the task as finished or inactive if aborted.
+// It then marks the task as finished. If the task is aborted, this will no-op.
 func (h *podAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 	finishTime := time.Now()
 	p, err := findPod(h.podID)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(err)
+		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 	t, err := findTask(h.taskID)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(err)
+		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 
 	endTaskResp := &apimodels.EndTaskResponse{}
@@ -424,17 +424,9 @@ func (h *podAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(endTaskResp)
 	}
 
-	// Clear the running task on the pod now that the task has finished.
-	if err := p.ClearRunningTask(); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "clearing running task %s for pod %s", t.Id, p.ID))
-	}
-
 	projectRef, err := model.FindMergedProjectRef(t.Project, t.Version, true)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrap(err, "finding project").Error(),
-		})
+		gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding project"))
 	}
 	if projectRef == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
@@ -443,16 +435,20 @@ func (h *podAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	// mark task as finished
 	deactivatePrevious := utility.FromBoolPtr(projectRef.DeactivatePrevious)
 	err = model.MarkEnd(t, evergreen.APIServerTaskActivator, finishTime, &h.details, deactivatePrevious)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "calling mark finish on task %v", t.Id))
 	}
 
+	// Clear the running task on the pod now that the task has finished.
+	if err = p.ClearRunningTask(); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "clearing running task '%s' for pod '%s'", t.Id, p.ID))
+	}
+
 	if t.Requester == evergreen.MergeTestRequester {
 		if err = model.HandleEndTaskForCommitQueueTask(t, h.details.Status); err != nil {
-			return gimlet.MakeJSONErrorResponder(err)
+			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
 	}
 
@@ -460,23 +456,26 @@ func (h *podAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 	// the active state should be inactive.
 	if h.details.Status == evergreen.TaskUndispatched {
 		if t.Activated {
-			grip.Warningf("task %v is active and undispatched after being marked as finished", t.Id)
+			grip.Warningf("task %s is active and undispatched after being marked as finished", t.Id)
 			return gimlet.NewJSONResponse(&apimodels.EndTaskResponse{})
 		}
-		grip.Infof(fmt.Sprintf("task %v has been aborted and will not run", t.Id))
+		grip.Info(message.Fields{
+			"message": fmt.Sprintf("task %s has been aborted", t.Id),
+			"task_id": t.Id,
+			"path":    fmt.Sprintf("/rest/v2/pods/%s/task/%s/end", p.ID, t.Id),
+		})
 		return gimlet.NewJSONResponse(&apimodels.EndTaskResponse{})
 	}
 
 	// GetDisplayTask will set the DisplayTask on t if applicable
-	// we set this before the collect task end job is run to prevent data race
 	dt, err := t.GetDisplayTask()
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "getting display task"))
 	}
 	queue := h.env.RemoteQueue()
-	job := units.NewCollectTaskEndDataJob(t, nil, p)
+	job := units.NewCollectTaskEndDataJob(t, nil, p, p.ID)
 	if err = queue.Put(ctx, job); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "couldn't queue job to update task stats accounting"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "couldn't queue job to update task stats accounting"))
 	}
 
 	if p.Status != pod.StatusRunning {

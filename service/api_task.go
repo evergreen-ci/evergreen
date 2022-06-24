@@ -196,14 +196,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	// Clear the running task on the host now that the task has finished.
-	if err := currentHost.ClearRunningAndSetLastTask(t); err != nil {
-		err = errors.Wrapf(err, "error clearing running task %s for host %s", t.Id, currentHost.Id)
-		grip.Errorf(err.Error())
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-
 	projectRef, err := model.FindMergedProjectRef(t.Project, t.Version, true)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -218,6 +210,14 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	err = model.MarkEnd(t, APIServerLockTitle, finishTime, details, deactivatePrevious)
 	if err != nil {
 		err = errors.Wrapf(err, "Error calling mark finish on task %v", t.Id)
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+
+	// Clear the running task on the host now that the task has finished.
+	if err := currentHost.ClearRunningAndSetLastTask(t); err != nil {
+		err = errors.Wrapf(err, "error clearing running task %s for host %s", t.Id, currentHost.Id)
+		grip.Errorf(err.Error())
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
@@ -244,12 +244,11 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// GetDisplayTask will set the DisplayTask on t if applicable
-	// we set this before the collect task end job is run to prevent data race
 	dt, err := t.GetDisplayTask()
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 	}
-	job := units.NewCollectTaskEndDataJob(t, currentHost, nil)
+	job := units.NewCollectTaskEndDataJob(t, currentHost, nil, currentHost.Id)
 	if err = as.queue.Put(r.Context(), job); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError,
 			errors.Wrap(err, "couldn't queue job to update task stats accounting"))

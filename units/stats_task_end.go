@@ -27,11 +27,10 @@ func init() {
 }
 
 type collectTaskEndDataJob struct {
-	TaskID    string `bson:"task_id" json:"task_id" yaml:"task_id"`
-	Execution int    `bson:"execution" json:"execution" yaml:"execution"`
-	HostID    string `bson:"host_id" json:"host_id" yaml:"host_id"`
-	PodID     string `bson:"pod_id" json:"pod_id" yaml:"host_id"`
-	job.Base  `bson:"metadata" json:"metadata" yaml:"metadata"`
+	TaskID       string `bson:"task_id" json:"task_id" yaml:"task_id"`
+	Execution    int    `bson:"execution" json:"execution" yaml:"execution"`
+	RuntimeEnvID string `bson:"runtime_env_id" json:"runtime_env_id" yaml:"runtime_env_id"`
+	job.Base     `bson:"metadata" json:"metadata" yaml:"metadata"`
 
 	// internal cache
 	task *task.Task
@@ -55,20 +54,15 @@ func newTaskEndJob() *collectTaskEndDataJob {
 // NewCollectTaskEndDataJob logs information a task after it
 // completes. It also logs information about the total runtime and instance
 // type, which can be used to measure the cost of running a task.
-func NewCollectTaskEndDataJob(t *task.Task, h *host.Host, p *pod.Pod) amboy.Job {
+func NewCollectTaskEndDataJob(t *task.Task, h *host.Host, p *pod.Pod, id string) amboy.Job {
 	j := newTaskEndJob()
 	j.TaskID = t.Id
 	j.Execution = t.Execution
-	var id string
-	if h != nil {
-		id = h.Id
-	} else {
-		id = p.ID
-	}
+	j.RuntimeEnvID = id
 	j.pod = p
 	j.task = t
 	j.host = h
-	j.SetID(fmt.Sprintf("%s.%s.%s.%d", collectTaskEndDataJobName, j.TaskID, id, job.GetNumber()))
+	j.SetID(fmt.Sprintf("%s.%s.%s.%d", collectTaskEndDataJobName, j.TaskID, j.RuntimeEnvID, job.GetNumber()))
 	j.SetPriority(-2)
 	return j
 }
@@ -76,9 +70,24 @@ func NewCollectTaskEndDataJob(t *task.Task, h *host.Host, p *pod.Pod) amboy.Job 
 func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	isHostMode := j.host != nil
-	if !isHostMode && j.pod == nil {
-		j.AddError(errors.New("Could not find host or pod"))
+	var err error
+	if j.task == nil {
+		j.task, err = task.FindOneIdAndExecution(j.TaskID, j.Execution)
+		j.AddError(err)
+		if err != nil {
+			return
+		}
+	}
+	// The task was restarted before the job ran.
+	if j.task == nil {
+		j.task, err = task.FindOneOldByIdAndExecution(j.TaskID, j.Execution)
+		j.AddError(err)
+		if err != nil {
+			return
+		}
+	}
+	if j.task == nil {
+		j.AddError(errors.Errorf("finding task '%s'", j.TaskID))
 		return
 	}
 
@@ -120,7 +129,17 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 	}
 	j.AddError(err)
 
+	isHostMode := j.task.IsHostTask()
 	if isHostMode {
+		j.host, err = host.FindOneId(j.RuntimeEnvID)
+		j.AddError(err)
+		if err != nil {
+			return
+		}
+		if j.host == nil {
+			j.AddError(errors.Errorf("finding host '%s'", j.RuntimeEnvID))
+			return
+		}
 		msg["host_id"] = j.host.Id
 		msg["distro"] = j.host.Distro.Id
 		msg["provider"] = j.host.Distro.Provider
@@ -131,6 +150,15 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 			}
 		}
 	} else {
+		j.pod, err = pod.FindOneByID(j.RuntimeEnvID)
+		j.AddError(err)
+		if err != nil {
+			return
+		}
+		if j.pod == nil {
+			j.AddError(errors.Errorf("finding pod '%s'", j.RuntimeEnvID))
+			return
+		}
 		msg["pod_id"] = j.pod.ID
 	}
 
