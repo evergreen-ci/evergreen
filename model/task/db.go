@@ -1037,7 +1037,8 @@ func FindUniqueBuildVariantNamesByTask(projectId string, taskName string, repoOr
 	groupByBuildVariant := bson.M{
 		"$group": bson.M{
 			"_id": bson.M{
-				BuildVariantKey: "$" + BuildVariantKey,
+				BuildVariantKey:            "$" + BuildVariantKey,
+				BuildVariantDisplayNameKey: "$" + BuildVariantDisplayNameKey,
 			},
 			BuildIdKey: bson.M{
 				"$first": "$" + BuildIdKey,
@@ -1050,9 +1051,10 @@ func FindUniqueBuildVariantNamesByTask(projectId string, taskName string, repoOr
 	// reorganize the results to get the build variant names and a corresponding build id
 	projectBuildId := bson.M{
 		"$project": bson.M{
-			"_id":           0,
-			BuildVariantKey: bsonutil.GetDottedKeyName("$_id", BuildVariantKey),
-			BuildIdKey:      "$" + BuildIdKey,
+			"_id":                      0,
+			BuildVariantKey:            bsonutil.GetDottedKeyName("$_id", BuildVariantKey),
+			BuildVariantDisplayNameKey: bsonutil.GetDottedKeyName("$_id", BuildVariantDisplayNameKey),
+			BuildIdKey:                 "$" + BuildIdKey,
 		},
 	}
 
