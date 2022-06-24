@@ -276,7 +276,7 @@ func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
 
-		// if the task can be dispatched and activated dispatch it
+		// if the task can be dispatched and activated, dispatch it
 		if t.IsDispatchable() {
 			err = errors.WithStack(model.MarkContainerTaskDispatched(ctx, h.env, t, p))
 			if err != nil {
@@ -289,14 +289,12 @@ func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 			task.SetNextTask(t, nextTaskResp)
 			return gimlet.NewJSONResponse(nextTaskResp)
 		}
-		// the task is not activated so the pod's running task should be unset
+		// the task is not activated, so the pod's running task should be unset
 		// so it can retrieve a new task.
 		if err = p.ClearRunningTask(); err != nil {
 			err = errors.WithStack(err)
 			return gimlet.MakeJSONErrorResponder(err)
 		}
-
-		// return an empty
 		grip.Info(message.Fields{
 			"op":      "next_task",
 			"message": "unset running task field for inactive task on pod",
