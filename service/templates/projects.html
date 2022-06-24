@@ -318,19 +318,6 @@ Evergreen Projects
     <div class="variables">
       <div class="form-group">
         <div class="col-header col-lg-8 form-control-static">
-          <h3>Test Results</h3>
-        </div>
-      </div>
-      <div id="enable-cedar-test-results" class="form-group">
-        <div class="col-lg-6">
-          <input type="checkbox" id="enable-cedar-test-results-checkbox" ng-model="settingsFormData.cedar_test_results_enabled"/>
-          <label for="enable-cedar-test-results-checkbox">Enable Cedar Test Results</label>
-        </div>
-      </div>
-    </div>
-    <div class="variables">
-      <div class="form-group">
-        <div class="col-header col-lg-8 form-control-static">
           <h3>Version Control</h3>
         </div>
       </div>
@@ -976,8 +963,9 @@ Evergreen Projects
           </div>
         </div>
       </div>
+<!--      TODO: EVG-17134 Unhide once container tasks are available-->
       <!-- Custom container resource aliases -->
-      <div class="variables">
+      <div class="variables" ng-hide="true">
         <div class="form-group">
           <div class="col-header col-lg-6 form-control-static">
             <h3>Container Sizes</h3>
@@ -1025,7 +1013,7 @@ Evergreen Projects
         </div>
       </div>
       <!-- Container credentials used for private image repos -->
-      <div class="variables">
+      <div class="variables" ng-hide="true">
         <div class="form-group">
           <div class="col-header col-lg-6 form-control-static">
             <h3>Container Credentials</h3>

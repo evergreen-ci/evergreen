@@ -255,45 +255,44 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	origProjectRef := *projectRef
 
 	responseRef := struct {
-		Id                      string                         `json:"id"`
-		Identifier              string                         `json:"identifier"`
-		DisplayName             string                         `json:"display_name"`
-		RemotePath              string                         `json:"remote_path"`
-		SpawnHostScriptPath     string                         `json:"spawn_host_script_path"`
-		BatchTime               int                            `json:"batch_time"`
-		DeactivatePrevious      bool                           `json:"deactivate_previous"`
-		Branch                  string                         `json:"branch_name"`
-		ProjVarsMap             map[string]string              `json:"project_vars"`
-		GitHubPRAliases         []model.ProjectAlias           `json:"github_pr_aliases,omitempty"`
-		GithubChecksAliases     []model.ProjectAlias           `json:"github_checks_aliases,omitempty"`
-		CommitQueueAliases      []model.ProjectAlias           `json:"commit_queue_aliases,omitempty"`
-		PatchAliases            []model.ProjectAlias           `json:"patch_aliases,omitempty"`
-		GitTagAliases           []model.ProjectAlias           `json:"git_tag_aliases,omitempty"`
-		DeleteAliases           []string                       `json:"delete_aliases"`
-		DefaultLogger           string                         `json:"default_logger"`
-		CedarTestResultsEnabled bool                           `json:"cedar_test_results_enabled"`
-		PrivateVars             map[string]bool                `json:"private_vars"`
-		AdminOnlyVars           map[string]bool                `json:"admin_only_vars"`
-		Enabled                 bool                           `json:"enabled"`
-		Private                 bool                           `json:"private"`
-		Restricted              bool                           `json:"restricted"`
-		Owner                   string                         `json:"owner_name"`
-		Repo                    string                         `json:"repo_name"`
-		Admins                  []string                       `json:"admins"`
-		GitTagAuthorizedUsers   []string                       `json:"git_tag_authorized_users,omitempty"`
-		GitTagAuthorizedTeams   []string                       `json:"git_tag_authorized_teams,omitempty"`
-		PRTestingEnabled        bool                           `json:"pr_testing_enabled"`
-		ManualPRTestingEnabled  bool                           `json:"manual_pr_testing_enabled"`
-		GithubChecksEnabled     bool                           `json:"github_checks_enabled"`
-		GitTagVersionsEnabled   bool                           `json:"git_tag_versions_enabled"`
-		Hidden                  bool                           `json:"hidden"`
-		CommitQueue             restModel.APICommitQueueParams `json:"commit_queue"`
-		TaskSync                restModel.APITaskSyncOptions   `json:"task_sync"`
-		PatchingDisabled        bool                           `json:"patching_disabled"`
-		RepotrackerDisabled     bool                           `json:"repotracker_disabled"`
-		DispatchingDisabled     bool                           `json:"dispatching_disabled"`
-		VersionControlEnabled   bool                           `json:"version_control_enabled"`
-		AlertConfig             map[string][]struct {
+		Id                     string                         `json:"id"`
+		Identifier             string                         `json:"identifier"`
+		DisplayName            string                         `json:"display_name"`
+		RemotePath             string                         `json:"remote_path"`
+		SpawnHostScriptPath    string                         `json:"spawn_host_script_path"`
+		BatchTime              int                            `json:"batch_time"`
+		DeactivatePrevious     bool                           `json:"deactivate_previous"`
+		Branch                 string                         `json:"branch_name"`
+		ProjVarsMap            map[string]string              `json:"project_vars"`
+		GitHubPRAliases        []model.ProjectAlias           `json:"github_pr_aliases,omitempty"`
+		GithubChecksAliases    []model.ProjectAlias           `json:"github_checks_aliases,omitempty"`
+		CommitQueueAliases     []model.ProjectAlias           `json:"commit_queue_aliases,omitempty"`
+		PatchAliases           []model.ProjectAlias           `json:"patch_aliases,omitempty"`
+		GitTagAliases          []model.ProjectAlias           `json:"git_tag_aliases,omitempty"`
+		DeleteAliases          []string                       `json:"delete_aliases"`
+		DefaultLogger          string                         `json:"default_logger"`
+		PrivateVars            map[string]bool                `json:"private_vars"`
+		AdminOnlyVars          map[string]bool                `json:"admin_only_vars"`
+		Enabled                bool                           `json:"enabled"`
+		Private                bool                           `json:"private"`
+		Restricted             bool                           `json:"restricted"`
+		Owner                  string                         `json:"owner_name"`
+		Repo                   string                         `json:"repo_name"`
+		Admins                 []string                       `json:"admins"`
+		GitTagAuthorizedUsers  []string                       `json:"git_tag_authorized_users,omitempty"`
+		GitTagAuthorizedTeams  []string                       `json:"git_tag_authorized_teams,omitempty"`
+		PRTestingEnabled       bool                           `json:"pr_testing_enabled"`
+		ManualPRTestingEnabled bool                           `json:"manual_pr_testing_enabled"`
+		GithubChecksEnabled    bool                           `json:"github_checks_enabled"`
+		GitTagVersionsEnabled  bool                           `json:"git_tag_versions_enabled"`
+		Hidden                 bool                           `json:"hidden"`
+		CommitQueue            restModel.APICommitQueueParams `json:"commit_queue"`
+		TaskSync               restModel.APITaskSyncOptions   `json:"task_sync"`
+		PatchingDisabled       bool                           `json:"patching_disabled"`
+		RepotrackerDisabled    bool                           `json:"repotracker_disabled"`
+		DispatchingDisabled    bool                           `json:"dispatching_disabled"`
+		VersionControlEnabled  bool                           `json:"version_control_enabled"`
+		AlertConfig            map[string][]struct {
 			Provider string                 `json:"provider"`
 			Settings map[string]interface{} `json:"settings"`
 		} `json:"alert_config"`
@@ -619,7 +618,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.Branch = responseRef.Branch
 	projectRef.Enabled = &responseRef.Enabled
 	projectRef.DefaultLogger = responseRef.DefaultLogger
-	projectRef.CedarTestResultsEnabled = &responseRef.CedarTestResultsEnabled
 	projectRef.Private = &responseRef.Private
 	projectRef.Restricted = &responseRef.Restricted
 	projectRef.Owner = responseRef.Owner

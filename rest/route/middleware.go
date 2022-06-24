@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -327,9 +328,7 @@ func (m *podOrHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Requ
 		return
 	}
 	if hostID != "" && podID != "" {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			Message: "host ID and pod ID cannot both be set",
-		}))
+		gimlet.WriteResponse(rw, gimlet.NewJSONErrorResponse("host ID and pod ID cannot both be set"))
 		return
 	}
 
@@ -857,14 +856,14 @@ func AddCORSHeaders(allowedOrigins []string, next http.HandlerFunc) http.Handler
 			"op":              "addCORSHeaders",
 			"requester":       requester,
 			"allowed_origins": allowedOrigins,
-			"adding_headers":  util.StringContainsSliceRegex(allowedOrigins, requester),
+			"adding_headers":  utility.StringMatchesAnyRegex(requester, allowedOrigins),
 			"settings_is_nil": evergreen.GetEnvironment().Settings() == nil,
 			"headers":         r.Header,
 		})
 		if len(allowedOrigins) > 0 {
 			// Requests from a GQL client include this header, which must be added to the response to enable CORS
 			gqlHeader := r.Header.Get("Access-Control-Request-Headers")
-			if util.StringContainsSliceRegex(allowedOrigins, requester) {
+			if utility.StringMatchesAnyRegex(requester, allowedOrigins) {
 				w.Header().Add("Access-Control-Allow-Origin", requester)
 				w.Header().Add("Access-Control-Allow-Credentials", "true")
 				w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PATCH, PUT")

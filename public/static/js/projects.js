@@ -481,7 +481,6 @@ mciModule.controller(
             admin_only_vars: $scope.adminOnlyVars,
             display_name: $scope.projectRef.display_name,
             default_logger: $scope.projectRef.default_logger,
-            cedar_test_results_enabled: $scope.projectRef.cedar_test_results_enabled,
             remote_path: $scope.projectRef.remote_path,
             spawn_host_script_path: $scope.projectRef.spawn_host_script_path,
             batch_time: $scope.projectRef.batch_time,
