@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"net/http"
 	"testing"
 	"time"
@@ -308,8 +310,14 @@ func TestPodAgentNextTask(t *testing.T) {
 
 func TestPodAgentEndTask(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(task.Collection, pod.Collection, event.AllLogCollection, model.ProjectRefCollection, build.Collection, model.VersionCollection))
+		assert.NoError(t, db.ClearCollections(task.Collection, pod.Collection, event.AllLogCollection, model.ProjectRefCollection, build.Collection, model.VersionCollection, commitqueue.Collection, patchmodel.Collection))
 	}()
+	const podID = "pod"
+	const taskID = "task"
+	const buildID = "build"
+	const versionID = "version"
+	const projID = "proj"
+	const patchID = "aabbccddeeff001122334455"
 	td := &apimodels.TaskEndDetail{
 		Status: evergreen.TaskSucceeded,
 	}
@@ -340,8 +348,6 @@ func TestPodAgentEndTask(t *testing.T) {
 			assert.Zero(t, rh.taskID)
 		},
 		"RunFailsWithNonexistentPodOrTask": func(ctx context.Context, t *testing.T, rh *podAgentEndTask, env evergreen.Environment) {
-			const podID = "foo1"
-			const taskID = "foo1"
 			rh.podID = podID
 			rh.taskID = taskID
 			resp := rh.Run(ctx)
@@ -353,9 +359,7 @@ func TestPodAgentEndTask(t *testing.T) {
 			resp = rh.Run(ctx)
 			assert.Equal(t, http.StatusNotFound, resp.Status())
 		},
-		"RunReturnsShouldExitWithNilRunningTaskAndInvalidStatus": func(ctx context.Context, t *testing.T, rh *podAgentEndTask, env evergreen.Environment) {
-			const podID = "foo2"
-			const taskID = "foo2"
+		"RunNoOpsWithNilRunningTaskAndInvalidStatus": func(ctx context.Context, t *testing.T, rh *podAgentEndTask, env evergreen.Environment) {
 			podToInsert := &pod.Pod{
 				ID:          podID,
 				RunningTask: "",
@@ -369,17 +373,13 @@ func TestPodAgentEndTask(t *testing.T) {
 			rh.taskID = taskID
 			resp := rh.Run(ctx)
 			endTaskResp := resp.Data().(*apimodels.EndTaskResponse)
-			assert.Equal(t, endTaskResp.ShouldExit, true)
+			assert.Equal(t, endTaskResp, &apimodels.EndTaskResponse{})
 			require.NoError(t, podToInsert.UpdateStatus(pod.StatusStarting))
 			resp = rh.Run(ctx)
 			endTaskResp = resp.Data().(*apimodels.EndTaskResponse)
-			assert.Equal(t, endTaskResp.ShouldExit, true)
+			assert.Equal(t, endTaskResp, &apimodels.EndTaskResponse{})
 		},
 		"RunSuccessfullyFinishesTask": func(ctx context.Context, t *testing.T, rh *podAgentEndTask, env evergreen.Environment) {
-			const podID = "foo3"
-			const taskID = "foo3"
-			const buildID = "foo3"
-			const versionID = "foo3"
 			podToInsert := &pod.Pod{
 				ID:          podID,
 				RunningTask: taskID,
@@ -414,6 +414,100 @@ func TestPodAgentEndTask(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, foundTask.Status, evergreen.TaskSucceeded)
 		},
+		"RunNoOpsOnAbortedTask": func(ctx context.Context, t *testing.T, rh *podAgentEndTask, env evergreen.Environment) {
+			podToInsert := &pod.Pod{
+				ID:          podID,
+				RunningTask: taskID,
+				Status:      pod.StatusRunning,
+			}
+			require.NoError(t, podToInsert.Insert())
+			taskToInsert := &task.Task{
+				Id:      taskID,
+				BuildId: buildID,
+				Version: versionID,
+			}
+			require.NoError(t, taskToInsert.Insert())
+			buildToInsert := &build.Build{
+				Id: buildID,
+			}
+			require.NoError(t, buildToInsert.Insert())
+			versionToInsert := &model.Version{
+				Id: versionID,
+			}
+			require.NoError(t, versionToInsert.Insert())
+			projectToInsert := model.ProjectRef{
+				Identifier: taskID,
+			}
+			require.NoError(t, projectToInsert.Insert())
+			rh.podID = podID
+			rh.taskID = taskID
+			rh.details = *td
+			rh.details.Status = evergreen.TaskUndispatched
+			resp := rh.Run(ctx)
+			endTaskResp := resp.Data().(*apimodels.EndTaskResponse)
+			assert.Equal(t, endTaskResp, &apimodels.EndTaskResponse{})
+		},
+		"RunSuccessfullyDequeuesLaterCommitQueueTask": func(ctx context.Context, t *testing.T, rh *podAgentEndTask, env evergreen.Environment) {
+			podToInsert := &pod.Pod{
+				ID:          podID,
+				RunningTask: taskID,
+				Status:      pod.StatusRunning,
+			}
+			require.NoError(t, podToInsert.Insert())
+			taskToInsert := &task.Task{
+				Id:           taskID,
+				BuildId:      buildID,
+				Version:      versionID,
+				Project:      projID,
+				BuildVariant: "bv1",
+				Requester:    evergreen.MergeTestRequester,
+				DisplayName:  "some_task",
+			}
+			taskToInsert2 := &task.Task{
+				Id:               "task2",
+				Version:          patchID,
+				BuildVariant:     "bv1",
+				Status:           evergreen.TaskFailed,
+				DisplayName:      "some_task",
+				CommitQueueMerge: true,
+			}
+			require.NoError(t, taskToInsert2.Insert())
+			require.NoError(t, taskToInsert.Insert())
+			buildToInsert := &build.Build{
+				Id: buildID,
+			}
+			require.NoError(t, buildToInsert.Insert())
+			versionToInsert := &model.Version{
+				Id: versionID,
+			}
+			require.NoError(t, versionToInsert.Insert())
+			projectToInsert := model.ProjectRef{
+				Identifier: projID,
+			}
+			require.NoError(t, projectToInsert.Insert())
+			cq := commitqueue.CommitQueue{
+				ProjectID: projID,
+				Queue: []commitqueue.CommitQueueItem{
+					{Source: commitqueue.SourceDiff, Version: versionID, Issue: "issue1"},
+					{Source: commitqueue.SourceDiff, Version: patchID, Issue: "issue2"},
+				},
+			}
+			require.NoError(t, commitqueue.InsertQueue(&cq))
+			patch := patchmodel.Patch{
+				Id: patchmodel.NewId(patchID),
+			}
+			require.NoError(t, patch.Insert())
+			rh.podID = podID
+			rh.taskID = taskID
+			rh.details = *td
+			resp := rh.Run(ctx)
+			endTaskResp := resp.Data().(*apimodels.EndTaskResponse)
+			assert.Equal(t, endTaskResp.ShouldExit, false)
+			foundCq, err := commitqueue.FindOneId(projID)
+			require.NoError(t, err)
+			assert.Len(t, foundCq.Queue, 1)
+			assert.Equal(t, foundCq.Queue[0].Issue, "issue1")
+		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
@@ -422,7 +516,7 @@ func TestPodAgentEndTask(t *testing.T) {
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
 
-			require.NoError(t, db.ClearCollections(task.Collection, pod.Collection, event.AllLogCollection, model.ProjectRefCollection, build.Collection, model.VersionCollection))
+			require.NoError(t, db.ClearCollections(task.Collection, pod.Collection, event.AllLogCollection, model.ProjectRefCollection, build.Collection, model.VersionCollection, commitqueue.Collection, patchmodel.Collection))
 
 			rh, ok := makePodAgentEndTask(env).(*podAgentEndTask)
 			require.True(t, ok)

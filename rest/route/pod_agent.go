@@ -409,7 +409,7 @@ func (h *podAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 
 	if p.RunningTask == "" {
 		grip.Notice(message.Fields{
-			"message":                 "pod is not assigned task, not clearing, asking agent to exit",
+			"message":                 "pod is not assigned task, agent should move onto requesting next task",
 			"task_id":                 t.Id,
 			"task_status_from_db":     t.Status,
 			"task_details_from_db":    t.Details,
@@ -420,7 +420,6 @@ func (h *podAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 			"task_details_from_agent": h.details,
 			"pod_id":                  p.ID,
 		})
-		endTaskResp.ShouldExit = true
 		return gimlet.NewJSONResponse(endTaskResp)
 	}
 
@@ -479,7 +478,13 @@ func (h *podAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if p.Status != pod.StatusRunning {
-		endTaskResp.ShouldExit = true
+		j := units.NewPodTerminationJob(h.podID, "pod is no longer running", utility.RoundPartOfMinute(0))
+		if err := amboy.EnqueueUniqueJob(ctx, h.env.RemoteQueue(), j); err != nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    errors.Wrap(err, "enqueueing job to terminate pod").Error(),
+			})
+		}
 	}
 
 	msg := message.Fields{
