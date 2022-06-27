@@ -3668,6 +3668,9 @@ type GroupedTaskStatusCount struct {
 }
 
 func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]*GroupedTaskStatusCount, error) {
+	if opts.Variants != nil {
+		opts.IncludeBuildVariantDisplayName = true
+	}
 	pipeline := getTasksByVersionPipeline(versionID, opts)
 	project := bson.M{"$project": bson.M{
 		BuildVariantKey:            "$" + BuildVariantKey,
@@ -3860,17 +3863,8 @@ func HasMatchingTasks(versionID string, opts HasMatchingTasksOptions) (bool, err
 func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) []bson.M {
 	var match bson.M = bson.M{}
 
-	// Allow searching by either variant name or variant display
-	if len(opts.Variants) > 0 {
-		variantsAsRegex := strings.Join(opts.Variants, "|")
+	match[VersionKey] = versionID
 
-		match = bson.M{
-			"$or": []bson.M{
-				{BuildVariantDisplayNameKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
-				{BuildVariantKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
-			},
-		}
-	}
 	if len(opts.TaskNames) > 0 {
 		taskNamesAsRegex := strings.Join(opts.TaskNames, "|")
 		match[DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex, "$options": "i"}
@@ -3879,16 +3873,25 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	if !opts.IncludeEmptyActivation {
 		match[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
 	}
-	match[VersionKey] = versionID
-	pipeline := []bson.M{}
+	pipeline := []bson.M{
+		{"$match": match},
+	}
+
 	// Add BuildVariantDisplayName to all the results if it we need to match on the entire set of results
 	// This is an expensive operation so we only want to do it if we have to
 	if len(opts.Variants) > 0 && opts.IncludeBuildVariantDisplayName {
 		pipeline = append(pipeline, AddBuildVariantDisplayName...)
+
+		// Allow searching by either variant name or variant display
+		variantsAsRegex := strings.Join(opts.Variants, "|")
+		match = bson.M{
+			"$or": []bson.M{
+				{BuildVariantDisplayNameKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
+				{BuildVariantKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
+			},
+		}
+		pipeline = append(pipeline, bson.M{"$match": match})
 	}
-	pipeline = append(pipeline,
-		bson.M{"$match": match},
-	)
 
 	if !opts.IncludeExecutionTasks {
 		const tempParentKey = "_parent"
