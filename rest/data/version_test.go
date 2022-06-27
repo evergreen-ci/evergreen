@@ -312,7 +312,7 @@ func TestCreateVersionFromConfig(t *testing.T) {
 	assert.Equal("my message", newVersion.Message)
 	assert.Equal(evergreen.VersionCreated, newVersion.Status)
 	assert.Equal(ref.Id, newVersion.Identifier)
-	assert.Equal(6, newVersion.RevisionOrderNumber)
+	assert.Equal(1, newVersion.RevisionOrderNumber)
 	assert.Equal(evergreen.AdHocRequester, newVersion.Requester)
 	assert.Empty(newVersion.Config)
 
@@ -358,7 +358,7 @@ tasks:
 	assert.Equal("message 2", newVersion.Message)
 	assert.Equal(evergreen.VersionCreated, newVersion.Status)
 	assert.Equal(ref.Id, newVersion.Identifier)
-	assert.Equal(7, newVersion.RevisionOrderNumber)
+	assert.Equal(2, newVersion.RevisionOrderNumber)
 	assert.Equal(evergreen.AdHocRequester, newVersion.Requester)
 	assert.Empty(newVersion.Config)
 
