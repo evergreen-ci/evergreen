@@ -251,10 +251,10 @@ func NewCliIntent(params CLIIntentParams) (Intent, error) {
 	}
 	if params.Finalize {
 		if params.Alias == "" {
-			if len(params.Variants) == 0 {
+			if len(params.Variants) == 0 && len(params.RegexVariants) == 0 {
 				return nil, errors.New("no variants provided")
 			}
-			if len(params.Tasks) == 0 {
+			if len(params.Tasks) == 0 && len(params.RegexTasks) == 0 {
 				return nil, errors.New("no tasks provided")
 			}
 		}
