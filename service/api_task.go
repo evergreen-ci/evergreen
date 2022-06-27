@@ -243,12 +243,10 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// GetDisplayTask will set the DisplayTask on t if applicable
-	dt, err := t.GetDisplayTask()
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 	}
-	job := units.NewCollectTaskEndDataJob(t, currentHost, nil, currentHost.Id)
+	job := units.NewCollectTaskEndDataJob(*t, currentHost, nil, currentHost.Id)
 	if err = as.queue.Put(r.Context(), job); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError,
 			errors.Wrap(err, "couldn't queue job to update task stats accounting"))
@@ -309,9 +307,10 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		"duration":    time.Since(finishTime),
 		"should_exit": endTaskResp.ShouldExit,
 		"status":      details.Status,
+		"path":        fmt.Sprintf("/api/2/task/%s/end", t.Id),
 	}
 
-	if dt != nil {
+	if t.IsPartOfDisplay() {
 		msg["display_task_id"] = t.DisplayTask.Id
 	}
 

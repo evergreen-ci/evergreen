@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
@@ -28,6 +27,7 @@ func init() {
 
 type collectTaskEndDataJob struct {
 	TaskID       string `bson:"task_id" json:"task_id" yaml:"task_id"`
+	HostID       string `bson:"host_id" json:"host_id" yaml:"host_id"`
 	Execution    int    `bson:"execution" json:"execution" yaml:"execution"`
 	RuntimeEnvID string `bson:"runtime_env_id" json:"runtime_env_id" yaml:"runtime_env_id"`
 	job.Base     `bson:"metadata" json:"metadata" yaml:"metadata"`
@@ -54,13 +54,15 @@ func newTaskEndJob() *collectTaskEndDataJob {
 // NewCollectTaskEndDataJob logs information a task after it
 // completes. It also logs information about the total runtime and instance
 // type, which can be used to measure the cost of running a task.
-func NewCollectTaskEndDataJob(t *task.Task, h *host.Host, p *pod.Pod, id string) amboy.Job {
+func NewCollectTaskEndDataJob(t task.Task, h *host.Host, p *pod.Pod, id string) amboy.Job {
 	j := newTaskEndJob()
 	j.TaskID = t.Id
 	j.Execution = t.Execution
+	// TODO: Remove HostID and its usages in favor of RuntimeEnvID
+	j.HostID = id
 	j.RuntimeEnvID = id
 	j.pod = p
-	j.task = t
+	j.task = &t
 	j.host = h
 	j.SetID(fmt.Sprintf("%s.%s.%s.%d", collectTaskEndDataJobName, j.TaskID, j.RuntimeEnvID, job.GetNumber()))
 	j.SetPriority(-2)
@@ -87,7 +89,7 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		}
 	}
 	if j.task == nil {
-		j.AddError(errors.Errorf("finding task '%s'", j.TaskID))
+		j.AddError(errors.Errorf("task '%s' not found", j.TaskID))
 		return
 	}
 
@@ -119,8 +121,8 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		"version":              j.task.Version,
 	}
 
-	if utility.FromStringPtr(j.task.DisplayTaskId) != "" {
-		msg["display_task_id"] = j.task.DisplayTaskId
+	if j.task.IsPartOfDisplay() {
+		msg["display_task_id"] = j.task.DisplayTask.Id
 	}
 
 	pRef, err := model.FindBranchProjectRef(j.task.Project)
@@ -131,13 +133,19 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 
 	isHostMode := j.task.IsHostTask()
 	if isHostMode {
-		j.host, err = host.FindOneId(j.RuntimeEnvID)
+		var id string
+		if j.HostID != "" {
+			id = j.HostID
+		} else {
+			id = j.RuntimeEnvID
+		}
+		j.host, err = host.FindOneId(id)
 		j.AddError(err)
 		if err != nil {
 			return
 		}
 		if j.host == nil {
-			j.AddError(errors.Errorf("finding host '%s'", j.RuntimeEnvID))
+			j.AddError(errors.Errorf("host '%s' not found", id))
 			return
 		}
 		msg["host_id"] = j.host.Id
@@ -156,10 +164,17 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 			return
 		}
 		if j.pod == nil {
-			j.AddError(errors.Errorf("finding pod '%s'", j.RuntimeEnvID))
+			j.AddError(errors.Errorf("pod '%s' not found", j.RuntimeEnvID))
 			return
 		}
 		msg["pod_id"] = j.pod.ID
+		msg["pod_os"] = j.pod.TaskContainerCreationOpts.OS
+		msg["pod_arch"] = j.pod.TaskContainerCreationOpts.Arch
+		msg["cpu"] = j.pod.TaskContainerCreationOpts.CPU
+		msg["memory_mb"] = j.pod.TaskContainerCreationOpts.MemoryMB
+		if j.pod.TaskContainerCreationOpts.OS.Matches(evergreen.ECSOS(pod.OSWindows)) {
+			msg["windows_version"] = j.pod.TaskContainerCreationOpts.WindowsVersion
+		}
 	}
 
 	if !j.task.DependenciesMetTime.IsZero() {
