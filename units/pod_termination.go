@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/pod/dispatcher"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
@@ -202,8 +203,14 @@ func (j *podTerminationJob) populateIfUnset(ctx context.Context) error {
 // tasks in the dispatcher as needing re-allocation.
 func (j *podTerminationJob) fixStrandedTasks(ctx context.Context) error {
 	if j.pod.RunningTask != "" {
+		// A stranded task will need to be re-allocated to ensure that it
+		// dispatches to a new pod after this one is terminated.
+		if err := task.MarkManyContainerDeallocated([]string{j.pod.RunningTask}); err != nil {
+			return errors.Wrapf(err, "marking stranded container task '%s' running on pod as deallocated", j.pod.RunningTask)
+		}
+
 		if err := model.ClearAndResetStrandedContainerTask(j.pod); err != nil {
-			return errors.Wrap(err, "resetting stranded container task running on pod")
+			return errors.Wrapf(err, "resetting stranded container task '%s' running on pod", j.pod.RunningTask)
 		}
 	}
 
