@@ -3723,6 +3723,16 @@ func TestDisplayTaskUpdates(t *testing.T) {
 		},
 	}
 	assert.NoError(dt2.Insert())
+	dt3 := task.Task{
+		Id:          "dt2",
+		DisplayOnly: true,
+		Status:      evergreen.TaskUndispatched,
+		Activated:   false,
+		ExecutionTasks: []string{
+			"task11",
+		},
+	}
+	assert.NoError(dt3.Insert())
 	blockedDt := task.Task{
 		Id:          "blockedDt",
 		DisplayOnly: true,
@@ -3811,6 +3821,19 @@ func TestDisplayTaskUpdates(t *testing.T) {
 		Status:    evergreen.TaskUndispatched,
 	}
 	assert.NoError(task10.Insert())
+	task11 := task.Task{
+		Id:        "task11",
+		Activated: true,
+		StartTime: time.Time{},
+	}
+	task12 := task.Task{
+		Id:         "task12",
+		Activated:  true,
+		StartTime:  time.Date(2000, 0, 0, 0, 44, 0, 0, time.Local),
+		FinishTime: time.Date(2000, 0, 0, 1, 0, 1, 0, time.Local),
+	}
+	assert.NoError(task11.Insert())
+	assert.NoError(task12.Insert())
 
 	// test that updating the status + activated from execution tasks works
 	assert.NoError(UpdateDisplayTaskForTask(&task1))
@@ -3857,6 +3880,13 @@ func TestDisplayTaskUpdates(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(dbTask)
 	assert.Equal(evergreen.TaskFailed, dbTask.Status)
+
+	// a display task should not set its start time to any exec tasks that have zero start time
+	assert.NoError(UpdateDisplayTaskForTask(&task11))
+	dbTask, err = task.FindOne(db.Query(task.ById(dt3.Id)))
+	assert.NoError(err)
+	assert.NotNil(dbTask)
+	assert.Equal(time.Date(2000, 0, 0, 0, 44, 0, 0, time.Local), dbTask.StartTime)
 }
 
 func TestDisplayTaskUpdateNoUndispatched(t *testing.T) {

@@ -1583,7 +1583,7 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 		timeTaken += execTask.TimeTaken
 
 		// set the start/end time of the display task as the earliest/latest task
-		if execTask.StartTime.Before(startTime) {
+		if execTask.StartTime != utility.ZeroTime && execTask.StartTime.Before(startTime) {
 			startTime = execTask.StartTime
 		}
 		if execTask.FinishTime.After(endTime) {
