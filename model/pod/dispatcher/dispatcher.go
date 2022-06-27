@@ -309,6 +309,11 @@ func (pd *PodDispatcher) RemovePod(ctx context.Context, env evergreen.Environmen
 	if len(pd.PodIDs) == 1 && len(pd.TaskIDs) > 0 {
 		// The last pod is about to be removed, so there will be no pod
 		// remaining to run the tasks still in the dispatch queue.
+
+		if err := model.MarkUnallocatableContainerTasksSystemFailed(pd.TaskIDs); err != nil {
+			return errors.Wrap(err, "marking unallocatable container tasks as system-failed")
+		}
+
 		if err := task.MarkManyContainerDeallocated(pd.TaskIDs); err != nil {
 			return errors.Wrap(err, "marking all tasks in dispatcher as container deallocated")
 		}
@@ -330,7 +335,24 @@ func (pd *PodDispatcher) removePodsAndTasks(ctx context.Context, env evergreen.E
 	oldPodIDs := pd.PodIDs
 	oldTaskIDs := pd.TaskIDs
 	pd.PodIDs, _ = utility.StringSliceSymmetricDifference(pd.PodIDs, podIDs)
-	pd.TaskIDs, _ = utility.StringSliceSymmetricDifference(pd.TaskIDs, taskIDs)
+
+	taskIDsSet := map[string]struct{}{}
+	for _, taskID := range taskIDs {
+		taskIDsSet[taskID] = struct{}{}
+	}
+	// Don't use StringSliceSymmetricDifference here, because the order of tasks
+	// in the dispatch queue matters and StringSliceSymmetricDifference is not
+	// guaranteed to return strings in the same order as they were originally
+	// ordered in the slice. Iterate in reverse so that removing elements during
+	// iteration doesn't change the cursor position.
+	for i := len(pd.TaskIDs) - 1; i >= 0; i-- {
+		if _, ok := taskIDsSet[pd.TaskIDs[i]]; !ok {
+			continue
+		}
+
+		pd.TaskIDs = append(pd.TaskIDs[:i], pd.TaskIDs[i+1:]...)
+	}
+
 	defer func() {
 		if err != nil {
 			pd.PodIDs = oldPodIDs

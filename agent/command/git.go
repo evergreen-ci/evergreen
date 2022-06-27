@@ -22,7 +22,6 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v34/github"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -213,6 +212,31 @@ func (opts cloneOpts) buildSSHCloneCommand() ([]string, error) {
 	}, nil
 }
 
+func moduleRevExpansionName(name string) string { return fmt.Sprintf("%s_rev", name) }
+
+// Load performs a GET on /manifest/load
+func (c *gitFetchProject) manifestLoad(ctx context.Context,
+	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
+
+	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
+
+	manifest, err := comm.GetManifest(ctx, td)
+	if err != nil {
+		return errors.Wrapf(err, "problem loading manifest for %s", td.ID)
+	}
+
+	for moduleName := range manifest.Modules {
+		// put the url for the module in the expansions
+		conf.Expansions.Put(moduleRevExpansionName(moduleName), manifest.Modules[moduleName].Revision)
+		conf.Expansions.Put(fmt.Sprintf("%s_branch", moduleName), manifest.Modules[moduleName].Branch)
+		conf.Expansions.Put(fmt.Sprintf("%s_repo", moduleName), manifest.Modules[moduleName].Repo)
+		conf.Expansions.Put(fmt.Sprintf("%s_owner", moduleName), manifest.Modules[moduleName].Owner)
+	}
+
+	logger.Execution().Info("manifest loaded successfully")
+	return nil
+}
+
 func gitFetchProjectFactory() Command   { return &gitFetchProject{} }
 func (c *gitFetchProject) Name() string { return "git.get_project" }
 
@@ -290,16 +314,14 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, conf *internal.
 
 func (c *gitFetchProject) waitForMergeableCheck(ctx context.Context, logger client.LoggerProducer, opts cloneOpts, prNum int) (string, error) {
 	var mergeSHA string
-	httpClient := utility.GetOAuth2HTTPClient(opts.token)
-	defer utility.PutHTTPClient(httpClient)
-	githubClient := github.NewClient(httpClient)
+
 	const (
-		getPRAttempts      = 8
+		getPRAttempts      = 3
 		getPRRetryMinDelay = time.Second
 		getPRRetryMaxDelay = 15 * time.Second
 	)
 	err := utility.Retry(ctx, func() (bool, error) {
-		pr, _, err := githubClient.PullRequests.Get(ctx, opts.owner, opts.repo, prNum)
+		pr, err := thirdparty.GetGithubPullRequest(ctx, opts.token, opts.owner, opts.repo, prNum)
 		if err != nil {
 			return false, errors.Wrap(err, "error getting pull request data from Github")
 		}
@@ -321,7 +343,7 @@ func (c *gitFetchProject) waitForMergeableCheck(ctx context.Context, logger clie
 		MaxAttempts: getPRAttempts,
 		MinDelay:    getPRRetryMinDelay,
 		MaxDelay:    getPRRetryMaxDelay,
-	}) // Retry roughly after 1, 2, 4, 8, 15, 15, 15, seconds, or 1 minute.
+	})
 
 	return mergeSHA, err
 }
@@ -390,7 +412,11 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 		fetchRetryMaxDelay = 10 * time.Second
 	)
 
-	var err error
+	err := c.manifestLoad(ctx, comm, logger, conf)
+	if err != nil {
+		return errors.Wrap(err, "failed to load manifest")
+	}
+
 	if err = util.ExpandValues(c, conf.Expansions); err != nil {
 		return errors.Wrap(err, "error expanding github parameters")
 	}

@@ -99,6 +99,9 @@ const (
 	TaskDescriptionHeartbeat = "heartbeat"
 	TaskDescriptionStranded  = "stranded"
 	TaskDescriptionNoResults = "expected test results, but none attached"
+	// TaskDescriptionContainerUnallocatable indicates that the reason a
+	// container task failed is because it cannot be allocated a container.
+	TaskDescriptionContainerUnallocatable = "container task cannot be allocated"
 
 	// Task Statuses that are currently used only by the UI, and in tests
 	// (these may be used in old tasks as actual task statuses rather than just
@@ -539,6 +542,7 @@ const (
 	S3PullCommandName             = "s3.pull"
 	ShellExecCommandName          = "shell.exec"
 	AttachResultsCommandName      = "attach.results"
+	ManifestLoadCommandName       = "manifest.load"
 	AttachArtifactsCommandName    = "attach.artifacts"
 	AttachXUnitResultsCommandName = "attach.xunit_results"
 )
@@ -1072,13 +1076,20 @@ var SuperuserPermissions = []string{
 }
 
 const (
-	BasicProjectAccessRole = "basic_project_access"
-	BasicDistroAccessRole  = "basic_distro_access"
+	BasicProjectAccessRole     = "basic_project_access"
+	BasicDistroAccessRole      = "basic_distro_access"
+	SuperUserRole              = "superuser"
+	SuperUserProjectAccessRole = "admin_project_access"
+	SuperUserDistroAccessRole  = "superuser_distro_access"
 )
 
-var BasicAccessRoles = []string{
+// Contains both general and superuser access.
+var GeneralAccessRoles = []string{
 	BasicProjectAccessRole,
 	BasicDistroAccessRole,
+	SuperUserRole,
+	SuperUserProjectAccessRole,
+	SuperUserDistroAccessRole,
 }
 
 // Constants for Evergreen log types.
