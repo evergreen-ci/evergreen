@@ -548,12 +548,23 @@ func TestSetRunningTask(t *testing.T) {
 			require.NotZero(t, dbPod)
 			assert.Equal(t, taskID, dbPod.RunningTask)
 		},
+		"NoopsWithPodAlreadyRunningSameTask": func(ctx context.Context, t *testing.T, env *mock.Environment, p Pod) {
+			const taskID = "task"
+			p.RunningTask = taskID
+			require.NoError(t, p.Insert())
+			assert.NoError(t, p.SetRunningTask(ctx, env, taskID))
+
+			dbPod, err := FindOneByID(p.ID)
+			require.NoError(t, err)
+			require.NotZero(t, dbPod)
+			assert.Equal(t, taskID, dbPod.RunningTask)
+		},
 		"FailsWithNonRunningPod": func(ctx context.Context, t *testing.T, env *mock.Environment, p Pod) {
 			p.Status = StatusDecommissioned
 			require.NoError(t, p.Insert())
 			assert.Error(t, p.SetRunningTask(ctx, env, "task"))
 		},
-		"FailsWithPodAlreadyRunningTask": func(ctx context.Context, t *testing.T, env *mock.Environment, p Pod) {
+		"FailsWithPodAlreadyRunningDifferentTask": func(ctx context.Context, t *testing.T, env *mock.Environment, p Pod) {
 			p.RunningTask = "some-other-task"
 			require.NoError(t, p.Insert())
 			assert.Error(t, p.SetRunningTask(ctx, env, "task"))
