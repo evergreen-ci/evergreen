@@ -421,12 +421,14 @@ func (h *podAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 		if t.Activated {
 			grip.Warning(message.Fields{
 				"message": fmt.Sprintf("task '%s' is active and undispatched after being marked as finished", t.Id),
+				"task_id": t.Id,
 				"path":    fmt.Sprintf("/rest/v2/pods/%s/task/%s/end", p.ID, t.Id),
 			})
 			return gimlet.NewJSONResponse(&apimodels.EndTaskResponse{})
 		}
 		grip.Info(message.Fields{
 			"message": fmt.Sprintf("task %s has been aborted", t.Id),
+			"task_id": t.Id,
 			"path":    fmt.Sprintf("/rest/v2/pods/%s/task/%s/end", p.ID, t.Id),
 		})
 		return gimlet.NewJSONResponse(&apimodels.EndTaskResponse{})

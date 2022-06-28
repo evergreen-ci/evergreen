@@ -122,7 +122,7 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 	}
 
 	if j.task.IsPartOfDisplay() {
-		msg["display_task_id"] = j.task.DisplayTask.Id
+		msg["display_task_id"] = j.task.DisplayTaskId
 	}
 
 	pRef, err := model.FindBranchProjectRef(j.task.Project)
