@@ -625,10 +625,12 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 	project, err := projCtx.GetProject()
 
 	if r.FormValue("redirect_spruce_users") == "true" {
-		user := MustHaveUser(r)
-		if user.Settings.UseSpruceOptions.SpruceV1 {
-			http.Redirect(w, r, fmt.Sprintf("%s/commits/%s", uis.Settings.Ui.UIv2Url, project.Identifier), http.StatusTemporaryRedirect)
-			return
+		if u := gimlet.GetUser(r.Context()); u != nil {
+			usr, ok := u.(*user.DBUser)
+			if ok && usr != nil && usr.Settings.UseSpruceOptions.SpruceV1 {
+				http.Redirect(w, r, fmt.Sprintf("%s/commits/%s", uis.Settings.Ui.UIv2Url, project.Identifier), http.StatusTemporaryRedirect)
+				return
+			}
 		}
 	}
 

@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -51,10 +52,12 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 
 	if r.FormValue("redirect_spruce_users") == "true" {
-		user := MustHaveUser(r)
-		if user.Settings.UseSpruceOptions.SpruceV1 {
-			http.Redirect(w, r, fmt.Sprintf("%s/version/%s/tasks?variant=%s", uis.Settings.Ui.UIv2Url, projCtx.Version.Id, projCtx.Build.BuildVariant), http.StatusTemporaryRedirect)
-			return
+		if u := gimlet.GetUser(r.Context()); u != nil {
+			usr, ok := u.(*user.DBUser)
+			if ok && usr != nil && usr.Settings.UseSpruceOptions.SpruceV1 {
+				http.Redirect(w, r, fmt.Sprintf("%s/version/%s/tasks?variant=%s", uis.Settings.Ui.UIv2Url, projCtx.Version.Id, projCtx.Build.BuildVariant), http.StatusTemporaryRedirect)
+				return
+			}
 		}
 	}
 

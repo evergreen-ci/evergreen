@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -26,9 +27,12 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 	currentUser := MustHaveUser(r)
 	spruceLink := fmt.Sprintf("%s/patch/%s/configure", uis.Settings.Ui.UIv2Url, projCtx.Patch.Id.Hex())
 	if r.FormValue("redirect_spruce_users") == "true" {
-		if currentUser.Settings.UseSpruceOptions.SpruceV1 {
-			http.Redirect(w, r, spruceLink, http.StatusTemporaryRedirect)
-			return
+		if u := gimlet.GetUser(r.Context()); u != nil {
+			usr, ok := u.(*user.DBUser)
+			if ok && usr != nil && usr.Settings.UseSpruceOptions.SpruceV1 {
+				http.Redirect(w, r, spruceLink, http.StatusTemporaryRedirect)
+				return
+			}
 		}
 	}
 

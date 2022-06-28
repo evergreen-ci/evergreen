@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
 	"github.com/evergreen-ci/utility"
@@ -40,10 +41,12 @@ func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
 	id := gimlet.GetVars(r)["host_id"]
 
 	if r.FormValue("redirect_spruce_users") == "true" {
-		user := MustHaveUser(r)
-		if user.Settings.UseSpruceOptions.SpruceV1 {
-			http.Redirect(w, r, fmt.Sprintf("%s/host/%s", uis.Settings.Ui.UIv2Url, id), http.StatusTemporaryRedirect)
-			return
+		if u := gimlet.GetUser(r.Context()); u != nil {
+			usr, ok := u.(*user.DBUser)
+			if ok && usr != nil && usr.Settings.UseSpruceOptions.SpruceV1 {
+				http.Redirect(w, r, fmt.Sprintf("%s/host/%s", uis.Settings.Ui.UIv2Url, id), http.StatusTemporaryRedirect)
+				return
+			}
 		}
 	}
 

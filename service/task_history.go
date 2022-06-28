@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -73,10 +74,12 @@ func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
 	taskName := gimlet.GetVars(r)["task_name"]
 
 	if r.FormValue("redirect_spruce_users") == "true" {
-		user := MustHaveUser(r)
-		if user.Settings.UseSpruceOptions.SpruceV1 {
-			http.Redirect(w, r, fmt.Sprintf("%s/task-history/%s/%s", uis.Settings.Ui.UIv2Url, project.Identifier, taskName), http.StatusTemporaryRedirect)
-			return
+		if u := gimlet.GetUser(r.Context()); u != nil {
+			usr, ok := u.(*user.DBUser)
+			if ok && usr != nil && usr.Settings.UseSpruceOptions.SpruceV1 {
+				http.Redirect(w, r, fmt.Sprintf("%s/task-history/%s/%s", uis.Settings.Ui.UIv2Url, project.Identifier, taskName), http.StatusTemporaryRedirect)
+				return
+			}
 		}
 	}
 
