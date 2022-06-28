@@ -522,6 +522,13 @@ func (p *Pod) GetSecret() (*Secret, error) {
 
 // SetRunningTask sets the task to dispatch to the pod.
 func (p *Pod) SetRunningTask(ctx context.Context, env evergreen.Environment, taskID string) error {
+	if p.RunningTask == taskID {
+		return nil
+	}
+	if p.RunningTask != "" {
+		return errors.Errorf("cannot set running task to '%s' when it is already set to '%s'", taskID, p.RunningTask)
+	}
+
 	query := bson.M{
 		IDKey:          p.ID,
 		StatusKey:      StatusRunning,

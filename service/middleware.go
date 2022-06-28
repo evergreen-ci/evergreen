@@ -365,6 +365,7 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 			Value:   ctx.ProjectRef.Id,
 			Path:    "/",
 			Expires: time.Now().Add(7 * 24 * time.Hour),
+			Secure:  true,
 		})
 	}
 

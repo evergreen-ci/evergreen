@@ -5,12 +5,8 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestFindPredictedMakespan(t *testing.T) {
@@ -68,110 +64,4 @@ func TestCalculateActualMakespan(t *testing.T) {
 		})
 
 	})
-}
-
-func TestAverageTaskLatencyLastMinuteByDistro(t *testing.T) {
-	require := require.New(t)
-	assert := assert.New(t)
-	require.NoError(db.ClearCollections(task.Collection, distro.Collection))
-	distroName := "sampleDistro"
-	d := distro.Distro{Id: distroName}
-	require.NoError(d.Insert())
-	now := time.Now().Add(-50 * time.Second)
-
-	tasks := []task.Task{
-		{
-			Id:                "task1",
-			Requester:         evergreen.RepotrackerVersionRequester,
-			ExecutionPlatform: task.ExecutionPlatformHost,
-			ActivatedTime:     now,
-			ScheduledTime:     now,
-			StartTime:         now.Add(10 * time.Second),
-			Status:            evergreen.TaskStarted,
-			DistroId:          distroName,
-			DisplayOnly:       false},
-		{
-			Id:                "task2",
-			Requester:         evergreen.RepotrackerVersionRequester,
-			ExecutionPlatform: task.ExecutionPlatformHost,
-			ScheduledTime:     now,
-			ActivatedTime:     now,
-			StartTime:         now.Add(20 * time.Second),
-			Status:            evergreen.TaskFailed,
-			DistroId:          distroName},
-		{
-			Id:            "displaytask",
-			Requester:     evergreen.RepotrackerVersionRequester,
-			ActivatedTime: now,
-			ScheduledTime: now,
-			StartTime:     now.Add(40 * time.Second),
-			Status:        evergreen.TaskFailed,
-			DistroId:      distroName,
-			DisplayOnly:   true},
-		{
-			Id:            "task3",
-			Requester:     evergreen.RepotrackerVersionRequester,
-			ActivatedTime: now.Add(10 * time.Second),
-			ScheduledTime: now.Add(10 * time.Second),
-			StartTime:     now.Add(40 * time.Second),
-			Status:        evergreen.TaskSucceeded,
-			DistroId:      distroName},
-		{
-			Id:            "task4",
-			Requester:     evergreen.RepotrackerVersionRequester,
-			ScheduledTime: now,
-			ActivatedTime: now,
-			StartTime:     now.Add(1000 * time.Second),
-			Status:        evergreen.TaskUnstarted,
-			DistroId:      distroName},
-		{
-			Id:            "task5",
-			Requester:     evergreen.PatchVersionRequester,
-			ScheduledTime: now,
-			ActivatedTime: now,
-			StartTime:     now.Add(5 * time.Second),
-			Status:        evergreen.TaskSucceeded,
-			DistroId:      distroName},
-		{
-			Id:            "task6",
-			Requester:     evergreen.PatchVersionRequester,
-			ActivatedTime: now,
-			ScheduledTime: now,
-			StartTime:     now.Add(15 * time.Second),
-			Status:        evergreen.TaskSucceeded,
-			DistroId:      distroName},
-		{
-			Id:            "task7",
-			Requester:     evergreen.GithubPRRequester,
-			ActivatedTime: now,
-			ScheduledTime: now,
-			StartTime:     now.Add(1 * time.Second),
-			Status:        evergreen.TaskSucceeded,
-			DistroId:      distroName},
-	}
-	for _, t := range tasks {
-		require.NoError(t.Insert())
-	}
-	latencies, err := AverageHostTaskLatency(time.Minute)
-	require.NoError(err)
-	expected := []AverageTimeByDistroAndRequester{
-		{
-			Distro:      "sampleDistro",
-			Requester:   evergreen.GithubPRRequester,
-			AverageTime: time.Second,
-		},
-		{
-			Distro:      "sampleDistro",
-			Requester:   evergreen.PatchVersionRequester,
-			AverageTime: 10 * time.Second,
-		},
-		{
-			Distro:      "sampleDistro",
-			Requester:   evergreen.RepotrackerVersionRequester,
-			AverageTime: 20 * time.Second,
-		},
-	}
-	for _, time := range expected {
-		assert.Contains(latencies.Times, time)
-	}
 }

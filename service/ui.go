@@ -89,6 +89,7 @@ func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo T
 
 	cookieStore := sessions.NewCookieStore([]byte(settings.Ui.Secret))
 	cookieStore.Options.HttpOnly = true
+	cookieStore.Options.Secure = true
 
 	uis := &UIServer{
 		Settings:     *settings,

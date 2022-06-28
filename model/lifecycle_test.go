@@ -2003,6 +2003,23 @@ func TestDisplayTaskRestart(t *testing.T) {
 		assert.True(dbTask.Activated, dbTask.Id)
 	}
 
+	// Test that restarting a display task with restartFailed correctly resets failed tasks.
+	assert.NoError(resetTaskData())
+	dt, err := task.FindOneId("displayTask")
+	assert.NoError(err)
+	assert.NoError(dt.SetResetFailedWhenFinished())
+	assert.NoError(resetTask(dt.Id, "caller", false))
+	tasks, err = task.FindAll(db.Query(task.ByIds(allTasks)))
+	assert.NoError(err)
+	assert.Len(tasks, 3)
+	for _, dbTask := range tasks {
+		if dbTask.Activated {
+			assert.Equal(evergreen.TaskUndispatched, dbTask.Status, dbTask.Id)
+		} else {
+			assert.Equal(evergreen.TaskSucceeded, dbTask.Status, dbTask.Id)
+		}
+	}
+
 	// test that execution tasks cannot be restarted
 	assert.NoError(resetTaskData())
 	assert.Error(TryResetTask("task5", "", "", nil))
@@ -2025,8 +2042,8 @@ func TestResetTaskOrDisplayTask(t *testing.T) {
 	assert.NoError(t, err)
 	require.NotNil(t, et)
 
-	// restarting execution tasks should restart the whole display task if it's complete
-	assert.NoError(t, ResetTaskOrDisplayTask(et, "me", evergreen.StepbackTaskActivator, nil))
+	// restarting execution tasks should restart display task
+	assert.NoError(t, ResetTaskOrDisplayTask(et, "me", evergreen.StepbackTaskActivator, false, nil))
 	dt, err := task.FindOneId("displayTask")
 	assert.NoError(t, err)
 	require.NotNil(t, dt)
@@ -2035,13 +2052,14 @@ func TestResetTaskOrDisplayTask(t *testing.T) {
 	assert.False(t, dt.ResetWhenFinished)
 
 	// restarting display task should mark the display task for restart if it's not complete
-	assert.NoError(t, ResetTaskOrDisplayTask(dt, "me", evergreen.StepbackTaskActivator, nil))
+	// ResetFailedWhenFinished should be set to true if failedOnly is passed in
+	assert.NoError(t, ResetTaskOrDisplayTask(dt, "me", evergreen.StepbackTaskActivator, true, nil))
 	dt, err = task.FindOneId("displayTask")
 	assert.NoError(t, err)
 	require.NotNil(t, dt)
 	assert.Equal(t, dt.Status, evergreen.TaskUndispatched)
 	assert.Equal(t, dt.Execution, 1)
-	assert.True(t, dt.ResetWhenFinished)
+	assert.True(t, dt.ResetFailedWhenFinished)
 }
 
 func resetTaskData() error {

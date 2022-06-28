@@ -172,6 +172,7 @@ func SetLoginToken(token, domain string, w http.ResponseWriter) {
 		Path:     "/",
 		Domain:   domain,
 		Expires:  time.Now().Add(365 * 24 * time.Hour),
+		Secure:   true,
 	}
 	http.SetCookie(w, authTokenCookie)
 }

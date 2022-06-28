@@ -512,7 +512,7 @@ const (
 	RepotrackerVersionRequester = "gitter_request"
 	TriggerRequester            = "trigger_request"
 	MergeTestRequester          = "merge_test" // commit queue
-	AdHocRequester              = "ad_hoc"
+	AdHocRequester              = "ad_hoc"     // periodic build
 )
 
 var AllRequesterTypes = []string{
@@ -531,6 +531,7 @@ var (
 		RepotrackerVersionRequester,
 		TriggerRequester,
 		GitTagRequester,
+		AdHocRequester,
 	}
 )
 
