@@ -133,8 +133,13 @@ func (v *Version) SetActivated(activated bool) error {
 		return nil
 	}
 	v.Activated = utility.ToBoolPtr(activated)
+	return SetVersionActivated(v.Id, activated)
+}
+
+// SetVersionActivated sets version activated field to specified boolean given a version id.
+func SetVersionActivated(versionId string, activated bool) error {
 	return VersionUpdateOne(
-		bson.M{VersionIdKey: v.Id},
+		bson.M{VersionIdKey: versionId},
 		bson.M{
 			"$set": bson.M{
 				VersionActivatedKey: activated,
