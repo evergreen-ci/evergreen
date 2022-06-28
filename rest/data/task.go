@@ -104,3 +104,21 @@ func CheckTaskSecret(taskID string, r *http.Request) (int, error) {
 	}
 	return code, errors.WithStack(err)
 }
+
+func FindTask(taskID string) (*task.Task, error) {
+	foundTask, err := task.FindOneId(taskID)
+	if err != nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "finding task").Error(),
+		}
+	}
+	if foundTask == nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task '%s' not found", taskID),
+		}
+	}
+
+	return foundTask, nil
+}
