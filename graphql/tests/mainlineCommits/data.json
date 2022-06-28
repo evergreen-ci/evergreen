@@ -118,7 +118,7 @@
             "build_variant": "enterprise-ubuntu1604-64",
             "display_name": "Ubuntu 16.04"
         },
-        {
+                        {
             "_id": "evergreen_version5_build",
             "build_variant": "enterprise-ubuntu1604-64",
             "display_name": "Ubuntu 16.04"
