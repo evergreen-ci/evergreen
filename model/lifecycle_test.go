@@ -2042,18 +2042,9 @@ func TestResetTaskOrDisplayTask(t *testing.T) {
 	assert.NoError(t, err)
 	require.NotNil(t, et)
 
-	// restarting execution tasks should return an error
-	assert.Error(t, ResetTaskOrDisplayTask(et, "me", evergreen.StepbackTaskActivator, false, nil))
+	// restarting execution tasks should restart display task
+	assert.NoError(t, ResetTaskOrDisplayTask(et, "me", evergreen.StepbackTaskActivator, false, nil))
 	dt, err := task.FindOneId("displayTask")
-	assert.NoError(t, err)
-	require.NotNil(t, dt)
-	assert.Equal(t, dt.Status, evergreen.TaskFailed)
-	assert.Equal(t, dt.Execution, 0)
-	assert.False(t, dt.ResetWhenFinished)
-
-	// restarting display task
-	assert.NoError(t, ResetTaskOrDisplayTask(dt, "me", evergreen.StepbackTaskActivator, false, nil))
-	dt, err = task.FindOneId("displayTask")
 	assert.NoError(t, err)
 	require.NotNil(t, dt)
 	assert.Equal(t, dt.Status, evergreen.TaskUndispatched)
