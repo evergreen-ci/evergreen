@@ -96,6 +96,7 @@ var (
 	GenerateTasksErrorKey       = bsonutil.MustHaveTag(Task{}, "GenerateTasksError")
 	GeneratedTasksToActivateKey = bsonutil.MustHaveTag(Task{}, "GeneratedTasksToActivate")
 	ResetWhenFinishedKey        = bsonutil.MustHaveTag(Task{}, "ResetWhenFinished")
+	ResetFailedWhenFinishedKey  = bsonutil.MustHaveTag(Task{}, "ResetFailedWhenFinished")
 	LogsKey                     = bsonutil.MustHaveTag(Task{}, "Logs")
 	CommitQueueMergeKey         = bsonutil.MustHaveTag(Task{}, "CommitQueueMerge")
 	DisplayStatusKey            = bsonutil.MustHaveTag(Task{}, "DisplayStatus")
@@ -423,6 +424,13 @@ func FailedTasksByVersionAndBV(version string, variant string) bson.M {
 		VersionKey:      version,
 		BuildVariantKey: variant,
 		StatusKey:       bson.M{"$in": evergreen.TaskFailureStatuses},
+	}
+}
+
+func FailedTasksByIds(taskIds []string) bson.M {
+	return bson.M{
+		IdKey:     bson.M{"$in": taskIds},
+		StatusKey: bson.M{"$in": evergreen.TaskFailureStatuses},
 	}
 }
 
