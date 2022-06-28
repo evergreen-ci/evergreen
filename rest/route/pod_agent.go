@@ -247,6 +247,10 @@ func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 
+	if err := h.transitionStartingToRunning(p); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "marking pod as running"))
+	}
+
 	h.setAgentFirstContactTime(p)
 
 	pd, err := h.findDispatcher()
@@ -272,6 +276,16 @@ func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewJSONResponse(apimodels.NextTaskResponse{})
+}
+
+// transitionStartingToRunning transitions the pod that is still starting up to
+// indicate that it is running and ready to accept tasks.
+func (h *podAgentNextTask) transitionStartingToRunning(p *pod.Pod) error {
+	if p.Status != pod.StatusStarting {
+		return nil
+	}
+
+	return p.UpdateStatus(pod.StatusRunning)
 }
 
 func (h *podAgentNextTask) setAgentFirstContactTime(p *pod.Pod) {

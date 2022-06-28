@@ -203,8 +203,9 @@ type Task struct {
 	// ResetWhenFinished indicates that a task should be reset once it is
 	// finished running. This is typically to deal with tasks that should be
 	// reset but cannot do so yet because they're currently running.
-	ResetWhenFinished bool  `bson:"reset_when_finished,omitempty" json:"reset_when_finished,omitempty"`
-	DisplayTask       *Task `bson:"-" json:"-"` // this is a local pointer from an exec to display task
+	ResetWhenFinished       bool  `bson:"reset_when_finished,omitempty" json:"reset_when_finished,omitempty"`
+	ResetFailedWhenFinished bool  `bson:"reset_failed_when_finished,omitempty" json:"reset_failed_when_finished,omitempty"`
+	DisplayTask             *Task `bson:"-" json:"-"` // this is a local pointer from an exec to display task
 
 	// DisplayTaskId is set to the display task ID if the task is an execution task, the empty string if it's not an execution task,
 	// and is nil if we haven't yet checked whether or not this task has a display task.
@@ -1984,6 +1985,7 @@ func resetTaskUpdate(t *Task) bson.M {
 		t.Details = apimodels.TaskEndDetail{}
 		t.HasCedarResults = false
 		t.ResetWhenFinished = false
+		t.ResetFailedWhenFinished = false
 		t.AgentVersion = ""
 		t.HostCreateDetails = []HostCreateDetail{}
 		t.OverrideDependencies = false
@@ -2005,14 +2007,15 @@ func resetTaskUpdate(t *Task) bson.M {
 			ContainerAllocationAttemptsKey: 0,
 		},
 		"$unset": bson.M{
-			DetailsKey:              "",
-			HasCedarResultsKey:      "",
-			CedarResultsFailedKey:   "",
-			ResetWhenFinishedKey:    "",
-			AgentVersionKey:         "",
-			HostIdKey:               "",
-			HostCreateDetailsKey:    "",
-			OverrideDependenciesKey: "",
+			DetailsKey:                 "",
+			HasCedarResultsKey:         "",
+			CedarResultsFailedKey:      "",
+			ResetWhenFinishedKey:       "",
+			ResetFailedWhenFinishedKey: "",
+			AgentVersionKey:            "",
+			HostIdKey:                  "",
+			HostCreateDetailsKey:       "",
+			OverrideDependenciesKey:    "",
 		},
 	}
 	return update
@@ -2690,6 +2693,9 @@ func (t *Task) populateTestResultsForDisplayTask() error {
 // SetResetWhenFinished requests that a display task or single-host task group
 // reset itself when finished. Will mark itself as system failed.
 func (t *Task) SetResetWhenFinished() error {
+	if t.ResetWhenFinished {
+		return nil
+	}
 	t.ResetWhenFinished = true
 	return UpdateOne(
 		bson.M{
@@ -2698,6 +2704,25 @@ func (t *Task) SetResetWhenFinished() error {
 		bson.M{
 			"$set": bson.M{
 				ResetWhenFinishedKey: true,
+			},
+		},
+	)
+}
+
+// SetResetFailedWhenFinished requests that a display task
+// only restarts failed tasks.
+func (t *Task) SetResetFailedWhenFinished() error {
+	if t.ResetFailedWhenFinished {
+		return nil
+	}
+	t.ResetFailedWhenFinished = true
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				ResetFailedWhenFinishedKey: true,
 			},
 		},
 	)
@@ -3668,9 +3693,6 @@ type GroupedTaskStatusCount struct {
 }
 
 func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]*GroupedTaskStatusCount, error) {
-	if opts.Variants != nil {
-		opts.IncludeBuildVariantDisplayName = true
-	}
 	pipeline := getTasksByVersionPipeline(versionID, opts)
 	project := bson.M{"$project": bson.M{
 		BuildVariantKey:            "$" + BuildVariantKey,
@@ -3863,8 +3885,17 @@ func HasMatchingTasks(versionID string, opts HasMatchingTasksOptions) (bool, err
 func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) []bson.M {
 	var match bson.M = bson.M{}
 
-	match[VersionKey] = versionID
+	// Allow searching by either variant name or variant display
+	if len(opts.Variants) > 0 {
+		variantsAsRegex := strings.Join(opts.Variants, "|")
 
+		match = bson.M{
+			"$or": []bson.M{
+				{BuildVariantDisplayNameKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
+				{BuildVariantKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
+			},
+		}
+	}
 	if len(opts.TaskNames) > 0 {
 		taskNamesAsRegex := strings.Join(opts.TaskNames, "|")
 		match[DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex, "$options": "i"}
@@ -3873,25 +3904,16 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	if !opts.IncludeEmptyActivation {
 		match[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
 	}
-	pipeline := []bson.M{
-		{"$match": match},
-	}
-
+	match[VersionKey] = versionID
+	pipeline := []bson.M{}
 	// Add BuildVariantDisplayName to all the results if it we need to match on the entire set of results
 	// This is an expensive operation so we only want to do it if we have to
 	if len(opts.Variants) > 0 && opts.IncludeBuildVariantDisplayName {
 		pipeline = append(pipeline, AddBuildVariantDisplayName...)
-
-		// Allow searching by either variant name or variant display
-		variantsAsRegex := strings.Join(opts.Variants, "|")
-		match = bson.M{
-			"$or": []bson.M{
-				{BuildVariantDisplayNameKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
-				{BuildVariantKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
-			},
-		}
-		pipeline = append(pipeline, bson.M{"$match": match})
 	}
+	pipeline = append(pipeline,
+		bson.M{"$match": match},
+	)
 
 	if !opts.IncludeExecutionTasks {
 		const tempParentKey = "_parent"

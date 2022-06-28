@@ -96,6 +96,7 @@ var (
 	GenerateTasksErrorKey       = bsonutil.MustHaveTag(Task{}, "GenerateTasksError")
 	GeneratedTasksToActivateKey = bsonutil.MustHaveTag(Task{}, "GeneratedTasksToActivate")
 	ResetWhenFinishedKey        = bsonutil.MustHaveTag(Task{}, "ResetWhenFinished")
+	ResetFailedWhenFinishedKey  = bsonutil.MustHaveTag(Task{}, "ResetFailedWhenFinished")
 	LogsKey                     = bsonutil.MustHaveTag(Task{}, "Logs")
 	CommitQueueMergeKey         = bsonutil.MustHaveTag(Task{}, "CommitQueueMerge")
 	DisplayStatusKey            = bsonutil.MustHaveTag(Task{}, "DisplayStatus")
@@ -267,53 +268,19 @@ var (
 	}
 
 	AddBuildVariantDisplayName = []bson.M{
-		{"$facet": bson.M{
-			"has_build_variant_display_name": []bson.M{
-				{"$match": bson.M{
-					"$and": []bson.M{
-						{
-							BuildVariantDisplayNameKey: bson.M{"$exists": true},
-						},
-						{
-							BuildVariantDisplayNameKey: bson.M{"$ne": ""},
-						},
-					}},
-				},
-			},
-			"not_has_build_variant_display_name": []bson.M{
-				{"$match": bson.M{
-					"$or": []bson.M{
-						{
-							BuildVariantDisplayNameKey: bson.M{"$exists": false},
-						},
-						{
-							BuildVariantDisplayNameKey: bson.M{"$eq": ""},
-						},
-					}},
-				},
-				{"$lookup": bson.M{
-					"from":         "builds",
-					"localField":   BuildIdKey,
-					"foreignField": "_id",
-					"as":           BuildVariantDisplayNameKey,
-				}},
-				{"$unwind": bson.M{
-					"path":                       "$" + BuildVariantDisplayNameKey,
-					"preserveNullAndEmptyArrays": true,
-				}},
-				{"$addFields": bson.M{
-					BuildVariantDisplayNameKey: "$" + bsonutil.GetDottedKeyName(BuildVariantDisplayNameKey, "display_name"),
-				}},
-			},
-		},
-		},
-		{"$project": bson.M{
-			"tasks": bson.M{
-				"$setUnion": []string{"$has_build_variant_display_name", "$not_has_build_variant_display_name"},
-			}},
-		},
-		{"$unwind": "$tasks"},
-		{"$replaceRoot": bson.M{"newRoot": "$tasks"}},
+		bson.M{"$lookup": bson.M{
+			"from":         "builds",
+			"localField":   BuildIdKey,
+			"foreignField": "_id",
+			"as":           BuildVariantDisplayNameKey,
+		}},
+		bson.M{"$unwind": bson.M{
+			"path":                       "$" + BuildVariantDisplayNameKey,
+			"preserveNullAndEmptyArrays": true,
+		}},
+		bson.M{"$addFields": bson.M{
+			BuildVariantDisplayNameKey: "$" + bsonutil.GetDottedKeyName(BuildVariantDisplayNameKey, "display_name"),
+		}},
 	}
 )
 
@@ -423,6 +390,13 @@ func FailedTasksByVersionAndBV(version string, variant string) bson.M {
 		VersionKey:      version,
 		BuildVariantKey: variant,
 		StatusKey:       bson.M{"$in": evergreen.TaskFailureStatuses},
+	}
+}
+
+func FailedTasksByIds(taskIds []string) bson.M {
+	return bson.M{
+		IdKey:     bson.M{"$in": taskIds},
+		StatusKey: bson.M{"$in": evergreen.TaskFailureStatuses},
 	}
 }
 
@@ -1037,8 +1011,7 @@ func FindUniqueBuildVariantNamesByTask(projectId string, taskName string, repoOr
 	groupByBuildVariant := bson.M{
 		"$group": bson.M{
 			"_id": bson.M{
-				BuildVariantKey:            "$" + BuildVariantKey,
-				BuildVariantDisplayNameKey: "$" + BuildVariantDisplayNameKey,
+				BuildVariantKey: "$" + BuildVariantKey,
 			},
 			BuildIdKey: bson.M{
 				"$first": "$" + BuildIdKey,
@@ -1051,10 +1024,9 @@ func FindUniqueBuildVariantNamesByTask(projectId string, taskName string, repoOr
 	// reorganize the results to get the build variant names and a corresponding build id
 	projectBuildId := bson.M{
 		"$project": bson.M{
-			"_id":                      0,
-			BuildVariantKey:            bsonutil.GetDottedKeyName("$_id", BuildVariantKey),
-			BuildVariantDisplayNameKey: bsonutil.GetDottedKeyName("$_id", BuildVariantDisplayNameKey),
-			BuildIdKey:                 "$" + BuildIdKey,
+			"_id":           0,
+			BuildVariantKey: bsonutil.GetDottedKeyName("$_id", BuildVariantKey),
+			BuildIdKey:      "$" + BuildIdKey,
 		},
 	}
 

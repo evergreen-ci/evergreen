@@ -22,10 +22,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model/pod/dispatcher"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestPodProvisioningScript(t *testing.T) {
@@ -236,7 +237,7 @@ func TestPodAgentNextTask(t *testing.T) {
 	}()
 	getPod := func() pod.Pod {
 		return pod.Pod{
-			ID:     utility.RandomString(),
+			ID:     primitive.NewObjectID().Hex(),
 			Status: pod.StatusStarting,
 		}
 	}
@@ -290,6 +291,28 @@ func TestPodAgentNextTask(t *testing.T) {
 			stats := env.RemoteQueue().Stats(ctx)
 			assert.Equal(t, 1, stats.Total)
 		},
+		"RunUpdatesStartingPodToRunning": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
+			// Close the remote queue so that it doesn't actually try to run the
+			// pod termination job when there's no task to run.
+			env.RemoteQueue().Close(ctx)
+
+			p := getPod()
+			require.NoError(t, p.Insert())
+			assert.Equal(t, pod.StatusStarting, p.Status, "initial pod status should be starting")
+			rh.podID = p.ID
+
+			pd := dispatcher.NewPodDispatcher("group", []string{}, []string{p.ID})
+			require.NoError(t, pd.Insert())
+
+			resp := rh.Run(ctx)
+			assert.Equal(t, http.StatusOK, resp.Status())
+
+			dbPod, err := pod.FindOneByID(p.ID)
+			require.NoError(t, err)
+			require.NotZero(t, dbPod)
+			assert.NotZero(t, dbPod.TimeInfo.AgentStarted)
+			assert.Equal(t, pod.StatusRunning, dbPod.Status)
+		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
@@ -297,6 +320,11 @@ func TestPodAgentNextTask(t *testing.T) {
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
+			// Don't use the default local limited size remote queue from the
+			// mock env because it does not accept jobs when it's not active.
+			rq, err := queue.NewLocalLimitedSizeSerializable(1, 1)
+			require.NoError(t, err)
+			env.Remote = rq
 
 			require.NoError(t, db.ClearCollections(task.Collection, pod.Collection, dispatcher.Collection, event.AllLogCollection))
 
