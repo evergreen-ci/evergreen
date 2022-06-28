@@ -45,11 +45,12 @@ func getMockProjectSettings() ProjectSettings {
 			AdminOnlyVars: map[string]bool{},
 		},
 		Aliases: []ProjectAlias{ProjectAlias{
-			ID:        mgobson.ObjectIdHex("5bedc72ee4055d31f0340b1d"),
-			ProjectID: projectId,
-			Alias:     "alias1",
-			Variant:   "ubuntu",
-			Task:      "subcommand",
+			ID:          mgobson.ObjectIdHex("5bedc72ee4055d31f0340b1d"),
+			ProjectID:   projectId,
+			Alias:       "alias1",
+			Variant:     "ubuntu",
+			Task:        "subcommand",
+			Description: "Description Here",
 		},
 		},
 		Subscriptions: []event.Subscription{event.Subscription{

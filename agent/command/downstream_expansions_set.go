@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -69,11 +70,17 @@ func (c *setDownstream) Execute(ctx context.Context,
 	}
 	logger.Task().Infof("Saving downstream parameters to patch with keys from file: %s", c.YamlFile)
 
-	if len(c.downstreamParams) != 0 {
-		err = comm.SetDownstreamParams(ctx, c.downstreamParams, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret})
-		if err != nil {
-			return errors.WithStack(err)
-		}
+	if len(c.downstreamParams) == 0 {
+		return nil
+	}
+
+	if !evergreen.IsPatchRequester(conf.Task.Requester) {
+		return nil
+	}
+
+	err = comm.SetDownstreamParams(ctx, c.downstreamParams, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret})
+	if err != nil {
+		return errors.WithStack(err)
 	}
 
 	return nil

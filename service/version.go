@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -21,18 +20,17 @@ import (
 func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 	project, err := projCtx.GetProject()
+
 	if err != nil || project == nil || projCtx.Version == nil {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
 
 	if r.FormValue("redirect_spruce_users") == "true" {
-		if u := gimlet.GetUser(r.Context()); u != nil {
-			usr, ok := u.(*user.DBUser)
-			if ok && usr.Settings.UseSpruceOptions.SpruceV1 {
-				http.Redirect(w, r, fmt.Sprintf("%s/version/%s", uis.Settings.Ui.UIv2Url, projCtx.Version.Id), http.StatusTemporaryRedirect)
-				return
-			}
+		user := MustHaveUser(r)
+		if user.Settings.UseSpruceOptions.SpruceV1 {
+			http.Redirect(w, r, fmt.Sprintf("%s/version/%s", uis.Settings.Ui.UIv2Url, projCtx.Version.Id), http.StatusTemporaryRedirect)
+			return
 		}
 	}
 

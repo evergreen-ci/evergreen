@@ -94,5 +94,6 @@ func resetTask(taskId, username string) error {
 			Message:    fmt.Sprintf("task '%s' not found", taskId),
 		}
 	}
-	return errors.Wrapf(serviceModel.ResetTaskOrDisplayTask(t, username, evergreen.RESTV2Package, nil), "resetting task '%s'", taskId)
+	// TODO EVG-17120 handle failedOnly
+	return errors.Wrapf(serviceModel.ResetTaskOrDisplayTask(t, username, evergreen.RESTV2Package, false, nil), "resetting task '%s'", taskId)
 }

@@ -2,6 +2,7 @@ package route
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"testing"
 	"time"
@@ -163,15 +164,21 @@ func TestECSSNSHandleNotification(t *testing.T) {
 		taskARN = "external_id"
 	)
 
+	makeJSON := func(t *testing.T, i interface{}) json.RawMessage {
+		b, err := json.Marshal(i)
+		require.NoError(t, err)
+		return json.RawMessage(b)
+	}
+
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *ecsSNS){
 		"MarksRunningPodForTerminationWhenStopped": func(ctx context.Context, t *testing.T, rh *ecsSNS) {
 			notification := ecsEventBridgeNotification{
 				DetailType: ecsTaskStateChangeType,
-				Detail: ecsTaskEventDetail{
+				Detail: makeJSON(t, ecsTaskEventDetail{
 					TaskARN:       taskARN,
 					LastStatus:    string(ecs.TaskStatusStopped),
 					StoppedReason: "reason",
-				},
+				}),
 			}
 			require.NoError(t, rh.handleNotification(ctx, notification))
 
@@ -221,12 +228,12 @@ func TestECSSNSHandleNotification(t *testing.T) {
 
 			notification := ecsEventBridgeNotification{
 				DetailType: ecsTaskStateChangeType,
-				Detail: ecsTaskEventDetail{
+				Detail: makeJSON(t, ecsTaskEventDetail{
 					TaskARN:       taskID,
 					ClusterARN:    clusterID,
 					LastStatus:    status,
 					DesiredStatus: desiredStatus,
-				},
+				}),
 			}
 			assert.NoError(t, rh.handleNotification(ctx, notification))
 
@@ -272,12 +279,12 @@ func TestECSSNSHandleNotification(t *testing.T) {
 
 			notification := ecsEventBridgeNotification{
 				DetailType: ecsTaskStateChangeType,
-				Detail: ecsTaskEventDetail{
+				Detail: makeJSON(t, ecsTaskEventDetail{
 					TaskARN:       taskID,
 					ClusterARN:    clusterID,
 					LastStatus:    status,
 					DesiredStatus: desiredStatus,
-				},
+				}),
 			}
 			assert.NoError(t, rh.handleNotification(ctx, notification))
 
@@ -326,12 +333,12 @@ func TestECSSNSHandleNotification(t *testing.T) {
 
 			notification := ecsEventBridgeNotification{
 				DetailType: ecsTaskStateChangeType,
-				Detail: ecsTaskEventDetail{
+				Detail: makeJSON(t, ecsTaskEventDetail{
 					TaskARN:       taskID,
 					ClusterARN:    clusterID,
 					LastStatus:    status,
 					DesiredStatus: desiredStatus,
-				},
+				}),
 			}
 			assert.NoError(t, rh.handleNotification(ctx, notification))
 
@@ -377,12 +384,12 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			}
 			notification := ecsEventBridgeNotification{
 				DetailType: ecsTaskStateChangeType,
-				Detail: ecsTaskEventDetail{
+				Detail: makeJSON(t, ecsTaskEventDetail{
 					TaskARN:       taskID,
 					ClusterARN:    clusterID,
 					LastStatus:    status,
 					DesiredStatus: desiredStatus,
-				},
+				}),
 			}
 			assert.NoError(t, rh.handleNotification(ctx, notification))
 
@@ -392,10 +399,10 @@ func TestECSSNSHandleNotification(t *testing.T) {
 		"FailsWithoutStatus": func(ctx context.Context, t *testing.T, rh *ecsSNS) {
 			notification := ecsEventBridgeNotification{
 				DetailType: ecsTaskStateChangeType,
-				Detail: ecsTaskEventDetail{
+				Detail: makeJSON(t, ecsTaskEventDetail{
 					TaskARN:       taskARN,
 					StoppedReason: "reason",
-				},
+				}),
 			}
 			assert.Error(t, rh.handleNotification(ctx, notification))
 
@@ -407,11 +414,23 @@ func TestECSSNSHandleNotification(t *testing.T) {
 		"FailsWithUnknownNotificationType": func(ctx context.Context, t *testing.T, rh *ecsSNS) {
 			notification := ecsEventBridgeNotification{
 				DetailType: "unknown",
-				Detail: ecsTaskEventDetail{
+				Detail: makeJSON(t, ecsTaskEventDetail{
 					TaskARN:       taskARN,
 					LastStatus:    string(ecs.TaskStatusStopped),
 					StoppedReason: "reason",
-				},
+				}),
+			}
+			assert.Error(t, rh.handleNotification(ctx, notification))
+
+			p, err := pod.FindOneByExternalID(taskARN)
+			require.NoError(t, err)
+			require.NotZero(t, p)
+			assert.Equal(t, pod.StatusRunning, p.Status)
+		},
+		"FailsWithInvalidDetails": func(ctx context.Context, t *testing.T, rh *ecsSNS) {
+			notification := ecsEventBridgeNotification{
+				DetailType: "unknown",
+				Detail:     makeJSON(t, "lol what"),
 			}
 			assert.Error(t, rh.handleNotification(ctx, notification))
 
@@ -451,11 +470,11 @@ func TestECSSNSHandleNotification(t *testing.T) {
 
 			notification := ecsEventBridgeNotification{
 				DetailType: ecsContainerInstanceStateChangeType,
-				Detail: ecsContainerInstanceEventDetail{
+				Detail: makeJSON(t, ecsContainerInstanceEventDetail{
 					ContainerInstanceARN: containerInstanceID,
 					ClusterARN:           clusterID,
 					Status:               status,
-				},
+				}),
 			}
 			assert.NoError(t, rh.handleNotification(ctx, notification))
 
@@ -467,11 +486,11 @@ func TestECSSNSHandleNotification(t *testing.T) {
 		"NoopsWithContainerInstanceForIrreleventStatusChange": func(ctx context.Context, t *testing.T, rh *ecsSNS) {
 			notification := ecsEventBridgeNotification{
 				DetailType: ecsContainerInstanceStateChangeType,
-				Detail: ecsContainerInstanceEventDetail{
+				Detail: makeJSON(t, ecsContainerInstanceEventDetail{
 					ContainerInstanceARN: "container_instance_arn",
 					Status:               string(ecs.ContainerInstanceStatusActive),
 					ClusterARN:           "cluster_arn",
-				},
+				}),
 			}
 			assert.NoError(t, rh.handleNotification(ctx, notification))
 

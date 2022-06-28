@@ -466,6 +466,6 @@ func versionLink(i versionLinkInput) string {
 }
 
 func hostLink(uiBase string, hostID string) string {
-	return fmt.Sprintf("%s/host/%s", uiBase, hostID)
+	return fmt.Sprintf("%s/host/%s?redirect_spruce_users=true", uiBase, hostID)
 
 }

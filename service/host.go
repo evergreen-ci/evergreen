@@ -39,6 +39,14 @@ func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
 
 	id := gimlet.GetVars(r)["host_id"]
 
+	if r.FormValue("redirect_spruce_users") == "true" {
+		user := MustHaveUser(r)
+		if user.Settings.UseSpruceOptions.SpruceV1 {
+			http.Redirect(w, r, fmt.Sprintf("%s/host/%s", uis.Settings.Ui.UIv2Url, id), http.StatusTemporaryRedirect)
+			return
+		}
+	}
+
 	h, err := host.FindOneByIdOrTag(id)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
