@@ -7604,6 +7604,33 @@ type JiraTicket {
 }
 
 `, BuiltIn: false},
+	{Name: "graphql/schema/types/commit_queue.graphql", Input: `###### TYPES ######
+"""
+CommitQueue is returned by the commitQueue query.
+It contains information about the patches on the commit queue (e.g. author, code changes) for a given project.
+"""
+type CommitQueue {
+  message: String
+  owner: String
+  projectId: String
+  queue: [CommitQueueItem!]
+  repo: String
+}
+
+type CommitQueueItem {
+  enqueueTime: Time
+  issue: String
+  modules: [Module!]
+  patch: Patch
+  source: String
+  version: String
+}
+
+type Module {
+  issue: String
+  module: String
+}
+`, BuiltIn: false},
 	{Name: "graphql/schema/types/config.graphql", Input: `###### TYPES ######
 """ 
 SpruceConfig defines settings that apply to all users of Evergreen.
@@ -7797,6 +7824,51 @@ type IssueLink {
   jiraTicket: JiraTicket
   source: Source
   url: String
+}
+`, BuiltIn: false},
+	{Name: "graphql/schema/types/mainline_commits.graphql", Input: `###### INPUTS ######
+"""
+BuildVariantOptions is an input to the mainlineCommits query.
+It stores values for statuses, tasks, and variants which are used to filter for matching versions.
+"""
+input BuildVariantOptions {
+  includeBaseTasks: Boolean
+  statuses: [String!]
+  tasks: [String!]
+  variants: [String!]
+}
+
+"""
+MainlineCommitsOptions is an input to the mainlineCommits query.
+Its fields determine what mainline commits we fetch for a given projectID.
+"""
+input MainlineCommitsOptions {
+  limit: Int = 7
+  projectID: String!
+  requesters: [String!]
+  shouldCollapse: Boolean = false # used to determine if unmatching active versions should be collapsed
+  skipOrderNumber: Int = 0
+}
+
+###### TYPES ######
+"""
+MainlineCommits is returned by the mainline commits query.
+It contains information about versions (both unactivated and activated) which is surfaced on the Project Health page.
+"""
+type MainlineCommits {
+  nextPageOrderNumber: Int # represents the last order number returned and is used for pagination
+  prevPageOrderNumber: Int # represents the order number of the previous page and is also used for pagination
+  versions: [MainlineCommitVersion!]! # array of unactivated and activated versions
+}
+
+type MainlineCommitVersion {
+  rolledUpVersions: [Version!]
+  version: Version
+}
+
+type BuildVariantTuple {
+  buildVariant: String!
+  displayName: String!
 }
 `, BuiltIn: false},
 	{Name: "graphql/schema/types/patch.graphql", Input: `enum TaskSortCategory {
@@ -9160,29 +9232,6 @@ input VersionToRestart {
   taskIds: [String!]!
 }
 
-"""
-BuildVariantOptions is an input to the mainlineCommits query.
-It stores values for statuses, tasks, and variants which are used to filter for matching versions.
-"""
-input BuildVariantOptions {
-  includeBaseTasks: Boolean
-  statuses: [String!]
-  tasks: [String!]
-  variants: [String!]
-}
-
-"""
-MainlineCommitsOptions is an input to the mainlineCommits query.
-Its fields determine what mainline commits we fetch for a given projectID.
-"""
-input MainlineCommitsOptions {
-  limit: Int = 7
-  projectID: String!
-  requesters: [String!]
-  shouldCollapse: Boolean = false # used to determine if unmatching active versions should be collapsed
-  skipOrderNumber: Int = 0
-}
-
 ###### TYPES ######
 """
 Version models a commit within a project.
@@ -9270,52 +9319,6 @@ type UpstreamProject {
   triggerID: String! # ID of the trigger that created the upstream version (corresponds to a task ID or build ID)
   triggerType: String!
   version: Version
-}
-
-"""
-MainlineCommits is returned by the mainline commits query.
-It contains information about versions (both unactivated and activated) which is surfaced on the Project Health page.
-"""
-type MainlineCommits {
-  nextPageOrderNumber: Int # represents the last order number returned and is used for pagination
-  prevPageOrderNumber: Int # represents the order number of the previous page and is also used for pagination
-  versions: [MainlineCommitVersion!]! # array of unactivated and activated versions
-}
-
-type MainlineCommitVersion {
-  rolledUpVersions: [Version!]
-  version: Version
-}
-
-type BuildVariantTuple {
-  buildVariant: String!
-  displayName: String!
-}
-
-"""
-CommitQueue is returned by the commitQueue query.
-It contains information about the patches on the commit queue (e.g. author, code changes) for a given project.
-"""
-type CommitQueue {
-  message: String
-  owner: String
-  projectId: String
-  queue: [CommitQueueItem!]
-  repo: String
-}
-
-type CommitQueueItem {
-  enqueueTime: Time
-  issue: String
-  modules: [Module!]
-  patch: Patch
-  source: String
-  version: String
-}
-
-type Module {
-  issue: String
-  module: String
 }
 
 

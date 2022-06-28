@@ -1,7 +1,7 @@
 package graphql
 
 // This file will always be generated when running gqlgen.
-// It contains the definitions for the Query & Mutation resolver, which are used by the other files in this folder.
+// werrors imports in the resolvers are due to https://github.com/99designs/gqlgen/issues/1171.
 
 import (
 	"context"
