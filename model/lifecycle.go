@@ -55,79 +55,61 @@ type VersionToRestart struct {
 // SetVersionActivation updates the "active" state of all builds and tasks associated with a
 // version to the given setting. It also updates the task cache for all builds affected.
 func SetVersionActivation(versionId string, active bool, caller string) error {
-	version, err := VersionFindOneId(versionId)
-	if err != nil {
-		return errors.Wrapf(err, "getting version '%s'", versionId)
-	}
-	if version == nil {
-		return errors.Wrapf(err, "version '%s' not found", versionId)
-	}
-	if err = version.SetActivated(active); err != nil {
+	if err := SetVersionActivated(versionId, active); err != nil {
 		return errors.Wrapf(err, "setting activated for version '%s'", versionId)
 	}
-	changed, err := setTaskActivationForVersion(versionId, active, caller)
-	if err != nil {
+	if err := setTaskActivationForVersion(versionId, active, caller); err != nil {
 		return errors.Wrapf(err, "setting activation for tasks in version '%s'", versionId)
-	}
-	if active && changed && evergreen.IsFinishedVersionStatus(version.Status) {
-		if err = version.UpdateStatus(evergreen.VersionCreated); err != nil {
-			return errors.Wrapf(err, "setting status for version '%s'", versionId)
-		}
 	}
 	return nil
 }
 
 // setTaskActivationForVersion activates all tasks in a version.
-// Returns true if at least one task has been updated.
-func setTaskActivationForVersion(versionId string, active bool, caller string) (bool, error) {
+func setTaskActivationForVersion(versionId string, active bool, caller string) error {
 	q := bson.M{
 		task.VersionKey: versionId,
 		task.StatusKey:  evergreen.TaskUndispatched,
 	}
+	tasksToModify := []task.Task{}
 	// If activating a task, set the ActivatedBy field to be the caller.
 	if active {
-		tasksToActivate, err := task.FindAll(db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey, task.BuildIdKey))
+		tasksToModify, err := task.FindAll(db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey, task.BuildIdKey))
 		if err != nil {
-			return false, errors.Wrap(err, "getting tasks to activate")
+			return errors.Wrap(err, "getting tasks to activate")
 		}
-		if len(tasksToActivate) > 0 {
-			if err = task.ActivateTasks(tasksToActivate, time.Now(), false, caller); err != nil {
-				return false, errors.Wrap(err, "updating tasks for activation")
+		if len(tasksToModify) > 0 {
+			if err = task.ActivateTasks(tasksToModify, time.Now(), false, caller); err != nil {
+				return errors.Wrap(err, "updating tasks for activation")
 			}
-			var buildIds []string
-			for _, task := range tasksToActivate {
-				if !utility.StringSliceContains(buildIds, task.BuildId) {
-					buildIds = append(buildIds, task.BuildId)
-				}
-			}
-			builds, err := build.Find(build.ByIds(buildIds))
-			if err != nil {
-				return false, errors.Wrap(err, "fetching builds")
-			}
-			for _, b := range builds {
-				_, err := updateBuildStatus(&b)
-				if err != nil {
-					return false, errors.Wrapf(err, "updating status for build '%s'", b.Id)
-				}
-			}
-			return true, nil
 		}
-	}
-	// If the caller is the default task activator, only deactivate tasks that have not been activated by a user.
-	if evergreen.IsSystemActivator(caller) {
-		q[task.ActivatedByKey] = bson.M{"$in": evergreen.SystemActivators}
-	}
+	} else {
+		// If the caller is the default task activator, only deactivate tasks that have not been activated by a user.
+		if evergreen.IsSystemActivator(caller) {
+			q[task.ActivatedByKey] = bson.M{"$in": evergreen.SystemActivators}
+		}
 
-	tasks, err := task.FindAll(db.Query(q).WithFields(task.IdKey, task.ExecutionKey))
-	if err != nil {
-		return false, errors.Wrap(err, "getting tasks to deactivate")
-	}
-	if len(tasks) > 0 {
-		if err = task.DeactivateTasks(tasks, false, caller); err != nil {
-			return true, errors.Wrap(err, "deactivating tasks")
+		tasksToModify, err := task.FindAll(db.Query(q).WithFields(task.IdKey, task.ExecutionKey))
+		if err != nil {
+			return errors.Wrap(err, "getting tasks to deactivate")
+		}
+		if len(tasksToModify) > 0 {
+			if err = task.DeactivateTasks(tasksToModify, false, caller); err != nil {
+				return errors.Wrap(err, "deactivating tasks")
+			}
 		}
 	}
-	return false, nil
+	if len(tasksToModify) > 0 {
+		var buildIds []string
+		for _, task := range tasksToModify {
+			if !utility.StringSliceContains(buildIds, task.BuildId) {
+				buildIds = append(buildIds, task.BuildId)
+			}
+		}
+		if err := UpdateVersionAndPatchStatusForBuilds(buildIds); err != nil {
+			return errors.Wrapf(err, "updating build and version status for version '%s'", versionId)
+		}
+	}
+	return nil
 }
 
 // SetBuildActivation updates the "active" state of this build and all associated tasks.
