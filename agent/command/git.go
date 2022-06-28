@@ -212,6 +212,31 @@ func (opts cloneOpts) buildSSHCloneCommand() ([]string, error) {
 	}, nil
 }
 
+func moduleRevExpansionName(name string) string { return fmt.Sprintf("%s_rev", name) }
+
+// Load performs a GET on /manifest/load
+func (c *gitFetchProject) manifestLoad(ctx context.Context,
+	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
+
+	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
+
+	manifest, err := comm.GetManifest(ctx, td)
+	if err != nil {
+		return errors.Wrapf(err, "problem loading manifest for %s", td.ID)
+	}
+
+	for moduleName := range manifest.Modules {
+		// put the url for the module in the expansions
+		conf.Expansions.Put(moduleRevExpansionName(moduleName), manifest.Modules[moduleName].Revision)
+		conf.Expansions.Put(fmt.Sprintf("%s_branch", moduleName), manifest.Modules[moduleName].Branch)
+		conf.Expansions.Put(fmt.Sprintf("%s_repo", moduleName), manifest.Modules[moduleName].Repo)
+		conf.Expansions.Put(fmt.Sprintf("%s_owner", moduleName), manifest.Modules[moduleName].Owner)
+	}
+
+	logger.Execution().Info("manifest loaded successfully")
+	return nil
+}
+
 func gitFetchProjectFactory() Command   { return &gitFetchProject{} }
 func (c *gitFetchProject) Name() string { return "git.get_project" }
 
@@ -387,7 +412,11 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 		fetchRetryMaxDelay = 10 * time.Second
 	)
 
-	var err error
+	err := c.manifestLoad(ctx, comm, logger, conf)
+	if err != nil {
+		return errors.Wrap(err, "failed to load manifest")
+	}
+
 	if err = util.ExpandValues(c, conf.Expansions); err != nil {
 		return errors.Wrap(err, "error expanding github parameters")
 	}

@@ -838,13 +838,6 @@ func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 		if metadata.Message != "" {
 			v.Message = metadata.Message
 		}
-		if metadata.User != nil {
-			num, err := metadata.User.IncPatchNumber()
-			if err != nil {
-				return nil, errors.Wrap(err, "error incrementing patch number")
-			}
-			v.RevisionOrderNumber = num
-		}
 	} else if metadata.GitTag.Tag != "" {
 		if !ref.IsGitTagVersionsEnabled() {
 			return nil, errors.Errorf("git tag versions are not enabled for project '%s'", ref.Id)

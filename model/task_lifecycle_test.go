@@ -3350,6 +3350,117 @@ func TestClearAndResetStaleStrandedHostTask(t *testing.T) {
 	assert.Equal("system", runningTask.Details.Type)
 }
 
+func TestMarkUnallocatableContainerTasksSystemFailed(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.AllLogCollection))
+	}()
+	for tName, tCase := range map[string]func(t *testing.T, tsk task.Task, b build.Build, v Version){
+		"SystemFailsTaskWithNoRemainingAllocationAttempts": func(t *testing.T, tsk task.Task, b build.Build, v Version) {
+			require.NoError(t, tsk.Insert())
+			require.NoError(t, MarkUnallocatableContainerTasksSystemFailed([]string{tsk.Id}))
+
+			dbTask, err := task.FindOneId(tsk.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.True(t, dbTask.IsFinished(), "task that has used up its container allocation attempts should be finished")
+
+			dbBuild, err := build.FindOneId(b.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbBuild)
+			assert.True(t, dbBuild.IsFinished(), "build with finished task should have updated status")
+
+			dbVersion, err := VersionFindOneId(v.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbVersion)
+			assert.Equal(t, evergreen.VersionFailed, dbVersion.Status, "version with finished task should have updated status")
+		},
+		"NoopsWithTaskThatHasRemainingAllocationAttempts": func(t *testing.T, tsk task.Task, b build.Build, v Version) {
+			tsk.ContainerAllocationAttempts = 0
+			require.NoError(t, tsk.Insert())
+			require.NoError(t, MarkUnallocatableContainerTasksSystemFailed([]string{tsk.Id}))
+
+			dbTask, err := task.FindOneId(tsk.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.False(t, dbTask.IsFinished(), "task with remaining container allocation attempts should not be finished")
+
+			dbBuild, err := build.FindOneId(b.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbBuild)
+			assert.Equal(t, b.Status, dbBuild.Status, "build status should not be changed because task should not be finished")
+
+			dbVersion, err := VersionFindOneId(v.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbVersion)
+			assert.Equal(t, v.Status, dbVersion.Status, "version status should not be changed because task should not be finished")
+		},
+		"SystemFailsSubsetOfTasksWithNoRemainingAllocationAttempts": func(t *testing.T, tsk0 task.Task, b build.Build, v Version) {
+			require.NoError(t, tsk0.Insert())
+			tsk1 := tsk0
+			tsk1.Id = "other_task_id"
+			tsk1.ContainerAllocationAttempts = 0
+			require.NoError(t, tsk1.Insert())
+
+			require.NoError(t, MarkUnallocatableContainerTasksSystemFailed([]string{tsk0.Id, tsk1.Id}))
+
+			dbTask0, err := task.FindOneId(tsk0.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask0)
+			assert.True(t, dbTask0.IsFinished())
+
+			dbTask1, err := task.FindOneId(tsk1.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask1)
+			assert.False(t, dbTask1.IsFinished())
+		},
+		"NoopsWithHostTask": func(t *testing.T, tsk task.Task, b build.Build, v Version) {
+			tsk.ExecutionPlatform = task.ExecutionPlatformHost
+			require.NoError(t, tsk.Insert())
+
+			require.NoError(t, MarkUnallocatableContainerTasksSystemFailed([]string{tsk.Id}))
+
+			dbTask, err := task.FindOneId(tsk.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.False(t, dbTask.IsFinished())
+		},
+		"NoopsWithNonexistentTasks": func(t *testing.T, tsk task.Task, b build.Build, v Version) {
+			require.NoError(t, MarkUnallocatableContainerTasksSystemFailed([]string{tsk.Id}))
+
+			dbTask, err := task.FindOneId(tsk.Id)
+			assert.NoError(t, err)
+			assert.Zero(t, dbTask)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.AllLogCollection))
+			v := Version{
+				Id:     "version_id",
+				Status: evergreen.VersionStarted,
+			}
+			require.NoError(t, v.Insert())
+			b := build.Build{
+				Id:      "build_id",
+				Version: v.Id,
+				Status:  evergreen.BuildStarted,
+			}
+			require.NoError(t, b.Insert())
+			tsk := task.Task{
+				Id:                          "task_id",
+				Execution:                   1,
+				BuildId:                     b.Id,
+				Version:                     v.Id,
+				Status:                      evergreen.TaskUndispatched,
+				ExecutionPlatform:           task.ExecutionPlatformContainer,
+				Activated:                   true,
+				ContainerAllocated:          true,
+				ContainerAllocationAttempts: 100,
+			}
+			tCase(t, tsk, b, v)
+		})
+	}
+}
+
 func TestClearAndResetExecTask(t *testing.T) {
 	require.NoError(t, db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection, VersionCollection))
 
