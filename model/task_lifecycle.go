@@ -1514,27 +1514,34 @@ func resetStrandedTask(t *task.Task) error {
 		return errors.WithStack(MarkEnd(t, evergreen.MonitorPackage, time.Now(), &t.Details, false))
 	}
 
-	return errors.Wrap(ResetTaskOrDisplayTask(t, evergreen.User, evergreen.MonitorPackage, true, &t.Details), "resetting task")
+	return errors.Wrap(ResetTaskOrDisplayTask(t, evergreen.User, evergreen.MonitorPackage, false, &t.Details), "resetting task")
 }
 
 // ResetTaskOrDisplayTask is a wrapper for TryResetTask that handles execution and display tasks that are restarted
 // from sources separate from marking the task finished. If an execution task, attempts to restart the display task instead.
 // Marks display tasks as reset when finished and then check if it can be reset immediately.
 func ResetTaskOrDisplayTask(t *task.Task, user, origin string, failedOnly bool, detail *apimodels.TaskEndDetail) error {
-	if t.IsPartOfDisplay() {
-		return errors.New("cannot restart individual execution task")
+	taskToReset := *t
+	if taskToReset.IsPartOfDisplay() { // if given an execution task, attempt to restart the full display task
+		dt, err := taskToReset.GetDisplayTask()
+		if err != nil {
+			return errors.Wrap(err, "getting display task")
+		}
+		if dt != nil {
+			taskToReset = *dt
+		}
 	}
-	if t.DisplayOnly {
+	if taskToReset.DisplayOnly {
 		if failedOnly {
-			if err := t.SetResetFailedWhenFinished(); err != nil {
+			if err := taskToReset.SetResetFailedWhenFinished(); err != nil {
 				return errors.Wrap(err, "marking display task for reset")
 			}
 		} else {
-			if err := t.SetResetWhenFinished(); err != nil {
+			if err := taskToReset.SetResetWhenFinished(); err != nil {
 				return errors.Wrap(err, "marking display task for reset")
 			}
 		}
-		return errors.Wrap(checkResetDisplayTask(t), "checking display task reset")
+		return errors.Wrap(checkResetDisplayTask(&taskToReset), "checking display task reset")
 	}
 
 	return errors.Wrap(TryResetTask(t.Id, user, origin, detail), "resetting task")

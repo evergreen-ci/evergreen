@@ -2007,7 +2007,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	assert.NoError(resetTaskData())
 	dt, err := task.FindOneId("displayTask")
 	assert.NoError(err)
-	dt.SetResetFailedWhenFinished()
+	assert.NoError(dt.SetResetFailedWhenFinished())
 	assert.NoError(resetTask(dt.Id, "caller", false))
 	tasks, err = task.FindAll(db.Query(task.ByIds(allTasks)))
 	assert.NoError(err)
