@@ -3352,7 +3352,7 @@ func TestClearAndResetStaleStrandedHostTask(t *testing.T) {
 
 func TestMarkUnallocatableContainerTasksSystemFailed(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.AllLogCollection))
+		assert.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.LegacyEventLogCollection))
 	}()
 	for tName, tCase := range map[string]func(t *testing.T, tsk task.Task, b build.Build, v Version){
 		"SystemFailsTaskWithNoRemainingAllocationAttempts": func(t *testing.T, tsk task.Task, b build.Build, v Version) {
@@ -3433,7 +3433,7 @@ func TestMarkUnallocatableContainerTasksSystemFailed(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.AllLogCollection))
+			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.LegacyEventLogCollection))
 			v := Version{
 				Id:     "version_id",
 				Status: evergreen.VersionStarted,
