@@ -153,7 +153,7 @@ func TestAllocate(t *testing.T) {
 	defer cancel()
 
 	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection, event.AllLogCollection))
+		assert.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection, event.LegacyEventLogCollection))
 	}()
 
 	env := &mock.Environment{}
@@ -252,7 +252,7 @@ func TestAllocate(t *testing.T) {
 			tctx, tcancel := context.WithTimeout(ctx, 10*time.Second)
 			defer tcancel()
 
-			require.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection, event.AllLogCollection))
+			require.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection, event.LegacyEventLogCollection))
 
 			p, err := pod.NewTaskIntentPod(pod.TaskIntentPodOptions{
 				ID:         primitive.NewObjectID().Hex(),

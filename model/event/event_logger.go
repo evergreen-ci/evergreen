@@ -5,34 +5,62 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-const notSubscribableTimeString = "2015-10-21T16:29:01-07:00"
+var eventCollections = []string{LegacyEventLogCollection, EventCollection}
 
-type EventLogger interface {
-	LogEvent(event *EventLogEntry) error
-}
-
-type DBEventLogger struct {
-	collection string
-}
-
-func NewDBEventLogger(collection string) *DBEventLogger {
-	return &DBEventLogger{
-		collection: collection,
-	}
-}
-
-func (l *DBEventLogger) LogEvent(e *EventLogEntry) error {
+func (e *EventLogEntry) Log() error {
 	if err := e.validateEvent(); err != nil {
 		return errors.Wrap(err, "not logging event, event is invalid")
 	}
-	return db.Insert(l.collection, e)
+
+	grip.Error(message.WrapError(db.Insert(EventCollection, e), message.Fields{
+		"message":       "inserting event",
+		"collection":    EventCollection,
+		"resource_type": e.ResourceType,
+		"event_type":    e.EventType,
+		"event_id":      e.ID,
+	}))
+
+	return errors.Wrap(db.Insert(LegacyEventLogCollection, e), "inserting event")
 }
 
-func (l *DBEventLogger) LogManyEvents(events []EventLogEntry) error {
+func (e *EventLogEntry) MarkProcessed() error {
+	if e.ID == "" {
+		return errors.New("event has no ID")
+	}
+	processedAt := time.Now()
+
+	filter := bson.M{
+		idKey: e.ID,
+		processedAtKey: bson.M{
+			"$eq": time.Time{},
+		},
+	}
+	update := bson.M{
+		"$set": bson.M{
+			processedAtKey: processedAt,
+		},
+	}
+
+	grip.Error(message.WrapError(db.Update(EventCollection, filter, update), message.Fields{
+		"message":    "marking event processed",
+		"collection": EventCollection,
+		"event_id":   e.ID,
+	}))
+
+	if err := db.Update(LegacyEventLogCollection, filter, update); err != nil {
+		return errors.Wrap(err, "updating 'processed at' time")
+	}
+
+	e.ProcessedAt = processedAt
+	return nil
+}
+
+func LogManyEvents(events []EventLogEntry) error {
 	catcher := grip.NewBasicCatcher()
 	interfaces := make([]interface{}, len(events))
 	for i := range events {
@@ -46,29 +74,11 @@ func (l *DBEventLogger) LogManyEvents(events []EventLogEntry) error {
 	if catcher.HasErrors() {
 		return errors.Wrap(catcher.Resolve(), "invalid events")
 	}
-	return db.InsertMany(l.collection, interfaces...)
-}
 
-func (l *DBEventLogger) MarkProcessed(event *EventLogEntry) error {
-	if event.ID == "" {
-		return errors.New("event has no ID")
-	}
-	event.ProcessedAt = time.Now()
+	grip.Error(message.WrapError(db.InsertMany(EventCollection, interfaces...), message.Fields{
+		"message":    "inserting many events",
+		"collection": EventCollection,
+	}))
 
-	err := db.Update(l.collection, bson.M{
-		idKey: event.ID,
-		processedAtKey: bson.M{
-			"$eq": time.Time{},
-		},
-	}, bson.M{
-		"$set": bson.M{
-			processedAtKey: event.ProcessedAt,
-		},
-	})
-	if err != nil {
-		event.ProcessedAt = time.Time{}
-		return errors.Wrap(err, "updating 'processed at' time")
-	}
-
-	return nil
+	return db.InsertMany(LegacyEventLogCollection, interfaces...)
 }

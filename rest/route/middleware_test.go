@@ -902,14 +902,14 @@ func TestEventLogPermission(t *testing.T) {
 
 	// no user + private project should 404
 	rw := httptest.NewRecorder()
-	req = gimlet.SetURLVars(req, map[string]string{"resource_type": model.EventResourceTypeProject, "resource_id": proj1.Id})
+	req = gimlet.SetURLVars(req, map[string]string{"resource_type": event.EventResourceTypeProject, "resource_id": proj1.Id})
 	authHandler.ServeHTTP(rw, req, checkPermission)
 	assert.Equal(http.StatusNotFound, rw.Code)
 	assert.Equal(0, counter)
 
 	// have user, project event
 	req = req.WithContext(gimlet.AttachUser(req.Context(), user))
-	req = gimlet.SetURLVars(req, map[string]string{"resource_type": model.EventResourceTypeProject, "resource_id": proj1.Id})
+	req = gimlet.SetURLVars(req, map[string]string{"resource_type": event.EventResourceTypeProject, "resource_id": proj1.Id})
 	rw = httptest.NewRecorder()
 	authHandler.ServeHTTP(rw, req, checkPermission)
 	assert.Equal(http.StatusOK, rw.Code)
