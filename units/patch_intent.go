@@ -302,7 +302,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	if j.intent.ReusePreviousPatchDefinition() {
-		patchDoc.VariantsTasks, err = j.getPreviousPatchDefinition(project, false)
+		err = j.setToPreviousPatchDefinition(patchDoc, project)
 		if err != nil {
 			return err
 		}
@@ -340,7 +340,25 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	if len(patchDoc.VariantsTasks) == 0 {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":                     "chayaM this line should be hit even with reuse",
+			"patch_id":                    patchDoc.Id,
+			"patchDoc.BuildVariants":      patchDoc.BuildVariants,
+			"patchDoc.Tasks":              patchDoc.Tasks,
+			"patchDoc.RegexBuildVariants": patchDoc.RegexBuildVariants,
+			"patchDoc.RegexTasks":         patchDoc.RegexTasks,
+			"patchDoc.VariantsTasks":      patchDoc.VariantsTasks,
+		}))
 		project.BuildProjectTVPairs(patchDoc, j.intent.GetAlias())
+		grip.Error(message.Fields{
+			"message":                     "chayaM after  BuildProjectTVPairs",
+			"patch_id":                    patchDoc.Id,
+			"patchDoc.BuildVariants":      patchDoc.BuildVariants,
+			"patchDoc.Tasks":              patchDoc.Tasks,
+			"patchDoc.RegexBuildVariants": patchDoc.RegexBuildVariants,
+			"patchDoc.RegexTasks":         patchDoc.RegexTasks,
+			"patchDoc.VariantsTasks":      patchDoc.VariantsTasks,
+		})
 	}
 
 	if (j.intent.ShouldFinalizePatch() || patchDoc.IsCommitQueuePatch()) &&
@@ -522,6 +540,41 @@ func (j *patchIntentProcessor) getPreviousPatchDefinition(project *model.Project
 		}
 	}
 	return res, nil
+}
+
+func (j *patchIntentProcessor) setToPreviousPatchDefinition(patchDoc *patch.Patch, project *model.Project) error {
+	grip.Error(message.Fields{
+		"message":                     "chayaM before setting to previous",
+		"patch_id":                    patchDoc.Id,
+		"patchDoc.BuildVariants":      patchDoc.BuildVariants,
+		"patchDoc.Tasks":              patchDoc.Tasks,
+		"patchDoc.RegexBuildVariants": patchDoc.RegexBuildVariants,
+		"patchDoc.RegexTasks":         patchDoc.RegexTasks,
+		"patchDoc.VariantsTasks":      patchDoc.VariantsTasks,
+	})
+	previousPatch, err := patch.FindOne(patch.MostRecentPatchByUserAndProject(j.user.Username(), project.Identifier))
+	if err != nil {
+		return errors.Wrap(err, "error querying for most recent patch")
+	}
+	if previousPatch == nil {
+		return errors.Errorf("no previous patch available")
+	}
+
+	patchDoc.BuildVariants = previousPatch.BuildVariants
+	patchDoc.Tasks = previousPatch.Tasks
+	patchDoc.RegexBuildVariants = previousPatch.RegexBuildVariants
+	patchDoc.RegexTasks = previousPatch.RegexTasks
+
+	grip.Error(message.Fields{
+		"message":                     "chayaM after setting to previous",
+		"patch_id":                    patchDoc.Id,
+		"patchDoc.BuildVariants":      patchDoc.BuildVariants,
+		"patchDoc.Tasks":              patchDoc.Tasks,
+		"patchDoc.RegexBuildVariants": patchDoc.RegexBuildVariants,
+		"patchDoc.RegexTasks":         patchDoc.RegexTasks,
+		"patchDoc.VariantsTasks":      patchDoc.VariantsTasks,
+	})
+	return nil
 }
 
 func getPreviousFailedTasksAndDisplayTasks(tasksInProjectVariant []string, displayTasksInProjectVariant []string, vt patch.VariantTasks, version string) ([]string, []patch.DisplayTask, error) {

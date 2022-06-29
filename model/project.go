@@ -1672,6 +1672,7 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 	}
 
 	vts = pairs.TVPairsToVariantTasks()
+	// resolves here
 	bvs, tasks = patch.ResolveVariantTasks(vts)
 	return bvs, tasks, vts
 }
