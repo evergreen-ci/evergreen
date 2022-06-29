@@ -13,8 +13,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/pod/dispatcher"
-	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -347,7 +347,7 @@ func (h *podAgentNextTask) transitionStartingToRunning(p *pod.Pod) error {
 }
 
 func (h *podAgentNextTask) setAgentFirstContactTime(p *pod.Pod) {
-	if !p.TimeInfo.Initializing.IsZero() {
+	if p.TimeInfo.Initializing.IsZero() {
 		return
 	}
 
