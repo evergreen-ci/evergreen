@@ -70,7 +70,7 @@ func (s *ProjectEventsTestSuite) SetupSuite() {
 		After:  afterSettings,
 	}
 
-	s.NoError(db.ClearCollections(event.LegacyEventLogCollection, model.ProjectRefCollection))
+	s.NoError(db.ClearCollections(event.AllLogCollection, model.ProjectRefCollection))
 
 	projectRef := &model.ProjectRef{
 		Id:      "mci2",
@@ -78,7 +78,7 @@ func (s *ProjectEventsTestSuite) SetupSuite() {
 	}
 	s.NoError(projectRef.Insert())
 
-	s.NoError(model.LogProjectEvent(event.EventTypeProjectAdded, "mci2", s.event))
+	s.NoError(model.LogProjectEvent(model.EventTypeProjectAdded, "mci2", s.event))
 }
 
 func (s *ProjectEventsTestSuite) TestGetProjectEvents() {

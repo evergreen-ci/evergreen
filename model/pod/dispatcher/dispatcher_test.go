@@ -127,7 +127,7 @@ func TestAssignNextTask(t *testing.T) {
 	defer cancel()
 
 	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection, event.LegacyEventLogCollection))
+		assert.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection, event.AllLogCollection))
 	}()
 
 	env := &mock.Environment{}
@@ -411,7 +411,7 @@ func TestAssignNextTask(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			tctx, tcancel := context.WithTimeout(ctx, 10*time.Second)
 			defer tcancel()
-			require.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection, event.LegacyEventLogCollection))
+			require.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection, event.AllLogCollection))
 
 			p := pod.Pod{
 				ID:           utility.RandomString(),

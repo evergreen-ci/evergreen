@@ -61,7 +61,6 @@ type Host struct {
 
 	// the task that is currently running on the host
 	RunningTask             string `bson:"running_task,omitempty" json:"running_task,omitempty"`
-	RunningTaskExecution    int    `bson:"running_task_execution,omitempty" json:"running_task_execution,omitempty"`
 	RunningTaskBuildVariant string `bson:"running_task_bv,omitempty" json:"running_task_bv,omitempty"`
 	RunningTaskVersion      string `bson:"running_task_version,omitempty" json:"running_task_version,omitempty"`
 	RunningTaskProject      string `bson:"running_task_project,omitempty" json:"running_task_project,omitempty"`
@@ -1309,7 +1308,6 @@ func (h *Host) ClearRunningAndSetLastTask(t *task.Task) error {
 			},
 			"$unset": bson.M{
 				RunningTaskKey:             1,
-				RunningTaskExecutionKey:    1,
 				RunningTaskGroupKey:        1,
 				RunningTaskGroupOrderKey:   1,
 				RunningTaskBuildVariantKey: 1,
@@ -1322,7 +1320,7 @@ func (h *Host) ClearRunningAndSetLastTask(t *task.Task) error {
 		return err
 	}
 
-	event.LogHostRunningTaskCleared(h.Id, h.RunningTask, h.RunningTaskExecution)
+	event.LogHostRunningTaskCleared(h.Id, h.RunningTask)
 	grip.Info(message.Fields{
 		"message":         "cleared host running task and set last task",
 		"host_id":         h.Id,
@@ -1333,7 +1331,6 @@ func (h *Host) ClearRunningAndSetLastTask(t *task.Task) error {
 	})
 
 	h.RunningTask = ""
-	h.RunningTaskExecution = 0
 	h.RunningTaskBuildVariant = ""
 	h.RunningTaskVersion = ""
 	h.RunningTaskProject = ""
@@ -1358,7 +1355,6 @@ func (h *Host) ClearRunningTask() error {
 		bson.M{
 			"$unset": bson.M{
 				RunningTaskKey:             1,
-				RunningTaskExecutionKey:    1,
 				RunningTaskGroupKey:        1,
 				RunningTaskGroupOrderKey:   1,
 				RunningTaskBuildVariantKey: 1,
@@ -1372,7 +1368,7 @@ func (h *Host) ClearRunningTask() error {
 	}
 
 	if h.RunningTask != "" {
-		event.LogHostRunningTaskCleared(h.Id, h.RunningTask, h.RunningTaskExecution)
+		event.LogHostRunningTaskCleared(h.Id, h.RunningTask)
 		grip.Info(message.Fields{
 			"message":  "cleared host running task",
 			"host_id":  h.Id,
@@ -1383,7 +1379,6 @@ func (h *Host) ClearRunningTask() error {
 	}
 
 	h.RunningTask = ""
-	h.RunningTaskExecution = 0
 	h.RunningTaskBuildVariant = ""
 	h.RunningTaskVersion = ""
 	h.RunningTaskProject = ""
@@ -1420,7 +1415,6 @@ func (h *Host) UpdateRunningTask(t *task.Task) (bool, error) {
 	update := bson.M{
 		"$set": bson.M{
 			RunningTaskKey:             t.Id,
-			RunningTaskExecutionKey:    t.Execution,
 			RunningTaskGroupKey:        t.TaskGroup,
 			RunningTaskGroupOrderKey:   t.TaskGroupOrder,
 			RunningTaskBuildVariantKey: t.BuildVariant,
@@ -1441,7 +1435,7 @@ func (h *Host) UpdateRunningTask(t *task.Task) (bool, error) {
 		}
 		return false, errors.Wrapf(err, "setting running task to '%s' for host '%s'", t.Id, h.Id)
 	}
-	event.LogHostRunningTaskSet(h.Id, t.Id, t.Execution)
+	event.LogHostRunningTaskSet(h.Id, t.Id)
 	grip.Info(message.Fields{
 		"message":  "host running task set",
 		"host_id":  h.Id,

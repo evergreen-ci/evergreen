@@ -37,7 +37,8 @@ func LogPatchStateChangeEvent(id, newStatus string) {
 		},
 	}
 
-	if err := event.Log(); err != nil {
+	logger := NewDBEventLogger(AllLogCollection)
+	if err := logger.LogEvent(&event); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypePatch,
 			"message":       "error logging event",

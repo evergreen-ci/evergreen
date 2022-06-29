@@ -233,7 +233,7 @@ func TestPodAgentSetup(t *testing.T) {
 
 func TestPodAgentNextTask(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(task.Collection, pod.Collection, dispatcher.Collection, event.LegacyEventLogCollection))
+		assert.NoError(t, db.ClearCollections(task.Collection, pod.Collection, dispatcher.Collection, event.AllLogCollection))
 	}()
 	getPod := func() pod.Pod {
 		return pod.Pod{
@@ -326,7 +326,7 @@ func TestPodAgentNextTask(t *testing.T) {
 			require.NoError(t, err)
 			env.Remote = rq
 
-			require.NoError(t, db.ClearCollections(task.Collection, pod.Collection, dispatcher.Collection, event.LegacyEventLogCollection))
+			require.NoError(t, db.ClearCollections(task.Collection, pod.Collection, dispatcher.Collection, event.AllLogCollection))
 
 			rh, ok := makePodAgentNextTask(env).(*podAgentNextTask)
 			require.True(t, ok)

@@ -137,8 +137,8 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 		h :=
 			event.EventLogEntry{
 				Timestamp:    time.Now(),
-				ResourceType: event.EventResourceTypeProject,
-				EventType:    event.EventTypeProjectModified,
+				ResourceType: model.EventResourceTypeProject,
+				EventType:    model.EventTypeProjectModified,
 				ResourceId:   projectId,
 				Data: &model.ProjectChangeEvent{
 					User:   username,
@@ -147,10 +147,11 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 				},
 			}
 
-		s.Require().NoError(db.ClearCollections(event.LegacyEventLogCollection))
+		s.Require().NoError(db.ClearCollections(event.AllLogCollection))
+		logger := event.NewDBEventLogger(event.AllLogCollection)
 		for i := 0; i < projEventCount; i++ {
 			eventShallowCpy := h
-			s.NoError(eventShallowCpy.Log())
+			s.NoError(logger.LogEvent(&eventShallowCpy))
 		}
 
 		return nil
@@ -255,7 +256,7 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 }
 
 func TestUpdateProjectVarsByValue(t *testing.T) {
-	require.NoError(t, db.ClearCollections(model.ProjectVarsCollection, event.LegacyEventLogCollection))
+	require.NoError(t, db.ClearCollections(model.ProjectVarsCollection, event.AllLogCollection))
 
 	vars := &model.ProjectVars{
 		Id:          projectId,

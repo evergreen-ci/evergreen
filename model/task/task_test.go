@@ -3,7 +3,6 @@ package task
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"testing"
 	"time"
 
@@ -1262,7 +1261,7 @@ func TestUnscheduleStaleUnderwaterHostTasksNoDistro(t *testing.T) {
 
 func TestDisableStaleContainerTasks(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
+		assert.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
 	}()
 	for tName, tCase := range map[string]func(t *testing.T, tsk Task){
 		"DisablesStaleUnallocatedContainerTask": func(t *testing.T, tsk Task) {
@@ -1329,14 +1328,14 @@ func TestDisableStaleContainerTasks(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
+			require.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
 			tCase(t, getTaskThatNeedsContainerAllocation())
 		})
 	}
 }
 
 func TestDeactivateStepbackTasksForProject(t *testing.T) {
-	require.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
+	require.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
 
 	activatedStepbackTask := Task{
 		Id:          "activated",
@@ -1382,7 +1381,7 @@ func TestDeactivateStepbackTasksForProject(t *testing.T) {
 	assert.NoError(t, db.InsertMany(Collection, activatedStepbackTask, taskDependingOnStepbackTask, wrongProjectTask, runningStepbackTask, notStepbackTask))
 	assert.NoError(t, DeactivateStepbackTasksForProject("p1", "me"))
 
-	events, err := event.Find(db.Q{})
+	events, err := event.Find(event.AllLogCollection, db.Q{})
 	assert.NoError(t, err)
 	assert.Len(t, events, 4)
 	var numDeactivated, numAborted int
@@ -1996,7 +1995,7 @@ func TestGetRecursiveDependenciesDown(t *testing.T) {
 }
 
 func TestDeactivateDependencies(t *testing.T) {
-	require.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
+	require.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
 
 	tasks := []Task{
 		{Id: "t0"},
@@ -2033,7 +2032,7 @@ func TestDeactivateDependencies(t *testing.T) {
 }
 
 func TestActivateDeactivatedDependencies(t *testing.T) {
-	require.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
+	require.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
 
 	tasks := []Task{
 		{Id: "t0"},
@@ -2093,7 +2092,7 @@ func TestTopologicalSort(t *testing.T) {
 }
 
 func TestActivateTasks(t *testing.T) {
-	require.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
+	require.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
 
 	tasks := []Task{
 		{Id: "t0"},
@@ -2128,7 +2127,7 @@ func TestActivateTasks(t *testing.T) {
 }
 
 func TestDeactivateTasks(t *testing.T) {
-	require.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
+	require.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
 
 	tasks := []Task{
 		{Id: "t0"},
@@ -2747,7 +2746,7 @@ func getTaskThatNeedsContainerAllocation() Task {
 
 func TestDisableOneTask(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
+		assert.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
 	}()
 
 	type disableFunc func(t *testing.T, tsk Task) error
@@ -2821,7 +2820,7 @@ func TestDisableOneTask(t *testing.T) {
 				},
 			} {
 				t.Run(tName, func(t *testing.T) {
-					require.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
+					require.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
 					tasks := [5]Task{
 						{Id: "display-task0", DisplayOnly: true, ExecutionTasks: []string{"exec-task1", "exec-task2"}, Activated: true},
 						{Id: "exec-task1", DisplayTaskId: utility.ToStringPtr("display-task0"), Activated: true},
@@ -2842,7 +2841,7 @@ func TestDisableOneTask(t *testing.T) {
 
 func TestDisableManyTasks(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
+		assert.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
 	}()
 
 	for tName, tCase := range map[string]func(t *testing.T){
@@ -2976,7 +2975,7 @@ func TestDisableManyTasks(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
+			require.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
 			tCase(t)
 		})
 	}
@@ -3581,7 +3580,7 @@ func TestAbortVersion(t *testing.T) {
 
 func TestArchive(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection, OldCollection, event.LegacyEventLogCollection))
+		assert.NoError(t, db.ClearCollections(Collection, OldCollection, event.AllLogCollection))
 	}()
 	checkTaskIsArchived := func(t *testing.T, oldTaskID string) {
 		dbTask, err := FindOneOldId(oldTaskID)
@@ -3607,7 +3606,7 @@ func TestArchive(t *testing.T) {
 			hostEventData, ok := e.Data.(*event.HostEventData)
 			require.True(t, ok)
 			require.Equal(t, hostEventData.TaskId, dbTask.OldTaskId)
-			require.Equal(t, hostEventData.Execution, strconv.Itoa(dbTask.Execution))
+			require.Equal(t, hostEventData.TaskExecution, dbTask.Execution)
 		}
 	}
 	for tName, tCase := range map[string]func(t *testing.T, tsk Task){
@@ -3617,8 +3616,8 @@ func TestArchive(t *testing.T) {
 			require.NoError(t, tsk.Insert())
 
 			hostID := "hostID"
-			event.LogHostRunningTaskSet(hostID, tsk.Id, 0)
-			event.LogHostRunningTaskCleared(hostID, tsk.Id, 0)
+			event.LogHostRunningTaskSet(hostID, tsk.Id)
+			event.LogHostRunningTaskCleared(hostID, tsk.Id)
 
 			require.NoError(t, tsk.Archive())
 
@@ -3635,8 +3634,8 @@ func TestArchive(t *testing.T) {
 			require.NoError(t, execTask.Insert())
 
 			hostID := "hostID"
-			event.LogHostRunningTaskSet(hostID, execTask.Id, 0)
-			event.LogHostRunningTaskCleared(hostID, execTask.Id, 0)
+			event.LogHostRunningTaskSet(hostID, execTask.Id)
+			event.LogHostRunningTaskCleared(hostID, execTask.Id)
 
 			dt.DisplayOnly = true
 			dt.ExecutionTasks = []string{execTask.Id}
@@ -3660,7 +3659,7 @@ func TestArchive(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(Collection, OldCollection, event.LegacyEventLogCollection))
+			require.NoError(t, db.ClearCollections(Collection, OldCollection, event.AllLogCollection))
 			tsk := Task{
 				Id: "taskID",
 			}

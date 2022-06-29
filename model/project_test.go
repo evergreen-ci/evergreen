@@ -1435,8 +1435,8 @@ func TestFindProjectsSuite(t *testing.T) {
 		h :=
 			event.EventLogEntry{
 				Timestamp:    time.Now(),
-				ResourceType: event.EventResourceTypeProject,
-				EventType:    event.EventTypeProjectModified,
+				ResourceType: EventResourceTypeProject,
+				EventType:    EventTypeProjectModified,
 				ResourceId:   projectId,
 				Data: &ProjectChangeEvent{
 					User:   username,
@@ -1445,10 +1445,11 @@ func TestFindProjectsSuite(t *testing.T) {
 				},
 			}
 
-		s.Require().NoError(db.ClearCollections(event.LegacyEventLogCollection))
+		s.Require().NoError(db.ClearCollections(event.AllLogCollection))
+		logger := event.NewDBEventLogger(event.AllLogCollection)
 		for i := 0; i < projEventCount; i++ {
 			eventShallowCpy := h
-			s.NoError(eventShallowCpy.Log())
+			s.NoError(logger.LogEvent(&eventShallowCpy))
 		}
 
 		return nil

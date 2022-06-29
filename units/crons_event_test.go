@@ -52,7 +52,7 @@ func (s *cronsEventSuite) SetupTest() {
 	s.Require().NoError(env.Configure(s.ctx))
 	s.env = env
 
-	s.Require().NoError(db.ClearCollections(event.LegacyEventLogCollection, evergreen.ConfigCollection, notification.Collection,
+	s.Require().NoError(db.ClearCollections(event.AllLogCollection, evergreen.ConfigCollection, notification.Collection,
 		event.SubscriptionsCollection, patch.Collection, model.ProjectRefCollection))
 
 	events := []event.EventLogEntry{
@@ -67,8 +67,9 @@ func (s *cronsEventSuite) SetupTest() {
 		},
 	}
 
+	logger := event.NewDBEventLogger(event.AllLogCollection)
 	for i := range events {
-		s.NoError(events[i].Log())
+		s.NoError(logger.LogEvent(&events[i]))
 	}
 
 	s.n = []notification.Notification{
@@ -127,7 +128,8 @@ func (s *cronsEventSuite) TestDegradedMode() {
 	}
 
 	// degraded mode shouldn't process events
-	s.NoError(e.Log())
+	logger := event.NewDBEventLogger(event.AllLogCollection)
+	s.NoError(logger.LogEvent(&e))
 	s.NoError(PopulateEventNotifierJobs(s.env)(s.ctx, s.env.LocalQueue()))
 
 	out, err := event.FindUnprocessedEvents(-1)
@@ -216,7 +218,8 @@ func (s *cronsEventSuite) TestEndToEnd() {
 		},
 	}
 
-	s.NoError(e.Log())
+	logger := event.NewDBEventLogger(event.AllLogCollection)
+	s.NoError(logger.LogEvent(&e))
 
 	subs := []event.Subscription{
 		{

@@ -12,7 +12,7 @@ import (
 
 func TestLogUserRolesEvent(t *testing.T) {
 	defer func() {
-		require.NoError(t, db.Clear(LegacyEventLogCollection))
+		require.NoError(t, db.Clear(AllLogCollection))
 	}()
 	t.Run("InvalidUserEventType", func(t *testing.T) {
 		assert.Error(t, LogUserEvent("user", "invalid", []string{"role"}, []string{}))
@@ -30,7 +30,7 @@ func TestLogUserRolesEvent(t *testing.T) {
 			bsonutil.GetDottedKeyName("data", "before"): before,
 			bsonutil.GetDottedKeyName("data", "after"):  after,
 		})
-		err := db.FindOneQ(LegacyEventLogCollection, q, e)
+		err := db.FindOneQ(AllLogCollection, q, e)
 		require.NoError(t, err)
 	})
 }

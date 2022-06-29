@@ -39,7 +39,7 @@ func checkSpawnHostModificationEvent(t *testing.T, hostID, expectedEvent string,
 }
 
 func TestSpawnhostModifyJob(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(host.Collection, event.LegacyEventLogCollection))
+	assert.NoError(t, db.ClearCollections(host.Collection, event.AllLogCollection))
 	mock := cloud.GetMockProvider()
 	h := host.Host{
 		Id:       "hostID",

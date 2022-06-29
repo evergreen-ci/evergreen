@@ -1,7 +1,6 @@
 package event
 
 import (
-	"strconv"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -10,7 +9,7 @@ import (
 )
 
 func init() {
-	registry.AddType(ResourceTypeTask, func() interface{} { return &TaskEventData{} })
+	registry.AddType(ResourceTypeTask, taskEventDataFactory)
 	registry.AllowSubscription(ResourceTypeTask, TaskStarted)
 	registry.AllowSubscription(ResourceTypeTask, TaskFinished)
 	registry.AllowSubscription(ResourceTypeTask, TaskBlocked)
@@ -63,7 +62,8 @@ func logTaskEvent(taskId string, eventType string, eventData TaskEventData) {
 		ResourceType: ResourceTypeTask,
 	}
 
-	if err := event.Log(); err != nil {
+	logger := NewDBEventLogger(AllLogCollection)
+	if err := logger.LogEvent(&event); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeTask,
 			"message":       "error logging event",
@@ -94,7 +94,8 @@ func logManyTaskEvents(taskIds []string, eventType string, eventData TaskEventDa
 		}
 		events = append(events, event)
 	}
-	if err := LogManyEvents(events); err != nil {
+	logger := NewDBEventLogger(AllLogCollection)
+	if err := logger.LogManyEvents(events); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeTask,
 			"message":       "error logging event",
@@ -144,7 +145,7 @@ func LogTaskStarted(taskId string, execution int) {
 func LogTaskFinished(taskId string, execution int, hostId, status string) {
 	logTaskEvent(taskId, TaskFinished, TaskEventData{Execution: execution, Status: status})
 	if hostId != "" {
-		LogHostEvent(hostId, EventTaskFinished, HostEventData{Execution: strconv.Itoa(execution), TaskStatus: status, TaskId: taskId})
+		LogHostEvent(hostId, EventTaskFinished, HostEventData{TaskExecution: execution, TaskStatus: status, TaskId: taskId})
 	}
 }
 

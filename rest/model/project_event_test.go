@@ -72,8 +72,8 @@ func (s *ProjectEventSuite) SetupTest() {
 	h := model.ProjectChangeEventEntry{
 		EventLogEntry: event.EventLogEntry{
 			Timestamp:    time.Now(),
-			ResourceType: event.EventResourceTypeProject,
-			EventType:    event.EventTypeProjectModified,
+			ResourceType: model.EventResourceTypeProject,
+			EventType:    model.EventTypeProjectModified,
 			ResourceId:   projectId,
 			Data: &model.ProjectChangeEvent{
 				User:   username,

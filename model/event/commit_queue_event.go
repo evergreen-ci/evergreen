@@ -8,12 +8,8 @@ import (
 	"github.com/mongodb/grip/message"
 )
 
-func init() {
-	registry.AddType(ResourceTypeCommitQueue, func() interface{} { return &CommitQueueEventData{} })
-
-	registry.AllowSubscription(ResourceTypeCommitQueue, CommitQueueStartTest)
-	registry.AllowSubscription(ResourceTypeCommitQueue, CommitQueueConcludeTest)
-	registry.AllowSubscription(ResourceTypeCommitQueue, CommitQueueEnqueueFailed)
+func commitQueueEventDataFactory() interface{} {
+	return &CommitQueueEventData{}
 }
 
 const (
@@ -41,7 +37,8 @@ func logCommitQueueEvent(patchID, eventType string, data *CommitQueueEventData) 
 		Data:         data,
 	}
 
-	if err := event.Log(); err != nil {
+	logger := NewDBEventLogger(AllLogCollection)
+	if err := logger.LogEvent(&event); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeCommitQueue,
 			"message":       "error logging event",

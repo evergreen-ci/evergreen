@@ -289,7 +289,7 @@ func TestUpdatingHostStatus(t *testing.T) {
 
 func TestSetStatusAndFields(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
+		assert.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
 	}()
 	for tName, tCase := range map[string]func(t *testing.T, h *Host){
 		"FailsIfHostDoesNotExist": func(t *testing.T, h *Host) {
@@ -376,7 +376,7 @@ func TestSetStatusAndFields(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
+			require.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
 			h := Host{
 				Id:     "host",
 				Status: evergreen.HostRunning,

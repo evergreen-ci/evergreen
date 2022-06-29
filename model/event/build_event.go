@@ -7,11 +7,8 @@ import (
 	"github.com/mongodb/grip/message"
 )
 
-func init() {
-	registry.AddType(ResourceTypeBuild, func() interface{} { return &BuildEventData{} })
-
-	registry.AllowSubscription(ResourceTypeBuild, BuildStateChange)
-	registry.AllowSubscription(ResourceTypeBuild, BuildGithubCheckFinished)
+func buildEventDataFactory() interface{} {
+	return &BuildEventData{}
 }
 
 const (
@@ -37,7 +34,8 @@ func LogBuildStateChangeEvent(id, status string) {
 		ResourceType: ResourceTypeBuild,
 	}
 
-	if err := event.Log(); err != nil {
+	logger := NewDBEventLogger(AllLogCollection)
+	if err := logger.LogEvent(&event); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": event.ResourceType,
 			"event_type":    BuildStateChange,
@@ -57,7 +55,8 @@ func LogBuildGithubCheckFinishedEvent(id, status string) {
 		},
 		ResourceType: ResourceTypeBuild,
 	}
-	if err := event.Log(); err != nil {
+	logger := NewDBEventLogger(AllLogCollection)
+	if err := logger.LogEvent(&event); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": event.ResourceType,
 			"event_type":    BuildGithubCheckFinished,

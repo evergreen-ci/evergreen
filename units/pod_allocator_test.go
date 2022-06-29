@@ -25,7 +25,7 @@ func TestPodAllocatorJob(t *testing.T) {
 	defer cancel()
 
 	defer func() {
-		assert.NoError(t, db.ClearCollections(task.Collection, pod.Collection, dispatcher.Collection, event.LegacyEventLogCollection))
+		assert.NoError(t, db.ClearCollections(task.Collection, pod.Collection, dispatcher.Collection, event.AllLogCollection))
 	}()
 
 	var originalPodInit evergreen.PodInitConfig
@@ -182,7 +182,7 @@ func TestPodAllocatorJob(t *testing.T) {
 			tctx, tcancel := context.WithTimeout(ctx, 10*time.Second)
 			defer tcancel()
 
-			require.NoError(t, db.ClearCollections(task.Collection, pod.Collection, dispatcher.Collection, event.LegacyEventLogCollection))
+			require.NoError(t, db.ClearCollections(task.Collection, pod.Collection, dispatcher.Collection, event.AllLogCollection))
 
 			tsk := getTaskThatNeedsContainerAllocation()
 			j := NewPodAllocatorJob(tsk.Id, utility.RoundPartOfMinute(0).Format(TSFormat))

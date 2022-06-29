@@ -20,7 +20,7 @@ func TestProjectEventSuite(t *testing.T) {
 }
 
 func (s *ProjectEventSuite) SetupTest() {
-	s.Require().NoError(db.ClearCollections(event.LegacyEventLogCollection))
+	s.Require().NoError(db.ClearCollections(event.AllLogCollection))
 }
 
 const (

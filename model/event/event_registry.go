@@ -12,10 +12,28 @@ type eventRegistry struct {
 
 	types          map[string]eventDataFactory
 	isSubscribable map[EventLogEntry]bool
-	unexpirable    map[EventLogEntry]bool
 }
 
-var registry eventRegistry
+var registry *eventRegistry
+
+func init() {
+	registry = &eventRegistry{
+		types:          map[string]eventDataFactory{},
+		isSubscribable: map[EventLogEntry]bool{},
+	}
+
+	registry.AddType(ResourceTypeAdmin, adminEventDataFactory)
+	registry.AddType(ResourceTypeBuild, buildEventDataFactory)
+	registry.AddType(ResourceTypeDistro, distroEventDataFactory)
+	registry.AddType(ResourceTypeUser, userEventDataFactory)
+	registry.AllowSubscription(ResourceTypeBuild, BuildStateChange)
+	registry.AllowSubscription(ResourceTypeBuild, BuildGithubCheckFinished)
+
+	registry.AddType(ResourceTypeCommitQueue, commitQueueEventDataFactory)
+	registry.AllowSubscription(ResourceTypeCommitQueue, CommitQueueStartTest)
+	registry.AllowSubscription(ResourceTypeCommitQueue, CommitQueueConcludeTest)
+	registry.AllowSubscription(ResourceTypeCommitQueue, CommitQueueEnqueueFailed)
+}
 
 // AddType adds an event data factory to the registry with the given resource
 // type. AddType will panic if you attempt to add the same resourceType more
@@ -23,10 +41,6 @@ var registry eventRegistry
 func (r *eventRegistry) AddType(resourceType string, f eventDataFactory) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
-
-	if r.types == nil {
-		r.types = make(map[string]eventDataFactory)
-	}
 
 	_, ok := r.types[resourceType]
 	if ok {
@@ -51,15 +65,11 @@ func (r *eventRegistry) AllowSubscription(resourceType, eventType string) {
 		ResourceType: resourceType,
 		EventType:    eventType,
 	}
-
 	_, ok := r.isSubscribable[e]
 	if ok {
 		panic(fmt.Sprintf("attempted to enable subscribability for event '%s/%s' more than once", resourceType, eventType))
 	}
 
-	if r.isSubscribable == nil {
-		r.isSubscribable = make(map[EventLogEntry]bool)
-	}
 	r.isSubscribable[e] = true
 }
 
@@ -77,29 +87,7 @@ func (r *eventRegistry) IsSubscribable(resourceType, eventType string) bool {
 	return r.isSubscribable[e]
 }
 
-func (r *eventRegistry) setUnexpirable(resourceType, eventType string) {
-	r.lock.Lock()
-	defer r.lock.Unlock()
-
-	if r.unexpirable == nil {
-		r.unexpirable = make(map[EventLogEntry]bool)
-	}
-	r.unexpirable[EventLogEntry{ResourceType: resourceType, EventType: eventType}] = true
-}
-
-func (r *eventRegistry) isExpirable(resourceType, eventType string) bool {
-	r.lock.RLock()
-	defer r.lock.RUnlock()
-
-	e := EventLogEntry{
-		ResourceType: resourceType,
-		EventType:    eventType,
-	}
-
-	return !r.unexpirable[e]
-}
-
-func (r *eventRegistry) newEventFromType(resourceType string) interface{} {
+func NewEventFromType(resourceType string) interface{} {
 	registry.lock.RLock()
 	defer registry.lock.RUnlock()
 
@@ -109,4 +97,28 @@ func (r *eventRegistry) newEventFromType(resourceType string) interface{} {
 	}
 
 	return f()
+}
+
+func taskEventDataFactory() interface{} {
+	return &TaskEventData{}
+}
+
+func hostEventDataFactory() interface{} {
+	return &HostEventData{}
+}
+
+func distroEventDataFactory() interface{} {
+	return &DistroEventData{}
+}
+
+func adminEventDataFactory() interface{} {
+	return &rawAdminEventData{}
+}
+
+func userEventDataFactory() interface{} {
+	return &userData{}
+}
+
+func podEventDataFactory() interface{} {
+	return &podData{}
 }

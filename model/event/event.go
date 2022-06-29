@@ -9,12 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-const (
-	LegacyEventLogCollection = "event_log"
-	EventCollection          = "events"
-)
-
-var notSubscribableTime = time.Date(2015, time.October, 21, 23, 29, 1, 0, time.UTC)
+const AllLogCollection = "event_log"
 
 type EventLogEntry struct {
 	ID           string    `bson:"_id" json:"-"`
@@ -22,7 +17,6 @@ type EventLogEntry struct {
 	ProcessedAt  time.Time `bson:"processed_at" json:"processed_at"`
 
 	Timestamp  time.Time   `bson:"ts" json:"timestamp"`
-	Expirable  bool        `bson:"expirable,omitempty" json:"expirable,omitempty"`
 	ResourceId string      `bson:"r_id" json:"resource_id"`
 	EventType  string      `bson:"e_type" json:"event_type"`
 	Data       interface{} `bson:"data" json:"data"`
@@ -44,7 +38,6 @@ type UnmarshalEventLogEntry struct {
 	ProcessedAt  time.Time   `bson:"processed_at" json:"processed_at"`
 
 	Timestamp  time.Time   `bson:"ts" json:"timestamp"`
-	Expirable  bool        `bson:"expirable,omitempty" json:"expirable,omitempty"`
 	ResourceId string      `bson:"r_id" json:"resource_id"`
 	EventType  string      `bson:"e_type" json:"event_type"`
 	Data       mgobson.Raw `bson:"data" json:"data"`
@@ -54,7 +47,6 @@ var (
 	// bson fields for the event struct
 	idKey           = bsonutil.MustHaveTag(EventLogEntry{}, "ID")
 	TimestampKey    = bsonutil.MustHaveTag(EventLogEntry{}, "Timestamp")
-	ExpirableKey    = bsonutil.MustHaveTag(EventLogEntry{}, "Expirable")
 	ResourceIdKey   = bsonutil.MustHaveTag(EventLogEntry{}, "ResourceId")
 	ResourceTypeKey = bsonutil.MustHaveTag(EventLogEntry{}, "ResourceType")
 	processedAtKey  = bsonutil.MustHaveTag(EventLogEntry{}, "ProcessedAt")
@@ -73,7 +65,7 @@ func (e *EventLogEntry) SetBSON(raw mgobson.Raw) error {
 		return errors.Wrap(err, "unmarshalling event into generic event log entry")
 	}
 
-	e.Data = registry.newEventFromType(temp.ResourceType)
+	e.Data = NewEventFromType(temp.ResourceType)
 	if e.Data == nil {
 		return errors.Errorf("unknown resource type '%s'", temp.ResourceType)
 	}
@@ -82,7 +74,6 @@ func (e *EventLogEntry) SetBSON(raw mgobson.Raw) error {
 	}
 
 	// IDs for events were ObjectIDs previously, so we need to do this
-	// TODO (EVG-17214): Remove once old events are TTLed and/or migrated.
 	switch v := temp.ID.(type) {
 	case string:
 		e.ID = v
@@ -98,7 +89,6 @@ func (e *EventLogEntry) SetBSON(raw mgobson.Raw) error {
 	e.EventType = temp.EventType
 	e.ProcessedAt = temp.ProcessedAt
 	e.ResourceType = temp.ResourceType
-	e.Expirable = temp.Expirable
 
 	return nil
 }
@@ -114,9 +104,12 @@ func (e *EventLogEntry) validateEvent() error {
 		e.ID = mgobson.NewObjectId().Hex()
 	}
 	if !registry.IsSubscribable(e.ResourceType, e.EventType) {
+		loc, _ := time.LoadLocation("UTC")
+		notSubscribableTime, err := time.ParseInLocation(time.RFC3339, notSubscribableTimeString, loc)
+		if err != nil {
+			return errors.Wrap(err, "setting processed at time")
+		}
 		e.ProcessedAt = notSubscribableTime
 	}
-	e.Expirable = registry.isExpirable(e.ResourceType, e.EventType)
-
 	return nil
 }

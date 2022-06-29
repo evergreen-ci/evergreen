@@ -328,7 +328,7 @@ func TestUpdateDistrosSettingsHandlerParse(t *testing.T) {
 }
 
 func TestUpdateDistrosSettingsHandlerRun(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(distro.Collection, event.LegacyEventLogCollection))
+	assert.NoError(t, db.ClearCollections(distro.Collection, event.AllLogCollection))
 	conf := testutil.TestConfig()
 	conf.Providers.AWS.EC2Keys = []evergreen.EC2Key{{Key: "key", Secret: "secret"}}
 	conf.SSHKeyPairs = []evergreen.SSHKeyPair{{Name: "a"}}

@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	amboyRegistry "github.com/mongodb/amboy/registry"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -25,7 +24,7 @@ func TestEventSuite(t *testing.T) {
 }
 
 func (s *eventSuite) SetupTest() {
-	s.NoError(db.ClearCollections(LegacyEventLogCollection))
+	s.NoError(db.ClearCollections(AllLogCollection))
 }
 
 func (s *eventSuite) TestMarshallAndUnarshallingStructsHaveSameTags() {
@@ -74,8 +73,8 @@ func (s *eventSuite) TestWithRealData() {
 			hostDataStatusKey: "success",
 		},
 	}
-	s.NoError(db.Insert(LegacyEventLogCollection, data))
-	entries, err := Find(db.Query(bson.M{idKey: mgobson.ObjectIdHex("5949645c9acd9604fdd202d8")}))
+	s.NoError(db.Insert(AllLogCollection, data))
+	entries, err := Find(AllLogCollection, db.Query(bson.M{idKey: mgobson.ObjectIdHex("5949645c9acd9604fdd202d8")}))
 	s.NoError(err)
 	s.Len(entries, 1)
 	s.NotPanics(func() {
@@ -109,8 +108,8 @@ func (s *eventSuite) TestWithRealData() {
 			hostDataStatusKey: "success",
 		},
 	}
-	s.NoError(db.Insert(LegacyEventLogCollection, data))
-	entries, err = Find(db.Query(bson.M{idKey: mgobson.ObjectIdHex("5949645c9acd9604fdd202d9")}))
+	s.NoError(db.Insert(AllLogCollection, data))
+	entries, err = Find(AllLogCollection, db.Query(bson.M{idKey: mgobson.ObjectIdHex("5949645c9acd9604fdd202d9")}))
 	s.NoError(err)
 	s.Len(entries, 1)
 	s.NotPanics(func() {
@@ -133,14 +132,15 @@ func (s *eventSuite) TestWithRealData() {
 
 	// check that string IDs are preserved in the DB
 	data[idKey] = "elephant"
-	s.NoError(db.Insert(LegacyEventLogCollection, data))
-	entries, err = Find(db.Query(bson.M{idKey: "elephant"}))
+	s.NoError(db.Insert(AllLogCollection, data))
+	entries, err = Find(AllLogCollection, db.Query(bson.M{idKey: "elephant"}))
 	s.NoError(err)
 	s.Len(entries, 1)
 	s.Equal("elephant", entries[0].ID)
 }
 
 func (s *eventSuite) TestEventWithNilData() {
+	logger := NewDBEventLogger(AllLogCollection)
 	event := EventLogEntry{
 		ID:         mgobson.NewObjectId().Hex(),
 		ResourceId: "TEST1",
@@ -148,12 +148,12 @@ func (s *eventSuite) TestEventWithNilData() {
 		Timestamp:  time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
 	}
 	s.Nil(event.Data)
-	s.Errorf(event.Log(), "event log entry cannot have nil data")
+	s.Errorf(logger.LogEvent(&event), "event log entry cannot have nil data")
 
 	s.NotPanics(func() {
 		// But reading this back should not panic, if it somehow got into the db
-		s.NoError(db.Insert(LegacyEventLogCollection, event))
-		fetchedEvents, err := Find(db.Query(bson.M{}))
+		s.NoError(db.Insert(AllLogCollection, event))
+		fetchedEvents, err := Find(AllLogCollection, db.Query(bson.M{}))
 		s.Require().Error(err)
 		s.Nil(fetchedEvents)
 	})
@@ -161,7 +161,7 @@ func (s *eventSuite) TestEventWithNilData() {
 
 func (s *eventSuite) TestGlobalEventRegistryItemsAreSane() {
 	for k := range registry.types {
-		event := registry.newEventFromType(k)
+		event := NewEventFromType(k)
 		s.NotNil(event)
 		found, rTypeTag := findResourceTypeIn(event)
 
@@ -246,15 +246,16 @@ func (s *eventSuite) TestFindResourceTypeIn() {
 }
 
 func (s *eventSuite) TestFindByID() {
+	logger := NewDBEventLogger(AllLogCollection)
 	e := &EventLogEntry{
 		ID:           mgobson.NewObjectId().Hex(),
 		ResourceType: ResourceTypeHost,
 		ResourceId:   "TEST1",
 		EventType:    "TEST2",
 		Timestamp:    time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
-		Data:         registry.newEventFromType(ResourceTypeHost),
+		Data:         NewEventFromType(ResourceTypeHost),
 	}
-	s.Require().NoError(e.Log())
+	s.Require().NoError(logger.LogEvent(e))
 	dbEvent, err := FindByID(e.ID)
 	s.Require().NoError(err)
 	s.Require().NotZero(dbEvent)
@@ -263,37 +264,39 @@ func (s *eventSuite) TestFindByID() {
 
 func (s *eventSuite) TestMarkProcessed() {
 	startTime := time.Now()
+
+	logger := NewDBEventLogger(AllLogCollection)
 	event := &EventLogEntry{
 		ResourceType: ResourceTypeHost,
 		ResourceId:   "TEST1",
 		EventType:    "TEST2",
 		Timestamp:    time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
-		Data:         registry.newEventFromType(ResourceTypeHost),
+		Data:         NewEventFromType(ResourceTypeHost),
 	}
 	processed, ptime := event.Processed()
 	s.False(processed)
 	s.Zero(ptime)
 
-	s.EqualError(event.MarkProcessed(), "event has no ID")
+	s.EqualError(logger.MarkProcessed(event), "event has no ID")
 	event.ID = mgobson.NewObjectId().Hex()
-	s.EqualError(event.MarkProcessed(), "updating 'processed at' time: document not found")
-	s.NoError(event.Log())
+	s.EqualError(logger.MarkProcessed(event), "updating 'processed at' time: document not found")
+	s.NoError(logger.LogEvent(event))
 
-	s.NoError(db.UpdateId(LegacyEventLogCollection, event.ID, bson.M{
+	s.NoError(db.UpdateId(AllLogCollection, event.ID, bson.M{
 		"$set": bson.M{
 			"processed_at": time.Time{},
 		},
 	}))
 
 	var fetchedEvent EventLogEntry
-	s.NoError(db.FindOneQ(LegacyEventLogCollection, db.Q{}, &fetchedEvent))
+	s.NoError(db.FindOneQ(AllLogCollection, db.Q{}, &fetchedEvent))
 
 	processed, ptime = fetchedEvent.Processed()
 	s.False(processed)
 	s.Zero(ptime)
 
 	time.Sleep(time.Millisecond)
-	s.NoError(fetchedEvent.MarkProcessed())
+	s.NoError(logger.MarkProcessed(&fetchedEvent))
 	processed, ptime = fetchedEvent.Processed()
 	s.True(processed)
 	s.True(ptime.After(startTime))
@@ -303,6 +306,8 @@ func (s *eventSuite) TestFindUnprocessedEvents() {
 	const migrationTimeString = "2015-10-21T16:29:00-07:00"
 	loc, _ := time.LoadLocation("UTC")
 	migrationTime, err := time.ParseInLocation(time.RFC3339, migrationTimeString, loc)
+	s.NoError(err)
+	notSubscribableTime, err := time.ParseInLocation(time.RFC3339, notSubscribableTimeString, loc)
 	s.NoError(err)
 
 	data := []bson.M{
@@ -333,7 +338,7 @@ func (s *eventSuite) TestFindUnprocessedEvents() {
 		},
 	}
 	for i := range data {
-		s.NoError(db.Insert(LegacyEventLogCollection, data[i]))
+		s.NoError(db.Insert(AllLogCollection, data[i]))
 	}
 	events, err := FindUnprocessedEvents(-1)
 	s.NoError(err)
@@ -385,7 +390,7 @@ func (s *eventSuite) TestFindLastProcessedEvent() {
 		},
 	}
 	for i := range events {
-		s.NoError(db.Insert(LegacyEventLogCollection, events[i]))
+		s.NoError(db.Insert(AllLogCollection, events[i]))
 	}
 
 	e, err := FindLastProcessedEvent()
@@ -432,7 +437,7 @@ func (s *eventSuite) TestCountUnprocessedEvents() {
 		},
 	}
 	for i := range events {
-		s.NoError(db.Insert(LegacyEventLogCollection, events[i]))
+		s.NoError(db.Insert(AllLogCollection, events[i]))
 	}
 
 	n, err := CountUnprocessedEvents()
@@ -486,12 +491,13 @@ func findResourceTypeIn(data interface{}) (bool, string) {
 }
 
 func (s *eventSuite) TestLogManyEvents() {
+	logger := NewDBEventLogger(AllLogCollection)
 	event1 := EventLogEntry{
 		ID:           mgobson.NewObjectId().Hex(),
 		ResourceId:   "resource_id_1",
 		EventType:    "some_type",
 		Timestamp:    time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
-		Data:         registry.newEventFromType(ResourceTypeTask),
+		Data:         NewEventFromType(ResourceTypeTask),
 		ResourceType: "TASK",
 	}
 	event2 := EventLogEntry{
@@ -499,12 +505,12 @@ func (s *eventSuite) TestLogManyEvents() {
 		ResourceId:   "resource_id_1",
 		EventType:    "some_type",
 		Timestamp:    time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
-		Data:         registry.newEventFromType(ResourceTypeTask),
+		Data:         NewEventFromType(ResourceTypeTask),
 		ResourceType: "TASK",
 	}
-	s.NoError(LogManyEvents([]EventLogEntry{event1, event2}))
+	s.NoError(logger.LogManyEvents([]EventLogEntry{event1, event2}))
 	events := []EventLogEntry{}
-	s.NoError(db.FindAllQ(LegacyEventLogCollection, db.Query(bson.M{}), &events))
+	s.NoError(db.FindAllQ(AllLogCollection, db.Query(bson.M{}), &events))
 	s.Len(events, 2)
 	s.Equal(events[0].ResourceId, "resource_id_1")
 	s.Equal(events[0].EventType, "some_type")
@@ -514,18 +520,4 @@ func (s *eventSuite) TestLogManyEvents() {
 	s.Equal(events[1].EventType, "some_type")
 	_, ok = events[1].Data.(*TaskEventData)
 	s.True(ok)
-}
-
-func TestEventExpiration(t *testing.T) {
-	for event, isExpirable := range map[EventLogEntry]bool{
-		{ResourceType: EventResourceTypeProject, EventType: EventTypeProjectModified, Data: ""}: false,
-		{ResourceType: ResourceTypeAdmin, EventType: EventTypeValueChanged, Data: ""}:           false,
-		{ResourceType: ResourceTypeDistro, EventType: EventDistroAdded, Data: ""}:               false,
-		{ResourceType: ResourceTypeCommitQueue, EventType: CommitQueueConcludeTest, Data: ""}:   true,
-		{ResourceType: ResourceTypeTask, EventType: EventTaskFinished, Data: ""}:                true,
-		{ResourceType: ResourceTypeHost, EventType: EventHostCreated, Data: ""}:                 true,
-	} {
-		assert.NoError(t, event.validateEvent())
-		assert.Equal(t, isExpirable, event.Expirable)
-	}
 }

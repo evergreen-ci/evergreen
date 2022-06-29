@@ -28,7 +28,7 @@ func (s *notificationSuite) SetupSuite() {
 }
 
 func (s *notificationSuite) SetupTest() {
-	s.NoError(db.ClearCollections(event.LegacyEventLogCollection, notification.Collection))
+	s.NoError(db.ClearCollections(event.AllLogCollection, notification.Collection))
 	s.expectedTime = time.Now().Add(-time.Hour).Round(0).Truncate(time.Millisecond)
 
 	events := []event.EventLogEntry{
@@ -51,7 +51,7 @@ func (s *notificationSuite) SetupTest() {
 	}
 
 	for i := range events {
-		s.NoError(db.Insert(event.LegacyEventLogCollection, events[i]))
+		s.NoError(db.Insert(event.AllLogCollection, events[i]))
 	}
 
 	n := []notification.Notification{

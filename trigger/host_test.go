@@ -31,7 +31,7 @@ func (s *hostSuite) SetupSuite() {
 }
 
 func (s *hostSuite) SetupTest() {
-	s.NoError(db.ClearCollections(event.LegacyEventLogCollection, host.Collection, event.SubscriptionsCollection, alertrecord.Collection))
+	s.NoError(db.ClearCollections(event.AllLogCollection, host.Collection, event.SubscriptionsCollection, alertrecord.Collection))
 
 	s.t = makeHostTriggers().(*hostTriggers)
 	s.t.host = &host.Host{

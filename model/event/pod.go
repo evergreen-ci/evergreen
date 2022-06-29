@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	registry.AddType(ResourceTypePod, func() interface{} { return &podData{} })
+	registry.AddType(ResourceTypePod, podEventDataFactory)
 }
 
 // PodEventType represents a type of event related to a pod.
@@ -44,7 +44,8 @@ func LogPodEvent(id string, kind PodEventType, data podData) {
 		Data:         data,
 	}
 
-	if err := e.Log(); err != nil {
+	logger := NewDBEventLogger(AllLogCollection)
+	if err := logger.LogEvent(&e); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":    "failed to log pod event",
 			"pod":        id,

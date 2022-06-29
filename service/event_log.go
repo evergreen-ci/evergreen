@@ -24,7 +24,8 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 	var err error
 	switch resourceType {
 	case event.ResourceTypeTask:
-		loggedEvents, err = event.Find(event.MostRecentTaskEvents(resourceID, 100))
+		eventQuery := event.MostRecentTaskEvents(resourceID, 100)
+		loggedEvents, err = event.Find(event.AllLogCollection, eventQuery)
 	case event.ResourceTypeHost:
 		if u == nil {
 			uis.RedirectToLogin(w, r)
@@ -40,7 +41,8 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "host '%s' not found", http.StatusBadRequest)
 			return
 		}
-		loggedEvents, err = event.Find(event.MostRecentHostEvents(h.Id, h.Tag, 5000))
+		eventQuery := event.MostRecentHostEvents(h.Id, h.Tag, 5000)
+		loggedEvents, err = event.Find(event.AllLogCollection, eventQuery)
 	case event.ResourceTypeDistro:
 		if u == nil {
 			uis.RedirectToLogin(w, r)
@@ -52,8 +54,9 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 			uis.RedirectToLogin(w, r)
 			return
 		}
-		loggedEvents, err = event.Find(event.RecentAdminEvents(100))
-	case event.EventResourceTypeProject:
+		eventQuery := event.RecentAdminEvents(100)
+		loggedEvents, err = event.Find(event.AllLogCollection, eventQuery)
+	case model.EventResourceTypeProject:
 		if u == nil {
 			uis.RedirectToLogin(w, r)
 			return

@@ -100,9 +100,9 @@ func TestPodConnector(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(pod.Collection, event.LegacyEventLogCollection))
+			require.NoError(t, db.ClearCollections(pod.Collection, event.AllLogCollection))
 			defer func() {
-				assert.NoError(t, db.ClearCollections(pod.Collection, event.LegacyEventLogCollection))
+				assert.NoError(t, db.ClearCollections(pod.Collection, event.AllLogCollection))
 			}()
 			tCase(t)
 		})

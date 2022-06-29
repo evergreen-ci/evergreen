@@ -7,14 +7,6 @@ import (
 	"github.com/mongodb/grip/message"
 )
 
-func init() {
-	registry.AddType(ResourceTypeDistro, func() interface{} { return &DistroEventData{} })
-	registry.setUnexpirable(ResourceTypeDistro, EventDistroAdded)
-	registry.setUnexpirable(ResourceTypeDistro, EventDistroModified)
-	registry.setUnexpirable(ResourceTypeDistro, EventDistroAMIModfied)
-	registry.setUnexpirable(ResourceTypeDistro, EventDistroRemoved)
-}
-
 const (
 	// resource type
 	ResourceTypeDistro = "DISTRO"
@@ -42,7 +34,7 @@ func LogDistroEvent(distroId string, eventType string, eventData DistroEventData
 		ResourceType: ResourceTypeDistro,
 	}
 
-	if err := event.Log(); err != nil {
+	if err := NewDBEventLogger(AllLogCollection).LogEvent(&event); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeDistro,
 			"message":       "error logging event",
