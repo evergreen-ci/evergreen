@@ -9,10 +9,10 @@ import (
 
 func init() {
 	registry.AddType(ResourceTypeDistro, func() interface{} { return &DistroEventData{} })
-	registry.setNeverExpire(ResourceTypeDistro, EventDistroAdded)
-	registry.setNeverExpire(ResourceTypeDistro, EventDistroModified)
-	registry.setNeverExpire(ResourceTypeDistro, EventDistroAMIModfied)
-	registry.setNeverExpire(ResourceTypeDistro, EventDistroRemoved)
+	registry.setUnexpirable(ResourceTypeDistro, EventDistroAdded)
+	registry.setUnexpirable(ResourceTypeDistro, EventDistroModified)
+	registry.setUnexpirable(ResourceTypeDistro, EventDistroAMIModfied)
+	registry.setUnexpirable(ResourceTypeDistro, EventDistroRemoved)
 }
 
 const (

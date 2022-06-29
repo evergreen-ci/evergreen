@@ -15,7 +15,7 @@ import (
 
 func init() {
 	registry.AddType(ResourceTypeAdmin, func() interface{} { return &rawAdminEventData{} })
-	registry.setNeverExpire(ResourceTypeAdmin, EventTypeValueChanged)
+	registry.setUnexpirable(ResourceTypeAdmin, EventTypeValueChanged)
 }
 
 const (

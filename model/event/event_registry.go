@@ -12,7 +12,7 @@ type eventRegistry struct {
 
 	types          map[string]eventDataFactory
 	isSubscribable map[EventLogEntry]bool
-	neverExpires   map[EventLogEntry]bool
+	unexpirable    map[EventLogEntry]bool
 }
 
 var registry eventRegistry
@@ -77,14 +77,14 @@ func (r *eventRegistry) IsSubscribable(resourceType, eventType string) bool {
 	return r.isSubscribable[e]
 }
 
-func (r *eventRegistry) setNeverExpire(resourceType, eventType string) {
+func (r *eventRegistry) setUnexpirable(resourceType, eventType string) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	if r.neverExpires == nil {
-		r.neverExpires = make(map[EventLogEntry]bool)
+	if r.unexpirable == nil {
+		r.unexpirable = make(map[EventLogEntry]bool)
 	}
-	r.neverExpires[EventLogEntry{ResourceType: resourceType, EventType: eventType}] = true
+	r.unexpirable[EventLogEntry{ResourceType: resourceType, EventType: eventType}] = true
 }
 
 func (r *eventRegistry) isExpirable(resourceType, eventType string) bool {
@@ -96,7 +96,7 @@ func (r *eventRegistry) isExpirable(resourceType, eventType string) bool {
 		EventType:    eventType,
 	}
 
-	return !r.neverExpires[e]
+	return !r.unexpirable[e]
 }
 
 func (r *eventRegistry) newEventFromType(resourceType string) interface{} {

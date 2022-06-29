@@ -257,7 +257,7 @@ func LogVolumeExpirationWarningSent(volumeID string) {
 
 // UpdateHostTaskExecutions updates host events to track multiple executions of
 // the same host task.
-// TODO (EVG-16650): Stop using UpdateHostTaskExecutions once all hosts running tasks have a running task execution set.
+// TODO (EVG-17215): Stop using UpdateHostTaskExecutions once all hosts running tasks have a running task execution set.
 func UpdateHostTaskExecutions(hostId, taskId string, execution int) error {
 	query := bson.M{
 		ResourceIdKey: hostId,

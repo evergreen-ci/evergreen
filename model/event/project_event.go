@@ -1,8 +1,8 @@
 package event
 
 func init() {
-	registry.setNeverExpire(EventResourceTypeProject, EventTypeProjectModified)
-	registry.setNeverExpire(EventResourceTypeProject, EventTypeProjectAdded)
+	registry.setUnexpirable(EventResourceTypeProject, EventTypeProjectModified)
+	registry.setUnexpirable(EventResourceTypeProject, EventTypeProjectAdded)
 }
 
 const (
