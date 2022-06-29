@@ -756,7 +756,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			assert.NoError(t, db.ClearCollections(ProjectRefCollection, ProjectVarsCollection, ProjectAliasCollection,
-				event.SubscriptionsCollection, event.AllLogCollection))
+				event.SubscriptionsCollection, event.LegacyEventLogCollection))
 
 			pRef := ProjectRef{
 				Id:                    "my_project",
