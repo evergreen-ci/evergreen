@@ -3724,12 +3724,13 @@ func TestDisplayTaskUpdates(t *testing.T) {
 	}
 	assert.NoError(dt2.Insert())
 	dt3 := task.Task{
-		Id:          "dt2",
+		Id:          "dt3",
 		DisplayOnly: true,
 		Status:      evergreen.TaskUndispatched,
 		Activated:   false,
 		ExecutionTasks: []string{
 			"task11",
+			"task12",
 		},
 	}
 	assert.NoError(dt3.Insert())
@@ -3886,6 +3887,7 @@ func TestDisplayTaskUpdates(t *testing.T) {
 	dbTask, err = task.FindOne(db.Query(task.ById(dt3.Id)))
 	assert.NoError(err)
 	assert.NotNil(dbTask)
+	assert.Equal(task12.StartTime, dbTask.StartTime)
 	assert.Equal(time.Date(2000, 0, 0, 0, 44, 0, 0, time.Local), dbTask.StartTime)
 }
 
