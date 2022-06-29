@@ -1310,7 +1310,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 	defer cancel()
 
 	Convey("with tasks, a host, a build, and a task queue", t, func() {
-		colls := []string{host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection, model.ParserProjectCollection, model.ProjectRefCollection, model.VersionCollection, alertrecord.Collection, event.AllLogCollection}
+		colls := []string{host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection, model.ParserProjectCollection, model.ProjectRefCollection, model.VersionCollection, alertrecord.Collection, event.LegacyEventLogCollection}
 		if err := db.DropCollections(colls...); err != nil {
 			t.Fatalf("dropping collections: %v", err)
 		}

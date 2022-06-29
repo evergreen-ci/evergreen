@@ -610,7 +610,7 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 	resourceType := strings.ToUpper(util.CoalesceStrings(query["resource_type"], vars["resource_type"]))
 	if resourceType != "" {
 		switch resourceType {
-		case model.EventResourceTypeProject:
+		case event.EventResourceTypeProject:
 			vars["project_id"] = vars["resource_id"]
 		case event.ResourceTypeTask:
 			vars["task_id"] = vars["resource_id"]
@@ -787,7 +787,7 @@ func (m *EventLogPermissionsMiddleware) ServeHTTP(rw http.ResponseWriter, r *htt
 		opts.ResourceType = evergreen.ProjectResourceType
 		opts.Permission = evergreen.PermissionTasks
 		opts.RequiredLevel = evergreen.TasksView.Value
-	case model.EventResourceTypeProject:
+	case event.EventResourceTypeProject:
 		resources, status, err = urlVarsToProjectScopes(r)
 		opts.ResourceType = evergreen.ProjectResourceType
 		opts.Permission = evergreen.PermissionProjectSettings

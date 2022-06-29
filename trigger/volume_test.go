@@ -22,7 +22,7 @@ func TestVolumeTriggers(t *testing.T) {
 func TestVolumeExpiration(t *testing.T) {
 	require.Implements(t, (*eventHandler)(nil), &volumeTriggers{})
 
-	require.NoError(t, db.ClearCollections(event.AllLogCollection, host.VolumesCollection, event.SubscriptionsCollection, alertrecord.Collection))
+	require.NoError(t, db.ClearCollections(event.LegacyEventLogCollection, host.VolumesCollection, event.SubscriptionsCollection, alertrecord.Collection))
 	v := host.Volume{
 		ID:         "v0",
 		Expiration: time.Now().Add(12 * time.Hour),

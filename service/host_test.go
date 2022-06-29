@@ -28,7 +28,7 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 
 	env := &mock.Environment{}
 	assert.NoError(env.Configure(ctx))
-	require.NoError(db.ClearCollections(host.Collection, event.AllLogCollection), "error clearing collections")
+	require.NoError(db.ClearCollections(host.Collection, event.LegacyEventLogCollection), "error clearing collections")
 
 	// Normal test, changing a host from running to quarantined
 	t.Run("SuccessfullyModifiesHostStatusWithNote", func(t *testing.T) {
@@ -42,7 +42,7 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 		assert.Equal(http.StatusOK, httpStatus)
 		assert.Equal(result, fmt.Sprintf(api.HostStatusUpdateSuccess, evergreen.HostRunning, evergreen.HostQuarantined))
 		assert.Equal(h.Status, evergreen.HostQuarantined)
-		events, err := event.Find(event.AllLogCollection, event.MostRecentHostEvents("h1", "", 1))
+		events, err := event.Find(event.MostRecentHostEvents("h1", "", 1))
 		assert.NoError(err)
 		assert.Len(events, 1)
 		hostevent, ok := events[0].Data.(*event.HostEventData)
