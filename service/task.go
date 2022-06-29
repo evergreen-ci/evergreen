@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
@@ -150,14 +149,8 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	projCtx := MustHaveProjectContext(r)
 
-	if r.FormValue("redirect_spruce_users") == "true" {
-		if u := gimlet.GetUser(r.Context()); u != nil {
-			usr, ok := u.(*user.DBUser)
-			if ok && usr != nil && usr.Settings.UseSpruceOptions.SpruceV1 {
-				http.Redirect(w, r, fmt.Sprintf("%s/task/%s", uis.Settings.Ui.UIv2Url, projCtx.Task.Id), http.StatusTemporaryRedirect)
-				return
-			}
-		}
+	if RedirectSpruceUsers(w, r, fmt.Sprintf("%s/task/%s", uis.Settings.Ui.UIv2Url, projCtx.Task.Id)) {
+		return
 	}
 
 	if projCtx.Task == nil {

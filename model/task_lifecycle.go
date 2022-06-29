@@ -701,6 +701,76 @@ func DequeueAndRestartForTask(cq *commitqueue.CommitQueue, t *task.Task, githubS
 	return nil
 }
 
+// HandleEndTaskForCommitQueueTask handles necessary dequeues and stepback restarts for
+// ending tasks that run on a commit queue.
+func HandleEndTaskForCommitQueueTask(t *task.Task, status string) error {
+	cq, err := commitqueue.FindOneId(t.Project)
+	if err != nil {
+		return errors.Wrapf(err, "can't get commit queue for id '%s'", t.Project)
+	}
+	if cq == nil {
+		return errors.Errorf("no commit queue found for '%s'", t.Project)
+	}
+	if status != evergreen.TaskSucceeded && !t.Aborted {
+		return dequeueAndRestartWithStepback(cq, t, evergreen.APIServerTaskActivator, fmt.Sprintf("task '%s' failed", t.DisplayName))
+	} else if status == evergreen.TaskSucceeded {
+		// Query for all cq version tasks after this one; they may have been waiting to see if this
+		// one was the cause of the failure, in which case we should dequeue and restart.
+		foundVersion := false
+		for _, item := range cq.Queue {
+			if item.Version == "" {
+				return nil // no longer looking at scheduled versions
+			}
+			if item.Version == t.Version {
+				foundVersion = true
+				continue
+			}
+			if foundVersion {
+				laterTask, err := task.FindTaskForVersion(item.Version, t.DisplayName, t.BuildVariant)
+				if err != nil {
+					return errors.Wrapf(err, "error finding task for version '%s'", item.Version)
+				}
+				if laterTask == nil {
+					return errors.Errorf("couldn't find task for version '%s'", item.Version)
+				}
+				if evergreen.IsFailedTaskStatus(laterTask.Status) {
+					// Because our task is successful, this task should have failed so we dequeue.
+					return dequeueAndRestartWithStepback(cq, laterTask, evergreen.APIServerTaskActivator,
+						fmt.Sprintf("task '%s' failed and was not impacted by previous task", t.DisplayName))
+				}
+				if !evergreen.IsFinishedTaskStatus(laterTask.Status) {
+					// When this task finishes, it will handle stepping back any later commit queue item, so we're done.
+					return nil
+				}
+			}
+
+		}
+	}
+	return nil
+}
+
+// dequeueAndRestartWithStepback dequeues the current task and restarts later tasks, if earlier tasks have all run.
+// Otherwise, the failure may be a result of those untested commits so we will wait for the earlier tasks to run
+// and handle dequeuing (merge still won't run for failed task versions because of dependencies).
+func dequeueAndRestartWithStepback(cq *commitqueue.CommitQueue, t *task.Task, caller, reason string) error {
+	if i := cq.FindItem(t.Version); i > 0 {
+		prevVersions := []string{}
+		for j := 0; j < i; j++ {
+			prevVersions = append(prevVersions, cq.Queue[j].Version)
+		}
+		// if any of the commit queue tasks higher on the queue haven't finished, then they will handle dequeuing.
+		previousTaskNeedsToRun, err := task.HasUnfinishedTaskForVersions(prevVersions, t.DisplayName, t.BuildVariant)
+		if err != nil {
+			return errors.Wrap(err, "error checking early commit queue tasks")
+		}
+		if previousTaskNeedsToRun {
+			return nil
+		}
+		// Otherwise, continue on and dequeue.
+	}
+	return DequeueAndRestartForTask(cq, t, message.GithubStateFailure, caller, reason)
+}
+
 func tryDequeueAndAbortCommitQueueVersion(p *patch.Patch, cq commitqueue.CommitQueue, taskId string, caller string) error {
 	issue := p.Id.Hex()
 	err := removeNextMergeTaskDependency(cq, issue)

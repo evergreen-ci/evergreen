@@ -70,6 +70,25 @@ func MustHaveUser(r *http.Request) *user.DBUser {
 	return usr
 }
 
+func RedirectSpruceUsers(w http.ResponseWriter, r *http.Request, redirect string) bool {
+	if r.FormValue("redirect_spruce_users") != "true" {
+		return false
+	}
+
+	u := gimlet.GetUser(r.Context())
+	if u == nil {
+		return false
+	}
+
+	usr, ok := u.(*user.DBUser)
+	if !ok || usr == nil || !usr.Settings.UseSpruceOptions.SpruceV1 {
+		return false
+	}
+
+	http.Redirect(w, r, redirect, http.StatusTemporaryRedirect)
+	return true
+}
+
 // ToPluginContext creates a UIContext from the projectContext data.
 func (pc projectContext) ToPluginContext(settings evergreen.Settings, usr gimlet.User) plugin.UIContext {
 	dbUser, ok := usr.(*user.DBUser)
