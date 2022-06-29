@@ -50,7 +50,7 @@ type Distro struct {
 	IsVirtualWorkstation  bool                  `bson:"is_virtual_workstation" json:"is_virtual_workstation" mapstructure:"is_virtual_workstation"`
 	IsCluster             bool                  `bson:"is_cluster" json:"is_cluster" mapstructure:"is_cluster"`
 	HomeVolumeSettings    HomeVolumeSettings    `bson:"home_volume_settings" json:"home_volume_settings" mapstructure:"home_volume_settings"`
-	IcecreamSettings      IcecreamSettings      `bson:"icecream_settings,omitempty" json:"icecream_settings,omitempty" mapstructure:"icecream_settings,omitempty"`
+	IcecreamSettings      IceCreamSettings      `bson:"icecream_settings,omitempty" json:"icecream_settings,omitempty" mapstructure:"icecream_settings,omitempty"`
 }
 
 type DistroData struct {
@@ -128,14 +128,14 @@ type HomeVolumeSettings struct {
 	FormatCommand string `bson:"format_command" json:"format_command" mapstructure:"format_command"`
 }
 
-type IcecreamSettings struct {
+type IceCreamSettings struct {
 	SchedulerHost string `bson:"scheduler_host,omitempty" json:"scheduler_host,omitempty" mapstructure:"scheduler_host,omitempty"`
 	ConfigPath    string `bson:"config_path,omitempty" json:"config_path,omitempty" mapstructure:"config_path,omitempty"`
 }
 
 // WriteConfigScript returns the shell script to update the icecream config
 // file.
-func (s IcecreamSettings) GetUpdateConfigScript() string {
+func (s IceCreamSettings) GetUpdateConfigScript() string {
 	if !s.Populated() {
 		return ""
 	}
@@ -161,7 +161,7 @@ fi
 	)
 }
 
-func (s IcecreamSettings) Populated() bool {
+func (s IceCreamSettings) Populated() bool {
 	return s.SchedulerHost != "" && s.ConfigPath != ""
 }
 

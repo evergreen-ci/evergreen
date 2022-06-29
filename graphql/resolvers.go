@@ -2331,10 +2331,7 @@ func (r *queryResolver) Distros(ctx context.Context, onlySpawnable bool) ([]*res
 	}
 	for _, d := range distros {
 		apiDistro := restModel.APIDistro{}
-		err := apiDistro.BuildFromService(d)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to build APIDistro from distro: %s", err.Error()))
-		}
+		apiDistro.BuildFromService(d)
 		apiDistros = append(apiDistros, &apiDistro)
 	}
 	return apiDistros, nil
