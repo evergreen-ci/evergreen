@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	werrors "github.com/pkg/errors"
 )
 
 func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*string, error) {
@@ -67,7 +66,7 @@ func (r *hostResolver) Volumes(ctx context.Context, obj *restModel.APIHost) ([]*
 		apiVolume := &restModel.APIVolume{}
 		err = apiVolume.BuildFromService(volume)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, werrors.Wrapf(err, "error building volume '%s' from service", volId).Error())
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("building volume '%s' from service: %s", volId, err.Error()))
 		}
 		volumes = append(volumes, apiVolume)
 	}

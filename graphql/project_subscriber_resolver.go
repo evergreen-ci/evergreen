@@ -11,7 +11,6 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
-	werrors "github.com/pkg/errors"
 )
 
 func (r *projectSubscriberResolver) Subscriber(ctx context.Context, obj *restModel.APISubscriber) (*Subscriber, error) {
@@ -58,7 +57,7 @@ func (r *projectSubscriberResolver) Subscriber(ctx context.Context, obj *restMod
 	case event.EnqueuePatchSubscriberType:
 		// We don't store information in target for this case, so do nothing.
 	default:
-		return nil, werrors.Errorf("unknown subscriber type: '%s'", subscriberType)
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("encountered unknown subscriber type '%s'", subscriberType))
 	}
 
 	return res, nil

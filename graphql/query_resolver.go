@@ -157,7 +157,7 @@ func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.API
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error Fetching host: %s", err.Error()))
 	}
 	if host == nil {
-		return nil, werrors.Errorf("unable to find host %s", hostID)
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("unable to find host '%s'", hostID))
 	}
 
 	apiHost := &restModel.APIHost{}
@@ -626,7 +626,7 @@ func (r *queryResolver) Task(ctx context.Context, taskID string, execution *int)
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 	if dbTask == nil {
-		return nil, werrors.Errorf("unable to find task %s", taskID)
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("unable to find task '%s'", taskID))
 	}
 	apiTask, err := getAPITaskFromTask(ctx, r.sc.GetURL(), *dbTask)
 	if err != nil {
@@ -641,7 +641,7 @@ func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 	if latestTask == nil {
-		return nil, werrors.Errorf("unable to find task %s", taskID)
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("unable to find latest task '%s'", taskID))
 	}
 	allTasks := []*restModel.APITask{}
 	for i := 0; i < latestTask.Execution; i++ {
@@ -651,7 +651,7 @@ func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([
 			return nil, ResourceNotFound.Send(ctx, err.Error())
 		}
 		if dbTask == nil {
-			return nil, werrors.Errorf("unable to find task %s", taskID)
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("unable to find task '%s'", taskID))
 		}
 		var apiTask *restModel.APITask
 		apiTask, err = getAPITaskFromTask(ctx, r.sc.GetURL(), *dbTask)

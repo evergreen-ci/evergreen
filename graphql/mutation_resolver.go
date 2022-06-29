@@ -375,7 +375,7 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 	}
 	dbProjectRef, ok := i.(*model.ProjectRef)
 	if !ok {
-		return nil, InternalServerError.Send(ctx, werrors.Wrapf(err, "Unexpected type %T for model.ProjectRef", i).Error())
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("unexpected type %T for model.ProjectRef: %s", i, err.Error()))
 	}
 
 	u := gimlet.GetUser(ctx).(*user.DBUser)
@@ -730,7 +730,7 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 		var newExpiration time.Time
 		newExpiration, err = restModel.FromTimePtr(spawnVolumeInput.Expiration)
 		if err != nil {
-			return false, InternalServerError.Send(ctx, werrors.Wrapf(err, errorTemplate, vol.ID).Error())
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("Volume '%s' has been created but an error occurred: %s", vol.ID, err.Error()))
 		}
 		additionalOptions.Expiration = newExpiration
 	} else if spawnVolumeInput.NoExpiration != nil && *spawnVolumeInput.NoExpiration {

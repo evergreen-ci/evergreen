@@ -20,7 +20,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
-	werrors "github.com/pkg/errors"
 )
 
 func (r *patchResolver) AuthorDisplayName(ctx context.Context, obj *restModel.APIPatch) (string, error) {
@@ -130,7 +129,7 @@ func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *restModel.
 		if !projectCached {
 			_, project, err = model.FindLatestVersionWithValidProject(alias.ChildProject)
 			if err != nil {
-				return nil, InternalServerError.Send(ctx, werrors.Wrapf(err, "Problem getting last known project for '%s'", alias.ChildProject).Error())
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting last known project for '%s': %s", alias.ChildProject, err.Error()))
 			}
 			projectCache[alias.ChildProject] = project
 		}
