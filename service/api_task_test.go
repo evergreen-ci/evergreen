@@ -1696,7 +1696,7 @@ func TestHandleEndTaskForCommitQueueTask(t *testing.T) {
 			assert.NoError(t, taskC.Insert())
 
 			// should dequeue task B and restart task C
-			assert.NoError(t, handleEndTaskForCommitQueueTask(&taskA, evergreen.TaskSucceeded))
+			assert.NoError(t, model.HandleEndTaskForCommitQueueTask(&taskA, evergreen.TaskSucceeded))
 
 			taskBFromDb, err := task.FindOneId("taskB")
 			assert.NoError(t, err)
@@ -1727,7 +1727,7 @@ func TestHandleEndTaskForCommitQueueTask(t *testing.T) {
 			assert.NoError(t, taskC.Insert())
 
 			// should just restart taskC now that we know for certain taskA is the problem
-			assert.NoError(t, handleEndTaskForCommitQueueTask(&taskA, evergreen.TaskSucceeded))
+			assert.NoError(t, model.HandleEndTaskForCommitQueueTask(&taskA, evergreen.TaskSucceeded))
 
 			taskBFromDb, err := task.FindOneId("taskB")
 			assert.NoError(t, err)
@@ -1760,7 +1760,7 @@ func TestHandleEndTaskForCommitQueueTask(t *testing.T) {
 			assert.NoError(t, taskC.Insert())
 
 			// shouldn't do anything since TaskB could be the problem
-			assert.NoError(t, handleEndTaskForCommitQueueTask(&taskA, evergreen.TaskSucceeded))
+			assert.NoError(t, model.HandleEndTaskForCommitQueueTask(&taskA, evergreen.TaskSucceeded))
 
 			taskBFromDb, err := task.FindOneId("taskB")
 			assert.NoError(t, err)
@@ -1792,7 +1792,7 @@ func TestHandleEndTaskForCommitQueueTask(t *testing.T) {
 			assert.NoError(t, taskA.Insert())
 
 			// shouldn't do anything since taskB isn't scheduled
-			assert.NoError(t, handleEndTaskForCommitQueueTask(&taskA, evergreen.TaskSucceeded))
+			assert.NoError(t, model.HandleEndTaskForCommitQueueTask(&taskA, evergreen.TaskSucceeded))
 
 			cqFromDb, err := commitqueue.FindOneId(cq.ProjectID)
 			assert.NoError(t, err)
@@ -1811,7 +1811,7 @@ func TestHandleEndTaskForCommitQueueTask(t *testing.T) {
 			assert.NoError(t, taskC.Insert())
 
 			// Shouldn't do anything since TaskB could be the problem.
-			assert.NoError(t, handleEndTaskForCommitQueueTask(&taskB, evergreen.TaskFailed))
+			assert.NoError(t, model.HandleEndTaskForCommitQueueTask(&taskB, evergreen.TaskFailed))
 
 			// no tasks restarted
 			taskBFromDb, err := task.FindOneId("taskB")

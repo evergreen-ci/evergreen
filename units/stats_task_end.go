@@ -8,8 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
@@ -26,14 +26,16 @@ func init() {
 }
 
 type collectTaskEndDataJob struct {
-	TaskID    string `bson:"task_id" json:"task_id" yaml:"task_id"`
-	Execution int    `bson:"execution" json:"execution" yaml:"execution"`
-	HostID    string `bson:"host_id" json:"host_id" yaml:"host_id"`
-	job.Base  `bson:"metadata" json:"metadata" yaml:"metadata"`
+	TaskID       string `bson:"task_id" json:"task_id" yaml:"task_id"`
+	HostID       string `bson:"host_id" json:"host_id" yaml:"host_id"`
+	Execution    int    `bson:"execution" json:"execution" yaml:"execution"`
+	RuntimeEnvID string `bson:"runtime_env_id" json:"runtime_env_id" yaml:"runtime_env_id"`
+	job.Base     `bson:"metadata" json:"metadata" yaml:"metadata"`
 
 	// internal cache
 	task *task.Task
 	host *host.Host
+	pod  *pod.Pod
 	env  evergreen.Environment
 }
 
@@ -52,14 +54,17 @@ func newTaskEndJob() *collectTaskEndDataJob {
 // NewCollectTaskEndDataJob logs information a task after it
 // completes. It also logs information about the total runtime and instance
 // type, which can be used to measure the cost of running a task.
-func NewCollectTaskEndDataJob(t *task.Task, h *host.Host) amboy.Job {
+func NewCollectTaskEndDataJob(t task.Task, h *host.Host, p *pod.Pod, id string) amboy.Job {
 	j := newTaskEndJob()
 	j.TaskID = t.Id
 	j.Execution = t.Execution
-	j.HostID = h.Id
-	j.task = t
+	// TODO: Remove HostID and its usages in favor of RuntimeEnvID
+	j.HostID = id
+	j.RuntimeEnvID = id
+	j.pod = p
+	j.task = &t
 	j.host = h
-	j.SetID(fmt.Sprintf("%s.%s.%s.%d", collectTaskEndDataJobName, j.TaskID, j.HostID, job.GetNumber()))
+	j.SetID(fmt.Sprintf("%s.%s.%s.%d", collectTaskEndDataJobName, j.TaskID, j.RuntimeEnvID, job.GetNumber()))
 	j.SetPriority(-2)
 	return j
 }
@@ -84,19 +89,7 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		}
 	}
 	if j.task == nil {
-		j.AddError(errors.Errorf("Could not find task '%s'", j.TaskID))
-		return
-	}
-
-	if j.host == nil {
-		j.host, err = host.FindOneId(j.HostID)
-		j.AddError(err)
-		if err != nil {
-			return
-		}
-	}
-	if j.host == nil {
-		j.AddError(errors.Errorf("Could not find host '%s'", j.HostID))
+		j.AddError(errors.Errorf("task '%s' not found", j.TaskID))
 		return
 	}
 
@@ -110,15 +103,12 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		"build":                j.task.BuildId,
 		"current_runtime_secs": j.task.FinishTime.Sub(j.task.StartTime).Seconds(),
 		"display_task":         j.task.DisplayOnly,
-		"distro":               j.host.Distro.Id,
 		"execution":            j.task.Execution,
 		"generator":            j.task.GenerateTask,
 		"group":                j.task.TaskGroup,
 		"group_max_hosts":      j.task.TaskGroupMaxHosts,
-		"host_id":              j.host.Id,
 		"priority":             j.task.Priority,
 		"project":              j.task.Project,
-		"provider":             j.host.Distro.Provider,
 		"requester":            j.task.Requester,
 		"stat":                 "task-end-stats",
 		"status":               j.task.GetDisplayStatus(),
@@ -131,7 +121,7 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		"version":              j.task.Version,
 	}
 
-	if utility.FromStringPtr(j.task.DisplayTaskId) != "" {
+	if j.task.IsPartOfDisplay() {
 		msg["display_task_id"] = j.task.DisplayTaskId
 	}
 
@@ -141,10 +131,49 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 	}
 	j.AddError(err)
 
-	if cloud.IsEc2Provider(j.host.Distro.Provider) && len(j.host.Distro.ProviderSettingsList) > 0 {
-		instanceType, ok := j.host.Distro.ProviderSettingsList[0].Lookup("instance_type").StringValueOK()
-		if ok {
-			msg["instance_type"] = instanceType
+	isHostMode := j.task.IsHostTask()
+	if isHostMode {
+		var id string
+		if j.HostID != "" {
+			id = j.HostID
+		} else {
+			id = j.RuntimeEnvID
+		}
+		j.host, err = host.FindOneId(id)
+		j.AddError(err)
+		if err != nil {
+			return
+		}
+		if j.host == nil {
+			j.AddError(errors.Errorf("host '%s' not found", id))
+			return
+		}
+		msg["host_id"] = j.host.Id
+		msg["distro"] = j.host.Distro.Id
+		msg["provider"] = j.host.Distro.Provider
+		if cloud.IsEc2Provider(j.host.Distro.Provider) && len(j.host.Distro.ProviderSettingsList) > 0 {
+			instanceType, ok := j.host.Distro.ProviderSettingsList[0].Lookup("instance_type").StringValueOK()
+			if ok {
+				msg["instance_type"] = instanceType
+			}
+		}
+	} else {
+		j.pod, err = pod.FindOneByID(j.RuntimeEnvID)
+		j.AddError(err)
+		if err != nil {
+			return
+		}
+		if j.pod == nil {
+			j.AddError(errors.Errorf("pod '%s' not found", j.RuntimeEnvID))
+			return
+		}
+		msg["pod_id"] = j.pod.ID
+		msg["pod_os"] = j.pod.TaskContainerCreationOpts.OS
+		msg["pod_arch"] = j.pod.TaskContainerCreationOpts.Arch
+		msg["cpu"] = j.pod.TaskContainerCreationOpts.CPU
+		msg["memory_mb"] = j.pod.TaskContainerCreationOpts.MemoryMB
+		if j.pod.TaskContainerCreationOpts.OS.Matches(evergreen.ECSOS(pod.OSWindows)) {
+			msg["windows_version"] = j.pod.TaskContainerCreationOpts.WindowsVersion
 		}
 	}
 
