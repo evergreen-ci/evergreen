@@ -210,10 +210,7 @@ func FindCommitQueueForProject(name string) (*restModel.APICommitQueue, error) {
 	}
 
 	apiCommitQueue := &restModel.APICommitQueue{}
-	if err = apiCommitQueue.BuildFromService(*cqService); err != nil {
-		return nil, errors.Wrap(err, "converting commit queue into API model")
-	}
-
+	apiCommitQueue.BuildFromService(*cqService)
 	return apiCommitQueue, nil
 }
 

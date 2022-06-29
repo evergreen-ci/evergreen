@@ -35,15 +35,13 @@ type APICommitQueueItemAuthor struct {
 	Author *string `json:"author"`
 }
 
-func (cq *APICommitQueue) BuildFromService(cqService commitqueue.CommitQueue) error {
+func (cq *APICommitQueue) BuildFromService(cqService commitqueue.CommitQueue) {
 	cq.ProjectID = utility.ToStringPtr(cqService.ProjectID)
 	for _, item := range cqService.Queue {
 		cqItem := APICommitQueueItem{}
 		cqItem.BuildFromService(item)
 		cq.Queue = append(cq.Queue, cqItem)
 	}
-
-	return nil
 }
 
 func (item *APICommitQueueItem) BuildFromService(cqItemService commitqueue.CommitQueueItem) {
