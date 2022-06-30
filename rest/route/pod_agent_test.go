@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/evergreen-ci/utility"
 	"net/http"
 	"testing"
 	"time"
@@ -26,7 +27,6 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestPodProvisioningScript(t *testing.T) {
@@ -237,8 +237,8 @@ func TestPodAgentNextTask(t *testing.T) {
 	}()
 	getPod := func() pod.Pod {
 		return pod.Pod{
-			ID:     primitive.NewObjectID().Hex(),
-			Status: pod.StatusRunning,
+			ID:     "pod1",
+			Status: pod.StatusStarting,
 		}
 	}
 	getTask := func() task.Task {
@@ -254,15 +254,7 @@ func TestPodAgentNextTask(t *testing.T) {
 	getProject := func() model.ProjectRef {
 		return model.ProjectRef{
 			Id:      "proj",
-			Enabled: utility.ToBoolPtr(true),
-		}
-	}
-	getDispatcher := func() dispatcher.PodDispatcher {
-		return dispatcher.PodDispatcher{
-			ID:                primitive.NewObjectID().Hex(),
-			PodIDs:            []string{"pod1"},
-			TaskIDs:           []string{"t1"},
-			ModificationCount: 0,
+			Enabled: utility.TruePtr(),
 		}
 	}
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment){
@@ -281,7 +273,7 @@ func TestPodAgentNextTask(t *testing.T) {
 			assert.Zero(t, rh.podID)
 		},
 		"RunFailsWithNonexistentPod": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
-			d := getDispatcher()
+			d := dispatcher.NewPodDispatcher("group", []string{"t1"}, []string{"pod1"})
 			require.NoError(t, d.Insert())
 			rh.podID = "pod1"
 			resp := rh.Run(ctx)
@@ -295,21 +287,21 @@ func TestPodAgentNextTask(t *testing.T) {
 			resp := rh.Run(ctx)
 			assert.Equal(t, http.StatusNotFound, resp.Status())
 		},
-		"RunShouldExitWithNonRunningPod": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
+		"RunShouldEnqueueTerminationJobWithNonRunningPod": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
 			p := getPod()
-			p.Status = pod.StatusStarting
+			p.Status = pod.StatusTerminated
 			require.NoError(t, p.Insert())
 			rh.podID = p.ID
 
 			resp := rh.Run(ctx)
 			assert.Equal(t, http.StatusOK, resp.Status())
-			nextTaskResp := resp.Data().(*apimodels.NextTaskResponse)
-			assert.Equal(t, nextTaskResp.ShouldExit, true)
+			stats := env.RemoteQueue().Stats(ctx)
+			assert.Equal(t, 1, stats.Total)
 		},
 		"RunCorrectlyMarksContainerTaskDispatched": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
 			p := getPod()
 			require.NoError(t, p.Insert())
-			d := getDispatcher()
+			d := dispatcher.NewPodDispatcher("group", []string{"t1"}, []string{"pod1"})
 			require.NoError(t, d.Insert())
 			proj := getProject()
 			require.NoError(t, proj.Insert())
@@ -320,7 +312,6 @@ func TestPodAgentNextTask(t *testing.T) {
 			resp := rh.Run(ctx)
 			assert.Equal(t, http.StatusOK, resp.Status())
 			nextTaskResp := resp.Data().(*apimodels.NextTaskResponse)
-			assert.Equal(t, nextTaskResp.ShouldExit, false)
 			assert.Equal(t, nextTaskResp.TaskId, "t1")
 			foundTask, err := task.FindOneId("t1")
 			require.NoError(t, err)
@@ -328,10 +319,11 @@ func TestPodAgentNextTask(t *testing.T) {
 		},
 		"RunEnqueuesTerminationJobWhenThereAreNoTasksToDispatch": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
 			p := getPod()
+			p.TimeInfo.Initializing = time.Now()
 			require.NoError(t, p.Insert())
 			rh.podID = p.ID
 
-			d := getDispatcher()
+			d := dispatcher.NewPodDispatcher("group", []string{"t1"}, []string{"pod1"})
 			require.NoError(t, d.Insert())
 
 			resp := rh.Run(ctx)
@@ -351,6 +343,7 @@ func TestPodAgentNextTask(t *testing.T) {
 			env.RemoteQueue().Close(ctx)
 
 			p := getPod()
+			p.TimeInfo.Initializing = time.Now()
 			require.NoError(t, p.Insert())
 			assert.Equal(t, pod.StatusStarting, p.Status, "initial pod status should be starting")
 			rh.podID = p.ID

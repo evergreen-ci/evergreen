@@ -253,60 +253,38 @@ func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "marking pod as running"))
 	}
 
-	nextTaskResp := &apimodels.NextTaskResponse{}
 	h.setAgentFirstContactTime(p)
 
-	if p.Status != pod.StatusRunning {
-		nextTaskResp.ShouldExit = true
-		return gimlet.NewJSONResponse(nextTaskResp)
+	if p.Status == pod.StatusTerminated || p.Status == pod.StatusDecommissioned {
+		if err = h.enqueuePodTerminationJob(ctx, "pod is no longer running"); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(err)
+		}
+		return gimlet.NewJSONResponse(&apimodels.NextTaskResponse{})
 	}
 
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrap(err, "error retrieving admin settings").Error(),
-		})
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving admin settings"))
 	}
 	if flags.TaskDispatchDisabled {
+		// TODO: EVG-17224 Potentially terminate pod when task dispatching is disabled
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), "task dispatch is disabled, returning no task")
-		return gimlet.NewJSONResponse(nextTaskResp)
+		return gimlet.NewJSONResponse(&apimodels.NextTaskResponse{})
 	}
 
 	if p.RunningTask != "" {
 		var t *task.Task
 		t, err = task.FindOneId(p.RunningTask)
 		if err != nil {
-			err = errors.Wrapf(err, "getting running task %s", p.RunningTask)
-			return gimlet.MakeJSONErrorResponder(err)
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting running task '%s'", p.RunningTask))
 		}
-
-		// if the task can be dispatched and activated, dispatch it
-		if t.IsDispatchable() {
-			err = errors.WithStack(model.MarkContainerTaskDispatched(ctx, h.env, t, p))
-			if err != nil {
-				grip.Error(errors.Wrapf(err, "error while marking task %s as dispatched for host %s", t.Id, p.ID))
-				return gimlet.MakeJSONErrorResponder(err)
-			}
-		}
-		// if the task is activated return that task
-		if t.Activated {
-			task.SetNextTask(t, nextTaskResp)
-			return gimlet.NewJSONResponse(nextTaskResp)
-		}
-		// the task is not activated, so the pod's running task should be unset
-		// so it can retrieve a new task.
-		if err = p.ClearRunningTask(); err != nil {
-			err = errors.WithStack(err)
-			return gimlet.MakeJSONErrorResponder(err)
-		}
-		grip.Info(message.Fields{
-			"op":      "next_task",
-			"message": "unset running task field for inactive task on pod",
-			"pod_id":  p.ID,
-			"task_id": t.Id,
+		return gimlet.NewJSONResponse(&apimodels.NextTaskResponse{
+			TaskId:     t.Id,
+			TaskSecret: t.Secret,
+			TaskGroup:  t.TaskGroup,
+			Version:    t.Version,
+			Build:      t.BuildId,
 		})
-		return gimlet.NewJSONResponse(nextTaskResp)
 	}
 
 	pd, err := h.findDispatcher()
@@ -322,18 +300,28 @@ func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 	if nextTask == nil {
-		j := units.NewPodTerminationJob(h.podID, "reached end of pod lifecycle", utility.RoundPartOfMinute(0))
-		if err := amboy.EnqueueUniqueJob(ctx, h.env.RemoteQueue(), j); err != nil {
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusInternalServerError,
-				Message:    errors.Wrap(err, "enqueueing job to terminate pod").Error(),
-			})
+		if err = h.enqueuePodTerminationJob(ctx, "reached end of pod lifecycle"); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
-		return gimlet.NewJSONResponse(nextTaskResp)
+		return gimlet.NewJSONResponse(&apimodels.NextTaskResponse{})
 	}
 
-	task.SetNextTask(nextTask, nextTaskResp)
-	return gimlet.NewJSONResponse(nextTaskResp)
+	return gimlet.NewJSONResponse(&apimodels.NextTaskResponse{
+		TaskId:     nextTask.Id,
+		TaskSecret: nextTask.Secret,
+		TaskGroup:  nextTask.TaskGroup,
+		Version:    nextTask.Version,
+		Build:      nextTask.BuildId,
+	})
+}
+
+// enqueuePodTerminationJob will enqueue the job to terminate a pod with a detailed reason for doing so.
+func (h *podAgentNextTask) enqueuePodTerminationJob(ctx context.Context, reason string) error {
+	j := units.NewPodTerminationJob(h.podID, reason, utility.RoundPartOfMinute(0))
+	if err := amboy.EnqueueUniqueJob(ctx, h.env.RemoteQueue(), j); err != nil {
+		return errors.Wrap(err, "enqueueing job to terminate pod")
+	}
+	return nil
 }
 
 // transitionStartingToRunning transitions the pod that is still starting up to
