@@ -62,9 +62,7 @@ func (h *distroIDGetSetupHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	apiDistro := &model.APIDistro{}
-	if err = apiDistro.BuildFromService(d); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting distro to API model"))
-	}
+	apiDistro.BuildFromService(*d)
 
 	return gimlet.NewJSONResponse(apiDistro.Setup)
 }
@@ -115,9 +113,7 @@ func (h *distroIDChangeSetupHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	apiDistro := &model.APIDistro{}
-	if err = apiDistro.BuildFromService(d); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting distro to API model"))
-	}
+	apiDistro.BuildFromService(*d)
 
 	return gimlet.NewJSONResponse(apiDistro)
 }
@@ -314,9 +310,7 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	apiDistro := &model.APIDistro{}
-	if err = apiDistro.BuildFromService(old); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting old distro to API model"))
-	}
+	apiDistro.BuildFromService(*old)
 	oldSettingsList := apiDistro.ProviderSettingsList
 	apiDistro.ProviderSettingsList = nil
 	if err = json.Unmarshal(h.body, apiDistro); err != nil {
@@ -382,9 +376,7 @@ func (h *distroIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	apiDistro := &model.APIDistro{}
-	if err = apiDistro.BuildFromService(d); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting distro to API model"))
-	}
+	apiDistro.BuildFromService(*d)
 
 	return gimlet.NewJSONResponse(apiDistro)
 }
@@ -633,9 +625,7 @@ func (h *distroGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 	for _, d := range distros {
 		distroModel := &model.APIDistro{}
-		if err = distroModel.BuildFromService(d); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting distro '%s' to API model", d.Id))
-		}
+		distroModel.BuildFromService(d)
 
 		err = resp.AddData(distroModel)
 		if err != nil {
@@ -649,17 +639,7 @@ func (h *distroGetHandler) Run(ctx context.Context) gimlet.Responder {
 ////////////////////////////////////////////////////////////////////////
 
 func validateDistro(ctx context.Context, apiDistro *model.APIDistro, resourceID string, settings *evergreen.Settings, isNewDistro bool) (*distro.Distro, gimlet.Responder) {
-	i, err := apiDistro.ToService()
-	if err != nil {
-		return nil, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting distro to service model"))
-	}
-	d, ok := i.(*distro.Distro)
-	if !ok {
-		return nil, gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    fmt.Sprintf("programmatic error: expected distro but got type %T", i),
-		})
-	}
+	d := apiDistro.ToService()
 
 	id := utility.FromStringPtr(apiDistro.Name)
 	if resourceID != id {
@@ -834,7 +814,7 @@ func (h *distroIcecreamConfigHandler) Run(ctx context.Context) gimlet.Responder 
 		var d distro.Distro
 		var distroFound bool
 		for _, d = range distros {
-			if d.IcecreamSettings.Populated() {
+			if d.IceCreamSettings.Populated() {
 				distroFound = true
 				break
 			}
@@ -844,7 +824,7 @@ func (h *distroIcecreamConfigHandler) Run(ctx context.Context) gimlet.Responder 
 			continue
 		}
 
-		script := d.IcecreamSettings.GetUpdateConfigScript()
+		script := d.IceCreamSettings.GetUpdateConfigScript()
 		ts := utility.RoundPartOfMinute(0).Format(units.TSFormat)
 		if err = h.env.RemoteQueue().Put(ctx, units.NewHostExecuteJob(h.env, host, script, true, "root", ts)); err != nil {
 			catcher.Wrapf(err, "enqueueing job to update Icecream config file on host '%s'", host.Id)

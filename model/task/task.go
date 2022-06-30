@@ -1848,6 +1848,13 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 		"details":   t.Details,
 	})
 	if detail.Status == "" {
+		grip.Debug(message.Fields{
+			"message":   "detail status was empty, setting to failed",
+			"task_id":   t.Id,
+			"execution": t.Execution,
+			"project":   t.Project,
+			"details":   t.Details,
+		})
 		detail.Status = evergreen.TaskFailed
 	}
 	// record that the task has finished, in memory and in the db

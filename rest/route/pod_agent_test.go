@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/evergreen-ci/utility"
+
 	"net/http"
 	"testing"
 	"time"
@@ -23,6 +23,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/pod/dispatcher"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
@@ -233,7 +234,7 @@ func TestPodAgentSetup(t *testing.T) {
 
 func TestPodAgentNextTask(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(task.Collection, pod.Collection, dispatcher.Collection, event.AllLogCollection, model.ProjectRefCollection))
+		assert.NoError(t, db.ClearCollections(task.Collection, pod.Collection, dispatcher.Collection, event.AllLogCollection, model.ProjectRefCollection, event.LegacyEventLogCollection))
 	}()
 	getPod := func() pod.Pod {
 		return pod.Pod{
@@ -384,7 +385,7 @@ func TestPodAgentNextTask(t *testing.T) {
 			require.NoError(t, err)
 			env.Remote = rq
 
-			require.NoError(t, db.ClearCollections(task.Collection, pod.Collection, dispatcher.Collection, event.AllLogCollection, model.ProjectRefCollection))
+			require.NoError(t, db.ClearCollections(task.Collection, pod.Collection, dispatcher.Collection, event.AllLogCollection, model.ProjectRefCollection, event.LegacyEventLogCollection))
 
 			rh, ok := makePodAgentNextTask(env).(*podAgentNextTask)
 			require.True(t, ok)
@@ -396,7 +397,7 @@ func TestPodAgentNextTask(t *testing.T) {
 
 func TestPodAgentEndTask(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(task.Collection, pod.Collection, event.AllLogCollection, model.ProjectRefCollection, build.Collection, model.VersionCollection, commitqueue.Collection, patchmodel.Collection))
+		assert.NoError(t, db.ClearCollections(task.Collection, pod.Collection, event.LegacyEventLogCollection, model.ProjectRefCollection, build.Collection, model.VersionCollection, commitqueue.Collection, patchmodel.Collection))
 	}()
 	const podID = "pod"
 	const taskID = "task"
@@ -602,7 +603,7 @@ func TestPodAgentEndTask(t *testing.T) {
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
 
-			require.NoError(t, db.ClearCollections(task.Collection, pod.Collection, event.AllLogCollection, model.ProjectRefCollection, build.Collection, model.VersionCollection, commitqueue.Collection, patchmodel.Collection))
+			require.NoError(t, db.ClearCollections(task.Collection, pod.Collection, event.LegacyEventLogCollection, model.ProjectRefCollection, build.Collection, model.VersionCollection, commitqueue.Collection, patchmodel.Collection))
 
 			rh, ok := makePodAgentEndTask(env).(*podAgentEndTask)
 			require.True(t, ok)
