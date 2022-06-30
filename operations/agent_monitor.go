@@ -283,16 +283,13 @@ func (m *monitor) fetchClient(ctx context.Context, urls []string, retry utility.
 	// downloading prevents this from occurring. See
 	// https://apple.stackexchange.com/questions/258623/how-to-fix-killed-9-error-in-mac-os/428388#428388
 	if runtime.GOOS == "darwin" {
-		if _, err := os.Stat(m.clientPath); err != nil {
-			// It is significant toil to investigate a host, so
-			// log an error but but don't return if there is a
-			// problem checking whether the client exists, and try
-			// to download a client anyway.
-			grip.ErrorWhen(!errors.Is(err, os.ErrNotExist), errors.Wrap(err, "checking if client exists"))
-		} else {
+		_, err := os.Stat(m.clientPath)
+		if err == nil {
 			if err := os.Remove(m.clientPath); err != nil {
 				grip.Error(errors.Wrap(err, "deleting client"))
 			}
+		} else {
+			grip.ErrorWhen(!errors.Is(err, os.ErrNotExist), errors.Wrap(err, "checking if client exists"))
 		}
 	}
 
