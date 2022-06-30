@@ -366,6 +366,8 @@ func TestPodAgentNextTask(t *testing.T) {
 			require.NoError(t, p.Insert())
 			tsk := getTask()
 			require.NoError(t, tsk.Insert())
+
+			rh.podID = p.ID
 			resp := rh.Run(ctx)
 			assert.Equal(t, http.StatusOK, resp.Status())
 			nextTaskResp := resp.Data().(*apimodels.NextTaskResponse)
