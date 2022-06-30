@@ -66,10 +66,9 @@ type ProjectRef struct {
 	// all aliases defined for the project
 	PatchTriggerAliases []patch.PatchTriggerDefinition `bson:"patch_trigger_aliases" json:"patch_trigger_aliases"`
 	// all PatchTriggerAliases applied to github patch intents
-	GithubTriggerAliases    []string                  `bson:"github_trigger_aliases" json:"github_trigger_aliases"`
-	PeriodicBuilds          []PeriodicBuildDefinition `bson:"periodic_builds" json:"periodic_builds"`
-	CedarTestResultsEnabled *bool                     `bson:"cedar_test_results_enabled,omitempty" json:"cedar_test_results_enabled,omitempty" yaml:"cedar_test_results_enabled"`
-	CommitQueue             CommitQueueParams         `bson:"commit_queue" json:"commit_queue" yaml:"commit_queue"`
+	GithubTriggerAliases []string                  `bson:"github_trigger_aliases" json:"github_trigger_aliases"`
+	PeriodicBuilds       []PeriodicBuildDefinition `bson:"periodic_builds" json:"periodic_builds"`
+	CommitQueue          CommitQueueParams         `bson:"commit_queue" json:"commit_queue" yaml:"commit_queue"`
 
 	// Admins contain a list of users who are able to access the projects page.
 	Admins []string `bson:"admins" json:"admins"`
@@ -222,48 +221,47 @@ type EmailAlertData struct {
 
 var (
 	// bson fields for the ProjectRef struct
-	ProjectRefIdKey                      = bsonutil.MustHaveTag(ProjectRef{}, "Id")
-	ProjectRefOwnerKey                   = bsonutil.MustHaveTag(ProjectRef{}, "Owner")
-	ProjectRefRepoKey                    = bsonutil.MustHaveTag(ProjectRef{}, "Repo")
-	ProjectRefBranchKey                  = bsonutil.MustHaveTag(ProjectRef{}, "Branch")
-	ProjectRefEnabledKey                 = bsonutil.MustHaveTag(ProjectRef{}, "Enabled")
-	ProjectRefPrivateKey                 = bsonutil.MustHaveTag(ProjectRef{}, "Private")
-	ProjectRefRestrictedKey              = bsonutil.MustHaveTag(ProjectRef{}, "Restricted")
-	ProjectRefBatchTimeKey               = bsonutil.MustHaveTag(ProjectRef{}, "BatchTime")
-	ProjectRefIdentifierKey              = bsonutil.MustHaveTag(ProjectRef{}, "Identifier")
-	ProjectRefRepoRefIdKey               = bsonutil.MustHaveTag(ProjectRef{}, "RepoRefId")
-	ProjectRefDisplayNameKey             = bsonutil.MustHaveTag(ProjectRef{}, "DisplayName")
-	ProjectRefDeactivatePreviousKey      = bsonutil.MustHaveTag(ProjectRef{}, "DeactivatePrevious")
-	ProjectRefRemotePathKey              = bsonutil.MustHaveTag(ProjectRef{}, "RemotePath")
-	ProjectRefHiddenKey                  = bsonutil.MustHaveTag(ProjectRef{}, "Hidden")
-	ProjectRefRepotrackerError           = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerError")
-	ProjectRefFilesIgnoredFromCacheKey   = bsonutil.MustHaveTag(ProjectRef{}, "FilesIgnoredFromCache")
-	ProjectRefDisabledStatsCacheKey      = bsonutil.MustHaveTag(ProjectRef{}, "DisabledStatsCache")
-	ProjectRefAdminsKey                  = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
-	ProjectRefGitTagAuthorizedUsersKey   = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedUsers")
-	ProjectRefGitTagAuthorizedTeamsKey   = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedTeams")
-	projectRefDefaultLoggerKey           = bsonutil.MustHaveTag(ProjectRef{}, "DefaultLogger")
-	projectRefCedarTestResultsEnabledKey = bsonutil.MustHaveTag(ProjectRef{}, "CedarTestResultsEnabled")
-	projectRefPRTestingEnabledKey        = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
-	projectRefManualPRTestingEnabledKey  = bsonutil.MustHaveTag(ProjectRef{}, "ManualPRTestingEnabled")
-	projectRefGithubChecksEnabledKey     = bsonutil.MustHaveTag(ProjectRef{}, "GithubChecksEnabled")
-	projectRefGitTagVersionsEnabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "GitTagVersionsEnabled")
-	projectRefRepotrackerDisabledKey     = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerDisabled")
-	projectRefCommitQueueKey             = bsonutil.MustHaveTag(ProjectRef{}, "CommitQueue")
-	projectRefTaskSyncKey                = bsonutil.MustHaveTag(ProjectRef{}, "TaskSync")
-	projectRefPatchingDisabledKey        = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
-	projectRefDispatchingDisabledKey     = bsonutil.MustHaveTag(ProjectRef{}, "DispatchingDisabled")
-	projectRefVersionControlEnabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "VersionControlEnabled")
-	projectRefNotifyOnFailureKey         = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
-	projectRefSpawnHostScriptPathKey     = bsonutil.MustHaveTag(ProjectRef{}, "SpawnHostScriptPath")
-	projectRefTriggersKey                = bsonutil.MustHaveTag(ProjectRef{}, "Triggers")
-	projectRefPatchTriggerAliasesKey     = bsonutil.MustHaveTag(ProjectRef{}, "PatchTriggerAliases")
-	projectRefGithubTriggerAliasesKey    = bsonutil.MustHaveTag(ProjectRef{}, "GithubTriggerAliases")
-	projectRefPeriodicBuildsKey          = bsonutil.MustHaveTag(ProjectRef{}, "PeriodicBuilds")
-	projectRefWorkstationConfigKey       = bsonutil.MustHaveTag(ProjectRef{}, "WorkstationConfig")
-	projectRefTaskAnnotationSettingsKey  = bsonutil.MustHaveTag(ProjectRef{}, "TaskAnnotationSettings")
-	projectRefBuildBaronSettingsKey      = bsonutil.MustHaveTag(ProjectRef{}, "BuildBaronSettings")
-	projectRefPerfEnabledKey             = bsonutil.MustHaveTag(ProjectRef{}, "PerfEnabled")
+	ProjectRefIdKey                     = bsonutil.MustHaveTag(ProjectRef{}, "Id")
+	ProjectRefOwnerKey                  = bsonutil.MustHaveTag(ProjectRef{}, "Owner")
+	ProjectRefRepoKey                   = bsonutil.MustHaveTag(ProjectRef{}, "Repo")
+	ProjectRefBranchKey                 = bsonutil.MustHaveTag(ProjectRef{}, "Branch")
+	ProjectRefEnabledKey                = bsonutil.MustHaveTag(ProjectRef{}, "Enabled")
+	ProjectRefPrivateKey                = bsonutil.MustHaveTag(ProjectRef{}, "Private")
+	ProjectRefRestrictedKey             = bsonutil.MustHaveTag(ProjectRef{}, "Restricted")
+	ProjectRefBatchTimeKey              = bsonutil.MustHaveTag(ProjectRef{}, "BatchTime")
+	ProjectRefIdentifierKey             = bsonutil.MustHaveTag(ProjectRef{}, "Identifier")
+	ProjectRefRepoRefIdKey              = bsonutil.MustHaveTag(ProjectRef{}, "RepoRefId")
+	ProjectRefDisplayNameKey            = bsonutil.MustHaveTag(ProjectRef{}, "DisplayName")
+	ProjectRefDeactivatePreviousKey     = bsonutil.MustHaveTag(ProjectRef{}, "DeactivatePrevious")
+	ProjectRefRemotePathKey             = bsonutil.MustHaveTag(ProjectRef{}, "RemotePath")
+	ProjectRefHiddenKey                 = bsonutil.MustHaveTag(ProjectRef{}, "Hidden")
+	ProjectRefRepotrackerError          = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerError")
+	ProjectRefFilesIgnoredFromCacheKey  = bsonutil.MustHaveTag(ProjectRef{}, "FilesIgnoredFromCache")
+	ProjectRefDisabledStatsCacheKey     = bsonutil.MustHaveTag(ProjectRef{}, "DisabledStatsCache")
+	ProjectRefAdminsKey                 = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
+	ProjectRefGitTagAuthorizedUsersKey  = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedUsers")
+	ProjectRefGitTagAuthorizedTeamsKey  = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedTeams")
+	projectRefDefaultLoggerKey          = bsonutil.MustHaveTag(ProjectRef{}, "DefaultLogger")
+	projectRefPRTestingEnabledKey       = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
+	projectRefManualPRTestingEnabledKey = bsonutil.MustHaveTag(ProjectRef{}, "ManualPRTestingEnabled")
+	projectRefGithubChecksEnabledKey    = bsonutil.MustHaveTag(ProjectRef{}, "GithubChecksEnabled")
+	projectRefGitTagVersionsEnabledKey  = bsonutil.MustHaveTag(ProjectRef{}, "GitTagVersionsEnabled")
+	projectRefRepotrackerDisabledKey    = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerDisabled")
+	projectRefCommitQueueKey            = bsonutil.MustHaveTag(ProjectRef{}, "CommitQueue")
+	projectRefTaskSyncKey               = bsonutil.MustHaveTag(ProjectRef{}, "TaskSync")
+	projectRefPatchingDisabledKey       = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
+	projectRefDispatchingDisabledKey    = bsonutil.MustHaveTag(ProjectRef{}, "DispatchingDisabled")
+	projectRefVersionControlEnabledKey  = bsonutil.MustHaveTag(ProjectRef{}, "VersionControlEnabled")
+	projectRefNotifyOnFailureKey        = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
+	projectRefSpawnHostScriptPathKey    = bsonutil.MustHaveTag(ProjectRef{}, "SpawnHostScriptPath")
+	projectRefTriggersKey               = bsonutil.MustHaveTag(ProjectRef{}, "Triggers")
+	projectRefPatchTriggerAliasesKey    = bsonutil.MustHaveTag(ProjectRef{}, "PatchTriggerAliases")
+	projectRefGithubTriggerAliasesKey   = bsonutil.MustHaveTag(ProjectRef{}, "GithubTriggerAliases")
+	projectRefPeriodicBuildsKey         = bsonutil.MustHaveTag(ProjectRef{}, "PeriodicBuilds")
+	projectRefWorkstationConfigKey      = bsonutil.MustHaveTag(ProjectRef{}, "WorkstationConfig")
+	projectRefTaskAnnotationSettingsKey = bsonutil.MustHaveTag(ProjectRef{}, "TaskAnnotationSettings")
+	projectRefBuildBaronSettingsKey     = bsonutil.MustHaveTag(ProjectRef{}, "BuildBaronSettings")
+	projectRefPerfEnabledKey            = bsonutil.MustHaveTag(ProjectRef{}, "PerfEnabled")
 
 	commitQueueEnabledKey       = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
 	triggerDefinitionProjectKey = bsonutil.MustHaveTag(TriggerDefinition{}, "Project")
@@ -326,10 +324,6 @@ func (p *ProjectRef) ShouldDeactivatePrevious() bool {
 
 func (p *ProjectRef) ShouldNotifyOnBuildFailure() bool {
 	return utility.FromBoolPtr(p.NotifyOnBuildFailure)
-}
-
-func (p *ProjectRef) IsCedarTestResultsEnabled() bool {
-	return utility.FromBoolPtr(p.CedarTestResultsEnabled)
 }
 
 func (p *ProjectRef) IsGitTagVersionsEnabled() bool {
@@ -1763,23 +1757,22 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 	switch section {
 	case ProjectPageGeneralSection:
 		setUpdate := bson.M{
-			ProjectRefEnabledKey:                 p.Enabled,
-			ProjectRefBranchKey:                  p.Branch,
-			ProjectRefDisplayNameKey:             p.DisplayName,
-			ProjectRefIdentifierKey:              p.Identifier,
-			ProjectRefBatchTimeKey:               p.BatchTime,
-			ProjectRefRemotePathKey:              p.RemotePath,
-			projectRefSpawnHostScriptPathKey:     p.SpawnHostScriptPath,
-			projectRefDispatchingDisabledKey:     p.DispatchingDisabled,
-			projectRefVersionControlEnabledKey:   p.VersionControlEnabled,
-			ProjectRefDeactivatePreviousKey:      p.DeactivatePrevious,
-			projectRefRepotrackerDisabledKey:     p.RepotrackerDisabled,
-			projectRefDefaultLoggerKey:           p.DefaultLogger,
-			projectRefCedarTestResultsEnabledKey: p.CedarTestResultsEnabled,
-			projectRefPatchingDisabledKey:        p.PatchingDisabled,
-			projectRefTaskSyncKey:                p.TaskSync,
-			ProjectRefDisabledStatsCacheKey:      p.DisabledStatsCache,
-			ProjectRefFilesIgnoredFromCacheKey:   p.FilesIgnoredFromCache,
+			ProjectRefEnabledKey:               p.Enabled,
+			ProjectRefBranchKey:                p.Branch,
+			ProjectRefDisplayNameKey:           p.DisplayName,
+			ProjectRefIdentifierKey:            p.Identifier,
+			ProjectRefBatchTimeKey:             p.BatchTime,
+			ProjectRefRemotePathKey:            p.RemotePath,
+			projectRefSpawnHostScriptPathKey:   p.SpawnHostScriptPath,
+			projectRefDispatchingDisabledKey:   p.DispatchingDisabled,
+			projectRefVersionControlEnabledKey: p.VersionControlEnabled,
+			ProjectRefDeactivatePreviousKey:    p.DeactivatePrevious,
+			projectRefRepotrackerDisabledKey:   p.RepotrackerDisabled,
+			projectRefDefaultLoggerKey:         p.DefaultLogger,
+			projectRefPatchingDisabledKey:      p.PatchingDisabled,
+			projectRefTaskSyncKey:              p.TaskSync,
+			ProjectRefDisabledStatsCacheKey:    p.DisabledStatsCache,
+			ProjectRefFilesIgnoredFromCacheKey: p.FilesIgnoredFromCache,
 		}
 		if !isRepo && !p.UseRepoSettings() {
 			setUpdate[ProjectRefOwnerKey] = p.Owner
@@ -2412,6 +2405,13 @@ func (p *ProjectRef) CommitQueueIsOn() error {
 
 	return catcher.Resolve()
 }
+
+// IsMongoProject returns whether this project is one of the Server's
+// mongodb-mongo-* projects. Until these projects can support Presto test
+// resutlts, their test results will need special treatment.
+// TODO (PM-2940): Remove this once Mongo projects can fully support Presto
+// test results.
+func (p *ProjectRef) IsMongoProject() bool { return strings.HasPrefix(p.Identifier, "mongodb-mongo-") }
 
 func GetProjectRefForTask(taskId string) (*ProjectRef, error) {
 	t, err := task.FindOneId(taskId)
