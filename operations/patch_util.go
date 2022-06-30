@@ -271,15 +271,10 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 		}
 	}
 
-	if !p.Finalize || p.Alias != "" {
-		return ref, nil
-	}
-
-	if len(p.Tasks) == 0 && len(p.RegexTasks) == 0 {
-		return ref, errors.Errorf("Need to specify at least one task/variant or alias when finalizing (No task specified).")
-	}
-	if len(p.Variants) == 0 && len(p.RegexVariants) == 0 {
-		return ref, errors.Errorf("Need to specify at least one task/variant or alias when finalizing (No variants specified).")
+	if p.Finalize && p.Alias != "" {
+		if len(p.Variants)+len(p.RegexVariants) == 0 || len(p.Tasks)+len(p.RegexTasks) == 0 {
+			return ref, errors.Errorf("Need to specify at least one task/variant or alias when finalizing")
+		}
 	}
 
 	return ref, nil
