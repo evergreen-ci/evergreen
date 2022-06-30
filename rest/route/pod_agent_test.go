@@ -360,6 +360,17 @@ func TestPodAgentNextTask(t *testing.T) {
 			assert.NotZero(t, dbPod.TimeInfo.AgentStarted)
 			assert.Equal(t, pod.StatusRunning, dbPod.Status)
 		},
+		"RunReturnsRunningTaskIfItExists": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
+			p := getPod()
+			p.RunningTask = "t1"
+			require.NoError(t, p.Insert())
+			tsk := getTask()
+			require.NoError(t, tsk.Insert())
+			resp := rh.Run(ctx)
+			assert.Equal(t, http.StatusOK, resp.Status())
+			nextTaskResp := resp.Data().(*apimodels.NextTaskResponse)
+			assert.Equal(t, nextTaskResp.TaskId, "t1")
+		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
