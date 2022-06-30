@@ -244,7 +244,6 @@ const (
 const (
 	VolumeTypeStandard = "standard"
 	VolumeTypeIo2      = "io1"
-	VolumeTypeGp3      = "gp3"
 	VolumeTypeGp2      = "gp2"
 	VolumeTypeSc1      = "sc1"
 	VolumeTypeSt1      = "st1"
@@ -254,7 +253,6 @@ var (
 	ValidVolumeTypes = []string{
 		VolumeTypeStandard,
 		VolumeTypeIo2,
-		VolumeTypeGp3,
 		VolumeTypeGp2,
 		VolumeTypeSc1,
 		VolumeTypeSt1,
