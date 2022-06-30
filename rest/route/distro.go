@@ -814,7 +814,7 @@ func (h *distroIcecreamConfigHandler) Run(ctx context.Context) gimlet.Responder 
 		var d distro.Distro
 		var distroFound bool
 		for _, d = range distros {
-			if d.IcecreamSettings.Populated() {
+			if d.IceCreamSettings.Populated() {
 				distroFound = true
 				break
 			}
@@ -824,7 +824,7 @@ func (h *distroIcecreamConfigHandler) Run(ctx context.Context) gimlet.Responder 
 			continue
 		}
 
-		script := d.IcecreamSettings.GetUpdateConfigScript()
+		script := d.IceCreamSettings.GetUpdateConfigScript()
 		ts := utility.RoundPartOfMinute(0).Format(units.TSFormat)
 		if err = h.env.RemoteQueue().Put(ctx, units.NewHostExecuteJob(h.env, host, script, true, "root", ts)); err != nil {
 			catcher.Wrapf(err, "enqueueing job to update Icecream config file on host '%s'", host.Id)

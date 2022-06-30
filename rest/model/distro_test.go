@@ -28,7 +28,7 @@ func TestDistroBuildFromService(t *testing.T) {
 		HomeVolumeSettings: distro.HomeVolumeSettings{
 			FormatCommand: "format_command",
 		},
-		IcecreamSettings: distro.IceCreamSettings{
+		IceCreamSettings: distro.IceCreamSettings{
 			SchedulerHost: "host",
 			ConfigPath:    "config_path",
 		},
@@ -45,8 +45,8 @@ func TestDistroBuildFromService(t *testing.T) {
 	assert.Equal(t, d.BootstrapSettings.ShellPath, utility.FromStringPtr(apiDistro.BootstrapSettings.ShellPath))
 	assert.Equal(t, d.Note, utility.FromStringPtr(apiDistro.Note))
 	assert.Equal(t, d.HomeVolumeSettings.FormatCommand, utility.FromStringPtr(apiDistro.HomeVolumeSettings.FormatCommand))
-	assert.Equal(t, d.IcecreamSettings.SchedulerHost, utility.FromStringPtr(apiDistro.IcecreamSettings.SchedulerHost))
-	assert.Equal(t, d.IcecreamSettings.ConfigPath, utility.FromStringPtr(apiDistro.IcecreamSettings.ConfigPath))
+	assert.Equal(t, d.IceCreamSettings.SchedulerHost, utility.FromStringPtr(apiDistro.IcecreamSettings.SchedulerHost))
+	assert.Equal(t, d.IceCreamSettings.ConfigPath, utility.FromStringPtr(apiDistro.IcecreamSettings.ConfigPath))
 }
 
 func TestDistroBuildFromServiceDefaults(t *testing.T) {
@@ -122,8 +122,8 @@ func TestDistroToService(t *testing.T) {
 	assert.Equal(t, utility.FromStringPtr(apiDistro.BootstrapSettings.PreconditionScripts[0].Script), d.BootstrapSettings.PreconditionScripts[0].Script)
 	assert.Equal(t, utility.FromStringPtr(apiDistro.Note), (d.Note))
 	assert.Equal(t, utility.FromStringPtr(apiDistro.HomeVolumeSettings.FormatCommand), d.HomeVolumeSettings.FormatCommand)
-	assert.Equal(t, utility.FromStringPtr(apiDistro.IcecreamSettings.SchedulerHost), d.IcecreamSettings.SchedulerHost)
-	assert.Equal(t, utility.FromStringPtr(apiDistro.IcecreamSettings.ConfigPath), d.IcecreamSettings.ConfigPath)
+	assert.Equal(t, utility.FromStringPtr(apiDistro.IcecreamSettings.SchedulerHost), d.IceCreamSettings.SchedulerHost)
+	assert.Equal(t, utility.FromStringPtr(apiDistro.IcecreamSettings.ConfigPath), d.IceCreamSettings.ConfigPath)
 }
 
 func TestDistroToServiceDefaults(t *testing.T) {

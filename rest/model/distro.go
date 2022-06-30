@@ -419,7 +419,7 @@ func (apiDistro *APIDistro) BuildFromService(d distro.Distro) {
 	apiDistro.HomeVolumeSettings = homeVolumeSettings
 
 	icecreamSettings := APIIceCreamSettings{}
-	icecreamSettings.BuildFromService(d.IcecreamSettings)
+	icecreamSettings.BuildFromService(d.IceCreamSettings)
 	apiDistro.IcecreamSettings = icecreamSettings
 	apiDistro.IsVirtualWorkstation = d.IsVirtualWorkstation
 	apiDistro.IsCluster = d.IsCluster
@@ -462,7 +462,7 @@ func (apiDistro *APIDistro) ToService() *distro.Distro {
 	d.HostAllocatorSettings = apiDistro.HostAllocatorSettings.ToService()
 	d.DispatcherSettings = apiDistro.DispatcherSettings.ToService()
 	d.HomeVolumeSettings = apiDistro.HomeVolumeSettings.ToService()
-	d.IcecreamSettings = apiDistro.IcecreamSettings.ToService()
+	d.IceCreamSettings = apiDistro.IcecreamSettings.ToService()
 
 	d.DisableShallowClone = apiDistro.DisableShallowClone
 	d.Note = utility.FromStringPtr(apiDistro.Note)
