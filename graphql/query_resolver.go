@@ -119,10 +119,7 @@ func (r *queryResolver) Distros(ctx context.Context, onlySpawnable bool) ([]*res
 	}
 	for _, d := range distros {
 		apiDistro := restModel.APIDistro{}
-		err := apiDistro.BuildFromService(d)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to build APIDistro from distro: %s", err.Error()))
-		}
+		apiDistro.BuildFromService(d)
 		apiDistros = append(apiDistros, &apiDistro)
 	}
 	return apiDistros, nil
@@ -184,7 +181,7 @@ func (r *queryResolver) HostEvents(ctx context.Context, hostID string, hostTag *
 	if h == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Host %s not found", hostID))
 	}
-	events, err := event.FindPaginated(h.Id, h.Tag, event.AllLogCollection, *limit, *page)
+	events, err := event.FindPaginated(h.Id, h.Tag, *limit, *page)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error Fetching host events: %s", err.Error()))
 	}

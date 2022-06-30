@@ -98,7 +98,7 @@ func (r *taskLogsResolver) EventLogs(ctx context.Context, obj *TaskLogs) ([]*res
 	const logMessageCount = 100
 	var loggedEvents []event.EventLogEntry
 	// loggedEvents is ordered ts descending
-	loggedEvents, err := event.Find(event.AllLogCollection, event.MostRecentTaskEvents(obj.TaskID, logMessageCount))
+	loggedEvents, err := event.Find(event.MostRecentTaskEvents(obj.TaskID, logMessageCount))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to find EventLogs for task %s: %s", obj.TaskID, err.Error()))
 	}

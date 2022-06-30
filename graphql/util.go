@@ -858,7 +858,7 @@ func getCollectiveStatusArray(v restModel.APIVersion) ([]string, error) {
 }
 
 func bbGetCreatedTicketsPointers(taskId string) ([]*thirdparty.JiraTicket, error) {
-	events, err := event.Find(event.AllLogCollection, event.TaskEventsForId(taskId))
+	events, err := event.Find(event.TaskEventsForId(taskId))
 	if err != nil {
 		return nil, err
 	}
