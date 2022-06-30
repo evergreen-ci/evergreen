@@ -53,11 +53,7 @@ func parseJson(r *http.Request) ([]json.RawMessage, error) {
 }
 
 func (h *generateHandler) Run(ctx context.Context) gimlet.Responder {
-	if err := data.GenerateTasks(ctx, h.taskID, h.files, h.queue); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "error generating tasks",
-			"task_id": h.taskID,
-		}))
+	if err := data.GenerateTasks(h.taskID, h.files, h.queue); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "generating tasks for task '%s'", h.taskID))
 	}
 
