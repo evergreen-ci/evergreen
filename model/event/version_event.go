@@ -39,8 +39,7 @@ func LogVersionStateChangeEvent(id, newStatus string) {
 		},
 	}
 
-	logger := NewDBEventLogger(AllLogCollection)
-	if err := logger.LogEvent(&event); err != nil {
+	if err := event.Log(); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeVersion,
 			"message":       "error logging event",
@@ -60,8 +59,7 @@ func LogVersionGithubCheckFinishedEvent(id, newStatus string) {
 		},
 	}
 
-	logger := NewDBEventLogger(AllLogCollection)
-	if err := logger.LogEvent(&event); err != nil {
+	if err := event.Log(); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeVersion,
 			"message":       "error logging event",

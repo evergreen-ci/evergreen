@@ -29,9 +29,9 @@ func ResourceTypeKeyIs(key string) bson.M {
 
 // Find takes a collection storing events and a query, generated
 // by one of the query functions, and returns a slice of events.
-func Find(coll string, query db.Q) ([]EventLogEntry, error) {
+func Find(query db.Q) ([]EventLogEntry, error) {
 	events := []EventLogEntry{}
-	err := db.FindAllQ(coll, query, &events)
+	err := db.FindAllQ(LegacyEventLogCollection, query, &events)
 	if err != nil || adb.ResultsNotFound(err) {
 		return nil, errors.WithStack(err)
 	}
@@ -39,7 +39,7 @@ func Find(coll string, query db.Q) ([]EventLogEntry, error) {
 	return events, nil
 }
 
-func FindPaginated(hostID, hostTag, coll string, limit, page int) ([]EventLogEntry, error) {
+func FindPaginated(hostID, hostTag string, limit, page int) ([]EventLogEntry, error) {
 	query := MostRecentHostEvents(hostID, hostTag, limit)
 	events := []EventLogEntry{}
 	skip := page * limit
@@ -47,7 +47,7 @@ func FindPaginated(hostID, hostTag, coll string, limit, page int) ([]EventLogEnt
 		query = query.Skip(skip)
 	}
 
-	err := db.FindAllQ(coll, query, &events)
+	err := db.FindAllQ(LegacyEventLogCollection, query, &events)
 	if err != nil || adb.ResultsNotFound(err) {
 		return nil, errors.WithStack(err)
 	}
@@ -55,7 +55,7 @@ func FindPaginated(hostID, hostTag, coll string, limit, page int) ([]EventLogEnt
 	return events, nil
 }
 
-// FindUnprocessedEvents returns all unprocessed events in AllLogCollection.
+// FindUnprocessedEvents returns all unprocessed events in LegacyEventLogCollection.
 // Events are considered unprocessed if their "processed_at" time IsZero
 func FindUnprocessedEvents(limit int) ([]EventLogEntry, error) {
 	out := []EventLogEntry{}
@@ -63,7 +63,7 @@ func FindUnprocessedEvents(limit int) ([]EventLogEntry, error) {
 	if limit > 0 {
 		query = query.Limit(limit)
 	}
-	err := db.FindAllQ(AllLogCollection, query, &out)
+	err := db.FindAllQ(LegacyEventLogCollection, query, &out)
 	if err != nil {
 		return nil, errors.Wrap(err, "fetching unprocessed events")
 	}
@@ -78,7 +78,7 @@ func FindByID(eventID string) (*EventLogEntry, error) {
 	}
 
 	var e EventLogEntry
-	if err := db.FindOneQ(AllLogCollection, db.Query(query), &e); err != nil {
+	if err := db.FindOneQ(LegacyEventLogCollection, db.Query(query), &e); err != nil {
 		if adb.ResultsNotFound(err) {
 			return nil, nil
 		}
@@ -95,7 +95,7 @@ func FindLastProcessedEvent() (*EventLogEntry, error) {
 	}).Sort([]string{"-" + processedAtKey})
 
 	e := EventLogEntry{}
-	if err := db.FindOneQ(AllLogCollection, q, &e); err != nil {
+	if err := db.FindOneQ(LegacyEventLogCollection, q, &e); err != nil {
 		if adb.ResultsNotFound(err) {
 			return nil, nil
 		}
@@ -108,7 +108,7 @@ func FindLastProcessedEvent() (*EventLogEntry, error) {
 func CountUnprocessedEvents() (int, error) {
 	q := db.Query(unprocessedEvents())
 
-	n, err := db.CountQ(AllLogCollection, q)
+	n, err := db.CountQ(LegacyEventLogCollection, q)
 	if err != nil {
 		return 0, errors.Wrap(err, "fetching number of unprocessed events")
 	}
@@ -151,7 +151,7 @@ func TaskEventsInOrder(id string) db.Q {
 // FindLatestPrimaryDistroEvents return the most recent non-AMI events for the distro.
 func FindLatestPrimaryDistroEvents(id string, n int) ([]EventLogEntry, error) {
 	events := []EventLogEntry{}
-	err := db.Aggregate(AllLogCollection, latestDistroEventsPipeline(id, n, false), &events)
+	err := db.Aggregate(LegacyEventLogCollection, latestDistroEventsPipeline(id, n, false), &events)
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +162,7 @@ func FindLatestPrimaryDistroEvents(id string, n int) ([]EventLogEntry, error) {
 func FindLatestAMIModifiedDistroEvent(id string) (EventLogEntry, error) {
 	events := []EventLogEntry{}
 	res := EventLogEntry{}
-	err := db.Aggregate(AllLogCollection, latestDistroEventsPipeline(id, 1, true), &events)
+	err := db.Aggregate(LegacyEventLogCollection, latestDistroEventsPipeline(id, 1, true), &events)
 	if err != nil {
 		return res, err
 	}
@@ -216,7 +216,7 @@ func AdminEventsBefore(before time.Time, n int) db.Q {
 }
 
 func FindAllByResourceID(resourceID string) ([]EventLogEntry, error) {
-	return Find(AllLogCollection, db.Query(bson.M{ResourceIdKey: resourceID}))
+	return Find(db.Query(bson.M{ResourceIdKey: resourceID}))
 }
 
 // Pod events

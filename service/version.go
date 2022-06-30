@@ -25,13 +25,8 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
-
-	if r.FormValue("redirect_spruce_users") == "true" {
-		user := MustHaveUser(r)
-		if user.Settings.UseSpruceOptions.SpruceV1 {
-			http.Redirect(w, r, fmt.Sprintf("%s/version/%s", uis.Settings.Ui.UIv2Url, projCtx.Version.Id), http.StatusTemporaryRedirect)
-			return
-		}
+	if RedirectSpruceUsers(w, r, fmt.Sprintf("%s/version/%s", uis.Settings.Ui.UIv2Url, projCtx.Version.Id)) {
+		return
 	}
 
 	// Set the config to blank to avoid writing it to the UI unnecessarily.
