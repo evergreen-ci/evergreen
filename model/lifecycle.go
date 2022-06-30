@@ -70,10 +70,11 @@ func setTaskActivationForVersion(versionId string, active bool, caller string) e
 		task.VersionKey: versionId,
 		task.StatusKey:  evergreen.TaskUndispatched,
 	}
-	tasksToModify := []task.Task{}
+	var tasksToModify []task.Task
+	var err error
 	// If activating a task, set the ActivatedBy field to be the caller.
 	if active {
-		tasksToModify, err := task.FindAll(db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey, task.BuildIdKey))
+		tasksToModify, err = task.FindAll(db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey, task.BuildIdKey))
 		if err != nil {
 			return errors.Wrap(err, "getting tasks to activate")
 		}
@@ -88,7 +89,7 @@ func setTaskActivationForVersion(versionId string, active bool, caller string) e
 			q[task.ActivatedByKey] = bson.M{"$in": evergreen.SystemActivators}
 		}
 
-		tasksToModify, err := task.FindAll(db.Query(q).WithFields(task.IdKey, task.ExecutionKey))
+		tasksToModify, err = task.FindAll(db.Query(q).WithFields(task.IdKey, task.ExecutionKey))
 		if err != nil {
 			return errors.Wrap(err, "getting tasks to deactivate")
 		}
@@ -170,6 +171,10 @@ func setTaskActivationForBuilds(buildIds []string, active, withDependencies bool
 		if err = task.DeactivateTasks(tasks, withDependencies, caller); err != nil {
 			return errors.Wrap(err, "deactivating tasks")
 		}
+	}
+
+	if err := UpdateVersionAndPatchStatusForBuilds(buildIds); err != nil {
+		return errors.Wrapf(err, "updating status for builds '%s'", buildIds)
 	}
 	return nil
 }
