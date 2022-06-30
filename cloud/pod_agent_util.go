@@ -9,27 +9,44 @@ import (
 	"github.com/evergreen-ci/evergreen/model/pod"
 )
 
-// agentScript returns the script to provision and run the agent in the pod's
-// container.
-func agentScript(settings *evergreen.Settings, p *pod.Pod) []string {
-	scriptCmds := []string{downloadAgentCommands(settings, p)}
-	if p.TaskContainerCreationOpts.OS == pod.OSLinux {
-		scriptCmds = append(scriptCmds, fmt.Sprintf("chmod +x %s", clientName(p)))
-	}
-	agentCmd := strings.Join(agentCommand(settings, p), " ")
-	scriptCmds = append(scriptCmds, agentCmd)
+// bootstrapContainerCommand returns the script to bootstrap the pod's primary container
+// to run the agent.
+func bootstrapContainerCommand(settings *evergreen.Settings, p *pod.Pod) []string {
+	scriptCmds := downloadPodProvisioningScriptCommand(settings, p)
 
-	return append(invokeShellScriptCommand(p), strings.Join(scriptCmds, " && "))
+	return append(invokeShellScriptCommand(p), scriptCmds)
 }
 
 // invokeShellScriptCommand returns the arguments to invoke an in-line shell
 // script in the pod's container.
 func invokeShellScriptCommand(p *pod.Pod) []string {
 	if p.TaskContainerCreationOpts.OS == pod.OSWindows {
-		return []string{"cmd.exe", "/c"}
+		return []string{"powershell.exe", "-noninteractive", "-noprofile", "-Command"}
 	}
 
 	return []string{"bash", "-c"}
+}
+
+func downloadPodProvisioningScriptCommand(settings *evergreen.Settings, p *pod.Pod) string {
+	const (
+		curlDefaultNumRetries = 10
+		curlDefaultMaxSecs    = 60
+	)
+	retryArgs := curlRetryArgs(curlDefaultNumRetries, curlDefaultMaxSecs)
+
+	// Return the command to download the provisioning script from the app
+	// server and run it in a shell script.
+
+	if p.TaskContainerCreationOpts.OS == pod.OSLinux {
+		// For Linux, run the script using bash syntax to interpolate the
+		// environment variables and pipe the script into another bash instance.
+		return fmt.Sprintf("curl %s -L -H \"%s: ${%s}\" -H \"%s: ${%s}\" %s/rest/v2/pods/${%s}/provisioning_script | bash -s", retryArgs, evergreen.PodHeader, pod.PodIDEnvVar, evergreen.PodSecretHeader, pod.PodSecretEnvVar, strings.TrimSuffix(settings.ApiUrl, "/"), pod.PodIDEnvVar)
+	}
+
+	// For Windows, run the script using PowerShell syntax to interpolate the
+	// environment variables and pipe the script into another PowerShell
+	// instance.
+	return fmt.Sprintf("curl.exe %s -L -H \"%s: $env:%s\" -H \"%s: $env:%s\" %s/rest/v2/pods/$env:%s/provisioning_script | powershell.exe -noprofile -noninteractive -", retryArgs, evergreen.PodHeader, pod.PodIDEnvVar, evergreen.PodSecretHeader, pod.PodSecretEnvVar, strings.TrimSuffix(settings.ApiUrl, "/"), pod.PodIDEnvVar)
 }
 
 // agentCommand returns the arguments to start the agent in the pod's container.
