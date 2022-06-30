@@ -285,9 +285,7 @@ func (m *monitor) fetchClient(ctx context.Context, urls []string, retry utility.
 	if runtime.GOOS == "darwin" {
 		_, err := os.Stat(m.clientPath)
 		if err == nil {
-			if err := os.Remove(m.clientPath); err != nil {
-				grip.Error(errors.Wrap(err, "deleting client"))
-			}
+			grip.Error(errors.Wrap(os.Remove(m.clientPath), "deleting client"))
 		} else {
 			grip.ErrorWhen(!errors.Is(err, os.ErrNotExist), errors.Wrap(err, "checking if client exists"))
 		}
