@@ -2429,7 +2429,7 @@ func TestMarkAsContainerDeallocated(t *testing.T) {
 	}
 }
 
-func TestMarkManyContainerDeallocated(t *testing.T) {
+func TestMarkTasksAsContainerDeallocated(t *testing.T) {
 	defer func() {
 		assert.NoError(t, db.Clear(Collection))
 	}()
@@ -2452,7 +2452,7 @@ func TestMarkManyContainerDeallocated(t *testing.T) {
 				taskIDs = append(taskIDs, tsk.Id)
 			}
 
-			require.NoError(t, MarkManyContainerDeallocated(taskIDs))
+			require.NoError(t, MarkTasksAsContainerDeallocated(taskIDs))
 			checkTasksUnallocated(t, taskIDs)
 		},
 		"NoopsWithHostTask": func(t *testing.T, tasks []Task) {
@@ -2463,7 +2463,7 @@ func TestMarkManyContainerDeallocated(t *testing.T) {
 				taskIDs = append(taskIDs, tsk.Id)
 			}
 
-			require.NoError(t, MarkManyContainerDeallocated(taskIDs))
+			require.NoError(t, MarkTasksAsContainerDeallocated(taskIDs))
 			checkTasksUnallocated(t, taskIDs[1:])
 			dbHostTask, err := FindOneId(tasks[0].Id)
 			require.NoError(t, err)
@@ -2479,7 +2479,7 @@ func TestMarkManyContainerDeallocated(t *testing.T) {
 				taskIDs = append(taskIDs, tsk.Id)
 			}
 
-			require.NoError(t, MarkManyContainerDeallocated(taskIDs))
+			require.NoError(t, MarkTasksAsContainerDeallocated(taskIDs))
 			checkTasksUnallocated(t, taskIDs)
 		},
 		"DoesNotUpdateNonexistentTask": func(t *testing.T, tasks []Task) {
@@ -2489,7 +2489,7 @@ func TestMarkManyContainerDeallocated(t *testing.T) {
 				taskIDs = append(taskIDs, tsk.Id)
 			}
 
-			require.NoError(t, MarkManyContainerDeallocated(taskIDs))
+			require.NoError(t, MarkTasksAsContainerDeallocated(taskIDs))
 			checkTasksUnallocated(t, taskIDs[1:])
 
 			dbTask, err := FindOneId(tasks[0].Id)

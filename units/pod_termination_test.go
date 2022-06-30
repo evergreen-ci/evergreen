@@ -125,16 +125,18 @@ func TestPodTerminationJob(t *testing.T) {
 			}
 			require.NoError(t, v.Insert())
 			tsk := task.Task{
-				Id:            "task_id",
-				Execution:     1,
-				BuildId:       b.Id,
-				Version:       v.Id,
-				Status:        evergreen.TaskStarted,
-				Activated:     true,
-				ActivatedTime: time.Now(),
-				DispatchTime:  time.Now(),
-				StartTime:     time.Now(),
-				LastHeartbeat: time.Now(),
+				Id:                 "task_id",
+				Execution:          1,
+				BuildId:            b.Id,
+				Version:            v.Id,
+				ExecutionPlatform:  task.ExecutionPlatformContainer,
+				Status:             evergreen.TaskStarted,
+				Activated:          true,
+				ActivatedTime:      time.Now(),
+				DispatchTime:       time.Now(),
+				StartTime:          time.Now(),
+				LastHeartbeat:      time.Now(),
+				ContainerAllocated: true,
 			}
 			require.NoError(t, tsk.Insert())
 			j.pod.RunningTask = tsk.Id
@@ -156,7 +158,7 @@ func TestPodTerminationJob(t *testing.T) {
 			dbTask, err := task.FindOneId(tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
-			assert.Equal(t, evergreen.TaskUndispatched, dbTask.Status, "stranded task should have been restarted")
+			assert.True(t, dbTask.ShouldAllocateContainer(), "stranded task should have been restarted to re-attempt allocation")
 
 			dbBuild, err := build.FindOneId(b.Id)
 			require.NoError(t, err)
