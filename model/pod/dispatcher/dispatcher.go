@@ -314,7 +314,7 @@ func (pd *PodDispatcher) RemovePod(ctx context.Context, env evergreen.Environmen
 			return errors.Wrap(err, "marking unallocatable container tasks as system-failed")
 		}
 
-		if err := task.MarkManyContainerDeallocated(pd.TaskIDs); err != nil {
+		if err := task.MarkTasksAsContainerDeallocated(pd.TaskIDs); err != nil {
 			return errors.Wrap(err, "marking all tasks in dispatcher as container deallocated")
 		}
 
