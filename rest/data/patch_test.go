@@ -187,10 +187,14 @@ func TestPatchConnectorFetchByIdSuite(t *testing.T) {
 }
 
 func (s *PatchConnectorFetchByIdSuite) SetupSuite() {
-	s.NoError(db.ClearCollections(patch.Collection, dbModel.ProjectRefCollection))
+	s.NoError(db.ClearCollections(patch.Collection, dbModel.ProjectRefCollection, dbModel.VersionCollection))
 	s.setup = func() error {
-		s.obj_ids = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
+		version := dbModel.Version{
+			Id: "version1",
+		}
+		s.NoError(version.Insert())
 
+		s.obj_ids = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
 		patches := []patch.Patch{
 			{Id: patch.NewId(s.obj_ids[0])},
 			{Id: patch.NewId(s.obj_ids[1])},
@@ -368,7 +372,7 @@ func TestPatchConnectorChangeStatusSuite(t *testing.T) {
 }
 
 func (s *PatchConnectorChangeStatusSuite) SetupSuite() {
-	s.NoError(db.ClearCollections(patch.Collection, dbModel.ProjectRefCollection, task.Collection))
+	s.NoError(db.ClearCollections(patch.Collection, dbModel.ProjectRefCollection, task.Collection, dbModel.VersionCollection))
 	s.setup = func() error {
 		s.obj_ids = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
 
@@ -383,6 +387,12 @@ func (s *PatchConnectorChangeStatusSuite) SetupSuite() {
 		s.NoError(task.Insert())
 		for _, p := range patches {
 			s.NoError(p.Insert())
+		}
+		for _, id := range s.obj_ids {
+			version := dbModel.Version{
+				Id: id,
+			}
+			s.NoError(version.Insert())
 		}
 
 		return nil
