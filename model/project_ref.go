@@ -380,6 +380,13 @@ func (p *ProjectRef) AliasesNeeded() bool {
 	return p.IsGithubChecksEnabled() || p.IsGitTagVersionsEnabled() || p.IsGithubChecksEnabled() || p.IsPRTestingEnabled()
 }
 
+// IsServerResmokeProject returns whether the project is owned by the Server
+// team and uses Resmoke.
+// TODO (PM-2940): Remove this once we migrate Mongo projects to Presto.
+func (p *ProjectRef) IsServerResmokeProject() bool {
+	return strings.HasPrefix("mongodb-mongo-", p.Identifier) || strings.HasPrefix("mongosync", p.Identifier)
+}
+
 const (
 	ProjectRefCollection     = "project_ref"
 	ProjectTriggerLevelTask  = "task"
