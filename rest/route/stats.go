@@ -328,23 +328,17 @@ func (tsh *testStatsHandler) Parse(ctx context.Context, r *http.Request) error {
 	project := gimlet.GetVars(r)["project_id"]
 	vals := r.URL.Query()
 
-	projectRef, err := dbModel.FindBranchProjectRef(project)
+	identifier, err := dbModel.GetIdentifierForProject(project)
 	if err != nil {
 		return gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("finding project ref '%s'", project),
+			Message:    fmt.Sprintf("getting project identifier for '%s'", project),
 			StatusCode: http.StatusInternalServerError,
-		}
-	}
-	if projectRef == nil {
-		return gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("project ref '%s' not found", project),
-			StatusCode: http.StatusNotFound,
 		}
 	}
 
 	// If this project is owned by Server and uses Resmoke, we need to use
 	// Evergreen test stats.
-	if projectRef.IsServerResmokeProject() {
+	if dbModel.IsServerResmokeProject(identifier) {
 		tsh.filter = stats.StatsFilter{Project: project}
 		err := tsh.StatsHandler.parseStatsFilter(vals)
 		if err != nil {
