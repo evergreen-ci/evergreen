@@ -150,7 +150,6 @@ func (j *idleHostJob) Run(ctx context.Context) {
 			"num_idle_hosts":                 len(info.IdleHosts),
 			"min_num_idle_hosts_to_evaluate": minNumHostsToEvaluate,
 			"num_idle_hosts_to_evaluate":     len(hostsToEvaluateForTermination),
-			"idle_hosts_to_evaluate":         hostsToEvaluateForTermination,
 		})
 	}
 }
