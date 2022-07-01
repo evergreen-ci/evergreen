@@ -57,12 +57,6 @@ func ActivateElapsedBuildsAndTasks(v *Version) (bool, error) {
 
 		isElapsedBuild := bv.ShouldActivate(now)
 		if !isElapsedBuild && len(readyTasks) == 0 {
-			grip.Debug(message.Fields{
-				"message":          "not activating build",
-				"ignore_tasks":     ignoreTasks,
-				"is_elapsed_build": isElapsedBuild,
-				"build_variant":    bv.BuildId,
-			})
 			continue
 		}
 		hasActivated = true
