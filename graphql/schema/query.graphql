@@ -99,11 +99,15 @@ type Query {
   userConfig: UserConfig
   userSettings: UserSettings
 
-  # version
-  buildVariantsForTaskName(projectId: String!, taskName: String!): [BuildVariantTuple]
+  # commit queue
   commitQueue(id: String!): CommitQueue!
-  hasVersion(id: String!): Boolean!
+
+  # mainline commits
+  buildVariantsForTaskName(projectId: String!, taskName: String!): [BuildVariantTuple]
   mainlineCommits(options: MainlineCommitsOptions!, buildVariantOptions: BuildVariantOptions): MainlineCommits
   taskNamesForBuildVariant(projectId: String!, buildVariant: String!): [String!]
+
+  # version
+  hasVersion(id: String!): Boolean!
   version(id: String!): Version!
 }

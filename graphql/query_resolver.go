@@ -995,28 +995,6 @@ func (r *queryResolver) UserSettings(ctx context.Context) (*restModel.APIUserSet
 	return &userSettings, nil
 }
 
-func (r *queryResolver) BuildVariantsForTaskName(ctx context.Context, projectID string, taskName string) ([]*task.BuildVariantTuple, error) {
-	pid, err := model.GetIdForProject(projectID)
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with id: %s", projectID))
-	}
-	repo, err := model.FindRepository(pid)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting repository for '%s': %s", projectID, err.Error()))
-	}
-	if repo == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find repository '%s'", projectID))
-	}
-	taskBuildVariants, err := task.FindUniqueBuildVariantNamesByTask(pid, taskName, repo.RevisionOrderNumber)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting build variant tasks for task '%s': %s", taskName, err.Error()))
-	}
-	if taskBuildVariants == nil {
-		return nil, nil
-	}
-	return taskBuildVariants, nil
-}
-
 func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.APICommitQueue, error) {
 	commitQueue, err := data.FindCommitQueueForProject(id)
 	if err != nil {
@@ -1054,25 +1032,26 @@ func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.
 	return commitQueue, nil
 }
 
-func (r *queryResolver) HasVersion(ctx context.Context, id string) (bool, error) {
-	v, err := model.VersionFindOne(model.VersionById(id))
+func (r *queryResolver) BuildVariantsForTaskName(ctx context.Context, projectID string, taskName string) ([]*task.BuildVariantTuple, error) {
+	pid, err := model.GetIdForProject(projectID)
 	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("Error finding version %s: %s", id, err.Error()))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with id: %s", projectID))
 	}
-	if v != nil {
-		return true, nil
+	repo, err := model.FindRepository(pid)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting repository for '%s': %s", projectID, err.Error()))
 	}
-
-	if patch.IsValidId(id) {
-		p, err := patch.FindOneId(id)
-		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("Error finding patch %s: %s", id, err.Error()))
-		}
-		if p != nil {
-			return false, nil
-		}
+	if repo == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find repository '%s'", projectID))
 	}
-	return false, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find patch or version %s", id))
+	taskBuildVariants, err := task.FindUniqueBuildVariantNamesByTask(pid, taskName, repo.RevisionOrderNumber)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting build variant tasks for task '%s': %s", taskName, err.Error()))
+	}
+	if taskBuildVariants == nil {
+		return nil, nil
+	}
+	return taskBuildVariants, nil
 }
 
 func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCommitsOptions, buildVariantOptions *BuildVariantOptions) (*MainlineCommits, error) {
@@ -1240,6 +1219,27 @@ func (r *queryResolver) TaskNamesForBuildVariant(ctx context.Context, projectID 
 		return []string{}, nil
 	}
 	return buildVariantTasks, nil
+}
+
+func (r *queryResolver) HasVersion(ctx context.Context, id string) (bool, error) {
+	v, err := model.VersionFindOne(model.VersionById(id))
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("Error finding version %s: %s", id, err.Error()))
+	}
+	if v != nil {
+		return true, nil
+	}
+
+	if patch.IsValidId(id) {
+		p, err := patch.FindOneId(id)
+		if err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("Error finding patch %s: %s", id, err.Error()))
+		}
+		if p != nil {
+			return false, nil
+		}
+	}
+	return false, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find patch or version %s", id))
 }
 
 func (r *queryResolver) Version(ctx context.Context, id string) (*restModel.APIVersion, error) {

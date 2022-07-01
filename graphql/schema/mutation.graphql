@@ -87,7 +87,9 @@ type Mutation {
   ): [PublicKey!]!
   updateUserSettings(userSettings: UserSettingsInput): Boolean!
 
-  # version
+  # commit queue
   removeItemFromCommitQueue(commitQueueId: String!, issue: String!): String
+
+  # version
   restartVersions(versionId: String!, abort: Boolean!, versionsToRestart: [VersionToRestart!]!): [Version!]
 }

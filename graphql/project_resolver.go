@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 )
@@ -22,6 +23,32 @@ func (r *projectResolver) IsFavorite(ctx context.Context, obj *restModel.APIProj
 		return true, nil
 	}
 	return false, nil
+}
+
+func (r *projectResolver) Patches(ctx context.Context, obj *restModel.APIProjectRef, patchesInput PatchesInput) (*Patches, error) {
+	opts := patch.ByPatchNameStatusesCommitQueuePaginatedOptions{
+		Project:         obj.Id,
+		PatchName:       patchesInput.PatchName,
+		Statuses:        patchesInput.Statuses,
+		Page:            patchesInput.Page,
+		Limit:           patchesInput.Limit,
+		OnlyCommitQueue: patchesInput.OnlyCommitQueue,
+	}
+
+	patches, count, err := patch.ByPatchNameStatusesCommitQueuePaginated(opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while fetching patches for this project : %s", err.Error()))
+	}
+	apiPatches := []*restModel.APIPatch{}
+	for _, p := range patches {
+		apiPatch := restModel.APIPatch{}
+		err = apiPatch.BuildFromService(p)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building APIPatch from service for patch: %s : %s", p.Id.Hex(), err.Error()))
+		}
+		apiPatches = append(apiPatches, &apiPatch)
+	}
+	return &Patches{Patches: apiPatches, FilteredPatchCount: count}, nil
 }
 
 func (r *projectResolver) ValidDefaultLoggers(ctx context.Context, obj *restModel.APIProjectRef) ([]string, error) {

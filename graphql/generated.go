@@ -1289,9 +1289,9 @@ type PermissionsResolver interface {
 type ProjectResolver interface {
 	IsFavorite(ctx context.Context, obj *model.APIProjectRef) (bool, error)
 
-	ValidDefaultLoggers(ctx context.Context, obj *model.APIProjectRef) ([]string, error)
-
 	Patches(ctx context.Context, obj *model.APIProjectRef, patchesInput PatchesInput) (*Patches, error)
+
+	ValidDefaultLoggers(ctx context.Context, obj *model.APIProjectRef) ([]string, error)
 }
 type ProjectSettingsResolver interface {
 	Aliases(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APIProjectAlias, error)
@@ -1343,11 +1343,11 @@ type QueryResolver interface {
 	User(ctx context.Context, userID *string) (*model.APIDBUser, error)
 	UserConfig(ctx context.Context) (*UserConfig, error)
 	UserSettings(ctx context.Context) (*model.APIUserSettings, error)
-	BuildVariantsForTaskName(ctx context.Context, projectID string, taskName string) ([]*task.BuildVariantTuple, error)
 	CommitQueue(ctx context.Context, id string) (*model.APICommitQueue, error)
-	HasVersion(ctx context.Context, id string) (bool, error)
+	BuildVariantsForTaskName(ctx context.Context, projectID string, taskName string) ([]*task.BuildVariantTuple, error)
 	MainlineCommits(ctx context.Context, options MainlineCommitsOptions, buildVariantOptions *BuildVariantOptions) (*MainlineCommits, error)
 	TaskNamesForBuildVariant(ctx context.Context, projectID string, buildVariant string) ([]string, error)
+	HasVersion(ctx context.Context, id string) (bool, error)
 	Version(ctx context.Context, id string) (*model.APIVersion, error)
 }
 type RepoRefResolver interface {
@@ -1429,9 +1429,8 @@ type TicketFieldsResolver interface {
 	ResolutionName(ctx context.Context, obj *thirdparty.TicketFields) (*string, error)
 }
 type UserResolver interface {
-	Permissions(ctx context.Context, obj *model.APIDBUser) (*Permissions, error)
-
 	Patches(ctx context.Context, obj *model.APIDBUser, patchesInput PatchesInput) (*Patches, error)
+	Permissions(ctx context.Context, obj *model.APIDBUser) (*Permissions, error)
 }
 type VersionResolver interface {
 	BaseTaskStatuses(ctx context.Context, obj *model.APIVersion) ([]string, error)
@@ -7433,8 +7432,10 @@ type Mutation {
   ): [PublicKey!]!
   updateUserSettings(userSettings: UserSettingsInput): Boolean!
 
-  # version
+  # commit queue
   removeItemFromCommitQueue(commitQueueId: String!, issue: String!): String
+
+  # version
   restartVersions(versionId: String!, abort: Boolean!, versionsToRestart: [VersionToRestart!]!): [Version!]
 }`, BuiltIn: false},
 	{Name: "graphql/schema/query.graphql", Input: `# This file lists all of the queries. The query definitions can be found in the corresponding files in the resolvers folder.
@@ -7538,21 +7539,23 @@ type Query {
   userConfig: UserConfig
   userSettings: UserSettings
 
-  # version
-  buildVariantsForTaskName(projectId: String!, taskName: String!): [BuildVariantTuple]
+  # commit queue
   commitQueue(id: String!): CommitQueue!
-  hasVersion(id: String!): Boolean!
+
+  # mainline commits
+  buildVariantsForTaskName(projectId: String!, taskName: String!): [BuildVariantTuple]
   mainlineCommits(options: MainlineCommitsOptions!, buildVariantOptions: BuildVariantOptions): MainlineCommits
   taskNamesForBuildVariant(projectId: String!, buildVariant: String!): [String!]
+
+  # version
+  hasVersion(id: String!): Boolean!
   version(id: String!): Version!
 }`, BuiltIn: false},
 	{Name: "graphql/schema/scalars.graphql", Input: `# Define scalars used in other files.
 scalar Time
 scalar Duration
 scalar StringMap
-scalar Map
-
-`, BuiltIn: false},
+scalar Map`, BuiltIn: false},
 	{Name: "graphql/schema/types/annotation.graphql", Input: `###### TYPES ######
 """ 
 Annotation models the metadata that a user can add to a task.
@@ -8054,14 +8057,6 @@ type Patches {
   patches: [Patch!]!
 }
 
-extend type User {
-  patches(patchesInput: PatchesInput!): Patches! # user patches
-}
-
-extend type Project {
-  patches(patchesInput: PatchesInput!): Patches! # project patches
-}
-
 """
 PatchTasks is the return value of the PatchTasks query.
 It contains an array of Tasks based on filter criteria, as well as a count for the number of Tasks in that array.
@@ -8256,6 +8251,7 @@ type Project {
   manualPrTestingEnabled: Boolean
   notifyOnBuildFailure: Boolean
   owner: String!
+  patches(patchesInput: PatchesInput!): Patches! # project patches
   patchingDisabled: Boolean
   patchTriggerAliases: [PatchTriggerAlias!]
   perfEnabled: Boolean
@@ -9025,7 +9021,7 @@ type LogMessage {
   type: String
   version: Int
 }`, BuiltIn: false},
-	{Name: "graphql/schema/types/task_queue.graphql", Input: `"""
+	{Name: "graphql/schema/types/task_queue_item.graphql", Input: `"""
 Distro[] is the return value for the distros query.
 It models an environment configuration for a host.
 """
@@ -9159,6 +9155,7 @@ It contains information about a user's id, name, email, and permissions.
 type User {
   displayName: String!
   emailAddress: String!
+  patches(patchesInput: PatchesInput!): Patches! # user patches
   permissions: Permissions!
   userId: String!
 }
@@ -23145,6 +23142,48 @@ func (ec *executionContext) _Project_owner(ctx context.Context, field graphql.Co
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Project_patches(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Project_patches_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Project().Patches(rctx, obj, args["patchesInput"].(PatchesInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*Patches)
+	fc.Result = res
+	return ec.marshalNPatches2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatches(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Project_patchingDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -23775,48 +23814,6 @@ func (ec *executionContext) _Project_workstationConfig(ctx context.Context, fiel
 	res := resTmp.(model.APIWorkstationConfig)
 	fc.Result = res
 	return ec.marshalNWorkstationConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationConfig(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Project_patches(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "Project",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   true,
-		IsResolver: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Project_patches_args(ctx, rawArgs)
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	fc.Args = args
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Project().Patches(rctx, obj, args["patchesInput"].(PatchesInput))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*Patches)
-	fc.Result = res
-	return ec.marshalNPatches2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatches(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ProjectAlias_id(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectAlias) (ret graphql.Marshaler) {
@@ -26599,45 +26596,6 @@ func (ec *executionContext) _Query_userSettings(ctx context.Context, field graph
 	return ec.marshalOUserSettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUserSettings(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Query_buildVariantsForTaskName(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   true,
-		IsResolver: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Query_buildVariantsForTaskName_args(ctx, rawArgs)
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	fc.Args = args
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().BuildVariantsForTaskName(rctx, args["projectId"].(string), args["taskName"].(string))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.([]*task.BuildVariantTuple)
-	fc.Result = res
-	return ec.marshalOBuildVariantTuple2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐBuildVariantTuple(ctx, field.Selections, res)
-}
-
 func (ec *executionContext) _Query_commitQueue(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -26680,7 +26638,7 @@ func (ec *executionContext) _Query_commitQueue(ctx context.Context, field graphq
 	return ec.marshalNCommitQueue2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueue(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Query_hasVersion(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Query_buildVariantsForTaskName(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -26697,7 +26655,7 @@ func (ec *executionContext) _Query_hasVersion(ctx context.Context, field graphql
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Query_hasVersion_args(ctx, rawArgs)
+	args, err := ec.field_Query_buildVariantsForTaskName_args(ctx, rawArgs)
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
@@ -26705,21 +26663,18 @@ func (ec *executionContext) _Query_hasVersion(ctx context.Context, field graphql
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().HasVersion(rctx, args["id"].(string))
+		return ec.resolvers.Query().BuildVariantsForTaskName(rctx, args["projectId"].(string), args["taskName"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
-	res := resTmp.(bool)
+	res := resTmp.([]*task.BuildVariantTuple)
 	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalOBuildVariantTuple2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐBuildVariantTuple(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_mainlineCommits(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -26798,6 +26753,48 @@ func (ec *executionContext) _Query_taskNamesForBuildVariant(ctx context.Context,
 	res := resTmp.([]string)
 	fc.Result = res
 	return ec.marshalOString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_hasVersion(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_hasVersion_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().HasVersion(rctx, args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_version(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -35628,6 +35625,48 @@ func (ec *executionContext) _User_emailAddress(ctx context.Context, field graphq
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _User_patches(ctx context.Context, field graphql.CollectedField, obj *model.APIDBUser) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "User",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_User_patches_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.User().Patches(rctx, obj, args["patchesInput"].(PatchesInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*Patches)
+	fc.Result = res
+	return ec.marshalNPatches2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatches(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _User_permissions(ctx context.Context, field graphql.CollectedField, obj *model.APIDBUser) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -35696,48 +35735,6 @@ func (ec *executionContext) _User_userId(ctx context.Context, field graphql.Coll
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _User_patches(ctx context.Context, field graphql.CollectedField, obj *model.APIDBUser) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "User",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   true,
-		IsResolver: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_User_patches_args(ctx, rawArgs)
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	fc.Args = args
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.User().Patches(rctx, obj, args["patchesInput"].(PatchesInput))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*Patches)
-	fc.Result = res
-	return ec.marshalNPatches2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatches(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _UserConfig_api_key(ctx context.Context, field graphql.CollectedField, obj *UserConfig) (ret graphql.Marshaler) {
@@ -44893,6 +44890,20 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
+		case "patches":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Project_patches(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "patchingDisabled":
 			out.Values[i] = ec._Project_patchingDisabled(ctx, field, obj)
 		case "patchTriggerAliases":
@@ -44964,20 +44975,6 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
-		case "patches":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Project_patches(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
-				return res
-			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -45918,17 +45915,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				res = ec._Query_userSettings(ctx, field)
 				return res
 			})
-		case "buildVariantsForTaskName":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_buildVariantsForTaskName(ctx, field)
-				return res
-			})
 		case "commitQueue":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -45943,7 +45929,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				}
 				return res
 			})
-		case "hasVersion":
+		case "buildVariantsForTaskName":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
 				defer func() {
@@ -45951,10 +45937,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_hasVersion(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
+				res = ec._Query_buildVariantsForTaskName(ctx, field)
 				return res
 			})
 		case "mainlineCommits":
@@ -45977,6 +45960,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_taskNamesForBuildVariant(ctx, field)
+				return res
+			})
+		case "hasVersion":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_hasVersion(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		case "version":
@@ -48160,6 +48157,20 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
+		case "patches":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._User_patches(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "permissions":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -48179,20 +48190,6 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
-		case "patches":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._User_patches(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
-				return res
-			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

@@ -236,57 +236,6 @@ func (r *patchResolver) VersionFull(ctx context.Context, obj *restModel.APIPatch
 	return &apiVersion, nil
 }
 
-func (r *projectResolver) Patches(ctx context.Context, obj *restModel.APIProjectRef, patchesInput PatchesInput) (*Patches, error) {
-	opts := patch.ByPatchNameStatusesCommitQueuePaginatedOptions{
-		Project:         obj.Id,
-		PatchName:       patchesInput.PatchName,
-		Statuses:        patchesInput.Statuses,
-		Page:            patchesInput.Page,
-		Limit:           patchesInput.Limit,
-		OnlyCommitQueue: patchesInput.OnlyCommitQueue,
-	}
-
-	patches, count, err := patch.ByPatchNameStatusesCommitQueuePaginated(opts)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while fetching patches for this project : %s", err.Error()))
-	}
-	apiPatches := []*restModel.APIPatch{}
-	for _, p := range patches {
-		apiPatch := restModel.APIPatch{}
-		err = apiPatch.BuildFromService(p)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building APIPatch from service for patch: %s : %s", p.Id.Hex(), err.Error()))
-		}
-		apiPatches = append(apiPatches, &apiPatch)
-	}
-	return &Patches{Patches: apiPatches, FilteredPatchCount: count}, nil
-}
-
-func (r *userResolver) Patches(ctx context.Context, obj *restModel.APIDBUser, patchesInput PatchesInput) (*Patches, error) {
-	opts := patch.ByPatchNameStatusesCommitQueuePaginatedOptions{
-		Author:             obj.UserID,
-		PatchName:          patchesInput.PatchName,
-		Statuses:           patchesInput.Statuses,
-		Page:               patchesInput.Page,
-		Limit:              patchesInput.Limit,
-		IncludeCommitQueue: patchesInput.IncludeCommitQueue,
-	}
-	patches, count, err := patch.ByPatchNameStatusesCommitQueuePaginated(opts)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting patches for user %s: %s", utility.FromStringPtr(obj.UserID), err.Error()))
-	}
-
-	apiPatches := []*restModel.APIPatch{}
-	for _, p := range patches {
-		apiPatch := restModel.APIPatch{}
-		if err = apiPatch.BuildFromService(p); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error converting patch to APIPatch for patch %s : %s", p.Id, err.Error()))
-		}
-		apiPatches = append(apiPatches, &apiPatch)
-	}
-	return &Patches{Patches: apiPatches, FilteredPatchCount: count}, nil
-}
-
 // Patch returns PatchResolver implementation.
 func (r *Resolver) Patch() PatchResolver { return &patchResolver{r} }
 

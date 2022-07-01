@@ -176,6 +176,7 @@ type Project {
   manualPrTestingEnabled: Boolean
   notifyOnBuildFailure: Boolean
   owner: String!
+  patches(patchesInput: PatchesInput!): Patches! # project patches
   patchingDisabled: Boolean
   patchTriggerAliases: [PatchTriggerAlias!]
   perfEnabled: Boolean

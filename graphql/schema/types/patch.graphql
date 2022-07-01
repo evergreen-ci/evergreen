@@ -181,14 +181,6 @@ type Patches {
   patches: [Patch!]!
 }
 
-extend type User {
-  patches(patchesInput: PatchesInput!): Patches! # user patches
-}
-
-extend type Project {
-  patches(patchesInput: PatchesInput!): Patches! # project patches
-}
-
 """
 PatchTasks is the return value of the PatchTasks query.
 It contains an array of Tasks based on filter criteria, as well as a count for the number of Tasks in that array.
