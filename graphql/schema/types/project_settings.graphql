@@ -1,0 +1,190 @@
+enum ProjectSettingsAccess {
+  EDIT
+  VIEW
+}
+
+enum ProjectSettingsSection {
+  GENERAL
+  ACCESS
+  VARIABLES
+  GITHUB_AND_COMMIT_QUEUE
+  NOTIFICATIONS
+  PATCH_ALIASES
+  WORKSTATION
+  TRIGGERS
+  PERIODIC_BUILDS
+  PLUGINS
+}
+
+###### INPUTS ######
+"""
+ProjectSettingsInput is the input to the saveProjectSettingsForSection mutation.
+It contains information about project settings (e.g. Build Baron configurations, subscriptions, etc) and is used to
+update the settings for a given project.
+"""
+input ProjectSettingsInput {
+  aliases: [ProjectAliasInput!]
+  githubWebhooksEnabled: Boolean
+  projectRef: ProjectInput
+  subscriptions: [SubscriptionInput!]
+  vars: ProjectVarsInput
+}
+
+input ProjectInput {
+  id: String! @requireProjectAccess(access: EDIT)
+  admins: [String!]
+  batchTime: Int
+  branch: String
+  buildBaronSettings: BuildBaronSettingsInput
+  cedarTestResultsEnabled: Boolean
+  commitQueue: CommitQueueParamsInput
+  deactivatePrevious: Boolean
+  defaultLogger: String
+  disabledStatsCache: Boolean
+  dispatchingDisabled: Boolean
+  displayName: String
+  enabled: Boolean
+  filesIgnoredFromCache: [String!]
+  githubChecksEnabled: Boolean
+  githubTriggerAliases: [String]
+  gitTagAuthorizedTeams: [String!]
+  gitTagAuthorizedUsers: [String!]
+  gitTagVersionsEnabled: Boolean
+  identifier: String
+  manualPrTestingEnabled: Boolean
+  notifyOnBuildFailure: Boolean
+  owner: String
+  patchingDisabled: Boolean
+  patchTriggerAliases: [PatchTriggerAliasInput!]
+  perfEnabled: Boolean
+  periodicBuilds: [PeriodicBuildInput!]
+  private: Boolean
+  prTestingEnabled: Boolean
+  remotePath: String
+  repo: String
+  repotrackerDisabled: Boolean
+  restricted: Boolean
+  spawnHostScriptPath: String
+  taskAnnotationSettings: TaskAnnotationSettingsInput
+  taskSync: TaskSyncOptionsInput
+  tracksPushEvents: Boolean
+  triggers: [TriggerAliasInput!]
+  versionControlEnabled: Boolean
+  workstationConfig: WorkstationConfigInput
+}
+
+###### TYPES ######
+"""
+ProjectSettings models the settings for a given Project.
+"""
+type ProjectSettings {
+  aliases: [ProjectAlias!]
+  githubWebhooksEnabled: Boolean!
+  projectRef: Project
+  subscriptions: [ProjectSubscription!]
+  vars: ProjectVars
+}
+
+# shared by Project and RepoRef
+type ProjectSubscription {
+  id: String!
+  ownerType: String!
+  regexSelectors: [Selector!]!
+  resourceType: String!
+  selectors: [Selector!]!
+  subscriber: ProjectSubscriber
+  trigger: String!
+  triggerData: StringMap
+ }
+
+type Selector {
+  data: String!
+  type: String!
+}
+
+# shared by Project and RepoRef
+type TriggerAlias {
+  alias: String!
+  buildVariantRegex: String!
+  configFile: String!
+  dateCutoff: Int!
+  level: String!
+  project: String!
+  status: String!
+  taskRegex: String!
+}
+
+# shared by Project and RepoRef
+type PeriodicBuild {
+  id: String!
+  alias: String!
+  configFile: String!
+  intervalHours: Int!
+  message: String!
+  nextRunTime: Time!
+}
+
+# shared by Project and RepoRef
+type BuildBaronSettings {
+  bfSuggestionFeaturesURL: String
+  bfSuggestionPassword: String
+  bfSuggestionServer: String
+  bfSuggestionTimeoutSecs: Int
+  bfSuggestionUsername: String
+  ticketCreateProject: String!
+  ticketSearchProjects: [String!]
+}
+
+# shared by Project and RepoRef
+type TaskAnnotationSettings {
+  fileTicketWebhook: Webhook!
+  jiraCustomFields: [JiraField!]
+}
+
+type JiraField {
+  displayText: String!
+  field: String!
+}
+
+type Webhook {
+  endpoint: String!
+  secret: String!
+}
+
+"""
+ProjectEvents contains project event log entries that concern the history of changes related to project
+settings.
+Although RepoSettings uses RepoRef in practice to have stronger types, this can't be enforced
+or event logs because new fields could always be introduced that don't exist in the old event logs.
+"""
+type ProjectEvents {
+  count: Int!
+  eventLogEntries: [ProjectEventLogEntry!]!
+}
+
+type ProjectEventLogEntry {
+  after: ProjectEventSettings
+  before: ProjectEventSettings
+  timestamp: Time!
+  user: String!
+}
+
+type ProjectEventSettings{
+  aliases: [ProjectAlias!]
+  githubWebhooksEnabled: Boolean!
+  projectRef: Project
+  subscriptions: [ProjectSubscription!]
+  vars: ProjectVars
+}
+
+type ProjectAlias {
+  id: String!
+  alias: String!
+  gitTag: String!
+  remotePath: String!
+  task: String!
+  taskTags: [String!]!
+  variant: String!
+  variantTags: [String!]!
+}
+

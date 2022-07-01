@@ -1,0 +1,25 @@
+###### INPUTS ######
+"""
+RepoSettingsInput is the input to the saveRepoSettingsForSection mutation.
+It contains information about repo settings (e.g. Build Baron configurations, subscriptions, etc) and is used to
+update the settings for a given project.
+"""
+input RepoSettingsInput {
+  aliases: [ProjectAliasInput!]
+  githubWebhooksEnabled: Boolean
+  projectRef: RepoRefInput ## use the repo ref here in order to have stronger types
+  subscriptions: [SubscriptionInput!]
+  vars: ProjectVarsInput
+}
+
+###### TYPES ######
+"""
+RepoSettings models the settings for a given RepoRef.
+"""
+type RepoSettings {
+  aliases: [ProjectAlias!]
+  githubWebhooksEnabled: Boolean!
+  projectRef: RepoRef ## use the repo ref here in order to have stronger types
+  subscriptions: [ProjectSubscription!]
+  vars: ProjectVars
+}
