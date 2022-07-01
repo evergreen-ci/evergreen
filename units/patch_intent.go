@@ -301,15 +301,11 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		return err
 	}
 
-	if j.intent.ReusePreviousPatchDefinition() {
-		err = j.setToPreviousPatchDefinition(patchDoc, project)
-		if err != nil {
-			return err
-		}
-	}
+	var previousPatchStatus string
+	failedOnly := j.intent.RepeatFailedTasksAndVariants()
 
-	if j.intent.RepeatFailedTasksAndVariants() {
-		patchDoc.VariantsTasks, err = j.getPreviousPatchDefinition(project, true)
+	if j.intent.ReusePreviousPatchDefinition() || failedOnly {
+		err, previousPatchStatus = j.setToPreviousPatchDefinition(patchDoc, project, failedOnly)
 		if err != nil {
 			return err
 		}
@@ -339,26 +335,10 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 	}
 
-	if len(patchDoc.VariantsTasks) == 0 {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":                     "chayaM this line should be hit even with reuse",
-			"patch_id":                    patchDoc.Id,
-			"patchDoc.BuildVariants":      patchDoc.BuildVariants,
-			"patchDoc.Tasks":              patchDoc.Tasks,
-			"patchDoc.RegexBuildVariants": patchDoc.RegexBuildVariants,
-			"patchDoc.RegexTasks":         patchDoc.RegexTasks,
-			"patchDoc.VariantsTasks":      patchDoc.VariantsTasks,
-		}))
+	skipForFailed := failedOnly && !(previousPatchStatus == evergreen.PatchFailed)
+
+	if len(patchDoc.VariantsTasks) == 0 && !skipForFailed {
 		project.BuildProjectTVPairs(patchDoc, j.intent.GetAlias())
-		grip.Error(message.Fields{
-			"message":                     "chayaM after  BuildProjectTVPairs",
-			"patch_id":                    patchDoc.Id,
-			"patchDoc.BuildVariants":      patchDoc.BuildVariants,
-			"patchDoc.Tasks":              patchDoc.Tasks,
-			"patchDoc.RegexBuildVariants": patchDoc.RegexBuildVariants,
-			"patchDoc.RegexTasks":         patchDoc.RegexTasks,
-			"patchDoc.VariantsTasks":      patchDoc.VariantsTasks,
-		})
 	}
 
 	if (j.intent.ShouldFinalizePatch() || patchDoc.IsCommitQueuePatch()) &&
@@ -506,75 +486,43 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	return catcher.Resolve()
 }
 
-func (j *patchIntentProcessor) getPreviousPatchDefinition(project *model.Project, failedOnly bool) ([]patch.VariantTasks, error) {
-	previousPatch, err := patch.FindOne(patch.MostRecentPatchByUserAndProject(j.user.Username(), project.Identifier))
-	if err != nil {
-		return nil, errors.Wrap(err, "error querying for most recent patch")
-	}
-	if previousPatch == nil {
-		return nil, errors.Errorf("no previous patch available")
-	}
-	var res []patch.VariantTasks
-	if failedOnly && !(previousPatch.Status == evergreen.PatchFailed) {
-		return res, nil
-	}
+func setFailedTasksToPrevious(patchDoc, previousPatch *patch.Patch, project *model.Project) error {
+	var failedTasks []string
 	for _, vt := range previousPatch.VariantsTasks {
 		tasksInProjectVariant := project.FindTasksForVariant(vt.Variant)
 		displayTasksInProjectVariant := project.FindDisplayTasksForVariant(vt.Variant)
-		var displayTasks []patch.DisplayTask
 		var tasks []string
-		if failedOnly {
-			tasks, displayTasks, err = getPreviousFailedTasksAndDisplayTasks(tasksInProjectVariant, displayTasksInProjectVariant, vt, previousPatch.Version)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			tasks, displayTasks = getPreviousTasksAndDisplayTasks(tasksInProjectVariant, displayTasksInProjectVariant, vt)
+		tasks, _, err := getPreviousFailedTasksAndDisplayTasks(tasksInProjectVariant, displayTasksInProjectVariant, vt, previousPatch.Version)
+		if err != nil {
+			return err
 		}
-		if len(tasks)+len(displayTasks) > 0 {
-			res = append(res, patch.VariantTasks{
-				Variant:      vt.Variant,
-				Tasks:        tasks,
-				DisplayTasks: displayTasks,
-			})
-		}
+		failedTasks = append(failedTasks, tasks...)
 	}
-	return res, nil
+
+	patchDoc.Tasks = failedTasks
+	return nil
 }
 
-func (j *patchIntentProcessor) setToPreviousPatchDefinition(patchDoc *patch.Patch, project *model.Project) error {
-	grip.Error(message.Fields{
-		"message":                     "chayaM before setting to previous",
-		"patch_id":                    patchDoc.Id,
-		"patchDoc.BuildVariants":      patchDoc.BuildVariants,
-		"patchDoc.Tasks":              patchDoc.Tasks,
-		"patchDoc.RegexBuildVariants": patchDoc.RegexBuildVariants,
-		"patchDoc.RegexTasks":         patchDoc.RegexTasks,
-		"patchDoc.VariantsTasks":      patchDoc.VariantsTasks,
-	})
+func (j *patchIntentProcessor) setToPreviousPatchDefinition(patchDoc *patch.Patch, project *model.Project, failedOnly bool) (error, string) {
 	previousPatch, err := patch.FindOne(patch.MostRecentPatchByUserAndProject(j.user.Username(), project.Identifier))
 	if err != nil {
-		return errors.Wrap(err, "error querying for most recent patch")
+		return errors.Wrap(err, "querying for most recent patch"), ""
 	}
 	if previousPatch == nil {
-		return errors.Errorf("no previous patch available")
+		return errors.Errorf("no previous patch available"), ""
 	}
 
 	patchDoc.BuildVariants = previousPatch.BuildVariants
-	patchDoc.Tasks = previousPatch.Tasks
 	patchDoc.RegexBuildVariants = previousPatch.RegexBuildVariants
 	patchDoc.RegexTasks = previousPatch.RegexTasks
 
-	grip.Error(message.Fields{
-		"message":                     "chayaM after setting to previous",
-		"patch_id":                    patchDoc.Id,
-		"patchDoc.BuildVariants":      patchDoc.BuildVariants,
-		"patchDoc.Tasks":              patchDoc.Tasks,
-		"patchDoc.RegexBuildVariants": patchDoc.RegexBuildVariants,
-		"patchDoc.RegexTasks":         patchDoc.RegexTasks,
-		"patchDoc.VariantsTasks":      patchDoc.VariantsTasks,
-	})
-	return nil
+	if failedOnly {
+		j.setFailedTasksToPrevious(patchDoc, previousPatch, project)
+	} else {
+		patchDoc.Tasks = previousPatch.Tasks
+	}
+
+	return nil, previousPatch.Status
 }
 
 func getPreviousFailedTasksAndDisplayTasks(tasksInProjectVariant []string, displayTasksInProjectVariant []string, vt patch.VariantTasks, version string) ([]string, []patch.DisplayTask, error) {
