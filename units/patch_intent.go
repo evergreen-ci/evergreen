@@ -517,7 +517,7 @@ func (j *patchIntentProcessor) setToPreviousPatchDefinition(patchDoc *patch.Patc
 	patchDoc.RegexTasks = previousPatch.RegexTasks
 
 	if failedOnly {
-		j.setFailedTasksToPrevious(patchDoc, previousPatch, project)
+		setFailedTasksToPrevious(patchDoc, previousPatch, project)
 	} else {
 		patchDoc.Tasks = previousPatch.Tasks
 	}
