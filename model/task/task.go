@@ -1143,9 +1143,9 @@ func (t *Task) MarkAsContainerDeallocated(ctx context.Context, env evergreen.Env
 	return nil
 }
 
-// MarkManyContainerDeallocated marks multiple container tasks as no longer
+// MarkTasksAsContainerDeallocated marks multiple container tasks as no longer
 // allocated containers.
-func MarkManyContainerDeallocated(taskIDs []string) error {
+func MarkTasksAsContainerDeallocated(taskIDs []string) error {
 	if len(taskIDs) == 0 {
 		return nil
 	}
