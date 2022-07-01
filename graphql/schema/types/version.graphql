@@ -1,0 +1,101 @@
+###### INPUTS ######
+"""
+VersionToRestart is the input to the restartVersions mutation.
+It contains an array of taskIds to restart for a given versionId.
+"""
+input VersionToRestart {
+  versionId: String!
+  taskIds: [String!]!
+}
+
+###### TYPES ######
+"""
+Version models a commit within a project.
+"""
+type Version {
+  id: String!
+  activated: Boolean
+  author: String!
+  baseTaskStatuses: [String!]!
+  baseVersion: Version
+  branch: String!
+  buildVariants(options: BuildVariantOptions): [GroupedBuildVariant]
+  buildVariantStats(options: BuildVariantOptions): [GroupedTaskStatusCount!]
+  childVersions: [Version]
+  createTime: Time!
+  finishTime: Time
+  isPatch: Boolean!
+  manifest: Manifest
+  message: String!
+  order: Int!
+  parameters: [Parameter!]!
+  patch: Patch
+  previousVersion: Version
+  project: String!
+  projectIdentifier: String!
+  projectMetadata: Project
+  repo: String!
+  requester: String!
+  revision: String!
+  startTime: Time
+  status: String!
+  taskCount: Int
+  taskStatusCounts(options: BuildVariantOptions): [StatusCount!] @deprecated(reason: "Use taskStatusStats instead")
+  taskStatuses: [String!]!
+  taskStatusStats(options: BuildVariantOptions): TaskStats
+  upstreamProject: UpstreamProject
+  versionTiming: VersionTiming
+}
+
+type TaskStats {
+  counts: [StatusCount!]
+  eta: Time
+}
+
+# deprecated field
+type StatusCount { 
+  count: Int!
+  status: String!
+}
+
+type GroupedBuildVariant {
+  displayName: String!
+  tasks: [Task]
+  variant: String!
+}
+
+type GroupedTaskStatusCount {
+  displayName: String!
+  statusCounts: [StatusCount!]!
+  variant: String!
+}
+
+type VersionTiming {
+  makespan: Duration
+  timeTaken: Duration
+}
+
+type Manifest {
+  id: String!
+  branch: String!
+  isBase: Boolean!
+  moduleOverrides: StringMap
+  modules: Map
+  project: String!
+  revision: String!
+}
+
+type UpstreamProject {
+  owner: String!
+  project: String!
+  repo: String!
+  resourceID: String! # ID of the UI linkable resource that triggered the upstream version (corresponds to a task ID or version ID)
+  revision: String!
+  task: Task
+  triggerID: String! # ID of the trigger that created the upstream version (corresponds to a task ID or build ID)
+  triggerType: String!
+  version: Version
+}
+
+
+

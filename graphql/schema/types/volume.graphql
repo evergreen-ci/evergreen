@@ -1,0 +1,15 @@
+type Volume {
+  id: String!
+  availabilityZone: String!
+  createdBy: String!
+  creationTime: Time
+  deviceName: String
+  displayName: String!
+  expiration: Time
+  homeVolume: Boolean!
+  host: Host
+  hostID: String!
+  noExpiration: Boolean!
+  size: Int!
+  type: String!
+}

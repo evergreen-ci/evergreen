@@ -101,12 +101,11 @@ func (j *eventNotifierJob) Run(ctx context.Context) {
 
 func (j *eventNotifierJob) processEvent(ctx context.Context, e *event.EventLogEntry) error {
 	startTime := time.Now()
-	logger := event.NewDBEventLogger(event.AllLogCollection)
 	catcher := grip.NewSimpleCatcher()
 
 	n, err := j.processEventTriggers(e)
 	catcher.Add(err)
-	catcher.Add(logger.MarkProcessed(e))
+	catcher.Add(e.MarkProcessed())
 
 	if err = notification.InsertMany(n...); err != nil {
 		// Consider that duplicate key errors are expected.

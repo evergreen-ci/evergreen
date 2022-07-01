@@ -35,7 +35,7 @@ func TestNewPodTerminationJob(t *testing.T) {
 
 func TestPodTerminationJob(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(pod.Collection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, dispatcher.Collection, event.AllLogCollection))
+		assert.NoError(t, db.ClearCollections(pod.Collection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, dispatcher.Collection, event.LegacyEventLogCollection))
 	}()
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, j *podTerminationJob){
@@ -125,16 +125,18 @@ func TestPodTerminationJob(t *testing.T) {
 			}
 			require.NoError(t, v.Insert())
 			tsk := task.Task{
-				Id:            "task_id",
-				Execution:     1,
-				BuildId:       b.Id,
-				Version:       v.Id,
-				Status:        evergreen.TaskStarted,
-				Activated:     true,
-				ActivatedTime: time.Now(),
-				DispatchTime:  time.Now(),
-				StartTime:     time.Now(),
-				LastHeartbeat: time.Now(),
+				Id:                 "task_id",
+				Execution:          1,
+				BuildId:            b.Id,
+				Version:            v.Id,
+				ExecutionPlatform:  task.ExecutionPlatformContainer,
+				Status:             evergreen.TaskStarted,
+				Activated:          true,
+				ActivatedTime:      time.Now(),
+				DispatchTime:       time.Now(),
+				StartTime:          time.Now(),
+				LastHeartbeat:      time.Now(),
+				ContainerAllocated: true,
 			}
 			require.NoError(t, tsk.Insert())
 			j.pod.RunningTask = tsk.Id
@@ -156,7 +158,7 @@ func TestPodTerminationJob(t *testing.T) {
 			dbTask, err := task.FindOneId(tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
-			assert.Equal(t, evergreen.TaskUndispatched, dbTask.Status, "stranded task should have been restarted")
+			assert.True(t, dbTask.ShouldAllocateContainer(), "stranded task should have been restarted to re-attempt allocation")
 
 			dbBuild, err := build.FindOneId(b.Id)
 			require.NoError(t, err)
@@ -266,7 +268,7 @@ func TestPodTerminationJob(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			require.NoError(t, db.ClearCollections(pod.Collection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, dispatcher.Collection, event.AllLogCollection))
+			require.NoError(t, db.ClearCollections(pod.Collection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, dispatcher.Collection, event.LegacyEventLogCollection))
 
 			cluster := "cluster"
 

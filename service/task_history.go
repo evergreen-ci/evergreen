@@ -72,12 +72,8 @@ func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
 
 	taskName := gimlet.GetVars(r)["task_name"]
 
-	if r.FormValue("redirect_spruce_users") == "true" {
-		user := MustHaveUser(r)
-		if user.Settings.UseSpruceOptions.SpruceV1 {
-			http.Redirect(w, r, fmt.Sprintf("%s/task-history/%s/%s", uis.Settings.Ui.UIv2Url, project.Identifier, taskName), http.StatusTemporaryRedirect)
-			return
-		}
+	if RedirectSpruceUsers(w, r, fmt.Sprintf("%s/task-history/%s/%s", uis.Settings.Ui.UIv2Url, project.Identifier, taskName)) {
+		return
 	}
 
 	if err != nil || project == nil {

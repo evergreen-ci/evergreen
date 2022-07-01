@@ -15,7 +15,6 @@ import (
 
 func init() {
 	testutil.Setup()
-
 }
 
 func setupPermissions(t *testing.T) {

@@ -149,12 +149,8 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	projCtx := MustHaveProjectContext(r)
 
-	if r.FormValue("redirect_spruce_users") == "true" {
-		user := MustHaveUser(r)
-		if user.Settings.UseSpruceOptions.SpruceV1 {
-			http.Redirect(w, r, fmt.Sprintf("%s/task/%s", uis.Settings.Ui.UIv2Url, projCtx.Task.Id), http.StatusTemporaryRedirect)
-			return
-		}
+	if RedirectSpruceUsers(w, r, fmt.Sprintf("%s/task/%s", uis.Settings.Ui.UIv2Url, projCtx.Task.Id)) {
+		return
 	}
 
 	if projCtx.Task == nil {
@@ -526,7 +522,7 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 	logType := r.FormValue("type")
 	if logType == "EV" {
 		var loggedEvents []event.EventLogEntry
-		loggedEvents, err = event.Find(event.AllLogCollection, event.MostRecentTaskEvents(projCtx.Task.Id, DefaultLogMessages))
+		loggedEvents, err = event.Find(event.MostRecentTaskEvents(projCtx.Task.Id, DefaultLogMessages))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

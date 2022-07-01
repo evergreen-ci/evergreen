@@ -1,0 +1,13 @@
+###### INPUTS ######
+input ProjectVarsInput {
+  adminOnlyVarsList: [String]
+  privateVarsList: [String]
+  vars: StringMap
+}
+
+###### TYPES ######
+type ProjectVars {
+  adminOnlyVars: [String]
+  privateVars: [String]
+  vars: StringMap
+}

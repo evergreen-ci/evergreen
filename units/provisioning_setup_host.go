@@ -772,11 +772,11 @@ func waitForDevice(ctx context.Context, env evergreen.Environment, h *host.Host)
 }
 
 func writeIcecreamConfig(ctx context.Context, env evergreen.Environment, h *host.Host) error {
-	if !h.Distro.IcecreamSettings.Populated() {
+	if !h.Distro.IceCreamSettings.Populated() {
 		return nil
 	}
 
-	script := h.Distro.IcecreamSettings.GetUpdateConfigScript()
+	script := h.Distro.IceCreamSettings.GetUpdateConfigScript()
 	args := []string{h.Distro.ShellBinary(), "-c", script}
 	if logs, err := h.RunJasperProcess(ctx, env, &options.Create{
 		Args: args,

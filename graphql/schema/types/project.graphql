@@ -1,0 +1,216 @@
+
+###### INPUTS ######
+"""
+CreateProjectInput is the input to the createProject mutation.
+It contains information about a new project to be created.
+"""
+input CreateProjectInput {
+  id: String
+  identifier: String!
+  owner: String!
+  repo: String!
+  repoRefId: String
+}
+
+"""
+CopyProjectInput is the input to the copyProject mutation.
+It contains information about a project to be duplicated.
+"""
+input CopyProjectInput {
+  newProjectId: String
+  newProjectIdentifier: String!
+  projectIdToCopy: String!
+}
+
+"""
+MoveProjectInput is the input to the attachProjectToNewRepo mutation.
+It contains information used to move a project to a a new owner and repo.
+"""
+input MoveProjectInput {
+  newOwner: String!
+  newRepo: String!
+  projectId: String! @requireProjectAccess(access: EDIT)
+}
+
+input ProjectAliasInput {
+  id: String!
+  alias: String!
+  gitTag: String!
+  remotePath: String!
+  task: String!
+  taskTags: [String!]!
+  variant: String!
+  variantTags: [String!]!
+}
+
+input TaskSyncOptionsInput {
+  configEnabled: Boolean
+  patchEnabled: Boolean
+}
+
+input PeriodicBuildInput {
+  id: String!
+  alias: String!
+  configFile: String!
+  intervalHours: Int!
+  message: String!
+  nextRunTime: Time!
+}
+
+input TaskAnnotationSettingsInput {
+  fileTicketWebhook: WebhookInput
+  jiraCustomFields: [JiraFieldInput!]
+}
+
+input JiraFieldInput {
+  displayText: String!
+  field: String!
+}
+
+input WebhookInput {
+  endpoint: String!
+  secret: String!
+}
+
+input BuildBaronSettingsInput {
+  bfSuggestionFeaturesURL: String
+  bfSuggestionPassword: String
+  bfSuggestionServer: String
+  bfSuggestionTimeoutSecs: Int
+  bfSuggestionUsername: String
+  ticketCreateProject: String!
+  ticketSearchProjects: [String!]
+}
+
+input TriggerAliasInput {
+  alias: String!
+  buildVariantRegex: String!
+  configFile: String!
+  dateCutoff: Int!
+  level: String!
+  project: String!
+  status: String!
+  taskRegex: String!
+}
+
+input PatchTriggerAliasInput {
+  alias: String!
+  childProjectIdentifier: String!
+  parentAsModule: String
+  status: String
+  taskSpecifiers: [TaskSpecifierInput!]!
+}
+
+input TaskSpecifierInput {
+  patchAlias: String!
+  taskRegex: String!
+  variantRegex: String!
+}
+
+input CommitQueueParamsInput {
+  enabled: Boolean
+  mergeMethod: String
+  message: String
+  requireSigned: Boolean
+}
+
+input WorkstationConfigInput {
+  gitClone: Boolean
+  setupCommands: [WorkstationSetupCommandInput!]
+}
+
+input WorkstationSetupCommandInput {
+  command: String!
+  directory: String
+}
+
+
+###### TYPES ######
+"""
+GroupedProjects is the return value for the projects & viewableProjectRefs queries.
+It contains an array of projects which are grouped under a groupDisplayName.
+"""
+type GroupedProjects {
+  groupDisplayName: String! 
+  name: String! @deprecated(reason: "name is deprecated. Use groupDisplayName instead.")
+  projects: [Project!]!
+  repo: RepoRef
+}
+
+"""
+GithubProjectConflicts is the return value for the githubProjectConflicts query.
+Its contains information about potential conflicts in the commit checks, the commit queue, and PR testing. 
+"""
+type GithubProjectConflicts {
+  commitCheckIdentifiers: [String!]
+  commitQueueIdentifiers: [String!]
+  prTestingIdentifiers: [String!]
+}
+
+"""
+Project models single repository on GitHub.
+"""
+type Project {
+  id: String!
+  admins: [String]
+  batchTime: Int!
+  branch: String!
+  buildBaronSettings: BuildBaronSettings!
+  cedarTestResultsEnabled: Boolean
+  commitQueue: CommitQueueParams!
+  deactivatePrevious: Boolean
+  defaultLogger: String!
+  disabledStatsCache: Boolean
+  dispatchingDisabled: Boolean
+  displayName: String!
+  enabled: Boolean
+  filesIgnoredFromCache: [String!]
+  githubChecksEnabled: Boolean
+  githubTriggerAliases: [String!]
+  gitTagAuthorizedTeams: [String!]
+  gitTagAuthorizedUsers: [String!]
+  gitTagVersionsEnabled: Boolean
+  hidden: Boolean
+  identifier: String!
+  isFavorite: Boolean!
+  manualPrTestingEnabled: Boolean
+  notifyOnBuildFailure: Boolean
+  owner: String!
+  patches(patchesInput: PatchesInput!): Patches! # project patches
+  patchingDisabled: Boolean
+  patchTriggerAliases: [PatchTriggerAlias!]
+  perfEnabled: Boolean
+  periodicBuilds: [PeriodicBuild!]
+  private: Boolean
+  prTestingEnabled: Boolean
+  remotePath: String!
+  repo: String!
+  repoRefId: String!
+  repotrackerDisabled: Boolean
+  restricted: Boolean
+  spawnHostScriptPath: String!
+  taskAnnotationSettings: TaskAnnotationSettings!
+  taskSync: TaskSyncOptions!
+  tracksPushEvents: Boolean
+  triggers: [TriggerAlias!]
+  validDefaultLoggers: [String!]!
+  versionControlEnabled: Boolean
+  workstationConfig: WorkstationConfig!
+}
+
+type CommitQueueParams {
+  enabled: Boolean
+  mergeMethod: String!
+  message: String!
+  requireSigned: Boolean
+}
+
+type TaskSyncOptions {
+  configEnabled: Boolean
+  patchEnabled: Boolean
+}
+
+type WorkstationConfig {
+  gitClone: Boolean
+  setupCommands: [WorkstationSetupCommand!]
+}

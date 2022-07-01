@@ -45,6 +45,7 @@ var (
 	DisplayNameKey                     = bsonutil.MustHaveTag(Host{}, "DisplayName")
 	RunningTaskFullKey                 = bsonutil.MustHaveTag(Host{}, "RunningTaskFull")
 	RunningTaskKey                     = bsonutil.MustHaveTag(Host{}, "RunningTask")
+	RunningTaskExecutionKey            = bsonutil.MustHaveTag(Host{}, "RunningTaskExecution")
 	RunningTaskGroupKey                = bsonutil.MustHaveTag(Host{}, "RunningTaskGroup")
 	RunningTaskGroupOrderKey           = bsonutil.MustHaveTag(Host{}, "RunningTaskGroupOrder")
 	RunningTaskBuildVariantKey         = bsonutil.MustHaveTag(Host{}, "RunningTaskBuildVariant")

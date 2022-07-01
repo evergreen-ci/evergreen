@@ -1,0 +1,53 @@
+###### TYPES ######
+""" 
+SpruceConfig defines settings that apply to all users of Evergreen.
+For example, if the banner field is populated, then a sitewide banner will be shown to all users.
+"""
+type SpruceConfig {
+  banner: String
+  bannerTheme: String
+  githubOrgs: [String!]!
+  jira: JiraConfig
+  providers: CloudProviderConfig
+  spawnHost: SpawnHostConfig!
+  ui: UIConfig
+}
+
+type UIConfig {
+  defaultProject: String!
+  userVoice: String
+}
+
+type JiraConfig {
+  host: String
+}
+
+type CloudProviderConfig {
+  aws: AWSConfig
+}
+
+type AWSConfig {
+  maxVolumeSizePerUser: Int
+}
+
+type SpawnHostConfig {
+  spawnHostsPerUser: Int!
+  unexpirableHostsPerUser: Int!
+  unexpirableVolumesPerUser: Int!
+}
+
+""" 
+ClientConfig stores information about the binaries for the Evergreen Command-Line Client that are available for
+download on Evergreen.
+"""
+type ClientConfig {
+  clientBinaries: [ClientBinary!]
+  latestRevision: String
+}
+
+type ClientBinary {
+  arch: String
+  displayName: String
+  os: String
+  url: String
+}

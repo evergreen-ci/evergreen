@@ -13,6 +13,11 @@ import (
 	"github.com/pkg/errors"
 )
 
+func init() {
+	registry.AddType(ResourceTypeAdmin, func() interface{} { return &rawAdminEventData{} })
+	registry.setUnexpirable(ResourceTypeAdmin, EventTypeValueChanged)
+}
+
 const (
 	ResourceTypeAdmin     = "ADMIN"
 	EventTypeValueChanged = "CONFIG_VALUE_CHANGED"
@@ -66,8 +71,7 @@ func LogAdminEvent(section string, before, after evergreen.ConfigSection, user s
 		ResourceType: ResourceTypeAdmin,
 	}
 
-	logger := NewDBEventLogger(AllLogCollection)
-	if err := logger.LogEvent(&event); err != nil {
+	if err := event.Log(); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeAdmin,
 			"message":       "error logging event",
@@ -99,7 +103,7 @@ func stripInteriorSections(config *evergreen.Settings) *evergreen.Settings {
 }
 
 func FindAdmin(query db.Q) ([]EventLogEntry, error) {
-	eventsRaw, err := Find(AllLogCollection, query)
+	eventsRaw, err := Find(query)
 	if err != nil {
 		return nil, err
 	}
