@@ -334,7 +334,7 @@ func generateBuildVariants(versionId string, buildVariantOpts BuildVariantOption
 	return result, nil
 }
 
-// getFailedTestResultsSample returns a sample of failed test results for the given tasks that match the supplied testFilters
+// getCedarFailedTestResultsSample returns a sample of failed test results for the given tasks that match the supplied testFilters
 func getCedarFailedTestResultsSample(ctx context.Context, tasks []task.Task, testFilters []string) ([]apimodels.CedarFailedTestResultsSample, error) {
 	if len(tasks) == 0 {
 		return nil, nil
@@ -362,7 +362,7 @@ func getCedarFailedTestResultsSample(ctx context.Context, tasks []task.Task, tes
 	return results, nil
 }
 
-// ModifyVersionHandler handles the boilerplate code for performing a modify version action, i.e. schedule, unschedule, restart and set priority
+// modifyVersionHandler handles the boilerplate code for performing a modify version action, i.e. schedule, unschedule, restart and set priority
 func modifyVersionHandler(ctx context.Context, patchID string, modification model.VersionModification) error {
 	v, err := model.VersionFindOneId(patchID)
 	if err != nil {
@@ -659,6 +659,7 @@ func setVersionActivationStatus(version *model.Version) error {
 		return errors.Wrapf(version.SetActivated(), "Error updating version activated status for `%s`", version.Id)
 	}
 }
+
 func isPopulated(buildVariantOptions *BuildVariantOptions) bool {
 	if buildVariantOptions == nil {
 		return false
