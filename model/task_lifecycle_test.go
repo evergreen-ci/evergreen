@@ -3888,7 +3888,6 @@ func TestDisplayTaskUpdates(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(dbTask)
 	assert.Equal(task12.StartTime, dbTask.StartTime)
-	assert.Equal(time.Date(2000, 0, 0, 0, 44, 0, 0, time.Local), dbTask.StartTime)
 }
 
 func TestDisplayTaskUpdateNoUndispatched(t *testing.T) {
