@@ -103,6 +103,9 @@ func setTaskActivationForVersion(versionId string, active bool, caller string) e
 		var buildIds []string
 		for _, task := range tasksToModify {
 			if !utility.StringSliceContains(buildIds, task.BuildId) {
+				if err = SetBuildActivation(task.BuildId, active, caller); err != nil {
+					return errors.Wrap(err, "updating build status")
+				}
 				buildIds = append(buildIds, task.BuildId)
 			}
 		}

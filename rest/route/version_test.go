@@ -148,7 +148,7 @@ func (s *VersionSuite) TestPatchVersionVersion() {
 	s.Equal(author, v.Author)
 	s.Equal(authorEmail, v.AuthorEmail)
 	s.Equal(msg, v.Message)
-	s.Equal(status, v.Status)
+	s.Equal(evergreen.VersionStarted, v.Status)
 	s.Equal(repo, v.Repo)
 	s.Equal(branch, v.Branch)
 	s.Equal(utility.TruePtr(), v.Activated)
