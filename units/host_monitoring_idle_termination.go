@@ -17,7 +17,6 @@ import (
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 )
 
@@ -138,19 +137,6 @@ func (j *idleHostJob) Run(ctx context.Context) {
 			hostsToEvaluateForTermination = append(hostsToEvaluateForTermination, info.IdleHosts[i])
 			j.AddError(j.checkAndTerminateHost(ctx, &info.IdleHosts[i], currentDistro))
 		}
-
-		grip.InfoWhen(sometimes.Percent(10), message.Fields{
-			"id":                             j.ID(),
-			"job_type":                       idleHostJobName,
-			"runner":                         "monitor",
-			"op":                             "dispatcher",
-			"distro_id":                      info.DistroID,
-			"minimum_hosts":                  minimumHostsForDistro,
-			"num_running_hosts":              info.RunningHostsCount,
-			"num_idle_hosts":                 len(info.IdleHosts),
-			"min_num_idle_hosts_to_evaluate": minNumHostsToEvaluate,
-			"num_idle_hosts_to_evaluate":     len(hostsToEvaluateForTermination),
-		})
 	}
 }
 
