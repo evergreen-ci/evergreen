@@ -1,0 +1,50 @@
+###### TYPES ######
+""" 
+Annotation models the metadata that a user can add to a task.
+It is used as a field within the Task type.
+"""
+type Annotation {
+  id: String!
+  createdIssues: [IssueLink]
+  issues: [IssueLink]
+  note: Note
+  suspectedIssues: [IssueLink]
+  taskId: String!
+  taskExecution: Int!
+  webhookConfigured: Boolean!
+}
+
+type Note {
+  message: String!
+  source: Source!
+}
+
+type Source {
+  author: String!
+  requester: String!
+  time: Time!
+}
+
+""" 
+Build Baron is a service that can be integrated into a project (see Confluence Wiki for more details).
+This type is returned from the buildBaron query, and contains information about Build Baron configurations and suggested
+tickets from JIRA for a given task on a given execution.
+"""
+type BuildBaron {
+  bbTicketCreationDefined: Boolean!
+  buildBaronConfigured: Boolean!
+  searchReturnInfo: SearchReturnInfo # contains array of suggested tickets from JIRA
+}
+
+type SearchReturnInfo {
+  featuresURL: String!
+  issues: [JiraTicket!]!
+  search: String!
+  source: String!
+}
+
+type JiraTicket {
+  fields: TicketFields!
+  key: String!
+}
+

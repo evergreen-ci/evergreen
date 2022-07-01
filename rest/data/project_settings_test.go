@@ -150,7 +150,7 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 		},
 	} {
 		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection,
-			event.SubscriptionsCollection, event.AllLogCollection, evergreen.ScopeCollection, user.Collection))
+			event.SubscriptionsCollection, event.LegacyEventLogCollection, evergreen.ScopeCollection, user.Collection))
 		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 		repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
@@ -466,7 +466,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 		},
 	} {
 		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection,
-			event.SubscriptionsCollection, event.AllLogCollection, evergreen.ScopeCollection, user.Collection))
+			event.SubscriptionsCollection, event.LegacyEventLogCollection, evergreen.ScopeCollection, user.Collection))
 		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 		pRef := model.ProjectRef{
@@ -595,7 +595,7 @@ func TestCopyProject(t *testing.T) {
 		},
 	} {
 		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection,
-			event.SubscriptionsCollection, event.AllLogCollection, evergreen.ScopeCollection, user.Collection))
+			event.SubscriptionsCollection, event.LegacyEventLogCollection, evergreen.ScopeCollection, user.Collection))
 		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 		pRef := model.ProjectRef{

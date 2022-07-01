@@ -1,0 +1,5 @@
+###### TYPES ######
+type Permissions {
+  canCreateProject: Boolean!
+  userId: String!
+}

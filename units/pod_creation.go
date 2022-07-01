@@ -85,6 +85,11 @@ func (j *podCreationJob) Run(ctx context.Context) {
 
 		if j.pod != nil && j.pod.Status == pod.StatusInitializing && (j.RetryInfo().GetRemainingAttempts() == 0 || !j.RetryInfo().ShouldRetry()) {
 			j.AddError(errors.Wrap(j.pod.UpdateStatus(pod.StatusDecommissioned), "updating pod status to decommissioned after pod failed to start"))
+
+			terminationJob := NewPodTerminationJob(j.PodID, fmt.Sprintf("pod creation job hit max attempts %d", j.RetryInfo().MaxAttempts), time.Now())
+			if err := amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), terminationJob); err != nil {
+				j.AddError(errors.Wrap(err, "enqueueing job to terminate pod"))
+			}
 		}
 	}()
 	if err := j.populateIfUnset(ctx); err != nil {

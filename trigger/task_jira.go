@@ -22,7 +22,7 @@ import (
 const descriptionTemplateString = `
 h2. [{{.Task.DisplayName}} failed on {{.Build.DisplayName}}|{{taskurl .}}]
 Host: {{host .}}
-Project: [{{.Project.DisplayName}}|{{.UIRoot}}/waterfall/{{.Project.Id}}]
+Project: [{{.Project.DisplayName}}|{{.UIRoot}}/waterfall/{{.Project.Id}}?redirect_spruce_users=true]
 Commit: [diff|https://github.com/{{.Project.Owner}}/{{.Project.Repo}}/commit/{{.Version.Revision}}]: {{.Version.Message}} | {{.Task.CreateTime | formatAsTimestamp}}
 Evergreen Subscription: {{.SubscriptionID}}; Evergreen Event: {{.EventID}}
 {{range .Tests}}*{{.Name}}* - [Logs|{{.URL}}] | [History|{{.HistoryURL}}]
@@ -53,7 +53,7 @@ func getHostMetadata(data *jiraTemplateData) string {
 		return "N/A"
 	}
 
-	return fmt.Sprintf("[%s|%s/host/%s]", data.Host.Host, data.UIRoot, url.PathEscape(data.Host.Id))
+	return fmt.Sprintf("[%s|%s/host/%s?redirect_spruce_users=true]", data.Host.Host, data.UIRoot, url.PathEscape(data.Host.Id))
 }
 
 func getTaskURL(data *jiraTemplateData) (string, error) {
@@ -339,7 +339,7 @@ func (j *jiraBuilder) makeCustomFields(customFields []evergreen.JIRANotification
 
 // historyURL provides a full URL to the test's task history page.
 func historyURL(t *task.Task, testName, uiRoot string) string {
-	return fmt.Sprintf("%s/task_history/%s/%s?revision=%s#/%s=fail",
+	return fmt.Sprintf("%s/task_history/%s/%s?revision=%s&redirect_spruce_users=true#/%s=fail",
 		uiRoot, url.PathEscape(t.Project), url.PathEscape(t.DisplayName), t.Revision, url.QueryEscape(testName))
 }
 

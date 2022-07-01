@@ -1,0 +1,113 @@
+###### INPUTS ######
+input RepoRefInput {
+  id: String! @requireProjectAccess(access: EDIT)
+  admins: [String!]
+  batchTime: Int
+  branch: String
+  buildBaronSettings: BuildBaronSettingsInput
+  cedarTestResultsEnabled: Boolean
+  commitQueue: CommitQueueParamsInput
+  deactivatePrevious: Boolean
+  defaultLogger: String
+  disabledStatsCache: Boolean
+  dispatchingDisabled: Boolean
+  displayName: String
+  enabled: Boolean
+  filesIgnoredFromCache: [String!]
+  githubChecksEnabled: Boolean
+  githubTriggerAliases: [String!]
+  gitTagAuthorizedTeams: [String!]
+  gitTagAuthorizedUsers: [String!]
+  gitTagVersionsEnabled: Boolean
+  manualPrTestingEnabled: Boolean
+  notifyOnBuildFailure: Boolean
+  owner: String
+  patchingDisabled: Boolean
+  patchTriggerAliases: [PatchTriggerAliasInput!]
+  perfEnabled: Boolean
+  periodicBuilds: [PeriodicBuildInput!]
+  private: Boolean
+  prTestingEnabled: Boolean
+  remotePath: String
+  repo: String
+  repotrackerDisabled: Boolean
+  restricted: Boolean
+  spawnHostScriptPath: String
+  taskAnnotationSettings: TaskAnnotationSettingsInput
+  taskSync: TaskSyncOptionsInput
+  tracksPushEvents: Boolean
+  triggers: [TriggerAliasInput!]
+  versionControlEnabled: Boolean
+  workstationConfig: WorkstationConfigInput
+}
+
+###### TYPES ######
+"""
+RepoRef is technically a special kind of Project.
+Repo types have booleans defaulted, which is why it is necessary to redeclare the types despite them matching nearly
+exactly.
+"""
+type RepoRef {
+  id: String!
+  admins: [String!]!
+  batchTime: Int!
+  branch: String!
+  buildBaronSettings: BuildBaronSettings!
+  cedarTestResultsEnabled: Boolean!
+  commitQueue: RepoCommitQueueParams!
+  deactivatePrevious: Boolean!
+  defaultLogger: String!
+  disabledStatsCache: Boolean!
+  dispatchingDisabled: Boolean!
+  displayName: String!
+  enabled: Boolean!
+  filesIgnoredFromCache: [String!]
+  githubChecksEnabled: Boolean!
+  githubTriggerAliases: [String!]
+  gitTagAuthorizedTeams: [String!]
+  gitTagAuthorizedUsers: [String!]
+  gitTagVersionsEnabled: Boolean!
+  manualPrTestingEnabled: Boolean!
+  notifyOnBuildFailure: Boolean!
+  owner: String!
+  patchingDisabled: Boolean!
+  patchTriggerAliases: [PatchTriggerAlias!]
+  perfEnabled: Boolean!
+  periodicBuilds: [PeriodicBuild!]
+  private: Boolean!
+  prTestingEnabled: Boolean!
+  remotePath: String!
+  repo: String!
+  repotrackerDisabled: Boolean!
+  restricted: Boolean!
+  spawnHostScriptPath: String!
+  taskAnnotationSettings: TaskAnnotationSettings!
+  taskSync: RepoTaskSyncOptions!
+  tracksPushEvents: Boolean!
+  triggers: [TriggerAlias!]!
+  validDefaultLoggers: [String!]!
+  versionControlEnabled: Boolean!
+  workstationConfig: RepoWorkstationConfig!
+}
+
+type RepoCommitQueueParams {
+  enabled: Boolean!
+  mergeMethod: String!
+  message: String!
+  requireSigned: Boolean!
+}
+
+type RepoTaskSyncOptions {
+  configEnabled: Boolean!
+  patchEnabled: Boolean!
+}
+
+type RepoWorkstationConfig {
+  gitClone: Boolean!
+  setupCommands: [WorkstationSetupCommand!]
+}
+
+type WorkstationSetupCommand {
+  command: String!
+  directory: String!
+}

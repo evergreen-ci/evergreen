@@ -36,7 +36,7 @@ func (s *patchSuite) SetupSuite() {
 }
 
 func (s *patchSuite) SetupTest() {
-	s.NoError(db.ClearCollections(event.AllLogCollection, patch.Collection, event.SubscriptionsCollection, dbModel.ProjectRefCollection))
+	s.NoError(db.ClearCollections(event.LegacyEventLogCollection, patch.Collection, event.SubscriptionsCollection, dbModel.ProjectRefCollection))
 	startTime := time.Now().Truncate(time.Millisecond)
 
 	patchID := mgobson.ObjectIdHex("5aeb4514f27e4f9984646d97")

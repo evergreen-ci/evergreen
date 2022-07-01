@@ -4,59 +4,225 @@
 # for detailed .gqlgen.yml documentation.
 
 schema:
-  - graphql/schema.graphql
+  - graphql/schema/**/*.graphql
 exec:
   filename: graphql/generated.go
 model:
   filename: graphql/models_gen.go
 resolver:
-  filename: graphql/resolvers.go
-  type: Resolver
+  layout: follow-schema
+  dir: graphql
+  filename_template: "{name}_resolver.go"
 models:
+  Annotation:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITaskAnnotation
+  AWSConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAWSConfig
   Build:
     model: github.com/evergreen-ci/evergreen/rest/model.APIBuild
-  VersionToRestart:
-    model: github.com/evergreen-ci/evergreen/model.VersionToRestart
-  SubscriptionInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APISubscription
-  SelectorInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APISelector
-  SubscriberInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APISubscriber
-  StringMap:
-    model: github.com/evergreen-ci/evergreen/graphql.StringMap
-  Patch:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIPatch
-  Parameter:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIParameter
-  ParameterInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIParameter
-  File:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIFile
-  VariantTask:
-    model: github.com/evergreen-ci/evergreen/rest/model.VariantTask
-  VariantTaskInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.VariantTask
+  BuildBaronSettings:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIBuildBaronSettings
+  BuildBaronSettingsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIBuildBaronSettings
+  BuildVariantTuple:
+    model: github.com/evergreen-ci/evergreen/model/task.BuildVariantTuple
   ChildPatch:
     model: github.com/evergreen-ci/evergreen/rest/model.ChildPatch
   ChildPatchAlias:
     model: github.com/evergreen-ci/evergreen/rest/model.APIChildPatchAlias
-  ModuleCodeChange:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIModulePatch
+  ClientBinary:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIClientBinary
+  ClientConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIClientConfig
+  CloudProviderConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APICloudProviders
+  CommitQueue:
+    model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueue
+  CommitQueueItem:
+    model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueueItem
+  CommitQueueParams:
+    model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueueParams
+  CommitQueueParamsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueueParams
+  CopyProjectInput:
+    model: github.com/evergreen-ci/evergreen/rest/data.CopyProjectOpts
+  CreateProjectInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
+  DistroInfo:
+    model: github.com/evergreen-ci/evergreen/rest/model.DistroInfo
+  Distro:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIDistro
+  Duration:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIDuration
+  File:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIFile
   FileDiff:
     model: github.com/evergreen-ci/evergreen/rest/model.FileDiff
-  Volume:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIVolume
-  Annotation:
-    model: github.com/evergreen-ci/evergreen/rest/model.APITaskAnnotation
-  Note:
-    model: github.com/evergreen-ci/evergreen/rest/model.APINote
-  IssueLinkInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIIssueLink
+  GithubCheckSubscriber:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIGithubCheckSubscriber
+  GithubProjectConflicts:
+    model: github.com/evergreen-ci/evergreen/model.GithubProjectConflicts
+  GithubPRSubscriber:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIGithubPRSubscriber
+  GithubUser:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIGithubUser
+  GithubUserInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIGithubUser
+  GroupedTaskStatusCount:
+    model: github.com/evergreen-ci/evergreen/model/task.GroupedTaskStatusCount
+  Host:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIHost
+  HostEventLogData:
+    model: github.com/evergreen-ci/evergreen/rest/model.HostAPIEventData
+  HostEventLogEntry:
+    model: github.com/evergreen-ci/evergreen/rest/model.HostAPIEventLogEntry
+  InstanceTag:
+    model: github.com/evergreen-ci/evergreen/model/host.Tag
+  InstanceTagInput:
+    model: github.com/evergreen-ci/evergreen/model/host.Tag
   IssueLink:
     model: github.com/evergreen-ci/evergreen/rest/model.APIIssueLink
+  IssueLinkInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIIssueLink
+  JiraConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIJiraConfig
+  JiraField:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIJiraField
+  JiraFieldInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIJiraField
+  JiraIssueSubscriber:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIJIRAIssueSubscriber
+  JiraStatus:
+    model: github.com/evergreen-ci/evergreen/thirdparty.JiraStatus
+  JiraTicket:
+    model: github.com/evergreen-ci/evergreen/thirdparty.JiraTicket
+  LogMessage:
+    model: github.com/evergreen-ci/evergreen/apimodels.LogMessage
+  Module:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIModule
+  ModuleCodeChange:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIModulePatch
+  Note:
+    model: github.com/evergreen-ci/evergreen/rest/model.APINote
+  Notifications:
+    model: github.com/evergreen-ci/evergreen/rest/model.APINotificationPreferences
+  NotificationsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APINotificationPreferences
+  OomTrackerInfo:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIOomTrackerInfo
+  Parameter:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIParameter
+  ParameterInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIParameter
+  Patch:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIPatch
+  PatchTriggerAlias:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIPatchTriggerDefinition
+  PatchTriggerAliasInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIPatchTriggerDefinition
+  PeriodicBuild:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIPeriodicBuildDefinition
+  PeriodicBuildInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIPeriodicBuildDefinition
+  Permissions:
+    fields:
+      canCreateProject:
+        resolver: true
+  Project:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
+    fields:
+      patches:
+        resolver: true
+  ProjectAlias:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectAlias
+  ProjectAliasInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectAlias
+  ProjectEventLogEntry:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectEvent
+  ProjectEventSettings:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectEventSettings
+  ProjectInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
+  ProjectSettings:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
+    fields:
+      githubWebhooksEnabled:
+        resolver: true
+      vars:
+        resolver: true
+      aliases:
+        resolver: true
+      subscriptions:
+        resolver: true
+  ProjectSettingsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
+  ProjectSubscriber:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISubscriber
+    fields:
+      subscriber:
+        resolver: true
+  ProjectSubscription:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISubscription
+  ProjectVars:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectVars
+    fields:
+      privateVars:
+        resolver: true
+      adminOnlyVars:
+        resolver: true
+  ProjectVarsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectVars
+  PublicKey:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIPubKey
+  RepoCommitQueueParams:
+    model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueueParams
+  RepoEventLogEntry:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectEvent
+  RepoEventSettings:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectEventSettings
+  RepoRef:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
+  RepoRefInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
+  RepoSettings:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
+    fields:
+      githubWebhooksEnabled:
+        resolver: true
+      vars:
+        resolver: true
+      aliases:
+        resolver: true
+      subscriptions:
+        resolver: true
+  RepoSettingsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
+  RepoTaskSyncOptions:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITaskSyncOptions
+  RepoWorkstationConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIWorkstationConfig
+  SearchReturnInfo:
+    model: github.com/evergreen-ci/evergreen/thirdparty.SearchReturnInfo
+  Selector:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISelector
+  SelectorInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISelector
+  SiteBanner:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIBanner
   Source:
     model: github.com/evergreen-ci/evergreen/rest/model.APISource
+  SpawnHostConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISpawnHostConfig
+  SpruceConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAdminSettings
+  StatusCount:
+    model: github.com/evergreen-ci/evergreen/model/task.StatusCount
+  StringMap:
+    model: github.com/evergreen-ci/evergreen/graphql.StringMap
+  SubscriberInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISubscriber
+  SubscriptionInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISubscription
   Task:
     model: github.com/evergreen-ci/evergreen/rest/model.APITask
     fields:
@@ -92,249 +258,20 @@ models:
         resolver: true
       project:
         resolver: true
-  BaseTaskInfo:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIBaseTaskInfo
-  TaskLogLinks:
-    model: github.com/evergreen-ci/evergreen/rest/model.LogLinks
-  TaskEndDetail:
-    model: github.com/evergreen-ci/evergreen/rest/model.ApiTaskEndDetail
-  OomTrackerInfo:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIOomTrackerInfo
-  TestResult:
-    model: github.com/evergreen-ci/evergreen/rest/model.APITest
-  TestLog:
-    model: github.com/evergreen-ci/evergreen/rest/model.TestLogs
-  Duration:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIDuration
-  ProjectEventSettings:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectEventSettings
-  RepoEventSettings:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectEventSettings
-  ProjectEventLogEntry:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectEvent
-  RepoEventLogEntry:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectEvent
-  ProjectSettings:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
-    fields:
-      githubWebhooksEnabled:
-        resolver: true
-      vars:
-        resolver: true
-      aliases:
-        resolver: true
-      subscriptions:
-        resolver: true
-  RepoSettings:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
-    fields:
-      githubWebhooksEnabled:
-        resolver: true
-      vars:
-        resolver: true
-      aliases:
-        resolver: true
-      subscriptions:
-        resolver: true
-  ProjectSettingsInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
-  RepoSettingsInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
-  Project:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
-    fields:
-      patches:
-        resolver: true
-  RepoRef:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
-  CreateProjectInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
-  ProjectInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
-  RepoRefInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
-  CopyProjectInput:
-    model: github.com/evergreen-ci/evergreen/rest/data.CopyProjectOpts
-  CommitQueueParams:
-    model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueueParams
-  RepoCommitQueueParams:
-    model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueueParams
-  CommitQueueParamsInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueueParams
-  PatchTriggerAlias:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIPatchTriggerDefinition
-  PatchTriggerAliasInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIPatchTriggerDefinition
-  BuildBaronSettings:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIBuildBaronSettings
-  BuildBaronSettingsInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIBuildBaronSettings
   TaskAnnotationSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskAnnotationSettings
   TaskAnnotationSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskAnnotationSettings
-  JiraField:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIJiraField
-  JiraFieldInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIJiraField
-  Webhook:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIWebHook
-  WebhookInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIWebHook
-  TaskSpecifier:
-    model: github.com/evergreen-ci/evergreen/rest/model.APITaskSpecifier
-  TaskSpecifierInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APITaskSpecifier
-  TriggerAlias:
-    model: github.com/evergreen-ci/evergreen/rest/model.APITriggerDefinition
-  TriggerAliasInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APITriggerDefinition
-  PeriodicBuild:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIPeriodicBuildDefinition
-  PeriodicBuildInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIPeriodicBuildDefinition
-  TaskSyncOptions:
-    model: github.com/evergreen-ci/evergreen/rest/model.APITaskSyncOptions
-  RepoTaskSyncOptions:
-    model: github.com/evergreen-ci/evergreen/rest/model.APITaskSyncOptions
-  TaskSyncOptionsInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APITaskSyncOptions
-  WorkstationConfig:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIWorkstationConfig
-  RepoWorkstationConfig:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIWorkstationConfig
-  WorkstationConfigInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIWorkstationConfig
-  WorkstationSetupCommand:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIWorkstationSetupCommand
-  WorkstationSetupCommandInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIWorkstationSetupCommand
-  ProjectVars:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectVars
-    fields:
-      privateVars:
-        resolver: true
-      adminOnlyVars:
-        resolver: true
-  ProjectVarsInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectVars
-  ProjectAlias:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectAlias
-  ProjectAliasInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectAlias
-  ProjectSubscription:
-    model: github.com/evergreen-ci/evergreen/rest/model.APISubscription
-  ProjectSubscriber:
-    model: github.com/evergreen-ci/evergreen/rest/model.APISubscriber
-    fields:
-      subscriber:
-        resolver: true
-  GithubPRSubscriber:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIGithubPRSubscriber
-  GithubCheckSubscriber:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIGithubCheckSubscriber
-  WebhookSubscriber:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIWebhookSubscriber
-  WebhookHeader:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIWebhookHeader
-  JiraIssueSubscriber:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIJIRAIssueSubscriber
-  Selector:
-    model: github.com/evergreen-ci/evergreen/rest/model.APISelector
-  User:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIDBUser
-    fields:
-      patches:
-        resolver: true
-  TaskEventLogEntry:
-    model: github.com/evergreen-ci/evergreen/rest/model.TaskAPIEventLogEntry
+  TaskEndDetail:
+    model: github.com/evergreen-ci/evergreen/rest/model.ApiTaskEndDetail
   TaskEventLogData:
     model: github.com/evergreen-ci/evergreen/rest/model.TaskEventData
-  LogMessage:
-    model: github.com/evergreen-ci/evergreen/apimodels.LogMessage
-  CommitQueue:
-    model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueue
-  CommitQueueItem:
-    model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueueItem
-  Module:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIModule
-  UserSettings:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIUserSettings
-  Notifications:
-    model: github.com/evergreen-ci/evergreen/rest/model.APINotificationPreferences
-  GithubUser:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIGithubUser
-  UserSettingsInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIUserSettings
-  NotificationsInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APINotificationPreferences
-  GithubUserInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIGithubUser
-  GithubProjectConflicts:
-    model: github.com/evergreen-ci/evergreen/model.GithubProjectConflicts
-  ClientConfig:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIClientConfig
-  ClientBinary:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIClientBinary
-  UseSpruceOptions:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIUseSpruceOptions
-  UseSpruceOptionsInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIUseSpruceOptions
-  SiteBanner:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIBanner
-  Host:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIHost
-  HostEventLogEntry:
-    model: github.com/evergreen-ci/evergreen/rest/model.HostAPIEventLogEntry
-  HostEventLogData:
-    model: github.com/evergreen-ci/evergreen/rest/model.HostAPIEventData
+  TaskEventLogEntry:
+    model: github.com/evergreen-ci/evergreen/rest/model.TaskAPIEventLogEntry
   TaskInfo:
     model: github.com/evergreen-ci/evergreen/rest/model.TaskInfo
-  InstanceTag:
-    model: github.com/evergreen-ci/evergreen/model/host.Tag
-  InstanceTagInput:
-    model: github.com/evergreen-ci/evergreen/model/host.Tag
-  PublicKey:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIPubKey
-  DistroInfo:
-    model: github.com/evergreen-ci/evergreen/rest/model.DistroInfo
-  Distro:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIDistro
-  TaskQueueItem:
-    model: github.com/evergreen-ci/evergreen/rest/model.APITaskQueueItem
-  SearchReturnInfo:
-    model: github.com/evergreen-ci/evergreen/thirdparty.SearchReturnInfo
-  JiraTicket:
-    model: github.com/evergreen-ci/evergreen/thirdparty.JiraTicket
-  TicketFields:
-    model: github.com/evergreen-ci/evergreen/thirdparty.TicketFields
-  JiraStatus:
-    model: github.com/evergreen-ci/evergreen/thirdparty.JiraStatus
-  SpruceConfig:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIAdminSettings
-  UIConfig:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIUIConfig
-  JiraConfig:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIJiraConfig
-  CloudProviderConfig:
-    model: github.com/evergreen-ci/evergreen/rest/model.APICloudProviders
-  AWSConfig:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIAWSConfig
-  SpawnHostConfig:
-    model: github.com/evergreen-ci/evergreen/rest/model.APISpawnHostConfig
-  Version:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIVersion
-    fields:
-      status:
-        resolver: true
-  BuildVariantTuple:
-    model: github.com/evergreen-ci/evergreen/model/task.BuildVariantTuple
-  StatusCount:
-    model: github.com/evergreen-ci/evergreen/model/task.StatusCount
-  TaskStats:
-    model: github.com/evergreen-ci/evergreen/model/task.TaskStats
-  GroupedTaskStatusCount:
-    model: github.com/evergreen-ci/evergreen/model/task.GroupedTaskStatusCount
+  TaskLogLinks:
+    model: github.com/evergreen-ci/evergreen/rest/model.LogLinks
   TaskLogs:
     fields:
       eventLogs:
@@ -347,7 +284,69 @@ models:
         resolver: true
       allLogs:
         resolver: true
-  Permissions:
+  TaskSpecifier:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITaskSpecifier
+  TaskSpecifierInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITaskSpecifier
+  TaskStats:
+    model: github.com/evergreen-ci/evergreen/model/task.TaskStats
+  TaskSyncOptions:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITaskSyncOptions
+  TaskSyncOptionsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITaskSyncOptions
+  TaskQueueItem:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITaskQueueItem
+  TicketFields:
+    model: github.com/evergreen-ci/evergreen/thirdparty.TicketFields
+  TestLog:
+    model: github.com/evergreen-ci/evergreen/rest/model.TestLogs
+  TestResult:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITest
+  TriggerAlias:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITriggerDefinition
+  TriggerAliasInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITriggerDefinition
+  UIConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIUIConfig
+  User:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIDBUser
     fields:
-      canCreateProject:
+      patches:
         resolver: true
+  UserSettings:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIUserSettings
+  UserSettingsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIUserSettings
+  UseSpruceOptions:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIUseSpruceOptions
+  UseSpruceOptionsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIUseSpruceOptions
+  VariantTask:
+    model: github.com/evergreen-ci/evergreen/rest/model.VariantTask
+  VariantTaskInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.VariantTask
+  Version:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIVersion
+    fields:
+      status:
+        resolver: true
+  VersionToRestart:
+    model: github.com/evergreen-ci/evergreen/model.VersionToRestart
+  Volume:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIVolume
+  Webhook:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIWebHook
+  WebhookHeader:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIWebhookHeader
+  WebhookInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIWebHook
+  WebhookSubscriber:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIWebhookSubscriber
+  WorkstationConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIWorkstationConfig
+  WorkstationConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIWorkstationConfig
+  WorkstationSetupCommand:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIWorkstationSetupCommand
+  WorkstationSetupCommandInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIWorkstationSetupCommand

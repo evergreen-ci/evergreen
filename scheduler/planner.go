@@ -11,8 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 )
 
 // UnitCache stores an unordered collection of schedulable units. The
@@ -315,13 +313,6 @@ func (unit *Unit) RankValue() int64 {
 
 	info := unit.info()
 	unit.cachedValue = info.value()
-
-	grip.Info(message.Fields{
-		"message":   "prioritized distro unit",
-		"distro":    unit.distro.Id,
-		"value":     unit.cachedValue,
-		"unit_info": info,
-	})
 
 	return unit.cachedValue
 }

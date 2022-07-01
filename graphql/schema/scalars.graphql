@@ -1,0 +1,5 @@
+# Define scalars used in other files.
+scalar Time
+scalar Duration
+scalar StringMap
+scalar Map
