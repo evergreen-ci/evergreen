@@ -2688,7 +2688,7 @@ func GetUpstreamProjectName(triggerID, triggerType string) (string, error) {
 // team and uses Resmoke.
 // TODO (PM-2940): Remove this once we migrate Mongo projects to Presto.
 func IsServerResmokeProject(identifier string) bool {
-	return strings.HasPrefix("mongodb-mongo-", identifier) || strings.HasPrefix("mongosync", identifier)
+	return strings.HasPrefix(identifier, "mongodb-mongo-") || strings.HasPrefix(identifier, "mongosync")
 }
 
 // projectRefPipelineForMatchingTrigger is an aggregation pipeline to find projects that have the projectKey
