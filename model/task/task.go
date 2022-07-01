@@ -1481,15 +1481,6 @@ func (t *Task) SetAborted(reason AbortInfo) error {
 	)
 }
 
-// SetNextTask constructs a NextTaskResponse from a task that has been assigned to run next.
-func SetNextTask(t *Task, response *apimodels.NextTaskResponse) {
-	response.TaskId = t.Id
-	response.TaskSecret = t.Secret
-	response.TaskGroup = t.TaskGroup
-	response.Version = t.Version
-	response.Build = t.BuildId
-}
-
 // SetHasCedarResults sets the HasCedarResults field of the task to
 // hasCedarResults and, if failedResults is true, sets CedarResultsFailed to
 // true. If the task is part of a display task, the display tasks's fields are

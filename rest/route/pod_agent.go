@@ -278,6 +278,11 @@ func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting running task '%s'", p.RunningTask))
 		}
+		if t.IsPartOfDisplay() {
+			if err = model.UpdateDisplayTaskForTask(t); err != nil {
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "updating parent display task"))
+			}
+		}
 		return gimlet.NewJSONResponse(&apimodels.NextTaskResponse{
 			TaskId:     t.Id,
 			TaskSecret: t.Secret,

@@ -1065,7 +1065,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 		return
 	}
-	task.SetNextTask(nextTask, &response)
+	setNextTask(nextTask, &response)
 	gimlet.WriteJSON(w, response)
 }
 
@@ -1234,6 +1234,15 @@ func handleOldAgentRevision(response apimodels.NextTaskResponse, details *apimod
 	return response, false
 }
 
+// setNextTask constructs a NextTaskResponse from a task that has been assigned to run next.
+func setNextTask(t *task.Task, response *apimodels.NextTaskResponse) {
+	response.TaskId = t.Id
+	response.TaskSecret = t.Secret
+	response.TaskGroup = t.TaskGroup
+	response.Version = t.Version
+	response.Build = t.BuildId
+}
+
 func sendBackRunningTask(h *host.Host, response apimodels.NextTaskResponse, w http.ResponseWriter) {
 	var err error
 	var t *task.Task
@@ -1256,7 +1265,7 @@ func sendBackRunningTask(h *host.Host, response apimodels.NextTaskResponse, w ht
 	}
 	// if the task is activated return that task
 	if t.Activated {
-		task.SetNextTask(t, &response)
+		setNextTask(t, &response)
 		gimlet.WriteJSON(w, response)
 		return
 	}
