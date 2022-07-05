@@ -49,8 +49,8 @@ func (s *payloadSuite) SetupTest() {
 		DisplayName:     "display-1234",
 		Object:          "patch",
 		Project:         "test",
-		EventID:         "ABC123",
-		SubscriptionID:  "DFE456",
+		EventID:         "eventid",
+		SubscriptionID:  "subscriptionid",
 		URL:             s.url,
 		PastTenseStatus: s.status,
 		Headers:         headers,
@@ -67,8 +67,8 @@ func (s *payloadSuite) TestEmailWithNilContent() {
 	s.Contains(m.Body, "> has failed.")
 	s.Contains(m.Body, `href="`+s.url+`"`)
 	s.Contains(m.Body, "X-Evergreen-test:something")
-	s.Contains(m.Body, "Subscription: DFE456")
-	s.Contains(m.Body, "Event: ABC123")
+	s.Contains(m.Body, "Subscription: subscriptionid")
+	s.Contains(m.Body, "Event: eventid")
 }
 
 func (s *payloadSuite) TestEmailWithTaskContent() {
@@ -106,8 +106,8 @@ func (s *payloadSuite) TestEmailWithTaskContent() {
 	s.Contains(m.Body, "display_test1")
 	s.Contains(m.Body, "theproject")
 	s.Contains(m.Body, "buildname")
-	s.Contains(m.Body, "DFE456")
-	s.Contains(m.Body, "ABC123")
+	s.Contains(m.Body, "subscriptionid")
+	s.Contains(m.Body, "eventid")
 
 	s.t.Task.DisplayTask = &task.Task{
 		DisplayName: "thedisplaytask",
