@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/evergreen-ci/evergreen"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
@@ -46,9 +47,22 @@ func (trh *taskRestartHandler) Parse(ctx context.Context, r *http.Request) error
 			StatusCode: http.StatusNotFound,
 		}
 	}
+	paramsFailedOnly := r.URL.Query().Get("failedOnly")
+	failedOnly := false
+	if paramsFailedOnly != "" {
+		var err error
+		failedOnly, err = strconv.ParseBool(paramsFailedOnly)
+		if err != nil {
+			return gimlet.ErrorResponse{
+				Message:    "failedOnly can only be true/false, True/False, 1/0, or T/F.",
+				StatusCode: http.StatusUnprocessableEntity,
+			}
+		}
+	}
 	trh.taskId = projCtx.Task.Id
 	u := MustHaveUser(ctx)
 	trh.username = u.DisplayName()
+	trh.failedOnly = failedOnly
 	return nil
 }
 
