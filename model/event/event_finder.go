@@ -39,7 +39,7 @@ func Find(query db.Q) ([]EventLogEntry, error) {
 	return events, nil
 }
 
-func FindPaginated(hostID, hostTag string, limit, page int) ([]EventLogEntry, error) {
+func FindPaginatedWithTotalCount(hostID, hostTag string, limit, page int) ([]EventLogEntry, int, error) {
 	query := MostRecentHostEvents(hostID, hostTag, limit)
 	events := []EventLogEntry{}
 	skip := page * limit
@@ -49,10 +49,16 @@ func FindPaginated(hostID, hostTag string, limit, page int) ([]EventLogEntry, er
 
 	err := db.FindAllQ(LegacyEventLogCollection, query, &events)
 	if err != nil || adb.ResultsNotFound(err) {
-		return nil, errors.WithStack(err)
+		return nil, 0, errors.WithStack(err)
 	}
 
-	return events, nil
+	// Count ignores skip and limit by default, so this will give the total count of events.
+	count, err := db.CountQ(LegacyEventLogCollection, query)
+	if err != nil {
+		return nil, 0, errors.Wrap(err, "failed to fetch number of host events")
+	}
+
+	return events, count, nil
 }
 
 // FindUnprocessedEvents returns all unprocessed events in LegacyEventLogCollection.
