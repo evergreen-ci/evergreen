@@ -32,5 +32,5 @@ if [[ "${last_commit_client_version_updated}" == "000000000000000000000000000000
 fi
 
 echo -e "Files affected by client version update:\n${files_changed}" >&2
-echo "Operations has been changed but client version has not been updated. Please update the client version." >&2
+echo "Evergreen CLI has been changed but client version has not been updated. Please update the client version." >&2
 exit 1
