@@ -17,8 +17,9 @@ import (
 // fetches the needed task and project and calls the service function to
 // set the proper fields when reseting the task.
 type taskRestartHandler struct {
-	taskId   string
-	username string
+	taskId     string
+	username   string
+	failedOnly bool
 }
 
 func makeTaskRestartHandler() gimlet.RouteHandler {
@@ -54,7 +55,7 @@ func (trh *taskRestartHandler) Parse(ctx context.Context, r *http.Request) error
 // Execute calls the data ResetTask function and returns the refreshed
 // task from the service.
 func (trh *taskRestartHandler) Run(ctx context.Context) gimlet.Responder {
-	err := resetTask(trh.taskId, trh.username)
+	err := resetTask(trh.taskId, trh.username, trh.failedOnly)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -80,7 +81,7 @@ func (trh *taskRestartHandler) Run(ctx context.Context) gimlet.Responder {
 
 // resetTask sets the task to be in an unexecuted state and prepares it to be run again.
 // If given an execution task, marks the display task for reset.
-func resetTask(taskId, username string) error {
+func resetTask(taskId, username string, failedOnly bool) error {
 	t, err := task.FindOneId(taskId)
 	if err != nil {
 		return gimlet.ErrorResponse{
@@ -95,5 +96,5 @@ func resetTask(taskId, username string) error {
 		}
 	}
 	// TODO EVG-17120 handle failedOnly
-	return errors.Wrapf(serviceModel.ResetTaskOrDisplayTask(t, username, evergreen.RESTV2Package, false, nil), "resetting task '%s'", taskId)
+	return errors.Wrapf(serviceModel.ResetTaskOrDisplayTask(t, username, evergreen.RESTV2Package, failedOnly, nil), "resetting task '%s'", taskId)
 }
