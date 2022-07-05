@@ -148,9 +148,9 @@ func TestPodCreationJob(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			require.NoError(t, db.ClearCollections(pod.Collection, event.AllLogCollection))
+			require.NoError(t, db.ClearCollections(pod.Collection, event.LegacyEventLogCollection))
 			defer func() {
-				assert.NoError(t, db.ClearCollections(pod.Collection, event.AllLogCollection))
+				assert.NoError(t, db.ClearCollections(pod.Collection, event.LegacyEventLogCollection))
 			}()
 
 			cocoaMock.GlobalECSService = cocoaMock.ECSService{

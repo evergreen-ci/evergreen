@@ -17,12 +17,14 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -364,8 +366,24 @@ func spawnTestHostAndVolume(t *testing.T) {
 	}
 	require.NoError(t, h.Insert())
 	ctx := context.Background()
-	err = SpawnHostForTestCode(ctx, &mountedVolume, &h)
+	err = spawnHostForTestCode(ctx, &mountedVolume, &h)
 	require.NoError(t, err)
+}
+
+func spawnHostForTestCode(ctx context.Context, vol *host.Volume, h *host.Host) error {
+	mgr, err := cloud.GetEC2ManagerForVolume(ctx, vol)
+	if err != nil {
+		return err
+	}
+	if os.Getenv("SETTINGS_OVERRIDE") != "" {
+		// The mock manager needs to spawn the host specified in our test data.
+		// The host should already be spawned in a non-test scenario.
+		_, err := mgr.SpawnHost(ctx, h)
+		if err != nil {
+			return errors.Wrapf(err, "error spawning host in test code")
+		}
+	}
+	return nil
 }
 
 func addSubnets(t *testing.T) {

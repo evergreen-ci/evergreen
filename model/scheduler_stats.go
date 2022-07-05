@@ -1,106 +1,10 @@
 package model
 
 import (
-	"encoding/json"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/mongodb/grip/message"
-	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
 )
-
-// AverageTimeByDistroAndRequester is the average time of a host task.
-type AverageTimeByDistroAndRequester struct {
-	Distro      string        `bson:"distro" json:"distro"`
-	Requester   string        `bson:"requester" json:"requester"`
-	AverageTime time.Duration `bson:"average_time" json:"average_time"`
-}
-
-// AverageTimes holds loggable information about host task runtimes.
-type AverageTimes struct {
-	Times         []AverageTimeByDistroAndRequester `json:"times"`
-	message.Base  `json:"metadata,omitempty"`
-	cachedMessage string
-}
-
-// AverageHostTaskLatency finds the average host task latency by distro and
-// requester.
-func AverageHostTaskLatency(since time.Duration) (*AverageTimes, error) {
-	now := time.Now()
-	match := task.ByExecutionPlatform(task.ExecutionPlatformHost)
-	match[task.StartTimeKey] = bson.M{
-		"$gte": now.Add(-since),
-		"$lte": now,
-	}
-	match[task.StatusKey] = bson.M{
-		"$in": []string{
-			evergreen.TaskStarted,
-			evergreen.TaskFailed,
-			evergreen.TaskSucceeded},
-	}
-	match[task.DisplayOnlyKey] = bson.M{"$ne": true}
-
-	pipeline := []bson.M{
-		{"$match": match},
-		{"$group": bson.M{
-			"_id": bson.M{
-				"distro":    "$" + task.DistroIdKey,
-				"requester": "$" + task.RequesterKey,
-			},
-			"average_time": bson.M{
-				"$avg": bson.M{
-					"$subtract": []interface{}{"$" + task.StartTimeKey, "$" + task.ActivatedTimeKey},
-				},
-			},
-		}},
-		{"$project": bson.M{
-			"distro":       "$" + "_id.distro",
-			"requester":    "$" + "_id.requester",
-			"average_time": "$" + "average_time",
-		}},
-	}
-
-	stats := AverageTimes{}
-	if err := db.Aggregate(task.Collection, pipeline, &stats.Times); err != nil {
-		return &AverageTimes{}, errors.Wrap(err, "aggregating average task latency")
-	}
-	// set mongodb times to golang times
-	for i, t := range stats.Times {
-		stats.Times[i].AverageTime = t.AverageTime * time.Millisecond
-	}
-	return &stats, nil
-}
-
-func (a *AverageTimes) MarshalBSON() ([]byte, error) {
-	return mgobson.Marshal(a)
-}
-
-func (a *AverageTimes) UnmarshalBSON(in []byte) error {
-	return mgobson.Unmarshal(in, a)
-}
-
-func (a *AverageTimes) Raw() interface{} {
-	_ = a.Collect()
-	return a
-}
-
-func (a *AverageTimes) Loggable() bool {
-	return len(a.Times) > 0
-}
-
-func (a *AverageTimes) String() string { // nolint: golint
-	if a.cachedMessage == "" {
-		_ = a.Collect()
-		out, _ := json.Marshal(a.Times)
-		a.cachedMessage = string(out)
-	}
-
-	return a.cachedMessage
-}
 
 // dependencyPath represents the path of tasks that can
 // occur by taking one from each layer of the dependencies

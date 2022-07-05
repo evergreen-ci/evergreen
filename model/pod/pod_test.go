@@ -321,7 +321,7 @@ func TestUpdateStatus(t *testing.T) {
 	}
 
 	checkEventLog := func(t *testing.T, p Pod) {
-		events, err := event.Find(event.AllLogCollection, event.MostRecentPodEvents(p.ID, 10))
+		events, err := event.Find(event.MostRecentPodEvents(p.ID, 10))
 		require.NoError(t, err)
 		require.Len(t, events, 1)
 		assert.Equal(t, p.ID, events[0].ResourceId)
@@ -386,9 +386,9 @@ func TestUpdateStatus(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
+			require.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
 			defer func() {
-				assert.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
+				assert.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
 			}()
 			tCase(t, Pod{
 				ID:     "id",
@@ -474,9 +474,9 @@ func TestUpdateResources(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
+			require.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
 			defer func() {
-				assert.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
+				assert.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
 			}()
 			tCase(t, Pod{
 				ID:     "id",
@@ -548,12 +548,23 @@ func TestSetRunningTask(t *testing.T) {
 			require.NotZero(t, dbPod)
 			assert.Equal(t, taskID, dbPod.RunningTask)
 		},
+		"NoopsWithPodAlreadyRunningSameTask": func(ctx context.Context, t *testing.T, env *mock.Environment, p Pod) {
+			const taskID = "task"
+			p.RunningTask = taskID
+			require.NoError(t, p.Insert())
+			assert.NoError(t, p.SetRunningTask(ctx, env, taskID))
+
+			dbPod, err := FindOneByID(p.ID)
+			require.NoError(t, err)
+			require.NotZero(t, dbPod)
+			assert.Equal(t, taskID, dbPod.RunningTask)
+		},
 		"FailsWithNonRunningPod": func(ctx context.Context, t *testing.T, env *mock.Environment, p Pod) {
 			p.Status = StatusDecommissioned
 			require.NoError(t, p.Insert())
 			assert.Error(t, p.SetRunningTask(ctx, env, "task"))
 		},
-		"FailsWithPodAlreadyRunningTask": func(ctx context.Context, t *testing.T, env *mock.Environment, p Pod) {
+		"FailsWithPodAlreadyRunningDifferentTask": func(ctx context.Context, t *testing.T, env *mock.Environment, p Pod) {
 			p.RunningTask = "some-other-task"
 			require.NoError(t, p.Insert())
 			assert.Error(t, p.SetRunningTask(ctx, env, "task"))

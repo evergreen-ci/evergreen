@@ -3,7 +3,6 @@ package model
 import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/message"
-	"github.com/pkg/errors"
 )
 
 type APIJiraComment struct {
@@ -12,28 +11,19 @@ type APIJiraComment struct {
 }
 
 // BuildFromService converts from service level message.JIRAComment to APIJiraComment.
-func (c *APIJiraComment) BuildFromService(h interface{}) error {
-	var comment message.JIRAComment
-	switch v := h.(type) {
-	case *message.JIRAComment:
-		comment = *v
-	default:
-		return errors.Errorf("programmatic error: expected Jira comment but got type %T", h)
-	}
-
+func (c *APIJiraComment) BuildFromService(comment *message.JIRAComment) {
 	c.IssueID = utility.ToStringPtr(comment.IssueID)
 	c.Body = utility.ToStringPtr(comment.Body)
-
-	return nil
 }
 
 // ToService returns a service layer message.JIRAComment using the data from APIJiraComment.
-func (c *APIJiraComment) ToService() (interface{}, error) {
-	comment := message.JIRAComment{}
-	comment.IssueID = utility.FromStringPtr(c.IssueID)
-	comment.Body = utility.FromStringPtr(c.Body)
+func (c *APIJiraComment) ToService() *message.JIRAComment {
+	comment := message.JIRAComment{
+		IssueID: utility.FromStringPtr(c.IssueID),
+		Body:    utility.FromStringPtr(c.Body),
+	}
 
-	return &comment, nil
+	return &comment
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -52,15 +42,7 @@ type APIJiraIssue struct {
 }
 
 // BuildFromService converts from service level message.JiraIssue to APIJiraIssue.
-func (i *APIJiraIssue) BuildFromService(h interface{}) error {
-	var issue message.JiraIssue
-	switch v := h.(type) {
-	case *message.JiraIssue:
-		issue = *v
-	default:
-		return errors.Errorf("programmatic error: expected Jira issue but got type %T", h)
-	}
-
+func (i *APIJiraIssue) BuildFromService(issue message.JiraIssue) {
 	i.IssueKey = utility.ToStringPtr(issue.IssueKey)
 	i.Project = utility.ToStringPtr(issue.Project)
 	i.Summary = utility.ToStringPtr(issue.Summary)
@@ -75,12 +57,10 @@ func (i *APIJiraIssue) BuildFromService(h interface{}) error {
 		i.Labels = issue.Labels
 	}
 	i.Fields = issue.Fields
-
-	return nil
 }
 
 // ToService returns a service layer message.JiraIssue using the data from APIJiraIssue.
-func (i *APIJiraIssue) ToService() (interface{}, error) {
+func (i *APIJiraIssue) ToService() *message.JiraIssue {
 	issue := message.JiraIssue{}
 	issue.IssueKey = utility.FromStringPtr(i.IssueKey)
 	issue.Project = utility.FromStringPtr(i.Project)
@@ -93,7 +73,7 @@ func (i *APIJiraIssue) ToService() (interface{}, error) {
 	issue.Labels = i.Labels
 	issue.Fields = i.Fields
 
-	return &issue, nil
+	return &issue
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -102,37 +82,6 @@ type APISlack struct {
 	Target      *string              `json:"target"`
 	Msg         *string              `json:"msg"`
 	Attachments []APISlackAttachment `json:"attachments"`
-}
-
-// BuildFromService converts from service level message.Slack to APISlack.
-func (n *APISlack) BuildFromService(h interface{}) error {
-	var slack message.Slack
-	switch v := h.(type) {
-	case *message.Slack:
-		slack = *v
-	default:
-		return errors.Errorf("programmatic error: expected Slack message but got type %T", h)
-	}
-
-	n.Target = utility.ToStringPtr(slack.Target)
-	n.Msg = utility.ToStringPtr(slack.Msg)
-	if slack.Attachments != nil {
-		n.Attachments = []APISlackAttachment{}
-		for _, a := range slack.Attachments {
-			attachment := &APISlackAttachment{}
-			if err := attachment.BuildFromService(a); err != nil {
-				return errors.Wrap(err, "converting Slack attachment to API model")
-			}
-			n.Attachments = append(n.Attachments, *attachment)
-		}
-	}
-
-	return nil
-}
-
-// ToService is not implemented
-func (n *APISlack) ToService() (interface{}, error) {
-	return nil, errors.New("ToService() is not implemented for model.APISlack")
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -151,15 +100,7 @@ type APISlackAttachment struct {
 }
 
 // BuildFromService converts from service level message.SlackAttachment to APISlackAttachment.
-func (a *APISlackAttachment) BuildFromService(h interface{}) error {
-	var attachment message.SlackAttachment
-	switch v := h.(type) {
-	case *message.SlackAttachment:
-		attachment = *v
-	default:
-		return errors.Errorf("%T is not a supported type", h)
-	}
-
+func (a *APISlackAttachment) BuildFromService(attachment message.SlackAttachment) {
 	a.Color = utility.ToStringPtr(attachment.Color)
 	a.Fallback = utility.ToStringPtr(attachment.Fallback)
 	a.AuthorName = utility.ToStringPtr(attachment.AuthorName)
@@ -171,22 +112,21 @@ func (a *APISlackAttachment) BuildFromService(h interface{}) error {
 	if attachment.Fields != nil {
 		a.Fields = []APISlackAttachmentField{}
 		for _, f := range attachment.Fields {
-			field := &APISlackAttachmentField{}
-			if err := field.BuildFromService(f); err != nil {
-				return errors.Wrap(err, "converting Slack attachment field to API model")
+			if f != nil {
+				field := APISlackAttachmentField{}
+				field.BuildFromService(*f)
+				a.Fields = append(a.Fields, field)
 			}
-			a.Fields = append(a.Fields, *field)
+
 		}
 	}
 	if attachment.MarkdownIn != nil {
 		a.MarkdownIn = attachment.MarkdownIn
 	}
-
-	return nil
 }
 
 // ToService returns a service layer message.SlackAttachment using the data from APISlackAttachment.
-func (a *APISlackAttachment) ToService() (interface{}, error) {
+func (a *APISlackAttachment) ToService() message.SlackAttachment {
 	attachment := message.SlackAttachment{}
 	attachment.Color = utility.FromStringPtr(a.Color)
 	attachment.Fallback = utility.FromStringPtr(a.Fallback)
@@ -197,15 +137,12 @@ func (a *APISlackAttachment) ToService() (interface{}, error) {
 	attachment.Text = utility.FromStringPtr(a.Text)
 	attachment.Footer = utility.FromStringPtr(a.Footer)
 	for _, f := range a.Fields {
-		i, err := f.ToService()
-		if err != nil {
-			return nil, errors.Wrap(err, "converting Slack attachment field to service model")
-		}
-		attachment.Fields = append(attachment.Fields, i.(*message.SlackAttachmentField))
+		field := f.ToService()
+		attachment.Fields = append(attachment.Fields, &field)
 	}
 	attachment.MarkdownIn = a.MarkdownIn
 
-	return &attachment, nil
+	return attachment
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -217,30 +154,19 @@ type APISlackAttachmentField struct {
 }
 
 // BuildFromService converts from service level message.SlackAttachmentField to an APISlackAttachmentField.
-func (f *APISlackAttachmentField) BuildFromService(h interface{}) error {
-	var field message.SlackAttachmentField
-	switch v := h.(type) {
-	case *message.SlackAttachmentField:
-		field = *v
-	default:
-		return errors.Errorf("programmatic error: expected Slack attachment field but got type %T", h)
-	}
-
+func (f *APISlackAttachmentField) BuildFromService(field message.SlackAttachmentField) {
 	f.Title = utility.ToStringPtr(field.Title)
 	f.Value = utility.ToStringPtr(field.Value)
 	f.Short = field.Short
-
-	return nil
 }
 
 // ToService returns a service layer message.SlackAttachmentField using the data from APISlackAttachmentField.
-func (f *APISlackAttachmentField) ToService() (interface{}, error) {
-	field := message.SlackAttachmentField{}
-	field.Title = utility.FromStringPtr(f.Title)
-	field.Value = utility.FromStringPtr(f.Value)
-	field.Short = f.Short
-
-	return &field, nil
+func (f *APISlackAttachmentField) ToService() message.SlackAttachmentField {
+	return message.SlackAttachmentField{
+		Title: utility.FromStringPtr(f.Title),
+		Value: utility.FromStringPtr(f.Value),
+		Short: f.Short,
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -255,15 +181,7 @@ type APIEmail struct {
 }
 
 // BuildFromService converts from service level message.Email to an APIEmail.
-func (n *APIEmail) BuildFromService(h interface{}) error {
-	var email message.Email
-	switch v := h.(type) {
-	case *message.Email:
-		email = *v
-	default:
-		return errors.Errorf("programmatic error: expected email message but got type %T", h)
-	}
-
+func (n *APIEmail) BuildFromService(email message.Email) {
 	n.From = utility.ToStringPtr(email.From)
 	if email.Recipients != nil {
 		n.Recipients = email.Recipients
@@ -272,12 +190,10 @@ func (n *APIEmail) BuildFromService(h interface{}) error {
 	n.Body = utility.ToStringPtr(email.Body)
 	n.PlainTextContents = email.PlainTextContents
 	n.Headers = email.Headers
-
-	return nil
 }
 
 // ToService returns a service layer message.Email using the data from APIEmail.
-func (n *APIEmail) ToService() (interface{}, error) {
+func (n *APIEmail) ToService() message.Email {
 	email := message.Email{}
 	email.From = utility.FromStringPtr(n.From)
 	email.Recipients = n.Recipients
@@ -286,5 +202,5 @@ func (n *APIEmail) ToService() (interface{}, error) {
 	email.PlainTextContents = n.PlainTextContents
 	email.Headers = n.Headers
 
-	return &email, nil
+	return email
 }

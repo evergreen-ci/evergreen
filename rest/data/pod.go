@@ -1,6 +1,7 @@
 package data
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/model/pod"
@@ -60,6 +61,24 @@ func CheckPodSecret(id, secret string) error {
 		}
 	}
 	return nil
+}
+
+func FindPod(podID string) (*pod.Pod, error) {
+	p, err := pod.FindOneByID(podID)
+	if err != nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "finding pod").Error(),
+		}
+	}
+	if p == nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("pod '%s' not found", podID),
+		}
+	}
+
+	return p, nil
 }
 
 // FindPodByID finds a pod by the given ID. It returns a nil result if no such

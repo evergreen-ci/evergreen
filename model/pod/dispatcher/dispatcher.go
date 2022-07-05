@@ -309,7 +309,12 @@ func (pd *PodDispatcher) RemovePod(ctx context.Context, env evergreen.Environmen
 	if len(pd.PodIDs) == 1 && len(pd.TaskIDs) > 0 {
 		// The last pod is about to be removed, so there will be no pod
 		// remaining to run the tasks still in the dispatch queue.
-		if err := task.MarkManyContainerDeallocated(pd.TaskIDs); err != nil {
+
+		if err := model.MarkUnallocatableContainerTasksSystemFailed(pd.TaskIDs); err != nil {
+			return errors.Wrap(err, "marking unallocatable container tasks as system-failed")
+		}
+
+		if err := task.MarkTasksAsContainerDeallocated(pd.TaskIDs); err != nil {
 			return errors.Wrap(err, "marking all tasks in dispatcher as container deallocated")
 		}
 

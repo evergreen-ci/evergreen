@@ -186,32 +186,6 @@ func resetManyTasks(tasks []task.Task, caller string, logIDs bool) error {
 	return catcher.Resolve()
 }
 
-// resetTask finds a task, attempts to archive it, and resets the task and
-// resets the TaskCache in the build as well.
-func resetTask(taskId, caller string, logIDs bool) error {
-	t, err := task.FindOneId(taskId)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	if t.IsPartOfDisplay() {
-		return errors.Errorf("cannot restart execution task '%s' because it is part of a display task", t.Id)
-	}
-	if err = t.Archive(); err != nil {
-		return errors.Wrap(err, "archiving old task execution")
-	}
-
-	if err = MarkOneTaskReset(t, logIDs); err != nil {
-		return errors.WithStack(err)
-	}
-	event.LogTaskRestarted(t.Id, t.Execution, caller)
-
-	if err = t.ActivateTask(caller); err != nil {
-		return errors.WithStack(err)
-	}
-
-	return errors.WithStack(UpdateBuildAndVersionStatusForTask(t))
-}
-
 // TryResetTask resets a task. Individual execution tasks cannot be reset - to
 // reset an execution task, the given task ID must be that of its parent display
 // task.
@@ -308,6 +282,32 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 	}
 
 	return errors.WithStack(resetTask(t.Id, caller, false))
+}
+
+// resetTask finds a task, attempts to archive it, and resets the task and
+// resets the TaskCache in the build as well.
+func resetTask(taskId, caller string, logIDs bool) error {
+	t, err := task.FindOneId(taskId)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	if t.IsPartOfDisplay() {
+		return errors.Errorf("cannot restart execution task '%s' because it is part of a display task", t.Id)
+	}
+	if err := t.Archive(); err != nil {
+		return errors.Wrap(err, "can't restart task because it can't be archived")
+	}
+
+	if err := MarkOneTaskReset(t, logIDs); err != nil {
+		return errors.WithStack(err)
+	}
+	event.LogTaskRestarted(t.Id, t.Execution, caller)
+
+	if err := t.ActivateTask(caller); err != nil {
+		return errors.WithStack(err)
+	}
+
+	return errors.WithStack(UpdateBuildAndVersionStatusForTask(t))
 }
 
 func AbortTask(taskId, caller string) error {
@@ -580,7 +580,7 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		return errors.Wrap(err, "updating build/version status")
 	}
 
-	if t.ResetWhenFinished && !t.IsPartOfDisplay() && !t.IsPartOfSingleHostTaskGroup() {
+	if (t.ResetWhenFinished || t.ResetFailedWhenFinished) && !t.IsPartOfDisplay() && !t.IsPartOfSingleHostTaskGroup() {
 		return TryResetTask(t.Id, evergreen.APIServerTaskActivator, "", detail)
 	}
 
@@ -698,6 +698,76 @@ func DequeueAndRestartForTask(cq *commitqueue.CommitQueue, t *task.Task, githubS
 	}))
 
 	return nil
+}
+
+// HandleEndTaskForCommitQueueTask handles necessary dequeues and stepback restarts for
+// ending tasks that run on a commit queue.
+func HandleEndTaskForCommitQueueTask(t *task.Task, status string) error {
+	cq, err := commitqueue.FindOneId(t.Project)
+	if err != nil {
+		return errors.Wrapf(err, "can't get commit queue for id '%s'", t.Project)
+	}
+	if cq == nil {
+		return errors.Errorf("no commit queue found for '%s'", t.Project)
+	}
+	if status != evergreen.TaskSucceeded && !t.Aborted {
+		return dequeueAndRestartWithStepback(cq, t, evergreen.APIServerTaskActivator, fmt.Sprintf("task '%s' failed", t.DisplayName))
+	} else if status == evergreen.TaskSucceeded {
+		// Query for all cq version tasks after this one; they may have been waiting to see if this
+		// one was the cause of the failure, in which case we should dequeue and restart.
+		foundVersion := false
+		for _, item := range cq.Queue {
+			if item.Version == "" {
+				return nil // no longer looking at scheduled versions
+			}
+			if item.Version == t.Version {
+				foundVersion = true
+				continue
+			}
+			if foundVersion {
+				laterTask, err := task.FindTaskForVersion(item.Version, t.DisplayName, t.BuildVariant)
+				if err != nil {
+					return errors.Wrapf(err, "error finding task for version '%s'", item.Version)
+				}
+				if laterTask == nil {
+					return errors.Errorf("couldn't find task for version '%s'", item.Version)
+				}
+				if evergreen.IsFailedTaskStatus(laterTask.Status) {
+					// Because our task is successful, this task should have failed so we dequeue.
+					return dequeueAndRestartWithStepback(cq, laterTask, evergreen.APIServerTaskActivator,
+						fmt.Sprintf("task '%s' failed and was not impacted by previous task", t.DisplayName))
+				}
+				if !evergreen.IsFinishedTaskStatus(laterTask.Status) {
+					// When this task finishes, it will handle stepping back any later commit queue item, so we're done.
+					return nil
+				}
+			}
+
+		}
+	}
+	return nil
+}
+
+// dequeueAndRestartWithStepback dequeues the current task and restarts later tasks, if earlier tasks have all run.
+// Otherwise, the failure may be a result of those untested commits so we will wait for the earlier tasks to run
+// and handle dequeuing (merge still won't run for failed task versions because of dependencies).
+func dequeueAndRestartWithStepback(cq *commitqueue.CommitQueue, t *task.Task, caller, reason string) error {
+	if i := cq.FindItem(t.Version); i > 0 {
+		prevVersions := []string{}
+		for j := 0; j < i; j++ {
+			prevVersions = append(prevVersions, cq.Queue[j].Version)
+		}
+		// if any of the commit queue tasks higher on the queue haven't finished, then they will handle dequeuing.
+		previousTaskNeedsToRun, err := task.HasUnfinishedTaskForVersions(prevVersions, t.DisplayName, t.BuildVariant)
+		if err != nil {
+			return errors.Wrap(err, "error checking early commit queue tasks")
+		}
+		if previousTaskNeedsToRun {
+			return nil
+		}
+		// Otherwise, continue on and dequeue.
+	}
+	return DequeueAndRestartForTask(cq, t, message.GithubStateFailure, caller, reason)
 }
 
 func tryDequeueAndAbortCommitQueueVersion(p *patch.Patch, cq commitqueue.CommitQueue, taskId string, caller string) error {
@@ -1252,13 +1322,21 @@ func MarkHostTaskDispatched(t *task.Task, h *host.Host) error {
 
 func MarkOneTaskReset(t *task.Task, logIDs bool) error {
 	if t.DisplayOnly {
-		for _, et := range t.ExecutionTasks {
-			execTask, err := task.FindOneId(et)
-			if err != nil {
-				return errors.Wrap(err, "retrieving execution task")
+		if !t.ResetFailedWhenFinished {
+			if err := MarkTasksReset(t.ExecutionTasks); err != nil {
+				return errors.Wrap(err, "resetting execution tasks")
 			}
-			if err = MarkOneTaskReset(execTask, logIDs); err != nil {
-				return errors.Wrap(err, "resetting execution task")
+		} else {
+			failedExecTasks, err := task.FindWithFields(task.FailedTasksByIds(t.ExecutionTasks), task.IdKey)
+			if err != nil {
+				return errors.Wrap(err, "retrieving failed execution tasks")
+			}
+			failedExecTaskIds := []string{}
+			for _, et := range failedExecTasks {
+				failedExecTaskIds = append(failedExecTaskIds, et.Id)
+			}
+			if err := MarkTasksReset(failedExecTaskIds); err != nil {
+				return errors.Wrap(err, "resetting failed execution tasks")
 			}
 		}
 	}
@@ -1506,13 +1584,13 @@ func resetStrandedTask(t *task.Task) error {
 		return errors.WithStack(MarkEnd(t, evergreen.MonitorPackage, time.Now(), &t.Details, false))
 	}
 
-	return errors.Wrap(ResetTaskOrDisplayTask(t, evergreen.User, evergreen.MonitorPackage, &t.Details), "resetting task")
+	return errors.Wrap(ResetTaskOrDisplayTask(t, evergreen.User, evergreen.MonitorPackage, false, &t.Details), "resetting task")
 }
 
 // ResetTaskOrDisplayTask is a wrapper for TryResetTask that handles execution and display tasks that are restarted
 // from sources separate from marking the task finished. If an execution task, attempts to restart the display task instead.
 // Marks display tasks as reset when finished and then check if it can be reset immediately.
-func ResetTaskOrDisplayTask(t *task.Task, user, origin string, detail *apimodels.TaskEndDetail) error {
+func ResetTaskOrDisplayTask(t *task.Task, user, origin string, failedOnly bool, detail *apimodels.TaskEndDetail) error {
 	taskToReset := *t
 	if taskToReset.IsPartOfDisplay() { // if given an execution task, attempt to restart the full display task
 		dt, err := taskToReset.GetDisplayTask()
@@ -1524,8 +1602,14 @@ func ResetTaskOrDisplayTask(t *task.Task, user, origin string, detail *apimodels
 		}
 	}
 	if taskToReset.DisplayOnly {
-		if err := taskToReset.SetResetWhenFinished(); err != nil {
-			return errors.Wrap(err, "marking display task for reset")
+		if failedOnly {
+			if err := taskToReset.SetResetFailedWhenFinished(); err != nil {
+				return errors.Wrap(err, "marking display task for reset")
+			}
+		} else {
+			if err := taskToReset.SetResetWhenFinished(); err != nil {
+				return errors.Wrap(err, "marking display task for reset")
+			}
 		}
 		return errors.Wrap(checkResetDisplayTask(&taskToReset), "checking display task reset")
 	}
@@ -1583,7 +1667,7 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 		timeTaken += execTask.TimeTaken
 
 		// set the start/end time of the display task as the earliest/latest task
-		if execTask.StartTime.Before(startTime) {
+		if !utility.IsZeroTime(execTask.StartTime) && execTask.StartTime.Before(startTime) {
 			startTime = execTask.StartTime
 		}
 		if execTask.FinishTime.After(endTime) {
@@ -1684,7 +1768,7 @@ func checkResetSingleHostTaskGroup(t *task.Task, caller string) error {
 // parent display task as t once all tasks under the display task are finished
 // running.
 func checkResetDisplayTask(t *task.Task) error {
-	if !t.ResetWhenFinished {
+	if !t.ResetWhenFinished && !t.ResetFailedWhenFinished {
 		return nil
 	}
 	execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
@@ -1703,5 +1787,53 @@ func checkResetDisplayTask(t *task.Task) error {
 			Status: evergreen.TaskFailed,
 		}
 	}
+	grip.DebugWhen(details.Status == "", message.Fields{
+		"message":   "resetting display task",
+		"task_id":   t.Id,
+		"execution": t.Execution,
+		"project":   t.Project,
+		"details":   details,
+	})
 	return errors.Wrap(TryResetTask(t.Id, evergreen.User, evergreen.User, details), "resetting display task")
+}
+
+// MarkUnallocatableContainerTasksSystemFailed marks any container task within
+// the candidate task IDs that needs to re-allocate a container but has used up
+// all of its container allocation attempts as finished due to system failure.
+func MarkUnallocatableContainerTasksSystemFailed(candidateTaskIDs []string) error {
+	var unallocatableTasks []task.Task
+	for _, taskID := range candidateTaskIDs {
+		tsk, err := task.FindOneId(taskID)
+		if err != nil {
+			return errors.Wrapf(err, "finding task '%s'", taskID)
+		}
+		if tsk == nil {
+			continue
+		}
+		if !tsk.IsContainerTask() {
+			continue
+		}
+		if !tsk.ContainerAllocated {
+			continue
+		}
+		if tsk.RemainingContainerAllocationAttempts() > 0 {
+			continue
+		}
+
+		unallocatableTasks = append(unallocatableTasks, *tsk)
+	}
+
+	catcher := grip.NewBasicCatcher()
+	for _, tsk := range unallocatableTasks {
+		details := apimodels.TaskEndDetail{
+			Status:      evergreen.TaskFailed,
+			Type:        evergreen.CommandTypeSystem,
+			Description: evergreen.TaskDescriptionContainerUnallocatable,
+		}
+		if err := MarkEnd(&tsk, evergreen.APIServerTaskActivator, time.Now(), &details, false); err != nil {
+			catcher.Wrapf(err, "marking task '%s' as a failure due to inability to allocate", tsk.Id)
+		}
+	}
+
+	return catcher.Resolve()
 }

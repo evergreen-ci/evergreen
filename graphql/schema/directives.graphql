@@ -1,0 +1,2 @@
+directive @requireSuperUser on FIELD_DEFINITION 
+directive @requireProjectAccess(access: ProjectSettingsAccess!) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION

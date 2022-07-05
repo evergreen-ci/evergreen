@@ -95,16 +95,9 @@ func (h *jiraCommentNotificationPostHandler) Parse(ctx context.Context, r *http.
 
 // Run dispatches the notification.
 func (h *jiraCommentNotificationPostHandler) Run(ctx context.Context) gimlet.Responder {
-	i, err := h.APIJiraComment.ToService()
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting Jira comment to service model"))
-	}
-	comment, ok := i.(*message.JIRAComment)
-	if !ok {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("programmatic error: expected Jira comment message but got type %T", i))
-	}
-
+	comment := h.APIJiraComment.ToService()
 	h.composer = message.NewJIRACommentMessage(level.Notice, comment.IssueID, comment.Body)
+	var err error
 	h.sender, err = h.environment.GetSender(evergreen.SenderJIRAComment)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting Jira comment sender"))
@@ -151,16 +144,10 @@ func (h *jiraIssueNotificationPostHandler) Parse(ctx context.Context, r *http.Re
 
 // Run dispatches the notification.
 func (h *jiraIssueNotificationPostHandler) Run(ctx context.Context) gimlet.Responder {
-	i, err := h.APIJiraIssue.ToService()
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting Jira issue to service model"))
-	}
-	issue, ok := i.(*message.JiraIssue)
-	if !ok {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("programmatic error: expected Jira issue message but got type %T", i))
-	}
-
+	issue := h.APIJiraIssue.ToService()
 	h.composer = message.MakeJiraMessage(issue)
+
+	var err error
 	if err = h.composer.SetPriority(level.Notice); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting priority on Jira message"))
 	}
@@ -168,7 +155,6 @@ func (h *jiraIssueNotificationPostHandler) Run(ctx context.Context) gimlet.Respo
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting Jira issue sender"))
 	}
-
 	h.sender.Send(h.composer)
 
 	return gimlet.NewJSONResponse(struct{}{})
@@ -211,16 +197,8 @@ func (h *slackNotificationPostHandler) Parse(ctx context.Context, r *http.Reques
 // Run dispatches the notification.
 func (h *slackNotificationPostHandler) Run(ctx context.Context) gimlet.Responder {
 	attachments := []message.SlackAttachment{}
-	for idx, a := range h.APISlack.Attachments {
-		i, err := a.ToService()
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting Slack attachment at index %d to service model", idx))
-		}
-		attachment, ok := i.(*message.SlackAttachment)
-		if !ok {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("programmatic error: expected Slack attachment message but got type %T", i))
-		}
-		attachments = append(attachments, *attachment)
+	for _, a := range h.APISlack.Attachments {
+		attachments = append(attachments, a.ToService())
 	}
 	target := utility.FromStringPtr(h.APISlack.Target)
 	msg := utility.FromStringPtr(h.APISlack.Msg)
@@ -273,16 +251,9 @@ func (h *emailNotificationPostHandler) Parse(ctx context.Context, r *http.Reques
 
 // Run dispatches the notification.
 func (h *emailNotificationPostHandler) Run(ctx context.Context) gimlet.Responder {
-	i, err := h.APIEmail.ToService()
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting email to service model"))
-	}
-	email, ok := i.(*message.Email)
-	if !ok {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("programmatic error: expected email message but got type %T", i))
-	}
-
-	h.composer = message.NewEmailMessage(level.Notice, *email)
+	var err error
+	email := h.APIEmail.ToService()
+	h.composer = message.NewEmailMessage(level.Notice, email)
 	h.sender, err = h.environment.GetSender(evergreen.SenderEmail)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting email sender"))

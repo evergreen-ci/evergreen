@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -197,14 +196,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	// Clear the running task on the host now that the task has finished.
-	if err := currentHost.ClearRunningAndSetLastTask(t); err != nil {
-		err = errors.Wrapf(err, "error clearing running task %s for host %s", t.Id, currentHost.Id)
-		grip.Errorf(err.Error())
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-
 	projectRef, err := model.FindMergedProjectRef(t.Project, t.Version, true)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -223,8 +214,16 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Clear the running task on the host now that the task has finished.
+	if err := currentHost.ClearRunningAndSetLastTask(t); err != nil {
+		err = errors.Wrapf(err, "error clearing running task %s for host %s", t.Id, currentHost.Id)
+		grip.Errorf(err.Error())
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+
 	if t.Requester == evergreen.MergeTestRequester {
-		if err = handleEndTaskForCommitQueueTask(t, details.Status); err != nil {
+		if err = model.HandleEndTaskForCommitQueueTask(t, details.Status); err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
@@ -244,13 +243,10 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// GetDisplayTask will set the DisplayTask on t if applicable
-	// we set this before the collect task end job is run to prevent data race
-	dt, err := t.GetDisplayTask()
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 	}
-	job := units.NewCollectTaskEndDataJob(t, currentHost)
+	job := units.NewCollectTaskEndDataJob(*t, currentHost, nil, currentHost.Id)
 	if err = as.queue.Put(r.Context(), job); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError,
 			errors.Wrap(err, "couldn't queue job to update task stats accounting"))
@@ -311,82 +307,15 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		"duration":    time.Since(finishTime),
 		"should_exit": endTaskResp.ShouldExit,
 		"status":      details.Status,
+		"path":        fmt.Sprintf("/api/2/task/%s/end", t.Id),
 	}
 
-	if dt != nil {
+	if t.IsPartOfDisplay() {
 		msg["display_task_id"] = t.DisplayTask.Id
 	}
 
 	grip.Info(msg)
 	gimlet.WriteJSON(w, endTaskResp)
-}
-
-func handleEndTaskForCommitQueueTask(t *task.Task, status string) error {
-	cq, err := commitqueue.FindOneId(t.Project)
-	if err != nil {
-		return errors.Wrapf(err, "can't get commit queue for id '%s'", t.Project)
-	}
-	if cq == nil {
-		return errors.Errorf("no commit queue found for '%s'", t.Project)
-	}
-	if status != evergreen.TaskSucceeded && !t.Aborted {
-		return dequeueAndRestartWithStepback(cq, t, APIServerLockTitle, fmt.Sprintf("task '%s' failed", t.DisplayName))
-	} else if status == evergreen.TaskSucceeded {
-		// Query for all cq version tasks after this one; they may have been waiting to see if this
-		// one was the cause of the failure, in which case we should dequeue and restart.
-		foundVersion := false
-		for _, item := range cq.Queue {
-			if item.Version == "" {
-				return nil // no longer looking at scheduled versions
-			}
-			if item.Version == t.Version {
-				foundVersion = true
-				continue
-			}
-			if foundVersion {
-				laterTask, err := task.FindTaskForVersion(item.Version, t.DisplayName, t.BuildVariant)
-				if err != nil {
-					return errors.Wrapf(err, "error finding task for version '%s'", item.Version)
-				}
-				if laterTask == nil {
-					return errors.Errorf("couldn't find task for version '%s'", item.Version)
-				}
-				if evergreen.IsFailedTaskStatus(laterTask.Status) {
-					// Because our task is successful, this task should have failed so we dequeue.
-					return dequeueAndRestartWithStepback(cq, laterTask, APIServerLockTitle,
-						fmt.Sprintf("task '%s' failed and was not impacted by previous task", t.DisplayName))
-				}
-				if !evergreen.IsFinishedTaskStatus(laterTask.Status) {
-					// When this task finishes, it will handle stepping back any later commit queue item, so we're done.
-					return nil
-				}
-			}
-
-		}
-	}
-	return nil
-}
-
-// dequeueAndRestartWithStepback dequeues the current task and restarts later tasks, if earlier tasks have all run.
-// Otherwise, the failure may be a result of those untested commits so we will wait for the earlier tasks to run
-// and handle dequeuing (merge still won't run for failed task versions because of dependencies).
-func dequeueAndRestartWithStepback(cq *commitqueue.CommitQueue, t *task.Task, caller, reason string) error {
-	if i := cq.FindItem(t.Version); i > 0 {
-		prevVersions := []string{}
-		for j := 0; j < i; j++ {
-			prevVersions = append(prevVersions, cq.Queue[j].Version)
-		}
-		// if any of the commit queue tasks higher on the queue haven't finished, then they will handle dequeuing.
-		previousTaskNeedsToRun, err := task.HasUnfinishedTaskForVersions(prevVersions, t.DisplayName, t.BuildVariant)
-		if err != nil {
-			return errors.Wrap(err, "error checking early commit queue tasks")
-		}
-		if previousTaskNeedsToRun {
-			return nil
-		}
-		// Otherwise, continue on and dequeue.
-	}
-	return model.DequeueAndRestartForTask(cq, t, message.GithubStateFailure, caller, reason)
 }
 
 // fixIntentHostRunningAgent handles an exceptional case in which an ephemeral
@@ -1305,6 +1234,15 @@ func handleOldAgentRevision(response apimodels.NextTaskResponse, details *apimod
 	return response, false
 }
 
+// setNextTask constructs a NextTaskResponse from a task that has been assigned to run next.
+func setNextTask(t *task.Task, response *apimodels.NextTaskResponse) {
+	response.TaskId = t.Id
+	response.TaskSecret = t.Secret
+	response.TaskGroup = t.TaskGroup
+	response.Version = t.Version
+	response.Build = t.BuildId
+}
+
 func sendBackRunningTask(h *host.Host, response apimodels.NextTaskResponse, w http.ResponseWriter) {
 	var err error
 	var t *task.Task
@@ -1348,12 +1286,4 @@ func sendBackRunningTask(h *host.Host, response apimodels.NextTaskResponse, w ht
 		"task_id": t.Id,
 	})
 	gimlet.WriteJSON(w, response)
-}
-
-func setNextTask(t *task.Task, response *apimodels.NextTaskResponse) {
-	response.TaskId = t.Id
-	response.TaskSecret = t.Secret
-	response.TaskGroup = t.TaskGroup
-	response.Version = t.Version
-	response.Build = t.BuildId
 }

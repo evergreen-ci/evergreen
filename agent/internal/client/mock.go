@@ -469,7 +469,6 @@ func (c *Mock) GenerateTasksPoll(ctx context.Context, td TaskData) (*apimodels.G
 	return &apimodels.GeneratePollResponse{
 		Finished:   true,
 		ShouldExit: false,
-		Errors:     []string{},
 	}, nil
 }
 

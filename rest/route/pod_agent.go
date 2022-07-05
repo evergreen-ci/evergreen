@@ -10,14 +10,18 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/pod/dispatcher"
+	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 )
 
@@ -240,12 +244,53 @@ func (h *podAgentNextTask) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
-	p, err := h.findPod()
+	p, err := data.FindPod(h.podID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 
+	if err := h.transitionStartingToRunning(p); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "marking pod as running"))
+	}
+
 	h.setAgentFirstContactTime(p)
+
+	if p.Status == pod.StatusTerminated || p.Status == pod.StatusDecommissioned {
+		if err = h.enqueuePodTerminationJob(ctx, "pod is no longer running"); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(err)
+		}
+		return gimlet.NewJSONResponse(&apimodels.NextTaskResponse{})
+	}
+
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving admin settings"))
+	}
+	if flags.TaskDispatchDisabled {
+		// TODO: EVG-17224 Potentially terminate pod when task dispatching is disabled
+		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), "task dispatch is disabled, returning no task")
+		return gimlet.NewJSONResponse(&apimodels.NextTaskResponse{})
+	}
+
+	if p.RunningTask != "" {
+		var t *task.Task
+		t, err = task.FindOneId(p.RunningTask)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting running task '%s'", p.RunningTask))
+		}
+		if t.IsPartOfDisplay() {
+			if err = model.UpdateDisplayTaskForTask(t); err != nil {
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "updating parent display task"))
+			}
+		}
+		return gimlet.NewJSONResponse(&apimodels.NextTaskResponse{
+			TaskId:     t.Id,
+			TaskSecret: t.Secret,
+			TaskGroup:  t.TaskGroup,
+			Version:    t.Version,
+			Build:      t.BuildId,
+		})
+	}
 
 	pd, err := h.findDispatcher()
 	if err != nil {
@@ -260,38 +305,42 @@ func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 	if nextTask == nil {
-		j := units.NewPodTerminationJob(h.podID, "reached end of pod lifecycle", utility.RoundPartOfMinute(0))
-		if err := amboy.EnqueueUniqueJob(ctx, h.env.RemoteQueue(), j); err != nil {
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusInternalServerError,
-				Message:    errors.Wrap(err, "enqueueing job to terminate pod").Error(),
-			})
+		if err = h.enqueuePodTerminationJob(ctx, "reached end of pod lifecycle"); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
+		return gimlet.NewJSONResponse(&apimodels.NextTaskResponse{})
 	}
 
-	return gimlet.NewJSONResponse(apimodels.NextTaskResponse{})
+	return gimlet.NewJSONResponse(&apimodels.NextTaskResponse{
+		TaskId:     nextTask.Id,
+		TaskSecret: nextTask.Secret,
+		TaskGroup:  nextTask.TaskGroup,
+		Version:    nextTask.Version,
+		Build:      nextTask.BuildId,
+	})
 }
 
-func (h *podAgentNextTask) findPod() (*pod.Pod, error) {
-	p, err := pod.FindOneByID(h.podID)
-	if err != nil {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrap(err, "finding pod").Error(),
-		}
+// enqueuePodTerminationJob will enqueue the job to terminate a pod with a detailed reason for doing so.
+func (h *podAgentNextTask) enqueuePodTerminationJob(ctx context.Context, reason string) error {
+	j := units.NewPodTerminationJob(h.podID, reason, utility.RoundPartOfMinute(0))
+	if err := amboy.EnqueueUniqueJob(ctx, h.env.RemoteQueue(), j); err != nil {
+		return errors.Wrap(err, "enqueueing job to terminate pod")
 	}
-	if p == nil {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("pod '%s' not found", h.podID),
-		}
+	return nil
+}
+
+// transitionStartingToRunning transitions the pod that is still starting up to
+// indicate that it is running and ready to accept tasks.
+func (h *podAgentNextTask) transitionStartingToRunning(p *pod.Pod) error {
+	if p.Status != pod.StatusStarting {
+		return nil
 	}
 
-	return p, nil
+	return p.UpdateStatus(pod.StatusRunning)
 }
 
 func (h *podAgentNextTask) setAgentFirstContactTime(p *pod.Pod) {
-	if !p.TimeInfo.Initializing.IsZero() {
+	if p.TimeInfo.Initializing.IsZero() {
 		return
 	}
 
@@ -327,4 +376,160 @@ func (h *podAgentNextTask) findDispatcher() (*dispatcher.PodDispatcher, error) {
 	}
 
 	return pd, nil
+}
+
+// POST /rest/v2/pods/{pod_id}/task/{task_id}/end
+
+type podAgentEndTask struct {
+	env     evergreen.Environment
+	podID   string
+	taskID  string
+	details apimodels.TaskEndDetail
+}
+
+func makePodAgentEndTask(env evergreen.Environment) gimlet.RouteHandler {
+	return &podAgentEndTask{
+		env: env,
+	}
+}
+
+func (h *podAgentEndTask) Factory() gimlet.RouteHandler {
+	return &podAgentEndTask{
+		env: h.env,
+	}
+}
+
+func (h *podAgentEndTask) Parse(ctx context.Context, r *http.Request) error {
+	h.podID = gimlet.GetVars(r)["pod_id"]
+	if h.podID == "" {
+		return errors.New("missing pod ID")
+	}
+	h.taskID = gimlet.GetVars(r)["task_id"]
+	if h.taskID == "" {
+		return errors.New("missing task ID")
+	}
+	details := apimodels.TaskEndDetail{}
+	if err := utility.ReadJSON(utility.NewRequestReader(r), &details); err != nil {
+		return errors.Wrap(err, "reading task end details from JSON request body")
+	}
+	h.details = details
+
+	// Check that status is either finished or aborted (i.e. undispatched)
+	if !evergreen.IsValidTaskEndStatus(details.Status) && details.Status != evergreen.TaskUndispatched {
+		return errors.Errorf("invalid end status '%s' for task '%s'", details.Status, h.taskID)
+	}
+	return nil
+}
+
+// Run finishes the given task and generates a job to collect task end stats.
+// It then marks the task as finished. If the task is aborted, this will no-op.
+func (h *podAgentEndTask) Run(ctx context.Context) gimlet.Responder {
+	finishTime := time.Now()
+	p, err := data.FindPod(h.podID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(err)
+	}
+	t, err := data.FindTask(h.taskID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(err)
+	}
+
+	endTaskResp := &apimodels.EndTaskResponse{}
+
+	if p.RunningTask == "" {
+		grip.Notice(message.Fields{
+			"message":                 "pod is not assigned task, agent should move onto requesting next task",
+			"task_id":                 t.Id,
+			"task_status_from_db":     t.Status,
+			"task_details_from_db":    t.Details,
+			"current_agent":           p.AgentVersion == evergreen.AgentVersion,
+			"agent_version":           p.AgentVersion,
+			"build_revision":          evergreen.BuildRevision,
+			"build_agent":             evergreen.AgentVersion,
+			"task_details_from_agent": h.details,
+			"pod_id":                  p.ID,
+		})
+		return gimlet.NewJSONResponse(endTaskResp)
+	}
+
+	projectRef, err := model.FindMergedProjectRef(t.Project, t.Version, true)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding project"))
+	}
+	if projectRef == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    errors.Errorf("project '%s' not found", t.Project).Error(),
+		})
+	}
+
+	deactivatePrevious := utility.FromBoolPtr(projectRef.DeactivatePrevious)
+	err = model.MarkEnd(t, evergreen.APIServerTaskActivator, finishTime, &h.details, deactivatePrevious)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "calling mark finish on task %v", t.Id))
+	}
+
+	// Clear the running task on the pod now that the task has finished.
+	if err = p.ClearRunningTask(); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "clearing running task '%s' for pod '%s'", t.Id, p.ID))
+	}
+
+	if t.Requester == evergreen.MergeTestRequester {
+		if err = model.HandleEndTaskForCommitQueueTask(t, h.details.Status); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(err)
+		}
+	}
+
+	// the task was aborted if it is still in undispatched.
+	// the active state should be inactive.
+	if h.details.Status == evergreen.TaskUndispatched {
+		if t.Activated {
+			grip.Warning(message.Fields{
+				"message": fmt.Sprintf("task '%s' is active and undispatched after being marked as finished", t.Id),
+				"task_id": t.Id,
+				"path":    fmt.Sprintf("/rest/v2/pods/%s/task/%s/end", p.ID, t.Id),
+			})
+			return gimlet.NewJSONResponse(&apimodels.EndTaskResponse{})
+		}
+		grip.Info(message.Fields{
+			"message": fmt.Sprintf("task %s has been aborted", t.Id),
+			"task_id": t.Id,
+			"path":    fmt.Sprintf("/rest/v2/pods/%s/task/%s/end", p.ID, t.Id),
+		})
+		return gimlet.NewJSONResponse(&apimodels.EndTaskResponse{})
+	}
+
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "getting display task"))
+	}
+	queue := h.env.RemoteQueue()
+	job := units.NewCollectTaskEndDataJob(*t, nil, p, p.ID)
+	if err = queue.Put(ctx, job); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "enqueueing job to update task stats accounting"))
+	}
+
+	if p.Status != pod.StatusRunning {
+		j := units.NewPodTerminationJob(h.podID, "pod is no longer running", utility.RoundPartOfMinute(0))
+		if err := amboy.EnqueueUniqueJob(ctx, h.env.RemoteQueue(), j); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "enqueueing job to terminate pod"))
+		}
+	}
+
+	msg := message.Fields{
+		"message":     "Successfully marked task as finished",
+		"task_id":     t.Id,
+		"execution":   t.Execution,
+		"operation":   "mark end",
+		"duration":    time.Since(finishTime),
+		"should_exit": endTaskResp.ShouldExit,
+		"status":      h.details.Status,
+		"path":        fmt.Sprintf("/rest/v2/pods/%s/task/%s/end", p.ID, t.Id),
+	}
+
+	if t.IsPartOfDisplay() {
+		msg["display_task_id"] = t.DisplayTask.Id
+	}
+
+	grip.Info(msg)
+	return gimlet.NewJSONResponse(endTaskResp)
 }

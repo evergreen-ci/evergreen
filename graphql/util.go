@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -24,6 +23,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -225,7 +225,7 @@ func getPatchProjectVariantsAndTasksForUI(ctx context.Context, apiPatch *restMod
 	return &patchProject, nil
 }
 
-// BuildFromGqlInput takes a PatchConfigure gql type and returns a PatchUpdate type
+// buildFromGqlInput takes a PatchConfigure gql type and returns a PatchUpdate type
 func buildFromGqlInput(r PatchConfigure) model.PatchUpdate {
 	p := model.PatchUpdate{}
 	p.Description = r.Description
@@ -334,7 +334,7 @@ func generateBuildVariants(versionId string, buildVariantOpts BuildVariantOption
 	return result, nil
 }
 
-// getFailedTestResultsSample returns a sample of failed test results for the given tasks that match the supplied testFilters
+// getCedarFailedTestResultsSample returns a sample of failed test results for the given tasks that match the supplied testFilters
 func getCedarFailedTestResultsSample(ctx context.Context, tasks []task.Task, testFilters []string) ([]apimodels.CedarFailedTestResultsSample, error) {
 	if len(tasks) == 0 {
 		return nil, nil
@@ -579,22 +579,6 @@ func getAPIVolumeList(volumes []host.Volume) ([]*restModel.APIVolume, error) {
 	return apiVolumes, nil
 }
 
-func SpawnHostForTestCode(ctx context.Context, vol *host.Volume, h *host.Host) error {
-	mgr, err := cloud.GetEC2ManagerForVolume(ctx, vol)
-	if err != nil {
-		return err
-	}
-	if os.Getenv("SETTINGS_OVERRIDE") != "" {
-		// The mock manager needs to spawn the host specified in our test data.
-		// The host should already be spawned in a non-test scenario.
-		_, err := mgr.SpawnHost(ctx, h)
-		if err != nil {
-			return errors.Wrapf(err, "error spawning host in test code")
-		}
-	}
-	return nil
-}
-
 func mustHaveUser(ctx context.Context) *user.DBUser {
 	u := gimlet.GetUser(ctx)
 	if u == nil {
@@ -667,15 +651,12 @@ func setVersionActivationStatus(version *model.Version) error {
 	}
 	tasks, _, err := task.GetTasksByVersion(version.Id, opts)
 	if err != nil {
-		return errors.Wrapf(err, "error getting tasks for version %s", version.Id)
+		return errors.Wrapf(err, "getting tasks for version '%s'", version.Id)
 	}
-	if !task.AnyActiveTasks(tasks) {
-		return errors.Wrapf(version.SetNotActivated(), "Error updating version activated status for `%s`", version.Id)
-	} else {
-		return errors.Wrapf(version.SetActivated(), "Error updating version activated status for `%s`", version.Id)
-	}
+	return errors.Wrapf(version.SetActivated(task.AnyActiveTasks(tasks)), "Updating version activated status for `%s`", version.Id)
 }
-func (buildVariantOptions *BuildVariantOptions) isPopulated() bool {
+
+func isPopulated(buildVariantOptions *BuildVariantOptions) bool {
 	if buildVariantOptions == nil {
 		return false
 	}
@@ -871,4 +852,34 @@ func getCollectiveStatusArray(v restModel.APIVersion) ([]string, error) {
 		}
 	}
 	return allStatuses, nil
+}
+
+func bbGetCreatedTicketsPointers(taskId string) ([]*thirdparty.JiraTicket, error) {
+	events, err := event.Find(event.TaskEventsForId(taskId))
+	if err != nil {
+		return nil, err
+	}
+
+	var results []*thirdparty.JiraTicket
+	var searchTickets []string
+	for _, evt := range events {
+		data := evt.Data.(*event.TaskEventData)
+		if evt.EventType == event.TaskJiraAlertCreated {
+			searchTickets = append(searchTickets, data.JiraIssue)
+		}
+	}
+	settings := evergreen.GetEnvironment().Settings()
+	jiraHandler := thirdparty.NewJiraHandler(*settings.Jira.Export())
+	for _, ticket := range searchTickets {
+		jiraIssue, err := jiraHandler.GetJIRATicket(ticket)
+		if err != nil {
+			return nil, err
+		}
+		if jiraIssue == nil {
+			continue
+		}
+		results = append(results, jiraIssue)
+	}
+
+	return results, nil
 }

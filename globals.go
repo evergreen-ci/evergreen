@@ -99,6 +99,9 @@ const (
 	TaskDescriptionHeartbeat = "heartbeat"
 	TaskDescriptionStranded  = "stranded"
 	TaskDescriptionNoResults = "expected test results, but none attached"
+	// TaskDescriptionContainerUnallocatable indicates that the reason a
+	// container task failed is because it cannot be allocated a container.
+	TaskDescriptionContainerUnallocatable = "container task cannot be allocated"
 
 	// Task Statuses that are currently used only by the UI, and in tests
 	// (these may be used in old tasks as actual task statuses rather than just
@@ -509,7 +512,7 @@ const (
 	RepotrackerVersionRequester = "gitter_request"
 	TriggerRequester            = "trigger_request"
 	MergeTestRequester          = "merge_test" // commit queue
-	AdHocRequester              = "ad_hoc"
+	AdHocRequester              = "ad_hoc"     // periodic build
 )
 
 var AllRequesterTypes = []string{
@@ -528,6 +531,7 @@ var (
 		RepotrackerVersionRequester,
 		TriggerRequester,
 		GitTagRequester,
+		AdHocRequester,
 	}
 )
 
@@ -539,6 +543,7 @@ const (
 	S3PullCommandName             = "s3.pull"
 	ShellExecCommandName          = "shell.exec"
 	AttachResultsCommandName      = "attach.results"
+	ManifestLoadCommandName       = "manifest.load"
 	AttachArtifactsCommandName    = "attach.artifacts"
 	AttachXUnitResultsCommandName = "attach.xunit_results"
 )

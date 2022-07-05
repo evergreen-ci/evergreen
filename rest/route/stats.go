@@ -6,7 +6,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -14,13 +13,11 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/stats"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -331,21 +328,29 @@ func (tsh *testStatsHandler) Parse(ctx context.Context, r *http.Request) error {
 	project := gimlet.GetVars(r)["project_id"]
 	vals := r.URL.Query()
 
-	if vals.Get("presto") == "true" {
-		return tsh.parsePrestoStatsFilter(project, vals)
+	identifier, err := dbModel.GetIdentifierForProject(project)
+	if err != nil {
+		return gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("getting project identifier for '%s'", project),
+			StatusCode: http.StatusInternalServerError,
+		}
 	}
 
-	tsh.filter = stats.StatsFilter{Project: project}
-	err := tsh.StatsHandler.parseStatsFilter(vals)
-	if err != nil {
-		return errors.Wrap(err, "invalid query parameters")
-	}
-	err = tsh.filter.ValidateForTests()
-	if err != nil {
-		return errors.Wrap(err, "invalid filter")
+	// If this project is owned by Server and uses Resmoke, we need to use
+	// Evergreen test stats.
+	if dbModel.IsServerResmokeProject(identifier) {
+		tsh.filter = stats.StatsFilter{Project: project}
+		err := tsh.StatsHandler.parseStatsFilter(vals)
+		if err != nil {
+			return errors.Wrap(err, "invalid query parameters")
+		}
+		err = tsh.filter.ValidateForTests()
+		if err != nil {
+			return errors.Wrap(err, "invalid filter")
+		}
 	}
 
-	return nil
+	return tsh.parsePrestoStatsFilter(project, vals)
 }
 
 func (tsh *testStatsHandler) parsePrestoStatsFilter(project string, vals url.Values) error {
@@ -579,61 +584,4 @@ func (tsh *taskStatsHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return resp
-}
-
-type cedarTestStatsMiddleware struct {
-	settings *evergreen.Settings
-}
-
-func checkCedarTestStats(settings *evergreen.Settings) gimlet.Middleware {
-	return &cedarTestStatsMiddleware{
-		settings: settings,
-	}
-}
-
-func (m *cedarTestStatsMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	ctx := r.Context()
-
-	if r.URL.Query().Get("presto") != "true" {
-		newURL := fmt.Sprintf(
-			"https://%s/rest/v1/historical_test_data/%s?%s",
-			m.settings.Cedar.BaseURL,
-			gimlet.GetVars(r)["project_id"],
-			r.URL.RawQuery,
-		)
-		req, err := http.NewRequest(http.MethodGet, newURL, nil)
-		if err != nil {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "creating Cedar test stats request")))
-			return
-		}
-		req = req.WithContext(ctx)
-
-		c := utility.GetHTTPClient()
-		defer utility.PutHTTPClient(c)
-
-		resp, err := c.Do(req)
-		if err != nil {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "sending test stats request to Cedar")))
-			return
-		}
-		defer func() {
-			_ = resp.Body.Close()
-		}()
-		if resp.StatusCode == http.StatusOK {
-			for key, vals := range resp.Header {
-				for _, val := range vals {
-					rw.Header().Add(key, val)
-				}
-			}
-			_, err = io.Copy(rw, resp.Body)
-			grip.Error(message.WrapError(err, message.Fields{
-				"route":      "/projects/{project_id}/test_stats",
-				"message":    "problem copying Cedar test stats",
-				"project_id": gimlet.GetVars(r)["project_id"],
-			}))
-			return
-		}
-	}
-
-	next(rw, r)
 }
