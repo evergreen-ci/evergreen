@@ -2060,3 +2060,44 @@ func TestMergeWithProjectConfig(t *testing.T) {
 	assert.Equal(t, 4, projectRef.ContainerSizes["xlarge"].CPU)
 
 }
+
+func TestIsServerResmokeProject(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		identifier string
+		expected   bool
+	}{
+		{
+			name:       "MongoMaster",
+			identifier: "mongodb-mongo-master",
+			expected:   true,
+		},
+		{
+			name:       "MongoBranch",
+			identifier: "mongodb-mongo-5.0",
+			expected:   true,
+		},
+		{
+			name:       "MongoSync",
+			identifier: "mongosync",
+			expected:   true,
+		},
+		{
+			name:       "MongoSyncCoinbase",
+			identifier: "mongosync-coinbase",
+			expected:   true,
+		},
+		{
+			name:       "Evergreen",
+			identifier: "evergreen",
+		},
+		{
+			name:       "Mongo",
+			identifier: "mongo",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			assert.Equal(t, test.expected, IsServerResmokeProject(test.identifier))
+		})
+	}
+}
