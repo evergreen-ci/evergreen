@@ -561,51 +561,50 @@ type ComplexityRoot struct {
 	}
 
 	Project struct {
-		Admins                  func(childComplexity int) int
-		BatchTime               func(childComplexity int) int
-		Branch                  func(childComplexity int) int
-		BuildBaronSettings      func(childComplexity int) int
-		CedarTestResultsEnabled func(childComplexity int) int
-		CommitQueue             func(childComplexity int) int
-		DeactivatePrevious      func(childComplexity int) int
-		DefaultLogger           func(childComplexity int) int
-		DisabledStatsCache      func(childComplexity int) int
-		DispatchingDisabled     func(childComplexity int) int
-		DisplayName             func(childComplexity int) int
-		Enabled                 func(childComplexity int) int
-		FilesIgnoredFromCache   func(childComplexity int) int
-		GitTagAuthorizedTeams   func(childComplexity int) int
-		GitTagAuthorizedUsers   func(childComplexity int) int
-		GitTagVersionsEnabled   func(childComplexity int) int
-		GithubChecksEnabled     func(childComplexity int) int
-		GithubTriggerAliases    func(childComplexity int) int
-		Hidden                  func(childComplexity int) int
-		Id                      func(childComplexity int) int
-		Identifier              func(childComplexity int) int
-		IsFavorite              func(childComplexity int) int
-		ManualPRTestingEnabled  func(childComplexity int) int
-		NotifyOnBuildFailure    func(childComplexity int) int
-		Owner                   func(childComplexity int) int
-		PRTestingEnabled        func(childComplexity int) int
-		PatchTriggerAliases     func(childComplexity int) int
-		Patches                 func(childComplexity int, patchesInput PatchesInput) int
-		PatchingDisabled        func(childComplexity int) int
-		PerfEnabled             func(childComplexity int) int
-		PeriodicBuilds          func(childComplexity int) int
-		Private                 func(childComplexity int) int
-		RemotePath              func(childComplexity int) int
-		Repo                    func(childComplexity int) int
-		RepoRefId               func(childComplexity int) int
-		RepotrackerDisabled     func(childComplexity int) int
-		Restricted              func(childComplexity int) int
-		SpawnHostScriptPath     func(childComplexity int) int
-		TaskAnnotationSettings  func(childComplexity int) int
-		TaskSync                func(childComplexity int) int
-		TracksPushEvents        func(childComplexity int) int
-		Triggers                func(childComplexity int) int
-		ValidDefaultLoggers     func(childComplexity int) int
-		VersionControlEnabled   func(childComplexity int) int
-		WorkstationConfig       func(childComplexity int) int
+		Admins                 func(childComplexity int) int
+		BatchTime              func(childComplexity int) int
+		Branch                 func(childComplexity int) int
+		BuildBaronSettings     func(childComplexity int) int
+		CommitQueue            func(childComplexity int) int
+		DeactivatePrevious     func(childComplexity int) int
+		DefaultLogger          func(childComplexity int) int
+		DisabledStatsCache     func(childComplexity int) int
+		DispatchingDisabled    func(childComplexity int) int
+		DisplayName            func(childComplexity int) int
+		Enabled                func(childComplexity int) int
+		FilesIgnoredFromCache  func(childComplexity int) int
+		GitTagAuthorizedTeams  func(childComplexity int) int
+		GitTagAuthorizedUsers  func(childComplexity int) int
+		GitTagVersionsEnabled  func(childComplexity int) int
+		GithubChecksEnabled    func(childComplexity int) int
+		GithubTriggerAliases   func(childComplexity int) int
+		Hidden                 func(childComplexity int) int
+		Id                     func(childComplexity int) int
+		Identifier             func(childComplexity int) int
+		IsFavorite             func(childComplexity int) int
+		ManualPRTestingEnabled func(childComplexity int) int
+		NotifyOnBuildFailure   func(childComplexity int) int
+		Owner                  func(childComplexity int) int
+		PRTestingEnabled       func(childComplexity int) int
+		PatchTriggerAliases    func(childComplexity int) int
+		Patches                func(childComplexity int, patchesInput PatchesInput) int
+		PatchingDisabled       func(childComplexity int) int
+		PerfEnabled            func(childComplexity int) int
+		PeriodicBuilds         func(childComplexity int) int
+		Private                func(childComplexity int) int
+		RemotePath             func(childComplexity int) int
+		Repo                   func(childComplexity int) int
+		RepoRefId              func(childComplexity int) int
+		RepotrackerDisabled    func(childComplexity int) int
+		Restricted             func(childComplexity int) int
+		SpawnHostScriptPath    func(childComplexity int) int
+		TaskAnnotationSettings func(childComplexity int) int
+		TaskSync               func(childComplexity int) int
+		TracksPushEvents       func(childComplexity int) int
+		Triggers               func(childComplexity int) int
+		ValidDefaultLoggers    func(childComplexity int) int
+		VersionControlEnabled  func(childComplexity int) int
+		WorkstationConfig      func(childComplexity int) int
 	}
 
 	ProjectAlias struct {
@@ -732,46 +731,45 @@ type ComplexityRoot struct {
 	}
 
 	RepoRef struct {
-		Admins                  func(childComplexity int) int
-		BatchTime               func(childComplexity int) int
-		Branch                  func(childComplexity int) int
-		BuildBaronSettings      func(childComplexity int) int
-		CedarTestResultsEnabled func(childComplexity int) int
-		CommitQueue             func(childComplexity int) int
-		DeactivatePrevious      func(childComplexity int) int
-		DefaultLogger           func(childComplexity int) int
-		DisabledStatsCache      func(childComplexity int) int
-		DispatchingDisabled     func(childComplexity int) int
-		DisplayName             func(childComplexity int) int
-		Enabled                 func(childComplexity int) int
-		FilesIgnoredFromCache   func(childComplexity int) int
-		GitTagAuthorizedTeams   func(childComplexity int) int
-		GitTagAuthorizedUsers   func(childComplexity int) int
-		GitTagVersionsEnabled   func(childComplexity int) int
-		GithubChecksEnabled     func(childComplexity int) int
-		GithubTriggerAliases    func(childComplexity int) int
-		Id                      func(childComplexity int) int
-		ManualPRTestingEnabled  func(childComplexity int) int
-		NotifyOnBuildFailure    func(childComplexity int) int
-		Owner                   func(childComplexity int) int
-		PRTestingEnabled        func(childComplexity int) int
-		PatchTriggerAliases     func(childComplexity int) int
-		PatchingDisabled        func(childComplexity int) int
-		PerfEnabled             func(childComplexity int) int
-		PeriodicBuilds          func(childComplexity int) int
-		Private                 func(childComplexity int) int
-		RemotePath              func(childComplexity int) int
-		Repo                    func(childComplexity int) int
-		RepotrackerDisabled     func(childComplexity int) int
-		Restricted              func(childComplexity int) int
-		SpawnHostScriptPath     func(childComplexity int) int
-		TaskAnnotationSettings  func(childComplexity int) int
-		TaskSync                func(childComplexity int) int
-		TracksPushEvents        func(childComplexity int) int
-		Triggers                func(childComplexity int) int
-		ValidDefaultLoggers     func(childComplexity int) int
-		VersionControlEnabled   func(childComplexity int) int
-		WorkstationConfig       func(childComplexity int) int
+		Admins                 func(childComplexity int) int
+		BatchTime              func(childComplexity int) int
+		Branch                 func(childComplexity int) int
+		BuildBaronSettings     func(childComplexity int) int
+		CommitQueue            func(childComplexity int) int
+		DeactivatePrevious     func(childComplexity int) int
+		DefaultLogger          func(childComplexity int) int
+		DisabledStatsCache     func(childComplexity int) int
+		DispatchingDisabled    func(childComplexity int) int
+		DisplayName            func(childComplexity int) int
+		Enabled                func(childComplexity int) int
+		FilesIgnoredFromCache  func(childComplexity int) int
+		GitTagAuthorizedTeams  func(childComplexity int) int
+		GitTagAuthorizedUsers  func(childComplexity int) int
+		GitTagVersionsEnabled  func(childComplexity int) int
+		GithubChecksEnabled    func(childComplexity int) int
+		GithubTriggerAliases   func(childComplexity int) int
+		Id                     func(childComplexity int) int
+		ManualPRTestingEnabled func(childComplexity int) int
+		NotifyOnBuildFailure   func(childComplexity int) int
+		Owner                  func(childComplexity int) int
+		PRTestingEnabled       func(childComplexity int) int
+		PatchTriggerAliases    func(childComplexity int) int
+		PatchingDisabled       func(childComplexity int) int
+		PerfEnabled            func(childComplexity int) int
+		PeriodicBuilds         func(childComplexity int) int
+		Private                func(childComplexity int) int
+		RemotePath             func(childComplexity int) int
+		Repo                   func(childComplexity int) int
+		RepotrackerDisabled    func(childComplexity int) int
+		Restricted             func(childComplexity int) int
+		SpawnHostScriptPath    func(childComplexity int) int
+		TaskAnnotationSettings func(childComplexity int) int
+		TaskSync               func(childComplexity int) int
+		TracksPushEvents       func(childComplexity int) int
+		Triggers               func(childComplexity int) int
+		ValidDefaultLoggers    func(childComplexity int) int
+		VersionControlEnabled  func(childComplexity int) int
+		WorkstationConfig      func(childComplexity int) int
 	}
 
 	RepoSettings struct {
@@ -3922,13 +3920,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Project.BuildBaronSettings(childComplexity), true
 
-	case "Project.cedarTestResultsEnabled":
-		if e.complexity.Project.CedarTestResultsEnabled == nil {
-			break
-		}
-
-		return e.complexity.Project.CedarTestResultsEnabled(childComplexity), true
-
 	case "Project.commitQueue":
 		if e.complexity.Project.CommitQueue == nil {
 			break
@@ -4990,13 +4981,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.RepoRef.BuildBaronSettings(childComplexity), true
-
-	case "RepoRef.cedarTestResultsEnabled":
-		if e.complexity.RepoRef.CedarTestResultsEnabled == nil {
-			break
-		}
-
-		return e.complexity.RepoRef.CedarTestResultsEnabled(childComplexity), true
 
 	case "RepoRef.commitQueue":
 		if e.complexity.RepoRef.CommitQueue == nil {
@@ -8231,7 +8215,6 @@ type Project {
   batchTime: Int!
   branch: String!
   buildBaronSettings: BuildBaronSettings!
-  cedarTestResultsEnabled: Boolean
   commitQueue: CommitQueueParams!
   deactivatePrevious: Boolean
   defaultLogger: String!
@@ -8328,7 +8311,6 @@ input ProjectInput {
   batchTime: Int
   branch: String
   buildBaronSettings: BuildBaronSettingsInput
-  cedarTestResultsEnabled: Boolean
   commitQueue: CommitQueueParamsInput
   deactivatePrevious: Boolean
   defaultLogger: String
@@ -8551,7 +8533,6 @@ input RepoRefInput {
   batchTime: Int
   branch: String
   buildBaronSettings: BuildBaronSettingsInput
-  cedarTestResultsEnabled: Boolean
   commitQueue: CommitQueueParamsInput
   deactivatePrevious: Boolean
   defaultLogger: String
@@ -8599,7 +8580,6 @@ type RepoRef {
   batchTime: Int!
   branch: String!
   buildBaronSettings: BuildBaronSettings!
-  cedarTestResultsEnabled: Boolean!
   commitQueue: RepoCommitQueueParams!
   deactivatePrevious: Boolean!
   defaultLogger: String!
@@ -8656,7 +8636,8 @@ type RepoWorkstationConfig {
 type WorkstationSetupCommand {
   command: String!
   directory: String!
-}`, BuiltIn: false},
+}
+`, BuiltIn: false},
 	{Name: "graphql/schema/types/repo_settings.graphql", Input: `###### INPUTS ######
 """
 RepoSettingsInput is the input to the saveRepoSettingsForSection mutation.
@@ -22484,38 +22465,6 @@ func (ec *executionContext) _Project_buildBaronSettings(ctx context.Context, fie
 	return ec.marshalNBuildBaronSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBuildBaronSettings(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Project_cedarTestResultsEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "Project",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.CedarTestResultsEnabled, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*bool)
-	fc.Result = res
-	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
-}
-
 func (ec *executionContext) _Project_commitQueue(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -27223,41 +27172,6 @@ func (ec *executionContext) _RepoRef_buildBaronSettings(ctx context.Context, fie
 	res := resTmp.(model.APIBuildBaronSettings)
 	fc.Result = res
 	return ec.marshalNBuildBaronSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBuildBaronSettings(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _RepoRef_cedarTestResultsEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "RepoRef",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.CedarTestResultsEnabled, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*bool)
-	fc.Result = res
-	return ec.marshalNBoolean2ᚖbool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _RepoRef_commitQueue(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
@@ -40350,14 +40264,6 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 			if err != nil {
 				return it, err
 			}
-		case "cedarTestResultsEnabled":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cedarTestResultsEnabled"))
-			it.CedarTestResultsEnabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
-			if err != nil {
-				return it, err
-			}
 		case "commitQueue":
 			var err error
 
@@ -40827,14 +40733,6 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("buildBaronSettings"))
 			it.BuildBaronSettings, err = ec.unmarshalOBuildBaronSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBuildBaronSettings(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "cedarTestResultsEnabled":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cedarTestResultsEnabled"))
-			it.CedarTestResultsEnabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -44823,8 +44721,6 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
-		case "cedarTestResultsEnabled":
-			out.Values[i] = ec._Project_cedarTestResultsEnabled(ctx, field, obj)
 		case "commitQueue":
 			out.Values[i] = ec._Project_commitQueue(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -46080,11 +45976,6 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "buildBaronSettings":
 			out.Values[i] = ec._RepoRef_buildBaronSettings(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
-		case "cedarTestResultsEnabled":
-			out.Values[i] = ec._RepoRef_cedarTestResultsEnabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}

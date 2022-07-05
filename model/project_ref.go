@@ -2406,13 +2406,6 @@ func (p *ProjectRef) CommitQueueIsOn() error {
 	return catcher.Resolve()
 }
 
-// IsMongoProject returns whether this project is one of the Server's
-// mongodb-mongo-* projects. Until these projects can support Presto test
-// resutlts, their test results will need special treatment.
-// TODO (PM-2940): Remove this once Mongo projects can fully support Presto
-// test results.
-func (p *ProjectRef) IsMongoProject() bool { return strings.HasPrefix(p.Identifier, "mongodb-mongo-") }
-
 func GetProjectRefForTask(taskId string) (*ProjectRef, error) {
 	t, err := task.FindOneId(taskId)
 	if err != nil {

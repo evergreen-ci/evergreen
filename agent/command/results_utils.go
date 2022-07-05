@@ -31,7 +31,7 @@ func sendTestResults(ctx context.Context, comm client.Communicator, logger clien
 
 	// TODO (PM-2940): Stop sending Mongo project test results to the
 	// database once they can support Presto test results.
-	if conf.ProjectRef.IsMongoProject() {
+	if model.IsServerResmokeProject(conf.ProjectRef.Identifier) {
 		if err := comm.SendTestResults(ctx, td, results); err != nil {
 			logger.Task().Errorf("error posting parsed results to Evergreen: %+v", err)
 			return errors.Wrap(err, "sending test results to Evergreen")
