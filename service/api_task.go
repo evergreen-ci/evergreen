@@ -1234,6 +1234,15 @@ func handleOldAgentRevision(response apimodels.NextTaskResponse, details *apimod
 	return response, false
 }
 
+// setNextTask constructs a NextTaskResponse from a task that has been assigned to run next.
+func setNextTask(t *task.Task, response *apimodels.NextTaskResponse) {
+	response.TaskId = t.Id
+	response.TaskSecret = t.Secret
+	response.TaskGroup = t.TaskGroup
+	response.Version = t.Version
+	response.Build = t.BuildId
+}
+
 func sendBackRunningTask(h *host.Host, response apimodels.NextTaskResponse, w http.ResponseWriter) {
 	var err error
 	var t *task.Task
@@ -1277,12 +1286,4 @@ func sendBackRunningTask(h *host.Host, response apimodels.NextTaskResponse, w ht
 		"task_id": t.Id,
 	})
 	gimlet.WriteJSON(w, response)
-}
-
-func setNextTask(t *task.Task, response *apimodels.NextTaskResponse) {
-	response.TaskId = t.Id
-	response.TaskSecret = t.Secret
-	response.TaskGroup = t.TaskGroup
-	response.Version = t.Version
-	response.Build = t.BuildId
 }

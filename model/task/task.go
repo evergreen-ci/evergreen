@@ -995,6 +995,37 @@ func (t *Task) cacheExpectedDuration() error {
 	)
 }
 
+// MarkAsContainerDispatched marks that the container task has been dispatched
+// to a pod.
+func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Environment, agentVersion string) error {
+	dispatchedAt := time.Now()
+	query := isContainerTaskScheduledQuery()
+	query[StatusKey] = evergreen.TaskUndispatched
+	query[ContainerAllocatedKey] = true
+	update := bson.M{
+		"$set": bson.M{
+			StatusKey:        evergreen.TaskDispatched,
+			DispatchTimeKey:  dispatchedAt,
+			LastHeartbeatKey: dispatchedAt,
+			AgentVersionKey:  agentVersion,
+		},
+	}
+	res, err := env.DB().Collection(Collection).UpdateOne(ctx, query, update)
+	if err != nil {
+		return errors.Wrap(err, "updating task")
+	}
+	if res.ModifiedCount == 0 {
+		return errors.New("task was not updated")
+	}
+
+	t.Status = evergreen.TaskDispatched
+	t.DispatchTime = dispatchedAt
+	t.LastHeartbeat = dispatchedAt
+	t.AgentVersion = agentVersion
+
+	return nil
+}
+
 // MarkAsHostDispatched marks that the task has been dispatched onto a
 // particular host. If the task is part of a display task, the display task is
 // also marked as dispatched to a host. Returns an error if any of the database
@@ -1156,37 +1187,6 @@ func MarkTasksAsContainerDeallocated(taskIDs []string) error {
 	}, containerDeallocatedUpdate()); err != nil {
 		return errors.Wrap(err, "updating tasks")
 	}
-
-	return nil
-}
-
-// MarkAsContainerDispatched marks that the container task has been dispatched
-// to a pod.
-func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Environment, agentVersion string) error {
-	dispatchedAt := time.Now()
-	query := isContainerTaskScheduledQuery()
-	query[StatusKey] = evergreen.TaskUndispatched
-	query[ContainerAllocatedKey] = true
-	update := bson.M{
-		"$set": bson.M{
-			StatusKey:        evergreen.TaskDispatched,
-			DispatchTimeKey:  dispatchedAt,
-			LastHeartbeatKey: dispatchedAt,
-			AgentVersionKey:  agentVersion,
-		},
-	}
-	res, err := env.DB().Collection(Collection).UpdateOne(ctx, query, update)
-	if err != nil {
-		return errors.Wrap(err, "updating task")
-	}
-	if res.ModifiedCount == 0 {
-		return errors.New("task was not updated")
-	}
-
-	t.Status = evergreen.TaskDispatched
-	t.DispatchTime = dispatchedAt
-	t.LastHeartbeat = dispatchedAt
-	t.AgentVersion = agentVersion
 
 	return nil
 }
