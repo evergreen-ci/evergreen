@@ -17,7 +17,7 @@ func TestAPIRecentTaskStatsListBuildFromService(t *testing.T) {
 	service[evergreen.TaskFailed] = []task.Stat{{Name: "d1", Count: 2}, {Name: "d2", Count: 1}}
 
 	apiList := APIRecentTaskStatsList{}
-	assert.NoError(apiList.BuildFromService(service))
+	apiList.BuildFromService(service)
 	assert.Equal(utility.ToStringPtr("d1"), apiList["total"][0].Name)
 	assert.Equal(5, apiList["total"][0].Count)
 	assert.Equal(utility.ToStringPtr("d1"), apiList[evergreen.TaskInactive][0].Name)

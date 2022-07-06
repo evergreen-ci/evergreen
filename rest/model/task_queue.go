@@ -3,7 +3,6 @@ package model
 import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/utility"
-	"github.com/pkg/errors"
 )
 
 type APITaskQueueItem struct {
@@ -20,12 +19,7 @@ type APITaskQueueItem struct {
 	Priority            int64       `json:"priority"`
 }
 
-func (s *APITaskQueueItem) BuildFromService(h interface{}) error {
-	tqi, ok := h.(model.TaskQueueItem)
-	if !ok {
-		return errors.New("interface is not of type TaskQueueItem")
-	}
-
+func (s *APITaskQueueItem) BuildFromService(tqi model.TaskQueueItem) {
 	s.Id = utility.ToStringPtr(tqi.Id)
 	s.DisplayName = utility.ToStringPtr(tqi.DisplayName)
 	s.BuildVariant = utility.ToStringPtr(tqi.BuildVariant)
@@ -37,6 +31,4 @@ func (s *APITaskQueueItem) BuildFromService(h interface{}) error {
 	s.Build = utility.ToStringPtr(tqi.BuildVariant)
 	s.ExpectedDuration = NewAPIDuration(tqi.ExpectedDuration)
 	s.Priority = tqi.Priority
-
-	return nil
 }

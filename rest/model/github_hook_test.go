@@ -27,7 +27,7 @@ func TestAPIGithubHook(t *testing.T) {
 	}, apiHook)
 
 	apiHook = APIGithubHook{}
-	assert.Error(apiHook.BuildFromService(&hook))
+	assert.Error(apiHook.BuildFromService(hook))
 	assert.Zero(apiHook)
 
 	apiHook = APIGithubHook{}

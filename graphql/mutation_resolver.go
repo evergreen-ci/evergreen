@@ -1118,9 +1118,7 @@ func (r *mutationResolver) RestartVersions(ctx context.Context, versionID string
 				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find version with id %s", *version.VersionId))
 			}
 			apiVersion := restModel.APIVersion{}
-			if err = apiVersion.BuildFromService(v); err != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIVersion from service for `%s`: %s", *version.VersionId, err.Error()))
-			}
+			apiVersion.BuildFromService(*v)
 			versions = append(versions, &apiVersion)
 		}
 	}

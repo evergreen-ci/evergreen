@@ -691,12 +691,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 
 	origSubscriptions, _ := event.FindSubscriptionsByOwner(projectRef.Id, event.OwnerTypeProject)
 	for _, apiSubscription := range responseRef.Subscriptions {
-		var subscriptionIface interface{}
-		subscriptionIface, err = apiSubscription.ToService()
-		if err != nil {
-			catcher.Add(err)
-		}
-		subscription := subscriptionIface.(event.Subscription)
+		subscription, err := apiSubscription.ToService()
+		catcher.Add(err)
 		subscription.Selectors = []event.Selector{
 			{
 				Type: event.SelectorProject,

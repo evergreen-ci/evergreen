@@ -31,8 +31,7 @@ func TestAPITaskReliabilityBuildFromService(t *testing.T) {
 	}
 
 	apiDoc := APITaskReliability{}
-	err := apiDoc.BuildFromService(&serviceDoc)
-	assert.NoError(err)
+	apiDoc.BuildFromService(serviceDoc)
 
 	assert.Equal(serviceDoc.TaskName, *apiDoc.TaskName)
 	assert.Equal(serviceDoc.BuildVariant, *apiDoc.BuildVariant)
