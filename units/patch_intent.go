@@ -305,7 +305,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	failedOnly := j.intent.RepeatFailedTasksAndVariants()
 
 	if j.intent.ReusePreviousPatchDefinition() || failedOnly {
-		err, previousPatchStatus = j.setToPreviousPatchDefinition(patchDoc, project, failedOnly)
+		previousPatchStatus, err = j.setToPreviousPatchDefinition(patchDoc, project, failedOnly)
 		if err != nil {
 			return err
 		}
@@ -503,13 +503,13 @@ func setFailedTasksToPrevious(patchDoc, previousPatch *patch.Patch, project *mod
 	return nil
 }
 
-func (j *patchIntentProcessor) setToPreviousPatchDefinition(patchDoc *patch.Patch, project *model.Project, failedOnly bool) (error, string) {
+func (j *patchIntentProcessor) setToPreviousPatchDefinition(patchDoc *patch.Patch, project *model.Project, failedOnly bool) (string, error) {
 	previousPatch, err := patch.FindOne(patch.MostRecentPatchByUserAndProject(j.user.Username(), project.Identifier))
 	if err != nil {
-		return errors.Wrap(err, "querying for most recent patch"), ""
+		return "", errors.Wrap(err, "querying for most recent patch")
 	}
 	if previousPatch == nil {
-		return errors.Errorf("no previous patch available"), ""
+		return "", errors.Errorf("no previous patch available")
 	}
 
 	patchDoc.BuildVariants = previousPatch.BuildVariants
@@ -522,7 +522,7 @@ func (j *patchIntentProcessor) setToPreviousPatchDefinition(patchDoc *patch.Patc
 		patchDoc.Tasks = previousPatch.Tasks
 	}
 
-	return nil, previousPatch.Status
+	return previousPatch.Status, nil
 }
 
 func getPreviousFailedTasksAndDisplayTasks(tasksInProjectVariant []string, displayTasksInProjectVariant []string, vt patch.VariantTasks, version string) ([]string, []patch.DisplayTask, error) {

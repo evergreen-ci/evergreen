@@ -270,7 +270,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinishCommitQueuePatchWithNoTasksAndVari
 	s.Equal("patch has no build variants or tasks", err.Error())
 }
 
-func (s *PatchIntentUnitsSuite) TestGetPreviousPatchDefinition() {
+func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 	t1 := task.Task{
 		Id:           "t1",
 		DisplayName:  "t1",
@@ -280,7 +280,7 @@ func (s *PatchIntentUnitsSuite) TestGetPreviousPatchDefinition() {
 	}
 	s.NoError(t1.Insert())
 	patchId := "aabbccddeeff001122334455"
-	s.NoError((&patch.Patch{
+	previousPatchDoc := &patch.Patch{
 		Id:         patch.NewId(patchId),
 		Activated:  true,
 		Status:     evergreen.PatchFailed,
@@ -302,7 +302,12 @@ func (s *PatchIntentUnitsSuite) TestGetPreviousPatchDefinition() {
 				DisplayTasks: []patch.DisplayTask{{Name: "dt2"}},
 			},
 		},
-	}).Insert())
+		Tasks:              []string{"t1", "t2"},
+		BuildVariants:      []string{"bv_only_dt", "bv_different_dt"},
+		RegexBuildVariants: []string{"bv_$"},
+		RegexTasks:         []string{"1$"},
+	}
+	s.NoError((previousPatchDoc).Insert())
 
 	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
 		User:             "me",
@@ -328,22 +333,24 @@ func (s *PatchIntentUnitsSuite) TestGetPreviousPatchDefinition() {
 			DisplayTasks: []patch.DisplayTask{{Name: "dt2"}},
 		},
 	}}
-	vt, err := j.getPreviousPatchDefinition(&project, false)
+	currentPatchDoc := intent.NewPatch()
 	s.NoError(err)
-	s.Require().Len(vt, 2)
-	s.Equal("bv1", vt[0].Variant)
-	s.Require().Len(vt[0].Tasks, 1)
-	s.Equal("t1", vt[0].Tasks[0])
-	s.Equal("bv_different_dt", vt[1].Variant)
-	s.Require().Len(vt[1].DisplayTasks, 1)
-	s.Equal("dt2", vt[1].DisplayTasks[0].Name)
+	previousPatchStatus, err := j.setToPreviousPatchDefinition(currentPatchDoc, &project, false)
+	s.NoError(err)
+	s.Equal(previousPatchStatus, "failed")
 
-	vt, err = j.getPreviousPatchDefinition(&project, true)
+	s.Equal(currentPatchDoc.BuildVariants, previousPatchDoc.BuildVariants)
+	s.Equal(currentPatchDoc.RegexBuildVariants, previousPatchDoc.RegexBuildVariants)
+	s.Equal(currentPatchDoc.RegexTasks, previousPatchDoc.RegexTasks)
+	s.Equal(currentPatchDoc.Tasks, previousPatchDoc.Tasks)
+
+	previousPatchStatus, err = j.setToPreviousPatchDefinition(currentPatchDoc, &project, true)
 	s.NoError(err)
-	s.Require().Len(vt, 1)
-	s.Equal("bv1", vt[0].Variant)
-	s.Require().Len(vt[0].Tasks, 1)
-	s.Equal("t1", vt[0].Tasks[0])
+	s.Equal(previousPatchStatus, "failed")
+	s.Equal(currentPatchDoc.BuildVariants, previousPatchDoc.BuildVariants)
+	s.Equal(currentPatchDoc.RegexBuildVariants, previousPatchDoc.RegexBuildVariants)
+	s.Equal(currentPatchDoc.RegexTasks, previousPatchDoc.RegexTasks)
+	s.Equal(currentPatchDoc.Tasks, []string{"t1"})
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
