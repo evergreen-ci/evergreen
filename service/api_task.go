@@ -311,7 +311,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if t.IsPartOfDisplay() {
-		msg["display_task_id"] = t.DisplayTask.Id
+		msg["display_task_id"] = t.DisplayTaskId
 	}
 
 	grip.Info(msg)
