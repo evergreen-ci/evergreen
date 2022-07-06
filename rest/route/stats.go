@@ -340,14 +340,12 @@ func (tsh *testStatsHandler) Parse(ctx context.Context, r *http.Request) error {
 	// Evergreen test stats.
 	if dbModel.IsServerResmokeProject(identifier) {
 		tsh.filter = stats.StatsFilter{Project: project}
-		err := tsh.StatsHandler.parseStatsFilter(vals)
+		err := tsh.parseStatsFilter(vals)
 		if err != nil {
 			return errors.Wrap(err, "invalid query parameters")
 		}
-		err = tsh.filter.ValidateForTests()
-		if err != nil {
-			return errors.Wrap(err, "invalid filter")
-		}
+
+		return errors.Wrap(tsh.filter.ValidateForTests(), "invalid filter")
 	}
 
 	return tsh.parsePrestoStatsFilter(project, vals)
