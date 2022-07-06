@@ -1,0 +1,87 @@
+enum SpawnHostStatusActions {
+  START
+  STOP
+  TERMINATE
+}
+
+###### INPUTS ######
+"""
+VolumeHost is the input to the attachVolumeToHost mutation.
+Its fields are used to attach the volume with volumeId to the host with hostId.
+"""
+input VolumeHost {
+  volumeId: String!
+  hostId: String!
+}
+
+"""
+SpawnHostInput is the input to the spawnHost mutation.
+Its fields determine the properties of the host that will be spawned.
+"""
+input SpawnHostInput {
+  distroId: String!
+  expiration: Time
+  homeVolumeSize: Int
+  isVirtualWorkStation: Boolean!
+  noExpiration: Boolean!
+  publicKey: PublicKeyInput!
+  region: String!
+  savePublicKey: Boolean!
+  setUpScript: String
+  spawnHostsStartedByTask: Boolean
+  taskId: String
+  taskSync: Boolean
+  useProjectSetupScript: Boolean
+  userDataScript: String
+  useTaskConfig: Boolean
+  volumeId: String
+}
+
+"""
+SpawnVolumeInput is the input to the spawnVolume mutation.
+Its fields determine the properties of the volume that will be spawned.
+"""
+input SpawnVolumeInput {
+  availabilityZone: String!
+  expiration: Time
+  host: String
+  noExpiration: Boolean
+  size: Int!
+  type: String!
+}
+
+"""
+UpdateVolumeInput is the input to the updateVolume mutation.
+Its fields determine how a given volume will be modified.
+"""
+input UpdateVolumeInput {
+  expiration: Time
+  name: String
+  noExpiration: Boolean
+  volumeId: String!
+}
+
+"""
+EditSpawnHostInput is the input to the editSpawnHost mutation.
+Its fields determine how a given host will be modified.
+"""
+input EditSpawnHostInput {
+  addedInstanceTags: [InstanceTagInput!]
+  deletedInstanceTags: [InstanceTagInput!]
+  displayName: String
+  expiration: Time
+  hostId: String!
+  instanceType: String
+  noExpiration: Boolean
+  publicKey: PublicKeyInput
+  savePublicKey: Boolean
+  servicePassword: String
+  volume: String
+}
+
+input InstanceTagInput {
+  key: String!
+  value: String!
+}
+
+

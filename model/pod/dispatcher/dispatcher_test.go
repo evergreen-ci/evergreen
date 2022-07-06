@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -126,7 +127,7 @@ func TestAssignNextTask(t *testing.T) {
 	defer cancel()
 
 	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection, event.AllLogCollection))
+		assert.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection, event.LegacyEventLogCollection))
 	}()
 
 	env := &mock.Environment{}
@@ -410,7 +411,7 @@ func TestAssignNextTask(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			tctx, tcancel := context.WithTimeout(ctx, 10*time.Second)
 			defer tcancel()
-			require.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection, event.AllLogCollection))
+			require.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection, event.LegacyEventLogCollection))
 
 			p := pod.Pod{
 				ID:           utility.RandomString(),
@@ -480,13 +481,27 @@ func TestRemovePod(t *testing.T) {
 				ContainerAllocatedTime: time.Now(),
 			}
 			require.NoError(t, t0.Insert())
+
+			v := model.Version{
+				Id:     "version_id",
+				Status: evergreen.BuildStarted,
+			}
+			require.NoError(t, v.Insert())
+			b := build.Build{
+				Id:      "build_id",
+				Version: v.Id,
+			}
+			require.NoError(t, b.Insert())
 			t1 := task.Task{
-				Id:                     "task_id1",
-				ExecutionPlatform:      task.ExecutionPlatformContainer,
-				Status:                 evergreen.TaskUndispatched,
-				Activated:              true,
-				ContainerAllocated:     true,
-				ContainerAllocatedTime: time.Now(),
+				Id:                          "task_id1",
+				BuildId:                     b.Id,
+				Version:                     v.Id,
+				ExecutionPlatform:           task.ExecutionPlatformContainer,
+				Status:                      evergreen.TaskUndispatched,
+				Activated:                   true,
+				ContainerAllocated:          true,
+				ContainerAllocatedTime:      time.Now(),
+				ContainerAllocationAttempts: 100,
 			}
 			require.NoError(t, t1.Insert())
 
@@ -506,11 +521,24 @@ func TestRemovePod(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbTask0)
 			assert.False(t, dbTask0.ContainerAllocated)
+			assert.True(t, dbTask0.ShouldAllocateContainer(), "task should be able to allocate another container")
 
 			dbTask1, err := task.FindOneId(t1.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask1)
+			assert.False(t, dbTask1.ShouldAllocateContainer(), "task should not be able to allocate another container because it has no remaining attempts")
+			assert.True(t, dbTask1.IsFinished(), "task should be finished because it has used up all of its container allocation attempts")
 			assert.False(t, dbTask1.ContainerAllocated)
+
+			dbBuild, err := build.FindOneId(b.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbBuild)
+			assert.True(t, dbBuild.IsFinished(), "build should be updated after its task is finished")
+
+			dbVersion, err := model.VersionFindOneId(v.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbVersion)
+			assert.Equal(t, evergreen.VersionFailed, dbVersion.Status, "version should be updated after its task is finished")
 		},
 		"FailsWhenPodIsNotInTheDispatcher": func(ctx context.Context, env evergreen.Environment, t *testing.T) {
 			pd := NewPodDispatcher("group_id", []string{"task_id"}, []string{"pod_id"})
@@ -556,7 +584,7 @@ func TestRemovePod(t *testing.T) {
 			tctx, tcancel := context.WithTimeout(ctx, 5*time.Second)
 			defer tcancel()
 
-			require.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection))
+			require.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection, build.Collection, model.VersionCollection))
 
 			tCase(tctx, env, t)
 		})

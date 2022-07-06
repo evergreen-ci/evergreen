@@ -36,7 +36,7 @@ var (
 	ValidProjectsKey         = bsonutil.MustHaveTag(Distro{}, "ValidProjects")
 	IsVirtualWorkstationKey  = bsonutil.MustHaveTag(Distro{}, "IsVirtualWorkstation")
 	IsClusterKey             = bsonutil.MustHaveTag(Distro{}, "IsCluster")
-	IcecreamSettingsKey      = bsonutil.MustHaveTag(Distro{}, "IcecreamSettings")
+	IceCreamSettingsKey      = bsonutil.MustHaveTag(Distro{}, "IceCreamSettings")
 )
 
 var (
@@ -68,8 +68,8 @@ var (
 )
 
 var (
-	IcecreamSettingsSchedulerHostKey = bsonutil.MustHaveTag(IcecreamSettings{}, "SchedulerHost")
-	IcecreamSettingsConfigPathKey    = bsonutil.MustHaveTag(IcecreamSettings{}, "ConfigPath")
+	IceCreamSettingsSchedulerHostKey = bsonutil.MustHaveTag(IceCreamSettings{}, "SchedulerHost")
+	IceCreamSettingsConfigPathKey    = bsonutil.MustHaveTag(IceCreamSettings{}, "ConfigPath")
 )
 
 const Collection = "distro"

@@ -1,0 +1,16 @@
+##### TYPES #####
+type TicketFields {
+  assignedTeam: String
+  assigneeDisplayName: String
+  created: String!
+  resolutionName: String
+  status: JiraStatus!
+  summary: String!
+  updated: String!
+}
+
+type JiraStatus {
+  id: String!
+  name: String!
+}
+

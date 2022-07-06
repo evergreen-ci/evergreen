@@ -1,0 +1,139 @@
+###### INPUTS ######
+"""
+PublicKeyInput is an input to the createPublicKey and updatePublicKey mutations.
+"""
+input PublicKeyInput {
+  key: String!
+  name: String!
+}
+
+"""
+UserSettingsInput is the input to the updateUserSettings mutation.
+It is used to update user information such as GitHub or Slack username.
+"""
+input UserSettingsInput {
+  githubUser: GithubUserInput
+  notifications: NotificationsInput
+  region: String
+  slackUsername: String
+  timezone: String
+  useSpruceOptions: UseSpruceOptionsInput
+}
+
+input GithubUserInput {
+  lastKnownAs: String
+}
+
+input NotificationsInput {
+  buildBreak: String
+  commitQueue: String
+  patchFinish: String
+  patchFirstFailure: String
+  spawnHostExpiration: String
+  spawnHostOutcome: String
+}
+
+input UseSpruceOptionsInput {
+  hasUsedMainlineCommitsBefore: Boolean
+  hasUsedSpruceBefore: Boolean
+  spruceV1: Boolean
+}
+
+"""
+SubscriptionInput is the input to the saveSubscription mutation.
+It stores information about a user's subscription to a version or task. For example, a user
+can have a subscription to send them a Slack message when a version finishes.
+"""
+input SubscriptionInput {
+  id: String
+  owner_type: String
+  owner: String
+  regex_selectors: [SelectorInput!]!
+  resource_type: String
+  selectors: [SelectorInput!]!
+  subscriber: SubscriberInput!
+  trigger_data: StringMap!
+  trigger: String
+}
+
+input SelectorInput {
+  data: String!
+  type: String!
+}
+
+input SubscriberInput {
+  target: String!
+  type: String!
+}
+
+###### TYPES ######
+"""
+User is returned by the user query.
+It contains information about a user's id, name, email, and permissions.
+"""
+type User {
+  displayName: String!
+  emailAddress: String!
+  patches(patchesInput: PatchesInput!): Patches! # user patches
+  permissions: Permissions!
+  userId: String!
+}
+
+"""
+PublicKey models a public key. Users can save/modify/delete their public keys.
+"""
+type PublicKey {
+  key: String!
+  name: String!
+}
+
+"""
+UserConfig is returned by the userConfig query.
+It contains configuration information such as the user's api key for the Evergreen CLI and a user's
+preferred UI (legacy vs Spruce).
+"""
+type UserConfig {
+  api_key: String!
+  api_server_host: String!
+  ui_server_host: String!
+  user: String!
+}
+
+"""
+UserSettings is returned by the userSettings query.
+It contains information about a user's settings, such as their GitHub username or timezone.
+"""
+type UserSettings {
+  githubUser: GithubUser
+  notifications: Notifications
+  region: String
+  slackUsername: String
+  timezone: String
+  useSpruceOptions: UseSpruceOptions
+}
+
+type GithubUser {
+  lastKnownAs: String
+  uid: Int
+}
+
+type Notifications {
+  buildBreak: String
+  commitQueue: String
+  patchFinish: String
+  patchFirstFailure: String
+  spawnHostExpiration: String
+  spawnHostOutcome: String
+}
+
+type UseSpruceOptions {
+  hasUsedMainlineCommitsBefore: Boolean
+  hasUsedSpruceBefore: Boolean
+  spruceV1: Boolean
+}
+
+
+
+
+
+

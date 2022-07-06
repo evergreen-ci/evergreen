@@ -14,12 +14,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-const (
-	EventResourceTypeProject = "PROJECT"
-	EventTypeProjectModified = "PROJECT_MODIFIED"
-	EventTypeProjectAdded    = "PROJECT_ADDED"
-)
-
 type ProjectSettings struct {
 	ProjectRef         ProjectRef           `bson:"proj_ref" json:"proj_ref"`
 	GithubHooksEnabled bool                 `bson:"github_hooks_enabled" json:"github_hooks_enabled"`
@@ -73,6 +67,7 @@ func (e *ProjectChangeEventEntry) SetBSON(raw mgobson.Raw) error {
 	}
 
 	// IDs for events were ObjectIDs previously, so we need to do this
+	// TODO (EVG-17214): Remove once old events are TTLed and/or migrated.
 	switch v := temp.ID.(type) {
 	case string:
 		e.ID = v
@@ -94,18 +89,18 @@ func (e *ProjectChangeEventEntry) SetBSON(raw mgobson.Raw) error {
 
 // Project Events queries
 func MostRecentProjectEvents(id string, n int) (ProjectChangeEvents, error) {
-	filter := event.ResourceTypeKeyIs(EventResourceTypeProject)
+	filter := event.ResourceTypeKeyIs(event.EventResourceTypeProject)
 	filter[event.ResourceIdKey] = id
 
 	query := db.Query(filter).Sort([]string{"-" + event.TimestampKey}).Limit(n)
 	events := ProjectChangeEvents{}
-	err := db.FindAllQ(event.AllLogCollection, query, &events)
+	err := db.FindAllQ(event.LegacyEventLogCollection, query, &events)
 
 	return events, err
 }
 
 func ProjectEventsBefore(id string, before time.Time, n int) (ProjectChangeEvents, error) {
-	filter := event.ResourceTypeKeyIs(EventResourceTypeProject)
+	filter := event.ResourceTypeKeyIs(event.EventResourceTypeProject)
 	filter[event.ResourceIdKey] = id
 	filter[event.TimestampKey] = bson.M{
 		"$lt": before,
@@ -113,7 +108,7 @@ func ProjectEventsBefore(id string, before time.Time, n int) (ProjectChangeEvent
 
 	query := db.Query(filter).Sort([]string{"-" + event.TimestampKey}).Limit(n)
 	events := ProjectChangeEvents{}
-	err := db.FindAllQ(event.AllLogCollection, query, &events)
+	err := db.FindAllQ(event.LegacyEventLogCollection, query, &events)
 
 	return events, err
 }
@@ -121,16 +116,15 @@ func ProjectEventsBefore(id string, before time.Time, n int) (ProjectChangeEvent
 func LogProjectEvent(eventType string, projectId string, eventData ProjectChangeEvent) error {
 	projectEvent := event.EventLogEntry{
 		Timestamp:    time.Now(),
-		ResourceType: EventResourceTypeProject,
+		ResourceType: event.EventResourceTypeProject,
 		EventType:    eventType,
 		ResourceId:   projectId,
 		Data:         eventData,
 	}
 
-	logger := event.NewDBEventLogger(event.AllLogCollection)
-	if err := logger.LogEvent(&projectEvent); err != nil {
+	if err := projectEvent.Log(); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
-			"resource_type": EventResourceTypeProject,
+			"resource_type": event.EventResourceTypeProject,
 			"message":       "error logging event",
 			"source":        "event-log-fail",
 			"projectId":     projectId,
@@ -142,7 +136,7 @@ func LogProjectEvent(eventType string, projectId string, eventData ProjectChange
 }
 
 func LogProjectAdded(projectId, username string) error {
-	return LogProjectEvent(EventTypeProjectAdded, projectId, ProjectChangeEvent{User: username})
+	return LogProjectEvent(event.EventTypeProjectAdded, projectId, ProjectChangeEvent{User: username})
 }
 
 func GetAndLogProjectModified(id, userId string, isRepo bool, before *ProjectSettings) error {
@@ -167,5 +161,5 @@ func LogProjectModified(projectId, username string, before, after *ProjectSettin
 		Before: *before,
 		After:  *after,
 	}
-	return LogProjectEvent(EventTypeProjectModified, projectId, eventData)
+	return LogProjectEvent(event.EventTypeProjectModified, projectId, eventData)
 }

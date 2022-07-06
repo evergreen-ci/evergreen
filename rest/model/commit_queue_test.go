@@ -32,7 +32,7 @@ func TestCommitQueueBuildFromService(t *testing.T) {
 	}
 
 	cqAPI := APICommitQueue{}
-	assert.NoError(cqAPI.BuildFromService(cq))
+	cqAPI.BuildFromService(cq)
 	assert.Equal(cq.ProjectID, utility.FromStringPtr(cqAPI.ProjectID))
 	assert.Equal(len(cqAPI.Queue), len(cq.Queue))
 	for i := range cq.Queue {

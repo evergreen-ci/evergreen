@@ -54,7 +54,6 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	editDistroSettings := RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsEdit)
 	removeDistroSettings := RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsAdmin)
 	editHosts := RequiresDistroPermission(evergreen.PermissionHosts, evergreen.HostsEdit)
-	cedarTestStats := checkCedarTestStats(settings)
 
 	app.AddWrapper(gimlet.WrapperMiddleware(allowCORS))
 
@@ -148,6 +147,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/patches/{patch_id}/merge_patch").Version(2).Put().Wrap(requireUser, addProject, submitPatches, requireCommitQueueItemOwner).RouteHandler(makeMergePatch())
 	app.AddRoute("/pods/{pod_id}/agent/setup").Version(2).Get().Wrap(requirePod).RouteHandler(makePodAgentSetup(env.Settings()))
 	app.AddRoute("/pods/{pod_id}/agent/next_task").Version(2).Get().Wrap(requirePod).RouteHandler(makePodAgentNextTask(env))
+	app.AddRoute("/pods/{pod_id}/task/{task_id}/end").Version(2).Post().Wrap(requirePod, requireTask).RouteHandler(makePodAgentEndTask(env))
 	app.AddRoute("/pods").Version(2).Post().Wrap(adminSettings).RouteHandler(makePostPod(env))
 	app.AddRoute("/pods/{pod_id}").Version(2).Get().Wrap(adminSettings).RouteHandler(makeGetPod(env))
 	app.AddRoute("/pods/{pod_id}/provisioning_script").Version(2).Get().Wrap(requirePod).RouteHandler(makePodProvisioningScript(env.Settings()))
@@ -168,7 +168,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/projects/{project_id}/revisions/{commit_hash}/tasks").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeTasksByProjectAndCommitHandler(opts.URL))
 	app.AddRoute("/projects/{project_id}/task_reliability").Version(2).Get().Wrap(requireUser).RouteHandler(makeGetProjectTaskReliability(opts.URL))
 	app.AddRoute("/projects/{project_id}/task_stats").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetProjectTaskStats(opts.URL))
-	app.AddRoute("/projects/{project_id}/test_stats").Version(2).Get().Wrap(requireUser, viewTasks, cedarTestStats).RouteHandler(makeGetProjectTestStats(opts.URL, env.Settings().Presto.DB()))
+	app.AddRoute("/projects/{project_id}/test_stats").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetProjectTestStats(opts.URL, env.Settings().Presto.DB()))
 	app.AddRoute("/projects/{project_id}/versions").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetProjectVersionsHandler(opts.URL))
 	app.AddRoute("/projects/{project_id}/tasks/{task_name}").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetProjectTasksHandler(opts.URL))
 	app.AddRoute("/projects/{project_id}/patch_trigger_aliases").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeFetchPatchTriggerAliases())
@@ -218,6 +218,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/users/permissions").Version(2).Get().Wrap(requireUser).RouteHandler(makeGetAllUsersPermissions(evergreen.GetEnvironment().RoleManager()))
 	app.AddRoute("/versions").Version(2).Put().Wrap(requireUser).RouteHandler(makeVersionCreateHandler())
 	app.AddRoute("/versions/{version_id}").Version(2).Get().Wrap(viewTasks).RouteHandler(makeGetVersionByID())
+	app.AddRoute("/versions/{version_id}").Version(2).Patch().Wrap(requireUser, editTasks).RouteHandler(makePatchVersion())
 	app.AddRoute("/versions/{version_id}/abort").Version(2).Post().Wrap(requireUser, editTasks).RouteHandler(makeAbortVersion())
 	app.AddRoute("/versions/{version_id}/builds").Version(2).Get().Wrap(viewTasks).RouteHandler(makeGetVersionBuilds())
 	app.AddRoute("/versions/{version_id}/restart").Version(2).Post().Wrap(requireUser, editTasks).RouteHandler(makeRestartVersion())

@@ -28,14 +28,13 @@ func TestDistroBuildFromService(t *testing.T) {
 		HomeVolumeSettings: distro.HomeVolumeSettings{
 			FormatCommand: "format_command",
 		},
-		IcecreamSettings: distro.IcecreamSettings{
+		IceCreamSettings: distro.IceCreamSettings{
 			SchedulerHost: "host",
 			ConfigPath:    "config_path",
 		},
 	}
 	apiDistro := &APIDistro{}
-	err := apiDistro.BuildFromService(d)
-	require.NoError(t, err)
+	apiDistro.BuildFromService(d)
 	assert.Equal(t, utility.FromStringPtr(apiDistro.Name), d.Id)
 	assert.Equal(t, d.BootstrapSettings.Method, utility.FromStringPtr(apiDistro.BootstrapSettings.Method))
 	assert.Equal(t, d.BootstrapSettings.Communication, utility.FromStringPtr(apiDistro.BootstrapSettings.Communication))
@@ -46,8 +45,8 @@ func TestDistroBuildFromService(t *testing.T) {
 	assert.Equal(t, d.BootstrapSettings.ShellPath, utility.FromStringPtr(apiDistro.BootstrapSettings.ShellPath))
 	assert.Equal(t, d.Note, utility.FromStringPtr(apiDistro.Note))
 	assert.Equal(t, d.HomeVolumeSettings.FormatCommand, utility.FromStringPtr(apiDistro.HomeVolumeSettings.FormatCommand))
-	assert.Equal(t, d.IcecreamSettings.SchedulerHost, utility.FromStringPtr(apiDistro.IcecreamSettings.SchedulerHost))
-	assert.Equal(t, d.IcecreamSettings.ConfigPath, utility.FromStringPtr(apiDistro.IcecreamSettings.ConfigPath))
+	assert.Equal(t, d.IceCreamSettings.SchedulerHost, utility.FromStringPtr(apiDistro.IcecreamSettings.SchedulerHost))
+	assert.Equal(t, d.IceCreamSettings.ConfigPath, utility.FromStringPtr(apiDistro.IcecreamSettings.ConfigPath))
 }
 
 func TestDistroBuildFromServiceDefaults(t *testing.T) {
@@ -56,7 +55,7 @@ func TestDistroBuildFromServiceDefaults(t *testing.T) {
 	}
 
 	apiDistro := &APIDistro{}
-	require.NoError(t, apiDistro.BuildFromService(d))
+	apiDistro.BuildFromService(d)
 
 	assert.Equal(t, distro.BootstrapMethodLegacySSH, utility.FromStringPtr(apiDistro.BootstrapSettings.Method))
 	assert.Equal(t, distro.CommunicationMethodLegacySSH, utility.FromStringPtr(apiDistro.BootstrapSettings.Method))
@@ -94,17 +93,13 @@ func TestDistroToService(t *testing.T) {
 		HomeVolumeSettings: APIHomeVolumeSettings{
 			FormatCommand: utility.ToStringPtr("format_command"),
 		},
-		IcecreamSettings: APIIcecreamSettings{
+		IcecreamSettings: APIIceCreamSettings{
 			SchedulerHost: utility.ToStringPtr("host"),
 			ConfigPath:    utility.ToStringPtr("config_path"),
 		},
 	}
 
-	res, err := apiDistro.ToService()
-	require.NoError(t, err)
-
-	d, ok := res.(*distro.Distro)
-	require.True(t, ok)
+	d := apiDistro.ToService()
 
 	assert.Equal(t, utility.FromStringPtr(apiDistro.CloneMethod), d.CloneMethod)
 	assert.Equal(t, utility.FromStringPtr(apiDistro.BootstrapSettings.Method), d.BootstrapSettings.Method)
@@ -127,8 +122,8 @@ func TestDistroToService(t *testing.T) {
 	assert.Equal(t, utility.FromStringPtr(apiDistro.BootstrapSettings.PreconditionScripts[0].Script), d.BootstrapSettings.PreconditionScripts[0].Script)
 	assert.Equal(t, utility.FromStringPtr(apiDistro.Note), (d.Note))
 	assert.Equal(t, utility.FromStringPtr(apiDistro.HomeVolumeSettings.FormatCommand), d.HomeVolumeSettings.FormatCommand)
-	assert.Equal(t, utility.FromStringPtr(apiDistro.IcecreamSettings.SchedulerHost), d.IcecreamSettings.SchedulerHost)
-	assert.Equal(t, utility.FromStringPtr(apiDistro.IcecreamSettings.ConfigPath), d.IcecreamSettings.ConfigPath)
+	assert.Equal(t, utility.FromStringPtr(apiDistro.IcecreamSettings.SchedulerHost), d.IceCreamSettings.SchedulerHost)
+	assert.Equal(t, utility.FromStringPtr(apiDistro.IcecreamSettings.ConfigPath), d.IceCreamSettings.ConfigPath)
 }
 
 func TestDistroToServiceDefaults(t *testing.T) {
@@ -136,11 +131,7 @@ func TestDistroToServiceDefaults(t *testing.T) {
 		Name: utility.ToStringPtr("id"),
 	}
 
-	res, err := apiDistro.ToService()
-	require.NoError(t, err)
-
-	d, ok := res.(*distro.Distro)
-	require.True(t, ok)
+	d := apiDistro.ToService()
 
 	assert.Equal(t, distro.CloneMethodLegacySSH, d.CloneMethod)
 	assert.Equal(t, distro.BootstrapMethodLegacySSH, d.BootstrapSettings.Method)
@@ -156,8 +147,7 @@ func TestDistroAMIForEC2(t *testing.T) {
 	}
 
 	apiDistro := &APIDistro{}
-	err := apiDistro.BuildFromService(d)
-	assert.Nil(t, err)
+	apiDistro.BuildFromService(d)
 	require.Len(t, apiDistro.ProviderSettingsList, 1)
 	assert.Equal(t, "ami-000000", apiDistro.ProviderSettingsList[0].Lookup("ami").StringValue())
 }

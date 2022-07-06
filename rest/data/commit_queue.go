@@ -178,12 +178,7 @@ func EnqueueItem(projectID string, item restModel.APICommitQueueItem, enqueueNex
 		return 0, errors.Errorf("commit queue not found for project '%s'", projectID)
 	}
 
-	itemInterface, err := item.ToService()
-	if err != nil {
-		return 0, errors.Wrap(err, "commit queue item cannot be converted to service model")
-	}
-
-	itemService := itemInterface.(commitqueue.CommitQueueItem)
+	itemService := item.ToService()
 	if enqueueNext {
 		var position int
 		position, err = q.EnqueueAtFront(itemService)
@@ -215,10 +210,7 @@ func FindCommitQueueForProject(name string) (*restModel.APICommitQueue, error) {
 	}
 
 	apiCommitQueue := &restModel.APICommitQueue{}
-	if err = apiCommitQueue.BuildFromService(*cqService); err != nil {
-		return nil, errors.Wrap(err, "converting commit queue into API model")
-	}
-
+	apiCommitQueue.BuildFromService(*cqService)
 	return apiCommitQueue, nil
 }
 
@@ -246,9 +238,7 @@ func CommitQueueRemoveItem(identifier, issue, user string) (*restModel.APICommit
 		return nil, errors.Errorf("item '%s' not found in commit queue", issue)
 	}
 	apiRemovedItem := restModel.APICommitQueueItem{}
-	if err = apiRemovedItem.BuildFromService(*removed); err != nil {
-		return nil, errors.Wrap(err, "converting commit queue into API model")
-	}
+	apiRemovedItem.BuildFromService(*removed)
 	return &apiRemovedItem, nil
 }
 

@@ -203,8 +203,9 @@ type Task struct {
 	// ResetWhenFinished indicates that a task should be reset once it is
 	// finished running. This is typically to deal with tasks that should be
 	// reset but cannot do so yet because they're currently running.
-	ResetWhenFinished bool  `bson:"reset_when_finished,omitempty" json:"reset_when_finished,omitempty"`
-	DisplayTask       *Task `bson:"-" json:"-"` // this is a local pointer from an exec to display task
+	ResetWhenFinished       bool  `bson:"reset_when_finished,omitempty" json:"reset_when_finished,omitempty"`
+	ResetFailedWhenFinished bool  `bson:"reset_failed_when_finished,omitempty" json:"reset_failed_when_finished,omitempty"`
+	DisplayTask             *Task `bson:"-" json:"-"` // this is a local pointer from an exec to display task
 
 	// DisplayTaskId is set to the display task ID if the task is an execution task, the empty string if it's not an execution task,
 	// and is nil if we haven't yet checked whether or not this task has a display task.
@@ -994,6 +995,37 @@ func (t *Task) cacheExpectedDuration() error {
 	)
 }
 
+// MarkAsContainerDispatched marks that the container task has been dispatched
+// to a pod.
+func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Environment, agentVersion string) error {
+	dispatchedAt := time.Now()
+	query := isContainerTaskScheduledQuery()
+	query[StatusKey] = evergreen.TaskUndispatched
+	query[ContainerAllocatedKey] = true
+	update := bson.M{
+		"$set": bson.M{
+			StatusKey:        evergreen.TaskDispatched,
+			DispatchTimeKey:  dispatchedAt,
+			LastHeartbeatKey: dispatchedAt,
+			AgentVersionKey:  agentVersion,
+		},
+	}
+	res, err := env.DB().Collection(Collection).UpdateOne(ctx, query, update)
+	if err != nil {
+		return errors.Wrap(err, "updating task")
+	}
+	if res.ModifiedCount == 0 {
+		return errors.New("task was not updated")
+	}
+
+	t.Status = evergreen.TaskDispatched
+	t.DispatchTime = dispatchedAt
+	t.LastHeartbeat = dispatchedAt
+	t.AgentVersion = agentVersion
+
+	return nil
+}
+
 // MarkAsHostDispatched marks that the task has been dispatched onto a
 // particular host. If the task is part of a display task, the display task is
 // also marked as dispatched to a host. Returns an error if any of the database
@@ -1142,9 +1174,9 @@ func (t *Task) MarkAsContainerDeallocated(ctx context.Context, env evergreen.Env
 	return nil
 }
 
-// MarkManyContainerDeallocated marks multiple container tasks as no longer
+// MarkTasksAsContainerDeallocated marks multiple container tasks as no longer
 // allocated containers.
-func MarkManyContainerDeallocated(taskIDs []string) error {
+func MarkTasksAsContainerDeallocated(taskIDs []string) error {
 	if len(taskIDs) == 0 {
 		return nil
 	}
@@ -1155,37 +1187,6 @@ func MarkManyContainerDeallocated(taskIDs []string) error {
 	}, containerDeallocatedUpdate()); err != nil {
 		return errors.Wrap(err, "updating tasks")
 	}
-
-	return nil
-}
-
-// MarkAsContainerDispatched marks that the container task has been dispatched
-// to a pod.
-func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Environment, agentVersion string) error {
-	dispatchedAt := time.Now()
-	query := isContainerTaskScheduledQuery()
-	query[StatusKey] = evergreen.TaskUndispatched
-	query[ContainerAllocatedKey] = true
-	update := bson.M{
-		"$set": bson.M{
-			StatusKey:        evergreen.TaskDispatched,
-			DispatchTimeKey:  dispatchedAt,
-			LastHeartbeatKey: dispatchedAt,
-			AgentVersionKey:  agentVersion,
-		},
-	}
-	res, err := env.DB().Collection(Collection).UpdateOne(ctx, query, update)
-	if err != nil {
-		return errors.Wrap(err, "updating task")
-	}
-	if res.ModifiedCount == 0 {
-		return errors.New("task was not updated")
-	}
-
-	t.Status = evergreen.TaskDispatched
-	t.DispatchTime = dispatchedAt
-	t.LastHeartbeat = dispatchedAt
-	t.AgentVersion = agentVersion
 
 	return nil
 }
@@ -1838,6 +1839,13 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 		"details":   t.Details,
 	})
 	if detail.Status == "" {
+		grip.Debug(message.Fields{
+			"message":   "detail status was empty, setting to failed",
+			"task_id":   t.Id,
+			"execution": t.Execution,
+			"project":   t.Project,
+			"details":   t.Details,
+		})
 		detail.Status = evergreen.TaskFailed
 	}
 	// record that the task has finished, in memory and in the db
@@ -1984,6 +1992,7 @@ func resetTaskUpdate(t *Task) bson.M {
 		t.Details = apimodels.TaskEndDetail{}
 		t.HasCedarResults = false
 		t.ResetWhenFinished = false
+		t.ResetFailedWhenFinished = false
 		t.AgentVersion = ""
 		t.HostCreateDetails = []HostCreateDetail{}
 		t.OverrideDependencies = false
@@ -2005,14 +2014,15 @@ func resetTaskUpdate(t *Task) bson.M {
 			ContainerAllocationAttemptsKey: 0,
 		},
 		"$unset": bson.M{
-			DetailsKey:              "",
-			HasCedarResultsKey:      "",
-			CedarResultsFailedKey:   "",
-			ResetWhenFinishedKey:    "",
-			AgentVersionKey:         "",
-			HostIdKey:               "",
-			HostCreateDetailsKey:    "",
-			OverrideDependenciesKey: "",
+			DetailsKey:                 "",
+			HasCedarResultsKey:         "",
+			CedarResultsFailedKey:      "",
+			ResetWhenFinishedKey:       "",
+			ResetFailedWhenFinishedKey: "",
+			AgentVersionKey:            "",
+			HostIdKey:                  "",
+			HostCreateDetailsKey:       "",
+			OverrideDependenciesKey:    "",
 		},
 	}
 	return update
@@ -2690,6 +2700,9 @@ func (t *Task) populateTestResultsForDisplayTask() error {
 // SetResetWhenFinished requests that a display task or single-host task group
 // reset itself when finished. Will mark itself as system failed.
 func (t *Task) SetResetWhenFinished() error {
+	if t.ResetWhenFinished {
+		return nil
+	}
 	t.ResetWhenFinished = true
 	return UpdateOne(
 		bson.M{
@@ -2698,6 +2711,25 @@ func (t *Task) SetResetWhenFinished() error {
 		bson.M{
 			"$set": bson.M{
 				ResetWhenFinishedKey: true,
+			},
+		},
+	)
+}
+
+// SetResetFailedWhenFinished requests that a display task
+// only restarts failed tasks.
+func (t *Task) SetResetFailedWhenFinished() error {
+	if t.ResetFailedWhenFinished {
+		return nil
+	}
+	t.ResetFailedWhenFinished = true
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				ResetFailedWhenFinishedKey: true,
 			},
 		},
 	)

@@ -89,6 +89,7 @@ func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo T
 
 	cookieStore := sessions.NewCookieStore([]byte(settings.Ui.Secret))
 	cookieStore.Options.HttpOnly = true
+	cookieStore.Options.Secure = true
 
 	uis := &UIServer{
 		Settings:     *settings,
@@ -318,9 +319,6 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	// Performance Discovery pages
 	app.AddRoute("/perfdiscovery/").Wrap(needsLogin, needsContext).Handler(uis.perfdiscoveryPage).Get()
 	app.AddRoute("/perfdiscovery/{project_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.perfdiscoveryPage).Get()
-
-	// Signal Processing page (UI-routing enabled for this route)
-	app.AddRoute("/perf-bb/{_}/{project_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.signalProcessingPage).Get()
 
 	// Test Logs
 	app.AddRoute("/test_log/{log_id}").Wrap(needsContext, allowsCORS).Handler(uis.testLog).Get()

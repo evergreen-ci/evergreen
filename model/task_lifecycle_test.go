@@ -733,7 +733,7 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 }
 
 func TestUpdateBuildStatusForTaskReset(t *testing.T) {
-	require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.AllLogCollection))
+	require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.LegacyEventLogCollection))
 	displayName := "testName"
 	b := &build.Build{
 		Id:        "buildtest",
@@ -785,7 +785,7 @@ func TestUpdateBuildStatusForTaskReset(t *testing.T) {
 }
 
 func TestUpdateVersionStatusForGithubChecks(t *testing.T) {
-	require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.AllLogCollection))
+	require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.LegacyEventLogCollection))
 	b1 := build.Build{
 		Id:                "b1",
 		Status:            evergreen.BuildStarted,
@@ -821,7 +821,7 @@ func TestUpdateVersionStatusForGithubChecks(t *testing.T) {
 }
 
 func TestUpdateBuildAndVersionStatusForTaskAbort(t *testing.T) {
-	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection, event.AllLogCollection))
+	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection, event.LegacyEventLogCollection))
 	displayName := "testName"
 	b1 := &build.Build{
 		Id:        "buildtest1",
@@ -995,7 +995,7 @@ func TestGetVersionStatus(t *testing.T) {
 }
 
 func TestUpdateVersionGithubStatus(t *testing.T) {
-	require.NoError(t, db.ClearCollections(VersionCollection, event.AllLogCollection))
+	require.NoError(t, db.ClearCollections(VersionCollection, event.LegacyEventLogCollection))
 	versionID := "v1"
 	v := &Version{Id: versionID}
 	require.NoError(t, v.Insert())
@@ -1013,7 +1013,7 @@ func TestUpdateVersionGithubStatus(t *testing.T) {
 }
 
 func TestUpdateBuildGithubStatus(t *testing.T) {
-	require.NoError(t, db.ClearCollections(build.Collection, event.AllLogCollection))
+	require.NoError(t, db.ClearCollections(build.Collection, event.LegacyEventLogCollection))
 	buildID := "b1"
 	b := &build.Build{Id: buildID}
 	require.NoError(t, b.Insert())
@@ -3008,7 +3008,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	require.NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.AllLogCollection, ProjectRefCollection))
+	require.NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.LegacyEventLogCollection, ProjectRefCollection))
 
 	projRef := &ProjectRef{
 		Id: "sample",
@@ -3146,7 +3146,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 	assert := assert.New(t)
 	require := require.New(t)
 
-	require.NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.AllLogCollection))
+	require.NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.LegacyEventLogCollection))
 	v := &Version{
 		Id:        "sample_version",
 		Requester: evergreen.RepotrackerVersionRequester,
@@ -3217,7 +3217,7 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	require.NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.AllLogCollection))
+	require.NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.LegacyEventLogCollection))
 
 	v := &Version{
 		Id:        "sample_version",
@@ -3348,6 +3348,117 @@ func TestClearAndResetStaleStrandedHostTask(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(evergreen.TaskFailed, runningTask.Status)
 	assert.Equal("system", runningTask.Details.Type)
+}
+
+func TestMarkUnallocatableContainerTasksSystemFailed(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.LegacyEventLogCollection))
+	}()
+	for tName, tCase := range map[string]func(t *testing.T, tsk task.Task, b build.Build, v Version){
+		"SystemFailsTaskWithNoRemainingAllocationAttempts": func(t *testing.T, tsk task.Task, b build.Build, v Version) {
+			require.NoError(t, tsk.Insert())
+			require.NoError(t, MarkUnallocatableContainerTasksSystemFailed([]string{tsk.Id}))
+
+			dbTask, err := task.FindOneId(tsk.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.True(t, dbTask.IsFinished(), "task that has used up its container allocation attempts should be finished")
+
+			dbBuild, err := build.FindOneId(b.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbBuild)
+			assert.True(t, dbBuild.IsFinished(), "build with finished task should have updated status")
+
+			dbVersion, err := VersionFindOneId(v.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbVersion)
+			assert.Equal(t, evergreen.VersionFailed, dbVersion.Status, "version with finished task should have updated status")
+		},
+		"NoopsWithTaskThatHasRemainingAllocationAttempts": func(t *testing.T, tsk task.Task, b build.Build, v Version) {
+			tsk.ContainerAllocationAttempts = 0
+			require.NoError(t, tsk.Insert())
+			require.NoError(t, MarkUnallocatableContainerTasksSystemFailed([]string{tsk.Id}))
+
+			dbTask, err := task.FindOneId(tsk.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.False(t, dbTask.IsFinished(), "task with remaining container allocation attempts should not be finished")
+
+			dbBuild, err := build.FindOneId(b.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbBuild)
+			assert.Equal(t, b.Status, dbBuild.Status, "build status should not be changed because task should not be finished")
+
+			dbVersion, err := VersionFindOneId(v.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbVersion)
+			assert.Equal(t, v.Status, dbVersion.Status, "version status should not be changed because task should not be finished")
+		},
+		"SystemFailsSubsetOfTasksWithNoRemainingAllocationAttempts": func(t *testing.T, tsk0 task.Task, b build.Build, v Version) {
+			require.NoError(t, tsk0.Insert())
+			tsk1 := tsk0
+			tsk1.Id = "other_task_id"
+			tsk1.ContainerAllocationAttempts = 0
+			require.NoError(t, tsk1.Insert())
+
+			require.NoError(t, MarkUnallocatableContainerTasksSystemFailed([]string{tsk0.Id, tsk1.Id}))
+
+			dbTask0, err := task.FindOneId(tsk0.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask0)
+			assert.True(t, dbTask0.IsFinished())
+
+			dbTask1, err := task.FindOneId(tsk1.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask1)
+			assert.False(t, dbTask1.IsFinished())
+		},
+		"NoopsWithHostTask": func(t *testing.T, tsk task.Task, b build.Build, v Version) {
+			tsk.ExecutionPlatform = task.ExecutionPlatformHost
+			require.NoError(t, tsk.Insert())
+
+			require.NoError(t, MarkUnallocatableContainerTasksSystemFailed([]string{tsk.Id}))
+
+			dbTask, err := task.FindOneId(tsk.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.False(t, dbTask.IsFinished())
+		},
+		"NoopsWithNonexistentTasks": func(t *testing.T, tsk task.Task, b build.Build, v Version) {
+			require.NoError(t, MarkUnallocatableContainerTasksSystemFailed([]string{tsk.Id}))
+
+			dbTask, err := task.FindOneId(tsk.Id)
+			assert.NoError(t, err)
+			assert.Zero(t, dbTask)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.LegacyEventLogCollection))
+			v := Version{
+				Id:     "version_id",
+				Status: evergreen.VersionStarted,
+			}
+			require.NoError(t, v.Insert())
+			b := build.Build{
+				Id:      "build_id",
+				Version: v.Id,
+				Status:  evergreen.BuildStarted,
+			}
+			require.NoError(t, b.Insert())
+			tsk := task.Task{
+				Id:                          "task_id",
+				Execution:                   1,
+				BuildId:                     b.Id,
+				Version:                     v.Id,
+				Status:                      evergreen.TaskUndispatched,
+				ExecutionPlatform:           task.ExecutionPlatformContainer,
+				Activated:                   true,
+				ContainerAllocated:          true,
+				ContainerAllocationAttempts: 100,
+			}
+			tCase(t, tsk, b, v)
+		})
+	}
 }
 
 func TestClearAndResetExecTask(t *testing.T) {
@@ -3639,7 +3750,7 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 }
 
 func TestMarkEndWithNoResults(t *testing.T) {
-	require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.AllLogCollection, testresult.Collection))
+	require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.LegacyEventLogCollection, testresult.Collection))
 	testTask1 := task.Task{
 		Id:              "t1",
 		Status:          evergreen.TaskStarted,
@@ -3697,7 +3808,7 @@ func TestMarkEndWithNoResults(t *testing.T) {
 }
 
 func TestDisplayTaskUpdates(t *testing.T) {
-	require.NoError(t, db.ClearCollections(task.Collection, event.AllLogCollection))
+	require.NoError(t, db.ClearCollections(task.Collection, event.LegacyEventLogCollection))
 	assert := assert.New(t)
 	dt := task.Task{
 		Id:          "dt",
@@ -3723,6 +3834,17 @@ func TestDisplayTaskUpdates(t *testing.T) {
 		},
 	}
 	assert.NoError(dt2.Insert())
+	dt3 := task.Task{
+		Id:          "dt3",
+		DisplayOnly: true,
+		Status:      evergreen.TaskUndispatched,
+		Activated:   false,
+		ExecutionTasks: []string{
+			"task11",
+			"task12",
+		},
+	}
+	assert.NoError(dt3.Insert())
 	blockedDt := task.Task{
 		Id:          "blockedDt",
 		DisplayOnly: true,
@@ -3811,6 +3933,19 @@ func TestDisplayTaskUpdates(t *testing.T) {
 		Status:    evergreen.TaskUndispatched,
 	}
 	assert.NoError(task10.Insert())
+	task11 := task.Task{
+		Id:        "task11",
+		Activated: true,
+		StartTime: time.Time{},
+	}
+	task12 := task.Task{
+		Id:         "task12",
+		Activated:  true,
+		StartTime:  time.Date(2000, 0, 0, 0, 44, 0, 0, time.Local),
+		FinishTime: time.Date(2000, 0, 0, 1, 0, 1, 0, time.Local),
+	}
+	assert.NoError(task11.Insert())
+	assert.NoError(task12.Insert())
 
 	// test that updating the status + activated from execution tasks works
 	assert.NoError(UpdateDisplayTaskForTask(&task1))
@@ -3836,10 +3971,10 @@ func TestDisplayTaskUpdates(t *testing.T) {
 	assert.Zero(dbTask.FinishTime)
 
 	// check that the updates above logged an event for the first one
-	events, err := event.Find(event.AllLogCollection, event.TaskEventsForId(dt.Id))
+	events, err := event.Find(event.TaskEventsForId(dt.Id))
 	assert.NoError(err)
 	assert.Len(events, 1)
-	events, err = event.Find(event.AllLogCollection, event.TaskEventsForId(dt2.Id))
+	events, err = event.Find(event.TaskEventsForId(dt2.Id))
 	assert.NoError(err)
 	assert.Len(events, 0)
 
@@ -3857,10 +3992,17 @@ func TestDisplayTaskUpdates(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(dbTask)
 	assert.Equal(evergreen.TaskFailed, dbTask.Status)
+
+	// a display task should not set its start time to any exec tasks that have zero start time
+	assert.NoError(UpdateDisplayTaskForTask(&task11))
+	dbTask, err = task.FindOne(db.Query(task.ById(dt3.Id)))
+	assert.NoError(err)
+	assert.NotNil(dbTask)
+	assert.Equal(task12.StartTime, dbTask.StartTime)
 }
 
 func TestDisplayTaskUpdateNoUndispatched(t *testing.T) {
-	require.NoError(t, db.ClearCollections(task.Collection, event.AllLogCollection))
+	require.NoError(t, db.ClearCollections(task.Collection, event.LegacyEventLogCollection))
 	assert := assert.New(t)
 	dt := task.Task{
 		Id:          "dt",
@@ -3899,7 +4041,7 @@ func TestDisplayTaskUpdateNoUndispatched(t *testing.T) {
 	assert.NotNil(dbTask)
 	assert.Equal(evergreen.TaskStarted, dbTask.Status)
 
-	events, err := event.Find(event.AllLogCollection, event.TaskEventsForId(dt.Id))
+	events, err := event.Find(event.TaskEventsForId(dt.Id))
 	assert.NoError(err)
 	assert.Len(events, 0)
 }
@@ -4302,7 +4444,7 @@ tasks:
 }
 
 func TestEvalStepbackTaskGroup(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(task.Collection, VersionCollection, build.Collection, event.AllLogCollection))
+	assert.NoError(t, db.ClearCollections(task.Collection, VersionCollection, build.Collection, event.LegacyEventLogCollection))
 	yml := `
 stepback: true
 `
@@ -4455,7 +4597,7 @@ stepback: true
 
 func TestUpdateBlockedDependencies(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(task.Collection, build.Collection, event.AllLogCollection))
+	assert.NoError(db.ClearCollections(task.Collection, build.Collection, event.LegacyEventLogCollection))
 
 	b := build.Build{Id: "build0"}
 	tasks := []task.Task{
@@ -4573,7 +4715,7 @@ func TestUpdateBlockedDependencies(t *testing.T) {
 	assert.True(dbExecTask.DependsOn[0].Unattainable)
 
 	// one event inserted for every updated task
-	events, err := event.Find(event.AllLogCollection, db.Q{})
+	events, err := event.Find(db.Q{})
 	assert.NoError(err)
 	assert.Len(events, 4)
 

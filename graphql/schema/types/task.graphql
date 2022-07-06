@@ -1,0 +1,206 @@
+enum TestSortCategory {
+  BASE_STATUS
+  STATUS
+  START_TIME
+  DURATION
+  TEST_NAME
+}
+
+###### INPUTS ######
+"""
+TestFilter is an input value for the taskTestSample query.
+It's used to filter for tests with testName and status testStatus.
+"""
+input TestFilter {
+  testName: String!
+  testStatus: String!
+}
+
+###### TYPES ######
+"""
+Task models a task, the simplest unit of execution for Evergreen.
+"""
+type Task {
+  id: String!
+  aborted: Boolean!
+  abortInfo: AbortInfo
+  activated: Boolean!
+  activatedBy: String
+  activatedTime: Time
+  ami: String
+  annotation: Annotation
+  baseStatus: String
+  baseTask: Task
+  blocked: Boolean!
+  buildId: String!
+  buildVariant: String!
+  buildVariantDisplayName: String
+  canAbort: Boolean!
+  canModifyAnnotation: Boolean!
+  canOverrideDependencies: Boolean!
+  canRestart: Boolean!
+  canSchedule: Boolean!
+  canSetPriority: Boolean!
+  canSync: Boolean!
+  canUnschedule: Boolean!
+  containerAllocatedTime: Time
+  createTime: Time
+  dependsOn: [Dependency!]
+  details: TaskEndDetail
+  dispatchTime: Time
+  displayName: String!
+  displayOnly: Boolean
+  displayTask: Task
+  distroId: String!
+  estimatedStart: Duration
+  execution: Int!
+  executionTasks: [String!]
+  executionTasksFull: [Task!]
+  expectedDuration: Duration
+  failedTestCount: Int!
+  finishTime: Time
+  generatedBy: String
+  generatedByName: String
+  generateTask: Boolean
+  hostId: String
+  ingestTime: Time
+  isPerfPluginEnabled: Boolean!
+  latestExecution: Int!
+  logs: TaskLogLinks!
+  minQueuePosition: Int!
+  order: Int!
+  patch: Patch
+  patchNumber: Int
+  priority: Int
+  project: Project
+  projectId: String!
+  projectIdentifier: String
+  requester: String!
+  revision: String
+  scheduledTime: Time
+  spawnHostLink: String
+  startTime: Time
+  status: String!
+  taskGroup: String
+  taskGroupMaxHosts: Int
+  timeTaken: Duration
+  totalTestCount: Int!
+  versionMetadata: Version!
+}
+
+type AbortInfo {
+  buildVariantDisplayName: String!
+  newVersion: String!
+  prClosed: Boolean!
+  taskDisplayName: String!
+  taskID: String!
+  user: String!
+}
+
+type Dependency {
+  buildVariant: String!
+  metStatus: MetStatus!
+  name: String!
+  requiredStatus: RequiredStatus!
+  taskId: String!
+}
+
+enum MetStatus {
+  UNMET
+  MET
+  PENDING
+  STARTED
+}
+
+enum RequiredStatus {
+  MUST_FAIL
+  MUST_FINISH
+  MUST_SUCCEED
+}
+
+type TaskEndDetail {
+  description: String
+  oomTracker: OomTrackerInfo!
+  status: String!
+  timedOut: Boolean
+  timeoutType: String
+  type: String!
+}
+
+type OomTrackerInfo {
+  detected: Boolean!
+  pids: [Int]
+}
+
+type TaskLogLinks {
+  agentLogLink: String
+  allLogLink: String
+  eventLogLink: String
+  systemLogLink: String
+  taskLogLink: String
+}
+
+"""
+TaskFiles is the return value for the taskFiles query.
+Some tasks generate files which are represented by this type.
+"""
+type TaskFiles {
+  fileCount: Int!
+  groupedFiles: [GroupedFiles!]!
+}
+
+type GroupedFiles {
+  files: [File!]
+  taskName: String
+}
+
+type File {
+  link: String!
+  name: String!
+  visibility: String!
+}
+
+"""
+TaskTestResult is the return value for the taskTests query.
+It contains the test results for a task. For example, if there is a task to run all unit tests, then the test results
+could be the result of each individual unit test.
+"""
+type TaskTestResult {
+  filteredTestCount: Int!
+  testResults: [TestResult!]!
+  totalTestCount: Int!
+}
+
+type TestResult {
+  id: String!
+  baseStatus: String
+  duration: Float
+  endTime: Time
+  execution: Int
+  exitCode: Int
+  groupID: String
+  logs: TestLog!
+  startTime: Time
+  status: String!
+  taskId: String
+  testFile: String!
+}
+
+type TestLog {
+  lineNum: Int
+  url: String
+  urlLobster: String
+  urlRaw: String
+}
+
+"""
+TaskTestResultSample is the return value for the taskTestSample query.
+It is used to represent failing test results on the task history pages.
+"""
+type TaskTestResultSample {
+  execution: Int!
+  matchingFailedTestNames: [String!]!
+  taskId: String!
+  totalTestCount: Int!
+}
+

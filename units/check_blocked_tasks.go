@@ -106,19 +106,6 @@ func (j *checkBlockedTasksJob) Run(ctx context.Context) {
 			numChecksThatUpdatedTasks++
 		}
 	}
-	grip.Debug(message.Fields{
-		"message":             "finished check blocked tasks job",
-		"len_queue":           lenQueue,
-		"len_alias_queue":     lenAliasQueue,
-		"len_tasks":           len(tasksToCheck),
-		"len_task_ids":        len(taskIds),
-		"task_ids":            taskIds,
-		"num_tasks_modified":  numTasksModified,
-		"num_updating_checks": numChecksThatUpdatedTasks,
-		"job":                 j.ID(),
-		"source":              checkBlockedTasks,
-		"distro":              j.DistroId,
-	})
 }
 
 func checkUnmarkedBlockingTasks(t *task.Task, dependencyCaches map[string]task.Task) (int, error) {

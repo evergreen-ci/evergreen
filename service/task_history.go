@@ -69,11 +69,17 @@ type taskBlurb struct {
 func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 	project, err := projCtx.GetProject()
+
+	taskName := gimlet.GetVars(r)["task_name"]
+
+	if RedirectSpruceUsers(w, r, fmt.Sprintf("%s/task-history/%s/%s", uis.Settings.Ui.UIv2Url, project.Identifier, taskName)) {
+		return
+	}
+
 	if err != nil || project == nil {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
-	taskName := gimlet.GetVars(r)["task_name"]
 
 	var chunk model.TaskHistoryChunk
 	var v *model.Version

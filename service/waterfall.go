@@ -623,6 +623,11 @@ func waterfallDataAdaptor(vvData versionVariantData, project *model.Project, ski
 func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 	project, err := projCtx.GetProject()
+
+	if RedirectSpruceUsers(w, r, fmt.Sprintf("%s/commits/%s", uis.Settings.Ui.UIv2Url, project.Identifier)) {
+		return
+	}
+
 	if err != nil || project == nil {
 		uis.ProjectNotFound(w, r)
 		return

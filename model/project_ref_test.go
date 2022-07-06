@@ -756,7 +756,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			assert.NoError(t, db.ClearCollections(ProjectRefCollection, ProjectVarsCollection, ProjectAliasCollection,
-				event.SubscriptionsCollection, event.AllLogCollection))
+				event.SubscriptionsCollection, event.LegacyEventLogCollection))
 
 			pRef := ProjectRef{
 				Id:                    "my_project",
@@ -2059,4 +2059,45 @@ func TestMergeWithProjectConfig(t *testing.T) {
 	require.NotNil(t, projectRef)
 	assert.Equal(t, 4, projectRef.ContainerSizes["xlarge"].CPU)
 
+}
+
+func TestIsServerResmokeProject(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		identifier string
+		expected   bool
+	}{
+		{
+			name:       "MongoMaster",
+			identifier: "mongodb-mongo-master",
+			expected:   true,
+		},
+		{
+			name:       "MongoBranch",
+			identifier: "mongodb-mongo-5.0",
+			expected:   true,
+		},
+		{
+			name:       "MongoSync",
+			identifier: "mongosync",
+			expected:   true,
+		},
+		{
+			name:       "MongoSyncCoinbase",
+			identifier: "mongosync-coinbase",
+			expected:   true,
+		},
+		{
+			name:       "Evergreen",
+			identifier: "evergreen",
+		},
+		{
+			name:       "Mongo",
+			identifier: "mongo",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			assert.Equal(t, test.expected, IsServerResmokeProject(test.identifier))
+		})
+	}
 }

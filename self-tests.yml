@@ -290,6 +290,15 @@ functions:
         env:
           BRANCH_NAME: ${branch_name}
 
+  verify-client-version-update:
+    - command: subprocess.exec
+      params:
+        working_dir: evergreen
+        binary: bash
+        args: ["scripts/verify-client-version-update.sh"]
+        env:
+          BRANCH_NAME: ${branch_name}
+
   verify-merge-function-update:
     - command: subprocess.exec
       params:
@@ -537,6 +546,12 @@ tasks:
     commands:
       - func: get-project-and-modules
       - func: verify-agent-version-update
+  - name: verify-client-version-update
+    tags: ["linter"]
+    patch_only: true
+    commands:
+      - func: get-project-and-modules
+      - func: verify-client-version-update
   - name: verify-mod-tidy
     tags: ["linter"]
     commands:
