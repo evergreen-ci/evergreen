@@ -1781,18 +1781,14 @@ func checkResetDisplayTask(t *task.Task) error {
 		}
 	}
 	details := &t.Details
-	// assign task end details to indicate system failure if we receive no valid details
-	if taskEndDetailsIsEmpty(details) && !t.IsFinished() {
+	// Assign task end details to indicate system failure if we receive no valid details
+	if details.IsEmpty() && !t.IsFinished() {
 		details = &apimodels.TaskEndDetail{
 			Type:   evergreen.CommandTypeSystem,
 			Status: evergreen.TaskFailed,
 		}
 	}
 	return errors.Wrap(TryResetTask(t.Id, evergreen.User, evergreen.User, details), "resetting display task")
-}
-
-func taskEndDetailsIsEmpty(details *apimodels.TaskEndDetail) bool {
-	return details == nil || details.Status == ""
 }
 
 // MarkUnallocatableContainerTasksSystemFailed marks any container task within
