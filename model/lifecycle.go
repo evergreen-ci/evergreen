@@ -55,65 +55,25 @@ type VersionToRestart struct {
 // SetVersionActivation updates the "active" state of all builds and tasks associated with a
 // version to the given setting. It also updates the task cache for all builds affected.
 func SetVersionActivation(versionId string, active bool, caller string) error {
-	if err := SetVersionActivated(versionId, active); err != nil {
-		return errors.Wrapf(err, "setting activated for version '%s'", versionId)
+	builds, err := build.Find(
+		build.ByVersion(versionId).WithFields(build.IdKey),
+	)
+	if err != nil {
+		return errors.Wrapf(err, "getting builds for version '%s'", versionId)
 	}
-	if err := setTaskActivationForVersion(versionId, active, caller); err != nil {
-		return errors.Wrapf(err, "setting activation for tasks in version '%s'", versionId)
+	buildIDs := make([]string, 0, len(builds))
+	for _, build := range builds {
+		buildIDs = append(buildIDs, build.Id)
 	}
-	return nil
-}
 
-// setTaskActivationForVersion activates all tasks in a version.
-func setTaskActivationForVersion(versionId string, active bool, caller string) error {
-	q := bson.M{
-		task.VersionKey: versionId,
-		task.StatusKey:  evergreen.TaskUndispatched,
+	// Update activation for all builds before updating their tasks so the version won't spend
+	// time in an intermediate state where only some builds are updated
+	if err = build.UpdateActivation(buildIDs, active, caller); err != nil {
+		return errors.Wrapf(err, "setting activation for builds in version '%s'", versionId)
 	}
-	var tasksToModify []task.Task
-	var err error
-	// If activating a task, set the ActivatedBy field to be the caller.
-	if active {
-		tasksToModify, err = task.FindAll(db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey, task.BuildIdKey))
-		if err != nil {
-			return errors.Wrap(err, "getting tasks to activate")
-		}
-		if len(tasksToModify) > 0 {
-			if err = task.ActivateTasks(tasksToModify, time.Now(), false, caller); err != nil {
-				return errors.Wrap(err, "updating tasks for activation")
-			}
-		}
-	} else {
-		// If the caller is the default task activator, only deactivate tasks that have not been activated by a user.
-		if evergreen.IsSystemActivator(caller) {
-			q[task.ActivatedByKey] = bson.M{"$in": evergreen.SystemActivators}
-		}
 
-		tasksToModify, err = task.FindAll(db.Query(q).WithFields(task.IdKey, task.ExecutionKey))
-		if err != nil {
-			return errors.Wrap(err, "getting tasks to deactivate")
-		}
-		if len(tasksToModify) > 0 {
-			if err = task.DeactivateTasks(tasksToModify, false, caller); err != nil {
-				return errors.Wrap(err, "deactivating tasks")
-			}
-		}
-	}
-	if len(tasksToModify) > 0 {
-		var buildIds []string
-		for _, task := range tasksToModify {
-			if !utility.StringSliceContains(buildIds, task.BuildId) {
-				if err = SetBuildActivation(task.BuildId, active, caller); err != nil {
-					return errors.Wrap(err, "updating build status")
-				}
-				buildIds = append(buildIds, task.BuildId)
-			}
-		}
-		if err := UpdateVersionAndPatchStatusForBuilds(buildIds); err != nil {
-			return errors.Wrapf(err, "updating build and version status for version '%s'", versionId)
-		}
-	}
-	return nil
+	return errors.Wrapf(setTaskActivationForBuilds(buildIDs, active, false, nil, caller),
+		"setting activation for tasks in version '%s'", versionId)
 }
 
 // SetBuildActivation updates the "active" state of this build and all associated tasks.
@@ -143,7 +103,7 @@ func setTaskActivationForBuilds(buildIds []string, active, withDependencies bool
 		}
 		tasksToActivate, err := task.FindAll(db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey))
 		if err != nil {
-			return errors.Wrap(err, "getting tasks to activate")
+			return errors.Wrap(err, "getting tasks to deactivate")
 		}
 		if withDependencies {
 			dependOn, err := task.GetRecursiveDependenciesUp(tasksToActivate, nil)
@@ -179,6 +139,7 @@ func setTaskActivationForBuilds(buildIds []string, active, withDependencies bool
 	if err := UpdateVersionAndPatchStatusForBuilds(buildIds); err != nil {
 		return errors.Wrapf(err, "updating status for builds '%s'", buildIds)
 	}
+
 	return nil
 }
 
@@ -1773,7 +1734,7 @@ func addNewTasks(ctx context.Context, activationInfo specificActivationInfo, v *
 			"version": v.Id,
 		}))
 	}
-	if err = v.SetActivated(true); err != nil {
+	if err = v.SetActivated(); err != nil {
 		return nil, errors.Wrap(err, "setting version activation to true")
 	}
 
