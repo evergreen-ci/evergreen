@@ -69,9 +69,6 @@ func (r *versionResolver) BuildVariants(ctx context.Context, obj *restModel.APIV
 		obj.Activated = version.Activated
 	}
 
-	if !utility.FromBoolPtr(obj.Activated) {
-		return nil, nil
-	}
 	groupedBuildVariants, err := generateBuildVariants(utility.FromStringPtr(obj.Id), *options)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error generating build variants for version %s : %s", *obj.Id, err.Error()))
