@@ -148,8 +148,19 @@ type abortedByDisplay struct {
 func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	projCtx := MustHaveProjectContext(r)
+	executionStr := gimlet.GetVars(r)["execution"]
+	var execution int
+	var err error
 
-	if RedirectSpruceUsers(w, r, fmt.Sprintf("%s/task/%s", uis.Settings.Ui.UIv2Url, projCtx.Task.Id)) {
+	if executionStr != "" {
+		execution, err = strconv.Atoi(executionStr)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Bad execution number: %v", executionStr), http.StatusBadRequest)
+			return
+		}
+	}
+
+	if RedirectSpruceUsers(w, r, fmt.Sprintf("%s/task/%s?execution=%d", uis.Settings.Ui.UIv2Url, projCtx.Task.Id, execution)) {
 		return
 	}
 
@@ -174,17 +185,11 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	executionStr := gimlet.GetVars(r)["execution"]
 	archived := false
 
 	// if there is an execution number, the task might be in the old_tasks collection, so we
 	// query that collection and set projCtx.Task to the old task if it exists.
 	if executionStr != "" {
-		execution, err := strconv.Atoi(executionStr)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Bad execution number: %v", executionStr), http.StatusBadRequest)
-			return
-		}
 		// Construct the old task id.
 		oldTaskId := task.MakeOldID(projCtx.Task.Id, execution)
 
