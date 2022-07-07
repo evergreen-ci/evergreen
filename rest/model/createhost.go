@@ -30,6 +30,7 @@ func (createHost *APICreateHost) BuildFromService(h host.Host) {
 		createHost.Image = utility.ToStringPtr(h.DockerOptions.Image)
 		createHost.Command = utility.ToStringPtr(h.DockerOptions.Command)
 		createHost.PortBindings = h.PortBindings
+		return
 	}
 	createHost.InstanceID = utility.ToStringPtr(h.Id)
 	if h.ExternalIdentifier != "" {
