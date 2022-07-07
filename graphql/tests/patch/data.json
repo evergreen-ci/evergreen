@@ -11,7 +11,16 @@
       "identifier":"spruce",
       "r": "gitter_request",
       "requester": "gitter_request",
-      "config": "stepback: true\ncommand_type: test\nignore:\n  - \"*.md\"\n  - \".github/*\"\ntasks:\n  - name: compile\n    commands:\n    - func: get-project\n    - func: npm-install\n    - func: npm-build\n    - func: npm-build\n  - name: test\n    commands:\n    - func: get-project\n    - func: npm-install\n    - func: npm-test\n    - func: attach-results\n  - name: lint\n    commands:\n    - func: get-project\n    - func: npm-install\n    - func: npm-lint\n  - name: coverage\n    commands:\n    - func: get-project\n    - func: npm-install\n    - func: npm-coverage\nbuildvariants:\n  - name: ubuntu1804\n    display_name: Ubuntu 18.04\n    run_on:\n    - ubuntu1804-test\n    tasks:\n    - name: compile\n"
+      "config": "stepback: true\ncommand_type: test\nignore:\n  - \"*.md\"\n  - \".github/*\"\ntasks:\n  - name: compile\n    commands:\n    - func: get-project\n    - func: npm-install\n    - func: npm-build\n    - func: npm-build\n  - name: test\n    commands:\n    - func: get-project\n    - func: npm-install\n    - func: npm-test\n    - func: attach-results\n  - name: lint\n    commands:\n    - func: get-project\n    - func: npm-install\n    - func: npm-lint\n  - name: coverage\n    commands:\n    - func: get-project\n    - func: npm-install\n    - func: npm-coverage\nbuildvariants:\n  - name: ubuntu1804\n    display_name: Ubuntu 18.04\n    run_on:\n    - ubuntu1804-test\n    tasks:\n    - name: compile\n",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab"
+    },
+    {
+      "_id": "5e4ff3abe3c3317e352062e4",
+      "identifier":"spruce",
+      "r": "gitter_request",
+      "requester": "gitter_request",
+      "config": "stepback: true\ncommand_type: test\nignore:\n  - \"*.md\"\n  - \".github/*\"\ntasks:\n  - name: compile\n    commands:\n    - func: get-project\n    - func: npm-install\n    - func: npm-build\n    - func: npm-build\n  - name: test\n    commands:\n    - func: get-project\n    - func: npm-install\n    - func: npm-test\n    - func: attach-results\n  - name: lint\n    commands:\n    - func: get-project\n    - func: npm-install\n    - func: npm-lint\n  - name: coverage\n    commands:\n    - func: get-project\n    - func: npm-install\n    - func: npm-coverage\nbuildvariants:\n  - name: ubuntu1804\n    display_name: Ubuntu 18.04\n    run_on:\n    - ubuntu1804-test\n    tasks:\n    - name: compile\n",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
     }
   ],
   "tasks": [
