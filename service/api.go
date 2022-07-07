@@ -159,27 +159,38 @@ func (as *APIServer) requireProject(next http.HandlerFunc) http.HandlerFunc {
 
 func (as *APIServer) requireHost(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		h, code, err := model.ValidateHost(gimlet.GetVars(r)["hostId"], r)
+		h, _, err := model.ValidateHost(gimlet.GetVars(r)["hostId"], r)
+		UpdateHost(h)
 		if err != nil {
-			as.LoggedError(w, r, code, errors.Wrap(err, "host not assigned to run task"))
-			return
-		}
-		// update host access time
-		if err := h.UpdateLastCommunicated(); err != nil {
-			grip.Warningf("Could not update host last communication time for %s: %+v", h.Id, err)
-		}
-		// Since the host has contacted the app server, we should prevent the
-		// app server from attempting to deploy agents or agent monitors.
-		// Deciding whether or not we should redeploy agents or agent monitors
-		// is handled within the REST route handler.
-		if h.NeedsNewAgent {
-			grip.Warning(message.WrapError(h.SetNeedsNewAgent(false), "problem clearing host needs new agent"))
-		}
-		if h.NeedsNewAgentMonitor {
-			grip.Warning(message.WrapError(h.SetNeedsNewAgentMonitor(false), "problem clearing host needs new agent monitor"))
+			// validate the host again after update in case the agent and app server were out of sync,
+			// and the update fixed it
+			var code int
+			h, code, err = model.ValidateHost(gimlet.GetVars(r)["hostId"], r)
+			if err != nil {
+				as.LoggedError(w, r, code, errors.Wrap(err, "host not assigned to run task"))
+				return
+			}
+
 		}
 		r = setAPIHostContext(r, h)
 		next(w, r)
+	}
+}
+
+func UpdateHost(h *host.Host) {
+	// update host access time
+	if err := h.UpdateLastCommunicated(); err != nil {
+		grip.Warningf("Could not update host last communication time for %s: %+v", h.Id, err)
+	}
+	// Since the host has contacted the app server, we should prevent the
+	// app server from attempting to deploy agents or agent monitors.
+	// Deciding whether or not we should redeploy agents or agent monitors
+	// is handled within the REST route handler.
+	if h.NeedsNewAgent {
+		grip.Warning(message.WrapError(h.SetNeedsNewAgent(false), "problem clearing host needs new agent"))
+	}
+	if h.NeedsNewAgentMonitor {
+		grip.Warning(message.WrapError(h.SetNeedsNewAgentMonitor(false), "problem clearing host needs new agent monitor"))
 	}
 }
 
@@ -365,7 +376,8 @@ func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Reque
 // AttachFiles updates file mappings for a task or build
 func (as *APIServer) AttachFiles(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
-	grip.Infoln("Attaching files to task:", t.Id)
+
+	grip.Infof("Attaching files to task:%v", t.Id)
 
 	entry := &artifact.Entry{
 		TaskId:          t.Id,
