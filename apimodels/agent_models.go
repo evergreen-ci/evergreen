@@ -172,6 +172,10 @@ type RegistrySettings struct {
 	Password string `mapstructure:"registry_password" json:"registry_password" yaml:"registry_password"`
 }
 
+func (ted *TaskEndDetail) IsEmpty() bool {
+	return ted == nil || ted.Status == ""
+}
+
 func (ch *CreateHost) ValidateDocker() error {
 	catcher := grip.NewBasicCatcher()
 
