@@ -66,7 +66,11 @@
         "data": {
           "patch": {
             "id": "5e4ff3abe3c3317e352062e4",
-            "baseVersionID": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab"
+            "versionFull": {
+              "baseVersion": {
+                "id": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab"
+              }
+            }
           }
         }
       }
@@ -77,7 +81,9 @@
         "data": {
           "patch": {
             "id": "5d7288d91f8c8a403bc34a7d",
-            "baseVersionID": null
+            "versionFull": {
+              "baseVersion": null
+            }
           }
         }
       }
