@@ -216,7 +216,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	// Build a struct containing the subset of task data needed for display in the UI
 	tId := projCtx.Task.Id
 	totalExecutions := projCtx.Task.Execution
-
+	taskExecution := projCtx.Task.Execution
 	if archived {
 		tId = projCtx.Task.OldTaskId
 
@@ -244,7 +244,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		BuildVariant:         projCtx.Task.BuildVariant,
 		BuildId:              projCtx.Task.BuildId,
 		Activated:            projCtx.Task.Activated,
-		Execution:            projCtx.Task.Execution,
+		Execution:            taskExecution,
 		Requester:            projCtx.Task.Requester,
 		CreateTime:           projCtx.Task.CreateTime,
 		IngestTime:           projCtx.Task.IngestTime,
@@ -385,7 +385,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	}
 	newUILink := ""
 	if len(uis.Settings.Ui.UIv2Url) > 0 {
-		newUILink = fmt.Sprintf("%s/task/%s", uis.Settings.Ui.UIv2Url, tId)
+		newUILink = fmt.Sprintf("%s/task/%s?execution=%d", uis.Settings.Ui.UIv2Url, tId, taskExecution)
 	}
 
 	if uiTask.AbortInfo.TaskID != "" {
