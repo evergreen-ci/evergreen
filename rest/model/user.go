@@ -142,6 +142,8 @@ func (n *APINotificationPreferences) BuildFromService(v user.NotificationPrefere
 	}
 }
 
+// ToService converts an API notification preferences model into a service-layer model, and validates
+// the notification preference types.
 func (n *APINotificationPreferences) ToService() (user.NotificationPreferences, error) {
 	if n == nil {
 		return user.NotificationPreferences{}, nil
