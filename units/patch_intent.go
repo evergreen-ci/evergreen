@@ -335,7 +335,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 	}
 
-	skipForFailed := failedOnly && !(previousPatchStatus == evergreen.PatchFailed)
+	skipForFailed := failedOnly && previousPatchStatus != evergreen.PatchFailed
 
 	if len(patchDoc.VariantsTasks) == 0 && !skipForFailed {
 		project.BuildProjectTVPairs(patchDoc, j.intent.GetAlias())
@@ -492,7 +492,7 @@ func setFailedTasksToPrevious(patchDoc, previousPatch *patch.Patch, project *mod
 		tasksInProjectVariant := project.FindTasksForVariant(vt.Variant)
 		displayTasksInProjectVariant := project.FindDisplayTasksForVariant(vt.Variant)
 		var tasks []string
-		tasks, _, err := getPreviousFailedTasksAndDisplayTasks(tasksInProjectVariant, displayTasksInProjectVariant, vt, previousPatch.Version)
+		tasks, err := getPreviousFailedTasksAndDisplayTasks(tasksInProjectVariant, displayTasksInProjectVariant, vt, previousPatch.Version)
 		if err != nil {
 			return err
 		}
@@ -525,37 +525,21 @@ func (j *patchIntentProcessor) setToPreviousPatchDefinition(patchDoc *patch.Patc
 	return previousPatch.Status, nil
 }
 
-func getPreviousFailedTasksAndDisplayTasks(tasksInProjectVariant []string, displayTasksInProjectVariant []string, vt patch.VariantTasks, version string) ([]string, []patch.DisplayTask, error) {
+func getPreviousFailedTasksAndDisplayTasks(tasksInProjectVariant []string, displayTasksInProjectVariant []string, vt patch.VariantTasks, version string) ([]string, error) {
 	failedTasks, err := task.FindAll(db.Query(task.FailedTasksByVersionAndBV(version, vt.Variant)))
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "error querying for failed tasks from previous patch")
+		return nil, errors.Wrap(err, "error querying for failed tasks from previous patch")
 	}
 	failedExecutionTasks := []string{}
-	failedDisplayTasks := []string{}
 	for _, failedTask := range failedTasks {
-		if failedTask.DisplayOnly {
-			failedDisplayTasks = append(failedDisplayTasks, failedTask.DisplayName)
-		} else {
+		if !failedTask.DisplayOnly {
 			failedExecutionTasks = append(failedExecutionTasks, failedTask.DisplayName)
 		}
 	}
 	failedExecutionTasks = utility.StringSliceIntersection(tasksInProjectVariant, failedExecutionTasks)
-	failedDisplayTasks = utility.StringSliceIntersection(displayTasksInProjectVariant, failedDisplayTasks)
 
-	tasks, displayTasks := getPreviousTasksAndDisplayTasks(failedExecutionTasks, failedDisplayTasks, vt)
-	return tasks, displayTasks, nil
-}
-
-func getPreviousTasksAndDisplayTasks(tasksInProjectVariant []string, displayTasksInProjectVariant []string, vt patch.VariantTasks) ([]string, []patch.DisplayTask) {
-	// We want the subset of vt.tasks that exist in tasksForVariant.
-	tasks := utility.StringSliceIntersection(tasksInProjectVariant, vt.Tasks)
-	var displayTasks []patch.DisplayTask
-	for _, dt := range vt.DisplayTasks {
-		if utility.StringSliceContains(displayTasksInProjectVariant, dt.Name) {
-			displayTasks = append(displayTasks, patch.DisplayTask{Name: dt.Name})
-		}
-	}
-	return tasks, displayTasks
+	tasks := utility.StringSliceIntersection(failedExecutionTasks, vt.Tasks)
+	return tasks, nil
 }
 
 func ProcessTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *model.ProjectRef, env evergreen.Environment, aliasNames []string) error {
@@ -574,7 +558,6 @@ func ProcessTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *mode
 		if !found {
 			return errors.Errorf("patch trigger alias '%s' is not defined", aliasName)
 		}
-
 		// group patches on project, status, parentAsModule
 		group := aliasGroup{
 			project:        alias.ChildProject,
