@@ -137,6 +137,8 @@ type BuildVariantTaskUnit struct {
 	CronBatchTime string `yaml:"cron,omitempty" bson:"cron,omitempty"`
 	// If Activate is set to false, then we don't initially activate the task.
 	Activate *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
+	// Group write comment
+	Group *TaskGroup `yaml:"group,omitempty" bson:"group,omitempty"`
 }
 
 func (b BuildVariant) Get(name string) (BuildVariantTaskUnit, error) {
@@ -833,7 +835,7 @@ func NewTaskIdTable(p *Project, v *Version, sourceRev, defID string) TaskIdConfi
 			if t.IsDisabled() || t.SkipOnRequester(v.Requester) {
 				continue
 			}
-			if tg := p.FindTaskGroup(t.Name); tg != nil {
+			if tg := p.FindTaskGroup(t.Name, t.Group); tg != nil {
 				for _, groupTask := range tg.Tasks {
 					taskId := generateId(groupTask, projectIdentifier, &bv, rev, v)
 					execTable[TVPair{bv.Name, groupTask}] = util.CleanName(taskId)
@@ -867,7 +869,12 @@ func NewPatchTaskIdTable(proj *Project, v *Version, tasks TaskVariantPairs, proj
 	execTasksWithTaskGroupTasks := TVPairSet{}
 	for _, vt := range tasks.ExecTasks {
 		if _, ok := tgMap[vt.TaskName]; ok {
-			if tg := proj.FindTaskGroup(vt.TaskName); tg != nil {
+			var group *TaskGroup
+			bvt := proj.FindTaskForVariant(vt.TaskName, vt.Variant)
+			if bvt != nil {
+				group = bvt.Group
+			}
+			if tg := proj.FindTaskGroup(vt.TaskName, group); tg != nil {
 				for _, t := range tg.Tasks {
 					execTasksWithTaskGroupTasks = append(execTasksWithTaskGroupTasks, TVPair{vt.Variant, t})
 				}
@@ -1173,7 +1180,10 @@ func (m *Module) GetRepoOwnerAndName() (string, string) {
 }
 
 // FindTaskGroup returns a specific task group from a project
-func (p *Project) FindTaskGroup(name string) *TaskGroup {
+func (p *Project) FindTaskGroup(name string, group *TaskGroup) *TaskGroup {
+	if group != nil {
+		return group
+	}
 	for _, tg := range p.TaskGroups {
 		if tg.Name == name {
 			return &tg
@@ -1357,7 +1367,7 @@ func (p *Project) findBuildVariantsWithTag(tags []string) []string {
 // build variant task unit, and returns the name and tags
 func (p *Project) GetTaskNameAndTags(bvt BuildVariantTaskUnit) (string, []string, bool) {
 	if bvt.IsGroup {
-		ptg := p.FindTaskGroup(bvt.Name)
+		ptg := p.FindTaskGroup(bvt.Name, bvt.Group)
 		if ptg == nil {
 			return "", nil, false
 		}
@@ -1469,7 +1479,7 @@ func (p *Project) FindAllBuildVariantTasks() []BuildVariantTaskUnit {
 // tasksFromGroup returns a slice of the task group's tasks.
 // Settings missing from the group task are populated from the task definition.
 func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVariantTaskUnit {
-	tg := p.FindTaskGroup(bvTaskGroup.Name)
+	tg := p.FindTaskGroup(bvTaskGroup.Name, bvTaskGroup.Group)
 	if tg == nil {
 		return nil
 	}
@@ -2089,6 +2099,7 @@ func GetVariantsAndTasksFromProject(ctx context.Context, patchedConfig, patchPro
 			// add a task name to the list if it's patchable and not restricted to git tags and not disabled
 			if !taskFromVariant.IsDisabled() && utility.FromBoolTPtr(taskFromVariant.Patchable) && !utility.FromBoolPtr(taskFromVariant.GitTagOnly) {
 				if taskFromVariant.IsGroup {
+
 					tasksForVariant = append(tasksForVariant, CreateTasksFromGroup(taskFromVariant, project, evergreen.PatchVersionRequester)...)
 				} else {
 					tasksForVariant = append(tasksForVariant, taskFromVariant)

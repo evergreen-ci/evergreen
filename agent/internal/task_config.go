@@ -143,7 +143,12 @@ func (tc *TaskConfig) GetTaskGroup(taskGroup string) (*model.TaskGroup, error) {
 			TeardownTaskCanFailTask: tc.Project.Post == nil || tc.Project.PostErrorFailsTask,
 		}
 	} else {
-		tg = tc.Project.FindTaskGroup(taskGroup)
+		var group *model.TaskGroup
+		bvt := tc.Project.FindTaskForVariant(tc.Task.DisplayName, tc.BuildVariant.Name)
+		if bvt != nil {
+			group = bvt.Group
+		}
+		tg = tc.Project.FindTaskGroup(taskGroup, group)
 		if tg == nil {
 			return nil, errors.Errorf("couldn't find task group %s", tc.Task.TaskGroup)
 		}

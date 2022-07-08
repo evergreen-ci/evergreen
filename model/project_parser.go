@@ -408,6 +408,8 @@ type parserBVTaskUnit struct {
 	CronBatchTime string `yaml:"cron,omitempty" bson:"cron,omitempty"`
 	// If Activate is set to false, then we don't initially activate the task.
 	Activate *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
+	// Group write a comment
+	Group *parserTaskGroup `yaml:"group,omitempty" bson:"group,omitempty"`
 }
 
 // UnmarshalYAML allows the YAML parser to read both a single selector string or
@@ -1130,7 +1132,11 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 				isGroup = true
 			}
 		}
-		if err1 != nil && err2 != nil {
+		if pbvt.Group != nil {
+			names = append(names, pbvt.Name)
+			isGroup = true
+		}
+		if err1 != nil && err2 != nil && !isGroup {
 			evalErrs = append(evalErrs, err1, err2)
 			continue
 		}
@@ -1190,6 +1196,22 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 		CronBatchTime:    bvt.CronBatchTime,
 		BatchTime:        bvt.BatchTime,
 		Activate:         bvt.Activate,
+	}
+	if bvt.Group != nil {
+		res.Group = &TaskGroup{
+			Name:                    bvt.Group.Name,
+			SetupGroupFailTask:      bvt.Group.SetupGroupFailTask,
+			TeardownTaskCanFailTask: bvt.Group.TeardownTaskCanFailTask,
+			SetupGroupTimeoutSecs:   bvt.Group.SetupGroupTimeoutSecs,
+			SetupGroup:              bvt.Group.SetupGroup,
+			TeardownGroup:           bvt.Group.TeardownGroup,
+			SetupTask:               bvt.Group.SetupTask,
+			TeardownTask:            bvt.Group.TeardownTask,
+			Tags:                    bvt.Group.Tags,
+			MaxHosts:                bvt.Group.MaxHosts,
+			Timeout:                 bvt.Group.Timeout,
+			ShareProcs:              bvt.Group.ShareProcs,
+		}
 	}
 	if res.Priority == 0 {
 		res.Priority = pt.Priority

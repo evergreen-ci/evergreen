@@ -1243,7 +1243,7 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 	}
 
 	if buildVarTask.IsGroup {
-		tg := project.FindTaskGroup(buildVarTask.GroupName)
+		tg := project.FindTaskGroup(buildVarTask.GroupName, buildVarTask.Group)
 		if tg == nil {
 			return nil, errors.Errorf("finding task group '%s' in project '%s'", buildVarTask.GroupName, project.Identifier)
 		}

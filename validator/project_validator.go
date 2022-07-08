@@ -1448,7 +1448,7 @@ func validateDuplicateBVTasks(p *model.Project) ValidationErrors {
 		for _, t := range bv.Tasks {
 
 			if t.IsGroup {
-				tg := p.FindTaskGroup(t.Name)
+				tg := p.FindTaskGroup(t.Name, t.Group)
 				if tg == nil {
 					continue
 				}
@@ -1677,7 +1677,7 @@ func bvsWithTasksThatCallCommand(p *model.Project, cmd string) (map[string]map[s
 
 		for _, bvtu := range bv.Tasks {
 			if bvtu.IsGroup {
-				tg := p.FindTaskGroup(bvtu.Name)
+				tg := p.FindTaskGroup(bvtu.Name, bvtu.Group)
 				if tg == nil {
 					catcher.Errorf("cannot find definition of task group '%s' used in build variant '%s'", bvtu.Name, bv.Name)
 					continue
