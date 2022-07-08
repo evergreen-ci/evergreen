@@ -144,7 +144,7 @@ func (tc *TaskConfig) GetTaskGroup(taskGroup string) (*model.TaskGroup, error) {
 		}
 	} else {
 		var group *model.TaskGroup
-		bvt := tc.Project.FindTaskForVariant(tc.Task.DisplayName, tc.BuildVariant.Name)
+		bvt := tc.Project.FindTaskForVariant(tc.Task.DisplayName, tc.Task.BuildVariant)
 		if bvt != nil {
 			group = bvt.Group
 		}
