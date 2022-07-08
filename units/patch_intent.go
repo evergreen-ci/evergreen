@@ -513,8 +513,6 @@ func (j *patchIntentProcessor) setToPreviousPatchDefinition(patchDoc *patch.Patc
 	}
 
 	patchDoc.BuildVariants = previousPatch.BuildVariants
-	patchDoc.RegexBuildVariants = previousPatch.RegexBuildVariants
-	patchDoc.RegexTasks = previousPatch.RegexTasks
 
 	if failedOnly {
 		setTasksToPreviousFailed(patchDoc, previousPatch, project)
