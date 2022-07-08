@@ -52,10 +52,10 @@ func FindPaginatedWithTotalCount(hostID, hostTag string, limit, page int) ([]Eve
 		return nil, 0, errors.WithStack(err)
 	}
 
-	// Count ignores skip and limit by default, so this will give the total count of events.
+	// Count ignores skip and limit by default, so this will return the total number of events.
 	count, err := db.CountQ(LegacyEventLogCollection, query)
 	if err != nil {
-		return nil, 0, errors.Wrap(err, "failed to fetch number of host events")
+		return nil, 0, errors.Wrap(err, "fetching total count for host events")
 	}
 
 	return events, count, nil
