@@ -1838,7 +1838,7 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 		"project":   t.Project,
 		"details":   t.Details,
 	})
-	if detail.Status == "" {
+	if detail.IsEmpty() {
 		grip.Debug(message.Fields{
 			"message":   "detail status was empty, setting to failed",
 			"task_id":   t.Id,
