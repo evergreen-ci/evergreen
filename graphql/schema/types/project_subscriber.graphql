@@ -46,3 +46,14 @@ type JiraIssueSubscriber {
   issueType: String!
   project: String!
 }
+
+input WebhookSubscriberInput {
+  headers: [WebhookHeaderInput]!
+  secret: String!
+  url: String!
+}
+
+input WebhookHeaderInput {
+  key: String!
+  value: String!
+}

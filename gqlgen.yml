@@ -338,9 +338,13 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIWebHook
   WebhookHeader:
     model: github.com/evergreen-ci/evergreen/rest/model.APIWebhookHeader
+  WebhookHeaderInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIWebhookHeader
   WebhookInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIWebHook
   WebhookSubscriber:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIWebhookSubscriber
+  WebhookSubscriberInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIWebhookSubscriber
   WorkstationConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIWorkstationConfig
