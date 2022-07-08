@@ -208,17 +208,16 @@ func (v *Version) UpdateStatus(newStatus string) error {
 	}
 
 	v.Status = newStatus
-	update := bson.M{
-		"$set": bson.M{
-			VersionStatusKey: newStatus,
-		},
-	}
-	err := VersionUpdateOne(bson.M{VersionIdKey: v.Id}, update)
-	if err != nil {
-		return err
-	}
+	return updateVersionStatus(v.Id, newStatus)
+}
 
-	return nil
+func updateVersionStatus(versionId, newStatus string) error {
+	return VersionUpdateOne(
+		bson.M{VersionIdKey: versionId},
+		bson.M{"$set": bson.M{
+			VersionStatusKey: newStatus,
+		}},
+	)
 }
 
 // GetTimeSpent returns the total time_taken and makespan of a version for
