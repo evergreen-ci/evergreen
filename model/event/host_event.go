@@ -78,9 +78,7 @@ type HostEventData struct {
 }
 
 var (
-	hostDataStatusKey        = bsonutil.MustHaveTag(HostEventData{}, "TaskStatus")
-	hostDataTaskIDKey        = bsonutil.MustHaveTag(HostEventData{}, "TaskId")
-	hostDataTaskExecutionKey = bsonutil.MustHaveTag(HostEventData{}, "Execution")
+	hostDataStatusKey = bsonutil.MustHaveTag(HostEventData{}, "TaskStatus")
 )
 
 func LogHostEvent(hostId string, eventType string, eventData HostEventData) {
