@@ -1271,10 +1271,11 @@ func TestTaskResetExecute(t *testing.T) {
 		})
 
 		Convey("calling TaskRestartHandler should reset the task with failedonly", func() {
+			trueBool := true
 			trh := &taskRestartHandler{
 				taskId:     "displayTask",
 				username:   "testUser",
-				failedOnly: true,
+				failedOnly: &trueBool,
 			}
 
 			res := trh.Run(ctx)

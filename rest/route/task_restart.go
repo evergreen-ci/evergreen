@@ -20,7 +20,7 @@ import (
 type taskRestartHandler struct {
 	taskId     string
 	username   string
-	failedOnly bool
+	failedOnly *bool
 }
 
 func makeTaskRestartHandler() gimlet.RouteHandler {
@@ -55,21 +55,21 @@ func (trh *taskRestartHandler) Parse(ctx context.Context, r *http.Request) error
 		if err != nil {
 			return gimlet.ErrorResponse{
 				Message:    "failedOnly can only be true/false, True/False, 1/0, or T/F.",
-				StatusCode: http.StatusUnprocessableEntity,
+				StatusCode: http.StatusBadRequest,
 			}
 		}
 	}
 	trh.taskId = projCtx.Task.Id
 	u := MustHaveUser(ctx)
 	trh.username = u.DisplayName()
-	trh.failedOnly = failedOnly
+	trh.failedOnly = &failedOnly
 	return nil
 }
 
 // Execute calls the data ResetTask function and returns the refreshed
 // task from the service.
 func (trh *taskRestartHandler) Run(ctx context.Context) gimlet.Responder {
-	err := resetTask(trh.taskId, trh.username, trh.failedOnly)
+	err := resetTask(trh.taskId, trh.username, trh.failedOnly != nil && *trh.failedOnly)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -109,6 +109,5 @@ func resetTask(taskId, username string, failedOnly bool) error {
 			Message:    fmt.Sprintf("task '%s' not found", taskId),
 		}
 	}
-	// TODO EVG-17120 handle failedOnly
 	return errors.Wrapf(serviceModel.ResetTaskOrDisplayTask(t, username, evergreen.RESTV2Package, failedOnly, nil), "resetting task '%s'", taskId)
 }
