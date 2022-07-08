@@ -2581,10 +2581,7 @@ func ArchiveMany(tasks []Task) error {
 	}
 
 	_, err = session.WithTransaction(ctx, txFunc)
-	if err != nil {
-		return errors.Wrap(err, "archiving tasks")
-	}
-	return nil
+	return errors.Wrap(err, "archiving tasks")
 }
 
 func (t *Task) makeArchivedTask() *Task {
