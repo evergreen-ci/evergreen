@@ -2476,6 +2476,28 @@ func (t *Task) Archive() error {
 		if err != nil {
 			return errors.Wrap(err, "retrieving execution tasks")
 		}
+		// TODO
+		/*
+			if !t.ResetFailedWhenFinished {
+				if err := MarkTasksReset(t.ExecutionTasks); err != nil {
+					return errors.Wrap(err, "resetting execution tasks")
+				}
+			} else {
+				failedExecTasks, err := task.FindWithFields(task.FailedTasksByIds(t.ExecutionTasks), task.IdKey)
+				if err != nil {
+					return errors.Wrap(err, "retrieving failed execution tasks")
+				}
+				failedExecTaskIds := []string{}
+				for _, et := range failedExecTasks {
+					failedExecTaskIds = append(failedExecTaskIds, et.Id)
+				}
+				if err := MarkTasksReset(failedExecTaskIds); err != nil {
+					return errors.Wrap(err, "resetting failed execution tasks")
+				}
+			}
+		*/
+		// Only archive failed tasks for ResetfailedWhenFinished
+
 		if err = ArchiveMany(execTasks); err != nil {
 			return errors.Wrap(err, "archiving execution tasks")
 		}

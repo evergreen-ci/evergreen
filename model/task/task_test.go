@@ -4139,6 +4139,7 @@ type TaskConnectorFetchByIdSuite struct {
 	suite.Suite
 }
 
+// TODO RUN THIS TEST TO TEST
 func TestTaskConnectorFetchByIdSuite(t *testing.T) {
 	s := &TaskConnectorFetchByIdSuite{}
 	suite.Run(t, s)
@@ -4250,6 +4251,9 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByVersion() {
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, t[0].DisplayStatus)
 }
+
+// TODO
+// Test for archive, execution is stable with highest execution being for dt. Non-archived execution should not increment
 
 func (s *TaskConnectorFetchByIdSuite) TestFindOldTasksByIDWithDisplayTasks() {
 	s.Require().NoError(db.ClearCollections(Collection, OldCollection))
