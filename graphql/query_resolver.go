@@ -176,14 +176,14 @@ func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.API
 func (r *queryResolver) HostEvents(ctx context.Context, hostID string, hostTag *string, limit *int, page *int) (*HostEvents, error) {
 	h, err := host.FindOneByIdOrTag(hostID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding host %s: %s", hostID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding host '%s': %s", hostID, err.Error()))
 	}
 	if h == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Host %s not found", hostID))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("host '%s' not found", hostID))
 	}
-	events, err := event.FindPaginated(h.Id, h.Tag, *limit, *page)
+	events, count, err := event.FindPaginatedWithTotalCount(h.Id, h.Tag, *limit, *page)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error Fetching host events: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching host events: %s", err.Error()))
 	}
 	// populate eventlogs pointer arrays
 	apiEventLogPointers := []*restModel.HostAPIEventLogEntry{}
@@ -191,13 +191,13 @@ func (r *queryResolver) HostEvents(ctx context.Context, hostID string, hostTag *
 		apiEventLog := restModel.HostAPIEventLogEntry{}
 		err = apiEventLog.BuildFromService(&e)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to build APIEventLogEntry from EventLog: %s", err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIEventLogEntry from EventLog: %s", err.Error()))
 		}
 		apiEventLogPointers = append(apiEventLogPointers, &apiEventLog)
 	}
 	hostevents := HostEvents{
 		EventLogEntries: apiEventLogPointers,
-		Count:           len(events),
+		Count:           count,
 	}
 	return &hostevents, nil
 }
