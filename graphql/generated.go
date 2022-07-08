@@ -8540,7 +8540,11 @@ input WebhookHeaderInput {
   key: String!
   value: String!
 }
-`, BuiltIn: false},
+
+input JiraIssueSubscriberInput {
+  issueType: String!
+  project: String!
+}`, BuiltIn: false},
 	{Name: "graphql/schema/types/project_vars.graphql", Input: `###### INPUTS ######
 input ProjectVarsInput {
   adminOnlyVarsList: [String]
@@ -9157,6 +9161,7 @@ input SubscriberInput {
   target: String!
   type: String!
   webhookSubscriber: WebhookSubscriberInput
+  jiraIssueSubscriber: JiraIssueSubscriberInput
 }
 
 ###### TYPES ######
@@ -39776,6 +39781,37 @@ func (ec *executionContext) unmarshalInputJiraFieldInput(ctx context.Context, ob
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputJiraIssueSubscriberInput(ctx context.Context, obj interface{}) (model.APIJIRAIssueSubscriber, error) {
+	var it model.APIJIRAIssueSubscriber
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	for k, v := range asMap {
+		switch k {
+		case "issueType":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("issueType"))
+			it.IssueType, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "project":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("project"))
+			it.Project, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputMainlineCommitsOptions(ctx context.Context, obj interface{}) (MainlineCommitsOptions, error) {
 	var it MainlineCommitsOptions
 	asMap := map[string]interface{}{}
@@ -41473,6 +41509,14 @@ func (ec *executionContext) unmarshalInputSubscriberInput(ctx context.Context, o
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("webhookSubscriber"))
 			it.WebhookSubscriber, err = ec.unmarshalOWebhookSubscriberInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWebhookSubscriber(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "jiraIssueSubscriber":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("jiraIssueSubscriber"))
+			it.JiraIssueSubscriber, err = ec.unmarshalOJiraIssueSubscriberInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJIRAIssueSubscriber(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -53020,6 +53064,14 @@ func (ec *executionContext) marshalOJiraIssueSubscriber2ᚖgithubᚗcomᚋevergr
 		return graphql.Null
 	}
 	return ec._JiraIssueSubscriber(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOJiraIssueSubscriberInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJIRAIssueSubscriber(ctx context.Context, v interface{}) (*model.APIJIRAIssueSubscriber, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputJiraIssueSubscriberInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOJiraTicket2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐJiraTicket(ctx context.Context, sel ast.SelectionSet, v *thirdparty.JiraTicket) graphql.Marshaler {

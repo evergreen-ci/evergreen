@@ -92,6 +92,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIJiraField
   JiraIssueSubscriber:
     model: github.com/evergreen-ci/evergreen/rest/model.APIJIRAIssueSubscriber
+  JiraIssueSubscriberInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIJIRAIssueSubscriber
   JiraStatus:
     model: github.com/evergreen-ci/evergreen/thirdparty.JiraStatus
   JiraTicket:

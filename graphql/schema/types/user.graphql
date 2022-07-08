@@ -65,6 +65,7 @@ input SubscriberInput {
   target: String!
   type: String!
   webhookSubscriber: WebhookSubscriberInput
+  jiraIssueSubscriber: JiraIssueSubscriberInput
 }
 
 ###### TYPES ######
