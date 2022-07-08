@@ -3,6 +3,7 @@ package route
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 
@@ -47,18 +48,23 @@ func (trh *taskRestartHandler) Parse(ctx context.Context, r *http.Request) error
 			StatusCode: http.StatusNotFound,
 		}
 	}
-	paramsFailedOnly := r.URL.Query().Get("failedOnly")
 	failedOnly := false
-	if paramsFailedOnly != "" {
-		var err error
-		failedOnly, err = strconv.ParseBool(paramsFailedOnly)
-		if err != nil {
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return gimlet.ErrorResponse{
+			Message:    "failedOnly in body is invalid",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+	if bodyFailedOnly := string(body); bodyFailedOnly != "" {
+		if failedOnly, err = strconv.ParseBool(bodyFailedOnly); err != nil {
 			return gimlet.ErrorResponse{
 				Message:    "failedOnly can only be true/false, True/False, 1/0, or T/F.",
 				StatusCode: http.StatusBadRequest,
 			}
 		}
 	}
+
 	trh.taskId = projCtx.Task.Id
 	u := MustHaveUser(ctx)
 	trh.username = u.DisplayName()

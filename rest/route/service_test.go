@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math"
 	"net/http"
 	"net/http/httptest"
@@ -1070,13 +1071,13 @@ func TestTaskResetPrepare(t *testing.T) {
 
 		failedOnlyTest := func(failedOnly bool) {
 			projCtx.Task = &testTask
-			req, err := http.NewRequest(http.MethodPost, "task/testTaskId/restart?failedOnly="+strconv.FormatBool(failedOnly), &bytes.Buffer{})
+			req, err := http.NewRequest(http.MethodPost, "task/testTaskId/restart", ioutil.NopCloser(bytes.NewBufferString(strconv.FormatBool(failedOnly))))
 			So(err, ShouldBeNil)
 			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = trh.Parse(ctx, req)
 			So(err, ShouldBeNil)
-			So(trh.failedOnly, ShouldEqual, failedOnly)
+			So(*trh.failedOnly, ShouldEqual, failedOnly)
 		}
 
 		Convey("should register true valued failedOnly parameter", func() {
@@ -1095,7 +1096,7 @@ func TestTaskResetPrepare(t *testing.T) {
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = trh.Parse(ctx, req)
 			So(err, ShouldBeNil)
-			So(trh.failedOnly, ShouldEqual, false)
+			So(*trh.failedOnly, ShouldEqual, false)
 		})
 	})
 }
