@@ -486,7 +486,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	return catcher.Resolve()
 }
 
-func setFailedTasksToPrevious(patchDoc, previousPatch *patch.Patch, project *model.Project) error {
+func setTasksToPreviousFailed(patchDoc, previousPatch *patch.Patch, project *model.Project) error {
 	var failedTasks []string
 	for _, vt := range previousPatch.VariantsTasks {
 		tasksInProjectVariant := project.FindTasksForVariant(vt.Variant)
@@ -517,7 +517,7 @@ func (j *patchIntentProcessor) setToPreviousPatchDefinition(patchDoc *patch.Patc
 	patchDoc.RegexTasks = previousPatch.RegexTasks
 
 	if failedOnly {
-		setFailedTasksToPrevious(patchDoc, previousPatch, project)
+		setTasksToPreviousFailed(patchDoc, previousPatch, project)
 	} else {
 		patchDoc.Tasks = previousPatch.Tasks
 	}
