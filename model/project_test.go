@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	yaml "oldYAML"
+	yaml "gopkg.in/20210107192922/yaml.v3"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
