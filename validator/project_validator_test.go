@@ -2308,12 +2308,39 @@ buildvariants:
 - name: "bv"
   display_name: "bv_display"
   tasks:
-  - name: example_task_group
+    - name: example_task_group
+    - name: example_task_group2
+      group:
+        share_processes: true
+        max_hosts: 2
+        setup_group_can_fail_task: true
+        setup_group_timeout_secs: 10
+        setup_group:
+        - command: shell.exec
+          params:
+            script: "echo setup_group"
+        teardown_group:
+        - command: shell.exec
+          params:
+            script: "echo teardown_group"
+        setup_task:
+        - command: shell.exec
+          params:
+            script: "echo setup_group"
+        teardown_task:
+        - command: shell.exec
+          params:
+            script: "echo setup_group"
+        tasks:
+        - example_task_1
+        - example_task_2
 `
 	pp, err = model.LoadProjectInto(ctx, []byte(largeMaxHostYml), nil, "", &proj)
 	assert.NotNil(proj)
 	assert.NotNil(pp)
 	assert.NoError(err)
+	validationErrs = validateTaskGroups(&proj)
+	assert.Len(validationErrs, 0)
 	validationErrs = checkTaskGroups(&proj)
 	assert.Len(validationErrs, 1)
 	assert.Contains(validationErrs[0].Message, "task group example_task_group has max number of hosts 4 greater than the number of tasks 3")

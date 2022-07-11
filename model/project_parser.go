@@ -1208,6 +1208,7 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 			SetupTask:               bvt.Group.SetupTask,
 			TeardownTask:            bvt.Group.TeardownTask,
 			Tags:                    bvt.Group.Tags,
+			Tasks:                   bvt.Group.Tasks,
 			MaxHosts:                bvt.Group.MaxHosts,
 			Timeout:                 bvt.Group.Timeout,
 			ShareProcs:              bvt.Group.ShareProcs,
