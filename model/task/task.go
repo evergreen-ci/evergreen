@@ -2472,34 +2472,24 @@ func (t *Task) Insert() error {
 // are also archived.
 func (t *Task) Archive() error {
 	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
-		execTasks, err := FindAll(db.Query(ByIds(t.ExecutionTasks)))
-		if err != nil {
-			return errors.Wrap(err, "retrieving execution tasks")
-		}
-		// TODO
-		/*
-			if !t.ResetFailedWhenFinished {
-				if err := MarkTasksReset(t.ExecutionTasks); err != nil {
-					return errors.Wrap(err, "resetting execution tasks")
-				}
-			} else {
-				failedExecTasks, err := task.FindWithFields(task.FailedTasksByIds(t.ExecutionTasks), task.IdKey)
-				if err != nil {
-					return errors.Wrap(err, "retrieving failed execution tasks")
-				}
-				failedExecTaskIds := []string{}
-				for _, et := range failedExecTasks {
-					failedExecTaskIds = append(failedExecTaskIds, et.Id)
-				}
-				if err := MarkTasksReset(failedExecTaskIds); err != nil {
-					return errors.Wrap(err, "resetting failed execution tasks")
-				}
-			}
-		*/
-		// Only archive failed tasks for ResetfailedWhenFinished
+		if !t.ResetFailedWhenFinished {
+			execTasks, err := FindAll(db.Query(ByIds(t.ExecutionTasks)))
 
-		if err = ArchiveMany(execTasks); err != nil {
-			return errors.Wrap(err, "archiving execution tasks")
+			if err != nil {
+				return errors.Wrap(err, "retrieving execution tasks")
+			}
+			if err = ArchiveMany(execTasks, t.Execution); err != nil {
+				return errors.Wrap(err, "archiving execution tasks")
+			}
+		} else {
+			failedExecTasks, err := FindWithFields(FailedTasksByIds(t.ExecutionTasks), IdKey)
+
+			if err != nil {
+				return errors.Wrap(err, "retrieving failed execution tasks")
+			}
+			if err = ArchiveMany(failedExecTasks, t.Execution); err != nil {
+				return errors.Wrap(err, "archiving failed execution tasks")
+			}
 		}
 	}
 
@@ -2544,7 +2534,7 @@ func (t *Task) Archive() error {
 	return nil
 }
 
-func ArchiveMany(tasks []Task) error {
+func ArchiveMany(tasks []Task, execution int) error {
 	if len(tasks) == 0 {
 		return nil
 	}
@@ -2574,7 +2564,7 @@ func ArchiveMany(tasks []Task) error {
 	archived := []interface{}{}
 	taskIds := []string{}
 	for _, t := range tasks {
-		archived = append(archived, *t.makeArchivedTask())
+		archived = append(archived, *t.makeArchivedTaskWithExecution(execution))
 		taskIds = append(taskIds, t.Id)
 	}
 
@@ -2605,8 +2595,8 @@ func ArchiveMany(tasks []Task) error {
 					AbortedKey:   "",
 					AbortInfoKey: "",
 				},
-				"$inc": bson.M{
-					ExecutionKey: 1,
+				"$set": bson.M{
+					ExecutionKey: execution + 1,
 				},
 			})
 		if err != nil {
@@ -2639,6 +2629,15 @@ func ArchiveMany(tasks []Task) error {
 func (t *Task) makeArchivedTask() *Task {
 	archiveTask := *t
 	archiveTask.Id = MakeOldID(t.Id, t.Execution)
+	archiveTask.OldTaskId = t.Id
+	archiveTask.Archived = true
+
+	return &archiveTask
+}
+
+func (t *Task) makeArchivedTaskWithExecution(execution int) *Task {
+	archiveTask := *t
+	archiveTask.Id = MakeOldID(t.Id, execution)
 	archiveTask.OldTaskId = t.Id
 	archiveTask.Archived = true
 
