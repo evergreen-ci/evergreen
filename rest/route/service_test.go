@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"net/http"
 	"net/http/httptest"
@@ -1071,13 +1070,15 @@ func TestTaskResetPrepare(t *testing.T) {
 
 		failedOnlyTest := func(failedOnly bool) {
 			projCtx.Task = &testTask
-			req, err := http.NewRequest(http.MethodPost, "task/testTaskId/restart", ioutil.NopCloser(bytes.NewBufferString(strconv.FormatBool(failedOnly))))
+
+			var jsonStr = []byte(`{"failedOnly":"` + strconv.FormatBool(failedOnly) + `"}`)
+			req, err := http.NewRequest(http.MethodPost, "task/testTaskId/restart", bytes.NewBuffer(jsonStr))
 			So(err, ShouldBeNil)
 			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = trh.Parse(ctx, req)
 			So(err, ShouldBeNil)
-			So(*trh.failedOnly, ShouldEqual, failedOnly)
+			So(trh.failedOnly, ShouldEqual, failedOnly)
 		}
 
 		Convey("should register true valued failedOnly parameter", func() {
@@ -1096,7 +1097,7 @@ func TestTaskResetPrepare(t *testing.T) {
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = trh.Parse(ctx, req)
 			So(err, ShouldBeNil)
-			So(*trh.failedOnly, ShouldEqual, false)
+			So(trh.failedOnly, ShouldEqual, false)
 		})
 	})
 }
@@ -1272,11 +1273,10 @@ func TestTaskResetExecute(t *testing.T) {
 		})
 
 		Convey("calling TaskRestartHandler should reset the task with failedonly", func() {
-			trueBool := true
 			trh := &taskRestartHandler{
 				taskId:     "displayTask",
 				username:   "testUser",
-				failedOnly: &trueBool,
+				failedOnly: true,
 			}
 
 			res := trh.Run(ctx)
