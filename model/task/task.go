@@ -2474,7 +2474,6 @@ func (t *Task) Archive() error {
 	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
 		if !t.ResetFailedWhenFinished {
 			execTasks, err := FindAll(db.Query(ByIds(t.ExecutionTasks)))
-
 			if err != nil {
 				return errors.Wrap(err, "retrieving execution tasks")
 			}
@@ -2483,7 +2482,6 @@ func (t *Task) Archive() error {
 			}
 		} else {
 			failedExecTasks, err := Find(FailedTasksByIds(t.ExecutionTasks))
-
 			if err != nil {
 				return errors.Wrap(err, "retrieving failed execution tasks")
 			}
@@ -2538,7 +2536,12 @@ func ArchiveMany(tasks []Task) error {
 	return ArchiveManyExecutionTasks(tasks, false)
 }
 
-// When true, assumes all tasks are execution tasks under the same display task
+// ArchiveManyExecutionTasks is a wrapper function for ArchiveMany.
+// When overrideExecutions is false, it will do the original functionality of
+// incremeneting each execution task by 1. If overrideExecutions is true,
+// it will force all archived tasks to be updated to the newest execution number
+// of their display task. (i.e. dt.execution = 2, exect1 = 0, exect2 = 2, after
+// calling it will be dt.execution = 3, exect1 = 3, exect2 = 3 rather than incrementing)
 func ArchiveManyExecutionTasks(tasks []Task, overrideExecutions bool) error {
 	if len(tasks) == 0 {
 		return nil
