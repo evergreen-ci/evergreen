@@ -72,12 +72,12 @@ func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
 
 	taskName := gimlet.GetVars(r)["task_name"]
 
-	if RedirectSpruceUsers(w, r, fmt.Sprintf("%s/task-history/%s/%s", uis.Settings.Ui.UIv2Url, project.Identifier, taskName)) {
+	if err != nil || project == nil {
+		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
 
-	if err != nil || project == nil {
-		http.Error(w, "not found", http.StatusNotFound)
+	if RedirectSpruceUsers(w, r, fmt.Sprintf("%s/task-history/%s/%s", uis.Settings.Ui.UIv2Url, project.Identifier, taskName)) {
 		return
 	}
 

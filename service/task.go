@@ -160,12 +160,12 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if RedirectSpruceUsers(w, r, fmt.Sprintf("%s/task/%s?execution=%d", uis.Settings.Ui.UIv2Url, projCtx.Task.Id, execution)) {
+	if projCtx.Task == nil {
+		http.Error(w, "Not found", http.StatusNotFound)
 		return
 	}
 
-	if projCtx.Task == nil {
-		http.Error(w, "Not found", http.StatusNotFound)
+	if RedirectSpruceUsers(w, r, fmt.Sprintf("%s/task/%s?execution=%d", uis.Settings.Ui.UIv2Url, projCtx.Task.Id, execution)) {
 		return
 	}
 
