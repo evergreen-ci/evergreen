@@ -2482,7 +2482,7 @@ func (t *Task) Archive() error {
 				return errors.Wrap(err, "archiving execution tasks")
 			}
 		} else {
-			failedExecTasks, err := FindWithFields(FailedTasksByIds(t.ExecutionTasks), IdKey)
+			failedExecTasks, err := Find(FailedTasksByIds(t.ExecutionTasks))
 
 			if err != nil {
 				return errors.Wrap(err, "retrieving failed execution tasks")
@@ -2566,11 +2566,7 @@ func ArchiveMany(tasks []Task, execution int) error {
 	archived := []interface{}{}
 	taskIds := []string{}
 	for _, t := range tasks {
-		if execution == -1 {
-			archived = append(archived, *t.makeArchivedTask())
-		} else {
-			archived = append(archived, *t.makeArchivedTaskWithExecution(execution))
-		}
+		archived = append(archived, *t.makeArchivedTask())
 		taskIds = append(taskIds, t.Id)
 	}
 
@@ -2652,15 +2648,6 @@ func ArchiveMany(tasks []Task, execution int) error {
 func (t *Task) makeArchivedTask() *Task {
 	archiveTask := *t
 	archiveTask.Id = MakeOldID(t.Id, t.Execution)
-	archiveTask.OldTaskId = t.Id
-	archiveTask.Archived = true
-
-	return &archiveTask
-}
-
-func (t *Task) makeArchivedTaskWithExecution(execution int) *Task {
-	archiveTask := *t
-	archiveTask.Id = MakeOldID(t.Id, execution)
 	archiveTask.OldTaskId = t.Id
 	archiveTask.Archived = true
 
