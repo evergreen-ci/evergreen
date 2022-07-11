@@ -2506,19 +2506,6 @@ func (t *Task) Archive() error {
 		return errors.Wrap(err, "updating task")
 	}
 	t.Aborted = false
-
-	if t.IsHostTask() {
-		// Host event logs involving running a host task don't include the
-		// execution number but need it to distinguish which task execution it
-		// ran once the task is no longer the latest execution. This
-		// retroactively sets the task execution for event logs involving the
-		// host running this task so that it correctly identifies this archived
-		// execution.
-		err = event.UpdateHostTaskExecutions(t.HostId, t.Id, t.Execution)
-		if err != nil {
-			return errors.Wrap(err, "updating host event logs")
-		}
-	}
 	return nil
 }
 
@@ -2594,24 +2581,7 @@ func ArchiveMany(tasks []Task) error {
 	}
 
 	_, err = session.WithTransaction(ctx, txFunc)
-	if err != nil {
-		return errors.Wrap(err, "archiving tasks")
-	}
-
-	eventLogErrs := grip.NewBasicCatcher()
-	for _, t := range tasks {
-		if t.IsHostTask() {
-			// Host event logs involving running a host task don't include the
-			// execution number but need it to distinguish which task execution
-			// it ran once the task is no longer the latest execution. This
-			// retroactively sets the task execution for event logs involving
-			// the host running this task so that it correctly identifies this
-			// archived execution.
-			eventLogErrs.Wrapf(event.UpdateHostTaskExecutions(t.HostId, t.Id, t.Execution), "updating execution %d of task '%s' for host '%s'", t.Execution, t.Id, t.HostId)
-		}
-	}
-
-	return eventLogErrs.Resolve()
+	return errors.Wrap(err, "archiving tasks")
 }
 
 func (t *Task) makeArchivedTask() *Task {
