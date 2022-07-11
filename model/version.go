@@ -127,22 +127,34 @@ func (v *Version) UpdateBuildVariants() error {
 	)
 }
 
-// SetActivated sets version activated field to specified boolean.
-func (v *Version) SetActivated(activated bool) error {
-	if utility.FromBoolPtr(v.Activated) == activated {
+// SetActivated sets this version to activated if it's not already activated.
+func (v *Version) SetActivated() error {
+	if utility.FromBoolPtr(v.Activated) {
 		return nil
 	}
-	v.Activated = utility.ToBoolPtr(activated)
-	return SetVersionActivated(v.Id, activated)
-}
-
-// SetVersionActivated sets version activated field to specified boolean given a version id.
-func SetVersionActivated(versionId string, activated bool) error {
+	v.Activated = utility.TruePtr()
 	return VersionUpdateOne(
-		bson.M{VersionIdKey: versionId},
+		bson.M{VersionIdKey: v.Id},
 		bson.M{
 			"$set": bson.M{
-				VersionActivatedKey: activated,
+				VersionActivatedKey: true,
+			},
+		},
+	)
+}
+
+// SetNotActivated sets this version to inactive if it's been explicitly set to
+// activated.
+func (v *Version) SetNotActivated() error {
+	if !utility.FromBoolTPtr(v.Activated) {
+		return nil
+	}
+	v.Activated = utility.FalsePtr()
+	return VersionUpdateOne(
+		bson.M{VersionIdKey: v.Id},
+		bson.M{
+			"$set": bson.M{
+				VersionActivatedKey: false,
 			},
 		},
 	)

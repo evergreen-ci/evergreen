@@ -379,8 +379,8 @@ func TestSetVersionActivation(t *testing.T) {
 	}
 
 	tasks := []task.Task{
-		{Id: "t0", BuildId: "b0", Version: vID, Activated: true, Status: evergreen.TaskUndispatched},
-		{Id: "t1", BuildId: "b1", Version: vID, Activated: true, Status: evergreen.TaskSucceeded},
+		{Id: "t0", BuildId: "b0", Activated: true, Status: evergreen.TaskUndispatched},
+		{Id: "t1", BuildId: "b1", Activated: true, Status: evergreen.TaskSucceeded},
 	}
 	for _, task := range tasks {
 		require.NoError(t, task.Insert())

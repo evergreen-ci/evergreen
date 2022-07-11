@@ -12,7 +12,7 @@ require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/evergreen-ci/birch v0.0.0-20211025210128-7f3409c2b515
 	github.com/evergreen-ci/certdepot v0.0.0-20211117185134-dbedb3d79a10
-	github.com/evergreen-ci/cocoa v0.0.0-20220610175551-2ddb1b6e0758
+	github.com/evergreen-ci/cocoa v0.0.0-20220706150511-817846ab6de9
 	github.com/evergreen-ci/gimlet v0.0.0-20220419172609-b882e01673e7
 	github.com/evergreen-ci/go-test2json v0.0.0-20180702150328-5b6cfd2e8cb0
 	github.com/evergreen-ci/juniper v0.0.0-20220118233332-0813edc78908
@@ -39,7 +39,7 @@ require (
 	github.com/robfig/cron v1.2.0
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
 	github.com/smartystreets/goconvey v1.7.2
-	github.com/stretchr/testify v1.7.1
+	github.com/stretchr/testify v1.8.0
 	github.com/urfave/cli v1.22.5
 	github.com/vektah/gqlparser/v2 v2.2.0
 	github.com/vmware/govmomi v0.27.1
@@ -51,7 +51,7 @@ require (
 	google.golang.org/api v0.60.0
 	google.golang.org/grpc v1.44.0
 	gopkg.in/yaml.v2 v2.4.0
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
