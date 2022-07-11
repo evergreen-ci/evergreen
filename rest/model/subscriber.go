@@ -12,8 +12,10 @@ import (
 )
 
 type APISubscriber struct {
-	Type   *string     `json:"type"`
-	Target interface{} `json:"target"`
+	Type                *string                 `json:"type"`
+	Target              interface{}             `json:"target"`
+	WebhookSubscriber   *APIWebhookSubscriber   `json:"-"`
+	JiraIssueSubscriber *APIJIRAIssueSubscriber `json:"-"`
 }
 
 type APIGithubPRSubscriber struct {
@@ -126,20 +128,28 @@ func (s *APISubscriber) ToService() (event.Subscriber, error) {
 
 	case event.EvergreenWebhookSubscriberType:
 		apiModel := APIWebhookSubscriber{}
-		if err = mapstructure.Decode(s.Target, &apiModel); err != nil {
-			return event.Subscriber{}, gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    errors.Wrap(err, "webhook subscriber target is malformed").Error(),
+		if s.WebhookSubscriber != nil {
+			apiModel = *s.WebhookSubscriber
+		} else {
+			if err = mapstructure.Decode(s.Target, &apiModel); err != nil {
+				return event.Subscriber{}, gimlet.ErrorResponse{
+					StatusCode: http.StatusBadRequest,
+					Message:    errors.Wrap(err, "webhook subscriber target is malformed").Error(),
+				}
 			}
 		}
 		target = apiModel.ToService()
 
 	case event.JIRAIssueSubscriberType:
 		apiModel := APIJIRAIssueSubscriber{}
-		if err = mapstructure.Decode(s.Target, &apiModel); err != nil {
-			return event.Subscriber{}, gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    errors.Wrap(err, "Jira issue subscriber target is malformed").Error(),
+		if s.JiraIssueSubscriber != nil {
+			apiModel = *s.JiraIssueSubscriber
+		} else {
+			if err = mapstructure.Decode(s.Target, &apiModel); err != nil {
+				return event.Subscriber{}, gimlet.ErrorResponse{
+					StatusCode: http.StatusBadRequest,
+					Message:    errors.Wrap(err, "Jira issue subscriber target is malformed").Error(),
+				}
 			}
 		}
 		target = apiModel.ToService()
