@@ -2,6 +2,10 @@ module github.com/evergreen-ci/evergreen
 
 go 1.16
 
+// We need to keep this old YAML version because upgrading from this specific revision to any newer one somehow breaks
+// project validation.
+replace gopkg.in/20210107192922/yaml.v3 => gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
+
 require (
 	github.com/99designs/gqlgen v0.14.0
 	github.com/PuerkitoBio/rehttp v1.1.0
@@ -68,4 +72,5 @@ require (
 	github.com/shirou/gopsutil/v3 v3.22.3
 	github.com/trinodb/trino-go-client v0.300.0
 	google.golang.org/genproto v0.0.0-20211129164237-f09f9a12af12 // indirect
+	gopkg.in/20210107192922/yaml.v3 v3.0.0-00010101000000-000000000000
 )
