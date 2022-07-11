@@ -3,15 +3,14 @@ package route
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/http"
-	"strconv"
 
 	"github.com/evergreen-ci/evergreen"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -21,7 +20,7 @@ import (
 type taskRestartHandler struct {
 	taskId     string
 	username   string
-	failedOnly *bool
+	failedOnly bool
 }
 
 func makeTaskRestartHandler() gimlet.RouteHandler {
@@ -49,33 +48,26 @@ func (trh *taskRestartHandler) Parse(ctx context.Context, r *http.Request) error
 		}
 	}
 	failedOnly := false
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
+	body := utility.NewRequestReader(r)
+	defer body.Close()
+	if err := utility.ReadJSON(body, trh); err != nil {
 		return gimlet.ErrorResponse{
-			Message:    "failedOnly in body is invalid",
+			Message:    "failedOnly in body is invalid. failedOnly can only be true/false, True/False, 1/0, or T/F.",
 			StatusCode: http.StatusBadRequest,
-		}
-	}
-	if bodyFailedOnly := string(body); bodyFailedOnly != "" {
-		if failedOnly, err = strconv.ParseBool(bodyFailedOnly); err != nil {
-			return gimlet.ErrorResponse{
-				Message:    "failedOnly can only be true/false, True/False, 1/0, or T/F.",
-				StatusCode: http.StatusBadRequest,
-			}
 		}
 	}
 
 	trh.taskId = projCtx.Task.Id
 	u := MustHaveUser(ctx)
 	trh.username = u.DisplayName()
-	trh.failedOnly = &failedOnly
+	trh.failedOnly = failedOnly
 	return nil
 }
 
 // Execute calls the data ResetTask function and returns the refreshed
 // task from the service.
 func (trh *taskRestartHandler) Run(ctx context.Context) gimlet.Responder {
-	err := resetTask(trh.taskId, trh.username, trh.failedOnly != nil && *trh.failedOnly)
+	err := resetTask(trh.taskId, trh.username, trh.failedOnly)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
