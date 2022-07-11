@@ -19,9 +19,9 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     $scope.validECSOSes = ["linux", "windows"];
     $scope.validECSArches = ["amd64", "arm64"];
     $scope.validECSWindowsVersions = {
-      "Windows Server 2016": "windows_server_2016",
-      "Windows Server 2019": "windows_server_2019",
-      "Windows Server 2022": "windows_server_2022"
+      "Server 2016": "windows_server_2016",
+      "Server 2019": "windows_server_2019",
+      "Server 2022": "windows_server_2022"
     };
     $("#restart-modal").on("hidden.bs.modal", $scope.enableSubmit);
   }
