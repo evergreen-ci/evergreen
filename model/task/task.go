@@ -2478,7 +2478,7 @@ func (t *Task) Archive() error {
 			if err != nil {
 				return errors.Wrap(err, "retrieving execution tasks")
 			}
-			if err = ArchiveMany(execTasks, t.Execution); err != nil {
+			if err = ArchiveManyExecutionTasks(execTasks, true); err != nil {
 				return errors.Wrap(err, "archiving execution tasks")
 			}
 		} else {
@@ -2487,7 +2487,7 @@ func (t *Task) Archive() error {
 			if err != nil {
 				return errors.Wrap(err, "retrieving failed execution tasks")
 			}
-			if err = ArchiveMany(failedExecTasks, t.Execution); err != nil {
+			if err = ArchiveManyExecutionTasks(failedExecTasks, true); err != nil {
 				return errors.Wrap(err, "archiving failed execution tasks")
 			}
 		}
@@ -2534,9 +2534,12 @@ func (t *Task) Archive() error {
 	return nil
 }
 
-// Execution argument is for display tasks to override the natural incrementing
-// when archiving. To incremenent all executions, put execution = -1
-func ArchiveMany(tasks []Task, execution int) error {
+func ArchiveMany(tasks []Task) error {
+	return ArchiveManyExecutionTasks(tasks, false)
+}
+
+// When true, assumes all tasks are execution tasks under the same display task
+func ArchiveManyExecutionTasks(tasks []Task, overrideExecutions bool) error {
 	if len(tasks) == 0 {
 		return nil
 	}
@@ -2587,37 +2590,32 @@ func ArchiveMany(tasks []Task, execution int) error {
 		}
 
 		taskColl := evergreen.GetEnvironment().DB().Collection(Collection)
-		if execution == -1 {
-			_, err = taskColl.UpdateMany(ctx, bson.M{
-				IdKey: bson.M{
-					"$in": taskIds,
-				},
+		updates := bson.M{
+			"$unset": bson.M{
+				AbortedKey:   "",
+				AbortInfoKey: "",
 			},
-				bson.M{
-					"$unset": bson.M{
-						AbortedKey:   "",
-						AbortInfoKey: "",
-					},
-					"$in": bson.M{
-						ExecutionKey: 1,
-					},
-				})
-		} else {
-			_, err = taskColl.UpdateMany(ctx, bson.M{
-				IdKey: bson.M{
-					"$in": taskIds,
-				},
-			},
-				bson.M{
-					"$unset": bson.M{
-						AbortedKey:   "",
-						AbortInfoKey: "",
-					},
-					"$set": bson.M{
-						ExecutionKey: execution + 1,
-					},
-				})
 		}
+		if overrideExecutions {
+			dt, err := FindOneId(*tasks[0].DisplayTaskId)
+			if err != nil {
+				return nil, err
+			}
+			updates["$set"] = bson.M{
+				ExecutionKey: dt.Execution + 1,
+			}
+		} else {
+			updates["$inc"] = bson.M{
+				ExecutionKey: 1,
+			}
+		}
+
+		_, err = taskColl.UpdateMany(ctx, bson.M{
+			IdKey: bson.M{
+				"$in": taskIds,
+			},
+		},
+			updates)
 		if err != nil {
 			return nil, err
 		}

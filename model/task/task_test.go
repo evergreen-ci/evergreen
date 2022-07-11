@@ -3122,7 +3122,7 @@ func TestArchiveMany(t *testing.T) {
 	assert.NoError(t, et.Insert())
 
 	tasks := []Task{t1, t2, dt}
-	err := ArchiveMany(tasks, -1)
+	err := ArchiveMany(tasks)
 	assert.NoError(t, err)
 	currentTasks, err := FindAll(db.Query(ByVersion("v")))
 	assert.NoError(t, err)
