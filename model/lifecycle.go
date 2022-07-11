@@ -326,7 +326,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 			toArchive = append(toArchive, t)
 		}
 	}
-	if err = task.ArchiveMany(toArchive); err != nil {
+	if err = task.ArchiveMany(toArchive, -1); err != nil {
 		return errors.Wrap(err, "archiving tasks")
 	}
 
@@ -459,7 +459,7 @@ func restartTasksForBuild(buildId string, tasks []task.Task, caller string) erro
 			}
 		}
 	}
-	if err := task.ArchiveMany(toArchive); err != nil {
+	if err := task.ArchiveMany(toArchive, -1); err != nil {
 		return errors.Wrap(err, "archiving tasks")
 	}
 	// Set all the task fields to indicate restarted

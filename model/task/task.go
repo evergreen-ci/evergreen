@@ -2534,6 +2534,8 @@ func (t *Task) Archive() error {
 	return nil
 }
 
+// Execution argument is for display tasks to override the natural incrementing
+// when archiving. To incremenent all executions, put execution = -1
 func ArchiveMany(tasks []Task, execution int) error {
 	if len(tasks) == 0 {
 		return nil
@@ -2564,7 +2566,11 @@ func ArchiveMany(tasks []Task, execution int) error {
 	archived := []interface{}{}
 	taskIds := []string{}
 	for _, t := range tasks {
-		archived = append(archived, *t.makeArchivedTaskWithExecution(execution))
+		if execution == -1 {
+			archived = append(archived, *t.makeArchivedTask())
+		} else {
+			archived = append(archived, *t.makeArchivedTaskWithExecution(execution))
+		}
 		taskIds = append(taskIds, t.Id)
 	}
 
@@ -2585,20 +2591,37 @@ func ArchiveMany(tasks []Task, execution int) error {
 		}
 
 		taskColl := evergreen.GetEnvironment().DB().Collection(Collection)
-		_, err = taskColl.UpdateMany(ctx, bson.M{
-			IdKey: bson.M{
-				"$in": taskIds,
+		if execution == -1 {
+			_, err = taskColl.UpdateMany(ctx, bson.M{
+				IdKey: bson.M{
+					"$inc": taskIds,
+				},
 			},
-		},
-			bson.M{
-				"$unset": bson.M{
-					AbortedKey:   "",
-					AbortInfoKey: "",
+				bson.M{
+					"$unset": bson.M{
+						AbortedKey:   "",
+						AbortInfoKey: "",
+					},
+					"$in": bson.M{
+						ExecutionKey: 1,
+					},
+				})
+		} else {
+			_, err = taskColl.UpdateMany(ctx, bson.M{
+				IdKey: bson.M{
+					"$in": taskIds,
 				},
-				"$set": bson.M{
-					ExecutionKey: execution + 1,
-				},
-			})
+			},
+				bson.M{
+					"$unset": bson.M{
+						AbortedKey:   "",
+						AbortInfoKey: "",
+					},
+					"$set": bson.M{
+						ExecutionKey: execution + 1,
+					},
+				})
+		}
 		if err != nil {
 			return nil, err
 		}
