@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"strconv"
 	"testing"
 	"time"
 
@@ -1038,7 +1037,7 @@ func TestTaskResetPrepare(t *testing.T) {
 		ctx := context.Background()
 
 		Convey("should error on empty project", func() {
-			req, err := http.NewRequest(http.MethodPost, "task/testTaskId/restart", &bytes.Buffer{})
+			req, err := http.NewRequest(http.MethodPost, "task/testTaskId/restart", nil)
 			So(err, ShouldBeNil)
 			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
@@ -1049,7 +1048,7 @@ func TestTaskResetPrepare(t *testing.T) {
 		})
 		Convey("then should error on empty task", func() {
 			projCtx.Task = nil
-			req, err := http.NewRequest(http.MethodPost, "task/testTaskId/restart", &bytes.Buffer{})
+			req, err := http.NewRequest(http.MethodPost, "task/testTaskId/restart", nil)
 			So(err, ShouldBeNil)
 			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
@@ -1070,9 +1069,15 @@ func TestTaskResetPrepare(t *testing.T) {
 
 		failedOnlyTest := func(failedOnly bool) {
 			projCtx.Task = &testTask
-
-			var jsonStr = []byte(`{"failedOnly":"` + strconv.FormatBool(failedOnly) + `"}`)
-			req, err := http.NewRequest(http.MethodPost, "task/testTaskId/restart", bytes.NewBuffer(jsonStr))
+			goodBod := &struct {
+				FailedOnly bool
+			}{
+				FailedOnly: failedOnly,
+			}
+			res, err := json.Marshal(goodBod)
+			So(err, ShouldBeNil)
+			buf := bytes.NewBuffer(res)
+			req, err := http.NewRequest(http.MethodPost, "task/testTaskId/restart", buf)
 			So(err, ShouldBeNil)
 			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
@@ -1091,7 +1096,7 @@ func TestTaskResetPrepare(t *testing.T) {
 
 		Convey("should have default false failedOnly", func() {
 			projCtx.Task = &testTask
-			req, err := http.NewRequest(http.MethodPost, "task/testTaskId/restart", &bytes.Buffer{})
+			req, err := http.NewRequest(http.MethodPost, "task/testTaskId/restart", nil)
 			So(err, ShouldBeNil)
 			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
