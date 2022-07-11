@@ -52,7 +52,7 @@ func (trh *taskRestartHandler) Parse(ctx context.Context, r *http.Request) error
 	defer body.Close()
 	if err := utility.ReadJSON(body, trh); err != nil {
 		return gimlet.ErrorResponse{
-			Message:    "failedOnly in body is invalid. failedOnly can only be true/false, True/False, 1/0, or T/F.",
+			Message:    errors.Wrapf(err, "failedOnly in body is invalid. failedOnly can only be true/false, True/False, 1/0, or T/F.", trh.taskId).Error(),
 			StatusCode: http.StatusBadRequest,
 		}
 	}
