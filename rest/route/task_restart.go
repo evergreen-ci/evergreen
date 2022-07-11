@@ -47,7 +47,9 @@ func (trh *taskRestartHandler) Parse(ctx context.Context, r *http.Request) error
 			StatusCode: http.StatusNotFound,
 		}
 	}
-	failedOnly := false
+	trh.taskId = projCtx.Task.Id
+	u := MustHaveUser(ctx)
+	trh.username = u.DisplayName()
 	body := utility.NewRequestReader(r)
 	defer body.Close()
 	if err := utility.ReadJSON(body, trh); err != nil {
@@ -57,10 +59,6 @@ func (trh *taskRestartHandler) Parse(ctx context.Context, r *http.Request) error
 		}
 	}
 
-	trh.taskId = projCtx.Task.Id
-	u := MustHaveUser(ctx)
-	trh.username = u.DisplayName()
-	trh.failedOnly = failedOnly
 	return nil
 }
 
