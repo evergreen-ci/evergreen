@@ -783,6 +783,13 @@ func createTasksForBuild(project *Project, pRef *ProjectRef, buildVariant *Build
 	for _, tg := range project.TaskGroups {
 		tgMap[tg.Name] = tg
 	}
+	for _, variant := range project.BuildVariants {
+		for _, t := range variant.Tasks {
+			if t.Group != nil {
+				tgMap[t.Name] = *t.Group
+			}
+		}
+	}
 
 	for _, task := range buildVariant.Tasks {
 		// Verify that the config isn't malformed.
