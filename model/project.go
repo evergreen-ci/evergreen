@@ -1309,6 +1309,13 @@ func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit
 	for _, tg := range p.TaskGroups {
 		tgMap[tg.Name] = tg
 	}
+	for _, v := range p.BuildVariants {
+		for _, t := range v.Tasks {
+			if t.Group != nil {
+				tgMap[t.Name] = *t.Group
+			}
+		}
+	}
 
 	for _, bvt := range bv.Tasks {
 		if bvt.Name == task {
