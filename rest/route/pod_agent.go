@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/pod/dispatcher"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
@@ -20,6 +21,7 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 )
 
@@ -253,6 +255,43 @@ func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 
 	h.setAgentFirstContactTime(p)
 
+	if p.Status == pod.StatusTerminated || p.Status == pod.StatusDecommissioned {
+		if err = h.enqueuePodTerminationJob(ctx, "pod is no longer running"); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(err)
+		}
+		return gimlet.NewJSONResponse(&apimodels.NextTaskResponse{})
+	}
+
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving admin settings"))
+	}
+	if flags.TaskDispatchDisabled {
+		// TODO: EVG-17224 Potentially terminate pod when task dispatching is disabled
+		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), "task dispatch is disabled, returning no task")
+		return gimlet.NewJSONResponse(&apimodels.NextTaskResponse{})
+	}
+
+	if p.RunningTask != "" {
+		var t *task.Task
+		t, err = task.FindOneId(p.RunningTask)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting running task '%s'", p.RunningTask))
+		}
+		if t.IsPartOfDisplay() {
+			if err = model.UpdateDisplayTaskForTask(t); err != nil {
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "updating parent display task"))
+			}
+		}
+		return gimlet.NewJSONResponse(&apimodels.NextTaskResponse{
+			TaskId:     t.Id,
+			TaskSecret: t.Secret,
+			TaskGroup:  t.TaskGroup,
+			Version:    t.Version,
+			Build:      t.BuildId,
+		})
+	}
+
 	pd, err := h.findDispatcher()
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
@@ -266,16 +305,28 @@ func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 	if nextTask == nil {
-		j := units.NewPodTerminationJob(h.podID, "reached end of pod lifecycle", utility.RoundPartOfMinute(0))
-		if err := amboy.EnqueueUniqueJob(ctx, h.env.RemoteQueue(), j); err != nil {
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusInternalServerError,
-				Message:    errors.Wrap(err, "enqueueing job to terminate pod").Error(),
-			})
+		if err = h.enqueuePodTerminationJob(ctx, "reached end of pod lifecycle"); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
+		return gimlet.NewJSONResponse(&apimodels.NextTaskResponse{})
 	}
 
-	return gimlet.NewJSONResponse(apimodels.NextTaskResponse{})
+	return gimlet.NewJSONResponse(&apimodels.NextTaskResponse{
+		TaskId:     nextTask.Id,
+		TaskSecret: nextTask.Secret,
+		TaskGroup:  nextTask.TaskGroup,
+		Version:    nextTask.Version,
+		Build:      nextTask.BuildId,
+	})
+}
+
+// enqueuePodTerminationJob will enqueue the job to terminate a pod with a detailed reason for doing so.
+func (h *podAgentNextTask) enqueuePodTerminationJob(ctx context.Context, reason string) error {
+	j := units.NewPodTerminationJob(h.podID, reason, utility.RoundPartOfMinute(0))
+	if err := amboy.EnqueueUniqueJob(ctx, h.env.RemoteQueue(), j); err != nil {
+		return errors.Wrap(err, "enqueueing job to terminate pod")
+	}
+	return nil
 }
 
 // transitionStartingToRunning transitions the pod that is still starting up to
@@ -289,7 +340,7 @@ func (h *podAgentNextTask) transitionStartingToRunning(p *pod.Pod) error {
 }
 
 func (h *podAgentNextTask) setAgentFirstContactTime(p *pod.Pod) {
-	if !p.TimeInfo.Initializing.IsZero() {
+	if p.TimeInfo.Initializing.IsZero() {
 		return
 	}
 
@@ -476,7 +527,7 @@ func (h *podAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if t.IsPartOfDisplay() {
-		msg["display_task_id"] = t.DisplayTask.Id
+		msg["display_task_id"] = t.DisplayTaskId
 	}
 
 	grip.Info(msg)

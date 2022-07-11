@@ -995,6 +995,37 @@ func (t *Task) cacheExpectedDuration() error {
 	)
 }
 
+// MarkAsContainerDispatched marks that the container task has been dispatched
+// to a pod.
+func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Environment, agentVersion string) error {
+	dispatchedAt := time.Now()
+	query := isContainerTaskScheduledQuery()
+	query[StatusKey] = evergreen.TaskUndispatched
+	query[ContainerAllocatedKey] = true
+	update := bson.M{
+		"$set": bson.M{
+			StatusKey:        evergreen.TaskDispatched,
+			DispatchTimeKey:  dispatchedAt,
+			LastHeartbeatKey: dispatchedAt,
+			AgentVersionKey:  agentVersion,
+		},
+	}
+	res, err := env.DB().Collection(Collection).UpdateOne(ctx, query, update)
+	if err != nil {
+		return errors.Wrap(err, "updating task")
+	}
+	if res.ModifiedCount == 0 {
+		return errors.New("task was not updated")
+	}
+
+	t.Status = evergreen.TaskDispatched
+	t.DispatchTime = dispatchedAt
+	t.LastHeartbeat = dispatchedAt
+	t.AgentVersion = agentVersion
+
+	return nil
+}
+
 // MarkAsHostDispatched marks that the task has been dispatched onto a
 // particular host. If the task is part of a display task, the display task is
 // also marked as dispatched to a host. Returns an error if any of the database
@@ -1156,37 +1187,6 @@ func MarkTasksAsContainerDeallocated(taskIDs []string) error {
 	}, containerDeallocatedUpdate()); err != nil {
 		return errors.Wrap(err, "updating tasks")
 	}
-
-	return nil
-}
-
-// MarkAsContainerDispatched marks that the container task has been dispatched
-// to a pod.
-func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Environment, agentVersion string) error {
-	dispatchedAt := time.Now()
-	query := isContainerTaskScheduledQuery()
-	query[StatusKey] = evergreen.TaskUndispatched
-	query[ContainerAllocatedKey] = true
-	update := bson.M{
-		"$set": bson.M{
-			StatusKey:        evergreen.TaskDispatched,
-			DispatchTimeKey:  dispatchedAt,
-			LastHeartbeatKey: dispatchedAt,
-			AgentVersionKey:  agentVersion,
-		},
-	}
-	res, err := env.DB().Collection(Collection).UpdateOne(ctx, query, update)
-	if err != nil {
-		return errors.Wrap(err, "updating task")
-	}
-	if res.ModifiedCount == 0 {
-		return errors.New("task was not updated")
-	}
-
-	t.Status = evergreen.TaskDispatched
-	t.DispatchTime = dispatchedAt
-	t.LastHeartbeat = dispatchedAt
-	t.AgentVersion = agentVersion
 
 	return nil
 }
@@ -1838,7 +1838,7 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 		"project":   t.Project,
 		"details":   t.Details,
 	})
-	if detail.Status == "" {
+	if detail.IsEmpty() {
 		grip.Debug(message.Fields{
 			"message":   "detail status was empty, setting to failed",
 			"task_id":   t.Id,
@@ -2506,19 +2506,6 @@ func (t *Task) Archive() error {
 		return errors.Wrap(err, "updating task")
 	}
 	t.Aborted = false
-
-	if t.IsHostTask() {
-		// Host event logs involving running a host task don't include the
-		// execution number but need it to distinguish which task execution it
-		// ran once the task is no longer the latest execution. This
-		// retroactively sets the task execution for event logs involving the
-		// host running this task so that it correctly identifies this archived
-		// execution.
-		err = event.UpdateHostTaskExecutions(t.HostId, t.Id, t.Execution)
-		if err != nil {
-			return errors.Wrap(err, "updating host event logs")
-		}
-	}
 	return nil
 }
 
@@ -2594,24 +2581,7 @@ func ArchiveMany(tasks []Task) error {
 	}
 
 	_, err = session.WithTransaction(ctx, txFunc)
-	if err != nil {
-		return errors.Wrap(err, "archiving tasks")
-	}
-
-	eventLogErrs := grip.NewBasicCatcher()
-	for _, t := range tasks {
-		if t.IsHostTask() {
-			// Host event logs involving running a host task don't include the
-			// execution number but need it to distinguish which task execution
-			// it ran once the task is no longer the latest execution. This
-			// retroactively sets the task execution for event logs involving
-			// the host running this task so that it correctly identifies this
-			// archived execution.
-			eventLogErrs.Wrapf(event.UpdateHostTaskExecutions(t.HostId, t.Id, t.Execution), "updating execution %d of task '%s' for host '%s'", t.Execution, t.Id, t.HostId)
-		}
-	}
-
-	return eventLogErrs.Resolve()
+	return errors.Wrap(err, "archiving tasks")
 }
 
 func (t *Task) makeArchivedTask() *Task {
