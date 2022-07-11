@@ -1970,6 +1970,12 @@ Admin Settings
 															<md-option ng-repeat="arch in validECSArches" value="[[arch]]">[[arch]]</md-option>
 														</md-select>
 													</md-input-container>
+													<br />
+													<md-input-container class="control" flex=25>
+														<md-select ng-model="capacityProvider.windows_version" placeholder="Windows version">
+															<md-option ng-repeat="(displayWinVer, winVer) in validECSWindowsVersions" value="[[winVer]]">[[displayWinVer]]</md-option>
+														</md-select>
+													</md-input-container>
 
 													<div style="margin-top: 1%;">
 														<button class="btn btn-default btn-danger" type="button"
@@ -1994,6 +2000,12 @@ Admin Settings
 												<md-input-container class="control" flex=25>
 													<md-select ng-model="new_ecs_capacity_provider.arch" placeholder="Arch">
 														<md-option ng-repeat="arch in validECSArches" value="[[arch]]">[[arch]]</md-option>
+													</md-select>
+												</md-input-container>
+												<br />
+												<md-input-container class="control" flex=25>
+													<md-select ng-model="new_ecs_capacity_provider.windows_version" placeholder="Windows version">
+														<md-option ng-repeat="(displayWinVer, winVer) in validECSWindowsVersions" value="[[winVer]]">[[displayWinVer]]</md-option>
 													</md-select>
 												</md-input-container>
 												<div style="margin-top: 1%;">

@@ -375,14 +375,24 @@ func TestExportECSPodCreationOptions(t *testing.T) {
 							Clusters: []evergreen.ECSClusterConfig{
 								{
 									OS:   evergreen.ECSOSLinux,
-									Name: "cluster",
+									Name: "linux_cluster",
+								},
+								{
+									OS:   evergreen.ECSOSWindows,
+									Name: "windows_cluster",
 								},
 							},
 							CapacityProviders: []evergreen.ECSCapacityProvider{
 								{
-									Name: "capacity_provider",
+									Name: "linux_capacity_provider",
 									OS:   evergreen.ECSOSLinux,
 									Arch: evergreen.ECSArchAMD64,
+								},
+								{
+									Name:           "windows_capacity_provider",
+									OS:             evergreen.ECSOSWindows,
+									Arch:           evergreen.ECSArchAMD64,
+									WindowsVersion: evergreen.ECSWindowsServer2022,
 								},
 							},
 						},
@@ -395,7 +405,7 @@ func TestExportECSPodCreationOptions(t *testing.T) {
 		}
 	}
 
-	t.Run("Succeeds", func(t *testing.T) {
+	t.Run("SucceedsWithLinuxPod", func(t *testing.T) {
 		settings := validSettings()
 		p := validPod()
 		opts, err := ExportECSPodCreationOptions(settings, p)
@@ -411,7 +421,6 @@ func TestExportECSPodCreationOptions(t *testing.T) {
 		require.NotZero(t, opts.ExecutionOpts.AWSVPCOpts)
 		assert.Equal(t, settings.Providers.AWS.Pod.ECS.AWSVPC.Subnets, opts.ExecutionOpts.AWSVPCOpts.Subnets)
 		assert.Equal(t, settings.Providers.AWS.Pod.ECS.AWSVPC.SecurityGroups, opts.ExecutionOpts.AWSVPCOpts.SecurityGroups)
-		require.NotZero(t, opts.ExecutionOpts.PlacementOpts)
 		assert.Equal(t, settings.Providers.AWS.Pod.ECS.CapacityProviders[0].Name, utility.FromStringPtr(opts.ExecutionOpts.CapacityProvider))
 
 		assert.True(t, strings.HasPrefix(utility.FromStringPtr(opts.Name), settings.Providers.AWS.Pod.ECS.TaskDefinitionPrefix))
@@ -461,6 +470,20 @@ func TestExportECSPodCreationOptions(t *testing.T) {
 			}
 		}
 	})
+	t.Run("SpecifiesWindowsClusterAndCapacityProviderWithWindowsPod", func(t *testing.T) {
+		settings := validSettings()
+		p := validPod()
+		p.TaskContainerCreationOpts.OS = pod.OSWindows
+		p.TaskContainerCreationOpts.Arch = pod.ArchAMD64
+		p.TaskContainerCreationOpts.WindowsVersion = pod.WindowsVersionServer2022
+
+		opts, err := ExportECSPodCreationOptions(settings, p)
+		require.NoError(t, err)
+		require.NotZero(t, opts)
+		require.NotZero(t, opts.ExecutionOpts)
+		require.Equal(t, settings.Providers.AWS.Pod.ECS.Clusters[1].Name, utility.FromStringPtr(opts.ExecutionOpts.Cluster))
+		assert.Equal(t, settings.Providers.AWS.Pod.ECS.CapacityProviders[1].Name, utility.FromStringPtr(opts.ExecutionOpts.CapacityProvider))
+	})
 	t.Run("SucceedsWithRepositoryCredentials", func(t *testing.T) {
 		settings := validSettings()
 		p := validPod()
@@ -496,14 +519,24 @@ func TestExportECSPodCreationOptions(t *testing.T) {
 	t.Run("FailsWithNoMatchingCluster", func(t *testing.T) {
 		settings := validSettings()
 		settings.Providers.AWS.Pod.ECS.Clusters[0].OS = evergreen.ECSOSWindows
-		opts, err := ExportECSPodCreationOptions(settings, &pod.Pod{})
+		opts, err := ExportECSPodCreationOptions(settings, validPod())
 		assert.Error(t, err)
 		assert.Zero(t, opts)
 	})
-	t.Run("FailsWithNoMatchingCapacityProvider", func(t *testing.T) {
+	t.Run("FailsWithNoMatchingCapacityProviderForLinux", func(t *testing.T) {
 		settings := validSettings()
 		settings.Providers.AWS.Pod.ECS.CapacityProviders[0].Arch = evergreen.ECSArchARM64
-		opts, err := ExportECSPodCreationOptions(settings, &pod.Pod{})
+		opts, err := ExportECSPodCreationOptions(settings, validPod())
+		assert.Error(t, err)
+		assert.Zero(t, opts)
+	})
+	t.Run("FailsWithNoMatchingCapacityProviderForWindows", func(t *testing.T) {
+		settings := validSettings()
+		p := validPod()
+		p.TaskContainerCreationOpts.OS = pod.OSWindows
+		p.TaskContainerCreationOpts.Arch = pod.ArchAMD64
+		p.TaskContainerCreationOpts.WindowsVersion = pod.WindowsVersionServer2016
+		opts, err := ExportECSPodCreationOptions(settings, p)
 		assert.Error(t, err)
 		assert.Zero(t, opts)
 	})
