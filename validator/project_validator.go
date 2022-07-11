@@ -637,6 +637,9 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 	for _, buildVariant := range project.BuildVariants {
 		buildVariantTasks := map[string]bool{}
 		for _, task := range buildVariant.Tasks {
+			if task.Group != nil {
+				continue
+			}
 			if _, ok := allTaskNames[task.Name]; !ok {
 				if task.Name == "" {
 					errs = append(errs,
@@ -1357,7 +1360,15 @@ func validateParameters(p *model.Project) ValidationErrors {
 
 func validateTaskGroups(p *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
-	for _, tg := range p.TaskGroups {
+	taskGroups := p.TaskGroups
+	for _, bv := range p.BuildVariants {
+		for _, t := range bv.Tasks {
+			if t.Group != nil {
+				taskGroups = append(taskGroups, *t.Group)
+			}
+		}
+	}
+	for _, tg := range taskGroups {
 		// validate that there is at least 1 task
 		if len(tg.Tasks) < 1 {
 			errs = append(errs, ValidationError{
@@ -1407,7 +1418,15 @@ func checkTaskGroups(p *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 	tasksInTaskGroups := map[string]string{}
 	names := map[string]bool{}
-	for _, tg := range p.TaskGroups {
+	taskGroups := p.TaskGroups
+	for _, bv := range p.BuildVariants {
+		for _, t := range bv.Tasks {
+			if t.Group != nil {
+				taskGroups = append(taskGroups, *t.Group)
+			}
+		}
+	}
+	for _, tg := range taskGroups {
 		if _, ok := names[tg.Name]; ok {
 			errs = append(errs, ValidationError{
 				Level:   Warning,
