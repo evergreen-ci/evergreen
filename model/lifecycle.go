@@ -408,7 +408,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		return errors.Wrap(err, "setting builds started")
 	}
 
-	return errors.Wrap(updateVersionStatus(versionId, evergreen.VersionStarted), "changing version status")
+	return errors.Wrap(setVersionStatus(versionId, evergreen.VersionStarted), "changing version status")
 }
 
 // RestartVersions restarts selected tasks for a set of versions.

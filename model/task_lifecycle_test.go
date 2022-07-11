@@ -809,7 +809,7 @@ func TestUpdateVersionStatusForGithubChecks(t *testing.T) {
 		Status: evergreen.VersionStarted,
 	}
 	assert.NoError(t, v1.Insert())
-	versionStatus, err := updateVersionStatus(&v1)
+	versionStatus, err := setVersionStatus(&v1)
 	assert.NoError(t, err)
 	assert.Equal(t, versionStatus, v1.Status) // version status hasn't changed
 

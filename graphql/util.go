@@ -230,8 +230,8 @@ func buildFromGqlInput(r PatchConfigure) model.PatchUpdate {
 	p := model.PatchUpdate{}
 	p.Description = r.Description
 	p.PatchTriggerAliases = r.PatchTriggerAliases
-	for _, param := range r.Parameters {
-		p.Parameters = append(p.Parameters, param.ToService())
+	for i := range r.Parameters {
+		p.Parameters = append(p.Parameters, r.Parameters[i].ToService())
 	}
 	for _, vt := range r.VariantsTasks {
 		variantTasks := patch.VariantTasks{

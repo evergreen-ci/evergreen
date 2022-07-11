@@ -196,10 +196,10 @@ func (v *Version) UpdateStatus(newStatus string) error {
 	}
 
 	v.Status = newStatus
-	return updateVersionStatus(v.Id, newStatus)
+	return setVersionStatus(v.Id, newStatus)
 }
 
-func updateVersionStatus(versionId, newStatus string) error {
+func setVersionStatus(versionId, newStatus string) error {
 	return VersionUpdateOne(
 		bson.M{VersionIdKey: versionId},
 		bson.M{"$set": bson.M{
