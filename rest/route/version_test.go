@@ -88,6 +88,7 @@ func (s *VersionSuite) SetupSuite() {
 	tasks := []task.Task{
 		{Id: "task1", Version: versionId, Aborted: false, Status: evergreen.TaskStarted},
 		{Id: "task2", Version: versionId, Aborted: false, Status: evergreen.TaskDispatched},
+		{Id: "task3", Version: versionId, Aborted: false, Status: evergreen.TaskUndispatched, BuildId: testBuild1.Id},
 	}
 
 	builds := []build.Build{testBuild1, testBuild2}
@@ -121,6 +122,36 @@ func (s *VersionSuite) TestFindByVersionId() {
 	s.Equal(utility.ToStringPtr(repo), h.Repo)
 	s.Equal(utility.ToStringPtr(branch), h.Branch)
 	s.Equal(utility.ToStringPtr(project), h.Project)
+}
+
+func (s *VersionSuite) TestPatchVersionVersion() {
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "caller1"})
+	handler := &versionPatchHandler{
+		versionId: versionId,
+		Activated: utility.TruePtr(),
+	}
+
+	res := handler.Run(ctx)
+	s.NotNil(res)
+	s.Equal(http.StatusOK, res.Status())
+
+	v, err := serviceModel.VersionFindOneId(versionId)
+	s.Nil(err)
+	for _, b := range v.BuildIds {
+		build, err := build.FindOneId(b)
+		s.Nil(err)
+		s.Equal(true, build.Activated)
+	}
+	s.Equal(versionId, v.Id)
+	s.Equal(revision, v.Revision)
+	s.Equal(author, v.Author)
+	s.Equal(authorEmail, v.AuthorEmail)
+	s.Equal(msg, v.Message)
+	s.Equal(evergreen.VersionStarted, v.Status)
+	s.Equal(repo, v.Repo)
+	s.Equal(branch, v.Branch)
+	s.Equal(utility.TruePtr(), v.Activated)
 }
 
 // TestFindAllBuildsForVersion tests the route for finding all builds for a version.
@@ -181,7 +212,9 @@ func (s *VersionSuite) TestAbortVersion() {
 	for _, t := range tasks {
 		foundTask, err := task.FindOneId(t)
 		s.NoError(err)
-		s.Equal(foundTask.Aborted, true)
+		if utility.StringSliceContains(evergreen.TaskAbortableStatuses, foundTask.Status) {
+			s.Equal(foundTask.Aborted, true)
+		}
 	}
 }
 

@@ -5,11 +5,9 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 func init() {
@@ -80,9 +78,7 @@ type HostEventData struct {
 }
 
 var (
-	hostDataStatusKey        = bsonutil.MustHaveTag(HostEventData{}, "TaskStatus")
-	hostDataTaskIDKey        = bsonutil.MustHaveTag(HostEventData{}, "TaskId")
-	hostDataTaskExecutionKey = bsonutil.MustHaveTag(HostEventData{}, "Execution")
+	hostDataStatusKey = bsonutil.MustHaveTag(HostEventData{}, "TaskStatus")
 )
 
 func LogHostEvent(hostId string, eventType string, eventData HostEventData) {
@@ -253,29 +249,6 @@ func LogSpawnhostExpirationWarningSent(hostID string) {
 
 func LogVolumeExpirationWarningSent(volumeID string) {
 	LogHostEvent(volumeID, EventVolumeExpirationWarningSent, HostEventData{})
-}
-
-// UpdateHostTaskExecutions updates host events to track multiple executions of
-// the same host task.
-// TODO (EVG-17215): Stop using UpdateHostTaskExecutions once all hosts running tasks have a running task execution set.
-func UpdateHostTaskExecutions(hostId, taskId string, execution int) error {
-	query := bson.M{
-		ResourceIdKey: hostId,
-		bsonutil.GetDottedKeyName(DataKey, hostDataTaskIDKey): taskId,
-	}
-	update := bson.M{
-		"$set": bson.M{
-			bsonutil.GetDottedKeyName(DataKey, hostDataTaskExecutionKey): strconv.Itoa(execution),
-		},
-	}
-
-	catcher := grip.NewBasicCatcher()
-	for _, col := range eventCollections {
-		_, err := db.UpdateAll(col, query, update)
-		catcher.Add(err)
-	}
-
-	return catcher.Resolve()
 }
 
 func LogHostScriptExecuted(hostID string, logs string) {
