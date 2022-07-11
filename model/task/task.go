@@ -2590,7 +2590,7 @@ func ArchiveMany(tasks []Task, execution int) error {
 		if execution == -1 {
 			_, err = taskColl.UpdateMany(ctx, bson.M{
 				IdKey: bson.M{
-					"$inc": taskIds,
+					"$in": taskIds,
 				},
 			},
 				bson.M{
