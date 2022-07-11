@@ -301,44 +301,8 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		return err
 	}
 
-	var previousPatchStatus string
-	failedOnly := j.intent.RepeatFailedTasksAndVariants()
-
-	if j.intent.ReusePreviousPatchDefinition() || failedOnly {
-		previousPatchStatus, err = j.setToPreviousPatchDefinition(patchDoc, project, failedOnly)
-		if err != nil {
-			return err
-		}
-	}
-
-	// verify that all variants exists
-	for _, buildVariant := range patchDoc.BuildVariants {
-		if buildVariant == "all" || buildVariant == "" {
-			continue
-		}
-		bv := project.FindBuildVariant(buildVariant)
-		if bv == nil {
-			return errors.Errorf("no such buildvariant matching '%s'", buildVariant)
-		}
-	}
-
-	for _, bv := range patchDoc.RegexBuildVariants {
-		_, err := regexp.Compile(bv)
-		if err != nil {
-			return errors.Wrapf(err, "compiling buildvariant regex '%s'", bv)
-		}
-	}
-	for _, t := range patchDoc.RegexTasks {
-		_, err := regexp.Compile(t)
-		if err != nil {
-			return errors.Wrapf(err, "compiling task regex '%s'", t)
-		}
-	}
-
-	skipForFailed := failedOnly && previousPatchStatus != evergreen.PatchFailed
-
-	if len(patchDoc.VariantsTasks) == 0 && !skipForFailed {
-		project.BuildProjectTVPairs(patchDoc, j.intent.GetAlias())
+	if err = j.buildTasksandVariants(patchDoc, project); err != nil {
+		return err
 	}
 
 	if (j.intent.ShouldFinalizePatch() || patchDoc.IsCommitQueuePatch()) &&
@@ -484,6 +448,51 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	return catcher.Resolve()
+}
+
+func (j *patchIntentProcessor) buildTasksandVariants(patchDoc *patch.Patch, project *model.Project) error {
+	var previousPatchStatus string
+	var err error
+
+	failedOnly := j.intent.RepeatFailedTasksAndVariants()
+
+	if j.intent.ReusePreviousPatchDefinition() || failedOnly {
+		previousPatchStatus, err = j.setToPreviousPatchDefinition(patchDoc, project, failedOnly)
+		if err != nil {
+			return err
+		}
+	}
+
+	// verify that all variants exists
+	for _, buildVariant := range patchDoc.BuildVariants {
+		if buildVariant == "all" || buildVariant == "" {
+			continue
+		}
+		bv := project.FindBuildVariant(buildVariant)
+		if bv == nil {
+			return errors.Errorf("no such buildvariant matching '%s'", buildVariant)
+		}
+	}
+
+	for _, bv := range patchDoc.RegexBuildVariants {
+		_, err := regexp.Compile(bv)
+		if err != nil {
+			return errors.Wrapf(err, "compiling buildvariant regex '%s'", bv)
+		}
+	}
+	for _, t := range patchDoc.RegexTasks {
+		_, err := regexp.Compile(t)
+		if err != nil {
+			return errors.Wrapf(err, "compiling task regex '%s'", t)
+		}
+	}
+
+	skipForFailed := failedOnly && previousPatchStatus != evergreen.PatchFailed
+
+	if len(patchDoc.VariantsTasks) == 0 && !skipForFailed {
+		project.BuildProjectTVPairs(patchDoc, j.intent.GetAlias())
+	}
+	return nil
 }
 
 func setTasksToPreviousFailed(patchDoc, previousPatch *patch.Patch, project *model.Project) error {
