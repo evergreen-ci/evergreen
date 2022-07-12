@@ -148,8 +148,19 @@ type abortedByDisplay struct {
 func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	projCtx := MustHaveProjectContext(r)
+	executionStr := gimlet.GetVars(r)["execution"]
+	var execution int
+	var err error
 
-	if RedirectSpruceUsers(w, r, fmt.Sprintf("%s/task/%s", uis.Settings.Ui.UIv2Url, projCtx.Task.Id)) {
+	if executionStr != "" {
+		execution, err = strconv.Atoi(executionStr)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Bad execution number: %v", executionStr), http.StatusBadRequest)
+			return
+		}
+	}
+
+	if RedirectSpruceUsers(w, r, fmt.Sprintf("%s/task/%s?execution=%d", uis.Settings.Ui.UIv2Url, projCtx.Task.Id, execution)) {
 		return
 	}
 
@@ -174,17 +185,11 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	executionStr := gimlet.GetVars(r)["execution"]
 	archived := false
 
 	// if there is an execution number, the task might be in the old_tasks collection, so we
 	// query that collection and set projCtx.Task to the old task if it exists.
 	if executionStr != "" {
-		execution, err := strconv.Atoi(executionStr)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Bad execution number: %v", executionStr), http.StatusBadRequest)
-			return
-		}
 		// Construct the old task id.
 		oldTaskId := task.MakeOldID(projCtx.Task.Id, execution)
 
@@ -211,7 +216,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	// Build a struct containing the subset of task data needed for display in the UI
 	tId := projCtx.Task.Id
 	totalExecutions := projCtx.Task.Execution
-
+	taskExecution := projCtx.Task.Execution
 	if archived {
 		tId = projCtx.Task.OldTaskId
 
@@ -239,7 +244,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		BuildVariant:         projCtx.Task.BuildVariant,
 		BuildId:              projCtx.Task.BuildId,
 		Activated:            projCtx.Task.Activated,
-		Execution:            projCtx.Task.Execution,
+		Execution:            taskExecution,
 		Requester:            projCtx.Task.Requester,
 		CreateTime:           projCtx.Task.CreateTime,
 		IngestTime:           projCtx.Task.IngestTime,
@@ -380,7 +385,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	}
 	newUILink := ""
 	if len(uis.Settings.Ui.UIv2Url) > 0 {
-		newUILink = fmt.Sprintf("%s/task/%s", uis.Settings.Ui.UIv2Url, tId)
+		newUILink = fmt.Sprintf("%s/task/%s?execution=%d", uis.Settings.Ui.UIv2Url, tId, taskExecution)
 	}
 
 	if uiTask.AbortInfo.TaskID != "" {

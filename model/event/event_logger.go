@@ -10,8 +10,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-var eventCollections = []string{LegacyEventLogCollection, EventCollection}
-
 func (e *EventLogEntry) Log() error {
 	if err := e.validateEvent(); err != nil {
 		return errors.Wrap(err, "not logging event, event is invalid")
