@@ -2,8 +2,8 @@ package route
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
@@ -11,16 +11,14 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
 )
 
 // taskRestartHandler implements the route POST /task/{task_id}/restart. It
 // fetches the needed task and project and calls the service function to
 // set the proper fields when reseting the task.
 type taskRestartHandler struct {
-	FailedOnly bool `json:"failedOnly"`
+	FailedOnly *bool `json:"FailedOnly"`
 
 	taskId   string
 	username string
@@ -53,25 +51,35 @@ func (trh *taskRestartHandler) Parse(ctx context.Context, r *http.Request) error
 	trh.taskId = projCtx.Task.Id
 	u := MustHaveUser(ctx)
 	trh.username = u.DisplayName()
-	body := utility.NewRequestReader(r)
-	defer body.Close()
 
-	// Manually decoding the json because it is optional, so
-	// checking for len(data) == 0 has to be handled
-	data, err := ioutil.ReadAll(body)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	if len(data) == 0 { // No FailedOnly passed
+	if r.Body == nil {
 		return nil
 	}
+	fmt.Println("Hey1")
 
-	if err := errors.WithStack(yaml.UnmarshalStrict(data, trh)); err != nil {
+	// // Manually decoding the json because it is optional, so
+	// // checking for len(data) == 0 has to be handled
+	// data, err := ioutil.ReadAll(r.Body)
+	// defer r.Body.Close()
+	// fmt.Println("Hey2")
+	// if err != nil {
+	// 	return errors.WithStack(err)
+	// }
+	// if len(data) == 0 { // No FailedOnly passed
+	// 	return nil
+	// }
+	// fmt.Println("Hey4")
+
+	// fmt.Println("Hey5")
+	// if err := utility.ReadJSON(r.Body, trh); err != nil {
+	// if err := errors.WithStack(yaml.Unmarshal(data, trh)); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(trh); err != nil && err.Error() != "EOF" {
 		return gimlet.ErrorResponse{
 			Message:    errors.Wrapf(err, "failedOnly in body is invalid for taskid '%s'. failedOnly can only be true/false, True/False, 1/0, or T/F.", trh.taskId).Error(),
 			StatusCode: http.StatusBadRequest,
 		}
 	}
+	fmt.Println("Hey6")
 
 	return nil
 }
@@ -79,7 +87,7 @@ func (trh *taskRestartHandler) Parse(ctx context.Context, r *http.Request) error
 // Execute calls the data ResetTask function and returns the refreshed
 // task from the service.
 func (trh *taskRestartHandler) Run(ctx context.Context) gimlet.Responder {
-	err := resetTask(trh.taskId, trh.username, trh.FailedOnly)
+	err := resetTask(trh.taskId, trh.username, *trh.FailedOnly)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}

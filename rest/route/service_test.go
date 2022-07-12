@@ -1037,7 +1037,7 @@ func TestTaskResetPrepare(t *testing.T) {
 		ctx := context.Background()
 
 		Convey("should error on empty project", func() {
-			req, err := http.NewRequest(http.MethodPost, "task/testTaskId/restart", nil)
+			req, err := http.NewRequest(http.MethodPatch, "task/testTaskId/restart", &bytes.Buffer{})
 			So(err, ShouldBeNil)
 			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
@@ -1048,7 +1048,7 @@ func TestTaskResetPrepare(t *testing.T) {
 		})
 		Convey("then should error on empty task", func() {
 			projCtx.Task = nil
-			req, err := http.NewRequest(http.MethodPost, "task/testTaskId/restart", nil)
+			req, err := http.NewRequest(http.MethodPatch, "task/testTaskId/restart", &bytes.Buffer{})
 			So(err, ShouldBeNil)
 			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
@@ -1070,20 +1070,20 @@ func TestTaskResetPrepare(t *testing.T) {
 		failedOnlyTest := func(failedOnly bool) {
 			projCtx.Task = &testTask
 			goodBod := &struct {
-				FailedOnly bool
+				FailedOnly *bool
 			}{
-				FailedOnly: failedOnly,
+				FailedOnly: &failedOnly,
 			}
 			res, err := json.Marshal(goodBod)
 			So(err, ShouldBeNil)
 			buf := bytes.NewBuffer(res)
-			req, err := http.NewRequest(http.MethodPost, "task/testTaskId/restart", buf)
+			req, err := http.NewRequest(http.MethodPatch, "task/testTaskId/restart", buf)
 			So(err, ShouldBeNil)
 			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = trh.Parse(ctx, req)
 			So(err, ShouldBeNil)
-			So(trh.FailedOnly, ShouldEqual, failedOnly)
+			So(utility.FromBoolPtr(trh.FailedOnly), ShouldEqual, failedOnly)
 		}
 
 		Convey("should register true valued failedOnly parameter", func() {
@@ -1096,13 +1096,13 @@ func TestTaskResetPrepare(t *testing.T) {
 
 		Convey("should have default false failedOnly", func() {
 			projCtx.Task = &testTask
-			req, err := http.NewRequest(http.MethodPost, "task/testTaskId/restart", nil)
+			req, err := http.NewRequest(http.MethodPatch, "task/testTaskId/restart", &bytes.Buffer{})
 			So(err, ShouldBeNil)
 			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = trh.Parse(ctx, req)
 			So(err, ShouldBeNil)
-			So(trh.FailedOnly, ShouldEqual, false)
+			So(utility.FromBoolPtr(trh.FailedOnly), ShouldEqual, false)
 		})
 	})
 }
@@ -1281,7 +1281,7 @@ func TestTaskResetExecute(t *testing.T) {
 			trh := &taskRestartHandler{
 				taskId:     "displayTask",
 				username:   "testUser",
-				FailedOnly: true,
+				FailedOnly: utility.TruePtr(),
 			}
 
 			res := trh.Run(ctx)
