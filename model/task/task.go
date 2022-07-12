@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
@@ -18,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/tarjan"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
@@ -2472,108 +2474,40 @@ func (t *Task) Insert() error {
 // are also archived.
 func (t *Task) Archive() error {
 	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
-		if !t.ResetFailedWhenFinished {
-			execTasks, err := FindAll(db.Query(ByIds(t.ExecutionTasks)))
-			if err != nil {
-				return errors.Wrap(err, "retrieving execution tasks")
-			}
-			if err = ArchiveManyExecutionTasks(execTasks, true); err != nil {
-				return errors.Wrap(err, "archiving execution tasks")
-			}
-		} else {
-			failedExecTasks, err := Find(FailedTasksByIds(t.ExecutionTasks))
-			if err != nil {
-				return errors.Wrap(err, "retrieving failed execution tasks")
-			}
-			if err = ArchiveManyExecutionTasks(failedExecTasks, true); err != nil {
-				return errors.Wrap(err, "archiving failed execution tasks")
-			}
-		}
+		return ArchiveDisplayTask(*t)
 	}
 
-	archiveTask := t.makeArchivedTask()
-	err := db.Insert(OldCollection, archiveTask)
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"archive_task_id": archiveTask.Id,
-			"old_task_id":     archiveTask.OldTaskId,
-			"execution":       t.Execution,
-			"display_only":    t.DisplayOnly,
-		}))
-		return errors.Wrap(err, "inserting archived task into old tasks")
-	}
-	err = UpdateOne(
-		bson.M{IdKey: t.Id},
-		bson.M{
-			"$unset": bson.M{
-				AbortedKey:              "",
-				AbortInfoKey:            "",
-				OverrideDependenciesKey: "",
-			},
-			"$inc": bson.M{ExecutionKey: 1},
-		})
-	if err != nil {
-		return errors.Wrap(err, "updating task")
-	}
-	t.Aborted = false
-
-	if t.IsHostTask() {
-		// Host event logs involving running a host task don't include the
-		// execution number but need it to distinguish which task execution it
-		// ran once the task is no longer the latest execution. This
-		// retroactively sets the task execution for event logs involving the
-		// host running this task so that it correctly identifies this archived
-		// execution.
-		err = event.UpdateHostTaskExecutions(t.HostId, t.Id, t.Execution)
-		if err != nil {
-			return errors.Wrap(err, "updating host event logs")
-		}
-	}
-	return nil
+	return ArchiveTask(*t)
 }
 
+// ArchiveMany accepts tasks and display tasks (execution tasks are ignored) and calls archive on all of them.
+// Returning if any error. For tasks, it will bundle them together to execute one query. It also archives the display tasks
 func ArchiveMany(tasks []Task) error {
-	return ArchiveManyExecutionTasks(tasks, false)
-}
-
-// ArchiveManyExecutionTasks is a wrapper function for ArchiveMany.
-// When overrideExecutions is false, it will do the original functionality of
-// incremeneting each execution task by 1. If overrideExecutions is true,
-// it will force all archived tasks to be updated to the newest execution number
-// of their display task. (i.e. dt.execution = 2, exect1 = 0, exect2 = 2, after
-// calling it will be dt.execution = 3, exect1 = 3, exect2 = 3 rather than incrementing)
-func ArchiveManyExecutionTasks(tasks []Task, overrideExecutions bool) error {
-	if len(tasks) == 0 {
-		return nil
-	}
-	// add execution tasks of display tasks passed in, if they are not there
-	execTaskMap := map[string]bool{}
-	for _, t := range tasks {
-		execTaskMap[t.Id] = true
-	}
-	additionalTasks := []string{}
-	for _, t := range tasks {
-		// for any display tasks here, make sure that we archive all their execution tasks
-		for _, et := range t.ExecutionTasks {
-			if !execTaskMap[et] {
-				additionalTasks = append(additionalTasks, t.ExecutionTasks...)
-				continue
-			}
-		}
-	}
-	if len(additionalTasks) > 0 {
-		toAdd, err := FindAll(db.Query(ByIds((additionalTasks))))
-		if err != nil {
-			return errors.Wrap(err, "finding execution tasks")
-		}
-		tasks = append(tasks, toAdd...)
-	}
-
+	var err error
+	bundledTasks := []interface{}{}
 	archived := []interface{}{}
-	taskIds := []string{}
 	for _, t := range tasks {
-		archived = append(archived, *t.makeArchivedTask())
-		taskIds = append(taskIds, t.Id)
+		// Ignore execution tasks
+		if t.IsPartOfDisplay() {
+			continue
+		}
+
+		// Archive display tasks (each take one query)
+		if t.DisplayOnly {
+			err = t.Archive()
+			continue
+		}
+
+		// Ensure the task is something we archive
+		if !t.ResetFailedWhenFinished || evergreen.IsFailedTaskStatus(t.Status) {
+			bundledTasks = append(bundledTasks, t)
+			archived = append(archived, *t.makeArchivedTask())
+		}
+
+		if err != nil {
+			err = errors.Wrapf(err, "Archiving task '%s' with execution '%d' failed.", t.Id, t.Execution)
+			break
+		}
 	}
 
 	mongoClient := evergreen.GetEnvironment().Client()
@@ -2589,49 +2523,113 @@ func ArchiveManyExecutionTasks(tasks []Task, overrideExecutions bool) error {
 		oldTaskColl := evergreen.GetEnvironment().DB().Collection(OldCollection)
 		_, err = oldTaskColl.InsertMany(ctx, archived)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "archiving tasks")
 		}
 
 		taskColl := evergreen.GetEnvironment().DB().Collection(Collection)
-		updates := bson.M{
-			"$unset": bson.M{
-				AbortedKey:   "",
-				AbortInfoKey: "",
-			},
-		}
-		if overrideExecutions {
-			dt, err := FindOneId(*tasks[0].DisplayTaskId)
-			if err != nil {
-				return nil, err
-			}
-			updates["$set"] = bson.M{
-				ExecutionKey: dt.Execution + 1,
-			}
-		} else {
-			updates["$inc"] = bson.M{
-				ExecutionKey: 1,
-			}
-		}
 
 		_, err = taskColl.UpdateMany(ctx, bson.M{
 			IdKey: bson.M{
-				"$in": taskIds,
+				"$in": bundledTasks,
 			},
 		},
-			updates)
+			bson.M{
+				"$unset": bson.M{
+					AbortedKey:              "",
+					AbortInfoKey:            "",
+					OverrideDependenciesKey: "",
+				},
+				"$in": bson.M{
+					ExecutionKey: 1,
+				},
+			})
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "updating tasks")
 		}
-		return nil, err
+		return nil, nil
 	}
 
 	_, err = session.WithTransaction(ctx, txFunc)
+
 	if err != nil {
-		return errors.Wrap(err, "archiving tasks")
+		return errors.Wrap(err, "archiving tasks and updating tasks")
+	}
+
+	return err
+}
+
+// ArchiveDisplayTask gets all the execution tasks and archives them and updates to the lastest execution
+func ArchiveDisplayTask(dt Task) error {
+	if !dt.DisplayOnly || len(dt.ExecutionTasks) == 0 {
+		return gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("Invalid task with id '%s'. Is display only '%v'", dt.Id, dt.DisplayOnly),
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	var execTasks []Task
+	var err error
+	if dt.ResetFailedWhenFinished {
+		execTasks, err = FindWithFields(FailedTasksByIds(dt.ExecutionTasks), IdKey)
+	} else {
+		execTasks, err = FindAll(db.Query(ByIds(dt.ExecutionTasks)))
+	}
+
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("Failed getting execution tasks for display task: '%s'", dt.Id))
+	}
+
+	archived := []interface{}{}
+	for _, t := range execTasks {
+		archived = append(archived, *t.makeArchivedTask())
+	}
+
+	mongoClient := evergreen.GetEnvironment().Client()
+	ctx, cancel := evergreen.GetEnvironment().Context()
+	defer cancel()
+	session, err := mongoClient.StartSession()
+	if err != nil {
+		return errors.Wrap(err, "starting DB session")
+	}
+	defer session.EndSession(ctx)
+
+	txFunc := func(sessCtx mongo.SessionContext) (interface{}, error) {
+		oldTaskColl := evergreen.GetEnvironment().DB().Collection(OldCollection)
+		_, err = oldTaskColl.InsertMany(ctx, archived)
+		if err != nil {
+			return nil, errors.Wrap(err, fmt.Sprintf("archiving tasks for dt '%s'.", dt.Id))
+		}
+
+		taskColl := evergreen.GetEnvironment().DB().Collection(Collection)
+
+		_, err = taskColl.UpdateMany(ctx, bson.M{
+			IdKey: bson.M{
+				"$in": dt.ExecutionTasks,
+			},
+		},
+			bson.M{
+				"$unset": bson.M{
+					AbortedKey:   "",
+					AbortInfoKey: "",
+				},
+				"$set": bson.M{
+					ExecutionKey: dt.Execution + 1,
+				},
+			})
+		if err != nil {
+			return nil, errors.Wrap(err, fmt.Sprintf("updating tasks for dt '%s'.", dt.Id))
+		}
+		return nil, nil
+	}
+
+	_, err = session.WithTransaction(ctx, txFunc)
+
+	if err != nil {
+		return errors.Wrap(err, "archiving tasks and updating tasks")
 	}
 
 	eventLogErrs := grip.NewBasicCatcher()
-	for _, t := range tasks {
+	for _, t := range execTasks {
 		if t.IsHostTask() {
 			// Host event logs involving running a host task don't include the
 			// execution number but need it to distinguish which task execution
@@ -2644,6 +2642,49 @@ func ArchiveManyExecutionTasks(tasks []Task, overrideExecutions bool) error {
 	}
 
 	return eventLogErrs.Resolve()
+}
+
+// ArchiveTask only archives a non-execution, non-display task, task
+func ArchiveTask(task Task) error {
+	archiveTask := task.makeArchivedTask()
+	err := db.Insert(OldCollection, archiveTask)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"archive_task_id": archiveTask.Id,
+			"old_task_id":     archiveTask.OldTaskId,
+			"execution":       task.Execution,
+			"display_only":    task.DisplayOnly,
+		}))
+		return errors.Wrap(err, "inserting archived task into old tasks")
+	}
+	err = UpdateOne(
+		bson.M{IdKey: task.Id},
+		bson.M{
+			"$unset": bson.M{
+				AbortedKey:              "",
+				AbortInfoKey:            "",
+				OverrideDependenciesKey: "",
+			},
+			"$inc": bson.M{ExecutionKey: 1},
+		})
+	if err != nil {
+		return errors.Wrap(err, "updating task")
+	}
+	task.Aborted = false
+
+	if task.IsHostTask() {
+		// Host event logs involving running a host task don't include the
+		// execution number but need it to distinguish which task execution it
+		// ran once the task is no longer the latest execution. This
+		// retroactively sets the task execution for event logs involving the
+		// host running this task so that it correctly identifies this archived
+		// execution.
+		err = event.UpdateHostTaskExecutions(task.HostId, task.Id, task.Execution)
+		if err != nil {
+			return errors.Wrap(err, "updating host event logs")
+		}
+	}
+	return nil
 }
 
 func (t *Task) makeArchivedTask() *Task {
