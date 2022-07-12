@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -69,7 +70,7 @@ func (trh *taskRestartHandler) Parse(ctx context.Context, r *http.Request) error
 // Execute calls the data ResetTask function and returns the refreshed
 // task from the service.
 func (trh *taskRestartHandler) Run(ctx context.Context) gimlet.Responder {
-	err := resetTask(trh.taskId, trh.username, *trh.FailedOnly)
+	err := resetTask(trh.taskId, trh.username, utility.FromBoolPtr(trh.FailedOnly))
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
