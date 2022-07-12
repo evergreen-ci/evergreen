@@ -1083,7 +1083,7 @@ func TestTaskResetPrepare(t *testing.T) {
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = trh.Parse(ctx, req)
 			So(err, ShouldBeNil)
-			So(trh.failedOnly, ShouldEqual, failedOnly)
+			So(trh.FailedOnly, ShouldEqual, failedOnly)
 		}
 
 		Convey("should register true valued failedOnly parameter", func() {
@@ -1102,7 +1102,7 @@ func TestTaskResetPrepare(t *testing.T) {
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = trh.Parse(ctx, req)
 			So(err, ShouldBeNil)
-			So(trh.failedOnly, ShouldEqual, false)
+			So(trh.FailedOnly, ShouldEqual, false)
 		})
 	})
 }
@@ -1281,7 +1281,7 @@ func TestTaskResetExecute(t *testing.T) {
 			trh := &taskRestartHandler{
 				taskId:     "displayTask",
 				username:   "testUser",
-				failedOnly: true,
+				FailedOnly: true,
 			}
 
 			res := trh.Run(ctx)

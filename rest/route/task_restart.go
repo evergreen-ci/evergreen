@@ -18,9 +18,10 @@ import (
 // fetches the needed task and project and calls the service function to
 // set the proper fields when reseting the task.
 type taskRestartHandler struct {
-	taskId     string
-	username   string
-	failedOnly bool
+	FailedOnly bool `json:"failedOnly"`
+
+	taskId   string
+	username string
 }
 
 func makeTaskRestartHandler() gimlet.RouteHandler {
@@ -65,7 +66,7 @@ func (trh *taskRestartHandler) Parse(ctx context.Context, r *http.Request) error
 // Execute calls the data ResetTask function and returns the refreshed
 // task from the service.
 func (trh *taskRestartHandler) Run(ctx context.Context) gimlet.Responder {
-	err := resetTask(trh.taskId, trh.username, trh.failedOnly)
+	err := resetTask(trh.taskId, trh.username, trh.FailedOnly)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
