@@ -3,6 +3,7 @@ package route
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
@@ -12,6 +13,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
+	"gopkg.in/yaml.v2"
 )
 
 // taskRestartHandler implements the route POST /task/{task_id}/restart. It
@@ -53,7 +55,18 @@ func (trh *taskRestartHandler) Parse(ctx context.Context, r *http.Request) error
 	trh.username = u.DisplayName()
 	body := utility.NewRequestReader(r)
 	defer body.Close()
-	if err := utility.ReadJSON(body, trh); err != nil {
+
+	// Manually decoding the json because it is optional, so
+	// checking for len(data) == 0 has to be handled
+	data, err := ioutil.ReadAll(body)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	if len(data) == 0 { // No FailedOnly passed
+		return nil
+	}
+
+	if err := errors.WithStack(yaml.UnmarshalStrict(data, trh)); err != nil {
 		return gimlet.ErrorResponse{
 			Message:    errors.Wrapf(err, "failedOnly in body is invalid for taskid '%s'. failedOnly can only be true/false, True/False, 1/0, or T/F.", trh.taskId).Error(),
 			StatusCode: http.StatusBadRequest,
