@@ -230,7 +230,8 @@ func (s *OpenStackSuite) TestSpawnInvalidSettings() {
 	defer cancel()
 
 	var err error
-	s.hostOpts.Distro = distro.Distro{Provider: evergreen.ProviderNameEc2Auto}
+	// kim: TODO: check test
+	s.hostOpts.Distro = distro.Distro{Provider: evergreen.ProviderNameEc2Fleet}
 	h := host.NewIntent(s.hostOpts)
 	s.NotNil(h)
 	h, err = s.manager.SpawnHost(ctx, h)

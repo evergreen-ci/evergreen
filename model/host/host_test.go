@@ -3520,7 +3520,8 @@ func TestRemoveStaleInitializing(t *testing.T) {
 			Status:       evergreen.HostUninitialized,
 			CreationTime: now.Add(-1 * time.Minute),
 			UserHost:     false,
-			Provider:     evergreen.ProviderNameEc2Auto,
+			// kim: TODO: check this test
+			Provider: evergreen.ProviderNameEc2Fleet,
 		},
 		{
 			Id:           "host2",
@@ -3528,7 +3529,7 @@ func TestRemoveStaleInitializing(t *testing.T) {
 			Status:       evergreen.HostUninitialized,
 			CreationTime: now.Add(-5 * time.Minute),
 			UserHost:     false,
-			Provider:     evergreen.ProviderNameEc2Auto,
+			Provider:     evergreen.ProviderNameEc2Fleet,
 		},
 		{
 			Id:           "host3",
@@ -3544,7 +3545,7 @@ func TestRemoveStaleInitializing(t *testing.T) {
 			Status:       evergreen.HostUninitialized,
 			CreationTime: now.Add(-5 * time.Minute),
 			UserHost:     false,
-			Provider:     evergreen.ProviderNameEc2Auto,
+			Provider:     evergreen.ProviderNameEc2Fleet,
 		},
 		{
 			Id:           "host5",
@@ -3552,7 +3553,7 @@ func TestRemoveStaleInitializing(t *testing.T) {
 			Status:       evergreen.HostBuilding,
 			CreationTime: now.Add(-5 * time.Minute),
 			UserHost:     false,
-			Provider:     evergreen.ProviderNameEc2Auto,
+			Provider:     evergreen.ProviderNameEc2Fleet,
 		},
 		{
 			Id:           "host6",
@@ -3560,7 +3561,7 @@ func TestRemoveStaleInitializing(t *testing.T) {
 			Status:       evergreen.HostBuilding,
 			CreationTime: now.Add(-30 * time.Minute),
 			UserHost:     false,
-			Provider:     evergreen.ProviderNameEc2Auto,
+			Provider:     evergreen.ProviderNameEc2Fleet,
 		},
 		{
 			Id:           "host7",
@@ -3568,7 +3569,7 @@ func TestRemoveStaleInitializing(t *testing.T) {
 			Status:       evergreen.HostRunning,
 			CreationTime: now.Add(-30 * time.Minute),
 			UserHost:     false,
-			Provider:     evergreen.ProviderNameEc2Auto,
+			Provider:     evergreen.ProviderNameEc2Fleet,
 		},
 		{
 			Id:           "host8",
@@ -3577,7 +3578,7 @@ func TestRemoveStaleInitializing(t *testing.T) {
 			CreationTime: now.Add(-30 * time.Minute),
 			UserHost:     false,
 			SpawnOptions: SpawnOptions{SpawnedByTask: true},
-			Provider:     evergreen.ProviderNameEc2Auto,
+			Provider:     evergreen.ProviderNameEc2Fleet,
 		},
 	}
 
@@ -3640,7 +3641,7 @@ func TestMarkStaleBuildingAsFailed(t *testing.T) {
 			Status:       evergreen.HostUninitialized,
 			CreationTime: now.Add(-time.Minute),
 			UserHost:     false,
-			Provider:     evergreen.ProviderNameEc2Auto,
+			Provider:     evergreen.ProviderNameEc2Fleet,
 		},
 		{
 			Id:           "host2",
@@ -3648,7 +3649,7 @@ func TestMarkStaleBuildingAsFailed(t *testing.T) {
 			Status:       evergreen.HostBuilding,
 			CreationTime: now.Add(-30 * time.Minute),
 			UserHost:     false,
-			Provider:     evergreen.ProviderNameEc2Auto,
+			Provider:     evergreen.ProviderNameEc2Fleet,
 		},
 		{
 			Id:           "host3",
@@ -3664,7 +3665,7 @@ func TestMarkStaleBuildingAsFailed(t *testing.T) {
 			Status:       evergreen.HostBuildingFailed,
 			CreationTime: now.Add(-5 * time.Minute),
 			UserHost:     false,
-			Provider:     evergreen.ProviderNameEc2Auto,
+			Provider:     evergreen.ProviderNameEc2Fleet,
 		},
 		{
 			Id:           "host5",
@@ -3672,7 +3673,7 @@ func TestMarkStaleBuildingAsFailed(t *testing.T) {
 			Status:       evergreen.HostBuilding,
 			CreationTime: now.Add(-time.Minute),
 			UserHost:     false,
-			Provider:     evergreen.ProviderNameEc2Auto,
+			Provider:     evergreen.ProviderNameEc2Fleet,
 		},
 		{
 			Id:           "host6",
@@ -3680,7 +3681,7 @@ func TestMarkStaleBuildingAsFailed(t *testing.T) {
 			Status:       evergreen.HostBuilding,
 			CreationTime: now.Add(-30 * time.Minute),
 			UserHost:     false,
-			Provider:     evergreen.ProviderNameEc2Auto,
+			Provider:     evergreen.ProviderNameEc2Fleet,
 			SpawnOptions: SpawnOptions{SpawnedByTask: true},
 		},
 		{
@@ -3689,7 +3690,7 @@ func TestMarkStaleBuildingAsFailed(t *testing.T) {
 			Status:       evergreen.HostRunning,
 			CreationTime: now.Add(-30 * time.Minute),
 			UserHost:     false,
-			Provider:     evergreen.ProviderNameEc2Auto,
+			Provider:     evergreen.ProviderNameEc2Fleet,
 		},
 		{
 			Id:           "host8",
@@ -3697,7 +3698,7 @@ func TestMarkStaleBuildingAsFailed(t *testing.T) {
 			Status:       evergreen.HostBuilding,
 			CreationTime: now.Add(-30 * time.Minute),
 			UserHost:     false,
-			Provider:     evergreen.ProviderNameEc2Auto,
+			Provider:     evergreen.ProviderNameEc2Fleet,
 		},
 	}
 

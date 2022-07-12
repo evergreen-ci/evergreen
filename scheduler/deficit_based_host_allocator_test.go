@@ -23,7 +23,8 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 		" determining the number of new hosts to spin up...", t, func() {
 		runningTaskIds = []string{"t1", "t2", "t3", "t4", "t5"}
 		hostIds = []string{"h1", "h2", "h3", "h4", "h5"}
-		dist = distro.Distro{Provider: evergreen.ProviderNameEc2Auto}
+		// kim: TODO: check this test
+		dist = distro.Distro{Provider: evergreen.ProviderNameEc2Fleet}
 
 		Convey("if there are no tasks to run, no new hosts should be needed",
 			func() {

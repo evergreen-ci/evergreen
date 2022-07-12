@@ -492,11 +492,12 @@ func (d *Distro) IsParent(s *evergreen.Settings) bool {
 	return false
 }
 
+// GetImageID returns the distro provider's image.
 func (d *Distro) GetImageID() (string, error) {
 	key := ""
 
 	switch d.Provider {
-	case evergreen.ProviderNameEc2Auto, evergreen.ProviderNameEc2OnDemand, evergreen.ProviderNameEc2Spot, evergreen.ProviderNameEc2Fleet:
+	case evergreen.ProviderNameEc2OnDemand, evergreen.ProviderNameEc2Spot, evergreen.ProviderNameEc2Fleet:
 		key = "ami"
 	case evergreen.ProviderNameDocker, evergreen.ProviderNameDockerMock:
 		key = "image_url"
