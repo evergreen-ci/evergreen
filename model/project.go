@@ -868,17 +868,16 @@ func NewPatchTaskIdTable(proj *Project, v *Version, tasks TaskVariantPairs, proj
 	}
 	execTasksWithTaskGroupTasks := TVPairSet{}
 	for _, vt := range tasks.ExecTasks {
-		if _, ok := tgMap[vt.TaskName]; ok {
-			var group *TaskGroup
-			bvt := proj.FindTaskForVariant(vt.TaskName, vt.Variant)
-			if bvt != nil {
-				group = bvt.Group
+		var group *TaskGroup
+		bvt := proj.FindTaskForVariant(vt.TaskName, vt.Variant)
+		if bvt != nil {
+			group = bvt.Group
+		}
+		if tg := proj.FindTaskGroup(vt.TaskName, group); tg != nil {
+			for _, t := range tg.Tasks {
+				execTasksWithTaskGroupTasks = append(execTasksWithTaskGroupTasks, TVPair{vt.Variant, t})
 			}
-			if tg := proj.FindTaskGroup(vt.TaskName, group); tg != nil {
-				for _, t := range tg.Tasks {
-					execTasksWithTaskGroupTasks = append(execTasksWithTaskGroupTasks, TVPair{vt.Variant, t})
-				}
-			}
+			tgMap[bvt.Name] = *tg
 		} else {
 			execTasksWithTaskGroupTasks = append(execTasksWithTaskGroupTasks, vt)
 		}
@@ -1503,6 +1502,7 @@ func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVarian
 			// IsGroup is not persisted, and indicates here that the
 			// task is a member of a task group.
 			IsGroup:          true,
+			Group:            bvTaskGroup.Group,
 			Variant:          bvTaskGroup.Variant,
 			GroupName:        bvTaskGroup.Name,
 			Patchable:        bvTaskGroup.Patchable,

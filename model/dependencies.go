@@ -55,17 +55,8 @@ func (di *dependencyIncluder) handle(pair TVPair) (bool, error) {
 		return included, nil
 	}
 
-	// we must load the BuildVariantTaskUnit for the task/variant pair,
-	// since it contains the full scope of dependency information
-	bvt := di.Project.FindTaskForVariant(pair.TaskName, pair.Variant)
-	if bvt == nil {
-		di.included[pair] = false
-		return false, errors.Errorf("task '%s' does not exist in project '%s' for variant '%s'", pair.TaskName,
-			di.Project.Identifier, pair.Variant)
-	}
-
 	// if the given task is a task group, recurse on each task
-	if tg := di.Project.FindTaskGroup(pair.TaskName, bvt.Group); tg != nil {
+	if tg := di.Project.FindTaskGroup(pair.TaskName, nil); tg != nil {
 		for _, t := range tg.Tasks {
 			ok, err := di.handle(TVPair{TaskName: t, Variant: pair.Variant})
 			if !ok {
@@ -74,6 +65,15 @@ func (di *dependencyIncluder) handle(pair TVPair) (bool, error) {
 			}
 		}
 		return true, nil
+	}
+
+	// we must load the BuildVariantTaskUnit for the task/variant pair,
+	// since it contains the full scope of dependency information
+	bvt := di.Project.FindTaskForVariant(pair.TaskName, pair.Variant)
+	if bvt == nil {
+		di.included[pair] = false
+		return false, errors.Errorf("task '%s' does not exist in project '%s' for variant '%s'", pair.TaskName,
+			di.Project.Identifier, pair.Variant)
 	}
 
 	if bvt.SkipOnRequester(di.requester) {

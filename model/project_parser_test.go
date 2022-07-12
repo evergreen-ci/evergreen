@@ -1043,7 +1043,8 @@ tasks:
 - name: example_task_1
 - name: example_task_2
 task_groups:
-- name: example_task_group2
+- &example_task_group2
+  name: example_task_group2
   share_processes: true
   max_hosts: 2
   setup_group_can_fail_task: true
@@ -1070,32 +1071,11 @@ task_groups:
 buildvariants:
 - name: "bv"
   tasks:
-  - name: example_task_group2
   - name: example_task_group
     group:
-      share_processes: true
-      max_hosts: 2
-      setup_group_can_fail_task: true
-      setup_group_timeout_secs: 10
-      setup_group:
-      - command: shell.exec
-        params:
-          script: "echo setup_group"
-      teardown_group:
-      - command: shell.exec
-        params:
-          script: "echo teardown_group"
-      setup_task:
-      - command: shell.exec
-        params:
-          script: "echo setup_group"
-      teardown_task:
-      - command: shell.exec
-        params:
-          script: "echo setup_group"
+      <<: *example_task_group2
       tasks:
       - example_task_1
-      - example_task_2
 `
 	proj = &Project{}
 	_, err = LoadProjectInto(ctx, []byte(inlineYml), nil, "id", proj)
