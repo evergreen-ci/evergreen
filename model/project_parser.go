@@ -1199,7 +1199,7 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 	}
 	if bvt.Group != nil {
 		res.Group = &TaskGroup{
-			Name:                    bvt.Group.Name,
+			Name:                    bvt.Name,
 			SetupGroupFailTask:      bvt.Group.SetupGroupFailTask,
 			TeardownTaskCanFailTask: bvt.Group.TeardownTaskCanFailTask,
 			SetupGroupTimeoutSecs:   bvt.Group.SetupGroupTimeoutSecs,
