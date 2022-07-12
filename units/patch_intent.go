@@ -487,6 +487,7 @@ func (j *patchIntentProcessor) buildTasksandVariants(patchDoc *patch.Patch, proj
 		}
 	}
 
+	// if the user only wants failed tasks but the previous patch has no failed tasks, there is nothing to build
 	skipForFailed := failedOnly && previousPatchStatus != evergreen.PatchFailed
 
 	if len(patchDoc.VariantsTasks) == 0 && !skipForFailed {
@@ -499,9 +500,8 @@ func setTasksToPreviousFailed(patchDoc, previousPatch *patch.Patch, project *mod
 	var failedTasks []string
 	for _, vt := range previousPatch.VariantsTasks {
 		tasksInProjectVariant := project.FindTasksForVariant(vt.Variant)
-		displayTasksInProjectVariant := project.FindDisplayTasksForVariant(vt.Variant)
 		var tasks []string
-		tasks, err := getPreviousFailedTasksAndDisplayTasks(tasksInProjectVariant, displayTasksInProjectVariant, vt, previousPatch.Version)
+		tasks, err := getPreviousFailedTasksAndDisplayTasks(tasksInProjectVariant, vt, previousPatch.Version)
 		if err != nil {
 			return err
 		}
@@ -532,7 +532,7 @@ func (j *patchIntentProcessor) setToPreviousPatchDefinition(patchDoc *patch.Patc
 	return previousPatch.Status, nil
 }
 
-func getPreviousFailedTasksAndDisplayTasks(tasksInProjectVariant []string, displayTasksInProjectVariant []string, vt patch.VariantTasks, version string) ([]string, error) {
+func getPreviousFailedTasksAndDisplayTasks(tasksInProjectVariant []string, vt patch.VariantTasks, version string) ([]string, error) {
 	failedTasks, err := task.FindAll(db.Query(task.FailedTasksByVersionAndBV(version, vt.Variant)))
 	if err != nil {
 		return nil, errors.Wrap(err, "error querying for failed tasks from previous patch")
