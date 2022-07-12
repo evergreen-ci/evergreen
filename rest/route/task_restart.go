@@ -58,10 +58,7 @@ func (trh *taskRestartHandler) Parse(ctx context.Context, r *http.Request) error
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(trh); err != nil && err.Error() != "EOF" {
-		return gimlet.ErrorResponse{
-			Message:    errors.Wrapf(err, "failedOnly in body is invalid for taskid '%s'. failedOnly can only be true/false, True/False, 1/0, or T/F.", trh.taskId).Error(),
-			StatusCode: http.StatusBadRequest,
-		}
+		return errors.Wrapf(err, "parsing JSON request body for taskid '%s'.", trh.taskId)
 	}
 
 	return nil
