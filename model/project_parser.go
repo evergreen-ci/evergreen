@@ -408,7 +408,7 @@ type parserBVTaskUnit struct {
 	CronBatchTime string `yaml:"cron,omitempty" bson:"cron,omitempty"`
 	// If Activate is set to false, then we don't initially activate the task.
 	Activate *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
-	// Group write a comment
+	// Group is set if an inline task group is defined on the build variant config.
 	Group *parserTaskGroup `yaml:"group,omitempty" bson:"group,omitempty"`
 }
 

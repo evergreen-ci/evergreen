@@ -137,7 +137,7 @@ type BuildVariantTaskUnit struct {
 	CronBatchTime string `yaml:"cron,omitempty" bson:"cron,omitempty"`
 	// If Activate is set to false, then we don't initially activate the task.
 	Activate *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
-	// Group write comment
+	// Group is set if an inline task group is defined on the build variant.
 	Group *TaskGroup `yaml:"group,omitempty" bson:"group,omitempty"`
 }
 
