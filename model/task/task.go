@@ -2539,7 +2539,7 @@ func ArchiveMany(tasks []Task) error {
 					AbortInfoKey:            "",
 					OverrideDependenciesKey: "",
 				},
-				"$in": bson.M{
+				"$inc": bson.M{
 					ExecutionKey: 1,
 				},
 			})
@@ -2625,7 +2625,7 @@ func ArchiveDisplayTask(dt Task) error {
 	_, err = session.WithTransaction(ctx, txFunc)
 
 	if err != nil {
-		return errors.Wrap(err, "archiving tasks and updating tasks")
+		return errors.Wrap(err, "archiving execution tasks and updating execution tasks")
 	}
 
 	eventLogErrs := grip.NewBasicCatcher()
