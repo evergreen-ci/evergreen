@@ -2481,33 +2481,36 @@ func (t *Task) Archive() error {
 }
 
 // ArchiveMany accepts tasks and display tasks (execution tasks are ignored) and calls archive on all of them.
-// Returning if any error. For tasks, it will bundle them together to execute one query. It also archives the display tasks
+// Returning if any error. For tasks, it will bundle them together to execute one query. It also archives the display tasks.
+// It expects all tasks inside are NOT execution tasks.
 func ArchiveMany(tasks []Task) error {
-	var err error
-	bundledTasks := []interface{}{}
+	bundledTasks := []string{}
 	archived := []interface{}{}
 	for _, t := range tasks {
 		// Ignore execution tasks
-		if t.IsPartOfDisplay() {
-			continue
-		}
+		// This is an expensive call, so it is removed if not needed.
+		// if t.IsPartOfDisplay() {
+		// 	continue
+		// }
 
 		// Archive display tasks (each take one query)
 		if t.DisplayOnly {
-			err = t.Archive()
+			if err := t.Archive(); err != nil {
+				return errors.Wrapf(err, "Archiving task '%s' with execution '%d' failed.", t.Id, t.Execution)
+			}
 			continue
 		}
 
 		// Ensure the task is something we archive
 		if !t.ResetFailedWhenFinished || evergreen.IsFailedTaskStatus(t.Status) {
-			bundledTasks = append(bundledTasks, t)
+			bundledTasks = append(bundledTasks, t.Id)
 			archived = append(archived, *t.makeArchivedTask())
 		}
+	}
 
-		if err != nil {
-			err = errors.Wrapf(err, "Archiving task '%s' with execution '%d' failed.", t.Id, t.Execution)
-			break
-		}
+	// If there are none to archive/update, noop
+	if len(bundledTasks) == 0 {
+		return nil
 	}
 
 	mongoClient := evergreen.GetEnvironment().Client()
@@ -2543,19 +2546,12 @@ func ArchiveMany(tasks []Task) error {
 					ExecutionKey: 1,
 				},
 			})
-		if err != nil {
-			return nil, errors.Wrap(err, "updating tasks")
-		}
-		return nil, nil
+		return nil, errors.Wrap(err, "updating tasks")
 	}
 
 	_, err = session.WithTransaction(ctx, txFunc)
 
-	if err != nil {
-		return errors.Wrap(err, "archiving tasks and updating tasks")
-	}
-
-	return err
+	return errors.Wrap(err, "archiving tasks and updating tasks")
 }
 
 // ArchiveDisplayTask gets all the execution tasks and archives them and updates to the lastest execution
