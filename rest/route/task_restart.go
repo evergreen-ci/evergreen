@@ -55,31 +55,13 @@ func (trh *taskRestartHandler) Parse(ctx context.Context, r *http.Request) error
 	if r.Body == nil {
 		return nil
 	}
-	fmt.Println("Hey1")
 
-	// // Manually decoding the json because it is optional, so
-	// // checking for len(data) == 0 has to be handled
-	// data, err := ioutil.ReadAll(r.Body)
-	// defer r.Body.Close()
-	// fmt.Println("Hey2")
-	// if err != nil {
-	// 	return errors.WithStack(err)
-	// }
-	// if len(data) == 0 { // No FailedOnly passed
-	// 	return nil
-	// }
-	// fmt.Println("Hey4")
-
-	// fmt.Println("Hey5")
-	// if err := utility.ReadJSON(r.Body, trh); err != nil {
-	// if err := errors.WithStack(yaml.Unmarshal(data, trh)); err != nil {
 	if err := json.NewDecoder(r.Body).Decode(trh); err != nil && err.Error() != "EOF" {
 		return gimlet.ErrorResponse{
 			Message:    errors.Wrapf(err, "failedOnly in body is invalid for taskid '%s'. failedOnly can only be true/false, True/False, 1/0, or T/F.", trh.taskId).Error(),
 			StatusCode: http.StatusBadRequest,
 		}
 	}
-	fmt.Println("Hey6")
 
 	return nil
 }
