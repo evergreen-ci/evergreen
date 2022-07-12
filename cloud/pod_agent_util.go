@@ -26,6 +26,8 @@ func invokeShellScriptCommand(p *pod.Pod) []string {
 	return []string{"bash", "-c"}
 }
 
+// downloadPodProvisioningScriptCommand returns the command to download and
+// execute the provisioning script for this pod.
 func downloadPodProvisioningScriptCommand(settings *evergreen.Settings, p *pod.Pod) string {
 	const (
 		curlDefaultNumRetries = 10
