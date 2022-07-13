@@ -15,7 +15,6 @@ func TestDistroAliases(t *testing.T) {
 		t.Run("Containers", func(t *testing.T) {
 			distros := byPoolSize{
 				{Id: "three", Provider: evergreen.ProviderNameStatic},
-				// kim: TODO: check this test
 				{Id: "two", Provider: evergreen.ProviderNameEc2Fleet},
 				{Id: "one", Provider: evergreen.ProviderNameDocker},
 			}

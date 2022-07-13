@@ -3520,8 +3520,7 @@ func TestRemoveStaleInitializing(t *testing.T) {
 			Status:       evergreen.HostUninitialized,
 			CreationTime: now.Add(-1 * time.Minute),
 			UserHost:     false,
-			// kim: TODO: check this test
-			Provider: evergreen.ProviderNameEc2Fleet,
+			Provider:     evergreen.ProviderNameEc2Fleet,
 		},
 		{
 			Id:           "host2",

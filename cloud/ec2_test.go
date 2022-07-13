@@ -332,7 +332,6 @@ func (s *EC2Suite) TestSpawnHostInvalidInput() {
 }
 
 func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
-	// kim: TODO: check this test
 	s.h.Distro.Id = "distro_id"
 	s.h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
 	s.h.Distro.ProviderSettingsList = []*birch.Document{birch.NewDocument(
@@ -377,7 +376,6 @@ func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 }
 
 func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
-	// kim: TODO: check this test
 	h := &host.Host{}
 	h.Distro.Id = "distro_id"
 	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
@@ -1026,7 +1024,6 @@ func (s *EC2Suite) TestGetInstanceName() {
 
 func (s *EC2Suite) TestGetProvider() {
 	s.h.Distro.Arch = "Linux/Unix"
-	// kim: TODO: check this test
 	ec2Settings := &EC2ProviderSettings{
 		InstanceType: "instance",
 		IsVpc:        true,
@@ -1340,7 +1337,6 @@ func (s *EC2Suite) TestGetRegion() {
 }
 
 func (s *EC2Suite) TestUserDataExpand() {
-	// kim: TODO: check test
 	expanded, err := expandUserData("${test} a thing", s.onDemandManager.(*ec2Manager).settings.Expansions)
 	s.NoError(err)
 	s.Equal("expand a thing", expanded)

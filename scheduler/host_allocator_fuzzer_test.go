@@ -60,7 +60,6 @@ func (s *HostAllocatorFuzzerSuite) SetupSuite() {
 		HostAllocatorSettings: distro.HostAllocatorSettings{
 			MaximumHosts: 100,
 		},
-		// kim: TODO: check this test
 		Provider: evergreen.ProviderNameEc2Fleet,
 	}
 	s.projectName = "testProject"

@@ -141,8 +141,7 @@ func TestDistroToServiceDefaults(t *testing.T) {
 func TestDistroAMIForEC2(t *testing.T) {
 	settingsList := []*birch.Document{birch.NewDocument(birch.EC.String("ami", "ami-000000"))}
 	d := distro.Distro{
-		Id: "testId",
-		// kim: TODO: check this test
+		Id:                   "testId",
 		Provider:             evergreen.ProviderNameEc2Fleet,
 		ProviderSettingsList: settingsList,
 	}

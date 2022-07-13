@@ -16,8 +16,7 @@ func insertTestDocuments() error {
 			Id:     "one",
 			Status: evergreen.HostRunning,
 			Distro: distro.Distro{
-				Id: "debian",
-				// kim: TODO: check this test
+				Id:       "debian",
 				Provider: evergreen.ProviderNameEc2Fleet,
 			},
 			RunningTask: "baz",
@@ -99,7 +98,6 @@ func TestHostStatsByProvider(t *testing.T) {
 
 	rmap := result.Map()
 	assert.Equal(1, rmap[evergreen.ProviderNameEc2Spot])
-	// kim: TODO: check this test
 	assert.Equal(3, rmap[evergreen.ProviderNameEc2Fleet])
 
 	alt, err := GetProviderCounts()
