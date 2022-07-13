@@ -341,16 +341,12 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 	s.Equal(previousPatchStatus, "failed")
 
 	s.Equal(currentPatchDoc.BuildVariants, previousPatchDoc.BuildVariants)
-	s.Equal(currentPatchDoc.RegexBuildVariants, previousPatchDoc.RegexBuildVariants)
-	s.Equal(currentPatchDoc.RegexTasks, previousPatchDoc.RegexTasks)
 	s.Equal(currentPatchDoc.Tasks, previousPatchDoc.Tasks)
 
 	previousPatchStatus, err = j.setToPreviousPatchDefinition(currentPatchDoc, &project, true)
 	s.NoError(err)
 	s.Equal(previousPatchStatus, "failed")
 	s.Equal(currentPatchDoc.BuildVariants, previousPatchDoc.BuildVariants)
-	s.Equal(currentPatchDoc.RegexBuildVariants, previousPatchDoc.RegexBuildVariants)
-	s.Equal(currentPatchDoc.RegexTasks, previousPatchDoc.RegexTasks)
 	s.Equal(currentPatchDoc.Tasks, []string{"t1"})
 }
 
