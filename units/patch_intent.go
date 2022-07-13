@@ -546,6 +546,7 @@ func getPreviousFailedTasksAndDisplayTasks(tasksInProjectVariant []string, vt pa
 			failedExecutionTasks = append(failedExecutionTasks, failedTask.DisplayName)
 		}
 	}
+	// We want to get the intersection of tasks that are in the current project definition and tasks that failed in the previous run.
 	failedExecutionTasks = utility.StringSliceIntersection(tasksInProjectVariant, failedExecutionTasks)
 
 	tasks := utility.StringSliceIntersection(failedExecutionTasks, vt.Tasks)
