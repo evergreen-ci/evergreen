@@ -1070,9 +1070,9 @@ func TestTaskResetPrepare(t *testing.T) {
 		failedOnlyTest := func(failedOnly bool) {
 			projCtx.Task = &testTask
 			goodBod := &struct {
-				FailedOnly bool
+				Failed_Only bool
 			}{
-				FailedOnly: failedOnly,
+				Failed_Only: failedOnly,
 			}
 			res, err := json.Marshal(goodBod)
 			So(err, ShouldBeNil)
