@@ -51,11 +51,7 @@ type APIBuild struct {
 
 // BuildFromService converts from service level structs to an APIBuild.
 // APIBuild.ProjectId is set in the route builder's Execute method.
-func (apiBuild *APIBuild) BuildFromService(h interface{}) error {
-	v, ok := h.(build.Build)
-	if !ok {
-		return errors.Errorf("unexpected type %T", h)
-	}
+func (apiBuild *APIBuild) BuildFromService(v build.Build) {
 	apiBuild.Id = utility.ToStringPtr(v.Id)
 	apiBuild.CreateTime = ToTimePtr(v.CreateTime)
 	apiBuild.StartTime = ToTimePtr(v.StartTime)
@@ -101,7 +97,6 @@ func (apiBuild *APIBuild) BuildFromService(h interface{}) error {
 			apiBuild.ProjectIdentifier = utility.ToStringPtr(identifier)
 		}
 	}
-	return nil
 }
 
 func (apiBuild *APIBuild) SetTaskCache(tasks []task.Task) {

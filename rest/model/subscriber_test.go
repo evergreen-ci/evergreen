@@ -25,11 +25,9 @@ func TestSubscriberModelsGithubStatusAPI(t *testing.T) {
 	err := apiPrSubscriber.BuildFromService(prSubscriber)
 	assert.NoError(err)
 
-	origPrSubscriberInterface, err := apiPrSubscriber.ToService()
+	origPrSubscriber, err := apiPrSubscriber.ToService()
 	assert.NoError(err)
 
-	origPrSubscriber, ok := origPrSubscriberInterface.(event.Subscriber)
-	assert.True(ok)
 	assert.EqualValues(prSubscriber.Type, origPrSubscriber.Type)
 	assert.EqualValues(target, origPrSubscriber.Target)
 
@@ -65,11 +63,9 @@ func TestSubscriberModelsWebhook(t *testing.T) {
 	err := apiWebhookSubscriber.BuildFromService(webhookSubscriber)
 	assert.NoError(err)
 
-	origWebhookSubscriberInterface, err := apiWebhookSubscriber.ToService()
+	origWebhookSubscriber, err := apiWebhookSubscriber.ToService()
 	assert.NoError(err)
 
-	origWebhookSubscriber, ok := origWebhookSubscriberInterface.(event.Subscriber)
-	assert.True(ok)
 	assert.EqualValues(webhookSubscriber.Type, origWebhookSubscriber.Type)
 	assert.EqualValues(target, origWebhookSubscriber.Target)
 
@@ -102,11 +98,9 @@ func TestSubscriberModelsJIRAIssue(t *testing.T) {
 	err := apiJIRAIssueSubscriber.BuildFromService(jiraIssueSubscriber)
 	assert.NoError(err)
 
-	origJIRAIssueSubscriberInterface, err := apiJIRAIssueSubscriber.ToService()
+	origJIRAIssueSubscriber, err := apiJIRAIssueSubscriber.ToService()
 	assert.NoError(err)
 
-	origJIRAIssueSubscriber, ok := origJIRAIssueSubscriberInterface.(event.Subscriber)
-	assert.True(ok)
 	assert.EqualValues(jiraIssueSubscriber.Type, origJIRAIssueSubscriber.Type)
 	assert.EqualValues(target, origJIRAIssueSubscriber.Target)
 

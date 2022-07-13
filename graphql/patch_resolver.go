@@ -48,10 +48,7 @@ func (r *patchResolver) Builds(ctx context.Context, obj *restModel.APIPatch) ([]
 	var apiBuilds []*restModel.APIBuild
 	for _, build := range builds {
 		apiBuild := restModel.APIBuild{}
-		err = apiBuild.BuildFromService(build)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIBuild from service: %s", err.Error()))
-		}
+		apiBuild.BuildFromService(build)
 		apiBuilds = append(apiBuilds, &apiBuild)
 	}
 	return apiBuilds, nil
@@ -221,9 +218,7 @@ func (r *patchResolver) VersionFull(ctx context.Context, obj *restModel.APIPatch
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find version with id: `%s`", *obj.Version))
 	}
 	apiVersion := restModel.APIVersion{}
-	if err = apiVersion.BuildFromService(v); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIVersion from service for `%s`: %s", *obj.Version, err.Error()))
-	}
+	apiVersion.BuildFromService(*v)
 	return &apiVersion, nil
 }
 

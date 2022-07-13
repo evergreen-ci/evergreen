@@ -50,10 +50,7 @@ func getGroupedFiles(ctx context.Context, name string, taskID string, execution 
 	apiFileList := []*restModel.APIFile{}
 	for _, file := range strippedFiles {
 		apiFile := restModel.APIFile{}
-		err := apiFile.BuildFromService(file)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, "error stripping hidden files")
-		}
+		apiFile.BuildFromService(file)
 		apiFileList = append(apiFileList, &apiFile)
 	}
 	return &GroupedFiles{TaskName: &name, Files: apiFileList}, nil

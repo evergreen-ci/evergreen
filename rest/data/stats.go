@@ -27,10 +27,7 @@ func GetTestStats(filter stats.StatsFilter) ([]restModel.APITestStats, error) {
 	apiStatsResult := make([]restModel.APITestStats, len(serviceStatsResult))
 	for i, serviceStats := range serviceStatsResult {
 		ats := restModel.APITestStats{}
-		err = ats.BuildFromService(&serviceStats)
-		if err != nil {
-			return nil, errors.Wrap(err, "converting test stats to API model")
-		}
+		ats.BuildFromService(serviceStats)
 		apiStatsResult[i] = ats
 	}
 	return apiStatsResult, nil
@@ -55,10 +52,7 @@ func GetPrestoTestStats(ctx context.Context, filter stats.PrestoTestStatsFilter)
 	apiStatsResult := make([]restModel.APITestStats, len(serviceStatsResult))
 	for i, serviceStats := range serviceStatsResult {
 		ats := restModel.APITestStats{}
-		err = ats.BuildFromService(&serviceStats)
-		if err != nil {
-			return nil, errors.Wrap(err, "converting test stats to API model")
-		}
+		ats.BuildFromService(serviceStats)
 		apiStatsResult[i] = ats
 	}
 
@@ -83,10 +77,7 @@ func GetTaskStats(filter stats.StatsFilter) ([]restModel.APITaskStats, error) {
 	apiStatsResult := make([]restModel.APITaskStats, len(serviceStatsResult))
 	for i, serviceStats := range serviceStatsResult {
 		ats := restModel.APITaskStats{}
-		err = ats.BuildFromService(&serviceStats)
-		if err != nil {
-			return nil, errors.Wrap(err, "converting task stats to API model")
-		}
+		ats.BuildFromService(serviceStats)
 		apiStatsResult[i] = ats
 	}
 	return apiStatsResult, nil
