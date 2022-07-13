@@ -258,6 +258,9 @@ func exportECSPodExecutionOptions(ecsConfig evergreen.ECSConfig, containerOpts p
 			SetSecurityGroups(ecsConfig.AWSVPC.SecurityGroups))
 	}
 
+	// Pods need to run inside container instances that have a compatible
+	// environment, so specifying the capacity provider essentially specifies
+	// the host environment it must run inside.
 	var foundCapacityProvider bool
 	for _, cp := range ecsConfig.CapacityProviders {
 		if containerOpts.OS == pod.OSWindows && !containerOpts.WindowsVersion.Matches(cp.WindowsVersion) {
