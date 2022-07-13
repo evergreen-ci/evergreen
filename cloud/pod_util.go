@@ -247,10 +247,6 @@ func exportECSPodContainerDef(settings *evergreen.Settings, p *pod.Pod) (*cocoa.
 	return def, nil
 }
 
-const (
-	ecsWindowsVersionTagConstraint = "attribute:WindowsVersion"
-)
-
 // exportECSPodExecutionOptions exports the ECS configuration into
 // cocoa.ECSPodExecutionOptions.
 func exportECSPodExecutionOptions(ecsConfig evergreen.ECSConfig, containerOpts pod.TaskContainerCreationOptions) (*cocoa.ECSPodExecutionOptions, error) {
@@ -262,15 +258,14 @@ func exportECSPodExecutionOptions(ecsConfig evergreen.ECSConfig, containerOpts p
 			SetSecurityGroups(ecsConfig.AWSVPC.SecurityGroups))
 	}
 
-	placementOpts := cocoa.NewECSPodPlacementOptions()
-	if containerOpts.WindowsVersion != "" {
-		windowsVersionConstraint := fmt.Sprintf("%s == %s", ecsWindowsVersionTagConstraint, containerOpts.WindowsVersion)
-		placementOpts.AddInstanceFilters(windowsVersionConstraint)
-	}
-	opts.SetPlacementOptions(*placementOpts)
-
+	// Pods need to run inside container instances that have a compatible
+	// environment, so specifying the capacity provider essentially specifies
+	// the host environment it must run inside.
 	var foundCapacityProvider bool
 	for _, cp := range ecsConfig.CapacityProviders {
+		if containerOpts.OS == pod.OSWindows && !containerOpts.WindowsVersion.Matches(cp.WindowsVersion) {
+			continue
+		}
 		if containerOpts.OS.Matches(cp.OS) && containerOpts.Arch.Matches(cp.Arch) {
 			opts.SetCapacityProvider(cp.Name)
 			foundCapacityProvider = true
@@ -278,6 +273,9 @@ func exportECSPodExecutionOptions(ecsConfig evergreen.ECSConfig, containerOpts p
 		}
 	}
 	if !foundCapacityProvider {
+		if containerOpts.OS == pod.OSWindows {
+			return nil, errors.Errorf("container OS '%s' with version '%s' and arch '%s' did not match any recognized capacity provider", containerOpts.OS, containerOpts.WindowsVersion, containerOpts.Arch)
+		}
 		return nil, errors.Errorf("container OS '%s' and arch '%s' did not match any recognized capacity provider", containerOpts.OS, containerOpts.Arch)
 	}
 

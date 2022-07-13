@@ -1739,15 +1739,17 @@ func (a *APIECSClusterConfig) ToService() (*evergreen.ECSClusterConfig, error) {
 // APIECSCapacityProvider represents configuration options for a capacity
 // provider within an ECS cluster.
 type APIECSCapacityProvider struct {
-	Name *string `json:"name"`
-	OS   *string `json:"os"`
-	Arch *string `json:"arch"`
+	Name           *string `json:"name"`
+	OS             *string `json:"os"`
+	Arch           *string `json:"arch"`
+	WindowsVersion *string `json:"windows_version"`
 }
 
 func (a *APIECSCapacityProvider) BuildFromService(cp evergreen.ECSCapacityProvider) {
 	a.Name = utility.ToStringPtr(cp.Name)
 	a.OS = utility.ToStringPtr(string(cp.OS))
 	a.Arch = utility.ToStringPtr(string(cp.Arch))
+	a.WindowsVersion = utility.ToStringPtr(string(cp.WindowsVersion))
 }
 
 func (a *APIECSCapacityProvider) ToService() (*evergreen.ECSCapacityProvider, error) {
@@ -1759,10 +1761,17 @@ func (a *APIECSCapacityProvider) ToService() (*evergreen.ECSCapacityProvider, er
 	if err := arch.Validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid arch")
 	}
+	winVer := evergreen.ECSWindowsVersion(utility.FromStringPtr(a.WindowsVersion))
+	if winVer != "" {
+		if err := winVer.Validate(); err != nil {
+			return nil, errors.Wrap(err, "invalid Windows version")
+		}
+	}
 	return &evergreen.ECSCapacityProvider{
-		Name: utility.FromStringPtr(a.Name),
-		OS:   os,
-		Arch: arch,
+		Name:           utility.FromStringPtr(a.Name),
+		OS:             os,
+		Arch:           arch,
+		WindowsVersion: winVer,
 	}, nil
 }
 

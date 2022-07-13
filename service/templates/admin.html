@@ -496,7 +496,7 @@ Admin Settings
 												</button>
 											</section>
 										</div>
-									</div> 
+									</div>
 								</md-card-content>
 							</md-card>
 
@@ -1958,13 +1958,16 @@ Admin Settings
 													<md-input-container class="control" flex=25>
 														<input class="control" type="text" ng-model="capacityProvider.name" placeholder="Name">
 													</md-input-container>
-													<br />
 													<md-input-container class="control" flex=25>
 														<md-select ng-model="capacityProvider.os" placeholder="OS">
 															<md-option ng-repeat="os in validECSOSes" value="[[os]]">[[os]]</md-option>
 														</md-select>
 													</md-input-container>
-													<br />
+													<md-input-container class="control" flex=25>
+														<md-select ng-model="capacityProvider.windows_version" placeholder="Windows version">
+															<md-option ng-repeat="(displayWinVer, winVer) in validECSWindowsVersions" value="[[winVer]]">[[displayWinVer]]</md-option>
+														</md-select>
+													</md-input-container>
 													<md-input-container class="control" flex=25>
 														<md-select ng-model="capacityProvider.arch" placeholder="Arch">
 															<md-option ng-repeat="arch in validECSArches" value="[[arch]]">[[arch]]</md-option>
@@ -1984,13 +1987,16 @@ Admin Settings
 													<input class="control" type="text" ng-model="new_ecs_capacity_provider.name"
 														placeholder="Name">
 												</md-input-container>
-												<br />
 												<md-input-container class="control" flex=25>
 													<md-select ng-model="new_ecs_capacity_provider.os" placeholder="OS">
 														<md-option ng-repeat="os in validECSOSes" value="[[os]]">[[os]]</md-option>
 													</md-select>
 												</md-input-container>
-												<br />
+												<md-input-container class="control" flex=25>
+													<md-select ng-model="new_ecs_capacity_provider.windows_version" placeholder="Windows version">
+														<md-option ng-repeat="(displayWinVer, winVer) in validECSWindowsVersions" value="[[winVer]]">[[displayWinVer]]</md-option>
+													</md-select>
+												</md-input-container>
 												<md-input-container class="control" flex=25>
 													<md-select ng-model="new_ecs_capacity_provider.arch" placeholder="Arch">
 														<md-option ng-repeat="arch in validECSArches" value="[[arch]]">[[arch]]</md-option>
