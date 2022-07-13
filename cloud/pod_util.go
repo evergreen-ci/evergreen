@@ -229,7 +229,7 @@ func exportECSPodContainerDef(settings *evergreen.Settings, p *pod.Pod) (*cocoa.
 		SetMemoryMB(p.TaskContainerCreationOpts.MemoryMB).
 		SetCPU(p.TaskContainerCreationOpts.CPU).
 		SetWorkingDir(p.TaskContainerCreationOpts.WorkingDir).
-		SetCommand(agentScript(settings, p)).
+		SetCommand(bootstrapContainerCommand(settings, p)).
 		SetEnvironmentVariables(exportPodEnvVars(settings.Providers.AWS.Pod.SecretsManager, p)).
 		AddPortMappings(*cocoa.NewPortMapping().SetContainerPort(agentPort))
 
