@@ -2497,9 +2497,11 @@ func ArchiveMany(tasks []Task) error {
 
 		// Archive display tasks (each take one query)
 		if t.DisplayOnly {
-			if err := t.Archive(); err != nil {
+			addArchived, err := updateDisplayTask(t)
+			if err != nil {
 				return errors.Wrapf(err, "Archiving task '%s' with execution '%d' failed.", t.Id, t.Execution)
 			}
+			archived = append(archived, addArchived...)
 			continue
 		}
 
@@ -2625,6 +2627,78 @@ func ArchiveDisplayTask(dt Task) error {
 	_, err = session.WithTransaction(ctx, txFunc)
 
 	return errors.Wrap(err, "archiving execution tasks and updating execution tasks")
+}
+
+// ArchiveDisplayTask gets all the execution tasks and updates to the lastest execution. It returns the
+// tasks to be archived.
+func updateDisplayTask(dt Task) ([]interface{}, error) {
+	if !dt.DisplayOnly || len(dt.ExecutionTasks) == 0 {
+		return nil, gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("Invalid task with id '%s'. Is display only '%v'", dt.Id, dt.DisplayOnly),
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	var execTasks []Task
+	var err error
+	if dt.ResetFailedWhenFinished {
+		execTasks, err = FindWithFields(FailedTasksByIds(dt.ExecutionTasks), IdKey)
+	} else {
+		execTasks, err = FindAll(db.Query(ByIds(dt.ExecutionTasks)))
+	}
+
+	if err != nil {
+		return nil, errors.Wrap(err, fmt.Sprintf("Failed getting execution tasks for display task: '%s'", dt.Id))
+	}
+
+	archived := []interface{}{}
+	tasks := []string{}
+	for _, t := range execTasks {
+		archived = append(archived, *t.makeArchivedTask())
+		tasks = append(tasks, t.Id)
+	}
+
+	mongoClient := evergreen.GetEnvironment().Client()
+	ctx, cancel := evergreen.GetEnvironment().Context()
+	defer cancel()
+	session, err := mongoClient.StartSession()
+	if err != nil {
+		return nil, errors.Wrap(err, "starting DB session")
+	}
+	defer session.EndSession(ctx)
+
+	txFunc := func(sessCtx mongo.SessionContext) (interface{}, error) {
+		// oldTaskColl := evergreen.GetEnvironment().DB().Collection(OldCollection)
+		// _, err = oldTaskColl.InsertMany(ctx, archived)
+		// if err != nil {
+		// 	return nil, errors.Wrap(err, fmt.Sprintf("archiving tasks for dt '%s'.", dt.Id))
+		// }
+
+		taskColl := evergreen.GetEnvironment().DB().Collection(Collection)
+
+		_, err = taskColl.UpdateMany(ctx, bson.M{
+			IdKey: bson.M{
+				"$in": tasks,
+			},
+		},
+			bson.M{
+				"$unset": bson.M{
+					AbortedKey:   "",
+					AbortInfoKey: "",
+				},
+				"$set": bson.M{
+					ExecutionKey: dt.Execution + 1,
+				},
+			})
+		if err != nil {
+			return nil, errors.Wrap(err, fmt.Sprintf("updating tasks for dt '%s'.", dt.Id))
+		}
+		return nil, nil
+	}
+
+	_, err = session.WithTransaction(ctx, txFunc)
+
+	return archived, errors.Wrap(err, "archiving execution tasks and updating execution tasks")
 }
 
 // ArchiveTask only archives a non-execution task. I.e. display task or task
