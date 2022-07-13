@@ -8529,7 +8529,22 @@ type JiraIssueSubscriber {
   issueType: String!
   project: String!
 }
-`, BuiltIn: false},
+
+input WebhookSubscriberInput {
+  headers: [WebhookHeaderInput]!
+  secret: String!
+  url: String!
+}
+
+input WebhookHeaderInput {
+  key: String!
+  value: String!
+}
+
+input JiraIssueSubscriberInput {
+  issueType: String!
+  project: String!
+}`, BuiltIn: false},
 	{Name: "graphql/schema/types/project_vars.graphql", Input: `###### INPUTS ######
 input ProjectVarsInput {
   adminOnlyVarsList: [String]
@@ -9145,6 +9160,8 @@ input SelectorInput {
 input SubscriberInput {
   target: String!
   type: String!
+  webhookSubscriber: WebhookSubscriberInput
+  jiraIssueSubscriber: JiraIssueSubscriberInput
 }
 
 ###### TYPES ######
@@ -39764,6 +39781,37 @@ func (ec *executionContext) unmarshalInputJiraFieldInput(ctx context.Context, ob
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputJiraIssueSubscriberInput(ctx context.Context, obj interface{}) (model.APIJIRAIssueSubscriber, error) {
+	var it model.APIJIRAIssueSubscriber
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	for k, v := range asMap {
+		switch k {
+		case "issueType":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("issueType"))
+			it.IssueType, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "project":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("project"))
+			it.Project, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputMainlineCommitsOptions(ctx context.Context, obj interface{}) (MainlineCommitsOptions, error) {
 	var it MainlineCommitsOptions
 	asMap := map[string]interface{}{}
@@ -41456,6 +41504,22 @@ func (ec *executionContext) unmarshalInputSubscriberInput(ctx context.Context, o
 			if err != nil {
 				return it, err
 			}
+		case "webhookSubscriber":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("webhookSubscriber"))
+			it.WebhookSubscriber, err = ec.unmarshalOWebhookSubscriberInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWebhookSubscriber(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "jiraIssueSubscriber":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("jiraIssueSubscriber"))
+			it.JiraIssueSubscriber, err = ec.unmarshalOJiraIssueSubscriberInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJIRAIssueSubscriber(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		}
 	}
 
@@ -42010,6 +42074,37 @@ func (ec *executionContext) unmarshalInputVolumeHost(ctx context.Context, obj in
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputWebhookHeaderInput(ctx context.Context, obj interface{}) (model.APIWebhookHeader, error) {
+	var it model.APIWebhookHeader
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	for k, v := range asMap {
+		switch k {
+		case "key":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("key"))
+			it.Key, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "value":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("value"))
+			it.Value, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputWebhookInput(ctx context.Context, obj interface{}) (model.APIWebHook, error) {
 	var it model.APIWebHook
 	asMap := map[string]interface{}{}
@@ -42032,6 +42127,45 @@ func (ec *executionContext) unmarshalInputWebhookInput(ctx context.Context, obj 
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("secret"))
 			it.Secret, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputWebhookSubscriberInput(ctx context.Context, obj interface{}) (model.APIWebhookSubscriber, error) {
+	var it model.APIWebhookSubscriber
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	for k, v := range asMap {
+		switch k {
+		case "headers":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("headers"))
+			it.Headers, err = ec.unmarshalNWebhookHeaderInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWebhookHeader(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "secret":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("secret"))
+			it.Secret, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "url":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("url"))
+			it.URL, err = ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -51822,6 +51956,27 @@ func (ec *executionContext) marshalNWebhookHeader2ᚕgithubᚗcomᚋevergreenᚑ
 	return ret
 }
 
+func (ec *executionContext) unmarshalNWebhookHeaderInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWebhookHeader(ctx context.Context, v interface{}) ([]model.APIWebhookHeader, error) {
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]model.APIWebhookHeader, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalOWebhookHeaderInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWebhookHeader(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
 func (ec *executionContext) marshalNWorkstationConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationConfig(ctx context.Context, sel ast.SelectionSet, v model.APIWorkstationConfig) graphql.Marshaler {
 	return ec._WorkstationConfig(ctx, sel, &v)
 }
@@ -52909,6 +53064,14 @@ func (ec *executionContext) marshalOJiraIssueSubscriber2ᚖgithubᚗcomᚋevergr
 		return graphql.Null
 	}
 	return ec._JiraIssueSubscriber(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOJiraIssueSubscriberInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJIRAIssueSubscriber(ctx context.Context, v interface{}) (*model.APIJIRAIssueSubscriber, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputJiraIssueSubscriberInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOJiraTicket2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐJiraTicket(ctx context.Context, sel ast.SelectionSet, v *thirdparty.JiraTicket) graphql.Marshaler {
@@ -54432,6 +54595,11 @@ func (ec *executionContext) marshalOWebhookHeader2githubᚗcomᚋevergreenᚑci�
 	return ec._WebhookHeader(ctx, sel, &v)
 }
 
+func (ec *executionContext) unmarshalOWebhookHeaderInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWebhookHeader(ctx context.Context, v interface{}) (model.APIWebhookHeader, error) {
+	res, err := ec.unmarshalInputWebhookHeaderInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalOWebhookInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWebHook(ctx context.Context, v interface{}) (model.APIWebHook, error) {
 	res, err := ec.unmarshalInputWebhookInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -54442,6 +54610,14 @@ func (ec *executionContext) marshalOWebhookSubscriber2ᚖgithubᚗcomᚋevergree
 		return graphql.Null
 	}
 	return ec._WebhookSubscriber(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOWebhookSubscriberInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWebhookSubscriber(ctx context.Context, v interface{}) (*model.APIWebhookSubscriber, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputWebhookSubscriberInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalOWorkstationConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationConfig(ctx context.Context, v interface{}) (model.APIWorkstationConfig, error) {

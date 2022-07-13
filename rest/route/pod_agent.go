@@ -527,7 +527,7 @@ func (h *podAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if t.IsPartOfDisplay() {
-		msg["display_task_id"] = t.DisplayTask.Id
+		msg["display_task_id"] = t.DisplayTaskId
 	}
 
 	grip.Info(msg)

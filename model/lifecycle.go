@@ -55,17 +55,6 @@ type VersionToRestart struct {
 // SetVersionActivation updates the "active" state of all builds and tasks associated with a
 // version to the given setting. It also updates the task cache for all builds affected.
 func SetVersionActivation(versionId string, active bool, caller string) error {
-	if err := SetVersionActivated(versionId, active); err != nil {
-		return errors.Wrapf(err, "setting activated for version '%s'", versionId)
-	}
-	if err := setTaskActivationForVersion(versionId, active, caller); err != nil {
-		return errors.Wrapf(err, "setting activation for tasks in version '%s'", versionId)
-	}
-	return nil
-}
-
-// setTaskActivationForVersion activates all tasks in a version.
-func setTaskActivationForVersion(versionId string, active bool, caller string) error {
 	q := bson.M{
 		task.VersionKey: versionId,
 		task.StatusKey:  evergreen.TaskUndispatched,
@@ -74,6 +63,9 @@ func setTaskActivationForVersion(versionId string, active bool, caller string) e
 	var err error
 	// If activating a task, set the ActivatedBy field to be the caller.
 	if active {
+		if err := SetVersionActivated(versionId, active); err != nil {
+			return errors.Wrapf(err, "setting activated for version '%s'", versionId)
+		}
 		tasksToModify, err = task.FindAll(db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey, task.BuildIdKey))
 		if err != nil {
 			return errors.Wrap(err, "getting tasks to activate")

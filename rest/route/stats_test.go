@@ -436,7 +436,6 @@ func TestParsePrestoStatsFilter(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			test.vals["presto"] = []string{"true"}
 			handler := testStatsHandler{db: db}
 
 			err := handler.parsePrestoStatsFilter("project", test.vals)
