@@ -2,6 +2,10 @@ module github.com/evergreen-ci/evergreen
 
 go 1.16
 
+// We need to keep this old YAML version because upgrading from this specific revision to any newer one somehow breaks
+// project validation.
+replace gopkg.in/20210107192922/yaml.v3 => gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
+
 require (
 	github.com/99designs/gqlgen v0.14.0
 	github.com/PuerkitoBio/rehttp v1.1.0
@@ -12,7 +16,7 @@ require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/evergreen-ci/birch v0.0.0-20211025210128-7f3409c2b515
 	github.com/evergreen-ci/certdepot v0.0.0-20211117185134-dbedb3d79a10
-	github.com/evergreen-ci/cocoa v0.0.0-20220610175551-2ddb1b6e0758
+	github.com/evergreen-ci/cocoa v0.0.0-20220706150511-817846ab6de9
 	github.com/evergreen-ci/gimlet v0.0.0-20220419172609-b882e01673e7
 	github.com/evergreen-ci/go-test2json v0.0.0-20180702150328-5b6cfd2e8cb0
 	github.com/evergreen-ci/juniper v0.0.0-20220118233332-0813edc78908
@@ -39,7 +43,7 @@ require (
 	github.com/robfig/cron v1.2.0
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
 	github.com/smartystreets/goconvey v1.7.2
-	github.com/stretchr/testify v1.7.1
+	github.com/stretchr/testify v1.8.0
 	github.com/urfave/cli v1.22.5
 	github.com/vektah/gqlparser/v2 v2.2.0
 	github.com/vmware/govmomi v0.27.1
@@ -51,7 +55,6 @@ require (
 	google.golang.org/api v0.60.0
 	google.golang.org/grpc v1.44.0
 	gopkg.in/yaml.v2 v2.4.0
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 )
 
 require (
@@ -68,4 +71,5 @@ require (
 	github.com/shirou/gopsutil/v3 v3.22.3
 	github.com/trinodb/trino-go-client v0.300.0
 	google.golang.org/genproto v0.0.0-20211129164237-f09f9a12af12 // indirect
+	gopkg.in/20210107192922/yaml.v3 v3.0.0-00010101000000-000000000000
 )
