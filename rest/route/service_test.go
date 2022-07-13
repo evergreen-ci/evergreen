@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"testing"
 	"time"
 
@@ -1069,14 +1070,8 @@ func TestTaskResetPrepare(t *testing.T) {
 
 		failedOnlyTest := func(failedOnly bool) {
 			projCtx.Task = &testTask
-			goodBod := &struct {
-				FailedOnly bool `json:"failed_only"`
-			}{
-				FailedOnly: failedOnly,
-			}
-			res, err := json.Marshal(goodBod)
-			So(err, ShouldBeNil)
-			buf := bytes.NewBuffer(res)
+			json := []byte(`{"failed_only": ` + strconv.FormatBool(failedOnly) + `}`)
+			buf := bytes.NewBuffer(json)
 			req, err := http.NewRequest(http.MethodPatch, "task/testTaskId/restart", buf)
 			So(err, ShouldBeNil)
 			ctx = gimlet.AttachUser(ctx, &u)
