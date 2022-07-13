@@ -57,7 +57,7 @@ func (trh *taskRestartHandler) Parse(ctx context.Context, r *http.Request) error
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(trh); err != nil && err.Error() != "EOF" {
-		return errors.Wrapf(err, "parsing JSON request body for taskid '%s'.", trh.taskId)
+		return errors.Wrapf(err, "parsing request's body as JSON for following task ID: '%s'.", trh.taskId)
 	}
 
 	return nil
