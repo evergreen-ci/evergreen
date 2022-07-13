@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
@@ -56,8 +57,14 @@ func (trh *taskRestartHandler) Parse(ctx context.Context, r *http.Request) error
 		return nil
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(trh); err != nil && err.Error() != "EOF" {
-		return errors.Wrapf(err, "parsing request's body as JSON for following task ID: '%s'.", trh.taskId)
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return errors.Wrapf(err, "reading body")
+	}
+	if len(b) > 0 {
+		if err := json.Unmarshal(b, trh); err != nil {
+			return errors.Wrapf(err, "parsing request's body as JSON for following task ID: '%s'.", trh.taskId)
+		}
 	}
 
 	return nil
