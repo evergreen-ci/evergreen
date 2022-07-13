@@ -170,9 +170,6 @@ func (c *s3copy) Execute(ctx context.Context,
 		return errors.WithStack(err)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	errChan := make(chan error)
 	go func() {
 		errChan <- errors.WithStack(c.copyWithRetry(ctx, comm, logger, conf))
