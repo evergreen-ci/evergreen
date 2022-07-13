@@ -2474,7 +2474,9 @@ func (t *Task) Insert() error {
 // are also archived.
 func (t *Task) Archive() error {
 	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
-		return ArchiveDisplayTask(*t)
+		if err := ArchiveDisplayTask(*t); err != nil {
+			return errors.Wrapf(err, "archiving execution tasks of display task with id '%s'.", t.Id)
+		}
 	}
 
 	return ArchiveTask(*t)
@@ -2623,7 +2625,7 @@ func ArchiveDisplayTask(dt Task) error {
 	return errors.Wrap(err, "archiving execution tasks and updating execution tasks")
 }
 
-// ArchiveTask only archives a non-execution, non-display, task
+// ArchiveTask only archives a non-execution task. I.e. display task or task
 func ArchiveTask(task Task) error {
 	archiveTask := task.makeArchivedTask()
 	err := db.Insert(OldCollection, archiveTask)
