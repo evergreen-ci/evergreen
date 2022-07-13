@@ -18,7 +18,7 @@ import (
 // fetches the needed task and project and calls the service function to
 // set the proper fields when reseting the task.
 type taskRestartHandler struct {
-	FailedOnly bool `json:"failedOnly"`
+	FailedOnly bool `json:"failed_only"`
 
 	taskId   string
 	username string
