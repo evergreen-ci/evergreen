@@ -233,13 +233,6 @@ func TestGetImageID(t *testing.T) {
 		legacyOnly     bool
 	}{
 		{
-			name:           "Ec2Auto",
-			provider:       evergreen.ProviderNameEc2Auto,
-			key:            "ami",
-			value:          "imageID",
-			expectedOutput: "imageID",
-		},
-		{
 			name:           "Ec2OnDemand",
 			provider:       evergreen.ProviderNameEc2OnDemand,
 			key:            "ami",
@@ -317,7 +310,7 @@ func TestGetImageID(t *testing.T) {
 		},
 		{
 			name:       "InvalidKey",
-			provider:   evergreen.ProviderNameEc2Auto,
+			provider:   evergreen.ProviderNameEc2Fleet,
 			key:        "abi",
 			value:      "imageID",
 			err:        true,

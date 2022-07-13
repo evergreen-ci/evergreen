@@ -1618,7 +1618,7 @@ func TestDownstreamParams(t *testing.T) {
 		sampleHost := host.Host{
 			Id: hostId,
 			Distro: distro.Distro{
-				Provider: evergreen.ProviderNameEc2Auto,
+				Provider: evergreen.ProviderNameEc2Fleet,
 			},
 			Secret:                hostSecret,
 			RunningTask:           task1.Id,

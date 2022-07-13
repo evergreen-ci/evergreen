@@ -37,8 +37,6 @@ type EC2Suite struct {
 	onDemandWithRegionManager Manager
 	spotOpts                  *EC2ManagerOptions
 	spotManager               Manager
-	autoOpts                  *EC2ManagerOptions
-	autoManager               Manager
 	impl                      *ec2Manager
 	mock                      *awsClientMock
 	h                         *host.Host
@@ -90,14 +88,6 @@ func (s *EC2Suite) SetupTest() {
 	}
 	s.spotManager = &ec2Manager{env: s.env, EC2ManagerOptions: s.spotOpts}
 	_ = s.spotManager.Configure(s.ctx, &evergreen.Settings{
-		Expansions: map[string]string{"test": "expand"},
-	})
-	s.autoOpts = &EC2ManagerOptions{
-		client:   &awsClientMock{},
-		provider: autoProvider,
-	}
-	s.autoManager = &ec2Manager{env: s.env, EC2ManagerOptions: s.autoOpts}
-	_ = s.autoManager.Configure(s.ctx, &evergreen.Settings{
 		Expansions: map[string]string{"test": "expand"},
 	})
 	var ok bool
@@ -342,9 +332,6 @@ func (s *EC2Suite) TestSpawnHostInvalidInput() {
 }
 
 func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
-	pkgCachingPriceFetcher.ec2Prices = map[odInfo]float64{
-		odInfo{"Linux", "instanceType", "US East (N. Virginia)"}: .1,
-	}
 	s.h.Distro.Id = "distro_id"
 	s.h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
 	s.h.Distro.ProviderSettingsList = []*birch.Document{birch.NewDocument(
@@ -389,9 +376,6 @@ func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 }
 
 func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
-	pkgCachingPriceFetcher.ec2Prices = map[odInfo]float64{
-		odInfo{"Linux", "instanceType", "US East (N. Virginia)"}: .1,
-	}
 	h := &host.Host{}
 	h.Distro.Id = "distro_id"
 	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
@@ -1040,13 +1024,6 @@ func (s *EC2Suite) TestGetInstanceName() {
 
 func (s *EC2Suite) TestGetProvider() {
 	s.h.Distro.Arch = "Linux/Unix"
-	pkgCachingPriceFetcher.ec2Prices = map[odInfo]float64{
-		odInfo{
-			os:       "Linux",
-			instance: "instance",
-			region:   "US East (N. Virginia)",
-		}: 23.2,
-	}
 	ec2Settings := &EC2ProviderSettings{
 		InstanceType: "instance",
 		IsVpc:        true,
@@ -1057,14 +1034,11 @@ func (s *EC2Suite) TestGetProvider() {
 	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
 
-	manager, ok := s.autoManager.(*ec2Manager)
+	manager, ok := s.spotManager.(*ec2Manager)
 	s.True(ok)
 	provider, err := manager.getProvider(ctx, s.h, ec2Settings)
 	s.NoError(err)
 	s.Equal(spotProvider, provider)
-	// subnet should be set based on vpc name
-	s.Equal("subnet-654321", ec2Settings.SubnetId)
-	s.Equal(s.h.Distro.Provider, evergreen.ProviderNameEc2Spot)
 
 	s.h.UserHost = true
 	provider, err = manager.getProvider(ctx, s.h, ec2Settings)
@@ -1363,7 +1337,7 @@ func (s *EC2Suite) TestGetRegion() {
 }
 
 func (s *EC2Suite) TestUserDataExpand() {
-	expanded, err := expandUserData("${test} a thing", s.autoManager.(*ec2Manager).settings.Expansions)
+	expanded, err := expandUserData("${test} a thing", s.onDemandManager.(*ec2Manager).settings.Expansions)
 	s.NoError(err)
 	s.Equal("expand a thing", expanded)
 }
