@@ -382,14 +382,13 @@ func modifyVersionHandler(ctx context.Context, patchID string, modification mode
 		// which downstream tasks they want to restart.
 		if modification.Action != evergreen.RestartAction {
 			// Only modify the child patch if it is finalized.
-			childPatches, err := patch.GetFinalizedChildPatchIdsForPatch(patchID)
+			childPatchIds, err := patch.GetFinalizedChildPatchIdsForPatch(patchID)
 			if err != nil {
 				return ResourceNotFound.Send(ctx, err.Error())
 			}
-			for _, childPatch := range childPatches {
-				err = modifyVersionHandler(ctx, childPatch, modification)
-				if err != nil {
-					return errors.Wrap(mapHTTPStatusToGqlError(ctx, httpStatus, err), fmt.Sprintf("error modifying child patch '%s'", patchID))
+			for _, childPatchId := range childPatchIds {
+				if err = modifyVersionHandler(ctx, childPatchId, modification); err != nil {
+					return errors.Wrap(mapHTTPStatusToGqlError(ctx, httpStatus, err), fmt.Sprintf("modifying child patch '%s'", childPatchId))
 				}
 			}
 

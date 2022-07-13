@@ -368,7 +368,7 @@ func GetFinalizedChildPatchIdsForPatch(patchID string) ([]string, error) {
 	//do the same for child patches
 	p, err := FindOne(ByStringId(patchID).WithFields(withKey))
 	if err != nil {
-		return nil, errors.Wrapf(err, "error finding patch '%s'", patchID)
+		return nil, errors.Wrapf(err, "finding patch '%s'", patchID)
 	}
 	if p == nil {
 		return nil, errors.Wrapf(err, "patch '%s' not found", patchID)
@@ -379,11 +379,13 @@ func GetFinalizedChildPatchIdsForPatch(patchID string) ([]string, error) {
 
 	childPatches, err := Find(ByStringIds(p.Triggers.ChildPatches).WithFields(VersionKey))
 	if err != nil {
-		return nil, errors.Wrap(err, "error getting child patches")
+		return nil, errors.Wrap(err, "getting child patches")
 	}
 	res := []string{}
 	for _, child := range childPatches {
-		res = append(res, child.Id.Hex())
+		if child.Version != "" {
+			res = append(res, child.Id.Hex())
+		}
 	}
 	return res, nil
 }
