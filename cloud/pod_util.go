@@ -274,7 +274,7 @@ func exportECSPodExecutionOptions(ecsConfig evergreen.ECSConfig, containerOpts p
 	}
 	if !foundCapacityProvider {
 		if containerOpts.OS == pod.OSWindows {
-			return nil, errors.Errorf("container OS '%s' with Windows version '%s' and arch '%s' did not match any recognized capacity provider", containerOpts.OS, containerOpts.WindowsVersion, containerOpts.Arch)
+			return nil, errors.Errorf("container OS '%s' with version '%s' and arch '%s' did not match any recognized capacity provider", containerOpts.OS, containerOpts.WindowsVersion, containerOpts.Arch)
 		}
 		return nil, errors.Errorf("container OS '%s' and arch '%s' did not match any recognized capacity provider", containerOpts.OS, containerOpts.Arch)
 	}
