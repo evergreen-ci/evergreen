@@ -66,7 +66,7 @@ func TestGetRepoIDHandler(t *testing.T) {
 
 	repo := resp.Data().(*model.APIProjectRef)
 	alias := model.APIProjectAlias{}
-	err = alias.BuildFromService(repoAlias)
+	alias.BuildFromService(*repoAlias)
 	assert.NoError(t, err)
 
 	assert.Equal(t, repoRef.Id, utility.FromStringPtr(repo.Id))

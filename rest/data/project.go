@@ -117,7 +117,7 @@ func GetProjectTasksWithOptions(projectName string, taskName string, opts model.
 	res := []restModel.APITask{}
 	for _, t := range tasks {
 		apiTask := restModel.APITask{}
-		if err = apiTask.BuildFromArgs(&t, &restModel.APITaskArgs{
+		if err = apiTask.BuildFromService(&t, &restModel.APITaskArgs{
 			IncludeProjectIdentifier: true,
 			IncludeAMI:               true,
 		}); err != nil {
@@ -166,9 +166,7 @@ func FindProjectVarsById(id string, repoId string, redact bool) (*restModel.APIP
 	}
 
 	varsModel := restModel.APIProjectVars{}
-	if err := varsModel.BuildFromService(vars); err != nil {
-		return nil, errors.Wrap(err, "converting project variables to API model")
-	}
+	varsModel.BuildFromService(*vars)
 	return &varsModel, nil
 }
 
@@ -177,19 +175,15 @@ func UpdateProjectVars(projectId string, varsModel *restModel.APIProjectVars, ov
 	if varsModel == nil {
 		return nil
 	}
-	v, err := varsModel.ToService()
-	if err != nil {
-		return errors.Wrap(err, "converting project variables to service model")
-	}
-	vars := v.(*model.ProjectVars)
+	vars := varsModel.ToService()
 	vars.Id = projectId
 
 	if overwrite {
-		if _, err = vars.Upsert(); err != nil {
+		if _, err := vars.Upsert(); err != nil {
 			return errors.Wrapf(err, "overwriting variables for project '%s'", vars.Id)
 		}
 	} else {
-		_, err = vars.FindAndModify(varsModel.VarsToDelete)
+		_, err := vars.FindAndModify(varsModel.VarsToDelete)
 		if err != nil {
 			return errors.Wrapf(err, "updating variables for project '%s'", vars.Id)
 		}

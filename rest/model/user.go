@@ -21,9 +21,9 @@ type APIPubKey struct {
 }
 
 // BuildFromService converts from service level structs to an APIPubKey.
-func (pk *APIPubKey) BuildFromService(key user.PubKey) {
-	pk.Name = utility.ToStringPtr(key.Name)
-	pk.Key = utility.ToStringPtr(key.Key)
+func (pk *APIPubKey) BuildFromService(in user.PubKey) {
+	pk.Name = utility.ToStringPtr(in.Name)
+	pk.Key = utility.ToStringPtr(in.Key)
 }
 
 type APIUserSettings struct {
@@ -42,20 +42,19 @@ type APIUseSpruceOptions struct {
 	SpruceV1                     *bool `json:"spruce_v1" bson:"spruce_v1,omitempty"`
 }
 
-func (s *APIUserSettings) BuildFromService(v user.UserSettings) {
-	s.Timezone = utility.ToStringPtr(v.Timezone)
-	s.Region = utility.ToStringPtr(v.Region)
-	s.SlackUsername = utility.ToStringPtr(v.SlackUsername)
+func (s *APIUserSettings) BuildFromService(settings user.UserSettings) {
+	s.Timezone = utility.ToStringPtr(settings.Timezone)
+	s.Region = utility.ToStringPtr(settings.Region)
+	s.SlackUsername = utility.ToStringPtr(settings.SlackUsername)
 	s.UseSpruceOptions = &APIUseSpruceOptions{
-		HasUsedSpruceBefore:          utility.ToBoolPtr(v.UseSpruceOptions.HasUsedSpruceBefore),
-		HasUsedMainlineCommitsBefore: utility.ToBoolPtr(v.UseSpruceOptions.HasUsedMainlineCommitsBefore),
-		SpruceV1:                     utility.ToBoolPtr(v.UseSpruceOptions.SpruceV1),
+		HasUsedSpruceBefore:          utility.ToBoolPtr(settings.UseSpruceOptions.HasUsedSpruceBefore),
+		HasUsedMainlineCommitsBefore: utility.ToBoolPtr(settings.UseSpruceOptions.HasUsedMainlineCommitsBefore),
+		SpruceV1:                     utility.ToBoolPtr(settings.UseSpruceOptions.SpruceV1),
 	}
 	s.GithubUser = &APIGithubUser{}
-	s.GithubUser.BuildFromService(v.GithubUser)
-
+	s.GithubUser.BuildFromService(settings.GithubUser)
 	s.Notifications = &APINotificationPreferences{}
-	s.Notifications.BuildFromService(v.Notifications)
+	s.Notifications.BuildFromService(settings.Notifications)
 }
 
 func (s *APIUserSettings) ToService() (user.UserSettings, error) {
@@ -64,6 +63,7 @@ func (s *APIUserSettings) ToService() (user.UserSettings, error) {
 	if err != nil {
 		return user.UserSettings{}, err
 	}
+
 	useSpruceOptions := user.UseSpruceOptions{}
 	if s.UseSpruceOptions != nil {
 		useSpruceOptions.HasUsedSpruceBefore = utility.FromBoolPtr(s.UseSpruceOptions.HasUsedSpruceBefore)
@@ -91,9 +91,6 @@ func (g *APIGithubUser) BuildFromService(usr user.GithubUser) {
 }
 
 func (g *APIGithubUser) ToService() user.GithubUser {
-	if g == nil {
-		return user.GithubUser{}
-	}
 	return user.GithubUser{
 		UID:         g.UID,
 		LastKnownAs: utility.FromStringPtr(g.LastKnownAs),
@@ -115,35 +112,33 @@ type APINotificationPreferences struct {
 	CommitQueueID         *string `json:"commit_queue_id,omitempty"`
 }
 
-func (n *APINotificationPreferences) BuildFromService(v user.NotificationPreferences) {
-	n.BuildBreak = utility.ToStringPtr(string(v.BuildBreak))
-	n.PatchFinish = utility.ToStringPtr(string(v.PatchFinish))
-	n.PatchFirstFailure = utility.ToStringPtr(string(v.PatchFirstFailure))
-	n.SpawnHostOutcome = utility.ToStringPtr(string(v.SpawnHostOutcome))
-	n.SpawnHostExpiration = utility.ToStringPtr(string(v.SpawnHostExpiration))
-	n.CommitQueue = utility.ToStringPtr(string(v.CommitQueue))
-	if v.BuildBreakID != "" {
-		n.BuildBreakID = utility.ToStringPtr(v.BuildBreakID)
+func (n *APINotificationPreferences) BuildFromService(in user.NotificationPreferences) {
+	n.BuildBreak = utility.ToStringPtr(string(in.BuildBreak))
+	n.PatchFinish = utility.ToStringPtr(string(in.PatchFinish))
+	n.PatchFirstFailure = utility.ToStringPtr(string(in.PatchFirstFailure))
+	n.SpawnHostOutcome = utility.ToStringPtr(string(in.SpawnHostOutcome))
+	n.SpawnHostExpiration = utility.ToStringPtr(string(in.SpawnHostExpiration))
+	n.CommitQueue = utility.ToStringPtr(string(in.CommitQueue))
+	if in.BuildBreakID != "" {
+		n.BuildBreakID = utility.ToStringPtr(in.BuildBreakID)
 	}
-	if v.PatchFinishID != "" {
-		n.PatchFinishID = utility.ToStringPtr(v.PatchFinishID)
+	if in.PatchFinishID != "" {
+		n.PatchFinishID = utility.ToStringPtr(in.PatchFinishID)
 	}
-	if v.PatchFirstFailureID != "" {
-		n.PatchFirstFailureID = utility.ToStringPtr(v.PatchFirstFailureID)
+	if in.PatchFirstFailureID != "" {
+		n.PatchFirstFailureID = utility.ToStringPtr(in.PatchFirstFailureID)
 	}
-	if v.SpawnHostOutcomeID != "" {
-		n.SpawnHostOutcomeID = utility.ToStringPtr(v.SpawnHostOutcomeID)
+	if in.SpawnHostOutcomeID != "" {
+		n.SpawnHostOutcomeID = utility.ToStringPtr(in.SpawnHostOutcomeID)
 	}
-	if v.SpawnHostExpirationID != "" {
-		n.SpawnHostExpirationID = utility.ToStringPtr(v.SpawnHostExpirationID)
+	if in.SpawnHostExpirationID != "" {
+		n.SpawnHostExpirationID = utility.ToStringPtr(in.SpawnHostExpirationID)
 	}
-	if v.CommitQueueID != "" {
-		n.CommitQueueID = utility.ToStringPtr(v.CommitQueueID)
+	if in.CommitQueueID != "" {
+		n.CommitQueueID = utility.ToStringPtr(in.CommitQueueID)
 	}
 }
 
-// ToService converts an API notification preferences model into a service-layer model, and validates
-// the notification preference types.
 func (n *APINotificationPreferences) ToService() (user.NotificationPreferences, error) {
 	if n == nil {
 		return user.NotificationPreferences{}, nil
@@ -155,28 +150,22 @@ func (n *APINotificationPreferences) ToService() (user.NotificationPreferences, 
 	spawnHostOutcome := utility.FromStringPtr(n.SpawnHostOutcome)
 	commitQueue := utility.FromStringPtr(n.CommitQueue)
 	if !user.IsValidSubscriptionPreference(buildBreak) {
-		return user.NotificationPreferences{},
-			errors.Errorf("invalid build break subscription preference '%s'", buildBreak)
+		return user.NotificationPreferences{}, errors.Errorf("invalid build break subscription preference '%s'", buildBreak)
 	}
 	if !user.IsValidSubscriptionPreference(patchFinish) {
-		return user.NotificationPreferences{},
-			errors.Errorf("invalid patch finish subscription preference '%s'", patchFinish)
+		return user.NotificationPreferences{}, errors.Errorf("invalid patch finish subscription preference '%s'", patchFinish)
 	}
 	if !user.IsValidSubscriptionPreference(patchFirstFailure) {
-		return user.NotificationPreferences{},
-			errors.Errorf("invalid patch first failure subscription preference '%s'", patchFirstFailure)
+		return user.NotificationPreferences{}, errors.Errorf("invalid patch first failure subscription preference '%s'", patchFirstFailure)
 	}
 	if !user.IsValidSubscriptionPreference(spawnHostExpiration) {
-		return user.NotificationPreferences{},
-			errors.Errorf("invalid spawn host expiration subscription preference '%s'", spawnHostExpiration)
+		return user.NotificationPreferences{}, errors.Errorf("invalid spawn host expiration subscription preference '%s'", spawnHostExpiration)
 	}
 	if !user.IsValidSubscriptionPreference(spawnHostOutcome) {
-		return user.NotificationPreferences{},
-			errors.Errorf("invalid spawn host outcome subscription preference '%s'", spawnHostOutcome)
+		return user.NotificationPreferences{}, errors.Errorf("invalid spawn host outcome subscription preference '%s'", spawnHostOutcome)
 	}
 	if !user.IsValidSubscriptionPreference(commitQueue) {
-		return user.NotificationPreferences{},
-			errors.Errorf("invalid commit queue subscription preference '%s'", commitQueue)
+		return user.NotificationPreferences{}, errors.Errorf("invalid commit queue subscription preference '%s'", commitQueue)
 	}
 	preferences := user.NotificationPreferences{
 		BuildBreak:          user.UserSubscriptionPreference(buildBreak),
@@ -195,7 +184,7 @@ func (n *APINotificationPreferences) ToService() (user.NotificationPreferences, 
 	return preferences, nil
 }
 
-func applyUserChanges(current user.UserSettings, changes APIUserSettings) APIUserSettings {
+func ApplyUserChanges(current user.UserSettings, changes APIUserSettings) APIUserSettings {
 	oldSettings := APIUserSettings{}
 	oldSettings.BuildFromService(current)
 
@@ -213,14 +202,10 @@ type APIFeedbackSubmission struct {
 	Questions   []APIQuestionAnswer `json:"questions"`
 }
 
-func (a *APIFeedbackSubmission) BuildFromService(h interface{}) error {
-	return errors.New("BuildFromService not implemented for APIFeedbackSubmission")
-}
-
-func (a *APIFeedbackSubmission) ToService() (interface{}, error) {
+func (a *APIFeedbackSubmission) ToService() (model.FeedbackSubmission, error) {
 	submittedAt, err := FromTimePtr(a.SubmittedAt)
 	if err != nil {
-		return nil, errors.Wrap(err, "parsing 'submitted at' time")
+		return model.FeedbackSubmission{}, errors.Wrap(err, "parsing 'submitted at' time")
 	}
 	result := model.FeedbackSubmission{
 		Type:        utility.FromStringPtr(a.Type),
@@ -228,9 +213,7 @@ func (a *APIFeedbackSubmission) ToService() (interface{}, error) {
 		SubmittedAt: submittedAt,
 	}
 	for _, question := range a.Questions {
-		answerInterface, _ := question.ToService()
-		answer := answerInterface.(model.QuestionAnswer)
-		result.Questions = append(result.Questions, answer)
+		result.Questions = append(result.Questions, question.ToService())
 	}
 	return result, nil
 }
@@ -241,16 +224,12 @@ type APIQuestionAnswer struct {
 	Answer *string `json:"answer"`
 }
 
-func (a *APIQuestionAnswer) BuildFromService(h interface{}) error {
-	return errors.New("BuildFromService not implemented for APIQuestionAnswer")
-}
-
-func (a *APIQuestionAnswer) ToService() (interface{}, error) {
+func (a *APIQuestionAnswer) ToService() model.QuestionAnswer {
 	return model.QuestionAnswer{
 		ID:     utility.FromStringPtr(a.ID),
 		Prompt: utility.FromStringPtr(a.Prompt),
 		Answer: utility.FromStringPtr(a.Answer),
-	}, nil
+	}
 }
 
 // UpdateUserSettings Returns an updated version of the user settings struct
@@ -259,7 +238,7 @@ func UpdateUserSettings(ctx context.Context, usr *user.DBUser, userSettings APIU
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting admin settings")
 	}
-	changedSettings := applyUserChanges(usr.Settings, userSettings)
+	changedSettings := ApplyUserChanges(usr.Settings, userSettings)
 	updatedUserSettings, err := changedSettings.ToService()
 	if err != nil {
 		return nil, errors.Wrapf(err, "converting user settings to service model")

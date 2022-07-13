@@ -52,9 +52,7 @@ func FindProjectAliases(projectId, repoId string, aliasesToAdd []restModel.APIPr
 			continue
 		}
 		aliasModel := restModel.APIProjectAlias{}
-		if err := aliasModel.BuildFromService(alias); err != nil {
-			return nil, err
-		}
+		aliasModel.BuildFromService(alias)
 		aliasModels = append(aliasModels, aliasModel)
 	}
 
@@ -70,14 +68,7 @@ func UpdateProjectAliases(projectId string, aliases []restModel.APIProjectAlias)
 		if aliasModel.Delete {
 			aliasesToDelete = append(aliasesToDelete, utility.FromStringPtr(aliasModel.ID))
 		} else {
-			v, err := aliasModel.ToService()
-			catcher.Wrap(err, "converting API project alias to DB model")
-
-			alias, ok := v.(model.ProjectAlias)
-			if !ok {
-				catcher.Errorf("programmatic error: expected DB project alias but actual type is %T", v)
-				continue
-			}
+			alias := aliasModel.ToService()
 			alias.ProjectID = projectId
 			aliasesToUpsert = append(aliasesToUpsert, alias)
 		}

@@ -197,9 +197,9 @@ func (a *AliasSuite) TestUpdateAliasesForSection() {
 
 	// delete one alias, add one alias, modify one alias
 	aliasToKeep := restModel.APIProjectAlias{}
-	a.NoError(aliasToKeep.BuildFromService(originalAliases[0]))
+	aliasToKeep.BuildFromService(originalAliases[0])
 	aliasToModify := restModel.APIProjectAlias{}
-	a.NoError(aliasToModify.BuildFromService(originalAliases[1]))
+	aliasToModify.BuildFromService(originalAliases[1])
 	aliasToModify.Alias = utility.ToStringPtr("this is a new alias")
 
 	newAlias := restModel.APIProjectAlias{

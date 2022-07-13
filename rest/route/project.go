@@ -313,23 +313,10 @@ func (h *projectIDPatchHandler) Parse(ctx context.Context, r *http.Request) erro
 		}
 	}
 
-	i, err := requestProjectRef.ToService()
-	if err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrap(err, "converting updated project to service model").Error(),
-		}
-	}
-	newProjectRef, ok := i.(*dbModel.ProjectRef)
-	if !ok {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    fmt.Sprintf("programmatic error: expected project ref but got type %T", i),
-		}
-	}
+	newProjectRef := requestProjectRef.ToService()
 	newProjectRef.RepoRefId = oldProject.RepoRefId // this can't be modified by users
 
-	h.newProjectRef = newProjectRef
+	h.newProjectRef = &newProjectRef
 	h.originalProject = oldProject
 	h.apiNewProjectRef = requestProjectRef // needed for the delete fields
 	return nil
@@ -620,14 +607,7 @@ func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "unmarshalling JSON request body into project ref"))
 	}
 
-	i, err := apiProjectRef.ToService()
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting project ref to service model"))
-	}
-	dbProjectRef, ok := i.(*dbModel.ProjectRef)
-	if !ok {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("programmatic error: expected project ref but got type %T", i))
-	}
+	dbProjectRef := apiProjectRef.ToService()
 	dbProjectRef.Identifier = h.projectName
 
 	responder := gimlet.NewJSONResponse(struct{}{})
@@ -635,7 +615,7 @@ func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting response HTTP status code to %d", http.StatusCreated))
 	}
 	u := gimlet.GetUser(ctx).(*user.DBUser)
-	if err = data.CreateProject(dbProjectRef, u); err != nil {
+	if err = data.CreateProject(&dbProjectRef, u); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating project '%s'", h.projectName))
 	}
 
@@ -791,7 +771,7 @@ func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	projectModel := &model.APIProjectRef{}
-	if err = projectModel.BuildFromService(project); err != nil {
+	if err = projectModel.BuildFromService(*project); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting project '%s' to API model", h.projectName))
 	}
 
@@ -1099,10 +1079,7 @@ func (h *projectParametersGetHandler) Run(ctx context.Context) gimlet.Responder 
 	res := make([]model.APIParameterInfo, len(p.Parameters))
 	for i, param := range p.Parameters {
 		var apiParam model.APIParameterInfo
-		if err = apiParam.BuildFromService(param); err != nil {
-			return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err,
-				"converting parameters to API model"))
-		}
+		apiParam.BuildFromService(param)
 		res[i] = apiParam
 	}
 

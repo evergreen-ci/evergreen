@@ -79,7 +79,7 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	taskModel := &model.APITask{}
-	err = taskModel.BuildFromArgs(foundTask, &model.APITaskArgs{
+	err = taskModel.BuildFromService(foundTask, &model.APITaskArgs{
 		IncludeProjectIdentifier: true,
 		IncludeAMI:               true,
 		IncludeArtifacts:         true,
@@ -196,7 +196,7 @@ func (tep *taskExecutionPatchHandler) Run(ctx context.Context) gimlet.Responder 
 	}
 
 	taskModel := &model.APITask{}
-	err = taskModel.BuildFromArgs(refreshedTask, &model.APITaskArgs{
+	err = taskModel.BuildFromService(refreshedTask, &model.APITaskArgs{
 		IncludeProjectIdentifier: true,
 		IncludeAMI:               true,
 	})

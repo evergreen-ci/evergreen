@@ -98,36 +98,32 @@ func (p *APIParameter) ToService() patch.Parameter {
 }
 
 // BuildFromService converts from service level structs to an APIPatch
-func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
-	v, ok := h.(patch.Patch)
-	if !ok {
-		return errors.Errorf("programmatic error: expected patch but got type %T", h)
-	}
-	apiPatch.Id = utility.ToStringPtr(v.Id.Hex())
-	apiPatch.Description = utility.ToStringPtr(v.Description)
-	apiPatch.ProjectId = utility.ToStringPtr(v.Project)
-	apiPatch.Branch = utility.ToStringPtr(v.Project)
-	apiPatch.Githash = utility.ToStringPtr(v.Githash)
-	apiPatch.PatchNumber = v.PatchNumber
-	apiPatch.Author = utility.ToStringPtr(v.Author)
-	apiPatch.Version = utility.ToStringPtr(v.Version)
-	apiPatch.Status = utility.ToStringPtr(v.Status)
-	apiPatch.CreateTime = ToTimePtr(v.CreateTime)
-	apiPatch.StartTime = ToTimePtr(v.StartTime)
-	apiPatch.FinishTime = ToTimePtr(v.FinishTime)
-	apiPatch.MergedFrom = utility.ToStringPtr(v.MergedFrom)
+func (apiPatch *APIPatch) BuildFromService(p patch.Patch) error {
+	apiPatch.Id = utility.ToStringPtr(p.Id.Hex())
+	apiPatch.Description = utility.ToStringPtr(p.Description)
+	apiPatch.ProjectId = utility.ToStringPtr(p.Project)
+	apiPatch.Branch = utility.ToStringPtr(p.Project)
+	apiPatch.Githash = utility.ToStringPtr(p.Githash)
+	apiPatch.PatchNumber = p.PatchNumber
+	apiPatch.Author = utility.ToStringPtr(p.Author)
+	apiPatch.Version = utility.ToStringPtr(p.Version)
+	apiPatch.Status = utility.ToStringPtr(p.Status)
+	apiPatch.CreateTime = ToTimePtr(p.CreateTime)
+	apiPatch.StartTime = ToTimePtr(p.StartTime)
+	apiPatch.FinishTime = ToTimePtr(p.FinishTime)
+	apiPatch.MergedFrom = utility.ToStringPtr(p.MergedFrom)
 	builds := make([]*string, 0)
-	for _, b := range v.BuildVariants {
+	for _, b := range p.BuildVariants {
 		builds = append(builds, utility.ToStringPtr(b))
 	}
 	apiPatch.Variants = builds
 	tasks := make([]*string, 0)
-	for _, t := range v.Tasks {
+	for _, t := range p.Tasks {
 		tasks = append(tasks, utility.ToStringPtr(t))
 	}
 	apiPatch.Tasks = tasks
 	variantTasks := []VariantTask{}
-	for _, vt := range v.VariantsTasks {
+	for _, vt := range p.VariantsTasks {
 		vtasks := make([]*string, 0)
 		for _, task := range vt.Tasks {
 			vtasks = append(vtasks, utility.ToStringPtr(task))
@@ -138,14 +134,14 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 		})
 	}
 	apiPatch.VariantsTasks = variantTasks
-	apiPatch.Activated = v.Activated
-	apiPatch.Alias = utility.ToStringPtr(v.Alias)
+	apiPatch.Activated = p.Activated
+	apiPatch.Alias = utility.ToStringPtr(p.Alias)
 	apiPatch.GithubPatchData = githubPatch{}
-	apiPatch.Requester = utility.ToStringPtr(v.GetRequester())
+	apiPatch.Requester = utility.ToStringPtr(p.GetRequester())
 
-	if v.Parameters != nil {
+	if p.Parameters != nil {
 		apiPatch.Parameters = []APIParameter{}
-		for _, param := range v.Parameters {
+		for _, param := range p.Parameters {
 			apiPatch.Parameters = append(apiPatch.Parameters, APIParameter{
 				Key:   utility.ToStringPtr(param.Key),
 				Value: utility.ToStringPtr(param.Value),
@@ -153,11 +149,11 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 		}
 	}
 
-	projectIdentifier := v.Project
-	if v.Project != "" {
-		identifier, err := model.GetIdentifierForProject(v.Project)
+	projectIdentifier := p.Project
+	if p.Project != "" {
+		identifier, err := model.GetIdentifierForProject(p.Project)
 		if err != nil {
-			return errors.Wrapf(err, "getting project '%s'", v.Project)
+			return errors.Wrapf(err, "getting project '%s'", p.Project)
 		}
 		apiPatch.ProjectIdentifier = utility.ToStringPtr(identifier)
 		projectIdentifier = identifier
@@ -167,7 +163,7 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 		codeChanges := []APIModulePatch{}
 		apiURL := env.Settings().ApiUrl
 
-		for patchNumber, modPatch := range v.Patches {
+		for patchNumber, modPatch := range p.Patches {
 			branchName := modPatch.ModuleName
 			if branchName == "" {
 				branchName = projectIdentifier
@@ -200,10 +196,10 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 		apiPatch.ModuleCodeChanges = codeChanges
 	}
 
-	apiPatch.PatchedParserProject = utility.ToStringPtr(v.PatchedParserProject)
-	apiPatch.CanEnqueueToCommitQueue = v.HasValidGitInfo()
+	apiPatch.PatchedParserProject = utility.ToStringPtr(p.PatchedParserProject)
+	apiPatch.CanEnqueueToCommitQueue = p.HasValidGitInfo()
 
-	downstreamTasks, childPatches, err := getChildPatchesData(v)
+	downstreamTasks, childPatches, err := getChildPatchesData(p)
 	if err != nil {
 		return errors.Wrap(err, "getting downstream tasks")
 	}
@@ -218,9 +214,9 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 		for i, cp := range childPatches {
 			allStatuses = append(allStatuses, *cp.Status)
 
-			if i < len(v.Triggers.Aliases) {
+			if i < len(p.Triggers.Aliases) {
 				childPatchAlias := APIChildPatchAlias{
-					Alias:   utility.ToStringPtr(v.Triggers.Aliases[i]),
+					Alias:   utility.ToStringPtr(p.Triggers.Aliases[i]),
 					PatchID: utility.ToStringPtr(*cp.Id),
 				}
 				childPatchAliases = append(childPatchAliases, childPatchAlias)
@@ -230,8 +226,8 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 		apiPatch.ChildPatchAliases = childPatchAliases
 
 	}
-
-	return errors.WithStack(apiPatch.GithubPatchData.BuildFromService(v.GithubPatchData))
+	apiPatch.GithubPatchData.BuildFromService(p.GithubPatchData)
+	return nil
 }
 
 func getChildPatchesData(p patch.Patch) ([]DownstreamTasks, []APIPatch, error) {
@@ -275,7 +271,7 @@ func getChildPatchesData(p patch.Patch) ([]DownstreamTasks, []APIPatch, error) {
 }
 
 // ToService converts a service layer patch using the data from APIPatch
-func (apiPatch *APIPatch) ToService() (interface{}, error) {
+func (apiPatch *APIPatch) ToService() (patch.Patch, error) {
 	var err error
 	res := patch.Patch{}
 	catcher := grip.NewBasicCatcher()
@@ -317,13 +313,7 @@ func (apiPatch *APIPatch) ToService() (interface{}, error) {
 		}
 	}
 
-	i, err := apiPatch.GithubPatchData.ToService()
-	catcher.Add(err)
-	data, ok := i.(thirdparty.GithubPatch)
-	if !ok {
-		catcher.Errorf("programmatic error: expected GitHub patch but got type %T", i)
-	}
-	res.GithubPatchData = data
+	res.GithubPatchData = apiPatch.GithubPatchData.ToService()
 	return res, catcher.Resolve()
 }
 
@@ -338,23 +328,18 @@ type githubPatch struct {
 }
 
 // BuildFromService converts from service level structs to an APIPatch
-func (g *githubPatch) BuildFromService(h interface{}) error {
-	v, ok := h.(thirdparty.GithubPatch)
-	if !ok {
-		return errors.Errorf("programmatic error: expected GitHub patch but got type %T", h)
-	}
-	g.PRNumber = v.PRNumber
-	g.BaseOwner = utility.ToStringPtr(v.BaseOwner)
-	g.BaseRepo = utility.ToStringPtr(v.BaseRepo)
-	g.HeadOwner = utility.ToStringPtr(v.HeadOwner)
-	g.HeadRepo = utility.ToStringPtr(v.HeadRepo)
-	g.HeadHash = utility.ToStringPtr(v.HeadHash)
-	g.Author = utility.ToStringPtr(v.Author)
-	return nil
+func (g *githubPatch) BuildFromService(p thirdparty.GithubPatch) {
+	g.PRNumber = p.PRNumber
+	g.BaseOwner = utility.ToStringPtr(p.BaseOwner)
+	g.BaseRepo = utility.ToStringPtr(p.BaseRepo)
+	g.HeadOwner = utility.ToStringPtr(p.HeadOwner)
+	g.HeadRepo = utility.ToStringPtr(p.HeadRepo)
+	g.HeadHash = utility.ToStringPtr(p.HeadHash)
+	g.Author = utility.ToStringPtr(p.Author)
 }
 
 // ToService converts a service layer patch using the data from APIPatch
-func (g *githubPatch) ToService() (interface{}, error) {
+func (g *githubPatch) ToService() thirdparty.GithubPatch {
 	res := thirdparty.GithubPatch{}
 	res.PRNumber = g.PRNumber
 	res.BaseOwner = utility.FromStringPtr(g.BaseOwner)
@@ -363,5 +348,5 @@ func (g *githubPatch) ToService() (interface{}, error) {
 	res.HeadRepo = utility.FromStringPtr(g.HeadRepo)
 	res.HeadHash = utility.FromStringPtr(g.HeadHash)
 	res.Author = utility.FromStringPtr(g.Author)
-	return res, nil
+	return res
 }

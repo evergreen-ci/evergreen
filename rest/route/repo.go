@@ -3,7 +3,6 @@ package route
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 
@@ -127,21 +126,8 @@ func (h *repoIDPatchHandler) Parse(ctx context.Context, r *http.Request) error {
 	}
 
 	// read the new changes onto it
-	i, err := h.apiNewRepoRef.ToService()
-	if err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrap(err, "converting updated project ref to service model").Error(),
-		}
-	}
-	pRef, ok := i.(*dbModel.ProjectRef)
-	if !ok {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    fmt.Sprintf("programmatic error: expected project ref but got type %T", i),
-		}
-	}
-	h.newRepoRef = &dbModel.RepoRef{ProjectRef: *pRef}
+	pRef := h.apiNewRepoRef.ToService()
+	h.newRepoRef = &dbModel.RepoRef{ProjectRef: pRef}
 	return nil
 }
 
