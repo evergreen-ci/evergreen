@@ -28,10 +28,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-const (
-	VersionCollection = "versions"
-)
-
 type PatchIntentUnitsSuite struct {
 	sender *send.InternalSender
 	env    *mock.Environment
@@ -358,7 +354,7 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 	s.Equal(currentPatchDoc.Tasks, []string{"t1"})
 }
 
-func (s *PatchIntentUnitsSuite) TestBuildTasksandVariantsWithRepeat() {
+func (s *PatchIntentUnitsSuite) TestBuildTasksandVariantsWithRepeatFailed() {
 	s.Require().NoError(db.ClearCollections(task.Collection))
 	s.Require().NoError(db.ClearCollections(patch.Collection))
 
@@ -414,7 +410,7 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksandVariantsWithRepeat() {
 		Project:     s.project,
 		BaseGitHash: s.hash,
 		Description: s.desc,
-		// --reuse flag
+		// --repeat-failed flag
 		RepeatFailed: true,
 	})
 	s.NoError(err)
@@ -430,7 +426,7 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksandVariantsWithRepeat() {
 					{
 						Name: "t1",
 						DependsOn: []model.TaskUnitDependency{
-							{Name: "t3", Status: evergreen.TaskFailed},
+							{Name: "t3", Status: evergreen.TaskSucceeded},
 						},
 					},
 					{

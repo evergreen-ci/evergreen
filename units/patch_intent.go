@@ -487,7 +487,7 @@ func (j *patchIntentProcessor) buildTasksandVariants(patchDoc *patch.Patch, proj
 		}
 	}
 
-	// if the user only wants failed tasks but the previous patch has no failed tasks, there is nothing to build
+	// If the user only wants failed tasks but the previous patch has no failed tasks, there is nothing to build
 	skipForFailed := failedOnly && previousPatchStatus != evergreen.PatchFailed
 
 	if len(patchDoc.VariantsTasks) == 0 && !skipForFailed {
@@ -524,7 +524,10 @@ func (j *patchIntentProcessor) setToPreviousPatchDefinition(patchDoc *patch.Patc
 	patchDoc.BuildVariants = previousPatch.BuildVariants
 
 	if failedOnly {
-		setTasksToPreviousFailed(patchDoc, previousPatch, project)
+		if err = setTasksToPreviousFailed(patchDoc, previousPatch, project); err != nil {
+			return "", errors.Wrap(err, "settings tasks to previous failed")
+		}
+
 	} else {
 		patchDoc.Tasks = previousPatch.Tasks
 	}
