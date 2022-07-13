@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -19,7 +18,7 @@ import (
 // fetches the needed task and project and calls the service function to
 // set the proper fields when reseting the task.
 type taskRestartHandler struct {
-	FailedOnly *bool `json:"failedOnly"`
+	FailedOnly bool `json:"failedOnly"`
 
 	taskId   string
 	username string
@@ -67,7 +66,7 @@ func (trh *taskRestartHandler) Parse(ctx context.Context, r *http.Request) error
 // Execute calls the data ResetTask function and returns the refreshed
 // task from the service.
 func (trh *taskRestartHandler) Run(ctx context.Context) gimlet.Responder {
-	err := resetTask(trh.taskId, trh.username, utility.FromBoolPtr(trh.FailedOnly))
+	err := resetTask(trh.taskId, trh.username, trh.FailedOnly)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}

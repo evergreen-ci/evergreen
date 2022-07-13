@@ -1070,9 +1070,9 @@ func TestTaskResetPrepare(t *testing.T) {
 		failedOnlyTest := func(failedOnly bool) {
 			projCtx.Task = &testTask
 			goodBod := &struct {
-				FailedOnly *bool
+				FailedOnly bool
 			}{
-				FailedOnly: &failedOnly,
+				FailedOnly: failedOnly,
 			}
 			res, err := json.Marshal(goodBod)
 			So(err, ShouldBeNil)
@@ -1083,7 +1083,7 @@ func TestTaskResetPrepare(t *testing.T) {
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = trh.Parse(ctx, req)
 			So(err, ShouldBeNil)
-			So(utility.FromBoolPtr(trh.FailedOnly), ShouldEqual, failedOnly)
+			So(trh.FailedOnly, ShouldEqual, failedOnly)
 		}
 
 		Convey("should register true valued failedOnly parameter", func() {
@@ -1102,7 +1102,7 @@ func TestTaskResetPrepare(t *testing.T) {
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = trh.Parse(ctx, req)
 			So(err, ShouldBeNil)
-			So(utility.FromBoolPtr(trh.FailedOnly), ShouldEqual, false)
+			So(trh.FailedOnly, ShouldEqual, false)
 		})
 	})
 }
@@ -1281,7 +1281,7 @@ func TestTaskResetExecute(t *testing.T) {
 			trh := &taskRestartHandler{
 				taskId:     "displayTask",
 				username:   "testUser",
-				FailedOnly: utility.TruePtr(),
+				FailedOnly: true,
 			}
 
 			res := trh.Run(ctx)
