@@ -2309,28 +2309,12 @@ buildvariants:
   display_name: "bv_display"
   tasks:
     - name: example_task_group
-    - name: example_task_group2
+    - name: inline_task_group
       group:
         share_processes: true
-        max_hosts: 2
-        setup_group_can_fail_task: true
-        setup_group_timeout_secs: 10
-        setup_group:
-        - command: shell.exec
-          params:
-            script: "echo setup_group"
+        max_hosts: 3
         teardown_group:
-        - command: shell.exec
-          params:
-            script: "echo teardown_group"
-        setup_task:
-        - command: shell.exec
-          params:
-            script: "echo setup_group"
-        teardown_task:
-        - command: shell.exec
-          params:
-            script: "echo setup_group"
+        - command: attach.results
         tasks:
         - example_task_1
         - example_task_2
@@ -2340,11 +2324,14 @@ buildvariants:
 	assert.NotNil(pp)
 	assert.NoError(err)
 	validationErrs = validateTaskGroups(&proj)
-	assert.Len(validationErrs, 0)
-	validationErrs = checkTaskGroups(&proj)
 	assert.Len(validationErrs, 1)
+	assert.Contains(validationErrs[0].Message, "attach.results cannot be used in the group teardown stage")
+	validationErrs = checkTaskGroups(&proj)
+	assert.Len(validationErrs, 2)
 	assert.Contains(validationErrs[0].Message, "task group example_task_group has max number of hosts 4 greater than the number of tasks 3")
+	assert.Contains(validationErrs[1].Message, "task group inline_task_group has max number of hosts 3 greater than the number of tasks 2")
 	assert.Equal(validationErrs[0].Level, Warning)
+	assert.Equal(validationErrs[1].Level, Warning)
 }
 
 func TestTaskGroupTeardownValidation(t *testing.T) {

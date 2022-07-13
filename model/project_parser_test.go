@@ -1043,8 +1043,8 @@ tasks:
 - name: example_task_1
 - name: example_task_2
 task_groups:
-- &example_task_group2
-  name: example_task_group2
+- &example_task_group
+  name: example_task_group
   share_processes: true
   max_hosts: 2
   setup_group_can_fail_task: true
@@ -1071,9 +1071,9 @@ task_groups:
 buildvariants:
 - name: "bv"
   tasks:
-  - name: example_task_group
+  - name: inline_task_group
     group:
-      <<: *example_task_group2
+      <<: *example_task_group
       tasks:
       - example_task_1
 `
