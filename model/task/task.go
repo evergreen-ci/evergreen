@@ -2499,8 +2499,12 @@ func ArchiveMany(tasks []Task) error {
 		if t.DisplayOnly {
 			addArchived, err := updateDisplayTask(t)
 			if err != nil {
-				return errors.Wrapf(err, "Archiving task '%s' with execution '%d' failed.", t.Id, t.Execution)
+				return errors.Wrapf(err, "Archiving execution task's of '%s' with execution '%d'.", t.Id, t.Execution)
 			}
+			if err := ArchiveTask(t); err != nil {
+				return errors.Wrapf(err, "Archiving display task with id '%s' with execution '%d'.", t.Id, t.Execution)
+			}
+			fmt.Println(addArchived)
 			archived = append(archived, addArchived...)
 			continue
 		}
