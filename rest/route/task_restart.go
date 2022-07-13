@@ -53,10 +53,6 @@ func (trh *taskRestartHandler) Parse(ctx context.Context, r *http.Request) error
 	u := MustHaveUser(ctx)
 	trh.username = u.DisplayName()
 
-	if r.Body == nil {
-		return nil
-	}
-
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return errors.Wrapf(err, "reading body")

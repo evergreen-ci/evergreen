@@ -1089,17 +1089,6 @@ func TestTaskResetPrepare(t *testing.T) {
 			failedOnlyTest(false)
 		})
 
-		Convey("should have default false failedOnly with nil body", func() {
-			projCtx.Task = &testTask
-			req, err := http.NewRequest(http.MethodPatch, "task/testTaskId/restart", nil)
-			So(err, ShouldBeNil)
-			ctx = gimlet.AttachUser(ctx, &u)
-			ctx = context.WithValue(ctx, RequestContext, &projCtx)
-			err = trh.Parse(ctx, req)
-			So(err, ShouldBeNil)
-			So(trh.FailedOnly, ShouldEqual, false)
-		})
-
 		Convey("should have default false failedOnly with empty body", func() {
 			projCtx.Task = &testTask
 			req, err := http.NewRequest(http.MethodPatch, "task/testTaskId/restart", &bytes.Buffer{})
