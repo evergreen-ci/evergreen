@@ -1044,6 +1044,7 @@ func FindUniqueBuildVariantNamesByTask(projectId string, taskName string, repoOr
 			"$and": []bson.M{
 				{RevisionOrderNumberKey: bson.M{"$gte": repoOrderNumber - VersionLimit}},
 				{RevisionOrderNumberKey: bson.M{"$lte": repoOrderNumber}},
+				{BuildVariantDisplayNameKey: bson.M{"$exists": true, "$ne": ""}},
 			},
 		},
 		},
