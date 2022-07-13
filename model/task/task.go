@@ -2578,8 +2578,10 @@ func ArchiveDisplayTask(dt Task) error {
 	}
 
 	archived := []interface{}{}
+	tasks := []string{}
 	for _, t := range execTasks {
 		archived = append(archived, *t.makeArchivedTask())
+		tasks = append(tasks, t.Id)
 	}
 
 	mongoClient := evergreen.GetEnvironment().Client()
@@ -2602,7 +2604,7 @@ func ArchiveDisplayTask(dt Task) error {
 
 		_, err = taskColl.UpdateMany(ctx, bson.M{
 			IdKey: bson.M{
-				"$in": dt.ExecutionTasks,
+				"$in": tasks,
 			},
 		},
 			bson.M{
