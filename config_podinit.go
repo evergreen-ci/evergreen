@@ -30,11 +30,11 @@ func (c *PodInitConfig) Get(env Environment) error {
 			*c = PodInitConfig{}
 			return nil
 		}
-		return errors.Wrapf(err, "error retrieving section '%s'", c.SectionId())
+		return errors.Wrapf(err, "getting config section '%s'", c.SectionId())
 	}
 
 	if err := res.Decode(c); err != nil {
-		return errors.Wrap(err, "problem decoding result")
+		return errors.Wrapf(err, "decoding config section '%s'", c.SectionId())
 	}
 
 	return nil
@@ -53,7 +53,7 @@ func (c *PodInitConfig) Set() error {
 		},
 	}, options.Update().SetUpsert(true))
 
-	return errors.Wrapf(err, "error updating section %s", c.SectionId())
+	return errors.Wrapf(err, "updating config section '%s'", c.SectionId())
 }
 
 func (c *PodInitConfig) ValidateAndDefault() error {
@@ -62,6 +62,6 @@ func (c *PodInitConfig) ValidateAndDefault() error {
 		// TODO: (EVG-16217) Determine empirically if this is indeed reasonable
 		c.MaxParallelPodRequests = 2000
 	}
-	catcher.NewWhen(c.MaxParallelPodRequests < 0, "MaxParallelPodRequests cannot be negative")
+	catcher.NewWhen(c.MaxParallelPodRequests < 0, "max parallel pod requests cannot be negative")
 	return catcher.Resolve()
 }

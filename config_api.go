@@ -40,7 +40,7 @@ func (c *APIConfig) Get(env Environment) error {
 			return nil
 		}
 
-		return errors.Wrapf(err, "retrieving config section '%s'", c.SectionId())
+		return errors.Wrapf(err, "getting config section '%s'", c.SectionId())
 	}
 
 	if err := res.Decode(c); err != nil {

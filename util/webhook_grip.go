@@ -112,18 +112,18 @@ func (w *evergreenWebhookLogger) Send(m message.Composer) {
 func (w *evergreenWebhookLogger) send(m message.Composer) error {
 	raw, ok := m.Raw().(*EvergreenWebhook)
 	if !ok {
-		return errors.New("evergreen-webhook sender received unexpected composer")
+		return errors.Errorf("received unexpected composer %T", m.Raw())
 	}
 
 	reader := bytes.NewReader(raw.Body)
 	req, err := http.NewRequest(http.MethodPost, raw.URL, reader)
 	if err != nil {
-		return errors.Wrap(err, "evergreen-webhook failed to create http request")
+		return errors.Wrap(err, "creating webhook HTTP request")
 	}
 
 	hash, err := CalculateHMACHash(raw.Secret, raw.Body)
 	if err != nil {
-		return errors.Wrap(err, "evergreen-webhook failed to calculate hash")
+		return errors.Wrap(err, "calculating HMAC hash")
 	}
 
 	for k := range raw.Headers {
@@ -153,10 +153,10 @@ func (w *evergreenWebhookLogger) send(m message.Composer) error {
 		defer resp.Body.Close()
 	}
 	if err != nil {
-		return errors.Wrap(err, "evergreen-webhook failed to send webhook data")
+		return errors.Wrap(err, "sending webhook data")
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return errors.Errorf("evergreen-webhook response status was %d %s", resp.StatusCode, http.StatusText(resp.StatusCode))
+		return errors.Errorf("response was %d (%s)", resp.StatusCode, http.StatusText(resp.StatusCode))
 	}
 
 	return nil
