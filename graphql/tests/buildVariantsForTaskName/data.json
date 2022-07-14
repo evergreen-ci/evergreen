@@ -4,6 +4,7 @@
             "_id": "t1",
             "display_name" : "test-agent",
             "build_variant": "ubuntu1604",
+            "build_variant_display_name": "Ubuntu 16.04",
             "branch": "evergreen",
             "r": "gitter_request",
             "build_id": "b1",
@@ -13,6 +14,7 @@
             "_id": "t2",
             "display_name" : "dist",
             "build_variant": "ubuntu1604",
+            "build_variant_display_name": "Ubuntu 16.04",
             "branch": "evergreen",
             "r": "gitter_request",
             "build_id": "b1",
@@ -26,12 +28,13 @@
             "r": "gitter_request",
             "build_id": "b1",
             "order": 1
-            
+
         },
         {
             "_id": "t4",
             "display_name" : "test-agent",
             "build_variant": "osx",
+            "build_variant_display_name": "OSX",
             "branch": "evergreen",
             "r": "gitter_request",
             "build_id": "b2",
