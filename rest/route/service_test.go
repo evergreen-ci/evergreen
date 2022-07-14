@@ -1038,7 +1038,7 @@ func TestTaskResetPrepare(t *testing.T) {
 		ctx := context.Background()
 
 		Convey("should error on empty project", func() {
-			req, err := http.NewRequest(http.MethodPatch, "task/testTaskId/restart", &bytes.Buffer{})
+			req, err := http.NewRequest(http.MethodPost, "task/testTaskId/restart", &bytes.Buffer{})
 			So(err, ShouldBeNil)
 			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
@@ -1049,7 +1049,7 @@ func TestTaskResetPrepare(t *testing.T) {
 		})
 		Convey("then should error on empty task", func() {
 			projCtx.Task = nil
-			req, err := http.NewRequest(http.MethodPatch, "task/testTaskId/restart", &bytes.Buffer{})
+			req, err := http.NewRequest(http.MethodPost, "task/testTaskId/restart", &bytes.Buffer{})
 			So(err, ShouldBeNil)
 			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
@@ -1072,7 +1072,7 @@ func TestTaskResetPrepare(t *testing.T) {
 			projCtx.Task = &testTask
 			json := []byte(`{"failed_only": ` + strconv.FormatBool(failedOnly) + `}`)
 			buf := bytes.NewBuffer(json)
-			req, err := http.NewRequest(http.MethodPatch, "task/testTaskId/restart", buf)
+			req, err := http.NewRequest(http.MethodPost, "task/testTaskId/restart", buf)
 			So(err, ShouldBeNil)
 			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
@@ -1091,7 +1091,7 @@ func TestTaskResetPrepare(t *testing.T) {
 
 		Convey("should have default false failedOnly with empty body", func() {
 			projCtx.Task = &testTask
-			req, err := http.NewRequest(http.MethodPatch, "task/testTaskId/restart", &bytes.Buffer{})
+			req, err := http.NewRequest(http.MethodPost, "task/testTaskId/restart", &bytes.Buffer{})
 			So(err, ShouldBeNil)
 			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
