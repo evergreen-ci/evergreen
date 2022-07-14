@@ -1300,8 +1300,8 @@ type ProjectSubscriberResolver interface {
 	Subscriber(ctx context.Context, obj *model.APISubscriber) (*Subscriber, error)
 }
 type ProjectVarsResolver interface {
-	AdminOnlyVars(ctx context.Context, obj *model.APIProjectVars) ([]*string, error)
-	PrivateVars(ctx context.Context, obj *model.APIProjectVars) ([]*string, error)
+	AdminOnlyVars(ctx context.Context, obj *model.APIProjectVars) ([]string, error)
+	PrivateVars(ctx context.Context, obj *model.APIProjectVars) ([]string, error)
 }
 type QueryResolver interface {
 	BbGetCreatedTickets(ctx context.Context, taskID string) ([]*thirdparty.JiraTicket, error)
@@ -8521,8 +8521,8 @@ input ProjectVarsInput {
 
 ###### TYPES ######
 type ProjectVars {
-  adminOnlyVars: [String]
-  privateVars: [String]
+  adminOnlyVars: [String!]!
+  privateVars: [String!]!
   vars: StringMap
 }
 `, BuiltIn: false},
@@ -25001,11 +25001,14 @@ func (ec *executionContext) _ProjectVars_adminOnlyVars(ctx context.Context, fiel
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.([]*string)
+	res := resTmp.([]string)
 	fc.Result = res
-	return ec.marshalOString2ᚕᚖstring(ctx, field.Selections, res)
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ProjectVars_privateVars(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectVars) (ret graphql.Marshaler) {
@@ -25033,11 +25036,14 @@ func (ec *executionContext) _ProjectVars_privateVars(ctx context.Context, field 
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.([]*string)
+	res := resTmp.([]string)
 	fc.Result = res
-	return ec.marshalOString2ᚕᚖstring(ctx, field.Selections, res)
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ProjectVars_vars(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectVars) (ret graphql.Marshaler) {
@@ -45339,6 +45345,9 @@ func (ec *executionContext) _ProjectVars(ctx context.Context, sel ast.SelectionS
 					}
 				}()
 				res = ec._ProjectVars_adminOnlyVars(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		case "privateVars":
@@ -45350,6 +45359,9 @@ func (ec *executionContext) _ProjectVars(ctx context.Context, sel ast.SelectionS
 					}
 				}()
 				res = ec._ProjectVars_privateVars(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		case "vars":
