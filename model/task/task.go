@@ -2556,28 +2556,28 @@ func archiveAll(tasksIds []string, toUpdateTaskIds []string, toArchive []interfa
 					}},
 				}}},
 				bson.D{{Key: "$set", Value: bson.D{
-					{Key: "latest_parent_execution", Value: bson.D{
+					{Key: LatestParentExecutionKey, Value: bson.D{
 						{Key: "$cond", Value: bson.A{
 							bson.D{{Key: "$not", Value: bson.A{
-								"$latest_parent_execution",
+								"$" + LatestParentExecutionKey,
 							}}},
 							bson.D{{Key: "$add", Value: bson.A{
-								"$execution",
+								"$" + ExecutionKey,
 								1,
 							}}},
 							bson.D{{Key: "$add", Value: bson.A{
-								"$latest_parent_execution",
+								"$" + ExecutionKey,
 								1,
 							}}},
 						}}},
 					}}},
 				},
 				bson.D{{Key: "$set", Value: bson.D{
-					{Key: "execution", Value: bson.D{
+					{Key: ExecutionKey, Value: bson.D{
 						{Key: "$cond", Value: bson.A{
 							bson.D{{Key: "$in", Value: bson.A{"$_id", toUpdateTaskIds}}},
-							"$latest_parent_execution",
-							"$execution",
+							"$" + LatestParentExecutionKey,
+							"$" + ExecutionKey,
 						}}},
 					}}},
 				},
