@@ -2472,7 +2472,6 @@ func (t *Task) Insert() error {
 // into the old_tasks collection. If this is a display task, its execution tasks
 // are also archived.
 func (t *Task) Archive() error {
-
 	err := ArchiveMany([]Task{*t})
 	if t.DisplayOnly {
 		return errors.Wrapf(err, "archiving and updating display task with ID '%s'.", t.Id)
@@ -2519,9 +2518,9 @@ func ArchiveMany(tasks []Task) error {
 		toArchive = append(toArchive, et.makeArchivedTask())
 	}
 
-	archiveAll(bundledTasks, toUpdateTaskIds, toArchive)
+	err = archiveAll(bundledTasks, toUpdateTaskIds, toArchive)
 
-	return nil
+	return err
 }
 
 // archiveAll takes in:
