@@ -409,7 +409,7 @@ type parserBVTaskUnit struct {
 	// If Activate is set to false, then we don't initially activate the task.
 	Activate *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
 	// Group is set if an inline task group is defined on the build variant config.
-	Group *parserTaskGroup `yaml:"group,omitempty" bson:"group,omitempty"`
+	Group *parserTaskGroup `yaml:"task_group,omitempty" bson:"task_group,omitempty"`
 }
 
 // UnmarshalYAML allows the YAML parser to read both a single selector string or

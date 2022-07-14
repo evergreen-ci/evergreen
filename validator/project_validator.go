@@ -618,6 +618,35 @@ func checkProjectFields(project *model.Project) ValidationErrors {
 	return errs
 }
 
+func validateBuildVariantTaskNames(task string, variant string, allTaskNames map[string]bool, taskGroupTaskSet map[string]string) []ValidationError {
+	var errs []ValidationError
+	if _, ok := allTaskNames[task]; !ok {
+		if task == "" {
+			errs = append(errs, ValidationError{
+				Message: fmt.Sprintf("tasks for buildvariant '%s' must each have a name field",
+					variant),
+				Level: Error,
+			})
+
+		} else {
+			errs = append(errs, ValidationError{
+				Message: fmt.Sprintf("buildvariant '%s' references a non-existent task '%s'",
+					variant, task),
+				Level: Error,
+			})
+		}
+	}
+	if _, ok := taskGroupTaskSet[task]; ok {
+		errs = append(errs,
+			ValidationError{
+				Message: fmt.Sprintf("task '%s' in build variant '%s' is already referenced in task group '%s'",
+					task, variant, taskGroupTaskSet[task]),
+				Level: Warning,
+			})
+	}
+	return errs
+}
+
 // ensureReferentialIntegrity checks all fields that reference other entities defined in the YAML and ensure that they are referring to valid names.
 func ensureReferentialIntegrity(project *model.Project, containerNameMap map[string]bool, distroIDs []string, distroAliases []string) ValidationErrors {
 	errs := ValidationErrors{}
@@ -638,37 +667,12 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 		buildVariantTasks := map[string]bool{}
 		for _, task := range buildVariant.Tasks {
 			if task.Group != nil {
-				continue
-			}
-			if _, ok := allTaskNames[task.Name]; !ok {
-				if task.Name == "" {
-					errs = append(errs,
-						ValidationError{
-							Message: fmt.Sprintf("tasks for buildvariant '%s' must each have a name field",
-								buildVariant.Name),
-							Level: Error,
-						},
-					)
-				} else {
-					errs = append(errs,
-						ValidationError{
-							Message: fmt.Sprintf("buildvariant '%s' references a non-existent task '%s'",
-								buildVariant.Name, task.Name),
-							Level: Error,
-						},
-					)
+				for _, taskGroupTask := range task.Group.Tasks {
+					errs = append(errs, validateBuildVariantTaskNames(taskGroupTask, buildVariant.Name, allTaskNames, taskGroupTaskSet)...)
 				}
 			}
+			errs = append(errs, validateBuildVariantTaskNames(task.Name, buildVariant.Name, allTaskNames, taskGroupTaskSet)...)
 			buildVariantTasks[task.Name] = true
-
-			if _, ok := taskGroupTaskSet[task.Name]; ok {
-				errs = append(errs,
-					ValidationError{
-						Message: fmt.Sprintf("task '%s' in build variant '%s' is already referenced in task group '%s'",
-							task.Name, buildVariant.Name, taskGroupTaskSet[task.Name]),
-						Level: Warning,
-					})
-			}
 			runOnHasDistro := false
 			runOnHasContainer := false
 			for _, name := range task.RunOn {
@@ -1467,7 +1471,10 @@ func validateDuplicateBVTasks(p *model.Project) ValidationErrors {
 		for _, t := range bv.Tasks {
 
 			if t.IsGroup {
-				tg := p.FindTaskGroup(t.Name, t.Group)
+				tg := t.Group
+				if tg == nil {
+					tg = p.FindTaskGroup(t.Name)
+				}
 				if tg == nil {
 					continue
 				}
@@ -1696,7 +1703,10 @@ func bvsWithTasksThatCallCommand(p *model.Project, cmd string) (map[string]map[s
 
 		for _, bvtu := range bv.Tasks {
 			if bvtu.IsGroup {
-				tg := p.FindTaskGroup(bvtu.Name, bvtu.Group)
+				tg := bvtu.Group
+				if tg == nil {
+					tg = p.FindTaskGroup(bvtu.Name)
+				}
 				if tg == nil {
 					catcher.Errorf("cannot find definition of task group '%s' used in build variant '%s'", bvtu.Name, bv.Name)
 					continue

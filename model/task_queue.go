@@ -248,12 +248,7 @@ func BlockTaskGroupTasks(taskID string) error {
 	if err != nil {
 		return errors.Wrapf(err, "getting project for task '%s'", t.Id)
 	}
-	var group *TaskGroup
-	bvt := p.FindTaskForVariant(t.DisplayName, t.BuildVariant)
-	if bvt != nil {
-		group = bvt.Group
-	}
-	tg := p.FindTaskGroup(t.TaskGroup, group)
+	tg := p.FindTaskGroup(t.TaskGroup)
 	if tg == nil {
 		return errors.Errorf("unable to find task group '%s' for task '%s'", t.TaskGroup, taskID)
 	}

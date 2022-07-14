@@ -56,7 +56,7 @@ func (di *dependencyIncluder) handle(pair TVPair) (bool, error) {
 	}
 
 	// if the given task is a task group, recurse on each task
-	if tg := di.Project.FindTaskGroup(pair.TaskName, nil); tg != nil {
+	if tg := di.Project.FindTaskGroup(pair.TaskName); tg != nil {
 		for _, t := range tg.Tasks {
 			ok, err := di.handle(TVPair{TaskName: t, Variant: pair.Variant})
 			if !ok {
