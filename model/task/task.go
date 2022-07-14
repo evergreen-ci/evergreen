@@ -153,10 +153,11 @@ type Task struct {
 	// Set to true if the task should be considered for mainline github checks
 	IsGithubCheck bool `bson:"is_github_check,omitempty" json:"is_github_check,omitempty"`
 
-	Execution           int    `bson:"execution" json:"execution"`
-	OldTaskId           string `bson:"old_task_id,omitempty" json:"old_task_id,omitempty"`
-	Archived            bool   `bson:"archived,omitempty" json:"archived,omitempty"`
-	RevisionOrderNumber int    `bson:"order,omitempty" json:"order,omitempty"`
+	Execution             int    `bson:"execution" json:"execution"`
+	LatestParentExecution int    `bson:"latest_parent_execution" json:"latest_parent_execution"`
+	OldTaskId             string `bson:"old_task_id,omitempty" json:"old_task_id,omitempty"`
+	Archived              bool   `bson:"archived,omitempty" json:"archived,omitempty"`
+	RevisionOrderNumber   int    `bson:"order,omitempty" json:"order,omitempty"`
 
 	// task requester - this is used to help tell the
 	// reason this task was created. e.g. it could be
@@ -2687,9 +2688,9 @@ func archiveAll(tasksIds []string, toUpdateTaskIds []string, toArchive []interfa
 				bson.D{{Key: "$unset", Value: bson.A{
 					AbortedKey,
 					AbortInfoKey,
-					OverrideDependenciesKey,
+					DetailsKey,
 				}}},
-				bson.D{{Key: "$merge", Value: bson.D{{Key: "into", Value: Collection}}}},
+				bson.D{{Key: "$merge", Value: bson.D{{Key: "into", Value: Collection}, {Key: "whenMatched", Value: "replace"}}}},
 			},
 		)
 		return nil, errors.Wrap(err, "updating tasks.")
