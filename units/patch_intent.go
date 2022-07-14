@@ -450,7 +450,6 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	return catcher.Resolve()
 }
 
-<<<<<<< HEAD
 func (j *patchIntentProcessor) buildTasksandVariants(patchDoc *patch.Patch, project *model.Project) error {
 	var previousPatchStatus string
 	var err error
@@ -473,15 +472,6 @@ func (j *patchIntentProcessor) buildTasksandVariants(patchDoc *patch.Patch, proj
 		if bv == nil {
 			return errors.Errorf("no such buildvariant matching '%s'", buildVariant)
 		}
-=======
-func (j *patchIntentProcessor) getPreviousPatchDefinition(project *model.Project, failedOnly bool) ([]patch.VariantTasks, error) {
-	previousPatch, err := patch.FindOne(patch.MostRecentPatchByUserAndProject(j.user.Username(), project.Identifier))
-	if err != nil {
-		return nil, errors.Wrapf(err, "finding most recent patch for user '%s' in project '%s'", j.user.Username(), project.Identifier)
-	}
-	if previousPatch == nil {
-		return nil, errors.Errorf("previous patch for user '%s' in project '%s' not found", j.user.Username(), project.Identifier)
->>>>>>> 4379bf9ae (EVG-16501: cleaning up units error messages)
 	}
 
 	for _, bv := range patchDoc.RegexBuildVariants {
@@ -511,19 +501,9 @@ func setTasksToPreviousFailed(patchDoc, previousPatch *patch.Patch, project *mod
 	for _, vt := range previousPatch.VariantsTasks {
 		tasksInProjectVariant := project.FindTasksForVariant(vt.Variant)
 		var tasks []string
-<<<<<<< HEAD
 		tasks, err := getPreviousFailedTasksAndDisplayTasks(tasksInProjectVariant, vt, previousPatch.Version)
 		if err != nil {
 			return err
-=======
-		if failedOnly {
-			tasks, displayTasks, err = getPreviousFailedTasksAndDisplayTasks(tasksInProjectVariant, displayTasksInProjectVariant, vt, previousPatch.Version)
-			if err != nil {
-				return nil, errors.Wrap(err, "getting previous patch's failed tasks")
-			}
-		} else {
-			tasks, displayTasks = getPreviousTasksAndDisplayTasks(tasksInProjectVariant, displayTasksInProjectVariant, vt)
->>>>>>> 4379bf9ae (EVG-16501: cleaning up units error messages)
 		}
 		failedTasks = append(failedTasks, tasks...)
 	}
@@ -558,11 +538,7 @@ func (j *patchIntentProcessor) setToPreviousPatchDefinition(patchDoc *patch.Patc
 func getPreviousFailedTasksAndDisplayTasks(tasksInProjectVariant []string, vt patch.VariantTasks, version string) ([]string, error) {
 	failedTasks, err := task.FindAll(db.Query(task.FailedTasksByVersionAndBV(version, vt.Variant)))
 	if err != nil {
-<<<<<<< HEAD
-		return nil, errors.Wrap(err, "error querying for failed tasks from previous patch")
-=======
-		return nil, nil, errors.Wrapf(err, "finding failed tasks in build variant '%s' from previous patch '%s'", vt.Variant, version)
->>>>>>> 4379bf9ae (EVG-16501: cleaning up units error messages)
+		return nil, errors.Wrapf(err, "finding failed tasks in build variant '%s' from previous patch '%s'", vt.Variant, version)
 	}
 	failedExecutionTasks := []string{}
 	for _, failedTask := range failedTasks {
