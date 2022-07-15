@@ -988,49 +988,12 @@ type BuildVariantTuple struct {
 	DisplayName  string `bson:"build_variant_display_name"`
 }
 
-const VersionLimit = 50
-
-// Reusable pipeline stages when finding build variant display names
 var (
-	// sort build variant display names alphabetically
-	sortByVariantDisplayName = bson.M{
-		"$sort": bson.M{
-			"build_variant_display_name": 1,
-		},
-	}
-
-	// cleanup the results
-	projectBvResults = bson.M{
-		"$project": bson.M{
-			"_id":                        0,
-			"build_variant":              "$" + BuildVariantKey,
-			"build_variant_display_name": "$" + BuildVariantDisplayNameKey,
-		},
-	}
-
-	// reorganize the results to get the build variant names and a corresponding build id
-	projectBuildIdAndVariant = bson.M{
-		"$project": bson.M{
-			"_id":                      0,
-			BuildVariantKey:            bsonutil.GetDottedKeyName("$_id", BuildVariantKey),
-			BuildVariantDisplayNameKey: bsonutil.GetDottedKeyName("$_id", BuildVariantDisplayNameKey),
-			BuildIdKey:                 "$" + BuildIdKey,
-		},
-	}
-
-	// group the build variants by unique build variant names and get a build id for each
-	groupByBuildVariant = bson.M{
-		"$group": bson.M{
-			"_id": bson.M{
-				BuildVariantKey:            "$" + BuildVariantKey,
-				BuildVariantDisplayNameKey: "$" + BuildVariantDisplayNameKey,
-			},
-			BuildIdKey: bson.M{
-				"$first": "$" + BuildIdKey,
-			},
-		},
-	}
+	buildVariantTupleVariantKey     = bsonutil.MustHaveTag(BuildVariantTuple{}, "BuildVariant")
+	buildVariantTupleDisplayNameKey = bsonutil.MustHaveTag(BuildVariantTuple{}, "DisplayName")
 )
+
+const VersionLimit = 50
 
 // FindUniqueBuildVariantNamesByTask returns a list of unique build variants names and their display names for a given task name.
 // It attempts to return the most recent display name for each build variant to avoid returning duplicates caused by display names changing.
@@ -1050,9 +1013,47 @@ func FindUniqueBuildVariantNamesByTask(projectId string, taskName string, repoOr
 		},
 	}
 
+	// group the build variants by unique build variant names and get a build id for each
+	groupByBuildVariant := bson.M{
+		"$group": bson.M{
+			"_id": bson.M{
+				BuildVariantKey:            "$" + BuildVariantKey,
+				BuildVariantDisplayNameKey: "$" + BuildVariantDisplayNameKey,
+			},
+			BuildIdKey: bson.M{
+				"$first": "$" + BuildIdKey,
+			},
+		},
+	}
 	pipeline = append(pipeline, groupByBuildVariant)
+
+	// reorganize the results to get the build variant names and a corresponding build id
+	projectBuildIdAndVariant := bson.M{
+		"$project": bson.M{
+			"_id":                      0,
+			BuildVariantKey:            bsonutil.GetDottedKeyName("$_id", BuildVariantKey),
+			BuildVariantDisplayNameKey: bsonutil.GetDottedKeyName("$_id", BuildVariantDisplayNameKey),
+			BuildIdKey:                 "$" + BuildIdKey,
+		},
+	}
 	pipeline = append(pipeline, projectBuildIdAndVariant)
+
+	// cleanup the results
+	projectBvResults := bson.M{
+		"$project": bson.M{
+			"_id":                           0,
+			buildVariantTupleVariantKey:     "$" + BuildVariantKey,
+			buildVariantTupleDisplayNameKey: "$" + BuildVariantDisplayNameKey,
+		},
+	}
 	pipeline = append(pipeline, projectBvResults)
+
+	// sort build variant display names alphabetically
+	sortByVariantDisplayName := bson.M{
+		"$sort": bson.M{
+			buildVariantTupleDisplayNameKey: 1,
+		},
+	}
 	pipeline = append(pipeline, sortByVariantDisplayName)
 
 	result := []*BuildVariantTuple{}
