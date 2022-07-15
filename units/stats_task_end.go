@@ -76,7 +76,7 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 	if j.task == nil {
 		j.task, err = task.FindOneIdAndExecution(j.TaskID, j.Execution)
 		if err != nil {
-			j.AddError(errors.Wrapf(err, "finding task '%s' with execution '%s'", j.TaskID, j.Execution))
+			j.AddError(errors.Wrapf(err, "finding task '%s' with execution %d", j.TaskID, j.Execution))
 			return
 		}
 	}

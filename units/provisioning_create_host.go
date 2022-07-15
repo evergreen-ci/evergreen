@@ -279,7 +279,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 
 	mgrOpts, err := cloud.GetManagerOptions(j.host.Distro)
 	if err != nil {
-		return errors.Wrapf(err, "getting cloud manager options for distro '%s'", j.host.Distro)
+		return errors.Wrapf(err, "getting cloud manager options for distro '%s'", j.host.Distro.Id)
 	}
 	cloudManager, err = cloud.GetManager(ctx, j.env, mgrOpts)
 	if err != nil {

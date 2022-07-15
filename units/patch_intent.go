@@ -825,7 +825,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 
 	j.user, err = findEvergreenUserForPR(patchDoc.GithubPatchData.AuthorUID)
 	if err != nil {
-		return isMember, errors.Wrapf(err, "finding user associated with GitHub UID '%s'", patchDoc.GithubPatchData.AuthorUID)
+		return isMember, errors.Wrapf(err, "finding user associated with GitHub UID '%d'", patchDoc.GithubPatchData.AuthorUID)
 	}
 	patchDoc.Author = j.user.Id
 

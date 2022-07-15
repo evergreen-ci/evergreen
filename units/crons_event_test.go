@@ -157,7 +157,7 @@ func (s *cronsEventSuite) TestSenderDegradedModeDoesntDispatchJobs() {
 	s.NoError(db.FindAllQ(notification.Collection, db.Q{}, &out))
 	s.Len(out, 6)
 	for i := range out {
-		s.Equal("sender disabled", out[i].Error)
+		s.Equal("notifications are disabled", out[i].Error)
 	}
 
 	stats := s.env.LocalQueue().Stats(ctx)
