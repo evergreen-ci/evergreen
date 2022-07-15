@@ -2522,10 +2522,11 @@ func ArchiveMany(tasks []Task) error {
 	for _, et := range execTasks {
 		toArchive = append(toArchive, et.makeArchivedTask())
 	}
-	grip.DebugWhen(len(utility.UniqueStrings(taskIds)) != len(taskIds), message.Fields{
+
+	grip.DebugWhen(len(utility.UniqueStrings(bundledTasks)) != len(bundledTasks), message.Fields{
 		"ticket":           "EVG-17261",
 		"message":          "archiving same task multiple times",
-		"tasks_to_archive": taskIds,
+		"tasks_to_archive": bundledTasks,
 	})
 
 	err = archiveAll(bundledTasks, toUpdateTaskIds, toArchive)
