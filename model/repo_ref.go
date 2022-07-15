@@ -96,6 +96,14 @@ func FindRepoRefByOwnerAndRepo(owner, repoName string) (*RepoRef, error) {
 // for the repo and branches, and gives branch admins permission to view the repo.
 func (r *RepoRef) addPermissions(creator *user.DBUser) error {
 	rm := evergreen.GetEnvironment().RoleManager()
+	// Add to the general scope.
+	parentScope := evergreen.UnrestrictedProjectsScope
+	if r.IsRestricted() {
+		parentScope = evergreen.RestrictedProjectsScope
+	}
+	if err := rm.AddResourceToScope(parentScope, r.Id); err != nil {
+		return errors.Wrapf(err, "adding repo '%s' to the scope '%s'", r.Id, parentScope)
+	}
 
 	adminScope := gimlet.Scope{
 		ID:        GetRepoAdminScope(r.Id),
