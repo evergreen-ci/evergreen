@@ -284,6 +284,7 @@ func directorySpecificTestSetup(t *testing.T, state AtomicGraphQLState) {
 	persistTestSettings := func(t *testing.T) {
 		_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": build.Collection})
 		_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": task.Collection})
+		_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": task.OldCollection})
 		_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": model.VersionCollection})
 		_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": model.ParserProjectCollection})
 		require.NoError(t, state.Settings.Set())
