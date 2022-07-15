@@ -243,6 +243,8 @@ $(clientBuildDir)/%/.signed:$(buildDir)/sign-executable $(clientBuildDir)/%/$(un
 
 dist-staging:
 	STAGING_ONLY=1 SIGN_MACOS= $(MAKE) dist
+dist-unsigned:
+	SIGN_MACOS= $(MAKE) dist
 dist:$(buildDir)/dist.tar.gz
 $(buildDir)/dist.tar.gz:$(buildDir)/make-tarball $(clientBinaries) $(uiFiles) $(if $(SIGN_MACOS),$(foreach platform,$(macOSPlatforms),$(clientBuildDir)/$(platform)/.signed))
 	./$< --name $@ --prefix $(name) $(foreach item,$(distContents),--item $(item)) --exclude "public/node_modules" --exclude "clients/.cache"
