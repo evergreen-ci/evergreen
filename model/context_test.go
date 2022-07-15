@@ -11,6 +11,7 @@ import (
 
 func TestLoadContext(t *testing.T) {
 	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, ProjectRefCollection))
+	require.NoError(t, db.CreateCollections(task.Collection, task.OldCollection))
 
 	assert := assert.New(t)
 	myProject := ProjectRef{

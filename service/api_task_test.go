@@ -1835,6 +1835,8 @@ func TestHandleEndTaskForCommitQueueTask(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(commitqueue.Collection, model.VersionCollection,
 				task.Collection, patch.Collection, task.OldCollection))
+			require.NoError(t, db.CreateCollections(task.Collection, task.OldCollection))
+
 			version1 := model.Version{
 				Id: p1,
 			}

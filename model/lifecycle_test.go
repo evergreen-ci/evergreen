@@ -201,6 +201,8 @@ func TestBuildRestart(t *testing.T) {
 			" non in-progress tasks and abort in-progress ones", func() {
 
 			require.NoError(t, db.ClearCollections(build.Collection, task.Collection, task.OldCollection))
+			require.NoError(t, db.CreateCollections(task.Collection, task.OldCollection))
+
 			b := &build.Build{Id: "build"}
 			So(b.Insert(), ShouldBeNil)
 
@@ -240,6 +242,8 @@ func TestBuildRestart(t *testing.T) {
 			" of only those build tasks not in-progress", func() {
 
 			require.NoError(t, db.ClearCollections(build.Collection))
+			require.NoError(t, db.CreateCollections(task.Collection, task.OldCollection))
+
 			b := &build.Build{Id: "build"}
 			So(b.Insert(), ShouldBeNil)
 
@@ -2063,6 +2067,9 @@ func TestResetTaskOrDisplayTask(t *testing.T) {
 }
 
 func resetTaskData() error {
+	if err := db.CreateCollections(task.Collection, task.OldCollection); err != nil {
+		return err
+	}
 	if err := db.ClearCollections(build.Collection, task.Collection, VersionCollection, task.OldCollection); err != nil {
 		return err
 	}

@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/service"
@@ -37,7 +38,7 @@ func TestAtomicGQLQueries(t *testing.T) {
 	defer server.Close()
 	dir, _ := os.Getwd()
 	fmt.Println("PATH: ", dir)
-
+	require.NoError(t, db.CreateCollections(task.Collection, task.OldCollection))
 	for _, dir := range testDirectories {
 		state := graphql.AtomicGraphQLState{
 			TaskLogDB:   model.TaskLogDB,

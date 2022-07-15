@@ -91,6 +91,7 @@ func TestCleanupTask(t *testing.T) {
 				So(v.Insert(), ShouldBeNil)
 
 				// cleaning up the task should work
+				require.NoError(t, db.CreateCollections(task.Collection, task.OldCollection))
 				So(cleanUpTimedOutTask(ctx, env, t.Name(), newTask), ShouldBeNil)
 
 				// refresh the task - it should be reset
@@ -185,6 +186,7 @@ func TestCleanupTask(t *testing.T) {
 						Status: cloud.StatusRunning,
 					})
 
+					require.NoError(t, db.CreateCollections(task.Collection, task.OldCollection))
 					// cleaning up the task should work
 					So(cleanUpTimedOutTask(ctx, env, t.Name(), newTask), ShouldBeNil)
 

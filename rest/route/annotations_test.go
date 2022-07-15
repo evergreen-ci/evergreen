@@ -344,6 +344,8 @@ func TestAnnotationByTaskGetHandlerRun(t *testing.T) {
 
 func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(annotations.Collection, task.Collection, task.OldCollection))
+	require.NoError(t, db.CreateCollections(task.Collection, task.OldCollection))
+
 	tasks := []task.Task{
 		{Id: "TaskFailedId", Execution: 1, Status: evergreen.TaskFailed},
 		{Id: "TaskSystemUnresponseId", Execution: 1, Status: evergreen.TaskSystemUnresponse},

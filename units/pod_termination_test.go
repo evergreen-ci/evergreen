@@ -269,6 +269,7 @@ func TestPodTerminationJob(t *testing.T) {
 			defer cancel()
 
 			require.NoError(t, db.ClearCollections(pod.Collection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, dispatcher.Collection, event.LegacyEventLogCollection))
+			require.NoError(t, db.CreateCollections(task.Collection, task.OldCollection))
 
 			cluster := "cluster"
 
