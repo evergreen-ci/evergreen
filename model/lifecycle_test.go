@@ -2,7 +2,6 @@ package model
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -2044,7 +2043,6 @@ func TestResetTaskOrDisplayTask(t *testing.T) {
 	require.NotNil(t, et)
 
 	// restarting execution tasks should restart display task
-	fmt.Println("HELP-1")
 	assert.NoError(t, ResetTaskOrDisplayTask(et, "me", evergreen.StepbackTaskActivator, false, nil))
 	dt, err := task.FindOneId("displayTask")
 	assert.NoError(t, err)
@@ -2055,7 +2053,6 @@ func TestResetTaskOrDisplayTask(t *testing.T) {
 
 	// restarting display task should mark the display task for restart if it's not complete
 	// ResetFailedWhenFinished should be set to true if failedOnly is passed in
-	fmt.Println("HELP-1")
 	assert.NoError(t, ResetTaskOrDisplayTask(dt, "me", evergreen.StepbackTaskActivator, true, nil))
 	dt, err = task.FindOneId("displayTask")
 	assert.NoError(t, err)
