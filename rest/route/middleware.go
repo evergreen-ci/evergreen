@@ -334,7 +334,7 @@ func (m *podOrHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Requ
 
 	isHostMode := hostID != ""
 	if isHostMode {
-		h, statusCode, err := model.ValidateHost(gimlet.GetVars(r)["host_id"], r)
+		h, statusCode, err := model.ValidateHost(hostID, r)
 		if err != nil {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: statusCode,

@@ -153,7 +153,7 @@ func (c *baseCommunicator) GetProjectRef(ctx context.Context, taskData TaskData)
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
-		version:  apiVersion1,
+		version:  apiVersion2,
 	}
 	info.setTaskPathSuffix("project_ref")
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -190,7 +190,7 @@ func (c *baseCommunicator) GetTask(ctx context.Context, taskData TaskData) (*tas
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
-		version:  apiVersion1,
+		version:  apiVersion2,
 	}
 	info.setTaskPathSuffix("")
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -233,7 +233,7 @@ func (c *baseCommunicator) GetDistroView(ctx context.Context, taskData TaskData)
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
-		version:  apiVersion1,
+		version:  apiVersion2,
 	}
 	info.setTaskPathSuffix("distro_view")
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -276,7 +276,7 @@ func (c *baseCommunicator) GetProject(ctx context.Context, taskData TaskData) (*
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
-		version:  apiVersion1,
+		version:  apiVersion2,
 	}
 	info.setTaskPathSuffix("parser_project")
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -295,7 +295,7 @@ func (c *baseCommunicator) GetExpansions(ctx context.Context, taskData TaskData)
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
-		version:  apiVersion1,
+		version:  apiVersion2,
 	}
 	info.setTaskPathSuffix("expansions")
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -317,7 +317,7 @@ func (c *baseCommunicator) Heartbeat(ctx context.Context, taskData TaskData) (st
 	defer cancel()
 	info := requestInfo{
 		method:   http.MethodPost,
-		version:  apiVersion1,
+		version:  apiVersion2,
 		taskData: &taskData,
 	}
 	info.setTaskPathSuffix("heartbeat")
@@ -352,7 +352,7 @@ func (c *baseCommunicator) FetchExpansionVars(ctx context.Context, taskData Task
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
-		version:  apiVersion1,
+		version:  apiVersion2,
 	}
 	info.setTaskPathSuffix("fetch_vars")
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -546,7 +546,7 @@ func (c *baseCommunicator) SendLogMessages(ctx context.Context, taskData TaskDat
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
-		version:  apiVersion1,
+		version:  apiVersion2,
 	}
 	info.setTaskPathSuffix("log")
 	var cancel context.CancelFunc
@@ -597,7 +597,7 @@ func (c *baseCommunicator) SendTaskResults(ctx context.Context, taskData TaskDat
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
-		version:  apiVersion1,
+		version:  apiVersion2,
 	}
 	info.setTaskPathSuffix("results")
 	resp, err := c.retryRequest(ctx, info, r)
@@ -693,7 +693,7 @@ func (c *baseCommunicator) SendTestLog(ctx context.Context, taskData TaskData, l
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
-		version:  apiVersion1,
+		version:  apiVersion2,
 	}
 	info.setTaskPathSuffix("test_logs")
 	resp, err := c.retryRequest(ctx, info, log)
@@ -723,7 +723,7 @@ func (c *baseCommunicator) SendTestResults(ctx context.Context, taskData TaskDat
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
-		version:  apiVersion1,
+		version:  apiVersion2,
 	}
 	info.setTaskPathSuffix("results")
 	resp, err := c.retryRequest(ctx, info, results)
@@ -756,7 +756,7 @@ func (c *baseCommunicator) NewPush(ctx context.Context, taskData TaskData, req *
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
-		version:  apiVersion1,
+		version:  apiVersion2,
 	}
 
 	info.setTaskPathSuffix("new_push")
@@ -778,7 +778,7 @@ func (c *baseCommunicator) UpdatePushStatus(ctx context.Context, taskData TaskDa
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
-		version:  apiVersion1,
+		version:  apiVersion2,
 	}
 
 	info.setTaskPathSuffix("update_push_status")
@@ -804,7 +804,7 @@ func (c *baseCommunicator) AttachFiles(ctx context.Context, taskData TaskData, t
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
-		version:  apiVersion1,
+		version:  apiVersion2,
 	}
 	info.setTaskPathSuffix("files")
 	resp, err := c.retryRequest(ctx, info, taskFiles)
@@ -1054,7 +1054,7 @@ func (c *baseCommunicator) StartTask(ctx context.Context, taskData TaskData) err
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
-		version:  apiVersion1,
+		version:  apiVersion2,
 	}
 	info.setTaskPathSuffix("start")
 	resp, err := c.retryRequest(ctx, info, taskStartRequest)
