@@ -2546,7 +2546,7 @@ func archiveAll(tasksIds []string, toUpdateTaskIds []string, toArchive []interfa
 	txFunc := func(sessCtx mongo.SessionContext) (interface{}, error) {
 		if len(toArchive) > 0 {
 			oldTaskColl := evergreen.GetEnvironment().DB().Collection(OldCollection)
-			_, err = oldTaskColl.InsertMany(ctx, toArchive)
+			_, err = oldTaskColl.InsertMany(sessCtx, toArchive)
 			if err != nil {
 				return nil, errors.Wrap(err, "archiving tasks")
 			}
@@ -2595,10 +2595,10 @@ func archiveAll(tasksIds []string, toUpdateTaskIds []string, toArchive []interfa
 			// 		bson.D{{Key: "$merge", Value: bson.D{{Key: "into", Value: Collection}, {Key: "whenMatched", Value: "replace"}}}},
 			// 	},
 			// )
-			evergreen.GetEnvironment().DB().RunCommand(ctx,
-				bson.M{
-					"update": Collection,
-					"updates": bson.M{
+			result := evergreen.GetEnvironment().DB().RunCommand(sessCtx,
+				bson.D{
+					bson.E{Key: "update", Value: Collection},
+					bson.E{Key: "updates", Value: bson.A{bson.M{
 						"q": bson.D{{Key: "_id", Value: bson.D{{Key: "$in", Value: tasksIds}}}},
 						"u": bson.A{
 							bson.D{{Key: "$set", Value: bson.D{
@@ -2612,7 +2612,7 @@ func archiveAll(tasksIds []string, toUpdateTaskIds []string, toArchive []interfa
 											1,
 										}}},
 										bson.D{{Key: "$add", Value: bson.A{
-											"$" + ExecutionKey,
+											"$" + LatestParentExecutionKey,
 											1,
 										}}},
 									}}},
@@ -2633,9 +2633,11 @@ func archiveAll(tasksIds []string, toUpdateTaskIds []string, toArchive []interfa
 								DetailsKey,
 							}}},
 						},
-					},
+						"multi": true,
+					}}},
 				},
 			)
+			return nil, errors.Wrap(result.Err(), "Error updating documents")
 		}
 		return nil, errors.Wrap(err, "updating tasks.")
 	}
