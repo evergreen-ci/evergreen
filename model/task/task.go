@@ -2498,13 +2498,16 @@ func ArchiveMany(tasks []Task) error {
 			toUpdateTaskIds = append(toUpdateTaskIds, t.Id)
 		}
 
-		if t.DisplayOnly {
-			for _, et := range t.ExecutionTasks {
-				bundledTasks = append(bundledTasks, et)
-
-				if !t.ResetFailedWhenFinished || evergreen.IsFailedTaskStatus(t.Status) {
-					etToArchiveIds = append(etToArchiveIds, et)
-					toUpdateTaskIds = append(toUpdateTaskIds, et)
+		if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
+			eTasks, err := FindAll(db.Query(ByIds(t.ExecutionTasks)))
+			if err != nil {
+				return errors.Wrapf(err, "finding execution tasks for display task '%s'.", t.Id)
+			}
+			for _, et := range eTasks {
+				bundledTasks = append(bundledTasks, et.Id)
+				if !t.ResetFailedWhenFinished || evergreen.IsFailedTaskStatus(et.Status) {
+					etToArchiveIds = append(etToArchiveIds, et.Id)
+					toUpdateTaskIds = append(toUpdateTaskIds, et.Id)
 				}
 			}
 		}
