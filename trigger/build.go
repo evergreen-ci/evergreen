@@ -265,9 +265,7 @@ func (t *buildTriggers) buildRuntimeChange(sub *event.Subscription) (*notificati
 
 func (t *buildTriggers) makeData(sub *event.Subscription, pastTenseOverride string) (*commonTemplateData, error) {
 	api := restModel.APIBuild{}
-	if err := api.BuildFromService(*t.build); err != nil {
-		return nil, errors.Wrap(err, "error building json model")
-	}
+	api.BuildFromService(*t.build)
 	projectName := t.build.Project
 	if api.ProjectIdentifier != nil {
 		projectName = utility.FromStringPtr(api.ProjectIdentifier)

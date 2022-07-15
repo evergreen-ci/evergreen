@@ -25,10 +25,7 @@ func GetTaskReliabilityScores(filter reliability.TaskReliabilityFilter) ([]restM
 	apiStatsResult := make([]restModel.APITaskReliability, len(serviceStatsResult))
 	for i, serviceStats := range serviceStatsResult {
 		ats := restModel.APITaskReliability{}
-		err = ats.BuildFromService(&serviceStats)
-		if err != nil {
-			return nil, errors.Wrap(err, "converting task reliability stats to API model")
-		}
+		ats.BuildFromService(serviceStats)
 		apiStatsResult[i] = ats
 	}
 	return apiStatsResult, nil

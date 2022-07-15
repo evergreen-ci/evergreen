@@ -18,36 +18,10 @@ func TestAPIGithubHook(t *testing.T) {
 	}
 
 	apiHook := APIGithubHook{}
-	err := apiHook.BuildFromService(hook)
-	assert.NoError(err)
+	assert.NoError(apiHook.BuildFromService(hook))
 	assert.Equal(APIGithubHook{
 		HookID: 1,
 		Owner:  utility.ToStringPtr("evergreen-ci"),
 		Repo:   utility.ToStringPtr("evergreen"),
 	}, apiHook)
-
-	apiHook = APIGithubHook{}
-	assert.Error(apiHook.BuildFromService(&hook))
-	assert.Zero(apiHook)
-
-	apiHook = APIGithubHook{}
-	hook.HookID = 0
-	hook.Owner = "owner"
-	hook.Repo = "repo"
-	assert.Error(apiHook.BuildFromService(hook))
-	assert.Zero(apiHook)
-
-	apiHook = APIGithubHook{}
-	hook.HookID = 1
-	hook.Owner = "owner"
-	hook.Repo = ""
-	assert.Error(apiHook.BuildFromService(hook))
-	assert.Zero(apiHook)
-
-	apiHook = APIGithubHook{}
-	hook.HookID = 1
-	hook.Owner = ""
-	hook.Repo = "repo"
-	assert.Error(apiHook.BuildFromService(hook))
-	assert.Zero(apiHook)
 }

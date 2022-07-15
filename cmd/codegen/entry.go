@@ -8,7 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/cmd/codegen/core"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v3"
+	yaml "gopkg.in/20210107192922/yaml.v3"
 )
 
 func main() {

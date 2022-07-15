@@ -19,14 +19,8 @@ func TestEventStats(t *testing.T) {
 		NumUnprocessedEvents: 1234,
 	}
 
-	assert.Error(stats.BuildFromService(nil))
-	assert.NoError(stats.BuildFromService(&nstats))
+	stats.BuildFromService(nstats)
 	assert.NotZero(stats.PendingNotificationsByType)
-
-	x, err := stats.ToService()
-	assert.Nil(x)
-	assert.EqualError(err, "(*APIEventStats) ToService not implemented")
-	assert.Implements((*Model)(nil), &stats)
 }
 
 func TestNotificationStats(t *testing.T) {
@@ -41,9 +35,7 @@ func TestNotificationStats(t *testing.T) {
 	}
 
 	stats := apiNotificationStats{}
-	assert.Error(stats.BuildFromService(5))
-	assert.Error(stats.BuildFromService(nstats))
-	assert.NoError(stats.BuildFromService(&nstats))
+	stats.BuildFromService(nstats)
 
 	// all fields should be 1
 	v = reflect.ValueOf(&stats).Elem()
@@ -51,9 +43,4 @@ func TestNotificationStats(t *testing.T) {
 		f := v.Field(i)
 		assert.Equal(1, int(f.Int()))
 	}
-
-	x, err := stats.ToService()
-	assert.Nil(x)
-	assert.Error(err)
-	assert.Implements((*Model)(nil), &stats)
 }

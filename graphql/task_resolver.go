@@ -505,9 +505,7 @@ func (r *taskResolver) VersionMetadata(ctx context.Context, obj *restModel.APITa
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find version with id: `%s`", *obj.Version))
 	}
 	apiVersion := &restModel.APIVersion{}
-	if err = apiVersion.BuildFromService(v); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert version: %s to APIVersion", v.Id))
-	}
+	apiVersion.BuildFromService(*v)
 	return apiVersion, nil
 }
 

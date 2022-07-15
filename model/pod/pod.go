@@ -402,6 +402,21 @@ func (v WindowsVersion) Validate() error {
 	}
 }
 
+// Matches returns whether or not the pod Windows Version matches the given
+// Evergreen ECS config Windows version.
+func (v WindowsVersion) Matches(other evergreen.ECSWindowsVersion) bool {
+	switch v {
+	case WindowsVersionServer2016:
+		return other == evergreen.ECSWindowsServer2016
+	case WindowsVersionServer2019:
+		return other == evergreen.ECSWindowsServer2019
+	case WindowsVersionServer2022:
+		return other == evergreen.ECSWindowsServer2022
+	default:
+		return false
+	}
+}
+
 // ImportWindowsVersion converts the container Windows version into its
 // equivalent pod Windows version.
 func ImportWindowsVersion(winVer evergreen.WindowsVersion) (WindowsVersion, error) {

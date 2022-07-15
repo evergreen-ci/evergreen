@@ -3,10 +3,9 @@ package model
 import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/utility"
-	"github.com/pkg/errors"
 )
 
-type CreateHost struct {
+type APICreateHost struct {
 	DNSName    *string `json:"dns_name,omitempty"`
 	IP         *string `json:"ip_address,omitempty"`
 	IPv4       *string `json:"ipv4_address,omitempty"`
@@ -19,50 +18,22 @@ type CreateHost struct {
 	PortBindings host.PortMap `json:"port_bindings,omitempty"`
 }
 
-func (createHost *CreateHost) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case host.Host:
-		createHost.DNSName = utility.ToStringPtr(v.Host)
-		createHost.IP = utility.ToStringPtr(v.IP)
-		createHost.IPv4 = utility.ToStringPtr(v.IPv4)
+func (createHost *APICreateHost) BuildFromService(h host.Host) {
+	createHost.DNSName = utility.ToStringPtr(h.Host)
+	createHost.IP = utility.ToStringPtr(h.IP)
+	createHost.IPv4 = utility.ToStringPtr(h.IPv4)
 
-		// container
-		if v.ParentID != "" {
-			createHost.HostID = utility.ToStringPtr(v.Id)
-			createHost.ParentID = utility.ToStringPtr(v.ParentID)
-			createHost.Image = utility.ToStringPtr(v.DockerOptions.Image)
-			createHost.Command = utility.ToStringPtr(v.DockerOptions.Command)
-			createHost.PortBindings = v.PortBindings
-			return nil
-		}
-		createHost.InstanceID = utility.ToStringPtr(v.Id)
-		if v.ExternalIdentifier != "" {
-			createHost.InstanceID = utility.ToStringPtr(v.ExternalIdentifier)
-		}
-	case *host.Host:
-		createHost.DNSName = utility.ToStringPtr(v.Host)
-		createHost.IP = utility.ToStringPtr(v.IP)
-		createHost.IPv4 = utility.ToStringPtr(v.IPv4)
-
-		// container
-		if v.ParentID != "" {
-			createHost.HostID = utility.ToStringPtr(v.Id)
-			createHost.ParentID = utility.ToStringPtr(v.ParentID)
-			createHost.Image = utility.ToStringPtr(v.DockerOptions.Image)
-			createHost.Command = utility.ToStringPtr(v.DockerOptions.Command)
-			createHost.PortBindings = v.PortBindings
-			return nil
-		}
-		createHost.InstanceID = utility.ToStringPtr(v.Id)
-		if v.ExternalIdentifier != "" {
-			createHost.InstanceID = utility.ToStringPtr(v.ExternalIdentifier)
-		}
-	default:
-		return errors.Errorf("programmatic error: expected create host options but got type %T", h)
+	// container
+	if h.ParentID != "" {
+		createHost.HostID = utility.ToStringPtr(h.Id)
+		createHost.ParentID = utility.ToStringPtr(h.ParentID)
+		createHost.Image = utility.ToStringPtr(h.DockerOptions.Image)
+		createHost.Command = utility.ToStringPtr(h.DockerOptions.Command)
+		createHost.PortBindings = h.PortBindings
+		return
 	}
-	return nil
-}
-
-func (createHost *CreateHost) ToService() (interface{}, error) {
-	return nil, errors.Errorf("ToService() is not implemented for CreateHost")
+	createHost.InstanceID = utility.ToStringPtr(h.Id)
+	if h.ExternalIdentifier != "" {
+		createHost.InstanceID = utility.ToStringPtr(h.ExternalIdentifier)
+	}
 }

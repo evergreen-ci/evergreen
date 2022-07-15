@@ -279,8 +279,6 @@ func (s3pc *s3put) Execute(ctx context.Context,
 	if err := s3pc.createPailBucket(httpClient); err != nil {
 		return errors.Wrap(err, "problem connecting to s3")
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	if err := s3pc.bucket.Check(ctx); err != nil {
 		return errors.Wrap(err, "invalid bucket")

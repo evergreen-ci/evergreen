@@ -40,7 +40,7 @@ func TestVersionBuildFromService(t *testing.T) {
 			BuildId:      bi2,
 		},
 	}
-	v := &model.Version{
+	v := model.Version{
 		Id:            versionId,
 		CreateTime:    time,
 		StartTime:     time,
@@ -58,8 +58,7 @@ func TestVersionBuildFromService(t *testing.T) {
 
 	apiVersion := &APIVersion{}
 	// BuildFromService should complete without error
-	err := apiVersion.BuildFromService(v)
-	assert.Nil(err)
+	apiVersion.BuildFromService(v)
 	// Each field should be as expected
 	assert.Equal(apiVersion.Id, utility.ToStringPtr(versionId))
 	assert.Equal(*apiVersion.CreateTime, time)
@@ -79,12 +78,4 @@ func TestVersionBuildFromService(t *testing.T) {
 	assert.Equal(bvs[0].BuildId, utility.ToStringPtr(bi1))
 	assert.Equal(bvs[1].BuildVariant, utility.ToStringPtr(bv2))
 	assert.Equal(bvs[1].BuildId, utility.ToStringPtr(bi2))
-}
-
-func TestVersionToService(t *testing.T) {
-	assert := assert.New(t)
-	apiVersion := &APIVersion{}
-	v, err := apiVersion.ToService()
-	assert.Nil(v)
-	assert.Error(err)
 }

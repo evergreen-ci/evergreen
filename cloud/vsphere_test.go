@@ -211,7 +211,7 @@ func (s *VSphereSuite) TestSpawnInvalidSettings() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s.hostOpts.Distro = distro.Distro{Provider: evergreen.ProviderNameEc2Auto}
+	s.hostOpts.Distro = distro.Distro{Provider: evergreen.ProviderNameEc2Fleet}
 	h := host.NewIntent(s.hostOpts)
 	s.NotNil(h)
 	h, err := s.manager.SpawnHost(ctx, h)

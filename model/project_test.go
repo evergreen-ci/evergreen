@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	yaml "gopkg.in/20210107192922/yaml.v3"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -22,7 +24,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
-	"gopkg.in/yaml.v3"
 )
 
 func init() {
