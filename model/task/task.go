@@ -2513,23 +2513,23 @@ func ArchiveMany(tasks []Task) error {
 	if len(tasks) == 0 {
 		return nil
 	}
-	// add execution tasks of display tasks passed in, if they are not there
-	execTaskMap := map[string]bool{}
+	existingTasksMap := map[string]bool{}
 	for _, t := range tasks {
-		execTaskMap[t.Id] = true
+		existingTasksMap[t.Id] = true
 	}
 	additionalTasks := []string{}
 	for _, t := range tasks {
-		// for any display tasks here, make sure that we archive all their execution tasks
+		// For any display tasks here, make sure that we also archive all their execution tasks.
+		// Consider each execution tasks individually, so we don't query a task we already passed in.
 		for _, et := range t.ExecutionTasks {
-			if !execTaskMap[et] {
-				additionalTasks = append(additionalTasks, t.ExecutionTasks...)
-				continue
+			if !existingTasksMap[et] {
+				additionalTasks = append(additionalTasks, et)
+				existingTasksMap[et] = true
 			}
 		}
 	}
 	if len(additionalTasks) > 0 {
-		toAdd, err := FindAll(db.Query(ByIds((additionalTasks))))
+		toAdd, err := FindAll(db.Query(ByIds(additionalTasks)))
 		if err != nil {
 			return errors.Wrap(err, "finding execution tasks")
 		}
@@ -2542,6 +2542,11 @@ func ArchiveMany(tasks []Task) error {
 		archived = append(archived, *t.makeArchivedTask())
 		taskIds = append(taskIds, t.Id)
 	}
+	grip.DebugWhen(len(utility.UniqueStrings(taskIds)) != len(taskIds), message.Fields{
+		"ticket":           "EVG-17261",
+		"message":          "archiving same task multiple times",
+		"tasks_to_archive": taskIds,
+	})
 
 	mongoClient := evergreen.GetEnvironment().Client()
 	ctx, cancel := evergreen.GetEnvironment().Context()
