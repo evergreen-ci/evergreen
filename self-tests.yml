@@ -611,6 +611,7 @@ buildvariants:
     tasks:
       - name: "dist-and-upload-clis"
       - name: "dist-staging"
+      - name: "dist-unsigned"
       - name: ".smoke"
       - name: ".test"
       - name: "js-test"
