@@ -396,6 +396,7 @@ func (s *taskSuite) TestAllTriggers() {
 }
 
 func (s *taskSuite) TestAbortedTaskDoesNotNotify() {
+	s.NoError(db.CreateCollections(task.OldCollection))
 	n, err := NotificationsFromEvent(&s.event)
 	s.NoError(err)
 	s.NotEmpty(n)
@@ -855,6 +856,7 @@ func (s *taskSuite) TestRegressionByTestWithTestChanges() {
 
 func (s *taskSuite) TestRegressionByTestWithReruns() {
 	s.NoError(db.ClearCollections(task.Collection, testresult.Collection))
+	s.NoError(db.CreateCollections(task.Collection, task.OldCollection))
 
 	// insert a couple of successful tasks
 	s.makeTask(17, evergreen.TaskSucceeded)
