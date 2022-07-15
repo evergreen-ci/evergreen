@@ -267,6 +267,7 @@ func TestFindTasksByBuildIdAndGithubChecks(t *testing.T) {
 func TestFindOneIdAndExecutionWithDisplayStatus(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection, OldCollection))
+	assert.NoError(db.CreateCollections(Collection, OldCollection))
 	taskDoc := Task{
 		Id:        "task",
 		Status:    evergreen.TaskUndispatched,
@@ -310,6 +311,7 @@ func TestFindOneIdAndExecutionWithDisplayStatus(t *testing.T) {
 func TestFindOldTasksByID(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection, OldCollection))
+	assert.NoError(db.CreateCollections(Collection, OldCollection))
 
 	taskDoc := Task{
 		Id: "task",
