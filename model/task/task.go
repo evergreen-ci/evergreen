@@ -2545,6 +2545,7 @@ func archiveAll(tasksIds []string, toUpdateTaskIds []string, toArchive []interfa
 	defer session.EndSession(ctx)
 
 	txFunc := func(sessCtx mongo.SessionContext) (interface{}, error) {
+		var err error
 		if len(toArchive) > 0 {
 			oldTaskColl := evergreen.GetEnvironment().DB().Collection(OldCollection)
 			_, err = oldTaskColl.InsertMany(sessCtx, toArchive)
@@ -2602,8 +2603,6 @@ func archiveAll(tasksIds []string, toUpdateTaskIds []string, toArchive []interfa
 	}
 
 	// TODO (EVG-17322): Remove Create Collection calls
-	err = evergreen.GetEnvironment().DB().CreateCollection(ctx, OldCollection)
-	err = evergreen.GetEnvironment().DB().CreateCollection(ctx, Collection)
 	_, err = session.WithTransaction(ctx, txFunc)
 
 	return errors.Wrap(err, "archiving execution tasks and updating execution tasks")
