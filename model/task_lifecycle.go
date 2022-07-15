@@ -1667,7 +1667,7 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 		timeTaken += execTask.TimeTaken
 
 		// set the start/end time of the display task as the earliest/latest task
-		if execTask.StartTime.Before(startTime) {
+		if !utility.IsZeroTime(execTask.StartTime) && execTask.StartTime.Before(startTime) {
 			startTime = execTask.StartTime
 		}
 		if execTask.FinishTime.After(endTime) {
@@ -1781,19 +1781,13 @@ func checkResetDisplayTask(t *task.Task) error {
 		}
 	}
 	details := &t.Details
-	if details == nil && !t.IsFinished() {
+	// Assign task end details to indicate system failure if we receive no valid details
+	if details.IsEmpty() && !t.IsFinished() {
 		details = &apimodels.TaskEndDetail{
 			Type:   evergreen.CommandTypeSystem,
 			Status: evergreen.TaskFailed,
 		}
 	}
-	grip.DebugWhen(details.Status == "", message.Fields{
-		"message":   "resetting display task",
-		"task_id":   t.Id,
-		"execution": t.Execution,
-		"project":   t.Project,
-		"details":   details,
-	})
 	return errors.Wrap(TryResetTask(t.Id, evergreen.User, evergreen.User, details), "resetting display task")
 }
 

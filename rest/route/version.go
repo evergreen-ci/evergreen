@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -56,11 +57,60 @@ func (vh *versionHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	versionModel := &model.APIVersion{}
-
-	if err = versionModel.BuildFromService(foundVersion); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting version '%s' to API model", foundVersion.Id))
-	}
+	versionModel.BuildFromService(*foundVersion)
 	return gimlet.NewJSONResponse(versionModel)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// PATCH /rest/v2/versions/{version_id}
+
+type versionPatchHandler struct {
+	Activated *bool `json:"activated"`
+
+	versionId string
+}
+
+func makePatchVersion() gimlet.RouteHandler {
+	return &versionPatchHandler{}
+}
+
+func (vh *versionPatchHandler) Factory() gimlet.RouteHandler {
+	return &versionPatchHandler{}
+}
+
+// Parse fetches the versionId from the http request.
+func (vh *versionPatchHandler) Parse(ctx context.Context, r *http.Request) error {
+	if err := utility.ReadJSON(r.Body, vh); err != nil {
+		return errors.Wrap(err, "reading body")
+	}
+	if vh.Activated == nil {
+		return gimlet.ErrorResponse{
+			Message:    "Must set 'activated'",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	vh.versionId = gimlet.GetVars(r)["version_id"]
+	if vh.versionId == "" {
+		return errors.New("missing version id")
+	}
+	return nil
+}
+
+// Run calls the data model.SetVersionActivation function
+func (vh *versionPatchHandler) Run(ctx context.Context) gimlet.Responder {
+	u := MustHaveUser(ctx)
+	if err := dbModel.SetVersionActivation(vh.versionId, utility.FromBoolPtr(vh.Activated), u.Id); err != nil {
+		state := "inactive"
+		if utility.FromBoolPtr(vh.Activated) {
+			state = "active"
+		}
+		return gimlet.MakeJSONErrorResponder(
+			errors.Wrapf(err, "marking version '%v' as '%v'", vh.versionId, state),
+		)
+	}
+	return gimlet.NewJSONResponse(struct{}{})
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -127,11 +177,7 @@ func (h *buildsForVersionHandler) Run(ctx context.Context) gimlet.Responder {
 			})
 		}
 		buildModel := model.APIBuild{}
-		err = buildModel.BuildFromService(*foundBuild)
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting build '%s' to API model", foundBuild.Id))
-		}
-
+		buildModel.BuildFromService(*foundBuild)
 		buildModels = append(buildModels, buildModel)
 	}
 	return gimlet.NewJSONResponse(buildModels)
@@ -185,10 +231,7 @@ func (h *versionAbortHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	versionModel := &model.APIVersion{}
-	if err = versionModel.BuildFromService(foundVersion); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting version '%s' to API model", foundVersion.Id))
-	}
-
+	versionModel.BuildFromService(*foundVersion)
 	return gimlet.NewJSONResponse(versionModel)
 }
 
@@ -239,10 +282,6 @@ func (h *versionRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	versionModel := &model.APIVersion{}
-	err = versionModel.BuildFromService(foundVersion)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting version '%s' to API model", foundVersion.Id))
-	}
-
+	versionModel.BuildFromService(*foundVersion)
 	return gimlet.NewJSONResponse(versionModel)
 }

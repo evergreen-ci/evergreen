@@ -995,6 +995,37 @@ func (t *Task) cacheExpectedDuration() error {
 	)
 }
 
+// MarkAsContainerDispatched marks that the container task has been dispatched
+// to a pod.
+func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Environment, agentVersion string) error {
+	dispatchedAt := time.Now()
+	query := isContainerTaskScheduledQuery()
+	query[StatusKey] = evergreen.TaskUndispatched
+	query[ContainerAllocatedKey] = true
+	update := bson.M{
+		"$set": bson.M{
+			StatusKey:        evergreen.TaskDispatched,
+			DispatchTimeKey:  dispatchedAt,
+			LastHeartbeatKey: dispatchedAt,
+			AgentVersionKey:  agentVersion,
+		},
+	}
+	res, err := env.DB().Collection(Collection).UpdateOne(ctx, query, update)
+	if err != nil {
+		return errors.Wrap(err, "updating task")
+	}
+	if res.ModifiedCount == 0 {
+		return errors.New("task was not updated")
+	}
+
+	t.Status = evergreen.TaskDispatched
+	t.DispatchTime = dispatchedAt
+	t.LastHeartbeat = dispatchedAt
+	t.AgentVersion = agentVersion
+
+	return nil
+}
+
 // MarkAsHostDispatched marks that the task has been dispatched onto a
 // particular host. If the task is part of a display task, the display task is
 // also marked as dispatched to a host. Returns an error if any of the database
@@ -1156,37 +1187,6 @@ func MarkTasksAsContainerDeallocated(taskIDs []string) error {
 	}, containerDeallocatedUpdate()); err != nil {
 		return errors.Wrap(err, "updating tasks")
 	}
-
-	return nil
-}
-
-// MarkAsContainerDispatched marks that the container task has been dispatched
-// to a pod.
-func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Environment, agentVersion string) error {
-	dispatchedAt := time.Now()
-	query := isContainerTaskScheduledQuery()
-	query[StatusKey] = evergreen.TaskUndispatched
-	query[ContainerAllocatedKey] = true
-	update := bson.M{
-		"$set": bson.M{
-			StatusKey:        evergreen.TaskDispatched,
-			DispatchTimeKey:  dispatchedAt,
-			LastHeartbeatKey: dispatchedAt,
-			AgentVersionKey:  agentVersion,
-		},
-	}
-	res, err := env.DB().Collection(Collection).UpdateOne(ctx, query, update)
-	if err != nil {
-		return errors.Wrap(err, "updating task")
-	}
-	if res.ModifiedCount == 0 {
-		return errors.New("task was not updated")
-	}
-
-	t.Status = evergreen.TaskDispatched
-	t.DispatchTime = dispatchedAt
-	t.LastHeartbeat = dispatchedAt
-	t.AgentVersion = agentVersion
 
 	return nil
 }
@@ -1838,7 +1838,7 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 		"project":   t.Project,
 		"details":   t.Details,
 	})
-	if detail.Status == "" {
+	if detail.IsEmpty() {
 		grip.Debug(message.Fields{
 			"message":   "detail status was empty, setting to failed",
 			"task_id":   t.Id,
@@ -1882,7 +1882,7 @@ func (t *Task) GetDisplayStatus() string {
 		if !t.Activated {
 			return evergreen.TaskUnscheduled
 		}
-		if t.Blocked() && !t.OverrideDependencies {
+		if t.Blocked() {
 			return evergreen.TaskStatusBlocked
 		}
 		return evergreen.TaskWillRun
@@ -2346,7 +2346,7 @@ func (t *Task) MarkUnscheduled() error {
 // and logs if the task is newly blocked.
 func (t *Task) MarkUnattainableDependency(dependencyId string, unattainable bool) error {
 	wasBlocked := t.Blocked()
-	// check all dependencies in case of erroneous duplicate
+	// Check all dependencies in case of erroneous duplicate
 	for i := range t.DependsOn {
 		if t.DependsOn[i].TaskId == dependencyId {
 			t.DependsOn[i].Unattainable = unattainable
@@ -2357,8 +2357,8 @@ func (t *Task) MarkUnattainableDependency(dependencyId string, unattainable bool
 		return err
 	}
 
-	// only want to log the task as blocked if it wasn't already blocked
-	if !wasBlocked && unattainable {
+	// Only want to log the task as blocked if it wasn't already blocked, and if we're not overriding dependencies.
+	if !wasBlocked && unattainable && !t.OverrideDependencies {
 		event.LogTaskBlocked(t.Id, t.Execution)
 	}
 	return nil
@@ -2506,19 +2506,6 @@ func (t *Task) Archive() error {
 		return errors.Wrap(err, "updating task")
 	}
 	t.Aborted = false
-
-	if t.IsHostTask() {
-		// Host event logs involving running a host task don't include the
-		// execution number but need it to distinguish which task execution it
-		// ran once the task is no longer the latest execution. This
-		// retroactively sets the task execution for event logs involving the
-		// host running this task so that it correctly identifies this archived
-		// execution.
-		err = event.UpdateHostTaskExecutions(t.HostId, t.Id, t.Execution)
-		if err != nil {
-			return errors.Wrap(err, "updating host event logs")
-		}
-	}
 	return nil
 }
 
@@ -2526,23 +2513,23 @@ func ArchiveMany(tasks []Task) error {
 	if len(tasks) == 0 {
 		return nil
 	}
-	// add execution tasks of display tasks passed in, if they are not there
-	execTaskMap := map[string]bool{}
+	existingTasksMap := map[string]bool{}
 	for _, t := range tasks {
-		execTaskMap[t.Id] = true
+		existingTasksMap[t.Id] = true
 	}
 	additionalTasks := []string{}
 	for _, t := range tasks {
-		// for any display tasks here, make sure that we archive all their execution tasks
+		// For any display tasks here, make sure that we also archive all their execution tasks.
+		// Consider each execution tasks individually, so we don't query a task we already passed in.
 		for _, et := range t.ExecutionTasks {
-			if !execTaskMap[et] {
-				additionalTasks = append(additionalTasks, t.ExecutionTasks...)
-				continue
+			if !existingTasksMap[et] {
+				additionalTasks = append(additionalTasks, et)
+				existingTasksMap[et] = true
 			}
 		}
 	}
 	if len(additionalTasks) > 0 {
-		toAdd, err := FindAll(db.Query(ByIds((additionalTasks))))
+		toAdd, err := FindAll(db.Query(ByIds(additionalTasks)))
 		if err != nil {
 			return errors.Wrap(err, "finding execution tasks")
 		}
@@ -2555,6 +2542,11 @@ func ArchiveMany(tasks []Task) error {
 		archived = append(archived, *t.makeArchivedTask())
 		taskIds = append(taskIds, t.Id)
 	}
+	grip.DebugWhen(len(utility.UniqueStrings(taskIds)) != len(taskIds), message.Fields{
+		"ticket":           "EVG-17261",
+		"message":          "archiving same task multiple times",
+		"tasks_to_archive": taskIds,
+	})
 
 	mongoClient := evergreen.GetEnvironment().Client()
 	ctx, cancel := evergreen.GetEnvironment().Context()
@@ -2594,24 +2586,7 @@ func ArchiveMany(tasks []Task) error {
 	}
 
 	_, err = session.WithTransaction(ctx, txFunc)
-	if err != nil {
-		return errors.Wrap(err, "archiving tasks")
-	}
-
-	eventLogErrs := grip.NewBasicCatcher()
-	for _, t := range tasks {
-		if t.IsHostTask() {
-			// Host event logs involving running a host task don't include the
-			// execution number but need it to distinguish which task execution
-			// it ran once the task is no longer the latest execution. This
-			// retroactively sets the task execution for event logs involving
-			// the host running this task so that it correctly identifies this
-			// archived execution.
-			eventLogErrs.Wrapf(event.UpdateHostTaskExecutions(t.HostId, t.Id, t.Execution), "updating execution %d of task '%s' for host '%s'", t.Execution, t.Id, t.HostId)
-		}
-	}
-
-	return eventLogErrs.Resolve()
+	return errors.Wrap(err, "archiving tasks")
 }
 
 func (t *Task) makeArchivedTask() *Task {
@@ -3324,6 +3299,9 @@ func (t *Task) GetJQL(searchProjects []string) string {
 
 // Blocked returns if a task cannot run given the state of the task
 func (t *Task) Blocked() bool {
+	if t.OverrideDependencies {
+		return false
+	}
 	for _, dependency := range t.DependsOn {
 		if dependency.Unattainable {
 			return true

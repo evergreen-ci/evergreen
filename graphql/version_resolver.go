@@ -50,9 +50,7 @@ func (r *versionResolver) BaseVersion(ctx context.Context, obj *restModel.APIVer
 		return nil, nil
 	}
 	apiVersion := restModel.APIVersion{}
-	if err = apiVersion.BuildFromService(baseVersion); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIVersion from service for `%s`: %s", baseVersion.Id, err.Error()))
-	}
+	apiVersion.BuildFromService(*baseVersion)
 	return &apiVersion, nil
 }
 
@@ -193,9 +191,7 @@ func (r *versionResolver) PreviousVersion(ctx context.Context, obj *restModel.AP
 			return nil, nil
 		}
 		apiVersion := restModel.APIVersion{}
-		if err = apiVersion.BuildFromService(previousVersion); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIVersion from service for `%s`: %s", previousVersion.Id, err.Error()))
-		}
+		apiVersion.BuildFromService(*previousVersion)
 		return &apiVersion, nil
 	} else {
 		return nil, nil
@@ -232,29 +228,6 @@ func (r *versionResolver) TaskCount(ctx context.Context, obj *restModel.APIVersi
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting task count for version `%s`: %s", *obj.Id, err.Error()))
 	}
 	return &taskCount, nil
-}
-
-func (r *versionResolver) TaskStatusCounts(ctx context.Context, obj *restModel.APIVersion, options *BuildVariantOptions) ([]*task.StatusCount, error) {
-	opts := task.GetTasksByVersionOptions{
-		IncludeBaseTasks:      false,
-		IncludeExecutionTasks: false,
-		TaskNames:             options.Tasks,
-		Variants:              options.Variants,
-		Statuses:              getValidTaskStatusesFilter(options.Statuses),
-	}
-	if len(options.Variants) != 0 {
-		opts.IncludeBuildVariantDisplayName = true // we only need the buildVariantDisplayName if we plan on filtering on it.
-	}
-	stats, err := task.GetTaskStatsByVersion(*obj.Id, opts)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version task stats: %s", err.Error()))
-	}
-	result := []*task.StatusCount{}
-	for _, c := range stats.Counts {
-		count := c
-		result = append(result, &count)
-	}
-	return result, nil
 }
 
 func (r *versionResolver) TaskStatuses(ctx context.Context, obj *restModel.APIVersion) ([]string, error) {
@@ -338,14 +311,12 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding upstream version %s: '%s'", *obj.Id, err.Error()))
 		}
-		if v == nil {
+		if upstreamVersion == nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("upstream version %s not found", *obj.Id))
 		}
 
 		apiVersion := restModel.APIVersion{}
-		if err = apiVersion.BuildFromService(upstreamVersion); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIVersion from service for `%s`: %s", upstreamVersion.Id, err.Error()))
-		}
+		apiVersion.BuildFromService(*upstreamVersion)
 
 		projectID = upstreamVersion.Identifier
 		upstreamProject = &UpstreamProject{

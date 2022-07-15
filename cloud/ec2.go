@@ -222,7 +222,6 @@ type ec2ProviderType int
 const (
 	onDemandProvider ec2ProviderType = iota
 	spotProvider
-	autoProvider
 )
 
 const (
@@ -612,8 +611,7 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 // SpawnHost spawns a new host.
 func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, error) {
 	if h.Distro.Provider != evergreen.ProviderNameEc2OnDemand &&
-		h.Distro.Provider != evergreen.ProviderNameEc2Spot &&
-		h.Distro.Provider != evergreen.ProviderNameEc2Auto {
+		h.Distro.Provider != evergreen.ProviderNameEc2Spot {
 		return nil, errors.Errorf("Can't spawn instance for distro %s: provider is %s",
 			h.Distro.Id, h.Distro.Provider)
 	}
@@ -1691,4 +1689,16 @@ func (m *ec2Manager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) e
 	defer m.client.Close()
 
 	return errors.Wrap(addSSHKey(ctx, m.client, pair), "could not add SSH key")
+}
+
+func (m *ec2Manager) getProvider(ctx context.Context, h *host.Host, ec2settings *EC2ProviderSettings) (ec2ProviderType, error) {
+	if h.UserHost || m.provider == onDemandProvider {
+		h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
+		return onDemandProvider, nil
+	}
+	if m.provider == spotProvider {
+		h.Distro.Provider = evergreen.ProviderNameEc2Spot
+		return spotProvider, nil
+	}
+	return 0, errors.Errorf("provider is %d, expected %d or %d", m.provider, onDemandProvider, spotProvider)
 }

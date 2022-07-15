@@ -282,15 +282,25 @@ func MockConfig() *evergreen.Settings {
 						},
 						Clusters: []evergreen.ECSClusterConfig{
 							{
-								Name: "cluster_name",
+								Name: "linux_cluster_name",
+								OS:   evergreen.ECSOSLinux,
+							},
+							{
+								Name: "windows_cluster_name",
 								OS:   evergreen.ECSOSLinux,
 							},
 						},
 						CapacityProviders: []evergreen.ECSCapacityProvider{
 							{
-								Name: "capacity_provider_name",
+								Name: "linux_capacity_provider_name",
 								OS:   evergreen.ECSOSLinux,
 								Arch: evergreen.ECSArchAMD64,
+							},
+							{
+								Name:           "windows_capacity_provider_name",
+								OS:             evergreen.ECSOSWindows,
+								Arch:           evergreen.ECSArchAMD64,
+								WindowsVersion: evergreen.ECSWindowsServer2022,
 							},
 						},
 					},

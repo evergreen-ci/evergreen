@@ -26,10 +26,8 @@ func TestArtifactModels(t *testing.T) {
 		},
 	}
 	apiEntry := APIEntry{}
-	err := apiEntry.BuildFromService(entry)
-	assert.NoError(err)
+	apiEntry.BuildFromService(entry)
 
-	origEntry, err := apiEntry.ToService()
-	assert.NoError(err)
+	origEntry := apiEntry.ToService()
 	assert.EqualValues(entry, origEntry)
 }

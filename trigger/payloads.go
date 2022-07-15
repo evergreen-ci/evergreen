@@ -189,6 +189,26 @@ const emailTaskFailTemplate = `
           </span>
         </td>
       </tr>
+      <tr>
+	     <td colspan="2"><span style="font-family:Arial,sans-serif;font-weight:bold;font-size:10px;color:#999999" class="label">SUBSCRIPTION ID</span></td>
+	  </tr>
+      <tr>
+        <td colspan="2">
+          <span style="font-family:Arial,sans-serif;font-weight:bold;font-size:36px;color:#333333" class="subscription">
+            {{ .SubscriptionID }}
+          </span>
+        </td>
+      </tr>
+      <tr>
+	     <td colspan="2"><span style="font-family:Arial,sans-serif;font-weight:bold;font-size:10px;color:#999999" class="label">EVENT ID</span></td>
+	  </tr>
+      <tr>
+        <td colspan="2">
+          <span style="font-family:Arial,sans-serif;font-weight:bold;font-size:36px;color:#333333" class="event">
+            {{ .EventID }}
+          </span>
+        </td>
+      </tr>
     </table>
   </td>
   <td width="20"></td>
@@ -203,6 +223,8 @@ const emailDefaultContentTemplateString = `{{ define "content"}}
 
 <p>Your Evergreen {{ .Object }} in '{{ .Project }}' <a href="{{ .URL }}">{{ .DisplayName }}</a> has {{ .PastTenseStatus }}.</p>
 <p>{{ .Description }}</p>
+
+<p>Subscription: {{ .SubscriptionID }}; Event: {{ .EventID }} </p>
 {{ end }}`
 
 var emailDefaultContentTemplate = template.Must(template.New("content").Parse(emailDefaultContentTemplateString))

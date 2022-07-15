@@ -25,7 +25,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
-	yaml "gopkg.in/yaml.v3"
+	yaml "gopkg.in/20210107192922/yaml.v3"
 )
 
 var (
@@ -33,10 +33,10 @@ var (
 	BuildRevision = ""
 
 	// Commandline Version String; used to control auto-updating.
-	ClientVersion = "2022-06-07"
+	ClientVersion = "2022-07-06"
 
 	// Agent version to control agent rollover.
-	AgentVersion = "2022-06-29"
+	AgentVersion = "2022-07-14"
 )
 
 // ConfigSection defines a sub-document in the evergreen config

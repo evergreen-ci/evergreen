@@ -25,7 +25,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v3"
+	yaml "gopkg.in/20210107192922/yaml.v3"
 )
 
 const (
@@ -301,46 +301,8 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		return err
 	}
 
-	if j.intent.ReusePreviousPatchDefinition() {
-		patchDoc.VariantsTasks, err = j.getPreviousPatchDefinition(project, false)
-		if err != nil {
-			return err
-		}
-	}
-
-	if j.intent.RepeatFailedTasksAndVariants() {
-		patchDoc.VariantsTasks, err = j.getPreviousPatchDefinition(project, true)
-		if err != nil {
-			return err
-		}
-	}
-
-	// verify that all variants exists
-	for _, buildVariant := range patchDoc.BuildVariants {
-		if buildVariant == "all" || buildVariant == "" {
-			continue
-		}
-		bv := project.FindBuildVariant(buildVariant)
-		if bv == nil {
-			return errors.Errorf("no such buildvariant matching '%s'", buildVariant)
-		}
-	}
-
-	for _, bv := range patchDoc.RegexBuildVariants {
-		_, err := regexp.Compile(bv)
-		if err != nil {
-			return errors.Wrapf(err, "compiling buildvariant regex '%s'", bv)
-		}
-	}
-	for _, t := range patchDoc.RegexTasks {
-		_, err := regexp.Compile(t)
-		if err != nil {
-			return errors.Wrapf(err, "compiling task regex '%s'", t)
-		}
-	}
-
-	if len(patchDoc.VariantsTasks) == 0 {
-		project.BuildProjectTVPairs(patchDoc, j.intent.GetAlias())
+	if err = j.buildTasksandVariants(patchDoc, project); err != nil {
+		return err
 	}
 
 	if (j.intent.ShouldFinalizePatch() || patchDoc.IsCommitQueuePatch()) &&
@@ -488,73 +450,107 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	return catcher.Resolve()
 }
 
-func (j *patchIntentProcessor) getPreviousPatchDefinition(project *model.Project, failedOnly bool) ([]patch.VariantTasks, error) {
-	previousPatch, err := patch.FindOne(patch.MostRecentPatchByUserAndProject(j.user.Username(), project.Identifier))
-	if err != nil {
-		return nil, errors.Wrap(err, "error querying for most recent patch")
-	}
-	if previousPatch == nil {
-		return nil, errors.Errorf("no previous patch available")
-	}
-	var res []patch.VariantTasks
-	if failedOnly && !(previousPatch.Status == evergreen.PatchFailed) {
-		return res, nil
-	}
-	for _, vt := range previousPatch.VariantsTasks {
-		tasksInProjectVariant := project.FindTasksForVariant(vt.Variant)
-		displayTasksInProjectVariant := project.FindDisplayTasksForVariant(vt.Variant)
-		var displayTasks []patch.DisplayTask
-		var tasks []string
-		if failedOnly {
-			tasks, displayTasks, err = getPreviousFailedTasksAndDisplayTasks(tasksInProjectVariant, displayTasksInProjectVariant, vt, previousPatch.Version)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			tasks, displayTasks = getPreviousTasksAndDisplayTasks(tasksInProjectVariant, displayTasksInProjectVariant, vt)
-		}
-		if len(tasks)+len(displayTasks) > 0 {
-			res = append(res, patch.VariantTasks{
-				Variant:      vt.Variant,
-				Tasks:        tasks,
-				DisplayTasks: displayTasks,
-			})
+func (j *patchIntentProcessor) buildTasksandVariants(patchDoc *patch.Patch, project *model.Project) error {
+	var previousPatchStatus string
+	var err error
+
+	failedOnly := j.intent.RepeatFailedTasksAndVariants()
+
+	if j.intent.ReusePreviousPatchDefinition() || failedOnly {
+		previousPatchStatus, err = j.setToPreviousPatchDefinition(patchDoc, project, failedOnly)
+		if err != nil {
+			return err
 		}
 	}
-	return res, nil
+
+	// verify that all variants exists
+	for _, buildVariant := range patchDoc.BuildVariants {
+		if buildVariant == "all" || buildVariant == "" {
+			continue
+		}
+		bv := project.FindBuildVariant(buildVariant)
+		if bv == nil {
+			return errors.Errorf("no such buildvariant matching '%s'", buildVariant)
+		}
+	}
+
+	for _, bv := range patchDoc.RegexBuildVariants {
+		_, err := regexp.Compile(bv)
+		if err != nil {
+			return errors.Wrapf(err, "compiling buildvariant regex '%s'", bv)
+		}
+	}
+	for _, t := range patchDoc.RegexTasks {
+		_, err := regexp.Compile(t)
+		if err != nil {
+			return errors.Wrapf(err, "compiling task regex '%s'", t)
+		}
+	}
+
+	// If the user only wants failed tasks but the previous patch has no failed tasks, there is nothing to build
+	skipForFailed := failedOnly && previousPatchStatus != evergreen.PatchFailed
+
+	if len(patchDoc.VariantsTasks) == 0 && !skipForFailed {
+		project.BuildProjectTVPairs(patchDoc, j.intent.GetAlias())
+	}
+	return nil
 }
 
-func getPreviousFailedTasksAndDisplayTasks(tasksInProjectVariant []string, displayTasksInProjectVariant []string, vt patch.VariantTasks, version string) ([]string, []patch.DisplayTask, error) {
+func setTasksToPreviousFailed(patchDoc, previousPatch *patch.Patch, project *model.Project) error {
+	var failedTasks []string
+	for _, vt := range previousPatch.VariantsTasks {
+		tasksInProjectVariant := project.FindTasksForVariant(vt.Variant)
+		var tasks []string
+		tasks, err := getPreviousFailedTasksAndDisplayTasks(tasksInProjectVariant, vt, previousPatch.Version)
+		if err != nil {
+			return err
+		}
+		failedTasks = append(failedTasks, tasks...)
+	}
+
+	patchDoc.Tasks = failedTasks
+	return nil
+}
+
+func (j *patchIntentProcessor) setToPreviousPatchDefinition(patchDoc *patch.Patch, project *model.Project, failedOnly bool) (string, error) {
+	previousPatch, err := patch.FindOne(patch.MostRecentPatchByUserAndProject(j.user.Username(), project.Identifier))
+	if err != nil {
+		return "", errors.Wrap(err, "querying for most recent patch")
+	}
+	if previousPatch == nil {
+		return "", errors.Errorf("no previous patch available")
+	}
+
+	patchDoc.BuildVariants = previousPatch.BuildVariants
+
+	if failedOnly {
+		if err = setTasksToPreviousFailed(patchDoc, previousPatch, project); err != nil {
+			return "", errors.Wrap(err, "settings tasks to previous failed")
+		}
+
+	} else {
+		patchDoc.Tasks = previousPatch.Tasks
+	}
+
+	return previousPatch.Status, nil
+}
+
+func getPreviousFailedTasksAndDisplayTasks(tasksInProjectVariant []string, vt patch.VariantTasks, version string) ([]string, error) {
 	failedTasks, err := task.FindAll(db.Query(task.FailedTasksByVersionAndBV(version, vt.Variant)))
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "error querying for failed tasks from previous patch")
+		return nil, errors.Wrap(err, "error querying for failed tasks from previous patch")
 	}
 	failedExecutionTasks := []string{}
-	failedDisplayTasks := []string{}
 	for _, failedTask := range failedTasks {
-		if failedTask.DisplayOnly {
-			failedDisplayTasks = append(failedDisplayTasks, failedTask.DisplayName)
-		} else {
+		if !failedTask.DisplayOnly {
 			failedExecutionTasks = append(failedExecutionTasks, failedTask.DisplayName)
 		}
 	}
+	// We want to get the intersection of tasks that are in the current project definition and tasks that failed in the previous run.
 	failedExecutionTasks = utility.StringSliceIntersection(tasksInProjectVariant, failedExecutionTasks)
-	failedDisplayTasks = utility.StringSliceIntersection(displayTasksInProjectVariant, failedDisplayTasks)
 
-	tasks, displayTasks := getPreviousTasksAndDisplayTasks(failedExecutionTasks, failedDisplayTasks, vt)
-	return tasks, displayTasks, nil
-}
-
-func getPreviousTasksAndDisplayTasks(tasksInProjectVariant []string, displayTasksInProjectVariant []string, vt patch.VariantTasks) ([]string, []patch.DisplayTask) {
-	// We want the subset of vt.tasks that exist in tasksForVariant.
-	tasks := utility.StringSliceIntersection(tasksInProjectVariant, vt.Tasks)
-	var displayTasks []patch.DisplayTask
-	for _, dt := range vt.DisplayTasks {
-		if utility.StringSliceContains(displayTasksInProjectVariant, dt.Name) {
-			displayTasks = append(displayTasks, patch.DisplayTask{Name: dt.Name})
-		}
-	}
-	return tasks, displayTasks
+	tasks := utility.StringSliceIntersection(failedExecutionTasks, vt.Tasks)
+	return tasks, nil
 }
 
 func ProcessTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *model.ProjectRef, env evergreen.Environment, aliasNames []string) error {
@@ -573,7 +569,6 @@ func ProcessTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *mode
 		if !found {
 			return errors.Errorf("patch trigger alias '%s' is not defined", aliasName)
 		}
-
 		// group patches on project, status, parentAsModule
 		group := aliasGroup{
 			project:        alias.ChildProject,

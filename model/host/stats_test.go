@@ -17,7 +17,7 @@ func insertTestDocuments() error {
 			Status: evergreen.HostRunning,
 			Distro: distro.Distro{
 				Id:       "debian",
-				Provider: evergreen.ProviderNameEc2Auto,
+				Provider: evergreen.ProviderNameEc2Fleet,
 			},
 			RunningTask: "baz",
 			StartedBy:   evergreen.User,
@@ -27,7 +27,7 @@ func insertTestDocuments() error {
 			Status: evergreen.HostRunning,
 			Distro: distro.Distro{
 				Id:       "redhat",
-				Provider: evergreen.ProviderNameEc2Auto,
+				Provider: evergreen.ProviderNameEc2Fleet,
 			},
 			RunningTask: "bar",
 			StartedBy:   evergreen.User,
@@ -37,7 +37,7 @@ func insertTestDocuments() error {
 			Status: evergreen.HostRunning,
 			Distro: distro.Distro{
 				Id:       "debian",
-				Provider: evergreen.ProviderNameEc2Auto,
+				Provider: evergreen.ProviderNameEc2Fleet,
 			},
 			RunningTask: "foo-foo",
 			StartedBy:   evergreen.User,
@@ -56,7 +56,7 @@ func insertTestDocuments() error {
 			Status: evergreen.HostUninitialized,
 			Distro: distro.Distro{
 				Id:       "foo",
-				Provider: evergreen.ProviderNameEc2Auto,
+				Provider: evergreen.ProviderNameEc2Fleet,
 			},
 			StartedBy: evergreen.User,
 		},
@@ -98,7 +98,7 @@ func TestHostStatsByProvider(t *testing.T) {
 
 	rmap := result.Map()
 	assert.Equal(1, rmap[evergreen.ProviderNameEc2Spot])
-	assert.Equal(3, rmap[evergreen.ProviderNameEc2Auto])
+	assert.Equal(3, rmap[evergreen.ProviderNameEc2Fleet])
 
 	alt, err := GetProviderCounts()
 	assert.NoError(err)

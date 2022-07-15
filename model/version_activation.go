@@ -57,12 +57,6 @@ func ActivateElapsedBuildsAndTasks(v *Version) (bool, error) {
 
 		isElapsedBuild := bv.ShouldActivate(now)
 		if !isElapsedBuild && len(readyTasks) == 0 {
-			grip.Debug(message.Fields{
-				"message":          "not activating build",
-				"ignore_tasks":     ignoreTasks,
-				"is_elapsed_build": isElapsedBuild,
-				"build_variant":    bv.BuildId,
-			})
 			continue
 		}
 		hasActivated = true
@@ -149,7 +143,7 @@ func ActivateElapsedBuildsAndTasks(v *Version) (bool, error) {
 	// If any variants/tasks were activated, update the stored version so that we don't
 	// attempt to activate them again
 	if hasActivated {
-		if err := v.SetActivated(); err != nil {
+		if err := v.SetActivated(true); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"operation": "project-activation",
 				"message":   "problem activating version",

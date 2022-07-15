@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/pod/dispatcher"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
@@ -20,6 +20,7 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 )
 
@@ -68,7 +69,7 @@ func (h *podProvisioningScript) Run(ctx context.Context) gimlet.Responder {
 
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
-		gimlet.NewTextInternalErrorResponse(errors.Wrap(err, "getting service flags"))
+		return gimlet.NewTextInternalErrorResponse(errors.Wrap(err, "getting service flags"))
 	}
 
 	script := h.agentScript(p, !flags.S3BinaryDownloadsDisabled)
@@ -87,7 +88,18 @@ func (h *podProvisioningScript) agentScript(p *pod.Pod, downloadFromS3 bool) str
 	agentCmd := strings.Join(h.agentCommand(p), " ")
 	scriptCmds = append(scriptCmds, agentCmd)
 
-	return strings.Join(scriptCmds, " && ")
+	if p.TaskContainerCreationOpts.OS == pod.OSLinux {
+		return strings.Join(scriptCmds, " && ")
+	}
+
+	// This chains together the PowerShell commands so that they run in order,
+	// but they also run regardless of whether the previous command succeeded,
+	// which is undesirable. It would be preferable to use pipeline chaining
+	// operators instead (like bash's && and || operators) but they were not
+	// introduced until PowerShell 7. Users may not provide a sufficiently
+	// up-to-date version of PowerShell on their images to use these operators.
+	// Docs: https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_pipeline_chain_operators
+	return strings.Join(scriptCmds, "; ")
 }
 
 // agentCommand returns the arguments to start the agent in the pod's container.
@@ -104,7 +116,7 @@ func (h *podProvisioningScript) agentCommand(p *pod.Pod) []string {
 		"agent",
 		fmt.Sprintf("--api_server=%s", h.settings.ApiUrl),
 		"--mode=pod",
-		fmt.Sprintf("--log_prefix=%s", filepath.Join(p.TaskContainerCreationOpts.WorkingDir, "agent")),
+		fmt.Sprintf("--log_prefix=%s", strings.Join([]string{p.TaskContainerCreationOpts.WorkingDir, "agent"}, "/")),
 		fmt.Sprintf("--working_directory=%s", p.TaskContainerCreationOpts.WorkingDir),
 	}
 }
@@ -118,18 +130,32 @@ func (h *podProvisioningScript) downloadAgentCommands(p *pod.Pod, downloadFromS3
 	)
 	retryArgs := h.curlRetryArgs(curlDefaultNumRetries, curlDefaultMaxSecs)
 
-	var curlCmd string
+	curlExecutable := "curl"
+	if p.TaskContainerCreationOpts.OS == pod.OSWindows {
+		curlExecutable = curlExecutable + ".exe"
+	}
+
 	if downloadFromS3 && h.settings.PodInit.S3BaseURL != "" {
 		// Attempt to download the agent from S3, but fall back to downloading
 		// from the app server if it fails.
 		// Include -f to return an error code from curl if the HTTP request
 		// fails (e.g. it receives 403 Forbidden or 404 Not Found).
-		curlCmd = fmt.Sprintf("(curl -fLO %s %s || curl -fLO %s %s)", h.s3ClientURL(p), retryArgs, h.evergreenClientURL(p), retryArgs)
-	} else {
-		curlCmd = fmt.Sprintf("curl -fLO %s %s", h.evergreenClientURL(p), retryArgs)
+
+		if p.TaskContainerCreationOpts.OS == pod.OSWindows {
+			// PowerShell supports pipeline chaining operators (like bash's ||
+			// operator) as of PowerShell 7. However, users may not provide a
+			// sufficiently up-to-date version of PowerShell on their images to
+			// use these operators. Therefore, use a PowerShell if-else
+			// statement to produce the equivalent functionality.
+			// Docs: https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_pipeline_chain_operators
+			return fmt.Sprintf("if (%s -fLO %s %s) {} else { %s -fLO %s %s }", curlExecutable, h.s3ClientURL(p), retryArgs, curlExecutable, h.evergreenClientURL(p), retryArgs)
+		}
+
+		return fmt.Sprintf("(%s -fLO %s %s || %s -fLO %s %s)", curlExecutable, h.s3ClientURL(p), retryArgs, curlExecutable, h.evergreenClientURL(p), retryArgs)
+
 	}
 
-	return curlCmd
+	return fmt.Sprintf("%s -fLO %s %s", curlExecutable, h.evergreenClientURL(p), retryArgs)
 }
 
 // evergreenClientURL returns the URL used to get the latest Evergreen client
@@ -253,6 +279,43 @@ func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 
 	h.setAgentFirstContactTime(p)
 
+	if p.Status == pod.StatusTerminated || p.Status == pod.StatusDecommissioned {
+		if err = h.enqueuePodTerminationJob(ctx, "pod is no longer running"); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(err)
+		}
+		return gimlet.NewJSONResponse(&apimodels.NextTaskResponse{})
+	}
+
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving admin settings"))
+	}
+	if flags.TaskDispatchDisabled {
+		// TODO: EVG-17224 Potentially terminate pod when task dispatching is disabled
+		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), "task dispatch is disabled, returning no task")
+		return gimlet.NewJSONResponse(&apimodels.NextTaskResponse{})
+	}
+
+	if p.RunningTask != "" {
+		var t *task.Task
+		t, err = task.FindOneId(p.RunningTask)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting running task '%s'", p.RunningTask))
+		}
+		if t.IsPartOfDisplay() {
+			if err = model.UpdateDisplayTaskForTask(t); err != nil {
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "updating parent display task"))
+			}
+		}
+		return gimlet.NewJSONResponse(&apimodels.NextTaskResponse{
+			TaskId:     t.Id,
+			TaskSecret: t.Secret,
+			TaskGroup:  t.TaskGroup,
+			Version:    t.Version,
+			Build:      t.BuildId,
+		})
+	}
+
 	pd, err := h.findDispatcher()
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
@@ -266,16 +329,28 @@ func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 	if nextTask == nil {
-		j := units.NewPodTerminationJob(h.podID, "reached end of pod lifecycle", utility.RoundPartOfMinute(0))
-		if err := amboy.EnqueueUniqueJob(ctx, h.env.RemoteQueue(), j); err != nil {
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusInternalServerError,
-				Message:    errors.Wrap(err, "enqueueing job to terminate pod").Error(),
-			})
+		if err = h.enqueuePodTerminationJob(ctx, "reached end of pod lifecycle"); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
+		return gimlet.NewJSONResponse(&apimodels.NextTaskResponse{})
 	}
 
-	return gimlet.NewJSONResponse(apimodels.NextTaskResponse{})
+	return gimlet.NewJSONResponse(&apimodels.NextTaskResponse{
+		TaskId:     nextTask.Id,
+		TaskSecret: nextTask.Secret,
+		TaskGroup:  nextTask.TaskGroup,
+		Version:    nextTask.Version,
+		Build:      nextTask.BuildId,
+	})
+}
+
+// enqueuePodTerminationJob will enqueue the job to terminate a pod with a detailed reason for doing so.
+func (h *podAgentNextTask) enqueuePodTerminationJob(ctx context.Context, reason string) error {
+	j := units.NewPodTerminationJob(h.podID, reason, utility.RoundPartOfMinute(0))
+	if err := amboy.EnqueueUniqueJob(ctx, h.env.RemoteQueue(), j); err != nil {
+		return errors.Wrap(err, "enqueueing job to terminate pod")
+	}
+	return nil
 }
 
 // transitionStartingToRunning transitions the pod that is still starting up to
@@ -289,7 +364,7 @@ func (h *podAgentNextTask) transitionStartingToRunning(p *pod.Pod) error {
 }
 
 func (h *podAgentNextTask) setAgentFirstContactTime(p *pod.Pod) {
-	if !p.TimeInfo.Initializing.IsZero() {
+	if p.TimeInfo.Initializing.IsZero() {
 		return
 	}
 
@@ -476,7 +551,7 @@ func (h *podAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if t.IsPartOfDisplay() {
-		msg["display_task_id"] = t.DisplayTask.Id
+		msg["display_task_id"] = t.DisplayTaskId
 	}
 
 	grip.Info(msg)

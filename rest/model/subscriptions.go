@@ -23,64 +23,45 @@ type APISubscription struct {
 	TriggerData    map[string]string `json:"trigger_data,omitempty"`
 }
 
-func (s *APISelector) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case event.Selector:
-		s.Data = utility.ToStringPtr(v.Data)
-		s.Type = utility.ToStringPtr(v.Type)
-	default:
-		return errors.Errorf("programmatic error: expected event selector but got type %T", h)
-	}
-
-	return nil
+func (s *APISelector) BuildFromService(selector event.Selector) {
+	s.Data = utility.ToStringPtr(selector.Data)
+	s.Type = utility.ToStringPtr(selector.Type)
 }
 
-func (s *APISelector) ToService() (interface{}, error) {
+func (s *APISelector) ToService() event.Selector {
 	return event.Selector{
 		Data: utility.FromStringPtr(s.Data),
 		Type: utility.FromStringPtr(s.Type),
-	}, nil
+	}
 }
 
-func (s *APISubscription) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case event.Subscription:
-		s.ID = utility.ToStringPtr(v.ID)
-		s.ResourceType = utility.ToStringPtr(v.ResourceType)
-		s.Trigger = utility.ToStringPtr(v.Trigger)
-		s.Owner = utility.ToStringPtr(v.Owner)
-		s.OwnerType = utility.ToStringPtr(string(v.OwnerType))
-		s.TriggerData = v.TriggerData
-		err := s.Subscriber.BuildFromService(v.Subscriber)
-		if err != nil {
-			return err
-		}
-		s.Selectors = []APISelector{}
-		s.RegexSelectors = []APISelector{}
-		for _, selector := range v.Selectors {
-			newSelector := APISelector{}
-			err = newSelector.BuildFromService(selector)
-			if err != nil {
-				return err
-			}
-			s.Selectors = append(s.Selectors, newSelector)
-		}
-		for _, selector := range v.RegexSelectors {
-			newSelector := APISelector{}
-			err = newSelector.BuildFromService(selector)
-			if err != nil {
-				return err
-			}
-			s.RegexSelectors = append(s.RegexSelectors, newSelector)
-		}
-	default:
-		return errors.Errorf("programmatic error: expected event subscription but got type %T", h)
+func (s *APISubscription) BuildFromService(sub event.Subscription) error {
+	s.ID = utility.ToStringPtr(sub.ID)
+	s.ResourceType = utility.ToStringPtr(sub.ResourceType)
+	s.Trigger = utility.ToStringPtr(sub.Trigger)
+	s.Owner = utility.ToStringPtr(sub.Owner)
+	s.OwnerType = utility.ToStringPtr(string(sub.OwnerType))
+	s.TriggerData = sub.TriggerData
+	err := s.Subscriber.BuildFromService(sub.Subscriber)
+	if err != nil {
+		return err
 	}
-
+	s.Selectors = []APISelector{}
+	s.RegexSelectors = []APISelector{}
+	for _, selector := range sub.Selectors {
+		newSelector := APISelector{}
+		newSelector.BuildFromService(selector)
+		s.Selectors = append(s.Selectors, newSelector)
+	}
+	for _, selector := range sub.RegexSelectors {
+		newSelector := APISelector{}
+		newSelector.BuildFromService(selector)
+		s.RegexSelectors = append(s.RegexSelectors, newSelector)
+	}
 	return nil
 }
 
-func (s *APISubscription) ToService() (interface{}, error) {
+func (s *APISubscription) ToService() (event.Subscription, error) {
 	out := event.Subscription{
 		ID:             utility.FromStringPtr(s.ID),
 		ResourceType:   utility.FromStringPtr(s.ResourceType),
@@ -91,40 +72,21 @@ func (s *APISubscription) ToService() (interface{}, error) {
 		RegexSelectors: []event.Selector{},
 		TriggerData:    s.TriggerData,
 	}
-	subscriberInterface, err := s.Subscriber.ToService()
+	subscriber, err := s.Subscriber.ToService()
 	if err != nil {
-		return nil, err
-	}
-	subscriber, ok := subscriberInterface.(event.Subscriber)
-	if !ok {
-		return nil, errors.Errorf("programmatic error: expected event subscriber but got type %T", subscriberInterface)
-	}
-	out.Subscriber = subscriber
-	for i, selector := range s.Selectors {
-		selectorInterface, err := selector.ToService()
-		if err != nil {
-			return nil, err
-		}
-		newSelector, ok := selectorInterface.(event.Selector)
-		if !ok {
-			return nil, errors.Errorf("programmatic error: expected event selector at index %d but got type %T", i, selectorInterface)
-		}
-		out.Selectors = append(out.Selectors, newSelector)
-	}
-	if err = out.Filter.FromSelectors(out.Selectors); err != nil {
-		return nil, errors.Wrap(err, "setting filter from selectors")
+		return event.Subscription{}, err
 	}
 
-	for i, selector := range s.RegexSelectors {
-		selectorInterface, err := selector.ToService()
-		if err != nil {
-			return nil, err
-		}
-		newSelector, ok := selectorInterface.(event.Selector)
-		if !ok {
-			return nil, errors.Errorf("programmatic error: expected regex event selector at index %d but got type %T", i, selectorInterface)
-		}
-		out.RegexSelectors = append(out.RegexSelectors, newSelector)
+	out.Subscriber = subscriber
+	for _, selector := range s.Selectors {
+		out.Selectors = append(out.Selectors, selector.ToService())
+	}
+	if err = out.Filter.FromSelectors(out.Selectors); err != nil {
+		return event.Subscription{}, errors.Wrap(err, "setting filter from selectors")
+	}
+
+	for _, selector := range s.RegexSelectors {
+		out.RegexSelectors = append(out.RegexSelectors, selector.ToService())
 	}
 
 	return out, nil

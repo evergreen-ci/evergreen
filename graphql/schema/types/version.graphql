@@ -40,7 +40,6 @@ type Version {
   startTime: Time
   status: String!
   taskCount: Int
-  taskStatusCounts(options: BuildVariantOptions): [StatusCount!] @deprecated(reason: "Use taskStatusStats instead")
   taskStatuses: [String!]!
   taskStatusStats(options: BuildVariantOptions): TaskStats
   upstreamProject: UpstreamProject

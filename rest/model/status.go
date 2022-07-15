@@ -4,8 +4,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip"
-	"github.com/pkg/errors"
 )
 
 // APIRecentTaskStats is the model to be returned by the API whenever recent tasks are fetched.
@@ -24,29 +22,18 @@ type APIRecentTaskStats struct {
 }
 
 // BuildFromService converts from service level structs to an APIRecentTaskStats.
-func (ts *APIRecentTaskStats) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case *task.ResultCounts:
-		ts.Total = v.Total
-		ts.Inactive = v.Inactive
-		ts.Unstarted = v.Unstarted
-		ts.Started = v.Started
-		ts.Succeeded = v.Succeeded
-		ts.SetupFailed = v.SetupFailed
-		ts.Failed = v.Failed
-		ts.SystemFailed = v.SystemFailed
-		ts.SystemUnresponsive = v.SystemUnresponsive
-		ts.SystemTimedOut = v.SystemTimedOut
-		ts.TestTimedOut = v.TestTimedOut
-	default:
-		return errors.Errorf("programmatic error: expected task result counts but got type %T", h)
-	}
-	return nil
-}
-
-// ToService returns a service layer distro using the data from APIRecentTaskStats.
-func (ts *APIRecentTaskStats) ToService() (interface{}, error) {
-	return nil, errors.Errorf("ToService() is not implemented for APIRecentTaskStats")
+func (ts *APIRecentTaskStats) BuildFromService(rc task.ResultCounts) {
+	ts.Total = rc.Total
+	ts.Inactive = rc.Inactive
+	ts.Unstarted = rc.Unstarted
+	ts.Started = rc.Started
+	ts.Succeeded = rc.Succeeded
+	ts.SetupFailed = rc.SetupFailed
+	ts.Failed = rc.Failed
+	ts.SystemFailed = rc.SystemFailed
+	ts.SystemUnresponsive = rc.SystemUnresponsive
+	ts.SystemTimedOut = rc.SystemTimedOut
+	ts.TestTimedOut = rc.TestTimedOut
 }
 
 type APIStat struct {
@@ -56,39 +43,20 @@ type APIStat struct {
 
 type APIStatList []APIStat
 
-func (s *APIStatList) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case []task.Stat:
-		for _, stat := range v {
-			*s = append(*s, APIStat{Name: utility.ToStringPtr(stat.Name), Count: stat.Count})
-		}
-	default:
-		return errors.Errorf("programmatic error: expected slice of task stats but got type %T", h)
+func (s *APIStatList) BuildFromService(tasks []task.Stat) {
+	for _, stat := range tasks {
+		*s = append(*s, APIStat{Name: utility.ToStringPtr(stat.Name), Count: stat.Count})
 	}
-
-	return nil
 }
 
 type APIRecentTaskStatsList map[string][]APIStat
 
-func (s *APIRecentTaskStatsList) BuildFromService(h interface{}) error {
-	catcher := grip.NewBasicCatcher()
-	switch v := h.(type) {
-	case map[string][]task.Stat:
-		for status, stat := range v {
-			list := APIStatList{}
-			catcher.Add(list.BuildFromService(stat))
-			(*s)[status] = list
-		}
-	default:
-		return errors.Errorf("programmatic error: expected map of task stats but got type %T", h)
+func (s *APIRecentTaskStatsList) BuildFromService(statsMap map[string][]task.Stat) {
+	for status, stat := range statsMap {
+		list := APIStatList{}
+		list.BuildFromService(stat)
+		(*s)[status] = list
 	}
-
-	return catcher.Resolve()
-}
-
-func (s *APIRecentTaskStatsList) ToService() (interface{}, error) {
-	return nil, errors.Errorf("ToService() is not implemented for APIRecentTaskStatsList")
 }
 
 // APIHostStatsByDistro is a slice of host stats for a distro
@@ -107,27 +75,16 @@ type apiHostStatsForDistro struct {
 
 // BuildFromService takes the slice of stats returned by GetHostStatsByDistro and embeds
 // them so that the return value is a slice of distros
-func (s *APIHostStatsByDistro) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case []host.StatsByDistro:
-		for _, entry := range v {
-			d := apiHostStatsForDistro{
-				Distro:   utility.ToStringPtr(entry.Distro),
-				Status:   utility.ToStringPtr(entry.Status),
-				NumHosts: entry.Count,
-				NumTasks: entry.NumTasks,
-				MaxHosts: entry.MaxHosts,
-			}
-
-			s.Distros = append(s.Distros, d)
+func (s *APIHostStatsByDistro) BuildFromService(stats []host.StatsByDistro) {
+	for _, entry := range stats {
+		d := apiHostStatsForDistro{
+			Distro:   utility.ToStringPtr(entry.Distro),
+			Status:   utility.ToStringPtr(entry.Status),
+			NumHosts: entry.Count,
+			NumTasks: entry.NumTasks,
+			MaxHosts: entry.MaxHosts,
 		}
-	default:
-		return errors.Errorf("programmatic error: expected distro host stats but got type %T", h)
-	}
-	return nil
-}
 
-// ToService is not implemented for APIHostStatsByDistro
-func (s *APIHostStatsByDistro) ToService() (interface{}, error) {
-	return nil, errors.Errorf("ToService() is not implemented for APIHostStatsByDistro")
+		s.Distros = append(s.Distros, d)
+	}
 }

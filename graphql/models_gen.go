@@ -85,7 +85,6 @@ type GroupedFiles struct {
 // It contains an array of projects which are grouped under a groupDisplayName.
 type GroupedProjects struct {
 	GroupDisplayName string                 `json:"groupDisplayName"`
-	Name             string                 `json:"name"`
 	Projects         []*model.APIProjectRef `json:"projects"`
 	Repo             *model.APIProjectRef   `json:"repo"`
 }

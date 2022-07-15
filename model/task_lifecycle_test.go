@@ -950,12 +950,29 @@ func TestGetBuildStatus(t *testing.T) {
 	assert.Equal(t, false, allTasksBlocked)
 
 	buildTasks = []task.Task{
-		{Status: evergreen.TaskUndispatched,
-			DependsOn: []task.Dependency{{Unattainable: true}}},
+		{
+			Status:    evergreen.TaskUndispatched,
+			DependsOn: []task.Dependency{{Unattainable: true}},
+			Activated: true,
+		},
 		{Status: evergreen.TaskFailed},
 	}
 	status, allTasksBlocked = getBuildStatus(buildTasks)
 	assert.Equal(t, evergreen.BuildFailed, status)
+	assert.Equal(t, false, allTasksBlocked)
+
+	// Blocked tasks that are overriding dependencies should prevent the build from being completed.
+	buildTasks = []task.Task{
+		{
+			Status:               evergreen.TaskUndispatched,
+			DependsOn:            []task.Dependency{{Unattainable: true}},
+			OverrideDependencies: true,
+			Activated:            true,
+		},
+		{Status: evergreen.TaskSucceeded},
+	}
+	status, allTasksBlocked = getBuildStatus(buildTasks)
+	assert.Equal(t, evergreen.BuildStarted, status)
 	assert.Equal(t, false, allTasksBlocked)
 
 	// Builds with only blocked tasks should stay as created.
@@ -3834,6 +3851,17 @@ func TestDisplayTaskUpdates(t *testing.T) {
 		},
 	}
 	assert.NoError(dt2.Insert())
+	dt3 := task.Task{
+		Id:          "dt3",
+		DisplayOnly: true,
+		Status:      evergreen.TaskUndispatched,
+		Activated:   false,
+		ExecutionTasks: []string{
+			"task11",
+			"task12",
+		},
+	}
+	assert.NoError(dt3.Insert())
 	blockedDt := task.Task{
 		Id:          "blockedDt",
 		DisplayOnly: true,
@@ -3922,6 +3950,19 @@ func TestDisplayTaskUpdates(t *testing.T) {
 		Status:    evergreen.TaskUndispatched,
 	}
 	assert.NoError(task10.Insert())
+	task11 := task.Task{
+		Id:        "task11",
+		Activated: true,
+		StartTime: time.Time{},
+	}
+	task12 := task.Task{
+		Id:         "task12",
+		Activated:  true,
+		StartTime:  time.Date(2000, 0, 0, 0, 44, 0, 0, time.Local),
+		FinishTime: time.Date(2000, 0, 0, 1, 0, 1, 0, time.Local),
+	}
+	assert.NoError(task11.Insert())
+	assert.NoError(task12.Insert())
 
 	// test that updating the status + activated from execution tasks works
 	assert.NoError(UpdateDisplayTaskForTask(&task1))
@@ -3968,6 +4009,13 @@ func TestDisplayTaskUpdates(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(dbTask)
 	assert.Equal(evergreen.TaskFailed, dbTask.Status)
+
+	// a display task should not set its start time to any exec tasks that have zero start time
+	assert.NoError(UpdateDisplayTaskForTask(&task11))
+	dbTask, err = task.FindOne(db.Query(task.ById(dt3.Id)))
+	assert.NoError(err)
+	assert.NotNil(dbTask)
+	assert.Equal(task12.StartTime, dbTask.StartTime)
 }
 
 func TestDisplayTaskUpdateNoUndispatched(t *testing.T) {

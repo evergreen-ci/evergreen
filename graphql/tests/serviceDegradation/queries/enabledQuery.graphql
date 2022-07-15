@@ -1,6 +1,6 @@
 query GetProjects {
   projects {
-      name
+      groupDisplayName
       projects {
         id
         identifier

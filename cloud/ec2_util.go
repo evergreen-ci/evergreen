@@ -73,44 +73,10 @@ var (
 	VolumeTypeKey  = bsonutil.MustHaveTag(MountPoint{}, "VolumeType")
 )
 
-// type/consts for price evaluation based on OS
-type osType string
-
-const (
-	osLinux   osType = "Linux/UNIX"
-	osSUSE    osType = "SUSE Linux"
-	osWindows osType = "Windows"
-)
-
-// regionFullname takes the API ID of amazon region and returns the
-// full region name. For instance, "us-west-1" becomes "US West (N. California)".
-// This is necessary as the On Demand pricing endpoint uses the full name, unlike
-// the rest of the API. THIS FUNCTION ONLY HANDLES U.S. REGIONS.
-func regionFullname(region string) (string, error) {
-	switch region {
-	case "us-east-1":
-		return "US East (N. Virginia)", nil
-	case "us-west-1":
-		return "US West (N. California)", nil
-	case "us-west-2":
-		return "US West (Oregon)", nil
-	}
-	return "", errors.Errorf("region %v not supported", region)
-}
-
 // AztoRegion takes an availability zone and returns the region id.
 func AztoRegion(az string) string {
 	// an amazon region is just the availability zone minus the final letter
 	return az[:len(az)-1]
-}
-
-// returns the format of os name expected by EC2 On Demand billing data,
-// bucking the normal AWS API naming scheme.
-func osBillingName(os osType) string {
-	if os == osLinux {
-		return "Linux"
-	}
-	return string(os)
 }
 
 //ec2StatusToEvergreenStatus returns a "universal" status code based on EC2's
@@ -359,24 +325,6 @@ func cleanLaunchTemplateName(name string) string {
 	return templateNameInvalidRegex.ReplaceAllString(name, "")
 }
 
-// odInfo is an internal type for keying hosts by the attributes that affect billing.
-type odInfo struct {
-	os       string
-	instance string
-	region   string
-}
-
-// Terms is an internal type for loading price API results into.
-type Terms struct {
-	OnDemand map[string]map[string]struct {
-		PriceDimensions map[string]struct {
-			PricePerUnit struct {
-				USD string
-			}
-		}
-	}
-}
-
 // formats /dev/sd[f-p]and xvd[f-p] taken from https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/device_naming.html
 func generateDeviceNameForVolume(opts generateDeviceNameOptions) (string, error) {
 	letters := "fghijklmnop"
@@ -536,8 +484,7 @@ func validateEc2DescribeInstancesOutput(describeInstancesResponse *ec2aws.Descri
 }
 
 func IsEc2Provider(provider string) bool {
-	return provider == evergreen.ProviderNameEc2Auto ||
-		provider == evergreen.ProviderNameEc2OnDemand ||
+	return provider == evergreen.ProviderNameEc2OnDemand ||
 		provider == evergreen.ProviderNameEc2Spot ||
 		provider == evergreen.ProviderNameEc2Fleet
 }

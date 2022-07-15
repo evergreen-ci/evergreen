@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -257,12 +256,13 @@ func UpdateOne(query interface{}, update interface{}) error {
 	)
 }
 
-func UpdateAllBuilds(query interface{}, update interface{}) (*adb.ChangeInfo, error) {
-	return db.UpdateAll(
+func UpdateAllBuilds(query interface{}, update interface{}) error {
+	_, err := db.UpdateAll(
 		Collection,
 		query,
 		update,
 	)
+	return err
 }
 
 // Remove deletes the build of the given id from the database
@@ -287,7 +287,6 @@ func FindProjectForBuild(buildID string) (string, error) {
 // SetBuildStartedForTasks sets tasks' builds status to started and activates them
 func SetBuildStartedForTasks(tasks []task.Task, caller string) error {
 	buildIdSet := map[string]bool{}
-	catcher := grip.NewBasicCatcher()
 	for _, t := range tasks {
 		buildIdSet[t.BuildId] = true
 	}
@@ -295,16 +294,13 @@ func SetBuildStartedForTasks(tasks []task.Task, caller string) error {
 	for k := range buildIdSet {
 		buildIdList = append(buildIdList, k)
 	}
-	// Set the build status for all the builds containing the tasks that we touched
-	_, err := UpdateAllBuilds(
+	update := getSetBuildActivatedUpdate(true, caller)
+	update[StatusKey] = evergreen.BuildStarted
+	update[StartTimeKey] = time.Now()
+	// Set the build status/activation for all the builds containing the tasks that we touched.
+	err := UpdateAllBuilds(
 		bson.M{IdKey: bson.M{"$in": buildIdList}},
-		bson.M{"$set": bson.M{
-			StatusKey:    evergreen.BuildStarted,
-			StartTimeKey: time.Now(),
-		}},
+		bson.M{"$set": update},
 	)
-	catcher.Wrap(err, "setting builds to started")
-	// update activation for all the builds
-	catcher.Wrap(UpdateActivation(buildIdList, true, caller), "activating builds")
-	return catcher.Resolve()
+	return errors.Wrap(err, "setting builds to started")
 }

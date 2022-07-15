@@ -55,25 +55,57 @@ type VersionToRestart struct {
 // SetVersionActivation updates the "active" state of all builds and tasks associated with a
 // version to the given setting. It also updates the task cache for all builds affected.
 func SetVersionActivation(versionId string, active bool, caller string) error {
-	builds, err := build.Find(
-		build.ByVersion(versionId).WithFields(build.IdKey),
-	)
-	if err != nil {
-		return errors.Wrapf(err, "getting builds for version '%s'", versionId)
+	q := bson.M{
+		task.VersionKey: versionId,
+		task.StatusKey:  evergreen.TaskUndispatched,
 	}
-	buildIDs := make([]string, 0, len(builds))
-	for _, build := range builds {
-		buildIDs = append(buildIDs, build.Id)
-	}
+	var tasksToModify []task.Task
+	var err error
+	// If activating a task, set the ActivatedBy field to be the caller.
+	if active {
+		if err := SetVersionActivated(versionId, active); err != nil {
+			return errors.Wrapf(err, "setting activated for version '%s'", versionId)
+		}
+		tasksToModify, err = task.FindAll(db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey, task.BuildIdKey))
+		if err != nil {
+			return errors.Wrap(err, "getting tasks to activate")
+		}
+		if len(tasksToModify) > 0 {
+			if err = task.ActivateTasks(tasksToModify, time.Now(), false, caller); err != nil {
+				return errors.Wrap(err, "updating tasks for activation")
+			}
+		}
+	} else {
+		// If the caller is the default task activator, only deactivate tasks that have not been activated by a user.
+		if evergreen.IsSystemActivator(caller) {
+			q[task.ActivatedByKey] = bson.M{"$in": evergreen.SystemActivators}
+		}
 
-	// Update activation for all builds before updating their tasks so the version won't spend
-	// time in an intermediate state where only some builds are updated
-	if err = build.UpdateActivation(buildIDs, active, caller); err != nil {
-		return errors.Wrapf(err, "setting activation for builds in version '%s'", versionId)
+		tasksToModify, err = task.FindAll(db.Query(q).WithFields(task.IdKey, task.ExecutionKey))
+		if err != nil {
+			return errors.Wrap(err, "getting tasks to deactivate")
+		}
+		if len(tasksToModify) > 0 {
+			if err = task.DeactivateTasks(tasksToModify, false, caller); err != nil {
+				return errors.Wrap(err, "deactivating tasks")
+			}
+		}
 	}
-
-	return errors.Wrapf(setTaskActivationForBuilds(buildIDs, active, false, nil, caller),
-		"setting activation for tasks in version '%s'", versionId)
+	if len(tasksToModify) > 0 {
+		var buildIds []string
+		for _, task := range tasksToModify {
+			if !utility.StringSliceContains(buildIds, task.BuildId) {
+				if err = SetBuildActivation(task.BuildId, active, caller); err != nil {
+					return errors.Wrap(err, "updating build status")
+				}
+				buildIds = append(buildIds, task.BuildId)
+			}
+		}
+		if err := UpdateVersionAndPatchStatusForBuilds(buildIds); err != nil {
+			return errors.Wrapf(err, "updating build and version status for version '%s'", versionId)
+		}
+	}
+	return nil
 }
 
 // SetBuildActivation updates the "active" state of this build and all associated tasks.
@@ -103,7 +135,7 @@ func setTaskActivationForBuilds(buildIds []string, active, withDependencies bool
 		}
 		tasksToActivate, err := task.FindAll(db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey))
 		if err != nil {
-			return errors.Wrap(err, "getting tasks to deactivate")
+			return errors.Wrap(err, "getting tasks to activate")
 		}
 		if withDependencies {
 			dependOn, err := task.GetRecursiveDependenciesUp(tasksToActivate, nil)
@@ -139,7 +171,6 @@ func setTaskActivationForBuilds(buildIds []string, active, withDependencies bool
 	if err := UpdateVersionAndPatchStatusForBuilds(buildIds); err != nil {
 		return errors.Wrapf(err, "updating status for builds '%s'", buildIds)
 	}
-
 	return nil
 }
 
@@ -298,7 +329,7 @@ func RestartTasksInVersion(versionId string, abortInProgress bool, caller string
 // If abortInProgress is true, it also sets the abort flag on any in-progress tasks.
 func RestartVersion(versionId string, taskIds []string, abortInProgress bool, caller string) error {
 	if abortInProgress {
-		if err := task.AbortTasksForVersion(versionId, taskIds, caller); err != nil {
+		if err := task.AbortAndMarkResetTasksForVersion(versionId, taskIds, caller); err != nil {
 			return errors.WithStack(err)
 		}
 	}
@@ -310,8 +341,8 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	// remove execution tasks in case the caller passed both display and execution tasks
-	// the functions below are expected to work if just the display task is passed
+	// Remove execution tasks in case the caller passed both display and execution tasks.
+	// The functions below are expected to work if just the display task is passed.
 	for i := len(allFinishedTasks) - 1; i >= 0; i-- {
 		t := allFinishedTasks[i]
 		if t.DisplayTask != nil {
@@ -322,7 +353,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	// archive all the finished tasks
 	toArchive := []task.Task{}
 	for _, t := range allFinishedTasks {
-		if !t.IsPartOfSingleHostTaskGroup() { // for single host task groups we don't archive until fully restarting
+		if !t.IsPartOfSingleHostTaskGroup() { // For single host task groups we don't archive until fully restarting
 			toArchive = append(toArchive, t)
 		}
 	}
@@ -334,14 +365,8 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		Build     string
 		TaskGroup string
 	}
-	// Mark aborted tasks to reset when finished if not all tasks are finished.
-	if abortInProgress && len(finishedTasks) < len(taskIds) {
-		if err = task.SetAbortedTasksResetWhenFinished(taskIds); err != nil {
-			return err
-		}
-	}
 
-	// only need to check one task per task group / build combination
+	// Only need to check one task per task group / build combination
 	taskGroupsToCheck := map[taskGroupAndBuild]task.Task{}
 	tasksToRestart := allFinishedTasks
 
@@ -356,7 +381,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 				TaskGroup: t.TaskGroup,
 			}] = t
 		} else {
-			// only hard restart non-single host task group tasks
+			// Only hard restart non-single host task group tasks
 			restartIds = append(restartIds, t.Id)
 			if t.DisplayOnly {
 				restartIds = append(restartIds, t.ExecutionTasks...)
@@ -382,12 +407,8 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	if err = build.SetBuildStartedForTasks(tasksToRestart, caller); err != nil {
 		return errors.Wrap(err, "setting builds started")
 	}
-	version, err := VersionFindOneId(versionId)
-	if err != nil {
-		return errors.Wrap(err, "finding version")
-	}
-	return errors.Wrap(version.UpdateStatus(evergreen.VersionStarted), "changing version status")
 
+	return errors.Wrap(setVersionStatus(versionId, evergreen.VersionStarted), "changing version status")
 }
 
 // RestartVersions restarts selected tasks for a set of versions.
@@ -1734,7 +1755,7 @@ func addNewTasks(ctx context.Context, activationInfo specificActivationInfo, v *
 			"version": v.Id,
 		}))
 	}
-	if err = v.SetActivated(); err != nil {
+	if err = v.SetActivated(true); err != nil {
 		return nil, errors.Wrap(err, "setting version activation to true")
 	}
 
