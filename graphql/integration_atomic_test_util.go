@@ -263,6 +263,7 @@ func MakeTestsInDirectory(state *AtomicGraphQLState, pathToTests string) func(t 
 func setupData(db mongo.Database, logsDb mongo.Database, data map[string]json.RawMessage, state AtomicGraphQLState) error {
 	ctx := context.Background()
 	catcher := grip.NewBasicCatcher()
+	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": task.OldCollection})
 	for coll, d := range data {
 		var docs []interface{}
 		// the docs to insert as part of setup need to be deserialized as extended JSON, whereas the rest of the
@@ -284,7 +285,6 @@ func directorySpecificTestSetup(t *testing.T, state AtomicGraphQLState) {
 	persistTestSettings := func(t *testing.T) {
 		_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": build.Collection})
 		_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": task.Collection})
-		_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": task.OldCollection})
 		_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": model.VersionCollection})
 		_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": model.ParserProjectCollection})
 		require.NoError(t, state.Settings.Set())
