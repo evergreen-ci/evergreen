@@ -137,8 +137,8 @@ type BuildVariantTaskUnit struct {
 	CronBatchTime string `yaml:"cron,omitempty" bson:"cron,omitempty"`
 	// If Activate is set to false, then we don't initially activate the task.
 	Activate *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
-	// Group is set if an inline task group is defined on the build variant.
-	Group *TaskGroup `yaml:"task_group,omitempty" bson:"task_group,omitempty"`
+	// TaskGroup is set if an inline task group is defined on the build variant.
+	TaskGroup *TaskGroup `yaml:"task_group,omitempty" bson:"task_group,omitempty"`
 }
 
 func (b BuildVariant) Get(name string) (BuildVariantTaskUnit, error) {
@@ -835,7 +835,7 @@ func NewTaskIdTable(p *Project, v *Version, sourceRev, defID string) TaskIdConfi
 			if t.IsDisabled() || t.SkipOnRequester(v.Requester) {
 				continue
 			}
-			tg := t.Group
+			tg := t.TaskGroup
 			if tg == nil {
 				tg = p.FindTaskGroup(t.Name)
 			}
@@ -1187,8 +1187,8 @@ func (p *Project) FindTaskGroup(name string) *TaskGroup {
 	}
 	for _, bv := range p.BuildVariants {
 		for _, t := range bv.Tasks {
-			if t.Group != nil && t.Name == name {
-				return t.Group
+			if t.TaskGroup != nil && t.Name == name {
+				return t.TaskGroup
 			}
 		}
 	}
@@ -1313,8 +1313,8 @@ func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit
 		tgMap[tg.Name] = tg
 	}
 	for _, t := range bv.Tasks {
-		if t.Group != nil {
-			tgMap[t.Name] = *t.Group
+		if t.TaskGroup != nil {
+			tgMap[t.Name] = *t.TaskGroup
 		}
 	}
 
@@ -1375,7 +1375,7 @@ func (p *Project) findBuildVariantsWithTag(tags []string) []string {
 // build variant task unit, and returns the name and tags
 func (p *Project) GetTaskNameAndTags(bvt BuildVariantTaskUnit) (string, []string, bool) {
 	if bvt.IsGroup {
-		ptg := bvt.Group
+		ptg := bvt.TaskGroup
 		if ptg == nil {
 			ptg = p.FindTaskGroup(bvt.Name)
 		}
@@ -1490,7 +1490,7 @@ func (p *Project) FindAllBuildVariantTasks() []BuildVariantTaskUnit {
 // tasksFromGroup returns a slice of the task group's tasks.
 // Settings missing from the group task are populated from the task definition.
 func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVariantTaskUnit {
-	tg := bvTaskGroup.Group
+	tg := bvTaskGroup.TaskGroup
 	if tg == nil {
 		tg = p.FindTaskGroup(bvTaskGroup.Name)
 	}
@@ -1510,7 +1510,7 @@ func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVarian
 			// IsGroup is not persisted, and indicates here that the
 			// task is a member of a task group.
 			IsGroup:          true,
-			Group:            bvTaskGroup.Group,
+			TaskGroup:        bvTaskGroup.TaskGroup,
 			Variant:          bvTaskGroup.Variant,
 			GroupName:        bvTaskGroup.Name,
 			Patchable:        bvTaskGroup.Patchable,

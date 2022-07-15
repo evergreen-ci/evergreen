@@ -636,14 +636,6 @@ func validateBuildVariantTaskNames(task string, variant string, allTaskNames map
 			})
 		}
 	}
-	if _, ok := taskGroupTaskSet[task]; ok {
-		errs = append(errs,
-			ValidationError{
-				Message: fmt.Sprintf("task '%s' in build variant '%s' is already referenced in task group '%s'",
-					task, variant, taskGroupTaskSet[task]),
-				Level: Warning,
-			})
-	}
 	return errs
 }
 
@@ -666,12 +658,20 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 	for _, buildVariant := range project.BuildVariants {
 		buildVariantTasks := map[string]bool{}
 		for _, task := range buildVariant.Tasks {
-			if task.Group != nil {
-				for _, taskGroupTask := range task.Group.Tasks {
+			if task.TaskGroup != nil {
+				for _, taskGroupTask := range task.TaskGroup.Tasks {
 					errs = append(errs, validateBuildVariantTaskNames(taskGroupTask, buildVariant.Name, allTaskNames, taskGroupTaskSet)...)
 				}
 			}
 			errs = append(errs, validateBuildVariantTaskNames(task.Name, buildVariant.Name, allTaskNames, taskGroupTaskSet)...)
+			if _, ok := taskGroupTaskSet[task.Name]; ok {
+				errs = append(errs,
+					ValidationError{
+						Message: fmt.Sprintf("task '%s' in build variant '%s' is already referenced in task group '%s'",
+							task.Name, buildVariant.Name, taskGroupTaskSet[task.Name]),
+						Level: Warning,
+					})
+			}
 			buildVariantTasks[task.Name] = true
 			runOnHasDistro := false
 			runOnHasContainer := false
@@ -1367,8 +1367,8 @@ func validateTaskGroups(p *model.Project) ValidationErrors {
 	taskGroups := p.TaskGroups
 	for _, bv := range p.BuildVariants {
 		for _, t := range bv.Tasks {
-			if t.Group != nil {
-				taskGroups = append(taskGroups, *t.Group)
+			if t.TaskGroup != nil {
+				taskGroups = append(taskGroups, *t.TaskGroup)
 			}
 		}
 	}
@@ -1425,8 +1425,8 @@ func checkTaskGroups(p *model.Project) ValidationErrors {
 	taskGroups := p.TaskGroups
 	for _, bv := range p.BuildVariants {
 		for _, t := range bv.Tasks {
-			if t.Group != nil {
-				taskGroups = append(taskGroups, *t.Group)
+			if t.TaskGroup != nil {
+				taskGroups = append(taskGroups, *t.TaskGroup)
 			}
 		}
 	}
@@ -1471,7 +1471,7 @@ func validateDuplicateBVTasks(p *model.Project) ValidationErrors {
 		for _, t := range bv.Tasks {
 
 			if t.IsGroup {
-				tg := t.Group
+				tg := t.TaskGroup
 				if tg == nil {
 					tg = p.FindTaskGroup(t.Name)
 				}
@@ -1703,7 +1703,7 @@ func bvsWithTasksThatCallCommand(p *model.Project, cmd string) (map[string]map[s
 
 		for _, bvtu := range bv.Tasks {
 			if bvtu.IsGroup {
-				tg := bvtu.Group
+				tg := bvtu.TaskGroup
 				if tg == nil {
 					tg = p.FindTaskGroup(bvtu.Name)
 				}

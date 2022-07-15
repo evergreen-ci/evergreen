@@ -408,8 +408,8 @@ type parserBVTaskUnit struct {
 	CronBatchTime string `yaml:"cron,omitempty" bson:"cron,omitempty"`
 	// If Activate is set to false, then we don't initially activate the task.
 	Activate *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
-	// Group is set if an inline task group is defined on the build variant config.
-	Group *parserTaskGroup `yaml:"task_group,omitempty" bson:"task_group,omitempty"`
+	// TaskGroup is set if an inline task group is defined on the build variant config.
+	TaskGroup *parserTaskGroup `yaml:"task_group,omitempty" bson:"task_group,omitempty"`
 }
 
 // UnmarshalYAML allows the YAML parser to read both a single selector string or
@@ -1132,7 +1132,7 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 				isGroup = true
 			}
 		}
-		if pbvt.Group != nil {
+		if pbvt.TaskGroup != nil {
 			names = append(names, pbvt.Name)
 			isGroup = true
 		}
@@ -1197,21 +1197,21 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 		BatchTime:        bvt.BatchTime,
 		Activate:         bvt.Activate,
 	}
-	if bvt.Group != nil {
-		res.Group = &TaskGroup{
+	if bvt.TaskGroup != nil {
+		res.TaskGroup = &TaskGroup{
 			Name:                    bvt.Name,
-			SetupGroupFailTask:      bvt.Group.SetupGroupFailTask,
-			TeardownTaskCanFailTask: bvt.Group.TeardownTaskCanFailTask,
-			SetupGroupTimeoutSecs:   bvt.Group.SetupGroupTimeoutSecs,
-			SetupGroup:              bvt.Group.SetupGroup,
-			TeardownGroup:           bvt.Group.TeardownGroup,
-			SetupTask:               bvt.Group.SetupTask,
-			TeardownTask:            bvt.Group.TeardownTask,
-			Tags:                    bvt.Group.Tags,
-			Tasks:                   bvt.Group.Tasks,
-			MaxHosts:                bvt.Group.MaxHosts,
-			Timeout:                 bvt.Group.Timeout,
-			ShareProcs:              bvt.Group.ShareProcs,
+			SetupGroupFailTask:      bvt.TaskGroup.SetupGroupFailTask,
+			TeardownTaskCanFailTask: bvt.TaskGroup.TeardownTaskCanFailTask,
+			SetupGroupTimeoutSecs:   bvt.TaskGroup.SetupGroupTimeoutSecs,
+			SetupGroup:              bvt.TaskGroup.SetupGroup,
+			TeardownGroup:           bvt.TaskGroup.TeardownGroup,
+			SetupTask:               bvt.TaskGroup.SetupTask,
+			TeardownTask:            bvt.TaskGroup.TeardownTask,
+			Tags:                    bvt.TaskGroup.Tags,
+			Tasks:                   bvt.TaskGroup.Tasks,
+			MaxHosts:                bvt.TaskGroup.MaxHosts,
+			Timeout:                 bvt.TaskGroup.Timeout,
+			ShareProcs:              bvt.TaskGroup.ShareProcs,
 		}
 	}
 	if res.Priority == 0 {

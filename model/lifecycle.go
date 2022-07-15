@@ -785,8 +785,8 @@ func createTasksForBuild(project *Project, pRef *ProjectRef, buildVariant *Build
 	}
 	for _, variant := range project.BuildVariants {
 		for _, t := range variant.Tasks {
-			if t.Group != nil {
-				tgMap[t.Name] = *t.Group
+			if t.TaskGroup != nil {
+				tgMap[t.Name] = *t.TaskGroup
 			}
 		}
 	}
@@ -1281,7 +1281,7 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 	}
 
 	if buildVarTask.IsGroup {
-		tg := buildVarTask.Group
+		tg := buildVarTask.TaskGroup
 		if tg == nil {
 			tg = project.FindTaskGroup(buildVarTask.GroupName)
 		}

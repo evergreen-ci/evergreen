@@ -1072,7 +1072,7 @@ buildvariants:
 - name: "bv"
   tasks:
   - name: inline_task_group
-    group:
+    task_group:
       <<: *example_task_group
       tasks:
       - example_task_1
@@ -1081,9 +1081,8 @@ buildvariants:
 	_, err = LoadProjectInto(ctx, []byte(inlineYml), nil, "id", proj)
 	assert.Nil(err)
 	assert.NotNil(proj)
-	assert.Len(proj.BuildVariants[0].Tasks, 2)
-	assert.Nil(proj.BuildVariants[0].Tasks[0].Group)
-	assert.NotNil(proj.BuildVariants[0].Tasks[1].Group)
+	assert.Len(proj.BuildVariants[0].Tasks, 1)
+	assert.NotNil(proj.BuildVariants[0].Tasks[0].TaskGroup)
 
 	// check that yml with a task group that contains a nonexistent task errors
 	wrongTaskYml := `

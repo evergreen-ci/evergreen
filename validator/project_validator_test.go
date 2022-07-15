@@ -2310,7 +2310,7 @@ buildvariants:
   tasks:
     - name: example_task_group
     - name: inline_task_group
-      group:
+      task_group:
         share_processes: true
         max_hosts: 3
         teardown_group:
