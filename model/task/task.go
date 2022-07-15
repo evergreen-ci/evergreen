@@ -2473,7 +2473,10 @@ func (t *Task) Insert() error {
 // are also archived.
 func (t *Task) Archive() error {
 	fmt.Println("TEST----" + t.Id)
-	err := ArchiveMany([]Task{*t})
+
+	var task []Task
+	task = append(task, *t)
+	err := ArchiveMany(task)
 	if t.DisplayOnly {
 		return errors.Wrapf(err, "archiving and updating display task with ID '%s'.", t.Id)
 	} else {
