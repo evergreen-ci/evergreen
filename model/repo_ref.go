@@ -97,12 +97,8 @@ func FindRepoRefByOwnerAndRepo(owner, repoName string) (*RepoRef, error) {
 func (r *RepoRef) addPermissions(creator *user.DBUser) error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	// Add to the general scope.
-	parentScope := evergreen.UnrestrictedProjectsScope
-	if r.IsRestricted() {
-		parentScope = evergreen.RestrictedProjectsScope
-	}
-	if err := rm.AddResourceToScope(parentScope, r.Id); err != nil {
-		return errors.Wrapf(err, "adding repo '%s' to the scope '%s'", r.Id, parentScope)
+	if err := rm.AddResourceToScope(evergreen.AllProjectsScope, r.Id); err != nil {
+		return errors.Wrapf(err, "adding repo '%s' to the scope '%s'", r.Id, evergreen.AllProjectsScope)
 	}
 
 	adminScope := gimlet.Scope{
@@ -191,6 +187,7 @@ func (r *RepoRef) MakeRestricted(branchProjects []ProjectRef) error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	scopeId := GetUnrestrictedBranchProjectsScope(r.Id)
 	branchOnlyAdmins := []string{}
+
 	// if the branch project is now restricted, remove it from the unrestricted scope
 	for _, p := range branchProjects {
 		if !p.IsRestricted() {
