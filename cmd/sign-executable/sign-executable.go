@@ -13,7 +13,6 @@ import (
 	"os/exec"
 	"path"
 
-	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -22,8 +21,6 @@ const (
 	getClientSubcommand  = "get-client"
 	signSubcommand       = "sign"
 	notaryClientFilename = "macnotary"
-
-	maxRetries = 3
 )
 
 func zipFile(inputFilePath, destinationPath string) error {
@@ -147,12 +144,10 @@ func signWithNotaryClient(ctx context.Context, zipToSignPath, destinationPath st
 		args = append(args, "--secret", opts.notarySecret)
 	}
 
-	return utility.Retry(ctx, func() (bool, error) {
-		cmd := exec.CommandContext(ctx, opts.notaryClientPath, args...)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		return true, errors.Wrap(cmd.Run(), "running notary client")
-	}, utility.RetryOptions{MaxAttempts: maxRetries})
+	cmd := exec.CommandContext(ctx, opts.notaryClientPath, args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return errors.Wrap(cmd.Run(), "running notary client")
 }
 
 func downloadClient(ctx context.Context, opts fetchClientOpts) error {
