@@ -25,7 +25,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
-	yaml "gopkg.in/20210107192922/yaml.v3"
+	"gopkg.in/20210107192922/yaml.v3"
 )
 
 var (
@@ -33,7 +33,7 @@ var (
 	BuildRevision = ""
 
 	// Commandline Version String; used to control auto-updating.
-	ClientVersion = "2022-07-06"
+	ClientVersion = "2022-07-15"
 
 	// Agent version to control agent rollover.
 	AgentVersion = "2022-06-29"

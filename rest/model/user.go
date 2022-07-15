@@ -184,7 +184,7 @@ func (n *APINotificationPreferences) ToService() (user.NotificationPreferences, 
 	return preferences, nil
 }
 
-func ApplyUserChanges(current user.UserSettings, changes APIUserSettings) APIUserSettings {
+func applyUserChanges(current user.UserSettings, changes APIUserSettings) APIUserSettings {
 	oldSettings := APIUserSettings{}
 	oldSettings.BuildFromService(current)
 
@@ -238,7 +238,7 @@ func UpdateUserSettings(ctx context.Context, usr *user.DBUser, userSettings APIU
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting admin settings")
 	}
-	changedSettings := ApplyUserChanges(usr.Settings, userSettings)
+	changedSettings := applyUserChanges(usr.Settings, userSettings)
 	updatedUserSettings, err := changedSettings.ToService()
 	if err != nil {
 		return nil, errors.Wrapf(err, "converting user settings to service model")
