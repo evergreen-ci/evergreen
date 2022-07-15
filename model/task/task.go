@@ -2472,6 +2472,7 @@ func (t *Task) Insert() error {
 // into the old_tasks collection. If this is a display task, its execution tasks
 // are also archived.
 func (t *Task) Archive() error {
+	fmt.Println("TEST----" + t.Id)
 	err := ArchiveMany([]Task{*t})
 	if t.DisplayOnly {
 		return errors.Wrapf(err, "archiving and updating display task with ID '%s'.", t.Id)
@@ -2540,97 +2541,99 @@ func archiveAll(tasksIds []string, toUpdateTaskIds []string, toArchive []interfa
 	defer session.EndSession(ctx)
 
 	txFunc := func(sessCtx mongo.SessionContext) (interface{}, error) {
-		oldTaskColl := evergreen.GetEnvironment().DB().Collection(OldCollection)
-		_, err = oldTaskColl.InsertMany(ctx, toArchive)
-		if err != nil {
-			return nil, errors.Wrap(err, "archiving tasks")
+		if len(toArchive) > 0 {
+			oldTaskColl := evergreen.GetEnvironment().DB().Collection(OldCollection)
+			_, err = oldTaskColl.InsertMany(ctx, toArchive)
+			if err != nil {
+				return nil, errors.Wrap(err, "archiving tasks")
+			}
 		}
+		if len(tasksIds) > 0 {
+			//taskColl := evergreen.GetEnvironment().DB().Collection(Collection)
 
-		//taskColl := evergreen.GetEnvironment().DB().Collection(Collection)
-
-		// _, err = taskColl.Aggregate(ctx,
-		// 	bson.A{
-		// 		bson.D{{Key: "$match", Value: bson.D{
-		// 			{Key: "_id", Value: bson.D{
-		// 				{Key: "$in", Value: tasksIds},
-		// 			}},
-		// 		}}},
-		// 		bson.D{{Key: "$set", Value: bson.D{
-		// 			{Key: LatestParentExecutionKey, Value: bson.D{
-		// 				{Key: "$cond", Value: bson.A{
-		// 					bson.D{{Key: "$not", Value: bson.A{
-		// 						"$" + LatestParentExecutionKey,
-		// 					}}},
-		// 					bson.D{{Key: "$add", Value: bson.A{
-		// 						"$" + ExecutionKey,
-		// 						1,
-		// 					}}},
-		// 					bson.D{{Key: "$add", Value: bson.A{
-		// 						"$" + ExecutionKey,
-		// 						1,
-		// 					}}},
-		// 				}}},
-		// 			}}},
-		// 		},
-		// 		bson.D{{Key: "$set", Value: bson.D{
-		// 			{Key: ExecutionKey, Value: bson.D{
-		// 				{Key: "$cond", Value: bson.A{
-		// 					bson.D{{Key: "$in", Value: bson.A{"$_id", toUpdateTaskIds}}},
-		// 					"$" + LatestParentExecutionKey,
-		// 					"$" + ExecutionKey,
-		// 				}}},
-		// 			}}},
-		// 		},
-		// 		bson.D{{Key: "$unset", Value: bson.A{
-		// 			AbortedKey,
-		// 			AbortInfoKey,
-		// 			DetailsKey,
-		// 		}}},
-		// 		bson.D{{Key: "$merge", Value: bson.D{{Key: "into", Value: Collection}, {Key: "whenMatched", Value: "replace"}}}},
-		// 	},
-		// )
-		evergreen.GetEnvironment().DB().RunCommand(ctx,
-			bson.M{
-				"update": Collection,
-				"updates": bson.M{
-					"q": bson.D{{Key: "_id", Value: bson.D{{Key: "$in", Value: tasksIds}}}},
-					"u": bson.A{
-						bson.D{{Key: "$set", Value: bson.D{
-							{Key: LatestParentExecutionKey, Value: bson.D{
-								{Key: "$cond", Value: bson.A{
-									bson.D{{Key: "$not", Value: bson.A{
+			// _, err = taskColl.Aggregate(ctx,
+			// 	bson.A{
+			// 		bson.D{{Key: "$match", Value: bson.D{
+			// 			{Key: "_id", Value: bson.D{
+			// 				{Key: "$in", Value: tasksIds},
+			// 			}},
+			// 		}}},
+			// 		bson.D{{Key: "$set", Value: bson.D{
+			// 			{Key: LatestParentExecutionKey, Value: bson.D{
+			// 				{Key: "$cond", Value: bson.A{
+			// 					bson.D{{Key: "$not", Value: bson.A{
+			// 						"$" + LatestParentExecutionKey,
+			// 					}}},
+			// 					bson.D{{Key: "$add", Value: bson.A{
+			// 						"$" + ExecutionKey,
+			// 						1,
+			// 					}}},
+			// 					bson.D{{Key: "$add", Value: bson.A{
+			// 						"$" + ExecutionKey,
+			// 						1,
+			// 					}}},
+			// 				}}},
+			// 			}}},
+			// 		},
+			// 		bson.D{{Key: "$set", Value: bson.D{
+			// 			{Key: ExecutionKey, Value: bson.D{
+			// 				{Key: "$cond", Value: bson.A{
+			// 					bson.D{{Key: "$in", Value: bson.A{"$_id", toUpdateTaskIds}}},
+			// 					"$" + LatestParentExecutionKey,
+			// 					"$" + ExecutionKey,
+			// 				}}},
+			// 			}}},
+			// 		},
+			// 		bson.D{{Key: "$unset", Value: bson.A{
+			// 			AbortedKey,
+			// 			AbortInfoKey,
+			// 			DetailsKey,
+			// 		}}},
+			// 		bson.D{{Key: "$merge", Value: bson.D{{Key: "into", Value: Collection}, {Key: "whenMatched", Value: "replace"}}}},
+			// 	},
+			// )
+			evergreen.GetEnvironment().DB().RunCommand(ctx,
+				bson.M{
+					"update": Collection,
+					"updates": bson.M{
+						"q": bson.D{{Key: "_id", Value: bson.D{{Key: "$in", Value: tasksIds}}}},
+						"u": bson.A{
+							bson.D{{Key: "$set", Value: bson.D{
+								{Key: LatestParentExecutionKey, Value: bson.D{
+									{Key: "$cond", Value: bson.A{
+										bson.D{{Key: "$not", Value: bson.A{
+											"$" + LatestParentExecutionKey,
+										}}},
+										bson.D{{Key: "$add", Value: bson.A{
+											"$" + ExecutionKey,
+											1,
+										}}},
+										bson.D{{Key: "$add", Value: bson.A{
+											"$" + ExecutionKey,
+											1,
+										}}},
+									}}},
+								}}},
+							},
+							bson.D{{Key: "$set", Value: bson.D{
+								{Key: ExecutionKey, Value: bson.D{
+									{Key: "$cond", Value: bson.A{
+										bson.D{{Key: "$in", Value: bson.A{"$_id", toUpdateTaskIds}}},
 										"$" + LatestParentExecutionKey,
-									}}},
-									bson.D{{Key: "$add", Value: bson.A{
 										"$" + ExecutionKey,
-										1,
-									}}},
-									bson.D{{Key: "$add", Value: bson.A{
-										"$" + ExecutionKey,
-										1,
 									}}},
 								}}},
+							},
+							bson.D{{Key: "$unset", Value: bson.A{
+								AbortedKey,
+								AbortInfoKey,
+								DetailsKey,
 							}}},
 						},
-						bson.D{{Key: "$set", Value: bson.D{
-							{Key: ExecutionKey, Value: bson.D{
-								{Key: "$cond", Value: bson.A{
-									bson.D{{Key: "$in", Value: bson.A{"$_id", toUpdateTaskIds}}},
-									"$" + LatestParentExecutionKey,
-									"$" + ExecutionKey,
-								}}},
-							}}},
-						},
-						bson.D{{Key: "$unset", Value: bson.A{
-							AbortedKey,
-							AbortInfoKey,
-							DetailsKey,
-						}}},
 					},
 				},
-			},
-		)
-		//taskColl.UpdateMany()
+			)
+		}
 		return nil, errors.Wrap(err, "updating tasks.")
 	}
 
