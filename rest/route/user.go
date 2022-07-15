@@ -78,10 +78,7 @@ func (h *userSettingsGetHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
 
 	apiSettings := model.APIUserSettings{}
-	if err := apiSettings.BuildFromService(u.Settings); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting settings for user '%s' to API model", u.Username()))
-	}
-
+	apiSettings.BuildFromService(u.Settings)
 	return gimlet.NewJSONResponse(apiSettings)
 }
 

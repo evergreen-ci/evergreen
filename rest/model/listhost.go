@@ -7,7 +7,7 @@ import (
 )
 
 type HostListResults struct {
-	Hosts   []CreateHost
+	Hosts   []APICreateHost
 	Details []APIHostCreateDetail
 }
 

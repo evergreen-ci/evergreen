@@ -28,9 +28,7 @@ func GetProjectVersionsWithOptions(projectName string, opts model.GetVersionsOpt
 	res := []restModel.APIVersion{}
 	for _, v := range versions {
 		apiVersion := restModel.APIVersion{}
-		if err = apiVersion.BuildFromService(&v); err != nil {
-			return nil, errors.Wrapf(err, "converting version '%s' to API model", v.Id)
-		}
+		apiVersion.BuildFromService(v)
 		res = append(res, apiVersion)
 	}
 	return res, nil
@@ -110,10 +108,7 @@ func GetVersionsAndVariants(skip, numVersionElements int, project *model.Project
 
 				// add the version data into the last rolled-up version
 				newVersion := restModel.APIVersion{}
-				err = newVersion.BuildFromService(&versionFromDB)
-				if err != nil {
-					return nil, errors.Wrapf(err, "converting version '%s' to API model", versionFromDB.Id)
-				}
+				newVersion.BuildFromService(versionFromDB)
 				lastRolledUpVersion.Versions = append(lastRolledUpVersion.Versions, newVersion)
 
 				// move on to the next version
@@ -157,19 +152,13 @@ func GetVersionsAndVariants(skip, numVersionElements int, project *model.Project
 			// if the version can not be rolled up, create a fully fledged
 			// version for it
 			activeVersion := restModel.APIVersion{}
-			err = activeVersion.BuildFromService(&versionFromDB)
-			if err != nil {
-				return nil, errors.Wrapf(err, "converting version '%s' to API model", versionFromDB.Id)
-			}
+			activeVersion.BuildFromService(versionFromDB)
 
 			// add the builds to the "row"
 			for _, b := range buildsInVersion {
 				currentRow := buildList[b.BuildVariant]
 				buildsForRow := restModel.APIBuild{}
-				err = buildsForRow.BuildFromService(b)
-				if err != nil {
-					return nil, errors.Wrapf(err, "converting build '%s' to API model", b.Id)
-				}
+				buildsForRow.BuildFromService(b)
 				buildsForRow.SetTaskCache(tasksByBuild[b.Id])
 
 				currentRow.Builds[versionFromDB.Id] = buildsForRow

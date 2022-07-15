@@ -954,12 +954,29 @@ func TestGetBuildStatus(t *testing.T) {
 	assert.Equal(t, false, allTasksBlocked)
 
 	buildTasks = []task.Task{
-		{Status: evergreen.TaskUndispatched,
-			DependsOn: []task.Dependency{{Unattainable: true}}},
+		{
+			Status:    evergreen.TaskUndispatched,
+			DependsOn: []task.Dependency{{Unattainable: true}},
+			Activated: true,
+		},
 		{Status: evergreen.TaskFailed},
 	}
 	status, allTasksBlocked = getBuildStatus(buildTasks)
 	assert.Equal(t, evergreen.BuildFailed, status)
+	assert.Equal(t, false, allTasksBlocked)
+
+	// Blocked tasks that are overriding dependencies should prevent the build from being completed.
+	buildTasks = []task.Task{
+		{
+			Status:               evergreen.TaskUndispatched,
+			DependsOn:            []task.Dependency{{Unattainable: true}},
+			OverrideDependencies: true,
+			Activated:            true,
+		},
+		{Status: evergreen.TaskSucceeded},
+	}
+	status, allTasksBlocked = getBuildStatus(buildTasks)
+	assert.Equal(t, evergreen.BuildStarted, status)
 	assert.Equal(t, false, allTasksBlocked)
 
 	// Builds with only blocked tasks should stay as created.

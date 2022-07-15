@@ -38,6 +38,17 @@ func TestPodTerminationJob(t *testing.T) {
 		assert.NoError(t, db.ClearCollections(pod.Collection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, dispatcher.Collection, event.LegacyEventLogCollection))
 	}()
 
+	checkCloudPodDeleteRequests := func(t *testing.T, ecsc cocoa.ECSClient, smc cocoa.SecretsManagerClient) {
+		ecsClient, ok := ecsc.(*mock.ECSClient)
+		require.True(t, ok)
+		assert.NotZero(t, ecsClient.StopTaskInput, "should have requested to stop the cloud pod")
+		assert.NotZero(t, ecsClient.DeregisterTaskDefinitionInput, "should have requested to clean up the ECS task definition")
+
+		smClient, ok := smc.(*mock.SecretsManagerClient)
+		require.True(t, ok)
+		assert.NotZero(t, smClient.DeleteSecretInput, "should have requested to delete the owned secret")
+	}
+
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, j *podTerminationJob){
 		"TerminatesAndDeletesResourcesForRunningPod": func(ctx context.Context, t *testing.T, j *podTerminationJob) {
 			require.NoError(t, j.pod.Insert())
@@ -45,14 +56,7 @@ func TestPodTerminationJob(t *testing.T) {
 			j.Run(ctx)
 			require.NoError(t, j.Error())
 
-			ecsClient, ok := j.ecsClient.(*mock.ECSClient)
-			require.True(t, ok)
-			assert.NotZero(t, ecsClient.StopTaskInput)
-			assert.NotZero(t, ecsClient.DeregisterTaskDefinitionInput)
-
-			smClient, ok := j.smClient.(*mock.SecretsManagerClient)
-			require.True(t, ok)
-			assert.NotZero(t, smClient.DeleteSecretInput)
+			checkCloudPodDeleteRequests(t, j.ecsClient, j.smClient)
 
 			assert.Equal(t, cocoa.StatusDeleted, j.ecsPod.StatusInfo().Status)
 		},
@@ -64,29 +68,46 @@ func TestPodTerminationJob(t *testing.T) {
 			j.Run(ctx)
 			require.NoError(t, j.Error())
 
-			ecsClient, ok := j.ecsClient.(*mock.ECSClient)
-			require.True(t, ok)
-			assert.NotZero(t, ecsClient.StopTaskInput)
-			assert.NotZero(t, ecsClient.DeregisterTaskDefinitionInput)
-
-			smClient, ok := j.smClient.(*mock.SecretsManagerClient)
-			require.True(t, ok)
-			assert.NotZero(t, smClient.DeleteSecretInput)
+			checkCloudPodDeleteRequests(t, j.ecsClient, j.smClient)
 
 			assert.Equal(t, cocoa.StatusDeleted, j.ecsPod.StatusInfo().Status)
 		},
-		"FailsWhenDeletingResourcesErrors": func(ctx context.Context, t *testing.T, j *podTerminationJob) {
+		"SucceedsWhenDeletingNonexistentCloudPod": func(ctx context.Context, t *testing.T, j *podTerminationJob) {
 			require.NoError(t, j.pod.Insert())
+			// This simulates a condition where the cloud pod may have been long
+			// since cleaned up, so it has no more information about the pod. In
+			// the case that the cloud pod does not exist, termination should
+			// still succeed.
 			j.pod.Resources.ExternalID = utility.RandomString()
-			j.ecsPod = nil
 
 			j.Run(ctx)
-			require.Error(t, j.Error())
+			assert.NoError(t, j.Error())
+
+			checkCloudPodDeleteRequests(t, j.ecsClient, j.smClient)
 
 			dbPod, err := pod.FindOneByID(j.PodID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
-			assert.NotEqual(t, pod.StatusTerminated, dbPod.Status)
+			assert.Equal(t, pod.StatusTerminated, dbPod.Status)
+
+			assert.Equal(t, cocoa.StatusDeleted, j.ecsPod.StatusInfo().Status)
+		},
+		"SucceedsWhenTerminatingAlreadyTerminatedPod": func(ctx context.Context, t *testing.T, j *podTerminationJob) {
+			require.NoError(t, j.pod.Insert())
+
+			j.Run(ctx)
+			assert.NoError(t, j.Error())
+			j.Run(ctx)
+			assert.NoError(t, j.Error())
+
+			checkCloudPodDeleteRequests(t, j.ecsClient, j.smClient)
+
+			dbPod, err := pod.FindOneByID(j.PodID)
+			require.NoError(t, err)
+			require.NotZero(t, dbPod)
+			assert.Equal(t, pod.StatusTerminated, dbPod.Status)
+
+			assert.Equal(t, cocoa.StatusDeleted, j.ecsPod.StatusInfo().Status)
 		},
 		"TerminatesWithoutDeletingResourcesForIntentPod": func(ctx context.Context, t *testing.T, j *podTerminationJob) {
 			j.pod.Status = pod.StatusInitializing
@@ -275,10 +296,7 @@ func TestPodTerminationJob(t *testing.T) {
 
 			mock.GlobalECSService.Clusters[cluster] = mock.ECSCluster{}
 			defer func() {
-				mock.GlobalECSService = mock.ECSService{
-					Clusters: map[string]mock.ECSCluster{},
-					TaskDefs: map[string][]mock.ECSTaskDefinition{},
-				}
+				mock.ResetGlobalECSService()
 			}()
 
 			p := pod.Pod{

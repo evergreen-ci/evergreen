@@ -174,7 +174,7 @@ func (s *DockerSuite) TestSpawnInvalidSettings() {
 	defer cancel()
 
 	ec2HostOps := s.hostOpts
-	ec2HostOps.Distro.Provider = evergreen.ProviderNameEc2Auto
+	ec2HostOps.Distro.Provider = evergreen.ProviderNameEc2Fleet
 	h := host.NewIntent(ec2HostOps)
 	h, err := s.manager.SpawnHost(ctx, h)
 	s.Error(err)

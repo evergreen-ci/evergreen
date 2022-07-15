@@ -5,28 +5,30 @@ package graphql
 
 import (
 	"context"
+	"sort"
 
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/utility"
 )
 
-func (r *projectVarsResolver) AdminOnlyVars(ctx context.Context, obj *restModel.APIProjectVars) ([]*string, error) {
-	res := []*string{}
+func (r *projectVarsResolver) AdminOnlyVars(ctx context.Context, obj *restModel.APIProjectVars) ([]string, error) {
+	res := []string{}
 	for varAlias, isAdminOnly := range obj.AdminOnlyVars {
 		if isAdminOnly {
-			res = append(res, utility.ToStringPtr(varAlias))
+			res = append(res, varAlias)
 		}
 	}
+	sort.Strings(res)
 	return res, nil
 }
 
-func (r *projectVarsResolver) PrivateVars(ctx context.Context, obj *restModel.APIProjectVars) ([]*string, error) {
-	res := []*string{}
+func (r *projectVarsResolver) PrivateVars(ctx context.Context, obj *restModel.APIProjectVars) ([]string, error) {
+	res := []string{}
 	for privateAlias, isPrivate := range obj.PrivateVars {
 		if isPrivate {
-			res = append(res, utility.ToStringPtr(privateAlias))
+			res = append(res, privateAlias)
 		}
 	}
+	sort.Strings(res)
 	return res, nil
 }
 

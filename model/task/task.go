@@ -1883,7 +1883,7 @@ func (t *Task) GetDisplayStatus() string {
 		if !t.Activated {
 			return evergreen.TaskUnscheduled
 		}
-		if t.Blocked() && !t.OverrideDependencies {
+		if t.Blocked() {
 			return evergreen.TaskStatusBlocked
 		}
 		return evergreen.TaskWillRun
@@ -2347,7 +2347,7 @@ func (t *Task) MarkUnscheduled() error {
 // and logs if the task is newly blocked.
 func (t *Task) MarkUnattainableDependency(dependencyId string, unattainable bool) error {
 	wasBlocked := t.Blocked()
-	// check all dependencies in case of erroneous duplicate
+	// Check all dependencies in case of erroneous duplicate
 	for i := range t.DependsOn {
 		if t.DependsOn[i].TaskId == dependencyId {
 			t.DependsOn[i].Unattainable = unattainable
@@ -2358,8 +2358,8 @@ func (t *Task) MarkUnattainableDependency(dependencyId string, unattainable bool
 		return err
 	}
 
-	// only want to log the task as blocked if it wasn't already blocked
-	if !wasBlocked && unattainable {
+	// Only want to log the task as blocked if it wasn't already blocked, and if we're not overriding dependencies.
+	if !wasBlocked && unattainable && !t.OverrideDependencies {
 		event.LogTaskBlocked(t.Id, t.Execution)
 	}
 	return nil
@@ -2522,6 +2522,11 @@ func ArchiveMany(tasks []Task) error {
 	for _, et := range execTasks {
 		toArchive = append(toArchive, et.makeArchivedTask())
 	}
+	grip.DebugWhen(len(utility.UniqueStrings(taskIds)) != len(taskIds), message.Fields{
+		"ticket":           "EVG-17261",
+		"message":          "archiving same task multiple times",
+		"tasks_to_archive": taskIds,
+	})
 
 	err = archiveAll(bundledTasks, toUpdateTaskIds, toArchive)
 
@@ -3318,6 +3323,9 @@ func (t *Task) GetJQL(searchProjects []string) string {
 
 // Blocked returns if a task cannot run given the state of the task
 func (t *Task) Blocked() bool {
+	if t.OverrideDependencies {
+		return false
+	}
 	for _, dependency := range t.DependsOn {
 		if dependency.Unattainable {
 			return true

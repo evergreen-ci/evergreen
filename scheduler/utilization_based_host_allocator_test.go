@@ -147,7 +147,7 @@ func (s *UtilizationAllocatorSuite) SetupTest() {
 	s.NoError(db.ClearCollections(task.Collection, host.Collection, distro.Collection))
 	s.distro = distro.Distro{
 		Id:       s.distroName,
-		Provider: evergreen.ProviderNameEc2Auto,
+		Provider: evergreen.ProviderNameEc2Fleet,
 		HostAllocatorSettings: distro.HostAllocatorSettings{
 			MinimumHosts:       0,
 			MaximumHosts:       50,
@@ -540,7 +540,7 @@ func (s *UtilizationAllocatorSuite) TestOverMaxHosts() {
 	s.NoError(t2.Insert())
 
 	distro := distro.Distro{
-		Provider: evergreen.ProviderNameEc2Auto,
+		Provider: evergreen.ProviderNameEc2Fleet,
 		HostAllocatorSettings: distro.HostAllocatorSettings{
 			MaximumHosts: 10,
 		},
@@ -1061,7 +1061,7 @@ func (s *UtilizationAllocatorSuite) TestRoundingUp() {
 func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers() {
 	parentDistro := distro.Distro{
 		Id:       "parent-distro",
-		Provider: evergreen.ProviderNameEc2Auto,
+		Provider: evergreen.ProviderNameEc2Fleet,
 		HostAllocatorSettings: distro.HostAllocatorSettings{
 			MaximumHosts: 50,
 		},
@@ -1176,7 +1176,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers() {
 func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers2() {
 	parentDistro := distro.Distro{
 		Id:       "parent-distro",
-		Provider: evergreen.ProviderNameEc2Auto,
+		Provider: evergreen.ProviderNameEc2Fleet,
 		HostAllocatorSettings: distro.HostAllocatorSettings{
 			MaximumHosts: 50,
 		},

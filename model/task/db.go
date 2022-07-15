@@ -1650,16 +1650,17 @@ func AbortTasksForBuild(buildId string, taskIds []string, caller string) error {
 	return err
 }
 
-func AbortTasksForVersion(versionId string, taskIds []string, caller string) error {
+func AbortAndMarkResetTasksForVersion(versionId string, taskIds []string, caller string) error {
 	_, err := UpdateAll(
 		bson.M{
-			VersionKey: versionId,
+			VersionKey: versionId, // Include to improve query.
 			IdKey:      bson.M{"$in": taskIds},
 			StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
 		},
 		bson.M{"$set": bson.M{
-			AbortedKey:   true,
-			AbortInfoKey: AbortInfo{User: caller},
+			AbortedKey:           true,
+			AbortInfoKey:         AbortInfo{User: caller},
+			ResetWhenFinishedKey: true,
 		}},
 	)
 	return err
