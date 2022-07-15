@@ -3692,6 +3692,7 @@ func TestArchiveFailedOnly(t *testing.T) {
 			Id:                      "dt",
 			DisplayOnly:             true,
 			ExecutionTasks:          []string{"t1", "t2"},
+			Status:                  evergreen.TaskFailed,
 			Version:                 "v",
 			ResetFailedWhenFinished: true,
 		}
