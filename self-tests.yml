@@ -340,6 +340,9 @@ tasks:
     run_on: archlinux-new-small
   - <<: *run-build
     name: dist
+  - <<: *run-build
+    name: dist-unsigned
+    activate: false
   - <<: *run-smoke-test
     name: smoke-test-task
     tags: ["smoke"]
@@ -608,6 +611,7 @@ buildvariants:
     tasks:
       - name: "dist-and-upload-clis"
       - name: "dist-staging"
+      - name: "dist-unsigned"
       - name: ".smoke"
       - name: ".test"
       - name: "js-test"
