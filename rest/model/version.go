@@ -5,7 +5,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/utility"
-	"github.com/pkg/errors"
 )
 
 // APIVersion is the model to be returned by the API whenever versions are fetched.
@@ -39,12 +38,7 @@ type buildDetail struct {
 }
 
 // BuildFromService converts from service level structs to an APIVersion.
-func (apiVersion *APIVersion) BuildFromService(h interface{}) error {
-	v, ok := h.(*model.Version)
-	if !ok {
-		return errors.Errorf("programmatic error: expected version but got type %T", h)
-	}
-
+func (apiVersion *APIVersion) BuildFromService(v model.Version) {
 	apiVersion.Id = utility.ToStringPtr(v.Id)
 	apiVersion.CreateTime = ToTimePtr(v.CreateTime)
 	apiVersion.StartTime = ToTimePtr(v.StartTime)
@@ -73,9 +67,7 @@ func (apiVersion *APIVersion) BuildFromService(h interface{}) error {
 	}
 	for _, bv := range v.Builds {
 		apiBuild := APIBuild{}
-		if err := apiBuild.BuildFromService(bv); err != nil {
-			return errors.Wrap(err, "converting build to API model")
-		}
+		apiBuild.BuildFromService(bv)
 		apiVersion.Builds = append(apiVersion.Builds, apiBuild)
 	}
 
@@ -91,10 +83,4 @@ func (apiVersion *APIVersion) BuildFromService(h interface{}) error {
 			apiVersion.ProjectIdentifier = utility.ToStringPtr(identifier)
 		}
 	}
-	return nil
-}
-
-// ToService returns a service layer build using the data from the APIVersion.
-func (apiVersion *APIVersion) ToService() (interface{}, error) {
-	return nil, errors.New("not implemented for read-only route")
 }

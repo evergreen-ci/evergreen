@@ -17,18 +17,11 @@ import (
 func SaveSubscriptions(owner string, subscriptions []restModel.APISubscription, isProjectOwner bool) error {
 	dbSubscriptions := []event.Subscription{}
 	for _, subscription := range subscriptions {
-		subscriptionInterface, err := subscription.ToService()
+		dbSubscription, err := subscription.ToService()
 		if err != nil {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
 				Message:    errors.Wrap(err, "converting subscription to service model").Error(),
-			}
-		}
-		dbSubscription, ok := subscriptionInterface.(event.Subscription)
-		if !ok {
-			return gimlet.ErrorResponse{
-				StatusCode: http.StatusInternalServerError,
-				Message:    fmt.Sprintf("programmatic error: expected subscription model type but actually got type %T", subscriptionInterface),
 			}
 		}
 		if isProjectOwner {

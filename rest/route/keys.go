@@ -37,9 +37,7 @@ func (h *keysGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 	for _, key := range user.PubKeys {
 		apiKey := &model.APIPubKey{}
-		if err := apiKey.BuildFromService(key); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting public key to API model"))
-		}
+		apiKey.BuildFromService(key)
 		if err := resp.AddData(apiKey); err != nil {
 			return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "adding public keys to response"))
 		}

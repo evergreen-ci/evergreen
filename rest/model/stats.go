@@ -5,7 +5,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/stats"
 	"github.com/evergreen-ci/utility"
-	"github.com/pkg/errors"
 )
 
 // APITestStats is the model to be returned by the API when querying test execution statistics.
@@ -22,27 +21,16 @@ type APITestStats struct {
 }
 
 // BuildFromService converts a service level struct to an API level struct.
-func (ts *APITestStats) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case *stats.TestStats:
-		ts.TestFile = utility.ToStringPtr(v.TestFile)
-		ts.TaskName = utility.ToStringPtr(v.TaskName)
-		ts.BuildVariant = utility.ToStringPtr(v.BuildVariant)
-		ts.Distro = utility.ToStringPtr(v.Distro)
-		ts.Date = utility.ToStringPtr(v.Date.UTC().Format("2006-01-02"))
+func (ts *APITestStats) BuildFromService(in stats.TestStats) {
+	ts.TestFile = utility.ToStringPtr(in.TestFile)
+	ts.TaskName = utility.ToStringPtr(in.TaskName)
+	ts.BuildVariant = utility.ToStringPtr(in.BuildVariant)
+	ts.Distro = utility.ToStringPtr(in.Distro)
+	ts.Date = utility.ToStringPtr(in.Date.UTC().Format("2006-01-02"))
 
-		ts.NumPass = v.NumPass
-		ts.NumFail = v.NumFail
-		ts.AvgDurationPass = v.AvgDurationPass
-	default:
-		return errors.Errorf("programmatic error: expected test stats but got type %T", h)
-	}
-	return nil
-}
-
-// ToService is not implemented for APITestStats.
-func (ts *APITestStats) ToService() (interface{}, error) {
-	return nil, errors.Errorf("ToService() is not implemented for APITestStats")
+	ts.NumPass = in.NumPass
+	ts.NumFail = in.NumFail
+	ts.AvgDurationPass = in.AvgDurationPass
 }
 
 // StartAtKey returns the start_at key parameter that can be used to paginate and start at this element.
@@ -73,32 +61,21 @@ type APITaskStats struct {
 	AvgDurationSuccess float64 `json:"avg_duration_success"`
 }
 
-// Converts a service level struct to an API level struct
-func (ts *APITaskStats) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case *stats.TaskStats:
-		ts.TaskName = utility.ToStringPtr(v.TaskName)
-		ts.BuildVariant = utility.ToStringPtr(v.BuildVariant)
-		ts.Distro = utility.ToStringPtr(v.Distro)
-		ts.Date = utility.ToStringPtr(v.Date.UTC().Format("2006-01-02"))
+// BuildFromService converts a service level struct to an API level struct.
+func (ts *APITaskStats) BuildFromService(v stats.TaskStats) {
+	ts.TaskName = utility.ToStringPtr(v.TaskName)
+	ts.BuildVariant = utility.ToStringPtr(v.BuildVariant)
+	ts.Distro = utility.ToStringPtr(v.Distro)
+	ts.Date = utility.ToStringPtr(v.Date.UTC().Format("2006-01-02"))
 
-		ts.NumSuccess = v.NumSuccess
-		ts.NumFailed = v.NumFailed
-		ts.NumTotal = v.NumTotal
-		ts.NumTimeout = v.NumTimeout
-		ts.NumTestFailed = v.NumTestFailed
-		ts.NumSystemFailed = v.NumSystemFailed
-		ts.NumSetupFailed = v.NumSetupFailed
-		ts.AvgDurationSuccess = v.AvgDurationSuccess
-	default:
-		return errors.Errorf("programmatic error: expected task stats but got type %T", h)
-	}
-	return nil
-}
-
-// ToService is not implemented for APITaskStats.
-func (ts *APITaskStats) ToService() (interface{}, error) {
-	return nil, errors.Errorf("ToService() is not implemented for APITaskStats")
+	ts.NumSuccess = v.NumSuccess
+	ts.NumFailed = v.NumFailed
+	ts.NumTotal = v.NumTotal
+	ts.NumTimeout = v.NumTimeout
+	ts.NumTestFailed = v.NumTestFailed
+	ts.NumSystemFailed = v.NumSystemFailed
+	ts.NumSetupFailed = v.NumSetupFailed
+	ts.AvgDurationSuccess = v.AvgDurationSuccess
 }
 
 // StartAtKey returns the start_at key parameter that can be used to paginate and start at this element.

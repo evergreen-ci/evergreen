@@ -1034,16 +1034,9 @@ func (c *communicatorImpl) GetSubscriptions(ctx context.Context) ([]event.Subscr
 
 	subs := make([]event.Subscription, len(apiSubs))
 	for i := range apiSubs {
-		var iface interface{}
-		iface, err = apiSubs[i].ToService()
+		subs[i], err = apiSubs[i].ToService()
 		if err != nil {
 			return nil, errors.Wrap(err, "converting API model")
-		}
-
-		var ok bool
-		subs[i], ok = iface.(event.Subscription)
-		if !ok {
-			return nil, errors.Errorf("programmatic error: expected event subscription type but actual type is %T", iface)
 		}
 	}
 

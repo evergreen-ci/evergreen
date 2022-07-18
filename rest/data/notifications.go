@@ -1,12 +1,9 @@
 package data
 
 import (
-	"net/http"
-
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
@@ -31,13 +28,8 @@ func GetNotificationsStats() (*restModel.APIEventStats, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "collecting unsent notification stats")
 	}
-
-	if err = stats.BuildFromService(nStats); err != nil {
-		return nil, gimlet.ErrorResponse{
-			Message:    errors.Wrap(err, "converting notification stats to API model").Error(),
-			StatusCode: http.StatusInternalServerError,
-		}
+	if nStats != nil {
+		stats.BuildFromService(*nStats)
 	}
-
 	return &stats, nil
 }

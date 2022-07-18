@@ -89,9 +89,7 @@ func (t *versionTriggers) Attributes() event.Attributes {
 
 func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride string) (*commonTemplateData, error) {
 	api := restModel.APIVersion{}
-	if err := api.BuildFromService(t.version); err != nil {
-		return nil, errors.Wrap(err, "error building json model")
-	}
+	api.BuildFromService(*t.version)
 	projectName := t.version.Identifier
 	if api.ProjectIdentifier != nil {
 		projectName = utility.FromStringPtr(api.ProjectIdentifier)

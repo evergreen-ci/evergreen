@@ -18,6 +18,11 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     $scope.validAuthKinds = ["ldap", "okta", "naive", "only_api", "allow_service_users", "github"];
     $scope.validECSOSes = ["linux", "windows"];
     $scope.validECSArches = ["amd64", "arm64"];
+    $scope.validECSWindowsVersions = {
+      "Server 2016": "windows_server_2016",
+      "Server 2019": "windows_server_2019",
+      "Server 2022": "windows_server_2022"
+    };
     $("#restart-modal").on("hidden.bs.modal", $scope.enableSubmit);
   }
 
@@ -475,7 +480,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     }
 
     if (!$scope.validECSCapacityProvider($scope.new_ecs_capacity_provider)) {
-      $scope.invalidECSCapacityProvider = "ECS capacity provider name, os, and arch are required.";
+      $scope.invalidECSCapacityProvider = "ECS capacity provider name, OS (and Windows version if Windows), and arch are required.";
       return
     }
 
@@ -485,7 +490,13 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
   }
 
   $scope.validECSCapacityProvider = function (item) {
-    return item && item.name && item.os && item.arch;
+    if (!item || !item.name || !item.os || !item.arch) {
+      return false
+    }
+    if (item.os == "windows" && !item.windows_version) {
+      return false
+    }
+    return true
   }
 
   $scope.deleteECSCapacityProvider = function (index) {

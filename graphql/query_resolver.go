@@ -138,10 +138,7 @@ func (r *queryResolver) DistroTaskQueue(ctx context.Context, distroID string) ([
 
 	for _, taskQueueItem := range distroQueue.Queue {
 		apiTaskQueueItem := restModel.APITaskQueueItem{}
-		err := apiTaskQueueItem.BuildFromService(taskQueueItem)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error converting task queue item db model to api model: %v", err.Error()))
-		}
+		apiTaskQueueItem.BuildFromService(taskQueueItem)
 		taskQueue = append(taskQueue, &apiTaskQueueItem)
 	}
 
@@ -988,10 +985,7 @@ func (r *queryResolver) UserConfig(ctx context.Context) (*UserConfig, error) {
 func (r *queryResolver) UserSettings(ctx context.Context) (*restModel.APIUserSettings, error) {
 	usr := mustHaveUser(ctx)
 	userSettings := restModel.APIUserSettings{}
-	err := userSettings.BuildFromService(usr.Settings)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, err.Error())
-	}
+	userSettings.BuildFromService(usr.Settings)
 	return &userSettings, nil
 }
 
@@ -1121,10 +1115,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 		versionsCheckedCount++
 		v := versions[index]
 		apiVersion := restModel.APIVersion{}
-		err = apiVersion.BuildFromService(&v)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIVersion from service: %s", err.Error()))
-		}
+		apiVersion.BuildFromService(v)
 
 		// If the version was created before we started caching activation status we must manually verify it and cache that value.
 		if v.Activated == nil {
@@ -1251,9 +1242,7 @@ func (r *queryResolver) Version(ctx context.Context, id string) (*restModel.APIV
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find version with id: `%s`", id))
 	}
 	apiVersion := restModel.APIVersion{}
-	if err = apiVersion.BuildFromService(v); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIVersion from service for `%s`: %s", id, err.Error()))
-	}
+	apiVersion.BuildFromService(*v)
 	return &apiVersion, nil
 }
 

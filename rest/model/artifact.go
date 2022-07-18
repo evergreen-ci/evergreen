@@ -3,8 +3,6 @@ package model
 import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip"
-	"github.com/pkg/errors"
 )
 
 type APIFile struct {
@@ -22,71 +20,44 @@ type APIEntry struct {
 	Execution       int       `json:"execution"`
 }
 
-func (f *APIFile) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case artifact.File:
-		f.Name = utility.ToStringPtr(v.Name)
-		f.Link = utility.ToStringPtr(v.Link)
-		f.Visibility = utility.ToStringPtr(v.Visibility)
-		f.IgnoreForFetch = v.IgnoreForFetch
-	default:
-		return errors.Errorf("%T is not a supported type", h)
-	}
-	return nil
+func (f *APIFile) BuildFromService(file artifact.File) {
+	f.Name = utility.ToStringPtr(file.Name)
+	f.Link = utility.ToStringPtr(file.Link)
+	f.Visibility = utility.ToStringPtr(file.Visibility)
+	f.IgnoreForFetch = file.IgnoreForFetch
 }
 
-func (f *APIFile) ToService() (interface{}, error) {
+func (f *APIFile) ToService() artifact.File {
 	return artifact.File{
 		Name:           utility.FromStringPtr(f.Name),
 		Link:           utility.FromStringPtr(f.Link),
 		Visibility:     utility.FromStringPtr(f.Visibility),
 		IgnoreForFetch: f.IgnoreForFetch,
-	}, nil
-}
-
-func (e *APIEntry) BuildFromService(h interface{}) error {
-	catcher := grip.NewBasicCatcher()
-	switch v := h.(type) {
-	case artifact.Entry:
-		e.TaskId = utility.ToStringPtr(v.TaskId)
-		e.TaskDisplayName = utility.ToStringPtr(v.TaskDisplayName)
-		e.BuildId = utility.ToStringPtr(v.BuildId)
-		e.Execution = v.Execution
-		for _, file := range v.Files {
-			apiFile := APIFile{}
-			catcher.Add(apiFile.BuildFromService(file))
-			e.Files = append(e.Files, apiFile)
-		}
-	default:
-		return errors.Errorf("unexpected type %T", h)
 	}
-	return catcher.Resolve()
 }
 
-func (e *APIEntry) ToService() (interface{}, error) {
+func (e *APIEntry) BuildFromService(v artifact.Entry) {
+	e.TaskId = utility.ToStringPtr(v.TaskId)
+	e.TaskDisplayName = utility.ToStringPtr(v.TaskDisplayName)
+	e.BuildId = utility.ToStringPtr(v.BuildId)
+	e.Execution = v.Execution
+	for _, file := range v.Files {
+		apiFile := APIFile{}
+		apiFile.BuildFromService(file)
+		e.Files = append(e.Files, apiFile)
+	}
+}
+
+func (e *APIEntry) ToService() artifact.Entry {
 	entry := artifact.Entry{
 		TaskId:          utility.FromStringPtr(e.TaskId),
 		TaskDisplayName: utility.FromStringPtr(e.TaskDisplayName),
 		BuildId:         utility.FromStringPtr(e.BuildId),
 		Execution:       e.Execution,
 	}
-	catcher := grip.NewBasicCatcher()
 	for _, apiFile := range e.Files {
-		f, err := apiFile.ToService()
-		if err != nil {
-			catcher.Wrapf(err, "converting artifact file entry to service model")
-			continue
-		}
-		file, ok := f.(artifact.File)
-		if !ok {
-			catcher.Errorf("programmatic error: expected artifact file but got type %T", f)
-			continue
-		}
-		entry.Files = append(entry.Files, file)
-	}
-	if catcher.HasErrors() {
-		return nil, catcher.Resolve()
+		entry.Files = append(entry.Files, apiFile.ToService())
 	}
 
-	return entry, nil
+	return entry
 }
