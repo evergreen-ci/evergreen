@@ -1115,30 +1115,32 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 		tasksByName[t.Name] = t
 	}
 	for _, pbvt := range pbv.Tasks {
-		// evaluate each task against both the task and task group selectors
+		// Evaluate each task against both the task and task group selectors
 		// only error if both selectors error because each task should only be found
-		// in one or the other
+		// in one or the other.  Skip selector checking if task group is defined
+		// directly on the build variant task.
 		var names, temp []string
-		var err1, err2 error
 		isGroup := false
-		if tse != nil {
-			temp, err1 = tse.evalSelector(ParseSelector(pbvt.Name))
-			names = append(names, temp...)
-		}
-		if tgse != nil {
-			temp, err2 = tgse.evalSelector(ParseSelector(pbvt.Name))
-			if len(temp) > 0 {
-				names = append(names, temp...)
-				isGroup = true
-			}
-		}
 		if pbvt.TaskGroup != nil {
 			names = append(names, pbvt.Name)
 			isGroup = true
-		}
-		if err1 != nil && err2 != nil && !isGroup {
-			evalErrs = append(evalErrs, err1, err2)
-			continue
+		} else {
+			var err1, err2 error
+			if tse != nil {
+				temp, err1 = tse.evalSelector(ParseSelector(pbvt.Name))
+				names = append(names, temp...)
+			}
+			if tgse != nil {
+				temp, err2 = tgse.evalSelector(ParseSelector(pbvt.Name))
+				if len(temp) > 0 {
+					names = append(names, temp...)
+					isGroup = true
+				}
+			}
+			if err1 != nil && err2 != nil {
+				evalErrs = append(evalErrs, err1, err2)
+				continue
+			}
 		}
 		// create new task definitions--duplicates must have the same status requirements
 		for _, name := range names {

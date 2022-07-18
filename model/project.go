@@ -870,14 +870,21 @@ func NewPatchTaskIdTable(proj *Project, v *Version, tasks TaskVariantPairs, proj
 	for _, tg := range proj.TaskGroups {
 		tgMap[tg.Name] = tg
 	}
+	for _, variant := range proj.BuildVariants {
+		for _, t := range variant.Tasks {
+			if t.TaskGroup != nil {
+				tgMap[t.Name] = *t.TaskGroup
+			}
+		}
+	}
 	execTasksWithTaskGroupTasks := TVPairSet{}
 	for _, vt := range tasks.ExecTasks {
-		bvt := proj.FindTaskForVariant(vt.TaskName, vt.Variant)
-		if tg := proj.FindTaskGroup(vt.TaskName); tg != nil {
-			for _, t := range tg.Tasks {
-				execTasksWithTaskGroupTasks = append(execTasksWithTaskGroupTasks, TVPair{vt.Variant, t})
+		if _, ok := tgMap[vt.TaskName]; ok {
+			if tg := proj.FindTaskGroup(vt.TaskName); tg != nil {
+				for _, t := range tg.Tasks {
+					execTasksWithTaskGroupTasks = append(execTasksWithTaskGroupTasks, TVPair{vt.Variant, t})
+				}
 			}
-			tgMap[bvt.Name] = *tg
 		} else {
 			execTasksWithTaskGroupTasks = append(execTasksWithTaskGroupTasks, vt)
 		}
