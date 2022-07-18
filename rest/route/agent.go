@@ -239,6 +239,9 @@ func (h *getExpansionsHandler) Parse(ctx context.Context, r *http.Request) error
 	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
 		return errors.New("missing task ID")
 	}
+	if h.hostID = r.Header.Get(evergreen.HostHeader); h.hostID == "" {
+		return errors.New("missing host ID")
+	}
 	return nil
 }
 
@@ -404,6 +407,9 @@ func (h *getDistroViewHandler) Factory() gimlet.RouteHandler {
 }
 
 func (h *getDistroViewHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.hostID = r.Header.Get(evergreen.HostHeader); h.hostID == "" {
+		return errors.New("missing host ID")
+	}
 	return nil
 }
 
@@ -420,9 +426,9 @@ func (h *getDistroViewHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	dv := apimodels.DistroView{
-		//CloneMethod:         h.Distro.CloneMethod,
-		//DisableShallowClone: h.Distro.DisableShallowClone,
-		//WorkDir:             h.Distro.WorkDir,
+		CloneMethod:         host.Distro.CloneMethod,
+		DisableShallowClone: host.Distro.DisableShallowClone,
+		WorkDir:             host.Distro.WorkDir,
 	}
 	return gimlet.NewJSONResponse(dv)
 }
