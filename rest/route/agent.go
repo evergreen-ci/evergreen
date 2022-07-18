@@ -3,6 +3,12 @@ package route
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"strings"
+	"time"
+
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -10,18 +16,12 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	"net/http"
-	"strings"
-	"time"
-
-	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/gimlet"
 )
 
 // GET /rest/v2/agent/cedar_config
@@ -442,6 +442,9 @@ func (h *attachFilesHandler) Factory() gimlet.RouteHandler {
 }
 
 func (h *attachFilesHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
 	err := utility.ReadJSON(r.Body, &h.files)
 	if err != nil {
 		message := fmt.Sprintf("reading file definitions for task  %v: %v", h.taskID, err)
@@ -502,6 +505,9 @@ func (h *attachTestLogHandler) Factory() gimlet.RouteHandler {
 }
 
 func (h *attachTestLogHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
 	err := utility.ReadJSON(r.Body, &h.log)
 	if err != nil {
 		return errors.Wrap(err, "reading test log from JSON request body")
@@ -568,6 +574,9 @@ func (h *attachResultsHandler) Factory() gimlet.RouteHandler {
 }
 
 func (h *attachResultsHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
 	err := utility.ReadJSON(r.Body, &h.results)
 	if err != nil {
 		return errors.Wrap(err, "reading test results from JSON request body")
@@ -609,6 +618,9 @@ func (h *heartbeatHandler) Factory() gimlet.RouteHandler {
 }
 
 func (h *heartbeatHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
 	return nil
 }
 
@@ -652,6 +664,9 @@ func (h *fetchExpansionsForTaskHandler) Factory() gimlet.RouteHandler {
 }
 
 func (h *fetchExpansionsForTaskHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
 	return nil
 }
 
@@ -724,6 +739,9 @@ func (h *fetchTaskHandler) Factory() gimlet.RouteHandler {
 }
 
 func (h *fetchTaskHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
 	return nil
 }
 
@@ -762,6 +780,9 @@ func (h *appendTaskLogHandler) Factory() gimlet.RouteHandler {
 }
 
 func (h *appendTaskLogHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
 	if err := utility.ReadJSON(r.Body, &h.taskLog); err != nil {
 		return errors.Wrap(err, "reading task log from JSON request body")
 	}
@@ -812,6 +833,9 @@ func (h *startTaskHandler) Factory() gimlet.RouteHandler {
 }
 
 func (h *startTaskHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
 	if err := utility.ReadJSON(r.Body, &h.taskStartInfo); err != nil {
 		return errors.Wrapf(err, "reading task start request for %s", h.taskID)
 	}
@@ -890,9 +914,7 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 }
 
 // POST /task/{task_id}/end
-type endTaskHandler struct {
-	taskID string
-}
+type endTaskHandler struct{}
 
 func makeEndTask() gimlet.RouteHandler {
 	return &endTaskHandler{}
