@@ -227,8 +227,8 @@ func buildFromGqlInput(r PatchConfigure) model.PatchUpdate {
 	p := model.PatchUpdate{}
 	p.Description = r.Description
 	p.PatchTriggerAliases = r.PatchTriggerAliases
-	for _, param := range r.Parameters {
-		p.Parameters = append(p.Parameters, param.ToService())
+	for i := range r.Parameters {
+		p.Parameters = append(p.Parameters, r.Parameters[i].ToService())
 	}
 	for _, vt := range r.VariantsTasks {
 		variantTasks := patch.VariantTasks{
@@ -375,31 +375,17 @@ func modifyVersionHandler(ctx context.Context, patchID string, modification mode
 	}
 
 	if evergreen.IsPatchRequester(v.Requester) {
-		// restart is handled through graphql because we need the user to specify
-		// which downstream tasks they want to restart
+		// Restart is handled through graphql because we need the user to specify
+		// which downstream tasks they want to restart.
 		if modification.Action != evergreen.RestartAction {
-			//do the same for child patches
-			p, err := patch.FindOneId(patchID)
+			// Only modify the child patch if it is finalized.
+			childPatchIds, err := patch.GetFinalizedChildPatchIdsForPatch(patchID)
 			if err != nil {
-				return ResourceNotFound.Send(ctx, fmt.Sprintf("error finding patch %s: %s", patchID, err.Error()))
+				return ResourceNotFound.Send(ctx, err.Error())
 			}
-			if p == nil {
-				return ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found ", patchID))
-			}
-			if p.IsParent() {
-				childPatches, err := patch.Find(patch.ByStringIds(p.Triggers.ChildPatches))
-				if err != nil {
-					return InternalServerError.Send(ctx, fmt.Sprintf("error getting child patches: %s", err.Error()))
-				}
-				for _, childPatch := range childPatches {
-					// only modify the child patch if it is finalized
-					if childPatch.Version != "" {
-						err = modifyVersionHandler(ctx, childPatch.Id.Hex(), modification)
-						if err != nil {
-							return errors.Wrap(mapHTTPStatusToGqlError(ctx, httpStatus, err), fmt.Sprintf("error modifying child patch '%s'", patchID))
-						}
-					}
-
+			for _, childPatchId := range childPatchIds {
+				if err = modifyVersionHandler(ctx, childPatchId, modification); err != nil {
+					return errors.Wrap(mapHTTPStatusToGqlError(ctx, httpStatus, err), fmt.Sprintf("modifying child patch '%s'", childPatchId))
 				}
 			}
 

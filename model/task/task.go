@@ -1882,7 +1882,7 @@ func (t *Task) GetDisplayStatus() string {
 		if !t.Activated {
 			return evergreen.TaskUnscheduled
 		}
-		if t.Blocked() && !t.OverrideDependencies {
+		if t.Blocked() {
 			return evergreen.TaskStatusBlocked
 		}
 		return evergreen.TaskWillRun
@@ -2346,7 +2346,7 @@ func (t *Task) MarkUnscheduled() error {
 // and logs if the task is newly blocked.
 func (t *Task) MarkUnattainableDependency(dependencyId string, unattainable bool) error {
 	wasBlocked := t.Blocked()
-	// check all dependencies in case of erroneous duplicate
+	// Check all dependencies in case of erroneous duplicate
 	for i := range t.DependsOn {
 		if t.DependsOn[i].TaskId == dependencyId {
 			t.DependsOn[i].Unattainable = unattainable
@@ -2357,8 +2357,8 @@ func (t *Task) MarkUnattainableDependency(dependencyId string, unattainable bool
 		return err
 	}
 
-	// only want to log the task as blocked if it wasn't already blocked
-	if !wasBlocked && unattainable {
+	// Only want to log the task as blocked if it wasn't already blocked, and if we're not overriding dependencies.
+	if !wasBlocked && unattainable && !t.OverrideDependencies {
 		event.LogTaskBlocked(t.Id, t.Execution)
 	}
 	return nil
@@ -2513,23 +2513,23 @@ func ArchiveMany(tasks []Task) error {
 	if len(tasks) == 0 {
 		return nil
 	}
-	// add execution tasks of display tasks passed in, if they are not there
-	execTaskMap := map[string]bool{}
+	existingTasksMap := map[string]bool{}
 	for _, t := range tasks {
-		execTaskMap[t.Id] = true
+		existingTasksMap[t.Id] = true
 	}
 	additionalTasks := []string{}
 	for _, t := range tasks {
-		// for any display tasks here, make sure that we archive all their execution tasks
+		// For any display tasks here, make sure that we also archive all their execution tasks.
+		// Consider each execution tasks individually, so we don't query a task we already passed in.
 		for _, et := range t.ExecutionTasks {
-			if !execTaskMap[et] {
-				additionalTasks = append(additionalTasks, t.ExecutionTasks...)
-				continue
+			if !existingTasksMap[et] {
+				additionalTasks = append(additionalTasks, et)
+				existingTasksMap[et] = true
 			}
 		}
 	}
 	if len(additionalTasks) > 0 {
-		toAdd, err := FindAll(db.Query(ByIds((additionalTasks))))
+		toAdd, err := FindAll(db.Query(ByIds(additionalTasks)))
 		if err != nil {
 			return errors.Wrap(err, "finding execution tasks")
 		}
@@ -2542,6 +2542,11 @@ func ArchiveMany(tasks []Task) error {
 		archived = append(archived, *t.makeArchivedTask())
 		taskIds = append(taskIds, t.Id)
 	}
+	grip.DebugWhen(len(utility.UniqueStrings(taskIds)) != len(taskIds), message.Fields{
+		"ticket":           "EVG-17261",
+		"message":          "archiving same task multiple times",
+		"tasks_to_archive": taskIds,
+	})
 
 	mongoClient := evergreen.GetEnvironment().Client()
 	ctx, cancel := evergreen.GetEnvironment().Context()
@@ -3294,6 +3299,9 @@ func (t *Task) GetJQL(searchProjects []string) string {
 
 // Blocked returns if a task cannot run given the state of the task
 func (t *Task) Blocked() bool {
+	if t.OverrideDependencies {
+		return false
+	}
 	for _, dependency := range t.DependsOn {
 		if dependency.Unattainable {
 			return true

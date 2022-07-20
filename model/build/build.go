@@ -142,6 +142,14 @@ func (b *Build) PreviousSuccessful() (*Build, error) {
 		b.RevisionOrderNumber, b.Project, b.BuildVariant))
 }
 
+func getSetBuildActivatedUpdate(active bool, caller string) bson.M {
+	return bson.M{
+		ActivatedKey:     active,
+		ActivatedTimeKey: time.Now(),
+		ActivatedByKey:   caller,
+	}
+}
+
 // UpdateActivation updates builds with the given ids
 // to the given activation setting.
 func UpdateActivation(buildIds []string, active bool, caller string) error {
@@ -150,14 +158,10 @@ func UpdateActivation(buildIds []string, active bool, caller string) error {
 		query[ActivatedByKey] = bson.M{"$in": evergreen.SystemActivators}
 	}
 
-	_, err := UpdateAllBuilds(
+	err := UpdateAllBuilds(
 		query,
 		bson.M{
-			"$set": bson.M{
-				ActivatedKey:     active,
-				ActivatedTimeKey: time.Now(),
-				ActivatedByKey:   caller,
-			},
+			"$set": getSetBuildActivatedUpdate(active, caller),
 		},
 	)
 	return errors.Wrapf(err, "setting build activation to %t", active)

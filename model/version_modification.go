@@ -27,7 +27,7 @@ type VersionModification struct {
 func ModifyVersion(version Version, user user.DBUser, modifications VersionModification) (int, error) {
 	switch modifications.Action {
 	case evergreen.RestartAction:
-		if modifications.VersionsToRestart == nil { // to maintain backwards compatibility with legacy Ui and support the deprecated restartPatch resolver
+		if modifications.VersionsToRestart == nil { // To maintain backwards compatibility with legacy UI
 			if err := RestartVersion(version.Id, modifications.TaskIds, modifications.Abort, user.Id); err != nil {
 				return http.StatusInternalServerError, errors.Wrap(err, "restarting patch")
 			}
