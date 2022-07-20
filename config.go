@@ -332,7 +332,7 @@ func BootstrapConfig(env Environment) (*Settings, error) {
 
 		// retrieve the section's document from the db
 		if err := section.Get(env); err != nil {
-			catcher.Add(errors.Wrapf(err, "error populating section '%s'", sectionId))
+			catcher.Add(errors.Wrapf(err, "populating section '%s'", sectionId))
 			continue
 		}
 

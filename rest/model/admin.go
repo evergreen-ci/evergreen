@@ -2364,6 +2364,8 @@ func (rtr *RestartResponse) ToService() (interface{}, error) {
 	return nil, errors.New("ToService not implemented for RestartTasksResponse")
 }
 
+const prestoConfigId = "presto"
+
 func AdminDbToRestModel(in evergreen.ConfigSection) (Model, error) {
 	id := in.SectionId()
 	var out Model
@@ -2373,7 +2375,7 @@ func AdminDbToRestModel(in evergreen.ConfigSection) (Model, error) {
 		if err != nil {
 			return nil, err
 		}
-	} else if id == "presto" { // TODO PM-2940: Remove presto check
+	} else if id == prestoConfigId { // TODO PM-2940: Remove presto check
 		return nil, nil
 	} else {
 		structVal := reflect.ValueOf(*NewConfigModel())
