@@ -226,9 +226,9 @@ func (h *podAgentSetup) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *podAgentSetup) Run(ctx context.Context) gimlet.Responder {
 	data := apimodels.AgentSetupData{
-		SplunkServerURL:   h.settings.Splunk.ServerURL,
-		SplunkClientToken: h.settings.Splunk.Token,
-		SplunkChannel:     h.settings.Splunk.Channel,
+		SplunkServerURL:   h.settings.Splunk.SplunkConnectionInfo.ServerURL,
+		SplunkClientToken: h.settings.Splunk.SplunkConnectionInfo.Token,
+		SplunkChannel:     h.settings.Splunk.SplunkConnectionInfo.Channel,
 		S3Bucket:          h.settings.Providers.AWS.S3.Bucket,
 		S3Key:             h.settings.Providers.AWS.S3.Key,
 		S3Secret:          h.settings.Providers.AWS.S3.Secret,

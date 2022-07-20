@@ -161,7 +161,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.ServiceFlags.ContainerConfigurationsDisabled, settingsFromConnector.ServiceFlags.ContainerConfigurationsDisabled)
 	s.EqualValues(testSettings.Slack.Level, settingsFromConnector.Slack.Level)
 	s.EqualValues(testSettings.Slack.Options.Channel, settingsFromConnector.Slack.Options.Channel)
-	s.EqualValues(testSettings.Splunk.Channel, settingsFromConnector.Splunk.Channel)
+	s.EqualValues(testSettings.Splunk.SplunkConnectionInfo.Channel, settingsFromConnector.Splunk.SplunkConnectionInfo.Channel)
 	s.EqualValues(testSettings.Ui.HttpListenAddr, settingsFromConnector.Ui.HttpListenAddr)
 
 	// spot check events in the event log
@@ -286,7 +286,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.ServiceFlags.UnrecognizedPodCleanupDisabled, settingsFromConnector.ServiceFlags.UnrecognizedPodCleanupDisabled)
 	s.EqualValues(testSettings.Slack.Level, settingsFromConnector.Slack.Level)
 	s.EqualValues(testSettings.Slack.Options.Channel, settingsFromConnector.Slack.Options.Channel)
-	s.EqualValues(testSettings.Splunk.Channel, settingsFromConnector.Splunk.Channel)
+	s.EqualValues(testSettings.Splunk.SplunkConnectionInfo.Channel, settingsFromConnector.Splunk.SplunkConnectionInfo.Channel)
 	s.EqualValues(testSettings.Ui.HttpListenAddr, settingsFromConnector.Ui.HttpListenAddr)
 }
 

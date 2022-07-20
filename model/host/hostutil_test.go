@@ -406,9 +406,9 @@ func TestJasperCommands(t *testing.T) {
 			assert.Contains(t, cmd, "--env 'envKey1=envValue1'")
 		},
 		"ForceReinstallJasperCommandWithSplunkLogging": func(t *testing.T, h *Host, settings *evergreen.Settings) {
-			settings.Splunk.ServerURL = "url"
-			settings.Splunk.Token = "token"
-			settings.Splunk.Channel = "channel"
+			settings.Splunk.SplunkConnectionInfo.ServerURL = "url"
+			settings.Splunk.SplunkConnectionInfo.Token = "token"
+			settings.Splunk.SplunkConnectionInfo.Channel = "channel"
 
 			cmd := h.ForceReinstallJasperCommand(settings)
 			assert.True(t, strings.HasPrefix(cmd, "sudo /foo/jasper_cli jasper service force-reinstall rpc"))
@@ -417,9 +417,9 @@ func TestJasperCommands(t *testing.T) {
 			assert.Contains(t, cmd, fmt.Sprintf("--port=%d", settings.HostJasper.Port))
 			assert.Contains(t, cmd, fmt.Sprintf("--creds_path=%s", h.Distro.BootstrapSettings.JasperCredentialsPath))
 			assert.Contains(t, cmd, fmt.Sprintf("--user=%s", h.User))
-			assert.Contains(t, cmd, fmt.Sprintf("--splunk_url=%s", settings.Splunk.ServerURL))
+			assert.Contains(t, cmd, fmt.Sprintf("--splunk_url=%s", settings.Splunk.SplunkConnectionInfo.ServerURL))
 			assert.Contains(t, cmd, fmt.Sprintf("--splunk_token_path=%s", h.splunkTokenFilePath()))
-			assert.Contains(t, cmd, fmt.Sprintf("--splunk_channel=%s", settings.Splunk.Channel))
+			assert.Contains(t, cmd, fmt.Sprintf("--splunk_channel=%s", settings.Splunk.SplunkConnectionInfo.Channel))
 		},
 		"ForceReinstallJasperWithResourceLimits": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			h.Distro.BootstrapSettings.ResourceLimits = distro.ResourceLimits{
@@ -531,7 +531,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
-			writeCredentialsCmd, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
+			writeCredentialsCmd, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk.SplunkConnectionInfo, creds)
 			require.NoError(t, err)
 
 			startAgentMonitor, err := h.StartAgentMonitorRequest(settings)
@@ -579,7 +579,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
-			writeCredentialsCmd, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
+			writeCredentialsCmd, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk.SplunkConnectionInfo, creds)
 			require.NoError(t, err)
 
 			setupSpawnHost, err := h.SpawnHostSetupCommands(settings)
@@ -620,7 +620,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 
 			for testName, testCase := range map[string]func(t *testing.T, h *Host, settings *evergreen.Settings){
 				"WithJasperCredentialsPath": func(t *testing.T, h *Host, settings *evergreen.Settings) {
-					cmd, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
+					cmd, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk.SplunkConnectionInfo, creds)
 					require.NoError(t, err)
 
 					expectedCreds, err := creds.Export()
@@ -628,20 +628,20 @@ func TestJasperCommandsWindows(t *testing.T) {
 					assert.Equal(t, fmt.Sprintf("echo '%s' > /bar/bat.txt && chmod 666 /bar/bat.txt", expectedCreds), cmd)
 				},
 				"WithSplunkCredentials": func(t *testing.T, h *Host, settings *evergreen.Settings) {
-					settings.Splunk.Token = "token"
-					settings.Splunk.ServerURL = "splunk_url"
-					cmd, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
+					settings.Splunk.SplunkConnectionInfo.Token = "token"
+					settings.Splunk.SplunkConnectionInfo.ServerURL = "splunk_url"
+					cmd, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk.SplunkConnectionInfo, creds)
 					require.NoError(t, err)
 
 					expectedCreds, err := creds.Export()
 					require.NoError(t, err)
-					assert.Equal(t, fmt.Sprintf("echo '%s' > /bar/bat.txt && chmod 666 /bar/bat.txt && echo '%s' > /bar/splunk.txt && chmod 666 /bar/splunk.txt", expectedCreds, settings.Splunk.Token), cmd)
+					assert.Equal(t, fmt.Sprintf("echo '%s' > /bar/bat.txt && chmod 666 /bar/bat.txt && echo '%s' > /bar/splunk.txt && chmod 666 /bar/splunk.txt", expectedCreds, settings.Splunk.SplunkConnectionInfo.Token), cmd)
 				},
 				"SpawnHostWithSplunkCredentials": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 					h.StartedBy = "started_by_user"
-					settings.Splunk.Token = "token"
-					settings.Splunk.ServerURL = "splunk_url"
-					cmd, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
+					settings.Splunk.SplunkConnectionInfo.Token = "token"
+					settings.Splunk.SplunkConnectionInfo.ServerURL = "splunk_url"
+					cmd, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk.SplunkConnectionInfo, creds)
 					require.NoError(t, err)
 
 					expectedCreds, err := creds.Export()
@@ -985,9 +985,11 @@ func TestStartAgentMonitorRequest(t *testing.T) {
 		Ui: evergreen.UIConfig{
 			Url: "www.example2.com",
 		},
-		Splunk: send.SplunkConnectionInfo{
-			ServerURL: "www.example3.com",
-			Token:     "token",
+		Splunk: evergreen.SplunkConfig{
+			send.SplunkConnectionInfo{
+				ServerURL: "www.example3.com",
+				Token:     "token",
+			},
 		},
 	}
 

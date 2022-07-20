@@ -142,27 +142,22 @@ func (s *AdminSuite) TestBanner() {
 
 func (s *AdminSuite) TestBaseConfig() {
 	config := Settings{
-		ApiUrl:             "api",
-		Banner:             "banner",
-		BannerTheme:        Important,
-		ClientBinariesDir:  "bin_dir",
-		ConfigDir:          "cfg_dir",
-		Credentials:        map[string]string{"k1": "v1"},
-		DomainName:         "example.com",
-		Expansions:         map[string]string{"k2": "v2"},
-		GithubPRCreatorOrg: "org",
-		GithubOrgs:         []string{"evergreen-ci"},
-		Keys:               map[string]string{"k3": "v3"},
-		LogPath:            "logpath",
-		Plugins:            map[string]map[string]interface{}{"k4": {"k5": "v5"}},
-		PprofPort:          "port",
-		SSHKeyDirectory:    "/ssh_key_directory",
-		SSHKeyPairs:        []SSHKeyPair{{Name: "key", Public: "public", Private: "private"}},
-		Splunk: send.SplunkConnectionInfo{
-			ServerURL: "server",
-			Token:     "token",
-			Channel:   "channel",
-		},
+		ApiUrl:              "api",
+		Banner:              "banner",
+		BannerTheme:         Important,
+		ClientBinariesDir:   "bin_dir",
+		ConfigDir:           "cfg_dir",
+		Credentials:         map[string]string{"k1": "v1"},
+		DomainName:          "example.com",
+		Expansions:          map[string]string{"k2": "v2"},
+		GithubPRCreatorOrg:  "org",
+		GithubOrgs:          []string{"evergreen-ci"},
+		Keys:                map[string]string{"k3": "v3"},
+		LogPath:             "logpath",
+		Plugins:             map[string]map[string]interface{}{"k4": {"k5": "v5"}},
+		PprofPort:           "port",
+		SSHKeyDirectory:     "/ssh_key_directory",
+		SSHKeyPairs:         []SSHKeyPair{{Name: "key", Public: "public", Private: "private"}},
 		ShutdownWaitSeconds: 15,
 	}
 
@@ -464,6 +459,23 @@ func (s *AdminSuite) TestSlackConfig() {
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config, settings.Slack)
+}
+
+func (s *AdminSuite) TestSplunkConfig() {
+	config := SplunkConfig{
+		SplunkConnectionInfo: send.SplunkConnectionInfo{
+			ServerURL: "splunk_url",
+			Token:     "splunk_token",
+			Channel:   "splunk_channel",
+		},
+	}
+
+	err := config.Set()
+	s.NoError(err)
+	settings, err := GetConfig()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.Splunk)
 }
 
 func (s *AdminSuite) TestUiConfig() {

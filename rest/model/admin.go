@@ -2142,21 +2142,23 @@ type APISplunkConnectionInfo struct {
 
 func (a *APISplunkConnectionInfo) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
-	case send.SplunkConnectionInfo:
-		a.ServerURL = utility.ToStringPtr(v.ServerURL)
-		a.Token = utility.ToStringPtr(v.Token)
-		a.Channel = utility.ToStringPtr(v.Channel)
+	case evergreen.SplunkConfig:
+		a.ServerURL = utility.ToStringPtr(v.SplunkConnectionInfo.ServerURL)
+		a.Token = utility.ToStringPtr(v.SplunkConnectionInfo.Token)
+		a.Channel = utility.ToStringPtr(v.SplunkConnectionInfo.Channel)
 	default:
-		return errors.Errorf("programmatic error: expected Splunk connection info but got type %T", h)
+		return errors.Errorf("programmatic error: expected Splunk connection info but got type '%T'", h)
 	}
 	return nil
 }
 
 func (a *APISplunkConnectionInfo) ToService() (interface{}, error) {
-	return send.SplunkConnectionInfo{
-		ServerURL: utility.FromStringPtr(a.ServerURL),
-		Token:     utility.FromStringPtr(a.Token),
-		Channel:   utility.FromStringPtr(a.Channel),
+	return evergreen.SplunkConfig{
+		send.SplunkConnectionInfo{
+			ServerURL: utility.FromStringPtr(a.ServerURL),
+			Token:     utility.FromStringPtr(a.Token),
+			Channel:   utility.FromStringPtr(a.Channel),
+		},
 	}, nil
 }
 
@@ -2371,6 +2373,8 @@ func AdminDbToRestModel(in evergreen.ConfigSection) (Model, error) {
 		if err != nil {
 			return nil, err
 		}
+	} else if id == "presto" { // TODO PM-2940: Remove presto check
+		return nil, nil
 	} else {
 		structVal := reflect.ValueOf(*NewConfigModel())
 		for i := 0; i < structVal.NumField(); i++ {
