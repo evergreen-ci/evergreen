@@ -528,7 +528,7 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding host by id: %s", err))
 	}
 	if h == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Host not found"))
+		return nil, ResourceNotFound.Send(ctx, "Host not found")
 	}
 
 	if !host.CanUpdateSpawnHost(h, usr) {
