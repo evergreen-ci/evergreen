@@ -224,14 +224,19 @@ func (d *Distro) ShellBinary() string {
 }
 
 type HostAllocatorSettings struct {
-	Version                string        `bson:"version" json:"version" mapstructure:"version"`
-	MinimumHosts           int           `bson:"minimum_hosts" json:"minimum_hosts" mapstructure:"minimum_hosts"`
-	MaximumHosts           int           `bson:"maximum_hosts" json:"maximum_hosts" mapstructure:"maximum_hosts"`
-	RoundingRule           string        `bson:"rounding_rule" json:"rounding_rule" mapstructure:"rounding_rule"`
-	FeedbackRule           string        `bson:"feedback_rule" json:"feedback_rule" mapstructure:"feedback_rule"`
-	HostsOverallocatedRule string        `bson:"hosts_overallocated_rule" json:"hosts_overallocated_rule" mapstructure:"hosts_overallocated_rule"`
+	Version                string `bson:"version" json:"version" mapstructure:"version"`
+	MinimumHosts           int    `bson:"minimum_hosts" json:"minimum_hosts" mapstructure:"minimum_hosts"`
+	MaximumHosts           int    `bson:"maximum_hosts" json:"maximum_hosts" mapstructure:"maximum_hosts"`
+	RoundingRule           string `bson:"rounding_rule" json:"rounding_rule" mapstructure:"rounding_rule"`
+	FeedbackRule           string `bson:"feedback_rule" json:"feedback_rule" mapstructure:"feedback_rule"`
+	HostsOverallocatedRule string `bson:"hosts_overallocated_rule" json:"hosts_overallocated_rule" mapstructure:"hosts_overallocated_rule"`
+	// AcceptableHostIdleTime is the amount of time we wait for an idle host to be marked as idle.
 	AcceptableHostIdleTime time.Duration `bson:"acceptable_host_idle_time" json:"acceptable_host_idle_time" mapstructure:"acceptable_host_idle_time"`
-	FutureHostFraction     float64       `bson:"future_host_fraction" json:"future_host_fraction" mapstructure:"future_host_fraction"`
+	// AcceptableHostOutdatedIdleTime is the amount of time we wait for an outdated idle host to be marked idle.
+	AcceptableHostOutdatedIdleTime time.Duration `bson:"acceptable_host_outdated_idle_time" json:"acceptable_host_outdated_idle_time" mapstructure:"acceptable_host_outdated_idle_time"`
+	// AcceptableTaskGroupHostIdleTime is the amount of time we wait for a task group host to be marked as idle.
+	AcceptableTaskGroupHostIdleTime time.Duration `bson:"acceptable_task_group_host_idle_time" json:"acceptable_task_group_host_idle_time" mapstructure:"acceptable_task_group_host_idle_time"`
+	FutureHostFraction              float64       `bson:"future_host_fraction" json:"future_host_fraction" mapstructure:"future_host_fraction"`
 }
 
 type FinderSettings struct {
@@ -649,14 +654,16 @@ func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAl
 	config := s.Scheduler
 	has := d.HostAllocatorSettings
 	resolved := HostAllocatorSettings{
-		Version:                has.Version,
-		MinimumHosts:           has.MinimumHosts,
-		MaximumHosts:           has.MaximumHosts,
-		AcceptableHostIdleTime: has.AcceptableHostIdleTime,
-		RoundingRule:           has.RoundingRule,
-		FeedbackRule:           has.FeedbackRule,
-		HostsOverallocatedRule: has.HostsOverallocatedRule,
-		FutureHostFraction:     has.FutureHostFraction,
+		Version:                         has.Version,
+		MinimumHosts:                    has.MinimumHosts,
+		MaximumHosts:                    has.MaximumHosts,
+		AcceptableHostIdleTime:          has.AcceptableHostIdleTime,
+		AcceptableHostOutdatedIdleTime:  has.AcceptableHostOutdatedIdleTime,
+		AcceptableTaskGroupHostIdleTime: has.AcceptableTaskGroupHostIdleTime,
+		RoundingRule:                    has.RoundingRule,
+		FeedbackRule:                    has.FeedbackRule,
+		HostsOverallocatedRule:          has.HostsOverallocatedRule,
+		FutureHostFraction:              has.FutureHostFraction,
 	}
 
 	catcher := grip.NewBasicCatcher()
@@ -672,6 +679,12 @@ func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAl
 
 	if resolved.AcceptableHostIdleTime == 0 {
 		resolved.AcceptableHostIdleTime = time.Duration(config.AcceptableHostIdleTimeSeconds) * time.Second
+	}
+	if resolved.AcceptableHostOutdatedIdleTime == 0 {
+		resolved.AcceptableHostOutdatedIdleTime = time.Duration(config.AcceptableHostOutdatedIdleTimeSeconds) * time.Second
+	}
+	if resolved.AcceptableTaskGroupHostIdleTime == 0 {
+		resolved.AcceptableTaskGroupHostIdleTime = time.Duration(config.AcceptableTaskGroupHostIdleTimeSeconds) * time.Second
 	}
 	if resolved.RoundingRule == evergreen.HostAllocatorRoundDefault {
 		resolved.RoundingRule = config.HostAllocatorRoundingRule

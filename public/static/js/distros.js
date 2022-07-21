@@ -196,10 +196,17 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
           distro.distro.host_allocator_settings.minimum_hosts = distro.distro.host_allocator_settings.minimum_hosts || 0;
           distro.distro.host_allocator_settings.maximum_hosts = distro.distro.host_allocator_settings.maximum_hosts || 0;
           distro.distro.host_allocator_settings.acceptable_host_idle_time = distro.distro.host_allocator_settings.acceptable_host_idle_time || 0;
+          distro.distro.host_allocator_settings.acceptable_host_outdated_idle_time = distro.distro.host_allocator_settings.acceptable_host_outdated_idle_time || 0;
+          distro.distro.host_allocator_settings.acceptable_task_group_host_idle_time = distro.distro.host_allocator_settings.acceptable_task_group_host_idle_time || 0;
           // Convert from nanoseconds (time.Duration) to seconds (UI display units) for the relevant host_allocator_settings' fields.
           if (distro.distro.host_allocator_settings.acceptable_host_idle_time > 0) {
             distro.distro.host_allocator_settings.acceptable_host_idle_time /= 1e9;
-
+          }
+          if (distro.distro.host_allocator_settings.acceptable_host_outdated_idle_time > 0) {
+            distro.distro.host_allocator_settings.acceptable_host_outdated_idle_time /= 1e9;
+          }
+          if (distro.distro.host_allocator_settings.acceptable_task_group_host_idle_time > 0) {
+            distro.distro.host_allocator_settings.acceptable_task_group_host_idle_time /= 1e9;
           }
           // Planner Settings
           distro.distro.planner_settings = distro.distro.planner_settings || {};
@@ -489,6 +496,12 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
     }
     if ($scope.activeDistro.host_allocator_settings.acceptable_host_idle_time > 0) {
       $scope.activeDistro.host_allocator_settings.acceptable_host_idle_time *= 1e9
+    }
+    if ($scope.activeDistro.host_allocator_settings.acceptable_host_outdated_idle_time > 0) {
+      $scope.activeDistro.host_allocator_settings.acceptable_host_outdated_idle_time *= 1e9
+    }
+    if ($scope.activeDistro.host_allocator_settings.acceptable_task_group_host_idle_time_seconds > 0) {
+      $scope.activeDistro.host_allocator_settings.acceptable_task_group_host_idle_time *= 1e9
     }
     $scope.updateSettingsList();
     $scope.activeDistro.settings = null;

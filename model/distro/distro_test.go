@@ -357,22 +357,24 @@ func TestGetResolvedHostAllocatorSettings(t *testing.T) {
 		},
 	}
 	config0 := evergreen.SchedulerConfig{
-		TaskFinder:                    "legacy",
-		HostAllocator:                 evergreen.HostAllocatorUtilization,
-		HostAllocatorRoundingRule:     evergreen.HostAllocatorRoundDown,
-		HostAllocatorFeedbackRule:     evergreen.HostAllocatorNoFeedback,
-		HostsOverallocatedRule:        evergreen.HostsOverallocatedIgnore,
-		FutureHostFraction:            .1,
-		CacheDurationSeconds:          60,
-		Planner:                       evergreen.PlannerVersionLegacy,
-		TargetTimeSeconds:             112358,
-		AcceptableHostIdleTimeSeconds: 123,
-		GroupVersions:                 false,
-		PatchFactor:                   50,
-		PatchTimeInQueueFactor:        12,
-		CommitQueueFactor:             50,
-		MainlineTimeInQueueFactor:     10,
-		ExpectedRuntimeFactor:         7,
+		TaskFinder:                             "legacy",
+		HostAllocator:                          evergreen.HostAllocatorUtilization,
+		HostAllocatorRoundingRule:              evergreen.HostAllocatorRoundDown,
+		HostAllocatorFeedbackRule:              evergreen.HostAllocatorNoFeedback,
+		HostsOverallocatedRule:                 evergreen.HostsOverallocatedIgnore,
+		FutureHostFraction:                     .1,
+		CacheDurationSeconds:                   60,
+		Planner:                                evergreen.PlannerVersionLegacy,
+		TargetTimeSeconds:                      112358,
+		AcceptableHostIdleTimeSeconds:          123,
+		AcceptableHostOutdatedIdleTimeSeconds:  456,
+		AcceptableTaskGroupHostIdleTimeSeconds: 789,
+		GroupVersions:                          false,
+		PatchFactor:                            50,
+		PatchTimeInQueueFactor:                 12,
+		CommitQueueFactor:                      50,
+		MainlineTimeInQueueFactor:              10,
+		ExpectedRuntimeFactor:                  7,
 	}
 
 	settings0 := &evergreen.Settings{Scheduler: config0}
@@ -388,6 +390,8 @@ func TestGetResolvedHostAllocatorSettings(t *testing.T) {
 	assert.Equal(t, evergreen.HostsOverallocatedIgnore, resolved0.HostsOverallocatedRule)
 	// Fallback to the SchedulerConfig.AcceptableHostIdleTimeSeconds as HostAllocatorSettings.AcceptableHostIdleTime is equal to 0.
 	assert.Equal(t, time.Duration(123)*time.Second, resolved0.AcceptableHostIdleTime)
+	assert.Equal(t, time.Duration(456)*time.Second, resolved0.AcceptableHostOutdatedIdleTime)
+	assert.Equal(t, time.Duration(789)*time.Second, resolved0.AcceptableTaskGroupHostIdleTime)
 
 	// test distro-first override when RoundingRule is not HostAllocatorRoundDefault
 	d0.HostAllocatorSettings.RoundingRule = evergreen.HostAllocatorRoundUp
