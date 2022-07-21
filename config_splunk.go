@@ -63,12 +63,4 @@ func (c *SplunkConfig) Set() error {
 	return errors.Wrapf(err, "updating section '%s'", c.SectionId())
 }
 
-func (c *SplunkConfig) ValidateAndDefault() error {
-	if c.SplunkConnectionInfo.ServerURL == "" {
-		return errors.New("server url for splunk is required")
-	}
-	if c.SplunkConnectionInfo.Token == "" {
-		return errors.New("token for splunk is required")
-	}
-	return nil
-}
+func (c *SplunkConfig) ValidateAndDefault() error { return nil }
