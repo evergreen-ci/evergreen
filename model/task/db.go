@@ -998,20 +998,20 @@ const VersionLimit = 50
 // FindUniqueBuildVariantNamesByTask returns a list of unique build variants names and their display names for a given task name.
 // It attempts to return the most recent display name for each build variant to avoid returning duplicates caused by display names changing.
 // It only checks the last 50 versions that ran for a given task name.
-func FindUniqueBuildVariantNamesByTask(projectId string, taskName string, repoOrderNumber int) ([]*BuildVariantTuple, error) {
-	pipeline := []bson.M{
-		{"$match": bson.M{
-			ProjectKey:     projectId,
-			DisplayNameKey: taskName,
-			RequesterKey:   bson.M{"$in": evergreen.SystemVersionRequesterTypes},
-			"$and": []bson.M{
-				{RevisionOrderNumberKey: bson.M{"$gte": repoOrderNumber - VersionLimit}},
-				{RevisionOrderNumberKey: bson.M{"$lte": repoOrderNumber}},
-				{BuildVariantDisplayNameKey: bson.M{"$exists": true, "$ne": ""}},
-			},
-		},
+func FindUniqueBuildVariantNamesByTask(projectId string, taskName string, repoOrderNumber int, legacyLookup bool) ([]*BuildVariantTuple, error) {
+	query := bson.M{
+		ProjectKey:     projectId,
+		DisplayNameKey: taskName,
+		RequesterKey:   bson.M{"$in": evergreen.SystemVersionRequesterTypes},
+		"$and": []bson.M{
+			{RevisionOrderNumberKey: bson.M{"$gte": repoOrderNumber - VersionLimit}},
+			{RevisionOrderNumberKey: bson.M{"$lte": repoOrderNumber}},
 		},
 	}
+	if !legacyLookup {
+		query[BuildVariantDisplayNameKey] = bson.M{"$exists": true, "$ne": ""}
+	}
+	pipeline := []bson.M{{"$match": query}}
 
 	// group the build variants by unique build variant names and get a build id for each
 	groupByBuildVariant := bson.M{
@@ -1037,6 +1037,13 @@ func FindUniqueBuildVariantNamesByTask(projectId string, taskName string, repoOr
 		},
 	}
 	pipeline = append(pipeline, projectBuildIdAndVariant)
+
+	// legacy tasks do not have variant display name directly set on them
+	// so need to lookup from builds collection
+	if legacyLookup {
+		// get the display name for each build variant
+		pipeline = append(pipeline, AddBuildVariantDisplayName...)
+	}
 
 	// cleanup the results
 	projectBvResults := bson.M{
