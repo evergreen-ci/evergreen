@@ -986,7 +986,7 @@ func TestStartAgentMonitorRequest(t *testing.T) {
 			Url: "www.example2.com",
 		},
 		Splunk: evergreen.SplunkConfig{
-			send.SplunkConnectionInfo{
+			SplunkConnectionInfo: send.SplunkConnectionInfo{
 				ServerURL: "www.example3.com",
 				Token:     "token",
 			},

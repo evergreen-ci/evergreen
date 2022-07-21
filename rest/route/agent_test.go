@@ -54,7 +54,7 @@ func TestAgentCedarConfig(t *testing.T) {
 
 			s := &evergreen.Settings{
 				Splunk: evergreen.SplunkConfig{
-					send.SplunkConnectionInfo{
+					SplunkConnectionInfo: send.SplunkConnectionInfo{
 						ServerURL: "server_url",
 						Token:     "token",
 						Channel:   "channel",

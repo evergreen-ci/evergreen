@@ -2154,7 +2154,7 @@ func (a *APISplunkConnectionInfo) BuildFromService(h interface{}) error {
 
 func (a *APISplunkConnectionInfo) ToService() (interface{}, error) {
 	return evergreen.SplunkConfig{
-		send.SplunkConnectionInfo{
+		SplunkConnectionInfo: send.SplunkConnectionInfo{
 			ServerURL: utility.FromStringPtr(a.ServerURL),
 			Token:     utility.FromStringPtr(a.Token),
 			Channel:   utility.FromStringPtr(a.Channel),

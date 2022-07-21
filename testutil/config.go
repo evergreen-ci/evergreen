@@ -384,7 +384,7 @@ func MockConfig() *evergreen.Settings {
 			Level: "info",
 		},
 		Splunk: evergreen.SplunkConfig{
-			send.SplunkConnectionInfo{
+			SplunkConnectionInfo: send.SplunkConnectionInfo{
 				ServerURL: "server",
 				Token:     "token",
 				Channel:   "channel",
