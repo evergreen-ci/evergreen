@@ -11,17 +11,17 @@ import (
 
 // APICreatePod is the model to create a new pod.
 type APICreatePod struct {
-	Name           *string              `json:"name"`
-	Memory         *int                 `json:"memory"`
-	CPU            *int                 `json:"cpu"`
-	Image          *string              `json:"image"`
-	RepoUsername   *string              `json:"repo_username"`
-	RepoPassword   *string              `json:"repo_password"`
-	OS             APIPodOS             `json:"os"`
-	Arch           APIPodArch           `json:"arch"`
-	WindowsVersion APIPodWindowsVersion `json:"windows_version"`
-	Secret         *string              `json:"secret"`
-	WorkingDir     *string              `json:"working_dir"`
+	Name                *string              `json:"name"`
+	Memory              *int                 `json:"memory"`
+	CPU                 *int                 `json:"cpu"`
+	Image               *string              `json:"image"`
+	RepoCredsExternalID *string              `json:"repo_creds_external_id"`
+	OS                  APIPodOS             `json:"os"`
+	Arch                APIPodArch           `json:"arch"`
+	WindowsVersion      APIPodWindowsVersion `json:"windows_version"`
+	WorkingDir          *string              `json:"working_dir"`
+	PodSecretExternalID *string              `json:"secret_id"`
+	PodSecretValue      *string              `json:"-"`
 }
 
 type APICreatePodResponse struct {
@@ -44,16 +44,16 @@ func (p *APICreatePod) ToService() (*pod.Pod, error) {
 	}
 
 	return pod.NewTaskIntentPod(evergreen.GetEnvironment().Settings().Providers.AWS.Pod.ECS, pod.TaskIntentPodOptions{
-		Secret:         utility.FromStringPtr(p.Secret),
-		CPU:            utility.FromIntPtr(p.CPU),
-		MemoryMB:       utility.FromIntPtr(p.Memory),
-		OS:             *os,
-		Arch:           *arch,
-		WindowsVersion: *winVer,
-		Image:          utility.FromStringPtr(p.Image),
-		WorkingDir:     utility.FromStringPtr(p.WorkingDir),
-		RepoUsername:   utility.FromStringPtr(p.RepoUsername),
-		RepoPassword:   utility.FromStringPtr(p.RepoPassword),
+		CPU:                 utility.FromIntPtr(p.CPU),
+		MemoryMB:            utility.FromIntPtr(p.Memory),
+		OS:                  *os,
+		Arch:                *arch,
+		WindowsVersion:      *winVer,
+		Image:               utility.FromStringPtr(p.Image),
+		WorkingDir:          utility.FromStringPtr(p.WorkingDir),
+		RepoCredsExternalID: utility.FromStringPtr(p.RepoCredsExternalID),
+		PodSecretExternalID: utility.FromStringPtr(p.PodSecretExternalID),
+		PodSecretValue:      utility.FromStringPtr(p.PodSecretValue),
 	})
 }
 
@@ -196,25 +196,23 @@ func (s APIPodStatus) ToService() (*pod.Status, error) {
 // APIPodTaskContainerCreationOptions represents options to apply to the task's
 // container when creating a pod.
 type APIPodTaskContainerCreationOptions struct {
-	Image          *string                 `json:"image,omitempty"`
-	RepoUsername   *string                 `json:"repo_username,omitempty"`
-	RepoPassword   *string                 `json:"repo_password,omitempty"`
-	MemoryMB       *int                    `json:"memory_mb,omitempty"`
-	CPU            *int                    `json:"cpu,omitempty"`
-	OS             APIPodOS                `json:"os,omitempty"`
-	Arch           APIPodArch              `json:"arch,omitempty"`
-	WindowsVersion APIPodWindowsVersion    `json:"windows_version,omitempty"`
-	EnvVars        map[string]string       `json:"env_vars,omitempty"`
-	EnvSecrets     map[string]APIPodSecret `json:"env_secrets,omitempty"`
-	WorkingDir     *string                 `json:"working_dir,omitempty"`
+	Image               *string                 `json:"image,omitempty"`
+	RepoCredsExternalID *string                 `json:"repo_credss_external_id,omitempty"`
+	MemoryMB            *int                    `json:"memory_mb,omitempty"`
+	CPU                 *int                    `json:"cpu,omitempty"`
+	OS                  APIPodOS                `json:"os,omitempty"`
+	Arch                APIPodArch              `json:"arch,omitempty"`
+	WindowsVersion      APIPodWindowsVersion    `json:"windows_version,omitempty"`
+	EnvVars             map[string]string       `json:"env_vars,omitempty"`
+	EnvSecrets          map[string]APIPodSecret `json:"env_secrets,omitempty"`
+	WorkingDir          *string                 `json:"working_dir,omitempty"`
 }
 
 // BuildFromService converts service-layer task container creation options into
 // REST API task container creation options.
 func (o *APIPodTaskContainerCreationOptions) BuildFromService(opts pod.TaskContainerCreationOptions) {
 	o.Image = utility.ToStringPtr(opts.Image)
-	o.RepoUsername = utility.ToStringPtr(opts.RepoUsername)
-	o.RepoPassword = utility.ToStringPtr(opts.RepoPassword)
+	o.RepoCredsExternalID = utility.ToStringPtr(opts.RepoCredsExternalID)
 	o.MemoryMB = utility.ToIntPtr(opts.MemoryMB)
 	o.CPU = utility.ToIntPtr(opts.CPU)
 	o.OS.BuildFromService(&opts.OS)
@@ -251,9 +249,10 @@ func (o *APIPodTaskContainerCreationOptions) ToService() (*pod.TaskContainerCrea
 		envSecrets[name] = secret.ToService()
 	}
 	return &pod.TaskContainerCreationOptions{
-		Image:          utility.FromStringPtr(o.Image),
-		RepoUsername:   utility.FromStringPtr(o.RepoUsername),
-		RepoPassword:   utility.FromStringPtr(o.RepoPassword),
+		Image:               utility.FromStringPtr(o.Image),
+		RepoCredsExternalID: utility.FromStringPtr(o.RepoCredsExternalID),
+		// RepoUsername:   utility.FromStringPtr(o.RepoUsername),
+		// RepoPassword:   utility.FromStringPtr(o.RepoPassword),
 		MemoryMB:       utility.FromIntPtr(o.MemoryMB),
 		CPU:            utility.FromIntPtr(o.CPU),
 		OS:             *os,
@@ -420,30 +419,21 @@ func (i *APIContainerResourceInfo) ToService() pod.ContainerResourceInfo {
 // APIPodSecret represents a secret associated with a pod returned from the REST
 // API.
 type APIPodSecret struct {
-	Name       *string `json:"name,omitempty"`
 	ExternalID *string `json:"external_id,omitempty"`
 	Value      *string `json:"value,omitempty"`
-	Exists     *bool   `json:"exists,omitempty"`
-	Owned      *bool   `json:"owned,omitempty"`
 }
 
 // BuildFromService converts a service-layer pod secret into a REST API pod
 // secret.
 func (s *APIPodSecret) BuildFromService(secret pod.Secret) {
-	s.Name = utility.ToStringPtr(secret.Name)
 	s.ExternalID = utility.ToStringPtr(secret.ExternalID)
 	s.Value = utility.ToStringPtr(secret.Value)
-	s.Exists = secret.Exists
-	s.Owned = secret.Owned
 }
 
 // ToService converts a REST API pod secret into a service-layer pod secret.
 func (s *APIPodSecret) ToService() pod.Secret {
 	return pod.Secret{
-		Name:       utility.FromStringPtr(s.Name),
 		ExternalID: utility.FromStringPtr(s.ExternalID),
 		Value:      utility.FromStringPtr(s.Value),
-		Exists:     s.Exists,
-		Owned:      s.Owned,
 	}
 }

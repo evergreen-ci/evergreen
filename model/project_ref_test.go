@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
@@ -17,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	adb "github.com/mongodb/anser/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
@@ -1541,20 +1543,6 @@ func TestValidatePeriodicBuildDefinition(t *testing.T) {
 }
 
 func TestContainerSecretValidate(t *testing.T) {
-	t.Run("SucceedsWithStoredSecret", func(t *testing.T) {
-		cs := ContainerSecret{
-			Type:  ContainerSecretRepoCred,
-			Value: `{"username": "cool_user", "password": "very_secure_password_waow"}`,
-		}
-		assert.NoError(t, cs.Validate())
-	})
-	t.Run("SucceedsWithSecretNeedingToBeCreated", func(t *testing.T) {
-		cs := ContainerSecret{
-			Type:  ContainerSecretPodSecret,
-			Value: "pod_secret",
-		}
-		assert.NoError(t, cs.Validate())
-	})
 	t.Run("FailsWithInvalidSecretType", func(t *testing.T) {
 		cs := ContainerSecret{
 			Type:       "",
@@ -1562,12 +1550,280 @@ func TestContainerSecretValidate(t *testing.T) {
 		}
 		assert.Error(t, cs.Validate())
 	})
-	t.Run("FailsWithoutExternalIDOrValueForNewSecret", func(t *testing.T) {
-		cs := ContainerSecret{
-			Type: ContainerSecretRepoCred,
+}
+
+func TestValidateContainerSecrets(t *testing.T) {
+	settings := &evergreen.Settings{
+		Providers: evergreen.CloudProviders{
+			AWS: evergreen.AWSConfig{
+				Pod: evergreen.AWSPodConfig{
+					SecretsManager: evergreen.SecretsManagerConfig{
+						SecretPrefix: "secret_prefix",
+					},
+				},
+			},
+		},
+	}
+	const projectID = "project_id"
+
+	t.Run("SucceedsWithUniquelyNamedValidContainerSecrets", func(t *testing.T) {
+		containerSecrets := []ContainerSecret{
+			{
+				Name:         "apple",
+				ExternalName: "external_name0",
+				ExternalID:   "external_id0",
+				Type:         ContainerSecretRepoCreds,
+			},
+			{
+				Name:         "orange",
+				ExternalName: "external_name1",
+				ExternalID:   "external_id1",
+				Type:         ContainerSecretRepoCreds,
+			},
 		}
-		assert.Error(t, cs.Validate())
+		validated, err := ValidateContainerSecrets(settings, projectID, nil, containerSecrets)
+		require.NoError(t, err)
+
+		require.Len(t, validated, len(containerSecrets))
+		for i := 0; i < len(containerSecrets); i++ {
+			assert.Equal(t, containerSecrets[i], validated[i])
+		}
 	})
+	t.Run("SucceedsWithoutAnyContainerSecrets", func(t *testing.T) {
+		_, err := ValidateContainerSecrets(settings, projectID, nil, nil)
+		assert.NoError(t, err)
+	})
+	t.Run("FailsWithDuplicateNames", func(t *testing.T) {
+		containerSecrets := []ContainerSecret{
+			{
+				Name:         "lychee",
+				ExternalName: "external_name0",
+				ExternalID:   "external_id0",
+				Type:         ContainerSecretRepoCreds,
+			},
+			{
+				Name:         "lychee",
+				ExternalName: "external_name1",
+				ExternalID:   "external_id1",
+				Type:         ContainerSecretRepoCreds,
+			},
+		}
+		_, err := ValidateContainerSecrets(settings, projectID, nil, containerSecrets)
+		assert.Error(t, err)
+	})
+	t.Run("FailsWithInvalidType", func(t *testing.T) {
+		containerSecrets := []ContainerSecret{
+			{
+				Name: "breadfruit",
+				Type: "a type of bread",
+			},
+		}
+		_, err := ValidateContainerSecrets(settings, projectID, nil, containerSecrets)
+		assert.Error(t, err)
+	})
+	t.Run("FailsWithDifferentTypeForExistingSecret", func(t *testing.T) {
+		oldContainerSecrets := []ContainerSecret{
+			{
+				Name: "starfruit",
+				Type: ContainerSecretRepoCreds,
+			},
+		}
+		newContainerSecrets := []ContainerSecret{
+			{
+				Name: "starfruit",
+				Type: ContainerSecretPodSecret,
+			},
+		}
+		_, err := ValidateContainerSecrets(settings, projectID, oldContainerSecrets, newContainerSecrets)
+		assert.Error(t, err)
+	})
+	t.Run("FailsWithDifferentExternalNameForExistingSecret", func(t *testing.T) {
+		oldContainerSecrets := []ContainerSecret{
+			{
+				Name:         "starfruit",
+				ExternalName: "a_starfruit",
+				Type:         ContainerSecretRepoCreds,
+			},
+		}
+		newContainerSecrets := []ContainerSecret{
+			{
+				Name:         "starfruit",
+				ExternalName: "not_a_starfruit_no_more",
+				Type:         ContainerSecretRepoCreds,
+			},
+		}
+		_, err := ValidateContainerSecrets(settings, projectID, oldContainerSecrets, newContainerSecrets)
+		assert.Error(t, err)
+	})
+	t.Run("FailsWithDifferentExternalIDForExistingSecret", func(t *testing.T) {
+		oldContainerSecrets := []ContainerSecret{
+			{
+				Name:       "starfruit",
+				ExternalID: "a_starfruit",
+				Type:       ContainerSecretRepoCreds,
+			},
+		}
+		newContainerSecrets := []ContainerSecret{
+			{
+				Name:       "starfruit",
+				ExternalID: "not_a_starfruit_no_more",
+				Type:       ContainerSecretRepoCreds,
+			},
+		}
+		_, err := ValidateContainerSecrets(settings, projectID, oldContainerSecrets, newContainerSecrets)
+		assert.Error(t, err)
+	})
+	t.Run("FailsWithoutName", func(t *testing.T) {
+		containerSecrets := []ContainerSecret{
+			{
+				Type: ContainerSecretPodSecret,
+			},
+		}
+		_, err := ValidateContainerSecrets(settings, projectID, nil, containerSecrets)
+		assert.Error(t, err)
+	})
+}
+
+func TestContainerSecretCache(t *testing.T) {
+	assert.Implements(t, (*cocoa.SecretCache)(nil), ContainerSecretCache{})
+	defer func() {
+		assert.NoError(t, db.ClearCollections(ProjectRefCollection))
+	}()
+
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, pRef ProjectRef, c ContainerSecretCache){
+		"PutSucceeds": func(ctx context.Context, t *testing.T, pRef ProjectRef, c ContainerSecretCache) {
+			pRef.ContainerSecrets[0].ExternalID = ""
+			require.NoError(t, pRef.Insert())
+			const externalID = "external_id"
+			require.NoError(t, c.Put(ctx, cocoa.SecretCacheItem{
+				ID:   externalID,
+				Name: pRef.ContainerSecrets[0].ExternalName,
+			}))
+
+			dbProjRef, err := FindMergedProjectRef(pRef.Id, "", false)
+			require.NoError(t, err)
+			require.NotZero(t, dbProjRef)
+			require.Len(t, dbProjRef.ContainerSecrets, len(pRef.ContainerSecrets))
+			original := pRef.ContainerSecrets[0]
+			updated := dbProjRef.ContainerSecrets[0]
+			assert.Equal(t, original.ExternalName, updated.ExternalName)
+			assert.Equal(t, original.Name, updated.Name)
+			assert.Equal(t, original.Type, updated.Type)
+			assert.Equal(t, externalID, updated.ExternalID)
+			for i := 1; i < len(pRef.ContainerSecrets); i++ {
+				assert.Equal(t, pRef.ContainerSecrets[i], dbProjRef.ContainerSecrets[i], "mismatched container secrets at index %d", i)
+			}
+		},
+		"PutFailsWithNonexistentProjectRef": func(ctx context.Context, t *testing.T, pRef ProjectRef, c ContainerSecretCache) {
+			assert.Error(t, c.Put(ctx, cocoa.SecretCacheItem{ID: "external_id", Name: pRef.ContainerSecrets[0].ExternalName}))
+		},
+		"PutFailsWithoutMatchingContainerSecretExternalName": func(ctx context.Context, t *testing.T, pRef ProjectRef, c ContainerSecretCache) {
+			require.NoError(t, pRef.Insert())
+			assert.Error(t, c.Put(ctx, cocoa.SecretCacheItem{
+				ID:   "external_id",
+				Name: "nonexistent",
+			}))
+
+			dbProjRef, err := FindMergedProjectRef(pRef.Id, "", false)
+			require.NoError(t, err)
+			require.NotZero(t, dbProjRef)
+			require.Len(t, dbProjRef.ContainerSecrets, len(pRef.ContainerSecrets))
+			for i := 0; i < len(pRef.ContainerSecrets); i++ {
+				assert.Equal(t, pRef.ContainerSecrets[i], dbProjRef.ContainerSecrets[i], "mismatched container secrets at index %d", i)
+			}
+		},
+		"PutSucceedsWithContainerSecretThatAlreadyHasSameExternalIDAlreadySet": func(ctx context.Context, t *testing.T, pRef ProjectRef, c ContainerSecretCache) {
+			pRef.ContainerSecrets[0].ExternalID = "external_id"
+			require.NoError(t, pRef.Insert())
+			require.NoError(t, c.Put(ctx, cocoa.SecretCacheItem{
+				ID:   pRef.ContainerSecrets[0].ExternalID,
+				Name: pRef.ContainerSecrets[0].ExternalName,
+			}))
+
+			dbProjRef, err := FindMergedProjectRef(pRef.Id, "", false)
+			require.NoError(t, err)
+			require.NotZero(t, dbProjRef)
+			require.Len(t, dbProjRef.ContainerSecrets, len(pRef.ContainerSecrets))
+			for i := 0; i < len(pRef.ContainerSecrets); i++ {
+				assert.Equal(t, pRef.ContainerSecrets[i], dbProjRef.ContainerSecrets[i], "mismatched container secrets at index %d", i)
+			}
+		},
+		"PutFailsWithContainerSecretThatHasDifferentExternalIDAlreadySet": func(ctx context.Context, t *testing.T, pRef ProjectRef, c ContainerSecretCache) {
+			const externalID = "external_id"
+			pRef.ContainerSecrets[0].ExternalID = "something_else"
+			require.NoError(t, pRef.Insert())
+			require.Error(t, c.Put(ctx, cocoa.SecretCacheItem{
+				ID:   externalID,
+				Name: pRef.ContainerSecrets[0].ExternalName,
+			}))
+
+			dbProjRef, err := FindMergedProjectRef(pRef.Id, "", false)
+			require.NoError(t, err)
+			require.NotZero(t, dbProjRef)
+			require.Len(t, dbProjRef.ContainerSecrets, len(pRef.ContainerSecrets))
+			for i := 0; i < len(pRef.ContainerSecrets); i++ {
+				assert.Equal(t, pRef.ContainerSecrets[i], dbProjRef.ContainerSecrets[i], "mismatched container secrets at index %d", i)
+			}
+		},
+		"DeleteSucceeds": func(ctx context.Context, t *testing.T, pRef ProjectRef, c ContainerSecretCache) {
+			require.NoError(t, pRef.Insert())
+			require.NoError(t, c.Delete(ctx, pRef.ContainerSecrets[1].ExternalID))
+
+			dbProjRef, err := FindMergedProjectRef(pRef.Id, "", false)
+			require.NoError(t, err)
+			require.NotZero(t, dbProjRef)
+			require.Len(t, dbProjRef.ContainerSecrets, len(pRef.ContainerSecrets)-1)
+			assert.Equal(t, dbProjRef.ContainerSecrets[0], pRef.ContainerSecrets[0])
+		},
+		"DeleteNoopsWithNonexistentProjectRef": func(ctx context.Context, t *testing.T, pRef ProjectRef, c ContainerSecretCache) {
+			assert.NoError(t, c.Delete(ctx, "external_id"), "should not for nonexistent project ref")
+			assert.True(t, adb.ResultsNotFound(db.FindOneQ(ProjectRefCollection, db.Query(bson.M{}), &pRef)))
+		},
+		"DeleteNoopsWithoutMatchingContainerSecretExternalID": func(ctx context.Context, t *testing.T, pRef ProjectRef, c ContainerSecretCache) {
+			require.NoError(t, pRef.Insert())
+			assert.NoError(t, c.Delete(ctx, "nonexistent"), "should not error for nonexistent container secret")
+
+			dbProjRef, err := FindMergedProjectRef(pRef.Id, "", false)
+			require.NoError(t, err)
+			require.NotZero(t, dbProjRef)
+			assert.Len(t, dbProjRef.ContainerSecrets, len(pRef.ContainerSecrets))
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			require.NoError(t, db.ClearCollections(ProjectRefCollection))
+			pRef := ProjectRef{
+				Id:         "project_id",
+				Identifier: "identifier",
+				ContainerSecrets: []ContainerSecret{
+					{
+						Name:       "banana",
+						Type:       ContainerSecretRepoCreds,
+						ExternalID: "external_id0",
+					},
+					{
+						Name:       "cherry",
+						Type:       ContainerSecretRepoCreds,
+						ExternalID: "external_id1",
+					},
+					{
+						Name:       "banerry",
+						Type:       ContainerSecretRepoCreds,
+						ExternalID: "external_id2",
+					},
+				},
+			}
+			for i := 0; i < len(pRef.ContainerSecrets); i++ {
+				pRef.ContainerSecrets[i].ExternalName = makeRepoCredsContainerSecretName(evergreen.SecretsManagerConfig{
+					SecretPrefix: "prefix",
+				}, pRef.Id, pRef.ContainerSecrets[i].Name)
+			}
+
+			tCase(ctx, t, pRef, ContainerSecretCache{})
+		})
+	}
 }
 
 func TestGetPatchTriggerAlias(t *testing.T) {

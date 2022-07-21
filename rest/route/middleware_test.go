@@ -553,11 +553,8 @@ func TestPodAuthMiddleware(t *testing.T) {
 				TaskContainerCreationOpts: pod.TaskContainerCreationOptions{
 					EnvSecrets: map[string]pod.Secret{
 						pod.PodSecretEnvVar: {
-							Name:       "name",
-							Value:      "value",
 							ExternalID: "external_id",
-							Exists:     utility.FalsePtr(),
-							Owned:      utility.TruePtr(),
+							Value:      "value",
 						},
 					},
 				},
@@ -706,11 +703,8 @@ func TestPodOrHostAuthMiddleware(t *testing.T) {
 				TaskContainerCreationOpts: pod.TaskContainerCreationOptions{
 					EnvSecrets: map[string]pod.Secret{
 						pod.PodSecretEnvVar: {
-							Name:       "name",
-							Value:      "value",
 							ExternalID: "external_id",
-							Exists:     utility.FalsePtr(),
-							Owned:      utility.TruePtr(),
+							Value:      "value",
 						},
 					},
 				},

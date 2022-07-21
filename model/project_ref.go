@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
@@ -110,7 +111,7 @@ type ProjectRef struct {
 
 	// Container settings
 	ContainerSizes   map[string]ContainerResources `bson:"container_sizes,omitempty" json:"container_sizes,omitempty" yaml:"container_sizes,omitempty"`
-	ContainerSecrets map[string]ContainerSecret    `bson:"container_credentials,omitempty" json:"container_credentials,omitempty" yaml:"container_credentials,omitempty"`
+	ContainerSecrets []ContainerSecret             `bson:"container_secrets,omitempty" json:"container_secrets,omitempty" yaml:"container_secrets,omitempty"`
 
 	RepoRefId string `bson:"repo_ref_id" json:"repo_ref_id" yaml:"repo_ref_id"`
 
@@ -162,6 +163,10 @@ type ContainerResources struct {
 // on a private image repository. The credential is saved in AWS Secrets Manager upon
 // saving to the ProjectRef
 type ContainerSecret struct {
+	// Name is the user-friendly display name of the secret.
+	Name string `bson:"name" json:"name" yaml:"name"`
+	// ExternalName is the name of the stored secret.
+	ExternalName string `bson:"external_name" json:"external_name" yaml:"external_name"`
 	// ExternalID is the unique resource identifier for the secret. This can be
 	// used to access and modify the secret.
 	ExternalID string `bson:"external_id" json:"external_id" yaml:"external_id"`
@@ -180,15 +185,15 @@ const (
 	// ContainerSecretPodSecret is a container secret representing the Evergreen
 	// agent's pod secret.
 	ContainerSecretPodSecret = "pod_secret"
-	// ContainerSecretRepoCred is a container secret representing an image
-	// repository credential.
-	ContainerSecretRepoCred = "repository_credential"
+	// ContainerSecretRepoCreds is a container secret representing an image
+	// repository's credentials.
+	ContainerSecretRepoCreds = "repository_credentials"
 )
 
 // Validate checks that the container secret type is recognized.
 func (t ContainerSecretType) Validate() error {
 	switch t {
-	case ContainerSecretPodSecret, ContainerSecretRepoCred:
+	case ContainerSecretPodSecret, ContainerSecretRepoCreds:
 		return nil
 	default:
 		return errors.Errorf("unrecognized container secret type '%s'", t)
@@ -293,9 +298,12 @@ var (
 	projectRefTaskAnnotationSettingsKey = bsonutil.MustHaveTag(ProjectRef{}, "TaskAnnotationSettings")
 	projectRefBuildBaronSettingsKey     = bsonutil.MustHaveTag(ProjectRef{}, "BuildBaronSettings")
 	projectRefPerfEnabledKey            = bsonutil.MustHaveTag(ProjectRef{}, "PerfEnabled")
+	projectRefContainerSecretsKey       = bsonutil.MustHaveTag(ProjectRef{}, "ContainerSecrets")
 
-	commitQueueEnabledKey       = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
-	triggerDefinitionProjectKey = bsonutil.MustHaveTag(TriggerDefinition{}, "Project")
+	commitQueueEnabledKey          = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
+	triggerDefinitionProjectKey    = bsonutil.MustHaveTag(TriggerDefinition{}, "Project")
+	containerSecretExternalNameKey = bsonutil.MustHaveTag(ContainerSecret{}, "ExternalName")
+	containerSecretExternalIDKey   = bsonutil.MustHaveTag(ContainerSecret{}, "ExternalID")
 )
 
 func (p *ProjectRef) IsEnabled() bool {
@@ -2591,9 +2599,15 @@ func ValidateContainers(pRef *ProjectRef, containers []Container) error {
 		}
 		catcher.ErrorfWhen(container.Size != "" && !ok, "size '%s' is not defined anywhere", container.Size)
 		if container.Credential != "" {
-			cs, ok := pRef.ContainerSecrets[container.Credential]
-			catcher.ErrorfWhen(!ok, "credential '%s' is not defined anywhere", container.Credential)
-			catcher.ErrorfWhen(ok && cs.Type != ContainerSecretRepoCred, "container credential named '%s' exists but is not valid for use as a repository credential", container.Credential)
+			var matchingSecret *ContainerSecret
+			for _, cs := range pRef.ContainerSecrets {
+				if cs.Name == container.Credential {
+					matchingSecret = &cs
+					break
+				}
+			}
+			catcher.ErrorfWhen(matchingSecret == nil, "credential '%s' is not defined in project settings", container.Credential)
+			catcher.ErrorfWhen(matchingSecret != nil && matchingSecret.Type != ContainerSecretRepoCreds, "container credential named '%s' exists but is not valid for use as a repository credential", container.Credential)
 		}
 		catcher.NewWhen(container.Size != "" && container.Resources != nil, "size and resources cannot both be defined")
 		catcher.NewWhen(container.Size == "" && container.Resources == nil, "either size or resources must be defined")
@@ -2627,11 +2641,10 @@ func (c ContainerResources) Validate() error {
 	return catcher.Resolve()
 }
 
-// Validate that essential ContainerCredential fields are properly defined.
+// Validate that essential container secret fields are properly defined.
 func (c ContainerSecret) Validate() error {
 	catcher := grip.NewSimpleCatcher()
 	catcher.Add(c.Type.Validate())
-	catcher.NewWhen(c.Value == "" && c.ExternalID == "", "must specify a container credential value or have an external ID")
 	return catcher.Resolve()
 }
 
@@ -2856,3 +2869,125 @@ var lookupRepoStep = bson.M{"$lookup": bson.M{
 	"foreignField": RepoRefIdKey,
 	"as":           "repo_ref",
 }}
+
+// ContainerSecretCache implements the cocoa.SecretCache to provide a cache to
+// store secrets in the DB's project ref.
+type ContainerSecretCache struct{}
+
+// Put sets the external ID for a project ref's container secret by its name.
+func (c ContainerSecretCache) Put(_ context.Context, sc cocoa.SecretCacheItem) error {
+	externalNameKey := bsonutil.GetDottedKeyName(projectRefContainerSecretsKey, containerSecretExternalNameKey)
+	externalIDKey := bsonutil.GetDottedKeyName(projectRefContainerSecretsKey, containerSecretExternalIDKey)
+	externalIDUpdateKey := bsonutil.GetDottedKeyName(projectRefContainerSecretsKey, "$", containerSecretExternalIDKey)
+	return db.Update(ProjectRefCollection, bson.M{
+		externalNameKey: sc.Name,
+		externalIDKey: bson.M{
+			"$in": []interface{}{"", sc.ID},
+		},
+	}, bson.M{
+		"$set": bson.M{
+			externalIDUpdateKey: sc.ID,
+		},
+	})
+}
+
+// Delete deletes a container secret from the project ref by its external
+// identifier.
+func (c ContainerSecretCache) Delete(_ context.Context, externalID string) error {
+	externalIDKey := bsonutil.GetDottedKeyName(projectRefContainerSecretsKey, containerSecretExternalIDKey)
+	err := db.Update(ProjectRefCollection, bson.M{
+		externalIDKey: externalID,
+	}, bson.M{
+		"$pull": bson.M{
+			projectRefContainerSecretsKey: bson.M{
+				containerSecretExternalIDKey: externalID,
+			},
+		},
+	})
+	if adb.ResultsNotFound(err) {
+		return nil
+	}
+
+	return err
+}
+
+// Constants related to secrets stored in Secrets Manager.
+const (
+	// internalSecretNamespace is the namespace for secrets that are
+	// Evergreen-internal (such as the pod secret).
+	internalSecretNamespace = "evg-internal"
+	// repoCredsSecretName is the namespace for repository credentials.
+	repoCredsSecretName = "repo-creds"
+)
+
+// makeContainerSecretName creates a Secrets Manager secret name namespaced
+// within the given project ID.
+func makeContainerSecretName(smConf evergreen.SecretsManagerConfig, projectID, name string) string {
+	return strings.Join([]string{strings.TrimRight(smConf.SecretPrefix, "/"), "project", projectID, name}, "/")
+}
+
+// makeInternalContainerSecretName creates a Secrets Manager secret name
+// namespaced by the given project ID for Evergreen-internal purposes.
+func makeInternalContainerSecretName(smConf evergreen.SecretsManagerConfig, projectID, name string) string {
+	return makeContainerSecretName(smConf, projectID, fmt.Sprintf("%s/%s", internalSecretNamespace, name))
+}
+
+// makeRepoCredsSecretName creates a Secrets Manager secret name namespaced by
+// the given project ID for use as a repository credential.
+func makeRepoCredsContainerSecretName(smConf evergreen.SecretsManagerConfig, projectID, name string) string {
+	return makeContainerSecretName(smConf, projectID, fmt.Sprintf("%s/%s", repoCredsSecretName, name))
+}
+
+// ValidateContainerSecrets checks that the project-level container secrets to
+// be added/updated are valid and sets default values where necessary. It
+// returns the defaulted container secrets.
+func ValidateContainerSecrets(settings *evergreen.Settings, projectID string, originalContainerSecrets, updatedContainerSecrets []ContainerSecret) ([]ContainerSecret, error) {
+	original := ContainerSecretsMap(originalContainerSecrets)
+
+	catcher := grip.NewBasicCatcher()
+	containerSecretNames := map[string]struct{}{}
+	for i, containerSecret := range updatedContainerSecrets {
+		catcher.Wrapf(containerSecret.Validate(), "invalid container secret '%s'", containerSecret.Name)
+
+		if containerSecret.Name == "" {
+			catcher.Errorf("container secret name at index %d cannot be empty", i)
+		} else if _, ok := containerSecretNames[containerSecret.Name]; ok {
+			catcher.Errorf("cannot have duplicate container secret named '%s'", containerSecret.Name)
+		}
+		containerSecretNames[containerSecret.Name] = struct{}{}
+
+		if existingSecret, ok := original[containerSecret.Name]; ok {
+			catcher.ErrorfWhen(existingSecret.Type != containerSecret.Type, "container secret '%s' type cannot be changed from '%s' to '%s'", containerSecret.Name, existingSecret.Type, containerSecret.Type)
+			catcher.ErrorfWhen(existingSecret.ExternalID != containerSecret.ExternalID, "container secret '%s' external ID cannot be changed from '%s' to '%s'", existingSecret.ExternalID, existingSecret.ExternalID, containerSecret.ExternalID)
+			catcher.ErrorfWhen(existingSecret.ExternalName != containerSecret.ExternalName, "container secret '%s' external name cannot be changed from '%s' to '%s'", existingSecret.ExternalID, existingSecret.ExternalName, containerSecret.ExternalName)
+			continue
+		}
+
+		// New secrets to be created should not have their external name and ID
+		// decided by the user. The external name is controlled by Evergreen
+		// (and set here) and the external ID is determined by the secret
+		// storage service (and set when the secret is actually stored).
+		smConf := settings.Providers.AWS.Pod.SecretsManager
+		switch containerSecret.Type {
+		case ContainerSecretPodSecret:
+			updatedContainerSecrets[i].ExternalName = makeInternalContainerSecretName(smConf, projectID, containerSecret.Name)
+		case ContainerSecretRepoCreds:
+			updatedContainerSecrets[i].ExternalName = makeRepoCredsContainerSecretName(smConf, projectID, containerSecret.Name)
+		default:
+			catcher.Errorf("unrecognized secret type '%s' for container secret '%s'", containerSecret.Type, containerSecret.Name)
+		}
+		updatedContainerSecrets[i].ExternalID = ""
+	}
+
+	return updatedContainerSecrets, catcher.Resolve()
+}
+
+// ContainerSecretsMap is a convenience function to convert a slice of container
+// secrets to a map of container secrets by name.
+func ContainerSecretsMap(containerSecrets []ContainerSecret) map[string]ContainerSecret {
+	containerSecretsByName := map[string]ContainerSecret{}
+	for _, secret := range containerSecrets {
+		containerSecretsByName[secret.Name] = secret
+	}
+	return containerSecretsByName
+}

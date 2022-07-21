@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -316,4 +317,61 @@ func handleGithubConflicts(pRef *model.ProjectRef, reason string) error {
 			reason, strings.Join(conflictMsgs, " and "))
 	}
 	return nil
+}
+
+// DeleteContainerSecrets deletes existing container secrets in the project ref
+// from the secrets storage service.
+// kim: NOTE: cache updating won't work until Cocoa is upgraded to include the
+// secret cache deletion.
+func DeleteContainerSecrets(ctx context.Context, v cocoa.Vault, pRef *model.ProjectRef, namesToDelete []string) error {
+	catcher := grip.NewBasicCatcher()
+	for _, secret := range pRef.ContainerSecrets {
+		if !utility.StringSliceContains(namesToDelete, secret.Name) {
+			continue
+		}
+
+		if secret.ExternalID != "" {
+			catcher.Wrapf(v.DeleteSecret(ctx, secret.ExternalID), "deleting container secret '%s' with external ID '%s'", secret.Name, secret.ExternalID)
+		}
+	}
+	return catcher.Resolve()
+}
+
+// UpsertContainerSecrets adds new secrets or updates the value of existing
+// container secrets in the secrets storage service for a project. Each
+// container secret to upsert must already be stored in the project ref.
+func UpsertContainerSecrets(ctx context.Context, v cocoa.Vault, projectID string, originalSecrets, updatedSecrets []model.ContainerSecret) error {
+	original := model.ContainerSecretsMap(originalSecrets)
+	updated := model.ContainerSecretsMap(updatedSecrets)
+
+	catcher := grip.NewBasicCatcher()
+	for name, updatedSecret := range updated {
+		existingSecret, ok := original[name]
+		if !ok {
+			catcher.Errorf("cannot upsert secret '%s' because it does not exist in the project ref", name)
+			continue
+		}
+
+		if existingSecret.ExternalID == "" {
+			// The secret is not yet stored externally, so create it.
+			newSecret := cocoa.NewNamedSecret().
+				SetName(updatedSecret.ExternalName).
+				SetValue(updatedSecret.Value)
+			if _, err := v.CreateSecret(ctx, *newSecret); err != nil {
+				catcher.Wrapf(err, "adding new container secret '%s'", updatedSecret.Name)
+			}
+			continue
+		}
+
+		if updatedSecret.Value != "" {
+			// The secret already exists but needs to be given a new value, so
+			// update the existing secret.
+			updatedValue := cocoa.NewNamedSecret().
+				SetName(updatedSecret.ExternalID).
+				SetValue(updatedSecret.Value)
+			catcher.Wrapf(v.UpdateValue(ctx, *updatedValue), "updating value for existing container secret '%s'", name)
+		}
+	}
+
+	return catcher.Resolve()
 }

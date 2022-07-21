@@ -258,10 +258,13 @@ const (
 
 // ContainerOptions represent options to create the container to run a task.
 type ContainerOptions struct {
-	CPU            int
-	MemoryMB       int
-	WorkingDir     string
-	Image          string
+	CPU        int
+	MemoryMB   int
+	WorkingDir string
+	Image      string
+	// RepoCredsName is the name of the project container secret containing the
+	// repository credentials.
+	RepoCredsName  string
 	OS             evergreen.ContainerOS
 	Arch           evergreen.ContainerArch
 	WindowsVersion evergreen.WindowsVersion

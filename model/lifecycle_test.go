@@ -761,6 +761,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				OperatingSystem: evergreen.LinuxOS,
 				CPUArchitecture: evergreen.ArchARM64,
 			},
+			Credential: "repo_creds",
 		}
 		container2 := Container{
 			Name:       "container2",
@@ -1044,12 +1045,13 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(len(build.Tasks), ShouldEqual, 4)
 
 			bvContainerOpts := task.ContainerOptions{
-				CPU:        container1.Resources.CPU,
-				MemoryMB:   container1.Resources.MemoryMB,
-				WorkingDir: container1.WorkingDir,
-				Image:      container1.Image,
-				OS:         container1.System.OperatingSystem,
-				Arch:       container1.System.CPUArchitecture,
+				CPU:           container1.Resources.CPU,
+				MemoryMB:      container1.Resources.MemoryMB,
+				WorkingDir:    container1.WorkingDir,
+				Image:         container1.Image,
+				OS:            container1.System.OperatingSystem,
+				Arch:          container1.System.CPUArchitecture,
+				RepoCredsName: container1.Credential,
 			}
 			taskContainerOpts := task.ContainerOptions{
 				CPU:        smallContainerSize.CPU,

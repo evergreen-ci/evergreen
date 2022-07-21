@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/cocoa/ecs"
 	"github.com/evergreen-ci/cocoa/secret"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/pod/definition"
 	"github.com/evergreen-ci/utility"
@@ -26,14 +27,21 @@ func MakeSecretsManagerClient(settings *evergreen.Settings) (cocoa.SecretsManage
 	return secret.NewBasicSecretsManagerClient(podAWSOptions(settings))
 }
 
-// MakeSecretsManagerVault creates a cocoa.Vault backed by Secrets Manager.
-func MakeSecretsManagerVault(c cocoa.SecretsManagerClient) (cocoa.Vault, error) {
-	return secret.NewBasicSecretsManager(*secret.NewBasicSecretsManagerOptions().SetClient(c))
-}
+const (
+	// PodCacheTag is the name of the tag in AWS that marks whether pod
+	// resources such as secrets and pod definitions are tracked or not by
+	// Evergreen.
+	PodCacheTag = "evergreen-tracked"
+)
 
-// PodDefinitionTag is the name of the tag in ECS that marks whether pod
-// definitions that are tracked or not by Evergreen.
-const PodDefinitionTag = "evergreen-tracked"
+// MakeSecretsManagerVault creates a cocoa.Vault backed by Secrets Manager with
+// an optional cocoa.SecretCache.
+func MakeSecretsManagerVault(c cocoa.SecretsManagerClient) (cocoa.Vault, error) {
+	return secret.NewBasicSecretsManager(*secret.NewBasicSecretsManagerOptions().
+		SetClient(c).
+		SetCache(model.ContainerSecretCache{}).
+		SetCacheTag(PodCacheTag))
+}
 
 // MakeECSPodDefinitionManager creates a cocoa.ECSPodDefinitionManager that
 // creates pod definitions in ECS and secrets backed by an optional cocoa.Vault.
@@ -42,7 +50,7 @@ func MakeECSPodDefinitionManager(c cocoa.ECSClient, v cocoa.Vault) (cocoa.ECSPod
 		SetClient(c).
 		SetVault(v).
 		SetCache(definition.PodDefinitionCache{}).
-		SetCacheTag(PodDefinitionTag))
+		SetCacheTag(PodCacheTag))
 }
 
 // MakeECSPodCreator creates a cocoa.ECSPodCreator to create pods backed by ECS
@@ -246,15 +254,8 @@ func exportECSPodContainerDef(settings *evergreen.Settings, opts pod.TaskContain
 		SetEnvironmentVariables(exportPodEnvVars(settings.Providers.AWS.Pod.SecretsManager, opts)).
 		AddPortMappings(*cocoa.NewPortMapping().SetContainerPort(agentPort))
 
-	if opts.RepoUsername != "" && opts.RepoPassword != "" {
-		secretName := makeInternalSecretName(settings.Providers.AWS.Pod.SecretsManager, opts, repoCredsSecretName)
-
-		def.SetRepositoryCredentials(*cocoa.NewRepositoryCredentials().
-			SetName(secretName).
-			SetOwned(true).
-			SetNewCredentials(*cocoa.NewStoredRepositoryCredentials().
-				SetUsername(opts.RepoUsername).
-				SetPassword(opts.RepoPassword)))
+	if opts.RepoCredsExternalID != "" {
+		def.SetRepositoryCredentials(*cocoa.NewRepositoryCredentials().SetID(opts.RepoCredsExternalID))
 	}
 
 	return def, nil
@@ -340,17 +341,7 @@ func exportPodEnvVars(smConf evergreen.SecretsManagerConfig, opts pod.TaskContai
 	}
 
 	for envVarName, s := range opts.EnvSecrets {
-		secretOpts := cocoa.NewSecretOptions().SetOwned(utility.FromBoolPtr(s.Owned))
-		if utility.FromBoolPtr(s.Exists) && s.ExternalID != "" {
-			secretOpts.SetID(s.ExternalID)
-		} else if s.Name != "" {
-			secretOpts.SetName(makeSecretName(smConf, opts, s.Name))
-		} else {
-			secretOpts.SetName(makeSecretName(smConf, opts, envVarName))
-		}
-		if !utility.FromBoolPtr(s.Exists) && s.Value != "" {
-			secretOpts.SetNewValue(s.Value)
-		}
+		secretOpts := cocoa.NewSecretOptions().SetID(s.ExternalID)
 
 		allEnvVars = append(allEnvVars, *cocoa.NewEnvironmentVariable().
 			SetName(envVarName).
@@ -362,7 +353,7 @@ func exportPodEnvVars(smConf evergreen.SecretsManagerConfig, opts pod.TaskContai
 
 // makeSecretName creates a Secrets Manager secret name for the pod.
 func makeSecretName(smConf evergreen.SecretsManagerConfig, opts pod.TaskContainerCreationOptions, name string) string {
-	return strings.Join([]string{strings.TrimRight(smConf.SecretPrefix, "/"), "agent", opts.Hash(), name}, "/")
+	return strings.Join([]string{strings.TrimRight(smConf.SecretPrefix, "/"), "task", opts.Hash(), name}, "/")
 }
 
 // makeInternalSecretName creates a Secrets Manager secret name for the pod in a

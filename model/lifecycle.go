@@ -1347,6 +1347,7 @@ func getContainerOptions(project *Project, pRef *ProjectRef, container string) (
 		opts := task.ContainerOptions{
 			WorkingDir:     c.WorkingDir,
 			Image:          c.Image,
+			RepoCredsName:  c.Credential,
 			OS:             c.System.OperatingSystem,
 			Arch:           c.System.CPUArchitecture,
 			WindowsVersion: c.System.WindowsVersion,

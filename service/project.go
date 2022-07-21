@@ -8,12 +8,14 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/trigger"
 	"github.com/evergreen-ci/evergreen/units"
@@ -244,6 +246,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
+	env := evergreen.GetEnvironment()
+	settings := env.Settings()
 
 	projectRef, err := model.FindBranchProjectRef(id)
 	if err != nil {
@@ -319,7 +323,10 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		BuildBaronSettings      restModel.APIBuildBaronSettings            `json:"build_baron_settings"`
 		TaskAnnotationSettings  restModel.APITaskAnnotationSettings        `json:"task_annotation_settings"`
 		ContainerSizes          map[string]restModel.APIContainerResources `json:"container_sizes"`
-		ContainerSecrets        map[string]restModel.APIContainerSecret    `json:"container_secrets"`
+		ContainerSecrets        []restModel.APIContainerSecret             `json:"container_secrets"`
+		// DeleteContainerSecrets contains names of container secrets to be
+		// deleted.
+		DeleteContainerSecrets []string `json:"delete_container_secrets"`
 	}{}
 
 	if err = utility.ReadJSON(utility.NewRequestReader(r), &responseRef); err != nil {
@@ -553,14 +560,22 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	catcher := grip.NewSimpleCatcher()
-	containerSecrets := map[string]model.ContainerSecret{}
-	for key, apiContainerSecret := range responseRef.ContainerSecrets {
-		secret, err := apiContainerSecret.ToService()
-		if err != nil {
-			catcher.Wrapf(err, "converting secret '%s' to service model", key)
+
+	var updatedContainerSecrets []model.ContainerSecret
+	for i, apiContainerSecret := range responseRef.ContainerSecrets {
+		name := utility.FromStringPtr(apiContainerSecret.Name)
+		if utility.StringSliceContains(responseRef.DeleteContainerSecrets, name) {
+			// Exclude deleted secrets from the updated set of secrets so it'll
+			// be removed from the project ref.
 			continue
 		}
-		containerSecrets[key] = *secret
+
+		containerSecret, err := apiContainerSecret.ToService()
+		if err != nil {
+			catcher.Wrapf(err, "converting container secret at index %d to service model", i)
+			continue
+		}
+		updatedContainerSecrets = append(updatedContainerSecrets, *containerSecret)
 	}
 
 	for i := range responseRef.Triggers {
@@ -577,12 +592,33 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		catcher.NewWhen(size == "", "container size name cannot be empty")
 		catcher.Wrapf(containerResource.Validate(), "invalid container size '%s'", size)
 	}
-	for name, containerSecret := range containerSecrets {
-		catcher.NewWhen(name == "", "container secret's name cannot be empty")
-		catcher.Wrapf(containerSecret.Validate(), "invalid container secret '%s'", name)
-	}
+
+	originalContainerSecrets := projectRef.ContainerSecrets
+	updatedContainerSecrets, err = model.ValidateContainerSecrets(settings, id, originalContainerSecrets, updatedContainerSecrets)
+	catcher.Wrap(err, "invalid container secrets")
+
 	if catcher.HasErrors() {
 		uis.LoggedError(w, r, http.StatusBadRequest, catcher.Resolve())
+		return
+	}
+
+	smClient, err := cloud.MakeSecretsManagerClient(settings)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "initializing Secrets Manager client"))
+		return
+	}
+	defer smClient.Close(ctx)
+	vault, err := cloud.MakeSecretsManagerVault(smClient)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "initializing Secrets Manager vault"))
+		return
+	}
+	// This intentionally deletes the container secrets from external storage
+	// before updating the project ref. Deleting the secrets before updating the
+	// project ref ensures that the cloud secrets are cleaned up before removing
+	// references to them in the project ref.
+	if err := data.DeleteContainerSecrets(ctx, vault, projectRef, responseRef.DeleteContainerSecrets); err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "deleting container secrets"))
 		return
 	}
 
@@ -626,17 +662,13 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.PeriodicBuilds = []model.PeriodicBuildDefinition{}
 	projectRef.PerfEnabled = &responseRef.PerfEnabled
 	projectRef.ContainerSizes = containerSizes
-	projectRef.ContainerSecrets = containerSecrets
+	projectRef.ContainerSecrets = updatedContainerSecrets
 	projectRef.WorkstationConfig = responseRef.WorkstationConfig.ToService()
 	if hook != nil {
 		projectRef.TracksPushEvents = utility.TruePtr()
 	}
 	for _, periodicBuild := range responseRef.PeriodicBuilds {
 		projectRef.PeriodicBuilds = append(projectRef.PeriodicBuilds, *periodicBuild)
-	}
-
-	if containerSecrets != nil {
-		// TODO: store / update these credentials in Secrets Manager if applicable
 	}
 
 	if responseRef.ForceRepotrackerRun {
@@ -655,6 +687,11 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	err = projectRef.Upsert()
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+
+	if err := data.UpsertContainerSecrets(ctx, vault, id, originalContainerSecrets, updatedContainerSecrets); err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "syncing container secrets"))
 		return
 	}
 

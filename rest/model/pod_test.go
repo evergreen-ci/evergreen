@@ -13,25 +13,24 @@ import (
 func TestAPICreatePod(t *testing.T) {
 	t.Run("ToService", func(t *testing.T) {
 		apiPod := APICreatePod{
-			Name:           utility.ToStringPtr("id"),
-			Memory:         utility.ToIntPtr(128),
-			CPU:            utility.ToIntPtr(128),
-			Image:          utility.ToStringPtr("image"),
-			RepoUsername:   utility.ToStringPtr("username"),
-			RepoPassword:   utility.ToStringPtr("password"),
-			OS:             APIPodOS(pod.OSWindows),
-			Arch:           APIPodArch(pod.ArchAMD64),
-			WindowsVersion: APIPodWindowsVersion(pod.WindowsVersionServer2019),
-			Secret:         utility.ToStringPtr("secret"),
-			WorkingDir:     utility.ToStringPtr("working_dir"),
+			Name:                utility.ToStringPtr("id"),
+			Memory:              utility.ToIntPtr(128),
+			CPU:                 utility.ToIntPtr(128),
+			Image:               utility.ToStringPtr("image"),
+			RepoCredsExternalID: utility.ToStringPtr("repo_creds_external_id"),
+			OS:                  APIPodOS(pod.OSWindows),
+			Arch:                APIPodArch(pod.ArchAMD64),
+			WindowsVersion:      APIPodWindowsVersion(pod.WindowsVersionServer2019),
+			PodSecretExternalID: utility.ToStringPtr("pod_secret_external_id"),
+			PodSecretValue:      utility.ToStringPtr("pod_secret_value"),
+			WorkingDir:          utility.ToStringPtr("working_dir"),
 		}
 
 		p, err := apiPod.ToService()
 		require.NoError(t, err)
 
 		assert.Equal(t, utility.FromStringPtr(apiPod.Image), p.TaskContainerCreationOpts.Image)
-		assert.Equal(t, utility.FromStringPtr(apiPod.RepoUsername), p.TaskContainerCreationOpts.RepoUsername)
-		assert.Equal(t, utility.FromStringPtr(apiPod.RepoPassword), p.TaskContainerCreationOpts.RepoPassword)
+		assert.Equal(t, utility.FromStringPtr(apiPod.RepoCredsExternalID), p.TaskContainerCreationOpts.RepoCredsExternalID)
 		assert.Equal(t, utility.FromIntPtr(apiPod.Memory), p.TaskContainerCreationOpts.MemoryMB)
 		assert.Equal(t, utility.FromIntPtr(apiPod.CPU), p.TaskContainerCreationOpts.CPU)
 		assert.EqualValues(t, apiPod.OS, p.TaskContainerCreationOpts.OS)
@@ -47,13 +46,10 @@ func TestAPICreatePod(t *testing.T) {
 		require.True(t, ok)
 		assert.NotZero(t, p.ID)
 		assert.Equal(t, p.ID, podID)
+		assert.Equal(t, utility.FromStringPtr(apiPod.RepoCredsExternalID), p.TaskContainerCreationOpts.RepoCredsExternalID)
 		podSecret, err := p.GetSecret()
 		require.NoError(t, err)
-		assert.Zero(t, podSecret.Name)
-		assert.Zero(t, podSecret.ExternalID)
-		assert.Equal(t, utility.FromStringPtr(apiPod.Secret), podSecret.Value)
-		assert.False(t, utility.FromBoolPtr(podSecret.Exists))
-		assert.True(t, utility.FromBoolPtr(podSecret.Owned))
+		assert.Equal(t, utility.FromStringPtr(apiPod.PodSecretExternalID), podSecret.ExternalID)
 	})
 }
 
@@ -65,8 +61,6 @@ func TestAPIPod(t *testing.T) {
 			Status: pod.StatusRunning,
 			TaskContainerCreationOpts: pod.TaskContainerCreationOptions{
 				Image:          "image",
-				RepoUsername:   "username",
-				RepoPassword:   "password",
 				MemoryMB:       128,
 				CPU:            128,
 				OS:             pod.OSWindows,
@@ -78,16 +72,12 @@ func TestAPIPod(t *testing.T) {
 				},
 				EnvSecrets: map[string]pod.Secret{
 					"SECRET_ENV_VAR0": {
-						Name:   "secret_name0",
-						Value:  "secret_val0",
-						Exists: utility.FalsePtr(),
-						Owned:  utility.TruePtr(),
+						ExternalID: "external_id0",
+						Value:      "secret_val0",
 					},
 					"SECRET_ENV_VAR1": {
-						Name:   "secret_name1",
-						Value:  "secret_val1",
-						Exists: utility.FalsePtr(),
-						Owned:  utility.TruePtr(),
+						ExternalID: "external_id1",
+						Value:      "secret_val1",
 					},
 				},
 				WorkingDir: "working_dir",
@@ -118,30 +108,25 @@ func TestAPIPod(t *testing.T) {
 			Type:   PodTypeAgent,
 			Status: PodStatusRunning,
 			TaskContainerCreationOpts: APIPodTaskContainerCreationOptions{
-				Image:          utility.ToStringPtr("image"),
-				RepoUsername:   utility.ToStringPtr("username"),
-				RepoPassword:   utility.ToStringPtr("password"),
-				MemoryMB:       utility.ToIntPtr(128),
-				CPU:            utility.ToIntPtr(128),
-				OS:             APIPodOS(pod.OSWindows),
-				Arch:           APIPodArch(pod.ArchAMD64),
-				WindowsVersion: APIPodWindowsVersion(pod.WindowsVersionServer2019),
+				Image:               utility.ToStringPtr("image"),
+				RepoCredsExternalID: utility.ToStringPtr("repo_creds_external_id"),
+				MemoryMB:            utility.ToIntPtr(128),
+				CPU:                 utility.ToIntPtr(128),
+				OS:                  APIPodOS(pod.OSWindows),
+				Arch:                APIPodArch(pod.ArchAMD64),
+				WindowsVersion:      APIPodWindowsVersion(pod.WindowsVersionServer2019),
 				EnvVars: map[string]string{
 					"ENV_VAR0": "val0",
 					"ENV_VAR1": "val1",
 				},
 				EnvSecrets: map[string]APIPodSecret{
 					"SECRET_ENV_VAR0": {
-						Name:   utility.ToStringPtr("secret_name0"),
-						Value:  utility.ToStringPtr("secret_val0"),
-						Exists: utility.FalsePtr(),
-						Owned:  utility.TruePtr(),
+						ExternalID: utility.ToStringPtr("external_id0"),
+						Value:      utility.ToStringPtr("secret_val0"),
 					},
 					"SECRET_ENV_VAR1": {
-						Name:   utility.ToStringPtr("secret_name0"),
-						Value:  utility.ToStringPtr("secret_val0"),
-						Exists: utility.FalsePtr(),
-						Owned:  utility.TruePtr(),
+						ExternalID: utility.ToStringPtr("external_id1"),
+						Value:      utility.ToStringPtr("secret_val0"),
 					},
 				},
 				WorkingDir: utility.ToStringPtr("working_dir"),
@@ -174,8 +159,7 @@ func TestAPIPod(t *testing.T) {
 			assert.Equal(t, pod.TypeAgent, dbPod.Type)
 			assert.Equal(t, pod.StatusRunning, dbPod.Status)
 			assert.Equal(t, utility.FromStringPtr(apiPod.TaskContainerCreationOpts.Image), dbPod.TaskContainerCreationOpts.Image)
-			assert.Equal(t, utility.FromStringPtr(apiPod.TaskContainerCreationOpts.RepoUsername), dbPod.TaskContainerCreationOpts.RepoUsername)
-			assert.Equal(t, utility.FromStringPtr(apiPod.TaskContainerCreationOpts.RepoPassword), dbPod.TaskContainerCreationOpts.RepoPassword)
+			assert.Equal(t, utility.FromStringPtr(apiPod.TaskContainerCreationOpts.RepoCredsExternalID), dbPod.TaskContainerCreationOpts.RepoCredsExternalID)
 			assert.Equal(t, utility.FromIntPtr(apiPod.TaskContainerCreationOpts.MemoryMB), dbPod.TaskContainerCreationOpts.MemoryMB)
 			assert.Equal(t, utility.FromIntPtr(apiPod.TaskContainerCreationOpts.CPU), dbPod.TaskContainerCreationOpts.CPU)
 			assert.EqualValues(t, apiPod.TaskContainerCreationOpts.OS, dbPod.TaskContainerCreationOpts.OS)
@@ -240,8 +224,7 @@ func TestAPIPod(t *testing.T) {
 			assert.Equal(t, PodTypeAgent, apiPod.Type)
 			assert.Equal(t, PodStatusRunning, apiPod.Status)
 			assert.Equal(t, dbPod.TaskContainerCreationOpts.Image, utility.FromStringPtr(apiPod.TaskContainerCreationOpts.Image))
-			assert.Equal(t, dbPod.TaskContainerCreationOpts.RepoUsername, utility.FromStringPtr(apiPod.TaskContainerCreationOpts.RepoUsername))
-			assert.Equal(t, dbPod.TaskContainerCreationOpts.RepoPassword, utility.FromStringPtr(apiPod.TaskContainerCreationOpts.RepoPassword))
+			assert.Equal(t, dbPod.TaskContainerCreationOpts.RepoCredsExternalID, utility.FromStringPtr(apiPod.TaskContainerCreationOpts.RepoCredsExternalID))
 			assert.Equal(t, dbPod.TaskContainerCreationOpts.MemoryMB, utility.FromIntPtr(apiPod.TaskContainerCreationOpts.MemoryMB))
 			assert.Equal(t, dbPod.TaskContainerCreationOpts.CPU, utility.FromIntPtr(apiPod.TaskContainerCreationOpts.CPU))
 			assert.EqualValues(t, dbPod.TaskContainerCreationOpts.OS, apiPod.TaskContainerCreationOpts.OS)
