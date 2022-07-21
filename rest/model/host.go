@@ -80,94 +80,75 @@ type TaskInfo struct {
 	StartTime    *time.Time `json:"start_time"`
 }
 
-// BuildFromService converts from service level structs to an APIHost. It can
-// be called multiple times with different data types, a service layer host and
-// a service layer task, which are each loaded into the data structure.
-func (apiHost *APIHost) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case host.Host, *host.Host:
-		return apiHost.buildFromHostStruct(h)
-	case *task.Task:
-		apiHost.RunningTask = getTaskInfo(v)
-	case task.Task:
-		apiHost.RunningTask = getTaskInfo(&v)
-	default:
-		return errors.Errorf("programmatic error: expected host or task but got type %T", h)
-	}
-	return nil
-}
-
-func getTaskInfo(t *task.Task) TaskInfo {
-	return TaskInfo{
-		Id:           utility.ToStringPtr(t.Id),
-		Name:         utility.ToStringPtr(t.DisplayName),
-		DispatchTime: ToTimePtr(t.DispatchTime),
-		VersionId:    utility.ToStringPtr(t.Version),
-		BuildId:      utility.ToStringPtr(t.BuildId),
-		StartTime:    ToTimePtr(t.StartTime),
+// BuildFromService converts from service level structs to an APIHost. If a task is given,
+// we set that to the APIHost's running task.
+func (apiHost *APIHost) BuildFromService(h *host.Host, t *task.Task) {
+	apiHost.buildFromHostStruct(h)
+	if t != nil {
+		apiHost.RunningTask = TaskInfo{
+			Id:           utility.ToStringPtr(t.Id),
+			Name:         utility.ToStringPtr(t.DisplayName),
+			DispatchTime: ToTimePtr(t.DispatchTime),
+			VersionId:    utility.ToStringPtr(t.Version),
+			BuildId:      utility.ToStringPtr(t.BuildId),
+			StartTime:    ToTimePtr(t.StartTime),
+		}
 	}
 }
 
-func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
-	var v *host.Host
-	switch t := h.(type) {
-	case host.Host:
-		v = &t
-	case *host.Host:
-		v = t
-	default:
-		return errors.Errorf("programmatic error: expected host but got type %T", h)
+func (apiHost *APIHost) buildFromHostStruct(h *host.Host) {
+	if h == nil {
+		return
 	}
-	apiHost.Id = utility.ToStringPtr(v.Id)
-	apiHost.HostURL = utility.ToStringPtr(v.Host)
-	apiHost.Tag = utility.ToStringPtr(v.Tag)
-	apiHost.Provisioned = v.Provisioned
-	apiHost.StartedBy = utility.ToStringPtr(v.StartedBy)
-	apiHost.Provider = utility.ToStringPtr(v.Provider)
-	apiHost.User = utility.ToStringPtr(v.User)
-	apiHost.Status = utility.ToStringPtr(v.Status)
-	apiHost.UserHost = v.UserHost
-	apiHost.NoExpiration = v.NoExpiration
-	apiHost.InstanceTags = v.InstanceTags
-	apiHost.InstanceType = utility.ToStringPtr(v.InstanceType)
-	apiHost.AvailabilityZone = utility.ToStringPtr(v.Zone)
-	apiHost.DisplayName = utility.ToStringPtr(v.DisplayName)
-	apiHost.HomeVolumeID = utility.ToStringPtr(v.HomeVolumeID)
-	apiHost.TotalIdleTime = NewAPIDuration(v.TotalIdleTime)
-	apiHost.CreationTime = ToTimePtr(v.CreationTime)
-	apiHost.LastCommunicationTime = v.LastCommunicationTime
-	apiHost.Expiration = ToTimePtr(v.ExpirationTime)
+	apiHost.Id = utility.ToStringPtr(h.Id)
+	apiHost.HostURL = utility.ToStringPtr(h.Host)
+	apiHost.Tag = utility.ToStringPtr(h.Tag)
+	apiHost.Provisioned = h.Provisioned
+	apiHost.StartedBy = utility.ToStringPtr(h.StartedBy)
+	apiHost.Provider = utility.ToStringPtr(h.Provider)
+	apiHost.User = utility.ToStringPtr(h.User)
+	apiHost.Status = utility.ToStringPtr(h.Status)
+	apiHost.UserHost = h.UserHost
+	apiHost.NoExpiration = h.NoExpiration
+	apiHost.InstanceTags = h.InstanceTags
+	apiHost.InstanceType = utility.ToStringPtr(h.InstanceType)
+	apiHost.AvailabilityZone = utility.ToStringPtr(h.Zone)
+	apiHost.DisplayName = utility.ToStringPtr(h.DisplayName)
+	apiHost.HomeVolumeID = utility.ToStringPtr(h.HomeVolumeID)
+	apiHost.TotalIdleTime = NewAPIDuration(h.TotalIdleTime)
+	apiHost.CreationTime = ToTimePtr(h.CreationTime)
+	apiHost.LastCommunicationTime = h.LastCommunicationTime
+	apiHost.Expiration = ToTimePtr(h.ExpirationTime)
 	attachedVolumeIds := []string{}
-	for _, volAttachment := range v.Volumes {
+	for _, volAttachment := range h.Volumes {
 		attachedVolumeIds = append(attachedVolumeIds, volAttachment.VolumeID)
 	}
 	apiHost.AttachedVolumeIDs = attachedVolumeIds
-	imageId, err := v.Distro.GetImageID()
+	imageId, err := h.Distro.GetImageID()
 	if err != nil {
 		// report error but do not fail function because of a bad imageId
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "could not get image ID",
-			"host":    v.Id,
-			"distro":  v.Distro.Id,
+			"host":    h.Id,
+			"distro":  h.Distro.Id,
 		}))
 	}
 	di := DistroInfo{
-		Id:                   utility.ToStringPtr(v.Distro.Id),
-		Provider:             utility.ToStringPtr(v.Distro.Provider),
+		Id:                   utility.ToStringPtr(h.Distro.Id),
+		Provider:             utility.ToStringPtr(h.Distro.Provider),
 		ImageId:              utility.ToStringPtr(imageId),
-		WorkDir:              utility.ToStringPtr(v.Distro.WorkDir),
-		IsVirtualWorkstation: v.Distro.IsVirtualWorkstation,
-		User:                 utility.ToStringPtr(v.Distro.User),
-		IsWindows:            v.Distro.IsWindows(),
-		BootstrapMethod:      utility.ToStringPtr(v.Distro.BootstrapSettings.Method),
+		WorkDir:              utility.ToStringPtr(h.Distro.WorkDir),
+		IsVirtualWorkstation: h.Distro.IsVirtualWorkstation,
+		User:                 utility.ToStringPtr(h.Distro.User),
+		IsWindows:            h.Distro.IsWindows(),
+		BootstrapMethod:      utility.ToStringPtr(h.Distro.BootstrapSettings.Method),
 	}
 	apiHost.Distro = di
-	return nil
 }
 
 // ToService returns a service layer host using the data from the APIHost.
-func (apiHost *APIHost) ToService() (interface{}, error) {
-	h := host.Host{
+func (apiHost *APIHost) ToService() host.Host {
+	return host.Host{
 		Id:                    utility.FromStringPtr(apiHost.Id),
 		Tag:                   utility.FromStringPtr(apiHost.Tag),
 		Provisioned:           apiHost.Provisioned,
@@ -182,7 +163,6 @@ func (apiHost *APIHost) ToService() (interface{}, error) {
 		HomeVolumeID:          utility.FromStringPtr(apiHost.HomeVolumeID),
 		LastCommunicationTime: apiHost.LastCommunicationTime,
 	}
-	return interface{}(h), nil
 }
 
 type APIVolume struct {
@@ -214,25 +194,7 @@ type VolumeModifyOptions struct {
 	HasExpiration bool      `json:"has_expiration"`
 }
 
-func (apiVolume *APIVolume) BuildFromService(volume interface{}) error {
-	switch volume.(type) {
-	case host.Volume, *host.Volume:
-		return apiVolume.buildFromVolumeStruct(volume)
-	default:
-		return errors.Errorf("programmatic error: expected host volume but got type %T", volume)
-	}
-}
-
-func (apiVolume *APIVolume) buildFromVolumeStruct(volume interface{}) error {
-	var v *host.Volume
-	switch t := volume.(type) {
-	case host.Volume:
-		v = &t
-	case *host.Volume:
-		v = t
-	default:
-		return errors.Errorf("programmatic error: expected host volume but got type %T", volume)
-	}
+func (apiVolume *APIVolume) BuildFromService(v host.Volume) {
 	apiVolume.ID = utility.ToStringPtr(v.ID)
 	apiVolume.DisplayName = utility.ToStringPtr(v.DisplayName)
 	apiVolume.CreatedBy = utility.ToStringPtr(v.CreatedBy)
@@ -244,13 +206,12 @@ func (apiVolume *APIVolume) buildFromVolumeStruct(volume interface{}) error {
 	apiVolume.NoExpiration = v.NoExpiration
 	apiVolume.HomeVolume = v.HomeVolume
 	apiVolume.CreationTime = ToTimePtr(v.CreationDate)
-	return nil
 }
 
-func (apiVolume *APIVolume) ToService() (interface{}, error) {
+func (apiVolume *APIVolume) ToService() (host.Volume, error) {
 	expiration, err := FromTimePtr(apiVolume.Expiration)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting expiration time")
+		return host.Volume{}, errors.Wrap(err, "getting expiration time")
 	}
 
 	return host.Volume{

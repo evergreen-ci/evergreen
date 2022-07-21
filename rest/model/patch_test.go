@@ -110,8 +110,7 @@ func TestGithubPatch(t *testing.T) {
 		Author:    "octocat",
 	}
 	a := githubPatch{}
-	err := a.BuildFromService(p)
-	assert.NoError(err)
+	a.BuildFromService(p)
 	assert.Equal(123, a.PRNumber)
 	assert.Equal("evergreen-ci", utility.FromStringPtr(a.BaseOwner))
 	assert.Equal("evergreen", utility.FromStringPtr(a.BaseRepo))

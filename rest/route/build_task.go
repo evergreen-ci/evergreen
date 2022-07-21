@@ -95,7 +95,7 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 	for i := range tasks {
 		taskModel := &model.APITask{}
 
-		if err = taskModel.BuildFromArgs(&tasks[i], &model.APITaskArgs{
+		if err = taskModel.BuildFromService(&tasks[i], &model.APITaskArgs{
 			IncludeAMI:               true,
 			IncludeArtifacts:         true,
 			IncludeProjectIdentifier: true,

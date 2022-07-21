@@ -413,12 +413,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			// branch we don't have access to
 		}
 	}
-	commitQueueParamsInterface, err := responseRef.CommitQueue.ToService()
-	commitQueueParams, ok := commitQueueParamsInterface.(model.CommitQueueParams)
-	if err != nil || !ok {
-		uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot read Commit Queue into model"))
-		return
-	}
+	commitQueueParams := responseRef.CommitQueue.ToService()
 
 	var aliasesDefined bool
 	var conflictingRefs []model.ProjectRef
@@ -536,40 +531,10 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	i, err := responseRef.TaskSync.ToService()
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "cannot convert API task sync options to service representation"))
-		return
-	}
-	taskSync, ok := i.(model.TaskSyncOptions)
-	if !ok {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("expected task sync options but was actually '%T'", i))
-		return
-	}
-
-	i, err = responseRef.BuildBaronSettings.ToService()
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "cannot convert API build baron config to service representation"))
-		return
-	}
-	buildbaronConfig, ok := i.(evergreen.BuildBaronSettings)
-	if !ok {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("expected build baron config but was actually '%T'", i))
-		return
-	}
-
-	i, err = responseRef.TaskAnnotationSettings.ToService()
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "cannot convert API task annotations config to service representation"))
-		return
-	}
-	taskannotationsConfig, ok := i.(evergreen.AnnotationsSettings)
-	if !ok {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("expected task annotations config but was actually '%T'", i))
-		return
-	}
-
-	err = model.ValidateBbProject(projectRef.Id, buildbaronConfig, &taskannotationsConfig.FileTicketWebhook)
+	taskSync := responseRef.TaskSync.ToService()
+	buildBaronConfig := responseRef.BuildBaronSettings.ToService()
+	taskAnnotationsConfig := responseRef.TaskAnnotationSettings.ToService()
+	err = model.ValidateBbProject(projectRef.Id, buildBaronConfig, &taskAnnotationsConfig.FileTicketWebhook)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error validating build baron config input"))
 		return
@@ -634,8 +599,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.GithubChecksEnabled = &responseRef.GithubChecksEnabled
 	projectRef.CommitQueue = commitQueueParams
 	projectRef.TaskSync = taskSync
-	projectRef.BuildBaronSettings = buildbaronConfig
-	projectRef.TaskAnnotationSettings = taskannotationsConfig
+	projectRef.BuildBaronSettings = buildBaronConfig
+	projectRef.TaskAnnotationSettings = taskAnnotationsConfig
 	projectRef.PatchingDisabled = &responseRef.PatchingDisabled
 	projectRef.DispatchingDisabled = &responseRef.DispatchingDisabled
 	projectRef.VersionControlEnabled = &responseRef.VersionControlEnabled
@@ -650,21 +615,13 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.PerfEnabled = &responseRef.PerfEnabled
 	projectRef.ContainerSizes = containerSizes
 	projectRef.ContainerCredentials = containerCredentials
+	projectRef.WorkstationConfig = responseRef.WorkstationConfig.ToService()
 	if hook != nil {
 		projectRef.TracksPushEvents = utility.TruePtr()
 	}
 	for _, periodicBuild := range responseRef.PeriodicBuilds {
 		projectRef.PeriodicBuilds = append(projectRef.PeriodicBuilds, *periodicBuild)
 	}
-
-	i, err = responseRef.WorkstationConfig.ToService()
-	catcher.Add(err)
-	config, ok := i.(model.WorkstationConfig)
-	if !ok {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("expected workstation config but was actually '%T'", i))
-		return
-	}
-	projectRef.WorkstationConfig = config
 
 	if containerCredentials != nil {
 		// TODO: store / update these credentials in Secrets Manager if applicable

@@ -113,31 +113,31 @@ func TestTaskBuildFromService(t *testing.T) {
 		Convey("running BuildFromService(), should produce the equivalent model", func() {
 			for _, tc := range modelPairs {
 				apiTask := &APITask{}
-				err := apiTask.BuildFromService(&tc.st)
+				err := apiTask.BuildFromService(&tc.st, nil)
 				So(err, ShouldBeNil)
 				So(true, ShouldEqual, apiTask.Mainline)
 
 				tc.st.Requester = evergreen.PatchVersionRequester
 				apiTask = &APITask{}
-				err = apiTask.BuildFromService(&tc.st)
+				err = apiTask.BuildFromService(&tc.st, nil)
 				So(err, ShouldBeNil)
 				So(false, ShouldEqual, apiTask.Mainline)
 
 				tc.st.Requester = evergreen.GithubPRRequester
 				apiTask = &APITask{}
-				err = apiTask.BuildFromService(&tc.st)
+				err = apiTask.BuildFromService(&tc.st, nil)
 				So(err, ShouldBeNil)
 				So(false, ShouldEqual, apiTask.Mainline)
 
 				tc.st.Requester = evergreen.TriggerRequester
 				apiTask = &APITask{}
-				err = apiTask.BuildFromService(&tc.st)
+				err = apiTask.BuildFromService(&tc.st, nil)
 				So(err, ShouldBeNil)
 				So(false, ShouldEqual, apiTask.Mainline)
 
 				tc.st.Requester = evergreen.AdHocRequester
 				apiTask = &APITask{}
-				err = apiTask.BuildFromService(&tc.st)
+				err = apiTask.BuildFromService(&tc.st, nil)
 				So(err, ShouldBeNil)
 				So(false, ShouldEqual, apiTask.Mainline)
 
@@ -146,39 +146,39 @@ func TestTaskBuildFromService(t *testing.T) {
 					{Unattainable: true},
 				}
 				apiTask = &APITask{}
-				err = apiTask.BuildFromService(&tc.st)
+				err = apiTask.BuildFromService(&tc.st, nil)
 				So(err, ShouldBeNil)
 				So(apiTask.Blocked, ShouldBeTrue)
 			}
 		})
-		Convey("running BuildFromArgs(), should produce an equivalent model", func() {
+		Convey("running BuildFromService(), should produce an equivalent model", func() {
 			for _, tc := range modelPairs {
 				apiTask := &APITask{}
-				err := apiTask.BuildFromArgs(&tc.st, nil)
+				err := apiTask.BuildFromService(&tc.st, nil)
 				So(err, ShouldBeNil)
 				So(true, ShouldEqual, apiTask.Mainline)
 
 				tc.st.Requester = evergreen.PatchVersionRequester
 				apiTask = &APITask{}
-				err = apiTask.BuildFromArgs(&tc.st, nil)
+				err = apiTask.BuildFromService(&tc.st, nil)
 				So(err, ShouldBeNil)
 				So(false, ShouldEqual, apiTask.Mainline)
 
 				tc.st.Requester = evergreen.GithubPRRequester
 				apiTask = &APITask{}
-				err = apiTask.BuildFromArgs(&tc.st, nil)
+				err = apiTask.BuildFromService(&tc.st, nil)
 				So(err, ShouldBeNil)
 				So(false, ShouldEqual, apiTask.Mainline)
 
 				tc.st.Requester = evergreen.TriggerRequester
 				apiTask = &APITask{}
-				err = apiTask.BuildFromArgs(&tc.st, nil)
+				err = apiTask.BuildFromService(&tc.st, nil)
 				So(err, ShouldBeNil)
 				So(false, ShouldEqual, apiTask.Mainline)
 
 				tc.st.Requester = evergreen.AdHocRequester
 				apiTask = &APITask{}
-				err = apiTask.BuildFromArgs(&tc.st, nil)
+				err = apiTask.BuildFromService(&tc.st, nil)
 				So(err, ShouldBeNil)
 				So(false, ShouldEqual, apiTask.Mainline)
 
@@ -187,11 +187,11 @@ func TestTaskBuildFromService(t *testing.T) {
 					{Unattainable: true},
 				}
 				apiTask = &APITask{}
-				err = apiTask.BuildFromArgs(&tc.st, nil)
+				err = apiTask.BuildFromService(&tc.st, nil)
 				So(err, ShouldBeNil)
 				So(apiTask.Blocked, ShouldBeTrue)
 
-				err = apiTask.BuildFromArgs(&tc.st, &APITaskArgs{LogURL: "url"})
+				err = apiTask.BuildFromService(&tc.st, &APITaskArgs{LogURL: "url"})
 				So(err, ShouldBeNil)
 				So(utility.FromStringPtr(apiTask.Id), ShouldEqual, utility.FromStringPtr(tc.at.Id))
 				So(apiTask.Execution, ShouldEqual, tc.at.Execution)

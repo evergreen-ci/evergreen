@@ -125,13 +125,13 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 		},
 		model.ProjectPageVariablesSection: func(t *testing.T, ref model.RepoRef) {
 			// remove a variable, modify a variable, add a variable
-			updatedVars := &model.ProjectVars{
+			updatedVars := model.ProjectVars{
 				Id:          ref.Id,
 				Vars:        map[string]string{"it": "me", "banana": "phone"},
 				PrivateVars: map[string]bool{"banana": true},
 			}
 			apiProjectVars := restModel.APIProjectVars{}
-			assert.NoError(t, apiProjectVars.BuildFromService(updatedVars))
+			apiProjectVars.BuildFromService(updatedVars)
 			apiChanges := &restModel.APIProjectSettings{
 				Vars: apiProjectVars,
 			}

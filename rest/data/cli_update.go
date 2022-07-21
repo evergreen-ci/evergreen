@@ -31,13 +31,7 @@ func GetCLIUpdate() (*model.APICLIUpdate, error) {
 		config.S3ClientBinaries = nil
 	}
 
-	if err := update.BuildFromService(*config); err != nil {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    err.Error(),
-		}
-	}
-
+	update.BuildFromService(*config)
 	update.IgnoreUpdate = flags.CLIUpdatesDisabled
 
 	return update, nil
