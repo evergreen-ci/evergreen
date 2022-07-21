@@ -176,10 +176,7 @@
         "host_allocator_settings": {
           "version": "utilization",
           "minimum_hosts": 0,
-          "maximum_hosts": 120,
-          "acceptable_host_idle_time": {
-            "$numberLong": "0"
-          }
+          "maximum_hosts": 120
         },
         "disable_shallow_clone": false,
         "note": "",
@@ -415,10 +412,7 @@
         "host_allocator_settings": {
           "version": "utilization",
           "minimum_hosts": 0,
-          "maximum_hosts": 300,
-          "acceptable_host_idle_time": {
-            "$numberLong": "0"
-          }
+          "maximum_hosts": 300
         },
         "disable_shallow_clone": false,
         "note": "",
@@ -612,10 +606,7 @@
         "host_allocator_settings": {
           "version": "utilization",
           "minimum_hosts": 0,
-          "maximum_hosts": 1,
-          "acceptable_host_idle_time": {
-            "$numberLong": "0"
-          }
+          "maximum_hosts": 1
         },
         "disable_shallow_clone": false,
         "note": "",
@@ -787,10 +778,7 @@
         "host_allocator_settings": {
           "version": "utilization",
           "minimum_hosts": 0,
-          "maximum_hosts": 40,
-          "acceptable_host_idle_time": {
-            "$numberLong": "0"
-          }
+          "maximum_hosts": 40
         },
         "disable_shallow_clone": false,
         "note": "",
@@ -1025,10 +1013,7 @@
         "host_allocator_settings": {
           "version": "utilization",
           "minimum_hosts": 0,
-          "maximum_hosts": 0,
-          "acceptable_host_idle_time": {
-            "$numberLong": "0"
-          }
+          "maximum_hosts": 0
         },
         "disable_shallow_clone": false,
         "note": "",
@@ -1395,10 +1380,7 @@
         "host_allocator_settings": {
           "version": "utilization",
           "minimum_hosts": 0,
-          "maximum_hosts": 0,
-          "acceptable_host_idle_time": {
-            "$numberLong": "0"
-          }
+          "maximum_hosts": 0
         },
         "disable_shallow_clone": false,
         "note": "",
@@ -1547,10 +1529,7 @@
         "host_allocator_settings": {
           "version": "utilization",
           "minimum_hosts": 0,
-          "maximum_hosts": 0,
-          "acceptable_host_idle_time": {
-            "$numberLong": "0"
-          }
+          "maximum_hosts": 0
         },
         "disable_shallow_clone": false,
         "note": "",
@@ -1694,10 +1673,7 @@
         "host_allocator_settings": {
           "version": "utilization",
           "minimum_hosts": 0,
-          "maximum_hosts": 0,
-          "acceptable_host_idle_time": {
-            "$numberLong": "0"
-          }
+          "maximum_hosts": 0
         },
         "disable_shallow_clone": false,
         "note": "",
@@ -1886,10 +1862,7 @@
         "host_allocator_settings": {
           "version": "utilization",
           "minimum_hosts": 0,
-          "maximum_hosts": 0,
-          "acceptable_host_idle_time": {
-            "$numberLong": "0"
-          }
+          "maximum_hosts": 0
         },
         "disable_shallow_clone": false,
         "note": "",

@@ -138,10 +138,7 @@
             "host_allocator_settings": {
                 "version": "utilization",
                 "minimum_hosts": 0,
-                "maximum_hosts": 0,
-                "acceptable_host_idle_time": {
-                    "$numberLong": "0"
-                }
+                "maximum_hosts": 0
             },
             "disable_shallow_clone": false,
             "note": "",

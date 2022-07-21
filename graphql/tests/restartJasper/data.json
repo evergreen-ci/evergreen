@@ -154,8 +154,7 @@
         "host_allocator_settings": {
           "version": "utilization",
           "minimum_hosts": 0,
-          "maximum_hosts": 120,
-          "acceptable_host_idle_time": { "$numberLong": "0" }
+          "maximum_hosts": 120
         },
         "disable_shallow_clone": false,
         "note": "",
@@ -358,8 +357,7 @@
         "host_allocator_settings": {
           "version": "utilization",
           "minimum_hosts": 0,
-          "maximum_hosts": 300,
-          "acceptable_host_idle_time": { "$numberLong": "0" }
+          "maximum_hosts": 300
         },
         "disable_shallow_clone": false,
         "note": "",

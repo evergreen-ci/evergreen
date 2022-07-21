@@ -61,13 +61,12 @@ func (s *APIPlannerSettings) ToService() distro.PlannerSettings {
 // APIHostAllocatorSettings is the model to be returned by the API whenever distro.HostAllocatorSettings are fetched
 
 type APIHostAllocatorSettings struct {
-	Version                *string     `json:"version"`
-	MinimumHosts           int         `json:"minimum_hosts"`
-	MaximumHosts           int         `json:"maximum_hosts"`
-	RoundingRule           *string     `json:"rounding_rule"`
-	FeedbackRule           *string     `json:"feedback_rule"`
-	HostsOverallocatedRule *string     `json:"hosts_overallocated_rule"`
-	AcceptableHostIdleTime APIDuration `json:"acceptable_host_idle_time"`
+	Version                *string `json:"version"`
+	MinimumHosts           int     `json:"minimum_hosts"`
+	MaximumHosts           int     `json:"maximum_hosts"`
+	RoundingRule           *string `json:"rounding_rule"`
+	FeedbackRule           *string `json:"feedback_rule"`
+	HostsOverallocatedRule *string `json:"hosts_overallocated_rule"`
 }
 
 // BuildFromService converts from service level distro.HostAllocatorSettings to an APIHostAllocatorSettings
@@ -79,7 +78,6 @@ func (s *APIHostAllocatorSettings) BuildFromService(settings distro.HostAllocato
 	}
 	s.MinimumHosts = settings.MinimumHosts
 	s.MaximumHosts = settings.MaximumHosts
-	s.AcceptableHostIdleTime = NewAPIDuration(settings.AcceptableHostIdleTime)
 	s.RoundingRule = utility.ToStringPtr(settings.RoundingRule)
 	s.FeedbackRule = utility.ToStringPtr(settings.FeedbackRule)
 	s.HostsOverallocatedRule = utility.ToStringPtr(settings.HostsOverallocatedRule)
@@ -96,7 +94,6 @@ func (s *APIHostAllocatorSettings) ToService() distro.HostAllocatorSettings {
 	}
 	settings.MinimumHosts = s.MinimumHosts
 	settings.MaximumHosts = s.MaximumHosts
-	settings.AcceptableHostIdleTime = s.AcceptableHostIdleTime.ToDuration()
 	settings.RoundingRule = utility.FromStringPtr(s.RoundingRule)
 	settings.FeedbackRule = utility.FromStringPtr(s.FeedbackRule)
 	settings.HostsOverallocatedRule = utility.FromStringPtr(s.HostsOverallocatedRule)
