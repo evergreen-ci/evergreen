@@ -158,9 +158,10 @@ func (s *DistroByIDSuite) SetupSuite() {
 				Version: evergreen.DispatcherVersionRevisedWithDependencies,
 			},
 			HostAllocatorSettings: distro.HostAllocatorSettings{
-				Version:      evergreen.HostAllocatorUtilization,
-				MinimumHosts: 5,
-				MaximumHosts: 10,
+				Version:                evergreen.HostAllocatorUtilization,
+				MinimumHosts:           5,
+				MaximumHosts:           10,
+				AcceptableHostIdleTime: 10000000000,
 			},
 			FinderSettings: distro.FinderSettings{
 				Version: evergreen.FinderVersionLegacy,
@@ -205,6 +206,7 @@ func (s *DistroByIDSuite) TestFindByIdFound() {
 
 	s.Equal(5, d.HostAllocatorSettings.MinimumHosts)
 	s.Equal(10, d.HostAllocatorSettings.MaximumHosts)
+	s.Equal(restModel.NewAPIDuration(10000000000), d.HostAllocatorSettings.AcceptableHostIdleTime)
 	s.Equal(utility.ToStringPtr(evergreen.PlannerVersionTunable), d.PlannerSettings.Version)
 	s.Equal(restModel.NewAPIDuration(80000000000), d.PlannerSettings.TargetTime)
 	s.Equal(true, *d.PlannerSettings.GroupVersions)
@@ -468,6 +470,7 @@ func (s *DistroPutSuite) TestParse() {
 			"minimum_hosts": 10,
 			"maximum_hosts": 20,
 			"target_time": 30000000000,
+			"acceptable_host_idle_time": 5000000000,
 			"group_versions": false,
 			"patch_factor": 2,
 			"patch_first": false

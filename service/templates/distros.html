@@ -166,6 +166,11 @@ Evergreen - Distros
                   form.hostAllocatorSettingsMinimumHosts.$modelValue % 1 != 0"> A non-negative integer value for Minimum Hosts is required
                 </div>
               </div>
+              <div>
+                <label class="distro-label">Acceptable Host Idle Time (sec):</label>
+                <input ng-readonly="readOnly" type="number"
+                  name="hostAllocatorSettingsAcceptableHostIdleTime" class="form-control" ng-model="activeDistro.host_allocator_settings.acceptable_host_idle_time" placeholder="Set to 0 to use its global default">
+              </div>
               <div class="icon fa fa-warning distro-error" ng-show="form.plannerSettingsAcceptableHostIdleTime.$dirty && form.hostAllocatorSettingsAcceptableHostIdleTime.$error.required ||
                 form.hostAllocatorSettingsAcceptableHostIdleTime.$invalid ||
                 form.hostAllocatorSettingsAcceptableHostIdleTime.$modelValue < 0 ||

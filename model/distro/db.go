@@ -44,6 +44,7 @@ var (
 	// HostAllocatorSettingsVersionKey                = bsonutil.MustHaveTag(HostAllocatorSettings{}, "Version")
 	// HostAllocatorSettingsMinimumHostsKey           = bsonutil.MustHaveTag(HostAllocatorSettings{}, "MinimumHosts")
 	HostAllocatorSettingsMaximumHostsKey = bsonutil.MustHaveTag(HostAllocatorSettings{}, "MaximumHosts")
+	// HostAllocatorSettingsAcceptableHostIdleTimeKey = bsonutil.MustHaveTag(HostAllocatorSettings{}, "AcceptableHostIdleTime")
 )
 
 var (

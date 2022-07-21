@@ -350,27 +350,29 @@ func TestGetResolvedHostAllocatorSettings(t *testing.T) {
 			Version:                "",
 			MinimumHosts:           4,
 			MaximumHosts:           10,
+			AcceptableHostIdleTime: 0,
 			RoundingRule:           evergreen.HostAllocatorRoundDefault,
 			FeedbackRule:           evergreen.HostAllocatorUseDefaultFeedback,
 			HostsOverallocatedRule: evergreen.HostsOverallocatedUseDefault,
 		},
 	}
 	config0 := evergreen.SchedulerConfig{
-		TaskFinder:                "legacy",
-		HostAllocator:             evergreen.HostAllocatorUtilization,
-		HostAllocatorRoundingRule: evergreen.HostAllocatorRoundDown,
-		HostAllocatorFeedbackRule: evergreen.HostAllocatorNoFeedback,
-		HostsOverallocatedRule:    evergreen.HostsOverallocatedIgnore,
-		FutureHostFraction:        .1,
-		CacheDurationSeconds:      60,
-		Planner:                   evergreen.PlannerVersionLegacy,
-		TargetTimeSeconds:         112358,
-		GroupVersions:             false,
-		PatchFactor:               50,
-		PatchTimeInQueueFactor:    12,
-		CommitQueueFactor:         50,
-		MainlineTimeInQueueFactor: 10,
-		ExpectedRuntimeFactor:     7,
+		TaskFinder:                    "legacy",
+		HostAllocator:                 evergreen.HostAllocatorUtilization,
+		HostAllocatorRoundingRule:     evergreen.HostAllocatorRoundDown,
+		HostAllocatorFeedbackRule:     evergreen.HostAllocatorNoFeedback,
+		HostsOverallocatedRule:        evergreen.HostsOverallocatedIgnore,
+		FutureHostFraction:            .1,
+		CacheDurationSeconds:          60,
+		Planner:                       evergreen.PlannerVersionLegacy,
+		TargetTimeSeconds:             112358,
+		AcceptableHostIdleTimeSeconds: 123,
+		GroupVersions:                 false,
+		PatchFactor:                   50,
+		PatchTimeInQueueFactor:        12,
+		CommitQueueFactor:             50,
+		MainlineTimeInQueueFactor:     10,
+		ExpectedRuntimeFactor:         7,
 	}
 
 	settings0 := &evergreen.Settings{Scheduler: config0}
@@ -384,6 +386,8 @@ func TestGetResolvedHostAllocatorSettings(t *testing.T) {
 	assert.Equal(t, evergreen.HostAllocatorRoundDown, resolved0.RoundingRule)
 	assert.Equal(t, evergreen.HostAllocatorNoFeedback, resolved0.FeedbackRule)
 	assert.Equal(t, evergreen.HostsOverallocatedIgnore, resolved0.HostsOverallocatedRule)
+	// Fallback to the SchedulerConfig.AcceptableHostIdleTimeSeconds as HostAllocatorSettings.AcceptableHostIdleTime is equal to 0.
+	assert.Equal(t, time.Duration(123)*time.Second, resolved0.AcceptableHostIdleTime)
 
 	// test distro-first override when RoundingRule is not HostAllocatorRoundDefault
 	d0.HostAllocatorSettings.RoundingRule = evergreen.HostAllocatorRoundUp
@@ -418,20 +422,21 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 		},
 	}
 	config0 := evergreen.SchedulerConfig{
-		TaskFinder:                "legacy",
-		HostAllocator:             evergreen.HostAllocatorUtilization,
-		FutureHostFraction:        .1,
-		CacheDurationSeconds:      60,
-		Planner:                   evergreen.PlannerVersionLegacy,
-		TargetTimeSeconds:         112358,
-		GroupVersions:             false,
-		PatchFactor:               50,
-		PatchTimeInQueueFactor:    12,
-		CommitQueueFactor:         50,
-		MainlineTimeInQueueFactor: 10,
-		ExpectedRuntimeFactor:     7,
-		GenerateTaskFactor:        20,
-		StepbackTaskFactor:        40,
+		TaskFinder:                    "legacy",
+		HostAllocator:                 evergreen.HostAllocatorUtilization,
+		FutureHostFraction:            .1,
+		CacheDurationSeconds:          60,
+		Planner:                       evergreen.PlannerVersionLegacy,
+		TargetTimeSeconds:             112358,
+		AcceptableHostIdleTimeSeconds: 132134,
+		GroupVersions:                 false,
+		PatchFactor:                   50,
+		PatchTimeInQueueFactor:        12,
+		CommitQueueFactor:             50,
+		MainlineTimeInQueueFactor:     10,
+		ExpectedRuntimeFactor:         7,
+		GenerateTaskFactor:            20,
+		StepbackTaskFactor:            40,
 	}
 
 	settings0 := &evergreen.Settings{Scheduler: config0}
@@ -470,19 +475,20 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 		},
 	}
 	config1 := evergreen.SchedulerConfig{
-		TaskFinder:                "legacy",
-		HostAllocator:             evergreen.HostAllocatorUtilization,
-		FutureHostFraction:        .1,
-		CacheDurationSeconds:      60,
-		Planner:                   evergreen.PlannerVersionLegacy,
-		TargetTimeSeconds:         10,
-		GroupVersions:             false,
-		PatchFactor:               50,
-		PatchTimeInQueueFactor:    0,
-		CommitQueueFactor:         0,
-		MainlineTimeInQueueFactor: 0,
-		ExpectedRuntimeFactor:     0,
-		GenerateTaskFactor:        0,
+		TaskFinder:                    "legacy",
+		HostAllocator:                 evergreen.HostAllocatorUtilization,
+		FutureHostFraction:            .1,
+		CacheDurationSeconds:          60,
+		Planner:                       evergreen.PlannerVersionLegacy,
+		TargetTimeSeconds:             10,
+		AcceptableHostIdleTimeSeconds: 60,
+		GroupVersions:                 false,
+		PatchFactor:                   50,
+		PatchTimeInQueueFactor:        0,
+		CommitQueueFactor:             0,
+		MainlineTimeInQueueFactor:     0,
+		ExpectedRuntimeFactor:         0,
+		GenerateTaskFactor:            0,
 	}
 
 	settings1 := &evergreen.Settings{Scheduler: config1}
@@ -516,19 +522,20 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 		PlannerSettings: *ps,
 	}
 	config2 := evergreen.SchedulerConfig{
-		TaskFinder:                "",
-		HostAllocator:             "",
-		FutureHostFraction:        .1,
-		CacheDurationSeconds:      60,
-		Planner:                   evergreen.PlannerVersionLegacy,
-		TargetTimeSeconds:         12345,
-		GroupVersions:             false,
-		PatchFactor:               0,
-		PatchTimeInQueueFactor:    0,
-		CommitQueueFactor:         0,
-		MainlineTimeInQueueFactor: 0,
-		ExpectedRuntimeFactor:     0,
-		GenerateTaskFactor:        0,
+		TaskFinder:                    "",
+		HostAllocator:                 "",
+		FutureHostFraction:            .1,
+		CacheDurationSeconds:          60,
+		Planner:                       evergreen.PlannerVersionLegacy,
+		TargetTimeSeconds:             12345,
+		AcceptableHostIdleTimeSeconds: 67890,
+		GroupVersions:                 false,
+		PatchFactor:                   0,
+		PatchTimeInQueueFactor:        0,
+		CommitQueueFactor:             0,
+		MainlineTimeInQueueFactor:     0,
+		ExpectedRuntimeFactor:         0,
+		GenerateTaskFactor:            0,
 	}
 	settings2 := &evergreen.Settings{Scheduler: config2}
 
