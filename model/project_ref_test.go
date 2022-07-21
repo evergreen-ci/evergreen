@@ -1847,6 +1847,25 @@ func TestGetProjectSetupCommands(t *testing.T) {
 	assert.Contains(t, cmds[1].String(), "c1")
 }
 
+func TestFindFirstProjectRef(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(ProjectRefCollection))
+
+	_, err := FindFirstProjectRef()
+	assert.Error(t, err, "Should return error and not panic if there are no matching projects")
+
+	projectRef := ProjectRef{
+		Id:        "p1",
+		RepoRefId: "my_repo",
+		Private:   utility.FalsePtr(),
+	}
+
+	assert.NoError(t, projectRef.Insert())
+
+	resultRef, err := FindFirstProjectRef()
+	assert.NoError(t, err)
+	assert.Equal(t, "p1", resultRef.Id)
+}
+
 func TestFindPeriodicProjects(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection))
 
