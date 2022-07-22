@@ -55,10 +55,12 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	rest := GetRESTv1App(as)
 
 	opts := route.HandlerOpts{
-		APIQueue:     as.queue,
-		QueueGroup:   as.env.RemoteQueueGroup(),
-		URL:          as.Settings.Ui.Url,
-		GithubSecret: []byte(as.Settings.Api.GithubWebhookSecret),
+		APIQueue:            as.queue,
+		QueueGroup:          as.env.RemoteQueueGroup(),
+		URL:                 as.Settings.Ui.Url,
+		GithubSecret:        []byte(as.Settings.Api.GithubWebhookSecret),
+		TaskDispatcher:      as.taskDispatcher,
+		TaskAliasDispatcher: as.taskAliasDispatcher,
 	}
 	route.AttachHandler(rest, opts)
 
@@ -70,10 +72,12 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	apiRestV2 := gimlet.NewApp()
 	apiRestV2.SetPrefix(evergreen.APIRoutePrefix + "/" + evergreen.RestRoutePrefix)
 	opts = route.HandlerOpts{
-		APIQueue:     as.queue,
-		QueueGroup:   as.env.RemoteQueueGroup(),
-		URL:          as.Settings.Ui.Url,
-		GithubSecret: []byte(as.Settings.Api.GithubWebhookSecret),
+		APIQueue:            as.queue,
+		QueueGroup:          as.env.RemoteQueueGroup(),
+		URL:                 as.Settings.Ui.Url,
+		GithubSecret:        []byte(as.Settings.Api.GithubWebhookSecret),
+		TaskDispatcher:      as.taskDispatcher,
+		TaskAliasDispatcher: as.taskAliasDispatcher,
 	}
 	route.AttachHandler(apiRestV2, opts)
 

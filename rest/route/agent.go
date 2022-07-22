@@ -453,7 +453,7 @@ func (h *attachFilesHandler) Parse(ctx context.Context, r *http.Request) error {
 	}
 	err := utility.ReadJSON(r.Body, &h.files)
 	if err != nil {
-		message := fmt.Sprintf("reading file definitions for task  %v: %v", h.taskID, err)
+		message := fmt.Sprintf("reading file definitions for task  %s: %v", h.taskID, err)
 		grip.Error(message)
 		return errors.Wrap(err, message)
 	}
@@ -484,11 +484,11 @@ func (h *attachFilesHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if err = entry.Upsert(); err != nil {
-		message := fmt.Sprintf("updating artifact file info for task %v: %v", t.Id, err)
+		message := fmt.Sprintf("updating artifact file info for task %s: %v", t.Id, err)
 		grip.Error(message)
 		return gimlet.MakeJSONInternalErrorResponder(errors.New(message))
 	}
-	return gimlet.NewJSONResponse(fmt.Sprintf("Artifact files for task %v successfully attached", t.Id))
+	return gimlet.NewJSONResponse(fmt.Sprintf("Artifact files for task %s successfully attached", t.Id))
 }
 
 // POST /task/{task_id}/test_logs
@@ -889,7 +889,7 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if host == nil {
-		message := fmt.Sprintf("no host found running task %v", t.Id)
+		message := fmt.Sprintf("no host found running task %s", t.Id)
 		if t.HostId != "" {
 			message = fmt.Sprintf("no host found running task %s but task is said to be running on %s",
 				t.Id, t.HostId)
@@ -906,7 +906,7 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 		idleTimeStartAt = host.StartTime
 	}
 
-	msg := fmt.Sprintf("Task %v started on host %v", t.Id, host.Id)
+	msg := fmt.Sprintf("Task %s started on host %s", t.Id, host.Id)
 
 	if host.Distro.IsEphemeral() {
 		queue := evergreen.GetEnvironment().RemoteQueue()
@@ -917,23 +917,4 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewJSONResponse(msg)
-}
-
-// POST /task/{task_id}/end
-type endTaskHandler struct{}
-
-func makeEndTask() gimlet.RouteHandler {
-	return &endTaskHandler{}
-}
-
-func (h *endTaskHandler) Factory() gimlet.RouteHandler {
-	return &endTaskHandler{}
-}
-
-func (h *endTaskHandler) Parse(ctx context.Context, r *http.Request) error {
-	return nil
-}
-
-func (h *endTaskHandler) Run(ctx context.Context) gimlet.Responder {
-	return nil
 }

@@ -16,7 +16,7 @@ func (c *hostCommunicator) GetAgentSetupData(ctx context.Context) (*apimodels.Ag
 	out := &apimodels.AgentSetupData{}
 	info := requestInfo{
 		method:  http.MethodGet,
-		version: apiVersion1,
+		version: apiVersion2,
 		path:    "agent/setup",
 	}
 
@@ -44,9 +44,9 @@ func (c *hostCommunicator) EndTask(ctx context.Context, detail *apimodels.TaskEn
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
-		version:  apiVersion1,
+		version:  apiVersion2,
+		path:     fmt.Sprintf("hosts/%s/task/%s/end", c.hostID, taskData.ID),
 	}
-	info.setTaskPathSuffix("end")
 	resp, err := c.retryRequest(ctx, info, detail)
 	if err != nil {
 		return nil, utility.RespErrorf(resp, "failed to end task %s: %s", taskData.ID, err.Error())
@@ -69,9 +69,9 @@ func (c *hostCommunicator) GetNextTask(ctx context.Context, details *apimodels.G
 	nextTask := &apimodels.NextTaskResponse{}
 	info := requestInfo{
 		method:  http.MethodGet,
-		version: apiVersion1,
+		version: apiVersion2,
 	}
-	info.path = "agent/next_task"
+	info.path = fmt.Sprintf("hosts/%s/agent/next_task", c.hostID)
 	resp, err := c.retryRequest(ctx, info, details)
 	if err != nil {
 		err = utility.RespErrorf(resp, "failed to get next task: %s", err.Error())
