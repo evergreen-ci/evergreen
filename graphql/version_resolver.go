@@ -207,7 +207,7 @@ func (r *versionResolver) ProjectMetadata(ctx context.Context, obj *restModel.AP
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project ref for project `%s`: %s", *obj.Project, "Project not found"))
 	}
 	apiProjectRef := restModel.APIProjectRef{}
-	if err = apiProjectRef.BuildFromService(projectRef); err != nil {
+	if err = apiProjectRef.BuildFromService(*projectRef); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIProjectRef from service for `%s`: %s", projectRef.Id, err.Error()))
 	}
 	return &apiProjectRef, nil
@@ -289,7 +289,7 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 		}
 
 		apiTask := restModel.APITask{}
-		if err = apiTask.BuildFromArgs(upstreamTask, nil); err != nil {
+		if err = apiTask.BuildFromService(upstreamTask, nil); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APITask from service for `%s`: %s", upstreamTask.Id, err.Error()))
 		}
 

@@ -102,7 +102,7 @@ func setManyTasksScheduled(ctx context.Context, url string, isActive bool, taskI
 	apiTasks := []*restModel.APITask{}
 	for _, t := range tasks {
 		apiTask := restModel.APITask{}
-		err = apiTask.BuildFromArgs(&t, &restModel.APITaskArgs{
+		err = apiTask.BuildFromService(&t, &restModel.APITaskArgs{
 			LogURL: url,
 		})
 		if err != nil {
@@ -248,7 +248,7 @@ func buildFromGqlInput(r PatchConfigure) model.PatchUpdate {
 // getAPITaskFromTask builds an APITask from the given task
 func getAPITaskFromTask(ctx context.Context, url string, task task.Task) (*restModel.APITask, error) {
 	apiTask := restModel.APITask{}
-	err := apiTask.BuildFromArgs(&task, &restModel.APITaskArgs{
+	err := apiTask.BuildFromService(&task, &restModel.APITaskArgs{
 		LogURL: url,
 	})
 	if err != nil {
@@ -284,7 +284,7 @@ func generateBuildVariants(versionId string, buildVariantOpts BuildVariantOption
 	buildTaskStartTime := time.Now()
 	for _, t := range tasks {
 		apiTask := restModel.APITask{}
-		err := apiTask.BuildFromArgs(&t, nil)
+		err := apiTask.BuildFromService(&t, nil)
 		if err != nil {
 			return nil, errors.Wrapf(err, fmt.Sprintf("Error building apiTask from task : %s", t.Id))
 		}
@@ -554,9 +554,7 @@ func getAPIVolumeList(volumes []host.Volume) ([]*restModel.APIVolume, error) {
 	apiVolumes := make([]*restModel.APIVolume, 0, len(volumes))
 	for _, vol := range volumes {
 		apiVolume := restModel.APIVolume{}
-		if err := apiVolume.BuildFromService(vol); err != nil {
-			return nil, errors.Wrapf(err, "error building volume '%s' from service", vol.ID)
-		}
+		apiVolume.BuildFromService(vol)
 		apiVolumes = append(apiVolumes, &apiVolume)
 	}
 	return apiVolumes, nil
@@ -656,9 +654,7 @@ func getRedactedAPIVarsForProject(ctx context.Context, projectId string) (*restM
 	}
 	vars = vars.RedactPrivateVars()
 	res := &restModel.APIProjectVars{}
-	if err = res.BuildFromService(vars); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building APIProjectVars from service: %s", err.Error()))
-	}
+	res.BuildFromService(*vars)
 	return res, nil
 }
 
@@ -670,10 +666,7 @@ func getAPIAliasesForProject(ctx context.Context, projectId string) ([]*restMode
 	res := []*restModel.APIProjectAlias{}
 	for _, alias := range aliases {
 		apiAlias := restModel.APIProjectAlias{}
-		if err = apiAlias.BuildFromService(alias); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building APIPProjectAlias %s from service: %s",
-				alias.Alias, err.Error()))
-		}
+		apiAlias.BuildFromService(alias)
 		res = append(res, &apiAlias)
 	}
 	return res, nil

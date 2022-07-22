@@ -80,38 +80,23 @@ func (el *TaskEventData) BuildFromService(v *event.TaskEventData) error {
 	return nil
 }
 
-// ToService is not implemented for TaskEventData.
-func (el *TaskEventData) ToService() (interface{}, error) {
-	return nil, errors.Errorf("ToService() is not implemented for TaskEventData")
-}
-
-func (el *TaskAPIEventLogEntry) BuildFromService(t interface{}) error {
-	switch v := t.(type) {
-	case *event.EventLogEntry:
-		d, ok := v.Data.(*event.TaskEventData)
-		if !ok {
-			return errors.Errorf("programmatic error: expected task event data but got type %T", v.Data)
-		}
-		taskEventData := TaskEventData{}
-		if err := taskEventData.BuildFromService(d); err != nil {
-			return errors.Wrap(err, "converting task event data to API model")
-		}
-		el.ID = utility.ToStringPtr(v.ID)
-		el.ResourceType = utility.ToStringPtr(v.ResourceType)
-		el.ProcessedAt = ToTimePtr(v.ProcessedAt)
-		el.Timestamp = ToTimePtr(v.Timestamp)
-		el.ResourceId = utility.ToStringPtr(v.ResourceId)
-		el.EventType = utility.ToStringPtr(v.EventType)
-		el.Data = &taskEventData
-	default:
-		return errors.Errorf("programmatic error: expected event log entry but got type %T", t)
+func (el *TaskAPIEventLogEntry) BuildFromService(v event.EventLogEntry) error {
+	d, ok := v.Data.(*event.TaskEventData)
+	if !ok {
+		return errors.Errorf("programmatic error: expected task event data but got type %T", v.Data)
 	}
+	taskEventData := TaskEventData{}
+	if err := taskEventData.BuildFromService(d); err != nil {
+		return errors.Wrap(err, "converting task event data to API model")
+	}
+	el.ID = utility.ToStringPtr(v.ID)
+	el.ResourceType = utility.ToStringPtr(v.ResourceType)
+	el.ProcessedAt = ToTimePtr(v.ProcessedAt)
+	el.Timestamp = ToTimePtr(v.Timestamp)
+	el.ResourceId = utility.ToStringPtr(v.ResourceId)
+	el.EventType = utility.ToStringPtr(v.EventType)
+	el.Data = &taskEventData
 	return nil
-}
-
-// ToService is not implemented for APITestStats.
-func (el *TaskAPIEventLogEntry) ToService() (interface{}, error) {
-	return nil, errors.Errorf("ToService() is not implemented for TaskAPIEventLogEntry")
 }
 
 //HostEvent functions
@@ -136,34 +121,19 @@ func (el *HostAPIEventData) BuildFromService(v *event.HostEventData) {
 	el.Duration = NewAPIDuration(v.Duration)
 }
 
-// ToService is not implemented for TaskEventData.
-func (el *HostAPIEventData) ToService() (interface{}, error) {
-	return nil, errors.Errorf("ToService() is not implemented for HostAPIEventData")
-}
-
-func (el *HostAPIEventLogEntry) BuildFromService(t interface{}) error {
-	switch v := t.(type) {
-	case *event.EventLogEntry:
-		d, ok := v.Data.(*event.HostEventData)
-		if !ok {
-			return errors.Errorf("programmatic error: expected host event data but got type %T", v.Data)
-		}
-		hostAPIEventData := HostAPIEventData{}
-		hostAPIEventData.BuildFromService(d)
-		el.ID = utility.ToStringPtr(v.ID)
-		el.ResourceType = utility.ToStringPtr(v.ResourceType)
-		el.ProcessedAt = ToTimePtr(v.ProcessedAt)
-		el.Timestamp = ToTimePtr(v.Timestamp)
-		el.ResourceId = utility.ToStringPtr(v.ResourceId)
-		el.EventType = utility.ToStringPtr(v.EventType)
-		el.Data = &hostAPIEventData
-	default:
-		return errors.Errorf("programmatic error: expected event log entry but got type %T", t)
+func (el *HostAPIEventLogEntry) BuildFromService(entry event.EventLogEntry) error {
+	d, ok := entry.Data.(*event.HostEventData)
+	if !ok {
+		return errors.Errorf("programmatic error: expected host event data but got type %T", entry.Data)
 	}
+	hostAPIEventData := HostAPIEventData{}
+	hostAPIEventData.BuildFromService(d)
+	el.ID = utility.ToStringPtr(entry.ID)
+	el.ResourceType = utility.ToStringPtr(entry.ResourceType)
+	el.ProcessedAt = ToTimePtr(entry.ProcessedAt)
+	el.Timestamp = ToTimePtr(entry.Timestamp)
+	el.ResourceId = utility.ToStringPtr(entry.ResourceId)
+	el.EventType = utility.ToStringPtr(entry.EventType)
+	el.Data = &hostAPIEventData
 	return nil
-}
-
-// ToService is not implemented for APITestStats.
-func (el *HostAPIEventLogEntry) ToService() (interface{}, error) {
-	return nil, errors.Errorf("ToService() is not implemented for HostAPIEventLogEntry")
 }

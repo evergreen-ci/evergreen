@@ -351,7 +351,7 @@ func (s *HostSuite) TestBuildFromServiceHost() {
 	host, err := host.FindOneId("host1")
 	s.NoError(err)
 	apiHost := model.APIHost{}
-	s.NoError(apiHost.BuildFromService(host))
+	apiHost.BuildFromService(host, nil)
 	s.Equal(apiHost.Id, utility.ToStringPtr(host.Id))
 	s.Equal(apiHost.HostURL, utility.ToStringPtr(host.Host))
 	s.Equal(apiHost.Provisioned, host.Provisioned)
