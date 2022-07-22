@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
@@ -311,6 +312,65 @@ var (
 		{"$project": bson.M{
 			"tasks": bson.M{
 				"$setUnion": []string{"$has_build_variant_display_name", "$not_has_build_variant_display_name"},
+			}},
+		},
+		{"$unwind": "$tasks"},
+		{"$replaceRoot": bson.M{"newRoot": "$tasks"}},
+	}
+
+	// AddAnnotations adds the annotations to the task document.
+	AddAnnotations = []bson.M{
+		{
+			"$facet": bson.M{
+				// We skip annotation lookup for non-failed tasks, because these can't have annotations
+				"not_failed": []bson.M{
+					{
+						"$match": bson.M{
+							StatusKey: bson.M{"$nin": evergreen.TaskFailureStatuses},
+						},
+					},
+				},
+				// for failed tasks, get any annotation that has at least one issue
+				"failed": []bson.M{
+					{
+						"$match": bson.M{
+							StatusKey: bson.M{"$in": evergreen.TaskFailureStatuses},
+						},
+					},
+					{
+						"$lookup": bson.M{
+							"from": annotations.Collection,
+							"let":  bson.M{"task_annotation_id": "$" + IdKey, "task_annotation_execution": "$" + ExecutionKey},
+							"pipeline": []bson.M{
+								{
+									"$match": bson.M{
+										"$expr": bson.M{
+											"$and": []bson.M{
+												{
+													"$eq": []string{"$" + annotations.TaskIdKey, "$$task_annotation_id"},
+												},
+												{
+													"$eq": []string{"$" + annotations.TaskExecutionKey, "$$task_annotation_execution"},
+												},
+												{
+													"$ne": []interface{}{
+														bson.M{
+															"$size": bson.M{"$ifNull": []interface{}{"$" + annotations.IssuesKey, []bson.M{}}},
+														}, 0,
+													},
+												},
+											},
+										},
+									}}},
+							"as": "annotation_docs",
+						},
+					},
+				},
+			},
+		},
+		{"$project": bson.M{
+			"tasks": bson.M{
+				"$setUnion": []string{"$not_failed", "$failed"},
 			}},
 		},
 		{"$unwind": "$tasks"},

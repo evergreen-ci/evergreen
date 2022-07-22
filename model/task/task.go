@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
-	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -3958,65 +3957,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		pipeline = append(pipeline, recombineTasks...)
 	}
 
-	annotationFacet := bson.M{
-		"$facet": bson.M{
-			// We skip annotation lookup for non-failed tasks, because these can't have annotations
-			"not_failed": []bson.M{
-				{
-					"$match": bson.M{
-						StatusKey: bson.M{"$nin": evergreen.TaskFailureStatuses},
-					},
-				},
-			},
-			// for failed tasks, get any annotation that has at least one issue
-			"failed": []bson.M{
-				{
-					"$match": bson.M{
-						StatusKey: bson.M{"$in": evergreen.TaskFailureStatuses},
-					},
-				},
-				{
-					"$lookup": bson.M{
-						"from": annotations.Collection,
-						"let":  bson.M{"task_annotation_id": "$" + IdKey, "task_annotation_execution": "$" + ExecutionKey},
-						"pipeline": []bson.M{
-							{
-								"$match": bson.M{
-									"$expr": bson.M{
-										"$and": []bson.M{
-											{
-												"$eq": []string{"$" + annotations.TaskIdKey, "$$task_annotation_id"},
-											},
-											{
-												"$eq": []string{"$" + annotations.TaskExecutionKey, "$$task_annotation_execution"},
-											},
-											{
-												"$ne": []interface{}{
-													bson.M{
-														"$size": bson.M{"$ifNull": []interface{}{"$" + annotations.IssuesKey, []bson.M{}}},
-													}, 0,
-												},
-											},
-										},
-									},
-								}}},
-						"as": "annotation_docs",
-					},
-				},
-			},
-		},
-	}
-	pipeline = append(pipeline, annotationFacet)
-	recombineAnnotationFacet := []bson.M{
-		{"$project": bson.M{
-			"tasks": bson.M{
-				"$setUnion": []string{"$not_failed", "$failed"},
-			}},
-		},
-		{"$unwind": "$tasks"},
-		{"$replaceRoot": bson.M{"newRoot": "$tasks"}},
-	}
-	pipeline = append(pipeline, recombineAnnotationFacet...)
+	pipeline = append(pipeline, AddAnnotations...)
 	pipeline = append(pipeline,
 		// Add a field for the display status of each task
 		addDisplayStatus,
