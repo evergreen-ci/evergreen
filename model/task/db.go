@@ -269,53 +269,29 @@ var (
 	}
 
 	AddBuildVariantDisplayName = []bson.M{
-		{"$facet": bson.M{
-			"has_build_variant_display_name": []bson.M{
-				{"$match": bson.M{
-					"$and": []bson.M{
-						{
-							BuildVariantDisplayNameKey: bson.M{"$exists": true},
-						},
-						{
-							BuildVariantDisplayNameKey: bson.M{"$ne": ""},
-						},
-					}},
+		{"$match": bson.M{
+			"$or": []bson.M{
+				{
+					BuildVariantDisplayNameKey: bson.M{"$exists": false},
 				},
-			},
-			"not_has_build_variant_display_name": []bson.M{
-				{"$match": bson.M{
-					"$or": []bson.M{
-						{
-							BuildVariantDisplayNameKey: bson.M{"$exists": false},
-						},
-						{
-							BuildVariantDisplayNameKey: bson.M{"$eq": ""},
-						},
-					}},
+				{
+					BuildVariantDisplayNameKey: bson.M{"$eq": ""},
 				},
-				{"$lookup": bson.M{
-					"from":         "builds",
-					"localField":   BuildIdKey,
-					"foreignField": "_id",
-					"as":           BuildVariantDisplayNameKey,
-				}},
-				{"$unwind": bson.M{
-					"path":                       "$" + BuildVariantDisplayNameKey,
-					"preserveNullAndEmptyArrays": true,
-				}},
-				{"$addFields": bson.M{
-					BuildVariantDisplayNameKey: "$" + bsonutil.GetDottedKeyName(BuildVariantDisplayNameKey, "display_name"),
-				}},
-			},
-		},
-		},
-		{"$project": bson.M{
-			"tasks": bson.M{
-				"$setUnion": []string{"$has_build_variant_display_name", "$not_has_build_variant_display_name"},
 			}},
 		},
-		{"$unwind": "$tasks"},
-		{"$replaceRoot": bson.M{"newRoot": "$tasks"}},
+		{"$lookup": bson.M{
+			"from":         "builds",
+			"localField":   BuildIdKey,
+			"foreignField": "_id",
+			"as":           BuildVariantDisplayNameKey,
+		}},
+		{"$unwind": bson.M{
+			"path":                       "$" + BuildVariantDisplayNameKey,
+			"preserveNullAndEmptyArrays": true,
+		}},
+		{"$addFields": bson.M{
+			BuildVariantDisplayNameKey: "$" + bsonutil.GetDottedKeyName(BuildVariantDisplayNameKey, "display_name"),
+		}},
 	}
 
 	// AddAnnotations adds the annotations to the task document.

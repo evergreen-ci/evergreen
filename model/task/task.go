@@ -3468,25 +3468,28 @@ type GetTasksByProjectAndCommitOptions struct {
 }
 
 type GetTasksByVersionOptions struct {
-	Statuses                       []string
-	BaseStatuses                   []string
-	Variants                       []string
-	TaskNames                      []string
-	Page                           int
-	Limit                          int
-	FieldsToProject                []string
-	Sorts                          []TasksSortOrder
-	IncludeExecutionTasks          bool
-	IncludeBaseTasks               bool
-	IncludeEmptyActivation         bool
-	IncludeBuildVariantDisplayName bool
-	IsMainlineCommit               bool
+	Statuses                            []string
+	BaseStatuses                        []string
+	Variants                            []string
+	TaskNames                           []string
+	Page                                int
+	Limit                               int
+	FieldsToProject                     []string
+	Sorts                               []TasksSortOrder
+	IncludeExecutionTasks               bool
+	IncludeBaseTasks                    bool
+	IncludeEmptyActivation              bool
+	IncludeBuildVariantDisplayName      bool
+	IsMainlineCommit                    bool
+	UseLegacyAddBuildVariantDisplayName bool
 }
 
 // GetTasksByVersion gets all tasks for a specific version
 // Query results can be filtered by task name, variant name and status in addition to being paginated and limited
 func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task, int, error) {
-
+	// get a single task from the version
+	shouldUseLegacyAddBuildVariantDisplayName := ShouldUseLegacyAddBuildVariantDisplayName(versionID)
+	opts.UseLegacyAddBuildVariantDisplayName = shouldUseLegacyAddBuildVariantDisplayName
 	pipeline := getTasksByVersionPipeline(versionID, opts)
 
 	if len(opts.Sorts) > 0 {
@@ -3599,6 +3602,8 @@ type TaskStats struct {
 }
 
 func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) (*TaskStats, error) {
+	shouldUseLegacyAddBuildVariantDisplayName := ShouldUseLegacyAddBuildVariantDisplayName(versionID)
+	opts.UseLegacyAddBuildVariantDisplayName = shouldUseLegacyAddBuildVariantDisplayName
 	pipeline := getTasksByVersionPipeline(versionID, opts)
 	maxEtaPipeline := []bson.M{
 		{
@@ -3670,6 +3675,23 @@ func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) (*Ta
 	return &result, nil
 }
 
+// ShouldUseLegacyAddBuildVariantDisplayName returns a boolean indicating whether the given version uses the buildVariantDisplayName field that was added in https://jira.mongodb.org/browse/EVG-16761
+// This is used to determine whether we should use the buildVariantDisplayName field in the task document or if we should use a $lookup to retrieve it
+func ShouldUseLegacyAddBuildVariantDisplayName(versionID string) bool {
+	query := db.Query(ByVersion(versionID))
+	task, err := FindOne(query)
+	if err != nil {
+		return false
+	}
+	if task == nil {
+		return false
+	}
+	if task.BuildVariantDisplayName != "" {
+		return false
+	}
+	return true
+}
+
 type GroupedTaskStatusCount struct {
 	Variant      string         `bson:"variant"`
 	DisplayName  string         `bson:"display_name"`
@@ -3679,6 +3701,8 @@ type GroupedTaskStatusCount struct {
 func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]*GroupedTaskStatusCount, error) {
 	if opts.Variants != nil {
 		opts.IncludeBuildVariantDisplayName = true
+		shouldUseLegacyAddBuildVariantDisplayName := ShouldUseLegacyAddBuildVariantDisplayName(versionID)
+		opts.UseLegacyAddBuildVariantDisplayName = shouldUseLegacyAddBuildVariantDisplayName
 	}
 	pipeline := getTasksByVersionPipeline(versionID, opts)
 	project := bson.M{"$project": bson.M{
@@ -3840,11 +3864,13 @@ type HasMatchingTasksOptions struct {
 
 // HasMatchingTasks returns true if the version has tasks with the given statuses
 func HasMatchingTasks(versionID string, opts HasMatchingTasksOptions) (bool, error) {
+	shouldUseLegacyAddBuildVariantDisplayName := ShouldUseLegacyAddBuildVariantDisplayName(versionID)
 	options := GetTasksByVersionOptions{
-		TaskNames:                      opts.TaskNames,
-		Variants:                       opts.Variants,
-		Statuses:                       opts.Statuses,
-		IncludeBuildVariantDisplayName: true,
+		TaskNames:                           opts.TaskNames,
+		Variants:                            opts.Variants,
+		Statuses:                            opts.Statuses,
+		IncludeBuildVariantDisplayName:      true,
+		UseLegacyAddBuildVariantDisplayName: shouldUseLegacyAddBuildVariantDisplayName,
 	}
 	pipeline := getTasksByVersionPipeline(versionID, options)
 	pipeline = append(pipeline, bson.M{"$count": "count"})
@@ -3871,7 +3897,11 @@ func HasMatchingTasks(versionID string, opts HasMatchingTasksOptions) (bool, err
 
 func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) []bson.M {
 	var match bson.M = bson.M{}
-
+	if !opts.IncludeBuildVariantDisplayName && opts.UseLegacyAddBuildVariantDisplayName {
+		grip.Alert(message.Fields{
+			"message": "Implementer error: should not use UseLegacyAddBuildVariantDisplayName with !IncludeBuildVariantDisplayName",
+		})
+	}
 	match[VersionKey] = versionID
 
 	if len(opts.TaskNames) > 0 {
@@ -3889,7 +3919,9 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	// Add BuildVariantDisplayName to all the results if it we need to match on the entire set of results
 	// This is an expensive operation so we only want to do it if we have to
 	if len(opts.Variants) > 0 && opts.IncludeBuildVariantDisplayName {
-		pipeline = append(pipeline, AddBuildVariantDisplayName...)
+		if opts.UseLegacyAddBuildVariantDisplayName {
+			pipeline = append(pipeline, AddBuildVariantDisplayName...)
+		}
 
 		// Allow searching by either variant name or variant display
 		variantsAsRegex := strings.Join(opts.Variants, "|")
@@ -4024,7 +4056,9 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	}
 	// Add the build variant display name to the returned subset of results if it wasn't added earlier
 	if len(opts.Variants) == 0 && opts.IncludeBuildVariantDisplayName {
-		pipeline = append(pipeline, AddBuildVariantDisplayName...)
+		if opts.UseLegacyAddBuildVariantDisplayName {
+			pipeline = append(pipeline, AddBuildVariantDisplayName...)
+		}
 	}
 
 	if opts.IncludeBaseTasks && len(opts.BaseStatuses) > 0 {
