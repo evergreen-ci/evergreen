@@ -2135,7 +2135,7 @@ func (a *APISlackOptions) ToService() (interface{}, error) {
 }
 
 type APISplunkConfig struct {
-	SplunkConnectionInfo *APISplunkConnectionInfo `json:",inline"`
+	SplunkConnectionInfo *APISplunkConnectionInfo `json:"splunk_connection_info"`
 }
 
 func (a *APISplunkConfig) BuildFromService(h interface{}) error {
