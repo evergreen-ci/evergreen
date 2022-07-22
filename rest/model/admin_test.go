@@ -191,7 +191,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ServiceFlags.ContainerConfigurationsDisabled, apiSettings.ServiceFlags.ContainerConfigurationsDisabled)
 	assert.EqualValues(testSettings.Slack.Level, utility.FromStringPtr(apiSettings.Slack.Level))
 	assert.EqualValues(testSettings.Slack.Options.Channel, utility.FromStringPtr(apiSettings.Slack.Options.Channel))
-	assert.EqualValues(testSettings.Splunk.SplunkConnectionInfo.Channel, utility.FromStringPtr(apiSettings.Splunk.Channel))
+	assert.EqualValues(testSettings.Splunk.SplunkConnectionInfo.Channel, utility.FromStringPtr(apiSettings.Splunk.SplunkConnectionInfo.Channel))
 	assert.EqualValues(testSettings.Triggers.GenerateTaskDistro, utility.FromStringPtr(apiSettings.Triggers.GenerateTaskDistro))
 	assert.EqualValues(testSettings.Ui.HttpListenAddr, utility.FromStringPtr(apiSettings.Ui.HttpListenAddr))
 	assert.Equal(testSettings.Spawnhost.SpawnHostsPerUser, *apiSettings.Spawnhost.SpawnHostsPerUser)
