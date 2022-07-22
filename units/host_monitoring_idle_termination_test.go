@@ -67,6 +67,9 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		distro1 := distro.Distro{
 			Id:       "distro1",
 			Provider: evergreen.ProviderNameMock,
+			HostAllocatorSettings: distro.HostAllocatorSettings{
+				AcceptableHostIdleTime: 4 * time.Minute,
+			},
 		}
 		require.NoError(t, distro1.Insert(), "error inserting distro '%s'", distro1.Id)
 		// insert a host that is currently running a task - but whose
@@ -96,6 +99,9 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		distro1 := distro.Distro{
 			Id:       "distro1",
 			Provider: evergreen.ProviderNameMock,
+			HostAllocatorSettings: distro.HostAllocatorSettings{
+				AcceptableHostIdleTime: 4 * time.Minute,
+			},
 		}
 		require.NoError(t, distro1.Insert(), "error inserting distro '%s'", distro1.Id)
 
@@ -125,6 +131,9 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		distro1 := distro.Distro{
 			Id:       "distro1",
 			Provider: evergreen.ProviderNameMock,
+			HostAllocatorSettings: distro.HostAllocatorSettings{
+				AcceptableHostIdleTime: 4 * time.Minute,
+			},
 		}
 		require.NoError(t, distro1.Insert(), "error inserting distro '%s'", distro1.Id)
 
@@ -169,6 +178,9 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		distro1 := distro.Distro{
 			Id:       "distro1",
 			Provider: evergreen.ProviderNameMock,
+			HostAllocatorSettings: distro.HostAllocatorSettings{
+				AcceptableHostIdleTime: 4 * time.Minute,
+			},
 		}
 		require.NoError(t, distro1.Insert(), "error inserting distro '%s'", distro1.Id)
 
@@ -213,6 +225,9 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		distro1 := distro.Distro{
 			Id:       "distro1",
 			Provider: evergreen.ProviderNameMock,
+			HostAllocatorSettings: distro.HostAllocatorSettings{
+				AcceptableHostIdleTime: 4 * time.Minute,
+			},
 		}
 		require.NoError(t, distro1.Insert(), "error inserting distro '%s'", distro1.Id)
 
@@ -242,6 +257,9 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		distro1 := distro.Distro{
 			Id:       "distro1",
 			Provider: evergreen.ProviderNameMock,
+			HostAllocatorSettings: distro.HostAllocatorSettings{
+				AcceptableHostIdleTime: 4 * time.Minute,
+			},
 			BootstrapSettings: distro.BootstrapSettings{
 				Method:        distro.BootstrapMethodLegacySSH,
 				Communication: distro.CommunicationMethodLegacySSH,
@@ -275,6 +293,9 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		distro1 := distro.Distro{
 			Id:       "distro1",
 			Provider: evergreen.ProviderNameMock,
+			HostAllocatorSettings: distro.HostAllocatorSettings{
+				AcceptableHostIdleTime: 4 * time.Minute,
+			},
 			BootstrapSettings: distro.BootstrapSettings{
 				Method:        distro.BootstrapMethodSSH,
 				Communication: distro.CommunicationMethodSSH,
@@ -308,6 +329,9 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		distro1 := distro.Distro{
 			Id:       "distro1",
 			Provider: evergreen.ProviderNameMock,
+			HostAllocatorSettings: distro.HostAllocatorSettings{
+				AcceptableHostIdleTime: 4 * time.Minute,
+			},
 			BootstrapSettings: distro.BootstrapSettings{
 				Method:        distro.BootstrapMethodSSH,
 				Communication: distro.CommunicationMethodSSH,
