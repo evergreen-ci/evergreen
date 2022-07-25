@@ -211,16 +211,18 @@ func ExportECSPodCreationOptions(settings *evergreen.Settings, p *pod.Pod) (*coc
 		return nil, errors.Wrap(err, "exporting pod container definition")
 	}
 
-	opts := cocoa.NewECSPodCreationOptions().
+	defOpts := cocoa.NewECSPodDefinitionOptions().
 		SetName(strings.Join([]string{strings.TrimRight(ecsConf.TaskDefinitionPrefix, "-"), "agent", p.ID}, "-")).
 		SetTaskRole(ecsConf.TaskRole).
 		SetExecutionRole(ecsConf.ExecutionRole).
-		SetExecutionOptions(*execOpts).
 		AddContainerDefinitions(*containerDef)
-
 	if len(ecsConf.AWSVPC.Subnets) != 0 || len(ecsConf.AWSVPC.SecurityGroups) != 0 {
-		opts.SetNetworkMode(cocoa.NetworkModeAWSVPC)
+		defOpts.SetNetworkMode(cocoa.NetworkModeAWSVPC)
 	}
+
+	opts := cocoa.NewECSPodCreationOptions().
+		SetDefinitionOptions(*defOpts).
+		SetExecutionOptions(*execOpts)
 
 	return opts, nil
 }
