@@ -128,7 +128,6 @@ github.com/aws/aws-sdk-go v1.15.11/go.mod h1:mFuSZ37Z9YOHbQEwBWztmVzqXrEkub65tZo
 github.com/aws/aws-sdk-go v1.41.11/go.mod h1:585smgzpB/KqRA+K3y/NL/oYRqQvpNJYvLm+LY1U59Q=
 github.com/aws/aws-sdk-go v1.41.12/go.mod h1:585smgzpB/KqRA+K3y/NL/oYRqQvpNJYvLm+LY1U59Q=
 github.com/aws/aws-sdk-go v1.43.30/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX4oIKwKHZo=
-github.com/aws/aws-sdk-go v1.44.25/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX4oIKwKHZo=
 github.com/aws/aws-sdk-go v1.44.46 h1:BsKENvu24eXg7CWQ2wJAjKbDFkGP+hBtxKJIR3UdcB8=
 github.com/aws/aws-sdk-go v1.44.46/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX4oIKwKHZo=
 github.com/aybabtme/iocontrol v0.0.0-20150809002002-ad15bcfc95a0 h1:0NmehRCgyk5rljDQLKUO+cRJCnduDyn11+zGZIc9Z48=
@@ -362,8 +361,6 @@ github.com/evergreen-ci/bond v0.0.0-20211109152423-ba2b6b207f56/go.mod h1:EO+Oqm
 github.com/evergreen-ci/certdepot v0.0.0-20211109153348-d681ebe95b66/go.mod h1:X72gmQuA1g8E1vWg1Jfve3zdHoPxJkpwXDMLV1COs5g=
 github.com/evergreen-ci/certdepot v0.0.0-20211117185134-dbedb3d79a10 h1:dVNSXGxztN6t1S3vGxbSKqb5vqIRM5LiM1O5JjnVuCA=
 github.com/evergreen-ci/certdepot v0.0.0-20211117185134-dbedb3d79a10/go.mod h1:KpN0y+4m4oplnmM/PQmKAG+NQDKUbtr1BbdR4mr+6Ww=
-github.com/evergreen-ci/cocoa v0.0.0-20220706150511-817846ab6de9 h1:t4i6uK0v4Xh8ZvulqwBpNa7EQEGBE1X2UlgOo+8dMzo=
-github.com/evergreen-ci/cocoa v0.0.0-20220706150511-817846ab6de9/go.mod h1:NtrubQ0ezMvRQoLCXmKFhnA9HCK6AzT3j1b8WauwTHQ=
 github.com/evergreen-ci/cocoa v0.0.0-20220718191344-9c40afd9b130 h1:SJ9cSQAFm6tVG846mL18NayJDezVAa7O1ksL7NsSZEg=
 github.com/evergreen-ci/cocoa v0.0.0-20220718191344-9c40afd9b130/go.mod h1:lbhhy1dk+2jeAjJQlGvY+/W8U/Dpnh9b67Y2buCgEKM=
 github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57 h1:CIUR6i5YWJ/z5RbZ11UomO7aZxQjeHqAjOqGwPh7sCY=
@@ -403,8 +400,6 @@ github.com/evergreen-ci/timber v0.0.0-20220119202616-544be15f3b95/go.mod h1:Owh+
 github.com/evergreen-ci/utility v0.0.0-20211026201827-97b21fa2660a/go.mod h1:fuEDytmDhOv+UCUwRPG/qD7mjVkUgx37KEv+thUgHVk=
 github.com/evergreen-ci/utility v0.0.0-20220302150552-3f7a1a268ea7/go.mod h1:EXIwZ5mlP/g0UrWPWX7oRTKQ8nD/ghE3lPCKQ8JMjbk=
 github.com/evergreen-ci/utility v0.0.0-20220404192535-d16eb64796e6/go.mod h1:wSui4nRyDZzm2db7Ju7ZzBAelLyVLmcTPJEIh1IdSrc=
-github.com/evergreen-ci/utility v0.0.0-20220622184037-b63c011983c2 h1:/kxVsjuy7aYGZLqWt4vNDvyffCjmlKGDybkAtD6S7/o=
-github.com/evergreen-ci/utility v0.0.0-20220622184037-b63c011983c2/go.mod h1:wSui4nRyDZzm2db7Ju7ZzBAelLyVLmcTPJEIh1IdSrc=
 github.com/evergreen-ci/utility v0.0.0-20220725171106-4730479c6118 h1:VgLiqOcQvltQVJtkKF5GSKJSA0ZyFGynxn8A0y7fHww=
 github.com/evergreen-ci/utility v0.0.0-20220725171106-4730479c6118/go.mod h1:J23DaXv/35hpeeDLK1ay9KX/7zMF0HdVMAitqXQW9j0=
 github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
