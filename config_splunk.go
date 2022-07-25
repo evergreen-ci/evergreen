@@ -21,22 +21,20 @@ func (c *SplunkConfig) Get(env Environment) error {
 
 	res := coll.FindOne(ctx, byId(c.SectionId()))
 	if err := res.Err(); err != nil {
-		if err == mongo.ErrNoDocuments {
-			// Get the splunk config from global if the document doesn't exist.
-			globalConfig := coll.FindOne(ctx, byId(ConfigDocID))
-			if err := globalConfig.Err(); err != nil {
-				*c = SplunkConfig{}
-				return nil
-			} else {
-				s := Settings{}
-				if err := globalConfig.Decode(&s); err != nil {
-					return errors.Wrap(err, "decoding global config")
-				}
-				c.SplunkConnectionInfo = s.Splunk.SplunkConnectionInfo
-				return nil
-			}
+		if err != mongo.ErrNoDocuments {
+			return errors.Wrapf(err, "retrieving section '%s'", c.SectionId())
 		}
-		return errors.Wrapf(err, "retrieving section '%s'", c.SectionId())
+		// Get the splunk config from global if the document doesn't exist.
+		globalConfig := coll.FindOne(ctx, byId(ConfigDocID))
+		if err := globalConfig.Err(); err != nil {
+			return errors.Wrap(err, "retrieving global settings")
+		}
+		s := Settings{}
+		if err := globalConfig.Decode(&s); err != nil {
+			return errors.Wrap(err, "decoding global config")
+		}
+		c.SplunkConnectionInfo = s.Splunk.SplunkConnectionInfo
+		return nil
 	}
 
 	if err := res.Decode(c); err != nil {
