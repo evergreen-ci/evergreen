@@ -1954,23 +1954,27 @@ func (t *Task) Reset() error {
 
 // ResetTasks performs the same DB updates as (*Task).Reset, but resets many
 // tasks instead of a single one.
-func ResetTasks(tasks []Task) error {
+func ResetTasks(tasks []Task) (*adb.ChangeInfo, error) {
 	if len(tasks) == 0 {
-		return nil
+		return nil, nil
 	}
 	var taskIDs []string
 	for _, t := range tasks {
 		taskIDs = append(taskIDs, t.Id)
 	}
 
-	if _, err := UpdateAll(
-		bson.M{IdKey: bson.M{"$in": taskIDs}},
+	info, err := UpdateAll(
+		bson.M{
+			IdKey:     bson.M{"$in": taskIDs},
+			StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses},
+		},
 		resetTaskUpdate(nil),
-	); err != nil {
-		return err
+	)
+	if err != nil {
+		return nil, err
 	}
 
-	return nil
+	return info, nil
 }
 
 func resetTaskUpdate(t *Task) bson.M {

@@ -284,12 +284,15 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 	return errors.WithStack(resetTask(t.Id, caller, false))
 }
 
-// resetTask finds a task, attempts to archive it, and resets the task and
+// resetTask finds a finished task, attempts to archive it, and resets the task and
 // resets the TaskCache in the build as well.
 func resetTask(taskId, caller string, logIDs bool) error {
 	t, err := task.FindOneId(taskId)
 	if err != nil {
 		return errors.WithStack(err)
+	}
+	if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, t.Status) {
+		return nil
 	}
 	if t.IsPartOfDisplay() {
 		return errors.Errorf("cannot restart execution task '%s' because it is part of a display task", t.Id)
@@ -1368,8 +1371,12 @@ func MarkTasksReset(taskIds []string) error {
 		return errors.WithStack(err)
 	}
 
-	if err = task.ResetTasks(tasks); err != nil {
+	info, err := task.ResetTasks(tasks)
+	if err != nil {
 		return errors.Wrap(err, "resetting tasks in database")
+	}
+	if info.Updated == 0 {
+		return nil
 	}
 
 	catcher := grip.NewBasicCatcher()
