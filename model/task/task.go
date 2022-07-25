@@ -3702,11 +3702,9 @@ type GroupedTaskStatusCount struct {
 }
 
 func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]*GroupedTaskStatusCount, error) {
-	if opts.Variants != nil {
-		opts.IncludeBuildVariantDisplayName = true
-		shouldUseLegacyAddBuildVariantDisplayName := ShouldUseLegacyAddBuildVariantDisplayName(versionID)
-		opts.UseLegacyAddBuildVariantDisplayName = shouldUseLegacyAddBuildVariantDisplayName
-	}
+	opts.IncludeBuildVariantDisplayName = true
+	shouldUseLegacyAddBuildVariantDisplayName := ShouldUseLegacyAddBuildVariantDisplayName(versionID)
+	opts.UseLegacyAddBuildVariantDisplayName = shouldUseLegacyAddBuildVariantDisplayName
 	pipeline := getTasksByVersionPipeline(versionID, opts)
 	project := bson.M{"$project": bson.M{
 		BuildVariantKey:            "$" + BuildVariantKey,
