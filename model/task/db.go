@@ -269,16 +269,6 @@ var (
 	}
 
 	AddBuildVariantDisplayName = []bson.M{
-		{"$match": bson.M{
-			"$or": []bson.M{
-				{
-					BuildVariantDisplayNameKey: bson.M{"$exists": false},
-				},
-				{
-					BuildVariantDisplayNameKey: bson.M{"$eq": ""},
-				},
-			}},
-		},
 		{"$lookup": bson.M{
 			"from":         "builds",
 			"localField":   BuildIdKey,
