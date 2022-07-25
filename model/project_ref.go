@@ -1143,7 +1143,7 @@ func GetTasksWithOptions(projectName string, taskName string, opts GetProjectTas
 func FindFirstProjectRef() (*ProjectRef, error) {
 	projectRefSlice := []ProjectRef{}
 	pipeline := projectRefPipelineForValueIsBool(ProjectRefPrivateKey, RepoRefPrivateKey, false)
-	pipeline = append(pipeline, bson.M{"$sort": bson.M{ProjectRefPrivateKey: -1}}, bson.M{"$limit": 1})
+	pipeline = append(pipeline, bson.M{"$sort": bson.M{ProjectRefDisplayNameKey: -1}}, bson.M{"$limit": 1})
 	err := db.Aggregate(
 		ProjectRefCollection,
 		pipeline,
