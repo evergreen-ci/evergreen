@@ -1850,8 +1850,11 @@ func TestGetProjectSetupCommands(t *testing.T) {
 func TestFindFirstProjectRef(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(ProjectRefCollection))
 
-	_, err := FindFirstProjectRef()
-	assert.Error(t, err, "Should return error and not panic if there are no matching projects")
+	var err error
+	assert.NotPanics(t, func() {
+		_, err = FindFirstProjectRef()
+	}, "Should not panic if there are no matching projects")
+	assert.Error(t, err, "Should return error if there are no matching projects")
 
 	projectRef := ProjectRef{
 		Id:        "p1",
