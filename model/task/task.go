@@ -2472,13 +2472,39 @@ func (t *Task) Insert() error {
 // into the old_tasks collection. If this is a display task, its execution tasks
 // are also archived.
 func (t *Task) Archive() error {
-	var task []Task
-	task = append(task, *t)
-	err := ArchiveMany(task)
 	if t.DisplayOnly {
+		var task []Task
+		task = append(task, *t)
+		err := ArchiveMany(task)
 		return errors.Wrapf(err, "archiving and updating display task with ID '%s'.", t.Id)
 	} else {
-		return errors.Wrapf(err, "archiving and updating task with ID '%s'.", t.Id)
+		// Archiving a single task.
+		archiveTask := t.makeArchivedTask()
+		err := db.Insert(OldCollection, archiveTask)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"archive_task_id": archiveTask.Id,
+				"old_task_id":     archiveTask.OldTaskId,
+				"execution":       t.Execution,
+				"display_only":    t.DisplayOnly,
+			}))
+			return errors.Wrap(err, "inserting archived task into old tasks")
+		}
+		err = UpdateOne(
+			bson.M{IdKey: t.Id},
+			bson.M{
+				"$unset": bson.M{
+					AbortedKey:              "",
+					AbortInfoKey:            "",
+					OverrideDependenciesKey: "",
+				},
+				"$set": bson.M{ExecutionKey: t.LatestParentExecution + 1, LatestParentExecutionKey: t.LatestParentExecution + 1},
+			})
+		if err != nil {
+			return errors.Wrap(err, "updating task")
+		}
+		t.Aborted = false
+		return nil
 	}
 }
 
