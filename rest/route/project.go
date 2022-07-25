@@ -607,8 +607,12 @@ func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "unmarshalling JSON request body into project ref"))
 	}
 
-	dbProjectRef := apiProjectRef.ToService()
-	dbProjectRef.Identifier = h.projectName
+	dbProjectRef := dbModel.ProjectRef{
+		Identifier: h.projectName,
+		Id:         utility.FromStringPtr(apiProjectRef.Id),
+		Owner:      utility.FromStringPtr(apiProjectRef.Owner),
+		Repo:       utility.FromStringPtr(apiProjectRef.Repo),
+	}
 
 	responder := gimlet.NewJSONResponse(struct{}{})
 	if err = responder.SetStatus(http.StatusCreated); err != nil {
