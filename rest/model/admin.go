@@ -2134,6 +2134,32 @@ func (a *APISlackOptions) ToService() (interface{}, error) {
 	}, nil
 }
 
+// type APISplunkConnectionInfo struct {
+// 	ServerURL *string `json:"url"`
+// 	Token     *string `json:"token"`
+// 	Channel   *string `json:"channel"`
+// }
+
+// func (a *APISplunkConnectionInfo) BuildFromService(h interface{}) error {
+// 	switch v := h.(type) {
+// 	case send.SplunkConnectionInfo:
+// 		a.ServerURL = utility.ToStringPtr(v.ServerURL)
+// 		a.Token = utility.ToStringPtr(v.Token)
+// 		a.Channel = utility.ToStringPtr(v.Channel)
+// 	default:
+// 		return errors.Errorf("programmatic error: expected Splunk connection info but got type %T", h)
+// 	}
+// 	return nil
+// }
+
+// func (a *APISplunkConnectionInfo) ToService() (interface{}, error) {
+// 	return send.SplunkConnectionInfo{
+// 		ServerURL: utility.FromStringPtr(a.ServerURL),
+// 		Token:     utility.FromStringPtr(a.Token),
+// 		Channel:   utility.FromStringPtr(a.Channel),
+// 	}, nil
+// }
+
 type APISplunkConfig struct {
 	SplunkConnectionInfo *APISplunkConnectionInfo `json:"splunk_connection_info"`
 }
@@ -2151,7 +2177,9 @@ func (a *APISplunkConfig) BuildFromService(h interface{}) error {
 
 func (a *APISplunkConfig) ToService() (interface{}, error) {
 	c := evergreen.SplunkConfig{}
-	c.SplunkConnectionInfo = a.SplunkConnectionInfo.ToService()
+	if a.SplunkConnectionInfo != nil {
+		c.SplunkConnectionInfo = a.SplunkConnectionInfo.ToService()
+	}
 	return c, nil
 }
 

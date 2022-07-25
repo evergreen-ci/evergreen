@@ -9,7 +9,7 @@ import (
 )
 
 type SplunkConfig struct {
-	SplunkConnectionInfo send.SplunkConnectionInfo `bson:",inline" json:",inline" yaml:",inline"`
+	SplunkConnectionInfo send.SplunkConnectionInfo `bson:"splunk_connection_info" json:"splunk_connection_info" yaml:"splunk_connection_info"`
 }
 
 func (c *SplunkConfig) SectionId() string { return "splunk" }
