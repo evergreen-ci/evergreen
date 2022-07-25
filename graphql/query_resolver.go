@@ -1003,14 +1003,21 @@ func (r *queryResolver) BuildVariantsForTaskName(ctx context.Context, projectID 
 	}
 	repo, err := model.FindRepository(pid)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting repository for '%s': %s", projectID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting repository for '%s': %s", projectID, err.Error()))
 	}
 	if repo == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find repository '%s'", projectID))
 	}
-	taskBuildVariants, err := task.FindUniqueBuildVariantNamesByTask(pid, taskName, repo.RevisionOrderNumber)
+	taskBuildVariants, err := task.FindUniqueBuildVariantNamesByTask(pid, taskName, repo.RevisionOrderNumber, false)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting build variant tasks for task '%s': %s", taskName, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting build variant tasks for task '%s': %s", taskName, err.Error()))
+	}
+	// use legacy lookup pipeline if no results are found
+	if len(taskBuildVariants) == 0 {
+		taskBuildVariants, err = task.FindUniqueBuildVariantNamesByTask(pid, taskName, repo.RevisionOrderNumber, true)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting build variant tasks using legacy pipeline for task '%s': %s", taskName, err.Error()))
+		}
 	}
 	if taskBuildVariants == nil {
 		return nil, nil
