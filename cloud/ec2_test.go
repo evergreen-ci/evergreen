@@ -739,7 +739,7 @@ func (s *EC2Suite) TestSpawnHostForTask() {
 func (s *EC2Suite) TestModifyHost() {
 	changes := host.HostModifyOptions{
 		AddInstanceTags: []host.Tag{
-			host.Tag{
+			{
 				Key:           "key-2",
 				Value:         "val-2",
 				CanBeModified: true,
@@ -757,19 +757,43 @@ func (s *EC2Suite) TestModifyHost() {
 	s.Error(s.onDemandManager.ModifyHost(ctx, s.h, changes))
 	s.Require().NoError(s.h.Remove())
 
+	s.h.CreationTime = time.Now()
+	s.h.ExpirationTime = time.Now().Add(time.Hour * 24 * 7)
+	s.h.NoExpiration = false
 	s.h.Status = evergreen.HostStopped
 	s.Require().NoError(s.h.Insert())
+
+	// updating instance tags and instance type
 	s.NoError(s.onDemandManager.ModifyHost(ctx, s.h, changes))
 	found, err := host.FindOne(host.ById(s.h.Id))
 	s.NoError(err)
-	s.Equal([]host.Tag{host.Tag{Key: "key-2", Value: "val-2", CanBeModified: true}}, found.InstanceTags)
+	s.Equal([]host.Tag{{Key: "key-2", Value: "val-2", CanBeModified: true}}, found.InstanceTags)
 	s.Equal(changes.InstanceType, found.InstanceType)
 
-	intent := host.Host{
-		Id:           "evg-1234",
-		NoExpiration: false,
+	// intent := host.Host{
+	// 	Id:             "evg-1234",
+	// 	NoExpiration:   false,
+	// 	CreationTime:   time.Now(),
+	// }
+	// s.NoError(intent.Insert())
+
+	// updating host expiration
+	currHostExpiration := found.ExpirationTime
+	changes = host.HostModifyOptions{
+		AddHours: time.Hour * 24,
 	}
-	s.NoError(intent.Insert())
+	s.NoError(s.onDemandManager.ModifyHost(ctx, s.h, changes))
+	found, err = host.FindOne(host.ById(s.h.Id))
+	s.NoError(err)
+	s.True(found.ExpirationTime.Equal(currHostExpiration.Add(changes.AddHours)))
+
+	// trying to update host expiration past 14 days should fail
+	changes = host.HostModifyOptions{
+		AddHours: evergreen.MaxSpawnHostExpirationDurationHours,
+	}
+	s.Error(s.onDemandManager.ModifyHost(ctx, s.h, changes))
+
+	// modifying host to have no expiration
 	noExpiration := true
 	changes = host.HostModifyOptions{NoExpiration: &noExpiration}
 	s.NoError(s.onDemandManager.ModifyHost(ctx, s.h, changes))
@@ -777,6 +801,7 @@ func (s *EC2Suite) TestModifyHost() {
 	s.NoError(err)
 	s.True(found.NoExpiration)
 
+	// attaching a volume to a host
 	volumeToMount := host.Volume{
 		ID:               "thang",
 		AvailabilityZone: "us-east-1a",
@@ -789,7 +814,7 @@ func (s *EC2Suite) TestModifyHost() {
 		AttachVolume: "thang",
 	}
 	s.NoError(s.onDemandManager.ModifyHost(ctx, s.h, changes))
-	found, err = host.FindOne(host.ById(s.h.Id))
+	_, err = host.FindOne(host.ById(s.h.Id))
 	s.NoError(err)
 	s.Require().NoError(s.h.Remove())
 }
