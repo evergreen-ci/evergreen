@@ -3904,7 +3904,9 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	var match bson.M = bson.M{}
 	if !opts.IncludeBuildVariantDisplayName && opts.UseLegacyAddBuildVariantDisplayName {
 		grip.Alert(message.Fields{
-			"message": "Implementer error: should not use UseLegacyAddBuildVariantDisplayName with !IncludeBuildVariantDisplayName",
+			"versionID": versionID,
+			"opts":      opts,
+			"message":   "Programmer error: should not use UseLegacyAddBuildVariantDisplayName with !IncludeBuildVariantDisplayName",
 		})
 	}
 	match[VersionKey] = versionID
