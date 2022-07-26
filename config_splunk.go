@@ -9,7 +9,7 @@ import (
 )
 
 type SplunkConfig struct {
-	SplunkConnectionInfo send.SplunkConnectionInfo `bson:"splunk_connection_info" json:"splunk_connection_info" yaml:"splunk_connection_info"`
+	SplunkConnectionInfo send.SplunkConnectionInfo `bson:",inline" json:"splunk_connection_info" yaml:"splunk_connection_info"`
 }
 
 func (c *SplunkConfig) SectionId() string { return "splunk" }
@@ -27,7 +27,8 @@ func (c *SplunkConfig) Get(env Environment) error {
 		// Get the splunk config from global if the document doesn't exist.
 		globalConfig := coll.FindOne(ctx, byId(ConfigDocID))
 		if err := globalConfig.Err(); err != nil {
-			return errors.Wrap(err, "retrieving global settings")
+			c = &SplunkConfig{}
+			return nil
 		}
 		s := Settings{}
 		if err := globalConfig.Decode(&s); err != nil {
