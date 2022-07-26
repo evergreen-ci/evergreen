@@ -3488,8 +3488,7 @@ type GetTasksByVersionOptions struct {
 // Query results can be filtered by task name, variant name and status in addition to being paginated and limited
 func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task, int, error) {
 	if opts.IncludeBuildVariantDisplayName {
-		shouldUseLegacyAddBuildVariantDisplayName := ShouldUseLegacyAddBuildVariantDisplayName(versionID)
-		opts.UseLegacyAddBuildVariantDisplayName = shouldUseLegacyAddBuildVariantDisplayName
+		opts.UseLegacyAddBuildVariantDisplayName = ShouldUseLegacyAddBuildVariantDisplayName(versionID)
 	}
 	pipeline := getTasksByVersionPipeline(versionID, opts)
 
@@ -3604,8 +3603,7 @@ type TaskStats struct {
 
 func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) (*TaskStats, error) {
 	if opts.IncludeBuildVariantDisplayName {
-		shouldUseLegacyAddBuildVariantDisplayName := ShouldUseLegacyAddBuildVariantDisplayName(versionID)
-		opts.UseLegacyAddBuildVariantDisplayName = shouldUseLegacyAddBuildVariantDisplayName
+		opts.UseLegacyAddBuildVariantDisplayName = ShouldUseLegacyAddBuildVariantDisplayName(versionID)
 	}
 	pipeline := getTasksByVersionPipeline(versionID, opts)
 	maxEtaPipeline := []bson.M{
@@ -3689,10 +3687,8 @@ func ShouldUseLegacyAddBuildVariantDisplayName(versionID string) bool {
 	if task == nil {
 		return false
 	}
-	if task.BuildVariantDisplayName != "" {
-		return false
-	}
-	return true
+
+	return task.BuildVariantDisplayName == ""
 }
 
 type GroupedTaskStatusCount struct {
@@ -3703,8 +3699,7 @@ type GroupedTaskStatusCount struct {
 
 func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]*GroupedTaskStatusCount, error) {
 	opts.IncludeBuildVariantDisplayName = true
-	shouldUseLegacyAddBuildVariantDisplayName := ShouldUseLegacyAddBuildVariantDisplayName(versionID)
-	opts.UseLegacyAddBuildVariantDisplayName = shouldUseLegacyAddBuildVariantDisplayName
+	opts.UseLegacyAddBuildVariantDisplayName = ShouldUseLegacyAddBuildVariantDisplayName(versionID)
 	pipeline := getTasksByVersionPipeline(versionID, opts)
 	project := bson.M{"$project": bson.M{
 		BuildVariantKey:            "$" + BuildVariantKey,
@@ -3872,8 +3867,7 @@ func HasMatchingTasks(versionID string, opts HasMatchingTasksOptions) (bool, err
 		IncludeBuildVariantDisplayName: true,
 	}
 	if len(opts.Variants) > 0 {
-		shouldUseLegacyAddBuildVariantDisplayName := ShouldUseLegacyAddBuildVariantDisplayName(versionID)
-		options.UseLegacyAddBuildVariantDisplayName = shouldUseLegacyAddBuildVariantDisplayName
+		options.UseLegacyAddBuildVariantDisplayName = ShouldUseLegacyAddBuildVariantDisplayName(versionID)
 	}
 	pipeline := getTasksByVersionPipeline(versionID, options)
 	pipeline = append(pipeline, bson.M{"$count": "count"})
