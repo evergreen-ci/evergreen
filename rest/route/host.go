@@ -413,6 +413,11 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 			"context": "user offboarding",
 			"user":    ch.user,
 		}))
+		grip.Error(message.WrapError(user.ClearUserSettings(ch.user), message.Fields{
+			"message": "could not clear user settings",
+			"context": "user offboarding",
+			"user":    ch.user,
+		}))
 	}
 
 	if catcher.HasErrors() {

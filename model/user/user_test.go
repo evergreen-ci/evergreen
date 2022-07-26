@@ -799,3 +799,32 @@ func TestViewableProjectSettings(t *testing.T) {
 	assert.Contains(t, projects, "view1")
 	assert.NotContains(t, projects, "other")
 }
+
+func (s *UserTestSuite) TestClearUserSettings() {
+	// Error on non-existent user
+	s.Error(ClearUserSettings("asdf"))
+
+	emptySettings := UserSettings{
+		Timezone: "", Region: "", GithubUser: GithubUser{UID: 0, LastKnownAs: ""},
+		SlackUsername: "", Notifications: NotificationPreferences{BuildBreak: "",
+			BuildBreakID: "", PatchFinish: "", PatchFinishID: "", PatchFirstFailure: "",
+			PatchFirstFailureID: "", SpawnHostExpiration: "", SpawnHostExpirationID: "",
+			SpawnHostOutcome: "", SpawnHostOutcomeID: "", CommitQueue: "", CommitQueueID: ""},
+		UseSpruceOptions: UseSpruceOptions{PatchPage: false, SpruceV1: false, HasUsedSpruceBefore: false, HasUsedMainlineCommitsBefore: false},
+	}
+
+	u, err := FindOneById(s.users[0].Id)
+	s.NoError(err)
+	s.NotNil(u)
+	s.NotEqual(u.Settings, emptySettings)
+	s.Equal("Test1", u.Id)
+
+	s.NoError(ClearUserSettings(u.Id))
+
+	// settings should now be empty
+	u, err = FindOneById(s.users[0].Id)
+	s.NoError(err)
+	s.NotNil(u)
+
+	s.Equal(u.Settings, emptySettings)
+}
