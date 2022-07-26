@@ -2498,7 +2498,7 @@ func (t *Task) Archive() error {
 					AbortInfoKey:            "",
 					OverrideDependenciesKey: "",
 				},
-				"$set": bson.M{ExecutionKey: t.LatestParentExecution + 1, LatestParentExecutionKey: t.LatestParentExecution + 1},
+				"$set": bson.M{ExecutionKey: t.Execution + 1, LatestParentExecutionKey: t.Execution + 1},
 			})
 		if err != nil {
 			return errors.Wrap(err, "updating task")
