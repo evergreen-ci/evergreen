@@ -3490,8 +3490,10 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 	if opts.IncludeBuildVariantDisplayName {
 		opts.UseLegacyAddBuildVariantDisplayName = ShouldUseLegacyAddBuildVariantDisplayName(versionID)
 	}
-	pipeline := getTasksByVersionPipeline(versionID, opts)
-
+	pipeline, err := getTasksByVersionPipeline(versionID, opts)
+	if err != nil {
+		return nil, 0, errors.Wrap(err, "getting tasks by version pipeline")
+	}
 	if len(opts.Sorts) > 0 {
 		sortPipeline := []bson.M{}
 
@@ -3605,7 +3607,10 @@ func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) (*Ta
 	if opts.IncludeBuildVariantDisplayName {
 		opts.UseLegacyAddBuildVariantDisplayName = ShouldUseLegacyAddBuildVariantDisplayName(versionID)
 	}
-	pipeline := getTasksByVersionPipeline(versionID, opts)
+	pipeline, err := getTasksByVersionPipeline(versionID, opts)
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting tasks by version pipeline")
+	}
 	maxEtaPipeline := []bson.M{
 		{
 			"$match": bson.M{
@@ -3700,7 +3705,10 @@ type GroupedTaskStatusCount struct {
 func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]*GroupedTaskStatusCount, error) {
 	opts.IncludeBuildVariantDisplayName = true
 	opts.UseLegacyAddBuildVariantDisplayName = ShouldUseLegacyAddBuildVariantDisplayName(versionID)
-	pipeline := getTasksByVersionPipeline(versionID, opts)
+	pipeline, err := getTasksByVersionPipeline(versionID, opts)
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting tasks by version pipeline")
+	}
 	project := bson.M{"$project": bson.M{
 		BuildVariantKey:            "$" + BuildVariantKey,
 		BuildVariantDisplayNameKey: "$" + BuildVariantDisplayNameKey,
@@ -3869,7 +3877,10 @@ func HasMatchingTasks(versionID string, opts HasMatchingTasksOptions) (bool, err
 	if len(opts.Variants) > 0 {
 		options.UseLegacyAddBuildVariantDisplayName = ShouldUseLegacyAddBuildVariantDisplayName(versionID)
 	}
-	pipeline := getTasksByVersionPipeline(versionID, options)
+	pipeline, err := getTasksByVersionPipeline(versionID, options)
+	if err != nil {
+		return false, errors.Wrap(err, "getting tasks by version pipeline")
+	}
 	pipeline = append(pipeline, bson.M{"$count": "count"})
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()
@@ -3892,14 +3903,10 @@ func HasMatchingTasks(versionID string, opts HasMatchingTasksOptions) (bool, err
 	return count[0].Count > 0, nil
 }
 
-func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) []bson.M {
+func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) ([]bson.M, error) {
 	var match bson.M = bson.M{}
 	if !opts.IncludeBuildVariantDisplayName && opts.UseLegacyAddBuildVariantDisplayName {
-		grip.Alert(message.Fields{
-			"versionID": versionID,
-			"opts":      opts,
-			"message":   "Programmer error: should not use UseLegacyAddBuildVariantDisplayName with !IncludeBuildVariantDisplayName",
-		})
+		return nil, errors.New("should not use UseLegacyAddBuildVariantDisplayName with !IncludeBuildVariantDisplayName")
 	}
 	match[VersionKey] = versionID
 
@@ -4068,7 +4075,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		})
 	}
 
-	return pipeline
+	return pipeline, nil
 }
 
 func recalculateTimeTaken() bson.M {
