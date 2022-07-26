@@ -50,6 +50,23 @@ func FindProjectById(id string, includeRepo bool, includeProjectConfig bool) (*m
 
 // CreateProject inserts the given model.ProjectRef.
 func CreateProject(projectRef *model.ProjectRef, u *user.DBUser) error {
+
+	config, err := evergreen.GetConfig()
+	if err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrapf(err, "getting evergreen config ").Error(),
+		}
+	}
+
+	if err := projectRef.ValidateOwnerAndRepo(config.GithubOrgs); err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrapf(err, "validating owner and repo for project: %s", projectRef.Identifier).Error(),
+		}
+
+	}
+
 	if projectRef.Identifier != "" {
 		if err := VerifyUniqueProject(projectRef.Identifier); err != nil {
 			return err

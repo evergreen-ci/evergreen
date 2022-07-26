@@ -372,15 +372,6 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 	dbProjectRef := project.ToService()
 	u := gimlet.GetUser(ctx).(*user.DBUser)
 
-	config, err := evergreen.GetConfig()
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting evergreen config: %s", err.Error()))
-	}
-
-	if err := dbProjectRef.ValidateOwnerAndRepo(config.GithubOrgs); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("validating owner and repo: %s", err.Error()))
-	}
-
 	if err := data.CreateProject(&dbProjectRef, u); err != nil {
 		apiErr, ok := err.(gimlet.ErrorResponse)
 		if ok {

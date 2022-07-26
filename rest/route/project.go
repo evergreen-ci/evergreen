@@ -573,15 +573,11 @@ type projectIDPutHandler struct {
 }
 
 func makePutProjectByID(settings *evergreen.Settings) gimlet.RouteHandler {
-	return &projectIDPutHandler{
-		settings: settings,
-	}
+	return &projectIDPutHandler{}
 }
 
 func (h *projectIDPutHandler) Factory() gimlet.RouteHandler {
-	return &projectIDPutHandler{
-		settings: h.settings,
-	}
+	return &projectIDPutHandler{}
 }
 
 // Parse fetches the distroId and JSON payload from the http request.
@@ -631,10 +627,6 @@ func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting response HTTP status code to %d", http.StatusCreated))
 	}
 	u := gimlet.GetUser(ctx).(*user.DBUser)
-
-	if err := dbProjectRef.ValidateOwnerAndRepo(h.settings.GithubOrgs); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "validating owner and repo"))
-	}
 
 	if err = data.CreateProject(&dbProjectRef, u); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating project '%s'", h.projectName))
