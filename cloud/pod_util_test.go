@@ -411,10 +411,10 @@ func TestExportECSPodCreationOptions(t *testing.T) {
 		opts, err := ExportECSPodCreationOptions(settings, p)
 		require.NoError(t, err)
 		require.NotZero(t, opts)
-		require.Equal(t, settings.Providers.AWS.Pod.ECS.TaskRole, utility.FromStringPtr(opts.TaskRole))
-		require.Equal(t, settings.Providers.AWS.Pod.ECS.ExecutionRole, utility.FromStringPtr(opts.ExecutionRole))
-		require.NotZero(t, opts.NetworkMode)
-		assert.Equal(t, cocoa.NetworkModeAWSVPC, *opts.NetworkMode)
+		require.Equal(t, settings.Providers.AWS.Pod.ECS.TaskRole, utility.FromStringPtr(opts.DefinitionOpts.TaskRole))
+		require.Equal(t, settings.Providers.AWS.Pod.ECS.ExecutionRole, utility.FromStringPtr(opts.DefinitionOpts.ExecutionRole))
+		require.NotZero(t, opts.DefinitionOpts.NetworkMode)
+		assert.Equal(t, cocoa.NetworkModeAWSVPC, *opts.DefinitionOpts.NetworkMode)
 
 		require.NotZero(t, opts.ExecutionOpts)
 		require.Equal(t, settings.Providers.AWS.Pod.ECS.Clusters[0].Name, utility.FromStringPtr(opts.ExecutionOpts.Cluster))
@@ -423,11 +423,11 @@ func TestExportECSPodCreationOptions(t *testing.T) {
 		assert.Equal(t, settings.Providers.AWS.Pod.ECS.AWSVPC.SecurityGroups, opts.ExecutionOpts.AWSVPCOpts.SecurityGroups)
 		assert.Equal(t, settings.Providers.AWS.Pod.ECS.CapacityProviders[0].Name, utility.FromStringPtr(opts.ExecutionOpts.CapacityProvider))
 
-		assert.True(t, strings.HasPrefix(utility.FromStringPtr(opts.Name), settings.Providers.AWS.Pod.ECS.TaskDefinitionPrefix))
-		assert.Contains(t, utility.FromStringPtr(opts.Name), p.ID)
+		assert.True(t, strings.HasPrefix(utility.FromStringPtr(opts.DefinitionOpts.Name), settings.Providers.AWS.Pod.ECS.TaskDefinitionPrefix))
+		assert.Contains(t, utility.FromStringPtr(opts.DefinitionOpts.Name), p.ID)
 
-		require.Len(t, opts.ContainerDefinitions, 1)
-		cDef := opts.ContainerDefinitions[0]
+		require.Len(t, opts.DefinitionOpts.ContainerDefinitions, 1)
+		cDef := opts.DefinitionOpts.ContainerDefinitions[0]
 		require.Equal(t, p.TaskContainerCreationOpts.Image, utility.FromStringPtr(cDef.Image))
 		require.Equal(t, p.TaskContainerCreationOpts.MemoryMB, utility.FromIntPtr(cDef.MemoryMB))
 		require.Equal(t, p.TaskContainerCreationOpts.CPU, utility.FromIntPtr(cDef.CPU))
@@ -493,8 +493,8 @@ func TestExportECSPodCreationOptions(t *testing.T) {
 		require.NoError(t, err)
 		require.NotZero(t, opts)
 
-		require.Len(t, opts.ContainerDefinitions, 1)
-		cDef := opts.ContainerDefinitions[0]
+		require.Len(t, opts.DefinitionOpts.ContainerDefinitions, 1)
+		cDef := opts.DefinitionOpts.ContainerDefinitions[0]
 		assert.True(t, strings.HasPrefix(utility.FromStringPtr(cDef.RepoCreds.Name), settings.Providers.AWS.Pod.SecretsManager.SecretPrefix))
 		assert.Contains(t, utility.FromStringPtr(cDef.RepoCreds.Name), p.ID)
 		assert.Equal(t, utility.FromStringPtr(cDef.RepoCreds.NewCreds.Username), p.TaskContainerCreationOpts.RepoUsername)
@@ -507,7 +507,7 @@ func TestExportECSPodCreationOptions(t *testing.T) {
 		opts, err := ExportECSPodCreationOptions(settings, p)
 		require.NoError(t, err)
 		assert.NoError(t, opts.Validate())
-		assert.Zero(t, opts.NetworkMode)
+		assert.Zero(t, opts.DefinitionOpts.NetworkMode)
 	})
 	t.Run("FailsWithNoECSConfig", func(t *testing.T) {
 		settings := validSettings()

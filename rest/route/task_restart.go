@@ -2,7 +2,9 @@ package route
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
@@ -17,6 +19,8 @@ import (
 // fetches the needed task and project and calls the service function to
 // set the proper fields when reseting the task.
 type taskRestartHandler struct {
+	FailedOnly bool `json:"failed_only"`
+
 	taskId   string
 	username string
 }
@@ -48,13 +52,24 @@ func (trh *taskRestartHandler) Parse(ctx context.Context, r *http.Request) error
 	trh.taskId = projCtx.Task.Id
 	u := MustHaveUser(ctx)
 	trh.username = u.DisplayName()
+
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return errors.Wrapf(err, "reading body")
+	}
+	if len(b) > 0 {
+		if err := json.Unmarshal(b, trh); err != nil {
+			return errors.Wrapf(err, "parsing request's body as JSON for following task ID: '%s'.", trh.taskId)
+		}
+	}
+
 	return nil
 }
 
 // Execute calls the data ResetTask function and returns the refreshed
 // task from the service.
 func (trh *taskRestartHandler) Run(ctx context.Context) gimlet.Responder {
-	err := resetTask(trh.taskId, trh.username)
+	err := resetTask(trh.taskId, trh.username, trh.FailedOnly)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -80,7 +95,7 @@ func (trh *taskRestartHandler) Run(ctx context.Context) gimlet.Responder {
 
 // resetTask sets the task to be in an unexecuted state and prepares it to be run again.
 // If given an execution task, marks the display task for reset.
-func resetTask(taskId, username string) error {
+func resetTask(taskId, username string, failedOnly bool) error {
 	t, err := task.FindOneId(taskId)
 	if err != nil {
 		return gimlet.ErrorResponse{
@@ -94,6 +109,5 @@ func resetTask(taskId, username string) error {
 			Message:    fmt.Sprintf("task '%s' not found", taskId),
 		}
 	}
-	// TODO EVG-17120 handle failedOnly
-	return errors.Wrapf(serviceModel.ResetTaskOrDisplayTask(t, username, evergreen.RESTV2Package, false, nil), "resetting task '%s'", taskId)
+	return errors.Wrapf(serviceModel.ResetTaskOrDisplayTask(t, username, evergreen.RESTV2Package, failedOnly, nil), "resetting task '%s'", taskId)
 }

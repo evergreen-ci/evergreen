@@ -1141,21 +1141,27 @@ func GetTasksWithOptions(projectName string, taskName string, opts GetProjectTas
 }
 
 func FindFirstProjectRef() (*ProjectRef, error) {
-	projectRef := &ProjectRef{}
+	projectRefSlice := []ProjectRef{}
 	pipeline := projectRefPipelineForValueIsBool(ProjectRefPrivateKey, RepoRefPrivateKey, false)
-	pipeline = append(pipeline, bson.M{"$sort": "-" + ProjectRefDisplayNameKey}, bson.M{"$limit": 1})
+	pipeline = append(pipeline, bson.M{"$sort": bson.M{ProjectRefDisplayNameKey: -1}}, bson.M{"$limit": 1})
 	err := db.Aggregate(
 		ProjectRefCollection,
 		pipeline,
-		projectRef,
+		&projectRefSlice,
 	)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "aggregating project ref")
 	}
+
+	if len(projectRefSlice) == 0 {
+		return nil, errors.New("No project found in FindFirstProjectRef")
+	}
+	projectRef := projectRefSlice[0]
+
 	projectRef.checkDefaultLogger()
 
-	return projectRef, nil
+	return &projectRef, nil
 }
 
 // FindAllMergedTrackedProjectRefs returns all project refs in the db

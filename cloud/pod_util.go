@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/cocoa/secret"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/pod"
+	"github.com/evergreen-ci/evergreen/model/pod/definition"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
@@ -30,7 +31,22 @@ func MakeSecretsManagerVault(c cocoa.SecretsManagerClient) cocoa.Vault {
 	return secret.NewBasicSecretsManager(c)
 }
 
-// MakeECSPodCreator creates a cocoa.ECSPodCreator to create pods backed by ECS and secrets backed by a secret Vault.
+// PodDefinitionTag is the name of the tag in ECS that marks whether pod
+// definitions that are tracked or not by Evergreen.
+const PodDefinitionTag = "evergreen-tracked"
+
+// MakeECSPodDefinitionManager creates a cocoa.ECSPodDefinitionManager that
+// creates pod definitions in ECS and secrets backed by an optional cocoa.Vault.
+func MakeECSPodDefinitionManager(c cocoa.ECSClient, v cocoa.Vault) (cocoa.ECSPodDefinitionManager, error) {
+	return ecs.NewBasicPodDefinitionManager(*ecs.NewBasicPodDefinitionManagerOptions().
+		SetClient(c).
+		SetVault(v).
+		SetCache(definition.PodDefinitionCache{}).
+		SetCacheTag(PodDefinitionTag))
+}
+
+// MakeECSPodCreator creates a cocoa.ECSPodCreator to create pods backed by ECS
+// and secrets backed by an optional cocoa.Vault.
 func MakeECSPodCreator(c cocoa.ECSClient, v cocoa.Vault) (cocoa.ECSPodCreator, error) {
 	return ecs.NewBasicECSPodCreator(c, v)
 }
@@ -196,16 +212,18 @@ func ExportECSPodCreationOptions(settings *evergreen.Settings, p *pod.Pod) (*coc
 		return nil, errors.Wrap(err, "exporting pod container definition")
 	}
 
-	opts := cocoa.NewECSPodCreationOptions().
+	defOpts := cocoa.NewECSPodDefinitionOptions().
 		SetName(strings.Join([]string{strings.TrimRight(ecsConf.TaskDefinitionPrefix, "-"), "agent", p.ID}, "-")).
 		SetTaskRole(ecsConf.TaskRole).
 		SetExecutionRole(ecsConf.ExecutionRole).
-		SetExecutionOptions(*execOpts).
 		AddContainerDefinitions(*containerDef)
-
 	if len(ecsConf.AWSVPC.Subnets) != 0 || len(ecsConf.AWSVPC.SecurityGroups) != 0 {
-		opts.SetNetworkMode(cocoa.NetworkModeAWSVPC)
+		defOpts.SetNetworkMode(cocoa.NetworkModeAWSVPC)
 	}
+
+	opts := cocoa.NewECSPodCreationOptions().
+		SetDefinitionOptions(*defOpts).
+		SetExecutionOptions(*execOpts)
 
 	return opts, nil
 }

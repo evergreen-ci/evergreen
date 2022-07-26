@@ -132,6 +132,9 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 }
 
 func (r *taskResolver) BuildVariantDisplayName(ctx context.Context, obj *restModel.APITask) (*string, error) {
+	if obj.BuildVariantDisplayName != nil {
+		return obj.BuildVariantDisplayName, nil
+	}
 	if obj.BuildId == nil {
 		return nil, nil
 	}
