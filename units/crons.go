@@ -1354,6 +1354,8 @@ func PopulatePodCreationJobs(env evergreen.Environment) amboy.QueueOperation {
 		}
 
 		catcher := grip.NewBasicCatcher()
+		// kim: TODO: enqueue pod definition jobs.
+		// kim: TODO: make separate job queue for pod definition jobs.
 		for _, p := range pods {
 			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewPodCreationJob(p.ID, utility.RoundPartOfMinute(0).Format(TSFormat))), "enqueueing job to create pod %s", p.ID)
 		}

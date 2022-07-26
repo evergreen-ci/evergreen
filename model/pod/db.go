@@ -20,6 +20,7 @@ var (
 	TypeKey                      = bsonutil.MustHaveTag(Pod{}, "Type")
 	StatusKey                    = bsonutil.MustHaveTag(Pod{}, "Status")
 	TaskContainerCreationOptsKey = bsonutil.MustHaveTag(Pod{}, "TaskContainerCreationOpts")
+	IntentDigestKey              = bsonutil.MustHaveTag(Pod{}, "IntentDigest")
 	TimeInfoKey                  = bsonutil.MustHaveTag(Pod{}, "TimeInfo")
 	ResourcesKey                 = bsonutil.MustHaveTag(Pod{}, "Resources")
 	RunningTaskKey               = bsonutil.MustHaveTag(Pod{}, "RunningTask")

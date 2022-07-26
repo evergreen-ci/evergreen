@@ -12,21 +12,18 @@ import (
 func TestAgentScript(t *testing.T) {
 	const workingDir = "/data/mci"
 
-	settings := &evergreen.Settings{
+	settings := evergreen.Settings{
 		ApiUrl:            "https://example.com",
 		ClientBinariesDir: "clients",
 	}
 
 	t.Run("Linux", func(t *testing.T) {
-		p := &pod.Pod{
-			ID: "id",
-			TaskContainerCreationOpts: pod.TaskContainerCreationOptions{
-				OS:         pod.OSLinux,
-				Arch:       pod.ArchAMD64,
-				WorkingDir: workingDir,
-			},
+		opts := pod.TaskContainerCreationOptions{
+			OS:         pod.OSLinux,
+			Arch:       pod.ArchAMD64,
+			WorkingDir: workingDir,
 		}
-		cmd := bootstrapContainerCommand(settings, p)
+		cmd := bootstrapContainerCommand(settings, opts)
 		require.NotZero(t, cmd)
 
 		expected := []string{
@@ -36,13 +33,10 @@ func TestAgentScript(t *testing.T) {
 		assert.Equal(t, expected, cmd)
 	})
 	t.Run("Windows", func(t *testing.T) {
-		p := &pod.Pod{
-			ID: "id",
-			TaskContainerCreationOpts: pod.TaskContainerCreationOptions{
-				OS:         pod.OSWindows,
-				Arch:       pod.ArchAMD64,
-				WorkingDir: workingDir,
-			},
+		p := pod.TaskContainerCreationOptions{
+			OS:         pod.OSWindows,
+			Arch:       pod.ArchAMD64,
+			WorkingDir: workingDir,
 		}
 		cmd := bootstrapContainerCommand(settings, p)
 		require.NotZero(t, cmd)

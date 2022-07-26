@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/pod"
+	"github.com/evergreen-ci/evergreen/model/pod/definition"
 	"github.com/evergreen-ci/evergreen/model/pod/dispatcher"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
@@ -108,13 +109,43 @@ func (j *podCreationJob) Run(ctx context.Context) {
 
 	switch j.pod.Status {
 	case pod.StatusInitializing:
-		opts, err := cloud.ExportECSPodCreationOptions(&settings, j.pod)
+		// kim: TODO: pre-create cached pod definition and use external ID here.
+		// kim: TODO: decide if it's worth it to make a separate job and poll
+		// for the existing pod def in this job. That would allow the scope to
+		// do its locking magic for the new pod definition digest and would work
+		// well with the cache; otherwise, we can try doing some atomic DB ops
+		// like upsert to achieve the same effect (to deal with conflicts
+		// attempting to insert the same pod definition).
+
+		// kim: TODO: poll for pod def with matching digest. If it doesn't
+		// exist, enqueue pod definition creation job. Otherwise, wait some
+		// more until it's populated. Once it's populated, set the pod
+		// definition ID for the pod.
+		// Once the definition exists and can be looked up, look it up here and
+		// pass the task definition ARN to CreatePodFromExistingDefinition.
+
+		execOpts, err := cloud.ExportECSPodExecutionOptions(settings.Providers.AWS.Pod.ECS, j.pod.TaskContainerCreationOpts)
 		if err != nil {
-			j.AddError(errors.Wrap(err, "exporting pod creation options"))
+			j.AddError(errors.Wrap(err, "getting pod execution options"))
 			return
 		}
 
-		p, err := j.ecsPodCreator.CreatePod(ctx, *opts)
+		opts, err := cloud.ExportECSPodDefinitionOptions(settings, j.pod.TaskContainerCreationOpts)
+		if err != nil {
+			j.AddError(errors.Wrap(err, "getting pod definition options"))
+			return
+		}
+		// Wait for the pod definition to be asynchronously created. If the pod
+		// definition is not ready yet, retry again later.
+		podDef, err := j.waitForPodDefinition(*opts)
+		if err != nil {
+			j.AddRetryableError(errors.Wrap(err, "waiting for pod definition to be created"))
+			return
+		}
+
+		p, err := j.ecsPodCreator.CreatePodFromExistingDefinition(ctx, *cocoa.NewECSTaskDefinition().SetID(podDef.ID), *execOpts)
+		// kim: TODO: remove
+		// p, err := j.ecsPodCreator.CreatePod(ctx, *opts)
 		if err != nil {
 			j.AddRetryableError(errors.Wrap(err, "starting pod"))
 			return
@@ -189,6 +220,19 @@ func (j *podCreationJob) populateIfUnset(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (j *podCreationJob) waitForPodDefinition(opts cocoa.ECSPodDefinitionOptions) (*definition.PodDefinition, error) {
+	digest := opts.Hash()
+	podDef, err := definition.FindOneByDigest(digest)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding pod definition with digest '%s'", digest)
+	}
+	if podDef == nil {
+		return nil, errors.Errorf("pod definition with digest '%s' not found", digest)
+	}
+
+	return podDef, nil
 }
 
 func (j *podCreationJob) logTaskTimingStats() error {

@@ -2,6 +2,9 @@ package pod
 
 import (
 	"context"
+	"fmt"
+	"sort"
+	"strconv"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -26,6 +29,9 @@ type Pod struct {
 	// TaskCreationOpts are options to configure how a task should be
 	// containerized and run in a pod.
 	TaskContainerCreationOpts TaskContainerCreationOptions `bson:"task_creation_opts,omitempty" json:"task_creation_opts,omitempty"`
+	// IntentDigest is the hash digest of the task container creation options
+	// before it has created a pod definition.
+	IntentDigest string `bson:"intent_digest,omitempty" json:"intent_digest,omitempty"`
 	// TimeInfo contains timing information for the pod's lifecycle.
 	TimeInfo TimeInfo `bson:"time_info,omitempty" json:"time_info,omitempty"`
 	// Resources are external resources that are owned and managed by this pod.
@@ -135,6 +141,7 @@ func NewTaskIntentPod(opts TaskIntentPodOptions) (*Pod, error) {
 			Owned:  utility.TruePtr(),
 		},
 	}
+	p.IntentDigest = p.TaskContainerCreationOpts.Hash()
 
 	return &p, nil
 }
@@ -432,6 +439,124 @@ func ImportWindowsVersion(winVer evergreen.WindowsVersion) (WindowsVersion, erro
 	}
 }
 
+type hashableEnvVar struct {
+	name  string
+	value string
+}
+
+func (hev hashableEnvVar) hash() string {
+	h := utility.NewSHA1Hash()
+	h.Add(hev.name)
+	h.Add(hev.value)
+	return h.Sum()
+}
+
+type hashableEnvVars []hashableEnvVar
+
+func newHashableEnvVars(envVars map[string]string) hashableEnvVars {
+	var hev hashableEnvVars
+	for k, v := range envVars {
+		hev = append(hev, hashableEnvVar{
+			name:  k,
+			value: v,
+		})
+	}
+	sort.Sort(hev)
+	return hev
+}
+
+func (hev hashableEnvVars) hash() string {
+	if !sort.IsSorted(hev) {
+		sort.Sort(hev)
+	}
+
+	h := utility.NewSHA1Hash()
+	for _, ev := range hev {
+		h.Add(ev.hash())
+	}
+	return h.Sum()
+}
+
+func (hev hashableEnvVars) Len() int {
+	return len(hev)
+}
+
+func (hev hashableEnvVars) Less(i, j int) bool {
+	return hev[i].name < hev[j].name
+}
+
+func (hev hashableEnvVars) Swap(i, j int) {
+	hev[i], hev[j] = hev[j], hev[i]
+}
+
+type hashableEnvSecret struct {
+	name   string
+	secret Secret
+}
+
+func (hev hashableEnvSecret) hash() string {
+	h := utility.NewSHA1Hash()
+	h.Add(hev.name)
+	h.Add(hev.secret.hash())
+	return h.Sum()
+}
+
+type hashableEnvSecrets []hashableEnvSecret
+
+func newHashableEnvSecrets(envSecrets map[string]Secret) hashableEnvSecrets {
+	var hes hashableEnvSecrets
+	for k, s := range envSecrets {
+		hes = append(hes, hashableEnvSecret{
+			name:   k,
+			secret: s,
+		})
+	}
+	sort.Sort(hes)
+	return hes
+}
+
+func (hev hashableEnvSecrets) hash() string {
+	if !sort.IsSorted(hev) {
+		sort.Sort(hev)
+	}
+
+	h := utility.NewSHA1Hash()
+	for _, ev := range hev {
+		h.Add(ev.hash())
+	}
+	return h.Sum()
+}
+
+func (hes hashableEnvSecrets) Len() int {
+	return len(hes)
+}
+
+func (hes hashableEnvSecrets) Less(i, j int) bool {
+	return hes[i].name < hes[j].name
+}
+
+func (hes hashableEnvSecrets) Swap(i, j int) {
+	hes[i], hes[j] = hes[j], hes[i]
+}
+
+// Hash returns the hash digest of the creation options for the container.
+// kim: TODO: test
+func (o TaskContainerCreationOptions) Hash() string {
+	h := utility.NewSHA1Hash()
+	h.Add(o.Image)
+	h.Add(o.RepoUsername)
+	h.Add(o.RepoPassword)
+	h.Add(fmt.Sprint(o.MemoryMB))
+	h.Add(fmt.Sprint(o.CPU))
+	h.Add(string(o.OS))
+	h.Add(string(o.Arch))
+	h.Add(string(o.WindowsVersion))
+	h.Add(string(o.WorkingDir))
+	h.Add(newHashableEnvVars(o.EnvVars).hash())
+	h.Add(newHashableEnvSecrets(o.EnvSecrets).hash())
+	return h.Sum()
+}
+
 // IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
 // zero value for BSON marshalling.
 func (o TaskContainerCreationOptions) IsZero() bool {
@@ -441,11 +566,12 @@ func (o TaskContainerCreationOptions) IsZero() bool {
 // Secret is a sensitive secret that a pod can access. The secret is managed
 // in an integrated secrets storage service.
 type Secret struct {
-	// Name is the friendly name of the secret.
-	Name string `bson:"name,omitempty" json:"name,omitempty" yaml:"name,omitempty"`
 	// ExternalID is the unique external resource identifier for a secret that
 	// already exists in the secrets storage service.
 	ExternalID string `bson:"external_id,omitempty" json:"external_id,omitempty" yaml:"external_id,omitempty"`
+	// Name is the friendly name of the secret. If the secret does not yet
+	// exist, it will be given this name when created.
+	Name string `bson:"name,omitempty" json:"name,omitempty" yaml:"name,omitempty"`
 	// Value is the value of the secret. If the secret does not yet exist, it
 	// will be created; otherwise, this is just a cached copy of the actual
 	// value stored in the secrets storage service.
@@ -457,6 +583,16 @@ type Secret struct {
 	// is true, then its lifetime is tied to the pod's lifetime, implying that
 	// when the pod is cleaned up, this secret is also cleaned up.
 	Owned *bool `bson:"owned,omitempty" json:"owned,omitempty" yaml:"owned,omitempty"`
+}
+
+func (s Secret) hash() string {
+	h := utility.NewSHA1Hash()
+	h.Add(s.ExternalID)
+	h.Add(s.Name)
+	h.Add(s.Value)
+	h.Add(strconv.FormatBool(utility.FromBoolPtr(s.Exists)))
+	h.Add(strconv.FormatBool(utility.FromBoolPtr(s.Owned)))
+	return h.Sum()
 }
 
 // IsZero implements the bsoncodec.Zeroer interface for the sake of defining the

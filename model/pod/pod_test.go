@@ -707,3 +707,144 @@ func TestSetAgentStartTime(t *testing.T) {
 		})
 	}
 }
+
+func TestTaskContainerCreationOptionsHash(t *testing.T) {
+	t.Run("Hash", func(t *testing.T) {
+		var baseOpts TaskContainerCreationOptions
+		baseHash := baseOpts.Hash()
+
+		t.Run("ReturnsSameValueForSameInput", func(t *testing.T) {
+			assert.Equal(t, baseHash, baseOpts.Hash())
+		})
+		t.Run("ChangesForImage", func(t *testing.T) {
+			var opts TaskContainerCreationOptions
+			opts.Image = "image"
+			assert.NotEqual(t, baseHash, opts.Hash(), "image should affect hash")
+		})
+		t.Run("ChangesForRepoUsername", func(t *testing.T) {
+			var opts TaskContainerCreationOptions
+			opts.RepoUsername = "repo_username"
+			assert.NotEqual(t, baseHash, opts.Hash(), "repo username should affect hash")
+		})
+		t.Run("ChangesForRepoPassword", func(t *testing.T) {
+			var opts TaskContainerCreationOptions
+			opts.RepoPassword = "repo_password"
+			assert.NotEqual(t, baseHash, opts.Hash(), "repo password should affect hash")
+		})
+		t.Run("ChangesForMemory", func(t *testing.T) {
+			var opts TaskContainerCreationOptions
+			opts.MemoryMB = 1024
+			assert.NotEqual(t, baseHash, opts.Hash(), "memory should affect hash")
+		})
+		t.Run("ChangesForCPU", func(t *testing.T) {
+			var opts TaskContainerCreationOptions
+			opts.CPU = 256
+			assert.NotEqual(t, baseHash, opts.Hash(), "CPU should affect hash")
+		})
+		t.Run("ChangesForOS", func(t *testing.T) {
+			var opts TaskContainerCreationOptions
+			opts.OS = OSWindows
+			assert.NotEqual(t, baseHash, opts.Hash(), "OS should affect hash")
+		})
+		t.Run("ChangesForArch", func(t *testing.T) {
+			var opts TaskContainerCreationOptions
+			opts.Arch = ArchARM64
+			assert.NotEqual(t, baseHash, opts.Hash(), "CPU architecture should affect hash")
+		})
+		t.Run("ChangesForWindowsVersion", func(t *testing.T) {
+			var opts TaskContainerCreationOptions
+			opts.WindowsVersion = WindowsVersionServer2019
+			assert.NotEqual(t, baseHash, opts.Hash(), "Windows version should affect hash")
+		})
+		t.Run("ChangesForWorkingDir", func(t *testing.T) {
+			var opts TaskContainerCreationOptions
+			opts.WorkingDir = "/working_dir"
+			assert.NotEqual(t, baseHash, opts.Hash(), "working directory should affect hash")
+		})
+		t.Run("ChangesForEnvVars", func(t *testing.T) {
+			var opts TaskContainerCreationOptions
+			opts.EnvVars = map[string]string{
+				"ENV_VAR": "value",
+			}
+			assert.NotEqual(t, baseHash, opts.Hash(), "env vars should affect hash")
+		})
+		t.Run("ReturnsSameValueForSameUnorderedEnvVars", func(t *testing.T) {
+			var opts TaskContainerCreationOptions
+			opts.EnvVars = map[string]string{
+				"ENV_VAR0": "value0",
+				"ENV_VAR1": "value1",
+				"ENV_VAR2": "value2",
+			}
+			h0 := opts.Hash()
+			h1 := opts.Hash()
+			assert.Equal(t, h0, h1, "order of env vars should not affect hash")
+		})
+		t.Run("ReturnsSameValueForSameUnorderedEnvSecrets", func(t *testing.T) {
+			var opts TaskContainerCreationOptions
+			opts.EnvSecrets = map[string]Secret{
+				"SECRET_ENV_VAR0": {
+					ExternalID: "external_id0",
+				},
+				"SECRET_ENV_VAR1": {
+					ExternalID: "external_id1",
+				},
+				"SECRET_ENV_VAR2": {
+					ExternalID: "external_id2",
+				},
+			}
+			h0 := opts.Hash()
+			h1 := opts.Hash()
+			assert.Equal(t, h0, h1, "order of env secrets should not affect hash")
+		})
+		t.Run("ChangesForEnvSecretExternalID", func(t *testing.T) {
+			var opts TaskContainerCreationOptions
+			opts.EnvSecrets = map[string]Secret{
+				"SECRET_ENV_VAR": {},
+			}
+			h0 := opts.Hash()
+			opts.EnvSecrets["SECRET_ENV_VAR"] = Secret{ExternalID: "external_id"}
+			h1 := opts.Hash()
+			assert.NotEqual(t, h0, h1, "env secret external ID should affect hash")
+		})
+		t.Run("ChangesForEnvSecretName", func(t *testing.T) {
+			var opts TaskContainerCreationOptions
+			opts.EnvSecrets = map[string]Secret{
+				"SECRET_ENV_VAR": {},
+			}
+			h0 := opts.Hash()
+			opts.EnvSecrets["SECRET_ENV_VAR"] = Secret{Name: "name"}
+			h1 := opts.Hash()
+			assert.NotEqual(t, h0, h1, "env secret name should affect hash")
+		})
+		t.Run("ChangesForEnvSecretValue", func(t *testing.T) {
+			var opts TaskContainerCreationOptions
+			opts.EnvSecrets = map[string]Secret{
+				"SECRET_ENV_VAR": {},
+			}
+			h0 := opts.Hash()
+			opts.EnvSecrets["SECRET_ENV_VAR"] = Secret{Value: "secret_value"}
+			h1 := opts.Hash()
+			assert.NotEqual(t, h0, h1, "env secret value should affect hash")
+		})
+		t.Run("ChangesForEnvSecretExistence", func(t *testing.T) {
+			var opts TaskContainerCreationOptions
+			opts.EnvSecrets = map[string]Secret{
+				"SECRET_ENV_VAR": {},
+			}
+			h0 := opts.Hash()
+			opts.EnvSecrets["SECRET_ENV_VAR"] = Secret{Exists: utility.TruePtr()}
+			h1 := opts.Hash()
+			assert.NotEqual(t, h0, h1, "env secret existence should affect hash")
+		})
+		t.Run("ChangesForEnvSecretOwnership", func(t *testing.T) {
+			var opts TaskContainerCreationOptions
+			opts.EnvSecrets = map[string]Secret{
+				"SECRET_ENV_VAR": {},
+			}
+			h0 := opts.Hash()
+			opts.EnvSecrets["SECRET_ENV_VAR"] = Secret{Owned: utility.TruePtr()}
+			h1 := opts.Hash()
+			assert.NotEqual(t, h0, h1, "env secret ownership should affect hash")
+		})
+	})
+}
