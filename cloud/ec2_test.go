@@ -770,13 +770,6 @@ func (s *EC2Suite) TestModifyHost() {
 	s.Equal([]host.Tag{{Key: "key-2", Value: "val-2", CanBeModified: true}}, found.InstanceTags)
 	s.Equal(changes.InstanceType, found.InstanceType)
 
-	// intent := host.Host{
-	// 	Id:             "evg-1234",
-	// 	NoExpiration:   false,
-	// 	CreationTime:   time.Now(),
-	// }
-	// s.NoError(intent.Insert())
-
 	// updating host expiration
 	currHostExpiration := found.ExpirationTime
 	changes = host.HostModifyOptions{
@@ -787,7 +780,7 @@ func (s *EC2Suite) TestModifyHost() {
 	s.NoError(err)
 	s.True(found.ExpirationTime.Equal(currHostExpiration.Add(changes.AddHours)))
 
-	// trying to update host expiration past 14 days should fail
+	// trying to update host expiration past 14 days should error
 	changes = host.HostModifyOptions{
 		AddHours: evergreen.MaxSpawnHostExpirationDurationHours,
 	}
