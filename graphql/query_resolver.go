@@ -25,6 +25,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -1164,6 +1165,15 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 			index = 0
 		}
 	}
+	grip.DebugWhen(versionsCheckedCount > limit, message.Fields{
+		"message":         "Returning mainlineCommits",
+		"project_id":      projectId,
+		"limit":           limit,
+		"count":           len(mainlineCommits.Versions),
+		"versionsChecked": versionsCheckedCount,
+		"opts":            buildVariantOptions,
+		"request":         gimlet.GetRequestID(ctx),
+	})
 	return &mainlineCommits, nil
 }
 
