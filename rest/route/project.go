@@ -572,7 +572,7 @@ type projectIDPutHandler struct {
 	settings *evergreen.Settings
 }
 
-func makePutProjectByID(settings *evergreen.Settings) gimlet.RouteHandler {
+func makePutProjectByID() gimlet.RouteHandler {
 	return &projectIDPutHandler{}
 }
 
