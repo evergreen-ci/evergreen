@@ -566,15 +566,22 @@ func canEnablePRTesting(projectRef *dbModel.ProjectRef) error {
 
 type projectIDPutHandler struct {
 	projectName string
+	project     model.APIProjectRef
 	body        []byte
+
+	settings *evergreen.Settings
 }
 
-func makePutProjectByID() gimlet.RouteHandler {
-	return &projectIDPutHandler{}
+func makePutProjectByID(settings *evergreen.Settings) gimlet.RouteHandler {
+	return &projectIDPutHandler{
+		settings: settings,
+	}
 }
 
 func (h *projectIDPutHandler) Factory() gimlet.RouteHandler {
-	return &projectIDPutHandler{}
+	return &projectIDPutHandler{
+		settings: h.settings,
+	}
 }
 
 // Parse fetches the distroId and JSON payload from the http request.
@@ -589,6 +596,17 @@ func (h *projectIDPutHandler) Parse(ctx context.Context, r *http.Request) error 
 	}
 	h.body = b
 
+	apiProjectRef := model.APIProjectRef{}
+	apiProjectRef.ToService()
+	if err = json.Unmarshal(h.body, apiProjectRef); err != nil {
+		return errors.Wrap(err, "unmarshalling JSON request body into project ref")
+	}
+	h.project = apiProjectRef
+
+	if len(*h.project.Owner) == 0 || len(*h.project.Repo) == 0 {
+		return errors.New("Owner and repository must not be empty strings")
+	}
+
 	return nil
 }
 
@@ -602,16 +620,11 @@ func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("project with identifier '%s' already exists", h.projectName))
 	}
 
-	apiProjectRef := &model.APIProjectRef{}
-	if err = json.Unmarshal(h.body, apiProjectRef); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "unmarshalling JSON request body into project ref"))
-	}
-
 	dbProjectRef := dbModel.ProjectRef{
 		Identifier: h.projectName,
-		Id:         utility.FromStringPtr(apiProjectRef.Id),
-		Owner:      utility.FromStringPtr(apiProjectRef.Owner),
-		Repo:       utility.FromStringPtr(apiProjectRef.Repo),
+		Id:         utility.FromStringPtr(h.project.Id),
+		Owner:      utility.FromStringPtr(h.project.Owner),
+		Repo:       utility.FromStringPtr(h.project.Repo),
 	}
 
 	responder := gimlet.NewJSONResponse(struct{}{})
@@ -619,6 +632,11 @@ func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting response HTTP status code to %d", http.StatusCreated))
 	}
 	u := gimlet.GetUser(ctx).(*user.DBUser)
+
+	if err := dbProjectRef.ValidateOwnerAndRepo(h.settings.GithubOrgs); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "validating owner and repo"))
+	}
+
 	if err = data.CreateProject(&dbProjectRef, u); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating project '%s'", h.projectName))
 	}
