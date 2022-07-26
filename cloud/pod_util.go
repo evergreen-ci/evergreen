@@ -36,16 +36,17 @@ func MakeSecretsManagerVault(c cocoa.SecretsManagerClient) cocoa.Vault {
 const PodDefinitionTag = "evergreen-tracked"
 
 // MakeECSPodDefinitionManager creates a cocoa.ECSPodDefinitionManager that
-// creates pod definitions in ECS and secrets backed by a cocoa.Vault.
+// creates pod definitions in ECS and secrets backed by an optional cocoa.Vault.
 func MakeECSPodDefinitionManager(c cocoa.ECSClient, v cocoa.Vault) (cocoa.ECSPodDefinitionManager, error) {
 	return ecs.NewBasicPodDefinitionManager(*ecs.NewBasicPodDefinitionManagerOptions().
 		SetClient(c).
+		SetVault(v).
 		SetCache(definition.PodDefinitionCache{}).
 		SetCacheTag(PodDefinitionTag))
 }
 
 // MakeECSPodCreator creates a cocoa.ECSPodCreator to create pods backed by ECS
-// and secrets backed by a cocoa.Vault.
+// and secrets backed by an optional cocoa.Vault.
 func MakeECSPodCreator(c cocoa.ECSClient, v cocoa.Vault) (cocoa.ECSPodCreator, error) {
 	return ecs.NewBasicECSPodCreator(c, v)
 }
