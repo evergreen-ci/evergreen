@@ -415,11 +415,6 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 		}))
 		err = user.ClearUserSettings(ch.user)
 		catcher.Wrapf(err, "clearing user settings for user '%s'", ch.user)
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "could not clear user settings",
-			"context": "user offboarding",
-			"user":    ch.user,
-		}))
 	}
 
 	if catcher.HasErrors() {
@@ -429,7 +424,7 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 			"context": "user offboarding",
 			"user":    ch.user,
 		}))
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "not all unexpirable hosts/volumes terminated"))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "offboarding user '%s'", ch.user))
 	}
 
 	return gimlet.NewJSONResponse(toTerminate)
