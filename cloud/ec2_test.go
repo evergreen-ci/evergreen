@@ -758,7 +758,7 @@ func (s *EC2Suite) TestModifyHost() {
 	s.Require().NoError(s.h.Remove())
 
 	s.h.CreationTime = time.Now()
-	s.h.ExpirationTime = time.Now().Add(time.Hour * 24 * 7)
+	s.h.ExpirationTime = s.h.CreationTime.Add(time.Hour * 24 * 7)
 	s.h.NoExpiration = false
 	s.h.Status = evergreen.HostStopped
 	s.Require().NoError(s.h.Insert())
@@ -771,14 +771,14 @@ func (s *EC2Suite) TestModifyHost() {
 	s.Equal(changes.InstanceType, found.InstanceType)
 
 	// updating host expiration
-	currHostExpiration := found.ExpirationTime
+	prevExpirationTime := found.ExpirationTime
 	changes = host.HostModifyOptions{
 		AddHours: time.Hour * 24,
 	}
 	s.NoError(s.onDemandManager.ModifyHost(ctx, s.h, changes))
 	found, err = host.FindOne(host.ById(s.h.Id))
 	s.NoError(err)
-	s.True(found.ExpirationTime.Equal(currHostExpiration.Add(changes.AddHours)))
+	s.True(found.ExpirationTime.Equal(prevExpirationTime.Add(changes.AddHours)))
 
 	// trying to update host expiration past 14 days should error
 	changes = host.HostModifyOptions{
@@ -794,7 +794,7 @@ func (s *EC2Suite) TestModifyHost() {
 	s.NoError(err)
 	s.True(found.NoExpiration)
 
-	// attaching a volume to a host
+	// attaching a volume to host
 	volumeToMount := host.Volume{
 		ID:               "thang",
 		AvailabilityZone: "us-east-1a",
