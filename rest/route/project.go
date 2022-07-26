@@ -597,7 +597,6 @@ func (h *projectIDPutHandler) Parse(ctx context.Context, r *http.Request) error 
 	h.body = b
 
 	apiProjectRef := model.APIProjectRef{}
-	apiProjectRef.ToService()
 	if err = json.Unmarshal(h.body, apiProjectRef); err != nil {
 		return errors.Wrap(err, "unmarshalling JSON request body into project ref")
 	}
