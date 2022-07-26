@@ -545,7 +545,6 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 	if spawnHost.Expiration != nil {
 		opts.AddHours = (*spawnHost.Expiration).Sub(h.ExpirationTime)
 	}
-
 	if spawnHost.InstanceType != nil {
 		var config *evergreen.Settings
 		config, err = evergreen.GetConfig()
