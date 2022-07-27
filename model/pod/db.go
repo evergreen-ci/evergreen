@@ -149,6 +149,14 @@ func FindOneByExternalID(id string) (*Pod, error) {
 	return FindOne(db.Query(ByExternalID(id)))
 }
 
+// FindByIntentDigest finds intent pods that have a matching intent digest.
+func FindByIntentDigest(digest string) ([]Pod, error) {
+	return Find(db.Query(bson.M{
+		StatusKey:       StatusInitializing,
+		IntentDigestKey: digest,
+	}))
+}
+
 // UpdateOneStatus updates a pod's status by ID along with any relevant metadata
 // information about the status update. If the current status is identical to
 // the updated one, this will no-op. If the current status does not match the

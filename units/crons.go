@@ -1346,21 +1346,37 @@ func PopulatePodAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 	}
 }
 
-func PopulatePodCreationJobs(env evergreen.Environment) amboy.QueueOperation {
-	return func(ctx context.Context, queue amboy.Queue) error {
+func PopulatePodCreationJobs() amboy.QueueOperation {
+	return func(ctx context.Context, podCreationQueue amboy.Queue) error {
 		pods, err := pod.FindByInitializing()
 		if err != nil {
 			return errors.Wrap(err, "error fetching initializing pods")
 		}
 
 		catcher := grip.NewBasicCatcher()
-		// kim: TODO: enqueue pod definition jobs.
-		// kim: TODO: make separate job queue for pod definition jobs.
 		for _, p := range pods {
-			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewPodCreationJob(p.ID, utility.RoundPartOfMinute(0).Format(TSFormat))), "enqueueing job to create pod %s", p.ID)
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, podCreationQueue, NewPodCreationJob(p.ID, utility.RoundPartOfMinute(0).Format(TSFormat))), "enqueueing job to create pod %s", p.ID)
 		}
 
 		return catcher.Resolve()
+	}
+}
+
+// PopulatePodDefinitionCreationJobs populates the jobs to create pod
+// definitions.
+func PopulatePodDefinitionCreationJobs() amboy.QueueOperation {
+	return func(ctx context.Context, podDefCreationQueue amboy.Queue) error {
+		pods, err := pod.FindByInitializing()
+		if err != nil {
+			return errors.Wrap(err, "finding initializing pods")
+		}
+
+		catcher := grip.NewBasicCatcher()
+		for _, p := range pods {
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, podDefCreationQueue, NewPodDefinitionCreationJob(p.TaskContainerCreationOpts, utility.RoundPartOfMinute(0).Format(TSFormat))), "pod '%s'", p.ID)
+		}
+
+		return errors.Wrap(catcher.Resolve(), "enqueueing pod definition creation jobs")
 	}
 }
 

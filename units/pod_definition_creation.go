@@ -31,8 +31,9 @@ func init() {
 }
 
 type podDefinitionCreationJob struct {
-	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
-	Opts     pod.TaskContainerCreationOptions `bson:"opts" json:"opts" yaml:"opts"`
+	job.Base      `bson:"metadata" json:"metadata" yaml:"metadata"`
+	ContainerOpts pod.TaskContainerCreationOptions `bson:"container_opts" json:"container_opts" yaml:"container_opts"`
+	IntentDigest  string                           `bson:"intent_digest" json:"intent_digest" yaml:"intent_digest"`
 
 	ecsClient        cocoa.ECSClient
 	ecsPodDefManager cocoa.ECSPodDefinitionManager
@@ -58,9 +59,10 @@ func makePodDefinitionCreationJob() *podDefinitionCreationJob {
 // preparation for running a pod.
 func NewPodDefinitionCreationJob(opts pod.TaskContainerCreationOptions, id string) amboy.Job {
 	j := makePodDefinitionCreationJob()
-	intentDigest := opts.Hash()
-	j.SetID(fmt.Sprintf("%s.%s.%s", podCreationJobName, intentDigest, id))
-	j.SetScopes([]string{fmt.Sprintf("%s.%s", podDefinitionCreationJobName, intentDigest)})
+	j.ContainerOpts = opts
+	j.IntentDigest = opts.Hash()
+	j.SetID(fmt.Sprintf("%s.%s.%s", podCreationJobName, j.IntentDigest, id))
+	j.SetScopes([]string{fmt.Sprintf("%s.%s", podDefinitionCreationJobName, j.IntentDigest)})
 	j.SetEnqueueAllScopes(true)
 	j.UpdateRetryInfo(amboy.JobRetryOptions{
 		Retryable:   utility.TruePtr(),
@@ -71,11 +73,15 @@ func NewPodDefinitionCreationJob(opts pod.TaskContainerCreationOptions, id strin
 	return j
 }
 
+// kim: TODO: test
 func (j *podDefinitionCreationJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	// kim: TODO: if pod definition creation fails and won't retry, decommission
-	// failed intent pods.
+	defer func() {
+		if j.HasErrors() && (!j.RetryInfo().ShouldRetry() || j.RetryInfo().GetRemainingAttempts() == 0) {
+			j.AddError(errors.Wrap(j.decommissionDependentIntentPods(), "decommissioning intent pods after pod definition creation failed"))
+		}
+	}()
 
 	defer func() {
 		if j.smClient != nil {
@@ -90,11 +96,19 @@ func (j *podDefinitionCreationJob) Run(ctx context.Context) {
 		return
 	}
 
-	intentDigest := j.Opts.Hash()
-
-	podDefOpts, err := cloud.ExportECSPodDefinitionOptions(j.settings, j.Opts)
+	dependents, err := pod.FindByIntentDigest(j.IntentDigest)
 	if err != nil {
-		j.AddError(errors.Wrapf(err, "creating pod definition from pod '%s' with intent digest '%s'", intentDigest))
+		j.AddRetryableError(errors.Wrapf(err, "finding dependent intent pods with intent digest '%s'", j.IntentDigest))
+		return
+	}
+	if len(dependents) == 0 {
+		// No-op if there are no pods that need this definition to be created.
+		return
+	}
+
+	podDefOpts, err := cloud.ExportECSPodDefinitionOptions(j.settings, j.ContainerOpts)
+	if err != nil {
+		j.AddError(errors.Wrapf(err, "creating pod definition with intent digest '%s'", j.IntentDigest))
 		return
 	}
 
@@ -105,18 +119,19 @@ func (j *podDefinitionCreationJob) Run(ctx context.Context) {
 		return
 	}
 	if podDef != nil {
+		// No-op if this pod definition already exists.
 		return
 	}
 
 	item, err := j.ecsPodDefManager.CreatePodDefinition(ctx, *podDefOpts)
 	if err != nil {
-		j.AddRetryableError(errors.Wrapf(err, "creating pod definition from pod '%s' with digest '%s'", intentDigest))
+		j.AddRetryableError(errors.Wrapf(err, "creating pod definition with intent digest '%s'", j.IntentDigest))
 		return
 	}
 
 	grip.Info(message.Fields{
 		"message":       "successfully created pod definition",
-		"intent_digest": intentDigest,
+		"intent_digest": j.IntentDigest,
 		"digest":        digest,
 		"external_id":   item.ID,
 	})
@@ -162,4 +177,18 @@ func (j *podDefinitionCreationJob) populateIfUnset(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// decommissionDependentIntentPods decommissions all intent pods that depend on
+// the pod definition created by this job.
+func (j *podDefinitionCreationJob) decommissionDependentIntentPods() error {
+	podsToDecommission, err := pod.FindByIntentDigest(j.IntentDigest)
+	if err != nil {
+		return errors.Wrap(err, "finding intent pods to decommission")
+	}
+	catcher := grip.NewBasicCatcher()
+	for _, p := range podsToDecommission {
+		catcher.Wrapf(p.UpdateStatus(pod.StatusDecommissioned), "pod '%s'", p.ID)
+	}
+	return errors.Wrap(catcher.Resolve(), "decommissioning intent pods")
 }

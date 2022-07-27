@@ -168,7 +168,6 @@ func ImportECSPodResources(res cocoa.ECSPodResources) pod.ResourceInfo {
 		Cluster:      utility.FromStringPtr(res.Cluster),
 		Containers:   containerResources,
 	}
-
 }
 
 // exportECSContainerResources exports the ECS container resource information
@@ -198,6 +197,7 @@ const (
 
 // ExportECSPodCreationOptions exports the ECS pod creation options into
 // cocoa.ECSPodDefinitionOptions to create the pod definition.
+// kim: TODO: change to *evergreen.Settings to avoid excessive copying.
 func ExportECSPodDefinitionOptions(settings evergreen.Settings, opts pod.TaskContainerCreationOptions) (*cocoa.ECSPodDefinitionOptions, error) {
 	ecsConf := settings.Providers.AWS.Pod.ECS
 
@@ -208,6 +208,8 @@ func ExportECSPodDefinitionOptions(settings evergreen.Settings, opts pod.TaskCon
 
 	defOpts := cocoa.NewECSPodDefinitionOptions().
 		SetName(strings.Join([]string{strings.TrimRight(ecsConf.TaskDefinitionPrefix, "-"), "agent", opts.Hash()}, "-")).
+		SetCPU(opts.CPU).
+		SetMemoryMB(opts.MemoryMB).
 		SetTaskRole(ecsConf.TaskRole).
 		SetExecutionRole(ecsConf.ExecutionRole).
 		AddContainerDefinitions(*containerDef)
@@ -230,6 +232,7 @@ const (
 
 // exportECSPodContainerDef exports the ECS pod container definition into the
 // equivalent cocoa.ECSContainerDefintion.
+// kim: TODO: change to *evergreen.Settings to avoid excessive copying.
 func exportECSPodContainerDef(settings evergreen.Settings, opts pod.TaskContainerCreationOptions) (*cocoa.ECSContainerDefinition, error) {
 	def := cocoa.NewECSContainerDefinition().
 		SetName(agentContainerName).
@@ -294,6 +297,13 @@ func ExportECSPodExecutionOptions(ecsConfig evergreen.ECSConfig, containerOpts p
 	}
 
 	return nil, errors.Errorf("container OS '%s' did not match any recognized ECS cluster", containerOpts.OS)
+}
+
+// ExportECSPodDefinition exports the pod definition into an
+// cocoa.ECSTaskDefinition.
+// kim: TODO: test
+func ExportECSPodDefinition(podDef definition.PodDefinition) cocoa.ECSTaskDefinition {
+	return *cocoa.NewECSTaskDefinition().SetID(podDef.ExternalID)
 }
 
 // podAWSOptions creates options to initialize an AWS client for pod management.

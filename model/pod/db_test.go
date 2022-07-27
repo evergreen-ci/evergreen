@@ -243,6 +243,88 @@ func TestFindOneByExternalID(t *testing.T) {
 	}
 }
 
+func TestFindByIntentDigest(t *testing.T) {
+	for tName, tCase := range map[string]func(t *testing.T){
+		"FindsMatchingSubsetOfPods": func(t *testing.T) {
+			const intentDigest = "abc123"
+			pods := []Pod{
+				{
+					ID:           "p0",
+					Status:       StatusInitializing,
+					IntentDigest: intentDigest,
+				},
+				{
+					ID:           "p1",
+					Status:       StatusRunning,
+					IntentDigest: intentDigest,
+				},
+				{
+					ID:           "p2",
+					Status:       StatusInitializing,
+					IntentDigest: intentDigest,
+				},
+				{
+					ID:           "p3",
+					Status:       StatusInitializing,
+					IntentDigest: "something_else",
+				},
+			}
+			for _, p := range pods {
+				require.NoError(t, p.Insert())
+			}
+
+			dbPods, err := FindByIntentDigest(intentDigest)
+			require.NoError(t, err)
+			var numMatches int
+			for _, p := range dbPods {
+				switch p.ID {
+				case pods[0].ID, pods[2].ID:
+					numMatches++
+				default:
+					assert.FailNow(t, "found unexpected pod '%s'", p.ID)
+				}
+			}
+			assert.Equal(t, 2, numMatches)
+		},
+		"IgnoresNonIntentPods": func(t *testing.T) {
+			p := Pod{
+				ID:           "pod",
+				Status:       StatusStarting,
+				IntentDigest: "intent_digest",
+			}
+			require.NoError(t, p.Insert())
+			dbPods, err := FindByIntentDigest(p.IntentDigest)
+			assert.NoError(t, err)
+			assert.Empty(t, dbPods)
+		},
+		"IgnoresPodsWithoutMatchingDigest": func(t *testing.T) {
+			p := Pod{
+				ID:           "pod",
+				Status:       StatusStarting,
+				IntentDigest: "intent_digest",
+			}
+			require.NoError(t, p.Insert())
+			dbPods, err := FindByIntentDigest("foo")
+			assert.NoError(t, err)
+			assert.Empty(t, dbPods)
+		},
+		"ReturnsNoErrorForNoMatchingPods": func(t *testing.T) {
+			dbPods, err := FindByIntentDigest("nonexistent")
+			assert.NoError(t, err)
+			assert.Empty(t, dbPods)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection))
+			defer func() {
+				assert.NoError(t, db.Clear(Collection))
+			}()
+
+			tCase(t)
+		})
+	}
+}
+
 func TestUpdateOneStatus(t *testing.T) {
 	checkStatusAndTimeInfo := func(t *testing.T, p *Pod, s Status) {
 		assert.Equal(t, s, p.Status)

@@ -109,21 +109,6 @@ func (j *podCreationJob) Run(ctx context.Context) {
 
 	switch j.pod.Status {
 	case pod.StatusInitializing:
-		// kim: TODO: pre-create cached pod definition and use external ID here.
-		// kim: TODO: decide if it's worth it to make a separate job and poll
-		// for the existing pod def in this job. That would allow the scope to
-		// do its locking magic for the new pod definition digest and would work
-		// well with the cache; otherwise, we can try doing some atomic DB ops
-		// like upsert to achieve the same effect (to deal with conflicts
-		// attempting to insert the same pod definition).
-
-		// kim: TODO: poll for pod def with matching digest. If it doesn't
-		// exist, enqueue pod definition creation job. Otherwise, wait some
-		// more until it's populated. Once it's populated, set the pod
-		// definition ID for the pod.
-		// Once the definition exists and can be looked up, look it up here and
-		// pass the task definition ARN to CreatePodFromExistingDefinition.
-
 		execOpts, err := cloud.ExportECSPodExecutionOptions(settings.Providers.AWS.Pod.ECS, j.pod.TaskContainerCreationOpts)
 		if err != nil {
 			j.AddError(errors.Wrap(err, "getting pod execution options"))
@@ -139,13 +124,11 @@ func (j *podCreationJob) Run(ctx context.Context) {
 		// definition is not ready yet, retry again later.
 		podDef, err := j.waitForPodDefinition(*opts)
 		if err != nil {
-			j.AddRetryableError(errors.Wrap(err, "waiting for pod definition to be created"))
+			j.AddRetryableError(errors.Wrap(err, "waiting for pod definition"))
 			return
 		}
 
-		p, err := j.ecsPodCreator.CreatePodFromExistingDefinition(ctx, *cocoa.NewECSTaskDefinition().SetID(podDef.ID), *execOpts)
-		// kim: TODO: remove
-		// p, err := j.ecsPodCreator.CreatePod(ctx, *opts)
+		p, err := j.ecsPodCreator.CreatePodFromExistingDefinition(ctx, cloud.ExportECSPodDefinition(*podDef), *execOpts)
 		if err != nil {
 			j.AddRetryableError(errors.Wrap(err, "starting pod"))
 			return

@@ -393,6 +393,8 @@ func TestExportECSPodDefinitionOptions(t *testing.T) {
 
 		assert.True(t, strings.HasPrefix(utility.FromStringPtr(podDefOpts.Name), settings.Providers.AWS.Pod.ECS.TaskDefinitionPrefix))
 		assert.Contains(t, utility.FromStringPtr(podDefOpts.Name), containerOpts.Hash())
+		require.Equal(t, containerOpts.CPU, utility.FromIntPtr(podDefOpts.CPU))
+		require.Equal(t, containerOpts.MemoryMB, utility.FromIntPtr(podDefOpts.MemoryMB))
 
 		require.Len(t, podDefOpts.ContainerDefinitions, 1)
 		cDef := podDefOpts.ContainerDefinitions[0]
@@ -507,7 +509,6 @@ func TestExportECSPodExecutionOptions(t *testing.T) {
 	}
 
 	t.Run("SpecifiesLinuxClusterAndCapacityProviderWithWindowsPod", func(t *testing.T) {
-		// kim: TODO: test ExportECSPodExecutionOptions
 		ecsConf := getECSConfig()
 		containerOpts := getContainerOpts()
 		execOpts, err := ExportECSPodExecutionOptions(ecsConf, containerOpts)

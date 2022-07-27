@@ -112,36 +112,38 @@ func NewTaskIntentPod(opts TaskIntentPodOptions) (*Pod, error) {
 		return nil, errors.Wrap(err, "invalid options")
 	}
 
-	p := Pod{
-		ID:     opts.ID,
-		Status: StatusInitializing,
-		Type:   TypeAgent,
-		TaskContainerCreationOpts: TaskContainerCreationOptions{
-			CPU:            opts.CPU,
-			MemoryMB:       opts.MemoryMB,
-			OS:             opts.OS,
-			Arch:           opts.Arch,
-			WindowsVersion: opts.WindowsVersion,
-			Image:          opts.Image,
-			WorkingDir:     opts.WorkingDir,
-			RepoUsername:   opts.RepoUsername,
-			RepoPassword:   opts.RepoPassword,
+	containerOpts := TaskContainerCreationOptions{
+		CPU:            opts.CPU,
+		MemoryMB:       opts.MemoryMB,
+		OS:             opts.OS,
+		Arch:           opts.Arch,
+		WindowsVersion: opts.WindowsVersion,
+		Image:          opts.Image,
+		WorkingDir:     opts.WorkingDir,
+		RepoUsername:   opts.RepoUsername,
+		RepoPassword:   opts.RepoPassword,
+		EnvVars: map[string]string{
+			PodIDEnvVar: opts.ID,
 		},
+		EnvSecrets: map[string]Secret{
+			PodSecretEnvVar: {
+				Value:  opts.Secret,
+				Exists: utility.FalsePtr(),
+				Owned:  utility.TruePtr(),
+			},
+		},
+	}
+
+	p := Pod{
+		ID:                        opts.ID,
+		Status:                    StatusInitializing,
+		Type:                      TypeAgent,
+		TaskContainerCreationOpts: containerOpts,
 		TimeInfo: TimeInfo{
 			Initializing: time.Now(),
 		},
+		IntentDigest: containerOpts.Hash(),
 	}
-	p.TaskContainerCreationOpts.EnvVars = map[string]string{
-		PodIDEnvVar: opts.ID,
-	}
-	p.TaskContainerCreationOpts.EnvSecrets = map[string]Secret{
-		PodSecretEnvVar: {
-			Value:  opts.Secret,
-			Exists: utility.FalsePtr(),
-			Owned:  utility.TruePtr(),
-		},
-	}
-	p.IntentDigest = p.TaskContainerCreationOpts.Hash()
 
 	return &p, nil
 }
@@ -540,7 +542,6 @@ func (hes hashableEnvSecrets) Swap(i, j int) {
 }
 
 // Hash returns the hash digest of the creation options for the container.
-// kim: TODO: test
 func (o TaskContainerCreationOptions) Hash() string {
 	h := utility.NewSHA1Hash()
 	h.Add(o.Image)
