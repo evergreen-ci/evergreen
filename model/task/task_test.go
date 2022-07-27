@@ -3746,12 +3746,13 @@ func TestArchiveFailedOnly(t *testing.T) {
 	dt := resetDatabase()
 
 	t.Run("ArchivesOnlyFailedExecutionTasks", func(t *testing.T) {
-		require.True(t, dt.ResetFailedWhenFinished)
+		dt.ResetFailedWhenFinished = true
+
+		// Gets the future archived tasks information.
 		t1, err := FindOneIdAndExecution(dt.ExecutionTasks[0], dt.Execution)
 		require.NoError(t, err)
 		t2, err := FindOneIdAndExecution(dt.ExecutionTasks[1], dt.Execution)
 		require.NoError(t, err)
-
 		archivedT1 := MakeOldID(t1.Id, t1.Execution)
 		archivedExecution := t1.Execution
 
@@ -3759,6 +3760,7 @@ func TestArchiveFailedOnly(t *testing.T) {
 		event.LogHostRunningTaskSet(hostID, t1.Id, 0)
 		event.LogHostRunningTaskCleared(hostID, t1.Id, 0)
 
+		// Verifies the execution before and after calling Archive
 		archivedDisplayTaskID := MakeOldID(dt.Id, dt.Execution)
 		require.Equal(t, 0, dt.Execution)
 		require.NoError(t, dt.Archive())
@@ -3767,6 +3769,7 @@ func TestArchiveFailedOnly(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 1, dt.Execution)
 
+		// Cross checks the collections to ensure that each task was or was not archived
 		checkTaskIsArchived(t, archivedT1)
 		checkTaskIsNotArchived(t, t2.Id, 0)
 		checkTaskIsArchived(t, archivedDisplayTaskID)
@@ -3777,6 +3780,8 @@ func TestArchiveFailedOnly(t *testing.T) {
 	// This test is for the edge case of a archiving with only failed execution tasks, then archiving all execution tasks
 	t.Run("ArchivesExecutionTasksAfterFailedOnly", func(t *testing.T) {
 		dt.ResetFailedWhenFinished = false
+
+		// Verifies the results from the last test as a basis (more on below comment)
 		require.Equal(t, 1, dt.Execution)
 		t1, err := FindOneId(dt.ExecutionTasks[0])
 		require.NoError(t, err)
@@ -3786,16 +3791,15 @@ func TestArchiveFailedOnly(t *testing.T) {
 		require.Equal(t, 0, t2.Execution)
 		// This ensures that the latest (highest execution) task in the database for each ID is proper.
 		// The dt should have 1, as well as the restarted t1. But t2 should have 0
-
 		archivedT1 := MakeOldID(t1.Id, t1.Execution)
 		archivedExecutionT1 := t1.Execution
-
 		archivedT2 := MakeOldID(t2.Id, t2.Execution)
 
 		hostID := "hostID2"
 		event.LogHostRunningTaskSet(hostID, t1.Id, 1)
 		event.LogHostRunningTaskCleared(hostID, t1.Id, 1)
 
+		// Verifies the display task is archived after calling archive
 		archivedDisplayTaskID := MakeOldID(dt.Id, dt.Execution)
 		require.NoError(t, dt.Archive())
 		dtPointer, err := FindOneId(dt.Id)
@@ -3810,12 +3814,12 @@ func TestArchiveFailedOnly(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 2, t2.Execution)
 
+		// CRoss checks the tasks to ensure they were archived
 		checkTaskIsArchived(t, archivedT1)
 		checkTaskIsArchived(t, archivedT2)
 		checkTaskIsArchived(t, archivedDisplayTaskID)
 
 		checkEventLogHostTaskExecutions(t, hostID, archivedT1, archivedExecutionT1)
-		require.True(t, dt.ResetFailedWhenFinished)
 	})
 }
 
