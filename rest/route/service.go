@@ -82,6 +82,18 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/task/{task_id}/log").Version(2).Post().Wrap(requireTask, requirePodOrHost).RouteHandler(makeAppendTaskLog(env.Settings()))
 	app.AddRoute("/task/{task_id}/start").Version(2).Post().Wrap(requireTask, requirePodOrHost).RouteHandler(makeStartTask())
 
+	//Plugin routes
+	app.AddRoute("/task/{task_id}/git/patchfile/{patchfile_id}").Version(2).Get().Wrap(requireTask).RouteHandler(makeGitServePatchFile())
+	app.AddRoute("/task/{task_id}/git/patch").Version(2).Get().Wrap(requireTask).RouteHandler(makeGitServePatch())
+	app.AddRoute("/task/{task_id}/keyval/inc").Version(2).Post().Wrap(requireTask).RouteHandler(makeKeyvalPluginInc())
+	app.AddRoute("/task/{task_id}/manifest/load").Version(2).Get().Wrap(requireTask).RouteHandler(makeManifestLoad(env.Settings()))
+	app.AddRoute("/task/{task_id}/downstreamParams").Version(2).Post().Wrap(requireTask).RouteHandler(makeSetDownstreamParams())
+	app.AddRoute("/task/{task_id}/json/tags/{task_name}/{name}").Version(2).Get().Wrap(requireTask).RouteHandler(makeGetTaskJSONTagsForTask())
+	app.AddRoute("/task/{task_id}/json/history/{task_name}/{name}").Version(2).Get().Wrap(requireTask).RouteHandler(makeGetTaskJSONTaskHistory())
+	app.AddRoute("/task/{task_id}/json/data/{name}").Version(2).Post().Wrap(requireTask).RouteHandler(makeInsertTaskJSON())
+	app.AddRoute("/task/{task_id}/json/data/{task_name}/{name}").Version(2).Get().Wrap(requireTask).RouteHandler(makeGetTaskJSONByName())
+	app.AddRoute("/task/{task_id}/json/data/{task_name}/{name}/{variant}").Version(2).Get().Wrap(requireTask).RouteHandler(makeGetTaskJSONForVariant())
+
 	// Routes
 	app.AddRoute("/").Version(2).Get().RouteHandler(makePlaceHolder())
 	app.AddRoute("/admin/banner").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchAdminBanner())

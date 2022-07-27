@@ -617,7 +617,7 @@ func (c *baseCommunicator) GetTaskPatch(ctx context.Context, taskData TaskData, 
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
-		version:  apiVersion1,
+		version:  apiVersion2,
 	}
 	suffix := "git/patch"
 	if patchId != "" {
@@ -665,7 +665,7 @@ func (c *baseCommunicator) GetPatchFile(ctx context.Context, taskData TaskData, 
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
-		version:  apiVersion1,
+		version:  apiVersion2,
 	}
 	info.setTaskPathSuffix("git/patchfile/" + patchFileID)
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -820,7 +820,7 @@ func (c *baseCommunicator) SetDownstreamParams(ctx context.Context, downstreamPa
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
-		version:  apiVersion1,
+		version:  apiVersion2,
 	}
 
 	info.setTaskPathSuffix("downstreamParams")
@@ -837,7 +837,7 @@ func (c *baseCommunicator) GetManifest(ctx context.Context, taskData TaskData) (
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
-		version:  apiVersion1,
+		version:  apiVersion2,
 	}
 	info.setTaskPathSuffix("manifest/load")
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -858,7 +858,7 @@ func (c *baseCommunicator) KeyValInc(ctx context.Context, taskData TaskData, kv 
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
-		version:  apiVersion1,
+		version:  apiVersion2,
 	}
 	info.setTaskPathSuffix("keyval/inc")
 	resp, err := c.retryRequest(ctx, info, kv.Key)
@@ -878,7 +878,7 @@ func (c *baseCommunicator) PostJSONData(ctx context.Context, taskData TaskData, 
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
-		version:  apiVersion1,
+		version:  apiVersion2,
 	}
 	info.setTaskPathSuffix(fmt.Sprintf("json/data/%s", path))
 	resp, err := c.retryRequest(ctx, info, data)
@@ -898,7 +898,7 @@ func (c *baseCommunicator) GetJSONData(ctx context.Context, taskData TaskData, t
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
-		version:  apiVersion1,
+		version:  apiVersion2,
 	}
 	info.setTaskPathSuffix(strings.Join(pathParts, "/"))
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -926,7 +926,7 @@ func (c *baseCommunicator) GetJSONHistory(ctx context.Context, taskData TaskData
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
-		version:  apiVersion1,
+		version:  apiVersion2,
 	}
 	info.setTaskPathSuffix(path)
 	resp, err := c.retryRequest(ctx, info, nil)

@@ -3,6 +3,12 @@ package route
 import (
 	"context"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/manifest"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/repotracker"
+	"github.com/evergreen-ci/evergreen/thirdparty"
+	adb "github.com/mongodb/anser/db"
 	"net/http"
 	"strings"
 	"time"
@@ -917,4 +923,569 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewJSONResponse(msg)
+}
+
+// GET /task/{task_id}/git/patchfile/{patchfile_id}
+type gitServePatchFileHandler struct {
+	taskID  string
+	patchID string
+}
+
+func makeGitServePatchFile() gimlet.RouteHandler {
+	return &gitServePatchFileHandler{}
+}
+
+func (h *gitServePatchFileHandler) Factory() gimlet.RouteHandler {
+	return &gitServePatchFileHandler{}
+}
+
+func (h *gitServePatchFileHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
+	if h.patchID = gimlet.GetVars(r)["patchfile_id"]; h.patchID == "" {
+		return errors.New("missing patch ID")
+	}
+	return nil
+}
+
+func (h *gitServePatchFileHandler) Run(ctx context.Context) gimlet.Responder {
+	patchContents, err := patch.FetchPatchContents(h.patchID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "reading patch file from db"))
+	}
+	return gimlet.NewTextResponse(patchContents)
+}
+
+// GET /task/{task_id}/git/patch
+type gitServePatchHandler struct {
+	taskID  string
+	patchID string
+}
+
+func makeGitServePatch() gimlet.RouteHandler {
+	return &gitServePatchHandler{}
+}
+
+func (h *gitServePatchHandler) Factory() gimlet.RouteHandler {
+	return &gitServePatchHandler{}
+}
+
+func (h *gitServePatchHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
+	if patchParam, exists := r.URL.Query()["patch"]; exists {
+		h.patchID = patchParam[0]
+	}
+	return nil
+}
+
+func (h *gitServePatchHandler) Run(ctx context.Context) gimlet.Responder {
+	if h.patchID == "" {
+		t, err := task.FindOneId(h.taskID)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
+		}
+		if t == nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+			})
+		}
+		h.patchID = t.Version
+	}
+
+	p, err := patch.FindOne(patch.ByVersion(h.patchID))
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding patch '%s'", h.patchID))
+	}
+	if p == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("patch with ID '%s' not found", h.patchID),
+		})
+	}
+
+	// add on the merge status for the patch, if applicable
+	if p.GetRequester() == evergreen.MergeTestRequester {
+		builds, err := build.Find(build.ByVersion(p.Version))
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "retrieving builds for task"))
+		}
+		tasks, err := task.FindWithFields(task.ByVersion(p.Version), task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding tasks for version"))
+		}
+
+		status := evergreen.PatchSucceeded
+		for _, b := range builds {
+			if b.BuildVariant == evergreen.MergeTaskVariant {
+				continue
+			}
+			complete, buildStatus, err := b.AllUnblockedTasksFinished(tasks)
+			if err != nil {
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "checking build tasks"))
+			}
+			if !complete {
+				status = evergreen.PatchStarted
+				break
+			}
+			if buildStatus == evergreen.BuildFailed {
+				status = evergreen.PatchFailed
+				break
+			}
+		}
+		p.MergeStatus = status
+	}
+	p.MergeStatus = evergreen.PatchSucceeded
+
+	return gimlet.NewJSONResponse(p)
+}
+
+// POST /task/{task_id}/keyval/inc
+type keyvalIncHandler struct {
+	key string
+}
+
+func makeKeyvalPluginInc() gimlet.RouteHandler {
+	return &keyvalIncHandler{}
+}
+
+func (h *keyvalIncHandler) Factory() gimlet.RouteHandler {
+	return &keyvalIncHandler{}
+}
+
+func (h *keyvalIncHandler) Parse(ctx context.Context, r *http.Request) error {
+	err := utility.ReadJSON(r.Body, &h.key)
+	if err != nil {
+		return errors.Wrap(err, "could not get key")
+	}
+	return nil
+}
+
+func (h *keyvalIncHandler) Run(ctx context.Context) gimlet.Responder {
+	keyVal := &model.KeyVal{Key: h.key}
+	if err := keyVal.Inc(); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "doing findAndModify on key '%s'", h.key))
+	}
+	return gimlet.NewJSONResponse(keyVal)
+}
+
+// GET /task/{task_id}/manifest/load
+type manifestLoadHandler struct {
+	taskID   string
+	settings *evergreen.Settings
+}
+
+func makeManifestLoad(settings *evergreen.Settings) gimlet.RouteHandler {
+	return &manifestLoadHandler{
+		settings: settings,
+	}
+}
+
+func (h *manifestLoadHandler) Factory() gimlet.RouteHandler {
+	return &manifestLoadHandler{
+		settings: h.settings,
+	}
+}
+
+func (h *manifestLoadHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
+	return nil
+}
+
+// Run attempts to get the manifest, if it exists it updates the expansions and returns
+// If it does not exist it performs GitHub API calls for each of the project's modules and gets
+// the head revision of the branch and inserts it into the manifest collection.
+// If there is a duplicate key error, then do a find on the manifest again.
+func (h *manifestLoadHandler) Run(ctx context.Context) gimlet.Responder {
+	task, err := task.FindOneId(h.taskID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
+	}
+	if task == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+		})
+	}
+
+	projectRef, err := model.FindMergedProjectRef(task.Project, task.Version, true)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project '%s'", task.Project))
+	}
+	if projectRef == nil {
+		return gimlet.MakeJSONErrorResponder(errors.Errorf("project ref '%s' doesn't exist", task.Project))
+	}
+
+	v, err := model.VersionFindOne(model.VersionById(task.Version))
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving version for task"))
+	}
+	if v == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("version not found: %s", task.Version),
+		})
+	}
+	currentManifest, err := manifest.FindFromVersion(v.Id, v.Identifier, v.Revision, v.Requester)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "retrieving manifest with version id '%s'", task.Version))
+	}
+
+	projectInfo, err := model.LoadProjectForVersion(v, v.Identifier, false)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "loading project from version"))
+	}
+	if projectInfo.Project == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    "unable to find project for version",
+		})
+	}
+
+	if currentManifest != nil && projectInfo.Project.Modules.IsIdentical(*currentManifest) {
+		return gimlet.NewJSONResponse(currentManifest)
+	}
+
+	// attempt to insert a manifest after making GitHub API calls
+	manifest, err := repotracker.CreateManifest(*v, projectInfo.Project, projectRef, h.settings)
+	if err != nil {
+		if apiErr, ok := errors.Cause(err).(thirdparty.APIRequestError); ok && apiErr.StatusCode == http.StatusNotFound {
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "manifest resource not found"))
+		}
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "storing new manifest"))
+	}
+	return gimlet.NewJSONResponse(manifest)
+}
+
+// POST /task/{task_id}/downstreamParams
+type setDownstreamParamsHandler struct {
+	taskID           string
+	downstreamParams []patch.Parameter
+}
+
+func makeSetDownstreamParams() gimlet.RouteHandler {
+	return &setDownstreamParamsHandler{}
+}
+
+func (h *setDownstreamParamsHandler) Factory() gimlet.RouteHandler {
+	return &setDownstreamParamsHandler{}
+}
+
+func (h *setDownstreamParamsHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
+	err := utility.ReadJSON(r.Body, &h.downstreamParams)
+	if err != nil {
+		errorMessage := fmt.Sprintf("reading downstream expansions for task %s", h.taskID)
+		grip.Error(message.Fields{
+			"message": errorMessage,
+			"task_id": h.taskID,
+		})
+		return errors.Wrapf(err, errorMessage)
+	}
+	return nil
+}
+
+// Run updates file mappings for a task or build.
+func (h *setDownstreamParamsHandler) Run(ctx context.Context) gimlet.Responder {
+	t, err := task.FindOneId(h.taskID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
+	}
+	if t == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+		})
+	}
+	grip.Infoln("Setting downstream expansions for task:", t.Id)
+
+	p, err := patch.FindOne(patch.ByVersion(t.Version))
+
+	if err != nil {
+		errorMessage := fmt.Sprintf("loading patch: %s: ", err.Error())
+		grip.Error(message.Fields{
+			"message": errorMessage,
+			"task_id": t.Id,
+		})
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "loading patch"))
+	}
+
+	if p == nil {
+		errorMessage := "patch not found"
+		grip.Error(message.Fields{
+			"message": errorMessage,
+			"task_id": t.Id,
+		})
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    errorMessage,
+		})
+	}
+
+	if err = p.SetDownstreamParameters(h.downstreamParams); err != nil {
+		errorMessage := fmt.Sprintf("setting patch parameters: %s", err.Error())
+		grip.Error(message.Fields{
+			"message": errorMessage,
+			"task_id": t.Id,
+		})
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting patch parameters"))
+	}
+
+	return gimlet.NewJSONResponse(fmt.Sprintf("Downstream patches for %v have successfully been set", p.Id))
+}
+
+// GET /task/{task_id}/json/tags/{task_name}/{name}
+type jsonTagsForTaskHandler struct {
+	taskID   string
+	taskName string
+	name     string
+}
+
+func makeGetTaskJSONTagsForTask() gimlet.RouteHandler {
+	return &jsonTagsForTaskHandler{}
+}
+
+func (h *jsonTagsForTaskHandler) Factory() gimlet.RouteHandler {
+	return &jsonTagsForTaskHandler{}
+}
+
+func (h *jsonTagsForTaskHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
+	h.taskName = gimlet.GetVars(r)["task_name"]
+	h.name = gimlet.GetVars(r)["name"]
+	return nil
+}
+
+func (h *jsonTagsForTaskHandler) Run(ctx context.Context) gimlet.Responder {
+	t, err := task.FindOneId(h.taskID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
+	}
+	if t == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+		})
+	}
+
+	tagged, err := model.GetTaskJSONTagsForTask(t.Project, t.BuildVariant, h.taskName, h.name)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(err)
+	}
+
+	return gimlet.NewJSONResponse(tagged)
+}
+
+// GET /task/{task_id}/json/history/{task_name}/{name}
+type jsonTaskHistoryHandler struct {
+	taskID string
+	name   string
+}
+
+func makeGetTaskJSONTaskHistory() gimlet.RouteHandler {
+	return &jsonTaskHistoryHandler{}
+}
+
+func (h *jsonTaskHistoryHandler) Factory() gimlet.RouteHandler {
+	return &jsonTaskHistoryHandler{}
+}
+
+func (h *jsonTaskHistoryHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
+	h.name = gimlet.GetVars(r)["name"]
+	return nil
+}
+
+func (h *jsonTaskHistoryHandler) Run(ctx context.Context) gimlet.Responder {
+	t, err := task.FindOneId(h.taskID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
+	}
+	if t == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+		})
+	}
+
+	history, err := model.GetTaskJSONHistory(t, h.name)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(err)
+	}
+
+	return gimlet.NewJSONResponse(history)
+}
+
+// POST /task/{task_id}/data/{name}
+type insertTaskJsonHandler struct {
+	taskID  string
+	name    string
+	rawData map[string]interface{}
+}
+
+func makeInsertTaskJSON() gimlet.RouteHandler {
+	return &insertTaskJsonHandler{}
+}
+
+func (h *insertTaskJsonHandler) Factory() gimlet.RouteHandler {
+	return &insertTaskJsonHandler{}
+}
+
+func (h *insertTaskJsonHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
+	h.name = gimlet.GetVars(r)["name"]
+
+	if err := utility.ReadJSON(r.Body, &h.rawData); err != nil {
+		return errors.Wrapf(err, "reading raw data from request")
+	}
+	return nil
+}
+
+func (h *insertTaskJsonHandler) Run(ctx context.Context) gimlet.Responder {
+	t, err := task.FindOneId(h.taskID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
+	}
+	if t == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+		})
+	}
+
+	if err = model.InsertTaskJSON(t, h.name, h.rawData); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(err)
+	}
+
+	return gimlet.NewJSONResponse("ok")
+}
+
+// GET /task/{task_id}/json/data/{task_name}/{name}
+type taskJsonByNameHandler struct {
+	taskID    string
+	name      string
+	taskName  string
+	formValue string
+}
+
+func makeGetTaskJSONByName() gimlet.RouteHandler {
+	return &taskJsonByNameHandler{}
+}
+
+func (h *taskJsonByNameHandler) Factory() gimlet.RouteHandler {
+	return &taskJsonByNameHandler{}
+}
+
+func (h *taskJsonByNameHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
+	h.name = gimlet.GetVars(r)["name"]
+	h.taskName = gimlet.GetVars(r)["task_name"]
+	h.formValue = r.FormValue("full")
+	return nil
+}
+
+func (h *taskJsonByNameHandler) Run(ctx context.Context) gimlet.Responder {
+	t, err := task.FindOneId(h.taskID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
+	}
+	if t == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+		})
+	}
+
+	jsonForTask, err := model.GetTaskJSONByName(t.Version, t.BuildId, h.taskName, h.name)
+	if err != nil {
+		if adb.ResultsNotFound(err) {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("task by name '%s' not found", h.name),
+			})
+		}
+
+		return gimlet.MakeJSONInternalErrorResponder(err)
+	}
+	if len(h.formValue) != 0 { // if specified, include the json data's container as well
+		return gimlet.NewJSONResponse(jsonForTask)
+	}
+
+	return gimlet.NewJSONResponse(jsonForTask.Data)
+}
+
+// GET /task/{task_id}/json/data/{task_name}/{name}/{variant}
+type taskJsonByNameForVariantHandler struct {
+	taskID    string
+	name      string
+	taskName  string
+	variant   string
+	formValue string
+}
+
+func makeGetTaskJSONForVariant() gimlet.RouteHandler {
+	return &taskJsonByNameForVariantHandler{}
+}
+
+func (h *taskJsonByNameForVariantHandler) Factory() gimlet.RouteHandler {
+	return &taskJsonByNameForVariantHandler{}
+}
+
+func (h *taskJsonByNameForVariantHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
+	h.name = gimlet.GetVars(r)["name"]
+	h.taskName = gimlet.GetVars(r)["task_name"]
+	h.variant = gimlet.GetVars(r)["variant"]
+	h.formValue = r.FormValue("full")
+	return nil
+}
+
+// Run finds a task by name and variant and finds
+// the document in the json collection associated with that task's id.
+func (h *taskJsonByNameForVariantHandler) Run(ctx context.Context) gimlet.Responder {
+	t, err := task.FindOneId(h.taskID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
+	}
+	if t == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+		})
+	}
+
+	// Find the task for the other variant, if it exists
+	jsonForTask, err := model.GetTaskJSONForVariant(t.Version, h.variant, h.taskName, h.name)
+
+	if err != nil {
+		if adb.ResultsNotFound(err) {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("task by name '%s' and variant '%s' not found", h.name, h.variant),
+			})
+		}
+
+		return gimlet.MakeJSONInternalErrorResponder(err)
+	}
+	if len(h.formValue) != 0 { // if specified, include the json data's container as well
+		return gimlet.NewJSONResponse(jsonForTask)
+	}
+	return gimlet.NewJSONResponse(jsonForTask.Data)
 }
