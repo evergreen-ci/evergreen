@@ -37,7 +37,7 @@ var (
 func TestSetActiveState(t *testing.T) {
 	Convey("With one task with no dependencies", t, func() {
 		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, task.OldCollection, VersionCollection))
-		require.NoError(t, db.CreateCollections(task.Collection, task.OldCollection))
+		require.NoError(t, db.CreateCollections(task.OldCollection))
 
 		var err error
 
