@@ -2479,31 +2479,33 @@ func (t *Task) Archive() error {
 		return errors.Wrapf(err, "archiving and updating display task with ID '%s'.", t.Id)
 	} else {
 		// Archiving a single task.
-		archiveTask := t.makeArchivedTask()
-		err := db.Insert(OldCollection, archiveTask)
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"archive_task_id": archiveTask.Id,
-				"old_task_id":     archiveTask.OldTaskId,
-				"execution":       t.Execution,
-				"display_only":    t.DisplayOnly,
-			}))
-			return errors.Wrap(err, "inserting archived task into old tasks")
+		if !t.ResetFailedWhenFinished || evergreen.IsFailedTaskStatus(t.Status) {
+			archiveTask := t.makeArchivedTask()
+			err := db.Insert(OldCollection, archiveTask)
+			if err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"archive_task_id": archiveTask.Id,
+					"old_task_id":     archiveTask.OldTaskId,
+					"execution":       t.Execution,
+					"display_only":    t.DisplayOnly,
+				}))
+				return errors.Wrap(err, "inserting archived task into old tasks")
+			}
+			err = UpdateOne(
+				bson.M{IdKey: t.Id},
+				bson.M{
+					"$unset": bson.M{
+						AbortedKey:              "",
+						AbortInfoKey:            "",
+						OverrideDependenciesKey: "",
+					},
+					"$set": bson.M{ExecutionKey: t.Execution + 1, LatestParentExecutionKey: t.Execution + 1},
+				})
+			if err != nil {
+				return errors.Wrap(err, "updating task")
+			}
+			t.Aborted = false
 		}
-		err = UpdateOne(
-			bson.M{IdKey: t.Id},
-			bson.M{
-				"$unset": bson.M{
-					AbortedKey:              "",
-					AbortInfoKey:            "",
-					OverrideDependenciesKey: "",
-				},
-				"$set": bson.M{ExecutionKey: t.Execution + 1, LatestParentExecutionKey: t.Execution + 1},
-			})
-		if err != nil {
-			return errors.Wrap(err, "updating task")
-		}
-		t.Aborted = false
 		return nil
 	}
 }
