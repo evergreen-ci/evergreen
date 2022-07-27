@@ -50,7 +50,6 @@ func FindProjectById(id string, includeRepo bool, includeProjectConfig bool) (*m
 
 // CreateProject inserts the given model.ProjectRef.
 func CreateProject(projectRef *model.ProjectRef, u *user.DBUser) error {
-
 	config, err := evergreen.GetConfig()
 	if err != nil {
 		return gimlet.ErrorResponse{
@@ -77,7 +76,7 @@ func CreateProject(projectRef *model.ProjectRef, u *user.DBUser) error {
 			return err
 		}
 	}
-	err := projectRef.Add(u)
+	err = projectRef.Add(u)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
