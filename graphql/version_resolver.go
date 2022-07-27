@@ -222,6 +222,93 @@ func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion)
 	return status, nil
 }
 
+func (r *versionResolver) VersionTasks(ctx context.Context, obj *restModel.APIVersion, sorts []*SortOrder, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string, includeEmptyActivation *bool) (*VersionTasks, error) {
+	versionId := utility.FromStringPtr(obj.Id)
+	pageParam := 0
+	if page != nil {
+		pageParam = *page
+	}
+	limitParam := 0
+	if limit != nil {
+		limitParam = *limit
+	}
+	variantParam := ""
+	if variant != nil {
+		variantParam = *variant
+	}
+	taskNameParam := ""
+	if taskName != nil {
+		taskNameParam = *taskName
+	}
+	var taskSorts []task.TasksSortOrder
+	if len(sorts) > 0 {
+		taskSorts = []task.TasksSortOrder{}
+		for _, singleSort := range sorts {
+			key := ""
+			switch singleSort.Key {
+			// the keys here should be the keys for the column headers of the tasks table
+			case TaskSortCategoryName:
+				key = task.DisplayNameKey
+			case TaskSortCategoryStatus:
+				key = task.DisplayStatusKey
+			case TaskSortCategoryBaseStatus:
+				key = task.BaseTaskStatusKey
+			case TaskSortCategoryVariant:
+				key = task.BuildVariantKey
+			case TaskSortCategoryDuration:
+				key = task.TimeTakenKey
+			default:
+				return nil, InputValidationError.Send(ctx, fmt.Sprintf("invalid sort key: %s", singleSort.Key))
+			}
+			order := 1
+			if singleSort.Direction == SortDirectionDesc {
+				order = -1
+			}
+			taskSorts = append(taskSorts, task.TasksSortOrder{Key: key, Order: order})
+		}
+	}
+	v, err := model.VersionFindOne(model.VersionById(versionId).WithFields(model.VersionRequesterKey))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version with id: '%s': %s", versionId, err.Error()))
+	}
+	if v == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find version with id: '%s'", versionId))
+	}
+
+	opts := task.GetTasksByVersionOptions{
+		Statuses:                       getValidTaskStatusesFilter(statuses),
+		BaseStatuses:                   getValidTaskStatusesFilter(baseStatuses),
+		Variants:                       []string{variantParam},
+		TaskNames:                      []string{taskNameParam},
+		Page:                           pageParam,
+		Limit:                          limitParam,
+		Sorts:                          taskSorts,
+		IncludeBaseTasks:               true,
+		IncludeEmptyActivation:         utility.FromBoolPtr(includeEmptyActivation),
+		IncludeBuildVariantDisplayName: true,
+		IsMainlineCommit:               !evergreen.IsPatchRequester(v.Requester),
+	}
+	tasks, count, err := task.GetTasksByVersion(versionId, opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting tasks for version with id '%s': %s", versionId, err.Error()))
+	}
+
+	var apiTasks []*restModel.APITask
+	for _, t := range tasks {
+		apiTask := restModel.APITask{}
+		err := apiTask.BuildFromService(&t, nil)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task item db model to api model: %v", err.Error()))
+		}
+		apiTasks = append(apiTasks, &apiTask)
+	}
+	versionTasks := VersionTasks{
+		Count: count,
+		Tasks: apiTasks,
+	}
+	return &versionTasks, nil
+}
+
 func (r *versionResolver) TaskCount(ctx context.Context, obj *restModel.APIVersion) (*int, error) {
 	taskCount, err := task.Count(db.Query(task.DisplayTasksByVersion(*obj.Id)))
 	if err != nil {

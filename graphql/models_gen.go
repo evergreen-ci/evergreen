@@ -359,6 +359,11 @@ type VariantTasks struct {
 	Variant      string         `json:"variant"`
 }
 
+type VersionTasks struct {
+	Count int              `json:"count"`
+	Tasks []*model.APITask `json:"tasks"`
+}
+
 type VersionTiming struct {
 	Makespan  *model.APIDuration `json:"makespan"`
 	TimeTaken *model.APIDuration `json:"timeTaken"`

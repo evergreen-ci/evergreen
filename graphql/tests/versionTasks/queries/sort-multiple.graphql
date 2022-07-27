@@ -1,0 +1,24 @@
+{
+  version(id: "5e4ff3abe3c3317e352062e4") {
+    versionTasks(
+      limit: 50
+      page: 0
+      sorts: [
+        { Key: STATUS, Direction: ASC }
+        { Key: BASE_STATUS, Direction: DESC }
+      ]
+    ) {
+      tasks {
+        id
+        status
+        baseTask {
+          status
+        }
+        displayName
+        buildVariant
+        blocked
+      }
+      count
+    }
+  }
+}

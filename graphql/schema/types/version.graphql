@@ -39,6 +39,16 @@ type Version {
   revision: String!
   startTime: Time
   status: String!
+  versionTasks(
+    sorts: [SortOrder!]
+    page: Int = 0
+    limit: Int = 0
+    statuses: [String!] = []
+    baseStatuses: [String!] = []
+    variant: String
+    taskName: String
+    includeEmptyActivation: Boolean = false
+  ): VersionTasks!
   taskCount: Int
   taskStatuses: [String!]!
   taskStatusStats(options: BuildVariantOptions): TaskStats
@@ -46,12 +56,16 @@ type Version {
   versionTiming: VersionTiming
 }
 
+type VersionTasks {
+  count: Int!
+  tasks: [Task!]!
+}
+
 type TaskStats {
   counts: [StatusCount!]
   eta: Time
 }
 
-# deprecated field
 type StatusCount { 
   count: Int!
   status: String!
