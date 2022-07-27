@@ -383,7 +383,7 @@ func TestExportECSPodDefinitionOptions(t *testing.T) {
 	t.Run("Succeeds", func(t *testing.T) {
 		settings := validSettings()
 		containerOpts := validContainerOpts()
-		podDefOpts, err := ExportECSPodDefinitionOptions(settings, containerOpts)
+		podDefOpts, err := ExportECSPodDefinitionOptions(&settings, containerOpts)
 		require.NoError(t, err)
 		require.NotZero(t, podDefOpts)
 		require.Equal(t, settings.Providers.AWS.Pod.ECS.TaskRole, utility.FromStringPtr(podDefOpts.TaskRole))
@@ -445,7 +445,7 @@ func TestExportECSPodDefinitionOptions(t *testing.T) {
 		containerOpts := validContainerOpts()
 		containerOpts.RepoUsername = "username"
 		containerOpts.RepoPassword = "password"
-		podDefOpts, err := ExportECSPodDefinitionOptions(settings, containerOpts)
+		podDefOpts, err := ExportECSPodDefinitionOptions(&settings, containerOpts)
 		require.NoError(t, err)
 		require.NotZero(t, containerOpts)
 
@@ -459,7 +459,7 @@ func TestExportECSPodDefinitionOptions(t *testing.T) {
 	t.Run("DefaultsToBridgeNetworkingWhenAWSVPCSettingsAreUnset", func(t *testing.T) {
 		settings := validSettings()
 		settings.Providers.AWS.Pod.ECS.AWSVPC = evergreen.AWSVPCConfig{}
-		podDefOpts, err := ExportECSPodDefinitionOptions(settings, validContainerOpts())
+		podDefOpts, err := ExportECSPodDefinitionOptions(&settings, validContainerOpts())
 		require.NoError(t, err)
 		assert.NoError(t, podDefOpts.Validate())
 		assert.Zero(t, podDefOpts.NetworkMode)

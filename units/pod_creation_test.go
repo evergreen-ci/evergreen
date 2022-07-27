@@ -208,7 +208,7 @@ func TestPodCreationJob(t *testing.T) {
 				assert.NoError(t, ecsClient.Close(ctx))
 			}()
 
-			podDefOpts, err := cloud.ExportECSPodDefinitionOptions(*env.Settings(), p.TaskContainerCreationOpts)
+			podDefOpts, err := cloud.ExportECSPodDefinitionOptions(env.Settings(), p.TaskContainerCreationOpts)
 			require.NoError(t, err)
 
 			pdm, err := cloud.MakeECSPodDefinitionManager(ecsClient, vault)

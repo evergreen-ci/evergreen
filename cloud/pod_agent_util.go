@@ -10,7 +10,7 @@ import (
 
 // bootstrapContainerCommand returns the script to bootstrap the pod's primary container
 // to run the agent.
-func bootstrapContainerCommand(settings evergreen.Settings, opts pod.TaskContainerCreationOptions) []string {
+func bootstrapContainerCommand(settings *evergreen.Settings, opts pod.TaskContainerCreationOptions) []string {
 	scriptCmds := downloadPodProvisioningScriptCommand(settings, opts)
 
 	return append(invokeShellScriptCommand(opts), scriptCmds)
@@ -28,7 +28,7 @@ func invokeShellScriptCommand(opts pod.TaskContainerCreationOptions) []string {
 
 // downloadPodProvisioningScriptCommand returns the command to download and
 // execute the provisioning script for a pod's container options.
-func downloadPodProvisioningScriptCommand(settings evergreen.Settings, opts pod.TaskContainerCreationOptions) string {
+func downloadPodProvisioningScriptCommand(settings *evergreen.Settings, opts pod.TaskContainerCreationOptions) string {
 	const (
 		curlDefaultNumRetries = 10
 		curlDefaultMaxSecs    = 60

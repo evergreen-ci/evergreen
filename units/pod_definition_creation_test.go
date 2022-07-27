@@ -118,7 +118,7 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 		"NoopsWithAlreadyExistingPodDefinition": func(ctx context.Context, t *testing.T, j *podDefinitionCreationJob, p *pod.Pod) {
 			require.NoError(t, p.Insert())
 
-			podDefOpts, err := cloud.ExportECSPodDefinitionOptions(j.settings, j.ContainerOpts)
+			podDefOpts, err := cloud.ExportECSPodDefinitionOptions(&j.settings, j.ContainerOpts)
 			require.NoError(t, err)
 			digest := podDefOpts.Hash()
 			require.NoError(t, db.Insert(definition.Collection, definition.PodDefinition{

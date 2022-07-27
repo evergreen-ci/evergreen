@@ -73,7 +73,6 @@ func NewPodDefinitionCreationJob(opts pod.TaskContainerCreationOptions, id strin
 	return j
 }
 
-// kim: TODO: test
 func (j *podDefinitionCreationJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
@@ -106,7 +105,7 @@ func (j *podDefinitionCreationJob) Run(ctx context.Context) {
 		return
 	}
 
-	podDefOpts, err := cloud.ExportECSPodDefinitionOptions(j.settings, j.ContainerOpts)
+	podDefOpts, err := cloud.ExportECSPodDefinitionOptions(&j.settings, j.ContainerOpts)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "creating pod definition with intent digest '%s'", j.IntentDigest))
 		return

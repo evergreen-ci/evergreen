@@ -115,7 +115,7 @@ func (j *podCreationJob) Run(ctx context.Context) {
 			return
 		}
 
-		opts, err := cloud.ExportECSPodDefinitionOptions(settings, j.pod.TaskContainerCreationOpts)
+		opts, err := cloud.ExportECSPodDefinitionOptions(&settings, j.pod.TaskContainerCreationOpts)
 		if err != nil {
 			j.AddError(errors.Wrap(err, "getting pod definition options"))
 			return

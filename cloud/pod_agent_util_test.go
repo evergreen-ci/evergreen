@@ -23,7 +23,7 @@ func TestAgentScript(t *testing.T) {
 			Arch:       pod.ArchAMD64,
 			WorkingDir: workingDir,
 		}
-		cmd := bootstrapContainerCommand(settings, opts)
+		cmd := bootstrapContainerCommand(&settings, opts)
 		require.NotZero(t, cmd)
 
 		expected := []string{
@@ -38,7 +38,7 @@ func TestAgentScript(t *testing.T) {
 			Arch:       pod.ArchAMD64,
 			WorkingDir: workingDir,
 		}
-		cmd := bootstrapContainerCommand(settings, p)
+		cmd := bootstrapContainerCommand(&settings, p)
 		require.NotZero(t, cmd)
 
 		expected := []string{
