@@ -2589,43 +2589,43 @@ func archiveAll(tasksIds []string, toUpdateTaskIds []string, toArchive []interfa
 			// TODO (EVG-17322): Remove RunCommand call and replace with aggregate + merge
 			result := evergreen.GetEnvironment().DB().RunCommand(sessCtx,
 				bson.D{
-					bson.E{Key: "update", Value: Collection},
+					bson.E{Key: "update", Value: Collection}, // The command is 'update' on the collection 'Colection'.
 					bson.E{Key: "updates", Value: bson.A{bson.M{
-						"q": bson.D{{Key: "_id", Value: bson.D{{Key: "$in", Value: tasksIds}}}},
+						"q": bson.D{{Key: "_id", Value: bson.D{{Key: "$in", Value: tasksIds}}}}, // Queries all 'taskIds' in the collection
 						"u": bson.A{
-							bson.D{{Key: "$set", Value: bson.D{
+							bson.D{{Key: "$set", Value: bson.D{ // Stage 1: Sets LatestParentExecution (LPE) = !exists(LPE) ? execution + 1 : LPE + 1
 								{Key: LatestParentExecutionKey, Value: bson.D{
 									{Key: "$cond", Value: bson.A{
-										bson.D{{Key: "$not", Value: bson.A{
+										bson.D{{Key: "$not", Value: bson.A{ // !exists(LPE)
 											"$" + LatestParentExecutionKey,
 										}}},
-										bson.D{{Key: "$add", Value: bson.A{
+										bson.D{{Key: "$add", Value: bson.A{ // execution + 1
 											"$" + ExecutionKey,
 											1,
 										}}},
-										bson.D{{Key: "$add", Value: bson.A{
+										bson.D{{Key: "$add", Value: bson.A{ // LPE + 1
 											"$" + LatestParentExecutionKey,
 											1,
 										}}},
 									}}},
 								}}},
 							},
-							bson.D{{Key: "$set", Value: bson.D{
+							bson.D{{Key: "$set", Value: bson.D{ // Stage 2: Updates execution number for id's in 'toUpdateTaskIds' to the LPE
 								{Key: ExecutionKey, Value: bson.D{
 									{Key: "$cond", Value: bson.A{
-										bson.D{{Key: "$in", Value: bson.A{"$_id", toUpdateTaskIds}}},
-										"$" + LatestParentExecutionKey,
-										"$" + ExecutionKey,
+										bson.D{{Key: "$in", Value: bson.A{"$_id", toUpdateTaskIds}}}, // In 'toUpdateTaskIds'
+										"$" + LatestParentExecutionKey,                               // Update to LPE
+										"$" + ExecutionKey,                                           // Keep value of Execution
 									}}},
 								}}},
 							},
-							bson.D{{Key: "$unset", Value: bson.A{
+							bson.D{{Key: "$unset", Value: bson.A{ // Stage 3: Unsets aborted, aborted info, and details key
 								AbortedKey,
 								AbortInfoKey,
-								DetailsKey,
+								OverrideDependenciesKey,
 							}}},
 						},
-						"multi": true,
+						"multi": true, // Update multiple documents
 					}}},
 				},
 			)
