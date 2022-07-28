@@ -187,7 +187,7 @@ func (r *requestInfo) validateRequestInfo() error {
 		return errors.New("invalid HTTP method")
 	}
 
-	if r.version != apiVersion2 {
+	if r.version != apiVersion1 && r.version != apiVersion2 {
 		return errors.New("invalid API version")
 	}
 
