@@ -543,10 +543,7 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 		opts.NoExpiration = spawnHost.NoExpiration
 	}
 	if spawnHost.Expiration != nil {
-		err = h.SetExpirationTime(*spawnHost.Expiration)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while modifying spawnhost expiration time: %s", err))
-		}
+		opts.AddHours = (*spawnHost.Expiration).Sub(h.ExpirationTime)
 	}
 	if spawnHost.InstanceType != nil {
 		var config *evergreen.Settings

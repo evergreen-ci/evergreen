@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
@@ -269,19 +270,78 @@ var (
 	}
 
 	AddBuildVariantDisplayName = []bson.M{
-		bson.M{"$lookup": bson.M{
+		{"$lookup": bson.M{
 			"from":         "builds",
 			"localField":   BuildIdKey,
 			"foreignField": "_id",
 			"as":           BuildVariantDisplayNameKey,
 		}},
-		bson.M{"$unwind": bson.M{
+		{"$unwind": bson.M{
 			"path":                       "$" + BuildVariantDisplayNameKey,
 			"preserveNullAndEmptyArrays": true,
 		}},
-		bson.M{"$addFields": bson.M{
+		{"$addFields": bson.M{
 			BuildVariantDisplayNameKey: "$" + bsonutil.GetDottedKeyName(BuildVariantDisplayNameKey, "display_name"),
 		}},
+	}
+
+	// AddAnnotations adds the annotations to the task document.
+	AddAnnotations = []bson.M{
+		{
+			"$facet": bson.M{
+				// We skip annotation lookup for non-failed tasks, because these can't have annotations
+				"not_failed": []bson.M{
+					{
+						"$match": bson.M{
+							StatusKey: bson.M{"$nin": evergreen.TaskFailureStatuses},
+						},
+					},
+				},
+				// for failed tasks, get any annotation that has at least one issue
+				"failed": []bson.M{
+					{
+						"$match": bson.M{
+							StatusKey: bson.M{"$in": evergreen.TaskFailureStatuses},
+						},
+					},
+					{
+						"$lookup": bson.M{
+							"from": annotations.Collection,
+							"let":  bson.M{"task_annotation_id": "$" + IdKey, "task_annotation_execution": "$" + ExecutionKey},
+							"pipeline": []bson.M{
+								{
+									"$match": bson.M{
+										"$expr": bson.M{
+											"$and": []bson.M{
+												{
+													"$eq": []string{"$" + annotations.TaskIdKey, "$$task_annotation_id"},
+												},
+												{
+													"$eq": []string{"$" + annotations.TaskExecutionKey, "$$task_annotation_execution"},
+												},
+												{
+													"$ne": []interface{}{
+														bson.M{
+															"$size": bson.M{"$ifNull": []interface{}{"$" + annotations.IssuesKey, []bson.M{}}},
+														}, 0,
+													},
+												},
+											},
+										},
+									}}},
+							"as": "annotation_docs",
+						},
+					},
+				},
+			},
+		},
+		{"$project": bson.M{
+			"tasks": bson.M{
+				"$setUnion": []string{"$not_failed", "$failed"},
+			}},
+		},
+		{"$unwind": "$tasks"},
+		{"$replaceRoot": bson.M{"newRoot": "$tasks"}},
 	}
 )
 
@@ -986,72 +1046,83 @@ func FindByExecutionTasksAndMaxExecution(taskIds []*string, execution int) ([]Ta
 
 type BuildVariantTuple struct {
 	BuildVariant string `bson:"build_variant"`
-	DisplayName  string `bson:"display_name"`
+	DisplayName  string `bson:"build_variant_display_name"`
 }
+
+var (
+	buildVariantTupleVariantKey     = bsonutil.MustHaveTag(BuildVariantTuple{}, "BuildVariant")
+	buildVariantTupleDisplayNameKey = bsonutil.MustHaveTag(BuildVariantTuple{}, "DisplayName")
+)
 
 const VersionLimit = 50
 
 // FindUniqueBuildVariantNamesByTask returns a list of unique build variants names and their display names for a given task name.
 // It attempts to return the most recent display name for each build variant to avoid returning duplicates caused by display names changing.
 // It only checks the last 50 versions that ran for a given task name.
-func FindUniqueBuildVariantNamesByTask(projectId string, taskName string, repoOrderNumber int) ([]*BuildVariantTuple, error) {
-	pipeline := []bson.M{
-		{"$match": bson.M{
-			ProjectKey:     projectId,
-			DisplayNameKey: taskName,
-			RequesterKey:   bson.M{"$in": evergreen.SystemVersionRequesterTypes},
-			"$and": []bson.M{
-				{RevisionOrderNumberKey: bson.M{"$gte": repoOrderNumber - VersionLimit}},
-				{RevisionOrderNumberKey: bson.M{"$lte": repoOrderNumber}},
-			},
-		},
+func FindUniqueBuildVariantNamesByTask(projectId string, taskName string, repoOrderNumber int, legacyLookup bool) ([]*BuildVariantTuple, error) {
+	query := bson.M{
+		ProjectKey:     projectId,
+		DisplayNameKey: taskName,
+		RequesterKey:   bson.M{"$in": evergreen.SystemVersionRequesterTypes},
+		"$and": []bson.M{
+			{RevisionOrderNumberKey: bson.M{"$gte": repoOrderNumber - VersionLimit}},
+			{RevisionOrderNumberKey: bson.M{"$lte": repoOrderNumber}},
 		},
 	}
+	if !legacyLookup {
+		query[BuildVariantDisplayNameKey] = bson.M{"$exists": true, "$ne": ""}
+	}
+	pipeline := []bson.M{{"$match": query}}
 
 	// group the build variants by unique build variant names and get a build id for each
 	groupByBuildVariant := bson.M{
 		"$group": bson.M{
 			"_id": bson.M{
-				BuildVariantKey: "$" + BuildVariantKey,
+				BuildVariantKey:            "$" + BuildVariantKey,
+				BuildVariantDisplayNameKey: "$" + BuildVariantDisplayNameKey,
 			},
 			BuildIdKey: bson.M{
 				"$first": "$" + BuildIdKey,
 			},
 		},
 	}
-
 	pipeline = append(pipeline, groupByBuildVariant)
 
 	// reorganize the results to get the build variant names and a corresponding build id
-	projectBuildId := bson.M{
+	projectBuildIdAndVariant := bson.M{
 		"$project": bson.M{
-			"_id":           0,
-			BuildVariantKey: bsonutil.GetDottedKeyName("$_id", BuildVariantKey),
-			BuildIdKey:      "$" + BuildIdKey,
+			"_id":                      0,
+			BuildVariantKey:            bsonutil.GetDottedKeyName("$_id", BuildVariantKey),
+			BuildVariantDisplayNameKey: bsonutil.GetDottedKeyName("$_id", BuildVariantDisplayNameKey),
+			BuildIdKey:                 "$" + BuildIdKey,
 		},
 	}
+	pipeline = append(pipeline, projectBuildIdAndVariant)
 
-	pipeline = append(pipeline, projectBuildId)
-
-	// get the display name for each build variant
-	pipeline = append(pipeline, AddBuildVariantDisplayName...)
+	// legacy tasks do not have variant display name directly set on them
+	// so need to lookup from builds collection
+	if legacyLookup {
+		// get the display name for each build variant
+		pipeline = append(pipeline, AddBuildVariantDisplayName...)
+	}
 
 	// cleanup the results
-	project := bson.M{
+	projectBvResults := bson.M{
 		"$project": bson.M{
-			"_id":           0,
-			"build_variant": "$" + BuildVariantKey,
-			"display_name":  "$" + BuildVariantDisplayNameKey,
+			"_id":                           0,
+			buildVariantTupleVariantKey:     "$" + BuildVariantKey,
+			buildVariantTupleDisplayNameKey: "$" + BuildVariantDisplayNameKey,
 		},
 	}
-	pipeline = append(pipeline, project)
+	pipeline = append(pipeline, projectBvResults)
 
-	sort := bson.M{
+	// sort build variant display names alphabetically
+	sortByVariantDisplayName := bson.M{
 		"$sort": bson.M{
-			"display_name": 1,
+			buildVariantTupleDisplayNameKey: 1,
 		},
 	}
-	pipeline = append(pipeline, sort)
+	pipeline = append(pipeline, sortByVariantDisplayName)
 
 	result := []*BuildVariantTuple{}
 	if err := Aggregate(pipeline, &result); err != nil {

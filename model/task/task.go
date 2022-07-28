@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
-	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -3522,27 +3521,32 @@ type GetTasksByProjectAndCommitOptions struct {
 }
 
 type GetTasksByVersionOptions struct {
-	Statuses                       []string
-	BaseStatuses                   []string
-	Variants                       []string
-	TaskNames                      []string
-	Page                           int
-	Limit                          int
-	FieldsToProject                []string
-	Sorts                          []TasksSortOrder
-	IncludeExecutionTasks          bool
-	IncludeBaseTasks               bool
-	IncludeEmptyActivation         bool
-	IncludeBuildVariantDisplayName bool
-	IsMainlineCommit               bool
+	Statuses                            []string
+	BaseStatuses                        []string
+	Variants                            []string
+	TaskNames                           []string
+	Page                                int
+	Limit                               int
+	FieldsToProject                     []string
+	Sorts                               []TasksSortOrder
+	IncludeExecutionTasks               bool
+	IncludeBaseTasks                    bool
+	IncludeEmptyActivation              bool
+	IncludeBuildVariantDisplayName      bool
+	IsMainlineCommit                    bool
+	UseLegacyAddBuildVariantDisplayName bool
 }
 
 // GetTasksByVersion gets all tasks for a specific version
 // Query results can be filtered by task name, variant name and status in addition to being paginated and limited
 func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task, int, error) {
-
-	pipeline := getTasksByVersionPipeline(versionID, opts)
-
+	if opts.IncludeBuildVariantDisplayName {
+		opts.UseLegacyAddBuildVariantDisplayName = ShouldUseLegacyAddBuildVariantDisplayName(versionID)
+	}
+	pipeline, err := getTasksByVersionPipeline(versionID, opts)
+	if err != nil {
+		return nil, 0, errors.Wrap(err, "getting tasks by version pipeline")
+	}
 	if len(opts.Sorts) > 0 {
 		sortPipeline := []bson.M{}
 
@@ -3653,7 +3657,13 @@ type TaskStats struct {
 }
 
 func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) (*TaskStats, error) {
-	pipeline := getTasksByVersionPipeline(versionID, opts)
+	if opts.IncludeBuildVariantDisplayName {
+		opts.UseLegacyAddBuildVariantDisplayName = ShouldUseLegacyAddBuildVariantDisplayName(versionID)
+	}
+	pipeline, err := getTasksByVersionPipeline(versionID, opts)
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting tasks by version pipeline")
+	}
 	maxEtaPipeline := []bson.M{
 		{
 			"$match": bson.M{
@@ -3724,6 +3734,21 @@ func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) (*Ta
 	return &result, nil
 }
 
+// ShouldUseLegacyAddBuildVariantDisplayName returns a boolean indicating whether the given version uses the buildVariantDisplayName field that was added in https://jira.mongodb.org/browse/EVG-16761
+// This is used to determine whether we should use the buildVariantDisplayName field in the task document or if we should use a $lookup to retrieve it
+func ShouldUseLegacyAddBuildVariantDisplayName(versionID string) bool {
+	query := db.Query(ByVersion(versionID))
+	task, err := FindOne(query)
+	if err != nil {
+		return false
+	}
+	if task == nil {
+		return false
+	}
+
+	return task.BuildVariantDisplayName == ""
+}
+
 type GroupedTaskStatusCount struct {
 	Variant      string         `bson:"variant"`
 	DisplayName  string         `bson:"display_name"`
@@ -3731,7 +3756,12 @@ type GroupedTaskStatusCount struct {
 }
 
 func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]*GroupedTaskStatusCount, error) {
-	pipeline := getTasksByVersionPipeline(versionID, opts)
+	opts.IncludeBuildVariantDisplayName = true
+	opts.UseLegacyAddBuildVariantDisplayName = ShouldUseLegacyAddBuildVariantDisplayName(versionID)
+	pipeline, err := getTasksByVersionPipeline(versionID, opts)
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting tasks by version pipeline")
+	}
 	project := bson.M{"$project": bson.M{
 		BuildVariantKey:            "$" + BuildVariantKey,
 		BuildVariantDisplayNameKey: "$" + BuildVariantDisplayNameKey,
@@ -3897,7 +3927,13 @@ func HasMatchingTasks(versionID string, opts HasMatchingTasksOptions) (bool, err
 		Statuses:                       opts.Statuses,
 		IncludeBuildVariantDisplayName: true,
 	}
-	pipeline := getTasksByVersionPipeline(versionID, options)
+	if len(opts.Variants) > 0 {
+		options.UseLegacyAddBuildVariantDisplayName = ShouldUseLegacyAddBuildVariantDisplayName(versionID)
+	}
+	pipeline, err := getTasksByVersionPipeline(versionID, options)
+	if err != nil {
+		return false, errors.Wrap(err, "getting tasks by version pipeline")
+	}
 	pipeline = append(pipeline, bson.M{"$count": "count"})
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()
@@ -3920,20 +3956,13 @@ func HasMatchingTasks(versionID string, opts HasMatchingTasksOptions) (bool, err
 	return count[0].Count > 0, nil
 }
 
-func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) []bson.M {
+func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) ([]bson.M, error) {
 	var match bson.M = bson.M{}
-
-	// Allow searching by either variant name or variant display
-	if len(opts.Variants) > 0 {
-		variantsAsRegex := strings.Join(opts.Variants, "|")
-
-		match = bson.M{
-			"$or": []bson.M{
-				{BuildVariantDisplayNameKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
-				{BuildVariantKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
-			},
-		}
+	if !opts.IncludeBuildVariantDisplayName && opts.UseLegacyAddBuildVariantDisplayName {
+		return nil, errors.New("should not use UseLegacyAddBuildVariantDisplayName with !IncludeBuildVariantDisplayName")
 	}
+	match[VersionKey] = versionID
+
 	if len(opts.TaskNames) > 0 {
 		taskNamesAsRegex := strings.Join(opts.TaskNames, "|")
 		match[DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex, "$options": "i"}
@@ -3942,16 +3971,27 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	if !opts.IncludeEmptyActivation {
 		match[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
 	}
-	match[VersionKey] = versionID
-	pipeline := []bson.M{}
+	pipeline := []bson.M{
+		{"$match": match},
+	}
+
 	// Add BuildVariantDisplayName to all the results if it we need to match on the entire set of results
 	// This is an expensive operation so we only want to do it if we have to
 	if len(opts.Variants) > 0 && opts.IncludeBuildVariantDisplayName {
-		pipeline = append(pipeline, AddBuildVariantDisplayName...)
+		if opts.UseLegacyAddBuildVariantDisplayName {
+			pipeline = append(pipeline, AddBuildVariantDisplayName...)
+		}
+
+		// Allow searching by either variant name or variant display
+		variantsAsRegex := strings.Join(opts.Variants, "|")
+		match = bson.M{
+			"$or": []bson.M{
+				{BuildVariantDisplayNameKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
+				{BuildVariantKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
+			},
+		}
+		pipeline = append(pipeline, bson.M{"$match": match})
 	}
-	pipeline = append(pipeline,
-		bson.M{"$match": match},
-	)
 
 	if !opts.IncludeExecutionTasks {
 		const tempParentKey = "_parent"
@@ -4008,65 +4048,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		pipeline = append(pipeline, recombineTasks...)
 	}
 
-	annotationFacet := bson.M{
-		"$facet": bson.M{
-			// We skip annotation lookup for non-failed tasks, because these can't have annotations
-			"not_failed": []bson.M{
-				{
-					"$match": bson.M{
-						StatusKey: bson.M{"$nin": evergreen.TaskFailureStatuses},
-					},
-				},
-			},
-			// for failed tasks, get any annotation that has at least one issue
-			"failed": []bson.M{
-				{
-					"$match": bson.M{
-						StatusKey: bson.M{"$in": evergreen.TaskFailureStatuses},
-					},
-				},
-				{
-					"$lookup": bson.M{
-						"from": annotations.Collection,
-						"let":  bson.M{"task_annotation_id": "$" + IdKey, "task_annotation_execution": "$" + ExecutionKey},
-						"pipeline": []bson.M{
-							{
-								"$match": bson.M{
-									"$expr": bson.M{
-										"$and": []bson.M{
-											{
-												"$eq": []string{"$" + annotations.TaskIdKey, "$$task_annotation_id"},
-											},
-											{
-												"$eq": []string{"$" + annotations.TaskExecutionKey, "$$task_annotation_execution"},
-											},
-											{
-												"$ne": []interface{}{
-													bson.M{
-														"$size": bson.M{"$ifNull": []interface{}{"$" + annotations.IssuesKey, []bson.M{}}},
-													}, 0,
-												},
-											},
-										},
-									},
-								}}},
-						"as": "annotation_docs",
-					},
-				},
-			},
-		},
-	}
-	pipeline = append(pipeline, annotationFacet)
-	recombineAnnotationFacet := []bson.M{
-		{"$project": bson.M{
-			"tasks": bson.M{
-				"$setUnion": []string{"$not_failed", "$failed"},
-			}},
-		},
-		{"$unwind": "$tasks"},
-		{"$replaceRoot": bson.M{"newRoot": "$tasks"}},
-	}
-	pipeline = append(pipeline, recombineAnnotationFacet...)
+	pipeline = append(pipeline, AddAnnotations...)
 	pipeline = append(pipeline,
 		// Add a field for the display status of each task
 		addDisplayStatus,
@@ -4133,7 +4115,9 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	}
 	// Add the build variant display name to the returned subset of results if it wasn't added earlier
 	if len(opts.Variants) == 0 && opts.IncludeBuildVariantDisplayName {
-		pipeline = append(pipeline, AddBuildVariantDisplayName...)
+		if opts.UseLegacyAddBuildVariantDisplayName {
+			pipeline = append(pipeline, AddBuildVariantDisplayName...)
+		}
 	}
 
 	if opts.IncludeBaseTasks && len(opts.BaseStatuses) > 0 {
@@ -4144,7 +4128,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		})
 	}
 
-	return pipeline
+	return pipeline, nil
 }
 
 func recalculateTimeTaken() bson.M {
