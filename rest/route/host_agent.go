@@ -1225,7 +1225,7 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(&apimodels.EndTaskResponse{})
 	}
 
-	queue := evergreen.GetEnvironment().RemoteQueue()
+	queue := h.env.RemoteQueue()
 	job := units.NewCollectTaskEndDataJob(*t, currentHost, nil, currentHost.Id)
 	if err = queue.Put(ctx, job); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "couldn't queue job to update task stats accounting"))

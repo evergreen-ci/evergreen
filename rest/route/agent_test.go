@@ -2,14 +2,26 @@ package route
 
 import (
 	"context"
+	"github.com/evergreen-ci/evergreen/db"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/mongodb/amboy/queue"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+)
+
+var (
+	taskSecret = "tasksecret"
 )
 
 func TestAgentCedarConfig(t *testing.T) {
@@ -159,4 +171,76 @@ func TestAgentSetup(t *testing.T) {
 			tCase(ctx, t, r, s)
 		})
 	}
+}
+
+func TestDownstreamParams(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	if err := db.ClearCollections(patch.Collection, task.Collection, host.Collection); err != nil {
+		t.Fatalf("clearing db: %v", err)
+	}
+	parameters := []patch.Parameter{
+		{Key: "key_1", Value: "value_1"},
+		{Key: "key_2", Value: "value_2"},
+	}
+
+	versionId := "myTestVersion"
+	parentPatchId := "5bedc62ee4055d31f0340b1d"
+	parentPatch := patch.Patch{
+		Id:      mgobson.ObjectIdHex(parentPatchId),
+		Version: versionId,
+	}
+	require.NoError(t, parentPatch.Insert())
+
+	hostId := "h1"
+	projectId := "proj"
+	buildID := "b1"
+
+	task1 := task.Task{
+		Id:        "task1",
+		Status:    evergreen.TaskStarted,
+		Activated: true,
+		HostId:    hostId,
+		Secret:    taskSecret,
+		Project:   projectId,
+		BuildId:   buildID,
+		Version:   versionId,
+	}
+	require.NoError(t, task1.Insert())
+
+	sampleHost := host.Host{
+		Id: hostId,
+		Distro: distro.Distro{
+			Provider: evergreen.ProviderNameEc2Fleet,
+		},
+		Secret:                hostSecret,
+		RunningTask:           task1.Id,
+		Provider:              evergreen.ProviderNameStatic,
+		Status:                evergreen.HostRunning,
+		AgentRevision:         evergreen.AgentVersion,
+		LastTaskCompletedTime: time.Now().Add(-20 * time.Minute).Round(time.Second),
+	}
+	require.NoError(t, sampleHost.Insert())
+
+	q := queue.NewLocalLimitedSize(4, 2048)
+	if err := q.Start(ctx); err != nil {
+		t.Fatalf("failed to start queue %s", err)
+	}
+
+	r, ok := makeSetDownstreamParams().(*setDownstreamParamsHandler)
+	r.taskID = "task1"
+	r.downstreamParams = parameters
+	require.True(t, ok)
+
+	resp := r.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.Equal(t, resp.Status(), http.StatusOK)
+
+	p, err := patch.FindOneId(parentPatchId)
+	require.NoError(t, err)
+	assert.Equal(t, p.Triggers.DownstreamParameters[0].Key, parameters[0].Key)
+	assert.Equal(t, p.Triggers.DownstreamParameters[0].Value, parameters[0].Value)
+	assert.Equal(t, p.Triggers.DownstreamParameters[1].Key, parameters[1].Key)
+	assert.Equal(t, p.Triggers.DownstreamParameters[1].Value, parameters[1].Value)
 }

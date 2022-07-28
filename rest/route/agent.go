@@ -832,16 +832,21 @@ func (h *appendTaskLogHandler) Run(ctx context.Context) gimlet.Responder {
 
 // POST /task/{task_id}/start
 type startTaskHandler struct {
+	env           evergreen.Environment
 	taskID        string
 	taskStartInfo apimodels.TaskStartRequest
 }
 
-func makeStartTask() gimlet.RouteHandler {
-	return &startTaskHandler{}
+func makeStartTask(env evergreen.Environment) gimlet.RouteHandler {
+	return &startTaskHandler{
+		env: env,
+	}
 }
 
 func (h *startTaskHandler) Factory() gimlet.RouteHandler {
-	return &startTaskHandler{}
+	return &startTaskHandler{
+		env: h.env,
+	}
 }
 
 func (h *startTaskHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -915,7 +920,7 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 	msg := fmt.Sprintf("Task %s started on host %s", t.Id, host.Id)
 
 	if host.Distro.IsEphemeral() {
-		queue := evergreen.GetEnvironment().RemoteQueue()
+		queue := h.env.RemoteQueue()
 		job := units.NewCollectHostIdleDataJob(host, t, idleTimeStartAt, t.StartTime)
 		if err = queue.Put(ctx, job); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "queuing host idle stats for %s", msg))
