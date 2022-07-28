@@ -247,7 +247,7 @@ var (
 					"case": bson.M{
 						"$and": []bson.M{
 							{"$eq": []string{"$" + StatusKey, evergreen.TaskUndispatched}},
-							{OverrideDependenciesKey: false},
+							{"$ne": []interface{}{"$" + OverrideDependenciesKey, true}},
 							isUnattainable,
 						},
 					},

@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
-	"github.com/pkg/errors"
 )
 
 var (
@@ -120,11 +119,6 @@ func (apiBuild *APIBuild) SetTaskCache(tasks []task.Task) {
 		})
 		apiBuild.StatusCounts.IncrementStatus(t.Status, t.Details)
 	}
-}
-
-// ToService returns a service layer build using the data from the APIBuild.
-func (apiBuild *APIBuild) ToService() (interface{}, error) {
-	return nil, errors.New("not implemented for read-only route")
 }
 
 type APITaskCache struct {

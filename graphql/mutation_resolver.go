@@ -321,7 +321,7 @@ func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier st
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 	apiProjectRef := restModel.APIProjectRef{}
-	err = apiProjectRef.BuildFromService(p)
+	err = apiProjectRef.BuildFromService(*p)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
 	}
@@ -342,7 +342,7 @@ func (r *mutationResolver) AttachProjectToNewRepo(ctx context.Context, project M
 	}
 
 	res := &restModel.APIProjectRef{}
-	if err = res.BuildFromService(pRef); err != nil {
+	if err = res.BuildFromService(*pRef); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIProjectRef: %s", err.Error()))
 	}
 	return res, nil
@@ -362,24 +362,16 @@ func (r *mutationResolver) AttachProjectToRepo(ctx context.Context, projectID st
 	}
 
 	res := &restModel.APIProjectRef{}
-	if err := res.BuildFromService(pRef); err != nil {
+	if err := res.BuildFromService(*pRef); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building project from service: %s", err.Error()))
 	}
 	return res, nil
 }
 
 func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.APIProjectRef) (*restModel.APIProjectRef, error) {
-	i, err := project.ToService()
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("API error converting from model.APIProjectRef to model.ProjectRef: %s ", err.Error()))
-	}
-	dbProjectRef, ok := i.(*model.ProjectRef)
-	if !ok {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("unexpected type %T for model.ProjectRef: %s", i, err.Error()))
-	}
-
+	dbProjectRef := project.ToService()
 	u := gimlet.GetUser(ctx).(*user.DBUser)
-	if err = data.CreateProject(dbProjectRef, u); err != nil {
+	if err := data.CreateProject(&dbProjectRef, u); err != nil {
 		apiErr, ok := err.(gimlet.ErrorResponse)
 		if ok {
 			if apiErr.StatusCode == http.StatusBadRequest {
@@ -399,7 +391,7 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding project: %s", err.Error()))
 	}
 	apiProjectRef := restModel.APIProjectRef{}
-	if err = apiProjectRef.BuildFromService(projectRef); err != nil {
+	if err = apiProjectRef.BuildFromService(*projectRef); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
 	}
 
@@ -450,7 +442,7 @@ func (r *mutationResolver) DetachProjectFromRepo(ctx context.Context, projectID 
 	}
 
 	res := &restModel.APIProjectRef{}
-	if err := res.BuildFromService(pRef); err != nil {
+	if err := res.BuildFromService(*pRef); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building project from service: %s", err.Error()))
 	}
 	return res, nil
@@ -477,7 +469,7 @@ func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error removing project : %s : %s", identifier, err))
 	}
 	apiProjectRef := restModel.APIProjectRef{}
-	err = apiProjectRef.BuildFromService(p)
+	err = apiProjectRef.BuildFromService(*p)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
 	}
@@ -534,6 +526,9 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 	h, err := host.FindOneByIdOrTag(spawnHost.HostID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding host by id: %s", err))
+	}
+	if h == nil {
+		return nil, ResourceNotFound.Send(ctx, "Host not found")
 	}
 
 	if !host.CanUpdateSpawnHost(h, usr) {
@@ -615,10 +610,7 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 	}
 
 	apiHost := restModel.APIHost{}
-	err = apiHost.BuildFromService(h)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiHost from service: %s", err))
-	}
+	apiHost.BuildFromService(h, nil)
 	return &apiHost, nil
 }
 
@@ -700,9 +692,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 		return nil, InternalServerError.Send(ctx, "An error occurred Spawn host is nil")
 	}
 	apiHost := restModel.APIHost{}
-	if err := apiHost.BuildFromService(spawnHost); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiHost from service: %s", err))
-	}
+	apiHost.BuildFromService(spawnHost, nil)
 	return &apiHost, nil
 }
 
@@ -796,10 +786,7 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, hostID str
 		return nil, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
 	apiHost := restModel.APIHost{}
-	err = apiHost.BuildFromService(h)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiHost from service: %s", err))
-	}
+	apiHost.BuildFromService(h, nil)
 	return &apiHost, nil
 }
 

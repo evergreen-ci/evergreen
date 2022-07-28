@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -140,12 +139,7 @@ func UpdateSettings(dbUser *user.DBUser, settings user.UserSettings) error {
 
 func SubmitFeedback(in restModel.APIFeedbackSubmission) error {
 	f, _ := in.ToService()
-	feedback, isValid := f.(model.FeedbackSubmission)
-	if !isValid {
-		return errors.Errorf("unknown feedback submission type %T", feedback)
-	}
-
-	return errors.Wrap(feedback.Insert(), "error saving feedback")
+	return errors.Wrap(f.Insert(), "error saving feedback")
 }
 
 func GetServiceUsers() ([]restModel.APIDBUser, error) {
