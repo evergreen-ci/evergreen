@@ -7478,7 +7478,7 @@ type Query {
 
   # patch
   patch(id: String!): Patch!
-  patchTasks( 
+  patchTasks(
     patchId: String!
     sorts: [SortOrder!]
     page: Int = 0

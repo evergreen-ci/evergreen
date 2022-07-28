@@ -118,7 +118,7 @@ func (r *versionResolver) ChildVersions(ctx context.Context, obj *restModel.APIV
 			// this calls the graphql Version query resolver
 			cv, err := r.Query().Version(ctx, cp)
 			if err != nil {
-				//before erroring due to the version being nil or not found,
+				// before erroring due to the version being nil or not found,
 				// fetch the child patch to see if it's activated
 				p, err := patch.FindOneId(cp)
 				if err != nil {
@@ -128,7 +128,7 @@ func (r *versionResolver) ChildVersions(ctx context.Context, obj *restModel.APIV
 					return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to child patch %s", cp))
 				}
 				if p.Version != "" {
-					//only return the error if the version is activated (and we therefore expect it to be there)
+					// only return the error if the version is activated (and we therefore expect it to be there)
 					return nil, InternalServerError.Send(ctx, "An unexpected error occurred. Could not find a child version and expected one.")
 				}
 			}
@@ -258,7 +258,7 @@ func (r *versionResolver) VersionTasks(ctx context.Context, obj *restModel.APIVe
 			case TaskSortCategoryDuration:
 				key = task.TimeTakenKey
 			default:
-				return nil, InputValidationError.Send(ctx, fmt.Sprintf("invalid sort key: %s", singleSort.Key))
+				return nil, InputValidationError.Send(ctx, fmt.Sprintf("invalid sort key: '%s'", singleSort.Key))
 			}
 			order := 1
 			if singleSort.Direction == SortDirectionDesc {
@@ -298,7 +298,7 @@ func (r *versionResolver) VersionTasks(ctx context.Context, obj *restModel.APIVe
 		apiTask := restModel.APITask{}
 		err := apiTask.BuildFromService(&t, nil)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task item db model to api model: %v", err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task item db model to api model: %s", err.Error()))
 		}
 		apiTasks = append(apiTasks, &apiTask)
 	}
