@@ -54,6 +54,7 @@ func TestModelConversion(t *testing.T) {
 	// test converting from a db model to an API model
 	assert.NoError(apiSettings.BuildFromService(testSettings))
 	assert.Equal(testSettings.ApiUrl, *apiSettings.ApiUrl)
+	assert.Equal(testSettings.AWSInstanceRole, *apiSettings.AWSInstanceRole)
 	assert.Equal(testSettings.Banner, *apiSettings.Banner)
 	assert.EqualValues(testSettings.BannerTheme, *apiSettings.BannerTheme)
 	assert.Equal(testSettings.ClientBinariesDir, *apiSettings.ClientBinariesDir)

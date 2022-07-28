@@ -165,6 +165,7 @@ func MockConfig() *evergreen.Settings {
 			PreferredType:           evergreen.AuthLDAPKey,
 			BackgroundReauthMinutes: 60,
 		},
+		AWSInstanceRole:   "role",
 		Banner:            "banner",
 		BannerTheme:       "important",
 		ClientBinariesDir: "bin_dir",
