@@ -1946,7 +1946,8 @@ func (t *Task) displayTaskPriority() int {
 func (t *Task) Reset() error {
 	return UpdateOne(
 		bson.M{
-			IdKey: t.Id,
+			IdKey:     t.Id,
+			StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses},
 		},
 		resetTaskUpdate(t),
 	)
@@ -2474,17 +2475,7 @@ func (t *Task) Insert() error {
 // considered the latest execution. This task execution is inserted
 // into the old_tasks collection. If this is a display task, its execution tasks
 // are also archived.
-func (t *Task) Archive() error {
-	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
-		execTasks, err := FindAll(db.Query(ByIds(t.ExecutionTasks)))
-		if err != nil {
-			return errors.Wrap(err, "retrieving execution tasks")
-		}
-		if err = ArchiveMany(execTasks); err != nil {
-			return errors.Wrap(err, "archiving execution tasks")
-		}
-	}
-
+func (t *Task) Archive() (bool, error) {
 	archiveTask := t.makeArchivedTask()
 	err := db.Insert(OldCollection, archiveTask)
 	if err != nil {
@@ -2494,10 +2485,13 @@ func (t *Task) Archive() error {
 			"execution":       t.Execution,
 			"display_only":    t.DisplayOnly,
 		}))
-		return errors.Wrap(err, "inserting archived task into old tasks")
+		return false, errors.Wrap(err, "inserting archived task into old tasks")
 	}
-	err = UpdateOne(
-		bson.M{IdKey: t.Id},
+	info, err := UpdateAll(
+		bson.M{
+			IdKey:     t.Id,
+			StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses},
+		},
 		bson.M{
 			"$unset": bson.M{
 				AbortedKey:              "",
@@ -2507,10 +2501,23 @@ func (t *Task) Archive() error {
 			"$inc": bson.M{ExecutionKey: 1},
 		})
 	if err != nil {
-		return errors.Wrap(err, "updating task")
+		return false, errors.Wrap(err, "updating task")
+	}
+	if info.Updated <= 0 {
+		return true, nil
+	}
+	// only archive execution tasks after we confirm that the task was in a completed state
+	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
+		execTasks, err := FindAll(db.Query(ByIds(t.ExecutionTasks)))
+		if err != nil {
+			return false, errors.Wrap(err, "retrieving execution tasks")
+		}
+		if err = ArchiveMany(execTasks); err != nil {
+			return false, errors.Wrap(err, "archiving execution tasks")
+		}
 	}
 	t.Aborted = false
-	return nil
+	return false, nil
 }
 
 func ArchiveMany(tasks []Task) error {
@@ -2570,9 +2577,8 @@ func ArchiveMany(tasks []Task) error {
 
 		taskColl := evergreen.GetEnvironment().DB().Collection(Collection)
 		_, err = taskColl.UpdateMany(ctx, bson.M{
-			IdKey: bson.M{
-				"$in": taskIds,
-			},
+			IdKey:     bson.M{"$in": taskIds},
+			StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses},
 		},
 			bson.M{
 				"$unset": bson.M{
