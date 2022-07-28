@@ -196,7 +196,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.ServiceFlags.ContainerConfigurationsDisabled, settings.ServiceFlags.ContainerConfigurationsDisabled)
 	s.EqualValues(testSettings.Slack.Level, settings.Slack.Level)
 	s.EqualValues(testSettings.Slack.Options.Channel, settings.Slack.Options.Channel)
-	s.EqualValues(testSettings.Splunk.Channel, settings.Splunk.Channel)
+	s.EqualValues(testSettings.Splunk.SplunkConnectionInfo.Channel, settings.Splunk.SplunkConnectionInfo.Channel)
 	s.EqualValues(testSettings.Ui.HttpListenAddr, settings.Ui.HttpListenAddr)
 
 	// test that invalid input errors

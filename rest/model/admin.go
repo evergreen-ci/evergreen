@@ -37,7 +37,7 @@ func NewConfigModel() *APIAdminSettings {
 		Scheduler:         &APISchedulerConfig{},
 		ServiceFlags:      &APIServiceFlags{},
 		Slack:             &APISlackConfig{},
-		Splunk:            &APISplunkConnectionInfo{},
+		Splunk:            &APISplunkConfig{},
 		Triggers:          &APITriggerConfig{},
 		Ui:                &APIUIConfig{},
 		Spawnhost:         &APISpawnHostConfig{},
@@ -84,7 +84,7 @@ type APIAdminSettings struct {
 	Slack               *APISlackConfig                   `json:"slack,omitempty"`
 	SSHKeyDirectory     *string                           `json:"ssh_key_directory,omitempty"`
 	SSHKeyPairs         []APISSHKeyPair                   `json:"ssh_key_pairs,omitempty"`
-	Splunk              *APISplunkConnectionInfo          `json:"splunk,omitempty"`
+	Splunk              *APISplunkConfig                  `json:"splunk,omitempty"`
 	Triggers            *APITriggerConfig                 `json:"triggers,omitempty"`
 	Ui                  *APIUIConfig                      `json:"ui,omitempty"`
 	Spawnhost           *APISpawnHostConfig               `json:"spawnhost,omitempty"`
@@ -2134,30 +2134,47 @@ func (a *APISlackOptions) ToService() (interface{}, error) {
 	}, nil
 }
 
+type APISplunkConfig struct {
+	SplunkConnectionInfo *APISplunkConnectionInfo `json:"splunk_connection_info"`
+}
+
+func (a *APISplunkConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.SplunkConfig:
+		a.SplunkConnectionInfo = &APISplunkConnectionInfo{}
+		a.SplunkConnectionInfo.BuildFromService(v.SplunkConnectionInfo)
+	default:
+		return errors.Errorf("programmatic error: expected Splunk config but got type '%T'", h)
+	}
+	return nil
+}
+
+func (a *APISplunkConfig) ToService() (interface{}, error) {
+	c := evergreen.SplunkConfig{}
+	if a.SplunkConnectionInfo != nil {
+		c.SplunkConnectionInfo = a.SplunkConnectionInfo.ToService()
+	}
+	return c, nil
+}
+
 type APISplunkConnectionInfo struct {
 	ServerURL *string `json:"url"`
 	Token     *string `json:"token"`
 	Channel   *string `json:"channel"`
 }
 
-func (a *APISplunkConnectionInfo) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case send.SplunkConnectionInfo:
-		a.ServerURL = utility.ToStringPtr(v.ServerURL)
-		a.Token = utility.ToStringPtr(v.Token)
-		a.Channel = utility.ToStringPtr(v.Channel)
-	default:
-		return errors.Errorf("programmatic error: expected Splunk connection info but got type %T", h)
-	}
-	return nil
+func (a *APISplunkConnectionInfo) BuildFromService(s send.SplunkConnectionInfo) {
+	a.ServerURL = utility.ToStringPtr(s.ServerURL)
+	a.Token = utility.ToStringPtr(s.Token)
+	a.Channel = utility.ToStringPtr(s.Channel)
 }
 
-func (a *APISplunkConnectionInfo) ToService() (interface{}, error) {
+func (a *APISplunkConnectionInfo) ToService() send.SplunkConnectionInfo {
 	return send.SplunkConnectionInfo{
 		ServerURL: utility.FromStringPtr(a.ServerURL),
 		Token:     utility.FromStringPtr(a.Token),
 		Channel:   utility.FromStringPtr(a.Channel),
-	}, nil
+	}
 }
 
 type APIUIConfig struct {
@@ -2362,6 +2379,8 @@ func (rtr *RestartResponse) ToService() (interface{}, error) {
 	return nil, errors.New("ToService not implemented for RestartTasksResponse")
 }
 
+const prestoConfigId = "presto"
+
 func AdminDbToRestModel(in evergreen.ConfigSection) (Model, error) {
 	id := in.SectionId()
 	var out Model
@@ -2371,6 +2390,8 @@ func AdminDbToRestModel(in evergreen.ConfigSection) (Model, error) {
 		if err != nil {
 			return nil, err
 		}
+	} else if id == prestoConfigId { // TODO PM-2940: Remove presto check
+		return nil, nil
 	} else {
 		structVal := reflect.ValueOf(*NewConfigModel())
 		for i := 0; i < structVal.NumField(); i++ {

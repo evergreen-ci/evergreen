@@ -175,9 +175,9 @@ func TestPodAgentSetup(t *testing.T) {
 
 			data, ok := resp.Data().(apimodels.AgentSetupData)
 			require.True(t, ok)
-			assert.Equal(t, data.SplunkServerURL, s.Splunk.ServerURL)
-			assert.Equal(t, data.SplunkClientToken, s.Splunk.Token)
-			assert.Equal(t, data.SplunkChannel, s.Splunk.Channel)
+			assert.Equal(t, data.SplunkServerURL, s.Splunk.SplunkConnectionInfo.ServerURL)
+			assert.Equal(t, data.SplunkClientToken, s.Splunk.SplunkConnectionInfo.Token)
+			assert.Equal(t, data.SplunkChannel, s.Splunk.SplunkConnectionInfo.Channel)
 			assert.Equal(t, data.S3Bucket, s.Providers.AWS.S3.Bucket)
 			assert.Equal(t, data.S3Key, s.Providers.AWS.S3.Key)
 			assert.Equal(t, data.S3Secret, s.Providers.AWS.S3.Secret)
@@ -199,10 +199,12 @@ func TestPodAgentSetup(t *testing.T) {
 			defer cancel()
 
 			s := &evergreen.Settings{
-				Splunk: send.SplunkConnectionInfo{
-					ServerURL: "server_url",
-					Token:     "token",
-					Channel:   "channel",
+				Splunk: evergreen.SplunkConfig{
+					SplunkConnectionInfo: send.SplunkConnectionInfo{
+						ServerURL: "server_url",
+						Token:     "token",
+						Channel:   "channel",
+					},
 				},
 				Providers: evergreen.CloudProviders{
 					AWS: evergreen.AWSConfig{
