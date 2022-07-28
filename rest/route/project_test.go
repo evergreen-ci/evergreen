@@ -349,6 +349,8 @@ type ProjectPutSuite struct {
 }
 
 func TestProjectPutSuite(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	s := &ProjectPutSuite{
 		env: testutil.NewEnvironment(ctx, t),
@@ -362,7 +364,7 @@ func (s *ProjectPutSuite) SetupTest() {
 
 	settings := s.env.Settings()
 	s.settings = settings
-	settings.GithubOrgs = []string{"evergreen-ci", "evergreen"}
+	settings.GithubOrgs = []string{"Rembrandt Q. Einstein"}
 	s.NoError(evergreen.UpdateConfig(settings))
 
 	s.rm = makePutProjectByID().(*projectIDPutHandler)
@@ -373,8 +375,8 @@ func (s *ProjectPutSuite) TestParse() {
 	defer cancel()
 	json := []byte(
 		`{
-				"owner_name": "evergreen-ci",
-				"repo_name": "evergreen",
+				"owner_name": "Rembrandt Q. Einstein",
+				"repo_name": "nutsandgum",
 				"branch_name": "main",
 				"enabled": false,
 				"private": true,
@@ -405,15 +407,10 @@ func (s *ProjectPutSuite) TestRunNewWithValidEntity() {
 		Id: "user",
 	}
 	s.NoError(u.Insert())
-
-	settings, err := evergreen.GetConfig()
-	s.NoError(err)
-	settings.GithubOrgs = []string{"evergreen-ci"}
-
 	json := []byte(
 		`{
-				"owner_name": "evergreen-ci",
-				"repo_name": "evergreen",
+				"owner_name": "Rembrandt Q. Einstein",
+				"repo_name": "nutsandgum",
 				"branch_name": "main",
 				"enabled": false,
 				"private": true,
@@ -434,8 +431,8 @@ func (s *ProjectPutSuite) TestRunNewWithValidEntity() {
 	h := s.rm.(*projectIDPutHandler)
 	h.projectName = "nutsandgum"
 	h.project = model.APIProjectRef{
-		Owner: utility.ToStringPtr("evergreen-ci"),
-		Repo:  utility.ToStringPtr("evergreen"),
+		Owner: utility.ToStringPtr("Rembrandt Q. Einstein"),
+		Repo:  utility.ToStringPtr("nutsandgum"),
 	}
 	h.body = json
 
