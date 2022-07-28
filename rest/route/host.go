@@ -420,7 +420,7 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 	if catcher.HasErrors() {
 		err := catcher.Resolve()
 		grip.CriticalWhen(!ch.dryRun, message.WrapError(err, message.Fields{
-			"message": "not all unexpirable hosts/volumes terminated",
+			"message": "the user did not offboard fully",
 			"context": "user offboarding",
 			"user":    ch.user,
 		}))
