@@ -24,9 +24,12 @@ func (c *SplunkConfig) Get(env Environment) error {
 		if err != mongo.ErrNoDocuments {
 			return errors.Wrapf(err, "retrieving section '%s'", c.SectionId())
 		}
-		// Get the splunk config from global if the document doesn't exist.
+		// TODO EVG-17353: remove retrieving settings from global
 		globalConfig := coll.FindOne(ctx, byId(ConfigDocID))
 		if err := globalConfig.Err(); err != nil {
+			if err != mongo.ErrNoDocuments {
+				return errors.Wrap(err, "retrieving global settings")
+			}
 			c = &SplunkConfig{}
 			return nil
 		}
