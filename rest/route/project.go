@@ -568,8 +568,6 @@ type projectIDPutHandler struct {
 	projectName string
 	project     model.APIProjectRef
 	body        []byte
-
-	settings *evergreen.Settings
 }
 
 func makePutProjectByID() gimlet.RouteHandler {
@@ -593,7 +591,7 @@ func (h *projectIDPutHandler) Parse(ctx context.Context, r *http.Request) error 
 	h.body = b
 
 	apiProjectRef := model.APIProjectRef{}
-	if err = json.Unmarshal(h.body, apiProjectRef); err != nil {
+	if err = json.Unmarshal(h.body, &apiProjectRef); err != nil {
 		return errors.Wrap(err, "unmarshalling JSON request body into project ref")
 	}
 	h.project = apiProjectRef
