@@ -414,6 +414,17 @@ func ClearLoginCache(user gimlet.User) error {
 	return nil
 }
 
+// ClearUserSettings clears one user's settings
+func ClearUserSettings(userId string) error {
+	update := bson.M{"$set": bson.M{SettingsKey: bson.M{}}}
+	query := bson.M{IdKey: userId}
+	if err := UpdateOne(query, update); err != nil {
+		return errors.Wrap(err, "unsetting user settings")
+	}
+
+	return nil
+}
+
 // ClearAllLoginCaches clears all users' login caches, forcibly logging them
 // out.
 func ClearAllLoginCaches() error {

@@ -383,10 +383,12 @@ func MockConfig() *evergreen.Settings {
 			Token: "token",
 			Level: "info",
 		},
-		Splunk: send.SplunkConnectionInfo{
-			ServerURL: "server",
-			Token:     "token",
-			Channel:   "channel",
+		Splunk: evergreen.SplunkConfig{
+			SplunkConnectionInfo: send.SplunkConnectionInfo{
+				ServerURL: "server",
+				Token:     "token",
+				Channel:   "channel",
+			},
 		},
 		Triggers: evergreen.TriggerConfig{
 			GenerateTaskDistro: "distro",

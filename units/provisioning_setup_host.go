@@ -269,7 +269,7 @@ func putJasperCredentials(ctx context.Context, env evergreen.Environment, settin
 		return errors.Wrap(err, "could not generate Jasper credentials for host")
 	}
 
-	writeCmds, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
+	writeCmds, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk.SplunkConnectionInfo, creds)
 	if err != nil {
 		return errors.Wrap(err, "could not get command to write Jasper credentials file")
 	}
