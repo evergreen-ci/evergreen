@@ -341,18 +341,30 @@ func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
 // Tests for PUT /rest/v2/projects/{project_id}
 
 type ProjectPutSuite struct {
-	rm gimlet.RouteHandler
+	rm       gimlet.RouteHandler
+	env      evergreen.Environment
+	settings *evergreen.Settings
 
 	suite.Suite
 }
 
 func TestProjectPutSuite(t *testing.T) {
-	suite.Run(t, new(ProjectPutSuite))
+
+	s := &ProjectPutSuite{
+		env: testutil.NewEnvironment(ctx, t),
+	}
+	suite.Run(t, s)
 }
 
 func (s *ProjectPutSuite) SetupTest() {
 	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection, user.Collection))
 	s.NoError(getTestProjectRef().Insert())
+
+	settings := s.env.Settings()
+	s.settings = settings
+	settings.GithubOrgs = []string{"evergreen-ci", "evergreen"}
+	s.NoError(evergreen.UpdateConfig(settings))
+
 	s.rm = makePutProjectByID().(*projectIDPutHandler)
 }
 
@@ -361,8 +373,8 @@ func (s *ProjectPutSuite) TestParse() {
 	defer cancel()
 	json := []byte(
 		`{
-				"owner_name": "Rembrandt Q. Einstein",
-				"repo_name": "nutsandgum",
+				"owner_name": "evergreen-ci",
+				"repo_name": "evergreen",
 				"branch_name": "main",
 				"enabled": false,
 				"private": true,
@@ -393,10 +405,15 @@ func (s *ProjectPutSuite) TestRunNewWithValidEntity() {
 		Id: "user",
 	}
 	s.NoError(u.Insert())
+
+	settings, err := evergreen.GetConfig()
+	s.NoError(err)
+	settings.GithubOrgs = []string{"evergreen-ci"}
+
 	json := []byte(
 		`{
-				"owner_name": "Rembrandt Q. Einstein",
-				"repo_name": "nutsandgum",
+				"owner_name": "evergreen-ci",
+				"repo_name": "evergreen",
 				"branch_name": "main",
 				"enabled": false,
 				"private": true,
@@ -416,6 +433,10 @@ func (s *ProjectPutSuite) TestRunNewWithValidEntity() {
 
 	h := s.rm.(*projectIDPutHandler)
 	h.projectName = "nutsandgum"
+	h.project = model.APIProjectRef{
+		Owner: utility.ToStringPtr("evergreen-ci"),
+		Repo:  utility.ToStringPtr("evergreen"),
+	}
 	h.body = json
 
 	resp := s.rm.Run(ctx)
