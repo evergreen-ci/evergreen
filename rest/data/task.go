@@ -97,10 +97,7 @@ func FindTasksByProjectAndCommit(opts task.GetTasksByProjectAndCommitOptions) ([
 func CheckTaskSecret(taskID string, r *http.Request) (int, error) {
 	_, code, err := serviceModel.ValidateTask(taskID, true, r)
 	if code == http.StatusConflict {
-		if err == nil {
-			err = errors.Errorf("conflict for task '%s'", taskID)
-		}
-		return http.StatusUnauthorized, errors.Wrapf(err, "invalid task '%s'", taskID)
+		return code, errors.Wrapf(err, "invalid task '%s'", taskID)
 	}
 	return code, errors.WithStack(err)
 }
