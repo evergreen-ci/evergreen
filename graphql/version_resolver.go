@@ -222,28 +222,36 @@ func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion)
 	return status, nil
 }
 
-func (r *versionResolver) VersionTasks(ctx context.Context, obj *restModel.APIVersion, sorts []*SortOrder, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string, includeEmptyActivation *bool) (*VersionTasks, error) {
+func (r *versionResolver) TaskCount(ctx context.Context, obj *restModel.APIVersion) (*int, error) {
+	taskCount, err := task.Count(db.Query(task.DisplayTasksByVersion(*obj.Id)))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting task count for version `%s`: %s", *obj.Id, err.Error()))
+	}
+	return &taskCount, nil
+}
+
+func (r *versionResolver) Tasks(ctx context.Context, obj *restModel.APIVersion, options *TaskFilterOptions) (*VersionTasks, error) {
 	versionId := utility.FromStringPtr(obj.Id)
 	pageParam := 0
-	if page != nil {
-		pageParam = *page
+	if options.Page != nil {
+		pageParam = *options.Page
 	}
 	limitParam := 0
-	if limit != nil {
-		limitParam = *limit
+	if options.Limit != nil {
+		limitParam = *options.Limit
 	}
 	variantParam := ""
-	if variant != nil {
-		variantParam = *variant
+	if options.Variant != nil {
+		variantParam = *options.Variant
 	}
 	taskNameParam := ""
-	if taskName != nil {
-		taskNameParam = *taskName
+	if options.TaskName != nil {
+		taskNameParam = *options.TaskName
 	}
 	var taskSorts []task.TasksSortOrder
-	if len(sorts) > 0 {
+	if len(options.Sorts) > 0 {
 		taskSorts = []task.TasksSortOrder{}
-		for _, singleSort := range sorts {
+		for _, singleSort := range options.Sorts {
 			key := ""
 			switch singleSort.Key {
 			// the keys here should be the keys for the column headers of the tasks table
@@ -276,15 +284,15 @@ func (r *versionResolver) VersionTasks(ctx context.Context, obj *restModel.APIVe
 	}
 
 	opts := task.GetTasksByVersionOptions{
-		Statuses:                       getValidTaskStatusesFilter(statuses),
-		BaseStatuses:                   getValidTaskStatusesFilter(baseStatuses),
+		Statuses:                       getValidTaskStatusesFilter(options.Statuses),
+		BaseStatuses:                   getValidTaskStatusesFilter(options.BaseStatuses),
 		Variants:                       []string{variantParam},
 		TaskNames:                      []string{taskNameParam},
 		Page:                           pageParam,
 		Limit:                          limitParam,
 		Sorts:                          taskSorts,
 		IncludeBaseTasks:               true,
-		IncludeEmptyActivation:         utility.FromBoolPtr(includeEmptyActivation),
+		IncludeEmptyActivation:         utility.FromBoolPtr(options.IncludeEmptyActivation),
 		IncludeBuildVariantDisplayName: true,
 		IsMainlineCommit:               !evergreen.IsPatchRequester(v.Requester),
 	}
@@ -304,17 +312,9 @@ func (r *versionResolver) VersionTasks(ctx context.Context, obj *restModel.APIVe
 	}
 	versionTasks := VersionTasks{
 		Count: count,
-		Tasks: apiTasks,
+		Data:  apiTasks,
 	}
 	return &versionTasks, nil
-}
-
-func (r *versionResolver) TaskCount(ctx context.Context, obj *restModel.APIVersion) (*int, error) {
-	taskCount, err := task.Count(db.Query(task.DisplayTasksByVersion(*obj.Id)))
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting task count for version `%s`: %s", *obj.Id, err.Error()))
-	}
-	return &taskCount, nil
 }
 
 func (r *versionResolver) TaskStatuses(ctx context.Context, obj *restModel.APIVersion) ([]string, error) {

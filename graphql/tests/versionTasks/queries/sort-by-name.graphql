@@ -1,7 +1,7 @@
 {
   version(id: "5e4ff3abe3c3317e352062e4") {
-    versionTasks(sorts: [{ Key: NAME, Direction: ASC }]) {
-      tasks {
+    tasks(options: { sorts: [{ Key: NAME, Direction: ASC }] }) {
+      data {
         id
         displayName
       }

@@ -1,7 +1,7 @@
 {
   version(id: "5e4ff3abe3c3317e352062e4") {
-    versionTasks(page: 0) {
-      tasks {
+    tasks(options: { page: 0 }) {
+      data {
         id
         executionTasksFull {
           id

@@ -276,6 +276,17 @@ type TaskFiles struct {
 	GroupedFiles []*GroupedFiles `json:"groupedFiles"`
 }
 
+type TaskFilterOptions struct {
+	Sorts                  []*SortOrder `json:"sorts"`
+	Page                   *int         `json:"page"`
+	Limit                  *int         `json:"limit"`
+	Statuses               []string     `json:"statuses"`
+	BaseStatuses           []string     `json:"baseStatuses"`
+	Variant                *string      `json:"variant"`
+	TaskName               *string      `json:"taskName"`
+	IncludeEmptyActivation *bool        `json:"includeEmptyActivation"`
+}
+
 // TaskLogs is the return value for the taskLogs query.
 // It contains the logs for a given task on a given execution.
 type TaskLogs struct {
@@ -361,7 +372,7 @@ type VariantTasks struct {
 
 type VersionTasks struct {
 	Count int              `json:"count"`
-	Tasks []*model.APITask `json:"tasks"`
+	Data  []*model.APITask `json:"data"`
 }
 
 type VersionTiming struct {

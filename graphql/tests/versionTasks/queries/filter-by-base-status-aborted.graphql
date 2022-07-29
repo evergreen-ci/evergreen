@@ -1,7 +1,7 @@
 {
   version(id: "5e4ff3abe3c3317e352062e4") {
-    versionTasks(baseStatuses: ["aborted"]) {
-      tasks {
+    tasks(options: { baseStatuses: ["aborted"] }) {
+      data {
         id
       }
     }

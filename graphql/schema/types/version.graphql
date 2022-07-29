@@ -39,26 +39,28 @@ type Version {
   revision: String!
   startTime: Time
   status: String!
-  versionTasks(
-    sorts: [SortOrder!]
-    page: Int = 0
-    limit: Int = 0
-    statuses: [String!] = []
-    baseStatuses: [String!] = []
-    variant: String
-    taskName: String
-    includeEmptyActivation: Boolean = false
-  ): VersionTasks!
   taskCount: Int
+  tasks(options: TaskFilterOptions): VersionTasks!
   taskStatuses: [String!]!
   taskStatusStats(options: BuildVariantOptions): TaskStats
   upstreamProject: UpstreamProject
   versionTiming: VersionTiming
 }
 
+input TaskFilterOptions {
+  sorts: [SortOrder!]
+  page: Int = 0
+  limit: Int = 0
+  statuses: [String!] = []
+  baseStatuses: [String!] = []
+  variant: String
+  taskName: String
+  includeEmptyActivation: Boolean = false
+}
+
 type VersionTasks {
   count: Int!
-  tasks: [Task!]!
+  data: [Task!]!
 }
 
 type TaskStats {
