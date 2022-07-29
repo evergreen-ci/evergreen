@@ -1946,8 +1946,9 @@ func (t *Task) displayTaskPriority() int {
 func (t *Task) Reset() error {
 	return UpdateOne(
 		bson.M{
-			IdKey:     t.Id,
-			StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses},
+			IdKey:       t.Id,
+			StatusKey:   bson.M{"$in": evergreen.TaskCompletedStatuses},
+			ArchivedKey: true,
 		},
 		resetTaskUpdate(t),
 	)
@@ -1966,8 +1967,9 @@ func ResetTasks(tasks []Task) error {
 
 	if _, err := UpdateAll(
 		bson.M{
-			IdKey:     bson.M{"$in": taskIDs},
-			StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses},
+			IdKey:       bson.M{"$in": taskIDs},
+			StatusKey:   bson.M{"$in": evergreen.TaskCompletedStatuses},
+			ArchivedKey: true,
 		},
 		resetTaskUpdate(nil),
 	); err != nil {
