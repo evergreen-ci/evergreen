@@ -363,6 +363,8 @@ github.com/evergreen-ci/certdepot v0.0.0-20211117185134-dbedb3d79a10 h1:dVNSXGxz
 github.com/evergreen-ci/certdepot v0.0.0-20211117185134-dbedb3d79a10/go.mod h1:KpN0y+4m4oplnmM/PQmKAG+NQDKUbtr1BbdR4mr+6Ww=
 github.com/evergreen-ci/cocoa v0.0.0-20220718191344-9c40afd9b130 h1:SJ9cSQAFm6tVG846mL18NayJDezVAa7O1ksL7NsSZEg=
 github.com/evergreen-ci/cocoa v0.0.0-20220718191344-9c40afd9b130/go.mod h1:lbhhy1dk+2jeAjJQlGvY+/W8U/Dpnh9b67Y2buCgEKM=
+github.com/evergreen-ci/cocoa v0.0.0-20220728163929-9e0e88aac0df h1:aGAKVqfGBXtNhbKKtUauyf2I8NRb4efil7Y3BpcEGhs=
+github.com/evergreen-ci/cocoa v0.0.0-20220728163929-9e0e88aac0df/go.mod h1:KAY46OMYKFmnVi+SnPHBSML16Ezp6rYVfPLK1R0eX2s=
 github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57 h1:CIUR6i5YWJ/z5RbZ11UomO7aZxQjeHqAjOqGwPh7sCY=
 github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57/go.mod h1:lbmNkNEkJEuhIdctIEbJhx4hMzjRvbUg172mQRvNnKo=
 github.com/evergreen-ci/gimlet v0.0.0-20211018155143-ebbbff34990a/go.mod h1:F2dAoc1x1+JwZH9ylB9tpeOnztafEx2IbZjEz8GQzOM=

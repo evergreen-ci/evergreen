@@ -178,7 +178,9 @@ func TestPodCreationJob(t *testing.T) {
 			defer func() {
 				assert.NoError(t, smClient.Close(ctx))
 			}()
-			vault := cocoaMock.NewVault(cloud.MakeSecretsManagerVault(smClient))
+
+			vault, err := cloud.MakeSecretsManagerVault(smClient)
+			require.NoError(t, err)
 
 			ecsClient := &cocoaMock.ECSClient{}
 			defer func() {
@@ -193,7 +195,7 @@ func TestPodCreationJob(t *testing.T) {
 
 			j.ecsClient = ecsClient
 			j.smClient = smClient
-			j.vault = vault
+			j.vault = cocoaMock.NewVault(vault)
 
 			pc, err := cloud.MakeECSPodCreator(j.ecsClient, j.vault)
 			require.NoError(t, err)

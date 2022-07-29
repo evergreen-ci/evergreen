@@ -52,7 +52,9 @@ func TestMakeSecretsManagerVault(t *testing.T) {
 	t.Run("Succeeds", func(t *testing.T) {
 		c, err := MakeSecretsManagerClient(validPodClientSettings())
 		require.NoError(t, err)
-		assert.NotZero(t, MakeSecretsManagerVault(c))
+		v, err := MakeSecretsManagerVault(c)
+		assert.NoError(t, err)
+		assert.NotZero(t, v)
 	})
 }
 
@@ -136,7 +138,8 @@ func TestExportECSPod(t *testing.T) {
 			defer func() {
 				assert.NoError(t, smClient.Close(ctx))
 			}()
-			vault := MakeSecretsManagerVault(smClient)
+			vault, err := MakeSecretsManagerVault(smClient)
+			require.NoError(t, err)
 
 			tCase(ctx, t, &p, ecsClient, vault)
 		})

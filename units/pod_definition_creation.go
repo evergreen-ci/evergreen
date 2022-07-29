@@ -155,7 +155,11 @@ func (j *podDefinitionCreationJob) populateIfUnset(ctx context.Context) error {
 			}
 			j.smClient = client
 		}
-		j.vault = cloud.MakeSecretsManagerVault(j.smClient)
+		vault, err := cloud.MakeSecretsManagerVault(j.smClient)
+		if err != nil {
+			return errors.Wrap(err, "initializing Secrets Manager vault")
+		}
+		j.vault = vault
 	}
 
 	if j.ecsClient == nil {

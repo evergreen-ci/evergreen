@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/cocoa/ecs"
 	"github.com/evergreen-ci/cocoa/mock"
-	"github.com/evergreen-ci/cocoa/secret"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
@@ -321,7 +320,9 @@ func TestPodTerminationJob(t *testing.T) {
 			defer func() {
 				assert.NoError(t, j.smClient.Close(ctx))
 			}()
-			j.vault = mock.NewVault(secret.NewBasicSecretsManager(j.smClient))
+			vault, err := cloud.MakeSecretsManagerVault(j.smClient)
+			require.NoError(t, err)
+			j.vault = mock.NewVault(vault)
 
 			pc, err := ecs.NewBasicECSPodCreator(j.ecsClient, nil)
 			require.NoError(t, err)

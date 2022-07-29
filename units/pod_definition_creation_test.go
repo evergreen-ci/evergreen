@@ -231,7 +231,9 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 				assert.NoError(t, j.ecsClient.Close(ctx))
 			}()
 
-			j.vault = cocoaMock.NewVault(cloud.MakeSecretsManagerVault(j.smClient))
+			vault, err := cloud.MakeSecretsManagerVault(j.smClient)
+			require.NoError(t, err)
+			j.vault = cocoaMock.NewVault(vault)
 
 			pdm, err := cloud.MakeECSPodDefinitionManager(j.ecsClient, j.vault)
 			require.NoError(t, err)

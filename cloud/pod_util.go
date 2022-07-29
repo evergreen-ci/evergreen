@@ -27,8 +27,8 @@ func MakeSecretsManagerClient(settings *evergreen.Settings) (cocoa.SecretsManage
 }
 
 // MakeSecretsManagerVault creates a cocoa.Vault backed by Secrets Manager.
-func MakeSecretsManagerVault(c cocoa.SecretsManagerClient) cocoa.Vault {
-	return secret.NewBasicSecretsManager(c)
+func MakeSecretsManagerVault(c cocoa.SecretsManagerClient) (cocoa.Vault, error) {
+	return secret.NewBasicSecretsManager(*secret.NewBasicSecretsManagerOptions().SetClient(c))
 }
 
 // PodDefinitionTag is the name of the tag in ECS that marks whether pod
