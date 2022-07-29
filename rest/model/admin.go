@@ -50,6 +50,7 @@ type APIAdminSettings struct {
 	Amboy               *APIAmboyConfig                   `json:"amboy,omitempty"`
 	Api                 *APIapiConfig                     `json:"api,omitempty"`
 	ApiUrl              *string                           `json:"api_url,omitempty"`
+	AWSInstanceRole     *string                           `json:"aws_instance_role,omitempty"`
 	AuthConfig          *APIAuthConfig                    `json:"auth,omitempty"`
 	Banner              *string                           `json:"banner,omitempty"`
 	BannerTheme         *string                           `json:"banner_theme,omitempty"`
@@ -119,6 +120,7 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 			}
 		}
 		as.ApiUrl = &v.ApiUrl
+		as.AWSInstanceRole = utility.ToStringPtr(v.AWSInstanceRole)
 		as.Banner = &v.Banner
 		tmp := string(v.BannerTheme)
 		as.BannerTheme = &tmp
@@ -186,6 +188,9 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	}
 	if as.ApiUrl != nil {
 		settings.ApiUrl = *as.ApiUrl
+	}
+	if as.AWSInstanceRole != nil {
+		settings.AWSInstanceRole = *as.AWSInstanceRole
 	}
 	if as.Banner != nil {
 		settings.Banner = *as.Banner
