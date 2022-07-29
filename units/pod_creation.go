@@ -129,6 +129,11 @@ func (j *podCreationJob) Run(ctx context.Context) {
 			return
 		}
 
+		if err := podDef.UpdateLastAccessed(); err != nil {
+			j.AddRetryableError(errors.Wrapf(err, "updating last access time for pod definition '%s'", podDef.ID))
+			return
+		}
+
 		p, err := j.ecsPodCreator.CreatePodFromExistingDefinition(ctx, cloud.ExportECSPodDefinition(*podDef), *execOpts)
 		if err != nil {
 			j.AddRetryableError(errors.Wrap(err, "starting pod"))

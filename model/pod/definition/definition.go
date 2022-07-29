@@ -16,7 +16,7 @@ import (
 // storage.
 type PodDefinition struct {
 	// ID is the unique identifier for this document.
-	ID string `bson:"_id,omitempty"`
+	ID string `bson:"_id"`
 	// ExternalID is the identifier for the template definition in external
 	// storage.
 	ExternalID string `bson:"external_id,omitempty"`
@@ -31,6 +31,18 @@ type PodDefinition struct {
 // Insert inserts the pod definition into the collection.
 func (pd *PodDefinition) Insert() error {
 	return db.Insert(Collection, pd)
+}
+
+// UpdateLastAccessed updates the time this pod definition was last accessed to
+// now.
+func (pd *PodDefinition) UpdateLastAccessed() error {
+	return UpdateOne(bson.M{
+		IDKey: pd.ID,
+	}, bson.M{
+		"$set": bson.M{
+			LastAccessedKey: time.Now(),
+		},
+	})
 }
 
 // PodDefinitionCache implements a cocoa.ECSPodDefinitionCache to cache pod

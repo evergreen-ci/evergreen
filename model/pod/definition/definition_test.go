@@ -12,6 +12,32 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestPodDefinitionUpdateLastAccessed(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
+	for tName, tCase := range map[string]func(t *testing.T, pd PodDefinition){
+		"SetsLastAccessedTime": func(t *testing.T, pd PodDefinition) {
+			require.NoError(t, pd.Insert())
+
+			require.NoError(t, pd.UpdateLastAccessed())
+		},
+		"FailsForNonexistentPodDefinition": func(t *testing.T, pd PodDefinition) {
+			assert.Error(t, pd.UpdateLastAccessed())
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(Collection))
+			pd := PodDefinition{
+				ID:         "id",
+				ExternalID: "external_id",
+				Family:     "family",
+			}
+			tCase(t, pd)
+		})
+	}
+}
+
 func TestPodDefinitionCache(t *testing.T) {
 	assert.Implements(t, (*cocoa.ECSPodDefinitionCache)(nil), PodDefinitionCache{})
 

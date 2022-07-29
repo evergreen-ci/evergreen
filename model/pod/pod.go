@@ -553,7 +553,7 @@ func (o *TaskContainerCreationOptions) Hash() string {
 	h.Add(string(o.OS))
 	h.Add(string(o.Arch))
 	h.Add(string(o.WindowsVersion))
-	h.Add(string(o.WorkingDir))
+	h.Add(o.WorkingDir)
 	h.Add(newHashableEnvVars(o.EnvVars).hash())
 	h.Add(newHashableEnvSecrets(o.EnvSecrets).hash())
 	return h.Sum()
