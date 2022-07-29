@@ -61,7 +61,7 @@ func NewPodDefinitionCreationJob(ecsConf evergreen.ECSConfig, opts pod.TaskConta
 	j := makePodDefinitionCreationJob()
 	j.ContainerOpts = opts
 	j.Family = j.ContainerOpts.GetFamily(ecsConf)
-	j.SetID(fmt.Sprintf("%s.%s.%s", podCreationJobName, j.Family, id))
+	j.SetID(fmt.Sprintf("%s.%s.%s", podDefinitionCreationJobName, j.Family, id))
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", podDefinitionCreationJobName, j.Family)})
 	j.SetEnqueueAllScopes(true)
 	j.UpdateRetryInfo(amboy.JobRetryOptions{

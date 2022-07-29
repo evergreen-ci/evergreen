@@ -91,6 +91,12 @@ func (j *podCreationJob) Run(ctx context.Context) {
 			if err := amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), terminationJob); err != nil {
 				j.AddError(errors.Wrap(err, "enqueueing job to terminate pod"))
 			}
+
+			grip.Info(message.Fields{
+				"message": "decommissioned pod after it failed to be created",
+				"pod":     j.pod.ID,
+				"job":     j.ID(),
+			})
 		}
 	}()
 	if err := j.populateIfUnset(ctx); err != nil {

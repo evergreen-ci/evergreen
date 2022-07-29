@@ -16,7 +16,7 @@ import (
 // storage.
 type PodDefinition struct {
 	// ID is the unique identifier for this document.
-	ID string `bson:"id,omitempty"`
+	ID string `bson:"_id,omitempty"`
 	// ExternalID is the identifier for the template definition in external
 	// storage.
 	ExternalID string `bson:"external_id,omitempty"`

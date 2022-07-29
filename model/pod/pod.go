@@ -562,7 +562,7 @@ func (o *TaskContainerCreationOptions) Hash() string {
 // GetFamily returns the family name for the cloud pod definition to be used
 // for these container creation options.
 func (o *TaskContainerCreationOptions) GetFamily(ecsConf evergreen.ECSConfig) string {
-	return strings.Join([]string{strings.TrimRight(ecsConf.TaskDefinitionPrefix, "-"), "agent", o.Hash()}, "-")
+	return strings.Join([]string{strings.TrimRight(ecsConf.TaskDefinitionPrefix, "-"), "task", o.Hash()}, "-")
 }
 
 // IsZero implements the bsoncodec.Zeroer interface for the sake of defining the

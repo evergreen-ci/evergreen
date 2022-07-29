@@ -43,7 +43,7 @@ func (p *APICreatePod) ToService() (*pod.Pod, error) {
 		return nil, err
 	}
 
-	return pod.NewTaskIntentPod(evergreen.ECSConfig{}, pod.TaskIntentPodOptions{
+	return pod.NewTaskIntentPod(evergreen.GetEnvironment().Settings().Providers.AWS.Pod.ECS, pod.TaskIntentPodOptions{
 		Secret:         utility.FromStringPtr(p.Secret),
 		CPU:            utility.FromIntPtr(p.CPU),
 		MemoryMB:       utility.FromIntPtr(p.Memory),

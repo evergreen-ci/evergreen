@@ -83,8 +83,6 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 			assert.True(t, strings.HasPrefix(utility.FromStringPtr(taskDef.Family), podConf.ECS.TaskDefinitionPrefix))
 			assert.Equal(t, fmt.Sprint(j.ContainerOpts.CPU), utility.FromStringPtr(taskDef.Cpu))
 			assert.Equal(t, fmt.Sprint(j.ContainerOpts.MemoryMB), utility.FromStringPtr(taskDef.Memory))
-			// kim: TODO: upgrade Cocoa to include the execution role in the
-			// mock ECS service task def.
 			assert.Equal(t, podConf.ECS.ExecutionRole, utility.FromStringPtr(taskDef.ExecutionRoleArn))
 			assert.Equal(t, podConf.ECS.TaskRole, utility.FromStringPtr(taskDef.TaskRoleArn))
 
