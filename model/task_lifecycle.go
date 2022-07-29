@@ -294,20 +294,11 @@ func resetTask(taskId, caller string) error {
 	if t.IsPartOfDisplay() {
 		return errors.Errorf("cannot restart execution task '%s' because it is part of a display task", t.Id)
 	}
-	shouldExit, err := t.Archive()
-	if err != nil {
+	if err = t.Archive(); err != nil {
 		return errors.Wrap(err, "can't restart task because it can't be archived")
 	}
-	if shouldExit {
-		grip.Debug(message.Fields{
-			"message":   "task was not found in completed state, skipping reset",
-			"task_id":   t.Id,
-			"execution": t.Execution,
-		})
-		return nil
-	}
 
-	if err := MarkOneTaskReset(t); err != nil {
+	if err = MarkOneTaskReset(t); err != nil {
 		return errors.WithStack(err)
 	}
 	event.LogTaskRestarted(t.Id, t.Execution, caller)
@@ -1377,12 +1368,8 @@ func MarkTasksReset(taskIds []string) error {
 		return errors.WithStack(err)
 	}
 
-	info, err := task.ResetTasks(tasks)
-	if err != nil {
+	if err = task.ResetTasks(tasks); err != nil {
 		return errors.Wrap(err, "resetting tasks in database")
-	}
-	if info.Updated == 0 {
-		return nil
 	}
 
 	catcher := grip.NewBasicCatcher()
