@@ -108,7 +108,7 @@ func (j *podAllocatorJob) Run(ctx context.Context) {
 		return
 	}
 
-	intentPod, err := pod.NewTaskIntentPod(*opts)
+	intentPod, err := pod.NewTaskIntentPod(evergreen.ECSConfig{}, *opts)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "creating new task intent pod"))
 		return

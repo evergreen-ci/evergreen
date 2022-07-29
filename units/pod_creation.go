@@ -115,16 +115,11 @@ func (j *podCreationJob) Run(ctx context.Context) {
 			return
 		}
 
-		opts, err := cloud.ExportECSPodDefinitionOptions(&settings, j.pod.TaskContainerCreationOpts)
-		if err != nil {
-			j.AddError(errors.Wrap(err, "getting pod definition options"))
-			return
-		}
 		// Wait for the pod definition to be asynchronously created. If the pod
 		// definition is not ready yet, retry again later.
-		podDef, err := j.waitForPodDefinition(*opts)
+		podDef, err := j.waitForPodDefinition(j.pod.Family)
 		if err != nil {
-			j.AddRetryableError(errors.Wrap(err, "waiting for pod definition"))
+			j.AddRetryableError(errors.Wrap(err, "waiting for pod definition to be created"))
 			return
 		}
 
@@ -205,14 +200,13 @@ func (j *podCreationJob) populateIfUnset(ctx context.Context) error {
 	return nil
 }
 
-func (j *podCreationJob) waitForPodDefinition(opts cocoa.ECSPodDefinitionOptions) (*definition.PodDefinition, error) {
-	digest := opts.Hash()
-	podDef, err := definition.FindOneByDigest(digest)
+func (j *podCreationJob) waitForPodDefinition(family string) (*definition.PodDefinition, error) {
+	podDef, err := definition.FindOneByFamily(family)
 	if err != nil {
-		return nil, errors.Wrapf(err, "finding pod definition with digest '%s'", digest)
+		return nil, errors.Wrapf(err, "finding pod definition with family '%s'", family)
 	}
 	if podDef == nil {
-		return nil, errors.Errorf("pod definition with digest '%s' not found", digest)
+		return nil, errors.Errorf("pod definition with family '%s' not found", family)
 	}
 
 	return podDef, nil

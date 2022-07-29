@@ -5,7 +5,9 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/cocoa"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -18,11 +20,17 @@ type PodDefinition struct {
 	// ExternalID is the identifier for the template definition in external
 	// storage.
 	ExternalID string `bson:"external_id,omitempty"`
-	// Digest is the hashed value for the pod definition parameters.
-	Digest string `bson:"digest,omitempty"`
+	// Family is the family name of the pod definition stored in the cloud
+	// provider.
+	Family string `bson:"family,omitempty"`
 	// LastAccessed is the timestamp for the last time this pod definition was
 	// used.
 	LastAccessed time.Time `bson:"last_accessed,omitempty"`
+}
+
+// Insert inserts the pod definition into the collection.
+func (pd *PodDefinition) Insert() error {
+	return db.Insert(Collection, pd)
 }
 
 // PodDefinitionCache implements a cocoa.ECSPodDefinitionCache to cache pod
@@ -32,22 +40,22 @@ type PodDefinitionCache struct{}
 // Put inserts a new pod definition; if an identical one already exists, this is
 // a no-op.
 func (pdc PodDefinitionCache) Put(_ context.Context, item cocoa.ECSPodDefinitionItem) error {
-	h := item.DefinitionOpts.Hash()
-	idAndDigest := bson.M{
+	family := utility.FromStringPtr(item.DefinitionOpts.Name)
+	idAndFamily := bson.M{
 		ExternalIDKey: item.ID,
-		DigestKey:     h,
+		FamilyKey:     family,
 	}
 	newPodDef := bson.M{
 		"$set": bson.M{
 			ExternalIDKey:   item.ID,
-			DigestKey:       h,
+			FamilyKey:       family,
 			LastAccessedKey: time.Now(),
 		},
 		"$setOnInsert": bson.M{
 			IDKey: primitive.NewObjectID().String(),
 		},
 	}
-	if _, err := UpsertOne(idAndDigest, newPodDef); err != nil {
+	if _, err := UpsertOne(idAndFamily, newPodDef); err != nil {
 		return errors.Wrap(err, "upserting pod definition")
 	}
 	return nil

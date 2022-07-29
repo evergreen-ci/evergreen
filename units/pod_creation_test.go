@@ -2,7 +2,6 @@ package units
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/cocoa"
@@ -14,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/pod/definition"
+	"github.com/evergreen-ci/evergreen/model/pod/dispatcher"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -42,6 +42,14 @@ func TestPodCreationJob(t *testing.T) {
 			require.NoError(t, j.pod.Insert())
 			assert.Equal(t, pod.StatusInitializing, j.pod.Status)
 
+			podDefOpts, err := cloud.ExportECSPodDefinitionOptions(j.env.Settings(), j.pod.TaskContainerCreationOpts)
+			require.NoError(t, err)
+
+			pdm, err := cloud.MakeECSPodDefinitionManager(j.ecsClient, j.vault)
+			require.NoError(t, err)
+			_, err = pdm.CreatePodDefinition(ctx, *podDefOpts)
+			require.NoError(t, err)
+
 			j.Run(ctx)
 			require.NoError(t, j.Error())
 
@@ -63,108 +71,74 @@ func TestPodCreationJob(t *testing.T) {
 			taskID := utility.FromStringPtr(res.TaskID)
 			assert.NotZero(t, taskID)
 			assert.Equal(t, dbPod.Resources.ExternalID, taskID, "ECS task ID should be saved in the DB pod")
-			require.Len(t, dbPod.Resources.Containers, 1, "should have created a pod with 1 container")
-
-			assert.Len(t, cocoaMock.GlobalSecretCache, len(dbPod.TaskContainerCreationOpts.EnvSecrets))
-			containerResources := res.Containers[0]
-			require.Len(t, containerResources.Secrets, len(dbPod.TaskContainerCreationOpts.EnvSecrets))
-			for _, secret := range containerResources.Secrets {
-				id := utility.FromStringPtr(secret.ID)
-				assert.Contains(t, dbPod.Resources.Containers[0].SecretIDs, id)
-
-				val, err := j.vault.GetValue(ctx, id)
-				require.NoError(t, err)
-
-				name := utility.FromStringPtr(secret.Name)
-
-				var found bool
-				for k, v := range dbPod.TaskContainerCreationOpts.EnvSecrets {
-					if strings.Contains(name, k) {
-						assert.Equal(t, v.Value, val)
-						found = true
-						break
-					}
-				}
-				assert.True(t, found, "missing expected secret '%s'", name)
-			}
+			assert.Len(t, dbPod.Resources.Containers, 1, "should have created a pod with 1 container")
 		},
-		// "FailsWithStartingStatus": func(ctx context.Context, t *testing.T, j *podCreationJob) {
-		//     require.NoError(t, j.pod.Insert())
-		//     require.NoError(t, j.pod.UpdateStatus(pod.StatusStarting))
-		//     assert.Equal(t, pod.StatusStarting, j.pod.Status)
-		//
-		//     j.Run(ctx)
-		//     require.Error(t, j.Error())
-		//     require.Zero(t, j.ecsPod)
-		//     require.Zero(t, j.pod.Resources)
-		//     assert.Len(t, cocoaMock.GlobalSecretCache, 0)
-		//     assert.Len(t, cocoaMock.GlobalECSService.Clusters[clusterName], 0)
-		//
-		//     dbPod, err := pod.FindOneByID(j.PodID)
-		//     require.NoError(t, err)
-		//     require.NotZero(t, dbPod)
-		//     assert.Equal(t, pod.StatusStarting, dbPod.Status)
-		// },
-		// "FailsWithRunningStatus": func(ctx context.Context, t *testing.T, j *podCreationJob) {
-		//     require.NoError(t, j.pod.Insert())
-		//     require.NoError(t, j.pod.UpdateStatus(pod.StatusRunning))
-		//     assert.Equal(t, pod.StatusRunning, j.pod.Status)
-		//
-		//     j.Run(ctx)
-		//     require.Error(t, j.Error())
-		//     assert.Zero(t, j.ecsPod)
-		//     assert.Zero(t, j.pod.Resources)
-		//     assert.Len(t, cocoaMock.GlobalSecretCache, 0)
-		//     assert.Len(t, cocoaMock.GlobalECSService.Clusters[clusterName], 0)
-		//
-		//     dbPod, err := pod.FindOneByID(j.PodID)
-		//     require.NoError(t, err)
-		//     require.NotZero(t, dbPod)
-		//     assert.Equal(t, pod.StatusRunning, dbPod.Status)
-		// },
-		// "FailsWithTerminatedStatus": func(ctx context.Context, t *testing.T, j *podCreationJob) {
-		//     require.NoError(t, j.pod.Insert())
-		//     require.NoError(t, j.pod.UpdateStatus(pod.StatusTerminated))
-		//
-		//     j.Run(ctx)
-		//     require.Error(t, j.Error())
-		//     assert.Zero(t, j.ecsPod)
-		//     assert.Zero(t, j.pod.Resources)
-		//     assert.Len(t, cocoaMock.GlobalSecretCache, 0)
-		//     assert.Len(t, cocoaMock.GlobalECSService.Clusters[clusterName], 0)
-		//
-		//     dbPod, err := pod.FindOneByID(j.PodID)
-		//     require.NoError(t, err)
-		//     require.NotZero(t, dbPod)
-		//     assert.Equal(t, pod.StatusTerminated, dbPod.Status)
-		// },
-		// "DecommissionsInitializingPodWithBadContainerOptions": func(ctx context.Context, t *testing.T, j *podCreationJob) {
-		//     j.pod.TaskContainerCreationOpts = pod.TaskContainerCreationOptions{}
-		//     require.NoError(t, j.pod.Insert())
-		//
-		//     j.UpdateRetryInfo(amboy.JobRetryOptions{
-		//         MaxAttempts: utility.ToIntPtr(1),
-		//     })
-		//
-		//     j.Run(ctx)
-		//     require.Error(t, j.pod.Insert())
-		//     assert.Zero(t, j.ecsPod)
-		//     assert.Zero(t, j.pod.Resources)
-		//     assert.Len(t, cocoaMock.GlobalSecretCache, 0)
-		//
-		//     dbPod, err := pod.FindOneByID(j.PodID)
-		//     require.NoError(t, err)
-		//     require.NotZero(t, dbPod)
-		//     assert.Equal(t, pod.StatusDecommissioned, dbPod.Status)
-		// },
+		"RetriesWithPodDefinitionNotYetCreated": func(ctx context.Context, t *testing.T, j *podCreationJob) {
+			require.NoError(t, j.pod.Insert())
+
+			j.Run(ctx)
+			assert.Error(t, j.Error())
+
+			assert.True(t, j.RetryInfo().ShouldRetry(), "job should retry because the pod's definition does not yet exist")
+		},
+		"FailsWithStartingStatus": func(ctx context.Context, t *testing.T, j *podCreationJob) {
+			require.NoError(t, j.pod.Insert())
+			require.NoError(t, j.pod.UpdateStatus(pod.StatusStarting))
+			assert.Equal(t, pod.StatusStarting, j.pod.Status)
+
+			j.Run(ctx)
+			require.Error(t, j.Error())
+			require.Zero(t, j.ecsPod)
+			require.Zero(t, j.pod.Resources)
+			assert.Len(t, cocoaMock.GlobalSecretCache, 0)
+			assert.Len(t, cocoaMock.GlobalECSService.Clusters[clusterName], 0)
+
+			dbPod, err := pod.FindOneByID(j.PodID)
+			require.NoError(t, err)
+			require.NotZero(t, dbPod)
+			assert.Equal(t, pod.StatusStarting, dbPod.Status)
+		},
+		"FailsWithRunningStatus": func(ctx context.Context, t *testing.T, j *podCreationJob) {
+			require.NoError(t, j.pod.Insert())
+			require.NoError(t, j.pod.UpdateStatus(pod.StatusRunning))
+			assert.Equal(t, pod.StatusRunning, j.pod.Status)
+
+			j.Run(ctx)
+			require.Error(t, j.Error())
+			assert.Zero(t, j.ecsPod)
+			assert.Zero(t, j.pod.Resources)
+			assert.Len(t, cocoaMock.GlobalSecretCache, 0)
+			assert.Len(t, cocoaMock.GlobalECSService.Clusters[clusterName], 0)
+
+			dbPod, err := pod.FindOneByID(j.PodID)
+			require.NoError(t, err)
+			require.NotZero(t, dbPod)
+			assert.Equal(t, pod.StatusRunning, dbPod.Status)
+		},
+		"FailsWithTerminatedStatus": func(ctx context.Context, t *testing.T, j *podCreationJob) {
+			require.NoError(t, j.pod.Insert())
+			require.NoError(t, j.pod.UpdateStatus(pod.StatusTerminated))
+
+			j.Run(ctx)
+			require.Error(t, j.Error())
+			assert.Zero(t, j.ecsPod)
+			assert.Zero(t, j.pod.Resources)
+			assert.Len(t, cocoaMock.GlobalSecretCache, 0)
+			assert.Len(t, cocoaMock.GlobalECSService.Clusters[clusterName], 0)
+
+			dbPod, err := pod.FindOneByID(j.PodID)
+			require.NoError(t, err)
+			require.NotZero(t, dbPod)
+			assert.Equal(t, pod.StatusTerminated, dbPod.Status)
+		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			require.NoError(t, db.ClearCollections(pod.Collection, definition.Collection, event.LegacyEventLogCollection))
+			require.NoError(t, db.ClearCollections(pod.Collection, definition.Collection, dispatcher.Collection, event.LegacyEventLogCollection))
 			defer func() {
-				assert.NoError(t, db.ClearCollections(pod.Collection, definition.Collection, event.LegacyEventLogCollection))
+				assert.NoError(t, db.ClearCollections(pod.Collection, definition.Collection, dispatcher.Collection, event.LegacyEventLogCollection))
 			}()
 
 			cocoaMock.ResetGlobalECSService()
@@ -187,7 +161,7 @@ func TestPodCreationJob(t *testing.T) {
 				},
 			}
 
-			p, err := pod.NewTaskIntentPod(pod.TaskIntentPodOptions{
+			p, err := pod.NewTaskIntentPod(evergreen.ECSConfig{}, pod.TaskIntentPodOptions{
 				MemoryMB:   256,
 				CPU:        512,
 				OS:         pod.OSLinux,
@@ -196,6 +170,9 @@ func TestPodCreationJob(t *testing.T) {
 				WorkingDir: "/working_dir",
 			})
 			require.NoError(t, err)
+
+			pd := dispatcher.NewPodDispatcher("group_id", []string{}, []string{p.ID})
+			require.NoError(t, pd.Insert())
 
 			smClient := &cocoaMock.SecretsManagerClient{}
 			defer func() {
@@ -207,14 +184,6 @@ func TestPodCreationJob(t *testing.T) {
 			defer func() {
 				assert.NoError(t, ecsClient.Close(ctx))
 			}()
-
-			podDefOpts, err := cloud.ExportECSPodDefinitionOptions(env.Settings(), p.TaskContainerCreationOpts)
-			require.NoError(t, err)
-
-			pdm, err := cloud.MakeECSPodDefinitionManager(ecsClient, vault)
-			require.NoError(t, err)
-			_, err = pdm.CreatePodDefinition(ctx, *podDefOpts)
-			require.NoError(t, err)
 
 			j, ok := NewPodCreationJob(p.ID, utility.RoundPartOfMinute(0).Format(TSFormat)).(*podCreationJob)
 			require.True(t, ok)

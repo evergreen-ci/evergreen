@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -29,9 +30,9 @@ type Pod struct {
 	// TaskCreationOpts are options to configure how a task should be
 	// containerized and run in a pod.
 	TaskContainerCreationOpts TaskContainerCreationOptions `bson:"task_creation_opts,omitempty" json:"task_creation_opts,omitempty"`
-	// IntentDigest is the hash digest of the task container creation options
-	// before it has created a pod definition.
-	IntentDigest string `bson:"intent_digest,omitempty" json:"intent_digest,omitempty"`
+	// Family is the family name of the pod definition stored in the cloud
+	// provider.
+	Family string `bson:"family,omitempty" json:"family,omitempty"`
 	// TimeInfo contains timing information for the pod's lifecycle.
 	TimeInfo TimeInfo `bson:"time_info,omitempty" json:"time_info,omitempty"`
 	// Resources are external resources that are owned and managed by this pod.
@@ -107,7 +108,7 @@ const (
 
 // NewTaskIntentPod creates a new intent pod to run container tasks from the
 // given initialization options.
-func NewTaskIntentPod(opts TaskIntentPodOptions) (*Pod, error) {
+func NewTaskIntentPod(ecsConf evergreen.ECSConfig, opts TaskIntentPodOptions) (*Pod, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid options")
 	}
@@ -142,7 +143,7 @@ func NewTaskIntentPod(opts TaskIntentPodOptions) (*Pod, error) {
 		TimeInfo: TimeInfo{
 			Initializing: time.Now(),
 		},
-		IntentDigest: containerOpts.Hash(),
+		Family: containerOpts.GetFamily(ecsConf),
 	}
 
 	return &p, nil
@@ -542,7 +543,7 @@ func (hes hashableEnvSecrets) Swap(i, j int) {
 }
 
 // Hash returns the hash digest of the creation options for the container.
-func (o TaskContainerCreationOptions) Hash() string {
+func (o *TaskContainerCreationOptions) Hash() string {
 	h := utility.NewSHA1Hash()
 	h.Add(o.Image)
 	h.Add(o.RepoUsername)
@@ -556,6 +557,12 @@ func (o TaskContainerCreationOptions) Hash() string {
 	h.Add(newHashableEnvVars(o.EnvVars).hash())
 	h.Add(newHashableEnvSecrets(o.EnvSecrets).hash())
 	return h.Sum()
+}
+
+// GetFamily returns the family name for the cloud pod definition to be used
+// for these container creation options.
+func (o *TaskContainerCreationOptions) GetFamily(ecsConf evergreen.ECSConfig) string {
+	return strings.Join([]string{strings.TrimRight(ecsConf.TaskDefinitionPrefix, "-"), "agent", o.Hash()}, "-")
 }
 
 // IsZero implements the bsoncodec.Zeroer interface for the sake of defining the

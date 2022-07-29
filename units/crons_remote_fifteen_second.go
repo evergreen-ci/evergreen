@@ -77,7 +77,7 @@ func (j *cronsRemoteFifteenSecondJob) Run(ctx context.Context) {
 	if err != nil {
 		catcher.Wrap(err, "getting pod creation queue")
 	} else {
-		catcher.Wrap(PopulatePodDefinitionCreationJobs()(ctx, podDefCreationQueue), "populating pod definition creation jobs")
+		catcher.Wrap(PopulatePodDefinitionCreationJobs(j.env)(ctx, podDefCreationQueue), "populating pod definition creation jobs")
 	}
 	podCreationQueue, err := j.env.RemoteQueueGroup().Get(appCtx, "service.pod.create")
 	if err != nil {

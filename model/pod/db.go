@@ -20,7 +20,7 @@ var (
 	TypeKey                      = bsonutil.MustHaveTag(Pod{}, "Type")
 	StatusKey                    = bsonutil.MustHaveTag(Pod{}, "Status")
 	TaskContainerCreationOptsKey = bsonutil.MustHaveTag(Pod{}, "TaskContainerCreationOpts")
-	IntentDigestKey              = bsonutil.MustHaveTag(Pod{}, "IntentDigest")
+	FamilyKey                    = bsonutil.MustHaveTag(Pod{}, "Family")
 	TimeInfoKey                  = bsonutil.MustHaveTag(Pod{}, "TimeInfo")
 	ResourcesKey                 = bsonutil.MustHaveTag(Pod{}, "Resources")
 	RunningTaskKey               = bsonutil.MustHaveTag(Pod{}, "RunningTask")
@@ -149,11 +149,11 @@ func FindOneByExternalID(id string) (*Pod, error) {
 	return FindOne(db.Query(ByExternalID(id)))
 }
 
-// FindByIntentDigest finds intent pods that have a matching intent digest.
-func FindByIntentDigest(digest string) ([]Pod, error) {
+// FindIntentByFamily finds intent pods that have a matching family name.
+func FindIntentByFamily(family string) ([]Pod, error) {
 	return Find(db.Query(bson.M{
-		StatusKey:       StatusInitializing,
-		IntentDigestKey: digest,
+		StatusKey: StatusInitializing,
+		FamilyKey: family,
 	}))
 }
 

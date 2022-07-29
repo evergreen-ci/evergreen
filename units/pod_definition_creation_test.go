@@ -31,11 +31,14 @@ func TestNewPodDefinitionCreationJob(t *testing.T) {
 		CPU:        256,
 		WorkingDir: "/working_dir",
 	}
-	j, ok := NewPodDefinitionCreationJob(opts, utility.RoundPartOfMinute(0).Format(TSFormat)).(*podDefinitionCreationJob)
+	ecsConf := evergreen.ECSConfig{
+		TaskDefinitionPrefix: "prefix",
+	}
+	j, ok := NewPodDefinitionCreationJob(ecsConf, opts, utility.RoundPartOfMinute(0).Format(TSFormat)).(*podDefinitionCreationJob)
 	require.True(t, ok)
 	assert.NotZero(t, j.ID())
 	assert.Equal(t, opts, j.ContainerOpts)
-	assert.Equal(t, opts.Hash(), j.IntentDigest)
+	assert.Equal(t, opts.GetFamily(ecsConf), j.Family)
 }
 
 func TestPodDefinitionCreationJob(t *testing.T) {
@@ -54,7 +57,7 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 			podDef, err := definition.FindOne(db.Query(bson.M{}))
 			require.NoError(t, err)
 			require.NotZero(t, podDef, "pod definition creation should have inserted a document")
-			assert.NotZero(t, podDef.Digest)
+			assert.Equal(t, j.Family, podDef.Family)
 			assert.NotZero(t, podDef.ExternalID)
 			assert.NotZero(t, podDef.LastAccessed)
 
@@ -118,12 +121,9 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 		"NoopsWithAlreadyExistingPodDefinition": func(ctx context.Context, t *testing.T, j *podDefinitionCreationJob, p *pod.Pod) {
 			require.NoError(t, p.Insert())
 
-			podDefOpts, err := cloud.ExportECSPodDefinitionOptions(&j.settings, j.ContainerOpts)
-			require.NoError(t, err)
-			digest := podDefOpts.Hash()
 			require.NoError(t, db.Insert(definition.Collection, definition.PodDefinition{
 				ID:         utility.RandomString(),
-				Digest:     digest,
+				Family:     j.Family,
 				ExternalID: "external_id",
 			}))
 
@@ -133,7 +133,7 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 			podDef, err := definition.FindOne(db.Query(bson.M{}))
 			require.NoError(t, err)
 			require.NotZero(t, podDef, "pre-existing pod definition should still exist")
-			assert.Equal(t, digest, podDef.Digest)
+			assert.Equal(t, j.Family, podDef.Family)
 
 			pdm, ok := j.ecsPodDefManager.(*cocoaMock.ECSPodDefinitionManager)
 			require.True(t, ok)
@@ -193,16 +193,6 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 			cocoaMock.ResetGlobalECSService()
 			cocoaMock.ResetGlobalSecretCache()
 
-			p, err := pod.NewTaskIntentPod(pod.TaskIntentPodOptions{
-				CPU:        128,
-				MemoryMB:   256,
-				OS:         pod.OSLinux,
-				Arch:       pod.ArchAMD64,
-				Image:      "ubuntu",
-				WorkingDir: "/working_dir",
-			})
-			require.NoError(t, err)
-
 			env := &evgMock.Environment{}
 			require.NoError(t, env.Configure(ctx))
 			env.EvergreenSettings.Providers.AWS.Pod.ECS = evergreen.ECSConfig{
@@ -213,8 +203,19 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 			env.EvergreenSettings.Providers.AWS.Pod.SecretsManager = evergreen.SecretsManagerConfig{
 				SecretPrefix: "secret-prefix",
 			}
+			ecsConf := env.EvergreenSettings.Providers.AWS.Pod.ECS
 
-			j, ok := NewPodDefinitionCreationJob(p.TaskContainerCreationOpts, utility.RoundPartOfMinute(0).Format(TSFormat)).(*podDefinitionCreationJob)
+			p, err := pod.NewTaskIntentPod(ecsConf, pod.TaskIntentPodOptions{
+				CPU:        128,
+				MemoryMB:   256,
+				OS:         pod.OSLinux,
+				Arch:       pod.ArchAMD64,
+				Image:      "ubuntu",
+				WorkingDir: "/working_dir",
+			})
+			require.NoError(t, err)
+
+			j, ok := NewPodDefinitionCreationJob(ecsConf, p.TaskContainerCreationOpts, utility.RoundPartOfMinute(0).Format(TSFormat)).(*podDefinitionCreationJob)
 			require.True(t, ok)
 
 			j.env = env

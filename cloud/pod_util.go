@@ -206,7 +206,7 @@ func ExportECSPodDefinitionOptions(settings *evergreen.Settings, opts pod.TaskCo
 	}
 
 	defOpts := cocoa.NewECSPodDefinitionOptions().
-		SetName(strings.Join([]string{strings.TrimRight(ecsConf.TaskDefinitionPrefix, "-"), "agent", opts.Hash()}, "-")).
+		SetName(opts.GetFamily(ecsConf)).
 		SetCPU(opts.CPU).
 		SetMemoryMB(opts.MemoryMB).
 		SetTaskRole(ecsConf.TaskRole).
@@ -214,6 +214,10 @@ func ExportECSPodDefinitionOptions(settings *evergreen.Settings, opts pod.TaskCo
 		AddContainerDefinitions(*containerDef)
 	if len(ecsConf.AWSVPC.Subnets) != 0 || len(ecsConf.AWSVPC.SecurityGroups) != 0 {
 		defOpts.SetNetworkMode(cocoa.NetworkModeAWSVPC)
+	}
+
+	if err := defOpts.Validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid pod definition options")
 	}
 
 	return defOpts, nil
@@ -259,10 +263,10 @@ func exportECSPodContainerDef(settings *evergreen.Settings, opts pod.TaskContain
 // ExportECSPodExecutionOptions exports the ECS configuration into
 // cocoa.ECSPodExecutionOptions.
 func ExportECSPodExecutionOptions(ecsConfig evergreen.ECSConfig, containerOpts pod.TaskContainerCreationOptions) (*cocoa.ECSPodExecutionOptions, error) {
-	opts := cocoa.NewECSPodExecutionOptions()
+	execOpts := cocoa.NewECSPodExecutionOptions()
 
 	if len(ecsConfig.AWSVPC.Subnets) != 0 || len(ecsConfig.AWSVPC.SecurityGroups) != 0 {
-		opts.SetAWSVPCOptions(*cocoa.NewAWSVPCOptions().
+		execOpts.SetAWSVPCOptions(*cocoa.NewAWSVPCOptions().
 			SetSubnets(ecsConfig.AWSVPC.Subnets).
 			SetSecurityGroups(ecsConfig.AWSVPC.SecurityGroups))
 	}
@@ -276,7 +280,7 @@ func ExportECSPodExecutionOptions(ecsConfig evergreen.ECSConfig, containerOpts p
 			continue
 		}
 		if containerOpts.OS.Matches(cp.OS) && containerOpts.Arch.Matches(cp.Arch) {
-			opts.SetCapacityProvider(cp.Name)
+			execOpts.SetCapacityProvider(cp.Name)
 			foundCapacityProvider = true
 			break
 		}
@@ -288,13 +292,23 @@ func ExportECSPodExecutionOptions(ecsConfig evergreen.ECSConfig, containerOpts p
 		return nil, errors.Errorf("container OS '%s' and arch '%s' did not match any recognized capacity provider", containerOpts.OS, containerOpts.Arch)
 	}
 
+	var foundCluster bool
 	for _, cluster := range ecsConfig.Clusters {
 		if containerOpts.OS.Matches(cluster.OS) {
-			return opts.SetCluster(cluster.Name), nil
+			execOpts.SetCluster(cluster.Name)
+			foundCluster = true
+			break
 		}
 	}
+	if !foundCluster {
+		return nil, errors.Errorf("container OS '%s' did not match any recognized ECS cluster", containerOpts.OS)
+	}
 
-	return nil, errors.Errorf("container OS '%s' did not match any recognized ECS cluster", containerOpts.OS)
+	if err := execOpts.Validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid options")
+	}
+
+	return execOpts, nil
 }
 
 // ExportECSPodDefinition exports the pod definition into an

@@ -3,6 +3,7 @@ package model
 import (
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -42,7 +43,7 @@ func (p *APICreatePod) ToService() (*pod.Pod, error) {
 		return nil, err
 	}
 
-	return pod.NewTaskIntentPod(pod.TaskIntentPodOptions{
+	return pod.NewTaskIntentPod(evergreen.ECSConfig{}, pod.TaskIntentPodOptions{
 		Secret:         utility.FromStringPtr(p.Secret),
 		CPU:            utility.FromIntPtr(p.CPU),
 		MemoryMB:       utility.FromIntPtr(p.Memory),

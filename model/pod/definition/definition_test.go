@@ -25,7 +25,7 @@ func TestPodDefinitionCache(t *testing.T) {
 		for tName, tCase := range map[string]func(ctx context.Context, t *testing.T){
 			"SucceedsWithNewItem": func(ctx context.Context, t *testing.T) {
 				externalID := "external_id"
-				defOpts := cocoa.NewECSPodDefinitionOptions().SetName("name")
+				defOpts := cocoa.NewECSPodDefinitionOptions().SetName("family")
 				require.NoError(t, pdc.Put(ctx, cocoa.ECSPodDefinitionItem{
 					ID:             externalID,
 					DefinitionOpts: *defOpts,
@@ -35,7 +35,7 @@ func TestPodDefinitionCache(t *testing.T) {
 				require.NotZero(t, pd)
 				assert.NotZero(t, pd.ID)
 				assert.Equal(t, externalID, pd.ExternalID)
-				assert.Equal(t, defOpts.Hash(), pd.Digest)
+				assert.Equal(t, utility.FromStringPtr(defOpts.Name), pd.Family)
 				assert.NotZero(t, pd.LastAccessed)
 			},
 			"IsIdempotentForIdenticalItem": func(ctx context.Context, t *testing.T) {
@@ -53,7 +53,7 @@ func TestPodDefinitionCache(t *testing.T) {
 				originalID := pd.ID
 				assert.NotZero(t, pd.ID)
 				assert.Equal(t, externalID, pd.ExternalID)
-				assert.Equal(t, defOpts.Hash(), pd.Digest)
+				assert.Equal(t, utility.FromStringPtr(defOpts.Name), pd.Family)
 				assert.NotZero(t, pd.LastAccessed)
 
 				require.NoError(t, pdc.Put(ctx, cocoa.ECSPodDefinitionItem{
@@ -67,7 +67,7 @@ func TestPodDefinitionCache(t *testing.T) {
 
 				assert.Equal(t, originalID, pds[0].ID)
 				assert.Equal(t, externalID, pds[0].ExternalID)
-				assert.Equal(t, defOpts.Hash(), pds[0].Digest)
+				assert.Equal(t, utility.FromStringPtr(defOpts.Name), pds[0].Family)
 				assert.NotZero(t, pd.LastAccessed)
 			},
 			"AddsMultipleDifferentItems": func(ctx context.Context, t *testing.T) {

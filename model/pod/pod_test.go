@@ -240,7 +240,7 @@ func TestNewTaskIntentPod(t *testing.T) {
 	t.Run("SucceedsWithValidOptions", func(t *testing.T) {
 		opts := makeValidOpts()
 
-		p, err := NewTaskIntentPod(opts)
+		p, err := NewTaskIntentPod(evergreen.ECSConfig{}, opts)
 		require.NoError(t, err)
 		assert.Equal(t, opts.ID, p.ID)
 		assert.Equal(t, opts.CPU, p.TaskContainerCreationOpts.CPU)
@@ -265,7 +265,7 @@ func TestNewTaskIntentPod(t *testing.T) {
 		opts := makeValidOpts()
 		opts.ID = ""
 
-		p, err := NewTaskIntentPod(opts)
+		p, err := NewTaskIntentPod(evergreen.ECSConfig{}, opts)
 		require.NoError(t, err)
 		assert.NotZero(t, p.ID)
 		assert.Equal(t, p.ID, p.TaskContainerCreationOpts.EnvVars[PodIDEnvVar])
@@ -274,7 +274,7 @@ func TestNewTaskIntentPod(t *testing.T) {
 		opts := makeValidOpts()
 		opts.Secret = ""
 
-		p, err := NewTaskIntentPod(opts)
+		p, err := NewTaskIntentPod(evergreen.ECSConfig{}, opts)
 		require.NoError(t, err)
 		assert.NotZero(t, p.ID)
 		s, err := p.GetSecret()
@@ -289,7 +289,7 @@ func TestNewTaskIntentPod(t *testing.T) {
 		opts := makeValidOpts()
 		opts.Image = ""
 
-		p, err := NewTaskIntentPod(opts)
+		p, err := NewTaskIntentPod(evergreen.ECSConfig{}, opts)
 		assert.Error(t, err)
 		assert.Zero(t, p)
 	})
