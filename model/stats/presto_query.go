@@ -100,7 +100,7 @@ func (f *PrestoTestStatsFilter) Validate() error {
 	catcher.ErrorfWhen(f.Limit > MaxQueryLimit, "limit cannot exceed %d", MaxQueryLimit)
 
 	if f.DB == nil {
-		f.DB = evergreen.GetEnvironment().Settings().Presto.DB()
+		f.DB = evergreen.GetEnvironment().PrestoDB()
 	}
 
 	return errors.Wrap(catcher.Resolve(), "invalid Presto test stats filter")
