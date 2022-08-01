@@ -24,20 +24,7 @@ func (c *SplunkConfig) Get(env Environment) error {
 		if err != mongo.ErrNoDocuments {
 			return errors.Wrapf(err, "retrieving section '%s'", c.SectionId())
 		}
-		// TODO EVG-17353: remove retrieving settings from global
-		globalConfig := coll.FindOne(ctx, byId(ConfigDocID))
-		if err := globalConfig.Err(); err != nil {
-			if err != mongo.ErrNoDocuments {
-				return errors.Wrap(err, "retrieving global settings")
-			}
-			c = &SplunkConfig{}
-			return nil
-		}
-		s := Settings{}
-		if err := globalConfig.Decode(&s); err != nil {
-			return errors.Wrap(err, "decoding global config")
-		}
-		c.SplunkConnectionInfo = s.Splunk.SplunkConnectionInfo
+		c = &SplunkConfig{}
 		return nil
 	}
 
