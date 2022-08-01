@@ -177,9 +177,7 @@ func TestDownstreamParams(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	if err := db.ClearCollections(patch.Collection, task.Collection, host.Collection); err != nil {
-		t.Fatalf("clearing db: %v", err)
-	}
+	require.NoError(t, db.ClearCollections(patch.Collection, task.Collection, host.Collection))
 	parameters := []patch.Parameter{
 		{Key: "key_1", Value: "value_1"},
 		{Key: "key_2", Value: "value_2"},
@@ -224,9 +222,7 @@ func TestDownstreamParams(t *testing.T) {
 	require.NoError(t, sampleHost.Insert())
 
 	q := queue.NewLocalLimitedSize(4, 2048)
-	if err := q.Start(ctx); err != nil {
-		t.Fatalf("failed to start queue %s", err)
-	}
+	require.NoError(t, q.Start(ctx))
 
 	r, ok := makeSetDownstreamParams().(*setDownstreamParamsHandler)
 	r.taskID = "task1"

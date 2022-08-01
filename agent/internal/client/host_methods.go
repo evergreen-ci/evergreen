@@ -15,9 +15,8 @@ import (
 func (c *hostCommunicator) GetAgentSetupData(ctx context.Context) (*apimodels.AgentSetupData, error) {
 	out := &apimodels.AgentSetupData{}
 	info := requestInfo{
-		method:  http.MethodGet,
-		version: apiVersion2,
-		path:    "agent/setup",
+		method: http.MethodGet,
+		path:   "agent/setup",
 	}
 
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -44,7 +43,6 @@ func (c *hostCommunicator) EndTask(ctx context.Context, detail *apimodels.TaskEn
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
-		version:  apiVersion2,
 		path:     fmt.Sprintf("hosts/%s/task/%s/end", c.hostID, taskData.ID),
 	}
 	resp, err := c.retryRequest(ctx, info, detail)
@@ -68,8 +66,7 @@ func (c *hostCommunicator) EndTask(ctx context.Context, detail *apimodels.TaskEn
 func (c *hostCommunicator) GetNextTask(ctx context.Context, details *apimodels.GetNextTaskDetails) (*apimodels.NextTaskResponse, error) {
 	nextTask := &apimodels.NextTaskResponse{}
 	info := requestInfo{
-		method:  http.MethodGet,
-		version: apiVersion2,
+		method: http.MethodGet,
 	}
 	info.path = fmt.Sprintf("hosts/%s/agent/next_task", c.hostID)
 	resp, err := c.retryRequest(ctx, info, details)

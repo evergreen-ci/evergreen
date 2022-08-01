@@ -458,18 +458,12 @@ func TestHostNextTask(t *testing.T) {
 			defer cancel()
 
 			colls := []string{model.ProjectRefCollection, host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection, evergreen.ConfigCollection}
-			if err := db.DropCollections(colls...); err != nil {
-				t.Fatalf("dropping collections: %v", err)
-			}
+			require.NoError(t, db.DropCollections(colls...))
 			defer func() {
 				assert.NoError(t, db.DropCollections(colls...))
 			}()
-			if err := modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey); err != nil {
-				t.Fatalf("adding test indexes %v", err)
-			}
-			if err := evergreen.SetServiceFlags(evergreen.ServiceFlags{}); err != nil {
-				t.Fatalf("unable to create admin settings: %v", err)
-			}
+			require.NoError(t, modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey))
+			require.NoError(t, evergreen.SetServiceFlags(evergreen.ServiceFlags{}))
 
 			distroID := "testDistro"
 			buildID := "buildId"
@@ -731,9 +725,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 			defer cancel()
 
 			colls := []string{host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection, model.ParserProjectCollection, model.ProjectRefCollection, model.VersionCollection, alertrecord.Collection, event.LegacyEventLogCollection}
-			if err := db.DropCollections(colls...); err != nil {
-				t.Fatalf("dropping collections: %v", err)
-			}
+			require.NoError(t, db.DropCollections(colls...))
 			defer func() {
 				assert.NoError(t, db.DropCollections(colls...))
 			}()
@@ -744,9 +736,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 			require.NoError(t, err)
 			env.Remote = q
 
-			if err := modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey); err != nil {
-				t.Fatalf("adding test indexes %v", err)
-			}
+			require.NoError(t, modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey))
 
 			proj := model.ProjectRef{
 				Id: projectId,
@@ -818,15 +808,11 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 		}
 
 		colls := []string{distro.Collection, host.Collection, task.Collection, model.TaskQueuesCollection, model.ProjectRefCollection}
-		if err := db.DropCollections(colls...); err != nil {
-			t.Fatalf("dropping collections: %s", err)
-		}
+		require.NoError(t, db.DropCollections(colls...))
 		defer func() {
 			assert.NoError(t, db.DropCollections(colls...))
 		}()
-		if err := modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey); err != nil {
-			t.Fatalf("adding test indexes %v", err)
-		}
+		require.NoError(t, modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey))
 		distroID := "testDistro"
 		d := distro.Distro{
 			Id:                 distroID,
@@ -1168,15 +1154,11 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 			Version: evergreen.DispatcherVersionRevisedWithDependencies,
 		}
 		colls := []string{distro.Collection, host.Collection, task.Collection, model.TaskQueuesCollection, model.ProjectRefCollection}
-		if err := db.DropCollections(colls...); err != nil {
-			t.Fatalf("dropping collections: %v", err)
-		}
+		require.NoError(t, db.DropCollections(colls...))
 		defer func() {
 			assert.NoError(t, db.DropCollections(colls...))
 		}()
-		if err := modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey); err != nil {
-			t.Fatalf("adding test indexes %v", err)
-		}
+		require.NoError(t, modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey))
 
 		d := distro.Distro{
 			Id:                 "testDistro",
