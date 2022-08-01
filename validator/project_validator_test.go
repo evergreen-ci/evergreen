@@ -2308,16 +2308,30 @@ buildvariants:
 - name: "bv"
   display_name: "bv_display"
   tasks:
-  - name: example_task_group
+    - name: example_task_group
+    - name: inline_task_group
+      task_group:
+        share_processes: true
+        max_hosts: 3
+        teardown_group:
+        - command: attach.results
+        tasks:
+        - example_task_1
+        - example_task_2
 `
 	pp, err = model.LoadProjectInto(ctx, []byte(largeMaxHostYml), nil, "", &proj)
 	assert.NotNil(proj)
 	assert.NotNil(pp)
 	assert.NoError(err)
-	validationErrs = checkTaskGroups(&proj)
+	validationErrs = validateTaskGroups(&proj)
 	assert.Len(validationErrs, 1)
+	assert.Contains(validationErrs[0].Message, "attach.results cannot be used in the group teardown stage")
+	validationErrs = checkTaskGroups(&proj)
+	assert.Len(validationErrs, 2)
 	assert.Contains(validationErrs[0].Message, "task group example_task_group has max number of hosts 4 greater than the number of tasks 3")
+	assert.Contains(validationErrs[1].Message, "task group inline_task_group has max number of hosts 3 greater than the number of tasks 2")
 	assert.Equal(validationErrs[0].Level, Warning)
+	assert.Equal(validationErrs[1].Level, Warning)
 }
 
 func TestTaskGroupTeardownValidation(t *testing.T) {
