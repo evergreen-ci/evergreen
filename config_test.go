@@ -143,6 +143,7 @@ func (s *AdminSuite) TestBanner() {
 func (s *AdminSuite) TestBaseConfig() {
 	config := Settings{
 		ApiUrl:              "api",
+		AWSInstanceRole:     "role",
 		Banner:              "banner",
 		BannerTheme:         Important,
 		ClientBinariesDir:   "bin_dir",
@@ -167,6 +168,7 @@ func (s *AdminSuite) TestBaseConfig() {
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config.ApiUrl, settings.ApiUrl)
+	s.Equal(config.AWSInstanceRole, settings.AWSInstanceRole)
 	s.Equal(config.Banner, settings.Banner)
 	s.Equal(config.BannerTheme, settings.BannerTheme)
 	s.Equal(config.ClientBinariesDir, settings.ClientBinariesDir)
