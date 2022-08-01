@@ -649,6 +649,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 			pRefFromDb, err := FindBranchProjectRef(id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
+			assert.NotEqual(t, pRefFromDb.Identifier, "")
 			assert.Equal(t, pRefFromDb.BatchTime, 0)
 			assert.Nil(t, pRefFromDb.RepotrackerDisabled)
 			assert.Nil(t, pRefFromDb.DeactivatePrevious)

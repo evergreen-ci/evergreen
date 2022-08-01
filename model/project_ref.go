@@ -1762,17 +1762,17 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			return false, errors.New("can't default project ref for a repo")
 		}
 	}
+	defaultToRepo := false
 	if p == nil {
+		defaultToRepo = true
 		p = &ProjectRef{} // use a blank project ref to default the section to repo
 	}
+
 	var err error
 	switch section {
 	case ProjectPageGeneralSection:
 		setUpdate := bson.M{
-			ProjectRefEnabledKey:                 p.Enabled,
 			ProjectRefBranchKey:                  p.Branch,
-			ProjectRefDisplayNameKey:             p.DisplayName,
-			ProjectRefIdentifierKey:              p.Identifier,
 			ProjectRefBatchTimeKey:               p.BatchTime,
 			ProjectRefRemotePathKey:              p.RemotePath,
 			projectRefSpawnHostScriptPathKey:     p.SpawnHostScriptPath,
@@ -1787,9 +1787,14 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			ProjectRefDisabledStatsCacheKey:      p.DisabledStatsCache,
 			ProjectRefFilesIgnoredFromCacheKey:   p.FilesIgnoredFromCache,
 		}
-		if !isRepo && !p.UseRepoSettings() {
+		if !isRepo && !p.UseRepoSettings() && !defaultToRepo {
 			setUpdate[ProjectRefOwnerKey] = p.Owner
 			setUpdate[ProjectRefRepoKey] = p.Repo
+		}
+		if !defaultToRepo {
+			setUpdate[ProjectRefEnabledKey] = p.Enabled
+			setUpdate[ProjectRefDisplayNameKey] = p.DisplayName
+			setUpdate[ProjectRefIdentifierKey] = p.Identifier
 		}
 		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},
@@ -1885,6 +1890,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 // to create our own project settings event  after completing the update.
 func DefaultSectionToRepo(projectId string, section ProjectPageSection, userId string) error {
 	before, err := GetProjectSettingsById(projectId, false)
+
 	if err != nil {
 		return errors.Wrap(err, "getting before project settings event")
 	}
