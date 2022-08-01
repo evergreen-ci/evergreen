@@ -11,13 +11,13 @@
     ) {
       data {
         id
-        status
         baseTask {
           status
         }
-        displayName
-        buildVariant
         blocked
+        buildVariant
+        displayName
+        status
       }
       count
     }

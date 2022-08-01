@@ -4,11 +4,11 @@
       data {
         id
         baseStatus
-        displayName
         baseTask {
           id
           status
         }
+        displayName
       }
       count
     }

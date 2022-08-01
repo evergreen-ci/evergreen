@@ -3,8 +3,8 @@
     tasks(options: { statuses: ["failed"] }) {
       data {
         id
-        status
         displayName
+        status
       }
       count
     }

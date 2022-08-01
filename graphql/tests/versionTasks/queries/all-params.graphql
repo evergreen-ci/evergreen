@@ -10,11 +10,11 @@
     ) {
       data {
         id
-        status
         baseStatus
-        displayName
-        buildVariant
         blocked
+        buildVariant
+        displayName
+        status
       }
       count
     }

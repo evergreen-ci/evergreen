@@ -3,10 +3,10 @@
     tasks(options: {}) {
       data {
         id
-        status
         baseStatus
-        displayName
         buildVariant
+        displayName
+        status
       }
       count
     }
