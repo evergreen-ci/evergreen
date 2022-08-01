@@ -7488,7 +7488,7 @@ type Query {
     variant: String
     taskName: String
     includeEmptyActivation: Boolean = false
-  ): PatchTasks! @deprecated(reason: "patchTasks is deprecated, use version.versionTasks instead.")
+  ): PatchTasks! @deprecated(reason: "patchTasks is deprecated, use version.tasks instead.")
 
   # project
   githubProjectConflicts(projectId: String!): GithubProjectConflicts!
@@ -9246,6 +9246,20 @@ input VersionToRestart {
   taskIds: [String!]!
 }
 
+"""
+TaskFilterOptions defines the parameters that are used when fetching tasks from a Version.
+"""
+input TaskFilterOptions {
+  baseStatuses: [String!] = []
+  includeEmptyActivation: Boolean = false
+  limit: Int = 0
+  page: Int = 0
+  sorts: [SortOrder!]
+  statuses: [String!] = []
+  taskName: String
+  variant: String
+}
+
 ###### TYPES ######
 """
 Version models a commit within a project.
@@ -9283,17 +9297,6 @@ type Version {
   taskStatusStats(options: BuildVariantOptions): TaskStats
   upstreamProject: UpstreamProject
   versionTiming: VersionTiming
-}
-
-input TaskFilterOptions {
-  sorts: [SortOrder!]
-  page: Int = 0
-  limit: Int = 0
-  statuses: [String!] = []
-  baseStatuses: [String!] = []
-  variant: String
-  taskName: String
-  includeEmptyActivation: Boolean = false
 }
 
 type VersionTasks {
@@ -41680,19 +41683,19 @@ func (ec *executionContext) unmarshalInputTaskFilterOptions(ctx context.Context,
 
 	for k, v := range asMap {
 		switch k {
-		case "sorts":
+		case "baseStatuses":
 			var err error
 
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sorts"))
-			it.Sorts, err = ec.unmarshalOSortOrder2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortOrderᚄ(ctx, v)
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("baseStatuses"))
+			it.BaseStatuses, err = ec.unmarshalOString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-		case "page":
+		case "includeEmptyActivation":
 			var err error
 
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("page"))
-			it.Page, err = ec.unmarshalOInt2ᚖint(ctx, v)
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeEmptyActivation"))
+			it.IncludeEmptyActivation, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -41704,27 +41707,27 @@ func (ec *executionContext) unmarshalInputTaskFilterOptions(ctx context.Context,
 			if err != nil {
 				return it, err
 			}
+		case "page":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("page"))
+			it.Page, err = ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "sorts":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sorts"))
+			it.Sorts, err = ec.unmarshalOSortOrder2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortOrderᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		case "statuses":
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statuses"))
 			it.Statuses, err = ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "baseStatuses":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("baseStatuses"))
-			it.BaseStatuses, err = ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "variant":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("variant"))
-			it.Variant, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -41736,11 +41739,11 @@ func (ec *executionContext) unmarshalInputTaskFilterOptions(ctx context.Context,
 			if err != nil {
 				return it, err
 			}
-		case "includeEmptyActivation":
+		case "variant":
 			var err error
 
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeEmptyActivation"))
-			it.IncludeEmptyActivation, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("variant"))
+			it.Variant, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
