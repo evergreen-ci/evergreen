@@ -1142,8 +1142,14 @@ type ComplexityRoot struct {
 		TaskCount         func(childComplexity int) int
 		TaskStatusStats   func(childComplexity int, options *BuildVariantOptions) int
 		TaskStatuses      func(childComplexity int) int
+		Tasks             func(childComplexity int, options *TaskFilterOptions) int
 		UpstreamProject   func(childComplexity int) int
 		VersionTiming     func(childComplexity int) int
+	}
+
+	VersionTasks struct {
+		Count func(childComplexity int) int
+		Data  func(childComplexity int) int
 	}
 
 	VersionTiming struct {
@@ -1446,6 +1452,7 @@ type VersionResolver interface {
 
 	Status(ctx context.Context, obj *model.APIVersion) (string, error)
 	TaskCount(ctx context.Context, obj *model.APIVersion) (*int, error)
+	Tasks(ctx context.Context, obj *model.APIVersion, options *TaskFilterOptions) (*VersionTasks, error)
 	TaskStatuses(ctx context.Context, obj *model.APIVersion) ([]string, error)
 	TaskStatusStats(ctx context.Context, obj *model.APIVersion, options *BuildVariantOptions) (*task.TaskStats, error)
 	UpstreamProject(ctx context.Context, obj *model.APIVersion) (*UpstreamProject, error)
@@ -7050,6 +7057,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Version.TaskStatuses(childComplexity), true
 
+	case "Version.tasks":
+		if e.complexity.Version.Tasks == nil {
+			break
+		}
+
+		args, err := ec.field_Version_tasks_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Version.Tasks(childComplexity, args["options"].(*TaskFilterOptions)), true
+
 	case "Version.upstreamProject":
 		if e.complexity.Version.UpstreamProject == nil {
 			break
@@ -7063,6 +7082,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Version.VersionTiming(childComplexity), true
+
+	case "VersionTasks.count":
+		if e.complexity.VersionTasks.Count == nil {
+			break
+		}
+
+		return e.complexity.VersionTasks.Count(childComplexity), true
+
+	case "VersionTasks.data":
+		if e.complexity.VersionTasks.Data == nil {
+			break
+		}
+
+		return e.complexity.VersionTasks.Data(childComplexity), true
 
 	case "VersionTiming.makespan":
 		if e.complexity.VersionTiming.Makespan == nil {
@@ -7455,7 +7488,7 @@ type Query {
     variant: String
     taskName: String
     includeEmptyActivation: Boolean = false
-  ): PatchTasks!
+  ): PatchTasks! @deprecated(reason: "patchTasks is deprecated, use version.tasks instead.")
 
   # project
   githubProjectConflicts(projectId: String!): GithubProjectConflicts!
@@ -9213,6 +9246,20 @@ input VersionToRestart {
   taskIds: [String!]!
 }
 
+"""
+TaskFilterOptions defines the parameters that are used when fetching tasks from a Version.
+"""
+input TaskFilterOptions {
+  baseStatuses: [String!] = []
+  includeEmptyActivation: Boolean = false
+  limit: Int = 0
+  page: Int = 0
+  sorts: [SortOrder!]
+  statuses: [String!] = []
+  taskName: String
+  variant: String
+}
+
 ###### TYPES ######
 """
 Version models a commit within a project.
@@ -9245,10 +9292,16 @@ type Version {
   startTime: Time
   status: String!
   taskCount: Int
+  tasks(options: TaskFilterOptions): VersionTasks!
   taskStatuses: [String!]!
   taskStatusStats(options: BuildVariantOptions): TaskStats
   upstreamProject: UpstreamProject
   versionTiming: VersionTiming
+}
+
+type VersionTasks {
+  count: Int!
+  data: [Task!]!
 }
 
 type TaskStats {
@@ -9256,7 +9309,6 @@ type TaskStats {
   eta: Time
 }
 
-# deprecated field
 type StatusCount { 
   count: Int!
   status: String!
@@ -11308,6 +11360,21 @@ func (ec *executionContext) field_Version_taskStatusStats_args(ctx context.Conte
 	if tmp, ok := rawArgs["options"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("options"))
 		arg0, err = ec.unmarshalOBuildVariantOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBuildVariantOptions(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["options"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Version_tasks_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *TaskFilterOptions
+	if tmp, ok := rawArgs["options"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("options"))
+		arg0, err = ec.unmarshalOTaskFilterOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskFilterOptions(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -36969,6 +37036,48 @@ func (ec *executionContext) _Version_taskCount(ctx context.Context, field graphq
 	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Version_tasks(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Version",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Version_tasks_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Version().Tasks(rctx, obj, args["options"].(*TaskFilterOptions))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*VersionTasks)
+	fc.Result = res
+	return ec.marshalNVersionTasks2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐVersionTasks(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Version_taskStatuses(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -37105,6 +37214,76 @@ func (ec *executionContext) _Version_versionTiming(ctx context.Context, field gr
 	res := resTmp.(*VersionTiming)
 	fc.Result = res
 	return ec.marshalOVersionTiming2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐVersionTiming(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _VersionTasks_count(ctx context.Context, field graphql.CollectedField, obj *VersionTasks) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "VersionTasks",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Count, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _VersionTasks_data(ctx context.Context, field graphql.CollectedField, obj *VersionTasks) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "VersionTasks",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Data, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.APITask)
+	fc.Result = res
+	return ec.marshalNTask2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _VersionTiming_makespan(ctx context.Context, field graphql.CollectedField, obj *VersionTiming) (ret graphql.Marshaler) {
@@ -41486,6 +41665,85 @@ func (ec *executionContext) unmarshalInputTaskAnnotationSettingsInput(ctx contex
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("jiraCustomFields"))
 			it.JiraCustomFields, err = ec.unmarshalOJiraFieldInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJiraFieldᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputTaskFilterOptions(ctx context.Context, obj interface{}) (TaskFilterOptions, error) {
+	var it TaskFilterOptions
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	for k, v := range asMap {
+		switch k {
+		case "baseStatuses":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("baseStatuses"))
+			it.BaseStatuses, err = ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "includeEmptyActivation":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeEmptyActivation"))
+			it.IncludeEmptyActivation, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "limit":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
+			it.Limit, err = ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "page":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("page"))
+			it.Page, err = ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "sorts":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sorts"))
+			it.Sorts, err = ec.unmarshalOSortOrder2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortOrderᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "statuses":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statuses"))
+			it.Statuses, err = ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "taskName":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskName"))
+			it.TaskName, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "variant":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("variant"))
+			it.Variant, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -48502,6 +48760,20 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 				res = ec._Version_taskCount(ctx, field, obj)
 				return res
 			})
+		case "tasks":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Version_tasks(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "taskStatuses":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -48549,6 +48821,38 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 				res = ec._Version_versionTiming(ctx, field, obj)
 				return res
 			})
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var versionTasksImplementors = []string{"VersionTasks"}
+
+func (ec *executionContext) _VersionTasks(ctx context.Context, sel ast.SelectionSet, obj *VersionTasks) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, versionTasksImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("VersionTasks")
+		case "count":
+			out.Values[i] = ec._VersionTasks_count(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "data":
+			out.Values[i] = ec._VersionTasks_data(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -51659,6 +51963,20 @@ func (ec *executionContext) marshalNVersion2ᚖgithubᚗcomᚋevergreenᚑciᚋe
 	return ec._Version(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNVersionTasks2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐVersionTasks(ctx context.Context, sel ast.SelectionSet, v VersionTasks) graphql.Marshaler {
+	return ec._VersionTasks(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNVersionTasks2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐVersionTasks(ctx context.Context, sel ast.SelectionSet, v *VersionTasks) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._VersionTasks(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNVersionToRestart2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐVersionToRestartᚄ(ctx context.Context, v interface{}) ([]*model1.VersionToRestart, error) {
 	var vSlice []interface{}
 	if v != nil {
@@ -53987,6 +54305,14 @@ func (ec *executionContext) unmarshalOTaskAnnotationSettingsInput2githubᚗcom�
 
 func (ec *executionContext) marshalOTaskEndDetail2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐApiTaskEndDetail(ctx context.Context, sel ast.SelectionSet, v model.ApiTaskEndDetail) graphql.Marshaler {
 	return ec._TaskEndDetail(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalOTaskFilterOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskFilterOptions(ctx context.Context, v interface{}) (*TaskFilterOptions, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputTaskFilterOptions(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOTaskInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐTaskInfo(ctx context.Context, sel ast.SelectionSet, v model.TaskInfo) graphql.Marshaler {
