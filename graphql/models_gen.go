@@ -276,6 +276,18 @@ type TaskFiles struct {
 	GroupedFiles []*GroupedFiles `json:"groupedFiles"`
 }
 
+// TaskFilterOptions defines the parameters that are used when fetching tasks from a Version.
+type TaskFilterOptions struct {
+	BaseStatuses           []string     `json:"baseStatuses"`
+	IncludeEmptyActivation *bool        `json:"includeEmptyActivation"`
+	Limit                  *int         `json:"limit"`
+	Page                   *int         `json:"page"`
+	Sorts                  []*SortOrder `json:"sorts"`
+	Statuses               []string     `json:"statuses"`
+	TaskName               *string      `json:"taskName"`
+	Variant                *string      `json:"variant"`
+}
+
 // TaskLogs is the return value for the taskLogs query.
 // It contains the logs for a given task on a given execution.
 type TaskLogs struct {
@@ -357,6 +369,11 @@ type VariantTasks struct {
 	DisplayTasks []*DisplayTask `json:"displayTasks"`
 	Tasks        []string       `json:"tasks"`
 	Variant      string         `json:"variant"`
+}
+
+type VersionTasks struct {
+	Count int              `json:"count"`
+	Data  []*model.APITask `json:"data"`
 }
 
 type VersionTiming struct {

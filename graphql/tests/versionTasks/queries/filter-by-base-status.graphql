@@ -1,0 +1,16 @@
+{
+  version(id: "5e4ff3abe3c3317e352062e4") {
+    tasks(options: { baseStatuses: ["failed"] }) {
+      data {
+        id
+        baseStatus
+        baseTask {
+          id
+          status
+        }
+        displayName
+      }
+      count
+    }
+  }
+}

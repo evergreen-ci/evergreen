@@ -165,6 +165,7 @@ func MockConfig() *evergreen.Settings {
 			PreferredType:           evergreen.AuthLDAPKey,
 			BackgroundReauthMinutes: 60,
 		},
+		AWSInstanceRole:   "role",
 		Banner:            "banner",
 		BannerTheme:       "important",
 		ClientBinariesDir: "bin_dir",
@@ -383,10 +384,12 @@ func MockConfig() *evergreen.Settings {
 			Token: "token",
 			Level: "info",
 		},
-		Splunk: send.SplunkConnectionInfo{
-			ServerURL: "server",
-			Token:     "token",
-			Channel:   "channel",
+		Splunk: evergreen.SplunkConfig{
+			SplunkConnectionInfo: send.SplunkConnectionInfo{
+				ServerURL: "server",
+				Token:     "token",
+				Channel:   "channel",
+			},
 		},
 		Triggers: evergreen.TriggerConfig{
 			GenerateTaskDistro: "distro",

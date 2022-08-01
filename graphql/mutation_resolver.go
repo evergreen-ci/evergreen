@@ -371,6 +371,7 @@ func (r *mutationResolver) AttachProjectToRepo(ctx context.Context, projectID st
 func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.APIProjectRef) (*restModel.APIProjectRef, error) {
 	dbProjectRef := project.ToService()
 	u := gimlet.GetUser(ctx).(*user.DBUser)
+
 	if err := data.CreateProject(&dbProjectRef, u); err != nil {
 		apiErr, ok := err.(gimlet.ErrorResponse)
 		if ok {
