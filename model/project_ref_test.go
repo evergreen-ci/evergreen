@@ -761,6 +761,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 
 			pRef := ProjectRef{
 				Id:                    "my_project",
+				Identifier:            "my_identifier",
 				Owner:                 "candy",
 				Repo:                  "land",
 				BatchTime:             10,
