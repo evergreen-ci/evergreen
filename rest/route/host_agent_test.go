@@ -337,6 +337,7 @@ func TestHostNextTask(t *testing.T) {
 						AgentRevision: "out-of-date",
 					}
 					require.NoError(t, nonLegacyHost.Insert())
+					handler.host = nonLegacyHost
 					testCase(ctx, t, handler)
 				})
 			}
