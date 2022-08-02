@@ -2472,9 +2472,7 @@ func (t *Task) Insert() error {
 // are also archived.
 func (t *Task) Archive() error {
 	if t.DisplayOnly {
-		var task []Task
-		task = append(task, *t)
-		err := ArchiveMany(task)
+		err := ArchiveMany([]Task{*t})
 		return errors.Wrapf(err, "archiving and updating display task with ID '%s'.", t.Id)
 	} else {
 		// Archiving a single task.
