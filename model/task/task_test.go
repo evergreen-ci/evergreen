@@ -3771,44 +3771,40 @@ func TestArchiveFailedOnly(t *testing.T) {
 		assert.NoError(t, db.ClearCollections(Collection, OldCollection, event.LegacyEventLogCollection))
 	}()
 
-	resetDatabase := func() Task {
-		assert.NoError(t, db.ClearCollections(Collection, OldCollection, event.LegacyEventLogCollection))
-		t1 := Task{
-			Id:      "t1",
-			Status:  evergreen.TaskFailed,
-			Version: "v",
-		}
-		assert.NoError(t, t1.Insert())
-		t2 := Task{
-			Id:      "t2",
-			Status:  evergreen.TaskSucceeded,
-			Version: "v",
-		}
-		assert.NoError(t, t2.Insert())
-		t3 := Task{
-			Id:      "t3",
-			Status:  evergreen.TaskFailed,
-			Version: "v",
-		}
-		assert.NoError(t, t3.Insert())
-		t4 := Task{
-			Id:      "t4",
-			Status:  evergreen.TaskSucceeded,
-			Version: "v",
-		}
-		assert.NoError(t, t4.Insert())
-		dt := Task{
-			Id:                      "dt",
-			DisplayOnly:             true,
-			ExecutionTasks:          []string{"t1", "t2"},
-			Status:                  evergreen.TaskFailed,
-			Version:                 "v",
-			ResetFailedWhenFinished: true,
-		}
-		assert.NoError(t, dt.Insert())
-
-		return dt
+	assert.NoError(t, db.ClearCollections(Collection, OldCollection, event.LegacyEventLogCollection))
+	t1 := Task{
+		Id:      "t1",
+		Status:  evergreen.TaskFailed,
+		Version: "v",
 	}
+	assert.NoError(t, t1.Insert())
+	t2 := Task{
+		Id:      "t2",
+		Status:  evergreen.TaskSucceeded,
+		Version: "v",
+	}
+	assert.NoError(t, t2.Insert())
+	t3 := Task{
+		Id:      "t3",
+		Status:  evergreen.TaskFailed,
+		Version: "v",
+	}
+	assert.NoError(t, t3.Insert())
+	t4 := Task{
+		Id:      "t4",
+		Status:  evergreen.TaskSucceeded,
+		Version: "v",
+	}
+	assert.NoError(t, t4.Insert())
+	dt := Task{
+		Id:                      "dt",
+		DisplayOnly:             true,
+		ExecutionTasks:          []string{"t1", "t2"},
+		Status:                  evergreen.TaskFailed,
+		Version:                 "v",
+		ResetFailedWhenFinished: true,
+	}
+	assert.NoError(t, dt.Insert())
 
 	checkTaskIsArchived := func(t *testing.T, oldTaskID string) {
 		dbTask, err := FindOneOldId(oldTaskID)
@@ -3851,8 +3847,6 @@ func TestArchiveFailedOnly(t *testing.T) {
 			require.Equal(t, hostEventData.Execution, strconv.Itoa(dbTask.Execution), len(events))
 		}
 	}
-
-	dt := resetDatabase()
 
 	t.Run("ArchivesOnlyFailedExecutionTasks", func(t *testing.T) {
 		dt.ResetFailedWhenFinished = true
