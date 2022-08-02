@@ -59,7 +59,7 @@ var (
 )
 
 type Task struct {
-	Id     string `bson:"_id" json:"id"`
+	Id     string `bson:"_id,omitempty" json:"id"`
 	Secret string `bson:"secret" json:"secret"`
 
 	// time information for task
@@ -2515,44 +2515,58 @@ func shouldRestartTask(resetFailedWhenFinished bool, resetWhenFinished bool, sta
 // ArchiveMany accepts tasks and display tasks (no execution tasks), bundles them all up, archives and updates all
 // that need to be (accounting for ResetFailedWhenFinished) in two queries
 func ArchiveMany(tasks []Task) error {
-	bundledTasks := []string{}    // Contains all tasks
-	toUpdateTaskIds := []string{} // Contains all tasks that should update and have new execution
-	toArchive := []interface{}{}  // Contains all archived tasks that are being updated / have new execution
+	updatedTasks := []Task{}     // Contains all tasks with updated information
+	toArchive := []interface{}{} // Contains all archived tasks that are being updated / have new execution
 
 	for _, t := range tasks {
-		bundledTasks = append(bundledTasks, t.Id)
-
 		if t.DisplayOnly {
 			if len(t.ExecutionTasks) > 0 && shouldRestartTask(t.ResetFailedWhenFinished, t.ResetWhenFinished, t.Status) {
 				toArchive = append(toArchive, t.makeArchivedTask())
-				toUpdateTaskIds = append(toUpdateTaskIds, t.Id)
+				// Take the highest and use that as the baseline. This is the backwards compatability check
+				if t.Execution > t.LatestParentExecution {
+					t.Execution += 1
+					t.LatestParentExecution = t.Execution
+				} else {
+					t.LatestParentExecution += 1
+					t.Execution = t.LatestParentExecution
+				}
+				updatedTasks = append(updatedTasks, t)
 
 				eTasks, err := FindAll(db.Query(ByIds(t.ExecutionTasks)))
 				if err != nil {
 					return errors.Wrapf(err, "finding execution tasks for display task '%s'.", t.Id)
 				}
 				for _, et := range eTasks {
-					bundledTasks = append(bundledTasks, et.Id)
+					et.LatestParentExecution = t.LatestParentExecution
 					if shouldRestartTask(t.ResetFailedWhenFinished, t.ResetWhenFinished, et.Status) {
 						toArchive = append(toArchive, et.makeArchivedTask())
-						toUpdateTaskIds = append(toUpdateTaskIds, et.Id)
+						et.Execution = t.Execution
 					}
+					updatedTasks = append(updatedTasks, et)
 				}
 			}
 		} else {
 			// Archiving a task
 			toArchive = append(toArchive, t.makeArchivedTask())
-			toUpdateTaskIds = append(toUpdateTaskIds, t.Id)
+			// Take the highest and use that as the baseline. This is the backwards compatability check
+			if t.Execution > t.LatestParentExecution {
+				t.Execution += 1
+				t.LatestParentExecution = t.Execution
+			} else {
+				t.LatestParentExecution += 1
+				t.Execution = t.LatestParentExecution
+			}
+			updatedTasks = append(updatedTasks, t)
 		}
 	}
 
-	grip.DebugWhen(len(utility.UniqueStrings(bundledTasks)) != len(bundledTasks), message.Fields{
-		"ticket":           "EVG-17261",
-		"message":          "archiving same task multiple times",
-		"tasks_to_archive": bundledTasks,
-	})
+	// grip.DebugWhen(len(utility.UniqueStrings(bundledTasks)) != len(bundledTasks), message.Fields{
+	// 	"ticket":           "EVG-17261",
+	// 	"message":          "archiving same task multiple times",
+	// 	"tasks_to_archive": bundledTasks,
+	// })
 
-	err := archiveAll(bundledTasks, toUpdateTaskIds, toArchive)
+	err := archiveAll(updatedTasks, toArchive)
 
 	return err
 }
@@ -2563,7 +2577,7 @@ func ArchiveMany(tasks []Task) error {
 // - toArchive       : Compiled archived tasks to put in old tasks collection
 //
 // Each array *should* include execution tasks id's
-func archiveAll(tasksIds []string, toUpdateTaskIds []string, toArchive []interface{}) error {
+func archiveAll(updatedTasks []Task, toArchive []interface{}) error {
 	mongoClient := evergreen.GetEnvironment().Client()
 	ctx, cancel := evergreen.GetEnvironment().Context()
 	defer cancel()
@@ -2582,44 +2596,25 @@ func archiveAll(tasksIds []string, toUpdateTaskIds []string, toArchive []interfa
 				return nil, errors.Wrap(err, "archiving tasks")
 			}
 		}
-		if len(tasksIds) > 0 {
-			// TODO (EVG-17322): Remove RunCommand call and replace with aggregate + merge
-			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(sessCtx,
-				bson.D{{Key: "_id", Value: bson.D{{Key: "$in", Value: tasksIds}}}}, // Query
-				bson.A{ // Pipeline
-					bson.D{{Key: "$set", Value: bson.D{ // Stage 1: Sets LatestParentExecution (LPE) = !exists(LPE) ? execution + 1 : LPE + 1
-						{Key: LatestParentExecutionKey, Value: bson.D{
-							{Key: "$cond", Value: bson.A{
-								bson.D{{Key: "$not", Value: bson.A{ // !exists(LPE)
-									"$" + LatestParentExecutionKey,
-								}}},
-								bson.D{{Key: "$add", Value: bson.A{ // execution + 1
-									"$" + ExecutionKey,
-									1,
-								}}},
-								bson.D{{Key: "$add", Value: bson.A{ // LPE + 1
-									"$" + LatestParentExecutionKey,
-									1,
-								}}},
-							}}},
-						}}},
-					},
-					bson.D{{Key: "$set", Value: bson.D{ // Stage 2: Updates execution number for id's in 'toUpdateTaskIds' to the LPE
-						{Key: ExecutionKey, Value: bson.D{
-							{Key: "$cond", Value: bson.A{
-								bson.D{{Key: "$in", Value: bson.A{"$_id", toUpdateTaskIds}}}, // In 'toUpdateTaskIds'
-								"$" + LatestParentExecutionKey,                               // Update to LPE
-								"$" + ExecutionKey,                                           // Keep value of Execution
-							}}},
-						}}},
-					},
-					bson.D{{Key: "$unset", Value: bson.A{ // Stage 3: Unsets aborted, aborted info, and details key
-						AbortedKey,
-						AbortInfoKey,
-						OverrideDependenciesKey,
-					}}}})
-
-			return nil, errors.Wrap(err, "Error updating documents")
+		if len(updatedTasks) > 0 {
+			var operations []mongo.WriteModel
+			for _, t := range updatedTasks {
+				t.Aborted = false
+				t.AbortInfo = AbortInfo{}
+				t.OverrideDependencies = false
+				operation := mongo.NewReplaceOneModel()
+				operation.SetFilter(bson.M{"_id": t.Id})
+				t.Id = ""
+				operation.SetReplacement(&t)
+				operation.SetUpsert(true)
+				operations = append(operations, operation)
+			}
+			result, err := evergreen.GetEnvironment().DB().Collection(Collection).BulkWrite(sessCtx, operations)
+			fmt.Println(result)
+			// _, err = evergreen.GetEnvironment().DB().Collection(Collection).InsertMany(sessCtx, updatedTasks)
+			if err != nil {
+				return nil, errors.Wrap(err, "Error updating update tasks")
+			}
 		}
 		return nil, errors.Wrap(err, "updating tasks")
 	}
