@@ -2019,7 +2019,6 @@ func resetTaskUpdate(t *Task) bson.M {
 			TimeTakenKey:                   0,
 			LastHeartbeatKey:               utility.ZeroTime,
 			ContainerAllocationAttemptsKey: 0,
-			ArchivedKey:                    false,
 		},
 		"$unset": bson.M{
 			DetailsKey:                 "",
@@ -2031,6 +2030,7 @@ func resetTaskUpdate(t *Task) bson.M {
 			HostIdKey:                  "",
 			HostCreateDetailsKey:       "",
 			OverrideDependenciesKey:    "",
+			ArchivedKey:                "",
 		},
 	}
 	return update
@@ -2509,7 +2509,7 @@ func (t *Task) Archive() error {
 	if err != nil {
 		return errors.Wrap(err, "updating task")
 	}
-	// only archive execution tasks after we confirm that the task was in a completed state
+
 	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
 		execTasks, err := FindAll(db.Query(ByIds(t.ExecutionTasks)))
 		if err != nil {
