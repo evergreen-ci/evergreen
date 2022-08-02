@@ -2,6 +2,7 @@ package evergreen
 
 import (
 	"context"
+	"database/sql"
 	"encoding/gob"
 	"fmt"
 	"math"
@@ -84,6 +85,7 @@ type Environment interface {
 	Session() db.Session
 	Client() *mongo.Client
 	DB() *mongo.Database
+	PrestoDB() *sql.DB
 
 	// The Environment provides access to several amboy queues for
 	// processing background work in the context of the Evergreen
@@ -202,6 +204,7 @@ func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Envir
 	catcher.Add(e.initJasper())
 	catcher.Add(e.initDepot(ctx))
 	catcher.Add(e.initSenders(ctx))
+	catcher.Add(e.initPrestoDB(ctx))
 	catcher.Add(e.createLocalQueue(ctx))
 	catcher.Add(e.createApplicationQueue(ctx))
 	catcher.Add(e.createNotificationQueue(ctx))
@@ -227,6 +230,7 @@ type envState struct {
 	settings                *Settings
 	dbName                  string
 	client                  *mongo.Client
+	prestoDB                *sql.DB
 	mu                      sync.RWMutex
 	clientConfig            *ClientConfig
 	closers                 []closerOp
@@ -316,6 +320,20 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings) error {
 	return nil
 }
 
+func (e *envState) initPrestoDB(ctx context.Context) error {
+	var err error
+	e.prestoDB, err = e.settings.Presto.setupDB(ctx)
+	if err != nil {
+		return errors.Wrap(err, "initializing the Presto DB client")
+	}
+
+	e.RegisterCloser("presto-db-client", false, func(_ context.Context) error {
+		return errors.Wrap(e.prestoDB.Close(), "closing the Presto DB client")
+	})
+
+	return nil
+}
+
 func (e *envState) Context() (context.Context, context.CancelFunc) {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
@@ -347,6 +365,13 @@ func (e *envState) DB() *mongo.Database {
 	defer e.mu.RUnlock()
 
 	return e.client.Database(e.dbName)
+}
+
+func (e *envState) PrestoDB() *sql.DB {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return e.prestoDB
 }
 
 func (e *envState) createLocalQueue(ctx context.Context) error {
