@@ -81,7 +81,7 @@ func SetVersionActivation(versionId string, active bool, caller string) error {
 			q[task.ActivatedByKey] = bson.M{"$in": evergreen.SystemActivators}
 		}
 
-		tasksToModify, err = task.FindAll(db.Query(q).WithFields(task.IdKey, task.ExecutionKey))
+		tasksToModify, err = task.FindAll(db.Query(q).WithFields(task.IdKey, task.ExecutionKey, task.BuildIdKey))
 		if err != nil {
 			return errors.Wrap(err, "getting tasks to deactivate")
 		}
