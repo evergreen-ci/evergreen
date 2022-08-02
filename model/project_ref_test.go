@@ -1540,6 +1540,36 @@ func TestValidatePeriodicBuildDefinition(t *testing.T) {
 	}
 }
 
+func TestContainerSecretValidate(t *testing.T) {
+	t.Run("SucceedsWithStoredSecret", func(t *testing.T) {
+		cs := ContainerSecret{
+			Type:  ContainerSecretRepoCred,
+			Value: `{"username": "cool_user", "password": "very_secure_password_waow"}`,
+		}
+		assert.NoError(t, cs.Validate())
+	})
+	t.Run("SucceedsWithSecretNeedingToBeCreated", func(t *testing.T) {
+		cs := ContainerSecret{
+			Type:  ContainerSecretPodSecret,
+			Value: "pod_secret",
+		}
+		assert.NoError(t, cs.Validate())
+	})
+	t.Run("FailsWithInvalidSecretType", func(t *testing.T) {
+		cs := ContainerSecret{
+			Type:       "",
+			ExternalID: "external_id",
+		}
+		assert.Error(t, cs.Validate())
+	})
+	t.Run("FailsWithoutExternalIDOrValueForNewSecret", func(t *testing.T) {
+		cs := ContainerSecret{
+			Type: ContainerSecretRepoCred,
+		}
+		assert.Error(t, cs.Validate())
+	})
+}
+
 func TestGetPatchTriggerAlias(t *testing.T) {
 	projRef := ProjectRef{
 		PatchTriggerAliases: []patch.PatchTriggerDefinition{{Alias: "a0"}},
@@ -2104,7 +2134,6 @@ func TestMergeWithProjectConfig(t *testing.T) {
 	assert.NoError(t, err)
 	require.NotNil(t, projectRef)
 	assert.Equal(t, 4, projectRef.ContainerSizes["xlarge"].CPU)
-
 }
 
 func TestIsServerResmokeProject(t *testing.T) {

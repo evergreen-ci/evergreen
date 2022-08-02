@@ -280,20 +280,26 @@ type APIWorkstationConfig struct {
 	GitClone      *bool                        `bson:"git_clone" json:"git_clone"`
 }
 
-type APIContainerCredential struct {
-	Username *string `bson:"username" json:"username"`
-	Password *string `bson:"password" json:"password"`
+type APIContainerSecret struct {
+	ExternalID *string `json:"external_id"`
+	Type       *string `json:"type" json:"type" yaml:"type"`
+	Value      *string `json:"value"`
 }
 
-func (cr *APIContainerCredential) BuildFromService(h model.ContainerCredential) {
-	cr.Username = utility.ToStringPtr(h.Username)
-	cr.Password = utility.ToStringPtr(h.Password)
+func (cr *APIContainerSecret) BuildFromService(h model.ContainerSecret) error {
+	if h.Value != "" {
+		cr.Value = utility.ToStringPtr(h.Value)
+	}
+	cr.ExternalID = utility.ToStringPtr(h.ExternalID)
+	cr.Type = utility.ToStringPtr(string(h.Type))
+	return nil
 }
 
-func (cr *APIContainerCredential) ToService() model.ContainerCredential {
-	return model.ContainerCredential{
-		Username: utility.FromStringPtr(cr.Username),
-		Password: utility.FromStringPtr(cr.Password),
+func (cr *APIContainerSecret) ToService() model.ContainerSecret {
+	return model.ContainerSecret{
+		ExternalID: utility.FromStringPtr(cr.ExternalID),
+		Type:       model.ContainerSecretType(utility.FromStringPtr(cr.Type)),
+		Value:      utility.FromStringPtr(cr.Value),
 	}
 }
 
@@ -411,15 +417,17 @@ type APIProjectRef struct {
 	Restricted                  *bool                     `json:"restricted"`
 	Revision                    *string                   `json:"revision"`
 
-	Triggers             []APITriggerDefinition       `json:"triggers"`
-	GithubTriggerAliases []*string                    `json:"github_trigger_aliases"`
-	PatchTriggerAliases  []APIPatchTriggerDefinition  `json:"patch_trigger_aliases"`
-	Aliases              []APIProjectAlias            `json:"aliases"`
-	Variables            APIProjectVars               `json:"variables"`
-	WorkstationConfig    APIWorkstationConfig         `json:"workstation_config"`
-	Subscriptions        []APISubscription            `json:"subscriptions"`
-	DeleteSubscriptions  []*string                    `json:"delete_subscriptions,omitempty"`
-	PeriodicBuilds       []APIPeriodicBuildDefinition `json:"periodic_builds,omitempty"`
+	Triggers             []APITriggerDefinition           `json:"triggers"`
+	GithubTriggerAliases []*string                        `json:"github_trigger_aliases"`
+	PatchTriggerAliases  []APIPatchTriggerDefinition      `json:"patch_trigger_aliases"`
+	Aliases              []APIProjectAlias                `json:"aliases"`
+	Variables            APIProjectVars                   `json:"variables"`
+	WorkstationConfig    APIWorkstationConfig             `json:"workstation_config"`
+	Subscriptions        []APISubscription                `json:"subscriptions"`
+	DeleteSubscriptions  []*string                        `json:"delete_subscriptions,omitempty"`
+	PeriodicBuilds       []APIPeriodicBuildDefinition     `json:"periodic_builds,omitempty"`
+	ContainerSizes       map[string]APIContainerResources `json:"container_sizes"`
+	ContainerSecrets     map[string]APIContainerSecret    `json:"container_secrets,omitempty"`
 }
 
 // ToService returns a service layer ProjectRef using the data from APIProjectRef
@@ -491,6 +499,22 @@ func (p *APIProjectRef) ToService() model.ProjectRef {
 		}
 		projectRef.PatchTriggerAliases = patchTriggers
 	}
+
+	if p.ContainerSizes != nil {
+		containerSizes := map[string]model.ContainerResources{}
+		for name, size := range p.ContainerSizes {
+			containerSizes[name] = size.ToService()
+		}
+		projectRef.ContainerSizes = containerSizes
+	}
+
+	if p.ContainerSecrets != nil {
+		containerSecrets := map[string]model.ContainerSecret{}
+		for name, secret := range p.ContainerSecrets {
+			containerSecrets[name] = secret.ToService()
+		}
+	}
+
 	return projectRef
 }
 
@@ -584,6 +608,29 @@ func (p *APIProjectRef) BuildFromService(projectRef model.ProjectRef) error {
 		}
 		p.PatchTriggerAliases = patchTriggers
 	}
+
+	if projectRef.ContainerSizes != nil {
+		containerSizes := map[string]APIContainerResources{}
+		for name, resources := range projectRef.ContainerSizes {
+			var apiResources APIContainerResources
+			apiResources.BuildFromService(resources)
+			containerSizes[name] = apiResources
+		}
+		p.ContainerSizes = containerSizes
+	}
+
+	if projectRef.ContainerSecrets != nil {
+		containerSecrets := map[string]APIContainerSecret{}
+		for name, secret := range projectRef.ContainerSecrets {
+			var apiSecret APIContainerSecret
+			if err := apiSecret.BuildFromService(secret); err != nil {
+				return errors.Wrapf(err, "converting container secret '%s' to service model", name)
+			}
+			containerSecrets[name] = apiSecret
+		}
+		p.ContainerSecrets = containerSecrets
+	}
+
 	return nil
 }
 

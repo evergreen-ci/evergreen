@@ -110,8 +110,8 @@ type ProjectRef struct {
 	PerfEnabled        *bool                        `bson:"perf_enabled,omitempty" json:"perf_enabled,omitempty" yaml:"perf_enabled,omitempty"`
 
 	// Container settings
-	ContainerSizes       map[string]ContainerResources  `bson:"container_sizes,omitempty" json:"container_sizes,omitempty" yaml:"container_sizes,omitempty"`
-	ContainerCredentials map[string]ContainerCredential `bson:"container_credentials,omitempty" json:"container_credentials,omitempty" yaml:"container_credentials,omitempty"`
+	ContainerSizes   map[string]ContainerResources `bson:"container_sizes,omitempty" json:"container_sizes,omitempty" yaml:"container_sizes,omitempty"`
+	ContainerSecrets map[string]ContainerSecret    `bson:"container_credentials,omitempty" json:"container_credentials,omitempty" yaml:"container_credentials,omitempty"`
 
 	RepoRefId string `bson:"repo_ref_id" json:"repo_ref_id" yaml:"repo_ref_id"`
 
@@ -159,12 +159,41 @@ type ContainerResources struct {
 	CPU      int `bson:"cpu,omitempty" json:"cpu" yaml:"cpu"`
 }
 
-// ContainerCredential specifies the username and password required for authentication
+// ContainerSecret specifies the username and password required for authentication
 // on a private image repository. The credential is saved in AWS Secrets Manager upon
 // saving to the ProjectRef
-type ContainerCredential struct {
-	Username string `bson:"username,omitempty" json:"username" yaml:"username"`
-	Password string `bson:"password,omitempty" json:"password" yaml:"password"`
+type ContainerSecret struct {
+	// ExternalID is the unique resource identifier for the secret. This can be
+	// used to access and modify the secret.
+	ExternalID string `bson:"external_id" json:"external_id" yaml:"external_id"`
+	// Type is the type of secret that is stored.
+	Type ContainerSecretType `bson:"type" json:"type" yaml:"type"`
+	// Value is the plaintext value of the secret. This is not stored and must
+	// be retrieved using the external ID.
+	Value string `bson:"-" json:"-" yaml:"-"`
+}
+
+// ContainerSecretType represents a particular type of container secret, which
+// designates its purpose.
+type ContainerSecretType string
+
+const (
+	// ContainerSecretPodSecret is a container secret representing the Evergreen
+	// agent's pod secret.
+	ContainerSecretPodSecret = "pod_secret"
+	// ContainerSecretRepoCred is a container secret representing an image
+	// repository credential.
+	ContainerSecretRepoCred = "repository_credential"
+)
+
+// Validate checks that the container secret type is recognized.
+func (t ContainerSecretType) Validate() error {
+	switch t {
+	case ContainerSecretPodSecret, ContainerSecretRepoCred:
+		return nil
+	default:
+		return errors.Errorf("unrecognized container secret type '%s'", t)
+	}
 }
 
 type TriggerDefinition struct {
@@ -2550,8 +2579,11 @@ func ValidateContainers(pRef *ProjectRef, containers []Container) error {
 			catcher.Add(size.Validate())
 		}
 		catcher.ErrorfWhen(container.Size != "" && !ok, "size '%s' is not defined anywhere", container.Size)
-		_, ok = pRef.ContainerCredentials[container.Credential]
-		catcher.ErrorfWhen(container.Credential != "" && !ok, "credential '%s' is not defined anywhere", container.Credential)
+		if container.Credential != "" {
+			cs, ok := pRef.ContainerSecrets[container.Credential]
+			catcher.ErrorfWhen(!ok, "credential '%s' is not defined anywhere", container.Credential)
+			catcher.ErrorfWhen(ok && cs.Type != ContainerSecretRepoCred, "container credential named '%s' exists but is not valid for use as a repository credential", container.Credential)
+		}
 		catcher.NewWhen(container.Size != "" && container.Resources != nil, "size and resources cannot both be defined")
 		catcher.NewWhen(container.Size == "" && container.Resources == nil, "either size or resources must be defined")
 		catcher.NewWhen(container.Image == "", "image must be defined")
@@ -2585,10 +2617,10 @@ func (c ContainerResources) Validate() error {
 }
 
 // Validate that essential ContainerCredential fields are properly defined.
-func (c ContainerCredential) Validate() error {
+func (c ContainerSecret) Validate() error {
 	catcher := grip.NewSimpleCatcher()
-	catcher.NewWhen(c.Username == "", "container credential username must be a non empty string")
-	catcher.NewWhen(c.Password == "", "container credential password must be a non empty string")
+	catcher.Add(c.Type.Validate())
+	catcher.NewWhen(c.Value == "" && c.ExternalID == "", "must specify a container credential value or have an external ID")
 	return catcher.Resolve()
 }
 
