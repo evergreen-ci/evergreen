@@ -2476,79 +2476,74 @@ func (t *Task) Archive() error {
 		return errors.Wrapf(err, "archiving display task '%s'", t.Id)
 	} else {
 		// Archiving a single task.
-		if !t.ResetFailedWhenFinished || evergreen.IsFailedTaskStatus(t.Status) {
-			archiveTask := t.makeArchivedTask()
-			err := db.Insert(OldCollection, archiveTask)
-			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"archive_task_id": archiveTask.Id,
-					"old_task_id":     archiveTask.OldTaskId,
-					"execution":       t.Execution,
-					"display_only":    t.DisplayOnly,
-				}))
-				return errors.Wrap(err, "inserting archived task into old tasks")
-			}
-			err = UpdateOne(
-				bson.M{IdKey: t.Id},
-				bson.M{
-					"$unset": bson.M{
-						AbortedKey:              "",
-						AbortInfoKey:            "",
-						OverrideDependenciesKey: "",
-					},
-					"$set": bson.M{
-						ExecutionKey:             t.Execution + 1,
-						LatestParentExecutionKey: t.Execution + 1,
-					},
-				})
-			if err != nil {
-				return errors.Wrap(err, "updating task")
-			}
-			t.Aborted = false
+		archiveTask := t.makeArchivedTask()
+		err := db.Insert(OldCollection, archiveTask)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"archive_task_id": archiveTask.Id,
+				"old_task_id":     archiveTask.OldTaskId,
+				"execution":       t.Execution,
+				"display_only":    t.DisplayOnly,
+			}))
+			return errors.Wrap(err, "inserting archived task into old tasks")
 		}
+		err = UpdateOne(
+			bson.M{IdKey: t.Id},
+			bson.M{
+				"$unset": bson.M{
+					AbortedKey:              "",
+					AbortInfoKey:            "",
+					OverrideDependenciesKey: "",
+				},
+				"$set": bson.M{
+					ExecutionKey:             t.Execution + 1,
+					LatestParentExecutionKey: t.Execution + 1, // Will this matter for regular tasks?
+				},
+			})
+		if err != nil {
+			return errors.Wrap(err, "updating task")
+		}
+		t.Aborted = false
 		return nil
 	}
+}
+
+func shouldRestartTask(resetFailedWhenFinished bool, resetWhenFinished bool, status string) bool {
+	return resetWhenFinished || !resetFailedWhenFinished || evergreen.IsFailedTaskStatus(status)
 }
 
 // ArchiveMany accepts tasks and display tasks (no execution tasks), bundles them all up, archives and updates all
 // that need to be (accounting for ResetFailedWhenFinished) in two queries
 func ArchiveMany(tasks []Task) error {
-	bundledTasks := []string{}
-	toUpdateTaskIds := []string{}
-	etToArchiveIds := []string{}
-	toArchive := []interface{}{}
+	bundledTasks := []string{}    // Contains all tasks
+	toUpdateTaskIds := []string{} // Contains all tasks that should update and have new execution
+	toArchive := []interface{}{}  // Contains all archived tasks that are being updated / have new execution
 
 	for _, t := range tasks {
 		bundledTasks = append(bundledTasks, t.Id)
 
-		if !t.ResetFailedWhenFinished || evergreen.IsFailedTaskStatus(t.Status) {
+		if t.DisplayOnly {
+			if len(t.ExecutionTasks) > 0 && shouldRestartTask(t.ResetFailedWhenFinished, t.ResetWhenFinished, t.Status) {
+				toArchive = append(toArchive, t.makeArchivedTask())
+				toUpdateTaskIds = append(toUpdateTaskIds, t.Id)
+
+				eTasks, err := FindAll(db.Query(ByIds(t.ExecutionTasks)))
+				if err != nil {
+					return errors.Wrapf(err, "finding execution tasks for display task '%s'.", t.Id)
+				}
+				for _, et := range eTasks {
+					bundledTasks = append(bundledTasks, et.Id)
+					if shouldRestartTask(t.ResetFailedWhenFinished, t.ResetWhenFinished, et.Status) {
+						toArchive = append(toArchive, et.makeArchivedTask())
+						toUpdateTaskIds = append(toUpdateTaskIds, et.Id)
+					}
+				}
+			}
+		} else {
+			// Archiving a task
 			toArchive = append(toArchive, t.makeArchivedTask())
 			toUpdateTaskIds = append(toUpdateTaskIds, t.Id)
 		}
-
-		if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
-			eTasks, err := FindAll(db.Query(ByIds(t.ExecutionTasks)))
-			if err != nil {
-				return errors.Wrapf(err, "finding execution tasks for display task '%s'.", t.Id)
-			}
-			for _, et := range eTasks {
-				bundledTasks = append(bundledTasks, et.Id)
-				if !t.ResetFailedWhenFinished || evergreen.IsFailedTaskStatus(et.Status) {
-					etToArchiveIds = append(etToArchiveIds, et.Id)
-					toUpdateTaskIds = append(toUpdateTaskIds, et.Id)
-				}
-			}
-		}
-	}
-
-	execTasks, err := FindAll(db.Query(ByIds(etToArchiveIds)))
-
-	if err != nil {
-		return errors.Wrap(err, "Failed getting execution tasks")
-	}
-
-	for _, et := range execTasks {
-		toArchive = append(toArchive, et.makeArchivedTask())
 	}
 
 	grip.DebugWhen(len(utility.UniqueStrings(bundledTasks)) != len(bundledTasks), message.Fields{
@@ -2557,15 +2552,15 @@ func ArchiveMany(tasks []Task) error {
 		"tasks_to_archive": bundledTasks,
 	})
 
-	err = archiveAll(bundledTasks, toUpdateTaskIds, toArchive)
+	err := archiveAll(bundledTasks, toUpdateTaskIds, toArchive)
 
 	return err
 }
 
 // archiveAll takes in:
-// - taskIds : All tasks id's of display tasks, execution tasks, and tasks
+// - taskIds         : All tasks id's of display tasks, execution tasks, and tasks
 // - toUpdateTaskIds : All tasks that should be progressing to the latest execution
-// - toArchive : Compiled archived tasks to put in old tasks collection
+// - toArchive       : Compiled archived tasks to put in old tasks collection
 //
 // Each array *should* include execution tasks id's
 func archiveAll(tasksIds []string, toUpdateTaskIds []string, toArchive []interface{}) error {
