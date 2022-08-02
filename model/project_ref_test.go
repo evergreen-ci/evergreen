@@ -1067,6 +1067,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 
 	assert.Equal(t, "mongodb", repoRef.Owner)
 	assert.Equal(t, "mongo", repoRef.Repo)
+	assert.Equal(t, "main", repoRef.Branch)
 	assert.Contains(t, repoRef.Admins, "bob")
 	assert.Contains(t, repoRef.Admins, "other bob")
 	assert.Contains(t, repoRef.Admins, "me")

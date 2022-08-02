@@ -934,7 +934,7 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 	if err != nil {
 		return nil, errors.Wrap(err, "finding all enabled projects")
 	}
-	// for every setting in the project ref, if all enabled projects have the same setting, then use that
+	// For every setting in the project ref, if all enabled projects have the same setting, then use that.
 	defer func() {
 		err = recovery.HandlePanicWithError(recover(), err, "project and repo structures do not match")
 	}()
@@ -942,14 +942,14 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 	if !utility.StringSliceContains(repoRef.Admins, u.Username()) {
 		repoRef.Admins = append(repoRef.Admins, u.Username())
 	}
-	// some fields shouldn't be set from projects
+	// Some fields shouldn't be set from projects.
 	repoRef.Id = mgobson.NewObjectId().Hex()
 	repoRef.RepoRefId = ""
-	// set explicitly in case no project is enabled
+	// Set explicitly in case no project is enabled.
 	repoRef.Owner = p.Owner
 	repoRef.Repo = p.Repo
 
-	// creates scope and give user admin access to repo
+	// Creates scope and give user admin access to repo.
 	if err = repoRef.Add(u); err != nil {
 		return nil, errors.Wrapf(err, "adding new repo repo ref for '%s/%s'", p.Owner, p.Repo)
 	}
