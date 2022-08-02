@@ -1,6 +1,7 @@
 package evergreen
 
 import (
+	"regexp"
 	"time"
 
 	"github.com/mongodb/amboy"
@@ -142,6 +143,17 @@ const (
 )
 
 func (c *AmboyConfig) ValidateAndDefault() error {
+	catcher := grip.NewBasicCatcher()
+	for _, namedQueue := range c.NamedQueues {
+		if namedQueue.Regexp != "" {
+			_, err := regexp.Compile(namedQueue.Regexp)
+			catcher.Wrapf(err, "invalid regexp '%s'", namedQueue.Regexp)
+		}
+	}
+	if catcher.HasErrors() {
+		return errors.Wrap(catcher.Resolve(), "invalid regexp for named queues")
+	}
+
 	if c.Name == "" {
 		c.Name = DefaultAmboyQueueName
 	}
