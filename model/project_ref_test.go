@@ -1590,6 +1590,22 @@ func TestFindDownstreamProjects(t *testing.T) {
 	assert.Len(t, projects, 2)
 }
 
+func TestAddEmptyBranch(t *testing.T) {
+	require.NoError(t, db.ClearCollections(user.Collection, ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection))
+	u := user.DBUser{
+		Id: "me",
+	}
+	require.NoError(t, u.Insert())
+	p := ProjectRef{
+		Identifier: "myProject",
+		Owner:      "mongodb",
+		Repo:       "mongo",
+	}
+	assert.NoError(t, p.Add(&u))
+	assert.NotEmpty(t, p.Branch)
+	assert.Equal(t, "main", p.Branch)
+}
+
 func TestAddPermissions(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

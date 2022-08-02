@@ -63,7 +63,6 @@ func CreateProject(projectRef *model.ProjectRef, u *user.DBUser) error {
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrapf(err, "validating owner and repo for project: %s", projectRef.Identifier).Error(),
 		}
-
 	}
 
 	if projectRef.Identifier != "" {

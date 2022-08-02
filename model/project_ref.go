@@ -447,6 +447,11 @@ func (p *ProjectRef) Add(creator *user.DBUser) error {
 		}
 	}
 
+	// Default to main for branch
+	if p.Branch == "" {
+		p.Branch = "main"
+	}
+
 	err := db.Insert(ProjectRefCollection, p)
 	if err != nil {
 		return errors.Wrap(err, "inserting project ref")
