@@ -8,6 +8,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -440,9 +441,15 @@ func (e *envState) createRemoteQueueGroup(ctx context.Context) error {
 		Retryable:  &retryOpts,
 	}
 
+	perQueue, regexpQueue, err := e.getNamedRemoteQueueOptions()
+	if err != nil {
+		return errors.Wrap(err, "getting named remote queue options")
+	}
+
 	remoteQueueGroupOpts := queue.MongoDBQueueGroupOptions{
 		DefaultQueue:              queueOpts,
-		PerQueue:                  e.getNamedRemoteQueueOptions(),
+		PerQueue:                  perQueue,
+		RegexpQueue:               regexpQueue,
 		BackgroundCreateFrequency: time.Duration(e.settings.Amboy.GroupBackgroundCreateFrequencyMinutes) * time.Minute,
 		PruneFrequency:            time.Duration(e.settings.Amboy.GroupPruneFrequencyMinutes) * time.Minute,
 		TTL:                       time.Duration(e.settings.Amboy.GroupTTLMinutes) * time.Minute,
@@ -476,9 +483,13 @@ func (e *envState) getRemoteQueueGroupDBOptions() queue.MongoDBOptions {
 	return opts
 }
 
-func (e *envState) getNamedRemoteQueueOptions() map[string]queue.MongoDBQueueOptions {
+func (e *envState) getNamedRemoteQueueOptions() (map[string]queue.MongoDBQueueOptions, []queue.RegexpMongoDBQueueOptions, error) {
 	perQueueOpts := map[string]queue.MongoDBQueueOptions{}
+	var regexpQueueOpts []queue.RegexpMongoDBQueueOptions
 	for _, namedQueue := range e.settings.Amboy.NamedQueues {
+		if namedQueue.Name == "" {
+			continue
+		}
 		dbOpts := e.getRemoteQueueGroupDBOptions()
 		if namedQueue.SampleSize != 0 {
 			dbOpts.SampleSize = namedQueue.SampleSize
@@ -492,12 +503,26 @@ func (e *envState) getNamedRemoteQueueOptions() map[string]queue.MongoDBQueueOpt
 		} else {
 			numWorkers = e.settings.Amboy.GroupDefaultWorkers
 		}
-		perQueueOpts[namedQueue.Name] = queue.MongoDBQueueOptions{
+		queueOpts := queue.MongoDBQueueOptions{
 			NumWorkers: utility.ToIntPtr(numWorkers),
 			DB:         &dbOpts,
 		}
+		if namedQueue.Name != "" {
+			perQueueOpts[namedQueue.Name] = queueOpts
+			continue
+		}
+
+		re, err := regexp.Compile(namedQueue.Regexp)
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "invalid regexp '%s'", namedQueue.Regexp)
+		}
+		regexpQueueOpts = append(regexpQueueOpts, queue.RegexpMongoDBQueueOptions{
+			Regexp:  *re,
+			Options: queueOpts,
+		})
 	}
-	return perQueueOpts
+
+	return perQueueOpts, regexpQueueOpts, nil
 }
 
 func (e *envState) createNotificationQueue(ctx context.Context) error {
