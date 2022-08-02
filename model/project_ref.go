@@ -1768,6 +1768,11 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 	var err error
 	switch section {
 	case ProjectPageGeneralSection:
+                allowedOrgs := evergreen.GetEnvironment().Settings().GithubOrgs
+                if err := p.ValidateOwnerAndRepo(allowedOrgs); err != nil {
+                        return false, errors.Wrap(err, "validating new owner/repo")
+                }
+
 		setUpdate := bson.M{
 			ProjectRefEnabledKey:                 p.Enabled,
 			ProjectRefBranchKey:                  p.Branch,
