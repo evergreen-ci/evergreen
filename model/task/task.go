@@ -2633,7 +2633,7 @@ func archiveAll(tasksIds []string, toUpdateTaskIds []string, toArchive []interfa
 			)
 			return nil, errors.Wrap(result.Err(), "Error updating documents")
 		}
-		return nil, errors.Wrap(err, "updating tasks.")
+		return nil, errors.Wrap(err, "updating tasks")
 	}
 
 	// TODO (EVG-17322): Remove Create Collection calls
