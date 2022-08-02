@@ -1772,6 +1772,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 	switch section {
 	case ProjectPageGeneralSection:
 		setUpdate := bson.M{
+			ProjectRefEnabledKey:                 p.Enabled,
 			ProjectRefBranchKey:                  p.Branch,
 			ProjectRefBatchTimeKey:               p.BatchTime,
 			ProjectRefRemotePathKey:              p.RemotePath,
@@ -1787,12 +1788,11 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			ProjectRefDisabledStatsCacheKey:      p.DisabledStatsCache,
 			ProjectRefFilesIgnoredFromCacheKey:   p.FilesIgnoredFromCache,
 		}
-		if !isRepo && !p.UseRepoSettings() && !defaultToRepo {
+		if !isRepo && !p.UseRepoSettings() {
 			setUpdate[ProjectRefOwnerKey] = p.Owner
 			setUpdate[ProjectRefRepoKey] = p.Repo
 		}
 		if !defaultToRepo {
-			setUpdate[ProjectRefEnabledKey] = p.Enabled
 			setUpdate[ProjectRefDisplayNameKey] = p.DisplayName
 			setUpdate[ProjectRefIdentifierKey] = p.Identifier
 		}
