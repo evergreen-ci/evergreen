@@ -4,7 +4,7 @@ buildDir := bin
 nodeDir := public
 packages := $(name) agent agent-command agent-util agent-internal agent-internal-client operations cloud cloud-userdata
 packages += db util plugin units graphql thirdparty thirdparty-docker auth scheduler model validator service repotracker cmd-codegen-core mock
-packages += model-annotations model-patch model-artifact model-host model-pod model-pod-dispatcher model-build model-event model-task model-user model-distro model-manifest model-testresult
+packages += model-annotations model-patch model-artifact model-host model-pod model-pod-definition model-pod-dispatcher model-build model-event model-task model-user model-distro model-manifest model-testresult
 packages += operations-metabuild-generator operations-metabuild-model model-commitqueue
 packages += rest-client rest-data rest-route rest-model migrations trigger model-alertrecord model-notification model-stats model-reliability
 lintOnlyPackages := api apimodels testutil model-manifest model-testutil service-testutil service-graphql db-mgo db-mgo-bson db-mgo-internal-json
@@ -243,6 +243,8 @@ $(clientBuildDir)/%/.signed:$(buildDir)/sign-executable $(clientBuildDir)/%/$(un
 
 dist-staging:
 	STAGING_ONLY=1 SIGN_MACOS= $(MAKE) dist
+dist-unsigned:
+	SIGN_MACOS= $(MAKE) dist
 dist:$(buildDir)/dist.tar.gz
 $(buildDir)/dist.tar.gz:$(buildDir)/make-tarball $(clientBinaries) $(uiFiles) $(if $(SIGN_MACOS),$(foreach platform,$(macOSPlatforms),$(clientBuildDir)/$(platform)/.signed))
 	./$< --name $@ --prefix $(name) $(foreach item,$(distContents),--item $(item)) --exclude "public/node_modules" --exclude "clients/.cache"

@@ -50,6 +50,22 @@ func FindProjectById(id string, includeRepo bool, includeProjectConfig bool) (*m
 
 // CreateProject inserts the given model.ProjectRef.
 func CreateProject(projectRef *model.ProjectRef, u *user.DBUser) error {
+	config, err := evergreen.GetConfig()
+	if err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrapf(err, "getting evergreen config ").Error(),
+		}
+	}
+
+	if err := projectRef.ValidateOwnerAndRepo(config.GithubOrgs); err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrapf(err, "validating owner and repo for project: %s", projectRef.Identifier).Error(),
+		}
+
+	}
+
 	if projectRef.Identifier != "" {
 		if err := VerifyUniqueProject(projectRef.Identifier); err != nil {
 			return err
@@ -60,7 +76,7 @@ func CreateProject(projectRef *model.ProjectRef, u *user.DBUser) error {
 			return err
 		}
 	}
-	err := projectRef.Add(u)
+	err = projectRef.Add(u)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -117,7 +133,7 @@ func GetProjectTasksWithOptions(projectName string, taskName string, opts model.
 	res := []restModel.APITask{}
 	for _, t := range tasks {
 		apiTask := restModel.APITask{}
-		if err = apiTask.BuildFromArgs(&t, &restModel.APITaskArgs{
+		if err = apiTask.BuildFromService(&t, &restModel.APITaskArgs{
 			IncludeProjectIdentifier: true,
 			IncludeAMI:               true,
 		}); err != nil {
@@ -166,9 +182,7 @@ func FindProjectVarsById(id string, repoId string, redact bool) (*restModel.APIP
 	}
 
 	varsModel := restModel.APIProjectVars{}
-	if err := varsModel.BuildFromService(vars); err != nil {
-		return nil, errors.Wrap(err, "converting project variables to API model")
-	}
+	varsModel.BuildFromService(*vars)
 	return &varsModel, nil
 }
 
@@ -177,19 +191,15 @@ func UpdateProjectVars(projectId string, varsModel *restModel.APIProjectVars, ov
 	if varsModel == nil {
 		return nil
 	}
-	v, err := varsModel.ToService()
-	if err != nil {
-		return errors.Wrap(err, "converting project variables to service model")
-	}
-	vars := v.(*model.ProjectVars)
+	vars := varsModel.ToService()
 	vars.Id = projectId
 
 	if overwrite {
-		if _, err = vars.Upsert(); err != nil {
+		if _, err := vars.Upsert(); err != nil {
 			return errors.Wrapf(err, "overwriting variables for project '%s'", vars.Id)
 		}
 	} else {
-		_, err = vars.FindAndModify(varsModel.VarsToDelete)
+		_, err := vars.FindAndModify(varsModel.VarsToDelete)
 		if err != nil {
 			return errors.Wrapf(err, "updating variables for project '%s'", vars.Id)
 		}

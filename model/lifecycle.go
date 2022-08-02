@@ -329,7 +329,7 @@ func RestartTasksInVersion(versionId string, abortInProgress bool, caller string
 // If abortInProgress is true, it also sets the abort flag on any in-progress tasks.
 func RestartVersion(versionId string, taskIds []string, abortInProgress bool, caller string) error {
 	if abortInProgress {
-		if err := task.AbortTasksForVersion(versionId, taskIds, caller); err != nil {
+		if err := task.AbortAndMarkResetTasksForVersion(versionId, taskIds, caller); err != nil {
 			return errors.WithStack(err)
 		}
 	}
@@ -341,8 +341,8 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	// remove execution tasks in case the caller passed both display and execution tasks
-	// the functions below are expected to work if just the display task is passed
+	// Remove execution tasks in case the caller passed both display and execution tasks.
+	// The functions below are expected to work if just the display task is passed.
 	for i := len(allFinishedTasks) - 1; i >= 0; i-- {
 		t := allFinishedTasks[i]
 		if t.DisplayTask != nil {
@@ -353,7 +353,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	// archive all the finished tasks
 	toArchive := []task.Task{}
 	for _, t := range allFinishedTasks {
-		if !t.IsPartOfSingleHostTaskGroup() { // for single host task groups we don't archive until fully restarting
+		if !t.IsPartOfSingleHostTaskGroup() { // For single host task groups we don't archive until fully restarting
 			toArchive = append(toArchive, t)
 		}
 	}
@@ -365,14 +365,8 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		Build     string
 		TaskGroup string
 	}
-	// Mark aborted tasks to reset when finished if not all tasks are finished.
-	if abortInProgress && len(finishedTasks) < len(taskIds) {
-		if err = task.SetAbortedTasksResetWhenFinished(taskIds); err != nil {
-			return err
-		}
-	}
 
-	// only need to check one task per task group / build combination
+	// Only need to check one task per task group / build combination
 	taskGroupsToCheck := map[taskGroupAndBuild]task.Task{}
 	tasksToRestart := allFinishedTasks
 
@@ -387,7 +381,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 				TaskGroup: t.TaskGroup,
 			}] = t
 		} else {
-			// only hard restart non-single host task group tasks
+			// Only hard restart non-single host task group tasks
 			restartIds = append(restartIds, t.Id)
 			if t.DisplayOnly {
 				restartIds = append(restartIds, t.ExecutionTasks...)
@@ -413,12 +407,8 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	if err = build.SetBuildStartedForTasks(tasksToRestart, caller); err != nil {
 		return errors.Wrap(err, "setting builds started")
 	}
-	version, err := VersionFindOneId(versionId)
-	if err != nil {
-		return errors.Wrap(err, "finding version")
-	}
-	return errors.Wrap(version.UpdateStatus(evergreen.VersionStarted), "changing version status")
 
+	return errors.Wrap(setVersionStatus(versionId, evergreen.VersionStarted), "changing version status")
 }
 
 // RestartVersions restarts selected tasks for a set of versions.
@@ -782,6 +772,13 @@ func createTasksForBuild(project *Project, pRef *ProjectRef, buildVariant *Build
 	tgMap := map[string]TaskGroup{}
 	for _, tg := range project.TaskGroups {
 		tgMap[tg.Name] = tg
+	}
+	for _, variant := range project.BuildVariants {
+		for _, t := range variant.Tasks {
+			if t.TaskGroup != nil {
+				tgMap[t.Name] = *t.TaskGroup
+			}
+		}
 	}
 
 	for _, task := range buildVariant.Tasks {
@@ -1274,7 +1271,10 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 	}
 
 	if buildVarTask.IsGroup {
-		tg := project.FindTaskGroup(buildVarTask.GroupName)
+		tg := buildVarTask.TaskGroup
+		if tg == nil {
+			tg = project.FindTaskGroup(buildVarTask.GroupName)
+		}
 		if tg == nil {
 			return nil, errors.Errorf("finding task group '%s' in project '%s'", buildVarTask.GroupName, project.Identifier)
 		}

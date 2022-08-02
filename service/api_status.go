@@ -190,9 +190,9 @@ func (as *APIServer) serviceStatusSimple(w http.ResponseWriter, r *http.Request)
 
 func (as *APIServer) agentSetup(w http.ResponseWriter, r *http.Request) {
 	out := &apimodels.AgentSetupData{
-		SplunkServerURL:   as.Settings.Splunk.ServerURL,
-		SplunkClientToken: as.Settings.Splunk.Token,
-		SplunkChannel:     as.Settings.Splunk.Channel,
+		SplunkServerURL:   as.Settings.Splunk.SplunkConnectionInfo.ServerURL,
+		SplunkClientToken: as.Settings.Splunk.SplunkConnectionInfo.Token,
+		SplunkChannel:     as.Settings.Splunk.SplunkConnectionInfo.Channel,
 		S3Key:             as.Settings.Providers.AWS.S3.Key,
 		S3Secret:          as.Settings.Providers.AWS.S3.Secret,
 		S3Bucket:          as.Settings.Providers.AWS.S3.Bucket,

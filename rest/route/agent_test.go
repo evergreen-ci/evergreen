@@ -65,10 +65,12 @@ func TestAgentCedarConfig(t *testing.T) {
 			defer cancel()
 
 			s := &evergreen.Settings{
-				Splunk: send.SplunkConnectionInfo{
-					ServerURL: "server_url",
-					Token:     "token",
-					Channel:   "channel",
+				Splunk: evergreen.SplunkConfig{
+					SplunkConnectionInfo: send.SplunkConnectionInfo{
+						ServerURL: "server_url",
+						Token:     "token",
+						Channel:   "channel",
+					},
 				},
 				Providers: evergreen.CloudProviders{
 					AWS: evergreen.AWSConfig{

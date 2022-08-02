@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"testing"
 	"time"
 
@@ -349,7 +350,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 						Project:  projectId,
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromArgs(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
+					err := nextModelTask.BuildFromService(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
@@ -390,7 +391,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 						Project:  projectId,
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromArgs(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
+					err := nextModelTask.BuildFromService(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
@@ -431,7 +432,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 						Project:  projectId,
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromArgs(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
+					err := nextModelTask.BuildFromService(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
@@ -473,7 +474,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 						Project:  projectId,
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromArgs(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
+					err := nextModelTask.BuildFromService(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
@@ -548,7 +549,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 						Id: fmt.Sprintf("%dbuild%d", prefix, i),
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromArgs(serviceModel, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
+					err := nextModelTask.BuildFromService(serviceModel, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
@@ -588,7 +589,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 						Id: fmt.Sprintf("%dbuild%d", prefix, i),
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromArgs(serviceModel, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
+					err := nextModelTask.BuildFromService(serviceModel, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
@@ -628,7 +629,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 						Id: fmt.Sprintf("%dbuild%d", prefix, i),
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromArgs(serviceModel, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
+					err := nextModelTask.BuildFromService(serviceModel, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
@@ -667,7 +668,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 						Id: fmt.Sprintf("%dbuild%d", prefix, i),
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromArgs(serviceModel, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
+					err := nextModelTask.BuildFromService(serviceModel, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
@@ -698,7 +699,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 					Id: "0build0",
 				}
 				nextModelTask := &model.APITask{}
-				err := nextModelTask.BuildFromArgs(serviceModel, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
+				err := nextModelTask.BuildFromService(serviceModel, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
 				So(err, ShouldBeNil)
 				err = nextModelTask.BuildPreviousExecutions(cachedOldTasks, "http://evergreen.example.net")
 				So(err, ShouldBeNil)
@@ -1017,12 +1018,19 @@ func TestTaskResetPrepare(t *testing.T) {
 	Convey("With handler and a project context and user", t, func() {
 		trh := &taskRestartHandler{}
 
+		testTask := task.Task{
+			Id:           "testTaskId",
+			Activated:    false,
+			Secret:       "initialSecret",
+			DispatchTime: time.Now(),
+			BuildId:      "b0",
+			Version:      "v1",
+			Status:       evergreen.TaskSucceeded,
+			Priority:     0,
+		}
+
 		projCtx := serviceModel.Context{
-			Task: &task.Task{
-				Id:        "testTaskId",
-				Priority:  0,
-				Activated: false,
-			},
+			Task: &testTask,
 		}
 		u := user.DBUser{
 			Id: "testUser",
@@ -1053,6 +1061,43 @@ func TestTaskResetPrepare(t *testing.T) {
 			}
 
 			So(err, ShouldResemble, expectedErr)
+		})
+
+		projCtx.ProjectRef = &serviceModel.ProjectRef{
+			Id:         "project_1",
+			Identifier: "project_identifier",
+		}
+
+		failedOnlyTest := func(failedOnly bool) {
+			projCtx.Task = &testTask
+			json := []byte(`{"failed_only": ` + strconv.FormatBool(failedOnly) + `}`)
+			buf := bytes.NewBuffer(json)
+			req, err := http.NewRequest(http.MethodPost, "task/testTaskId/restart", buf)
+			So(err, ShouldBeNil)
+			ctx = gimlet.AttachUser(ctx, &u)
+			ctx = context.WithValue(ctx, RequestContext, &projCtx)
+			err = trh.Parse(ctx, req)
+			So(err, ShouldBeNil)
+			So(trh.FailedOnly, ShouldEqual, failedOnly)
+		}
+
+		Convey("should register true valued failedOnly parameter", func() {
+			failedOnlyTest(true)
+		})
+
+		Convey("should register false valued failedOnly parameter", func() {
+			failedOnlyTest(false)
+		})
+
+		Convey("should have default false failedOnly with empty body", func() {
+			projCtx.Task = &testTask
+			req, err := http.NewRequest(http.MethodPost, "task/testTaskId/restart", &bytes.Buffer{})
+			So(err, ShouldBeNil)
+			ctx = gimlet.AttachUser(ctx, &u)
+			ctx = context.WithValue(ctx, RequestContext, &projCtx)
+			err = trh.Parse(ctx, req)
+			So(err, ShouldBeNil)
+			So(trh.FailedOnly, ShouldEqual, false)
 		})
 	})
 }
@@ -1145,14 +1190,51 @@ func TestTaskResetExecute(t *testing.T) {
 			Status:       evergreen.TaskSucceeded,
 		}
 		So(testTask.Insert(), ShouldBeNil)
+
+		testTask2 := task.Task{
+			Id:           "testTaskId2",
+			Activated:    false,
+			Secret:       "initialSecret",
+			DispatchTime: timeNow,
+			BuildId:      "b0",
+			Version:      "v1",
+			Status:       evergreen.TaskFailed,
+		}
+		So(testTask2.Insert(), ShouldBeNil)
+
+		testTask3 := task.Task{
+			Id:           "testTaskId3",
+			Activated:    false,
+			Secret:       "initialSecret",
+			DispatchTime: timeNow,
+			BuildId:      "b0",
+			Version:      "v1",
+			Status:       evergreen.TaskSucceeded,
+		}
+		So(testTask3.Insert(), ShouldBeNil)
+
+		displayTask := &task.Task{
+			Id:             "displayTask",
+			DisplayName:    "displayTask",
+			BuildId:        "b0",
+			Version:        "v1",
+			Activated:      false,
+			DisplayOnly:    true,
+			ExecutionTasks: []string{testTask2.Id, testTask3.Id},
+			Status:         evergreen.TaskFailed,
+			DispatchTime:   time.Now(),
+		}
+		So(displayTask.Insert(), ShouldBeNil)
+
 		v := &serviceModel.Version{Id: "v1"}
 		So(v.Insert(), ShouldBeNil)
 		b := build.Build{Id: "b0", Version: "v1", Activated: true}
 		So(b.Insert(), ShouldBeNil)
+
 		ctx := context.Background()
 		Convey("and an error from the service function", func() {
-			testTask2 := task.Task{
-				Id:           "testTaskId2",
+			testTask4 := task.Task{
+				Id:           "testTaskId4",
 				Activated:    false,
 				Secret:       "initialSecret",
 				DispatchTime: timeNow,
@@ -1160,9 +1242,9 @@ func TestTaskResetExecute(t *testing.T) {
 				Version:      "v1",
 				Status:       evergreen.TaskStarted,
 			}
-			So(testTask2.Insert(), ShouldBeNil)
+			So(testTask4.Insert(), ShouldBeNil)
 			trh := &taskRestartHandler{
-				taskId:   "testTaskId2",
+				taskId:   "testTaskId4",
 				username: "testUser",
 			}
 			resp := trh.Run(ctx)
@@ -1173,7 +1255,7 @@ func TestTaskResetExecute(t *testing.T) {
 
 		})
 
-		Convey("calling TryReset should reset the task", func() {
+		Convey("calling TaskRestartHandler should reset the task", func() {
 			trh := &taskRestartHandler{
 				taskId:   "testTaskId",
 				username: "testUser",
@@ -1188,6 +1270,29 @@ func TestTaskResetExecute(t *testing.T) {
 			dbTask, err := task.FindOneId("testTaskId")
 			So(err, ShouldBeNil)
 			So(dbTask.Secret, ShouldNotResemble, "initialSecret")
+		})
+
+		Convey("calling TaskRestartHandler should reset the task with failedonly", func() {
+			trh := &taskRestartHandler{
+				taskId:     "displayTask",
+				username:   "testUser",
+				FailedOnly: true,
+			}
+
+			res := trh.Run(ctx)
+			So(res.Status(), ShouldEqual, http.StatusOK)
+			resTask, ok := res.Data().(*model.APITask)
+			So(ok, ShouldBeTrue)
+			So(resTask.Activated, ShouldBeTrue)
+			So(resTask.DispatchTime, ShouldEqual, nil)
+			dbTask2, err := task.FindOneId("testTaskId2")
+			So(err, ShouldBeNil)
+			So(dbTask2.Secret, ShouldNotResemble, "initialSecret")
+			So(dbTask2.Status, ShouldEqual, evergreen.TaskUndispatched)
+			dbTask3, err := task.FindOneId("testTaskId3")
+			So(err, ShouldBeNil)
+			So(dbTask3.Secret, ShouldResemble, "initialSecret")
+			So(dbTask3.Status, ShouldEqual, evergreen.TaskSucceeded)
 		})
 	})
 

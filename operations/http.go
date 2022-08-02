@@ -251,13 +251,9 @@ func (ac *legacyClient) GetPatch(patchId string) (*patch.Patch, error) {
 	if err = utility.ReadJSON(resp.Body, apiModel); err != nil {
 		return nil, err
 	}
-	i, err := apiModel.ToService()
+	res, err := apiModel.ToService()
 	if err != nil {
 		return nil, errors.Wrapf(err, "error building to patch")
-	}
-	res, ok := i.(patch.Patch)
-	if !ok {
-		return nil, errors.Wrapf(err, "error converting type %T to Patch", res)
 	}
 	return &res, nil
 }

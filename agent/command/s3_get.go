@@ -143,8 +143,7 @@ func (c *s3get) Execute(ctx context.Context,
 	if err != nil {
 		return errors.Wrap(err, "problem connecting to s3")
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+
 	if err := c.bucket.Check(ctx); err != nil {
 		return errors.Wrap(err, "invalid pail bucket")
 	}

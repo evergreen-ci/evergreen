@@ -8,6 +8,20 @@ input VersionToRestart {
   taskIds: [String!]!
 }
 
+"""
+TaskFilterOptions defines the parameters that are used when fetching tasks from a Version.
+"""
+input TaskFilterOptions {
+  baseStatuses: [String!] = []
+  includeEmptyActivation: Boolean = false
+  limit: Int = 0
+  page: Int = 0
+  sorts: [SortOrder!]
+  statuses: [String!] = []
+  taskName: String
+  variant: String
+}
+
 ###### TYPES ######
 """
 Version models a commit within a project.
@@ -40,10 +54,16 @@ type Version {
   startTime: Time
   status: String!
   taskCount: Int
+  tasks(options: TaskFilterOptions): VersionTasks!
   taskStatuses: [String!]!
   taskStatusStats(options: BuildVariantOptions): TaskStats
   upstreamProject: UpstreamProject
   versionTiming: VersionTiming
+}
+
+type VersionTasks {
+  count: Int!
+  data: [Task!]!
 }
 
 type TaskStats {
@@ -51,7 +71,6 @@ type TaskStats {
   eta: Time
 }
 
-# deprecated field
 type StatusCount { 
   count: Int!
   status: String!

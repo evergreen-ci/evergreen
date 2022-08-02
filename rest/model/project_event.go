@@ -58,32 +58,26 @@ type APIProjectAlias struct {
 	ID          *string   `json:"_id,omitempty"`
 }
 
-func (e *APIProjectEvent) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case model.ProjectChangeEventEntry:
-		e.Timestamp = ToTimePtr(v.Timestamp)
-		data, ok := v.Data.(*model.ProjectChangeEvent)
-		if !ok {
-			return errors.Errorf("programmatic error: expected project change event but got type %T", v.Data)
-		}
-
-		user := utility.ToStringPtr(data.User)
-		before, err := DbProjectSettingsToRestModel(data.Before)
-		if err != nil {
-			return errors.Wrap(err, "converting 'before' project settings to API model")
-		}
-		after, err := DbProjectSettingsToRestModel(data.After)
-		if err != nil {
-			return errors.Wrap(err, "converting 'after' project settings to API model")
-		}
-
-		e.User = user
-		e.Before = APIProjectEventSettings(before)
-		e.After = APIProjectEventSettings(after)
-	default:
-		return errors.Errorf("programmatic error: expected project change event entry but got type %T", h)
+func (e *APIProjectEvent) BuildFromService(entry model.ProjectChangeEventEntry) error {
+	e.Timestamp = ToTimePtr(entry.Timestamp)
+	data, ok := entry.Data.(*model.ProjectChangeEvent)
+	if !ok {
+		return errors.Errorf("programmatic error: expected project change event but got type %T", entry.Data)
 	}
 
+	user := utility.ToStringPtr(data.User)
+	before, err := DbProjectSettingsToRestModel(data.Before)
+	if err != nil {
+		return errors.Wrap(err, "converting 'before' project settings to API model")
+	}
+	after, err := DbProjectSettingsToRestModel(data.After)
+	if err != nil {
+		return errors.Wrap(err, "converting 'after' project settings to API model")
+	}
+
+	e.User = user
+	e.Before = APIProjectEventSettings(before)
+	e.After = APIProjectEventSettings(after)
 	return nil
 }
 
@@ -103,9 +97,7 @@ func DbProjectSettingsToRestModel(settings model.ProjectSettings) (APIProjectSet
 	}
 
 	apiProjectVars := APIProjectVars{}
-	if err := apiProjectVars.BuildFromService(&settings.Vars); err != nil {
-		return APIProjectSettings{}, err
-	}
+	apiProjectVars.BuildFromService(settings.Vars)
 
 	return APIProjectSettings{
 		ProjectRef:            apiProjectRef,
@@ -116,7 +108,7 @@ func DbProjectSettingsToRestModel(settings model.ProjectSettings) (APIProjectSet
 	}, nil
 }
 
-func (p *APIProjectVars) ToService() (interface{}, error) {
+func (p *APIProjectVars) ToService() *model.ProjectVars {
 	privateVars := map[string]bool{}
 	adminOnlyVars := map[string]bool{}
 	// ignore false inputs
@@ -142,22 +134,16 @@ func (p *APIProjectVars) ToService() (interface{}, error) {
 		Vars:          p.Vars,
 		AdminOnlyVars: adminOnlyVars,
 		PrivateVars:   privateVars,
-	}, nil
-}
-
-func (p *APIProjectVars) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case *model.ProjectVars:
-		p.PrivateVars = v.PrivateVars
-		p.Vars = v.Vars
-		p.AdminOnlyVars = v.AdminOnlyVars
-	default:
-		return errors.Errorf("programmatic error: expected project variables but got type %T", h)
 	}
-	return nil
 }
 
-func (a *APIProjectAlias) ToService() (interface{}, error) {
+func (p *APIProjectVars) BuildFromService(v model.ProjectVars) {
+	p.PrivateVars = v.PrivateVars
+	p.Vars = v.Vars
+	p.AdminOnlyVars = v.AdminOnlyVars
+}
+
+func (a *APIProjectAlias) ToService() model.ProjectAlias {
 	res := model.ProjectAlias{
 		Alias:       utility.FromStringPtr(a.Alias),
 		Task:        utility.FromStringPtr(a.Task),
@@ -171,41 +157,22 @@ func (a *APIProjectAlias) ToService() (interface{}, error) {
 	if model.IsValidId(utility.FromStringPtr(a.ID)) {
 		res.ID = model.NewId(utility.FromStringPtr(a.ID))
 	}
-	return res, nil
+	return res
 }
 
-func (a *APIProjectAlias) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case *model.ProjectAlias:
-		APITaskTags := utility.ToStringPtrSlice(v.TaskTags)
-		APIVariantTags := utility.ToStringPtrSlice(v.VariantTags)
+func (a *APIProjectAlias) BuildFromService(in model.ProjectAlias) {
+	APITaskTags := utility.ToStringPtrSlice(in.TaskTags)
+	APIVariantTags := utility.ToStringPtrSlice(in.VariantTags)
 
-		a.Alias = utility.ToStringPtr(v.Alias)
-		a.Variant = utility.ToStringPtr(v.Variant)
-		a.Description = utility.ToStringPtr(v.Description)
-		a.GitTag = utility.ToStringPtr(v.GitTag)
-		a.RemotePath = utility.ToStringPtr(v.RemotePath)
-		a.Task = utility.ToStringPtr(v.Task)
-		a.VariantTags = APIVariantTags
-		a.TaskTags = APITaskTags
-		a.ID = utility.ToStringPtr(v.ID.Hex())
-	case model.ProjectAlias:
-		APITaskTags := utility.ToStringPtrSlice(v.TaskTags)
-		APIVariantTags := utility.ToStringPtrSlice(v.VariantTags)
-
-		a.Alias = utility.ToStringPtr(v.Alias)
-		a.Variant = utility.ToStringPtr(v.Variant)
-		a.Description = utility.ToStringPtr(v.Description)
-		a.GitTag = utility.ToStringPtr(v.GitTag)
-		a.RemotePath = utility.ToStringPtr(v.RemotePath)
-		a.Task = utility.ToStringPtr(v.Task)
-		a.VariantTags = APIVariantTags
-		a.TaskTags = APITaskTags
-		a.ID = utility.ToStringPtr(v.ID.Hex())
-	default:
-		return errors.Errorf("programmatic error: expected project alias but got type %T", h)
-	}
-	return nil
+	a.Alias = utility.ToStringPtr(in.Alias)
+	a.Variant = utility.ToStringPtr(in.Variant)
+	a.Description = utility.ToStringPtr(in.Description)
+	a.GitTag = utility.ToStringPtr(in.GitTag)
+	a.RemotePath = utility.ToStringPtr(in.RemotePath)
+	a.Task = utility.ToStringPtr(in.Task)
+	a.VariantTags = APIVariantTags
+	a.TaskTags = APITaskTags
+	a.ID = utility.ToStringPtr(in.ID.Hex())
 }
 
 func dbProjectAliasesToRestModel(aliases []model.ProjectAlias) []APIProjectAlias {

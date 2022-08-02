@@ -54,6 +54,7 @@ func TestModelConversion(t *testing.T) {
 	// test converting from a db model to an API model
 	assert.NoError(apiSettings.BuildFromService(testSettings))
 	assert.Equal(testSettings.ApiUrl, *apiSettings.ApiUrl)
+	assert.Equal(testSettings.AWSInstanceRole, *apiSettings.AWSInstanceRole)
 	assert.Equal(testSettings.Banner, *apiSettings.Banner)
 	assert.EqualValues(testSettings.BannerTheme, *apiSettings.BannerTheme)
 	assert.Equal(testSettings.ClientBinariesDir, *apiSettings.ClientBinariesDir)
@@ -191,7 +192,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ServiceFlags.ContainerConfigurationsDisabled, apiSettings.ServiceFlags.ContainerConfigurationsDisabled)
 	assert.EqualValues(testSettings.Slack.Level, utility.FromStringPtr(apiSettings.Slack.Level))
 	assert.EqualValues(testSettings.Slack.Options.Channel, utility.FromStringPtr(apiSettings.Slack.Options.Channel))
-	assert.EqualValues(testSettings.Splunk.Channel, utility.FromStringPtr(apiSettings.Splunk.Channel))
+	assert.EqualValues(testSettings.Splunk.SplunkConnectionInfo.Channel, utility.FromStringPtr(apiSettings.Splunk.SplunkConnectionInfo.Channel))
 	assert.EqualValues(testSettings.Triggers.GenerateTaskDistro, utility.FromStringPtr(apiSettings.Triggers.GenerateTaskDistro))
 	assert.EqualValues(testSettings.Ui.HttpListenAddr, utility.FromStringPtr(apiSettings.Ui.HttpListenAddr))
 	assert.Equal(testSettings.Spawnhost.SpawnHostsPerUser, *apiSettings.Spawnhost.SpawnHostsPerUser)
@@ -281,7 +282,7 @@ func TestModelConversion(t *testing.T) {
 	}
 	assert.EqualValues(testSettings.Slack.Level, dbSettings.Slack.Level)
 	assert.EqualValues(testSettings.Slack.Options.Channel, dbSettings.Slack.Options.Channel)
-	assert.EqualValues(testSettings.Splunk.Channel, dbSettings.Splunk.Channel)
+	assert.EqualValues(testSettings.Splunk.SplunkConnectionInfo.Channel, dbSettings.Splunk.SplunkConnectionInfo.Channel)
 	assert.EqualValues(testSettings.Triggers.GenerateTaskDistro, dbSettings.Triggers.GenerateTaskDistro)
 	assert.EqualValues(testSettings.Ui.HttpListenAddr, dbSettings.Ui.HttpListenAddr)
 	assert.EqualValues(testSettings.Spawnhost.SpawnHostsPerUser, dbSettings.Spawnhost.SpawnHostsPerUser)

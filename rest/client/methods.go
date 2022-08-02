@@ -959,14 +959,7 @@ func (c *communicatorImpl) GetClientConfig(ctx context.Context) (*evergreen.Clie
 		return nil, errors.Wrap(err, "reading JSON response body")
 	}
 
-	configInterface, err := update.ClientConfig.ToService()
-	if err != nil {
-		return nil, err
-	}
-	config, ok := configInterface.(evergreen.ClientConfig)
-	if !ok {
-		return nil, errors.Errorf("programmatic error: expected CLI configuration type but actual type is %T", configInterface)
-	}
+	config := update.ClientConfig.ToService()
 	if update.IgnoreUpdate {
 		config.LatestRevision = evergreen.ClientVersion
 	}

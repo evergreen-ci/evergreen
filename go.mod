@@ -16,7 +16,7 @@ require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/evergreen-ci/birch v0.0.0-20220401151432-c792c3d8e0eb
 	github.com/evergreen-ci/certdepot v0.0.0-20211117185134-dbedb3d79a10
-	github.com/evergreen-ci/cocoa v0.0.0-20220706150511-817846ab6de9
+	github.com/evergreen-ci/cocoa v0.0.0-20220718191344-9c40afd9b130
 	github.com/evergreen-ci/gimlet v0.0.0-20220419172609-b882e01673e7
 	github.com/evergreen-ci/go-test2json v0.0.0-20180702150328-5b6cfd2e8cb0
 	github.com/evergreen-ci/juniper v0.0.0-20220118233332-0813edc78908
@@ -24,7 +24,7 @@ require (
 	github.com/evergreen-ci/poplar v0.0.0-20220405164038-0cfe3198c320
 	github.com/evergreen-ci/shrub v0.0.0-20211025143051-a8d91b2e29fd
 	github.com/evergreen-ci/timber v0.0.0-20220119202616-544be15f3b95
-	github.com/evergreen-ci/utility v0.0.0-20220622184037-b63c011983c2
+	github.com/evergreen-ci/utility v0.0.0-20220725171106-4730479c6118
 	github.com/google/go-github/v34 v34.0.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/gophercloud/gophercloud v0.1.0
@@ -34,7 +34,7 @@ require (
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.4.2
-	github.com/mongodb/amboy v0.0.0-20220713142000-b4178dc5100f
+	github.com/mongodb/amboy v0.0.0-20220714150236-d5bf2dac258e
 	github.com/mongodb/anser v0.0.0-20220318141853-005b8ead5b8f
 	github.com/mongodb/ftdc v0.0.0-20220401165013-13e4af55e809
 	github.com/mongodb/grip v0.0.0-20220401165023-6a1d9bb90c21
