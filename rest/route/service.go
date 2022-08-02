@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/acl"
@@ -13,10 +14,12 @@ import (
 const defaultLimit = 100
 
 type HandlerOpts struct {
-	APIQueue     amboy.Queue
-	QueueGroup   amboy.QueueGroup
-	URL          string
-	GithubSecret []byte
+	APIQueue            amboy.Queue
+	QueueGroup          amboy.QueueGroup
+	TaskDispatcher      model.TaskQueueItemDispatcher
+	TaskAliasDispatcher model.TaskQueueItemDispatcher
+	URL                 string
+	GithubSecret        []byte
 }
 
 // AttachHandler attaches the api's request handlers to the given mux router.
@@ -57,6 +60,40 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 
 	app.AddWrapper(gimlet.WrapperMiddleware(allowCORS))
 
+	// Agent routes
+	app.AddRoute("/pods/{pod_id}/agent/next_task").Version(2).Get().Wrap(requirePod).RouteHandler(makePodAgentNextTask(env))
+	app.AddRoute("/pods/{pod_id}/task/{task_id}/end").Version(2).Post().Wrap(requirePod, requireTask).RouteHandler(makePodAgentEndTask(env))
+	app.AddRoute("/hosts/{host_id}/agent/next_task").Version(2).Get().Wrap(requireHost).RouteHandler(makeHostAgentNextTask(env, opts.TaskDispatcher, opts.TaskAliasDispatcher))
+	app.AddRoute("/hosts/{host_id}/task/{task_id}/end").Version(2).Post().Wrap(requireHost, requireTask).RouteHandler(makeHostAgentEndTask(env))
+	app.AddRoute("/agent/cedar_config").Version(2).Get().Wrap(requirePodOrHost).RouteHandler(makeAgentCedarConfig(env.Settings()))
+	app.AddRoute("/agent/setup").Version(2).Get().Wrap(requirePodOrHost).RouteHandler(makeAgentSetup(env.Settings()))
+	app.AddRoute("/task/{task_id}/update_push_status").Version(2).Post().Wrap(requireTask).RouteHandler(makeUpdatePushStatus())
+	app.AddRoute("/task/{task_id}/new_push").Version(2).Post().Wrap(requireTask).RouteHandler(makeNewPush())
+	app.AddRoute("/task/{task_id}/expansions").Version(2).Get().Wrap(requireTask, requirePodOrHost).RouteHandler(makeGetExpansions(env.Settings()))
+	app.AddRoute("/task/{task_id}/project_ref").Version(2).Get().Wrap(requireTask).RouteHandler(makeGetProjectRef())
+	app.AddRoute("/task/{task_id}/parser_project").Version(2).Get().Wrap(requireTask).RouteHandler(makeGetParserProject())
+	app.AddRoute("/task/{task_id}/distro_view").Version(2).Get().Wrap(requireTask, requirePodOrHost).RouteHandler(makeGetDistroView())
+	app.AddRoute("/task/{task_id}/files").Version(2).Post().Wrap(requireTask, requirePodOrHost).RouteHandler(makeAttachFiles())
+	app.AddRoute("/task/{task_id}/test_logs").Version(2).Post().Wrap(requireTask, requirePodOrHost).RouteHandler(makeAttachTestLog(env.Settings()))
+	app.AddRoute("/task/{task_id}/results").Version(2).Post().Wrap(requireTask, requirePodOrHost).RouteHandler(makeAttachResults())
+	app.AddRoute("/task/{task_id}/heartbeat").Version(2).Post().Wrap(requireTask, requirePodOrHost).RouteHandler(makeHeartbeat())
+	app.AddRoute("/task/{task_id}/fetch_vars").Version(2).Get().Wrap(requireTask).RouteHandler(makeFetchExpansionsForTask())
+	app.AddRoute("/task/{task_id}/").Version(2).Get().Wrap(requireTask).RouteHandler(makeFetchTask())
+	app.AddRoute("/task/{task_id}/log").Version(2).Post().Wrap(requireTask, requirePodOrHost).RouteHandler(makeAppendTaskLog(env.Settings()))
+	app.AddRoute("/task/{task_id}/start").Version(2).Post().Wrap(requireTask, requirePodOrHost).RouteHandler(makeStartTask(env))
+
+	// Plugin routes
+	app.AddRoute("/task/{task_id}/git/patchfile/{patchfile_id}").Version(2).Get().Wrap(requireTask).RouteHandler(makeGitServePatchFile())
+	app.AddRoute("/task/{task_id}/git/patch").Version(2).Get().Wrap(requireTask).RouteHandler(makeGitServePatch())
+	app.AddRoute("/task/{task_id}/keyval/inc").Version(2).Post().Wrap(requireTask).RouteHandler(makeKeyvalPluginInc())
+	app.AddRoute("/task/{task_id}/manifest/load").Version(2).Get().Wrap(requireTask).RouteHandler(makeManifestLoad(env.Settings()))
+	app.AddRoute("/task/{task_id}/downstreamParams").Version(2).Post().Wrap(requireTask).RouteHandler(makeSetDownstreamParams())
+	app.AddRoute("/task/{task_id}/json/tags/{task_name}/{name}").Version(2).Get().Wrap(requireTask).RouteHandler(makeGetTaskJSONTagsForTask())
+	app.AddRoute("/task/{task_id}/json/history/{task_name}/{name}").Version(2).Get().Wrap(requireTask).RouteHandler(makeGetTaskJSONTaskHistory())
+	app.AddRoute("/task/{task_id}/json/data/{name}").Version(2).Post().Wrap(requireTask).RouteHandler(makeInsertTaskJSON())
+	app.AddRoute("/task/{task_id}/json/data/{task_name}/{name}").Version(2).Get().Wrap(requireTask).RouteHandler(makeGetTaskJSONByName())
+	app.AddRoute("/task/{task_id}/json/data/{task_name}/{name}/{variant}").Version(2).Get().Wrap(requireTask).RouteHandler(makeGetTaskJSONForVariant())
+
 	// Routes
 	app.AddRoute("/").Version(2).Get().RouteHandler(makePlaceHolder())
 	app.AddRoute("/admin/banner").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchAdminBanner())
@@ -75,7 +112,6 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/admin/service_users").Version(2).Get().Wrap(adminSettings).RouteHandler(makeGetServiceUsers())
 	app.AddRoute("/admin/service_users").Version(2).Post().Wrap(adminSettings).RouteHandler(makeUpdateServiceUser())
 	app.AddRoute("/admin/service_users").Version(2).Delete().Wrap(adminSettings).RouteHandler(makeDeleteServiceUser())
-	app.AddRoute("/agent/cedar_config").Version(2).Get().Wrap(requirePodOrHost).RouteHandler(makeAgentCedarConfig(env.Settings()))
 	app.AddRoute("/alias/{name}").Version(2).Get().RouteHandler(makeFetchAliases())
 	app.AddRoute("/auth").Version(2).Get().Wrap(requireUser).RouteHandler(&authPermissionGetHandler{})
 	app.AddRoute("/builds/{build_id}").Version(2).Get().Wrap(viewTasks).RouteHandler(makeGetBuildByID())
@@ -145,9 +181,6 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/patches/{patch_id}/raw").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makePatchRawHandler())
 	app.AddRoute("/patches/{patch_id}/restart").Version(2).Post().Wrap(requireUser, submitPatches).RouteHandler(makeRestartPatch())
 	app.AddRoute("/patches/{patch_id}/merge_patch").Version(2).Put().Wrap(requireUser, addProject, submitPatches, requireCommitQueueItemOwner).RouteHandler(makeMergePatch())
-	app.AddRoute("/pods/{pod_id}/agent/setup").Version(2).Get().Wrap(requirePod).RouteHandler(makePodAgentSetup(env.Settings()))
-	app.AddRoute("/pods/{pod_id}/agent/next_task").Version(2).Get().Wrap(requirePod).RouteHandler(makePodAgentNextTask(env))
-	app.AddRoute("/pods/{pod_id}/task/{task_id}/end").Version(2).Post().Wrap(requirePod, requireTask).RouteHandler(makePodAgentEndTask(env))
 	app.AddRoute("/pods").Version(2).Post().Wrap(adminSettings).RouteHandler(makePostPod(env))
 	app.AddRoute("/pods/{pod_id}").Version(2).Get().Wrap(adminSettings).RouteHandler(makeGetPod(env))
 	app.AddRoute("/pods/{pod_id}/provisioning_script").Version(2).Get().Wrap(requirePod).RouteHandler(makePodProvisioningScript(env.Settings()))

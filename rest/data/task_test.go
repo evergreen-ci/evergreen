@@ -473,7 +473,7 @@ func TestCheckTaskSecret(t *testing.T) {
 	}
 	code, err := CheckTaskSecret("task1", r)
 	assert.Error(err)
-	assert.Equal(http.StatusUnauthorized, code)
+	assert.Equal(http.StatusConflict, code)
 
 	r.Header.Set(evergreen.TaskSecretHeader, "abcdef")
 	code, err = CheckTaskSecret("task1", r)
