@@ -6,11 +6,13 @@ package graphql
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/task"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 )
@@ -177,6 +179,11 @@ func (r *taskLogsResolver) SystemLogs(ctx context.Context, obj *TaskLogs) ([]*ap
 
 func (r *taskLogsResolver) TaskLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error) {
 	const logMessageCount = 100
+	const notFoundMessage = "failed to fetch logs with resp '404 Not Found'"
+	task, taskErr := task.FindOneId(obj.TaskID)
+	if taskErr != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s: %s", obj.TaskID, taskErr.Error()))
+	}
 
 	var taskLogs []apimodels.LogMessage
 
@@ -195,6 +202,9 @@ func (r *taskLogsResolver) TaskLogs(ctx context.Context, obj *TaskLogs) ([]*apim
 		taskLogReader, err := apimodels.GetBuildloggerLogs(ctx, opts)
 
 		if err != nil {
+			if task.Status == evergreen.TaskUndispatched && strings.Contains(err.Error(), notFoundMessage) {
+				return []*apimodels.LogMessage{}, nil
+			}
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Encountered an error while fetching build logger logs: %s", err.Error()))
 		}
 
@@ -207,6 +217,9 @@ func (r *taskLogsResolver) TaskLogs(ctx context.Context, obj *TaskLogs) ([]*apim
 		taskLogs, err = model.FindMostRecentLogMessages(obj.TaskID, obj.Execution, logMessageCount, []string{},
 			[]string{apimodels.TaskLogPrefix})
 		if err != nil {
+			if task.Status == evergreen.TaskUndispatched && strings.Contains(err.Error(), notFoundMessage) {
+				return []*apimodels.LogMessage{}, nil
+			}
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task logs for task %s: %s", obj.TaskID, err.Error()))
 		}
 	}
