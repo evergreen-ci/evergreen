@@ -447,7 +447,7 @@ func (p *ProjectRef) Add(creator *user.DBUser) error {
 		}
 	}
 
-	// Default to main for branch
+	// Default to main if branch is empty.
 	if p.Branch == "" {
 		p.Branch = "main"
 	}
