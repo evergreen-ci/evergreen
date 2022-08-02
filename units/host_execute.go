@@ -141,10 +141,10 @@ func (j *hostExecuteJob) populateIfUnset() error {
 	if j.host == nil {
 		h, err := host.FindOneId(j.HostID)
 		if err != nil {
-			return errors.Wrapf(err, "could not find host %s for job %s", j.HostID, j.ID())
+			return errors.Wrapf(err, "finding host '%s'", j.HostID)
 		}
 		if h == nil {
-			return errors.Errorf("could not find host %s for job %s", j.HostID, j.ID())
+			return errors.Errorf("host '%s' not found", j.HostID)
 		}
 		j.host = h
 	}

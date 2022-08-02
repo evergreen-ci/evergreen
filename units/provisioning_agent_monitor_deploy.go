@@ -136,13 +136,13 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 		}
 		var externallyTerminated bool
 		externallyTerminated, err = handleExternallyTerminatedHost(ctx, j.ID(), j.env, j.host)
-		j.AddError(errors.Wrapf(err, "can't check if host '%s' was externally terminated", j.HostID))
+		j.AddError(errors.Wrapf(err, "checking if host '%s' was externally terminated", j.HostID))
 		if externallyTerminated {
 			return
 		}
 
 		if disableErr := HandlePoisonedHost(ctx, j.env, j.host, fmt.Sprintf("failed %d times to put agent monitor on host", agentMonitorPutRetries)); disableErr != nil {
-			j.AddError(errors.Wrapf(disableErr, "error terminating host %s", j.host.Id))
+			j.AddError(errors.Wrapf(disableErr, "terminating poisoned host '%s'", j.host.Id))
 		}
 	}()
 
@@ -192,7 +192,7 @@ func (j *agentMonitorDeployJob) hostDown() bool {
 // disableHost changes the host so that it is down and enqueues a job to
 // terminate it.
 func (j *agentMonitorDeployJob) disableHost(ctx context.Context, reason string) error {
-	return errors.Wrapf(HandlePoisonedHost(ctx, j.env, j.host, reason), "error terminating host %s", j.host.Id)
+	return errors.Wrapf(HandlePoisonedHost(ctx, j.env, j.host, reason), "terminating host '%s'", j.host.Id)
 }
 
 // checkAgentMonitor returns whether or not an agent monitor is already running
@@ -216,13 +216,13 @@ func (j *agentMonitorDeployJob) checkAgentMonitor(ctx context.Context) (bool, er
 
 		return nil
 	})
-	return alive, errors.Wrap(err, "could not check agent monitor status")
+	return alive, errors.Wrap(err, "checking agent monitor status")
 }
 
 // fetchClient fetches the client on the host through the host's Jasper service.
 func (j *agentMonitorDeployJob) fetchClient(ctx context.Context, settings *evergreen.Settings) error {
 	grip.Info(message.Fields{
-		"message":       "fetching latest evergreen binary for agent monitor",
+		"message":       "fetching latest Evergreen binary for agent monitor",
 		"host_id":       j.host.Id,
 		"distro":        j.host.Distro.Id,
 		"communication": j.host.Distro.BootstrapSettings.Communication,
@@ -231,7 +231,7 @@ func (j *agentMonitorDeployJob) fetchClient(ctx context.Context, settings *everg
 
 	cmd, err := j.host.CurlCommand(settings)
 	if err != nil {
-		return errors.Wrap(err, "could not create command to curl evergreen client")
+		return errors.Wrap(err, "creating command to curl agent monitor binary")
 	}
 	opts := &options.Create{
 		Args: []string{j.host.Distro.ShellBinary(), "-l", "-c", cmd},
@@ -252,7 +252,7 @@ func (j *agentMonitorDeployJob) fetchClient(ctx context.Context, settings *everg
 		return errors.WithStack(err)
 	}
 	if ctx.Err() != nil {
-		return errors.Wrap(ctx.Err(), "timed out curling evergreen binary")
+		return errors.Wrap(ctx.Err(), "curling agent monitor binary")
 	}
 
 	return nil
@@ -278,7 +278,7 @@ func (j *agentMonitorDeployJob) runSetupScript(ctx context.Context, settings *ev
 	}
 	output, err := j.host.RunJasperProcess(ctx, j.env, opts)
 	if err != nil {
-		reason := "error running setup script on host"
+		reason := "running setup script on host"
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": reason,
 			"host_id": j.host.Id,
@@ -288,7 +288,7 @@ func (j *agentMonitorDeployJob) runSetupScript(ctx context.Context, settings *ev
 		}))
 		catcher := grip.NewBasicCatcher()
 		catcher.Wrapf(err, "%s: %s", reason, output)
-		catcher.Wrap(j.disableHost(ctx, reason), "failed to disable host after setup script failed")
+		catcher.Wrap(j.disableHost(ctx, reason), "disabling host after setup script failed")
 		return catcher.Resolve()
 	}
 
@@ -301,7 +301,7 @@ func (j *agentMonitorDeployJob) startAgentMonitor(ctx context.Context, settings 
 	// Generate the host secret if none exists.
 	if j.host.Secret == "" {
 		if err := j.host.CreateSecret(); err != nil {
-			return errors.Wrapf(err, "creating secret for %s", j.host.Id)
+			return errors.Wrapf(err, "creating secret for host '%s'", j.host.Id)
 		}
 	}
 
@@ -313,7 +313,7 @@ func (j *agentMonitorDeployJob) startAgentMonitor(ctx context.Context, settings 
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		}))
-		return errors.Wrap(err, "failed to create command")
+		return errors.Wrap(err, "creating agent monitor command")
 	}
 
 	event.LogHostAgentMonitorDeployed(j.host.Id)
@@ -364,10 +364,10 @@ func (j *agentMonitorDeployJob) populateIfUnset() error {
 	if j.host == nil {
 		h, err := host.FindOneId(j.HostID)
 		if err != nil {
-			return errors.Wrapf(err, "could not find host %s for job %s", j.HostID, j.ID())
+			return errors.Wrapf(err, "finding host '%s'", j.HostID)
 		}
 		if h == nil {
-			return errors.Errorf("could not find host %s for job %s", j.HostID, j.ID())
+			return errors.Errorf("host '%s' not found", j.HostID)
 		}
 		j.host = h
 	}

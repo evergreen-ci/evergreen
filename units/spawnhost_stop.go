@@ -20,8 +20,9 @@ const (
 )
 
 func init() {
-	registry.AddJobType(spawnhostStopName,
-		func() amboy.Job { return makeSpawnhostStopJob() })
+	registry.AddJobType(spawnhostStopName, func() amboy.Job {
+		return makeSpawnhostStopJob()
+	})
 }
 
 type spawnhostStopJob struct {

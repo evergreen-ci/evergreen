@@ -69,7 +69,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 	var err error
 	j.project, err = model.FindMergedProjectRef(j.ProjectID, "", true)
 	if err != nil {
-		j.AddError(errors.Wrap(err, "error finding project"))
+		j.AddError(errors.Wrapf(err, "finding project '%s'", j.ProjectID))
 		return
 	}
 	var definition *model.PeriodicBuildDefinition
@@ -80,7 +80,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 		}
 	}
 	if definition == nil {
-		j.AddError(errors.New("no definition ID found"))
+		j.AddError(errors.Errorf("periodic build definition '%s' not found", j.DefinitionID))
 		return
 	}
 	defer func() {
@@ -151,19 +151,19 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.PeriodicBuildDefinition) (string, error) {
 	token, err := j.env.Settings().GetGithubOauthToken()
 	if err != nil {
-		return "", errors.Wrap(err, "getting github token")
+		return "", errors.Wrap(err, "getting GitHub OAuth token")
 	}
 
 	mostRecentVersion, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester(j.ProjectID))
 	if err != nil {
-		return "", errors.Wrap(err, "finding most recent version for project")
+		return "", errors.Wrapf(err, "finding most recent version for project '%s'", j.ProjectID)
 	}
 	if mostRecentVersion == nil {
-		return "", errors.New("no recent version found for project")
+		return "", errors.Errorf("no recent version found for project '%s'", j.ProjectID)
 	}
 	configFile, err := thirdparty.GetGithubFile(ctx, token, j.project.Owner, j.project.Repo, definition.ConfigFile, mostRecentVersion.Revision)
 	if err != nil {
-		return "", errors.Wrap(err, "getting config file from github")
+		return "", errors.Wrap(err, "getting config file from GitHub")
 	}
 	configBytes, err := base64.StdEncoding.DecodeString(*configFile.Content)
 	if err != nil {

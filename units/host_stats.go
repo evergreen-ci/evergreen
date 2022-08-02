@@ -67,7 +67,7 @@ func (j *hostStatsJob) Run(_ context.Context) {
 
 	inactiveHosts, err := host.CountInactiveHostsByProvider()
 	if err != nil {
-		j.AddError(errors.Wrap(err, "error aggregating inactive hosts"))
+		j.AddError(errors.Wrap(err, "counting inactive hosts by cloud provider"))
 		return
 	}
 	j.logger.Info(message.Fields{
@@ -77,7 +77,7 @@ func (j *hostStatsJob) Run(_ context.Context) {
 
 	taskSpawned, err := host.FindAllHostsSpawnedByTasks()
 	if err != nil {
-		j.AddError(errors.Wrap(err, "error finding hosts spawned by tasks"))
+		j.AddError(errors.Wrap(err, "finding hosts spawned by tasks"))
 		return
 	}
 	hosts := []taskSpawnedHost{}

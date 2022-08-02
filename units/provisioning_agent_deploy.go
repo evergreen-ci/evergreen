@@ -89,11 +89,11 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 	if j.host == nil {
 		j.host, err = host.FindOneId(j.HostID)
 		if err != nil {
-			j.AddError(err)
+			j.AddError(errors.Wrapf(err, "finding host '%s'", j.HostID))
 			return
 		}
 		if j.host == nil {
-			j.AddError(fmt.Errorf("could not find host %s for job %s", j.HostID, j.TaskID))
+			j.AddError(errors.Errorf("host '%s' not found", j.HostID))
 			return
 		}
 	}
@@ -115,7 +115,7 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 	}
 
 	if err = j.host.UpdateLastCommunicated(); err != nil {
-		j.AddRetryableError(errors.Wrapf(err, "error setting LCT on host %s", j.host.Id))
+		j.AddRetryableError(errors.Wrapf(err, "setting last communication time on host '%s'", j.host.Id))
 	}
 
 	defer func() {
@@ -131,13 +131,13 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 
 		var externallyTerminated bool
 		externallyTerminated, err = handleExternallyTerminatedHost(ctx, j.ID(), j.env, j.host)
-		j.AddError(errors.Wrapf(err, "can't check if host '%s' was externally terminated", j.HostID))
+		j.AddError(errors.Wrapf(err, "checking if host '%s' was externally terminated", j.HostID))
 		if externallyTerminated {
 			return
 		}
 
 		if disableErr := HandlePoisonedHost(ctx, j.env, j.host, fmt.Sprintf("failed %d times to put agent on host", agentPutRetries)); disableErr != nil {
-			j.AddError(errors.Wrapf(disableErr, "error terminating host %s", j.host.Id))
+			j.AddError(errors.Wrapf(disableErr, "terminating poisoned host '%s'", j.host.Id))
 		}
 	}()
 
@@ -190,7 +190,7 @@ func (j *agentDeployJob) getHostMessage() message.Fields {
 // machine. Returns an error if any step along the way fails.
 func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergreen.Settings) error {
 	if err := j.prepRemoteHost(ctx, settings); err != nil {
-		return errors.Wrap(err, "could not prep remote host")
+		return errors.Wrap(err, "prepping remote host")
 	}
 
 	grip.Info(message.Fields{
@@ -219,7 +219,7 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 			"provider": j.host.Provider,
 			"job":      j.ID(),
 		}))
-		return errors.Wrap(err, "could not start agent on remote")
+		return errors.Wrap(err, "starting agent on remote")
 	}
 	grip.Info(message.Fields{
 		"message":  "agent successfully started for host",
@@ -231,7 +231,7 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 	})
 
 	if err := j.host.SetAgentRevision(evergreen.AgentVersion); err != nil {
-		return errors.Wrapf(err, "error setting agent revision on host %s", j.host.Id)
+		return errors.Wrapf(err, "setting agent revision on host '%s'", j.host.Id)
 	}
 	return nil
 }
@@ -250,7 +250,7 @@ func (j *agentDeployJob) prepRemoteHost(ctx context.Context, settings *evergreen
 	defer cancel()
 	curlCmd, err := j.host.CurlCommand(settings)
 	if err != nil {
-		return errors.Wrap(err, "could not create command to curl evergreen client")
+		return errors.Wrap(err, "creating command to curl agent binary")
 	}
 	output, err := j.host.RunSSHCommand(curlCtx, curlCmd)
 	if err != nil {
@@ -264,10 +264,10 @@ func (j *agentDeployJob) prepRemoteHost(ctx context.Context, settings *evergreen
 			"provider": j.host.Provider,
 			"job":      j.ID(),
 		}))
-		return errors.Wrapf(err, "error downloading agent binary on remote host: %s", output)
+		return errors.Wrapf(err, "downloading agent binary on remote host: %s", output)
 	}
 	if curlCtx.Err() != nil {
-		return errors.Wrap(curlCtx.Err(), "timed out curling evergreen binary")
+		return errors.Wrap(curlCtx.Err(), "timed out curling agent binary")
 	}
 
 	if j.host.Distro.Setup == "" {
@@ -288,7 +288,7 @@ func (j *agentDeployJob) prepRemoteHost(ctx context.Context, settings *evergreen
 		}))
 
 		// there is no guarantee setup scripts are idempotent, so we terminate the host if the setup script fails
-		return errors.Wrapf(HandlePoisonedHost(ctx, j.env, j.host, fmt.Sprintf("failed %d times to put agent on host", agentPutRetries)), "error terminating host %s", j.host.Id)
+		return errors.Wrapf(HandlePoisonedHost(ctx, j.env, j.host, fmt.Sprintf("failed %d times to put agent on host", agentPutRetries)), "terminating poisoned host '%s'", j.host.Id)
 	}
 
 	return nil
@@ -310,16 +310,15 @@ func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *everg
 	startAgentCmd := fmt.Sprintf("nohup %s > /tmp/start 2>&1 &", remoteCmd)
 	logs, err := j.host.RunSSHCommand(ctx, startAgentCmd)
 	if err != nil {
-		return logs, errors.Wrapf(err, "error starting agent on host '%s'", j.host.Id)
+		return logs, errors.Wrapf(err, "starting agent on host '%s'", j.host.Id)
 	}
 
 	event.LogHostAgentDeployed(j.host.Id)
 	grip.Info(message.Fields{
 		"message":        "started the agent on a remote host",
-		"operation":      "agentDeployJob",
+		"operation":      j.ID(),
 		"host_id":        j.host.Id,
 		"host_tag":       j.host.Tag,
-		"source":         "database error",
 		"agent_version":  evergreen.AgentVersion,
 		"build_revision": evergreen.BuildRevision,
 	})

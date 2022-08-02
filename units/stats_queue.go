@@ -18,8 +18,9 @@ import (
 const queueStatsCollectorJobName = "queue-stats-collector"
 
 func init() {
-	registry.AddJobType(queueStatsCollectorJobName,
-		func() amboy.Job { return makeQueueStatsCollector() })
+	registry.AddJobType(queueStatsCollectorJobName, func() amboy.Job {
+		return makeQueueStatsCollector()
+	})
 }
 
 type queueStatsCollector struct {

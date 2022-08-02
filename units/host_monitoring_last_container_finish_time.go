@@ -8,6 +8,7 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -49,17 +50,17 @@ func (j *lastContainerFinishTimeJob) Run(ctx context.Context) {
 
 	// get pairs of host ID and finish time for each host with containers
 	times, err := host.AggregateLastContainerFinishTimes()
-	j.AddError(err)
+	j.AddError(errors.Wrap(err, "getting container parents and their last container finish times"))
 
 	// update last container finish time for each host with containers
 	for _, time := range times {
 		h, err := host.FindOneByIdOrTag(time.Id)
 		if err != nil {
-			j.AddError(err)
+			j.AddError(errors.Wrapf(err, "finding host '%s'", time.Id))
 			continue
 		} else if h == nil {
 			continue
 		}
-		j.AddError(h.UpdateLastContainerFinishTime(time.FinishTime))
+		j.AddError(errors.Wrapf(h.UpdateLastContainerFinishTime(time.FinishTime), "updating last container finish time for container parent '%s'", h.Id))
 	}
 }

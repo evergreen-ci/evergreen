@@ -78,7 +78,7 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 		j.parent, err = host.FindOneByIdOrTag(j.ParentID)
 		j.AddError(err)
 		if j.parent == nil {
-			j.AddError(errors.Errorf("parent %s not found", j.ParentID))
+			j.AddError(errors.Errorf("parent '%s' not found", j.ParentID))
 		}
 	}
 	if j.env == nil {
@@ -118,7 +118,7 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 
 	if j.parent.ContainerBuildAttempt >= containerBuildRetries {
 		err = j.parent.SetDecommissioned(evergreen.User, false, fmt.Sprintf("exceeded max container build retries (%d)", containerBuildRetries))
-		j.AddError(errors.Wrapf(err, "failed to set parent '%s' to decommissioned", j.parent.Id))
+		j.AddError(errors.Wrapf(err, "setting parent '%s' to decommissioned", j.parent.Id))
 		err = errors.Errorf("failed %d times to build and download image '%s' on parent '%s'", containerBuildRetries, j.DockerOptions.Image, j.parent.Id)
 		j.AddError(err)
 		grip.Warning(message.WrapError(err, message.Fields{
@@ -135,18 +135,18 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 	mgrOpts := cloud.ManagerOpts{Provider: j.Provider}
 	mgr, err := cloud.GetManager(ctx, j.env, mgrOpts)
 	if err != nil {
-		j.AddError(errors.Wrap(err, "error getting Docker manager"))
+		j.AddError(errors.Wrap(err, "getting Docker manager"))
 		return
 	}
 	containerMgr, err := cloud.ConvertContainerManager(mgr)
 	if err != nil {
-		j.AddError(errors.Wrap(err, "error converting Docker manager"))
+		j.AddError(errors.Wrap(err, "converting cloud manager to Docker manager"))
 		return
 	}
 
 	err = containerMgr.GetContainerImage(ctx, j.parent, j.DockerOptions)
 	if err != nil {
-		j.AddError(errors.Wrap(err, "error building and downloading container image"))
+		j.AddError(errors.Wrap(err, "building and downloading container image"))
 		return
 	}
 	if j.parent.ContainerImages == nil {
@@ -155,7 +155,7 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 	j.parent.ContainerImages[j.DockerOptions.Image] = true
 	_, err = j.parent.Upsert()
 	if err != nil {
-		j.AddError(errors.Wrapf(err, "error upserting parent %s", j.parent.Id))
+		j.AddError(errors.Wrapf(err, "upserting parent '%s'", j.parent.Id))
 		return
 	}
 }

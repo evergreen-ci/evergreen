@@ -67,11 +67,11 @@ func (j *volumeExpirationCheckJob) Run(ctx context.Context) {
 	if j.volume == nil {
 		j.volume, err = host.FindVolumeByID(j.VolumeID)
 		if err != nil {
-			j.AddError(errors.Wrapf(err, "error getting volume '%s' in volume expiration check job", j.VolumeID))
+			j.AddError(errors.Wrapf(err, "finding volume '%s'", j.VolumeID))
 			return
 		}
 		if j.volume == nil {
-			j.AddError(errors.Wrapf(err, "volume '%s' is not found", j.VolumeID))
+			j.AddError(errors.Errorf("volume '%s' not found", j.VolumeID))
 			return
 		}
 	}
@@ -82,11 +82,11 @@ func (j *volumeExpirationCheckJob) Run(ctx context.Context) {
 	}
 	mgr, err := cloud.GetManager(ctx, j.env, mgrOpts)
 	if err != nil {
-		j.AddError(errors.Wrapf(err, "error getting cloud manager for volume '%s' in volume expiration check job", j.VolumeID))
+		j.AddError(errors.Wrapf(err, "getting cloud manager for volume '%s'", j.VolumeID))
 		return
 	}
 	if err := mgr.ModifyVolume(ctx, j.volume, &model.VolumeModifyOptions{NoExpiration: true}); err != nil {
-		j.AddError(errors.Wrapf(err, "error extending expiration for volume '%s' using cloud manager", j.VolumeID))
+		j.AddError(errors.Wrapf(err, "extending expiration for volume '%s'", j.VolumeID))
 		return
 	}
 }
