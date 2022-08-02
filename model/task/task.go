@@ -2473,7 +2473,7 @@ func (t *Task) Insert() error {
 func (t *Task) Archive() error {
 	if t.DisplayOnly {
 		err := ArchiveMany([]Task{*t})
-		return errors.Wrapf(err, "archiving and updating display task with ID '%s'.", t.Id)
+		return errors.Wrapf(err, "archiving display task '%s'", t.Id)
 	} else {
 		// Archiving a single task.
 		if !t.ResetFailedWhenFinished || evergreen.IsFailedTaskStatus(t.Status) {
