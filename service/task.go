@@ -915,17 +915,17 @@ func (uis *UIServer) getTestResults(projCtx projectContext, uiTask *uiTaskData) 
 			}
 			if err != nil {
 				grip.Error(message.Fields{
-					"message": "fetching execution task",
-					"task":    t,
-					"parent":  projCtx.Task.Id,
+					"message":        "fetching test results for execution task",
+					"task_id":        t,
+					"parent_task_id": projCtx.Task.Id,
 				})
 				return nil
 			}
 			if et == nil {
 				grip.Error(message.Fields{
-					"message": "execution task not found",
-					"task":    t,
-					"parent":  projCtx.Task.Id,
+					"message":        "execution task not found",
+					"task_id":        t,
+					"parent_task_id": projCtx.Task.Id,
 				})
 				continue
 			}
