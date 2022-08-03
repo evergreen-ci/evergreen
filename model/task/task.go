@@ -2624,7 +2624,6 @@ func archiveAll(tasksIds []string, toUpdateTaskIds []string, toArchive []interfa
 		return nil, errors.Wrap(err, "updating tasks")
 	}
 
-	// TODO (EVG-17322): Remove Create Collection calls
 	_, err = session.WithTransaction(ctx, txFunc)
 
 	return errors.Wrap(err, "archiving execution tasks and updating execution tasks")
