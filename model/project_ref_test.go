@@ -931,6 +931,8 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, user.Collection,
 		evergreen.ScopeCollection, ProjectVarsCollection, ProjectAliasCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
+	evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger = "buildlogger"
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	doc1 := &ProjectRef{
@@ -1069,6 +1071,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.Equal(t, "mongodb", repoRef.Owner)
 	assert.Equal(t, "mongo", repoRef.Repo)
 	assert.Equal(t, "main", repoRef.Branch)
+	assert.Equal(t, "buildlogger", repoRef.DefaultLogger)
 	assert.Contains(t, repoRef.Admins, "bob")
 	assert.Contains(t, repoRef.Admins, "other bob")
 	assert.Contains(t, repoRef.Admins, "me")

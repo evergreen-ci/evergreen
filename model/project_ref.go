@@ -946,7 +946,9 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 	repoRef.Id = mgobson.NewObjectId().Hex()
 	repoRef.RepoRefId = ""
 	repoRef.Identifier = ""
-	// set explicitly in case no project is enabled
+	repoRef.DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
+
+	// Set explicitly in case no project is enabled.
 	repoRef.Owner = p.Owner
 	repoRef.Repo = p.Repo
 
