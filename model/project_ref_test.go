@@ -649,6 +649,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 			pRefFromDb, err := FindBranchProjectRef(id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
+			assert.NotEqual(t, pRefFromDb.Identifier, "")
 			assert.Equal(t, pRefFromDb.BatchTime, 0)
 			assert.Nil(t, pRefFromDb.RepotrackerDisabled)
 			assert.Nil(t, pRefFromDb.DeactivatePrevious)
@@ -760,6 +761,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 
 			pRef := ProjectRef{
 				Id:                    "my_project",
+				Identifier:            "my_identifier",
 				Owner:                 "candy",
 				Repo:                  "land",
 				BatchTime:             10,
@@ -950,6 +952,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.NoError(t, doc1.Insert())
 	doc2 := &ProjectRef{
 		Id:                    "id2",
+		Identifier:            "identifier",
 		Owner:                 "mongodb",
 		Repo:                  "mongo",
 		Branch:                "mci2",
@@ -1074,6 +1077,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.True(t, repoRef.IsEnabled())
 	assert.True(t, repoRef.IsPRTestingEnabled())
 	assert.Equal(t, "evergreen.yml", repoRef.RemotePath)
+	assert.Equal(t, "", repoRef.Identifier)
 	assert.Nil(t, repoRef.NotifyOnBuildFailure)
 	assert.Nil(t, repoRef.GithubChecksEnabled)
 	assert.Equal(t, "my message", repoRef.CommitQueue.Message)

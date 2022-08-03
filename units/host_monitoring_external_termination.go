@@ -69,7 +69,7 @@ func (j *hostMonitorExternalStateCheckJob) Run(ctx context.Context) {
 
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
-		j.AddError(errors.Wrap(err, "error retrieving admin settings"))
+		j.AddError(errors.Wrap(err, "getting admin settings"))
 		return
 	}
 	if flags.MonitorDisabled {
@@ -80,10 +80,10 @@ func (j *hostMonitorExternalStateCheckJob) Run(ctx context.Context) {
 	if j.host == nil {
 		j.host, err = host.FindOneId(j.HostID)
 		if err != nil {
-			j.AddError(err)
+			j.AddError(errors.Wrapf(err, "finding host '%s'", j.HostID))
 			return
 		} else if j.host == nil {
-			j.AddError(errors.Errorf("unable to retrieve host %s", j.HostID))
+			j.AddError(errors.Errorf("host '%s' not found", j.HostID))
 			return
 		}
 	}
@@ -107,11 +107,11 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 
 	cloudHost, err := cloud.GetCloudHost(ctx, h, env)
 	if err != nil {
-		return false, errors.Wrapf(err, "error getting cloud host for host %s", h.Id)
+		return false, errors.Wrapf(err, "getting cloud host for host '%s'", h.Id)
 	}
 	cloudStatus, err := cloudHost.GetInstanceStatus(ctx)
 	if err != nil {
-		return false, errors.Wrapf(err, "error getting cloud status for host %s", h.Id)
+		return false, errors.Wrapf(err, "getting cloud status for host '%s'", h.Id)
 	}
 
 	switch cloudStatus {
@@ -125,7 +125,7 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 				"host_id": h.Id,
 				"distro":  h.Distro.Id,
 			})
-			return false, errors.Wrapf(h.MarkReachable(), "error updating reachability for host %s", h.Id)
+			return false, errors.Wrapf(h.MarkReachable(), "updating reachability for host '%s'", h.Id)
 		}
 		return false, nil
 	case cloud.StatusStopping, cloud.StatusStopped, cloud.StatusTerminated:
@@ -157,7 +157,7 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 
 		err = amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewHostTerminationJob(env, h, HostTerminationOptions{
 			TerminateIfBusy:          true,
-			TerminationReason:        fmt.Sprintf("host was found in %s state", cloudStatus.String()),
+			TerminationReason:        fmt.Sprintf("host was found in state '%s'", cloudStatus.String()),
 			SkipCloudHostTermination: cloudStatus == cloud.StatusTerminated,
 		}))
 		grip.Error(message.WrapError(err, message.Fields{
@@ -223,10 +223,10 @@ func insertNewHostForTask(h *host.Host) (*host.Host, error) {
 
 	t, err := task.FindOneIdAndExecution(h.SpawnOptions.TaskID, h.SpawnOptions.TaskExecutionNumber)
 	if err != nil {
-		return nil, errors.Wrapf(err, "finding task for host '%s'", h.Id)
+		return nil, errors.Wrapf(err, "finding task '%s' with execution %d for host '%s'", h.SpawnOptions.TaskID, h.SpawnOptions.TaskExecutionNumber, h.Id)
 	}
 	if t == nil {
-		return nil, errors.Errorf("host '%s' created by task '%s' execution '%d' that does not exist", h.Id, h.SpawnOptions.TaskID, h.SpawnOptions.TaskExecutionNumber)
+		return nil, errors.Errorf("host '%s' was created by task '%s' execution %d that does not exist", h.Id, h.SpawnOptions.TaskID, h.SpawnOptions.TaskExecutionNumber)
 	}
 
 	if h.Status != evergreen.HostStarting || t.Status != evergreen.TaskStarted || t.Aborted {

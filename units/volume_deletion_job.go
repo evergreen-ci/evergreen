@@ -64,11 +64,11 @@ func (j *volumeDeletionJob) Run(ctx context.Context) {
 	if j.volume == nil {
 		j.volume, err = host.FindVolumeByID(j.VolumeID)
 		if err != nil {
-			j.AddError(errors.Wrapf(err, "error getting volume '%s'", j.VolumeID))
+			j.AddError(errors.Wrapf(err, "finding volume '%s'", j.VolumeID))
 			return
 		}
 		if j.volume == nil {
-			j.AddError(errors.Errorf("no volume '%s' exists", j.VolumeID))
+			j.AddError(errors.Errorf("volume '%s' not found", j.VolumeID))
 			return
 		}
 	}
@@ -79,12 +79,12 @@ func (j *volumeDeletionJob) Run(ctx context.Context) {
 	}
 	mgr, err := cloud.GetManager(ctx, j.env, mgrOpts)
 	if err != nil {
-		j.AddError(errors.Wrapf(err, "can't get manager for volume '%s'", j.VolumeID))
+		j.AddError(errors.Wrapf(err, "getting cloud manager for volume '%s'", j.VolumeID))
 		return
 	}
 
 	if err := mgr.DeleteVolume(ctx, j.volume); err != nil {
-		j.AddError(errors.Wrapf(err, "can't delete volume '%s'", j.VolumeID))
+		j.AddError(errors.Wrapf(err, "deleting volume '%s'", j.VolumeID))
 		return
 	}
 }

@@ -9,6 +9,5 @@
 // whatever additional methods or functions are required. The units
 // package prefers a one-to-one mapping of files to job
 // implementations. Additionally all jobs must be capable of
-// marshiling to either JSON/BSON/YAML (depending on the
-// amoby.JobType format.)
+// marshalling to JSON/BSON (depending on the amoby.JobType format.)
 package units

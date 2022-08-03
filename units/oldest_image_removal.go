@@ -70,7 +70,7 @@ func (j *oldestImageRemovalJob) Run(ctx context.Context) {
 		j.host, err = host.FindOneId(j.HostID)
 		j.AddError(err)
 		if j.host == nil {
-			j.AddError(errors.Errorf("unable to retrieve host %s", j.HostID))
+			j.AddError(errors.Errorf("host '%s' not found", j.HostID))
 		}
 	}
 	if j.env == nil {
@@ -87,26 +87,25 @@ func (j *oldestImageRemovalJob) Run(ctx context.Context) {
 	// get least recently used image from Docker provider
 	mgr, err := cloud.GetManager(ctx, j.env, cloud.ManagerOpts{Provider: j.Provider})
 	if err != nil {
-		j.AddError(errors.Wrap(err, "error getting Docker manager"))
+		j.AddError(errors.Wrap(err, "getting Docker manager"))
 		return
 	}
 	containerMgr, err := cloud.ConvertContainerManager(mgr)
 	if err != nil {
-		j.AddError(errors.Wrap(err, "error getting Docker manager"))
+		j.AddError(errors.Wrap(err, "converting Docker manager to container manager"))
 		return
 	}
 
 	diskUsage, err := containerMgr.CalculateImageSpaceUsage(ctx, j.host)
 	if err != nil {
-		j.AddError(errors.Wrap(err, "error getting Docker disk usage"))
+		j.AddError(errors.Wrap(err, "getting Docker disk usage"))
 	}
 
 	if diskUsage >= maxDiskUsage {
 		err = containerMgr.RemoveOldestImage(ctx, j.host)
 		if err != nil {
-			j.AddError(errors.Wrapf(err, "error removing least recently used image ID on parent %s from Docker", j.HostID))
+			j.AddError(errors.Wrapf(err, "removing least recently used image ID on parent '%s' from Docker", j.HostID))
 			return
 		}
 	}
-
 }

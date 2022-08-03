@@ -84,11 +84,11 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	if j.host == nil {
 		j.host, err = host.FindOneId(j.HostID)
 		if err != nil {
-			j.AddError(errors.Wrapf(err, "error finding host '%s'", j.HostID))
+			j.AddError(errors.Wrapf(err, "finding host '%s'", j.HostID))
 			return
 		}
 		if j.host == nil {
-			j.AddError(fmt.Errorf("could not find host %s for job %s", j.HostID, j.TaskID))
+			j.AddError(errors.Errorf("could not find host '%s'", j.HostID))
 			return
 		}
 	}
@@ -114,7 +114,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		idle, err = j.host.IsIdleParent()
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"message": "problem checking if host is an idle parent",
+				"message": "checking if host is an idle parent",
 				"host_id": j.host.Id,
 				"job":     j.ID(),
 			}))
@@ -210,7 +210,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 				if tasks[len(tasks)-1].Id != lastTask.Id {
 					// If we aren't looking at the last task in the group, then we should mark the whole thing for restart,
 					// because later tasks in the group need to run on the same host as the earlier ones.
-					j.AddError(errors.Wrap(model.TryResetTask(lastTask.Id, evergreen.User, evergreen.MonitorPackage, nil), "problem resetting task"))
+					j.AddError(errors.Wrapf(model.TryResetTask(lastTask.Id, evergreen.User, evergreen.MonitorPackage, nil), "resetting task '%s'", lastTask.Id))
 				}
 			}
 		}
@@ -232,11 +232,11 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 
 	j.host, err = host.FindOneId(j.HostID)
 	if err != nil {
-		j.AddError(errors.Wrapf(err, "error finding host '%s'", j.HostID))
+		j.AddError(errors.Wrapf(err, "finding host '%s'", j.HostID))
 		return
 	}
 	if j.host == nil {
-		j.AddError(fmt.Errorf("could not find host %s for job %s", j.HostID, j.TaskID))
+		j.AddError(errors.Errorf("host '%s' not found", j.HostID))
 		return
 	}
 
@@ -252,7 +252,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 				"task":     j.host.RunningTask,
 			})
 
-			j.AddError(model.ClearAndResetStrandedHostTask(j.host))
+			j.AddError(errors.Wrapf(model.ClearAndResetStrandedHostTask(j.host), "fixing stranded task '%s'", j.host.RunningTask))
 		} else {
 			return
 		}
@@ -264,13 +264,13 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		parent, err = j.host.GetParent()
 		if err != nil {
 			if err.Error() != host.ErrorParentNotFound {
-				j.AddError(errors.Wrapf(err, "problem finding parent of '%s'", j.host.Id))
+				j.AddError(errors.Wrapf(err, "finding parent for container '%s'", j.host.Id))
 				return
 			}
 		}
 		if parent == nil || parent.Status == evergreen.HostTerminated {
 			if err = j.host.Terminate(evergreen.User, "parent was already terminated"); err != nil {
-				j.AddError(errors.Wrapf(err, "terminating container '%s' in db", j.host.Id))
+				j.AddError(errors.Wrapf(err, "terminating container '%s' in DB", j.host.Id))
 			}
 			return
 		}
@@ -285,7 +285,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			if adb.ResultsNotFound(err) {
 				return
 			}
-			j.AddError(errors.Wrapf(err, "terminating intent host '%s' in db", j.host.Id))
+			j.AddError(errors.Wrapf(err, "terminating intent host '%s' in DB", j.host.Id))
 		}
 
 		return

@@ -105,7 +105,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
-	j.AddError(errors.Wrap(j.env.Settings().HostInit.Get(j.env), "problem refreshing hostinit settings"))
+	j.AddError(errors.Wrap(j.env.Settings().HostInit.Get(j.env), "refreshing hostinit settings"))
 
 	if j.host == nil {
 		j.host, err = host.FindOneId(j.HostID)
@@ -139,7 +139,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 		var numHosts int
 		numHosts, err = host.CountRunningHosts(j.host.Distro.Id)
 		if err != nil {
-			j.AddError(errors.Wrap(err, "problem getting count of existing pool size"))
+			j.AddError(errors.Wrapf(err, "counting existing host pool size for distro '%s'", j.host.Distro.Id))
 			return
 		}
 
@@ -182,7 +182,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 		}
 
 		if removeHostIntent {
-			err = errors.Wrap(j.host.Remove(), "problem removing host intent")
+			err = errors.Wrap(j.host.Remove(), "removing host intent to respect max distro hosts")
 
 			j.AddError(err)
 			grip.Error(message.WrapError(err, message.Fields{
@@ -233,26 +233,26 @@ func (j *createHostJob) selfThrottle() bool {
 
 	numProv, err = host.CountStartedTaskHosts()
 	if err != nil {
-		j.AddError(errors.Wrap(err, "problem getting count of pending pool size"))
+		j.AddError(errors.Wrap(err, "counting pending host pool size"))
 		return true
 	}
 
 	distroRunningHosts, err = host.CountRunningHosts(j.host.Distro.Id)
 	if err != nil {
-		j.AddError(errors.Wrap(err, "problem getting count of pending pool size"))
+		j.AddError(errors.Wrapf(err, "counting host pool size for distro '%s'", j.host.Distro.Id))
 		return true
 	}
 
 	runningHosts, err = host.CountAllRunningDynamicHosts()
 	if err != nil {
-		j.AddError(errors.Wrap(err, "problem getting count of pending pool size"))
+		j.AddError(errors.Wrap(err, "counting size of entire host pool"))
 		return true
 	}
 
 	if distroRunningHosts < runningHosts/100 || distroRunningHosts < j.host.Distro.HostAllocatorSettings.MinimumHosts {
 		return false
 	} else if numProv >= j.env.Settings().HostInit.HostThrottle {
-		j.AddError(errors.Wrapf(j.host.Remove(), "problem removing host intent for %s", j.host.Id))
+		j.AddError(errors.Wrapf(j.host.Remove(), "removing intent host '%s'", j.host.Id))
 		return true
 	}
 
@@ -267,7 +267,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	var cloudManager cloud.Manager
 	var err error
 	if err = ctx.Err(); err != nil {
-		return errors.Wrap(err, "canceling create host because context is canceled")
+		return errors.Wrap(err, "creating host")
 	}
 	grip.Info(message.Fields{
 		"message":      "attempting to start host",
@@ -279,7 +279,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 
 	mgrOpts, err := cloud.GetManagerOptions(j.host.Distro)
 	if err != nil {
-		return errors.Wrapf(err, "can't get ManagerOpts for '%s'", j.host.Id)
+		return errors.Wrapf(err, "getting cloud manager options for distro '%s'", j.host.Distro.Id)
 	}
 	cloudManager, err = cloud.GetManager(ctx, j.env, mgrOpts)
 	if err != nil {
@@ -288,7 +288,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 			"host_id": j.host.Id,
 			"job":     j.ID(),
 		}))
-		return errors.Wrapf(errIgnorableCreateHost, "problem getting cloud provider for host '%s' [%s]", j.host.Id, err.Error())
+		return errors.Wrapf(errIgnorableCreateHost, "getting cloud provider for host '%s' [%s]", j.host.Id, err.Error())
 	}
 
 	if j.host.Status != evergreen.HostUninitialized && j.host.Status != evergreen.HostBuilding {
@@ -317,7 +317,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		var ready bool
 		ready, err = j.isImageBuilt(ctx)
 		if err != nil {
-			return errors.Wrap(err, "problem building container image")
+			return errors.Wrap(err, "checking if container image is built")
 		}
 		if !ready {
 			j.UpdateRetryInfo(amboy.JobRetryOptions{
@@ -344,7 +344,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	if j.HostID == j.host.Id {
 		// spawning the host did not change the ID, so we can replace the old host with the new one (ie. for docker containers)
 		if err = j.host.Replace(); err != nil {
-			return errors.Wrapf(err, "unable to replace host %s", j.host.Id)
+			return errors.Wrapf(err, "replacing host '%s'", j.host.Id)
 		}
 		hostReplaced = true
 	} else {
@@ -384,10 +384,10 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
 	parent, err := j.host.GetParent()
 	if err != nil {
-		return false, errors.Wrapf(err, "problem getting parent for '%s'", j.host.Id)
+		return false, errors.Wrapf(err, "getting parent host for container '%s'", j.host.Id)
 	}
 	if parent == nil {
-		return false, errors.Wrapf(err, "parent for '%s' does not exist", j.host.Id)
+		return false, errors.Wrapf(err, "parent for container '%s' not found", j.host.Id)
 	}
 
 	if parent.Status != evergreen.HostRunning {

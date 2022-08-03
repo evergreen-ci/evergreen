@@ -200,12 +200,20 @@ func getPatchProjectVariantsAndTasksForUI(ctx context.Context, apiPatch *restMod
 			DisplayName: buildVariant.DisplayName,
 		}
 		projTasks := []string{}
-		for _, taskUnit := range buildVariant.Tasks {
-			projTasks = append(projTasks, taskUnit.Name)
-		}
+		executionTasks := map[string]bool{}
 		for _, displayTask := range buildVariant.DisplayTasks {
 			projTasks = append(projTasks, displayTask.Name)
+			for _, execTask := range displayTask.ExecTasks {
+				executionTasks[execTask] = true
+			}
 		}
+		for _, taskUnit := range buildVariant.Tasks {
+			// Only add task if it is not an execution task.
+			if !executionTasks[taskUnit.Name] {
+				projTasks = append(projTasks, taskUnit.Name)
+			}
+		}
+		// Sort tasks alphanumerically by display name.
 		sort.SliceStable(projTasks, func(i, j int) bool {
 			return projTasks[i] < projTasks[j]
 		})

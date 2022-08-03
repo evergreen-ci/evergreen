@@ -54,12 +54,12 @@ func (j *parentDecommissionJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 	parents, err := host.FindAllRunningParentsByDistroID(j.DistroId)
 	if err != nil {
-		j.AddError(err)
+		j.AddError(errors.Wrapf(err, "finding container parents in distro '%s'", j.DistroId))
 		return
 	}
 	parentDistro, err := distro.FindOneId(j.DistroId)
 	if err != nil {
-		j.AddError(err)
+		j.AddError(errors.Wrapf(err, "finding distro '%s'", j.DistroId))
 		return
 	}
 	minHosts := 0
@@ -81,7 +81,7 @@ func (j *parentDecommissionJob) Run(ctx context.Context) {
 			continue
 		}
 		if idle {
-			err = h.SetDecommissioned(evergreen.User, false, "host only contains decommissioned containers and there is excess capacity")
+			err = h.SetDecommissioned(evergreen.User, false, "container parent has no healthy containers and there is excess capacity")
 			if err != nil {
 				j.AddError(err)
 				continue

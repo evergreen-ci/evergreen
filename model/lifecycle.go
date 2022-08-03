@@ -81,7 +81,7 @@ func SetVersionActivation(versionId string, active bool, caller string) error {
 			q[task.ActivatedByKey] = bson.M{"$in": evergreen.SystemActivators}
 		}
 
-		tasksToModify, err = task.FindAll(db.Query(q).WithFields(task.IdKey, task.ExecutionKey))
+		tasksToModify, err = task.FindAll(db.Query(q).WithFields(task.IdKey, task.ExecutionKey, task.BuildIdKey))
 		if err != nil {
 			return errors.Wrap(err, "getting tasks to deactivate")
 		}
@@ -773,6 +773,13 @@ func createTasksForBuild(project *Project, pRef *ProjectRef, buildVariant *Build
 	for _, tg := range project.TaskGroups {
 		tgMap[tg.Name] = tg
 	}
+	for _, variant := range project.BuildVariants {
+		for _, t := range variant.Tasks {
+			if t.TaskGroup != nil {
+				tgMap[t.Name] = *t.TaskGroup
+			}
+		}
+	}
 
 	for _, task := range buildVariant.Tasks {
 		// Verify that the config isn't malformed.
@@ -1264,7 +1271,10 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 	}
 
 	if buildVarTask.IsGroup {
-		tg := project.FindTaskGroup(buildVarTask.GroupName)
+		tg := buildVarTask.TaskGroup
+		if tg == nil {
+			tg = project.FindTaskGroup(buildVarTask.GroupName)
+		}
 		if tg == nil {
 			return nil, errors.Errorf("finding task group '%s' in project '%s'", buildVarTask.GroupName, project.Identifier)
 		}

@@ -940,6 +940,7 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 	// some fields shouldn't be set from projects
 	repoRef.Id = mgobson.NewObjectId().Hex()
 	repoRef.RepoRefId = ""
+	repoRef.Identifier = ""
 	// set explicitly in case no project is enabled
 	repoRef.Owner = p.Owner
 	repoRef.Repo = p.Repo
@@ -1762,17 +1763,18 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			return false, errors.New("can't default project ref for a repo")
 		}
 	}
+	defaultToRepo := false
 	if p == nil {
+		defaultToRepo = true
 		p = &ProjectRef{} // use a blank project ref to default the section to repo
 	}
+
 	var err error
 	switch section {
 	case ProjectPageGeneralSection:
 		setUpdate := bson.M{
 			ProjectRefEnabledKey:                 p.Enabled,
 			ProjectRefBranchKey:                  p.Branch,
-			ProjectRefDisplayNameKey:             p.DisplayName,
-			ProjectRefIdentifierKey:              p.Identifier,
 			ProjectRefBatchTimeKey:               p.BatchTime,
 			ProjectRefRemotePathKey:              p.RemotePath,
 			projectRefSpawnHostScriptPathKey:     p.SpawnHostScriptPath,
@@ -1790,6 +1792,11 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 		if !isRepo && !p.UseRepoSettings() {
 			setUpdate[ProjectRefOwnerKey] = p.Owner
 			setUpdate[ProjectRefRepoKey] = p.Repo
+		}
+		// some fields shouldn't be set to nil when defaulting to the repo
+		if !defaultToRepo {
+			setUpdate[ProjectRefDisplayNameKey] = p.DisplayName
+			setUpdate[ProjectRefIdentifierKey] = p.Identifier
 		}
 		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},
@@ -1885,6 +1892,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 // to create our own project settings event  after completing the update.
 func DefaultSectionToRepo(projectId string, section ProjectPageSection, userId string) error {
 	before, err := GetProjectSettingsById(projectId, false)
+
 	if err != nil {
 		return errors.Wrap(err, "getting before project settings event")
 	}

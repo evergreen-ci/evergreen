@@ -72,7 +72,7 @@ func (j *eventNotifierJob) Run(ctx context.Context) {
 	var err error
 	j.flags, err = evergreen.GetServiceFlags()
 	if err != nil {
-		j.AddError(errors.Wrap(err, "error retrieving admin settings"))
+		j.AddError(errors.Wrap(err, "getting admin settings"))
 		return
 	}
 	if j.flags.EventProcessingDisabled {
@@ -85,7 +85,7 @@ func (j *eventNotifierJob) Run(ctx context.Context) {
 
 	e, err := event.FindByID(j.EventID)
 	if err != nil {
-		j.AddError(err)
+		j.AddError(errors.Wrapf(err, "finding event '%s'", j.EventID))
 		return
 	}
 	if e == nil {
@@ -117,7 +117,7 @@ func (j *eventNotifierJob) processEvent(ctx context.Context, e *event.EventLogEn
 			"notifications": n,
 			"message":       "can't insert notifications",
 		}))
-		catcher.AddWhen(shouldLogError, err)
+		catcher.AddWhen(shouldLogError, errors.Wrap(err, "bulk inserting notifications"))
 	}
 
 	catcher.Add(dispatchNotifications(ctx, n, j.q, j.flags))
@@ -143,13 +143,13 @@ func (j *eventNotifierJob) processEvent(ctx context.Context, e *event.EventLogEn
 
 func (j *eventNotifierJob) processEventTriggers(e *event.EventLogEntry) (n []notification.Notification, err error) {
 	if e == nil {
-		return nil, errors.New("nil event")
+		return nil, errors.New("cannot process event triggers for nil event")
 	}
 
 	defer func() {
 		if r := recover(); r != nil {
 			n = nil
-			err = errors.Errorf("panicked while processing event %s", e.ID)
+			err = errors.Errorf("panicked while processing event '%s'", e.ID)
 			grip.Alert(message.WrapError(err, message.Fields{
 				"job_id":      j.ID(),
 				"job_type":    j.Type().Name,
@@ -216,10 +216,11 @@ func dispatchNotifications(ctx context.Context, notifications []notification.Not
 	for i := range notifications {
 		if notificationIsEnabled(flags, &notifications[i]) {
 			if err := q.Put(ctx, NewEventSendJob(notifications[i].ID, utility.RoundPartOfMinute(1).Format(TSFormat))); !amboy.IsDuplicateJobError(err) {
-				catcher.Add(err)
+				catcher.Wrapf(err, "enqueueing event send job for notification '%s'", notifications[i].ID)
 			}
 		} else {
-			catcher.Add(notifications[i].MarkError(errors.New("sender disabled")))
+			err := errors.New("notifications are disabled")
+			catcher.Wrapf(notifications[i].MarkError(err), "setting error for notification '%s'", notifications[i].ID)
 		}
 	}
 

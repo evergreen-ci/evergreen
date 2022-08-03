@@ -1,40 +1,110 @@
 {
   "tests": [
-    { 
-      "query_file": "empty-version.graphql",
+    {
+      "query_file": "aborted-patch.graphql",
       "result": {
         "data": {
           "patch": {
-            "versionFull": null
+            "status": "aborted"
           }
         }
       }
     },
     {
-      "query_file": "version.graphql",
+      "query_file": "base-version-null.graphql",
       "result": {
         "data": {
           "patch": {
+            "id": "5d7288d91f8c8a403bc34a7d",
             "versionFull": {
-              "id": "5dd2e89cd1fe07048e43bb9c"
+              "baseVersion": null
             }
           }
         }
       }
     },
     {
-      "query_file": "taskCount.graphql",
+      "query_file": "base-version.graphql",
       "result": {
         "data": {
           "patch": {
             "id": "5e4ff3abe3c3317e352062e4",
-            "taskCount": 5
+            "versionFull": {
+              "baseVersion": {
+                "id": "5dd2e89cd1fe07048e43bb9c"
+              }
+            }
           }
         }
       }
     },
     {
-      "query_file": "childPatches.graphql",
+      "query_file": "builds-do-not-exist.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "builds": []
+          }
+        }
+      }
+    },
+    {
+      "query_file": "builds-exist.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "builds": [
+              {
+                "id": "logkeeper_ubuntu_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58",
+                "buildVariant": "ubuntu",
+                "status": "created",
+                "predictedMakespan": 70000000,
+                "actualMakespan": 0
+              },
+              {
+                "id": "sys_perf_linux_3_node_replSet_initialsync_40dc86136f85f88e1782a1c65b49bfba02757009_17_12_05_17_20_27",
+                "buildVariant": "linux-3-node-replSet-initialsync",
+                "status": "success",
+                "predictedMakespan": 0,
+                "actualMakespan": 7057665
+              },
+              {
+                "id": "sys_perf_linux_3_node_replSet_852ff9f97b6b92f5c3a88d0e070fe9c0f90ef175_17_11_30_16_44_10",
+                "buildVariant": "linux-3-node-replSet",
+                "status": "failed",
+                "predictedMakespan": 0,
+                "actualMakespan": 26167579
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "child-patch-aliases.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "childPatchAliases": [
+              { "alias": "evergreen_alias", "patchId": "5e4ff3abe3c3317e352062e4"}
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "child-patches-null.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "id": "5d7288d91f8c8a403bc34a7d",
+            "childPatches": null
+          }
+        }
+      }
+    },
+    {
+      "query_file": "child-patches.graphql",
       "result": {
         "data": {
           "patch": {
@@ -50,46 +120,60 @@
       }
     },
     {
-      "query_file": "noChildPatches.graphql",
+      "query_file": "commit-queue-null.graphql",
       "result": {
         "data": {
           "patch": {
-            "id": "5d7288d91f8c8a403bc34a7d",
-            "childPatches": null
+            "commitQueuePosition": null
           }
         }
       }
     },
     {
-      "query_file": "baseVersionId.graphql",
+      "query_file": "commit-queue.graphql",
       "result": {
         "data": {
           "patch": {
-            "id": "5e4ff3abe3c3317e352062e4",
-            "versionFull": {
-              "baseVersion": {
-                "id": "5dd2e89cd1fe07048e43bb9c"
-              }
+            "commitQueuePosition": 0
+          }
+        }
+      }
+    },
+    {
+      "query_file": "correct-duration.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "duration": {
+              "timeTaken": "1m 37s",
+              "makespan": "1m 37s"
             }
           }
         }
       }
     },
     {
-      "query_file": "noBaseCommit.graphql",
+      "query_file": "create-time-null.graphql",
       "result": {
         "data": {
           "patch": {
-            "id": "5d7288d91f8c8a403bc34a7d",
-            "versionFull": {
-              "baseVersion": null
-            }
+            "createTime": null
           }
         }
       }
     },
     {
-      "query_file": "moduleCodeChanges.graphql",
+      "query_file": "create-time.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "createTime": "2020-04-13T16:12:39-04:00"
+          }
+        }
+      }
+    },
+    {
+      "query_file": "module-code-changes.graphql",
       "result": {
         "data": {
           "patch": {
@@ -142,125 +226,6 @@
       }
     },
     {
-      "query_file": "builds.graphql",
-      "result": {
-        "data": {
-          "patch": {
-            "builds": [
-              {
-                "id": "logkeeper_ubuntu_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58",
-                "buildVariant": "ubuntu",
-                "status": "created",
-                "predictedMakespan": 70000000,
-                "actualMakespan": 0
-              },
-              {
-                "id": "sys_perf_linux_3_node_replSet_initialsync_40dc86136f85f88e1782a1c65b49bfba02757009_17_12_05_17_20_27",
-                "buildVariant": "linux-3-node-replSet-initialsync",
-                "status": "success",
-                "predictedMakespan": 0,
-                "actualMakespan": 7057665
-              },
-              {
-                "id": "sys_perf_linux_3_node_replSet_852ff9f97b6b92f5c3a88d0e070fe9c0f90ef175_17_11_30_16_44_10",
-                "buildVariant": "linux-3-node-replSet",
-                "status": "failed",
-                "predictedMakespan": 0,
-                "actualMakespan": 26167579
-              }
-            ]
-          }
-        }
-      }
-    },
-    {
-      "query_file": "builds-no-builds.graphql",
-      "result": {
-        "data": {
-          "patch": {
-            "builds": []
-          }
-        }
-      }
-    },
-    {
-      "query_file": "projectVariantsAndTasks.graphql",
-      "result": {
-        "data": {
-          "patch": {
-            "project": {
-              "variants": [
-                {
-                  "name": "ubuntu1604",
-                  "displayName": "Ubuntu 16.04",
-                  "tasks": [
-                    "compile",
-                    "coverage",
-                    "e2e_test",
-                    "lint",
-                    "test"
-                  ]
-                }
-              ]
-            }
-          }
-        }
-      }
-    },
-    {
-      "query_file": "createTime-exists.graphql",
-      "result": {
-        "data": {
-          "patch": {
-            "createTime": "2020-04-13T16:12:39-04:00"
-          }
-        }
-      }
-    },
-    {
-      "query_file": "createTime-does-not-exist.graphql",
-      "result": {
-        "data": {
-          "patch": {
-            "createTime": null
-          }
-        }
-      }
-    },
-    {
-      "query_file": "commit-queue.graphql",
-      "result": {
-        "data": {
-          "patch": {
-            "commitQueuePosition": 0
-          }
-        }
-      }
-    },
-    {
-      "query_file": "commit-queue-null.graphql",
-      "result": {
-        "data": {
-          "patch": {
-            "commitQueuePosition": null
-          }
-        }
-      }
-    },
-    {
-      "query_file": "correct-duration.graphql",
-      "result": {
-        "data": {
-          "patch": {
-            "duration": {
-              "timeTaken": "1m 37s",
-              "makespan": "1m 37s"
-            }
-          }
-        }
-      }
-    },
-    {
       "query_file": "parameters.graphql",
       "result": {
         "data": {
@@ -275,16 +240,6 @@
                 "value": "this_is_it"
               }
             ]
-          }
-        }
-      }
-    },
-    {
-      "query_file": "abortedPatchTasks.graphql",
-      "result": {
-        "data": {
-          "patch": {
-            "status": "aborted"
           }
         }
       }
@@ -314,13 +269,57 @@
       }
     },
     {
-      "query_file": "childPatchAliases.graphql",
+      "query_file": "project-variants-and-tasks.graphql",
       "result": {
         "data": {
           "patch": {
-            "childPatchAliases": [
-              { "alias": "evergreen_alias", "patchId": "5e4ff3abe3c3317e352062e4"}
-            ]
+            "project": {
+              "variants": [
+                {
+                  "name": "ubuntu1604",
+                  "displayName": "Ubuntu 16.04",
+                  "tasks": [
+                    "batchtime_task",
+                    "display_task",
+                    "display_task2",
+                    "patch_only_task"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "task-count.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "id": "5e4ff3abe3c3317e352062e4",
+            "taskCount": 5
+          }
+        }
+      }
+    },
+    { 
+      "query_file": "version-null.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "versionFull": null
+          }
+        }
+      }
+    },
+    {
+      "query_file": "version.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "versionFull": {
+              "id": "5dd2e89cd1fe07048e43bb9c"
+            }
           }
         }
       }

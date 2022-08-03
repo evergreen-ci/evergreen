@@ -151,10 +151,10 @@ func (j *podTerminationJob) populateIfUnset(ctx context.Context) error {
 	if j.pod == nil {
 		p, err := pod.FindOneByID(j.PodID)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "finding pod '%s'", j.PodID)
 		}
 		if p == nil {
-			return errors.New("pod not found")
+			return errors.Errorf("pod '%s' not found", j.PodID)
 		}
 		j.pod = p
 	}

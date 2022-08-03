@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
@@ -62,24 +63,27 @@ func (j *spawnhostExpirationCheckJob) Run(ctx context.Context) {
 	if j.host == nil {
 		j.host, err = host.FindOneId(j.HostID)
 		if err != nil {
-			j.AddError(errors.Wrapf(err, "error getting host '%s' in spawnhost expiration check job", j.HostID))
+			j.AddError(errors.Wrapf(err, "finding host '%s'", j.HostID))
+			return
+		}
+		if j.host == nil {
+			j.AddError(errors.Errorf("host '%s' not found", j.HostID))
 			return
 		}
 	}
 
 	mgrOpts, err := cloud.GetManagerOptions(j.host.Distro)
 	if err != nil {
-		j.AddError(errors.Wrapf(err, "can't get ManagerOpts for '%s'", j.host.Id))
+		j.AddError(errors.Wrapf(err, "getting cloud manager options for host '%s'", j.host.Id))
 		return
 	}
 	cloudManager, err := cloud.GetManager(ctx, j.env, mgrOpts)
 	if err != nil {
-		j.AddError(errors.Wrapf(err, "error getting cloud manager for host '%s' in spawnhost expiration check job", j.HostID))
+		j.AddError(errors.Wrapf(err, "getting cloud manager for host '%s'", j.HostID))
 		return
 	}
-	noExpiration := true
-	if err := cloudManager.ModifyHost(ctx, j.host, host.HostModifyOptions{NoExpiration: &noExpiration}); err != nil {
-		j.AddError(errors.Wrapf(err, "error extending expiration for spawn host '%s' using cloud manager", j.HostID))
+	if err := cloudManager.ModifyHost(ctx, j.host, host.HostModifyOptions{NoExpiration: utility.TruePtr()}); err != nil {
+		j.AddError(errors.Wrapf(err, "extending expiration for host '%s'", j.HostID))
 		return
 	}
 }

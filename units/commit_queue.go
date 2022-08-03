@@ -76,7 +76,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 	// stop if degraded
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
-		j.AddError(errors.New("can't get degraded mode flags"))
+		j.AddError(errors.Wrap(err, "getting service flags"))
 		return
 	}
 	if flags.CommitQueueDisabled {
@@ -90,11 +90,11 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 	// stop if project is disabled
 	projectRef, err := model.FindMergedProjectRef(j.QueueID, "", false)
 	if err != nil {
-		j.AddError(errors.Wrapf(err, "can't find project for queue id %s", j.QueueID))
+		j.AddError(errors.Wrapf(err, "finding project for commit queue '%s'", j.QueueID))
 		return
 	}
 	if projectRef == nil {
-		j.AddError(errors.Errorf("no project found for queue id %s", j.QueueID))
+		j.AddError(errors.Errorf("project not found for commit queue '%s'", j.QueueID))
 		return
 	}
 	if !projectRef.CommitQueue.IsEnabled() {
@@ -108,11 +108,11 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 
 	cq, err := commitqueue.FindOneId(j.QueueID)
 	if err != nil {
-		j.AddError(errors.Wrapf(err, "can't find commit queue for id %s", j.QueueID))
+		j.AddError(errors.Wrapf(err, "finding commit queue '%s'", j.QueueID))
 		return
 	}
 	if cq == nil {
-		j.AddError(errors.Errorf("no commit queue found for id %s", j.QueueID))
+		j.AddError(errors.Errorf("commit queue '%s' not found", j.QueueID))
 		return
 	}
 
@@ -127,12 +127,12 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 
 	conf, err := evergreen.GetConfig()
 	if err != nil {
-		j.AddError(errors.Wrap(err, "can't get settings"))
+		j.AddError(errors.Wrap(err, "getting admin settings"))
 		return
 	}
 	githubToken, err := conf.GetGithubOauthToken()
 	if err != nil {
-		j.AddError(errors.Wrap(err, "can't get github token"))
+		j.AddError(errors.Wrap(err, "getting global GitHub OAuth token"))
 		return
 	}
 	j.TryUnstick(ctx, cq, projectRef, githubToken)
@@ -205,10 +205,10 @@ func (j *commitQueueJob) addMergeTaskDependencies(cq commitqueue.CommitQueue) er
 		}
 		mergeTask, err := task.FindMergeTaskForVersion(currentItem.Version)
 		if err != nil {
-			return errors.Wrap(err, "unable to find merge task")
+			return errors.Wrapf(err, "finding merge task from version '%s'", currentItem.Version)
 		}
 		if mergeTask == nil {
-			return errors.Errorf("no merge task found for version '%s'", currentItem.Version)
+			return errors.Errorf("merge task not found for version '%s'", currentItem.Version)
 		}
 		dependency := task.Dependency{
 			TaskId: prevMergeTask,
@@ -220,15 +220,15 @@ func (j *commitQueueJob) addMergeTaskDependencies(cq commitqueue.CommitQueue) er
 		}
 		err = mergeTask.AddDependency(dependency)
 		if err != nil {
-			return errors.Wrap(err, "unable to add dependency")
+			return errors.Wrapf(err, "adding dependency of merge task '%s' on previous merge task '%s'", mergeTask.Id, dependency.TaskId)
 		}
 		err = mergeTask.UpdateDependsOn(dependency.Status, []string{dependency.TaskId})
 		if err != nil {
-			return errors.Wrap(err, "unable to update task dependencies")
+			return errors.Wrapf(err, "updating tasks depending on merge task '%s' to also depend on previous merge task '%s'", mergeTask.Id, dependency.TaskId)
 		}
 		err = model.RecomputeNumDependents(*mergeTask)
 		if err != nil {
-			return errors.Wrap(err, "unable to recompute number of dependencies")
+			return errors.Wrapf(err, "recomputing number of dependencies for merge task '%s'", mergeTask.Id)
 		}
 	}
 
@@ -248,18 +248,18 @@ func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQ
 	// unstick the queue if the patch is done.
 	if !patch.IsValidId(nextItem.Version) {
 		j.dequeue(cq, nextItem)
-		j.logError(errors.Errorf("The Patch id '%s' is not an object id", nextItem.Issue), "The patch was removed from the queue.", nextItem)
+		j.logError(errors.Errorf("patch ID '%s' is not an object id", nextItem.Issue), "patch was removed from the commit queue", nextItem)
 		return
 	}
 
 	patchDoc, err := patch.FindOne(patch.ByStringId(nextItem.Version).WithFields(patch.FinishTimeKey, patch.StatusKey))
 	if err != nil {
-		j.AddError(errors.Wrapf(err, "error finding the patch for %s", j.QueueID))
+		j.AddError(errors.Wrapf(err, "finding patch '%s' for commit queue '%s'", nextItem.Version, j.QueueID))
 		return
 	}
 	if patchDoc == nil {
 		j.dequeue(cq, nextItem)
-		j.logError(errors.New("The patch on top of the queue is nil"), "The patch was removed from the queue.", nextItem)
+		j.logError(errors.New("patch at the top of the commit queue is nil"), "patch was removed from the queue", nextItem)
 		if nextItem.Source == commitqueue.SourcePullRequest {
 			pr, _, err := checkPR(ctx, githubToken, nextItem.Issue, projectRef.Owner, projectRef.Repo)
 			if err != nil {
@@ -273,7 +273,7 @@ func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQ
 
 	mergeTask, err := task.FindMergeTaskForVersion(nextItem.Version)
 	if err != nil {
-		j.AddError(errors.Wrap(err, "unable to find merge task for version"))
+		j.AddError(errors.Wrapf(err, "finding merge task for version '%s'", nextItem.Version))
 	}
 	if mergeTask != nil {
 		// check that the merge task can run. Assume that if we're here the merge task
@@ -331,7 +331,7 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 
 	patchDoc, err := patch.FindOneId(nextItem.PatchId)
 	if err != nil {
-		j.AddError(errors.Wrapf(err, "error finding patch '%s'", nextItem.Version))
+		j.AddError(errors.Wrapf(err, "finding patch '%s'", nextItem.Version))
 		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "no patch found", ""))
 		j.dequeue(cq, nextItem)
 		return
@@ -458,12 +458,12 @@ func (j *commitQueueJob) dequeue(cq *commitqueue.CommitQueue, item commitqueue.C
 func checkPR(ctx context.Context, githubToken, issue, owner, repo string) (*github.PullRequest, bool, error) {
 	issueInt, err := strconv.Atoi(issue)
 	if err != nil {
-		return nil, true, errors.Wrapf(err, "can't parse issue '%s' as int", issue)
+		return nil, true, errors.Wrapf(err, "parsing issue '%s' as int", issue)
 	}
 
 	pr, err := thirdparty.GetGithubPullRequest(ctx, githubToken, owner, repo, issueInt)
 	if err != nil {
-		return nil, false, errors.Wrap(err, "can't get PR from GitHub")
+		return nil, false, errors.Wrap(err, "getting PR from GitHub")
 	}
 
 	if err = thirdparty.ValidatePR(pr); err != nil {
@@ -479,7 +479,7 @@ func sendCommitQueueGithubStatus(env evergreen.Environment, pr *github.PullReque
 	}
 	sender, err := env.GetSender(evergreen.SenderGithubStatus)
 	if err != nil {
-		return errors.Wrap(err, "can't get GitHub status sender")
+		return errors.Wrap(err, "getting GitHub status sender")
 	}
 
 	var url string
@@ -523,7 +523,7 @@ func validateBranch(branch *github.Branch) error {
 func AddMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, projectRef *model.ProjectRef, source string) error {
 	settings, err := evergreen.GetConfig()
 	if err != nil {
-		return errors.Wrap(err, "error retrieving Evergreen config")
+		return errors.Wrap(err, "retrieving admin settings")
 	}
 
 	modules := make([]string, 0, len(patchDoc.Patches))
@@ -592,7 +592,7 @@ func AddMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, proje
 				},
 			})
 	} else {
-		return errors.Errorf("unknown commit queue source: %s", source)
+		return errors.Errorf("unknown commit queue source '%s'", source)
 	}
 
 	// Define as part of a task group with no pre to skip
@@ -615,11 +615,11 @@ func AddMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, proje
 		catcher.Add(validationErr)
 	}
 	if catcher.HasErrors() {
-		return errors.Errorf("project validation failed: %s", catcher.Resolve())
+		return errors.Wrap(catcher.Resolve(), "validating project")
 	}
 	yamlBytes, err := yaml.Marshal(project)
 	if err != nil {
-		return errors.Wrap(err, "can't marshall remote config file")
+		return errors.Wrap(err, "marshalling remote config file")
 	}
 
 	patchDoc.PatchedParserProject = string(yamlBytes)
@@ -636,10 +636,10 @@ func AddMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, proje
 func setDefaultNotification(username string) error {
 	u, err := user.FindOneById(username)
 	if err != nil {
-		return errors.Wrap(err, "can't get user")
+		return errors.Wrapf(err, "finding user '%s'", username)
 	}
 	if u == nil {
-		return errors.Errorf("no matching user for %s", username)
+		return errors.Errorf("user '%s' not found", username)
 	}
 
 	// The user has never saved their notification settings
@@ -649,7 +649,7 @@ func setDefaultNotification(username string) error {
 		commitQueueSubscription, err := event.CreateOrUpdateGeneralSubscription(event.GeneralSubscriptionCommitQueue,
 			"", commitQueueSubscriber, u.Id)
 		if err != nil {
-			return errors.Wrap(err, "can't create default email subscription")
+			return errors.Wrap(err, "creating default email subscription")
 		}
 		u.Settings.Notifications.CommitQueueID = commitQueueSubscription.ID
 
@@ -662,10 +662,10 @@ func setDefaultNotification(username string) error {
 func updatePatch(ctx context.Context, githubToken string, projectRef *model.ProjectRef, patchDoc *patch.Patch) (*model.Project, error) {
 	branch, err := thirdparty.GetBranchEvent(ctx, githubToken, projectRef.Owner, projectRef.Repo, projectRef.Branch)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't get branch")
+		return nil, errors.Wrap(err, "getting branch")
 	}
 	if err = validateBranch(branch); err != nil {
-		return nil, errors.Wrap(err, "GitHub returned invalid branch")
+		return nil, errors.Wrap(err, "GitHub returned an invalid branch")
 	}
 
 	sha := *branch.Commit.SHA
@@ -676,7 +676,7 @@ func updatePatch(ctx context.Context, githubToken string, projectRef *model.Proj
 	patchDoc.PatchedProjectConfig = ""
 	project, patchConfig, err := model.GetPatchedProject(ctx, patchDoc, githubToken)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't get updated project config")
+		return nil, errors.Wrap(err, "getting updated project config")
 	}
 	patchDoc.PatchedParserProject = patchConfig.PatchedParserProject
 	patchDoc.PatchedProjectConfig = patchConfig.PatchedProjectConfig
@@ -690,7 +690,7 @@ func updatePatch(ctx context.Context, githubToken string, projectRef *model.Proj
 
 		module, err := project.GetModuleByName(mod.ModuleName)
 		if err != nil {
-			return nil, errors.Wrapf(err, "can't get module for module name '%s'", mod.ModuleName)
+			return nil, errors.Wrapf(err, "getting module '%s'", mod.ModuleName)
 		}
 		owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
 		if err != nil {
@@ -699,7 +699,7 @@ func updatePatch(ctx context.Context, githubToken string, projectRef *model.Proj
 
 		branch, err = thirdparty.GetBranchEvent(ctx, githubToken, owner, repo, module.Branch)
 		if err != nil {
-			return nil, errors.Wrap(err, "can't get branch")
+			return nil, errors.Wrap(err, "getting branch")
 		}
 		if err = validateBranch(branch); err != nil {
 			return nil, errors.Wrap(err, "GitHub returned invalid branch")
