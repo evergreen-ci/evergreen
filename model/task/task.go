@@ -2609,7 +2609,7 @@ func archiveAll(tasksIds []string, toUpdateTaskIds []string, toArchive []interfa
 						OverrideDependenciesKey,
 					}}}})
 
-			// Same call without backwards compatability
+			// Same call without backwards compatibility
 			// _, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(sessCtx,
 			// 	bson.D{{Key: "_id", Value: bson.D{{Key: "$in", Value: tasksIds}}}}, // Query all 'taskIds'
 			// 	bson.A{ // Pipeline
