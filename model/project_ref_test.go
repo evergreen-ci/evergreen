@@ -649,6 +649,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 			pRefFromDb, err := FindBranchProjectRef(id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
+			assert.NotEqual(t, pRefFromDb.Identifier, "")
 			assert.Equal(t, pRefFromDb.BatchTime, 0)
 			assert.Nil(t, pRefFromDb.RepotrackerDisabled)
 			assert.Nil(t, pRefFromDb.DeactivatePrevious)
@@ -760,6 +761,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 
 			pRef := ProjectRef{
 				Id:                    "my_project",
+				Identifier:            "my_identifier",
 				Owner:                 "candy",
 				Repo:                  "land",
 				BatchTime:             10,
