@@ -18,27 +18,25 @@ import (
 // PrestoConfig represents configuration information for the application level
 // Presto DB connection.
 type PrestoConfig struct {
-	BaseURI           string            `bson:"base_uri" json:"base_uri" yaml:"base_uri"`
-	Port              int               `bson:"port" json:"port" yaml:"port"`
-	TLS               bool              `bson:"tls" json:"tls" yaml:"tls"`
-	Username          string            `bson:"username" json:"username" yaml:"username"`
-	Password          string            `bson:"password" json:"password" yaml:"password"`
-	Source            string            `bson:"source" json:"source" yaml:"source"`
-	Catalog           string            `bson:"catalog" json:"catalog" yaml:"catalog"`
-	Schema            string            `bson:"schema" json:"schema" yaml:"schema"`
-	SessionProperties map[string]string `bson:"session_properties" json:"session_properties" yaml:"session_properties"`
+	BaseURI  string `bson:"base_uri" json:"base_uri" yaml:"base_uri"`
+	Port     int    `bson:"port" json:"port" yaml:"port"`
+	TLS      bool   `bson:"tls" json:"tls" yaml:"tls"`
+	Username string `bson:"username" json:"username" yaml:"username"`
+	Password string `bson:"password" json:"password" yaml:"password"`
+	Source   string `bson:"source" json:"source" yaml:"source"`
+	Catalog  string `bson:"catalog" json:"catalog" yaml:"catalog"`
+	Schema   string `bson:"schema" json:"schema" yaml:"schema"`
 }
 
 var (
-	PrestoConfigBaseURIKey           = bsonutil.MustHaveTag(PrestoConfig{}, "BaseURI")
-	PrestoConfigPortKey              = bsonutil.MustHaveTag(PrestoConfig{}, "Port")
-	PrestoConfigTLSKey               = bsonutil.MustHaveTag(PrestoConfig{}, "TLS")
-	PrestoConfigUsernameKey          = bsonutil.MustHaveTag(PrestoConfig{}, "Username")
-	PrestoConfigPasswordKey          = bsonutil.MustHaveTag(PrestoConfig{}, "Password")
-	PrestoConfigSourceKey            = bsonutil.MustHaveTag(PrestoConfig{}, "Source")
-	PrestoConfigCatalogKey           = bsonutil.MustHaveTag(PrestoConfig{}, "Catalog")
-	PrestoConfigSchemaKey            = bsonutil.MustHaveTag(PrestoConfig{}, "Schema")
-	PrestoConfigSessionPropertiesKey = bsonutil.MustHaveTag(PrestoConfig{}, "SessionProperties")
+	PrestoConfigBaseURIKey  = bsonutil.MustHaveTag(PrestoConfig{}, "BaseURI")
+	PrestoConfigPortKey     = bsonutil.MustHaveTag(PrestoConfig{}, "Port")
+	PrestoConfigTLSKey      = bsonutil.MustHaveTag(PrestoConfig{}, "TLS")
+	PrestoConfigUsernameKey = bsonutil.MustHaveTag(PrestoConfig{}, "Username")
+	PrestoConfigPasswordKey = bsonutil.MustHaveTag(PrestoConfig{}, "Password")
+	PrestoConfigSourceKey   = bsonutil.MustHaveTag(PrestoConfig{}, "Source")
+	PrestoConfigCatalogKey  = bsonutil.MustHaveTag(PrestoConfig{}, "Catalog")
+	PrestoConfigSchemaKey   = bsonutil.MustHaveTag(PrestoConfig{}, "Schema")
 )
 
 func (*PrestoConfig) SectionId() string { return "presto" }
@@ -78,11 +76,10 @@ func (*PrestoConfig) ValidateAndDefault() error { return nil }
 
 func (c *PrestoConfig) setupDB(ctx context.Context) (*sql.DB, error) {
 	dsnConfig := trino.Config{
-		ServerURI:         c.formatURI(),
-		Source:            c.Source,
-		Catalog:           c.Catalog,
-		Schema:            c.Schema,
-		SessionProperties: c.SessionProperties,
+		ServerURI: c.formatURI(),
+		Source:    c.Source,
+		Catalog:   c.Catalog,
+		Schema:    c.Schema,
 	}
 	dsn, err := dsnConfig.FormatDSN()
 	if err != nil {

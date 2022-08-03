@@ -32,6 +32,7 @@ func NewConfigModel() *APIAdminSettings {
 		Notify:            &APINotifyConfig{},
 		Plugins:           map[string]map[string]interface{}{},
 		PodInit:           &APIPodInitConfig{},
+		Presto:            &APIPrestoConfig{},
 		Providers:         &APICloudProviders{},
 		RepoTracker:       &APIRepoTrackerConfig{},
 		Scheduler:         &APISchedulerConfig{},
@@ -78,6 +79,7 @@ type APIAdminSettings struct {
 	Plugins             map[string]map[string]interface{} `json:"plugins,omitempty"`
 	PodInit             *APIPodInitConfig                 `json:"pod_init,omitempty"`
 	PprofPort           *string                           `json:"pprof_port,omitempty"`
+	Presto              *APIPrestoConfig                  `json:"presto,omitempty"`
 	Providers           *APICloudProviders                `json:"providers,omitempty"`
 	RepoTracker         *APIRepoTrackerConfig             `json:"repotracker,omitempty"`
 	Scheduler           *APISchedulerConfig               `json:"scheduler,omitempty"`
@@ -1192,6 +1194,48 @@ func (a *APINotifyConfig) ToService() (interface{}, error) {
 		BufferTargetPerInterval: a.BufferTargetPerInterval,
 		BufferIntervalSeconds:   a.BufferIntervalSeconds,
 		SMTP:                    smtp.(evergreen.SMTPConfig),
+	}, nil
+}
+
+type APIPrestoConfig struct {
+	BaseURI  *string `json:"base_uri"`
+	Port     int     `json:"port"`
+	TLS      bool    `json:"tls"`
+	Username *string `json:"username"`
+	Password *string `json:"password"`
+	Source   *string `json:"source"`
+	Catalog  *string `json:"catalog"`
+	Schema   *string `json:"schema"`
+}
+
+func (a *APIPrestoConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.PrestoConfig:
+		a.BaseURI = utility.ToStringPtr(v.BaseURI)
+		a.Port = v.Port
+		a.TLS = v.TLS
+		a.Username = utility.ToStringPtr(v.Username)
+		a.Password = utility.ToStringPtr(v.Password)
+		a.Source = utility.ToStringPtr(v.Source)
+		a.Catalog = utility.ToStringPtr(v.Catalog)
+		a.Schema = utility.ToStringPtr(v.Schema)
+	default:
+		return errors.Errorf("programmatic error: expected Presto config but got type %T", h)
+	}
+
+	return nil
+}
+
+func (a *APIPrestoConfig) ToService() (interface{}, error) {
+	return evergreen.PrestoConfig{
+		BaseURI:  utility.FromStringPtr(a.BaseURI),
+		Port:     a.Port,
+		TLS:      a.TLS,
+		Username: utility.FromStringPtr(a.Username),
+		Password: utility.FromStringPtr(a.Password),
+		Source:   utility.FromStringPtr(a.Source),
+		Catalog:  utility.FromStringPtr(a.Catalog),
+		Schema:   utility.FromStringPtr(a.Schema),
 	}, nil
 }
 
@@ -2384,8 +2428,6 @@ func (rtr *RestartResponse) ToService() (interface{}, error) {
 	return nil, errors.New("ToService not implemented for RestartTasksResponse")
 }
 
-const prestoConfigId = "presto"
-
 func AdminDbToRestModel(in evergreen.ConfigSection) (Model, error) {
 	id := in.SectionId()
 	var out Model
@@ -2395,8 +2437,6 @@ func AdminDbToRestModel(in evergreen.ConfigSection) (Model, error) {
 		if err != nil {
 			return nil, err
 		}
-	} else if id == prestoConfigId { // TODO PM-2940: Remove presto check
-		return nil, nil
 	} else {
 		structVal := reflect.ValueOf(*NewConfigModel())
 		for i := 0; i < structVal.NumField(); i++ {
