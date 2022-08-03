@@ -153,6 +153,7 @@ func (c *baseCommunicator) GetProjectRef(ctx context.Context, taskData TaskData)
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix("project_ref")
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -170,8 +171,9 @@ func (c *baseCommunicator) GetProjectRef(ctx context.Context, taskData TaskData)
 // DisableHost signals to the app server that the host should be disabled.
 func (c *baseCommunicator) DisableHost(ctx context.Context, hostID string, details apimodels.DisableInfo) error {
 	info := requestInfo{
-		method: http.MethodPost,
-		path:   fmt.Sprintf("hosts/%s/disable", hostID),
+		method:  http.MethodPost,
+		version: apiVersion2,
+		path:    fmt.Sprintf("hosts/%s/disable", hostID),
 	}
 	resp, err := c.retryRequest(ctx, info, &details)
 	if err != nil {
@@ -188,6 +190,7 @@ func (c *baseCommunicator) GetTask(ctx context.Context, taskData TaskData) (*tas
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix("")
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -209,6 +212,7 @@ func (c *baseCommunicator) GetDisplayTaskInfoFromExecution(ctx context.Context, 
 		method:   http.MethodGet,
 		path:     fmt.Sprintf("tasks/%s/display_task", td.ID),
 		taskData: &td,
+		version:  apiVersion2,
 	}
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
@@ -229,6 +233,7 @@ func (c *baseCommunicator) GetDistroView(ctx context.Context, taskData TaskData)
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix("distro_view")
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -249,6 +254,7 @@ func (c *baseCommunicator) GetDistroAMI(ctx context.Context, distro, region stri
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
+		version:  apiVersion2,
 	}
 	info.path = fmt.Sprintf("distros/%s/ami", distro)
 	if region != "" {
@@ -270,6 +276,7 @@ func (c *baseCommunicator) GetProject(ctx context.Context, taskData TaskData) (*
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix("parser_project")
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -288,6 +295,7 @@ func (c *baseCommunicator) GetExpansions(ctx context.Context, taskData TaskData)
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix("expansions")
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -309,6 +317,7 @@ func (c *baseCommunicator) Heartbeat(ctx context.Context, taskData TaskData) (st
 	defer cancel()
 	info := requestInfo{
 		method:   http.MethodPost,
+		version:  apiVersion1,
 		taskData: &taskData,
 	}
 	info.setTaskPathSuffix("heartbeat")
@@ -343,6 +352,7 @@ func (c *baseCommunicator) FetchExpansionVars(ctx context.Context, taskData Task
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix("fetch_vars")
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -536,6 +546,7 @@ func (c *baseCommunicator) SendLogMessages(ctx context.Context, taskData TaskDat
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix("log")
 	var cancel context.CancelFunc
@@ -586,6 +597,7 @@ func (c *baseCommunicator) SendTaskResults(ctx context.Context, taskData TaskDat
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix("results")
 	resp, err := c.retryRequest(ctx, info, r)
@@ -605,6 +617,7 @@ func (c *baseCommunicator) GetTaskPatch(ctx context.Context, taskData TaskData, 
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
+		version:  apiVersion1,
 	}
 	suffix := "git/patch"
 	if patchId != "" {
@@ -628,8 +641,9 @@ func (c *baseCommunicator) GetTaskPatch(ctx context.Context, taskData TaskData, 
 // URL, RPC port, and credentials.
 func (c *baseCommunicator) GetCedarConfig(ctx context.Context) (*apimodels.CedarConfig, error) {
 	info := requestInfo{
-		method: http.MethodGet,
-		path:   "agent/cedar_config",
+		method:  http.MethodGet,
+		version: apiVersion2,
+		path:    "agent/cedar_config",
 	}
 
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -651,6 +665,7 @@ func (c *baseCommunicator) GetPatchFile(ctx context.Context, taskData TaskData, 
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix("git/patchfile/" + patchFileID)
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -678,6 +693,7 @@ func (c *baseCommunicator) SendTestLog(ctx context.Context, taskData TaskData, l
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix("test_logs")
 	resp, err := c.retryRequest(ctx, info, log)
@@ -707,6 +723,7 @@ func (c *baseCommunicator) SendTestResults(ctx context.Context, taskData TaskDat
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix("results")
 	resp, err := c.retryRequest(ctx, info, results)
@@ -723,6 +740,7 @@ func (c *baseCommunicator) SetHasCedarResults(ctx context.Context, taskData Task
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
+		version:  apiVersion2,
 	}
 	info.path = fmt.Sprintf("tasks/%s/set_has_cedar_results", taskData.ID)
 	resp, err := c.retryRequest(ctx, info, &apimodels.CedarTestResultsTaskInfo{Failed: failed})
@@ -738,6 +756,7 @@ func (c *baseCommunicator) NewPush(ctx context.Context, taskData TaskData, req *
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
+		version:  apiVersion1,
 	}
 
 	info.setTaskPathSuffix("new_push")
@@ -759,6 +778,7 @@ func (c *baseCommunicator) UpdatePushStatus(ctx context.Context, taskData TaskDa
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
+		version:  apiVersion1,
 	}
 
 	info.setTaskPathSuffix("update_push_status")
@@ -784,6 +804,7 @@ func (c *baseCommunicator) AttachFiles(ctx context.Context, taskData TaskData, t
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix("files")
 	resp, err := c.retryRequest(ctx, info, taskFiles)
@@ -799,6 +820,7 @@ func (c *baseCommunicator) SetDownstreamParams(ctx context.Context, downstreamPa
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
+		version:  apiVersion1,
 	}
 
 	info.setTaskPathSuffix("downstreamParams")
@@ -815,6 +837,7 @@ func (c *baseCommunicator) GetManifest(ctx context.Context, taskData TaskData) (
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix("manifest/load")
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -835,6 +858,7 @@ func (c *baseCommunicator) KeyValInc(ctx context.Context, taskData TaskData, kv 
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix("keyval/inc")
 	resp, err := c.retryRequest(ctx, info, kv.Key)
@@ -854,6 +878,7 @@ func (c *baseCommunicator) PostJSONData(ctx context.Context, taskData TaskData, 
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix(fmt.Sprintf("json/data/%s", path))
 	resp, err := c.retryRequest(ctx, info, data)
@@ -873,6 +898,7 @@ func (c *baseCommunicator) GetJSONData(ctx context.Context, taskData TaskData, t
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix(strings.Join(pathParts, "/"))
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -900,6 +926,7 @@ func (c *baseCommunicator) GetJSONHistory(ctx context.Context, taskData TaskData
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix(path)
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -921,6 +948,7 @@ func (c *baseCommunicator) GenerateTasks(ctx context.Context, td TaskData, jsonB
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &td,
+		version:  apiVersion2,
 	}
 	info.path = fmt.Sprintf("tasks/%s/generate", td.ID)
 	resp, err := c.retryRequest(ctx, info, jsonBytes)
@@ -935,6 +963,7 @@ func (c *baseCommunicator) GenerateTasksPoll(ctx context.Context, td TaskData) (
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &td,
+		version:  apiVersion2,
 	}
 	info.path = fmt.Sprintf("tasks/%s/generate", td.ID)
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -954,6 +983,7 @@ func (c *baseCommunicator) CreateHost(ctx context.Context, td TaskData, options 
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &td,
+		version:  apiVersion2,
 	}
 	info.path = fmt.Sprintf("hosts/%s/create", td.ID)
 	resp, err := c.retryRequest(ctx, info, options)
@@ -973,6 +1003,7 @@ func (c *baseCommunicator) ListHosts(ctx context.Context, td TaskData) (restmode
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &td,
+		version:  apiVersion2,
 		path:     fmt.Sprintf("hosts/%s/list", td.ID),
 	}
 
@@ -991,8 +1022,9 @@ func (c *baseCommunicator) ListHosts(ctx context.Context, td TaskData) (restmode
 
 func (c *baseCommunicator) GetDistroByName(ctx context.Context, id string) (*restmodel.APIDistro, error) {
 	info := requestInfo{
-		method: http.MethodGet,
-		path:   fmt.Sprintf("distros/%s", id),
+		method:  http.MethodGet,
+		version: apiVersion2,
+		path:    fmt.Sprintf("distros/%s", id),
 	}
 
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -1022,6 +1054,7 @@ func (c *baseCommunicator) StartTask(ctx context.Context, taskData TaskData) err
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix("start")
 	resp, err := c.retryRequest(ctx, info, taskStartRequest)
@@ -1040,8 +1073,9 @@ func (c *baseCommunicator) StartTask(ctx context.Context, taskData TaskData) err
 // GetDockerStatus returns status of the container for the given host
 func (c *baseCommunicator) GetDockerStatus(ctx context.Context, hostID string) (*cloud.ContainerStatus, error) {
 	info := requestInfo{
-		method: http.MethodGet,
-		path:   fmt.Sprintf("hosts/%s/status", hostID),
+		method:  http.MethodGet,
+		path:    fmt.Sprintf("hosts/%s/status", hostID),
+		version: apiVersion2,
 	}
 	resp, err := c.request(ctx, info, nil)
 	if err != nil {
@@ -1076,8 +1110,9 @@ func (c *baseCommunicator) GetDockerLogs(ctx context.Context, hostID string, sta
 	}
 
 	info := requestInfo{
-		method: http.MethodGet,
-		path:   path,
+		method:  http.MethodGet,
+		version: apiVersion2,
+		path:    path,
 	}
 	resp, err := c.request(ctx, info, "")
 	if err != nil {
@@ -1101,6 +1136,7 @@ func (c *baseCommunicator) ConcludeMerge(ctx context.Context, patchId, status st
 	info := requestInfo{
 		method:   http.MethodPost,
 		path:     fmt.Sprintf("commit_queue/%s/conclude_merge", patchId),
+		version:  apiVersion2,
 		taskData: &td,
 	}
 	body := struct {
@@ -1125,6 +1161,7 @@ func (c *baseCommunicator) GetAdditionalPatches(ctx context.Context, patchId str
 	info := requestInfo{
 		method:   http.MethodGet,
 		path:     fmt.Sprintf("commit_queue/%s/additional", patchId),
+		version:  apiVersion2,
 		taskData: &td,
 	}
 	resp, err := c.request(ctx, info, nil)
