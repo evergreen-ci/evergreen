@@ -29,7 +29,7 @@ func notificationSlack() cli.Command {
 
 	return cli.Command{
 		Name:  "slack",
-		Usage: "send a slack message",
+		Usage: "send a Slack message",
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  joinFlagNames(targetFlagName, "t"),
@@ -59,13 +59,13 @@ func notificationSlack() cli.Command {
 
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
-				return errors.Wrap(err, "problem loading configuration")
+				return errors.Wrap(err, "loading configuration")
 			}
 			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
 			if err := client.SendNotification(ctx, "slack", apiSlack); err != nil {
-				return errors.Wrap(err, "problem contacting evergreen service")
+				return errors.Wrap(err, "sending Slack notification")
 			}
 
 			return nil
@@ -129,13 +129,13 @@ func notificationEmail() cli.Command {
 
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
-				return errors.Wrap(err, "problem loading configuration")
+				return errors.Wrap(err, "loading configuration")
 			}
 			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
 			if err := client.SendNotification(ctx, "email", apiEmail); err != nil {
-				return errors.Wrap(err, "problem contacting evergreen service")
+				return errors.Wrap(err, "sending email notification")
 			}
 
 			return nil

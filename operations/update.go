@@ -57,7 +57,7 @@ func Update() cli.Command {
 
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
-				return errors.Wrap(err, "problem loading configuration")
+				return errors.Wrap(err, "loading configuration")
 			}
 			if !conf.AutoUpgradeCLI && !autoUpgrade {
 				fmt.Printf("Automatic CLI upgrades are not set up; specifying the --%s flag will enable automatic CLI upgrades before each command if the current CLI is out of date.\n", autoUpgradeFlagName)
@@ -68,7 +68,7 @@ func Update() cli.Command {
 			if !conf.AutoUpgradeCLI && autoUpgrade {
 				conf.SetAutoUpgradeCLI()
 				if err := conf.Write(""); err != nil {
-					return errors.Wrap(err, "error setting auto-upgrade CLI option")
+					return errors.Wrap(err, "setting auto-upgrade CLI option")
 				}
 				fmt.Println("Automatic CLI upgrades have successfully been setup.")
 			}
@@ -110,7 +110,7 @@ func checkAndUpdateVersion(conf *ClientSettings, ctx context.Context, doInstall 
 		var binaryDest string
 		binaryDest, err = osext.Executable()
 		if err != nil {
-			return errors.Errorf("Failed to get installation path: %s", err)
+			return errors.Wrap(err, "getting installation path")
 		}
 
 		winTempFileBase := strings.TrimSuffix(filepath.Base(binaryDest), ".exe")
@@ -226,12 +226,12 @@ func prepareUpdate(url, newVersion string) (string, error) {
 	}
 	if response.StatusCode != http.StatusOK {
 		grip.Error(tempFile.Close())
-		return "", errors.Errorf("received status code %s", response.Status)
+		return "", errors.Errorf("received status code '%s'", response.Status)
 	}
 
 	if response == nil {
 		grip.Error(tempFile.Close())
-		return "", errors.Errorf("empty response from URL: %s", url)
+		return "", errors.Errorf("empty response from URL '%s'", url)
 	}
 
 	defer response.Body.Close()
@@ -260,7 +260,7 @@ func prepareUpdate(url, newVersion string) (string, error) {
 	if runtime.GOOS == "windows" {
 		winTempPath := tempPath + ".exe"
 		if err = os.Rename(tempPath, winTempPath); err != nil {
-			return "", errors.Wrapf(err, "problem renaming file %s to %s", tempPath, winTempPath)
+			return "", errors.Wrapf(err, "renaming file '%s' to '%s'", tempPath, winTempPath)
 		}
 		tempPath = winTempPath
 	}
@@ -279,7 +279,7 @@ func prepareUpdate(url, newVersion string) (string, error) {
 	updatedVersion = strings.TrimSpace(updatedVersion)
 
 	if updatedVersion != newVersion {
-		return "", errors.Errorf("Update failed - expected new binary to have version %s, but got %s instead", newVersion, updatedVersion)
+		return "", errors.Errorf("Update failed - expected new binary to have version '%s', but got '%s' instead", newVersion, updatedVersion)
 	}
 
 	return tempPath, nil

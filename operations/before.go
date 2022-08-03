@@ -38,13 +38,13 @@ var (
 		path := c.String(pathFlagName)
 		if path == "" {
 			if c.NArg() != 1 {
-				return errors.New("must specify the path to an evergreen configuration")
+				return errors.New("must specify the path to an Evergreen configuration")
 			}
 			path = c.Args().Get(0)
 		}
 
 		if _, err := os.Stat(path); os.IsNotExist(err) {
-			return errors.Errorf("configuration file %s does not exist", path)
+			return errors.Errorf("configuration file '%s' does not exist", path)
 		}
 
 		return c.Set(pathFlagName, path)
@@ -54,7 +54,7 @@ var (
 		host := c.String(hostFlagName)
 		if host == "" {
 			if c.NArg() != 1 {
-				return errors.New("must specify a host id")
+				return errors.New("must specify a host ID")
 			}
 			host = c.Args().Get(0)
 		}
@@ -72,7 +72,7 @@ var (
 	requirePatchIDFlag = func(c *cli.Context) error {
 		patch := c.String(patchIDFlagName)
 		if patch == "" {
-			return errors.New("must specify a patch id")
+			return errors.New("must specify a patch ID")
 		}
 		return nil
 	}
@@ -252,7 +252,7 @@ func requireWorkingDirFlag(dirFlagName string) cli.BeforeFunc {
 			var err error
 			wd, err = os.Getwd()
 			if err != nil {
-				return errors.Wrap(err, "cannot find working directory")
+				return errors.Wrap(err, "finding working directory")
 			}
 			return c.Set(dirFlagName, wd)
 		}

@@ -50,7 +50,7 @@ func TestHostSetupScript(t *testing.T) {
 	time.Sleep(time.Millisecond)
 	err = runSetupScript(ctx, dir, false)
 	assert.Error(err)
-	assert.Contains(err.Error(), "context deadline exceeded")
+	assert.Contains(err.Error(), context.DeadlineExceeded.Error())
 
 	// A non-zero exit status should return an error
 	content = []byte("exit 1")

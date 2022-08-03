@@ -51,7 +51,6 @@ func TestAgentMonitorWithJasper(t *testing.T) {
 			assert.True(t, proc.Complete(ctx))
 			assert.Zero(t, exitCode)
 		},
-		// "": func(context.Context, *testing.T, *monitor)
 	} {
 		t.Run(testName, func(t *testing.T) {
 			tctx, tcancel := context.WithTimeout(ctx, monitorTestTimeout)

@@ -18,7 +18,7 @@ import (
 func Generate() cli.Command {
 	return cli.Command{
 		Name:  "generate",
-		Usage: "Generate simple evergreen configurations.",
+		Usage: "Generate simple Evergreen configurations.",
 		Subcommands: []cli.Command{
 			generateGolang(),
 			generateMake(),

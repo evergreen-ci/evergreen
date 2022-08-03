@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -68,14 +67,14 @@ func listQueue() cli.Command {
 			defer cancel()
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
-				return errors.Wrap(err, "problem loading configuration")
+				return errors.Wrap(err, "loading configuration")
 			}
 			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
 			ac, _, err := conf.getLegacyClients()
 			if err != nil {
-				return errors.Wrap(err, "problem accessing legacy evergreen client")
+				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
 
 			return listCommitQueue(ctx, client, ac, projectID, conf.UIServerHost)
@@ -105,13 +104,13 @@ func deleteItem() cli.Command {
 			defer cancel()
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
-				return errors.Wrap(err, "problem loading configuration")
+				return errors.Wrap(err, "loading configuration")
 			}
 			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
 			if err != nil {
-				return errors.Wrap(err, "problem accessing legacy evergreen client")
+				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
 
 			showCQMessageForPatch(ctx, client, item)
@@ -173,12 +172,12 @@ func mergeCommand() cli.Command {
 			}
 			conf, err := NewClientSettings(c.Parent().Parent().String(confFlagName))
 			if err != nil {
-				return errors.Wrap(err, "problem loading configuration")
+				return errors.Wrap(err, "loading configuration")
 			}
 
 			ac, _, err := conf.getLegacyClients()
 			if err != nil {
-				return errors.Wrap(err, "problem accessing legacy evergreen client")
+				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
 
 			client := conf.setupRestCommunicator(ctx)
@@ -213,11 +212,11 @@ func setModuleCommand() cli.Command {
 
 			conf, err := NewClientSettings(c.Parent().Parent().String(confFlagName))
 			if err != nil {
-				return errors.Wrap(err, "problem loading configuration")
+				return errors.Wrap(err, "loading configuration")
 			}
 			ac, rc, err := conf.getLegacyClients()
 			if err != nil {
-				return errors.Wrap(err, "problem accessing evergreen service")
+				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
 			ctx := context.Background()
 			client := conf.setupRestCommunicator(ctx)
@@ -259,20 +258,20 @@ func enqueuePatch() cli.Command {
 			defer cancel()
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
-				return errors.Wrap(err, "problem loading configuration")
+				return errors.Wrap(err, "loading configuration")
 			}
 			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
 			ac, _, err := conf.getLegacyClients()
 			if err != nil {
-				return errors.Wrap(err, "problem accessing legacy evergreen client")
+				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
 
 			// verify the patch can be enqueued
 			existingPatch, err := ac.GetPatch(patchID)
 			if err != nil {
-				return errors.Wrapf(err, "can't get patch '%s'", patchID)
+				return errors.Wrapf(err, "getting patch '%s'", patchID)
 			}
 			if !existingPatch.HasValidGitInfo() {
 				return errors.Errorf("patch '%s' is not eligible to be enqueued", patchID)
@@ -299,11 +298,11 @@ func enqueuePatch() cli.Command {
 			// create the new merge patch
 			mergePatch, err := client.CreatePatchForMerge(ctx, patchID, commitMessage)
 			if err != nil {
-				return errors.Wrap(err, "problem creating a commit queue patch")
+				return errors.Wrap(err, "creating commit queue patch")
 			}
 			uiV2, err := client.GetUiV2URL(ctx)
 			if err != nil {
-				return errors.Wrap(err, "problem retrieving admin settings")
+				return errors.Wrap(err, "getting UI v2 URL")
 			}
 			patchDisp, err := getAPICommitQueuePatchDisplay(mergePatch, false, uiV2)
 			if err != nil {
@@ -315,7 +314,7 @@ func enqueuePatch() cli.Command {
 			// enqueue the patch
 			position, err := client.EnqueueItem(ctx, utility.FromStringPtr(mergePatch.Id), force)
 			if err != nil {
-				return errors.Wrap(err, "problem enqueueing new patch")
+				return errors.Wrap(err, "enqueueing new patch")
 			}
 			grip.Infof("Queue position is %d.", position)
 
@@ -382,11 +381,11 @@ func backport() cli.Command {
 
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
-				return errors.Wrap(err, "problem loading configuration")
+				return errors.Wrap(err, "loading configuration")
 			}
 			ac, _, err := conf.getLegacyClients()
 			if err != nil {
-				return errors.Wrap(err, "problem accessing legacy evergreen client")
+				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
 			showCQMessageForProject(ac, patchParams.Project)
 			client := conf.setupRestCommunicator(ctx)
@@ -400,7 +399,7 @@ func backport() cli.Command {
 				var existingPatch *patch.Patch
 				existingPatch, err = ac.GetPatch(patchParams.BackportOf.PatchID)
 				if err != nil {
-					return errors.Wrapf(err, "error getting existing patch '%s'", patchParams.BackportOf.PatchID)
+					return errors.Wrapf(err, "getting existing patch '%s'", patchParams.BackportOf.PatchID)
 				}
 				if !existingPatch.IsCommitQueuePatch() {
 					return errors.Errorf("patch '%s' is not a commit queue patch", patchParams.BackportOf.PatchID)
@@ -409,27 +408,27 @@ func backport() cli.Command {
 
 			uiV2, err := client.GetUiV2URL(ctx)
 			if err != nil {
-				return errors.Wrap(err, "problem retrieving admin settings")
+				return errors.Wrap(err, "getting UI v2 URL")
 			}
 			latestVersions, err := client.GetRecentVersionsForProject(ctx, patchParams.Project, evergreen.RepotrackerVersionRequester)
 			if err != nil {
-				return errors.Wrapf(err, "can't get latest repotracker version for project '%s'", patchParams.Project)
+				return errors.Wrapf(err, "getting latest repotracker version for project '%s'", patchParams.Project)
 			}
 			if len(latestVersions) == 0 {
 				return errors.Errorf("no repotracker versions exist in project '%s'", patchParams.Project)
 			}
 			gitMetadata, err := getGitConfigMetadata()
 			if err != nil {
-				return errors.Wrap(err, "Error getting git metadata")
+				return errors.Wrap(err, "getting git metadata")
 			}
 			var backportPatch *patch.Patch
 			backportPatch, err = patchParams.createPatch(ac, &localDiff{base: utility.FromStringPtr(latestVersions[0].Revision), gitMetadata: gitMetadata})
 			if err != nil {
-				return errors.Wrap(err, "can't upload backport patch")
+				return errors.Wrap(err, "uploading backport patch")
 			}
 
 			if err = patchParams.displayPatch(backportPatch, uiV2, true); err != nil {
-				return errors.Wrap(err, "problem getting result display")
+				return errors.Wrap(err, "getting result display")
 			}
 
 			return nil
@@ -440,7 +439,7 @@ func backport() cli.Command {
 func listCommitQueue(ctx context.Context, client client.Communicator, ac *legacyClient, projectID string, uiServerHost string) error {
 	projectRef, err := ac.GetProjectRef(projectID)
 	if err != nil {
-		return errors.Wrapf(err, "can't find project for queue id '%s'", projectID)
+		return errors.Wrapf(err, "finding project '%s' for commit queue", projectID)
 	}
 	cq, err := client.GetCommitQueue(ctx, projectRef.Id)
 	if err != nil {
@@ -468,7 +467,7 @@ func listCommitQueue(ctx context.Context, client client.Communicator, ac *legacy
 func listPRCommitQueueItem(item restModel.APICommitQueueItem, projectRef *model.ProjectRef, uiServerHost string) {
 	issue := utility.FromStringPtr(item.Issue)
 	prDisplay := `
-           PR # : %s
+            PR # : %s
             URL : %s
 `
 	url := fmt.Sprintf("https://github.com/%s/%s/pull/%s", projectRef.Owner, projectRef.Repo, issue)
@@ -486,7 +485,7 @@ func listCLICommitQueueItem(item restModel.APICommitQueueItem, ac *legacyClient,
 	issue := utility.FromStringPtr(item.Issue)
 	p, err := ac.GetPatch(issue)
 	if err != nil {
-		grip.Errorf("Error getting patch for issue '%s': %s", issue, err.Error())
+		grip.Error(errors.Wrapf(err, "getting patch for issue '%s'", issue))
 		return
 	}
 
@@ -495,7 +494,7 @@ func listCLICommitQueueItem(item restModel.APICommitQueueItem, ac *legacyClient,
 	}
 	disp, err := getPatchDisplay(p, false, uiServerHost, false)
 	if err != nil {
-		grip.Error(message.WrapError(err, "\terror getting patch display"))
+		grip.Error(errors.Wrapf(err, "getting patch display summary for patch '%s'", p.Id.Hex()))
 		return
 	}
 	grip.Info(disp)
@@ -540,7 +539,7 @@ func (p *mergeParams) mergeBranch(ctx context.Context, conf *ClientSettings, cli
 		showCQMessageForProject(ac, p.project)
 		uiV2, err := client.GetUiV2URL(ctx)
 		if err != nil {
-			return errors.Wrap(err, "problem retrieving admin settings")
+			return errors.Wrap(err, "getting UI v2 URL")
 		}
 		if err := p.uploadMergePatch(conf, ac, uiV2); err != nil {
 			return err
@@ -578,7 +577,7 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient, u
 		if apiErr, ok := err.(APIError); ok && apiErr.code == http.StatusNotFound {
 			err = errors.WithStack(err)
 		}
-		return errors.Wrap(err, "can't get project ref")
+		return errors.Wrap(err, "getting project ref")
 	}
 	if !ref.CommitQueue.IsEnabled() {
 		return errors.New("commit queue not enabled for project")
@@ -586,7 +585,7 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient, u
 
 	commitCount, err := gitCommitCount(ref.Branch, p.ref, p.commits)
 	if err != nil {
-		return errors.Wrap(err, "can't get commit count")
+		return errors.Wrap(err, "getting commit count")
 	}
 	if commitCount > 1 && !p.skipConfirm &&
 		!confirm("Commit queue patch has multiple commits (these will be tested together but merged separately). Continue? (y/N):", false) {
@@ -599,7 +598,7 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient, u
 
 	diffData, err := loadGitData(ref.Branch, p.ref, p.commits, true)
 	if err != nil {
-		return errors.Wrap(err, "can't generate patches")
+		return errors.Wrap(err, "generating patches")
 	}
 
 	commits := noCommits
@@ -607,7 +606,7 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient, u
 		var commitMessages string
 		commitMessages, err = gitCommitMessages(ref.Branch, p.ref, p.commits)
 		if err != nil {
-			return errors.Wrap(err, "can't get commit messages")
+			return errors.Wrap(err, "getting commit messages")
 		}
 		commits = fmt.Sprintf(commitFmtString, commitMessages, ref.Owner, ref.Repo, ref.Branch)
 	}
@@ -650,15 +649,15 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 	}
 	module, err := proj.GetModuleByName(p.module)
 	if err != nil {
-		return errors.Wrapf(err, "could not find module '%s'", p.module)
+		return errors.Wrapf(err, "finding module '%s'", p.module)
 	}
 
 	commitCount, err := gitCommitCount(module.Branch, p.ref, p.commits)
 	if err != nil {
-		return errors.Wrap(err, "can't get commit count")
+		return errors.Wrap(err, "getting commit count")
 	}
 	if commitCount == 0 {
-		return errors.New("No commits for module")
+		return errors.New("no commits for module")
 	}
 	if commitCount > 1 && !p.skipConfirm &&
 		!confirm("Commit queue module patch has multiple commits (these will be tested together but merged separately). Continue? (y/N):", false) {
@@ -667,17 +666,17 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 
 	owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
 	if err != nil {
-		return errors.Wrapf(err, "can't get owner/repo from '%s'", module.Repo)
+		return errors.Wrapf(err, "getting owner/repo from module repo '%s'", module.Repo)
 	}
 
 	patch, err := rc.GetPatch(p.patchID)
 	if err != nil {
-		return errors.Wrapf(err, "can't get patch '%s'", p.patchID)
+		return errors.Wrapf(err, "get patch '%s'", p.patchID)
 	}
 
 	commitMessages, err := gitCommitMessages(module.Branch, p.ref, p.commits)
 	if err != nil {
-		return errors.Wrap(err, "can't get module commit messages")
+		return errors.Wrap(err, "getting module commit messages")
 	}
 	commits := fmt.Sprintf(commitFmtString, commitMessages, owner, repo, module.Branch)
 	message := fmt.Sprintf("%s || %s", patch.Description, commits)
@@ -688,7 +687,7 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 
 	diffData, err := loadGitData(module.Branch, p.ref, p.commits, true)
 	if err != nil {
-		return errors.Wrap(err, "can't get patch data")
+		return errors.Wrap(err, "getting patch data")
 	}
 	if err = validatePatchSize(diffData, p.large); err != nil {
 		return err
@@ -734,7 +733,7 @@ func showCQMessageForPatch(ctx context.Context, comm client.Communicator, patchI
 func getAPICommitQueuePatchDisplay(apiPatch *restModel.APIPatch, summarize bool, uiHost string) (string, error) {
 	servicePatch, err := apiPatch.ToService()
 	if err != nil {
-		return "", errors.Wrap(err, "can't convert patch to service")
+		return "", errors.Wrap(err, "converting patch to service model")
 	}
 
 	return getPatchDisplay(&servicePatch, summarize, uiHost, true)

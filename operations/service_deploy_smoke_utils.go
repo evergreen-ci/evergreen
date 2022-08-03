@@ -2,7 +2,6 @@ package operations
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -43,7 +42,7 @@ func (tests smokeEndpointTestDefinitions) checkEndpoints(username, key string) e
 		_, err := client.Get(smokeUrlPrefix + smokeUiPort)
 		if err != nil {
 			if i == attempts {
-				err = errors.Wrapf(err, "could not connect to Evergreen after %d attempts", attempts)
+				err = errors.Wrapf(err, "connecting to Evergreen after %d attempts", attempts)
 				grip.Error(err)
 				return err
 			}
@@ -58,17 +57,17 @@ func (tests smokeEndpointTestDefinitions) checkEndpoints(username, key string) e
 	catcher := grip.NewSimpleCatcher()
 	grip.Info("Testing UI Endpoints")
 	for url, expected := range tests.UI {
-		catcher.Add(makeSmokeGetRequestAndCheck(username, key, client, url, expected))
+		catcher.Wrap(makeSmokeGetRequestAndCheck(username, key, client, url, expected), "testing UI endpoints")
 	}
 
 	grip.Info("Testing API Endpoints")
 	for url, expected := range tests.API {
-		catcher.Add(makeSmokeGetRequestAndCheck(username, key, client, "/api"+url, expected))
+		catcher.Wrap(makeSmokeGetRequestAndCheck(username, key, client, "/api"+url, expected), "testing API endpoints")
 	}
 
 	grip.InfoWhen(!catcher.HasErrors(), "success: all endpoints accessible")
 
-	return errors.Wrapf(catcher.Resolve(), "failed to get %d endpoints", catcher.Len())
+	return errors.Wrapf(catcher.Resolve(), "testing endpoints")
 }
 
 func getLatestGithubCommit() (string, error) {
@@ -77,17 +76,17 @@ func getLatestGithubCommit() (string, error) {
 
 	resp, err := client.Get("https://api.github.com/repos/evergreen-ci/evergreen/git/refs/heads/main")
 	if err != nil {
-		return "", errors.Wrap(err, "failed to get latest commit from GitHub")
+		return "", errors.Wrap(err, "getting latest commit from GitHub")
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return "", errors.Wrap(err, "error reading response body from GitHub")
+		return "", errors.Wrap(err, "reading response body from GitHub")
 	}
 
 	latest := github.Reference{}
 	if err = json.Unmarshal(body, &latest); err != nil {
-		return "", errors.Wrap(err, "error unmarshaling response from GitHub")
+		return "", errors.Wrap(err, "unmarshalling response from GitHub")
 	}
 	if latest.Object != nil && latest.Object.SHA != nil && *latest.Object.SHA != "" {
 		return *latest.Object.SHA, nil
@@ -126,12 +125,12 @@ func checkHostTaskByCommit(username, key string) error {
 	for i := 0; i <= 30; i++ {
 		// get task id
 		if i == 30 {
-			return errors.New("error getting builds for version")
+			return errors.New("ran out of attempts to get builds for version")
 		}
 		time.Sleep(10 * time.Second)
 		latest, err := getLatestGithubCommit()
 		if err != nil {
-			grip.Error(errors.Wrap(err, "error getting latest GitHub commit"))
+			grip.Error(errors.Wrap(err, "getting latest GitHub commit"))
 			continue
 		}
 		grip.Infof("checking for a build of %s (%d/30)", latest, i+1)
@@ -145,7 +144,7 @@ func checkHostTaskByCommit(username, key string) error {
 		if err != nil {
 			err = json.Unmarshal(body, &build)
 			if err != nil {
-				return errors.Wrap(err, "error unmarshaling json")
+				return errors.Wrap(err, "unmarshalling JSON response body into builds")
 			}
 		}
 
@@ -275,7 +274,7 @@ func checkTask(client *http.Client, username, key string, taskId string) (apimod
 	grip.Infof("checking for task %s", taskId)
 	r, err := http.NewRequest(http.MethodGet, smokeUrlPrefix+smokeUiPort+"/rest/v2/tasks/"+taskId, nil)
 	if err != nil {
-		return task, errors.Wrap(err, "failed to make request")
+		return task, errors.Wrap(err, "making request for task")
 	}
 	r.Header.Add(evergreen.APIUserHeader, username)
 	r.Header.Add(evergreen.APIKeyHeader, key)
@@ -284,11 +283,11 @@ func checkTask(client *http.Client, username, key string, taskId string) (apimod
 		defer resp.Body.Close()
 	}
 	if err != nil {
-		return task, errors.Wrap(err, "error getting task data")
+		return task, errors.Wrap(err, "getting task data")
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		err = errors.Wrap(err, "error reading response body")
+		err = errors.Wrap(err, "reading response body")
 		grip.Error(err)
 		return task, err
 	}
@@ -298,7 +297,7 @@ func checkTask(client *http.Client, username, key string, taskId string) (apimod
 
 	err = json.Unmarshal(body, &task)
 	if err != nil {
-		return task, errors.Wrap(err, "error unmarshaling json")
+		return task, errors.Wrap(err, "unmarshalling JSON response body into task")
 	}
 
 	return task, nil
@@ -311,7 +310,7 @@ func makeSmokeRequest(username, key string, method string, client *http.Client, 
 	}
 	req, err := http.NewRequest(method, url, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "error forming request")
+		return nil, errors.Wrapf(err, "making request for URL '%s'", url)
 	}
 	req.Header.Add(evergreen.APIUserHeader, username)
 	req.Header.Add(evergreen.APIKeyHeader, key)
@@ -320,12 +319,12 @@ func makeSmokeRequest(username, key string, method string, client *http.Client, 
 		defer resp.Body.Close()
 	}
 	if err != nil {
-		return nil, errors.Wrapf(err, "error getting endpoint '%s'", url)
+		return nil, errors.Wrapf(err, "getting endpoint '%s'", url)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		err = errors.Wrap(err, "error reading response body")
+		err = errors.Wrap(err, "reading response body")
 		grip.Error(err)
 		return nil, err
 	}
@@ -345,9 +344,9 @@ func makeSmokeGetRequestAndCheck(username, key string, client *http.Client, url 
 		if strings.Contains(page, text) {
 			grip.Infof("found '%s' in endpoint '%s'", text, url)
 		} else {
-			logErr := fmt.Sprintf("did not find '%s' in endpoint '%s'", text, url)
+			logErr := errors.Errorf("did not find '%s' in endpoint '%s'", text, url)
 			grip.Error(logErr)
-			catcher.Add(errors.New(logErr))
+			catcher.Add(logErr)
 		}
 	}
 

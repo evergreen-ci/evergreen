@@ -130,9 +130,9 @@ user: myusername
 projects:
 - name: my-primary-project
   default: true
-  tasks: 
+  tasks:
     - all
-  local_aliases: 
+  local_aliases:
     - alias: "bynn"
       variant: ".*"
       task: ".*"
@@ -170,11 +170,11 @@ user: some-other-username
 projects:
 - name: my-other-project
   default: true
-  tasks: 
+  tasks:
     - all
-  variants: 
+  variants:
     - all
-  local_aliases: 
+  local_aliases:
     - alias: "other one"
       variant: ".*"
       task: ".*"

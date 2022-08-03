@@ -24,9 +24,7 @@ func TestGitCmd(t *testing.T) {
 			So(err, ShouldNotBeNil)
 			So(err.Error(), ShouldEndWith, "failed with err exit status 1")
 		})
-
 	})
-
 }
 
 func TestGetHistoryCreateUrlQuery(t *testing.T) {
