@@ -417,7 +417,7 @@ func TestTaskAuthMiddleware(t *testing.T) {
 
 	rw := httptest.NewRecorder()
 	m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
-	assert.Equal(http.StatusConflict, rw.Code)
+	assert.Equal(http.StatusUnauthorized, rw.Code)
 
 	r.Header.Set(evergreen.TaskSecretHeader, "abcdef")
 	rw = httptest.NewRecorder()

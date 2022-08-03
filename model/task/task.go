@@ -2413,19 +2413,22 @@ func AbortVersion(versionId string, reason AbortInfo) error {
 		// if the aborting task is part of a display task, we also don't want to mark it as aborted
 		q[ExecutionTasksKey] = bson.M{"$ne": reason.TaskID}
 	}
+	now := time.Now()
 	ids, err := findAllTaskIDs(db.Query(q))
 	if err != nil {
 		return errors.Wrap(err, "finding updated tasks")
 	}
-
+	grip.DebugWhen(reason.User != "", message.Fields{
+		"ticket":        "EVG-16730",
+		"step":          "finding tasks to abort",
+		"version_id":    versionId,
+		"time_taken_ms": time.Since(now).Milliseconds(),
+	})
 	if len(ids) == 0 {
-		grip.Info(message.Fields{
-			"message": "no tasks aborted for version",
-			"buildId": versionId,
-		})
 		return nil
 	}
 
+	now = time.Now()
 	_, err = UpdateAll(
 		bson.M{IdKey: bson.M{"$in": ids}},
 		bson.M{"$set": bson.M{
@@ -2433,12 +2436,24 @@ func AbortVersion(versionId string, reason AbortInfo) error {
 			AbortInfoKey: reason,
 		}},
 	)
+	grip.DebugWhen(reason.User != "", message.Fields{
+		"ticket":        "EVG-16730",
+		"step":          "updating aborted tasks",
+		"version_id":    versionId,
+		"time_taken_ms": time.Since(now).Milliseconds(),
+	})
 	if err != nil {
 		return errors.Wrap(err, "setting aborted statuses")
 	}
 
+	now = time.Now()
 	event.LogManyTaskAbortRequests(ids, reason.User)
-
+	grip.DebugWhen(reason.User != "", message.Fields{
+		"ticket":        "EVG-16730",
+		"step":          "logging aborted tasks",
+		"version_id":    versionId,
+		"time_taken_ms": time.Since(now).Milliseconds(),
+	})
 	return nil
 }
 
