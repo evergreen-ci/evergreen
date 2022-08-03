@@ -1754,16 +1754,15 @@ func (projectRef *ProjectRef) Upsert() error {
 }
 
 // SaveProjectPageForSection updates the project or repo ref variables for the section (if no project is given, we unset to default to repo).
-func SaveProjectPageForSection(projectId string, projectRef *ProjectRef, section ProjectPageSection, isRepo bool) (bool, error) {
+func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectPageSection, isRepo bool) (bool, error) {
 	coll := ProjectRefCollection
 	if isRepo {
 		coll = RepoRefCollection
-		if projectRef == nil {
+		if p == nil {
 			return false, errors.New("can't default project ref for a repo")
 		}
 	}
-        p := projectRef
-	if projectRef == nil {
+	if p == nil {
                 p = &ProjectRef{} // use a blank project ref to default the section to repo
         }
 	var err error
