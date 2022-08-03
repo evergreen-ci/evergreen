@@ -33,6 +33,5 @@ func TestGetTestResults(t *testing.T) {
 	}
 	uiTask := uiTaskData{}
 	results := uis.getTestResults(projectContext, &uiTask)
-	var expected []task.TestResult = nil
-	assert.Equal(t, expected, results)
+	assert.Nil(t, results)
 }
