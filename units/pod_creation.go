@@ -74,9 +74,9 @@ func NewPodCreationJob(podID, id string) amboy.Job {
 }
 
 func (j *podCreationJob) Run(ctx context.Context) {
-	defer j.MarkComplete()
-
 	defer func() {
+		j.MarkComplete()
+
 		if j.smClient != nil {
 			j.AddError(errors.Wrap(j.smClient.Close(ctx), "closing Secrets Manager client"))
 		}
@@ -123,7 +123,7 @@ func (j *podCreationJob) Run(ctx context.Context) {
 
 		// Wait for the pod definition to be asynchronously created. If the pod
 		// definition is not ready yet, retry again later.
-		podDef, err := j.waitForPodDefinition(j.pod.Family)
+		podDef, err := j.checkForPodDefinition(j.pod.Family)
 		if err != nil {
 			j.AddRetryableError(errors.Wrap(err, "waiting for pod definition to be created"))
 			return
@@ -215,7 +215,7 @@ func (j *podCreationJob) populateIfUnset(ctx context.Context) error {
 	return nil
 }
 
-func (j *podCreationJob) waitForPodDefinition(family string) (*definition.PodDefinition, error) {
+func (j *podCreationJob) checkForPodDefinition(family string) (*definition.PodDefinition, error) {
 	podDef, err := definition.FindOneByFamily(family)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding pod definition with family '%s'", family)

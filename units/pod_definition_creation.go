@@ -195,7 +195,7 @@ func (j *podDefinitionCreationJob) decommissionDependentIntentPods() error {
 		podIDs = append(podIDs, p.ID)
 	}
 
-	grip.Info(message.Fields{
+	grip.InfoWhen(len(podIDs) > 0, message.Fields{
 		"message": "decommissioned dependent intent pods that have failed to create the pod definition",
 		"pod_ids": podIDs,
 		"family":  j.Family,
