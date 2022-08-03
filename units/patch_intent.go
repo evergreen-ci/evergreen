@@ -25,7 +25,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
-	yaml "gopkg.in/20210107192922/yaml.v3"
+	"gopkg.in/20210107192922/yaml.v3"
 )
 
 const (
@@ -786,7 +786,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 		patchDoc.Triggers = patch.TriggerInfo{Aliases: projectRef.GithubTriggerAliases}
 	}
 
-	isMember, err := j.authAndFetchPRMergeBase(ctx, patchDoc, mustBeMemberOfOrg,
+	isMember, err := j.isUserAuthorized(ctx, patchDoc, mustBeMemberOfOrg,
 		patchDoc.GithubPatchData.Author, githubOauthToken)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
@@ -940,11 +940,10 @@ func findEvergreenUserForPR(githubUID int) (*user.DBUser, error) {
 	return u, err
 }
 
-func (j *patchIntentProcessor) authAndFetchPRMergeBase(ctx context.Context, patchDoc *patch.Patch, requiredOrganization, githubUser, githubOauthToken string) (bool, error) {
+func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *patch.Patch, requiredOrganization, githubUser, githubOauthToken string) (bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	isMember := false
 	var err error
 	// GitHub Dependabot patches should be automatically authorized.
 	if githubUser == githubDependabotUser {
@@ -956,44 +955,22 @@ func (j *patchIntentProcessor) authAndFetchPRMergeBase(ctx context.Context, patc
 			"head_repo": fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
 			"pr_number": patchDoc.GithubPatchData.PRNumber,
 		})
-		isMember = true
-	} else {
-		isMember, err = thirdparty.GithubUserInOrganization(ctx, githubOauthToken, requiredOrganization, githubUser)
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"job":          j.ID(),
-				"message":      "failed to authenticate GitHub PR",
-				"source":       "patch intents",
-				"creator":      githubUser,
-				"required_org": requiredOrganization,
-				"base_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
-				"head_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
-				"pr_number":    patchDoc.GithubPatchData.PRNumber,
-			}))
-			return false, err
-		}
+		return true, nil
 	}
-
-	// Maintain for backwards compatibility; remove after deploy of EVG-16615.
-	if patchDoc.Githash == "" {
-		hash, err := thirdparty.GetPullRequestMergeBase(ctx, githubOauthToken, patchDoc.GithubPatchData)
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"job":          j.ID(),
-				"message":      "failed to authenticate GitHub PR",
-				"source":       "patch intents",
-				"creator":      githubUser,
-				"required_org": requiredOrganization,
-				"base_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
-				"head_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
-				"pr_number":    patchDoc.GithubPatchData.PRNumber,
-			}))
-			return isMember, err
-		}
-
-		patchDoc.Githash = hash
+	isMember, err := thirdparty.GithubUserInOrganization(ctx, githubOauthToken, requiredOrganization, githubUser)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"job":          j.ID(),
+			"message":      "failed to authenticate GitHub PR",
+			"source":       "patch intents",
+			"creator":      githubUser,
+			"required_org": requiredOrganization,
+			"base_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
+			"head_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
+			"pr_number":    patchDoc.GithubPatchData.PRNumber,
+		}))
+		return false, err
 	}
-
 	return isMember, nil
 }
 
