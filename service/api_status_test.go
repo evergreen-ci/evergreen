@@ -31,12 +31,18 @@ func getCTAEndpoint(t *testing.T) *httptest.ResponseRecorder {
 	queue := env.LocalQueue()
 
 	as, err := NewAPIServer(env, queue)
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("creating test API server: %v", err)
+	}
 	handler, err := as.GetServiceApp().Handler()
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("creating test API handler: %v", err)
+	}
 	url := "/api/status/consistent_task_assignment"
 	request, err := http.NewRequest("GET", url, nil)
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("building request: %v", err)
+	}
 
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, request)
@@ -53,12 +59,18 @@ func getStuckHostEndpoint(t *testing.T) *httptest.ResponseRecorder {
 	queue := env.LocalQueue()
 
 	as, err := NewAPIServer(env, queue)
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("creating test API server: %v", err)
+	}
 	handler, err := as.GetServiceApp().Handler()
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("creating test API handler: %v", err)
+	}
 	url := "/api/status/stuck_hosts"
 	request, err := http.NewRequest("GET", url, nil)
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("building request: %v", err)
+	}
 
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, request)
@@ -68,7 +80,9 @@ func getStuckHostEndpoint(t *testing.T) *httptest.ResponseRecorder {
 func TestConsistentTaskAssignment(t *testing.T) {
 
 	Convey("With various states of tasks and hosts in the DB", t, func() {
-		require.NoError(t, db.ClearCollections(host.Collection, task.Collection))
+		if err := db.ClearCollections(host.Collection, task.Collection); err != nil {
+			t.Fatalf("clearing db: %v", err)
+		}
 		Convey("A correct host/task mapping", func() {
 			h1 := host.Host{Id: "h1", Status: evergreen.HostRunning, RunningTask: "t1"}
 			h2 := host.Host{Id: "h2", Status: evergreen.HostRunning, RunningTask: "t2"}
@@ -167,7 +181,9 @@ func TestStuckHostEndpoints(t *testing.T) {
 		require.NoError(t, err, "Couldn't create apiserver: %v", err)
 		defer testServer.Close()
 
-		require.NoError(t, db.ClearCollections(host.Collection, task.Collection))
+		if err := db.ClearCollections(host.Collection, task.Collection); err != nil {
+			t.Fatalf("clearing db: %v", err)
+		}
 
 		url := fmt.Sprintf("%s/api/status/stuck_hosts", testServer.URL)
 		Convey("With hosts and tasks that are all consistent, the response should success", func() {

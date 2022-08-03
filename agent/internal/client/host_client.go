@@ -20,9 +20,6 @@ const (
 // for an agent running on a host.
 type hostCommunicator struct {
 	baseCommunicator
-
-	hostID     string
-	hostSecret string
 }
 
 // NewHostCommunicator returns a Communicator capable of making HTTP REST
@@ -35,8 +32,6 @@ func NewHostCommunicator(serverURL, hostID, hostSecret string) Communicator {
 			evergreen.HostHeader:       hostID,
 			evergreen.HostSecretHeader: hostSecret,
 		}),
-		hostID:     hostID,
-		hostSecret: hostSecret,
 	}
 
 	c.resetClient()

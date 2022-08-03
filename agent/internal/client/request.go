@@ -22,13 +22,22 @@ import (
 type requestInfo struct {
 	method   string
 	path     string
+	version  apiVersion
 	taskData *TaskData
 }
 
+// Version is an "enum" for the different API versions
+type apiVersion string
+
+const (
+	apiVersion1 apiVersion = "/api/2"
+	apiVersion2 apiVersion = evergreen.APIRoutePrefixV2
+)
+
 var HTTPConflictError = errors.New(evergreen.TaskConflict)
 
-func (c *baseCommunicator) newRequest(method, path, taskID, taskSecret string, data interface{}) (*http.Request, error) {
-	url := c.getPath(path, evergreen.APIRoutePrefixV2)
+func (c *baseCommunicator) newRequest(method, path, taskID, taskSecret, version string, data interface{}) (*http.Request, error) {
+	url := c.getPath(path, version)
 	r, err := http.NewRequest(method, url, nil)
 	if err != nil {
 		return nil, errors.New("Error building request")
@@ -74,7 +83,7 @@ func (c *baseCommunicator) createRequest(info requestInfo, data interface{}) (*h
 		taskID = info.taskData.ID
 		secret = info.taskData.Secret
 	}
-	r, err := c.newRequest(info.method, info.path, taskID, secret, data)
+	r, err := c.newRequest(info.method, info.path, taskID, secret, string(info.version), data)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error creating request")
 	}
@@ -176,6 +185,10 @@ func (r *requestInfo) validateRequestInfo() error {
 	case http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodPatch:
 	default:
 		return errors.New("invalid HTTP method")
+	}
+
+	if r.version != apiVersion1 && r.version != apiVersion2 {
+		return errors.New("invalid API version")
 	}
 
 	return nil
