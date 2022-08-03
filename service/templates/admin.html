@@ -1512,15 +1512,19 @@ Admin Settings
 													<label>Name</label>
 													<input type="text" ng-model="queue.name">
 												</md-input-container>
-												<md-input-container class="control" style="width:45%;margin-left:50px;">
+												<md-input-container class="control" style="width:45%;margin-left:50px">
+													<label>Regular Expression</label>
+													<input type="text" ng-model="queue.regexp">
+												</md-input-container>
+												<md-input-container class="control" style="width:45%;">
 													<label>Number of Workers</label>
 													<input type="number" ng-model="queue.num_workers">
 												</md-input-container>
-												<md-input-container class="control" style="width:45%;">
+												<md-input-container class="control" style="width:45%;margin-left:50px;">
 													<label>Sample Size</label>
 													<input type="number" ng-model="queue.sample_size" placeholder="Sample Size">
 												</md-input-container>
-												<md-input-container class="control" style="width:45%;margin-left:50px;">
+												<md-input-container class="control" style="width:45%;">
 													<label>Lock Timeout (Seconds)</label>
 													<input type="number" ng-model="queue.lock_timeout_seconds">
 												</md-input-container>
@@ -1540,14 +1544,18 @@ Admin Settings
 												<input type="text" ng-model="new_amboy_named_queue.name">
 											</md-input-container>
 											<md-input-container class="control" style="width:45%;margin-left:50px;">
+												<label>Regular Expression</label>
+												<input type="text" ng-model="new_amboy_named_queue.regexp">
+											</md-input-container>
+											<md-input-container class="control" style="width:45%;">
 												<label>Number of Workers</label>
 												<input type="number" ng-model="new_amboy_named_queue.num_workers">
 											</md-input-container>
-											<md-input-container class="control" style="width:45%;">
+											<md-input-container class="control" style="width:45%;margin-left:50px;">
 												<label>Sample Size</label>
 												<input type="number" ng-model="new_amboy_named_queue.sample_size" placeholder="Sample Size">
 											</md-input-container>
-											<md-input-container class="control" style="width:45%;margin-left:50px;">
+											<md-input-container class="control" style="width:45%;">
 												<label>Lock Timeout (Seconds)</label>
 												<input type="number" ng-model="new_amboy_named_queue.lock_timeout_seconds">
 											</md-input-container>

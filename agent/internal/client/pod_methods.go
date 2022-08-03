@@ -14,9 +14,8 @@ import (
 
 func (c *podCommunicator) GetAgentSetupData(ctx context.Context) (*apimodels.AgentSetupData, error) {
 	info := requestInfo{
-		method:  http.MethodGet,
-		version: apiVersion2,
-		path:    fmt.Sprintf("pods/%s/agent/setup", c.podID),
+		method: http.MethodGet,
+		path:   "agent/setup",
 	}
 
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -37,7 +36,6 @@ func (c *podCommunicator) EndTask(ctx context.Context, detail *apimodels.TaskEnd
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
-		version:  apiVersion2,
 		path:     fmt.Sprintf("pods/%s/task/%s/end", c.podID, taskData.ID),
 	}
 	resp, err := c.retryRequest(ctx, info, detail)
@@ -59,9 +57,8 @@ func (c *podCommunicator) EndTask(ctx context.Context, detail *apimodels.TaskEnd
 // GetNextTask returns a next task response by getting the next task for a given host.
 func (c *podCommunicator) GetNextTask(ctx context.Context, details *apimodels.GetNextTaskDetails) (*apimodels.NextTaskResponse, error) {
 	info := requestInfo{
-		method:  http.MethodGet,
-		version: apiVersion2,
-		path:    fmt.Sprintf("pods/%s/agent/next_task", c.podID),
+		method: http.MethodGet,
+		path:   fmt.Sprintf("pods/%s/agent/next_task", c.podID),
 	}
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {

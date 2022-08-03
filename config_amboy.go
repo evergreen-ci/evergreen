@@ -1,6 +1,7 @@
 package evergreen
 
 import (
+	"regexp"
 	"time"
 
 	"github.com/mongodb/amboy"
@@ -46,6 +47,7 @@ type AmboyRetryConfig struct {
 // queues in the Amboy queue group.
 type AmboyNamedQueueConfig struct {
 	Name               string `bson:"name" json:"name" yaml:"name"`
+	Regexp             string `bson:"regexp" json:"regexp" yaml:"regexp"`
 	NumWorkers         int    `bson:"num_workers" json:"num_workers" yaml:"num_workers"`
 	SampleSize         int    `bson:"sample_size" json:"sample_size" yaml:"sample_size"`
 	LockTimeoutSeconds int    `bson:"lock_timeout_seconds" json:"lock_timeout_seconds" yaml:"lock_timeout_seconds"`
@@ -141,6 +143,17 @@ const (
 )
 
 func (c *AmboyConfig) ValidateAndDefault() error {
+	catcher := grip.NewBasicCatcher()
+	for _, namedQueue := range c.NamedQueues {
+		if namedQueue.Regexp != "" {
+			_, err := regexp.Compile(namedQueue.Regexp)
+			catcher.Wrapf(err, "invalid regexp '%s'", namedQueue.Regexp)
+		}
+	}
+	if catcher.HasErrors() {
+		return errors.Wrap(catcher.Resolve(), "invalid regexp for named queues")
+	}
+
 	if c.Name == "" {
 		c.Name = DefaultAmboyQueueName
 	}

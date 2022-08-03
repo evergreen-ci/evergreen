@@ -8,8 +8,6 @@ import (
 	"time"
 
 	"github.com/mongodb/anser/bsonutil"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"github.com/trinodb/trino-go-client/trino"
 	"go.mongodb.org/mongo-driver/bson"
@@ -29,8 +27,6 @@ type PrestoConfig struct {
 	Catalog           string            `bson:"catalog" json:"catalog" yaml:"catalog"`
 	Schema            string            `bson:"schema" json:"schema" yaml:"schema"`
 	SessionProperties map[string]string `bson:"session_properties" json:"session_properties" yaml:"session_properties"`
-
-	db *sql.DB
 }
 
 var (
@@ -65,12 +61,6 @@ func (c *PrestoConfig) Get(env Environment) error {
 		return errors.Wrapf(err, "decoding section '%s'", c.SectionId())
 	}
 
-	if err := c.setupDB(ctx); err != nil {
-		grip.Alert(message.WrapError(err, message.Fields{
-			"message": "setting up Presto DB client",
-		}))
-	}
-
 	return nil
 }
 
@@ -86,9 +76,7 @@ func (c *PrestoConfig) Set() error {
 
 func (*PrestoConfig) ValidateAndDefault() error { return nil }
 
-func (c *PrestoConfig) DB() *sql.DB { return c.db }
-
-func (c *PrestoConfig) setupDB(ctx context.Context) error {
+func (c *PrestoConfig) setupDB(ctx context.Context) (*sql.DB, error) {
 	dsnConfig := trino.Config{
 		ServerURI:         c.formatURI(),
 		Source:            c.Source,
@@ -98,17 +86,22 @@ func (c *PrestoConfig) setupDB(ctx context.Context) error {
 	}
 	dsn, err := dsnConfig.FormatDSN()
 	if err != nil {
-		return errors.Wrap(err, "formatting Presto DSN")
+		return nil, errors.Wrap(err, "formatting Presto DSN")
 	}
 
-	c.db, err = sql.Open("trino", dsn)
+	db, err := sql.Open("trino", dsn)
 	if err != nil {
-		return errors.Wrap(err, "opening Presto connection")
+		return nil, errors.Wrap(err, "opening Presto connection")
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
-	return c.db.PingContext(ctx)
+
+	if err := db.PingContext(ctx); err != nil {
+		return nil, errors.Wrap(err, "pinging Presto DB")
+	}
+
+	return db, nil
 }
 
 func (c *PrestoConfig) formatURI() string {

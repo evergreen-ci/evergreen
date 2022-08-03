@@ -945,7 +945,8 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 	// Some fields shouldn't be set from projects.
 	repoRef.Id = mgobson.NewObjectId().Hex()
 	repoRef.RepoRefId = ""
-	// Set explicitly in case no project is enabled.
+	repoRef.Identifier = ""
+	// set explicitly in case no project is enabled
 	repoRef.Owner = p.Owner
 	repoRef.Repo = p.Repo
 
