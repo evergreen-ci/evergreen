@@ -2144,25 +2144,25 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	require.Len(t, projectRefs, 1)
 
         update := &ProjectRef{
-          Id: "iden_",
-          Owner: "invalid",
-          Repo: "nonexistent",
+                Id: "iden_",
+                Owner: "invalid",
+                Repo: "nonexistent",
         }
         _, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
 	assert.Error(err)
 
         update = &ProjectRef{
-          Id: "iden_",
-          Owner: "",
-          Repo: "",
+                Id: "iden_",
+                Owner: "",
+                Repo: "",
         }
         _, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
-	assert.Error(err)
+	assert.NoError(err)
 
         update = &ProjectRef{
-          Id: "iden_",
-          Owner: "evergreen-ci",
-          Repo: "test",
+                Id: "iden_",
+                Owner: "evergreen-ci",
+                Repo: "test",
         }
         _, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
 	assert.NoError(err)

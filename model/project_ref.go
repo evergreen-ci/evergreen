@@ -1754,25 +1754,21 @@ func (projectRef *ProjectRef) Upsert() error {
 }
 
 // SaveProjectPageForSection updates the project or repo ref variables for the section (if no project is given, we unset to default to repo).
-func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectPageSection, isRepo bool) (bool, error) {
+func SaveProjectPageForSection(projectId string, projectRef *ProjectRef, section ProjectPageSection, isRepo bool) (bool, error) {
 	coll := ProjectRefCollection
 	if isRepo {
 		coll = RepoRefCollection
-		if p == nil {
+		if projectRef == nil {
 			return false, errors.New("can't default project ref for a repo")
 		}
 	}
-	if p == nil {
-		p = &ProjectRef{} // use a blank project ref to default the section to repo
-	}
+        p := projectRef
+	if projectRef == nil {
+                p = &ProjectRef{} // use a blank project ref to default the section to repo
+        }
 	var err error
 	switch section {
 	case ProjectPageGeneralSection:
-                allowedOrgs := evergreen.GetEnvironment().Settings().GithubOrgs
-                if err := p.ValidateOwnerAndRepo(allowedOrgs); err != nil {
-                        return false, errors.Wrap(err, "validating new owner/repo")
-                }
-
 		setUpdate := bson.M{
 			ProjectRefEnabledKey:                 p.Enabled,
 			ProjectRefBranchKey:                  p.Branch,
@@ -1793,6 +1789,14 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			ProjectRefFilesIgnoredFromCacheKey:   p.FilesIgnoredFromCache,
 		}
 		if !isRepo && !p.UseRepoSettings() {
+                        // Don't validate owner if user is defaulting page to repo
+                        if p.Owner != "" {
+                                allowedOrgs := evergreen.GetEnvironment().Settings().GithubOrgs
+                                if err := validateOwner(p.Owner, allowedOrgs); err != nil {
+                                        return false, errors.Wrap(err, "validating new owner/repo")
+                                }
+                        }
+
 			setUpdate[ProjectRefOwnerKey] = p.Owner
 			setUpdate[ProjectRefRepoKey] = p.Repo
 		}
@@ -2107,7 +2111,11 @@ func (p *ProjectRef) ValidateOwnerAndRepo(validOrgs []string) error {
 		return errors.New("no owner/repo specified")
 	}
 
-	if len(validOrgs) > 0 && !utility.StringSliceContains(validOrgs, p.Owner) {
+        return validateOwner(p.Owner, validOrgs)
+}
+
+func validateOwner(owner string, validOrgs []string) error {
+	if len(validOrgs) > 0 && !utility.StringSliceContains(validOrgs, owner) {
 		return errors.New("owner not authorized")
 	}
 	return nil
