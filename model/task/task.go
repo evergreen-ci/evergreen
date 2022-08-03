@@ -2609,6 +2609,21 @@ func archiveAll(tasksIds []string, toUpdateTaskIds []string, toArchive []interfa
 						OverrideDependenciesKey,
 					}}}})
 
+			// Same call without backwards compatability
+			// _, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(sessCtx,
+			// 	bson.D{{Key: "_id", Value: bson.D{{Key: "$in", Value: tasksIds}}}}, // Query all 'taskIds'
+			// 	bson.A{ // Pipeline
+			// 		bson.D{{Key: "$set", Value: bson.D{ // Sets LatestParentExecution (LPE) = LPE + 1
+			// 			{Key: LatestParentExecutionKey, Value: bson.D{{Key: "$add", Value: bson.A{
+			// 				"$" + LatestParentExecutionKey, 1,
+			// 			}}}}}},
+			// 		},
+			// 		bson.D{{Key: "$unset", Value: bson.A{
+			// 			AbortedKey,
+			// 			AbortInfoKey,
+			// 			OverrideDependenciesKey,
+			// 		}}}})
+
 			if err != nil {
 				return nil, errors.Wrap(err, "Error updating documents")
 			}
