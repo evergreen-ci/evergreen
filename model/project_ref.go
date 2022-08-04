@@ -1792,7 +1792,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			if p.Owner != "" {
 				allowedOrgs := evergreen.GetEnvironment().Settings().GithubOrgs
 				if err := validateOwner(p.Owner, allowedOrgs); err != nil {
-					return false, errors.Wrap(err, "validating new owner/repo")
+					return false, errors.Wrap(err, "validating new owner")
 				}
 			}
 
