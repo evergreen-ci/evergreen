@@ -200,12 +200,20 @@ func getPatchProjectVariantsAndTasksForUI(ctx context.Context, apiPatch *restMod
 			DisplayName: buildVariant.DisplayName,
 		}
 		projTasks := []string{}
-		for _, taskUnit := range buildVariant.Tasks {
-			projTasks = append(projTasks, taskUnit.Name)
-		}
+		executionTasks := map[string]bool{}
 		for _, displayTask := range buildVariant.DisplayTasks {
 			projTasks = append(projTasks, displayTask.Name)
+			for _, execTask := range displayTask.ExecTasks {
+				executionTasks[execTask] = true
+			}
 		}
+		for _, taskUnit := range buildVariant.Tasks {
+			// Only add task if it is not an execution task.
+			if !executionTasks[taskUnit.Name] {
+				projTasks = append(projTasks, taskUnit.Name)
+			}
+		}
+		// Sort tasks alphanumerically by display name.
 		sort.SliceStable(projTasks, func(i, j int) bool {
 			return projTasks[i] < projTasks[j]
 		})
@@ -374,21 +382,18 @@ func modifyVersionHandler(ctx context.Context, patchID string, modification mode
 		return mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
 
-	if evergreen.IsPatchRequester(v.Requester) {
-		// Restart is handled through graphql because we need the user to specify
-		// which downstream tasks they want to restart.
-		if modification.Action != evergreen.RestartAction {
-			// Only modify the child patch if it is finalized.
-			childPatchIds, err := patch.GetFinalizedChildPatchIdsForPatch(patchID)
-			if err != nil {
-				return ResourceNotFound.Send(ctx, err.Error())
+	// Restart is handled through graphql because we need the user to specify
+	// which downstream tasks they want to restart.
+	if evergreen.IsPatchRequester(v.Requester) && modification.Action != evergreen.RestartAction {
+		// Only modify the child patch if it is finalized.
+		childPatchIds, err := patch.GetFinalizedChildPatchIdsForPatch(patchID)
+		if err != nil {
+			return ResourceNotFound.Send(ctx, err.Error())
+		}
+		for _, childPatchId := range childPatchIds {
+			if err = modifyVersionHandler(ctx, childPatchId, modification); err != nil {
+				return errors.Wrap(mapHTTPStatusToGqlError(ctx, httpStatus, err), fmt.Sprintf("modifying child patch '%s'", childPatchId))
 			}
-			for _, childPatchId := range childPatchIds {
-				if err = modifyVersionHandler(ctx, childPatchId, modification); err != nil {
-					return errors.Wrap(mapHTTPStatusToGqlError(ctx, httpStatus, err), fmt.Sprintf("modifying child patch '%s'", childPatchId))
-				}
-			}
-
 		}
 	}
 

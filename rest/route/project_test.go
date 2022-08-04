@@ -341,18 +341,32 @@ func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
 // Tests for PUT /rest/v2/projects/{project_id}
 
 type ProjectPutSuite struct {
-	rm gimlet.RouteHandler
+	rm       gimlet.RouteHandler
+	env      evergreen.Environment
+	settings *evergreen.Settings
 
 	suite.Suite
 }
 
 func TestProjectPutSuite(t *testing.T) {
-	suite.Run(t, new(ProjectPutSuite))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s := &ProjectPutSuite{
+		env: testutil.NewEnvironment(ctx, t),
+	}
+	suite.Run(t, s)
 }
 
 func (s *ProjectPutSuite) SetupTest() {
 	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection, user.Collection))
 	s.NoError(getTestProjectRef().Insert())
+
+	settings := s.env.Settings()
+	s.settings = settings
+	settings.GithubOrgs = []string{"Rembrandt Q. Einstein"}
+	s.NoError(evergreen.UpdateConfig(settings))
+
 	s.rm = makePutProjectByID().(*projectIDPutHandler)
 }
 
@@ -416,6 +430,10 @@ func (s *ProjectPutSuite) TestRunNewWithValidEntity() {
 
 	h := s.rm.(*projectIDPutHandler)
 	h.projectName = "nutsandgum"
+	h.project = model.APIProjectRef{
+		Owner: utility.ToStringPtr("Rembrandt Q. Einstein"),
+		Repo:  utility.ToStringPtr("nutsandgum"),
+	}
 	h.body = json
 
 	resp := s.rm.Run(ctx)

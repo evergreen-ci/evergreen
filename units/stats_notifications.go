@@ -21,8 +21,9 @@ const (
 )
 
 func init() {
-	registry.AddJobType(notificationsStatsCollectorJobName,
-		func() amboy.Job { return makeNotificationsStatsCollector() })
+	registry.AddJobType(notificationsStatsCollectorJobName, func() amboy.Job {
+		return makeNotificationsStatsCollector()
+	})
 }
 
 type notificationsStatsCollector struct {
@@ -67,7 +68,7 @@ func (j *notificationsStatsCollector) Run(ctx context.Context) {
 	}
 
 	e, err := event.FindLastProcessedEvent()
-	j.AddError(errors.Wrap(err, "failed to fetch most recently processed event"))
+	j.AddError(errors.Wrap(err, "fetching most recently processed event"))
 	if j.HasErrors() {
 		return
 	}
@@ -76,14 +77,14 @@ func (j *notificationsStatsCollector) Run(ctx context.Context) {
 	}
 
 	nUnprocessed, err := event.CountUnprocessedEvents()
-	j.AddError(errors.Wrap(err, "failed to count unprocessed events"))
+	j.AddError(errors.Wrap(err, "counting unprocessed events"))
 	if j.HasErrors() {
 		return
 	}
 	msg["unprocessed_events"] = nUnprocessed
 
 	stats, err := notification.CollectUnsentNotificationStats()
-	j.AddError(errors.Wrap(err, "failed to collect notification stats"))
+	j.AddError(errors.Wrap(err, "collecting unsent notification stats"))
 	if j.HasErrors() {
 		return
 	}

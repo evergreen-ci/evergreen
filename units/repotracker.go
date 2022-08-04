@@ -64,7 +64,7 @@ func (j *repotrackerJob) Run(ctx context.Context) {
 
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
-		j.AddError(errors.Wrap(err, "error retrieving admin settings"))
+		j.AddError(errors.Wrap(err, "getting service flags"))
 		return
 	}
 	if flags.RepotrackerDisabled {
@@ -84,23 +84,22 @@ func (j *repotrackerJob) Run(ctx context.Context) {
 	}
 	token, err := settings.GetGithubOauthToken()
 	if err != nil {
-		j.AddError(errors.New("github token is missing"))
+		j.AddError(errors.New("GitHub OAuth token is missing"))
 		return
 	}
 
 	ref, err := model.FindMergedProjectRef(j.ProjectID, "", true)
 	if err != nil {
-		j.AddError(err)
+		j.AddError(errors.Wrapf(err, "finding project '%s'", j.ProjectID))
 		return
 	}
 	if ref == nil {
-		j.AddError(errors.Errorf("project ref '%s' does not exist", j.ProjectID))
+		j.AddError(errors.Errorf("project ref '%s' not found", j.ProjectID))
 		return
 	}
 
 	if !repotracker.CheckGithubAPIResources(ctx, token) {
-		j.AddError(errors.Errorf("skipping repotracker run [%s] for %s because of github limit issues",
-			j.ID(), j.ProjectID))
+		j.AddError(errors.Errorf("skipping repotracker run for project '%s' because of GitHub API limit issues", j.ProjectID))
 		return
 	}
 

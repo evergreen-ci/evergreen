@@ -367,12 +367,12 @@ func TestSetVersionActivation(t *testing.T) {
 	require.NoError(t, db.ClearCollections(build.Collection, task.Collection, VersionCollection))
 
 	vID := "abcdef"
-	v := &Version{Id: vID}
+	v := &Version{Id: vID, BuildIds: []string{"b0", "b1"}}
 	require.NoError(t, v.Insert())
 
 	builds := []build.Build{
-		{Id: "b0", Version: vID, Activated: true},
-		{Id: "b1", Version: vID, Activated: true},
+		{Id: "b0", Version: vID, Activated: true, Tasks: []build.TaskCache{{Id: "t0"}}, Status: evergreen.BuildStarted},
+		{Id: "b1", Version: vID, Activated: true, Tasks: []build.TaskCache{{Id: "t1"}}, Status: evergreen.BuildSucceeded},
 	}
 	for _, build := range builds {
 		require.NoError(t, build.Insert())
@@ -391,6 +391,9 @@ func TestSetVersionActivation(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, builds, 2)
 	for _, b := range builds {
+		if b.Id == "b0" {
+			assert.Equal(t, evergreen.BuildCreated, b.Status)
+		}
 		assert.False(t, b.Activated)
 	}
 

@@ -72,7 +72,7 @@ func (j *cloudCleanupJob) Run(ctx context.Context) {
 		Region:   j.Region,
 	})
 	if err != nil {
-		j.AddError(errors.Wrapf(err, "getting cloud manager for '%s' in region '%s'", j.Provider, j.Region))
+		j.AddError(errors.Wrapf(err, "getting cloud manager for provider '%s' in region '%s'", j.Provider, j.Region))
 		return
 	}
 

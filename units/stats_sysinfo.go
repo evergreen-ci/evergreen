@@ -14,8 +14,9 @@ import (
 const sysInfoStatsCollectorJobName = "sysinfo-stats-collector"
 
 func init() {
-	registry.AddJobType(sysInfoStatsCollectorJobName,
-		func() amboy.Job { return makeSysInfoStatsCollector() })
+	registry.AddJobType(sysInfoStatsCollectorJobName, func() amboy.Job {
+		return makeSysInfoStatsCollector()
+	})
 }
 
 type sysInfoStatsCollector struct {

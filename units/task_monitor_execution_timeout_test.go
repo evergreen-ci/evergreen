@@ -28,9 +28,7 @@ func TestCleanupTask(t *testing.T) {
 	require.NoError(t, env.Configure(ctx))
 
 	Convey("When cleaning up a task", t, func() {
-		// reset the db
-		require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection), "error clearing tasks collection")
-		require.NoError(t, db.ClearCollections(host.Collection), "error clearing hosts collection")
+		require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, host.Collection))
 
 		Convey("an error should be thrown if the passed-in projects slice"+
 			" does not contain the task's project", func() {
@@ -44,13 +42,7 @@ func TestCleanupTask(t *testing.T) {
 		})
 
 		Convey("if the task's heartbeat timed out", func() {
-
-			// reset the db
-			require.NoError(t, db.ClearCollections(task.Collection), "error clearing tasks collection")
-			require.NoError(t, db.ClearCollections(host.Collection), "error clearing hosts collection")
-			require.NoError(t, db.ClearCollections(build.Collection), "error clearing builds collection")
-			require.NoError(t, db.ClearCollections(task.OldCollection), "error clearing old tasks collection")
-			require.NoError(t, db.ClearCollections(model.VersionCollection), "error clearing versions collection")
+			require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, build.Collection, model.VersionCollection))
 
 			vID := "v1"
 			bID := "b1"
@@ -66,7 +58,7 @@ func TestCleanupTask(t *testing.T) {
 					Project: "proj",
 					Version: vID,
 				}
-				require.NoError(t, newTask.Insert(), "error inserting task")
+				require.NoError(t, newTask.Insert())
 
 				host := &host.Host{
 					Id:          hID,
@@ -145,11 +137,7 @@ func TestCleanupTask(t *testing.T) {
 			})
 
 			Convey("given a running host running a task", func() {
-				require.NoError(t, db.ClearCollections(task.Collection), "error clearing tasks collection")
-				require.NoError(t, db.ClearCollections(host.Collection), "error clearing hosts collection")
-				require.NoError(t, db.ClearCollections(build.Collection), "error clearing builds collection")
-				require.NoError(t, db.ClearCollections(task.OldCollection), "error clearing old tasks collection")
-				require.NoError(t, db.ClearCollections(model.VersionCollection), "error clearing versions collection")
+				require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, build.Collection, model.VersionCollection))
 
 				newTask := &task.Task{
 					Id:      tID,
@@ -159,7 +147,7 @@ func TestCleanupTask(t *testing.T) {
 					Project: "proj",
 					Version: vID,
 				}
-				require.NoError(t, newTask.Insert(), "error inserting task")
+				require.NoError(t, newTask.Insert())
 
 				h := &host.Host{
 					Id:          hID,

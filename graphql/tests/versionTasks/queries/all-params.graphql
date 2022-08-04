@@ -1,0 +1,22 @@
+{
+  version(id: "5e4ff3abe3c3317e352062e4") {
+    tasks(options: {
+        limit: 2
+        page: 0
+        sorts: [{ Key: VARIANT, Direction: DESC }]
+        variant: "ubuntu1604"
+        taskName: "party"
+      }
+    ) {
+      data {
+        id
+        baseStatus
+        blocked
+        buildVariant
+        displayName
+        status
+      }
+      count
+    }
+  }
+}

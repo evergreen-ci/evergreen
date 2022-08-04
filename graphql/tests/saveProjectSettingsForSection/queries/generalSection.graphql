@@ -6,6 +6,8 @@ mutation {
                 identifier: "sandbox",
                 enabled: true,
                 remotePath: "my_path_is_new"
+                owner: "evergreen-ci"
+                repo: "commit-queue-sandbox"
             }
         },
         section: GENERAL

@@ -20,8 +20,7 @@ func TestDecommissioningParentWithTerminatedContainers(t *testing.T) {
 	mockCloud := cloud.GetMockProvider()
 	mockCloud.Reset()
 
-	require.NoError(t, db.Clear(host.Collection), "error clearing %v collections", host.Collection)
-	require.NoError(t, db.Clear(distro.Collection), "Error clearing '%v' collection", distro.Collection)
+	require.NoError(t, db.ClearCollections(host.Collection, distro.Collection))
 
 	d2 := distro.Distro{Id: "d2", HostAllocatorSettings: distro.HostAllocatorSettings{MinimumHosts: 2}}
 	assert.NoError(d2.Insert())

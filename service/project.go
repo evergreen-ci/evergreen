@@ -57,11 +57,18 @@ func (uis *UIServer) projectsPage(w http.ResponseWriter, r *http.Request) {
 	}
 	canCreate := dbUser.HasPermission(opts)
 
+	spruceLink := fmt.Sprintf("%s/projects", uis.Settings.Ui.UIv2Url)
+	newUILink := ""
+	if len(uis.Settings.Ui.UIv2Url) > 0 {
+		newUILink = spruceLink
+	}
+
 	data := struct {
 		AllProjects []model.ProjectRef
 		CanCreate   bool
 		ViewData
-	}{allProjects, canCreate, uis.GetCommonViewData(w, r, true, true)}
+		NewUILink string
+	}{allProjects, canCreate, uis.GetCommonViewData(w, r, true, true), newUILink}
 
 	uis.render.WriteResponse(w, http.StatusOK, data, "base", "projects.html", "base_angular.html", "menu.html")
 }
@@ -968,10 +975,17 @@ func (uis *UIServer) projectEvents(w http.ResponseWriter, r *http.Request) {
 		template = "project_events.html"
 	}
 
+	spruceLink := fmt.Sprintf("%s/project/%s/settings/event-log", uis.Settings.Ui.UIv2Url, id)
+	newUILink := ""
+	if len(uis.Settings.Ui.UIv2Url) > 0 {
+		newUILink = spruceLink
+	}
+
 	data := struct {
 		Project string
 		ViewData
-	}{id, uis.GetCommonViewData(w, r, true, true)}
+		NewUILink string
+	}{id, uis.GetCommonViewData(w, r, true, true), newUILink}
 	uis.render.WriteResponse(w, http.StatusOK, data, "base", template, "base_angular.html", "menu.html")
 }
 

@@ -424,7 +424,7 @@ func (s *SubscriptionRouteSuite) TestInvalidTriggerData() {
 	s.Require().Equal(400, resp.Status())
 	respErr, ok = resp.Data().(gimlet.ErrorResponse)
 	s.True(ok)
-	s.Contains(respErr.Message, "unable to parse a as float")
+	s.Contains(respErr.Message, "parsing 'a' as float")
 
 	body = []map[string]interface{}{{
 		"resource_type": event.ResourceTypeTask,

@@ -12,6 +12,7 @@ import (
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 )
 
 const staticUpdateSSHKeysJobName = "update-ssh-keys-host"
@@ -55,7 +56,11 @@ func (j *staticUpdateSSHKeysJob) Run(ctx context.Context) {
 	if j.host == nil {
 		h, err := host.FindOneId(j.HostID)
 		if err != nil {
-			j.AddError(err)
+			j.AddError(errors.Wrapf(err, "finding host '%s'", j.HostID))
+			return
+		}
+		if h == nil {
+			j.AddError(errors.Errorf("host '%s' not found", j.HostID))
 			return
 		}
 		j.host = h

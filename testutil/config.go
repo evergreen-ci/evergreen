@@ -125,6 +125,10 @@ func MockConfig() *evergreen.Settings {
 					Name:       "queue1",
 					SampleSize: 500,
 				},
+				{
+					Regexp:             "^queue2",
+					LockTimeoutSeconds: 50,
+				},
 			},
 		},
 		Api: evergreen.APIConfig{
@@ -165,6 +169,7 @@ func MockConfig() *evergreen.Settings {
 			PreferredType:           evergreen.AuthLDAPKey,
 			BackgroundReauthMinutes: 60,
 		},
+		AWSInstanceRole:   "role",
 		Banner:            "banner",
 		BannerTheme:       "important",
 		ClientBinariesDir: "bin_dir",

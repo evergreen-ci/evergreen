@@ -31,8 +31,9 @@ type podAllocatorJob struct {
 	TaskID   string `bson:"task_id" json:"task_id"`
 	job.Base `bson:"job_base" json:"job_base"`
 
-	task *task.Task
-	env  evergreen.Environment
+	task     *task.Task
+	env      evergreen.Environment
+	settings evergreen.Settings
 }
 
 func makePodAllocatorJob() *podAllocatorJob {
@@ -107,7 +108,7 @@ func (j *podAllocatorJob) Run(ctx context.Context) {
 		return
 	}
 
-	intentPod, err := pod.NewTaskIntentPod(*opts)
+	intentPod, err := pod.NewTaskIntentPod(j.settings.Providers.AWS.Pod.ECS, *opts)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "creating new task intent pod"))
 		return
@@ -154,6 +155,13 @@ func (j *podAllocatorJob) populate() error {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
+
+	// Use the latest service flags instead of those cached in the environment.
+	settings := *j.env.Settings()
+	if err := settings.ServiceFlags.Get(j.env); err != nil {
+		return errors.Wrap(err, "getting service flags")
+	}
+	j.settings = settings
 
 	if j.task == nil {
 		t, err := task.FindOneId(j.TaskID)

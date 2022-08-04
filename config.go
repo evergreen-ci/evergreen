@@ -36,7 +36,7 @@ var (
 	ClientVersion = "2022-07-15"
 
 	// Agent version to control agent rollover.
-	AgentVersion = "2022-07-14"
+	AgentVersion = "2022-07-18"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -61,6 +61,7 @@ type Settings struct {
 	Api                 APIConfig               `yaml:"api" bson:"api" json:"api" id:"api"`
 	ApiUrl              string                  `yaml:"api_url" bson:"api_url" json:"api_url"`
 	AuthConfig          AuthConfig              `yaml:"auth" bson:"auth" json:"auth" id:"auth"`
+	AWSInstanceRole     string                  `yaml:"aws_instance_role" bson:"aws_instance_role" json:"aws_instance_role"`
 	Banner              string                  `bson:"banner" json:"banner" yaml:"banner"`
 	BannerTheme         BannerTheme             `bson:"banner_theme" json:"banner_theme" yaml:"banner_theme"`
 	Cedar               CedarConfig             `bson:"cedar" json:"cedar" yaml:"cedar" id:"cedar"`
@@ -120,10 +121,10 @@ func (c *Settings) Get(env Environment) error {
 			*c = Settings{}
 			return nil
 		}
-		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
+		return errors.Wrapf(err, "getting config section '%s'", c.SectionId())
 	}
 	if err := res.Decode(c); err != nil {
-		return errors.Wrap(err, "problem decoding result")
+		return errors.Wrapf(err, "decoding config section '%s'", c.SectionId())
 	}
 
 	return nil
@@ -140,6 +141,7 @@ func (c *Settings) Set() error {
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
 			apiUrlKey:             c.ApiUrl,
+			awsInstanceRoleKey:    c.AWSInstanceRole,
 			bannerKey:             c.Banner,
 			bannerThemeKey:        c.BannerTheme,
 			clientBinariesDirKey:  c.ClientBinariesDir,
@@ -168,7 +170,7 @@ func (c *Settings) Set() error {
 		},
 	}, options.Update().SetUpsert(true))
 
-	return errors.Wrapf(err, "error updating section %s", c.SectionId())
+	return errors.Wrapf(err, "updating section '%s'", c.SectionId())
 }
 
 func (c *Settings) ValidateAndDefault() error {
@@ -178,27 +180,27 @@ func (c *Settings) ValidateAndDefault() error {
 		catcher.Add(errors.New("API hostname must not be empty"))
 	}
 	if c.ConfigDir == "" {
-		catcher.Add(errors.New("Config directory must not be empty"))
+		catcher.Add(errors.New("config directory must not be empty"))
 	}
 	if len(c.CredentialsNew) > 0 {
 		if c.Credentials, err = c.CredentialsNew.Map(); err != nil {
-			catcher.Add(errors.Wrap(err, "error parsing credentials"))
+			catcher.Add(errors.Wrap(err, "parsing credentials"))
 		}
 	}
 	if len(c.ExpansionsNew) > 0 {
 		if c.Expansions, err = c.ExpansionsNew.Map(); err != nil {
-			catcher.Add(errors.Wrap(err, "error parsing expansions"))
+			catcher.Add(errors.Wrap(err, "parsing expansions"))
 		}
 	}
 	if len(c.KeysNew) > 0 {
 		if c.Keys, err = c.KeysNew.Map(); err != nil {
-			catcher.Add(errors.Wrap(err, "error parsing keys"))
+			catcher.Add(errors.Wrap(err, "parsing keys"))
 		}
 	}
 	if len(c.PluginsNew) > 0 {
 		tempPlugins, err := c.PluginsNew.NestedMap()
 		if err != nil {
-			catcher.Add(errors.Wrap(err, "error parsing plugins"))
+			catcher.Add(errors.Wrap(err, "parsing plugins"))
 		}
 		c.Plugins = map[string]map[string]interface{}{}
 		for k1, v1 := range tempPlugins {
@@ -212,7 +214,7 @@ func (c *Settings) ValidateAndDefault() error {
 	keys := map[string]bool{}
 	for _, mapping := range c.LDAPRoleMap {
 		if keys[mapping.LDAPGroup] {
-			catcher.Add(errors.Errorf("duplicate LDAP group value %s found in LDAP-role mappings", mapping.LDAPGroup))
+			catcher.Errorf("duplicate LDAP group value %s found in LDAP-role mappings", mapping.LDAPGroup)
 		}
 		keys[mapping.LDAPGroup] = true
 	}
@@ -340,7 +342,7 @@ func BootstrapConfig(env Environment) (*Settings, error) {
 		sectionVal := reflect.ValueOf(section).Elem()
 		propVal := reflect.ValueOf(config).Elem().FieldByName(propName)
 		if !propVal.CanSet() {
-			catcher.Add(fmt.Errorf("unable to set field %s in %s", propName, sectionId))
+			catcher.Errorf("unable to set field '%s' in section '%s'", propName, sectionId)
 			continue
 		}
 		propVal.Set(sectionVal)
@@ -386,7 +388,7 @@ func UpdateConfig(config *Settings) error {
 		// type assert to the ConfigSection interface
 		section, ok := propInterface.(ConfigSection)
 		if !ok {
-			catcher.Add(fmt.Errorf("unable to convert config section %s", propName))
+			catcher.Errorf("unable to convert config section '%s'", propName)
 			continue
 		}
 
@@ -434,7 +436,7 @@ func (settings *Settings) Validate() error {
 		// type assert to the ConfigSection interface
 		section, ok := propInterface.(ConfigSection)
 		if !ok {
-			catcher.Add(fmt.Errorf("unable to convert config section %s", propName))
+			catcher.Errorf("unable to convert config section '%s'", propName)
 			continue
 		}
 		err := section.ValidateAndDefault()
@@ -447,7 +449,7 @@ func (settings *Settings) Validate() error {
 		sectionVal := reflect.ValueOf(section).Elem()
 		propAddr := reflect.ValueOf(settings).Elem().FieldByName(propName)
 		if !propAddr.CanSet() {
-			catcher.Add(fmt.Errorf("unable to set field %s in %s", propName, sectionId))
+			catcher.Errorf("unable to set field '%s' 'in' %s", propName, sectionId)
 			continue
 		}
 		propAddr.Set(sectionVal)
@@ -468,7 +470,7 @@ func (s *Settings) GetSender(ctx context.Context, env Environment) (send.Sender,
 	fallback, err = send.NewErrorLogger("evergreen.err",
 		send.LevelInfo{Default: level.Info, Threshold: level.Debug})
 	if err != nil {
-		return nil, errors.Wrap(err, "problem configuring err fallback logger")
+		return nil, errors.Wrap(err, "configuring error fallback logger")
 	}
 
 	// setup the base/default logger (generally direct to systemd
@@ -483,15 +485,15 @@ func (s *Settings) GetSender(ctx context.Context, env Environment) (send.Sender,
 	default:
 		sender, err = send.MakeFileLogger(s.LogPath)
 		if err != nil {
-			return nil, errors.Wrap(err, "could not configure file logger")
+			return nil, errors.Wrap(err, "configuring file logger")
 		}
 	}
 
 	if err = sender.SetLevel(levelInfo); err != nil {
-		return nil, errors.Wrap(err, "problem setting level")
+		return nil, errors.Wrap(err, "setting level")
 	}
 	if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback)); err != nil {
-		return nil, errors.Wrap(err, "problem setting error handler")
+		return nil, errors.Wrap(err, "setting error handler")
 	}
 	senders = append(senders, sender)
 
@@ -534,12 +536,12 @@ func (s *Settings) GetSender(ctx context.Context, env Environment) (send.Sender,
 			}
 
 			if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(slackFallback)); err != nil {
-				return nil, errors.Wrap(err, "problem setting error handler")
+				return nil, errors.Wrap(err, "setting error handler")
 			}
 
 			senders = append(senders, logger.MakeQueueSender(ctx, env.LocalQueue(), sender))
 		}
-		grip.Warning(errors.Wrap(err, "problem setting up slack alert logger"))
+		grip.Warning(errors.Wrap(err, "setting up Slack alert logger"))
 	}
 
 	return send.NewConfiguredMultiSender(senders...), nil
@@ -552,11 +554,11 @@ func (s *Settings) makeSplunkSender(ctx context.Context, client *http.Client, le
 	}
 
 	if err = sender.SetLevel(levelInfo); err != nil {
-		return nil, errors.Wrap(err, "problem setting splunk level")
+		return nil, errors.Wrap(err, "setting Splunk level")
 	}
 
 	if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback)); err != nil {
-		return nil, errors.Wrap(err, "setting splunk error handler")
+		return nil, errors.Wrap(err, "setting Splunk error handler")
 	}
 
 	opts := send.BufferedSenderOptions{
@@ -570,11 +572,11 @@ func (s *Settings) makeSplunkSender(ctx context.Context, client *http.Client, le
 				BufferedSenderOptions: opts,
 				IncomingBufferFactor:  s.LoggerConfig.Buffer.IncomingBufferFactor,
 			}); err != nil {
-			return nil, errors.Wrap(err, "making splunk async buffered sender")
+			return nil, errors.Wrap(err, "making Splunk async buffered sender")
 		}
 	} else {
 		if sender, err = send.NewBufferedSender(ctx, sender, opts); err != nil {
-			return nil, errors.Wrap(err, "making splunk buffered sender")
+			return nil, errors.Wrap(err, "making Splunk buffered sender")
 		}
 	}
 
@@ -641,7 +643,7 @@ func splitToken(oauthString string) (string, error) {
 func GetServiceFlags() (*ServiceFlags, error) {
 	flags := &ServiceFlags{}
 	if err := flags.Get(GetEnvironment()); err != nil {
-		return nil, errors.Wrap(err, "error retrieving section from DB")
+		return nil, errors.Wrapf(err, "getting section '%s'", flags.SectionId())
 	}
 	return flags, nil
 }
