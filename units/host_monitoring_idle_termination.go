@@ -161,9 +161,9 @@ func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, h *host.Host, d
 
 	idleThreshold := d.HostAllocatorSettings.AcceptableHostIdleTime
 	if h.RunningTaskGroup != "" {
-		idleThreshold = d.HostAllocatorSettings.AcceptableTaskGroupHostIdleTime
+		idleThreshold = idleThreshold * 2
 	} else if hostHasOutdatedAMI(*h, d) {
-		idleThreshold = d.HostAllocatorSettings.AcceptableHostOutdatedIdleTime
+		idleThreshold = idleTime / 2
 	}
 
 	// if we haven't heard from the host or it's been idle for longer than the cutoff, we should terminate

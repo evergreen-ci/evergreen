@@ -177,26 +177,6 @@ Evergreen - Distros
                 form.hostAllocatorSettingsAcceptableHostIdleTime.$modelValue % 1 != 0"> Acceptable Host Idle Time must a non-negative integer
               </div>
               <div>
-                <label class="distro-label">Acceptable Outdated Host Idle Time (sec):</label>
-                <input ng-readonly="readOnly" type="number"
-                       name="hostAllocatorSettingsAcceptableHostOutdatedIdleTime" class="form-control" ng-model="activeDistro.host_allocator_settings.acceptable_host_outdated_idle_time" placeholder="Set to 0 to use its global default">
-              </div>
-              <div class="icon fa fa-warning distro-error" ng-show="form.plannerSettingsAcceptableHostOutdatedIdleTime.$dirty && form.hostAllocatorSettingsAcceptableHostOutdatedIdleTime.$error.required ||
-                form.hostAllocatorSettingsAcceptableHostOutdatedIdleTime.$invalid ||
-                form.hostAllocatorSettingsAcceptableHostOutdatedIdleTime.$modelValue < 0 ||
-                form.hostAllocatorSettingsAcceptableHostOutdatedIdleTime.$modelValue % 1 != 0"> Acceptable Outdated Host Idle Time must a non-negative integer
-              </div>
-              <div>
-                <label class="distro-label">Acceptable Task Group Host Idle Time (sec):</label>
-                <input ng-readonly="readOnly" type="number"
-                       name="hostAllocatorSettingsAcceptableTaskGroupHostIdleTime" class="form-control" ng-model="activeDistro.host_allocator_settings.acceptable_task_group_host_idle_time" placeholder="Set to 0 to use its global default">
-              </div>
-              <div class="icon fa fa-warning distro-error" ng-show="form.plannerSettingsAcceptableTaskGroupHostIdleTime.$dirty && form.hostAllocatorSettingsAcceptableTaskGroupHostIdleTime.$error.required ||
-                form.hostAllocatorSettingsAcceptableTaskGroupHostIdleTime.$invalid ||
-                form.hostAllocatorSettingsAcceptableTaskGroupHostIdleTime.$modelValue < 0 ||
-                form.hostAllocatorSettingsAcceptableTaskGroupHostIdleTime.$modelValue % 1 != 0"> Acceptable Task Group Host Idle Time must a non-negative integer
-              </div>
-              <div>
                 <label class="distro-label">Future Host Fraction</label>
                 <input ng-readonly="readOnly" type="number" step=".01" min="0" max="1"
                   name="hostAllocatorSettingsFutureHostFraction" class="form-control" ng-model="activeDistro.host_allocator_settings.future_host_fraction" placeholder="Set to 0 to use its global default">

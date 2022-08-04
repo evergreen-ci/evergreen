@@ -1940,26 +1940,24 @@ func (a *APIRepoTrackerConfig) ToService() (interface{}, error) {
 }
 
 type APISchedulerConfig struct {
-	TaskFinder                             *string `json:"task_finder"`
-	HostAllocator                          *string `json:"host_allocator"`
-	HostAllocatorRoundingRule              *string `json:"host_allocator_rounding_rule"`
-	HostAllocatorFeedbackRule              *string `json:"host_allocator_feedback_rule"`
-	HostsOverallocatedRule                 *string `json:"hosts_overallocated_rule"`
-	FutureHostFraction                     float64 `json:"free_host_fraction"`
-	CacheDurationSeconds                   int     `json:"cache_duration_seconds"`
-	Planner                                *string `json:"planner"`
-	TargetTimeSeconds                      int     `json:"target_time_seconds"`
-	AcceptableHostIdleTimeSeconds          int     `json:"acceptable_host_idle_time_seconds"`
-	AcceptableHostOutdatedIdleTimeSeconds  int     `json:"acceptable_host_outdated_idle_time_seconds"`
-	AcceptableTaskGroupHostIdleTimeSeconds int     `json:"acceptable_task_group_host_idle_time_seconds"`
-	GroupVersions                          bool    `json:"group_versions"`
-	PatchFactor                            int64   `json:"patch_factor"`
-	PatchTimeInQueueFactor                 int64   `json:"patch_time_in_queue_factor"`
-	CommitQueueFactor                      int64   `json:"commit_queue_factor"`
-	MainlineTimeInQueueFactor              int64   `json:"mainline_time_in_queue_factor"`
-	ExpectedRuntimeFactor                  int64   `json:"expected_runtime_factor"`
-	GenerateTaskFactor                     int64   `json:"generate_task_factor"`
-	StepbackTaskFactor                     int64   `json:"stepback_task_factor"`
+	TaskFinder                    *string `json:"task_finder"`
+	HostAllocator                 *string `json:"host_allocator"`
+	HostAllocatorRoundingRule     *string `json:"host_allocator_rounding_rule"`
+	HostAllocatorFeedbackRule     *string `json:"host_allocator_feedback_rule"`
+	HostsOverallocatedRule        *string `json:"hosts_overallocated_rule"`
+	FutureHostFraction            float64 `json:"free_host_fraction"`
+	CacheDurationSeconds          int     `json:"cache_duration_seconds"`
+	Planner                       *string `json:"planner"`
+	TargetTimeSeconds             int     `json:"target_time_seconds"`
+	AcceptableHostIdleTimeSeconds int     `json:"acceptable_host_idle_time_seconds"`
+	GroupVersions                 bool    `json:"group_versions"`
+	PatchFactor                   int64   `json:"patch_factor"`
+	PatchTimeInQueueFactor        int64   `json:"patch_time_in_queue_factor"`
+	CommitQueueFactor             int64   `json:"commit_queue_factor"`
+	MainlineTimeInQueueFactor     int64   `json:"mainline_time_in_queue_factor"`
+	ExpectedRuntimeFactor         int64   `json:"expected_runtime_factor"`
+	GenerateTaskFactor            int64   `json:"generate_task_factor"`
+	StepbackTaskFactor            int64   `json:"stepback_task_factor"`
 }
 
 func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
@@ -1974,8 +1972,6 @@ func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 		a.Planner = utility.ToStringPtr(v.Planner)
 		a.TargetTimeSeconds = v.TargetTimeSeconds
 		a.AcceptableHostIdleTimeSeconds = v.AcceptableHostIdleTimeSeconds
-		a.AcceptableHostOutdatedIdleTimeSeconds = v.AcceptableHostOutdatedIdleTimeSeconds
-		a.AcceptableTaskGroupHostIdleTimeSeconds = v.AcceptableTaskGroupHostIdleTimeSeconds
 		a.GroupVersions = v.GroupVersions
 		a.PatchFactor = v.PatchFactor
 		a.PatchTimeInQueueFactor = v.PatchTimeInQueueFactor
@@ -1992,25 +1988,23 @@ func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 
 func (a *APISchedulerConfig) ToService() (interface{}, error) {
 	return evergreen.SchedulerConfig{
-		TaskFinder:                             utility.FromStringPtr(a.TaskFinder),
-		HostAllocator:                          utility.FromStringPtr(a.HostAllocator),
-		HostAllocatorFeedbackRule:              utility.FromStringPtr(a.HostAllocatorFeedbackRule),
-		HostsOverallocatedRule:                 utility.FromStringPtr(a.HostsOverallocatedRule),
-		FutureHostFraction:                     a.FutureHostFraction,
-		CacheDurationSeconds:                   a.CacheDurationSeconds,
-		Planner:                                utility.FromStringPtr(a.Planner),
-		TargetTimeSeconds:                      a.TargetTimeSeconds,
-		AcceptableHostIdleTimeSeconds:          a.AcceptableHostIdleTimeSeconds,
-		AcceptableHostOutdatedIdleTimeSeconds:  a.AcceptableHostOutdatedIdleTimeSeconds,
-		AcceptableTaskGroupHostIdleTimeSeconds: a.AcceptableTaskGroupHostIdleTimeSeconds,
-		GroupVersions:                          a.GroupVersions,
-		PatchFactor:                            a.PatchFactor,
-		ExpectedRuntimeFactor:                  a.ExpectedRuntimeFactor,
-		PatchTimeInQueueFactor:                 a.PatchTimeInQueueFactor,
-		CommitQueueFactor:                      a.CommitQueueFactor,
-		MainlineTimeInQueueFactor:              a.MainlineTimeInQueueFactor,
-		GenerateTaskFactor:                     a.GenerateTaskFactor,
-		StepbackTaskFactor:                     a.StepbackTaskFactor,
+		TaskFinder:                    utility.FromStringPtr(a.TaskFinder),
+		HostAllocator:                 utility.FromStringPtr(a.HostAllocator),
+		HostAllocatorFeedbackRule:     utility.FromStringPtr(a.HostAllocatorFeedbackRule),
+		HostsOverallocatedRule:        utility.FromStringPtr(a.HostsOverallocatedRule),
+		FutureHostFraction:            a.FutureHostFraction,
+		CacheDurationSeconds:          a.CacheDurationSeconds,
+		Planner:                       utility.FromStringPtr(a.Planner),
+		TargetTimeSeconds:             a.TargetTimeSeconds,
+		AcceptableHostIdleTimeSeconds: a.AcceptableHostIdleTimeSeconds,
+		GroupVersions:                 a.GroupVersions,
+		PatchFactor:                   a.PatchFactor,
+		ExpectedRuntimeFactor:         a.ExpectedRuntimeFactor,
+		PatchTimeInQueueFactor:        a.PatchTimeInQueueFactor,
+		CommitQueueFactor:             a.CommitQueueFactor,
+		MainlineTimeInQueueFactor:     a.MainlineTimeInQueueFactor,
+		GenerateTaskFactor:            a.GenerateTaskFactor,
+		StepbackTaskFactor:            a.StepbackTaskFactor,
 	}, nil
 }
 
