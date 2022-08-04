@@ -35,6 +35,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+const defaultBranch = "main"
+
 // The ProjectRef struct contains general information, independent of any revision control system, needed to track a given project.
 // Booleans that can be defined from both the repo and branch must be pointers, so that branch configurations can specify when to default to the repo.
 type ProjectRef struct {
@@ -445,6 +447,11 @@ func (p *ProjectRef) Add(creator *user.DBUser) error {
 			}
 			return nil
 		}
+	}
+
+	// TODO EVG-17412: Remove the following code that defaults the branch to main.
+	if p.Branch == "" {
+		p.Branch = defaultBranch
 	}
 
 	err := db.Insert(ProjectRefCollection, p)
@@ -929,7 +936,7 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 	if err != nil {
 		return nil, errors.Wrap(err, "finding all enabled projects")
 	}
-	// for every setting in the project ref, if all enabled projects have the same setting, then use that
+	// For every setting in the project ref, if all enabled projects have the same setting, then use that.
 	defer func() {
 		err = recovery.HandlePanicWithError(recover(), err, "project and repo structures do not match")
 	}()
@@ -937,15 +944,17 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 	if !utility.StringSliceContains(repoRef.Admins, u.Username()) {
 		repoRef.Admins = append(repoRef.Admins, u.Username())
 	}
-	// some fields shouldn't be set from projects
+	// Some fields shouldn't be set from projects.
 	repoRef.Id = mgobson.NewObjectId().Hex()
 	repoRef.RepoRefId = ""
 	repoRef.Identifier = ""
-	// set explicitly in case no project is enabled
+	repoRef.DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
+
+	// Set explicitly in case no project is enabled.
 	repoRef.Owner = p.Owner
 	repoRef.Repo = p.Repo
 
-	// creates scope and give user admin access to repo
+	// Creates scope and give user admin access to repo.
 	if err = repoRef.Add(u); err != nil {
 		return nil, errors.Wrapf(err, "adding new repo repo ref for '%s/%s'", p.Owner, p.Repo)
 	}
