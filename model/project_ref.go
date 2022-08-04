@@ -1763,8 +1763,8 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 		}
 	}
 	if p == nil {
-                p = &ProjectRef{} // use a blank project ref to default the section to repo
-        }
+		p = &ProjectRef{} // use a blank project ref to default the section to repo
+	}
 	var err error
 	switch section {
 	case ProjectPageGeneralSection:
@@ -1788,13 +1788,13 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			ProjectRefFilesIgnoredFromCacheKey:   p.FilesIgnoredFromCache,
 		}
 		if !isRepo && !p.UseRepoSettings() {
-                        // Don't validate owner if user is defaulting page to repo
-                        if p.Owner != "" {
-                                allowedOrgs := evergreen.GetEnvironment().Settings().GithubOrgs
-                                if err := validateOwner(p.Owner, allowedOrgs); err != nil {
-                                        return false, errors.Wrap(err, "validating new owner/repo")
-                                }
-                        }
+			// Don't validate owner if user is defaulting page to repo
+			if p.Owner != "" {
+				allowedOrgs := evergreen.GetEnvironment().Settings().GithubOrgs
+				if err := validateOwner(p.Owner, allowedOrgs); err != nil {
+					return false, errors.Wrap(err, "validating new owner/repo")
+				}
+			}
 
 			setUpdate[ProjectRefOwnerKey] = p.Owner
 			setUpdate[ProjectRefRepoKey] = p.Repo
@@ -2110,7 +2110,7 @@ func (p *ProjectRef) ValidateOwnerAndRepo(validOrgs []string) error {
 		return errors.New("no owner/repo specified")
 	}
 
-        return validateOwner(p.Owner, validOrgs)
+	return validateOwner(p.Owner, validOrgs)
 }
 
 func validateOwner(owner string, validOrgs []string) error {

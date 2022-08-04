@@ -2137,33 +2137,35 @@ func TestSaveProjectPageForSection(t *testing.T) {
 		Enabled:          utility.TruePtr(),
 		BatchTime:        10,
 		Id:               "iden_",
+		Identifier:       "identifier",
 		PRTestingEnabled: utility.TruePtr(),
 	}
 	assert.NoError(projectRef.Insert())
-        projectRefs, err := FindMergedEnabledProjectRefsByRepoAndBranch("evergreen-ci", "mci", "main")
-	require.Len(t, projectRefs, 1)
+	projectRef, err := FindBranchProjectRef("identifier")
+	assert.NoError(err)
+	assert.NotNil(t, projectRef)
 
-        update := &ProjectRef{
-                Id: "iden_",
-                Owner: "invalid",
-                Repo: "nonexistent",
-        }
-        _, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
+	update := &ProjectRef{
+		Id:    "iden_",
+		Owner: "invalid",
+		Repo:  "nonexistent",
+	}
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
 	assert.Error(err)
 
-        update = &ProjectRef{
-                Id: "iden_",
-                Owner: "",
-                Repo: "",
-        }
-        _, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
+	update = &ProjectRef{
+		Id:    "iden_",
+		Owner: "",
+		Repo:  "",
+	}
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
 	assert.NoError(err)
 
-        update = &ProjectRef{
-                Id: "iden_",
-                Owner: "evergreen-ci",
-                Repo: "test",
-        }
-        _, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
+	update = &ProjectRef{
+		Id:    "iden_",
+		Owner: "evergreen-ci",
+		Repo:  "test",
+	}
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
 	assert.NoError(err)
 }
