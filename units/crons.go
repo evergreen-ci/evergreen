@@ -1337,7 +1337,7 @@ func PopulatePodAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 	}
 }
 
-func PopulatePodCreationJobs(env evergreen.Environment) amboy.QueueOperation {
+func PopulatePodCreationJobs() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		pods, err := pod.FindByInitializing()
 		if err != nil {
@@ -1350,6 +1350,24 @@ func PopulatePodCreationJobs(env evergreen.Environment) amboy.QueueOperation {
 		}
 
 		return catcher.Resolve()
+	}
+}
+
+// PopulatePodDefinitionCreationJobs populates the jobs to create pod
+// definitions.
+func PopulatePodDefinitionCreationJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		pods, err := pod.FindByInitializing()
+		if err != nil {
+			return errors.Wrap(err, "finding initializing pods")
+		}
+
+		catcher := grip.NewBasicCatcher()
+		for _, p := range pods {
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewPodDefinitionCreationJob(env.Settings().Providers.AWS.Pod.ECS, p.TaskContainerCreationOpts, utility.RoundPartOfMinute(0).Format(TSFormat))), "pod '%s'", p.ID)
+		}
+
+		return errors.Wrap(catcher.Resolve(), "enqueueing pod definition creation jobs")
 	}
 }
 
