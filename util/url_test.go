@@ -9,7 +9,7 @@ import (
 func TestCheckURL(t *testing.T) {
 	url := "issuelink.com"
 	err := CheckURL(url)
-	assert.Contains(t, err.Error(), "error parsing request uri 'issuelink.com'")
+	assert.Contains(t, err.Error(), "parsing request URI 'issuelink.com'")
 
 	url = "http://issuelink.com/"
 	err = CheckURL(url)
@@ -17,7 +17,7 @@ func TestCheckURL(t *testing.T) {
 
 	url = "http://issuelinkcom/ticket"
 	err = CheckURL(url)
-	assert.Contains(t, err.Error(), "url 'http://issuelinkcom/ticket' must have a domain and extension")
+	assert.Contains(t, err.Error(), "URL 'http://issuelinkcom/ticket' must have a domain and extension")
 
 	url = "https://issuelink.com/browse/ticket"
 	err = CheckURL(url)
@@ -25,9 +25,9 @@ func TestCheckURL(t *testing.T) {
 
 	url = "https://"
 	err = CheckURL(url)
-	assert.Contains(t, err.Error(), "url 'https://' must have a host name")
+	assert.Contains(t, err.Error(), "URL 'https://' must have a host name")
 
 	url = "vscode://issuelink.com"
 	err = CheckURL(url)
-	assert.Contains(t, err.Error(), "url 'vscode://issuelink.com' scheme 'vscode' should either be 'http' or 'https'")
+	assert.Contains(t, err.Error(), "scheme 'vscode' for URL 'vscode://issuelink.com' should either be 'http' or 'https'")
 }

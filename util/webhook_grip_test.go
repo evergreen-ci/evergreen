@@ -116,7 +116,7 @@ func TestEvergreenWebhookSenderWithBadSecret(t *testing.T) {
 	}))
 	s.Send(m)
 
-	assert.EqualError(<-channel, "evergreen-webhook response status was 400 Bad Request")
+	assert.EqualError(<-channel, "response was 400 (Bad Request)")
 	assert.Equal("https://example.com", transport.lastUrl)
 }
 

@@ -614,7 +614,7 @@ func (s *AdminSuite) TestContainerPoolsConfig() {
 	}
 
 	err := invalidConfig.ValidateAndDefault()
-	s.EqualError(err, "container pool field max_containers must be positive integer")
+	s.EqualError(err, "container pool max containers must be positive integer")
 
 	validConfig := ContainerPoolsConfig{
 		Pools: []ContainerPool{

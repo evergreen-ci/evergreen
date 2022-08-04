@@ -38,11 +38,11 @@ func (c *ContainerPoolsConfig) Get(env Environment) error {
 			*c = ContainerPoolsConfig{}
 			return nil
 		}
-		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
+		return errors.Wrapf(err, "getting config section '%s'", c.SectionId())
 	}
 
 	if err := res.Decode(c); err != nil {
-		return errors.Wrap(err, "problem decoding result")
+		return errors.Wrapf(err, "decoding config section '%s'", c.SectionId())
 	}
 
 	return nil
@@ -60,7 +60,7 @@ func (c *ContainerPoolsConfig) Set() error {
 		},
 	}, options.Update().SetUpsert(true))
 
-	return errors.Wrapf(err, "error updating section %s", c.SectionId())
+	return errors.Wrapf(err, "updating config section '%s'", c.SectionId())
 }
 
 // GetContainerPool retrieves the container pool with a given id from
@@ -78,7 +78,7 @@ func (c *ContainerPoolsConfig) ValidateAndDefault() error {
 	// ensure that max_containers is positive
 	for _, pool := range c.Pools {
 		if pool.MaxContainers <= 0 {
-			return errors.Errorf("container pool field max_containers must be positive integer")
+			return errors.Errorf("container pool max containers must be positive integer")
 		}
 	}
 	return nil

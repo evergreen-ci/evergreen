@@ -1166,7 +1166,7 @@ func (w WindowsVersion) Validate() error {
 	case Windows2022, Windows2019, Windows2016:
 		return nil
 	default:
-		return errors.Errorf("unrecognized windows version '%s'", w)
+		return errors.Errorf("unrecognized Windows version '%s'", w)
 	}
 }
 

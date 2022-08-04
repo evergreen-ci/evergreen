@@ -52,11 +52,11 @@ func (c *PrestoConfig) Get(env Environment) error {
 			*c = PrestoConfig{}
 			return nil
 		}
-		return errors.Wrapf(err, "retrieving section '%s'", c.SectionId())
+		return errors.Wrapf(err, "getting config section '%s'", c.SectionId())
 	}
 
 	if err := res.Decode(c); err != nil {
-		return errors.Wrapf(err, "decoding section '%s'", c.SectionId())
+		return errors.Wrapf(err, "decoding config section '%s'", c.SectionId())
 	}
 
 	return nil
@@ -69,7 +69,7 @@ func (c *PrestoConfig) Set() error {
 	coll := env.DB().Collection(ConfigCollection)
 
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{"$set": c}, options.Update().SetUpsert(true))
-	return errors.Wrapf(err, "updating section '%s'", c.SectionId())
+	return errors.Wrapf(err, "updating config section '%s'", c.SectionId())
 }
 
 func (*PrestoConfig) ValidateAndDefault() error { return nil }

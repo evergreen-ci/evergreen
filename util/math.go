@@ -23,13 +23,13 @@ func Min(a ...int) int {
 func TryParseFloat(s string) (float64, error) {
 	f, err := strconv.ParseFloat(s, 64)
 	if err != nil {
-		return math.NaN(), errors.Wrapf(err, "unable to parse %s as float", s)
+		return math.NaN(), errors.Wrapf(err, "parsing '%s' as float", s)
 	}
 	if math.IsNaN(f) {
-		return math.NaN(), errors.Errorf("%s is not a number", s)
+		return math.NaN(), errors.Errorf("float '%s' is not a number", s)
 	}
 	if math.IsInf(f, 0) {
-		return math.NaN(), errors.Errorf("%s is either too large or too small", s)
+		return math.NaN(), errors.Errorf("float '%s' is either too large or too small", s)
 	}
 	return f, nil
 }
