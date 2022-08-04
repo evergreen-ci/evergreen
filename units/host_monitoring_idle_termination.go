@@ -162,6 +162,13 @@ func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, h *host.Host, d
 	communicationTime := h.GetElapsedCommunicationTime()
 
 	idleThreshold := d.HostAllocatorSettings.AcceptableHostIdleTime
+	if idleThreshold == 0 {
+		conf, err := evergreen.GetConfig()
+		if err != nil {
+			return errors.Wrap(err, "getting evergreen configuration")
+		}
+		idleThreshold = time.Duration(conf.Scheduler.AcceptableHostIdleTimeSeconds) * time.Second
+	}
 	if h.RunningTaskGroup != "" {
 		idleThreshold = idleThreshold * 2
 	} else if hostHasOutdatedAMI(*h, d) {
