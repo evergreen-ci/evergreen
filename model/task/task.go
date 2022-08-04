@@ -2523,7 +2523,7 @@ func ArchiveMany(tasks []Task) error {
 		bundledTasks = append(bundledTasks, t.Id)
 
 		if t.DisplayOnly {
-			if len(t.ExecutionTasks) > 0 && shouldRestartTask(t.ResetFailedWhenFinished, t.ResetWhenFinished, t.Status) {
+			if shouldRestartTask(t.ResetFailedWhenFinished, t.ResetWhenFinished, t.Status) {
 				toArchive = append(toArchive, t.makeArchivedTask())
 				toUpdateTaskIds = append(toUpdateTaskIds, t.Id)
 
@@ -2584,7 +2584,7 @@ func archiveAll(tasksIds []string, toUpdateTaskIds []string, toArchive []interfa
 		}
 		if len(tasksIds) > 0 {
 
-			// Background compatability call + LPE setting for all tasks
+			// Background compatibility call + LPE setting for all tasks
 			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(sessCtx,
 				bson.D{{Key: "_id", Value: bson.D{{Key: "$in", Value: tasksIds}}}}, // Query all 'taskIds'
 				bson.A{ // Pipeline
