@@ -118,11 +118,11 @@ func (c *AuthConfig) Get(env Environment) error {
 			*c = AuthConfig{}
 			return nil
 		}
-		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
+		return errors.Wrapf(err, "getting config section '%s'", c.SectionId())
 	}
 
 	if err := res.Decode(c); err != nil {
-		return errors.Wrap(err, "problem decoding result")
+		return errors.Wrapf(err, "decoding config section '%s'", c.SectionId())
 	}
 
 	return nil
@@ -147,7 +147,7 @@ func (c *AuthConfig) Set() error {
 			AuthAllowServiceUsersKey:       c.AllowServiceUsers,
 		}}, options.Update().SetUpsert(true))
 
-	return errors.Wrapf(err, "error updating section %s", c.SectionId())
+	return errors.Wrapf(err, "updating config section '%s'", c.SectionId())
 }
 
 func (c *AuthConfig) checkDuplicateUsers() error {
@@ -182,7 +182,7 @@ func (c *AuthConfig) ValidateAndDefault() error {
 		AuthMultiKey}, c.PreferredType), "invalid auth type '%s'", c.PreferredType)
 
 	if c.LDAP == nil && c.Naive == nil && c.OnlyAPI == nil && c.Github == nil && c.Okta == nil && c.Multi == nil {
-		catcher.Add(errors.New("You must specify one form of authentication"))
+		catcher.Add(errors.New("must specify one form of authentication"))
 	}
 
 	catcher.Add(c.checkDuplicateUsers())
@@ -198,7 +198,7 @@ func (c *AuthConfig) ValidateAndDefault() error {
 
 	if c.Github != nil {
 		if c.Github.Users == nil && c.Github.Organization == "" {
-			catcher.Add(errors.New("Must specify either a set of users or an organization for Github Authentication"))
+			catcher.Add(errors.New("must specify either a set of users or an organization for GitHub authentication"))
 		}
 	}
 

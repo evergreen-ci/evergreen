@@ -105,6 +105,7 @@ func TestModelConversion(t *testing.T) {
 	require.Equal(len(testSettings.Amboy.NamedQueues), len(apiSettings.Amboy.NamedQueues))
 	for i := range testSettings.Amboy.NamedQueues {
 		assert.Equal(testSettings.Amboy.NamedQueues[i].Name, utility.FromStringPtr(apiSettings.Amboy.NamedQueues[i].Name))
+		assert.Equal(testSettings.Amboy.NamedQueues[i].Regexp, utility.FromStringPtr(apiSettings.Amboy.NamedQueues[i].Regexp))
 		assert.Equal(testSettings.Amboy.NamedQueues[i].NumWorkers, apiSettings.Amboy.NamedQueues[i].NumWorkers)
 		assert.Equal(testSettings.Amboy.NamedQueues[i].SampleSize, apiSettings.Amboy.NamedQueues[i].SampleSize)
 		assert.Equal(testSettings.Amboy.NamedQueues[i].LockTimeoutSeconds, apiSettings.Amboy.NamedQueues[i].LockTimeoutSeconds)
@@ -219,6 +220,7 @@ func TestModelConversion(t *testing.T) {
 	require.Equal(len(testSettings.Amboy.NamedQueues), len(dbSettings.Amboy.NamedQueues))
 	for i := range testSettings.Amboy.NamedQueues {
 		assert.Equal(testSettings.Amboy.NamedQueues[i].Name, dbSettings.Amboy.NamedQueues[i].Name)
+		assert.Equal(testSettings.Amboy.NamedQueues[i].Regexp, dbSettings.Amboy.NamedQueues[i].Regexp)
 		assert.Equal(testSettings.Amboy.NamedQueues[i].NumWorkers, dbSettings.Amboy.NamedQueues[i].NumWorkers)
 		assert.Equal(testSettings.Amboy.NamedQueues[i].SampleSize, dbSettings.Amboy.NamedQueues[i].SampleSize)
 		assert.Equal(testSettings.Amboy.NamedQueues[i].LockTimeoutSeconds, dbSettings.Amboy.NamedQueues[i].LockTimeoutSeconds)

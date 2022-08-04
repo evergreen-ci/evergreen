@@ -13,7 +13,7 @@ const Collection = "pod_definitions"
 var (
 	IDKey           = bsonutil.MustHaveTag(PodDefinition{}, "ID")
 	ExternalIDKey   = bsonutil.MustHaveTag(PodDefinition{}, "ExternalID")
-	DigestKey       = bsonutil.MustHaveTag(PodDefinition{}, "Digest")
+	FamilyKey       = bsonutil.MustHaveTag(PodDefinition{}, "Family")
 	LastAccessedKey = bsonutil.MustHaveTag(PodDefinition{}, "LastAccessed")
 )
 
@@ -39,6 +39,11 @@ func UpsertOne(query, update interface{}) (*adb.ChangeInfo, error) {
 	return db.Upsert(Collection, query, update)
 }
 
+// UpdateOne updates an existing pod definition.
+func UpdateOne(query, update interface{}) error {
+	return db.Update(Collection, query, update)
+}
+
 // FindOneID returns a query to find a pod definition with the given ID.
 func FindOneID(id string) (*PodDefinition, error) {
 	return FindOne(db.Query(bson.M{
@@ -57,10 +62,9 @@ func FindOneByExternalID(id string) (*PodDefinition, error) {
 	return FindOne(db.Query(ByExternalID(id)))
 }
 
-// FindOneByDigest returns a query to find a pod definition with a matching
-// hash digest.
-func FindOneByDigest(digest string) (*PodDefinition, error) {
+// FindOneByFamily finds a pod definition with the given family name.
+func FindOneByFamily(family string) (*PodDefinition, error) {
 	return FindOne(db.Query(bson.M{
-		DigestKey: digest,
+		FamilyKey: family,
 	}))
 }

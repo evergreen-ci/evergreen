@@ -56,7 +56,7 @@ func (j *volumeExpirationWarningsJob) Run(ctx context.Context) {
 
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
-		j.AddError(errors.Wrap(err, "error retrieving admin settings"))
+		j.AddError(errors.Wrap(err, "getting service flags"))
 		return
 	}
 	if flags.AlertsDisabled {
@@ -79,7 +79,7 @@ func (j *volumeExpirationWarningsJob) Run(ctx context.Context) {
 
 	for _, v := range unattachedVolumes {
 		if ctx.Err() != nil {
-			j.AddError(errors.New("volume expiration warning run canceled"))
+			j.AddError(errors.Wrap(ctx.Err(), "volume expiration warning run canceled"))
 			return
 		}
 		if err = runVolumeWarningTriggers(v); err != nil {
@@ -87,7 +87,7 @@ func (j *volumeExpirationWarningsJob) Run(ctx context.Context) {
 			grip.Error(message.WrapError(err, message.Fields{
 				"runner":    "monitor",
 				"id":        j.ID(),
-				"message":   "Error queuing alert",
+				"message":   "error queueing volume expiration warning alert",
 				"volume_id": v.ID,
 			}))
 		}
@@ -101,7 +101,7 @@ func runVolumeWarningTriggers(v host.Volume) error {
 	triggerHours := []int{24 * 21, 24 * 14, 24 * 7, 12, 2}
 	for _, numHours := range triggerHours {
 		ok, err := tryVolumeNotification(v, numHours)
-		catcher.Add(err)
+		catcher.Add(errors.Wrapf(err, "trying to send volume expiration warning notification"))
 		if ok {
 			return catcher.Resolve()
 		}

@@ -254,7 +254,7 @@ func TestAllocate(t *testing.T) {
 
 			require.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection, event.LegacyEventLogCollection))
 
-			p, err := pod.NewTaskIntentPod(pod.TaskIntentPodOptions{
+			p, err := pod.NewTaskIntentPod(evergreen.ECSConfig{}, pod.TaskIntentPodOptions{
 				ID:         primitive.NewObjectID().Hex(),
 				CPU:        256,
 				MemoryMB:   512,

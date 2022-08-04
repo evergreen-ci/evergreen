@@ -191,7 +191,7 @@ func TestHostTerminationJob(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(host.Collection, event.LegacyEventLogCollection), "error clearing host collection")
+			require.NoError(t, db.ClearCollections(host.Collection, event.LegacyEventLogCollection))
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 

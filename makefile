@@ -110,13 +110,13 @@ smokeFile := $(if $(SMOKE_TEST_FILE),--test-file $(SMOKE_TEST_FILE),)
 
 # start rules for building services and clients
 ifeq ($(OS),Windows_NT)
-localClientBinary := $(clientBuildDir)/$(goos)_$(goarch)/evergreen.exe
+localClientBinary := $(clientBuildDir)/$(goos)_$(goarch)/$(windowsBinaryBasename)
 else
-localClientBinary := $(clientBuildDir)/$(goos)_$(goarch)/evergreen
+localClientBinary := $(clientBuildDir)/$(goos)_$(goarch)/$(unixBinaryBasename)
 endif
 cli:$(localClientBinary)
 clis:$(clientBinaries)
-$(clientBuildDir)/%/evergreen $(clientBuildDir)/%/evergreen.exe:$(buildDir)/build-cross-compile $(srcFiles)
+$(clientBuildDir)/%/$(unixBinaryBasename) $(clientBuildDir)/%/$(windowsBinaryBasename):$(buildDir)/build-cross-compile $(srcFiles) go.mod go.sum
 	@./$(buildDir)/build-cross-compile -buildName=$* -ldflags="$(ldFlags)" -goBinary="$(gobin)" -directory=$(clientBuildDir) -source=$(clientSource) -output=$@
 # Targets to upload the CLI binaries to S3.
 $(buildDir)/upload-s3:cmd/upload-s3/upload-s3.go

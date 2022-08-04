@@ -15,27 +15,27 @@ import (
 
 func HandlePoisonedHost(ctx context.Context, env evergreen.Environment, h *host.Host, reason string) error {
 	if h == nil {
-		return errors.New("no host found")
+		return errors.New("host cannot be nil")
 	}
 	catcher := grip.NewBasicCatcher()
 	if h.ParentID != "" {
 		parent, err := host.FindOneId(h.ParentID)
 		if err != nil {
-			return errors.Wrap(err, "error finding parent host")
+			return errors.Wrapf(err, "finding parent host for container '%s'", h.Id)
 		}
 		if parent != nil {
 			containers, err := parent.GetActiveContainers()
 			if err != nil {
-				return errors.Wrap(err, "error getting containers")
+				return errors.Wrapf(err, "getting containers under parent container '%s'", h.ParentID)
 			}
 
 			for i := range containers {
-				catcher.Add(DisableAndNotifyPoisonedHost(ctx, env, &containers[i], reason))
+				catcher.Wrapf(DisableAndNotifyPoisonedHost(ctx, env, &containers[i], reason), "disabling poisoned container '%s' under parent '%s'", containers[i].Id, h.ParentID)
 			}
-			catcher.Add(DisableAndNotifyPoisonedHost(ctx, env, parent, reason))
+			catcher.Wrapf(DisableAndNotifyPoisonedHost(ctx, env, parent, reason), "disabling poisoned parent '%s' of container '%s'", h.ParentID, h.Id)
 		}
 	} else {
-		catcher.Add(DisableAndNotifyPoisonedHost(ctx, env, h, reason))
+		catcher.Wrapf(DisableAndNotifyPoisonedHost(ctx, env, h, reason), "disabling poisoned host '%s'", h.Id)
 	}
 
 	return catcher.Resolve()
@@ -48,7 +48,7 @@ func DisableAndNotifyPoisonedHost(ctx context.Context, env evergreen.Environment
 
 	err := h.DisablePoisonedHost(reason)
 	if err != nil {
-		return errors.Wrap(err, "error disabling poisoned host")
+		return errors.Wrap(err, "disabling poisoned host")
 	}
 
 	if err = env.RemoteQueue().Put(ctx, NewDecoHostNotifyJob(env, h, nil, reason)); err != nil {

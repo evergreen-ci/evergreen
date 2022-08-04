@@ -95,7 +95,7 @@ func (s *githubStatusUpdateSuite) TestRunInDegradedMode() {
 	job.Run(context.Background())
 
 	s.Error(job.Error())
-	s.Contains(job.Error().Error(), "github status updates are disabled, not updating status")
+	s.Contains(job.Error().Error(), "GitHub status updates are disabled, not updating status")
 }
 
 func (s *githubStatusUpdateSuite) TestForPatchCreated() {

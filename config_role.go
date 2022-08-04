@@ -50,7 +50,7 @@ func (m *LDAPRoleMap) Add(group, roleID string) error {
 	)
 
 	if err != nil || res.MatchedCount > 0 {
-		return errors.Wrapf(err, "error adding %s:%s to the LDAP-role map", group, roleID)
+		return errors.Wrapf(err, "adding '%s:%s' to the LDAP-role map", group, roleID)
 	}
 
 	_, err = coll.UpdateOne(ctx, byId(s.SectionId()), bson.M{
@@ -62,7 +62,7 @@ func (m *LDAPRoleMap) Add(group, roleID string) error {
 		},
 	}, options.Update().SetUpsert(true))
 
-	return errors.Wrapf(err, "error adding %s:%s to the LDAP-role map", group, roleID)
+	return errors.Wrapf(err, "adding '%s:%s' to the LDAP-role map", group, roleID)
 }
 
 // Remove removes a LDAP group to role mapping from the database.
@@ -81,5 +81,5 @@ func (m *LDAPRoleMap) Remove(group string) error {
 		},
 	})
 
-	return errors.Wrapf(err, "error removing %s from the LDAP-role map", group)
+	return errors.Wrapf(err, "removing group '%s' from the LDAP-role map", group)
 }

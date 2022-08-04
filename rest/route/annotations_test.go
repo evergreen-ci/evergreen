@@ -422,8 +422,8 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskFailedId"})
 
 	err = h.Parse(ctx, r)
-	assert.Contains(t, err.Error(), "error parsing request uri 'issuelink.com'")
-	assert.Contains(t, err.Error(), "url 'https://issuelinkcom' must have a domain and extension")
+	assert.Contains(t, err.Error(), "parsing request URI 'issuelink.com'")
+	assert.Contains(t, err.Error(), "URL 'https://issuelinkcom' must have a domain and extension")
 	assert.Contains(t, err.Error(), "confidence score '-12.000000' must be between 0 and 100")
 	assert.Contains(t, err.Error(), "confidence score '112.000000' must be between 0 and 100")
 
@@ -872,7 +872,7 @@ func TestCreatedTicketByTaskPutHandlerParse(t *testing.T) {
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "t1"})
 	assert.NoError(t, err)
 	err = h.Parse(ctx, r)
-	assert.Contains(t, err.Error(), "error parsing request uri 'issuelink.com'")
+	assert.Contains(t, err.Error(), "parsing request URI 'issuelink.com'")
 
 	// test with a task that doesn't exist
 	h = &createdTicketByTaskPutHandler{}

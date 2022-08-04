@@ -1,6 +1,7 @@
 package evergreen
 
 import (
+	"regexp"
 	"time"
 
 	"github.com/mongodb/amboy"
@@ -12,6 +13,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+// kim: TODO: continue here
 
 type AmboyConfig struct {
 	Name                                  string                  `bson:"name" json:"name" yaml:"name"`
@@ -46,6 +49,7 @@ type AmboyRetryConfig struct {
 // queues in the Amboy queue group.
 type AmboyNamedQueueConfig struct {
 	Name               string `bson:"name" json:"name" yaml:"name"`
+	Regexp             string `bson:"regexp" json:"regexp" yaml:"regexp"`
 	NumWorkers         int    `bson:"num_workers" json:"num_workers" yaml:"num_workers"`
 	SampleSize         int    `bson:"sample_size" json:"sample_size" yaml:"sample_size"`
 	LockTimeoutSeconds int    `bson:"lock_timeout_seconds" json:"lock_timeout_seconds" yaml:"lock_timeout_seconds"`
@@ -83,11 +87,11 @@ func (c *AmboyConfig) Get(env Environment) error {
 			*c = AmboyConfig{}
 			return nil
 		}
-		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
+		return errors.Wrapf(err, "getting config section '%s'", c.SectionId())
 	}
 
 	if err := res.Decode(c); err != nil {
-		return errors.Wrap(err, "problem decoding result")
+		return errors.Wrapf(err, "decoding config section '%s'", c.SectionId())
 	}
 	return nil
 }
@@ -118,7 +122,7 @@ func (c *AmboyConfig) Set() error {
 		},
 	}, options.Update().SetUpsert(true))
 
-	return errors.Wrapf(err, "error updating section %s", c.SectionId())
+	return errors.Wrapf(err, "updating config section '%s'", c.SectionId())
 }
 
 const (
@@ -141,6 +145,17 @@ const (
 )
 
 func (c *AmboyConfig) ValidateAndDefault() error {
+	catcher := grip.NewBasicCatcher()
+	for _, namedQueue := range c.NamedQueues {
+		if namedQueue.Regexp != "" {
+			_, err := regexp.Compile(namedQueue.Regexp)
+			catcher.Wrapf(err, "invalid regexp '%s'", namedQueue.Regexp)
+		}
+	}
+	if catcher.HasErrors() {
+		return errors.Wrap(catcher.Resolve(), "invalid regexp for named queues")
+	}
+
 	if c.Name == "" {
 		c.Name = DefaultAmboyQueueName
 	}

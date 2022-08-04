@@ -514,7 +514,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     }
 
     if (!$scope.validAmboyNamedQueue($scope.new_amboy_named_queue)) {
-      $scope.invalidAmboyNamedQueue = "Amboy queue name is required.";
+      $scope.invalidAmboyNamedQueue = "Amboy queue name or regexp is required.";
       return
     }
 
@@ -524,7 +524,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
   }
 
   $scope.validAmboyNamedQueue = function (queue) {
-    return queue && queue.name;
+    return queue && (queue.name || queue.regexp);
   }
 
   $scope.deleteAmboyNamedQueue = function (index) {

@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSpawnhostExpirationCheckJob(t *testing.T) {
@@ -50,5 +51,6 @@ func TestSpawnhostExpirationCheckJob(t *testing.T) {
 
 	found, err := host.FindOneId(h.Id)
 	assert.NoError(t, err)
+	require.NotNil(t, found)
 	assert.True(t, found.ExpirationTime.Sub(h.ExpirationTime) > 0)
 }

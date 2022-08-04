@@ -70,13 +70,13 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 
 	config, err := evergreen.GetConfig()
 	if err != nil {
-		j.AddError(errors.Wrap(err, "Can't get evergreen configuration"))
+		j.AddError(errors.Wrap(err, "getting admin settings"))
 		return
 	}
 
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
-		j.AddError(errors.Wrapf(err, "Can't get degraded mode flags"))
+		j.AddError(errors.Wrapf(err, "getting service flags"))
 		return
 	}
 
@@ -90,7 +90,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 
 	distro, err := distro.FindByIdWithDefaultSettings(j.DistroID)
 	if err != nil {
-		j.AddError(errors.Wrapf(err, "Database error for find() by distro id '%s'", j.DistroID))
+		j.AddError(errors.Wrapf(err, "finding distro '%s'", j.DistroID))
 		return
 	}
 	if distro == nil {
@@ -98,12 +98,12 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		return
 	}
 	if _, err = distro.GetResolvedHostAllocatorSettings(config); err != nil {
-		j.AddError(errors.Errorf("distro '%s' host allocator settings failed to resolve", j.DistroID))
+		j.AddError(errors.Errorf("resolving distro '%s' host allocator settings", j.DistroID))
 		return
 	}
 
 	if err = scheduler.UpdateStaticDistro(*distro); err != nil {
-		j.AddError(errors.Wrap(err, "problem updating static hosts"))
+		j.AddError(errors.Wrapf(err, "updating static host in distro '%s'", j.DistroID))
 		return
 	}
 
@@ -111,30 +111,30 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	if distro.ContainerPool != "" {
 		containerPool = config.ContainerPools.GetContainerPool(distro.ContainerPool)
 		if containerPool == nil {
-			j.AddError(errors.Wrapf(err, "Distro container pool not found for distro id '%s'", j.DistroID))
+			j.AddError(errors.Wrapf(err, "container pool not found for distro '%s'", j.DistroID))
 			return
 		}
 	}
 
 	if err = host.RemoveStaleInitializing(j.DistroID); err != nil {
-		j.AddError(errors.Wrap(err, "Problem removing previous intent hosts before creating new ones"))
+		j.AddError(errors.Wrap(err, "removing stale initializing intent hosts"))
 		return
 	}
 	if err = host.MarkStaleBuildingAsFailed(j.DistroID); err != nil {
-		j.AddError(errors.Wrap(err, "marking building hosts as failed"))
+		j.AddError(errors.Wrap(err, "marking building intent hosts as failed"))
 		return
 	}
 
 	existingHosts, err := host.AllActiveHosts(j.DistroID)
 	if err != nil {
-		j.AddError(errors.Wrap(err, "Database error retrieving running hosts"))
+		j.AddError(errors.Wrap(err, "finding active hosts"))
 		return
 	}
 	upHosts := existingHosts.Uphosts()
 
 	distroQueueInfo, err := model.GetDistroQueueInfo(j.DistroID)
 	if err != nil {
-		j.AddError(errors.Wrapf(err, "Database error retrieving DistroQueueInfo for distro id '%s'", j.DistroID))
+		j.AddError(errors.Wrapf(err, "getting distro queue info for distro '%s'", j.DistroID))
 		return
 	}
 
@@ -157,7 +157,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	// nHosts is the number of additional hosts desired.
 	nHosts, nHostsFree, err := hostAllocator(ctx, &hostAllocatorData)
 	if err != nil {
-		j.AddError(errors.Wrapf(err, "Error calculating the number of new hosts required for distro id '%s'", j.DistroID))
+		j.AddError(errors.Wrapf(err, "calculating the number of new hosts required for distro '%s'", j.DistroID))
 		return
 	}
 
@@ -177,7 +177,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	hostSpawningBegins := time.Now()
 	hostsSpawned, err := scheduler.SpawnHosts(ctx, *distro, nHosts, containerPool)
 	if err != nil {
-		j.AddError(errors.Wrap(err, "Error spawning new hosts"))
+		j.AddError(errors.Wrap(err, "spawning new hosts"))
 		return
 	}
 
@@ -298,7 +298,7 @@ func (j *hostAllocatorJob) setTargetAndTerminate(ctx context.Context, numUpHosts
 		err := amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewHostDrawdownJob(j.env, drawdownInfo, utility.RoundPartOfMinute(1).Format(TSFormat)))
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"message":  "Error drawing down hosts",
+				"message":  "could not enqueue job to draw down hosts",
 				"instance": j.ID(),
 				"distro":   distro.Id,
 			}))

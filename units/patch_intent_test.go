@@ -743,7 +743,7 @@ func (s *PatchIntentUnitsSuite) TestRunInDegradedModeWithGithubIntent() {
 	s.NotNil(j)
 	j.Run(context.Background())
 	s.Error(j.Error())
-	s.Contains(j.Error().Error(), "github pr testing is disabled, not processing pull request")
+	s.Contains(j.Error().Error(), "not processing PR because GitHub PR testing is disabled")
 
 	patchDoc, err := patch.FindOne(patch.ById(patchID))
 	s.NoError(err)

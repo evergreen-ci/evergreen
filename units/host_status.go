@@ -69,12 +69,12 @@ func (j *cloudHostReadyJob) Run(ctx context.Context) {
 	// Collect hosts by provider and region
 	settings, err := evergreen.GetConfig()
 	if err != nil {
-		j.AddError(errors.Wrap(err, "unable to get evergreen settings"))
+		j.AddError(errors.Wrap(err, "getting admin settings"))
 		return
 	}
 	startingHostsByClient, err := host.StartingHostsByClient(settings.HostInit.CloudStatusBatchSize)
 	if err != nil {
-		j.AddError(errors.Wrap(err, "can't get starting hosts"))
+		j.AddError(errors.Wrap(err, "getting starting hosts"))
 		return
 	}
 clientsLoop:
@@ -94,7 +94,7 @@ clientsLoop:
 		}
 		m, err := cloud.GetManager(ctx, j.env, mgrOpts)
 		if err != nil {
-			j.AddError(errors.Wrap(err, "error getting cloud manager"))
+			j.AddError(errors.Wrap(err, "getting cloud manager"))
 			return
 		}
 		if batch, ok := m.(cloud.BatchManager); ok {
@@ -114,7 +114,7 @@ clientsLoop:
 					j.AddError(j.terminateUnknownHosts(ctx, err.Error()))
 					continue clientsLoop
 				}
-				j.AddError(errors.Wrap(err, "error getting host statuses for providers"))
+				j.AddError(errors.Wrap(err, "getting host statuses for providers"))
 				continue clientsLoop
 			}
 			if len(statuses) != len(hosts) {
@@ -122,7 +122,7 @@ clientsLoop:
 				continue clientsLoop
 			}
 			for i := range hosts {
-				j.AddError(errors.Wrapf(j.setCloudHostStatus(ctx, m, hosts[i], statuses[i]), "setting instance status for host '%s'", hosts[i].Id))
+				j.AddError(errors.Wrapf(j.setCloudHostStatus(ctx, m, hosts[i], statuses[i]), "setting status for host '%s' based on its cloud instance's status", hosts[i].Id))
 			}
 			continue clientsLoop
 		}
@@ -138,7 +138,7 @@ clientsLoop:
 				"duration_secs": time.Since(startAt).Seconds(),
 			})
 			if err != nil {
-				j.AddError(errors.Wrapf(err, "error checking instance status of host %s", h.Id))
+				j.AddError(errors.Wrapf(err, "checking instance status of host '%s'", h.Id))
 				continue clientsLoop
 			}
 			if cloudStatus == cloud.StatusNonExistent {
@@ -151,7 +151,7 @@ clientsLoop:
 				}))
 				continue clientsLoop
 			}
-			j.AddError(errors.Wrapf(j.setCloudHostStatus(ctx, m, h, cloudStatus), "setting instance status for host '%s'", h.Id))
+			j.AddError(errors.Wrapf(j.setCloudHostStatus(ctx, m, h, cloudStatus), "setting status for host '%s' based on its cloud instance's status", h.Id))
 		}
 	}
 }
@@ -159,7 +159,7 @@ clientsLoop:
 func (j *cloudHostReadyJob) terminateUnknownHosts(ctx context.Context, awsErr string) error {
 	pieces := strings.Split(awsErr, "'")
 	if len(pieces) != 3 {
-		return errors.Errorf("unexpected format of AWS error: %s", awsErr)
+		return errors.Errorf("expected AWS error message to contain three single quotes, but actual error message is: %s", awsErr)
 	}
 	instanceIDs := strings.Split(pieces[1], ",")
 	grip.Warning(message.Fields{
@@ -170,7 +170,7 @@ func (j *cloudHostReadyJob) terminateUnknownHosts(ctx context.Context, awsErr st
 	for _, hostID := range instanceIDs {
 		h, err := host.FindOneId(hostID)
 		if err != nil {
-			catcher.Add(err)
+			catcher.Wrapf(err, "finding host '%s'", h.Id)
 			continue
 		}
 		if h == nil {
@@ -180,7 +180,7 @@ func (j *cloudHostReadyJob) terminateUnknownHosts(ctx context.Context, awsErr st
 			TerminateIfBusy:   true,
 			TerminationReason: "instance ID not found",
 		})
-		catcher.Add(amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), terminationJob))
+		catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), terminationJob), "enqueueing termination job for host '%s'", hostID)
 	}
 	return catcher.Resolve()
 }
@@ -218,7 +218,7 @@ func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, m cloud.Mana
 		return catcher.Resolve()
 	case cloud.StatusRunning:
 		if err := j.initialSetup(ctx, m, &h); err != nil {
-			return errors.Wrap(err, "problem doing initial setup")
+			return errors.Wrap(err, "performing initial setup")
 		}
 		catcher := grip.NewBasicCatcher()
 		catcher.Wrapf(j.setNextState(ctx, &h), "transitioning host state")
@@ -273,7 +273,7 @@ func (j *cloudHostReadyJob) setNextState(ctx context.Context, h *host.Host) erro
 
 func (j *cloudHostReadyJob) initialSetup(ctx context.Context, cloudMgr cloud.Manager, h *host.Host) error {
 	if err := cloudMgr.OnUp(ctx, h); err != nil {
-		return errors.Wrapf(err, "OnUp callback failed for host %s", h.Id)
+		return errors.Wrapf(err, "performing cloud manager to initialize up host  '%s'", h.Id)
 	}
 	return j.setDNSName(ctx, cloudMgr, h)
 }
@@ -285,7 +285,7 @@ func (j *cloudHostReadyJob) setDNSName(ctx context.Context, cloudMgr cloud.Manag
 
 	hostDNS, err := cloudMgr.GetDNSName(ctx, h)
 	if err != nil {
-		return errors.Wrapf(err, "error checking DNS name for host %s", h.Id)
+		return errors.Wrapf(err, "checking DNS name for host '%s'", h.Id)
 	}
 
 	if hostDNS == "" {
@@ -293,12 +293,12 @@ func (j *cloudHostReadyJob) setDNSName(ctx context.Context, cloudMgr cloud.Manag
 		if h.IP != "" {
 			return nil
 		}
-		return errors.Errorf("instance %s is running but not returning a DNS name or IP address", h.Id)
+		return errors.Errorf("host '%s' is running but not returning a DNS name or IP address", h.Id)
 	}
 
 	// update the host's DNS name
 	if err = h.SetDNSName(hostDNS); err != nil {
-		return errors.Wrapf(err, "error setting DNS name for host %s", h.Id)
+		return errors.Wrapf(err, "setting DNS name for host '%s'", h.Id)
 	}
 
 	return nil

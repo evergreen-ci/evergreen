@@ -6,8 +6,6 @@ import (
 	"time"
 )
 
-// TODO write code generators to define additional forms of these types as needed.
-
 // CachedIntValueRefresher provides a mechanism for CachedIntValues to
 // update their values when the current cached value
 // expires. Implementations are responsible for logging  errors, as

@@ -26,10 +26,8 @@ func TestLastContainerFinishTimeJob(t *testing.T) {
 	durationOne := 5 * time.Minute
 	durationTwo := 30 * time.Minute
 
-	require.NoError(t, db.Clear(host.Collection), "error clearing %v collections", host.Collection)
-	require.NoError(t, db.Clear(task.Collection), "Error clearing '%v' collection", task.Collection)
+	require.NoError(t, db.ClearCollections(host.Collection, task.Collection))
 
-	// this host p1 is the parent of hosts h1 and h2 below
 	p1 := &host.Host{
 		Id:            "p1",
 		Status:        evergreen.HostRunning,
@@ -77,9 +75,8 @@ func TestLastContainerFinishTimeJob(t *testing.T) {
 	assert.NoError(j.Error())
 	assert.True(j.Status().Completed)
 
-	// should return parent host with LastContainerFinishTime sent to the later FinishTime
 	parent1, err := host.FindOne(host.ById("p1"))
 	assert.NoError(err)
-	assert.WithinDuration(startTimeTwo.Add(durationTwo), parent1.LastContainerFinishTime, time.Millisecond)
+	assert.WithinDuration(startTimeTwo.Add(durationTwo), parent1.LastContainerFinishTime, time.Millisecond, "parent host's last container finish time should be set to latest finish time")
 
 }

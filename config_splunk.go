@@ -22,14 +22,14 @@ func (c *SplunkConfig) Get(env Environment) error {
 	res := coll.FindOne(ctx, byId(c.SectionId()))
 	if err := res.Err(); err != nil {
 		if err != mongo.ErrNoDocuments {
-			return errors.Wrapf(err, "retrieving section '%s'", c.SectionId())
+			return errors.Wrapf(err, "getting config section '%s'", c.SectionId())
 		}
 		*c = SplunkConfig{}
 		return nil
 	}
 
 	if err := res.Decode(c); err != nil {
-		return errors.Wrap(err, "decoding result")
+		return errors.Wrapf(err, "decoding config section '%s'", c.SectionId())
 	}
 
 	return nil
@@ -49,7 +49,7 @@ func (c *SplunkConfig) Set() error {
 		},
 	}, options.Update().SetUpsert(true))
 
-	return errors.Wrapf(err, "updating section '%s'", c.SectionId())
+	return errors.Wrapf(err, "updating config section '%s'", c.SectionId())
 }
 
 func (c *SplunkConfig) ValidateAndDefault() error { return nil }

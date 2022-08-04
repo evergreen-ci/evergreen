@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/pod"
+	"github.com/evergreen-ci/evergreen/model/pod/definition"
 	"github.com/evergreen-ci/evergreen/model/pod/dispatcher"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
@@ -73,14 +74,14 @@ func NewPodCreationJob(podID, id string) amboy.Job {
 }
 
 func (j *podCreationJob) Run(ctx context.Context) {
-	defer j.MarkComplete()
-
 	defer func() {
+		j.MarkComplete()
+
 		if j.smClient != nil {
-			j.AddError(j.smClient.Close(ctx))
+			j.AddError(errors.Wrap(j.smClient.Close(ctx), "closing Secrets Manager client"))
 		}
 		if j.ecsClient != nil {
-			j.AddError(j.ecsClient.Close(ctx))
+			j.AddError(errors.Wrap(j.ecsClient.Close(ctx), "closing ECS client"))
 		}
 
 		if j.pod != nil && j.pod.Status == pod.StatusInitializing && (j.RetryInfo().GetRemainingAttempts() == 0 || !j.RetryInfo().ShouldRetry()) {
@@ -90,6 +91,12 @@ func (j *podCreationJob) Run(ctx context.Context) {
 			if err := amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), terminationJob); err != nil {
 				j.AddError(errors.Wrap(err, "enqueueing job to terminate pod"))
 			}
+
+			grip.Info(message.Fields{
+				"message": "decommissioned pod after it failed to be created",
+				"pod":     j.pod.ID,
+				"job":     j.ID(),
+			})
 		}
 	}()
 	if err := j.populateIfUnset(ctx); err != nil {
@@ -108,13 +115,26 @@ func (j *podCreationJob) Run(ctx context.Context) {
 
 	switch j.pod.Status {
 	case pod.StatusInitializing:
-		opts, err := cloud.ExportECSPodCreationOptions(&settings, j.pod)
+		execOpts, err := cloud.ExportECSPodExecutionOptions(settings.Providers.AWS.Pod.ECS, j.pod.TaskContainerCreationOpts)
 		if err != nil {
-			j.AddError(errors.Wrap(err, "exporting pod creation options"))
+			j.AddError(errors.Wrap(err, "getting pod execution options"))
 			return
 		}
 
-		p, err := j.ecsPodCreator.CreatePod(ctx, *opts)
+		// Wait for the pod definition to be asynchronously created. If the pod
+		// definition is not ready yet, retry again later.
+		podDef, err := j.checkForPodDefinition(j.pod.Family)
+		if err != nil {
+			j.AddRetryableError(errors.Wrap(err, "waiting for pod definition to be created"))
+			return
+		}
+
+		if err := podDef.UpdateLastAccessed(); err != nil {
+			j.AddRetryableError(errors.Wrapf(err, "updating last access time for pod definition '%s'", podDef.ID))
+			return
+		}
+
+		p, err := j.ecsPodCreator.CreatePodFromExistingDefinition(ctx, cloud.ExportECSPodDefinition(*podDef), *execOpts)
 		if err != nil {
 			j.AddRetryableError(errors.Wrap(err, "starting pod"))
 			return
@@ -169,7 +189,11 @@ func (j *podCreationJob) populateIfUnset(ctx context.Context) error {
 			}
 			j.smClient = client
 		}
-		j.vault = cloud.MakeSecretsManagerVault(j.smClient)
+		vault, err := cloud.MakeSecretsManagerVault(j.smClient)
+		if err != nil {
+			return errors.Wrap(err, "initializing Secrets Manager vault")
+		}
+		j.vault = vault
 	}
 
 	if j.ecsClient == nil {
@@ -189,6 +213,18 @@ func (j *podCreationJob) populateIfUnset(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (j *podCreationJob) checkForPodDefinition(family string) (*definition.PodDefinition, error) {
+	podDef, err := definition.FindOneByFamily(family)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding pod definition with family '%s'", family)
+	}
+	if podDef == nil {
+		return nil, errors.Errorf("pod definition with family '%s' not found", family)
+	}
+
+	return podDef, nil
 }
 
 func (j *podCreationJob) logTaskTimingStats() error {
