@@ -3215,7 +3215,6 @@ func TestArchiveManyFailedOnly(t *testing.T) {
 	t3_pointer, err := FindByIdExecution(t3.Id, nil)
 	t3 = *t3_pointer
 	t3.ResetFailedWhenFinished = false
-	fmt.Println(t3)
 	assert.NoError(t, err)
 	t4 := Task{
 		Id:        "t4",
@@ -3230,7 +3229,7 @@ func TestArchiveManyFailedOnly(t *testing.T) {
 	// Before ArchiveMany:
 	// t1: et1, et2 (execution 2)
 	// t2 (execution 3)
-	// t3: t1 (execution 1), t2 (execution 0), t3 (execution 1)
+	// t3: et1 (execution 1), et2 (execution 0), et3 (execution 1)
 	// t4 (execution 1)
 
 	// After ArchiveMany:
@@ -3250,7 +3249,7 @@ func TestArchiveManyFailedOnly(t *testing.T) {
 		case t2.Id:
 			assert.Equal(t, 4, task.Execution)
 		case t3.Id, t3_et1.Id, t3_et2.Id, t3_et3.Id:
-			assert.Equal(t, 2, task.Execution, task)
+			assert.Equal(t, 2, task.Execution)
 		case t4.Id:
 			assert.Equal(t, 2, task.Execution)
 		default:
