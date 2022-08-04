@@ -552,12 +552,17 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		containerSizes[key] = apiContainerResource.ToService()
 	}
 
+	catcher := grip.NewSimpleCatcher()
 	containerSecrets := map[string]model.ContainerSecret{}
 	for key, apiContainerSecret := range responseRef.ContainerSecrets {
-		containerSecrets[key] = apiContainerSecret.ToService()
+		secret, err := apiContainerSecret.ToService()
+		if err != nil {
+			catcher.Wrapf(err, "converting secret '%s' to service model", key)
+			continue
+		}
+		containerSecrets[key] = *secret
 	}
 
-	catcher := grip.NewSimpleCatcher()
 	for i := range responseRef.Triggers {
 		catcher.Add(responseRef.Triggers[i].Validate(id))
 	}

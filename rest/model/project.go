@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"time"
@@ -281,12 +282,28 @@ type APIWorkstationConfig struct {
 }
 
 type APIContainerSecret struct {
-	ExternalID *string `json:"external_id"`
-	Type       *string `json:"type" json:"type" yaml:"type"`
-	Value      *string `json:"value"`
+	ExternalID *string                   `json:"external_id"`
+	Type       *string                   `json:"type" json:"type" yaml:"type"`
+	Value      *string                   `json:"value"`
+	RepoCreds  *APIRepositoryCredentials `json:"repo_creds"`
+}
+
+type APIRepositoryCredentials struct {
+	Username *string `json:"username"`
+	Password *string `json:"password"`
 }
 
 func (cr *APIContainerSecret) BuildFromService(h model.ContainerSecret) error {
+	if h.Type == model.ContainerSecretRepoCred && h.Value != "" {
+		// If the plaintext secret value is available and this secret is a repo
+		// cred, the value is the repo creds encoded as JSON, so convert it back
+		// to its structured form for the REST API.
+		var apiRepoCreds APIRepositoryCredentials
+		if err := json.Unmarshal([]byte(h.Value), &apiRepoCreds); err != nil {
+			return errors.Wrap(err, "unmarshalling repository credentials")
+		}
+		cr.RepoCreds = &apiRepoCreds
+	}
 	if h.Value != "" {
 		cr.Value = utility.ToStringPtr(h.Value)
 	}
@@ -295,12 +312,22 @@ func (cr *APIContainerSecret) BuildFromService(h model.ContainerSecret) error {
 	return nil
 }
 
-func (cr *APIContainerSecret) ToService() model.ContainerSecret {
-	return model.ContainerSecret{
+func (cr *APIContainerSecret) ToService() (*model.ContainerSecret, error) {
+	secret := model.ContainerSecret{
 		ExternalID: utility.FromStringPtr(cr.ExternalID),
 		Type:       model.ContainerSecretType(utility.FromStringPtr(cr.Type)),
 		Value:      utility.FromStringPtr(cr.Value),
 	}
+	if model.ContainerSecretType(utility.FromStringPtr(cr.Type)) == model.ContainerSecretRepoCred && cr.RepoCreds != nil {
+		// If this is a repo cred and the credentials must be stored, the value
+		// to store must be encoded as JSON.
+		b, err := json.Marshal(cr.RepoCreds)
+		if err != nil {
+			return nil, errors.Wrap(err, "marshalling repository credentials as JSON")
+		}
+		secret.Value = string(b)
+	}
+	return &secret, nil
 }
 
 type APIContainerResources struct {
@@ -431,7 +458,7 @@ type APIProjectRef struct {
 }
 
 // ToService returns a service layer ProjectRef using the data from APIProjectRef
-func (p *APIProjectRef) ToService() model.ProjectRef {
+func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 	projectRef := model.ProjectRef{
 		Owner:                   utility.FromStringPtr(p.Owner),
 		Repo:                    utility.FromStringPtr(p.Repo),
@@ -511,11 +538,15 @@ func (p *APIProjectRef) ToService() model.ProjectRef {
 	if p.ContainerSecrets != nil {
 		containerSecrets := map[string]model.ContainerSecret{}
 		for name, secret := range p.ContainerSecrets {
-			containerSecrets[name] = secret.ToService()
+			apiContainerSecret, err := secret.ToService()
+			if err != nil {
+				return nil, errors.Wrap(err, "converting container secret to service model")
+			}
+			containerSecrets[name] = *apiContainerSecret
 		}
 	}
 
-	return projectRef
+	return &projectRef, nil
 }
 
 func (p *APIProjectRef) BuildFromService(projectRef model.ProjectRef) error {
