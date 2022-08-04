@@ -37,7 +37,6 @@ var (
 func TestSetActiveState(t *testing.T) {
 	Convey("With one task with no dependencies", t, func() {
 		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, task.OldCollection, VersionCollection))
-		require.NoError(t, db.CreateCollections(task.OldCollection))
 
 		var err error
 
@@ -824,7 +823,6 @@ func TestUpdateVersionStatusForGithubChecks(t *testing.T) {
 
 func TestUpdateBuildAndVersionStatusForTaskAbort(t *testing.T) {
 	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection, event.LegacyEventLogCollection))
-	require.NoError(t, db.CreateCollections(task.Collection, task.OldCollection))
 
 	displayName := "testName"
 	b1 := &build.Build{
@@ -1434,7 +1432,6 @@ func TestMarkEndWithTaskGroup(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(distro.Collection, host.Collection, task.Collection, task.OldCollection,
 				build.Collection, VersionCollection, ParserProjectCollection, ProjectRefCollection))
-			require.NoError(t, db.CreateCollections(task.Collection, task.OldCollection))
 
 			assert := assert.New(t)
 			runningTask.ResetWhenFinished = false
@@ -1476,14 +1473,12 @@ func TestMarkEndWithTaskGroup(t *testing.T) {
 func TestTryResetTask(t *testing.T) {
 	Convey("With a task that does not exist", t, func() {
 		require.NoError(t, db.ClearCollections(task.Collection))
-		require.NoError(t, db.CreateCollections(task.Collection, task.OldCollection))
 
 		So(TryResetTask("id", "username", "", nil), ShouldNotBeNil)
 	})
 	Convey("With a task, a build, version and a project", t, func() {
 		Convey("resetting a task without a max number of executions", func() {
 			require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection))
-			require.NoError(t, db.CreateCollections(task.Collection, task.OldCollection))
 
 			displayName := "testName"
 			userName := "testUser"
@@ -1605,7 +1600,6 @@ func TestTryResetTask(t *testing.T) {
 		})
 		Convey("resetting a task with a max number of executions", func() {
 			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection))
-			require.NoError(t, db.CreateCollections(task.Collection, task.OldCollection))
 
 			displayName := "testName"
 			userName := "testUser"
@@ -1716,7 +1710,7 @@ func TestTryResetTask(t *testing.T) {
 
 func TestTryResetTaskWithTaskGroup(t *testing.T) {
 	require.NoError(t, db.ClearCollections(host.Collection, build.Collection, VersionCollection, distro.Collection))
-	require.NoError(t, db.CreateCollections(task.Collection, task.OldCollection))
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -2041,7 +2035,6 @@ func TestTryDequeueAndAbortCommitQueueVersion(t *testing.T) {
 
 func TestDequeueAndRestart(t *testing.T) {
 	require.NoError(t, db.ClearCollections(VersionCollection, patch.Collection, build.Collection, task.Collection, commitqueue.Collection, task.OldCollection))
-	require.NoError(t, db.CreateCollections(task.Collection, task.OldCollection))
 
 	v1 := bson.NewObjectId()
 	v2 := bson.NewObjectId()
@@ -2427,7 +2420,6 @@ buildvariants:
 func TestFailedTaskRestart(t *testing.T) {
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection))
-	require.NoError(t, db.CreateCollections(task.Collection, task.OldCollection))
 
 	userName := "testUser"
 	b := &build.Build{
