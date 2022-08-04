@@ -37,6 +37,7 @@ func TestAtomicGQLQueries(t *testing.T) {
 	defer server.Close()
 	dir, _ := os.Getwd()
 	fmt.Println("PATH: ", dir)
+
 	for _, dir := range testDirectories {
 		state := graphql.AtomicGraphQLState{
 			TaskLogDB:   model.TaskLogDB,
