@@ -24,7 +24,7 @@ func (c *SplunkConfig) Get(env Environment) error {
 		if err != mongo.ErrNoDocuments {
 			return errors.Wrapf(err, "retrieving section '%s'", c.SectionId())
 		}
-		c = &SplunkConfig{}
+		*c = SplunkConfig{}
 		return nil
 	}
 
