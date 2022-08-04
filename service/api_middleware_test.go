@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCheckHostWrapper(t *testing.T) {
@@ -31,14 +32,10 @@ func TestCheckHostWrapper(t *testing.T) {
 	queue := env.LocalQueue()
 
 	Convey("With a simple checkTask and checkHost-wrapped route", t, func() {
-		if err := db.ClearCollections(host.Collection, task.Collection); err != nil {
-			t.Fatalf("clearing db: %v", err)
-		}
+		require.NoError(t, db.ClearCollections(host.Collection, task.Collection))
 
 		as, err := NewAPIServer(env, queue)
-		if err != nil {
-			t.Fatalf("creating test API server: %v", err)
-		}
+		require.NoError(t, err)
 		var (
 			retrievedTask *task.Task
 			retrievedHost *host.Host
@@ -55,9 +52,7 @@ func TestCheckHostWrapper(t *testing.T) {
 		))).Get()
 
 		root, err := app.Handler()
-		if err != nil {
-			t.Fatalf("creating test handler server: %v", err)
-		}
+		require.NoError(t, err)
 
 		Convey("and documents representing a proper host-task relationship", func() {
 			So(t1.Insert(), ShouldBeNil)
@@ -65,9 +60,7 @@ func TestCheckHostWrapper(t *testing.T) {
 
 			w := httptest.NewRecorder()
 			r, err := http.NewRequest("GET", "/t1/", nil)
-			if err != nil {
-				t.Fatalf("building request: %v", err)
-			}
+			require.NoError(t, err)
 
 			Convey("a request without proper task fields should fail", func() {
 				root.ServeHTTP(w, r)
@@ -150,9 +143,7 @@ func TestCheckHostWrapper(t *testing.T) {
 
 			w := httptest.NewRecorder()
 			r, err := http.NewRequest("GET", "/t2/", nil)
-			if err != nil {
-				t.Fatalf("building request: %v", err)
-			}
+			require.NoError(t, err)
 
 			Convey("a request with proper task fields and host fields should fail", func() {
 				r.Header.Add(evergreen.TaskSecretHeader, t2.Secret)
@@ -171,14 +162,10 @@ func TestCheckHostWrapper(t *testing.T) {
 		})
 	})
 	Convey("With a requireTask and requireHost-wrapped route using URL params", t, func() {
-		if err := db.ClearCollections(host.Collection, task.Collection); err != nil {
-			t.Fatalf("clearing db: %v", err)
-		}
+		require.NoError(t, db.ClearCollections(host.Collection, task.Collection))
 
 		as, err := NewAPIServer(env, queue)
-		if err != nil {
-			t.Fatalf("creating test API server: %v", err)
-		}
+		require.NoError(t, err)
 
 		var (
 			retrievedTask *task.Task
@@ -197,9 +184,7 @@ func TestCheckHostWrapper(t *testing.T) {
 		))).Get()
 
 		root, err := app.Handler()
-		if err != nil {
-			t.Fatalf("creating test API server: %v", err)
-		}
+		require.NoError(t, err)
 
 		Convey("and documents representing a proper host-task relationship", func() {
 
@@ -208,9 +193,7 @@ func TestCheckHostWrapper(t *testing.T) {
 
 			w := httptest.NewRecorder()
 			r, err := http.NewRequest("GET", "/t1/h1", nil)
-			if err != nil {
-				t.Fatalf("building request: %v", err)
-			}
+			require.NoError(t, err)
 
 			Convey("a request with proper host params and fields should pass", func() {
 				r.Header.Add(evergreen.TaskSecretHeader, t1.Secret)
