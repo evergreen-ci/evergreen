@@ -1799,6 +1799,14 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			ProjectRefFilesIgnoredFromCacheKey:   p.FilesIgnoredFromCache,
 		}
 		if !isRepo && !p.UseRepoSettings() {
+			// Don't validate owner if user is defaulting page to repo
+			if p.Owner != "" {
+				allowedOrgs := evergreen.GetEnvironment().Settings().GithubOrgs
+				if err := validateOwner(p.Owner, allowedOrgs); err != nil {
+					return false, errors.Wrap(err, "validating new owner")
+				}
+			}
+
 			setUpdate[ProjectRefOwnerKey] = p.Owner
 			setUpdate[ProjectRefRepoKey] = p.Repo
 		}
@@ -2119,7 +2127,11 @@ func (p *ProjectRef) ValidateOwnerAndRepo(validOrgs []string) error {
 		return errors.New("no owner/repo specified")
 	}
 
-	if len(validOrgs) > 0 && !utility.StringSliceContains(validOrgs, p.Owner) {
+	return validateOwner(p.Owner, validOrgs)
+}
+
+func validateOwner(owner string, validOrgs []string) error {
+	if len(validOrgs) > 0 && !utility.StringSliceContains(validOrgs, owner) {
 		return errors.New("owner not authorized")
 	}
 	return nil

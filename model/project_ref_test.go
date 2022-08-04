@@ -2147,3 +2147,49 @@ func TestIsServerResmokeProject(t *testing.T) {
 		})
 	}
 }
+
+func TestSaveProjectPageForSection(t *testing.T) {
+	evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger = "buildlogger"
+	assert := assert.New(t)
+
+	assert.NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection))
+
+	projectRef := &ProjectRef{
+		Owner:            "evergreen-ci",
+		Repo:             "mci",
+		Branch:           "main",
+		Enabled:          utility.TruePtr(),
+		BatchTime:        10,
+		Id:               "iden_",
+		Identifier:       "identifier",
+		PRTestingEnabled: utility.TruePtr(),
+	}
+	assert.NoError(projectRef.Insert())
+	projectRef, err := FindBranchProjectRef("identifier")
+	assert.NoError(err)
+	assert.NotNil(t, projectRef)
+
+	update := &ProjectRef{
+		Id:    "iden_",
+		Owner: "invalid",
+		Repo:  "nonexistent",
+	}
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
+	assert.Error(err)
+
+	update = &ProjectRef{
+		Id:    "iden_",
+		Owner: "",
+		Repo:  "",
+	}
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
+	assert.NoError(err)
+
+	update = &ProjectRef{
+		Id:    "iden_",
+		Owner: "evergreen-ci",
+		Repo:  "test",
+	}
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
+	assert.NoError(err)
+}
