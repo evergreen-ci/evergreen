@@ -3108,18 +3108,18 @@ func TestArchiveMany(t *testing.T) {
 		Version: "v",
 	}
 	assert.NoError(t, t2.Insert())
-	dt := Task{
-		Id:             "dt",
-		DisplayOnly:    true,
-		ExecutionTasks: []string{"et"},
-		Version:        "v",
-	}
-	assert.NoError(t, dt.Insert())
 	et := Task{
 		Id:      "et",
 		Version: "v",
 	}
 	assert.NoError(t, et.Insert())
+	dt := Task{
+		Id:             "dt",
+		DisplayOnly:    true,
+		ExecutionTasks: []string{et.Id},
+		Version:        "v",
+	}
+	assert.NoError(t, dt.Insert())
 
 	tasks := []Task{t1, t2, dt}
 	err := ArchiveMany(tasks)
@@ -3142,99 +3142,121 @@ func TestArchiveMany(t *testing.T) {
 
 func TestArchiveManyFailedOnly(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection, OldCollection))
+	t1_et1 := Task{
+		Id:        "t1_et1",
+		Status:    evergreen.TaskFailed,
+		Execution: 2,
+		Aborted:   true,
+		Version:   "v",
+	}
+	assert.NoError(t, t1_et1.Insert())
+	t1_et2 := Task{
+		Id:        "t1_et2",
+		Status:    evergreen.TaskSucceeded,
+		Execution: 2,
+		Aborted:   true,
+		Version:   "v",
+	}
+	assert.NoError(t, t1_et2.Insert())
 	t1 := Task{
-		Id:      "t1",
-		Status:  evergreen.TaskFailed,
-		Aborted: true,
-		Version: "v",
+		Id:             "t1",
+		Status:         evergreen.TaskFailed,
+		ExecutionTasks: []string{t1_et1.Id, t1_et2.Id},
+		Execution:      2,
+		Aborted:        true,
+		DisplayOnly:    true,
+		Version:        "v",
 	}
 	assert.NoError(t, t1.Insert())
 	t2 := Task{
-		Id:      "t2",
-		Status:  evergreen.TaskSucceeded,
-		Aborted: true,
-		Version: "v",
+		Id:        "t2",
+		Status:    evergreen.TaskSucceeded,
+		Execution: 3,
+		Aborted:   true,
+		Version:   "v",
 	}
 	assert.NoError(t, t2.Insert())
-	dt := Task{
-		Id:                      "dt",
-		DisplayOnly:             true,
-		ExecutionTasks:          []string{"t1", "t2"},
-		Version:                 "v",
-		ResetFailedWhenFinished: true,
+	t3_et1 := Task{
+		Id:        "t3_et1",
+		Status:    evergreen.TaskFailed,
+		Execution: 0,
+		Aborted:   true,
+		Version:   "v",
 	}
-	assert.NoError(t, dt.Insert())
+	assert.NoError(t, t3_et1.Insert())
+	t3_et2 := Task{
+		Id:        "t3_et2",
+		Status:    evergreen.TaskSucceeded,
+		Execution: 0,
+		Aborted:   true,
+		Version:   "v",
+	}
+	assert.NoError(t, t3_et2.Insert())
+	t3_et3 := Task{
+		Id:        "t3_et3",
+		Status:    evergreen.TaskFailed,
+		Execution: 0,
+		Aborted:   true,
+		Version:   "v",
+	}
+	assert.NoError(t, t3_et3.Insert())
 	t3 := Task{
 		Id:                      "t3",
-		Status:                  evergreen.TaskSucceeded,
+		Status:                  evergreen.TaskFailed,
+		ExecutionTasks:          []string{t3_et1.Id, t3_et2.Id, t3_et3.Id},
+		Execution:               0,
 		Aborted:                 true,
-		Version:                 "v",
+		DisplayOnly:             true,
 		ResetFailedWhenFinished: true,
+		Version:                 "v",
 	}
 	assert.NoError(t, t3.Insert())
+	assert.NoError(t, t3.Archive()) // Failed only is true
+	t3_pointer, err := FindByIdExecution(t3.Id, nil)
+	t3 = *t3_pointer
+	t3.ResetFailedWhenFinished = false
+	fmt.Println(t3)
+	assert.NoError(t, err)
 	t4 := Task{
-		Id:                      "t4",
-		Status:                  evergreen.TaskFailed,
-		Aborted:                 true,
-		Version:                 "v",
-		ResetFailedWhenFinished: true,
+		Id:        "t4",
+		Status:    evergreen.TaskSucceeded,
+		Execution: 1,
+		Aborted:   true,
+		Version:   "v",
 	}
 	assert.NoError(t, t4.Insert())
+	assert.NoError(t, ArchiveMany([]Task{t1, t2, t3, t4}))
 
-	tasks := []Task{dt, t3, t4} // dt has t1, t2.
-	err := ArchiveMany(tasks)   // This should: archive t1 and t4 since they have failed
-	assert.NoError(t, err)
+	// Before ArchiveMany:
+	// t1: et1, et2 (execution 2)
+	// t2 (execution 3)
+	// t3: t1 (execution 1), t2 (execution 0), t3 (execution 1)
+	// t4 (execution 1)
+
+	// After ArchiveMany:
+	// t1: et1, et2 (execution 3)
+	// t2 (execution 4)
+	// t3: t1 (execution 2), t2 (execution 2), t3 (execution 2)
+	// t4 (execution 2)
+
 	currentTasks, err := FindAll(db.Query(ByVersion("v")))
 	assert.NoError(t, err)
-	assert.Len(t, currentTasks, 5) // All tasks should be active at all times
-	tasks = []Task{}               // This will contain the new dt, t3, t4
-	for _, task := range currentTasks {
-		assert.False(t, task.Aborted)
-		task.ResetFailedWhenFinished = false    // Reset this for the next call to ArchiveMany
-		if task.Id == "t1" || task.Id == "t4" { // The ones that got archived
-			assert.Equal(t, 1, task.Execution)
-			task.Status = evergreen.TaskFailed
-		} else {
-			assert.Equal(t, 0, task.Execution)
-			task.Status = evergreen.TaskSucceeded
-		}
-		if task.Id == "dt" || task.Id == "t3" || task.Id == "t4" { // All display tasks and tasks
-			tasks = append(tasks, task)
-		}
-	}
-	oldTasks, err := FindAllOld(db.Query(ByVersion("v")))
-	assert.NoError(t, err)
-	assert.Len(t, oldTasks, 2) // Only t1 and t4 have been archived (totaling 2)
-	for _, task := range oldTasks {
-		assert.True(t, task.Archived)
-		assert.Equal(t, 0, task.Execution)
-	}
+	assert.Len(t, currentTasks, 9)
 
-	// Archive {dt, t3, t4} (the version) again
-	err = ArchiveMany(tasks) // This should set all executions to 2 regardless of the status
-	assert.NoError(t, err)
-	currentTasks, err = FindAll(db.Query(ByVersion("v")))
-	assert.NoError(t, err)
-	assert.Len(t, currentTasks, 5)
 	for _, task := range currentTasks {
-		assert.False(t, task.Aborted)
-		assert.Equal(t, 2, task.Execution)
-	}
-	oldTasks, err = FindAllOld(db.Query(ByVersion("v")))
-	assert.NoError(t, err)
-	assert.Len(t, oldTasks, 7) // t1 and t4 were archived the first time, and then all 5 the second time (totaling 7)
-	execution0 := 0            // There should be 5, all tasks
-	execution1 := 0            // There should be 2, t1 and t4
-	for _, task := range oldTasks {
-		assert.True(t, task.Archived)
-		if task.Execution == 0 {
-			execution0++
-		} else if task.Execution == 1 {
-			execution1++
+		switch task.Id {
+		case t1.Id, t1_et1.Id, t1_et2.Id:
+			assert.Equal(t, 3, task.Execution)
+		case t2.Id:
+			assert.Equal(t, 4, task.Execution)
+		case t3.Id, t3_et1.Id, t3_et2.Id, t3_et3.Id:
+			assert.Equal(t, 2, task.Execution, task)
+		case t4.Id:
+			assert.Equal(t, 2, task.Execution)
+		default:
+			assert.Error(t, nil, "A task was not accounted for")
 		}
 	}
-	assert.Equal(t, 5, execution0)
-	assert.Equal(t, 2, execution1)
 }
 
 func TestAddParentDisplayTasks(t *testing.T) {
@@ -3784,18 +3806,6 @@ func TestArchiveFailedOnly(t *testing.T) {
 		Version: "v",
 	}
 	assert.NoError(t, t2.Insert())
-	t3 := Task{
-		Id:      "t3",
-		Status:  evergreen.TaskFailed,
-		Version: "v",
-	}
-	assert.NoError(t, t3.Insert())
-	t4 := Task{
-		Id:      "t4",
-		Status:  evergreen.TaskSucceeded,
-		Version: "v",
-	}
-	assert.NoError(t, t4.Insert())
 	dt := Task{
 		Id:                      "dt",
 		DisplayOnly:             true,
@@ -3917,7 +3927,7 @@ func TestArchiveFailedOnly(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 2, t2.Execution)
 
-		// CRoss checks the tasks to ensure they were archived
+		// Cross checks the tasks to ensure they were archived
 		checkTaskIsArchived(t, archivedT1)
 		checkTaskIsArchived(t, archivedT2)
 		checkTaskIsArchived(t, archivedDisplayTaskID)
