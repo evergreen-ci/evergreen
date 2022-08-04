@@ -16,7 +16,7 @@ func TestGetTestResults(t *testing.T) {
 
 	testutil.Setup()
 
-	db.ClearCollections(task.Collection)
+	require.NoError(t, db.ClearCollections(task.Collection))
 
 	newTask := task.Task{
 		HasCedarResults: true,
