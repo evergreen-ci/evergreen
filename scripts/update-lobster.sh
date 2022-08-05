@@ -27,6 +27,7 @@ npm install
 # env variables used during lobster build step
 export PUBLIC_URL=/static/lobster
 export REACT_APP_LOGKEEPER_BASE=https://logkeeper.mongodb.org
+export REACT_APP_NEW_LOGKEEPER_BASE=https://logkeeper2.build.10gen.cc
 export REACT_APP_EVERGREEN_BASE=https://evergreen.mongodb.com
 #
 npm run build 
