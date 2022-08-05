@@ -151,6 +151,9 @@ type Task struct {
 	// Set to true if the task should be considered for mainline github checks
 	IsGithubCheck bool `bson:"is_github_check,omitempty" json:"is_github_check,omitempty"`
 
+	// CanReset indicates if the task is in a valid state to be reset.
+	CanReset bool `bson:"can_reset,omitempty" json:"can_reset,omitempty"`
+
 	Execution           int    `bson:"execution" json:"execution"`
 	OldTaskId           string `bson:"old_task_id,omitempty" json:"old_task_id,omitempty"`
 	Archived            bool   `bson:"archived,omitempty" json:"archived,omitempty"`
@@ -1948,7 +1951,7 @@ func (t *Task) Reset() error {
 		bson.M{
 			IdKey:       t.Id,
 			StatusKey:   bson.M{"$in": evergreen.TaskCompletedStatuses},
-			ArchivedKey: true,
+			CanResetKey: true,
 		},
 		resetTaskUpdate(t),
 	)
@@ -1969,7 +1972,7 @@ func ResetTasks(tasks []Task) error {
 		bson.M{
 			IdKey:       bson.M{"$in": taskIDs},
 			StatusKey:   bson.M{"$in": evergreen.TaskCompletedStatuses},
-			ArchivedKey: true,
+			CanResetKey: true,
 		},
 		resetTaskUpdate(nil),
 	); err != nil {
@@ -2003,7 +2006,7 @@ func resetTaskUpdate(t *Task) bson.M {
 		t.HostCreateDetails = []HostCreateDetail{}
 		t.OverrideDependencies = false
 		t.ContainerAllocationAttempts = 0
-		t.Archived = false
+		t.CanReset = false
 	}
 	update := bson.M{
 		"$set": bson.M{
@@ -2030,7 +2033,7 @@ func resetTaskUpdate(t *Task) bson.M {
 			HostIdKey:                  "",
 			HostCreateDetailsKey:       "",
 			OverrideDependenciesKey:    "",
-			ArchivedKey:                "",
+			CanResetKey:                "",
 		},
 	}
 	return update
@@ -2497,7 +2500,7 @@ func (t *Task) Archive() error {
 		},
 		bson.M{
 			"$set": bson.M{
-				ArchivedKey: true,
+				CanResetKey: true,
 			},
 			"$unset": bson.M{
 				AbortedKey:              "",
@@ -2585,7 +2588,7 @@ func ArchiveMany(tasks []Task) error {
 		},
 			bson.M{
 				"$set": bson.M{
-					ArchivedKey: true,
+					CanResetKey: true,
 				},
 				"$unset": bson.M{
 					AbortedKey:   "",
