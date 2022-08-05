@@ -25,8 +25,7 @@ func TestAPITestStatsBuildFromService(t *testing.T) {
 	}
 
 	apiDoc := APITestStats{}
-	err := apiDoc.BuildFromService(&serviceDoc)
-	assert.NoError(err)
+	apiDoc.BuildFromService(serviceDoc)
 
 	assert.Equal(serviceDoc.TestFile, *apiDoc.TestFile)
 	assert.Equal(serviceDoc.TaskName, *apiDoc.TaskName)
@@ -77,8 +76,7 @@ func TestAPITaskStatsBuildFromService(t *testing.T) {
 	}
 
 	apiDoc := APITaskStats{}
-	err := apiDoc.BuildFromService(&serviceDoc)
-	assert.NoError(err)
+	apiDoc.BuildFromService(serviceDoc)
 
 	assert.Equal(serviceDoc.TaskName, *apiDoc.TaskName)
 	assert.Equal(serviceDoc.BuildVariant, *apiDoc.BuildVariant)

@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -27,7 +28,7 @@ type VersionModification struct {
 func ModifyVersion(version Version, user user.DBUser, modifications VersionModification) (int, error) {
 	switch modifications.Action {
 	case evergreen.RestartAction:
-		if modifications.VersionsToRestart == nil { // to maintain backwards compatibility with legacy Ui and support the deprecated restartPatch resolver
+		if modifications.VersionsToRestart == nil { // To maintain backwards compatibility with legacy UI
 			if err := RestartVersion(version.Id, modifications.TaskIds, modifications.Abort, user.Id); err != nil {
 				return http.StatusInternalServerError, errors.Wrap(err, "restarting patch")
 			}
@@ -39,9 +40,16 @@ func ModifyVersion(version Version, user user.DBUser, modifications VersionModif
 		if version.Requester == evergreen.MergeTestRequester && modifications.Active {
 			return http.StatusBadRequest, errors.New("commit queue merges cannot be manually scheduled")
 		}
+		now := time.Now()
 		if err := SetVersionActivation(version.Id, modifications.Active, user.Id); err != nil {
 			return http.StatusInternalServerError, errors.Wrap(err, "activating patch")
 		}
+		grip.Debug(message.Fields{
+			"ticket":        "EVG-16730",
+			"step":          "setting version activation",
+			"version_id":    version.Id,
+			"time_taken_ms": time.Since(now).Milliseconds(),
+		})
 		// abort after deactivating the version so we aren't bombarded with failing tasks while
 		// the deactivation is in progress
 		if modifications.Abort {

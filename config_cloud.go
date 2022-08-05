@@ -30,11 +30,11 @@ func (c *CloudProviders) Get(env Environment) error {
 			*c = CloudProviders{}
 			return nil
 		}
-		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
+		return errors.Wrapf(err, "getting config section '%s'", c.SectionId())
 	}
 
 	if err := res.Decode(c); err != nil {
-		return errors.Wrap(err, "problem decoding result")
+		return errors.Wrapf(err, "decoding config section '%s'", c.SectionId())
 	}
 
 	return nil
@@ -56,7 +56,7 @@ func (c *CloudProviders) Set() error {
 		},
 	}, options.Update().SetUpsert(true))
 
-	return errors.Wrapf(err, "error updating section %s", c.SectionId())
+	return errors.Wrapf(err, "updating config section '%s'", c.SectionId())
 }
 
 func (c *CloudProviders) ValidateAndDefault() error {
@@ -185,12 +185,53 @@ const (
 	ECSOSWindows = "windows"
 )
 
+// Validate checks that the OS is a valid one for running containers.
 func (p ECSOS) Validate() error {
 	switch p {
 	case ECSOSLinux, ECSOSWindows:
 		return nil
 	default:
 		return errors.Errorf("unrecognized ECS OS '%s'", p)
+	}
+}
+
+// ECSArch represents a CPU architecture that can run containers in ECS.
+type ECSArch string
+
+const (
+	ECSArchAMD64 = "amd64"
+	ECSArchARM64 = "arm64"
+)
+
+// Validate checks that the CPU architecture is a valid one for running
+// containers.
+func (a ECSArch) Validate() error {
+	switch a {
+	case ECSArchAMD64, ECSArchARM64:
+		return nil
+	default:
+		return errors.Errorf("unrecognized ECS capacity provider arch '%s'", a)
+	}
+}
+
+// ECSWindowsVersion represents a particular Windows OS version that can run
+// containers in ECS.
+type ECSWindowsVersion string
+
+const (
+	ECSWindowsServer2016 = "windows_server_2016"
+	ECSWindowsServer2019 = "windows_server_2019"
+	ECSWindowsServer2022 = "windows_server_2022"
+)
+
+// Validate checks that the Windows OS version is a valid one for running
+// containers.
+func (v ECSWindowsVersion) Validate() error {
+	switch v {
+	case ECSWindowsServer2016, ECSWindowsServer2019, ECSWindowsServer2022:
+		return nil
+	default:
+		return errors.Errorf("unrecognized ECS Windows version '%s'", v)
 	}
 }
 
@@ -204,6 +245,10 @@ type ECSCapacityProvider struct {
 	// Arch is the type of CPU architecture that the container instances in this
 	// capacity provider can run.
 	Arch ECSArch `bson:"arch" json:"arch" yaml:"arch"`
+	// WindowsVersion is the particular version of Windows that container
+	// instances in this capacity provider run. This only applies if the OS is
+	// Windows.
+	WindowsVersion ECSWindowsVersion `bson:"windows_version" json:"windows_version" yaml:"windows_version"`
 }
 
 // Validate checks that the required settings are given for the capacity
@@ -213,24 +258,16 @@ func (p *ECSCapacityProvider) Validate() error {
 	catcher.NewWhen(p.Name == "", "must provide a capacity provider name")
 	catcher.Add(p.OS.Validate())
 	catcher.Add(p.Arch.Validate())
-	return catcher.Resolve()
-}
-
-// ECSArch represents a CPU architecture that can run containers in ECS.
-type ECSArch string
-
-const (
-	ECSArchAMD64 = "amd64"
-	ECSArchARM64 = "arm64"
-)
-
-func (a ECSArch) Validate() error {
-	switch a {
-	case ECSArchAMD64, ECSArchARM64:
-		return nil
-	default:
-		return errors.Errorf("unrecognized ECS capacity provider arch '%s'", a)
+	if p.OS == ECSOSWindows {
+		if p.WindowsVersion == "" {
+			catcher.New("must specify a particular Windows version when using Windows OS")
+		} else {
+			catcher.Add(p.WindowsVersion.Validate())
+		}
+	} else if p.OS != ECSOSWindows && p.WindowsVersion != "" {
+		catcher.New("cannot specify a Windows version for a non-Windows OS")
 	}
+	return catcher.Resolve()
 }
 
 // Validate checks that the ECS cluster configuration has the required fields

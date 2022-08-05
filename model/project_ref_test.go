@@ -649,6 +649,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 			pRefFromDb, err := FindBranchProjectRef(id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
+			assert.NotEqual(t, pRefFromDb.Identifier, "")
 			assert.Equal(t, pRefFromDb.BatchTime, 0)
 			assert.Nil(t, pRefFromDb.RepotrackerDisabled)
 			assert.Nil(t, pRefFromDb.DeactivatePrevious)
@@ -760,6 +761,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 
 			pRef := ProjectRef{
 				Id:                    "my_project",
+				Identifier:            "my_identifier",
 				Owner:                 "candy",
 				Repo:                  "land",
 				BatchTime:             10,
@@ -931,6 +933,8 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, user.Collection,
 		evergreen.ScopeCollection, ProjectVarsCollection, ProjectAliasCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
+	evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger = "buildlogger"
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	doc1 := &ProjectRef{
@@ -950,6 +954,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.NoError(t, doc1.Insert())
 	doc2 := &ProjectRef{
 		Id:                    "id2",
+		Identifier:            "identifier",
 		Owner:                 "mongodb",
 		Repo:                  "mongo",
 		Branch:                "mci2",
@@ -1067,6 +1072,8 @@ func TestCreateNewRepoRef(t *testing.T) {
 
 	assert.Equal(t, "mongodb", repoRef.Owner)
 	assert.Equal(t, "mongo", repoRef.Repo)
+	assert.Equal(t, "main", repoRef.Branch)
+	assert.Equal(t, "buildlogger", repoRef.DefaultLogger)
 	assert.Contains(t, repoRef.Admins, "bob")
 	assert.Contains(t, repoRef.Admins, "other bob")
 	assert.Contains(t, repoRef.Admins, "me")
@@ -1074,6 +1081,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.True(t, repoRef.IsEnabled())
 	assert.True(t, repoRef.IsPRTestingEnabled())
 	assert.Equal(t, "evergreen.yml", repoRef.RemotePath)
+	assert.Equal(t, "", repoRef.Identifier)
 	assert.Nil(t, repoRef.NotifyOnBuildFailure)
 	assert.Nil(t, repoRef.GithubChecksEnabled)
 	assert.Equal(t, "my message", repoRef.CommitQueue.Message)
@@ -1590,6 +1598,22 @@ func TestFindDownstreamProjects(t *testing.T) {
 	assert.Len(t, projects, 2)
 }
 
+func TestAddEmptyBranch(t *testing.T) {
+	require.NoError(t, db.ClearCollections(user.Collection, ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection))
+	u := user.DBUser{
+		Id: "me",
+	}
+	require.NoError(t, u.Insert())
+	p := ProjectRef{
+		Identifier: "myProject",
+		Owner:      "mongodb",
+		Repo:       "mongo",
+	}
+	assert.NoError(t, p.Add(&u))
+	assert.NotEmpty(t, p.Branch)
+	assert.Equal(t, "main", p.Branch)
+}
+
 func TestAddPermissions(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -1847,6 +1871,28 @@ func TestGetProjectSetupCommands(t *testing.T) {
 	assert.Contains(t, cmds[1].String(), "c1")
 }
 
+func TestFindFirstProjectRef(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(ProjectRefCollection))
+
+	var err error
+	assert.NotPanics(t, func() {
+		_, err = FindFirstProjectRef()
+	}, "Should not panic if there are no matching projects")
+	assert.Error(t, err, "Should return error if there are no matching projects")
+
+	projectRef := ProjectRef{
+		Id:        "p1",
+		RepoRefId: "my_repo",
+		Private:   utility.FalsePtr(),
+	}
+
+	assert.NoError(t, projectRef.Insert())
+
+	resultRef, err := FindFirstProjectRef()
+	assert.NoError(t, err)
+	assert.Equal(t, "p1", resultRef.Id)
+}
+
 func TestFindPeriodicProjects(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection))
 
@@ -2100,4 +2146,50 @@ func TestIsServerResmokeProject(t *testing.T) {
 			assert.Equal(t, test.expected, IsServerResmokeProject(test.identifier))
 		})
 	}
+}
+
+func TestSaveProjectPageForSection(t *testing.T) {
+	evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger = "buildlogger"
+	assert := assert.New(t)
+
+	assert.NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection))
+
+	projectRef := &ProjectRef{
+		Owner:            "evergreen-ci",
+		Repo:             "mci",
+		Branch:           "main",
+		Enabled:          utility.TruePtr(),
+		BatchTime:        10,
+		Id:               "iden_",
+		Identifier:       "identifier",
+		PRTestingEnabled: utility.TruePtr(),
+	}
+	assert.NoError(projectRef.Insert())
+	projectRef, err := FindBranchProjectRef("identifier")
+	assert.NoError(err)
+	assert.NotNil(t, projectRef)
+
+	update := &ProjectRef{
+		Id:    "iden_",
+		Owner: "invalid",
+		Repo:  "nonexistent",
+	}
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
+	assert.Error(err)
+
+	update = &ProjectRef{
+		Id:    "iden_",
+		Owner: "",
+		Repo:  "",
+	}
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
+	assert.NoError(err)
+
+	update = &ProjectRef{
+		Id:    "iden_",
+		Owner: "evergreen-ci",
+		Repo:  "test",
+	}
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
+	assert.NoError(err)
 }

@@ -132,7 +132,6 @@ It contains an array of projects which are grouped under a groupDisplayName.
 """
 type GroupedProjects {
   groupDisplayName: String! 
-  name: String! @deprecated(reason: "name is deprecated. Use groupDisplayName instead.")
   projects: [Project!]!
   repo: RepoRef
 }

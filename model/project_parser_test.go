@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
-	"gopkg.in/yaml.v3"
+	yaml "gopkg.in/20210107192922/yaml.v3"
 )
 
 // ShouldContainResembling tests whether a slice contains an element that DeepEquals
@@ -1036,6 +1036,53 @@ buildvariants:
 	assert.Len(tg.TeardownTask.List(), 1)
 	assert.Len(tg.TeardownGroup.List(), 1)
 	assert.True(tg.ShareProcs)
+
+	// check that yml with inline task groups within its buildvariants correctly parses the group
+	inlineYml := `
+tasks:
+- name: example_task_1
+- name: example_task_2
+task_groups:
+- &example_task_group
+  name: example_task_group
+  share_processes: true
+  max_hosts: 2
+  setup_group_can_fail_task: true
+  setup_group_timeout_secs: 10
+  setup_group:
+  - command: shell.exec
+    params:
+      script: "echo setup_group"
+  teardown_group:
+  - command: shell.exec
+    params:
+      script: "echo teardown_group"
+  setup_task:
+  - command: shell.exec
+    params:
+      script: "echo setup_group"
+  teardown_task:
+  - command: shell.exec
+    params:
+      script: "echo setup_group"
+  tasks:
+  - example_task_1
+  - example_task_2
+buildvariants:
+- name: "bv"
+  tasks:
+  - name: inline_task_group
+    task_group:
+      <<: *example_task_group
+      tasks:
+      - example_task_1
+`
+	proj = &Project{}
+	_, err = LoadProjectInto(ctx, []byte(inlineYml), nil, "id", proj)
+	assert.Nil(err)
+	assert.NotNil(proj)
+	assert.Len(proj.BuildVariants[0].Tasks, 1)
+	assert.NotNil(proj.BuildVariants[0].Tasks[0].TaskGroup)
 
 	// check that yml with a task group that contains a nonexistent task errors
 	wrongTaskYml := `

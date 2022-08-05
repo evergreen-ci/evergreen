@@ -66,11 +66,7 @@ func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	hostModel := &model.APIHost{}
-	err = hostModel.BuildFromService(intentHost)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting created intent host to API model"))
-	}
-
+	hostModel.BuildFromService(intentHost, nil)
 	return gimlet.NewJSONResponse(hostModel)
 }
 
@@ -616,11 +612,11 @@ func (h *createVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "creating new volume"))
 	}
-	volumeModel := &model.APIVolume{}
-	err = volumeModel.BuildFromService(res)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting created volume to API model"))
+	if res == nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("no volume created"))
 	}
+	volumeModel := &model.APIVolume{}
+	volumeModel.BuildFromService(*res)
 
 	return gimlet.NewJSONResponse(volumeModel)
 }
@@ -852,9 +848,7 @@ func (h *getVolumesHandler) Run(ctx context.Context) gimlet.Responder {
 	volumeDocs := []model.APIVolume{}
 	for _, v := range volumes {
 		volumeDoc := model.APIVolume{}
-		if err = volumeDoc.BuildFromService(v); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting volume '%s' to API model", v.ID))
-		}
+		volumeDoc.BuildFromService(v)
 
 		// if the volume is attached to a host, also return the host ID and volume device name
 		if v.Host != "" {
@@ -911,9 +905,7 @@ func (h *getVolumeByIDHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 	volumeDoc := &model.APIVolume{}
-	if err = volumeDoc.BuildFromService(v); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting volume '%s' to API model", v.ID))
-	}
+	volumeDoc.BuildFromService(*v)
 	// if the volume is attached to a host, also return the host ID and volume device name
 	if v.Host != "" {
 		attachedHost, err := host.FindOneId(v.Host)

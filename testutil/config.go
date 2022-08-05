@@ -125,6 +125,10 @@ func MockConfig() *evergreen.Settings {
 					Name:       "queue1",
 					SampleSize: 500,
 				},
+				{
+					Regexp:             "^queue2",
+					LockTimeoutSeconds: 50,
+				},
 			},
 		},
 		Api: evergreen.APIConfig{
@@ -165,8 +169,15 @@ func MockConfig() *evergreen.Settings {
 			PreferredType:           evergreen.AuthLDAPKey,
 			BackgroundReauthMinutes: 60,
 		},
-		Banner:            "banner",
-		BannerTheme:       "important",
+		AWSInstanceRole: "role",
+		Banner:          "banner",
+		BannerTheme:     "important",
+		Cedar: evergreen.CedarConfig{
+			BaseURL: "url.com",
+			RPCPort: "7070",
+			User:    "cedar-user",
+			APIKey:  "cedar-key",
+		},
 		ClientBinariesDir: "bin_dir",
 		CommitQueue: evergreen.CommitQueueConfig{
 			MergeTaskDistro: "distro",
@@ -184,7 +195,14 @@ func MockConfig() *evergreen.Settings {
 				},
 			},
 		},
-		Credentials:        map[string]string{"k1": "v1"},
+		Credentials: map[string]string{"k1": "v1"},
+		DataPipes: evergreen.DataPipesConfig{
+			Host:         "https://url.com",
+			Region:       "us-east-1",
+			AWSAccessKey: "access",
+			AWSSecretKey: "secret",
+			AWSToken:     "token",
+		},
 		DomainName:         "example.com",
 		Expansions:         map[string]string{"k2": "v2"},
 		GithubPRCreatorOrg: "org",
@@ -282,15 +300,25 @@ func MockConfig() *evergreen.Settings {
 						},
 						Clusters: []evergreen.ECSClusterConfig{
 							{
-								Name: "cluster_name",
+								Name: "linux_cluster_name",
+								OS:   evergreen.ECSOSLinux,
+							},
+							{
+								Name: "windows_cluster_name",
 								OS:   evergreen.ECSOSLinux,
 							},
 						},
 						CapacityProviders: []evergreen.ECSCapacityProvider{
 							{
-								Name: "capacity_provider_name",
+								Name: "linux_capacity_provider_name",
 								OS:   evergreen.ECSOSLinux,
 								Arch: evergreen.ECSArchAMD64,
+							},
+							{
+								Name:           "windows_capacity_provider_name",
+								OS:             evergreen.ECSOSWindows,
+								Arch:           evergreen.ECSArchAMD64,
+								WindowsVersion: evergreen.ECSWindowsServer2022,
 							},
 						},
 					},
@@ -373,10 +401,12 @@ func MockConfig() *evergreen.Settings {
 			Token: "token",
 			Level: "info",
 		},
-		Splunk: send.SplunkConnectionInfo{
-			ServerURL: "server",
-			Token:     "token",
-			Channel:   "channel",
+		Splunk: evergreen.SplunkConfig{
+			SplunkConnectionInfo: send.SplunkConnectionInfo{
+				ServerURL: "server",
+				Token:     "token",
+				Channel:   "channel",
+			},
 		},
 		Triggers: evergreen.TriggerConfig{
 			GenerateTaskDistro: "distro",

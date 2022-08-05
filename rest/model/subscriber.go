@@ -12,8 +12,10 @@ import (
 )
 
 type APISubscriber struct {
-	Type   *string     `json:"type"`
-	Target interface{} `json:"target"`
+	Type                *string                 `json:"type"`
+	Target              interface{}             `json:"target"`
+	WebhookSubscriber   *APIWebhookSubscriber   `json:"-"`
+	JiraIssueSubscriber *APIJIRAIssueSubscriber `json:"-"`
 }
 
 type APIGithubPRSubscriber struct {
@@ -48,138 +50,116 @@ type APIWebhookHeader struct {
 	Value *string `json:"value" mapstructure:"value"`
 }
 
-func (s *APISubscriber) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case event.Subscriber:
-		s.Type = utility.ToStringPtr(v.Type)
-		var target interface{}
+// BuildFromService for APISubscriber needs to return an error so that we can validate the target interface type.
+func (s *APISubscriber) BuildFromService(in event.Subscriber) error {
+	s.Type = utility.ToStringPtr(in.Type)
+	var target interface{}
 
-		switch v.Type {
-		case event.GithubPullRequestSubscriberType:
-			sub := APIGithubPRSubscriber{}
-			err := sub.BuildFromService(v.Target)
-			if err != nil {
-				return err
-			}
-			target = sub
-		case event.GithubCheckSubscriberType:
-			sub := APIGithubCheckSubscriber{}
-			err := sub.BuildFromService(v.Target)
-			if err != nil {
-				return err
-			}
-			target = sub
-
-		case event.EvergreenWebhookSubscriberType:
-			sub := APIWebhookSubscriber{}
-			err := sub.BuildFromService(v.Target)
-			if err != nil {
-				return err
-			}
-			target = sub
-
-		case event.JIRAIssueSubscriberType:
-			sub := APIJIRAIssueSubscriber{}
-			err := sub.BuildFromService(v.Target)
-			if err != nil {
-				return err
-			}
-			target = sub
-
-		case event.JIRACommentSubscriberType, event.EmailSubscriberType,
-			event.SlackSubscriberType, event.EnqueuePatchSubscriberType:
-			target = v.Target
-
-		default:
-			return errors.Errorf("unknown subscriber type '%s'", v.Type)
+	switch in.Type {
+	case event.GithubPullRequestSubscriberType:
+		sub := APIGithubPRSubscriber{}
+		err := sub.BuildFromService(in.Target)
+		if err != nil {
+			return err
 		}
+		target = sub
+	case event.GithubCheckSubscriberType:
+		sub := APIGithubCheckSubscriber{}
+		err := sub.BuildFromService(in.Target)
+		if err != nil {
+			return err
+		}
+		target = sub
 
-		s.Target = target
+	case event.EvergreenWebhookSubscriberType:
+		sub := APIWebhookSubscriber{}
+		err := sub.BuildFromService(in.Target)
+		if err != nil {
+			return err
+		}
+		target = sub
+
+	case event.JIRAIssueSubscriberType:
+		sub := APIJIRAIssueSubscriber{}
+		err := sub.BuildFromService(in.Target)
+		if err != nil {
+			return err
+		}
+		target = sub
+
+	case event.JIRACommentSubscriberType, event.EmailSubscriberType,
+		event.SlackSubscriberType, event.EnqueuePatchSubscriberType:
+		target = in.Target
 
 	default:
-		return errors.Errorf("programmatic error: expected event subscriber but got type %T", h)
+		return errors.Errorf("unknown subscriber type '%s'", in.Type)
 	}
 
+	s.Target = target
 	return nil
 }
 
-func (s *APISubscriber) ToService() (interface{}, error) {
+func (s *APISubscriber) ToService() (event.Subscriber, error) {
 	var target interface{}
 	var err error
 	out := event.Subscriber{
 		Type: utility.FromStringPtr(s.Type),
 	}
 	switch utility.FromStringPtr(s.Type) {
-
 	case event.GithubPullRequestSubscriberType:
 		apiModel := APIGithubPRSubscriber{}
 		if err = mapstructure.Decode(s.Target, &apiModel); err != nil {
-			return nil, gimlet.ErrorResponse{
+			return event.Subscriber{}, gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
 				Message:    errors.Wrap(err, "GitHub PR subscriber target is malformed").Error(),
 			}
 		}
-		target, err = apiModel.ToService()
-		if err != nil {
-			return nil, gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    errors.Wrap(err, "converting GitHub PR subscriber to service model").Error(),
-			}
-		}
+		target = apiModel.ToService()
+
 	case event.GithubCheckSubscriberType:
 		apiModel := APIGithubCheckSubscriber{}
 		if err = mapstructure.Decode(s.Target, &apiModel); err != nil {
-			return nil, gimlet.ErrorResponse{
+			return event.Subscriber{}, gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
 				Message:    errors.Wrap(err, "GitHub check subscriber target is malformed").Error(),
 			}
 		}
-		target, err = apiModel.ToService()
-		if err != nil {
-			return nil, gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    errors.Wrap(err, "converting GitHub check subscriber to service model").Error(),
-			}
-		}
+		target = apiModel.ToService()
 
 	case event.EvergreenWebhookSubscriberType:
 		apiModel := APIWebhookSubscriber{}
-		if err = mapstructure.Decode(s.Target, &apiModel); err != nil {
-			return nil, gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    errors.Wrap(err, "webhook subscriber target is malformed").Error(),
+		if s.WebhookSubscriber != nil {
+			apiModel = *s.WebhookSubscriber
+		} else {
+			if err = mapstructure.Decode(s.Target, &apiModel); err != nil {
+				return event.Subscriber{}, gimlet.ErrorResponse{
+					StatusCode: http.StatusBadRequest,
+					Message:    errors.Wrap(err, "webhook subscriber target is malformed").Error(),
+				}
 			}
 		}
-		target, err = apiModel.ToService()
-		if err != nil {
-			return nil, gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    errors.Wrap(err, "converting webhook subscriber to service model").Error(),
-			}
-		}
+		target = apiModel.ToService()
 
 	case event.JIRAIssueSubscriberType:
 		apiModel := APIJIRAIssueSubscriber{}
-		if err = mapstructure.Decode(s.Target, &apiModel); err != nil {
-			return nil, gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    errors.Wrap(err, "Jira issue subscriber target is malformed").Error(),
+		if s.JiraIssueSubscriber != nil {
+			apiModel = *s.JiraIssueSubscriber
+		} else {
+			if err = mapstructure.Decode(s.Target, &apiModel); err != nil {
+				return event.Subscriber{}, gimlet.ErrorResponse{
+					StatusCode: http.StatusBadRequest,
+					Message:    errors.Wrap(err, "Jira issue subscriber target is malformed").Error(),
+				}
 			}
 		}
-		target, err = apiModel.ToService()
-		if err != nil {
-			return nil, gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    errors.Wrap(err, "converting Jira issue subscriber to service model").Error(),
-			}
-		}
+		target = apiModel.ToService()
 
 	case event.JIRACommentSubscriberType, event.EmailSubscriberType,
 		event.SlackSubscriberType, event.EnqueuePatchSubscriberType:
 		target = s.Target
 
 	default:
-		return nil, gimlet.ErrorResponse{
+		return event.Subscriber{}, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    fmt.Sprintf("unknown subscriber type '%s'", utility.FromStringPtr(s.Type)),
 		}
@@ -204,12 +184,12 @@ func (s *APIGithubPRSubscriber) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (s *APIGithubCheckSubscriber) ToService() (interface{}, error) {
+func (s *APIGithubCheckSubscriber) ToService() event.GithubCheckSubscriber {
 	return event.GithubCheckSubscriber{
 		Owner: utility.FromStringPtr(s.Owner),
 		Repo:  utility.FromStringPtr(s.Repo),
 		Ref:   utility.FromStringPtr(s.Ref),
-	}, nil
+	}
 }
 
 func (s *APIGithubCheckSubscriber) BuildFromService(h interface{}) error {
@@ -226,36 +206,31 @@ func (s *APIGithubCheckSubscriber) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (s *APIGithubPRSubscriber) ToService() (interface{}, error) {
+func (s *APIGithubPRSubscriber) ToService() event.GithubPullRequestSubscriber {
 	return event.GithubPullRequestSubscriber{
 		Owner:    utility.FromStringPtr(s.Owner),
 		Repo:     utility.FromStringPtr(s.Repo),
 		Ref:      utility.FromStringPtr(s.Ref),
 		PRNumber: s.PRNumber,
-	}, nil
-}
-
-func (s *APIPRInfo) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case event.PRInfo:
-		s.Owner = utility.ToStringPtr(v.Owner)
-		s.Repo = utility.ToStringPtr(v.Repo)
-		s.PRNumber = v.PRNum
-		s.Ref = utility.ToStringPtr(v.Ref)
-		s.CommitTitle = utility.ToStringPtr(v.CommitTitle)
 	}
-
-	return nil
 }
 
-func (s *APIPRInfo) ToService() (interface{}, error) {
+func (s *APIPRInfo) BuildFromService(info event.PRInfo) {
+	s.Owner = utility.ToStringPtr(info.Owner)
+	s.Repo = utility.ToStringPtr(info.Repo)
+	s.PRNumber = info.PRNum
+	s.Ref = utility.ToStringPtr(info.Ref)
+	s.CommitTitle = utility.ToStringPtr(info.CommitTitle)
+}
+
+func (s *APIPRInfo) ToService() event.PRInfo {
 	return event.PRInfo{
 		Owner:       utility.FromStringPtr(s.Owner),
 		Repo:        utility.FromStringPtr(s.Repo),
 		PRNum:       s.PRNumber,
 		Ref:         utility.FromStringPtr(s.Ref),
 		CommitTitle: utility.FromStringPtr(s.CommitTitle),
-	}, nil
+	}
 }
 
 func (s *APIWebhookSubscriber) BuildFromService(h interface{}) error {
@@ -277,7 +252,7 @@ func (s *APIWebhookSubscriber) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (s *APIWebhookSubscriber) ToService() (interface{}, error) {
+func (s *APIWebhookSubscriber) ToService() event.WebhookSubscriber {
 	sub := event.WebhookSubscriber{
 		URL:     utility.FromStringPtr(s.URL),
 		Secret:  []byte(utility.FromStringPtr(s.Secret)),
@@ -286,7 +261,7 @@ func (s *APIWebhookSubscriber) ToService() (interface{}, error) {
 	for _, apiHeader := range s.Headers {
 		sub.Headers = append(sub.Headers, apiHeader.ToService())
 	}
-	return sub, nil
+	return sub
 }
 
 func (s *APIWebhookHeader) BuildFromService(h event.WebhookHeader) {
@@ -319,9 +294,9 @@ func (s *APIJIRAIssueSubscriber) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (s *APIJIRAIssueSubscriber) ToService() (interface{}, error) {
+func (s *APIJIRAIssueSubscriber) ToService() event.JIRAIssueSubscriber {
 	return event.JIRAIssueSubscriber{
 		Project:   utility.FromStringPtr(s.Project),
 		IssueType: utility.FromStringPtr(s.IssueType),
-	}, nil
+	}
 }

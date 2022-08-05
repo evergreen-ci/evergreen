@@ -37,8 +37,6 @@ type EC2Suite struct {
 	onDemandWithRegionManager Manager
 	spotOpts                  *EC2ManagerOptions
 	spotManager               Manager
-	autoOpts                  *EC2ManagerOptions
-	autoManager               Manager
 	impl                      *ec2Manager
 	mock                      *awsClientMock
 	h                         *host.Host
@@ -90,14 +88,6 @@ func (s *EC2Suite) SetupTest() {
 	}
 	s.spotManager = &ec2Manager{env: s.env, EC2ManagerOptions: s.spotOpts}
 	_ = s.spotManager.Configure(s.ctx, &evergreen.Settings{
-		Expansions: map[string]string{"test": "expand"},
-	})
-	s.autoOpts = &EC2ManagerOptions{
-		client:   &awsClientMock{},
-		provider: autoProvider,
-	}
-	s.autoManager = &ec2Manager{env: s.env, EC2ManagerOptions: s.autoOpts}
-	_ = s.autoManager.Configure(s.ctx, &evergreen.Settings{
 		Expansions: map[string]string{"test": "expand"},
 	})
 	var ok bool
@@ -342,9 +332,6 @@ func (s *EC2Suite) TestSpawnHostInvalidInput() {
 }
 
 func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
-	pkgCachingPriceFetcher.ec2Prices = map[odInfo]float64{
-		odInfo{"Linux", "instanceType", "US East (N. Virginia)"}: .1,
-	}
 	s.h.Distro.Id = "distro_id"
 	s.h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
 	s.h.Distro.ProviderSettingsList = []*birch.Document{birch.NewDocument(
@@ -389,9 +376,6 @@ func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 }
 
 func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
-	pkgCachingPriceFetcher.ec2Prices = map[odInfo]float64{
-		odInfo{"Linux", "instanceType", "US East (N. Virginia)"}: .1,
-	}
 	h := &host.Host{}
 	h.Distro.Id = "distro_id"
 	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
@@ -755,7 +739,7 @@ func (s *EC2Suite) TestSpawnHostForTask() {
 func (s *EC2Suite) TestModifyHost() {
 	changes := host.HostModifyOptions{
 		AddInstanceTags: []host.Tag{
-			host.Tag{
+			{
 				Key:           "key-2",
 				Value:         "val-2",
 				CanBeModified: true,
@@ -773,19 +757,36 @@ func (s *EC2Suite) TestModifyHost() {
 	s.Error(s.onDemandManager.ModifyHost(ctx, s.h, changes))
 	s.Require().NoError(s.h.Remove())
 
+	s.h.CreationTime = time.Now()
+	s.h.ExpirationTime = s.h.CreationTime.Add(time.Hour * 24 * 7)
+	s.h.NoExpiration = false
 	s.h.Status = evergreen.HostStopped
 	s.Require().NoError(s.h.Insert())
+
+	// updating instance tags and instance type
 	s.NoError(s.onDemandManager.ModifyHost(ctx, s.h, changes))
 	found, err := host.FindOne(host.ById(s.h.Id))
 	s.NoError(err)
-	s.Equal([]host.Tag{host.Tag{Key: "key-2", Value: "val-2", CanBeModified: true}}, found.InstanceTags)
+	s.Equal([]host.Tag{{Key: "key-2", Value: "val-2", CanBeModified: true}}, found.InstanceTags)
 	s.Equal(changes.InstanceType, found.InstanceType)
 
-	intent := host.Host{
-		Id:           "evg-1234",
-		NoExpiration: false,
+	// updating host expiration
+	prevExpirationTime := found.ExpirationTime
+	changes = host.HostModifyOptions{
+		AddHours: time.Hour * 24,
 	}
-	s.NoError(intent.Insert())
+	s.NoError(s.onDemandManager.ModifyHost(ctx, s.h, changes))
+	found, err = host.FindOne(host.ById(s.h.Id))
+	s.NoError(err)
+	s.True(found.ExpirationTime.Equal(prevExpirationTime.Add(changes.AddHours)))
+
+	// trying to update host expiration past 14 days should error
+	changes = host.HostModifyOptions{
+		AddHours: evergreen.MaxSpawnHostExpirationDurationHours,
+	}
+	s.Error(s.onDemandManager.ModifyHost(ctx, s.h, changes))
+
+	// modifying host to have no expiration
 	noExpiration := true
 	changes = host.HostModifyOptions{NoExpiration: &noExpiration}
 	s.NoError(s.onDemandManager.ModifyHost(ctx, s.h, changes))
@@ -793,6 +794,7 @@ func (s *EC2Suite) TestModifyHost() {
 	s.NoError(err)
 	s.True(found.NoExpiration)
 
+	// attaching a volume to host
 	volumeToMount := host.Volume{
 		ID:               "thang",
 		AvailabilityZone: "us-east-1a",
@@ -805,7 +807,7 @@ func (s *EC2Suite) TestModifyHost() {
 		AttachVolume: "thang",
 	}
 	s.NoError(s.onDemandManager.ModifyHost(ctx, s.h, changes))
-	found, err = host.FindOne(host.ById(s.h.Id))
+	_, err = host.FindOne(host.ById(s.h.Id))
 	s.NoError(err)
 	s.Require().NoError(s.h.Remove())
 }
@@ -1040,13 +1042,6 @@ func (s *EC2Suite) TestGetInstanceName() {
 
 func (s *EC2Suite) TestGetProvider() {
 	s.h.Distro.Arch = "Linux/Unix"
-	pkgCachingPriceFetcher.ec2Prices = map[odInfo]float64{
-		odInfo{
-			os:       "Linux",
-			instance: "instance",
-			region:   "US East (N. Virginia)",
-		}: 23.2,
-	}
 	ec2Settings := &EC2ProviderSettings{
 		InstanceType: "instance",
 		IsVpc:        true,
@@ -1057,14 +1052,11 @@ func (s *EC2Suite) TestGetProvider() {
 	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
 
-	manager, ok := s.autoManager.(*ec2Manager)
+	manager, ok := s.spotManager.(*ec2Manager)
 	s.True(ok)
 	provider, err := manager.getProvider(ctx, s.h, ec2Settings)
 	s.NoError(err)
 	s.Equal(spotProvider, provider)
-	// subnet should be set based on vpc name
-	s.Equal("subnet-654321", ec2Settings.SubnetId)
-	s.Equal(s.h.Distro.Provider, evergreen.ProviderNameEc2Spot)
 
 	s.h.UserHost = true
 	provider, err = manager.getProvider(ctx, s.h, ec2Settings)
@@ -1363,7 +1355,7 @@ func (s *EC2Suite) TestGetRegion() {
 }
 
 func (s *EC2Suite) TestUserDataExpand() {
-	expanded, err := expandUserData("${test} a thing", s.autoManager.(*ec2Manager).settings.Expansions)
+	expanded, err := expandUserData("${test} a thing", s.onDemandManager.(*ec2Manager).settings.Expansions)
 	s.NoError(err)
 	s.Equal("expand a thing", expanded)
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
+	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -60,7 +61,7 @@ func (j *dataCleanupTestLogs) Run(ctx context.Context) {
 
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
-		j.AddError(err)
+		j.AddError(errors.Wrap(err, "getting service flags"))
 		return
 	}
 
@@ -93,7 +94,7 @@ deleteDocs:
 			}
 			opStart := time.Now()
 			num, err := model.DeleteTestLogsWithLimit(ctx, j.env, timestamp, cleanupBatchSize)
-			j.AddError(err)
+			j.AddError(errors.Wrap(err, "deleting test logs"))
 
 			batches++
 			numDocs += num

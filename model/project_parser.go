@@ -408,6 +408,8 @@ type parserBVTaskUnit struct {
 	CronBatchTime string `yaml:"cron,omitempty" bson:"cron,omitempty"`
 	// If Activate is set to false, then we don't initially activate the task.
 	Activate *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
+	// TaskGroup is set if an inline task group is defined on the build variant config.
+	TaskGroup *parserTaskGroup `yaml:"task_group,omitempty" bson:"task_group,omitempty"`
 }
 
 // UnmarshalYAML allows the YAML parser to read both a single selector string or
@@ -1113,26 +1115,32 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 		tasksByName[t.Name] = t
 	}
 	for _, pbvt := range pbv.Tasks {
-		// evaluate each task against both the task and task group selectors
+		// Evaluate each task against both the task and task group selectors
 		// only error if both selectors error because each task should only be found
-		// in one or the other
+		// in one or the other.  Skip selector checking if task group is defined
+		// directly on the build variant task.
 		var names, temp []string
-		var err1, err2 error
 		isGroup := false
-		if tse != nil {
-			temp, err1 = tse.evalSelector(ParseSelector(pbvt.Name))
-			names = append(names, temp...)
-		}
-		if tgse != nil {
-			temp, err2 = tgse.evalSelector(ParseSelector(pbvt.Name))
-			if len(temp) > 0 {
+		if pbvt.TaskGroup != nil {
+			names = append(names, pbvt.Name)
+			isGroup = true
+		} else {
+			var err1, err2 error
+			if tse != nil {
+				temp, err1 = tse.evalSelector(ParseSelector(pbvt.Name))
 				names = append(names, temp...)
-				isGroup = true
 			}
-		}
-		if err1 != nil && err2 != nil {
-			evalErrs = append(evalErrs, err1, err2)
-			continue
+			if tgse != nil {
+				temp, err2 = tgse.evalSelector(ParseSelector(pbvt.Name))
+				if len(temp) > 0 {
+					names = append(names, temp...)
+					isGroup = true
+				}
+			}
+			if err1 != nil && err2 != nil {
+				evalErrs = append(evalErrs, err1, err2)
+				continue
+			}
 		}
 		// create new task definitions--duplicates must have the same status requirements
 		for _, name := range names {
@@ -1190,6 +1198,23 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 		CronBatchTime:    bvt.CronBatchTime,
 		BatchTime:        bvt.BatchTime,
 		Activate:         bvt.Activate,
+	}
+	if bvt.TaskGroup != nil {
+		res.TaskGroup = &TaskGroup{
+			Name:                    bvt.Name,
+			SetupGroupFailTask:      bvt.TaskGroup.SetupGroupFailTask,
+			TeardownTaskCanFailTask: bvt.TaskGroup.TeardownTaskCanFailTask,
+			SetupGroupTimeoutSecs:   bvt.TaskGroup.SetupGroupTimeoutSecs,
+			SetupGroup:              bvt.TaskGroup.SetupGroup,
+			TeardownGroup:           bvt.TaskGroup.TeardownGroup,
+			SetupTask:               bvt.TaskGroup.SetupTask,
+			TeardownTask:            bvt.TaskGroup.TeardownTask,
+			Tags:                    bvt.TaskGroup.Tags,
+			Tasks:                   bvt.TaskGroup.Tasks,
+			MaxHosts:                bvt.TaskGroup.MaxHosts,
+			Timeout:                 bvt.TaskGroup.Timeout,
+			ShareProcs:              bvt.TaskGroup.ShareProcs,
+		}
 	}
 	if res.Priority == 0 {
 		res.Priority = pt.Priority

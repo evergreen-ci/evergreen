@@ -72,11 +72,11 @@ func (j *reauthorizeUserJob) Run(ctx context.Context) {
 	if j.user == nil {
 		user, err := user.FindOneById(j.UserID)
 		if err != nil {
-			j.AddRetryableError(err)
+			j.AddRetryableError(errors.Wrapf(err, "finding user '%s'", j.UserID))
 			return
 		}
 		if user == nil {
-			j.AddError(errors.Errorf("could not find user '%s'", j.UserID))
+			j.AddError(errors.Errorf("user '%s' not found", j.UserID))
 			return
 		}
 		j.user = user
@@ -110,11 +110,11 @@ func (j *reauthorizeUserJob) Run(ctx context.Context) {
 
 	um := j.env.UserManager()
 	if um == nil {
-		j.AddRetryableError(errors.New("cannot get global user manager"))
+		j.AddRetryableError(errors.New("getting global user manager"))
 		return
 	}
 	if !j.env.UserManagerInfo().CanReauthorize {
-		j.AddRetryableError(errors.New("cannot reauthorize user when the user manager does not support reauthorization"))
+		j.AddRetryableError(errors.New("reauthorizing user when the user manager does not support reauthorization"))
 		return
 	}
 

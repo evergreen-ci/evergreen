@@ -37,7 +37,7 @@ func TestConfigModelHasMatchingFieldNames(t *testing.T) {
 		}
 	}
 
-	exclude := []string{"Id", "CredentialsNew", "Database", "KeysNew", "ExpansionsNew", "PluginsNew", "Presto"}
+	exclude := []string{"Id", "CredentialsNew", "Database", "KeysNew", "ExpansionsNew", "PluginsNew"}
 	for k, v := range matched {
 		if !utility.StringSliceContains(exclude, k) {
 			assert.False(v, "config field '%s' is missing from APIAdminSettings", k)
@@ -54,6 +54,7 @@ func TestModelConversion(t *testing.T) {
 	// test converting from a db model to an API model
 	assert.NoError(apiSettings.BuildFromService(testSettings))
 	assert.Equal(testSettings.ApiUrl, *apiSettings.ApiUrl)
+	assert.Equal(testSettings.AWSInstanceRole, *apiSettings.AWSInstanceRole)
 	assert.Equal(testSettings.Banner, *apiSettings.Banner)
 	assert.EqualValues(testSettings.BannerTheme, *apiSettings.BannerTheme)
 	assert.Equal(testSettings.ClientBinariesDir, *apiSettings.ClientBinariesDir)
@@ -104,6 +105,7 @@ func TestModelConversion(t *testing.T) {
 	require.Equal(len(testSettings.Amboy.NamedQueues), len(apiSettings.Amboy.NamedQueues))
 	for i := range testSettings.Amboy.NamedQueues {
 		assert.Equal(testSettings.Amboy.NamedQueues[i].Name, utility.FromStringPtr(apiSettings.Amboy.NamedQueues[i].Name))
+		assert.Equal(testSettings.Amboy.NamedQueues[i].Regexp, utility.FromStringPtr(apiSettings.Amboy.NamedQueues[i].Regexp))
 		assert.Equal(testSettings.Amboy.NamedQueues[i].NumWorkers, apiSettings.Amboy.NamedQueues[i].NumWorkers)
 		assert.Equal(testSettings.Amboy.NamedQueues[i].SampleSize, apiSettings.Amboy.NamedQueues[i].SampleSize)
 		assert.Equal(testSettings.Amboy.NamedQueues[i].LockTimeoutSeconds, apiSettings.Amboy.NamedQueues[i].LockTimeoutSeconds)
@@ -116,6 +118,10 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.AuthConfig.Github.ClientId, utility.FromStringPtr(apiSettings.AuthConfig.Github.ClientId))
 	assert.EqualValues(testSettings.AuthConfig.Multi.ReadWrite[0], apiSettings.AuthConfig.Multi.ReadWrite[0])
 	assert.Equal(len(testSettings.AuthConfig.Github.Users), len(apiSettings.AuthConfig.Github.Users))
+	assert.EqualValues(testSettings.Cedar.BaseURL, utility.FromStringPtr(apiSettings.Cedar.BaseURL))
+	assert.EqualValues(testSettings.Cedar.RPCPort, utility.FromStringPtr(apiSettings.Cedar.RPCPort))
+	assert.EqualValues(testSettings.Cedar.User, utility.FromStringPtr(apiSettings.Cedar.User))
+	assert.EqualValues(testSettings.Cedar.APIKey, utility.FromStringPtr(apiSettings.Cedar.APIKey))
 	assert.EqualValues(testSettings.CommitQueue.MergeTaskDistro, utility.FromStringPtr(apiSettings.CommitQueue.MergeTaskDistro))
 	assert.EqualValues(testSettings.CommitQueue.CommitterName, utility.FromStringPtr(apiSettings.CommitQueue.CommitterName))
 	assert.EqualValues(testSettings.CommitQueue.CommitterEmail, utility.FromStringPtr(apiSettings.CommitQueue.CommitterEmail))
@@ -123,6 +129,11 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ContainerPools.Pools[0].Id, utility.FromStringPtr(apiSettings.ContainerPools.Pools[0].Id))
 	assert.EqualValues(testSettings.ContainerPools.Pools[0].MaxContainers, apiSettings.ContainerPools.Pools[0].MaxContainers)
 	assert.EqualValues(testSettings.ContainerPools.Pools[0].Port, apiSettings.ContainerPools.Pools[0].Port)
+	assert.Equal(testSettings.DataPipes.Host, utility.FromStringPtr(apiSettings.DataPipes.Host))
+	assert.Equal(testSettings.DataPipes.Region, utility.FromStringPtr(apiSettings.DataPipes.Region))
+	assert.Equal(testSettings.DataPipes.AWSAccessKey, utility.FromStringPtr(apiSettings.DataPipes.AWSAccessKey))
+	assert.Equal(testSettings.DataPipes.AWSSecretKey, utility.FromStringPtr(apiSettings.DataPipes.AWSSecretKey))
+	assert.Equal(testSettings.DataPipes.AWSToken, utility.FromStringPtr(apiSettings.DataPipes.AWSToken))
 	assert.Equal(testSettings.HostJasper.BinaryName, utility.FromStringPtr(apiSettings.HostJasper.BinaryName))
 	assert.Equal(testSettings.HostJasper.DownloadFileName, utility.FromStringPtr(apiSettings.HostJasper.DownloadFileName))
 	assert.Equal(testSettings.HostJasper.Port, apiSettings.HostJasper.Port)
@@ -174,6 +185,7 @@ func TestModelConversion(t *testing.T) {
 		assert.Equal(cp.Name, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.ECS.CapacityProviders[i].Name))
 		assert.EqualValues(cp.OS, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.ECS.CapacityProviders[i].OS))
 		assert.EqualValues(cp.Arch, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.ECS.CapacityProviders[i].Arch))
+		assert.EqualValues(cp.WindowsVersion, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.ECS.CapacityProviders[i].WindowsVersion))
 	}
 	assert.EqualValues(testSettings.Providers.AWS.Pod.SecretsManager.SecretPrefix, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.SecretsManager.SecretPrefix))
 	assert.EqualValues(testSettings.Providers.Docker.APIVersion, utility.FromStringPtr(apiSettings.Providers.Docker.APIVersion))
@@ -190,7 +202,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ServiceFlags.ContainerConfigurationsDisabled, apiSettings.ServiceFlags.ContainerConfigurationsDisabled)
 	assert.EqualValues(testSettings.Slack.Level, utility.FromStringPtr(apiSettings.Slack.Level))
 	assert.EqualValues(testSettings.Slack.Options.Channel, utility.FromStringPtr(apiSettings.Slack.Options.Channel))
-	assert.EqualValues(testSettings.Splunk.Channel, utility.FromStringPtr(apiSettings.Splunk.Channel))
+	assert.EqualValues(testSettings.Splunk.SplunkConnectionInfo.Channel, utility.FromStringPtr(apiSettings.Splunk.SplunkConnectionInfo.Channel))
 	assert.EqualValues(testSettings.Triggers.GenerateTaskDistro, utility.FromStringPtr(apiSettings.Triggers.GenerateTaskDistro))
 	assert.EqualValues(testSettings.Ui.HttpListenAddr, utility.FromStringPtr(apiSettings.Ui.HttpListenAddr))
 	assert.Equal(testSettings.Spawnhost.SpawnHostsPerUser, *apiSettings.Spawnhost.SpawnHostsPerUser)
@@ -217,6 +229,7 @@ func TestModelConversion(t *testing.T) {
 	require.Equal(len(testSettings.Amboy.NamedQueues), len(dbSettings.Amboy.NamedQueues))
 	for i := range testSettings.Amboy.NamedQueues {
 		assert.Equal(testSettings.Amboy.NamedQueues[i].Name, dbSettings.Amboy.NamedQueues[i].Name)
+		assert.Equal(testSettings.Amboy.NamedQueues[i].Regexp, dbSettings.Amboy.NamedQueues[i].Regexp)
 		assert.Equal(testSettings.Amboy.NamedQueues[i].NumWorkers, dbSettings.Amboy.NamedQueues[i].NumWorkers)
 		assert.Equal(testSettings.Amboy.NamedQueues[i].SampleSize, dbSettings.Amboy.NamedQueues[i].SampleSize)
 		assert.Equal(testSettings.Amboy.NamedQueues[i].LockTimeoutSeconds, dbSettings.Amboy.NamedQueues[i].LockTimeoutSeconds)
@@ -280,7 +293,7 @@ func TestModelConversion(t *testing.T) {
 	}
 	assert.EqualValues(testSettings.Slack.Level, dbSettings.Slack.Level)
 	assert.EqualValues(testSettings.Slack.Options.Channel, dbSettings.Slack.Options.Channel)
-	assert.EqualValues(testSettings.Splunk.Channel, dbSettings.Splunk.Channel)
+	assert.EqualValues(testSettings.Splunk.SplunkConnectionInfo.Channel, dbSettings.Splunk.SplunkConnectionInfo.Channel)
 	assert.EqualValues(testSettings.Triggers.GenerateTaskDistro, dbSettings.Triggers.GenerateTaskDistro)
 	assert.EqualValues(testSettings.Ui.HttpListenAddr, dbSettings.Ui.HttpListenAddr)
 	assert.EqualValues(testSettings.Spawnhost.SpawnHostsPerUser, dbSettings.Spawnhost.SpawnHostsPerUser)

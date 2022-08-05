@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/cocoa/secret"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/pod"
+	"github.com/evergreen-ci/evergreen/model/pod/definition"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
@@ -26,11 +27,26 @@ func MakeSecretsManagerClient(settings *evergreen.Settings) (cocoa.SecretsManage
 }
 
 // MakeSecretsManagerVault creates a cocoa.Vault backed by Secrets Manager.
-func MakeSecretsManagerVault(c cocoa.SecretsManagerClient) cocoa.Vault {
-	return secret.NewBasicSecretsManager(c)
+func MakeSecretsManagerVault(c cocoa.SecretsManagerClient) (cocoa.Vault, error) {
+	return secret.NewBasicSecretsManager(*secret.NewBasicSecretsManagerOptions().SetClient(c))
 }
 
-// MakeECSPodCreator creates a cocoa.ECSPodCreator to create pods backed by ECS and secrets backed by a secret Vault.
+// PodDefinitionTag is the name of the tag in ECS that marks whether pod
+// definitions that are tracked or not by Evergreen.
+const PodDefinitionTag = "evergreen-tracked"
+
+// MakeECSPodDefinitionManager creates a cocoa.ECSPodDefinitionManager that
+// creates pod definitions in ECS and secrets backed by an optional cocoa.Vault.
+func MakeECSPodDefinitionManager(c cocoa.ECSClient, v cocoa.Vault) (cocoa.ECSPodDefinitionManager, error) {
+	return ecs.NewBasicPodDefinitionManager(*ecs.NewBasicPodDefinitionManagerOptions().
+		SetClient(c).
+		SetVault(v).
+		SetCache(definition.PodDefinitionCache{}).
+		SetCacheTag(PodDefinitionTag))
+}
+
+// MakeECSPodCreator creates a cocoa.ECSPodCreator to create pods backed by ECS
+// and secrets backed by an optional cocoa.Vault.
 func MakeECSPodCreator(c cocoa.ECSClient, v cocoa.Vault) (cocoa.ECSPodCreator, error) {
 	return ecs.NewBasicECSPodCreator(c, v)
 }
@@ -114,9 +130,7 @@ func exportECSPodResources(info pod.ResourceInfo) cocoa.ECSPodResources {
 	}
 
 	if info.DefinitionID != "" {
-		taskDef := cocoa.NewECSTaskDefinition().
-			SetID(info.DefinitionID).
-			SetOwned(true)
+		taskDef := cocoa.NewECSTaskDefinition().SetID(info.DefinitionID)
 		res.SetTaskDefinition(*taskDef)
 	}
 
@@ -154,7 +168,6 @@ func ImportECSPodResources(res cocoa.ECSPodResources) pod.ResourceInfo {
 		Cluster:      utility.FromStringPtr(res.Cluster),
 		Containers:   containerResources,
 	}
-
 }
 
 // exportECSContainerResources exports the ECS container resource information
@@ -182,32 +195,32 @@ const (
 	agentPort = 2285
 )
 
-// ExportECSPodCreationOptions exports the ECS pod resources into
-// cocoa.ECSPodExecutionOptions.
-func ExportECSPodCreationOptions(settings *evergreen.Settings, p *pod.Pod) (*cocoa.ECSPodCreationOptions, error) {
+// ExportECSPodCreationOptions exports the ECS pod creation options into
+// cocoa.ECSPodDefinitionOptions to create the pod definition.
+func ExportECSPodDefinitionOptions(settings *evergreen.Settings, opts pod.TaskContainerCreationOptions) (*cocoa.ECSPodDefinitionOptions, error) {
 	ecsConf := settings.Providers.AWS.Pod.ECS
-	execOpts, err := exportECSPodExecutionOptions(ecsConf, p.TaskContainerCreationOpts)
-	if err != nil {
-		return nil, errors.Wrap(err, "exporting pod execution options")
-	}
 
-	containerDef, err := exportECSPodContainerDef(settings, p)
+	containerDef, err := exportECSPodContainerDef(settings, opts)
 	if err != nil {
 		return nil, errors.Wrap(err, "exporting pod container definition")
 	}
 
-	opts := cocoa.NewECSPodCreationOptions().
-		SetName(strings.Join([]string{strings.TrimRight(ecsConf.TaskDefinitionPrefix, "-"), "agent", p.ID}, "-")).
+	defOpts := cocoa.NewECSPodDefinitionOptions().
+		SetName(opts.GetFamily(ecsConf)).
+		SetCPU(opts.CPU).
+		SetMemoryMB(opts.MemoryMB).
 		SetTaskRole(ecsConf.TaskRole).
 		SetExecutionRole(ecsConf.ExecutionRole).
-		SetExecutionOptions(*execOpts).
 		AddContainerDefinitions(*containerDef)
-
 	if len(ecsConf.AWSVPC.Subnets) != 0 || len(ecsConf.AWSVPC.SecurityGroups) != 0 {
-		opts.SetNetworkMode(cocoa.NetworkModeAWSVPC)
+		defOpts.SetNetworkMode(cocoa.NetworkModeAWSVPC)
 	}
 
-	return opts, nil
+	if err := defOpts.Validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid pod definition options")
+	}
+
+	return defOpts, nil
 }
 
 // Constants related to secrets stored in Secrets Manager.
@@ -222,72 +235,86 @@ const (
 
 // exportECSPodContainerDef exports the ECS pod container definition into the
 // equivalent cocoa.ECSContainerDefintion.
-func exportECSPodContainerDef(settings *evergreen.Settings, p *pod.Pod) (*cocoa.ECSContainerDefinition, error) {
+func exportECSPodContainerDef(settings *evergreen.Settings, opts pod.TaskContainerCreationOptions) (*cocoa.ECSContainerDefinition, error) {
 	def := cocoa.NewECSContainerDefinition().
 		SetName(agentContainerName).
-		SetImage(p.TaskContainerCreationOpts.Image).
-		SetMemoryMB(p.TaskContainerCreationOpts.MemoryMB).
-		SetCPU(p.TaskContainerCreationOpts.CPU).
-		SetWorkingDir(p.TaskContainerCreationOpts.WorkingDir).
-		SetCommand(agentScript(settings, p)).
-		SetEnvironmentVariables(exportPodEnvVars(settings.Providers.AWS.Pod.SecretsManager, p)).
+		SetImage(opts.Image).
+		SetMemoryMB(opts.MemoryMB).
+		SetCPU(opts.CPU).
+		SetWorkingDir(opts.WorkingDir).
+		SetCommand(bootstrapContainerCommand(settings, opts)).
+		SetEnvironmentVariables(exportPodEnvVars(settings.Providers.AWS.Pod.SecretsManager, opts)).
 		AddPortMappings(*cocoa.NewPortMapping().SetContainerPort(agentPort))
 
-	if p.TaskContainerCreationOpts.RepoUsername != "" && p.TaskContainerCreationOpts.RepoPassword != "" {
-		secretName := makeInternalSecretName(settings.Providers.AWS.Pod.SecretsManager, p, repoCredsSecretName)
+	if opts.RepoUsername != "" && opts.RepoPassword != "" {
+		secretName := makeInternalSecretName(settings.Providers.AWS.Pod.SecretsManager, opts, repoCredsSecretName)
 
 		def.SetRepositoryCredentials(*cocoa.NewRepositoryCredentials().
 			SetName(secretName).
 			SetOwned(true).
 			SetNewCredentials(*cocoa.NewStoredRepositoryCredentials().
-				SetUsername(p.TaskContainerCreationOpts.RepoUsername).
-				SetPassword(p.TaskContainerCreationOpts.RepoPassword)))
+				SetUsername(opts.RepoUsername).
+				SetPassword(opts.RepoPassword)))
 	}
 
 	return def, nil
 }
 
-const (
-	ecsWindowsVersionTagConstraint = "attribute:WindowsVersion"
-)
-
-// exportECSPodExecutionOptions exports the ECS configuration into
+// ExportECSPodExecutionOptions exports the ECS configuration into
 // cocoa.ECSPodExecutionOptions.
-func exportECSPodExecutionOptions(ecsConfig evergreen.ECSConfig, containerOpts pod.TaskContainerCreationOptions) (*cocoa.ECSPodExecutionOptions, error) {
-	opts := cocoa.NewECSPodExecutionOptions()
+func ExportECSPodExecutionOptions(ecsConfig evergreen.ECSConfig, containerOpts pod.TaskContainerCreationOptions) (*cocoa.ECSPodExecutionOptions, error) {
+	execOpts := cocoa.NewECSPodExecutionOptions()
 
 	if len(ecsConfig.AWSVPC.Subnets) != 0 || len(ecsConfig.AWSVPC.SecurityGroups) != 0 {
-		opts.SetAWSVPCOptions(*cocoa.NewAWSVPCOptions().
+		execOpts.SetAWSVPCOptions(*cocoa.NewAWSVPCOptions().
 			SetSubnets(ecsConfig.AWSVPC.Subnets).
 			SetSecurityGroups(ecsConfig.AWSVPC.SecurityGroups))
 	}
 
-	placementOpts := cocoa.NewECSPodPlacementOptions()
-	if containerOpts.WindowsVersion != "" {
-		windowsVersionConstraint := fmt.Sprintf("%s == %s", ecsWindowsVersionTagConstraint, containerOpts.WindowsVersion)
-		placementOpts.AddInstanceFilters(windowsVersionConstraint)
-	}
-	opts.SetPlacementOptions(*placementOpts)
-
+	// Pods need to run inside container instances that have a compatible
+	// environment, so specifying the capacity provider essentially specifies
+	// the host environment it must run inside.
 	var foundCapacityProvider bool
 	for _, cp := range ecsConfig.CapacityProviders {
+		if containerOpts.OS == pod.OSWindows && !containerOpts.WindowsVersion.Matches(cp.WindowsVersion) {
+			continue
+		}
 		if containerOpts.OS.Matches(cp.OS) && containerOpts.Arch.Matches(cp.Arch) {
-			opts.SetCapacityProvider(cp.Name)
+			execOpts.SetCapacityProvider(cp.Name)
 			foundCapacityProvider = true
 			break
 		}
 	}
 	if !foundCapacityProvider {
+		if containerOpts.OS == pod.OSWindows {
+			return nil, errors.Errorf("container OS '%s' with version '%s' and arch '%s' did not match any recognized capacity provider", containerOpts.OS, containerOpts.WindowsVersion, containerOpts.Arch)
+		}
 		return nil, errors.Errorf("container OS '%s' and arch '%s' did not match any recognized capacity provider", containerOpts.OS, containerOpts.Arch)
 	}
 
+	var foundCluster bool
 	for _, cluster := range ecsConfig.Clusters {
 		if containerOpts.OS.Matches(cluster.OS) {
-			return opts.SetCluster(cluster.Name), nil
+			execOpts.SetCluster(cluster.Name)
+			foundCluster = true
+			break
 		}
 	}
+	if !foundCluster {
+		return nil, errors.Errorf("container OS '%s' did not match any recognized ECS cluster", containerOpts.OS)
+	}
 
-	return nil, errors.Errorf("container OS '%s' did not match any recognized ECS cluster", containerOpts.OS)
+	if err := execOpts.Validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid options")
+	}
+
+	return execOpts, nil
+}
+
+// ExportECSPodDefinition exports the pod definition into an
+// cocoa.ECSTaskDefinition.
+func ExportECSPodDefinition(podDef definition.PodDefinition) cocoa.ECSTaskDefinition {
+	return *cocoa.NewECSTaskDefinition().SetID(podDef.ExternalID)
 }
 
 // podAWSOptions creates options to initialize an AWS client for pod management.
@@ -305,42 +332,42 @@ func podAWSOptions(settings *evergreen.Settings) awsutil.ClientOptions {
 
 // exportPodEnvVars converts a map of environment variables and a map of secrets
 // to a slice of cocoa.EnvironmentVariables.
-func exportPodEnvVars(smConf evergreen.SecretsManagerConfig, p *pod.Pod) []cocoa.EnvironmentVariable {
+func exportPodEnvVars(smConf evergreen.SecretsManagerConfig, opts pod.TaskContainerCreationOptions) []cocoa.EnvironmentVariable {
 	var allEnvVars []cocoa.EnvironmentVariable
 
-	for k, v := range p.TaskContainerCreationOpts.EnvVars {
+	for k, v := range opts.EnvVars {
 		allEnvVars = append(allEnvVars, *cocoa.NewEnvironmentVariable().SetName(k).SetValue(v))
 	}
 
-	for envVarName, s := range p.TaskContainerCreationOpts.EnvSecrets {
-		opts := cocoa.NewSecretOptions().SetOwned(utility.FromBoolPtr(s.Owned))
+	for envVarName, s := range opts.EnvSecrets {
+		secretOpts := cocoa.NewSecretOptions().SetOwned(utility.FromBoolPtr(s.Owned))
 		if utility.FromBoolPtr(s.Exists) && s.ExternalID != "" {
-			opts.SetID(s.ExternalID)
+			secretOpts.SetID(s.ExternalID)
 		} else if s.Name != "" {
-			opts.SetName(makeSecretName(smConf, p, s.Name))
+			secretOpts.SetName(makeSecretName(smConf, opts, s.Name))
 		} else {
-			opts.SetName(makeSecretName(smConf, p, envVarName))
+			secretOpts.SetName(makeSecretName(smConf, opts, envVarName))
 		}
 		if !utility.FromBoolPtr(s.Exists) && s.Value != "" {
-			opts.SetNewValue(s.Value)
+			secretOpts.SetNewValue(s.Value)
 		}
 
 		allEnvVars = append(allEnvVars, *cocoa.NewEnvironmentVariable().
 			SetName(envVarName).
-			SetSecretOptions(*opts))
+			SetSecretOptions(*secretOpts))
 	}
 
 	return allEnvVars
 }
 
 // makeSecretName creates a Secrets Manager secret name for the pod.
-func makeSecretName(smConf evergreen.SecretsManagerConfig, p *pod.Pod, name string) string {
-	return strings.Join([]string{strings.TrimRight(smConf.SecretPrefix, "/"), "agent", p.ID, name}, "/")
+func makeSecretName(smConf evergreen.SecretsManagerConfig, opts pod.TaskContainerCreationOptions, name string) string {
+	return strings.Join([]string{strings.TrimRight(smConf.SecretPrefix, "/"), "agent", opts.Hash(), name}, "/")
 }
 
 // makeInternalSecretName creates a Secrets Manager secret name for the pod in a
 // reserved namespace that is meant for Evergreen-internal purposes and should
 // not be exposed to users.
-func makeInternalSecretName(smConf evergreen.SecretsManagerConfig, p *pod.Pod, name string) string {
-	return makeSecretName(smConf, p, fmt.Sprintf("%s/%s", internalSecretNamespace, name))
+func makeInternalSecretName(smConf evergreen.SecretsManagerConfig, opts pod.TaskContainerCreationOptions, name string) string {
+	return makeSecretName(smConf, opts, fmt.Sprintf("%s/%s", internalSecretNamespace, name))
 }

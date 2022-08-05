@@ -467,14 +467,13 @@ func (p *schedulePatchHandler) Parse(ctx context.Context, r *http.Request) error
 	if apiPatch == nil {
 		return errors.New("patch not found")
 	}
-	dbPatch, err := apiPatch.ToService()
+	p.patch, err = apiPatch.ToService()
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrap(err, "converting patch to service model").Error(),
 		}
 	}
-	p.patch = dbPatch.(patch.Patch)
 	body := utility.NewRequestReader(r)
 	defer body.Close()
 	tasks := patchTasks{}
@@ -556,8 +555,6 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("version for patch '%s' not found", p.patchId))
 	}
 	restVersion := model.APIVersion{}
-	if err = restVersion.BuildFromService(dbVersion); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting version '%s' to API model", dbVersion.Id))
-	}
+	restVersion.BuildFromService(*dbVersion)
 	return gimlet.NewJSONResponse(restVersion)
 }

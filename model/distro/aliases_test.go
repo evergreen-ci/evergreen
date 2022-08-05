@@ -15,7 +15,7 @@ func TestDistroAliases(t *testing.T) {
 		t.Run("Containers", func(t *testing.T) {
 			distros := byPoolSize{
 				{Id: "three", Provider: evergreen.ProviderNameStatic},
-				{Id: "two", Provider: evergreen.ProviderNameEc2Auto},
+				{Id: "two", Provider: evergreen.ProviderNameEc2Fleet},
 				{Id: "one", Provider: evergreen.ProviderNameDocker},
 			}
 			sort.Sort(distros)
@@ -25,7 +25,7 @@ func TestDistroAliases(t *testing.T) {
 		t.Run("Ephemeral", func(t *testing.T) {
 			distros := byPoolSize{
 				{Id: "two", Provider: evergreen.ProviderNameStatic},
-				{Id: "one", Provider: evergreen.ProviderNameEc2Auto},
+				{Id: "one", Provider: evergreen.ProviderNameEc2Fleet},
 			}
 			sort.Sort(distros)
 			assert.Equal(t, "one", distros[0].Id)

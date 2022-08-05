@@ -148,13 +148,24 @@ type abortedByDisplay struct {
 func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	projCtx := MustHaveProjectContext(r)
+	executionStr := gimlet.GetVars(r)["execution"]
+	var execution int
+	var err error
 
-	if RedirectSpruceUsers(w, r, fmt.Sprintf("%s/task/%s", uis.Settings.Ui.UIv2Url, projCtx.Task.Id)) {
-		return
+	if executionStr != "" {
+		execution, err = strconv.Atoi(executionStr)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Bad execution number: %v", executionStr), http.StatusBadRequest)
+			return
+		}
 	}
 
 	if projCtx.Task == nil {
 		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
+
+	if RedirectSpruceUsers(w, r, fmt.Sprintf("%s/task/%s?execution=%d", uis.Settings.Ui.UIv2Url, projCtx.Task.Id, execution)) {
 		return
 	}
 
@@ -174,17 +185,11 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	executionStr := gimlet.GetVars(r)["execution"]
 	archived := false
 
 	// if there is an execution number, the task might be in the old_tasks collection, so we
 	// query that collection and set projCtx.Task to the old task if it exists.
 	if executionStr != "" {
-		execution, err := strconv.Atoi(executionStr)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Bad execution number: %v", executionStr), http.StatusBadRequest)
-			return
-		}
 		// Construct the old task id.
 		oldTaskId := task.MakeOldID(projCtx.Task.Id, execution)
 
@@ -211,7 +216,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	// Build a struct containing the subset of task data needed for display in the UI
 	tId := projCtx.Task.Id
 	totalExecutions := projCtx.Task.Execution
-
+	taskExecution := projCtx.Task.Execution
 	if archived {
 		tId = projCtx.Task.OldTaskId
 
@@ -239,7 +244,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		BuildVariant:         projCtx.Task.BuildVariant,
 		BuildId:              projCtx.Task.BuildId,
 		Activated:            projCtx.Task.Activated,
-		Execution:            projCtx.Task.Execution,
+		Execution:            taskExecution,
 		Requester:            projCtx.Task.Requester,
 		CreateTime:           projCtx.Task.CreateTime,
 		IngestTime:           projCtx.Task.IngestTime,
@@ -328,7 +333,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	testResults := uis.getTestResults(w, r, projCtx, &uiTask)
+	testResults := uis.getTestResults(projCtx, &uiTask)
 	if projCtx.Patch != nil {
 		var taskOnBaseCommit *task.Task
 		var testResultsOnBaseCommit []task.TestResult
@@ -380,7 +385,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	}
 	newUILink := ""
 	if len(uis.Settings.Ui.UIv2Url) > 0 {
-		newUILink = fmt.Sprintf("%s/task/%s", uis.Settings.Ui.UIv2Url, tId)
+		newUILink = fmt.Sprintf("%s/task/%s?execution=%d", uis.Settings.Ui.UIv2Url, tId, taskExecution)
 	}
 
 	if uiTask.AbortInfo.TaskID != "" {
@@ -886,9 +891,12 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 	uis.render.Stream(w, http.StatusOK, data, "base", "task_log.html")
 }
 
-func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, projCtx projectContext, uiTask *uiTaskData) []task.TestResult {
+func (uis *UIServer) getTestResults(projCtx projectContext, uiTask *uiTaskData) []task.TestResult {
 	if err := projCtx.Task.PopulateTestResults(); err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"task_id": projCtx.Task.Id,
+			"message": "fetching test results for task",
+		}))
 		return nil
 	}
 
@@ -906,14 +914,18 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 				et, err = task.FindOneId(t)
 			}
 			if err != nil {
-				uis.LoggedError(w, r, http.StatusInternalServerError, err)
+				grip.Error(message.Fields{
+					"message":        "fetching test results for execution task",
+					"task_id":        t,
+					"parent_task_id": projCtx.Task.Id,
+				})
 				return nil
 			}
 			if et == nil {
 				grip.Error(message.Fields{
-					"message": "execution task not found",
-					"task":    t,
-					"parent":  projCtx.Task.Id,
+					"message":        "execution task not found",
+					"task_id":        t,
+					"parent_task_id": projCtx.Task.Id,
 				})
 				continue
 			}

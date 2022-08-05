@@ -4,6 +4,7 @@ import (
 	"context"
 	"io/ioutil"
 	"net/http"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -270,7 +271,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinishCommitQueuePatchWithNoTasksAndVari
 	s.Equal("patch has no build variants or tasks", err.Error())
 }
 
-func (s *PatchIntentUnitsSuite) TestGetPreviousPatchDefinition() {
+func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 	t1 := task.Task{
 		Id:           "t1",
 		DisplayName:  "t1",
@@ -280,7 +281,7 @@ func (s *PatchIntentUnitsSuite) TestGetPreviousPatchDefinition() {
 	}
 	s.NoError(t1.Insert())
 	patchId := "aabbccddeeff001122334455"
-	s.NoError((&patch.Patch{
+	previousPatchDoc := &patch.Patch{
 		Id:         patch.NewId(patchId),
 		Activated:  true,
 		Status:     evergreen.PatchFailed,
@@ -302,7 +303,12 @@ func (s *PatchIntentUnitsSuite) TestGetPreviousPatchDefinition() {
 				DisplayTasks: []patch.DisplayTask{{Name: "dt2"}},
 			},
 		},
-	}).Insert())
+		Tasks:              []string{"t1", "t2"},
+		BuildVariants:      []string{"bv_only_dt", "bv_different_dt"},
+		RegexBuildVariants: []string{"bv_$"},
+		RegexTasks:         []string{"1$"},
+	}
+	s.NoError((previousPatchDoc).Insert())
 
 	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
 		User:             "me",
@@ -328,22 +334,239 @@ func (s *PatchIntentUnitsSuite) TestGetPreviousPatchDefinition() {
 			DisplayTasks: []patch.DisplayTask{{Name: "dt2"}},
 		},
 	}}
-	vt, err := j.getPreviousPatchDefinition(&project, false)
+	currentPatchDoc := intent.NewPatch()
 	s.NoError(err)
-	s.Require().Len(vt, 2)
-	s.Equal("bv1", vt[0].Variant)
-	s.Require().Len(vt[0].Tasks, 1)
-	s.Equal("t1", vt[0].Tasks[0])
-	s.Equal("bv_different_dt", vt[1].Variant)
-	s.Require().Len(vt[1].DisplayTasks, 1)
-	s.Equal("dt2", vt[1].DisplayTasks[0].Name)
+	previousPatchStatus, err := j.setToPreviousPatchDefinition(currentPatchDoc, &project, false)
+	s.NoError(err)
+	s.Equal(previousPatchStatus, "failed")
 
-	vt, err = j.getPreviousPatchDefinition(&project, true)
+	s.Equal(currentPatchDoc.BuildVariants, previousPatchDoc.BuildVariants)
+	s.Equal(currentPatchDoc.Tasks, previousPatchDoc.Tasks)
+
+	previousPatchStatus, err = j.setToPreviousPatchDefinition(currentPatchDoc, &project, true)
 	s.NoError(err)
-	s.Require().Len(vt, 1)
-	s.Equal("bv1", vt[0].Variant)
-	s.Require().Len(vt[0].Tasks, 1)
-	s.Equal("t1", vt[0].Tasks[0])
+	s.Equal(previousPatchStatus, "failed")
+	s.Equal(currentPatchDoc.BuildVariants, previousPatchDoc.BuildVariants)
+	s.Equal(currentPatchDoc.Tasks, []string{"t1"})
+}
+
+func (s *PatchIntentUnitsSuite) TestBuildTasksandVariantsWithRepeatFailed() {
+	s.Require().NoError(db.ClearCollections(task.Collection))
+	s.Require().NoError(db.ClearCollections(patch.Collection))
+
+	patchId := "aaaaaaaaaaff001122334455"
+	tasks := []task.Task{
+		{
+			Id:           "t1",
+			DependsOn:    []task.Dependency{{TaskId: "t3", Status: evergreen.TaskSucceeded}},
+			Version:      patchId,
+			BuildVariant: "bv1",
+			BuildId:      "b0",
+			Status:       evergreen.TaskFailed,
+			Project:      s.project,
+			DisplayName:  "t1",
+		},
+		{
+			Id:           "t2",
+			Activated:    true,
+			BuildVariant: "bv1",
+			BuildId:      "b0",
+			Version:      patchId,
+			Status:       evergreen.TaskSucceeded,
+			Project:      s.project,
+			DisplayName:  "t2",
+		},
+	}
+
+	for _, t := range tasks {
+		s.NoError(t.Insert())
+	}
+
+	previousPatchDoc := &patch.Patch{
+		Id:            patch.NewId(patchId),
+		Activated:     true,
+		Status:        evergreen.PatchFailed,
+		Project:       s.project,
+		CreateTime:    time.Now(),
+		Author:        s.user,
+		Version:       patchId,
+		Tasks:         []string{"t1", "t2"},
+		BuildVariants: []string{"bv1"},
+		VariantsTasks: []patch.VariantTasks{
+			{
+				Variant: "bv1",
+				Tasks:   []string{"t1", "t2", "t3", "t4"},
+			},
+		},
+	}
+	s.NoError((previousPatchDoc).Insert())
+
+	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
+		User:        s.user,
+		Project:     s.project,
+		BaseGitHash: s.hash,
+		Description: s.desc,
+		// --repeat-failed flag
+		RepeatFailed: true,
+	})
+	s.NoError(err)
+	j := NewPatchIntentProcessor(mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+	j.user = &user.DBUser{Id: s.user}
+
+	project := model.Project{
+		Identifier: s.project,
+		BuildVariants: model.BuildVariants{
+			{
+				Name: "bv1",
+				Tasks: []model.BuildVariantTaskUnit{
+					{
+						Name: "t1",
+						DependsOn: []model.TaskUnitDependency{
+							{Name: "t3", Status: evergreen.TaskSucceeded},
+						},
+					},
+					{
+						Name: "t2",
+					},
+					{
+						Name: "t3",
+						DependsOn: []model.TaskUnitDependency{
+							{Name: "t4", Status: evergreen.TaskFailed},
+						},
+					},
+					{
+						Name: "t4",
+					}},
+			},
+		},
+		Tasks: []model.ProjectTask{
+			{Name: "t1"},
+			{Name: "t2"},
+			{Name: "t3"},
+			{Name: "t4"},
+		},
+	}
+
+	currentPatchDoc := intent.NewPatch()
+	currentPatchDoc.Tasks = []string{"t1", "t2"}
+	currentPatchDoc.BuildVariants = []string{"bv1"}
+
+	s.NoError(err)
+
+	err = j.buildTasksandVariants(currentPatchDoc, &project)
+	s.NoError(err)
+	sort.Strings(currentPatchDoc.Tasks)
+	s.Equal([]string{"t1", "t3", "t4"}, currentPatchDoc.Tasks)
+}
+
+func (s *PatchIntentUnitsSuite) TestBuildTasksandVariantsWithReuse() {
+	s.Require().NoError(db.ClearCollections(task.Collection))
+	s.Require().NoError(db.ClearCollections(patch.Collection))
+
+	patchId := "aaaaaaaaaaff001122334455"
+	tasks := []task.Task{
+		{
+			Id:           "t1",
+			DependsOn:    []task.Dependency{{TaskId: "t3", Status: evergreen.TaskSucceeded}},
+			Version:      patchId,
+			BuildVariant: "bv1",
+			BuildId:      "b0",
+			Status:       evergreen.TaskFailed,
+			Project:      s.project,
+			DisplayName:  "t1",
+		},
+		{
+			Id:           "t2",
+			Activated:    true,
+			BuildVariant: "bv1",
+			BuildId:      "b0",
+			Version:      patchId,
+			Status:       evergreen.TaskSucceeded,
+			Project:      s.project,
+			DisplayName:  "t2",
+		},
+	}
+
+	for _, t := range tasks {
+		s.NoError(t.Insert())
+	}
+
+	previousPatchDoc := &patch.Patch{
+		Id:            patch.NewId(patchId),
+		Activated:     true,
+		Status:        evergreen.PatchFailed,
+		Project:       s.project,
+		CreateTime:    time.Now(),
+		Author:        s.user,
+		Version:       patchId,
+		Tasks:         []string{"t1", "t2"},
+		BuildVariants: []string{"bv1"},
+		VariantsTasks: []patch.VariantTasks{
+			{
+				Variant: "bv1",
+				Tasks:   []string{"t1", "t2", "t3", "t4"},
+			},
+		},
+	}
+	s.NoError((previousPatchDoc).Insert())
+
+	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
+		User:        s.user,
+		Project:     s.project,
+		BaseGitHash: s.hash,
+		Description: s.desc,
+		// --reuse flag
+		RepeatDefinition: true,
+	})
+	s.NoError(err)
+	j := NewPatchIntentProcessor(mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+	j.user = &user.DBUser{Id: s.user}
+
+	project := model.Project{
+		Identifier: s.project,
+		BuildVariants: model.BuildVariants{
+			{
+				Name: "bv1",
+				Tasks: []model.BuildVariantTaskUnit{
+					{
+						Name: "t1",
+						DependsOn: []model.TaskUnitDependency{
+							{Name: "t3", Status: evergreen.TaskFailed},
+						},
+					},
+					{
+						Name: "t2",
+					},
+					{
+						Name: "t3",
+						DependsOn: []model.TaskUnitDependency{
+							{Name: "t4", Status: evergreen.TaskFailed},
+						},
+					},
+					{
+						Name: "t4",
+					}},
+			},
+		},
+		Tasks: []model.ProjectTask{
+			{Name: "t1"},
+			{Name: "t2"},
+			{Name: "t3"},
+			{Name: "t4"},
+		},
+	}
+
+	currentPatchDoc := intent.NewPatch()
+	currentPatchDoc.Tasks = []string{"t1", "t2"}
+	currentPatchDoc.BuildVariants = []string{"bv1"}
+
+	s.NoError(err)
+
+	// test --reuse
+	err = j.buildTasksandVariants(currentPatchDoc, &project)
+	s.NoError(err)
+	sort.Strings(currentPatchDoc.Tasks)
+	s.Equal([]string{"t1", "t2", "t3", "t4"}, currentPatchDoc.Tasks)
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
@@ -520,7 +743,7 @@ func (s *PatchIntentUnitsSuite) TestRunInDegradedModeWithGithubIntent() {
 	s.NotNil(j)
 	j.Run(context.Background())
 	s.Error(j.Error())
-	s.Contains(j.Error().Error(), "github pr testing is disabled, not processing pull request")
+	s.Contains(j.Error().Error(), "not processing PR because GitHub PR testing is disabled")
 
 	patchDoc, err := patch.FindOne(patch.ById(patchID))
 	s.NoError(err)

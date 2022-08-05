@@ -104,7 +104,7 @@ func (s *notificationsStatsCollectorSuite) TestStatsCollector() {
 	sender := send.MakeInternalLogger()
 
 	job := makeNotificationsStatsCollector()
-	job.SetID("TestStatsCollector")
+	job.SetID(s.T().Name())
 	job.logger = logging.MakeGrip(sender)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

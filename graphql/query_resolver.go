@@ -62,11 +62,7 @@ func (r *queryResolver) AwsRegions(ctx context.Context) ([]string, error) {
 func (r *queryResolver) ClientConfig(ctx context.Context) (*restModel.APIClientConfig, error) {
 	envClientConfig := evergreen.GetEnvironment().ClientConfig()
 	clientConfig := restModel.APIClientConfig{}
-	err := clientConfig.BuildFromService(*envClientConfig)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIClientConfig from service: %s", err.Error()))
-	}
-
+	clientConfig.BuildFromService(*envClientConfig)
 	return &clientConfig, nil
 }
 
@@ -138,10 +134,7 @@ func (r *queryResolver) DistroTaskQueue(ctx context.Context, distroID string) ([
 
 	for _, taskQueueItem := range distroQueue.Queue {
 		apiTaskQueueItem := restModel.APITaskQueueItem{}
-		err := apiTaskQueueItem.BuildFromService(taskQueueItem)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error converting task queue item db model to api model: %v", err.Error()))
-		}
+		apiTaskQueueItem.BuildFromService(taskQueueItem)
 		taskQueue = append(taskQueue, &apiTaskQueueItem)
 	}
 
@@ -158,46 +151,35 @@ func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.API
 	}
 
 	apiHost := &restModel.APIHost{}
-	err = apiHost.BuildFromService(host)
-	if err != nil || apiHost == nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error converting from host.Host to model.APIHost: %s", err.Error()))
-	}
-
-	if host.RunningTask != "" {
-		// Add the task information to the host document.
-		if err = apiHost.BuildFromService(host.RunningTaskFull); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error converting from host.Host to model.APIHost: %s", err.Error()))
-		}
-	}
-
+	apiHost.BuildFromService(host, host.RunningTaskFull)
 	return apiHost, nil
 }
 
 func (r *queryResolver) HostEvents(ctx context.Context, hostID string, hostTag *string, limit *int, page *int) (*HostEvents, error) {
 	h, err := host.FindOneByIdOrTag(hostID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding host %s: %s", hostID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding host '%s': %s", hostID, err.Error()))
 	}
 	if h == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Host %s not found", hostID))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("host '%s' not found", hostID))
 	}
-	events, err := event.FindPaginated(h.Id, h.Tag, *limit, *page)
+	events, count, err := event.FindPaginatedWithTotalCount(h.Id, h.Tag, *limit, *page)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error Fetching host events: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching host events: %s", err.Error()))
 	}
 	// populate eventlogs pointer arrays
 	apiEventLogPointers := []*restModel.HostAPIEventLogEntry{}
 	for _, e := range events {
 		apiEventLog := restModel.HostAPIEventLogEntry{}
-		err = apiEventLog.BuildFromService(&e)
+		err = apiEventLog.BuildFromService(e)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to build APIEventLogEntry from EventLog: %s", err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIEventLogEntry from EventLog: %s", err.Error()))
 		}
 		apiEventLogPointers = append(apiEventLogPointers, &apiEventLog)
 	}
 	hostevents := HostEvents{
 		EventLogEntries: apiEventLogPointers,
-		Count:           len(events),
+		Count:           count,
 	}
 	return &hostevents, nil
 }
@@ -263,21 +245,9 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 
 	apiHosts := []*restModel.APIHost{}
 
-	for _, host := range hosts {
+	for _, h := range hosts {
 		apiHost := restModel.APIHost{}
-
-		err = apiHost.BuildFromService(host)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building API Host from Service: %s", err.Error()))
-		}
-
-		if host.RunningTask != "" {
-			// Add the task information to the host document.
-			if err = apiHost.BuildFromService(host.RunningTaskFull); err != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error converting from host.Host to model.APIHost: %s", err.Error()))
-			}
-		}
-
+		apiHost.BuildFromService(&h, h.RunningTaskFull)
 		apiHosts = append(apiHosts, &apiHost)
 	}
 
@@ -431,7 +401,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 	var apiTasks []*restModel.APITask
 	for _, t := range tasks {
 		apiTask := restModel.APITask{}
-		err := apiTask.BuildFromArgs(&t, nil)
+		err := apiTask.BuildFromService(&t, nil)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error converting task item db model to api model: %v", err.Error()))
 		}
@@ -466,7 +436,7 @@ func (r *queryResolver) Project(ctx context.Context, projectID string) (*restMod
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding project by id %s: %s", projectID, err.Error()))
 	}
 	apiProjectRef := restModel.APIProjectRef{}
-	err = apiProjectRef.BuildFromService(project)
+	err = apiProjectRef.BuildFromService(*project)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProject from service: %s", err.Error()))
 	}
@@ -517,7 +487,7 @@ func (r *queryResolver) ProjectSettings(ctx context.Context, identifier string) 
 	res := &restModel.APIProjectSettings{
 		ProjectRef: restModel.APIProjectRef{},
 	}
-	if err = res.ProjectRef.BuildFromService(projectRef); err != nil {
+	if err = res.ProjectRef.BuildFromService(*projectRef); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
 	}
 	if !projectRef.UseRepoSettings() {
@@ -597,12 +567,9 @@ func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, erro
 	hosts = append(hosts, recentlyTerminatedHosts...)
 
 	var apiHosts []*restModel.APIHost
-	for _, host := range hosts {
+	for _, h := range hosts {
 		apiHost := restModel.APIHost{}
-		err = apiHost.BuildFromService(host)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIHost from service: %s", err.Error()))
-		}
+		apiHost.BuildFromService(&h, nil)
 		apiHosts = append(apiHosts, &apiHost)
 	}
 	return apiHosts, nil
@@ -988,10 +955,7 @@ func (r *queryResolver) UserConfig(ctx context.Context) (*UserConfig, error) {
 func (r *queryResolver) UserSettings(ctx context.Context) (*restModel.APIUserSettings, error) {
 	usr := mustHaveUser(ctx)
 	userSettings := restModel.APIUserSettings{}
-	err := userSettings.BuildFromService(usr.Settings)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, err.Error())
-	}
+	userSettings.BuildFromService(usr.Settings)
 	return &userSettings, nil
 }
 
@@ -1039,14 +1003,21 @@ func (r *queryResolver) BuildVariantsForTaskName(ctx context.Context, projectID 
 	}
 	repo, err := model.FindRepository(pid)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting repository for '%s': %s", projectID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting repository for '%s': %s", projectID, err.Error()))
 	}
 	if repo == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find repository '%s'", projectID))
 	}
-	taskBuildVariants, err := task.FindUniqueBuildVariantNamesByTask(pid, taskName, repo.RevisionOrderNumber)
+	taskBuildVariants, err := task.FindUniqueBuildVariantNamesByTask(pid, taskName, repo.RevisionOrderNumber, false)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting build variant tasks for task '%s': %s", taskName, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting build variant tasks for task '%s': %s", taskName, err.Error()))
+	}
+	// use legacy lookup pipeline if no results are found
+	if len(taskBuildVariants) == 0 {
+		taskBuildVariants, err = task.FindUniqueBuildVariantNamesByTask(pid, taskName, repo.RevisionOrderNumber, true)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting build variant tasks using legacy pipeline for task '%s': %s", taskName, err.Error()))
+		}
 	}
 	if taskBuildVariants == nil {
 		return nil, nil
@@ -1121,10 +1092,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 		versionsCheckedCount++
 		v := versions[index]
 		apiVersion := restModel.APIVersion{}
-		err = apiVersion.BuildFromService(&v)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIVersion from service: %s", err.Error()))
-		}
+		apiVersion.BuildFromService(v)
 
 		// If the version was created before we started caching activation status we must manually verify it and cache that value.
 		if v.Activated == nil {
@@ -1251,9 +1219,7 @@ func (r *queryResolver) Version(ctx context.Context, id string) (*restModel.APIV
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find version with id: `%s`", id))
 	}
 	apiVersion := restModel.APIVersion{}
-	if err = apiVersion.BuildFromService(v); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIVersion from service for `%s`: %s", id, err.Error()))
-	}
+	apiVersion.BuildFromService(*v)
 	return &apiVersion, nil
 }
 

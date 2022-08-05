@@ -1,9 +1,10 @@
 package evergreen
 
 import (
-	"errors"
 	"fmt"
 	"sync"
+
+	"github.com/pkg/errors"
 
 	"github.com/mongodb/grip"
 )
@@ -20,7 +21,7 @@ var ConfigRegistry *ConfigSectionRegistry
 func init() {
 
 	if err := resetRegistry(); err != nil {
-		panic(fmt.Sprintf("error registering config sections: %s", err.Error()))
+		panic(errors.Wrap(err, "registering config sections").Error())
 	}
 }
 
@@ -39,6 +40,7 @@ func resetRegistry() error {
 		&CloudProviders{},
 		&CommitQueueConfig{},
 		&ContainerPoolsConfig{},
+		&DataPipesConfig{},
 		&HostInitConfig{},
 		&HostJasperConfig{},
 		&JiraConfig{},
@@ -51,6 +53,7 @@ func resetRegistry() error {
 		&SchedulerConfig{},
 		&ServiceFlags{},
 		&SlackConfig{},
+		&SplunkConfig{},
 		&UIConfig{},
 		&Settings{},
 		&JIRANotificationsConfig{},
@@ -82,7 +85,7 @@ func (r *ConfigSectionRegistry) registerSection(id string, section ConfigSection
 		return errors.New("cannot register a section with no ID")
 	}
 	if _, exists := r.sections[id]; exists {
-		return fmt.Errorf("section %s is already registered", id)
+		return fmt.Errorf("section '%s' is already registered", id)
 	}
 
 	r.sections[id] = section

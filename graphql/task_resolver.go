@@ -124,7 +124,7 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 		return nil, nil
 	}
 	apiTask := &restModel.APITask{}
-	err = apiTask.BuildFromArgs(baseTask, nil)
+	err = apiTask.BuildFromService(baseTask, nil)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert baseTask %s to APITask : %s", baseTask.Id, err))
 	}
@@ -132,6 +132,9 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 }
 
 func (r *taskResolver) BuildVariantDisplayName(ctx context.Context, obj *restModel.APITask) (*string, error) {
+	if obj.BuildVariantDisplayName != nil {
+		return obj.BuildVariantDisplayName, nil
+	}
 	if obj.BuildId == nil {
 		return nil, nil
 	}
@@ -301,7 +304,7 @@ func (r *taskResolver) DisplayTask(ctx context.Context, obj *restModel.APITask) 
 		return nil, nil
 	}
 	apiTask := &restModel.APITask{}
-	if err = apiTask.BuildFromArgs(dt, nil); err != nil {
+	if err = apiTask.BuildFromService(dt, nil); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert display task: %s to APITask", dt.Id))
 	}
 	return apiTask, nil
@@ -331,7 +334,7 @@ func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.AP
 	apiTasks := []*restModel.APITask{}
 	for _, t := range tasks {
 		apiTask := &restModel.APITask{}
-		err = apiTask.BuildFromArgs(&t, nil)
+		err = apiTask.BuildFromService(&t, nil)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert task %s to APITask : %s", t.Id, err.Error()))
 		}
@@ -443,7 +446,7 @@ func (r *taskResolver) Project(ctx context.Context, obj *restModel.APITask) (*re
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find a ProjectRef for project %s", *obj.ProjectId))
 	}
 	apiProjectRef := restModel.APIProjectRef{}
-	if err = apiProjectRef.BuildFromService(pRef); err != nil {
+	if err = apiProjectRef.BuildFromService(*pRef); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIProject from service: %s", err.Error()))
 	}
 	return &apiProjectRef, nil
@@ -505,9 +508,7 @@ func (r *taskResolver) VersionMetadata(ctx context.Context, obj *restModel.APITa
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find version with id: `%s`", *obj.Version))
 	}
 	apiVersion := &restModel.APIVersion{}
-	if err = apiVersion.BuildFromService(v); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert version: %s to APIVersion", v.Id))
-	}
+	apiVersion.BuildFromService(*v)
 	return apiVersion, nil
 }
 

@@ -25,7 +25,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	ignore "github.com/sabhiram/go-gitignore"
-	"gopkg.in/yaml.v3"
+	yaml "gopkg.in/20210107192922/yaml.v3"
 )
 
 const (
@@ -137,6 +137,8 @@ type BuildVariantTaskUnit struct {
 	CronBatchTime string `yaml:"cron,omitempty" bson:"cron,omitempty"`
 	// If Activate is set to false, then we don't initially activate the task.
 	Activate *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
+	// TaskGroup is set if an inline task group is defined on the build variant.
+	TaskGroup *TaskGroup `yaml:"task_group,omitempty" bson:"task_group,omitempty"`
 }
 
 func (b BuildVariant) Get(name string) (BuildVariantTaskUnit, error) {
@@ -833,7 +835,11 @@ func NewTaskIdTable(p *Project, v *Version, sourceRev, defID string) TaskIdConfi
 			if t.IsDisabled() || t.SkipOnRequester(v.Requester) {
 				continue
 			}
-			if tg := p.FindTaskGroup(t.Name); tg != nil {
+			tg := t.TaskGroup
+			if tg == nil {
+				tg = p.FindTaskGroup(t.Name)
+			}
+			if tg != nil {
 				for _, groupTask := range tg.Tasks {
 					taskId := generateId(groupTask, projectIdentifier, &bv, rev, v)
 					execTable[TVPair{bv.Name, groupTask}] = util.CleanName(taskId)
@@ -863,6 +869,13 @@ func NewPatchTaskIdTable(proj *Project, v *Version, tasks TaskVariantPairs, proj
 	tgMap := map[string]TaskGroup{}
 	for _, tg := range proj.TaskGroups {
 		tgMap[tg.Name] = tg
+	}
+	for _, variant := range proj.BuildVariants {
+		for _, t := range variant.Tasks {
+			if t.TaskGroup != nil {
+				tgMap[t.Name] = *t.TaskGroup
+			}
+		}
 	}
 	execTasksWithTaskGroupTasks := TVPairSet{}
 	for _, vt := range tasks.ExecTasks {
@@ -1179,6 +1192,13 @@ func (p *Project) FindTaskGroup(name string) *TaskGroup {
 			return &tg
 		}
 	}
+	for _, bv := range p.BuildVariants {
+		for _, t := range bv.Tasks {
+			if t.TaskGroup != nil && t.Name == name {
+				return t.TaskGroup
+			}
+		}
+	}
 	return nil
 }
 
@@ -1299,6 +1319,11 @@ func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit
 	for _, tg := range p.TaskGroups {
 		tgMap[tg.Name] = tg
 	}
+	for _, t := range bv.Tasks {
+		if t.TaskGroup != nil {
+			tgMap[t.Name] = *t.TaskGroup
+		}
+	}
 
 	for _, bvt := range bv.Tasks {
 		if bvt.Name == task {
@@ -1357,7 +1382,10 @@ func (p *Project) findBuildVariantsWithTag(tags []string) []string {
 // build variant task unit, and returns the name and tags
 func (p *Project) GetTaskNameAndTags(bvt BuildVariantTaskUnit) (string, []string, bool) {
 	if bvt.IsGroup {
-		ptg := p.FindTaskGroup(bvt.Name)
+		ptg := bvt.TaskGroup
+		if ptg == nil {
+			ptg = p.FindTaskGroup(bvt.Name)
+		}
 		if ptg == nil {
 			return "", nil, false
 		}
@@ -1469,7 +1497,10 @@ func (p *Project) FindAllBuildVariantTasks() []BuildVariantTaskUnit {
 // tasksFromGroup returns a slice of the task group's tasks.
 // Settings missing from the group task are populated from the task definition.
 func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVariantTaskUnit {
-	tg := p.FindTaskGroup(bvTaskGroup.Name)
+	tg := bvTaskGroup.TaskGroup
+	if tg == nil {
+		tg = p.FindTaskGroup(bvTaskGroup.Name)
+	}
 	if tg == nil {
 		return nil
 	}
@@ -1486,6 +1517,7 @@ func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVarian
 			// IsGroup is not persisted, and indicates here that the
 			// task is a member of a task group.
 			IsGroup:          true,
+			TaskGroup:        bvTaskGroup.TaskGroup,
 			Variant:          bvTaskGroup.Variant,
 			GroupName:        bvTaskGroup.Name,
 			Patchable:        bvTaskGroup.Patchable,
@@ -2089,6 +2121,7 @@ func GetVariantsAndTasksFromProject(ctx context.Context, patchedConfig, patchPro
 			// add a task name to the list if it's patchable and not restricted to git tags and not disabled
 			if !taskFromVariant.IsDisabled() && utility.FromBoolTPtr(taskFromVariant.Patchable) && !utility.FromBoolPtr(taskFromVariant.GitTagOnly) {
 				if taskFromVariant.IsGroup {
+
 					tasksForVariant = append(tasksForVariant, CreateTasksFromGroup(taskFromVariant, project, evergreen.PatchVersionRequester)...)
 				} else {
 					tasksForVariant = append(tasksForVariant, taskFromVariant)

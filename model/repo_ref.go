@@ -54,7 +54,7 @@ func (r *RepoRef) Insert() error {
 // Ensures that fields that aren't relevant to repos aren't set.
 func (r *RepoRef) Upsert() error {
 	r.RepoRefId = ""
-	r.Branch = ""
+	r.Branch = defaultBranch
 	_, err := db.Upsert(
 		RepoRefCollection,
 		bson.M{
@@ -96,6 +96,10 @@ func FindRepoRefByOwnerAndRepo(owner, repoName string) (*RepoRef, error) {
 // for the repo and branches, and gives branch admins permission to view the repo.
 func (r *RepoRef) addPermissions(creator *user.DBUser) error {
 	rm := evergreen.GetEnvironment().RoleManager()
+	// Add to the general scope.
+	if err := rm.AddResourceToScope(evergreen.AllProjectsScope, r.Id); err != nil {
+		return errors.Wrapf(err, "adding repo '%s' to the scope '%s'", r.Id, evergreen.AllProjectsScope)
+	}
 
 	adminScope := gimlet.Scope{
 		ID:        GetRepoAdminScope(r.Id),
@@ -183,6 +187,7 @@ func (r *RepoRef) MakeRestricted(branchProjects []ProjectRef) error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	scopeId := GetUnrestrictedBranchProjectsScope(r.Id)
 	branchOnlyAdmins := []string{}
+
 	// if the branch project is now restricted, remove it from the unrestricted scope
 	for _, p := range branchProjects {
 		if !p.IsRestricted() {

@@ -10,7 +10,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -41,14 +40,6 @@ func (r *patchResolver) BaseTaskStatuses(ctx context.Context, obj *restModel.API
 	return getAllTaskStatuses(baseTasks), nil
 }
 
-func (r *patchResolver) BaseVersionID(ctx context.Context, obj *restModel.APIPatch) (*string, error) {
-	baseVersion, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(*obj.ProjectId, *obj.Githash).Project(bson.M{model.VersionIdentifierKey: 1}))
-	if baseVersion == nil || err != nil {
-		return nil, nil
-	}
-	return &baseVersion.Id, nil
-}
-
 func (r *patchResolver) Builds(ctx context.Context, obj *restModel.APIPatch) ([]*restModel.APIBuild, error) {
 	builds, err := build.FindBuildsByVersions([]string{*obj.Version})
 	if err != nil {
@@ -57,10 +48,7 @@ func (r *patchResolver) Builds(ctx context.Context, obj *restModel.APIPatch) ([]
 	var apiBuilds []*restModel.APIBuild
 	for _, build := range builds {
 		apiBuild := restModel.APIBuild{}
-		err = apiBuild.BuildFromService(build)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIBuild from service: %s", err.Error()))
-		}
+		apiBuild.BuildFromService(build)
 		apiBuilds = append(apiBuilds, &apiBuild)
 	}
 	return apiBuilds, nil
@@ -230,9 +218,7 @@ func (r *patchResolver) VersionFull(ctx context.Context, obj *restModel.APIPatch
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find version with id: `%s`", *obj.Version))
 	}
 	apiVersion := restModel.APIVersion{}
-	if err = apiVersion.BuildFromService(v); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIVersion from service for `%s`: %s", *obj.Version, err.Error()))
-	}
+	apiVersion.BuildFromService(*v)
 	return &apiVersion, nil
 }
 

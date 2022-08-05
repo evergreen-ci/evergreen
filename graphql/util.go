@@ -50,10 +50,7 @@ func getGroupedFiles(ctx context.Context, name string, taskID string, execution 
 	apiFileList := []*restModel.APIFile{}
 	for _, file := range strippedFiles {
 		apiFile := restModel.APIFile{}
-		err := apiFile.BuildFromService(file)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, "error stripping hidden files")
-		}
+		apiFile.BuildFromService(file)
 		apiFileList = append(apiFileList, &apiFile)
 	}
 	return &GroupedFiles{TaskName: &name, Files: apiFileList}, nil
@@ -105,7 +102,7 @@ func setManyTasksScheduled(ctx context.Context, url string, isActive bool, taskI
 	apiTasks := []*restModel.APITask{}
 	for _, t := range tasks {
 		apiTask := restModel.APITask{}
-		err = apiTask.BuildFromArgs(&t, &restModel.APITaskArgs{
+		err = apiTask.BuildFromService(&t, &restModel.APITaskArgs{
 			LogURL: url,
 		})
 		if err != nil {
@@ -203,12 +200,20 @@ func getPatchProjectVariantsAndTasksForUI(ctx context.Context, apiPatch *restMod
 			DisplayName: buildVariant.DisplayName,
 		}
 		projTasks := []string{}
-		for _, taskUnit := range buildVariant.Tasks {
-			projTasks = append(projTasks, taskUnit.Name)
-		}
+		executionTasks := map[string]bool{}
 		for _, displayTask := range buildVariant.DisplayTasks {
 			projTasks = append(projTasks, displayTask.Name)
+			for _, execTask := range displayTask.ExecTasks {
+				executionTasks[execTask] = true
+			}
 		}
+		for _, taskUnit := range buildVariant.Tasks {
+			// Only add task if it is not an execution task.
+			if !executionTasks[taskUnit.Name] {
+				projTasks = append(projTasks, taskUnit.Name)
+			}
+		}
+		// Sort tasks alphanumerically by display name.
 		sort.SliceStable(projTasks, func(i, j int) bool {
 			return projTasks[i] < projTasks[j]
 		})
@@ -230,8 +235,8 @@ func buildFromGqlInput(r PatchConfigure) model.PatchUpdate {
 	p := model.PatchUpdate{}
 	p.Description = r.Description
 	p.PatchTriggerAliases = r.PatchTriggerAliases
-	for _, param := range r.Parameters {
-		p.Parameters = append(p.Parameters, param.ToService())
+	for i := range r.Parameters {
+		p.Parameters = append(p.Parameters, r.Parameters[i].ToService())
 	}
 	for _, vt := range r.VariantsTasks {
 		variantTasks := patch.VariantTasks{
@@ -251,7 +256,7 @@ func buildFromGqlInput(r PatchConfigure) model.PatchUpdate {
 // getAPITaskFromTask builds an APITask from the given task
 func getAPITaskFromTask(ctx context.Context, url string, task task.Task) (*restModel.APITask, error) {
 	apiTask := restModel.APITask{}
-	err := apiTask.BuildFromArgs(&task, &restModel.APITaskArgs{
+	err := apiTask.BuildFromService(&task, &restModel.APITaskArgs{
 		LogURL: url,
 	})
 	if err != nil {
@@ -287,7 +292,7 @@ func generateBuildVariants(versionId string, buildVariantOpts BuildVariantOption
 	buildTaskStartTime := time.Now()
 	for _, t := range tasks {
 		apiTask := restModel.APITask{}
-		err := apiTask.BuildFromArgs(&t, nil)
+		err := apiTask.BuildFromService(&t, nil)
 		if err != nil {
 			return nil, errors.Wrapf(err, fmt.Sprintf("Error building apiTask from task : %s", t.Id))
 		}
@@ -377,35 +382,18 @@ func modifyVersionHandler(ctx context.Context, patchID string, modification mode
 		return mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
 
-	if evergreen.IsPatchRequester(v.Requester) {
-		// restart is handled through graphql because we need the user to specify
-		// which downstream tasks they want to restart
-		if modification.Action != evergreen.RestartAction {
-			//do the same for child patches
-			p, err := patch.FindOneId(patchID)
-			if err != nil {
-				return ResourceNotFound.Send(ctx, fmt.Sprintf("error finding patch %s: %s", patchID, err.Error()))
+	// Restart is handled through graphql because we need the user to specify
+	// which downstream tasks they want to restart.
+	if evergreen.IsPatchRequester(v.Requester) && modification.Action != evergreen.RestartAction {
+		// Only modify the child patch if it is finalized.
+		childPatchIds, err := patch.GetFinalizedChildPatchIdsForPatch(patchID)
+		if err != nil {
+			return ResourceNotFound.Send(ctx, err.Error())
+		}
+		for _, childPatchId := range childPatchIds {
+			if err = modifyVersionHandler(ctx, childPatchId, modification); err != nil {
+				return errors.Wrap(mapHTTPStatusToGqlError(ctx, httpStatus, err), fmt.Sprintf("modifying child patch '%s'", childPatchId))
 			}
-			if p == nil {
-				return ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found ", patchID))
-			}
-			if p.IsParent() {
-				childPatches, err := patch.Find(patch.ByStringIds(p.Triggers.ChildPatches))
-				if err != nil {
-					return InternalServerError.Send(ctx, fmt.Sprintf("error getting child patches: %s", err.Error()))
-				}
-				for _, childPatch := range childPatches {
-					// only modify the child patch if it is finalized
-					if childPatch.Version != "" {
-						err = modifyVersionHandler(ctx, childPatch.Id.Hex(), modification)
-						if err != nil {
-							return errors.Wrap(mapHTTPStatusToGqlError(ctx, httpStatus, err), fmt.Sprintf("error modifying child patch '%s'", patchID))
-						}
-					}
-
-				}
-			}
-
 		}
 	}
 
@@ -571,9 +559,7 @@ func getAPIVolumeList(volumes []host.Volume) ([]*restModel.APIVolume, error) {
 	apiVolumes := make([]*restModel.APIVolume, 0, len(volumes))
 	for _, vol := range volumes {
 		apiVolume := restModel.APIVolume{}
-		if err := apiVolume.BuildFromService(vol); err != nil {
-			return nil, errors.Wrapf(err, "error building volume '%s' from service", vol.ID)
-		}
+		apiVolume.BuildFromService(vol)
 		apiVolumes = append(apiVolumes, &apiVolume)
 	}
 	return apiVolumes, nil
@@ -673,9 +659,7 @@ func getRedactedAPIVarsForProject(ctx context.Context, projectId string) (*restM
 	}
 	vars = vars.RedactPrivateVars()
 	res := &restModel.APIProjectVars{}
-	if err = res.BuildFromService(vars); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building APIProjectVars from service: %s", err.Error()))
-	}
+	res.BuildFromService(*vars)
 	return res, nil
 }
 
@@ -687,10 +671,7 @@ func getAPIAliasesForProject(ctx context.Context, projectId string) ([]*restMode
 	res := []*restModel.APIProjectAlias{}
 	for _, alias := range aliases {
 		apiAlias := restModel.APIProjectAlias{}
-		if err = apiAlias.BuildFromService(alias); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building APIPProjectAlias %s from service: %s",
-				alias.Alias, err.Error()))
-		}
+		apiAlias.BuildFromService(alias)
 		res = append(res, &apiAlias)
 	}
 	return res, nil
@@ -749,7 +730,6 @@ func groupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 
 	for groupName, groupedProjects := range groupsMap {
 		gp := GroupedProjects{
-			Name:             groupName, //deprecated
 			GroupDisplayName: groupName,
 			Projects:         groupedProjects,
 		}

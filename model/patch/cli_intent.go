@@ -249,14 +249,15 @@ func NewCliIntent(params CLIIntentParams) (Intent, error) {
 	if params.BaseGitHash == "" {
 		return nil, errors.New("no base hash provided")
 	}
-	if params.Finalize {
-		if params.Alias == "" {
-			if len(params.Variants) == 0 {
-				return nil, errors.New("no variants provided")
-			}
-			if len(params.Tasks) == 0 {
-				return nil, errors.New("no tasks provided")
-			}
+	if params.Finalize && params.Alias == "" && !params.RepeatFailed && !params.RepeatDefinition {
+		if len(params.Variants)+len(params.RegexVariants)+len(params.Tasks)+len(params.RegexTasks) == 0 {
+			return nil, errors.New("no tasks or variants provided")
+		}
+		if len(params.Variants)+len(params.RegexVariants) == 0 {
+			return nil, errors.New("no variants provided")
+		}
+		if len(params.Tasks)+len(params.RegexTasks) == 0 {
+			return nil, errors.New("no tasks provided")
 		}
 	}
 	if len(params.SyncParams.BuildVariants) != 0 && len(params.SyncParams.Tasks) == 0 {

@@ -16,7 +16,7 @@ func GetIntValue(r *http.Request, valueKey string, defaultValue int) (int, error
 	}
 	intVal, err := strconv.Atoi(val)
 	if err != nil {
-		return 0, errors.Errorf("%v: cannot convert %v to integer: %v", valueKey, val, err.Error())
+		return 0, errors.Wrapf(err, "'%s': cannot convert value '%s' to integer", valueKey, val)
 	}
 	return intVal, nil
 }
@@ -29,7 +29,7 @@ func GetBoolValue(r *http.Request, valueKey string, defaultValue bool) (bool, er
 	}
 	boolVal, err := strconv.ParseBool(val)
 	if err != nil {
-		return defaultValue, errors.Errorf("%v: cannot convert %v to boolean: %v", valueKey, val, err.Error())
+		return defaultValue, errors.Wrapf(err, "'%s': cannot convert '%s' to boolean", valueKey, val)
 	}
 	return boolVal, nil
 }

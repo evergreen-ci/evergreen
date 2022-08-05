@@ -142,27 +142,23 @@ func (s *AdminSuite) TestBanner() {
 
 func (s *AdminSuite) TestBaseConfig() {
 	config := Settings{
-		ApiUrl:             "api",
-		Banner:             "banner",
-		BannerTheme:        Important,
-		ClientBinariesDir:  "bin_dir",
-		ConfigDir:          "cfg_dir",
-		Credentials:        map[string]string{"k1": "v1"},
-		DomainName:         "example.com",
-		Expansions:         map[string]string{"k2": "v2"},
-		GithubPRCreatorOrg: "org",
-		GithubOrgs:         []string{"evergreen-ci"},
-		Keys:               map[string]string{"k3": "v3"},
-		LogPath:            "logpath",
-		Plugins:            map[string]map[string]interface{}{"k4": {"k5": "v5"}},
-		PprofPort:          "port",
-		SSHKeyDirectory:    "/ssh_key_directory",
-		SSHKeyPairs:        []SSHKeyPair{{Name: "key", Public: "public", Private: "private"}},
-		Splunk: send.SplunkConnectionInfo{
-			ServerURL: "server",
-			Token:     "token",
-			Channel:   "channel",
-		},
+		ApiUrl:              "api",
+		AWSInstanceRole:     "role",
+		Banner:              "banner",
+		BannerTheme:         Important,
+		ClientBinariesDir:   "bin_dir",
+		ConfigDir:           "cfg_dir",
+		Credentials:         map[string]string{"k1": "v1"},
+		DomainName:          "example.com",
+		Expansions:          map[string]string{"k2": "v2"},
+		GithubPRCreatorOrg:  "org",
+		GithubOrgs:          []string{"evergreen-ci"},
+		Keys:                map[string]string{"k3": "v3"},
+		LogPath:             "logpath",
+		Plugins:             map[string]map[string]interface{}{"k4": {"k5": "v5"}},
+		PprofPort:           "port",
+		SSHKeyDirectory:     "/ssh_key_directory",
+		SSHKeyPairs:         []SSHKeyPair{{Name: "key", Public: "public", Private: "private"}},
 		ShutdownWaitSeconds: 15,
 	}
 
@@ -172,6 +168,7 @@ func (s *AdminSuite) TestBaseConfig() {
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config.ApiUrl, settings.ApiUrl)
+	s.Equal(config.AWSInstanceRole, settings.AWSInstanceRole)
 	s.Equal(config.Banner, settings.Banner)
 	s.Equal(config.BannerTheme, settings.BannerTheme)
 	s.Equal(config.ClientBinariesDir, settings.ClientBinariesDir)
@@ -466,6 +463,23 @@ func (s *AdminSuite) TestSlackConfig() {
 	s.Equal(config, settings.Slack)
 }
 
+func (s *AdminSuite) TestSplunkConfig() {
+	config := SplunkConfig{
+		SplunkConnectionInfo: send.SplunkConnectionInfo{
+			ServerURL: "splunk_url",
+			Token:     "splunk_token",
+			Channel:   "splunk_channel",
+		},
+	}
+
+	err := config.Set()
+	s.NoError(err)
+	settings, err := GetConfig()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.Splunk)
+}
+
 func (s *AdminSuite) TestUiConfig() {
 	config := UIConfig{
 		Url:            "url",
@@ -600,7 +614,7 @@ func (s *AdminSuite) TestContainerPoolsConfig() {
 	}
 
 	err := invalidConfig.ValidateAndDefault()
-	s.EqualError(err, "container pool field max_containers must be positive integer")
+	s.EqualError(err, "container pool max containers must be positive integer")
 
 	validConfig := ContainerPoolsConfig{
 		Pools: []ContainerPool{
@@ -860,4 +874,53 @@ func (s *AdminSuite) TestSSHKeysAppendOnly() {
 		Private: "private",
 	}}
 	s.NoError(newSettings.Validate(), "should be able to append new key pair")
+}
+
+func (s *AdminSuite) TestCedarConfig() {
+	config := CedarConfig{
+		BaseURL: "url.com",
+		RPCPort: "9090",
+		User:    "username",
+		APIKey:  "key",
+	}
+
+	err := config.Set()
+	s.NoError(err)
+	settings, err := GetConfig()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.Cedar)
+
+	config.RPCPort = "7070"
+	s.NoError(config.Set())
+
+	settings, err = GetConfig()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.Cedar)
+}
+
+func (s *AdminSuite) TestDataPipesConfig() {
+	config := DataPipesConfig{
+		Host:         "https://url.com",
+		Region:       "us-east-1",
+		AWSAccessKey: "access",
+		AWSSecretKey: "secret",
+		AWSToken:     "token",
+	}
+
+	err := config.Set()
+	s.NoError(err)
+	settings, err := GetConfig()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.DataPipes)
+
+	config.Region = "us-west-1"
+	s.NoError(config.Set())
+
+	settings, err = GetConfig()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.DataPipes)
 }

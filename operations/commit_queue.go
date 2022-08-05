@@ -732,13 +732,9 @@ func showCQMessageForPatch(ctx context.Context, comm client.Communicator, patchI
 }
 
 func getAPICommitQueuePatchDisplay(apiPatch *restModel.APIPatch, summarize bool, uiHost string) (string, error) {
-	servicePatchIface, err := apiPatch.ToService()
+	servicePatch, err := apiPatch.ToService()
 	if err != nil {
 		return "", errors.Wrap(err, "can't convert patch to service")
-	}
-	servicePatch, ok := servicePatchIface.(patch.Patch)
-	if !ok {
-		return "", errors.New("service patch is not a Patch")
 	}
 
 	return getPatchDisplay(&servicePatch, summarize, uiHost, true)

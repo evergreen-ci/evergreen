@@ -38,11 +38,11 @@ func (c *UIConfig) Get(env Environment) error {
 			*c = UIConfig{}
 			return nil
 		}
-		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
+		return errors.Wrapf(err, "getting config section '%s'", c.SectionId())
 	}
 
 	if err := res.Decode(c); err != nil {
-		return errors.Wrap(err, "problem decoding result")
+		return errors.Wrapf(err, "decoding config section '%s'", c.SectionId())
 	}
 	return nil
 }
@@ -69,19 +69,19 @@ func (c *UIConfig) Set() error {
 		},
 	}, options.Update().SetUpsert(true))
 
-	return errors.Wrapf(err, "error updating section %s", c.SectionId())
+	return errors.Wrapf(err, "updating config section '%s'", c.SectionId())
 }
 
 func (c *UIConfig) ValidateAndDefault() error {
 	catcher := grip.NewSimpleCatcher()
 	if c.Secret == "" {
-		catcher.Add(errors.New("UI Secret must not be empty"))
+		catcher.Add(errors.New("UI secret must not be empty"))
 	}
 	if c.DefaultProject == "" {
-		catcher.Add(errors.New("You must specify a default project in UI"))
+		catcher.Add(errors.New("must specify a default project in UI"))
 	}
 	if c.Url == "" {
-		catcher.Add(errors.New("You must specify a default UI url"))
+		catcher.Add(errors.New("must specify a default UI url"))
 	}
 	if c.CsrfKey != "" && len(c.CsrfKey) != 32 {
 		catcher.Add(errors.New("CSRF key must be 32 characters long"))

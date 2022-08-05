@@ -45,9 +45,6 @@ func FindRecentTaskList(minutes int, key string) (*model.APIRecentTaskStatsList,
 	list := task.GetResultCountList(stats)
 
 	apiList := model.APIRecentTaskStatsList{}
-	if err := apiList.BuildFromService(list); err != nil {
-		return nil, errors.Wrap(err, "converting recent task stats to API model")
-	}
-
+	apiList.BuildFromService(list)
 	return &apiList, nil
 }

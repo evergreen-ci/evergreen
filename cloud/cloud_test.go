@@ -17,14 +17,6 @@ func TestGetManager(t *testing.T) {
 
 	Convey("GetManager() should return non-nil for all valid provider names", t, func() {
 
-		Convey("EC2Auto should be returned for ec2-auto provider name", func() {
-			mgrOpts := ManagerOpts{Provider: evergreen.ProviderNameEc2Auto, ProviderKey: "key", ProviderSecret: "secret"}
-			cloudMgr, err := GetManager(ctx, env, mgrOpts)
-			So(cloudMgr, ShouldNotBeNil)
-			So(err, ShouldBeNil)
-			So(cloudMgr, ShouldHaveSameTypeAs, &ec2Manager{})
-		})
-
 		Convey("EC2Spot should be returned for ec2-spot provider name", func() {
 			mgrOpts := ManagerOpts{Provider: evergreen.ProviderNameEc2Spot, ProviderKey: "key", ProviderSecret: "secret"}
 			cloudMgr, err := GetManager(ctx, env, mgrOpts)

@@ -1,6 +1,6 @@
 query DisabledQuery {
   projects {
-      name
+      groupDisplayName
       projects {
         id
         identifier

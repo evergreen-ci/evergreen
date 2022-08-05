@@ -57,10 +57,7 @@ func (vh *versionHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	versionModel := &model.APIVersion{}
-
-	if err = versionModel.BuildFromService(foundVersion); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting version '%s' to API model", foundVersion.Id))
-	}
+	versionModel.BuildFromService(*foundVersion)
 	return gimlet.NewJSONResponse(versionModel)
 }
 
@@ -180,11 +177,7 @@ func (h *buildsForVersionHandler) Run(ctx context.Context) gimlet.Responder {
 			})
 		}
 		buildModel := model.APIBuild{}
-		err = buildModel.BuildFromService(*foundBuild)
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting build '%s' to API model", foundBuild.Id))
-		}
-
+		buildModel.BuildFromService(*foundBuild)
 		buildModels = append(buildModels, buildModel)
 	}
 	return gimlet.NewJSONResponse(buildModels)
@@ -238,10 +231,7 @@ func (h *versionAbortHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	versionModel := &model.APIVersion{}
-	if err = versionModel.BuildFromService(foundVersion); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting version '%s' to API model", foundVersion.Id))
-	}
-
+	versionModel.BuildFromService(*foundVersion)
 	return gimlet.NewJSONResponse(versionModel)
 }
 
@@ -292,10 +282,6 @@ func (h *versionRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	versionModel := &model.APIVersion{}
-	err = versionModel.BuildFromService(foundVersion)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting version '%s' to API model", foundVersion.Id))
-	}
-
+	versionModel.BuildFromService(*foundVersion)
 	return gimlet.NewJSONResponse(versionModel)
 }

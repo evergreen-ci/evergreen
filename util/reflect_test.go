@@ -90,5 +90,4 @@ func TestRecursivelySetUndefinedFields(t *testing.T) {
 	assert.Nil(ePtr.B)
 	assert.Equal(false, ePtr.C)
 	assert.Equal("foo", ePtr.D.Inner.Foo)
-
 }

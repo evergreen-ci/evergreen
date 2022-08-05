@@ -4,7 +4,7 @@ buildDir := bin
 nodeDir := public
 packages := $(name) agent agent-command agent-util agent-internal agent-internal-client operations cloud cloud-userdata
 packages += db util plugin units graphql thirdparty thirdparty-docker auth scheduler model validator service repotracker cmd-codegen-core mock
-packages += model-annotations model-patch model-artifact model-host model-pod model-pod-dispatcher model-build model-event model-task model-user model-distro model-manifest model-testresult
+packages += model-annotations model-patch model-artifact model-host model-pod model-pod-definition model-pod-dispatcher model-build model-event model-task model-user model-distro model-manifest model-testresult
 packages += operations-metabuild-generator operations-metabuild-model model-commitqueue
 packages += rest-client rest-data rest-route rest-model migrations trigger model-alertrecord model-notification model-stats model-reliability
 lintOnlyPackages := api apimodels testutil model-manifest model-testutil service-testutil service-graphql db-mgo db-mgo-bson db-mgo-internal-json
@@ -110,13 +110,13 @@ smokeFile := $(if $(SMOKE_TEST_FILE),--test-file $(SMOKE_TEST_FILE),)
 
 # start rules for building services and clients
 ifeq ($(OS),Windows_NT)
-localClientBinary := $(clientBuildDir)/$(goos)_$(goarch)/evergreen.exe
+localClientBinary := $(clientBuildDir)/$(goos)_$(goarch)/$(windowsBinaryBasename)
 else
-localClientBinary := $(clientBuildDir)/$(goos)_$(goarch)/evergreen
+localClientBinary := $(clientBuildDir)/$(goos)_$(goarch)/$(unixBinaryBasename)
 endif
 cli:$(localClientBinary)
 clis:$(clientBinaries)
-$(clientBuildDir)/%/evergreen $(clientBuildDir)/%/evergreen.exe:$(buildDir)/build-cross-compile $(srcFiles)
+$(clientBuildDir)/%/$(unixBinaryBasename) $(clientBuildDir)/%/$(windowsBinaryBasename):$(buildDir)/build-cross-compile $(srcFiles) go.mod go.sum
 	@./$(buildDir)/build-cross-compile -buildName=$* -ldflags="$(ldFlags)" -goBinary="$(gobin)" -directory=$(clientBuildDir) -source=$(clientSource) -output=$@
 # Targets to upload the CLI binaries to S3.
 $(buildDir)/upload-s3:cmd/upload-s3/upload-s3.go
@@ -241,9 +241,10 @@ $(clientBuildDir)/%/.signed:$(buildDir)/sign-executable $(clientBuildDir)/%/$(un
 	./$< sign --client $(buildDir)/macnotary --executable $(@D)/$(unixBinaryBasename) --server-url $(NOTARY_SERVER_URL) --bundle-id $(EVERGREEN_BUNDLE_ID)
 	touch $@
 
-dist-staging: export STAGING_ONLY := 1
 dist-staging:
-	make dist
+	STAGING_ONLY=1 SIGN_MACOS= $(MAKE) dist
+dist-unsigned:
+	SIGN_MACOS= $(MAKE) dist
 dist:$(buildDir)/dist.tar.gz
 $(buildDir)/dist.tar.gz:$(buildDir)/make-tarball $(clientBinaries) $(uiFiles) $(if $(SIGN_MACOS),$(foreach platform,$(macOSPlatforms),$(clientBuildDir)/$(platform)/.signed))
 	./$< --name $@ --prefix $(name) $(foreach item,$(distContents),--item $(item)) --exclude "public/node_modules" --exclude "clients/.cache"

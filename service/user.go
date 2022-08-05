@@ -177,6 +177,12 @@ func (uis *UIServer) userSettingsPage(w http.ResponseWriter, r *http.Request) {
 	if len(uis.Settings.Ui.UIv2Url) > 0 {
 		newUILink = fmt.Sprintf("%s/preferences", uis.Settings.Ui.UIv2Url)
 	}
+
+	if _, ok := gimlet.GetUser(r.Context()).(*user.DBUser); !ok {
+		uis.LoggedError(w, r, http.StatusNotFound, errors.New("User not found"))
+		return
+	}
+
 	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Data           user.UserSettings
 		Config         confFile

@@ -30,7 +30,7 @@ import (
 	"github.com/mongodb/jasper/remote"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	"gopkg.in/yaml.v3"
+	yaml "gopkg.in/20210107192922/yaml.v3"
 )
 
 const OutputBufferSize = 1000
@@ -293,13 +293,13 @@ func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string 
 		params = append(params, fmt.Sprintf("--user=%s", h.User))
 	}
 
-	if settings.Splunk.Populated() && h.StartedBy == evergreen.User {
+	if settings.Splunk.SplunkConnectionInfo.Populated() && h.StartedBy == evergreen.User {
 		params = append(params,
-			fmt.Sprintf("--splunk_url=%s", settings.Splunk.ServerURL),
+			fmt.Sprintf("--splunk_url=%s", settings.Splunk.SplunkConnectionInfo.ServerURL),
 			fmt.Sprintf("--splunk_token_path=%s", h.Distro.AbsPathNotCygwinCompatible(h.splunkTokenFilePath())),
 		)
-		if settings.Splunk.Channel != "" {
-			params = append(params, fmt.Sprintf("--splunk_channel=%s", settings.Splunk.Channel))
+		if settings.Splunk.SplunkConnectionInfo.Channel != "" {
+			params = append(params, fmt.Sprintf("--splunk_channel=%s", settings.Splunk.SplunkConnectionInfo.Channel))
 		}
 	}
 
@@ -463,7 +463,7 @@ func (h *Host) GenerateUserDataProvisioningScript(settings *evergreen.Settings, 
 		return "", errors.Wrap(err, "creating setup script")
 	}
 
-	writeCredentialsCmds, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
+	writeCredentialsCmds, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk.SplunkConnectionInfo, creds)
 	if err != nil {
 		return "", errors.Wrap(err, "creating commands to write Jasper credentials file")
 	}

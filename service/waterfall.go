@@ -624,18 +624,20 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 	project, err := projCtx.GetProject()
 
-	if RedirectSpruceUsers(w, r, fmt.Sprintf("%s/commits/%s", uis.Settings.Ui.UIv2Url, project.Identifier)) {
-		return
-	}
-
 	if err != nil || project == nil {
 		uis.ProjectNotFound(w, r)
 		return
 	}
+
 	newUILink := ""
 	if len(uis.Settings.Ui.UIv2Url) > 0 {
 		newUILink = fmt.Sprintf("%s/commits/%s", uis.Settings.Ui.UIv2Url, project.Identifier)
 	}
+
+	if RedirectSpruceUsers(w, r, newUILink) {
+		return
+	}
+
 	uis.render.WriteResponse(w, http.StatusOK, struct {
 		NewUILink string
 		JiraHost  string

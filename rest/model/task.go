@@ -155,7 +155,7 @@ func (ad *APIOomTrackerInfo) ToService() *apimodels.OOMTrackerInfo {
 func (at *APITask) BuildPreviousExecutions(tasks []task.Task, url string) error {
 	at.PreviousExecutions = make([]APITask, len(tasks))
 	for i := range at.PreviousExecutions {
-		if err := at.PreviousExecutions[i].BuildFromArgs(&tasks[i], &APITaskArgs{
+		if err := at.PreviousExecutions[i].BuildFromService(&tasks[i], &APITaskArgs{
 			IncludeProjectIdentifier: true,
 			IncludeAMI:               true,
 			IncludeArtifacts:         true,
@@ -291,26 +291,10 @@ type APITaskArgs struct {
 	LogURL                   string
 }
 
-// Deprecated: BuildFromArgs should be used instead to add fields that aren't from the task collection.
 // BuildFromService converts from a service level task by loading the data
-// into the appropriate fields of the APITask. Needed to support the model interface used by triggers.
-func (at *APITask) BuildFromService(t interface{}) error {
-	var st *task.Task
-	switch v := t.(type) {
-	case *task.Task:
-		st = v
-	case task.Task:
-		st = &v
-	default:
-		return errors.Errorf("programmatic error: expected task but got type %T", v)
-	}
-	return at.BuildFromArgs(st, nil)
-}
-
-// BuildFromArgs converts from a service level task by loading the data
 // into the appropriate fields of the APITask. It takes optional arguments to populate
 // additional fields.
-func (at *APITask) BuildFromArgs(t *task.Task, args *APITaskArgs) error {
+func (at *APITask) BuildFromService(t *task.Task, args *APITaskArgs) error {
 	err := at.buildTask(t)
 	if err != nil {
 		return err
@@ -490,10 +474,7 @@ func (at *APITask) getArtifacts() error {
 		}
 		for _, file := range strippedFiles {
 			apiFile := APIFile{}
-			err := apiFile.BuildFromService(file)
-			if err != nil {
-				return err
-			}
+			apiFile.BuildFromService(file)
 			at.Artifacts = append(at.Artifacts, apiFile)
 		}
 	}

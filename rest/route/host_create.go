@@ -111,14 +111,12 @@ func (h *hostListHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	catcher := grip.NewBasicCatcher()
 	result := model.HostListResults{
-		Hosts:   make([]model.CreateHost, len(hosts)),
+		Hosts:   make([]model.APICreateHost, len(hosts)),
 		Details: make([]model.APIHostCreateDetail, len(t.HostCreateDetails)),
 	}
 	for i := range hosts {
-		createHost := model.CreateHost{}
-		if err := createHost.BuildFromService(&hosts[i]); err != nil {
-			catcher.Wrapf(err, "converting created host to API model for host at index %d", i)
-		}
+		createHost := model.APICreateHost{}
+		createHost.BuildFromService(hosts[i])
 		result.Hosts[i] = createHost
 	}
 

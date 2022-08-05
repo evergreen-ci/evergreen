@@ -222,10 +222,7 @@ func (uis *UIServer) getVolumes(w http.ResponseWriter, r *http.Request) {
 	apiVolumes := make([]restModel.APIVolume, 0, len(volumes))
 	for _, vol := range volumes {
 		apiVolume := restModel.APIVolume{}
-		if err := apiVolume.BuildFromService(vol); err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error building volume '%s'", vol.ID))
-			return
-		}
+		apiVolume.BuildFromService(vol)
 		apiVolumes = append(apiVolumes, apiVolume)
 	}
 	gimlet.WriteJSON(w, apiVolumes)

@@ -422,7 +422,6 @@ const (
 
 // Constants related to cloud providers and provider-specific settings.
 const (
-	ProviderNameEc2Auto     = "ec2-auto"
 	ProviderNameEc2OnDemand = "ec2-ondemand"
 	ProviderNameEc2Spot     = "ec2-spot"
 	ProviderNameEc2Fleet    = "ec2-fleet"
@@ -450,7 +449,6 @@ var (
 	ProviderSpawnable = []string{
 		ProviderNameEc2OnDemand,
 		ProviderNameEc2Spot,
-		ProviderNameEc2Auto,
 		ProviderNameEc2Fleet,
 		ProviderNameGce,
 		ProviderNameOpenstack,
@@ -465,7 +463,6 @@ var (
 	ProviderUserSpawnable = []string{
 		ProviderNameEc2OnDemand,
 		ProviderNameEc2Spot,
-		ProviderNameEc2Auto,
 		ProviderNameEc2Fleet,
 		ProviderNameGce,
 		ProviderNameOpenstack,
@@ -479,7 +476,6 @@ var (
 	// ProviderSpotEc2Type includes all cloud provider types that manage EC2
 	// spot instances.
 	ProviderSpotEc2Type = []string{
-		ProviderNameEc2Auto,
 		ProviderNameEc2Spot,
 		ProviderNameEc2Fleet,
 	}
@@ -487,7 +483,6 @@ var (
 	// ProviderEc2Type includes all cloud provider types that manage EC2
 	// instances.
 	ProviderEc2Type = []string{
-		ProviderNameEc2Auto,
 		ProviderNameEc2Spot,
 		ProviderNameEc2Fleet,
 		ProviderNameEc2OnDemand,
@@ -1171,7 +1166,7 @@ func (w WindowsVersion) Validate() error {
 	case Windows2022, Windows2019, Windows2016:
 		return nil
 	default:
-		return errors.Errorf("unrecognized windows version '%s'", w)
+		return errors.Errorf("unrecognized Windows version '%s'", w)
 	}
 }
 

@@ -92,7 +92,7 @@ func (h *recentTasksGetHandler) Run(ctx context.Context) gimlet.Responder {
 		response := make([]model.APITask, len(tasks))
 		for i, t := range tasks {
 			taskModel := model.APITask{}
-			err = taskModel.BuildFromArgs(&t, &model.APITaskArgs{
+			err = taskModel.BuildFromService(&t, &model.APITaskArgs{
 				IncludeProjectIdentifier: true,
 				IncludeAMI:               true,
 			})
@@ -122,8 +122,8 @@ func (h *recentTasksGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	statsModel := &model.APIRecentTaskStats{}
-	if err := statsModel.BuildFromService(stats); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting recent task stats to API model"))
+	if stats != nil {
+		statsModel.BuildFromService(*stats)
 	}
 	return gimlet.NewJSONResponse(statsModel)
 }
@@ -150,9 +150,6 @@ func (h *hostStatsByDistroHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	statsModel := &model.APIHostStatsByDistro{}
-	if err := statsModel.BuildFromService(stats); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting distro host stats to API model"))
-	}
-
+	statsModel.BuildFromService(stats)
 	return gimlet.NewJSONResponse(statsModel)
 }

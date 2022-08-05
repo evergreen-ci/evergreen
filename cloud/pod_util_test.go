@@ -52,7 +52,9 @@ func TestMakeSecretsManagerVault(t *testing.T) {
 	t.Run("Succeeds", func(t *testing.T) {
 		c, err := MakeSecretsManagerClient(validPodClientSettings())
 		require.NoError(t, err)
-		assert.NotZero(t, MakeSecretsManagerVault(c))
+		v, err := MakeSecretsManagerVault(c)
+		assert.NoError(t, err)
+		assert.NotZero(t, v)
 	})
 }
 
@@ -79,7 +81,7 @@ func TestExportECSPod(t *testing.T) {
 			assert.Equal(t, p.Resources.ExternalID, utility.FromStringPtr(resources.TaskID))
 			require.NotZero(t, resources.TaskDefinition)
 			assert.Equal(t, p.Resources.DefinitionID, utility.FromStringPtr(resources.TaskDefinition.ID))
-			assert.True(t, utility.FromBoolPtr(resources.TaskDefinition.Owned))
+			assert.False(t, utility.FromBoolPtr(resources.TaskDefinition.Owned))
 			assert.Equal(t, p.Resources.Cluster, utility.FromStringPtr(resources.Cluster))
 			require.Len(t, resources.Containers, len(p.Resources.Containers))
 			for i := range p.Resources.Containers {
@@ -136,7 +138,8 @@ func TestExportECSPod(t *testing.T) {
 			defer func() {
 				assert.NoError(t, smClient.Close(ctx))
 			}()
-			vault := MakeSecretsManagerVault(smClient)
+			vault, err := MakeSecretsManagerVault(smClient)
+			require.NoError(t, err)
 
 			tCase(ctx, t, &p, ecsClient, vault)
 		})
@@ -213,7 +216,7 @@ func TestExportECSPodResources(t *testing.T) {
 		})
 		require.NotZero(t, r.TaskDefinition)
 		assert.Equal(t, id, utility.FromStringPtr(r.TaskDefinition.ID))
-		assert.True(t, utility.FromBoolPtr(r.TaskDefinition.Owned))
+		assert.False(t, utility.FromBoolPtr(r.TaskDefinition.Owned))
 		assert.Zero(t, r.TaskID)
 		assert.Zero(t, r.Cluster)
 		assert.Zero(t, r.Containers)
@@ -322,45 +325,43 @@ func TestExportECSContainerStatusInfo(t *testing.T) {
 	})
 }
 
-func TestExportECSPodCreationOptions(t *testing.T) {
-	validPod := func() *pod.Pod {
-		return &pod.Pod{
-			TaskContainerCreationOpts: pod.TaskContainerCreationOptions{
-				Image:      "image",
-				MemoryMB:   128,
-				CPU:        128,
-				OS:         pod.OSLinux,
-				Arch:       pod.ArchAMD64,
-				WorkingDir: "/root",
-				EnvVars: map[string]string{
-					"ENV_VAR": "value",
+func TestExportECSPodDefinitionOptions(t *testing.T) {
+	validContainerOpts := func() pod.TaskContainerCreationOptions {
+		return pod.TaskContainerCreationOptions{
+			Image:      "image",
+			MemoryMB:   128,
+			CPU:        128,
+			OS:         pod.OSLinux,
+			Arch:       pod.ArchAMD64,
+			WorkingDir: "/root",
+			EnvVars: map[string]string{
+				"ENV_VAR": "value",
+			},
+			EnvSecrets: map[string]pod.Secret{
+				"SECRET_ENV_VAR": {
+					Name:       "name0",
+					ExternalID: "external_id",
+					Value:      "value0",
+					Exists:     utility.TruePtr(),
+					Owned:      utility.FalsePtr(),
 				},
-				EnvSecrets: map[string]pod.Secret{
-					"SECRET_ENV_VAR": {
-						Name:       "name0",
-						ExternalID: "external_id",
-						Value:      "value0",
-						Exists:     utility.TruePtr(),
-						Owned:      utility.FalsePtr(),
-					},
-					"SHARED_SECRET_ENV_VAR": {
-						Name:   "name1",
-						Value:  "value1",
-						Exists: utility.FalsePtr(),
-						Owned:  utility.TruePtr(),
-					},
-					"UNNAMED_SECRET_ENV_VAR": {
-						Value:  "value2",
-						Exists: utility.FalsePtr(),
-						Owned:  utility.TruePtr(),
-					},
+				"SHARED_SECRET_ENV_VAR": {
+					Name:   "name1",
+					Value:  "value1",
+					Exists: utility.FalsePtr(),
+					Owned:  utility.TruePtr(),
+				},
+				"UNNAMED_SECRET_ENV_VAR": {
+					Value:  "value2",
+					Exists: utility.FalsePtr(),
+					Owned:  utility.TruePtr(),
 				},
 			},
 		}
 	}
 
-	validSettings := func() *evergreen.Settings {
-		return &evergreen.Settings{
+	validSettings := func() evergreen.Settings {
+		return evergreen.Settings{
 			Providers: evergreen.CloudProviders{
 				AWS: evergreen.AWSConfig{
 					Pod: evergreen.AWSPodConfig{
@@ -371,19 +372,6 @@ func TestExportECSPodCreationOptions(t *testing.T) {
 							AWSVPC: evergreen.AWSVPCConfig{
 								Subnets:        []string{"subnet-12345"},
 								SecurityGroups: []string{"sg-12345"},
-							},
-							Clusters: []evergreen.ECSClusterConfig{
-								{
-									OS:   evergreen.ECSOSLinux,
-									Name: "cluster",
-								},
-							},
-							CapacityProviders: []evergreen.ECSCapacityProvider{
-								{
-									Name: "capacity_provider",
-									OS:   evergreen.ECSOSLinux,
-									Arch: evergreen.ECSArchAMD64,
-								},
 							},
 						},
 						SecretsManager: evergreen.SecretsManagerConfig{
@@ -397,32 +385,26 @@ func TestExportECSPodCreationOptions(t *testing.T) {
 
 	t.Run("Succeeds", func(t *testing.T) {
 		settings := validSettings()
-		p := validPod()
-		opts, err := ExportECSPodCreationOptions(settings, p)
+		containerOpts := validContainerOpts()
+		podDefOpts, err := ExportECSPodDefinitionOptions(&settings, containerOpts)
 		require.NoError(t, err)
-		require.NotZero(t, opts)
-		require.Equal(t, settings.Providers.AWS.Pod.ECS.TaskRole, utility.FromStringPtr(opts.TaskRole))
-		require.Equal(t, settings.Providers.AWS.Pod.ECS.ExecutionRole, utility.FromStringPtr(opts.ExecutionRole))
-		require.NotZero(t, opts.NetworkMode)
-		assert.Equal(t, cocoa.NetworkModeAWSVPC, *opts.NetworkMode)
+		require.NotZero(t, podDefOpts)
+		require.Equal(t, settings.Providers.AWS.Pod.ECS.TaskRole, utility.FromStringPtr(podDefOpts.TaskRole))
+		require.Equal(t, settings.Providers.AWS.Pod.ECS.ExecutionRole, utility.FromStringPtr(podDefOpts.ExecutionRole))
+		require.NotZero(t, podDefOpts.NetworkMode)
+		assert.Equal(t, cocoa.NetworkModeAWSVPC, *podDefOpts.NetworkMode)
 
-		require.NotZero(t, opts.ExecutionOpts)
-		require.Equal(t, settings.Providers.AWS.Pod.ECS.Clusters[0].Name, utility.FromStringPtr(opts.ExecutionOpts.Cluster))
-		require.NotZero(t, opts.ExecutionOpts.AWSVPCOpts)
-		assert.Equal(t, settings.Providers.AWS.Pod.ECS.AWSVPC.Subnets, opts.ExecutionOpts.AWSVPCOpts.Subnets)
-		assert.Equal(t, settings.Providers.AWS.Pod.ECS.AWSVPC.SecurityGroups, opts.ExecutionOpts.AWSVPCOpts.SecurityGroups)
-		require.NotZero(t, opts.ExecutionOpts.PlacementOpts)
-		assert.Equal(t, settings.Providers.AWS.Pod.ECS.CapacityProviders[0].Name, utility.FromStringPtr(opts.ExecutionOpts.CapacityProvider))
+		assert.True(t, strings.HasPrefix(utility.FromStringPtr(podDefOpts.Name), settings.Providers.AWS.Pod.ECS.TaskDefinitionPrefix))
+		assert.Contains(t, utility.FromStringPtr(podDefOpts.Name), containerOpts.Hash())
+		require.Equal(t, containerOpts.CPU, utility.FromIntPtr(podDefOpts.CPU))
+		require.Equal(t, containerOpts.MemoryMB, utility.FromIntPtr(podDefOpts.MemoryMB))
 
-		assert.True(t, strings.HasPrefix(utility.FromStringPtr(opts.Name), settings.Providers.AWS.Pod.ECS.TaskDefinitionPrefix))
-		assert.Contains(t, utility.FromStringPtr(opts.Name), p.ID)
-
-		require.Len(t, opts.ContainerDefinitions, 1)
-		cDef := opts.ContainerDefinitions[0]
-		require.Equal(t, p.TaskContainerCreationOpts.Image, utility.FromStringPtr(cDef.Image))
-		require.Equal(t, p.TaskContainerCreationOpts.MemoryMB, utility.FromIntPtr(cDef.MemoryMB))
-		require.Equal(t, p.TaskContainerCreationOpts.CPU, utility.FromIntPtr(cDef.CPU))
-		require.Equal(t, p.TaskContainerCreationOpts.WorkingDir, utility.FromStringPtr(cDef.WorkingDir))
+		require.Len(t, podDefOpts.ContainerDefinitions, 1)
+		cDef := podDefOpts.ContainerDefinitions[0]
+		require.Equal(t, containerOpts.Image, utility.FromStringPtr(cDef.Image))
+		require.Equal(t, containerOpts.MemoryMB, utility.FromIntPtr(cDef.MemoryMB))
+		require.Equal(t, containerOpts.CPU, utility.FromIntPtr(cDef.CPU))
+		require.Equal(t, containerOpts.WorkingDir, utility.FromStringPtr(cDef.WorkingDir))
 		require.Len(t, cDef.PortMappings, 1)
 		assert.Equal(t, agentPort, utility.FromIntPtr(cDef.PortMappings[0].ContainerPort))
 		require.Len(t, cDef.EnvVars, 4)
@@ -430,30 +412,30 @@ func TestExportECSPodCreationOptions(t *testing.T) {
 			envVarName := utility.FromStringPtr(envVar.Name)
 			switch envVarName {
 			case "ENV_VAR":
-				assert.Equal(t, p.TaskContainerCreationOpts.EnvVars[utility.FromStringPtr(envVar.Name)], utility.FromStringPtr(envVar.Value))
+				assert.Equal(t, containerOpts.EnvVars[utility.FromStringPtr(envVar.Name)], utility.FromStringPtr(envVar.Value))
 			case "SECRET_ENV_VAR":
-				s := p.TaskContainerCreationOpts.EnvSecrets[utility.FromStringPtr(envVar.Name)]
+				s := containerOpts.EnvSecrets[utility.FromStringPtr(envVar.Name)]
 				assert.Zero(t, envVar.SecretOpts.NewValue)
 				assert.Zero(t, envVar.SecretOpts.Name)
 				secretName := utility.FromStringPtr(envVar.SecretOpts.ID)
 				assert.Equal(t, s.ExternalID, secretName)
 				assert.False(t, utility.FromBoolPtr(envVar.SecretOpts.Owned))
 			case "SHARED_SECRET_ENV_VAR":
-				s := p.TaskContainerCreationOpts.EnvSecrets[utility.FromStringPtr(envVar.Name)]
+				s := containerOpts.EnvSecrets[utility.FromStringPtr(envVar.Name)]
 				assert.Equal(t, s.Value, utility.FromStringPtr(envVar.SecretOpts.NewValue))
 				assert.Zero(t, envVar.SecretOpts.ID)
 				secretName := utility.FromStringPtr(envVar.SecretOpts.Name)
 				assert.True(t, strings.HasPrefix(secretName, settings.Providers.AWS.Pod.SecretsManager.SecretPrefix))
-				assert.Contains(t, secretName, p.ID)
+				assert.Contains(t, secretName, containerOpts.Hash())
 				assert.Contains(t, secretName, s.Name)
 				assert.True(t, utility.FromBoolPtr(envVar.SecretOpts.Owned))
 			case "UNNAMED_SECRET_ENV_VAR":
-				s := p.TaskContainerCreationOpts.EnvSecrets[utility.FromStringPtr(envVar.Name)]
+				s := containerOpts.EnvSecrets[utility.FromStringPtr(envVar.Name)]
 				assert.Equal(t, s.Value, utility.FromStringPtr(envVar.SecretOpts.NewValue))
 				assert.Zero(t, envVar.SecretOpts.ID)
 				secretName := utility.FromStringPtr(envVar.SecretOpts.Name)
 				assert.True(t, strings.HasPrefix(secretName, settings.Providers.AWS.Pod.SecretsManager.SecretPrefix))
-				assert.Contains(t, secretName, p.ID)
+				assert.Contains(t, secretName, containerOpts.Hash())
 				assert.Contains(t, secretName, envVarName)
 				assert.True(t, utility.FromBoolPtr(envVar.SecretOpts.Owned))
 			default:
@@ -463,49 +445,138 @@ func TestExportECSPodCreationOptions(t *testing.T) {
 	})
 	t.Run("SucceedsWithRepositoryCredentials", func(t *testing.T) {
 		settings := validSettings()
-		p := validPod()
-		p.TaskContainerCreationOpts.RepoUsername = "username"
-		p.TaskContainerCreationOpts.RepoPassword = "password"
-		opts, err := ExportECSPodCreationOptions(settings, p)
+		containerOpts := validContainerOpts()
+		containerOpts.RepoUsername = "username"
+		containerOpts.RepoPassword = "password"
+		podDefOpts, err := ExportECSPodDefinitionOptions(&settings, containerOpts)
 		require.NoError(t, err)
-		require.NotZero(t, opts)
+		require.NotZero(t, containerOpts)
 
-		require.Len(t, opts.ContainerDefinitions, 1)
-		cDef := opts.ContainerDefinitions[0]
+		require.Len(t, podDefOpts.ContainerDefinitions, 1)
+		cDef := podDefOpts.ContainerDefinitions[0]
 		assert.True(t, strings.HasPrefix(utility.FromStringPtr(cDef.RepoCreds.Name), settings.Providers.AWS.Pod.SecretsManager.SecretPrefix))
-		assert.Contains(t, utility.FromStringPtr(cDef.RepoCreds.Name), p.ID)
-		assert.Equal(t, utility.FromStringPtr(cDef.RepoCreds.NewCreds.Username), p.TaskContainerCreationOpts.RepoUsername)
-		assert.Equal(t, utility.FromStringPtr(cDef.RepoCreds.NewCreds.Password), p.TaskContainerCreationOpts.RepoPassword)
+		assert.Contains(t, utility.FromStringPtr(cDef.RepoCreds.Name), containerOpts.Hash())
+		assert.Equal(t, utility.FromStringPtr(cDef.RepoCreds.NewCreds.Username), containerOpts.RepoUsername)
+		assert.Equal(t, utility.FromStringPtr(cDef.RepoCreds.NewCreds.Password), containerOpts.RepoPassword)
 	})
-	t.Run("OnlyUsesAWSVPCWhenAWSVPCSettingsAreGiven", func(t *testing.T) {
+	t.Run("DefaultsToBridgeNetworkingWhenAWSVPCSettingsAreUnset", func(t *testing.T) {
 		settings := validSettings()
 		settings.Providers.AWS.Pod.ECS.AWSVPC = evergreen.AWSVPCConfig{}
-		p := validPod()
-		opts, err := ExportECSPodCreationOptions(settings, p)
+		podDefOpts, err := ExportECSPodDefinitionOptions(&settings, validContainerOpts())
 		require.NoError(t, err)
-		assert.NoError(t, opts.Validate())
-		assert.Zero(t, opts.NetworkMode)
+		assert.NoError(t, podDefOpts.Validate())
+		assert.Zero(t, podDefOpts.NetworkMode)
+	})
+}
+
+func TestExportECSPodExecutionOptions(t *testing.T) {
+	getECSConfig := func() evergreen.ECSConfig {
+		return evergreen.ECSConfig{
+			TaskRole:             "task_role",
+			TaskDefinitionPrefix: "task_definition_prefix",
+			ExecutionRole:        "execution_role",
+			AWSVPC: evergreen.AWSVPCConfig{
+				Subnets:        []string{"subnet-12345"},
+				SecurityGroups: []string{"sg-12345"},
+			},
+			Clusters: []evergreen.ECSClusterConfig{
+				{
+					OS:   evergreen.ECSOSLinux,
+					Name: "linux_cluster",
+				},
+				{
+					OS:   evergreen.ECSOSWindows,
+					Name: "windows_cluster",
+				},
+			},
+			CapacityProviders: []evergreen.ECSCapacityProvider{
+				{
+					Name: "linux_capacity_provider",
+					OS:   evergreen.ECSOSLinux,
+					Arch: evergreen.ECSArchAMD64,
+				},
+				{
+					Name:           "windows_capacity_provider",
+					OS:             evergreen.ECSOSWindows,
+					Arch:           evergreen.ECSArchAMD64,
+					WindowsVersion: evergreen.ECSWindowsServer2022,
+				},
+			},
+		}
+	}
+	getContainerOpts := func() pod.TaskContainerCreationOptions {
+		return pod.TaskContainerCreationOptions{
+			OS:   pod.OSLinux,
+			Arch: pod.ArchAMD64,
+		}
+	}
+
+	t.Run("SpecifiesLinuxClusterAndCapacityProviderWithWindowsPod", func(t *testing.T) {
+		ecsConf := getECSConfig()
+		containerOpts := getContainerOpts()
+		execOpts, err := ExportECSPodExecutionOptions(ecsConf, containerOpts)
+		require.NoError(t, err)
+		require.NotZero(t, execOpts)
+
+		require.Equal(t, ecsConf.Clusters[0].Name, utility.FromStringPtr(execOpts.Cluster))
+		assert.Equal(t, ecsConf.CapacityProviders[0].Name, utility.FromStringPtr(execOpts.CapacityProvider))
+		require.NotZero(t, execOpts.AWSVPCOpts)
+		assert.Equal(t, ecsConf.AWSVPC.Subnets, execOpts.AWSVPCOpts.Subnets)
+		assert.Equal(t, ecsConf.AWSVPC.SecurityGroups, execOpts.AWSVPCOpts.SecurityGroups)
+	})
+	t.Run("OmitsAWSVPCOptionsWhenUnset", func(t *testing.T) {
+		ecsConf := getECSConfig()
+		ecsConf.AWSVPC = evergreen.AWSVPCConfig{}
+		containerOpts := getContainerOpts()
+		execOpts, err := ExportECSPodExecutionOptions(ecsConf, containerOpts)
+		require.NoError(t, err)
+		require.NotZero(t, execOpts)
+
+		assert.Zero(t, execOpts.AWSVPCOpts)
+		require.Equal(t, ecsConf.Clusters[0].Name, utility.FromStringPtr(execOpts.Cluster))
+		assert.Equal(t, ecsConf.CapacityProviders[0].Name, utility.FromStringPtr(execOpts.CapacityProvider))
+	})
+	t.Run("SpecifiesWindowsClusterAndCapacityProviderWithWindowsPod", func(t *testing.T) {
+		ecsConf := getECSConfig()
+		containerOpts := getContainerOpts()
+		containerOpts.OS = pod.OSWindows
+		containerOpts.Arch = pod.ArchAMD64
+		containerOpts.WindowsVersion = pod.WindowsVersionServer2022
+
+		execOpts, err := ExportECSPodExecutionOptions(ecsConf, containerOpts)
+		require.NoError(t, err)
+		require.NotZero(t, execOpts)
+		require.Equal(t, ecsConf.Clusters[1].Name, utility.FromStringPtr(execOpts.Cluster))
+		assert.Equal(t, ecsConf.CapacityProviders[1].Name, utility.FromStringPtr(execOpts.CapacityProvider))
 	})
 	t.Run("FailsWithNoECSConfig", func(t *testing.T) {
-		settings := validSettings()
-		settings.Providers.AWS.Pod.ECS = evergreen.ECSConfig{}
-		opts, err := ExportECSPodCreationOptions(settings, validPod())
-		require.NotZero(t, err)
-		assert.Zero(t, opts)
+		execOpts, err := ExportECSPodExecutionOptions(evergreen.ECSConfig{}, getContainerOpts())
+		assert.Error(t, err)
+		assert.Zero(t, execOpts)
 	})
 	t.Run("FailsWithNoMatchingCluster", func(t *testing.T) {
-		settings := validSettings()
-		settings.Providers.AWS.Pod.ECS.Clusters[0].OS = evergreen.ECSOSWindows
-		opts, err := ExportECSPodCreationOptions(settings, &pod.Pod{})
+		ecsConf := getECSConfig()
+		ecsConf.Clusters[0].OS = evergreen.ECSOSWindows
+		execOpts, err := ExportECSPodExecutionOptions(ecsConf, getContainerOpts())
 		assert.Error(t, err)
-		assert.Zero(t, opts)
+		assert.Zero(t, execOpts)
 	})
-	t.Run("FailsWithNoMatchingCapacityProvider", func(t *testing.T) {
-		settings := validSettings()
-		settings.Providers.AWS.Pod.ECS.CapacityProviders[0].Arch = evergreen.ECSArchARM64
-		opts, err := ExportECSPodCreationOptions(settings, &pod.Pod{})
+	t.Run("FailsWithNoMatchingCapacityProviderForLinux", func(t *testing.T) {
+		ecsConf := getECSConfig()
+		ecsConf.CapacityProviders[0].Arch = evergreen.ECSArchARM64
+		execOpts, err := ExportECSPodExecutionOptions(ecsConf, getContainerOpts())
 		assert.Error(t, err)
-		assert.Zero(t, opts)
+		assert.Zero(t, execOpts)
+	})
+	t.Run("FailsWithNoMatchingCapacityProviderForWindows", func(t *testing.T) {
+		ecsConf := getECSConfig()
+		containerOpts := getContainerOpts()
+		containerOpts.OS = pod.OSWindows
+		containerOpts.Arch = pod.ArchAMD64
+		containerOpts.WindowsVersion = pod.WindowsVersionServer2016
+		execOpts, err := ExportECSPodExecutionOptions(ecsConf, containerOpts)
+		assert.Error(t, err)
+		assert.Zero(t, execOpts)
 	})
 }
 

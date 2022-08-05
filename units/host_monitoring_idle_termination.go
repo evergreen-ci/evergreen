@@ -21,15 +21,11 @@ import (
 )
 
 const (
-	idleHostJobName = "idle-host-termination"
-
-	// idleTimeCutoff is the amount of time we wait for an idle host to be marked as idle.
-	idleTimeCutoff = 4 * time.Minute
-	// outdatedIdleTimeCutoff is the amount of time we wait for an outdated idle host to be marked idle.
-	outdatedIdleTimeCutoff    = time.Minute
+	idleHostJobName           = "idle-host-termination"
 	idleWaitingForAgentCutoff = 10 * time.Minute
-	idleTaskGroupHostCutoff   = 10 * time.Minute
 
+	// outdatedIdleTimeCutoff is the amount of time we wait for an outdated idle host to be marked idle.
+	outdatedIdleTimeCutoff = time.Minute
 	// MaxTimeNextPayment is the amount of time we wait to have left before marking a host as idle
 	maxTimeTilNextPayment = 5 * time.Minute
 )
@@ -82,7 +78,7 @@ func (j *idleHostJob) Run(ctx context.Context) {
 	// Each DistroID's idleHosts are sorted from oldest to newest CreationTime.
 	distroHosts, err := host.IdleEphemeralGroupedByDistroID()
 	if err != nil {
-		j.AddError(errors.Wrap(err, "database error grouping idle hosts by Distro.Id"))
+		j.AddError(errors.Wrap(err, "finding idle ephemeral hosts grouped by distro ID"))
 		return
 	}
 
@@ -92,7 +88,7 @@ func (j *idleHostJob) Run(ctx context.Context) {
 	}
 	distrosFound, err := distro.Find(distro.ByIds(distroIDsToFind))
 	if err != nil {
-		j.AddError(errors.Wrapf(err, "database error for find() by distro ids in [%s]", strings.Join(distroIDsToFind, ",")))
+		j.AddError(errors.Wrapf(err, "finding distros"))
 		return
 	}
 
@@ -104,11 +100,11 @@ func (j *idleHostJob) Run(ctx context.Context) {
 		missingDistroIDs := utility.GetSetDifference(distroIDsToFind, distroIDsFound)
 		hosts, err := host.Find(db.Query(host.ByDistroIDs(missingDistroIDs...)))
 		if err != nil {
-			j.AddError(errors.Wrapf(err, "could not find hosts in missing distros: %s", strings.Join(missingDistroIDs, ", ")))
+			j.AddError(errors.Wrapf(err, "finding hosts in missing distros: %s", strings.Join(missingDistroIDs, ", ")))
 			return
 		}
 		for _, h := range hosts {
-			j.AddError(errors.Wrapf(h.SetDecommissioned(evergreen.User, false, "distro is missing"), "could not set host '%s' as decommissioned", h.Id))
+			j.AddError(errors.Wrapf(h.SetDecommissioned(evergreen.User, false, "host's distro not found"), "could not set host '%s' as decommissioned", h.Id))
 		}
 
 		if j.HasErrors() {
@@ -165,9 +161,16 @@ func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, h *host.Host, d
 	idleTime := h.IdleTime()
 	communicationTime := h.GetElapsedCommunicationTime()
 
-	idleThreshold := idleTimeCutoff
+	idleThreshold := d.HostAllocatorSettings.AcceptableHostIdleTime
+	if idleThreshold == 0 {
+		conf, err := evergreen.GetConfig()
+		if err != nil {
+			return errors.Wrap(err, "getting evergreen configuration")
+		}
+		idleThreshold = time.Duration(conf.Scheduler.AcceptableHostIdleTimeSeconds) * time.Second
+	}
 	if h.RunningTaskGroup != "" {
-		idleThreshold = idleTaskGroupHostCutoff
+		idleThreshold = idleThreshold * 2
 	} else if hostHasOutdatedAMI(*h, d) {
 		idleThreshold = outdatedIdleTimeCutoff
 	}
@@ -175,9 +178,9 @@ func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, h *host.Host, d
 	// if we haven't heard from the host or it's been idle for longer than the cutoff, we should terminate
 	var terminateReason string
 	if communicationTime >= idleThreshold {
-		terminateReason = fmt.Sprintf("host is idle or unreachable, communication time %s over threshold time %s", communicationTime.String(), idleThreshold)
+		terminateReason = fmt.Sprintf("host is idle or unreachable, communication time %s is over threshold time %s", communicationTime, idleThreshold)
 	} else if idleTime >= idleThreshold {
-		terminateReason = fmt.Sprintf("host is idle or unreachable, idle time %s over threshold time %s", idleTime, idleThreshold)
+		terminateReason = fmt.Sprintf("host is idle or unreachable, idle time %s is over threshold time %s", idleTime, idleThreshold)
 	}
 	if terminateReason != "" {
 		j.Terminated++
@@ -189,8 +192,8 @@ func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, h *host.Host, d
 	return nil
 }
 
-//checkTerminationExemptions checks if some conditions apply where we shouldn't terminate an idle host,
-//and returns true if some exemption applies
+// checkTerminationExemptions checks if some conditions apply where we shouldn't terminate an idle host,
+// and returns true if some exemption applies.
 func checkTerminationExemptions(ctx context.Context, h *host.Host, env evergreen.Environment, jobType string, jid string) (bool, error) {
 	if !h.IsEphemeral() {
 		grip.Notice(message.Fields{
@@ -227,11 +230,11 @@ func checkTerminationExemptions(ctx context.Context, h *host.Host, env evergreen
 	// get a cloud manager for the host
 	mgrOpts, err := cloud.GetManagerOptions(h.Distro)
 	if err != nil {
-		return true, errors.Wrapf(err, "can't get ManagerOpts for host '%s'", h.Id)
+		return true, errors.Wrapf(err, "getting cloud manager options for host '%s'", h.Id)
 	}
 	manager, err := cloud.GetManager(ctx, env, mgrOpts)
 	if err != nil {
-		return true, errors.Wrapf(err, "error getting cloud manager for host %v", h.Id)
+		return true, errors.Wrapf(err, "getting cloud manager for host '%s'", h.Id)
 	}
 
 	// ask how long until the next payment for the host

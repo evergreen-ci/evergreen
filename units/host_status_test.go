@@ -130,7 +130,7 @@ func TestTerminateUnknownHosts(t *testing.T) {
 	ctx := context.Background()
 	require.NoError(t, env.Configure(ctx))
 	j := NewCloudHostReadyJob(env, "id").(*cloudHostReadyJob)
-	awsErr := "error getting host statuses for providers: error describing instances: after 10 retries, operation failed: InvalidInstanceID.NotFound: The instance IDs 'h1, h2' do not exist"
+	awsErr := "getting host statuses for providers: error describing instances: after 10 retries, operation failed: InvalidInstanceID.NotFound: The instance IDs 'h1, h2' do not exist"
 	assert.NoError(t, j.terminateUnknownHosts(ctx, awsErr))
 }
 

@@ -50,9 +50,7 @@ func (r *versionResolver) BaseVersion(ctx context.Context, obj *restModel.APIVer
 		return nil, nil
 	}
 	apiVersion := restModel.APIVersion{}
-	if err = apiVersion.BuildFromService(baseVersion); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIVersion from service for `%s`: %s", baseVersion.Id, err.Error()))
-	}
+	apiVersion.BuildFromService(*baseVersion)
 	return &apiVersion, nil
 }
 
@@ -120,7 +118,7 @@ func (r *versionResolver) ChildVersions(ctx context.Context, obj *restModel.APIV
 			// this calls the graphql Version query resolver
 			cv, err := r.Query().Version(ctx, cp)
 			if err != nil {
-				//before erroring due to the version being nil or not found,
+				// before erroring due to the version being nil or not found,
 				// fetch the child patch to see if it's activated
 				p, err := patch.FindOneId(cp)
 				if err != nil {
@@ -130,7 +128,7 @@ func (r *versionResolver) ChildVersions(ctx context.Context, obj *restModel.APIV
 					return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to child patch %s", cp))
 				}
 				if p.Version != "" {
-					//only return the error if the version is activated (and we therefore expect it to be there)
+					// only return the error if the version is activated (and we therefore expect it to be there)
 					return nil, InternalServerError.Send(ctx, "An unexpected error occurred. Could not find a child version and expected one.")
 				}
 			}
@@ -193,9 +191,7 @@ func (r *versionResolver) PreviousVersion(ctx context.Context, obj *restModel.AP
 			return nil, nil
 		}
 		apiVersion := restModel.APIVersion{}
-		if err = apiVersion.BuildFromService(previousVersion); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIVersion from service for `%s`: %s", previousVersion.Id, err.Error()))
-		}
+		apiVersion.BuildFromService(*previousVersion)
 		return &apiVersion, nil
 	} else {
 		return nil, nil
@@ -211,7 +207,7 @@ func (r *versionResolver) ProjectMetadata(ctx context.Context, obj *restModel.AP
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project ref for project `%s`: %s", *obj.Project, "Project not found"))
 	}
 	apiProjectRef := restModel.APIProjectRef{}
-	if err = apiProjectRef.BuildFromService(projectRef); err != nil {
+	if err = apiProjectRef.BuildFromService(*projectRef); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIProjectRef from service for `%s`: %s", projectRef.Id, err.Error()))
 	}
 	return &apiProjectRef, nil
@@ -234,27 +230,91 @@ func (r *versionResolver) TaskCount(ctx context.Context, obj *restModel.APIVersi
 	return &taskCount, nil
 }
 
-func (r *versionResolver) TaskStatusCounts(ctx context.Context, obj *restModel.APIVersion, options *BuildVariantOptions) ([]*task.StatusCount, error) {
-	opts := task.GetTasksByVersionOptions{
-		IncludeBaseTasks:      false,
-		IncludeExecutionTasks: false,
-		TaskNames:             options.Tasks,
-		Variants:              options.Variants,
-		Statuses:              getValidTaskStatusesFilter(options.Statuses),
+func (r *versionResolver) Tasks(ctx context.Context, obj *restModel.APIVersion, options *TaskFilterOptions) (*VersionTasks, error) {
+	versionId := utility.FromStringPtr(obj.Id)
+	pageParam := 0
+	if options.Page != nil {
+		pageParam = *options.Page
 	}
-	if len(options.Variants) != 0 {
-		opts.IncludeBuildVariantDisplayName = true // we only need the buildVariantDisplayName if we plan on filtering on it.
+	limitParam := 0
+	if options.Limit != nil {
+		limitParam = *options.Limit
 	}
-	stats, err := task.GetTaskStatsByVersion(*obj.Id, opts)
+	variantParam := ""
+	if options.Variant != nil {
+		variantParam = *options.Variant
+	}
+	taskNameParam := ""
+	if options.TaskName != nil {
+		taskNameParam = *options.TaskName
+	}
+	var taskSorts []task.TasksSortOrder
+	if len(options.Sorts) > 0 {
+		taskSorts = []task.TasksSortOrder{}
+		for _, singleSort := range options.Sorts {
+			key := ""
+			switch singleSort.Key {
+			// the keys here should be the keys for the column headers of the tasks table
+			case TaskSortCategoryName:
+				key = task.DisplayNameKey
+			case TaskSortCategoryStatus:
+				key = task.DisplayStatusKey
+			case TaskSortCategoryBaseStatus:
+				key = task.BaseTaskStatusKey
+			case TaskSortCategoryVariant:
+				key = task.BuildVariantKey
+			case TaskSortCategoryDuration:
+				key = task.TimeTakenKey
+			default:
+				return nil, InputValidationError.Send(ctx, fmt.Sprintf("invalid sort key: '%s'", singleSort.Key))
+			}
+			order := 1
+			if singleSort.Direction == SortDirectionDesc {
+				order = -1
+			}
+			taskSorts = append(taskSorts, task.TasksSortOrder{Key: key, Order: order})
+		}
+	}
+	v, err := model.VersionFindOne(model.VersionById(versionId).WithFields(model.VersionRequesterKey))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version task stats: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version with id: '%s': %s", versionId, err.Error()))
 	}
-	result := []*task.StatusCount{}
-	for _, c := range stats.Counts {
-		count := c
-		result = append(result, &count)
+	if v == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find version with id: '%s'", versionId))
 	}
-	return result, nil
+
+	opts := task.GetTasksByVersionOptions{
+		Statuses:                       getValidTaskStatusesFilter(options.Statuses),
+		BaseStatuses:                   getValidTaskStatusesFilter(options.BaseStatuses),
+		Variants:                       []string{variantParam},
+		TaskNames:                      []string{taskNameParam},
+		Page:                           pageParam,
+		Limit:                          limitParam,
+		Sorts:                          taskSorts,
+		IncludeBaseTasks:               true,
+		IncludeEmptyActivation:         utility.FromBoolPtr(options.IncludeEmptyActivation),
+		IncludeBuildVariantDisplayName: true,
+		IsMainlineCommit:               !evergreen.IsPatchRequester(v.Requester),
+	}
+	tasks, count, err := task.GetTasksByVersion(versionId, opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting tasks for version with id '%s': %s", versionId, err.Error()))
+	}
+
+	var apiTasks []*restModel.APITask
+	for _, t := range tasks {
+		apiTask := restModel.APITask{}
+		err := apiTask.BuildFromService(&t, nil)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task item db model to api model: %s", err.Error()))
+		}
+		apiTasks = append(apiTasks, &apiTask)
+	}
+	versionTasks := VersionTasks{
+		Count: count,
+		Data:  apiTasks,
+	}
+	return &versionTasks, nil
 }
 
 func (r *versionResolver) TaskStatuses(ctx context.Context, obj *restModel.APIVersion) ([]string, error) {
@@ -316,7 +376,7 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 		}
 
 		apiTask := restModel.APITask{}
-		if err = apiTask.BuildFromArgs(upstreamTask, nil); err != nil {
+		if err = apiTask.BuildFromService(upstreamTask, nil); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APITask from service for `%s`: %s", upstreamTask.Id, err.Error()))
 		}
 
@@ -338,14 +398,12 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding upstream version %s: '%s'", *obj.Id, err.Error()))
 		}
-		if v == nil {
+		if upstreamVersion == nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("upstream version %s not found", *obj.Id))
 		}
 
 		apiVersion := restModel.APIVersion{}
-		if err = apiVersion.BuildFromService(upstreamVersion); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIVersion from service for `%s`: %s", upstreamVersion.Id, err.Error()))
-		}
+		apiVersion.BuildFromService(*upstreamVersion)
 
 		projectID = upstreamVersion.Identifier
 		upstreamProject = &UpstreamProject{

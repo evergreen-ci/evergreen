@@ -65,10 +65,7 @@ func (b *buildGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	buildModel := &model.APIBuild{}
-	err = buildModel.BuildFromService(*foundBuild)
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "converting build to API model"))
-	}
+	buildModel.BuildFromService(*foundBuild)
 	buildModel.SetTaskCache(tasks)
 
 	return gimlet.NewJSONResponse(buildModel)
@@ -159,10 +156,7 @@ func (b *buildChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	buildModel := &model.APIBuild{}
-	if err = buildModel.BuildFromService(*updatedBuild); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting build to API model"))
-	}
-
+	buildModel.BuildFromService(*updatedBuild)
 	return gimlet.NewJSONResponse(buildModel)
 }
 
@@ -207,11 +201,7 @@ func (b *buildAbortHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	buildModel := &model.APIBuild{}
-
-	if err = buildModel.BuildFromService(*foundBuild); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting build to API model"))
-	}
-
+	buildModel.BuildFromService(*foundBuild)
 	return gimlet.NewJSONResponse(buildModel)
 }
 
@@ -257,9 +247,6 @@ func (b *buildRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	buildModel := &model.APIBuild{}
-	if err = buildModel.BuildFromService(*foundBuild); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting build to API model"))
-	}
-
+	buildModel.BuildFromService(*foundBuild)
 	return gimlet.NewJSONResponse(buildModel)
 }

@@ -164,14 +164,14 @@ func (j *githubStatusUpdateJob) preamble() error {
 
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
-		return errors.Wrap(err, "error retrieving admin settings")
+		return errors.Wrap(err, "getting service flags")
 	}
 	if flags.GithubStatusAPIDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"job":     githubStatusUpdateJobName,
-			"message": "github status updates are disabled, not updating status",
+			"message": "GitHub status updates are disabled, not updating status",
 		})
-		return errors.New("github status updates are disabled, not updating status")
+		return errors.New("GitHub status updates are disabled, not updating status")
 	}
 
 	return nil
@@ -220,7 +220,7 @@ func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 			return nil, errors.WithStack(err)
 		}
 		if patchDoc == nil {
-			return nil, errors.New("can't find patch")
+			return nil, errors.New("patch not found")
 		}
 
 		status.Owner = patchDoc.GithubPatchData.BaseOwner

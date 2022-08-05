@@ -311,7 +311,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if t.IsPartOfDisplay() {
-		msg["display_task_id"] = t.DisplayTask.Id
+		msg["display_task_id"] = t.DisplayTaskId
 	}
 
 	grip.Info(msg)
@@ -1007,8 +1007,6 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		// assign the task to a host and retrieve the task
 		nextTask, shouldRunTeardown, err = assignNextAvailableTask(ctx, taskQueue, as.taskDispatcher, h, details)
 		if err != nil {
-			err = errors.WithStack(err)
-			grip.Error(err)
 			gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(err))
 			return
 		}

@@ -19,7 +19,7 @@ func DeepCopy(src, copy interface{}, registeredTypes []interface{}) error {
 	dec := gob.NewDecoder(&buff)
 	err := enc.Encode(src)
 	if err != nil {
-		return errors.Wrap(err, "error encoding source")
+		return errors.Wrap(err, "encoding source")
 	}
-	return errors.Wrap(dec.Decode(copy), "error decoding copy")
+	return errors.Wrap(dec.Decode(copy), "decoding copy")
 }

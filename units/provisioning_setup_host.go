@@ -88,11 +88,11 @@ func (j *setupHostJob) Run(ctx context.Context) {
 	if j.host == nil {
 		j.host, err = host.FindOneId(j.HostID)
 		if err != nil {
-			j.AddError(err)
+			j.AddError(errors.Wrapf(err, "finding host '%s'", j.HostID))
 			return
 		}
 		if j.host == nil {
-			j.AddError(fmt.Errorf("could not find host %s for job %s", j.HostID, j.TaskID))
+			j.AddError(errors.Errorf("host '%s' not found", j.HostID))
 			return
 		}
 	}
@@ -155,7 +155,7 @@ func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settin
 	})
 
 	if err := ctx.Err(); err != nil {
-		return errors.Wrapf(err, "hostinit canceled during setup for host %s", j.host.Id)
+		return err
 	}
 
 	setupStartTime := time.Now()
@@ -227,7 +227,7 @@ func (j *setupHostJob) copySetupScript(ctx context.Context, settings *evergreen.
 		}
 		output, err := copyScript(ctx, j.env, settings, j.host, filepath.Join(j.host.Distro.HomeDir(), scriptName), j.host.Distro.Setup)
 		if err != nil {
-			return errors.Wrapf(err, "error copying setup script %s to host %s: %s",
+			return errors.Wrapf(err, "copying setup script '%s' to host '%s': %s",
 				scriptName, j.host.Id, output)
 		}
 	}
@@ -239,15 +239,15 @@ func (j *setupHostJob) copySetupScript(ctx context.Context, settings *evergreen.
 // Jasper service.
 func setupJasper(ctx context.Context, env evergreen.Environment, settings *evergreen.Settings, h *host.Host) error {
 	if err := setupServiceUser(ctx, env, settings, h); err != nil {
-		return errors.Wrap(err, "error setting up service user")
+		return errors.Wrap(err, "setting up service user")
 	}
 
 	if logs, err := h.RunSSHCommand(ctx, h.MakeJasperDirsCommand()); err != nil {
-		return errors.Wrapf(err, "error creating Jasper directories: command returned: %s", logs)
+		return errors.Wrapf(err, "creating Jasper directories: command returned: %s", logs)
 	}
 
 	if err := putJasperCredentials(ctx, env, settings, h); err != nil {
-		return errors.Wrap(err, "error putting Jasper credentials on remote host")
+		return errors.Wrap(err, "putting Jasper credentials on remote host")
 	}
 
 	if err := putPreconditionScripts(ctx, env, settings, h); err != nil {
@@ -255,7 +255,7 @@ func setupJasper(ctx context.Context, env evergreen.Environment, settings *everg
 	}
 
 	if err := doFetchAndReinstallJasper(ctx, env, h); err != nil {
-		return errors.Wrap(err, "error starting Jasper service on remote host")
+		return errors.Wrap(err, "starting Jasper service on remote host")
 	}
 
 	return nil
@@ -266,12 +266,12 @@ func setupJasper(ctx context.Context, env evergreen.Environment, settings *everg
 func putJasperCredentials(ctx context.Context, env evergreen.Environment, settings *evergreen.Settings, h *host.Host) error {
 	creds, err := h.GenerateJasperCredentials(ctx, env)
 	if err != nil {
-		return errors.Wrap(err, "could not generate Jasper credentials for host")
+		return errors.Wrap(err, "generating credentials for host")
 	}
 
-	writeCmds, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk, creds)
+	writeCmds, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk.SplunkConnectionInfo, creds)
 	if err != nil {
-		return errors.Wrap(err, "could not get command to write Jasper credentials file")
+		return errors.Wrap(err, "getting command to write Jasper credentials file")
 	}
 
 	grip.Info(message.Fields{
@@ -281,11 +281,11 @@ func putJasperCredentials(ctx context.Context, env evergreen.Environment, settin
 	})
 
 	if logs, err := h.RunSSHCommand(ctx, writeCmds); err != nil {
-		return errors.Wrapf(err, "error copying credentials to remote machine: command returned: %s", logs)
+		return errors.Wrapf(err, "copying credentials to remote machine: command returned: %s", logs)
 	}
 
 	if err := h.SaveJasperCredentials(ctx, env, creds); err != nil {
-		return errors.Wrap(err, "error saving credentials")
+		return errors.Wrap(err, "saving credentials")
 	}
 
 	return nil
@@ -309,16 +309,16 @@ func setupServiceUser(ctx context.Context, env evergreen.Environment, settings *
 
 	cmds, err := h.SetupServiceUserCommands()
 	if err != nil {
-		return errors.Wrap(err, "could not get command to set up service user")
+		return errors.Wrap(err, "getting command to set up service user")
 	}
 
 	path := filepath.Join(h.Distro.HomeDir(), "setup-user.ps1")
 	if output, err := copyScript(ctx, env, settings, h, path, cmds); err != nil {
-		return errors.Wrapf(err, "error copying script to set up service user: %s", output)
+		return errors.Wrapf(err, "copying script to set up service user: %s", output)
 	}
 
 	if logs, err := h.RunSSHCommand(ctx, fmt.Sprintf("powershell ./%s && rm -f ./%s", filepath.Base(path), filepath.Base(path))); err != nil {
-		return errors.Wrapf(err, "error while setting up service user: command returned: %s", logs)
+		return errors.Wrapf(err, "setting up service user: command returned: %s", logs)
 	}
 
 	return nil
@@ -329,7 +329,7 @@ func setupServiceUser(ctx context.Context, env evergreen.Environment, settings *
 func doFetchAndReinstallJasper(ctx context.Context, env evergreen.Environment, h *host.Host) error {
 	cmd := h.FetchAndReinstallJasperCommands(env.Settings())
 	if logs, err := h.RunSSHCommand(ctx, cmd); err != nil {
-		return errors.Wrapf(err, "error while fetching Jasper binary and installing service on remote host: command returned: %s", logs)
+		return errors.Wrapf(err, "fetching Jasper binary and installing service on remote host: command returned: %s", logs)
 	}
 	return nil
 }
@@ -343,10 +343,10 @@ func copyScript(ctx context.Context, env evergreen.Environment, settings *evergr
 	// create a temp file for the script
 	file, err := ioutil.TempFile("", filepath.Base(dstPath))
 	if err != nil {
-		return "", errors.Wrap(err, "error creating temporary script file")
+		return "", errors.Wrap(err, "creating temporary script file")
 	}
 	if err = os.Chmod(file.Name(), 0700); err != nil {
-		return "", errors.Wrap(err, "error setting file permissions")
+		return "", errors.Wrap(err, "setting file permissions")
 	}
 	defer func() {
 		errCtx := message.Fields{
@@ -370,15 +370,15 @@ func copyScript(ctx context.Context, env evergreen.Environment, settings *evergr
 
 	expanded, err := expandScript(script, settings)
 	if err != nil {
-		return "", errors.Wrapf(err, "error expanding script for host %s", h.Id)
+		return "", errors.Wrap(err, "expanding script")
 	}
 	if _, err = io.WriteString(file, expanded); err != nil {
-		return "", errors.Wrap(err, "error writing local script")
+		return "", errors.Wrap(err, "writing local script")
 	}
 
 	sshOpts, err := h.GetSSHOptions(settings)
 	if err != nil {
-		return "", errors.Wrapf(err, "error getting ssh options for host %s", h.Id)
+		return "", errors.Wrapf(err, "getting SSH options for host '%s'", h.Id)
 	}
 
 	scpCmdOut := util.NewMBCappedWriter()
@@ -394,7 +394,7 @@ func copyScript(ctx context.Context, env evergreen.Environment, settings *evergr
 
 	err = scpCmd.Run(ctx)
 
-	return scpCmdOut.String(), errors.Wrap(err, "error copying script to remote machine")
+	return scpCmdOut.String(), errors.Wrap(err, "copying script to remote machine")
 }
 
 func buildScpCommand(src, dst string, h *host.Host, opts ...string) []string {
@@ -409,9 +409,9 @@ func expandScript(s string, settings *evergreen.Settings) (string, error) {
 	exp := util.NewExpansions(settings.Expansions)
 	script, err := exp.ExpandString(s)
 	if err != nil {
-		return "", errors.Wrap(err, "expansions error")
+		return "", err
 	}
-	return script, err
+	return script, nil
 }
 
 // Provision the host, and update the database accordingly.
@@ -431,7 +431,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 				"distro":  j.host.Distro.Id,
 				"job":     j.ID(),
 			}))
-			return errors.Wrapf(err, "error putting Jasper on host '%s'", j.host.Id)
+			return errors.Wrapf(err, "putting Jasper on host '%s'", j.host.Id)
 		}
 		grip.Info(message.Fields{
 			"message": "successfully fetched Jasper binary and started service",
@@ -442,7 +442,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 	}
 
 	if err := j.copySetupScript(ctx, settings); err != nil {
-		return errors.Wrapf(err, "error initializing host %s", j.host.Id)
+		return errors.Wrapf(err, "copying setup script to host '%s'", j.host.Id)
 	}
 
 	if j.host.IsVirtualWorkstation {
@@ -466,7 +466,6 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 
 	// If this is a spawn host
 	if j.host.ProvisionOptions != nil && j.host.UserHost {
-		grip.Infof("Uploading client binary to host %s", j.host.Id)
 		if err := j.setupSpawnHost(ctx, settings); err != nil {
 			catcher := grip.NewBasicCatcher()
 			catcher.Wrap(err, "setting up spawn host")
@@ -532,7 +531,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 	})
 
 	if err := j.host.MarkAsProvisioned(); err != nil {
-		return errors.Wrapf(err, "error marking host %s as provisioned", j.host.Id)
+		return errors.Wrapf(err, "marking host '%s' as provisioned", j.host.Id)
 	}
 
 	grip.Info(message.Fields{
@@ -556,27 +555,27 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 func (j *setupHostJob) setupSpawnHost(ctx context.Context, settings *evergreen.Settings) error {
 	script, err := j.host.SpawnHostSetupCommands(settings)
 	if err != nil {
-		return errors.Wrap(err, "could not create script to setup spawn host")
+		return errors.Wrap(err, "creating script to set up spawn host")
 	}
 
 	curlCtx, cancel := context.WithTimeout(ctx, evergreenCurlTimeout)
 	defer cancel()
 	curlCmd, err := j.host.CurlCommand(settings)
 	if err != nil {
-		return errors.Wrap(err, "could not create command to curl evergreen client")
+		return errors.Wrap(err, "creating command to curl Evergreen client")
 	}
 	output, err := j.host.RunSSHCommand(curlCtx, curlCmd)
 	if err != nil {
-		return errors.Wrapf(err, "error running command to get evergreen binary on spawn host: %s", output)
+		return errors.Wrapf(err, "running command to put Evergreen client on spawn host: %s", output)
 	}
 	if curlCtx.Err() != nil {
-		return errors.Wrap(curlCtx.Err(), "timed out curling evergreen binary")
+		return errors.Wrap(curlCtx.Err(), "running command to curl Evergreen binary")
 	}
 
 	spawnHostSetupCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	if output, err := j.host.RunSSHShellScript(spawnHostSetupCtx, script, false, ""); err != nil {
-		return errors.Wrapf(err, "error running command to set up spawn host: %s", output)
+		return errors.Wrapf(err, "running command to set up spawn host: %s", output)
 	}
 
 	return nil
@@ -617,7 +616,7 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context) error {
 		"logs":      output,
 	}))
 
-	return errors.Wrap(err, "could not fetch remote task data")
+	return errors.Wrap(err, "fetching remote task data")
 }
 
 func (j *setupHostJob) canRetryProvisioning() bool {
@@ -632,13 +631,11 @@ func attachVolume(ctx context.Context, env evergreen.Environment, h *host.Host) 
 	if h.HomeVolume() == nil {
 		mgrOpts, err := cloud.GetManagerOptions(h.Distro)
 		if err != nil {
-			return errors.Wrapf(err, "can't get ManagerOpts for '%s'", h.Id)
+			return errors.Wrapf(err, "getting cloud manager options for host '%s'", h.Id)
 		}
 		cloudMgr, err := cloud.GetManager(ctx, env, mgrOpts)
 		if err != nil {
-			return errors.Wrapf(err,
-				"failed to get cloud manager for host %s with provider %s",
-				h.Id, h.Provider)
+			return errors.Wrapf(err, "getting cloud manager for host '%s' with provider '%s'", h.Id, h.Provider)
 		}
 
 		var volume *host.Volume
@@ -648,7 +645,7 @@ func attachVolume(ctx context.Context, env evergreen.Environment, h *host.Host) 
 				return err
 			}
 			if volume.AvailabilityZone != h.Zone {
-				return errors.Errorf("can't attach volume in zone '%s' to host in zone '%s'", volume.AvailabilityZone, h.Zone)
+				return errors.Errorf("attaching volume in zone '%s' to host in zone '%s'", volume.AvailabilityZone, h.Zone)
 			}
 		} else {
 			// create the volume
@@ -660,10 +657,10 @@ func attachVolume(ctx context.Context, env evergreen.Environment, h *host.Host) 
 				HomeVolume:       true,
 			})
 			if err != nil {
-				return errors.Wrapf(err, "can't create a new volume for host '%s'", h.Id)
+				return errors.Wrapf(err, "creating new volume for host '%s'", h.Id)
 			}
 			if err = h.SetHomeVolumeID(volume.ID); err != nil {
-				return errors.Wrapf(err, "can't set home volume ID in host")
+				return errors.Wrapf(err, "setting home volume ID for host")
 			}
 		}
 
@@ -672,23 +669,23 @@ func attachVolume(ctx context.Context, env evergreen.Environment, h *host.Host) 
 		if err = cloudMgr.AttachVolume(ctx, h, &attachment); err != nil {
 			attachment, attachmentInfoErr := cloudMgr.GetVolumeAttachment(ctx, volume.ID)
 			if attachmentInfoErr != nil {
-				return errors.Wrapf(attachmentInfoErr, "can't query cloud provider for volume attachments for '%s'", volume.ID)
+				return errors.Wrapf(attachmentInfoErr, "getting volume attachments for volume '%s'", volume.ID)
 			}
 			// if the volume isn't attached to this host then we have a problem
 			if attachment == nil || attachment.HostID != h.Id {
-				return errors.Wrapf(err, "can't attach volume '%s' to host '%s'", volume.ID, h.Id)
+				return errors.Wrapf(err, "attaching volume '%s' to host '%s'", volume.ID, h.Id)
 			}
 		}
 	}
 
 	// run the appropriate mount script
-	return errors.Wrap(mountLinuxVolume(ctx, env, h), "can't mount volume")
+	return errors.Wrap(mountLinuxVolume(ctx, env, h), "mounting volume")
 }
 
 func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Host) error {
 	client, err := h.JasperClient(ctx, env)
 	if err != nil {
-		return errors.Wrap(err, "can't get Jasper client")
+		return errors.Wrap(err, "getting Jasper client")
 	}
 	defer func() {
 		grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
@@ -701,7 +698,7 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 	// wait for the volume to come up on the instance
 	device, err := waitForDevice(ctx, env, h)
 	if err != nil {
-		return errors.Wrap(err, "can't get device")
+		return errors.Wrap(err, "waiting for device")
 	}
 
 	// the device is aleady mounted on ~
@@ -713,22 +710,22 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 	// this is a fresh volume
 	if device.FSType == "" {
 		if err = prepareVolume(ctx, client, h, device); err != nil {
-			return errors.Wrap(err, "can't prepare new volume")
+			return errors.Wrap(err, "preparing new volume")
 		}
 	}
 
 	if err = client.CreateCommand(ctx).Sudo(true).Append(fmt.Sprintf("mount /dev/%s %s", device.Name, h.Distro.HomeDir())).Run(ctx); err != nil {
-		return errors.Wrap(err, "problem running mount commands")
+		return errors.Wrap(err, "running mount commands")
 	}
 
 	entryInFstab, err := findMnt(ctx, client, h)
 	if err != nil {
-		return errors.Wrap(err, "problem verifying mount")
+		return errors.Wrap(err, "verifying mount")
 	}
 	if !entryInFstab {
 		device, err = getMostRecentlyAddedDevice(ctx, env, h)
 		if err != nil {
-			return errors.Wrap(err, "can't refresh device info")
+			return errors.Wrap(err, "refreshing device info")
 		}
 		// write to /etc/fstab so the volume is mounted on restart
 		// use the UUID which is constant over the life of the filesystem
@@ -736,7 +733,7 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 		cmd.SetInputBytes([]byte(fmt.Sprintf("UUID=%s %s auto noatime 0 0\n", device.UUID, h.Distro.HomeDir())))
 		err = cmd.Run(ctx)
 		if err != nil {
-			return errors.Wrap(err, "problem appending to fstab")
+			return errors.Wrap(err, "appending to fstab")
 		}
 	}
 
@@ -751,7 +748,7 @@ func prepareVolume(ctx context.Context, client remote.Manager, h *host.Host, dev
 	cmd.Append(fmt.Sprintf("rsync -a %s/ /mnt", h.Distro.HomeDir()))
 	cmd.Append("umount /mnt")
 
-	return errors.Wrap(cmd.Run(ctx), "error with volume initialization")
+	return errors.Wrap(cmd.Run(ctx), "initializing volume")
 }
 
 func waitForDevice(ctx context.Context, env evergreen.Environment, h *host.Host) (blockDevice, error) {
@@ -781,7 +778,7 @@ func writeIcecreamConfig(ctx context.Context, env evergreen.Environment, h *host
 	if logs, err := h.RunJasperProcess(ctx, env, &options.Create{
 		Args: args,
 	}); err != nil {
-		return errors.Wrapf(err, "error writing icecream config file: command returned %s", logs)
+		return errors.Wrapf(err, "writing icecream config file: command returned %s", logs)
 	}
 	return nil
 }
@@ -790,14 +787,14 @@ func findMnt(ctx context.Context, client remote.Manager, h *host.Host) (bool, er
 	cmd := client.CreateCommand(ctx).Background(true)
 	cmd.Append(fmt.Sprintf("findmnt --fstab --target %s", h.Distro.HomeDir()))
 	if err := cmd.Run(ctx); err != nil {
-		return false, errors.Wrap(err, "can't run findmnt command")
+		return false, errors.Wrap(err, "running findmnt command")
 	}
 	exitCode, err := cmd.Wait(ctx)
 	if err != nil {
 		if exitCode != 0 {
 			return false, nil
 		}
-		return false, errors.Wrap(err, "problem waiting for findmnt command")
+		return false, errors.Wrap(err, "waiting for findmnt command")
 	}
 
 	return true, nil
@@ -816,12 +813,12 @@ func getMostRecentlyAddedDevice(ctx context.Context, env evergreen.Environment, 
 		Args: []string{"lsblk", "--fs", "--json"},
 	})
 	if err != nil {
-		return blockDevice{}, errors.Wrap(err, "can't run lsblk")
+		return blockDevice{}, errors.Wrap(err, "running lsblk")
 	}
 
 	devices, err := parseLsblkOutput(strings.Join(lsblkOutput, "\n"))
 	if err != nil {
-		return blockDevice{}, errors.Wrap(err, "can't parse lsblk output")
+		return blockDevice{}, errors.Wrap(err, "parsing lsblk output")
 	}
 	if len(devices) == 0 {
 		return blockDevice{}, errors.New("output contained no devices")
@@ -840,7 +837,7 @@ func parseLsblkOutput(lsblkOutput string) ([]blockDevice, error) {
 		BlockDevices []blockDevice `json:"blockdevices"`
 	}{}
 	if err := json.Unmarshal([]byte(lsblkOutput), &devices); err != nil {
-		return nil, errors.Wrapf(err, "can't parse lsblk output '%s'", lsblkOutput)
+		return nil, errors.Wrapf(err, "parsing lsblk output '%s'", lsblkOutput)
 	}
 
 	return devices.BlockDevices, nil

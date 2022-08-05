@@ -128,8 +128,7 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 				"job":     j.ID(),
 			}))
 			j.AddError(err)
-			j.AddError(j.host.SetStatus(evergreen.HostProvisionFailed, evergreen.User,
-				"decommissioning host after failing to mount volume"))
+			j.AddError(j.host.SetStatus(evergreen.HostProvisionFailed, evergreen.User, "decommissioning host after failing to mount volume"))
 
 			terminateJob := NewHostTerminationJob(j.env, j.host, HostTerminationOptions{
 				TerminateIfBusy:   true,
@@ -176,10 +175,10 @@ func (j *userDataDoneJob) populateIfUnset() error {
 	if j.host == nil {
 		h, err := host.FindOneId(j.HostID)
 		if err != nil {
-			return errors.Wrapf(err, "could not find host %s for job %s", j.HostID, j.ID())
+			return errors.Wrapf(err, "finding host '%s'", j.HostID)
 		}
 		if h == nil {
-			return errors.Errorf("could not find host %s for job %s", j.HostID, j.ID())
+			return errors.Errorf("host '%s' not found", j.HostID)
 		}
 		j.host = h
 	}

@@ -1,7 +1,6 @@
 package cloud
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -13,96 +12,39 @@ import (
 func TestAgentScript(t *testing.T) {
 	const workingDir = "/data/mci"
 
-	t.Run("WithoutS3", func(t *testing.T) {
-		settings := &evergreen.Settings{
-			ApiUrl:            "www.test.com",
-			ClientBinariesDir: "clients",
+	settings := evergreen.Settings{
+		ApiUrl:            "https://example.com",
+		ClientBinariesDir: "clients",
+	}
+
+	t.Run("Linux", func(t *testing.T) {
+		opts := pod.TaskContainerCreationOptions{
+			OS:         pod.OSLinux,
+			Arch:       pod.ArchAMD64,
+			WorkingDir: workingDir,
 		}
+		cmd := bootstrapContainerCommand(&settings, opts)
+		require.NotZero(t, cmd)
 
-		t.Run("Linux", func(t *testing.T) {
-			p := &pod.Pod{
-				ID: "id",
-				TaskContainerCreationOpts: pod.TaskContainerCreationOptions{
-					OS:         pod.OSLinux,
-					Arch:       pod.ArchAMD64,
-					WorkingDir: workingDir,
-				},
-			}
-			cmd := agentScript(settings, p)
-			require.NotZero(t, cmd)
-
-			expected := []string{
-				"bash", "-c",
-				"curl -fLO www.test.com/clients/linux_amd64/evergreen --retry 10 --retry-max-time 100 && " +
-					"chmod +x evergreen && " +
-					"./evergreen agent --api_server=www.test.com --mode=pod --log_prefix=/data/mci/agent --working_directory=/data/mci",
-			}
-			assert.Equal(t, expected, cmd)
-		})
-		t.Run("Windows", func(t *testing.T) {
-			p := &pod.Pod{
-				ID: "id",
-				TaskContainerCreationOpts: pod.TaskContainerCreationOptions{
-					OS:         pod.OSWindows,
-					Arch:       pod.ArchAMD64,
-					WorkingDir: workingDir,
-				},
-			}
-			cmd := agentScript(settings, p)
-			require.NotZero(t, cmd)
-
-			expected := []string{
-				"cmd.exe", "/c",
-				"curl -fLO www.test.com/clients/windows_amd64/evergreen.exe --retry 10 --retry-max-time 100 && " +
-					".\\evergreen.exe agent --api_server=www.test.com --mode=pod --log_prefix=/data/mci/agent --working_directory=/data/mci",
-			}
-			assert.Equal(t, expected, cmd)
-		})
+		expected := []string{
+			"bash", "-c",
+			"curl --retry 10 --retry-max-time 60 -L -H \"Pod-Id: ${POD_ID}\" -H \"Pod-Secret: ${POD_SECRET}\" https://example.com/rest/v2/pods/${POD_ID}/provisioning_script | bash -s",
+		}
+		assert.Equal(t, expected, cmd)
 	})
-
-	t.Run("WithS3", func(t *testing.T) {
-		settings := &evergreen.Settings{
-			ApiUrl:            "www.test.com",
-			PodInit:           evergreen.PodInitConfig{S3BaseURL: "https://foo.com"},
-			ClientBinariesDir: "clients",
+	t.Run("Windows", func(t *testing.T) {
+		p := pod.TaskContainerCreationOptions{
+			OS:         pod.OSWindows,
+			Arch:       pod.ArchAMD64,
+			WorkingDir: workingDir,
 		}
-		t.Run("Linux", func(t *testing.T) {
-			p := &pod.Pod{
-				ID: "id",
-				TaskContainerCreationOpts: pod.TaskContainerCreationOptions{
-					OS:         pod.OSLinux,
-					Arch:       pod.ArchAMD64,
-					WorkingDir: workingDir,
-				},
-			}
-			cmd := agentScript(settings, p)
-			require.NotZero(t, cmd)
+		cmd := bootstrapContainerCommand(&settings, p)
+		require.NotZero(t, cmd)
 
-			expected := []string{
-				"bash", "-c",
-				fmt.Sprintf("(curl -fLO https://foo.com/%s/linux_amd64/evergreen --retry 10 --retry-max-time 100 || curl -fLO www.test.com/clients/linux_amd64/evergreen --retry 10 --retry-max-time 100) && "+
-					"chmod +x evergreen && "+
-					"./evergreen agent --api_server=www.test.com --mode=pod --log_prefix=/data/mci/agent --working_directory=/data/mci", evergreen.BuildRevision),
-			}
-			assert.Equal(t, expected, cmd)
-		})
-		t.Run("Windows", func(t *testing.T) {
-			p := &pod.Pod{
-				ID: "id",
-				TaskContainerCreationOpts: pod.TaskContainerCreationOptions{
-					OS:         pod.OSWindows,
-					Arch:       pod.ArchAMD64,
-					WorkingDir: workingDir,
-				},
-			}
-			cmd := agentScript(settings, p)
-			require.NotZero(t, cmd)
-			expected := []string{
-				"cmd.exe", "/c",
-				fmt.Sprintf("(curl -fLO https://foo.com/%s/windows_amd64/evergreen.exe --retry 10 --retry-max-time 100 || curl -fLO www.test.com/clients/windows_amd64/evergreen.exe --retry 10 --retry-max-time 100) && "+
-					".\\evergreen.exe agent --api_server=www.test.com --mode=pod --log_prefix=/data/mci/agent --working_directory=/data/mci", evergreen.BuildRevision),
-			}
-			assert.Equal(t, expected, cmd)
-		})
+		expected := []string{
+			"powershell.exe", "-noninteractive", "-noprofile", "-Command",
+			"curl.exe --retry 10 --retry-max-time 60 -L -H \"Pod-Id: $env:POD_ID\" -H \"Pod-Secret: $env:POD_SECRET\" https://example.com/rest/v2/pods/$env:POD_ID/provisioning_script | powershell.exe -noprofile -noninteractive -",
+		}
+		assert.Equal(t, expected, cmd)
 	})
 }

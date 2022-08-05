@@ -7,7 +7,7 @@ input ProjectVarsInput {
 
 ###### TYPES ######
 type ProjectVars {
-  adminOnlyVars: [String]
-  privateVars: [String]
+  adminOnlyVars: [String!]!
+  privateVars: [String!]!
   vars: StringMap
 }

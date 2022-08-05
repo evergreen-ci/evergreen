@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMostRecentByUserAndProject(t *testing.T) {
@@ -148,4 +149,27 @@ func TestByPatchNameStatusesCommitQueuePaginated(t *testing.T) {
 	for _, patch := range patches {
 		assert.Equal(t, evergreen.CommitQueueAlias, patch.Alias)
 	}
+}
+
+func TestGetFinalizedChildPatchIdsForPatch(t *testing.T) {
+	childPatch := Patch{
+		Id:      bson.NewObjectId(),
+		Version: "myVersion",
+	}
+	childPatch2 := Patch{
+		Id: bson.NewObjectId(), // not yet finalized
+	}
+
+	p := Patch{
+		Id: bson.NewObjectId(),
+		Triggers: TriggerInfo{
+			ChildPatches: []string{childPatch.Id.Hex(), childPatch2.Id.Hex()},
+		},
+	}
+
+	assert.NoError(t, db.InsertMany(Collection, p, childPatch, childPatch2))
+	childPatchIds, err := GetFinalizedChildPatchIdsForPatch(p.Id.Hex())
+	assert.NoError(t, err)
+	require.Len(t, childPatchIds, 1)
+	assert.Equal(t, childPatchIds[0], childPatch.Id.Hex())
 }

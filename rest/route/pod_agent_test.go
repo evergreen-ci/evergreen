@@ -93,7 +93,7 @@ func TestPodProvisioningScript(t *testing.T) {
 				script, ok := resp.Data().(string)
 				require.True(t, ok, "route should return plaintext response")
 
-				expected := "curl -fLO www.test.com/clients/windows_amd64/evergreen.exe --retry 10 --retry-max-time 100 && " +
+				expected := "curl.exe -fLO www.test.com/clients/windows_amd64/evergreen.exe --retry 10 --retry-max-time 100; " +
 					".\\evergreen.exe agent --api_server=www.test.com --mode=pod --log_prefix=/working/dir/agent --working_directory=/working/dir"
 				assert.Equal(t, expected, script)
 			},
@@ -125,7 +125,7 @@ func TestPodProvisioningScript(t *testing.T) {
 				script, ok := resp.Data().(string)
 				require.True(t, ok, "route should return plaintext response")
 
-				expected := fmt.Sprintf("(curl -fLO https://foo.com/%s/windows_amd64/evergreen.exe --retry 10 --retry-max-time 100 || curl -fLO www.test.com/clients/windows_amd64/evergreen.exe --retry 10 --retry-max-time 100) && "+
+				expected := fmt.Sprintf("if (curl.exe -fLO https://foo.com/%s/windows_amd64/evergreen.exe --retry 10 --retry-max-time 100) {} else { curl.exe -fLO www.test.com/clients/windows_amd64/evergreen.exe --retry 10 --retry-max-time 100 }; "+
 					".\\evergreen.exe agent --api_server=www.test.com --mode=pod --log_prefix=/working/dir/agent --working_directory=/working/dir", evergreen.BuildRevision)
 				assert.Equal(t, expected, script)
 			},
@@ -175,9 +175,9 @@ func TestPodAgentSetup(t *testing.T) {
 
 			data, ok := resp.Data().(apimodels.AgentSetupData)
 			require.True(t, ok)
-			assert.Equal(t, data.SplunkServerURL, s.Splunk.ServerURL)
-			assert.Equal(t, data.SplunkClientToken, s.Splunk.Token)
-			assert.Equal(t, data.SplunkChannel, s.Splunk.Channel)
+			assert.Equal(t, data.SplunkServerURL, s.Splunk.SplunkConnectionInfo.ServerURL)
+			assert.Equal(t, data.SplunkClientToken, s.Splunk.SplunkConnectionInfo.Token)
+			assert.Equal(t, data.SplunkChannel, s.Splunk.SplunkConnectionInfo.Channel)
 			assert.Equal(t, data.S3Bucket, s.Providers.AWS.S3.Bucket)
 			assert.Equal(t, data.S3Key, s.Providers.AWS.S3.Key)
 			assert.Equal(t, data.S3Secret, s.Providers.AWS.S3.Secret)
@@ -199,10 +199,12 @@ func TestPodAgentSetup(t *testing.T) {
 			defer cancel()
 
 			s := &evergreen.Settings{
-				Splunk: send.SplunkConnectionInfo{
-					ServerURL: "server_url",
-					Token:     "token",
-					Channel:   "channel",
+				Splunk: evergreen.SplunkConfig{
+					SplunkConnectionInfo: send.SplunkConnectionInfo{
+						ServerURL: "server_url",
+						Token:     "token",
+						Channel:   "channel",
+					},
 				},
 				Providers: evergreen.CloudProviders{
 					AWS: evergreen.AWSConfig{

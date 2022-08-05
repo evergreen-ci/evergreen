@@ -40,10 +40,7 @@ func (r *hostResolver) HomeVolume(ctx context.Context, obj *restModel.APIHost) (
 			return nil, nil
 		}
 		apiVolume := &restModel.APIVolume{}
-		err = apiVolume.BuildFromService(volume)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building volume '%s' from service: %s", volId, err.Error()))
-		}
+		apiVolume.BuildFromService(*volume)
 		return apiVolume, nil
 	}
 	return nil, nil
@@ -64,10 +61,7 @@ func (r *hostResolver) Volumes(ctx context.Context, obj *restModel.APIHost) ([]*
 			continue
 		}
 		apiVolume := &restModel.APIVolume{}
-		err = apiVolume.BuildFromService(volume)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("building volume '%s' from service: %s", volId, err.Error()))
-		}
+		apiVolume.BuildFromService(*volume)
 		volumes = append(volumes, apiVolume)
 	}
 

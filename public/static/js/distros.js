@@ -46,9 +46,6 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
   }];
 
   $scope.providers = [{
-    'id': 'ec2-auto',
-    'display': 'EC2 Auto'
-  }, {
     'id': 'ec2-ondemand',
     'display': 'EC2 On-Demand'
   }, {
@@ -202,7 +199,6 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
           // Convert from nanoseconds (time.Duration) to seconds (UI display units) for the relevant host_allocator_settings' fields.
           if (distro.distro.host_allocator_settings.acceptable_host_idle_time > 0) {
             distro.distro.host_allocator_settings.acceptable_host_idle_time /= 1e9;
-
           }
           // Planner Settings
           distro.distro.planner_settings = distro.distro.planner_settings || {};
@@ -546,13 +542,13 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
       var defaultOptions = {
         '_id': newId,
         'arch': 'linux_amd64',
-        'provider': 'ec2-auto',
+        'provider': 'ec2-fleet',
         'bootstrap_settings': {
           'method': 'legacy-ssh',
           'communication': 'legacy-ssh'
         },
         'clone_method': 'legacy-ssh',
-        'provider_settings': [$scope.getNewProviderSettings('ec2-auto', "")], // empty list with one new object
+        'provider_settings': [$scope.getNewProviderSettings('ec2-fleet', "")], // empty list with one new object
         'finder_settings': {
           'version': 'legacy'
         },

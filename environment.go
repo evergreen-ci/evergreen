@@ -2,11 +2,13 @@ package evergreen
 
 import (
 	"context"
+	"database/sql"
 	"encoding/gob"
 	"fmt"
 	"math"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -84,6 +86,7 @@ type Environment interface {
 	Session() db.Session
 	Client() *mongo.Client
 	DB() *mongo.Database
+	PrestoDB() *sql.DB
 
 	// The Environment provides access to several amboy queues for
 	// processing background work in the context of the Evergreen
@@ -179,7 +182,7 @@ func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Envir
 
 	if db != nil && confPath == "" {
 		if err := e.initDB(ctx, *db); err != nil {
-			return nil, errors.Wrap(err, "error configuring db")
+			return nil, errors.Wrap(err, "initializing DB")
 		}
 		e.dbName = db.DB
 	}
@@ -202,6 +205,7 @@ func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Envir
 	catcher.Add(e.initJasper())
 	catcher.Add(e.initDepot(ctx))
 	catcher.Add(e.initSenders(ctx))
+	catcher.Add(e.initPrestoDB(ctx))
 	catcher.Add(e.createLocalQueue(ctx))
 	catcher.Add(e.createApplicationQueue(ctx))
 	catcher.Add(e.createNotificationQueue(ctx))
@@ -227,6 +231,7 @@ type envState struct {
 	settings                *Settings
 	dbName                  string
 	client                  *mongo.Client
+	prestoDB                *sql.DB
 	mu                      sync.RWMutex
 	clientConfig            *ClientConfig
 	closers                 []closerOp
@@ -263,21 +268,21 @@ func (e *envState) initSettings(path string) error {
 		if path != "" {
 			e.settings, err = NewSettings(path)
 			if err != nil {
-				return errors.Wrap(err, "problem getting settings from file")
+				return errors.Wrap(err, "getting config settings from file")
 			}
 		} else {
 			e.settings, err = BootstrapConfig(e)
 			if err != nil {
-				return errors.Wrap(err, "problem getting settings from DB")
+				return errors.Wrap(err, "getting config settings from DB")
 			}
 		}
 	}
 	if e.settings == nil {
-		return errors.New("unable to get settings from file and DB")
+		return errors.New("unable to get settings from file or DB")
 	}
 
 	if err = e.settings.Validate(); err != nil {
-		return errors.Wrap(err, "problem validating settings")
+		return errors.Wrap(err, "validating settings")
 	}
 
 	return nil
@@ -291,7 +296,9 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings) error {
 	if settings.HasAuth() {
 		ymlUser, ymlPwd, err := settings.GetAuth()
 		if err != nil {
-			grip.Error(errors.Wrap(err, "problem getting auth from yaml authfile, attempting to connect without auth"))
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "problem getting auth settings from YAML file, attempting to connect without auth",
+			}))
 		}
 		if err == nil && ymlUser != "" {
 			credential := options.Credential{
@@ -306,12 +313,26 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings) error {
 	var err error
 	e.client, err = mongo.NewClient(opts)
 	if err != nil {
-		return errors.Wrap(err, "problem constructing database")
+		return errors.Wrap(err, "initializing MongoDB client")
 	}
 
 	if err = e.client.Connect(ctx); err != nil {
-		return errors.Wrap(err, "problem connecting to the database")
+		return errors.Wrap(err, "connecting to the DB")
 	}
+
+	return nil
+}
+
+func (e *envState) initPrestoDB(ctx context.Context) error {
+	var err error
+	e.prestoDB, err = e.settings.Presto.setupDB(ctx)
+	if err != nil {
+		return errors.Wrap(err, "initializing the Presto DB client")
+	}
+
+	e.RegisterCloser("presto-db-client", false, func(_ context.Context) error {
+		return errors.Wrap(e.prestoDB.Close(), "closing the Presto DB client")
+	})
 
 	return nil
 }
@@ -349,11 +370,18 @@ func (e *envState) DB() *mongo.Database {
 	return e.client.Database(e.dbName)
 }
 
+func (e *envState) PrestoDB() *sql.DB {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return e.prestoDB
+}
+
 func (e *envState) createLocalQueue(ctx context.Context) error {
 	// configure the local-only (memory-backed) queue.
 	e.localQueue = queue.NewLocalLimitedSize(e.settings.Amboy.PoolSizeLocal, e.settings.Amboy.LocalStorage)
 	if err := e.localQueue.SetRunner(pool.NewAbortablePool(e.settings.Amboy.PoolSizeLocal, e.localQueue)); err != nil {
-		return errors.Wrap(err, "problem configuring worker pool for local queue")
+		return errors.Wrap(err, "setting local queue worker pool")
 	}
 
 	e.RegisterCloser("background-local-queue", true, func(ctx context.Context) error {
@@ -389,11 +417,11 @@ func (e *envState) createApplicationQueue(ctx context.Context) error {
 
 	rq, err := queue.NewMongoDBQueue(ctx, queueOpts)
 	if err != nil {
-		return errors.Wrap(err, "problem setting main queue backend")
+		return errors.Wrap(err, "creating main remote queue")
 	}
 
 	if err = rq.SetRunner(pool.NewAbortablePool(e.settings.Amboy.PoolSizeRemote, rq)); err != nil {
-		return errors.Wrap(err, "problem configuring worker pool for main remote queue")
+		return errors.Wrap(err, "setting main remote queue worker pool")
 	}
 	e.remoteQueue = rq
 	e.RegisterCloser("application-queue", false, func(ctx context.Context) error {
@@ -415,9 +443,15 @@ func (e *envState) createRemoteQueueGroup(ctx context.Context) error {
 		Retryable:  &retryOpts,
 	}
 
+	perQueue, regexpQueue, err := e.getNamedRemoteQueueOptions()
+	if err != nil {
+		return errors.Wrap(err, "getting named remote queue options")
+	}
+
 	remoteQueueGroupOpts := queue.MongoDBQueueGroupOptions{
 		DefaultQueue:              queueOpts,
-		PerQueue:                  e.getNamedRemoteQueueOptions(),
+		PerQueue:                  perQueue,
+		RegexpQueue:               regexpQueue,
 		BackgroundCreateFrequency: time.Duration(e.settings.Amboy.GroupBackgroundCreateFrequencyMinutes) * time.Minute,
 		PruneFrequency:            time.Duration(e.settings.Amboy.GroupPruneFrequencyMinutes) * time.Minute,
 		TTL:                       time.Duration(e.settings.Amboy.GroupTTLMinutes) * time.Minute,
@@ -425,12 +459,12 @@ func (e *envState) createRemoteQueueGroup(ctx context.Context) error {
 
 	remoteQueueGroup, err := queue.NewMongoDBSingleQueueGroup(ctx, remoteQueueGroupOpts)
 	if err != nil {
-		return errors.Wrap(err, "problem constructing remote queue group")
+		return errors.Wrap(err, "creating remote queue group")
 	}
 	e.remoteQueueGroup = remoteQueueGroup
 
 	e.RegisterCloser("remote-queue-group", false, func(ctx context.Context) error {
-		return errors.Wrap(e.remoteQueueGroup.Close(ctx), "problem waiting for remote queue group to close")
+		return errors.Wrap(e.remoteQueueGroup.Close(ctx), "waiting for remote queue group to close")
 	})
 
 	return nil
@@ -451,9 +485,13 @@ func (e *envState) getRemoteQueueGroupDBOptions() queue.MongoDBOptions {
 	return opts
 }
 
-func (e *envState) getNamedRemoteQueueOptions() map[string]queue.MongoDBQueueOptions {
+func (e *envState) getNamedRemoteQueueOptions() (map[string]queue.MongoDBQueueOptions, []queue.RegexpMongoDBQueueOptions, error) {
 	perQueueOpts := map[string]queue.MongoDBQueueOptions{}
+	var regexpQueueOpts []queue.RegexpMongoDBQueueOptions
 	for _, namedQueue := range e.settings.Amboy.NamedQueues {
+		if namedQueue.Name == "" {
+			continue
+		}
 		dbOpts := e.getRemoteQueueGroupDBOptions()
 		if namedQueue.SampleSize != 0 {
 			dbOpts.SampleSize = namedQueue.SampleSize
@@ -467,12 +505,26 @@ func (e *envState) getNamedRemoteQueueOptions() map[string]queue.MongoDBQueueOpt
 		} else {
 			numWorkers = e.settings.Amboy.GroupDefaultWorkers
 		}
-		perQueueOpts[namedQueue.Name] = queue.MongoDBQueueOptions{
+		queueOpts := queue.MongoDBQueueOptions{
 			NumWorkers: utility.ToIntPtr(numWorkers),
 			DB:         &dbOpts,
 		}
+		if namedQueue.Name != "" {
+			perQueueOpts[namedQueue.Name] = queueOpts
+			continue
+		}
+
+		re, err := regexp.Compile(namedQueue.Regexp)
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "invalid regexp '%s'", namedQueue.Regexp)
+		}
+		regexpQueueOpts = append(regexpQueueOpts, queue.RegexpMongoDBQueueOptions{
+			Regexp:  *re,
+			Options: queueOpts,
+		})
 	}
-	return perQueueOpts
+
+	return perQueueOpts, regexpQueueOpts, nil
 }
 
 func (e *envState) createNotificationQueue(ctx context.Context) error {
@@ -484,10 +536,10 @@ func (e *envState) createNotificationQueue(ctx context.Context) error {
 		time.Duration(e.settings.Notify.BufferIntervalSeconds)*time.Second,
 		e.notificationsQueue)
 	if err != nil {
-		return errors.Wrap(err, "Failed to make notifications queue runner")
+		return errors.Wrap(err, "creating notifications queue")
 	}
 	if err = e.notificationsQueue.SetRunner(runner); err != nil {
-		return errors.Wrap(err, "failed to set notifications queue runner")
+		return errors.Wrap(err, "setting notifications queue runner")
 	}
 	rootSenders := []send.Sender{}
 	for _, s := range e.senders {
@@ -505,7 +557,7 @@ func (e *envState) createNotificationQueue(ctx context.Context) error {
 				"queue":   "notifications",
 				"status":  e.notificationsQueue.Stats(ctx),
 			})
-			catcher.Add(errors.New("failed to stop with running jobs"))
+			catcher.New("failed to stop with running jobs")
 		}
 
 		e.notificationsQueue.Close(ctx)
@@ -565,7 +617,7 @@ func (e *envState) initClientConfig() {
 			"cause":   "infrastructure configuration issue",
 		}))
 	} else if len(e.clientConfig.ClientBinaries) == 0 {
-		grip.Critical("No clients are available for this server")
+		grip.Critical("no clients binaries are available for this server")
 	}
 }
 
@@ -594,19 +646,19 @@ func (e *envState) initSenders(ctx context.Context) error {
 		}
 		if len(smtp.AdminEmail) == 0 {
 			if err := opts.AddRecipient("", "test@domain.invalid"); err != nil {
-				return errors.Wrap(err, "failed to setup email logger")
+				return errors.Wrap(err, "adding email logger test recipient")
 			}
 
 		} else {
 			for i := range smtp.AdminEmail {
 				if err := opts.AddRecipient("", smtp.AdminEmail[i]); err != nil {
-					return errors.Wrap(err, "failed to setup email logger")
+					return errors.Wrap(err, "adding email logger recipient")
 				}
 			}
 		}
 		sender, err := send.NewSMTPLogger(&opts, levelInfo)
 		if err != nil {
-			return errors.Wrap(err, "Failed to setup email logger")
+			return errors.Wrap(err, "setting up email logger")
 		}
 		e.senders[SenderEmail] = sender
 	}
@@ -619,7 +671,7 @@ func (e *envState) initSenders(ctx context.Context) error {
 			Token: githubToken,
 		}, "")
 		if err != nil {
-			return errors.Wrap(err, "Failed to setup github status logger")
+			return errors.Wrap(err, "setting up GitHub status logger")
 		}
 		e.senders[SenderGithubStatus] = sender
 	}
@@ -627,13 +679,13 @@ func (e *envState) initSenders(ctx context.Context) error {
 	if jira := &e.settings.Jira; len(jira.GetHostURL()) != 0 {
 		sender, err = send.NewJiraLogger(ctx, jira.Export(), levelInfo)
 		if err != nil {
-			return errors.Wrap(err, "Failed to setup jira issue logger")
+			return errors.Wrap(err, "setting up Jira issue logger")
 		}
 		e.senders[SenderJIRAIssue] = sender
 
 		sender, err = send.NewJiraCommentLogger(ctx, "", jira.Export(), levelInfo)
 		if err != nil {
-			return errors.Wrap(err, "Failed to setup jira comment logger")
+			return errors.Wrap(err, "setting up Jira comment logger")
 		}
 		e.senders[SenderJIRAComment] = sender
 	}
@@ -649,20 +701,20 @@ func (e *envState) initSenders(ctx context.Context) error {
 			IconURL:  fmt.Sprintf("%s/static/img/evergreen_green_150x150.png", e.settings.Ui.Url),
 		}, slack.Token, levelInfo)
 		if err != nil {
-			return errors.Wrap(err, "Failed to setup slack logger")
+			return errors.Wrap(err, "setting up Slack logger")
 		}
 		e.senders[SenderSlack] = sender
 	}
 
 	sender, err = util.NewEvergreenWebhookLogger()
 	if err != nil {
-		return errors.Wrap(err, "Failed to setup evergreen webhook logger")
+		return errors.Wrap(err, "setting up Evergreen webhook logger")
 	}
 	e.senders[SenderEvergreenWebhook] = sender
 
 	sender, err = send.NewGenericLogger("evergreen", levelInfo)
 	if err != nil {
-		return errors.Wrap(err, "Failed to setup evergreen generic logger")
+		return errors.Wrap(err, "setting up Evergreen generic logger")
 	}
 	e.senders[SenderGeneric] = sender
 
@@ -702,7 +754,7 @@ func (e *envState) initJasper() error {
 
 func (e *envState) initDepot(ctx context.Context) error {
 	if e.settings.DomainName == "" {
-		return errors.Errorf("bootstrapping '%s' collection requires domain name to be set in admin settings", CredentialsCollection)
+		return errors.Errorf("bootstrapping collection '%s' requires domain name to be set in admin settings", CredentialsCollection)
 	}
 
 	maxExpiration := time.Duration(math.MaxInt64)
@@ -734,7 +786,7 @@ func (e *envState) initDepot(ctx context.Context) error {
 
 	var err error
 	if e.depot, err = certdepot.BootstrapDepotWithMongoClient(ctx, e.client, bootstrapConfig); err != nil {
-		return errors.Wrapf(err, "could not bootstrap %s collection", CredentialsCollection)
+		return errors.Wrapf(err, "bootstrapping collection '%s'", CredentialsCollection)
 	}
 
 	return nil
@@ -874,7 +926,7 @@ func (e *envState) SaveConfig() error {
 	}
 	err := util.DeepCopy(*e.settings, &copy, registeredTypes)
 	if err != nil {
-		return errors.Wrap(err, "problem copying settings")
+		return errors.Wrap(err, "copying settings")
 	}
 
 	gob.Register(map[interface{}]interface{}{})
@@ -885,7 +937,7 @@ func (e *envState) SaveConfig() error {
 					var projects map[string]BuildBaronSettings
 					err := mapstructure.Decode(field, &projects)
 					if err != nil {
-						return errors.Wrap(err, "problem decoding buildbaron projects")
+						return errors.Wrap(err, "decoding buildbaron projects")
 					}
 					plugin[fieldName] = projects
 				}
@@ -902,7 +954,7 @@ func (e *envState) GetSender(key SenderKey) (send.Sender, error) {
 
 	sender, ok := e.senders[key]
 	if !ok {
-		return nil, errors.Errorf("unknown sender key %v", key)
+		return nil, errors.Errorf("unknown sender key '%s'", key.String())
 	}
 
 	return sender, nil
@@ -934,9 +986,6 @@ func (e *envState) RegisterCloser(name string, background bool, closer func(cont
 func (e *envState) Close(ctx context.Context) error {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
-
-	// TODO we could, in the future call all closers in but that
-	// would require more complex waiting and timeout logic
 
 	deadline, _ := ctx.Deadline()
 	catcher := grip.NewBasicCatcher()
@@ -1040,7 +1089,7 @@ func getClientConfig(baseURL, s3BaseURL string) (*ClientConfig, error) {
 		return nil
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "problem finding client binaries")
+		return nil, errors.Wrap(err, "finding client binaries")
 	}
 
 	return c, nil

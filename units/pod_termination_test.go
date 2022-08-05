@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/pod"
+	"github.com/evergreen-ci/evergreen/model/pod/definition"
 	"github.com/evergreen-ci/evergreen/model/pod/dispatcher"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
@@ -38,6 +39,13 @@ func TestPodTerminationJob(t *testing.T) {
 		assert.NoError(t, db.ClearCollections(pod.Collection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, dispatcher.Collection, event.LegacyEventLogCollection))
 	}()
 
+	checkCloudPodDeleteRequests := func(t *testing.T, ecsc cocoa.ECSClient) {
+		ecsClient, ok := ecsc.(*mock.ECSClient)
+		require.True(t, ok)
+		assert.NotZero(t, ecsClient.StopTaskInput, "should have requested to stop the cloud pod")
+		assert.Zero(t, ecsClient.DeregisterTaskDefinitionInput, "should not have requested to clean up the ECS task definition")
+	}
+
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, j *podTerminationJob){
 		"TerminatesAndDeletesResourcesForRunningPod": func(ctx context.Context, t *testing.T, j *podTerminationJob) {
 			require.NoError(t, j.pod.Insert())
@@ -45,14 +53,7 @@ func TestPodTerminationJob(t *testing.T) {
 			j.Run(ctx)
 			require.NoError(t, j.Error())
 
-			ecsClient, ok := j.ecsClient.(*mock.ECSClient)
-			require.True(t, ok)
-			assert.NotZero(t, ecsClient.StopTaskInput)
-			assert.NotZero(t, ecsClient.DeregisterTaskDefinitionInput)
-
-			smClient, ok := j.smClient.(*mock.SecretsManagerClient)
-			require.True(t, ok)
-			assert.NotZero(t, smClient.DeleteSecretInput)
+			checkCloudPodDeleteRequests(t, j.ecsClient)
 
 			assert.Equal(t, cocoa.StatusDeleted, j.ecsPod.StatusInfo().Status)
 		},
@@ -64,29 +65,46 @@ func TestPodTerminationJob(t *testing.T) {
 			j.Run(ctx)
 			require.NoError(t, j.Error())
 
-			ecsClient, ok := j.ecsClient.(*mock.ECSClient)
-			require.True(t, ok)
-			assert.NotZero(t, ecsClient.StopTaskInput)
-			assert.NotZero(t, ecsClient.DeregisterTaskDefinitionInput)
-
-			smClient, ok := j.smClient.(*mock.SecretsManagerClient)
-			require.True(t, ok)
-			assert.NotZero(t, smClient.DeleteSecretInput)
+			checkCloudPodDeleteRequests(t, j.ecsClient)
 
 			assert.Equal(t, cocoa.StatusDeleted, j.ecsPod.StatusInfo().Status)
 		},
-		"FailsWhenDeletingResourcesErrors": func(ctx context.Context, t *testing.T, j *podTerminationJob) {
+		"SucceedsWhenDeletingNonexistentCloudPod": func(ctx context.Context, t *testing.T, j *podTerminationJob) {
 			require.NoError(t, j.pod.Insert())
+			// This simulates a condition where the cloud pod may have been long
+			// since cleaned up, so it has no more information about the pod. In
+			// the case that the cloud pod does not exist, termination should
+			// still succeed.
 			j.pod.Resources.ExternalID = utility.RandomString()
-			j.ecsPod = nil
 
 			j.Run(ctx)
-			require.Error(t, j.Error())
+			assert.NoError(t, j.Error())
+
+			checkCloudPodDeleteRequests(t, j.ecsClient)
 
 			dbPod, err := pod.FindOneByID(j.PodID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
-			assert.NotEqual(t, pod.StatusTerminated, dbPod.Status)
+			assert.Equal(t, pod.StatusTerminated, dbPod.Status)
+
+			assert.Equal(t, cocoa.StatusDeleted, j.ecsPod.StatusInfo().Status)
+		},
+		"SucceedsWhenTerminatingAlreadyTerminatedPod": func(ctx context.Context, t *testing.T, j *podTerminationJob) {
+			require.NoError(t, j.pod.Insert())
+
+			j.Run(ctx)
+			assert.NoError(t, j.Error())
+			j.Run(ctx)
+			assert.NoError(t, j.Error())
+
+			checkCloudPodDeleteRequests(t, j.ecsClient)
+
+			dbPod, err := pod.FindOneByID(j.PodID)
+			require.NoError(t, err)
+			require.NotZero(t, dbPod)
+			assert.Equal(t, pod.StatusTerminated, dbPod.Status)
+
+			assert.Equal(t, cocoa.StatusDeleted, j.ecsPod.StatusInfo().Status)
 		},
 		"TerminatesWithoutDeletingResourcesForIntentPod": func(ctx context.Context, t *testing.T, j *podTerminationJob) {
 			j.pod.Status = pod.StatusInitializing
@@ -272,12 +290,10 @@ func TestPodTerminationJob(t *testing.T) {
 
 			cluster := "cluster"
 
+			mock.ResetGlobalECSService()
 			mock.GlobalECSService.Clusters[cluster] = mock.ECSCluster{}
 			defer func() {
-				mock.GlobalECSService = mock.ECSService{
-					Clusters: map[string]mock.ECSCluster{},
-					TaskDefs: map[string][]mock.ECSTaskDefinition{},
-				}
+				mock.ResetGlobalECSService()
 			}()
 
 			p := pod.Pod{
@@ -289,56 +305,50 @@ func TestPodTerminationJob(t *testing.T) {
 					CPU:      128,
 					OS:       pod.OSLinux,
 					Arch:     pod.ArchAMD64,
-					EnvSecrets: map[string]pod.Secret{
-						"SECRET_ENV_VAR0": {
-							Value: utility.RandomString(),
-						},
-						"SECRET_ENV_VAR1": {
-							Value: utility.RandomString(),
-						},
-					},
 				},
 			}
 
 			j, ok := NewPodTerminationJob(p.ID, "reason", utility.RoundPartOfMinute(0)).(*podTerminationJob)
 			require.True(t, ok)
 			j.pod = &p
-			j.smClient = &mock.SecretsManagerClient{}
-			defer func() {
-				assert.NoError(t, j.smClient.Close(ctx))
-			}()
 			j.ecsClient = &mock.ECSClient{}
 			defer func() {
 				assert.NoError(t, j.ecsClient.Close(ctx))
 			}()
-			j.vault = cloud.MakeSecretsManagerVault(j.smClient)
 
-			pc, err := ecs.NewBasicECSPodCreator(j.ecsClient, j.vault)
+			j.smClient = &mock.SecretsManagerClient{}
+			defer func() {
+				assert.NoError(t, j.smClient.Close(ctx))
+			}()
+			vault, err := cloud.MakeSecretsManagerVault(j.smClient)
 			require.NoError(t, err)
+			j.vault = mock.NewVault(vault)
 
-			var envVars []cocoa.EnvironmentVariable
-			for name, secret := range p.TaskContainerCreationOpts.EnvSecrets {
-				envVars = append(envVars, *cocoa.NewEnvironmentVariable().
-					SetName(name).
-					SetSecretOptions(*cocoa.NewSecretOptions().
-						SetName(name).
-						SetNewValue(secret.Value).
-						SetOwned(true)))
-			}
+			pc, err := ecs.NewBasicECSPodCreator(j.ecsClient, nil)
+			require.NoError(t, err)
 
 			containerDef := cocoa.NewECSContainerDefinition().
 				SetImage(p.TaskContainerCreationOpts.Image).
-				AddEnvironmentVariables(envVars...)
+				SetCommand([]string{"echo", "hello"})
 
 			execOpts := cocoa.NewECSPodExecutionOptions().SetCluster(cluster)
-
-			ecsPod, err := pc.CreatePod(ctx, *cocoa.NewECSPodCreationOptions().
+			defOpts := cocoa.NewECSPodDefinitionOptions().
 				AddContainerDefinitions(*containerDef).
 				SetMemoryMB(p.TaskContainerCreationOpts.MemoryMB).
 				SetCPU(p.TaskContainerCreationOpts.CPU).
 				SetTaskRole("task_role").
-				SetExecutionRole("execution_role").
-				SetExecutionOptions(*execOpts))
+				SetExecutionRole("execution_role")
+
+			pdm, err := cloud.MakeECSPodDefinitionManager(j.ecsClient, nil)
+			require.NoError(t, err)
+			item, err := pdm.CreatePodDefinition(ctx, *defOpts)
+			require.NoError(t, err)
+
+			podDef, err := definition.FindOneByExternalID(item.ID)
+			require.NoError(t, err)
+			require.NotZero(t, podDef, "pod definition should have been cached")
+
+			ecsPod, err := pc.CreatePodFromExistingDefinition(ctx, cloud.ExportECSPodDefinition(*podDef), *execOpts)
 			require.NoError(t, err)
 			j.ecsPod = ecsPod
 

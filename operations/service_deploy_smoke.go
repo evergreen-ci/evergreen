@@ -18,7 +18,7 @@ import (
 	"github.com/mongodb/jasper/remote"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
-	yaml "gopkg.in/yaml.v3"
+	yaml "gopkg.in/20210107192922/yaml.v3"
 )
 
 func setupSmokeTest(err error) cli.BeforeFunc {

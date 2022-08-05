@@ -1781,19 +1781,13 @@ func checkResetDisplayTask(t *task.Task) error {
 		}
 	}
 	details := &t.Details
-	if details == nil && !t.IsFinished() {
+	// Assign task end details to indicate system failure if we receive no valid details
+	if details.IsEmpty() && !t.IsFinished() {
 		details = &apimodels.TaskEndDetail{
 			Type:   evergreen.CommandTypeSystem,
 			Status: evergreen.TaskFailed,
 		}
 	}
-	grip.DebugWhen(details.Status == "", message.Fields{
-		"message":   "resetting display task",
-		"task_id":   t.Id,
-		"execution": t.Execution,
-		"project":   t.Project,
-		"details":   details,
-	})
 	return errors.Wrap(TryResetTask(t.Id, evergreen.User, evergreen.User, details), "resetting display task")
 }
 

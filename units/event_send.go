@@ -65,10 +65,7 @@ func (j *eventSendJob) setup() error {
 	if j.flags == nil {
 		j.flags = &evergreen.ServiceFlags{}
 		if err := j.flags.Get(j.env); err != nil {
-			return errors.Wrap(err, "error retrieving service flags")
-
-		} else if j.flags == nil {
-			return errors.Wrap(err, "fetched no service flags configuration")
+			return errors.Wrap(err, "getting service flags")
 		}
 	}
 
@@ -84,16 +81,17 @@ func (j *eventSendJob) Run(_ context.Context) {
 	}
 
 	n, err := notification.Find(j.NotificationID)
-	j.AddError(err)
-	if err == nil && n == nil {
-		j.AddError(errors.Errorf("can't find notification with ID: '%s", j.NotificationID))
+	if err != nil {
+		j.AddError(errors.Wrapf(err, "finding notification '%s'", j.NotificationID))
+		return
 	}
-	if j.HasErrors() {
+	if n == nil {
+		j.AddError(errors.Errorf("notification '%s' not found", j.NotificationID))
 		return
 	}
 
 	if err = j.checkDegradedMode(n); err != nil {
-		j.AddError(n.MarkError(err))
+		j.AddError(errors.Wrapf(n.MarkError(errors.Wrap(err, "checking degraded mode")), "setting error for notification '%s'", n.ID))
 		return
 	}
 
@@ -110,8 +108,8 @@ func (j *eventSendJob) Run(_ context.Context) {
 		"message":           "send failed",
 	}))
 	j.AddError(err)
-	j.AddError(n.MarkSent())
-	j.AddError(n.MarkError(err))
+	j.AddError(errors.Wrapf(n.MarkSent(), "marking notification '%s' as sent", n.ID))
+	j.AddError(errors.Wrapf(n.MarkError(err), "setting error for notification '%s'", n.ID))
 }
 
 func (j *eventSendJob) send(n *notification.Notification) error {
@@ -120,7 +118,7 @@ func (j *eventSendJob) send(n *notification.Notification) error {
 		return err
 	}
 	if err = c.SetPriority(level.Notice); err != nil {
-		return errors.Wrap(err, "can't set priority")
+		return errors.Wrap(err, "setting priority")
 	}
 	if !c.Loggable() {
 		return errors.New("composer is not loggable")
@@ -128,12 +126,12 @@ func (j *eventSendJob) send(n *notification.Notification) error {
 
 	key, err := n.SenderKey()
 	if err != nil {
-		return errors.Wrap(err, "can't build sender for notification")
+		return errors.Wrap(err, "getting sender key for notification")
 	}
 
 	sender, err := j.env.GetSender(key)
 	if err != nil {
-		return errors.Wrap(err, "error building sender for notification")
+		return errors.Wrap(err, "getting global notification sender")
 	}
 
 	sender.Send(c)
@@ -164,7 +162,7 @@ func (j *eventSendJob) checkDegradedMode(n *notification.Notification) error {
 		return checkFlag(j.flags.CommitQueueDisabled)
 
 	default:
-		return errors.Errorf("unknown subscriber type: %s", n.Subscriber.Type)
+		return errors.Errorf("unknown subscriber type '%s'", n.Subscriber.Type)
 	}
 }
 

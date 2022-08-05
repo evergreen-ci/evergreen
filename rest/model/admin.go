@@ -20,6 +20,7 @@ func NewConfigModel() *APIAdminSettings {
 		CommitQueue:       &APICommitQueueConfig{},
 		ContainerPools:    &APIContainerPoolsConfig{},
 		Credentials:       map[string]string{},
+		DataPipes:         &APIDataPipesConfig{},
 		Expansions:        map[string]string{},
 		HostInit:          &APIHostInitConfig{},
 		HostJasper:        &APIHostJasperConfig{},
@@ -32,12 +33,13 @@ func NewConfigModel() *APIAdminSettings {
 		Notify:            &APINotifyConfig{},
 		Plugins:           map[string]map[string]interface{}{},
 		PodInit:           &APIPodInitConfig{},
+		Presto:            &APIPrestoConfig{},
 		Providers:         &APICloudProviders{},
 		RepoTracker:       &APIRepoTrackerConfig{},
 		Scheduler:         &APISchedulerConfig{},
 		ServiceFlags:      &APIServiceFlags{},
 		Slack:             &APISlackConfig{},
-		Splunk:            &APISplunkConnectionInfo{},
+		Splunk:            &APISplunkConfig{},
 		Triggers:          &APITriggerConfig{},
 		Ui:                &APIUIConfig{},
 		Spawnhost:         &APISpawnHostConfig{},
@@ -50,6 +52,7 @@ type APIAdminSettings struct {
 	Amboy               *APIAmboyConfig                   `json:"amboy,omitempty"`
 	Api                 *APIapiConfig                     `json:"api,omitempty"`
 	ApiUrl              *string                           `json:"api_url,omitempty"`
+	AWSInstanceRole     *string                           `json:"aws_instance_role,omitempty"`
 	AuthConfig          *APIAuthConfig                    `json:"auth,omitempty"`
 	Banner              *string                           `json:"banner,omitempty"`
 	BannerTheme         *string                           `json:"banner_theme,omitempty"`
@@ -60,6 +63,7 @@ type APIAdminSettings struct {
 	ContainerPools      *APIContainerPoolsConfig          `json:"container_pools,omitempty"`
 	Credentials         map[string]string                 `json:"credentials,omitempty"`
 	DomainName          *string                           `json:"domain_name,omitempty"`
+	DataPipes           *APIDataPipesConfig               `json:"data_pipes,omitempty"`
 	Expansions          map[string]string                 `json:"expansions,omitempty"`
 	GithubPRCreatorOrg  *string                           `json:"github_pr_creator_org,omitempty"`
 	GithubOrgs          []string                          `json:"github_orgs,omitempty"`
@@ -77,6 +81,7 @@ type APIAdminSettings struct {
 	Plugins             map[string]map[string]interface{} `json:"plugins,omitempty"`
 	PodInit             *APIPodInitConfig                 `json:"pod_init,omitempty"`
 	PprofPort           *string                           `json:"pprof_port,omitempty"`
+	Presto              *APIPrestoConfig                  `json:"presto,omitempty"`
 	Providers           *APICloudProviders                `json:"providers,omitempty"`
 	RepoTracker         *APIRepoTrackerConfig             `json:"repotracker,omitempty"`
 	Scheduler           *APISchedulerConfig               `json:"scheduler,omitempty"`
@@ -84,7 +89,7 @@ type APIAdminSettings struct {
 	Slack               *APISlackConfig                   `json:"slack,omitempty"`
 	SSHKeyDirectory     *string                           `json:"ssh_key_directory,omitempty"`
 	SSHKeyPairs         []APISSHKeyPair                   `json:"ssh_key_pairs,omitempty"`
-	Splunk              *APISplunkConnectionInfo          `json:"splunk,omitempty"`
+	Splunk              *APISplunkConfig                  `json:"splunk,omitempty"`
 	Triggers            *APITriggerConfig                 `json:"triggers,omitempty"`
 	Ui                  *APIUIConfig                      `json:"ui,omitempty"`
 	Spawnhost           *APISpawnHostConfig               `json:"spawnhost,omitempty"`
@@ -119,6 +124,7 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 			}
 		}
 		as.ApiUrl = &v.ApiUrl
+		as.AWSInstanceRole = utility.ToStringPtr(v.AWSInstanceRole)
 		as.Banner = &v.Banner
 		tmp := string(v.BannerTheme)
 		as.BannerTheme = &tmp
@@ -186,6 +192,9 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	}
 	if as.ApiUrl != nil {
 		settings.ApiUrl = *as.ApiUrl
+	}
+	if as.AWSInstanceRole != nil {
+		settings.AWSInstanceRole = *as.AWSInstanceRole
 	}
 	if as.Banner != nil {
 		settings.Banner = *as.Banner
@@ -455,6 +464,7 @@ func (a *APIAmboyRetryConfig) ToService() (interface{}, error) {
 // APIAmboyNamedQueueConfig is the model for named Amboy queue settings.
 type APIAmboyNamedQueueConfig struct {
 	Name               *string `json:"name"`
+	Regexp             *string `json:"regexp"`
 	NumWorkers         int     `json:"num_workers,omitempty"`
 	SampleSize         int     `json:"sample_size,omitempty"`
 	LockTimeoutSeconds int     `json:"lock_timeout_seconds,omitempty"`
@@ -462,6 +472,7 @@ type APIAmboyNamedQueueConfig struct {
 
 func (a *APIAmboyNamedQueueConfig) BuildFromService(h evergreen.AmboyNamedQueueConfig) {
 	a.Name = utility.ToStringPtr(h.Name)
+	a.Regexp = utility.ToStringPtr(h.Regexp)
 	a.NumWorkers = h.NumWorkers
 	a.SampleSize = h.SampleSize
 	a.LockTimeoutSeconds = h.LockTimeoutSeconds
@@ -470,6 +481,7 @@ func (a *APIAmboyNamedQueueConfig) BuildFromService(h evergreen.AmboyNamedQueueC
 func (a *APIAmboyNamedQueueConfig) ToService() evergreen.AmboyNamedQueueConfig {
 	return evergreen.AmboyNamedQueueConfig{
 		Name:               utility.FromStringPtr(a.Name),
+		Regexp:             utility.FromStringPtr(a.Regexp),
 		NumWorkers:         a.NumWorkers,
 		SampleSize:         a.SampleSize,
 		LockTimeoutSeconds: a.LockTimeoutSeconds,
@@ -1190,6 +1202,48 @@ func (a *APINotifyConfig) ToService() (interface{}, error) {
 	}, nil
 }
 
+type APIPrestoConfig struct {
+	BaseURI  *string `json:"base_uri"`
+	Port     int     `json:"port"`
+	TLS      bool    `json:"tls"`
+	Username *string `json:"username"`
+	Password *string `json:"password"`
+	Source   *string `json:"source"`
+	Catalog  *string `json:"catalog"`
+	Schema   *string `json:"schema"`
+}
+
+func (a *APIPrestoConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.PrestoConfig:
+		a.BaseURI = utility.ToStringPtr(v.BaseURI)
+		a.Port = v.Port
+		a.TLS = v.TLS
+		a.Username = utility.ToStringPtr(v.Username)
+		a.Password = utility.ToStringPtr(v.Password)
+		a.Source = utility.ToStringPtr(v.Source)
+		a.Catalog = utility.ToStringPtr(v.Catalog)
+		a.Schema = utility.ToStringPtr(v.Schema)
+	default:
+		return errors.Errorf("programmatic error: expected Presto config but got type %T", h)
+	}
+
+	return nil
+}
+
+func (a *APIPrestoConfig) ToService() (interface{}, error) {
+	return evergreen.PrestoConfig{
+		BaseURI:  utility.FromStringPtr(a.BaseURI),
+		Port:     a.Port,
+		TLS:      a.TLS,
+		Username: utility.FromStringPtr(a.Username),
+		Password: utility.FromStringPtr(a.Password),
+		Source:   utility.FromStringPtr(a.Source),
+		Catalog:  utility.FromStringPtr(a.Catalog),
+		Schema:   utility.FromStringPtr(a.Schema),
+	}, nil
+}
+
 type APICloudProviders struct {
 	AWS       *APIAWSConfig       `json:"aws"`
 	Docker    *APIDockerConfig    `json:"docker"`
@@ -1739,15 +1793,17 @@ func (a *APIECSClusterConfig) ToService() (*evergreen.ECSClusterConfig, error) {
 // APIECSCapacityProvider represents configuration options for a capacity
 // provider within an ECS cluster.
 type APIECSCapacityProvider struct {
-	Name *string `json:"name"`
-	OS   *string `json:"os"`
-	Arch *string `json:"arch"`
+	Name           *string `json:"name"`
+	OS             *string `json:"os"`
+	Arch           *string `json:"arch"`
+	WindowsVersion *string `json:"windows_version"`
 }
 
 func (a *APIECSCapacityProvider) BuildFromService(cp evergreen.ECSCapacityProvider) {
 	a.Name = utility.ToStringPtr(cp.Name)
 	a.OS = utility.ToStringPtr(string(cp.OS))
 	a.Arch = utility.ToStringPtr(string(cp.Arch))
+	a.WindowsVersion = utility.ToStringPtr(string(cp.WindowsVersion))
 }
 
 func (a *APIECSCapacityProvider) ToService() (*evergreen.ECSCapacityProvider, error) {
@@ -1759,10 +1815,17 @@ func (a *APIECSCapacityProvider) ToService() (*evergreen.ECSCapacityProvider, er
 	if err := arch.Validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid arch")
 	}
+	winVer := evergreen.ECSWindowsVersion(utility.FromStringPtr(a.WindowsVersion))
+	if winVer != "" {
+		if err := winVer.Validate(); err != nil {
+			return nil, errors.Wrap(err, "invalid Windows version")
+		}
+	}
 	return &evergreen.ECSCapacityProvider{
-		Name: utility.FromStringPtr(a.Name),
-		OS:   os,
-		Arch: arch,
+		Name:           utility.FromStringPtr(a.Name),
+		OS:             os,
+		Arch:           arch,
+		WindowsVersion: winVer,
 	}, nil
 }
 
@@ -2125,30 +2188,47 @@ func (a *APISlackOptions) ToService() (interface{}, error) {
 	}, nil
 }
 
+type APISplunkConfig struct {
+	SplunkConnectionInfo *APISplunkConnectionInfo `json:"splunk_connection_info"`
+}
+
+func (a *APISplunkConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.SplunkConfig:
+		a.SplunkConnectionInfo = &APISplunkConnectionInfo{}
+		a.SplunkConnectionInfo.BuildFromService(v.SplunkConnectionInfo)
+	default:
+		return errors.Errorf("programmatic error: expected Splunk config but got type '%T'", h)
+	}
+	return nil
+}
+
+func (a *APISplunkConfig) ToService() (interface{}, error) {
+	c := evergreen.SplunkConfig{}
+	if a.SplunkConnectionInfo != nil {
+		c.SplunkConnectionInfo = a.SplunkConnectionInfo.ToService()
+	}
+	return c, nil
+}
+
 type APISplunkConnectionInfo struct {
 	ServerURL *string `json:"url"`
 	Token     *string `json:"token"`
 	Channel   *string `json:"channel"`
 }
 
-func (a *APISplunkConnectionInfo) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case send.SplunkConnectionInfo:
-		a.ServerURL = utility.ToStringPtr(v.ServerURL)
-		a.Token = utility.ToStringPtr(v.Token)
-		a.Channel = utility.ToStringPtr(v.Channel)
-	default:
-		return errors.Errorf("programmatic error: expected Splunk connection info but got type %T", h)
-	}
-	return nil
+func (a *APISplunkConnectionInfo) BuildFromService(s send.SplunkConnectionInfo) {
+	a.ServerURL = utility.ToStringPtr(s.ServerURL)
+	a.Token = utility.ToStringPtr(s.Token)
+	a.Channel = utility.ToStringPtr(s.Channel)
 }
 
-func (a *APISplunkConnectionInfo) ToService() (interface{}, error) {
+func (a *APISplunkConnectionInfo) ToService() send.SplunkConnectionInfo {
 	return send.SplunkConnectionInfo{
 		ServerURL: utility.FromStringPtr(a.ServerURL),
 		Token:     utility.FromStringPtr(a.Token),
 		Channel:   utility.FromStringPtr(a.Channel),
-	}, nil
+	}
 }
 
 type APIUIConfig struct {
@@ -2560,4 +2640,37 @@ func (c *APISpawnHostConfig) ToService() (interface{}, error) {
 	}
 
 	return config, nil
+}
+
+type APIDataPipesConfig struct {
+	Host         *string `json:"host"`
+	Region       *string `json:"region"`
+	AWSAccessKey *string `json:"aws_access_key"`
+	AWSSecretKey *string `json:"aws_secret_key"`
+	AWSToken     *string `json:"aws_token"`
+}
+
+func (c *APIDataPipesConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.DataPipesConfig:
+		c.Host = utility.ToStringPtr(v.Host)
+		c.Region = utility.ToStringPtr(v.Region)
+		c.AWSAccessKey = utility.ToStringPtr(v.AWSAccessKey)
+		c.AWSSecretKey = utility.ToStringPtr(v.AWSSecretKey)
+		c.AWSToken = utility.ToStringPtr(v.AWSToken)
+	default:
+		return errors.Errorf("programmatic error: expected Data-Pipes config but got type %T", h)
+	}
+
+	return nil
+}
+
+func (c *APIDataPipesConfig) ToService() (interface{}, error) {
+	return evergreen.DataPipesConfig{
+		Host:         utility.FromStringPtr(c.Host),
+		Region:       utility.FromStringPtr(c.Region),
+		AWSAccessKey: utility.FromStringPtr(c.AWSAccessKey),
+		AWSSecretKey: utility.FromStringPtr(c.AWSSecretKey),
+		AWSToken:     utility.FromStringPtr(c.AWSToken),
+	}, nil
 }

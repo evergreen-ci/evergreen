@@ -20,7 +20,8 @@ const (
 	hostDrawdownJobName = "host-drawdown"
 
 	// if we need to drawdown hosts, we want to catch as many hosts as we can that are between jobs
-	idleTimeDrawdownCutoff = 5 * time.Second
+	idleTimeDrawdownCutoff      = 5 * time.Second
+	idleTaskGroupDrawdownCutoff = 10 * time.Minute
 )
 
 func init() {
@@ -77,12 +78,12 @@ func (j *hostDrawdownJob) Run(ctx context.Context) {
 	// get currently existing hosts, in case some hosts have already been terminated elsewhere
 	existingHostCount, err := host.CountRunningHosts(j.DrawdownInfo.DistroID)
 	if err != nil {
-		j.AddError(errors.Wrap(err, "database error getting existing hosts by Distro.Id"))
+		j.AddError(errors.Wrapf(err, "counting running hosts in distro '%s'", j.DrawdownInfo.DistroID))
 		return
 	}
 	idleHosts, err := host.IdleHostsWithDistroID(j.DrawdownInfo.DistroID)
 	if err != nil {
-		j.AddError(errors.Wrap(err, "database error getting idle hosts by Distro.Id"))
+		j.AddError(errors.Wrapf(err, "finding idle hosts in distro '%s'", j.DrawdownInfo.DistroID))
 		return
 	}
 	drawdownTarget := existingHostCount - j.DrawdownInfo.NewCapTarget
@@ -125,10 +126,10 @@ func (j *hostDrawdownJob) checkAndTerminateHost(ctx context.Context, h *host.Hos
 	if h.RunningTaskGroup != "" {
 		t, err := task.FindOneId(h.RunningTask)
 		if err != nil {
-			return errors.Wrap(err, "error finding running task")
+			return errors.Wrapf(err, "finding task '%s' running on host '%s'", h.RunningTask, h.Id)
 		}
 		if t == nil {
-			return errors.Errorf("could not find running task '%s'", h.RunningTask)
+			return errors.Errorf("task '%s' running on host '%s' not found", h.RunningTask, h.Id)
 		}
 		if t.IsPartOfSingleHostTaskGroup() {
 			return nil
@@ -136,10 +137,10 @@ func (j *hostDrawdownJob) checkAndTerminateHost(ctx context.Context, h *host.Hos
 	} else if h.LastGroup != "" && h.RunningTask == "" { // if we're currently running a task not in a group, then we already know the group is finished running.
 		t, err := task.FindOneId(h.LastTask)
 		if err != nil {
-			return errors.Wrap(err, "error finding last task")
+			return errors.Wrapf(err, "finding last run task '%s' on host '%s'", h.LastTask, h.Id)
 		}
 		if t == nil {
-			return errors.Errorf("could not find last task '%s'", h.LastTask)
+			return errors.Errorf("last run task '%s' on host '%s' not found", h.LastTask, h.Id)
 		}
 		if t.IsPartOfSingleHostTaskGroup() && t.Status == evergreen.TaskSucceeded {
 			return nil
@@ -150,7 +151,7 @@ func (j *hostDrawdownJob) checkAndTerminateHost(ctx context.Context, h *host.Hos
 
 	idleThreshold := idleTimeDrawdownCutoff
 	if h.RunningTaskGroup != "" {
-		idleThreshold = idleTaskGroupHostCutoff
+		idleThreshold = idleTaskGroupDrawdownCutoff
 	}
 
 	if idleTime > idleThreshold {
@@ -158,7 +159,7 @@ func (j *hostDrawdownJob) checkAndTerminateHost(ctx context.Context, h *host.Hos
 		j.Terminated++
 		j.TerminatedHosts = append(j.TerminatedHosts, h.Id)
 		if err = h.SetDecommissioned(evergreen.User, true, "host decommissioned due to overallocation"); err != nil {
-			return errors.Wrapf(err, "problem decommissioning host %s", h.Id)
+			return errors.Wrapf(err, "decommissioning host '%s'", h.Id)
 		}
 		return nil
 	}

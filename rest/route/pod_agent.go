@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -70,7 +69,7 @@ func (h *podProvisioningScript) Run(ctx context.Context) gimlet.Responder {
 
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
-		gimlet.NewTextInternalErrorResponse(errors.Wrap(err, "getting service flags"))
+		return gimlet.NewTextInternalErrorResponse(errors.Wrap(err, "getting service flags"))
 	}
 
 	script := h.agentScript(p, !flags.S3BinaryDownloadsDisabled)
@@ -89,7 +88,18 @@ func (h *podProvisioningScript) agentScript(p *pod.Pod, downloadFromS3 bool) str
 	agentCmd := strings.Join(h.agentCommand(p), " ")
 	scriptCmds = append(scriptCmds, agentCmd)
 
-	return strings.Join(scriptCmds, " && ")
+	if p.TaskContainerCreationOpts.OS == pod.OSLinux {
+		return strings.Join(scriptCmds, " && ")
+	}
+
+	// This chains together the PowerShell commands so that they run in order,
+	// but they also run regardless of whether the previous command succeeded,
+	// which is undesirable. It would be preferable to use pipeline chaining
+	// operators instead (like bash's && and || operators) but they were not
+	// introduced until PowerShell 7. Users may not provide a sufficiently
+	// up-to-date version of PowerShell on their images to use these operators.
+	// Docs: https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_pipeline_chain_operators
+	return strings.Join(scriptCmds, "; ")
 }
 
 // agentCommand returns the arguments to start the agent in the pod's container.
@@ -106,7 +116,7 @@ func (h *podProvisioningScript) agentCommand(p *pod.Pod) []string {
 		"agent",
 		fmt.Sprintf("--api_server=%s", h.settings.ApiUrl),
 		"--mode=pod",
-		fmt.Sprintf("--log_prefix=%s", filepath.Join(p.TaskContainerCreationOpts.WorkingDir, "agent")),
+		fmt.Sprintf("--log_prefix=%s", strings.Join([]string{p.TaskContainerCreationOpts.WorkingDir, "agent"}, "/")),
 		fmt.Sprintf("--working_directory=%s", p.TaskContainerCreationOpts.WorkingDir),
 	}
 }
@@ -120,18 +130,32 @@ func (h *podProvisioningScript) downloadAgentCommands(p *pod.Pod, downloadFromS3
 	)
 	retryArgs := h.curlRetryArgs(curlDefaultNumRetries, curlDefaultMaxSecs)
 
-	var curlCmd string
+	curlExecutable := "curl"
+	if p.TaskContainerCreationOpts.OS == pod.OSWindows {
+		curlExecutable = curlExecutable + ".exe"
+	}
+
 	if downloadFromS3 && h.settings.PodInit.S3BaseURL != "" {
 		// Attempt to download the agent from S3, but fall back to downloading
 		// from the app server if it fails.
 		// Include -f to return an error code from curl if the HTTP request
 		// fails (e.g. it receives 403 Forbidden or 404 Not Found).
-		curlCmd = fmt.Sprintf("(curl -fLO %s %s || curl -fLO %s %s)", h.s3ClientURL(p), retryArgs, h.evergreenClientURL(p), retryArgs)
-	} else {
-		curlCmd = fmt.Sprintf("curl -fLO %s %s", h.evergreenClientURL(p), retryArgs)
+
+		if p.TaskContainerCreationOpts.OS == pod.OSWindows {
+			// PowerShell supports pipeline chaining operators (like bash's ||
+			// operator) as of PowerShell 7. However, users may not provide a
+			// sufficiently up-to-date version of PowerShell on their images to
+			// use these operators. Therefore, use a PowerShell if-else
+			// statement to produce the equivalent functionality.
+			// Docs: https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_pipeline_chain_operators
+			return fmt.Sprintf("if (%s -fLO %s %s) {} else { %s -fLO %s %s }", curlExecutable, h.s3ClientURL(p), retryArgs, curlExecutable, h.evergreenClientURL(p), retryArgs)
+		}
+
+		return fmt.Sprintf("(%s -fLO %s %s || %s -fLO %s %s)", curlExecutable, h.s3ClientURL(p), retryArgs, curlExecutable, h.evergreenClientURL(p), retryArgs)
+
 	}
 
-	return curlCmd
+	return fmt.Sprintf("%s -fLO %s %s", curlExecutable, h.evergreenClientURL(p), retryArgs)
 }
 
 // evergreenClientURL returns the URL used to get the latest Evergreen client
@@ -202,9 +226,9 @@ func (h *podAgentSetup) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *podAgentSetup) Run(ctx context.Context) gimlet.Responder {
 	data := apimodels.AgentSetupData{
-		SplunkServerURL:   h.settings.Splunk.ServerURL,
-		SplunkClientToken: h.settings.Splunk.Token,
-		SplunkChannel:     h.settings.Splunk.Channel,
+		SplunkServerURL:   h.settings.Splunk.SplunkConnectionInfo.ServerURL,
+		SplunkClientToken: h.settings.Splunk.SplunkConnectionInfo.Token,
+		SplunkChannel:     h.settings.Splunk.SplunkConnectionInfo.Channel,
 		S3Bucket:          h.settings.Providers.AWS.S3.Bucket,
 		S3Key:             h.settings.Providers.AWS.S3.Key,
 		S3Secret:          h.settings.Providers.AWS.S3.Secret,
@@ -527,7 +551,7 @@ func (h *podAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if t.IsPartOfDisplay() {
-		msg["display_task_id"] = t.DisplayTask.Id
+		msg["display_task_id"] = t.DisplayTaskId
 	}
 
 	grip.Info(msg)

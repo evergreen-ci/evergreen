@@ -96,11 +96,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		return nil, errors.Wrap(err, "getting before project settings event")
 	}
 
-	v, err := changes.ProjectRef.ToService()
-	if err != nil {
-		return nil, errors.Wrap(err, "converting project ref to service model")
-	}
-	newProjectRef := v.(*model.ProjectRef)
+	newProjectRef := changes.ProjectRef.ToService()
 
 	// Changes sent to the resolver will not include the RepoRefId for some pages.
 	// Fall back on the existing value if none is provided in order to properly merge refs.
@@ -110,7 +106,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 
 	// If the project ref doesn't use the repo, or we're using a repo ref, then this will just be the same as the passed in ref.
 	// Used to verify that if something is set to nil, we properly validate using the merged project ref.
-	mergedProjectRef, err := model.GetProjectRefMergedWithRepo(*newProjectRef)
+	mergedProjectRef, err := model.GetProjectRefMergedWithRepo(newProjectRef)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting merged project ref")
 	}
@@ -160,7 +156,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		if isRepo {
 			modified = true
 			// For repos, we need to use the repo ref functions, as they update different scopes/roles.
-			repoRef := &model.RepoRef{ProjectRef: *newProjectRef}
+			repoRef := &model.RepoRef{ProjectRef: newProjectRef}
 			if err = repoRef.UpdateAdminRoles(adminsToAdd, adminsToDelete); err != nil {
 				catcher.Wrap(err, "updating repo admin roles")
 			}
@@ -260,7 +256,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			return nil, errors.Wrap(catcher.Resolve(), "invalid project trigger")
 		}
 	}
-	modifiedProjectRef, err := model.SaveProjectPageForSection(projectId, newProjectRef, section, isRepo)
+	modifiedProjectRef, err := model.SaveProjectPageForSection(projectId, &newProjectRef, section, isRepo)
 	if err != nil {
 		return nil, errors.Wrapf(err, "defaulting project ref to repo for section '%s'", section)
 	}
