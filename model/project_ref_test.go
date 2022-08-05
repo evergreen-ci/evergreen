@@ -2193,3 +2193,45 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
 	assert.NoError(err)
 }
+
+func TestValidateOwnerAndRepo(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection))
+	evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger = "buildlogger"
+
+	// a project with no owner should error
+	project := ProjectRef{
+		Id:      "project",
+		Enabled: utility.TruePtr(),
+		Repo:    "repo",
+	}
+	require.NoError(t, project.Insert())
+
+	err := project.ValidateOwnerAndRepo([]string{"evergreen-ci"})
+	assert.NotNil(t, err)
+
+	// a project with an owner and repo should not error
+	project.Owner = "evergreen-ci"
+	err = project.ValidateOwnerAndRepo([]string{"evergreen-ci"})
+	assert.NoError(t, err)
+
+	// a project with now owner and repo that is attached to a repo with
+	// an owner and repo should not error
+	repoRef := RepoRef{ProjectRef{
+		Id:      "my_repo",
+		Enabled: utility.TruePtr(),
+		Owner:   "evergreen-ci",
+		Repo:    "test",
+	}}
+	assert.NoError(t, repoRef.Upsert())
+
+	projectWithRepo := ProjectRef{
+		Id:        "project-with-repo",
+		Enabled:   utility.TruePtr(),
+		RepoRefId: repoRef.Id,
+	}
+	require.NoError(t, projectWithRepo.Insert())
+
+	err = projectWithRepo.ValidateOwnerAndRepo([]string{"evergreen-ci"})
+	assert.NoError(t, err)
+
+}

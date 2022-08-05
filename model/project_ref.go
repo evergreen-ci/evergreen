@@ -2115,12 +2115,18 @@ func (p *ProjectRef) GetGithubProjectConflicts() (GithubProjectConflicts, error)
 }
 
 func (p *ProjectRef) ValidateOwnerAndRepo(validOrgs []string) error {
+	// if the project doesn't have an owner, we want to verify the repo's owner instead
+	projectWithRepo, err := GetProjectRefMergedWithRepo(*p)
+	if err != nil {
+		return errors.Wrap(err, "getting the merged project ref")
+	}
+
 	// verify input and webhooks
-	if p.Owner == "" || p.Repo == "" {
+	if projectWithRepo.Owner == "" || projectWithRepo.Repo == "" {
 		return errors.New("no owner/repo specified")
 	}
 
-	return validateOwner(p.Owner, validOrgs)
+	return validateOwner(projectWithRepo.Owner, validOrgs)
 }
 
 func validateOwner(owner string, validOrgs []string) error {
