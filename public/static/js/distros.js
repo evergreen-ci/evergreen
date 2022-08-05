@@ -199,7 +199,6 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
           // Convert from nanoseconds (time.Duration) to seconds (UI display units) for the relevant host_allocator_settings' fields.
           if (distro.distro.host_allocator_settings.acceptable_host_idle_time > 0) {
             distro.distro.host_allocator_settings.acceptable_host_idle_time /= 1e9;
-
           }
           // Planner Settings
           distro.distro.planner_settings = distro.distro.planner_settings || {};

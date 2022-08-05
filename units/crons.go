@@ -688,13 +688,14 @@ func PopulateGenerateTasksJobs(env evergreen.Environment) amboy.QueueOperation {
 			return errors.Wrap(err, "getting tasks that need generators run")
 		}
 
-		queue, err := env.RemoteQueueGroup().Get(ctx, "service.generate.tasks")
-		if err != nil {
-			return errors.Wrap(err, "getting generate tasks queue")
-		}
-
 		ts := utility.RoundPartOfHour(1).Format(TSFormat)
 		for _, t := range tasks {
+			queueName := fmt.Sprintf("service.generate.tasks.version.%s", t.Version)
+			queue, err := env.RemoteQueueGroup().Get(ctx, queueName)
+			if err != nil {
+				catcher.Wrapf(err, "getting generate tasks queue '%s' for version '%s'", queueName, t.Version)
+				continue
+			}
 			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewGenerateTasksJob(t.Version, t.Id, ts, true)), "enqueueing generate tasks job for task '%s'", t.Id)
 		}
 
@@ -1336,7 +1337,7 @@ func PopulatePodAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 	}
 }
 
-func PopulatePodCreationJobs(env evergreen.Environment) amboy.QueueOperation {
+func PopulatePodCreationJobs() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		pods, err := pod.FindByInitializing()
 		if err != nil {
@@ -1349,6 +1350,24 @@ func PopulatePodCreationJobs(env evergreen.Environment) amboy.QueueOperation {
 		}
 
 		return catcher.Resolve()
+	}
+}
+
+// PopulatePodDefinitionCreationJobs populates the jobs to create pod
+// definitions.
+func PopulatePodDefinitionCreationJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		pods, err := pod.FindByInitializing()
+		if err != nil {
+			return errors.Wrap(err, "finding initializing pods")
+		}
+
+		catcher := grip.NewBasicCatcher()
+		for _, p := range pods {
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewPodDefinitionCreationJob(env.Settings().Providers.AWS.Pod.ECS, p.TaskContainerCreationOpts, utility.RoundPartOfMinute(0).Format(TSFormat))), "pod '%s'", p.ID)
+		}
+
+		return errors.Wrap(catcher.Resolve(), "enqueueing pod definition creation jobs")
 	}
 }
 

@@ -933,6 +933,8 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, user.Collection,
 		evergreen.ScopeCollection, ProjectVarsCollection, ProjectAliasCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
+	evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger = "buildlogger"
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	doc1 := &ProjectRef{
@@ -1070,6 +1072,8 @@ func TestCreateNewRepoRef(t *testing.T) {
 
 	assert.Equal(t, "mongodb", repoRef.Owner)
 	assert.Equal(t, "mongo", repoRef.Repo)
+	assert.Equal(t, "main", repoRef.Branch)
+	assert.Equal(t, "buildlogger", repoRef.DefaultLogger)
 	assert.Contains(t, repoRef.Admins, "bob")
 	assert.Contains(t, repoRef.Admins, "other bob")
 	assert.Contains(t, repoRef.Admins, "me")
@@ -1592,6 +1596,22 @@ func TestFindDownstreamProjects(t *testing.T) {
 	projects, err = FindDownstreamProjects("grip")
 	assert.NoError(t, err)
 	assert.Len(t, projects, 2)
+}
+
+func TestAddEmptyBranch(t *testing.T) {
+	require.NoError(t, db.ClearCollections(user.Collection, ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection))
+	u := user.DBUser{
+		Id: "me",
+	}
+	require.NoError(t, u.Insert())
+	p := ProjectRef{
+		Identifier: "myProject",
+		Owner:      "mongodb",
+		Repo:       "mongo",
+	}
+	assert.NoError(t, p.Add(&u))
+	assert.NotEmpty(t, p.Branch)
+	assert.Equal(t, "main", p.Branch)
 }
 
 func TestAddPermissions(t *testing.T) {
@@ -2126,4 +2146,50 @@ func TestIsServerResmokeProject(t *testing.T) {
 			assert.Equal(t, test.expected, IsServerResmokeProject(test.identifier))
 		})
 	}
+}
+
+func TestSaveProjectPageForSection(t *testing.T) {
+	evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger = "buildlogger"
+	assert := assert.New(t)
+
+	assert.NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection))
+
+	projectRef := &ProjectRef{
+		Owner:            "evergreen-ci",
+		Repo:             "mci",
+		Branch:           "main",
+		Enabled:          utility.TruePtr(),
+		BatchTime:        10,
+		Id:               "iden_",
+		Identifier:       "identifier",
+		PRTestingEnabled: utility.TruePtr(),
+	}
+	assert.NoError(projectRef.Insert())
+	projectRef, err := FindBranchProjectRef("identifier")
+	assert.NoError(err)
+	assert.NotNil(t, projectRef)
+
+	update := &ProjectRef{
+		Id:    "iden_",
+		Owner: "invalid",
+		Repo:  "nonexistent",
+	}
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
+	assert.Error(err)
+
+	update = &ProjectRef{
+		Id:    "iden_",
+		Owner: "",
+		Repo:  "",
+	}
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
+	assert.NoError(err)
+
+	update = &ProjectRef{
+		Id:    "iden_",
+		Owner: "evergreen-ci",
+		Repo:  "test",
+	}
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
+	assert.NoError(err)
 }

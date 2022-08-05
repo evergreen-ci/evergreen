@@ -333,7 +333,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	testResults := uis.getTestResults(w, r, projCtx, &uiTask)
+	testResults := uis.getTestResults(projCtx, &uiTask)
 	if projCtx.Patch != nil {
 		var taskOnBaseCommit *task.Task
 		var testResultsOnBaseCommit []task.TestResult
@@ -891,9 +891,12 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 	uis.render.Stream(w, http.StatusOK, data, "base", "task_log.html")
 }
 
-func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, projCtx projectContext, uiTask *uiTaskData) []task.TestResult {
+func (uis *UIServer) getTestResults(projCtx projectContext, uiTask *uiTaskData) []task.TestResult {
 	if err := projCtx.Task.PopulateTestResults(); err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"task_id": projCtx.Task.Id,
+			"message": "fetching test results for task",
+		}))
 		return nil
 	}
 
@@ -911,14 +914,18 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 				et, err = task.FindOneId(t)
 			}
 			if err != nil {
-				uis.LoggedError(w, r, http.StatusInternalServerError, err)
+				grip.Error(message.Fields{
+					"message":        "fetching test results for execution task",
+					"task_id":        t,
+					"parent_task_id": projCtx.Task.Id,
+				})
 				return nil
 			}
 			if et == nil {
 				grip.Error(message.Fields{
-					"message": "execution task not found",
-					"task":    t,
-					"parent":  projCtx.Task.Id,
+					"message":        "execution task not found",
+					"task_id":        t,
+					"parent_task_id": projCtx.Task.Id,
 				})
 				continue
 			}

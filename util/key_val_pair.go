@@ -23,7 +23,7 @@ func (in KeyValuePairSlice) Map() (map[string]string, error) {
 		case string:
 			out[pair.Key] = v
 		default:
-			return nil, fmt.Errorf("unrecognized type in key '%s'", pair.Key)
+			return nil, fmt.Errorf("unrecognized type %T in key '%s'", v, pair.Key)
 		}
 
 	}
@@ -40,12 +40,12 @@ func (in KeyValuePairSlice) NestedMap() (map[string]map[string]string, error) {
 		case KeyValuePairSlice:
 			outMap, err := v.Map()
 			if err != nil {
-				return nil, errors.Wrapf(err, "error parsing key '%s'", pair.Key)
+				return nil, errors.Wrapf(err, "parsing key '%s'", pair.Key)
 			}
 			out[pair.Key] = outMap
 
 		default:
-			return nil, fmt.Errorf("unrecognized type '%T' in key '%s'", v, pair.Key)
+			return nil, fmt.Errorf("unrecognized type %T in key '%s'", v, pair.Key)
 		}
 
 	}

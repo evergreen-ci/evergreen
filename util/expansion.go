@@ -25,15 +25,15 @@ func NewExpansions(initMap map[string]string) *Expansions {
 
 // Update all of the specified keys in the expansions to point to the specified
 // values.
-func (self *Expansions) Update(newItems map[string]string) {
+func (exp *Expansions) Update(newItems map[string]string) {
 	for k, v := range newItems {
-		self.Put(k, v)
+		exp.Put(k, v)
 	}
 }
 
 // Read a map of keys/values from the given file, and update the expansions
 // to include them (overwriting any duplicates with the new value).
-func (self *Expansions) UpdateFromYaml(filename string) error {
+func (exp *Expansions) UpdateFromYaml(filename string) error {
 	filedata, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return err
@@ -43,38 +43,38 @@ func (self *Expansions) UpdateFromYaml(filename string) error {
 	if err != nil {
 		return err
 	}
-	self.Update(newExpansions)
+	exp.Update(newExpansions)
 	return nil
 }
 
 // Set a single value in the expansions.
-func (self *Expansions) Put(expansion string, value string) {
-	(*self)[expansion] = value
+func (exp *Expansions) Put(expansion string, value string) {
+	(*exp)[expansion] = value
 }
 
 // Get a single value from the expansions.
 // Return the value, or the empty string if the value is not present.
-func (self *Expansions) Get(expansion string) string {
-	if self.Exists(expansion) {
-		return (*self)[expansion]
+func (exp *Expansions) Get(expansion string) string {
+	if exp.Exists(expansion) {
+		return (*exp)[expansion]
 	}
 	return ""
 }
 
 // Check if a value is present in the expansions.
-func (self *Expansions) Exists(expansion string) bool {
-	_, ok := (*self)[expansion]
+func (exp *Expansions) Exists(expansion string) bool {
+	_, ok := (*exp)[expansion]
 	return ok
 }
 
 // Remove deletes a value from the expansions.
-func (self *Expansions) Remove(expansion string) {
-	delete(*self, expansion)
+func (exp *Expansions) Remove(expansion string) {
+	delete(*exp, expansion)
 }
 
 // Apply the expansions to a single string.
 // Return the expanded string, or an error if the input string is malformed.
-func (self *Expansions) ExpandString(toExpand string) (string, error) {
+func (exp *Expansions) ExpandString(toExpand string) (string, error) {
 	// replace all expandable parts of the string
 	malformedFound := false
 	expanded := string(expansionRegex.ReplaceAllFunc([]byte(toExpand),
@@ -98,8 +98,8 @@ func (self *Expansions) ExpandString(toExpand string) (string, error) {
 			}
 
 			// return the specified expansion, if it is present.
-			if self.Exists(match) {
-				return []byte(self.Get(match))
+			if exp.Exists(match) {
+				return []byte(exp.Get(match))
 			}
 
 			return []byte(defaultVal)
@@ -112,6 +112,6 @@ func (self *Expansions) ExpandString(toExpand string) (string, error) {
 	return expanded, nil
 }
 
-func (self *Expansions) Map() map[string]string {
-	return *self
+func (exp *Expansions) Map() map[string]string {
+	return *exp
 }

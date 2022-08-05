@@ -28,11 +28,11 @@ func (c *NewRelicConfig) Get(env Environment) error {
 			*c = NewRelicConfig{}
 			return nil
 		}
-		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
+		return errors.Wrapf(err, "getting config section '%s'", c.SectionId())
 	}
 
 	if err := res.Decode(c); err != nil {
-		return errors.Wrap(err, "problem decoding result")
+		return errors.Wrapf(err, "decoding config section '%s'", c.SectionId())
 	}
 
 	return nil
@@ -54,7 +54,7 @@ func (c *NewRelicConfig) Set() error {
 		},
 	}, options.Update().SetUpsert(true))
 
-	return errors.Wrapf(err, "error updating section %s", c.SectionId())
+	return errors.Wrapf(err, "updating config section '%s'", c.SectionId())
 }
 
 func (c *NewRelicConfig) ValidateAndDefault() error {
@@ -62,7 +62,7 @@ func (c *NewRelicConfig) ValidateAndDefault() error {
 	allFieldsAreFilledOut := len(c.AccountID) > 0 && len(c.TrustKey) > 0 && len(c.AgentID) > 0 && len(c.LicenseKey) > 0 && len(c.ApplicationID) > 0
 
 	if !allFieldsAreEmpty && !allFieldsAreFilledOut {
-		return errors.New("Must provide all fields or no fields for New Relic settings")
+		return errors.New("must provide all fields or no fields for New Relic settings")
 	}
 	return nil
 }

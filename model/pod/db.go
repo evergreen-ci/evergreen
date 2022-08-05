@@ -20,6 +20,7 @@ var (
 	TypeKey                      = bsonutil.MustHaveTag(Pod{}, "Type")
 	StatusKey                    = bsonutil.MustHaveTag(Pod{}, "Status")
 	TaskContainerCreationOptsKey = bsonutil.MustHaveTag(Pod{}, "TaskContainerCreationOpts")
+	FamilyKey                    = bsonutil.MustHaveTag(Pod{}, "Family")
 	TimeInfoKey                  = bsonutil.MustHaveTag(Pod{}, "TimeInfo")
 	ResourcesKey                 = bsonutil.MustHaveTag(Pod{}, "Resources")
 	RunningTaskKey               = bsonutil.MustHaveTag(Pod{}, "RunningTask")
@@ -146,6 +147,14 @@ func CountByInitializing() (int, error) {
 // FindOneByExternalID finds a pod that has a matching external identifier.
 func FindOneByExternalID(id string) (*Pod, error) {
 	return FindOne(db.Query(ByExternalID(id)))
+}
+
+// FindIntentByFamily finds intent pods that have a matching family name.
+func FindIntentByFamily(family string) ([]Pod, error) {
+	return Find(db.Query(bson.M{
+		StatusKey: StatusInitializing,
+		FamilyKey: family,
+	}))
 }
 
 // UpdateOneStatus updates a pod's status by ID along with any relevant metadata

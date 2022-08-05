@@ -39,11 +39,11 @@ func (c *JIRANotificationsConfig) Get(env Environment) error {
 			*c = JIRANotificationsConfig{}
 			return nil
 		}
-		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
+		return errors.Wrapf(err, "getting config section '%s'", c.SectionId())
 	}
 
 	if err := res.Decode(c); err != nil {
-		return errors.Wrap(err, "problem decoding result")
+		return errors.Wrapf(err, "decoding config section '%s'", c.SectionId())
 	}
 
 	return nil
@@ -56,7 +56,7 @@ func (c *JIRANotificationsConfig) Set() error {
 	coll := env.DB().Collection(ConfigCollection)
 
 	_, err := coll.ReplaceOne(ctx, byId(c.SectionId()), c, options.Replace().SetUpsert(true))
-	return errors.Wrapf(err, "error updating section %s", c.SectionId())
+	return errors.Wrapf(err, "updating config section '%s'", c.SectionId())
 }
 
 func (c *JIRANotificationsConfig) ValidateAndDefault() error {
@@ -64,7 +64,7 @@ func (c *JIRANotificationsConfig) ValidateAndDefault() error {
 	projectSet := make(map[string]bool)
 	for _, project := range c.CustomFields {
 		if projectSet[project.Project] {
-			catcher.Add(errors.Errorf("duplicate project key '%s'", project.Project))
+			catcher.Errorf("duplicate project key '%s'", project.Project)
 			continue
 		}
 		projectSet[project.Project] = true
@@ -72,7 +72,7 @@ func (c *JIRANotificationsConfig) ValidateAndDefault() error {
 		fieldSet := make(map[string]bool)
 		for _, field := range project.Fields {
 			if fieldSet[field.Field] {
-				catcher.Add(errors.Errorf("duplicate field key '%s' in project '%s'", field.Field, project.Project))
+				catcher.Errorf("duplicate field key '%s' in project '%s'", field.Field, project.Project)
 				continue
 			}
 			fieldSet[field.Field] = true

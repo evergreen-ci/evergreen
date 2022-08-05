@@ -382,21 +382,18 @@ func modifyVersionHandler(ctx context.Context, patchID string, modification mode
 		return mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
 
-	if evergreen.IsPatchRequester(v.Requester) {
-		// Restart is handled through graphql because we need the user to specify
-		// which downstream tasks they want to restart.
-		if modification.Action != evergreen.RestartAction {
-			// Only modify the child patch if it is finalized.
-			childPatchIds, err := patch.GetFinalizedChildPatchIdsForPatch(patchID)
-			if err != nil {
-				return ResourceNotFound.Send(ctx, err.Error())
+	// Restart is handled through graphql because we need the user to specify
+	// which downstream tasks they want to restart.
+	if evergreen.IsPatchRequester(v.Requester) && modification.Action != evergreen.RestartAction {
+		// Only modify the child patch if it is finalized.
+		childPatchIds, err := patch.GetFinalizedChildPatchIdsForPatch(patchID)
+		if err != nil {
+			return ResourceNotFound.Send(ctx, err.Error())
+		}
+		for _, childPatchId := range childPatchIds {
+			if err = modifyVersionHandler(ctx, childPatchId, modification); err != nil {
+				return errors.Wrap(mapHTTPStatusToGqlError(ctx, httpStatus, err), fmt.Sprintf("modifying child patch '%s'", childPatchId))
 			}
-			for _, childPatchId := range childPatchIds {
-				if err = modifyVersionHandler(ctx, childPatchId, modification); err != nil {
-					return errors.Wrap(mapHTTPStatusToGqlError(ctx, httpStatus, err), fmt.Sprintf("modifying child patch '%s'", childPatchId))
-				}
-			}
-
 		}
 	}
 
