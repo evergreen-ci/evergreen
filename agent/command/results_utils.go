@@ -118,7 +118,7 @@ func sendTestResultsToCedar(ctx context.Context, conf *internal.TaskConfig, td c
 func sendTestLogToCedar(ctx context.Context, t *task.Task, comm client.Communicator, log *model.TestLog) error {
 	conn, err := comm.GetCedarGRPCConn(ctx)
 	if err != nil {
-		return errors.Wrapf(err, "setting up cedar gRPC connection for test %s", log.Name)
+		return errors.Wrapf(err, "getting the Cedar gRPC connection for test %s", log.Name)
 	}
 
 	timberOpts := &buildlogger.LoggerOptions{
