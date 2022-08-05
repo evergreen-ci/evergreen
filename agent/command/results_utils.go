@@ -69,9 +69,7 @@ func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logge
 
 		// Add all of the test results that correspond to that log to
 		// the full list of results.
-		for _, result := range results[idx] {
-			allResults.Results = append(allResults.Results, result)
-		}
+		allResults.Results = append(allResults.Results, results[idx]...)
 	}
 	logger.Task().Info("finshed posting test logs")
 
