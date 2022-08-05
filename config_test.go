@@ -875,3 +875,52 @@ func (s *AdminSuite) TestSSHKeysAppendOnly() {
 	}}
 	s.NoError(newSettings.Validate(), "should be able to append new key pair")
 }
+
+func (s *AdminSuite) TestCedarConfig() {
+	config := CedarConfig{
+		BaseURL: "url.com",
+		RPCPort: "9090",
+		User:    "username",
+		APIKey:  "key",
+	}
+
+	err := config.Set()
+	s.NoError(err)
+	settings, err := GetConfig()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.Cedar)
+
+	config.RPCPort = "7070"
+	s.NoError(config.Set())
+
+	settings, err = GetConfig()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.Cedar)
+}
+
+func (s *AdminSuite) TestDataPipesConfig() {
+	config := DataPipesConfig{
+		Host:         "https://url.com",
+		Region:       "us-east-1",
+		AWSAccessKey: "access",
+		AWSSecretKey: "secret",
+		AWSToken:     "token",
+	}
+
+	err := config.Set()
+	s.NoError(err)
+	settings, err := GetConfig()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.DataPipes)
+
+	config.Region = "us-west-1"
+	s.NoError(config.Set())
+
+	settings, err = GetConfig()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.DataPipes)
+}
