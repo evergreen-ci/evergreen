@@ -164,13 +164,6 @@ type PatchProject struct {
 	Variants []*ProjectBuildVariant `json:"variants"`
 }
 
-// PatchTasks is the return value of the PatchTasks query.
-// It contains an array of Tasks based on filter criteria, as well as a count for the number of Tasks in that array.
-type PatchTasks struct {
-	Count int              `json:"count"`
-	Tasks []*model.APITask `json:"tasks"`
-}
-
 type PatchTime struct {
 	Finished    *string `json:"finished"`
 	Started     *string `json:"started"`
@@ -221,7 +214,7 @@ type PublicKeyInput struct {
 	Name string `json:"name"`
 }
 
-// SortOrder[] is an input value for the patchTasks query. It is used to define where to sort by ASC/DEC for a given sort key.
+// SortOrder[] is an input value for version.tasks. It is used to define whether to sort by ASC/DEC for a given sort key.
 type SortOrder struct {
 	Direction SortDirection    `json:"Direction"`
 	Key       TaskSortCategory `json:"Key"`
