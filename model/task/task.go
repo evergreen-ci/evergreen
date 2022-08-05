@@ -2511,8 +2511,7 @@ func (t *Task) Archive() error {
 					OverrideDependenciesKey: "",
 				},
 				"$set": bson.M{
-					ExecutionKey:             t.Execution + 1,
-					LatestParentExecutionKey: t.Execution + 1, // Will this matter for regular tasks?
+					ExecutionKey: t.Execution + 1,
 				},
 			})
 		if err != nil {
@@ -2641,7 +2640,7 @@ func archiveAll(taskIds, execTasksIds, toUpdateExecTaskIds []string, toArchive [
 			// 		}})
 
 			if err != nil {
-				return nil, errors.Wrap(err, "Error updating documents")
+				return nil, errors.Wrap(err, "updating documents")
 			}
 
 			// Call to update all tasks that are actually restarting
@@ -2657,7 +2656,7 @@ func archiveAll(taskIds, execTasksIds, toUpdateExecTaskIds []string, toArchive [
 						OverrideDependenciesKey,
 					}}}})
 
-			return nil, errors.Wrap(err, "Error updating documents")
+			return nil, errors.Wrap(err, "updating documents")
 		}
 		return nil, errors.Wrap(err, "updating tasks")
 	}
@@ -3688,7 +3687,7 @@ func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) (*Ta
 	}
 	pipeline, err := getTasksByVersionPipeline(versionID, opts)
 	if err != nil {
-		return nil, errors.Wrap(err, "error getting tasks by version pipeline")
+		return nil, errors.Wrap(err, " etting tasks by version pipeline")
 	}
 	maxEtaPipeline := []bson.M{
 		{
@@ -3786,7 +3785,7 @@ func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOption
 	opts.UseLegacyAddBuildVariantDisplayName = ShouldUseLegacyAddBuildVariantDisplayName(versionID)
 	pipeline, err := getTasksByVersionPipeline(versionID, opts)
 	if err != nil {
-		return nil, errors.Wrap(err, "error getting tasks by version pipeline")
+		return nil, errors.Wrap(err, "getting tasks by version pipeline")
 	}
 	project := bson.M{"$project": bson.M{
 		BuildVariantKey:            "$" + BuildVariantKey,
