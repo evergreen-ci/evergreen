@@ -2609,36 +2609,36 @@ func archiveAll(taskIds, execTaskIds, toUpdateExecTaskIds []string, archivedTask
 		}
 		if len(execTaskIds) > 0 {
 			// Backwards compatibility call + LPE setting for all tasks
-			// _, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(sessCtx,
-			// 	bson.M{"_id": bson.M{"$in": execTaskIds}}, // Query all execution tasks
-			// 	bson.A{ // Pipeline
-			// 		bson.M{"$set": bson.M{ // Sets LatestParentExecution (LPE) = !exists(LPE) ? execution + 1 : LPE + 1
-			// 			LatestParentExecutionKey: bson.M{
-			// 				"$cond": bson.A{
-			// 					bson.M{"$not": bson.A{ // !exists(LPE)
-			// 						"$" + LatestParentExecutionKey,
-			// 					}},
-			// 					bson.M{"$add": bson.A{ // execution + 1
-			// 						"$" + ExecutionKey, 1,
-			// 					}},
-			// 					bson.M{"$add": bson.A{ // LPE + 1
-			// 						"$" + LatestParentExecutionKey, 1,
-			// 					}},
-			// 				},
-			// 			},
-			// 		}},
-			// 	})
-
-			// Same call without backwards compatibility
 			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(sessCtx,
-				bson.M{"_id": bson.M{"$in": toUpdateExecTaskIds}}, // Query all 'taskIds'
+				bson.M{"_id": bson.M{"$in": execTaskIds}}, // Query all execution tasks
 				bson.A{ // Pipeline
-					bson.M{"$set": bson.M{ // Sets LatestParentExecution (LPE) = LPE + 1
-						LatestParentExecutionKey: bson.M{"$add": bson.A{
-							"$" + LatestParentExecutionKey, 1,
-						}},
+					bson.M{"$set": bson.M{ // Sets LatestParentExecution (LPE) = !exists(LPE) ? execution + 1 : LPE + 1
+						LatestParentExecutionKey: bson.M{
+							"$cond": bson.A{
+								bson.M{"$not": bson.A{ // !exists(LPE)
+									"$" + LatestParentExecutionKey,
+								}},
+								bson.M{"$add": bson.A{ // execution + 1
+									"$" + ExecutionKey, 1,
+								}},
+								bson.M{"$add": bson.A{ // LPE + 1
+									"$" + LatestParentExecutionKey, 1,
+								}},
+							},
+						},
 					}},
 				})
+
+			// Same call without backwards compatibility
+			// _, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(sessCtx,
+			// 	bson.M{"_id": bson.M{"$in": execTaskIds}}, // Query all 'execTaskIds'
+			// 	bson.A{ // Pipeline
+			// 		bson.M{"$set": bson.M{ // Sets LatestParentExecution (LPE) = LPE + 1
+			// 			LatestParentExecutionKey: bson.M{"$add": bson.A{
+			// 				"$" + LatestParentExecutionKey, 1,
+			// 			}},
+			// 		}},
+			// 	})
 
 			if err != nil {
 				return nil, errors.Wrap(err, "updating documents")
@@ -2646,7 +2646,7 @@ func archiveAll(taskIds, execTaskIds, toUpdateExecTaskIds []string, archivedTask
 
 			// Call to update all tasks that are actually restarting
 			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(sessCtx,
-				bson.M{IdKey: bson.M{"$in": toUpdateExecTaskIds}}, // Query all archiving execution tasks
+				bson.M{IdKey: bson.M{"$in": toUpdateExecTaskIds}}, // Query all archiving/restarting execution tasks
 				bson.A{ // Pipeline
 					bson.M{"$set": bson.M{ // Execution = LPE
 						ExecutionKey: "$" + LatestParentExecutionKey,
