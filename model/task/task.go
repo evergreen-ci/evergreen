@@ -2507,10 +2507,10 @@ func (t *Task) Archive() error {
 		err = UpdateOne(
 			bson.M{IdKey: t.Id},
 			bson.M{
-				"$unset": bson.A{
-					AbortedKey,
-					AbortInfoKey,
-					OverrideDependenciesKey,
+				"$unset": bson.M{
+					AbortedKey:              "",
+					AbortInfoKey:            "",
+					OverrideDependenciesKey: "",
 				},
 				"$inc": bson.M{ExecutionKey: 1},
 			})
@@ -2600,10 +2600,10 @@ func archiveAll(taskIds, execTaskIds, toUpdateExecTaskIds []string, archivedTask
 							},
 						},
 					}},
-					bson.M{"$unset": bson.A{
-						AbortedKey,
-						AbortInfoKey,
-						OverrideDependenciesKey,
+					bson.M{"$unset": bson.M{
+						AbortedKey:              "",
+						AbortInfoKey:            "",
+						OverrideDependenciesKey: "",
 					}}})
 			if err != nil {
 				return nil, errors.Wrap(err, "archiving tasks")
@@ -2653,10 +2653,10 @@ func archiveAll(taskIds, execTaskIds, toUpdateExecTaskIds []string, archivedTask
 					bson.M{"$set": bson.M{ // Execution = LPE
 						ExecutionKey: "$" + LatestParentExecutionKey,
 					}},
-					bson.M{"$unset": bson.A{
-						AbortedKey,
-						AbortInfoKey,
-						OverrideDependenciesKey,
+					bson.M{"$unset": bson.M{
+						AbortedKey:              "",
+						AbortInfoKey:            "",
+						OverrideDependenciesKey: "",
 					}}})
 
 			return nil, errors.Wrap(err, "updating documents")
