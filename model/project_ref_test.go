@@ -1540,6 +1540,36 @@ func TestValidatePeriodicBuildDefinition(t *testing.T) {
 	}
 }
 
+func TestContainerSecretValidate(t *testing.T) {
+	t.Run("SucceedsWithStoredSecret", func(t *testing.T) {
+		cs := ContainerSecret{
+			Type:  ContainerSecretRepoCred,
+			Value: `{"username": "cool_user", "password": "very_secure_password_waow"}`,
+		}
+		assert.NoError(t, cs.Validate())
+	})
+	t.Run("SucceedsWithSecretNeedingToBeCreated", func(t *testing.T) {
+		cs := ContainerSecret{
+			Type:  ContainerSecretPodSecret,
+			Value: "pod_secret",
+		}
+		assert.NoError(t, cs.Validate())
+	})
+	t.Run("FailsWithInvalidSecretType", func(t *testing.T) {
+		cs := ContainerSecret{
+			Type:       "",
+			ExternalID: "external_id",
+		}
+		assert.Error(t, cs.Validate())
+	})
+	t.Run("FailsWithoutExternalIDOrValueForNewSecret", func(t *testing.T) {
+		cs := ContainerSecret{
+			Type: ContainerSecretRepoCred,
+		}
+		assert.Error(t, cs.Validate())
+	})
+}
+
 func TestGetPatchTriggerAlias(t *testing.T) {
 	projRef := ProjectRef{
 		PatchTriggerAliases: []patch.PatchTriggerDefinition{{Alias: "a0"}},
@@ -2104,7 +2134,6 @@ func TestMergeWithProjectConfig(t *testing.T) {
 	assert.NoError(t, err)
 	require.NotNil(t, projectRef)
 	assert.Equal(t, 4, projectRef.ContainerSizes["xlarge"].CPU)
-
 }
 
 func TestIsServerResmokeProject(t *testing.T) {
@@ -2192,4 +2221,46 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	}
 	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
 	assert.NoError(err)
+}
+
+func TestValidateOwnerAndRepo(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection))
+	evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger = "buildlogger"
+
+	// a project with no owner should error
+	project := ProjectRef{
+		Id:      "project",
+		Enabled: utility.TruePtr(),
+		Repo:    "repo",
+	}
+	require.NoError(t, project.Insert())
+
+	err := project.ValidateOwnerAndRepo([]string{"evergreen-ci"})
+	assert.NotNil(t, err)
+
+	// a project with an owner and repo should not error
+	project.Owner = "evergreen-ci"
+	err = project.ValidateOwnerAndRepo([]string{"evergreen-ci"})
+	assert.NoError(t, err)
+
+	// a project with now owner and repo that is attached to a repo with
+	// an owner and repo should not error
+	repoRef := RepoRef{ProjectRef{
+		Id:      "my_repo",
+		Enabled: utility.TruePtr(),
+		Owner:   "evergreen-ci",
+		Repo:    "test",
+	}}
+	assert.NoError(t, repoRef.Upsert())
+
+	projectWithRepo := ProjectRef{
+		Id:        "project-with-repo",
+		Enabled:   utility.TruePtr(),
+		RepoRefId: repoRef.Id,
+	}
+	require.NoError(t, projectWithRepo.Insert())
+
+	err = projectWithRepo.ValidateOwnerAndRepo([]string{"evergreen-ci"})
+	assert.NoError(t, err)
+
 }
