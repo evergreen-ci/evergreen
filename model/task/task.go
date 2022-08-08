@@ -1451,6 +1451,7 @@ func (t *Task) MarkSystemFailed(description string) error {
 				StatusKey:     evergreen.TaskFailed,
 				FinishTimeKey: t.FinishTime,
 				DetailsKey:    t.Details,
+				CanResetKey:   true,
 			},
 		},
 	)
@@ -1868,6 +1869,7 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 				StartTimeKey:        t.StartTime,
 				LogsKey:             detail.Logs,
 				HasLegacyResultsKey: t.HasLegacyResults,
+				CanResetKey:         true,
 			},
 		})
 
