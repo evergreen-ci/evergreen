@@ -169,17 +169,15 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 			return errors.New("operation canceled")
 		}
 
-		logId, err := sendTestLog(ctx, comm, conf, log)
-		if err != nil {
-			logger.Task().Warningf("problem uploading logs for %s", log.Name)
+		if err := sendTestLog(ctx, comm, conf, log); err != nil {
+			logger.Task().Errorf("error posting test log: %v", err)
 			continue
 		} else {
 			succeeded++
 		}
-		cumulative.tests[cumulative.logIdxToTestIdx[i]].LogId = logId
 		cumulative.tests[cumulative.logIdxToTestIdx[i]].LineNum = 1
 	}
-	logger.Task().Infof("Attach test logs succeeded for %d of %d files", succeeded, len(cumulative.logs))
+	logger.Task().Infof("posting test logs succeeded for %d of %d files", succeeded, len(cumulative.logs))
 
 	return sendTestResults(ctx, comm, logger, conf, &task.LocalTestResults{Results: cumulative.tests})
 }
