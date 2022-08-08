@@ -2546,8 +2546,8 @@ func ArchiveMany(tasks []Task) error {
 			if err != nil {
 				return errors.Wrapf(err, "finding execution tasks for display task '%s'", t.Id)
 			}
+			execTaskIds = append(execTaskIds, t.ExecutionTasks...)
 			for _, et := range eTasks {
-				execTaskIds = append(execTaskIds, et.Id)
 				archivedTasks = append(archivedTasks, et.makeArchivedTask())
 				toUpdateExecTaskIds = append(toUpdateExecTaskIds, et.Id)
 			}
