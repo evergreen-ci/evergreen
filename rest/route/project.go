@@ -313,10 +313,13 @@ func (h *projectIDPatchHandler) Parse(ctx context.Context, r *http.Request) erro
 		}
 	}
 
-	newProjectRef := requestProjectRef.ToService()
+	newProjectRef, err := requestProjectRef.ToService()
+	if err != nil {
+		return errors.Wrap(err, "converting new project to service model")
+	}
 	newProjectRef.RepoRefId = oldProject.RepoRefId // this can't be modified by users
 
-	h.newProjectRef = &newProjectRef
+	h.newProjectRef = newProjectRef
 	h.originalProject = oldProject
 	h.apiNewProjectRef = requestProjectRef // needed for the delete fields
 	return nil

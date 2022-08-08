@@ -2459,7 +2459,7 @@ tasks:
     params:
       script: echo "test"
 - name: display_three
-  exec_timeout_secs: 100 
+  exec_timeout_secs: 100
   commands:
   - command: shell.exec
     params:
@@ -2696,8 +2696,8 @@ tasks:
 - name: one
   commands:
   - command: shell.exec
-    params: 
-      script: | 
+    params:
+      script: |
         echo test
 - name: two
   commands:
@@ -2860,87 +2860,118 @@ func TestValidateVersionControl(t *testing.T) {
 }
 
 func TestValidateContainers(t *testing.T) {
-	require.NoError(t, db.Clear(model.ProjectRefCollection))
-	ref := &model.ProjectRef{
-		Identifier: "proj",
-		ContainerSizes: map[string]model.ContainerResources{
-			"s1": model.ContainerResources{
+	defer func() {
+		assert.NoError(t, db.Clear(model.ProjectRefCollection))
+	}()
+	for tName, tCase := range map[string]func(t *testing.T, p *model.Project, ref *model.ProjectRef){
+		"SucceedsWithValidProjectAndRef": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
+			verrs := validateContainers(p, ref, false)
+			assert.Len(t, verrs, 0)
+		},
+		"FailsWithoutContainerName": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
+			p.Containers[0].Name = ""
+			verrs := validateContainers(p, ref, false)
+			require.Len(t, verrs, 1)
+			assert.Contains(t, verrs[0].Message, "name must be defined")
+		},
+		"FailsWithoutContainerImage": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
+			p.Containers[0].Image = ""
+			verrs := validateContainers(p, ref, false)
+			require.Len(t, verrs, 1)
+			assert.Contains(t, verrs[0].Message, "image must be defined")
+		},
+		"MustSpecifyEitherContainerSizeOrResources": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
+			p.Containers[0].Size = ""
+			p.Containers[0].Resources = nil
+			verrs := validateContainers(p, ref, false)
+			require.Len(t, verrs, 1)
+			assert.Contains(t, verrs[0].Message, "either size or resources must be defined")
+		},
+		"ContainerSizeAndResourcesAreMutuallyExclusive": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
+			p.Containers[0].Resources = &model.ContainerResources{
 				MemoryMB: 100,
 				CPU:      1,
-			},
+			}
+			verrs := validateContainers(p, ref, false)
+			require.Len(t, verrs, 1)
+			assert.Contains(t, verrs[0].Message, "size and resources cannot both be defined")
 		},
-		ContainerCredentials: map[string]model.ContainerCredential{
-			"c1": model.ContainerCredential{
-				Username: "foo",
-				Password: "bar",
-			},
+		"FailsWithNonexistentContainerSize": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
+			p.Containers[0].Size = "s2"
+			verrs := validateContainers(p, ref, false)
+			require.Len(t, verrs, 1)
+			assert.Contains(t, verrs[0].Message, "size 's2' is not defined anywhere")
 		},
-	}
-	require.NoError(t, ref.Insert())
-	p := &model.Project{
-		Identifier: "proj",
-		Containers: []model.Container{
-			{
-				Name:       "c1",
-				Image:      "demo/image:latest",
-				WorkingDir: "/root",
-				Size:       "s1",
-				Credential: "c1",
-			},
+		"FailsWithNonexistentRepoCreds": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
+			p.Containers[0].Credential = "c2"
+			verrs := validateContainers(p, ref, false)
+			require.Len(t, verrs, 1)
+			assert.Contains(t, verrs[0].Message, "credential 'c2' is not defined anywhere")
 		},
+		"FailsWithInvalidOSAndArch": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
+			p.Containers[0].System = model.ContainerSystem{
+				OperatingSystem: "oops",
+				CPUArchitecture: "oops",
+			}
+			verrs := validateContainers(p, ref, false)
+			require.Len(t, verrs, 1)
+			assert.Contains(t, verrs[0].Message, "unrecognized container OS 'oops'")
+			assert.Contains(t, verrs[0].Message, "unrecognized CPU architecture 'oops'")
+		},
+		"FailsWithInvalidContainerResources": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
+			p.Containers[0].Resources = &model.ContainerResources{
+				MemoryMB: 0,
+				CPU:      -1,
+			}
+			verrs := validateContainers(p, ref, false)
+			require.Len(t, verrs, 1)
+			assert.Contains(t, verrs[0].Message, "container resource CPU must be a positive integer")
+			assert.Contains(t, verrs[0].Message, "container resource memory MB must be a positive integer")
+		},
+		"FailsWithPodSecretAsReferencedRepoCred": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
+			cs := ref.ContainerSecrets["c1"]
+			cs.Type = model.ContainerSecretPodSecret
+			ref.ContainerSecrets["c1"] = cs
+			verrs := validateContainers(p, ref, false)
+			require.Len(t, verrs, 1)
+			assert.Contains(t, verrs[0].Message, "container credential named 'c1' exists but is not valid for use as a repository credential")
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.Clear(model.ProjectRefCollection))
+
+			p := &model.Project{
+				Identifier: "proj",
+				Containers: []model.Container{
+					{
+						Name:       "c1",
+						Image:      "demo/image:latest",
+						WorkingDir: "/root",
+						Size:       "s1",
+						Credential: "c1",
+					},
+				},
+			}
+
+			ref := &model.ProjectRef{
+				Identifier: "proj",
+				ContainerSizes: map[string]model.ContainerResources{
+					"s1": model.ContainerResources{
+						MemoryMB: 100,
+						CPU:      1,
+					},
+				},
+				ContainerSecrets: map[string]model.ContainerSecret{
+					"c1": model.ContainerSecret{
+						ExternalID: "external_id",
+						Type:       model.ContainerSecretRepoCred,
+					},
+				},
+			}
+
+			tCase(t, p, ref)
+		})
 	}
-	verrs := validateContainers(p, ref, false)
-	assert.Len(t, verrs, 0)
-	p.Containers[0].Name = ""
-	verrs = validateContainers(p, ref, false)
-	require.Len(t, verrs, 1)
-	assert.Contains(t, verrs[0].Message, "name must be defined")
-	p.Containers[0].Name = "c1"
-	p.Containers[0].Image = ""
-	verrs = validateContainers(p, ref, false)
-	require.Len(t, verrs, 1)
-	assert.Contains(t, verrs[0].Message, "image must be defined")
-	p.Containers[0].Image = "demo:image"
-	p.Containers[0].Resources = &model.ContainerResources{
-		MemoryMB: 100,
-		CPU:      1,
-	}
-	verrs = validateContainers(p, ref, false)
-	require.Len(t, verrs, 1)
-	assert.Contains(t, verrs[0].Message, "size and resources cannot both be defined")
-	p.Containers[0].Size = ""
-	p.Containers[0].Resources = nil
-	verrs = validateContainers(p, ref, false)
-	require.Len(t, verrs, 1)
-	assert.Contains(t, verrs[0].Message, "either size or resources must be defined")
-	p.Containers[0].Size = "s2"
-	verrs = validateContainers(p, ref, false)
-	require.Len(t, verrs, 1)
-	assert.Contains(t, verrs[0].Message, "size 's2' is not defined anywhere")
-	p.Containers[0].Credential = "c2"
-	verrs = validateContainers(p, ref, false)
-	require.Len(t, verrs, 1)
-	assert.Contains(t, verrs[0].Message, "credential 'c2' is not defined anywhere")
-	p.Containers[0].System = model.ContainerSystem{
-		OperatingSystem: "oops",
-		CPUArchitecture: "oops",
-	}
-	verrs = validateContainers(p, ref, false)
-	require.Len(t, verrs, 1)
-	assert.Contains(t, verrs[0].Message, "unrecognized container OS 'oops'")
-	assert.Contains(t, verrs[0].Message, "unrecognized CPU architecture 'oops'")
-	p.Containers[0].System = model.ContainerSystem{
-		OperatingSystem: evergreen.LinuxOS,
-		CPUArchitecture: evergreen.ArchARM64,
-	}
-	p.Containers[0].Resources = &model.ContainerResources{
-		MemoryMB: 0,
-		CPU:      -1,
-	}
-	verrs = validateContainers(p, ref, false)
-	require.Len(t, verrs, 1)
-	assert.Contains(t, verrs[0].Message, "container resource CPU must be a positive integer")
-	assert.Contains(t, verrs[0].Message, "container resource memory MB must be a positive integer")
 }
 
 func TestValidateTaskSyncSettings(t *testing.T) {

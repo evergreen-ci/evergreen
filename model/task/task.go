@@ -398,13 +398,15 @@ func (tr TestResult) GetDisplayTestName() string {
 // generation for other log viewers.
 func (tr TestResult) GetLogURL(viewer evergreen.LogViewer) string {
 	root := evergreen.GetEnvironment().Settings().ApiUrl
-	deprecatedLobsterURL := "https://logkeeper.mongodb.org"
+	deprecatedLobsterURLs := []string{"https://logkeeper.mongodb.org", "https://logkeeper2.build.10gen.cc"}
 
 	switch viewer {
 	case evergreen.LogViewerHTML:
 		if tr.URL != "" {
-			if strings.Contains(tr.URL, deprecatedLobsterURL) {
-				return strings.Replace(tr.URL, deprecatedLobsterURL, root+"/lobster", 1)
+			for _, url := range deprecatedLobsterURLs {
+				if strings.Contains(tr.URL, url) {
+					return strings.Replace(tr.URL, url, root+"/lobster", 1)
+				}
 			}
 
 			// Some test results may have internal URLs that are

@@ -21,15 +21,11 @@ import (
 )
 
 const (
-	idleHostJobName = "idle-host-termination"
-
-	// idleTimeCutoff is the amount of time we wait for an idle host to be marked as idle.
-	idleTimeCutoff = 4 * time.Minute
-	// outdatedIdleTimeCutoff is the amount of time we wait for an outdated idle host to be marked idle.
-	outdatedIdleTimeCutoff    = time.Minute
+	idleHostJobName           = "idle-host-termination"
 	idleWaitingForAgentCutoff = 10 * time.Minute
-	idleTaskGroupHostCutoff   = 10 * time.Minute
 
+	// outdatedIdleTimeCutoff is the amount of time we wait for an outdated idle host to be marked idle.
+	outdatedIdleTimeCutoff = time.Minute
 	// MaxTimeNextPayment is the amount of time we wait to have left before marking a host as idle
 	maxTimeTilNextPayment = 5 * time.Minute
 )
@@ -165,9 +161,16 @@ func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, h *host.Host, d
 	idleTime := h.IdleTime()
 	communicationTime := h.GetElapsedCommunicationTime()
 
-	idleThreshold := idleTimeCutoff
+	idleThreshold := d.HostAllocatorSettings.AcceptableHostIdleTime
+	if idleThreshold == 0 {
+		conf, err := evergreen.GetConfig()
+		if err != nil {
+			return errors.Wrap(err, "getting evergreen configuration")
+		}
+		idleThreshold = time.Duration(conf.Scheduler.AcceptableHostIdleTimeSeconds) * time.Second
+	}
 	if h.RunningTaskGroup != "" {
-		idleThreshold = idleTaskGroupHostCutoff
+		idleThreshold = idleThreshold * 2
 	} else if hostHasOutdatedAMI(*h, d) {
 		idleThreshold = outdatedIdleTimeCutoff
 	}

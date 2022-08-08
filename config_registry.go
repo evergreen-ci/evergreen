@@ -40,6 +40,7 @@ func resetRegistry() error {
 		&CloudProviders{},
 		&CommitQueueConfig{},
 		&ContainerPoolsConfig{},
+		&DataPipesConfig{},
 		&HostInitConfig{},
 		&HostJasperConfig{},
 		&JiraConfig{},
