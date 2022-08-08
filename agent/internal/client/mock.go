@@ -274,7 +274,7 @@ func (c *Mock) GetCedarGRPCConn(ctx context.Context) (*grpc.ClientConn, error) {
 // GetDataPipesConfig returns a mock Data-Pipes service configuration.
 func (c *Mock) GetDataPipesConfig(ctx context.Context) (*apimodels.DataPipesConfig, error) {
 	return &apimodels.DataPipesConfig{
-		Host:         "https://url.com",
+		Host:         "url",
 		Region:       "us-east-1",
 		AWSAccessKey: "access",
 		AWSSecretKey: "secret",
