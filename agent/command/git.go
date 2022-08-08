@@ -384,6 +384,7 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 }
 
 func (c *gitFetchProject) opts(projectMethod, projectToken string, conf *internal.TaskConfig) (cloneOpts, error) {
+	shallowCloneEnabled := conf.Distro != nil && !conf.Distro.DisableShallowClone
 	opts := cloneOpts{
 		method:             projectMethod,
 		owner:              conf.ProjectRef.Owner,
@@ -391,7 +392,7 @@ func (c *gitFetchProject) opts(projectMethod, projectToken string, conf *interna
 		branch:             conf.ProjectRef.Branch,
 		dir:                c.Directory,
 		token:              projectToken,
-		shallowClone:       c.ShallowClone && !conf.Distro.DisableShallowClone,
+		shallowClone:       c.ShallowClone && shallowCloneEnabled,
 		recurseSubmodules:  c.RecurseSubmodules,
 		mergeTestRequester: conf.Task.Requester == evergreen.MergeTestRequester,
 	}
@@ -421,7 +422,11 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 		return errors.Wrap(err, "error expanding github parameters")
 	}
 
-	projectMethod, projectToken, err := getProjectMethodAndToken(c.Token, conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion), conf.Distro.CloneMethod)
+	cloneMethod := distro.CloneMethodOAuth
+	if conf.Distro != nil {
+		cloneMethod = conf.Distro.CloneMethod
+	}
+	projectMethod, projectToken, err := getProjectMethodAndToken(c.Token, conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion), cloneMethod)
 	if err != nil {
 		return errors.Wrap(err, "failed to get method of cloning and token")
 	}

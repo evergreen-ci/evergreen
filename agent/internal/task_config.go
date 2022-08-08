@@ -87,7 +87,9 @@ func NewTaskConfig(d *apimodels.DistroView, p *model.Project, t *task.Task, r *m
 		Task:         t,
 		BuildVariant: bv,
 		Expansions:   &e,
-		WorkDir:      d.WorkDir,
+	}
+	if d != nil {
+		taskConfig.WorkDir = d.WorkDir
 	}
 	if patchDoc != nil {
 		taskConfig.GithubPatchData = patchDoc.GithubPatchData

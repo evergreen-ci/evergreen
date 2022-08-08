@@ -29,7 +29,10 @@ func (a *Agent) createTaskDirectory(tc *taskContext) (string, error) {
 	}
 
 	dirName := hex.EncodeToString(h.Sum(nil))
-	newDir := filepath.Join(tc.taskConfig.Distro.WorkDir, dirName)
+	newDir := "/"
+	if tc.taskConfig.Distro != nil {
+		newDir = filepath.Join(tc.taskConfig.Distro.WorkDir, dirName)
+	}
 
 	tc.logger.Execution().Infof("Making new folder for task execution: %v", newDir)
 
