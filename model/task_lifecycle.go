@@ -1341,7 +1341,7 @@ func MarkOneTaskReset(t *task.Task) error {
 		}
 	}
 
-	if err := t.Reset(); err != nil {
+	if err := t.Reset(); err != nil && !adb.ResultsNotFound(err) {
 		return errors.Wrap(err, "resetting task in database")
 	}
 

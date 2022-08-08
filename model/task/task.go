@@ -2511,7 +2511,7 @@ func (t *Task) Archive() error {
 			},
 			"$inc": bson.M{ExecutionKey: 1},
 		})
-	if err != nil {
+	if err != nil && !adb.ResultsNotFound(err) {
 		return errors.Wrap(err, "updating task")
 	}
 
