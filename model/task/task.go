@@ -2520,17 +2520,19 @@ func (t *Task) Archive() error {
 	}
 }
 
-// ArchiveMany accepts tasks and display tasks (no execution tasks), bundles them all up, archives and updates all
-// that need to be (accounting for ResetFailedWhenFinished) in two queries
+// ArchiveMany accepts tasks and display tasks (no execution tasks). The function
+// expects that each one is going to be archived and progressed to the next execution.
+// For execution tasks in display tasks, it will properly account for archiving
+// only tasks that should be if failed.
 func ArchiveMany(tasks []Task) error {
-	bundledTasks := []string{}        // Contains all tasks and display tasks
-	execTasks := []string{}           // Contains all exec tasks
-	toUpdateExecTaskIds := []string{} // Contains all exec tasks that should update and have new execution
-	toArchive := []interface{}{}      // Contains all archived tasks that are being updated / have new execution
+	allTaskIds := []string{}          // Contains all tasks and display tasks IDs
+	execTaskIds := []string{}         // Contains all exec tasks IDs
+	toUpdateExecTaskIds := []string{} // Contains all exec tasks IDs that should update and have new execution
+	archivedTasks := []interface{}{}  // Contains all archived tasks (task, display, and execution). Created by Task#makeArchivedTask()
 
 	for _, t := range tasks {
-		bundledTasks = append(bundledTasks, t.Id)
-		toArchive = append(toArchive, t.makeArchivedTask())
+		allTaskIds = append(allTaskIds, t.Id)
+		archivedTasks = append(archivedTasks, t.makeArchivedTask())
 		if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
 			var eTasks []Task
 			var err error
@@ -2545,31 +2547,30 @@ func ArchiveMany(tasks []Task) error {
 				return errors.Wrapf(err, "finding execution tasks for display task '%s'.", t.Id)
 			}
 			for _, et := range eTasks {
-				execTasks = append(execTasks, et.Id)
-				toArchive = append(toArchive, et.makeArchivedTask())
+				execTaskIds = append(execTaskIds, et.Id)
+				archivedTasks = append(archivedTasks, et.makeArchivedTask())
 				toUpdateExecTaskIds = append(toUpdateExecTaskIds, et.Id)
 			}
 		}
 	}
 
-	grip.DebugWhen(len(utility.UniqueStrings(bundledTasks)) != len(bundledTasks), message.Fields{
+	grip.DebugWhen(len(utility.UniqueStrings(allTaskIds)) != len(allTaskIds), message.Fields{
 		"ticket":           "EVG-17261",
 		"message":          "archiving same task multiple times",
-		"tasks_to_archive": bundledTasks,
+		"tasks_to_archive": allTaskIds,
 	})
 
-	err := archiveAll(bundledTasks, execTasks, toUpdateExecTaskIds, toArchive)
+	err := archiveAll(allTaskIds, execTaskIds, toUpdateExecTaskIds, archivedTasks)
 
 	return err
 }
 
 // archiveAll takes in:
-// - taskIds         : All tasks id's of display tasks, execution tasks, and tasks
-// - toUpdateTaskIds : All tasks that should be progressing to the latest execution
-// - toArchive       : Compiled archived tasks to put in old tasks collection
-//
-// Each array *should* include execution tasks id's
-func archiveAll(taskIds, execTasksIds, toUpdateExecTaskIds []string, toArchive []interface{}) error {
+// - taskIds               : All tasks and display tasks IDs
+// - execTaskIds           : All execution task IDs
+// - toUpdateExecTaskIds   : All execution task IDs for execution tasks that will be archived/restarted
+// - archivedTasks         : All archived tasks created by Task#makeArchivedTask()
+func archiveAll(taskIds, execTaskIds, toUpdateExecTaskIds []string, archivedTasks []interface{}) error {
 	mongoClient := evergreen.GetEnvironment().Client()
 	ctx, cancel := evergreen.GetEnvironment().Context()
 	defer cancel()
@@ -2581,9 +2582,9 @@ func archiveAll(taskIds, execTasksIds, toUpdateExecTaskIds []string, toArchive [
 
 	txFunc := func(sessCtx mongo.SessionContext) (interface{}, error) {
 		var err error
-		if len(toArchive) > 0 {
+		if len(archivedTasks) > 0 {
 			oldTaskColl := evergreen.GetEnvironment().DB().Collection(OldCollection)
-			_, err = oldTaskColl.InsertMany(sessCtx, toArchive)
+			_, err = oldTaskColl.InsertMany(sessCtx, archivedTasks)
 			if err != nil {
 				return nil, errors.Wrap(err, "archiving tasks")
 			}
@@ -2608,10 +2609,10 @@ func archiveAll(taskIds, execTasksIds, toUpdateExecTaskIds []string, toArchive [
 				return nil, errors.Wrap(err, "archiving tasks")
 			}
 		}
-		if len(execTasksIds) > 0 {
+		if len(execTaskIds) > 0 {
 			// Backwards compatibility call + LPE setting for all tasks
 			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(sessCtx,
-				bson.D{{Key: "_id", Value: bson.D{{Key: "$in", Value: execTasksIds}}}}, // Query all execution tasks
+				bson.D{{Key: "_id", Value: bson.D{{Key: "$in", Value: execTaskIds}}}}, // Query all execution tasks
 				bson.A{ // Pipeline
 					bson.D{{Key: "$set", Value: bson.D{ // Sets LatestParentExecution (LPE) = !exists(LPE) ? execution + 1 : LPE + 1
 						{Key: LatestParentExecutionKey, Value: bson.D{
