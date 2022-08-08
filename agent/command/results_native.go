@@ -80,49 +80,41 @@ func (c *attachResults) Execute(ctx context.Context,
 	}
 
 	if err := c.sendTestLogs(ctx, conf, logger, comm, results); err != nil {
-		return errors.Wrap(err, "problem sending test logs")
+		return errors.Wrap(err, "sending test logs")
 	}
 
 	return sendTestResults(ctx, comm, logger, conf, results)
 }
 
 func (c *attachResults) sendTestLogs(ctx context.Context, conf *internal.TaskConfig, logger client.LoggerProducer, comm client.Communicator, results *task.LocalTestResults) error {
+	logger.Execution().Info("posting test logs...")
 	for i, res := range results.Results {
 		if ctx.Err() != nil {
-			return errors.Errorf("operation canceled during uploading")
+			return errors.Errorf("operation canceled")
 		}
 
 		if res.LogRaw != "" {
-			logger.Execution().Info("Attaching raw test logs")
 			testLogs := &model.TestLog{
+				// When sending test logs to Cedar we need to
+				// use a unique string since there may be
+				// duplicate file names if there are duplicate
+				// test names.
+				Name:          utility.RandomString(),
 				Task:          conf.Task.Id,
 				TaskExecution: conf.Task.Execution,
 				Lines:         []string{res.LogRaw},
 			}
-			if conf.ProjectRef.IsCedarTestResultsEnabled() {
-				// When sending test logs to cedar we need to
-				// use a unique string since there may be
-				// duplicate file names if there are duplicate
-				// test names.
-				testLogs.Name = utility.RandomString()
-			} else {
-				testLogs.Name = res.TestFile
-			}
 
-			logId, err := sendTestLog(ctx, comm, conf, testLogs)
-			if err != nil {
-				logger.Execution().Errorf("problem posting raw logs from results %s", err.Error())
+			if err := sendTestLog(ctx, comm, conf, testLogs); err != nil {
+				// Continue on error to let other logs be
+				// posted.
+				logger.Execution().Errorf("error posting test logs: %+v", err)
 			} else {
-				results.Results[i].LogId = logId
 				results.Results[i].LogTestName = testLogs.Name
 			}
-
-			// clear the logs from the TestResult struct after it has been saved in the test logs. Since they are
-			// being saved in the test_logs collection, we can clear them to prevent them from being saved in the task
-			// collection.
-			results.Results[i].LogRaw = ""
 		}
 	}
+	logger.Execution().Info("finished posted test logs")
 
 	return nil
 }

@@ -197,7 +197,7 @@ func MockConfig() *evergreen.Settings {
 		},
 		Credentials: map[string]string{"k1": "v1"},
 		DataPipes: evergreen.DataPipesConfig{
-			Host:         "https://url.com",
+			Host:         "url",
 			Region:       "us-east-1",
 			AWSAccessKey: "access",
 			AWSSecretKey: "secret",
