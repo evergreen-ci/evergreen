@@ -2522,10 +2522,6 @@ func (t *Task) Archive() error {
 	}
 }
 
-func shouldRestartTask(resetFailedWhenFinished bool, resetWhenFinished bool, status string) bool {
-	return resetWhenFinished || !resetFailedWhenFinished || evergreen.IsFailedTaskStatus(status)
-}
-
 // ArchiveMany accepts tasks and display tasks (no execution tasks), bundles them all up, archives and updates all
 // that need to be (accounting for ResetFailedWhenFinished) in two queries
 func ArchiveMany(tasks []Task) error {
@@ -2538,16 +2534,22 @@ func ArchiveMany(tasks []Task) error {
 		bundledTasks = append(bundledTasks, t.Id)
 		toArchive = append(toArchive, t.makeArchivedTask())
 		if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
-			eTasks, err := FindAll(db.Query(ByIds(t.ExecutionTasks)))
+			var eTasks []Task
+			var err error
+
+			if t.ResetFailedWhenFinished {
+				eTasks, err = Find(FailedTasksByIds(t.ExecutionTasks))
+			} else {
+				eTasks, err = FindAll(db.Query(ByIds(t.ExecutionTasks)))
+			}
+
 			if err != nil {
 				return errors.Wrapf(err, "finding execution tasks for display task '%s'.", t.Id)
 			}
 			for _, et := range eTasks {
 				execTasks = append(execTasks, et.Id)
-				if shouldRestartTask(t.ResetFailedWhenFinished, t.ResetWhenFinished, et.Status) {
-					toArchive = append(toArchive, et.makeArchivedTask())
-					toUpdateExecTaskIds = append(toUpdateExecTaskIds, et.Id)
-				}
+				toArchive = append(toArchive, et.makeArchivedTask())
+				toUpdateExecTaskIds = append(toUpdateExecTaskIds, et.Id)
 			}
 		}
 	}
