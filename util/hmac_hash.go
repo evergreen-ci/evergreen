@@ -18,7 +18,7 @@ func CalculateHMACHash(secret []byte, body []byte) (string, error) {
 	mac := hmac.New(sha256.New, secret)
 	n, err := mac.Write(body)
 	if n != len(body) {
-		return "", errors.Errorf("Body length expected to be %d, but was %d", len(body), n)
+		return "", errors.Errorf("body length expected to be %d, but was %d", len(body), n)
 	}
 	if err != nil {
 		return "", err

@@ -783,7 +783,6 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	// Agent routes
 	// NOTE: new agent routes should be written in REST v2. The ones here are
 	// legacy routes.
-	// TODO: Remove these routes once EVG-16989 deploys
 	app.Route().Version(2).Route("/agent/setup").Wrap(requireHost).Handler(as.agentSetup).Get()
 	app.Route().Version(2).Route("/agent/next_task").Wrap(requireHost).Handler(as.NextTask).Get()
 	app.Route().Version(2).Route("/task/{taskId}/end").Wrap(requireTaskSecret, requireHost).Handler(as.EndTask).Post()
@@ -803,7 +802,6 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.Route().Version(2).Route("/task/{taskId}/update_push_status").Wrap(requireTaskSecret).Handler(as.UpdatePushStatus).Post()
 
 	// plugins
-	// TODO: Remove these routes once EVG-16989 deploys
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/git/patchfile/{patchfile_id}").Wrap(requireTaskSecret).Handler(as.gitServePatchFile).Get()
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/git/patch").Wrap(requireTaskSecret).Handler(as.gitServePatch).Get()
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/keyval/inc").Wrap(requireTask).Handler(as.keyValPluginInc).Post()

@@ -22,7 +22,7 @@ func TestFindOneID(t *testing.T) {
 			pd := PodDefinition{
 				ID: "id",
 			}
-			require.NoError(t, db.Insert(Collection, pd))
+			require.NoError(t, pd.Insert())
 
 			dbPodDef, err := FindOneID(pd.ID)
 			require.NoError(t, err)
@@ -53,7 +53,7 @@ func TestFindOneByExternalID(t *testing.T) {
 				ID:         "id",
 				ExternalID: "external_id",
 			}
-			require.NoError(t, db.Insert(Collection, pd))
+			require.NoError(t, pd.Insert())
 
 			dbPodDef, err := FindOneByExternalID(pd.ExternalID)
 			require.NoError(t, err)
@@ -74,7 +74,7 @@ func TestFindOneByExternalID(t *testing.T) {
 	}
 }
 
-func TestFindOneByDigest(t *testing.T) {
+func TestFindOneByFamily(t *testing.T) {
 	defer func() {
 		assert.NoError(t, db.Clear(Collection))
 	}()
@@ -83,19 +83,19 @@ func TestFindOneByDigest(t *testing.T) {
 			pd := PodDefinition{
 				ID:         "id",
 				ExternalID: "external_id",
-				Digest:     "abcdef123456",
+				Family:     "family",
 			}
-			require.NoError(t, db.Insert(Collection, pd))
+			require.NoError(t, pd.Insert())
 
-			dbPodDef, err := FindOneByDigest(pd.Digest)
+			dbPodDef, err := FindOneByFamily(pd.Family)
 			require.NoError(t, err)
 			require.NotZero(t, dbPodDef)
 			assert.Equal(t, pd.ID, dbPodDef.ID)
 			assert.Equal(t, pd.ExternalID, dbPodDef.ExternalID)
-			assert.Equal(t, pd.Digest, dbPodDef.Digest)
+			assert.Equal(t, pd.Family, dbPodDef.Family)
 		},
 		"ReturnsNilWithNonexistentPodDefinition": func(t *testing.T) {
-			pd, err := FindOneByDigest("nonexistent")
+			pd, err := FindOneByFamily("nonexistent")
 			assert.NoError(t, err)
 			assert.Zero(t, pd)
 		},

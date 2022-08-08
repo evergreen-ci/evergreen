@@ -35,6 +35,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+const defaultBranch = "main"
+
 // The ProjectRef struct contains general information, independent of any revision control system, needed to track a given project.
 // Booleans that can be defined from both the repo and branch must be pointers, so that branch configurations can specify when to default to the repo.
 type ProjectRef struct {
@@ -445,6 +447,11 @@ func (p *ProjectRef) Add(creator *user.DBUser) error {
 			}
 			return nil
 		}
+	}
+
+	// TODO EVG-17412: Remove the following code that defaults the branch to main.
+	if p.Branch == "" {
+		p.Branch = defaultBranch
 	}
 
 	err := db.Insert(ProjectRefCollection, p)
@@ -929,7 +936,7 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 	if err != nil {
 		return nil, errors.Wrap(err, "finding all enabled projects")
 	}
-	// for every setting in the project ref, if all enabled projects have the same setting, then use that
+	// For every setting in the project ref, if all enabled projects have the same setting, then use that.
 	defer func() {
 		err = recovery.HandlePanicWithError(recover(), err, "project and repo structures do not match")
 	}()
@@ -937,14 +944,17 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 	if !utility.StringSliceContains(repoRef.Admins, u.Username()) {
 		repoRef.Admins = append(repoRef.Admins, u.Username())
 	}
-	// some fields shouldn't be set from projects
+	// Some fields shouldn't be set from projects.
 	repoRef.Id = mgobson.NewObjectId().Hex()
 	repoRef.RepoRefId = ""
-	// set explicitly in case no project is enabled
+	repoRef.Identifier = ""
+	repoRef.DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
+
+	// Set explicitly in case no project is enabled.
 	repoRef.Owner = p.Owner
 	repoRef.Repo = p.Repo
 
-	// creates scope and give user admin access to repo
+	// Creates scope and give user admin access to repo.
 	if err = repoRef.Add(u); err != nil {
 		return nil, errors.Wrapf(err, "adding new repo repo ref for '%s/%s'", p.Owner, p.Repo)
 	}
@@ -1762,17 +1772,18 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			return false, errors.New("can't default project ref for a repo")
 		}
 	}
+	defaultToRepo := false
 	if p == nil {
+		defaultToRepo = true
 		p = &ProjectRef{} // use a blank project ref to default the section to repo
 	}
+
 	var err error
 	switch section {
 	case ProjectPageGeneralSection:
 		setUpdate := bson.M{
 			ProjectRefEnabledKey:                 p.Enabled,
 			ProjectRefBranchKey:                  p.Branch,
-			ProjectRefDisplayNameKey:             p.DisplayName,
-			ProjectRefIdentifierKey:              p.Identifier,
 			ProjectRefBatchTimeKey:               p.BatchTime,
 			ProjectRefRemotePathKey:              p.RemotePath,
 			projectRefSpawnHostScriptPathKey:     p.SpawnHostScriptPath,
@@ -1788,8 +1799,21 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			ProjectRefFilesIgnoredFromCacheKey:   p.FilesIgnoredFromCache,
 		}
 		if !isRepo && !p.UseRepoSettings() {
+			// Don't validate owner if user is defaulting page to repo
+			if p.Owner != "" {
+				allowedOrgs := evergreen.GetEnvironment().Settings().GithubOrgs
+				if err := validateOwner(p.Owner, allowedOrgs); err != nil {
+					return false, errors.Wrap(err, "validating new owner")
+				}
+			}
+
 			setUpdate[ProjectRefOwnerKey] = p.Owner
 			setUpdate[ProjectRefRepoKey] = p.Repo
+		}
+		// some fields shouldn't be set to nil when defaulting to the repo
+		if !defaultToRepo {
+			setUpdate[ProjectRefDisplayNameKey] = p.DisplayName
+			setUpdate[ProjectRefIdentifierKey] = p.Identifier
 		}
 		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},
@@ -1885,6 +1909,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 // to create our own project settings event  after completing the update.
 func DefaultSectionToRepo(projectId string, section ProjectPageSection, userId string) error {
 	before, err := GetProjectSettingsById(projectId, false)
+
 	if err != nil {
 		return errors.Wrap(err, "getting before project settings event")
 	}
@@ -2097,12 +2122,22 @@ func (p *ProjectRef) GetGithubProjectConflicts() (GithubProjectConflicts, error)
 }
 
 func (p *ProjectRef) ValidateOwnerAndRepo(validOrgs []string) error {
+	// if the project doesn't have an owner, we want to verify the repo's owner instead
+	projectWithRepo, err := GetProjectRefMergedWithRepo(*p)
+	if err != nil {
+		return errors.Wrap(err, "getting the merged project ref")
+	}
+
 	// verify input and webhooks
-	if p.Owner == "" || p.Repo == "" {
+	if projectWithRepo.Owner == "" || projectWithRepo.Repo == "" {
 		return errors.New("no owner/repo specified")
 	}
 
-	if len(validOrgs) > 0 && !utility.StringSliceContains(validOrgs, p.Owner) {
+	return validateOwner(projectWithRepo.Owner, validOrgs)
+}
+
+func validateOwner(owner string, validOrgs []string) error {
+	if len(validOrgs) > 0 && !utility.StringSliceContains(validOrgs, owner) {
 		return errors.New("owner not authorized")
 	}
 	return nil

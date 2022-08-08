@@ -32,11 +32,11 @@ func (c *HostInitConfig) Get(env Environment) error {
 			*c = HostInitConfig{}
 			return nil
 		}
-		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
+		return errors.Wrapf(err, "getting config section '%s'", c.SectionId())
 	}
 
 	if err := res.Decode(c); err != nil {
-		return errors.Wrap(err, "problem decoding result")
+		return errors.Wrapf(err, "decoding config section '%s'", c.SectionId())
 	}
 
 	return nil
@@ -58,7 +58,7 @@ func (c *HostInitConfig) Set() error {
 		},
 	}, options.Update().SetUpsert(true))
 
-	return errors.Wrapf(err, "error updating section %s", c.SectionId())
+	return errors.Wrapf(err, "updating config section '%s'", c.SectionId())
 }
 
 func (c *HostInitConfig) ValidateAndDefault() error {
@@ -66,22 +66,22 @@ func (c *HostInitConfig) ValidateAndDefault() error {
 	if c.HostThrottle == 0 {
 		c.HostThrottle = defaultHostThrottle
 	}
-	catcher.NewWhen(c.HostThrottle < 0, "HostThrottle cannot be negative")
+	catcher.NewWhen(c.HostThrottle < 0, "host throttle cannot be negative")
 
 	if c.ProvisioningThrottle == 0 {
 		c.ProvisioningThrottle = 200
 	}
-	catcher.NewWhen(c.ProvisioningThrottle < 0, "ProvisioningThrottle cannot be negative")
+	catcher.NewWhen(c.ProvisioningThrottle < 0, "host provisioning throttle cannot be negative")
 
 	if c.CloudStatusBatchSize == 0 {
 		c.CloudStatusBatchSize = 500
 	}
-	catcher.NewWhen(c.CloudStatusBatchSize < 0, "CloudStatusBatchSize cannot be negative")
+	catcher.NewWhen(c.CloudStatusBatchSize < 0, "cloud host status batch size cannot be negative")
 
 	if c.MaxTotalDynamicHosts == 0 {
 		c.MaxTotalDynamicHosts = 5000
 	}
-	catcher.NewWhen(c.MaxTotalDynamicHosts < 0, "MaxTotalDynamicHosts cannot be negative")
+	catcher.NewWhen(c.MaxTotalDynamicHosts < 0, "max total dynamic hosts cannot be negative")
 
 	return catcher.Resolve()
 }

@@ -1,9 +1,10 @@
 package evergreen
 
 import (
-	"errors"
 	"fmt"
 	"sync"
+
+	"github.com/pkg/errors"
 
 	"github.com/mongodb/grip"
 )
@@ -20,7 +21,7 @@ var ConfigRegistry *ConfigSectionRegistry
 func init() {
 
 	if err := resetRegistry(); err != nil {
-		panic(fmt.Sprintf("error registering config sections: %s", err.Error()))
+		panic(errors.Wrap(err, "registering config sections").Error())
 	}
 }
 
@@ -39,6 +40,7 @@ func resetRegistry() error {
 		&CloudProviders{},
 		&CommitQueueConfig{},
 		&ContainerPoolsConfig{},
+		&DataPipesConfig{},
 		&HostInitConfig{},
 		&HostJasperConfig{},
 		&JiraConfig{},

@@ -243,6 +243,88 @@ func TestFindOneByExternalID(t *testing.T) {
 	}
 }
 
+func TestFindByFamily(t *testing.T) {
+	for tName, tCase := range map[string]func(t *testing.T){
+		"FindsMatchingSubsetOfPods": func(t *testing.T) {
+			const family = "cool_fam"
+			pods := []Pod{
+				{
+					ID:     "p0",
+					Status: StatusInitializing,
+					Family: family,
+				},
+				{
+					ID:     "p1",
+					Status: StatusRunning,
+					Family: family,
+				},
+				{
+					ID:     "p2",
+					Status: StatusInitializing,
+					Family: family,
+				},
+				{
+					ID:     "p3",
+					Status: StatusInitializing,
+					Family: "not_as_cool_fam",
+				},
+			}
+			for _, p := range pods {
+				require.NoError(t, p.Insert())
+			}
+
+			dbPods, err := FindIntentByFamily(family)
+			require.NoError(t, err)
+			var numMatches int
+			for _, p := range dbPods {
+				switch p.ID {
+				case pods[0].ID, pods[2].ID:
+					numMatches++
+				default:
+					assert.FailNow(t, "found unexpected pod '%s'", p.ID)
+				}
+			}
+			assert.Equal(t, 2, numMatches)
+		},
+		"IgnoresNonIntentPods": func(t *testing.T) {
+			p := Pod{
+				ID:     "pod",
+				Status: StatusStarting,
+				Family: "family",
+			}
+			require.NoError(t, p.Insert())
+			dbPods, err := FindIntentByFamily(p.Family)
+			assert.NoError(t, err)
+			assert.Empty(t, dbPods)
+		},
+		"IgnoresPodsWithoutMatchingFamily": func(t *testing.T) {
+			p := Pod{
+				ID:     "pod",
+				Status: StatusStarting,
+				Family: "family",
+			}
+			require.NoError(t, p.Insert())
+			dbPods, err := FindIntentByFamily("foo")
+			assert.NoError(t, err)
+			assert.Empty(t, dbPods)
+		},
+		"ReturnsNoErrorForNoMatchingPods": func(t *testing.T) {
+			dbPods, err := FindIntentByFamily("nonexistent")
+			assert.NoError(t, err)
+			assert.Empty(t, dbPods)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection))
+			defer func() {
+				assert.NoError(t, db.Clear(Collection))
+			}()
+
+			tCase(t)
+		})
+	}
+}
+
 func TestUpdateOneStatus(t *testing.T) {
 	checkStatusAndTimeInfo := func(t *testing.T, p *Pod, s Status) {
 		assert.Equal(t, s, p.Status)

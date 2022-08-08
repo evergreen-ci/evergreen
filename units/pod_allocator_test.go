@@ -380,7 +380,7 @@ func getTaskThatNeedsContainerAllocation() task.Task {
 }
 
 func getInitializingPod(t *testing.T) pod.Pod {
-	initializing, err := pod.NewTaskIntentPod(pod.TaskIntentPodOptions{
+	initializing, err := pod.NewTaskIntentPod(evergreen.ECSConfig{}, pod.TaskIntentPodOptions{
 		Image:          "rhel",
 		CPU:            256,
 		MemoryMB:       1024,

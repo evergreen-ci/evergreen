@@ -334,7 +334,7 @@ func (m *podOrHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Requ
 
 	isHostMode := hostID != ""
 	if isHostMode {
-		h, statusCode, err := model.ValidateHost(hostID, r)
+		h, statusCode, err := model.ValidateHost(gimlet.GetVars(r)["host_id"], r)
 		if err != nil {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: statusCode,
@@ -428,40 +428,12 @@ func (m *TaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 		}))
 		return
 	}
-
-	podID, ok := gimlet.GetVars(r)["pod_id"]
-	if !ok {
-		podID = r.Header.Get(evergreen.PodHeader)
-	}
-	hostID, ok := gimlet.GetVars(r)["host_id"]
-	if !ok {
-		hostID = r.Header.Get(evergreen.HostHeader)
-	}
-	if hostID == "" && podID == "" {
+	if _, code, err := model.ValidateHost("", r); err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusUnauthorized,
-			Message:    "either host ID or pod ID must be set",
+			StatusCode: code,
+			Message:    errors.Wrapf(err, "invalid host associated with task '%s'", taskID).Error(),
 		}))
 		return
-	}
-	if hostID != "" && podID != "" {
-		gimlet.WriteResponse(rw, gimlet.NewJSONErrorResponse("host ID and pod ID cannot both be set"))
-		return
-	}
-	isHostMode := hostID != ""
-	if isHostMode {
-		if _, code, err := model.ValidateHost(hostID, r); err != nil {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: code,
-				Message:    errors.Wrapf(err, "invalid host associated with task '%s'", taskID).Error(),
-			}))
-			return
-		}
-	} else {
-		if err := checkPodSecret(r, podID); err != nil {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
-			return
-		}
 	}
 
 	next(rw, r)

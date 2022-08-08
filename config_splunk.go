@@ -22,13 +22,13 @@ func (c *SplunkConfig) Get(env Environment) error {
 	res := coll.FindOne(ctx, byId(c.SectionId()))
 	if err := res.Err(); err != nil {
 		if err != mongo.ErrNoDocuments {
-			return errors.Wrapf(err, "retrieving section '%s'", c.SectionId())
+			return errors.Wrapf(err, "getting config section '%s'", c.SectionId())
 		}
 		// TODO EVG-17353: remove retrieving settings from global
 		globalConfig := coll.FindOne(ctx, byId(ConfigDocID))
 		if err := globalConfig.Err(); err != nil {
 			if err != mongo.ErrNoDocuments {
-				return errors.Wrap(err, "retrieving global settings")
+				return errors.Wrap(err, "getting global config")
 			}
 			c = &SplunkConfig{}
 			return nil
@@ -42,7 +42,7 @@ func (c *SplunkConfig) Get(env Environment) error {
 	}
 
 	if err := res.Decode(c); err != nil {
-		return errors.Wrap(err, "decoding result")
+		return errors.Wrapf(err, "decoding config section '%s'", c.SectionId())
 	}
 
 	return nil
@@ -62,7 +62,7 @@ func (c *SplunkConfig) Set() error {
 		},
 	}, options.Update().SetUpsert(true))
 
-	return errors.Wrapf(err, "updating section '%s'", c.SectionId())
+	return errors.Wrapf(err, "updating config section '%s'", c.SectionId())
 }
 
 func (c *SplunkConfig) ValidateAndDefault() error { return nil }

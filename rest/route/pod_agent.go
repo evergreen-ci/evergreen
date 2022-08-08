@@ -200,6 +200,46 @@ func (h *podProvisioningScript) curlRetryArgs(numRetries, maxSecs int) string {
 	return fmt.Sprintf("--retry %d --retry-max-time %d", numRetries, maxSecs)
 }
 
+/////////////////////////////////////////
+//
+// GET /rest/v2/pods/{pod_id}/agent/setup
+
+type podAgentSetup struct {
+	settings *evergreen.Settings
+}
+
+func makePodAgentSetup(settings *evergreen.Settings) gimlet.RouteHandler {
+	return &podAgentSetup{
+		settings: settings,
+	}
+}
+
+func (h *podAgentSetup) Factory() gimlet.RouteHandler {
+	return &podAgentSetup{
+		settings: h.settings,
+	}
+}
+
+func (h *podAgentSetup) Parse(ctx context.Context, r *http.Request) error {
+	return nil
+}
+
+func (h *podAgentSetup) Run(ctx context.Context) gimlet.Responder {
+	data := apimodels.AgentSetupData{
+		SplunkServerURL:   h.settings.Splunk.SplunkConnectionInfo.ServerURL,
+		SplunkClientToken: h.settings.Splunk.SplunkConnectionInfo.Token,
+		SplunkChannel:     h.settings.Splunk.SplunkConnectionInfo.Channel,
+		S3Bucket:          h.settings.Providers.AWS.S3.Bucket,
+		S3Key:             h.settings.Providers.AWS.S3.Key,
+		S3Secret:          h.settings.Providers.AWS.S3.Secret,
+		TaskSync:          h.settings.Providers.AWS.TaskSync,
+		LogkeeperURL:      h.settings.LoggerConfig.LogkeeperURL,
+	}
+	return gimlet.NewJSONResponse(data)
+}
+
+////////////////////////////////////////////////
+//
 // GET /rest/v2/pods/{pod_id}/agent/next_task
 
 type podAgentNextTask struct {
