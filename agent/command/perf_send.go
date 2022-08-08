@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/util"
@@ -99,7 +100,8 @@ func (c *perfSend) addEvgData(report *poplar.Report, conf *internal.TaskConfig) 
 	report.TaskName = conf.Task.DisplayName
 	report.TaskID = conf.Task.Id
 	report.Execution = conf.Task.Execution
-	report.Mainline = !conf.Task.IsPatchRequest()
+	report.Mainline = conf.Task.Requester == evergreen.RepotrackerVersionRequester
+	report.Requester = conf.Task.Requester
 
 	report.BucketConf.APIKey = c.AWSKey
 	report.BucketConf.APISecret = c.AWSSecret
