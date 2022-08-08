@@ -253,7 +253,7 @@ func (c *Mock) GetNextTask(ctx context.Context, details *apimodels.GetNextTaskDe
 	}, nil
 }
 
-// GetCedarConfig returns mock cedar service information.
+// GetCedarConfig returns a mock Cedar service configuration.
 func (c *Mock) GetCedarConfig(ctx context.Context) (*apimodels.CedarConfig, error) {
 	return &apimodels.CedarConfig{
 		BaseURL:  "base_url",
@@ -269,6 +269,16 @@ func (c *Mock) GetCedarGRPCConn(ctx context.Context) (*grpc.ClientConn, error) {
 		return nil, nil
 	}
 	return c.CedarGRPCConn, nil
+}
+
+// GetDataPipesConfig returns a mock Data-Pipes service configuration.
+func (c *Mock) GetDataPipesConfig(ctx context.Context) (*apimodels.DataPipesConfig, error) {
+	return &apimodels.DataPipesConfig{
+		Host:         "https://url.com",
+		Region:       "us-east-1",
+		AWSAccessKey: "access",
+		AWSSecretKey: "secret",
+	}, nil
 }
 
 // SendTaskLogMessages posts tasks messages to the api server
