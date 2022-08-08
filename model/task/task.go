@@ -2544,7 +2544,7 @@ func ArchiveMany(tasks []Task) error {
 			}
 
 			if err != nil {
-				return errors.Wrapf(err, "finding execution tasks for display task '%s'.", t.Id)
+				return errors.Wrapf(err, "finding execution tasks for display task '%s'", t.Id)
 			}
 			for _, et := range eTasks {
 				execTaskIds = append(execTaskIds, et.Id)
@@ -2560,9 +2560,7 @@ func ArchiveMany(tasks []Task) error {
 		"tasks_to_archive": allTaskIds,
 	})
 
-	err := archiveAll(allTaskIds, execTaskIds, toUpdateExecTaskIds, archivedTasks)
-
-	return err
+	return archiveAll(allTaskIds, execTaskIds, toUpdateExecTaskIds, archivedTasks)
 }
 
 // archiveAll takes in:
