@@ -126,8 +126,11 @@ func (h *repoIDPatchHandler) Parse(ctx context.Context, r *http.Request) error {
 	}
 
 	// read the new changes onto it
-	pRef := h.apiNewRepoRef.ToService()
-	h.newRepoRef = &dbModel.RepoRef{ProjectRef: pRef}
+	pRef, err := h.apiNewRepoRef.ToService()
+	if err != nil {
+		return errors.Wrap(err, "converting new repo ref to service model")
+	}
+	h.newRepoRef = &dbModel.RepoRef{ProjectRef: *pRef}
 	return nil
 }
 
