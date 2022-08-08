@@ -287,6 +287,7 @@ func TestHostNextTask(t *testing.T) {
 					resp := rh.Run(ctx)
 					taskResp := resp.Data().(apimodels.NextTaskResponse)
 					assert.NotEmpty(t, taskResp.TaskId)
+
 					assert.Equal(t, taskResp.Build, "buildId")
 				},
 				"LatestAgentRevisionInNextTaskDetails": func(ctx context.Context, t *testing.T) {
@@ -311,7 +312,7 @@ func TestHostNextTask(t *testing.T) {
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					require.NoError(t, db.Clear(host.Collection))
+					require.NoError(t, db.ClearCollections(host.Collection, task.Collection))
 					nonLegacyHost := &host.Host{
 						Id: "nonLegacyHost",
 						Distro: distro.Distro{
@@ -327,6 +328,15 @@ func TestHostNextTask(t *testing.T) {
 						AgentRevision: "out-of-date",
 					}
 					require.NoError(t, nonLegacyHost.Insert())
+					task1 := task.Task{
+						Id:        "task1",
+						Status:    evergreen.TaskUndispatched,
+						Activated: true,
+						BuildId:   "buildId",
+						Project:   "exists",
+						StartTime: utility.ZeroTime,
+					}
+					require.NoError(t, task1.Insert())
 					testCase(ctx, t)
 				})
 			}
