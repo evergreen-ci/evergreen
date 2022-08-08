@@ -3,7 +3,6 @@ package task
 import (
 	"context"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"strconv"
 	"testing"
 	"time"
@@ -29,10 +28,6 @@ import (
 var (
 	oneMs = time.Millisecond
 )
-
-func init() {
-	testutil.Setup()
-}
 
 var depTaskIds = []Dependency{
 	{TaskId: "td1", Status: evergreen.TaskSucceeded},
