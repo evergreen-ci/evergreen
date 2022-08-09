@@ -7,7 +7,7 @@ go 1.16
 replace gopkg.in/20210107192922/yaml.v3 => gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 
 // TODO: Remove this once changes in timber are merged and we update here.
-replace github.com/evergreen-ci/timber => github.com/julianedwards/timber v0.0.0-20220809195229-e4b683ba33e8
+replace github.com/evergreen-ci/timber => github.com/julianedwards/timber v0.0.0-20220809201653-6f695723c84f
 
 require (
 	github.com/99designs/gqlgen v0.14.0
