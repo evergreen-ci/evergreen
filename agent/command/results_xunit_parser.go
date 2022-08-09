@@ -127,12 +127,17 @@ func (tc testCase) toModelTestResultAndLog(conf *internal.TaskConfig) (task.Test
 	}
 
 	if log != nil {
-		// When sending test logs to Cedar we need to use a
-		// unique string since there may be duplicate file
-		// names if there are duplicate test names.
-		log.Name = utility.RandomString()
+		if conf.ProjectRef.IsCedarTestResultsEnabled() {
+			// When sending test logs to cedar we need to use a
+			// unique string since there may be duplicate file
+			// names if there are duplicate test names.
+			log.Name = utility.RandomString()
+		} else {
+			log.Name = res.TestFile
+		}
 		log.Task = conf.Task.Id
 		log.TaskExecution = conf.Task.Execution
+
 		res.LogTestName = log.Name
 	}
 

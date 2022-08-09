@@ -155,6 +155,7 @@ type Project {
   batchTime: Int!
   branch: String!
   buildBaronSettings: BuildBaronSettings!
+  cedarTestResultsEnabled: Boolean
   commitQueue: CommitQueueParams!
   deactivatePrevious: Boolean
   defaultLogger: String!

@@ -1987,7 +1987,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 
 	// test that restarting a task correctly resets the task and archives it
 	assert.NoError(resetTaskData())
-	assert.NoError(resetTask("displayTask", "caller", false))
+	assert.NoError(resetTask("displayTask", "caller"))
 	archivedTasks, err := task.FindOldWithDisplayTasks(nil)
 	assert.NoError(err)
 	assert.Len(archivedTasks, 3)
@@ -2011,7 +2011,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	dt, err := task.FindOneId("displayTask")
 	assert.NoError(err)
 	assert.NoError(dt.SetResetFailedWhenFinished())
-	assert.NoError(resetTask(dt.Id, "caller", false))
+	assert.NoError(resetTask(dt.Id, "caller"))
 	tasks, err = task.FindAll(db.Query(task.ByIds(allTasks)))
 	assert.NoError(err)
 	assert.Len(tasks, 3)
