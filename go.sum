@@ -399,8 +399,6 @@ github.com/evergreen-ci/shrub v0.0.0-20211025143051-a8d91b2e29fd h1:ZTiko2itvbnM
 github.com/evergreen-ci/shrub v0.0.0-20211025143051-a8d91b2e29fd/go.mod h1:UTWsClgKujHCHUovGzTTRW5i5HPWo5Ie/PTeODAkcjo=
 github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826 h1:oViYb1lmJN1k9SExkF87VTess4JVR7Uvwr8AAKzJ864=
 github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826/go.mod h1:SnQ9F63VSR6kHbC4aFE+f7+iL3yANhjaN9TT9T4skao=
-github.com/evergreen-ci/timber v0.0.0-20220119202616-544be15f3b95 h1:Y88D2bv37Ocfa8BoLfbTVepef9VvikKkoP5TaFQw/Jk=
-github.com/evergreen-ci/timber v0.0.0-20220119202616-544be15f3b95/go.mod h1:Owh+4Jydm5Pp+OuNgW4Z9YB79tc6hly2g36t9fnWqMc=
 github.com/evergreen-ci/utility v0.0.0-20211026201827-97b21fa2660a/go.mod h1:fuEDytmDhOv+UCUwRPG/qD7mjVkUgx37KEv+thUgHVk=
 github.com/evergreen-ci/utility v0.0.0-20220302150552-3f7a1a268ea7/go.mod h1:EXIwZ5mlP/g0UrWPWX7oRTKQ8nD/ghE3lPCKQ8JMjbk=
 github.com/evergreen-ci/utility v0.0.0-20220404192535-d16eb64796e6/go.mod h1:wSui4nRyDZzm2db7Ju7ZzBAelLyVLmcTPJEIh1IdSrc=
@@ -682,6 +680,8 @@ github.com/jstemmer/go-junit-report v0.0.0-20190106144839-af01ea7f8024/go.mod h1
 github.com/jstemmer/go-junit-report v0.9.1/go.mod h1:Brl9GWCQeLvo8nXZwPNNblvFj/XSXhF0NWZEnDohbsk=
 github.com/jtolds/gls v4.20.0+incompatible h1:xdiiI2gbIgH/gLH7ADydsJ1uDOEzR8yvV7C0MuV77Wo=
 github.com/jtolds/gls v4.20.0+incompatible/go.mod h1:QJZ7F/aHp+rZTRtaJ1ow/lLfFfVYBRgL+9YlvaHOwJU=
+github.com/julianedwards/timber v0.0.0-20220809201653-6f695723c84f h1:OIagG7S+GAggRpIEhzBzhhCh2LMD23xhUDhYo3JqLp8=
+github.com/julianedwards/timber v0.0.0-20220809201653-6f695723c84f/go.mod h1:wGsppw1QG3kmK1wtMgQHfiTr0ZTjtLvmmQxN8T+k8/4=
 github.com/julienschmidt/httprouter v1.2.0/go.mod h1:SYymIcj16QtmaHHD7aYtjjsJG7VTCxuUUipMqKk8s4w=
 github.com/jung-kurt/gofpdf v1.0.0/go.mod h1:7Id9E/uU8ce6rXgefFLlgrJj/GYY22cpxn+r32jIOes=
 github.com/jung-kurt/gofpdf v1.0.3-0.20190309125859-24315acbbda5/go.mod h1:7Id9E/uU8ce6rXgefFLlgrJj/GYY22cpxn+r32jIOes=
