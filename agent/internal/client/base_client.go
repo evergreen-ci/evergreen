@@ -637,8 +637,7 @@ func (c *baseCommunicator) GetTaskPatch(ctx context.Context, taskData TaskData, 
 	return &patch, nil
 }
 
-// GetCedarConfig returns the cedar service information including the base URL,
-// URL, RPC port, and credentials.
+// GetCedarConfig returns the Cedar service configuration.
 func (c *baseCommunicator) GetCedarConfig(ctx context.Context) (*apimodels.CedarConfig, error) {
 	info := requestInfo{
 		method:  http.MethodGet,
@@ -648,15 +647,36 @@ func (c *baseCommunicator) GetCedarConfig(ctx context.Context) (*apimodels.Cedar
 
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, "getting cedar config: %s", err.Error())
+		return nil, utility.RespErrorf(resp, "getting the Cedar config: %s", err.Error())
 	}
 
-	var cc apimodels.CedarConfig
-	if err := utility.ReadJSON(resp.Body, &cc); err != nil {
-		return nil, errors.Wrap(err, "reading cedar config from response")
+	config := &apimodels.CedarConfig{}
+	if err := utility.ReadJSON(resp.Body, config); err != nil {
+		return nil, errors.Wrap(err, "reading the Cedar config from the response")
 	}
 
-	return &cc, nil
+	return config, nil
+}
+
+// GetDataPipesConfig returns the Data-Pipes service configuration.
+func (c *baseCommunicator) GetDataPipesConfig(ctx context.Context) (*apimodels.DataPipesConfig, error) {
+	info := requestInfo{
+		method:  http.MethodGet,
+		version: apiVersion2,
+		path:    "agent/data_pipes_config",
+	}
+
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return nil, utility.RespErrorf(resp, "getting the Data-Pipes config: %s", err.Error())
+	}
+
+	config := &apimodels.DataPipesConfig{}
+	if err := utility.ReadJSON(resp.Body, config); err != nil {
+		return nil, errors.Wrap(err, "reading the Data-Pipes config from the response")
+	}
+
+	return config, nil
 }
 
 // GetPatchFiles is used by the git.get_project plugin and fetches
