@@ -6,9 +6,6 @@ go 1.16
 // project validation.
 replace gopkg.in/20210107192922/yaml.v3 => gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 
-// TODO: Remove this once changes in timber are merged and we update here.
-replace github.com/evergreen-ci/timber => github.com/julianedwards/timber v0.0.0-20220809201653-6f695723c84f
-
 require (
 	github.com/99designs/gqlgen v0.14.0
 	github.com/PuerkitoBio/rehttp v1.1.0
@@ -26,7 +23,7 @@ require (
 	github.com/evergreen-ci/pail v0.0.0-20220405154537-920afff49d92
 	github.com/evergreen-ci/poplar v0.0.0-20220801165844-adb53dc1b937
 	github.com/evergreen-ci/shrub v0.0.0-20211025143051-a8d91b2e29fd
-	github.com/evergreen-ci/timber v0.0.0-20220119202616-544be15f3b95
+	github.com/evergreen-ci/timber v0.0.0-20220809215118-028567bbef72
 	github.com/evergreen-ci/utility v0.0.0-20220725171106-4730479c6118
 	github.com/google/go-github/v34 v34.0.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
