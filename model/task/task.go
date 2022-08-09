@@ -150,6 +150,9 @@ type Task struct {
 	// Set to true if the task should be considered for mainline github checks
 	IsGithubCheck bool `bson:"is_github_check,omitempty" json:"is_github_check,omitempty"`
 
+	// CanReset indicates if the task is in a valid state to be reset.
+	CanReset bool `bson:"can_reset,omitempty" json:"can_reset,omitempty"`
+
 	Execution             int    `bson:"execution" json:"execution"`
 	LatestParentExecution int    `bson:"latest_parent_execution" json:"latest_parent_execution"`
 	OldTaskId             string `bson:"old_task_id,omitempty" json:"old_task_id,omitempty"`
@@ -1450,6 +1453,7 @@ func (t *Task) MarkSystemFailed(description string) error {
 				StatusKey:     evergreen.TaskFailed,
 				FinishTimeKey: t.FinishTime,
 				DetailsKey:    t.Details,
+				CanResetKey:   true,
 			},
 		},
 	)
@@ -1867,6 +1871,7 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 				StartTimeKey:        t.StartTime,
 				LogsKey:             detail.Logs,
 				HasLegacyResultsKey: t.HasLegacyResults,
+				CanResetKey:         true,
 			},
 		})
 
@@ -1948,7 +1953,9 @@ func (t *Task) displayTaskPriority() int {
 func (t *Task) Reset() error {
 	return UpdateOne(
 		bson.M{
-			IdKey: t.Id,
+			IdKey:       t.Id,
+			StatusKey:   bson.M{"$in": evergreen.TaskCompletedStatuses},
+			CanResetKey: true,
 		},
 		resetTaskUpdate(t),
 	)
@@ -1966,7 +1973,11 @@ func ResetTasks(tasks []Task) error {
 	}
 
 	if _, err := UpdateAll(
-		bson.M{IdKey: bson.M{"$in": taskIDs}},
+		bson.M{
+			IdKey:       bson.M{"$in": taskIDs},
+			StatusKey:   bson.M{"$in": evergreen.TaskCompletedStatuses},
+			CanResetKey: true,
+		},
 		resetTaskUpdate(nil),
 	); err != nil {
 		return err
@@ -1999,6 +2010,7 @@ func resetTaskUpdate(t *Task) bson.M {
 		t.HostCreateDetails = []HostCreateDetail{}
 		t.OverrideDependencies = false
 		t.ContainerAllocationAttempts = 0
+		t.CanReset = false
 	}
 	update := bson.M{
 		"$set": bson.M{
@@ -2025,6 +2037,7 @@ func resetTaskUpdate(t *Task) bson.M {
 			HostIdKey:                  "",
 			HostCreateDetailsKey:       "",
 			OverrideDependenciesKey:    "",
+			CanResetKey:                "",
 		},
 	}
 	return update
@@ -2493,31 +2506,36 @@ func (t *Task) Archive() error {
 		return errors.Wrapf(err, "archiving display task '%s'", t.Id)
 	} else {
 		// Archiving a single task.
-		archiveTask := t.makeArchivedTask()
-		err := db.Insert(OldCollection, archiveTask)
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"archive_task_id": archiveTask.Id,
-				"old_task_id":     archiveTask.OldTaskId,
-				"execution":       t.Execution,
-				"display_only":    t.DisplayOnly,
-			}))
-			return errors.Wrap(err, "inserting archived task into old tasks")
+		if evergreen.IsFinishedTaskStatus(t.Status) {
+			archiveTask := t.makeArchivedTask()
+			err := db.Insert(OldCollection, archiveTask)
+			if err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"archive_task_id": archiveTask.Id,
+					"old_task_id":     archiveTask.OldTaskId,
+					"execution":       t.Execution,
+					"display_only":    t.DisplayOnly,
+				}))
+				return errors.Wrap(err, "inserting archived task into old tasks")
+			}
+			err = UpdateOne(
+				bson.M{IdKey: t.Id},
+				bson.M{
+					"$set": bson.M{
+						CanResetKey: true,
+					},
+					"$unset": bson.M{
+						AbortedKey:              "",
+						AbortInfoKey:            "",
+						OverrideDependenciesKey: "",
+					},
+					"$inc": bson.M{ExecutionKey: 1},
+				})
+			if err != nil && !adb.ResultsNotFound(err) {
+				return errors.Wrap(err, "updating task")
+			}
+			t.Aborted = false
 		}
-		err = UpdateOne(
-			bson.M{IdKey: t.Id},
-			bson.M{
-				"$unset": bson.M{
-					AbortedKey:              "",
-					AbortInfoKey:            "",
-					OverrideDependenciesKey: "",
-				},
-				"$inc": bson.M{ExecutionKey: 1},
-			})
-		if err != nil {
-			return errors.Wrap(err, "updating task")
-		}
-		t.Aborted = false
 		return nil
 	}
 }
@@ -2649,6 +2667,7 @@ func archiveAll(taskIds, execTaskIds, toUpdateExecTaskIds []string, archivedTask
 				bson.A{ // Pipeline
 					bson.M{"$set": bson.M{ // Execution = LPE
 						ExecutionKey: "$" + LatestParentExecutionKey,
+						CanResetKey:  true,
 					}},
 					bson.M{"$unset": bson.A{
 						AbortedKey,
