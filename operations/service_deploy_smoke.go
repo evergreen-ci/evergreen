@@ -154,6 +154,11 @@ func smokeStartEvergreen() cli.Command {
 					return errors.Wrap(err, "error running agent")
 				}
 			} else if startAgentMonitor {
+				_, err = timberutil.NewMockCedarServer(ctx, cedarPort)
+				if err != nil {
+					return errors.Wrap(err, "starting mock Cedar service")
+				}
+
 				if distroID == "" {
 					return errors.New("distro ID URL cannot be empty when starting agent monitor")
 				}
