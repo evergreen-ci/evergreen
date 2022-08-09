@@ -5,7 +5,6 @@ input RepoRefInput {
   batchTime: Int
   branch: String
   buildBaronSettings: BuildBaronSettingsInput
-  cedarTestResultsEnabled: Boolean
   commitQueue: CommitQueueParamsInput
   deactivatePrevious: Boolean
   defaultLogger: String
@@ -53,7 +52,6 @@ type RepoRef {
   batchTime: Int!
   branch: String!
   buildBaronSettings: BuildBaronSettings!
-  cedarTestResultsEnabled: Boolean!
   commitQueue: RepoCommitQueueParams!
   deactivatePrevious: Boolean!
   defaultLogger: String!
