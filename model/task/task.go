@@ -2506,36 +2506,34 @@ func (t *Task) Archive() error {
 		return errors.Wrapf(err, "archiving display task '%s'", t.Id)
 	} else {
 		// Archiving a single task.
-		if evergreen.IsFinishedTaskStatus(t.Status) {
-			archiveTask := t.makeArchivedTask()
-			err := db.Insert(OldCollection, archiveTask)
-			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"archive_task_id": archiveTask.Id,
-					"old_task_id":     archiveTask.OldTaskId,
-					"execution":       t.Execution,
-					"display_only":    t.DisplayOnly,
-				}))
-				return errors.Wrap(err, "inserting archived task into old tasks")
-			}
-			err = UpdateOne(
-				bson.M{IdKey: t.Id},
-				bson.M{
-					"$set": bson.M{
-						CanResetKey: true,
-					},
-					"$unset": bson.M{
-						AbortedKey:              "",
-						AbortInfoKey:            "",
-						OverrideDependenciesKey: "",
-					},
-					"$inc": bson.M{ExecutionKey: 1},
-				})
-			if err != nil && !adb.ResultsNotFound(err) {
-				return errors.Wrap(err, "updating task")
-			}
-			t.Aborted = false
+		archiveTask := t.makeArchivedTask()
+		err := db.Insert(OldCollection, archiveTask)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"archive_task_id": archiveTask.Id,
+				"old_task_id":     archiveTask.OldTaskId,
+				"execution":       t.Execution,
+				"display_only":    t.DisplayOnly,
+			}))
+			return errors.Wrap(err, "inserting archived task into old tasks")
 		}
+		err = UpdateOne(
+			bson.M{IdKey: t.Id, StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses}},
+			bson.M{
+				"$set": bson.M{
+					CanResetKey: true,
+				},
+				"$unset": bson.M{
+					AbortedKey:              "",
+					AbortInfoKey:            "",
+					OverrideDependenciesKey: "",
+				},
+				"$inc": bson.M{ExecutionKey: 1},
+			})
+		if err != nil && !adb.ResultsNotFound(err) {
+			return errors.Wrap(err, "updating task")
+		}
+		t.Aborted = false
 		return nil
 	}
 }
@@ -2613,6 +2611,9 @@ func archiveAll(taskIds, execTaskIds, toUpdateExecTaskIds []string, archivedTask
 				bson.M{
 					"$inc": bson.M{
 						ExecutionKey: 1,
+					},
+					"$set": bson.M{
+						CanResetKey: true,
 					},
 					"$unset": bson.M{
 						AbortedKey:              "",
