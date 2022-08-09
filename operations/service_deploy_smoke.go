@@ -12,6 +12,7 @@ import (
 	"strconv"
 
 	"github.com/evergreen-ci/evergreen"
+	timberutil "github.com/evergreen-ci/timber/testutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
@@ -61,6 +62,8 @@ func smokeStartEvergreen() cli.Command {
 
 		// apiPort is the local port the API will listen on.
 		apiPort = ":9090"
+
+		cedarPort = 7070
 
 		hostId     = "localhost"
 		hostSecret = "de249183582947721fdfb2ea1796574b"
@@ -118,6 +121,9 @@ func smokeStartEvergreen() cli.Command {
 
 			exit := make(chan error, 3)
 
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
 			if startWeb {
 				if err := smokeRunBinary(exit, "web.service", wd, binary, "service", "web", "--conf", confPath); err != nil {
 					return errors.Wrap(err, "error running web service")
@@ -126,6 +132,11 @@ func smokeStartEvergreen() cli.Command {
 			apiServerURL := smokeUrlPrefix + apiPort
 
 			if startAgent {
+				_, err = timberutil.NewMockCedarServer(ctx, cedarPort)
+				if err != nil {
+					return errors.Wrap(err, "starting mock Cedar service")
+				}
+
 				err := smokeRunBinary(exit, "agent",
 					wd,
 					binary,
@@ -146,8 +157,6 @@ func smokeStartEvergreen() cli.Command {
 				if distroID == "" {
 					return errors.New("distro ID URL cannot be empty when starting agent monitor")
 				}
-				ctx, cancel := context.WithCancel(context.Background())
-				defer cancel()
 				manager, err := jasper.NewSynchronizedManager(false)
 				if err != nil {
 					return errors.Wrap(err, "error setting up Jasper process manager")

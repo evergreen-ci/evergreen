@@ -65,3 +65,10 @@ repotracker:
   maxreporevisionstosearch: 10
 
 shutdown_wait_seconds: 10
+
+cedar:
+  base_url: "localhost"
+  rpc_port: "7070"
+  user: "user"
+  api_key: "key"
+  insecure: true
