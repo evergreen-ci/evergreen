@@ -65,22 +65,22 @@ func (c *goTest2JSONCommand) Execute(ctx context.Context,
 
 func (c *goTest2JSONCommand) executeOneFile(ctx context.Context, file string,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
-	logger.Task().Infof("parsing test file '%s'...", file)
+	logger.Task().Infof("Parsing test file '%s'...", file)
 	results, err := c.loadJSONFile(file, logger, conf)
 	if err != nil {
-		logger.Task().Errorf("error parsing test file: %v", err)
-		return errors.Wrapf(err, "parsing test file: %v", err)
+		logger.Task().Errorf("Error parsing test file: %s", err)
+		return errors.Wrapf(err, "Error parsing test file: %s", err)
 	}
 
 	if len(results.Tests) == 0 {
-		logger.Task().Warning("parsed no events from test file")
+		logger.Task().Warning("Parsed no events from test file")
 		if len(results.Log) == 0 {
-			logger.Task().Warning("test log is empty")
+			logger.Task().Warning("Test log is empty")
 			return nil
 		}
 	}
 
-	logger.Task().Info("posting test logs...")
+	logger.Task().Info("Sending test logs to server...")
 	_, suiteName := filepath.Split(file)
 	log := model.TestLog{
 		Name:          suiteName,
@@ -88,17 +88,18 @@ func (c *goTest2JSONCommand) executeOneFile(ctx context.Context, file string,
 		TaskExecution: conf.Task.Execution,
 		Lines:         results.Log,
 	}
-	if err := sendTestLog(ctx, comm, conf, &log); err != nil {
-		logger.Task().Errorf("error posting test log: %v", err)
-		return errors.Wrap(err, "sending test log")
+	logId, err := sendTestLog(ctx, comm, conf, &log)
+	if err != nil {
+		logger.Task().Errorf("failed to post log: %v", err)
+		return errors.Wrap(err, "failed to post log")
 	}
-	logger.Task().Info("successfully posted test logs")
+	logger.Task().Info("Finished posting logs to server")
 
 	if len(results.Tests) == 0 {
 		return nil
 	}
 
-	// Exclude package level results if we have more than 1 test.
+	// exclude package level results if we have more than 1 test
 	if len(results.Tests) > 1 {
 		key := test2json.TestKey{
 			Name:      "",
@@ -110,10 +111,20 @@ func (c *goTest2JSONCommand) executeOneFile(ctx context.Context, file string,
 	evgResults := make([]task.TestResult, 0, len(results.Tests))
 	for _, v := range results.Tests {
 		testResult := goTest2JSONToTestResult(suiteName, v.Name, conf.Task, v)
+		testResult.LogId = logId
 		evgResults = append(evgResults, testResult)
 	}
 
-	return errors.Wrap(sendTestResults(ctx, comm, logger, conf, &task.LocalTestResults{Results: evgResults}), "sending test results")
+	logger.Task().Info("Sending parsed results to server...")
+	if err := sendTestResults(ctx, comm, logger, conf, &task.LocalTestResults{
+		Results: evgResults,
+	}); err != nil {
+		logger.Task().Errorf("problem posting parsed results to the server: %+v", err)
+		return errors.Wrap(err, "problem sending test results")
+	}
+	logger.Task().Info("Successfully sent parsed results to server")
+
+	return nil
 }
 
 func (c *goTest2JSONCommand) loadJSONFile(file string, logger client.LoggerProducer, conf *internal.TaskConfig) (*test2json.TestResults, error) {

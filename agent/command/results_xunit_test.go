@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -154,7 +155,25 @@ func TestXUnitParseAndUpload(t *testing.T) {
 	require.NoError(t, err)
 	conf.WorkDir = filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "xunit")
 
+	t.Run("SendToEvergreen", func(t *testing.T) {
+		logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+		assert.NoError(err)
+		err = xr.parseAndUploadResults(ctx, conf, logger, comm)
+		assert.NoError(err)
+		assert.NoError(logger.Close())
+
+		messages := comm.GetMockMessages()[conf.Task.Id]
+		successMessage := "Attach test logs succeeded for 12 of 12 files"
+		found := false
+		for _, message := range messages {
+			if successMessage == message.Message {
+				found = true
+			}
+		}
+		assert.True(found)
+	})
 	t.Run("SendToCedar", func(t *testing.T) {
+		conf.ProjectRef.CedarTestResultsEnabled = utility.TruePtr()
 		logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 		assert.NoError(err)
 		cedarSrv := setupCedarServer(ctx, t, comm)
