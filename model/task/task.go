@@ -2590,7 +2590,7 @@ func archiveAll(taskIds, execTaskIds, toUpdateExecTaskIds []string, archivedTask
 			}
 		}
 		if len(taskIds) > 0 {
-			evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(sessCtx, bson.M{
+			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(sessCtx, bson.M{
 				IdKey: bson.M{"$in": taskIds}},
 				bson.M{
 					"$inc": bson.M{
