@@ -1575,9 +1575,15 @@ func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bo
 	if err != nil {
 		return errors.Wrap(err, "activating tasks")
 	}
+	logs := []event.EventLogEntry{}
 	for _, t := range tasks {
-		event.LogTaskActivated(t.Id, t.Execution, caller)
+		logs = append(logs, event.GetTaskActivatedEvent(t.Id, t.Execution, caller))
 	}
+	grip.Error(message.WrapError(event.LogManyEvents(logs), message.Fields{
+		"message":  "problem logging task activated events",
+		"task_ids": taskIDs,
+		"caller":   caller,
+	}))
 
 	if updateDependencies {
 		return ActivateDeactivatedDependencies(taskIDs, caller)
@@ -1699,9 +1705,15 @@ func ActivateDeactivatedDependencies(tasks []string, caller string) error {
 		return errors.Wrap(err, "updating activation for dependencies")
 	}
 
+	logs := []event.EventLogEntry{}
 	for _, t := range tasksToActivate {
-		event.LogTaskActivated(t.Id, t.Execution, caller)
+		logs = append(logs, event.GetTaskActivatedEvent(t.Id, t.Execution, caller))
 	}
+	grip.Error(message.WrapError(event.LogManyEvents(logs), message.Fields{
+		"message":  "problem logging task activated events",
+		"task_ids": taskIDsToActivate,
+		"caller":   caller,
+	}))
 
 	return nil
 }
@@ -1772,9 +1784,15 @@ func DeactivateTasks(tasks []Task, updateDependencies bool, caller string) error
 	if err != nil {
 		return errors.Wrap(err, "deactivating tasks")
 	}
+	logs := []event.EventLogEntry{}
 	for _, t := range tasks {
-		event.LogTaskDeactivated(t.Id, t.Execution, caller)
+		logs = append(logs, event.GetTaskDeactivatedEvent(t.Id, t.Execution, caller))
 	}
+	grip.Error(message.WrapError(event.LogManyEvents(logs), message.Fields{
+		"message":  "problem logging task deactivated events",
+		"task_ids": taskIDs,
+		"caller":   caller,
+	}))
 
 	if updateDependencies {
 		return DeactivateDependencies(taskIDs, caller)
@@ -1814,9 +1832,16 @@ func DeactivateDependencies(tasks []string, caller string) error {
 	if err != nil {
 		return errors.Wrap(err, "deactivating dependencies")
 	}
+
+	logs := []event.EventLogEntry{}
 	for _, t := range tasksToUpdate {
-		event.LogTaskDeactivated(t.Id, t.Execution, caller)
+		logs = append(logs, event.GetTaskDeactivatedEvent(t.Id, t.Execution, caller))
 	}
+	grip.Error(message.WrapError(event.LogManyEvents(logs), message.Fields{
+		"message":  "problem logging task deactivated events",
+		"task_ids": taskIDsToUpdate,
+		"caller":   caller,
+	}))
 
 	return nil
 }

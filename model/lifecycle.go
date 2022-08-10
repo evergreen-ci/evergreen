@@ -92,18 +92,20 @@ func SetVersionActivation(versionId string, active bool, caller string) error {
 		}
 	}
 	if len(tasksToModify) > 0 {
-		var buildIds []string
-		for _, task := range tasksToModify {
-			if !utility.StringSliceContains(buildIds, task.BuildId) {
-				if err = SetBuildActivation(task.BuildId, active, caller); err != nil {
-					return errors.Wrap(err, "updating build status")
-				}
-				buildIds = append(buildIds, task.BuildId)
-			}
+		return nil
+	}
+
+	var buildIds []string
+	for _, t := range tasksToModify {
+		if !utility.StringSliceContains(buildIds, t.BuildId) {
+			buildIds = append(buildIds, t.BuildId)
 		}
-		if err := UpdateVersionAndPatchStatusForBuilds(buildIds); err != nil {
-			return errors.Wrapf(err, "updating build and version status for version '%s'", versionId)
-		}
+	}
+	if err := build.UpdateActivation(buildIds, active, caller); err != nil {
+		return errors.Wrapf(err, "setting build activations to %t", active)
+	}
+	if err := UpdateVersionAndPatchStatusForBuilds(buildIds); err != nil {
+		return errors.Wrapf(err, "updating build and version status for version '%s'", versionId)
 	}
 	return nil
 }
