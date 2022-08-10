@@ -2546,7 +2546,7 @@ func ArchiveMany(tasks []Task) error {
 	allTaskIds := []string{}          // Contains all tasks and display tasks IDs
 	execTaskIds := []string{}         // Contains all exec tasks IDs
 	toUpdateExecTaskIds := []string{} // Contains all exec tasks IDs that should update and have new execution
-	archivedTasks := []interface{}{}  // Contains all archived tasks (task, display, and execution). Created by Task#makeArchivedTask()
+	archivedTasks := []interface{}{}  // Contains all archived tasks (task, display, and execution). Created by Task.makeArchivedTask()
 
 	for _, t := range tasks {
 		allTaskIds = append(allTaskIds, t.Id)
@@ -2585,7 +2585,7 @@ func ArchiveMany(tasks []Task) error {
 // - taskIds               : All tasks and display tasks IDs
 // - execTaskIds           : All execution task IDs
 // - toUpdateExecTaskIds   : All execution task IDs for execution tasks that will be archived/restarted
-// - archivedTasks         : All archived tasks created by Task#makeArchivedTask()
+// - archivedTasks         : All archived tasks created by Task.makeArchivedTask()
 func archiveAll(taskIds, execTaskIds, toUpdateExecTaskIds []string, archivedTasks []interface{}) error {
 	mongoClient := evergreen.GetEnvironment().Client()
 	ctx, cancel := evergreen.GetEnvironment().Context()
