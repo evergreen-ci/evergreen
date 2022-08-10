@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func TestSendTestResults(t *testing.T) {
@@ -294,7 +295,7 @@ func setupCedarServer(ctx context.Context, t *testing.T, comm *client.Mock) *tim
 	srv, err := timberutil.NewMockCedarServer(ctx, serviceutil.NextPort())
 	require.NoError(t, err)
 
-	conn, err := grpc.DialContext(ctx, srv.Address(), grpc.WithInsecure())
+	conn, err := grpc.DialContext(ctx, srv.Address(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	require.NoError(t, err)
 	comm.CedarGRPCConn = conn
 	return srv
