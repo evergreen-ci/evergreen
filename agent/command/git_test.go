@@ -272,6 +272,7 @@ func (s *GitGetProjectSuite) TestGitFetchRetries() {
 func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
 	conf := s.taskConfig1
 	conf.ProjectRef.Repo = "doesntexist"
+	conf.Distro = nil
 	token, err := s.settings.GetGithubOauthToken()
 	s.Require().NoError(err)
 	conf.Expansions.Put(evergreen.GlobalGitHubTokenExpansion, token)
@@ -318,7 +319,7 @@ func (s *GitGetProjectSuite) TestStdErrLogged() {
 		s.T().Skip("TestStdErrLogged will not run on docker since it requires a SSH key")
 	}
 	conf := s.taskConfig5
-	conf.Distro = nil
+	conf.Distro.CloneMethod = evergreen.CloneMethodLegacySSH
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	comm := client.NewMock("http://localhost.com")
