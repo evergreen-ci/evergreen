@@ -172,6 +172,7 @@ func LogTaskDeactivated(taskId string, execution int, userId string) {
 func GetTaskDeactivatedEvent(taskId string, execution int, userId string) EventLogEntry {
 	return getTaskEvent(taskId, TaskDeactivated, TaskEventData{Execution: execution, UserId: userId})
 }
+
 func LogTaskAbortRequest(taskId string, execution int, userId string) {
 	logTaskEvent(taskId, TaskAbortRequest,
 		TaskEventData{Execution: execution, UserId: userId})
