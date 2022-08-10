@@ -36,17 +36,6 @@ type Query {
 
   # patch
   patch(id: String!): Patch!
-  patchTasks(
-    patchId: String!
-    sorts: [SortOrder!]
-    page: Int = 0
-    limit: Int = 0
-    statuses: [String!] = []
-    baseStatuses: [String!] = []
-    variant: String
-    taskName: String
-    includeEmptyActivation: Boolean = false
-  ): PatchTasks! @deprecated(reason: "patchTasks is deprecated, use version.tasks instead.")
 
   # project
   githubProjectConflicts(projectId: String!): GithubProjectConflicts!
