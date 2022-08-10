@@ -67,8 +67,7 @@ type SharedCommunicator interface {
 	Heartbeat(context.Context, TaskData) (string, error)
 	// FetchExpansionVars loads expansions for a communicator's task from the API server.
 	FetchExpansionVars(context.Context, TaskData) (*apimodels.ExpansionVars, error)
-	// GetCedarConfig returns the cedar service information including the
-	// base URL, RPC port, and credentials.
+	// GetCedarConfig returns the Cedar service configuration.
 	GetCedarConfig(context.Context) (*apimodels.CedarConfig, error)
 	// GetCedarGRPCConn returns the client connection to cedar if it exists, or
 	// creates it if it doesn't exist.
@@ -76,6 +75,8 @@ type SharedCommunicator interface {
 	// SetHasCedarResults sets the HasCedarResults flag to true in the
 	// task and sets CedarResultsFailed if there are failed results.
 	SetHasCedarResults(context.Context, TaskData, bool) error
+	// GetDataPipesConfig returns the Data-Pipes service configuration.
+	GetDataPipesConfig(context.Context) (*apimodels.DataPipesConfig, error)
 
 	// DisableHost signals to the app server that the host should be disabled.
 	DisableHost(context.Context, string, apimodels.DisableInfo) error
