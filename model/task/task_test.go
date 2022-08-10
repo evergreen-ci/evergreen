@@ -3110,6 +3110,7 @@ func TestArchiveMany(t *testing.T) {
 	assert.NoError(t, t2.Insert())
 	et := Task{
 		Id:      "et",
+		Status:  evergreen.TaskSucceeded,
 		Version: "v",
 	}
 	assert.NoError(t, et.Insert())

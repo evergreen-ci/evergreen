@@ -2607,7 +2607,7 @@ func archiveAll(taskIds, execTaskIds, toUpdateExecTaskIds []string, archivedTask
 		}
 		if len(taskIds) > 0 {
 			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(sessCtx, bson.M{
-				IdKey: bson.M{"$in": taskIds}},
+				IdKey: bson.M{"$in": taskIds}, StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses}},
 				bson.M{
 					"$inc": bson.M{
 						ExecutionKey: 1,
@@ -2664,7 +2664,7 @@ func archiveAll(taskIds, execTaskIds, toUpdateExecTaskIds []string, archivedTask
 
 			// Call to update all tasks that are actually restarting
 			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(sessCtx,
-				bson.M{IdKey: bson.M{"$in": toUpdateExecTaskIds}}, // Query all archiving/restarting execution tasks
+				bson.M{IdKey: bson.M{"$in": toUpdateExecTaskIds}, StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses}}, // Query all archiving/restarting execution tasks
 				bson.A{ // Pipeline
 					bson.M{"$set": bson.M{ // Execution = LPE
 						ExecutionKey: "$" + LatestParentExecutionKey,
