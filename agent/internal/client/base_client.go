@@ -132,11 +132,14 @@ func (c *baseCommunicator) createCedarGRPCConn(ctx context.Context) error {
 			RPCPort:     cc.RPCPort,
 			Username:    cc.Username,
 			APIKey:      cc.APIKey,
-			Retries:     10,
+			// Insecure should always be set to false except when
+			// running Cedar locally, e.g. with our smoke tests.
+			Insecure: cc.Insecure,
+			Retries:  10,
 		}
 		c.cedarGRPCClient, err = timber.DialCedar(ctx, c.httpClient, dialOpts)
 		if err != nil {
-			return errors.Wrap(err, "creating cedar grpc client connection")
+			return errors.Wrap(err, "creating Cedar grpc client connection")
 		}
 	}
 
@@ -144,7 +147,7 @@ func (c *baseCommunicator) createCedarGRPCConn(ctx context.Context) error {
 	// this way we can fail the agent early and avoid task system failures.
 	healthClient := gopb.NewHealthClient(c.cedarGRPCClient)
 	_, err := healthClient.Check(ctx, &gopb.HealthCheckRequest{})
-	return errors.Wrap(err, "checking cedar grpc health")
+	return errors.Wrap(err, "checking Cedar gRPC health")
 }
 
 // GetProjectRef loads the task's project.
