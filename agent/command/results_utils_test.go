@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func TestSendTestResults(t *testing.T) {
@@ -67,7 +68,6 @@ func TestSendTestResults(t *testing.T) {
 	}()
 
 	t.Run("ToCedar", func(t *testing.T) {
-		conf.ProjectRef.CedarTestResultsEnabled = utility.TruePtr()
 		checkRecord := func(t *testing.T, srv *timberutil.MockTestResultsServer) {
 			require.NotZero(t, srv.Create)
 			assert.Equal(t, conf.Task.Id, srv.Create.TaskId)
@@ -158,6 +158,21 @@ func TestSendTestResults(t *testing.T) {
 				assert.False(t, comm.CedarResultsFailed)
 				results.Results[0].LogTestName = logTestName
 			},
+			"ResmokeProject": func(ctx context.Context, t *testing.T, srv *timberutil.MockTestResultsServer, comm *client.Mock) {
+				conf.ProjectRef.Identifier = "mongodb-mongo-master"
+				defer func() {
+					conf.ProjectRef.Identifier = ""
+				}()
+				require.NoError(t, sendTestResults(ctx, comm, logger, conf, results))
+
+				assert.Equal(t, srv.Close.TestResultsRecordId, conf.CedarTestResultsID)
+				checkRecord(t, srv)
+				checkResults(t, srv)
+				assert.NotZero(t, srv.Close.TestResultsRecordId)
+				assert.True(t, comm.HasCedarResults)
+				assert.False(t, comm.CedarResultsFailed)
+				assert.Equal(t, results, comm.LocalTestResults)
+			},
 			"FailsIfCreatingRecordFails": func(ctx context.Context, t *testing.T, srv *timberutil.MockTestResultsServer, comm *client.Mock) {
 				srv.CreateErr = true
 
@@ -191,12 +206,6 @@ func TestSendTestResults(t *testing.T) {
 			})
 		}
 	})
-	t.Run("ToEvergreen", func(t *testing.T) {
-		conf.ProjectRef.CedarTestResultsEnabled = utility.FalsePtr()
-
-		require.NoError(t, sendTestResults(ctx, comm, logger, conf, results))
-		assert.Equal(t, results, comm.LocalTestResults)
-	})
 }
 
 func TestSendTestLog(t *testing.T) {
@@ -222,7 +231,6 @@ func TestSendTestLog(t *testing.T) {
 	comm := client.NewMock("url")
 
 	t.Run("ToCedar", func(t *testing.T) {
-		conf.ProjectRef.CedarTestResultsEnabled = utility.TruePtr()
 		for _, test := range []struct {
 			name     string
 			testCase func(*testing.T, *timberutil.MockBuildloggerServer)
@@ -231,34 +239,27 @@ func TestSendTestLog(t *testing.T) {
 				name: "CreateSenderFails",
 				testCase: func(t *testing.T, srv *timberutil.MockBuildloggerServer) {
 					srv.CreateErr = true
-
-					_, err := sendTestLog(ctx, comm, conf, log)
-					assert.Error(t, err)
+					assert.Error(t, sendTestLog(ctx, comm, conf, log))
 				},
 			},
 			{
 				name: "SendFails",
 				testCase: func(t *testing.T, srv *timberutil.MockBuildloggerServer) {
 					srv.AppendErr = true
-
-					_, err := sendTestLog(ctx, comm, conf, log)
-					assert.Error(t, err)
+					assert.Error(t, sendTestLog(ctx, comm, conf, log))
 				},
 			},
 			{
 				name: "CloseSenderFails",
 				testCase: func(t *testing.T, srv *timberutil.MockBuildloggerServer) {
 					srv.CloseErr = true
-
-					_, err := sendTestLog(ctx, comm, conf, log)
-					assert.Error(t, err)
+					assert.Error(t, sendTestLog(ctx, comm, conf, log))
 				},
 			},
 			{
 				name: "SendSucceeds",
 				testCase: func(t *testing.T, srv *timberutil.MockBuildloggerServer) {
-					_, err := sendTestLog(ctx, comm, conf, log)
-					assert.NoError(t, err)
+					require.NoError(t, sendTestLog(ctx, comm, conf, log))
 
 					require.NotEmpty(t, srv.Create)
 					assert.Equal(t, conf.Task.Project, srv.Create.Info.Project)
@@ -288,23 +289,13 @@ func TestSendTestLog(t *testing.T) {
 			})
 		}
 	})
-	t.Run("ToEvergreen", func(t *testing.T) {
-		conf.ProjectRef.CedarTestResultsEnabled = utility.FalsePtr()
-
-		logId, err := sendTestLog(ctx, comm, conf, log)
-		require.NoError(t, err)
-		assert.NotEmpty(t, logId)
-
-		require.Len(t, comm.TestLogs, 1)
-		assert.Equal(t, log, comm.TestLogs[0])
-	})
 }
 
 func setupCedarServer(ctx context.Context, t *testing.T, comm *client.Mock) *timberutil.MockCedarServer {
 	srv, err := timberutil.NewMockCedarServer(ctx, serviceutil.NextPort())
 	require.NoError(t, err)
 
-	conn, err := grpc.DialContext(ctx, srv.Address(), grpc.WithInsecure())
+	conn, err := grpc.DialContext(ctx, srv.Address(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	require.NoError(t, err)
 	comm.CedarGRPCConn = conn
 	return srv

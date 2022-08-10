@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
+	timberutil "github.com/evergreen-ci/timber/testutil"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
@@ -24,9 +25,10 @@ type test2JSONSuite struct {
 	args map[string]interface{}
 	c    *goTest2JSONCommand
 
-	sender *send.InternalSender
-	comm   *client.Mock
-	conf   *internal.TaskConfig
+	sender   *send.InternalSender
+	comm     *client.Mock
+	cedarSrv *timberutil.MockCedarServer
+	conf     *internal.TaskConfig
 
 	suite.Suite
 }
@@ -43,10 +45,10 @@ func (s *test2JSONSuite) SetupTest() {
 		"files": []string{test2JSONFile()},
 	}
 	s.Equal("gotest.parse_json", s.c.Name())
-
 	s.comm = &client.Mock{
 		LogID: "log0",
 	}
+	s.cedarSrv = setupCedarServer(context.TODO(), s.T(), s.comm)
 	s.conf = &internal.TaskConfig{
 		Task: &task.Task{
 			Id: "task0",
@@ -87,7 +89,7 @@ func (s *test2JSONSuite) TestPathExpansions() {
 	s.Require().NoError(s.c.Execute(context.Background(), s.comm, logger, s.conf))
 	s.Require().Equal(test2JSONFile(), s.c.Files[0])
 	msgs := drainMessages(s.sender)
-	s.Len(msgs, 7)
+	s.Len(msgs, 5)
 	s.noErrorMessages(msgs)
 }
 
@@ -96,12 +98,13 @@ func (s *test2JSONSuite) TestExecute() {
 	s.Require().NoError(s.c.Execute(context.Background(), s.comm, logger, s.conf))
 
 	msgs := drainMessages(s.sender)
-	s.Len(msgs, 7)
+	s.Len(msgs, 5)
 	s.noErrorMessages(msgs)
 
-	s.Len(s.comm.LocalTestResults.Results, 13)
-	s.Equal(1, s.comm.TestLogCount)
-	s.Len(s.comm.TestLogs, 1)
+	s.Require().Len(s.cedarSrv.TestResults.Results, 1)
+	s.True(s.comm.HasCedarResults)
+	s.True(s.comm.CedarResultsFailed)
+	s.Len(s.cedarSrv.Buildlogger.Data, 1)
 }
 
 func (s *test2JSONSuite) noErrorMessages(msgs []*send.InternalMessage) {
