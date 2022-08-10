@@ -282,6 +282,10 @@ const (
 	TasksAlreadyGeneratedError = "generator already ran and generated tasks"
 	KeyTooLargeToIndexError    = "key too large to index"
 	InvalidDivideInputError    = "$divide only supports numeric types"
+
+	// Valid types of performing git clone
+	CloneMethodLegacySSH = "legacy-ssh"
+	CloneMethodOAuth     = "oauth"
 )
 
 var TaskStatuses = []string{
@@ -771,6 +775,12 @@ var (
 		ArchDarwinArm64:  "OSX ARM 64-bit",
 		ArchLinuxAmd64:   "Linux 64-bit",
 		ArchLinux386:     "Linux 32-bit",
+	}
+
+	// ValidCloneMethods includes all recognized clone methods.
+	ValidCloneMethods = []string{
+		CloneMethodLegacySSH,
+		CloneMethodOAuth,
 	}
 )
 

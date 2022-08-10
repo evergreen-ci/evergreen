@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
 	"io/ioutil"
 	"os"
 	"path"
@@ -12,9 +13,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
-	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -37,11 +36,12 @@ func TestGitPush(t *testing.T) {
 	conf := &internal.TaskConfig{
 		Task:       &task.Task{},
 		ProjectRef: &model.ProjectRef{Branch: "main"},
-		Distro:     &apimodels.DistroView{CloneMethod: distro.CloneMethodOAuth},
 		Expansions: &util.Expansions{},
 	}
 	logger, err := comm.GetLoggerProducer(context.Background(), client.TaskData{}, nil)
 	require.NoError(t, err)
+
+	assert.Equal(t, conf.GetCloneMethod(), evergreen.CloneMethodOAuth)
 
 	var splitCommand []string
 	for name, test := range map[string]func(*testing.T){

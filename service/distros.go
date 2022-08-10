@@ -148,7 +148,7 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 		newDistro.BootstrapSettings.Communication = distro.BootstrapMethodLegacySSH
 	}
 	if newDistro.CloneMethod == "" {
-		newDistro.CloneMethod = distro.CloneMethodLegacySSH
+		newDistro.CloneMethod = evergreen.CloneMethodLegacySSH
 	}
 	if newDistro.FinderSettings.Version == "" {
 		newDistro.PlannerSettings.Version = evergreen.FinderVersionLegacy

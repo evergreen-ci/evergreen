@@ -120,6 +120,14 @@ func (c *TaskConfig) GetWorkingDirectory(dir string) (string, error) {
 	return dir, nil
 }
 
+func (c *TaskConfig) GetCloneMethod() string {
+	cloneMethod := evergreen.CloneMethodOAuth
+	if c.Distro != nil {
+		cloneMethod = c.Distro.CloneMethod
+	}
+	return cloneMethod
+}
+
 func (tc *TaskConfig) GetTaskGroup(taskGroup string) (*model.TaskGroup, error) {
 	if tc == nil {
 		return nil, errors.New("unable to get task group: TaskConfig is nil")

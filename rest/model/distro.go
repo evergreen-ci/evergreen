@@ -379,7 +379,7 @@ func (apiDistro *APIDistro) BuildFromService(d distro.Distro) {
 	apiDistro.User = utility.ToStringPtr(d.User)
 
 	if d.CloneMethod == "" {
-		d.CloneMethod = distro.CloneMethodLegacySSH
+		d.CloneMethod = evergreen.CloneMethodLegacySSH
 	}
 	apiDistro.CloneMethod = utility.ToStringPtr(d.CloneMethod)
 	apiDistro.SSHKey = utility.ToStringPtr(d.SSHKey)
@@ -444,7 +444,7 @@ func (apiDistro *APIDistro) ToService() *distro.Distro {
 	d.BootstrapSettings = apiDistro.BootstrapSettings.ToService()
 	d.CloneMethod = utility.FromStringPtr(apiDistro.CloneMethod)
 	if d.CloneMethod == "" {
-		d.CloneMethod = distro.CloneMethodLegacySSH
+		d.CloneMethod = evergreen.CloneMethodLegacySSH
 	}
 	d.SSHKey = utility.FromStringPtr(apiDistro.SSHKey)
 	d.SSHOptions = apiDistro.SSHOptions
