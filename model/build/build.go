@@ -153,6 +153,9 @@ func getSetBuildActivatedUpdate(active bool, caller string) bson.M {
 // UpdateActivation updates builds with the given ids
 // to the given activation setting.
 func UpdateActivation(buildIds []string, active bool, caller string) error {
+	if len(buildIds) == 0 {
+		return nil
+	}
 	query := bson.M{IdKey: bson.M{"$in": buildIds}}
 	if !active && evergreen.IsSystemActivator(caller) {
 		query[ActivatedByKey] = bson.M{"$in": evergreen.SystemActivators}
