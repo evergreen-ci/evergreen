@@ -165,13 +165,13 @@ type ContainerResources struct {
 type ContainerSecret struct {
 	// Name is the user-friendly display name of the secret.
 	Name string `bson:"name" json:"name" yaml:"name"`
+	// Type is the type of secret that is stored.
+	Type ContainerSecretType `bson:"type" json:"type" yaml:"type"`
 	// ExternalName is the name of the stored secret.
 	ExternalName string `bson:"external_name" json:"external_name" yaml:"external_name"`
 	// ExternalID is the unique resource identifier for the secret. This can be
 	// used to access and modify the secret.
 	ExternalID string `bson:"external_id" json:"external_id" yaml:"external_id"`
-	// Type is the type of secret that is stored.
-	Type ContainerSecretType `bson:"type" json:"type" yaml:"type"`
 	// Value is the plaintext value of the secret. This is not stored and must
 	// be retrieved using the external ID.
 	Value string `bson:"-" json:"-" yaml:"-"`
@@ -2641,10 +2641,14 @@ func (c ContainerResources) Validate() error {
 	return catcher.Resolve()
 }
 
-// Validate that essential container secret fields are properly defined.
+// Validate that essential container secret fields are properly defined for a
+// new secret.
+// kim: TODO: re-test
 func (c ContainerSecret) Validate() error {
 	catcher := grip.NewSimpleCatcher()
 	catcher.Add(c.Type.Validate())
+	catcher.ErrorfWhen(c.Name == "", "must specify name for new container secret")
+	catcher.ErrorfWhen(c.Value == "", "must specify value for new container secret")
 	return catcher.Resolve()
 }
 
@@ -2940,54 +2944,55 @@ func makeRepoCredsContainerSecretName(smConf evergreen.SecretsManagerConfig, pro
 
 // ValidateContainerSecrets checks that the project-level container secrets to
 // be added/updated are valid and sets default values where necessary. It
-// returns the defaulted container secrets.
-func ValidateContainerSecrets(settings *evergreen.Settings, projectID string, originalContainerSecrets, updatedContainerSecrets []ContainerSecret) ([]ContainerSecret, error) {
-	original := ContainerSecretsMap(originalContainerSecrets)
+// returns the validated and merged container secrets, including the unmodified
+// secrets, the modified secrets, and the new secrets to create.
+func ValidateContainerSecrets(settings *evergreen.Settings, projectID string, original, toUpdate []ContainerSecret) ([]ContainerSecret, error) {
+	combined := make([]ContainerSecret, len(original))
+	_ = copy(combined, original)
 
 	catcher := grip.NewBasicCatcher()
-	containerSecretNames := map[string]struct{}{}
-	for i, containerSecret := range updatedContainerSecrets {
-		catcher.Wrapf(containerSecret.Validate(), "invalid container secret '%s'", containerSecret.Name)
+	for _, updatedSecret := range toUpdate {
+		name := updatedSecret.Name
 
-		if containerSecret.Name == "" {
-			catcher.Errorf("container secret name at index %d cannot be empty", i)
-		} else if _, ok := containerSecretNames[containerSecret.Name]; ok {
-			catcher.Errorf("cannot have duplicate container secret named '%s'", containerSecret.Name)
+		idx := -1
+		for i := 0; i < len(original); i++ {
+			if original[i].Name == name {
+				idx = i
+				break
+			}
 		}
-		containerSecretNames[containerSecret.Name] = struct{}{}
 
-		if existingSecret, ok := original[containerSecret.Name]; ok {
-			catcher.ErrorfWhen(existingSecret.Type != containerSecret.Type, "container secret '%s' type cannot be changed from '%s' to '%s'", containerSecret.Name, existingSecret.Type, containerSecret.Type)
-			catcher.ErrorfWhen(existingSecret.ExternalID != containerSecret.ExternalID, "container secret '%s' external ID cannot be changed from '%s' to '%s'", existingSecret.ExternalID, existingSecret.ExternalID, containerSecret.ExternalID)
-			catcher.ErrorfWhen(existingSecret.ExternalName != containerSecret.ExternalName, "container secret '%s' external name cannot be changed from '%s' to '%s'", existingSecret.ExternalID, existingSecret.ExternalName, containerSecret.ExternalName)
+		if idx != -1 {
+			existingSecret := combined[idx]
+			// If updating an existing secret, only allow the value to be
+			// updated.
+			catcher.ErrorfWhen(updatedSecret.Type != "" && updatedSecret.Type != existingSecret.Type, "container secret '%s' type cannot be changed from '%s' to '%s'", name, existingSecret.Type, updatedSecret.Type)
+			catcher.ErrorfWhen(updatedSecret.ExternalID != "" && updatedSecret.ExternalID != existingSecret.ExternalID, "container secret '%s' external ID cannot be changed from '%s' to '%s'", name, existingSecret.ExternalID, existingSecret.ExternalID)
+			catcher.ErrorfWhen(updatedSecret.ExternalName != "" && updatedSecret.ExternalName != existingSecret.ExternalName, "container secret '%s' external name cannot be changed from '%s' to '%s'", name, existingSecret.ExternalName, updatedSecret.ExternalName)
+			existingSecret.Value = updatedSecret.Value
+			combined[idx] = existingSecret
 			continue
 		}
 
-		// New secrets to be created should not have their external name and ID
-		// decided by the user. The external name is controlled by Evergreen
-		// (and set here) and the external ID is determined by the secret
-		// storage service (and set when the secret is actually stored).
+		catcher.Wrapf(updatedSecret.Validate(), "invalid new container secret '%s'", name)
+
+		// New secrets that have to be created should not have their external
+		// name and ID decided by the user. The external name is controlled by
+		// Evergreen (and set here) and the external ID is determined by the
+		// secret storage service (and set when the secret is actually stored).
 		smConf := settings.Providers.AWS.Pod.SecretsManager
-		switch containerSecret.Type {
+		switch updatedSecret.Type {
 		case ContainerSecretPodSecret:
-			updatedContainerSecrets[i].ExternalName = makeInternalContainerSecretName(smConf, projectID, containerSecret.Name)
+			updatedSecret.ExternalName = makeInternalContainerSecretName(smConf, projectID, name)
 		case ContainerSecretRepoCreds:
-			updatedContainerSecrets[i].ExternalName = makeRepoCredsContainerSecretName(smConf, projectID, containerSecret.Name)
+			updatedSecret.ExternalName = makeRepoCredsContainerSecretName(smConf, projectID, name)
 		default:
-			catcher.Errorf("unrecognized secret type '%s' for container secret '%s'", containerSecret.Type, containerSecret.Name)
+			catcher.Errorf("unrecognized secret type '%s' for container secret '%s'", updatedSecret.Type, name)
 		}
-		updatedContainerSecrets[i].ExternalID = ""
+		updatedSecret.ExternalID = ""
+
+		combined = append(combined, updatedSecret)
 	}
 
-	return updatedContainerSecrets, catcher.Resolve()
-}
-
-// ContainerSecretsMap is a convenience function to convert a slice of container
-// secrets to a map of container secrets by name.
-func ContainerSecretsMap(containerSecrets []ContainerSecret) map[string]ContainerSecret {
-	containerSecretsByName := map[string]ContainerSecret{}
-	for _, secret := range containerSecrets {
-		containerSecretsByName[secret.Name] = secret
-	}
-	return containerSecretsByName
+	return combined, catcher.Resolve()
 }

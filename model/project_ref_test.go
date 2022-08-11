@@ -1553,21 +1553,57 @@ func TestContainerSecretValidate(t *testing.T) {
 }
 
 func TestValidateContainerSecrets(t *testing.T) {
-	settings := &evergreen.Settings{
-		Providers: evergreen.CloudProviders{
-			AWS: evergreen.AWSConfig{
-				Pod: evergreen.AWSPodConfig{
-					SecretsManager: evergreen.SecretsManagerConfig{
-						SecretPrefix: "secret_prefix",
-					},
-				},
-			},
-		},
-	}
+	var settings evergreen.Settings
+	settings.Providers.AWS.Pod.SecretsManager.SecretPrefix = "secret_prefix"
 	const projectID = "project_id"
 
-	t.Run("SucceedsWithUniquelyNamedValidContainerSecrets", func(t *testing.T) {
-		containerSecrets := []ContainerSecret{
+	t.Run("AddsNewSecretsWithoutAnyExistingSecrets", func(t *testing.T) {
+		toUpdate := []ContainerSecret{
+			{
+				Name:  "apple",
+				Value: "new_value0",
+				Type:  ContainerSecretRepoCreds,
+			},
+			{
+				Name:  "orange",
+				Value: "new_value1",
+				Type:  ContainerSecretRepoCreds,
+			},
+		}
+		combined, err := ValidateContainerSecrets(&settings, projectID, nil, toUpdate)
+		require.NoError(t, err)
+
+		require.Len(t, combined, len(toUpdate))
+		for i := 0; i < len(toUpdate); i++ {
+			assert.Equal(t, toUpdate[i].Name, combined[i].Name)
+			assert.Equal(t, toUpdate[i].Type, combined[i].Type)
+			assert.Equal(t, toUpdate[i].Value, combined[i].Value)
+			assert.Zero(t, combined[i].ExternalID)
+			assert.NotZero(t, combined[i].ExternalName)
+		}
+	})
+	t.Run("IgnoresUserDefinedExternalFieldsForNewSecrets", func(t *testing.T) {
+		toUpdate := []ContainerSecret{
+			{
+				Name:         "apple",
+				ExternalName: "external_name",
+				ExternalID:   "external_id",
+				Value:        "new_value0",
+				Type:         ContainerSecretRepoCreds,
+			},
+		}
+		combined, err := ValidateContainerSecrets(&settings, projectID, nil, toUpdate)
+		require.NoError(t, err)
+
+		require.Len(t, combined, 1)
+		assert.Equal(t, toUpdate[0].Name, combined[0].Name)
+		assert.Equal(t, toUpdate[0].Type, combined[0].Type)
+		assert.NotZero(t, combined[0].ExternalName)
+		assert.NotEqual(t, toUpdate[0].ExternalName, combined[0].ExternalName, "external name should not be settable by users and should be generated for new secrets")
+		assert.Zero(t, combined[0].ExternalID, "external ID should not be settable by users for new secrets")
+	})
+	t.Run("NoopsWithIdenticalOriginalAndUpdatedSecrets", func(t *testing.T) {
+		secrets := []ContainerSecret{
 			{
 				Name:         "apple",
 				ExternalName: "external_name0",
@@ -1581,96 +1617,200 @@ func TestValidateContainerSecrets(t *testing.T) {
 				Type:         ContainerSecretRepoCreds,
 			},
 		}
-		validated, err := ValidateContainerSecrets(settings, projectID, nil, containerSecrets)
+		combined, err := ValidateContainerSecrets(&settings, projectID, secrets, secrets)
 		require.NoError(t, err)
 
-		require.Len(t, validated, len(containerSecrets))
-		for i := 0; i < len(containerSecrets); i++ {
-			assert.Equal(t, containerSecrets[i], validated[i])
-		}
+		assert.Equal(t, combined, secrets)
 	})
-	t.Run("SucceedsWithoutAnyContainerSecrets", func(t *testing.T) {
-		_, err := ValidateContainerSecrets(settings, projectID, nil, nil)
-		assert.NoError(t, err)
-	})
-	t.Run("FailsWithDuplicateNames", func(t *testing.T) {
-		containerSecrets := []ContainerSecret{
+	t.Run("AddsNewContainerSecretsToExistingSecrets", func(t *testing.T) {
+		original := []ContainerSecret{
 			{
-				Name:         "lychee",
+				Name:         "apple",
 				ExternalName: "external_name0",
 				ExternalID:   "external_id0",
 				Type:         ContainerSecretRepoCreds,
 			},
+		}
+		toUpdate := []ContainerSecret{
 			{
-				Name:         "lychee",
+				Name:  "orange",
+				Type:  ContainerSecretRepoCreds,
+				Value: "new_value",
+			},
+		}
+		combined, err := ValidateContainerSecrets(&settings, projectID, original, toUpdate)
+		require.NoError(t, err)
+
+		require.Len(t, combined, 2)
+		assert.Equal(t, original[0], combined[0])
+		assert.Equal(t, toUpdate[0].Name, combined[1].Name)
+		assert.Equal(t, toUpdate[0].Type, combined[1].Type)
+		assert.Equal(t, toUpdate[0].Value, combined[1].Value)
+		assert.NotZero(t, combined[1].ExternalName)
+		assert.Zero(t, combined[1].ExternalID)
+	})
+	t.Run("SetsUpdatedValueForExistingSecret", func(t *testing.T) {
+		original := []ContainerSecret{
+			{
+				Name:         "pineapple",
+				ExternalName: "a_legit_pizza_topping",
+				ExternalID:   "external_id",
+				Type:         ContainerSecretPodSecret,
+			},
+		}
+		toUpdate := []ContainerSecret{
+			{
+				Name:  "pineapple",
+				Value: "new_value",
+			},
+		}
+		combined, err := ValidateContainerSecrets(&settings, projectID, original, toUpdate)
+		require.NoError(t, err)
+
+		require.Len(t, combined, 1)
+		assert.Equal(t, original[0].Name, combined[0].Name)
+		assert.Equal(t, original[0].ExternalName, combined[0].ExternalName)
+		assert.Equal(t, original[0].ExternalID, combined[0].ExternalID)
+		assert.Equal(t, original[0].Type, combined[0].Type)
+		assert.Equal(t, toUpdate[0].Value, combined[0].Value)
+	})
+	t.Run("CombinesExistingSecretsAndUpdatedSecrets", func(t *testing.T) {
+		original := []ContainerSecret{
+			{
+				Name:         "apple",
+				ExternalName: "external_name0",
+				ExternalID:   "external_id0",
+				Type:         ContainerSecretPodSecret,
+			},
+			{
+				Name:         "banana",
 				ExternalName: "external_name1",
 				ExternalID:   "external_id1",
 				Type:         ContainerSecretRepoCreds,
 			},
 		}
-		_, err := ValidateContainerSecrets(settings, projectID, nil, containerSecrets)
-		assert.Error(t, err)
+		updated := []ContainerSecret{
+			{
+				Name:  "cherry",
+				Value: "new_value0",
+				Type:  ContainerSecretRepoCreds,
+			},
+			{
+				Name:         "banana",
+				ExternalName: "external_name1",
+				ExternalID:   "external_id1",
+				Value:        "new_value1",
+				Type:         ContainerSecretRepoCreds,
+			},
+		}
+		combined, err := ValidateContainerSecrets(&settings, projectID, original, updated)
+		require.NoError(t, err)
+
+		require.Len(t, combined, 3)
+		assert.Equal(t, original[0], combined[0])
+		assert.Equal(t, original[1].Name, combined[1].Name)
+		assert.Equal(t, original[1].ExternalName, combined[1].ExternalName)
+		assert.Equal(t, original[1].ExternalID, combined[1].ExternalID)
+		assert.Equal(t, original[1].Type, combined[1].Type)
+		assert.Equal(t, updated[1].Value, combined[1].Value)
+		assert.Equal(t, updated[0].Name, combined[2].Name)
+		assert.NotZero(t, combined[2].ExternalName)
+		assert.Zero(t, combined[2].ExternalID)
+		assert.Equal(t, updated[0].Type, combined[2].Type)
+		assert.Equal(t, updated[0].Value, combined[2].Value)
 	})
-	t.Run("FailsWithInvalidType", func(t *testing.T) {
-		containerSecrets := []ContainerSecret{
+	t.Run("ReturnsOriginalForNoUpdatedSecrets", func(t *testing.T) {
+		original := []ContainerSecret{
+			{
+				Name:         "apple",
+				ExternalName: "external_name0",
+				ExternalID:   "external_id0",
+				Type:         ContainerSecretPodSecret,
+			},
+			{
+				Name:         "banana",
+				ExternalName: "external_name1",
+				ExternalID:   "external_id1",
+				Type:         ContainerSecretRepoCreds,
+			},
+		}
+		combined, err := ValidateContainerSecrets(&settings, projectID, original, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, original, combined)
+	})
+	t.Run("ReturnsEmptyWithoutAnyExistingOrUpdatedSecrets", func(t *testing.T) {
+		secrets, err := ValidateContainerSecrets(&settings, projectID, nil, nil)
+		assert.NoError(t, err)
+		assert.Empty(t, secrets)
+	})
+	t.Run("FailsWithInvalidSecretType", func(t *testing.T) {
+		toUpdate := []ContainerSecret{
 			{
 				Name: "breadfruit",
 				Type: "a type of bread",
 			},
 		}
-		_, err := ValidateContainerSecrets(settings, projectID, nil, containerSecrets)
+		_, err := ValidateContainerSecrets(&settings, projectID, nil, toUpdate)
 		assert.Error(t, err)
 	})
 	t.Run("FailsWithDifferentTypeForExistingSecret", func(t *testing.T) {
-		oldContainerSecrets := []ContainerSecret{
+		original := []ContainerSecret{
 			{
-				Name: "starfruit",
-				Type: ContainerSecretRepoCreds,
+				Name:         "starfruit",
+				ExternalName: "external_name",
+				ExternalID:   "external_id",
+				Type:         ContainerSecretRepoCreds,
 			},
 		}
-		newContainerSecrets := []ContainerSecret{
+		toUpdate := []ContainerSecret{
 			{
-				Name: "starfruit",
-				Type: ContainerSecretPodSecret,
+				Name:         "starfruit",
+				ExternalName: "external_name",
+				ExternalID:   "external_id",
+				Type:         ContainerSecretPodSecret,
 			},
 		}
-		_, err := ValidateContainerSecrets(settings, projectID, oldContainerSecrets, newContainerSecrets)
+		_, err := ValidateContainerSecrets(&settings, projectID, original, toUpdate)
 		assert.Error(t, err)
 	})
 	t.Run("FailsWithDifferentExternalNameForExistingSecret", func(t *testing.T) {
-		oldContainerSecrets := []ContainerSecret{
+		original := []ContainerSecret{
 			{
 				Name:         "starfruit",
+				ExternalID:   "external_id",
 				ExternalName: "a_starfruit",
 				Type:         ContainerSecretRepoCreds,
 			},
 		}
-		newContainerSecrets := []ContainerSecret{
+		toUpdate := []ContainerSecret{
 			{
 				Name:         "starfruit",
+				ExternalID:   "external_id",
 				ExternalName: "not_a_starfruit_no_more",
 				Type:         ContainerSecretRepoCreds,
 			},
 		}
-		_, err := ValidateContainerSecrets(settings, projectID, oldContainerSecrets, newContainerSecrets)
+		_, err := ValidateContainerSecrets(&settings, projectID, original, toUpdate)
 		assert.Error(t, err)
 	})
 	t.Run("FailsWithDifferentExternalIDForExistingSecret", func(t *testing.T) {
-		oldContainerSecrets := []ContainerSecret{
+		original := []ContainerSecret{
 			{
-				Name:       "starfruit",
-				ExternalID: "a_starfruit",
-				Type:       ContainerSecretRepoCreds,
+				Name:         "starfruit",
+				ExternalID:   "a_starfruit",
+				ExternalName: "external_name",
+				Type:         ContainerSecretRepoCreds,
 			},
 		}
-		newContainerSecrets := []ContainerSecret{
+		toUpdate := []ContainerSecret{
 			{
-				Name:       "starfruit",
-				ExternalID: "not_a_starfruit_no_more",
-				Type:       ContainerSecretRepoCreds,
+				Name:         "starfruit",
+				ExternalID:   "not_a_starfruit_no_more",
+				ExternalName: "external_name",
+				Type:         ContainerSecretRepoCreds,
 			},
 		}
-		_, err := ValidateContainerSecrets(settings, projectID, oldContainerSecrets, newContainerSecrets)
+		_, err := ValidateContainerSecrets(&settings, projectID, original, toUpdate)
 		assert.Error(t, err)
 	})
 	t.Run("FailsWithoutName", func(t *testing.T) {
@@ -1679,7 +1819,7 @@ func TestValidateContainerSecrets(t *testing.T) {
 				Type: ContainerSecretPodSecret,
 			},
 		}
-		_, err := ValidateContainerSecrets(settings, projectID, nil, containerSecrets)
+		_, err := ValidateContainerSecrets(&settings, projectID, nil, containerSecrets)
 		assert.Error(t, err)
 	})
 }

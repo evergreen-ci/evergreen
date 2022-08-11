@@ -8,7 +8,9 @@ import (
 	"net/http"
 	"testing"
 
+	cocoaMock "github.com/evergreen-ci/cocoa/mock"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
@@ -100,7 +102,7 @@ func (s *ProjectPatchByIDSuite) TestParse() {
 	s.NotNil(s.rm.(*projectIDPatchHandler).user)
 }
 
-func (s *ProjectPatchByIDSuite) TestRunInValidIdentifierChange() {
+func (s *ProjectPatchByIDSuite) TestRunInvalidIdentifierChange() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
@@ -334,6 +336,73 @@ func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
 	p, err = data.FindProjectById("dimoxinil", true, false)
 	s.NoError(err)
 	s.Nil(p.PatchTriggerAliases)
+}
+
+func (s *ProjectPatchByIDSuite) TestAddingNewContainerSecrets() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
+	h := s.rm.(*projectIDPatchHandler)
+	h.user = &user.DBUser{Id: "me"}
+
+	cocoaMock.ResetGlobalSecretCache()
+	defer cocoaMock.ResetGlobalSecretCache()
+
+	smClient := &cocoaMock.SecretsManagerClient{}
+	v, err := cloud.MakeSecretsManagerVault(smClient)
+	s.Require().NoError(err)
+	h.vault = cocoaMock.NewVault(v)
+
+	body := []byte(`{
+	"container_secrets": [
+		{
+			"name": "super_secret",
+			"value": "super_secret_value",
+			"type": "pod_secret"
+		}
+	]}`)
+	req, err := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(body))
+	s.Require().NoError(err)
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
+	s.Require().NoError(s.rm.Parse(ctx, req))
+
+	resp := s.rm.Run(ctx)
+	s.Require().NotNil(resp)
+	s.Require().NotNil(resp.Data())
+	s.Equal(http.StatusOK, resp.Status())
+
+	dbProjRef, err := serviceModel.FindBranchProjectRef("dimoxinil")
+	s.Require().NoError(err)
+	s.Require().NotNil(dbProjRef)
+	s.Require().Len(dbProjRef.ContainerSecrets, 1)
+	s.Equal("super_secret", dbProjRef.ContainerSecrets[0].Name)
+	s.EqualValues(serviceModel.ContainerSecretPodSecret, dbProjRef.ContainerSecrets[0].Type)
+	s.NotZero(dbProjRef.ContainerSecrets[0].ExternalName)
+	s.NotZero(dbProjRef.ContainerSecrets[0].ExternalID)
+
+	storedValue, err := h.vault.GetValue(ctx, dbProjRef.ContainerSecrets[0].ExternalID)
+	s.Require().NoError(err)
+	s.Equal("super_secret_value", storedValue)
+}
+
+func (s *ProjectPatchByIDSuite) TestDeletingExistingContainerSecrets() {
+	// ctx, cancel := context.WithCancel(context.Background())
+	// defer cancel()
+	// ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
+	// h := s.rm.(*projectIDPatchHandler)
+	// h.user = &user.DBUser{Id: "me"}
+	//
+	// jsonBody := []byte(`{"patch_trigger_aliases": [{"child_project_identifier": "child", "task_specifiers": [ {"task_regex": ".*", "variant_regex": ".*" }]}]}`)
+	// req, err := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
+	// s.Require().NoError(err)
+	// req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
+	// s.NoError(s.rm.Parse(ctx, req))
+	// s.NotNil(s.rm.(*projectIDPatchHandler).user)
+	//
+	// resp := s.rm.Run(ctx)
+	// s.NotNil(resp)
+	// s.NotNil(resp.Data())
+	// s.Equal(resp.Status(), http.StatusOK)
 }
 
 ////////////////////////////////////////////////////////////////////////

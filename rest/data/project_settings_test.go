@@ -693,7 +693,9 @@ func TestCopyProject(t *testing.T) {
 //
 //     for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, mv *cocoaMock.Vault, pRef model.ProjectRef){
 //         "NoopsForNoNames": func(ctx context.Context, t *testing.T, mv *cocoaMock.Vault, pRef model.ProjectRef) {
-//             require.NoError(t, DeleteContainerSecrets(ctx, mv, &pRef, nil))
+//             remaining, err := DeleteContainerSecrets(ctx, mv, &pRef, nil)
+//             require.NoError(t, err)
+//             assert.Len(t, remaining, len(pRef.ContainerSecrets))
 //
 //             dbProjRef, err := model.FindBranchProjectRef(pRef.Id)
 //             require.NoError(t, err)
@@ -701,30 +703,36 @@ func TestCopyProject(t *testing.T) {
 //             assert.Equal(t, dbProjRef.ContainerSecrets, pRef.ContainerSecrets)
 //         },
 //         "DeletesMatchingContainerSecretsByName": func(ctx context.Context, t *testing.T, mv *cocoaMock.Vault, pRef model.ProjectRef) {
-//             require.NoError(t, DeleteContainerSecrets(ctx, mv, &pRef, []string{
+//             remaining, err := DeleteContainerSecrets(ctx, mv, &pRef, []string{
 //                 pRef.ContainerSecrets[0].Name,
 //                 pRef.ContainerSecrets[3].Name,
-//             }))
+//             })
+//             require.NoError(t, err)
+//             require.Len(t, remaining, 2)
 //
 //             dbProjRef, err := model.FindBranchProjectRef(pRef.Id)
 //             require.NoError(t, err)
 //             require.NotZero(t, dbProjRef)
-//             require.Len(t, dbProjRef.ContainerSecrets, len(pRef.ContainerSecrets)-2)
+//             require.Len(t, dbProjRef.ContainerSecrets, 2)
 //             assert.Equal(t, pRef.ContainerSecrets[1], dbProjRef.ContainerSecrets[0])
 //             assert.Equal(t, pRef.ContainerSecrets[2], dbProjRef.ContainerSecrets[1])
 //         },
 //         "IgnoresNamesThatDoNotMatchAnyContainerSecrets": func(ctx context.Context, t *testing.T, mv *cocoaMock.Vault, pRef model.ProjectRef) {
-//             require.NoError(t, DeleteContainerSecrets(ctx, mv, &pRef, []string{"nonexistent"}))
+//             remaining, err := DeleteContainerSecrets(ctx, mv, &pRef, []string{"nonexistent"})
+//             require.NoError(t, err)
+//             assert.Len(t, remaining, len(pRef.ContainerSecrets))
 //
 //             dbProjRef, err := model.FindBranchProjectRef(pRef.Id)
 //             require.NoError(t, err)
 //             require.NotZero(t, dbProjRef)
 //             assert.Equal(t, dbProjRef.ContainerSecrets, pRef.ContainerSecrets)
 //         },
-//         "IgnoresContainerSecretsWithoutExternalIDs": func(ctx context.Context, t *testing.T, mv *cocoaMock.Vault, pRef model.ProjectRef) {
+//         "RemovesContainerSecretsMissingExternalIDsWithoutModifyingDBProjectRef": func(ctx context.Context, t *testing.T, mv *cocoaMock.Vault, pRef model.ProjectRef) {
 //             pRef.ContainerSecrets[0].ExternalID = ""
 //             require.NoError(t, pRef.Upsert())
-//             require.NoError(t, DeleteContainerSecrets(ctx, mv, &pRef, []string{pRef.ContainerSecrets[0].Name}))
+//             remaining, err := DeleteContainerSecrets(ctx, mv, &pRef, []string{pRef.ContainerSecrets[0].Name})
+//             require.NoError(t, err)
+//             assert.Len(t, remaining, len(pRef.ContainerSecrets)-1)
 //
 //             dbProjRef, err := model.FindBranchProjectRef(pRef.Id)
 //             require.NoError(t, err)
@@ -786,6 +794,9 @@ func TestCopyProject(t *testing.T) {
 //             require.NoError(t, err)
 //             require.NotZero(t, dbProjRef)
 //             pRef = *dbProjRef
+//             for _, secret := range pRef.ContainerSecrets {
+//                 require.NotZero(t, secret.ExternalID, "creating the container secret should have set the external ID")
+//             }
 //
 //             tCase(ctx, t, mv, pRef)
 //         })
@@ -801,7 +812,7 @@ func TestUpsertContainerSecrets(t *testing.T) {
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, mv *cocoaMock.Vault, pRef model.ProjectRef){
 		"NoopsWithoutAnyUpdatedContainerSecrets": func(ctx context.Context, t *testing.T, mv *cocoaMock.Vault, pRef model.ProjectRef) {
-			require.NoError(t, UpsertContainerSecrets(ctx, mv, pRef.Id, pRef.ContainerSecrets, nil))
+			require.NoError(t, UpsertContainerSecrets(ctx, mv, pRef.ContainerSecrets))
 
 			dbProjRef, err := model.FindBranchProjectRef(pRef.Id)
 			require.NoError(t, err)
@@ -809,15 +820,20 @@ func TestUpsertContainerSecrets(t *testing.T) {
 			assert.Equal(t, dbProjRef.ContainerSecrets, pRef.ContainerSecrets)
 		},
 		"AddsNewContainerSecretToProjectRef": func(ctx context.Context, t *testing.T, mv *cocoaMock.Vault, pRef model.ProjectRef) {
-			const newValue = "new_secret_value"
-			updatedSecret := pRef.ContainerSecrets[1]
-			updatedSecret.Value = newValue
-			require.NoError(t, UpsertContainerSecrets(ctx, mv, pRef.Id, pRef.ContainerSecrets, []model.ContainerSecret{updatedSecret}))
+			newSecret := model.ContainerSecret{
+				Name:         "churros",
+				ExternalName: "fried dough",
+				Type:         model.ContainerSecretRepoCreds,
+				Value:        "is yummy",
+			}
+			pRef.ContainerSecrets = append(pRef.ContainerSecrets, newSecret)
+			require.NoError(t, pRef.Upsert())
+			require.NoError(t, UpsertContainerSecrets(ctx, mv, pRef.ContainerSecrets))
 
 			dbProjRef, err := model.FindBranchProjectRef(pRef.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
-			require.Len(t, dbProjRef.ContainerSecrets, len(pRef.ContainerSecrets))
+			require.Len(t, dbProjRef.ContainerSecrets, 2)
 			assert.Equal(t, pRef.ContainerSecrets[0], dbProjRef.ContainerSecrets[0])
 			assert.Equal(t, pRef.ContainerSecrets[1].Name, dbProjRef.ContainerSecrets[1].Name)
 			assert.Equal(t, pRef.ContainerSecrets[1].ExternalName, dbProjRef.ContainerSecrets[1].ExternalName)
@@ -826,22 +842,39 @@ func TestUpsertContainerSecrets(t *testing.T) {
 
 			value, err := mv.GetValue(ctx, dbProjRef.ContainerSecrets[1].ExternalID)
 			require.NoError(t, err)
-			assert.Equal(t, newValue, value)
+			assert.Equal(t, newSecret.Value, value, "stored value should match the given one")
 		},
 		"UpdatesExistingContainerSecretValue": func(ctx context.Context, t *testing.T, mv *cocoaMock.Vault, pRef model.ProjectRef) {
 			const newValue = "new_secret_value"
-			updatedSecret := pRef.ContainerSecrets[0]
-			updatedSecret.Value = newValue
-			require.NoError(t, UpsertContainerSecrets(ctx, mv, pRef.Id, pRef.ContainerSecrets, []model.ContainerSecret{updatedSecret}))
+			pRef.ContainerSecrets[0].Value = newValue
+			require.NoError(t, pRef.Upsert())
+			require.NoError(t, UpsertContainerSecrets(ctx, mv, pRef.ContainerSecrets))
 
 			dbProjRef, err := model.FindBranchProjectRef(pRef.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
-			assert.Equal(t, pRef.ContainerSecrets, dbProjRef.ContainerSecrets)
+			assert.Equal(t, pRef.ContainerSecrets[0].Name, dbProjRef.ContainerSecrets[0].Name)
+			assert.Equal(t, pRef.ContainerSecrets[0].Type, dbProjRef.ContainerSecrets[0].Type)
+			assert.Equal(t, pRef.ContainerSecrets[0].ExternalName, dbProjRef.ContainerSecrets[0].ExternalName)
+			assert.Equal(t, pRef.ContainerSecrets[0].ExternalID, dbProjRef.ContainerSecrets[0].ExternalID)
 
-			value, err := mv.GetValue(ctx, updatedSecret.ExternalID)
+			value, err := mv.GetValue(ctx, pRef.ContainerSecrets[0].ExternalID)
 			require.NoError(t, err)
-			assert.Equal(t, newValue, value)
+			assert.Equal(t, newValue, value, "stored value for existing secret should be updated")
+		},
+		"FailsWithoutContainerSecretInDBProjectRef": func(ctx context.Context, t *testing.T, mv *cocoaMock.Vault, pRef model.ProjectRef) {
+			newSecret := model.ContainerSecret{
+				Name:  "new_secret",
+				Value: "new_value",
+			}
+			pRef.ContainerSecrets = append(pRef.ContainerSecrets, newSecret)
+			assert.Error(t, UpsertContainerSecrets(ctx, mv, pRef.ContainerSecrets))
+
+			dbProjRef, err := model.FindBranchProjectRef(pRef.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbProjRef)
+			require.Len(t, dbProjRef.ContainerSecrets, 1)
+			assert.Equal(t, pRef.ContainerSecrets[0], dbProjRef.ContainerSecrets[0])
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -859,12 +892,7 @@ func TestUpsertContainerSecrets(t *testing.T) {
 					{
 						Name:         "torta",
 						ExternalName: "cake",
-						Type:         model.ContainerSecretRepoCreds,
-					},
-					{
-						Name:         "churros",
-						ExternalName: "yummy fried dough",
-						Type:         model.ContainerSecretRepoCreds,
+						Type:         model.ContainerSecretPodSecret,
 					},
 				},
 			}
@@ -877,7 +905,7 @@ func TestUpsertContainerSecrets(t *testing.T) {
 
 			_, err = v.CreateSecret(ctx, *cocoa.NewNamedSecret().
 				SetName(pRef.ContainerSecrets[0].ExternalName).
-				SetValue("some_value"))
+				SetValue("is a lie"))
 			require.NoError(t, err)
 
 			// Re-find the project ref because creating the secret will update
@@ -886,6 +914,7 @@ func TestUpsertContainerSecrets(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			pRef = *dbProjRef
+			require.NotZero(t, dbProjRef.ContainerSecrets[0].ExternalID, "creating the container secret should have set the external ID")
 
 			tCase(ctx, t, mv, pRef)
 		})

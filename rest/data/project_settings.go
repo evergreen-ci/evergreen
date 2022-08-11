@@ -320,13 +320,17 @@ func handleGithubConflicts(pRef *model.ProjectRef, reason string) error {
 }
 
 // DeleteContainerSecrets deletes existing container secrets in the project ref
-// from the secrets storage service.
+// from the secrets storage service. This returns the remaining secrets after
+// deletion.
 // kim: NOTE: cache updating won't work until Cocoa is upgraded to include the
 // secret cache deletion.
-func DeleteContainerSecrets(ctx context.Context, v cocoa.Vault, pRef *model.ProjectRef, namesToDelete []string) error {
+// kim: TODO: re-test to check the remaining secrets
+func DeleteContainerSecrets(ctx context.Context, v cocoa.Vault, pRef *model.ProjectRef, namesToDelete []string) ([]model.ContainerSecret, error) {
 	catcher := grip.NewBasicCatcher()
+	var remaining []model.ContainerSecret
 	for _, secret := range pRef.ContainerSecrets {
 		if !utility.StringSliceContains(namesToDelete, secret.Name) {
+			remaining = append(remaining, secret)
 			continue
 		}
 
@@ -334,25 +338,16 @@ func DeleteContainerSecrets(ctx context.Context, v cocoa.Vault, pRef *model.Proj
 			catcher.Wrapf(v.DeleteSecret(ctx, secret.ExternalID), "deleting container secret '%s' with external ID '%s'", secret.Name, secret.ExternalID)
 		}
 	}
-	return catcher.Resolve()
+	return remaining, catcher.Resolve()
 }
 
 // UpsertContainerSecrets adds new secrets or updates the value of existing
 // container secrets in the secrets storage service for a project. Each
 // container secret to upsert must already be stored in the project ref.
-func UpsertContainerSecrets(ctx context.Context, v cocoa.Vault, projectID string, originalSecrets, updatedSecrets []model.ContainerSecret) error {
-	original := model.ContainerSecretsMap(originalSecrets)
-	updated := model.ContainerSecretsMap(updatedSecrets)
-
+func UpsertContainerSecrets(ctx context.Context, v cocoa.Vault, updatedSecrets []model.ContainerSecret) error {
 	catcher := grip.NewBasicCatcher()
-	for name, updatedSecret := range updated {
-		existingSecret, ok := original[name]
-		if !ok {
-			catcher.Errorf("cannot upsert secret '%s' because it does not exist in the project ref", name)
-			continue
-		}
-
-		if existingSecret.ExternalID == "" {
+	for _, updatedSecret := range updatedSecrets {
+		if updatedSecret.ExternalID == "" {
 			// The secret is not yet stored externally, so create it.
 			newSecret := cocoa.NewNamedSecret().
 				SetName(updatedSecret.ExternalName).
@@ -360,6 +355,7 @@ func UpsertContainerSecrets(ctx context.Context, v cocoa.Vault, projectID string
 			if _, err := v.CreateSecret(ctx, *newSecret); err != nil {
 				catcher.Wrapf(err, "adding new container secret '%s'", updatedSecret.Name)
 			}
+
 			continue
 		}
 
@@ -369,7 +365,7 @@ func UpsertContainerSecrets(ctx context.Context, v cocoa.Vault, projectID string
 			updatedValue := cocoa.NewNamedSecret().
 				SetName(updatedSecret.ExternalID).
 				SetValue(updatedSecret.Value)
-			catcher.Wrapf(v.UpdateValue(ctx, *updatedValue), "updating value for existing container secret '%s'", name)
+			catcher.Wrapf(v.UpdateValue(ctx, *updatedValue), "updating value for existing container secret '%s'", updatedSecret.Name)
 		}
 	}
 

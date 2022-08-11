@@ -278,6 +278,7 @@ func TestPodAllocatorJob(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			pRef = *dbProjRef
+			require.NotZero(t, dbProjRef.ContainerSecrets[0].ExternalID, "creating the container secret should have set the external ID")
 
 			j := NewPodAllocatorJob(tsk.Id, utility.RoundPartOfMinute(0).Format(TSFormat))
 			allocatorJob := j.(*podAllocatorJob)

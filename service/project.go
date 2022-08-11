@@ -323,7 +323,9 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		BuildBaronSettings      restModel.APIBuildBaronSettings            `json:"build_baron_settings"`
 		TaskAnnotationSettings  restModel.APITaskAnnotationSettings        `json:"task_annotation_settings"`
 		ContainerSizes          map[string]restModel.APIContainerResources `json:"container_sizes"`
-		ContainerSecrets        []restModel.APIContainerSecret             `json:"container_secrets"`
+		// ContainerSecrets includes either all the secrets (modified or not) or
+		// just the modified secrets.
+		ContainerSecrets []restModel.APIContainerSecret `json:"container_secrets"`
 		// DeleteContainerSecrets contains names of container secrets to be
 		// deleted.
 		DeleteContainerSecrets []string `json:"delete_container_secrets"`
@@ -561,12 +563,34 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 
 	catcher := grip.NewSimpleCatcher()
 
+	if uis.vault == nil && (len(responseRef.DeleteContainerSecrets) != 0 || len(responseRef.ContainerSecrets) != 0) {
+		smClient, err := cloud.MakeSecretsManagerClient(settings)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "initializing Secrets Manager client"))
+			return
+		}
+		defer smClient.Close(ctx)
+		vault, err := cloud.MakeSecretsManagerVault(smClient)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "initializing Secrets Manager vault"))
+			return
+		}
+		uis.vault = vault
+	}
+	// This intentionally deletes the container secrets from external storage
+	// before updating the project ref. Deleting the secrets before updating the
+	// project ref ensures that the cloud secrets are cleaned up before removing
+	// references to them in the project ref.
+	remainingSecretsAfterDeletion, err := data.DeleteContainerSecrets(ctx, uis.vault, projectRef, responseRef.DeleteContainerSecrets)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "deleting container secrets"))
+		return
+	}
+
 	var updatedContainerSecrets []model.ContainerSecret
 	for i, apiContainerSecret := range responseRef.ContainerSecrets {
 		name := utility.FromStringPtr(apiContainerSecret.Name)
 		if utility.StringSliceContains(responseRef.DeleteContainerSecrets, name) {
-			// Exclude deleted secrets from the updated set of secrets so it'll
-			// be removed from the project ref.
 			continue
 		}
 
@@ -577,6 +601,9 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		}
 		updatedContainerSecrets = append(updatedContainerSecrets, *containerSecret)
 	}
+
+	allContainerSecrets, err := model.ValidateContainerSecrets(settings, id, remainingSecretsAfterDeletion, updatedContainerSecrets)
+	catcher.Wrap(err, "invalid container secrets")
 
 	for i := range responseRef.Triggers {
 		catcher.Add(responseRef.Triggers[i].Validate(id))
@@ -593,32 +620,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		catcher.Wrapf(containerResource.Validate(), "invalid container size '%s'", size)
 	}
 
-	originalContainerSecrets := projectRef.ContainerSecrets
-	updatedContainerSecrets, err = model.ValidateContainerSecrets(settings, id, originalContainerSecrets, updatedContainerSecrets)
-	catcher.Wrap(err, "invalid container secrets")
-
 	if catcher.HasErrors() {
 		uis.LoggedError(w, r, http.StatusBadRequest, catcher.Resolve())
-		return
-	}
-
-	smClient, err := cloud.MakeSecretsManagerClient(settings)
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "initializing Secrets Manager client"))
-		return
-	}
-	defer smClient.Close(ctx)
-	vault, err := cloud.MakeSecretsManagerVault(smClient)
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "initializing Secrets Manager vault"))
-		return
-	}
-	// This intentionally deletes the container secrets from external storage
-	// before updating the project ref. Deleting the secrets before updating the
-	// project ref ensures that the cloud secrets are cleaned up before removing
-	// references to them in the project ref.
-	if err := data.DeleteContainerSecrets(ctx, vault, projectRef, responseRef.DeleteContainerSecrets); err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "deleting container secrets"))
 		return
 	}
 
@@ -662,7 +665,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.PeriodicBuilds = []model.PeriodicBuildDefinition{}
 	projectRef.PerfEnabled = &responseRef.PerfEnabled
 	projectRef.ContainerSizes = containerSizes
-	projectRef.ContainerSecrets = updatedContainerSecrets
+	projectRef.ContainerSecrets = allContainerSecrets
 	projectRef.WorkstationConfig = responseRef.WorkstationConfig.ToService()
 	if hook != nil {
 		projectRef.TracksPushEvents = utility.TruePtr()
@@ -690,7 +693,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := data.UpsertContainerSecrets(ctx, vault, id, originalContainerSecrets, updatedContainerSecrets); err != nil {
+	if err := data.UpsertContainerSecrets(ctx, uis.vault, allContainerSecrets); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "syncing container secrets"))
 		return
 	}

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	dbModel "github.com/evergreen-ci/evergreen/model"
@@ -263,6 +264,7 @@ type projectIDPatchHandler struct {
 	apiNewProjectRef *model.APIProjectRef
 
 	settings *evergreen.Settings
+	vault    cocoa.Vault
 }
 
 func makePatchProjectByID(settings *evergreen.Settings) gimlet.RouteHandler {
@@ -327,7 +329,6 @@ func (h *projectIDPatchHandler) Parse(ctx context.Context, r *http.Request) erro
 }
 
 // Run updates a project by name.
-// kim: TODO: unit test
 // kim: TODO: manually test adding secrets
 func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if err := h.newProjectRef.ValidateOwnerAndRepo(h.settings.GithubOrgs); err != nil {
@@ -356,18 +357,6 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	teamsToDelete := utility.FromStringPtrSlice(h.apiNewProjectRef.DeleteGitTagAuthorizedTeams)
 	allAuthorizedTeams := utility.UniqueStrings(append(h.originalProject.GitTagAuthorizedTeams, h.newProjectRef.GitTagAuthorizedTeams...))
 	h.newProjectRef.GitTagAuthorizedTeams, _ = utility.StringSliceSymmetricDifference(allAuthorizedTeams, teamsToDelete)
-
-	var updatedContainerSecrets []dbModel.ContainerSecret
-	for _, containerSecret := range h.newProjectRef.ContainerSecrets {
-		if utility.StringSliceContains(h.apiNewProjectRef.DeleteContainerSecrets, containerSecret.Name) {
-			// Exclude deleted secrets from the updated set of secrets so
-			// they'll be removed from the project ref.
-			continue
-		}
-
-		updatedContainerSecrets = append(updatedContainerSecrets, containerSecret)
-	}
-	h.newProjectRef.ContainerSecrets = updatedContainerSecrets
 
 	// If the project ref doesn't use the repo, then this will just be the same as newProjectRef.
 	// Used to verify that if something is set to nil in the request, we properly validate using the merged project ref.
@@ -468,6 +457,30 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
+	// This intentionally deletes the container secrets from external storage
+	// before updating the project ref. Deleting the secrets before updating the
+	// project ref ensures that the cloud secrets are cleaned up before removing
+	// references to them in the project ref.
+	remainingSecretsAfterDeletion, err := data.DeleteContainerSecrets(ctx, h.vault, h.originalProject, h.apiNewProjectRef.DeleteContainerSecrets)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "deleting container secrets"))
+	}
+
+	var updatedContainerSecrets []dbModel.ContainerSecret
+	for _, containerSecret := range h.newProjectRef.ContainerSecrets {
+		if utility.StringSliceContains(h.apiNewProjectRef.DeleteContainerSecrets, containerSecret.Name) {
+			continue
+		}
+		updatedContainerSecrets = append(updatedContainerSecrets, containerSecret)
+	}
+
+	allContainerSecrets, err := dbModel.ValidateContainerSecrets(h.settings, h.newProjectRef.Id, remainingSecretsAfterDeletion, updatedContainerSecrets)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "invalid container secrets"))
+	}
+
+	h.newProjectRef.ContainerSecrets = allContainerSecrets
+
 	if h.originalProject.Restricted != mergedProjectRef.Restricted {
 		if mergedProjectRef.IsRestricted() {
 			err = mergedProjectRef.MakeRestricted()
@@ -489,21 +502,17 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
-	smClient, err := cloud.MakeSecretsManagerClient(h.settings)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "initializing Secrets Manager client"))
-	}
-	defer smClient.Close(ctx)
-	vault, err := cloud.MakeSecretsManagerVault(smClient)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "initializing Secrets Manager vault"))
-	}
-	// This intentionally deletes the container secrets from external storage
-	// before updating the project ref. Deleting the secrets before updating the
-	// project ref ensures that the cloud secrets are cleaned up before removing
-	// references to them in the project ref.
-	if err := data.DeleteContainerSecrets(ctx, vault, h.originalProject, h.apiNewProjectRef.DeleteContainerSecrets); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "deleting container secrets"))
+	if h.vault == nil && (len(h.apiNewProjectRef.DeleteContainerSecrets) != 0 || len(h.apiNewProjectRef.ContainerSecrets) != 0) {
+		smClient, err := cloud.MakeSecretsManagerClient(h.settings)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "initializing Secrets Manager client"))
+		}
+		defer smClient.Close(ctx)
+		vault, err := cloud.MakeSecretsManagerVault(smClient)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "initializing Secrets Manager vault"))
+		}
+		h.vault = vault
 	}
 
 	// complete all updates
@@ -511,7 +520,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating project '%s'", h.newProjectRef.Id))
 	}
 
-	if err := data.UpsertContainerSecrets(ctx, vault, h.project, h.originalProject.ContainerSecrets, h.newProjectRef.ContainerSecrets); err != nil {
+	if err := data.UpsertContainerSecrets(ctx, h.vault, updatedContainerSecrets); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "upserting container secrets"))
 	}
 
