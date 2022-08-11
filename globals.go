@@ -1205,3 +1205,12 @@ func ValidateSSHKey(key string) error {
 	return errors.Errorf("either an invalid Evergreen-managed key name has been provided, "+
 		"or the key value is not one of the valid types: %s", validKeyTypes)
 }
+
+// ValidateCloneMethod checks that the clone mechanism is one of the supported
+// methods.
+func ValidateCloneMethod(method string) error {
+	if !utility.StringSliceContains(ValidCloneMethods, method) {
+		return errors.Errorf("'%s' is not a valid clone method", method)
+	}
+	return nil
+}

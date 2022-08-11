@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
@@ -84,7 +83,7 @@ func (opts cloneOpts) validate() error {
 		catcher.New("missing required location")
 	}
 	if opts.method != "" {
-		catcher.Wrap(distro.ValidateCloneMethod(opts.method), "invalid clone method")
+		catcher.Wrap(evergreen.ValidateCloneMethod(opts.method), "invalid clone method")
 	}
 	if opts.method == evergreen.CloneMethodOAuth && opts.token == "" {
 		catcher.New("cannot clone using OAuth if token is not set")
@@ -384,7 +383,7 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 }
 
 func (c *gitFetchProject) opts(projectMethod, projectToken string, conf *internal.TaskConfig) (cloneOpts, error) {
-	shallowCloneEnabled := conf.Distro == nil || (conf.Distro != nil && !conf.Distro.DisableShallowClone)
+	shallowCloneEnabled := conf.Distro == nil || !conf.Distro.DisableShallowClone
 	opts := cloneOpts{
 		method:             projectMethod,
 		owner:              conf.ProjectRef.Owner,

@@ -381,7 +381,7 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 	}
 
 	grip.Info("Constructing TaskConfig.")
-	taskConfig, err := internal.NewTaskConfig(confDistro, tc.project, tc.taskModel, confRef, confPatch, tc.expansions)
+	taskConfig, err := internal.NewTaskConfig(a.opts.WorkingDirectory, confDistro, tc.project, tc.taskModel, confRef, confPatch, tc.expansions)
 	if err != nil {
 		return nil, err
 	}

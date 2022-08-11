@@ -562,15 +562,6 @@ func ValidateArch(arch string) error {
 	return nil
 }
 
-// ValidateCloneMethod checks that the clone mechanism is one of the supported
-// methods.
-func ValidateCloneMethod(method string) error {
-	if !utility.StringSliceContains(evergreen.ValidCloneMethods, method) {
-		return errors.Errorf("'%s' is not a valid clone method", method)
-	}
-	return nil
-}
-
 // GetDistroIds returns a slice of distro IDs for the given group of distros
 func (distros DistroGroup) GetDistroIds() []string {
 	var ids []string

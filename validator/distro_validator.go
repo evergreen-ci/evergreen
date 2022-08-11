@@ -329,7 +329,7 @@ func ensureValidStaticBootstrapSettings(ctx context.Context, d *distro.Distro, s
 // ensureValidCloneMethod checks that the clone method is one of the supported
 // methods.
 func ensureValidCloneMethod(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
-	if err := distro.ValidateCloneMethod(d.CloneMethod); err != nil {
+	if err := evergreen.ValidateCloneMethod(d.CloneMethod); err != nil {
 		return ValidationErrors{{Level: Error, Message: err.Error()}}
 	}
 	return nil
