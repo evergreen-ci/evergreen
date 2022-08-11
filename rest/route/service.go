@@ -65,7 +65,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/pods/{pod_id}/task/{task_id}/end").Version(2).Post().Wrap(requirePod, requireTask).RouteHandler(makePodAgentEndTask(env))
 	app.AddRoute("/hosts/{host_id}/agent/next_task").Version(2).Get().Wrap(requireHost).RouteHandler(makeHostAgentNextTask(env, opts.TaskDispatcher, opts.TaskAliasDispatcher))
 	app.AddRoute("/hosts/{host_id}/task/{task_id}/end").Version(2).Post().Wrap(requireHost, requireTask).RouteHandler(makeHostAgentEndTask(env))
-	app.AddRoute("/agent/cedar_config").Version(2).Get().Wrap(requirePodOrHost).RouteHandler(makeAgentCedarConfig(env.Settings()))
+	app.AddRoute("/agent/cedar_config").Version(2).Get().Wrap(requirePodOrHost).RouteHandler(makeAgentCedarConfig(env.Settings().Cedar))
 	app.AddRoute("/agent/setup").Version(2).Get().Wrap(requirePodOrHost).RouteHandler(makeAgentSetup(env.Settings()))
 	app.AddRoute("/task/{task_id}/update_push_status").Version(2).Post().Wrap(requireTask).RouteHandler(makeUpdatePushStatus())
 	app.AddRoute("/task/{task_id}/new_push").Version(2).Post().Wrap(requireTask).RouteHandler(makeNewPush())
