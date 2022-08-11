@@ -91,7 +91,7 @@ func SetVersionActivation(versionId string, active bool, caller string) error {
 			}
 		}
 	}
-	if len(tasksToModify) > 0 {
+	if len(tasksToModify) == 0 {
 		return nil
 	}
 
