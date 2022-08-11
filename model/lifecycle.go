@@ -442,7 +442,7 @@ func RestartBuild(buildId string, taskIds []string, abortInProgress bool, caller
 	if len(tasks) == 0 {
 		return nil
 	}
-	return restartTasksForBuild(tasks, caller)
+	return restartTasksForBuild(buildId, tasks, caller)
 }
 
 // RestartAllBuildTasks restarts all the tasks associated with a given build.
@@ -458,10 +458,10 @@ func RestartAllBuildTasks(buildId string, caller string) error {
 	if len(allTasks) == 0 {
 		return nil
 	}
-	return restartTasksForBuild(allTasks, caller)
+	return restartTasksForBuild(buildId, allTasks, caller)
 }
 
-func restartTasksForBuild(tasks []task.Task, caller string) error {
+func restartTasksForBuild(buildId string, tasks []task.Task, caller string) error {
 	// maps task group to a single task in the group so we only check once
 	taskGroupsToCheck := map[string]task.Task{}
 	restartIds := []string{}
