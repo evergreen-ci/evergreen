@@ -3,9 +3,11 @@ package data
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy"
 	"github.com/pkg/errors"
 )
@@ -22,7 +24,10 @@ func GenerateTasks(taskID string, jsonBytes []json.RawMessage, group amboy.Queue
 
 	// Don't continue if the generator has already run
 	if t.GeneratedTasks {
-		return errors.New(evergreen.TasksAlreadyGeneratedError)
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    evergreen.TasksAlreadyGeneratedError,
+		}
 	}
 
 	if err = t.SetGeneratedJSON(jsonBytes); err != nil {
