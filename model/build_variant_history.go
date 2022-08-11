@@ -27,7 +27,7 @@ func NewBuildVariantHistoryIterator(buildVariantInTask string, buildVariantInVer
 }
 
 // Returns versions and tasks grouped by gitspec, newest first (sorted by order number desc)
-func (self *buildVariantHistoryIterator) GetItems(beforeCommit *Version, numRevisions int) ([]bson.M, []Version, error) {
+func (bvhi *buildVariantHistoryIterator) GetItems(beforeCommit *Version, numRevisions int) ([]bson.M, []Version, error) {
 	var versionQuery db.Q
 	if beforeCommit != nil {
 		versionQuery = db.Query(bson.M{
@@ -35,10 +35,10 @@ func (self *buildVariantHistoryIterator) GetItems(beforeCommit *Version, numRevi
 				"$in": evergreen.SystemVersionRequesterTypes,
 			},
 			VersionRevisionOrderNumberKey: bson.M{"$lt": beforeCommit.RevisionOrderNumber},
-			VersionIdentifierKey:          self.ProjectName,
+			VersionIdentifierKey:          bvhi.ProjectName,
 			VersionBuildVariantsKey: bson.M{
 				"$elemMatch": bson.M{
-					VersionBuildStatusVariantKey: self.BuildVariantInVersion,
+					VersionBuildStatusVariantKey: bvhi.BuildVariantInVersion,
 				},
 			},
 		})
@@ -47,10 +47,10 @@ func (self *buildVariantHistoryIterator) GetItems(beforeCommit *Version, numRevi
 			VersionRequesterKey: bson.M{
 				"$in": evergreen.SystemVersionRequesterTypes,
 			},
-			VersionIdentifierKey: self.ProjectName,
+			VersionIdentifierKey: bvhi.ProjectName,
 			VersionBuildVariantsKey: bson.M{
 				"$elemMatch": bson.M{
-					VersionBuildStatusVariantKey: self.BuildVariantInVersion,
+					VersionBuildStatusVariantKey: bvhi.BuildVariantInVersion,
 				},
 			},
 		})
@@ -81,8 +81,8 @@ func (self *buildVariantHistoryIterator) GetItems(beforeCommit *Version, numRevi
 		task.RequesterKey: bson.M{
 			"$in": evergreen.SystemVersionRequesterTypes,
 		},
-		task.BuildVariantKey: self.BuildVariantInTask,
-		task.ProjectKey:      self.ProjectName,
+		task.BuildVariantKey: bvhi.BuildVariantInTask,
+		task.ProjectKey:      bvhi.ProjectName,
 	}
 
 	if beforeCommit != nil {
