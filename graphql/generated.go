@@ -518,11 +518,6 @@ type ComplexityRoot struct {
 		Variants func(childComplexity int) int
 	}
 
-	PatchTasks struct {
-		Count func(childComplexity int) int
-		Tasks func(childComplexity int) int
-	}
-
 	PatchTime struct {
 		Finished    func(childComplexity int) int
 		Started     func(childComplexity int) int
@@ -559,51 +554,50 @@ type ComplexityRoot struct {
 	}
 
 	Project struct {
-		Admins                  func(childComplexity int) int
-		BatchTime               func(childComplexity int) int
-		Branch                  func(childComplexity int) int
-		BuildBaronSettings      func(childComplexity int) int
-		CedarTestResultsEnabled func(childComplexity int) int
-		CommitQueue             func(childComplexity int) int
-		DeactivatePrevious      func(childComplexity int) int
-		DefaultLogger           func(childComplexity int) int
-		DisabledStatsCache      func(childComplexity int) int
-		DispatchingDisabled     func(childComplexity int) int
-		DisplayName             func(childComplexity int) int
-		Enabled                 func(childComplexity int) int
-		FilesIgnoredFromCache   func(childComplexity int) int
-		GitTagAuthorizedTeams   func(childComplexity int) int
-		GitTagAuthorizedUsers   func(childComplexity int) int
-		GitTagVersionsEnabled   func(childComplexity int) int
-		GithubChecksEnabled     func(childComplexity int) int
-		GithubTriggerAliases    func(childComplexity int) int
-		Hidden                  func(childComplexity int) int
-		Id                      func(childComplexity int) int
-		Identifier              func(childComplexity int) int
-		IsFavorite              func(childComplexity int) int
-		ManualPRTestingEnabled  func(childComplexity int) int
-		NotifyOnBuildFailure    func(childComplexity int) int
-		Owner                   func(childComplexity int) int
-		PRTestingEnabled        func(childComplexity int) int
-		PatchTriggerAliases     func(childComplexity int) int
-		Patches                 func(childComplexity int, patchesInput PatchesInput) int
-		PatchingDisabled        func(childComplexity int) int
-		PerfEnabled             func(childComplexity int) int
-		PeriodicBuilds          func(childComplexity int) int
-		Private                 func(childComplexity int) int
-		RemotePath              func(childComplexity int) int
-		Repo                    func(childComplexity int) int
-		RepoRefId               func(childComplexity int) int
-		RepotrackerDisabled     func(childComplexity int) int
-		Restricted              func(childComplexity int) int
-		SpawnHostScriptPath     func(childComplexity int) int
-		TaskAnnotationSettings  func(childComplexity int) int
-		TaskSync                func(childComplexity int) int
-		TracksPushEvents        func(childComplexity int) int
-		Triggers                func(childComplexity int) int
-		ValidDefaultLoggers     func(childComplexity int) int
-		VersionControlEnabled   func(childComplexity int) int
-		WorkstationConfig       func(childComplexity int) int
+		Admins                 func(childComplexity int) int
+		BatchTime              func(childComplexity int) int
+		Branch                 func(childComplexity int) int
+		BuildBaronSettings     func(childComplexity int) int
+		CommitQueue            func(childComplexity int) int
+		DeactivatePrevious     func(childComplexity int) int
+		DefaultLogger          func(childComplexity int) int
+		DisabledStatsCache     func(childComplexity int) int
+		DispatchingDisabled    func(childComplexity int) int
+		DisplayName            func(childComplexity int) int
+		Enabled                func(childComplexity int) int
+		FilesIgnoredFromCache  func(childComplexity int) int
+		GitTagAuthorizedTeams  func(childComplexity int) int
+		GitTagAuthorizedUsers  func(childComplexity int) int
+		GitTagVersionsEnabled  func(childComplexity int) int
+		GithubChecksEnabled    func(childComplexity int) int
+		GithubTriggerAliases   func(childComplexity int) int
+		Hidden                 func(childComplexity int) int
+		Id                     func(childComplexity int) int
+		Identifier             func(childComplexity int) int
+		IsFavorite             func(childComplexity int) int
+		ManualPRTestingEnabled func(childComplexity int) int
+		NotifyOnBuildFailure   func(childComplexity int) int
+		Owner                  func(childComplexity int) int
+		PRTestingEnabled       func(childComplexity int) int
+		PatchTriggerAliases    func(childComplexity int) int
+		Patches                func(childComplexity int, patchesInput PatchesInput) int
+		PatchingDisabled       func(childComplexity int) int
+		PerfEnabled            func(childComplexity int) int
+		PeriodicBuilds         func(childComplexity int) int
+		Private                func(childComplexity int) int
+		RemotePath             func(childComplexity int) int
+		Repo                   func(childComplexity int) int
+		RepoRefId              func(childComplexity int) int
+		RepotrackerDisabled    func(childComplexity int) int
+		Restricted             func(childComplexity int) int
+		SpawnHostScriptPath    func(childComplexity int) int
+		TaskAnnotationSettings func(childComplexity int) int
+		TaskSync               func(childComplexity int) int
+		TracksPushEvents       func(childComplexity int) int
+		Triggers               func(childComplexity int) int
+		ValidDefaultLoggers    func(childComplexity int) int
+		VersionControlEnabled  func(childComplexity int) int
+		WorkstationConfig      func(childComplexity int) int
 	}
 
 	ProjectAlias struct {
@@ -698,7 +692,6 @@ type ComplexityRoot struct {
 		MyPublicKeys             func(childComplexity int) int
 		MyVolumes                func(childComplexity int) int
 		Patch                    func(childComplexity int, id string) int
-		PatchTasks               func(childComplexity int, patchID string, sorts []*SortOrder, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string, includeEmptyActivation *bool) int
 		Project                  func(childComplexity int, projectID string) int
 		ProjectEvents            func(childComplexity int, identifier string, limit *int, before *time.Time) int
 		ProjectSettings          func(childComplexity int, identifier string) int
@@ -730,46 +723,45 @@ type ComplexityRoot struct {
 	}
 
 	RepoRef struct {
-		Admins                  func(childComplexity int) int
-		BatchTime               func(childComplexity int) int
-		Branch                  func(childComplexity int) int
-		BuildBaronSettings      func(childComplexity int) int
-		CedarTestResultsEnabled func(childComplexity int) int
-		CommitQueue             func(childComplexity int) int
-		DeactivatePrevious      func(childComplexity int) int
-		DefaultLogger           func(childComplexity int) int
-		DisabledStatsCache      func(childComplexity int) int
-		DispatchingDisabled     func(childComplexity int) int
-		DisplayName             func(childComplexity int) int
-		Enabled                 func(childComplexity int) int
-		FilesIgnoredFromCache   func(childComplexity int) int
-		GitTagAuthorizedTeams   func(childComplexity int) int
-		GitTagAuthorizedUsers   func(childComplexity int) int
-		GitTagVersionsEnabled   func(childComplexity int) int
-		GithubChecksEnabled     func(childComplexity int) int
-		GithubTriggerAliases    func(childComplexity int) int
-		Id                      func(childComplexity int) int
-		ManualPRTestingEnabled  func(childComplexity int) int
-		NotifyOnBuildFailure    func(childComplexity int) int
-		Owner                   func(childComplexity int) int
-		PRTestingEnabled        func(childComplexity int) int
-		PatchTriggerAliases     func(childComplexity int) int
-		PatchingDisabled        func(childComplexity int) int
-		PerfEnabled             func(childComplexity int) int
-		PeriodicBuilds          func(childComplexity int) int
-		Private                 func(childComplexity int) int
-		RemotePath              func(childComplexity int) int
-		Repo                    func(childComplexity int) int
-		RepotrackerDisabled     func(childComplexity int) int
-		Restricted              func(childComplexity int) int
-		SpawnHostScriptPath     func(childComplexity int) int
-		TaskAnnotationSettings  func(childComplexity int) int
-		TaskSync                func(childComplexity int) int
-		TracksPushEvents        func(childComplexity int) int
-		Triggers                func(childComplexity int) int
-		ValidDefaultLoggers     func(childComplexity int) int
-		VersionControlEnabled   func(childComplexity int) int
-		WorkstationConfig       func(childComplexity int) int
+		Admins                 func(childComplexity int) int
+		BatchTime              func(childComplexity int) int
+		Branch                 func(childComplexity int) int
+		BuildBaronSettings     func(childComplexity int) int
+		CommitQueue            func(childComplexity int) int
+		DeactivatePrevious     func(childComplexity int) int
+		DefaultLogger          func(childComplexity int) int
+		DisabledStatsCache     func(childComplexity int) int
+		DispatchingDisabled    func(childComplexity int) int
+		DisplayName            func(childComplexity int) int
+		Enabled                func(childComplexity int) int
+		FilesIgnoredFromCache  func(childComplexity int) int
+		GitTagAuthorizedTeams  func(childComplexity int) int
+		GitTagAuthorizedUsers  func(childComplexity int) int
+		GitTagVersionsEnabled  func(childComplexity int) int
+		GithubChecksEnabled    func(childComplexity int) int
+		GithubTriggerAliases   func(childComplexity int) int
+		Id                     func(childComplexity int) int
+		ManualPRTestingEnabled func(childComplexity int) int
+		NotifyOnBuildFailure   func(childComplexity int) int
+		Owner                  func(childComplexity int) int
+		PRTestingEnabled       func(childComplexity int) int
+		PatchTriggerAliases    func(childComplexity int) int
+		PatchingDisabled       func(childComplexity int) int
+		PerfEnabled            func(childComplexity int) int
+		PeriodicBuilds         func(childComplexity int) int
+		Private                func(childComplexity int) int
+		RemotePath             func(childComplexity int) int
+		Repo                   func(childComplexity int) int
+		RepotrackerDisabled    func(childComplexity int) int
+		Restricted             func(childComplexity int) int
+		SpawnHostScriptPath    func(childComplexity int) int
+		TaskAnnotationSettings func(childComplexity int) int
+		TaskSync               func(childComplexity int) int
+		TracksPushEvents       func(childComplexity int) int
+		Triggers               func(childComplexity int) int
+		ValidDefaultLoggers    func(childComplexity int) int
+		VersionControlEnabled  func(childComplexity int) int
+		WorkstationConfig      func(childComplexity int) int
 	}
 
 	RepoSettings struct {
@@ -1324,7 +1316,6 @@ type QueryResolver interface {
 	Hosts(ctx context.Context, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) (*HostsResponse, error)
 	TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistro, error)
 	Patch(ctx context.Context, id string) (*model.APIPatch, error)
-	PatchTasks(ctx context.Context, patchID string, sorts []*SortOrder, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string, includeEmptyActivation *bool) (*PatchTasks, error)
 	GithubProjectConflicts(ctx context.Context, projectID string) (*model1.GithubProjectConflicts, error)
 	Project(ctx context.Context, projectID string) (*model.APIProjectRef, error)
 	Projects(ctx context.Context) ([]*GroupedProjects, error)
@@ -3728,20 +3719,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.PatchProject.Variants(childComplexity), true
 
-	case "PatchTasks.count":
-		if e.complexity.PatchTasks.Count == nil {
-			break
-		}
-
-		return e.complexity.PatchTasks.Count(childComplexity), true
-
-	case "PatchTasks.tasks":
-		if e.complexity.PatchTasks.Tasks == nil {
-			break
-		}
-
-		return e.complexity.PatchTasks.Tasks(childComplexity), true
-
 	case "PatchTime.finished":
 		if e.complexity.PatchTime.Finished == nil {
 			break
@@ -3909,13 +3886,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Project.BuildBaronSettings(childComplexity), true
-
-	case "Project.cedarTestResultsEnabled":
-		if e.complexity.Project.CedarTestResultsEnabled == nil {
-			break
-		}
-
-		return e.complexity.Project.CedarTestResultsEnabled(childComplexity), true
 
 	case "Project.commitQueue":
 		if e.complexity.Project.CommitQueue == nil {
@@ -4694,18 +4664,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.Patch(childComplexity, args["id"].(string)), true
 
-	case "Query.patchTasks":
-		if e.complexity.Query.PatchTasks == nil {
-			break
-		}
-
-		args, err := ec.field_Query_patchTasks_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.PatchTasks(childComplexity, args["patchId"].(string), args["sorts"].([]*SortOrder), args["page"].(*int), args["limit"].(*int), args["statuses"].([]string), args["baseStatuses"].([]string), args["variant"].(*string), args["taskName"].(*string), args["includeEmptyActivation"].(*bool)), true
-
 	case "Query.project":
 		if e.complexity.Query.Project == nil {
 			break
@@ -4978,13 +4936,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.RepoRef.BuildBaronSettings(childComplexity), true
-
-	case "RepoRef.cedarTestResultsEnabled":
-		if e.complexity.RepoRef.CedarTestResultsEnabled == nil {
-			break
-		}
-
-		return e.complexity.RepoRef.CedarTestResultsEnabled(childComplexity), true
 
 	case "RepoRef.commitQueue":
 		if e.complexity.RepoRef.CommitQueue == nil {
@@ -7478,17 +7429,6 @@ type Query {
 
   # patch
   patch(id: String!): Patch!
-  patchTasks(
-    patchId: String!
-    sorts: [SortOrder!]
-    page: Int = 0
-    limit: Int = 0
-    statuses: [String!] = []
-    baseStatuses: [String!] = []
-    variant: String
-    taskName: String
-    includeEmptyActivation: Boolean = false
-  ): PatchTasks! @deprecated(reason: "patchTasks is deprecated, use version.tasks instead.")
 
   # project
   githubProjectConflicts(projectId: String!): GithubProjectConflicts!
@@ -7899,14 +7839,6 @@ input PatchesInput {
 }
 
 """
-SortOrder[] is an input value for the patchTasks query. It is used to define where to sort by ASC/DEC for a given sort key.
-"""
-input SortOrder {
-  Direction: SortDirection!
-  Key: TaskSortCategory!
-}
-
-"""
 PatchConfigure is the input to the schedulePatch mutation.
 It contains information about how a user has configured their patch (e.g. name, tasks to run, etc).
 """
@@ -8057,16 +7989,6 @@ type Patches {
   filteredPatchCount: Int!
   patches: [Patch!]!
 }
-
-"""
-PatchTasks is the return value of the PatchTasks query.
-It contains an array of Tasks based on filter criteria, as well as a count for the number of Tasks in that array.
-"""
-type PatchTasks {
-  count: Int!
-  tasks: [Task!]!
-}
-
 `, BuiltIn: false},
 	{Name: "graphql/schema/types/permissions.graphql", Input: `###### TYPES ######
 type Permissions {
@@ -8231,7 +8153,6 @@ type Project {
   batchTime: Int!
   branch: String!
   buildBaronSettings: BuildBaronSettings!
-  cedarTestResultsEnabled: Boolean
   commitQueue: CommitQueueParams!
   deactivatePrevious: Boolean
   defaultLogger: String!
@@ -8328,7 +8249,6 @@ input ProjectInput {
   batchTime: Int
   branch: String
   buildBaronSettings: BuildBaronSettingsInput
-  cedarTestResultsEnabled: Boolean
   commitQueue: CommitQueueParamsInput
   deactivatePrevious: Boolean
   defaultLogger: String
@@ -8566,7 +8486,6 @@ input RepoRefInput {
   batchTime: Int
   branch: String
   buildBaronSettings: BuildBaronSettingsInput
-  cedarTestResultsEnabled: Boolean
   commitQueue: CommitQueueParamsInput
   deactivatePrevious: Boolean
   defaultLogger: String
@@ -8614,7 +8533,6 @@ type RepoRef {
   batchTime: Int!
   branch: String!
   buildBaronSettings: BuildBaronSettings!
-  cedarTestResultsEnabled: Boolean!
   commitQueue: RepoCommitQueueParams!
   deactivatePrevious: Boolean!
   defaultLogger: String!
@@ -8671,7 +8589,8 @@ type RepoWorkstationConfig {
 type WorkstationSetupCommand {
   command: String!
   directory: String!
-}`, BuiltIn: false},
+}
+`, BuiltIn: false},
 	{Name: "graphql/schema/types/repo_settings.graphql", Input: `###### INPUTS ######
 """
 RepoSettingsInput is the input to the saveRepoSettingsForSection mutation.
@@ -9259,6 +9178,15 @@ input TaskFilterOptions {
   taskName: String
   variant: String
 }
+
+"""
+SortOrder[] is an input value for version.tasks. It is used to define whether to sort by ASC/DEC for a given sort key.
+"""
+input SortOrder {
+  Direction: SortDirection!
+  Key: TaskSortCategory!
+}
+
 
 ###### TYPES ######
 """
@@ -10768,93 +10696,6 @@ func (ec *executionContext) field_Query_mainlineCommits_args(ctx context.Context
 		}
 	}
 	args["buildVariantOptions"] = arg1
-	return args, nil
-}
-
-func (ec *executionContext) field_Query_patchTasks_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 string
-	if tmp, ok := rawArgs["patchId"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("patchId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["patchId"] = arg0
-	var arg1 []*SortOrder
-	if tmp, ok := rawArgs["sorts"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sorts"))
-		arg1, err = ec.unmarshalOSortOrder2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortOrderᚄ(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["sorts"] = arg1
-	var arg2 *int
-	if tmp, ok := rawArgs["page"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("page"))
-		arg2, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["page"] = arg2
-	var arg3 *int
-	if tmp, ok := rawArgs["limit"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
-		arg3, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["limit"] = arg3
-	var arg4 []string
-	if tmp, ok := rawArgs["statuses"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statuses"))
-		arg4, err = ec.unmarshalOString2ᚕstringᚄ(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["statuses"] = arg4
-	var arg5 []string
-	if tmp, ok := rawArgs["baseStatuses"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("baseStatuses"))
-		arg5, err = ec.unmarshalOString2ᚕstringᚄ(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["baseStatuses"] = arg5
-	var arg6 *string
-	if tmp, ok := rawArgs["variant"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("variant"))
-		arg6, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["variant"] = arg6
-	var arg7 *string
-	if tmp, ok := rawArgs["taskName"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskName"))
-		arg7, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["taskName"] = arg7
-	var arg8 *bool
-	if tmp, ok := rawArgs["includeEmptyActivation"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeEmptyActivation"))
-		arg8, err = ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["includeEmptyActivation"] = arg8
 	return args, nil
 }
 
@@ -21525,76 +21366,6 @@ func (ec *executionContext) _PatchProject_variants(ctx context.Context, field gr
 	return ec.marshalNProjectBuildVariant2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectBuildVariantᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _PatchTasks_count(ctx context.Context, field graphql.CollectedField, obj *PatchTasks) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "PatchTasks",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Count, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _PatchTasks_tasks(ctx context.Context, field graphql.CollectedField, obj *PatchTasks) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "PatchTasks",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Tasks, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]*model.APITask)
-	fc.Result = res
-	return ec.marshalNTask2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskᚄ(ctx, field.Selections, res)
-}
-
 func (ec *executionContext) _PatchTime_finished(ctx context.Context, field graphql.CollectedField, obj *PatchTime) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -22450,38 +22221,6 @@ func (ec *executionContext) _Project_buildBaronSettings(ctx context.Context, fie
 	res := resTmp.(model.APIBuildBaronSettings)
 	fc.Result = res
 	return ec.marshalNBuildBaronSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBuildBaronSettings(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Project_cedarTestResultsEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "Project",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.CedarTestResultsEnabled, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*bool)
-	fc.Result = res
-	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Project_commitQueue(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
@@ -25749,48 +25488,6 @@ func (ec *executionContext) _Query_patch(ctx context.Context, field graphql.Coll
 	return ec.marshalNPatch2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatch(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Query_patchTasks(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   true,
-		IsResolver: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Query_patchTasks_args(ctx, rawArgs)
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	fc.Args = args
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().PatchTasks(rctx, args["patchId"].(string), args["sorts"].([]*SortOrder), args["page"].(*int), args["limit"].(*int), args["statuses"].([]string), args["baseStatuses"].([]string), args["variant"].(*string), args["taskName"].(*string), args["includeEmptyActivation"].(*bool))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*PatchTasks)
-	fc.Result = res
-	return ec.marshalNPatchTasks2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchTasks(ctx, field.Selections, res)
-}
-
 func (ec *executionContext) _Query_githubProjectConflicts(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -27197,41 +26894,6 @@ func (ec *executionContext) _RepoRef_buildBaronSettings(ctx context.Context, fie
 	res := resTmp.(model.APIBuildBaronSettings)
 	fc.Result = res
 	return ec.marshalNBuildBaronSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBuildBaronSettings(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _RepoRef_cedarTestResultsEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "RepoRef",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.CedarTestResultsEnabled, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*bool)
-	fc.Result = res
-	return ec.marshalNBoolean2ᚖbool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _RepoRef_commitQueue(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
@@ -40428,14 +40090,6 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 			if err != nil {
 				return it, err
 			}
-		case "cedarTestResultsEnabled":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cedarTestResultsEnabled"))
-			it.CedarTestResultsEnabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
-			if err != nil {
-				return it, err
-			}
 		case "commitQueue":
 			var err error
 
@@ -40905,14 +40559,6 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("buildBaronSettings"))
 			it.BuildBaronSettings, err = ec.unmarshalOBuildBaronSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBuildBaronSettings(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "cedarTestResultsEnabled":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cedarTestResultsEnabled"))
-			it.CedarTestResultsEnabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -44781,38 +44427,6 @@ func (ec *executionContext) _PatchProject(ctx context.Context, sel ast.Selection
 	return out
 }
 
-var patchTasksImplementors = []string{"PatchTasks"}
-
-func (ec *executionContext) _PatchTasks(ctx context.Context, sel ast.SelectionSet, obj *PatchTasks) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, patchTasksImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	var invalids uint32
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("PatchTasks")
-		case "count":
-			out.Values[i] = ec._PatchTasks_count(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "tasks":
-			out.Values[i] = ec._PatchTasks_tasks(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch()
-	if invalids > 0 {
-		return graphql.Null
-	}
-	return out
-}
-
 var patchTimeImplementors = []string{"PatchTime"}
 
 func (ec *executionContext) _PatchTime(ctx context.Context, sel ast.SelectionSet, obj *PatchTime) graphql.Marshaler {
@@ -45050,8 +44664,6 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
-		case "cedarTestResultsEnabled":
-			out.Values[i] = ec._Project_cedarTestResultsEnabled(ctx, field, obj)
 		case "commitQueue":
 			out.Values[i] = ec._Project_commitQueue(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -45866,20 +45478,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				}
 				return res
 			})
-		case "patchTasks":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_patchTasks(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
-				return res
-			})
 		case "githubProjectConflicts":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -46313,11 +45911,6 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "buildBaronSettings":
 			out.Values[i] = ec._RepoRef_buildBaronSettings(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
-		case "cedarTestResultsEnabled":
-			out.Values[i] = ec._RepoRef_cedarTestResultsEnabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
@@ -50503,20 +50096,6 @@ func (ec *executionContext) marshalNPatch2ᚖgithubᚗcomᚋevergreenᚑciᚋeve
 func (ec *executionContext) unmarshalNPatchConfigure2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchConfigure(ctx context.Context, v interface{}) (PatchConfigure, error) {
 	res, err := ec.unmarshalInputPatchConfigure(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNPatchTasks2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchTasks(ctx context.Context, sel ast.SelectionSet, v PatchTasks) graphql.Marshaler {
-	return ec._PatchTasks(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNPatchTasks2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchTasks(ctx context.Context, sel ast.SelectionSet, v *PatchTasks) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	return ec._PatchTasks(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNPatchTriggerAlias2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchTriggerDefinition(ctx context.Context, sel ast.SelectionSet, v model.APIPatchTriggerDefinition) graphql.Marshaler {

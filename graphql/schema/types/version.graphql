@@ -22,6 +22,15 @@ input TaskFilterOptions {
   variant: String
 }
 
+"""
+SortOrder[] is an input value for version.tasks. It is used to define whether to sort by ASC/DEC for a given sort key.
+"""
+input SortOrder {
+  Direction: SortDirection!
+  Key: TaskSortCategory!
+}
+
+
 ###### TYPES ######
 """
 Version models a commit within a project.

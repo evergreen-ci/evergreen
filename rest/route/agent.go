@@ -35,6 +35,7 @@ func (h *agentCedarConfig) Run(ctx context.Context) gimlet.Responder {
 		RPCPort:  h.config.RPCPort,
 		Username: h.config.User,
 		APIKey:   h.config.APIKey,
+		Insecure: h.config.Insecure,
 	})
 }
 

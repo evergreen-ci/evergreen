@@ -36,7 +36,6 @@ input ProjectInput {
   batchTime: Int
   branch: String
   buildBaronSettings: BuildBaronSettingsInput
-  cedarTestResultsEnabled: Boolean
   commitQueue: CommitQueueParamsInput
   deactivatePrevious: Boolean
   defaultLogger: String
