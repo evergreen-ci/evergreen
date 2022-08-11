@@ -1200,6 +1200,9 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 }
 
 func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
+	if len(buildIds) == 0 {
+		return nil
+	}
 	builds, err := build.Find(build.ByIds(buildIds))
 	if err != nil {
 		return errors.Wrapf(err, "fetching builds")
