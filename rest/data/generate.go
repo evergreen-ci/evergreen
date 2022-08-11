@@ -23,6 +23,7 @@ func GenerateTasks(taskID string, jsonBytes []json.RawMessage, group amboy.Queue
 	}
 
 	// Don't continue if the generator has already run
+	// Return status code 400 to prevent retries
 	if t.GeneratedTasks {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
