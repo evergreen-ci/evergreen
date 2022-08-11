@@ -302,6 +302,9 @@ func TestHostNextTask(t *testing.T) {
 					assert.Equal(t, taskResp.Build, "buildId")
 				},
 				"LatestAgentRevisionInNextTaskDetails": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
+					nonLegacyHost, err := host.FindOneId("nonLegacyHost")
+					require.NoError(t, err)
+					rh.host = nonLegacyHost
 					rh.details = &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
 					resp := rh.Run(ctx)
 					assert.Equal(t, resp.Status(), http.StatusOK)
