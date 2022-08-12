@@ -21,9 +21,9 @@ require (
 	github.com/evergreen-ci/go-test2json v0.0.0-20180702150328-5b6cfd2e8cb0
 	github.com/evergreen-ci/juniper v0.0.0-20220118233332-0813edc78908
 	github.com/evergreen-ci/pail v0.0.0-20220405154537-920afff49d92
-	github.com/evergreen-ci/poplar v0.0.0-20220405164038-0cfe3198c320
+	github.com/evergreen-ci/poplar v0.0.0-20220801165844-adb53dc1b937
 	github.com/evergreen-ci/shrub v0.0.0-20211025143051-a8d91b2e29fd
-	github.com/evergreen-ci/timber v0.0.0-20220119202616-544be15f3b95
+	github.com/evergreen-ci/timber v0.0.0-20220809215118-028567bbef72
 	github.com/evergreen-ci/utility v0.0.0-20220725171106-4730479c6118
 	github.com/google/go-github/v34 v34.0.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
@@ -47,13 +47,13 @@ require (
 	github.com/urfave/cli v1.22.9
 	github.com/vektah/gqlparser/v2 v2.2.0
 	github.com/vmware/govmomi v0.27.1
-	go.mongodb.org/mongo-driver v1.10.0
+	go.mongodb.org/mongo-driver v1.10.1
 	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8
 	golang.org/x/tools v0.1.9
 	gonum.org/v1/gonum v0.11.0
 	google.golang.org/api v0.60.0
-	google.golang.org/grpc v1.45.0
+	google.golang.org/grpc v1.48.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 

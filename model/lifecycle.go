@@ -91,19 +91,21 @@ func SetVersionActivation(versionId string, active bool, caller string) error {
 			}
 		}
 	}
-	if len(tasksToModify) > 0 {
-		var buildIds []string
-		for _, task := range tasksToModify {
-			if !utility.StringSliceContains(buildIds, task.BuildId) {
-				if err = SetBuildActivation(task.BuildId, active, caller); err != nil {
-					return errors.Wrap(err, "updating build status")
-				}
-				buildIds = append(buildIds, task.BuildId)
-			}
+	if len(tasksToModify) == 0 {
+		return nil
+	}
+
+	var buildIds []string
+	for _, t := range tasksToModify {
+		if !utility.StringSliceContains(buildIds, t.BuildId) {
+			buildIds = append(buildIds, t.BuildId)
 		}
-		if err := UpdateVersionAndPatchStatusForBuilds(buildIds); err != nil {
-			return errors.Wrapf(err, "updating build and version status for version '%s'", versionId)
-		}
+	}
+	if err := build.UpdateActivation(buildIds, active, caller); err != nil {
+		return errors.Wrapf(err, "setting build activations to %t", active)
+	}
+	if err := UpdateVersionAndPatchStatusForBuilds(buildIds); err != nil {
+		return errors.Wrapf(err, "updating build and version status for version '%s'", versionId)
 	}
 	return nil
 }
@@ -440,7 +442,7 @@ func RestartBuild(buildId string, taskIds []string, abortInProgress bool, caller
 	if len(tasks) == 0 {
 		return nil
 	}
-	return restartTasksForBuild(tasks, caller)
+	return restartTasksForBuild(buildId, tasks, caller)
 }
 
 // RestartAllBuildTasks restarts all the tasks associated with a given build.
@@ -456,10 +458,10 @@ func RestartAllBuildTasks(buildId string, caller string) error {
 	if len(allTasks) == 0 {
 		return nil
 	}
-	return restartTasksForBuild(allTasks, caller)
+	return restartTasksForBuild(buildId, allTasks, caller)
 }
 
-func restartTasksForBuild(tasks []task.Task, caller string) error {
+func restartTasksForBuild(buildId string, tasks []task.Task, caller string) error {
 	// maps task group to a single task in the group so we only check once
 	taskGroupsToCheck := map[string]task.Task{}
 	restartIds := []string{}

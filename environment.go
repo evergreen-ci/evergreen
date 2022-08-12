@@ -489,9 +489,10 @@ func (e *envState) getNamedRemoteQueueOptions() (map[string]queue.MongoDBQueueOp
 	perQueueOpts := map[string]queue.MongoDBQueueOptions{}
 	var regexpQueueOpts []queue.RegexpMongoDBQueueOptions
 	for _, namedQueue := range e.settings.Amboy.NamedQueues {
-		if namedQueue.Name == "" {
+		if namedQueue.Name == "" && namedQueue.Regexp == "" {
 			continue
 		}
+
 		dbOpts := e.getRemoteQueueGroupDBOptions()
 		if namedQueue.SampleSize != 0 {
 			dbOpts.SampleSize = namedQueue.SampleSize

@@ -3110,7 +3110,6 @@ func TestArchiveMany(t *testing.T) {
 	assert.NoError(t, t2.Insert())
 	dt := Task{
 		Id:             "dt",
-		Status:         evergreen.TaskSucceeded,
 		DisplayOnly:    true,
 		ExecutionTasks: []string{"et"},
 		Version:        "v",
@@ -3118,7 +3117,6 @@ func TestArchiveMany(t *testing.T) {
 	assert.NoError(t, dt.Insert())
 	et := Task{
 		Id:      "et",
-		Status:  evergreen.TaskSucceeded,
 		Version: "v",
 	}
 	assert.NoError(t, et.Insert())
@@ -4171,7 +4169,6 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByIdAndExecution() {
 		Id:        "task_1",
 		Execution: 0,
 		BuildId:   "build_1",
-		Status:    evergreen.TaskSucceeded,
 	}
 	s.NoError(testTask1.Insert())
 	for i := 0; i < 10; i++ {

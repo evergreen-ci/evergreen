@@ -1,7 +1,0 @@
-{
-  patchTasks(patchId: "5e4ff3abe3c3317e352062e4", statuses: ["aborted"]) {
-    tasks {
-      id
-    }
-  }
-}
