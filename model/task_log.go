@@ -60,19 +60,19 @@ func getSessionAndDB() (adb.Session, adb.Database, error) {
 Functions that operate on entire TaskLog documents
 ******************************************************/
 
-func (self *TaskLog) Insert() error {
+func (tl *TaskLog) Insert() error {
 	session, db, err := getSessionAndDB()
 	if err != nil {
 		return err
 	}
 	defer session.Close()
 
-	self.Id = mgobson.NewObjectId().Hex()
+	tl.Id = mgobson.NewObjectId().Hex()
 
-	return db.C(TaskLogCollection).Insert(self)
+	return db.C(TaskLogCollection).Insert(tl)
 }
 
-func (self *TaskLog) AddLogMessage(msg apimodels.LogMessage) error {
+func (tl *TaskLog) AddLogMessage(msg apimodels.LogMessage) error {
 	session, db, err := getSessionAndDB()
 	if err != nil {
 		return err
@@ -82,10 +82,10 @@ func (self *TaskLog) AddLogMessage(msg apimodels.LogMessage) error {
 	// NOTE: this was previously set to fire-and-forget writes,
 	// but removed during the database migration
 
-	self.Messages = append(self.Messages, msg)
-	self.MessageCount = self.MessageCount + 1
+	tl.Messages = append(tl.Messages, msg)
+	tl.MessageCount = tl.MessageCount + 1
 
-	return db.C(TaskLogCollection).UpdateId(self.Id,
+	return db.C(TaskLogCollection).UpdateId(tl.Id,
 		bson.M{
 			"$inc": bson.M{
 				TaskLogMessageCountKey: 1,

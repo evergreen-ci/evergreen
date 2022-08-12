@@ -36,12 +36,12 @@ type displayTaskFiles struct {
 
 // Name returns the name of this plugin - it serves to satisfy
 // the 'Plugin' interface
-func (self *AttachPlugin) Name() string                           { return AttachPluginName }
-func (self *AttachPlugin) Configure(map[string]interface{}) error { return nil }
+func (ap *AttachPlugin) Name() string                           { return AttachPluginName }
+func (ap *AttachPlugin) Configure(map[string]interface{}) error { return nil }
 
 // GetPanelConfig returns a plugin.PanelConfig struct representing panels
 // that will be added to the Task and Build pages.
-func (self *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
+func (ap *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
 	return &PanelConfig{
 		Panels: []UIPanel{
 			{

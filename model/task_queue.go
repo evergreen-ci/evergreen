@@ -173,15 +173,15 @@ func LoadDistroAliasTaskQueue(distroID string) (*TaskQueue, error) {
 	return findTaskQueueForDistro(taskQueueQuery{DistroID: distroID, Collection: TaskAliasQueuesCollection})
 }
 
-func (self *TaskQueue) Length() int {
-	if self == nil {
+func (tq *TaskQueue) Length() int {
+	if tq == nil {
 		return 0
 	}
-	return len(self.Queue)
+	return len(tq.Queue)
 }
 
-func (self *TaskQueue) NextTask() *TaskQueueItem {
-	return &self.Queue[0]
+func (tq *TaskQueue) NextTask() *TaskQueueItem {
+	return &tq.Queue[0]
 }
 
 // shouldRunTaskGroup returns true if the number of hosts running a task is less than the maximum for that task group.
@@ -286,21 +286,21 @@ func BlockTaskGroupTasks(taskID string) error {
 	return catcher.Resolve()
 }
 
-func (self *TaskQueue) Save() error {
-	if len(self.Queue) > 10000 {
-		self.Queue = self.Queue[:10000]
+func (tq *TaskQueue) Save() error {
+	if len(tq.Queue) > 10000 {
+		tq.Queue = tq.Queue[:10000]
 	}
 
-	return updateTaskQueue(self.Distro, self.Queue, self.DistroQueueInfo)
+	return updateTaskQueue(tq.Distro, tq.Queue, tq.DistroQueueInfo)
 }
 
-func (self *TaskQueue) FindNextTask(spec TaskSpec) (*TaskQueueItem, []string) {
-	if self.Length() == 0 {
+func (tq *TaskQueue) FindNextTask(spec TaskSpec) (*TaskQueueItem, []string) {
+	if tq.Length() == 0 {
 		return nil, nil
 	}
 	// With a spec, find a matching task.
 	if spec.Group != "" && spec.Project != "" && spec.BuildVariant != "" && spec.Version != "" {
-		for _, it := range self.Queue {
+		for _, it := range tq.Queue {
 			if it.Project != spec.Project {
 				continue
 			}
@@ -322,7 +322,7 @@ func (self *TaskQueue) FindNextTask(spec TaskSpec) (*TaskQueueItem, []string) {
 
 	// Otherwise, find the next dispatchable task.
 	spec = TaskSpec{}
-	for _, it := range self.Queue {
+	for _, it := range tq.Queue {
 		// Always return a task if the task group is empty.
 		if it.Group == "" {
 			return &it, nil
@@ -734,13 +734,13 @@ func FindTaskAliasQueueLastGenerationTimes() (map[string]time.Time, error) {
 
 // pull out the task with the specified id from both the in-memory and db
 // versions of the task queue
-func (self *TaskQueue) DequeueTask(taskId string) error {
+func (tq *TaskQueue) DequeueTask(taskId string) error {
 	// first, remove it from the in-memory queue if it is present
 outer:
 	for {
-		for idx, queueItem := range self.Queue {
+		for idx, queueItem := range tq.Queue {
 			if queueItem.Id == taskId {
-				self.Queue = append(self.Queue[:idx], self.Queue[idx+1:]...)
+				tq.Queue = append(tq.Queue[:idx], tq.Queue[idx+1:]...)
 				continue outer
 			}
 		}
@@ -752,7 +752,7 @@ outer:
 	// only no longer be present after the TTL has passed, and each app server
 	// has re-created its in-memory queue.
 
-	err := dequeue(taskId, self.Distro)
+	err := dequeue(taskId, tq.Distro)
 	if adb.ResultsNotFound(err) {
 		return nil
 	}
