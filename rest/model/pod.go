@@ -20,8 +20,8 @@ type APICreatePod struct {
 	Arch                APIPodArch           `json:"arch"`
 	WindowsVersion      APIPodWindowsVersion `json:"windows_version"`
 	WorkingDir          *string              `json:"working_dir"`
-	PodSecretExternalID *string              `json:"secret_id"`
-	PodSecretValue      *string              `json:"-"`
+	PodSecretExternalID *string              `json:"pod_secret_external_id"`
+	PodSecretValue      *string              `json:"pod_secret_value"`
 }
 
 type APICreatePodResponse struct {

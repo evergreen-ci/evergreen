@@ -1,9 +1,6 @@
 package cloud
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/cocoa/awsutil"
 	"github.com/evergreen-ci/cocoa/ecs"
@@ -229,16 +226,6 @@ func ExportECSPodDefinitionOptions(settings *evergreen.Settings, opts pod.TaskCo
 	return defOpts, nil
 }
 
-// Constants related to secrets stored in Secrets Manager.
-const (
-	// internalSecretNamespace is the namespace for secrets that are
-	// Evergreen-internal.
-	internalSecretNamespace = "evg-internal"
-	// repoCredsSecretName is the name of the secret used to store private
-	// repository credentials for pods.
-	repoCredsSecretName = "repo-creds"
-)
-
 // exportECSPodContainerDef exports the ECS pod container definition into the
 // equivalent cocoa.ECSContainerDefintion.
 func exportECSPodContainerDef(settings *evergreen.Settings, opts pod.TaskContainerCreationOptions) (*cocoa.ECSContainerDefinition, error) {
@@ -347,16 +334,4 @@ func exportPodEnvVars(smConf evergreen.SecretsManagerConfig, opts pod.TaskContai
 	}
 
 	return allEnvVars
-}
-
-// makeSecretName creates a Secrets Manager secret name for the pod.
-func makeSecretName(smConf evergreen.SecretsManagerConfig, opts pod.TaskContainerCreationOptions, name string) string {
-	return strings.Join([]string{strings.TrimRight(smConf.SecretPrefix, "/"), "task", opts.Hash(), name}, "/")
-}
-
-// makeInternalSecretName creates a Secrets Manager secret name for the pod in a
-// reserved namespace that is meant for Evergreen-internal purposes and should
-// not be exposed to users.
-func makeInternalSecretName(smConf evergreen.SecretsManagerConfig, opts pod.TaskContainerCreationOptions, name string) string {
-	return makeSecretName(smConf, opts, fmt.Sprintf("%s/%s", internalSecretNamespace, name))
 }

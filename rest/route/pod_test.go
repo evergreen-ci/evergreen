@@ -33,7 +33,7 @@ func TestPostPod(t *testing.T) {
 				"windows_version": "SERVER_2022",
 				"working_dir": "/",
 				"pod_secret_external_id": "external_id",
-				"pod_secret_value": "secret_value",
+				"pod_secret_value": "secret_value"
 			}`)
 			req, err := http.NewRequest(http.MethodPost, "https://example.com/rest/v2/pods", bytes.NewBuffer(json))
 			require.NoError(t, err)
@@ -55,7 +55,8 @@ func TestPostPod(t *testing.T) {
 				"os": "linux",
 				"arch": "arm64",
 				"working_dir": "/",
-				"secret": "secret"
+				"pod_secret_external_id": "external_id",
+				"pod_secret_value": "secret_value"
 			}`)
 
 			req, err := http.NewRequest(http.MethodPost, "https://example.com/rest/v2/pods", bytes.NewBuffer(json))
@@ -66,20 +67,14 @@ func TestPostPod(t *testing.T) {
 			assert.Equal(t, http.StatusCreated, resp.Status())
 		},
 		"RunFailsWithInvalidInput": func(ctx context.Context, t *testing.T, ph *podPostHandler) {
-			json := []byte(`{
-				"image": "image",
-				"os": "linux",
-				"arch": "arm64",
-				"working_dir": "/",
-				"secret": "secret"
-			}`)
+			json := []byte(`{}`)
 
 			req, err := http.NewRequest(http.MethodPost, "https://example.com/rest/v2/pods", bytes.NewBuffer(json))
 			require.NoError(t, err)
 			require.NoError(t, ph.Parse(ctx, req))
 			resp := ph.Run(ctx)
 			require.NotNil(t, resp.Data())
-			assert.True(t, resp.Status() > 400, "input should be rejected")
+			assert.True(t, resp.Status() >= 400, "input should be rejected")
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {

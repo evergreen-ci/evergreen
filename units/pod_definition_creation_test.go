@@ -190,12 +190,14 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 			ecsConf := env.EvergreenSettings.Providers.AWS.Pod.ECS
 
 			p, err := pod.NewTaskIntentPod(ecsConf, pod.TaskIntentPodOptions{
-				CPU:        128,
-				MemoryMB:   256,
-				OS:         pod.OSLinux,
-				Arch:       pod.ArchAMD64,
-				Image:      "ubuntu",
-				WorkingDir: "/working_dir",
+				CPU:                 128,
+				MemoryMB:            256,
+				OS:                  pod.OSLinux,
+				Arch:                pod.ArchAMD64,
+				Image:               "ubuntu",
+				WorkingDir:          "/working_dir",
+				PodSecretExternalID: "pod_secret_external_id",
+				PodSecretValue:      "pod_secret_value",
 			})
 			require.NoError(t, err)
 

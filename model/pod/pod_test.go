@@ -815,7 +815,7 @@ func TestTaskContainerCreationOptionsHash(t *testing.T) {
 			h0 := opts.Hash()
 			opts.EnvSecrets["SECRET_ENV_VAR"] = Secret{Value: "secret_value"}
 			h1 := opts.Hash()
-			assert.NotEqual(t, h0, h1, "env secret value should affect hash")
+			assert.Equal(t, h0, h1, "env secret value should not affect hash")
 		})
 	})
 }

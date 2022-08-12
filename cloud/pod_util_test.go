@@ -238,7 +238,7 @@ func TestExportECSPodResources(t *testing.T) {
 		require.Len(t, exported.Secrets, len(c.SecretIDs))
 		for i := range c.SecretIDs {
 			assert.True(t, utility.StringSliceContains(c.SecretIDs, utility.FromStringPtr(exported.Secrets[i].ID)))
-			assert.True(t, utility.FromBoolPtr(exported.Secrets[i].Owned))
+			assert.False(t, utility.FromBoolPtr(exported.Secrets[i].Owned))
 		}
 	})
 }
@@ -393,7 +393,7 @@ func TestExportECSPodDefinitionOptions(t *testing.T) {
 		require.Equal(t, containerOpts.WorkingDir, utility.FromStringPtr(cDef.WorkingDir))
 		require.Len(t, cDef.PortMappings, 1)
 		assert.Equal(t, agentPort, utility.FromIntPtr(cDef.PortMappings[0].ContainerPort))
-		require.Len(t, cDef.EnvVars, 4)
+		require.Len(t, cDef.EnvVars, 2)
 		for _, envVar := range cDef.EnvVars {
 			envVarName := utility.FromStringPtr(envVar.Name)
 			switch envVarName {
@@ -401,10 +401,7 @@ func TestExportECSPodDefinitionOptions(t *testing.T) {
 				assert.Equal(t, containerOpts.EnvVars[utility.FromStringPtr(envVar.Name)], utility.FromStringPtr(envVar.Value))
 			case "SECRET_ENV_VAR":
 				s := containerOpts.EnvSecrets[utility.FromStringPtr(envVar.Name)]
-				assert.Zero(t, envVar.SecretOpts.NewValue)
-				assert.Zero(t, envVar.SecretOpts.Name)
-				secretID := utility.FromStringPtr(envVar.SecretOpts.ID)
-				assert.Equal(t, s.ExternalID, secretID)
+				assert.Equal(t, s.ExternalID, utility.FromStringPtr(envVar.SecretOpts.ID))
 				assert.False(t, utility.FromBoolPtr(envVar.SecretOpts.Owned))
 			default:
 				require.FailNow(t, "unexpected environment variable '%s'", envVarName)
@@ -414,12 +411,14 @@ func TestExportECSPodDefinitionOptions(t *testing.T) {
 	t.Run("SucceedsWithRepositoryCredentials", func(t *testing.T) {
 		settings := validSettings()
 		containerOpts := validContainerOpts()
+		containerOpts.RepoCredsExternalID = "repo_credss_external_id"
 		podDefOpts, err := ExportECSPodDefinitionOptions(&settings, containerOpts)
 		require.NoError(t, err)
 		require.NotZero(t, containerOpts)
 
 		require.Len(t, podDefOpts.ContainerDefinitions, 1)
 		cDef := podDefOpts.ContainerDefinitions[0]
+		require.NotZero(t, cDef.RepoCreds)
 		assert.Equal(t, utility.FromStringPtr(cDef.RepoCreds.ID), containerOpts.RepoCredsExternalID)
 	})
 	t.Run("DefaultsToBridgeNetworkingWhenAWSVPCSettingsAreUnset", func(t *testing.T) {
