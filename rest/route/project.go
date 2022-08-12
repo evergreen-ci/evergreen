@@ -456,6 +456,19 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
+	if h.vault == nil && (len(h.apiNewProjectRef.DeleteContainerSecrets) != 0 || len(h.apiNewProjectRef.ContainerSecrets) != 0) {
+		smClient, err := cloud.MakeSecretsManagerClient(h.settings)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "initializing Secrets Manager client"))
+		}
+		defer smClient.Close(ctx)
+		vault, err := cloud.MakeSecretsManagerVault(smClient)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "initializing Secrets Manager vault"))
+		}
+		h.vault = vault
+	}
+
 	// This intentionally deletes the container secrets from external storage
 	// before updating the project ref. Deleting the secrets before updating the
 	// project ref ensures that the cloud secrets are cleaned up before removing
@@ -499,19 +512,6 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		if err = h.newProjectRef.AddToRepoScope(h.user); err != nil { // will re-add using the new owner/repo
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
-	}
-
-	if h.vault == nil && (len(h.apiNewProjectRef.DeleteContainerSecrets) != 0 || len(h.apiNewProjectRef.ContainerSecrets) != 0) {
-		smClient, err := cloud.MakeSecretsManagerClient(h.settings)
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "initializing Secrets Manager client"))
-		}
-		defer smClient.Close(ctx)
-		vault, err := cloud.MakeSecretsManagerVault(smClient)
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "initializing Secrets Manager vault"))
-		}
-		h.vault = vault
 	}
 
 	// complete all updates
