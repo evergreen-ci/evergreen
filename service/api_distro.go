@@ -13,6 +13,7 @@ func (as *APIServer) GetDistroView(w http.ResponseWriter, r *http.Request) {
 	dv := apimodels.DistroView{
 		CloneMethod:         h.Distro.CloneMethod,
 		DisableShallowClone: h.Distro.DisableShallowClone,
+		WorkDir:             h.Distro.WorkDir,
 	}
 	gimlet.WriteJSON(w, dv)
 }
