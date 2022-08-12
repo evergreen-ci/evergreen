@@ -270,7 +270,7 @@ func OpenProcess(desiredAccess uint32, inheritHandle bool, processId uint32) (sy
 }
 
 func (j *Job) Close() error {
-	if self.handle != 0 {
+	if j.handle != 0 {
 		if err := CloseHandle(j.handle); err != nil {
 			return NewWindowsError("CloseHandle", err)
 		}
