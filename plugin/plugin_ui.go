@@ -151,7 +151,7 @@ type SimplePanelManager struct {
 
 // RegisterPlugins takes an array of plugins and registers them with the
 // manager. After this step is done, the other manager functions may be used.
-func (spm *SimplePanelManager) RegisterPlugins(plugins []Plugin) error {
+func (self *SimplePanelManager) RegisterPlugins(plugins []Plugin) error {
 	//initialize temporary maps
 	registered := map[string]bool{}
 	includesWithPair := map[PageScope][]pluginTemplatePair{}
@@ -217,12 +217,12 @@ func (spm *SimplePanelManager) RegisterPlugins(plugins []Plugin) error {
 	}
 
 	// sort registered plugins by name and cache their HTML
-	spm.includes = map[PageScope][]template.HTML{
+	self.includes = map[PageScope][]template.HTML{
 		TaskPage:    sortAndExtractHTML(includesWithPair[TaskPage]),
 		BuildPage:   sortAndExtractHTML(includesWithPair[BuildPage]),
 		VersionPage: sortAndExtractHTML(includesWithPair[VersionPage]),
 	}
-	spm.panelHTML = map[PageScope]PanelLayout{
+	self.panelHTML = map[PageScope]PanelLayout{
 		TaskPage: {
 			Left:   sortAndExtractHTML(panelHTMLWithPair[TaskPage][PageLeft]),
 			Right:  sortAndExtractHTML(panelHTMLWithPair[TaskPage][PageRight]),
@@ -239,29 +239,29 @@ func (spm *SimplePanelManager) RegisterPlugins(plugins []Plugin) error {
 			Center: sortAndExtractHTML(panelHTMLWithPair[VersionPage][PageCenter]),
 		},
 	}
-	spm.uiDataFuncs = dataFuncs
+	self.uiDataFuncs = dataFuncs
 
 	return nil
 }
 
 // Includes returns a properly-ordered list of html tags to inject into the
 // head of the view for the given page.
-func (spm *SimplePanelManager) Includes(page PageScope) ([]template.HTML, error) {
-	return spm.includes[page], nil
+func (self *SimplePanelManager) Includes(page PageScope) ([]template.HTML, error) {
+	return self.includes[page], nil
 }
 
 // Panels returns a PanelLayout for the view renderer to inject panels into
 // the given page.
-func (spm *SimplePanelManager) Panels(page PageScope) (PanelLayout, error) {
-	return spm.panelHTML[page], nil
+func (self *SimplePanelManager) Panels(page PageScope) (PanelLayout, error) {
+	return self.panelHTML[page], nil
 }
 
 // UIData returns a map of plugin name -> data for inclusion
 // in the view's javascript.
-func (spm *SimplePanelManager) UIData(context UIContext, page PageScope) (map[string]interface{}, error) {
+func (self *SimplePanelManager) UIData(context UIContext, page PageScope) (map[string]interface{}, error) {
 	pluginUIData := map[string]interface{}{}
 	errs := &UIDataFunctionError{}
-	for plName, dataFunc := range spm.uiDataFuncs[page] {
+	for plName, dataFunc := range self.uiDataFuncs[page] {
 		// run the data function, catching all sorts of errors
 		plData, err := func() (data interface{}, err error) {
 			defer func() {

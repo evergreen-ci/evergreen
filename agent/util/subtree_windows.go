@@ -229,20 +229,20 @@ func NewJob(name string) (*Job, error) {
 	return &Job{handle: hJob}, nil
 }
 
-func (j *Job) AssignProcess(pid uint) error {
+func (self *Job) AssignProcess(pid uint) error {
 	hProcess, err := OpenProcess(PROCESS_ALL_ACCESS, false, uint32(pid))
 	if err != nil {
 		return NewWindowsError("OpenProcess", err)
 	}
 	defer CloseHandle(hProcess)
-	if err := AssignProcessToJobObject(j.handle, hProcess); err != nil {
+	if err := AssignProcessToJobObject(self.handle, hProcess); err != nil {
 		return NewWindowsError("AssignProcessToJobObject", err)
 	}
 	return nil
 }
 
-func (j *Job) Terminate(exitCode uint) error {
-	if err := TerminateJobObject(j.handle, uint32(exitCode)); err != nil {
+func (self *Job) Terminate(exitCode uint) error {
+	if err := TerminateJobObject(self.handle, uint32(exitCode)); err != nil {
 		return NewWindowsError("TerminateJobObject", err)
 	}
 	return nil
@@ -269,12 +269,12 @@ func OpenProcess(desiredAccess uint32, inheritHandle bool, processId uint32) (sy
 	return syscall.Handle(r1), nil
 }
 
-func (j *Job) Close() error {
+func (self *Job) Close() error {
 	if self.handle != 0 {
-		if err := CloseHandle(j.handle); err != nil {
+		if err := CloseHandle(self.handle); err != nil {
 			return NewWindowsError("CloseHandle", err)
 		}
-		j.handle = 0
+		self.handle = 0
 	}
 	return nil
 }
@@ -358,14 +358,14 @@ func NewWindowsError(functionName string, innerError error) *WindowsError {
 	return &WindowsError{functionName, innerError}
 }
 
-func (we *WindowsError) FunctionName() string {
-	return we.functionName
+func (self *WindowsError) FunctionName() string {
+	return self.functionName
 }
 
-func (we *WindowsError) InnerError() error {
-	return we.innerError
+func (self *WindowsError) InnerError() error {
+	return self.innerError
 }
 
-func (we *WindowsError) Error() string {
-	return fmt.Sprintf("gowin32: %s failed: %v", we.functionName, we.innerError)
+func (self *WindowsError) Error() string {
+	return fmt.Sprintf("gowin32: %s failed: %v", self.functionName, self.innerError)
 }

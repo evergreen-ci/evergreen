@@ -79,22 +79,22 @@ func DeleteTestLogsWithLimit(ctx context.Context, env evergreen.Environment, ts 
 }
 
 // Insert inserts the TestLog into the database
-func (tl *TestLog) Insert() error {
-	tl.Id = mgobson.NewObjectId().Hex()
-	if err := tl.Validate(); err != nil {
+func (self *TestLog) Insert() error {
+	self.Id = mgobson.NewObjectId().Hex()
+	if err := self.Validate(); err != nil {
 		return errors.Wrap(err, "invalid test log")
 	}
-	return errors.WithStack(db.Insert(TestLogCollection, tl))
+	return errors.WithStack(db.Insert(TestLogCollection, self))
 }
 
 // Validate makes sure the log will accessible in the database
 // before the log itself is inserted. Returns an error if
 // something is wrong.
-func (tl *TestLog) Validate() error {
+func (self *TestLog) Validate() error {
 	switch {
-	case tl.Name == "":
+	case self.Name == "":
 		return errors.New("test log requires a 'Name' field")
-	case tl.Task == "":
+	case self.Task == "":
 		return errors.New("test log requires a 'Task' field")
 	default:
 		return nil

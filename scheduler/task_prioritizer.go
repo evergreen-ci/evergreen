@@ -140,9 +140,9 @@ func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(distroId string, tas
 
 // Run all of the setup functions necessary for prioritizing the tasks.
 // Returns an error if any of the setup funcs return an error.
-func (cbtc *CmpBasedTaskComparator) setupForSortingTasks() error {
-	for _, setupFunc := range cbtc.setupFuncs {
-		if err := setupFunc(cbtc); err != nil {
+func (self *CmpBasedTaskComparator) setupForSortingTasks() error {
+	for _, setupFunc := range self.setupFuncs {
+		if err := setupFunc(self); err != nil {
 			return errors.Wrap(err, "Error running setup for sorting")
 		}
 	}
@@ -152,11 +152,11 @@ func (cbtc *CmpBasedTaskComparator) setupForSortingTasks() error {
 // Determine which of two tasks is more important, by running the tasks through
 // the comparator functions and returning the first definitive decision on which
 // is more important.
-func (cbtc *CmpBasedTaskComparator) taskMoreImportantThan(task1, task2 task.Task) (bool, string, error) {
+func (self *CmpBasedTaskComparator) taskMoreImportantThan(task1, task2 task.Task) (bool, string, error) {
 	// run through the comparators, and return the first definitive decision on
 	// which task is more important
-	for _, cmp := range cbtc.comparators {
-		ret, reason, err := cmp.compare(task1, task2, cbtc)
+	for _, cmp := range self.comparators {
+		ret, reason, err := cmp.compare(task1, task2, self)
 		if err != nil {
 			return false, "", errors.WithStack(err)
 		}
@@ -181,34 +181,34 @@ func (cbtc *CmpBasedTaskComparator) taskMoreImportantThan(task1, task2 task.Task
 
 // Functions that ensure the CmdBasedTaskPrioritizer implements sort.Interface
 
-func (cbtc *CmpBasedTaskComparator) Len() int {
-	return len(cbtc.tasks)
+func (self *CmpBasedTaskComparator) Len() int {
+	return len(self.tasks)
 }
 
-func (cbtc *CmpBasedTaskComparator) Less(i, j int) bool {
-	moreImportant, reason, err := cbtc.taskMoreImportantThan(cbtc.tasks[i],
-		cbtc.tasks[j])
+func (self *CmpBasedTaskComparator) Less(i, j int) bool {
+	moreImportant, reason, err := self.taskMoreImportantThan(self.tasks[i],
+		self.tasks[j])
 	if err != nil {
-		cbtc.errsDuringSort = append(cbtc.errsDuringSort, err)
+		self.errsDuringSort = append(self.errsDuringSort, err)
 	}
-	thisTask, exists := cbtc.orderingLogic[cbtc.tasks[i].Id]
+	thisTask, exists := self.orderingLogic[self.tasks[i].Id]
 	if !exists {
 		thisTask = map[string]string{}
 	}
-	thisTask[cbtc.tasks[j].Id] = reason
-	cbtc.orderingLogic[cbtc.tasks[i].Id] = thisTask
+	thisTask[self.tasks[j].Id] = reason
+	self.orderingLogic[self.tasks[i].Id] = thisTask
 
 	return moreImportant
 }
 
-func (cbtc *CmpBasedTaskComparator) Swap(i, j int) {
-	cbtc.tasks[i], cbtc.tasks[j] = cbtc.tasks[j], cbtc.tasks[i]
+func (self *CmpBasedTaskComparator) Swap(i, j int) {
+	self.tasks[i], self.tasks[j] = self.tasks[j], self.tasks[i]
 }
 
 // Split the tasks, based on the requester field.
 // Returns two slices - the tasks requested by the repotracker, and the tasks
 // requested in a patch.
-func (cbtc *CmpBasedTaskComparator) splitTasksByRequester(
+func (self *CmpBasedTaskComparator) splitTasksByRequester(
 	allTasks []task.Task) *CmpBasedTaskQueues {
 
 	repoTrackerTasks := make([]task.Task, 0, len(allTasks))
@@ -245,7 +245,7 @@ func (cbtc *CmpBasedTaskComparator) splitTasksByRequester(
 
 // Merge the slices of tasks requested by the repotracker and in patches.
 // Returns a slice of the merged tasks.
-func (cbtc *CmpBasedTaskComparator) mergeTasks(tq *CmpBasedTaskQueues) []task.Task {
+func (self *CmpBasedTaskComparator) mergeTasks(tq *CmpBasedTaskQueues) []task.Task {
 	mergedTasks := make([]task.Task, 0, len(tq.RepotrackerTasks)+
 		len(tq.PatchTasks)+len(tq.HighPriorityTasks))
 

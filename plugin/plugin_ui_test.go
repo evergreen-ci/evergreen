@@ -18,20 +18,20 @@ type MockPlugin struct {
 	Conf     *PanelConfig
 }
 
-func (mp *MockPlugin) Name() string {
-	return mp.NickName
+func (self *MockPlugin) Name() string {
+	return self.NickName
 }
 
-func (mp *MockPlugin) GetUIHandler() http.Handler {
+func (self *MockPlugin) GetUIHandler() http.Handler {
 	return nil
 }
 
-func (mp *MockPlugin) Configure(conf map[string]interface{}) error {
+func (self *MockPlugin) Configure(conf map[string]interface{}) error {
 	return nil
 }
 
-func (mp *MockPlugin) GetPanelConfig() (*PanelConfig, error) {
-	return mp.Conf, nil
+func (self *MockPlugin) GetPanelConfig() (*PanelConfig, error) {
+	return self.Conf, nil
 }
 
 // ===== Tests =====
