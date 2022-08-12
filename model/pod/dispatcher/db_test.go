@@ -255,13 +255,15 @@ func TestAllocate(t *testing.T) {
 			require.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection, event.LegacyEventLogCollection))
 
 			p, err := pod.NewTaskIntentPod(evergreen.ECSConfig{}, pod.TaskIntentPodOptions{
-				ID:         primitive.NewObjectID().Hex(),
-				CPU:        256,
-				MemoryMB:   512,
-				OS:         pod.OSLinux,
-				Arch:       pod.ArchARM64,
-				Image:      "image",
-				WorkingDir: "/",
+				ID:                  primitive.NewObjectID().Hex(),
+				CPU:                 256,
+				MemoryMB:            512,
+				OS:                  pod.OSLinux,
+				Arch:                pod.ArchARM64,
+				Image:               "image",
+				WorkingDir:          "/",
+				PodSecretExternalID: "pod_secret_external_id",
+				PodSecretValue:      "pod_secret_value",
 			})
 			require.NoError(t, err)
 			tCase(tctx, t, env, &task.Task{
