@@ -23,6 +23,7 @@ func MakeTaskConfigFromModelData(settings *evergreen.Settings, data *testutil.Te
 	if data.Host != nil {
 		dv = &apimodels.DistroView{
 			CloneMethod: data.Host.Distro.CloneMethod,
+			WorkDir:     data.Host.Distro.WorkDir,
 		}
 	}
 	config, err := internal.NewTaskConfig(data.Host.Distro.WorkDir, dv, data.Project, data.Task, data.ProjectRef, nil, exp)
