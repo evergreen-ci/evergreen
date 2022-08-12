@@ -76,7 +76,7 @@ func (j *podTerminationJob) Run(ctx context.Context) {
 
 	defer func() {
 		if j.ecsClient != nil {
-			j.AddError(j.ecsClient.Close(ctx))
+			j.AddError(errors.Wrap(j.ecsClient.Close(ctx), "closing ECS client"))
 		}
 	}()
 	if err := j.populateIfUnset(ctx); err != nil {

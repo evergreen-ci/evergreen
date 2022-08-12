@@ -17,16 +17,20 @@ import (
 func CreatePod(apiPod model.APICreatePod) (*model.APICreatePodResponse, error) {
 	if apiPod.PodSecretValue == nil {
 		env := evergreen.GetEnvironment()
+		ctx, cancel := env.Context()
+		defer cancel()
+
 		smClient, err := cloud.MakeSecretsManagerClient(env.Settings())
 		if err != nil {
 			return nil, errors.Wrap(err, "getting Secrets Manager client")
 		}
+		defer smClient.Close(ctx)
+
 		v, err := cloud.MakeSecretsManagerVault(smClient)
 		if err != nil {
 			return nil, errors.Wrap(err, "initializing Secrets Manager vault")
 		}
-		ctx, cancel := env.Context()
-		defer cancel()
+
 		podSecret, err := v.GetValue(ctx, utility.FromStringPtr(apiPod.PodSecretExternalID))
 		if err != nil {
 			return nil, errors.Wrap(err, "getting pod secret value")
