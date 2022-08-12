@@ -166,9 +166,7 @@ func (c *Mock) GetProjectRef(ctx context.Context, td TaskData) (*serviceModel.Pr
 }
 
 func (c *Mock) GetDistroView(context.Context, TaskData) (*apimodels.DistroView, error) {
-	return &apimodels.DistroView{
-		WorkDir: ".",
-	}, nil
+	return &apimodels.DistroView{}, nil
 }
 
 func (c *Mock) GetDistroAMI(context.Context, string, string, TaskData) (string, error) {
