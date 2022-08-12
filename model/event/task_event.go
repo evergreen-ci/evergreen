@@ -55,20 +55,21 @@ type TaskEventData struct {
 }
 
 func logTaskEvent(taskId string, eventType string, eventData TaskEventData) {
-	event := EventLogEntry{
+	event := getTaskEvent(taskId, eventType, eventData)
+	grip.Error(message.WrapError(event.Log(), message.Fields{
+		"resource_type": ResourceTypeTask,
+		"message":       "error logging event",
+		"source":        "event-log-fail",
+	}))
+}
+
+func getTaskEvent(taskId string, eventType string, eventData TaskEventData) EventLogEntry {
+	return EventLogEntry{
 		Timestamp:    time.Now(),
 		ResourceId:   taskId,
 		EventType:    eventType,
 		Data:         eventData,
 		ResourceType: ResourceTypeTask,
-	}
-
-	if err := event.Log(); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"resource_type": ResourceTypeTask,
-			"message":       "error logging event",
-			"source":        "event-log-fail",
-		}))
 	}
 }
 
@@ -160,8 +161,16 @@ func LogTaskActivated(taskId string, execution int, userId string) {
 	logTaskEvent(taskId, TaskActivated, TaskEventData{Execution: execution, UserId: userId})
 }
 
+func GetTaskActivatedEvent(taskId string, execution int, userId string) EventLogEntry {
+	return getTaskEvent(taskId, TaskActivated, TaskEventData{Execution: execution, UserId: userId})
+}
+
 func LogTaskDeactivated(taskId string, execution int, userId string) {
 	logTaskEvent(taskId, TaskDeactivated, TaskEventData{Execution: execution, UserId: userId})
+}
+
+func GetTaskDeactivatedEvent(taskId string, execution int, userId string) EventLogEntry {
+	return getTaskEvent(taskId, TaskDeactivated, TaskEventData{Execution: execution, UserId: userId})
 }
 
 func LogTaskAbortRequest(taskId string, execution int, userId string) {

@@ -21,14 +21,6 @@ input PatchesInput {
 }
 
 """
-SortOrder[] is an input value for the patchTasks query. It is used to define where to sort by ASC/DEC for a given sort key.
-"""
-input SortOrder {
-  Direction: SortDirection!
-  Key: TaskSortCategory!
-}
-
-"""
 PatchConfigure is the input to the schedulePatch mutation.
 It contains information about how a user has configured their patch (e.g. name, tasks to run, etc).
 """
@@ -179,13 +171,3 @@ type Patches {
   filteredPatchCount: Int!
   patches: [Patch!]!
 }
-
-"""
-PatchTasks is the return value of the PatchTasks query.
-It contains an array of Tasks based on filter criteria, as well as a count for the number of Tasks in that array.
-"""
-type PatchTasks {
-  count: Int!
-  tasks: [Task!]!
-}
-

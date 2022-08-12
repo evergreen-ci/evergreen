@@ -56,7 +56,7 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 					for _, dep := range deps {
 						// reset any already finished tasks in the same task group
 						if dep.TaskGroup == t.TaskGroup && t.TaskGroup != "" && dep.IsFinished() {
-							catcher.Wrapf(resetTask(dep.Id, caller), "resetting dependency '%s'", dep.Id)
+							catcher.Wrapf(resetTask(dep.Id, caller, false), "resetting dependency '%s'", dep.Id)
 						} else {
 							tasksToActivate = append(tasksToActivate, dep)
 						}
@@ -68,7 +68,7 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 
 			// Investigating strange dispatch state as part of EVG-13144
 			if t.IsHostTask() && !utility.IsZeroTime(t.DispatchTime) && t.Status == evergreen.TaskUndispatched {
-				catcher.Wrapf(resetTask(t.Id, caller), "resetting task '%s'", t.Id)
+				catcher.Wrapf(resetTask(t.Id, caller, false), "resetting task '%s'", t.Id)
 			} else {
 				tasksToActivate = append(tasksToActivate, originalTasks...)
 			}
@@ -178,10 +178,10 @@ func activatePreviousTask(taskId, caller string, originalStepbackTask *task.Task
 	return nil
 }
 
-func resetManyTasks(tasks []task.Task, caller string) error {
+func resetManyTasks(tasks []task.Task, caller string, logIDs bool) error {
 	catcher := grip.NewBasicCatcher()
 	for _, t := range tasks {
-		catcher.Add(resetTask(t.Id, caller))
+		catcher.Add(resetTask(t.Id, caller, logIDs))
 	}
 	return catcher.Resolve()
 }
@@ -281,12 +281,12 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 		return errors.Wrap(checkResetSingleHostTaskGroup(t, caller), "resetting single host task group")
 	}
 
-	return errors.WithStack(resetTask(t.Id, caller))
+	return errors.WithStack(resetTask(t.Id, caller, false))
 }
 
-// resetTask finds a finished task, attempts to archive it, and resets the task and
+// resetTask finds a task, attempts to archive it, and resets the task and
 // resets the TaskCache in the build as well.
-func resetTask(taskId, caller string) error {
+func resetTask(taskId, caller string, logIDs bool) error {
 	t, err := task.FindOneId(taskId)
 	if err != nil {
 		return errors.WithStack(err)
@@ -294,11 +294,11 @@ func resetTask(taskId, caller string) error {
 	if t.IsPartOfDisplay() {
 		return errors.Errorf("cannot restart execution task '%s' because it is part of a display task", t.Id)
 	}
-	if err = t.Archive(); err != nil {
+	if err := t.Archive(); err != nil {
 		return errors.Wrap(err, "can't restart task because it can't be archived")
 	}
 
-	if err = MarkOneTaskReset(t); err != nil {
+	if err := MarkOneTaskReset(t, logIDs); err != nil {
 		return errors.WithStack(err)
 	}
 	event.LogTaskRestarted(t.Id, t.Execution, caller)
@@ -1200,6 +1200,9 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 }
 
 func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
+	if len(buildIds) == 0 {
+		return nil
+	}
 	builds, err := build.Find(build.ByIds(buildIds))
 	if err != nil {
 		return errors.Wrapf(err, "fetching builds")
@@ -1320,7 +1323,7 @@ func MarkHostTaskDispatched(t *task.Task, h *host.Host) error {
 	return nil
 }
 
-func MarkOneTaskReset(t *task.Task) error {
+func MarkOneTaskReset(t *task.Task, logIDs bool) error {
 	if t.DisplayOnly {
 		if !t.ResetFailedWhenFinished {
 			if err := MarkTasksReset(t.ExecutionTasks); err != nil {
@@ -1341,7 +1344,7 @@ func MarkOneTaskReset(t *task.Task) error {
 		}
 	}
 
-	if err := t.Reset(); err != nil && !adb.ResultsNotFound(err) {
+	if err := t.Reset(); err != nil {
 		return errors.Wrap(err, "resetting task in database")
 	}
 
@@ -1761,7 +1764,7 @@ func checkResetSingleHostTaskGroup(t *task.Task, caller string) error {
 		return nil
 	}
 
-	return errors.Wrap(resetManyTasks(tasks, caller), "resetting task group tasks")
+	return errors.Wrap(resetManyTasks(tasks, caller, true), "resetting task group tasks")
 }
 
 // checkResetDisplayTask attempts to reset all tasks that are under the same

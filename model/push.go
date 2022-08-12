@@ -57,15 +57,15 @@ func NewPushLog(v *Version, task *task.Task, location string) *PushLog {
 	}
 }
 
-func (self *PushLog) Insert() error {
-	return db.Insert(PushlogCollection, self)
+func (pl *PushLog) Insert() error {
+	return db.Insert(PushlogCollection, pl)
 }
 
-func (self *PushLog) UpdateStatus(newStatus string) error {
+func (pl *PushLog) UpdateStatus(newStatus string) error {
 	return db.Update(
 		PushlogCollection,
 		bson.M{
-			PushLogIdKey: self.Id,
+			PushLogIdKey: pl.Id,
 		},
 		bson.M{
 			"$set": bson.M{
