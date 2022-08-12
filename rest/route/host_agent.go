@@ -231,7 +231,7 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 			})
 			nextTaskResponse.ShouldTeardownGroup = true
 		} else {
-			// if the task is empty, still send it with an status ok and check it on the other side
+			// if the task is empty, still send it with a status ok and check it on the other side
 			grip.Info(message.Fields{
 				"op":      "next_task",
 				"message": "no task to assign to host",

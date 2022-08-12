@@ -32,10 +32,43 @@ import (
 
 var (
 	hostSecret = "secret"
-	distroID   = "testDistro"
 )
 
 func TestHostNextTask(t *testing.T) {
+	distroID := "testDistro"
+	buildID := "buildId"
+	task1 := task.Task{
+		Id:        "task1",
+		Status:    evergreen.TaskUndispatched,
+		Activated: true,
+		BuildId:   buildID,
+		Project:   "exists",
+		StartTime: utility.ZeroTime,
+	}
+	task2 := task.Task{
+		Id:        "task2",
+		Status:    evergreen.TaskUndispatched,
+		Activated: true,
+		Project:   "exists",
+		BuildId:   buildID,
+		StartTime: utility.ZeroTime,
+	}
+	task3 := task.Task{
+		Id:        "task3",
+		Status:    evergreen.TaskUndispatched,
+		Activated: true,
+		Project:   "exists",
+		BuildId:   buildID,
+		StartTime: utility.ZeroTime,
+	}
+	task4 := task.Task{
+		Id:        "another",
+		Status:    evergreen.TaskUndispatched,
+		Activated: true,
+		Project:   "exists",
+		StartTime: utility.ZeroTime,
+		BuildId:   buildID,
+	}
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *hostAgentNextTask){
 		"ShouldSucceedAndSetAgentStartTime": func(ctx context.Context, t *testing.T, rh *hostAgentNextTask) {
 			resp := rh.Run(ctx)
@@ -299,7 +332,7 @@ func TestHostNextTask(t *testing.T) {
 					resp := rh.Run(ctx)
 					taskResp := resp.Data().(apimodels.NextTaskResponse)
 					assert.NotEmpty(t, taskResp.TaskId)
-					assert.Equal(t, taskResp.Build, "buildId")
+					assert.Equal(t, taskResp.Build, buildID)
 				},
 				"LatestAgentRevisionInNextTaskDetails": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
 					nonLegacyHost, err := host.FindOneId("nonLegacyHost")
@@ -323,7 +356,7 @@ func TestHostNextTask(t *testing.T) {
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					require.NoError(t, db.Clear(host.Collection))
+					require.NoError(t, db.ClearCollections(host.Collection, task.Collection))
 					handler := hostAgentNextTask{}
 					nonLegacyHost := &host.Host{
 						Id: "nonLegacyHost",
@@ -339,6 +372,10 @@ func TestHostNextTask(t *testing.T) {
 						Status:        evergreen.HostRunning,
 						AgentRevision: "out-of-date",
 					}
+					require.NoError(t, task1.Insert())
+					require.NoError(t, task2.Insert())
+					require.NoError(t, task3.Insert())
+					require.NoError(t, task4.Insert())
 					require.NoError(t, nonLegacyHost.Insert())
 					handler.host = nonLegacyHost
 					testCase(ctx, t, handler)
@@ -469,14 +506,12 @@ func TestHostNextTask(t *testing.T) {
 			require.NoError(t, modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey))
 			require.NoError(t, evergreen.SetServiceFlags(evergreen.ServiceFlags{}))
 
-			distroID := "testDistro"
-			buildID := "buildId"
-
 			tq := &model.TaskQueue{
 				Distro: distroID,
 				Queue: []model.TaskQueueItem{
 					{Id: "task1"},
 					{Id: "task2"},
+					{Id: "task3"},
 				},
 			}
 
@@ -491,32 +526,7 @@ func TestHostNextTask(t *testing.T) {
 				AgentRevision: evergreen.AgentVersion,
 			}
 
-			task1 := task.Task{
-				Id:        "task1",
-				Status:    evergreen.TaskUndispatched,
-				Activated: true,
-				BuildId:   buildID,
-				Project:   "exists",
-				StartTime: utility.ZeroTime,
-			}
-
-			task2 := task.Task{
-				Id:        "task2",
-				Status:    evergreen.TaskUndispatched,
-				Activated: true,
-				Project:   "exists",
-				BuildId:   buildID,
-				StartTime: utility.ZeroTime,
-			}
-
 			testBuild := build.Build{Id: buildID}
-
-			task3 := task.Task{
-				Id:        "another",
-				Status:    evergreen.TaskUndispatched,
-				Activated: true,
-				StartTime: utility.ZeroTime,
-			}
 
 			pref := &model.ProjectRef{
 				Id:      "exists",
@@ -526,6 +536,7 @@ func TestHostNextTask(t *testing.T) {
 			require.NoError(t, task1.Insert())
 			require.NoError(t, task2.Insert())
 			require.NoError(t, task3.Insert())
+			require.NoError(t, task4.Insert())
 			require.NoError(t, testBuild.Insert())
 			require.NoError(t, pref.Insert())
 			require.NoError(t, sampleHost.Insert())
