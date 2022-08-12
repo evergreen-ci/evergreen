@@ -269,14 +269,14 @@ func TestFindOneIdAndExecutionWithDisplayStatus(t *testing.T) {
 	assert.NoError(db.ClearCollections(Collection, OldCollection))
 	taskDoc := Task{
 		Id:        "task",
-		Status:    evergreen.TaskSucceeded,
+		Status:    evergreen.TaskUndispatched,
 		Activated: true,
 	}
 	assert.NoError(taskDoc.Insert())
 	task, err := FindOneIdAndExecutionWithDisplayStatus(taskDoc.Id, utility.ToIntPtr(0))
 	assert.NoError(err)
 	assert.NotNil(task)
-	assert.Equal(task.DisplayStatus, evergreen.TaskSucceeded)
+	assert.Equal(task.DisplayStatus, evergreen.TaskWillRun)
 
 	// Should fetch tasks from the old collection
 	assert.NoError(taskDoc.Archive())
@@ -293,7 +293,7 @@ func TestFindOneIdAndExecutionWithDisplayStatus(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(task)
 	assert.Equal(task.Execution, 1)
-	assert.Equal(task.DisplayStatus, evergreen.TaskSucceeded)
+	assert.Equal(task.DisplayStatus, evergreen.TaskWillRun)
 
 	taskDoc = Task{
 		Id:        "task2",

@@ -150,9 +150,6 @@ type Task struct {
 	// Set to true if the task should be considered for mainline github checks
 	IsGithubCheck bool `bson:"is_github_check,omitempty" json:"is_github_check,omitempty"`
 
-	// CanReset indicates if the task is in a valid state to be reset.
-	CanReset bool `bson:"can_reset,omitempty" json:"can_reset,omitempty"`
-
 	Execution           int    `bson:"execution" json:"execution"`
 	OldTaskId           string `bson:"old_task_id,omitempty" json:"old_task_id,omitempty"`
 	Archived            bool   `bson:"archived,omitempty" json:"archived,omitempty"`
@@ -1452,7 +1449,6 @@ func (t *Task) MarkSystemFailed(description string) error {
 				StatusKey:     evergreen.TaskFailed,
 				FinishTimeKey: t.FinishTime,
 				DetailsKey:    t.Details,
-				CanResetKey:   true,
 			},
 		},
 	)
@@ -1575,9 +1571,15 @@ func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bo
 	if err != nil {
 		return errors.Wrap(err, "activating tasks")
 	}
+	logs := []event.EventLogEntry{}
 	for _, t := range tasks {
-		event.LogTaskActivated(t.Id, t.Execution, caller)
+		logs = append(logs, event.GetTaskActivatedEvent(t.Id, t.Execution, caller))
 	}
+	grip.Error(message.WrapError(event.LogManyEvents(logs), message.Fields{
+		"message":  "problem logging task activated events",
+		"task_ids": taskIDs,
+		"caller":   caller,
+	}))
 
 	if updateDependencies {
 		return ActivateDeactivatedDependencies(taskIDs, caller)
@@ -1699,9 +1701,15 @@ func ActivateDeactivatedDependencies(tasks []string, caller string) error {
 		return errors.Wrap(err, "updating activation for dependencies")
 	}
 
+	logs := []event.EventLogEntry{}
 	for _, t := range tasksToActivate {
-		event.LogTaskActivated(t.Id, t.Execution, caller)
+		logs = append(logs, event.GetTaskActivatedEvent(t.Id, t.Execution, caller))
 	}
+	grip.Error(message.WrapError(event.LogManyEvents(logs), message.Fields{
+		"message":  "problem logging task activated events",
+		"task_ids": taskIDsToActivate,
+		"caller":   caller,
+	}))
 
 	return nil
 }
@@ -1772,9 +1780,15 @@ func DeactivateTasks(tasks []Task, updateDependencies bool, caller string) error
 	if err != nil {
 		return errors.Wrap(err, "deactivating tasks")
 	}
+	logs := []event.EventLogEntry{}
 	for _, t := range tasks {
-		event.LogTaskDeactivated(t.Id, t.Execution, caller)
+		logs = append(logs, event.GetTaskDeactivatedEvent(t.Id, t.Execution, caller))
 	}
+	grip.Error(message.WrapError(event.LogManyEvents(logs), message.Fields{
+		"message":  "problem logging task deactivated events",
+		"task_ids": taskIDs,
+		"caller":   caller,
+	}))
 
 	if updateDependencies {
 		return DeactivateDependencies(taskIDs, caller)
@@ -1814,9 +1828,16 @@ func DeactivateDependencies(tasks []string, caller string) error {
 	if err != nil {
 		return errors.Wrap(err, "deactivating dependencies")
 	}
+
+	logs := []event.EventLogEntry{}
 	for _, t := range tasksToUpdate {
-		event.LogTaskDeactivated(t.Id, t.Execution, caller)
+		logs = append(logs, event.GetTaskDeactivatedEvent(t.Id, t.Execution, caller))
 	}
+	grip.Error(message.WrapError(event.LogManyEvents(logs), message.Fields{
+		"message":  "problem logging task deactivated events",
+		"task_ids": taskIDsToUpdate,
+		"caller":   caller,
+	}))
 
 	return nil
 }
@@ -1870,7 +1891,6 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 				StartTimeKey:        t.StartTime,
 				LogsKey:             detail.Logs,
 				HasLegacyResultsKey: t.HasLegacyResults,
-				CanResetKey:         true,
 			},
 		})
 
@@ -1952,9 +1972,7 @@ func (t *Task) displayTaskPriority() int {
 func (t *Task) Reset() error {
 	return UpdateOne(
 		bson.M{
-			IdKey:       t.Id,
-			StatusKey:   bson.M{"$in": evergreen.TaskCompletedStatuses},
-			CanResetKey: true,
+			IdKey: t.Id,
 		},
 		resetTaskUpdate(t),
 	)
@@ -1972,11 +1990,7 @@ func ResetTasks(tasks []Task) error {
 	}
 
 	if _, err := UpdateAll(
-		bson.M{
-			IdKey:       bson.M{"$in": taskIDs},
-			StatusKey:   bson.M{"$in": evergreen.TaskCompletedStatuses},
-			CanResetKey: true,
-		},
+		bson.M{IdKey: bson.M{"$in": taskIDs}},
 		resetTaskUpdate(nil),
 	); err != nil {
 		return err
@@ -2009,7 +2023,6 @@ func resetTaskUpdate(t *Task) bson.M {
 		t.HostCreateDetails = []HostCreateDetail{}
 		t.OverrideDependencies = false
 		t.ContainerAllocationAttempts = 0
-		t.CanReset = false
 	}
 	update := bson.M{
 		"$set": bson.M{
@@ -2036,7 +2049,6 @@ func resetTaskUpdate(t *Task) bson.M {
 			HostIdKey:                  "",
 			HostCreateDetailsKey:       "",
 			OverrideDependenciesKey:    "",
-			CanResetKey:                "",
 		},
 	}
 	return update
@@ -2500,6 +2512,16 @@ func (t *Task) Insert() error {
 // into the old_tasks collection. If this is a display task, its execution tasks
 // are also archived.
 func (t *Task) Archive() error {
+	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
+		execTasks, err := FindAll(db.Query(ByIds(t.ExecutionTasks)))
+		if err != nil {
+			return errors.Wrap(err, "retrieving execution tasks")
+		}
+		if err = ArchiveMany(execTasks); err != nil {
+			return errors.Wrap(err, "archiving execution tasks")
+		}
+	}
+
 	archiveTask := t.makeArchivedTask()
 	err := db.Insert(OldCollection, archiveTask)
 	if err != nil {
@@ -2512,14 +2534,8 @@ func (t *Task) Archive() error {
 		return errors.Wrap(err, "inserting archived task into old tasks")
 	}
 	err = UpdateOne(
+		bson.M{IdKey: t.Id},
 		bson.M{
-			IdKey:     t.Id,
-			StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses},
-		},
-		bson.M{
-			"$set": bson.M{
-				CanResetKey: true,
-			},
 			"$unset": bson.M{
 				AbortedKey:              "",
 				AbortInfoKey:            "",
@@ -2527,18 +2543,8 @@ func (t *Task) Archive() error {
 			},
 			"$inc": bson.M{ExecutionKey: 1},
 		})
-	if err != nil && !adb.ResultsNotFound(err) {
+	if err != nil {
 		return errors.Wrap(err, "updating task")
-	}
-
-	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
-		execTasks, err := FindAll(db.Query(ByIds(t.ExecutionTasks)))
-		if err != nil {
-			return errors.Wrap(err, "retrieving execution tasks")
-		}
-		if err = ArchiveMany(execTasks); err != nil {
-			return errors.Wrap(err, "archiving execution tasks")
-		}
 	}
 	t.Aborted = false
 	return nil
@@ -2601,13 +2607,11 @@ func ArchiveMany(tasks []Task) error {
 
 		taskColl := evergreen.GetEnvironment().DB().Collection(Collection)
 		_, err = taskColl.UpdateMany(ctx, bson.M{
-			IdKey:     bson.M{"$in": taskIds},
-			StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses},
+			IdKey: bson.M{
+				"$in": taskIds,
+			},
 		},
 			bson.M{
-				"$set": bson.M{
-					CanResetKey: true,
-				},
 				"$unset": bson.M{
 					AbortedKey:   "",
 					AbortInfoKey: "",
