@@ -1545,8 +1545,25 @@ func TestValidatePeriodicBuildDefinition(t *testing.T) {
 func TestContainerSecretValidate(t *testing.T) {
 	t.Run("FailsWithInvalidSecretType", func(t *testing.T) {
 		cs := ContainerSecret{
-			Type:       "",
-			ExternalID: "external_id",
+			Name:  "secret_name",
+			Type:  "",
+			Value: "new_value",
+		}
+		assert.Error(t, cs.Validate())
+	})
+	t.Run("FailsWithoutName", func(t *testing.T) {
+		cs := ContainerSecret{
+			Name:  "secret_name",
+			Type:  ContainerSecretPodSecret,
+			Value: "",
+		}
+		assert.Error(t, cs.Validate())
+	})
+	t.Run("FailsWithoutNewSecretValue", func(t *testing.T) {
+		cs := ContainerSecret{
+			Name:  "secret_name",
+			Type:  ContainerSecretPodSecret,
+			Value: "",
 		}
 		assert.Error(t, cs.Validate())
 	})

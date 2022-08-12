@@ -322,9 +322,6 @@ func handleGithubConflicts(pRef *model.ProjectRef, reason string) error {
 // DeleteContainerSecrets deletes existing container secrets in the project ref
 // from the secrets storage service. This returns the remaining secrets after
 // deletion.
-// kim: NOTE: cache updating won't work until Cocoa is upgraded to include the
-// secret cache deletion.
-// kim: TODO: re-test to check the remaining secrets
 func DeleteContainerSecrets(ctx context.Context, v cocoa.Vault, pRef *model.ProjectRef, namesToDelete []string) ([]model.ContainerSecret, error) {
 	catcher := grip.NewBasicCatcher()
 	var remaining []model.ContainerSecret

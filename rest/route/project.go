@@ -329,7 +329,6 @@ func (h *projectIDPatchHandler) Parse(ctx context.Context, r *http.Request) erro
 }
 
 // Run updates a project by name.
-// kim: TODO: manually test adding secrets
 func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if err := h.newProjectRef.ValidateOwnerAndRepo(h.settings.GithubOrgs); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "validating owner and repo"))
@@ -520,7 +519,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating project '%s'", h.newProjectRef.Id))
 	}
 
-	if err := data.UpsertContainerSecrets(ctx, h.vault, updatedContainerSecrets); err != nil {
+	if err := data.UpsertContainerSecrets(ctx, h.vault, allContainerSecrets); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "upserting container secrets"))
 	}
 

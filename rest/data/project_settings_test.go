@@ -683,125 +683,124 @@ func TestCopyProject(t *testing.T) {
 	}
 }
 
-// kim: TODO: uncomment once vault is hooked up to secret cache for deletion.
-// func TestDeleteContainerSecrets(t *testing.T) {
-//     defer func() {
-//         cocoaMock.ResetGlobalSecretCache()
-//
-//         assert.NoError(t, db.ClearCollections(model.ProjectRefCollection))
-//     }()
-//
-//     for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, mv *cocoaMock.Vault, pRef model.ProjectRef){
-//         "NoopsForNoNames": func(ctx context.Context, t *testing.T, mv *cocoaMock.Vault, pRef model.ProjectRef) {
-//             remaining, err := DeleteContainerSecrets(ctx, mv, &pRef, nil)
-//             require.NoError(t, err)
-//             assert.Len(t, remaining, len(pRef.ContainerSecrets))
-//
-//             dbProjRef, err := model.FindBranchProjectRef(pRef.Id)
-//             require.NoError(t, err)
-//             require.NotZero(t, dbProjRef)
-//             assert.Equal(t, dbProjRef.ContainerSecrets, pRef.ContainerSecrets)
-//         },
-//         "DeletesMatchingContainerSecretsByName": func(ctx context.Context, t *testing.T, mv *cocoaMock.Vault, pRef model.ProjectRef) {
-//             remaining, err := DeleteContainerSecrets(ctx, mv, &pRef, []string{
-//                 pRef.ContainerSecrets[0].Name,
-//                 pRef.ContainerSecrets[3].Name,
-//             })
-//             require.NoError(t, err)
-//             require.Len(t, remaining, 2)
-//
-//             dbProjRef, err := model.FindBranchProjectRef(pRef.Id)
-//             require.NoError(t, err)
-//             require.NotZero(t, dbProjRef)
-//             require.Len(t, dbProjRef.ContainerSecrets, 2)
-//             assert.Equal(t, pRef.ContainerSecrets[1], dbProjRef.ContainerSecrets[0])
-//             assert.Equal(t, pRef.ContainerSecrets[2], dbProjRef.ContainerSecrets[1])
-//         },
-//         "IgnoresNamesThatDoNotMatchAnyContainerSecrets": func(ctx context.Context, t *testing.T, mv *cocoaMock.Vault, pRef model.ProjectRef) {
-//             remaining, err := DeleteContainerSecrets(ctx, mv, &pRef, []string{"nonexistent"})
-//             require.NoError(t, err)
-//             assert.Len(t, remaining, len(pRef.ContainerSecrets))
-//
-//             dbProjRef, err := model.FindBranchProjectRef(pRef.Id)
-//             require.NoError(t, err)
-//             require.NotZero(t, dbProjRef)
-//             assert.Equal(t, dbProjRef.ContainerSecrets, pRef.ContainerSecrets)
-//         },
-//         "RemovesContainerSecretsMissingExternalIDsWithoutModifyingDBProjectRef": func(ctx context.Context, t *testing.T, mv *cocoaMock.Vault, pRef model.ProjectRef) {
-//             pRef.ContainerSecrets[0].ExternalID = ""
-//             require.NoError(t, pRef.Upsert())
-//             remaining, err := DeleteContainerSecrets(ctx, mv, &pRef, []string{pRef.ContainerSecrets[0].Name})
-//             require.NoError(t, err)
-//             assert.Len(t, remaining, len(pRef.ContainerSecrets)-1)
-//
-//             dbProjRef, err := model.FindBranchProjectRef(pRef.Id)
-//             require.NoError(t, err)
-//             require.NotZero(t, dbProjRef)
-//             assert.Equal(t, dbProjRef.ContainerSecrets, pRef.ContainerSecrets)
-//         },
-//     } {
-//         t.Run(tName, func(t *testing.T) {
-//             ctx, cancel := context.WithCancel(context.Background())
-//             defer cancel()
-//
-//             cocoaMock.ResetGlobalSecretCache()
-//
-//             require.NoError(t, db.ClearCollections(model.ProjectRefCollection))
-//
-//             pRef := model.ProjectRef{
-//                 Id:         "project_id",
-//                 Identifier: "project_identifier",
-//                 ContainerSecrets: []model.ContainerSecret{
-//                     {
-//                         Name:         "celadon",
-//                         ExternalName: "celadon",
-//                         Type:         model.ContainerSecretRepoCreds,
-//                     },
-//                     {
-//                         Name:         "minium",
-//                         ExternalName: "minium",
-//                         Type:         model.ContainerSecretPodSecret,
-//                     },
-//                     {
-//                         Name:         "orpiment",
-//                         ExternalName: "orpiment",
-//                         Type:         model.ContainerSecretRepoCreds,
-//                     },
-//                     {
-//                         Name:         "fuchsia",
-//                         ExternalName: "fuchsia",
-//                         Type:         model.ContainerSecretRepoCreds,
-//                     },
-//                 },
-//             }
-//             require.NoError(t, pRef.Insert())
-//
-//             smClient := &cocoaMock.SecretsManagerClient{}
-//             v, err := cloud.MakeSecretsManagerVault(smClient)
-//             require.NoError(t, err)
-//             mv := cocoaMock.NewVault(v)
-//
-//             for _, secret := range pRef.ContainerSecrets {
-//                 _, err := mv.CreateSecret(ctx, *cocoa.NewNamedSecret().
-//                     SetName(secret.ExternalName).
-//                     SetValue(utility.RandomString()))
-//                 require.NoError(t, err)
-//             }
-//
-//             // Re-find the project ref because creating the secret will update
-//             // the container secret.
-//             dbProjRef, err := model.FindBranchProjectRef(pRef.Id)
-//             require.NoError(t, err)
-//             require.NotZero(t, dbProjRef)
-//             pRef = *dbProjRef
-//             for _, secret := range pRef.ContainerSecrets {
-//                 require.NotZero(t, secret.ExternalID, "creating the container secret should have set the external ID")
-//             }
-//
-//             tCase(ctx, t, mv, pRef)
-//         })
-//     }
-// }
+func TestDeleteContainerSecrets(t *testing.T) {
+	defer func() {
+		cocoaMock.ResetGlobalSecretCache()
+
+		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection))
+	}()
+
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, mv *cocoaMock.Vault, pRef model.ProjectRef){
+		"NoopsForNoNames": func(ctx context.Context, t *testing.T, mv *cocoaMock.Vault, pRef model.ProjectRef) {
+			remaining, err := DeleteContainerSecrets(ctx, mv, &pRef, nil)
+			require.NoError(t, err)
+			assert.Len(t, remaining, len(pRef.ContainerSecrets))
+
+			dbProjRef, err := model.FindBranchProjectRef(pRef.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbProjRef)
+			assert.Equal(t, dbProjRef.ContainerSecrets, pRef.ContainerSecrets)
+		},
+		"DeletesMatchingContainerSecretsByName": func(ctx context.Context, t *testing.T, mv *cocoaMock.Vault, pRef model.ProjectRef) {
+			remaining, err := DeleteContainerSecrets(ctx, mv, &pRef, []string{
+				pRef.ContainerSecrets[0].Name,
+				pRef.ContainerSecrets[3].Name,
+			})
+			require.NoError(t, err)
+			require.Len(t, remaining, 2)
+
+			dbProjRef, err := model.FindBranchProjectRef(pRef.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbProjRef)
+			require.Len(t, dbProjRef.ContainerSecrets, 2)
+			assert.Equal(t, pRef.ContainerSecrets[1], dbProjRef.ContainerSecrets[0])
+			assert.Equal(t, pRef.ContainerSecrets[2], dbProjRef.ContainerSecrets[1])
+		},
+		"IgnoresNamesThatDoNotMatchAnyContainerSecrets": func(ctx context.Context, t *testing.T, mv *cocoaMock.Vault, pRef model.ProjectRef) {
+			remaining, err := DeleteContainerSecrets(ctx, mv, &pRef, []string{"nonexistent"})
+			require.NoError(t, err)
+			assert.Len(t, remaining, len(pRef.ContainerSecrets))
+
+			dbProjRef, err := model.FindBranchProjectRef(pRef.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbProjRef)
+			assert.Equal(t, dbProjRef.ContainerSecrets, pRef.ContainerSecrets)
+		},
+		"RemovesContainerSecretsMissingExternalIDsWithoutModifyingDBProjectRef": func(ctx context.Context, t *testing.T, mv *cocoaMock.Vault, pRef model.ProjectRef) {
+			pRef.ContainerSecrets[0].ExternalID = ""
+			require.NoError(t, pRef.Upsert())
+			remaining, err := DeleteContainerSecrets(ctx, mv, &pRef, []string{pRef.ContainerSecrets[0].Name})
+			require.NoError(t, err)
+			assert.Len(t, remaining, len(pRef.ContainerSecrets)-1)
+
+			dbProjRef, err := model.FindBranchProjectRef(pRef.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbProjRef)
+			assert.Equal(t, dbProjRef.ContainerSecrets, pRef.ContainerSecrets)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			cocoaMock.ResetGlobalSecretCache()
+
+			require.NoError(t, db.ClearCollections(model.ProjectRefCollection))
+
+			pRef := model.ProjectRef{
+				Id:         "project_id",
+				Identifier: "project_identifier",
+				ContainerSecrets: []model.ContainerSecret{
+					{
+						Name:         "celadon",
+						ExternalName: "celadon",
+						Type:         model.ContainerSecretRepoCreds,
+					},
+					{
+						Name:         "minium",
+						ExternalName: "minium",
+						Type:         model.ContainerSecretPodSecret,
+					},
+					{
+						Name:         "orpiment",
+						ExternalName: "orpiment",
+						Type:         model.ContainerSecretRepoCreds,
+					},
+					{
+						Name:         "fuchsia",
+						ExternalName: "fuchsia",
+						Type:         model.ContainerSecretRepoCreds,
+					},
+				},
+			}
+			require.NoError(t, pRef.Insert())
+
+			smClient := &cocoaMock.SecretsManagerClient{}
+			v, err := cloud.MakeSecretsManagerVault(smClient)
+			require.NoError(t, err)
+			mv := cocoaMock.NewVault(v)
+
+			for _, secret := range pRef.ContainerSecrets {
+				_, err := mv.CreateSecret(ctx, *cocoa.NewNamedSecret().
+					SetName(secret.ExternalName).
+					SetValue(utility.RandomString()))
+				require.NoError(t, err)
+			}
+
+			// Re-find the project ref because creating the secret will update
+			// the container secret.
+			dbProjRef, err := model.FindBranchProjectRef(pRef.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbProjRef)
+			pRef = *dbProjRef
+			for _, secret := range pRef.ContainerSecrets {
+				require.NotZero(t, secret.ExternalID, "creating the container secret should have set the external ID")
+			}
+
+			tCase(ctx, t, mv, pRef)
+		})
+	}
+}
 
 func TestUpsertContainerSecrets(t *testing.T) {
 	defer func() {

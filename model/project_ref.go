@@ -2643,7 +2643,6 @@ func (c ContainerResources) Validate() error {
 
 // Validate that essential container secret fields are properly defined for a
 // new secret.
-// kim: TODO: re-test
 func (c ContainerSecret) Validate() error {
 	catcher := grip.NewSimpleCatcher()
 	catcher.Add(c.Type.Validate())

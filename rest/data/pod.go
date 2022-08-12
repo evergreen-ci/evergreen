@@ -15,8 +15,6 @@ import (
 
 // CreatePod creates a new pod from the given REST model and returns its ID.
 func CreatePod(apiPod model.APICreatePod) (*model.APICreatePodResponse, error) {
-	// kim: TODO: manually test loading external secret from pod creation REST
-	// route.
 	if apiPod.PodSecretValue == nil {
 		env := evergreen.GetEnvironment()
 		smClient, err := cloud.MakeSecretsManagerClient(env.Settings())

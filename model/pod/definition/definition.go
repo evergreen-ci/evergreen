@@ -72,3 +72,7 @@ func (pdc PodDefinitionCache) Put(_ context.Context, item cocoa.ECSPodDefinition
 	}
 	return nil
 }
+
+func (pdf PodDefinitionCache) Delete(_ context.Context, _ string) error {
+	return nil
+}
