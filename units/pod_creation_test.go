@@ -30,7 +30,12 @@ func TestNewPodCreationJob(t *testing.T) {
 }
 
 func TestPodCreationJob(t *testing.T) {
-	defer cocoaMock.ResetGlobalECSService()
+	defer func() {
+		cocoaMock.ResetGlobalECSService()
+		cocoaMock.ResetGlobalSecretCache()
+
+		assert.NoError(t, db.ClearCollections(pod.Collection, definition.Collection, dispatcher.Collection, event.LegacyEventLogCollection))
+	}()
 
 	const clusterName = "cluster"
 
@@ -131,11 +136,9 @@ func TestPodCreationJob(t *testing.T) {
 			defer cancel()
 
 			require.NoError(t, db.ClearCollections(pod.Collection, definition.Collection, dispatcher.Collection, event.LegacyEventLogCollection))
-			defer func() {
-				assert.NoError(t, db.ClearCollections(pod.Collection, definition.Collection, dispatcher.Collection, event.LegacyEventLogCollection))
-			}()
 
 			cocoaMock.ResetGlobalECSService()
+			cocoaMock.ResetGlobalSecretCache()
 			cocoaMock.GlobalECSService.Clusters[clusterName] = cocoaMock.ECSCluster{}
 
 			env := &evgMock.Environment{}
@@ -155,12 +158,14 @@ func TestPodCreationJob(t *testing.T) {
 			}
 
 			p, err := pod.NewTaskIntentPod(evergreen.ECSConfig{}, pod.TaskIntentPodOptions{
-				MemoryMB:   256,
-				CPU:        512,
-				OS:         pod.OSLinux,
-				Arch:       pod.ArchAMD64,
-				Image:      "image",
-				WorkingDir: "/working_dir",
+				MemoryMB:            256,
+				CPU:                 512,
+				OS:                  pod.OSLinux,
+				Arch:                pod.ArchAMD64,
+				Image:               "image",
+				WorkingDir:          "/working_dir",
+				PodSecretExternalID: "pod_secret_external_id",
+				PodSecretValue:      "pod_secret_value",
 			})
 			require.NoError(t, err)
 

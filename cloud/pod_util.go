@@ -186,9 +186,7 @@ func exportECSContainerResources(info pod.ContainerResourceInfo) cocoa.ECSContai
 		SetName(info.Name)
 
 	for _, id := range info.SecretIDs {
-		s := cocoa.NewContainerSecret().
-			SetID(id).
-			SetOwned(true)
+		s := cocoa.NewContainerSecret().SetID(id)
 		res.AddSecrets(*s)
 	}
 
