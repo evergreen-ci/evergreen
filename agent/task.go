@@ -351,9 +351,13 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 		}
 	}
 	grip.Info("Fetching distro configuration.")
-	confDistro, err := a.comm.GetDistroView(ctx, tc.task)
-	if err != nil {
-		return nil, err
+	var confDistro *apimodels.DistroView
+	var err error
+	if a.opts.Mode == HostMode {
+		confDistro, err = a.comm.GetDistroView(ctx, tc.task)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	grip.Info("Fetching project ref.")
@@ -377,7 +381,7 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 	}
 
 	grip.Info("Constructing TaskConfig.")
-	taskConfig, err := internal.NewTaskConfig(confDistro, tc.project, tc.taskModel, confRef, confPatch, tc.expansions)
+	taskConfig, err := internal.NewTaskConfig(a.opts.WorkingDirectory, confDistro, tc.project, tc.taskModel, confRef, confPatch, tc.expansions)
 	if err != nil {
 		return nil, err
 	}

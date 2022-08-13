@@ -2,7 +2,7 @@
 name := evergreen
 buildDir := bin
 nodeDir := public
-packages := $(name) agent agent-command agent-util agent-internal agent-internal-client operations cloud cloud-userdata
+packages := $(name) agent agent-command agent-util agent-internal agent-internal-client agent-internal-testutil operations cloud cloud-userdata
 packages += db util plugin units graphql thirdparty thirdparty-docker auth scheduler model validator service repotracker cmd-codegen-core mock
 packages += model-annotations model-patch model-artifact model-host model-pod model-pod-definition model-pod-dispatcher model-build model-event model-task model-user model-distro model-manifest model-testresult
 packages += operations-metabuild-generator operations-metabuild-model model-commitqueue

@@ -176,7 +176,7 @@ func (s *DistroByIDSuite) SetupSuite() {
 				Method:        distro.BootstrapMethodLegacySSH,
 				Communication: distro.CommunicationMethodLegacySSH,
 			},
-			CloneMethod: distro.CloneMethodLegacySSH,
+			CloneMethod: evergreen.CloneMethodLegacySSH,
 		},
 		{Id: "distro2"},
 	}
@@ -213,7 +213,7 @@ func (s *DistroByIDSuite) TestFindByIdFound() {
 	s.EqualValues(7, d.PlannerSettings.PatchFactor)
 	s.Equal(utility.ToStringPtr(distro.BootstrapMethodLegacySSH), d.BootstrapSettings.Method)
 	s.Equal(utility.ToStringPtr(distro.CommunicationMethodLegacySSH), d.BootstrapSettings.Communication)
-	s.Equal(utility.ToStringPtr(distro.CloneMethodLegacySSH), d.CloneMethod)
+	s.Equal(utility.ToStringPtr(evergreen.CloneMethodLegacySSH), d.CloneMethod)
 	s.Equal(utility.ToStringPtr(evergreen.FinderVersionLegacy), d.FinderSettings.Version)
 	s.Equal(utility.ToStringPtr(evergreen.DispatcherVersionRevisedWithDependencies), d.DispatcherSettings.Version)
 }
@@ -360,7 +360,7 @@ func TestUpdateDistrosSettingsHandlerRun(t *testing.T) {
 			Method:        distro.BootstrapMethodLegacySSH,
 			Communication: distro.CommunicationMethodLegacySSH,
 		},
-		CloneMethod: distro.CloneMethodLegacySSH,
+		CloneMethod: evergreen.CloneMethodLegacySSH,
 		FinderSettings: distro.FinderSettings{
 			Version: evergreen.FinderVersionLegacy,
 		},
@@ -1255,7 +1255,7 @@ func (s *DistroPatchByIDSuite) TestRunValidNonLegacyBootstrapSettings() {
 func (s *DistroPatchByIDSuite) TestRunValidCloneMethod() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
-	json := []byte(fmt.Sprintf(`{"clone_method": "%s"}`, distro.CloneMethodLegacySSH))
+	json := []byte(fmt.Sprintf(`{"clone_method": "%s"}`, evergreen.CloneMethodLegacySSH))
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
 	h.body = json
@@ -1266,7 +1266,7 @@ func (s *DistroPatchByIDSuite) TestRunValidCloneMethod() {
 
 	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
-	s.Equal(utility.ToStringPtr(distro.CloneMethodLegacySSH), apiDistro.CloneMethod)
+	s.Equal(utility.ToStringPtr(evergreen.CloneMethodLegacySSH), apiDistro.CloneMethod)
 }
 
 func (s *DistroPatchByIDSuite) TestRunInvalidCloneMethod() {
@@ -1403,7 +1403,7 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	s.Equal(apiDistro.Setup, utility.ToStringPtr("~Set-up script"))
 	s.Equal(utility.ToStringPtr(distro.BootstrapMethodLegacySSH), apiDistro.BootstrapSettings.Method)
 	s.Equal(utility.ToStringPtr(distro.CommunicationMethodLegacySSH), apiDistro.BootstrapSettings.Communication)
-	s.Equal(utility.ToStringPtr(distro.CloneMethodLegacySSH), apiDistro.CloneMethod)
+	s.Equal(utility.ToStringPtr(evergreen.CloneMethodLegacySSH), apiDistro.CloneMethod)
 	s.Equal(utility.ToStringPtr("/usr/bin"), apiDistro.BootstrapSettings.ClientDir)
 	s.Equal(utility.ToStringPtr("/usr/local/bin"), apiDistro.BootstrapSettings.JasperBinaryDir)
 	s.Equal(utility.ToStringPtr("/etc/credentials"), apiDistro.BootstrapSettings.JasperCredentialsPath)
