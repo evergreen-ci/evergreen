@@ -2612,7 +2612,7 @@ func archiveAll(taskIds, execTaskIds, toRestartExecTaskIds []string, archivedTas
 			}
 		}
 		if len(execTaskIds) > 0 {
-			// TODO (EVG-17508): Replace call with non-backwards compatibile call
+			// TODO (EVG-17508): Replace call with non-backwards compatible call
 			// Backwards compatibility call + LPE setting for all tasks
 			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(sessCtx,
 				bson.M{"_id": bson.M{"$in": execTaskIds}}, // Query all execution tasks
