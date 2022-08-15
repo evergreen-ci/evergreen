@@ -2,7 +2,6 @@ package command
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -364,8 +363,7 @@ func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {
 			defer cancel()
 			var err error
 
-			dir, err := ioutil.TempDir("", "s3put")
-			require.NoError(t, err)
+			dir := t.TempDir()
 			_, err = os.Create(filepath.Join(dir, "foo"))
 			require.NoError(t, err)
 			require.NoError(t, os.Mkdir(filepath.Join(dir, "subDir"), 0755))

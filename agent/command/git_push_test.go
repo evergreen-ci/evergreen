@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"path"
 	"strings"
 	"testing"
@@ -97,9 +96,7 @@ func TestGitPush(t *testing.T) {
 			c.base.jasper = jpm
 			c.DryRun = true
 
-			var repoDir string
-			repoDir, err = ioutil.TempDir("", "test_repo")
-			require.NoError(t, err)
+			repoDir := t.TempDir()
 			require.NoError(t, ioutil.WriteFile(path.Join(repoDir, "test1.txt"), []byte("test1"), 0644))
 			require.NoError(t, ioutil.WriteFile(path.Join(repoDir, "test2.txt"), []byte("test2"), 0644))
 
@@ -136,8 +133,6 @@ func TestGitPush(t *testing.T) {
 			require.Len(t, filesChangedSlice, 2)
 			assert.Equal(t, "test1.txt", filesChangedSlice[0])
 			assert.Equal(t, "test3.txt", filesChangedSlice[1])
-
-			assert.NoError(t, os.RemoveAll(repoDir))
 		},
 		"PushPatchMock": func(*testing.T) {
 			manager := &mock.Manager{}

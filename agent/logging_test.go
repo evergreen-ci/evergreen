@@ -32,10 +32,8 @@ func TestCommandFileLogging(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	tmpDirName, err := ioutil.TempDir("", "agent-logging-")
-	require.NoError(err)
+	tmpDirName := t.TempDir()
 	require.NoError(os.Mkdir(fmt.Sprintf("%s/tmp", tmpDirName), 0666))
-	defer os.RemoveAll(tmpDirName)
 
 	agt := &Agent{
 		opts: Options{
@@ -130,10 +128,7 @@ func TestCommandFileLogging(t *testing.T) {
 
 func TestStartLogging(t *testing.T) {
 	assert := assert.New(t)
-	require := require.New(t)
-	tmpDirName, err := ioutil.TempDir("", "reset-logging-")
-	require.NoError(err)
-	defer os.RemoveAll(tmpDirName)
+	tmpDirName := t.TempDir()
 	agt := &Agent{
 		opts: Options{
 			HostID:           "host",
@@ -177,10 +172,7 @@ func TestStartLogging(t *testing.T) {
 
 func TestStartLoggingErrors(t *testing.T) {
 	assert := assert.New(t)
-	require := require.New(t)
-	tmpDirName, err := ioutil.TempDir("", "logging-error-")
-	require.NoError(err)
-	defer os.RemoveAll(tmpDirName)
+	tmpDirName := t.TempDir()
 	agt := &Agent{
 		opts: Options{
 			HostID:           "host",

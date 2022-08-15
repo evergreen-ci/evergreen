@@ -44,8 +44,7 @@ func (s *CommandSuite) SetupTest() {
 	s.mockCommunicator = s.a.comm.(*client.Mock)
 
 	var err error
-	s.tmpDirName, err = ioutil.TempDir("", "agent-command-suite-")
-	s.Require().NoError(err)
+	s.tmpDirName = s.T().TempDir()
 	s.a.jasper, err = jasper.NewSynchronizedManager(false)
 	s.Require().NoError(err)
 
@@ -56,10 +55,6 @@ func (s *CommandSuite) SetupTest() {
 		taskModel:  &task.Task{},
 		oomTracker: &mock.OOMTracker{},
 	}
-}
-
-func (s *CommandSuite) TearDownTest() {
-	s.Require().NoError(os.RemoveAll(s.tmpDirName))
 }
 
 func (s *CommandSuite) TestShellExec() {
