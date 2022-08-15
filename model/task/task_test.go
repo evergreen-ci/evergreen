@@ -3830,7 +3830,7 @@ func TestArchiveFailedOnly(t *testing.T) {
 		Version: "v",
 	}
 	assert.NoError(t, t2.Insert())
-	dt := Task{
+	dt := &Task{
 		Id:                      "dt",
 		DisplayOnly:             true,
 		ExecutionTasks:          []string{"t1", "t2"},
@@ -3888,8 +3888,6 @@ func TestArchiveFailedOnly(t *testing.T) {
 		// Gets the future archived tasks information.
 		t1, err := FindOneIdAndExecution(dt.ExecutionTasks[0], dt.Execution)
 		require.NoError(t, err)
-		t2, err := FindOneIdAndExecution(dt.ExecutionTasks[1], dt.Execution)
-		require.NoError(t, err)
 		archivedT1 := MakeOldID(t1.Id, t1.Execution)
 		archivedExecution := t1.Execution
 
@@ -3901,15 +3899,15 @@ func TestArchiveFailedOnly(t *testing.T) {
 		archivedDisplayTaskID := MakeOldID(dt.Id, dt.Execution)
 		require.Equal(t, 0, dt.Execution)
 		require.NoError(t, dt.Archive())
-		dtPointer, err := FindOneId(dt.Id)
+		dt, err = FindOneId(dt.Id)
 		require.NoError(t, err)
-		require.Equal(t, 1, dtPointer.Execution)
+		require.Equal(t, 1, dt.Execution)
 
 		t1, err = FindOneId(dt.ExecutionTasks[0])
 		require.NoError(t, err)
 		require.Equal(t, 1, t1.Execution)
 		require.Equal(t, t1.LatestParentExecution, t1.Execution)
-		t2, err = FindOneId(dt.ExecutionTasks[1])
+		t2, err := FindOneId(dt.ExecutionTasks[1])
 		require.NoError(t, err)
 		require.Equal(t, 0, t2.Execution)
 		require.Equal(t, t2.LatestParentExecution, 1)
@@ -3947,8 +3945,7 @@ func TestArchiveFailedOnly(t *testing.T) {
 		// Verifies the display task is archived after calling archive
 		archivedDisplayTaskID := MakeOldID(dt.Id, dt.Execution)
 		require.NoError(t, dt.Archive())
-		dtPointer, err := FindOneId(dt.Id)
-		dt = *dtPointer
+		dt, err = FindOneId(dt.Id)
 		require.NoError(t, err)
 		require.Equal(t, 2, dt.Execution)
 
