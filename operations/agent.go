@@ -2,10 +2,12 @@ package operations
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent"
 	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/mongodb/grip"
@@ -33,6 +35,7 @@ func Agent() cli.Command {
 		modeFlagName             = "mode"
 		podIDFlagName            = "pod_id"
 		podSecretFlagName        = "pod_secret"
+		versionFlagName          = "version"
 	)
 
 	return cli.Command{
@@ -91,26 +94,32 @@ func Agent() cli.Command {
 				Usage: "the mode that the agent should run in (host, pod)",
 				Value: "host",
 			},
+			cli.BoolFlag{
+				Name:  joinFlagNames(versionFlagName, "v"),
+				Usage: "print the agent revision of the current binary and exit",
+			},
 		},
 		Before: mergeBeforeFuncs(
-			requireStringFlag(agentAPIServerURLFlagName),
-			requireStringFlag(workingDirectoryFlagName),
 			func(c *cli.Context) error {
+				if c.Bool(versionFlagName) {
+					return nil
+				}
+
+				catcher := grip.NewBasicCatcher()
+				catcher.Add(requireStringFlag(agentAPIServerURLFlagName)(c))
+				catcher.Add(requireStringFlag(workingDirectoryFlagName)(c))
 				mode := c.String(modeFlagName)
 				switch mode {
 				case string(agent.HostMode):
-					catcher := grip.NewBasicCatcher()
 					catcher.Add(requireStringFlag(hostIDFlagName)(c))
 					catcher.Add(requireStringFlag(hostSecretFlagName)(c))
-					return catcher.Resolve()
 				case string(agent.PodMode):
-					catcher := grip.NewBasicCatcher()
 					catcher.Add(requireStringFlag(podIDFlagName)(c))
 					catcher.Add(requireStringFlag(podSecretFlagName)(c))
-					return catcher.Resolve()
 				default:
 					return errors.Errorf("invalid mode '%s'", mode)
 				}
+				return catcher.Resolve()
 			},
 			func(c *cli.Context) error {
 				grip.SetName("evergreen.agent")
@@ -118,6 +127,11 @@ func Agent() cli.Command {
 			},
 		),
 		Action: func(c *cli.Context) error {
+			if c.Bool(versionFlagName) {
+				fmt.Println(evergreen.AgentVersion)
+				return nil
+			}
+
 			opts := agent.Options{
 				HostID:           c.String(hostIDFlagName),
 				HostSecret:       c.String(hostSecretFlagName),
