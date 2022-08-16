@@ -2515,24 +2515,19 @@ func (t *Task) Insert() error {
 // are also archived.
 func (t *Task) Archive() error {
 	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
-		err := ArchiveMany([]Task{*t})
-		return errors.Wrapf(err, "archiving display task '%s'", t.Id)
+		return errors.Wrapf(ArchiveMany([]Task{*t}), "archiving display task '%s'", t.Id)
 	} else {
 		// Archiving a single task.
 		archiveTask := t.makeArchivedTask()
 		err := db.Insert(OldCollection, archiveTask)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"archive_task_id": archiveTask.Id,
-				"old_task_id":     archiveTask.OldTaskId,
-				"execution":       t.Execution,
-				"display_only":    t.DisplayOnly,
-			}))
 			return errors.Wrap(err, "inserting archived task into old tasks")
 		}
-		err = UpdateOne(bson.M{IdKey: t.Id}, updateDisplayTasksAndTasksBson())
-
 		t.Aborted = false
+		err = UpdateOne(
+			bson.M{IdKey: t.Id},
+			updateDisplayTasksAndTasksBson(),
+		)
 		return errors.Wrap(err, "updating task")
 	}
 }
@@ -2605,8 +2600,10 @@ func archiveAll(taskIds, execTaskIds, toRestartExecTaskIds []string, archivedTas
 			}
 		}
 		if len(taskIds) > 0 {
-			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(sessCtx, bson.M{
-				IdKey: bson.M{"$in": taskIds}}, updateDisplayTasksAndTasksBson())
+			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(sessCtx,
+				bson.M{IdKey: bson.M{"$in": taskIds}},
+				updateDisplayTasksAndTasksBson(),
+			)
 			if err != nil {
 				return nil, errors.Wrap(err, "archiving tasks")
 			}
@@ -2615,7 +2612,7 @@ func archiveAll(taskIds, execTaskIds, toRestartExecTaskIds []string, archivedTas
 			// TODO (EVG-17508): Replace call with non-backwards compatible call
 			// Backwards compatibility call + LPE setting for all tasks
 			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(sessCtx,
-				bson.M{"_id": bson.M{"$in": execTaskIds}}, // Query all execution tasks
+				bson.M{IdKey: bson.M{"$in": execTaskIds}}, // Query all execution tasks
 				bson.A{ // Pipeline
 					bson.M{"$set": bson.M{ // Sets LatestParentExecution (LPE) = !exists(LPE) ? execution + 1 : LPE + 1
 						LatestParentExecutionKey: bson.M{

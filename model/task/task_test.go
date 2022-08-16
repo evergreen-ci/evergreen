@@ -3141,7 +3141,7 @@ func TestArchiveMany(t *testing.T) {
 	}
 }
 
-func TestArchiveManyFailedOnly(t *testing.T) {
+func TestArchiveManyAfterFailedOnly(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection, OldCollection))
 	et1 := Task{
 		Id:                    "et1",
@@ -3153,12 +3153,11 @@ func TestArchiveManyFailedOnly(t *testing.T) {
 	}
 	assert.NoError(t, et1.Insert())
 	et2 := Task{
-		Id:                    "et2",
-		Status:                evergreen.TaskSucceeded,
-		Execution:             2,
-		LatestParentExecution: 2,
-		Aborted:               true,
-		Version:               "v",
+		Id:        "et2",
+		Status:    evergreen.TaskSucceeded,
+		Execution: 2,
+		Aborted:   true,
+		Version:   "v",
 	}
 	assert.NoError(t, et2.Insert())
 	t1 := Task{
@@ -3217,21 +3216,20 @@ func TestArchiveManyFailedOnly(t *testing.T) {
 	assert.NoError(t, t3.Archive()) // Failed only is true
 	t3Pointer, err := FindByIdExecution(t3.Id, nil)
 	assert.NoError(t, err)
-	t3Pointer.ResetFailedWhenFinished = false
-
 	currentTasks, err := FindAll(db.Query(ByVersion("v")))
 	assert.NoError(t, err)
-
 	for _, task := range currentTasks {
-		switch task.Id {
-		case et3.Id, et5.Id: // Restarted tasks
-			assert.Equal(t, task.Execution, 1)
-			fallthrough
-		case et3.Id, et4.Id, et5.Id:
+		id := task.Id
+		// All execution tasks in the display task we archived
+		if id == et3.Id || id == et4.Id || id == et5.Id {
 			assert.Equal(t, task.LatestParentExecution, 1)
-		}
-		if task.Id == et4.Id { // Non-restarted task
-			assert.Equal(t, task.Execution, 0)
+
+			// Restarted tasks
+			if id == et3.Id || id == et5.Id {
+				assert.Equal(t, task.Execution, 1)
+			} else {
+				assert.Equal(t, task.Execution, 0)
+			}
 		}
 	}
 
@@ -3243,6 +3241,8 @@ func TestArchiveManyFailedOnly(t *testing.T) {
 		Version:   "v",
 	}
 	assert.NoError(t, t4.Insert())
+
+	t3Pointer.ResetFailedWhenFinished = false
 	assert.NoError(t, ArchiveMany([]Task{t1, t2, *t3Pointer, t4}))
 
 	// Before ArchiveMany:
@@ -3261,22 +3261,28 @@ func TestArchiveManyFailedOnly(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, currentTasks, 9)
 
+	// Every display task or task should have a '0' LatestParentExecution (it is an execution task only field)
+	// For execution tasks, the execution should be their latestparentexecution after archiving all
 	for _, task := range currentTasks {
 		switch task.Id {
 		case t1.Id:
 			assert.Equal(t, 3, task.Execution)
+			assert.Equal(t, 0, task.LatestParentExecution)
 		case et1.Id, et2.Id:
 			assert.Equal(t, 3, task.Execution)
 			assert.Equal(t, task.LatestParentExecution, task.Execution)
 		case t2.Id:
 			assert.Equal(t, 4, task.Execution)
+			assert.Equal(t, 0, task.LatestParentExecution)
 		case t3.Id:
 			assert.Equal(t, 2, task.Execution)
+			assert.Equal(t, 0, task.LatestParentExecution)
 		case et3.Id, et4.Id, et5.Id:
 			assert.Equal(t, 2, task.Execution)
 			assert.Equal(t, task.LatestParentExecution, task.Execution)
 		case t4.Id:
 			assert.Equal(t, 2, task.Execution)
+			assert.Equal(t, 0, task.LatestParentExecution)
 		default:
 			assert.Error(t, nil, "A task was not accounted for")
 		}
