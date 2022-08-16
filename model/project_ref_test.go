@@ -2199,25 +2199,28 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	assert.NotNil(t, projectRef)
 
 	update := &ProjectRef{
-		Id:    "iden_",
-		Owner: "invalid",
-		Repo:  "nonexistent",
+		Id:      "iden_",
+		Enabled: utility.TruePtr(),
+		Owner:   "invalid",
+		Repo:    "nonexistent",
 	}
 	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
 	assert.Error(err)
 
 	update = &ProjectRef{
-		Id:    "iden_",
-		Owner: "",
-		Repo:  "",
+		Id:      "iden_",
+		Enabled: utility.TruePtr(),
+		Owner:   "",
+		Repo:    "",
 	}
 	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
-	assert.NoError(err)
+	assert.Error(err)
 
 	update = &ProjectRef{
-		Id:    "iden_",
-		Owner: "evergreen-ci",
-		Repo:  "test",
+		Id:      "iden_",
+		Enabled: utility.TruePtr(),
+		Owner:   "evergreen-ci",
+		Repo:    "test",
 	}
 	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
 	assert.NoError(err)
