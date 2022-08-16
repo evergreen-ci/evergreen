@@ -19,7 +19,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -161,7 +160,7 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandUsesHTTPS() {
 	conf := s.taskConfig1
 
 	opts := cloneOpts{
-		method: distro.CloneMethodOAuth,
+		method: evergreen.CloneMethodOAuth,
 		owner:  conf.ProjectRef.Owner,
 		repo:   conf.ProjectRef.Repo,
 		branch: conf.ProjectRef.Branch,
@@ -180,7 +179,7 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandWithHTTPSNeedsToken() {
 	conf := s.taskConfig1
 
 	opts := cloneOpts{
-		method: distro.CloneMethodOAuth,
+		method: evergreen.CloneMethodOAuth,
 		owner:  conf.ProjectRef.Owner,
 		repo:   conf.ProjectRef.Repo,
 		branch: conf.ProjectRef.Branch,
@@ -200,7 +199,7 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandUsesSSH() {
 	conf := s.taskConfig2
 
 	opts := cloneOpts{
-		method: distro.CloneMethodLegacySSH,
+		method: evergreen.CloneMethodLegacySSH,
 		owner:  "deafgoat",
 		repo:   "mci_test",
 		branch: "main",
@@ -273,7 +272,7 @@ func (s *GitGetProjectSuite) TestGitFetchRetries() {
 func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
 	conf := s.taskConfig1
 	conf.ProjectRef.Repo = "doesntexist"
-	conf.Distro.CloneMethod = distro.CloneMethodOAuth
+	conf.Distro = nil
 	token, err := s.settings.GetGithubOauthToken()
 	s.Require().NoError(err)
 	conf.Expansions.Put(evergreen.GlobalGitHubTokenExpansion, token)
@@ -320,7 +319,7 @@ func (s *GitGetProjectSuite) TestStdErrLogged() {
 		s.T().Skip("TestStdErrLogged will not run on docker since it requires a SSH key")
 	}
 	conf := s.taskConfig5
-	conf.Distro.CloneMethod = distro.CloneMethodLegacySSH
+	conf.Distro.CloneMethod = evergreen.CloneMethodLegacySSH
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	comm := client.NewMock("http://localhost.com")
@@ -364,7 +363,7 @@ func (s *GitGetProjectSuite) TestValidateGitCommands() {
 	const refToCompare = "cf46076567e4949f9fc68e0634139d4ac495c89b" //note: also defined in test_config.yml
 
 	conf := s.taskConfig2
-	conf.Distro.CloneMethod = distro.CloneMethodOAuth
+	conf.Distro.CloneMethod = evergreen.CloneMethodOAuth
 	token, err := s.settings.GetGithubOauthToken()
 	s.Require().NoError(err)
 	conf.Expansions.Put(evergreen.GlobalGitHubTokenExpansion, token)
@@ -405,7 +404,7 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 
 	// build clone command to clone by http, main branch with token into 'dir'
 	opts := cloneOpts{
-		method: distro.CloneMethodOAuth,
+		method: evergreen.CloneMethodOAuth,
 		owner:  projectRef.Owner,
 		repo:   projectRef.Repo,
 		branch: projectRef.Branch,
@@ -456,7 +455,7 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 func (s *GitGetProjectSuite) TestBuildSSHCloneCommand() {
 	// ssh clone command with branch
 	opts := cloneOpts{
-		method: distro.CloneMethodLegacySSH,
+		method: evergreen.CloneMethodLegacySSH,
 		owner:  "deafgoat",
 		repo:   "mci_test",
 		branch: "main",
@@ -488,7 +487,7 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 
 	// ensure clone command with legacy SSH contains "git@github.com"
 	opts := cloneOpts{
-		method: distro.CloneMethodLegacySSH,
+		method: evergreen.CloneMethodLegacySSH,
 		branch: conf.ProjectRef.Branch,
 		owner:  conf.ProjectRef.Owner,
 		repo:   conf.ProjectRef.Repo,
@@ -508,7 +507,7 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 
 	// ensure clone command with location containing "https://github.com" uses
 	// HTTPS.
-	opts.method = distro.CloneMethodOAuth
+	opts.method = evergreen.CloneMethodOAuth
 	opts.token = c.Token
 	s.Require().NoError(opts.setLocation())
 	s.Require().NoError(err)
@@ -534,7 +533,7 @@ func (s *GitGetProjectSuite) TestBuildCommandForPullRequests() {
 	}
 
 	opts := cloneOpts{
-		method: distro.CloneMethodLegacySSH,
+		method: evergreen.CloneMethodLegacySSH,
 		branch: conf.ProjectRef.Branch,
 		owner:  conf.ProjectRef.Owner,
 		repo:   conf.ProjectRef.Repo,
@@ -559,7 +558,7 @@ func (s *GitGetProjectSuite) TestBuildCommandForCLIMergeTests() {
 	}
 
 	opts := cloneOpts{
-		method:             distro.CloneMethodOAuth,
+		method:             evergreen.CloneMethodOAuth,
 		branch:             conf.ProjectRef.Branch,
 		owner:              conf.ProjectRef.Owner,
 		repo:               conf.ProjectRef.Repo,
@@ -584,7 +583,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	}
 
 	opts := cloneOpts{
-		method: distro.CloneMethodLegacySSH,
+		method: evergreen.CloneMethodLegacySSH,
 		owner:  "deafgoat",
 		repo:   "mci_test",
 		dir:    "module",
@@ -602,7 +601,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	s.Equal("git checkout 'main'", cmds[4])
 
 	// ensure module clone command with http URL injects token
-	opts.method = distro.CloneMethodOAuth
+	opts.method = evergreen.CloneMethodOAuth
 	opts.token = c.Token
 	s.Require().NoError(opts.setLocation())
 	cmds, err = c.buildModuleCloneCommand(conf, opts, "main", nil)
@@ -634,7 +633,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 			Patch: "1234",
 		},
 	}
-	opts.method = distro.CloneMethodLegacySSH
+	opts.method = evergreen.CloneMethodLegacySSH
 	s.Require().NoError(opts.setLocation())
 	cmds, err = c.buildModuleCloneCommand(conf, opts, "main", module)
 	s.NoError(err)
@@ -825,15 +824,15 @@ func (s *GitGetProjectSuite) TestCloneOptsSetLocationGitHub() {
 	s.Require().NoError(opts.setLocation())
 	s.Equal("git@github.com:foo/bar.git", opts.location)
 
-	opts.method = distro.CloneMethodLegacySSH
+	opts.method = evergreen.CloneMethodLegacySSH
 	s.Require().NoError(opts.setLocation())
 	s.Equal("git@github.com:foo/bar.git", opts.location)
 
-	opts.method = distro.CloneMethodOAuth
+	opts.method = evergreen.CloneMethodOAuth
 	s.Require().NoError(opts.setLocation())
 	s.Equal("https://github.com/foo/bar.git", opts.location)
 
-	opts.method = distro.CloneMethodLegacySSH
+	opts.method = evergreen.CloneMethodLegacySSH
 	opts.token = globalGitHubToken
 	s.Require().NoError(opts.setLocation())
 	s.Equal("git@github.com:foo/bar.git", opts.location)
@@ -848,60 +847,60 @@ func (s *GitGetProjectSuite) TestGetProjectMethodAndToken() {
 	var method string
 	var err error
 
-	method, token, err = getProjectMethodAndToken(projectGitHubToken, globalGitHubToken, distro.CloneMethodOAuth)
+	method, token, err = getProjectMethodAndToken(projectGitHubToken, globalGitHubToken, evergreen.CloneMethodOAuth)
 	s.NoError(err)
 	s.Equal(projectGitHubToken, token)
-	s.Equal(distro.CloneMethodOAuth, method)
+	s.Equal(evergreen.CloneMethodOAuth, method)
 
-	method, token, err = getProjectMethodAndToken(projectGitHubToken, globalGitHubToken, distro.CloneMethodLegacySSH)
+	method, token, err = getProjectMethodAndToken(projectGitHubToken, globalGitHubToken, evergreen.CloneMethodLegacySSH)
 	s.NoError(err)
 	s.Equal(projectGitHubToken, token)
-	s.Equal(distro.CloneMethodOAuth, method)
+	s.Equal(evergreen.CloneMethodOAuth, method)
 
-	method, token, err = getProjectMethodAndToken(projectGitHubToken, "", distro.CloneMethodOAuth)
+	method, token, err = getProjectMethodAndToken(projectGitHubToken, "", evergreen.CloneMethodOAuth)
 	s.NoError(err)
 	s.Equal(projectGitHubToken, token)
-	s.Equal(distro.CloneMethodOAuth, method)
+	s.Equal(evergreen.CloneMethodOAuth, method)
 
-	method, token, err = getProjectMethodAndToken(projectGitHubToken, "", distro.CloneMethodLegacySSH)
+	method, token, err = getProjectMethodAndToken(projectGitHubToken, "", evergreen.CloneMethodLegacySSH)
 	s.NoError(err)
 	s.Equal(projectGitHubToken, token)
-	s.Equal(distro.CloneMethodOAuth, method)
+	s.Equal(evergreen.CloneMethodOAuth, method)
 
-	method, token, err = getProjectMethodAndToken("", globalGitHubToken, distro.CloneMethodOAuth)
+	method, token, err = getProjectMethodAndToken("", globalGitHubToken, evergreen.CloneMethodOAuth)
 	s.NoError(err)
 	s.Equal(globalGitHubToken, token)
-	s.Equal(distro.CloneMethodOAuth, method)
+	s.Equal(evergreen.CloneMethodOAuth, method)
 
-	method, token, err = getProjectMethodAndToken("", "", distro.CloneMethodLegacySSH)
+	method, token, err = getProjectMethodAndToken("", "", evergreen.CloneMethodLegacySSH)
 	s.NoError(err)
 	s.Equal("", token)
-	s.Equal(distro.CloneMethodLegacySSH, method)
+	s.Equal(evergreen.CloneMethodLegacySSH, method)
 
-	method, token, err = getProjectMethodAndToken("", "", distro.CloneMethodOAuth)
+	method, token, err = getProjectMethodAndToken("", "", evergreen.CloneMethodOAuth)
 	s.Error(err)
 	s.Equal("", token)
-	s.Equal(distro.CloneMethodLegacySSH, method)
+	s.Equal(evergreen.CloneMethodLegacySSH, method)
 
-	method, token, err = getProjectMethodAndToken("", "", distro.CloneMethodLegacySSH)
+	method, token, err = getProjectMethodAndToken("", "", evergreen.CloneMethodLegacySSH)
 	s.NoError(err)
 	s.Equal("", token)
-	s.Equal(distro.CloneMethodLegacySSH, method)
+	s.Equal(evergreen.CloneMethodLegacySSH, method)
 
 	method, token, err = getProjectMethodAndToken("", "", "")
 	s.NoError(err)
 	s.Equal("", token)
-	s.Equal(distro.CloneMethodLegacySSH, method)
+	s.Equal(evergreen.CloneMethodLegacySSH, method)
 
 	method, token, err = getProjectMethodAndToken("", "", "foobar")
 	s.Error(err)
 	s.Equal("", token)
 	s.Equal("", method)
 
-	_, _, err = getProjectMethodAndToken("", "token this is an invalid token", distro.CloneMethodOAuth)
+	_, _, err = getProjectMethodAndToken("", "token this is an invalid token", evergreen.CloneMethodOAuth)
 	s.Error(err)
 
-	_, _, err = getProjectMethodAndToken("token this is an invalid token", "", distro.CloneMethodOAuth)
+	_, _, err = getProjectMethodAndToken("token this is an invalid token", "", evergreen.CloneMethodOAuth)
 	s.Error(err)
 }
 

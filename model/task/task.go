@@ -150,9 +150,6 @@ type Task struct {
 	// Set to true if the task should be considered for mainline github checks
 	IsGithubCheck bool `bson:"is_github_check,omitempty" json:"is_github_check,omitempty"`
 
-	// CanReset indicates if the task is in a valid state to be reset.
-	CanReset bool `bson:"can_reset,omitempty" json:"can_reset,omitempty"`
-
 	Execution           int    `bson:"execution" json:"execution"`
 	OldTaskId           string `bson:"old_task_id,omitempty" json:"old_task_id,omitempty"`
 	Archived            bool   `bson:"archived,omitempty" json:"archived,omitempty"`
@@ -200,8 +197,10 @@ type Task struct {
 	LocalTestResults []TestResult `bson:"-" json:"test_results"`
 
 	// display task fields
-	DisplayOnly    bool     `bson:"display_only,omitempty" json:"display_only,omitempty"`
-	ExecutionTasks []string `bson:"execution_tasks,omitempty" json:"execution_tasks,omitempty"`
+	DisplayOnly           bool     `bson:"display_only,omitempty" json:"display_only,omitempty"`
+	ExecutionTasks        []string `bson:"execution_tasks,omitempty" json:"execution_tasks,omitempty"`
+	LatestParentExecution int      `bson:"latest_parent_execution" json:"latest_parent_execution"`
+
 	// ResetWhenFinished indicates that a task should be reset once it is
 	// finished running. This is typically to deal with tasks that should be
 	// reset but cannot do so yet because they're currently running.
@@ -1452,7 +1451,6 @@ func (t *Task) MarkSystemFailed(description string) error {
 				StatusKey:     evergreen.TaskFailed,
 				FinishTimeKey: t.FinishTime,
 				DetailsKey:    t.Details,
-				CanResetKey:   true,
 			},
 		},
 	)
@@ -1575,9 +1573,15 @@ func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bo
 	if err != nil {
 		return errors.Wrap(err, "activating tasks")
 	}
+	logs := []event.EventLogEntry{}
 	for _, t := range tasks {
-		event.LogTaskActivated(t.Id, t.Execution, caller)
+		logs = append(logs, event.GetTaskActivatedEvent(t.Id, t.Execution, caller))
 	}
+	grip.Error(message.WrapError(event.LogManyEvents(logs), message.Fields{
+		"message":  "problem logging task activated events",
+		"task_ids": taskIDs,
+		"caller":   caller,
+	}))
 
 	if updateDependencies {
 		return ActivateDeactivatedDependencies(taskIDs, caller)
@@ -1699,9 +1703,15 @@ func ActivateDeactivatedDependencies(tasks []string, caller string) error {
 		return errors.Wrap(err, "updating activation for dependencies")
 	}
 
+	logs := []event.EventLogEntry{}
 	for _, t := range tasksToActivate {
-		event.LogTaskActivated(t.Id, t.Execution, caller)
+		logs = append(logs, event.GetTaskActivatedEvent(t.Id, t.Execution, caller))
 	}
+	grip.Error(message.WrapError(event.LogManyEvents(logs), message.Fields{
+		"message":  "problem logging task activated events",
+		"task_ids": taskIDsToActivate,
+		"caller":   caller,
+	}))
 
 	return nil
 }
@@ -1772,9 +1782,15 @@ func DeactivateTasks(tasks []Task, updateDependencies bool, caller string) error
 	if err != nil {
 		return errors.Wrap(err, "deactivating tasks")
 	}
+	logs := []event.EventLogEntry{}
 	for _, t := range tasks {
-		event.LogTaskDeactivated(t.Id, t.Execution, caller)
+		logs = append(logs, event.GetTaskDeactivatedEvent(t.Id, t.Execution, caller))
 	}
+	grip.Error(message.WrapError(event.LogManyEvents(logs), message.Fields{
+		"message":  "problem logging task deactivated events",
+		"task_ids": taskIDs,
+		"caller":   caller,
+	}))
 
 	if updateDependencies {
 		return DeactivateDependencies(taskIDs, caller)
@@ -1814,9 +1830,16 @@ func DeactivateDependencies(tasks []string, caller string) error {
 	if err != nil {
 		return errors.Wrap(err, "deactivating dependencies")
 	}
+
+	logs := []event.EventLogEntry{}
 	for _, t := range tasksToUpdate {
-		event.LogTaskDeactivated(t.Id, t.Execution, caller)
+		logs = append(logs, event.GetTaskDeactivatedEvent(t.Id, t.Execution, caller))
 	}
+	grip.Error(message.WrapError(event.LogManyEvents(logs), message.Fields{
+		"message":  "problem logging task deactivated events",
+		"task_ids": taskIDsToUpdate,
+		"caller":   caller,
+	}))
 
 	return nil
 }
@@ -1870,7 +1893,6 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 				StartTimeKey:        t.StartTime,
 				LogsKey:             detail.Logs,
 				HasLegacyResultsKey: t.HasLegacyResults,
-				CanResetKey:         true,
 			},
 		})
 
@@ -1952,9 +1974,7 @@ func (t *Task) displayTaskPriority() int {
 func (t *Task) Reset() error {
 	return UpdateOne(
 		bson.M{
-			IdKey:       t.Id,
-			StatusKey:   bson.M{"$in": evergreen.TaskCompletedStatuses},
-			CanResetKey: true,
+			IdKey: t.Id,
 		},
 		resetTaskUpdate(t),
 	)
@@ -1972,11 +1992,7 @@ func ResetTasks(tasks []Task) error {
 	}
 
 	if _, err := UpdateAll(
-		bson.M{
-			IdKey:       bson.M{"$in": taskIDs},
-			StatusKey:   bson.M{"$in": evergreen.TaskCompletedStatuses},
-			CanResetKey: true,
-		},
+		bson.M{IdKey: bson.M{"$in": taskIDs}},
 		resetTaskUpdate(nil),
 	); err != nil {
 		return err
@@ -2009,7 +2025,6 @@ func resetTaskUpdate(t *Task) bson.M {
 		t.HostCreateDetails = []HostCreateDetail{}
 		t.OverrideDependencies = false
 		t.ContainerAllocationAttempts = 0
-		t.CanReset = false
 	}
 	update := bson.M{
 		"$set": bson.M{
@@ -2036,7 +2051,6 @@ func resetTaskUpdate(t *Task) bson.M {
 			HostIdKey:                  "",
 			HostCreateDetailsKey:       "",
 			OverrideDependenciesKey:    "",
-			CanResetKey:                "",
 		},
 	}
 	return update
@@ -2500,89 +2514,73 @@ func (t *Task) Insert() error {
 // into the old_tasks collection. If this is a display task, its execution tasks
 // are also archived.
 func (t *Task) Archive() error {
-	archiveTask := t.makeArchivedTask()
-	err := db.Insert(OldCollection, archiveTask)
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"archive_task_id": archiveTask.Id,
-			"old_task_id":     archiveTask.OldTaskId,
-			"execution":       t.Execution,
-			"display_only":    t.DisplayOnly,
-		}))
-		return errors.Wrap(err, "inserting archived task into old tasks")
-	}
-	err = UpdateOne(
-		bson.M{
-			IdKey:     t.Id,
-			StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses},
-		},
-		bson.M{
-			"$set": bson.M{
-				CanResetKey: true,
-			},
-			"$unset": bson.M{
-				AbortedKey:              "",
-				AbortInfoKey:            "",
-				OverrideDependenciesKey: "",
-			},
-			"$inc": bson.M{ExecutionKey: 1},
-		})
-	if err != nil && !adb.ResultsNotFound(err) {
+	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
+		return errors.Wrapf(ArchiveMany([]Task{*t}), "archiving display task '%s'", t.Id)
+	} else {
+		// Archiving a single task.
+		archiveTask := t.makeArchivedTask()
+		err := db.Insert(OldCollection, archiveTask)
+		if err != nil {
+			return errors.Wrap(err, "inserting archived task into old tasks")
+		}
+		t.Aborted = false
+		err = UpdateOne(
+			bson.M{IdKey: t.Id},
+			updateDisplayTasksAndTasksBson(),
+		)
 		return errors.Wrap(err, "updating task")
 	}
-
-	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
-		execTasks, err := FindAll(db.Query(ByIds(t.ExecutionTasks)))
-		if err != nil {
-			return errors.Wrap(err, "retrieving execution tasks")
-		}
-		if err = ArchiveMany(execTasks); err != nil {
-			return errors.Wrap(err, "archiving execution tasks")
-		}
-	}
-	t.Aborted = false
-	return nil
 }
 
+// ArchiveMany accepts tasks and display tasks (no execution tasks). The function
+// expects that each one is going to be archived and progressed to the next execution.
+// For execution tasks in display tasks, it will properly account for archiving
+// only tasks that should be if failed.
 func ArchiveMany(tasks []Task) error {
-	if len(tasks) == 0 {
-		return nil
-	}
-	existingTasksMap := map[string]bool{}
+	allTaskIds := []string{}          // Contains all tasks and display tasks IDs
+	execTaskIds := []string{}         // Contains all exec tasks IDs
+	toUpdateExecTaskIds := []string{} // Contains all exec tasks IDs that should update and have new execution
+	archivedTasks := []interface{}{}  // Contains all archived tasks (task, display, and execution). Created by Task.makeArchivedTask()
+
 	for _, t := range tasks {
-		existingTasksMap[t.Id] = true
-	}
-	additionalTasks := []string{}
-	for _, t := range tasks {
-		// For any display tasks here, make sure that we also archive all their execution tasks.
-		// Consider each execution tasks individually, so we don't query a task we already passed in.
-		for _, et := range t.ExecutionTasks {
-			if !existingTasksMap[et] {
-				additionalTasks = append(additionalTasks, et)
-				existingTasksMap[et] = true
+		allTaskIds = append(allTaskIds, t.Id)
+		archivedTasks = append(archivedTasks, t.makeArchivedTask())
+		if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
+			var execTasks []Task
+			var err error
+
+			if t.ResetFailedWhenFinished && !t.ResetWhenFinished {
+				execTasks, err = Find(FailedTasksByIds(t.ExecutionTasks))
+			} else {
+				execTasks, err = FindAll(db.Query(ByIds(t.ExecutionTasks)))
+			}
+
+			if err != nil {
+				return errors.Wrapf(err, "finding execution tasks for display task '%s'", t.Id)
+			}
+			execTaskIds = append(execTaskIds, t.ExecutionTasks...)
+			for _, et := range execTasks {
+				archivedTasks = append(archivedTasks, et.makeArchivedTask())
+				toUpdateExecTaskIds = append(toUpdateExecTaskIds, et.Id)
 			}
 		}
 	}
-	if len(additionalTasks) > 0 {
-		toAdd, err := FindAll(db.Query(ByIds(additionalTasks)))
-		if err != nil {
-			return errors.Wrap(err, "finding execution tasks")
-		}
-		tasks = append(tasks, toAdd...)
-	}
 
-	archived := []interface{}{}
-	taskIds := []string{}
-	for _, t := range tasks {
-		archived = append(archived, *t.makeArchivedTask())
-		taskIds = append(taskIds, t.Id)
-	}
-	grip.DebugWhen(len(utility.UniqueStrings(taskIds)) != len(taskIds), message.Fields{
+	grip.DebugWhen(len(utility.UniqueStrings(allTaskIds)) != len(allTaskIds), message.Fields{
 		"ticket":           "EVG-17261",
 		"message":          "archiving same task multiple times",
-		"tasks_to_archive": taskIds,
+		"tasks_to_archive": allTaskIds,
 	})
 
+	return archiveAll(allTaskIds, execTaskIds, toUpdateExecTaskIds, archivedTasks)
+}
+
+// archiveAll takes in:
+// - taskIds               : All tasks and display tasks IDs
+// - execTaskIds           : All execution task IDs
+// - toRestartExecTaskIds   : All execution task IDs for execution tasks that will be archived/restarted
+// - archivedTasks         : All archived tasks created by Task.makeArchivedTask()
+func archiveAll(taskIds, execTaskIds, toRestartExecTaskIds []string, archivedTasks []interface{}) error {
 	mongoClient := evergreen.GetEnvironment().Client()
 	ctx, cancel := evergreen.GetEnvironment().Context()
 	defer cancel()
@@ -2593,37 +2591,82 @@ func ArchiveMany(tasks []Task) error {
 	defer session.EndSession(ctx)
 
 	txFunc := func(sessCtx mongo.SessionContext) (interface{}, error) {
-		oldTaskColl := evergreen.GetEnvironment().DB().Collection(OldCollection)
-		_, err = oldTaskColl.InsertMany(ctx, archived)
-		if err != nil {
-			return nil, err
+		var err error
+		if len(archivedTasks) > 0 {
+			oldTaskColl := evergreen.GetEnvironment().DB().Collection(OldCollection)
+			_, err = oldTaskColl.InsertMany(sessCtx, archivedTasks)
+			if err != nil {
+				return nil, errors.Wrap(err, "archiving tasks")
+			}
 		}
+		if len(taskIds) > 0 {
+			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(sessCtx,
+				bson.M{IdKey: bson.M{"$in": taskIds}},
+				updateDisplayTasksAndTasksBson(),
+			)
+			if err != nil {
+				return nil, errors.Wrap(err, "archiving tasks")
+			}
+		}
+		if len(execTaskIds) > 0 {
+			// TODO (EVG-17508): Replace call with non-backwards compatible call
+			// Backwards compatibility call + LPE setting for all tasks
+			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(sessCtx,
+				bson.M{IdKey: bson.M{"$in": execTaskIds}}, // Query all execution tasks
+				bson.A{ // Pipeline
+					bson.M{"$set": bson.M{ // Sets LatestParentExecution (LPE) = !exists(LPE) ? execution + 1 : LPE + 1
+						LatestParentExecutionKey: bson.M{
+							"$cond": bson.A{
+								bson.M{"$not": bson.A{ // !exists(LPE)
+									"$" + LatestParentExecutionKey,
+								}},
+								bson.M{"$add": bson.A{ // execution + 1
+									"$" + ExecutionKey, 1,
+								}},
+								bson.M{"$add": bson.A{ // LPE + 1
+									"$" + LatestParentExecutionKey, 1,
+								}},
+							},
+						},
+					}},
+				})
 
-		taskColl := evergreen.GetEnvironment().DB().Collection(Collection)
-		_, err = taskColl.UpdateMany(ctx, bson.M{
-			IdKey:     bson.M{"$in": taskIds},
-			StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses},
-		},
-			bson.M{
-				"$set": bson.M{
-					CanResetKey: true,
-				},
-				"$unset": bson.M{
-					AbortedKey:   "",
-					AbortInfoKey: "",
-				},
-				"$inc": bson.M{
-					ExecutionKey: 1,
-				},
-			})
-		if err != nil {
-			return nil, err
+			if err != nil {
+				return nil, errors.Wrap(err, "updating latest parent executions")
+			}
+
+			// Call to update all tasks that are actually restarting
+			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(sessCtx,
+				bson.M{IdKey: bson.M{"$in": toRestartExecTaskIds}}, // Query all archiving/restarting execution tasks
+				bson.A{ // Pipeline
+					bson.M{"$set": bson.M{ // Execution = LPE
+						ExecutionKey: "$" + LatestParentExecutionKey,
+					}},
+					bson.M{"$unset": bson.A{
+						AbortedKey,
+						AbortInfoKey,
+						OverrideDependenciesKey,
+					}}})
+
+			return nil, errors.Wrap(err, "updating restarting exec tasks")
 		}
-		return nil, err
+		return nil, errors.Wrap(err, "updating tasks")
 	}
 
 	_, err = session.WithTransaction(ctx, txFunc)
-	return errors.Wrap(err, "archiving tasks")
+
+	return errors.Wrap(err, "archiving execution tasks and updating execution tasks")
+}
+
+func updateDisplayTasksAndTasksBson() bson.M {
+	return bson.M{
+		"$unset": bson.M{
+			AbortedKey:              "",
+			AbortInfoKey:            "",
+			OverrideDependenciesKey: "",
+		},
+		"$inc": bson.M{ExecutionKey: 1},
+	}
 }
 
 func (t *Task) makeArchivedTask() *Task {
@@ -3647,7 +3690,7 @@ func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) (*Ta
 	}
 	pipeline, err := getTasksByVersionPipeline(versionID, opts)
 	if err != nil {
-		return nil, errors.Wrap(err, "error getting tasks by version pipeline")
+		return nil, errors.Wrap(err, "getting tasks by version pipeline")
 	}
 	maxEtaPipeline := []bson.M{
 		{
@@ -3745,7 +3788,7 @@ func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOption
 	opts.UseLegacyAddBuildVariantDisplayName = ShouldUseLegacyAddBuildVariantDisplayName(versionID)
 	pipeline, err := getTasksByVersionPipeline(versionID, opts)
 	if err != nil {
-		return nil, errors.Wrap(err, "error getting tasks by version pipeline")
+		return nil, errors.Wrap(err, "getting tasks by version pipeline")
 	}
 	project := bson.M{"$project": bson.M{
 		BuildVariantKey:            "$" + BuildVariantKey,

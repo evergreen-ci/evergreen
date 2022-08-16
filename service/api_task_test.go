@@ -1660,6 +1660,7 @@ func TestDownstreamParams(t *testing.T) {
 }
 
 func TestHandleEndTaskForCommitQueueTask(t *testing.T) {
+	require.NoError(t, db.CreateCollections(task.OldCollection))
 	p1 := mgobson.NewObjectId().Hex()
 	p2 := mgobson.NewObjectId().Hex()
 	p3 := mgobson.NewObjectId().Hex()

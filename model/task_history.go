@@ -345,7 +345,7 @@ func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, i
 	return chunk, nil
 }
 
-func (self *taskHistoryIterator) GetDistinctTestNames(ctx context.Context, numCommits int) ([]string, error) {
+func (thi *taskHistoryIterator) GetDistinctTestNames(ctx context.Context, numCommits int) ([]string, error) {
 	session, mdb, err := db.GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting database session")
@@ -356,9 +356,9 @@ func (self *taskHistoryIterator) GetDistinctTestNames(ctx context.Context, numCo
 		[]bson.M{
 			{
 				"$match": bson.M{
-					task.ProjectKey:     self.ProjectName,
+					task.ProjectKey:     thi.ProjectName,
 					task.RequesterKey:   evergreen.RepotrackerVersionRequester,
-					task.DisplayNameKey: self.TaskName,
+					task.DisplayNameKey: thi.TaskName,
 				},
 			},
 			{"$sort": bson.D{{Key: task.CreateTimeKey, Value: -1}}},
@@ -408,7 +408,7 @@ func (self *taskHistoryIterator) GetDistinctTestNames(ctx context.Context, numCo
 
 // GetFailedTests returns a mapping of task id to a slice of failed tasks
 // extracted from a pipeline of aggregated tasks
-func (self *taskHistoryIterator) GetFailedTests(aggregatedTasks adb.Results) (map[string][]task.TestResult, error) {
+func (thi *taskHistoryIterator) GetFailedTests(aggregatedTasks adb.Results) (map[string][]task.TestResult, error) {
 	// get the ids of the failed task
 	var failedTaskIds []string
 	var taskHistory TaskHistory

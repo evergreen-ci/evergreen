@@ -178,7 +178,7 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 			Method:        utility.ToStringPtr(distro.BootstrapMethodLegacySSH),
 			Communication: utility.ToStringPtr(distro.CommunicationMethodLegacySSH),
 		},
-		CloneMethod: utility.ToStringPtr(distro.CloneMethodLegacySSH),
+		CloneMethod: utility.ToStringPtr(evergreen.CloneMethodLegacySSH),
 	}
 	if err = json.Unmarshal(h.body, apiDistro); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "unmarshalling JSON request body into API distro model"))

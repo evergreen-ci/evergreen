@@ -969,9 +969,6 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 	if t == nil {
 		return nil, errors.New("task cannot be nil")
 	}
-	if h == nil {
-		return nil, errors.New("host cannot be nil")
-	}
 
 	projectRef, err := FindBranchProjectRef(t.Project)
 	if err != nil {
@@ -988,10 +985,12 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 	expansions.Put("revision", t.Revision)
 	expansions.Put("github_commit", t.Revision)
 	expansions.Put(evergreen.GlobalGitHubTokenExpansion, oauthToken)
-	expansions.Put("distro_id", h.Distro.Id)
 	expansions.Put("project", projectRef.Identifier)
 	expansions.Put("project_identifier", projectRef.Identifier) // TODO: deprecate
 	expansions.Put("project_id", projectRef.Id)
+	if h != nil {
+		expansions.Put("distro_id", h.Distro.Id)
+	}
 	if t.ActivatedBy == evergreen.StepbackTaskActivator {
 		expansions.Put("is_stepback", "true")
 	}
@@ -1106,8 +1105,10 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 		expansions.Put("revision_order_id", strconv.Itoa(v.RevisionOrderNumber))
 	}
 
-	for _, e := range h.Distro.Expansions {
-		expansions.Put(e.Key, e.Value)
+	if h != nil {
+		for _, e := range h.Distro.Expansions {
+			expansions.Put(e.Key, e.Value)
+		}
 	}
 
 	bvExpansions, err := FindExpansionsForVariant(v, t.BuildVariant)

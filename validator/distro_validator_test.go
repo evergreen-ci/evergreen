@@ -46,7 +46,7 @@ func TestCheckDistro(t *testing.T) {
 					Method:        distro.BootstrapMethodLegacySSH,
 					Communication: distro.CommunicationMethodLegacySSH,
 				},
-				CloneMethod: distro.CloneMethodLegacySSH,
+				CloneMethod: evergreen.CloneMethodLegacySSH,
 				FinderSettings: distro.FinderSettings{
 					Version: evergreen.FinderVersionLegacy,
 				},
@@ -77,7 +77,7 @@ func TestCheckDistro(t *testing.T) {
 					Method:        distro.BootstrapMethodLegacySSH,
 					Communication: distro.CommunicationMethodLegacySSH,
 				},
-				CloneMethod: distro.CloneMethodLegacySSH,
+				CloneMethod: evergreen.CloneMethodLegacySSH,
 			}
 			// simulate duplicate id
 			dupe := distro.Distro{Id: "a"}
@@ -103,7 +103,7 @@ func TestCheckDistro(t *testing.T) {
 					Method:        distro.BootstrapMethodLegacySSH,
 					Communication: distro.CommunicationMethodLegacySSH,
 				},
-				CloneMethod: distro.CloneMethodLegacySSH,
+				CloneMethod: evergreen.CloneMethodLegacySSH,
 				FinderSettings: distro.FinderSettings{
 					Version: evergreen.FinderVersionLegacy,
 				},
@@ -673,8 +673,8 @@ func TestEnsureValidStaticBootstrapSettings(t *testing.T) {
 func TestEnsureValidCloneMethod(t *testing.T) {
 	ctx := context.Background()
 	assert.NotNil(t, ensureValidCloneMethod(ctx, &distro.Distro{}, &evergreen.Settings{}))
-	assert.Nil(t, ensureValidCloneMethod(ctx, &distro.Distro{CloneMethod: distro.CloneMethodLegacySSH}, &evergreen.Settings{}))
-	assert.Nil(t, ensureValidCloneMethod(ctx, &distro.Distro{CloneMethod: distro.CloneMethodOAuth}, &evergreen.Settings{}))
+	assert.Nil(t, ensureValidCloneMethod(ctx, &distro.Distro{CloneMethod: evergreen.CloneMethodLegacySSH}, &evergreen.Settings{}))
+	assert.Nil(t, ensureValidCloneMethod(ctx, &distro.Distro{CloneMethod: evergreen.CloneMethodOAuth}, &evergreen.Settings{}))
 }
 
 func TestEnsureValidSSHKeyName(t *testing.T) {

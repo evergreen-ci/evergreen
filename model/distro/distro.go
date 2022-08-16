@@ -280,9 +280,6 @@ const (
 	CommunicationMethodLegacySSH = "legacy-ssh"
 	CommunicationMethodSSH       = "ssh"
 	CommunicationMethodRPC       = "rpc"
-
-	CloneMethodLegacySSH = "legacy-ssh"
-	CloneMethodOAuth     = "oauth"
 )
 
 // validBootstrapMethods includes all recognized bootstrap methods.
@@ -298,12 +295,6 @@ var validCommunicationMethods = []string{
 	CommunicationMethodLegacySSH,
 	CommunicationMethodSSH,
 	CommunicationMethodRPC,
-}
-
-// validCloneMethods includes all recognized clone methods.
-var validCloneMethods = []string{
-	CloneMethodLegacySSH,
-	CloneMethodOAuth,
 }
 
 // Seed the random number generator for creating distro names
@@ -567,15 +558,6 @@ func ValidateArch(arch string) error {
 
 	if _, ok := evergreen.ValidArchDisplayNames[arch]; !ok {
 		return errors.Errorf("'%s' is not a recognized architecture", arch)
-	}
-	return nil
-}
-
-// ValidateCloneMethod checks that the clone mechanism is one of the supported
-// methods.
-func ValidateCloneMethod(method string) error {
-	if !utility.StringSliceContains(validCloneMethods, method) {
-		return errors.Errorf("'%s' is not a valid clone method", method)
 	}
 	return nil
 }

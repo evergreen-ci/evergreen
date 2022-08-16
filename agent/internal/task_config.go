@@ -64,7 +64,7 @@ func (t *TaskConfig) GetExecTimeout() int {
 	return t.Timeout.ExecTimeoutSecs
 }
 
-func NewTaskConfig(d *apimodels.DistroView, p *model.Project, t *task.Task, r *model.ProjectRef, patchDoc *patch.Patch, e util.Expansions) (*TaskConfig, error) {
+func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t *task.Task, r *model.ProjectRef, patchDoc *patch.Patch, e util.Expansions) (*TaskConfig, error) {
 	// do a check on if the project is empty
 	if p == nil {
 		return nil, errors.Errorf("project for task with project_id %v is empty", t.Project)
@@ -87,7 +87,7 @@ func NewTaskConfig(d *apimodels.DistroView, p *model.Project, t *task.Task, r *m
 		Task:         t,
 		BuildVariant: bv,
 		Expansions:   &e,
-		WorkDir:      d.WorkDir,
+		WorkDir:      workDir,
 	}
 	if patchDoc != nil {
 		taskConfig.GithubPatchData = patchDoc.GithubPatchData
@@ -116,6 +116,13 @@ func (c *TaskConfig) GetWorkingDirectory(dir string) (string, error) {
 	}
 
 	return dir, nil
+}
+
+func (c *TaskConfig) GetCloneMethod() string {
+	if c.Distro != nil {
+		return c.Distro.CloneMethod
+	}
+	return evergreen.CloneMethodOAuth
 }
 
 func (tc *TaskConfig) GetTaskGroup(taskGroup string) (*model.TaskGroup, error) {

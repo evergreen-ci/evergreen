@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
@@ -84,9 +83,9 @@ func (opts cloneOpts) validate() error {
 		catcher.New("missing required location")
 	}
 	if opts.method != "" {
-		catcher.Wrap(distro.ValidateCloneMethod(opts.method), "invalid clone method")
+		catcher.Wrap(evergreen.ValidateCloneMethod(opts.method), "invalid clone method")
 	}
-	if opts.method == distro.CloneMethodOAuth && opts.token == "" {
+	if opts.method == evergreen.CloneMethodOAuth && opts.token == "" {
 		catcher.New("cannot clone using OAuth if token is not set")
 	}
 	return catcher.Resolve()
@@ -103,9 +102,9 @@ func (opts cloneOpts) httpLocation() string {
 // setLocation sets the location to clone from.
 func (opts *cloneOpts) setLocation() error {
 	switch opts.method {
-	case "", distro.CloneMethodLegacySSH:
+	case "", evergreen.CloneMethodLegacySSH:
 		opts.location = opts.sshLocation()
-	case distro.CloneMethodOAuth:
+	case evergreen.CloneMethodOAuth:
 		opts.location = opts.httpLocation()
 	default:
 		return errors.Errorf("unrecognized clone method '%s'", opts.method)
@@ -118,23 +117,23 @@ func (opts *cloneOpts) setLocation() error {
 func getProjectMethodAndToken(projectToken, globalToken, globalCloneMethod string) (string, string, error) {
 	if projectToken != "" {
 		token, err := parseToken(projectToken)
-		return distro.CloneMethodOAuth, token, err
+		return evergreen.CloneMethodOAuth, token, err
 	}
 	token, err := parseToken(globalToken)
 	if err != nil {
-		return distro.CloneMethodLegacySSH, "", err
+		return evergreen.CloneMethodLegacySSH, "", err
 	}
 
 	switch globalCloneMethod {
 	// No clone method specified is equivalent to using legacy SSH.
-	case "", distro.CloneMethodLegacySSH:
-		return distro.CloneMethodLegacySSH, token, nil
-	case distro.CloneMethodOAuth:
+	case "", evergreen.CloneMethodLegacySSH:
+		return evergreen.CloneMethodLegacySSH, token, nil
+	case evergreen.CloneMethodOAuth:
 		if token == "" {
-			return distro.CloneMethodLegacySSH, "", errors.New("cannot clone using OAuth if global token is empty")
+			return evergreen.CloneMethodLegacySSH, "", errors.New("cannot clone using OAuth if global token is empty")
 		}
 		token, err := parseToken(globalToken)
-		return distro.CloneMethodOAuth, token, err
+		return evergreen.CloneMethodOAuth, token, err
 	}
 
 	return "", "", errors.Errorf("unrecognized clone method '%s'", globalCloneMethod)
@@ -158,9 +157,9 @@ func (opts cloneOpts) getCloneCommand() ([]string, error) {
 		return nil, errors.Wrap(err, "cannot create clone command")
 	}
 	switch opts.method {
-	case "", distro.CloneMethodLegacySSH:
+	case "", evergreen.CloneMethodLegacySSH:
 		return opts.buildSSHCloneCommand()
-	case distro.CloneMethodOAuth:
+	case evergreen.CloneMethodOAuth:
 		return opts.buildHTTPCloneCommand()
 	}
 	return nil, errors.New("unrecognized clone method in options")
@@ -384,6 +383,7 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 }
 
 func (c *gitFetchProject) opts(projectMethod, projectToken string, conf *internal.TaskConfig) (cloneOpts, error) {
+	shallowCloneEnabled := conf.Distro == nil || !conf.Distro.DisableShallowClone
 	opts := cloneOpts{
 		method:             projectMethod,
 		owner:              conf.ProjectRef.Owner,
@@ -391,7 +391,7 @@ func (c *gitFetchProject) opts(projectMethod, projectToken string, conf *interna
 		branch:             conf.ProjectRef.Branch,
 		dir:                c.Directory,
 		token:              projectToken,
-		shallowClone:       c.ShallowClone && !conf.Distro.DisableShallowClone,
+		shallowClone:       c.ShallowClone && shallowCloneEnabled,
 		recurseSubmodules:  c.RecurseSubmodules,
 		mergeTestRequester: conf.Task.Requester == evergreen.MergeTestRequester,
 	}
@@ -421,7 +421,7 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 		return errors.Wrap(err, "error expanding github parameters")
 	}
 
-	projectMethod, projectToken, err := getProjectMethodAndToken(c.Token, conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion), conf.Distro.CloneMethod)
+	projectMethod, projectToken, err := getProjectMethodAndToken(c.Token, conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion), conf.GetCloneMethod())
 	if err != nil {
 		return errors.Wrap(err, "failed to get method of cloning and token")
 	}
@@ -586,7 +586,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	// Module's location takes precedence over the project-level clone
 	// method.
 	if strings.Contains(opts.location, "git@github.com:") {
-		opts.method = distro.CloneMethodLegacySSH
+		opts.method = evergreen.CloneMethodLegacySSH
 	} else {
 		opts.method = projectMethod
 		opts.token = projectToken
