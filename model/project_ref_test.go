@@ -2199,25 +2199,28 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	assert.NotNil(t, projectRef)
 
 	update := &ProjectRef{
-		Id:    "iden_",
-		Owner: "invalid",
-		Repo:  "nonexistent",
+		Id:      "iden_",
+		Enabled: utility.TruePtr(),
+		Owner:   "invalid",
+		Repo:    "nonexistent",
 	}
 	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
 	assert.Error(err)
 
 	update = &ProjectRef{
-		Id:    "iden_",
-		Owner: "",
-		Repo:  "",
+		Id:      "iden_",
+		Enabled: utility.TruePtr(),
+		Owner:   "",
+		Repo:    "",
 	}
 	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
-	assert.NoError(err)
+	assert.Error(err)
 
 	update = &ProjectRef{
-		Id:    "iden_",
-		Owner: "evergreen-ci",
-		Repo:  "test",
+		Id:      "iden_",
+		Enabled: utility.TruePtr(),
+		Owner:   "evergreen-ci",
+		Repo:    "test",
 	}
 	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
 	assert.NoError(err)
@@ -2243,24 +2246,11 @@ func TestValidateOwnerAndRepo(t *testing.T) {
 	err = project.ValidateOwnerAndRepo([]string{"evergreen-ci"})
 	assert.NoError(t, err)
 
-	// a project with now owner and repo that is attached to a repo with
-	// an owner and repo should not error
-	repoRef := RepoRef{ProjectRef{
-		Id:      "my_repo",
-		Enabled: utility.TruePtr(),
-		Owner:   "evergreen-ci",
-		Repo:    "test",
-	}}
-	assert.NoError(t, repoRef.Upsert())
-
-	projectWithRepo := ProjectRef{
-		Id:        "project-with-repo",
-		Enabled:   utility.TruePtr(),
-		RepoRefId: repoRef.Id,
+	// a disabled project should not error
+	disabledProject := ProjectRef{
+		Id:      "project",
+		Enabled: utility.FalsePtr(),
 	}
-	require.NoError(t, projectWithRepo.Insert())
-
-	err = projectWithRepo.ValidateOwnerAndRepo([]string{"evergreen-ci"})
+	err = disabledProject.ValidateOwnerAndRepo([]string{"evergreen-ci"})
 	assert.NoError(t, err)
-
 }

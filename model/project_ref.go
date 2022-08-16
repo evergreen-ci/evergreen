@@ -1820,13 +1820,11 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			ProjectRefDisabledStatsCacheKey:    p.DisabledStatsCache,
 			ProjectRefFilesIgnoredFromCacheKey: p.FilesIgnoredFromCache,
 		}
-		if !isRepo && !p.UseRepoSettings() {
-			// Don't validate owner if user is defaulting page to repo
-			if p.Owner != "" {
-				allowedOrgs := evergreen.GetEnvironment().Settings().GithubOrgs
-				if err := validateOwner(p.Owner, allowedOrgs); err != nil {
-					return false, errors.Wrap(err, "validating new owner")
-				}
+		// Allow a user to modify owner and repo only if they are editing an unattached project
+		if !isRepo && !p.UseRepoSettings() && !defaultToRepo {
+			allowedOrgs := evergreen.GetEnvironment().Settings().GithubOrgs
+			if err := p.ValidateOwnerAndRepo(allowedOrgs); err != nil {
+				return false, errors.Wrap(err, "validating new owner/repo")
 			}
 
 			setUpdate[ProjectRefOwnerKey] = p.Owner
@@ -2144,18 +2142,16 @@ func (p *ProjectRef) GetGithubProjectConflicts() (GithubProjectConflicts, error)
 }
 
 func (p *ProjectRef) ValidateOwnerAndRepo(validOrgs []string) error {
-	// if the project doesn't have an owner, we want to verify the repo's owner instead
-	projectWithRepo, err := GetProjectRefMergedWithRepo(*p)
-	if err != nil {
-		return errors.Wrap(err, "getting the merged project ref")
+	if !p.IsEnabled() {
+		return nil
 	}
 
 	// verify input and webhooks
-	if projectWithRepo.Owner == "" || projectWithRepo.Repo == "" {
+	if p.Owner == "" || p.Repo == "" {
 		return errors.New("no owner/repo specified")
 	}
 
-	return validateOwner(projectWithRepo.Owner, validOrgs)
+	return validateOwner(p.Owner, validOrgs)
 }
 
 func validateOwner(owner string, validOrgs []string) error {
