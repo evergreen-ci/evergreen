@@ -82,14 +82,14 @@ func (s *BuildConnectorChangeStatusSuite) SetupSuite() {
 }
 
 func (s *BuildConnectorChangeStatusSuite) TestSetActivated() {
-	err := SetBuildActivation("build1", true, "user1")
+	err := ActivateBuilds([]string{"build1"}, true, "user1")
 	s.NoError(err)
 	b, err := build.FindOneId("build1")
 	s.NoError(err)
 	s.True(b.Activated)
 	s.Equal("user1", b.ActivatedBy)
 
-	err = SetBuildActivation("build1", false, "user1")
+	err = ActivateBuilds([]string{"build1"}, false, "user1")
 	s.NoError(err)
 	b, err = build.FindOneId("build1")
 	s.NoError(err)
