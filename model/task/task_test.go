@@ -3214,8 +3214,6 @@ func TestArchiveManyAfterFailedOnly(t *testing.T) {
 	}
 	assert.NoError(t, t3.Insert())
 	assert.NoError(t, t3.Archive()) // Failed only is true
-	t3Pointer, err := FindByIdExecution(t3.Id, nil)
-	assert.NoError(t, err)
 	currentTasks, err := FindAll(db.Query(ByVersion("v")))
 	assert.NoError(t, err)
 	for _, task := range currentTasks {
@@ -3242,6 +3240,8 @@ func TestArchiveManyAfterFailedOnly(t *testing.T) {
 	}
 	assert.NoError(t, t4.Insert())
 
+	t3Pointer, err := FindByIdExecution(t3.Id, nil)
+	assert.NoError(t, err)
 	t3Pointer.ResetFailedWhenFinished = false
 	assert.NoError(t, ArchiveMany([]Task{t1, t2, *t3Pointer, t4}))
 
