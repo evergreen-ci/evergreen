@@ -37,8 +37,6 @@ type podCreationJob struct {
 	PodID    string `bson:"pod_id" json:"pod_id" yaml:"pod_id"`
 
 	pod           *pod.Pod
-	smClient      cocoa.SecretsManagerClient
-	vault         cocoa.Vault
 	ecsClient     cocoa.ECSClient
 	ecsPod        cocoa.ECSPod
 	ecsPodCreator cocoa.ECSPodCreator
@@ -77,9 +75,6 @@ func (j *podCreationJob) Run(ctx context.Context) {
 	defer func() {
 		j.MarkComplete()
 
-		if j.smClient != nil {
-			j.AddError(errors.Wrap(j.smClient.Close(ctx), "closing Secrets Manager client"))
-		}
 		if j.ecsClient != nil {
 			j.AddError(errors.Wrap(j.ecsClient.Close(ctx), "closing ECS client"))
 		}
@@ -99,6 +94,7 @@ func (j *podCreationJob) Run(ctx context.Context) {
 			})
 		}
 	}()
+
 	if err := j.populateIfUnset(ctx); err != nil {
 		j.AddRetryableError(err)
 		return
@@ -181,21 +177,6 @@ func (j *podCreationJob) populateIfUnset(ctx context.Context) error {
 
 	settings := j.env.Settings()
 
-	if j.vault == nil {
-		if j.smClient == nil {
-			client, err := cloud.MakeSecretsManagerClient(settings)
-			if err != nil {
-				return errors.Wrap(err, "initializing Secrets Manager client")
-			}
-			j.smClient = client
-		}
-		vault, err := cloud.MakeSecretsManagerVault(j.smClient)
-		if err != nil {
-			return errors.Wrap(err, "initializing Secrets Manager vault")
-		}
-		j.vault = vault
-	}
-
 	if j.ecsClient == nil {
 		client, err := cloud.MakeECSClient(settings)
 		if err != nil {
@@ -205,7 +186,7 @@ func (j *podCreationJob) populateIfUnset(ctx context.Context) error {
 	}
 
 	if j.ecsPodCreator == nil {
-		creator, err := cloud.MakeECSPodCreator(j.ecsClient, j.vault)
+		creator, err := cloud.MakeECSPodCreator(j.ecsClient, nil)
 		if err != nil {
 			return errors.Wrap(err, "initializing ECS pod creator")
 		}

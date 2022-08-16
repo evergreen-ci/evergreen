@@ -316,14 +316,6 @@ func TestPodTerminationJob(t *testing.T) {
 				assert.NoError(t, j.ecsClient.Close(ctx))
 			}()
 
-			j.smClient = &mock.SecretsManagerClient{}
-			defer func() {
-				assert.NoError(t, j.smClient.Close(ctx))
-			}()
-			vault, err := cloud.MakeSecretsManagerVault(j.smClient)
-			require.NoError(t, err)
-			j.vault = mock.NewVault(vault)
-
 			pc, err := ecs.NewBasicECSPodCreator(j.ecsClient, nil)
 			require.NoError(t, err)
 

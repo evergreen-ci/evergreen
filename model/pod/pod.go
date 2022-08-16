@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -50,23 +49,20 @@ type TaskIntentPodOptions struct {
 	// ID is the pod identifier. If unspecified, it defaults to a new BSON
 	// object ID.
 	ID string
-	// Secret is the shared secret value between the server and the pod for
-	// authentication when the host is provisioned. If unspecified, it defaults
-	// to a random string.
-	Secret string
 
 	// The remaining fields correspond to the ones in
 	// TaskContainerCreationOptions.
 
-	CPU            int
-	MemoryMB       int
-	OS             OS
-	Arch           Arch
-	WindowsVersion WindowsVersion
-	Image          string
-	WorkingDir     string
-	RepoUsername   string
-	RepoPassword   string
+	CPU                 int
+	MemoryMB            int
+	OS                  OS
+	Arch                Arch
+	WindowsVersion      WindowsVersion
+	Image               string
+	RepoCredsExternalID string
+	WorkingDir          string
+	PodSecretExternalID string
+	PodSecretValue      string
 }
 
 // Validate checks that the options to create a task intent pod are valid and
@@ -82,6 +78,8 @@ func (o *TaskIntentPodOptions) Validate() error {
 	}
 	catcher.NewWhen(o.Image == "", "missing image")
 	catcher.NewWhen(o.WorkingDir == "", "missing working directory")
+	catcher.NewWhen(o.PodSecretExternalID == "", "missing pod secret external ID")
+	catcher.NewWhen(o.PodSecretValue == "", "missing pod secret value")
 
 	if catcher.HasErrors() {
 		return catcher.Resolve()
@@ -89,9 +87,6 @@ func (o *TaskIntentPodOptions) Validate() error {
 
 	if o.ID == "" {
 		o.ID = primitive.NewObjectID().Hex()
-	}
-	if o.Secret == "" {
-		o.Secret = utility.RandomString()
 	}
 
 	return nil
@@ -114,23 +109,21 @@ func NewTaskIntentPod(ecsConf evergreen.ECSConfig, opts TaskIntentPodOptions) (*
 	}
 
 	containerOpts := TaskContainerCreationOptions{
-		CPU:            opts.CPU,
-		MemoryMB:       opts.MemoryMB,
-		OS:             opts.OS,
-		Arch:           opts.Arch,
-		WindowsVersion: opts.WindowsVersion,
-		Image:          opts.Image,
-		WorkingDir:     opts.WorkingDir,
-		RepoUsername:   opts.RepoUsername,
-		RepoPassword:   opts.RepoPassword,
+		CPU:                 opts.CPU,
+		MemoryMB:            opts.MemoryMB,
+		OS:                  opts.OS,
+		Arch:                opts.Arch,
+		WindowsVersion:      opts.WindowsVersion,
+		Image:               opts.Image,
+		RepoCredsExternalID: opts.RepoCredsExternalID,
+		WorkingDir:          opts.WorkingDir,
 		EnvVars: map[string]string{
 			PodIDEnvVar: opts.ID,
 		},
 		EnvSecrets: map[string]Secret{
 			PodSecretEnvVar: {
-				Value:  opts.Secret,
-				Exists: utility.FalsePtr(),
-				Owned:  utility.TruePtr(),
+				ExternalID: opts.PodSecretExternalID,
+				Value:      opts.PodSecretValue,
 			},
 		},
 	}
@@ -256,12 +249,9 @@ func (i ContainerResourceInfo) IsZero() bool {
 type TaskContainerCreationOptions struct {
 	// Image is the image that the task's container will run.
 	Image string `bson:"image" json:"image"`
-	// RepoUsername is the username of the repository containing the image. This
-	// is only necessary if it is a private repository.
-	RepoUsername string `bson:"repo_username,omitempty" json:"repo_username,omitempty"`
-	// RepoPassword is the password of the repository containing the image. This
-	// is only necessary if it is a private repository.
-	RepoPassword string `bson:"repo_password,omitempty" json:"repo_password,omitempty"`
+	// RepoCredsExternalID is the external identifier for the repository
+	// credentials.
+	RepoCredsExternalID string `bson:"repo_creds_external_id,omitempty" json:"repo_creds_external_id,omitempty"`
 	// MemoryMB is the memory (in MB) that the task's container will be
 	// allocated.
 	MemoryMB int `bson:"memory_mb" json:"memory_mb"`
@@ -546,8 +536,7 @@ func (hes hashableEnvSecrets) Swap(i, j int) {
 func (o *TaskContainerCreationOptions) Hash() string {
 	h := utility.NewSHA1Hash()
 	h.Add(o.Image)
-	h.Add(o.RepoUsername)
-	h.Add(o.RepoPassword)
+	h.Add(o.RepoCredsExternalID)
 	h.Add(fmt.Sprint(o.MemoryMB))
 	h.Add(fmt.Sprint(o.CPU))
 	h.Add(string(o.OS))
@@ -568,7 +557,7 @@ func (o *TaskContainerCreationOptions) GetFamily(ecsConf evergreen.ECSConfig) st
 // IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
 // zero value for BSON marshalling.
 func (o TaskContainerCreationOptions) IsZero() bool {
-	return o.MemoryMB == 0 && o.CPU == 0 && o.OS == "" && o.Arch == "" && o.WindowsVersion == "" && o.Image == "" && o.RepoUsername == "" && o.RepoPassword == "" && o.WorkingDir == "" && len(o.EnvVars) == 0 && len(o.EnvSecrets) == 0
+	return o.MemoryMB == 0 && o.CPU == 0 && o.OS == "" && o.Arch == "" && o.WindowsVersion == "" && o.Image == "" && o.RepoCredsExternalID == "" && o.WorkingDir == "" && len(o.EnvVars) == 0 && len(o.EnvSecrets) == 0
 }
 
 // Secret is a sensitive secret that a pod can access. The secret is managed
@@ -577,29 +566,17 @@ type Secret struct {
 	// ExternalID is the unique external resource identifier for a secret that
 	// already exists in the secrets storage service.
 	ExternalID string `bson:"external_id,omitempty" json:"external_id,omitempty" yaml:"external_id,omitempty"`
-	// Name is the friendly name of the secret. If the secret does not yet
-	// exist, it will be given this name when created.
-	Name string `bson:"name,omitempty" json:"name,omitempty" yaml:"name,omitempty"`
-	// Value is the value of the secret. If the secret does not yet exist, it
-	// will be created; otherwise, this is just a cached copy of the actual
-	// value stored in the secrets storage service.
+	// Value is the value of the secret. This is a cached copy of the actual
+	// secret value stored in the secrets storage service.
 	Value string `bson:"value,omitempty" json:"value,omitempty" yaml:"value,omitempty"`
-	// Exists determines whether or not the secret already exists in the secrets
-	// storage service. If this is false, then a new secret will be stored.
-	Exists *bool `bson:"exists,omitempty" json:"exists,omitempty" yaml:"exists,omitempty"`
-	// Owned determines whether or not the secret is owned by its pod. If this
-	// is true, then its lifetime is tied to the pod's lifetime, implying that
-	// when the pod is cleaned up, this secret is also cleaned up.
-	Owned *bool `bson:"owned,omitempty" json:"owned,omitempty" yaml:"owned,omitempty"`
 }
 
 func (s Secret) hash() string {
 	h := utility.NewSHA1Hash()
 	h.Add(s.ExternalID)
-	h.Add(s.Name)
-	h.Add(s.Value)
-	h.Add(strconv.FormatBool(utility.FromBoolPtr(s.Exists)))
-	h.Add(strconv.FormatBool(utility.FromBoolPtr(s.Owned)))
+	// Intentionally do not add the value, because the value is a cached copy
+	// from the external secrets storage. The pod definition does not depend on
+	// the particular value of the secret, just its external ID.
 	return h.Sum()
 }
 

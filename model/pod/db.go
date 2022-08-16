@@ -47,11 +47,8 @@ var (
 	ContainerResourceInfoNameKey       = bsonutil.MustHaveTag(ContainerResourceInfo{}, "Name")
 	ContainerResourceInfoSecretIDsKey  = bsonutil.MustHaveTag(ContainerResourceInfo{}, "SecretIDs")
 
-	SecretNameKey       = bsonutil.MustHaveTag(Secret{}, "Name")
 	SecretExternalIDKey = bsonutil.MustHaveTag(Secret{}, "ExternalID")
 	SecretValueKey      = bsonutil.MustHaveTag(Secret{}, "Value")
-	SecretExistsKey     = bsonutil.MustHaveTag(Secret{}, "Exists")
-	SecretOwnedKey      = bsonutil.MustHaveTag(Secret{}, "Owned")
 )
 
 func ByID(id string) bson.M {

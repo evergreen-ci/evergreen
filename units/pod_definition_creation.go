@@ -37,8 +37,6 @@ type podDefinitionCreationJob struct {
 
 	ecsClient        cocoa.ECSClient
 	ecsPodDefManager cocoa.ECSPodDefinitionManager
-	smClient         cocoa.SecretsManagerClient
-	vault            cocoa.Vault
 	env              evergreen.Environment
 	settings         evergreen.Settings
 }
@@ -77,15 +75,16 @@ func (j *podDefinitionCreationJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
 	defer func() {
+		if j.ecsClient != nil {
+			j.AddError(errors.Wrap(j.ecsClient.Close(ctx), "closing ECS client"))
+		}
+
 		if j.HasErrors() && (!j.RetryInfo().ShouldRetry() || j.RetryInfo().GetRemainingAttempts() == 0) {
 			j.AddError(errors.Wrap(j.decommissionDependentIntentPods(), "decommissioning intent pods after pod definition creation failed"))
 		}
 	}()
 
 	defer func() {
-		if j.smClient != nil {
-			j.AddError(j.smClient.Close(ctx))
-		}
 		if j.ecsClient != nil {
 			j.AddError(j.ecsClient.Close(ctx))
 		}
@@ -147,21 +146,6 @@ func (j *podDefinitionCreationJob) populateIfUnset(ctx context.Context) error {
 	}
 	j.settings = settings
 
-	if j.vault == nil {
-		if j.smClient == nil {
-			client, err := cloud.MakeSecretsManagerClient(&settings)
-			if err != nil {
-				return errors.Wrap(err, "initializing Secrets Manager client")
-			}
-			j.smClient = client
-		}
-		vault, err := cloud.MakeSecretsManagerVault(j.smClient)
-		if err != nil {
-			return errors.Wrap(err, "initializing Secrets Manager vault")
-		}
-		j.vault = vault
-	}
-
 	if j.ecsClient == nil {
 		client, err := cloud.MakeECSClient(&settings)
 		if err != nil {
@@ -171,7 +155,7 @@ func (j *podDefinitionCreationJob) populateIfUnset(ctx context.Context) error {
 	}
 
 	if j.ecsPodDefManager == nil {
-		podDefMgr, err := cloud.MakeECSPodDefinitionManager(j.ecsClient, j.vault)
+		podDefMgr, err := cloud.MakeECSPodDefinitionManager(j.ecsClient, nil)
 		if err != nil {
 			return errors.Wrap(err, "initializing ECS pod creator")
 		}

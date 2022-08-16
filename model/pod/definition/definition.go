@@ -72,3 +72,8 @@ func (pdc PodDefinitionCache) Put(_ context.Context, item cocoa.ECSPodDefinition
 	}
 	return nil
 }
+
+// TODO (EVG-16900): implement deletion and pod definition cleanup.
+func (pdf PodDefinitionCache) Delete(_ context.Context, _ string) error {
+	return nil
+}

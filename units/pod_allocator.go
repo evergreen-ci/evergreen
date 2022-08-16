@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/pod/dispatcher"
@@ -32,8 +34,11 @@ type podAllocatorJob struct {
 	job.Base `bson:"job_base" json:"job_base"`
 
 	task     *task.Task
+	pRef     *model.ProjectRef
 	env      evergreen.Environment
 	settings evergreen.Settings
+	smClient cocoa.SecretsManagerClient
+	vault    cocoa.Vault
 }
 
 func makePodAllocatorJob() *podAllocatorJob {
@@ -64,7 +69,13 @@ func NewPodAllocatorJob(taskID, ts string) amboy.Job {
 }
 
 func (j *podAllocatorJob) Run(ctx context.Context) {
-	defer j.MarkComplete()
+	defer func() {
+		j.MarkComplete()
+
+		if j.smClient != nil {
+			j.AddError(errors.Wrap(j.smClient.Close(ctx), "closing Secrets Manager client"))
+		}
+	}()
 
 	shouldAllocate, err := j.canAllocate()
 	if err != nil {
@@ -102,7 +113,7 @@ func (j *podAllocatorJob) Run(ctx context.Context) {
 		return
 	}
 
-	opts, err := j.getIntentPodOptions(j.task.ContainerOpts)
+	opts, err := j.getIntentPodOptions(ctx)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "getting intent pod options"))
 		return
@@ -169,37 +180,89 @@ func (j *podAllocatorJob) populate() error {
 			return errors.Wrapf(err, "finding task '%s'", j.TaskID)
 		}
 		if t == nil {
-			return errors.New("task not found")
+			return errors.Errorf("task '%s' not found", j.TaskID)
 		}
 		j.task = t
+	}
+
+	if j.pRef == nil {
+		pRef, err := model.FindBranchProjectRef(j.task.Project)
+		if err != nil {
+			return errors.Wrapf(err, "finding project ref '%s' for task '%s'", j.task.Project, j.TaskID)
+		}
+		if pRef == nil {
+			return errors.Errorf("project ref '%s' not found", j.task.Project)
+		}
+		j.pRef = pRef
+	}
+
+	if j.vault == nil {
+		if j.smClient == nil {
+			client, err := cloud.MakeSecretsManagerClient(&settings)
+			if err != nil {
+				return errors.Wrap(err, "initializing Secrets Manager client")
+			}
+			j.smClient = client
+		}
+		vault, err := cloud.MakeSecretsManagerVault(j.smClient)
+		if err != nil {
+			return errors.Wrap(err, "initializing Secrets Manager vault")
+		}
+		j.vault = vault
 	}
 
 	return nil
 }
 
-func (j *podAllocatorJob) getIntentPodOptions(containerOpts task.ContainerOptions) (*pod.TaskIntentPodOptions, error) {
-	os, err := pod.ImportOS(containerOpts.OS)
+func (j *podAllocatorJob) getIntentPodOptions(ctx context.Context) (*pod.TaskIntentPodOptions, error) {
+	var (
+		repoCredsExternalID string
+		podSecretExternalID string
+	)
+	for _, containerSecret := range j.pRef.ContainerSecrets {
+		if j.task.ContainerOpts.RepoCredsName != "" && containerSecret.Name == j.task.ContainerOpts.RepoCredsName && containerSecret.Type == model.ContainerSecretRepoCreds {
+			repoCredsExternalID = containerSecret.ExternalID
+		}
+		if containerSecret.Type == model.ContainerSecretPodSecret {
+			podSecretExternalID = containerSecret.ExternalID
+		}
+	}
+	if j.task.ContainerOpts.RepoCredsName != "" && repoCredsExternalID == "" {
+		return nil, errors.Errorf("repository credentials '%s' could not be found in project ref '%s'", j.task.ContainerOpts.RepoCredsName, j.pRef.Identifier)
+	}
+	if podSecretExternalID == "" {
+		return nil, errors.Errorf("pod secret for project ref '%s' not found", j.pRef.Identifier)
+	}
+	podSecret, err := j.vault.GetValue(ctx, podSecretExternalID)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting pod secret value")
+	}
+
+	os, err := pod.ImportOS(j.task.ContainerOpts.OS)
 	if err != nil {
 		return nil, errors.Wrap(err, "importing OS")
 	}
-	arch, err := pod.ImportArch(containerOpts.Arch)
+	arch, err := pod.ImportArch(j.task.ContainerOpts.Arch)
 	if err != nil {
 		return nil, errors.Wrap(err, "importing CPU architecture")
 	}
 	var winVer pod.WindowsVersion
 	if j.task.ContainerOpts.WindowsVersion != "" {
-		winVer, err = pod.ImportWindowsVersion(containerOpts.WindowsVersion)
+		winVer, err = pod.ImportWindowsVersion(j.task.ContainerOpts.WindowsVersion)
 		if err != nil {
 			return nil, errors.Wrap(err, "importing Windows version")
 		}
 	}
 	return &pod.TaskIntentPodOptions{
-		CPU:            containerOpts.CPU,
-		MemoryMB:       containerOpts.MemoryMB,
-		OS:             os,
-		Arch:           arch,
-		WindowsVersion: winVer,
-		Image:          containerOpts.Image,
-		WorkingDir:     containerOpts.WorkingDir,
+		CPU:                 j.task.ContainerOpts.CPU,
+		MemoryMB:            j.task.ContainerOpts.MemoryMB,
+		OS:                  os,
+		Arch:                arch,
+		WindowsVersion:      winVer,
+		Image:               j.task.ContainerOpts.Image,
+		RepoCredsExternalID: repoCredsExternalID,
+		WorkingDir:          j.task.ContainerOpts.WorkingDir,
+		PodSecretExternalID: podSecretExternalID,
+		PodSecretValue:      podSecret,
 	}, nil
 }
