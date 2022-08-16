@@ -184,6 +184,7 @@ functions:
         - MONGO_CREDS_FILE
         - RUN_TEST
         - RUN_EC2_SPECIFIC_TESTS
+        - IS_DOCKER
       env:
         AWS_KEY: ${aws_key}
         AWS_SECRET: ${aws_secret}
@@ -623,6 +624,31 @@ buildvariants:
       - name: test-db-auth
       - name: test-cloud
 
+  - name: ubuntu1604-container
+    display_name: Ubuntu 16.04 (Container)
+    run_on:
+      - malik-container
+    expansions:
+      goos: linux
+      goarch: amd64
+      IS_DOCKER: true
+      GOROOT: /usr/local/go
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.2.18.tgz
+      decompress: tar zxvf
+      notary_client_url: https://macos-notary-1628249594.s3.amazonaws.com/releases/client/v3.1.2/linux_amd64.zip
+      sign_macos: true
+    tasks:
+      - name: "dist-and-upload-clis"
+      - name: "dist-staging"
+      - name: "dist-unsigned"
+      - name: ".smoke"
+      - name: ".test"
+      - name: "js-test"
+      - name: ".linter"
+      - name: "docker-cleanup"
+      - name: test-db-auth
+      - name: test-cloud
+
   - name: race-detector
     display_name: Race Detector
     run_on:
@@ -688,3 +714,15 @@ buildvariants:
     tasks:
       - name: ".agent .test"
       - name: ".cli .test"
+
+
+containers:
+- name: malik-container
+  working_dir: /
+  image: "hadjri/evg-e2e-test-ubuntu"
+  resources:
+    cpu: 4096
+    memory_mb: 8192
+  system:
+    cpu_architecture: x86_64
+    operating_system: linux

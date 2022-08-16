@@ -273,7 +273,9 @@ func (h *getExpansionsHandler) Parse(ctx context.Context, r *http.Request) error
 	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
 		return errors.New("missing task ID")
 	}
-	if h.hostID = r.Header.Get(evergreen.HostHeader); h.hostID == "" {
+	h.hostID = r.Header.Get(evergreen.HostHeader)
+	podID := r.Header.Get(evergreen.PodHeader)
+	if h.hostID == "" && podID == "" {
 		return errors.New("missing host ID")
 	}
 	return nil
@@ -290,15 +292,18 @@ func (h *getExpansionsHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
 		})
 	}
-	host, err := host.FindOneId(h.hostID)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting host"))
-	}
-	if host == nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("host '%s' not found", h.hostID)},
-		)
+	var foundHost *host.Host
+	if h.hostID != "" {
+		foundHost, err = host.FindOneId(h.hostID)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting host"))
+		}
+		if foundHost == nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("host '%s' not found", h.hostID)},
+			)
+		}
 	}
 
 	oauthToken, err := h.settings.GetGithubOauthToken()
@@ -306,7 +311,7 @@ func (h *getExpansionsHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting GitHub OAuth token"))
 	}
 
-	e, err := model.PopulateExpansions(t, host, oauthToken)
+	e, err := model.PopulateExpansions(t, foundHost, oauthToken)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(err)
 	}
@@ -862,6 +867,7 @@ func (h *appendTaskLogHandler) Run(ctx context.Context) gimlet.Responder {
 type startTaskHandler struct {
 	env           evergreen.Environment
 	taskID        string
+	hostID        string
 	taskStartInfo apimodels.TaskStartRequest
 }
 
@@ -884,6 +890,7 @@ func (h *startTaskHandler) Parse(ctx context.Context, r *http.Request) error {
 	if err := utility.ReadJSON(r.Body, &h.taskStartInfo); err != nil {
 		return errors.Wrapf(err, "reading task start request for %s", h.taskID)
 	}
+	h.hostID = r.Header.Get(evergreen.HostHeader)
 	return nil
 }
 
@@ -922,37 +929,42 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 		event.LogBuildStateChangeEvent(t.BuildId, updates.BuildNewStatus)
 	}
 
-	host, err := host.FindOne(host.ByRunningTaskId(t.Id))
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host running task %s", t.Id))
-	}
-
-	if host == nil {
-		message := fmt.Sprintf("no host found running task %s", t.Id)
-		if t.HostId != "" {
-			message = fmt.Sprintf("no host found running task %s but task is said to be running on %s",
-				t.Id, t.HostId)
+	var msg string
+	if h.hostID != "" {
+		host, err := host.FindOne(host.ByRunningTaskId(t.Id))
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host running task %s", t.Id))
 		}
 
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    message,
-		})
-	}
+		if host == nil {
+			message := fmt.Sprintf("no host found running task %s", t.Id)
+			if t.HostId != "" {
+				message = fmt.Sprintf("no host found running task %s but task is said to be running on %s",
+					t.Id, t.HostId)
+			}
 
-	idleTimeStartAt := host.LastTaskCompletedTime
-	if idleTimeStartAt.IsZero() || idleTimeStartAt == utility.ZeroTime {
-		idleTimeStartAt = host.StartTime
-	}
-
-	msg := fmt.Sprintf("Task %s started on host %s", t.Id, host.Id)
-
-	if host.Distro.IsEphemeral() {
-		queue := h.env.RemoteQueue()
-		job := units.NewCollectHostIdleDataJob(host, t, idleTimeStartAt, t.StartTime)
-		if err = queue.Put(ctx, job); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "queuing host idle stats for %s", msg))
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    message,
+			})
 		}
+
+		idleTimeStartAt := host.LastTaskCompletedTime
+		if idleTimeStartAt.IsZero() || idleTimeStartAt == utility.ZeroTime {
+			idleTimeStartAt = host.StartTime
+		}
+
+		msg = fmt.Sprintf("task %s started on host %s", t.Id, host.Id)
+
+		if host.Distro.IsEphemeral() {
+			queue := h.env.RemoteQueue()
+			job := units.NewCollectHostIdleDataJob(host, t, idleTimeStartAt, t.StartTime)
+			if err = queue.Put(ctx, job); err != nil {
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "queuing host idle stats for %s", msg))
+			}
+		}
+	} else {
+		msg = fmt.Sprintf("task %s started on container %s", t.Id, t.Container)
 	}
 
 	return gimlet.NewJSONResponse(msg)
