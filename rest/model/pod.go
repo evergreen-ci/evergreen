@@ -251,16 +251,14 @@ func (o *APIPodTaskContainerCreationOptions) ToService() (*pod.TaskContainerCrea
 	return &pod.TaskContainerCreationOptions{
 		Image:               utility.FromStringPtr(o.Image),
 		RepoCredsExternalID: utility.FromStringPtr(o.RepoCredsExternalID),
-		// RepoUsername:   utility.FromStringPtr(o.RepoUsername),
-		// RepoPassword:   utility.FromStringPtr(o.RepoPassword),
-		MemoryMB:       utility.FromIntPtr(o.MemoryMB),
-		CPU:            utility.FromIntPtr(o.CPU),
-		OS:             *os,
-		Arch:           *arch,
-		WindowsVersion: *winVer,
-		EnvVars:        o.EnvVars,
-		EnvSecrets:     envSecrets,
-		WorkingDir:     utility.FromStringPtr(o.WorkingDir),
+		MemoryMB:            utility.FromIntPtr(o.MemoryMB),
+		CPU:                 utility.FromIntPtr(o.CPU),
+		OS:                  *os,
+		Arch:                *arch,
+		WindowsVersion:      *winVer,
+		EnvVars:             o.EnvVars,
+		EnvSecrets:          envSecrets,
+		WorkingDir:          utility.FromStringPtr(o.WorkingDir),
 	}, nil
 }
 

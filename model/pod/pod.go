@@ -537,8 +537,6 @@ func (o *TaskContainerCreationOptions) Hash() string {
 	h := utility.NewSHA1Hash()
 	h.Add(o.Image)
 	h.Add(o.RepoCredsExternalID)
-	// h.Add(o.RepoUsername)
-	// h.Add(o.RepoPassword)
 	h.Add(fmt.Sprint(o.MemoryMB))
 	h.Add(fmt.Sprint(o.CPU))
 	h.Add(string(o.OS))

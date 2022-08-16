@@ -722,16 +722,6 @@ func TestTaskContainerCreationOptionsHash(t *testing.T) {
 			opts.RepoCredsExternalID = "external_id"
 			assert.NotEqual(t, baseHash, opts.Hash(), "repo creds external ID should affect hash")
 		})
-		// t.Run("ChangesForRepoUsername", func(t *testing.T) {
-		//     var opts TaskContainerCreationOptions
-		//     opts.RepoUsername = "repo_username"
-		//     assert.NotEqual(t, baseHash, opts.Hash(), "repo username should affect hash")
-		// })
-		// t.Run("ChangesForRepoPassword", func(t *testing.T) {
-		//     var opts TaskContainerCreationOptions
-		//     opts.RepoPassword = "repo_password"
-		//     assert.NotEqual(t, baseHash, opts.Hash(), "repo password should affect hash")
-		// })
 		t.Run("ChangesForMemory", func(t *testing.T) {
 			var opts TaskContainerCreationOptions
 			opts.MemoryMB = 1024
