@@ -2243,24 +2243,11 @@ func TestValidateOwnerAndRepo(t *testing.T) {
 	err = project.ValidateOwnerAndRepo([]string{"evergreen-ci"})
 	assert.NoError(t, err)
 
-	// a project with now owner and repo that is attached to a repo with
-	// an owner and repo should not error
-	repoRef := RepoRef{ProjectRef{
-		Id:      "my_repo",
-		Enabled: utility.TruePtr(),
-		Owner:   "evergreen-ci",
-		Repo:    "test",
-	}}
-	assert.NoError(t, repoRef.Upsert())
-
-	projectWithRepo := ProjectRef{
-		Id:        "project-with-repo",
-		Enabled:   utility.TruePtr(),
-		RepoRefId: repoRef.Id,
+	// a disabled project should not error
+	disabledProject := ProjectRef{
+		Id:      "project",
+		Enabled: utility.FalsePtr(),
 	}
-	require.NoError(t, projectWithRepo.Insert())
-
-	err = projectWithRepo.ValidateOwnerAndRepo([]string{"evergreen-ci"})
+	err = disabledProject.ValidateOwnerAndRepo([]string{"evergreen-ci"})
 	assert.NoError(t, err)
-
 }
