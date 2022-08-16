@@ -3,6 +3,10 @@ package command
 import (
 	"context"
 	"encoding/json"
+	"io/ioutil"
+	"os"
+	"strings"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
@@ -11,9 +15,6 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"io/ioutil"
-	"os"
-	"strings"
 )
 
 type generateTask struct {
