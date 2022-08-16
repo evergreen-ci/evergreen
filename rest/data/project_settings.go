@@ -335,6 +335,11 @@ func DeleteContainerSecrets(ctx context.Context, v cocoa.Vault, pRef *model.Proj
 			catcher.Wrapf(v.DeleteSecret(ctx, secret.ExternalID), "deleting container secret '%s' with external ID '%s'", secret.Name, secret.ExternalID)
 		}
 	}
+
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
+	}
+
 	return remaining, catcher.Resolve()
 }
 

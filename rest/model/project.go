@@ -539,18 +539,16 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		projectRef.ContainerSizes = containerSizes
 	}
 
-	if p.ContainerSecrets != nil {
-		for idx, secret := range p.ContainerSecrets {
-			if utility.StringSliceContains(p.DeleteContainerSecrets, utility.FromStringPtr(secret.Name)) {
-				continue
-			}
-
-			apiContainerSecret, err := secret.ToService()
-			if err != nil {
-				return nil, errors.Wrapf(err, "converting container secret at index %d to service model", idx)
-			}
-			projectRef.ContainerSecrets = append(projectRef.ContainerSecrets, *apiContainerSecret)
+	for idx, secret := range p.ContainerSecrets {
+		if utility.StringSliceContains(p.DeleteContainerSecrets, utility.FromStringPtr(secret.Name)) {
+			continue
 		}
+
+		apiContainerSecret, err := secret.ToService()
+		if err != nil {
+			return nil, errors.Wrapf(err, "converting container secret at index %d to service model", idx)
+		}
+		projectRef.ContainerSecrets = append(projectRef.ContainerSecrets, *apiContainerSecret)
 	}
 
 	return &projectRef, nil
@@ -656,14 +654,12 @@ func (p *APIProjectRef) BuildFromService(projectRef model.ProjectRef) error {
 		p.ContainerSizes = containerSizes
 	}
 
-	if projectRef.ContainerSecrets != nil {
-		for idx, secret := range projectRef.ContainerSecrets {
-			var apiSecret APIContainerSecret
-			if err := apiSecret.BuildFromService(secret); err != nil {
-				return errors.Wrapf(err, "converting container secret at index %d to service model", idx)
-			}
-			p.ContainerSecrets = append(p.ContainerSecrets, apiSecret)
+	for idx, secret := range projectRef.ContainerSecrets {
+		var apiSecret APIContainerSecret
+		if err := apiSecret.BuildFromService(secret); err != nil {
+			return errors.Wrapf(err, "converting container secret at index %d to service model", idx)
 		}
+		p.ContainerSecrets = append(p.ContainerSecrets, apiSecret)
 	}
 
 	return nil

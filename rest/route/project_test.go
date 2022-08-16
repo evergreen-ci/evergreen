@@ -338,7 +338,7 @@ func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
 	s.Nil(p.PatchTriggerAliases)
 }
 
-func (s *ProjectPatchByIDSuite) TestAddingNewContainerSecrets() {
+func (s *ProjectPatchByIDSuite) TestAddingNewAndDeletingExistingContainerSecrets() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
@@ -380,29 +380,31 @@ func (s *ProjectPatchByIDSuite) TestAddingNewContainerSecrets() {
 	s.NotZero(dbProjRef.ContainerSecrets[0].ExternalName)
 	s.NotZero(dbProjRef.ContainerSecrets[0].ExternalID)
 
-	storedValue, err := h.vault.GetValue(ctx, dbProjRef.ContainerSecrets[0].ExternalID)
+	externalID := dbProjRef.ContainerSecrets[0].ExternalID
+	storedValue, err := h.vault.GetValue(ctx, externalID)
 	s.Require().NoError(err)
 	s.Equal("super_secret_value", storedValue)
-}
 
-func (s *ProjectPatchByIDSuite) TestDeletingExistingContainerSecrets() {
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	// ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
-	// h := s.rm.(*projectIDPatchHandler)
-	// h.user = &user.DBUser{Id: "me"}
-	//
-	// jsonBody := []byte(`{"patch_trigger_aliases": [{"child_project_identifier": "child", "task_specifiers": [ {"task_regex": ".*", "variant_regex": ".*" }]}]}`)
-	// req, err := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
-	// s.Require().NoError(err)
-	// req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
-	// s.NoError(s.rm.Parse(ctx, req))
-	// s.NotNil(s.rm.(*projectIDPatchHandler).user)
-	//
-	// resp := s.rm.Run(ctx)
-	// s.NotNil(resp)
-	// s.NotNil(resp.Data())
-	// s.Equal(resp.Status(), http.StatusOK)
+	body = []byte(`{
+		"delete_container_secrets": ["super_secret"]
+	}`)
+	req, err = http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(body))
+	s.Require().NoError(err)
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
+	s.Require().NoError(s.rm.Parse(ctx, req))
+
+	resp = s.rm.Run(ctx)
+	s.Require().NotNil(resp)
+	s.Require().NotNil(resp.Data())
+	s.Equal(http.StatusOK, resp.Status())
+
+	dbProjRef, err = serviceModel.FindBranchProjectRef("dimoxinil")
+	s.Require().NoError(err)
+	s.Require().NotNil(dbProjRef)
+	s.Empty(dbProjRef.ContainerSecrets, "container secret should have been deleted")
+
+	_, err = h.vault.GetValue(ctx, externalID)
+	s.Error(err, "secret should have been deleted from the vault")
 }
 
 ////////////////////////////////////////////////////////////////////////
