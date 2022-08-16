@@ -62,6 +62,7 @@ var (
 	HostIdKey                      = bsonutil.MustHaveTag(Task{}, "HostId")
 	AgentVersionKey                = bsonutil.MustHaveTag(Task{}, "AgentVersion")
 	ExecutionKey                   = bsonutil.MustHaveTag(Task{}, "Execution")
+	LatestParentExecutionKey       = bsonutil.MustHaveTag(Task{}, "LatestParentExecution")
 	OldTaskIdKey                   = bsonutil.MustHaveTag(Task{}, "OldTaskId")
 	ArchivedKey                    = bsonutil.MustHaveTag(Task{}, "Archived")
 	RevisionOrderNumberKey         = bsonutil.MustHaveTag(Task{}, "RevisionOrderNumber")
