@@ -1,11 +1,11 @@
 package model
 
 import (
-	"github.com/evergreen-ci/evergreen/model/task"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -34,7 +34,7 @@ func DoProjectActivation(id string, ts time.Time) (bool, error) {
 
 }
 
-// Activates any builds/tasks if their BatchTimes have elapsed.
+// ActivateElapsedBuildsAndTasks activates any builds/tasks if their BatchTimes have elapsed.
 func ActivateElapsedBuildsAndTasks(v *Version) (bool, error) {
 	now := time.Now()
 

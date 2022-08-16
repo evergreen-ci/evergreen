@@ -237,7 +237,7 @@ func (vc *DBVersionConnector) CreateVersionFromConfig(ctx context.Context, proje
 	}
 
 	if active {
-		err := model.ActivateBuilds(newVersion.BuildIds, true, evergreen.DefaultTaskActivator)
+		err := model.ActivateBuildsAndTasks(newVersion.BuildIds, true, evergreen.DefaultTaskActivator)
 		if err != nil {
 			return nil, gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,

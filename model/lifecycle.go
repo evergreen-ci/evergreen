@@ -113,9 +113,9 @@ func SetVersionActivation(versionId string, active bool, caller string) error {
 	return nil
 }
 
-// ActivateBuilds updates the "active" state of this build and all associated tasks.
+// ActivateBuildsAndTasks updates the "active" state of this build and all associated tasks.
 // It also updates the task cache for the build document.
-func ActivateBuilds(buildIds []string, active bool, caller string) error {
+func ActivateBuildsAndTasks(buildIds []string, active bool, caller string) error {
 	if err := build.UpdateActivation(buildIds, active, caller); err != nil {
 		return errors.Wrapf(err, "setting build activation to %t for builds '%v'", active, buildIds)
 	}
