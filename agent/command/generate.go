@@ -3,11 +3,6 @@ package command
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
-	"os"
-	"strings"
-	"time"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
@@ -16,6 +11,9 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"io/ioutil"
+	"os"
+	"strings"
 )
 
 type generateTask struct {
@@ -97,48 +95,29 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 		return errors.Wrap(err, "Problem posting task data")
 	}
 
-	const (
-		pollAttempts      = 1500
-		pollRetryMinDelay = time.Second
-		pollRetryMaxDelay = 15 * time.Second
-	)
-
-	err = utility.Retry(
-		ctx,
-		func() (bool, error) {
-			generateStatus, err := comm.GenerateTasksPoll(ctx, td)
-			if err != nil {
-				return true, err
-			}
-
-			var generateErr error
-			if generateStatus.Error != "" {
-				generateErr = errors.New(generateStatus.Error)
-			}
-
-			if generateStatus.ShouldExit {
-				return false, generateErr
-			}
-			if generateErr != nil {
-				// if the error isn't related to saving the generated task, log it but still retry in case of race condition
-				if !strings.Contains(generateErr.Error(), evergreen.SaveGenerateTasksError) {
-					logger.Task().Infof("Problem polling for generate tasks job, retrying (%s)", generateErr.Error())
-				}
-				return true, generateErr
-			}
-			if generateStatus.Finished {
-				return false, nil
-			}
-			return true, errors.New("task generation unfinished")
-		}, utility.RetryOptions{
-			MaxAttempts: pollAttempts,
-			MinDelay:    pollRetryMinDelay,
-			MaxDelay:    pollRetryMaxDelay,
-		})
+	generateStatus, err := comm.GenerateTasksPoll(ctx, td)
 	if err != nil {
-		return errors.WithMessage(err, "problem polling for generate tasks job")
+		return errors.WithMessage(err, "polling for generate tasks job")
 	}
-	return nil
+
+	var generateErr error
+	if generateStatus.Error != "" {
+		generateErr = errors.New(generateStatus.Error)
+	}
+
+	if generateStatus.ShouldExit {
+		return errors.WithMessage(generateErr, "polling for generate tasks job")
+	}
+	if generateErr != nil {
+		if !strings.Contains(generateErr.Error(), evergreen.SaveGenerateTasksError) {
+			logger.Task().Infof("Problem polling for generate tasks job (%s)", generateErr.Error())
+		}
+		return errors.WithMessage(generateErr, "polling for generate tasks job")
+	}
+	if generateStatus.Finished {
+		return nil
+	}
+	return errors.New("task generation unfinished")
 }
 
 func generateTaskForFile(fn string, conf *internal.TaskConfig) ([]byte, error) {
