@@ -251,7 +251,7 @@ func (pd *PodDispatcher) checkTaskIsDispatchable(ctx context.Context, env evergr
 		return false, nil
 	}
 
-	refs, err := model.FindProjectRefsByIds(t.Project)
+	refs, err := model.FindMergedProjectRefsByIds(t.Project)
 	if err != nil {
 		return false, errors.Wrapf(err, "finding project ref '%s' for task '%s'", t.Project, t.Id)
 	}

@@ -32,7 +32,7 @@ func (uis *UIServer) filterViewableProjects(u *user.DBUser) ([]model.ProjectRef,
 	if err != nil {
 		return nil, err
 	}
-	projects, err := model.FindProjectRefsByIds(projectIds...)
+	projects, err := model.FindMergedProjectRefsByIds(projectIds...)
 	if err != nil {
 		return nil, err
 	}

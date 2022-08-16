@@ -1241,7 +1241,18 @@ func addLoggerAndRepoSettingsToProjects(pRefs []ProjectRef) ([]ProjectRef, error
 
 // FindAllMergedProjectRefs returns all project refs in the db, with repo ref information merged
 func FindAllMergedProjectRefs() ([]ProjectRef, error) {
-	return FindProjectRefsQ(bson.M{})
+	return FindMergedProjectRefsQ(bson.M{})
+}
+
+func FindMergedProjectRefsByIds(ids ...string) ([]ProjectRef, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	return FindMergedProjectRefsQ(bson.M{
+		ProjectRefIdKey: bson.M{
+			"$in": ids,
+		},
+	})
 }
 
 func FindProjectRefsByIds(ids ...string) ([]ProjectRef, error) {
@@ -1255,7 +1266,7 @@ func FindProjectRefsByIds(ids ...string) ([]ProjectRef, error) {
 	})
 }
 
-func FindProjectRefsQ(filter bson.M) ([]ProjectRef, error) {
+func FindMergedProjectRefsQ(filter bson.M) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 	q := db.Query(filter)
 	err := db.FindAllQ(ProjectRefCollection, q, &projectRefs)
@@ -1264,6 +1275,17 @@ func FindProjectRefsQ(filter bson.M) ([]ProjectRef, error) {
 	}
 
 	return addLoggerAndRepoSettingsToProjects(projectRefs)
+}
+
+func FindProjectRefsQ(filter bson.M) ([]ProjectRef, error) {
+	projectRefs := []ProjectRef{}
+	q := db.Query(filter)
+	err := db.FindAllQ(ProjectRefCollection, q, &projectRefs)
+	if err != nil {
+		return nil, err
+	}
+
+	return projectRefs, nil
 }
 
 func byOwnerAndRepo(owner, repoName string) bson.M {
