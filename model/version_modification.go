@@ -2,6 +2,8 @@ package model
 
 import (
 	"fmt"
+	"net/http"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -11,7 +13,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"net/http"
 )
 
 type VersionModification struct {

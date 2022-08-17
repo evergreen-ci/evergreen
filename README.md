@@ -1,7 +1,3 @@
-# Evergreen
-Evergreen is a distributed continuous integration system built by MongoDB.
-It dynamically allocates hosts to run tasks in parallel across many machines.
-
 See [the wiki](https://github.com/evergreen-ci/evergreen/wiki) for
 user-facing documentation.
 
