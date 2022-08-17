@@ -512,7 +512,7 @@ func (r *queryResolver) Task(ctx context.Context, taskID string, execution *int)
 	}
 	// If the executions don't match, the dbTask is a previous task (this task was cached)
 	if execution != nil && dbTask.Execution != *execution {
-		apiTask.FromExecution = execution
+		apiTask.CachedFromExecution = execution
 	}
 	return apiTask, err
 }
@@ -537,7 +537,7 @@ func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([
 			previousTask := allTasks[i-1]
 			if previousTask != nil {
 				apiTask := *previousTask
-				apiTask.FromExecution = &apiTask.Execution
+				apiTask.CachedFromExecution = &apiTask.Execution
 				apiTask.Execution = i
 				allTasks = append(allTasks, &apiTask)
 				continue
