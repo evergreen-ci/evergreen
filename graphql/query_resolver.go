@@ -500,8 +500,6 @@ func (r *queryResolver) MyVolumes(ctx context.Context) ([]*restModel.APIVolume, 
 
 func (r *queryResolver) Task(ctx context.Context, taskID string, execution *int) (*restModel.APITask, error) {
 	dbTask, err := task.FindOneIdWithHighestExecutionWithDisplayStatus(taskID, execution)
-	isCached := dbTask.Execution != *execution
-	from_execution := execution
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
@@ -512,9 +510,10 @@ func (r *queryResolver) Task(ctx context.Context, taskID string, execution *int)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, "error converting task")
 	}
-	if isCached {
-		apiTask.IsCachedResult = isCached
-		apiTask.FromExecution = *from_execution
+	// If the executions don't match, the dbTask is a previous task (this task was cached)
+	if dbTask.Execution != *execution {
+		apiTask.IsCachedResult = true
+		apiTask.FromExecution = *execution
 	}
 	return apiTask, err
 }
