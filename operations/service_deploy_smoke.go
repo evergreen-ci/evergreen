@@ -285,7 +285,7 @@ func smokeTestEndpoints() cli.Command {
 			}
 
 			if c.Bool(checkBuildName) {
-				return errors.Wrap(checkTaskByCommit(username, key), "check task failed")
+				return errors.Wrap(checkTaskByCommit(username, key, "smoke"), "check task failed")
 			}
 			return errors.WithStack(tests.checkEndpoints(username, key))
 		},
