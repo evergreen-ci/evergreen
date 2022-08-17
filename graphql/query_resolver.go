@@ -511,9 +511,8 @@ func (r *queryResolver) Task(ctx context.Context, taskID string, execution *int)
 		return nil, InternalServerError.Send(ctx, "error converting task")
 	}
 	// If the executions don't match, the dbTask is a previous task (this task was cached)
-	if dbTask.Execution != *execution {
-		apiTask.IsCachedResult = true
-		apiTask.FromExecution = *execution
+	if execution != nil && dbTask.Execution != *execution {
+		apiTask.FromExecution = execution
 	}
 	return apiTask, err
 }
@@ -535,12 +534,15 @@ func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([
 		}
 		if dbTask == nil {
 			// If not found, grab the latest execution and display those results
-			apiTask := *allTasks[i-1]
-			apiTask.IsCachedResult = true
-			apiTask.FromExecution = apiTask.Execution
-			apiTask.Execution = i
-			allTasks = append(allTasks, &apiTask)
-			continue
+			previousTask := allTasks[i-1]
+			if previousTask != nil {
+				apiTask := *previousTask
+				apiTask.FromExecution = &apiTask.Execution
+				apiTask.Execution = i
+				allTasks = append(allTasks, &apiTask)
+				continue
+			}
+			return nil, InternalServerError.Send(ctx, "error getting task")
 		}
 		var apiTask *restModel.APITask
 		apiTask, err = getAPITaskFromTask(ctx, r.sc.GetURL(), *dbTask)
