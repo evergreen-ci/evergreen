@@ -1230,6 +1230,20 @@ func FindByIdExecution(id string, execution *int) (*Task, error) {
 	return FindOneIdAndExecution(id, *execution)
 }
 
+// FindByIdWithHighestExecution returns a single task with the given ID and execution.
+// If the execution doesn't exist, it finds the closest execution below.
+func FindByIdWithHighestExecution(id string, execution int) (*Task, error) {
+	var task *Task
+	var err error
+	for i := execution; i >= 0; i-- {
+		task, err = FindByIdExecution(id, &execution)
+		if err == nil && task != nil {
+			break
+		}
+	}
+	return task, errors.Wrap(err, "finding task with highest execution")
+}
+
 // FindOneIdAndExecution returns a single task with the given ID and execution.
 func FindOneIdAndExecution(id string, execution int) (*Task, error) {
 	task := &Task{}
@@ -1272,6 +1286,20 @@ func FindOneIdAndExecutionWithDisplayStatus(id string, execution *int) (*Task, e
 	}
 
 	return FindOneOldByIdAndExecutionWithDisplayStatus(id, execution)
+}
+
+// FindByIdWithHighestExecution returns a single task with the given ID and execution.
+// If the execution doesn't exist, it finds the closest execution below.
+func FindOneIdWithHighestExecutionWithDisplayStatus(id string, execution int) (*Task, error) {
+	var task *Task
+	var err error
+	for i := execution; i >= 0; i-- {
+		task, err = FindOneIdAndExecutionWithDisplayStatus(id, &execution)
+		if err == nil && task != nil {
+			break
+		}
+	}
+	return task, errors.Wrap(err, "finding task with highest execution")
 }
 
 // FindOneOldByIdAndExecutionWithDisplayStatus returns a single task with the

@@ -499,7 +499,9 @@ func (r *queryResolver) MyVolumes(ctx context.Context) ([]*restModel.APIVolume, 
 }
 
 func (r *queryResolver) Task(ctx context.Context, taskID string, execution *int) (*restModel.APITask, error) {
-	dbTask, err := task.FindOneIdAndExecutionWithDisplayStatus(taskID, execution)
+	dbTask, err := task.FindOneIdWithHighestExecutionWithDisplayStatus(taskID, *execution)
+	isCached := dbTask.Execution != *execution
+	from_execution := execution
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
@@ -509,6 +511,10 @@ func (r *queryResolver) Task(ctx context.Context, taskID string, execution *int)
 	apiTask, err := getAPITaskFromTask(ctx, r.sc.GetURL(), *dbTask)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, "error converting task")
+	}
+	if isCached {
+		apiTask.IsCachedResult = isCached
+		apiTask.FromExecution = *from_execution
 	}
 	return apiTask, err
 }
@@ -529,7 +535,13 @@ func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([
 			return nil, ResourceNotFound.Send(ctx, err.Error())
 		}
 		if dbTask == nil {
-			return nil, werrors.Errorf("unable to find task %s", taskID)
+			// If not found, grab the latest execution and display those results
+			apiTask := *allTasks[i-1]
+			apiTask.IsCachedResult = true
+			apiTask.FromExecution = apiTask.Execution
+			apiTask.Execution = i
+			allTasks = append(allTasks, &apiTask)
+			continue
 		}
 		var apiTask *restModel.APITask
 		apiTask, err = getAPITaskFromTask(ctx, r.sc.GetURL(), *dbTask)
@@ -551,7 +563,7 @@ func (r *queryResolver) TaskFiles(ctx context.Context, taskID string, execution 
 		FileCount:    0,
 		GroupedFiles: []*GroupedFiles{},
 	}
-	t, err := task.FindByIdExecution(taskID, execution)
+	t, err := task.FindByIdWithHighestExecution(taskID, *execution)
 	if t == nil {
 		return &emptyTaskFiles, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
@@ -589,7 +601,7 @@ func (r *queryResolver) TaskFiles(ctx context.Context, taskID string, execution 
 }
 
 func (r *queryResolver) TaskLogs(ctx context.Context, taskID string, execution *int) (*TaskLogs, error) {
-	t, err := task.FindByIdExecution(taskID, execution)
+	t, err := task.FindByIdWithHighestExecution(taskID, *execution)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", taskID, err.Error()))
 	}

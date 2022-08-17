@@ -76,6 +76,11 @@ type APITask struct {
 	AMI                     *string             `json:"ami"`
 	MustHaveResults         bool                `json:"must_have_test_results"`
 	BaseTask                APIBaseTaskInfo     `json:"base_task"`
+
+	// These fields are only for cached tasks (tasks displaying info from a previous task)
+	IsCachedResult bool `json:"is_cached"`
+	FromExecution  int  `json:"from_execution"`
+
 	// These fields are used by graphql gen, but do not need to be exposed
 	// via Evergreen's user-facing API.
 	OverrideDependencies bool `json:"-"`
