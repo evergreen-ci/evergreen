@@ -1244,7 +1244,7 @@ func FindByIdWithHighestExecution(id string, execution *int) (*Task, error) {
 			break
 		}
 	}
-	return task, errors.Wrap(err, "finding task with highest execution")
+	return task, errors.Wrapf(err, "finding task '%s' with highest execution", id)
 }
 
 // FindOneIdAndExecution returns a single task with the given ID and execution.
@@ -1306,7 +1306,7 @@ func FindOneIdWithHighestExecutionWithDisplayStatus(id string, execution *int) (
 			break
 		}
 	}
-	return task, errors.Wrap(err, "finding task with highest execution")
+	return task, errors.Wrapf(err, "finding task '%s' with highest execution", id)
 }
 
 // FindOneOldByIdAndExecutionWithDisplayStatus returns a single task with the
