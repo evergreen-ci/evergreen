@@ -1239,7 +1239,7 @@ func FindByIdWithHighestExecution(id string, execution *int) (*Task, error) {
 	var task *Task
 	var err error
 	for i := *execution; i >= 0; i-- {
-		task, err = FindByIdExecution(id, execution)
+		task, err = FindByIdExecution(id, &i)
 		if err == nil && task != nil {
 			break
 		}
@@ -1301,7 +1301,7 @@ func FindOneIdWithHighestExecutionWithDisplayStatus(id string, execution *int) (
 	var task *Task
 	var err error
 	for i := *execution; i >= 0; i-- {
-		task, err = FindOneIdAndExecutionWithDisplayStatus(id, execution)
+		task, err = FindOneIdAndExecutionWithDisplayStatus(id, &i)
 		if err == nil && task != nil {
 			break
 		}
