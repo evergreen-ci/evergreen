@@ -18,7 +18,7 @@ import (
 
 func (r *taskLogsResolver) AgentLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error) {
 	const logMessageCount = 100
-	task, taskErr := task.FindOneIdAndExecutionWithDisplayStatus(obj.TaskID, &obj.Execution)
+	task, taskErr := task.FindOneIdAndExecution(obj.TaskID, obj.Execution)
 	if taskErr != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Finding task %s: %s", obj.TaskID, taskErr.Error()))
 	}
