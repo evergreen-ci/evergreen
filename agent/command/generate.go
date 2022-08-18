@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
@@ -96,29 +97,47 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 		return errors.Wrap(err, "Problem posting task data")
 	}
 
-	generateStatus, err := comm.GenerateTasksPoll(ctx, td)
+	const (
+		pollAttempts      = 1500
+		pollRetryMinDelay = time.Second
+		pollRetryMaxDelay = 15 * time.Second
+	)
+
+	err = utility.Retry(
+		ctx,
+		func() (bool, error) {
+			generateStatus, err := comm.GenerateTasksPoll(ctx, td)
+			if err != nil {
+				return false, err
+			}
+
+			var generateErr error
+			if generateStatus.Error != "" {
+				generateErr = errors.New(generateStatus.Error)
+			}
+
+			if generateStatus.ShouldExit {
+				return false, generateErr
+			}
+			if generateErr != nil {
+				if !strings.Contains(generateErr.Error(), evergreen.SaveGenerateTasksError) {
+					logger.Task().Infof("Problem polling for generate tasks job", generateErr.Error())
+				}
+				return false, generateErr
+			}
+			if generateStatus.Finished {
+				return false, nil
+			}
+			return true, errors.New("task generation unfinished")
+		}, utility.RetryOptions{
+			MaxAttempts: pollAttempts,
+			MinDelay:    pollRetryMinDelay,
+			MaxDelay:    pollRetryMaxDelay,
+		})
 	if err != nil {
-		return errors.WithMessage(err, "polling for generate tasks job")
+		return errors.WithMessage(err, "problem polling for generate tasks job")
 	}
-
-	var generateErr error
-	if generateStatus.Error != "" {
-		generateErr = errors.New(generateStatus.Error)
-	}
-
-	if generateStatus.ShouldExit {
-		return errors.WithMessage(generateErr, "polling for generate tasks job")
-	}
-	if generateErr != nil {
-		if !strings.Contains(generateErr.Error(), evergreen.SaveGenerateTasksError) {
-			logger.Task().Infof("Problem polling for generate tasks job (%s)", generateErr.Error())
-		}
-		return errors.WithMessage(generateErr, "polling for generate tasks job")
-	}
-	if generateStatus.Finished {
-		return nil
-	}
-	return errors.New("task generation unfinished")
+	return nil
 }
 
 func generateTaskForFile(fn string, conf *internal.TaskConfig) ([]byte, error) {
