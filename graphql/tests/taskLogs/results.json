@@ -143,6 +143,20 @@
         ],
         "data": null
       }
+    },
+    {
+      "query_file": "task_logs-unstarted.graphql",
+      "result": {
+        "data": {
+          "taskLogs": {
+            "systemLogs": [],
+            "eventLogs": [],
+            "taskLogs": [],
+            "agentLogs": [],
+            "allLogs": []
+          }
+        }
+      }
     }
   ]
 }
