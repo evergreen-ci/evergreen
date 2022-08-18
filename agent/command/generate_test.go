@@ -19,7 +19,7 @@ import (
 type generateSuite struct {
 	cancel     func()
 	conf       *internal.TaskConfig
-	comm       client.Communicator
+	comm       *client.Mock
 	logger     client.LoggerProducer
 	ctx        context.Context
 	g          *generateTask
@@ -90,6 +90,23 @@ func (s *generateSuite) TestParseParamsWithFiles() {
 func (s *generateSuite) TestExecuteFileDoesNotExist() {
 	c := &generateTask{Files: []string{"file-does-not-exist"}}
 	s.Error(c.Execute(s.ctx, s.comm, s.logger, s.conf))
+}
+
+func (s *generateSuite) TestExecuteFailsWithGeneratePollError() {
+	f, err := ioutil.TempFile(s.tmpDirName, "")
+	s.Require().NoError(err)
+	tmpFile := f.Name()
+	tmpFileBase := filepath.Base(tmpFile)
+	defer os.Remove(tmpFile)
+
+	n, err := f.WriteString(s.json)
+	s.NoError(err)
+	s.Equal(len(s.json), n)
+	s.NoError(f.Close())
+
+	c := &generateTask{Files: []string{tmpFileBase}}
+	s.comm.GenerateTasksShouldFail = true
+	s.Contains(c.Execute(s.ctx, s.comm, s.logger, s.conf).Error(), "error polling generate tasks!")
 }
 
 func (s *generateSuite) TestExecuteSuccess() {
