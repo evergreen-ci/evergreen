@@ -34,8 +34,6 @@ type podTerminationJob struct {
 	Reason   string `bson:"reason,omitempty" json:"reason,omitempty"`
 
 	pod       *pod.Pod
-	smClient  cocoa.SecretsManagerClient
-	vault     cocoa.Vault
 	ecsClient cocoa.ECSClient
 	ecsPod    cocoa.ECSPod
 	env       evergreen.Environment
@@ -77,11 +75,8 @@ func (j *podTerminationJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
 	defer func() {
-		if j.smClient != nil {
-			j.AddError(j.smClient.Close(ctx))
-		}
 		if j.ecsClient != nil {
-			j.AddError(j.ecsClient.Close(ctx))
+			j.AddError(errors.Wrap(j.ecsClient.Close(ctx), "closing ECS client"))
 		}
 	}()
 	if err := j.populateIfUnset(ctx); err != nil {
@@ -168,21 +163,6 @@ func (j *podTerminationJob) populateIfUnset(ctx context.Context) error {
 
 	settings := j.env.Settings()
 
-	if j.vault == nil {
-		if j.smClient == nil {
-			client, err := cloud.MakeSecretsManagerClient(settings)
-			if err != nil {
-				return errors.Wrap(err, "initializing Secrets Manager client")
-			}
-			j.smClient = client
-		}
-		vault, err := cloud.MakeSecretsManagerVault(j.smClient)
-		if err != nil {
-			return errors.Wrap(err, "initializing Secrets Manager vault")
-		}
-		j.vault = vault
-	}
-
 	if j.ecsClient == nil {
 		client, err := cloud.MakeECSClient(settings)
 		if err != nil {
@@ -191,7 +171,7 @@ func (j *podTerminationJob) populateIfUnset(ctx context.Context) error {
 		j.ecsClient = client
 	}
 
-	ecsPod, err := cloud.ExportECSPod(j.pod, j.ecsClient, j.vault)
+	ecsPod, err := cloud.ExportECSPod(j.pod, j.ecsClient, nil)
 	if err != nil {
 		return errors.Wrap(err, "exporting pod")
 	}

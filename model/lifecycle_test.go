@@ -489,7 +489,7 @@ func TestBuildSetActivated(t *testing.T) {
 				}
 				So(canary.Insert(), ShouldBeNil)
 
-				So(SetBuildActivation(b.Id, false, evergreen.DefaultTaskActivator), ShouldBeNil)
+				So(ActivateBuildsAndTasks([]string{b.Id}, false, evergreen.DefaultTaskActivator), ShouldBeNil)
 				// the build should have been updated in the db
 				b, err := build.FindOne(build.ById(b.Id))
 				So(err, ShouldBeNil)
@@ -508,7 +508,7 @@ func TestBuildSetActivated(t *testing.T) {
 				So(differentUserTask.Activated, ShouldBeTrue)
 				So(differentUserTask.ActivatedBy, ShouldEqual, user)
 
-				So(SetBuildActivation(b.Id, true, evergreen.DefaultTaskActivator), ShouldBeNil)
+				So(ActivateBuildsAndTasks([]string{b.Id}, true, evergreen.DefaultTaskActivator), ShouldBeNil)
 				activatedTasks, err := task.Find(task.ByActivation(true))
 				So(err, ShouldBeNil)
 				So(len(activatedTasks), ShouldEqual, 5)
@@ -554,7 +554,7 @@ func TestBuildSetActivated(t *testing.T) {
 				So(matching2.Insert(), ShouldBeNil)
 
 				// have a user set the build activation to true
-				So(SetBuildActivation(b.Id, true, user), ShouldBeNil)
+				So(ActivateBuildsAndTasks([]string{b.Id}, true, user), ShouldBeNil)
 
 				// task with the different user activating should be activated with that user
 				task1, err := task.FindOne(db.Query(task.ById(matching.Id)))
@@ -575,7 +575,7 @@ func TestBuildSetActivated(t *testing.T) {
 				So(b.ActivatedBy, ShouldEqual, user)
 
 				// deactivate the task from evergreen and nothing should be deactivated.
-				So(SetBuildActivation(b.Id, false, evergreen.DefaultTaskActivator), ShouldBeNil)
+				So(ActivateBuildsAndTasks([]string{b.Id}, false, evergreen.DefaultTaskActivator), ShouldBeNil)
 
 				// refresh from the database and check again
 				b, err = build.FindOne(build.ById(b.Id))
@@ -761,6 +761,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				OperatingSystem: evergreen.LinuxOS,
 				CPUArchitecture: evergreen.ArchARM64,
 			},
+			Credential: "repo_creds",
 		}
 		container2 := Container{
 			Name:       "container2",
@@ -1044,12 +1045,13 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(len(build.Tasks), ShouldEqual, 4)
 
 			bvContainerOpts := task.ContainerOptions{
-				CPU:        container1.Resources.CPU,
-				MemoryMB:   container1.Resources.MemoryMB,
-				WorkingDir: container1.WorkingDir,
-				Image:      container1.Image,
-				OS:         container1.System.OperatingSystem,
-				Arch:       container1.System.CPUArchitecture,
+				CPU:           container1.Resources.CPU,
+				MemoryMB:      container1.Resources.MemoryMB,
+				WorkingDir:    container1.WorkingDir,
+				Image:         container1.Image,
+				OS:            container1.System.OperatingSystem,
+				Arch:          container1.System.CPUArchitecture,
+				RepoCredsName: container1.Credential,
 			}
 			taskContainerOpts := task.ContainerOptions{
 				CPU:        smallContainerSize.CPU,

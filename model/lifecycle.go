@@ -91,15 +91,18 @@ func SetVersionActivation(versionId string, active bool, caller string) error {
 			}
 		}
 	}
+
 	if len(tasksToModify) == 0 {
 		return nil
 	}
 
+	buildIdsMap := map[string]bool{}
 	var buildIds []string
 	for _, t := range tasksToModify {
-		if !utility.StringSliceContains(buildIds, t.BuildId) {
-			buildIds = append(buildIds, t.BuildId)
-		}
+		buildIdsMap[t.BuildId] = true
+	}
+	for buildId := range buildIdsMap {
+		buildIds = append(buildIds, buildId)
 	}
 	if err := build.UpdateActivation(buildIds, active, caller); err != nil {
 		return errors.Wrapf(err, "setting build activations to %t", active)
@@ -110,15 +113,15 @@ func SetVersionActivation(versionId string, active bool, caller string) error {
 	return nil
 }
 
-// SetBuildActivation updates the "active" state of this build and all associated tasks.
+// ActivateBuildsAndTasks updates the "active" state of this build and all associated tasks.
 // It also updates the task cache for the build document.
-func SetBuildActivation(buildId string, active bool, caller string) error {
-	if err := build.UpdateActivation([]string{buildId}, active, caller); err != nil {
-		return errors.Wrapf(err, "setting build activation to %t for build '%s'", active, buildId)
+func ActivateBuildsAndTasks(buildIds []string, active bool, caller string) error {
+	if err := build.UpdateActivation(buildIds, active, caller); err != nil {
+		return errors.Wrapf(err, "setting build activation to %t for builds '%v'", active, buildIds)
 	}
 
-	return errors.Wrapf(setTaskActivationForBuilds([]string{buildId}, active, true, nil, caller),
-		"setting task activation for build '%s'", buildId)
+	return errors.Wrapf(setTaskActivationForBuilds(buildIds, active, true, nil, caller),
+		"setting task activation for builds '%v'", buildIds)
 }
 
 // setTaskActivationForBuilds updates the "active" state of all tasks in buildIds.
@@ -1349,6 +1352,7 @@ func getContainerOptions(project *Project, pRef *ProjectRef, container string) (
 		opts := task.ContainerOptions{
 			WorkingDir:     c.WorkingDir,
 			Image:          c.Image,
+			RepoCredsName:  c.Credential,
 			OS:             c.System.OperatingSystem,
 			Arch:           c.System.CPUArchitecture,
 			WindowsVersion: c.System.WindowsVersion,
@@ -1701,6 +1705,7 @@ func addNewTasks(ctx context.Context, activationInfo specificActivationInfo, v *
 
 	activatedTaskIds := []string{}
 	activatedTasks := []task.Task{}
+	var buildIdsToActivate []string
 	for _, b := range existingBuilds {
 		wasActivated := b.Activated
 		// Find the set of task names that already exist for the given build, including display tasks.
@@ -1756,19 +1761,22 @@ func addNewTasks(ctx context.Context, activationInfo specificActivationInfo, v *
 		}
 		// update build activation status if tasks have since been activated
 		if !wasActivated && b.Activated {
-			if err := build.UpdateActivation([]string{b.Id}, true, evergreen.DefaultTaskActivator); err != nil {
-				return nil, err
-			}
+			buildIdsToActivate = append(buildIdsToActivate, b.Id)
+		}
+	}
+	if len(buildIdsToActivate) > 0 {
+		if err := build.UpdateActivation(buildIdsToActivate, true, evergreen.DefaultTaskActivator); err != nil {
+			return nil, err
 		}
 	}
 	if activationInfo.hasActivationTasks() {
-		grip.Error(message.WrapError(v.UpdateBuildVariants(), message.Fields{
-			"message": "unable to add batchtime tasks",
-			"version": v.Id,
-		}))
-	}
-	if err = v.SetActivated(true); err != nil {
-		return nil, errors.Wrap(err, "setting version activation to true")
+		if err = v.ActivateAndSetBuildVariants(); err != nil {
+			return nil, errors.Wrap(err, "activating version and adding batchtime tasks")
+		}
+	} else {
+		if err = v.SetActivated(true); err != nil {
+			return nil, errors.Wrap(err, "setting version activation to true")
+		}
 	}
 
 	activatedTaskDependencies, err := task.GetRecursiveDependenciesUp(activatedTasks, nil)
