@@ -309,7 +309,7 @@ func TestAttachToNewRepo(t *testing.T) {
 	assert.NoError(t, u.Insert())
 	pRef.Owner = "newOwner"
 	pRef.Repo = "newRepo"
-	assert.NoError(t, pRef.AttachToNewRepo(u))
+	assert.NoError(t, pRef.AttachToNewRepo(context.Background(), u))
 
 	pRefFromDB, err := FindBranchProjectRef(pRef.Id)
 	assert.NoError(t, err)
@@ -340,7 +340,7 @@ func TestAttachToNewRepo(t *testing.T) {
 	assert.NoError(t, pRef.Insert())
 	pRef.Owner = "newOwner"
 	pRef.Repo = "newRepo"
-	assert.NoError(t, pRef.AttachToNewRepo(u))
+	assert.NoError(t, pRef.AttachToNewRepo(context.Background(), u))
 	assert.True(t, pRef.UseRepoSettings())
 	assert.NotEmpty(t, pRef.RepoRefId)
 
@@ -2085,11 +2085,11 @@ func TestMergeWithProjectConfig(t *testing.T) {
 				},
 			},
 			ContainerSizes: map[string]ContainerResources{
-				"small": ContainerResources{
+				"small": {
 					MemoryMB: 200,
 					CPU:      1,
 				},
-				"large": ContainerResources{
+				"large": {
 					MemoryMB: 400,
 					CPU:      2,
 				},
@@ -2125,7 +2125,7 @@ func TestMergeWithProjectConfig(t *testing.T) {
 	assert.Equal(t, 2, projectRef.ContainerSizes["large"].CPU)
 
 	projectRef.ContainerSizes = map[string]ContainerResources{
-		"xlarge": ContainerResources{
+		"xlarge": {
 			MemoryMB: 800,
 			CPU:      4,
 		},
