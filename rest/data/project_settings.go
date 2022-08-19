@@ -139,6 +139,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			if err != nil {
 				return nil, errors.Wrapf(err, "enabling webhooks for project '%s'", projectId)
 			}
+			modified = true
 		} else if mergedProjectRef.IsEnabled() && !mergedBeforeRef.IsEnabled() {
 			if err = handleGithubConflicts(mergedBeforeRef, "Enabling project"); err != nil {
 				return nil, err
