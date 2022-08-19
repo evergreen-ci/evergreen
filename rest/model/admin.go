@@ -942,9 +942,9 @@ func (a *APIHostInitConfig) ToService() (interface{}, error) {
 }
 
 type APIPodLifecycleConfig struct {
-	S3BaseURL               *string `json:"s3_base_url"`
-	MaxParallelPodRequests  int     `json:"max_parallel_pod_requests"`
-	MaxPodDefinitionCleanup int     `json:"max_pod_definition_cleanup"`
+	S3BaseURL                   *string `json:"s3_base_url"`
+	MaxParallelPodRequests      int     `json:"max_parallel_pod_requests"`
+	MaxPodDefinitionCleanupRate int     `json:"max_pod_definition_cleanup_rate"`
 }
 
 func (a *APIPodLifecycleConfig) BuildFromService(h interface{}) error {
@@ -952,7 +952,7 @@ func (a *APIPodLifecycleConfig) BuildFromService(h interface{}) error {
 	case evergreen.PodLifecycleConfig:
 		a.S3BaseURL = utility.ToStringPtr(v.S3BaseURL)
 		a.MaxParallelPodRequests = v.MaxParallelPodRequests
-		a.MaxPodDefinitionCleanup = v.MaxPodDefinitionCleanup
+		a.MaxPodDefinitionCleanupRate = v.MaxPodDefinitionCleanupRate
 	default:
 		return errors.Errorf("programmatic error: expected pod init config but got type %T", h)
 	}
@@ -961,9 +961,9 @@ func (a *APIPodLifecycleConfig) BuildFromService(h interface{}) error {
 
 func (a *APIPodLifecycleConfig) ToService() (interface{}, error) {
 	return evergreen.PodLifecycleConfig{
-		S3BaseURL:               utility.FromStringPtr(a.S3BaseURL),
-		MaxParallelPodRequests:  a.MaxParallelPodRequests,
-		MaxPodDefinitionCleanup: a.MaxPodDefinitionCleanup,
+		S3BaseURL:                   utility.FromStringPtr(a.S3BaseURL),
+		MaxParallelPodRequests:      a.MaxParallelPodRequests,
+		MaxPodDefinitionCleanupRate: a.MaxPodDefinitionCleanupRate,
 	}, nil
 }
 

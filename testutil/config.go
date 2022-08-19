@@ -257,9 +257,9 @@ func MockConfig() *evergreen.Settings {
 		},
 		Plugins: map[string]map[string]interface{}{"k4": {"k5": "v5"}},
 		PodLifecycle: evergreen.PodLifecycleConfig{
-			S3BaseURL:               "s3_base_url",
-			MaxParallelPodRequests:  2000,
-			MaxPodDefinitionCleanup: 100,
+			S3BaseURL:                   "s3_base_url",
+			MaxParallelPodRequests:      2000,
+			MaxPodDefinitionCleanupRate: 100,
 		},
 		PprofPort: "port",
 		Providers: evergreen.CloudProviders{

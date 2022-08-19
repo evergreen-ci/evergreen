@@ -362,9 +362,9 @@ func (s *AdminSuite) TestJiraConfig() {
 
 func (s *AdminSuite) TestPodLifecycleConfig() {
 	config := PodLifecycleConfig{
-		S3BaseURL:               "s3_base_url",
-		MaxParallelPodRequests:  1000,
-		MaxPodDefinitionCleanup: 100,
+		S3BaseURL:                   "s3_base_url",
+		MaxParallelPodRequests:      1000,
+		MaxPodDefinitionCleanupRate: 100,
 	}
 
 	err := config.Set()
