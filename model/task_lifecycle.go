@@ -1570,24 +1570,22 @@ func resetStrandedTask(t *task.Task) error {
 		// If the task has already exceeded the unschedulable threshold, we
 		// don't want to restart it, so just mark it as finished.
 		if t.DisplayOnly {
-			for _, etID := range t.ExecutionTasks {
-				var execTask *task.Task
-				execTask, err := task.FindOneId(etID)
-				if err != nil {
-					return errors.Wrap(err, "finding execution task")
-				}
-				if execTask == nil {
-					return errors.New("execution task not found")
-				}
-				if err := MarkEnd(execTask, evergreen.MonitorPackage, time.Now(), &t.Details, false); err != nil {
-					return errors.Wrap(err, "marking execution task as ended")
+			execTasks, err := task.FindAll(db.Query(task.ByIds(t.ExecutionTasks)))
+			if err != nil {
+				return errors.Wrap(err, "finding execution tasks")
+			}
+			for _, execTask := range execTasks {
+				if !evergreen.IsFinishedTaskStatus(execTask.Status) {
+					if err := MarkEnd(&execTask, evergreen.MonitorPackage, time.Now(), &t.Details, false); err != nil {
+						return errors.Wrap(err, "marking execution task as ended")
+					}
 				}
 			}
 		}
 		return errors.WithStack(MarkEnd(t, evergreen.MonitorPackage, time.Now(), &t.Details, false))
 	}
 
-	return errors.Wrap(ResetTaskOrDisplayTask(t, evergreen.User, evergreen.MonitorPackage, false, &t.Details), "resetting task")
+	return errors.Wrap(ResetTaskOrDisplayTask(t, evergreen.User, evergreen.MonitorPackage, true, &t.Details), "resetting task")
 }
 
 // ResetTaskOrDisplayTask is a wrapper for TryResetTask that handles execution and display tasks that are restarted

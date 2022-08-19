@@ -3367,6 +3367,80 @@ func TestClearAndResetStaleStrandedHostTask(t *testing.T) {
 	assert.Equal("system", runningTask.Details.Type)
 }
 
+func TestClearAndResetStrandedHostTaskFailedOnly(t *testing.T) {
+	require.NoError(t, db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection, VersionCollection))
+
+	dispTask := &task.Task{
+		Id:             "dt",
+		Status:         evergreen.TaskStarted,
+		Version:        "version",
+		Activated:      true,
+		ActivatedTime:  time.Now(),
+		BuildId:        "b",
+		ExecutionTasks: []string{"et1", "et2"},
+		DisplayOnly:    true,
+	}
+
+	execTask1 := &task.Task{
+		Id:            "et1",
+		Status:        evergreen.TaskStarted,
+		Version:       "version",
+		Activated:     true,
+		ActivatedTime: time.Now(),
+		BuildId:       "b",
+	}
+
+	execTask2 := &task.Task{
+		Id:            "et2",
+		Status:        evergreen.TaskSucceeded,
+		Version:       "version",
+		Activated:     true,
+		ActivatedTime: time.Now(),
+		BuildId:       "b",
+	}
+	assert.NoError(t, dispTask.Insert())
+	assert.NoError(t, execTask1.Insert())
+	assert.NoError(t, execTask2.Insert())
+
+	h := &host.Host{
+		Id:          "h1",
+		RunningTask: "et1",
+	}
+	assert.NoError(t, h.Insert())
+
+	b := build.Build{
+		Id:      "b",
+		Version: "version",
+	}
+	assert.NoError(t, b.Insert())
+	v := Version{
+		Id: "version",
+	}
+	assert.NoError(t, v.Insert())
+
+	assert.NoError(t, ClearAndResetStrandedHostTask(h))
+	restartedDisplayTask, err := task.FindOne(db.Query(task.ById("dt")))
+	assert.NoError(t, err)
+	assert.Equal(t, evergreen.TaskUndispatched, restartedDisplayTask.Status)
+	assert.Equal(t, 1, restartedDisplayTask.Execution)
+	restartedExecutionTask, err := task.FindOne(db.Query(task.ById("et1")))
+	assert.NoError(t, err)
+	assert.Equal(t, 1, restartedExecutionTask.Execution)
+	assert.Equal(t, 1, restartedExecutionTask.LatestParentExecution)
+	assert.Equal(t, evergreen.TaskUndispatched, restartedExecutionTask.Status)
+	nonRestartedExecutionTask, err := task.FindOne(db.Query(task.ById("et2")))
+	assert.NoError(t, err)
+	assert.Equal(t, evergreen.TaskSucceeded, nonRestartedExecutionTask.Status)
+	assert.Equal(t, 0, nonRestartedExecutionTask.Execution)
+	assert.Equal(t, 1, restartedExecutionTask.LatestParentExecution)
+
+	oldRestartedExecutionTask, err := task.FindOneOld(task.ById(fmt.Sprintf("%v_%v", execTask1.Id, 0)))
+	assert.NoError(t, err)
+	assert.NotNil(t, oldRestartedExecutionTask)
+	assert.Equal(t, evergreen.TaskFailed, oldRestartedExecutionTask.Status)
+	assert.Equal(t, 0, oldRestartedExecutionTask.Execution)
+}
+
 func TestMarkUnallocatableContainerTasksSystemFailed(t *testing.T) {
 	defer func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.LegacyEventLogCollection))
@@ -3594,7 +3668,7 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 			dbDisplayTask, err := task.FindOneId(dt.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbDisplayTask)
-			assert.True(t, dbDisplayTask.ResetWhenFinished, "display task should reset when other exec task finishes running")
+			assert.True(t, dbDisplayTask.ResetFailedWhenFinished, "display task should reset failed when other exec task finishes running")
 
 			dbArchivedTask, err := task.FindOneOldByIdAndExecution(tsk.Id, 1)
 			assert.NoError(t, err)
