@@ -3668,7 +3668,7 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 			dbDisplayTask, err := task.FindOneId(dt.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbDisplayTask)
-			assert.True(t, dbDisplayTask.ResetWhenFinished, "display task should reset when other exec task finishes running")
+			assert.True(t, dbDisplayTask.ResetFailedWhenFinished, "display task should reset failed when other exec task finishes running")
 
 			dbArchivedTask, err := task.FindOneOldByIdAndExecution(tsk.Id, 1)
 			assert.NoError(t, err)
