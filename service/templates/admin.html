@@ -61,7 +61,7 @@ Admin Settings
 						<li class="link" ng-click="scrollTo('alerts')">Alerts</li>
 						<li class="link" ng-click="scrollTo('notify')">Notify</li>
 						<li class="link" ng-click="scrollTo('hostinit')">Hostinit</li>
-						<li class="link" ng-click="scrollTo('pod_init')">Pod init</li>
+						<li class="link" ng-click="scrollTo('pod_lifecycle')">Pod init</li>
 						<li class="link" ng-click="scrollTo('scheduler')">Scheduler</li>
 						<li class="link" ng-click="scrollTo('repotracker')">Repotracker</li>
 						<div>Web</div>
@@ -651,23 +651,23 @@ Admin Settings
 								</md-card-content>
 							</md-card>
 
-							<md-card flex=50 id="pod_init">
+							<md-card flex=50 id="pod_lifecycle">
 								<md-card-title>
 									<md-card-title-text>
 										<span>Pod init</span>
 									</md-card-title-text>
-									<md-button ng-click="clearSection('pod_init')">
+									<md-button ng-click="clearSection('pod_lifecycle')">
 										<i class="fa fa-trash"></i>
 									</md-button>
 								</md-card-title>
 								<md-card-content>
 									<md-input-container class="control" style="width:45%;">
 										<label>S3 Download Base URL</label>
-										<input type="text" ng-model="Settings.pod_init.s3_base_url">
+										<input type="text" ng-model="Settings.pod_lifecycle.s3_base_url">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
 										<label>Max Parallel Pod Requests</label>
-										<input type="number" ng-model="Settings.pod_init.max_parallel_pod_requests">
+										<input type="number" ng-model="Settings.pod_lifecycle.max_parallel_pod_requests">
 									</md-input-container>
 								</md-card-content>
 							</md-card>
@@ -1386,7 +1386,7 @@ Admin Settings
 							<md-card flex=50 id="data_pipes" style="height:auto">
 								<md-card-title>
 									<md-card-title-text>
-                                                                            <span>Data-Pipes</span>
+										<span>Data-Pipes</span>
 									</md-card-title-text>
 									<md-button ng-click="clearSection('data_pipes')">
 										<i class="fa fa-trash"></i>
@@ -1415,7 +1415,7 @@ Admin Settings
 									</md-input-container>
 								</md-card-content>
 							</md-card>
-                                                </section>
+						</section>
 
 						<section layout="row" flex>
 							<md-card flex=50 id="cedar" style="height:auto">
@@ -1465,7 +1465,7 @@ Admin Settings
 										<input type="number" ng-model="Settings.presto.port">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
-                                                                                <md-checkbox ng-model="Settings.presto.tls">TLS</md-checkbox>
+										<md-checkbox ng-model="Settings.presto.tls">TLS</md-checkbox>
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
 										<label>Username</label>

@@ -32,14 +32,14 @@ func TestPodAllocatorJob(t *testing.T) {
 		assert.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, pod.Collection, dispatcher.Collection, event.LegacyEventLogCollection))
 	}()
 
-	var originalPodInit evergreen.PodInitConfig
-	require.NoError(t, originalPodInit.Get(evergreen.GetEnvironment()))
+	var originalPodLifecycleConf evergreen.PodLifecycleConfig
+	require.NoError(t, originalPodLifecycleConf.Get(evergreen.GetEnvironment()))
 	originalFlags, err := evergreen.GetServiceFlags()
 	require.NoError(t, err)
 	// Since the tests depend on modifying the global environment, reset it to
 	// its initial state afterwards.
 	defer func() {
-		require.NoError(t, originalPodInit.Set())
+		require.NoError(t, originalPodLifecycleConf.Set())
 		require.NoError(t, originalFlags.Set())
 	}()
 
@@ -48,8 +48,8 @@ func TestPodAllocatorJob(t *testing.T) {
 
 	env.EvergreenSettings.ServiceFlags.PodAllocatorDisabled = false
 	require.NoError(t, env.EvergreenSettings.ServiceFlags.Set())
-	env.EvergreenSettings.PodInit.MaxParallelPodRequests = 10
-	require.NoError(t, env.EvergreenSettings.PodInit.Set())
+	env.EvergreenSettings.PodLifecycle.MaxParallelPodRequests = 10
+	require.NoError(t, env.EvergreenSettings.PodLifecycle.Set())
 
 	// Pod allocation uses a multi-document transaction, which requires the
 	// collections to exist first before any documents can be inserted.
@@ -217,12 +217,12 @@ func TestPodAllocatorJob(t *testing.T) {
 			assert.False(t, dbTask.ContainerAllocated)
 		},
 		"RunNoopsWhenMaxParallelPodRequestLimitIsReached": func(ctx context.Context, t *testing.T, j *podAllocatorJob, v cocoa.Vault, tsk task.Task, pRef model.ProjectRef) {
-			originalPodInit := env.EvergreenSettings.PodInit
+			originalPodLifecycle := env.EvergreenSettings.PodLifecycle
 			defer func() {
-				assert.NoError(t, originalPodInit.Set())
+				assert.NoError(t, originalPodLifecycle.Set())
 			}()
-			env.EvergreenSettings.PodInit.MaxParallelPodRequests = 1
-			require.NoError(t, env.EvergreenSettings.PodInit.Set())
+			env.EvergreenSettings.PodLifecycle.MaxParallelPodRequests = 1
+			require.NoError(t, env.EvergreenSettings.PodLifecycle.Set())
 
 			initializing := getInitializingPod(t)
 			require.NoError(t, initializing.Insert())
@@ -311,14 +311,14 @@ func TestPopulatePodAllocatorJobs(t *testing.T) {
 		assert.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, pod.Collection, dispatcher.Collection))
 	}()
 
-	var originalPodInit evergreen.PodInitConfig
-	require.NoError(t, originalPodInit.Get(evergreen.GetEnvironment()))
+	var originalPodLifecycleConf evergreen.PodLifecycleConfig
+	require.NoError(t, originalPodLifecycleConf.Get(evergreen.GetEnvironment()))
 	originalFlags, err := evergreen.GetServiceFlags()
 	require.NoError(t, err)
 	// Since the tests depend on modifying the global environment, reset it to
 	// its initial state afterwards.
 	defer func() {
-		require.NoError(t, originalPodInit.Set())
+		require.NoError(t, originalPodLifecycleConf.Set())
 		require.NoError(t, originalFlags.Set())
 	}()
 
@@ -352,12 +352,12 @@ func TestPopulatePodAllocatorJobs(t *testing.T) {
 			assert.False(t, dbTask.ShouldAllocateContainer())
 		},
 		"StopsEnqueueingJobsWhenMaxParallelPodRequestLimitIsReached": func(ctx context.Context, t *testing.T, env *mock.Environment) {
-			originalPodInit := env.EvergreenSettings.PodInit
+			originalPodLifecycleConf := env.EvergreenSettings.PodLifecycle
 			defer func() {
-				require.NoError(t, originalPodInit.Set())
+				require.NoError(t, originalPodLifecycle.Set())
 			}()
-			env.EvergreenSettings.PodInit.MaxParallelPodRequests = 1
-			require.NoError(t, env.EvergreenSettings.PodInit.Set())
+			env.EvergreenSettings.PodLifecycle.MaxParallelPodRequests = 1
+			require.NoError(t, env.EvergreenSettings.PodLifecycle.Set())
 
 			initializing := getInitializingPod(t)
 			require.NoError(t, initializing.Insert())
@@ -400,8 +400,8 @@ func TestPopulatePodAllocatorJobs(t *testing.T) {
 
 			env.EvergreenSettings.ServiceFlags.PodAllocatorDisabled = false
 			require.NoError(t, env.EvergreenSettings.ServiceFlags.Set())
-			env.EvergreenSettings.PodInit.MaxParallelPodRequests = 100
-			require.NoError(t, env.EvergreenSettings.PodInit.Set())
+			env.EvergreenSettings.PodLifecycle.MaxParallelPodRequests = 100
+			require.NoError(t, env.EvergreenSettings.PodLifecycle.Set())
 
 			require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, pod.Collection, dispatcher.Collection))
 

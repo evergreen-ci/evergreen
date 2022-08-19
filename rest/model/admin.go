@@ -32,7 +32,7 @@ func NewConfigModel() *APIAdminSettings {
 		NewRelic:          &APINewRelicConfig{},
 		Notify:            &APINotifyConfig{},
 		Plugins:           map[string]map[string]interface{}{},
-		PodInit:           &APIPodInitConfig{},
+		PodLifecycle:      &APIPodLifecycleConfig{},
 		Presto:            &APIPrestoConfig{},
 		Providers:         &APICloudProviders{},
 		RepoTracker:       &APIRepoTrackerConfig{},
@@ -79,7 +79,7 @@ type APIAdminSettings struct {
 	NewRelic            *APINewRelicConfig                `json:"newrelic,omitempty"`
 	Notify              *APINotifyConfig                  `json:"notify,omitempty"`
 	Plugins             map[string]map[string]interface{} `json:"plugins,omitempty"`
-	PodInit             *APIPodInitConfig                 `json:"pod_init,omitempty"`
+	PodLifecycle        *APIPodLifecycleConfig            `json:"pod_lifecycle,omitempty"`
 	PprofPort           *string                           `json:"pprof_port,omitempty"`
 	Presto              *APIPrestoConfig                  `json:"presto,omitempty"`
 	Providers           *APICloudProviders                `json:"providers,omitempty"`
@@ -941,14 +941,14 @@ func (a *APIHostInitConfig) ToService() (interface{}, error) {
 	}, nil
 }
 
-type APIPodInitConfig struct {
+type APIPodLifecycleConfig struct {
 	S3BaseURL              *string `json:"s3_base_url"`
 	MaxParallelPodRequests int     `json:"max_parallel_pod_requests"`
 }
 
-func (a *APIPodInitConfig) BuildFromService(h interface{}) error {
+func (a *APIPodLifecycleConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
-	case evergreen.PodInitConfig:
+	case evergreen.PodLifecycleConfig:
 		a.S3BaseURL = utility.ToStringPtr(v.S3BaseURL)
 		a.MaxParallelPodRequests = v.MaxParallelPodRequests
 	default:
@@ -957,8 +957,8 @@ func (a *APIPodInitConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APIPodInitConfig) ToService() (interface{}, error) {
-	return evergreen.PodInitConfig{
+func (a *APIPodLifecycleConfig) ToService() (interface{}, error) {
+	return evergreen.PodLifecycleConfig{
 		S3BaseURL:              utility.FromStringPtr(a.S3BaseURL),
 		MaxParallelPodRequests: a.MaxParallelPodRequests,
 	}, nil
