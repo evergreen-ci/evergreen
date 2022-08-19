@@ -13,8 +13,9 @@ var podLifecycleConfigKey = bsonutil.MustHaveTag(Settings{}, "PodLifecycle") //n
 
 // PodLifecycleConfig holds logging settings for the pod init process.
 type PodLifecycleConfig struct {
-	S3BaseURL              string `bson:"s3_base_url" json:"s3_base_url" yaml:"s3_base_url"`
-	MaxParallelPodRequests int    `bson:"max_parallel_pod_requests" json:"max_parallel_pod_requests" yaml:"max_parallel_pod_requests"`
+	S3BaseURL               string `bson:"s3_base_url" json:"s3_base_url" yaml:"s3_base_url"`
+	MaxParallelPodRequests  int    `bson:"max_parallel_pod_requests" json:"max_parallel_pod_requests" yaml:"max_parallel_pod_requests"`
+	MaxPodDefinitionCleanup int    `bson:"max_pod_definition_cleanup" json:"max_pod_definition_cleanup" yam:"max_pod_definition_cleanup"`
 }
 
 func (c *PodLifecycleConfig) SectionId() string { return "pod_lifecycle" }
@@ -47,10 +48,7 @@ func (c *PodLifecycleConfig) Set() error {
 	coll := env.DB().Collection(ConfigCollection)
 
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
-		"$set": bson.M{
-			podLifecycleS3BaseURLKey:              c.S3BaseURL,
-			podLifecycleMaxParallelPodRequestsKey: c.MaxParallelPodRequests,
-		},
+		"$set": c,
 	}, options.Update().SetUpsert(true))
 
 	return errors.Wrapf(err, "updating config section '%s'", c.SectionId())

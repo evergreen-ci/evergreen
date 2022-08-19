@@ -108,9 +108,6 @@ var (
 	hostInitMaxTotalDynamicHostsKey = bsonutil.MustHaveTag(HostInitConfig{}, "MaxTotalDynamicHosts")
 	hostInitS3BaseURLKey            = bsonutil.MustHaveTag(HostInitConfig{}, "S3BaseURL")
 
-	podLifecycleS3BaseURLKey              = bsonutil.MustHaveTag(PodLifecycleConfig{}, "S3BaseURL")
-	podLifecycleMaxParallelPodRequestsKey = bsonutil.MustHaveTag(PodLifecycleConfig{}, "MaxParallelPodRequests")
-
 	// Spawnhost keys
 	unexpirableHostsPerUserKey   = bsonutil.MustHaveTag(SpawnHostConfig{}, "UnexpirableHostsPerUser")
 	unexpirableVolumesPerUserKey = bsonutil.MustHaveTag(SpawnHostConfig{}, "UnexpirableVolumesPerUser")

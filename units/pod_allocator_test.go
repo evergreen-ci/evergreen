@@ -354,7 +354,7 @@ func TestPopulatePodAllocatorJobs(t *testing.T) {
 		"StopsEnqueueingJobsWhenMaxParallelPodRequestLimitIsReached": func(ctx context.Context, t *testing.T, env *mock.Environment) {
 			originalPodLifecycleConf := env.EvergreenSettings.PodLifecycle
 			defer func() {
-				require.NoError(t, originalPodLifecycle.Set())
+				require.NoError(t, originalPodLifecycleConf.Set())
 			}()
 			env.EvergreenSettings.PodLifecycle.MaxParallelPodRequests = 1
 			require.NoError(t, env.EvergreenSettings.PodLifecycle.Set())

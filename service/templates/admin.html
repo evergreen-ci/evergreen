@@ -669,6 +669,10 @@ Admin Settings
 										<label>Max Parallel Pod Requests</label>
 										<input type="number" ng-model="Settings.pod_lifecycle.max_parallel_pod_requests">
 									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Max Pod Definition Cleanup Per Job</label>
+										<input type="number" ng-model="Settings.pod_lifecycle.max_pod_definition_cleanup">
+									</md-input-container>
 								</md-card-content>
 							</md-card>
 
