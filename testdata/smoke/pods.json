@@ -1,0 +1,2 @@
+{"_id":"pod0", "secret":"de249183582947721fdfb2ea1796574b","agent_revision":"foo", "task_creation_opts": {"env_secrets": {"POD_SECRET": "de249183582947721fdfb2ea1796574b"}}}
+{"_id":"pod1", "secret":"de249183582947721fdfb2ea1796574b","agent_revision":"foo"}

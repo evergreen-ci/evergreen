@@ -344,8 +344,11 @@ tasks:
     name: dist-unsigned
     activate: false
   - <<: *run-smoke-test
-    name: smoke-test-task
+    name: smoke-test-host-task
     tags: ["smoke"]
+  - <<: *run-smoke-test
+    name: smoke-test-container-task
+    tags: [ "smoke" ]
   - <<: *run-smoke-test
     name: smoke-test-endpoints
     tags: ["smoke"]

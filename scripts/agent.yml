@@ -73,6 +73,14 @@ tasks:
             set -o verbose
             set -o errexit
             echo "fourth"
+  - name: container_task
+    commands:
+      - command: shell.exec
+        params:
+          script: |
+            set -o verbose
+            set -o errexit
+            echo "first"
   - name: test
     commands:
       - command: git.get_project
@@ -201,3 +209,20 @@ buildvariants:
       - localhost
     tasks:
       - name: my_group
+  - name: container_bv
+    display_name: container_bv
+    run_on:
+      - container
+    tasks:
+      - name: container_task
+
+containers:
+  - name: container
+    working_dir: /
+    image: "hadjri/evg-e2e-test-ubuntu"
+    resources:
+      cpu: 1024
+      memory_mb: 1024
+    system:
+      cpu_architecture: x86_64
+      operating_system: linux

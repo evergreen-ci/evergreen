@@ -3,6 +3,7 @@ package operations
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/agent"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -93,14 +94,18 @@ func getLatestGithubCommit() (string, error) {
 	return "", errors.New("could not find latest commit in response")
 }
 
-func checkTaskByCommit(username, key string) error {
+func checkTaskByCommit(username, key, mode string) error {
 	client := utility.GetHTTPClient()
 	defer utility.PutHTTPClient(client)
 
 	var builds []apimodels.APIBuild
 	var build apimodels.APIBuild
 
-	// trigger repotracker
+	buildIdx := 0
+	if mode == string(agent.PodMode) {
+		buildIdx = 1
+	}
+	// trigger repotracker to insert relevant builds and tasks from agent.yml definitions
 	for i := 0; i < 5; i++ {
 		if i == 5 {
 			return errors.Errorf("unable to trigger the repotracker after 5 attempts")
@@ -144,7 +149,7 @@ func checkTaskByCommit(username, key string) error {
 			builds = []apimodels.APIBuild{build}
 		}
 
-		if len(builds[0].Tasks) == 0 {
+		if len(builds[buildIdx].Tasks) == 0 {
 			builds = []apimodels.APIBuild{}
 			build = apimodels.APIBuild{}
 
@@ -161,11 +166,11 @@ OUTER:
 			return errors.Errorf("task status is %s (expected %s)", task.Status, evergreen.TaskSucceeded)
 		}
 		time.Sleep(10 * time.Second)
-		grip.Infof("checking for %d tasks (%d/30)", len(builds[0].Tasks), i+1)
+		grip.Infof("checking for %d tasks (%d/30)", len(builds[buildIdx].Tasks), i+1)
 
 		var err error
-		for t := 0; t < len(builds[0].Tasks); t++ {
-			task, err = checkTask(client, username, key, builds, t)
+		for t := 0; t < len(builds[buildIdx].Tasks); t++ {
+			task, err = checkTask(client, username, key, builds, t, buildIdx)
 			if err != nil {
 				return errors.WithStack(err)
 			}
@@ -249,10 +254,10 @@ func checkTaskLog(body []byte) error {
 	return nil
 }
 
-func checkTask(client *http.Client, username, key string, builds []apimodels.APIBuild, taskIndex int) (apimodels.APITask, error) {
+func checkTask(client *http.Client, username, key string, builds []apimodels.APIBuild, taskIndex, buildIdx int) (apimodels.APITask, error) {
 	task := apimodels.APITask{}
-	grip.Infof("checking for task %s", builds[0].Tasks[taskIndex])
-	r, err := http.NewRequest("GET", smokeUrlPrefix+smokeUiPort+"/rest/v2/tasks/"+builds[0].Tasks[taskIndex], nil)
+	grip.Infof("checking for task %s", builds[buildIdx].Tasks[taskIndex])
+	r, err := http.NewRequest("GET", smokeUrlPrefix+smokeUiPort+"/rest/v2/tasks/"+builds[buildIdx].Tasks[taskIndex], nil)
 	if err != nil {
 		return task, errors.Wrap(err, "failed to make request")
 	}
