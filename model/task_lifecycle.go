@@ -1583,6 +1583,10 @@ func resetStrandedTask(t *task.Task) error {
 				return errors.Wrap(err, "finding execution tasks")
 			}
 
+			if len(execTasks) == 0 {
+				return errors.Wrap(err, "no execution tasks found")
+			}
+
 			for _, execTask := range execTasks {
 				if err != nil { // Keeping existing error check logic?
 					return errors.Wrap(err, "finding execution task")
