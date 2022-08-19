@@ -1574,11 +1574,8 @@ func resetStrandedTask(t *task.Task) error {
 			if err != nil {
 				return errors.Wrap(err, "finding execution tasks")
 			}
-			if len(execTasks) == 0 {
-				return errors.Wrap(err, "no execution tasks found")
-			}
 			for _, execTask := range execTasks {
-				if evergreen.IsFinishedTaskStatus(execTask.Status) {
+				if !evergreen.IsFinishedTaskStatus(execTask.Status) {
 					if err := MarkEnd(&execTask, evergreen.MonitorPackage, time.Now(), &t.Details, false); err != nil {
 						return errors.Wrap(err, "marking execution task as ended")
 					}
