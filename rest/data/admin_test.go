@@ -136,6 +136,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.PodLifecycle.S3BaseURL, settingsFromConnector.PodLifecycle.S3BaseURL)
 	s.EqualValues(testSettings.PodLifecycle.MaxParallelPodRequests, settingsFromConnector.PodLifecycle.MaxParallelPodRequests)
 	s.EqualValues(testSettings.PodLifecycle.MaxPodDefinitionCleanupRate, settingsFromConnector.PodLifecycle.MaxPodDefinitionCleanupRate)
+	s.EqualValues(testSettings.PodLifecycle.MaxSecretCleanupRate, settingsFromConnector.PodLifecycle.MaxSecretCleanupRate)
 	s.EqualValues(testSettings.Jira.BasicAuthConfig.Username, settingsFromConnector.Jira.BasicAuthConfig.Username)
 
 	s.Equal(level.Info.String(), settingsFromConnector.LoggerConfig.DefaultLevel)

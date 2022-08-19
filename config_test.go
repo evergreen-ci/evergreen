@@ -365,6 +365,7 @@ func (s *AdminSuite) TestPodLifecycleConfig() {
 		S3BaseURL:                   "s3_base_url",
 		MaxParallelPodRequests:      1000,
 		MaxPodDefinitionCleanupRate: 100,
+		MaxSecretCleanupRate:        100,
 	}
 
 	err := config.Set()

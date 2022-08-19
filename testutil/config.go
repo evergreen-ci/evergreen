@@ -260,6 +260,7 @@ func MockConfig() *evergreen.Settings {
 			S3BaseURL:                   "s3_base_url",
 			MaxParallelPodRequests:      2000,
 			MaxPodDefinitionCleanupRate: 100,
+			MaxSecretCleanupRate:        200,
 		},
 		PprofPort: "port",
 		Providers: evergreen.CloudProviders{
