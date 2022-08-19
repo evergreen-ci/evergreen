@@ -606,7 +606,7 @@ func (h *projectIDPutHandler) Parse(ctx context.Context, r *http.Request) error 
 	return nil
 }
 
-// creates a new resource based on the Request-URI and JSON payload and returns a http.StatusCreated (201)
+// Run creates a new resource based on the Request-URI and JSON payload and returns a http.StatusCreated (201)
 func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 	p, err := data.FindProjectById(h.projectName, false, false)
 	if err != nil && err.(gimlet.ErrorResponse).StatusCode != http.StatusNotFound {
@@ -629,7 +629,7 @@ func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	u := gimlet.GetUser(ctx).(*user.DBUser)
 
-	if err = data.CreateProject(&dbProjectRef, u); err != nil {
+	if err = data.CreateProject(ctx, &dbProjectRef, u); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating project '%s'", h.projectName))
 	}
 
@@ -989,7 +989,7 @@ func (p *GetProjectAliasResultsHandler) Parse(ctx context.Context, r *http.Reque
 	if p.alias == "" {
 		return errors.New("alias parameter must be specified")
 	}
-	p.includeDependencies = (params.Get("include_deps") == "true")
+	p.includeDependencies = params.Get("include_deps") == "true"
 
 	return nil
 }

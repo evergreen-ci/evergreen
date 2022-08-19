@@ -52,7 +52,7 @@ func CopyProject(ctx context.Context, opts CopyProjectOpts) (*restModel.APIProje
 	disableStartingSettings(projectToCopy)
 
 	u := gimlet.GetUser(ctx).(*user.DBUser)
-	if err := CreateProject(projectToCopy, u); err != nil {
+	if err := CreateProject(ctx, projectToCopy, u); err != nil {
 		return nil, err
 	}
 	apiProjectRef := &restModel.APIProjectRef{}
@@ -134,12 +134,11 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			if err = handleGithubConflicts(mergedBeforeRef, "Changing owner/repo"); err != nil {
 				return nil, err
 			}
-			// check if webhook is enabled if the owner/repo has changed
+			// Check if webhook is enabled if the owner/repo has changed
 			_, err = model.EnableWebhooks(ctx, mergedProjectRef)
 			if err != nil {
 				return nil, errors.Wrapf(err, "enabling webhooks for project '%s'", projectId)
 			}
-			modified = true
 		} else if mergedProjectRef.IsEnabled() && !mergedBeforeRef.IsEnabled() {
 			if err = handleGithubConflicts(mergedBeforeRef, "Enabling project"); err != nil {
 				return nil, err
