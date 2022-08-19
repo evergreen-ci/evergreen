@@ -116,13 +116,8 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 				generateErr = errors.New(generateStatus.Error)
 			}
 
-			if generateStatus.ShouldExit {
-				return false, generateErr
-			}
 			if generateErr != nil {
-				if !strings.Contains(generateErr.Error(), evergreen.SaveGenerateTasksError) {
-					logger.Task().Infof("Problem polling for generate tasks job", generateErr.Error())
-				}
+				logger.Task().Infof("Problem polling for generate tasks job", generateErr.Error())
 				return false, generateErr
 			}
 			if generateStatus.Finished {
