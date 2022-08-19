@@ -32,8 +32,8 @@ func New(apiURL string) Config {
 		opts := gimlet.PermissionOpts{
 			Resource:      evergreen.SuperUserPermissionsID,
 			ResourceType:  evergreen.SuperUserResourceType,
-			Permission:    evergreen.PermissionAdminSettings,
-			RequiredLevel: evergreen.AdminSettingsEdit.Value,
+			Permission:    evergreen.PermissionProjectCreate,
+			RequiredLevel: evergreen.ProjectCreate.Value,
 		}
 		if user.HasPermission(opts) {
 			return next(ctx)
