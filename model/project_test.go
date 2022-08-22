@@ -1429,8 +1429,12 @@ func TestFindProjectsSuite(t *testing.T) {
 			PrivateVars: map[string]bool{"a": true},
 		}
 		s.NoError(vars.Insert())
-		before := getMockProjectSettings()
-		after := getMockProjectSettings()
+		before := ProjectSettingsEvent{
+			ProjectSettings: getMockProjectSettings(),
+		}
+		after := ProjectSettingsEvent{
+			ProjectSettings: getMockProjectSettings(),
+		}
 		after.GithubHooksEnabled = false
 
 		h :=

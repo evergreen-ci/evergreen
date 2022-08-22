@@ -22,13 +22,35 @@ type ProjectSettings struct {
 	Subscriptions      []event.Subscription `bson:"subscriptions" json:"subscriptions"`
 }
 
+type ProjectSettingsEvent struct {
+	ProjectSettings
+	PeriodicBuildsDefault bool `bson:"periodic_builds_default" json:"periodic_builds_default"`
+}
+
 type ProjectChangeEvent struct {
-	User   string          `bson:"user" json:"user"`
-	Before ProjectSettings `bson:"before" json:"before"`
-	After  ProjectSettings `bson:"after" json:"after"`
+	User   string               `bson:"user" json:"user"`
+	Before ProjectSettingsEvent `bson:"before" json:"before"`
+	After  ProjectSettingsEvent `bson:"after" json:"after"`
 }
 
 type ProjectChangeEvents []ProjectChangeEventEntry
+
+func (p *ProjectChangeEvents) ApplyDefaults() {
+	for _, event := range *p {
+		changeEvent, isChangeEvent := event.Data.(*ProjectChangeEvent)
+		if !isChangeEvent {
+			continue
+		}
+
+		if changeEvent.Before.PeriodicBuildsDefault == true {
+			changeEvent.Before.ProjectRef.PeriodicBuilds = nil
+		}
+		if changeEvent.After.PeriodicBuildsDefault == true {
+			changeEvent.After.ProjectRef.PeriodicBuilds = nil
+		}
+	}
+
+}
 
 func (p *ProjectChangeEvents) RedactPrivateVars() {
 	for _, event := range *p {
@@ -147,6 +169,16 @@ func GetAndLogProjectModified(id, userId string, isRepo bool, before *ProjectSet
 	return errors.Wrap(LogProjectModified(id, userId, before, after), "logging project modified")
 }
 
+func (p *ProjectSettings) resolveDefaults() *ProjectSettingsEvent {
+	projectSettingsEvent := &ProjectSettingsEvent{
+		ProjectSettings: *p,
+	}
+	if p.ProjectRef.PeriodicBuilds == nil {
+		projectSettingsEvent.PeriodicBuildsDefault = true
+	}
+	return projectSettingsEvent
+}
+
 func LogProjectModified(projectId, username string, before, after *ProjectSettings) error {
 	if before == nil || after == nil {
 		return nil
@@ -158,8 +190,8 @@ func LogProjectModified(projectId, username string, before, after *ProjectSettin
 
 	eventData := ProjectChangeEvent{
 		User:   username,
-		Before: *before,
-		After:  *after,
+		Before: *before.resolveDefaults(),
+		After:  *after.resolveDefaults,
 	}
 	return LogProjectEvent(event.EventTypeProjectModified, projectId, eventData)
 }
