@@ -42,10 +42,10 @@ func (p *ProjectChangeEvents) ApplyDefaults() {
 			continue
 		}
 
-		if changeEvent.Before.PeriodicBuildsDefault == true {
+		if changeEvent.Before.PeriodicBuildsDefault {
 			changeEvent.Before.ProjectRef.PeriodicBuilds = nil
 		}
-		if changeEvent.After.PeriodicBuildsDefault == true {
+		if changeEvent.After.PeriodicBuildsDefault {
 			changeEvent.After.ProjectRef.PeriodicBuilds = nil
 		}
 	}
