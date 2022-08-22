@@ -956,7 +956,7 @@ func (a *APIPodLifecycleConfig) BuildFromService(h interface{}) error {
 		a.MaxPodDefinitionCleanupRate = v.MaxPodDefinitionCleanupRate
 		a.MaxSecretCleanupRate = v.MaxSecretCleanupRate
 	default:
-		return errors.Errorf("programmatic error: expected pod init config but got type %T", h)
+		return errors.Errorf("programmatic error: expected pod lifecycle config but got type %T", h)
 	}
 	return nil
 }

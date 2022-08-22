@@ -61,7 +61,7 @@ Admin Settings
 						<li class="link" ng-click="scrollTo('alerts')">Alerts</li>
 						<li class="link" ng-click="scrollTo('notify')">Notify</li>
 						<li class="link" ng-click="scrollTo('hostinit')">Hostinit</li>
-						<li class="link" ng-click="scrollTo('pod_lifecycle')">Pod init</li>
+						<li class="link" ng-click="scrollTo('pod_lifecycle')">Pod Lifecycle</li>
 						<li class="link" ng-click="scrollTo('scheduler')">Scheduler</li>
 						<li class="link" ng-click="scrollTo('repotracker')">Repotracker</li>
 						<div>Web</div>
@@ -654,7 +654,7 @@ Admin Settings
 							<md-card flex=50 id="pod_lifecycle">
 								<md-card-title>
 									<md-card-title-text>
-										<span>Pod init</span>
+										<span>Pod Lifecycle</span>
 									</md-card-title-text>
 									<md-button ng-click="clearSection('pod_lifecycle')">
 										<i class="fa fa-trash"></i>
@@ -670,11 +670,11 @@ Admin Settings
 										<input type="number" ng-model="Settings.pod_lifecycle.max_parallel_pod_requests">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
-										<label>Max Rate of Pod Definition Cleanup Per Job</label>
+										<label>Max Pod Definition Cleanup (Per Job)</label>
 										<input type="number" ng-model="Settings.pod_lifecycle.max_pod_definition_cleanup_rate">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
-										<label>Max Rate of Secret Cleanup Per Job</label>
+										<label>Max Secret Cleanup (Per Job)</label>
 										<input type="number" ng-model="Settings.pod_lifecycle.max_secret_cleanup_rate">
 									</md-input-container>
 								</md-card-content>
