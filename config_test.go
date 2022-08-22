@@ -360,9 +360,12 @@ func (s *AdminSuite) TestJiraConfig() {
 	s.Equal(config, settings.Jira)
 }
 
-func (s *AdminSuite) TestPodinitConfig() {
-	config := PodInitConfig{
-		S3BaseURL: "s3_base_url",
+func (s *AdminSuite) TestPodLifecycleConfig() {
+	config := PodLifecycleConfig{
+		S3BaseURL:                   "s3_base_url",
+		MaxParallelPodRequests:      1000,
+		MaxPodDefinitionCleanupRate: 100,
+		MaxSecretCleanupRate:        100,
 	}
 
 	err := config.Set()
@@ -370,7 +373,7 @@ func (s *AdminSuite) TestPodinitConfig() {
 	settings, err := GetConfig()
 	s.Require().NoError(err)
 	s.Require().NotNil(settings)
-	s.Equal(config, settings.PodInit)
+	s.Equal(config, settings.PodLifecycle)
 }
 
 func (s *AdminSuite) TestProvidersConfig() {

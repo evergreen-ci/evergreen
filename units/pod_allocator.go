@@ -155,7 +155,7 @@ func (j *podAllocatorJob) canAllocate() (shouldAllocate bool, err error) {
 	if err != nil {
 		return false, errors.Wrap(err, "counting initializing pods")
 	}
-	if numInitializing >= settings.PodInit.MaxParallelPodRequests {
+	if numInitializing >= settings.PodLifecycle.MaxParallelPodRequests {
 		return false, nil
 	}
 

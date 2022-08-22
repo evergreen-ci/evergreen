@@ -135,7 +135,7 @@ func (h *podProvisioningScript) downloadAgentCommands(p *pod.Pod, downloadFromS3
 		curlExecutable = curlExecutable + ".exe"
 	}
 
-	if downloadFromS3 && h.settings.PodInit.S3BaseURL != "" {
+	if downloadFromS3 && h.settings.PodLifecycle.S3BaseURL != "" {
 		// Attempt to download the agent from S3, but fall back to downloading
 		// from the app server if it fails.
 		// Include -f to return an error code from curl if the HTTP request
@@ -172,7 +172,7 @@ func (h *podProvisioningScript) evergreenClientURL(p *pod.Pod) string {
 // retrieved for this server's particular Evergreen build version.
 func (h *podProvisioningScript) s3ClientURL(p *pod.Pod) string {
 	return strings.Join([]string{
-		strings.TrimSuffix(h.settings.PodInit.S3BaseURL, "/"),
+		strings.TrimSuffix(h.settings.PodLifecycle.S3BaseURL, "/"),
 		evergreen.BuildRevision,
 		h.clientURLSubpath(p),
 	}, "/")
