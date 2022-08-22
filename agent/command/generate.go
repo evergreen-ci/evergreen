@@ -117,7 +117,6 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 			}
 
 			if generateErr != nil {
-				logger.Task().Infof("Problem polling for generate tasks job", generateErr.Error())
 				return false, generateErr
 			}
 			if generateStatus.Finished {
