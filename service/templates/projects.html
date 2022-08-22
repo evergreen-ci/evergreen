@@ -285,7 +285,7 @@ Evergreen Projects
       </div>
       <div class="h3">Repotracker Settings</div>
       <div class="project-error" ng-hide="github_webhooks_enabled">
-        Webhooks must be enabled to run the repotracker. Webhooks are enabled after saving with a valid repository and branch.
+        Webhooks must be enabled to run the repotracker. Webhooks are enabled after saving with a valid owner and repo.
       </div>
       <div class="form-group" ng-show="github_webhooks_enabled">
         <div class="col-lg-5 col-header">
@@ -423,7 +423,7 @@ Evergreen Projects
             GitHub webhooks are enabled.
           </div>
           <div class="project-error" ng-hide="github_webhooks_enabled">
-            <div>GitHub Pull Request testing and the commit queue are disabled because webhooks are not enabled. Webhooks are enabled after saving with a repository and branch.</div>
+            <div>GitHub Pull Request testing and the commit queue are disabled because webhooks are not enabled. Webhooks are enabled after saving with a owner and repo.</div>
           </div>
         </div>
       </div>
