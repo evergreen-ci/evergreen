@@ -150,6 +150,9 @@ type Task struct {
 	// Set to true if the task should be considered for mainline github checks
 	IsGithubCheck bool `bson:"is_github_check,omitempty" json:"is_github_check,omitempty"`
 
+	// CanReset indicates if the task is in a valid state to be reset.
+	CanReset bool `bson:"can_reset,omitempty" json:"can_reset,omitempty"`
+
 	Execution           int    `bson:"execution" json:"execution"`
 	OldTaskId           string `bson:"old_task_id,omitempty" json:"old_task_id,omitempty"`
 	Archived            bool   `bson:"archived,omitempty" json:"archived,omitempty"`
@@ -1454,6 +1457,7 @@ func (t *Task) MarkSystemFailed(description string) error {
 				StatusKey:     evergreen.TaskFailed,
 				FinishTimeKey: t.FinishTime,
 				DetailsKey:    t.Details,
+				CanResetKey:   true,
 			},
 		},
 	)
@@ -1897,6 +1901,7 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 				StartTimeKey:          t.StartTime,
 				LogsKey:               detail.Logs,
 				HasLegacyResultsKey:   t.HasLegacyResults,
+				CanResetKey:           true,
 				ContainerAllocatedKey: false,
 			},
 			"$unset": bson.M{
@@ -1982,7 +1987,9 @@ func (t *Task) displayTaskPriority() int {
 func (t *Task) Reset() error {
 	return UpdateOne(
 		bson.M{
-			IdKey: t.Id,
+			IdKey:       t.Id,
+			StatusKey:   bson.M{"$in": evergreen.TaskCompletedStatuses},
+			CanResetKey: true,
 		},
 		resetTaskUpdate(t),
 	)
@@ -2000,7 +2007,11 @@ func ResetTasks(tasks []Task) error {
 	}
 
 	if _, err := UpdateAll(
-		bson.M{IdKey: bson.M{"$in": taskIDs}},
+		bson.M{
+			IdKey:       bson.M{"$in": taskIDs},
+			StatusKey:   bson.M{"$in": evergreen.TaskCompletedStatuses},
+			CanResetKey: true,
+		},
 		resetTaskUpdate(nil),
 	); err != nil {
 		return err
@@ -2033,6 +2044,7 @@ func resetTaskUpdate(t *Task) bson.M {
 		t.HostCreateDetails = []HostCreateDetail{}
 		t.OverrideDependencies = false
 		t.ContainerAllocationAttempts = 0
+		t.CanReset = false
 	}
 	update := bson.M{
 		"$set": bson.M{
@@ -2059,6 +2071,7 @@ func resetTaskUpdate(t *Task) bson.M {
 			HostIdKey:                  "",
 			HostCreateDetailsKey:       "",
 			OverrideDependenciesKey:    "",
+			CanResetKey:                "",
 		},
 	}
 	return update
@@ -2507,12 +2520,15 @@ func (t *Task) Archive() error {
 		// Archiving a single task.
 		archiveTask := t.makeArchivedTask()
 		err := db.Insert(OldCollection, archiveTask)
-		if err != nil {
+		if err != nil && !db.IsDuplicateKey(err) {
 			return errors.Wrap(err, "inserting archived task into old tasks")
 		}
 		t.Aborted = false
 		err = UpdateOne(
-			bson.M{IdKey: t.Id},
+			bson.M{
+				IdKey:     t.Id,
+				StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses},
+			},
 			updateDisplayTasksAndTasksBson(),
 		)
 		return errors.Wrap(err, "updating task")
@@ -2582,13 +2598,16 @@ func archiveAll(taskIds, execTaskIds, toRestartExecTaskIds []string, archivedTas
 		if len(archivedTasks) > 0 {
 			oldTaskColl := evergreen.GetEnvironment().DB().Collection(OldCollection)
 			_, err = oldTaskColl.InsertMany(sessCtx, archivedTasks)
-			if err != nil {
+			if err != nil && !db.IsDuplicateKey(err) {
 				return nil, errors.Wrap(err, "archiving tasks")
 			}
 		}
 		if len(taskIds) > 0 {
 			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(sessCtx,
-				bson.M{IdKey: bson.M{"$in": taskIds}},
+				bson.M{
+					IdKey:     bson.M{"$in": taskIds},
+					StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses},
+				},
 				updateDisplayTasksAndTasksBson(),
 			)
 			if err != nil {
@@ -2647,6 +2666,9 @@ func archiveAll(taskIds, execTaskIds, toRestartExecTaskIds []string, archivedTas
 
 func updateDisplayTasksAndTasksBson() bson.M {
 	return bson.M{
+		"$set": bson.M{
+			CanResetKey: true,
+		},
 		"$unset": bson.M{
 			AbortedKey:              "",
 			AbortInfoKey:            "",
