@@ -35,11 +35,12 @@ const (
 func getMockProjectSettings() model.ProjectSettings {
 	return model.ProjectSettings{
 		ProjectRef: model.ProjectRef{
-			Owner:   "admin",
-			Enabled: utility.TruePtr(),
-			Private: utility.TruePtr(),
-			Id:      projectId,
-			Admins:  []string{},
+			Owner:          "admin",
+			Enabled:        utility.TruePtr(),
+			Private:        utility.TruePtr(),
+			Id:             projectId,
+			Admins:         []string{},
+			PeriodicBuilds: nil,
 		},
 		GithubHooksEnabled: true,
 		Vars: model.ProjectVars{
@@ -141,9 +142,13 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 				EventType:    event.EventTypeProjectModified,
 				ResourceId:   projectId,
 				Data: &model.ProjectChangeEvent{
-					User:   username,
-					Before: before,
-					After:  after,
+					User: username,
+					Before: model.ProjectSettingsEvent{
+						ProjectSettings: before,
+					},
+					After: model.ProjectSettingsEvent{
+						ProjectSettings: after,
+					},
 				},
 			}
 
@@ -178,6 +183,8 @@ func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
 		s.Len(eventLog.After.Aliases, 1)
 		s.NotEmpty(eventLog.Before.Aliases[0].ID)
 		s.NotEmpty(eventLog.After.Aliases[0].ID)
+		s.Nil(eventLog.Before.ProjectRef.PeriodicBuilds)
+		s.Nil(eventLog.After.ProjectRef.PeriodicBuilds)
 	}
 
 	// No error for empty events

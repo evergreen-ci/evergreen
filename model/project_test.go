@@ -1429,12 +1429,8 @@ func TestFindProjectsSuite(t *testing.T) {
 			PrivateVars: map[string]bool{"a": true},
 		}
 		s.NoError(vars.Insert())
-		before := ProjectSettingsEvent{
-			ProjectSettings: getMockProjectSettings(),
-		}
-		after := ProjectSettingsEvent{
-			ProjectSettings: getMockProjectSettings(),
-		}
+		before := getMockProjectSettings()
+		after := getMockProjectSettings()
 		after.GithubHooksEnabled = false
 
 		h :=
@@ -1444,9 +1440,13 @@ func TestFindProjectsSuite(t *testing.T) {
 				EventType:    event.EventTypeProjectModified,
 				ResourceId:   projectId,
 				Data: &ProjectChangeEvent{
-					User:   username,
-					Before: before,
-					After:  after,
+					User: username,
+					Before: ProjectSettingsEvent{
+						ProjectSettings: before,
+					},
+					After: ProjectSettingsEvent{
+						ProjectSettings: after,
+					},
 				},
 			}
 
