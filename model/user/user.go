@@ -63,6 +63,7 @@ type UserSettings struct {
 	SlackUsername    string                  `bson:"slack_username,omitempty" json:"slack_username,omitempty"`
 	Notifications    NotificationPreferences `bson:"notifications,omitempty" json:"notifications,omitempty"`
 	UseSpruceOptions UseSpruceOptions        `json:"use_spruce_options" bson:"use_spruce_options"`
+	DateFormat       string                  `json:"date_format" bson:"date_format"`
 }
 
 type UseSpruceOptions struct {
