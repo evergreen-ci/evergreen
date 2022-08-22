@@ -12,6 +12,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 )
 
 const amboyStatsCollectorJobName = "amboy-stats-collector"
@@ -89,5 +90,25 @@ func (j *amboyStatsCollector) Run(ctx context.Context) {
 			"message": "amboy remote queue stats",
 			"stats":   remoteQueue.Stats(ctx),
 		})
+	}
+
+	remoteQueueGroup := j.env.RemoteQueueGroup()
+	if !j.ExcludeRemote && remoteQueueGroup != nil {
+		// Log queue stats for any queue in the queue group that still has jobs
+		// to process or has only finished processing all of its jobs very
+		// recently.
+		for _, queueName := range remoteQueueGroup.Queues(ctx) {
+			queue, err := remoteQueueGroup.Get(ctx, queueName)
+			if err != nil {
+				j.AddError(errors.Wrapf(err, "getting queue stats for queue '%s' in queue group", queueName))
+				continue
+			}
+
+			j.logger.Info(message.Fields{
+				"message":    "amboy remote queue group queue stats",
+				"stats":      queue.Stats(ctx),
+				"queue_name": queueName,
+			})
+		}
 	}
 }
