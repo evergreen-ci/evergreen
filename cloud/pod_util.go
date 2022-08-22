@@ -1,10 +1,16 @@
 package cloud
 
 import (
+	"context"
+	"math"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/resourcegroupstaggingapi"
 	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/cocoa/awsutil"
 	"github.com/evergreen-ci/cocoa/ecs"
 	"github.com/evergreen-ci/cocoa/secret"
+	"github.com/evergreen-ci/cocoa/tag"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/pod"
@@ -24,11 +30,26 @@ func MakeSecretsManagerClient(settings *evergreen.Settings) (cocoa.SecretsManage
 	return secret.NewBasicSecretsManagerClient(podAWSOptions(settings))
 }
 
+// MakeTagClient creates a cocoa.TagClient to interact with the Resource Groups
+// Tagging API.
+func MakeTagClient(settings *evergreen.Settings) (cocoa.TagClient, error) {
+	return tag.NewBasicTagClient(podAWSOptions(settings))
+}
+
 const (
 	// PodCacheTag is the name of the tag in AWS that marks whether pod
 	// resources such as secrets and pod definitions are tracked or not by
 	// Evergreen.
 	PodCacheTag = "evergreen-tracked"
+)
+
+const (
+	// SecretsManagerResourceFilter is the name of the resource filter to find
+	// Secrets Manager secrets.
+	SecretsManagerResourceFilter = "secretsmanager:secret"
+	// PodDefinitionResourceFilter is the name of the resource filter to find
+	// ECS pod definitions.
+	PodDefinitionResourceFilter = "ecs:task-definition"
 )
 
 // MakeSecretsManagerVault creates a cocoa.Vault backed by Secrets Manager with
@@ -334,4 +355,103 @@ func exportPodEnvVars(smConf evergreen.SecretsManagerConfig, opts pod.TaskContai
 	}
 
 	return allEnvVars
+}
+
+// GetFilteredResourceIDs gets at most n resources that match the given resource
+// and tag filters. If n is not a positive integer, the results are not limited.
+func GetFilteredResourceIDs(ctx context.Context, c cocoa.TagClient, resources []string, tags map[string][]string, limit int) ([]string, error) {
+	if limit == 0 {
+		return []string{}, nil
+	}
+	if limit < 0 {
+		limit = math.MaxInt64
+	}
+
+	var tagFilters []*resourcegroupstaggingapi.TagFilter
+	for key, vals := range tags {
+		tagFilters = append(tagFilters, &resourcegroupstaggingapi.TagFilter{
+			Key:    aws.String(key),
+			Values: utility.ToStringPtrSlice(vals),
+		})
+	}
+	resourceFilters := utility.ToStringPtrSlice(resources)
+
+	var allIDs []string
+	remaining := limit
+	for ids, nextToken, err := getResourcesPage(ctx, c, resourceFilters, tagFilters, nil, limit); ; ids, nextToken, err = getResourcesPage(ctx, c, resourceFilters, tagFilters, nextToken, remaining) {
+		if err != nil {
+			return nil, errors.Wrap(err, "getting resources matching filters")
+		}
+		allIDs = append(allIDs, ids...)
+		remaining = remaining - len(ids)
+		if remaining <= 0 {
+			break
+		}
+		if nextToken == nil {
+			break
+		}
+	}
+
+	return allIDs, nil
+}
+
+func getResourcesPage(ctx context.Context, c cocoa.TagClient, resourceFilters []*string, tagFilters []*resourcegroupstaggingapi.TagFilter, nextToken *string, limit int) ([]string, *string, error) {
+	var ids []string
+
+	resp, err := c.GetResources(ctx, &resourcegroupstaggingapi.GetResourcesInput{
+		PaginationToken:     nextToken,
+		ResourceTypeFilters: resourceFilters,
+		TagFilters:          tagFilters,
+	})
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "getting resources")
+	}
+	if resp == nil {
+		return nil, nil, errors.Errorf("unexpected nil response for getting resources")
+	}
+
+	for _, tagMapping := range resp.ResourceTagMappingList {
+		if len(ids) >= limit {
+			break
+		}
+
+		if tagMapping == nil {
+			continue
+		}
+		if tagMapping.ResourceARN == nil {
+			continue
+		}
+
+		ids = append(ids, utility.FromStringPtr(tagMapping.ResourceARN))
+	}
+
+	return ids, resp.PaginationToken, nil
+}
+
+// NoopECSPodDefinitionCache is an implementation of cocoa.ECSPodDefinitionCache
+// that no-ops for all operations.
+type NoopECSPodDefinitionCache struct{}
+
+// Put is a no-op.
+func (c *NoopECSPodDefinitionCache) Put(context.Context, cocoa.ECSPodDefinitionItem) error {
+	return nil
+}
+
+// Delete is a no-op.
+func (c *NoopECSPodDefinitionCache) Delete(context.Context, string) error {
+	return nil
+}
+
+// NoopSecretCache is an implementation of cocoa.SecretCache that no-ops for all
+// operations.
+type NoopSecretCache struct{}
+
+// Put is a no-op.
+func (c *NoopSecretCache) Put(context.Context, cocoa.SecretCacheItem) error {
+	return nil
+}
+
+// Delete is a no-op.
+func (c *NoopSecretCache) Delete(context.Context, string) error {
+	return nil
 }

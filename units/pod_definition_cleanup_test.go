@@ -68,6 +68,9 @@ func TestPodDefinitionCleanupJob(t *testing.T) {
 					mockPodDefMgr, ok := j.podDefMgr.(*cocoaMock.ECSPodDefinitionManager)
 					require.True(t, ok)
 					mockPodDefMgr.DeletePodDefinitionError = errors.New("fake error")
+					defer func() {
+						mockPodDefMgr.DeletePodDefinitionError = nil
+					}()
 
 					pd.LastAccessed = time.Now().Add(-9000 * 24 * time.Hour)
 					require.NoError(t, pd.Upsert())
