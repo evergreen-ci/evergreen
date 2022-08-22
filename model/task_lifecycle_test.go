@@ -1057,6 +1057,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 		Id: "p1",
 	}
 	assert.NoError(t, projRef.Insert())
+
 	Convey("With a successful task one failed test should result in a task failure", t, func() {
 		displayName := "testName"
 
@@ -3823,13 +3824,16 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 			}
 			require.NoError(t, v.Insert())
 			tsk := task.Task{
-				Id:            "task_id",
-				Execution:     1,
-				Status:        evergreen.TaskStarted,
-				Activated:     true,
-				ActivatedTime: time.Now(),
-				BuildId:       b.Id,
-				Version:       v.Id,
+				Id:                     "task_id",
+				Execution:              1,
+				ExecutionPlatform:      task.ExecutionPlatformContainer,
+				ContainerAllocated:     true,
+				ContainerAllocatedTime: time.Now(),
+				Status:                 evergreen.TaskStarted,
+				Activated:              true,
+				ActivatedTime:          time.Now(),
+				BuildId:                b.Id,
+				Version:                v.Id,
 			}
 			p := pod.Pod{
 				ID:          "pod_id",
