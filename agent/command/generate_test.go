@@ -45,7 +45,7 @@ func (s *generateSuite) SetupTest() {
 	s.logger, err = s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: s.conf.Task.Id, Secret: s.conf.Task.Secret}, nil)
 	s.NoError(err)
 	s.g = &generateTask{}
-	s.tmpDirName, err = ioutil.TempDir("", "generate-suite-")
+	s.tmpDirName = s.T().TempDir()
 	s.conf.WorkDir = s.tmpDirName
 	s.Require().NoError(err)
 	s.json = `
@@ -73,7 +73,6 @@ func (s *generateSuite) SetupTest() {
 
 func (s *generateSuite) TearDownTest() {
 	s.cancel()
-	s.Require().NoError(os.RemoveAll(s.tmpDirName))
 }
 
 func (s *generateSuite) TestParseParamsWithNoFiles() {

@@ -107,11 +107,7 @@ func TestTarGzCommandMakeArchive(t *testing.T) {
 					assert.NoError(t, os.RemoveAll(target.Name()))
 				}()
 				require.NoError(t, target.Close())
-				outputDir, err := ioutil.TempDir("", "archive_targz_output")
-				require.NoError(t, err)
-				defer func() {
-					assert.NoError(t, os.RemoveAll(outputDir))
-				}()
+				outputDir := t.TempDir()
 
 				params := map[string]interface{}{
 					"target":        target.Name(),
