@@ -163,6 +163,27 @@ func TestAllocate(t *testing.T) {
 	// first before any documents can be inserted.
 	require.NoError(t, db.CreateCollections(Collection, task.Collection, pod.Collection))
 
+	checkTaskAllocated := func(t *testing.T, tsk *task.Task) {
+		dbTask, err := task.FindOneId(tsk.Id)
+		require.NoError(t, err)
+		require.NotZero(t, dbTask)
+		assert.True(t, dbTask.ContainerAllocated)
+		assert.NotZero(t, dbTask.ContainerAllocatedTime)
+	}
+	checkDispatcherUpdated := func(t *testing.T, tsk *task.Task, pd *PodDispatcher) {
+		dbDispatcher, err := FindOneByGroupID(GetGroupID(tsk))
+		require.NoError(t, err)
+		require.NotZero(t, dbDispatcher)
+		assert.Equal(t, pd.PodIDs, dbDispatcher.PodIDs)
+		assert.Equal(t, pd.TaskIDs, dbDispatcher.TaskIDs)
+		assert.Equal(t, pd.ModificationCount, dbDispatcher.ModificationCount)
+	}
+	checkEventLogged := func(t *testing.T, tsk *task.Task) {
+		dbEvents, err := event.FindAllByResourceID(tsk.Id)
+		require.NoError(t, err)
+		require.Len(t, dbEvents, 1)
+		assert.Equal(t, event.ContainerAllocated, dbEvents[0].EventType)
+	}
 	checkAllocated := func(t *testing.T, tsk *task.Task, p *pod.Pod, pd *PodDispatcher) {
 		dbPod, err := pod.FindOneByID(p.ID)
 		require.NoError(t, err)
@@ -170,23 +191,9 @@ func TestAllocate(t *testing.T) {
 		assert.Equal(t, p.Type, dbPod.Type)
 		assert.Equal(t, p.Status, dbPod.Status)
 
-		dbTask, err := task.FindOneId(tsk.Id)
-		require.NoError(t, err)
-		require.NotZero(t, dbTask)
-		assert.True(t, dbTask.ContainerAllocated)
-		assert.NotZero(t, dbTask.ContainerAllocatedTime)
-
-		dbDispatcher, err := FindOneByGroupID(GetGroupID(tsk))
-		require.NoError(t, err)
-		require.NotZero(t, dbDispatcher)
-		assert.Equal(t, pd.PodIDs, dbDispatcher.PodIDs)
-		assert.Equal(t, pd.TaskIDs, dbDispatcher.TaskIDs)
-		assert.Equal(t, pd.ModificationCount, dbDispatcher.ModificationCount)
-
-		dbEvents, err := event.FindAllByResourceID(tsk.Id)
-		require.NoError(t, err)
-		require.Len(t, dbEvents, 1)
-		assert.Equal(t, event.ContainerAllocated, dbEvents[0].EventType)
+		checkTaskAllocated(t, tsk)
+		checkDispatcherUpdated(t, tsk, pd)
+		checkEventLogged(t, tsk)
 	}
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment, tsk *task.Task, p *pod.Pod){
@@ -202,12 +209,10 @@ func TestAllocate(t *testing.T) {
 			assert.True(t, newDispatcher.ModificationCount > 0)
 
 			checkAllocated(t, tsk, p, newDispatcher)
-
 		},
 		"SucceedsWithExistingPodDispatcherForGroup": func(ctx context.Context, t *testing.T, env evergreen.Environment, tsk *task.Task, p *pod.Pod) {
 			pd := &PodDispatcher{
 				GroupID:           GetGroupID(tsk),
-				PodIDs:            []string{utility.RandomString()},
 				TaskIDs:           []string{tsk.Id},
 				ModificationCount: 1,
 			}
@@ -225,6 +230,28 @@ func TestAllocate(t *testing.T) {
 			assert.True(t, updatedDispatcher.ModificationCount > pd.ModificationCount)
 
 			checkAllocated(t, tsk, p, updatedDispatcher)
+		},
+		"SucceedsWithAlreadySufficientPodsAllocatedRunContainers": func(ctx context.Context, t *testing.T, env evergreen.Environment, tsk *task.Task, p *pod.Pod) {
+			pd := &PodDispatcher{
+				GroupID:           GetGroupID(tsk),
+				PodIDs:            []string{utility.RandomString()},
+				TaskIDs:           []string{tsk.Id},
+				ModificationCount: 1,
+			}
+			require.NoError(t, pd.Insert())
+			require.NoError(t, tsk.Insert())
+
+			updatedDispatcher, err := Allocate(ctx, env, tsk, p)
+			require.NoError(t, err)
+
+			assert.Equal(t, pd.GroupID, updatedDispatcher.GroupID)
+			assert.Equal(t, pd.PodIDs, updatedDispatcher.PodIDs)
+			assert.Equal(t, pd.TaskIDs, updatedDispatcher.TaskIDs)
+			assert.True(t, updatedDispatcher.ModificationCount > pd.ModificationCount)
+
+			checkTaskAllocated(t, tsk)
+			checkDispatcherUpdated(t, tsk, updatedDispatcher)
+			checkEventLogged(t, tsk)
 		},
 		"FailsWithoutMatchingTaskStatus": func(ctx context.Context, t *testing.T, env evergreen.Environment, tsk *task.Task, p *pod.Pod) {
 			pd, err := Allocate(ctx, env, tsk, p)

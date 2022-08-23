@@ -32,7 +32,7 @@ func NewConfigModel() *APIAdminSettings {
 		NewRelic:          &APINewRelicConfig{},
 		Notify:            &APINotifyConfig{},
 		Plugins:           map[string]map[string]interface{}{},
-		PodInit:           &APIPodInitConfig{},
+		PodLifecycle:      &APIPodLifecycleConfig{},
 		Presto:            &APIPrestoConfig{},
 		Providers:         &APICloudProviders{},
 		RepoTracker:       &APIRepoTrackerConfig{},
@@ -79,7 +79,7 @@ type APIAdminSettings struct {
 	NewRelic            *APINewRelicConfig                `json:"newrelic,omitempty"`
 	Notify              *APINotifyConfig                  `json:"notify,omitempty"`
 	Plugins             map[string]map[string]interface{} `json:"plugins,omitempty"`
-	PodInit             *APIPodInitConfig                 `json:"pod_init,omitempty"`
+	PodLifecycle        *APIPodLifecycleConfig            `json:"pod_lifecycle,omitempty"`
 	PprofPort           *string                           `json:"pprof_port,omitempty"`
 	Presto              *APIPrestoConfig                  `json:"presto,omitempty"`
 	Providers           *APICloudProviders                `json:"providers,omitempty"`
@@ -941,26 +941,32 @@ func (a *APIHostInitConfig) ToService() (interface{}, error) {
 	}, nil
 }
 
-type APIPodInitConfig struct {
-	S3BaseURL              *string `json:"s3_base_url"`
-	MaxParallelPodRequests int     `json:"max_parallel_pod_requests"`
+type APIPodLifecycleConfig struct {
+	S3BaseURL                   *string `json:"s3_base_url"`
+	MaxParallelPodRequests      int     `json:"max_parallel_pod_requests"`
+	MaxPodDefinitionCleanupRate int     `json:"max_pod_definition_cleanup_rate"`
+	MaxSecretCleanupRate        int     `json:"max_secret_cleanup_rate"`
 }
 
-func (a *APIPodInitConfig) BuildFromService(h interface{}) error {
+func (a *APIPodLifecycleConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
-	case evergreen.PodInitConfig:
+	case evergreen.PodLifecycleConfig:
 		a.S3BaseURL = utility.ToStringPtr(v.S3BaseURL)
 		a.MaxParallelPodRequests = v.MaxParallelPodRequests
+		a.MaxPodDefinitionCleanupRate = v.MaxPodDefinitionCleanupRate
+		a.MaxSecretCleanupRate = v.MaxSecretCleanupRate
 	default:
-		return errors.Errorf("programmatic error: expected pod init config but got type %T", h)
+		return errors.Errorf("programmatic error: expected pod lifecycle config but got type %T", h)
 	}
 	return nil
 }
 
-func (a *APIPodInitConfig) ToService() (interface{}, error) {
-	return evergreen.PodInitConfig{
-		S3BaseURL:              utility.FromStringPtr(a.S3BaseURL),
-		MaxParallelPodRequests: a.MaxParallelPodRequests,
+func (a *APIPodLifecycleConfig) ToService() (interface{}, error) {
+	return evergreen.PodLifecycleConfig{
+		S3BaseURL:                   utility.FromStringPtr(a.S3BaseURL),
+		MaxParallelPodRequests:      a.MaxParallelPodRequests,
+		MaxPodDefinitionCleanupRate: a.MaxPodDefinitionCleanupRate,
+		MaxSecretCleanupRate:        a.MaxSecretCleanupRate,
 	}, nil
 }
 

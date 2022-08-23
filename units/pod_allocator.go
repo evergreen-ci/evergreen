@@ -125,17 +125,26 @@ func (j *podAllocatorJob) Run(ctx context.Context) {
 		return
 	}
 
-	if _, err := dispatcher.Allocate(ctx, j.env, j.task, intentPod); err != nil {
+	pd, err := dispatcher.Allocate(ctx, j.env, j.task, intentPod)
+	if err != nil {
 		j.AddRetryableError(errors.Wrap(err, "allocating pod for task dispatch"))
 		return
 	}
 
-	grip.Info(message.Fields{
-		"message":                    "successfully allocated pod for container task",
-		"task":                       j.task.Id,
-		"pod":                        intentPod.ID,
-		"secs_since_task_activation": time.Since(j.task.ActivatedTime).Seconds(),
-	})
+	if utility.StringSliceContains(pd.PodIDs, intentPod.ID) {
+		grip.Info(message.Fields{
+			"message":                    "successfully allocated pod for container task",
+			"task":                       j.task.Id,
+			"pod":                        intentPod.ID,
+			"secs_since_task_activation": time.Since(j.task.ActivatedTime).Seconds(),
+		})
+	} else {
+		grip.Info(message.Fields{
+			"message":                    "container task already has a pod allocated to run it",
+			"task":                       j.task.Id,
+			"secs_since_task_activation": time.Since(j.task.ActivatedTime).Seconds(),
+		})
+	}
 }
 
 func (j *podAllocatorJob) canAllocate() (shouldAllocate bool, err error) {
@@ -155,7 +164,7 @@ func (j *podAllocatorJob) canAllocate() (shouldAllocate bool, err error) {
 	if err != nil {
 		return false, errors.Wrap(err, "counting initializing pods")
 	}
-	if numInitializing >= settings.PodInit.MaxParallelPodRequests {
+	if numInitializing >= settings.PodLifecycle.MaxParallelPodRequests {
 		return false, nil
 	}
 

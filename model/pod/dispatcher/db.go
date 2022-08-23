@@ -103,20 +103,37 @@ func Allocate(ctx context.Context, env evergreen.Environment, t *task.Task, p *p
 			newDispatcher := NewPodDispatcher(groupID, []string{t.Id}, []string{p.ID})
 			pd = &newDispatcher
 		} else {
-			pd.PodIDs = append(pd.PodIDs, p.ID)
-
 			if !utility.StringSliceContains(pd.TaskIDs, t.Id) {
 				pd.TaskIDs = append(pd.TaskIDs, t.Id)
 			}
+
+			if len(pd.TaskIDs) > len(pd.PodIDs) {
+				// Avoid allocating another pod if it's not necessary. The
+				// number of pods allocated to run the pod dispatchers' tasks
+				// should not exceed the number of tasks that need to be run.
+				pd.PodIDs = append(pd.PodIDs, p.ID)
+			}
 		}
 
-		if _, err := env.DB().Collection(Collection).UpdateOne(sessCtx, pd.atomicUpsertQuery(), pd.atomicUpsertUpdate(), options.Update().SetUpsert(true)); err != nil {
+		res, err := env.DB().Collection(Collection).UpdateOne(sessCtx, pd.atomicUpsertQuery(), pd.atomicUpsertUpdate(), options.Update().SetUpsert(true))
+		if err != nil {
 			return nil, errors.Wrap(err, "upserting pod dispatcher")
 		}
+		if res.ModifiedCount == 0 && res.UpsertedCount == 0 {
+			// This can occur due to the pod dispatcher being concurrently
+			// updated elsewhere (such as when dispatching a task to a pod),
+			// which is a transient issue.
+			return nil, errors.Errorf("pod dispatcher was not upserted")
+		}
+
 		pd.ModificationCount++
 
-		if err := p.InsertWithContext(sessCtx, env); err != nil {
-			return nil, errors.Wrap(err, "inserting new intent pod")
+		if utility.StringSliceContains(pd.PodIDs, p.ID) {
+			// A pod will only be allocated if the dispatcher is actually in
+			// need of another pod to run its tasks.
+			if err := p.InsertWithContext(sessCtx, env); err != nil {
+				return nil, errors.Wrap(err, "inserting new intent pod")
+			}
 		}
 
 		if err := t.MarkAsContainerAllocated(ctx, env); err != nil {
