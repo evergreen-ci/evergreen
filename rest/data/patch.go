@@ -46,7 +46,7 @@ func FindPatchesByProject(projectId string, ts time.Time, limit int) ([]restMode
 	}
 	for _, p := range patches {
 		apiPatch := restModel.APIPatch{}
-		err = apiPatch.BuildFromService(p)
+		err = apiPatch.BuildFromService(p, true)
 		if err != nil {
 			return nil, errors.Wrapf(err, "converting patch '%s' to API model", p.Id.Hex())
 		}
@@ -74,7 +74,7 @@ func FindPatchById(patchId string) (*restModel.APIPatch, error) {
 	}
 
 	apiPatch := restModel.APIPatch{}
-	err = apiPatch.BuildFromService(*p)
+	err = apiPatch.BuildFromService(*p, true)
 	if err != nil {
 		return nil, errors.Wrapf(err, "converting patch '%s' to API model", p.Id.Hex())
 	}
@@ -155,7 +155,7 @@ func FindPatchesByUser(user string, ts time.Time, limit int) ([]restModel.APIPat
 	apiPatches := []restModel.APIPatch{}
 	for _, p := range patches {
 		apiPatch := restModel.APIPatch{}
-		err = apiPatch.BuildFromService(p)
+		err = apiPatch.BuildFromService(p, true)
 		if err != nil {
 			return nil, errors.Wrapf(err, "converting patch '%s' to API model", p.Id.Hex())
 		}

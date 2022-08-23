@@ -40,17 +40,17 @@ func TestAPIPatch(t *testing.T) {
 		BuildVariants: []string{"bv1", "bv2"},
 		Tasks:         []string{"t1", "t2"},
 		VariantsTasks: []patch.VariantTasks{
-			patch.VariantTasks{
+			{
 				Variant: "bv1",
 				Tasks:   []string{"t1"},
-			},
-			patch.VariantTasks{
+						},
+			{
 				Variant: "bv2",
 				Tasks:   []string{"t2"},
-			},
+						},
 		},
 		Patches: []patch.ModulePatch{
-			patch.ModulePatch{},
+			{},
 		},
 		Activated:            true,
 		PatchedParserProject: "config",
@@ -67,7 +67,7 @@ func TestAPIPatch(t *testing.T) {
 	}
 
 	a := APIPatch{}
-	err := a.BuildFromService(p)
+	err := a.BuildFromService(p, true)
 	assert.NoError(err)
 
 	assert.Equal(p.Id.Hex(), utility.FromStringPtr(a.Id))
@@ -157,7 +157,7 @@ func TestDownstreamTasks(t *testing.T) {
 	assert.NoError(childPatch.Insert())
 
 	a := APIPatch{}
-	err := a.BuildFromService(p)
+	err := a.BuildFromService(p, false)
 	assert.NoError(err)
 	assert.Equal(*a.DownstreamTasks[0].Project, childPatch.Project)
 	assert.Len(a.DownstreamTasks, 1)

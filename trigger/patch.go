@@ -91,7 +91,7 @@ func (t *patchTriggers) patchOutcome(sub *event.Subscription) (*notification.Not
 
 		successOutcome := (ps == evergreen.PatchSucceeded) && (t.data.Status == evergreen.PatchSucceeded)
 		failureOutcome := (ps == evergreen.PatchFailed) && (t.data.Status == evergreen.PatchFailed)
-		anyOutcome := (ps == evergreen.PatchAllOutcomes)
+		anyOutcome := ps == evergreen.PatchAllOutcomes
 
 		if successOutcome || failureOutcome || anyOutcome {
 			err := finalizeChildPatch(sub)
@@ -256,7 +256,7 @@ func (t *patchTriggers) patchStarted(sub *event.Subscription) (*notification.Not
 
 func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, error) {
 	api := restModel.APIPatch{}
-	if err := api.BuildFromService(*t.patch); err != nil {
+	if err := api.BuildFromService(*t.patch, true); err != nil {
 		return nil, errors.Wrap(err, "error building json model")
 	}
 	projectName := t.patch.Project

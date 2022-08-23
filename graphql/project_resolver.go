@@ -42,7 +42,7 @@ func (r *projectResolver) Patches(ctx context.Context, obj *restModel.APIProject
 	apiPatches := []*restModel.APIPatch{}
 	for _, p := range patches {
 		apiPatch := restModel.APIPatch{}
-		err = apiPatch.BuildFromService(p)
+		err = apiPatch.BuildFromService(p, false)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building APIPatch from service for patch: %s : %s", p.Id.Hex(), err.Error()))
 		}

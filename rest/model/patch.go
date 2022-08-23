@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
@@ -45,6 +46,7 @@ type APIPatch struct {
 	ChildPatchAliases       []APIChildPatchAlias `json:"child_patch_aliases,omitempty"`
 	Requester               *string              `json:"requester"`
 	MergedFrom              *string              `json:"merged_from"`
+	CommitQueuePosition     *int                 `json:"commit_queue_position"`
 }
 
 type DownstreamTasks struct {
@@ -97,8 +99,9 @@ func (p *APIParameter) ToService() patch.Parameter {
 	return res
 }
 
-// BuildFromService converts from service level structs to an APIPatch
-func (apiPatch *APIPatch) BuildFromService(p patch.Patch) error {
+// BuildFromService converts from service level structs to an APIPatch.
+// If withArgs is set, includes identifier and commit queue position from the DB, if applicable.
+func (apiPatch *APIPatch) BuildFromService(p patch.Patch, withArgs bool) error {
 	apiPatch.Id = utility.ToStringPtr(p.Id.Hex())
 	apiPatch.Description = utility.ToStringPtr(p.Description)
 	apiPatch.ProjectId = utility.ToStringPtr(p.Project)
@@ -150,13 +153,24 @@ func (apiPatch *APIPatch) BuildFromService(p patch.Patch) error {
 	}
 
 	projectIdentifier := p.Project
-	if p.Project != "" {
+	if withArgs && p.Project != "" {
 		identifier, err := model.GetIdentifierForProject(p.Project)
 		if err != nil {
 			return errors.Wrapf(err, "getting project '%s'", p.Project)
 		}
 		apiPatch.ProjectIdentifier = utility.ToStringPtr(identifier)
 		projectIdentifier = identifier
+
+		if p.IsCommitQueuePatch() {
+			cq, err := commitqueue.FindOneId(p.Project)
+			if err != nil {
+				return errors.Wrap(err, "error getting commit queue position")
+			}
+			apiPatch.CommitQueuePosition = utility.ToIntPtr(-1)
+			if cq != nil {
+				apiPatch.CommitQueuePosition = utility.ToIntPtr(cq.FindItem(p.Id.Hex()))
+			}
+		}
 	}
 
 	if env := evergreen.GetEnvironment(); env != nil {
@@ -260,7 +274,7 @@ func getChildPatchesData(p patch.Patch) ([]DownstreamTasks, []APIPatch, error) {
 			VariantTasks: variantTasks,
 		}
 		apiPatch := APIPatch{}
-		err = apiPatch.BuildFromService(childPatch)
+		err = apiPatch.BuildFromService(childPatch, false)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "converting child patch to API model")
 		}

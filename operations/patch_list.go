@@ -76,7 +76,7 @@ func PatchList() cli.Command {
 
 				for _, p := range patches {
 					api := restModel.APIPatch{}
-					err := api.BuildFromService(p)
+					err := api.BuildFromService(p, false)
 					if err != nil {
 						return errors.Wrap(err, "error trying to build APIPatch from service")
 					}
