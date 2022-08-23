@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -208,6 +209,13 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		mergedProjectRef.Branch = mergedBeforeRef.Branch
 		if err = handleGithubConflicts(mergedProjectRef, "Toggling GitHub features"); err != nil {
 			return nil, err
+		}
+		// At project creation we now insert a commit queue, however older projects still may not have one
+		// so we need to validate that this exists if the feature is being toggled on.
+		if mergedBeforeRef.CommitQueue.IsEnabled() && mergedProjectRef.CommitQueue.IsEnabled() {
+			if err = commitqueue.EnsureCommitQueueExistsForProject(mergedProjectRef.Id); err != nil {
+				return nil, err
+			}
 		}
 		if err = validateFeaturesHaveAliases(mergedProjectRef, changes.Aliases); err != nil {
 			return nil, err
