@@ -24,7 +24,13 @@ type ProjectSettings struct {
 
 type ProjectSettingsEvent struct {
 	ProjectSettings
-	PeriodicBuildsDefault bool `bson:"periodic_builds_default" json:"periodic_builds_default"`
+	FilesIgnoredFromCacheDefault bool `bson:"files_ignored_from_cache_default" json:"files_ignored_from_cache_default"`
+	GitTagAuthorizedTeamsDefault bool `bson:"git_tag_authorized_teams_default" json:"git_tag_authorized_teams_default"`
+	GitTagAuthorizedUsersDefault bool `bson:"git_tag_authorized_users_default" json:"git_tag_authorized_users_default"`
+	PatchTriggerAliasesDefault   bool `bson:"patch_trigger_aliases_default" json:"patch_trigger_aliases_default"`
+	PeriodicBuildsDefault        bool `bson:"periodic_builds_default" json:"periodic_builds_default"`
+	TriggersDefault              bool `bson:"triggers_default" json:"triggers_default"`
+	WorkstationCommandsDefault   bool `bson:"workstation_commands_default" json:"workstation_commands_default"`
 }
 
 type ProjectChangeEvent struct {
@@ -42,11 +48,55 @@ func (p *ProjectChangeEvents) ApplyDefaults() {
 			continue
 		}
 
+		// Iterate through all flags for before and after to properly nullify fields
+
+		if changeEvent.Before.FilesIgnoredFromCacheDefault {
+			changeEvent.Before.ProjectRef.FilesIgnoredFromCache = nil
+		}
+		if changeEvent.After.FilesIgnoredFromCacheDefault {
+			changeEvent.After.ProjectRef.FilesIgnoredFromCache = nil
+		}
+
+		if changeEvent.Before.GitTagAuthorizedTeamsDefault {
+			changeEvent.Before.ProjectRef.GitTagAuthorizedTeams = nil
+		}
+		if changeEvent.After.GitTagAuthorizedTeamsDefault {
+			changeEvent.After.ProjectRef.GitTagAuthorizedTeams = nil
+		}
+
+		if changeEvent.Before.GitTagAuthorizedUsersDefault {
+			changeEvent.Before.ProjectRef.GitTagAuthorizedUsers = nil
+		}
+		if changeEvent.After.GitTagAuthorizedUsersDefault {
+			changeEvent.After.ProjectRef.GitTagAuthorizedUsers = nil
+		}
+
+		if changeEvent.Before.PatchTriggerAliasesDefault {
+			changeEvent.Before.ProjectRef.PatchTriggerAliases = nil
+		}
+		if changeEvent.After.PatchTriggerAliasesDefault {
+			changeEvent.After.ProjectRef.PatchTriggerAliases = nil
+		}
+
 		if changeEvent.Before.PeriodicBuildsDefault {
 			changeEvent.Before.ProjectRef.PeriodicBuilds = nil
 		}
 		if changeEvent.After.PeriodicBuildsDefault {
 			changeEvent.After.ProjectRef.PeriodicBuilds = nil
+		}
+
+		if changeEvent.Before.TriggersDefault {
+			changeEvent.Before.ProjectRef.Triggers = nil
+		}
+		if changeEvent.After.TriggersDefault {
+			changeEvent.After.ProjectRef.Triggers = nil
+		}
+
+		if changeEvent.Before.WorkstationCommandsDefault {
+			changeEvent.Before.ProjectRef.WorkstationConfig.SetupCommands = nil
+		}
+		if changeEvent.After.WorkstationCommandsDefault {
+			changeEvent.After.ProjectRef.WorkstationConfig.SetupCommands = nil
 		}
 	}
 
@@ -169,12 +219,32 @@ func GetAndLogProjectModified(id, userId string, isRepo bool, before *ProjectSet
 	return errors.Wrap(LogProjectModified(id, userId, before, after), "logging project modified")
 }
 
+// ProjectChangeEvents must be cast to a generic interface to utilize event logging, which casts all nil objects of array types to empty arrays. Set flags if these values should indeed be nil so that we can correct these values when the event log is read from the database.
 func (p *ProjectSettings) resolveDefaults() *ProjectSettingsEvent {
 	projectSettingsEvent := &ProjectSettingsEvent{
 		ProjectSettings: *p,
 	}
+
+	if p.ProjectRef.FilesIgnoredFromCache == nil {
+		projectSettingsEvent.FilesIgnoredFromCacheDefault = true
+	}
+	if p.ProjectRef.GitTagAuthorizedTeams == nil {
+		projectSettingsEvent.GitTagAuthorizedTeamsDefault = true
+	}
+	if p.ProjectRef.GitTagAuthorizedUsers == nil {
+		projectSettingsEvent.GitTagAuthorizedUsersDefault = true
+	}
+	if p.ProjectRef.PatchTriggerAliases == nil {
+		projectSettingsEvent.PatchTriggerAliasesDefault = true
+	}
 	if p.ProjectRef.PeriodicBuilds == nil {
 		projectSettingsEvent.PeriodicBuildsDefault = true
+	}
+	if p.ProjectRef.Triggers == nil {
+		projectSettingsEvent.TriggersDefault = true
+	}
+	if p.ProjectRef.WorkstationConfig.SetupCommands == nil {
+		projectSettingsEvent.WorkstationCommandsDefault = true
 	}
 	return projectSettingsEvent
 }
