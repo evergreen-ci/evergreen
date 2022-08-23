@@ -144,7 +144,8 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 				Data: &model.ProjectChangeEvent{
 					User: username,
 					Before: model.ProjectSettingsEvent{
-						ProjectSettings: before,
+						PeriodicBuildsDefault: true,
+						ProjectSettings:       before,
 					},
 					After: model.ProjectSettingsEvent{
 						ProjectSettings: after,
@@ -184,7 +185,6 @@ func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
 		s.NotEmpty(eventLog.Before.Aliases[0].ID)
 		s.NotEmpty(eventLog.After.Aliases[0].ID)
 		s.Nil(eventLog.Before.ProjectRef.PeriodicBuilds)
-		s.Nil(eventLog.After.ProjectRef.PeriodicBuilds)
 	}
 
 	// No error for empty events
