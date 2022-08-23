@@ -504,14 +504,17 @@ func makeGetProjectTaskStats(url string) gimlet.RouteHandler {
 }
 
 func (tsh *taskStatsHandler) Parse(ctx context.Context, r *http.Request) error {
-	tsh.filter = stats.StatsFilter{Project: gimlet.GetVars(r)["project_id"]}
-
-	err := tsh.StatsHandler.parseStatsFilter(r.URL.Query())
+	project := gimlet.GetVars(r)["project_id"]
+	projectId, err := dbModel.GetIdForProject(project)
 	if err != nil {
+		return errors.Wrapf(err, "project ID not found for project '%s'", project)
+	}
+	tsh.filter = stats.StatsFilter{Project: projectId}
+
+	if err = tsh.StatsHandler.parseStatsFilter(r.URL.Query()); err != nil {
 		return errors.Wrap(err, "invalid query parameters")
 	}
-	err = tsh.filter.ValidateForTasks()
-	if err != nil {
+	if err = tsh.filter.ValidateForTasks(); err != nil {
 		return errors.Wrap(err, "invalid filter")
 	}
 	return nil
