@@ -335,6 +335,16 @@ func (tsh *testStatsHandler) Parse(ctx context.Context, r *http.Request) error {
 			StatusCode: http.StatusInternalServerError,
 		}
 	}
+	if identifier == project {
+		// If the passed in project_id is actually an identifier, verify that we have the correct ID
+		project, err = dbModel.GetIdForProject(project)
+		if err != nil {
+			return gimlet.ErrorResponse{
+				Message:    fmt.Sprintf("getting project ID for '%s'", project),
+				StatusCode: http.StatusInternalServerError,
+			}
+		}
+	}
 
 	// If this project is owned by Server and uses Resmoke, we need to use
 	// Evergreen test stats.
