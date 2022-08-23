@@ -1091,6 +1091,7 @@ type ComplexityRoot struct {
 	}
 
 	UserSettings struct {
+		DateFormat       func(childComplexity int) int
 		GithubUser       func(childComplexity int) int
 		Notifications    func(childComplexity int) int
 		Region           func(childComplexity int) int
@@ -6734,6 +6735,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.UserConfig.User(childComplexity), true
 
+	case "UserSettings.dateFormat":
+		if e.complexity.UserSettings.DateFormat == nil {
+			break
+		}
+
+		return e.complexity.UserSettings.DateFormat(childComplexity), true
+
 	case "UserSettings.githubUser":
 		if e.complexity.UserSettings.GithubUser == nil {
 			break
@@ -9033,6 +9041,7 @@ input UserSettingsInput {
   slackUsername: String
   timezone: String
   useSpruceOptions: UseSpruceOptionsInput
+  dateFormat: String
 }
 
 input GithubUserInput {
@@ -9127,6 +9136,7 @@ type UserSettings {
   slackUsername: String
   timezone: String
   useSpruceOptions: UseSpruceOptions
+  dateFormat: String
 }
 
 type GithubUser {
@@ -35705,6 +35715,38 @@ func (ec *executionContext) _UserSettings_useSpruceOptions(ctx context.Context, 
 	return ec.marshalOUseSpruceOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUseSpruceOptions(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _UserSettings_dateFormat(ctx context.Context, field graphql.CollectedField, obj *model.APIUserSettings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "UserSettings",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DateFormat, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _VariantTask_name(ctx context.Context, field graphql.CollectedField, obj *model.VariantTask) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -41719,6 +41761,14 @@ func (ec *executionContext) unmarshalInputUserSettingsInput(ctx context.Context,
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("useSpruceOptions"))
 			it.UseSpruceOptions, err = ec.unmarshalOUseSpruceOptionsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUseSpruceOptions(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "dateFormat":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("dateFormat"))
+			it.DateFormat, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -48092,6 +48142,8 @@ func (ec *executionContext) _UserSettings(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._UserSettings_timezone(ctx, field, obj)
 		case "useSpruceOptions":
 			out.Values[i] = ec._UserSettings_useSpruceOptions(ctx, field, obj)
+		case "dateFormat":
+			out.Values[i] = ec._UserSettings_dateFormat(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
