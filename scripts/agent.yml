@@ -83,7 +83,7 @@ tasks:
           script: |
             set -o verbose
             set -o errexit
-            echo "hi"
+            echo "hello "
 
             # files to archive.targz_pack
             mkdir archive
@@ -158,6 +158,10 @@ tasks:
         params:
           key: "test"
           destination: "test_num"
+      - command: downstream_expansions.set
+        params:
+          file: ../testdata/downstream_expansions.yml
+          destination: "test_num"
       - command: manifest.load
       - command: s3.put
         params:
@@ -203,6 +207,9 @@ tasks:
                     "bucket": "mciuploads",
                   },
               }
+      - command: timeout.update
+        params:
+          timeout_secs: 2700
 buildvariants:
   - name: localhost
     display_name: localhost
