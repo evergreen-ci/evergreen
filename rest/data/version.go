@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/repotracker"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -238,14 +237,11 @@ func (vc *DBVersionConnector) CreateVersionFromConfig(ctx context.Context, proje
 	}
 
 	if active {
-		catcher := grip.NewBasicCatcher()
-		for _, b := range newVersion.BuildIds {
-			catcher.Add(model.SetBuildActivation(b, true, evergreen.DefaultTaskActivator))
-		}
-		if catcher.HasErrors() {
+		err := model.ActivateBuildsAndTasks(newVersion.BuildIds, true, evergreen.DefaultTaskActivator)
+		if err != nil {
 			return nil, gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
-				Message:    errors.Wrap(catcher.Resolve(), "activating builds").Error(),
+				Message:    errors.Wrap(err, "activating builds").Error(),
 			}
 		}
 	}

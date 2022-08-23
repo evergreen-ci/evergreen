@@ -16,15 +16,16 @@ func TestPodConnector(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T){
 		"CreatePodSucceeds": func(t *testing.T) {
 			p := model.APICreatePod{
-				Name:           utility.ToStringPtr("name"),
-				Memory:         utility.ToIntPtr(128),
-				CPU:            utility.ToIntPtr(128),
-				Image:          utility.ToStringPtr("image"),
-				OS:             model.APIPodOS(pod.OSWindows),
-				Arch:           model.APIPodArch(pod.ArchAMD64),
-				WindowsVersion: model.APIPodWindowsVersion(pod.WindowsVersionServer2019),
-				Secret:         utility.ToStringPtr("secret"),
-				WorkingDir:     utility.ToStringPtr("/working/dir"),
+				Name:                utility.ToStringPtr("name"),
+				Memory:              utility.ToIntPtr(128),
+				CPU:                 utility.ToIntPtr(128),
+				Image:               utility.ToStringPtr("image"),
+				OS:                  model.APIPodOS(pod.OSWindows),
+				Arch:                model.APIPodArch(pod.ArchAMD64),
+				WindowsVersion:      model.APIPodWindowsVersion(pod.WindowsVersionServer2019),
+				WorkingDir:          utility.ToStringPtr("/working/dir"),
+				PodSecretExternalID: utility.ToStringPtr("pod_secret_external_id"),
+				PodSecretValue:      utility.ToStringPtr("pod_secret_value"),
 			}
 			res, err := CreatePod(p)
 			require.NoError(t, err)
@@ -41,7 +42,8 @@ func TestPodConnector(t *testing.T) {
 			require.NotZero(t, apiPod.TaskContainerCreationOpts.EnvSecrets)
 			secret, ok := apiPod.TaskContainerCreationOpts.EnvSecrets[pod.PodSecretEnvVar]
 			require.True(t, ok)
-			assert.Equal(t, utility.FromStringPtr(p.Secret), utility.FromStringPtr(secret.Value))
+			assert.Equal(t, utility.FromStringPtr(p.PodSecretExternalID), utility.FromStringPtr(secret.ExternalID))
+			assert.Equal(t, utility.FromStringPtr(p.PodSecretValue), utility.FromStringPtr(secret.Value))
 		},
 		"FindPodByIDSucceeds": func(t *testing.T) {
 			p := pod.Pod{
@@ -74,8 +76,6 @@ func TestPodConnector(t *testing.T) {
 						pod.PodSecretEnvVar: {
 							Value:      secretVal,
 							ExternalID: "external_id",
-							Exists:     utility.TruePtr(),
-							Owned:      utility.FalsePtr(),
 						},
 					},
 				},

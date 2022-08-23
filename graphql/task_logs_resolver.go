@@ -11,13 +11,20 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/task"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 )
 
 func (r *taskLogsResolver) AgentLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error) {
 	const logMessageCount = 100
-
+	task, taskErr := task.FindOneIdAndExecution(obj.TaskID, obj.Execution)
+	if taskErr != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Finding task %s: %s", obj.TaskID, taskErr.Error()))
+	}
+	if evergreen.IsUnstartedTaskStatus(task.Status) {
+		return []*apimodels.LogMessage{}, nil
+	}
 	var agentLogs []apimodels.LogMessage
 	// get logs from cedar
 	if obj.DefaultLogger == model.BuildloggerLogSender {
@@ -41,7 +48,7 @@ func (r *taskLogsResolver) AgentLogs(ctx context.Context, obj *TaskLogs) ([]*api
 		agentLogs, err = model.FindMostRecentLogMessages(obj.TaskID, obj.Execution, logMessageCount, []string{},
 			[]string{apimodels.AgentLogPrefix})
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding agent logs for task %s: %s", obj.TaskID, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Finding agent logs for task %s: %s", obj.TaskID, err.Error()))
 		}
 	}
 
@@ -55,7 +62,13 @@ func (r *taskLogsResolver) AgentLogs(ctx context.Context, obj *TaskLogs) ([]*api
 
 func (r *taskLogsResolver) AllLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error) {
 	const logMessageCount = 100
-
+	task, taskErr := task.FindOneIdAndExecutionWithDisplayStatus(obj.TaskID, &obj.Execution)
+	if taskErr != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Finding task %s: %s", obj.TaskID, taskErr.Error()))
+	}
+	if evergreen.IsUnstartedTaskStatus(task.Status) {
+		return []*apimodels.LogMessage{}, nil
+	}
 	var allLogs []apimodels.LogMessage
 
 	// get logs from cedar
@@ -83,7 +96,7 @@ func (r *taskLogsResolver) AllLogs(ctx context.Context, obj *TaskLogs) ([]*apimo
 		// all logs
 		allLogs, err = model.FindMostRecentLogMessages(obj.TaskID, obj.Execution, logMessageCount, []string{}, []string{})
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding all logs for task %s: %s", obj.TaskID, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Finding all logs for task %s: %s", obj.TaskID, err.Error()))
 		}
 	}
 
@@ -139,7 +152,13 @@ func (r *taskLogsResolver) SystemLogs(ctx context.Context, obj *TaskLogs) ([]*ap
 	const logMessageCount = 100
 
 	var systemLogs []apimodels.LogMessage
-
+	task, taskErr := task.FindOneIdAndExecutionWithDisplayStatus(obj.TaskID, &obj.Execution)
+	if taskErr != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Finding task %s: %s", obj.TaskID, taskErr.Error()))
+	}
+	if evergreen.IsUnstartedTaskStatus(task.Status) {
+		return []*apimodels.LogMessage{}, nil
+	}
 	// get logs from cedar
 	if obj.DefaultLogger == model.BuildloggerLogSender {
 		opts := apimodels.GetBuildloggerLogsOptions{
@@ -164,7 +183,7 @@ func (r *taskLogsResolver) SystemLogs(ctx context.Context, obj *TaskLogs) ([]*ap
 		systemLogs, err = model.FindMostRecentLogMessages(obj.TaskID, obj.Execution, logMessageCount, []string{},
 			[]string{apimodels.SystemLogPrefix})
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding system logs for task %s: %s", obj.TaskID, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Finding system logs for task %s: %s", obj.TaskID, err.Error()))
 		}
 	}
 	systemLogPointers := []*apimodels.LogMessage{}
@@ -177,9 +196,15 @@ func (r *taskLogsResolver) SystemLogs(ctx context.Context, obj *TaskLogs) ([]*ap
 
 func (r *taskLogsResolver) TaskLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error) {
 	const logMessageCount = 100
+	task, taskErr := task.FindOneIdAndExecutionWithDisplayStatus(obj.TaskID, &obj.Execution)
+	if taskErr != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Finding task %s: %s", obj.TaskID, taskErr.Error()))
+	}
+	if evergreen.IsUnstartedTaskStatus(task.Status) {
+		return []*apimodels.LogMessage{}, nil
+	}
 
 	var taskLogs []apimodels.LogMessage
-
 	// get logs from cedar
 	if obj.DefaultLogger == model.BuildloggerLogSender {
 
@@ -207,7 +232,7 @@ func (r *taskLogsResolver) TaskLogs(ctx context.Context, obj *TaskLogs) ([]*apim
 		taskLogs, err = model.FindMostRecentLogMessages(obj.TaskID, obj.Execution, logMessageCount, []string{},
 			[]string{apimodels.TaskLogPrefix})
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task logs for task %s: %s", obj.TaskID, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Finding task logs for task %s: %s", obj.TaskID, err.Error()))
 		}
 	}
 

@@ -1303,7 +1303,7 @@ func PopulatePodAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 		if err != nil {
 			return errors.Wrap(err, "getting admin settings")
 		}
-		remaining := settings.PodInit.MaxParallelPodRequests - numInitializing
+		remaining := settings.PodLifecycle.MaxParallelPodRequests - numInitializing
 
 		ctq, err := model.NewContainerTaskQueue()
 		if err != nil {

@@ -98,7 +98,7 @@ func TestPodProvisioningScript(t *testing.T) {
 			},
 			"S3ClientDownloadsWithLinuxPod": func(t *testing.T, settings *evergreen.Settings, p *pod.Pod) {
 				require.NoError(t, p.Insert())
-				settings.PodInit.S3BaseURL = "https://foo.com"
+				settings.PodLifecycle.S3BaseURL = "https://foo.com"
 
 				rh := getRoute(t, settings, p.ID)
 				resp := rh.Run(ctx)
@@ -115,7 +115,7 @@ func TestPodProvisioningScript(t *testing.T) {
 			"S3ClientDownloadsWithWindowsPod": func(t *testing.T, settings *evergreen.Settings, p *pod.Pod) {
 				p.TaskContainerCreationOpts.OS = pod.OSWindows
 				require.NoError(t, p.Insert())
-				settings.PodInit.S3BaseURL = "https://foo.com"
+				settings.PodLifecycle.S3BaseURL = "https://foo.com"
 
 				rh := getRoute(t, settings, p.ID)
 				resp := rh.Run(ctx)

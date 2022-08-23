@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -53,7 +54,7 @@ func CopyProject(ctx context.Context, opts CopyProjectOpts) (*restModel.APIProje
 	disableStartingSettings(projectToCopy)
 
 	u := gimlet.GetUser(ctx).(*user.DBUser)
-	if err := CreateProject(projectToCopy, u); err != nil {
+	if err := CreateProject(ctx, projectToCopy, u); err != nil {
 		return nil, err
 	}
 	apiProjectRef := &restModel.APIProjectRef{}
@@ -135,7 +136,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			if err = handleGithubConflicts(mergedBeforeRef, "Changing owner/repo"); err != nil {
 				return nil, err
 			}
-			// check if webhook is enabled if the owner/repo has changed
+			// Check if webhook is enabled if the owner/repo has changed
 			_, err = model.EnableWebhooks(ctx, mergedProjectRef)
 			if err != nil {
 				return nil, errors.Wrapf(err, "enabling webhooks for project '%s'", projectId)
@@ -324,4 +325,59 @@ func handleGithubConflicts(pRef *model.ProjectRef, reason string) error {
 			reason, strings.Join(conflictMsgs, " and "))
 	}
 	return nil
+}
+
+// DeleteContainerSecrets deletes existing container secrets in the project ref
+// from the secrets storage service. This returns the remaining secrets after
+// deletion.
+func DeleteContainerSecrets(ctx context.Context, v cocoa.Vault, pRef *model.ProjectRef, namesToDelete []string) ([]model.ContainerSecret, error) {
+	catcher := grip.NewBasicCatcher()
+	var remaining []model.ContainerSecret
+	for _, secret := range pRef.ContainerSecrets {
+		if !utility.StringSliceContains(namesToDelete, secret.Name) {
+			remaining = append(remaining, secret)
+			continue
+		}
+
+		if secret.ExternalID != "" {
+			catcher.Wrapf(v.DeleteSecret(ctx, secret.ExternalID), "deleting container secret '%s' with external ID '%s'", secret.Name, secret.ExternalID)
+		}
+	}
+
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
+	}
+
+	return remaining, catcher.Resolve()
+}
+
+// UpsertContainerSecrets adds new secrets or updates the value of existing
+// container secrets in the secrets storage service for a project. Each
+// container secret to upsert must already be stored in the project ref.
+func UpsertContainerSecrets(ctx context.Context, v cocoa.Vault, updatedSecrets []model.ContainerSecret) error {
+	catcher := grip.NewBasicCatcher()
+	for _, updatedSecret := range updatedSecrets {
+		if updatedSecret.ExternalID == "" {
+			// The secret is not yet stored externally, so create it.
+			newSecret := cocoa.NewNamedSecret().
+				SetName(updatedSecret.ExternalName).
+				SetValue(updatedSecret.Value)
+			if _, err := v.CreateSecret(ctx, *newSecret); err != nil {
+				catcher.Wrapf(err, "adding new container secret '%s'", updatedSecret.Name)
+			}
+
+			continue
+		}
+
+		if updatedSecret.Value != "" {
+			// The secret already exists but needs to be given a new value, so
+			// update the existing secret.
+			updatedValue := cocoa.NewNamedSecret().
+				SetName(updatedSecret.ExternalID).
+				SetValue(updatedSecret.Value)
+			catcher.Wrapf(v.UpdateValue(ctx, *updatedValue), "updating value for existing container secret '%s'", updatedSecret.Name)
+		}
+	}
+
+	return catcher.Resolve()
 }
