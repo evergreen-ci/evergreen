@@ -29,7 +29,6 @@ type containerSecretCleanupJob struct {
 	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
 
 	env       evergreen.Environment
-	settings  evergreen.Settings
 	smClient  cocoa.SecretsManagerClient
 	vault     cocoa.Vault
 	tagClient cocoa.TagClient
