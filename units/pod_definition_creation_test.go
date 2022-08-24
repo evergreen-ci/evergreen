@@ -122,7 +122,7 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 			require.NotZero(t, podDef, "pre-existing pod definition should still exist")
 			assert.Equal(t, j.Family, podDef.Family)
 
-			pdm, ok := j.ecsPodDefManager.(*cocoaMock.ECSPodDefinitionManager)
+			pdm, ok := j.podDefMgr.(*cocoaMock.ECSPodDefinitionManager)
 			require.True(t, ok)
 			assert.Zero(t, pdm.CreatePodDefinitionInput, "should not have created a pod definition")
 		},
@@ -134,7 +134,7 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Zero(t, podDef, "should not have cached a pod definition")
 
-			pdm, ok := j.ecsPodDefManager.(*cocoaMock.ECSPodDefinitionManager)
+			pdm, ok := j.podDefMgr.(*cocoaMock.ECSPodDefinitionManager)
 			require.True(t, ok)
 			assert.Zero(t, pdm.CreatePodDefinitionInput, "should not have created a pod definition")
 
@@ -143,7 +143,7 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 		"DecommissionsDependentIntentPodsWithNoRetriesRemaining": func(ctx context.Context, t *testing.T, j *podDefinitionCreationJob, p *pod.Pod) {
 			require.NoError(t, p.Insert())
 
-			pdm, ok := j.ecsPodDefManager.(*cocoaMock.ECSPodDefinitionManager)
+			pdm, ok := j.podDefMgr.(*cocoaMock.ECSPodDefinitionManager)
 			require.True(t, ok)
 			pdm.CreatePodDefinitionError = errors.New("fail")
 
@@ -214,7 +214,7 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 
 			pdm, err := cloud.MakeECSPodDefinitionManager(j.ecsClient, nil)
 			require.NoError(t, err)
-			j.ecsPodDefManager = cocoaMock.NewECSPodDefinitionManager(pdm)
+			j.podDefMgr = cocoaMock.NewECSPodDefinitionManager(pdm)
 
 			tCase(ctx, t, j, p)
 		})
