@@ -103,6 +103,9 @@ func TestCommandFileLogging(t *testing.T) {
 	// verify log contents
 	f, err := os.Open(fmt.Sprintf("%s/%s/%s/task.log", tmpDirName, taskLogDirectory, "shell.exec"))
 	require.NoError(err)
+	defer func() {
+		assert.NoError(f.Close())
+	}()
 	bytes, err := ioutil.ReadAll(f)
 	require.NoError(err)
 	assert.Contains(string(bytes), "hello world")

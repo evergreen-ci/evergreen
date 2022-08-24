@@ -387,7 +387,10 @@ func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {
 				Permissions:                   s3.BucketCannedACLPublicRead,
 				RemoteFile:                    "remote",
 			}
-			opts := pail.LocalOptions{}
+			require.NoError(t, os.Mkdir(filepath.Join(dir, "destination"), 0755))
+			opts := pail.LocalOptions{
+				Path: filepath.Join(dir, "destination"),
+			}
 			s.bucket, err = pail.NewLocalBucket(opts)
 			require.NoError(t, err)
 			comm := client.NewMock("http://localhost.com")
