@@ -3,7 +3,6 @@ package validator
 import (
 	"context"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"math"
 	"testing"
 
@@ -1069,10 +1068,6 @@ func TestValidatePeriodicBuilds(t *testing.T) {
 
 func TestValidatePlugins(t *testing.T) {
 	assert := assert.New(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	require.NoError(t, db.Clear(model.ProjectRefCollection),
 		"Error clearing collection")
 	projectRef := &model.ProjectRef{
@@ -1211,7 +1206,6 @@ func TestValidateProjectAliases(t *testing.T) {
 						{
 							ID:        mgobson.NewObjectId(),
 							ProjectID: "project-1",
-							Alias:     evergreen.CommitQueueAlias,
 							Variant:   "v1",
 							Task:      "^test",
 						},
@@ -1220,7 +1214,6 @@ func TestValidateProjectAliases(t *testing.T) {
 						{
 							ID:        mgobson.NewObjectId(),
 							ProjectID: "project-1",
-							Alias:     evergreen.GithubChecksAlias,
 							Variant:   "v1",
 							Task:      "^test",
 						},
@@ -1229,14 +1222,12 @@ func TestValidateProjectAliases(t *testing.T) {
 						{
 							ID:        mgobson.NewObjectId(),
 							ProjectID: "project-1",
-							Alias:     evergreen.GitTagAlias,
 							Variant:   "v1",
 							Task:      "^test",
 						},
 						{
 							ID:        mgobson.NewObjectId(),
 							ProjectID: "project-1",
-							Alias:     evergreen.GitTagAlias,
 							Variant:   "v1",
 							Task:      "^test",
 							GitTag:    "[0-9]++",
@@ -1244,7 +1235,6 @@ func TestValidateProjectAliases(t *testing.T) {
 						{
 							ID:         mgobson.NewObjectId(),
 							ProjectID:  "project-1",
-							Alias:      evergreen.GitTagAlias,
 							Variant:    "v1",
 							Task:       "^test",
 							RemotePath: "remote/path",

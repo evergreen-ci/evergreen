@@ -421,6 +421,18 @@ func validateProjectConfigPeriodicBuilds(pc *model.ProjectConfig) ValidationErro
 
 func validateProjectConfigAliases(pc *model.ProjectConfig) ValidationErrors {
 	errs := []string{}
+	for i := range pc.GitTagAliases {
+		pc.GitTagAliases[i].Alias = evergreen.GitTagAlias
+	}
+	for i := range pc.GitHubChecksAliases {
+		pc.GitHubChecksAliases[i].Alias = evergreen.GithubChecksAlias
+	}
+	for i := range pc.CommitQueueAliases {
+		pc.CommitQueueAliases[i].Alias = evergreen.CommitQueueAlias
+	}
+	for i := range pc.GitHubPRAliases {
+		pc.GitHubPRAliases[i].Alias = evergreen.GithubPRAlias
+	}
 	errs = append(errs, model.ValidateProjectAliases(pc.GitHubPRAliases, "GitHub PR Aliases")...)
 	errs = append(errs, model.ValidateProjectAliases(pc.GitHubChecksAliases, "Github Checks Aliases")...)
 	errs = append(errs, model.ValidateProjectAliases(pc.CommitQueueAliases, "Commit Queue Aliases")...)
