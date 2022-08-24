@@ -3,6 +3,7 @@ package validator
 import (
 	"context"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"math"
 	"testing"
 
@@ -1068,6 +1069,10 @@ func TestValidatePeriodicBuilds(t *testing.T) {
 
 func TestValidatePlugins(t *testing.T) {
 	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	require.NoError(t, db.Clear(model.ProjectRefCollection),
 		"Error clearing collection")
 	projectRef := &model.ProjectRef{
@@ -1077,6 +1082,7 @@ func TestValidatePlugins(t *testing.T) {
 	assert.Nil(projectRef.Insert())
 	Convey("When validating a project", t, func() {
 		Convey("ensure bad plugin configs throw an error", func() {
+			So(validateProjectConfigPlugins(&model.ProjectConfig{}), ShouldResemble, ValidationErrors{})
 			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:  "BFG",
 				TicketSearchProjects: []string{"BF", "BFG"},

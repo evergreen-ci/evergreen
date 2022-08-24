@@ -461,7 +461,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't check if GitHub aliases are set"))
 				return
 			}
-			if !aliasesDefined {
+			if !aliasesDefined && !responseRef.VersionControlEnabled {
 				uis.LoggedError(w, r, http.StatusBadRequest, errors.New("cannot enable PR testing without patch definitions"))
 				return
 			}
