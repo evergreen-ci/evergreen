@@ -3,6 +3,9 @@ package agent
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -72,7 +75,8 @@ func (s *AgentSuite) SetupTest() {
 	factory, ok := command.GetCommandFactory("setup.initial")
 	s.True(ok)
 	s.tc.setCurrentCommand(factory())
-	s.tmpDirName = s.T().TempDir()
+	s.tmpDirName, err = ioutil.TempDir("", filepath.Base(s.T().Name()))
+	s.Require().NoError(err)
 	s.tc.taskDirectory = s.tmpDirName
 	sender, err := s.a.GetSender(ctx, evergreen.LocalLoggingOverride)
 	s.Require().NoError(err)
@@ -81,6 +85,7 @@ func (s *AgentSuite) SetupTest() {
 
 func (s *AgentSuite) TearDownTest() {
 	s.canceler()
+	s.Require().NoError(os.RemoveAll(s.tmpDirName))
 }
 
 func (s *AgentSuite) TestNextTaskResponseShouldExit() {

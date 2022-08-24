@@ -388,7 +388,7 @@ func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {
 				RemoteFile:                    "remote",
 			}
 			opts := pail.LocalOptions{}
-			s.bucket, err = pail.NewLocalTemporaryBucket(opts)
+			s.bucket, err = pail.NewLocalBucket(opts)
 			require.NoError(t, err)
 			comm := client.NewMock("http://localhost.com")
 			conf := &internal.TaskConfig{
