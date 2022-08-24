@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/ecs"
+	awsECS "github.com/aws/aws-sdk-go/service/ecs"
 	cocoaMock "github.com/evergreen-ci/cocoa/mock"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -58,7 +58,7 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 			assert.NotZero(t, podDef.ExternalID)
 			assert.NotZero(t, podDef.LastAccessed)
 
-			describeResp, err := j.ecsClient.DescribeTaskDefinition(ctx, &ecs.DescribeTaskDefinitionInput{
+			describeResp, err := j.ecsClient.DescribeTaskDefinition(ctx, &awsECS.DescribeTaskDefinitionInput{
 				Include:        []*string{aws.String("TAGS")},
 				TaskDefinition: aws.String(podDef.ExternalID),
 			})

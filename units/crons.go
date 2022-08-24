@@ -1386,11 +1386,30 @@ func PopulatePodDefinitionCreationJobs(env evergreen.Environment) amboy.QueueOpe
 	}
 }
 
-// PopulatePodDefinitionCleanupJobs populates the jobs to clean up pod
-// definitions.
-func PopulatePodDefinitionCleanupJobs() amboy.QueueOperation {
+// PopulatePodResourceCleanupJobs populates the jobs to clean up pod
+// resources.
+func PopulatePodResourceCleanupJobs() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		return errors.Wrap(amboy.EnqueueUniqueJob(ctx, queue, NewPodDefinitionCleanupJob(utility.RoundPartOfHour(0).Format(TSFormat))), "enqueueing pod definition cleanup job")
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.Wrap(err, "getting service flags")
+		}
+
+		// TODO (EVG-17603): remove this flag once the necessary admin settings
+		// are populated to run the cleanup jobs.
+		if flags.ContainerConfigurationsDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "pod resource cleanup disabled",
+				"impact":  "container tasks will not be allocated any pods to run them",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		catcher := grip.NewBasicCatcher()
+		catcher.Wrap(amboy.EnqueueUniqueJob(ctx, queue, NewPodDefinitionCleanupJob(utility.RoundPartOfHour(0).Format(TSFormat))), "enqueueing pod definition cleanup job")
+		catcher.Wrap(amboy.EnqueueUniqueJob(ctx, queue, NewContainerSecretCleanupJob(utility.RoundPartOfHour(0).Format(TSFormat))), "enqueueing container secret cleanup job")
+		return catcher.Resolve()
 	}
 }
 
