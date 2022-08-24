@@ -35,10 +35,10 @@ type podDefinitionCreationJob struct {
 	ContainerOpts pod.TaskContainerCreationOptions `bson:"container_opts" json:"container_opts" yaml:"container_opts"`
 	Family        string                           `bson:"family" json:"family" yaml:"family"`
 
-	ecsClient        cocoa.ECSClient
-	ecsPodDefManager cocoa.ECSPodDefinitionManager
-	env              evergreen.Environment
-	settings         evergreen.Settings
+	ecsClient cocoa.ECSClient
+	podDefMgr cocoa.ECSPodDefinitionManager
+	env       evergreen.Environment
+	settings  evergreen.Settings
 }
 
 func makePodDefinitionCreationJob() *podDefinitionCreationJob {
@@ -120,7 +120,7 @@ func (j *podDefinitionCreationJob) Run(ctx context.Context) {
 		return
 	}
 
-	item, err := j.ecsPodDefManager.CreatePodDefinition(ctx, *podDefOpts)
+	item, err := j.podDefMgr.CreatePodDefinition(ctx, *podDefOpts)
 	if err != nil {
 		j.AddRetryableError(errors.Wrapf(err, "creating pod definition with family '%s'", j.Family))
 		return
@@ -154,12 +154,12 @@ func (j *podDefinitionCreationJob) populateIfUnset(ctx context.Context) error {
 		j.ecsClient = client
 	}
 
-	if j.ecsPodDefManager == nil {
+	if j.podDefMgr == nil {
 		podDefMgr, err := cloud.MakeECSPodDefinitionManager(j.ecsClient, nil)
 		if err != nil {
-			return errors.Wrap(err, "initializing ECS pod creator")
+			return errors.Wrap(err, "initializing ECS pod definition manager")
 		}
-		j.ecsPodDefManager = podDefMgr
+		j.podDefMgr = podDefMgr
 	}
 
 	return nil
