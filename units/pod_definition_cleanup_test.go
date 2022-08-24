@@ -26,99 +26,95 @@ func TestPodDefinitionCleanupJob(t *testing.T) {
 		assert.NoError(t, db.ClearCollections(definition.Collection))
 	}()
 
+	createPodDef := func(ctx context.Context, t *testing.T, podDefMgr cocoa.ECSPodDefinitionManager, ecsClient cocoa.ECSClient) definition.PodDefinition {
+		containerDef := cocoa.NewECSContainerDefinition().
+			SetImage("image").
+			SetCommand([]string{"echo", "hello"})
+		podDefOpts := cocoa.NewECSPodDefinitionOptions().
+			AddContainerDefinitions(*containerDef).
+			SetCPU(128).
+			SetMemoryMB(128)
+
+		podDef, err := podDefMgr.CreatePodDefinition(ctx, *podDefOpts)
+		require.NoError(t, err)
+
+		describeOut, err := ecsClient.DescribeTaskDefinition(ctx, &awsECS.DescribeTaskDefinitionInput{
+			TaskDefinition: aws.String(podDef.ID),
+		})
+		require.NoError(t, err, "cloud pod definition should have been created")
+		require.NotZero(t, describeOut.TaskDefinition)
+		assert.Equal(t, podDef.ID, utility.FromStringPtr(describeOut.TaskDefinition.TaskDefinitionArn))
+
+		dbPodDef, err := definition.FindOneByExternalID(podDef.ID)
+		require.NoError(t, err)
+		require.NotZero(t, dbPodDef, "DB pod definition should have been created")
+
+		return *dbPodDef
+	}
+
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, j *podDefinitionCleanupJob){
-		"WithExistingPodDefinition": func(ctx context.Context, t *testing.T, j *podDefinitionCleanupJob) {
-			for tName, tCase := range map[string]func(pd definition.PodDefinition){
-				"CleansUpStaleUnusedPodDefinitions": func(pd definition.PodDefinition) {
-					pd.LastAccessed = time.Now().Add(-9000 * 24 * time.Hour)
-					require.NoError(t, pd.Upsert())
+		"CleansUpStaleUnusedPodDefinitions": func(ctx context.Context, t *testing.T, j *podDefinitionCleanupJob) {
+			pd := createPodDef(ctx, t, j.podDefMgr, j.ecsClient)
+			pd.LastAccessed = time.Now().Add(-9000 * 24 * time.Hour)
+			require.NoError(t, pd.Upsert())
 
-					j.Run(ctx)
-					require.NoError(t, j.Error())
+			j.Run(ctx)
+			require.NoError(t, j.Error())
 
-					describeOut, err := j.ecsClient.DescribeTaskDefinition(ctx, &awsECS.DescribeTaskDefinitionInput{
-						TaskDefinition: aws.String(pd.ExternalID),
-					})
-					assert.NoError(t, err, "cloud pod definition should still exist even after it's been cleaned up")
-					require.NotZero(t, describeOut.TaskDefinition)
-					assert.Equal(t, awsECS.TaskDefinitionStatusInactive, utility.FromStringPtr(describeOut.TaskDefinition.Status), "cloud pod definition should be inactive")
+			describeOut, err := j.ecsClient.DescribeTaskDefinition(ctx, &awsECS.DescribeTaskDefinitionInput{
+				TaskDefinition: aws.String(pd.ExternalID),
+			})
+			assert.NoError(t, err, "cloud pod definition should still exist even after it's been cleaned up")
+			require.NotZero(t, describeOut.TaskDefinition)
+			assert.Equal(t, awsECS.TaskDefinitionStatusInactive, utility.FromStringPtr(describeOut.TaskDefinition.Status), "cloud pod definition should be inactive")
 
-					dbPodDef, err := definition.FindOneID(pd.ID)
-					assert.NoError(t, err)
-					assert.Zero(t, dbPodDef, "pod definition should have been cleaned up")
-				},
-				"NoopsWithoutAnyPodDefinitionsExceedingTTL": func(pd definition.PodDefinition) {
-					assert.InDelta(t, time.Now().Unix(), pd.LastAccessed.Unix(), 1)
+			dbPodDef, err := definition.FindOneID(pd.ID)
+			assert.NoError(t, err)
+			assert.Zero(t, dbPodDef, "pod definition should have been cleaned up")
+		},
+		"NoopsWithoutAnyPodDefinitionsExceedingTTL": func(ctx context.Context, t *testing.T, j *podDefinitionCleanupJob) {
+			pd := createPodDef(ctx, t, j.podDefMgr, j.ecsClient)
+			assert.InDelta(t, time.Now().Unix(), pd.LastAccessed.Unix(), 1)
 
-					j.Run(ctx)
-					require.NoError(t, j.Error())
+			j.Run(ctx)
+			require.NoError(t, j.Error())
 
-					describeOut, err := j.ecsClient.DescribeTaskDefinition(ctx, &awsECS.DescribeTaskDefinitionInput{
-						TaskDefinition: aws.String(pd.ExternalID),
-					})
-					assert.NoError(t, err, "cloud pod definition should still exist")
-					require.NotZero(t, describeOut.TaskDefinition)
-					assert.Equal(t, awsECS.TaskDefinitionStatusActive, utility.FromStringPtr(describeOut.TaskDefinition.Status), "cloud pod definition should still be active")
+			describeOut, err := j.ecsClient.DescribeTaskDefinition(ctx, &awsECS.DescribeTaskDefinitionInput{
+				TaskDefinition: aws.String(pd.ExternalID),
+			})
+			assert.NoError(t, err, "cloud pod definition should still exist")
+			require.NotZero(t, describeOut.TaskDefinition)
+			assert.Equal(t, awsECS.TaskDefinitionStatusActive, utility.FromStringPtr(describeOut.TaskDefinition.Status), "cloud pod definition should still be active")
 
-					dbPodDef, err := definition.FindOneID(pd.ID)
-					assert.NoError(t, err)
-					assert.NotZero(t, dbPodDef, "pod definition should not have been cleaned up")
-				},
-				"ErrorsIfPodDefinitionCleanupErrors": func(pd definition.PodDefinition) {
-					mockPodDefMgr, ok := j.podDefMgr.(*cocoaMock.ECSPodDefinitionManager)
-					require.True(t, ok)
-					mockPodDefMgr.DeletePodDefinitionError = errors.New("fake error")
-					defer func() {
-						mockPodDefMgr.DeletePodDefinitionError = nil
-					}()
+			dbPodDef, err := definition.FindOneID(pd.ID)
+			assert.NoError(t, err)
+			assert.NotZero(t, dbPodDef, "pod definition should not have been cleaned up")
+		},
+		"ErrorsIfPodDefinitionCleanupErrors": func(ctx context.Context, t *testing.T, j *podDefinitionCleanupJob) {
+			mockPodDefMgr, ok := j.podDefMgr.(*cocoaMock.ECSPodDefinitionManager)
+			require.True(t, ok)
+			mockPodDefMgr.DeletePodDefinitionError = errors.New("fake error")
+			defer func() {
+				mockPodDefMgr.DeletePodDefinitionError = nil
+			}()
 
-					pd.LastAccessed = time.Now().Add(-9000 * 24 * time.Hour)
-					require.NoError(t, pd.Upsert())
+			pd := createPodDef(ctx, t, j.podDefMgr, j.ecsClient)
+			pd.LastAccessed = time.Now().Add(-9000 * 24 * time.Hour)
+			require.NoError(t, pd.Upsert())
 
-					j.Run(ctx)
-					assert.Error(t, j.Error())
+			j.Run(ctx)
+			assert.Error(t, j.Error())
 
-					describeOut, err := j.ecsClient.DescribeTaskDefinition(ctx, &awsECS.DescribeTaskDefinitionInput{
-						TaskDefinition: aws.String(pd.ExternalID),
-					})
-					assert.NoError(t, err, "cloud pod definition should still exist")
-					require.NotZero(t, describeOut.TaskDefinition)
-					assert.Equal(t, awsECS.TaskDefinitionStatusActive, utility.FromStringPtr(describeOut.TaskDefinition.Status), "cloud pod definition should still be active")
+			describeOut, err := j.ecsClient.DescribeTaskDefinition(ctx, &awsECS.DescribeTaskDefinitionInput{
+				TaskDefinition: aws.String(pd.ExternalID),
+			})
+			assert.NoError(t, err, "cloud pod definition should still exist")
+			require.NotZero(t, describeOut.TaskDefinition)
+			assert.Equal(t, awsECS.TaskDefinitionStatusActive, utility.FromStringPtr(describeOut.TaskDefinition.Status), "cloud pod definition should still be active")
 
-					dbPodDef, err := definition.FindOneID(pd.ID)
-					assert.NoError(t, err)
-					assert.NotZero(t, dbPodDef, "pod definition should not have been cleaned up")
-				},
-			} {
-				t.Run(tName, func(t *testing.T) {
-					cocoaMock.ResetGlobalECSService()
-					require.NoError(t, db.ClearCollections(definition.Collection))
-
-					containerDef := cocoa.NewECSContainerDefinition().
-						SetImage("image").
-						SetCommand([]string{"echo", "hello"})
-					podDefOpts := cocoa.NewECSPodDefinitionOptions().
-						AddContainerDefinitions(*containerDef).
-						SetCPU(128).
-						SetMemoryMB(128)
-
-					podDef, err := j.podDefMgr.CreatePodDefinition(ctx, *podDefOpts)
-					require.NoError(t, err)
-
-					describeOut, err := j.ecsClient.DescribeTaskDefinition(ctx, &awsECS.DescribeTaskDefinitionInput{
-						TaskDefinition: aws.String(podDef.ID),
-					})
-					require.NoError(t, err, "cloud pod definition should have been created")
-					require.NotZero(t, describeOut.TaskDefinition)
-					assert.Equal(t, podDef.ID, utility.FromStringPtr(describeOut.TaskDefinition.TaskDefinitionArn))
-
-					dbPodDef, err := definition.FindOneByExternalID(podDef.ID)
-					require.NoError(t, err)
-					require.NotZero(t, dbPodDef, "DB pod definition should have been created")
-
-					tCase(*dbPodDef)
-				})
-			}
+			dbPodDef, err := definition.FindOneID(pd.ID)
+			assert.NoError(t, err)
+			assert.NotZero(t, dbPodDef, "pod definition should not have been cleaned up")
 		},
 		"NoopsWithoutAnyPodDefinitions": func(ctx context.Context, t *testing.T, j *podDefinitionCleanupJob) {
 			j.Run(ctx)
