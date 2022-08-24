@@ -23,14 +23,14 @@ type ProjectSettings struct {
 }
 
 type ProjectSettingsEvent struct {
-	ProjectSettings
-	FilesIgnoredFromCacheDefault bool `bson:"files_ignored_from_cache_default" json:"files_ignored_from_cache_default"`
-	GitTagAuthorizedTeamsDefault bool `bson:"git_tag_authorized_teams_default" json:"git_tag_authorized_teams_default"`
-	GitTagAuthorizedUsersDefault bool `bson:"git_tag_authorized_users_default" json:"git_tag_authorized_users_default"`
-	PatchTriggerAliasesDefault   bool `bson:"patch_trigger_aliases_default" json:"patch_trigger_aliases_default"`
-	PeriodicBuildsDefault        bool `bson:"periodic_builds_default" json:"periodic_builds_default"`
-	TriggersDefault              bool `bson:"triggers_default" json:"triggers_default"`
-	WorkstationCommandsDefault   bool `bson:"workstation_commands_default" json:"workstation_commands_default"`
+	ProjectSettings              `bson:",inline"`
+	FilesIgnoredFromCacheDefault bool `bson:"files_ignored_from_cache_default,omitempty" json:"files_ignored_from_cache_default,omitempty"`
+	GitTagAuthorizedTeamsDefault bool `bson:"git_tag_authorized_teams_default,omitempty" json:"git_tag_authorized_teams_default,omitempty"`
+	GitTagAuthorizedUsersDefault bool `bson:"git_tag_authorized_users_default,omitempty" json:"git_tag_authorized_users_default,omitempty"`
+	PatchTriggerAliasesDefault   bool `bson:"patch_trigger_aliases_default,omitempty" json:"patch_trigger_aliases_default,omitempty"`
+	PeriodicBuildsDefault        bool `bson:"periodic_builds_default,omitempty" json:"periodic_builds_default,omitempty"`
+	TriggersDefault              bool `bson:"triggers_default,omitempty" json:"triggers_default,omitempty"`
+	WorkstationCommandsDefault   bool `bson:"workstation_commands_default,omitempty" json:"workstation_commands_default,omitempty"`
 }
 
 type ProjectChangeEvent struct {
