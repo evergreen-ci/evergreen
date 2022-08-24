@@ -364,11 +364,13 @@ func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {
 			var err error
 
 			dir := t.TempDir()
-			_, err = os.Create(filepath.Join(dir, "foo"))
+			f, err := os.Create(filepath.Join(dir, "foo"))
 			require.NoError(t, err)
+			require.NoError(t, f.Close())
 			require.NoError(t, os.Mkdir(filepath.Join(dir, "subDir"), 0755))
-			_, err = os.Create(filepath.Join(dir, "subDir", "bar"))
+			f, err = os.Create(filepath.Join(dir, "subDir", "bar"))
 			require.NoError(t, err)
+			require.NoError(t, f.Close())
 
 			var localFilesIncludeFilterPrefix string
 			if prefix == "emptyPrefix" {
