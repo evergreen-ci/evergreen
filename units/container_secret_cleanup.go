@@ -74,7 +74,7 @@ func (j *containerSecretCleanupJob) Run(ctx context.Context) {
 		cloud.PodCacheTag: {strconv.FormatBool(false)},
 	}, j.env.Settings().PodLifecycle.MaxPodDefinitionCleanupRate)
 	if err != nil {
-		j.AddError(errors.Wrap(err, "getting untracked Secrets Manager secrets"))
+		j.AddError(errors.Wrap(err, "getting stranded Secrets Manager secrets"))
 		return
 	}
 
