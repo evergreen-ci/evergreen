@@ -6,7 +6,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -49,12 +51,13 @@ func FindProjectById(id string, includeRepo bool, includeProjectConfig bool) (*m
 }
 
 // CreateProject inserts the given model.ProjectRef.
+// kim: TODO: test
 func CreateProject(ctx context.Context, projectRef *model.ProjectRef, u *user.DBUser) error {
 	config, err := evergreen.GetConfig()
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "getting evergreen config ").Error(),
+			Message:    errors.Wrapf(err, "getting evergreen config").Error(),
 		}
 	}
 
@@ -75,11 +78,47 @@ func CreateProject(ctx context.Context, projectRef *model.ProjectRef, u *user.DB
 			return err
 		}
 	}
+
+	cachedSettings := evergreen.GetEnvironment().Settings()
+	var vault cocoa.Vault
+	if len(projectRef.ContainerSecrets) != 0 {
+		smClient, err := cloud.MakeSecretsManagerClient(cachedSettings)
+		if err != nil {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    errors.Wrap(err, "initializing Secrets Manager client").Error(),
+			}
+		}
+		defer smClient.Close(ctx)
+		vault, err = cloud.MakeSecretsManagerVault(smClient)
+		if err != nil {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    errors.Wrap(err, "initializing Secrets Manager vault").Error(),
+			}
+		}
+	}
+
+	projectRef.ContainerSecrets, err = getCopiedContainerSecrets(ctx, cachedSettings, vault, projectRef.Id, projectRef.ContainerSecrets)
+	if err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrapf(err, "copying existing container secrets").Error(),
+		}
+	}
+
 	err = projectRef.Add(u)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrapf(err, "inserting project '%s'", projectRef.Identifier).Error(),
+		}
+	}
+
+	if err := UpsertContainerSecrets(ctx, vault, projectRef.ContainerSecrets); err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrapf(err, "upserting container secrets").Error(),
 		}
 	}
 
