@@ -309,7 +309,6 @@ func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 // a detailed reason for doing so.
 func (h *podAgentNextTask) prepareForPodTermination(ctx context.Context, p *pod.Pod, reason string) error {
 	if p.Status != pod.StatusDecommissioned && p.Status != pod.StatusTerminated {
-		// kim: TODO: test
 		if err := p.UpdateStatus(pod.StatusDecommissioned, reason); err != nil {
 			return errors.Wrap(err, "updating pod status to decommissioned")
 		}
