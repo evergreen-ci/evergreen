@@ -378,13 +378,22 @@ func GetFilteredResourceIDs(ctx context.Context, c cocoa.TagClient, resources []
 
 	var allIDs []string
 	remaining := limit
-	for ids, nextToken, err := getResourcesPage(ctx, c, resourceFilters, tagFilters, nil, limit); ; ids, nextToken, err = getResourcesPage(ctx, c, resourceFilters, tagFilters, nextToken, remaining) {
+	var nextToken *string
+	for {
+		var (
+			ids []string
+			err error
+		)
+		ids, nextToken, err = getResourcesPage(ctx, c, resourceFilters, tagFilters, nextToken, limit)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting resources matching filters")
 		}
 		allIDs = append(allIDs, ids...)
 		remaining = remaining - len(ids)
 		if remaining <= 0 {
+			break
+		}
+		if len(ids) == 0 {
 			break
 		}
 		if nextToken == nil {

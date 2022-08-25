@@ -205,14 +205,14 @@ func (j *podAllocatorJob) populate() error {
 		j.pRef = pRef
 	}
 
-	if j.vault == nil {
-		if j.smClient == nil {
-			client, err := cloud.MakeSecretsManagerClient(&settings)
-			if err != nil {
-				return errors.Wrap(err, "initializing Secrets Manager client")
-			}
-			j.smClient = client
+	if j.smClient == nil {
+		client, err := cloud.MakeSecretsManagerClient(&settings)
+		if err != nil {
+			return errors.Wrap(err, "initializing Secrets Manager client")
 		}
+		j.smClient = client
+	}
+	if j.vault == nil {
 		vault, err := cloud.MakeSecretsManagerVault(j.smClient)
 		if err != nil {
 			return errors.Wrap(err, "initializing Secrets Manager vault")

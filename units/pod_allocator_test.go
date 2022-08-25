@@ -284,6 +284,7 @@ func TestPodAllocatorJob(t *testing.T) {
 			allocatorJob := j.(*podAllocatorJob)
 			allocatorJob.env = env
 
+			allocatorJob.smClient = smClient
 			allocatorJob.vault = mv
 
 			tCase(tctx, t, allocatorJob, mv, tsk, pRef)
