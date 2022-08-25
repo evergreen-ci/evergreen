@@ -72,7 +72,7 @@ func (j *containerSecretCleanupJob) Run(ctx context.Context) {
 
 	secretIDs, err := cloud.GetFilteredResourceIDs(ctx, j.tagClient, []string{cloud.SecretsManagerResourceFilter}, map[string][]string{
 		cloud.PodCacheTag: {strconv.FormatBool(false)},
-	}, j.env.Settings().PodLifecycle.MaxPodDefinitionCleanupRate)
+	}, j.env.Settings().PodLifecycle.MaxSecretCleanupRate)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "getting stranded Secrets Manager secrets"))
 		return

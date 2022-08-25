@@ -49,7 +49,7 @@ func TestContainerSecretCleanupJob(t *testing.T) {
 			mockEnv, ok := j.env.(*mock.Environment)
 			require.True(t, ok)
 			const cleanupLimit = 2
-			mockEnv.EvergreenSettings.PodLifecycle.MaxPodDefinitionCleanupRate = cleanupLimit
+			mockEnv.EvergreenSettings.PodLifecycle.MaxSecretCleanupRate = cleanupLimit
 
 			var secretIDs []string
 			for i := 0; i < 5; i++ {
@@ -122,7 +122,7 @@ func TestContainerSecretCleanupJob(t *testing.T) {
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
 
-			env.EvergreenSettings.PodLifecycle.MaxPodDefinitionCleanupRate = 1000
+			env.EvergreenSettings.PodLifecycle.MaxSecretCleanupRate = 1000
 			j.env = env
 
 			tCase(ctx, t, j)
