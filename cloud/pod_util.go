@@ -357,8 +357,10 @@ func exportPodEnvVars(smConf evergreen.SecretsManagerConfig, opts pod.TaskContai
 	return allEnvVars
 }
 
-// GetFilteredResourceIDs gets at most n resources that match the given resource
-// and tag filters. If n is not a positive integer, the results are not limited.
+// GetFilteredResourceIDs gets resources that match the given resource and tag
+// filters. If the limit is positive, it will return at most that many results.
+// If the limit is zero, this will return no results. If the limit is negative,
+// the results are unlimited
 func GetFilteredResourceIDs(ctx context.Context, c cocoa.TagClient, resources []string, tags map[string][]string, limit int) ([]string, error) {
 	if limit == 0 {
 		return []string{}, nil
