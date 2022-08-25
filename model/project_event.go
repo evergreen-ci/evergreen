@@ -41,6 +41,7 @@ type ProjectChangeEvent struct {
 
 type ProjectChangeEvents []ProjectChangeEventEntry
 
+// Look at the flags set in the ProjectSettingsEvent so that fields that were converted to empty arrays when casting to an interface{} can be correctly set to nil
 func (p *ProjectChangeEvents) ApplyDefaults() {
 	for _, event := range *p {
 		changeEvent, isChangeEvent := event.Data.(*ProjectChangeEvent)
@@ -48,8 +49,7 @@ func (p *ProjectChangeEvents) ApplyDefaults() {
 			continue
 		}
 
-		// Iterate through all flags for before and after to properly nullify fields
-
+		// Iterate through all flags for Before and After to properly nullify fields
 		if changeEvent.Before.FilesIgnoredFromCacheDefault {
 			changeEvent.Before.ProjectRef.FilesIgnoredFromCache = nil
 		}
@@ -219,7 +219,8 @@ func GetAndLogProjectModified(id, userId string, isRepo bool, before *ProjectSet
 	return errors.Wrap(LogProjectModified(id, userId, before, after), "logging project modified")
 }
 
-// ProjectChangeEvents must be cast to a generic interface to utilize event logging, which casts all nil objects of array types to empty arrays. Set flags if these values should indeed be nil so that we can correct these values when the event log is read from the database.
+// ProjectChangeEvents must be cast to a generic interface to utilize event logging, which casts all nil objects of array types to empty arrays.
+// Set flags if these values should indeed be nil so that we can correct these values when the event log is read from the database.
 func (p *ProjectSettings) resolveDefaults() *ProjectSettingsEvent {
 	projectSettingsEvent := &ProjectSettingsEvent{
 		ProjectSettings: *p,

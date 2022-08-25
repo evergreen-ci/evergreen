@@ -35,12 +35,17 @@ const (
 func getMockProjectSettings() model.ProjectSettings {
 	return model.ProjectSettings{
 		ProjectRef: model.ProjectRef{
-			Owner:          "admin",
-			Enabled:        utility.TruePtr(),
-			Private:        utility.TruePtr(),
-			Id:             projectId,
-			Admins:         []string{},
-			PeriodicBuilds: nil,
+			Owner:                 "admin",
+			Enabled:               utility.TruePtr(),
+			Private:               utility.TruePtr(),
+			Id:                    projectId,
+			Admins:                []string{},
+			FilesIgnoredFromCache: []string{},
+			PeriodicBuilds:        nil,
+			WorkstationConfig: model.WorkstationConfig{
+				SetupCommands: nil,
+				GitClone:      utility.TruePtr(),
+			},
 		},
 		GithubHooksEnabled: true,
 		Vars: model.ProjectVars{
@@ -144,8 +149,9 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 				Data: &model.ProjectChangeEvent{
 					User: username,
 					Before: model.ProjectSettingsEvent{
-						PeriodicBuildsDefault: true,
-						ProjectSettings:       before,
+						PeriodicBuildsDefault:      true,
+						WorkstationCommandsDefault: true,
+						ProjectSettings:            before,
 					},
 					After: model.ProjectSettingsEvent{
 						ProjectSettings: after,
@@ -185,13 +191,15 @@ func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
 		s.NotEmpty(eventLog.Before.Aliases[0].ID)
 		s.NotEmpty(eventLog.After.Aliases[0].ID)
 		s.Nil(eventLog.Before.ProjectRef.PeriodicBuilds)
+		s.NotNil(eventLog.Before.ProjectRef.FilesIgnoredFromCache)
+		s.Len(eventLog.Before.ProjectRef.FilesIgnoredFromCache, 0)
+		s.Nil(eventLog.Before.ProjectRef.WorkstationConfig.SetupCommands)
 	}
 
 	// No error for empty events
 	events, err = GetProjectEventLog("projectA", time.Now(), 0)
 	s.NoError(err)
 	s.Equal(0, len(events))
-
 }
 
 func (s *ProjectConnectorGetSuite) TestFindProjectVarsById() {
@@ -353,4 +361,43 @@ func TestGetProjectAliasResults(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, variantTasks, 1)
 	assert.Len(t, variantTasks[0].Tasks, 2)
+}
+
+func TestGetLegacyProjectEvents(t *testing.T) {
+	project := &model.ProjectRef{Id: projectId}
+	require.NoError(t, project.Insert())
+
+	before := getMockProjectSettings()
+	after := getMockProjectSettings()
+
+	// Use an interface{} to mimic legacy data that was not inserted as a ProjectSettingsEvent
+	h :=
+		event.EventLogEntry{
+			Timestamp:    time.Now(),
+			ResourceType: event.EventResourceTypeProject,
+			EventType:    event.EventTypeProjectModified,
+			ResourceId:   projectId,
+			Data: map[string]interface{}{
+				"user":   username,
+				"before": before,
+				"after":  after,
+			},
+		}
+
+	require.NoError(t, db.ClearCollections(event.LegacyEventLogCollection))
+	require.NoError(t, h.Log())
+
+	events, err := GetProjectEventLog(projectId, time.Now(), 0)
+	require.NoError(t, err)
+	require.Equal(t, len(events), 1)
+	eventLog := events[0]
+	require.NotNil(t, eventLog)
+
+	// Because this document does not use <Fieldname>Default flags, it returns empty arrays instead of nil
+	require.NotNil(t, eventLog.Before.ProjectRef.PeriodicBuilds)
+	require.Len(t, eventLog.Before.ProjectRef.PeriodicBuilds, 0)
+	require.NotNil(t, eventLog.Before.ProjectRef.FilesIgnoredFromCache)
+	require.Len(t, eventLog.Before.ProjectRef.FilesIgnoredFromCache, 0)
+	require.NotNil(t, eventLog.Before.ProjectRef.WorkstationConfig.SetupCommands)
+	require.Len(t, eventLog.Before.ProjectRef.WorkstationConfig.SetupCommands, 0)
 }
