@@ -330,7 +330,7 @@ func TestUpdateStatus(t *testing.T) {
 		"SucceedsWithInitializingStatus": func(t *testing.T, p Pod) {
 			require.NoError(t, p.Insert())
 
-			require.NoError(t, p.UpdateStatus(StatusInitializing))
+			require.NoError(t, p.UpdateStatus(StatusInitializing, ""))
 			assert.Equal(t, StatusInitializing, p.Status)
 
 			checkStatusAndTimeInfo(t, p)
@@ -339,7 +339,7 @@ func TestUpdateStatus(t *testing.T) {
 		"SucceedsWithStartingStatus": func(t *testing.T, p Pod) {
 			require.NoError(t, p.Insert())
 
-			require.NoError(t, p.UpdateStatus(StatusStarting))
+			require.NoError(t, p.UpdateStatus(StatusStarting, ""))
 			assert.Equal(t, StatusStarting, p.Status)
 
 			checkStatusAndTimeInfo(t, p)
@@ -348,7 +348,7 @@ func TestUpdateStatus(t *testing.T) {
 		"SucceedsWithTerminatedStatus": func(t *testing.T, p Pod) {
 			require.NoError(t, p.Insert())
 
-			require.NoError(t, p.UpdateStatus(StatusTerminated))
+			require.NoError(t, p.UpdateStatus(StatusTerminated, ""))
 			assert.Equal(t, StatusTerminated, p.Status)
 
 			checkStatus(t, p)
@@ -357,11 +357,11 @@ func TestUpdateStatus(t *testing.T) {
 		"NoopsWithIdenticalStatus": func(t *testing.T, p Pod) {
 			require.NoError(t, p.Insert())
 
-			require.NoError(t, p.UpdateStatus(p.Status))
+			require.NoError(t, p.UpdateStatus(p.Status, ""))
 			checkStatus(t, p)
 		},
 		"FailsWithNonexistentPod": func(t *testing.T, p Pod) {
-			assert.Error(t, p.UpdateStatus(StatusTerminated))
+			assert.Error(t, p.UpdateStatus(StatusTerminated, ""))
 
 			dbPod, err := FindOneByID(p.ID)
 			assert.NoError(t, err)
@@ -374,7 +374,7 @@ func TestUpdateStatus(t *testing.T) {
 				"$set": bson.M{StatusKey: StatusInitializing},
 			}))
 
-			assert.Error(t, p.UpdateStatus(StatusTerminated))
+			assert.Error(t, p.UpdateStatus(StatusTerminated, ""))
 
 			dbPod, err := FindOneByID(p.ID)
 			require.NoError(t, err)

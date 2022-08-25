@@ -122,7 +122,7 @@ func (j *podTerminationJob) Run(ctx context.Context) {
 		})
 	}
 
-	if err := j.pod.UpdateStatus(pod.StatusTerminated); err != nil {
+	if err := j.pod.UpdateStatus(pod.StatusTerminated, j.Reason); err != nil {
 		j.AddError(errors.Wrap(err, "marking pod as terminated"))
 	}
 

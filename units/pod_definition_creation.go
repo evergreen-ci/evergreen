@@ -175,7 +175,7 @@ func (j *podDefinitionCreationJob) decommissionDependentIntentPods() error {
 	catcher := grip.NewBasicCatcher()
 	var podIDs []string
 	for _, p := range podsToDecommission {
-		catcher.Wrapf(p.UpdateStatus(pod.StatusDecommissioned), "pod '%s'", p.ID)
+		catcher.Wrapf(p.UpdateStatus(pod.StatusDecommissioned, "pod definition could not be created"), "pod '%s'", p.ID)
 		podIDs = append(podIDs, p.ID)
 	}
 
