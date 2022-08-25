@@ -196,9 +196,11 @@ func TestPodAgentNextTask(t *testing.T) {
 			assert.Zero(t, rh.podID)
 		},
 		"RunFailsWithNonexistentPod": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
-			d := dispatcher.NewPodDispatcher("group", []string{"t1"}, []string{"pod1"})
+			tsk := getTask()
+			require.NoError(t, tsk.Insert())
+			d := dispatcher.NewPodDispatcher("group", []string{tsk.Id}, []string{"nonexistent_pod"})
 			require.NoError(t, d.Insert())
-			rh.podID = "pod1"
+			rh.podID = "nonexistent_pod"
 			resp := rh.Run(ctx)
 			assert.Equal(t, http.StatusNotFound, resp.Status())
 		},
@@ -224,29 +226,29 @@ func TestPodAgentNextTask(t *testing.T) {
 		"RunCorrectlyMarksContainerTaskDispatched": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
 			p := getPod()
 			require.NoError(t, p.Insert())
-			d := dispatcher.NewPodDispatcher("group", []string{"t1"}, []string{"pod1"})
-			require.NoError(t, d.Insert())
 			proj := getProject()
 			require.NoError(t, proj.Insert())
 			tsk := getTask()
 			require.NoError(t, tsk.Insert())
+			d := dispatcher.NewPodDispatcher("group", []string{tsk.Id}, []string{p.ID})
+			require.NoError(t, d.Insert())
 			rh.podID = p.ID
 
 			resp := rh.Run(ctx)
 			assert.Equal(t, http.StatusOK, resp.Status())
 			nextTaskResp := resp.Data().(*apimodels.NextTaskResponse)
-			assert.Equal(t, nextTaskResp.TaskId, "t1")
-			foundTask, err := task.FindOneId("t1")
+			assert.Equal(t, nextTaskResp.TaskId, tsk.Id)
+			foundTask, err := task.FindOneId(tsk.Id)
 			require.NoError(t, err)
 			assert.Equal(t, foundTask.Status, evergreen.TaskDispatched)
 		},
-		"RunEnqueuesTerminationJobWhenThereAreNoTasksToDispatch": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
+		"RunPreparesToTerminatePodWhenThereAreNoTasksToDispatch": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
 			p := getPod()
 			p.TimeInfo.Initializing = time.Now()
 			require.NoError(t, p.Insert())
 			rh.podID = p.ID
 
-			d := dispatcher.NewPodDispatcher("group", []string{"t1"}, []string{"pod1"})
+			d := dispatcher.NewPodDispatcher("group", []string{}, []string{p.ID})
 			require.NoError(t, d.Insert())
 
 			resp := rh.Run(ctx)
@@ -256,23 +258,24 @@ func TestPodAgentNextTask(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.NotZero(t, dbPod.TimeInfo.AgentStarted)
+			assert.Equal(t, pod.StatusDecommissioned, dbPod.Status)
 
 			stats := env.RemoteQueue().Stats(ctx)
 			assert.Equal(t, 1, stats.Total)
 		},
 		"RunUpdatesStartingPodToRunning": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
-			// Close the remote queue so that it doesn't actually try to run the
-			// pod termination job when there's no task to run.
-			env.RemoteQueue().Close(ctx)
-
 			p := getPod()
 			p.TimeInfo.Initializing = time.Now()
 			require.NoError(t, p.Insert())
 			assert.Equal(t, pod.StatusStarting, p.Status, "initial pod status should be starting")
 			rh.podID = p.ID
 
-			pd := dispatcher.NewPodDispatcher("group", []string{}, []string{p.ID})
-			require.NoError(t, pd.Insert())
+			proj := getProject()
+			require.NoError(t, proj.Insert())
+			tsk := getTask()
+			require.NoError(t, tsk.Insert())
+			d := dispatcher.NewPodDispatcher("group", []string{tsk.Id}, []string{p.ID})
+			require.NoError(t, d.Insert())
 
 			resp := rh.Run(ctx)
 			assert.Equal(t, http.StatusOK, resp.Status())
@@ -284,17 +287,17 @@ func TestPodAgentNextTask(t *testing.T) {
 			assert.Equal(t, pod.StatusRunning, dbPod.Status)
 		},
 		"RunReturnsRunningTaskIfItExists": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
-			p := getPod()
-			p.RunningTask = "t1"
-			require.NoError(t, p.Insert())
 			tsk := getTask()
 			require.NoError(t, tsk.Insert())
+			p := getPod()
+			p.RunningTask = tsk.Id
+			require.NoError(t, p.Insert())
 
 			rh.podID = p.ID
 			resp := rh.Run(ctx)
 			assert.Equal(t, http.StatusOK, resp.Status())
 			nextTaskResp := resp.Data().(*apimodels.NextTaskResponse)
-			assert.Equal(t, nextTaskResp.TaskId, "t1")
+			assert.Equal(t, nextTaskResp.TaskId, tsk.Id)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -385,7 +388,7 @@ func TestPodAgentEndTask(t *testing.T) {
 			resp := rh.Run(ctx)
 			endTaskResp := resp.Data().(*apimodels.EndTaskResponse)
 			assert.Equal(t, endTaskResp, &apimodels.EndTaskResponse{})
-			require.NoError(t, podToInsert.UpdateStatus(pod.StatusStarting))
+			require.NoError(t, podToInsert.UpdateStatus(pod.StatusStarting, ""))
 			resp = rh.Run(ctx)
 			endTaskResp = resp.Data().(*apimodels.EndTaskResponse)
 			assert.Equal(t, endTaskResp, &apimodels.EndTaskResponse{})

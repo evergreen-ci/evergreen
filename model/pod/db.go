@@ -158,7 +158,7 @@ func FindIntentByFamily(family string) ([]Pod, error) {
 // information about the status update. If the current status is identical to
 // the updated one, this will no-op. If the current status does not match the
 // stored status, this will error.
-func UpdateOneStatus(id string, current, updated Status, ts time.Time) error {
+func UpdateOneStatus(id string, current, updated Status, ts time.Time, reason string) error {
 	if current == updated {
 		return nil
 	}
@@ -180,7 +180,7 @@ func UpdateOneStatus(id string, current, updated Status, ts time.Time) error {
 		return err
 	}
 
-	event.LogPodStatusChanged(id, string(current), string(updated))
+	event.LogPodStatusChanged(id, string(current), string(updated), reason)
 
 	return nil
 }

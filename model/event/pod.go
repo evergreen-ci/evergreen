@@ -30,6 +30,7 @@ const (
 type podData struct {
 	OldStatus     string `bson:"old_status,omitempty" json:"old_status,omitempty"`
 	NewStatus     string `bson:"new_status,omitempty" json:"new_status,omitempty"`
+	Reason        string `bson:"reason,omitempty" json:"reason,omitempty"`
 	TaskID        string `bson:"task_id,omitempty" json:"task_id,omitempty"`
 	TaskExecution int    `bson:"task_execution,omitempty" json:"task_execution,omitempty"`
 }
@@ -57,10 +58,11 @@ func LogPodEvent(id string, kind PodEventType, data podData) {
 
 // LogPodStatusChanged logs an event indicating that the pod's status has been
 // updated.
-func LogPodStatusChanged(id, oldStatus, newStatus string) {
+func LogPodStatusChanged(id, oldStatus, newStatus, reason string) {
 	LogPodEvent(id, EventPodStatusChange, podData{
 		OldStatus: oldStatus,
 		NewStatus: newStatus,
+		Reason:    reason,
 	})
 }
 
