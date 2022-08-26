@@ -612,9 +612,9 @@ func (p *Pod) Remove() error {
 }
 
 // UpdateStatus updates the pod status.
-func (p *Pod) UpdateStatus(s Status) error {
+func (p *Pod) UpdateStatus(s Status, reason string) error {
 	ts := utility.BSONTime(time.Now())
-	if err := UpdateOneStatus(p.ID, p.Status, s, ts); err != nil {
+	if err := UpdateOneStatus(p.ID, p.Status, s, ts, reason); err != nil {
 		return errors.Wrap(err, "updating status")
 	}
 

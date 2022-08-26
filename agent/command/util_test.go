@@ -13,20 +13,16 @@ import (
 
 func TestCreateEnclosingDirectory(t *testing.T) {
 	assert := assert.New(t)
-	require := require.New(t)
 
 	// create a temp directory and ensure that its cleaned up.
-	dirname, err := ioutil.TempDir("", "command-test")
-	require.NoError(err)
-	assert.True(dirExists(dirname))
-	defer os.RemoveAll(dirname)
+	dirname := t.TempDir()
 
 	// write data to a temp file and then ensure that the directory existing predicate is valid
 	fileName := filepath.Join(dirname, "foo")
 	assert.False(dirExists(fileName))
 	assert.NoError(ioutil.WriteFile(fileName, []byte("hello world"), 0744))
 	assert.False(dirExists(fileName))
-	_, err = os.Stat(fileName)
+	_, err := os.Stat(fileName)
 	assert.True(!os.IsNotExist(err))
 	assert.NoError(os.Remove(fileName))
 	_, err = os.Stat(fileName)
@@ -37,11 +33,6 @@ func TestCreateEnclosingDirectory(t *testing.T) {
 	fileName = filepath.Join(fileName, "bar")
 	assert.NoError(createEnclosingDirectoryIfNeeded(fileName))
 	assert.True(dirExists(filepath.Join(dirname, "foo")))
-
-	// ensure that directory existence check is correct
-	assert.True(dirExists(dirname))
-	assert.NoError(os.RemoveAll(dirname))
-	assert.False(dirExists(dirname))
 }
 
 func TestGetJoinedWithWorkDir(t *testing.T) {

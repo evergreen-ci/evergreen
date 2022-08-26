@@ -350,7 +350,7 @@ func TestUpdateOneStatus(t *testing.T) {
 			p.Status = StatusInitializing
 			require.NoError(t, p.Insert())
 
-			require.NoError(t, p.UpdateStatus(p.Status))
+			require.NoError(t, p.UpdateStatus(p.Status, ""))
 			assert.Equal(t, StatusInitializing, p.Status)
 
 			dbPod, err := FindOneByID(p.ID)
@@ -363,7 +363,7 @@ func TestUpdateOneStatus(t *testing.T) {
 			require.NoError(t, p.Insert())
 
 			updated := StatusInitializing
-			require.NoError(t, UpdateOneStatus(p.ID, p.Status, updated, time.Now()))
+			require.NoError(t, UpdateOneStatus(p.ID, p.Status, updated, time.Now(), ""))
 
 			dbPod, err := FindOneByID(p.ID)
 			require.NoError(t, err)
@@ -375,7 +375,7 @@ func TestUpdateOneStatus(t *testing.T) {
 			require.NoError(t, p.Insert())
 
 			updated := StatusStarting
-			require.NoError(t, UpdateOneStatus(p.ID, p.Status, updated, time.Now()))
+			require.NoError(t, UpdateOneStatus(p.ID, p.Status, updated, time.Now(), ""))
 
 			dbPod, err := FindOneByID(p.ID)
 			require.NoError(t, err)
@@ -386,13 +386,13 @@ func TestUpdateOneStatus(t *testing.T) {
 		"FailsWithMismatchedCurrentStatus": func(t *testing.T, p Pod) {
 			require.NoError(t, p.Insert())
 
-			assert.Error(t, UpdateOneStatus(p.ID, StatusInitializing, StatusTerminated, time.Now()))
+			assert.Error(t, UpdateOneStatus(p.ID, StatusInitializing, StatusTerminated, time.Now(), ""))
 		},
 		"SucceedsWithTerminatedStatus": func(t *testing.T, p Pod) {
 			require.NoError(t, p.Insert())
 
 			updated := StatusTerminated
-			require.NoError(t, UpdateOneStatus(p.ID, p.Status, updated, time.Now()))
+			require.NoError(t, UpdateOneStatus(p.ID, p.Status, updated, time.Now(), ""))
 
 			dbPod, err := FindOneByID(p.ID)
 			require.NoError(t, err)
@@ -404,7 +404,7 @@ func TestUpdateOneStatus(t *testing.T) {
 		"FailsWithNonexistentPod": func(t *testing.T, p Pod) {
 			require.NoError(t, p.Insert())
 
-			assert.Error(t, UpdateOneStatus("nonexistent", StatusStarting, StatusRunning, time.Now()))
+			assert.Error(t, UpdateOneStatus("nonexistent", StatusStarting, StatusRunning, time.Now(), ""))
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {

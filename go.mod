@@ -16,11 +16,11 @@ require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/evergreen-ci/birch v0.0.0-20220401151432-c792c3d8e0eb
 	github.com/evergreen-ci/certdepot v0.0.0-20211117185134-dbedb3d79a10
-	github.com/evergreen-ci/cocoa v0.0.0-20220811175637-7f2d39fe31aa
+	github.com/evergreen-ci/cocoa v0.0.0-20220822162052-df9129525b02
 	github.com/evergreen-ci/gimlet v0.0.0-20220419172609-b882e01673e7
 	github.com/evergreen-ci/go-test2json v0.0.0-20180702150328-5b6cfd2e8cb0
 	github.com/evergreen-ci/juniper v0.0.0-20220118233332-0813edc78908
-	github.com/evergreen-ci/pail v0.0.0-20220405154537-920afff49d92
+	github.com/evergreen-ci/pail v0.0.0-20220819171438-1fd2f7732eef
 	github.com/evergreen-ci/poplar v0.0.0-20220801165844-adb53dc1b937
 	github.com/evergreen-ci/shrub v0.0.0-20211025143051-a8d91b2e29fd
 	github.com/evergreen-ci/timber v0.0.0-20220809215118-028567bbef72

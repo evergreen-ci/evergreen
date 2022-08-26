@@ -69,9 +69,7 @@ func (s *logSenderSuite) SetupTest() {
 
 func (s *logSenderSuite) SetupSuite() {
 	s.restClient = NewHostCommunicator("foo", "hostID", "hostSecret").(*hostCommunicator)
-	tempDir, err := ioutil.TempDir("", "logSenderSuite")
-	s.Require().NoError(err)
-	s.tempDir = tempDir
+	s.tempDir = s.T().TempDir()
 	s.numMessages = 1000
 	s.maxSleep = 10 * time.Millisecond
 	rand.Seed(time.Now().UnixNano())
@@ -81,10 +79,6 @@ func (s *logSenderSuite) TearDownTest() {
 	for _, sender := range s.underlyingSenders {
 		s.Require().NoError(sender.Close())
 	}
-}
-
-func (s *logSenderSuite) TearDownSuite() {
-	s.Require().NoError(os.RemoveAll(s.tempDir))
 }
 
 func (s *logSenderSuite) randomSleep() {

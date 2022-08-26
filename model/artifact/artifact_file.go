@@ -3,7 +3,7 @@ package artifact
 import (
 	"time"
 
-	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/pail"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -72,13 +72,13 @@ func StripHiddenFiles(files []File, hasUser bool) ([]File, error) {
 			if !file.ContainsSigningParams() {
 				return nil, errors.New("AWS secret, AWS key, S3 bucket, or file key missing")
 			}
-			requestParams := thirdparty.RequestParams{
+			requestParams := pail.PreSignRequestParams{
 				Bucket:    file.Bucket,
 				FileKey:   file.FileKey,
 				AwsKey:    file.AwsKey,
 				AwsSecret: file.AwsSecret,
 			}
-			urlStr, err := thirdparty.PreSign(requestParams)
+			urlStr, err := pail.PreSign(requestParams)
 			if err != nil {
 				return nil, errors.Wrap(err, "presigning url")
 			}

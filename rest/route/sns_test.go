@@ -214,7 +214,7 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			}
 			cocoaMock.GlobalECSService.Clusters[clusterID] = cocoaMock.ECSCluster{
 				taskID: cocoaMock.ECSTask{
-					ARN:        utility.ToStringPtr(taskID),
+					ARN:        taskID,
 					Cluster:    utility.ToStringPtr(clusterID),
 					Created:    utility.ToTimePtr(time.Now().Add(-10 * time.Minute)),
 					Status:     utility.ToStringPtr(status),
@@ -265,7 +265,7 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			)
 			cocoaMock.GlobalECSService.Clusters[clusterID] = cocoaMock.ECSCluster{
 				taskID: cocoaMock.ECSTask{
-					ARN:        utility.ToStringPtr(taskID),
+					ARN:        taskID,
 					Cluster:    utility.ToStringPtr(clusterID),
 					Created:    utility.ToTimePtr(time.Now().Add(-10 * time.Minute)),
 					Status:     utility.ToStringPtr(status),
@@ -319,7 +319,7 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			}
 			cocoaMock.GlobalECSService.Clusters[clusterID] = cocoaMock.ECSCluster{
 				taskID: cocoaMock.ECSTask{
-					ARN:        utility.ToStringPtr(taskID),
+					ARN:        taskID,
 					Cluster:    utility.ToStringPtr(clusterID),
 					Created:    utility.ToTimePtr(time.Now().Add(-10 * time.Minute)),
 					Status:     utility.ToStringPtr(status),
@@ -370,7 +370,7 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			}
 			cocoaMock.GlobalECSService.Clusters[clusterID] = cocoaMock.ECSCluster{
 				taskID: cocoaMock.ECSTask{
-					ARN:        utility.ToStringPtr(taskID),
+					ARN:        taskID,
 					Cluster:    utility.ToStringPtr(clusterID),
 					Created:    utility.ToTimePtr(time.Now().Add(-10 * time.Minute)),
 					Status:     utility.ToStringPtr(status),
@@ -456,7 +456,7 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			}
 			cocoaMock.GlobalECSService.Clusters[clusterID] = cocoaMock.ECSCluster{
 				taskARN: cocoaMock.ECSTask{
-					ARN:               utility.ToStringPtr(taskARN),
+					ARN:               taskARN,
 					ContainerInstance: utility.ToStringPtr(containerInstanceID),
 					Cluster:           utility.ToStringPtr(clusterID),
 					Created:           utility.ToTimePtr(time.Now().Add(-10 * time.Minute)),

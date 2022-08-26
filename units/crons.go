@@ -1353,6 +1353,21 @@ func PopulatePodCreationJobs() amboy.QueueOperation {
 	}
 }
 
+func PopulatePodTerminationJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		pods, err := pod.FindByNeedsTermination()
+		if err != nil {
+			return errors.Wrap(err, "finding pods that need to be terminated")
+		}
+
+		catcher := grip.NewBasicCatcher()
+		for _, p := range pods {
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewPodTerminationJob(p.ID, "system indicates pod should be terminated", utility.RoundPartOfMinute(0))), "enqueueing pod termination job for pod '%s'", p.ID)
+		}
+		return catcher.Resolve()
+	}
+}
+
 // PopulatePodDefinitionCreationJobs populates the jobs to create pod
 // definitions.
 func PopulatePodDefinitionCreationJobs(env evergreen.Environment) amboy.QueueOperation {
@@ -1371,18 +1386,11 @@ func PopulatePodDefinitionCreationJobs(env evergreen.Environment) amboy.QueueOpe
 	}
 }
 
-func PopulatePodTerminationJobs(env evergreen.Environment) amboy.QueueOperation {
+// PopulatePodDefinitionCleanupJobs populates the jobs to clean up pod
+// definitions.
+func PopulatePodDefinitionCleanupJobs() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		pods, err := pod.FindByNeedsTermination()
-		if err != nil {
-			return errors.Wrap(err, "finding pods that need to be terminated")
-		}
-
-		catcher := grip.NewBasicCatcher()
-		for _, p := range pods {
-			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewPodTerminationJob(p.ID, "system indicates pod should be terminated", utility.RoundPartOfMinute(0))), "enqueueing pod termination job for pod '%s'", p.ID)
-		}
-		return catcher.Resolve()
+		return errors.Wrap(amboy.EnqueueUniqueJob(ctx, queue, NewPodDefinitionCleanupJob(utility.RoundPartOfHour(0).Format(TSFormat))), "enqueueing pod definition cleanup job")
 	}
 }
 
