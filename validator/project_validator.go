@@ -478,6 +478,7 @@ func validateProjectConfigPlugins(pc *model.ProjectConfig) ValidationErrors {
 	if annotationSettings != nil {
 		webhook = &annotationSettings.FileTicketWebhook
 	}
+	// skip validation if no build baron configuration exists
 	if pc.BuildBaronSettings == nil {
 		return errs
 	}
