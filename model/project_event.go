@@ -41,6 +41,7 @@ type ProjectChangeEvent struct {
 
 type ProjectChangeEvents []ProjectChangeEventEntry
 
+// Attached projects need to be able to distinguish between empty arrays and nil: nil values default to repo, while empty arrays do not.
 // Look at the flags set in the ProjectSettingsEvent so that fields that were converted to empty arrays when casting to an interface{} can be correctly set to nil
 func (p *ProjectChangeEvents) ApplyDefaults() {
 	for _, event := range *p {
