@@ -3,13 +3,13 @@ package operations
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/agent"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v34/github"
@@ -102,7 +102,7 @@ func checkTaskByCommit(username, key, mode string) error {
 	var build apimodels.APIBuild
 
 	buildIdx := 0
-	if mode == string(agent.PodMode) {
+	if mode == string(agent.HostMode) {
 		buildIdx = 1
 	}
 	// trigger repotracker to insert relevant builds and tasks from agent.yml definitions

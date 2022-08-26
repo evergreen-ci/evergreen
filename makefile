@@ -141,7 +141,7 @@ set-smoke-vars:$(buildDir)/.load-smoke-data
 	@./bin/set-project-var -dbName mci_smoke -key aws_key -value $(AWS_KEY)
 	@./bin/set-project-var -dbName mci_smoke -key aws_secret -value $(AWS_SECRET)
 	@./bin/set-var -dbName=mci_smoke -collection=hosts -id=localhost -key=agent_revision -value=$(agentVersion)
-	@./bin/set-var -dbName=mci_smoke -collection=pods -id=pod0 -key=agent_revision -value=$(agentVersion)
+	@./bin/set-var -dbName=mci_smoke -collection=pods -id=localhost -key=agent_version -value=$(agentVersion)
 load-smoke-data:$(buildDir)/.load-smoke-data
 load-local-data:$(buildDir)/.load-local-data
 $(buildDir)/.load-smoke-data:$(buildDir)/load-smoke-data

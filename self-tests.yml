@@ -184,6 +184,7 @@ functions:
         - MONGO_CREDS_FILE
         - RUN_TEST
         - RUN_EC2_SPECIFIC_TESTS
+        - IS_DOCKER
       env:
         AWS_KEY: ${aws_key}
         AWS_SECRET: ${aws_secret}

@@ -1,0 +1,2 @@
+{"_id":"localhost", "secret":"de249183582947721fdfb2ea1796574b","agent_revision":"foo", "type": "agent", "status": "running", "task_creation_opts": {"env_secrets": {"POD_SECRET": "de249183582947721fdfb2ea1796574b"}}}
+{"_id":"localhost2", "secret":"de249183582947721fdfb2ea1796574b","agent_revision":"foo", "type": "agent", "status": "running"}

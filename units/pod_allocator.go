@@ -77,11 +77,13 @@ func (j *podAllocatorJob) Run(ctx context.Context) {
 		}
 	}()
 
+	fmt.Println("MALIK9")
 	shouldAllocate, err := j.canAllocate()
 	if err != nil {
 		j.AddRetryableError(errors.Wrap(err, "checking allocation attempt against max parallel pod request limit"))
 		return
 	}
+	fmt.Println(shouldAllocate)
 	if !shouldAllocate {
 		grip.Info(message.Fields{
 			"message":            "reached max parallel pod request limit, will re-attempt to allocate container to task later",
@@ -95,10 +97,13 @@ func (j *podAllocatorJob) Run(ctx context.Context) {
 		return
 	}
 
+	fmt.Println(j)
 	if err := j.populate(); err != nil {
+		fmt.Println(err)
 		j.AddRetryableError(errors.Wrap(err, "populating job"))
 		return
 	}
+	fmt.Println(j)
 
 	if j.task.RemainingContainerAllocationAttempts() == 0 {
 		// A task that has used up all of its container allocation attempts
@@ -119,12 +124,15 @@ func (j *podAllocatorJob) Run(ctx context.Context) {
 		return
 	}
 
-	intentPod, err := pod.NewTaskIntentPod(j.settings.Providers.AWS.Pod.ECS, *opts)
+	fmt.Println("MALIK9.99")
+	intentPod, err := pod.NewTaskIntentPod(evergreen.ECSConfig{TaskDefinitionPrefix: "prefix_1"}, *opts)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "creating new task intent pod"))
 		return
 	}
 
+	fmt.Println("MALIK3")
+	fmt.Println(intentPod)
 	if _, err := dispatcher.Allocate(ctx, j.env, j.task, intentPod); err != nil {
 		j.AddRetryableError(errors.Wrap(err, "allocating pod for task dispatch"))
 		return
@@ -147,15 +155,15 @@ func (j *podAllocatorJob) canAllocate() (shouldAllocate bool, err error) {
 		return false, nil
 	}
 
-	settings, err := evergreen.GetConfig()
-	if err != nil {
-		return false, errors.Wrap(err, "getting admin settings")
-	}
+	//settings, err := evergreen.GetConfig()
+	//if err != nil {
+	//	return false, errors.Wrap(err, "getting admin settings")
+	//}
 	numInitializing, err := pod.CountByInitializing()
 	if err != nil {
 		return false, errors.Wrap(err, "counting initializing pods")
 	}
-	if numInitializing >= settings.PodInit.MaxParallelPodRequests {
+	if numInitializing >= 2000 {
 		return false, nil
 	}
 
@@ -195,17 +203,21 @@ func (j *podAllocatorJob) populate() error {
 		}
 		j.pRef = pRef
 	}
+	fmt.Println("SETTINGS2")
+	fmt.Println(settings)
 
 	if j.vault == nil {
 		if j.smClient == nil {
 			client, err := cloud.MakeSecretsManagerClient(&settings)
 			if err != nil {
+				fmt.Println(err)
 				return errors.Wrap(err, "initializing Secrets Manager client")
 			}
 			j.smClient = client
 		}
 		vault, err := cloud.MakeSecretsManagerVault(j.smClient)
 		if err != nil {
+			fmt.Println(err)
 			return errors.Wrap(err, "initializing Secrets Manager vault")
 		}
 		j.vault = vault
@@ -220,6 +232,7 @@ func (j *podAllocatorJob) getIntentPodOptions(ctx context.Context) (*pod.TaskInt
 		podSecretExternalID string
 	)
 	for _, containerSecret := range j.pRef.ContainerSecrets {
+		fmt.Println(containerSecret)
 		if j.task.ContainerOpts.RepoCredsName != "" && containerSecret.Name == j.task.ContainerOpts.RepoCredsName && containerSecret.Type == model.ContainerSecretRepoCreds {
 			repoCredsExternalID = containerSecret.ExternalID
 		}
@@ -233,11 +246,16 @@ func (j *podAllocatorJob) getIntentPodOptions(ctx context.Context) (*pod.TaskInt
 	if podSecretExternalID == "" {
 		return nil, errors.Errorf("pod secret for project ref '%s' not found", j.pRef.Identifier)
 	}
+	fmt.Println("Getting value:")
+	fmt.Println(j.vault)
+	fmt.Println(podSecretExternalID)
 	podSecret, err := j.vault.GetValue(ctx, podSecretExternalID)
 	if err != nil {
+		fmt.Println(err)
 		return nil, errors.Wrap(err, "getting pod secret value")
 	}
 
+	fmt.Println("Got value " + podSecret)
 	os, err := pod.ImportOS(j.task.ContainerOpts.OS)
 	if err != nil {
 		return nil, errors.Wrap(err, "importing OS")

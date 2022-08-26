@@ -27,6 +27,9 @@ notify:
 runner:
   intervalseconds: 10
 
+pod_init:
+  max_parallel_pod_requests: 2000
+
 auth:
   naive:
     users:
@@ -56,6 +59,9 @@ providers:
   aws:
     aws_id: "foo"
     aws_secret: "bar"
+    pod:
+      region: us-east-2
+      role: arn:aws:iam::579766882180:role/ClusterRole
 
 keys:
   test: "/dev/null"

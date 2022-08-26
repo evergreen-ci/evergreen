@@ -12,7 +12,6 @@ import (
 	"strconv"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/agent"
 	timberutil "github.com/evergreen-ci/timber/testutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
@@ -67,8 +66,7 @@ func smokeStartEvergreen() cli.Command {
 
 		cedarPort = 7070
 
-		hostId     = "localhost"
-		podId      = "pod0"
+		id         = "localhost"
 		secret     = "de249183582947721fdfb2ea1796574b"
 		statusPort = "2287"
 
@@ -133,7 +131,7 @@ func smokeStartEvergreen() cli.Command {
 			defer cancel()
 
 			if startWeb {
-				if err := smokeRunBinary(exit, "web.service", wd, binary, "service", "web", "--conf", confPath); err != nil {
+				if err := smokeRunBinary(exit, "web.service", wd, binary, "service", "web", "--conf", confPath, "--db", "mci_smoke"); err != nil {
 					return errors.Wrap(err, "error running web service")
 				}
 			}
@@ -145,10 +143,6 @@ func smokeStartEvergreen() cli.Command {
 					return errors.Wrap(err, "starting mock Cedar service")
 				}
 
-				id := hostId
-				if mode == string(agent.PodMode) {
-					id = podId
-				}
 				err := smokeRunBinary(exit, "agent",
 					wd,
 					binary,
@@ -205,7 +199,7 @@ func smokeStartEvergreen() cli.Command {
 					binary,
 					"agent",
 					"--mode=host",
-					"--host_id", hostId,
+					"--host_id", id,
 					"--host_secret", secret,
 					"--api_server", apiServerURL,
 					"--log_prefix", evergreen.StandardOutputLoggingOverride,

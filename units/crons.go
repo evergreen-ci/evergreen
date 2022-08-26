@@ -1298,12 +1298,12 @@ func PopulatePodAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 			"message":          "tracking statistics for number of parallel pods being requested",
 			"num_initializing": numInitializing,
 		})
-
-		settings, err := evergreen.GetConfig()
-		if err != nil {
-			return errors.Wrap(err, "getting admin settings")
-		}
-		remaining := settings.PodInit.MaxParallelPodRequests - numInitializing
+		//
+		//settings, err := evergreen.GetConfig()
+		//if err != nil {
+		//	return errors.Wrap(err, "getting admin settings")
+		//}
+		remaining := 2000 //settings.PodInit.MaxParallelPodRequests - numInitializing
 
 		ctq, err := model.NewContainerTaskQueue()
 		if err != nil {
