@@ -52,7 +52,7 @@ func FindProjectById(id string, includeRepo bool, includeProjectConfig bool) (*m
 
 // CreateProject inserts the given model.ProjectRef.
 // kim: TODO: test
-func CreateProject(ctx context.Context, projectRef *model.ProjectRef, u *user.DBUser) error {
+func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *model.ProjectRef, u *user.DBUser) error {
 	config, err := evergreen.GetConfig()
 	if err != nil {
 		return gimlet.ErrorResponse{
@@ -79,17 +79,17 @@ func CreateProject(ctx context.Context, projectRef *model.ProjectRef, u *user.DB
 		}
 	}
 
-	cachedSettings := evergreen.GetEnvironment().Settings()
+	cachedSettings := env.Settings()
+	smClient, err := cloud.MakeSecretsManagerClient(cachedSettings)
+	if err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "cannot set up Secrets Manager client to store newly-created project's container secrets",
+			"op":      "CreateProject",
+		}))
+	}
+	defer smClient.Close(ctx)
 	var vault cocoa.Vault
-	if len(projectRef.ContainerSecrets) != 0 {
-		smClient, err := cloud.MakeSecretsManagerClient(cachedSettings)
-		if err != nil {
-			return gimlet.ErrorResponse{
-				StatusCode: http.StatusInternalServerError,
-				Message:    errors.Wrap(err, "initializing Secrets Manager client").Error(),
-			}
-		}
-		defer smClient.Close(ctx)
+	if smClient != nil {
 		vault, err = cloud.MakeSecretsManagerVault(smClient)
 		if err != nil {
 			return gimlet.ErrorResponse{

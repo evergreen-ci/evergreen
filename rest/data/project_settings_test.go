@@ -571,28 +571,28 @@ func TestCopyProject(t *testing.T) {
 				NewProjectIdentifier: "myNewProject",
 				NewProjectId:         "12345",
 			}
-			newProject, err := CopyProject(ctx, copyProjectOpts)
+			newProject, err := CopyProject(ctx, env, copyProjectOpts)
 			assert.NoError(t, err)
-			assert.NotNil(t, newProject)
-			assert.Equal(t, *newProject.Identifier, "myNewProject")
-			assert.Equal(t, *newProject.Id, "12345")
+			require.NotNil(t, newProject)
+			assert.Equal(t, "myNewProject", utility.FromStringPtr(newProject.Identifier))
+			assert.Equal(t, "12345", utility.FromStringPtr(newProject.Id))
 		},
 		"Copies project with partial error": func(t *testing.T, ref model.ProjectRef) {
 			copyProjectOpts := CopyProjectOpts{
 				ProjectIdToCopy:      "myIdTwo",
 				NewProjectIdentifier: "mySecondProject",
 			}
-			newProject, err := CopyProject(ctx, copyProjectOpts)
+			newProject, err := CopyProject(ctx, env, copyProjectOpts)
 			assert.Error(t, err)
-			assert.NotNil(t, newProject)
-			assert.Equal(t, *newProject.Identifier, "mySecondProject")
+			require.NotNil(t, newProject)
+			assert.Equal(t, "mySecondProject", utility.FromStringPtr(newProject.Identifier))
 		},
 		"Does not copy project with fatal error": func(t *testing.T, ref model.ProjectRef) {
 			copyProjectOpts := CopyProjectOpts{
 				ProjectIdToCopy:      "nonexistentId",
 				NewProjectIdentifier: "myThirdProject",
 			}
-			newProject, err := CopyProject(ctx, copyProjectOpts)
+			newProject, err := CopyProject(ctx, env, copyProjectOpts)
 			assert.Error(t, err)
 			assert.Nil(t, newProject)
 		},

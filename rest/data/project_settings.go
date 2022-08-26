@@ -30,7 +30,7 @@ type CopyProjectOpts struct {
 }
 
 // CopyProject copies the passed in project with the given project identifier, and returns the new project.
-func CopyProject(ctx context.Context, opts CopyProjectOpts) (*restModel.APIProjectRef, error) {
+func CopyProject(ctx context.Context, env evergreen.Environment, opts CopyProjectOpts) (*restModel.APIProjectRef, error) {
 	projectToCopy, err := FindProjectById(opts.ProjectIdToCopy, false, false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding project '%s'", opts.ProjectIdToCopy)
@@ -56,7 +56,7 @@ func CopyProject(ctx context.Context, opts CopyProjectOpts) (*restModel.APIProje
 	disableStartingSettings(projectToCopy)
 
 	u := gimlet.GetUser(ctx).(*user.DBUser)
-	if err := CreateProject(ctx, projectToCopy, u); err != nil {
+	if err := CreateProject(ctx, env, projectToCopy, u); err != nil {
 		return nil, err
 	}
 	apiProjectRef := &restModel.APIProjectRef{}
