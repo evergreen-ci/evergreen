@@ -3532,6 +3532,7 @@ type GetTasksByProjectAndCommitOptions struct {
 	Status         string
 	VariantName    string
 	TaskName       string
+	Requesters     []string
 	Limit          int
 }
 

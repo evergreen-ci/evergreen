@@ -2,7 +2,9 @@ package route
 
 import (
 	"context"
+	"github.com/evergreen-ci/evergreen"
 	"net/http"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -22,6 +24,7 @@ type tasksByProjectHandler struct {
 	limit      int
 	key        string
 	url        string
+	requesters []string
 }
 
 func makeTasksByProjectAndCommitHandler(url string) gimlet.RouteHandler {
@@ -46,6 +49,7 @@ func (tph *tasksByProjectHandler) Parse(ctx context.Context, r *http.Request) er
 	tph.key = vals.Get("start_at")
 	tph.variant = vals.Get("variant")
 	tph.taskName = vals.Get("task_name")
+	tph.requesters = tph.readStringList(vals["requesters"])
 
 	if tph.project == "" {
 		return gimlet.ErrorResponse{
@@ -59,6 +63,10 @@ func (tph *tasksByProjectHandler) Parse(ctx context.Context, r *http.Request) er
 			Message:    "commit_hash cannot be empty",
 			StatusCode: http.StatusBadRequest,
 		}
+	}
+
+	if len(tph.requesters) == 0 {
+		tph.requesters = []string{evergreen.RepotrackerVersionRequester}
 	}
 
 	var err error
@@ -78,6 +86,7 @@ func (tph *tasksByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 		Status:         tph.status,
 		VariantName:    tph.variant,
 		TaskName:       tph.taskName,
+		Requesters:     tph.requesters,
 		Limit:          tph.limit + 1,
 	}
 	tasks, err := data.FindTasksByProjectAndCommit(opts)
@@ -129,4 +138,14 @@ func (tph *tasksByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return resp
+}
+
+// readStringList parses a string list parameter value, the values can be comma separated or specified multiple times.
+func (tph *tasksByProjectHandler) readStringList(values []string) []string {
+	var parsedValues []string
+	for _, val := range values {
+		elements := strings.Split(val, ",")
+		parsedValues = append(parsedValues, elements...)
+	}
+	return parsedValues
 }
