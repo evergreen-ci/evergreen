@@ -160,7 +160,7 @@ tasks:
           destination: "test_num"
       - command: downstream_expansions.set
         params:
-          file: ../testdata/downstream_expansions.yml
+          file: downstream_expansions.yml
           destination: "test_num"
       - command: manifest.load
       - command: s3.put
