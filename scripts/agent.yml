@@ -195,18 +195,12 @@ tasks:
           aws_key: ${aws_key}
           aws_secret: ${aws_secret}
           s3_copy_files:
-            - {
-                "source":
-                  {
-                    "path": "evergreen/smoke/${build_id}-${build_variant}/evergreen-${task_name}-${revision}",
-                    "bucket": "mciuploads",
-                  },
-                "destination":
-                  {
-                    "path": "evergreen/smoke/${build_id}-${build_variant}/evergreen-${task_name}-${revision}-copy",
-                    "bucket": "mciuploads",
-                  },
-              }
+            - source:
+              path: "evergreen/smoke/${build_id}-${build_variant}/evergreen-${task_name}-${revision}"
+              bucket: mciuploads
+            - destination:
+              path: "evergreen/smoke/${build_id}-${build_variant}/evergreen-${task_name}-${revision}-copy"
+              bucket: mciuploads
       - command: timeout.update
         params:
           timeout_secs: 2700
