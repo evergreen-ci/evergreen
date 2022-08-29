@@ -480,7 +480,7 @@ func validateProjectConfigPlugins(pc *model.ProjectConfig) ValidationErrors {
 	}
 	// skip validation if no build baron configuration exists
 	if pc.BuildBaronSettings == nil {
-		return nil
+		return ValidationErrors{}
 	}
 	err := model.ValidateBbProject(pc.Project, *pc.BuildBaronSettings, webhook)
 	if err != nil {
