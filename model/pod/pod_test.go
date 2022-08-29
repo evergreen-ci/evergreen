@@ -290,6 +290,28 @@ func TestNewTaskIntentPod(t *testing.T) {
 		assert.Error(t, err)
 		assert.Zero(t, p)
 	})
+	t.Run("FailsWithCPUExceedingGlobalMaxCPU", func(t *testing.T) {
+		opts := makeValidOpts()
+		ecsConf := evergreen.ECSConfig{
+			MaxCPU:      1024,
+			MaxMemoryMB: 2048,
+		}
+		opts.CPU = ecsConf.MaxCPU + 1
+		p, err := NewTaskIntentPod(ecsConf, opts)
+		assert.Error(t, err)
+		assert.Zero(t, p)
+	})
+	t.Run("FailsWithCPUExceedingGlobalMaxMemoryMB", func(t *testing.T) {
+		opts := makeValidOpts()
+		ecsConf := evergreen.ECSConfig{
+			MaxCPU:      1024,
+			MaxMemoryMB: 2048,
+		}
+		opts.MemoryMB = ecsConf.MaxMemoryMB + 1
+		p, err := NewTaskIntentPod(ecsConf, opts)
+		assert.Error(t, err)
+		assert.Zero(t, p)
+	})
 }
 
 func TestUpdateStatus(t *testing.T) {

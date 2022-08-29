@@ -1894,6 +1894,14 @@ Admin Settings
 											ng-trim="false" rows="3" md-select-on-focus></textarea>
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
+										<label>Pod ECS Max CPU Units Per Pod</label>
+										<input type="number" ng-model="Settings.providers.aws.pod.ecs.max_cpu">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>Pod ECS Max Memory (MB) Per Pod</label>
+										<input type="number" ng-model="Settings.providers.aws.pod.ecs.max_memory_mb">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
 										<label>Pod Role</label>
 										<input type="text" ng-model="Settings.providers.aws.pod.role">
 									</md-input-container>

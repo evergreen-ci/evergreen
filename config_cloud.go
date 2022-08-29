@@ -135,6 +135,12 @@ func (c *AWSPodConfig) Validate() error {
 
 // ECSConfig represents configuration for AWS ECS.
 type ECSConfig struct {
+	// MaxCPU is the maximum allowed CPU units (1024 CPU units = 1 vCPU) that a
+	// single pod can use.
+	MaxCPU int `bson:"max_cpu" json:"max_cpu" yaml:"max_cpu"`
+	// MaxMemoryMB is the maximum allowed memory (in MB) that a single pod can
+	// use.
+	MaxMemoryMB int `bson:"max_memory_mb" json:"max_memory_mb" yaml:"max_memory_mb"`
 	// TaskDefinitionPrefix is the prefix for the task definition families.
 	TaskDefinitionPrefix string `bson:"task_definition_prefix" json:"task_definition_prefix" yaml:"task_definition_prefix"`
 	// TaskRole is the IAM role that ECS tasks can assume to make AWS requests.
