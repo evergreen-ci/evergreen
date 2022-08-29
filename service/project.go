@@ -461,7 +461,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't check if GitHub aliases are set"))
 				return
 			}
-			if !aliasesDefined {
+			if !aliasesDefined && !responseRef.VersionControlEnabled {
 				uis.LoggedError(w, r, http.StatusBadRequest, errors.New("cannot enable PR testing without patch definitions"))
 				return
 			}
@@ -484,7 +484,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't check if GitHub check aliases are set"))
 				return
 			}
-			if !aliasesDefined {
+			if !aliasesDefined && !responseRef.VersionControlEnabled {
 				uis.LoggedError(w, r, http.StatusBadRequest, errors.New("cannot enable Github checks without definitions"))
 				return
 			}
@@ -496,7 +496,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't check if GitHub aliases are set"))
 				return
 			}
-			if !aliasesDefined {
+			if !aliasesDefined && !responseRef.VersionControlEnabled {
 				uis.LoggedError(w, r, http.StatusBadRequest, errors.New("cannot enable git tag versions without version definitions"))
 				return
 			}
@@ -527,7 +527,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't check if commit queue aliases are set"))
 				return
 			}
-			if !exists {
+			if !exists && !responseRef.VersionControlEnabled {
 				uis.LoggedError(w, r, http.StatusBadRequest, errors.New("cannot enable commit queue without patch definitions"))
 				return
 			}
