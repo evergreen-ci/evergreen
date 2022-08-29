@@ -2,14 +2,18 @@ package data
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/secretsmanager"
 	"github.com/evergreen-ci/cocoa"
 	cocoaMock "github.com/evergreen-ci/cocoa/mock"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -564,8 +568,15 @@ func TestCopyProject(t *testing.T) {
 	env := testutil.NewEnvironment(ctx, t)
 	rm := env.RoleManager()
 
+	defer cocoaMock.ResetGlobalSecretCache()
+
+	smClient := &cocoaMock.SecretsManagerClient{}
+	defer func() {
+		assert.NoError(t, smClient.Close(ctx))
+	}()
+
 	for name, test := range map[string]func(t *testing.T, ref model.ProjectRef){
-		"Successfully copies project": func(t *testing.T, ref model.ProjectRef) {
+		"SuccessfullyCopiesProject": func(t *testing.T, ref model.ProjectRef) {
 			copyProjectOpts := CopyProjectOpts{
 				ProjectIdToCopy:      ref.Id,
 				NewProjectIdentifier: "myNewProject",
@@ -576,8 +587,38 @@ func TestCopyProject(t *testing.T) {
 			require.NotNil(t, newProject)
 			assert.Equal(t, "myNewProject", utility.FromStringPtr(newProject.Identifier))
 			assert.Equal(t, "12345", utility.FromStringPtr(newProject.Id))
+
+			dbProjRef, err := model.FindBranchProjectRef(utility.FromStringPtr(newProject.Id))
+			require.NoError(t, err)
+			require.NotZero(t, dbProjRef)
+			require.Len(t, dbProjRef.ContainerSecrets, 2, "should create a new pod secret for the project and copy the existing repo creds from the old project")
+			for _, newSecret := range dbProjRef.ContainerSecrets {
+				if newSecret.Name == ref.ContainerSecrets[0].Name {
+					assert.Equal(t, model.ContainerSecretRepoCreds, newSecret.Type)
+					assert.NotZero(t, newSecret.ExternalName)
+					assert.NotZero(t, newSecret.ExternalID)
+					assert.NotEqual(t, ref.ContainerSecrets[0].ExternalName, newSecret.ExternalName, "should create a copy of the existing repo creds")
+					assert.NotEqual(t, ref.ContainerSecrets[0].ExternalID, newSecret.ExternalID)
+
+					getValOut, err := smClient.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{
+						SecretId: utility.ToStringPtr(newSecret.ExternalID),
+					})
+					require.NoError(t, err, "copied secret should be stored")
+					assert.NotZero(t, utility.FromStringPtr(getValOut.SecretString))
+				} else {
+					assert.NotZero(t, newSecret.Name)
+					assert.EqualValues(t, model.ContainerSecretPodSecret, newSecret.Type)
+					assert.NotZero(t, newSecret.ExternalID)
+					assert.NotZero(t, newSecret.ExternalName)
+					getValOut, err := smClient.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{
+						SecretId: utility.ToStringPtr(newSecret.ExternalID),
+					})
+					require.NoError(t, err, "copied secret should be stored")
+					assert.NotZero(t, utility.FromStringPtr(getValOut.SecretString))
+				}
+			}
 		},
-		"Copies project with partial error": func(t *testing.T, ref model.ProjectRef) {
+		"CopiesProjectWithPartialError": func(t *testing.T, ref model.ProjectRef) {
 			copyProjectOpts := CopyProjectOpts{
 				ProjectIdToCopy:      "myIdTwo",
 				NewProjectIdentifier: "mySecondProject",
@@ -587,7 +628,7 @@ func TestCopyProject(t *testing.T) {
 			require.NotNil(t, newProject)
 			assert.Equal(t, "mySecondProject", utility.FromStringPtr(newProject.Identifier))
 		},
-		"Does not copy project with fatal error": func(t *testing.T, ref model.ProjectRef) {
+		"DoesNotCopyProjectWithFatalError": func(t *testing.T, ref model.ProjectRef) {
 			copyProjectOpts := CopyProjectOpts{
 				ProjectIdToCopy:      "nonexistentId",
 				NewProjectIdentifier: "myThirdProject",
@@ -597,9 +638,24 @@ func TestCopyProject(t *testing.T) {
 			assert.Nil(t, newProject)
 		},
 	} {
-		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection,
-			event.SubscriptionsCollection, event.LegacyEventLogCollection, evergreen.ScopeCollection, user.Collection))
+		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, model.ProjectAliasCollection,
+			event.SubscriptionsCollection, event.LegacyEventLogCollection, evergreen.ScopeCollection, user.Collection, commitqueue.Collection))
 		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
+
+		cocoaMock.ResetGlobalSecretCache()
+
+		const secretName = "secret_stored_name"
+		repoCreds := restModel.APIRepositoryCredentials{
+			Username: utility.ToStringPtr("username"),
+			Password: utility.ToStringPtr("password"),
+		}
+		storedRepoCreds, err := json.Marshal(repoCreds)
+		require.NoError(t, err)
+		createSecretOut, err := smClient.CreateSecret(ctx, &secretsmanager.CreateSecretInput{
+			Name:         aws.String(secretName),
+			SecretString: aws.String(string(storedRepoCreds)),
+		})
+		require.NoError(t, err)
 
 		pRef := model.ProjectRef{
 			Id:         "myId",
@@ -608,6 +664,14 @@ func TestCopyProject(t *testing.T) {
 			Branch:     "main",
 			Restricted: utility.FalsePtr(),
 			Admins:     []string{"oldAdmin"},
+			ContainerSecrets: []model.ContainerSecret{
+				{
+					Name:         "super_secret",
+					Type:         model.ContainerSecretRepoCreds,
+					ExternalName: secretName,
+					ExternalID:   utility.FromStringPtr(createSecretOut.ARN),
+				},
+			},
 		}
 		assert.NoError(t, pRef.Insert())
 

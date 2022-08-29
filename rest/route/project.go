@@ -519,6 +519,8 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating project '%s'", h.newProjectRef.Id))
 	}
 
+	// This updates the container secrets in the DB project ref only, not the
+	// in-memory copy.
 	if err := data.UpsertContainerSecrets(ctx, h.vault, allContainerSecrets); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "upserting container secrets"))
 	}

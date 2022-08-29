@@ -185,10 +185,10 @@ type ContainerSecretType string
 const (
 	// ContainerSecretPodSecret is a container secret representing the Evergreen
 	// agent's pod secret.
-	ContainerSecretPodSecret = "pod_secret"
+	ContainerSecretPodSecret ContainerSecretType = "pod_secret"
 	// ContainerSecretRepoCreds is a container secret representing an image
 	// repository's credentials.
-	ContainerSecretRepoCreds = "repository_credentials"
+	ContainerSecretRepoCreds ContainerSecretType = "repository_credentials"
 )
 
 // Validate checks that the container secret type is recognized.

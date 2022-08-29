@@ -50,8 +50,10 @@ func FindProjectById(id string, includeRepo bool, includeProjectConfig bool) (*m
 	return p, nil
 }
 
-// CreateProject inserts the given model.ProjectRef.
-// kim: TODO: test
+// CreateProject creates a new project ref from the given one and performs other
+// initial setup for new projects such as populating initial project variables
+// and creating new webhooks. If the given project ref already has container
+// secrets, the new project ref receives copies of the existing ones.
 func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *model.ProjectRef, u *user.DBUser) error {
 	config, err := evergreen.GetConfig()
 	if err != nil {
@@ -115,6 +117,8 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 		}
 	}
 
+	// This updates the container secrets in the DB project ref only, not the
+	// in-memory copy.
 	if err := UpsertContainerSecrets(ctx, vault, projectRef.ContainerSecrets); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
