@@ -2981,6 +2981,10 @@ func ValidateContainerSecrets(settings *evergreen.Settings, projectID string, or
 	for _, updatedSecret := range toUpdate {
 		name := updatedSecret.Name
 
+		if updatedSecret.Type == ContainerSecretPodSecret {
+			numPodSecrets++
+		}
+
 		idx := -1
 		for i := 0; i < len(original); i++ {
 			if original[i].Name == name {
@@ -2991,9 +2995,6 @@ func ValidateContainerSecrets(settings *evergreen.Settings, projectID string, or
 
 		if idx != -1 {
 			existingSecret := combined[idx]
-			if existingSecret.Type == ContainerSecretPodSecret {
-				numPodSecrets++
-			}
 			// If updating an existing secret, only allow the value to be
 			// updated.
 			catcher.ErrorfWhen(updatedSecret.Type != "" && updatedSecret.Type != existingSecret.Type, "container secret '%s' type cannot be changed from '%s' to '%s'", name, existingSecret.Type, updatedSecret.Type)
@@ -3005,10 +3006,6 @@ func ValidateContainerSecrets(settings *evergreen.Settings, projectID string, or
 		}
 
 		catcher.Wrapf(updatedSecret.Validate(), "invalid new container secret '%s'", name)
-
-		if updatedSecret.Type == ContainerSecretPodSecret {
-			numPodSecrets++
-		}
 
 		// New secrets that have to be created should not have their external
 		// name and ID decided by the user. The external name is controlled by
