@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/evergreen-ci/cocoa"
@@ -33,6 +34,7 @@ type podDefinitionCleanupJob struct {
 
 	env       evergreen.Environment
 	settings  evergreen.Settings
+	tagClient cocoa.TagClient
 	ecsClient cocoa.ECSClient
 	podDefMgr cocoa.ECSPodDefinitionManager
 }
@@ -70,41 +72,16 @@ func (j *podDefinitionCleanupJob) Run(ctx context.Context) {
 		return
 	}
 
-	podDefs, err := definition.FindByLastAccessedBefore(podDefinitionTTL, -1)
-	if err != nil {
-		j.AddError(err)
+	cleanupLimit := j.settings.PodLifecycle.MaxPodDefinitionCleanupRate
+	numDeleted, err := j.cleanupStrandedPodDefinitions(ctx, cleanupLimit)
+	j.AddError(errors.Wrap(err, "cleaning up stranded pod definitions"))
+	cleanupLimit -= numDeleted
+	if cleanupLimit <= 0 {
 		return
 	}
 
-	for _, podDef := range podDefs {
-		if podDef.ExternalID == "" {
-			if err := podDef.Remove(); err != nil {
-				j.AddError(errors.Wrapf(err, "deleting pod definition '%s' which is missing an external ID", podDef.ID))
-				continue
-			}
-
-			grip.Info(message.Fields{
-				"message":        "cleaned up pod definition that has no corresponding external ID",
-				"pod_definition": podDef.ID,
-				"last_accessed":  podDef.LastAccessed,
-				"job":            j.ID(),
-			})
-			continue
-		}
-
-		if err := j.podDefMgr.DeletePodDefinition(ctx, podDef.ExternalID); err != nil {
-			j.AddError(errors.Wrapf(err, "deleting pod definition '%s'", podDef.ID))
-			continue
-		}
-
-		grip.Info(message.Fields{
-			"message":        "successfully cleaned up pod definition",
-			"pod_definition": podDef.ID,
-			"external_id":    podDef.ExternalID,
-			"last_accessed":  podDef.LastAccessed,
-			"job":            j.ID(),
-		})
-	}
+	_, err = j.cleanupStalePodDefinitions(ctx, cleanupLimit)
+	j.AddError(errors.Wrap(err, "cleaning up stale pod definitions"))
 }
 
 func (j *podDefinitionCleanupJob) populate() error {
@@ -119,6 +96,13 @@ func (j *podDefinitionCleanupJob) populate() error {
 	}
 	j.settings = settings
 
+	if j.tagClient == nil {
+		client, err := cloud.MakeTagClient(&settings)
+		if err != nil {
+			return errors.Wrap(err, "initializing tag client")
+		}
+		j.tagClient = client
+	}
 	if j.ecsClient == nil {
 		client, err := cloud.MakeECSClient(&settings)
 		if err != nil {
@@ -136,4 +120,73 @@ func (j *podDefinitionCleanupJob) populate() error {
 	}
 
 	return nil
+}
+
+func (j *podDefinitionCleanupJob) cleanupStrandedPodDefinitions(ctx context.Context, limit int) (numDeleted int, err error) {
+	podDefIDs, err := cloud.GetFilteredResourceIDs(ctx, j.tagClient, []string{cloud.PodDefinitionResourceFilter}, map[string][]string{
+		cloud.PodCacheTag: {strconv.FormatBool(false)},
+	}, limit)
+	if err != nil {
+		j.AddError(errors.Wrap(err, "getting un"))
+		return 0, errors.Wrap(err, "getting stranded pod definitions")
+	}
+
+	catcher := grip.NewBasicCatcher()
+	for _, podDefID := range podDefIDs {
+		if err := j.podDefMgr.DeletePodDefinition(ctx, podDefID); err != nil {
+			catcher.Wrapf(err, "deleting pod definition '%s'", podDefID)
+			continue
+		}
+
+		numDeleted++
+
+		grip.Info(message.Fields{
+			"message":     "successfully cleaned up stranded pod definition",
+			"external_id": podDefID,
+			"job":         j.ID(),
+		})
+	}
+	return numDeleted, catcher.Resolve()
+}
+
+func (j *podDefinitionCleanupJob) cleanupStalePodDefinitions(ctx context.Context, limit int) (numDeleted int, err error) {
+	podDefs, err := definition.FindByLastAccessedBefore(podDefinitionTTL, limit)
+	if err != nil {
+		return 0, errors.Wrapf(err, "finding pod definitions last accessed before %s", time.Now().Add(-podDefinitionTTL))
+	}
+
+	catcher := grip.NewBasicCatcher()
+	for _, podDef := range podDefs {
+		if podDef.ExternalID == "" {
+			if err := podDef.Remove(); err != nil {
+				catcher.Wrapf(err, "deleting pod definition '%s' which is missing an external ID", podDef.ID)
+				continue
+			}
+
+			numDeleted++
+			grip.Info(message.Fields{
+				"message":        "cleaned up pod definition that has no corresponding external ID",
+				"pod_definition": podDef.ID,
+				"last_accessed":  podDef.LastAccessed,
+				"job":            j.ID(),
+			})
+			continue
+		}
+
+		if err := j.podDefMgr.DeletePodDefinition(ctx, podDef.ExternalID); err != nil {
+			catcher.Wrapf(err, "deleting pod definition '%s'", podDef.ID)
+			continue
+		}
+
+		numDeleted++
+		grip.Info(message.Fields{
+			"message":        "successfully cleaned up pod definition",
+			"pod_definition": podDef.ID,
+			"external_id":    podDef.ExternalID,
+			"last_accessed":  podDef.LastAccessed,
+			"job":            j.ID(),
+		})
+	}
+
+	return numDeleted, catcher.Resolve()
 }
