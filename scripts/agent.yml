@@ -83,7 +83,7 @@ tasks:
           script: |
             set -o verbose
             set -o errexit
-            echo "hello "
+            echo "hi"
 
             # files to archive.targz_pack
             mkdir archive
