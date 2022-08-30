@@ -182,8 +182,18 @@ func TestAssignNextTask(t *testing.T) {
 
 		podEvents, err := event.FindAllByResourceID(p.ID)
 		require.NoError(t, err)
-		require.Len(t, podEvents, 1)
-		assert.Equal(t, string(event.EventPodAssignedTask), podEvents[0].EventType)
+		var foundPodAssignedTask bool
+		var foundPodUpdatedStatus bool
+		for _, podEvent := range podEvents {
+			switch podEvent.EventType {
+			case string(event.EventPodAssignedTask):
+				foundPodAssignedTask = true
+			case string(event.EventPodStatusChange):
+				foundPodUpdatedStatus = true
+			}
+		}
+		assert.True(t, foundPodAssignedTask)
+		assert.True(t, foundPodUpdatedStatus)
 	}
 
 	checkTaskUnallocated := func(t *testing.T, tsk task.Task) {
