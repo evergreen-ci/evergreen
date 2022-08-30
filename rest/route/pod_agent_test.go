@@ -263,7 +263,7 @@ func TestPodAgentNextTask(t *testing.T) {
 			stats := env.RemoteQueue().Stats(ctx)
 			assert.Equal(t, 1, stats.Total)
 		},
-		"RunUpdatesStartingPodToRunning": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
+		"RunUpdatesStartingPodToDecommissionedAfterTaskDispatch": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
 			p := getPod()
 			p.TimeInfo.Initializing = time.Now()
 			require.NoError(t, p.Insert())
@@ -284,7 +284,8 @@ func TestPodAgentNextTask(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.NotZero(t, dbPod.TimeInfo.AgentStarted)
-			assert.Equal(t, pod.StatusRunning, dbPod.Status)
+			assert.Equal(t, pod.StatusDecommissioned, dbPod.Status)
+			assert.Equal(t, tsk.Id, dbPod.RunningTask)
 		},
 		"RunReturnsRunningTaskIfItExists": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
 			tsk := getTask()
