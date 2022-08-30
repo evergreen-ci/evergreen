@@ -23,7 +23,9 @@ type ProjectSettings struct {
 }
 
 type ProjectSettingsEvent struct {
-	ProjectSettings              `bson:",inline"`
+	ProjectSettings `bson:",inline"`
+
+	// The following boolean fields are flags that indicate that a given field is nil instead of [], since this information is lost when casting the event to a generic interface.
 	FilesIgnoredFromCacheDefault bool `bson:"files_ignored_from_cache_default,omitempty" json:"files_ignored_from_cache_default,omitempty"`
 	GitTagAuthorizedTeamsDefault bool `bson:"git_tag_authorized_teams_default,omitempty" json:"git_tag_authorized_teams_default,omitempty"`
 	GitTagAuthorizedUsersDefault bool `bson:"git_tag_authorized_users_default,omitempty" json:"git_tag_authorized_users_default,omitempty"`
@@ -41,6 +43,7 @@ type ProjectChangeEvent struct {
 
 type ProjectChangeEvents []ProjectChangeEventEntry
 
+// ApplyDefaults checks for any flags that indicate that a field in a project event should be nil and sets the field accordingly.
 // Attached projects need to be able to distinguish between empty arrays and nil: nil values default to repo, while empty arrays do not.
 // Look at the flags set in the ProjectSettingsEvent so that fields that were converted to empty arrays when casting to an interface{} can be correctly set to nil
 func (p *ProjectChangeEvents) ApplyDefaults() {
@@ -220,6 +223,7 @@ func GetAndLogProjectModified(id, userId string, isRepo bool, before *ProjectSet
 	return errors.Wrap(LogProjectModified(id, userId, before, after), "logging project modified")
 }
 
+// resolveDefaults checks if certain project event fields are nil, and if so, sets the field's corresponding flag.
 // ProjectChangeEvents must be cast to a generic interface to utilize event logging, which casts all nil objects of array types to empty arrays.
 // Set flags if these values should indeed be nil so that we can correct these values when the event log is read from the database.
 func (p *ProjectSettings) resolveDefaults() *ProjectSettingsEvent {

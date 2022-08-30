@@ -364,6 +364,8 @@ func TestGetProjectAliasResults(t *testing.T) {
 }
 
 func TestGetLegacyProjectEvents(t *testing.T) {
+	require.NoError(t, db.ClearCollections(event.LegacyEventLogCollection))
+
 	project := &model.ProjectRef{Id: projectId}
 	require.NoError(t, project.Insert())
 
@@ -371,20 +373,18 @@ func TestGetLegacyProjectEvents(t *testing.T) {
 	after := getMockProjectSettings()
 
 	// Use an interface{} to mimic legacy data that was not inserted as a ProjectSettingsEvent
-	h :=
-		event.EventLogEntry{
-			Timestamp:    time.Now(),
-			ResourceType: event.EventResourceTypeProject,
-			EventType:    event.EventTypeProjectModified,
-			ResourceId:   projectId,
-			Data: map[string]interface{}{
-				"user":   username,
-				"before": before,
-				"after":  after,
-			},
-		}
+	h := event.EventLogEntry{
+		Timestamp:    time.Now(),
+		ResourceType: event.EventResourceTypeProject,
+		EventType:    event.EventTypeProjectModified,
+		ResourceId:   projectId,
+		Data: map[string]interface{}{
+			"user":   username,
+			"before": before,
+			"after":  after,
+		},
+	}
 
-	require.NoError(t, db.ClearCollections(event.LegacyEventLogCollection))
 	require.NoError(t, h.Log())
 
 	events, err := GetProjectEventLog(projectId, time.Now(), 0)
