@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
@@ -689,6 +690,9 @@ func (p *Pod) SetRunningTask(ctx context.Context, env evergreen.Environment, tas
 	}
 
 	p.RunningTask = taskID
+	p.Status = StatusDecommissioned
+
+	event.LogPodStatusChanged(p.ID, string(StatusRunning), string(StatusDecommissioned), "pod has been assigned a task and will not be reused")
 
 	return nil
 }
