@@ -1360,52 +1360,6 @@ func (h *jsonTaskHistoryHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(history)
 }
 
-// POST /task/{task_id}/data/{name}
-type insertTaskJsonHandler struct {
-	taskID  string
-	name    string
-	rawData map[string]interface{}
-}
-
-func makeInsertTaskJSON() gimlet.RouteHandler {
-	return &insertTaskJsonHandler{}
-}
-
-func (h *insertTaskJsonHandler) Factory() gimlet.RouteHandler {
-	return &insertTaskJsonHandler{}
-}
-
-func (h *insertTaskJsonHandler) Parse(ctx context.Context, r *http.Request) error {
-	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
-		return errors.New("missing task ID")
-	}
-	h.name = gimlet.GetVars(r)["name"]
-
-	if err := utility.ReadJSON(r.Body, &h.rawData); err != nil {
-		return errors.Wrapf(err, "reading raw data from request")
-	}
-	return nil
-}
-
-func (h *insertTaskJsonHandler) Run(ctx context.Context) gimlet.Responder {
-	t, err := task.FindOneId(h.taskID)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
-	}
-	if t == nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
-		})
-	}
-
-	if err = model.InsertTaskJSON(t, h.name, h.rawData); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(err)
-	}
-
-	return gimlet.NewJSONResponse("ok")
-}
-
 // GET /task/{task_id}/json/data/{task_name}/{name}
 type taskJsonByNameHandler struct {
 	taskID    string

@@ -103,7 +103,6 @@ type SharedCommunicator interface {
 	KeyValInc(context.Context, TaskData, *model.KeyVal) error
 
 	// These are for the taskdata/json plugin that saves perf data
-	PostJSONData(context.Context, TaskData, string, interface{}) error
 	GetJSONData(context.Context, TaskData, string, string, string) ([]byte, error)
 	GetJSONHistory(context.Context, TaskData, bool, string, string) ([]byte, error)
 

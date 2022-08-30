@@ -91,7 +91,6 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/task/{task_id}/downstreamParams").Version(2).Post().Wrap(requireTask).RouteHandler(makeSetDownstreamParams())
 	app.AddRoute("/task/{task_id}/json/tags/{task_name}/{name}").Version(2).Get().Wrap(requireTask).RouteHandler(makeGetTaskJSONTagsForTask())
 	app.AddRoute("/task/{task_id}/json/history/{task_name}/{name}").Version(2).Get().Wrap(requireTask).RouteHandler(makeGetTaskJSONTaskHistory())
-	app.AddRoute("/task/{task_id}/json/data/{name}").Version(2).Post().Wrap(requireTask).RouteHandler(makeInsertTaskJSON())
 	app.AddRoute("/task/{task_id}/json/data/{task_name}/{name}").Version(2).Get().Wrap(requireTask).RouteHandler(makeGetTaskJSONByName())
 	app.AddRoute("/task/{task_id}/json/data/{task_name}/{name}/{variant}").Version(2).Get().Wrap(requireTask).RouteHandler(makeGetTaskJSONForVariant())
 

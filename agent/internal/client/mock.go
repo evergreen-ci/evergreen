@@ -451,10 +451,6 @@ func (c *Mock) KeyValInc(ctx context.Context, td TaskData, kv *serviceModel.KeyV
 	return nil
 }
 
-func (c *Mock) PostJSONData(ctx context.Context, td TaskData, path string, data interface{}) error {
-	return nil
-}
-
 func (c *Mock) GetJSONData(ctx context.Context, td TaskData, tn, dn, vn string) ([]byte, error) {
 	return nil, nil
 }

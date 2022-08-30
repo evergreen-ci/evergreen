@@ -897,22 +897,6 @@ func (c *baseCommunicator) KeyValInc(ctx context.Context, taskData TaskData, kv 
 	return nil
 }
 
-func (c *baseCommunicator) PostJSONData(ctx context.Context, taskData TaskData, path string, data interface{}) error {
-	info := requestInfo{
-		method:   http.MethodPost,
-		taskData: &taskData,
-		version:  apiVersion1,
-	}
-	info.setTaskPathSuffix(fmt.Sprintf("json/data/%s", path))
-	resp, err := c.retryRequest(ctx, info, data)
-	if err != nil {
-		return utility.RespErrorf(resp, "failed to post json data for task %s: %s", taskData.ID, err.Error())
-	}
-	defer resp.Body.Close()
-
-	return nil
-}
-
 func (c *baseCommunicator) GetJSONData(ctx context.Context, taskData TaskData, taskName, dataName, variantName string) ([]byte, error) {
 	pathParts := []string{"json", "data", taskName, dataName}
 	if variantName != "" {
