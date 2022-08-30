@@ -543,6 +543,7 @@ func TestSetRunningTask(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, taskID, dbPod.RunningTask)
+			assert.Equal(t, StatusDecommissioned, dbPod.Status)
 		},
 		"NoopsWithPodAlreadyRunningSameTask": func(ctx context.Context, t *testing.T, env *mock.Environment, p Pod) {
 			const taskID = "task"

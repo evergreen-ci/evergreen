@@ -673,6 +673,10 @@ func (p *Pod) SetRunningTask(ctx context.Context, env evergreen.Environment, tas
 	update := bson.M{
 		"$set": bson.M{
 			RunningTaskKey: taskID,
+			// Decommissioning ensures that the pod cannot run another task.
+			// TODO (PM-2618): adjust this to handle cases such as
+			// single-container task groups, where the pod may be reused.
+			StatusKey: StatusDecommissioned,
 		},
 	}
 

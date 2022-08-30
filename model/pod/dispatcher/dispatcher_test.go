@@ -173,6 +173,7 @@ func TestAssignNextTask(t *testing.T) {
 		require.NoError(t, err)
 		require.NotZero(t, dbPod)
 		assert.Equal(t, tsk.Id, dbPod.RunningTask)
+		assert.Equal(t, pod.StatusDecommissioned, dbPod.Status)
 
 		taskEvents, err := event.FindAllByResourceID(dbTask.Id)
 		require.NoError(t, err)
