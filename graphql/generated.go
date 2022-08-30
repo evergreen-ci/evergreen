@@ -1161,6 +1161,7 @@ type ComplexityRoot struct {
 		Host             func(childComplexity int) int
 		HostID           func(childComplexity int) int
 		ID               func(childComplexity int) int
+		Migrating        func(childComplexity int) int
 		NoExpiration     func(childComplexity int) int
 		Size             func(childComplexity int) int
 		Type             func(childComplexity int) int
@@ -7140,6 +7141,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Volume.ID(childComplexity), true
 
+	case "Volume.migrating":
+		if e.complexity.Volume.Migrating == nil {
+			break
+		}
+
+		return e.complexity.Volume.Migrating(childComplexity), true
+
 	case "Volume.noExpiration":
 		if e.complexity.Volume.NoExpiration == nil {
 			break
@@ -9305,10 +9313,12 @@ type UpstreamProject {
   homeVolume: Boolean!
   host: Host
   hostID: String!
+  migrating: Boolean!
   noExpiration: Boolean!
   size: Int!
   type: String!
-}`, BuiltIn: false},
+}
+`, BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
@@ -37392,6 +37402,41 @@ func (ec *executionContext) _Volume_hostID(ctx context.Context, field graphql.Co
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Volume_migrating(ctx context.Context, field graphql.CollectedField, obj *model.APIVolume) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Volume",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Migrating, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Volume_noExpiration(ctx context.Context, field graphql.CollectedField, obj *model.APIVolume) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -48590,6 +48635,11 @@ func (ec *executionContext) _Volume(ctx context.Context, sel ast.SelectionSet, o
 			})
 		case "hostID":
 			out.Values[i] = ec._Volume_hostID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "migrating":
+			out.Values[i] = ec._Volume_migrating(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
