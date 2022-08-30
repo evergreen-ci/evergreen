@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -74,7 +75,7 @@ func (s *AgentSuite) SetupTest() {
 	factory, ok := command.GetCommandFactory("setup.initial")
 	s.True(ok)
 	s.tc.setCurrentCommand(factory())
-	s.tmpDirName, err = ioutil.TempDir("", "agent-command-suite-")
+	s.tmpDirName, err = ioutil.TempDir("", filepath.Base(s.T().Name()))
 	s.Require().NoError(err)
 	s.tc.taskDirectory = s.tmpDirName
 	sender, err := s.a.GetSender(ctx, evergreen.LocalLoggingOverride)

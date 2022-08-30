@@ -1,7 +1,6 @@
 package model
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -729,11 +728,7 @@ func TestDiscoverPackages(t *testing.T) {
 	} {
 		t.Run(testName, func(t *testing.T) {
 			rootPackage := util.ConsistentFilepath("github.com", "fake_user", "fake_repo")
-			gopath, err := ioutil.TempDir("", "gopath")
-			require.NoError(t, err)
-			defer func() {
-				assert.NoError(t, os.RemoveAll(gopath))
-			}()
+			gopath := t.TempDir()
 			rootPath := util.ConsistentFilepath(gopath, "src", rootPackage)
 			require.NoError(t, os.MkdirAll(rootPath, 0777))
 

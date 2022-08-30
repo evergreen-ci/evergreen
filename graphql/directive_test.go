@@ -37,7 +37,7 @@ func setupPermissions(t *testing.T) {
 		ID:          "superuser",
 		Name:        "superuser",
 		Scope:       "superuser_scope",
-		Permissions: map[string]int{"admin_settings": 10, "project_create": 10, "distro_create": 10, "modify_roles": 10},
+		Permissions: map[string]int{"project_create": 10, "distro_create": 10, "modify_roles": 10},
 	}
 	err = roleManager.UpdateRole(superUserRole)
 	require.NoError(t, err)

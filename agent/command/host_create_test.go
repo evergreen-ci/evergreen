@@ -74,8 +74,7 @@ func (s *createHostSuite) TestParamDefaults() {
 
 func (s *createHostSuite) TestParseFromFile() {
 	//file for testing parsing from a json file
-	tmpdir, err := ioutil.TempDir("", "evergreen.command.host_create.test")
-	s.Require().NoError(err)
+	tmpdir := s.T().TempDir()
 	ebsDevice := []map[string]interface{}{
 		map[string]interface{}{
 			"device_name": "myDevice",
@@ -91,7 +90,7 @@ func (s *createHostSuite) TestParseFromFile() {
 	}
 	//parse from JSON file
 	s.NoError(utility.WriteJSONFile(path, fileContent))
-	_, err = os.Stat(path)
+	_, err := os.Stat(path)
 	s.Require().False(os.IsNotExist(err))
 	s.params = map[string]interface{}{
 		"file": path,
@@ -121,8 +120,6 @@ func (s *createHostSuite) TestParseFromFile() {
 	s.Equal("task", s.cmd.CreateHost.Scope)
 	s.Equal("subnet-123456", s.cmd.CreateHost.Subnet)
 	s.Equal("myDevice", s.cmd.CreateHost.EBSDevices[0].DeviceName)
-
-	s.Require().NoError(os.RemoveAll(tmpdir))
 
 	//test with both file and other params
 	s.params = map[string]interface{}{

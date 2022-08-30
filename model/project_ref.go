@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -489,6 +490,13 @@ func (p *ProjectRef) Add(creator *user.DBUser) error {
 	if err != nil {
 		return errors.Wrap(err, "inserting project ref")
 	}
+	if err = commitqueue.EnsureCommitQueueExistsForProject(p.Id); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":            "error ensuring commit queue exists",
+			"project_id":         p.Id,
+			"project_identifier": p.Identifier,
+		}))
+	}
 	return p.addPermissions(creator)
 }
 
@@ -695,7 +703,7 @@ func (p *ProjectRef) AttachToRepo(u *user.DBUser) error {
 // AttachToNewRepo modifies the project's owner/repo, updates the old and new repo scopes (if relevant), and
 // updates the project to point to the new repo. Any Github project conflicts are disabled.
 // If no repo ref currently exists for the new repo, the user attaching it will be added as the repo ref admin.
-func (p *ProjectRef) AttachToNewRepo(u *user.DBUser) error {
+func (p *ProjectRef) AttachToNewRepo(ctx context.Context, u *user.DBUser) error {
 	before, err := GetProjectSettingsById(p.Id, false)
 	if err != nil {
 		return errors.Wrap(err, "getting before project settings event")
@@ -726,6 +734,16 @@ func (p *ProjectRef) AttachToNewRepo(u *user.DBUser) error {
 	})
 	if err != nil {
 		return errors.Wrap(err, "updating owner/repo in the DB")
+	}
+	_, err = EnableWebhooks(ctx, p)
+	if err != nil {
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message":            "error enabling webhooks",
+			"project_id":         p.Id,
+			"project_identifier": p.Identifier,
+			"owner":              p.Owner,
+			"repo":               p.Repo,
+		}))
 	}
 	return GetAndLogProjectModified(p.Id, u.Id, false, before)
 }
@@ -1550,7 +1568,6 @@ func EnableWebhooks(ctx context.Context, projectRef *ProjectRef) (bool, error) {
 		// sometimes people change a project to track a personal
 		// branch we don't have access to
 		grip.Error(message.WrapError(err, message.Fields{
-			"source":             "patch project",
 			"message":            "can't setup webhook",
 			"project":            projectRef.Id,
 			"project_identifier": projectRef.Identifier,

@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -311,7 +312,7 @@ func TestAttachToNewRepo(t *testing.T) {
 	assert.NoError(t, u.Insert())
 	pRef.Owner = "newOwner"
 	pRef.Repo = "newRepo"
-	assert.NoError(t, pRef.AttachToNewRepo(u))
+	assert.NoError(t, pRef.AttachToNewRepo(context.Background(), u))
 
 	pRefFromDB, err := FindBranchProjectRef(pRef.Id)
 	assert.NoError(t, err)
@@ -342,7 +343,7 @@ func TestAttachToNewRepo(t *testing.T) {
 	assert.NoError(t, pRef.Insert())
 	pRef.Owner = "newOwner"
 	pRef.Repo = "newRepo"
-	assert.NoError(t, pRef.AttachToNewRepo(u))
+	assert.NoError(t, pRef.AttachToNewRepo(context.Background(), u))
 	assert.True(t, pRef.UseRepoSettings())
 	assert.NotEmpty(t, pRef.RepoRefId)
 
@@ -2042,7 +2043,7 @@ func TestFindDownstreamProjects(t *testing.T) {
 }
 
 func TestAddEmptyBranch(t *testing.T) {
-	require.NoError(t, db.ClearCollections(user.Collection, ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection))
+	require.NoError(t, db.ClearCollections(user.Collection, ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection, commitqueue.Collection))
 	u := user.DBUser{
 		Id: "me",
 	}
@@ -2053,15 +2054,20 @@ func TestAddEmptyBranch(t *testing.T) {
 		Repo:       "mongo",
 	}
 	assert.NoError(t, p.Add(&u))
+	assert.NotEmpty(t, p.Id)
 	assert.NotEmpty(t, p.Branch)
 	assert.Equal(t, "main", p.Branch)
+
+	cq, err := commitqueue.FindOneId(p.Id)
+	assert.NoError(t, err)
+	assert.NotNil(t, cq)
 }
 
 func TestAddPermissions(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(user.Collection, ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection))
+	assert.NoError(db.ClearCollections(user.Collection, ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection, commitqueue.Collection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 	env := testutil.NewEnvironment(ctx, t)
 	u := user.DBUser{
@@ -2078,6 +2084,10 @@ func TestAddPermissions(t *testing.T) {
 	assert.NoError(p.Add(&u))
 	assert.NotEmpty(p.Id)
 	assert.True(mgobson.IsObjectIdHex(p.Id))
+
+	cq, err := commitqueue.FindOneId(p.Id)
+	assert.NoError(err)
+	assert.NotNil(cq)
 
 	rm := env.RoleManager()
 	scope, err := rm.FindScopeForResources(evergreen.ProjectResourceType, p.Id)
@@ -2105,6 +2115,10 @@ func TestAddPermissions(t *testing.T) {
 	assert.NotEmpty(p.Id)
 	assert.True(mgobson.IsObjectIdHex(p.Id))
 	assert.Equal(projectId, p.Id)
+
+	cq, err = commitqueue.FindOneId(p.Id)
+	assert.NoError(err)
+	assert.NotNil(cq)
 
 	scope, err = rm.FindScopeForResources(evergreen.ProjectResourceType, p.Id)
 	assert.NoError(err)
@@ -2498,11 +2512,11 @@ func TestMergeWithProjectConfig(t *testing.T) {
 				},
 			},
 			ContainerSizes: map[string]ContainerResources{
-				"small": ContainerResources{
+				"small": {
 					MemoryMB: 200,
 					CPU:      1,
 				},
-				"large": ContainerResources{
+				"large": {
 					MemoryMB: 400,
 					CPU:      2,
 				},
@@ -2538,7 +2552,7 @@ func TestMergeWithProjectConfig(t *testing.T) {
 	assert.Equal(t, 2, projectRef.ContainerSizes["large"].CPU)
 
 	projectRef.ContainerSizes = map[string]ContainerResources{
-		"xlarge": ContainerResources{
+		"xlarge": {
 			MemoryMB: 800,
 			CPU:      4,
 		},

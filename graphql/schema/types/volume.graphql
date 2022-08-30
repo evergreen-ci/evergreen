@@ -9,6 +9,7 @@ type Volume {
   homeVolume: Boolean!
   host: Host
   hostID: String!
+  migrating: Boolean!
   noExpiration: Boolean!
   size: Int!
   type: String!

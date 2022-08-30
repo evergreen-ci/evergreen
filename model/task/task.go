@@ -1883,19 +1883,24 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 	t.Status = detail.Status
 	t.FinishTime = finishTime
 	t.Details = *detail
+	t.ContainerAllocated = false
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				FinishTimeKey:       finishTime,
-				StatusKey:           detail.Status,
-				TimeTakenKey:        t.TimeTaken,
-				DetailsKey:          detail,
-				StartTimeKey:        t.StartTime,
-				LogsKey:             detail.Logs,
-				HasLegacyResultsKey: t.HasLegacyResults,
+				FinishTimeKey:         finishTime,
+				StatusKey:             detail.Status,
+				TimeTakenKey:          t.TimeTaken,
+				DetailsKey:            detail,
+				StartTimeKey:          t.StartTime,
+				LogsKey:               detail.Logs,
+				HasLegacyResultsKey:   t.HasLegacyResults,
+				ContainerAllocatedKey: false,
+			},
+			"$unset": bson.M{
+				ContainerAllocatedTimeKey: 1,
 			},
 		})
 
