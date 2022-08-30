@@ -145,10 +145,6 @@ tasks:
         params:
           files:
             - "src/agent/command/testdata/gotest/4_simple.log"
-      - command: json.send
-        params:
-          name: "foo"
-          file: "src/agent/command/testdata/attach/plugin_attach_results.json"
       - command: json.get_history
         params:
           task: ${task_name}
