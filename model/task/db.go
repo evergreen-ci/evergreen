@@ -858,10 +858,9 @@ func isContainerTaskScheduledQuery() bson.M {
 // buildvariant name are optionally available.
 func TasksByProjectAndCommitPipeline(opts GetTasksByProjectAndCommitOptions) []bson.M {
 	matchFilter := bson.M{
-		ProjectKey:   opts.Project,
-		RevisionKey:  opts.CommitHash,
-		IdKey:        bson.M{"$gte": opts.StartingTaskId},
-		RequesterKey: bson.M{"$in": opts.Requesters},
+		ProjectKey:  opts.Project,
+		RevisionKey: opts.CommitHash,
+		IdKey:       bson.M{"$gte": opts.StartingTaskId},
 	}
 	if opts.Status != "" {
 		matchFilter[StatusKey] = opts.Status

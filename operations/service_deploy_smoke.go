@@ -12,6 +12,7 @@ import (
 	"strconv"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent"
 	timberutil "github.com/evergreen-ci/timber/testutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
@@ -297,7 +298,10 @@ func smokeTestEndpoints() cli.Command {
 			}
 
 			if c.Bool(checkBuildName) {
-				return errors.Wrap(checkTaskByCommit(username, key, mode), "check task failed")
+				if mode == string(agent.PodMode) {
+					return errors.Wrap(checkContainerTask(username, key), "check task failed")
+				}
+				return errors.Wrap(checkTaskByCommit(username, key), "check task failed")
 			}
 			return errors.WithStack(tests.checkEndpoints(username, key))
 		},

@@ -306,10 +306,10 @@ func ExportECSPodDefinition(podDef definition.PodDefinition) cocoa.ECSTaskDefini
 // podAWSOptions creates options to initialize an AWS client for pod management.
 func podAWSOptions(settings *evergreen.Settings) awsutil.ClientOptions {
 	opts := awsutil.NewClientOptions().SetRetryOptions(awsClientDefaultRetryOptions())
-	if region := "us-east-2"; region != "" {
+	if region := settings.Providers.AWS.Pod.Region; region != "" {
 		opts.SetRegion(region)
 	}
-	if role := "arn:aws:iam::579766882180:role/ClusterRole"; role != "" {
+	if role := settings.Providers.AWS.Pod.Role; role != "" {
 		opts.SetRole(role)
 	}
 

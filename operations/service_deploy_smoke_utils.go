@@ -94,7 +94,63 @@ func getLatestGithubCommit() (string, error) {
 	return "", errors.New("could not find latest commit in response")
 }
 
-func checkTaskByCommit(username, key, mode string) error {
+func checkContainerTask(username, key string) error {
+	taskId := "evergreen_container_bv_container_task_a71e20e60918bb97d41422e94d04822be2a22e8e_22_08_22_13_44_49"
+	client := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(client)
+
+	var task apimodels.APITask
+OUTER:
+	for i := 0; i <= 30; i++ {
+		// check task
+		if i == 30 {
+			return errors.Errorf("task status is %s (expected %s)", task.Status, evergreen.TaskSucceeded)
+		}
+		time.Sleep(10 * time.Second)
+		grip.Infof("checking for task '%s' (%d/30)", taskId, i+1)
+
+		var err error
+		task, err = checkTask(client, username, key, taskId)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		if task.Status == evergreen.TaskFailed {
+			return errors.Errorf("task status is %s (expected %s)", task.Status, evergreen.TaskSucceeded)
+		}
+		if task.Status != evergreen.TaskSucceeded {
+			grip.Infof("found task is status %s", task.Status)
+			task = apimodels.APITask{
+				Status: task.Status,
+			}
+			continue OUTER
+		}
+
+		// retry for *slightly* delayed logger closing
+		for i := 0; i < 3; i++ {
+			grip.Infof("checking for log %s (%d/3)", task.Logs["task_log"], i+1)
+			var body []byte
+			body, err = makeSmokeRequest(username, key, http.MethodGet, client, task.Logs["task_log"]+"&text=true")
+			if err != nil {
+				err = errors.Wrap(err, "error getting log data")
+				grip.Debug(err)
+				continue
+			}
+			if err = checkTaskLog(body, agent.PodMode); err == nil {
+				break
+			}
+		}
+		if err != nil {
+			return err
+		}
+
+		grip.Info("Successfully checked container task")
+		return nil
+	}
+	return errors.New("this code should be unreachable")
+}
+
+func checkTaskByCommit(username, key string) error {
 	client := utility.GetHTTPClient()
 	defer utility.PutHTTPClient(client)
 
@@ -102,9 +158,6 @@ func checkTaskByCommit(username, key, mode string) error {
 	var build apimodels.APIBuild
 
 	buildIdx := 0
-	if mode == string(agent.HostMode) {
-		buildIdx = 1
-	}
 	// trigger repotracker to insert relevant builds and tasks from agent.yml definitions
 	for i := 0; i < 5; i++ {
 		if i == 5 {
@@ -170,7 +223,8 @@ OUTER:
 
 		var err error
 		for t := 0; t < len(builds[buildIdx].Tasks); t++ {
-			task, err = checkTask(client, username, key, builds, t, buildIdx)
+			taskId := builds[buildIdx].Tasks[t]
+			task, err = checkTask(client, username, key, taskId)
 			if err != nil {
 				return errors.WithStack(err)
 			}
@@ -196,7 +250,7 @@ OUTER:
 					grip.Debug(err)
 					continue
 				}
-				if err = checkTaskLog(body); err == nil {
+				if err = checkTaskLog(body, agent.HostMode); err == nil {
 					break
 				}
 			}
@@ -210,7 +264,7 @@ OUTER:
 	return errors.New("this code should be unreachable")
 }
 
-func checkTaskLog(body []byte) error {
+func checkTaskLog(body []byte, mode agent.Mode) error {
 	page := string(body)
 
 	// Validate that task contains task completed message
@@ -221,43 +275,49 @@ func checkTaskLog(body []byte) error {
 		return errors.New("did not find task completed message in log")
 	}
 
-	// Validate that setup_group only runs in first task
-	if strings.Contains(page, "first") {
-		if !strings.Contains(page, "setup_group") {
-			return errors.New("did not find setup_group in logs for first task")
+	if mode == agent.HostMode {
+		// Validate that setup_group only runs in first task
+		if strings.Contains(page, "first") {
+			if !strings.Contains(page, "setup_group") {
+				return errors.New("did not find setup_group in logs for first task")
+			}
+		} else {
+			if strings.Contains(page, "setup_group") {
+				return errors.New("setup_group should only run in first task")
+			}
 		}
-	} else {
-		if strings.Contains(page, "setup_group") {
-			return errors.New("setup_group should only run in first task")
-		}
-	}
 
-	// Validate that setup_task and teardown_task run for all tasks
-	if !strings.Contains(page, "setup_task") {
-		return errors.New("did not find setup_task in logs")
-	}
-	if !strings.Contains(page, "teardown_task") {
-		return errors.New("did not find teardown_task in logs")
-	}
-
-	// Validate that teardown_group only runs in last task
-	if strings.Contains(page, "fourth") {
-		if !strings.Contains(page, "teardown_group") {
-			return errors.New("did not find teardown_group in logs for last (fourth) task")
+		// Validate that setup_task and teardown_task run for all tasks
+		if !strings.Contains(page, "setup_task") {
+			return errors.New("did not find setup_task in logs")
 		}
-	} else {
-		if strings.Contains(page, "teardown_group") {
-			return errors.New("teardown_group should only run in last (fourth) task")
+		if !strings.Contains(page, "teardown_task") {
+			return errors.New("did not find teardown_task in logs")
+		}
+
+		// Validate that teardown_group only runs in last task
+		if strings.Contains(page, "fourth") {
+			if !strings.Contains(page, "teardown_group") {
+				return errors.New("did not find teardown_group in logs for last (fourth) task")
+			}
+		} else {
+			if strings.Contains(page, "teardown_group") {
+				return errors.New("teardown_group should only run in last (fourth) task")
+			}
+		}
+	} else if mode == agent.PodMode {
+		if !strings.Contains(page, "container task") {
+			return errors.New("did not find container task in logs")
 		}
 	}
 
 	return nil
 }
 
-func checkTask(client *http.Client, username, key string, builds []apimodels.APIBuild, taskIndex, buildIdx int) (apimodels.APITask, error) {
+func checkTask(client *http.Client, username, key string, taskId string) (apimodels.APITask, error) {
 	task := apimodels.APITask{}
-	grip.Infof("checking for task %s", builds[buildIdx].Tasks[taskIndex])
-	r, err := http.NewRequest("GET", smokeUrlPrefix+smokeUiPort+"/rest/v2/tasks/"+builds[buildIdx].Tasks[taskIndex], nil)
+	grip.Infof("checking for task %s", taskId)
+	r, err := http.NewRequest("GET", smokeUrlPrefix+smokeUiPort+"/rest/v2/tasks/"+taskId, nil)
 	if err != nil {
 		return task, errors.Wrap(err, "failed to make request")
 	}

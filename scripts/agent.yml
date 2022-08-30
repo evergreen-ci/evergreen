@@ -80,7 +80,7 @@ tasks:
           script: |
             set -o verbose
             set -o errexit
-            echo "first"
+            echo "container task"
   - name: test
     commands:
       - command: git.get_project
