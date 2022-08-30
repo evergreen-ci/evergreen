@@ -21,7 +21,8 @@ const (
 	// uiPort is the local port the UI will listen on.
 	smokeUiPort = ":9090"
 	// urlPrefix is the localhost prefix for accessing local Evergreen.
-	smokeUrlPrefix = "http://localhost"
+	smokeUrlPrefix  = "http://localhost"
+	containerTaskId = "evergreen_container_bv_container_task_a71e20e60918bb97d41422e94d04822be2a22e8e_22_08_22_13_44_49"
 )
 
 // smokeEndpointTestDefinitions describes the UI and API endpoints to verify are up.
@@ -95,7 +96,6 @@ func getLatestGithubCommit() (string, error) {
 }
 
 func checkContainerTask(username, key string) error {
-	taskId := "evergreen_container_bv_container_task_a71e20e60918bb97d41422e94d04822be2a22e8e_22_08_22_13_44_49"
 	client := utility.GetHTTPClient()
 	defer utility.PutHTTPClient(client)
 
@@ -107,10 +107,10 @@ OUTER:
 			return errors.Errorf("task status is %s (expected %s)", task.Status, evergreen.TaskSucceeded)
 		}
 		time.Sleep(10 * time.Second)
-		grip.Infof("checking for task '%s' (%d/30)", taskId, i+1)
+		grip.Infof("checking for task '%s' (%d/30)", containerTaskId, i+1)
 
 		var err error
-		task, err = checkTask(client, username, key, taskId)
+		task, err = checkTask(client, username, key, containerTaskId)
 		if err != nil {
 			return errors.WithStack(err)
 		}

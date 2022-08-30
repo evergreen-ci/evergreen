@@ -113,7 +113,7 @@ func smokeStartEvergreen() cli.Command {
 			},
 			cli.StringFlag{
 				Name:  modeFlagName,
-				Usage: "run the agent in host or pod more",
+				Usage: "run the agent in host or pod mode",
 			},
 		},
 		Before: mergeBeforeFuncs(setupSmokeTest(err), requireFileExists(confFlagName), requireAtLeastOneBool(webFlagName, agentFlagName, agentMonitorFlagName)),
