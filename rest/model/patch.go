@@ -107,7 +107,7 @@ type APIPatchArgs struct {
 }
 
 // BuildFromService converts from service level structs to an APIPatch.
-// If withArgs is set, includes identifier and commit queue position from the DB, if applicable.
+// If args are set, includes identifier, commit queue position, and/or child patches from the DB, if applicable.
 func (apiPatch *APIPatch) BuildFromService(p patch.Patch, args *APIPatchArgs) error {
 	projectIdentifier := p.Project
 	if args != nil {
