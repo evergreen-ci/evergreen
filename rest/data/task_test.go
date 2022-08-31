@@ -220,6 +220,7 @@ func TestTaskConnectorFetchByProjectAndCommitSuite(t *testing.T) {
 					Status:       status,
 					BuildVariant: variant,
 					DisplayName:  fmt.Sprintf("task_%d", tix),
+					Requester:    evergreen.RepotrackerVersionRequester,
 				}
 				assert.NoError(t, testTask.Insert())
 			}
