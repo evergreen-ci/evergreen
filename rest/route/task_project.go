@@ -2,12 +2,13 @@ package route
 
 import (
 	"context"
+	"net/http"
+
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
-	"net/http"
 )
 
 // taskByProjectHandler implements the GET /projects/{project_id}/revisions/{commit_hash}/tasks.
