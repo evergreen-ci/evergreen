@@ -46,7 +46,11 @@ func FindPatchesByProject(projectId string, ts time.Time, limit int) ([]restMode
 	}
 	for _, p := range patches {
 		apiPatch := restModel.APIPatch{}
-		err = apiPatch.BuildFromService(p, true)
+		err = apiPatch.BuildFromService(p, &restModel.APIPatchArgs{
+			IncludeProjectIdentifier:   true,
+			IncludeCommitQueuePosition: true,
+			IncludeChildPatches:        true,
+		})
 		if err != nil {
 			return nil, errors.Wrapf(err, "converting patch '%s' to API model", p.Id.Hex())
 		}
@@ -74,7 +78,11 @@ func FindPatchById(patchId string) (*restModel.APIPatch, error) {
 	}
 
 	apiPatch := restModel.APIPatch{}
-	err = apiPatch.BuildFromService(*p, true)
+	err = apiPatch.BuildFromService(*p, &restModel.APIPatchArgs{
+		IncludeChildPatches:        true,
+		IncludeProjectIdentifier:   true,
+		IncludeCommitQueuePosition: true,
+	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "converting patch '%s' to API model", p.Id.Hex())
 	}
@@ -155,7 +163,11 @@ func FindPatchesByUser(user string, ts time.Time, limit int) ([]restModel.APIPat
 	apiPatches := []restModel.APIPatch{}
 	for _, p := range patches {
 		apiPatch := restModel.APIPatch{}
-		err = apiPatch.BuildFromService(p, true)
+		err = apiPatch.BuildFromService(p, &restModel.APIPatchArgs{
+			IncludeProjectIdentifier:   true,
+			IncludeCommitQueuePosition: true,
+			IncludeChildPatches:        true,
+		})
 		if err != nil {
 			return nil, errors.Wrapf(err, "converting patch '%s' to API model", p.Id.Hex())
 		}

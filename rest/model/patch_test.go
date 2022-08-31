@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -17,7 +18,7 @@ import (
 )
 
 func TestAPIPatch(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(model.ProjectRefCollection))
+	assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, commitqueue.Collection))
 	assert := assert.New(t)
 	baseTime := time.Now()
 	pRef := model.ProjectRef{
@@ -43,18 +44,18 @@ func TestAPIPatch(t *testing.T) {
 			{
 				Variant: "bv1",
 				Tasks:   []string{"t1"},
-						},
+			},
 			{
 				Variant: "bv2",
 				Tasks:   []string{"t2"},
-						},
+			},
 		},
 		Patches: []patch.ModulePatch{
 			{},
 		},
 		Activated:            true,
 		PatchedParserProject: "config",
-		Alias:                "__github",
+		Alias:                evergreen.CommitQueueAlias,
 		GithubPatchData: thirdparty.GithubPatch{
 			PRNumber:  123,
 			BaseOwner: "evergreen-ci",
@@ -65,9 +66,20 @@ func TestAPIPatch(t *testing.T) {
 			Author:    "octocat",
 		},
 	}
+	cq := commitqueue.CommitQueue{
+		ProjectID: p.Project,
+		Queue: []commitqueue.CommitQueueItem{
+			{PatchId: "something else"},
+			{PatchId: p.Id.Hex()},
+		},
+	}
+	assert.NoError(commitqueue.InsertQueue(&cq))
 
 	a := APIPatch{}
-	err := a.BuildFromService(p, true)
+	err := a.BuildFromService(p, &APIPatchArgs{
+		IncludeProjectIdentifier:   true,
+		IncludeCommitQueuePosition: true,
+	})
 	assert.NoError(err)
 
 	assert.Equal(p.Id.Hex(), utility.FromStringPtr(a.Id))
@@ -81,6 +93,7 @@ func TestAPIPatch(t *testing.T) {
 	assert.Equal(p.Version, utility.FromStringPtr(a.Version))
 	assert.Equal(p.Status, utility.FromStringPtr(a.Status))
 	assert.Zero(a.CreateTime.Sub(p.CreateTime))
+	assert.Equal(1, a.CommitQueuePosition)
 	assert.Equal(-time.Hour, a.CreateTime.Sub(p.StartTime))
 	assert.Equal(-2*time.Hour, a.CreateTime.Sub(p.FinishTime))
 	for i, variant := range a.Variants {
@@ -92,7 +105,7 @@ func TestAPIPatch(t *testing.T) {
 	for i, vt := range a.VariantsTasks {
 		assert.Equal(p.VariantsTasks[i].Variant, utility.FromStringPtr(vt.Name))
 	}
-	assert.Equal("__github", utility.FromStringPtr(a.Alias))
+	assert.Equal(evergreen.CommitQueueAlias, utility.FromStringPtr(a.Alias))
 	assert.NotZero(a.GithubPatchData)
 	assert.NotEqual(a.VariantsTasks[0].Tasks, a.VariantsTasks[1].Tasks)
 	assert.Len(a.VariantsTasks[0].Tasks, 1)
@@ -157,7 +170,9 @@ func TestDownstreamTasks(t *testing.T) {
 	assert.NoError(childPatch.Insert())
 
 	a := APIPatch{}
-	err := a.BuildFromService(p, false)
+	err := a.BuildFromService(p, &APIPatchArgs{
+		IncludeChildPatches: true,
+	})
 	assert.NoError(err)
 	assert.Equal(*a.DownstreamTasks[0].Project, childPatch.Project)
 	assert.Len(a.DownstreamTasks, 1)

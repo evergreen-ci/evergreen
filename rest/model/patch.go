@@ -99,9 +99,49 @@ func (p *APIParameter) ToService() patch.Parameter {
 	return res
 }
 
+type APIPatchArgs struct {
+	IncludeProjectIdentifier   bool
+	IncludeCommitQueuePosition bool
+	IncludeChildPatches        bool
+	ProjectIdentifier          string
+}
+
 // BuildFromService converts from service level structs to an APIPatch.
 // If withArgs is set, includes identifier and commit queue position from the DB, if applicable.
-func (apiPatch *APIPatch) BuildFromService(p patch.Patch, withArgs bool) error {
+func (apiPatch *APIPatch) BuildFromService(p patch.Patch, args *APIPatchArgs) error {
+	projectIdentifier := p.Project
+	if args != nil {
+		if args.ProjectIdentifier != " " {
+			projectIdentifier = args.ProjectIdentifier
+			apiPatch.ProjectIdentifier = utility.ToStringPtr(projectIdentifier)
+		} else if args.IncludeProjectIdentifier && p.Project != "" {
+			identifier, err := model.GetIdentifierForProject(p.Project)
+			if err != nil {
+				return errors.Wrapf(err, "getting project '%s'", p.Project)
+			}
+			apiPatch.ProjectIdentifier = utility.ToStringPtr(identifier)
+			projectIdentifier = identifier
+		}
+		if args.IncludeCommitQueuePosition && p.IsCommitQueuePatch() {
+			cq, err := commitqueue.FindOneId(p.Project)
+			if err != nil {
+				return errors.Wrap(err, "error getting commit queue position")
+			}
+			apiPatch.CommitQueuePosition = utility.ToIntPtr(-1)
+			if cq != nil {
+				apiPatch.CommitQueuePosition = utility.ToIntPtr(cq.FindItem(p.Id.Hex()))
+			}
+			if args.IncludeChildPatches {
+				return apiPatch.buildChildPatches(p)
+			}
+		}
+	}
+	apiPatch.buildBasePatch(p)
+	apiPatch.buildModuleChanges(p, projectIdentifier)
+	return nil
+}
+
+func (apiPatch *APIPatch) buildBasePatch(p patch.Patch) {
 	apiPatch.Id = utility.ToStringPtr(p.Id.Hex())
 	apiPatch.Description = utility.ToStringPtr(p.Description)
 	apiPatch.ProjectId = utility.ToStringPtr(p.Project)
@@ -152,96 +192,81 @@ func (apiPatch *APIPatch) BuildFromService(p patch.Patch, withArgs bool) error {
 		}
 	}
 
-	projectIdentifier := p.Project
-	if withArgs && p.Project != "" {
-		identifier, err := model.GetIdentifierForProject(p.Project)
-		if err != nil {
-			return errors.Wrapf(err, "getting project '%s'", p.Project)
-		}
-		apiPatch.ProjectIdentifier = utility.ToStringPtr(identifier)
-		projectIdentifier = identifier
-
-		if p.IsCommitQueuePatch() {
-			cq, err := commitqueue.FindOneId(p.Project)
-			if err != nil {
-				return errors.Wrap(err, "error getting commit queue position")
-			}
-			apiPatch.CommitQueuePosition = utility.ToIntPtr(-1)
-			if cq != nil {
-				apiPatch.CommitQueuePosition = utility.ToIntPtr(cq.FindItem(p.Id.Hex()))
-			}
-		}
-	}
-
-	if env := evergreen.GetEnvironment(); env != nil {
-		codeChanges := []APIModulePatch{}
-		apiURL := env.Settings().ApiUrl
-
-		for patchNumber, modPatch := range p.Patches {
-			branchName := modPatch.ModuleName
-			if branchName == "" {
-				branchName = projectIdentifier
-			}
-			htmlLink := fmt.Sprintf("%s/filediff/%s?patch_number=%d", apiURL, *apiPatch.Id, patchNumber)
-			rawLink := fmt.Sprintf("%s/rawdiff/%s?patch_number=%d", apiURL, *apiPatch.Id, patchNumber)
-			fileDiffs := []FileDiff{}
-			for _, file := range modPatch.PatchSet.Summary {
-				diffLink := fmt.Sprintf("%s/filediff/%s?file_name=%s&patch_number=%d", apiURL, *apiPatch.Id, url.QueryEscape(file.Name), patchNumber)
-				fileName := file.Name
-				fileDiff := FileDiff{
-					FileName:    &fileName,
-					Additions:   file.Additions,
-					Deletions:   file.Deletions,
-					DiffLink:    &diffLink,
-					Description: file.Description,
-				}
-				fileDiffs = append(fileDiffs, fileDiff)
-			}
-			apiModPatch := APIModulePatch{
-				BranchName:     &branchName,
-				HTMLLink:       &htmlLink,
-				RawLink:        &rawLink,
-				FileDiffs:      fileDiffs,
-				CommitMessages: utility.ToStringPtrSlice(modPatch.PatchSet.CommitMessages),
-			}
-			codeChanges = append(codeChanges, apiModPatch)
-		}
-
-		apiPatch.ModuleCodeChanges = codeChanges
-	}
-
 	apiPatch.PatchedParserProject = utility.ToStringPtr(p.PatchedParserProject)
 	apiPatch.CanEnqueueToCommitQueue = p.HasValidGitInfo()
+	apiPatch.GithubPatchData.BuildFromService(p.GithubPatchData)
+}
 
+func (apiPatch *APIPatch) buildChildPatches(p patch.Patch) error {
 	downstreamTasks, childPatches, err := getChildPatchesData(p)
 	if err != nil {
 		return errors.Wrap(err, "getting downstream tasks")
 	}
 	apiPatch.DownstreamTasks = downstreamTasks
 	apiPatch.ChildPatches = childPatches
-
+	if len(childPatches) == 0 {
+		return nil
+	}
 	// set the patch status to the collective status between the parent and child patches
 	// Also correlate each child patch ID with the alias that invoked it
-	if len(childPatches) > 0 {
-		allStatuses := []string{*apiPatch.Status}
-		childPatchAliases := []APIChildPatchAlias{}
-		for i, cp := range childPatches {
-			allStatuses = append(allStatuses, *cp.Status)
+	allStatuses := []string{*apiPatch.Status}
+	childPatchAliases := []APIChildPatchAlias{}
+	for i, cp := range childPatches {
+		allStatuses = append(allStatuses, *cp.Status)
 
-			if i < len(p.Triggers.Aliases) {
-				childPatchAlias := APIChildPatchAlias{
-					Alias:   utility.ToStringPtr(p.Triggers.Aliases[i]),
-					PatchID: utility.ToStringPtr(*cp.Id),
-				}
-				childPatchAliases = append(childPatchAliases, childPatchAlias)
+		if i < len(p.Triggers.Aliases) {
+			childPatchAlias := APIChildPatchAlias{
+				Alias:   utility.ToStringPtr(p.Triggers.Aliases[i]),
+				PatchID: utility.ToStringPtr(*cp.Id),
 			}
+			childPatchAliases = append(childPatchAliases, childPatchAlias)
 		}
-		apiPatch.Status = utility.ToStringPtr(patch.GetCollectiveStatus(allStatuses))
-		apiPatch.ChildPatchAliases = childPatchAliases
-
 	}
-	apiPatch.GithubPatchData.BuildFromService(p.GithubPatchData)
+	apiPatch.Status = utility.ToStringPtr(patch.GetCollectiveStatus(allStatuses))
+	apiPatch.ChildPatchAliases = childPatchAliases
+
 	return nil
+}
+
+func (apiPatch *APIPatch) buildModuleChanges(p patch.Patch, identifier string) {
+	env := evergreen.GetEnvironment()
+	if env != nil {
+		return
+	}
+	codeChanges := []APIModulePatch{}
+	apiURL := env.Settings().ApiUrl
+
+	for patchNumber, modPatch := range p.Patches {
+		branchName := modPatch.ModuleName
+		if branchName == "" {
+			branchName = identifier
+		}
+		htmlLink := fmt.Sprintf("%s/filediff/%s?patch_number=%d", apiURL, *apiPatch.Id, patchNumber)
+		rawLink := fmt.Sprintf("%s/rawdiff/%s?patch_number=%d", apiURL, *apiPatch.Id, patchNumber)
+		fileDiffs := []FileDiff{}
+		for _, file := range modPatch.PatchSet.Summary {
+			diffLink := fmt.Sprintf("%s/filediff/%s?file_name=%s&patch_number=%d", apiURL, *apiPatch.Id, url.QueryEscape(file.Name), patchNumber)
+			fileName := file.Name
+			fileDiff := FileDiff{
+				FileName:    &fileName,
+				Additions:   file.Additions,
+				Deletions:   file.Deletions,
+				DiffLink:    &diffLink,
+				Description: file.Description,
+			}
+			fileDiffs = append(fileDiffs, fileDiff)
+		}
+		apiModPatch := APIModulePatch{
+			BranchName:     &branchName,
+			HTMLLink:       &htmlLink,
+			RawLink:        &rawLink,
+			FileDiffs:      fileDiffs,
+			CommitMessages: utility.ToStringPtrSlice(modPatch.PatchSet.CommitMessages),
+		}
+		codeChanges = append(codeChanges, apiModPatch)
+	}
+
+	apiPatch.ModuleCodeChanges = codeChanges
 }
 
 func getChildPatchesData(p patch.Patch) ([]DownstreamTasks, []APIPatch, error) {
@@ -274,7 +299,7 @@ func getChildPatchesData(p patch.Patch) ([]DownstreamTasks, []APIPatch, error) {
 			VariantTasks: variantTasks,
 		}
 		apiPatch := APIPatch{}
-		err = apiPatch.BuildFromService(childPatch, false)
+		err = apiPatch.BuildFromService(childPatch, &APIPatchArgs{IncludeProjectIdentifier: true})
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "converting child patch to API model")
 		}

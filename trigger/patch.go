@@ -256,7 +256,9 @@ func (t *patchTriggers) patchStarted(sub *event.Subscription) (*notification.Not
 
 func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, error) {
 	api := restModel.APIPatch{}
-	if err := api.BuildFromService(*t.patch, true); err != nil {
+	if err := api.BuildFromService(*t.patch, &restModel.APIPatchArgs{
+		IncludeProjectIdentifier: true,
+	}); err != nil {
 		return nil, errors.Wrap(err, "error building json model")
 	}
 	projectName := t.patch.Project

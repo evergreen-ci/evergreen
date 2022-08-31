@@ -299,7 +299,7 @@ func CreatePatchForMerge(ctx context.Context, existingPatchID, commitMessage str
 	}
 
 	apiPatch := &restModel.APIPatch{}
-	if err = apiPatch.BuildFromService(*newPatch, false); err != nil {
+	if err = apiPatch.BuildFromService(*newPatch, nil); err != nil {
 		return nil, errors.Wrap(err, "converting patch to API model")
 	}
 	return apiPatch, nil
