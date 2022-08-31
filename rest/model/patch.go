@@ -103,7 +103,6 @@ type APIPatchArgs struct {
 	IncludeProjectIdentifier   bool
 	IncludeCommitQueuePosition bool
 	IncludeChildPatches        bool
-	ProjectIdentifier          string
 }
 
 // BuildFromService converts from service level structs to an APIPatch.
@@ -111,10 +110,7 @@ type APIPatchArgs struct {
 func (apiPatch *APIPatch) BuildFromService(p patch.Patch, args *APIPatchArgs) error {
 	projectIdentifier := p.Project
 	if args != nil {
-		if args.ProjectIdentifier != " " {
-			projectIdentifier = args.ProjectIdentifier
-			apiPatch.ProjectIdentifier = utility.ToStringPtr(projectIdentifier)
-		} else if args.IncludeProjectIdentifier && p.Project != "" {
+		if args.IncludeProjectIdentifier && p.Project != "" {
 			identifier, err := model.GetIdentifierForProject(p.Project)
 			if err != nil {
 				return errors.Wrapf(err, "getting project '%s'", p.Project)
