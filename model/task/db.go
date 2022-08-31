@@ -861,7 +861,7 @@ func TasksByProjectAndCommitPipeline(opts GetTasksByProjectAndCommitOptions) []b
 		ProjectKey:   opts.Project,
 		RevisionKey:  opts.CommitHash,
 		IdKey:        bson.M{"$gte": opts.StartingTaskId},
-		RequesterKey: bson.M{"$in": opts.Requesters},
+		RequesterKey: evergreen.RepotrackerVersionRequester,
 	}
 	if opts.Status != "" {
 		matchFilter[StatusKey] = opts.Status
