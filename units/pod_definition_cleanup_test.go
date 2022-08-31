@@ -2,6 +2,7 @@ package units
 
 import (
 	"context"
+	"strconv"
 	"testing"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	cocoaMock "github.com/evergreen-ci/cocoa/mock"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	evgMock "github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/pod/definition"
 	"github.com/evergreen-ci/utility"
@@ -51,8 +53,84 @@ func TestPodDefinitionCleanupJob(t *testing.T) {
 
 		return *dbPodDef
 	}
+	createStrandedPodDef := func(ctx context.Context, t *testing.T, ecsClient cocoa.ECSClient, tags []*awsECS.Tag) awsECS.TaskDefinition {
+		registerIn := awsECS.RegisterTaskDefinitionInput{
+			Family: aws.String("family"),
+			ContainerDefinitions: []*awsECS.ContainerDefinition{
+				{
+					Image:   aws.String("image"),
+					Command: []*string{aws.String("echo"), aws.String("hello")},
+				},
+			},
+			Tags: tags,
+		}
+
+		resp, err := ecsClient.RegisterTaskDefinition(ctx, &registerIn)
+		require.NoError(t, err)
+		require.NotZero(t, resp.TaskDefinition)
+
+		return *resp.TaskDefinition
+	}
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, j *podDefinitionCleanupJob){
+		"DeletesStrandedPodDefinitionsWithMatchingTag": func(ctx context.Context, t *testing.T, j *podDefinitionCleanupJob) {
+			var podDefIDs []string
+			for i := 0; i < 5; i++ {
+				def := createStrandedPodDef(ctx, t, j.ecsClient, []*awsECS.Tag{{Key: aws.String(cloud.PodCacheTag), Value: aws.String(strconv.FormatBool(false))}})
+				podDefIDs = append(podDefIDs, utility.FromStringPtr(def.TaskDefinitionArn))
+			}
+
+			j.Run(ctx)
+			assert.NoError(t, j.Error())
+
+			for _, podDefID := range podDefIDs {
+				describeOut, err := j.ecsClient.DescribeTaskDefinition(ctx, &awsECS.DescribeTaskDefinitionInput{
+					TaskDefinition: aws.String(podDefID),
+				})
+				require.NoError(t, err)
+				assert.Equal(t, awsECS.TaskDefinitionStatusInactive, utility.FromStringPtr(describeOut.TaskDefinition.Status))
+			}
+		},
+		"DeletesLimitedNumberOfStrandedPodDefinitions": func(ctx context.Context, t *testing.T, j *podDefinitionCleanupJob) {
+			mockEnv, ok := j.env.(*mock.Environment)
+			require.True(t, ok)
+			const cleanupLimit = 2
+			mockEnv.EvergreenSettings.PodLifecycle.MaxPodDefinitionCleanupRate = cleanupLimit
+
+			var podDefIDs []string
+			for i := 0; i < 5; i++ {
+				def := createStrandedPodDef(ctx, t, j.ecsClient, []*awsECS.Tag{{Key: aws.String(cloud.PodCacheTag), Value: aws.String(strconv.FormatBool(false))}})
+				podDefIDs = append(podDefIDs, utility.FromStringPtr(def.TaskDefinitionArn))
+			}
+
+			j.Run(ctx)
+			assert.NoError(t, j.Error())
+
+			var numDeleted int
+			for _, podDefID := range podDefIDs {
+				describeOut, err := j.ecsClient.DescribeTaskDefinition(ctx, &awsECS.DescribeTaskDefinitionInput{
+					TaskDefinition: aws.String(podDefID),
+				})
+				require.NoError(t, err)
+				if utility.FromStringPtr(describeOut.TaskDefinition.Status) == awsECS.TaskDefinitionStatusInactive {
+					numDeleted++
+				}
+			}
+
+			assert.Equal(t, numDeleted, cleanupLimit)
+		},
+		"NoopsWithNoPodDefinitionsMatchingStrandedMarkerTag": func(ctx context.Context, t *testing.T, j *podDefinitionCleanupJob) {
+			def := createStrandedPodDef(ctx, t, j.ecsClient, nil)
+
+			j.Run(ctx)
+			assert.NoError(t, j.Error())
+
+			describeOut, err := j.ecsClient.DescribeTaskDefinition(ctx, &awsECS.DescribeTaskDefinitionInput{
+				TaskDefinition: def.TaskDefinitionArn,
+			})
+			require.NoError(t, err)
+			assert.Equal(t, awsECS.TaskDefinitionStatusActive, utility.FromStringPtr(describeOut.TaskDefinition.Status))
+		},
 		"CleansUpStaleUnusedPodDefinitions": func(ctx context.Context, t *testing.T, j *podDefinitionCleanupJob) {
 			pd := createPodDef(ctx, t, j.podDefMgr, j.ecsClient)
 			pd.LastAccessed = time.Now().Add(-9000 * 24 * time.Hour)
@@ -145,6 +223,7 @@ func TestPodDefinitionCleanupJob(t *testing.T) {
 
 			env := &evgMock.Environment{}
 			require.NoError(t, env.Configure(ctx))
+			env.EvergreenSettings.PodLifecycle.MaxPodDefinitionCleanupRate = 1000
 
 			j, ok := NewPodDefinitionCleanupJob(utility.RoundPartOfMinute(0).Format(TSFormat)).(*podDefinitionCleanupJob)
 			require.True(t, ok)
@@ -155,6 +234,10 @@ func TestPodDefinitionCleanupJob(t *testing.T) {
 			j.ecsClient = &cocoaMock.ECSClient{}
 			defer func() {
 				assert.NoError(t, j.ecsClient.Close(ctx))
+			}()
+			j.tagClient = &cocoaMock.TagClient{}
+			defer func() {
+				assert.NoError(t, j.tagClient.Close(ctx))
 			}()
 
 			pdm, err := cloud.MakeECSPodDefinitionManager(j.ecsClient, nil)

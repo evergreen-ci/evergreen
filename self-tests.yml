@@ -342,7 +342,6 @@ tasks:
     name: dist
   - <<: *run-build
     name: dist-unsigned
-    activate: false
   - <<: *run-smoke-test
     name: smoke-test-task
     tags: ["smoke"]
@@ -615,6 +614,7 @@ buildvariants:
       - name: "dist-and-upload-clis"
       - name: "dist-staging"
       - name: "dist-unsigned"
+        activate: false
       - name: ".smoke"
       - name: ".test"
       - name: "js-test"
