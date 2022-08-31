@@ -93,7 +93,7 @@ func TestAPIPatch(t *testing.T) {
 	assert.Equal(p.Version, utility.FromStringPtr(a.Version))
 	assert.Equal(p.Status, utility.FromStringPtr(a.Status))
 	assert.Zero(a.CreateTime.Sub(p.CreateTime))
-	assert.Equal(1, a.CommitQueuePosition)
+	assert.Equal(1, utility.FromIntPtr(a.CommitQueuePosition))
 	assert.Equal(-time.Hour, a.CreateTime.Sub(p.StartTime))
 	assert.Equal(-2*time.Hour, a.CreateTime.Sub(p.FinishTime))
 	for i, variant := range a.Variants {
@@ -152,6 +152,7 @@ func TestDownstreamTasks(t *testing.T) {
 		Triggers: patch.TriggerInfo{
 			ChildPatches: []string{childPatchId},
 		},
+		Status: evergreen.PatchCreated,
 	}
 
 	childPatch := patch.Patch{
@@ -166,6 +167,7 @@ func TestDownstreamTasks(t *testing.T) {
 			},
 		},
 		Activated: true,
+		Status:    evergreen.PatchCreated,
 	}
 	assert.NoError(childPatch.Insert())
 
@@ -174,8 +176,8 @@ func TestDownstreamTasks(t *testing.T) {
 		IncludeChildPatches: true,
 	})
 	assert.NoError(err)
+	require.Len(t, a.DownstreamTasks, 1)
 	assert.Equal(*a.DownstreamTasks[0].Project, childPatch.Project)
-	assert.Len(a.DownstreamTasks, 1)
 	assert.Len(a.DownstreamTasks[0].Tasks, 2)
 	assert.Len(a.DownstreamTasks[0].VariantTasks, 1)
 }

@@ -46,7 +46,7 @@ type APIPatch struct {
 	ChildPatchAliases       []APIChildPatchAlias `json:"child_patch_aliases,omitempty"`
 	Requester               *string              `json:"requester"`
 	MergedFrom              *string              `json:"merged_from"`
-	CommitQueuePosition     *int                 `json:"commit_queue_position"`
+	CommitQueuePosition     *int                 `json:"commit_queue_position,omitempty"`
 }
 
 type DownstreamTasks struct {
@@ -127,13 +127,15 @@ func (apiPatch *APIPatch) BuildFromService(p patch.Patch, args *APIPatchArgs) er
 			if cq != nil {
 				apiPatch.CommitQueuePosition = utility.ToIntPtr(cq.FindItem(p.Id.Hex()))
 			}
-			if args.IncludeChildPatches {
-				return apiPatch.buildChildPatches(p)
-			}
 		}
 	}
 	apiPatch.buildBasePatch(p)
 	apiPatch.buildModuleChanges(p, projectIdentifier)
+
+	fmt.Println(len(apiPatch.ModuleCodeChanges))
+	if args != nil && args.IncludeChildPatches {
+		return apiPatch.buildChildPatches(p)
+	}
 	return nil
 }
 
@@ -226,7 +228,7 @@ func (apiPatch *APIPatch) buildChildPatches(p patch.Patch) error {
 
 func (apiPatch *APIPatch) buildModuleChanges(p patch.Patch, identifier string) {
 	env := evergreen.GetEnvironment()
-	if env != nil {
+	if env == nil {
 		return
 	}
 	codeChanges := []APIModulePatch{}
