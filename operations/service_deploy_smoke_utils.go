@@ -127,19 +127,7 @@ OUTER:
 		}
 
 		// retry for *slightly* delayed logger closing
-		for i := 0; i < 3; i++ {
-			grip.Infof("checking for log %s (%d/3)", task.Logs["task_log"], i+1)
-			var body []byte
-			body, err = makeSmokeRequest(username, key, http.MethodGet, client, task.Logs["task_log"]+"&text=true")
-			if err != nil {
-				err = errors.Wrap(err, "error getting log data")
-				grip.Debug(err)
-				continue
-			}
-			if err = checkTaskLog(body, agent.PodMode); err == nil {
-				break
-			}
-		}
+		err = checkLog(task, client, username, key)
 		if err != nil {
 			return err
 		}
@@ -157,7 +145,6 @@ func checkTaskByCommit(username, key string) error {
 	var builds []apimodels.APIBuild
 	var build apimodels.APIBuild
 
-	buildIdx := 0
 	// trigger repotracker to insert relevant builds and tasks from agent.yml definitions
 	for i := 0; i < 5; i++ {
 		if i == 5 {
@@ -202,7 +189,7 @@ func checkTaskByCommit(username, key string) error {
 			builds = []apimodels.APIBuild{build}
 		}
 
-		if len(builds[buildIdx].Tasks) == 0 {
+		if len(builds[0].Tasks) == 0 {
 			builds = []apimodels.APIBuild{}
 			build = apimodels.APIBuild{}
 
@@ -219,11 +206,11 @@ OUTER:
 			return errors.Errorf("task status is %s (expected %s)", task.Status, evergreen.TaskSucceeded)
 		}
 		time.Sleep(10 * time.Second)
-		grip.Infof("checking for %d tasks (%d/30)", len(builds[buildIdx].Tasks), i+1)
+		grip.Infof("checking for %d tasks (%d/30)", len(builds[0].Tasks), i+1)
 
 		var err error
-		for t := 0; t < len(builds[buildIdx].Tasks); t++ {
-			taskId := builds[buildIdx].Tasks[t]
+		for t := 0; t < len(builds[0].Tasks); t++ {
+			taskId := builds[0].Tasks[t]
 			task, err = checkTask(client, username, key, taskId)
 			if err != nil {
 				return errors.WithStack(err)
@@ -239,21 +226,7 @@ OUTER:
 				}
 				continue OUTER
 			}
-
-			// retry for *slightly* delayed logger closing
-			for i := 0; i < 3; i++ {
-				grip.Infof("checking for log %s (%d/3)", task.Logs["task_log"], i+1)
-				var body []byte
-				body, err = makeSmokeRequest(username, key, http.MethodGet, client, task.Logs["task_log"]+"&text=true")
-				if err != nil {
-					err = errors.Wrap(err, "error getting log data")
-					grip.Debug(err)
-					continue
-				}
-				if err = checkTaskLog(body, agent.HostMode); err == nil {
-					break
-				}
-			}
+			err = checkLog(task, client, username, key)
 			if err != nil {
 				return err
 			}
@@ -262,6 +235,25 @@ OUTER:
 		return nil
 	}
 	return errors.New("this code should be unreachable")
+}
+
+func checkLog(task apimodels.APITask, client *http.Client, username, key string) error {
+	// retry for *slightly* delayed logger closing
+	var err error
+	for i := 0; i < 3; i++ {
+		grip.Infof("checking for log %s (%d/3)", task.Logs["task_log"], i+1)
+		var body []byte
+		body, err = makeSmokeRequest(username, key, http.MethodGet, client, task.Logs["task_log"]+"&text=true")
+		if err != nil {
+			err = errors.Wrap(err, "error getting log data")
+			grip.Debug(err)
+			continue
+		}
+		if err = checkTaskLog(body, agent.HostMode); err == nil {
+			break
+		}
+	}
+	return err
 }
 
 func checkTaskLog(body []byte, mode agent.Mode) error {
