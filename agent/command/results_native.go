@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
@@ -102,7 +103,7 @@ func (c *attachResults) sendTestLogs(ctx context.Context, conf *internal.TaskCon
 				Name:          utility.RandomString(),
 				Task:          conf.Task.Id,
 				TaskExecution: conf.Task.Execution,
-				Lines:         []string{res.LogRaw},
+				Lines:         strings.Split(res.LogRaw, "\n"),
 			}
 
 			if err := sendTestLog(ctx, comm, conf, testLogs); err != nil {
