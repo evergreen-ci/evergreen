@@ -241,7 +241,6 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindByProjectAndCommit()
 				TaskName:       "",
 				VariantName:    "",
 				Limit:          0,
-				Requesters:     []string{evergreen.RepotrackerVersionRequester},
 			}
 			foundTasks, err := FindTasksByProjectAndCommit(opts)
 			s.NoError(err)
@@ -262,7 +261,6 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindByProjectFail() {
 		TaskName:       "",
 		VariantName:    "",
 		Limit:          0,
-		Requesters:     []string{evergreen.RepotrackerVersionRequester},
 	}
 	foundTests, err := FindTasksByProjectAndCommit(opts)
 	s.Error(err)
@@ -283,7 +281,6 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindByCommitFail() {
 		TaskName:       "",
 		VariantName:    "",
 		Limit:          0,
-		Requesters:     []string{evergreen.RepotrackerVersionRequester},
 	}
 	foundTests, err := FindTasksByProjectAndCommit(opts)
 	s.Error(err)
@@ -307,7 +304,6 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindByProjectAndCommitAn
 					TaskName:       "",
 					VariantName:    "",
 					Limit:          0,
-					Requesters:     []string{evergreen.RepotrackerVersionRequester},
 				}
 				foundTasks, err := FindTasksByProjectAndCommit(opts)
 				s.Nil(err)
@@ -332,7 +328,6 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindByProjectAndCommitAn
 					TaskName:       "",
 					VariantName:    variant,
 					Limit:          0,
-					Requesters:     []string{evergreen.RepotrackerVersionRequester},
 				}
 				foundTasks, err := FindTasksByProjectAndCommit(opts)
 				s.Nil(err)
@@ -357,7 +352,6 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindByProjectAndCommitAn
 					TaskName:       fmt.Sprintf("task_%d", tix),
 					VariantName:    "",
 					Limit:          0,
-					Requesters:     []string{evergreen.RepotrackerVersionRequester},
 				}
 				foundTasks, err := FindTasksByProjectAndCommit(opts)
 				s.Nil(err)
@@ -383,7 +377,6 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindFromMiddle() {
 			TaskName:       "",
 			VariantName:    "",
 			Limit:          0,
-			Requesters:     []string{evergreen.RepotrackerVersionRequester},
 		}
 		foundTasks, err := FindTasksByProjectAndCommit(opts)
 		s.NoError(err)
@@ -408,7 +401,6 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindFromMiddleFail() {
 		TaskName:       "",
 		VariantName:    "",
 		Limit:          0,
-		Requesters:     []string{evergreen.RepotrackerVersionRequester},
 	}
 	foundTests, err := FindTasksByProjectAndCommit(opts)
 	s.Error(err)
@@ -436,7 +428,6 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindWithLimit() {
 			TaskName:       "",
 			VariantName:    "",
 			Limit:          limit,
-			Requesters:     []string{evergreen.RepotrackerVersionRequester},
 		}
 		foundTasks, err := FindTasksByProjectAndCommit(opts)
 		s.NoError(err)
@@ -458,7 +449,6 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindEmptyProjectAndCommi
 		TaskName:       "",
 		VariantName:    "",
 		Limit:          1,
-		Requesters:     []string{evergreen.RepotrackerVersionRequester},
 	}
 	foundTasks, err := FindTasksByProjectAndCommit(opts)
 	s.NoError(err)

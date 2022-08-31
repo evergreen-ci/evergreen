@@ -2,14 +2,12 @@ package route
 
 import (
 	"context"
-	"net/http"
-	"strings"
-
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
+	"net/http"
 )
 
 // taskByProjectHandler implements the GET /projects/{project_id}/revisions/{commit_hash}/tasks.
@@ -130,14 +128,4 @@ func (tph *tasksByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return resp
-}
-
-// readStringList parses a string list parameter value, the values can be comma separated or specified multiple times.
-func (tph *tasksByProjectHandler) readStringList(values []string) []string {
-	var parsedValues []string
-	for _, val := range values {
-		elements := strings.Split(val, ",")
-		parsedValues = append(parsedValues, elements...)
-	}
-	return parsedValues
 }

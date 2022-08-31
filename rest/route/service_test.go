@@ -373,7 +373,6 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					key:        fmt.Sprintf("%dtask_%d", prefix, taskToStartAt),
 					limit:      limit,
 					url:        "http://evergreen.example.net",
-					requesters: []string{evergreen.RepotrackerVersionRequester},
 				}
 
 				validatePaginatedResponse(t, handler, expectedTasks, expectedPages)
@@ -416,7 +415,6 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					key:        fmt.Sprintf("%dtask_%d", prefix, taskToStartAt),
 					limit:      limit,
 					url:        "http://evergreen.example.net",
-					requesters: []string{evergreen.RepotrackerVersionRequester},
 				}
 
 				validatePaginatedResponse(t, handler, expectedTasks, expectedPages)
@@ -460,7 +458,6 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					key:        fmt.Sprintf("%dtask_%d", prefix, taskToStartAt),
 					limit:      limit,
 					url:        "http://evergreen.example.net",
-					requesters: []string{evergreen.RepotrackerVersionRequester},
 				}
 
 				validatePaginatedResponse(t, handler, expectedTasks, expectedPages)
@@ -504,7 +501,6 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					key:        fmt.Sprintf("%dtask_%d", 0, taskToStartAt),
 					limit:      limit,
 					url:        "http://evergreen.example.net",
-					requesters: []string{evergreen.RepotrackerVersionRequester},
 				}
 
 				validatePaginatedResponse(t, handler, expectedTasks, expectedPages)
@@ -525,7 +521,6 @@ func TestTaskByProjectHandlerParse(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(tep.project, ShouldEqual, "evergreen")
 			So(tep.commitHash, ShouldEqual, "hash123")
-			So(tep.requesters[0], ShouldEqual, evergreen.RepotrackerVersionRequester)
 		})
 		Convey("should successfully parse all query params", func() {
 			req, err := http.NewRequest(http.MethodGet, "/projects/evergreen/revisions/hash123/tasks?status=succeeded&variant=ubuntu1604&limit=200&task_name=task1&requesters=gitter_request,github_pull_request", bytes.NewReader(nil))
@@ -536,8 +531,6 @@ func TestTaskByProjectHandlerParse(t *testing.T) {
 			So(tep.variant, ShouldEqual, "ubuntu1604")
 			So(tep.taskName, ShouldEqual, "task1")
 			So(tep.status, ShouldEqual, "succeeded")
-			So(tep.requesters[0], ShouldEqual, evergreen.RepotrackerVersionRequester)
-			So(tep.requesters[1], ShouldEqual, evergreen.GithubPRRequester)
 		})
 		Convey("should fail on missing project or commit hash", func() {
 			req, err := http.NewRequest(http.MethodGet, "/projects/evergreen/revisions/hash123/tasks?status=succeeded&variant=ubuntu1604&limit=200&task_name=task1&requesters=gitter_request,github_pull_request", bytes.NewReader(nil))
