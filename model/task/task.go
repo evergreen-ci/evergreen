@@ -2675,6 +2675,7 @@ func archiveAll(taskIds, execTaskIds, toRestartExecTaskIds []string, archivedTas
 				bson.A{ // Pipeline
 					bson.M{"$set": bson.M{ // Execution = LPE
 						ExecutionKey: "$" + LatestParentExecutionKey,
+						CanResetKey:  true,
 					}},
 					bson.M{"$unset": bson.A{
 						AbortedKey,
