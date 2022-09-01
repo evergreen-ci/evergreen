@@ -44,7 +44,7 @@ func getMockProjectSettings() model.ProjectSettings {
 			PeriodicBuilds:        nil,
 			WorkstationConfig: model.WorkstationConfig{
 				SetupCommands: nil,
-				GitClone:      utility.TruePtr(),
+				GitClone:      nil,
 			},
 		},
 		GithubHooksEnabled: true,
