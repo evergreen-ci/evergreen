@@ -137,6 +137,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 		before := getMockProjectSettings()
 		after := getMockProjectSettings()
 		after.GithubHooksEnabled = false
+		after.ProjectRef.WorkstationConfig.SetupCommands = []model.WorkstationSetupCommand{}
 		s.NotEmpty(before.Aliases[0].ID)
 		s.NotEmpty(after.Aliases[0].ID)
 
@@ -194,6 +195,8 @@ func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
 		s.NotNil(eventLog.Before.ProjectRef.FilesIgnoredFromCache)
 		s.Len(eventLog.Before.ProjectRef.FilesIgnoredFromCache, 0)
 		s.Nil(eventLog.Before.ProjectRef.WorkstationConfig.SetupCommands)
+		s.NotNil(eventLog.After.ProjectRef.WorkstationConfig.SetupCommands)
+		s.Len(eventLog.After.ProjectRef.WorkstationConfig.SetupCommands, 0)
 	}
 
 	// No error for empty events
