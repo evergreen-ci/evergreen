@@ -312,7 +312,8 @@ func TestFindOldTasksByID(t *testing.T) {
 	assert.NoError(db.ClearCollections(Collection, OldCollection))
 
 	taskDoc := Task{
-		Id: "task",
+		Id:     "task",
+		Status: evergreen.TaskSucceeded,
 	}
 	assert.NoError(taskDoc.Insert())
 	assert.NoError(taskDoc.Archive())

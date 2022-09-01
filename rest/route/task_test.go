@@ -87,6 +87,7 @@ func TestFetchArtifacts(t *testing.T) {
 	assert.NoError(db.ClearCollections(task.Collection, task.OldCollection, artifact.Collection))
 	task1 := task.Task{
 		Id:        "task1",
+		Status:    evergreen.TaskSucceeded,
 		Execution: 0,
 	}
 	assert.NoError(task1.Insert())
