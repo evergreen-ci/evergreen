@@ -440,7 +440,6 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 	if err != nil {
 		return err
 	}
-	logger.Task().Debugf("CLONE DEPTH BEING USED IS %d", opts.cloneDepth)
 
 	err = utility.Retry(
 		ctx,
