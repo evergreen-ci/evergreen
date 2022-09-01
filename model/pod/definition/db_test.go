@@ -2,9 +2,11 @@ package definition
 
 import (
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -98,6 +100,91 @@ func TestFindOneByFamily(t *testing.T) {
 			pd, err := FindOneByFamily("nonexistent")
 			assert.NoError(t, err)
 			assert.Zero(t, pd)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection))
+			tCase(t)
+		})
+	}
+}
+
+func TestFindOneByLastAccessedBefore(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.Clear(Collection))
+	}()
+	for tName, tCase := range map[string]func(t *testing.T){
+		"Succeeds": func(t *testing.T) {
+			podDefs := []PodDefinition{
+				{
+					ID:           "pod_def0",
+					LastAccessed: time.Now().Add(-time.Hour),
+				},
+				{
+					ID:           "pod_def1",
+					LastAccessed: time.Now(),
+				},
+				{
+					ID:           "pod_def2",
+					LastAccessed: time.Now().Add(-5 * time.Hour),
+				},
+			}
+			for _, podDef := range podDefs {
+				require.NoError(t, podDef.Insert())
+			}
+			found, err := FindByLastAccessedBefore(time.Minute, -1)
+			require.NoError(t, err)
+			require.Len(t, found, 2)
+			for _, podDef := range found {
+				assert.True(t, utility.StringSliceContains([]string{
+					podDefs[0].ID,
+					podDefs[2].ID,
+				}, podDef.ID), "unexpected pod definition '%s'", podDef.ID)
+			}
+		},
+		"LimitsResults": func(t *testing.T) {
+			podDefs := []PodDefinition{
+				{
+					ID:           "pod_def0",
+					LastAccessed: time.Now().Add(-time.Hour),
+				},
+				{
+					ID:           "pod_def1",
+					LastAccessed: time.Now().Add(-5 * time.Hour),
+				},
+			}
+			for _, podDef := range podDefs {
+				require.NoError(t, podDef.Insert())
+			}
+			found, err := FindByLastAccessedBefore(time.Minute, 1)
+			require.NoError(t, err)
+			require.Len(t, found, 1)
+			assert.True(t, utility.StringSliceContains([]string{
+				podDefs[0].ID,
+				podDefs[1].ID,
+			}, found[0].ID), "unexpected pod definition '%s'", found[0].ID)
+		},
+		"IgnoresPodDefinitionAccessedWithinTTL": func(t *testing.T) {
+			podDef := PodDefinition{
+				ID:           "pod_def",
+				LastAccessed: time.Now(),
+			}
+			require.NoError(t, podDef.Insert())
+
+			found, err := FindByLastAccessedBefore(time.Minute, -1)
+			require.NoError(t, err)
+			assert.Empty(t, found)
+		},
+		"ReturnsPodDefinitionsWithZeroLastAccessedTime": func(t *testing.T) {
+			podDef := PodDefinition{
+				ID: "pod_def",
+			}
+			require.NoError(t, podDef.Insert())
+
+			found, err := FindByLastAccessedBefore(time.Minute, -1)
+			require.NoError(t, err)
+			require.Len(t, found, 1)
+			assert.Equal(t, podDef.ID, found[0].ID)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {

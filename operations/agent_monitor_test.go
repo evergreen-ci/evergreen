@@ -3,7 +3,6 @@ package operations
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -58,9 +57,7 @@ func TestAgentMonitorWithJasper(t *testing.T) {
 			tctx, tcancel := context.WithTimeout(ctx, monitorTestTimeout)
 			defer tcancel()
 
-			tmpDir, err := ioutil.TempDir("", "monitor")
-			require.NoError(t, err)
-			defer os.RemoveAll(tmpDir)
+			tmpDir := t.TempDir()
 
 			m := &monitor{
 				clientPath: filepath.Join(tmpDir, "evergreen"),

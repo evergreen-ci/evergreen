@@ -17,14 +17,12 @@ func TestHostSetupScript(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	dir, err := ioutil.TempDir("", "")
-	require.NoError(err)
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	// With no setup script, noop
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	err = runSetupScript(ctx, dir, false)
+	err := runSetupScript(ctx, dir, false)
 	assert.NoError(err)
 
 	// With a setup script, run the script

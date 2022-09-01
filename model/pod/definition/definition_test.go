@@ -118,4 +118,51 @@ func TestPodDefinitionCache(t *testing.T) {
 			})
 		}
 	})
+
+	t.Run("Delete", func(t *testing.T) {
+		defer func() {
+			assert.NoError(t, db.ClearCollections(Collection))
+		}()
+
+		for tName, tCase := range map[string]func(ctx context.Context, t *testing.T){
+			"SuccessfullyDeletesPodDefinition": func(ctx context.Context, t *testing.T) {
+				pd := PodDefinition{
+					ID:         "pod_definition_id",
+					ExternalID: "external_id",
+				}
+				require.NoError(t, pd.Insert())
+
+				require.NoError(t, pdc.Delete(ctx, pd.ExternalID))
+
+				dbPodDef, err := FindOneByExternalID(pd.ExternalID)
+				assert.NoError(t, err)
+				assert.Zero(t, dbPodDef)
+			},
+			"NoopsForNonexistentPodDefinition": func(ctx context.Context, t *testing.T) {
+				assert.NoError(t, pdc.Delete(ctx, "nonexistent"))
+			},
+			"IsIdempotentForAlreadyDeletedPodDefinition": func(ctx context.Context, t *testing.T) {
+				pd := PodDefinition{
+					ID:         "pod_definition_id",
+					ExternalID: "external_id",
+				}
+				require.NoError(t, pd.Insert())
+
+				for i := 0; i < 3; i++ {
+					require.NoError(t, pdc.Delete(ctx, pd.ExternalID))
+
+					pd, err := FindOneByExternalID(pd.ExternalID)
+					assert.NoError(t, err)
+					assert.Zero(t, pd)
+				}
+			},
+		} {
+			t.Run(tName, func(t *testing.T) {
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				require.NoError(t, db.ClearCollections(Collection))
+				tCase(ctx, t)
+			})
+		}
+	})
 }

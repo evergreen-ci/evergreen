@@ -2,11 +2,16 @@ package cloud
 
 import (
 	"context"
+	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/secretsmanager"
 	"github.com/evergreen-ci/cocoa"
-	"github.com/evergreen-ci/cocoa/mock"
+	cocoaMock "github.com/evergreen-ci/cocoa/mock"
+	"github.com/evergreen-ci/cocoa/secret"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/utility"
@@ -60,12 +65,12 @@ func TestMakeSecretsManagerVault(t *testing.T) {
 
 func TestMakeECSPodCreator(t *testing.T) {
 	t.Run("Succeeds", func(t *testing.T) {
-		c, err := MakeECSPodCreator(&mock.ECSClient{}, &mock.Vault{})
+		c, err := MakeECSPodCreator(&cocoaMock.ECSClient{}, &cocoaMock.Vault{})
 		require.NoError(t, err)
 		assert.NotZero(t, c)
 	})
 	t.Run("FailsWithoutRequiredClient", func(t *testing.T) {
-		c, err := MakeECSPodCreator(nil, &mock.Vault{})
+		c, err := MakeECSPodCreator(nil, &cocoaMock.Vault{})
 		require.Error(t, err)
 		assert.Zero(t, c)
 	})
@@ -552,5 +557,100 @@ func validPodClientSettings() *evergreen.Settings {
 				},
 			},
 		},
+	}
+}
+
+func TestGetFilteredResourceIDs(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	defer cocoaMock.ResetGlobalSecretCache()
+
+	tagClient := &cocoaMock.TagClient{}
+	defer func() {
+		tagClient.Close(ctx)
+	}()
+
+	smClient := &cocoaMock.SecretsManagerClient{}
+	defer func() {
+		smClient.Close(ctx)
+	}()
+	const cacheTag = "cache_tag"
+	v, err := secret.NewBasicSecretsManager(*secret.NewBasicSecretsManagerOptions().
+		SetClient(smClient).
+		SetCache(&NoopSecretCache{}).
+		SetCacheTag(cacheTag))
+	require.NoError(t, err)
+
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, secretIDs []string){
+		"ReturnsAllResultsForNoFiltersWhenNumberOfMatchesEqualsLimit": func(ctx context.Context, t *testing.T, secretIDs []string) {
+			ids, err := GetFilteredResourceIDs(ctx, tagClient, nil, nil, len(secretIDs))
+			require.NoError(t, err)
+			assert.ElementsMatch(t, secretIDs, ids)
+		},
+		"ReturnsAllResultsForNegativeLimit": func(ctx context.Context, t *testing.T, secretIDs []string) {
+			ids, err := GetFilteredResourceIDs(ctx, tagClient, []string{SecretsManagerResourceFilter}, nil, -1)
+			require.NoError(t, err)
+			assert.ElementsMatch(t, secretIDs, ids)
+		},
+		"ReturnsNoResultsForZeroLimit": func(ctx context.Context, t *testing.T, secretIDs []string) {
+			ids, err := GetFilteredResourceIDs(ctx, tagClient, []string{SecretsManagerResourceFilter}, nil, 0)
+			require.NoError(t, err)
+			assert.Empty(t, ids)
+		},
+		"ReturnsLimitedResultsWhenNumberOfMatchesIsGreaterThanLimit": func(ctx context.Context, t *testing.T, secretIDs []string) {
+			n := len(secretIDs) - 2
+			ids, err := GetFilteredResourceIDs(ctx, tagClient, []string{SecretsManagerResourceFilter}, nil, n)
+			require.NoError(t, err)
+			assert.Subset(t, secretIDs, ids)
+			assert.Len(t, ids, n)
+		},
+		"ReturnsAllResultsWhenNumberOfMatchesIsLessThanLimit": func(ctx context.Context, t *testing.T, secretIDs []string) {
+			n := len(secretIDs) + 1
+			ids, err := GetFilteredResourceIDs(ctx, tagClient, []string{SecretsManagerResourceFilter}, nil, n)
+			require.NoError(t, err)
+			assert.ElementsMatch(t, secretIDs, ids)
+		},
+		"ReturnsNoResultsForNoMatchingResourceFilter": func(ctx context.Context, t *testing.T, secretIDs []string) {
+			ids, err := GetFilteredResourceIDs(ctx, tagClient, []string{PodDefinitionResourceFilter}, nil, len(secretIDs))
+			require.NoError(t, err)
+			assert.Empty(t, ids)
+		},
+		"ReturnsOnlyResultsMatchingTagFilter": func(ctx context.Context, t *testing.T, secretIDs []string) {
+			// Create untagged secret, which shouldn't appear in the results.
+			_, err := smClient.CreateSecret(ctx, &secretsmanager.CreateSecretInput{
+				Name:         aws.String(t.Name() + utility.RandomString()),
+				SecretString: aws.String(utility.RandomString()),
+			})
+			require.NoError(t, err)
+
+			ids, err := GetFilteredResourceIDs(ctx, tagClient, []string{SecretsManagerResourceFilter}, map[string][]string{
+				cacheTag: {strconv.FormatBool(true)},
+			}, len(secretIDs)+1)
+			require.NoError(t, err)
+			assert.ElementsMatch(t, secretIDs, ids)
+		},
+		"ReturnsNoResultsForNoMatchingTagFilter": func(ctx context.Context, t *testing.T, secretIDs []string) {
+			ids, err := GetFilteredResourceIDs(ctx, tagClient, []string{SecretsManagerResourceFilter}, map[string][]string{
+				"nonexistent_key": {"nonexistent_value"},
+			}, len(secretIDs))
+			require.NoError(t, err)
+			assert.Empty(t, ids)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			cocoaMock.ResetGlobalSecretCache()
+
+			var secretIDs []string
+			for i := 0; i < 5; i++ {
+				id, err := v.CreateSecret(ctx, *cocoa.NewNamedSecret().
+					SetName(fmt.Sprintf("%s%d", t.Name(), i)).
+					SetValue(fmt.Sprintf("some_value%d", i)))
+				require.NoError(t, err)
+				secretIDs = append(secretIDs, id)
+			}
+
+			tCase(ctx, t, secretIDs)
+		})
 	}
 }

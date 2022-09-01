@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -801,11 +800,7 @@ func (s *GitGetProjectSuite) TearDownSuite() {
 }
 
 func (s *GitGetProjectSuite) TestAllowsEmptyPatches() {
-	dir, err := ioutil.TempDir("", "evg-test")
-	s.Require().NoError(err)
-	defer func() {
-		s.NoError(os.RemoveAll(dir))
-	}()
+	dir := s.T().TempDir()
 
 	c := gitFetchProject{
 		Directory: dir,

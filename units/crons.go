@@ -1353,6 +1353,21 @@ func PopulatePodCreationJobs() amboy.QueueOperation {
 	}
 }
 
+func PopulatePodTerminationJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		pods, err := pod.FindByNeedsTermination()
+		if err != nil {
+			return errors.Wrap(err, "finding pods that need to be terminated")
+		}
+
+		catcher := grip.NewBasicCatcher()
+		for _, p := range pods {
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewPodTerminationJob(p.ID, "system indicates pod should be terminated", utility.RoundPartOfMinute(0))), "enqueueing pod termination job for pod '%s'", p.ID)
+		}
+		return catcher.Resolve()
+	}
+}
+
 // PopulatePodDefinitionCreationJobs populates the jobs to create pod
 // definitions.
 func PopulatePodDefinitionCreationJobs(env evergreen.Environment) amboy.QueueOperation {
@@ -1371,17 +1386,29 @@ func PopulatePodDefinitionCreationJobs(env evergreen.Environment) amboy.QueueOpe
 	}
 }
 
-func PopulatePodTerminationJobs(env evergreen.Environment) amboy.QueueOperation {
+// PopulatePodResourceCleanupJobs populates the jobs to clean up pod
+// resources.
+func PopulatePodResourceCleanupJobs() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		pods, err := pod.FindByNeedsTermination()
+		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
-			return errors.Wrap(err, "finding pods that need to be terminated")
+			return errors.Wrap(err, "getting service flags")
+		}
+
+		// TODO (EVG-17603): remove this flag once the necessary admin settings
+		// are populated to run the cleanup jobs.
+		if flags.ContainerConfigurationsDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "pod resource cleanup disabled",
+				"impact":  "container tasks will not be allocated any pods to run them",
+				"mode":    "degraded",
+			})
+			return nil
 		}
 
 		catcher := grip.NewBasicCatcher()
-		for _, p := range pods {
-			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewPodTerminationJob(p.ID, "system indicates pod should be terminated", utility.RoundPartOfMinute(0))), "enqueueing pod termination job for pod '%s'", p.ID)
-		}
+		catcher.Wrap(amboy.EnqueueUniqueJob(ctx, queue, NewPodDefinitionCleanupJob(utility.RoundPartOfHour(0).Format(TSFormat))), "enqueueing pod definition cleanup job")
+		catcher.Wrap(amboy.EnqueueUniqueJob(ctx, queue, NewContainerSecretCleanupJob(utility.RoundPartOfHour(0).Format(TSFormat))), "enqueueing container secret cleanup job")
 		return catcher.Resolve()
 	}
 }

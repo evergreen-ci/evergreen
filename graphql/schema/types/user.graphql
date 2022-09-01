@@ -18,6 +18,7 @@ input UserSettingsInput {
   slackUsername: String
   timezone: String
   useSpruceOptions: UseSpruceOptionsInput
+  dateFormat: String
 }
 
 input GithubUserInput {
@@ -112,6 +113,7 @@ type UserSettings {
   slackUsername: String
   timezone: String
   useSpruceOptions: UseSpruceOptions
+  dateFormat: String
 }
 
 type GithubUser {

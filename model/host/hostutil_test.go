@@ -249,11 +249,7 @@ func TestGetSSHOptions(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			sshKeyDir, err := ioutil.TempDir("", "ssh_key_directory")
-			require.NoError(t, err)
-			defer func() {
-				assert.NoError(t, os.RemoveAll(sshKeyDir))
-			}()
+			sshKeyDir := t.TempDir()
 			testCase(t, &Host{
 				Id: "id",
 				Distro: distro.Distro{

@@ -1,38 +1,37 @@
 command_type: test
 stepback: false
 
-
 task_groups:
   - name: my_group
     max_hosts: 1
     setup_group:
-    - command: shell.exec
-      params:
-        script: |
-          set -o verbose
-          set -o errexit
-          echo "setup_group"
+      - command: shell.exec
+        params:
+          script: |
+            set -o verbose
+            set -o errexit
+            echo "setup_group"
     teardown_group:
-    - command: shell.exec
-      params:
-        script: |
-          set -o verbose
-          set -o errexit
-          echo "teardown_group"
+      - command: shell.exec
+        params:
+          script: |
+            set -o verbose
+            set -o errexit
+            echo "teardown_group"
     setup_task:
-    - command: shell.exec
-      params:
-        script: |
-          set -o verbose
-          set -o errexit
-          echo "setup_task"
+      - command: shell.exec
+        params:
+          script: |
+            set -o verbose
+            set -o errexit
+            echo "setup_task"
     teardown_task:
-    - command: shell.exec
-      params:
-        script: |
-          set -o verbose
-          set -o errexit
-          echo "teardown_task"
+      - command: shell.exec
+        params:
+          script: |
+            set -o verbose
+            set -o errexit
+            echo "teardown_task"
     tasks:
       - first_task_in_task_group
       - second_task_in_task_group
@@ -159,6 +158,10 @@ tasks:
         params:
           key: "test"
           destination: "test_num"
+      - command: downstream_expansions.set
+        params:
+          file: "src/scripts/downstream_expansions.yml"
+          destination: "test_num"
       - command: manifest.load
       - command: s3.put
         params:
@@ -192,8 +195,15 @@ tasks:
           aws_key: ${aws_key}
           aws_secret: ${aws_secret}
           s3_copy_files:
-              - {'source': {'path': 'evergreen/smoke/${build_id}-${build_variant}/evergreen-${task_name}-${revision}', 'bucket': 'mciuploads'},
-                'destination': {'path': 'evergreen/smoke/${build_id}-${build_variant}/evergreen-${task_name}-${revision}-copy', 'bucket': 'mciuploads'}}
+            - source:
+                path: "evergreen/smoke/${build_id}-${build_variant}/evergreen-${task_name}-${revision}"
+                bucket: mciuploads
+              destination:
+                path: "evergreen/smoke/${build_id}-${build_variant}/evergreen-${task_name}-${revision}-copy"
+                bucket: mciuploads
+      - command: timeout.update
+        params:
+          timeout_secs: 2700
 buildvariants:
   - name: localhost
     display_name: localhost

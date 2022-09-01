@@ -2,8 +2,6 @@ package command
 
 import (
 	"context"
-	"io/ioutil"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -36,8 +34,7 @@ func TestZipCreateSuite(t *testing.T) {
 
 func (s *ZipCreateSuite) SetupTest() {
 	var err error
-	s.targetLocation, err = ioutil.TempDir("", "zip-create-suite")
-	s.Require().NoError(err)
+	s.targetLocation = s.T().TempDir()
 
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.comm = client.NewMock("http://localhost.com")
@@ -51,7 +48,6 @@ func (s *ZipCreateSuite) SetupTest() {
 
 func (s *ZipCreateSuite) TearDownTest() {
 	s.cancel()
-	s.Require().NoError(os.RemoveAll(s.targetLocation))
 }
 
 func (s *ZipCreateSuite) TestNilArguments() {

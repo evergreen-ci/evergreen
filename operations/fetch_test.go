@@ -1,8 +1,6 @@
 package operations
 
 import (
-	"io/ioutil"
-	"os"
 	"strings"
 	"testing"
 
@@ -60,12 +58,7 @@ func TestClone(t *testing.T) {
 }
 
 func runCloneTest(t *testing.T, opts cloneOptions, pass bool) {
-	tempDirName, err := ioutil.TempDir("", "testclone-")
-	defer func() {
-		assert.NoError(t, os.RemoveAll(tempDirName))
-	}()
-	assert.NoError(t, err)
-	opts.rootDir = tempDirName
+	opts.rootDir = t.TempDir()
 	if !pass {
 		assert.Error(t, clone(opts))
 		return

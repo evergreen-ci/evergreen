@@ -1,6 +1,8 @@
 package definition
 
 import (
+	"time"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/mongodb/anser/bsonutil"
@@ -46,9 +48,12 @@ func UpdateOne(query, update interface{}) error {
 
 // FindOneID returns a query to find a pod definition with the given ID.
 func FindOneID(id string) (*PodDefinition, error) {
-	return FindOne(db.Query(bson.M{
-		IDKey: id,
-	}))
+	return FindOne(db.Query(ByID(id)))
+}
+
+// ByID returns a query to find pod definitions with the given ID.
+func ByID(id string) bson.M {
+	return bson.M{IDKey: id}
 }
 
 // ByExternalID returns a query to find pod definitions with the given external
@@ -67,4 +72,20 @@ func FindOneByFamily(family string) (*PodDefinition, error) {
 	return FindOne(db.Query(bson.M{
 		FamilyKey: family,
 	}))
+}
+
+// FindByLastAccessedBefore finds all pod definitions that were last accessed
+// before the TTL. If a positive limit is given, it will return at most that
+// number of results; otherwise, the results are unlimited.
+func FindByLastAccessedBefore(ttl time.Duration, limit int) ([]PodDefinition, error) {
+	return Find(db.Query(bson.M{
+		"$or": []bson.M{
+			{
+				LastAccessedKey: bson.M{"$lt": time.Now().Add(-ttl)},
+			},
+			{
+				LastAccessedKey: nil,
+			},
+		},
+	}).Limit(limit))
 }
