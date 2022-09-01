@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -100,7 +101,7 @@ func (r *ec2AssumeRole) Execute(ctx context.Context,
 	}))
 
 	creds := stscreds.NewCredentials(session1, r.RoleARN, func(arp *stscreds.AssumeRoleProvider) {
-		arp.RoleSessionName = time.Now().String()
+		arp.RoleSessionName = strconv.Itoa(int(time.Now().Unix()))
 		if r.ExternalId != "" {
 			arp.ExternalID = utility.ToStringPtr(r.ExternalId)
 		}

@@ -44,11 +44,7 @@ func TestS3PushParseParams(t *testing.T) {
 func TestS3PushExecute(t *testing.T) {
 	for testName, testCase := range map[string]func(context.Context, *testing.T, *s3Push, *client.Mock, client.LoggerProducer, *internal.TaskConfig){
 		"PushesTaskDirectoryToS3": func(ctx context.Context, t *testing.T, c *s3Push, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
-			tmpDir, err := ioutil.TempDir("", "s3_push")
-			require.NoError(t, err)
-			defer func() {
-				assert.NoError(t, os.RemoveAll(tmpDir))
-			}()
+			tmpDir := t.TempDir()
 			workDir := filepath.Join(tmpDir, "work_dir")
 			require.NoError(t, os.MkdirAll(workDir, 0777))
 			tmpFile, err := ioutil.TempFile(workDir, "file")
@@ -75,11 +71,7 @@ func TestS3PushExecute(t *testing.T) {
 			assert.Equal(t, fileContent, pulledContent)
 		},
 		"IgnoresFilesExcludedByFilter": func(ctx context.Context, t *testing.T, c *s3Push, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
-			tmpDir, err := ioutil.TempDir("", "s3_push")
-			require.NoError(t, err)
-			defer func() {
-				assert.NoError(t, os.RemoveAll(tmpDir))
-			}()
+			tmpDir := t.TempDir()
 			workDir := filepath.Join(tmpDir, "work_dir")
 			require.NoError(t, os.MkdirAll(workDir, 0777))
 			tmpFile, err := ioutil.TempFile(workDir, "file")
@@ -106,12 +98,7 @@ func TestS3PushExecute(t *testing.T) {
 			assert.Empty(t, files)
 		},
 		"ExpandsParameters": func(ctx context.Context, t *testing.T, c *s3Push, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
-			tmpDir, err := ioutil.TempDir("", "s3_push")
-			require.NoError(t, err)
-			defer func() {
-				assert.NoError(t, os.RemoveAll(tmpDir))
-			}()
-			conf.WorkDir = tmpDir
+			conf.WorkDir = t.TempDir()
 
 			c.ExcludeFilter = "${exclude_filter}"
 			excludeFilterExpansion := "expanded_exclude_filter"
@@ -169,14 +156,9 @@ func TestS3PushExecute(t *testing.T) {
 				Secret: conf.Task.Secret,
 			}, nil)
 			require.NoError(t, err)
-			tmpDir, err := ioutil.TempDir("", "s3-push-bucket")
-			require.NoError(t, err)
-			defer func() {
-				assert.NoError(t, os.RemoveAll(tmpDir))
-			}()
 			c := &s3Push{}
 			c.bucket, err = pail.NewLocalBucket(pail.LocalOptions{
-				Path: tmpDir,
+				Path: t.TempDir(),
 			})
 			require.NoError(t, err)
 			testCase(ctx, t, c, comm, logger, conf)

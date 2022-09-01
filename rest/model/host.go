@@ -178,6 +178,7 @@ type APIVolume struct {
 	NoExpiration     bool       `json:"no_expiration"`
 	HomeVolume       bool       `json:"home_volume"`
 	CreationTime     *time.Time `json:"creation_time"`
+	Migrating        bool       `json:"migrating"`
 }
 
 type VolumePostRequest struct {
@@ -206,6 +207,7 @@ func (apiVolume *APIVolume) BuildFromService(v host.Volume) {
 	apiVolume.NoExpiration = v.NoExpiration
 	apiVolume.HomeVolume = v.HomeVolume
 	apiVolume.CreationTime = ToTimePtr(v.CreationDate)
+	apiVolume.Migrating = v.Migrating
 }
 
 func (apiVolume *APIVolume) ToService() (host.Volume, error) {
@@ -224,6 +226,7 @@ func (apiVolume *APIVolume) ToService() (host.Volume, error) {
 		Size:             apiVolume.Size,
 		NoExpiration:     apiVolume.NoExpiration,
 		HomeVolume:       apiVolume.HomeVolume,
+		Migrating:        apiVolume.Migrating,
 	}, nil
 }
 

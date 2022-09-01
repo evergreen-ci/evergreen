@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/model/artifact"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
@@ -523,14 +522,14 @@ func (s3pc *s3put) isPublic() bool {
 }
 
 func (s3pc *s3put) remoteFileExists(remoteName string) (bool, error) {
-	requestParams := thirdparty.RequestParams{
+	requestParams := pail.PreSignRequestParams{
 		Bucket:    s3pc.Bucket,
 		FileKey:   remoteName,
 		AwsKey:    s3pc.AwsKey,
 		AwsSecret: s3pc.AwsSecret,
 		Region:    s3pc.Region,
 	}
-	_, err := thirdparty.GetHeadObject(requestParams)
+	_, err := pail.GetHeadObject(requestParams)
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {

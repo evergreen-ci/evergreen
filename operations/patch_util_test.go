@@ -2,7 +2,6 @@ package operations
 
 import (
 	"io/ioutil"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -19,8 +18,7 @@ func TestPatchUtilTestSuite(t *testing.T) {
 }
 
 func (s *PatchUtilTestSuite) SetupSuite() {
-	dir, err := ioutil.TempDir("", "")
-	s.Require().NoError(err)
+	dir := s.T().TempDir()
 
 	s.tempDir = dir
 	s.testConfigFile = dir + ".evergreen.yml"
@@ -160,8 +158,4 @@ func (s *PatchUtilTestSuite) TestParseGitVersionString() {
 		s.NoError(err)
 		s.Equal(version, parsedVersion)
 	}
-}
-
-func (s *PatchUtilTestSuite) TearDownSuite() {
-	s.Require().NoError(os.RemoveAll(s.tempDir))
 }

@@ -14,7 +14,8 @@ func TestPodEvents(t *testing.T) {
 			id := "pod_id"
 			oldStatus := "initializing"
 			newStatus := "starting"
-			LogPodStatusChanged(id, oldStatus, newStatus)
+			reason := "some reason"
+			LogPodStatusChanged(id, oldStatus, newStatus, reason)
 
 			events, err := Find(MostRecentPodEvents(id, 10))
 			require.NoError(t, err)
@@ -26,6 +27,7 @@ func TestPodEvents(t *testing.T) {
 			require.True(t, ok)
 			assert.Equal(t, oldStatus, data.OldStatus)
 			assert.Equal(t, newStatus, data.NewStatus)
+			assert.Equal(t, reason, data.Reason)
 		},
 		"LogPodAssignedTask": func(t *testing.T) {
 			podID := "pod_id"

@@ -34,6 +34,7 @@ type APIUserSettings struct {
 	SlackUsername    *string                     `json:"slack_username"`
 	Notifications    *APINotificationPreferences `json:"notifications"`
 	SpruceFeedback   *APIFeedbackSubmission      `json:"spruce_feedback"`
+	DateFormat       *string                     `json:"date_format"`
 }
 
 type APIUseSpruceOptions struct {
@@ -55,6 +56,7 @@ func (s *APIUserSettings) BuildFromService(settings user.UserSettings) {
 	s.GithubUser.BuildFromService(settings.GithubUser)
 	s.Notifications = &APINotificationPreferences{}
 	s.Notifications.BuildFromService(settings.Notifications)
+	s.DateFormat = utility.ToStringPtr(settings.DateFormat)
 }
 
 func (s *APIUserSettings) ToService() (user.UserSettings, error) {
@@ -77,6 +79,7 @@ func (s *APIUserSettings) ToService() (user.UserSettings, error) {
 		GithubUser:       githubUser,
 		Notifications:    preferences,
 		UseSpruceOptions: useSpruceOptions,
+		DateFormat:       utility.FromStringPtr(s.DateFormat),
 	}, nil
 }
 

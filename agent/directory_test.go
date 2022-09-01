@@ -43,16 +43,12 @@ func TestDirectoryCleanup(t *testing.T) {
 	assert := assert.New(t)
 
 	// create a temp directory for the test
-	dir, err := ioutil.TempDir("", "dir-cleanup")
-	assert.NoError(err)
-	stat, err := os.Stat(dir)
-	assert.True(stat.IsDir())
-	assert.True(osExists(err))
+	dir := t.TempDir()
 
 	// create a file in that directory
 	fn := filepath.Join(dir, "foo")
 	assert.NoError(ioutil.WriteFile(fn, []byte("hello world!"), 0644))
-	stat, err = os.Stat(fn)
+	stat, err := os.Stat(fn)
 	assert.False(stat.IsDir())
 	assert.True(osExists(err))
 
@@ -89,6 +85,4 @@ func TestDirectoryCleanup(t *testing.T) {
 	assert.False(os.IsNotExist(err))
 	_, err = os.Stat(shouldNotDelete)
 	assert.False(os.IsNotExist(err))
-
-	assert.NoError(os.RemoveAll(dir))
 }

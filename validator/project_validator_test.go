@@ -1077,6 +1077,7 @@ func TestValidatePlugins(t *testing.T) {
 	assert.Nil(projectRef.Insert())
 	Convey("When validating a project", t, func() {
 		Convey("ensure bad plugin configs throw an error", func() {
+			So(validateProjectConfigPlugins(&model.ProjectConfig{}), ShouldResemble, ValidationErrors{})
 			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:  "BFG",
 				TicketSearchProjects: []string{"BF", "BFG"},
@@ -1205,7 +1206,6 @@ func TestValidateProjectAliases(t *testing.T) {
 						{
 							ID:        mgobson.NewObjectId(),
 							ProjectID: "project-1",
-							Alias:     evergreen.CommitQueueAlias,
 							Variant:   "v1",
 							Task:      "^test",
 						},
@@ -1214,7 +1214,6 @@ func TestValidateProjectAliases(t *testing.T) {
 						{
 							ID:        mgobson.NewObjectId(),
 							ProjectID: "project-1",
-							Alias:     evergreen.GithubChecksAlias,
 							Variant:   "v1",
 							Task:      "^test",
 						},
@@ -1223,14 +1222,12 @@ func TestValidateProjectAliases(t *testing.T) {
 						{
 							ID:        mgobson.NewObjectId(),
 							ProjectID: "project-1",
-							Alias:     evergreen.GitTagAlias,
 							Variant:   "v1",
 							Task:      "^test",
 						},
 						{
 							ID:        mgobson.NewObjectId(),
 							ProjectID: "project-1",
-							Alias:     evergreen.GitTagAlias,
 							Variant:   "v1",
 							Task:      "^test",
 							GitTag:    "[0-9]++",
@@ -1238,7 +1235,6 @@ func TestValidateProjectAliases(t *testing.T) {
 						{
 							ID:         mgobson.NewObjectId(),
 							ProjectID:  "project-1",
-							Alias:      evergreen.GitTagAlias,
 							Variant:    "v1",
 							Task:       "^test",
 							RemotePath: "remote/path",

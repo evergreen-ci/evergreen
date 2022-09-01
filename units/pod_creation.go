@@ -80,7 +80,7 @@ func (j *podCreationJob) Run(ctx context.Context) {
 		}
 
 		if j.pod != nil && j.pod.Status == pod.StatusInitializing && (j.RetryInfo().GetRemainingAttempts() == 0 || !j.RetryInfo().ShouldRetry()) {
-			j.AddError(errors.Wrap(j.pod.UpdateStatus(pod.StatusDecommissioned), "updating pod status to decommissioned after pod failed to start"))
+			j.AddError(errors.Wrap(j.pod.UpdateStatus(pod.StatusDecommissioned, "pod failed to start and will not retry"), "updating pod status to decommissioned after pod failed to start"))
 
 			terminationJob := NewPodTerminationJob(j.PodID, fmt.Sprintf("pod creation job hit max attempts %d", j.RetryInfo().MaxAttempts), time.Now())
 			if err := amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), terminationJob); err != nil {
@@ -94,8 +94,7 @@ func (j *podCreationJob) Run(ctx context.Context) {
 			})
 		}
 	}()
-
-	if err := j.populateIfUnset(ctx); err != nil {
+	if err := j.populateIfUnset(); err != nil {
 		j.AddRetryableError(err)
 		return
 	}
@@ -125,11 +124,6 @@ func (j *podCreationJob) Run(ctx context.Context) {
 			return
 		}
 
-		if err := podDef.UpdateLastAccessed(); err != nil {
-			j.AddRetryableError(errors.Wrapf(err, "updating last access time for pod definition '%s'", podDef.ID))
-			return
-		}
-
 		p, err := j.ecsPodCreator.CreatePodFromExistingDefinition(ctx, cloud.ExportECSPodDefinition(*podDef), *execOpts)
 		if err != nil {
 			j.AddRetryableError(errors.Wrap(err, "starting pod"))
@@ -143,7 +137,7 @@ func (j *podCreationJob) Run(ctx context.Context) {
 			j.AddError(errors.Wrap(err, "updating pod resources"))
 		}
 
-		if err := j.pod.UpdateStatus(pod.StatusStarting); err != nil {
+		if err := j.pod.UpdateStatus(pod.StatusStarting, "pod successfully started"); err != nil {
 			j.AddError(errors.Wrap(err, "marking pod as starting"))
 		}
 
@@ -155,7 +149,7 @@ func (j *podCreationJob) Run(ctx context.Context) {
 	}
 }
 
-func (j *podCreationJob) populateIfUnset(ctx context.Context) error {
+func (j *podCreationJob) populateIfUnset() error {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
@@ -203,6 +197,17 @@ func (j *podCreationJob) checkForPodDefinition(family string) (*definition.PodDe
 	}
 	if podDef == nil {
 		return nil, errors.Errorf("pod definition with family '%s' not found", family)
+	}
+
+	grip.WarningWhen(podDef.LastAccessed.Add(podDefinitionTTL).Before(time.Now()), message.Fields{
+		"message":        "Using a pod definition whose TTL has already elapsed, so it's at risk of being cleaned up. Starting this pod may fail if the pod definition gets cleaned up.",
+		"pod":            j.pod.ID,
+		"pod_definition": podDef.ID,
+		"job":            j.ID(),
+	})
+
+	if err := podDef.UpdateLastAccessed(); err != nil {
+		return nil, errors.Wrapf(err, "updating last access time for pod definition '%s'", podDef.ID)
 	}
 
 	return podDef, nil

@@ -33,12 +33,21 @@ func (pd *PodDefinition) Insert() error {
 	return db.Insert(Collection, pd)
 }
 
+// Upsert upserts the pod definition into the collection.
+func (pd *PodDefinition) Upsert() error {
+	_, err := db.Upsert(Collection, ByID(pd.ID), pd)
+	return err
+}
+
+// Remove removes the pod definition from the collection.
+func (pd *PodDefinition) Remove() error {
+	return db.Remove(Collection, ByID(pd.ID))
+}
+
 // UpdateLastAccessed updates the time this pod definition was last accessed to
 // now.
 func (pd *PodDefinition) UpdateLastAccessed() error {
-	return UpdateOne(bson.M{
-		IDKey: pd.ID,
-	}, bson.M{
+	return UpdateOne(ByID(pd.ID), bson.M{
 		"$set": bson.M{
 			LastAccessedKey: time.Now(),
 		},
@@ -73,7 +82,14 @@ func (pdc PodDefinitionCache) Put(_ context.Context, item cocoa.ECSPodDefinition
 	return nil
 }
 
-// TODO (EVG-16900): implement deletion and pod definition cleanup.
-func (pdf PodDefinitionCache) Delete(_ context.Context, _ string) error {
+// Delete deletes a new pod definition by its external ID. If the pod definition
+// does not exist, this is a no-op.
+func (pdc PodDefinitionCache) Delete(_ context.Context, externalID string) error {
+	if err := db.Remove(Collection, bson.M{
+		ExternalIDKey: externalID,
+	}); err != nil {
+		return errors.Wrapf(err, "deleting pod definition with external ID '%s'", externalID)
+	}
+
 	return nil
 }
