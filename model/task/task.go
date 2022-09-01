@@ -2515,7 +2515,7 @@ func (t *Task) Insert() error {
 // into the old_tasks collection. If this is a display task, its execution tasks
 // are also archived.
 func (t *Task) Archive() error {
-	if utility.StringSliceContains(evergreen.TaskCompletedStatuses, t.Status) {
+	if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, t.Status) {
 		grip.Debug(message.Fields{
 			"message":   "task is in incomplete state, skipping archiving",
 			"task_id":   t.Id,
