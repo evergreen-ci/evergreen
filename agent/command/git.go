@@ -92,7 +92,7 @@ func (opts cloneOpts) validate() error {
 		catcher.New("cannot clone using OAuth if token is not set")
 	}
 	if opts.cloneDepth < 0 {
-		catcher.New("clone depth must be a positive integer")
+		catcher.New("clone depth cannot be negative")
 	}
 	return catcher.Resolve()
 }
