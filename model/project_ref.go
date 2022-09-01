@@ -101,6 +101,7 @@ type ProjectRef struct {
 	DisabledStatsCache    *bool    `bson:"disabled_stats_cache,omitempty" json:"disabled_stats_cache,omitempty"`
 
 	// List of commands
+	// Lacks omitempty so that SetupCommands can be identified as either [] or nil in a ProjectSettingsEvent
 	WorkstationConfig WorkstationConfig `bson:"workstation_config" json:"workstation_config"`
 
 	// TaskAnnotationSettings holds settings for the file ticket button in the Task Annotations to call custom webhooks when clicked
