@@ -301,7 +301,7 @@ func smokeTestEndpoints() cli.Command {
 				if mode == string(agent.PodMode) {
 					return errors.Wrap(checkContainerTask(username, key), "check task failed")
 				}
-				return errors.Wrap(checkTaskByCommit(username, key), "check task failed")
+				return errors.Wrap(checkHostTaskByCommit(username, key), "check task failed")
 			}
 			return errors.WithStack(tests.checkEndpoints(username, key))
 		},

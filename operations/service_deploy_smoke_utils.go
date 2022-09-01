@@ -127,7 +127,7 @@ OUTER:
 		}
 
 		// retry for *slightly* delayed logger closing
-		err = checkLog(task, client, username, key)
+		err = checkLog(task, client, agent.PodMode, username, key)
 		if err != nil {
 			return err
 		}
@@ -138,7 +138,7 @@ OUTER:
 	return errors.New("this code should be unreachable")
 }
 
-func checkTaskByCommit(username, key string) error {
+func checkHostTaskByCommit(username, key string) error {
 	client := utility.GetHTTPClient()
 	defer utility.PutHTTPClient(client)
 
@@ -226,7 +226,7 @@ OUTER:
 				}
 				continue OUTER
 			}
-			err = checkLog(task, client, username, key)
+			err = checkLog(task, client, agent.HostMode, username, key)
 			if err != nil {
 				return err
 			}
@@ -237,7 +237,7 @@ OUTER:
 	return errors.New("this code should be unreachable")
 }
 
-func checkLog(task apimodels.APITask, client *http.Client, username, key string) error {
+func checkLog(task apimodels.APITask, client *http.Client, mode agent.Mode, username, key string) error {
 	// retry for *slightly* delayed logger closing
 	var err error
 	for i := 0; i < 3; i++ {
@@ -249,7 +249,7 @@ func checkLog(task apimodels.APITask, client *http.Client, username, key string)
 			grip.Debug(err)
 			continue
 		}
-		if err = checkTaskLog(body, agent.HostMode); err == nil {
+		if err = checkTaskLog(body, mode); err == nil {
 			break
 		}
 	}
