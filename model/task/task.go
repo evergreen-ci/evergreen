@@ -324,7 +324,8 @@ func (d *Dependency) UnmarshalBSON(in []byte) error {
 
 // SetBSON allows us to use dependency representation of both
 // just task Ids and of true Dependency structs.
-//  TODO eventually drop all of this switching
+//
+//	TODO eventually drop all of this switching
 func (d *Dependency) SetBSON(raw mgobson.Raw) error {
 	// copy the Dependency type to remove this SetBSON method but preserve bson struct tags
 	type nakedDep Dependency
@@ -2486,7 +2487,7 @@ func AbortVersion(versionId string, reason AbortInfo) error {
 	return nil
 }
 
-//String represents the stringified version of a task
+// String represents the stringified version of a task
 func (t *Task) String() (taskStruct string) {
 	taskStruct += fmt.Sprintf("Id: %v\n", t.Id)
 	taskStruct += fmt.Sprintf("Status: %v\n", t.Status)
@@ -2514,13 +2515,22 @@ func (t *Task) Insert() error {
 // into the old_tasks collection. If this is a display task, its execution tasks
 // are also archived.
 func (t *Task) Archive() error {
+	if utility.StringSliceContains(evergreen.TaskCompletedStatuses, t.Status) {
+		grip.Debug(message.Fields{
+			"message":   "task is in incomplete state, skipping archiving",
+			"task_id":   t.Id,
+			"execution": t.Execution,
+			"func":      "Archive",
+		})
+		return nil
+	}
 	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
 		return errors.Wrapf(ArchiveMany([]Task{*t}), "archiving display task '%s'", t.Id)
 	} else {
 		// Archiving a single task.
 		archiveTask := t.makeArchivedTask()
-		err := db.Insert(OldCollection, archiveTask)
-		if err != nil && !db.IsDuplicateKey(err) {
+		_, err := db.Upsert(OldCollection, bson.M{IdKey: MakeOldID(t.Id, t.Execution)}, archiveTask)
+		if err != nil {
 			return errors.Wrap(err, "inserting archived task into old tasks")
 		}
 		t.Aborted = false
@@ -2546,6 +2556,15 @@ func ArchiveMany(tasks []Task) error {
 	archivedTasks := []interface{}{}  // Contains all archived tasks (task, display, and execution). Created by Task.makeArchivedTask()
 
 	for _, t := range tasks {
+		if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, t.Status) {
+			grip.Debug(message.Fields{
+				"message":   "task is in incomplete state, skipping archiving",
+				"task_id":   t.Id,
+				"execution": t.Execution,
+				"func":      "ArchiveMany",
+			})
+			continue
+		}
 		allTaskIds = append(allTaskIds, t.Id)
 		archivedTasks = append(archivedTasks, t.makeArchivedTask())
 		if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
@@ -2555,7 +2574,7 @@ func ArchiveMany(tasks []Task) error {
 			if t.ResetFailedWhenFinished && !t.ResetWhenFinished {
 				execTasks, err = Find(FailedTasksByIds(t.ExecutionTasks))
 			} else {
-				execTasks, err = FindAll(db.Query(ByIds(t.ExecutionTasks)))
+				execTasks, err = FindAll(db.Query(ByIdsAndStatus(t.ExecutionTasks, evergreen.TaskCompletedStatuses)))
 			}
 
 			if err != nil {
@@ -2563,6 +2582,15 @@ func ArchiveMany(tasks []Task) error {
 			}
 			execTaskIds = append(execTaskIds, t.ExecutionTasks...)
 			for _, et := range execTasks {
+				if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, et.Status) {
+					grip.Debug(message.Fields{
+						"message":   "execution task is in incomplete state, skipping archiving",
+						"task_id":   et.Id,
+						"execution": et.Execution,
+						"func":      "ArchiveMany",
+					})
+					continue
+				}
 				archivedTasks = append(archivedTasks, et.makeArchivedTask())
 				toUpdateExecTaskIds = append(toUpdateExecTaskIds, et.Id)
 			}
@@ -2579,10 +2607,10 @@ func ArchiveMany(tasks []Task) error {
 }
 
 // archiveAll takes in:
-// - taskIds               : All tasks and display tasks IDs
-// - execTaskIds           : All execution task IDs
+// - taskIds                : All tasks and display tasks IDs
+// - execTaskIds            : All execution task IDs
 // - toRestartExecTaskIds   : All execution task IDs for execution tasks that will be archived/restarted
-// - archivedTasks         : All archived tasks created by Task.makeArchivedTask()
+// - archivedTasks          : All archived tasks created by Task.makeArchivedTask()
 func archiveAll(taskIds, execTaskIds, toRestartExecTaskIds []string, archivedTasks []interface{}) error {
 	mongoClient := evergreen.GetEnvironment().Client()
 	ctx, cancel := evergreen.GetEnvironment().Context()
