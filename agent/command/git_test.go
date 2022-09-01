@@ -229,6 +229,27 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandDefaultCloneMethodUsesSSH() {
 	s.Equal("git clone 'git@github.com:evergreen-ci/sample.git' 'dir' --branch 'main'", cmds[3])
 }
 
+func (s *GitGetProjectSuite) TestBuildCloneCommandCloneDepth() {
+	c := &gitFetchProject{
+		Directory: "dir",
+	}
+	conf := s.taskConfig2
+
+	opts := cloneOpts{
+		owner:      conf.ProjectRef.Owner,
+		repo:       conf.ProjectRef.Repo,
+		branch:     conf.ProjectRef.Branch,
+		dir:        c.Directory,
+		cloneDepth: 50,
+	}
+	s.Require().NoError(opts.setLocation())
+	cmds, err := c.buildCloneCommand(context.Background(), conf, nil, opts)
+	s.Require().NoError(err)
+	combined := strings.Join(cmds, " ")
+	s.Contains(combined, "--depth 50")
+	s.Contains(combined, "git log HEAD..")
+}
+
 func (s *GitGetProjectSuite) TestGitPlugin() {
 	conf := s.taskConfig1
 	token, err := s.settings.GetGithubOauthToken()

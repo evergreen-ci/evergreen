@@ -33,6 +33,7 @@ const (
 	GitFetchProjectRetries = 5
 	defaultCommitterName   = "Evergreen Agent"
 	defaultCommitterEmail  = "no-reply@evergreen.mongodb.com"
+	shallowCloneDepth      = 100
 )
 
 // gitFetchProject is a command that fetches source code from git for the project
@@ -48,7 +49,9 @@ type gitFetchProject struct {
 
 	Token string `plugin:"expand" mapstructure:"token"`
 
+	// ShallowClone sets CloneDepth to 100, and is kept for backwards compatibility.
 	ShallowClone bool `mapstructure:"shallow_clone"`
+	CloneDepth   int  `mapstructure:"clone_depth"`
 
 	RecurseSubmodules bool `mapstructure:"recurse_submodules"`
 
@@ -66,9 +69,9 @@ type cloneOpts struct {
 	branch             string
 	dir                string
 	token              string
-	shallowClone       bool
 	recurseSubmodules  bool
 	mergeTestRequester bool
+	cloneDepth         int
 }
 
 func (opts cloneOpts) validate() error {
@@ -87,6 +90,9 @@ func (opts cloneOpts) validate() error {
 	}
 	if opts.method == evergreen.CloneMethodOAuth && opts.token == "" {
 		catcher.New("cannot clone using OAuth if token is not set")
+	}
+	if opts.cloneDepth < 0 {
+		catcher.New("clone depth must be a positive integer")
 	}
 	return catcher.Resolve()
 }
@@ -174,9 +180,8 @@ func (opts cloneOpts) buildHTTPCloneCommand() ([]string, error) {
 	if opts.recurseSubmodules {
 		clone = fmt.Sprintf("%s --recurse-submodules", clone)
 	}
-	if opts.shallowClone {
-		// Experiments with shallow clone on AWS hosts suggest that depth 100 is as fast as 1, but 1000 is slower.
-		clone = fmt.Sprintf("%s --depth 100", clone)
+	if opts.cloneDepth > 0 {
+		clone = fmt.Sprintf("%s --depth %d", clone, opts.cloneDepth)
 	}
 	if opts.branch != "" {
 		clone = fmt.Sprintf("%s --branch '%s'", clone, opts.branch)
@@ -197,9 +202,8 @@ func (opts cloneOpts) buildSSHCloneCommand() ([]string, error) {
 	if opts.recurseSubmodules {
 		cloneCmd = fmt.Sprintf("%s --recurse-submodules", cloneCmd)
 	}
-	if opts.shallowClone {
-		// Experiments with shallow clone on AWS hosts suggest that depth 100 is as fast as 1, but 1000 is slower.
-		cloneCmd = fmt.Sprintf("%s --depth 100", cloneCmd)
+	if opts.cloneDepth > 0 {
+		cloneCmd = fmt.Sprintf("%s --depth %d", cloneCmd, opts.cloneDepth)
 	}
 	if opts.branch != "" {
 		cloneCmd = fmt.Sprintf("%s --branch '%s'", cloneCmd, opts.branch)
@@ -299,7 +303,8 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, conf *internal.
 		}
 
 	} else {
-		if opts.shallowClone {
+		if opts.cloneDepth > 0 {
+			// If this git log fails, then we know the clone is too shallow so we unshallow before reset.
 			gitCommands = append(gitCommands, fmt.Sprintf("git log HEAD..%s || git fetch --unshallow", conf.Task.Revision))
 		}
 		if !opts.mergeTestRequester {
@@ -391,9 +396,13 @@ func (c *gitFetchProject) opts(projectMethod, projectToken string, conf *interna
 		branch:             conf.ProjectRef.Branch,
 		dir:                c.Directory,
 		token:              projectToken,
-		shallowClone:       c.ShallowClone && shallowCloneEnabled,
+		cloneDepth:         c.CloneDepth,
 		recurseSubmodules:  c.RecurseSubmodules,
 		mergeTestRequester: conf.Task.Requester == evergreen.MergeTestRequester,
+	}
+	if opts.cloneDepth == 0 && c.ShallowClone && shallowCloneEnabled {
+		// Experiments with shallow clone on AWS hosts suggest that depth 100 is as fast as 1, but 1000 is slower.
+		opts.cloneDepth = shallowCloneDepth
 	}
 	if err := opts.setLocation(); err != nil {
 		return opts, errors.Wrap(err, "failed to set location to clone from")
@@ -431,6 +440,7 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 	if err != nil {
 		return err
 	}
+	logger.Task().Debugf("CLONE DEPTH BEING USED IS %d", opts.cloneDepth)
 
 	err = utility.Retry(
 		ctx,
