@@ -59,10 +59,14 @@ func (r *patchResolver) CommitQueuePosition(ctx context.Context, obj *restModel.
 	if *obj.Alias == evergreen.CommitQueueAlias {
 		cq, err := commitqueue.FindOneId(*obj.ProjectId)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting commit queue position for patch %s: %s", *obj.Id, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting commit queue position for patch '%s': %s", *obj.Id, err.Error()))
 		}
 		if cq != nil {
 			position := cq.FindItem(*obj.Id)
+			// Adjust to be one-indexed if found on commit queue.
+			if position >= 0 {
+				position += 1
+			}
 			commitQueuePosition = &position
 		}
 	}
