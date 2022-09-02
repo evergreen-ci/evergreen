@@ -3799,6 +3799,7 @@ func TestArchive(t *testing.T) {
 			execTask := Task{
 				Id:            "execTask",
 				DisplayTaskId: utility.ToStringPtr(dt.Id),
+				Status:        evergreen.TaskSucceeded,
 			}
 			archivedExecTaskID := MakeOldID(execTask.Id, execTask.Execution)
 			archivedExecution := execTask.Execution
@@ -3832,7 +3833,8 @@ func TestArchive(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(Collection, OldCollection, event.LegacyEventLogCollection))
 			tsk := Task{
-				Id: "taskID",
+				Id:     "taskID",
+				Status: evergreen.TaskSucceeded,
 			}
 			tCase(t, tsk)
 		})
@@ -4583,6 +4585,7 @@ func (s *TaskConnectorFetchByIdSuite) TestFindOldTasksByIDWithDisplayTasks() {
 		Id:        "task_1",
 		Execution: 0,
 		BuildId:   "build_1",
+		Status:    evergreen.TaskSucceeded,
 	}
 	s.NoError(testTask1.Insert())
 	testTask2 := &Task{
@@ -4590,6 +4593,7 @@ func (s *TaskConnectorFetchByIdSuite) TestFindOldTasksByIDWithDisplayTasks() {
 		Execution:   0,
 		BuildId:     "build_1",
 		DisplayOnly: true,
+		Status:      evergreen.TaskSucceeded,
 	}
 	s.NoError(testTask2.Insert())
 	for i := 0; i < 10; i++ {

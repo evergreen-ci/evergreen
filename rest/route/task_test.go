@@ -116,6 +116,7 @@ func TestFetchArtifacts(t *testing.T) {
 		Id:          "task2",
 		Execution:   0,
 		DisplayOnly: true,
+		Status:      evergreen.TaskSucceeded,
 	}
 	assert.NoError(task2.Insert())
 	assert.NoError(task2.Archive())

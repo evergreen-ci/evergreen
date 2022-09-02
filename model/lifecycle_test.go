@@ -195,6 +195,13 @@ func TestBuildSetPriority(t *testing.T) {
 }
 
 func TestBuildRestart(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(build.Collection, task.Collection, task.OldCollection))
+	}()
+
+	// Running a multi-document transaction requires the collections to exist
+	// first before any documents can be inserted.
+	require.NoError(t, db.CreateCollections(build.Collection, task.Collection, task.OldCollection))
 	Convey("Restarting a build", t, func() {
 
 		Convey("with task abort should update the status of"+
