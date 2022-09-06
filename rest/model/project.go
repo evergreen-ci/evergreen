@@ -335,17 +335,20 @@ func (cr *APIContainerSecret) ToService() (*model.ContainerSecret, error) {
 }
 
 type APIContainerResources struct {
-	MemoryMB *int `bson:"memory_mb" json:"memory_mb"`
-	CPU      *int `bson:"cpu" json:"cpu"`
+	Name     *string `bson:"name" json:"name"`
+	MemoryMB *int    `bson:"memory_mb" json:"memory_mb"`
+	CPU      *int    `bson:"cpu" json:"cpu"`
 }
 
 func (cr *APIContainerResources) BuildFromService(h model.ContainerResources) {
+	cr.Name = utility.ToStringPtr(h.Name)
 	cr.MemoryMB = utility.ToIntPtr(h.MemoryMB)
 	cr.CPU = utility.ToIntPtr(h.CPU)
 }
 
 func (cr *APIContainerResources) ToService() model.ContainerResources {
 	return model.ContainerResources{
+		Name:     utility.FromStringPtr(cr.Name),
 		MemoryMB: utility.FromIntPtr(cr.MemoryMB),
 		CPU:      utility.FromIntPtr(cr.CPU),
 	}
@@ -447,17 +450,17 @@ type APIProjectRef struct {
 	Restricted                  *bool                     `json:"restricted"`
 	Revision                    *string                   `json:"revision"`
 
-	Triggers             []APITriggerDefinition           `json:"triggers"`
-	GithubTriggerAliases []*string                        `json:"github_trigger_aliases"`
-	PatchTriggerAliases  []APIPatchTriggerDefinition      `json:"patch_trigger_aliases"`
-	Aliases              []APIProjectAlias                `json:"aliases"`
-	Variables            APIProjectVars                   `json:"variables"`
-	WorkstationConfig    APIWorkstationConfig             `json:"workstation_config"`
-	Subscriptions        []APISubscription                `json:"subscriptions"`
-	DeleteSubscriptions  []*string                        `json:"delete_subscriptions,omitempty"`
-	PeriodicBuilds       []APIPeriodicBuildDefinition     `json:"periodic_builds,omitempty"`
-	ContainerSizes       map[string]APIContainerResources `json:"container_sizes"`
-	ContainerSecrets     []APIContainerSecret             `json:"container_secrets,omitempty"`
+	Triggers                 []APITriggerDefinition       `json:"triggers"`
+	GithubTriggerAliases     []*string                    `json:"github_trigger_aliases"`
+	PatchTriggerAliases      []APIPatchTriggerDefinition  `json:"patch_trigger_aliases"`
+	Aliases                  []APIProjectAlias            `json:"aliases"`
+	Variables                APIProjectVars               `json:"variables"`
+	WorkstationConfig        APIWorkstationConfig         `json:"workstation_config"`
+	Subscriptions            []APISubscription            `json:"subscriptions"`
+	DeleteSubscriptions      []*string                    `json:"delete_subscriptions,omitempty"`
+	PeriodicBuilds           []APIPeriodicBuildDefinition `json:"periodic_builds,omitempty"`
+	ContainerSizeDefinitions []APIContainerResources      `json:"container_size_definitions"`
+	ContainerSecrets         []APIContainerSecret         `json:"container_secrets,omitempty"`
 	// DeleteContainerSecrets contains names of container secrets to be deleted.
 	DeleteContainerSecrets []string `json:"delete_container_secrets,omitempty"`
 }
@@ -531,12 +534,12 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		projectRef.PatchTriggerAliases = patchTriggers
 	}
 
-	if p.ContainerSizes != nil {
-		containerSizes := map[string]model.ContainerResources{}
-		for name, size := range p.ContainerSizes {
-			containerSizes[name] = size.ToService()
+	if p.ContainerSizeDefinitions != nil {
+		containerSizes := []model.ContainerResources{}
+		for _, size := range p.ContainerSizeDefinitions {
+			containerSizes = append(containerSizes, size.ToService())
 		}
-		projectRef.ContainerSizes = containerSizes
+		projectRef.ContainerSizeDefinitions = containerSizes
 	}
 
 	for idx, secret := range p.ContainerSecrets {
@@ -644,14 +647,14 @@ func (p *APIProjectRef) BuildFromService(projectRef model.ProjectRef) error {
 		p.PatchTriggerAliases = patchTriggers
 	}
 
-	if projectRef.ContainerSizes != nil {
-		containerSizes := map[string]APIContainerResources{}
-		for name, resources := range projectRef.ContainerSizes {
+	if projectRef.ContainerSizeDefinitions != nil {
+		containerSizes := []APIContainerResources{}
+		for _, resources := range projectRef.ContainerSizeDefinitions {
 			var apiResources APIContainerResources
 			apiResources.BuildFromService(resources)
-			containerSizes[name] = apiResources
+			containerSizes = append(containerSizes, apiResources)
 		}
-		p.ContainerSizes = containerSizes
+		p.ContainerSizeDefinitions = containerSizes
 	}
 
 	for idx, secret := range projectRef.ContainerSecrets {

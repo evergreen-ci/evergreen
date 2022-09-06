@@ -965,7 +965,7 @@ Evergreen Projects
       </div>
 <!--      TODO: EVG-17134 Unhide once container tasks are available-->
       <!-- Custom container resource aliases -->
-      <div class="variables" ng-hide="true">
+      <div class="variables">
         <div class="form-group">
           <div class="col-header col-lg-6 form-control-static">
             <h3>Container Sizes</h3>
@@ -978,7 +978,7 @@ Evergreen Projects
           <div class="col-lg-2"> <label class="control-label"> CPU </label> </div>
           <div class="col-lg-2"></div>
         </div>
-        <div id="container-sizes-list" class="form-group" ng-repeat="(name, obj) in settingsFormData.container_sizes track by $index">
+        <div id="container-sizes-list" class="form-group" ng-repeat="(name, obj) in settingsFormData.container_size_definitions track by $index">
           <div class="col-lg-2">
             <input class="form-control" ng-model="name" type="text" placeholder="name">
           </div>
@@ -1013,7 +1013,7 @@ Evergreen Projects
         </div>
       </div>
       <!-- Container credentials used for private image repos -->
-      <div class="variables" ng-hide="true">
+      <div class="variables">
         <div class="form-group">
           <div class="col-header col-lg-6 form-control-static">
             <h3>Container Credentials</h3>

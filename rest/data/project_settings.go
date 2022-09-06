@@ -251,6 +251,14 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			}
 		}
 		catcher.Wrapf(DeleteSubscriptions(projectId, toDelete), "deleting subscriptions")
+	case model.ProjectPageContainerSection:
+		for i := range mergedProjectRef.ContainerSizeDefinitions {
+			err = mergedProjectRef.ContainerSizeDefinitions[i].Validate()
+			catcher.Add(err)
+		}
+		if catcher.HasErrors() {
+			return nil, errors.Wrap(catcher.Resolve(), "invalid container size definition")
+		}
 	case model.ProjectPagePeriodicBuildsSection:
 		for i := range mergedProjectRef.PeriodicBuilds {
 			err = mergedProjectRef.PeriodicBuilds[i].Validate()

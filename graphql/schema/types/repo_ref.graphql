@@ -38,6 +38,7 @@ input RepoRefInput {
   triggers: [TriggerAliasInput!]
   versionControlEnabled: Boolean
   workstationConfig: WorkstationConfigInput
+  containerSizeDefinitions: [ContainerResourcesInput!]
 }
 
 ###### TYPES ######
@@ -86,6 +87,7 @@ type RepoRef {
   validDefaultLoggers: [String!]!
   versionControlEnabled: Boolean!
   workstationConfig: RepoWorkstationConfig!
+  containerSizeDefinitions: [ContainerResources!]
 }
 
 type RepoCommitQueueParams {

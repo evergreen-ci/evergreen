@@ -518,7 +518,7 @@ mciModule.controller(
             github_trigger_aliases: data.ProjectRef.github_trigger_aliases || [],
             disabled_stats_cache: data.ProjectRef.disabled_stats_cache,
             periodic_builds: data.ProjectRef.periodic_builds,
-            container_sizes: data.ProjectRef.container_sizes || {},
+            container_size_definitions: data.ProjectRef.container_size_definitions || {},
             container_credentials: data.ProjectRef.container_credentials || {},
             use_repo_settings: !!$scope.projectRef.repo_ref_id,
             build_baron_settings: data.ProjectRef.build_baron_settings || {},
@@ -808,7 +808,7 @@ mciModule.controller(
           return;
       }
       var item = Object.assign({}, $scope.container_size);
-      $scope.settingsFormData.container_sizes[item.name] = {
+      $scope.settingsFormData.container_size_definitions[item.name] = {
           "memory_mb": item.memory_mb,
           "cpu": item.cpu,
       }
@@ -902,8 +902,8 @@ mciModule.controller(
     };
 
       $scope.removeContainerSize = function (name) {
-          if ($scope.settingsFormData.container_sizes[name]) {
-              delete $scope.settingsFormData.container_sizes[name]
+          if ($scope.settingsFormData.container_size_definitions[name]) {
+              delete $scope.settingsFormData.container_size_definitions[name]
           }
           $scope.isDirty = true;
       };
