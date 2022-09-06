@@ -2900,7 +2900,7 @@ func TestValidateContainers(t *testing.T) {
 			p.Containers[0].Size = "s2"
 			verrs := validateContainers(p, ref, false)
 			require.Len(t, verrs, 1)
-			assert.Contains(t, verrs[0].Message, "size 's2' is not defined anywhere")
+			assert.Contains(t, verrs[0].Message, "container size 's2' not found")
 		},
 		"FailsWithNonexistentRepoCreds": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
 			p.Containers[0].Credential = "nonexistent"
@@ -2956,6 +2956,11 @@ func TestValidateContainers(t *testing.T) {
 				ContainerSizeDefinitions: []model.ContainerResources{
 					{
 						Name:     "s1",
+						CPU:      1,
+						MemoryMB: 100,
+					},
+					{
+						Name:     "",
 						CPU:      1,
 						MemoryMB: 100,
 					},
