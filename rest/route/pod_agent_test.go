@@ -23,6 +23,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -298,6 +299,49 @@ func TestPodAgentNextTask(t *testing.T) {
 			assert.Equal(t, http.StatusOK, resp.Status())
 			nextTaskResp := resp.Data().(*apimodels.NextTaskResponse)
 			assert.Equal(t, nextTaskResp.TaskId, tsk.Id)
+		},
+		"DegradedModeSetShouldTerminatePod": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
+			serviceFlags := evergreen.ServiceFlags{
+				TaskDispatchDisabled: true,
+			}
+			require.NoError(t, evergreen.SetServiceFlags(serviceFlags))
+			p := getPod()
+			require.NoError(t, p.Insert())
+			tsk := getTask()
+			require.NoError(t, tsk.Insert())
+			rh.podID = p.ID
+			resp := rh.Run(ctx)
+			nextTaskResp := resp.Data().(*apimodels.NextTaskResponse)
+			assert.Equal(t, nextTaskResp, &apimodels.NextTaskResponse{})
+
+			q := env.RemoteQueue()
+			require.NoError(t, q.Start(ctx))
+			require.True(t, amboy.WaitInterval(ctx, q, time.Millisecond))
+
+			counter := 0
+			results := q.Results(ctx)
+			for job := range results {
+				require.NotNil(t, job)
+				switch job.Type().Name {
+				case "pod-termination":
+					counter++
+					timeInfo := job.TimeInfo()
+					require.True(t, timeInfo.Start.Before(timeInfo.End))
+					require.False(t, timeInfo.Start.IsZero())
+					require.False(t, timeInfo.End.IsZero())
+				default:
+					counter--
+				}
+			}
+			stats := env.RemoteQueue().Stats(ctx)
+			assert.Equal(t, counter, stats.Total)
+
+			dbPod, err := pod.FindOneByID(rh.podID)
+			require.NoError(t, err)
+			require.NotZero(t, dbPod)
+			assert.Equal(t, pod.StatusTerminated, dbPod.Status)
+			serviceFlags.TaskDispatchDisabled = false // unset degraded mode
+			require.NoError(t, evergreen.SetServiceFlags(serviceFlags))
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {

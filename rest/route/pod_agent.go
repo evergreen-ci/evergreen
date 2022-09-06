@@ -251,8 +251,10 @@ func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving admin settings"))
 	}
 	if flags.TaskDispatchDisabled {
-		// TODO: EVG-17224 Potentially terminate pod when task dispatching is disabled
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), "task dispatch is disabled, returning no task")
+		if err = h.prepareForPodTermination(ctx, p, "task dispatching is disabled"); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(err)
+		}
 		return gimlet.NewJSONResponse(&apimodels.NextTaskResponse{})
 	}
 
