@@ -23,6 +23,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -236,7 +237,8 @@ func TestPodAgentNextTask(t *testing.T) {
 
 			resp := rh.Run(ctx)
 			assert.Equal(t, http.StatusOK, resp.Status())
-			nextTaskResp := resp.Data().(*apimodels.NextTaskResponse)
+			nextTaskResp, ok := resp.Data().(*apimodels.NextTaskResponse)
+			require.True(t, ok)
 			assert.Equal(t, nextTaskResp.TaskId, tsk.Id)
 			foundTask, err := task.FindOneId(tsk.Id)
 			require.NoError(t, err)
@@ -297,8 +299,40 @@ func TestPodAgentNextTask(t *testing.T) {
 			rh.podID = p.ID
 			resp := rh.Run(ctx)
 			assert.Equal(t, http.StatusOK, resp.Status())
-			nextTaskResp := resp.Data().(*apimodels.NextTaskResponse)
+			nextTaskResp, ok := resp.Data().(*apimodels.NextTaskResponse)
+			require.True(t, ok)
 			assert.Equal(t, nextTaskResp.TaskId, tsk.Id)
+		},
+		"DegradedModeSetShouldTerminatePod": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
+			defer func() {
+				// unset degraded mode
+				require.NoError(t, evergreen.SetServiceFlags(evergreen.ServiceFlags{
+					TaskDispatchDisabled: false,
+				}))
+			}()
+			require.NoError(t, evergreen.SetServiceFlags(evergreen.ServiceFlags{
+				TaskDispatchDisabled: true,
+			}))
+			p := getPod()
+			require.NoError(t, p.Insert())
+			tsk := getTask()
+			require.NoError(t, tsk.Insert())
+			rh.podID = p.ID
+			resp := rh.Run(ctx)
+			nextTaskResp, ok := resp.Data().(*apimodels.NextTaskResponse)
+			require.True(t, ok)
+			assert.Equal(t, nextTaskResp, &apimodels.NextTaskResponse{})
+
+			q := env.RemoteQueue()
+			require.NoError(t, q.Start(ctx))
+			require.True(t, amboy.WaitInterval(ctx, q, time.Millisecond))
+			stats := q.Stats(ctx)
+			assert.Equal(t, 1, stats.Total)
+
+			dbPod, err := pod.FindOneByID(rh.podID)
+			require.NoError(t, err)
+			require.NotZero(t, dbPod)
+			assert.Equal(t, pod.StatusTerminated, dbPod.Status)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -387,11 +421,13 @@ func TestPodAgentEndTask(t *testing.T) {
 			rh.podID = podID
 			rh.taskID = taskID
 			resp := rh.Run(ctx)
-			endTaskResp := resp.Data().(*apimodels.EndTaskResponse)
+			endTaskResp, ok := resp.Data().(*apimodels.EndTaskResponse)
+			require.True(t, ok)
 			assert.Equal(t, endTaskResp, &apimodels.EndTaskResponse{})
 			require.NoError(t, podToInsert.UpdateStatus(pod.StatusStarting, ""))
 			resp = rh.Run(ctx)
-			endTaskResp = resp.Data().(*apimodels.EndTaskResponse)
+			endTaskResp, ok = resp.Data().(*apimodels.EndTaskResponse)
+			require.True(t, ok)
 			assert.Equal(t, endTaskResp, &apimodels.EndTaskResponse{})
 		},
 		"RunSuccessfullyFinishesTask": func(ctx context.Context, t *testing.T, rh *podAgentEndTask, env evergreen.Environment) {
@@ -423,7 +459,8 @@ func TestPodAgentEndTask(t *testing.T) {
 			rh.taskID = taskID
 			rh.details = *td
 			resp := rh.Run(ctx)
-			endTaskResp := resp.Data().(*apimodels.EndTaskResponse)
+			endTaskResp, ok := resp.Data().(*apimodels.EndTaskResponse)
+			require.True(t, ok)
 			assert.Equal(t, endTaskResp.ShouldExit, false)
 			foundTask, err := task.FindOneId(taskID)
 			require.NoError(t, err)
@@ -459,7 +496,8 @@ func TestPodAgentEndTask(t *testing.T) {
 			rh.details = *td
 			rh.details.Status = evergreen.TaskUndispatched
 			resp := rh.Run(ctx)
-			endTaskResp := resp.Data().(*apimodels.EndTaskResponse)
+			endTaskResp, ok := resp.Data().(*apimodels.EndTaskResponse)
+			require.True(t, ok)
 			assert.Equal(t, endTaskResp, &apimodels.EndTaskResponse{})
 		},
 		"RunSuccessfullyDequeuesLaterCommitQueueTask": func(ctx context.Context, t *testing.T, rh *podAgentEndTask, env evergreen.Environment) {
@@ -516,7 +554,8 @@ func TestPodAgentEndTask(t *testing.T) {
 			rh.taskID = taskID
 			rh.details = *td
 			resp := rh.Run(ctx)
-			endTaskResp := resp.Data().(*apimodels.EndTaskResponse)
+			endTaskResp, ok := resp.Data().(*apimodels.EndTaskResponse)
+			require.True(t, ok)
 			assert.Equal(t, endTaskResp.ShouldExit, false)
 			foundCq, err := commitqueue.FindOneId(projID)
 			require.NoError(t, err)
