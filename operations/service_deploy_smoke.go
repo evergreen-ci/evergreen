@@ -237,7 +237,7 @@ func smokeRunBinary(exit chan error, name, wd, bin string, cmdParts ...string) e
 	}
 	go func() {
 		exit <- cmd.Wait()
-		grip.Errorf("%s service exited %s", name, exit)
+		grip.Errorf("%s service exited", name)
 	}()
 	return nil
 }

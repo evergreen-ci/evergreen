@@ -276,7 +276,7 @@ func (h *getExpansionsHandler) Parse(ctx context.Context, r *http.Request) error
 	h.hostID = r.Header.Get(evergreen.HostHeader)
 	podID := r.Header.Get(evergreen.PodHeader)
 	if h.hostID == "" && podID == "" {
-		return errors.New("missing host ID")
+		return errors.New("missing both host and pod ID")
 	}
 	return nil
 }
