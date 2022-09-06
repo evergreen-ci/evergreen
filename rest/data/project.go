@@ -49,7 +49,7 @@ func FindProjectById(id string, includeRepo bool, includeProjectConfig bool) (*m
 }
 
 // CreateProject inserts the given model.ProjectRef.
-func CreateProject(projectRef *model.ProjectRef, u *user.DBUser) error {
+func CreateProject(ctx context.Context, projectRef *model.ProjectRef, u *user.DBUser) error {
 	config, err := evergreen.GetConfig()
 	if err != nil {
 		return gimlet.ErrorResponse{
@@ -101,6 +101,16 @@ func CreateProject(projectRef *model.ProjectRef, u *user.DBUser) error {
 		"project_identifier": projectRef.Identifier,
 		"user":               u.DisplayName(),
 	}))
+	_, err = model.EnableWebhooks(ctx, projectRef)
+	if err != nil {
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message":            "error enabling webhooks",
+			"project_id":         projectRef.Id,
+			"project_identifier": projectRef.Identifier,
+			"owner":              projectRef.Owner,
+			"repo":               projectRef.Repo,
+		}))
+	}
 	return nil
 }
 
@@ -235,6 +245,7 @@ func GetEventsById(id string, before time.Time, n int) ([]restModel.APIProjectEv
 		return nil, err
 	}
 	events.RedactPrivateVars()
+	events.ApplyDefaults()
 
 	out := []restModel.APIProjectEvent{}
 	catcher := grip.NewBasicCatcher()

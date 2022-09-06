@@ -2,7 +2,6 @@ package command
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -36,8 +35,7 @@ func TestTarballExtractSuite(t *testing.T) {
 
 func (s *TarballExtractSuite) SetupTest() {
 	var err error
-	s.targetLocation, err = ioutil.TempDir("", "tarball-extract-suite")
-	s.Require().NoError(err)
+	s.targetLocation = s.T().TempDir()
 
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.comm = client.NewMock("http://localhost.com")
@@ -51,7 +49,6 @@ func (s *TarballExtractSuite) SetupTest() {
 
 func (s *TarballExtractSuite) TearDownTest() {
 	s.cancel()
-	s.Require().NoError(os.RemoveAll(s.targetLocation))
 }
 
 func (s *TarballExtractSuite) TestNilArguments() {

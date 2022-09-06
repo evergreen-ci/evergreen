@@ -257,10 +257,13 @@ const (
 
 // ContainerOptions represent options to create the container to run a task.
 type ContainerOptions struct {
-	CPU            int
-	MemoryMB       int
-	WorkingDir     string
-	Image          string
+	CPU        int
+	MemoryMB   int
+	WorkingDir string
+	Image      string
+	// RepoCredsName is the name of the project container secret containing the
+	// repository credentials.
+	RepoCredsName  string
 	OS             evergreen.ContainerOS
 	Arch           evergreen.ContainerArch
 	WindowsVersion evergreen.WindowsVersion
@@ -1880,19 +1883,24 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 	t.Status = detail.Status
 	t.FinishTime = finishTime
 	t.Details = *detail
+	t.ContainerAllocated = false
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				FinishTimeKey:       finishTime,
-				StatusKey:           detail.Status,
-				TimeTakenKey:        t.TimeTaken,
-				DetailsKey:          detail,
-				StartTimeKey:        t.StartTime,
-				LogsKey:             detail.Logs,
-				HasLegacyResultsKey: t.HasLegacyResults,
+				FinishTimeKey:         finishTime,
+				StatusKey:             detail.Status,
+				TimeTakenKey:          t.TimeTaken,
+				DetailsKey:            detail,
+				StartTimeKey:          t.StartTime,
+				LogsKey:               detail.Logs,
+				HasLegacyResultsKey:   t.HasLegacyResults,
+				ContainerAllocatedKey: false,
+			},
+			"$unset": bson.M{
+				ContainerAllocatedTimeKey: 1,
 			},
 		})
 
@@ -2442,22 +2450,14 @@ func AbortVersion(versionId string, reason AbortInfo) error {
 		// if the aborting task is part of a display task, we also don't want to mark it as aborted
 		q[ExecutionTasksKey] = bson.M{"$ne": reason.TaskID}
 	}
-	now := time.Now()
 	ids, err := findAllTaskIDs(db.Query(q))
 	if err != nil {
 		return errors.Wrap(err, "finding updated tasks")
 	}
-	grip.DebugWhen(reason.User != "", message.Fields{
-		"ticket":        "EVG-16730",
-		"step":          "finding tasks to abort",
-		"version_id":    versionId,
-		"time_taken_ms": time.Since(now).Milliseconds(),
-	})
 	if len(ids) == 0 {
 		return nil
 	}
 
-	now = time.Now()
 	_, err = UpdateAll(
 		bson.M{IdKey: bson.M{"$in": ids}},
 		bson.M{"$set": bson.M{
@@ -2465,24 +2465,11 @@ func AbortVersion(versionId string, reason AbortInfo) error {
 			AbortInfoKey: reason,
 		}},
 	)
-	grip.DebugWhen(reason.User != "", message.Fields{
-		"ticket":        "EVG-16730",
-		"step":          "updating aborted tasks",
-		"version_id":    versionId,
-		"time_taken_ms": time.Since(now).Milliseconds(),
-	})
 	if err != nil {
 		return errors.Wrap(err, "setting aborted statuses")
 	}
 
-	now = time.Now()
 	event.LogManyTaskAbortRequests(ids, reason.User)
-	grip.DebugWhen(reason.User != "", message.Fields{
-		"ticket":        "EVG-16730",
-		"step":          "logging aborted tasks",
-		"version_id":    versionId,
-		"time_taken_ms": time.Since(now).Milliseconds(),
-	})
 	return nil
 }
 

@@ -337,7 +337,7 @@ func (r *mutationResolver) AttachProjectToNewRepo(ctx context.Context, project M
 	pRef.Owner = project.NewOwner
 	pRef.Repo = project.NewRepo
 
-	if err = pRef.AttachToNewRepo(usr); err != nil {
+	if err = pRef.AttachToNewRepo(ctx, usr); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error updating owner/repo: %s", err.Error()))
 	}
 
@@ -375,7 +375,7 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 	}
 	u := gimlet.GetUser(ctx).(*user.DBUser)
 
-	if err := data.CreateProject(dbProjectRef, u); err != nil {
+	if err := data.CreateProject(ctx, dbProjectRef, u); err != nil {
 		apiErr, ok := err.(gimlet.ErrorResponse)
 		if ok {
 			if apiErr.StatusCode == http.StatusBadRequest {

@@ -62,11 +62,7 @@ func TestS3PullExecute(t *testing.T) {
 			assert.NoError(t, tmpFile.Close())
 			require.NoError(t, err)
 
-			c.WorkingDir, err = ioutil.TempDir("", "pull_dir")
-			require.NoError(t, err)
-			defer func() {
-				assert.NoError(t, os.RemoveAll(c.WorkingDir))
-			}()
+			c.WorkingDir = t.TempDir()
 
 			require.NoError(t, c.Execute(ctx, comm, logger, conf))
 			pulledContent, err := ioutil.ReadFile(filepath.Join(c.WorkingDir, filepath.Base(tmpFile.Name())))
@@ -85,11 +81,7 @@ func TestS3PullExecute(t *testing.T) {
 			assert.NoError(t, tmpFile.Close())
 			require.NoError(t, err)
 
-			c.WorkingDir, err = ioutil.TempDir("", "pull_dir")
-			require.NoError(t, err)
-			defer func() {
-				assert.NoError(t, os.RemoveAll(c.WorkingDir))
-			}()
+			c.WorkingDir = t.TempDir()
 
 			c.ExcludeFilter = ".*"
 			require.NoError(t, c.Execute(ctx, comm, logger, conf))
@@ -104,12 +96,7 @@ func TestS3PullExecute(t *testing.T) {
 
 			require.NoError(t, ioutil.WriteFile(filepath.Join(taskDir, "foo"), []byte("bar"), 0777))
 
-			wd, err := ioutil.TempDir("", "s3-pull-output")
-			require.NoError(t, err)
-			defer func() {
-				assert.NoError(t, os.RemoveAll(wd))
-			}()
-			c.WorkingDir = wd
+			c.WorkingDir = t.TempDir()
 
 			c.ExcludeFilter = "${exclude_filter}"
 			excludeFilterExpansion := "expanded_exclude_filter"
@@ -170,11 +157,7 @@ func TestS3PullExecute(t *testing.T) {
 				Secret: conf.Task.Secret,
 			}, nil)
 			require.NoError(t, err)
-			tmpDir, err := ioutil.TempDir("", "s3-pull-bucket")
-			require.NoError(t, err)
-			defer func() {
-				assert.NoError(t, os.RemoveAll(tmpDir))
-			}()
+			tmpDir := t.TempDir()
 			c := &s3Pull{Task: "task", FromBuildVariant: "from_build_variant"}
 			c.bucket, err = pail.NewLocalBucket(pail.LocalOptions{
 				Path: tmpDir,

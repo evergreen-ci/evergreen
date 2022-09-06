@@ -66,11 +66,11 @@ func (e *APIProjectEvent) BuildFromService(entry model.ProjectChangeEventEntry) 
 	}
 
 	user := utility.ToStringPtr(data.User)
-	before, err := DbProjectSettingsToRestModel(data.Before)
+	before, err := DbProjectSettingsToRestModel(data.Before.ProjectSettings)
 	if err != nil {
 		return errors.Wrap(err, "converting 'before' project settings to API model")
 	}
-	after, err := DbProjectSettingsToRestModel(data.After)
+	after, err := DbProjectSettingsToRestModel(data.After.ProjectSettings)
 	if err != nil {
 		return errors.Wrap(err, "converting 'after' project settings to API model")
 	}

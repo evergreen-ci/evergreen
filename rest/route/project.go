@@ -8,7 +8,9 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -262,6 +264,7 @@ type projectIDPatchHandler struct {
 	apiNewProjectRef *model.APIProjectRef
 
 	settings *evergreen.Settings
+	vault    cocoa.Vault
 }
 
 func makePatchProjectByID(settings *evergreen.Settings) gimlet.RouteHandler {
@@ -453,6 +456,43 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
+	if h.vault == nil && (len(h.apiNewProjectRef.DeleteContainerSecrets) != 0 || len(h.apiNewProjectRef.ContainerSecrets) != 0) {
+		smClient, err := cloud.MakeSecretsManagerClient(h.settings)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "initializing Secrets Manager client"))
+		}
+		defer smClient.Close(ctx)
+		vault, err := cloud.MakeSecretsManagerVault(smClient)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "initializing Secrets Manager vault"))
+		}
+		h.vault = vault
+	}
+
+	// This intentionally deletes the container secrets from external storage
+	// before updating the project ref. Deleting the secrets before updating the
+	// project ref ensures that the cloud secrets are cleaned up before removing
+	// references to them in the project ref.
+	remainingSecretsAfterDeletion, err := data.DeleteContainerSecrets(ctx, h.vault, h.originalProject, h.apiNewProjectRef.DeleteContainerSecrets)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "deleting container secrets"))
+	}
+
+	var updatedContainerSecrets []dbModel.ContainerSecret
+	for _, containerSecret := range h.newProjectRef.ContainerSecrets {
+		if utility.StringSliceContains(h.apiNewProjectRef.DeleteContainerSecrets, containerSecret.Name) {
+			continue
+		}
+		updatedContainerSecrets = append(updatedContainerSecrets, containerSecret)
+	}
+
+	allContainerSecrets, err := dbModel.ValidateContainerSecrets(h.settings, h.newProjectRef.Id, remainingSecretsAfterDeletion, updatedContainerSecrets)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "invalid container secrets"))
+	}
+
+	h.newProjectRef.ContainerSecrets = allContainerSecrets
+
 	if h.originalProject.Restricted != mergedProjectRef.Restricted {
 		if mergedProjectRef.IsRestricted() {
 			err = mergedProjectRef.MakeRestricted()
@@ -478,6 +518,11 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = h.newProjectRef.Update(); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating project '%s'", h.newProjectRef.Id))
 	}
+
+	if err := data.UpsertContainerSecrets(ctx, h.vault, allContainerSecrets); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "upserting container secrets"))
+	}
+
 	if err = data.UpdateProjectVars(h.newProjectRef.Id, &h.apiNewProjectRef.Variables, false); err != nil { // destructively modifies h.apiNewProjectRef.Variables
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating variables for project '%s'", h.project))
 	}
@@ -606,7 +651,7 @@ func (h *projectIDPutHandler) Parse(ctx context.Context, r *http.Request) error 
 	return nil
 }
 
-// creates a new resource based on the Request-URI and JSON payload and returns a http.StatusCreated (201)
+// Run creates a new resource based on the Request-URI and JSON payload and returns a http.StatusCreated (201)
 func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 	p, err := data.FindProjectById(h.projectName, false, false)
 	if err != nil && err.(gimlet.ErrorResponse).StatusCode != http.StatusNotFound {
@@ -629,7 +674,7 @@ func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	u := gimlet.GetUser(ctx).(*user.DBUser)
 
-	if err = data.CreateProject(&dbProjectRef, u); err != nil {
+	if err = data.CreateProject(ctx, &dbProjectRef, u); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating project '%s'", h.projectName))
 	}
 
@@ -989,7 +1034,7 @@ func (p *GetProjectAliasResultsHandler) Parse(ctx context.Context, r *http.Reque
 	if p.alias == "" {
 		return errors.New("alias parameter must be specified")
 	}
-	p.includeDependencies = (params.Get("include_deps") == "true")
+	p.includeDependencies = params.Get("include_deps") == "true"
 
 	return nil
 }

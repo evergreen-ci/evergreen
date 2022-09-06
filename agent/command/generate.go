@@ -44,7 +44,7 @@ func (c *generateTask) ParseParams(params map[string]interface{}) error {
 func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	var err error
 	if err = util.ExpandValues(c, conf.Expansions); err != nil {
-		return errors.Wrap(err, "error expanding params")
+		return errors.Wrap(err, "expanding params")
 	}
 
 	include := utility.NewGitIgnoreFileMatcher(conf.WorkDir, c.Files...)
@@ -53,15 +53,15 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 		Include:    include,
 	}
 	if c.Files, err = b.Build(); err != nil {
-		return errors.Wrap(err, "problem building wildcard paths")
+		return errors.Wrap(err, "building wildcard paths")
 	}
 
 	if len(c.Files) == 0 {
 		if c.Optional {
-			logger.Task().Info("No files found and optional is true, skipping generate.tasks")
+			logger.Task().Info("no files found and optional is true, skipping generate.tasks")
 			return nil
 		}
-		return errors.New("No files found for generate.tasks")
+		return errors.New("no files found for generate.tasks")
 	}
 
 	catcher := grip.NewBasicCatcher()
@@ -87,14 +87,14 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 	var post []json.RawMessage
 	post, err = makeJsonOfAllFiles(jsonBytes)
 	if err != nil {
-		return errors.Wrap(err, "problem parsing JSON")
+		return errors.Wrap(err, "parsing JSON")
 	}
 	if err = comm.GenerateTasks(ctx, td, post); err != nil {
 		if strings.Contains(err.Error(), evergreen.TasksAlreadyGeneratedError) {
 			logger.Task().Info("Tasks have already been generated, nooping.")
 			return nil
 		}
-		return errors.Wrap(err, "Problem posting task data")
+		return errors.Wrap(err, "posting task data")
 	}
 
 	const (
@@ -108,7 +108,7 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 		func() (bool, error) {
 			generateStatus, err := comm.GenerateTasksPoll(ctx, td)
 			if err != nil {
-				return true, err
+				return false, err
 			}
 
 			var generateErr error
@@ -116,15 +116,8 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 				generateErr = errors.New(generateStatus.Error)
 			}
 
-			if generateStatus.ShouldExit {
-				return false, generateErr
-			}
 			if generateErr != nil {
-				// if the error isn't related to saving the generated task, log it but still retry in case of race condition
-				if !strings.Contains(generateErr.Error(), evergreen.SaveGenerateTasksError) {
-					logger.Task().Infof("Problem polling for generate tasks job, retrying (%s)", generateErr.Error())
-				}
-				return true, generateErr
+				return false, generateErr
 			}
 			if generateStatus.Finished {
 				return false, nil
@@ -136,7 +129,7 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 			MaxDelay:    pollRetryMaxDelay,
 		})
 	if err != nil {
-		return errors.WithMessage(err, "problem polling for generate tasks job")
+		return errors.WithMessage(err, "polling for generate tasks job")
 	}
 	return nil
 }

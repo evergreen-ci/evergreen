@@ -224,17 +224,17 @@ func TestRemove(t *testing.T) {
 func TestNewTaskIntentPod(t *testing.T) {
 	makeValidOpts := func() TaskIntentPodOptions {
 		return TaskIntentPodOptions{
-			ID:             "id",
-			Secret:         "secret",
-			CPU:            128,
-			MemoryMB:       256,
-			OS:             OSWindows,
-			Arch:           ArchAMD64,
-			WindowsVersion: WindowsVersionServer2022,
-			Image:          "image",
-			WorkingDir:     "/",
-			RepoUsername:   "username",
-			RepoPassword:   "password",
+			ID:                  "id",
+			PodSecretExternalID: "pod_secret_external_id",
+			PodSecretValue:      "pod_secret_value",
+			CPU:                 128,
+			MemoryMB:            256,
+			OS:                  OSWindows,
+			Arch:                ArchAMD64,
+			WindowsVersion:      WindowsVersionServer2022,
+			Image:               "image",
+			RepoCredsExternalID: "repo_creds_external_id",
+			WorkingDir:          "/",
 		}
 	}
 	t.Run("SucceedsWithValidOptions", func(t *testing.T) {
@@ -249,17 +249,13 @@ func TestNewTaskIntentPod(t *testing.T) {
 		assert.Equal(t, opts.Arch, p.TaskContainerCreationOpts.Arch)
 		assert.Equal(t, opts.WindowsVersion, p.TaskContainerCreationOpts.WindowsVersion)
 		assert.Equal(t, opts.Image, p.TaskContainerCreationOpts.Image)
+		assert.Equal(t, opts.RepoCredsExternalID, p.TaskContainerCreationOpts.RepoCredsExternalID)
 		assert.Equal(t, opts.WorkingDir, p.TaskContainerCreationOpts.WorkingDir)
-		assert.Equal(t, opts.RepoUsername, p.TaskContainerCreationOpts.RepoUsername)
-		assert.Equal(t, opts.RepoPassword, p.TaskContainerCreationOpts.RepoPassword)
 		assert.Equal(t, opts.ID, p.TaskContainerCreationOpts.EnvVars[PodIDEnvVar])
 		s, err := p.GetSecret()
 		require.NoError(t, err)
-		assert.Zero(t, s.Name)
-		assert.Equal(t, opts.Secret, s.Value)
-		assert.Empty(t, s.ExternalID)
-		assert.False(t, utility.FromBoolPtr(s.Exists))
-		assert.True(t, utility.FromBoolPtr(s.Owned))
+		assert.Equal(t, opts.PodSecretExternalID, s.ExternalID)
+		assert.Equal(t, opts.PodSecretValue, s.Value)
 	})
 	t.Run("SetsDefaultID", func(t *testing.T) {
 		opts := makeValidOpts()
@@ -270,22 +266,23 @@ func TestNewTaskIntentPod(t *testing.T) {
 		assert.NotZero(t, p.ID)
 		assert.Equal(t, p.ID, p.TaskContainerCreationOpts.EnvVars[PodIDEnvVar])
 	})
-	t.Run("SetsDefaultPodSecret", func(t *testing.T) {
+	t.Run("FailsWithoutPodSecretExternalID", func(t *testing.T) {
 		opts := makeValidOpts()
-		opts.Secret = ""
+		opts.PodSecretExternalID = ""
 
 		p, err := NewTaskIntentPod(evergreen.ECSConfig{}, opts)
-		require.NoError(t, err)
-		assert.NotZero(t, p.ID)
-		s, err := p.GetSecret()
-		require.NoError(t, err)
-		assert.Zero(t, s.Name)
-		assert.NotZero(t, s.Value)
-		assert.Empty(t, s.ExternalID)
-		assert.False(t, utility.FromBoolPtr(s.Exists))
-		assert.True(t, utility.FromBoolPtr(s.Owned))
+		assert.Error(t, err)
+		assert.Zero(t, p)
 	})
-	t.Run("FailsWithInvalidOptions", func(t *testing.T) {
+	t.Run("FailsWithoutPodSecretValue", func(t *testing.T) {
+		opts := makeValidOpts()
+		opts.PodSecretValue = ""
+
+		p, err := NewTaskIntentPod(evergreen.ECSConfig{}, opts)
+		assert.Error(t, err)
+		assert.Zero(t, p)
+	})
+	t.Run("FailsWithoutImage", func(t *testing.T) {
 		opts := makeValidOpts()
 		opts.Image = ""
 
@@ -333,7 +330,7 @@ func TestUpdateStatus(t *testing.T) {
 		"SucceedsWithInitializingStatus": func(t *testing.T, p Pod) {
 			require.NoError(t, p.Insert())
 
-			require.NoError(t, p.UpdateStatus(StatusInitializing))
+			require.NoError(t, p.UpdateStatus(StatusInitializing, ""))
 			assert.Equal(t, StatusInitializing, p.Status)
 
 			checkStatusAndTimeInfo(t, p)
@@ -342,7 +339,7 @@ func TestUpdateStatus(t *testing.T) {
 		"SucceedsWithStartingStatus": func(t *testing.T, p Pod) {
 			require.NoError(t, p.Insert())
 
-			require.NoError(t, p.UpdateStatus(StatusStarting))
+			require.NoError(t, p.UpdateStatus(StatusStarting, ""))
 			assert.Equal(t, StatusStarting, p.Status)
 
 			checkStatusAndTimeInfo(t, p)
@@ -351,7 +348,7 @@ func TestUpdateStatus(t *testing.T) {
 		"SucceedsWithTerminatedStatus": func(t *testing.T, p Pod) {
 			require.NoError(t, p.Insert())
 
-			require.NoError(t, p.UpdateStatus(StatusTerminated))
+			require.NoError(t, p.UpdateStatus(StatusTerminated, ""))
 			assert.Equal(t, StatusTerminated, p.Status)
 
 			checkStatus(t, p)
@@ -360,11 +357,11 @@ func TestUpdateStatus(t *testing.T) {
 		"NoopsWithIdenticalStatus": func(t *testing.T, p Pod) {
 			require.NoError(t, p.Insert())
 
-			require.NoError(t, p.UpdateStatus(p.Status))
+			require.NoError(t, p.UpdateStatus(p.Status, ""))
 			checkStatus(t, p)
 		},
 		"FailsWithNonexistentPod": func(t *testing.T, p Pod) {
-			assert.Error(t, p.UpdateStatus(StatusTerminated))
+			assert.Error(t, p.UpdateStatus(StatusTerminated, ""))
 
 			dbPod, err := FindOneByID(p.ID)
 			assert.NoError(t, err)
@@ -377,7 +374,7 @@ func TestUpdateStatus(t *testing.T) {
 				"$set": bson.M{StatusKey: StatusInitializing},
 			}))
 
-			assert.Error(t, p.UpdateStatus(StatusTerminated))
+			assert.Error(t, p.UpdateStatus(StatusTerminated, ""))
 
 			dbPod, err := FindOneByID(p.ID)
 			require.NoError(t, err)
@@ -501,9 +498,8 @@ func TestUpdateResources(t *testing.T) {
 func TestGetSecret(t *testing.T) {
 	t.Run("SucceedsWithPopulatedEnvSecret", func(t *testing.T) {
 		expected := Secret{
-			Name:       "secret_name",
-			Value:      "secret_value",
 			ExternalID: "external_id",
+			Value:      "secret_value",
 		}
 		p := Pod{
 			ID: "id",
@@ -721,15 +717,10 @@ func TestTaskContainerCreationOptionsHash(t *testing.T) {
 			opts.Image = "image"
 			assert.NotEqual(t, baseHash, opts.Hash(), "image should affect hash")
 		})
-		t.Run("ChangesForRepoUsername", func(t *testing.T) {
+		t.Run("ChangesForRepoCredsExternalID", func(t *testing.T) {
 			var opts TaskContainerCreationOptions
-			opts.RepoUsername = "repo_username"
-			assert.NotEqual(t, baseHash, opts.Hash(), "repo username should affect hash")
-		})
-		t.Run("ChangesForRepoPassword", func(t *testing.T) {
-			var opts TaskContainerCreationOptions
-			opts.RepoPassword = "repo_password"
-			assert.NotEqual(t, baseHash, opts.Hash(), "repo password should affect hash")
+			opts.RepoCredsExternalID = "external_id"
+			assert.NotEqual(t, baseHash, opts.Hash(), "repo creds external ID should affect hash")
 		})
 		t.Run("ChangesForMemory", func(t *testing.T) {
 			var opts TaskContainerCreationOptions
@@ -806,17 +797,7 @@ func TestTaskContainerCreationOptionsHash(t *testing.T) {
 			h1 := opts.Hash()
 			assert.NotEqual(t, h0, h1, "env secret external ID should affect hash")
 		})
-		t.Run("ChangesForEnvSecretName", func(t *testing.T) {
-			var opts TaskContainerCreationOptions
-			opts.EnvSecrets = map[string]Secret{
-				"SECRET_ENV_VAR": {},
-			}
-			h0 := opts.Hash()
-			opts.EnvSecrets["SECRET_ENV_VAR"] = Secret{Name: "name"}
-			h1 := opts.Hash()
-			assert.NotEqual(t, h0, h1, "env secret name should affect hash")
-		})
-		t.Run("ChangesForEnvSecretValue", func(t *testing.T) {
+		t.Run("DoesNotChangeForEnvSecretValue", func(t *testing.T) {
 			var opts TaskContainerCreationOptions
 			opts.EnvSecrets = map[string]Secret{
 				"SECRET_ENV_VAR": {},
@@ -824,27 +805,7 @@ func TestTaskContainerCreationOptionsHash(t *testing.T) {
 			h0 := opts.Hash()
 			opts.EnvSecrets["SECRET_ENV_VAR"] = Secret{Value: "secret_value"}
 			h1 := opts.Hash()
-			assert.NotEqual(t, h0, h1, "env secret value should affect hash")
-		})
-		t.Run("ChangesForEnvSecretExistence", func(t *testing.T) {
-			var opts TaskContainerCreationOptions
-			opts.EnvSecrets = map[string]Secret{
-				"SECRET_ENV_VAR": {},
-			}
-			h0 := opts.Hash()
-			opts.EnvSecrets["SECRET_ENV_VAR"] = Secret{Exists: utility.TruePtr()}
-			h1 := opts.Hash()
-			assert.NotEqual(t, h0, h1, "env secret existence should affect hash")
-		})
-		t.Run("ChangesForEnvSecretOwnership", func(t *testing.T) {
-			var opts TaskContainerCreationOptions
-			opts.EnvSecrets = map[string]Secret{
-				"SECRET_ENV_VAR": {},
-			}
-			h0 := opts.Hash()
-			opts.EnvSecrets["SECRET_ENV_VAR"] = Secret{Owned: utility.TruePtr()}
-			h1 := opts.Hash()
-			assert.NotEqual(t, h0, h1, "env secret ownership should affect hash")
+			assert.Equal(t, h0, h1, "env secret value should not affect hash")
 		})
 	})
 }

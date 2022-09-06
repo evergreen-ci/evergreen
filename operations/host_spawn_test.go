@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -289,11 +288,7 @@ func TestHostRsync(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
 
-			localDir, err := ioutil.TempDir("", "local_dir")
-			require.NoError(t, err)
-			defer func() {
-				assert.NoError(t, os.RemoveAll(localDir))
-			}()
+			localDir := t.TempDir()
 
 			localFile, err := ioutil.TempFile(localDir, "local_file")
 			require.NoError(t, err)
@@ -302,11 +297,7 @@ func TestHostRsync(t *testing.T) {
 			require.Len(t, localFileContent, n)
 			require.NoError(t, localFile.Close())
 
-			remoteDir, err := ioutil.TempDir("", "remote_dir")
-			require.NoError(t, err)
-			defer func() {
-				assert.NoError(t, os.RemoveAll(remoteDir))
-			}()
+			remoteDir := t.TempDir()
 
 			remoteFile, err := ioutil.TempFile(remoteDir, "remote_file")
 			require.NoError(t, err)

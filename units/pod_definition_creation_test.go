@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/ecs"
+	awsECS "github.com/aws/aws-sdk-go/service/ecs"
 	cocoaMock "github.com/evergreen-ci/cocoa/mock"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -42,10 +42,7 @@ func TestNewPodDefinitionCreationJob(t *testing.T) {
 }
 
 func TestPodDefinitionCreationJob(t *testing.T) {
-	defer func() {
-		cocoaMock.ResetGlobalECSService()
-		cocoaMock.ResetGlobalSecretCache()
-	}()
+	defer cocoaMock.ResetGlobalECSService()
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, j *podDefinitionCreationJob, p *pod.Pod){
 		"Succeeds": func(ctx context.Context, t *testing.T, j *podDefinitionCreationJob, p *pod.Pod) {
@@ -61,7 +58,7 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 			assert.NotZero(t, podDef.ExternalID)
 			assert.NotZero(t, podDef.LastAccessed)
 
-			describeResp, err := j.ecsClient.DescribeTaskDefinition(ctx, &ecs.DescribeTaskDefinitionInput{
+			describeResp, err := j.ecsClient.DescribeTaskDefinition(ctx, &awsECS.DescribeTaskDefinitionInput{
 				Include:        []*string{aws.String("TAGS")},
 				TaskDefinition: aws.String(podDef.ExternalID),
 			})
@@ -69,7 +66,7 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 			require.NotZero(t, describeResp)
 			var cacheTagFound bool
 			for _, tag := range describeResp.Tags {
-				if utility.FromStringPtr(tag.Key) == cloud.PodDefinitionTag {
+				if utility.FromStringPtr(tag.Key) == cloud.PodCacheTag {
 					assert.Equal(t, "true", utility.FromStringPtr(tag.Value))
 					cacheTagFound = true
 					break
@@ -104,16 +101,8 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 			for _, secret := range containerDef.Secrets {
 				name := utility.FromStringPtr(secret.Name)
 				expectedSecret, ok := j.ContainerOpts.EnvSecrets[name]
-				require.True(t, ok, "unexpected environment secret '%s'", name)
-				assert.Contains(t, name, expectedSecret.Name)
-
-				secretRef := utility.FromStringPtr(secret.ValueFrom)
-				assert.True(t, strings.HasPrefix(secretRef, podConf.SecretsManager.SecretPrefix), "created secrets should include the secret prefix")
-
-				val, err := j.vault.GetValue(ctx, secretRef)
-				require.NoError(t, err, "missing expected secret '%s'", name)
-
-				assert.Equal(t, expectedSecret.Value, val, "incorrect value for secret '%s'", name)
+				require.True(t, ok, "unexpected secret environment variable '%s'", name)
+				assert.Equal(t, expectedSecret.ExternalID, utility.FromStringPtr(secret.ValueFrom))
 			}
 		},
 		"NoopsWithAlreadyExistingPodDefinition": func(ctx context.Context, t *testing.T, j *podDefinitionCreationJob, p *pod.Pod) {
@@ -133,7 +122,7 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 			require.NotZero(t, podDef, "pre-existing pod definition should still exist")
 			assert.Equal(t, j.Family, podDef.Family)
 
-			pdm, ok := j.ecsPodDefManager.(*cocoaMock.ECSPodDefinitionManager)
+			pdm, ok := j.podDefMgr.(*cocoaMock.ECSPodDefinitionManager)
 			require.True(t, ok)
 			assert.Zero(t, pdm.CreatePodDefinitionInput, "should not have created a pod definition")
 		},
@@ -145,17 +134,16 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Zero(t, podDef, "should not have cached a pod definition")
 
-			pdm, ok := j.ecsPodDefManager.(*cocoaMock.ECSPodDefinitionManager)
+			pdm, ok := j.podDefMgr.(*cocoaMock.ECSPodDefinitionManager)
 			require.True(t, ok)
 			assert.Zero(t, pdm.CreatePodDefinitionInput, "should not have created a pod definition")
 
 			assert.Empty(t, cocoaMock.GlobalECSService.TaskDefs, "should not have created an ECS task definition")
-			assert.Empty(t, cocoaMock.GlobalSecretCache, "should not have created any secrets")
 		},
 		"DecommissionsDependentIntentPodsWithNoRetriesRemaining": func(ctx context.Context, t *testing.T, j *podDefinitionCreationJob, p *pod.Pod) {
 			require.NoError(t, p.Insert())
 
-			pdm, ok := j.ecsPodDefManager.(*cocoaMock.ECSPodDefinitionManager)
+			pdm, ok := j.podDefMgr.(*cocoaMock.ECSPodDefinitionManager)
 			require.True(t, ok)
 			pdm.CreatePodDefinitionError = errors.New("fail")
 
@@ -171,7 +159,6 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 			assert.Zero(t, podDef, "should not have cached a pod definition")
 
 			assert.Empty(t, cocoaMock.GlobalECSService.TaskDefs, "should not have created an ECS task definition")
-			assert.Empty(t, cocoaMock.GlobalSecretCache, "should not have created any secrets")
 
 			dbPod, err := pod.FindOneByID(p.ID)
 			require.NoError(t, err)
@@ -189,7 +176,6 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 			}()
 
 			cocoaMock.ResetGlobalECSService()
-			cocoaMock.ResetGlobalSecretCache()
 
 			env := &evgMock.Environment{}
 			require.NoError(t, env.Configure(ctx))
@@ -204,12 +190,14 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 			ecsConf := env.EvergreenSettings.Providers.AWS.Pod.ECS
 
 			p, err := pod.NewTaskIntentPod(ecsConf, pod.TaskIntentPodOptions{
-				CPU:        128,
-				MemoryMB:   256,
-				OS:         pod.OSLinux,
-				Arch:       pod.ArchAMD64,
-				Image:      "ubuntu",
-				WorkingDir: "/working_dir",
+				CPU:                 128,
+				MemoryMB:            256,
+				OS:                  pod.OSLinux,
+				Arch:                pod.ArchAMD64,
+				Image:               "ubuntu",
+				WorkingDir:          "/working_dir",
+				PodSecretExternalID: "pod_secret_external_id",
+				PodSecretValue:      "pod_secret_value",
 			})
 			require.NoError(t, err)
 
@@ -219,23 +207,14 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 			j.env = env
 			j.settings = *env.Settings()
 
-			j.smClient = &cocoaMock.SecretsManagerClient{}
-			defer func() {
-				assert.NoError(t, j.smClient.Close(ctx))
-			}()
-
 			j.ecsClient = &cocoaMock.ECSClient{}
 			defer func() {
 				assert.NoError(t, j.ecsClient.Close(ctx))
 			}()
 
-			vault, err := cloud.MakeSecretsManagerVault(j.smClient)
+			pdm, err := cloud.MakeECSPodDefinitionManager(j.ecsClient, nil)
 			require.NoError(t, err)
-			j.vault = cocoaMock.NewVault(vault)
-
-			pdm, err := cloud.MakeECSPodDefinitionManager(j.ecsClient, j.vault)
-			require.NoError(t, err)
-			j.ecsPodDefManager = cocoaMock.NewECSPodDefinitionManager(pdm)
+			j.podDefMgr = cocoaMock.NewECSPodDefinitionManager(pdm)
 
 			tCase(ctx, t, j, p)
 		})

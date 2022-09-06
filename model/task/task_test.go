@@ -762,9 +762,29 @@ func TestEndingTask(t *testing.T) {
 				So(t.StartTime.Unix(), ShouldEqual, startTime.Unix())
 				So(t.FinishTime.Unix(), ShouldEqual, now.Unix())
 			})
-
 		})
+		Convey("a task that is allocated a container should be deallocated", func() {
+			now := time.Now()
+			t := &Task{
+				Id:                     "taskId",
+				Status:                 evergreen.TaskStarted,
+				StartTime:              now.Add(-5 * time.Minute),
+				ExecutionPlatform:      ExecutionPlatformContainer,
+				ContainerAllocated:     true,
+				ContainerAllocatedTime: time.Now(),
+			}
+			So(t.Insert(), ShouldBeNil)
+			details := &apimodels.TaskEndDetail{
+				Status: evergreen.TaskFailed,
+			}
 
+			So(t.MarkEnd(now, details), ShouldBeNil)
+			t, err := FindOne(db.Query(ById(t.Id)))
+			So(err, ShouldBeNil)
+			So(t.Status, ShouldEqual, evergreen.TaskFailed)
+			So(t.ContainerAllocated, ShouldBeFalse)
+			So(t.ContainerAllocatedTime, ShouldBeZeroValue)
+		})
 	})
 }
 

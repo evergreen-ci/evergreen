@@ -6,10 +6,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -17,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	adb "github.com/mongodb/anser/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
@@ -309,7 +312,7 @@ func TestAttachToNewRepo(t *testing.T) {
 	assert.NoError(t, u.Insert())
 	pRef.Owner = "newOwner"
 	pRef.Repo = "newRepo"
-	assert.NoError(t, pRef.AttachToNewRepo(u))
+	assert.NoError(t, pRef.AttachToNewRepo(context.Background(), u))
 
 	pRefFromDB, err := FindBranchProjectRef(pRef.Id)
 	assert.NoError(t, err)
@@ -340,7 +343,7 @@ func TestAttachToNewRepo(t *testing.T) {
 	assert.NoError(t, pRef.Insert())
 	pRef.Owner = "newOwner"
 	pRef.Repo = "newRepo"
-	assert.NoError(t, pRef.AttachToNewRepo(u))
+	assert.NoError(t, pRef.AttachToNewRepo(context.Background(), u))
 	assert.True(t, pRef.UseRepoSettings())
 	assert.NotEmpty(t, pRef.RepoRefId)
 
@@ -1541,33 +1544,444 @@ func TestValidatePeriodicBuildDefinition(t *testing.T) {
 }
 
 func TestContainerSecretValidate(t *testing.T) {
-	t.Run("SucceedsWithStoredSecret", func(t *testing.T) {
-		cs := ContainerSecret{
-			Type:  ContainerSecretRepoCred,
-			Value: `{"username": "cool_user", "password": "very_secure_password_waow"}`,
-		}
-		assert.NoError(t, cs.Validate())
-	})
-	t.Run("SucceedsWithSecretNeedingToBeCreated", func(t *testing.T) {
-		cs := ContainerSecret{
-			Type:  ContainerSecretPodSecret,
-			Value: "pod_secret",
-		}
-		assert.NoError(t, cs.Validate())
-	})
 	t.Run("FailsWithInvalidSecretType", func(t *testing.T) {
 		cs := ContainerSecret{
-			Type:       "",
-			ExternalID: "external_id",
+			Name:  "secret_name",
+			Type:  "",
+			Value: "new_value",
 		}
 		assert.Error(t, cs.Validate())
 	})
-	t.Run("FailsWithoutExternalIDOrValueForNewSecret", func(t *testing.T) {
+	t.Run("FailsWithoutName", func(t *testing.T) {
 		cs := ContainerSecret{
-			Type: ContainerSecretRepoCred,
+			Name:  "secret_name",
+			Type:  ContainerSecretPodSecret,
+			Value: "",
 		}
 		assert.Error(t, cs.Validate())
 	})
+	t.Run("FailsWithoutNewSecretValue", func(t *testing.T) {
+		cs := ContainerSecret{
+			Name:  "secret_name",
+			Type:  ContainerSecretPodSecret,
+			Value: "",
+		}
+		assert.Error(t, cs.Validate())
+	})
+}
+
+func TestValidateContainerSecrets(t *testing.T) {
+	var settings evergreen.Settings
+	settings.Providers.AWS.Pod.SecretsManager.SecretPrefix = "secret_prefix"
+	const projectID = "project_id"
+
+	t.Run("AddsNewSecretsWithoutAnyExistingSecrets", func(t *testing.T) {
+		toUpdate := []ContainerSecret{
+			{
+				Name:  "apple",
+				Value: "new_value0",
+				Type:  ContainerSecretRepoCreds,
+			},
+			{
+				Name:  "orange",
+				Value: "new_value1",
+				Type:  ContainerSecretRepoCreds,
+			},
+		}
+		combined, err := ValidateContainerSecrets(&settings, projectID, nil, toUpdate)
+		require.NoError(t, err)
+
+		require.Len(t, combined, len(toUpdate))
+		for i := 0; i < len(toUpdate); i++ {
+			assert.Equal(t, toUpdate[i].Name, combined[i].Name)
+			assert.Equal(t, toUpdate[i].Type, combined[i].Type)
+			assert.Equal(t, toUpdate[i].Value, combined[i].Value)
+			assert.Zero(t, combined[i].ExternalID)
+			assert.NotZero(t, combined[i].ExternalName)
+		}
+	})
+	t.Run("IgnoresUserDefinedExternalFieldsForNewSecrets", func(t *testing.T) {
+		toUpdate := []ContainerSecret{
+			{
+				Name:         "apple",
+				ExternalName: "external_name",
+				ExternalID:   "external_id",
+				Value:        "new_value0",
+				Type:         ContainerSecretRepoCreds,
+			},
+		}
+		combined, err := ValidateContainerSecrets(&settings, projectID, nil, toUpdate)
+		require.NoError(t, err)
+
+		require.Len(t, combined, 1)
+		assert.Equal(t, toUpdate[0].Name, combined[0].Name)
+		assert.Equal(t, toUpdate[0].Type, combined[0].Type)
+		assert.NotZero(t, combined[0].ExternalName)
+		assert.NotEqual(t, toUpdate[0].ExternalName, combined[0].ExternalName, "external name should not be settable by users and should be generated for new secrets")
+		assert.Zero(t, combined[0].ExternalID, "external ID should not be settable by users for new secrets")
+	})
+	t.Run("NoopsWithIdenticalOriginalAndUpdatedSecrets", func(t *testing.T) {
+		secrets := []ContainerSecret{
+			{
+				Name:         "apple",
+				ExternalName: "external_name0",
+				ExternalID:   "external_id0",
+				Type:         ContainerSecretRepoCreds,
+			},
+			{
+				Name:         "orange",
+				ExternalName: "external_name1",
+				ExternalID:   "external_id1",
+				Type:         ContainerSecretRepoCreds,
+			},
+		}
+		combined, err := ValidateContainerSecrets(&settings, projectID, secrets, secrets)
+		require.NoError(t, err)
+
+		assert.Equal(t, combined, secrets)
+	})
+	t.Run("AddsNewContainerSecretsToExistingSecrets", func(t *testing.T) {
+		original := []ContainerSecret{
+			{
+				Name:         "apple",
+				ExternalName: "external_name0",
+				ExternalID:   "external_id0",
+				Type:         ContainerSecretRepoCreds,
+			},
+		}
+		toUpdate := []ContainerSecret{
+			{
+				Name:  "orange",
+				Type:  ContainerSecretRepoCreds,
+				Value: "new_value",
+			},
+		}
+		combined, err := ValidateContainerSecrets(&settings, projectID, original, toUpdate)
+		require.NoError(t, err)
+
+		require.Len(t, combined, 2)
+		assert.Equal(t, original[0], combined[0])
+		assert.Equal(t, toUpdate[0].Name, combined[1].Name)
+		assert.Equal(t, toUpdate[0].Type, combined[1].Type)
+		assert.Equal(t, toUpdate[0].Value, combined[1].Value)
+		assert.NotZero(t, combined[1].ExternalName)
+		assert.Zero(t, combined[1].ExternalID)
+	})
+	t.Run("SetsUpdatedValueForExistingSecret", func(t *testing.T) {
+		original := []ContainerSecret{
+			{
+				Name:         "pineapple",
+				ExternalName: "a_legit_pizza_topping",
+				ExternalID:   "external_id",
+				Type:         ContainerSecretPodSecret,
+			},
+		}
+		toUpdate := []ContainerSecret{
+			{
+				Name:  "pineapple",
+				Value: "new_value",
+			},
+		}
+		combined, err := ValidateContainerSecrets(&settings, projectID, original, toUpdate)
+		require.NoError(t, err)
+
+		require.Len(t, combined, 1)
+		assert.Equal(t, original[0].Name, combined[0].Name)
+		assert.Equal(t, original[0].ExternalName, combined[0].ExternalName)
+		assert.Equal(t, original[0].ExternalID, combined[0].ExternalID)
+		assert.Equal(t, original[0].Type, combined[0].Type)
+		assert.Equal(t, toUpdate[0].Value, combined[0].Value)
+	})
+	t.Run("CombinesExistingSecretsAndUpdatedSecrets", func(t *testing.T) {
+		original := []ContainerSecret{
+			{
+				Name:         "apple",
+				ExternalName: "external_name0",
+				ExternalID:   "external_id0",
+				Type:         ContainerSecretPodSecret,
+			},
+			{
+				Name:         "banana",
+				ExternalName: "external_name1",
+				ExternalID:   "external_id1",
+				Type:         ContainerSecretRepoCreds,
+			},
+		}
+		updated := []ContainerSecret{
+			{
+				Name:  "cherry",
+				Value: "new_value0",
+				Type:  ContainerSecretRepoCreds,
+			},
+			{
+				Name:         "banana",
+				ExternalName: "external_name1",
+				ExternalID:   "external_id1",
+				Value:        "new_value1",
+				Type:         ContainerSecretRepoCreds,
+			},
+		}
+		combined, err := ValidateContainerSecrets(&settings, projectID, original, updated)
+		require.NoError(t, err)
+
+		require.Len(t, combined, 3)
+		assert.Equal(t, original[0], combined[0])
+		assert.Equal(t, original[1].Name, combined[1].Name)
+		assert.Equal(t, original[1].ExternalName, combined[1].ExternalName)
+		assert.Equal(t, original[1].ExternalID, combined[1].ExternalID)
+		assert.Equal(t, original[1].Type, combined[1].Type)
+		assert.Equal(t, updated[1].Value, combined[1].Value)
+		assert.Equal(t, updated[0].Name, combined[2].Name)
+		assert.NotZero(t, combined[2].ExternalName)
+		assert.Zero(t, combined[2].ExternalID)
+		assert.Equal(t, updated[0].Type, combined[2].Type)
+		assert.Equal(t, updated[0].Value, combined[2].Value)
+	})
+	t.Run("ReturnsOriginalForNoUpdatedSecrets", func(t *testing.T) {
+		original := []ContainerSecret{
+			{
+				Name:         "apple",
+				ExternalName: "external_name0",
+				ExternalID:   "external_id0",
+				Type:         ContainerSecretPodSecret,
+			},
+			{
+				Name:         "banana",
+				ExternalName: "external_name1",
+				ExternalID:   "external_id1",
+				Type:         ContainerSecretRepoCreds,
+			},
+		}
+		combined, err := ValidateContainerSecrets(&settings, projectID, original, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, original, combined)
+	})
+	t.Run("ReturnsEmptyWithoutAnyExistingOrUpdatedSecrets", func(t *testing.T) {
+		secrets, err := ValidateContainerSecrets(&settings, projectID, nil, nil)
+		assert.NoError(t, err)
+		assert.Empty(t, secrets)
+	})
+	t.Run("FailsWithInvalidSecretType", func(t *testing.T) {
+		toUpdate := []ContainerSecret{
+			{
+				Name: "breadfruit",
+				Type: "a type of bread",
+			},
+		}
+		_, err := ValidateContainerSecrets(&settings, projectID, nil, toUpdate)
+		assert.Error(t, err)
+	})
+	t.Run("FailsWithDifferentTypeForExistingSecret", func(t *testing.T) {
+		original := []ContainerSecret{
+			{
+				Name:         "starfruit",
+				ExternalName: "external_name",
+				ExternalID:   "external_id",
+				Type:         ContainerSecretRepoCreds,
+			},
+		}
+		toUpdate := []ContainerSecret{
+			{
+				Name:         "starfruit",
+				ExternalName: "external_name",
+				ExternalID:   "external_id",
+				Type:         ContainerSecretPodSecret,
+			},
+		}
+		_, err := ValidateContainerSecrets(&settings, projectID, original, toUpdate)
+		assert.Error(t, err)
+	})
+	t.Run("FailsWithDifferentExternalNameForExistingSecret", func(t *testing.T) {
+		original := []ContainerSecret{
+			{
+				Name:         "starfruit",
+				ExternalID:   "external_id",
+				ExternalName: "a_starfruit",
+				Type:         ContainerSecretRepoCreds,
+			},
+		}
+		toUpdate := []ContainerSecret{
+			{
+				Name:         "starfruit",
+				ExternalID:   "external_id",
+				ExternalName: "not_a_starfruit_no_more",
+				Type:         ContainerSecretRepoCreds,
+			},
+		}
+		_, err := ValidateContainerSecrets(&settings, projectID, original, toUpdate)
+		assert.Error(t, err)
+	})
+	t.Run("FailsWithDifferentExternalIDForExistingSecret", func(t *testing.T) {
+		original := []ContainerSecret{
+			{
+				Name:         "starfruit",
+				ExternalID:   "a_starfruit",
+				ExternalName: "external_name",
+				Type:         ContainerSecretRepoCreds,
+			},
+		}
+		toUpdate := []ContainerSecret{
+			{
+				Name:         "starfruit",
+				ExternalID:   "not_a_starfruit_no_more",
+				ExternalName: "external_name",
+				Type:         ContainerSecretRepoCreds,
+			},
+		}
+		_, err := ValidateContainerSecrets(&settings, projectID, original, toUpdate)
+		assert.Error(t, err)
+	})
+	t.Run("FailsWithoutName", func(t *testing.T) {
+		containerSecrets := []ContainerSecret{
+			{
+				Type: ContainerSecretPodSecret,
+			},
+		}
+		_, err := ValidateContainerSecrets(&settings, projectID, nil, containerSecrets)
+		assert.Error(t, err)
+	})
+}
+
+func TestContainerSecretCache(t *testing.T) {
+	assert.Implements(t, (*cocoa.SecretCache)(nil), ContainerSecretCache{})
+	defer func() {
+		assert.NoError(t, db.ClearCollections(ProjectRefCollection))
+	}()
+
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, pRef ProjectRef, c ContainerSecretCache){
+		"PutSucceeds": func(ctx context.Context, t *testing.T, pRef ProjectRef, c ContainerSecretCache) {
+			pRef.ContainerSecrets[0].ExternalID = ""
+			require.NoError(t, pRef.Insert())
+			const externalID = "external_id"
+			require.NoError(t, c.Put(ctx, cocoa.SecretCacheItem{
+				ID:   externalID,
+				Name: pRef.ContainerSecrets[0].ExternalName,
+			}))
+
+			dbProjRef, err := FindMergedProjectRef(pRef.Id, "", false)
+			require.NoError(t, err)
+			require.NotZero(t, dbProjRef)
+			require.Len(t, dbProjRef.ContainerSecrets, len(pRef.ContainerSecrets))
+			original := pRef.ContainerSecrets[0]
+			updated := dbProjRef.ContainerSecrets[0]
+			assert.Equal(t, original.ExternalName, updated.ExternalName)
+			assert.Equal(t, original.Name, updated.Name)
+			assert.Equal(t, original.Type, updated.Type)
+			assert.Equal(t, externalID, updated.ExternalID)
+			for i := 1; i < len(pRef.ContainerSecrets); i++ {
+				assert.Equal(t, pRef.ContainerSecrets[i], dbProjRef.ContainerSecrets[i], "mismatched container secrets at index %d", i)
+			}
+		},
+		"PutFailsWithNonexistentProjectRef": func(ctx context.Context, t *testing.T, pRef ProjectRef, c ContainerSecretCache) {
+			assert.Error(t, c.Put(ctx, cocoa.SecretCacheItem{ID: "external_id", Name: pRef.ContainerSecrets[0].ExternalName}))
+		},
+		"PutFailsWithoutMatchingContainerSecretExternalName": func(ctx context.Context, t *testing.T, pRef ProjectRef, c ContainerSecretCache) {
+			require.NoError(t, pRef.Insert())
+			assert.Error(t, c.Put(ctx, cocoa.SecretCacheItem{
+				ID:   "external_id",
+				Name: "nonexistent",
+			}))
+
+			dbProjRef, err := FindMergedProjectRef(pRef.Id, "", false)
+			require.NoError(t, err)
+			require.NotZero(t, dbProjRef)
+			require.Len(t, dbProjRef.ContainerSecrets, len(pRef.ContainerSecrets))
+			for i := 0; i < len(pRef.ContainerSecrets); i++ {
+				assert.Equal(t, pRef.ContainerSecrets[i], dbProjRef.ContainerSecrets[i], "mismatched container secrets at index %d", i)
+			}
+		},
+		"PutSucceedsWithContainerSecretThatAlreadyHasSameExternalIDAlreadySet": func(ctx context.Context, t *testing.T, pRef ProjectRef, c ContainerSecretCache) {
+			pRef.ContainerSecrets[0].ExternalID = "external_id"
+			require.NoError(t, pRef.Insert())
+			require.NoError(t, c.Put(ctx, cocoa.SecretCacheItem{
+				ID:   pRef.ContainerSecrets[0].ExternalID,
+				Name: pRef.ContainerSecrets[0].ExternalName,
+			}))
+
+			dbProjRef, err := FindMergedProjectRef(pRef.Id, "", false)
+			require.NoError(t, err)
+			require.NotZero(t, dbProjRef)
+			require.Len(t, dbProjRef.ContainerSecrets, len(pRef.ContainerSecrets))
+			for i := 0; i < len(pRef.ContainerSecrets); i++ {
+				assert.Equal(t, pRef.ContainerSecrets[i], dbProjRef.ContainerSecrets[i], "mismatched container secrets at index %d", i)
+			}
+		},
+		"PutFailsWithContainerSecretThatHasDifferentExternalIDAlreadySet": func(ctx context.Context, t *testing.T, pRef ProjectRef, c ContainerSecretCache) {
+			const externalID = "external_id"
+			pRef.ContainerSecrets[0].ExternalID = "something_else"
+			require.NoError(t, pRef.Insert())
+			require.Error(t, c.Put(ctx, cocoa.SecretCacheItem{
+				ID:   externalID,
+				Name: pRef.ContainerSecrets[0].ExternalName,
+			}))
+
+			dbProjRef, err := FindMergedProjectRef(pRef.Id, "", false)
+			require.NoError(t, err)
+			require.NotZero(t, dbProjRef)
+			require.Len(t, dbProjRef.ContainerSecrets, len(pRef.ContainerSecrets))
+			for i := 0; i < len(pRef.ContainerSecrets); i++ {
+				assert.Equal(t, pRef.ContainerSecrets[i], dbProjRef.ContainerSecrets[i], "mismatched container secrets at index %d", i)
+			}
+		},
+		"DeleteSucceeds": func(ctx context.Context, t *testing.T, pRef ProjectRef, c ContainerSecretCache) {
+			require.NoError(t, pRef.Insert())
+			require.NoError(t, c.Delete(ctx, pRef.ContainerSecrets[1].ExternalID))
+
+			dbProjRef, err := FindMergedProjectRef(pRef.Id, "", false)
+			require.NoError(t, err)
+			require.NotZero(t, dbProjRef)
+			require.Len(t, dbProjRef.ContainerSecrets, len(pRef.ContainerSecrets)-1)
+			assert.Equal(t, dbProjRef.ContainerSecrets[0], pRef.ContainerSecrets[0])
+		},
+		"DeleteNoopsWithNonexistentProjectRef": func(ctx context.Context, t *testing.T, pRef ProjectRef, c ContainerSecretCache) {
+			assert.NoError(t, c.Delete(ctx, "external_id"), "should not for nonexistent project ref")
+			assert.True(t, adb.ResultsNotFound(db.FindOneQ(ProjectRefCollection, db.Query(bson.M{}), &pRef)))
+		},
+		"DeleteNoopsWithoutMatchingContainerSecretExternalID": func(ctx context.Context, t *testing.T, pRef ProjectRef, c ContainerSecretCache) {
+			require.NoError(t, pRef.Insert())
+			assert.NoError(t, c.Delete(ctx, "nonexistent"), "should not error for nonexistent container secret")
+
+			dbProjRef, err := FindMergedProjectRef(pRef.Id, "", false)
+			require.NoError(t, err)
+			require.NotZero(t, dbProjRef)
+			assert.Len(t, dbProjRef.ContainerSecrets, len(pRef.ContainerSecrets))
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			require.NoError(t, db.ClearCollections(ProjectRefCollection))
+			pRef := ProjectRef{
+				Id:         "project_id",
+				Identifier: "identifier",
+				ContainerSecrets: []ContainerSecret{
+					{
+						Name:       "banana",
+						Type:       ContainerSecretRepoCreds,
+						ExternalID: "external_id0",
+					},
+					{
+						Name:       "cherry",
+						Type:       ContainerSecretRepoCreds,
+						ExternalID: "external_id1",
+					},
+					{
+						Name:       "banerry",
+						Type:       ContainerSecretRepoCreds,
+						ExternalID: "external_id2",
+					},
+				},
+			}
+			for i := 0; i < len(pRef.ContainerSecrets); i++ {
+				pRef.ContainerSecrets[i].ExternalName = makeRepoCredsContainerSecretName(evergreen.SecretsManagerConfig{
+					SecretPrefix: "prefix",
+				}, pRef.Id, pRef.ContainerSecrets[i].Name)
+			}
+
+			tCase(ctx, t, pRef, ContainerSecretCache{})
+		})
+	}
 }
 
 func TestGetPatchTriggerAlias(t *testing.T) {
@@ -1629,7 +2043,7 @@ func TestFindDownstreamProjects(t *testing.T) {
 }
 
 func TestAddEmptyBranch(t *testing.T) {
-	require.NoError(t, db.ClearCollections(user.Collection, ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection))
+	require.NoError(t, db.ClearCollections(user.Collection, ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection, commitqueue.Collection))
 	u := user.DBUser{
 		Id: "me",
 	}
@@ -1640,15 +2054,20 @@ func TestAddEmptyBranch(t *testing.T) {
 		Repo:       "mongo",
 	}
 	assert.NoError(t, p.Add(&u))
+	assert.NotEmpty(t, p.Id)
 	assert.NotEmpty(t, p.Branch)
 	assert.Equal(t, "main", p.Branch)
+
+	cq, err := commitqueue.FindOneId(p.Id)
+	assert.NoError(t, err)
+	assert.NotNil(t, cq)
 }
 
 func TestAddPermissions(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(user.Collection, ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection))
+	assert.NoError(db.ClearCollections(user.Collection, ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection, commitqueue.Collection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 	env := testutil.NewEnvironment(ctx, t)
 	u := user.DBUser{
@@ -1665,6 +2084,10 @@ func TestAddPermissions(t *testing.T) {
 	assert.NoError(p.Add(&u))
 	assert.NotEmpty(p.Id)
 	assert.True(mgobson.IsObjectIdHex(p.Id))
+
+	cq, err := commitqueue.FindOneId(p.Id)
+	assert.NoError(err)
+	assert.NotNil(cq)
 
 	rm := env.RoleManager()
 	scope, err := rm.FindScopeForResources(evergreen.ProjectResourceType, p.Id)
@@ -1692,6 +2115,10 @@ func TestAddPermissions(t *testing.T) {
 	assert.NotEmpty(p.Id)
 	assert.True(mgobson.IsObjectIdHex(p.Id))
 	assert.Equal(projectId, p.Id)
+
+	cq, err = commitqueue.FindOneId(p.Id)
+	assert.NoError(err)
+	assert.NotNil(cq)
 
 	scope, err = rm.FindScopeForResources(evergreen.ProjectResourceType, p.Id)
 	assert.NoError(err)
@@ -2085,11 +2512,11 @@ func TestMergeWithProjectConfig(t *testing.T) {
 				},
 			},
 			ContainerSizes: map[string]ContainerResources{
-				"small": ContainerResources{
+				"small": {
 					MemoryMB: 200,
 					CPU:      1,
 				},
-				"large": ContainerResources{
+				"large": {
 					MemoryMB: 400,
 					CPU:      2,
 				},
@@ -2125,7 +2552,7 @@ func TestMergeWithProjectConfig(t *testing.T) {
 	assert.Equal(t, 2, projectRef.ContainerSizes["large"].CPU)
 
 	projectRef.ContainerSizes = map[string]ContainerResources{
-		"xlarge": ContainerResources{
+		"xlarge": {
 			MemoryMB: 800,
 			CPU:      4,
 		},
@@ -2199,25 +2626,28 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	assert.NotNil(t, projectRef)
 
 	update := &ProjectRef{
-		Id:    "iden_",
-		Owner: "invalid",
-		Repo:  "nonexistent",
+		Id:      "iden_",
+		Enabled: utility.TruePtr(),
+		Owner:   "invalid",
+		Repo:    "nonexistent",
 	}
 	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
 	assert.Error(err)
 
 	update = &ProjectRef{
-		Id:    "iden_",
-		Owner: "",
-		Repo:  "",
+		Id:      "iden_",
+		Enabled: utility.TruePtr(),
+		Owner:   "",
+		Repo:    "",
 	}
 	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
-	assert.NoError(err)
+	assert.Error(err)
 
 	update = &ProjectRef{
-		Id:    "iden_",
-		Owner: "evergreen-ci",
-		Repo:  "test",
+		Id:      "iden_",
+		Enabled: utility.TruePtr(),
+		Owner:   "evergreen-ci",
+		Repo:    "test",
 	}
 	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
 	assert.NoError(err)
@@ -2243,24 +2673,11 @@ func TestValidateOwnerAndRepo(t *testing.T) {
 	err = project.ValidateOwnerAndRepo([]string{"evergreen-ci"})
 	assert.NoError(t, err)
 
-	// a project with now owner and repo that is attached to a repo with
-	// an owner and repo should not error
-	repoRef := RepoRef{ProjectRef{
-		Id:      "my_repo",
-		Enabled: utility.TruePtr(),
-		Owner:   "evergreen-ci",
-		Repo:    "test",
-	}}
-	assert.NoError(t, repoRef.Upsert())
-
-	projectWithRepo := ProjectRef{
-		Id:        "project-with-repo",
-		Enabled:   utility.TruePtr(),
-		RepoRefId: repoRef.Id,
+	// a disabled project should not error
+	disabledProject := ProjectRef{
+		Id:      "project",
+		Enabled: utility.FalsePtr(),
 	}
-	require.NoError(t, projectWithRepo.Insert())
-
-	err = projectWithRepo.ValidateOwnerAndRepo([]string{"evergreen-ci"})
+	err = disabledProject.ValidateOwnerAndRepo([]string{"evergreen-ci"})
 	assert.NoError(t, err)
-
 }

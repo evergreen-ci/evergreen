@@ -1,14 +1,18 @@
 package cloud
 
 import (
-	"fmt"
-	"strings"
+	"context"
+	"math"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/resourcegroupstaggingapi"
 	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/cocoa/awsutil"
 	"github.com/evergreen-ci/cocoa/ecs"
 	"github.com/evergreen-ci/cocoa/secret"
+	"github.com/evergreen-ci/cocoa/tag"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/pod/definition"
 	"github.com/evergreen-ci/utility"
@@ -26,14 +30,36 @@ func MakeSecretsManagerClient(settings *evergreen.Settings) (cocoa.SecretsManage
 	return secret.NewBasicSecretsManagerClient(podAWSOptions(settings))
 }
 
-// MakeSecretsManagerVault creates a cocoa.Vault backed by Secrets Manager.
-func MakeSecretsManagerVault(c cocoa.SecretsManagerClient) (cocoa.Vault, error) {
-	return secret.NewBasicSecretsManager(*secret.NewBasicSecretsManagerOptions().SetClient(c))
+// MakeTagClient creates a cocoa.TagClient to interact with the Resource Groups
+// Tagging API.
+func MakeTagClient(settings *evergreen.Settings) (cocoa.TagClient, error) {
+	return tag.NewBasicTagClient(podAWSOptions(settings))
 }
 
-// PodDefinitionTag is the name of the tag in ECS that marks whether pod
-// definitions that are tracked or not by Evergreen.
-const PodDefinitionTag = "evergreen-tracked"
+const (
+	// PodCacheTag is the name of the tag in AWS that marks whether pod
+	// resources such as secrets and pod definitions are tracked or not by
+	// Evergreen.
+	PodCacheTag = "evergreen-tracked"
+)
+
+const (
+	// SecretsManagerResourceFilter is the name of the resource filter to find
+	// Secrets Manager secrets.
+	SecretsManagerResourceFilter = "secretsmanager:secret"
+	// PodDefinitionResourceFilter is the name of the resource filter to find
+	// ECS pod definitions.
+	PodDefinitionResourceFilter = "ecs:task-definition"
+)
+
+// MakeSecretsManagerVault creates a cocoa.Vault backed by Secrets Manager with
+// an optional cocoa.SecretCache.
+func MakeSecretsManagerVault(c cocoa.SecretsManagerClient) (cocoa.Vault, error) {
+	return secret.NewBasicSecretsManager(*secret.NewBasicSecretsManagerOptions().
+		SetClient(c).
+		SetCache(model.ContainerSecretCache{}).
+		SetCacheTag(PodCacheTag))
+}
 
 // MakeECSPodDefinitionManager creates a cocoa.ECSPodDefinitionManager that
 // creates pod definitions in ECS and secrets backed by an optional cocoa.Vault.
@@ -42,7 +68,7 @@ func MakeECSPodDefinitionManager(c cocoa.ECSClient, v cocoa.Vault) (cocoa.ECSPod
 		SetClient(c).
 		SetVault(v).
 		SetCache(definition.PodDefinitionCache{}).
-		SetCacheTag(PodDefinitionTag))
+		SetCacheTag(PodCacheTag))
 }
 
 // MakeECSPodCreator creates a cocoa.ECSPodCreator to create pods backed by ECS
@@ -178,9 +204,7 @@ func exportECSContainerResources(info pod.ContainerResourceInfo) cocoa.ECSContai
 		SetName(info.Name)
 
 	for _, id := range info.SecretIDs {
-		s := cocoa.NewContainerSecret().
-			SetID(id).
-			SetOwned(true)
+		s := cocoa.NewContainerSecret().SetID(id)
 		res.AddSecrets(*s)
 	}
 
@@ -223,16 +247,6 @@ func ExportECSPodDefinitionOptions(settings *evergreen.Settings, opts pod.TaskCo
 	return defOpts, nil
 }
 
-// Constants related to secrets stored in Secrets Manager.
-const (
-	// internalSecretNamespace is the namespace for secrets that are
-	// Evergreen-internal.
-	internalSecretNamespace = "evg-internal"
-	// repoCredsSecretName is the name of the secret used to store private
-	// repository credentials for pods.
-	repoCredsSecretName = "repo-creds"
-)
-
 // exportECSPodContainerDef exports the ECS pod container definition into the
 // equivalent cocoa.ECSContainerDefintion.
 func exportECSPodContainerDef(settings *evergreen.Settings, opts pod.TaskContainerCreationOptions) (*cocoa.ECSContainerDefinition, error) {
@@ -246,15 +260,8 @@ func exportECSPodContainerDef(settings *evergreen.Settings, opts pod.TaskContain
 		SetEnvironmentVariables(exportPodEnvVars(settings.Providers.AWS.Pod.SecretsManager, opts)).
 		AddPortMappings(*cocoa.NewPortMapping().SetContainerPort(agentPort))
 
-	if opts.RepoUsername != "" && opts.RepoPassword != "" {
-		secretName := makeInternalSecretName(settings.Providers.AWS.Pod.SecretsManager, opts, repoCredsSecretName)
-
-		def.SetRepositoryCredentials(*cocoa.NewRepositoryCredentials().
-			SetName(secretName).
-			SetOwned(true).
-			SetNewCredentials(*cocoa.NewStoredRepositoryCredentials().
-				SetUsername(opts.RepoUsername).
-				SetPassword(opts.RepoPassword)))
+	if opts.RepoCredsExternalID != "" {
+		def.SetRepositoryCredentials(*cocoa.NewRepositoryCredentials().SetID(opts.RepoCredsExternalID))
 	}
 
 	return def, nil
@@ -340,17 +347,7 @@ func exportPodEnvVars(smConf evergreen.SecretsManagerConfig, opts pod.TaskContai
 	}
 
 	for envVarName, s := range opts.EnvSecrets {
-		secretOpts := cocoa.NewSecretOptions().SetOwned(utility.FromBoolPtr(s.Owned))
-		if utility.FromBoolPtr(s.Exists) && s.ExternalID != "" {
-			secretOpts.SetID(s.ExternalID)
-		} else if s.Name != "" {
-			secretOpts.SetName(makeSecretName(smConf, opts, s.Name))
-		} else {
-			secretOpts.SetName(makeSecretName(smConf, opts, envVarName))
-		}
-		if !utility.FromBoolPtr(s.Exists) && s.Value != "" {
-			secretOpts.SetNewValue(s.Value)
-		}
+		secretOpts := cocoa.NewSecretOptions().SetID(s.ExternalID)
 
 		allEnvVars = append(allEnvVars, *cocoa.NewEnvironmentVariable().
 			SetName(envVarName).
@@ -360,14 +357,112 @@ func exportPodEnvVars(smConf evergreen.SecretsManagerConfig, opts pod.TaskContai
 	return allEnvVars
 }
 
-// makeSecretName creates a Secrets Manager secret name for the pod.
-func makeSecretName(smConf evergreen.SecretsManagerConfig, opts pod.TaskContainerCreationOptions, name string) string {
-	return strings.Join([]string{strings.TrimRight(smConf.SecretPrefix, "/"), "agent", opts.Hash(), name}, "/")
+// GetFilteredResourceIDs gets resources that match the given resource and tag
+// filters. If the limit is positive, it will return at most that many results.
+// If the limit is zero, this will return no results. If the limit is negative,
+// the results are unlimited
+func GetFilteredResourceIDs(ctx context.Context, c cocoa.TagClient, resources []string, tags map[string][]string, limit int) ([]string, error) {
+	if limit == 0 {
+		return []string{}, nil
+	}
+	if limit < 0 {
+		limit = math.MaxInt64
+	}
+
+	var tagFilters []*resourcegroupstaggingapi.TagFilter
+	for key, vals := range tags {
+		tagFilters = append(tagFilters, &resourcegroupstaggingapi.TagFilter{
+			Key:    aws.String(key),
+			Values: utility.ToStringPtrSlice(vals),
+		})
+	}
+	resourceFilters := utility.ToStringPtrSlice(resources)
+
+	var allIDs []string
+	remaining := limit
+	var nextToken *string
+	for {
+		var (
+			ids []string
+			err error
+		)
+		ids, nextToken, err = getResourcesPage(ctx, c, resourceFilters, tagFilters, nextToken, limit)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting resources matching filters")
+		}
+		allIDs = append(allIDs, ids...)
+		remaining = remaining - len(ids)
+		if remaining <= 0 {
+			break
+		}
+		if len(ids) == 0 {
+			break
+		}
+		if nextToken == nil {
+			break
+		}
+	}
+
+	return allIDs, nil
 }
 
-// makeInternalSecretName creates a Secrets Manager secret name for the pod in a
-// reserved namespace that is meant for Evergreen-internal purposes and should
-// not be exposed to users.
-func makeInternalSecretName(smConf evergreen.SecretsManagerConfig, opts pod.TaskContainerCreationOptions, name string) string {
-	return makeSecretName(smConf, opts, fmt.Sprintf("%s/%s", internalSecretNamespace, name))
+func getResourcesPage(ctx context.Context, c cocoa.TagClient, resourceFilters []*string, tagFilters []*resourcegroupstaggingapi.TagFilter, nextToken *string, limit int) ([]string, *string, error) {
+	var ids []string
+
+	resp, err := c.GetResources(ctx, &resourcegroupstaggingapi.GetResourcesInput{
+		PaginationToken:     nextToken,
+		ResourceTypeFilters: resourceFilters,
+		TagFilters:          tagFilters,
+	})
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "getting resources")
+	}
+	if resp == nil {
+		return nil, nil, errors.Errorf("unexpected nil response for getting resources")
+	}
+
+	for _, tagMapping := range resp.ResourceTagMappingList {
+		if len(ids) >= limit {
+			break
+		}
+
+		if tagMapping == nil {
+			continue
+		}
+		if tagMapping.ResourceARN == nil {
+			continue
+		}
+
+		ids = append(ids, utility.FromStringPtr(tagMapping.ResourceARN))
+	}
+
+	return ids, resp.PaginationToken, nil
+}
+
+// NoopECSPodDefinitionCache is an implementation of cocoa.ECSPodDefinitionCache
+// that no-ops for all operations.
+type NoopECSPodDefinitionCache struct{}
+
+// Put is a no-op.
+func (c *NoopECSPodDefinitionCache) Put(context.Context, cocoa.ECSPodDefinitionItem) error {
+	return nil
+}
+
+// Delete is a no-op.
+func (c *NoopECSPodDefinitionCache) Delete(context.Context, string) error {
+	return nil
+}
+
+// NoopSecretCache is an implementation of cocoa.SecretCache that no-ops for all
+// operations.
+type NoopSecretCache struct{}
+
+// Put is a no-op.
+func (c *NoopSecretCache) Put(context.Context, cocoa.SecretCacheItem) error {
+	return nil
+}
+
+// Delete is a no-op.
+func (c *NoopSecretCache) Delete(context.Context, string) error {
+	return nil
 }

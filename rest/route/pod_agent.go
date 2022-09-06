@@ -135,7 +135,7 @@ func (h *podProvisioningScript) downloadAgentCommands(p *pod.Pod, downloadFromS3
 		curlExecutable = curlExecutable + ".exe"
 	}
 
-	if downloadFromS3 && h.settings.PodInit.S3BaseURL != "" {
+	if downloadFromS3 && h.settings.PodLifecycle.S3BaseURL != "" {
 		// Attempt to download the agent from S3, but fall back to downloading
 		// from the app server if it fails.
 		// Include -f to return an error code from curl if the HTTP request
@@ -172,7 +172,7 @@ func (h *podProvisioningScript) evergreenClientURL(p *pod.Pod) string {
 // retrieved for this server's particular Evergreen build version.
 func (h *podProvisioningScript) s3ClientURL(p *pod.Pod) string {
 	return strings.Join([]string{
-		strings.TrimSuffix(h.settings.PodInit.S3BaseURL, "/"),
+		strings.TrimSuffix(h.settings.PodLifecycle.S3BaseURL, "/"),
 		evergreen.BuildRevision,
 		h.clientURLSubpath(p),
 	}, "/")
@@ -240,7 +240,7 @@ func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 	h.setAgentFirstContactTime(p)
 
 	if p.Status == pod.StatusTerminated || p.Status == pod.StatusDecommissioned {
-		if err = h.enqueuePodTerminationJob(ctx, "pod is no longer running"); err != nil {
+		if err = h.prepareForPodTermination(ctx, p, "pod is no longer running"); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
 		return gimlet.NewJSONResponse(&apimodels.NextTaskResponse{})
@@ -289,7 +289,7 @@ func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 	if nextTask == nil {
-		if err = h.enqueuePodTerminationJob(ctx, "reached end of pod lifecycle"); err != nil {
+		if err = h.prepareForPodTermination(ctx, p, "dispatch queue has no more tasks to run"); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
 		return gimlet.NewJSONResponse(&apimodels.NextTaskResponse{})
@@ -304,8 +304,16 @@ func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 	})
 }
 
-// enqueuePodTerminationJob will enqueue the job to terminate a pod with a detailed reason for doing so.
-func (h *podAgentNextTask) enqueuePodTerminationJob(ctx context.Context, reason string) error {
+// prepareForPodTermination will mark the pod as preparing to terminate if it is
+// not already attempting to terminate and enqueue the job to terminate it with
+// a detailed reason for doing so.
+func (h *podAgentNextTask) prepareForPodTermination(ctx context.Context, p *pod.Pod, reason string) error {
+	if p.Status != pod.StatusDecommissioned && p.Status != pod.StatusTerminated {
+		if err := p.UpdateStatus(pod.StatusDecommissioned, reason); err != nil {
+			return errors.Wrap(err, "updating pod status to decommissioned")
+		}
+	}
+
 	j := units.NewPodTerminationJob(h.podID, reason, utility.RoundPartOfMinute(0))
 	if err := amboy.EnqueueUniqueJob(ctx, h.env.RemoteQueue(), j); err != nil {
 		return errors.Wrap(err, "enqueueing job to terminate pod")
@@ -320,7 +328,7 @@ func (h *podAgentNextTask) transitionStartingToRunning(p *pod.Pod) error {
 		return nil
 	}
 
-	return p.UpdateStatus(pod.StatusRunning)
+	return p.UpdateStatus(pod.StatusRunning, "agent requested next task to run, indicating that it is now running")
 }
 
 func (h *podAgentNextTask) setAgentFirstContactTime(p *pod.Pod) {

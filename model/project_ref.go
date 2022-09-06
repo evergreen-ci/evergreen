@@ -11,11 +11,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -99,7 +101,8 @@ type ProjectRef struct {
 	DisabledStatsCache    *bool    `bson:"disabled_stats_cache,omitempty" json:"disabled_stats_cache,omitempty"`
 
 	// List of commands
-	WorkstationConfig WorkstationConfig `bson:"workstation_config,omitempty" json:"workstation_config,omitempty"`
+	// Lacks omitempty so that SetupCommands can be identified as either [] or nil in a ProjectSettingsEvent
+	WorkstationConfig WorkstationConfig `bson:"workstation_config" json:"workstation_config"`
 
 	// TaskAnnotationSettings holds settings for the file ticket button in the Task Annotations to call custom webhooks when clicked
 	TaskAnnotationSettings evergreen.AnnotationsSettings `bson:"task_annotation_settings,omitempty" json:"task_annotation_settings,omitempty"`
@@ -110,7 +113,7 @@ type ProjectRef struct {
 
 	// Container settings
 	ContainerSizes   map[string]ContainerResources `bson:"container_sizes,omitempty" json:"container_sizes,omitempty" yaml:"container_sizes,omitempty"`
-	ContainerSecrets map[string]ContainerSecret    `bson:"container_credentials,omitempty" json:"container_credentials,omitempty" yaml:"container_credentials,omitempty"`
+	ContainerSecrets []ContainerSecret             `bson:"container_secrets,omitempty" json:"container_secrets,omitempty" yaml:"container_secrets,omitempty"`
 
 	RepoRefId string `bson:"repo_ref_id" json:"repo_ref_id" yaml:"repo_ref_id"`
 
@@ -162,11 +165,15 @@ type ContainerResources struct {
 // on a private image repository. The credential is saved in AWS Secrets Manager upon
 // saving to the ProjectRef
 type ContainerSecret struct {
+	// Name is the user-friendly display name of the secret.
+	Name string `bson:"name" json:"name" yaml:"name"`
+	// Type is the type of secret that is stored.
+	Type ContainerSecretType `bson:"type" json:"type" yaml:"type"`
+	// ExternalName is the name of the stored secret.
+	ExternalName string `bson:"external_name" json:"external_name" yaml:"external_name"`
 	// ExternalID is the unique resource identifier for the secret. This can be
 	// used to access and modify the secret.
 	ExternalID string `bson:"external_id" json:"external_id" yaml:"external_id"`
-	// Type is the type of secret that is stored.
-	Type ContainerSecretType `bson:"type" json:"type" yaml:"type"`
 	// Value is the plaintext value of the secret. This is not stored and must
 	// be retrieved using the external ID.
 	Value string `bson:"-" json:"-" yaml:"-"`
@@ -180,15 +187,15 @@ const (
 	// ContainerSecretPodSecret is a container secret representing the Evergreen
 	// agent's pod secret.
 	ContainerSecretPodSecret = "pod_secret"
-	// ContainerSecretRepoCred is a container secret representing an image
-	// repository credential.
-	ContainerSecretRepoCred = "repository_credential"
+	// ContainerSecretRepoCreds is a container secret representing an image
+	// repository's credentials.
+	ContainerSecretRepoCreds = "repository_credentials"
 )
 
 // Validate checks that the container secret type is recognized.
 func (t ContainerSecretType) Validate() error {
 	switch t {
-	case ContainerSecretPodSecret, ContainerSecretRepoCred:
+	case ContainerSecretPodSecret, ContainerSecretRepoCreds:
 		return nil
 	default:
 		return errors.Errorf("unrecognized container secret type '%s'", t)
@@ -293,9 +300,12 @@ var (
 	projectRefTaskAnnotationSettingsKey = bsonutil.MustHaveTag(ProjectRef{}, "TaskAnnotationSettings")
 	projectRefBuildBaronSettingsKey     = bsonutil.MustHaveTag(ProjectRef{}, "BuildBaronSettings")
 	projectRefPerfEnabledKey            = bsonutil.MustHaveTag(ProjectRef{}, "PerfEnabled")
+	projectRefContainerSecretsKey       = bsonutil.MustHaveTag(ProjectRef{}, "ContainerSecrets")
 
-	commitQueueEnabledKey       = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
-	triggerDefinitionProjectKey = bsonutil.MustHaveTag(TriggerDefinition{}, "Project")
+	commitQueueEnabledKey          = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
+	triggerDefinitionProjectKey    = bsonutil.MustHaveTag(TriggerDefinition{}, "Project")
+	containerSecretExternalNameKey = bsonutil.MustHaveTag(ContainerSecret{}, "ExternalName")
+	containerSecretExternalIDKey   = bsonutil.MustHaveTag(ContainerSecret{}, "ExternalID")
 )
 
 func (p *ProjectRef) IsEnabled() bool {
@@ -480,6 +490,13 @@ func (p *ProjectRef) Add(creator *user.DBUser) error {
 	err := db.Insert(ProjectRefCollection, p)
 	if err != nil {
 		return errors.Wrap(err, "inserting project ref")
+	}
+	if err = commitqueue.EnsureCommitQueueExistsForProject(p.Id); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":            "error ensuring commit queue exists",
+			"project_id":         p.Id,
+			"project_identifier": p.Identifier,
+		}))
 	}
 	return p.addPermissions(creator)
 }
@@ -687,7 +704,7 @@ func (p *ProjectRef) AttachToRepo(u *user.DBUser) error {
 // AttachToNewRepo modifies the project's owner/repo, updates the old and new repo scopes (if relevant), and
 // updates the project to point to the new repo. Any Github project conflicts are disabled.
 // If no repo ref currently exists for the new repo, the user attaching it will be added as the repo ref admin.
-func (p *ProjectRef) AttachToNewRepo(u *user.DBUser) error {
+func (p *ProjectRef) AttachToNewRepo(ctx context.Context, u *user.DBUser) error {
 	before, err := GetProjectSettingsById(p.Id, false)
 	if err != nil {
 		return errors.Wrap(err, "getting before project settings event")
@@ -718,6 +735,16 @@ func (p *ProjectRef) AttachToNewRepo(u *user.DBUser) error {
 	})
 	if err != nil {
 		return errors.Wrap(err, "updating owner/repo in the DB")
+	}
+	_, err = EnableWebhooks(ctx, p)
+	if err != nil {
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message":            "error enabling webhooks",
+			"project_id":         p.Id,
+			"project_identifier": p.Identifier,
+			"owner":              p.Owner,
+			"repo":               p.Repo,
+		}))
 	}
 	return GetAndLogProjectModified(p.Id, u.Id, false, before)
 }
@@ -1241,21 +1268,32 @@ func addLoggerAndRepoSettingsToProjects(pRefs []ProjectRef) ([]ProjectRef, error
 
 // FindAllMergedProjectRefs returns all project refs in the db, with repo ref information merged
 func FindAllMergedProjectRefs() ([]ProjectRef, error) {
-	return FindProjectRefsQ(bson.M{})
+	return findProjectRefsQ(bson.M{}, true)
+}
+
+func FindMergedProjectRefsByIds(ids ...string) ([]ProjectRef, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	return findProjectRefsQ(bson.M{
+		ProjectRefIdKey: bson.M{
+			"$in": ids,
+		},
+	}, true)
 }
 
 func FindProjectRefsByIds(ids ...string) ([]ProjectRef, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
-	return FindProjectRefsQ(bson.M{
+	return findProjectRefsQ(bson.M{
 		ProjectRefIdKey: bson.M{
 			"$in": ids,
 		},
-	})
+	}, false)
 }
 
-func FindProjectRefsQ(filter bson.M) ([]ProjectRef, error) {
+func findProjectRefsQ(filter bson.M, merged bool) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 	q := db.Query(filter)
 	err := db.FindAllQ(ProjectRefCollection, q, &projectRefs)
@@ -1263,7 +1301,10 @@ func FindProjectRefsQ(filter bson.M) ([]ProjectRef, error) {
 		return nil, err
 	}
 
-	return addLoggerAndRepoSettingsToProjects(projectRefs)
+	if merged {
+		return addLoggerAndRepoSettingsToProjects(projectRefs)
+	}
+	return projectRefs, nil
 }
 
 func byOwnerAndRepo(owner, repoName string) bson.M {
@@ -1528,7 +1569,6 @@ func EnableWebhooks(ctx context.Context, projectRef *ProjectRef) (bool, error) {
 		// sometimes people change a project to track a personal
 		// branch we don't have access to
 		grip.Error(message.WrapError(err, message.Fields{
-			"source":             "patch project",
 			"message":            "can't setup webhook",
 			"project":            projectRef.Id,
 			"project_identifier": projectRef.Identifier,
@@ -1820,13 +1860,11 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			ProjectRefDisabledStatsCacheKey:    p.DisabledStatsCache,
 			ProjectRefFilesIgnoredFromCacheKey: p.FilesIgnoredFromCache,
 		}
-		if !isRepo && !p.UseRepoSettings() {
-			// Don't validate owner if user is defaulting page to repo
-			if p.Owner != "" {
-				allowedOrgs := evergreen.GetEnvironment().Settings().GithubOrgs
-				if err := validateOwner(p.Owner, allowedOrgs); err != nil {
-					return false, errors.Wrap(err, "validating new owner")
-				}
+		// Allow a user to modify owner and repo only if they are editing an unattached project
+		if !isRepo && !p.UseRepoSettings() && !defaultToRepo {
+			allowedOrgs := evergreen.GetEnvironment().Settings().GithubOrgs
+			if err := p.ValidateOwnerAndRepo(allowedOrgs); err != nil {
+				return false, errors.Wrap(err, "validating new owner/repo")
 			}
 
 			setUpdate[ProjectRefOwnerKey] = p.Owner
@@ -2144,18 +2182,16 @@ func (p *ProjectRef) GetGithubProjectConflicts() (GithubProjectConflicts, error)
 }
 
 func (p *ProjectRef) ValidateOwnerAndRepo(validOrgs []string) error {
-	// if the project doesn't have an owner, we want to verify the repo's owner instead
-	projectWithRepo, err := GetProjectRefMergedWithRepo(*p)
-	if err != nil {
-		return errors.Wrap(err, "getting the merged project ref")
+	if !p.IsEnabled() {
+		return nil
 	}
 
 	// verify input and webhooks
-	if projectWithRepo.Owner == "" || projectWithRepo.Repo == "" {
+	if p.Owner == "" || p.Repo == "" {
 		return errors.New("no owner/repo specified")
 	}
 
-	return validateOwner(projectWithRepo.Owner, validOrgs)
+	return validateOwner(p.Owner, validOrgs)
 }
 
 func validateOwner(owner string, validOrgs []string) error {
@@ -2591,9 +2627,15 @@ func ValidateContainers(pRef *ProjectRef, containers []Container) error {
 		}
 		catcher.ErrorfWhen(container.Size != "" && !ok, "size '%s' is not defined anywhere", container.Size)
 		if container.Credential != "" {
-			cs, ok := pRef.ContainerSecrets[container.Credential]
-			catcher.ErrorfWhen(!ok, "credential '%s' is not defined anywhere", container.Credential)
-			catcher.ErrorfWhen(ok && cs.Type != ContainerSecretRepoCred, "container credential named '%s' exists but is not valid for use as a repository credential", container.Credential)
+			var matchingSecret *ContainerSecret
+			for _, cs := range pRef.ContainerSecrets {
+				if cs.Name == container.Credential {
+					matchingSecret = &cs
+					break
+				}
+			}
+			catcher.ErrorfWhen(matchingSecret == nil, "credential '%s' is not defined in project settings", container.Credential)
+			catcher.ErrorfWhen(matchingSecret != nil && matchingSecret.Type != ContainerSecretRepoCreds, "container credential named '%s' exists but is not valid for use as a repository credential", container.Credential)
 		}
 		catcher.NewWhen(container.Size != "" && container.Resources != nil, "size and resources cannot both be defined")
 		catcher.NewWhen(container.Size == "" && container.Resources == nil, "either size or resources must be defined")
@@ -2627,11 +2669,13 @@ func (c ContainerResources) Validate() error {
 	return catcher.Resolve()
 }
 
-// Validate that essential ContainerCredential fields are properly defined.
+// Validate that essential container secret fields are properly defined for a
+// new secret.
 func (c ContainerSecret) Validate() error {
 	catcher := grip.NewSimpleCatcher()
 	catcher.Add(c.Type.Validate())
-	catcher.NewWhen(c.Value == "" && c.ExternalID == "", "must specify a container credential value or have an external ID")
+	catcher.ErrorfWhen(c.Name == "", "must specify name for new container secret")
+	catcher.ErrorfWhen(c.Value == "", "must specify value for new container secret")
 	return catcher.Resolve()
 }
 
@@ -2856,3 +2900,126 @@ var lookupRepoStep = bson.M{"$lookup": bson.M{
 	"foreignField": RepoRefIdKey,
 	"as":           "repo_ref",
 }}
+
+// ContainerSecretCache implements the cocoa.SecretCache to provide a cache to
+// store secrets in the DB's project ref.
+type ContainerSecretCache struct{}
+
+// Put sets the external ID for a project ref's container secret by its name.
+func (c ContainerSecretCache) Put(_ context.Context, sc cocoa.SecretCacheItem) error {
+	externalNameKey := bsonutil.GetDottedKeyName(projectRefContainerSecretsKey, containerSecretExternalNameKey)
+	externalIDKey := bsonutil.GetDottedKeyName(projectRefContainerSecretsKey, containerSecretExternalIDKey)
+	externalIDUpdateKey := bsonutil.GetDottedKeyName(projectRefContainerSecretsKey, "$", containerSecretExternalIDKey)
+	return db.Update(ProjectRefCollection, bson.M{
+		externalNameKey: sc.Name,
+		externalIDKey: bson.M{
+			"$in": []interface{}{"", sc.ID},
+		},
+	}, bson.M{
+		"$set": bson.M{
+			externalIDUpdateKey: sc.ID,
+		},
+	})
+}
+
+// Delete deletes a container secret from the project ref by its external
+// identifier.
+func (c ContainerSecretCache) Delete(_ context.Context, externalID string) error {
+	externalIDKey := bsonutil.GetDottedKeyName(projectRefContainerSecretsKey, containerSecretExternalIDKey)
+	err := db.Update(ProjectRefCollection, bson.M{
+		externalIDKey: externalID,
+	}, bson.M{
+		"$pull": bson.M{
+			projectRefContainerSecretsKey: bson.M{
+				containerSecretExternalIDKey: externalID,
+			},
+		},
+	})
+	if adb.ResultsNotFound(err) {
+		return nil
+	}
+
+	return err
+}
+
+// Constants related to secrets stored in Secrets Manager.
+const (
+	// internalSecretNamespace is the namespace for secrets that are
+	// Evergreen-internal (such as the pod secret).
+	internalSecretNamespace = "evg-internal"
+	// repoCredsSecretName is the namespace for repository credentials.
+	repoCredsSecretName = "repo-creds"
+)
+
+// makeContainerSecretName creates a Secrets Manager secret name namespaced
+// within the given project ID.
+func makeContainerSecretName(smConf evergreen.SecretsManagerConfig, projectID, name string) string {
+	return strings.Join([]string{strings.TrimRight(smConf.SecretPrefix, "/"), "project", projectID, name}, "/")
+}
+
+// makeInternalContainerSecretName creates a Secrets Manager secret name
+// namespaced by the given project ID for Evergreen-internal purposes.
+func makeInternalContainerSecretName(smConf evergreen.SecretsManagerConfig, projectID, name string) string {
+	return makeContainerSecretName(smConf, projectID, fmt.Sprintf("%s/%s", internalSecretNamespace, name))
+}
+
+// makeRepoCredsSecretName creates a Secrets Manager secret name namespaced by
+// the given project ID for use as a repository credential.
+func makeRepoCredsContainerSecretName(smConf evergreen.SecretsManagerConfig, projectID, name string) string {
+	return makeContainerSecretName(smConf, projectID, fmt.Sprintf("%s/%s", repoCredsSecretName, name))
+}
+
+// ValidateContainerSecrets checks that the project-level container secrets to
+// be added/updated are valid and sets default values where necessary. It
+// returns the validated and merged container secrets, including the unmodified
+// secrets, the modified secrets, and the new secrets to create.
+func ValidateContainerSecrets(settings *evergreen.Settings, projectID string, original, toUpdate []ContainerSecret) ([]ContainerSecret, error) {
+	combined := make([]ContainerSecret, len(original))
+	_ = copy(combined, original)
+
+	catcher := grip.NewBasicCatcher()
+	for _, updatedSecret := range toUpdate {
+		name := updatedSecret.Name
+
+		idx := -1
+		for i := 0; i < len(original); i++ {
+			if original[i].Name == name {
+				idx = i
+				break
+			}
+		}
+
+		if idx != -1 {
+			existingSecret := combined[idx]
+			// If updating an existing secret, only allow the value to be
+			// updated.
+			catcher.ErrorfWhen(updatedSecret.Type != "" && updatedSecret.Type != existingSecret.Type, "container secret '%s' type cannot be changed from '%s' to '%s'", name, existingSecret.Type, updatedSecret.Type)
+			catcher.ErrorfWhen(updatedSecret.ExternalID != "" && updatedSecret.ExternalID != existingSecret.ExternalID, "container secret '%s' external ID cannot be changed from '%s' to '%s'", name, existingSecret.ExternalID, existingSecret.ExternalID)
+			catcher.ErrorfWhen(updatedSecret.ExternalName != "" && updatedSecret.ExternalName != existingSecret.ExternalName, "container secret '%s' external name cannot be changed from '%s' to '%s'", name, existingSecret.ExternalName, updatedSecret.ExternalName)
+			existingSecret.Value = updatedSecret.Value
+			combined[idx] = existingSecret
+			continue
+		}
+
+		catcher.Wrapf(updatedSecret.Validate(), "invalid new container secret '%s'", name)
+
+		// New secrets that have to be created should not have their external
+		// name and ID decided by the user. The external name is controlled by
+		// Evergreen (and set here) and the external ID is determined by the
+		// secret storage service (and set when the secret is actually stored).
+		smConf := settings.Providers.AWS.Pod.SecretsManager
+		switch updatedSecret.Type {
+		case ContainerSecretPodSecret:
+			updatedSecret.ExternalName = makeInternalContainerSecretName(smConf, projectID, name)
+		case ContainerSecretRepoCreds:
+			updatedSecret.ExternalName = makeRepoCredsContainerSecretName(smConf, projectID, name)
+		default:
+			catcher.Errorf("unrecognized secret type '%s' for container secret '%s'", updatedSecret.Type, name)
+		}
+		updatedSecret.ExternalID = ""
+
+		combined = append(combined, updatedSecret)
+	}
+
+	return combined, catcher.Resolve()
+}

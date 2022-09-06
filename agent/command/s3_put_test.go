@@ -2,7 +2,6 @@ package command
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -364,13 +363,14 @@ func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {
 			defer cancel()
 			var err error
 
-			dir, err := ioutil.TempDir("", "s3put")
+			dir := t.TempDir()
+			f, err := os.Create(filepath.Join(dir, "foo"))
 			require.NoError(t, err)
-			_, err = os.Create(filepath.Join(dir, "foo"))
-			require.NoError(t, err)
+			require.NoError(t, f.Close())
 			require.NoError(t, os.Mkdir(filepath.Join(dir, "subDir"), 0755))
-			_, err = os.Create(filepath.Join(dir, "subDir", "bar"))
+			f, err = os.Create(filepath.Join(dir, "subDir", "bar"))
 			require.NoError(t, err)
+			require.NoError(t, f.Close())
 
 			var localFilesIncludeFilterPrefix string
 			if prefix == "emptyPrefix" {
@@ -389,8 +389,11 @@ func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {
 				Permissions:                   s3.BucketCannedACLPublicRead,
 				RemoteFile:                    "remote",
 			}
-			opts := pail.LocalOptions{}
-			s.bucket, err = pail.NewLocalTemporaryBucket(opts)
+			require.NoError(t, os.Mkdir(filepath.Join(dir, "destination"), 0755))
+			opts := pail.LocalOptions{
+				Path: filepath.Join(dir, "destination"),
+			}
+			s.bucket, err = pail.NewLocalBucket(opts)
 			require.NoError(t, err)
 			comm := client.NewMock("http://localhost.com")
 			conf := &internal.TaskConfig{

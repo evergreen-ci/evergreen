@@ -14,8 +14,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// kim: TODO: continue here
-
 type AmboyConfig struct {
 	Name                                  string                  `bson:"name" json:"name" yaml:"name"`
 	SingleName                            string                  `bson:"single_name" json:"single_name" yaml:"single_name"`

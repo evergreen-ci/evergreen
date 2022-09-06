@@ -45,6 +45,7 @@ type Mock struct {
 	EndTaskResult               endTaskResult
 	ShellExecFilename           string
 	TimeoutFilename             string
+	GenerateTasksShouldFail     bool
 	HeartbeatShouldAbort        bool
 	HeartbeatShouldConflict     bool
 	HeartbeatShouldErr          bool
@@ -474,10 +475,14 @@ func (c *Mock) GenerateTasks(ctx context.Context, td TaskData, jsonBytes []json.
 }
 
 func (c *Mock) GenerateTasksPoll(ctx context.Context, td TaskData) (*apimodels.GeneratePollResponse, error) {
-	return &apimodels.GeneratePollResponse{
+	resp := &apimodels.GeneratePollResponse{
 		Finished:   true,
 		ShouldExit: false,
-	}, nil
+	}
+	if c.GenerateTasksShouldFail {
+		resp.Error = "error polling generate tasks!"
+	}
+	return resp, nil
 }
 
 func (c *Mock) CreateHost(ctx context.Context, td TaskData, options apimodels.CreateHost) ([]string, error) {

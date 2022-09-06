@@ -4,14 +4,40 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
 // CreatePod creates a new pod from the given REST model and returns its ID.
 func CreatePod(apiPod model.APICreatePod) (*model.APICreatePodResponse, error) {
+	if apiPod.PodSecretValue == nil {
+		env := evergreen.GetEnvironment()
+		ctx, cancel := env.Context()
+		defer cancel()
+
+		smClient, err := cloud.MakeSecretsManagerClient(env.Settings())
+		if err != nil {
+			return nil, errors.Wrap(err, "getting Secrets Manager client")
+		}
+		defer smClient.Close(ctx)
+
+		v, err := cloud.MakeSecretsManagerVault(smClient)
+		if err != nil {
+			return nil, errors.Wrap(err, "initializing Secrets Manager vault")
+		}
+
+		podSecret, err := v.GetValue(ctx, utility.FromStringPtr(apiPod.PodSecretExternalID))
+		if err != nil {
+			return nil, errors.Wrap(err, "getting pod secret value")
+		}
+		apiPod.PodSecretValue = utility.ToStringPtr(podSecret)
+	}
+
 	dbPod, err := apiPod.ToService()
 	if err != nil {
 		return nil, gimlet.ErrorResponse{

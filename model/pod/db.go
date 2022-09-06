@@ -47,11 +47,8 @@ var (
 	ContainerResourceInfoNameKey       = bsonutil.MustHaveTag(ContainerResourceInfo{}, "Name")
 	ContainerResourceInfoSecretIDsKey  = bsonutil.MustHaveTag(ContainerResourceInfo{}, "SecretIDs")
 
-	SecretNameKey       = bsonutil.MustHaveTag(Secret{}, "Name")
 	SecretExternalIDKey = bsonutil.MustHaveTag(Secret{}, "ExternalID")
 	SecretValueKey      = bsonutil.MustHaveTag(Secret{}, "Value")
-	SecretExistsKey     = bsonutil.MustHaveTag(Secret{}, "Exists")
-	SecretOwnedKey      = bsonutil.MustHaveTag(Secret{}, "Owned")
 )
 
 func ByID(id string) bson.M {
@@ -161,7 +158,7 @@ func FindIntentByFamily(family string) ([]Pod, error) {
 // information about the status update. If the current status is identical to
 // the updated one, this will no-op. If the current status does not match the
 // stored status, this will error.
-func UpdateOneStatus(id string, current, updated Status, ts time.Time) error {
+func UpdateOneStatus(id string, current, updated Status, ts time.Time, reason string) error {
 	if current == updated {
 		return nil
 	}
@@ -183,7 +180,7 @@ func UpdateOneStatus(id string, current, updated Status, ts time.Time) error {
 		return err
 	}
 
-	event.LogPodStatusChanged(id, string(current), string(updated))
+	event.LogPodStatusChanged(id, string(current), string(updated), reason)
 
 	return nil
 }

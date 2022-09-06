@@ -31,11 +31,7 @@ func getDirectoryOfFile() string {
 func TestArchiveExtract(t *testing.T) {
 	Convey("After extracting a tarball", t, func() {
 		testDir := getDirectoryOfFile()
-		outputDir, err := ioutil.TempDir("", "artifacts_test")
-		require.NoError(t, err)
-		defer func() {
-			assert.NoError(t, os.RemoveAll(outputDir))
-		}()
+		outputDir := t.TempDir()
 
 		f, gz, tarReader, err := TarGzReader(filepath.Join(testDir, "testdata", "artifacts.tar.gz"))
 		require.NoError(t, err, "Couldn't open test tarball")
@@ -104,11 +100,7 @@ func TestArchiveRoundTrip(t *testing.T) {
 		So(gz.Close(), ShouldBeNil)
 		So(f.Close(), ShouldBeNil)
 
-		outputDir, err := ioutil.TempDir("", "artifacts_out")
-		require.NoError(t, err)
-		defer func() {
-			assert.NoError(t, os.RemoveAll(outputDir))
-		}()
+		outputDir := t.TempDir()
 		f2, gz2, tarReader, err := TarGzReader(outputFile.Name())
 		require.NoError(t, err, "Couldn't open test tarball")
 		err = extractTarArchive(context.Background(), tarReader, outputDir, []string{})

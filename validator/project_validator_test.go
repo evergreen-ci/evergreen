@@ -1077,6 +1077,7 @@ func TestValidatePlugins(t *testing.T) {
 	assert.Nil(projectRef.Insert())
 	Convey("When validating a project", t, func() {
 		Convey("ensure bad plugin configs throw an error", func() {
+			So(validateProjectConfigPlugins(&model.ProjectConfig{}), ShouldResemble, ValidationErrors{})
 			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:  "BFG",
 				TicketSearchProjects: []string{"BF", "BFG"},
@@ -1205,7 +1206,6 @@ func TestValidateProjectAliases(t *testing.T) {
 						{
 							ID:        mgobson.NewObjectId(),
 							ProjectID: "project-1",
-							Alias:     evergreen.CommitQueueAlias,
 							Variant:   "v1",
 							Task:      "^test",
 						},
@@ -1214,7 +1214,6 @@ func TestValidateProjectAliases(t *testing.T) {
 						{
 							ID:        mgobson.NewObjectId(),
 							ProjectID: "project-1",
-							Alias:     evergreen.GithubChecksAlias,
 							Variant:   "v1",
 							Task:      "^test",
 						},
@@ -1223,14 +1222,12 @@ func TestValidateProjectAliases(t *testing.T) {
 						{
 							ID:        mgobson.NewObjectId(),
 							ProjectID: "project-1",
-							Alias:     evergreen.GitTagAlias,
 							Variant:   "v1",
 							Task:      "^test",
 						},
 						{
 							ID:        mgobson.NewObjectId(),
 							ProjectID: "project-1",
-							Alias:     evergreen.GitTagAlias,
 							Variant:   "v1",
 							Task:      "^test",
 							GitTag:    "[0-9]++",
@@ -1238,7 +1235,6 @@ func TestValidateProjectAliases(t *testing.T) {
 						{
 							ID:         mgobson.NewObjectId(),
 							ProjectID:  "project-1",
-							Alias:      evergreen.GitTagAlias,
 							Variant:    "v1",
 							Task:       "^test",
 							RemotePath: "remote/path",
@@ -2903,10 +2899,10 @@ func TestValidateContainers(t *testing.T) {
 			assert.Contains(t, verrs[0].Message, "size 's2' is not defined anywhere")
 		},
 		"FailsWithNonexistentRepoCreds": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
-			p.Containers[0].Credential = "c2"
+			p.Containers[0].Credential = "nonexistent"
 			verrs := validateContainers(p, ref, false)
 			require.Len(t, verrs, 1)
-			assert.Contains(t, verrs[0].Message, "credential 'c2' is not defined anywhere")
+			assert.Contains(t, verrs[0].Message, "credential 'nonexistent' is not defined in project settings")
 		},
 		"FailsWithInvalidOSAndArch": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
 			p.Containers[0].System = model.ContainerSystem{
@@ -2929,9 +2925,7 @@ func TestValidateContainers(t *testing.T) {
 			assert.Contains(t, verrs[0].Message, "container resource memory MB must be a positive integer")
 		},
 		"FailsWithPodSecretAsReferencedRepoCred": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
-			cs := ref.ContainerSecrets["c1"]
-			cs.Type = model.ContainerSecretPodSecret
-			ref.ContainerSecrets["c1"] = cs
+			ref.ContainerSecrets[0].Type = model.ContainerSecretPodSecret
 			verrs := validateContainers(p, ref, false)
 			require.Len(t, verrs, 1)
 			assert.Contains(t, verrs[0].Message, "container credential named 'c1' exists but is not valid for use as a repository credential")
@@ -2956,15 +2950,16 @@ func TestValidateContainers(t *testing.T) {
 			ref := &model.ProjectRef{
 				Identifier: "proj",
 				ContainerSizes: map[string]model.ContainerResources{
-					"s1": model.ContainerResources{
+					"s1": {
 						MemoryMB: 100,
 						CPU:      1,
 					},
 				},
-				ContainerSecrets: map[string]model.ContainerSecret{
-					"c1": model.ContainerSecret{
+				ContainerSecrets: []model.ContainerSecret{
+					{
+						Name:       "c1",
 						ExternalID: "external_id",
-						Type:       model.ContainerSecretRepoCred,
+						Type:       model.ContainerSecretRepoCreds,
 					},
 				},
 			}

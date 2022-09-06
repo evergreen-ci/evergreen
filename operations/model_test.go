@@ -119,12 +119,10 @@ func TestSetDefaultAlias(t *testing.T) {
 }
 
 func TestNewClientSettings(t *testing.T) {
-	tmpdir, err := ioutil.TempDir("", "newclientsettings")
-	assert.NoError(t, err)
-	defer os.RemoveAll(tmpdir)
+	tmpdir := t.TempDir()
 
 	globalTestConfigPath := filepath.Join(tmpdir, ".evergreen.test.yml")
-	err = ioutil.WriteFile(globalTestConfigPath,
+	err := ioutil.WriteFile(globalTestConfigPath,
 		[]byte(`api_server_host: https://some.evergreen.api
 ui_server_host: https://some.evergreen.ui
 api_key: not-a-valid-token
@@ -225,9 +223,7 @@ func TestLoadWorkingChangesFromFile(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
-	tmpdir, err := ioutil.TempDir("", "clientsettings")
-	assert.NoError(err)
-	defer os.RemoveAll(tmpdir)
+	tmpdir := t.TempDir()
 	globalTestConfigPath := filepath.Join(tmpdir, ".evergreen.test.yml")
 
 	//Uncommitted changes : true

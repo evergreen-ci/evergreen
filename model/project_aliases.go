@@ -54,6 +54,11 @@ const (
 // "linux"; and to run all tasks beginning with the string "compile" to run on all
 // variants beginning with the string "ubuntu1604".
 
+// For regular patch aliases, the Alias field is required to be a custom string defined by the user.
+// For all other special alias types (commit queue, github PR, etc) the Alias field must match its associated
+// constant in globals.go, i.e. evergreen.GithubPRAlias. For aliases defined within a project's config YAML
+// the Alias field for non-patch aliases is not-required since it will be inferred and assigned at runtime.
+
 // Git tags use a special alias "__git_tag" and create a new version for the matching
 // variants/tasks, assuming the tag matches the defined git_tag regex.
 // In this way, users can define different behavior for different kind of tags.

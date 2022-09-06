@@ -282,10 +282,12 @@ type APIWorkstationConfig struct {
 }
 
 type APIContainerSecret struct {
-	ExternalID *string                   `json:"external_id"`
-	Type       *string                   `json:"type" json:"type" yaml:"type"`
-	Value      *string                   `json:"value"`
-	RepoCreds  *APIRepositoryCredentials `json:"repo_creds"`
+	Name         *string                   `json:"name"`
+	ExternalName *string                   `json:"external_name"`
+	ExternalID   *string                   `json:"external_id"`
+	Type         *string                   `json:"type"`
+	Value        *string                   `json:"value"`
+	RepoCreds    *APIRepositoryCredentials `json:"repo_creds"`
 }
 
 type APIRepositoryCredentials struct {
@@ -294,7 +296,7 @@ type APIRepositoryCredentials struct {
 }
 
 func (cr *APIContainerSecret) BuildFromService(h model.ContainerSecret) error {
-	if h.Type == model.ContainerSecretRepoCred && h.Value != "" {
+	if h.Type == model.ContainerSecretRepoCreds && h.Value != "" {
 		// If the plaintext secret value is available and this secret is a repo
 		// cred, the value is the repo creds encoded as JSON, so convert it back
 		// to its structured form for the REST API.
@@ -307,6 +309,7 @@ func (cr *APIContainerSecret) BuildFromService(h model.ContainerSecret) error {
 	if h.Value != "" {
 		cr.Value = utility.ToStringPtr(h.Value)
 	}
+	cr.Name = utility.ToStringPtr(h.Name)
 	cr.ExternalID = utility.ToStringPtr(h.ExternalID)
 	cr.Type = utility.ToStringPtr(string(h.Type))
 	return nil
@@ -314,11 +317,12 @@ func (cr *APIContainerSecret) BuildFromService(h model.ContainerSecret) error {
 
 func (cr *APIContainerSecret) ToService() (*model.ContainerSecret, error) {
 	secret := model.ContainerSecret{
+		Name:       utility.FromStringPtr(cr.Name),
 		ExternalID: utility.FromStringPtr(cr.ExternalID),
 		Type:       model.ContainerSecretType(utility.FromStringPtr(cr.Type)),
 		Value:      utility.FromStringPtr(cr.Value),
 	}
-	if model.ContainerSecretType(utility.FromStringPtr(cr.Type)) == model.ContainerSecretRepoCred && cr.RepoCreds != nil {
+	if model.ContainerSecretType(utility.FromStringPtr(cr.Type)) == model.ContainerSecretRepoCreds && cr.RepoCreds != nil {
 		// If this is a repo cred and the credentials must be stored, the value
 		// to store must be encoded as JSON.
 		b, err := json.Marshal(cr.RepoCreds)
@@ -453,7 +457,9 @@ type APIProjectRef struct {
 	DeleteSubscriptions  []*string                        `json:"delete_subscriptions,omitempty"`
 	PeriodicBuilds       []APIPeriodicBuildDefinition     `json:"periodic_builds,omitempty"`
 	ContainerSizes       map[string]APIContainerResources `json:"container_sizes"`
-	ContainerSecrets     map[string]APIContainerSecret    `json:"container_secrets,omitempty"`
+	ContainerSecrets     []APIContainerSecret             `json:"container_secrets,omitempty"`
+	// DeleteContainerSecrets contains names of container secrets to be deleted.
+	DeleteContainerSecrets []string `json:"delete_container_secrets,omitempty"`
 }
 
 // ToService returns a service layer ProjectRef using the data from APIProjectRef
@@ -533,15 +539,16 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		projectRef.ContainerSizes = containerSizes
 	}
 
-	if p.ContainerSecrets != nil {
-		containerSecrets := map[string]model.ContainerSecret{}
-		for name, secret := range p.ContainerSecrets {
-			apiContainerSecret, err := secret.ToService()
-			if err != nil {
-				return nil, errors.Wrap(err, "converting container secret to service model")
-			}
-			containerSecrets[name] = *apiContainerSecret
+	for idx, secret := range p.ContainerSecrets {
+		if utility.StringSliceContains(p.DeleteContainerSecrets, utility.FromStringPtr(secret.Name)) {
+			continue
 		}
+
+		apiContainerSecret, err := secret.ToService()
+		if err != nil {
+			return nil, errors.Wrapf(err, "converting container secret at index %d to service model", idx)
+		}
+		projectRef.ContainerSecrets = append(projectRef.ContainerSecrets, *apiContainerSecret)
 	}
 
 	return &projectRef, nil
@@ -647,16 +654,12 @@ func (p *APIProjectRef) BuildFromService(projectRef model.ProjectRef) error {
 		p.ContainerSizes = containerSizes
 	}
 
-	if projectRef.ContainerSecrets != nil {
-		containerSecrets := map[string]APIContainerSecret{}
-		for name, secret := range projectRef.ContainerSecrets {
-			var apiSecret APIContainerSecret
-			if err := apiSecret.BuildFromService(secret); err != nil {
-				return errors.Wrapf(err, "converting container secret '%s' to service model", name)
-			}
-			containerSecrets[name] = apiSecret
+	for idx, secret := range projectRef.ContainerSecrets {
+		var apiSecret APIContainerSecret
+		if err := apiSecret.BuildFromService(secret); err != nil {
+			return errors.Wrapf(err, "converting container secret at index %d to service model", idx)
 		}
-		p.ContainerSecrets = containerSecrets
+		p.ContainerSecrets = append(p.ContainerSecrets, apiSecret)
 	}
 
 	return nil

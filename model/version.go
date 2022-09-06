@@ -115,12 +115,13 @@ func (v *Version) LastSuccessful() (*Version, error) {
 	return lastGreen, nil
 }
 
-// UpdateBuildVariants sets this version's build variants.
-func (v *Version) UpdateBuildVariants() error {
+// ActivateAndSetBuildVariants activates the version and sets its build variants.
+func (v *Version) ActivateAndSetBuildVariants() error {
 	return VersionUpdateOne(
 		bson.M{VersionIdKey: v.Id},
 		bson.M{
 			"$set": bson.M{
+				VersionActivatedKey:     true,
 				VersionBuildVariantsKey: v.BuildVariants,
 			},
 		},
