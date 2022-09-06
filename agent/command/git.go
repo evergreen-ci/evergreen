@@ -387,7 +387,7 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 	return gitCommands, nil
 }
 
-func (c *gitFetchProject) opts(projectMethod, projectToken string, conf *internal.TaskConfig) (cloneOpts, error) {
+func (c *gitFetchProject) opts(projectMethod, projectToken string, logger client.LoggerProducer, conf *internal.TaskConfig) (cloneOpts, error) {
 	shallowCloneEnabled := conf.Distro == nil || !conf.Distro.DisableShallowClone
 	opts := cloneOpts{
 		method:             projectMethod,
@@ -396,14 +396,23 @@ func (c *gitFetchProject) opts(projectMethod, projectToken string, conf *interna
 		branch:             conf.ProjectRef.Branch,
 		dir:                c.Directory,
 		token:              projectToken,
-		cloneDepth:         c.CloneDepth,
 		recurseSubmodules:  c.RecurseSubmodules,
 		mergeTestRequester: conf.Task.Requester == evergreen.MergeTestRequester,
 	}
-	if opts.cloneDepth == 0 && c.ShallowClone && shallowCloneEnabled {
+	cloneDepth := c.CloneDepth
+	if cloneDepth == 0 && c.ShallowClone {
 		// Experiments with shallow clone on AWS hosts suggest that depth 100 is as fast as 1, but 1000 is slower.
-		opts.cloneDepth = shallowCloneDepth
+		cloneDepth = shallowCloneDepth
 	}
+	if !shallowCloneEnabled && cloneDepth != 0 {
+		logger.Task().Infof("Clone depth is disabled for distro; ignoring user specified clone depth")
+	} else {
+		opts.cloneDepth = cloneDepth
+		if c.CloneDepth != 0 && c.ShallowClone {
+			logger.Task().Infof("Specified clone depth of %d will be used instead of shallow_clone (which uses depth %d)", opts.cloneDepth, shallowCloneDepth)
+		}
+	}
+
 	if err := opts.setLocation(); err != nil {
 		return opts, errors.Wrap(err, "failed to set location to clone from")
 	}
@@ -436,7 +445,7 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 	}
 
 	var opts cloneOpts
-	opts, err = c.opts(projectMethod, projectToken, conf)
+	opts, err = c.opts(projectMethod, projectToken, logger, conf)
 	if err != nil {
 		return err
 	}
