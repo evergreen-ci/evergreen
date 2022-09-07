@@ -3019,7 +3019,7 @@ func ValidateContainerSecrets(settings *evergreen.Settings, projectID string, or
 		combined = append(combined, updatedSecret)
 	}
 
-	catcher.NewWhen(numPodSecrets > 1, "a project can have at most one pod secret")
+	catcher.ErrorfWhen(numPodSecrets > 1, "a project can have at most one pod secret but tried to create %d pod secrets total", numPodSecrets)
 
 	return combined, catcher.Resolve()
 }

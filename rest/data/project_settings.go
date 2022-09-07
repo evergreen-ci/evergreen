@@ -389,7 +389,7 @@ func getCopiedContainerSecrets(ctx context.Context, settings *evergreen.Settings
 		return nil, errors.Wrap(catcher.Resolve(), "copying container secrets")
 	}
 
-	copied = append(copied, newPodSecret(settings, projectID))
+	copied = append(copied, newPodSecret())
 
 	validated, err := model.ValidateContainerSecrets(settings, projectID, nil, copied)
 	if err != nil {
@@ -401,7 +401,7 @@ func getCopiedContainerSecrets(ctx context.Context, settings *evergreen.Settings
 
 // newPodSecret returns a new default pod secret with a random value to be
 // stored.
-func newPodSecret(settings *evergreen.Settings, projectID string) model.ContainerSecret {
+func newPodSecret() model.ContainerSecret {
 	return model.ContainerSecret{
 		Name:  pod.PodSecretEnvVar,
 		Type:  model.ContainerSecretPodSecret,
