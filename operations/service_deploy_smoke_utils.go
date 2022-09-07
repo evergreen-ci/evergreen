@@ -22,7 +22,7 @@ const (
 	smokeUiPort = ":9090"
 	// urlPrefix is the localhost prefix for accessing local Evergreen.
 	smokeUrlPrefix       = "http://localhost"
-	smokeContainerTaskID = "evergreen_container_bv_container_task_a71e20e60918bb97d41422e94d04822be2a22e8e_22_08_22_13_44_49"
+	smokeContainerTaskID = "evergreen_pod_bv_container_task_a71e20e60918bb97d41422e94d04822be2a22e8e_22_08_22_13_44_49"
 )
 
 // smokeEndpointTestDefinitions describes the UI and API endpoints to verify are up.

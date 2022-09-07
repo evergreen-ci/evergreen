@@ -219,8 +219,8 @@ buildvariants:
       - localhost
     tasks:
       - name: my_group
-  - name: container_bv
-    display_name: container_bv
+  - name: pod_bv
+    display_name: pod_bv
     run_on:
       - container
     tasks:
