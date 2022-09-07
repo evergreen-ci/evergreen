@@ -617,7 +617,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, containerResource := range containerSizes {
 		catcher.NewWhen(containerResource.Name == "", "container size name cannot be empty")
-		catcher.Wrapf(containerResource.Validate(), "invalid container size '%s'", containerResource.Name)
+		catcher.Wrapf(containerResource.Validate(evergreen.GetEnvironment().Settings().Providers.AWS.Pod.ECS), "invalid container size '%s'", containerResource.Name)
 	}
 
 	if catcher.HasErrors() {

@@ -2623,12 +2623,12 @@ func GetMessageForPatch(patchID string) (string, error) {
 // ValidateContainers inspects the list of containers defined in the project YAML and checks that each
 // are properly configured, and that their definitions can coexist with what is defined for container sizes
 // on the project admin page.
-func ValidateContainers(pRef *ProjectRef, containers []Container) error {
+func ValidateContainers(ecsConf evergreen.ECSConfig, pRef *ProjectRef, containers []Container) error {
 	catcher := grip.NewSimpleCatcher()
 	for _, container := range containers {
 		catcher.Add(container.System.Validate())
 		if container.Resources != nil {
-			catcher.Add(container.Resources.Validate())
+			catcher.Add(container.Resources.Validate(ecsConf))
 		}
 		var containerSize *ContainerResources
 		for _, size := range pRef.ContainerSizeDefinitions {
@@ -2640,7 +2640,7 @@ func ValidateContainers(pRef *ProjectRef, containers []Container) error {
 		if containerSize == nil {
 			return errors.Errorf("container size '%s' not found", container.Size)
 		}
-		catcher.Add(containerSize.Validate())
+		catcher.Add(containerSize.Validate(ecsConf))
 		if container.Credential != "" {
 			var matchingSecret *ContainerSecret
 			for _, cs := range pRef.ContainerSecrets {
@@ -2677,10 +2677,14 @@ func (c ContainerSystem) Validate() error {
 }
 
 // Validate that essential ContainerResources fields are properly defined.
-func (c ContainerResources) Validate() error {
+func (c ContainerResources) Validate(ecsConf evergreen.ECSConfig) error {
 	catcher := grip.NewSimpleCatcher()
 	catcher.NewWhen(c.CPU <= 0, "container resource CPU must be a positive integer")
 	catcher.NewWhen(c.MemoryMB <= 0, "container resource memory MB must be a positive integer")
+
+	catcher.ErrorfWhen(ecsConf.MaxCPU > 0 && c.CPU > ecsConf.MaxCPU, "CPU cannot exceed maximum global limit of %d CPU units", ecsConf.MaxCPU)
+	catcher.ErrorfWhen(ecsConf.MaxMemoryMB > 0 && c.MemoryMB > ecsConf.MaxMemoryMB, "memory cannot exceed maximum global limit of %d MB", ecsConf.MaxMemoryMB)
+
 	return catcher.Resolve()
 }
 
