@@ -175,8 +175,7 @@ OUTER:
 		time.Sleep(10 * time.Second)
 		grip.Infof("checking for %d tasks (%d/30)", len(tasks), i+1)
 
-		for t := 0; t < len(tasks); t++ {
-			taskId := tasks[t]
+		for _, taskId := range tasks {
 			task, err := checkTask(client, username, key, taskId)
 			if err != nil {
 				return errors.WithStack(err)
@@ -195,7 +194,7 @@ OUTER:
 				return err
 			}
 		}
-		grip.Infof("Successfully checked %s tasks", string(mode))
+		grip.Infof("Successfully checked %d %s tasks", len(tasks), string(mode))
 		return nil
 	}
 	return errors.New("this code should be unreachable")

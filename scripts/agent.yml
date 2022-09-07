@@ -226,11 +226,14 @@ buildvariants:
     tasks:
       - name: container_task
 
-# TODO: Use more official image repo such as an AWS ECR image repo
+# TODO (EVG-17658): Refactor smoke tests to allow for faking agent creation
+# The following configuration is currently unused since the container task
+# smoke test does not rely on the repotracker job to create tasks for the version.
+# A real image will be used as a part of the above ticket.
 containers:
   - name: container
     working_dir: /
-    image: "hadjri/evg-e2e-test-ubuntu"
+    image: "not_a_real_image"
     resources:
       cpu: 1024
       memory_mb: 1024
