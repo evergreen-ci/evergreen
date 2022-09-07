@@ -741,6 +741,11 @@ func TestCreateBuildFromVersion(t *testing.T) {
 					CPU:      256,
 					MemoryMB: 128,
 				},
+				{
+					Name:     "large",
+					CPU:      512,
+					MemoryMB: 256,
+				},
 			},
 		}
 		So(pref.Insert(), ShouldBeNil)

@@ -534,12 +534,8 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		projectRef.PatchTriggerAliases = patchTriggers
 	}
 
-	if p.ContainerSizeDefinitions != nil {
-		containerSizes := []model.ContainerResources{}
-		for _, size := range p.ContainerSizeDefinitions {
-			containerSizes = append(containerSizes, size.ToService())
-		}
-		projectRef.ContainerSizeDefinitions = containerSizes
+	for _, size := range p.ContainerSizeDefinitions {
+		projectRef.ContainerSizeDefinitions = append(projectRef.ContainerSizeDefinitions, size.ToService())
 	}
 
 	for idx, secret := range p.ContainerSecrets {
@@ -647,14 +643,10 @@ func (p *APIProjectRef) BuildFromService(projectRef model.ProjectRef) error {
 		p.PatchTriggerAliases = patchTriggers
 	}
 
-	if projectRef.ContainerSizeDefinitions != nil {
-		containerSizes := []APIContainerResources{}
-		for _, resources := range projectRef.ContainerSizeDefinitions {
-			var apiResources APIContainerResources
-			apiResources.BuildFromService(resources)
-			containerSizes = append(containerSizes, apiResources)
-		}
-		p.ContainerSizeDefinitions = containerSizes
+	for _, size := range projectRef.ContainerSizeDefinitions {
+		var apiSize APIContainerResources
+		apiSize.BuildFromService(size)
+		p.ContainerSizeDefinitions = append(p.ContainerSizeDefinitions, apiSize)
 	}
 
 	for idx, secret := range projectRef.ContainerSecrets {

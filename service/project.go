@@ -557,8 +557,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	containerSizes := []model.ContainerResources{}
-	for _, apiContainerResource := range responseRef.ContainerSizeDefinitions {
-		containerSizes = append(containerSizes, apiContainerResource.ToService())
+	for _, apiSize := range responseRef.ContainerSizeDefinitions {
+		containerSizes = append(containerSizes, apiSize.ToService())
 	}
 
 	catcher := grip.NewSimpleCatcher()

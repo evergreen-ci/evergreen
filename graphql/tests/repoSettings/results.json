@@ -60,6 +60,11 @@
                   "secret" : "shh"
                 }
               },
+              "containerSizeDefinitions": [{
+                "name": "size1",
+                "cpu": 1,
+                "memoryMb": 1024
+              }],
               "validDefaultLoggers": [
                 "evergreen",
                 "buildlogger"

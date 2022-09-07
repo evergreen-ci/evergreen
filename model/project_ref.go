@@ -1954,6 +1954,15 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 				"$set": bson.M{projectRefPeriodicBuildsKey: p.PeriodicBuilds},
 			})
 	case ProjectPageContainerSection:
+		catcher := grip.NewSimpleCatcher()
+		for _, size := range p.ContainerSizeDefinitions {
+			if err = size.Validate(); err != nil {
+				catcher.Add(err)
+			}
+		}
+		if catcher.HasErrors() {
+			return false, errors.Wrapf(catcher.Resolve(), "validating container size deginitions")
+		}
 		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{

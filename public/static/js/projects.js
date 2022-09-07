@@ -518,8 +518,6 @@ mciModule.controller(
             github_trigger_aliases: data.ProjectRef.github_trigger_aliases || [],
             disabled_stats_cache: data.ProjectRef.disabled_stats_cache,
             periodic_builds: data.ProjectRef.periodic_builds,
-            container_size_definitions: data.ProjectRef.container_size_definitions || {},
-            container_credentials: data.ProjectRef.container_credentials || {},
             use_repo_settings: !!$scope.projectRef.repo_ref_id,
             build_baron_settings: data.ProjectRef.build_baron_settings || {},
             task_annotation_settings: data.ProjectRef.task_annotation_settings || {},
@@ -649,14 +647,6 @@ mciModule.controller(
 
       if ($scope.patch_alias) {
         $scope.addPatchAlias();
-      }
-
-      if ($scope.container_size) {
-        $scope.addContainerSize();
-      }
-
-      if ($scope.container_credential) {
-        $scope.addContainerCredential();
       }
 
       $scope.settingsFormData.subscriptions = _.filter(
@@ -801,36 +791,6 @@ mciModule.controller(
       $scope.invalidPatchAliasMessage = "";
     };
 
-    $scope.addContainerSize = function () {
-      if (!$scope.validContainerSize($scope.container_size)) {
-        $scope.invalidContainerSizeMessage =
-          "A valid container size must have a name, memory and CPU properties.";
-          return;
-      }
-      var item = Object.assign({}, $scope.container_size);
-      $scope.settingsFormData.container_size_definitions[item.name] = {
-          "memory_mb": item.memory_mb,
-          "cpu": item.cpu,
-      }
-      delete $scope.container_size;
-      $scope.invalidContainerSizeMessage = "";
-    };
-
-    $scope.addContainerCredential = function () {
-      if (!$scope.validContainerCredential($scope.container_credential)) {
-          $scope.invalidContainerCredentialMessage =
-              "A valid container credential must have a valid username and password.";
-          return;
-      }
-      var item = Object.assign({}, $scope.container_credential);
-      $scope.settingsFormData.container_credentials[item.name] = {
-          "username": item.username,
-          "password": item.password,
-      }
-      delete $scope.container_credential;
-      $scope.invalidContainerCredentialMessage = "";
-    };
-
     $scope.addWorkstationCommand = function () {
       if (!$scope.settingsFormData.workstation_config) {
         $scope.settingsFormData.workstation_config = {};
@@ -900,20 +860,6 @@ mciModule.controller(
       $scope.settingsFormData.patch_aliases.splice(i, 1);
       $scope.isDirty = true;
     };
-
-      $scope.removeContainerSize = function (name) {
-          if ($scope.settingsFormData.container_size_definitions[name]) {
-              delete $scope.settingsFormData.container_size_definitions[name]
-          }
-          $scope.isDirty = true;
-      };
-
-      $scope.removeContainerCredential = function (name) {
-          if ($scope.settingsFormData.container_credentials[name]) {
-              delete $scope.settingsFormData.container_credentials[name]
-          }
-          $scope.isDirty = true;
-      };
 
     $scope.removeProjectTrigger = function (i) {
       if ($scope.project_triggers[i]) {
@@ -1139,16 +1085,6 @@ mciModule.controller(
     $scope.validPatchAlias = function (alias) {
       // Same as GitHub alias, but with alias required
       return $scope.validPatchDefinition(alias) && alias.alias;
-    };
-
-    $scope.validContainerSize = function (container_size) {
-      return container_size && container_size.cpu && container_size.memory_mb
-          && container_size.cpu > 0 && container_size.memory_mb > 0;
-    };
-
-    $scope.validContainerCredential = function (container_credential) {
-      return container_credential && container_credential.username && container_credential.password
-        && container_credential.username !== "" && container_credential.password !== "";
     };
 
     $scope.validWorkstationCommand = function (obj) {
