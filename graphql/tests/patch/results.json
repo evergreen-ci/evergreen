@@ -179,7 +179,7 @@
           "patch": {
             "moduleCodeChanges": [
               {
-                "branchName": "evergreen",
+                "branchName": "evergreenIdentifier",
                 "htmlLink": "https://localhost:8443/filediff/5e4ff3abe3c3317e352062e4?patch_number=0",
                 "rawLink": "https://localhost:8443/rawdiff/5e4ff3abe3c3317e352062e4?patch_number=0",
                 "fileDiffs": [
@@ -274,6 +274,7 @@
         "data": {
           "patch": {
             "project": {
+              "projectIdentifier": "evergreenIdentifier",
               "variants": [
                 {
                   "name": "ubuntu1604",
