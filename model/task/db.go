@@ -853,14 +853,15 @@ func isContainerTaskScheduledQuery() bson.M {
 	}
 }
 
-// TasksByProjectAndCommitPipeline fetches the pipeline to get the retrieve all tasks
+// TasksByProjectAndCommitPipeline fetches the pipeline to get the retrieve all mainline commit tasks
 // associated with a given project and commit hash. Filtering by task status, task name, and
 // buildvariant name are optionally available.
 func TasksByProjectAndCommitPipeline(opts GetTasksByProjectAndCommitOptions) []bson.M {
 	matchFilter := bson.M{
-		ProjectKey:  opts.Project,
-		RevisionKey: opts.CommitHash,
-		IdKey:       bson.M{"$gte": opts.StartingTaskId},
+		ProjectKey:   opts.Project,
+		RevisionKey:  opts.CommitHash,
+		IdKey:        bson.M{"$gte": opts.StartingTaskId},
+		RequesterKey: evergreen.RepotrackerVersionRequester,
 	}
 	if opts.Status != "" {
 		matchFilter[StatusKey] = opts.Status

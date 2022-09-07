@@ -1440,9 +1440,13 @@ func TestFindProjectsSuite(t *testing.T) {
 				EventType:    event.EventTypeProjectModified,
 				ResourceId:   projectId,
 				Data: &ProjectChangeEvent{
-					User:   username,
-					Before: before,
-					After:  after,
+					User: username,
+					Before: ProjectSettingsEvent{
+						ProjectSettings: before,
+					},
+					After: ProjectSettingsEvent{
+						ProjectSettings: after,
+					},
 				},
 			}
 

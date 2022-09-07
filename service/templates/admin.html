@@ -399,6 +399,15 @@ Admin Settings
 												</td>
 											</tr>
 											<tr>
+												<td>Slack App</td>
+												<td colspan="2">
+													<md-radio-group data-ng-model="Settings.service_flags.slack_app_disabled" layout="row">
+														<md-radio-button data-ng-value="false"></md-radio-button>
+														<md-radio-button data-ng-value="true"></md-radio-button>
+													</md-radio-group>
+												</td>
+											</tr>
+											<tr>
 												<td>&nbsp;</td>
 											</tr>
 											<tr>
@@ -1892,6 +1901,14 @@ Admin Settings
 										<label>Allowed Regions</label>
 										<textarea ng-model="Settings.providers.aws.allowed_regions" ng-list="&#10;"
 											ng-trim="false" rows="3" md-select-on-focus></textarea>
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Pod ECS Max CPU Units Per Pod</label>
+										<input type="number" ng-model="Settings.providers.aws.pod.ecs.max_cpu">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>Pod ECS Max Memory (MB) Per Pod</label>
+										<input type="number" ng-model="Settings.providers.aws.pod.ecs.max_memory_mb">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
 										<label>Pod Role</label>

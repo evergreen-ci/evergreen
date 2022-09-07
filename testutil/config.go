@@ -293,6 +293,8 @@ func MockConfig() *evergreen.Settings {
 					Role:   "role",
 					Region: "region",
 					ECS: evergreen.ECSConfig{
+						MaxCPU:               2048,
+						MaxMemoryMB:          4096,
 						TaskDefinitionPrefix: "ecs_prefix",
 						TaskRole:             "task_role",
 						ExecutionRole:        "execution_role",
@@ -385,6 +387,7 @@ func MockConfig() *evergreen.Settings {
 			UnrecognizedPodCleanupDisabled:  true,
 			CloudCleanupDisabled:            true,
 			ContainerConfigurationsDisabled: true,
+			SlackAppDisabled:                true,
 		},
 		SSHKeyDirectory: "/ssh_key_directory",
 		SSHKeyPairs: []evergreen.SSHKeyPair{

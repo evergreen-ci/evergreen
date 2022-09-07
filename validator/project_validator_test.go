@@ -1491,6 +1491,46 @@ func TestValidateProjectConfigContainers(t *testing.T) {
 		errs := validateProjectConfigContainers(&pc)
 		assert.NotEmpty(t, errs)
 	})
+	t.Run("FailsWithContainerSizeExceedingGlobalLimits", func(t *testing.T) {
+		env := evergreen.GetEnvironment()
+		originalECSConf := env.Settings().Providers.AWS.Pod.ECS
+		defer func() {
+			env.Settings().Providers.AWS.Pod.ECS = originalECSConf
+		}()
+		env.Settings().Providers.AWS.Pod.ECS = evergreen.ECSConfig{
+			MaxCPU:      1024,
+			MaxMemoryMB: 2048,
+		}
+
+		t.Run("CPU", func(t *testing.T) {
+			pc := model.ProjectConfig{
+				ProjectConfigFields: model.ProjectConfigFields{
+					ContainerSizes: map[string]model.ContainerResources{
+						"xlarge": {
+							CPU:      100000000,
+							MemoryMB: 100,
+						},
+					},
+				},
+			}
+			errs := validateProjectConfigContainers(&pc)
+			assert.NotEmpty(t, errs)
+		})
+		t.Run("Memory", func(t *testing.T) {
+			pc := model.ProjectConfig{
+				ProjectConfigFields: model.ProjectConfigFields{
+					ContainerSizes: map[string]model.ContainerResources{
+						"xlarge": {
+							CPU:      100,
+							MemoryMB: 100000000,
+						},
+					},
+				},
+			}
+			errs := validateProjectConfigContainers(&pc)
+			assert.NotEmpty(t, errs)
+		})
+	})
 }
 
 func TestValidatePluginCommands(t *testing.T) {

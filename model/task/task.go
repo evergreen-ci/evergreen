@@ -553,6 +553,11 @@ func (t *Task) IsContainerTask() bool {
 	return t.ExecutionPlatform == ExecutionPlatformContainer
 }
 
+// IsRestartFailedOnly returns true if the task should only restart failed tests.
+func (t *Task) IsRestartFailedOnly() bool {
+	return t.ResetFailedWhenFinished && !t.ResetWhenFinished
+}
+
 // ShouldAllocateContainer indicates whether a task should be allocated a
 // container or not.
 func (t *Task) ShouldAllocateContainer() bool {
@@ -2536,7 +2541,7 @@ func ArchiveMany(tasks []Task) error {
 			var execTasks []Task
 			var err error
 
-			if t.ResetFailedWhenFinished && !t.ResetWhenFinished {
+			if t.IsRestartFailedOnly() {
 				execTasks, err = Find(FailedTasksByIds(t.ExecutionTasks))
 			} else {
 				execTasks, err = FindAll(db.Query(ByIds(t.ExecutionTasks)))
