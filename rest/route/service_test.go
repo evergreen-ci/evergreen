@@ -324,9 +324,10 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					prefix = 0
 				}
 				nextTask := task.Task{
-					Id:       fmt.Sprintf("%dtask_%d", prefix, i),
-					Revision: commit,
-					Project:  projectId,
+					Id:        fmt.Sprintf("%dtask_%d", prefix, i),
+					Revision:  commit,
+					Project:   projectId,
+					Requester: evergreen.RepotrackerVersionRequester,
 				}
 				cachedTasks = append(cachedTasks, nextTask)
 			}
@@ -345,9 +346,10 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 						prefix = 0
 					}
 					serviceTask := &task.Task{
-						Id:       fmt.Sprintf("%dtask_%d", prefix, i),
-						Revision: commit,
-						Project:  projectId,
+						Id:        fmt.Sprintf("%dtask_%d", prefix, i),
+						Revision:  commit,
+						Project:   projectId,
+						Requester: evergreen.RepotrackerVersionRequester,
 					}
 					nextModelTask := &model.APITask{}
 					err := nextModelTask.BuildFromService(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
@@ -386,9 +388,10 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 						prefix = 0
 					}
 					serviceTask := &task.Task{
-						Id:       fmt.Sprintf("%dtask_%d", prefix, i),
-						Revision: commit,
-						Project:  projectId,
+						Id:        fmt.Sprintf("%dtask_%d", prefix, i),
+						Revision:  commit,
+						Project:   projectId,
+						Requester: evergreen.RepotrackerVersionRequester,
 					}
 					nextModelTask := &model.APITask{}
 					err := nextModelTask.BuildFromService(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
@@ -427,9 +430,10 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 						prefix = 0
 					}
 					serviceTask := &task.Task{
-						Id:       fmt.Sprintf("%dtask_%d", prefix, i),
-						Revision: commit,
-						Project:  projectId,
+						Id:        fmt.Sprintf("%dtask_%d", prefix, i),
+						Revision:  commit,
+						Project:   projectId,
+						Requester: evergreen.RepotrackerVersionRequester,
 					}
 					nextModelTask := &model.APITask{}
 					err := nextModelTask.BuildFromService(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
@@ -469,9 +473,10 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 						prefix = 0
 					}
 					serviceTask := &task.Task{
-						Id:       fmt.Sprintf("%dtask_%d", prefix, i),
-						Revision: commit,
-						Project:  projectId,
+						Id:        fmt.Sprintf("%dtask_%d", prefix, i),
+						Revision:  commit,
+						Project:   projectId,
+						Requester: evergreen.RepotrackerVersionRequester,
 					}
 					nextModelTask := &model.APITask{}
 					err := nextModelTask.BuildFromService(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
@@ -500,6 +505,49 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 
 				validatePaginatedResponse(t, handler, expectedTasks, expectedPages)
 			})
+		})
+	})
+}
+
+func TestTaskByProjectHandlerParse(t *testing.T) {
+	Convey("Parsing get task by projects handler", t, func() {
+		tep := &tasksByProjectHandler{}
+		ctx := context.Background()
+		Convey("should successfully parse with no url query and default requester to mainline", func() {
+			req, err := http.NewRequest(http.MethodGet, "/projects/evergreen/revisions/hash123/tasks", bytes.NewReader(nil))
+			req = gimlet.SetURLVars(req, map[string]string{"commit_hash": "hash123", "project_id": "evergreen"})
+			So(err, ShouldBeNil)
+			err = tep.Parse(ctx, req)
+			So(err, ShouldBeNil)
+			So(tep.project, ShouldEqual, "evergreen")
+			So(tep.commitHash, ShouldEqual, "hash123")
+		})
+		Convey("should successfully parse all query params", func() {
+			req, err := http.NewRequest(http.MethodGet, "/projects/evergreen/revisions/hash123/tasks?status=succeeded&variant=ubuntu1604&limit=200&task_name=task1&requesters=gitter_request,github_pull_request", bytes.NewReader(nil))
+			So(err, ShouldBeNil)
+			req = gimlet.SetURLVars(req, map[string]string{"commit_hash": "hash123", "project_id": "evergreen"})
+			err = tep.Parse(ctx, req)
+			So(err, ShouldBeNil)
+			So(tep.variant, ShouldEqual, "ubuntu1604")
+			So(tep.taskName, ShouldEqual, "task1")
+			So(tep.status, ShouldEqual, "succeeded")
+		})
+		Convey("should fail on missing project or commit hash", func() {
+			req, err := http.NewRequest(http.MethodGet, "/projects/evergreen/revisions/hash123/tasks?status=succeeded&variant=ubuntu1604&limit=200&task_name=task1&requesters=gitter_request,github_pull_request", bytes.NewReader(nil))
+			So(err, ShouldBeNil)
+			req = gimlet.SetURLVars(req, map[string]string{"commit_hash": "hash123"})
+			err = tep.Parse(ctx, req)
+			So(err, ShouldNotBeNil)
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": "evergreen"})
+			err = tep.Parse(ctx, req)
+			So(err, ShouldNotBeNil)
+		})
+		Convey("should fail on invalid limit", func() {
+			req, err := http.NewRequest(http.MethodGet, "/projects/evergreen/revisions/hash123/tasks?limit=abc", bytes.NewReader(nil))
+			So(err, ShouldBeNil)
+			req = gimlet.SetURLVars(req, map[string]string{"commit_hash": "hash123", "project_id": "evergreen"})
+			err = tep.Parse(ctx, req)
+			So(err, ShouldNotBeNil)
 		})
 	})
 }

@@ -1689,6 +1689,8 @@ func (a *APIAWSPodConfig) ToService() (*evergreen.AWSPodConfig, error) {
 
 // APIECSConfig represents configuration options for AWS ECS.
 type APIECSConfig struct {
+	MaxCPU               *int                     `json:"max_cpu"`
+	MaxMemoryMB          *int                     `json:"max_memory_mb"`
 	TaskDefinitionPrefix *string                  `json:"task_definition_prefix"`
 	TaskRole             *string                  `json:"task_role"`
 	ExecutionRole        *string                  `json:"execution_role"`
@@ -1698,6 +1700,8 @@ type APIECSConfig struct {
 }
 
 func (a *APIECSConfig) BuildFromService(conf evergreen.ECSConfig) {
+	a.MaxCPU = utility.ToIntPtr(conf.MaxCPU)
+	a.MaxMemoryMB = utility.ToIntPtr(conf.MaxMemoryMB)
 	a.TaskDefinitionPrefix = utility.ToStringPtr(conf.TaskDefinitionPrefix)
 	a.TaskRole = utility.ToStringPtr(conf.TaskRole)
 	a.ExecutionRole = utility.ToStringPtr(conf.ExecutionRole)
@@ -1739,6 +1743,8 @@ func (a *APIECSConfig) ToService() (*evergreen.ECSConfig, error) {
 	}
 
 	return &evergreen.ECSConfig{
+		MaxCPU:               utility.FromIntPtr(a.MaxCPU),
+		MaxMemoryMB:          utility.FromIntPtr(a.MaxMemoryMB),
 		TaskDefinitionPrefix: utility.FromStringPtr(a.TaskDefinitionPrefix),
 		TaskRole:             utility.FromStringPtr(a.TaskRole),
 		ExecutionRole:        utility.FromStringPtr(a.ExecutionRole),
@@ -2095,6 +2101,7 @@ type APIServiceFlags struct {
 	BackgroundCleanupDisabled       bool `json:"background_cleanup_disabled"`
 	CloudCleanupDisabled            bool `json:"cloud_cleanup_disabled"`
 	ContainerConfigurationsDisabled bool `json:"container_configurations_disabled"`
+	SlackAppDisabled                bool `json:"slack_app_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2379,6 +2386,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.BackgroundReauthDisabled = v.BackgroundReauthDisabled
 		as.CloudCleanupDisabled = v.CloudCleanupDisabled
 		as.ContainerConfigurationsDisabled = v.ContainerConfigurationsDisabled
+		as.SlackAppDisabled = v.SlackAppDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2419,6 +2427,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		BackgroundReauthDisabled:        as.BackgroundReauthDisabled,
 		CloudCleanupDisabled:            as.CloudCleanupDisabled,
 		ContainerConfigurationsDisabled: as.ContainerConfigurationsDisabled,
+		SlackAppDisabled:                as.SlackAppDisabled,
 	}, nil
 }
 

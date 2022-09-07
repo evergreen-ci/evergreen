@@ -76,9 +76,13 @@ func (s *ProjectEventSuite) SetupTest() {
 			EventType:    event.EventTypeProjectModified,
 			ResourceId:   projectId,
 			Data: &model.ProjectChangeEvent{
-				User:   username,
-				Before: before,
-				After:  after,
+				User: username,
+				Before: model.ProjectSettingsEvent{
+					ProjectSettings: before,
+				},
+				After: model.ProjectSettingsEvent{
+					ProjectSettings: after,
+				},
 			},
 		},
 	}

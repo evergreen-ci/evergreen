@@ -101,7 +101,8 @@ type ProjectRef struct {
 	DisabledStatsCache    *bool    `bson:"disabled_stats_cache,omitempty" json:"disabled_stats_cache,omitempty"`
 
 	// List of commands
-	WorkstationConfig WorkstationConfig `bson:"workstation_config,omitempty" json:"workstation_config,omitempty"`
+	// Lacks omitempty so that SetupCommands can be identified as either [] or nil in a ProjectSettingsEvent
+	WorkstationConfig WorkstationConfig `bson:"workstation_config" json:"workstation_config"`
 
 	// TaskAnnotationSettings holds settings for the file ticket button in the Task Annotations to call custom webhooks when clicked
 	TaskAnnotationSettings evergreen.AnnotationsSettings `bson:"task_annotation_settings,omitempty" json:"task_annotation_settings,omitempty"`
@@ -2613,16 +2614,16 @@ func GetMessageForPatch(patchID string) (string, error) {
 // ValidateContainers inspects the list of containers defined in the project YAML and checks that each
 // are properly configured, and that their definitions can coexist with what is defined for container sizes
 // on the project admin page.
-func ValidateContainers(pRef *ProjectRef, containers []Container) error {
+func ValidateContainers(ecsConf evergreen.ECSConfig, pRef *ProjectRef, containers []Container) error {
 	catcher := grip.NewSimpleCatcher()
 	for _, container := range containers {
 		catcher.Add(container.System.Validate())
 		if container.Resources != nil {
-			catcher.Add(container.Resources.Validate())
+			catcher.Add(container.Resources.Validate(ecsConf))
 		}
 		size, ok := pRef.ContainerSizes[container.Size]
 		if ok {
-			catcher.Add(size.Validate())
+			catcher.Add(size.Validate(ecsConf))
 		}
 		catcher.ErrorfWhen(container.Size != "" && !ok, "size '%s' is not defined anywhere", container.Size)
 		if container.Credential != "" {
@@ -2661,10 +2662,14 @@ func (c ContainerSystem) Validate() error {
 }
 
 // Validate that essential ContainerResources fields are properly defined.
-func (c ContainerResources) Validate() error {
+func (c ContainerResources) Validate(ecsConf evergreen.ECSConfig) error {
 	catcher := grip.NewSimpleCatcher()
 	catcher.NewWhen(c.CPU <= 0, "container resource CPU must be a positive integer")
 	catcher.NewWhen(c.MemoryMB <= 0, "container resource memory MB must be a positive integer")
+
+	catcher.ErrorfWhen(ecsConf.MaxCPU > 0 && c.CPU > ecsConf.MaxCPU, "CPU cannot exceed maximum global limit of %d CPU units", ecsConf.MaxCPU)
+	catcher.ErrorfWhen(ecsConf.MaxMemoryMB > 0 && c.MemoryMB > ecsConf.MaxMemoryMB, "memory cannot exceed maximum global limit of %d MB", ecsConf.MaxMemoryMB)
+
 	return catcher.Resolve()
 }
 

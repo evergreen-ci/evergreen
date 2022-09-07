@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
@@ -67,10 +68,12 @@ type TaskIntentPodOptions struct {
 
 // Validate checks that the options to create a task intent pod are valid and
 // sets defaults if possible.
-func (o *TaskIntentPodOptions) Validate() error {
+func (o *TaskIntentPodOptions) Validate(ecsConf evergreen.ECSConfig) error {
 	catcher := grip.NewBasicCatcher()
 	catcher.NewWhen(o.CPU <= 0, "CPU must be a positive non-zero value")
+	catcher.ErrorfWhen(ecsConf.MaxCPU > 0 && o.CPU > ecsConf.MaxCPU, "CPU cannot exceed maximum global CPU limit of %d CPU units", ecsConf.MaxCPU)
 	catcher.NewWhen(o.MemoryMB <= 0, "memory must be a positive non-zero value")
+	catcher.ErrorfWhen(ecsConf.MaxMemoryMB > 0 && o.MemoryMB > ecsConf.MaxMemoryMB, "memory cannot exceed maximum global memory limit of %d MB", ecsConf.MaxCPU)
 	catcher.Wrap(o.OS.Validate(), "invalid OS")
 	catcher.Wrap(o.Arch.Validate(), "invalid CPU architecture")
 	if o.OS == OSWindows {
@@ -104,7 +107,7 @@ const (
 // NewTaskIntentPod creates a new intent pod to run container tasks from the
 // given initialization options.
 func NewTaskIntentPod(ecsConf evergreen.ECSConfig, opts TaskIntentPodOptions) (*Pod, error) {
-	if err := opts.Validate(); err != nil {
+	if err := opts.Validate(ecsConf); err != nil {
 		return nil, errors.Wrap(err, "invalid options")
 	}
 
@@ -673,6 +676,10 @@ func (p *Pod) SetRunningTask(ctx context.Context, env evergreen.Environment, tas
 	update := bson.M{
 		"$set": bson.M{
 			RunningTaskKey: taskID,
+			// Decommissioning ensures that the pod cannot run another task.
+			// TODO (PM-2618): adjust this to handle cases such as
+			// single-container task groups, where the pod may be reused.
+			StatusKey: StatusDecommissioned,
 		},
 	}
 
@@ -685,6 +692,9 @@ func (p *Pod) SetRunningTask(ctx context.Context, env evergreen.Environment, tas
 	}
 
 	p.RunningTask = taskID
+	p.Status = StatusDecommissioned
+
+	event.LogPodStatusChanged(p.ID, string(StatusRunning), string(StatusDecommissioned), "pod has been assigned a task and will not be reused")
 
 	return nil
 }

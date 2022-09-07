@@ -294,6 +294,7 @@ func GetEventsById(id string, before time.Time, n int) ([]restModel.APIProjectEv
 		return nil, err
 	}
 	events.RedactPrivateVars()
+	events.ApplyDefaults()
 
 	out := []restModel.APIProjectEvent{}
 	catcher := grip.NewBasicCatcher()
