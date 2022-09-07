@@ -196,7 +196,6 @@ functions:
         NODE_BIN_PATH: ${nodebin}
         RACE_DETECTOR: ${race_detector}
         SETTINGS_OVERRIDE: creds.yml
-        SMOKE_TEST_FILE: ${smoke_test_file}
         TEST_TIMEOUT: ${test_timeout}
         TZ: ${tz}
         VENDOR_PKG: "github.com/${trigger_repo_owner}/${trigger_repo_name}"
@@ -348,7 +347,7 @@ tasks:
     tags: ["smoke"]
   - <<: *run-smoke-test
     name: smoke-test-container-task
-    tags: [ "smoke" ]
+    tags: ["smoke"]
   - <<: *run-smoke-test
     name: smoke-test-endpoints
     tags: ["smoke"]

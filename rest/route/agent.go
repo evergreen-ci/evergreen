@@ -868,6 +868,7 @@ type startTaskHandler struct {
 	env           evergreen.Environment
 	taskID        string
 	hostID        string
+	podID         string
 	taskStartInfo apimodels.TaskStartRequest
 }
 
@@ -891,6 +892,10 @@ func (h *startTaskHandler) Parse(ctx context.Context, r *http.Request) error {
 		return errors.Wrapf(err, "reading task start request for %s", h.taskID)
 	}
 	h.hostID = r.Header.Get(evergreen.HostHeader)
+	h.podID = r.Header.Get(evergreen.PodHeader)
+	if h.hostID == "" && h.podID == "" {
+		return errors.New("missing both host and pod ID")
+	}
 	return nil
 }
 
@@ -964,7 +969,8 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 			}
 		}
 	} else {
-		msg = fmt.Sprintf("task %s started on container %s", t.Id, t.Container)
+		// TODO: EVG-17647 Create job to collect data on idle pods
+		msg = fmt.Sprintf("task '%s' started on pod '%s'", t.Id, h.podID)
 	}
 
 	return gimlet.NewJSONResponse(msg)

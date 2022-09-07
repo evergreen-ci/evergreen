@@ -132,7 +132,7 @@ func smokeStartEvergreen() cli.Command {
 			defer cancel()
 
 			if startWeb {
-				if err := smokeRunBinary(exit, "web.service", wd, binary, "service", "web", "--conf", confPath, "--db", "mci_smoke"); err != nil {
+				if err := smokeRunBinary(exit, "web.service", wd, binary, "service", "web", "--conf", confPath); err != nil {
 					return errors.Wrap(err, "error running web service")
 				}
 			}

@@ -226,6 +226,7 @@ buildvariants:
     tasks:
       - name: container_task
 
+# TODO: Use more official image repo such as an AWS ECR image repo
 containers:
   - name: container
     working_dir: /

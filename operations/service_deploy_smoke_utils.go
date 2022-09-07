@@ -21,8 +21,8 @@ const (
 	// uiPort is the local port the UI will listen on.
 	smokeUiPort = ":9090"
 	// urlPrefix is the localhost prefix for accessing local Evergreen.
-	smokeUrlPrefix  = "http://localhost"
-	containerTaskId = "evergreen_container_bv_container_task_a71e20e60918bb97d41422e94d04822be2a22e8e_22_08_22_13_44_49"
+	smokeUrlPrefix       = "http://localhost"
+	smokeContainerTaskID = "evergreen_container_bv_container_task_a71e20e60918bb97d41422e94d04822be2a22e8e_22_08_22_13_44_49"
 )
 
 // smokeEndpointTestDefinitions describes the UI and API endpoints to verify are up.
@@ -99,43 +99,7 @@ func checkContainerTask(username, key string) error {
 	client := utility.GetHTTPClient()
 	defer utility.PutHTTPClient(client)
 
-	var task apimodels.APITask
-OUTER:
-	for i := 0; i <= 30; i++ {
-		// check task
-		if i == 30 {
-			return errors.Errorf("task status is %s (expected %s)", task.Status, evergreen.TaskSucceeded)
-		}
-		time.Sleep(10 * time.Second)
-		grip.Infof("checking for task '%s' (%d/30)", containerTaskId, i+1)
-
-		var err error
-		task, err = checkTask(client, username, key, containerTaskId)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-
-		if task.Status == evergreen.TaskFailed {
-			return errors.Errorf("task status is %s (expected %s)", task.Status, evergreen.TaskSucceeded)
-		}
-		if task.Status != evergreen.TaskSucceeded {
-			grip.Infof("found task is status %s", task.Status)
-			task = apimodels.APITask{
-				Status: task.Status,
-			}
-			continue OUTER
-		}
-
-		// retry for *slightly* delayed logger closing
-		err = checkLog(task, client, agent.PodMode, username, key)
-		if err != nil {
-			return err
-		}
-
-		grip.Info("Successfully checked container task")
-		return nil
-	}
-	return errors.New("this code should be unreachable")
+	return checkForTask(client, agent.PodMode, []string{smokeContainerTaskID}, username, key)
 }
 
 func checkHostTaskByCommit(username, key string) error {
@@ -197,21 +161,23 @@ func checkHostTaskByCommit(username, key string) error {
 		}
 		break
 	}
+	return checkForTask(client, agent.HostMode, builds[0].Tasks, username, key)
+}
 
-	var task apimodels.APITask
+func checkForTask(client *http.Client, mode agent.Mode, tasks []string, username, key string) error {
+	var taskStatus string
 OUTER:
 	for i := 0; i <= 30; i++ {
 		// check task
 		if i == 30 {
-			return errors.Errorf("task status is %s (expected %s)", task.Status, evergreen.TaskSucceeded)
+			return errors.Errorf("task status is %s (expected %s)", taskStatus, evergreen.TaskSucceeded)
 		}
 		time.Sleep(10 * time.Second)
-		grip.Infof("checking for %d tasks (%d/30)", len(builds[0].Tasks), i+1)
+		grip.Infof("checking for %d tasks (%d/30)", len(tasks), i+1)
 
-		var err error
-		for t := 0; t < len(builds[0].Tasks); t++ {
-			taskId := builds[0].Tasks[t]
-			task, err = checkTask(client, username, key, taskId)
+		for t := 0; t < len(tasks); t++ {
+			taskId := tasks[t]
+			task, err := checkTask(client, username, key, taskId)
 			if err != nil {
 				return errors.WithStack(err)
 			}
@@ -221,17 +187,15 @@ OUTER:
 			}
 			if task.Status != evergreen.TaskSucceeded {
 				grip.Infof("found task is status %s", task.Status)
-				task = apimodels.APITask{
-					Status: task.Status,
-				}
+				taskStatus = task.Status
 				continue OUTER
 			}
-			err = checkLog(task, client, agent.HostMode, username, key)
+			err = checkLog(task, client, mode, username, key)
 			if err != nil {
 				return err
 			}
 		}
-		grip.Info("Successfully checked tasks")
+		grip.Infof("Successfully checked %s tasks", string(mode))
 		return nil
 	}
 	return errors.New("this code should be unreachable")
@@ -298,6 +262,7 @@ func checkTaskLog(body []byte, mode agent.Mode) error {
 			}
 		}
 	} else if mode == agent.PodMode {
+		// TODO (PM-2617) Add task groups to the container task smoke test once they aree supported
 		if !strings.Contains(page, "container task") {
 			return errors.New("did not find container task in logs")
 		}
