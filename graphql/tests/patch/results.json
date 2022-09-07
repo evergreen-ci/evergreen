@@ -273,8 +273,8 @@
       "result": {
         "data": {
           "patch": {
+            "projectIdentifier": "evergreenIdentifier",
             "project": {
-              "projectIdentifier": "evergreenIdentifier",
               "variants": [
                 {
                   "name": "ubuntu1604",

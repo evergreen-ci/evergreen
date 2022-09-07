@@ -132,7 +132,6 @@ func (apiPatch *APIPatch) BuildFromService(p patch.Patch, args *APIPatchArgs) er
 	apiPatch.buildBasePatch(p)
 	apiPatch.buildModuleChanges(p, projectIdentifier)
 
-	fmt.Println(len(apiPatch.ModuleCodeChanges))
 	if args != nil && args.IncludeChildPatches {
 		return apiPatch.buildChildPatches(p)
 	}
