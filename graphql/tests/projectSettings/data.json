@@ -68,6 +68,11 @@
           "name": "size1",
           "cpu": 1,
           "memory_mb": 1024
+        },
+        {
+          "name": "size2",
+          "cpu": 2,
+          "memory_mb": 2048
         }
       ],
       "git_tag_authorized_users" : [

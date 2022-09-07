@@ -1509,10 +1509,11 @@ func TestValidateProjectConfigContainers(t *testing.T) {
 		t.Run("CPU", func(t *testing.T) {
 			pc := model.ProjectConfig{
 				ProjectConfigFields: model.ProjectConfigFields{
-					ContainerSizes: map[string]model.ContainerResources{
-						"xlarge": {
-							CPU:      100000000,
-							MemoryMB: 100,
+					ContainerSizeDefinitions: []model.ContainerResources{
+						{
+							Name:     "xlarge",
+							CPU:      4,
+							MemoryMB: 800,
 						},
 					},
 				},
@@ -1523,10 +1524,11 @@ func TestValidateProjectConfigContainers(t *testing.T) {
 		t.Run("Memory", func(t *testing.T) {
 			pc := model.ProjectConfig{
 				ProjectConfigFields: model.ProjectConfigFields{
-					ContainerSizes: map[string]model.ContainerResources{
-						"xlarge": {
-							CPU:      100,
-							MemoryMB: 100000000,
+					ContainerSizeDefinitions: []model.ContainerResources{
+						{
+							Name:     "xlarge",
+							CPU:      4,
+							MemoryMB: 800,
 						},
 					},
 				},
