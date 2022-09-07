@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/cocoa"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -253,7 +254,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		catcher.Wrapf(DeleteSubscriptions(projectId, toDelete), "deleting subscriptions")
 	case model.ProjectPageContainerSection:
 		for i := range mergedProjectRef.ContainerSizeDefinitions {
-			err = mergedProjectRef.ContainerSizeDefinitions[i].Validate()
+			err = mergedProjectRef.ContainerSizeDefinitions[i].Validate(evergreen.GetEnvironment().Settings().Providers.AWS.Pod.ECS)
 			catcher.Add(err)
 		}
 		if catcher.HasErrors() {
