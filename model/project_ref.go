@@ -279,7 +279,6 @@ var (
 	ProjectRefAdminsKey                 = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
 	ProjectRefGitTagAuthorizedUsersKey  = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedUsers")
 	ProjectRefGitTagAuthorizedTeamsKey  = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedTeams")
-	projectRefDefaultLoggerKey          = bsonutil.MustHaveTag(ProjectRef{}, "DefaultLogger")
 	projectRefPRTestingEnabledKey       = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
 	projectRefManualPRTestingEnabledKey = bsonutil.MustHaveTag(ProjectRef{}, "ManualPRTestingEnabled")
 	projectRefGithubChecksEnabledKey    = bsonutil.MustHaveTag(ProjectRef{}, "GithubChecksEnabled")
