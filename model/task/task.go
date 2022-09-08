@@ -2529,8 +2529,8 @@ func (t *Task) Archive() error {
 	} else {
 		// Archiving a single task.
 		archiveTask := t.makeArchivedTask()
-		_, err := db.Upsert(OldCollection, bson.M{IdKey: MakeOldID(t.Id, t.Execution)}, archiveTask)
-		if err != nil {
+		err := db.Insert(OldCollection, archiveTask)
+		if err != nil && !db.IsDuplicateKey(err) {
 			return errors.Wrap(err, "inserting archived task into old tasks")
 		}
 		t.Aborted = false
