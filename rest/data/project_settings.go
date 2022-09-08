@@ -356,6 +356,10 @@ func DeleteContainerSecrets(ctx context.Context, v cocoa.Vault, pRef *model.Proj
 // getCopiedContainerSecrets gets a copy of an existing set of container
 // secrets. It returns the new secrets to create.
 func getCopiedContainerSecrets(ctx context.Context, settings *evergreen.Settings, v cocoa.Vault, projectID string, toCopy []model.ContainerSecret) ([]model.ContainerSecret, error) {
+	if projectID == "" {
+		return nil, errors.New("cannot copy container secrets without a project ID")
+	}
+
 	var copied []model.ContainerSecret
 	catcher := grip.NewBasicCatcher()
 
