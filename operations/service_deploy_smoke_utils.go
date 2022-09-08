@@ -273,7 +273,7 @@ func checkTaskLog(body []byte, mode agent.Mode) error {
 func checkTask(client *http.Client, username, key string, taskId string) (apimodels.APITask, error) {
 	task := apimodels.APITask{}
 	grip.Infof("checking for task %s", taskId)
-	r, err := http.NewRequest("GET", smokeUrlPrefix+smokeUiPort+"/rest/v2/tasks/"+taskId, nil)
+	r, err := http.NewRequest(http.MethodGet, smokeUrlPrefix+smokeUiPort+"/rest/v2/tasks/"+taskId, nil)
 	if err != nil {
 		return task, errors.Wrap(err, "failed to make request")
 	}
