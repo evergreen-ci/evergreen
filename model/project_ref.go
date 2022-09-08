@@ -1957,11 +1957,11 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 		catcher := grip.NewSimpleCatcher()
 		for _, size := range p.ContainerSizeDefinitions {
 			if err = size.Validate(evergreen.GetEnvironment().Settings().Providers.AWS.Pod.ECS); err != nil {
-				catcher.Add(err)
+				catcher.Add(errors.Wrapf(err, "validating container size '%s'", size.Name))
 			}
 		}
 		if catcher.HasErrors() {
-			return false, errors.Wrapf(catcher.Resolve(), "validating container size deginitions")
+			return false, errors.Wrapf(catcher.Resolve(), "validating container size definitions")
 		}
 		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},

@@ -3,6 +3,7 @@ package validator
 import (
 	"context"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"math"
 	"testing"
 
@@ -19,6 +20,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
+
+func init() { testutil.Setup() }
 
 func TestValidateTaskDependencies(t *testing.T) {
 	Convey("When validating a project's dependencies", t, func() {
@@ -1512,8 +1515,8 @@ func TestValidateProjectConfigContainers(t *testing.T) {
 					ContainerSizeDefinitions: []model.ContainerResources{
 						{
 							Name:     "xlarge",
-							CPU:      4,
-							MemoryMB: 800,
+							CPU:      100000000,
+							MemoryMB: 100,
 						},
 					},
 				},
@@ -1527,8 +1530,8 @@ func TestValidateProjectConfigContainers(t *testing.T) {
 					ContainerSizeDefinitions: []model.ContainerResources{
 						{
 							Name:     "xlarge",
-							CPU:      4,
-							MemoryMB: 800,
+							CPU:      100,
+							MemoryMB: 100000000,
 						},
 					},
 				},
