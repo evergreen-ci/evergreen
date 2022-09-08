@@ -7,9 +7,11 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/cocoa"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -28,7 +30,7 @@ type CopyProjectOpts struct {
 }
 
 // CopyProject copies the passed in project with the given project identifier, and returns the new project.
-func CopyProject(ctx context.Context, opts CopyProjectOpts) (*restModel.APIProjectRef, error) {
+func CopyProject(ctx context.Context, env evergreen.Environment, opts CopyProjectOpts) (*restModel.APIProjectRef, error) {
 	projectToCopy, err := FindProjectById(opts.ProjectIdToCopy, false, false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding project '%s'", opts.ProjectIdToCopy)
@@ -54,7 +56,7 @@ func CopyProject(ctx context.Context, opts CopyProjectOpts) (*restModel.APIProje
 	disableStartingSettings(projectToCopy)
 
 	u := gimlet.GetUser(ctx).(*user.DBUser)
-	if err := CreateProject(ctx, projectToCopy, u); err != nil {
+	if err := CreateProject(ctx, env, projectToCopy, u); err != nil {
 		return nil, err
 	}
 	apiProjectRef := &restModel.APIProjectRef{}
@@ -349,6 +351,62 @@ func DeleteContainerSecrets(ctx context.Context, v cocoa.Vault, pRef *model.Proj
 	}
 
 	return remaining, catcher.Resolve()
+}
+
+// getCopiedContainerSecrets gets a copy of an existing set of container
+// secrets. It returns the new secrets to create.
+func getCopiedContainerSecrets(ctx context.Context, settings *evergreen.Settings, v cocoa.Vault, projectID string, toCopy []model.ContainerSecret) ([]model.ContainerSecret, error) {
+	var copied []model.ContainerSecret
+	catcher := grip.NewBasicCatcher()
+
+	for _, original := range toCopy {
+		if original.ExternalID == "" {
+			// It's not possible to replicate a project secret without an
+			// external ID to get its value.
+			continue
+		}
+		if original.Type == model.ContainerSecretPodSecret {
+			// Generate a new pod secret rather than copy the existing one.
+			// Since users don't rely on this directly, it's preferable to have
+			// different pod secrets between projects.
+			continue
+		}
+
+		val, err := v.GetValue(ctx, original.ExternalID)
+		if err != nil {
+			catcher.Wrapf(err, "getting value for container secret '%s'", original.Name)
+			continue
+		}
+
+		// Make a new secret that will be stored as a copy of the original.
+		updated := original
+		updated.Value = val
+
+		copied = append(copied, updated)
+	}
+
+	if catcher.HasErrors() {
+		return nil, errors.Wrap(catcher.Resolve(), "copying container secrets")
+	}
+
+	copied = append(copied, newPodSecret())
+
+	validated, err := model.ValidateContainerSecrets(settings, projectID, nil, copied)
+	if err != nil {
+		return nil, errors.Wrap(err, "validating new container secrets")
+	}
+
+	return validated, nil
+}
+
+// newPodSecret returns a new default pod secret with a random value to be
+// stored.
+func newPodSecret() model.ContainerSecret {
+	return model.ContainerSecret{
+		Name:  pod.PodSecretEnvVar,
+		Type:  model.ContainerSecretPodSecret,
+		Value: utility.RandomString(),
+	}
 }
 
 // UpsertContainerSecrets adds new secrets or updates the value of existing

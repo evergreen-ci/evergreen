@@ -10,7 +10,6 @@ import (
 
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/PuerkitoBio/rehttp"
-	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/model"
@@ -50,8 +49,6 @@ type UIServer struct {
 	env   evergreen.Environment
 
 	plugin.PanelManager
-
-	vault cocoa.Vault
 }
 
 // ViewData contains common data that is provided to all Evergreen pages

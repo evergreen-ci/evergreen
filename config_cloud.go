@@ -98,7 +98,7 @@ type AWSConfig struct {
 	MaxVolumeSizePerUser int      `bson:"max_volume_size" json:"max_volume_size" yaml:"max_volume_size"`
 
 	// Pod represents configuration for using pods in AWS.
-	Pod AWSPodConfig
+	Pod AWSPodConfig `bson:"pod" json:"pod" yaml:"pod"`
 }
 
 type S3Credentials struct {
@@ -154,6 +154,10 @@ type ECSConfig struct {
 	Clusters []ECSClusterConfig `bson:"clusters" json:"clusters" yaml:"clusters"`
 	// CapacityProviders specify the available capacity provider configurations.
 	CapacityProviders []ECSCapacityProvider `bson:"capacity_providers" json:"capacity_providers" yaml:"capacity_providers"`
+	// ClientType represents the type of Secrets Manager client implementation
+	// that will be used. This is not a value that can or should be configured
+	// for production, but is useful to explicitly set for testing purposes.
+	ClientType AWSClientType `bson:"client_type" json:"client_type" yaml:"client_type"`
 }
 
 // AWSVPCConfig represents configuration when using AWSVPC networking in ECS.
@@ -289,7 +293,23 @@ func (c *ECSClusterConfig) Validate() error {
 type SecretsManagerConfig struct {
 	// SecretPrefix is the prefix for secret names.
 	SecretPrefix string `bson:"secret_prefix" json:"secret_prefix" yaml:"secret_prefix"`
+	// ClientType represents the type of Secrets Manager client implementation
+	// that will be used. This is not a value that can or should be configured
+	// for production, but is useful to explicitly set for testing purposes.
+	ClientType AWSClientType `bson:"client_type" json:"client_type" yaml:"client_type"`
 }
+
+// AWSClientType represents the different types of AWS client implementations
+// that can be used.
+type AWSClientType string
+
+const (
+	// AWSClientTypeBasic is the standard implementation of an AWS client.
+	AWSClientTypeBasic AWSClientType = ""
+	// AWSClientTypeMock is the mock implementation of an AWS client for testing
+	// purposes only. This should never be used in production.
+	AWSClientTypeMock AWSClientType = "mock"
+)
 
 // DockerConfig stores auth info for Docker.
 type DockerConfig struct {

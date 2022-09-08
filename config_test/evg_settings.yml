@@ -28,6 +28,13 @@ providers:
             secret: "aws secret"
         allowed_instance_types:
         - "test_instance_type"
+        # Ensure that tests depending on global settings use the mock AWS clients by default instead of actually
+        # connecting to AWS.
+        pod:
+          ecs:
+            client_type: "mock"
+          secrets_manager:
+            client_type: "mock"
     docker:
         api_version: 1.32
 

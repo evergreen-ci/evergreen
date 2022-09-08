@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -17,14 +18,17 @@ import (
 type projectCopyHandler struct {
 	oldProject string
 	newProject string
+	env        evergreen.Environment
 }
 
-func makeCopyProject() gimlet.RouteHandler {
-	return &projectCopyHandler{}
+func makeCopyProject(env evergreen.Environment) gimlet.RouteHandler {
+	return &projectCopyHandler{
+		env: env,
+	}
 }
 
 func (p *projectCopyHandler) Factory() gimlet.RouteHandler {
-	return &projectCopyHandler{}
+	return &projectCopyHandler{env: p.env}
 }
 
 func (p *projectCopyHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -41,7 +45,7 @@ func (p *projectCopyHandler) Run(ctx context.Context) gimlet.Responder {
 		ProjectIdToCopy:      p.oldProject,
 		NewProjectIdentifier: p.newProject,
 	}
-	apiProjectRef, err := data.CopyProject(ctx, opts)
+	apiProjectRef, err := data.CopyProject(ctx, p.env, opts)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "copying source project '%s' to target project '%s'", p.oldProject, p.newProject))
 	}
