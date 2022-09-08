@@ -5,7 +5,6 @@
   window.user = {{.User}};
   {{end}}
   window.canCreate = {{.CanCreate}};
-  window.validDefaultLoggers = {{.ValidDefaultLoggers}};
   window.userTz = {{GetTimezone $.User}}
 </script>
 <script type="text/javascript" src="{{Static "thirdparty" "tablesorter.js"}}"></script>
@@ -305,14 +304,6 @@ Evergreen Projects
           </div>
         </div>
         <br />
-      </div>
-    </div>
-    <div id="logging-info">
-      <div class="h3">Default Logger</div>
-      <div style="left:-15px" class="col-lg-4">
-        <select name="repeatSelect" id="repeatSelect" ng-model="settingsFormData.default_logger">
-          <option ng-repeat="logger in validDefaultLoggers" value="[[logger]]">[[logger]]</option>
-        </select>
       </div>
     </div>
     <div class="variables">

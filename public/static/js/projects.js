@@ -4,7 +4,6 @@ mciModule.controller(
     $scope.availableTriggers = $window.availableTriggers;
     $scope.userId = $window.user.Id;
     $scope.create = $window.canCreate;
-    $scope.validDefaultLoggers = $window.validDefaultLoggers;
 
     $scope.projectVars = {};
     $scope.patchVariants = [];
@@ -480,7 +479,6 @@ mciModule.controller(
             private_vars: $scope.privateVars,
             admin_only_vars: $scope.adminOnlyVars,
             display_name: $scope.projectRef.display_name,
-            default_logger: $scope.projectRef.default_logger,
             remote_path: $scope.projectRef.remote_path,
             spawn_host_script_path: $scope.projectRef.spawn_host_script_path,
             batch_time: $scope.projectRef.batch_time,

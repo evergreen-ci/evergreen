@@ -64,7 +64,6 @@ type ProjectRef struct {
 	GithubChecksEnabled    *bool               `bson:"github_checks_enabled,omitempty" json:"github_checks_enabled,omitempty" yaml:"github_checks_enabled"`
 	BatchTime              int                 `bson:"batch_time" json:"batch_time" yaml:"batchtime"`
 	DeactivatePrevious     *bool               `bson:"deactivate_previous,omitempty" json:"deactivate_previous,omitempty" yaml:"deactivate_previous"`
-	DefaultLogger          string              `bson:"default_logger" json:"default_logger" yaml:"default_logger"`
 	NotifyOnBuildFailure   *bool               `bson:"notify_on_failure,omitempty" json:"notify_on_failure,omitempty"`
 	Triggers               []TriggerDefinition `bson:"triggers" json:"triggers"`
 	// all aliases defined for the project
@@ -119,7 +118,8 @@ type ProjectRef struct {
 
 	// The following fields are used by Evergreen and are not discoverable.
 	// Hidden determines whether or not the project is discoverable/tracked in the UI
-	Hidden *bool `bson:"hidden,omitempty" json:"hidden,omitempty"`
+	Hidden        *bool  `bson:"hidden,omitempty" json:"hidden,omitempty"`
+	DefaultLogger string `bson:"default_logger,omitempty" json:"default_logger,omitempty"`
 }
 
 type CommitQueueParams struct {
@@ -998,7 +998,6 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 	repoRef.Id = mgobson.NewObjectId().Hex()
 	repoRef.RepoRefId = ""
 	repoRef.Identifier = ""
-	repoRef.DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
 
 	// Set explicitly in case no project is enabled.
 	repoRef.Owner = p.Owner
@@ -1854,7 +1853,6 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			projectRefVersionControlEnabledKey: p.VersionControlEnabled,
 			ProjectRefDeactivatePreviousKey:    p.DeactivatePrevious,
 			projectRefRepotrackerDisabledKey:   p.RepotrackerDisabled,
-			projectRefDefaultLoggerKey:         p.DefaultLogger,
 			projectRefPatchingDisabledKey:      p.PatchingDisabled,
 			projectRefTaskSyncKey:              p.TaskSync,
 			ProjectRefDisabledStatsCacheKey:    p.DisabledStatsCache,
