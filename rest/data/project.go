@@ -81,6 +81,17 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 		}
 	}
 
+	existingContainerSecrets := projectRef.ContainerSecrets
+	projectRef.ContainerSecrets = nil
+
+	err = projectRef.Add(u)
+	if err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrapf(err, "inserting project '%s'", projectRef.Identifier).Error(),
+		}
+	}
+
 	cachedSettings := env.Settings()
 	smClient, err := cloud.MakeSecretsManagerClient(cachedSettings)
 	if err != nil {
@@ -104,26 +115,21 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 	}
 
 	if vault != nil {
-		projectRef.ContainerSecrets, err = getCopiedContainerSecrets(ctx, cachedSettings, vault, projectRef.Id, projectRef.ContainerSecrets)
+		projectRef.ContainerSecrets, err = getCopiedContainerSecrets(ctx, cachedSettings, vault, projectRef.Id, existingContainerSecrets)
 		if err != nil {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
 				Message:    errors.Wrapf(err, "copying existing container secrets").Error(),
 			}
 		}
-	}
-
-	err = projectRef.Add(u)
-	if err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "inserting project '%s'", projectRef.Identifier).Error(),
+		if err := projectRef.Update(); err != nil {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    errors.Wrapf(err, "updating project ref's container secrets").Error(),
+			}
 		}
-	}
-
-	if vault != nil {
-		// This updates the container secrets in the DB project ref only, not the
-		// in-memory copy.
+		// This updates the container secrets in the DB project ref only, not
+		// the in-memory copy.
 		if err := UpsertContainerSecrets(ctx, vault, projectRef.ContainerSecrets); err != nil {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
