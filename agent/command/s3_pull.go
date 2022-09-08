@@ -48,9 +48,13 @@ func (c *s3Base) createBucket(client *http.Client, conf *internal.TaskConfig) er
 		Credentials: pail.CreateAWSCredentials(conf.TaskSync.Key, conf.TaskSync.Secret, ""),
 		Region:      endpoints.UsEast1RegionID,
 		Name:        conf.TaskSync.Bucket,
-		MaxRetries:  int(c.MaxRetries),
 		Permissions: pail.S3PermissionsPrivate,
 	}
+
+	if c.MaxRetries != 0 {
+		opts.MaxRetries = utility.ToIntPtr(int(c.MaxRetries))
+	}
+
 	bucket, err := pail.NewS3ArchiveBucketWithHTTPClient(client, opts)
 	if err != nil {
 		return errors.Wrap(err, "could not create bucket")
