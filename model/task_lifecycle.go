@@ -1497,6 +1497,11 @@ func ClearAndResetStrandedContainerTask(p *pod.Pod) error {
 		return nil
 	}
 
+	// Note that clearing the pod and resetting the task are not atomic
+	// operations, so it's possible for the pod's running task to be cleared but
+	// the stranded task fails to reset.
+	// In this case, there are other cleanup jobs to detect when a task is
+	// stranded on a terminated pod.
 	if err := p.ClearRunningTask(); err != nil {
 		return errors.Wrapf(err, "clearing running task '%s' from pod '%s'", runningTaskID, p.ID)
 	}

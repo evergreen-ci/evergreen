@@ -15,6 +15,7 @@ import (
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 )
 
 const taskStrandedCleanupJobName = "task-stranded-cleanup"
@@ -41,6 +42,9 @@ func makeStrandedTaskCleanupJob() *taskStrandedCleanupJob {
 	return j
 }
 
+// NewStrandedTaskCleanupJob returns a job to detect and clean up tasks that:
+// - Have been stranded on hosts that are already terminated
+// - Tasks that have been stuck dispatching for too long.
 func NewStrandedTaskCleanupJob(id string) amboy.Job {
 	j := makeStrandedTaskCleanupJob()
 	j.SetID(fmt.Sprintf("%s.%s", taskStrandedCleanupJobName, id))
@@ -48,19 +52,20 @@ func NewStrandedTaskCleanupJob(id string) amboy.Job {
 }
 
 func (j *taskStrandedCleanupJob) Run(ctx context.Context) {
+	j.AddError(errors.Wrap(j.fixTasksStrandedOnTerminatedHosts(), "fixing tasks stranded on already-terminated hosts"))
+	j.AddError(errors.Wrap(j.fixTasksStuckDispatching(), "fixing tasks that are stuck dispatching"))
+}
+
+func (j *taskStrandedCleanupJob) fixTasksStrandedOnTerminatedHosts() error {
 	hosts, err := host.FindTerminatedHostsRunningTasks()
 	if err != nil {
-		j.AddError(err)
-		return
+		return errors.Wrap(err, "finding already-terminated hosts running tasks")
 	}
 
-	if len(hosts) == 0 {
-		return
-	}
+	var taskIDs []string
+	var hostIDs []string
 
-	taskIDs := []string{}
-	hostIDs := []string{}
-
+	catcher := grip.NewBasicCatcher()
 	for _, h := range hosts {
 		if h.RunningTask == "" {
 			continue
@@ -69,17 +74,32 @@ func (j *taskStrandedCleanupJob) Run(ctx context.Context) {
 		taskIDs = append(taskIDs, h.RunningTask)
 		hostIDs = append(hostIDs, h.Id)
 
-		j.AddError(model.ClearAndResetStrandedHostTask(&h))
+		catcher.Wrapf(model.ClearAndResetStrandedHostTask(&h), "fixing stranded host task '%s' on host '%s'", h.RunningTask, h.Id)
 	}
 
+	grip.InfoWhen(len(taskIDs) > 0 || len(hostIDs) > 0, message.Fields{
+		"message":   "fixed tasks stranded on already-terminated hosts",
+		"job":       j.ID(),
+		"op":        j.Type().Name,
+		"num_hosts": len(hosts),
+		"num_tasks": len(taskIDs),
+		"tasks":     taskIDs,
+		"hosts":     hostIDs,
+	})
+
+	return catcher.Resolve()
+}
+
+func (j *taskStrandedCleanupJob) fixTasksStuckDispatching() error {
 	tasks, err := task.FindStuckDispatching()
 	if err != nil {
-		j.AddError(err)
+		return errors.Wrap(err, "finding tasks that are stuck dispatching")
 	}
 
-	tasksToDeactivate := []task.Task{}
+	catcher := grip.NewBasicCatcher()
+	var tasksToDeactivate []task.Task
 	for _, t := range tasks {
-		if time.Since(t.CreateTime) >= 2*7*24*time.Hour {
+		if time.Since(t.ActivatedTime) >= task.UnschedulableThreshold {
 			tasksToDeactivate = append(tasksToDeactivate, t)
 		} else {
 			details := &apimodels.TaskEndDetail{
@@ -87,21 +107,21 @@ func (j *taskStrandedCleanupJob) Run(ctx context.Context) {
 				Status:      evergreen.TaskFailed,
 				Description: evergreen.TaskDescriptionStranded,
 			}
-			j.AddError(model.TryResetTask(t.Id, evergreen.User, j.ID(), details))
+			catcher.Wrapf(model.TryResetTask(t.Id, evergreen.User, j.ID(), details), "resetting task '%s'", t.Id)
 		}
 	}
 	if len(tasksToDeactivate) > 0 {
 		err = task.DeactivateTasks(tasksToDeactivate, true, j.ID())
-		j.AddError(err)
+		catcher.Wrapf(err, "deactivating tasks exceeding the unschedulable threshold")
 	}
 
-	grip.InfoWhen(!j.HasErrors(),
-		message.Fields{
-			"job":       j.ID(),
-			"op":        j.Type().Name,
-			"num_hosts": len(hosts),
-			"num_tasks": len(taskIDs),
-			"tasks":     taskIDs,
-			"hosts":     hostIDs,
-		})
+	grip.InfoWhen(len(tasks) > 0, message.Fields{
+		"message":   "reset or deactivated tasks that are stuck dispatching",
+		"job":       j.ID(),
+		"op":        j.Type().Name,
+		"num_tasks": len(tasks),
+		"tasks":     tasks,
+	})
+
+	return nil
 }
