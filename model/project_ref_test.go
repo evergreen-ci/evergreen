@@ -1834,10 +1834,27 @@ func TestValidateContainerSecrets(t *testing.T) {
 	t.Run("FailsWithoutName", func(t *testing.T) {
 		containerSecrets := []ContainerSecret{
 			{
-				Type: ContainerSecretPodSecret,
+				Type:  ContainerSecretPodSecret,
+				Value: "value",
 			},
 		}
 		_, err := ValidateContainerSecrets(&settings, projectID, nil, containerSecrets)
+		assert.Error(t, err)
+	})
+	t.Run("FailsWithMultiplePodSecrets", func(t *testing.T) {
+		toUpdate := []ContainerSecret{
+			{
+				Name:  "breadfruit",
+				Type:  ContainerSecretPodSecret,
+				Value: "abcde",
+			},
+			{
+				Name:  "starfruit",
+				Type:  ContainerSecretPodSecret,
+				Value: "12345",
+			},
+		}
+		_, err := ValidateContainerSecrets(&settings, projectID, nil, toUpdate)
 		assert.Error(t, err)
 	})
 }

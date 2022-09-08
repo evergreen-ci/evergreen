@@ -10,7 +10,6 @@ import (
 
 	cocoaMock "github.com/evergreen-ci/cocoa/mock"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
@@ -31,8 +30,9 @@ import (
 // Tests for PATCH /rest/v2/projects/{project_id}
 
 type ProjectPatchByIDSuite struct {
-	rm  gimlet.RouteHandler
-	env evergreen.Environment
+	rm     gimlet.RouteHandler
+	env    evergreen.Environment
+	cancel context.CancelFunc
 
 	suite.Suite
 }
@@ -64,8 +64,11 @@ func (s *ProjectPatchByIDSuite) SetupTest() {
 		Project:      "dimoxinil",
 		LastRevision: "something",
 	}))
-	settings, err := evergreen.GetConfig()
-	s.NoError(err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	s.cancel = cancel
+	env := testutil.NewEnvironment(ctx, s.T())
+	settings := env.Settings()
 	settings.GithubOrgs = []string{getTestProjectRef().Owner}
 	s.rm = makePatchProjectByID(settings).(*projectIDPatchHandler)
 	projectAdminRole := gimlet.Role{
@@ -79,14 +82,17 @@ func (s *ProjectPatchByIDSuite) SetupTest() {
 		},
 	}
 	roleManager := s.env.RoleManager()
-	err = roleManager.UpdateRole(projectAdminRole)
-	s.NoError(err)
+	s.NoError(roleManager.UpdateRole(projectAdminRole))
 	adminScope := gimlet.Scope{
 		ID:        "project_scope",
 		Type:      evergreen.ProjectResourceType,
 		Resources: []string{"dimoxinil", "other_project", "branch_project"},
 	}
 	s.NoError(roleManager.AddScope(adminScope))
+}
+
+func (s *ProjectPatchByIDSuite) TearDownTest() {
+	s.cancel()
 }
 
 func (s *ProjectPatchByIDSuite) TestParse() {
@@ -348,11 +354,6 @@ func (s *ProjectPatchByIDSuite) TestAddingNewAndDeletingExistingContainerSecrets
 	cocoaMock.ResetGlobalSecretCache()
 	defer cocoaMock.ResetGlobalSecretCache()
 
-	smClient := &cocoaMock.SecretsManagerClient{}
-	v, err := cloud.MakeSecretsManagerVault(smClient)
-	s.Require().NoError(err)
-	h.vault = cocoaMock.NewVault(v)
-
 	body := []byte(`{
 	"container_secrets": [
 		{
@@ -381,6 +382,7 @@ func (s *ProjectPatchByIDSuite) TestAddingNewAndDeletingExistingContainerSecrets
 	s.NotZero(dbProjRef.ContainerSecrets[0].ExternalID)
 
 	externalID := dbProjRef.ContainerSecrets[0].ExternalID
+	s.Require().NotNil(h.vault)
 	storedValue, err := h.vault.GetValue(ctx, externalID)
 	s.Require().NoError(err)
 	s.Equal("super_secret_value", storedValue)
@@ -438,7 +440,7 @@ func (s *ProjectPutSuite) SetupTest() {
 	settings.GithubOrgs = []string{"Rembrandt Q. Einstein"}
 	s.NoError(evergreen.UpdateConfig(settings))
 
-	s.rm = makePutProjectByID().(*projectIDPutHandler)
+	s.rm = makePutProjectByID(s.env).(*projectIDPutHandler)
 }
 
 func (s *ProjectPutSuite) TestParse() {

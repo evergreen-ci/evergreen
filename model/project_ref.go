@@ -187,10 +187,10 @@ type ContainerSecretType string
 const (
 	// ContainerSecretPodSecret is a container secret representing the Evergreen
 	// agent's pod secret.
-	ContainerSecretPodSecret = "pod_secret"
+	ContainerSecretPodSecret ContainerSecretType = "pod_secret"
 	// ContainerSecretRepoCreds is a container secret representing an image
 	// repository's credentials.
-	ContainerSecretRepoCreds = "repository_credentials"
+	ContainerSecretRepoCreds ContainerSecretType = "repository_credentials"
 )
 
 // Validate checks that the container secret type is recognized.
@@ -3005,9 +3005,14 @@ func ValidateContainerSecrets(settings *evergreen.Settings, projectID string, or
 	combined := make([]ContainerSecret, len(original))
 	_ = copy(combined, original)
 
+	var numPodSecrets int
 	catcher := grip.NewBasicCatcher()
 	for _, updatedSecret := range toUpdate {
 		name := updatedSecret.Name
+
+		if updatedSecret.Type == ContainerSecretPodSecret {
+			numPodSecrets++
+		}
 
 		idx := -1
 		for i := 0; i < len(original); i++ {
@@ -3035,19 +3040,26 @@ func ValidateContainerSecrets(settings *evergreen.Settings, projectID string, or
 		// name and ID decided by the user. The external name is controlled by
 		// Evergreen (and set here) and the external ID is determined by the
 		// secret storage service (and set when the secret is actually stored).
-		smConf := settings.Providers.AWS.Pod.SecretsManager
-		switch updatedSecret.Type {
-		case ContainerSecretPodSecret:
-			updatedSecret.ExternalName = makeInternalContainerSecretName(smConf, projectID, name)
-		case ContainerSecretRepoCreds:
-			updatedSecret.ExternalName = makeRepoCredsContainerSecretName(smConf, projectID, name)
-		default:
-			catcher.Errorf("unrecognized secret type '%s' for container secret '%s'", updatedSecret.Type, name)
-		}
+		extName, err := newContainerSecretExternalName(settings.Providers.AWS.Pod.SecretsManager, projectID, updatedSecret)
+		catcher.Add(err)
+		updatedSecret.ExternalName = extName
 		updatedSecret.ExternalID = ""
 
 		combined = append(combined, updatedSecret)
 	}
 
+	catcher.ErrorfWhen(numPodSecrets > 1, "a project can have at most one pod secret but tried to create %d pod secrets total", numPodSecrets)
+
 	return combined, catcher.Resolve()
+}
+
+func newContainerSecretExternalName(smConf evergreen.SecretsManagerConfig, projectID string, secret ContainerSecret) (string, error) {
+	switch secret.Type {
+	case ContainerSecretPodSecret:
+		return makeInternalContainerSecretName(smConf, projectID, secret.Name), nil
+	case ContainerSecretRepoCreds:
+		return makeRepoCredsContainerSecretName(smConf, projectID, secret.Name), nil
+	default:
+		return "", errors.Errorf("unrecognized secret type '%s' for container secret '%s'", secret.Type, secret.Name)
+	}
 }
