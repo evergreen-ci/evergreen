@@ -350,7 +350,6 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 		}
 
 		err = env.JasperManager().CreateCommand(ctx).Add([]string{"bash", "-c", strings.Join(patchCommandStrings, "\n")}).
-			SetErrorSender(level.Error, grip.GetSender()).SetOutputSender(level.Info, grip.GetSender()).
 			Directory(workingDirectory).Run(ctx)
 		if err != nil {
 			return nil, errors.Wrap(err, "running patch command (possibly due to merge conflict on evergreen configuration file)")
