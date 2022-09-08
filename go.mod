@@ -21,7 +21,7 @@ require (
 	github.com/evergreen-ci/go-test2json v0.0.0-20180702150328-5b6cfd2e8cb0
 	github.com/evergreen-ci/juniper v0.0.0-20220118233332-0813edc78908
 	github.com/evergreen-ci/pail v0.0.0-20220908201135-8a2090a672b7
-	github.com/evergreen-ci/poplar v0.0.0-20220801165844-adb53dc1b937
+	github.com/evergreen-ci/poplar v0.0.0-20220908212406-a5e2aa799def
 	github.com/evergreen-ci/shrub v0.0.0-20211025143051-a8d91b2e29fd
 	github.com/evergreen-ci/timber v0.0.0-20220809215118-028567bbef72
 	github.com/evergreen-ci/utility v0.0.0-20220725171106-4730479c6118
@@ -53,7 +53,7 @@ require (
 	golang.org/x/tools v0.1.9
 	gonum.org/v1/gonum v0.11.0
 	google.golang.org/api v0.60.0
-	google.golang.org/grpc v1.48.0
+	google.golang.org/grpc v1.49.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
