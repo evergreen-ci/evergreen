@@ -62,22 +62,22 @@ func (j *taskStrandedCleanupJob) fixTasksStrandedOnTerminatedHosts() error {
 		return errors.Wrap(err, "finding already-terminated hosts running tasks")
 	}
 
+	if len(hosts) == 0 {
+		return nil
+	}
+
 	var taskIDs []string
 	var hostIDs []string
 
 	catcher := grip.NewBasicCatcher()
 	for _, h := range hosts {
-		if h.RunningTask == "" {
-			continue
-		}
-
 		taskIDs = append(taskIDs, h.RunningTask)
 		hostIDs = append(hostIDs, h.Id)
 
 		catcher.Wrapf(model.ClearAndResetStrandedHostTask(&h), "fixing stranded host task '%s' on host '%s'", h.RunningTask, h.Id)
 	}
 
-	grip.InfoWhen(len(taskIDs) > 0 || len(hostIDs) > 0, message.Fields{
+	grip.Info(message.Fields{
 		"message":   "fixed tasks stranded on already-terminated hosts",
 		"job":       j.ID(),
 		"op":        j.Type().Name,
@@ -98,6 +98,7 @@ func (j *taskStrandedCleanupJob) fixTasksStuckDispatching() error {
 
 	catcher := grip.NewBasicCatcher()
 	var tasksToDeactivate []task.Task
+	var tasksReset []task.Task
 	for _, t := range tasks {
 		if time.Since(t.ActivatedTime) >= task.UnschedulableThreshold {
 			tasksToDeactivate = append(tasksToDeactivate, t)
@@ -108,20 +109,29 @@ func (j *taskStrandedCleanupJob) fixTasksStuckDispatching() error {
 				Description: evergreen.TaskDescriptionStranded,
 			}
 			catcher.Wrapf(model.TryResetTask(t.Id, evergreen.User, j.ID(), details), "resetting task '%s'", t.Id)
+			tasksReset = append(tasksReset, t)
 		}
 	}
 	if len(tasksToDeactivate) > 0 {
 		err = task.DeactivateTasks(tasksToDeactivate, true, j.ID())
 		catcher.Wrapf(err, "deactivating tasks exceeding the unschedulable threshold")
+
+		grip.Info(message.Fields{
+			"message":   "deactivated tasks that are stuck dispatching and have exceeded the scheduling threshold",
+			"job":       j.ID(),
+			"op":        j.Type().Name,
+			"num_tasks": len(tasksToDeactivate),
+			"tasks":     tasksToDeactivate,
+		})
 	}
 
-	grip.InfoWhen(len(tasks) > 0, message.Fields{
-		"message":   "reset or deactivated tasks that are stuck dispatching",
+	grip.InfoWhen(len(tasksReset) > 0, message.Fields{
+		"message":   "reset tasks that are stuck dispatching",
 		"job":       j.ID(),
 		"op":        j.Type().Name,
-		"num_tasks": len(tasks),
-		"tasks":     tasks,
+		"num_tasks": len(tasksReset),
+		"tasks":     tasksReset,
 	})
 
-	return nil
+	return catcher.Resolve()
 }

@@ -54,8 +54,8 @@ func makeTaskExecutionTimeoutMonitorJob() *taskExecutionTimeoutJob {
 	return j
 }
 
-// NewTaskExecutionMonitorJob returns a job to check if a running task has to
-// failing to send a heartbeat recently. If it has timed out, it is cleaned up.
+// NewTaskExecutionMonitorJob returns a job to check if a running task has
+// failed to send a heartbeat recently. If it has timed out, it is cleaned up.
 func NewTaskExecutionMonitorJob(taskID string, ts string) amboy.Job {
 	j := makeTaskExecutionTimeoutMonitorJob()
 	j.Task = taskID
