@@ -16,6 +16,7 @@ input UserSettingsInput {
   notifications: NotificationsInput
   region: String
   slackUsername: String
+  slackMemberId: String
   timezone: String
   useSpruceOptions: UseSpruceOptionsInput
   dateFormat: String
@@ -111,6 +112,7 @@ type UserSettings {
   notifications: Notifications
   region: String
   slackUsername: String
+  slackMemberId: String
   timezone: String
   useSpruceOptions: UseSpruceOptions
   dateFormat: String
@@ -135,9 +137,3 @@ type UseSpruceOptions {
   hasUsedSpruceBefore: Boolean
   spruceV1: Boolean
 }
-
-
-
-
-
-

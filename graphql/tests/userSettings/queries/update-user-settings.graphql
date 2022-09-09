@@ -1,5 +1,9 @@
 mutation {
   updateUserSettings(
-    userSettings: { timezone: "UTC", slackUsername: "mohamed.khelif" }
+    userSettings: {
+      timezone: "UTC"
+      slackUsername: "mohamed.khelif"
+      slackMemberId: "testslackuser"
+    }
   )
 }
