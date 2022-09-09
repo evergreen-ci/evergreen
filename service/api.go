@@ -651,8 +651,9 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 	}
 
 	errs := validator.ValidationErrors{}
+	var projectRef *model.ProjectRef
 	if input.ProjectID != "" {
-		projectRef, err := model.FindMergedProjectRef(input.ProjectID, "", false)
+		projectRef, err = model.FindMergedProjectRef(input.ProjectID, "", false)
 		if err != nil {
 			validationErr = validator.ValidationError{
 				Message: "error finding project; validation will proceed without checking project settings",
@@ -686,6 +687,25 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 		errs = errs.AtLevel(validator.Error)
 	} else {
 		errs = append(errs, validator.CheckProjectWarnings(project)...)
+		// Check project aliases
+		grip.Infof("CHECKING PROJECT ALIASES: %s\n", input.ProjectID)
+		fmt.Println("SOMETHINGs")
+		if projectRef != nil {
+			var aliases model.ProjectAliases
+			if projectRef.IsVersionControlEnabled() {
+				aliases, err = model.FindAliasInProjectRepoOrProjectConfig(projectRef.Id, evergreen.CommitQueueAlias, projectConfig)
+			} else {
+				aliases, err = model.FindAliasInProjectRepoOrProjectConfig(projectRef.Id, evergreen.CommitQueueAlias, nil)
+			}
+			fmt.Println("length aliases: ", len(aliases))
+			if err != nil {
+				validationErr = validator.ValidationError{
+					Message: "problem finding aliases; validation will proceed without checking alias coverage",
+					Level:   validator.Warning,
+				}
+			}
+			errs = append(errs, validator.CheckAliasWarnings(project, aliases)...)
+		}
 	}
 
 	if len(errs) > 0 {

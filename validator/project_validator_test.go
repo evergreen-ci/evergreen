@@ -1161,6 +1161,189 @@ func TestValidatePlugins(t *testing.T) {
 	})
 }
 
+func TestValidateAliasCoverage(t *testing.T) {
+	for testName, testCase := range map[string]func(*testing.T, *model.Project){
+		"matchesNothing": func(t *testing.T, p *model.Project) {
+			alias1 := model.ProjectAlias{
+				ID:          mgobson.NewObjectId(),
+				Alias:       evergreen.CommitQueueAlias,
+				VariantTags: []string{"notTheVariantTag"},
+				TaskTags:    []string{"taskTag"},
+			}
+			alias2 := model.ProjectAlias{
+				ID:      mgobson.NewObjectId(),
+				Alias:   evergreen.CommitQueueAlias,
+				Variant: "nonsense",
+				Task:    ".*",
+			}
+			aliasMap := map[string]model.ProjectAlias{
+				"alias1": alias1,
+				"alias2": alias2,
+			}
+			needsVariants, needsTasks, err := getAliasCoverage(p, aliasMap)
+			assert.NoError(t, err)
+			assert.Len(t, needsVariants, 2)
+			assert.Len(t, needsTasks, 2)
+			for _, matches := range needsVariants {
+				assert.True(t, matches)
+			}
+			// Doesn't matter that the tasks match since the variants don't match
+			for _, matches := range needsTasks {
+				assert.True(t, matches)
+			}
+			alias3 := model.ProjectAlias{
+				ID:    mgobson.NewObjectId(),
+				Alias: "won't be used",
+			}
+			errs := validateCommitQueueAliasCoverage(p, model.ProjectAliases{alias1, alias2, alias3})
+			require.Len(t, errs, 2)
+			assert.Contains(t, errs[0].Message, "Commit queue alias")
+			assert.Contains(t, errs[0].Message, "has no matching variants")
+			assert.Contains(t, errs[1].Message, "Commit queue alias")
+			assert.Contains(t, errs[1].Message, "has no matching variants")
+			assert.NotContains(t, errs[0].Message, "tasks")
+			assert.NotContains(t, errs[1].Message, "tasks")
+			assert.Equal(t, errs[0].Level, Warning)
+			assert.Equal(t, errs[1].Level, Warning)
+		},
+		"matchesAll": func(t *testing.T, p *model.Project) {
+			alias1 := model.ProjectAlias{
+				ID:          mgobson.NewObjectId(),
+				Alias:       evergreen.CommitQueueAlias,
+				VariantTags: []string{"variantTag"},
+				TaskTags:    []string{"taskTag"},
+			}
+			alias2 := model.ProjectAlias{
+				ID:      mgobson.NewObjectId(),
+				Alias:   evergreen.CommitQueueAlias,
+				Variant: "bvWith.*",
+				Task:    ".*",
+			}
+			aliasMap := map[string]model.ProjectAlias{
+				"alias1": alias1,
+				"alias2": alias2,
+			}
+			needsVariants, needsTasks, err := getAliasCoverage(p, aliasMap)
+			assert.NoError(t, err)
+			assert.Len(t, needsVariants, 2)
+			assert.Len(t, needsTasks, 2)
+			for _, matches := range needsVariants {
+				assert.False(t, matches)
+			}
+			for _, matches := range needsTasks {
+				assert.False(t, matches)
+			}
+			errs := validateCommitQueueAliasCoverage(p, model.ProjectAliases{alias1, alias2})
+			assert.Len(t, errs, 0)
+		},
+		"matchesVariantTag": func(t *testing.T, p *model.Project) {
+			alias1 := model.ProjectAlias{
+				ID:          mgobson.NewObjectId(),
+				Alias:       evergreen.CommitQueueAlias,
+				VariantTags: []string{"variantTag"},
+			}
+			alias2 := model.ProjectAlias{
+				ID:      mgobson.NewObjectId(),
+				Alias:   evergreen.CommitQueueAlias,
+				Variant: "badRegex",
+			}
+			aliasMap := map[string]model.ProjectAlias{
+				"alias1": alias1,
+				"alias2": alias2,
+			}
+			needsVariants, needsTasks, err := getAliasCoverage(p, aliasMap)
+			assert.NoError(t, err)
+			assert.Len(t, needsVariants, 2)
+			assert.Len(t, needsTasks, 2)
+			assert.False(t, needsVariants["alias1"])
+			assert.True(t, needsVariants["alias2"])
+			for _, matches := range needsTasks {
+				assert.True(t, matches)
+			}
+
+			errs := validateCommitQueueAliasCoverage(p, model.ProjectAliases{alias1, alias2})
+			require.Len(t, errs, 2)
+			assert.Contains(t, errs[0].Message, "Commit queue alias")
+			assert.Contains(t, errs[0].Message, "has no matching tasks")
+			assert.Contains(t, errs[0].Message, "variant tags")
+			assert.Contains(t, errs[0].Message, "matching task regexp")
+			assert.Contains(t, errs[1].Message, "Commit queue alias")
+			assert.Contains(t, errs[1].Message, "has no matching variants")
+			assert.NotContains(t, errs[1].Message, "matching task regexp")
+			assert.Equal(t, errs[0].Level, Warning)
+			assert.Equal(t, errs[1].Level, Warning)
+		},
+		"negatedTag": func(t *testing.T, p *model.Project) {
+			negatedAlias := model.ProjectAlias{
+				ID:          mgobson.NewObjectId(),
+				Alias:       evergreen.CommitQueueAlias,
+				VariantTags: []string{"!variantTag"},
+				TaskTags:    []string{"!newTaskTag"},
+			}
+			aliasMap := map[string]model.ProjectAlias{
+				"negatedAlias": negatedAlias,
+			}
+			needsVariants, needsTasks, err := getAliasCoverage(p, aliasMap)
+			assert.NoError(t, err)
+			assert.Len(t, needsVariants, 1)
+			assert.Len(t, needsTasks, 1)
+			assert.False(t, needsVariants["negatedAlias"]) // Matches the second build variant
+			assert.False(t, needsTasks["negatedAlias"])
+
+			p.BuildVariants[1].Tags = []string{"variantTag"}
+			needsVariants, needsTasks, err = getAliasCoverage(p, aliasMap)
+			assert.NoError(t, err)
+			assert.Len(t, needsVariants, 1)
+			assert.Len(t, needsTasks, 1)
+			assert.True(t, needsVariants["negatedAlias"]) // Doesn't match either build variant
+			assert.True(t, needsTasks["negatedAlias"])    // Because the variants don't match
+
+			p.BuildVariants[1].Tags = nil
+			p.Tasks[1].Tags = []string{"newTaskTag"}
+			needsVariants, needsTasks, err = getAliasCoverage(p, aliasMap)
+			assert.NoError(t, err)
+			assert.Len(t, needsVariants, 1)
+			assert.Len(t, needsTasks, 1)
+			assert.False(t, needsVariants["negatedAlias"]) // Matches the second build variant again
+			assert.True(t, needsTasks["negatedAlias"])     // Second build variant task doesn't match
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			p := &model.Project{
+				BuildVariants: model.BuildVariants{
+					{
+						Name: "bvWithTag",
+						Tags: []string{"variantTag"},
+						Tasks: []model.BuildVariantTaskUnit{
+							{
+								Name: "taskWithTag",
+							},
+						},
+					},
+					{
+						Name: "bvWithoutTag",
+						Tasks: []model.BuildVariantTaskUnit{
+							{
+								Name: "taskWithoutTag",
+							},
+						},
+					},
+				},
+				Tasks: []model.ProjectTask{
+					{
+						Name: "taskWithTag",
+						Tags: []string{"taskTag"},
+					},
+					{
+						Name: "taskWithoutTag",
+					},
+				},
+			}
+			testCase(t, p)
+		})
+	}
+}
+
 func TestValidateProjectAliases(t *testing.T) {
 	Convey("When validating a project", t, func() {
 		Convey("ensure misconfigured aliases throw an error", func() {
@@ -3899,13 +4082,13 @@ func TestValidateTaskGroupsInBV(t *testing.T) {
 					},
 				},
 				TaskGroups: []model.TaskGroup{
-					model.TaskGroup{
+					{
 						Name:  "task1-and-task2",
 						Tasks: []string{"task1", "task2"},
 					},
 				},
 				BuildVariants: []model.BuildVariant{
-					model.BuildVariant{
+					{
 						Name: "ubuntu",
 						Tasks: []model.BuildVariantTaskUnit{
 							{Name: "task1-and-task2", IsGroup: true},
@@ -3931,13 +4114,13 @@ func TestValidateTaskGroupsInBV(t *testing.T) {
 					},
 				},
 				TaskGroups: []model.TaskGroup{
-					model.TaskGroup{
+					{
 						Name:  "task1-and-task2",
 						Tasks: []string{"task1", "task2"},
 					},
 				},
 				BuildVariants: []model.BuildVariant{
-					model.BuildVariant{
+					{
 						Name: "ubuntu",
 						Tasks: []model.BuildVariantTaskUnit{
 							{Name: "task2"},
@@ -3963,13 +4146,13 @@ func TestValidateTaskGroupsInBV(t *testing.T) {
 					},
 				},
 				TaskGroups: []model.TaskGroup{
-					model.TaskGroup{
+					{
 						Name:  "task1-and-task2",
 						Tasks: []string{"task1", "task2"},
 					},
 				},
 				BuildVariants: []model.BuildVariant{
-					model.BuildVariant{
+					{
 						Name: "ubuntu",
 						Tasks: []model.BuildVariantTaskUnit{
 							{Name: "task3"},
@@ -3994,13 +4177,13 @@ func TestValidateTaskGroupsInBV(t *testing.T) {
 					},
 				},
 				TaskGroups: []model.TaskGroup{
-					model.TaskGroup{
+					{
 						Name:  "task1-and-task2",
 						Tasks: []string{"task1", "task2"},
 					},
 				},
 				BuildVariants: []model.BuildVariant{
-					model.BuildVariant{
+					{
 						Name: "ubuntu",
 						Tasks: []model.BuildVariantTaskUnit{
 							{Name: "task3"},
@@ -4026,7 +4209,7 @@ func TestValidateTaskGroupsInBV(t *testing.T) {
 					},
 				},
 				TaskGroups: []model.TaskGroup{
-					model.TaskGroup{
+					{
 						Name:  "task1-and-task2",
 						Tasks: []string{"task1", "task2"},
 					},
@@ -4036,7 +4219,7 @@ func TestValidateTaskGroupsInBV(t *testing.T) {
 					},
 				},
 				BuildVariants: []model.BuildVariant{
-					model.BuildVariant{
+					{
 						Name: "ubuntu",
 						Tasks: []model.BuildVariantTaskUnit{
 							{Name: "task1-and-task2", IsGroup: true},
@@ -4217,13 +4400,13 @@ func TestBVsWithTasksThatCallCommand(t *testing.T) {
 			"TaskFunctionExpandsCommands": {
 				project: model.Project{
 					Functions: map[string]*model.YAMLCommandSet{
-						"pull_func": &model.YAMLCommandSet{
+						"pull_func": {
 							SingleCommand: &model.PluginCommandConf{
 								Command:     evergreen.S3PullCommandName,
 								DisplayName: "pull_dir",
 							},
 						},
-						"test_func": &model.YAMLCommandSet{
+						"test_func": {
 							MultiCommand: []model.PluginCommandConf{
 								{
 									Command:     evergreen.S3PullCommandName,
@@ -4751,7 +4934,7 @@ func TestBVsWithTasksThatCallCommand(t *testing.T) {
 
 	t.Run("MissingDefintiion", func(t *testing.T) {
 		for testName, project := range map[string]model.Project{
-			"ForTaskReferencedInBV": model.Project{
+			"ForTaskReferencedInBV": {
 				BuildVariants: []model.BuildVariant{
 					{
 						Name: "ubuntu",
@@ -4764,7 +4947,7 @@ func TestBVsWithTasksThatCallCommand(t *testing.T) {
 					},
 				},
 			},
-			"ForTaskGroupReferencedInBV": model.Project{
+			"ForTaskGroupReferencedInBV": {
 				BuildVariants: []model.BuildVariant{
 					{
 						Name: "ubuntu",
@@ -4777,7 +4960,7 @@ func TestBVsWithTasksThatCallCommand(t *testing.T) {
 					},
 				},
 			},
-			"ForTaskReferencedInTaskGroupInBV": model.Project{
+			"ForTaskReferencedInTaskGroupInBV": {
 				TaskGroups: []model.TaskGroup{
 					{
 						Name:  "test_group",

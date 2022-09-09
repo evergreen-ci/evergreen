@@ -308,7 +308,7 @@ patch_aliases:
     remote_path: ""
     description: "Test Description"
 `
-	projectAliases, err := FindAliasInProjectRepoOrPatchedConfig("", "test", projYml)
+	projectAliases, err := FindAliasInProjectRepoOrProjectConfig("", "test", projYml)
 	s.NoError(err)
 	s.Len(projectAliases, 1)
 	s.Equal("^ubuntu1604$", projectAliases[0].Variant)
