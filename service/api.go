@@ -688,8 +688,6 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 	} else {
 		errs = append(errs, validator.CheckProjectWarnings(project)...)
 		// Check project aliases
-		grip.Infof("CHECKING PROJECT ALIASES: %s\n", input.ProjectID)
-		fmt.Println("SOMETHINGs")
 		if projectRef != nil {
 			var aliases model.ProjectAliases
 			if projectRef.IsVersionControlEnabled() {
@@ -697,7 +695,6 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 			} else {
 				aliases, err = model.FindAliasInProjectRepoOrProjectConfig(projectRef.Id, evergreen.CommitQueueAlias, nil)
 			}
-			fmt.Println("length aliases: ", len(aliases))
 			if err != nil {
 				validationErr = validator.ValidationError{
 					Message: "problem finding aliases; validation will proceed without checking alias coverage",

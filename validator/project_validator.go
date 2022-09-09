@@ -441,13 +441,8 @@ func validateProjectConfigAliases(pc *model.ProjectConfig) ValidationErrors {
 	return validationErrs
 }
 
-type taskInfo struct {
-	name string
-	tags []string
-}
-
+// validateCommitQueueAliasCoverage validates that all commit queue aliases defined match some variants/tasks.
 func validateCommitQueueAliasCoverage(p *model.Project, aliases model.ProjectAliases) ValidationErrors {
-	//var err error
 	aliasMap := map[string]model.ProjectAlias{}
 	for _, a := range aliases {
 		aliasMap[a.ID.Hex()] = a
@@ -461,10 +456,11 @@ func validateCommitQueueAliasCoverage(p *model.Project, aliases model.ProjectAli
 			},
 		}
 	}
-	return getAliasWarnings(aliasMap, aliasNeedsVariant, aliasNeedsTask)
+	return constructAliasWarnings(aliasMap, aliasNeedsVariant, aliasNeedsTask)
 }
 
-func getAliasWarnings(aliasMap map[string]model.ProjectAlias, aliasNeedsVariant, aliasNeedsTask map[string]bool) ValidationErrors {
+// constructAliasWarnings returns validation errors given a map of aliases, and whether they need variants/tasks to match.
+func constructAliasWarnings(aliasMap map[string]model.ProjectAlias, aliasNeedsVariant, aliasNeedsTask map[string]bool) ValidationErrors {
 	res := ValidationErrors{}
 	for aliasID, a := range aliasMap {
 		needsVariant := aliasNeedsVariant[aliasID]
@@ -498,7 +494,12 @@ func getAliasWarnings(aliasMap map[string]model.ProjectAlias, aliasNeedsVariant,
 	return res
 }
 
+// getAliasCoverage returns a map of aliases that don't match variants and a map of aliases that don't match tasks.
 func getAliasCoverage(p *model.Project, aliasMap map[string]model.ProjectAlias) (map[string]bool, map[string]bool, error) {
+	type taskInfo struct {
+		name string
+		tags []string
+	}
 	aliasNeedsVariant := map[string]bool{}
 	aliasNeedsTask := map[string]bool{}
 	bvtCache := map[string]taskInfo{}
@@ -508,7 +509,7 @@ func getAliasCoverage(p *model.Project, aliasMap map[string]model.ProjectAlias) 
 	}
 	for _, bv := range p.BuildVariants {
 		for aliasID, alias := range aliasMap {
-			if !aliasNeedsVariant[aliasID] && !aliasNeedsTask[aliasID] {
+			if !aliasNeedsVariant[aliasID] && !aliasNeedsTask[aliasID] { // Have already found both variants and tasks.
 				continue
 			}
 			// If we still need a task to match the variant, still check if the alias matches, so we know if checking tasks is needed.
@@ -516,11 +517,10 @@ func getAliasCoverage(p *model.Project, aliasMap map[string]model.ProjectAlias) 
 			if err != nil {
 				return nil, nil, err
 			}
-			if !matchesThisVariant {
+			if !matchesThisVariant { // If the variant doesn't match, then there's no reason to keep checking tasks.
 				continue
 			}
 			aliasNeedsVariant[aliasID] = false
-			// We only get this far if the alias still needs to check tasks
 			for _, t := range bv.Tasks {
 				var name string
 				var tags []string
@@ -529,15 +529,15 @@ func getAliasCoverage(p *model.Project, aliasMap map[string]model.ProjectAlias) 
 					tags = info.tags
 				} else {
 					name, tags, _ = p.GetTaskNameAndTags(t)
-					// Even if we can't find the name/tags, still store it, so we don't  try again.
+					// Even if we can't find the name/tags, still store it, so we don't try again.
 					bvtCache[t.Name] = taskInfo{name: name, tags: tags}
 				}
 				if name != "" {
-					hasTask, err := alias.HasMatchingTask(name, tags)
+					matchesThisTask, err := alias.HasMatchingTask(name, tags)
 					if err != nil {
 						return nil, nil, err
 					}
-					if hasTask {
+					if matchesThisTask {
 						aliasNeedsTask[aliasID] = false
 						break
 					}
