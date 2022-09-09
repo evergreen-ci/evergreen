@@ -1191,11 +1191,7 @@ func TestValidateAliasCoverage(t *testing.T) {
 			for _, matches := range needsTasks {
 				assert.True(t, matches)
 			}
-			alias3 := model.ProjectAlias{
-				ID:    mgobson.NewObjectId(),
-				Alias: "won't be used",
-			}
-			errs := validateCommitQueueAliasCoverage(p, model.ProjectAliases{alias1, alias2, alias3})
+			errs := validateCommitQueueAliasCoverage(p, model.ProjectAliases{alias1, alias2})
 			require.Len(t, errs, 2)
 			assert.Contains(t, errs[0].Message, "Commit queue alias")
 			assert.Contains(t, errs[0].Message, "has no matching variants")

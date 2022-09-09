@@ -299,16 +299,20 @@ func (s *ProjectAliasSuite) TestMergeAliasesWithProjectConfig() {
 	s.Len(projectAliases, 0)
 }
 
-func (s *ProjectAliasSuite) TestFindAliasInProjectOrPatchedConfig() {
-	projYml := `
-patch_aliases:
-  - alias: "test"
-    variant: "^ubuntu1604$"
-    task: "^test.*$"
-    remote_path: ""
-    description: "Test Description"
-`
-	projectAliases, err := FindAliasInProjectRepoOrProjectConfig("", "test", projYml)
+func (s *ProjectAliasSuite) TestFindAliasInProjectOrProjectConfig() {
+	pc := ProjectConfig{ProjectConfigFields: ProjectConfigFields{
+		PatchAliases: ProjectAliases{
+			{
+				Alias:       "test",
+				Variant:     "^ubuntu1604$",
+				Task:        "^test.*$",
+				RemotePath:  "",
+				Description: "Test Description",
+			},
+		},
+	}}
+
+	projectAliases, err := FindAliasInProjectRepoOrProjectConfig("", "test", &pc)
 	s.NoError(err)
 	s.Len(projectAliases, 1)
 	s.Equal("^ubuntu1604$", projectAliases[0].Variant)
