@@ -93,9 +93,11 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 	}
 
 	cachedSettings := env.Settings()
-	smClient, err := cloud.MakeSecretsManagerClient(cachedSettings)
-	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
+	// TODO (PM-2950): remove this temporary error-checking once the AWS
+	// infrastructure is productionized and AWS admin settings are set.
+	smClient, clientErr := cloud.MakeSecretsManagerClient(cachedSettings)
+	if clientErr != nil {
+		grip.Warning(message.WrapError(clientErr, message.Fields{
 			"message":            "cannot set up Secrets Manager client to store newly-created project's container secrets",
 			"op":                 "CreateProject",
 			"project_id":         projectRef.Id,
@@ -104,8 +106,9 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 	}
 	defer smClient.Close(ctx)
 	var vault cocoa.Vault
-	if smClient != nil {
-		vault, err = cloud.MakeSecretsManagerVault(smClient)
+	var vaultErr error
+	if clientErr == nil {
+		vault, vaultErr = cloud.MakeSecretsManagerVault(smClient)
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message":            "cannot set up Secrets Manager vault to store newly-created project's container secrets",
 			"op":                 "CreateProject",
@@ -114,7 +117,7 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 		}))
 	}
 
-	if vault != nil {
+	if clientErr == nil && vaultErr == nil {
 		projectRef.ContainerSecrets, err = getCopiedContainerSecrets(ctx, cachedSettings, vault, projectRef.Id, existingContainerSecrets)
 		if err != nil {
 			return gimlet.ErrorResponse{
