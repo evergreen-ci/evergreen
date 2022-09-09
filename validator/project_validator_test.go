@@ -2944,7 +2944,7 @@ func TestValidateContainers(t *testing.T) {
 			require.Len(t, verrs, 1)
 			assert.Contains(t, verrs[0].Message, "container size 's2' not found")
 		},
-		"FailsWithNonexistentRepoCreds": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
+		"FailsWithNonexistentRepoCred": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
 			p.Containers[0].Credential = "nonexistent"
 			verrs := validateContainers(p, ref, false)
 			require.Len(t, verrs, 1)
