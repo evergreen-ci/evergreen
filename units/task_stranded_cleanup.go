@@ -43,8 +43,8 @@ func makeStrandedTaskCleanupJob() *taskStrandedCleanupJob {
 }
 
 // NewStrandedTaskCleanupJob returns a job to detect and clean up tasks that:
-// - Have been stranded on hosts that are already terminated
-// - Tasks that have been stuck dispatching for too long.
+// - Have been stranded on hosts that are already terminated.
+// - Have stuck dispatching for too long.
 func NewStrandedTaskCleanupJob(id string) amboy.Job {
 	j := makeStrandedTaskCleanupJob()
 	j.SetID(fmt.Sprintf("%s.%s", taskStrandedCleanupJobName, id))
