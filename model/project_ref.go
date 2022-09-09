@@ -2646,10 +2646,11 @@ func ValidateContainers(ecsConf evergreen.ECSConfig, pRef *ProjectRef, container
 				break
 			}
 		}
-		if containerSize == nil {
-			return errors.Errorf("container size '%s' not found", container.Size)
+		if containerSize != nil {
+			catcher.Add(containerSize.Validate(ecsConf))
 		}
-		catcher.Add(containerSize.Validate(ecsConf))
+		catcher.ErrorfWhen(container.Size != "" && containerSize == nil, "container size '%s' not found", container.Size)
+
 		if container.Credential != "" {
 			var matchingSecret *ContainerSecret
 			for _, cs := range pRef.ContainerSecrets {
