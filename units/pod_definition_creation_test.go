@@ -13,7 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
-	evgMock "github.com/evergreen-ci/evergreen/mock"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/pod/definition"
@@ -177,7 +177,7 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 
 			cocoaMock.ResetGlobalECSService()
 
-			env := &evgMock.Environment{}
+			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
 			env.EvergreenSettings.Providers.AWS.Pod.ECS = evergreen.ECSConfig{
 				TaskDefinitionPrefix: "task_definition_prefix",

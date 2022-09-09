@@ -6,7 +6,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -48,13 +50,16 @@ func FindProjectById(id string, includeRepo bool, includeProjectConfig bool) (*m
 	return p, nil
 }
 
-// CreateProject inserts the given model.ProjectRef.
-func CreateProject(ctx context.Context, projectRef *model.ProjectRef, u *user.DBUser) error {
+// CreateProject creates a new project ref from the given one and performs other
+// initial setup for new projects such as populating initial project variables
+// and creating new webhooks. If the given project ref already has container
+// secrets, the new project ref receives copies of the existing ones.
+func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *model.ProjectRef, u *user.DBUser) error {
 	config, err := evergreen.GetConfig()
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "getting evergreen config ").Error(),
+			Message:    errors.Wrapf(err, "getting evergreen config").Error(),
 		}
 	}
 
@@ -75,11 +80,61 @@ func CreateProject(ctx context.Context, projectRef *model.ProjectRef, u *user.DB
 			return err
 		}
 	}
+
+	existingContainerSecrets := projectRef.ContainerSecrets
+	projectRef.ContainerSecrets = nil
+
 	err = projectRef.Add(u)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrapf(err, "inserting project '%s'", projectRef.Identifier).Error(),
+		}
+	}
+
+	cachedSettings := env.Settings()
+	smClient, err := cloud.MakeSecretsManagerClient(cachedSettings)
+	if err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":            "cannot set up Secrets Manager client to store newly-created project's container secrets",
+			"op":                 "CreateProject",
+			"project_id":         projectRef.Id,
+			"project_identifier": projectRef.Identifier,
+		}))
+	}
+	defer smClient.Close(ctx)
+	var vault cocoa.Vault
+	if smClient != nil {
+		vault, err = cloud.MakeSecretsManagerVault(smClient)
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":            "cannot set up Secrets Manager vault to store newly-created project's container secrets",
+			"op":                 "CreateProject",
+			"project_id":         projectRef.Id,
+			"project_identifier": projectRef.Identifier,
+		}))
+	}
+
+	if vault != nil {
+		projectRef.ContainerSecrets, err = getCopiedContainerSecrets(ctx, cachedSettings, vault, projectRef.Id, existingContainerSecrets)
+		if err != nil {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    errors.Wrapf(err, "copying existing container secrets").Error(),
+			}
+		}
+		if err := projectRef.Update(); err != nil {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    errors.Wrapf(err, "updating project ref's container secrets").Error(),
+			}
+		}
+		// This updates the container secrets in the DB project ref only, not
+		// the in-memory copy.
+		if err := UpsertContainerSecrets(ctx, vault, projectRef.ContainerSecrets); err != nil {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    errors.Wrapf(err, "upserting container secrets").Error(),
+			}
 		}
 	}
 

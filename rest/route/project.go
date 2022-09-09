@@ -519,6 +519,8 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating project '%s'", h.newProjectRef.Id))
 	}
 
+	// This updates the container secrets in the DB project ref only, not the
+	// in-memory copy.
 	if err := data.UpsertContainerSecrets(ctx, h.vault, allContainerSecrets); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "upserting container secrets"))
 	}
@@ -616,14 +618,15 @@ type projectIDPutHandler struct {
 	projectName string
 	project     model.APIProjectRef
 	body        []byte
+	env         evergreen.Environment
 }
 
-func makePutProjectByID() gimlet.RouteHandler {
-	return &projectIDPutHandler{}
+func makePutProjectByID(env evergreen.Environment) gimlet.RouteHandler {
+	return &projectIDPutHandler{env: env}
 }
 
 func (h *projectIDPutHandler) Factory() gimlet.RouteHandler {
-	return &projectIDPutHandler{}
+	return &projectIDPutHandler{env: h.env}
 }
 
 // Parse fetches the distroId and JSON payload from the http request.
@@ -674,7 +677,7 @@ func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	u := gimlet.GetUser(ctx).(*user.DBUser)
 
-	if err = data.CreateProject(ctx, &dbProjectRef, u); err != nil {
+	if err = data.CreateProject(ctx, h.env, &dbProjectRef, u); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating project '%s'", h.projectName))
 	}
 

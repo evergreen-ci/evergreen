@@ -12,13 +12,15 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
 )
 
 type ProjectCopySuite struct {
-	route *projectCopyHandler
+	route  *projectCopyHandler
+	cancel context.CancelFunc
 
 	suite.Suite
 }
@@ -61,7 +63,15 @@ func (s *ProjectCopySuite) SetupSuite() {
 }
 
 func (s *ProjectCopySuite) SetupTest() {
-	s.route = &projectCopyHandler{}
+	ctx, cancel := context.WithCancel(context.Background())
+	s.cancel = cancel
+	s.route = &projectCopyHandler{
+		env: testutil.NewEnvironment(ctx, s.T()),
+	}
+}
+
+func (s *ProjectCopySuite) TearDownTest() {
+	s.cancel()
 }
 
 func (s *ProjectCopySuite) TestParse() {
