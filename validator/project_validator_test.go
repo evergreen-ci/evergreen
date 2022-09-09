@@ -3,7 +3,6 @@ package validator
 import (
 	"context"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"math"
 	"testing"
 
@@ -20,8 +19,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
-
-func init() { testutil.Setup() }
 
 func TestValidateTaskDependencies(t *testing.T) {
 	Convey("When validating a project's dependencies", t, func() {
