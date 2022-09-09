@@ -51,7 +51,7 @@ func main() {
 		Credentials: pail.CreateAWSCredentials(awsKey, awsSecret, ""),
 		Region:      endpoints.UsEast1RegionID,
 		Name:        bucketName,
-		MaxRetries:  10,
+		MaxRetries:  utility.ToIntPtr(10),
 		Permissions: pail.S3PermissionsPublicRead,
 		Verbose:     true,
 	}
