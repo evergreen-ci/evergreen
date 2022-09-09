@@ -1439,6 +1439,10 @@ func (t *Task) MarkSystemFailed(description string) error {
 		Type:        evergreen.CommandTypeSystem,
 		Description: description,
 	}
+	if description == evergreen.TaskDescriptionHeartbeat {
+		// kim: TODO: check if this needs to be set elsewhere, like in MarkEnd.
+		t.Details.TimedOut = true
+	}
 
 	event.LogTaskFinished(t.Id, t.Execution, t.HostId, evergreen.TaskSystemFailed)
 	grip.Info(message.Fields{

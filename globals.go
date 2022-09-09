@@ -96,7 +96,16 @@ const (
 	CommandTypeSetup  = "setup"
 
 	// Task descriptions
+	//
+	// TaskDescriptionHeartbeat indicates that a task failed because it did not
+	// send a heartbeat while it was running. Tasks are expected to send
+	// periodic heartbeats back to the app server indicating the task is still
+	// actively running.
 	TaskDescriptionHeartbeat = "heartbeat"
+	// TaskDescriptionStranded indicates that a task failed because its
+	// underlying runtime environment (i.e. container or host) encountered an
+	// issue. For example, if a host is terminated while the task is still
+	// running, the task is considered stranded.
 	TaskDescriptionStranded  = "stranded"
 	TaskDescriptionNoResults = "expected test results, but none attached"
 	// TaskDescriptionContainerUnallocatable indicates that the reason a
