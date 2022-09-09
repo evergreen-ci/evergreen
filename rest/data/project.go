@@ -134,41 +134,26 @@ func tryCopyingContainerSecrets(ctx context.Context, settings *evergreen.Setting
 	// infrastructure is productionized and AWS admin settings are set.
 	smClient, err := cloud.MakeSecretsManagerClient(settings)
 	if err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrap(err, "setting up Secrets Manager client to store newly-created project's container secrets").Error(),
-		}
+		return errors.Wrap(err, "setting up Secrets Manager client to store newly-created project's container secrets")
 	}
 	defer smClient.Close(ctx)
 
 	vault, err := cloud.MakeSecretsManagerVault(smClient)
 	if err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrap(err, "setting up Secrets Manager vault to store newly-created project's container secrets").Error(),
-		}
+		return errors.Wrap(err, "setting up Secrets Manager vault to store newly-created project's container secrets")
 	}
 
 	pRef.ContainerSecrets, err = getCopiedContainerSecrets(ctx, settings, vault, pRef.Id, existingSecrets)
 	if err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "copying existing container secrets").Error(),
-		}
+		return errors.Wrapf(err, "copying existing container secrets")
 	}
 	if err := pRef.Update(); err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "updating project ref's container secrets").Error(),
-		}
+		return errors.Wrapf(err, "updating project ref's container secrets")
 	}
 	// This updates the container secrets in the DB project ref only, not
 	// the in-memory copy.
 	if err := UpsertContainerSecrets(ctx, vault, pRef.ContainerSecrets); err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "upserting container secrets").Error(),
-		}
+		return errors.Wrapf(err, "upserting container secrets")
 	}
 
 	return nil
