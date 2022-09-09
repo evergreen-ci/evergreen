@@ -93,6 +93,12 @@ input TriggerAliasInput {
   taskRegex: String!
 }
 
+input ContainerResourcesInput {
+  name: String!
+  cpu: Int!
+  memoryMb: Int!
+}
+
 input PatchTriggerAliasInput {
   alias: String!
   childProjectIdentifier: String!
@@ -123,7 +129,6 @@ input WorkstationSetupCommandInput {
   command: String!
   directory: String
 }
-
 
 ###### TYPES ######
 """
@@ -194,6 +199,7 @@ type Project {
   validDefaultLoggers: [String!]!
   versionControlEnabled: Boolean
   workstationConfig: WorkstationConfig!
+  containerSizeDefinitions: [ContainerResources!]
 }
 
 type CommitQueueParams {

@@ -1364,13 +1364,19 @@ func getContainerOptions(project *Project, pRef *ProjectRef, container string) (
 			return &opts, nil
 		}
 
-		size, ok := pRef.ContainerSizes[c.Size]
-		if !ok {
+		var containerSize *ContainerResources
+		for _, size := range pRef.ContainerSizeDefinitions {
+			if size.Name == c.Size {
+				containerSize = &size
+				break
+			}
+		}
+		if containerSize == nil {
 			return nil, errors.Errorf("container size '%s' not found", c.Size)
 		}
 
-		opts.CPU = size.CPU
-		opts.MemoryMB = size.MemoryMB
+		opts.CPU = containerSize.CPU
+		opts.MemoryMB = containerSize.MemoryMB
 		return &opts, nil
 	}
 

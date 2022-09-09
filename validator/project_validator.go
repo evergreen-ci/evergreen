@@ -451,15 +451,15 @@ func validateProjectConfigAliases(pc *model.ProjectConfig) ValidationErrors {
 
 func validateProjectConfigContainers(pc *model.ProjectConfig) ValidationErrors {
 	errs := ValidationErrors{}
-	for name, containerResource := range pc.ContainerSizes {
-		if name == "" {
+	for _, size := range pc.ContainerSizeDefinitions {
+		if size.Name == "" {
 			errs = append(errs, ValidationError{
 				Message: "container size name cannot be empty",
 				Level:   Error,
 			})
 		}
 
-		if err := containerResource.Validate(evergreen.GetEnvironment().Settings().Providers.AWS.Pod.ECS); err != nil {
+		if err := size.Validate(evergreen.GetEnvironment().Settings().Providers.AWS.Pod.ECS); err != nil {
 			errs = append(errs,
 				ValidationError{
 					Message: errors.Wrap(err, "error validating container resources").Error(),
