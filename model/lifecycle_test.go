@@ -732,15 +732,20 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			},
 		}
 
-		smallContainerSize := ContainerResources{
-			MemoryMB: 128,
-			CPU:      256,
-		}
 		pref := &ProjectRef{
 			Id:         "projectId",
 			Identifier: "projectName",
-			ContainerSizes: map[string]ContainerResources{
-				"small": smallContainerSize,
+			ContainerSizeDefinitions: []ContainerResources{
+				{
+					Name:     "small",
+					CPU:      256,
+					MemoryMB: 128,
+				},
+				{
+					Name:     "large",
+					CPU:      512,
+					MemoryMB: 256,
+				},
 			},
 		}
 		So(pref.Insert(), ShouldBeNil)
@@ -1054,8 +1059,8 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				RepoCredsName: container1.Credential,
 			}
 			taskContainerOpts := task.ContainerOptions{
-				CPU:        smallContainerSize.CPU,
-				MemoryMB:   smallContainerSize.MemoryMB,
+				CPU:        256,
+				MemoryMB:   128,
 				WorkingDir: container2.WorkingDir,
 				Image:      container2.Image,
 				OS:         container2.System.OperatingSystem,

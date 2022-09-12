@@ -111,8 +111,8 @@ type ProjectRef struct {
 	PerfEnabled        *bool                        `bson:"perf_enabled,omitempty" json:"perf_enabled,omitempty" yaml:"perf_enabled,omitempty"`
 
 	// Container settings
-	ContainerSizes   map[string]ContainerResources `bson:"container_sizes,omitempty" json:"container_sizes,omitempty" yaml:"container_sizes,omitempty"`
-	ContainerSecrets []ContainerSecret             `bson:"container_secrets,omitempty" json:"container_secrets,omitempty" yaml:"container_secrets,omitempty"`
+	ContainerSizeDefinitions []ContainerResources `bson:"container_size_definitions,omitempty" json:"container_size_definitions,omitempty" yaml:"container_size_definitions,omitempty"`
+	ContainerSecrets         []ContainerSecret    `bson:"container_secrets,omitempty" json:"container_secrets,omitempty" yaml:"container_secrets,omitempty"`
 
 	RepoRefId string `bson:"repo_ref_id" json:"repo_ref_id" yaml:"repo_ref_id"`
 
@@ -157,8 +157,9 @@ type AlertConfig struct {
 // CPU is the CPU units that will be allocated. 1024 CPU units is
 // equivalent to 1vCPU.
 type ContainerResources struct {
-	MemoryMB int `bson:"memory_mb,omitempty" json:"memory_mb" yaml:"memory_mb"`
-	CPU      int `bson:"cpu,omitempty" json:"cpu" yaml:"cpu"`
+	Name     string `bson:"name,omitempty" json:"name" yaml:"name"`
+	MemoryMB int    `bson:"memory_mb,omitempty" json:"memory_mb" yaml:"memory_mb"`
+	CPU      int    `bson:"cpu,omitempty" json:"cpu" yaml:"cpu"`
 }
 
 // ContainerSecret specifies the username and password required for authentication
@@ -259,47 +260,48 @@ type EmailAlertData struct {
 
 var (
 	// bson fields for the ProjectRef struct
-	ProjectRefIdKey                     = bsonutil.MustHaveTag(ProjectRef{}, "Id")
-	ProjectRefOwnerKey                  = bsonutil.MustHaveTag(ProjectRef{}, "Owner")
-	ProjectRefRepoKey                   = bsonutil.MustHaveTag(ProjectRef{}, "Repo")
-	ProjectRefBranchKey                 = bsonutil.MustHaveTag(ProjectRef{}, "Branch")
-	ProjectRefEnabledKey                = bsonutil.MustHaveTag(ProjectRef{}, "Enabled")
-	ProjectRefPrivateKey                = bsonutil.MustHaveTag(ProjectRef{}, "Private")
-	ProjectRefRestrictedKey             = bsonutil.MustHaveTag(ProjectRef{}, "Restricted")
-	ProjectRefBatchTimeKey              = bsonutil.MustHaveTag(ProjectRef{}, "BatchTime")
-	ProjectRefIdentifierKey             = bsonutil.MustHaveTag(ProjectRef{}, "Identifier")
-	ProjectRefRepoRefIdKey              = bsonutil.MustHaveTag(ProjectRef{}, "RepoRefId")
-	ProjectRefDisplayNameKey            = bsonutil.MustHaveTag(ProjectRef{}, "DisplayName")
-	ProjectRefDeactivatePreviousKey     = bsonutil.MustHaveTag(ProjectRef{}, "DeactivatePrevious")
-	ProjectRefRemotePathKey             = bsonutil.MustHaveTag(ProjectRef{}, "RemotePath")
-	ProjectRefHiddenKey                 = bsonutil.MustHaveTag(ProjectRef{}, "Hidden")
-	ProjectRefRepotrackerError          = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerError")
-	ProjectRefFilesIgnoredFromCacheKey  = bsonutil.MustHaveTag(ProjectRef{}, "FilesIgnoredFromCache")
-	ProjectRefDisabledStatsCacheKey     = bsonutil.MustHaveTag(ProjectRef{}, "DisabledStatsCache")
-	ProjectRefAdminsKey                 = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
-	ProjectRefGitTagAuthorizedUsersKey  = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedUsers")
-	ProjectRefGitTagAuthorizedTeamsKey  = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedTeams")
-	projectRefPRTestingEnabledKey       = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
-	projectRefManualPRTestingEnabledKey = bsonutil.MustHaveTag(ProjectRef{}, "ManualPRTestingEnabled")
-	projectRefGithubChecksEnabledKey    = bsonutil.MustHaveTag(ProjectRef{}, "GithubChecksEnabled")
-	projectRefGitTagVersionsEnabledKey  = bsonutil.MustHaveTag(ProjectRef{}, "GitTagVersionsEnabled")
-	projectRefRepotrackerDisabledKey    = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerDisabled")
-	projectRefCommitQueueKey            = bsonutil.MustHaveTag(ProjectRef{}, "CommitQueue")
-	projectRefTaskSyncKey               = bsonutil.MustHaveTag(ProjectRef{}, "TaskSync")
-	projectRefPatchingDisabledKey       = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
-	projectRefDispatchingDisabledKey    = bsonutil.MustHaveTag(ProjectRef{}, "DispatchingDisabled")
-	projectRefVersionControlEnabledKey  = bsonutil.MustHaveTag(ProjectRef{}, "VersionControlEnabled")
-	projectRefNotifyOnFailureKey        = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
-	projectRefSpawnHostScriptPathKey    = bsonutil.MustHaveTag(ProjectRef{}, "SpawnHostScriptPath")
-	projectRefTriggersKey               = bsonutil.MustHaveTag(ProjectRef{}, "Triggers")
-	projectRefPatchTriggerAliasesKey    = bsonutil.MustHaveTag(ProjectRef{}, "PatchTriggerAliases")
-	projectRefGithubTriggerAliasesKey   = bsonutil.MustHaveTag(ProjectRef{}, "GithubTriggerAliases")
-	projectRefPeriodicBuildsKey         = bsonutil.MustHaveTag(ProjectRef{}, "PeriodicBuilds")
-	projectRefWorkstationConfigKey      = bsonutil.MustHaveTag(ProjectRef{}, "WorkstationConfig")
-	projectRefTaskAnnotationSettingsKey = bsonutil.MustHaveTag(ProjectRef{}, "TaskAnnotationSettings")
-	projectRefBuildBaronSettingsKey     = bsonutil.MustHaveTag(ProjectRef{}, "BuildBaronSettings")
-	projectRefPerfEnabledKey            = bsonutil.MustHaveTag(ProjectRef{}, "PerfEnabled")
-	projectRefContainerSecretsKey       = bsonutil.MustHaveTag(ProjectRef{}, "ContainerSecrets")
+	ProjectRefIdKey                       = bsonutil.MustHaveTag(ProjectRef{}, "Id")
+	ProjectRefOwnerKey                    = bsonutil.MustHaveTag(ProjectRef{}, "Owner")
+	ProjectRefRepoKey                     = bsonutil.MustHaveTag(ProjectRef{}, "Repo")
+	ProjectRefBranchKey                   = bsonutil.MustHaveTag(ProjectRef{}, "Branch")
+	ProjectRefEnabledKey                  = bsonutil.MustHaveTag(ProjectRef{}, "Enabled")
+	ProjectRefPrivateKey                  = bsonutil.MustHaveTag(ProjectRef{}, "Private")
+	ProjectRefRestrictedKey               = bsonutil.MustHaveTag(ProjectRef{}, "Restricted")
+	ProjectRefBatchTimeKey                = bsonutil.MustHaveTag(ProjectRef{}, "BatchTime")
+	ProjectRefIdentifierKey               = bsonutil.MustHaveTag(ProjectRef{}, "Identifier")
+	ProjectRefRepoRefIdKey                = bsonutil.MustHaveTag(ProjectRef{}, "RepoRefId")
+	ProjectRefDisplayNameKey              = bsonutil.MustHaveTag(ProjectRef{}, "DisplayName")
+	ProjectRefDeactivatePreviousKey       = bsonutil.MustHaveTag(ProjectRef{}, "DeactivatePrevious")
+	ProjectRefRemotePathKey               = bsonutil.MustHaveTag(ProjectRef{}, "RemotePath")
+	ProjectRefHiddenKey                   = bsonutil.MustHaveTag(ProjectRef{}, "Hidden")
+	ProjectRefRepotrackerError            = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerError")
+	ProjectRefFilesIgnoredFromCacheKey    = bsonutil.MustHaveTag(ProjectRef{}, "FilesIgnoredFromCache")
+	ProjectRefDisabledStatsCacheKey       = bsonutil.MustHaveTag(ProjectRef{}, "DisabledStatsCache")
+	ProjectRefAdminsKey                   = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
+	ProjectRefGitTagAuthorizedUsersKey    = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedUsers")
+	ProjectRefGitTagAuthorizedTeamsKey    = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedTeams")
+	projectRefPRTestingEnabledKey         = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
+	projectRefManualPRTestingEnabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "ManualPRTestingEnabled")
+	projectRefGithubChecksEnabledKey      = bsonutil.MustHaveTag(ProjectRef{}, "GithubChecksEnabled")
+	projectRefGitTagVersionsEnabledKey    = bsonutil.MustHaveTag(ProjectRef{}, "GitTagVersionsEnabled")
+	projectRefRepotrackerDisabledKey      = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerDisabled")
+	projectRefCommitQueueKey              = bsonutil.MustHaveTag(ProjectRef{}, "CommitQueue")
+	projectRefTaskSyncKey                 = bsonutil.MustHaveTag(ProjectRef{}, "TaskSync")
+	projectRefPatchingDisabledKey         = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
+	projectRefDispatchingDisabledKey      = bsonutil.MustHaveTag(ProjectRef{}, "DispatchingDisabled")
+	projectRefVersionControlEnabledKey    = bsonutil.MustHaveTag(ProjectRef{}, "VersionControlEnabled")
+	projectRefNotifyOnFailureKey          = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
+	projectRefSpawnHostScriptPathKey      = bsonutil.MustHaveTag(ProjectRef{}, "SpawnHostScriptPath")
+	projectRefTriggersKey                 = bsonutil.MustHaveTag(ProjectRef{}, "Triggers")
+	projectRefPatchTriggerAliasesKey      = bsonutil.MustHaveTag(ProjectRef{}, "PatchTriggerAliases")
+	projectRefGithubTriggerAliasesKey     = bsonutil.MustHaveTag(ProjectRef{}, "GithubTriggerAliases")
+	projectRefPeriodicBuildsKey           = bsonutil.MustHaveTag(ProjectRef{}, "PeriodicBuilds")
+	projectRefWorkstationConfigKey        = bsonutil.MustHaveTag(ProjectRef{}, "WorkstationConfig")
+	projectRefTaskAnnotationSettingsKey   = bsonutil.MustHaveTag(ProjectRef{}, "TaskAnnotationSettings")
+	projectRefBuildBaronSettingsKey       = bsonutil.MustHaveTag(ProjectRef{}, "BuildBaronSettings")
+	projectRefPerfEnabledKey              = bsonutil.MustHaveTag(ProjectRef{}, "PerfEnabled")
+	projectRefContainerSecretsKey         = bsonutil.MustHaveTag(ProjectRef{}, "ContainerSecrets")
+	projectRefContainerSizeDefinitionsKey = bsonutil.MustHaveTag(ProjectRef{}, "ContainerSizeDefinitions")
 
 	commitQueueEnabledKey          = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
 	triggerDefinitionProjectKey    = bsonutil.MustHaveTag(TriggerDefinition{}, "Project")
@@ -436,6 +438,7 @@ const (
 	ProjectPageTriggersSection       = "TRIGGERS"
 	ProjectPagePeriodicBuildsSection = "PERIODIC_BUILDS"
 	ProjectPagePluginSection         = "PLUGINS"
+	ProjectPageContainerSection      = "CONTAINERS"
 )
 
 const (
@@ -524,9 +527,9 @@ func (p *ProjectRef) MergeWithProjectConfig(version string) (err error) {
 			err = recovery.HandlePanicWithError(recover(), err, "project ref and project config structures do not match")
 		}()
 		pRefToMerge := ProjectRef{
-			PeriodicBuilds:       projectConfig.PeriodicBuilds,
-			GithubTriggerAliases: projectConfig.GithubTriggerAliases,
-			ContainerSizes:       projectConfig.ContainerSizes,
+			PeriodicBuilds:           projectConfig.PeriodicBuilds,
+			GithubTriggerAliases:     projectConfig.GithubTriggerAliases,
+			ContainerSizeDefinitions: projectConfig.ContainerSizeDefinitions,
 		}
 		if projectConfig.WorkstationConfig != nil {
 			pRefToMerge.WorkstationConfig = *projectConfig.WorkstationConfig
@@ -1947,6 +1950,21 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			bson.M{
 				"$set": bson.M{projectRefPeriodicBuildsKey: p.PeriodicBuilds},
 			})
+	case ProjectPageContainerSection:
+		catcher := grip.NewSimpleCatcher()
+		for _, size := range p.ContainerSizeDefinitions {
+			if err = size.Validate(evergreen.GetEnvironment().Settings().Providers.AWS.Pod.ECS); err != nil {
+				catcher.Add(errors.Wrapf(err, "validating container size '%s'", size.Name))
+			}
+		}
+		if catcher.HasErrors() {
+			return false, errors.Wrapf(catcher.Resolve(), "validating container size definitions")
+		}
+		err = db.Update(coll,
+			bson.M{ProjectRefIdKey: projectId},
+			bson.M{
+				"$set": bson.M{projectRefContainerSizeDefinitionsKey: p.ContainerSizeDefinitions},
+			})
 	case ProjectPageVariablesSection:
 		// this section doesn't modify the project/repo ref
 		return false, nil
@@ -2618,11 +2636,18 @@ func ValidateContainers(ecsConf evergreen.ECSConfig, pRef *ProjectRef, container
 		if container.Resources != nil {
 			catcher.Add(container.Resources.Validate(ecsConf))
 		}
-		size, ok := pRef.ContainerSizes[container.Size]
-		if ok {
-			catcher.Add(size.Validate(ecsConf))
+		var containerSize *ContainerResources
+		for _, size := range pRef.ContainerSizeDefinitions {
+			if size.Name == container.Size {
+				containerSize = &size
+				break
+			}
 		}
-		catcher.ErrorfWhen(container.Size != "" && !ok, "size '%s' is not defined anywhere", container.Size)
+		if containerSize != nil {
+			catcher.Add(containerSize.Validate(ecsConf))
+		}
+		catcher.ErrorfWhen(container.Size != "" && containerSize == nil, "container size '%s' not found", container.Size)
+
 		if container.Credential != "" {
 			var matchingSecret *ContainerSecret
 			for _, cs := range pRef.ContainerSecrets {

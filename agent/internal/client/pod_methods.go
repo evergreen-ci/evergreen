@@ -16,7 +16,7 @@ func (c *podCommunicator) GetAgentSetupData(ctx context.Context) (*apimodels.Age
 	info := requestInfo{
 		method:  http.MethodGet,
 		version: apiVersion2,
-		path:    fmt.Sprintf("pods/%s/agent/setup", c.podID),
+		path:    "agent/setup",
 	}
 
 	resp, err := c.retryRequest(ctx, info, nil)

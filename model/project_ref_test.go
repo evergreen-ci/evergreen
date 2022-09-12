@@ -2528,14 +2528,16 @@ func TestMergeWithProjectConfig(t *testing.T) {
 					{Command: "overridden"},
 				},
 			},
-			ContainerSizes: map[string]ContainerResources{
-				"small": {
-					MemoryMB: 200,
+			ContainerSizeDefinitions: []ContainerResources{
+				{
+					Name:     "small",
 					CPU:      1,
+					MemoryMB: 200,
 				},
-				"large": {
-					MemoryMB: 400,
+				{
+					Name:     "large",
 					CPU:      2,
+					MemoryMB: 400,
 				},
 			},
 			BuildBaronSettings: &evergreen.BuildBaronSettings{
@@ -2565,19 +2567,20 @@ func TestMergeWithProjectConfig(t *testing.T) {
 	assert.Equal(t, "EVG", projectRef.BuildBaronSettings.TicketCreateProject)
 	assert.Equal(t, []string{"one", "two"}, projectRef.GithubTriggerAliases)
 	assert.Equal(t, "p1", projectRef.PeriodicBuilds[0].ID)
-	assert.Equal(t, 1, projectRef.ContainerSizes["small"].CPU)
-	assert.Equal(t, 2, projectRef.ContainerSizes["large"].CPU)
+	assert.Equal(t, 1, projectRef.ContainerSizeDefinitions[0].CPU)
+	assert.Equal(t, 2, projectRef.ContainerSizeDefinitions[1].CPU)
 
-	projectRef.ContainerSizes = map[string]ContainerResources{
-		"xlarge": {
-			MemoryMB: 800,
+	projectRef.ContainerSizeDefinitions = []ContainerResources{
+		{
+			Name:     "xlarge",
 			CPU:      4,
+			MemoryMB: 800,
 		},
 	}
 	err = projectRef.MergeWithProjectConfig("version1")
 	assert.NoError(t, err)
 	require.NotNil(t, projectRef)
-	assert.Equal(t, 4, projectRef.ContainerSizes["xlarge"].CPU)
+	assert.Equal(t, 4, projectRef.ContainerSizeDefinitions[0].CPU)
 }
 
 func TestIsServerResmokeProject(t *testing.T) {

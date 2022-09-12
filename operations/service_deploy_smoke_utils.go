@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v34/github"
@@ -20,7 +21,8 @@ const (
 	// uiPort is the local port the UI will listen on.
 	smokeUiPort = ":9090"
 	// urlPrefix is the localhost prefix for accessing local Evergreen.
-	smokeUrlPrefix = "http://localhost"
+	smokeUrlPrefix       = "http://localhost"
+	smokeContainerTaskID = "evergreen_pod_bv_container_task_a71e20e60918bb97d41422e94d04822be2a22e8e_22_08_22_13_44_49"
 )
 
 // smokeEndpointTestDefinitions describes the UI and API endpoints to verify are up.
@@ -93,14 +95,21 @@ func getLatestGithubCommit() (string, error) {
 	return "", errors.New("could not find latest commit in response")
 }
 
-func checkTaskByCommit(username, key string) error {
+func checkContainerTask(username, key string) error {
+	client := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(client)
+
+	return checkForTask(client, agent.PodMode, []string{smokeContainerTaskID}, username, key)
+}
+
+func checkHostTaskByCommit(username, key string) error {
 	client := utility.GetHTTPClient()
 	defer utility.PutHTTPClient(client)
 
 	var builds []apimodels.APIBuild
 	var build apimodels.APIBuild
 
-	// trigger repotracker
+	// trigger repotracker to insert relevant builds and tasks from agent.yml definitions
 	for i := 0; i < 5; i++ {
 		if i == 5 {
 			return errors.Errorf("unable to trigger the repotracker after 5 attempts")
@@ -152,20 +161,22 @@ func checkTaskByCommit(username, key string) error {
 		}
 		break
 	}
+	return checkForTask(client, agent.HostMode, builds[0].Tasks, username, key)
+}
 
-	var task apimodels.APITask
+func checkForTask(client *http.Client, mode agent.Mode, tasks []string, username, key string) error {
+	var taskStatus string
 OUTER:
 	for i := 0; i <= 30; i++ {
 		// check task
 		if i == 30 {
-			return errors.Errorf("task status is %s (expected %s)", task.Status, evergreen.TaskSucceeded)
+			return errors.Errorf("task status is %s (expected %s)", taskStatus, evergreen.TaskSucceeded)
 		}
 		time.Sleep(10 * time.Second)
-		grip.Infof("checking for %d tasks (%d/30)", len(builds[0].Tasks), i+1)
+		grip.Infof("checking for %d tasks (%d/30)", len(tasks), i+1)
 
-		var err error
-		for t := 0; t < len(builds[0].Tasks); t++ {
-			task, err = checkTask(client, username, key, builds, t)
+		for _, taskId := range tasks {
+			task, err := checkTask(client, username, key, taskId)
 			if err != nil {
 				return errors.WithStack(err)
 			}
@@ -175,37 +186,40 @@ OUTER:
 			}
 			if task.Status != evergreen.TaskSucceeded {
 				grip.Infof("found task is status %s", task.Status)
-				task = apimodels.APITask{
-					Status: task.Status,
-				}
+				taskStatus = task.Status
 				continue OUTER
 			}
-
-			// retry for *slightly* delayed logger closing
-			for i := 0; i < 3; i++ {
-				grip.Infof("checking for log %s (%d/3)", task.Logs["task_log"], i+1)
-				var body []byte
-				body, err = makeSmokeRequest(username, key, http.MethodGet, client, task.Logs["task_log"]+"&text=true")
-				if err != nil {
-					err = errors.Wrap(err, "error getting log data")
-					grip.Debug(err)
-					continue
-				}
-				if err = checkTaskLog(body); err == nil {
-					break
-				}
-			}
+			err = checkLog(task, client, mode, username, key)
 			if err != nil {
 				return err
 			}
 		}
-		grip.Info("Successfully checked tasks")
+		grip.Infof("Successfully checked %d %s tasks", len(tasks), string(mode))
 		return nil
 	}
 	return errors.New("this code should be unreachable")
 }
 
-func checkTaskLog(body []byte) error {
+func checkLog(task apimodels.APITask, client *http.Client, mode agent.Mode, username, key string) error {
+	// retry for *slightly* delayed logger closing
+	var err error
+	for i := 0; i < 3; i++ {
+		grip.Infof("checking for log %s (%d/3)", task.Logs["task_log"], i+1)
+		var body []byte
+		body, err = makeSmokeRequest(username, key, http.MethodGet, client, task.Logs["task_log"]+"&text=true")
+		if err != nil {
+			err = errors.Wrap(err, "error getting log data")
+			grip.Debug(err)
+			continue
+		}
+		if err = checkTaskLog(body, mode); err == nil {
+			break
+		}
+	}
+	return err
+}
+
+func checkTaskLog(body []byte, mode agent.Mode) error {
 	page := string(body)
 
 	// Validate that task contains task completed message
@@ -216,43 +230,50 @@ func checkTaskLog(body []byte) error {
 		return errors.New("did not find task completed message in log")
 	}
 
-	// Validate that setup_group only runs in first task
-	if strings.Contains(page, "first") {
-		if !strings.Contains(page, "setup_group") {
-			return errors.New("did not find setup_group in logs for first task")
+	if mode == agent.HostMode {
+		// Validate that setup_group only runs in first task
+		if strings.Contains(page, "first") {
+			if !strings.Contains(page, "setup_group") {
+				return errors.New("did not find setup_group in logs for first task")
+			}
+		} else {
+			if strings.Contains(page, "setup_group") {
+				return errors.New("setup_group should only run in first task")
+			}
 		}
-	} else {
-		if strings.Contains(page, "setup_group") {
-			return errors.New("setup_group should only run in first task")
-		}
-	}
 
-	// Validate that setup_task and teardown_task run for all tasks
-	if !strings.Contains(page, "setup_task") {
-		return errors.New("did not find setup_task in logs")
-	}
-	if !strings.Contains(page, "teardown_task") {
-		return errors.New("did not find teardown_task in logs")
-	}
-
-	// Validate that teardown_group only runs in last task
-	if strings.Contains(page, "fourth") {
-		if !strings.Contains(page, "teardown_group") {
-			return errors.New("did not find teardown_group in logs for last (fourth) task")
+		// Validate that setup_task and teardown_task run for all tasks
+		if !strings.Contains(page, "setup_task") {
+			return errors.New("did not find setup_task in logs")
 		}
-	} else {
-		if strings.Contains(page, "teardown_group") {
-			return errors.New("teardown_group should only run in last (fourth) task")
+		if !strings.Contains(page, "teardown_task") {
+			return errors.New("did not find teardown_task in logs")
+		}
+
+		// Validate that teardown_group only runs in last task
+		if strings.Contains(page, "fourth") {
+			if !strings.Contains(page, "teardown_group") {
+				return errors.New("did not find teardown_group in logs for last (fourth) task")
+			}
+		} else {
+			if strings.Contains(page, "teardown_group") {
+				return errors.New("teardown_group should only run in last (fourth) task")
+			}
+		}
+	} else if mode == agent.PodMode {
+		// TODO (PM-2617) Add task groups to the container task smoke test once they aree supported
+		if !strings.Contains(page, "container task") {
+			return errors.New("did not find container task in logs")
 		}
 	}
 
 	return nil
 }
 
-func checkTask(client *http.Client, username, key string, builds []apimodels.APIBuild, taskIndex int) (apimodels.APITask, error) {
+func checkTask(client *http.Client, username, key string, taskId string) (apimodels.APITask, error) {
 	task := apimodels.APITask{}
-	grip.Infof("checking for task %s", builds[0].Tasks[taskIndex])
-	r, err := http.NewRequest("GET", smokeUrlPrefix+smokeUiPort+"/rest/v2/tasks/"+builds[0].Tasks[taskIndex], nil)
+	grip.Infof("checking for task %s", taskId)
+	r, err := http.NewRequest(http.MethodGet, smokeUrlPrefix+smokeUiPort+"/rest/v2/tasks/"+taskId, nil)
 	if err != nil {
 		return task, errors.Wrap(err, "failed to make request")
 	}
