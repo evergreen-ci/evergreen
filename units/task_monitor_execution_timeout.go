@@ -129,10 +129,7 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 // task heartbeat timeout.
 func cleanUpTimedOutTask(ctx context.Context, env evergreen.Environment, id string, t *task.Task) error {
 	if t.IsContainerTask() {
-		// kim: TODO: fix up this logic to handle container tasks.
-		return nil
-	} else {
-
+		return errors.Wrapf(model.ResetStaleHeartbeatTask(t), "resetting task '%s' due to stale heartbeat", t.Id)
 	}
 
 	host, err := host.FindOne(host.ById(t.HostId))
@@ -150,24 +147,24 @@ func cleanUpTimedOutTask(ctx context.Context, env evergreen.Environment, id stri
 				"operation": "cleanup timed out task",
 			})
 		}
+		// TODO (EVG-XXX): not entirely convinced that just unscheduling this
+		// task is correct, especially for special cases like single-host
+		// task groups and execution tasks. Supposedly, this state is not
+		// reachable because the host doc should exist if it was assigned a task
+		// to run.
 		return errors.WithStack(t.MarkUnscheduled())
 	}
 
-	// For a single-host task group, if a task fails, block and dequeue later tasks in that group.
-	model.CheckAndBlockSingleHostTaskGroup(t, t.Status)
+	if err := model.ResetStaleHeartbeatTask(t); err != nil {
+		return errors.Wrapf(err, "resetting task '%s' due to stale heartbeat", t.Id)
+	}
 
-	// if the host still has the task as its running task, clear it.
-	// kim: TODO: check if the order of blocking task groups and
-	// clearing/resetting the task is important or if it can be reordered
-	// safely.
-	// kim: TODO: check if it's safe to just use
-	// model.ClearAndResetStrandedHostTask instead of
-	// host.ClearRunningAndSetLastTask.
 	if host.RunningTask == t.Id {
-		// Check if the host was externally terminated. When the running task is
-		// cleared on the host, an agent or agent monitor deploy might run,
-		// which updates the LCT and prevents detection of external termination
-		// until the deploy job runs out of retries.
+		// Check if the host was externally terminated before clearing the
+		// host's running task. When the running task is cleared on the host, an
+		// agent or agent monitor deploy might run, which updates the LCT and
+		// prevents detection of external termination until the deploy job runs
+		// out of retries.
 		var terminated bool
 		terminated, err = handleExternallyTerminatedHost(ctx, id, env, host)
 		if err != nil {
@@ -181,39 +178,7 @@ func cleanUpTimedOutTask(ctx context.Context, env evergreen.Environment, id stri
 		}
 	}
 
-	return errors.Wrapf(model.ResetStaleHeartbeatHostTask(t), "resetting stale heartbeat task '%s'", t.Id)
-	// detail := &apimodels.TaskEndDetail{
-	//     // kim: TODO: have to propagate this to ClearAndResetStrandedHostTask so
-	//     // that it fails due to heartbeat timeout.
-	//     Description: evergreen.TaskDescriptionHeartbeat,
-	//     Type:        evergreen.CommandTypeSystem,
-	//     // kim: NOTE: this field is kind of redundant since it's always set if
-	//     // the description is heartbeat, but we can probably just set it to true
-	//     // when the task description reason is heartbeat under MarkSystemFailed
-	//     // and MarkEnd and such.
-	//     // kim: TODO: verify that if the description is
-	//     // TaskDescriptionHeartbeat, then TimedOut is always true.
-	//     TimedOut: true,
-	//     Status:   evergreen.TaskFailed,
-	// }
-	//
-	// // try to reset the task
-	// // kim: NOTE: this resetting functionality should be equivalent (and maybe
-	// // outdated) by model.ResetTaskorDisplayTask, which handles display,
-	// // execution, and normal tasks.
-	// // model.ResetTaskOrDisplayTask(t, evergreen.User, evergreen.MonitorPackage, true, detail)
-	// if t.IsPartOfDisplay() {
-	//     dt, err := t.GetDisplayTask()
-	//     if err != nil {
-	//         return errors.Wrapf(err, "getting display task")
-	//     }
-	//     if err = dt.SetResetWhenFinished(); err != nil {
-	//         return errors.Wrap(err, "marking display task for reset when finished")
-	//     }
-	//     return errors.Wrap(model.MarkEnd(t, evergreen.MonitorPackage, time.Now(), detail, false), "marking execution task ended")
-	// }
-	//
-	// return errors.Wrapf(model.TryResetTask(t.Id, evergreen.User, evergreen.MonitorPackage, detail), "trying to reset task '%s'", t.Id)
+	return nil
 }
 
 ////////////////////////////////////////////////////////////////////////

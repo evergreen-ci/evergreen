@@ -1486,11 +1486,35 @@ func doRestartFailedTasks(tasks []string, user string, results RestartResults) R
 	return results
 }
 
+// CheckAndBlockSingleHostTaskGroup blocks a single-host task group if the given
+// task is part of one and has finished (or is currently finishing) with a
+// failed status. This is a best-effort attempt, so if it fails, it will just
+// log the error.
+func CheckAndBlockSingleHostTaskGroup(t *task.Task, status string) {
+	if !t.IsPartOfSingleHostTaskGroup() || status == evergreen.TaskSucceeded {
+		return
+	}
+
+	// For a single-host task group, block and dequeue later tasks in that group.
+	if err := BlockTaskGroupTasks(t.Id); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "problem blocking task group tasks",
+			"task_id": t.Id,
+		}))
+		return
+	}
+
+	grip.Debug(message.Fields{
+		"message": "blocked task group tasks for task",
+		"task_id": t.Id,
+	})
+}
+
 // ClearAndResetStrandedContainerTask clears the container task dispatched to a
 // pod. It also resets the task so that the current task execution is marked as
 // finished and, if necessary, a new execution is created to restart the task.
-// TODO (PM-2618): should probably block single host task groups once they're
-// supported.
+// TODO (PM-2618): should probably block single-container task groups once
+// they're supported.
 func ClearAndResetStrandedContainerTask(p *pod.Pod) error {
 	runningTaskID := p.RunningTask
 	if runningTaskID == "" {
@@ -1523,8 +1547,8 @@ func ClearAndResetStrandedContainerTask(p *pod.Pod) error {
 
 // ClearAndResetStrandedHostTask clears the host task dispatched to the host due
 // to being stranded on a bad host (e.g. one that has been terminated). It also
-// resets the task so that the current task execution is marked as finished and,
-// if necessary, a new execution is created to restart the task.
+// marks the current task execution as finished and, if possible, a new
+// execution is created to restart the task.
 func ClearAndResetStrandedHostTask(h *host.Host) error {
 	if h.RunningTask == "" {
 		return nil
@@ -1550,34 +1574,10 @@ func ClearAndResetStrandedHostTask(h *host.Host) error {
 	return nil
 }
 
-// CheckAndBlockSingleHostTaskGroup blocks a single-host task group if the given
-// task is part of one and has finished (or is currently finishing) with a
-// failed status. This is a best-effort attempt, so if it fails, it will just
-// log the error.
-func CheckAndBlockSingleHostTaskGroup(t *task.Task, status string) {
-	if !t.IsPartOfSingleHostTaskGroup() || status == evergreen.TaskSucceeded {
-		return
-	}
-
-	// For a single-host task group, block and dequeue later tasks in that group.
-	if err := BlockTaskGroupTasks(t.Id); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "problem blocking task group tasks",
-			"task_id": t.Id,
-		}))
-		return
-	}
-
-	grip.Debug(message.Fields{
-		"message": "blocked task group tasks for task",
-		"task_id": t.Id,
-	})
-}
-
-// ResetStaleHeartbeatHostTask resets a task that has exceeded the heartbeat
-// timeout so that the current task execution is marked as finished and, if
-// necessary, a new execution is created to restart the task.
-func ResetStaleHeartbeatHostTask(t *task.Task) error {
+// ResetStaleHeartbeatTask fixes a task that has exceeded the heartbeat timeout
+// by marking the current task execution as finished and, if possible, a new
+// execution is created to restart the task.
+func ResetStaleHeartbeatTask(t *task.Task) error {
 	if t.IsContainerTask() {
 		return nil
 	}

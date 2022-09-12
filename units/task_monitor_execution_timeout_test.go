@@ -21,7 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCleanupTask(t *testing.T) {
+func TestCleanupTimedOutTask(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	env := &mock.Environment{}
@@ -51,12 +51,13 @@ func TestCleanupTask(t *testing.T) {
 
 			Convey("the task should be reset", func() {
 				newTask := &task.Task{
-					Id:      tID,
-					Status:  "started",
-					HostId:  hID,
-					BuildId: bID,
-					Project: "proj",
-					Version: vID,
+					Id:            tID,
+					Status:        evergreen.TaskStarted,
+					ActivatedTime: time.Now().Add(-time.Hour),
+					HostId:        hID,
+					BuildId:       bID,
+					Project:       "proj",
+					Version:       vID,
 				}
 				require.NoError(t, newTask.Insert())
 
@@ -101,20 +102,22 @@ func TestCleanupTask(t *testing.T) {
 						ExecutionTasks: []string{"et1", "et2"},
 					}
 					et1 := &task.Task{
-						Id:        "et1",
-						Status:    evergreen.TaskStarted,
-						HostId:    hID,
-						BuildId:   "b2",
-						Project:   "proj",
-						Requester: evergreen.PatchVersionRequester,
-						Activated: true,
-						Version:   vID,
+						Id:            "et1",
+						Status:        evergreen.TaskStarted,
+						HostId:        hID,
+						BuildId:       "b2",
+						Project:       "proj",
+						Requester:     evergreen.PatchVersionRequester,
+						Activated:     true,
+						ActivatedTime: time.Now().Add(-time.Hour),
+						Version:       vID,
 					}
 					et2 := &task.Task{
-						Id:        "et2",
-						Status:    evergreen.TaskStarted,
-						Activated: true,
-						Version:   vID,
+						Id:            "et2",
+						Status:        evergreen.TaskStarted,
+						Activated:     true,
+						ActivatedTime: time.Now().Add(-time.Hour),
+						Version:       vID,
 					}
 					So(dt.Insert(), ShouldBeNil)
 					So(et1.Insert(), ShouldBeNil)
@@ -132,7 +135,10 @@ func TestCleanupTask(t *testing.T) {
 					dt, err = task.FindOneId(dt.Id)
 					So(err, ShouldBeNil)
 					So(dt.Status, ShouldEqual, evergreen.TaskStarted) // et2 is still running
-					So(dt.ResetWhenFinished, ShouldBeTrue)
+					// kim: QUESTION: currently, this will set
+					// ResetFailedWhenFinished. Is it supposed to
+					// unconditionally reset instead? That seems kind of wrong.
+					So(dt.ResetWhenFinished || dt.ResetFailedWhenFinished, ShouldBeTrue)
 				})
 			})
 
@@ -213,6 +219,7 @@ func TestCleanupTimedOutTaskWithTaskGroup(t *testing.T) {
 	t1 := &task.Task{
 		Id:                "t1",
 		DisplayName:       "display_t1",
+		ActivatedTime:     time.Now().Add(-time.Hour),
 		Status:            evergreen.TaskStarted,
 		HostId:            "h1",
 		BuildId:           "b1",
@@ -224,6 +231,7 @@ func TestCleanupTimedOutTaskWithTaskGroup(t *testing.T) {
 	t2 := &task.Task{
 		Id:                "t2",
 		DisplayName:       "display_t2",
+		ActivatedTime:     time.Now().Add(-time.Hour),
 		Status:            evergreen.TaskSucceeded,
 		HostId:            "h2",
 		BuildId:           "b1",
@@ -235,6 +243,7 @@ func TestCleanupTimedOutTaskWithTaskGroup(t *testing.T) {
 	t3 := &task.Task{
 		Id:                "t3",
 		DisplayName:       "display_t3",
+		ActivatedTime:     time.Now().Add(-time.Hour),
 		Status:            evergreen.TaskUndispatched,
 		BuildId:           "b1",
 		Version:           "v1",
