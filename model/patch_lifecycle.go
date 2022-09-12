@@ -92,17 +92,21 @@ func ValidateTVPairs(p *Project, in []TVPair) error {
 
 // Given a patch version and a list of variant/task pairs, creates the set of new builds that
 // do not exist yet out of the set of pairs, and adds tasks for builds which already exist.
-func addNewTasksAndBuildsForPatch(ctx context.Context, syncOpts patch.SyncAtEndOptions, patchVersion *Version, project *Project,
-	pairs TaskVariantPairs, pRef *ProjectRef) error {
-	existingBuilds, err := build.Find(build.ByIds(patchVersion.BuildIds).WithFields(build.IdKey, build.BuildVariantKey, build.CreateTimeKey, build.RequesterKey))
+func addNewTasksAndBuildsForPatch(ctx context.Context, taskCreation TaskCreationInfo, syncOpts patch.SyncAtEndOptions) error {
+	existingBuilds, err := build.Find(build.ByIds(taskCreation.Version.BuildIds).WithFields(build.IdKey, build.BuildVariantKey, build.CreateTimeKey, build.RequesterKey))
 	if err != nil {
 		return err
 	}
-	_, err = addNewBuilds(ctx, specificActivationInfo{}, patchVersion, project, pairs, existingBuilds, syncOpts, pRef, "")
+	args := BuildCreateArgs{
+		SyncAtEndOpts:  syncOpts,
+		ActivationInfo: specificActivationInfo{},
+		GeneratedBy:    "",
+	}
+	_, err = addNewBuilds(ctx, taskCreation, args, existingBuilds)
 	if err != nil {
 		return errors.Wrap(err, "adding new builds")
 	}
-	_, err = addNewTasks(ctx, specificActivationInfo{}, patchVersion, project, pRef, pairs, existingBuilds, syncOpts, "")
+	_, err = addNewTasks(ctx, taskCreation, args, existingBuilds)
 	return errors.Wrap(err, "adding new tasks")
 }
 
@@ -164,7 +168,13 @@ func ConfigurePatch(ctx context.Context, p *patch.Patch, version *Version, proj 
 		}
 
 		// First add new tasks to existing builds, if necessary
-		err = addNewTasksAndBuildsForPatch(context.Background(), p.SyncAtEndOpts, version, project, tasks, proj)
+		taskCreation := TaskCreationInfo{
+			Project:    project,
+			ProjectRef: proj,
+			Version:    version,
+			pairs:      tasks,
+		}
+		err = addNewTasksAndBuildsForPatch(context.Background(), taskCreation, p.SyncAtEndOpts)
 		if err != nil {
 			return http.StatusInternalServerError, errors.Wrapf(err, "creating new tasks/builds for version '%s'", version.Id)
 		}
@@ -480,7 +490,12 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	taskIds := NewPatchTaskIdTable(project, patchVersion, tasks, projectRef.Identifier)
 	variantsProcessed := map[string]bool{}
 
-	createTime, err := getTaskCreateTime(p.Project, patchVersion)
+	taskCreation := TaskCreationInfo{
+		Version:    patchVersion,
+		Project:    project,
+		ProjectRef: projectRef,
+	}
+	createTime, err := getTaskCreateTime(taskCreation)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting create time for tasks in '%s', githash '%s'", p.Project, p.Githash)
 	}
@@ -499,9 +514,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		}
 		taskNames := tasks.ExecTasks.TaskNames(vt.Variant)
 		buildArgs := BuildCreateArgs{
-			Project:        *project,
-			ProjectRef:     *projectRef,
-			Version:        *patchVersion,
 			TaskIDs:        taskIds,
 			BuildName:      vt.Variant,
 			ActivateBuild:  true,
@@ -513,7 +525,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		}
 		var build *build.Build
 		var tasks task.Tasks
-		build, tasks, err = CreateBuildFromVersionNoInsert(buildArgs)
+		build, tasks, err = CreateBuildFromVersionNoInsert(taskCreation, buildArgs)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}

@@ -688,14 +688,25 @@ func TestAddNewPatch(t *testing.T) {
 			},
 		},
 	})
-	_, err := addNewBuilds(context.Background(), specificActivationInfo{}, v, proj, tasks, nil, p.SyncAtEndOpts, &ref, "")
+	taskCreation := TaskCreationInfo{
+		Project:    proj,
+		ProjectRef: &ref,
+		Version:    v,
+		pairs:      tasks,
+	}
+	args := BuildCreateArgs{
+		ActivationInfo: specificActivationInfo{},
+		SyncAtEndOpts:  p.SyncAtEndOpts,
+		GeneratedBy:    "",
+	}
+	_, err := addNewBuilds(context.Background(), taskCreation, args, nil)
 	assert.NoError(err)
 	dbBuild, err := build.FindOne(db.Q{})
 	assert.NoError(err)
 	assert.NotNil(dbBuild)
 	assert.Len(dbBuild.Tasks, 2)
 
-	_, err = addNewTasks(context.Background(), specificActivationInfo{}, v, proj, &ref, tasks, []build.Build{*dbBuild}, p.SyncAtEndOpts, "")
+	_, err = addNewTasks(context.Background(), taskCreation, args, []build.Build{*dbBuild})
 	assert.NoError(err)
 	dbTasks, err := task.FindAll(db.Query(task.ByBuildId(dbBuild.Id)))
 	assert.NoError(err)
@@ -768,14 +779,25 @@ func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 			},
 		},
 	})
-	_, err := addNewBuilds(context.Background(), specificActivationInfo{}, v, proj, tasks, nil, p.SyncAtEndOpts, &ref, "")
+	taskCreation := TaskCreationInfo{
+		Project:    proj,
+		ProjectRef: &ref,
+		Version:    v,
+		pairs:      tasks,
+	}
+	args := BuildCreateArgs{
+		ActivationInfo: specificActivationInfo{},
+		SyncAtEndOpts:  p.SyncAtEndOpts,
+		GeneratedBy:    "",
+	}
+	_, err := addNewBuilds(context.Background(), taskCreation, args, nil)
 	assert.NoError(err)
 	dbBuild, err := build.FindOne(db.Q{})
 	assert.NoError(err)
 	assert.NotNil(dbBuild)
 	assert.Len(dbBuild.Tasks, 2)
 
-	_, err = addNewTasks(context.Background(), specificActivationInfo{}, v, proj, &ref, tasks, []build.Build{*dbBuild}, p.SyncAtEndOpts, "")
+	_, err = addNewTasks(context.Background(), taskCreation, args, []build.Build{*dbBuild})
 	assert.NoError(err)
 	dbTasks, err := task.FindAll(db.Query(task.ByBuildId(dbBuild.Id)))
 	assert.NoError(err)
