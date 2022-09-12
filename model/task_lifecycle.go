@@ -1574,18 +1574,14 @@ func ClearAndResetStrandedHostTask(h *host.Host) error {
 	return nil
 }
 
-// ResetStaleHeartbeatTask fixes a task that has exceeded the heartbeat timeout
-// by marking the current task execution as finished and, if possible, a new
+// ResetStaleTask fixes a task that has exceeded the heartbeat timeout by
+// marking the current task execution as finished and, if possible, a new
 // execution is created to restart the task.
-func ResetStaleHeartbeatTask(t *task.Task) error {
-	if t.IsContainerTask() {
-		return nil
-	}
-
+func ResetStaleTask(t *task.Task) error {
 	CheckAndBlockSingleHostTaskGroup(t, t.Status)
 
 	if err := resetSystemFailedTask(t, evergreen.TaskDescriptionHeartbeat); err != nil {
-		return errors.Wrap(err, "resetting stale heartbeat task")
+		return errors.Wrap(err, "resetting task")
 	}
 
 	return nil

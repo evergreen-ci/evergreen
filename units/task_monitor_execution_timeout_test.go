@@ -12,294 +12,258 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
-	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	yaml "gopkg.in/20210107192922/yaml.v3"
 )
 
-func TestCleanupTimedOutTask(t *testing.T) {
+func TestTaskExecutionTimeoutJob(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	env := &mock.Environment{}
-	require.NoError(t, env.Configure(ctx))
 
-	Convey("When cleaning up a task", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, host.Collection))
+	mp := cloud.GetMockProvider()
 
-		Convey("an error should be thrown if the passed-in projects slice"+
-			" does not contain the task's project", func() {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, model.VersionCollection, host.Collection, event.LegacyEventLogCollection))
+		mp.Reset()
+	}()
 
-			err := cleanUpTimedOutTask(ctx, env, t.Name(), &task.Task{
-				Project: "proj",
+	checkTaskRestarted := func(t *testing.T, taskID string, oldExecution int, description string) {
+		archivedTask, err := task.FindOneIdAndExecution(taskID, oldExecution)
+		require.NoError(t, err)
+		require.NotZero(t, archivedTask)
+		assert.True(t, archivedTask.Archived)
+		assert.Equal(t, evergreen.TaskFailed, archivedTask.Status)
+		assert.Equal(t, description, archivedTask.Details.Description)
+
+		restartedTask, err := task.FindOneIdAndExecution(taskID, oldExecution+1)
+		require.NoError(t, err)
+		require.NotZero(t, restartedTask)
+		assert.Equal(t, evergreen.TaskUndispatched, restartedTask.Status)
+	}
+
+	const hostID = "host_id"
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, j *taskExecutionTimeoutJob, v model.Version){
+		"RestartsStaleHostTask": func(ctx context.Context, t *testing.T, j *taskExecutionTimeoutJob, v model.Version) {
+			require.NoError(t, j.task.Insert())
+			require.NoError(t, v.Insert())
+
+			j.Run(ctx)
+			require.NoError(t, j.Error())
+
+			dbHost, err := host.FindOneId(hostID)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, evergreen.HostRunning, dbHost.Status, "host should still be running")
+
+			checkTaskRestarted(t, j.task.Id, 0, evergreen.TaskDescriptionHeartbeat)
+		},
+		"RestartsAllTaskGroupTasksForStaleHostTaskInSingleHostTaskGroup": func(ctx context.Context, t *testing.T, j *taskExecutionTimeoutJob, v model.Version) {
+			const taskGroupName = "some_task_group"
+			j.task.TaskGroup = taskGroupName
+			j.task.TaskGroupMaxHosts = 1
+			require.NoError(t, j.task.Insert())
+			otherTask := task.Task{
+				Id:                "another_task",
+				BuildId:           j.task.BuildId,
+				BuildVariant:      j.task.BuildVariant,
+				Version:           j.task.Version,
+				TaskGroup:         taskGroupName,
+				TaskGroupMaxHosts: 1,
+				DisplayName:       "display_name_for_another_task",
+				Status:            evergreen.TaskUndispatched,
+			}
+			require.NoError(t, otherTask.Insert())
+
+			p := model.Project{
+				TaskGroups: []model.TaskGroup{
+					{
+						Name:     taskGroupName,
+						MaxHosts: 1,
+						Tasks:    []string{j.task.DisplayName, otherTask.DisplayName},
+					},
+				},
+				BuildVariants: []model.BuildVariant{
+					{
+						Name: j.task.BuildVariant,
+						Tasks: []model.BuildVariantTaskUnit{
+							{Name: taskGroupName},
+						},
+					},
+				},
+				Tasks: []model.ProjectTask{
+					{Name: j.task.DisplayName},
+					{Name: otherTask.DisplayName},
+				},
+			}
+			yml, err := yaml.Marshal(p)
+			require.NoError(t, err)
+			v.Config = string(yml)
+			require.NoError(t, v.Insert())
+
+			j.Run(ctx)
+			require.NoError(t, j.Error())
+
+			checkTaskRestarted(t, j.task.Id, 0, evergreen.TaskDescriptionHeartbeat)
+
+			dbOtherTask, err := task.FindOneId(otherTask.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbOtherTask)
+			assert.Equal(t, evergreen.TaskUndispatched, dbOtherTask.Status)
+			depsMet, err := dbOtherTask.DependenciesMet(map[string]task.Task{})
+			require.NoError(t, err)
+			assert.False(t, depsMet, "single host task group task should depend on first task succeeding")
+		},
+		"RestartsStaleContainerTask": func(ctx context.Context, t *testing.T, j *taskExecutionTimeoutJob, v model.Version) {
+			j.task.ExecutionPlatform = task.ExecutionPlatformContainer
+			j.task.HostId = ""
+			j.task.ContainerAllocated = true
+			require.NoError(t, j.task.Insert())
+			require.NoError(t, v.Insert())
+
+			j.Run(ctx)
+			require.NoError(t, j.Error())
+
+			checkTaskRestarted(t, j.task.Id, 0, evergreen.TaskDescriptionHeartbeat)
+		},
+		"RestartsParentDisplayTaskForStaleHostExecutionTask": func(ctx context.Context, t *testing.T, j *taskExecutionTimeoutJob, v model.Version) {
+			const displayTaskID = "display_task"
+			et0 := task.Task{
+				Id:            "some_other_execution_task",
+				BuildId:       j.task.BuildId,
+				Version:       j.task.Version,
+				DisplayTaskId: utility.ToStringPtr(displayTaskID),
+				Status:        evergreen.TaskFailed,
+			}
+			require.NoError(t, et0.Insert())
+			et1 := task.Task{
+				Id:            "another_execution_task",
+				BuildId:       j.task.BuildId,
+				Version:       j.task.Version,
+				DisplayTaskId: utility.ToStringPtr(displayTaskID),
+				Status:        evergreen.TaskUndispatched,
+			}
+			require.NoError(t, et1.Insert())
+			dt := task.Task{
+				Id:             displayTaskID,
+				BuildId:        j.task.BuildId,
+				Version:        j.task.Version,
+				DisplayOnly:    true,
+				ExecutionTasks: []string{j.task.Id, et0.Id, et1.Id},
+			}
+			require.NoError(t, dt.Insert())
+			j.task.DisplayTaskId = utility.ToStringPtr(displayTaskID)
+			require.NoError(t, j.task.Insert())
+			require.NoError(t, v.Insert())
+
+			j.Run(ctx)
+			require.NoError(t, j.Error())
+
+			checkTaskRestarted(t, j.task.Id, 0, evergreen.TaskDescriptionHeartbeat)
+
+			for _, taskID := range []string{et0.Id, et1.Id, j.task.Id} {
+				dbTask, err := task.FindOneId(taskID)
+				require.NoError(t, err)
+				assert.Equal(t, evergreen.TaskUndispatched, dbTask.Status, "execution task '%s' should be reset", dbTask.Id)
+			}
+		},
+		"RestartsStaleHostTaskAndTerminatesExternallyTerminatedHost": func(ctx context.Context, t *testing.T, j *taskExecutionTimeoutJob, v model.Version) {
+			mp.Set(hostID, cloud.MockInstance{
+				Status: cloud.StatusTerminated,
 			})
-			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldContainSubstring, "not found")
 
+			require.NoError(t, v.Insert())
+			require.NoError(t, j.task.Insert())
+
+			j.Run(ctx)
+			require.NoError(t, j.Error())
+
+			require.True(t, amboy.WaitInterval(ctx, j.env.RemoteQueue(), 100*time.Millisecond))
+
+			dbHost, err := host.FindOneId(hostID)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, evergreen.HostTerminated, dbHost.Status, "externally terminated host should be terminated")
+
+			checkTaskRestarted(t, j.task.Id, 0, evergreen.TaskDescriptionStranded)
+		},
+		"NoopsForActiveTask": func(ctx context.Context, t *testing.T, j *taskExecutionTimeoutJob, _ model.Version) {
+			j.task.LastHeartbeat = time.Now()
+			require.NoError(t, j.task.Insert())
+
+			j.Run(ctx)
+			require.NoError(t, j.Error())
+
+			dbTask, err := task.FindOneIdAndExecution(j.task.Id, 0)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.False(t, dbTask.Archived, "active task should not be archived")
+			assert.False(t, dbTask.IsFinished(), "active task should not be marked finished")
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			tctx, tcancel := context.WithCancel(ctx)
+			defer tcancel()
+
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(ctx))
+
+			require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, model.VersionCollection, host.Collection, event.LegacyEventLogCollection))
+			mp.Reset()
+
+			const taskID = "task_id"
+			h := host.Host{
+				Id: hostID,
+				Distro: distro.Distro{
+					Id:       "distro_id",
+					Provider: evergreen.ProviderNameMock,
+				},
+				Provider:    evergreen.ProviderNameMock,
+				StartedBy:   evergreen.User,
+				Status:      evergreen.HostRunning,
+				RunningTask: taskID,
+			}
+			require.NoError(t, h.Insert())
+			mp.Set(h.Id, cloud.MockInstance{
+				Status: cloud.StatusRunning,
+			})
+
+			b := build.Build{
+				Id:     "build",
+				Status: evergreen.BuildStarted,
+			}
+			require.NoError(t, b.Insert())
+
+			v := model.Version{
+				Id:     "version",
+				Status: evergreen.VersionStarted,
+			}
+
+			tsk := task.Task{
+				Id:                taskID,
+				BuildId:           b.Id,
+				BuildVariant:      "build_variant",
+				Version:           v.Id,
+				DisplayName:       "display_name",
+				ExecutionPlatform: task.ExecutionPlatformHost,
+				Activated:         true,
+				ActivatedTime:     time.Now().Add(-10 * time.Minute),
+				Status:            evergreen.TaskStarted,
+				HostId:            h.Id,
+				LastHeartbeat:     time.Now().Add(-time.Hour),
+			}
+
+			j, ok := NewTaskExecutionMonitorJob(tsk.Id, "").(*taskExecutionTimeoutJob)
+			require.True(t, ok)
+			j.task = &tsk
+			j.env = env
+
+			tCase(tctx, t, j, v)
 		})
-
-		Convey("if the task's heartbeat timed out", func() {
-			require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, build.Collection, model.VersionCollection))
-
-			vID := "v1"
-			bID := "b1"
-			tID := "t1"
-			hID := "h1"
-
-			Convey("the task should be reset", func() {
-				newTask := &task.Task{
-					Id:            tID,
-					Status:        evergreen.TaskStarted,
-					ActivatedTime: time.Now().Add(-time.Hour),
-					HostId:        hID,
-					BuildId:       bID,
-					Project:       "proj",
-					Version:       vID,
-				}
-				require.NoError(t, newTask.Insert())
-
-				host := &host.Host{
-					Id:          hID,
-					RunningTask: tID,
-					Distro:      distro.Distro{Provider: evergreen.ProviderNameMock},
-					Status:      evergreen.HostRunning,
-				}
-				So(host.Insert(), ShouldBeNil)
-				cloud.GetMockProvider().Set(host.Id, cloud.MockInstance{
-					Status: cloud.StatusRunning,
-				})
-
-				b := &build.Build{
-					Id:      bID,
-					Version: vID,
-				}
-				So(b.Insert(), ShouldBeNil)
-
-				v := &model.Version{
-					Id: vID,
-				}
-				So(v.Insert(), ShouldBeNil)
-
-				// cleaning up the task should work
-				So(cleanUpTimedOutTask(ctx, env, t.Name(), newTask), ShouldBeNil)
-
-				// refresh the task - it should be reset
-				newTask, err := task.FindOne(db.Query(task.ById(tID)))
-				So(err, ShouldBeNil)
-				So(newTask.Status, ShouldEqual, evergreen.TaskUndispatched)
-
-				Convey("an execution task should be cleaned up", func() {
-					dt := &task.Task{
-						Id:             "dt",
-						Status:         evergreen.TaskStarted,
-						HostId:         hID,
-						BuildId:        "b2",
-						Project:        "proj",
-						DisplayOnly:    true,
-						ExecutionTasks: []string{"et1", "et2"},
-					}
-					et1 := &task.Task{
-						Id:            "et1",
-						Status:        evergreen.TaskStarted,
-						HostId:        hID,
-						BuildId:       "b2",
-						Project:       "proj",
-						Requester:     evergreen.PatchVersionRequester,
-						Activated:     true,
-						ActivatedTime: time.Now().Add(-time.Hour),
-						Version:       vID,
-					}
-					et2 := &task.Task{
-						Id:            "et2",
-						Status:        evergreen.TaskStarted,
-						Activated:     true,
-						ActivatedTime: time.Now().Add(-time.Hour),
-						Version:       vID,
-					}
-					So(dt.Insert(), ShouldBeNil)
-					So(et1.Insert(), ShouldBeNil)
-					So(et2.Insert(), ShouldBeNil)
-					b := &build.Build{
-						Id:      "b2",
-						Version: vID,
-					}
-					So(b.Insert(), ShouldBeNil)
-
-					So(cleanUpTimedOutTask(ctx, env, t.Name(), et1), ShouldBeNil)
-					et1, err := task.FindOneId(et1.Id)
-					So(err, ShouldBeNil)
-					So(et1.Status, ShouldEqual, evergreen.TaskFailed)
-					dt, err = task.FindOneId(dt.Id)
-					So(err, ShouldBeNil)
-					So(dt.Status, ShouldEqual, evergreen.TaskStarted) // et2 is still running
-					// kim: QUESTION: currently, this will set
-					// ResetFailedWhenFinished. Is it supposed to
-					// unconditionally reset instead? That seems kind of wrong.
-					So(dt.ResetWhenFinished || dt.ResetFailedWhenFinished, ShouldBeTrue)
-				})
-			})
-
-			Convey("given a running host running a task", func() {
-				require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, build.Collection, model.VersionCollection))
-
-				newTask := &task.Task{
-					Id:      tID,
-					Status:  "started",
-					HostId:  hID,
-					BuildId: bID,
-					Project: "proj",
-					Version: vID,
-				}
-				require.NoError(t, newTask.Insert())
-
-				h := &host.Host{
-					Id:          hID,
-					RunningTask: tID,
-					Distro:      distro.Distro{Provider: evergreen.ProviderNameMock},
-					Provider:    evergreen.ProviderNameMock,
-					StartedBy:   evergreen.User,
-					Status:      evergreen.HostRunning,
-				}
-				So(h.Insert(), ShouldBeNil)
-
-				build := &build.Build{
-					Id:      bID,
-					Version: vID,
-				}
-				So(build.Insert(), ShouldBeNil)
-
-				v := &model.Version{Id: vID}
-				So(v.Insert(), ShouldBeNil)
-
-				Convey("a running host should have its running task cleared", func() {
-					cloud.GetMockProvider().Set(h.Id, cloud.MockInstance{
-						Status: cloud.StatusRunning,
-					})
-
-					// cleaning up the task should work
-					So(cleanUpTimedOutTask(ctx, env, t.Name(), newTask), ShouldBeNil)
-
-					// refresh the host, make sure its running task field has
-					// been reset
-					var err error
-					h, err = host.FindOne(host.ById(hID))
-					So(err, ShouldBeNil)
-					So(h.RunningTask, ShouldEqual, "")
-
-				})
-				Convey("an externally terminated host should be marked terminated and its task should be reset", func() {
-					cloud.GetMockProvider().Set(h.Id, cloud.MockInstance{
-						Status: cloud.StatusTerminated,
-					})
-
-					So(cleanUpTimedOutTask(ctx, env, t.Name(), newTask), ShouldBeNil)
-
-					So(amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond), ShouldBeTrue)
-
-					var err error
-					h, err = host.FindOneId(hID)
-					So(err, ShouldBeNil)
-					So(h.RunningTask, ShouldEqual, "")
-					So(h.Status, ShouldEqual, evergreen.HostTerminated)
-				})
-			})
-		})
-	})
-}
-
-func TestCleanupTimedOutTaskWithTaskGroup(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, host.Collection, model.VersionCollection, model.ProjectRefCollection))
-
-	t1 := &task.Task{
-		Id:                "t1",
-		DisplayName:       "display_t1",
-		ActivatedTime:     time.Now().Add(-time.Hour),
-		Status:            evergreen.TaskStarted,
-		HostId:            "h1",
-		BuildId:           "b1",
-		Version:           "v1",
-		TaskGroup:         "my_task_group",
-		TaskGroupMaxHosts: 1,
-		Project:           "proj",
 	}
-	t2 := &task.Task{
-		Id:                "t2",
-		DisplayName:       "display_t2",
-		ActivatedTime:     time.Now().Add(-time.Hour),
-		Status:            evergreen.TaskSucceeded,
-		HostId:            "h2",
-		BuildId:           "b1",
-		Version:           "v1",
-		TaskGroup:         "my_task_group",
-		TaskGroupMaxHosts: 1,
-		Project:           "proj",
-	}
-	t3 := &task.Task{
-		Id:                "t3",
-		DisplayName:       "display_t3",
-		ActivatedTime:     time.Now().Add(-time.Hour),
-		Status:            evergreen.TaskUndispatched,
-		BuildId:           "b1",
-		Version:           "v1",
-		TaskGroup:         "my_task_group",
-		TaskGroupMaxHosts: 1,
-		Project:           "proj",
-	}
-	b := &build.Build{
-		Id:      "b1",
-		Version: "v1",
-	}
-	h := &host.Host{
-		Id:          "h1",
-		RunningTask: "t1",
-		Distro:      distro.Distro{Provider: evergreen.ProviderNameMock},
-		Status:      evergreen.HostRunning,
-	}
-	yml := `
-task_groups:
-- name: my_task_group
-  tasks: [display_t1, display_t2, display_t3]
-tasks:
-- name: display_t1
-- name: display_t2
-- name: display_t3
-`
-	v := &model.Version{
-		Id:         "v1",
-		Identifier: "p1",
-		Config:     yml,
-	}
-
-	pRef := &model.ProjectRef{
-		Id: "p1",
-	}
-	assert.NoError(t, t1.Insert())
-	assert.NoError(t, t2.Insert())
-	assert.NoError(t, t3.Insert())
-	assert.NoError(t, b.Insert())
-	assert.NoError(t, h.Insert())
-	assert.NoError(t, v.Insert())
-	assert.NoError(t, pRef.Insert())
-	cloud.GetMockProvider().Set(h.Id, cloud.MockInstance{
-		Status: cloud.StatusRunning,
-	})
-
-	assert.NoError(t, cleanUpTimedOutTask(ctx, env, t.Name(), t1))
-
-	// refresh the host, make sure its running task field has been reset
-	var err error
-	h, err = host.FindOneId("h1")
-	assert.NoError(t, err)
-	assert.Empty(t, h.RunningTask)
-
-	t2, err = task.FindOneId(t2.Id)
-	assert.NoError(t, err)
-	assert.NotNil(t, t2)
-	assert.NotEqual(t, evergreen.TaskSucceeded, t2.Status)
 }

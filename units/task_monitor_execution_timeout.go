@@ -39,6 +39,9 @@ type taskExecutionTimeoutJob struct {
 	Task string `bson:"task_id"`
 
 	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
+
+	env  evergreen.Environment
+	task *task.Task
 }
 
 func makeTaskExecutionTimeoutMonitorJob() *taskExecutionTimeoutJob {
@@ -76,7 +79,9 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 		j.AddError(err)
 		return
 	}
-	env := evergreen.GetEnvironment()
+	if j.env == nil {
+		j.env = evergreen.GetEnvironment()
+	}
 
 	if flags.MonitorDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
@@ -88,18 +93,25 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 		return
 	}
 
-	t, err := task.FindOneId(j.Task)
-	if err != nil {
-		j.AddRetryableError(errors.Wrapf(err, "finding task '%s'", j.Task))
-		return
-	}
-	if t == nil {
-		j.AddError(errors.Errorf("task '%s' not found", j.Task))
-		return
+	if j.task == nil {
+		t, err := task.FindOneId(j.Task)
+		if err != nil {
+			j.AddRetryableError(errors.Wrapf(err, "finding task '%s'", j.Task))
+			return
+		}
+		if t == nil {
+			j.AddError(errors.Errorf("task '%s' not found", j.Task))
+			return
+		}
+		j.task = t
 	}
 
-	// if the task has heartbeat since this job was queued, let it run
-	if t.LastHeartbeat.Add(heartbeatTimeoutThreshold).After(time.Now()) {
+	// If the task has heartbeat since this job was queued, let it run.
+	if j.task.LastHeartbeat.Add(heartbeatTimeoutThreshold).After(time.Now()) {
+		return
+	}
+	// If the task is already finished, don't try cleaning it up again.
+	if j.task.IsFinished() {
 		return
 	}
 
@@ -107,13 +119,13 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 		"job":       j.ID(),
 		"operation": j.Type().Name,
 		"id":        j.ID(),
-		"task":      t.Id,
+		"task":      j.task.Id,
 	}
-	if t.HostId != "" {
-		msg["host_id"] = t.HostId
+	if j.task.HostId != "" {
+		msg["host_id"] = j.task.HostId
 	}
 
-	err = cleanUpTimedOutTask(ctx, env, j.ID(), t)
+	err = j.cleanUpTimedOutTask(ctx)
 	if err != nil {
 		msg["message"] = "failed to clean up timed-out task"
 		grip.Warning(message.WrapError(err, msg))
@@ -125,57 +137,53 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 	grip.Debug(msg)
 }
 
-// cleanUpTimedOutTask cleans up a single host task that has exceeded the
-// task heartbeat timeout.
-func cleanUpTimedOutTask(ctx context.Context, env evergreen.Environment, id string, t *task.Task) error {
-	if t.IsContainerTask() {
-		return errors.Wrapf(model.ResetStaleHeartbeatTask(t), "resetting task '%s' due to stale heartbeat", t.Id)
+// cleanUpTimedOutTask cleans up a single stale task that has exceeded the task
+// heartbeat timeout.
+func (j *taskExecutionTimeoutJob) cleanUpTimedOutTask(ctx context.Context) error {
+	if j.task.IsContainerTask() {
+		return errors.Wrapf(model.ResetStaleTask(j.task), "resetting stale task '%s'", j.task.Id)
 	}
 
-	host, err := host.FindOne(host.ById(t.HostId))
+	host, err := host.FindOne(host.ById(j.task.HostId))
 	if err != nil {
-		return errors.Wrapf(err, "finding host '%s' for task '%s'", t.HostId, t.Id)
+		return errors.Wrapf(err, "finding host '%s' for task '%s'", j.task.HostId, j.task.Id)
 	}
 
 	// if there's no relevant host and the task is not a display task, something went wrong
 	if host == nil {
-		if !t.DisplayOnly {
-			grip.Error(message.Fields{
-				"message":   "no entry found for host",
-				"task":      t.Id,
-				"host_id":   t.HostId,
-				"operation": "cleanup timed out task",
-			})
-		}
-		// TODO (EVG-XXX): not entirely convinced that just unscheduling this
-		// task is correct, especially for special cases like single-host
-		// task groups and execution tasks. Supposedly, this state is not
-		// reachable because the host doc should exist if it was assigned a task
-		// to run.
-		return errors.WithStack(t.MarkUnscheduled())
+		grip.ErrorWhen(!j.task.DisplayOnly, message.Fields{
+			"message":   "no entry found for host",
+			"task":      j.task.Id,
+			"host_id":   j.task.HostId,
+			"operation": "cleanup timed out task",
+		})
+		return errors.WithStack(j.task.MarkUnscheduled())
 	}
 
-	if err := model.ResetStaleHeartbeatTask(t); err != nil {
-		return errors.Wrapf(err, "resetting task '%s' due to stale heartbeat", t.Id)
-	}
-
-	if host.RunningTask == t.Id {
+	if host.RunningTask == j.task.Id {
 		// Check if the host was externally terminated before clearing the
 		// host's running task. When the running task is cleared on the host, an
 		// agent or agent monitor deploy might run, which updates the LCT and
 		// prevents detection of external termination until the deploy job runs
 		// out of retries.
-		var terminated bool
-		terminated, err = handleExternallyTerminatedHost(ctx, id, env, host)
+		terminated, err := handleExternallyTerminatedHost(ctx, j.ID(), j.env, host)
 		if err != nil {
-			return errors.Wrapf(err, "checking host '%s 'with timed out task '%s' for external termination", host.Id, t.Id)
+			return errors.Wrapf(err, "checking host '%s 'with timed out task '%s' for external termination", host.Id, j.task.Id)
 		}
 		if terminated {
+			// If the host has been externally terminated, then this is treated
+			// as a task failure due to stranding on a dead host rather than a
+			// stale heartbeat. The host termination process will deal with
+			// fixing the stranded task.
 			return nil
 		}
-		if err = host.ClearRunningAndSetLastTask(t); err != nil {
-			return errors.Wrapf(err, "clearing running task '%s' from host '%s'", t.Id, host.Id)
+		if err = host.ClearRunningAndSetLastTask(j.task); err != nil {
+			return errors.Wrapf(err, "clearing running task '%s' from host '%s'", j.task.Id, host.Id)
 		}
+	}
+
+	if err := model.ResetStaleTask(j.task); err != nil {
+		return errors.Wrapf(err, "resetting stale task '%s'", j.task.Id)
 	}
 
 	return nil
@@ -186,6 +194,7 @@ func cleanUpTimedOutTask(ctx context.Context, env evergreen.Environment, id stri
 // Population Job
 
 type taskExecutionTimeoutPopulationJob struct {
+	env      evergreen.Environment
 	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
 }
 
@@ -201,6 +210,8 @@ func makeTaskExecutionTimeoutPopulateJob() *taskExecutionTimeoutPopulationJob {
 	return j
 }
 
+// NewTaskExecutionMonitorPopulateJob returns a job to populate the queue with
+// jobs to check for stale tasks.
 func NewTaskExecutionMonitorPopulateJob(id string) amboy.Job {
 	j := makeTaskExecutionTimeoutPopulateJob()
 	j.SetID(fmt.Sprintf("%s.%s", j.Type().Name, id))
@@ -225,15 +236,11 @@ func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
 		return
 	}
 
-	queue := evergreen.GetEnvironment().RemoteQueue()
+	if j.env == nil {
+		j.env = evergreen.GetEnvironment()
+	}
+	queue := j.env.RemoteQueue()
 
-	// kim: NOTE: I think this logic is overkill for container tasks because we
-	// can check the task heartbeat state without looking at the pod doc at all.
-	// It should be sufficient to look for dispatching/starting tasks that have
-	// a stale heartbeat.
-	// - Task is dispatched, dispatch time has exceeded check threshold, and
-	// there is still no heartbeat.
-	// - Task is started but heartbeat is past threshold.
 	taskIDs := map[string]struct{}{}
 	tasks, err := host.FindStaleRunningTasks(heartbeatTimeoutThreshold, host.TaskHeartbeatPastCutoff)
 	if err != nil {
@@ -263,8 +270,6 @@ func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
 	}
 	j.logTasks(tasks, "undispatched task has a heartbeat, on running host")
 
-	// kim: NOTE: this should be sufficient to check for stale container tasks
-	// because the heartbeat is triggered when it dispatches and when it starts.
 	tasks, err = task.FindWithFields(task.ByStaleRunningTask(heartbeatTimeoutThreshold, task.HeartbeatPastCutoff), task.IdKey)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "finding tasks with timed-out or stale heartbeats"))
@@ -275,8 +280,6 @@ func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
 	}
 	j.logTasks(tasks, "heartbeat past cutoff")
 
-	// TODO (EVG-XXX): this query below is redundant because it covers a subset
-	// of task documents from the previous task.HeartbeatPastCutoff.
 	tasks, err = task.FindWithFields(task.ByStaleRunningTask(heartbeatTimeoutThreshold, task.NoHeartbeatSinceDispatch), task.IdKey)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "finding tasks with timed-out or stale heartbeats"))

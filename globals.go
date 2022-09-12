@@ -100,7 +100,7 @@ const (
 	// TaskDescriptionHeartbeat indicates that a task failed because it did not
 	// send a heartbeat while it was running. Tasks are expected to send
 	// periodic heartbeats back to the app server indicating the task is still
-	// actively running.
+	// actively running, or else they are considered stale.
 	TaskDescriptionHeartbeat = "heartbeat"
 	// TaskDescriptionStranded indicates that a task failed because its
 	// underlying runtime environment (i.e. container or host) encountered an

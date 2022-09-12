@@ -757,8 +757,6 @@ func FindStaleRunningTasks(cutoff time.Duration, reason StaleTaskReason) ([]task
 			task.StatusKey: evergreen.TaskStarted,
 			"$and": []bson.M{
 				{task.LastHeartbeatKey: bson.M{"$lte": time.Now().Add(-cutoff)}},
-				// kim: TODO: figure out how a task can be started but have a
-				// valid zero time heartbeat without being stale.
 				{task.LastHeartbeatKey: bson.M{"$ne": utility.ZeroTime}},
 			},
 		}
