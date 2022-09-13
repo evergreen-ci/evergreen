@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -56,6 +57,18 @@ type uiHostStatistics struct {
 	ActiveHosts       int `json:"active_hosts"`
 	ActiveStaticHosts int `json:"active_static_hosts"`
 	IdleStaticHosts   int `json:"idle_static_hosts"`
+}
+
+func (uis *UIServer) taskQueue(w http.ResponseWriter, r *http.Request) {
+	distro := gimlet.GetVars(r)["distro"]
+	taskId := gimlet.GetVars(r)["task_id"]
+	newUILink := ""
+	if len(uis.Settings.Ui.UIv2Url) > 0 {
+		newUILink = fmt.Sprintf("%s/task-queue/%s/%s", uis.Settings.Ui.UIv2Url, distro, taskId)
+	}
+
+	http.Redirect(w, r, newUILink, http.StatusTemporaryRedirect)
+	return
 }
 
 func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {

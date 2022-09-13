@@ -382,6 +382,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/build_variant/{project_id}/{variant}").Wrap(needsContext, viewTasks).Handler(uis.variantHistory).Get()
 
 	// Task queues
+	app.AddRoute("/task_queue/{distro}/{task_id}").Wrap(needsLogin, needsContext).Handler(uis.taskQueue).Get()
 	app.AddRoute("/task_queue/").Wrap(needsLogin, needsContext).Handler(uis.allTaskQueues).Get() // TODO: ¯\_(ツ)_/¯
 
 	// Patch pages
