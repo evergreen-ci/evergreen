@@ -68,7 +68,6 @@ func (uis *UIServer) taskQueue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, newUILink, http.StatusTemporaryRedirect)
-	return
 }
 
 func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {
