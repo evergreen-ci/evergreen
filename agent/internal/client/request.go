@@ -42,19 +42,20 @@ func (c *baseCommunicator) newRequest(method, path, taskID, taskSecret, version 
 	if err != nil {
 		return nil, errors.New("Error building request")
 	}
+	var out []byte
 	if data != nil {
 		if rc, ok := data.(io.ReadCloser); ok {
 			r.Body = rc
 		} else {
-			var out []byte
 			out, err = json.Marshal(data)
 			if err != nil {
 				return nil, err
 			}
-			r.Header.Add(evergreen.ContentLengthHeader, strconv.Itoa(len(out)))
 			r.Body = ioutil.NopCloser(bytes.NewReader(out))
 		}
 	}
+
+	r.Header.Add(evergreen.ContentLengthHeader, strconv.Itoa(len(out)))
 
 	if taskID != "" {
 		r.Header.Add(evergreen.TaskHeader, taskID)

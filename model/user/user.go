@@ -462,5 +462,9 @@ func GetSlackMemberId(username string) (string, error) {
 		return "", errors.Wrapf(err, "finding user by slack username '%s'", username)
 	}
 
+	if u == nil {
+		return "", errors.Wrapf(err, "user with id '%s' not found", username)
+	}
+
 	return u.Settings.SlackMemberId, nil
 }
