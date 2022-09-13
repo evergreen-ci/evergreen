@@ -169,6 +169,12 @@ type ComplexityRoot struct {
 		RequireSigned func(childComplexity int) int
 	}
 
+	ContainerResources struct {
+		CPU      func(childComplexity int) int
+		MemoryMB func(childComplexity int) int
+		Name     func(childComplexity int) int
+	}
+
 	Dependency struct {
 		BuildVariant   func(childComplexity int) int
 		MetStatus      func(childComplexity int) int
@@ -554,50 +560,51 @@ type ComplexityRoot struct {
 	}
 
 	Project struct {
-		Admins                 func(childComplexity int) int
-		BatchTime              func(childComplexity int) int
-		Branch                 func(childComplexity int) int
-		BuildBaronSettings     func(childComplexity int) int
-		CommitQueue            func(childComplexity int) int
-		DeactivatePrevious     func(childComplexity int) int
-		DefaultLogger          func(childComplexity int) int
-		DisabledStatsCache     func(childComplexity int) int
-		DispatchingDisabled    func(childComplexity int) int
-		DisplayName            func(childComplexity int) int
-		Enabled                func(childComplexity int) int
-		FilesIgnoredFromCache  func(childComplexity int) int
-		GitTagAuthorizedTeams  func(childComplexity int) int
-		GitTagAuthorizedUsers  func(childComplexity int) int
-		GitTagVersionsEnabled  func(childComplexity int) int
-		GithubChecksEnabled    func(childComplexity int) int
-		GithubTriggerAliases   func(childComplexity int) int
-		Hidden                 func(childComplexity int) int
-		Id                     func(childComplexity int) int
-		Identifier             func(childComplexity int) int
-		IsFavorite             func(childComplexity int) int
-		ManualPRTestingEnabled func(childComplexity int) int
-		NotifyOnBuildFailure   func(childComplexity int) int
-		Owner                  func(childComplexity int) int
-		PRTestingEnabled       func(childComplexity int) int
-		PatchTriggerAliases    func(childComplexity int) int
-		Patches                func(childComplexity int, patchesInput PatchesInput) int
-		PatchingDisabled       func(childComplexity int) int
-		PerfEnabled            func(childComplexity int) int
-		PeriodicBuilds         func(childComplexity int) int
-		Private                func(childComplexity int) int
-		RemotePath             func(childComplexity int) int
-		Repo                   func(childComplexity int) int
-		RepoRefId              func(childComplexity int) int
-		RepotrackerDisabled    func(childComplexity int) int
-		Restricted             func(childComplexity int) int
-		SpawnHostScriptPath    func(childComplexity int) int
-		TaskAnnotationSettings func(childComplexity int) int
-		TaskSync               func(childComplexity int) int
-		TracksPushEvents       func(childComplexity int) int
-		Triggers               func(childComplexity int) int
-		ValidDefaultLoggers    func(childComplexity int) int
-		VersionControlEnabled  func(childComplexity int) int
-		WorkstationConfig      func(childComplexity int) int
+		Admins                   func(childComplexity int) int
+		BatchTime                func(childComplexity int) int
+		Branch                   func(childComplexity int) int
+		BuildBaronSettings       func(childComplexity int) int
+		CommitQueue              func(childComplexity int) int
+		ContainerSizeDefinitions func(childComplexity int) int
+		DeactivatePrevious       func(childComplexity int) int
+		DefaultLogger            func(childComplexity int) int
+		DisabledStatsCache       func(childComplexity int) int
+		DispatchingDisabled      func(childComplexity int) int
+		DisplayName              func(childComplexity int) int
+		Enabled                  func(childComplexity int) int
+		FilesIgnoredFromCache    func(childComplexity int) int
+		GitTagAuthorizedTeams    func(childComplexity int) int
+		GitTagAuthorizedUsers    func(childComplexity int) int
+		GitTagVersionsEnabled    func(childComplexity int) int
+		GithubChecksEnabled      func(childComplexity int) int
+		GithubTriggerAliases     func(childComplexity int) int
+		Hidden                   func(childComplexity int) int
+		Id                       func(childComplexity int) int
+		Identifier               func(childComplexity int) int
+		IsFavorite               func(childComplexity int) int
+		ManualPRTestingEnabled   func(childComplexity int) int
+		NotifyOnBuildFailure     func(childComplexity int) int
+		Owner                    func(childComplexity int) int
+		PRTestingEnabled         func(childComplexity int) int
+		PatchTriggerAliases      func(childComplexity int) int
+		Patches                  func(childComplexity int, patchesInput PatchesInput) int
+		PatchingDisabled         func(childComplexity int) int
+		PerfEnabled              func(childComplexity int) int
+		PeriodicBuilds           func(childComplexity int) int
+		Private                  func(childComplexity int) int
+		RemotePath               func(childComplexity int) int
+		Repo                     func(childComplexity int) int
+		RepoRefId                func(childComplexity int) int
+		RepotrackerDisabled      func(childComplexity int) int
+		Restricted               func(childComplexity int) int
+		SpawnHostScriptPath      func(childComplexity int) int
+		TaskAnnotationSettings   func(childComplexity int) int
+		TaskSync                 func(childComplexity int) int
+		TracksPushEvents         func(childComplexity int) int
+		Triggers                 func(childComplexity int) int
+		ValidDefaultLoggers      func(childComplexity int) int
+		VersionControlEnabled    func(childComplexity int) int
+		WorkstationConfig        func(childComplexity int) int
 	}
 
 	ProjectAlias struct {
@@ -723,45 +730,46 @@ type ComplexityRoot struct {
 	}
 
 	RepoRef struct {
-		Admins                 func(childComplexity int) int
-		BatchTime              func(childComplexity int) int
-		Branch                 func(childComplexity int) int
-		BuildBaronSettings     func(childComplexity int) int
-		CommitQueue            func(childComplexity int) int
-		DeactivatePrevious     func(childComplexity int) int
-		DefaultLogger          func(childComplexity int) int
-		DisabledStatsCache     func(childComplexity int) int
-		DispatchingDisabled    func(childComplexity int) int
-		DisplayName            func(childComplexity int) int
-		Enabled                func(childComplexity int) int
-		FilesIgnoredFromCache  func(childComplexity int) int
-		GitTagAuthorizedTeams  func(childComplexity int) int
-		GitTagAuthorizedUsers  func(childComplexity int) int
-		GitTagVersionsEnabled  func(childComplexity int) int
-		GithubChecksEnabled    func(childComplexity int) int
-		GithubTriggerAliases   func(childComplexity int) int
-		Id                     func(childComplexity int) int
-		ManualPRTestingEnabled func(childComplexity int) int
-		NotifyOnBuildFailure   func(childComplexity int) int
-		Owner                  func(childComplexity int) int
-		PRTestingEnabled       func(childComplexity int) int
-		PatchTriggerAliases    func(childComplexity int) int
-		PatchingDisabled       func(childComplexity int) int
-		PerfEnabled            func(childComplexity int) int
-		PeriodicBuilds         func(childComplexity int) int
-		Private                func(childComplexity int) int
-		RemotePath             func(childComplexity int) int
-		Repo                   func(childComplexity int) int
-		RepotrackerDisabled    func(childComplexity int) int
-		Restricted             func(childComplexity int) int
-		SpawnHostScriptPath    func(childComplexity int) int
-		TaskAnnotationSettings func(childComplexity int) int
-		TaskSync               func(childComplexity int) int
-		TracksPushEvents       func(childComplexity int) int
-		Triggers               func(childComplexity int) int
-		ValidDefaultLoggers    func(childComplexity int) int
-		VersionControlEnabled  func(childComplexity int) int
-		WorkstationConfig      func(childComplexity int) int
+		Admins                   func(childComplexity int) int
+		BatchTime                func(childComplexity int) int
+		Branch                   func(childComplexity int) int
+		BuildBaronSettings       func(childComplexity int) int
+		CommitQueue              func(childComplexity int) int
+		ContainerSizeDefinitions func(childComplexity int) int
+		DeactivatePrevious       func(childComplexity int) int
+		DefaultLogger            func(childComplexity int) int
+		DisabledStatsCache       func(childComplexity int) int
+		DispatchingDisabled      func(childComplexity int) int
+		DisplayName              func(childComplexity int) int
+		Enabled                  func(childComplexity int) int
+		FilesIgnoredFromCache    func(childComplexity int) int
+		GitTagAuthorizedTeams    func(childComplexity int) int
+		GitTagAuthorizedUsers    func(childComplexity int) int
+		GitTagVersionsEnabled    func(childComplexity int) int
+		GithubChecksEnabled      func(childComplexity int) int
+		GithubTriggerAliases     func(childComplexity int) int
+		Id                       func(childComplexity int) int
+		ManualPRTestingEnabled   func(childComplexity int) int
+		NotifyOnBuildFailure     func(childComplexity int) int
+		Owner                    func(childComplexity int) int
+		PRTestingEnabled         func(childComplexity int) int
+		PatchTriggerAliases      func(childComplexity int) int
+		PatchingDisabled         func(childComplexity int) int
+		PerfEnabled              func(childComplexity int) int
+		PeriodicBuilds           func(childComplexity int) int
+		Private                  func(childComplexity int) int
+		RemotePath               func(childComplexity int) int
+		Repo                     func(childComplexity int) int
+		RepotrackerDisabled      func(childComplexity int) int
+		Restricted               func(childComplexity int) int
+		SpawnHostScriptPath      func(childComplexity int) int
+		TaskAnnotationSettings   func(childComplexity int) int
+		TaskSync                 func(childComplexity int) int
+		TracksPushEvents         func(childComplexity int) int
+		Triggers                 func(childComplexity int) int
+		ValidDefaultLoggers      func(childComplexity int) int
+		VersionControlEnabled    func(childComplexity int) int
+		WorkstationConfig        func(childComplexity int) int
 	}
 
 	RepoSettings struct {
@@ -1862,6 +1870,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.CommitQueueParams.RequireSigned(childComplexity), true
+
+	case "ContainerResources.cpu":
+		if e.complexity.ContainerResources.CPU == nil {
+			break
+		}
+
+		return e.complexity.ContainerResources.CPU(childComplexity), true
+
+	case "ContainerResources.memoryMb":
+		if e.complexity.ContainerResources.MemoryMB == nil {
+			break
+		}
+
+		return e.complexity.ContainerResources.MemoryMB(childComplexity), true
+
+	case "ContainerResources.name":
+		if e.complexity.ContainerResources.Name == nil {
+			break
+		}
+
+		return e.complexity.ContainerResources.Name(childComplexity), true
 
 	case "Dependency.buildVariant":
 		if e.complexity.Dependency.BuildVariant == nil {
@@ -3897,6 +3926,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Project.CommitQueue(childComplexity), true
 
+	case "Project.containerSizeDefinitions":
+		if e.complexity.Project.ContainerSizeDefinitions == nil {
+			break
+		}
+
+		return e.complexity.Project.ContainerSizeDefinitions(childComplexity), true
+
 	case "Project.deactivatePrevious":
 		if e.complexity.Project.DeactivatePrevious == nil {
 			break
@@ -4946,6 +4982,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.RepoRef.CommitQueue(childComplexity), true
+
+	case "RepoRef.containerSizeDefinitions":
+		if e.complexity.RepoRef.ContainerSizeDefinitions == nil {
+			break
+		}
+
+		return e.complexity.RepoRef.ContainerSizeDefinitions(childComplexity), true
 
 	case "RepoRef.deactivatePrevious":
 		if e.complexity.RepoRef.DeactivatePrevious == nil {
@@ -8115,6 +8158,12 @@ input TriggerAliasInput {
   taskRegex: String!
 }
 
+input ContainerResourcesInput {
+  name: String!
+  cpu: Int!
+  memoryMb: Int!
+}
+
 input PatchTriggerAliasInput {
   alias: String!
   childProjectIdentifier: String!
@@ -8145,7 +8194,6 @@ input WorkstationSetupCommandInput {
   command: String!
   directory: String
 }
-
 
 ###### TYPES ######
 """
@@ -8216,6 +8264,7 @@ type Project {
   validDefaultLoggers: [String!]!
   versionControlEnabled: Boolean
   workstationConfig: WorkstationConfig!
+  containerSizeDefinitions: [ContainerResources!]
 }
 
 type CommitQueueParams {
@@ -8233,8 +8282,7 @@ type TaskSyncOptions {
 type WorkstationConfig {
   gitClone: Boolean
   setupCommands: [WorkstationSetupCommand!]
-}
-`, BuiltIn: false},
+}`, BuiltIn: false},
 	{Name: "graphql/schema/types/project_settings.graphql", Input: `enum ProjectSettingsAccess {
   EDIT
   VIEW
@@ -8251,6 +8299,7 @@ enum ProjectSettingsSection {
   TRIGGERS
   PERIODIC_BUILDS
   PLUGINS
+  CONTAINERS
 }
 
 ###### INPUTS ######
@@ -8307,6 +8356,7 @@ input ProjectInput {
   triggers: [TriggerAliasInput!]
   versionControlEnabled: Boolean
   workstationConfig: WorkstationConfigInput
+  containerSizeDefinitions: [ContainerResourcesInput!]
 }
 
 ###### TYPES ######
@@ -8348,6 +8398,13 @@ type TriggerAlias {
   project: String!
   status: String!
   taskRegex: String!
+}
+
+# shared by Project and RepoRef
+type ContainerResources {
+  name: String!
+  cpu: Int!
+  memoryMb: Int!
 }
 
 # shared by Project and RepoRef
@@ -8543,6 +8600,7 @@ input RepoRefInput {
   triggers: [TriggerAliasInput!]
   versionControlEnabled: Boolean
   workstationConfig: WorkstationConfigInput
+  containerSizeDefinitions: [ContainerResourcesInput!]
 }
 
 ###### TYPES ######
@@ -8591,6 +8649,7 @@ type RepoRef {
   validDefaultLoggers: [String!]!
   versionControlEnabled: Boolean!
   workstationConfig: RepoWorkstationConfig!
+  containerSizeDefinitions: [ContainerResources!]
 }
 
 type RepoCommitQueueParams {
@@ -13148,6 +13207,111 @@ func (ec *executionContext) _CommitQueueParams_requireSigned(ctx context.Context
 	res := resTmp.(*bool)
 	fc.Result = res
 	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ContainerResources_name(ctx context.Context, field graphql.CollectedField, obj *model.APIContainerResources) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "ContainerResources",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ContainerResources_cpu(ctx context.Context, field graphql.CollectedField, obj *model.APIContainerResources) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "ContainerResources",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CPU, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalNInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ContainerResources_memoryMb(ctx context.Context, field graphql.CollectedField, obj *model.APIContainerResources) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "ContainerResources",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MemoryMB, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalNInt2ᚖint(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Dependency_buildVariant(ctx context.Context, field graphql.CollectedField, obj *Dependency) (ret graphql.Marshaler) {
@@ -23547,6 +23711,38 @@ func (ec *executionContext) _Project_workstationConfig(ctx context.Context, fiel
 	return ec.marshalNWorkstationConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationConfig(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Project_containerSizeDefinitions(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ContainerSizeDefinitions, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]model.APIContainerResources)
+	fc.Result = res
+	return ec.marshalOContainerResources2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerResourcesᚄ(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _ProjectAlias_id(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectAlias) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -28090,6 +28286,38 @@ func (ec *executionContext) _RepoRef_workstationConfig(ctx context.Context, fiel
 	res := resTmp.(model.APIWorkstationConfig)
 	fc.Result = res
 	return ec.marshalNRepoWorkstationConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _RepoRef_containerSizeDefinitions(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "RepoRef",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ContainerSizeDefinitions, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]model.APIContainerResources)
+	fc.Result = res
+	return ec.marshalOContainerResources2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerResourcesᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _RepoSettings_aliases(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectSettings) (ret graphql.Marshaler) {
@@ -39244,6 +39472,45 @@ func (ec *executionContext) unmarshalInputCommitQueueParamsInput(ctx context.Con
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputContainerResourcesInput(ctx context.Context, obj interface{}) (model.APIContainerResources, error) {
+	var it model.APIContainerResources
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	for k, v := range asMap {
+		switch k {
+		case "name":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			it.Name, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "cpu":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cpu"))
+			it.CPU, err = ec.unmarshalNInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "memoryMb":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("memoryMb"))
+			it.MemoryMB, err = ec.unmarshalNInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputCopyProjectInput(ctx context.Context, obj interface{}) (data.CopyProjectOpts, error) {
 	var it data.CopyProjectOpts
 	asMap := map[string]interface{}{}
@@ -40485,6 +40752,14 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 			if err != nil {
 				return it, err
 			}
+		case "containerSizeDefinitions":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("containerSizeDefinitions"))
+			it.ContainerSizeDefinitions, err = ec.unmarshalOContainerResourcesInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerResourcesᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		}
 	}
 
@@ -40946,6 +41221,14 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workstationConfig"))
 			it.WorkstationConfig, err = ec.unmarshalOWorkstationConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "containerSizeDefinitions":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("containerSizeDefinitions"))
+			it.ContainerSizeDefinitions, err = ec.unmarshalOContainerResourcesInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerResourcesᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -42629,6 +42912,43 @@ func (ec *executionContext) _CommitQueueParams(ctx context.Context, sel ast.Sele
 			}
 		case "requireSigned":
 			out.Values[i] = ec._CommitQueueParams_requireSigned(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var containerResourcesImplementors = []string{"ContainerResources"}
+
+func (ec *executionContext) _ContainerResources(ctx context.Context, sel ast.SelectionSet, obj *model.APIContainerResources) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, containerResourcesImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ContainerResources")
+		case "name":
+			out.Values[i] = ec._ContainerResources_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "cpu":
+			out.Values[i] = ec._ContainerResources_cpu(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "memoryMb":
+			out.Values[i] = ec._ContainerResources_memoryMb(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -44953,6 +45273,8 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
+		case "containerSizeDefinitions":
+			out.Values[i] = ec._Project_containerSizeDefinitions(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -46214,6 +46536,8 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
+		case "containerSizeDefinitions":
+			out.Values[i] = ec._RepoRef_containerSizeDefinitions(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -49260,6 +49584,15 @@ func (ec *executionContext) marshalNCommitQueueItem2githubᚗcomᚋevergreenᚑc
 
 func (ec *executionContext) marshalNCommitQueueParams2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueueParams(ctx context.Context, sel ast.SelectionSet, v model.APICommitQueueParams) graphql.Marshaler {
 	return ec._CommitQueueParams(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNContainerResources2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerResources(ctx context.Context, sel ast.SelectionSet, v model.APIContainerResources) graphql.Marshaler {
+	return ec._ContainerResources(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalNContainerResourcesInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerResources(ctx context.Context, v interface{}) (model.APIContainerResources, error) {
+	res, err := ec.unmarshalInputContainerResourcesInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalNCopyProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋdataᚐCopyProjectOpts(ctx context.Context, v interface{}) (data.CopyProjectOpts, error) {
@@ -52386,6 +52719,77 @@ func (ec *executionContext) marshalOCommitQueueItem2ᚕgithubᚗcomᚋevergreen�
 func (ec *executionContext) unmarshalOCommitQueueParamsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueueParams(ctx context.Context, v interface{}) (model.APICommitQueueParams, error) {
 	res, err := ec.unmarshalInputCommitQueueParamsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOContainerResources2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerResourcesᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIContainerResources) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNContainerResources2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerResources(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalOContainerResourcesInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerResourcesᚄ(ctx context.Context, v interface{}) ([]model.APIContainerResources, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]model.APIContainerResources, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNContainerResourcesInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerResources(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) marshalODependency2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDependencyᚄ(ctx context.Context, sel ast.SelectionSet, v []*Dependency) graphql.Marshaler {

@@ -12,6 +12,7 @@ import (
 	"strconv"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent"
 	timberutil "github.com/evergreen-ci/timber/testutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
@@ -59,14 +60,15 @@ func smokeStartEvergreen() cli.Command {
 		webFlagName          = "web"
 		agentMonitorFlagName = "monitor"
 		distroIDFlagName     = "distro"
+		modeFlagName         = "mode"
 
 		// apiPort is the local port the API will listen on.
 		apiPort = ":9090"
 
 		cedarPort = 7070
 
-		hostId     = "localhost"
-		hostSecret = "de249183582947721fdfb2ea1796574b"
+		id         = "localhost"
+		secret     = "de249183582947721fdfb2ea1796574b"
 		statusPort = "2287"
 
 		monitorPort = 2288
@@ -109,6 +111,10 @@ func smokeStartEvergreen() cli.Command {
 				Name:  distroIDFlagName,
 				Usage: "the distro ID of the agent monitor",
 			},
+			cli.StringFlag{
+				Name:  modeFlagName,
+				Usage: "run the agent in host or pod mode",
+			},
 		},
 		Before: mergeBeforeFuncs(setupSmokeTest(err), requireFileExists(confFlagName), requireAtLeastOneBool(webFlagName, agentFlagName, agentMonitorFlagName)),
 		Action: func(c *cli.Context) error {
@@ -118,6 +124,7 @@ func smokeStartEvergreen() cli.Command {
 			startAgent := c.Bool(agentFlagName)
 			startAgentMonitor := c.Bool(agentMonitorFlagName)
 			distroID := c.String(distroIDFlagName)
+			mode := c.String(modeFlagName)
 
 			exit := make(chan error, 3)
 
@@ -141,9 +148,9 @@ func smokeStartEvergreen() cli.Command {
 					wd,
 					binary,
 					"agent",
-					"--mode=host",
-					"--host_id", hostId,
-					"--host_secret", hostSecret,
+					fmt.Sprintf("--mode=%s", mode),
+					fmt.Sprintf("--%s_id", mode), id,
+					fmt.Sprintf("--%s_secret", mode), secret,
 					"--api_server", apiServerURL,
 					"--log_prefix", evergreen.StandardOutputLoggingOverride,
 					"--status_port", statusPort,
@@ -193,8 +200,8 @@ func smokeStartEvergreen() cli.Command {
 					binary,
 					"agent",
 					"--mode=host",
-					"--host_id", hostId,
-					"--host_secret", hostSecret,
+					"--host_id", id,
+					"--host_secret", secret,
 					"--api_server", apiServerURL,
 					"--log_prefix", evergreen.StandardOutputLoggingOverride,
 					"--status_port", statusPort,
@@ -241,6 +248,7 @@ func smokeTestEndpoints() cli.Command {
 		userNameFlagName = "username"
 		userKeyFlagName  = "key"
 		checkBuildName   = "check-build"
+		modeFlagName     = "mode"
 	)
 
 	wd, err := os.Getwd()
@@ -263,6 +271,10 @@ func smokeTestEndpoints() cli.Command {
 				Name:  userKeyFlagName,
 				Usage: "key to use with the API",
 			},
+			cli.StringFlag{
+				Name:  modeFlagName,
+				Usage: "run host or pod build variant",
+			},
 			cli.BoolFlag{
 				Name:  checkBuildName,
 				Usage: "verify agent has built latest commit",
@@ -273,6 +285,7 @@ func smokeTestEndpoints() cli.Command {
 			testFile := c.String(testFileFlagName)
 			username := c.String(userNameFlagName)
 			key := c.String(userKeyFlagName)
+			mode := c.String(modeFlagName)
 
 			defs, err := ioutil.ReadFile(testFile)
 			if err != nil {
@@ -285,7 +298,10 @@ func smokeTestEndpoints() cli.Command {
 			}
 
 			if c.Bool(checkBuildName) {
-				return errors.Wrap(checkTaskByCommit(username, key), "check task failed")
+				if mode == string(agent.PodMode) {
+					return errors.Wrap(checkContainerTask(username, key), "check task failed")
+				}
+				return errors.Wrap(checkHostTaskByCommit(username, key), "check task failed")
 			}
 			return errors.WithStack(tests.checkEndpoints(username, key))
 		},
