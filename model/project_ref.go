@@ -867,12 +867,6 @@ func (projectRef *ProjectRef) Update() error {
 	)
 }
 
-func (projectRef *ProjectRef) checkDefaultLogger() {
-	if projectRef.DefaultLogger == "" {
-		projectRef.DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
-	}
-}
-
 func findOneProjectRefQ(query db.Q) (*ProjectRef, error) {
 	projectRef := &ProjectRef{}
 	err := db.FindOneQ(ProjectRefCollection, query, projectRef)
@@ -880,7 +874,6 @@ func findOneProjectRefQ(query db.Q) (*ProjectRef, error) {
 		return nil, nil
 	}
 
-	projectRef.checkDefaultLogger()
 	return projectRef, err
 
 }
@@ -1220,8 +1213,6 @@ func FindFirstProjectRef() (*ProjectRef, error) {
 	}
 	projectRef := projectRefSlice[0]
 
-	projectRef.checkDefaultLogger()
-
 	return &projectRef, nil
 }
 
@@ -1243,7 +1234,6 @@ func FindAllMergedTrackedProjectRefs() ([]ProjectRef, error) {
 func addLoggerAndRepoSettingsToProjects(pRefs []ProjectRef) ([]ProjectRef, error) {
 	repoRefs := map[string]*RepoRef{} // cache repoRefs by id
 	for i, pRef := range pRefs {
-		pRefs[i].checkDefaultLogger()
 		if pRefs[i].UseRepoSettings() {
 			repoRef := repoRefs[pRef.RepoRefId]
 			if repoRef == nil {
@@ -1419,9 +1409,6 @@ func FindDownstreamProjects(project string) ([]ProjectRef, error) {
 		return nil, err
 	}
 
-	for i := range projectRefs {
-		projectRefs[i].checkDefaultLogger()
-	}
 	return projectRefs, err
 }
 
@@ -1435,7 +1422,6 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch, calledBy
 	}
 	for _, p := range projectRefs {
 		if p.IsPRTestingEnabledByCaller(calledBy) {
-			p.checkDefaultLogger()
 			return &p, nil
 		}
 	}
@@ -1534,7 +1520,6 @@ func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch st
 	}
 	for _, p := range projectRefs {
 		if p.CommitQueue.IsEnabled() {
-			p.checkDefaultLogger()
 			return &p, nil
 		}
 	}
@@ -1655,7 +1640,6 @@ func FindMergedProjectRefsForRepo(repoRef *RepoRef) ([]ProjectRef, error) {
 	}
 
 	for i := range projectRefs {
-		projectRefs[i].checkDefaultLogger()
 		if projectRefs[i].UseRepoSettings() {
 			mergedProject, err := mergeBranchAndRepoSettings(&projectRefs[i], repoRef)
 			if err != nil {
@@ -1756,10 +1740,6 @@ func FindProjectRefsWithCommitQueueEnabled() ([]ProjectRef, error) {
 		return nil, err
 	}
 
-	for i := range projectRefs {
-		projectRefs[i].checkDefaultLogger()
-	}
-
 	return projectRefs, nil
 }
 
@@ -1773,10 +1753,6 @@ func FindPeriodicProjects() ([]ProjectRef, error) {
 	)
 	if err != nil {
 		return nil, err
-	}
-
-	for i := range projectRefs {
-		projectRefs[i].checkDefaultLogger()
 	}
 
 	return projectRefs, nil
@@ -1797,10 +1773,6 @@ func FindProjectRefs(key string, limit int, sortDir int) ([]ProjectRef, error) {
 
 	q := db.Query(filter).Sort([]string{sortSpec}).Limit(limit)
 	err := db.FindAllQ(ProjectRefCollection, q, &projectRefs)
-
-	for i := range projectRefs {
-		projectRefs[i].checkDefaultLogger()
-	}
 
 	return projectRefs, err
 }

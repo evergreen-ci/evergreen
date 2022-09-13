@@ -39,7 +39,6 @@ input ProjectInput {
   buildBaronSettings: BuildBaronSettingsInput
   commitQueue: CommitQueueParamsInput
   deactivatePrevious: Boolean
-  defaultLogger: String
   disabledStatsCache: Boolean
   dispatchingDisabled: Boolean
   displayName: String

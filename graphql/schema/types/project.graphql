@@ -162,7 +162,6 @@ type Project {
   buildBaronSettings: BuildBaronSettings!
   commitQueue: CommitQueueParams!
   deactivatePrevious: Boolean
-  defaultLogger: String!
   disabledStatsCache: Boolean
   dispatchingDisabled: Boolean
   displayName: String!
@@ -196,7 +195,6 @@ type Project {
   taskSync: TaskSyncOptions!
   tracksPushEvents: Boolean
   triggers: [TriggerAlias!]
-  validDefaultLoggers: [String!]!
   versionControlEnabled: Boolean
   workstationConfig: WorkstationConfig!
   containerSizeDefinitions: [ContainerResources!]

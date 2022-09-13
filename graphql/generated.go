@@ -54,7 +54,6 @@ type ResolverRoot interface {
 	ProjectSubscriber() ProjectSubscriberResolver
 	ProjectVars() ProjectVarsResolver
 	Query() QueryResolver
-	RepoRef() RepoRefResolver
 	RepoSettings() RepoSettingsResolver
 	Task() TaskResolver
 	TaskLogs() TaskLogsResolver
@@ -567,7 +566,6 @@ type ComplexityRoot struct {
 		CommitQueue              func(childComplexity int) int
 		ContainerSizeDefinitions func(childComplexity int) int
 		DeactivatePrevious       func(childComplexity int) int
-		DefaultLogger            func(childComplexity int) int
 		DisabledStatsCache       func(childComplexity int) int
 		DispatchingDisabled      func(childComplexity int) int
 		DisplayName              func(childComplexity int) int
@@ -602,7 +600,6 @@ type ComplexityRoot struct {
 		TaskSync                 func(childComplexity int) int
 		TracksPushEvents         func(childComplexity int) int
 		Triggers                 func(childComplexity int) int
-		ValidDefaultLoggers      func(childComplexity int) int
 		VersionControlEnabled    func(childComplexity int) int
 		WorkstationConfig        func(childComplexity int) int
 	}
@@ -737,7 +734,6 @@ type ComplexityRoot struct {
 		CommitQueue              func(childComplexity int) int
 		ContainerSizeDefinitions func(childComplexity int) int
 		DeactivatePrevious       func(childComplexity int) int
-		DefaultLogger            func(childComplexity int) int
 		DisabledStatsCache       func(childComplexity int) int
 		DispatchingDisabled      func(childComplexity int) int
 		DisplayName              func(childComplexity int) int
@@ -767,7 +763,6 @@ type ComplexityRoot struct {
 		TaskSync                 func(childComplexity int) int
 		TracksPushEvents         func(childComplexity int) int
 		Triggers                 func(childComplexity int) int
-		ValidDefaultLoggers      func(childComplexity int) int
 		VersionControlEnabled    func(childComplexity int) int
 		WorkstationConfig        func(childComplexity int) int
 	}
@@ -1294,8 +1289,6 @@ type ProjectResolver interface {
 	IsFavorite(ctx context.Context, obj *model.APIProjectRef) (bool, error)
 
 	Patches(ctx context.Context, obj *model.APIProjectRef, patchesInput PatchesInput) (*Patches, error)
-
-	ValidDefaultLoggers(ctx context.Context, obj *model.APIProjectRef) ([]string, error)
 }
 type ProjectSettingsResolver interface {
 	Aliases(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APIProjectAlias, error)
@@ -1352,9 +1345,6 @@ type QueryResolver interface {
 	TaskNamesForBuildVariant(ctx context.Context, projectID string, buildVariant string) ([]string, error)
 	HasVersion(ctx context.Context, id string) (bool, error)
 	Version(ctx context.Context, id string) (*model.APIVersion, error)
-}
-type RepoRefResolver interface {
-	ValidDefaultLoggers(ctx context.Context, obj *model.APIProjectRef) ([]string, error)
 }
 type RepoSettingsResolver interface {
 	Aliases(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APIProjectAlias, error)
@@ -3939,13 +3929,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Project.DeactivatePrevious(childComplexity), true
 
-	case "Project.defaultLogger":
-		if e.complexity.Project.DefaultLogger == nil {
-			break
-		}
-
-		return e.complexity.Project.DefaultLogger(childComplexity), true
-
 	case "Project.disabledStatsCache":
 		if e.complexity.Project.DisabledStatsCache == nil {
 			break
@@ -4188,13 +4171,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Project.Triggers(childComplexity), true
-
-	case "Project.validDefaultLoggers":
-		if e.complexity.Project.ValidDefaultLoggers == nil {
-			break
-		}
-
-		return e.complexity.Project.ValidDefaultLoggers(childComplexity), true
 
 	case "Project.versionControlEnabled":
 		if e.complexity.Project.VersionControlEnabled == nil {
@@ -4996,13 +4972,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.RepoRef.DeactivatePrevious(childComplexity), true
 
-	case "RepoRef.defaultLogger":
-		if e.complexity.RepoRef.DefaultLogger == nil {
-			break
-		}
-
-		return e.complexity.RepoRef.DefaultLogger(childComplexity), true
-
 	case "RepoRef.disabledStatsCache":
 		if e.complexity.RepoRef.DisabledStatsCache == nil {
 			break
@@ -5205,13 +5174,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.RepoRef.Triggers(childComplexity), true
-
-	case "RepoRef.validDefaultLoggers":
-		if e.complexity.RepoRef.ValidDefaultLoggers == nil {
-			break
-		}
-
-		return e.complexity.RepoRef.ValidDefaultLoggers(childComplexity), true
 
 	case "RepoRef.versionControlEnabled":
 		if e.complexity.RepoRef.VersionControlEnabled == nil {
@@ -8219,7 +8181,6 @@ type Project {
   buildBaronSettings: BuildBaronSettings!
   commitQueue: CommitQueueParams!
   deactivatePrevious: Boolean
-  defaultLogger: String!
   disabledStatsCache: Boolean
   dispatchingDisabled: Boolean
   displayName: String!
@@ -8253,7 +8214,6 @@ type Project {
   taskSync: TaskSyncOptions!
   tracksPushEvents: Boolean
   triggers: [TriggerAlias!]
-  validDefaultLoggers: [String!]!
   versionControlEnabled: Boolean
   workstationConfig: WorkstationConfig!
   containerSizeDefinitions: [ContainerResources!]
@@ -8274,7 +8234,8 @@ type TaskSyncOptions {
 type WorkstationConfig {
   gitClone: Boolean
   setupCommands: [WorkstationSetupCommand!]
-}`, BuiltIn: false},
+}
+`, BuiltIn: false},
 	{Name: "graphql/schema/types/project_settings.graphql", Input: `enum ProjectSettingsAccess {
   EDIT
   VIEW
@@ -8316,7 +8277,6 @@ input ProjectInput {
   buildBaronSettings: BuildBaronSettingsInput
   commitQueue: CommitQueueParamsInput
   deactivatePrevious: Boolean
-  defaultLogger: String
   disabledStatsCache: Boolean
   dispatchingDisabled: Boolean
   displayName: String
@@ -8561,7 +8521,6 @@ input RepoRefInput {
   buildBaronSettings: BuildBaronSettingsInput
   commitQueue: CommitQueueParamsInput
   deactivatePrevious: Boolean
-  defaultLogger: String
   disabledStatsCache: Boolean
   dispatchingDisabled: Boolean
   displayName: String
@@ -8609,7 +8568,6 @@ type RepoRef {
   buildBaronSettings: BuildBaronSettings!
   commitQueue: RepoCommitQueueParams!
   deactivatePrevious: Boolean!
-  defaultLogger: String!
   disabledStatsCache: Boolean!
   dispatchingDisabled: Boolean!
   displayName: String!
@@ -8638,7 +8596,6 @@ type RepoRef {
   taskSync: RepoTaskSyncOptions!
   tracksPushEvents: Boolean!
   triggers: [TriggerAlias!]!
-  validDefaultLoggers: [String!]!
   versionControlEnabled: Boolean!
   workstationConfig: RepoWorkstationConfig!
   containerSizeDefinitions: [ContainerResources!]
@@ -22474,41 +22431,6 @@ func (ec *executionContext) _Project_deactivatePrevious(ctx context.Context, fie
 	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Project_defaultLogger(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "Project",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.DefaultLogger, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
 func (ec *executionContext) _Project_disabledStatsCache(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -23603,41 +23525,6 @@ func (ec *executionContext) _Project_triggers(ctx context.Context, field graphql
 	res := resTmp.([]model.APITriggerDefinition)
 	fc.Result = res
 	return ec.marshalOTriggerAlias2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITriggerDefinitionᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Project_validDefaultLoggers(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "Project",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   true,
-		IsResolver: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Project().ValidDefaultLoggers(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]string)
-	fc.Result = res
-	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Project_versionControlEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
@@ -27182,41 +27069,6 @@ func (ec *executionContext) _RepoRef_deactivatePrevious(ctx context.Context, fie
 	return ec.marshalNBoolean2ᚖbool(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _RepoRef_defaultLogger(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "RepoRef",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.DefaultLogger, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
 func (ec *executionContext) _RepoRef_disabledStatsCache(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -28177,41 +28029,6 @@ func (ec *executionContext) _RepoRef_triggers(ctx context.Context, field graphql
 	res := resTmp.([]model.APITriggerDefinition)
 	fc.Result = res
 	return ec.marshalNTriggerAlias2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITriggerDefinitionᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _RepoRef_validDefaultLoggers(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "RepoRef",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   true,
-		IsResolver: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.RepoRef().ValidDefaultLoggers(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]string)
-	fc.Result = res
-	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _RepoRef_versionControlEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
@@ -40460,14 +40277,6 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 			if err != nil {
 				return it, err
 			}
-		case "defaultLogger":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("defaultLogger"))
-			it.DefaultLogger, err = ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
 		case "disabledStatsCache":
 			var err error
 
@@ -40937,14 +40746,6 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deactivatePrevious"))
 			it.DeactivatePrevious, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "defaultLogger":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("defaultLogger"))
-			it.DefaultLogger, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -45086,11 +44887,6 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "deactivatePrevious":
 			out.Values[i] = ec._Project_deactivatePrevious(ctx, field, obj)
-		case "defaultLogger":
-			out.Values[i] = ec._Project_defaultLogger(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
 		case "disabledStatsCache":
 			out.Values[i] = ec._Project_disabledStatsCache(ctx, field, obj)
 		case "dispatchingDisabled":
@@ -45208,20 +45004,6 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._Project_tracksPushEvents(ctx, field, obj)
 		case "triggers":
 			out.Values[i] = ec._Project_triggers(ctx, field, obj)
-		case "validDefaultLoggers":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Project_validDefaultLoggers(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
-				return res
-			})
 		case "versionControlEnabled":
 			out.Values[i] = ec._Project_versionControlEnabled(ctx, field, obj)
 		case "workstationConfig":
@@ -46309,69 +46091,64 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 		case "id":
 			out.Values[i] = ec._RepoRef_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "admins":
 			out.Values[i] = ec._RepoRef_admins(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "batchTime":
 			out.Values[i] = ec._RepoRef_batchTime(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "branch":
 			out.Values[i] = ec._RepoRef_branch(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "buildBaronSettings":
 			out.Values[i] = ec._RepoRef_buildBaronSettings(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "commitQueue":
 			out.Values[i] = ec._RepoRef_commitQueue(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "deactivatePrevious":
 			out.Values[i] = ec._RepoRef_deactivatePrevious(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
-		case "defaultLogger":
-			out.Values[i] = ec._RepoRef_defaultLogger(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "disabledStatsCache":
 			out.Values[i] = ec._RepoRef_disabledStatsCache(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "dispatchingDisabled":
 			out.Values[i] = ec._RepoRef_dispatchingDisabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "displayName":
 			out.Values[i] = ec._RepoRef_displayName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "enabled":
 			out.Values[i] = ec._RepoRef_enabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "filesIgnoredFromCache":
 			out.Values[i] = ec._RepoRef_filesIgnoredFromCache(ctx, field, obj)
 		case "githubChecksEnabled":
 			out.Values[i] = ec._RepoRef_githubChecksEnabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "githubTriggerAliases":
 			out.Values[i] = ec._RepoRef_githubTriggerAliases(ctx, field, obj)
@@ -46382,115 +46159,101 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 		case "gitTagVersionsEnabled":
 			out.Values[i] = ec._RepoRef_gitTagVersionsEnabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "manualPrTestingEnabled":
 			out.Values[i] = ec._RepoRef_manualPrTestingEnabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "notifyOnBuildFailure":
 			out.Values[i] = ec._RepoRef_notifyOnBuildFailure(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "owner":
 			out.Values[i] = ec._RepoRef_owner(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "patchingDisabled":
 			out.Values[i] = ec._RepoRef_patchingDisabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "patchTriggerAliases":
 			out.Values[i] = ec._RepoRef_patchTriggerAliases(ctx, field, obj)
 		case "perfEnabled":
 			out.Values[i] = ec._RepoRef_perfEnabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "periodicBuilds":
 			out.Values[i] = ec._RepoRef_periodicBuilds(ctx, field, obj)
 		case "private":
 			out.Values[i] = ec._RepoRef_private(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "prTestingEnabled":
 			out.Values[i] = ec._RepoRef_prTestingEnabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "remotePath":
 			out.Values[i] = ec._RepoRef_remotePath(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "repo":
 			out.Values[i] = ec._RepoRef_repo(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "repotrackerDisabled":
 			out.Values[i] = ec._RepoRef_repotrackerDisabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "restricted":
 			out.Values[i] = ec._RepoRef_restricted(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "spawnHostScriptPath":
 			out.Values[i] = ec._RepoRef_spawnHostScriptPath(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "taskAnnotationSettings":
 			out.Values[i] = ec._RepoRef_taskAnnotationSettings(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "taskSync":
 			out.Values[i] = ec._RepoRef_taskSync(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "tracksPushEvents":
 			out.Values[i] = ec._RepoRef_tracksPushEvents(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "triggers":
 			out.Values[i] = ec._RepoRef_triggers(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
-		case "validDefaultLoggers":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._RepoRef_validDefaultLoggers(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
-				return res
-			})
 		case "versionControlEnabled":
 			out.Values[i] = ec._RepoRef_versionControlEnabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "workstationConfig":
 			out.Values[i] = ec._RepoRef_workstationConfig(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "containerSizeDefinitions":
 			out.Values[i] = ec._RepoRef_containerSizeDefinitions(ctx, field, obj)
