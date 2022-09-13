@@ -688,25 +688,23 @@ func TestAddNewPatch(t *testing.T) {
 			},
 		},
 	})
-	taskCreation := TaskCreationInfo{
-		Project:    proj,
-		ProjectRef: &ref,
-		Version:    v,
-		pairs:      tasks,
-	}
-	args := BuildCreateArgs{
+	creationInfo := TaskCreationInfo{
+		Project:        proj,
+		ProjectRef:     &ref,
+		Version:        v,
+		pairs:          tasks,
 		ActivationInfo: specificActivationInfo{},
 		SyncAtEndOpts:  p.SyncAtEndOpts,
 		GeneratedBy:    "",
 	}
-	_, err := addNewBuilds(context.Background(), taskCreation, args, nil)
+	_, err := addNewBuilds(context.Background(), creationInfo, nil)
 	assert.NoError(err)
 	dbBuild, err := build.FindOne(db.Q{})
 	assert.NoError(err)
 	assert.NotNil(dbBuild)
 	assert.Len(dbBuild.Tasks, 2)
 
-	_, err = addNewTasks(context.Background(), taskCreation, args, []build.Build{*dbBuild})
+	_, err = addNewTasks(context.Background(), creationInfo, []build.Build{*dbBuild})
 	assert.NoError(err)
 	dbTasks, err := task.FindAll(db.Query(task.ByBuildId(dbBuild.Id)))
 	assert.NoError(err)
@@ -779,25 +777,23 @@ func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 			},
 		},
 	})
-	taskCreation := TaskCreationInfo{
-		Project:    proj,
-		ProjectRef: &ref,
-		Version:    v,
-		pairs:      tasks,
-	}
-	args := BuildCreateArgs{
+	creationInfo := TaskCreationInfo{
+		Project:        proj,
+		ProjectRef:     &ref,
+		Version:        v,
+		pairs:          tasks,
 		ActivationInfo: specificActivationInfo{},
 		SyncAtEndOpts:  p.SyncAtEndOpts,
 		GeneratedBy:    "",
 	}
-	_, err := addNewBuilds(context.Background(), taskCreation, args, nil)
+	_, err := addNewBuilds(context.Background(), creationInfo, nil)
 	assert.NoError(err)
 	dbBuild, err := build.FindOne(db.Q{})
 	assert.NoError(err)
 	assert.NotNil(dbBuild)
 	assert.Len(dbBuild.Tasks, 2)
 
-	_, err = addNewTasks(context.Background(), taskCreation, args, []build.Build{*dbBuild})
+	_, err = addNewTasks(context.Background(), creationInfo, []build.Build{*dbBuild})
 	assert.NoError(err)
 	dbTasks, err := task.FindAll(db.Query(task.ByBuildId(dbBuild.Id)))
 	assert.NoError(err)

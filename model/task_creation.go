@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// add comment!
+// TaskCreationInfo contains the needed parameters to construct new builds and tasks for a given version.
 type TaskCreationInfo struct {
 	Version             *Version
 	Project             *Project
@@ -30,5 +30,5 @@ type TaskCreationInfo struct {
 	DistroAliases       distro.AliasLookupTable // map of distro aliases to names of distros
 	TaskCreateTime      time.Time               // create time of tasks in the build
 	GithubChecksAliases ProjectAliases          // project aliases to use to filter tasks to count towards the github checks, if any
-	SyncAtEndOpts       patch.SyncAtEndOptions
+	SyncAtEndOpts       patch.SyncAtEndOptions  // describes how tasks should sync upon the end of a task
 }

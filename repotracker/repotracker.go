@@ -993,12 +993,10 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			"version":            v.Id,
 			"variant":            buildvariant.Name,
 		}))
-		taskCreation := model.TaskCreationInfo{
-			Project:    projectInfo.Project,
-			ProjectRef: projectInfo.Ref,
-			Version:    v,
-		}
-		args := model.BuildCreateArgs{
+		creationInfo := model.TaskCreationInfo{
+			Project:             projectInfo.Project,
+			ProjectRef:          projectInfo.Ref,
+			Version:             v,
 			TaskIDs:             taskIds,
 			TaskNames:           taskNames,
 			BuildName:           buildvariant.Name,
@@ -1011,7 +1009,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			GithubChecksAliases: aliasesMatchingVariant,
 		}
 
-		b, tasks, err := model.CreateBuildFromVersionNoInsert(taskCreation, args)
+		b, tasks, err := model.CreateBuildFromVersionNoInsert(creationInfo)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":            "error creating build",
