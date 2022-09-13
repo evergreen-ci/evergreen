@@ -277,10 +277,10 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		PatchAliases           []model.ProjectAlias           `json:"patch_aliases,omitempty"`
 		GitTagAliases          []model.ProjectAlias           `json:"git_tag_aliases,omitempty"`
 		DeleteAliases          []string                       `json:"delete_aliases"`
+		DefaultLogger          string                         `json:"default_logger"`
 		PrivateVars            map[string]bool                `json:"private_vars"`
 		AdminOnlyVars          map[string]bool                `json:"admin_only_vars"`
 		Enabled                bool                           `json:"enabled"`
-		DefaultLogger          string                         `json:"default_logger"`
 		Private                bool                           `json:"private"`
 		Restricted             bool                           `json:"restricted"`
 		Owner                  string                         `json:"owner_name"`
