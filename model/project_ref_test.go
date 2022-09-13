@@ -26,7 +26,6 @@ import (
 )
 
 func TestFindOneProjectRef(t *testing.T) {
-	evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger = "buildlogger"
 	assert := assert.New(t)
 	require.NoError(t, db.Clear(ProjectRefCollection))
 	projectRef := &ProjectRef{
@@ -49,7 +48,6 @@ func TestFindOneProjectRef(t *testing.T) {
 	assert.True(projectRefFromDB.IsEnabled())
 	assert.Equal(projectRefFromDB.BatchTime, 10)
 	assert.Equal(projectRefFromDB.Id, "ident")
-	assert.Equal(projectRefFromDB.DefaultLogger, "buildlogger")
 }
 
 func TestFindMergedProjectRef(t *testing.T) {
@@ -864,7 +862,6 @@ func TestDefaultRepoBySection(t *testing.T) {
 }
 
 func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
-	evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger = "buildlogger"
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -896,7 +893,6 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 	assert.NoError(err)
 	require.Len(projectRefs, 1)
 	assert.Equal("ident", projectRefs[0].Id)
-	assert.Equal("buildlogger", projectRefs[0].DefaultLogger)
 
 	projectRef.Id = "ident2"
 	assert.NoError(projectRef.Insert())
@@ -936,7 +932,6 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, user.Collection,
 		evergreen.ScopeCollection, ProjectVarsCollection, ProjectAliasCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
-	evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger = "buildlogger"
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -1076,7 +1071,6 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.Equal(t, "mongodb", repoRef.Owner)
 	assert.Equal(t, "mongo", repoRef.Repo)
 	assert.Equal(t, "main", repoRef.Branch)
-	assert.Equal(t, "buildlogger", repoRef.DefaultLogger)
 	assert.Contains(t, repoRef.Admins, "bob")
 	assert.Contains(t, repoRef.Admins, "other bob")
 	assert.Contains(t, repoRef.Admins, "me")
@@ -1129,7 +1123,6 @@ func TestCreateNewRepoRef(t *testing.T) {
 }
 
 func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
-	evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger = "buildlogger"
 	assert := assert.New(t)   //nolint
 	require := require.New(t) //nolint
 
@@ -1173,7 +1166,6 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	assert.NoError(err)
 	require.NotNil(projectRef)
 	assert.Equal("ident1", projectRef.Id)
-	assert.Equal("buildlogger", projectRef.DefaultLogger)
 
 	// 2 matching documents, we just return one of those projects
 	doc.Id = "ident2"
@@ -1298,7 +1290,6 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 }
 
 func TestFindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t *testing.T) {
-	evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger = "buildlogger"
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -1328,7 +1319,6 @@ func TestFindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(projectRef)
 	assert.Equal("mci", projectRef.Id)
-	assert.Equal("buildlogger", projectRef.DefaultLogger)
 
 	// doc defaults to repo, which is not enabled
 	doc = &ProjectRef{
@@ -1355,7 +1345,6 @@ func TestFindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(projectRef)
 	assert.Equal("mci_main", projectRef.Id)
-	assert.Equal("buildlogger", projectRef.DefaultLogger)
 
 	// doc doesn't default to repo
 	doc.CommitQueue.Enabled = utility.FalsePtr()
@@ -1444,7 +1433,6 @@ func TestFindMergedEnabledProjectRefsByOwnerAndRepo(t *testing.T) {
 }
 
 func TestFindProjectRefsWithCommitQueueEnabled(t *testing.T) {
-	evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger = "buildlogger"
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -1489,9 +1477,7 @@ func TestFindProjectRefsWithCommitQueueEnabled(t *testing.T) {
 	assert.NoError(err)
 	require.Len(projectRefs, 2)
 	assert.Equal("mci", projectRefs[0].Identifier)
-	assert.Equal("buildlogger", projectRefs[0].DefaultLogger)
 	assert.Equal("mci", projectRefs[1].Identifier)
-	assert.Equal("buildlogger", projectRefs[1].DefaultLogger)
 
 	doc.Id = "both_settings_from_repo"
 	doc.Enabled = nil
@@ -2016,7 +2002,6 @@ func TestGetPatchTriggerAlias(t *testing.T) {
 
 func TestFindDownstreamProjects(t *testing.T) {
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection))
-	evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger = "buildlogger"
 
 	repoRef := RepoRef{ProjectRef{
 		Id:      "my_repo",
@@ -2043,7 +2028,6 @@ func TestFindDownstreamProjects(t *testing.T) {
 	projects, err := FindDownstreamProjects("grip")
 	assert.NoError(t, err)
 	assert.Len(t, projects, 1)
-	proj1.DefaultLogger = "buildlogger"
 	assert.Equal(t, proj1, projects[0])
 
 	proj1.Enabled = nil
@@ -2625,7 +2609,6 @@ func TestIsServerResmokeProject(t *testing.T) {
 }
 
 func TestSaveProjectPageForSection(t *testing.T) {
-	evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger = "buildlogger"
 	assert := assert.New(t)
 
 	assert.NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection))
@@ -2675,7 +2658,6 @@ func TestSaveProjectPageForSection(t *testing.T) {
 
 func TestValidateOwnerAndRepo(t *testing.T) {
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection))
-	evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger = "buildlogger"
 
 	// a project with no owner should error
 	project := ProjectRef{

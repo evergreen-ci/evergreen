@@ -363,6 +363,12 @@ func (h *getProjectRefHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
+	if p.DefaultLogger == "" {
+		// If the default logger is not set at the project level, use
+		// the global default logger.
+		p.DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
+	}
+
 	return gimlet.NewJSONResponse(p)
 }
 

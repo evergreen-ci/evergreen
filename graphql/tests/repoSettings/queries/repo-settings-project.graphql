@@ -64,8 +64,6 @@
                 configEnabled
                 patchEnabled
             }
-
-            validDefaultLoggers
         }
     }
 }

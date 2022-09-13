@@ -64,7 +64,6 @@ type ProjectRef struct {
 	GithubChecksEnabled    *bool               `bson:"github_checks_enabled,omitempty" json:"github_checks_enabled,omitempty" yaml:"github_checks_enabled"`
 	BatchTime              int                 `bson:"batch_time" json:"batch_time" yaml:"batchtime"`
 	DeactivatePrevious     *bool               `bson:"deactivate_previous,omitempty" json:"deactivate_previous,omitempty" yaml:"deactivate_previous"`
-	DefaultLogger          string              `bson:"default_logger" json:"default_logger" yaml:"default_logger"`
 	NotifyOnBuildFailure   *bool               `bson:"notify_on_failure,omitempty" json:"notify_on_failure,omitempty"`
 	Triggers               []TriggerDefinition `bson:"triggers" json:"triggers"`
 	// all aliases defined for the project
@@ -119,7 +118,8 @@ type ProjectRef struct {
 
 	// The following fields are used by Evergreen and are not discoverable.
 	// Hidden determines whether or not the project is discoverable/tracked in the UI
-	Hidden *bool `bson:"hidden,omitempty" json:"hidden,omitempty"`
+	Hidden        *bool  `bson:"hidden,omitempty" json:"hidden,omitempty"`
+	DefaultLogger string `bson:"default_logger,omitempty" json:"default_logger,omitempty"`
 }
 
 type CommitQueueParams struct {
@@ -280,7 +280,6 @@ var (
 	ProjectRefAdminsKey                   = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
 	ProjectRefGitTagAuthorizedUsersKey    = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedUsers")
 	ProjectRefGitTagAuthorizedTeamsKey    = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedTeams")
-	projectRefDefaultLoggerKey            = bsonutil.MustHaveTag(ProjectRef{}, "DefaultLogger")
 	projectRefPRTestingEnabledKey         = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
 	projectRefManualPRTestingEnabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "ManualPRTestingEnabled")
 	projectRefGithubChecksEnabledKey      = bsonutil.MustHaveTag(ProjectRef{}, "GithubChecksEnabled")
@@ -868,12 +867,6 @@ func (projectRef *ProjectRef) Update() error {
 	)
 }
 
-func (projectRef *ProjectRef) checkDefaultLogger() {
-	if projectRef.DefaultLogger == "" {
-		projectRef.DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
-	}
-}
-
 func findOneProjectRefQ(query db.Q) (*ProjectRef, error) {
 	projectRef := &ProjectRef{}
 	err := db.FindOneQ(ProjectRefCollection, query, projectRef)
@@ -881,7 +874,6 @@ func findOneProjectRefQ(query db.Q) (*ProjectRef, error) {
 		return nil, nil
 	}
 
-	projectRef.checkDefaultLogger()
 	return projectRef, err
 
 }
@@ -1001,7 +993,6 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 	repoRef.Id = mgobson.NewObjectId().Hex()
 	repoRef.RepoRefId = ""
 	repoRef.Identifier = ""
-	repoRef.DefaultLogger = evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger
 
 	// Set explicitly in case no project is enabled.
 	repoRef.Owner = p.Owner
@@ -1222,8 +1213,6 @@ func FindFirstProjectRef() (*ProjectRef, error) {
 	}
 	projectRef := projectRefSlice[0]
 
-	projectRef.checkDefaultLogger()
-
 	return &projectRef, nil
 }
 
@@ -1245,7 +1234,6 @@ func FindAllMergedTrackedProjectRefs() ([]ProjectRef, error) {
 func addLoggerAndRepoSettingsToProjects(pRefs []ProjectRef) ([]ProjectRef, error) {
 	repoRefs := map[string]*RepoRef{} // cache repoRefs by id
 	for i, pRef := range pRefs {
-		pRefs[i].checkDefaultLogger()
 		if pRefs[i].UseRepoSettings() {
 			repoRef := repoRefs[pRef.RepoRefId]
 			if repoRef == nil {
@@ -1421,9 +1409,6 @@ func FindDownstreamProjects(project string) ([]ProjectRef, error) {
 		return nil, err
 	}
 
-	for i := range projectRefs {
-		projectRefs[i].checkDefaultLogger()
-	}
 	return projectRefs, err
 }
 
@@ -1437,7 +1422,6 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch, calledBy
 	}
 	for _, p := range projectRefs {
 		if p.IsPRTestingEnabledByCaller(calledBy) {
-			p.checkDefaultLogger()
 			return &p, nil
 		}
 	}
@@ -1536,7 +1520,6 @@ func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch st
 	}
 	for _, p := range projectRefs {
 		if p.CommitQueue.IsEnabled() {
-			p.checkDefaultLogger()
 			return &p, nil
 		}
 	}
@@ -1657,7 +1640,6 @@ func FindMergedProjectRefsForRepo(repoRef *RepoRef) ([]ProjectRef, error) {
 	}
 
 	for i := range projectRefs {
-		projectRefs[i].checkDefaultLogger()
 		if projectRefs[i].UseRepoSettings() {
 			mergedProject, err := mergeBranchAndRepoSettings(&projectRefs[i], repoRef)
 			if err != nil {
@@ -1758,10 +1740,6 @@ func FindProjectRefsWithCommitQueueEnabled() ([]ProjectRef, error) {
 		return nil, err
 	}
 
-	for i := range projectRefs {
-		projectRefs[i].checkDefaultLogger()
-	}
-
 	return projectRefs, nil
 }
 
@@ -1775,10 +1753,6 @@ func FindPeriodicProjects() ([]ProjectRef, error) {
 	)
 	if err != nil {
 		return nil, err
-	}
-
-	for i := range projectRefs {
-		projectRefs[i].checkDefaultLogger()
 	}
 
 	return projectRefs, nil
@@ -1799,10 +1773,6 @@ func FindProjectRefs(key string, limit int, sortDir int) ([]ProjectRef, error) {
 
 	q := db.Query(filter).Sort([]string{sortSpec}).Limit(limit)
 	err := db.FindAllQ(ProjectRefCollection, q, &projectRefs)
-
-	for i := range projectRefs {
-		projectRefs[i].checkDefaultLogger()
-	}
 
 	return projectRefs, err
 }
@@ -1857,7 +1827,6 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			projectRefVersionControlEnabledKey: p.VersionControlEnabled,
 			ProjectRefDeactivatePreviousKey:    p.DeactivatePrevious,
 			projectRefRepotrackerDisabledKey:   p.RepotrackerDisabled,
-			projectRefDefaultLoggerKey:         p.DefaultLogger,
 			projectRefPatchingDisabledKey:      p.PatchingDisabled,
 			projectRefTaskSyncKey:              p.TaskSync,
 			ProjectRefDisabledStatsCacheKey:    p.DisabledStatsCache,

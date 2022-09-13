@@ -51,10 +51,6 @@ func (r *projectResolver) Patches(ctx context.Context, obj *restModel.APIProject
 	return &Patches{Patches: apiPatches, FilteredPatchCount: count}, nil
 }
 
-func (r *projectResolver) ValidDefaultLoggers(ctx context.Context, obj *restModel.APIProjectRef) ([]string, error) {
-	return model.ValidDefaultLoggers, nil
-}
-
 // Project returns ProjectResolver implementation.
 func (r *Resolver) Project() ProjectResolver { return &projectResolver{r} }
 

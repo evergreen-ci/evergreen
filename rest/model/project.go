@@ -427,7 +427,6 @@ type APIProjectRef struct {
 	GithubChecksEnabled         *bool                     `json:"github_checks_enabled"`
 	UseRepoSettings             *bool                     `json:"use_repo_settings"`
 	RepoRefId                   *string                   `json:"repo_ref_id"`
-	DefaultLogger               *string                   `json:"default_logger"`
 	CommitQueue                 APICommitQueueParams      `json:"commit_queue"`
 	TaskSync                    APITaskSyncOptions        `json:"task_sync"`
 	TaskAnnotationSettings      APITaskAnnotationSettings `json:"task_annotation_settings"`
@@ -481,7 +480,6 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		DisplayName:            utility.FromStringPtr(p.DisplayName),
 		DeactivatePrevious:     utility.BoolPtrCopy(p.DeactivatePrevious),
 		TracksPushEvents:       utility.BoolPtrCopy(p.TracksPushEvents),
-		DefaultLogger:          utility.FromStringPtr(p.DefaultLogger),
 		PRTestingEnabled:       utility.BoolPtrCopy(p.PRTestingEnabled),
 		ManualPRTestingEnabled: utility.BoolPtrCopy(p.ManualPRTestingEnabled),
 		GitTagVersionsEnabled:  utility.BoolPtrCopy(p.GitTagVersionsEnabled),
@@ -567,7 +565,6 @@ func (p *APIProjectRef) BuildFromService(projectRef model.ProjectRef) error {
 	p.DisplayName = utility.ToStringPtr(projectRef.DisplayName)
 	p.DeactivatePrevious = projectRef.DeactivatePrevious
 	p.TracksPushEvents = utility.BoolPtrCopy(projectRef.TracksPushEvents)
-	p.DefaultLogger = utility.ToStringPtr(projectRef.DefaultLogger)
 	p.PRTestingEnabled = utility.BoolPtrCopy(projectRef.PRTestingEnabled)
 	p.ManualPRTestingEnabled = utility.BoolPtrCopy(projectRef.ManualPRTestingEnabled)
 	p.GitTagVersionsEnabled = utility.BoolPtrCopy(projectRef.GitTagVersionsEnabled)
