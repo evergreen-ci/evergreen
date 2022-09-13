@@ -519,7 +519,7 @@ func (c *gitFetchProject) fetchAdditionalPatches(ctx context.Context,
 	logger.Execution().Info("Fetching additional patches.")
 	additionalPatches, err := comm.GetAdditionalPatches(ctx, conf.Task.Version, td)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to get additional patches")
+		return nil, errors.Wrap(err, "getting additional patches")
 	}
 	return additionalPatches, nil
 }

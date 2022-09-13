@@ -1189,12 +1189,12 @@ func (c *baseCommunicator) GetAdditionalPatches(ctx context.Context, patchId str
 	}
 	resp, err := c.request(ctx, info, nil)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error getting additional patches")
+		return nil, errors.Wrapf(err, "getting additional patches")
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "error getting additional patches")
+		return nil, utility.RespErrorf(resp, "getting additional patches")
 	}
 	patches := []string{}
 	if err := utility.ReadJSON(resp.Body, &patches); err != nil {
