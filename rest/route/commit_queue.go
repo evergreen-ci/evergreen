@@ -298,10 +298,7 @@ func (p *commitQueueAdditionalPatches) Parse(ctx context.Context, r *http.Reques
 func (p *commitQueueAdditionalPatches) Run(ctx context.Context) gimlet.Responder {
 	additional, err := data.GetAdditionalPatches(p.patchId)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    errors.Wrapf(err, "getting additional patches").Error(),
-		})
+		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "getting additional patches"))
 	}
 	return gimlet.NewJSONResponse(additional)
 }
