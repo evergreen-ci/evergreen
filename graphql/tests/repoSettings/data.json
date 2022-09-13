@@ -12,7 +12,6 @@
       "pr_testing_enabled" : true,
       "batch_time" : 2,
       "deactivate_previous" : true,
-      "default_logger" : "buildlogger",
       "triggers" : [ ],
       "patch_trigger_aliases" : [
         {
