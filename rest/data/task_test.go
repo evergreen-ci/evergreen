@@ -392,26 +392,6 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindFromMiddle() {
 
 }
 
-func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindFromMiddleFail() {
-	opts := task.GetTasksByProjectAndCommitOptions{
-		Project:        "project_0",
-		CommitHash:     "commit_0",
-		StartingTaskId: "fake_task",
-		Status:         "",
-		TaskName:       "",
-		VariantName:    "",
-		Limit:          0,
-	}
-	foundTests, err := FindTasksByProjectAndCommit(opts)
-	s.Error(err)
-	s.Equal(0, len(foundTests))
-
-	s.IsType(gimlet.ErrorResponse{}, err)
-	apiErr, ok := err.(gimlet.ErrorResponse)
-	s.True(ok)
-	s.Equal(http.StatusNotFound, apiErr.StatusCode)
-}
-
 func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindWithLimit() {
 	commitId := "commit_0"
 	projectId := "project_0"
