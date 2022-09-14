@@ -49,7 +49,7 @@ func FindTasksByProjectAndCommit(opts task.GetTasksByProjectAndCommitOptions) ([
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    err.Error(),
+			Message:    errors.Wrapf(err, "project '%s' not found").Error(),
 		}
 	}
 
@@ -87,7 +87,7 @@ func FindTasksByProjectAndCommit(opts task.GetTasksByProjectAndCommitOptions) ([
 		if !found {
 			return []task.Task{}, gimlet.ErrorResponse{
 				StatusCode: http.StatusNotFound,
-				Message:    fmt.Sprintf("task '%s' not found", opts.StartingTaskId),
+				Message:    fmt.Sprintf("starting task '%s' not found", opts.StartingTaskId),
 			}
 		}
 	}
