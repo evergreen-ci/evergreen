@@ -494,12 +494,15 @@ func LoadProjectForVersion(v *Version, id string, shouldSave bool) (ProjectInfo,
 	if err != nil {
 		return ProjectInfo{}, errors.Wrap(err, "finding project ref")
 	}
+	if pRef == nil {
+		return ProjectInfo{}, errors.Errorf("project ref '%s' not found", id)
+	}
 	pp, err = ParserProjectFindOneById(v.Id)
 	if err != nil {
 		return ProjectInfo{}, errors.Wrap(err, "finding parser project")
 	}
 	var pc *ProjectConfig
-	if pRef != nil && pRef.IsVersionControlEnabled() {
+	if pRef.IsVersionControlEnabled() {
 		pc, err = FindProjectConfigForProjectOrVersion(v.Identifier, v.Id)
 		if err != nil {
 			return ProjectInfo{}, errors.Wrap(err, "finding project config")
