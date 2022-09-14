@@ -150,7 +150,8 @@ func (r *patchResolver) Project(ctx context.Context, obj *restModel.APIPatch) (*
 }
 
 func (r *patchResolver) ProjectIdentifier(ctx context.Context, obj *restModel.APIPatch) (string, error) {
-	panic(fmt.Errorf("not implemented"))
+	obj.GetIdentifier()
+	return utility.FromStringPtr(obj.ProjectIdentifier), nil
 }
 
 func (r *patchResolver) TaskCount(ctx context.Context, obj *restModel.APIPatch) (*int, error) {
@@ -220,14 +221,3 @@ func (r *patchResolver) VersionFull(ctx context.Context, obj *restModel.APIPatch
 func (r *Resolver) Patch() PatchResolver { return &patchResolver{r} }
 
 type patchResolver struct{ *Resolver }
-
-// !!! WARNING !!!
-// The code below was going to be deleted when updating resolvers. It has been copied here so you have
-// one last chance to move it out of harms way if you want. There are two reasons this happens:
-//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
-//    it when you're done.
-//  - You have helper methods in this file. Move them out to keep these resolver files clean.
-func (r *patchResolver) Identifier(ctx context.Context, obj *restModel.APIPatch) (string, error) {
-	obj.GetIdentifier()
-	return utility.FromStringPtr(obj.ProjectIdentifier), nil
-}
