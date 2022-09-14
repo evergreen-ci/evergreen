@@ -165,7 +165,7 @@ func convertRaw(in rawAdminEventData) (*AdminEventData, error) {
 
 // RevertConfig reverts one config section to the before state of the specified GUID in the event log
 func RevertConfig(guid string, user string) error {
-	events, err := FindAdmin(ByGuid(guid))
+	events, err := FindAdmin(ByAdminGuid(guid))
 	if err != nil {
 		return errors.Wrap(err, "finding events")
 	}
