@@ -29,7 +29,7 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 	mp := cloud.GetMockProvider()
 
 	defer func() {
-		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, model.VersionCollection, host.Collection, event.LegacyEventLogCollection))
+		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, model.VersionCollection, model.ProjectRefCollection, host.Collection, event.LegacyEventLogCollection))
 		mp.Reset()
 	}()
 
@@ -137,6 +137,7 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 				Id:            "some_other_execution_task",
 				BuildId:       j.task.BuildId,
 				Version:       j.task.Version,
+				Project:       j.task.Project,
 				DisplayTaskId: utility.ToStringPtr(displayTaskID),
 				Status:        evergreen.TaskFailed,
 			}
@@ -145,6 +146,7 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 				Id:            "another_execution_task",
 				BuildId:       j.task.BuildId,
 				Version:       j.task.Version,
+				Project:       j.task.Project,
 				DisplayTaskId: utility.ToStringPtr(displayTaskID),
 				Status:        evergreen.TaskUndispatched,
 			}
@@ -153,6 +155,7 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 				Id:             displayTaskID,
 				BuildId:        j.task.BuildId,
 				Version:        j.task.Version,
+				Project:        j.task.Project,
 				DisplayOnly:    true,
 				ExecutionTasks: []string{j.task.Id, et0.Id, et1.Id},
 			}
@@ -213,7 +216,7 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
 
-			require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, model.VersionCollection, host.Collection, event.LegacyEventLogCollection))
+			require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, model.VersionCollection, model.ProjectRefCollection, host.Collection, event.LegacyEventLogCollection))
 			mp.Reset()
 
 			const taskID = "task_id"
@@ -244,11 +247,18 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 				Status: evergreen.VersionStarted,
 			}
 
+			pRef := model.ProjectRef{
+				Id:      "project_id",
+				Enabled: utility.TruePtr(),
+			}
+			require.NoError(t, pRef.Insert())
+
 			tsk := task.Task{
 				Id:                taskID,
 				BuildId:           b.Id,
 				BuildVariant:      "build_variant",
 				Version:           v.Id,
+				Project:           pRef.Id,
 				DisplayName:       "display_name",
 				ExecutionPlatform: task.ExecutionPlatformHost,
 				Activated:         true,
