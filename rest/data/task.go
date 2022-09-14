@@ -8,6 +8,7 @@ import (
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -84,12 +85,7 @@ func FindTasksByProjectAndCommit(opts task.GetTasksByProjectAndCommitOptions) ([
 				break
 			}
 		}
-		if !found {
-			return []task.Task{}, gimlet.ErrorResponse{
-				StatusCode: http.StatusNotFound,
-				Message:    fmt.Sprintf("starting task '%s' not found", opts.StartingTaskId),
-			}
-		}
+		grip.DebugWhen(!found, fmt.Sprintf("starting task '%s' not found", opts.StartingTaskId))
 	}
 	return res, nil
 }
