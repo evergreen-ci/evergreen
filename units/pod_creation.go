@@ -137,6 +137,12 @@ func (j *podCreationJob) Run(ctx context.Context) {
 			j.AddError(errors.Wrap(err, "updating pod resources"))
 		}
 
+		// Bump the last communication time to ensure that the pod has a
+		// sufficient grace period to start up.
+		if err := j.pod.UpdateLastCommunicated(); err != nil {
+			j.AddError(errors.Wrap(err, "updating pod last communication time"))
+		}
+
 		if err := j.pod.UpdateStatus(pod.StatusStarting, "pod successfully started"); err != nil {
 			j.AddError(errors.Wrap(err, "marking pod as starting"))
 		}
