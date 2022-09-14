@@ -1256,8 +1256,8 @@ func PopulateDataCleanupJobs(env evergreen.Environment) amboy.QueueOperation {
 		}
 
 		catcher := grip.NewBasicCatcher()
-		catcher.Wrap(queue.Put(ctx, NewTestResultsCleanupJob(utility.RoundPartOfMinute(2))), "enqueueing test results cleanup job")
-		catcher.Wrap(queue.Put(ctx, NewTestLogsCleanupJob(utility.RoundPartOfMinute(2))), "enqueueing test logs cleanup job")
+		catcher.Wrap(amboy.EnqueueUniqueJob(ctx, queue, NewTestResultsCleanupJob(utility.RoundPartOfMinute(2))), "enqueueing test results cleanup job")
+		catcher.Wrap(amboy.EnqueueUniqueJob(ctx, queue, NewTestLogsCleanupJob(utility.RoundPartOfMinute(2))), "enqueueing test logs cleanup job")
 
 		return catcher.Resolve()
 	}
