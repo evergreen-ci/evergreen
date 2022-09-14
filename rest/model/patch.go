@@ -120,6 +120,9 @@ func (apiPatch *APIPatch) BuildFromService(p patch.Patch, args *APIPatchArgs) er
 
 		}
 		if args.IncludeCommitQueuePosition {
+			if err := apiPatch.GetCommitQueuePosition(); err != nil {
+				return errors.Wrap(err, "getting commit queue position")
+			}
 		}
 	}
 	apiPatch.buildModuleChanges(p, projectIdentifier)
@@ -215,6 +218,46 @@ func (apiPatch *APIPatch) buildBasePatch(p patch.Patch) {
 	apiPatch.GithubPatchData.BuildFromService(p.GithubPatchData)
 }
 
+func getChildPatchesData(p patch.Patch) ([]DownstreamTasks, []APIPatch, error) {
+	if len(p.Triggers.ChildPatches) <= 0 {
+		return nil, nil, nil
+	}
+	childPatches, err := patch.Find(patch.ByStringIds(p.Triggers.ChildPatches))
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "getting child patches")
+	}
+	downstreamTasks := []DownstreamTasks{}
+	apiChildPatches := []APIPatch{}
+	for _, childPatch := range childPatches {
+		tasks := utility.ToStringPtrSlice(childPatch.Tasks)
+		variantTasks := []VariantTask{}
+		for _, vt := range childPatch.VariantsTasks {
+			vtasks := make([]*string, 0)
+			for _, task := range vt.Tasks {
+				vtasks = append(vtasks, utility.ToStringPtr(task))
+			}
+			variantTasks = append(variantTasks, VariantTask{
+				Name:  utility.ToStringPtr(vt.Variant),
+				Tasks: vtasks,
+			})
+		}
+
+		dt := DownstreamTasks{
+			Project:      utility.ToStringPtr(childPatch.Project),
+			Tasks:        tasks,
+			VariantTasks: variantTasks,
+		}
+		apiPatch := APIPatch{}
+		err = apiPatch.BuildFromService(childPatch, &APIPatchArgs{IncludeProjectIdentifier: true})
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "converting child patch to API model")
+		}
+		downstreamTasks = append(downstreamTasks, dt)
+		apiChildPatches = append(apiChildPatches, apiPatch)
+	}
+	return downstreamTasks, apiChildPatches, nil
+}
+
 func (apiPatch *APIPatch) buildChildPatches(p patch.Patch) error {
 	downstreamTasks, childPatches, err := getChildPatchesData(p)
 	if err != nil {
@@ -285,46 +328,6 @@ func (apiPatch *APIPatch) buildModuleChanges(p patch.Patch, identifier string) {
 	}
 
 	apiPatch.ModuleCodeChanges = codeChanges
-}
-
-func getChildPatchesData(p patch.Patch) ([]DownstreamTasks, []APIPatch, error) {
-	if len(p.Triggers.ChildPatches) <= 0 {
-		return nil, nil, nil
-	}
-	childPatches, err := patch.Find(patch.ByStringIds(p.Triggers.ChildPatches))
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "getting child patches")
-	}
-	downstreamTasks := []DownstreamTasks{}
-	apiChildPatches := []APIPatch{}
-	for _, childPatch := range childPatches {
-		tasks := utility.ToStringPtrSlice(childPatch.Tasks)
-		variantTasks := []VariantTask{}
-		for _, vt := range childPatch.VariantsTasks {
-			vtasks := make([]*string, 0)
-			for _, task := range vt.Tasks {
-				vtasks = append(vtasks, utility.ToStringPtr(task))
-			}
-			variantTasks = append(variantTasks, VariantTask{
-				Name:  utility.ToStringPtr(vt.Variant),
-				Tasks: vtasks,
-			})
-		}
-
-		dt := DownstreamTasks{
-			Project:      utility.ToStringPtr(childPatch.Project),
-			Tasks:        tasks,
-			VariantTasks: variantTasks,
-		}
-		apiPatch := APIPatch{}
-		err = apiPatch.BuildFromService(childPatch, &APIPatchArgs{IncludeProjectIdentifier: true})
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "converting child patch to API model")
-		}
-		downstreamTasks = append(downstreamTasks, dt)
-		apiChildPatches = append(apiChildPatches, apiPatch)
-	}
-	return downstreamTasks, apiChildPatches, nil
 }
 
 // ToService converts a service layer patch using the data from APIPatch
