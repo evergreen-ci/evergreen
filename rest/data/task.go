@@ -50,7 +50,7 @@ func FindTasksByProjectAndCommit(opts task.GetTasksByProjectAndCommitOptions) ([
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    errors.Wrapf(err, "project '%s' not found").Error(),
+			Message:    errors.Wrapf(err, "project '%s' not found", projectId).Error(),
 		}
 	}
 
@@ -85,6 +85,7 @@ func FindTasksByProjectAndCommit(opts task.GetTasksByProjectAndCommitOptions) ([
 				break
 			}
 		}
+		// TODO: EVG-17897 remove the debug statement
 		grip.DebugWhen(!found, fmt.Sprintf("starting task '%s' not found", opts.StartingTaskId))
 	}
 	return res, nil
