@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -48,13 +49,16 @@ func FindProjectById(id string, includeRepo bool, includeProjectConfig bool) (*m
 	return p, nil
 }
 
-// CreateProject inserts the given model.ProjectRef.
-func CreateProject(ctx context.Context, projectRef *model.ProjectRef, u *user.DBUser) error {
+// CreateProject creates a new project ref from the given one and performs other
+// initial setup for new projects such as populating initial project variables
+// and creating new webhooks. If the given project ref already has container
+// secrets, the new project ref receives copies of the existing ones.
+func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *model.ProjectRef, u *user.DBUser) error {
 	config, err := evergreen.GetConfig()
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "getting evergreen config ").Error(),
+			Message:    errors.Wrapf(err, "getting evergreen config").Error(),
 		}
 	}
 
@@ -75,6 +79,10 @@ func CreateProject(ctx context.Context, projectRef *model.ProjectRef, u *user.DB
 			return err
 		}
 	}
+
+	existingContainerSecrets := projectRef.ContainerSecrets
+	projectRef.ContainerSecrets = nil
+
 	err = projectRef.Add(u)
 	if err != nil {
 		return gimlet.ErrorResponse{
@@ -82,6 +90,13 @@ func CreateProject(ctx context.Context, projectRef *model.ProjectRef, u *user.DB
 			Message:    errors.Wrapf(err, "inserting project '%s'", projectRef.Identifier).Error(),
 		}
 	}
+
+	grip.Warning(message.WrapError(tryCopyingContainerSecrets(ctx, env.Settings(), existingContainerSecrets, projectRef), message.Fields{
+		"message":            "failed to copy container secrets to new project",
+		"op":                 "CreateProject",
+		"project_id":         projectRef.Id,
+		"project_identifier": projectRef.Identifier,
+	}))
 
 	newProjectVars := model.ProjectVars{
 		Id: projectRef.Id,
@@ -111,6 +126,36 @@ func CreateProject(ctx context.Context, projectRef *model.ProjectRef, u *user.DB
 			"repo":               projectRef.Repo,
 		}))
 	}
+	return nil
+}
+
+func tryCopyingContainerSecrets(ctx context.Context, settings *evergreen.Settings, existingSecrets []model.ContainerSecret, pRef *model.ProjectRef) error {
+	// TODO (PM-2950): remove this temporary error-checking once the AWS
+	// infrastructure is productionized and AWS admin settings are set.
+	smClient, err := cloud.MakeSecretsManagerClient(settings)
+	if err != nil {
+		return errors.Wrap(err, "setting up Secrets Manager client to store newly-created project's container secrets")
+	}
+	defer smClient.Close(ctx)
+
+	vault, err := cloud.MakeSecretsManagerVault(smClient)
+	if err != nil {
+		return errors.Wrap(err, "setting up Secrets Manager vault to store newly-created project's container secrets")
+	}
+
+	pRef.ContainerSecrets, err = getCopiedContainerSecrets(ctx, settings, vault, pRef.Id, existingSecrets)
+	if err != nil {
+		return errors.Wrapf(err, "copying existing container secrets")
+	}
+	if err := pRef.Update(); err != nil {
+		return errors.Wrapf(err, "updating project ref's container secrets")
+	}
+	// This updates the container secrets in the DB project ref only, not
+	// the in-memory copy.
+	if err := UpsertContainerSecrets(ctx, vault, pRef.ContainerSecrets); err != nil {
+		return errors.Wrapf(err, "upserting container secrets")
+	}
+
 	return nil
 }
 

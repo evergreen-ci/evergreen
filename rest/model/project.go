@@ -335,17 +335,20 @@ func (cr *APIContainerSecret) ToService() (*model.ContainerSecret, error) {
 }
 
 type APIContainerResources struct {
-	MemoryMB *int `bson:"memory_mb" json:"memory_mb"`
-	CPU      *int `bson:"cpu" json:"cpu"`
+	Name     *string `bson:"name" json:"name"`
+	MemoryMB *int    `bson:"memory_mb" json:"memory_mb"`
+	CPU      *int    `bson:"cpu" json:"cpu"`
 }
 
 func (cr *APIContainerResources) BuildFromService(h model.ContainerResources) {
+	cr.Name = utility.ToStringPtr(h.Name)
 	cr.MemoryMB = utility.ToIntPtr(h.MemoryMB)
 	cr.CPU = utility.ToIntPtr(h.CPU)
 }
 
 func (cr *APIContainerResources) ToService() model.ContainerResources {
 	return model.ContainerResources{
+		Name:     utility.FromStringPtr(cr.Name),
 		MemoryMB: utility.FromIntPtr(cr.MemoryMB),
 		CPU:      utility.FromIntPtr(cr.CPU),
 	}
@@ -424,7 +427,6 @@ type APIProjectRef struct {
 	GithubChecksEnabled         *bool                     `json:"github_checks_enabled"`
 	UseRepoSettings             *bool                     `json:"use_repo_settings"`
 	RepoRefId                   *string                   `json:"repo_ref_id"`
-	DefaultLogger               *string                   `json:"default_logger"`
 	CommitQueue                 APICommitQueueParams      `json:"commit_queue"`
 	TaskSync                    APITaskSyncOptions        `json:"task_sync"`
 	TaskAnnotationSettings      APITaskAnnotationSettings `json:"task_annotation_settings"`
@@ -447,17 +449,17 @@ type APIProjectRef struct {
 	Restricted                  *bool                     `json:"restricted"`
 	Revision                    *string                   `json:"revision"`
 
-	Triggers             []APITriggerDefinition           `json:"triggers"`
-	GithubTriggerAliases []*string                        `json:"github_trigger_aliases"`
-	PatchTriggerAliases  []APIPatchTriggerDefinition      `json:"patch_trigger_aliases"`
-	Aliases              []APIProjectAlias                `json:"aliases"`
-	Variables            APIProjectVars                   `json:"variables"`
-	WorkstationConfig    APIWorkstationConfig             `json:"workstation_config"`
-	Subscriptions        []APISubscription                `json:"subscriptions"`
-	DeleteSubscriptions  []*string                        `json:"delete_subscriptions,omitempty"`
-	PeriodicBuilds       []APIPeriodicBuildDefinition     `json:"periodic_builds,omitempty"`
-	ContainerSizes       map[string]APIContainerResources `json:"container_sizes"`
-	ContainerSecrets     []APIContainerSecret             `json:"container_secrets,omitempty"`
+	Triggers                 []APITriggerDefinition       `json:"triggers"`
+	GithubTriggerAliases     []*string                    `json:"github_trigger_aliases"`
+	PatchTriggerAliases      []APIPatchTriggerDefinition  `json:"patch_trigger_aliases"`
+	Aliases                  []APIProjectAlias            `json:"aliases"`
+	Variables                APIProjectVars               `json:"variables"`
+	WorkstationConfig        APIWorkstationConfig         `json:"workstation_config"`
+	Subscriptions            []APISubscription            `json:"subscriptions"`
+	DeleteSubscriptions      []*string                    `json:"delete_subscriptions,omitempty"`
+	PeriodicBuilds           []APIPeriodicBuildDefinition `json:"periodic_builds,omitempty"`
+	ContainerSizeDefinitions []APIContainerResources      `json:"container_size_definitions"`
+	ContainerSecrets         []APIContainerSecret         `json:"container_secrets,omitempty"`
 	// DeleteContainerSecrets contains names of container secrets to be deleted.
 	DeleteContainerSecrets []string `json:"delete_container_secrets,omitempty"`
 }
@@ -478,7 +480,6 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		DisplayName:            utility.FromStringPtr(p.DisplayName),
 		DeactivatePrevious:     utility.BoolPtrCopy(p.DeactivatePrevious),
 		TracksPushEvents:       utility.BoolPtrCopy(p.TracksPushEvents),
-		DefaultLogger:          utility.FromStringPtr(p.DefaultLogger),
 		PRTestingEnabled:       utility.BoolPtrCopy(p.PRTestingEnabled),
 		ManualPRTestingEnabled: utility.BoolPtrCopy(p.ManualPRTestingEnabled),
 		GitTagVersionsEnabled:  utility.BoolPtrCopy(p.GitTagVersionsEnabled),
@@ -531,12 +532,8 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		projectRef.PatchTriggerAliases = patchTriggers
 	}
 
-	if p.ContainerSizes != nil {
-		containerSizes := map[string]model.ContainerResources{}
-		for name, size := range p.ContainerSizes {
-			containerSizes[name] = size.ToService()
-		}
-		projectRef.ContainerSizes = containerSizes
+	for _, size := range p.ContainerSizeDefinitions {
+		projectRef.ContainerSizeDefinitions = append(projectRef.ContainerSizeDefinitions, size.ToService())
 	}
 
 	for idx, secret := range p.ContainerSecrets {
@@ -568,7 +565,6 @@ func (p *APIProjectRef) BuildFromService(projectRef model.ProjectRef) error {
 	p.DisplayName = utility.ToStringPtr(projectRef.DisplayName)
 	p.DeactivatePrevious = projectRef.DeactivatePrevious
 	p.TracksPushEvents = utility.BoolPtrCopy(projectRef.TracksPushEvents)
-	p.DefaultLogger = utility.ToStringPtr(projectRef.DefaultLogger)
 	p.PRTestingEnabled = utility.BoolPtrCopy(projectRef.PRTestingEnabled)
 	p.ManualPRTestingEnabled = utility.BoolPtrCopy(projectRef.ManualPRTestingEnabled)
 	p.GitTagVersionsEnabled = utility.BoolPtrCopy(projectRef.GitTagVersionsEnabled)
@@ -644,14 +640,10 @@ func (p *APIProjectRef) BuildFromService(projectRef model.ProjectRef) error {
 		p.PatchTriggerAliases = patchTriggers
 	}
 
-	if projectRef.ContainerSizes != nil {
-		containerSizes := map[string]APIContainerResources{}
-		for name, resources := range projectRef.ContainerSizes {
-			var apiResources APIContainerResources
-			apiResources.BuildFromService(resources)
-			containerSizes[name] = apiResources
-		}
-		p.ContainerSizes = containerSizes
+	for _, size := range projectRef.ContainerSizeDefinitions {
+		var apiSize APIContainerResources
+		apiSize.BuildFromService(size)
+		p.ContainerSizeDefinitions = append(p.ContainerSizeDefinitions, apiSize)
 	}
 
 	for idx, secret := range projectRef.ContainerSecrets {

@@ -54,12 +54,16 @@
                 }
             }
 
+            containerSizeDefinitions {
+                name
+                cpu
+                memoryMb
+            }
+
             taskSync {
                 configEnabled
                 patchEnabled
             }
-
-            validDefaultLoggers
         }
     }
 }

@@ -16,7 +16,8 @@
             "timezone": "UTC",
             "region": "",
             "githubUser": { "lastKnownAs": "" },
-            "slackUsername": "mohamed.khelif"
+            "slackUsername": "mohamed.khelif",
+            "slackMemberId": "testslackuser"
           }
         }
       }

@@ -45,6 +45,12 @@
                 bfSuggestionUsername
             }
 
+            containerSizeDefinitions {
+                name
+                cpu
+                memoryMb
+            }
+
             taskAnnotationSettings {
                 jiraCustomFields {
                     displayText
@@ -60,8 +66,6 @@
                 configEnabled
                 patchEnabled
             }
-
-            validDefaultLoggers
         }
     }
 }

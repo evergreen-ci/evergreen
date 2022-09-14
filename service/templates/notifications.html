@@ -33,6 +33,11 @@ Notifications Preferences
             <label>Slack Username</label>
             <input type="text" placeholder="john.doe" ng-model="settings.slack_username">
           </md-input-container>
+            <md-input-container style="width:50%;">
+              <md-tooltip md-direction="top" md-delay="500">Click on the three dots next to "set a status" in your slack profile, and then "Copy member ID"</md-tooltip>
+              <label>Slack MemberId</label>
+              <input type="text" placeholder="UKQLX35TA" ng-model="settings.slack_member_id">
+            </md-input-container>
           <table class="notificationTable">
             <thead>
               <tr><th/><th>Email</th><th>Slack</th><th>None</th></tr>

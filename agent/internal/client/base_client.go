@@ -298,7 +298,7 @@ func (c *baseCommunicator) GetExpansions(ctx context.Context, taskData TaskData)
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
-		version:  apiVersion1,
+		version:  apiVersion2,
 	}
 	info.setTaskPathSuffix("expansions")
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -549,7 +549,7 @@ func (c *baseCommunicator) SendLogMessages(ctx context.Context, taskData TaskDat
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
-		version:  apiVersion1,
+		version:  apiVersion2,
 	}
 	info.setTaskPathSuffix("log")
 	var cancel context.CancelFunc
@@ -1077,7 +1077,7 @@ func (c *baseCommunicator) StartTask(ctx context.Context, taskData TaskData) err
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
-		version:  apiVersion1,
+		version:  apiVersion2,
 	}
 	info.setTaskPathSuffix("start")
 	resp, err := c.retryRequest(ctx, info, taskStartRequest)
@@ -1189,12 +1189,12 @@ func (c *baseCommunicator) GetAdditionalPatches(ctx context.Context, patchId str
 	}
 	resp, err := c.request(ctx, info, nil)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error getting additional patches")
+		return nil, errors.Wrapf(err, "getting additional patches")
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "error getting additional patches")
+		return nil, utility.RespErrorf(resp, "getting additional patches")
 	}
 	patches := []string{}
 	if err := utility.ReadJSON(resp.Body, &patches); err != nil {

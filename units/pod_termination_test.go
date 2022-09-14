@@ -7,10 +7,11 @@ import (
 
 	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/cocoa/ecs"
-	"github.com/evergreen-ci/cocoa/mock"
+	cocoaMock "github.com/evergreen-ci/cocoa/mock"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -40,7 +41,7 @@ func TestPodTerminationJob(t *testing.T) {
 	}()
 
 	checkCloudPodDeleteRequests := func(t *testing.T, ecsc cocoa.ECSClient) {
-		ecsClient, ok := ecsc.(*mock.ECSClient)
+		ecsClient, ok := ecsc.(*cocoaMock.ECSClient)
 		require.True(t, ok)
 		assert.NotZero(t, ecsClient.StopTaskInput, "should have requested to stop the cloud pod")
 		assert.Zero(t, ecsClient.DeregisterTaskDefinitionInput, "should not have requested to clean up the ECS task definition")
@@ -290,10 +291,10 @@ func TestPodTerminationJob(t *testing.T) {
 
 			cluster := "cluster"
 
-			mock.ResetGlobalECSService()
-			mock.GlobalECSService.Clusters[cluster] = mock.ECSCluster{}
+			cocoaMock.ResetGlobalECSService()
+			cocoaMock.GlobalECSService.Clusters[cluster] = cocoaMock.ECSCluster{}
 			defer func() {
-				mock.ResetGlobalECSService()
+				cocoaMock.ResetGlobalECSService()
 			}()
 
 			p := pod.Pod{
@@ -311,7 +312,10 @@ func TestPodTerminationJob(t *testing.T) {
 			j, ok := NewPodTerminationJob(p.ID, "reason", utility.RoundPartOfMinute(0)).(*podTerminationJob)
 			require.True(t, ok)
 			j.pod = &p
-			j.ecsClient = &mock.ECSClient{}
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(ctx))
+			j.env = env
+			j.ecsClient = &cocoaMock.ECSClient{}
 			defer func() {
 				assert.NoError(t, j.ecsClient.Close(ctx))
 			}()

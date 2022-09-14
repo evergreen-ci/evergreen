@@ -14,6 +14,7 @@ enum ProjectSettingsSection {
   TRIGGERS
   PERIODIC_BUILDS
   PLUGINS
+  CONTAINERS
 }
 
 ###### INPUTS ######
@@ -38,7 +39,6 @@ input ProjectInput {
   buildBaronSettings: BuildBaronSettingsInput
   commitQueue: CommitQueueParamsInput
   deactivatePrevious: Boolean
-  defaultLogger: String
   disabledStatsCache: Boolean
   dispatchingDisabled: Boolean
   displayName: String
@@ -70,6 +70,7 @@ input ProjectInput {
   triggers: [TriggerAliasInput!]
   versionControlEnabled: Boolean
   workstationConfig: WorkstationConfigInput
+  containerSizeDefinitions: [ContainerResourcesInput!]
 }
 
 ###### TYPES ######
@@ -111,6 +112,13 @@ type TriggerAlias {
   project: String!
   status: String!
   taskRegex: String!
+}
+
+# shared by Project and RepoRef
+type ContainerResources {
+  name: String!
+  cpu: Int!
+  memoryMb: Int!
 }
 
 # shared by Project and RepoRef

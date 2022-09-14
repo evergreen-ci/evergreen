@@ -304,6 +304,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.TestLogs
   TestResult:
     model: github.com/evergreen-ci/evergreen/rest/model.APITest
+  ContainerResources:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIContainerResources
+  ContainerResourcesInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIContainerResources
   TriggerAlias:
     model: github.com/evergreen-ci/evergreen/rest/model.APITriggerDefinition
   TriggerAliasInput:

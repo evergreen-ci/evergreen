@@ -32,6 +32,7 @@ type APIUserSettings struct {
 	UseSpruceOptions *APIUseSpruceOptions        `json:"use_spruce_options"`
 	GithubUser       *APIGithubUser              `json:"github_user"`
 	SlackUsername    *string                     `json:"slack_username"`
+	SlackMemberId    *string                     `json:"slack_member_id"`
 	Notifications    *APINotificationPreferences `json:"notifications"`
 	SpruceFeedback   *APIFeedbackSubmission      `json:"spruce_feedback"`
 	DateFormat       *string                     `json:"date_format"`
@@ -47,6 +48,7 @@ func (s *APIUserSettings) BuildFromService(settings user.UserSettings) {
 	s.Timezone = utility.ToStringPtr(settings.Timezone)
 	s.Region = utility.ToStringPtr(settings.Region)
 	s.SlackUsername = utility.ToStringPtr(settings.SlackUsername)
+	s.SlackMemberId = utility.ToStringPtr(settings.SlackMemberId)
 	s.UseSpruceOptions = &APIUseSpruceOptions{
 		HasUsedSpruceBefore:          utility.ToBoolPtr(settings.UseSpruceOptions.HasUsedSpruceBefore),
 		HasUsedMainlineCommitsBefore: utility.ToBoolPtr(settings.UseSpruceOptions.HasUsedMainlineCommitsBefore),
@@ -76,6 +78,7 @@ func (s *APIUserSettings) ToService() (user.UserSettings, error) {
 		Timezone:         utility.FromStringPtr(s.Timezone),
 		Region:           utility.FromStringPtr(s.Region),
 		SlackUsername:    utility.FromStringPtr(s.SlackUsername),
+		SlackMemberId:    utility.FromStringPtr(s.SlackMemberId),
 		GithubUser:       githubUser,
 		Notifications:    preferences,
 		UseSpruceOptions: useSpruceOptions,

@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -276,4 +277,83 @@ func TestDownstreamParams(t *testing.T) {
 	assert.Equal(t, p.Triggers.DownstreamParameters[0].Value, parameters[0].Value)
 	assert.Equal(t, p.Triggers.DownstreamParameters[1].Key, parameters[1].Key)
 	assert.Equal(t, p.Triggers.DownstreamParameters[1].Value, parameters[1].Value)
+}
+
+func TestAgentGetProjectRef(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger = "buildlogger"
+	require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection))
+	defer func() {
+		assert.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection))
+	}()
+
+	task1 := &task.Task{
+		Id:      "task1",
+		Project: "project1",
+	}
+	projRef1 := &model.ProjectRef{Id: "project1"}
+	require.NoError(t, task1.Insert())
+	require.NoError(t, projRef1.Insert())
+	// Set the default logger after inserting into the DB since this should
+	// be set dynamically by the route handler when not set.
+	projRef1.DefaultLogger = "buildlogger"
+
+	task2 := &task.Task{
+		Id:      "task2",
+		Project: "project2",
+	}
+	projRef2 := &model.ProjectRef{
+		Id:            "project2",
+		DefaultLogger: "evergreen",
+	}
+	require.NoError(t, task2.Insert())
+	require.NoError(t, projRef2.Insert())
+
+	task3 := &task.Task{
+		Id:      "task3",
+		Project: "project3",
+	}
+	require.NoError(t, task3.Insert())
+
+	for _, test := range []struct {
+		name           string
+		taskID         string
+		expectedStatus int
+		expectedData   *model.ProjectRef
+	}{
+		{
+			name:           "TaskDNE",
+			taskID:         "DNE",
+			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:           "ProjectRefDNE",
+			taskID:         task3.Id,
+			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:           "GlobalLogger",
+			taskID:         task1.Id,
+			expectedStatus: http.StatusOK,
+			expectedData:   projRef1,
+		},
+		{
+			name:           "ProjectLogger",
+			taskID:         task2.Id,
+			expectedStatus: http.StatusOK,
+			expectedData:   projRef2,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			h := &getProjectRefHandler{taskID: test.taskID}
+
+			resp := h.Run(ctx)
+			assert.Equal(t, test.expectedStatus, resp.Status())
+			if test.expectedData != nil {
+				assert.EqualValues(t, test.expectedData, resp.Data())
+			}
+		})
+	}
 }

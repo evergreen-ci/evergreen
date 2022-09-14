@@ -6,5 +6,6 @@
       lastKnownAs
     }
     slackUsername
+    slackMemberId
   }
 }
