@@ -1098,6 +1098,7 @@ type ComplexityRoot struct {
 		GithubUser       func(childComplexity int) int
 		Notifications    func(childComplexity int) int
 		Region           func(childComplexity int) int
+		SlackMemberId    func(childComplexity int) int
 		SlackUsername    func(childComplexity int) int
 		Timezone         func(childComplexity int) int
 		UseSpruceOptions func(childComplexity int) int
@@ -6769,6 +6770,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.UserSettings.Region(childComplexity), true
 
+	case "UserSettings.slackMemberId":
+		if e.complexity.UserSettings.SlackMemberId == nil {
+			break
+		}
+
+		return e.complexity.UserSettings.SlackMemberId(childComplexity), true
+
 	case "UserSettings.slackUsername":
 		if e.complexity.UserSettings.SlackUsername == nil {
 			break
@@ -9063,6 +9071,7 @@ input UserSettingsInput {
   notifications: NotificationsInput
   region: String
   slackUsername: String
+  slackMemberId: String
   timezone: String
   useSpruceOptions: UseSpruceOptionsInput
   dateFormat: String
@@ -9158,6 +9167,7 @@ type UserSettings {
   notifications: Notifications
   region: String
   slackUsername: String
+  slackMemberId: String
   timezone: String
   useSpruceOptions: UseSpruceOptions
   dateFormat: String
@@ -9182,12 +9192,6 @@ type UseSpruceOptions {
   hasUsedSpruceBefore: Boolean
   spruceV1: Boolean
 }
-
-
-
-
-
-
 `, BuiltIn: false},
 	{Name: "graphql/schema/types/version.graphql", Input: `###### INPUTS ######
 """
@@ -35706,6 +35710,38 @@ func (ec *executionContext) _UserSettings_slackUsername(ctx context.Context, fie
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _UserSettings_slackMemberId(ctx context.Context, field graphql.CollectedField, obj *model.APIUserSettings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "UserSettings",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SlackMemberId, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _UserSettings_timezone(ctx context.Context, field graphql.CollectedField, obj *model.APIUserSettings) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -41874,6 +41910,14 @@ func (ec *executionContext) unmarshalInputUserSettingsInput(ctx context.Context,
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slackUsername"))
 			it.SlackUsername, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "slackMemberId":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slackMemberId"))
+			it.SlackMemberId, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -48270,6 +48314,8 @@ func (ec *executionContext) _UserSettings(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._UserSettings_region(ctx, field, obj)
 		case "slackUsername":
 			out.Values[i] = ec._UserSettings_slackUsername(ctx, field, obj)
+		case "slackMemberId":
+			out.Values[i] = ec._UserSettings_slackMemberId(ctx, field, obj)
 		case "timezone":
 			out.Values[i] = ec._UserSettings_timezone(ctx, field, obj)
 		case "useSpruceOptions":

@@ -42,6 +42,8 @@ func (s *UserTestSuite) SetupTest() {
 			Id:     "Test1",
 			APIKey: "12345",
 			Settings: UserSettings{
+				SlackUsername: "person",
+				SlackMemberId: "12345member",
 				GithubUser: GithubUser{
 					UID:         1234,
 					LastKnownAs: "octocat",
@@ -467,6 +469,13 @@ func (s *UserTestSuite) TestGetPatchUser() {
 	s.Equal(evergreen.GithubPatchUser, u.Id)
 }
 
+func (s *UserTestSuite) TestGetSlackMemberId() {
+	username := "person"
+	memberId, err := GetSlackMemberId(username)
+	s.NoError(err)
+	s.Equal("12345member", memberId)
+}
+
 func (s *UserTestSuite) TestRoles() {
 	u := s.users[0]
 	for i := 1; i <= 3; i++ {
@@ -806,7 +815,7 @@ func (s *UserTestSuite) TestClearUserSettings() {
 
 	emptySettings := UserSettings{
 		Timezone: "", Region: "", GithubUser: GithubUser{UID: 0, LastKnownAs: ""},
-		SlackUsername: "", Notifications: NotificationPreferences{BuildBreak: "",
+		SlackUsername: "", SlackMemberId: "", Notifications: NotificationPreferences{BuildBreak: "",
 			BuildBreakID: "", PatchFinish: "", PatchFinishID: "", PatchFirstFailure: "",
 			PatchFirstFailureID: "", SpawnHostExpiration: "", SpawnHostExpirationID: "",
 			SpawnHostOutcome: "", SpawnHostOutcomeID: "", CommitQueue: "", CommitQueueID: ""},
