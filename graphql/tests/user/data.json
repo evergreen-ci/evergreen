@@ -27,60 +27,101 @@
   ],
   "patches": [
     {
-      "_id": { "$oid": "5e4ff3abe3c3317e352062e4" },
+      "_id": {
+        "$oid": "5e4ff3abe3c3317e352062e4"
+      },
+      "branch": "myProject",
       "author": "testuser",
-      "create_time": { "$date": "2020-01-01T00:00:01Z" },
+      "create_time": {
+        "$date": "2020-01-01T00:00:01Z"
+      },
       "desc": "1",
       "status": "created",
       "alias": "__commit_queue"
     },
     {
-      "_id": { "$oid": "5e4ff3abe3c3317e352062e5" },
+      "_id": {
+        "$oid": "5e4ff3abe3c3317e352062e5"
+      },
+      "branch": "myProject",
       "author": "testuser",
-      "create_time": { "$date": "2020-01-01T00:00:02Z" },
+      "create_time": {
+        "$date": "2020-01-01T00:00:02Z"
+      },
       "desc": "222",
       "status": "created",
       "alias": "__commit_queue"
     },
     {
-      "_id": { "$oid": "5e4ff3abe3c3317e352062e6" },
+      "_id": {
+        "$oid": "5e4ff3abe3c3317e352062e6"
+      },
+      "branch": "myProject",
       "author": "testuser",
-      "create_time": { "$date": "2020-01-01T00:00:03Z" },
+      "create_time": {
+        "$date": "2020-01-01T00:00:03Z"
+      },
       "desc": "1",
       "status": "created",
       "alias": "__commit_queue"
     },
     {
-      "_id": { "$oid": "5e4ff3abe3c3317e352062e7" },
+      "_id": {
+        "$oid": "5e4ff3abe3c3317e352062e7"
+      },
+      "branch": "myProject",
       "author": "testuser",
-      "create_time": { "$date": "2020-01-01T00:00:04Z" },
+      "create_time": {
+        "$date": "2020-01-01T00:00:04Z"
+      },
       "desc": "222",
       "status": "failed",
       "alias": "__github"
     },
     {
-      "_id": { "$oid": "5e4ff3abe3c3317e352062e8" },
+      "_id": {
+        "$oid": "5e4ff3abe3c3317e352062e8"
+      },
+      "branch": "myProject",
       "author": "testuser",
-      "create_time": { "$date": "2020-01-01T00:00:05Z" },
+      "create_time": {
+        "$date": "2020-01-01T00:00:05Z"
+      },
       "desc": "1",
       "status": "created",
       "alias": "__github"
     },
     {
-      "_id": { "$oid": "5e4ff3abe3c3317e352062e9" },
+      "_id": {
+        "$oid": "5e4ff3abe3c3317e352062e9"
+      },
+      "branch": "myProject",
       "author": "testuser",
-      "create_time": { "$date": "2019-01-01T00:00:06Z" },
+      "create_time": {
+        "$date": "2019-01-01T00:00:06Z"
+      },
       "desc": "222",
       "status": "failed",
       "alias": "__github"
     },
     {
-      "_id": { "$oid": "6e4ff3abe3c3317e352062e9" },
+      "_id": {
+        "$oid": "6e4ff3abe3c3317e352062e9"
+      },
+      "branch": "myProject",
       "author": "user1",
-      "create_time": { "$date": "2019-01-01T00:00:06Z" },
+      "create_time": {
+        "$date": "2019-01-01T00:00:06Z"
+      },
       "desc": "222",
       "status": "failed",
       "alias": "__github"
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "myProject",
+      "identifier": "myProjectIdentifier"
     }
   ]
 }

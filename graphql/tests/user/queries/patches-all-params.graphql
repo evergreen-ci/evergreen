@@ -12,6 +12,7 @@
       patches {
         status
         id
+        projectIdentifier
         description
         alias
       }

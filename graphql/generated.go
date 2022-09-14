@@ -1276,6 +1276,8 @@ type PatchResolver interface {
 	PatchTriggerAliases(ctx context.Context, obj *model.APIPatch) ([]*model.APIPatchTriggerDefinition, error)
 	Project(ctx context.Context, obj *model.APIPatch) (*PatchProject, error)
 
+	ProjectIdentifier(ctx context.Context, obj *model.APIPatch) (string, error)
+
 	TaskCount(ctx context.Context, obj *model.APIPatch) (*int, error)
 
 	TaskStatuses(ctx context.Context, obj *model.APIPatch) ([]string, error)
@@ -21085,14 +21087,14 @@ func (ec *executionContext) _Patch_projectIdentifier(ctx context.Context, field 
 		Object:     "Patch",
 		Field:      field,
 		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.ProjectIdentifier, nil
+		return ec.resolvers.Patch().ProjectIdentifier(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -21104,9 +21106,9 @@ func (ec *executionContext) _Patch_projectIdentifier(ctx context.Context, field 
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Patch_status(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
@@ -44550,10 +44552,19 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 				atomic.AddUint32(&invalids, 1)
 			}
 		case "projectIdentifier":
-			out.Values[i] = ec._Patch_projectIdentifier(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Patch_projectIdentifier(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "status":
 			out.Values[i] = ec._Patch_status(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
