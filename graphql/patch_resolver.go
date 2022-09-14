@@ -8,11 +8,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -55,18 +53,10 @@ func (r *patchResolver) Builds(ctx context.Context, obj *restModel.APIPatch) ([]
 }
 
 func (r *patchResolver) CommitQueuePosition(ctx context.Context, obj *restModel.APIPatch) (*int, error) {
-	var commitQueuePosition *int
-	if *obj.Alias == evergreen.CommitQueueAlias {
-		cq, err := commitqueue.FindOneId(*obj.ProjectId)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting commit queue position for patch %s: %s", *obj.Id, err.Error()))
-		}
-		if cq != nil {
-			position := cq.FindItem(*obj.Id)
-			commitQueuePosition = &position
-		}
+	if err := obj.GetCommitQueuePosition(); err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
 	}
-	return commitQueuePosition, nil
+	return obj.CommitQueuePosition, nil
 }
 
 func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (*PatchDuration, error) {
@@ -159,6 +149,10 @@ func (r *patchResolver) Project(ctx context.Context, obj *restModel.APIPatch) (*
 	return patchProject, nil
 }
 
+func (r *patchResolver) ProjectIdentifier(ctx context.Context, obj *restModel.APIPatch) (string, error) {
+	panic(fmt.Errorf("not implemented"))
+}
+
 func (r *patchResolver) TaskCount(ctx context.Context, obj *restModel.APIPatch) (*int, error) {
 	taskCount, err := task.Count(db.Query(task.DisplayTasksByVersion(*obj.Id)))
 	if err != nil {
@@ -226,3 +220,14 @@ func (r *patchResolver) VersionFull(ctx context.Context, obj *restModel.APIPatch
 func (r *Resolver) Patch() PatchResolver { return &patchResolver{r} }
 
 type patchResolver struct{ *Resolver }
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//    it when you're done.
+//  - You have helper methods in this file. Move them out to keep these resolver files clean.
+func (r *patchResolver) Identifier(ctx context.Context, obj *restModel.APIPatch) (string, error) {
+	obj.GetIdentifier()
+	return utility.FromStringPtr(obj.ProjectIdentifier), nil
+}

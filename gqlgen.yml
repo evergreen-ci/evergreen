@@ -118,6 +118,11 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIParameter
   Patch:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPatch
+    fields:
+      projectIdentifier:
+        resolver: true
+      commitQueuePosition:
+        resolver: true
   PatchTriggerAlias:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPatchTriggerDefinition
   PatchTriggerAliasInput:

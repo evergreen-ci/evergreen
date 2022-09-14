@@ -29,7 +29,7 @@ func (r *userResolver) Patches(ctx context.Context, obj *restModel.APIDBUser, pa
 	apiPatches := []*restModel.APIPatch{}
 	for _, p := range patches {
 		apiPatch := restModel.APIPatch{}
-		if err = apiPatch.BuildFromService(p, &restModel.APIPatchArgs{IncludeProjectIdentifier: true}); err != nil {
+		if err = apiPatch.BuildFromService(p, nil); err != nil { // Injecting DB info into APIPatch is handled by the resolvers.
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error converting patch to APIPatch for patch %s : %s", p.Id, err.Error()))
 		}
 		apiPatches = append(apiPatches, &apiPatch)

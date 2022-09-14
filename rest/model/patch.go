@@ -108,34 +108,55 @@ type APIPatchArgs struct {
 // BuildFromService converts from service level structs to an APIPatch.
 // If args are set, includes identifier, commit queue position, and/or child patches from the DB, if applicable.
 func (apiPatch *APIPatch) BuildFromService(p patch.Patch, args *APIPatchArgs) error {
+	apiPatch.buildBasePatch(p)
+
 	projectIdentifier := p.Project
 	if args != nil {
 		if args.IncludeProjectIdentifier && p.Project != "" {
-			identifier, err := model.GetIdentifierForProject(p.Project)
-			if err != nil {
-				return errors.Wrapf(err, "getting project '%s'", p.Project)
+			apiPatch.GetIdentifier()
+			if apiPatch.ProjectIdentifier != nil {
+				projectIdentifier = utility.FromStringPtr(apiPatch.ProjectIdentifier)
 			}
-			apiPatch.ProjectIdentifier = utility.ToStringPtr(identifier)
-			projectIdentifier = identifier
+
 		}
-		if args.IncludeCommitQueuePosition && p.IsCommitQueuePatch() {
-			cq, err := commitqueue.FindOneId(p.Project)
-			if err != nil {
-				return errors.Wrap(err, "error getting commit queue position")
-			}
-			apiPatch.CommitQueuePosition = utility.ToIntPtr(-1)
-			if cq != nil {
-				apiPatch.CommitQueuePosition = utility.ToIntPtr(cq.FindItem(p.Id.Hex()))
-			}
+		if args.IncludeCommitQueuePosition {
 		}
 	}
-	apiPatch.buildBasePatch(p)
 	apiPatch.buildModuleChanges(p, projectIdentifier)
 
 	if args != nil && args.IncludeChildPatches {
 		return apiPatch.buildChildPatches(p)
 	}
 	return nil
+}
+
+func (apiPatch *APIPatch) GetCommitQueuePosition() error {
+	if apiPatch.CommitQueuePosition != nil {
+		return nil
+	}
+	if utility.FromStringPtr(apiPatch.Alias) == evergreen.CommitQueueAlias {
+		cq, err := commitqueue.FindOneId(utility.FromStringPtr(apiPatch.ProjectId))
+		if err != nil {
+			return errors.Wrap(err, "error getting commit queue position")
+		}
+		apiPatch.CommitQueuePosition = utility.ToIntPtr(-1)
+		if cq != nil {
+			apiPatch.CommitQueuePosition = utility.ToIntPtr(cq.FindItem(utility.FromStringPtr(apiPatch.Id)))
+		}
+	}
+	return nil
+}
+
+func (apiPatch *APIPatch) GetIdentifier() {
+	if apiPatch.ProjectIdentifier != nil {
+		return
+	}
+	if utility.FromStringPtr(apiPatch.ProjectId) != "" {
+		identifier, err := model.GetIdentifierForProject(utility.FromStringPtr(apiPatch.ProjectId))
+		if err == nil {
+			apiPatch.ProjectIdentifier = utility.ToStringPtr(identifier)
+		}
+	}
 }
 
 func (apiPatch *APIPatch) buildBasePatch(p patch.Patch) {
