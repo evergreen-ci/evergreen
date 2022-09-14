@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -85,8 +86,13 @@ func FindTasksByProjectAndCommit(opts task.GetTasksByProjectAndCommitOptions) ([
 				break
 			}
 		}
-		// TODO: EVG-17897 remove the debug statement
-		grip.DebugWhen(!found, fmt.Sprintf("starting task '%s' not found", opts.StartingTaskId))
+		grip.DebugWhen(!found, message.Fields{
+			"message":       "starting task not found",
+			"ticket":        "EVG-17338",
+			"starting_task": opts.StartingTaskId,
+			"project":       projectId,
+			"commit":        opts.CommitHash,
+		})
 	}
 	return res, nil
 }
