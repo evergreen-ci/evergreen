@@ -87,11 +87,9 @@ func FindTasksByProjectAndCommit(opts task.GetTasksByProjectAndCommitOptions) ([
 			}
 		}
 		grip.DebugWhen(!found, message.Fields{
-			"message":       "starting task not found",
-			"ticket":        "EVG-17338",
-			"starting_task": opts.StartingTaskId,
-			"project":       projectId,
-			"commit":        opts.CommitHash,
+			"message": "starting task not found",
+			"ticket":  "EVG-17338",
+			"opts":    opts,
 		})
 	}
 	return res, nil
