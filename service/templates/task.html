@@ -171,7 +171,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                     <tr ng-show="task.min_queue_pos != 0">
                       <td class="icon"><i class="fa fa-sort-numeric-asc"></i></td>
                       <td>
-                        Estimated Time to Start: [[task.wait_time | stringifyNanoseconds]] (<a href="/task_queue#/#[[task.id]]">[[task.min_queue_pos | ordinalNum]]</a>
+                        Estimated Time to Start: [[task.wait_time | stringifyNanoseconds]] (<a href="/task_queue/[[task.distro]]/[[task.id]]">[[task.min_queue_pos | ordinalNum]]</a>
                         in queue)
                       </td>
                     </tr>
