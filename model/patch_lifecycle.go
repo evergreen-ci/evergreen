@@ -349,9 +349,16 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 				remoteConfigPath, patchFilePath),
 		}
 
+		output := util.NewMBCappedWriter()
 		err = env.JasperManager().CreateCommand(ctx).Add([]string{"bash", "-c", strings.Join(patchCommandStrings, "\n")}).
-			Directory(workingDirectory).Run(ctx)
+			Directory(workingDirectory).SetCombinedWriter(output).Run(ctx)
 		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":       "error running patch command",
+				"patch_id":      p.Id.Hex(),
+				"output":        output.String(),
+				"patch_command": patchCommandStrings,
+			}))
 			return nil, errors.Wrap(err, "running patch command (possibly due to merge conflict on evergreen configuration file)")
 		}
 
