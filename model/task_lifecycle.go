@@ -1486,11 +1486,35 @@ func doRestartFailedTasks(tasks []string, user string, results RestartResults) R
 	return results
 }
 
+// CheckAndBlockSingleHostTaskGroup blocks a single-host task group if the given
+// task is part of one and has finished (or is currently finishing) with a
+// failed status. This is a best-effort attempt, so if it fails, it will just
+// log the error.
+func CheckAndBlockSingleHostTaskGroup(t *task.Task, status string) {
+	if !t.IsPartOfSingleHostTaskGroup() || status == evergreen.TaskSucceeded {
+		return
+	}
+
+	// For a single-host task group, block and dequeue later tasks in that group.
+	if err := BlockTaskGroupTasks(t.Id); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "problem blocking task group tasks",
+			"task_id": t.Id,
+		}))
+		return
+	}
+
+	grip.Debug(message.Fields{
+		"message": "blocked task group tasks for task",
+		"task_id": t.Id,
+	})
+}
+
 // ClearAndResetStrandedContainerTask clears the container task dispatched to a
 // pod. It also resets the task so that the current task execution is marked as
 // finished and, if necessary, a new execution is created to restart the task.
-// TODO (PM-2618): should probably block single host task groups once they're
-// supported.
+// TODO (PM-2618): should probably block single-container task groups once
+// they're supported.
 func ClearAndResetStrandedContainerTask(p *pod.Pod) error {
 	runningTaskID := p.RunningTask
 	if runningTaskID == "" {
@@ -1514,16 +1538,17 @@ func ClearAndResetStrandedContainerTask(p *pod.Pod) error {
 		return nil
 	}
 
-	if err := resetStrandedTask(t); err != nil {
+	if err := resetSystemFailedTask(t, evergreen.TaskDescriptionStranded); err != nil {
 		return errors.Wrapf(err, "resetting stranded task '%s'", t.Id)
 	}
 
 	return nil
 }
 
-// ClearAndResetStrandedHostTask clears the host task dispatched to the host. It
-// also resets the task so that the current task execution is marked as finished
-// and, if necessary, a new execution is created to restart the task.
+// ClearAndResetStrandedHostTask clears the host task dispatched to the host due
+// to being stranded on a bad host (e.g. one that has been terminated). It also
+// marks the current task execution as finished and, if possible, a new
+// execution is created to restart the task.
 func ClearAndResetStrandedHostTask(h *host.Host) error {
 	if h.RunningTask == "" {
 		return nil
@@ -1536,38 +1561,41 @@ func ClearAndResetStrandedHostTask(h *host.Host) error {
 		return nil
 	}
 
-	// For a single-host task group, block and dequeue later tasks in that group.
-	if t.IsPartOfSingleHostTaskGroup() && t.Status != evergreen.TaskSucceeded {
-		if err = BlockTaskGroupTasks(t.Id); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "problem blocking task group tasks",
-				"task_id": t.Id,
-			}))
-			return errors.Wrap(err, "blocking task group tasks")
-		}
-		grip.Debug(message.Fields{
-			"message": "blocked task group tasks for task",
-			"task_id": t.Id,
-		})
-	}
+	CheckAndBlockSingleHostTaskGroup(t, t.Status)
 
 	if err = h.ClearRunningTask(); err != nil {
 		return errors.Wrapf(err, "clearing running task from host '%s'", h.Id)
 	}
 
-	if err := resetStrandedTask(t); err != nil {
+	if err := resetSystemFailedTask(t, evergreen.TaskDescriptionStranded); err != nil {
 		return errors.Wrapf(err, "resetting stranded task '%s'", t.Id)
 	}
 
 	return nil
 }
 
-func resetStrandedTask(t *task.Task) error {
+// ResetStaleTask fixes a task that has exceeded the heartbeat timeout by
+// marking the current task execution as finished and, if possible, a new
+// execution is created to restart the task.
+func ResetStaleTask(t *task.Task) error {
+	CheckAndBlockSingleHostTaskGroup(t, t.Status)
+
+	if err := resetSystemFailedTask(t, evergreen.TaskDescriptionHeartbeat); err != nil {
+		return errors.Wrap(err, "resetting task")
+	}
+
+	return nil
+}
+
+// resetSystemFailedTask resets a task that has encountered a system failure
+// such as being stranded on a terminated host/container or failing to send a
+// heartbeat.
+func resetSystemFailedTask(t *task.Task, description string) error {
 	if t.IsFinished() {
 		return nil
 	}
 
-	if err := t.MarkSystemFailed(evergreen.TaskDescriptionStranded); err != nil {
+	if err := t.MarkSystemFailed(description); err != nil {
 		return errors.Wrap(err, "marking task as system failed")
 	}
 

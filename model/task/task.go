@@ -1439,6 +1439,9 @@ func (t *Task) MarkSystemFailed(description string) error {
 		Type:        evergreen.CommandTypeSystem,
 		Description: description,
 	}
+	if description == evergreen.TaskDescriptionHeartbeat {
+		t.Details.TimedOut = true
+	}
 
 	event.LogTaskFinished(t.Id, t.Execution, t.HostId, evergreen.TaskSystemFailed)
 	grip.Info(message.Fields{
@@ -1450,15 +1453,22 @@ func (t *Task) MarkSystemFailed(description string) error {
 		"description": description,
 	})
 
+	t.ContainerAllocated = false
+	t.ContainerAllocatedTime = time.Time{}
+
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				StatusKey:     evergreen.TaskFailed,
-				FinishTimeKey: t.FinishTime,
-				DetailsKey:    t.Details,
+				StatusKey:             evergreen.TaskFailed,
+				FinishTimeKey:         t.FinishTime,
+				DetailsKey:            t.Details,
+				ContainerAllocatedKey: false,
+			},
+			"$unset": bson.M{
+				ContainerAllocatedTimeKey: 1,
 			},
 		},
 	)
@@ -1882,13 +1892,17 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 			"project":   t.Project,
 			"details":   t.Details,
 		})
-		detail.Status = evergreen.TaskFailed
+		detail = &apimodels.TaskEndDetail{
+			Status: evergreen.TaskFailed,
+		}
 	}
+
 	// record that the task has finished, in memory and in the db
 	t.Status = detail.Status
 	t.FinishTime = finishTime
 	t.Details = *detail
 	t.ContainerAllocated = false
+	t.ContainerAllocatedTime = time.Time{}
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
