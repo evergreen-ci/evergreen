@@ -10,6 +10,8 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -60,19 +62,14 @@ func CreatePod(apiPod model.APICreatePod) (*model.APICreatePodResponse, error) {
 // database. It returns an error if the secret does not match the one assigned
 // to the pod.
 func CheckPodSecret(id, secret string) error {
-	p, err := pod.FindOneByID(id)
+	p, err := FindPodByID(id)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrapf(err, "finding pod '%s'", id).Error(),
 		}
 	}
-	if p == nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    "pod does not exist",
-		}
-	}
+
 	s, err := p.GetSecret()
 	if err != nil {
 		return gimlet.ErrorResponse{
@@ -86,15 +83,24 @@ func CheckPodSecret(id, secret string) error {
 			Message:    "pod secrets do not match",
 		}
 	}
+
+	// The pod just successfully authed into the app server, so bump its last
+	// communicated time.
+	grip.Warning(message.WrapError(p.UpdateLastCommunicated(), message.Fields{
+		"message": "failed to update last communication time",
+		"pod":     p.ID,
+	}))
+
 	return nil
 }
 
-func FindPod(podID string) (*pod.Pod, error) {
+// FindPodByID finds the pod by the given ID.
+func FindPodByID(podID string) (*pod.Pod, error) {
 	p, err := pod.FindOneByID(podID)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrap(err, "finding pod").Error(),
+			Message:    errors.Wrapf(err, "finding pod '%s'", podID).Error(),
 		}
 	}
 	if p == nil {
@@ -107,19 +113,14 @@ func FindPod(podID string) (*pod.Pod, error) {
 	return p, nil
 }
 
-// FindPodByID finds a pod by the given ID. It returns a nil result if no such
-// pod is found.
-func FindPodByID(id string) (*model.APIPod, error) {
-	p, err := pod.FindOneByID(id)
+// FindAPIPodByID finds a pod by the given ID and returns its equivalent API model.
+// It returns a nil result if no such pod is found.
+func FindAPIPodByID(id string) (*model.APIPod, error) {
+	p, err := FindPodByID(id)
 	if err != nil {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "finding pod '%s'", id).Error(),
-		}
+		return nil, err
 	}
-	if p == nil {
-		return nil, nil
-	}
+
 	var apiPod model.APIPod
 	if err := apiPod.BuildFromService(p); err != nil {
 		return nil, gimlet.ErrorResponse{

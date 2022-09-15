@@ -721,8 +721,8 @@ func (p *Pod) ClearRunningTask() error {
 	return nil
 }
 
-// SetAgentStartTime sets the time when the pod's agent started.
-func (p *Pod) SetAgentStartTime() error {
+// UpdateAgentStartTime updates the time when the pod's agent started to now.
+func (p *Pod) UpdateAgentStartTime() error {
 	ts := utility.BSONTime(time.Now())
 	if err := UpdateOne(ByID(p.ID), bson.M{
 		"$set": bson.M{
@@ -733,6 +733,23 @@ func (p *Pod) SetAgentStartTime() error {
 	}
 
 	p.TimeInfo.AgentStarted = ts
+
+	return nil
+}
+
+// UpdateLastCommunicated updates the last time that the pod and app server
+// successfully communicated to now, indicating that the pod is currently alive.
+func (p *Pod) UpdateLastCommunicated() error {
+	ts := utility.BSONTime(time.Now())
+	if err := UpdateOne(ByID(p.ID), bson.M{
+		"$set": bson.M{
+			bsonutil.GetDottedKeyName(TimeInfoKey, TimeInfoLastCommunicatedKey): ts,
+		},
+	}); err != nil {
+		return err
+	}
+
+	p.TimeInfo.LastCommunicated = ts
 
 	return nil
 }
