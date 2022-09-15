@@ -150,7 +150,7 @@ type Task struct {
 	// Set to true if the task should be considered for mainline github checks
 	IsGithubCheck bool `bson:"is_github_check,omitempty" json:"is_github_check,omitempty"`
 
-	// CanReset indicates if the task is in a valid state to be reset.
+	// CanReset indicates that the task has successfully archived and is in a valid state to be reset.
 	CanReset bool `bson:"can_reset,omitempty" json:"can_reset,omitempty"`
 
 	Execution           int    `bson:"execution" json:"execution"`
@@ -1458,7 +1458,6 @@ func (t *Task) MarkSystemFailed(description string) error {
 				StatusKey:     evergreen.TaskFailed,
 				FinishTimeKey: t.FinishTime,
 				DetailsKey:    t.Details,
-				CanResetKey:   true,
 			},
 		},
 	)
@@ -1902,7 +1901,6 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 				StartTimeKey:          t.StartTime,
 				LogsKey:               detail.Logs,
 				HasLegacyResultsKey:   t.HasLegacyResults,
-				CanResetKey:           true,
 				ContainerAllocatedKey: false,
 			},
 			"$unset": bson.M{
@@ -2536,8 +2534,9 @@ func (t *Task) Archive() error {
 		t.Aborted = false
 		err = UpdateOne(
 			bson.M{
-				IdKey:     t.Id,
-				StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses},
+				IdKey:       t.Id,
+				StatusKey:   bson.M{"$in": evergreen.TaskCompletedStatuses},
+				CanResetKey: false,
 			},
 			updateDisplayTasksAndTasksBson(),
 		)
@@ -2675,7 +2674,6 @@ func archiveAll(taskIds, execTaskIds, toRestartExecTaskIds []string, archivedTas
 				bson.A{ // Pipeline
 					bson.M{"$set": bson.M{ // Execution = LPE
 						ExecutionKey: "$" + LatestParentExecutionKey,
-						CanResetKey:  true,
 					}},
 					bson.M{"$unset": bson.A{
 						AbortedKey,
