@@ -167,7 +167,7 @@ func ConfigurePatch(ctx context.Context, p *patch.Patch, version *Version, proj 
 			Project:        project,
 			ProjectRef:     proj,
 			Version:        version,
-			pairs:          tasks,
+			Pairs:          tasks,
 			SyncAtEndOpts:  p.SyncAtEndOpts,
 			ActivationInfo: specificActivationInfo{},
 			GeneratedBy:    "",
@@ -512,17 +512,17 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		}
 		taskNames := tasks.ExecTasks.TaskNames(vt.Variant)
 		buildCreationArgs := TaskCreationInfo{
-			Project:        creationInfo.Project,
-			ProjectRef:     creationInfo.ProjectRef,
-			Version:        creationInfo.Version,
-			TaskIDs:        taskIds,
-			BuildName:      vt.Variant,
-			ActivateBuild:  true,
-			TaskNames:      taskNames,
-			DisplayNames:   displayNames,
-			DistroAliases:  distroAliases,
-			TaskCreateTime: createTime,
-			SyncAtEndOpts:  p.SyncAtEndOpts,
+			Project:          creationInfo.Project,
+			ProjectRef:       creationInfo.ProjectRef,
+			Version:          creationInfo.Version,
+			TaskIDs:          taskIds,
+			BuildVariantName: vt.Variant,
+			ActivateBuild:    true,
+			TaskNames:        taskNames,
+			DisplayNames:     displayNames,
+			DistroAliases:    distroAliases,
+			TaskCreateTime:   createTime,
+			SyncAtEndOpts:    p.SyncAtEndOpts,
 		}
 		var build *build.Build
 		var tasks task.Tasks

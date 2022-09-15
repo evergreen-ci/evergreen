@@ -273,7 +273,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 		Project:        p,
 		ProjectRef:     projectRef,
 		Version:        v,
-		pairs:          newTVPairsForExistingVariants,
+		Pairs:          newTVPairsForExistingVariants,
 		ActivationInfo: activationInfo,
 		SyncAtEndOpts:  syncAtEndOpts,
 		GeneratedBy:    g.Task.Id,
@@ -283,7 +283,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 		return errors.Wrap(err, "adding new tasks")
 	}
 
-	creationInfo.pairs = newTVPairsForNewVariants
+	creationInfo.Pairs = newTVPairsForNewVariants
 	activatedTasksInNewBuilds, err := addNewBuilds(ctx, creationInfo, existingBuilds)
 	if err != nil {
 		return errors.Wrap(err, "adding new builds")
@@ -327,7 +327,7 @@ func (g *GeneratedProject) simulateNewTasks(graph task.DependencyGraph, v *Versi
 		Project:    p,
 		ProjectRef: projectRef,
 		Version:    v,
-		pairs:      newTasks,
+		Pairs:      newTasks,
 	}
 	taskIDs, err := getTaskIdTables(creationInfo)
 	if err != nil {

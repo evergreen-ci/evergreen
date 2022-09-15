@@ -999,7 +999,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			Version:             v,
 			TaskIDs:             taskIds,
 			TaskNames:           taskNames,
-			BuildName:           buildvariant.Name,
+			BuildVariantName:    buildvariant.Name,
 			ActivateBuild:       false,
 			SourceRev:           sourceRev,
 			DefinitionID:        metadata.TriggerDefinitionID,
