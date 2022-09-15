@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/cocoa/awsutil"
 	"github.com/evergreen-ci/cocoa/ecs"
+	cocoaMock "github.com/evergreen-ci/cocoa/mock"
 	"github.com/evergreen-ci/cocoa/secret"
 	"github.com/evergreen-ci/cocoa/tag"
 	"github.com/evergreen-ci/evergreen"
@@ -21,13 +22,25 @@ import (
 
 // MakeECSClient creates a cocoa.ECSClient to interact with ECS.
 func MakeECSClient(settings *evergreen.Settings) (cocoa.ECSClient, error) {
-	return ecs.NewBasicECSClient(podAWSOptions(settings))
+	switch settings.Providers.AWS.Pod.SecretsManager.ClientType {
+	case evergreen.AWSClientTypeMock:
+		// This should only ever be used for testing purposes.
+		return &cocoaMock.ECSClient{}, nil
+	default:
+		return ecs.NewBasicECSClient(podAWSOptions(settings))
+	}
 }
 
 // MakeSecretsManagerClient creates a cocoa.SecretsManagerClient to interact
 // with Secrets Manager.
 func MakeSecretsManagerClient(settings *evergreen.Settings) (cocoa.SecretsManagerClient, error) {
-	return secret.NewBasicSecretsManagerClient(podAWSOptions(settings))
+	switch settings.Providers.AWS.Pod.SecretsManager.ClientType {
+	case evergreen.AWSClientTypeMock:
+		// This should only ever be used for testing purposes.
+		return &cocoaMock.SecretsManagerClient{}, nil
+	default:
+		return secret.NewBasicSecretsManagerClient(podAWSOptions(settings))
+	}
 }
 
 // MakeTagClient creates a cocoa.TagClient to interact with the Resource Groups

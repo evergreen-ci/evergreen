@@ -177,24 +177,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// For a single-host task group, if a task fails, block and dequeue later tasks in that group.
-	// Call before MarkEnd so the version is marked finished when this is the last task in the version to finish,
-	// and before clearing the running task from the host so later tasks in the group aren't picked up by the host.
-	if t.IsPartOfSingleHostTaskGroup() && details.Status != evergreen.TaskSucceeded {
-		// BlockTaskGroups is a recursive operation, which
-		// includes updating a large number of task
-		// documents.
-		if err := model.BlockTaskGroupTasks(t.Id); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "problem blocking task group tasks",
-				"task_id": t.Id,
-			}))
-		}
-		grip.Debug(message.Fields{
-			"message": "blocked task group tasks for task",
-			"task_id": t.Id,
-		})
-	}
+	model.CheckAndBlockSingleHostTaskGroup(t, details.Status)
 
 	projectRef, err := model.FindMergedProjectRef(t.Project, t.Version, true)
 	if err != nil {

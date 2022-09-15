@@ -942,7 +942,7 @@
   "project_ref": [
     {
       "_id": "evergreen",
-      "identifier": "evergreen",
+      "identifier": "evergreenIdentifier",
       "patch_trigger_aliases": [
         {
           "alias": "test-alias",

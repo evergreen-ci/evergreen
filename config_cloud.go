@@ -98,7 +98,7 @@ type AWSConfig struct {
 	MaxVolumeSizePerUser int      `bson:"max_volume_size" json:"max_volume_size" yaml:"max_volume_size"`
 
 	// Pod represents configuration for using pods in AWS.
-	Pod AWSPodConfig
+	Pod AWSPodConfig `bson:"pod" json:"pod" yaml:"pod"`
 }
 
 type S3Credentials struct {
@@ -135,6 +135,12 @@ func (c *AWSPodConfig) Validate() error {
 
 // ECSConfig represents configuration for AWS ECS.
 type ECSConfig struct {
+	// MaxCPU is the maximum allowed CPU units (1024 CPU units = 1 vCPU) that a
+	// single pod can use.
+	MaxCPU int `bson:"max_cpu" json:"max_cpu" yaml:"max_cpu"`
+	// MaxMemoryMB is the maximum allowed memory (in MB) that a single pod can
+	// use.
+	MaxMemoryMB int `bson:"max_memory_mb" json:"max_memory_mb" yaml:"max_memory_mb"`
 	// TaskDefinitionPrefix is the prefix for the task definition families.
 	TaskDefinitionPrefix string `bson:"task_definition_prefix" json:"task_definition_prefix" yaml:"task_definition_prefix"`
 	// TaskRole is the IAM role that ECS tasks can assume to make AWS requests.
@@ -148,6 +154,10 @@ type ECSConfig struct {
 	Clusters []ECSClusterConfig `bson:"clusters" json:"clusters" yaml:"clusters"`
 	// CapacityProviders specify the available capacity provider configurations.
 	CapacityProviders []ECSCapacityProvider `bson:"capacity_providers" json:"capacity_providers" yaml:"capacity_providers"`
+	// ClientType represents the type of Secrets Manager client implementation
+	// that will be used. This is not a value that can or should be configured
+	// for production, but is useful to explicitly set for testing purposes.
+	ClientType AWSClientType `bson:"client_type" json:"client_type" yaml:"client_type"`
 }
 
 // AWSVPCConfig represents configuration when using AWSVPC networking in ECS.
@@ -283,7 +293,23 @@ func (c *ECSClusterConfig) Validate() error {
 type SecretsManagerConfig struct {
 	// SecretPrefix is the prefix for secret names.
 	SecretPrefix string `bson:"secret_prefix" json:"secret_prefix" yaml:"secret_prefix"`
+	// ClientType represents the type of Secrets Manager client implementation
+	// that will be used. This is not a value that can or should be configured
+	// for production, but is useful to explicitly set for testing purposes.
+	ClientType AWSClientType `bson:"client_type" json:"client_type" yaml:"client_type"`
 }
+
+// AWSClientType represents the different types of AWS client implementations
+// that can be used.
+type AWSClientType string
+
+const (
+	// AWSClientTypeBasic is the standard implementation of an AWS client.
+	AWSClientTypeBasic AWSClientType = ""
+	// AWSClientTypeMock is the mock implementation of an AWS client for testing
+	// purposes only. This should never be used in production.
+	AWSClientTypeMock AWSClientType = "mock"
+)
 
 // DockerConfig stores auth info for Docker.
 type DockerConfig struct {

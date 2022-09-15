@@ -2132,7 +2132,7 @@ func FindHostsSpawnedByBuild(buildID string) ([]Host, error) {
 }
 
 // FindTerminatedHostsRunningTasks finds all hosts that were running tasks when
-// they were either terminated or needed to be re-provisioned.
+// they were terminated.
 func FindTerminatedHostsRunningTasks() ([]Host, error) {
 	hosts, err := Find(db.Query(bson.M{
 		StatusKey: evergreen.HostTerminated,

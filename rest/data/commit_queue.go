@@ -299,7 +299,7 @@ func CreatePatchForMerge(ctx context.Context, existingPatchID, commitMessage str
 	}
 
 	apiPatch := &restModel.APIPatch{}
-	if err = apiPatch.BuildFromService(*newPatch); err != nil {
+	if err = apiPatch.BuildFromService(*newPatch, nil); err != nil {
 		return nil, errors.Wrap(err, "converting patch to API model")
 	}
 	return apiPatch, nil
@@ -361,7 +361,10 @@ func GetAdditionalPatches(patchId string) ([]string, error) {
 		}
 	}
 	if p == nil {
-		return nil, errors.Errorf("patch '%s' not found", patchId)
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    errors.Errorf("patch '%s' not found", patchId).Error(),
+		}
 	}
 	cq, err := commitqueue.FindOneId(p.Project)
 	if err != nil {
@@ -371,7 +374,10 @@ func GetAdditionalPatches(patchId string) ([]string, error) {
 		}
 	}
 	if cq == nil {
-		return nil, errors.Errorf("commit queue for project '%s' not found", p.Project)
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    errors.Errorf("commit queue for project '%s' not found", p.Project).Error(),
+		}
 	}
 	additionalPatches := []string{}
 	for _, item := range cq.Queue {
@@ -381,5 +387,8 @@ func GetAdditionalPatches(patchId string) ([]string, error) {
 			additionalPatches = append(additionalPatches, item.Version)
 		}
 	}
-	return nil, errors.Errorf("patch '%s' not found in commit queue", patchId)
+	return nil, gimlet.ErrorResponse{
+		StatusCode: http.StatusNotFound,
+		Message:    errors.Errorf("patch '%s' not found in commit queue", patchId).Error(),
+	}
 }

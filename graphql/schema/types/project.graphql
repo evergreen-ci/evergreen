@@ -93,6 +93,12 @@ input TriggerAliasInput {
   taskRegex: String!
 }
 
+input ContainerResourcesInput {
+  name: String!
+  cpu: Int!
+  memoryMb: Int!
+}
+
 input PatchTriggerAliasInput {
   alias: String!
   childProjectIdentifier: String!
@@ -123,7 +129,6 @@ input WorkstationSetupCommandInput {
   command: String!
   directory: String
 }
-
 
 ###### TYPES ######
 """
@@ -157,7 +162,6 @@ type Project {
   buildBaronSettings: BuildBaronSettings!
   commitQueue: CommitQueueParams!
   deactivatePrevious: Boolean
-  defaultLogger: String!
   disabledStatsCache: Boolean
   dispatchingDisabled: Boolean
   displayName: String!
@@ -191,9 +195,9 @@ type Project {
   taskSync: TaskSyncOptions!
   tracksPushEvents: Boolean
   triggers: [TriggerAlias!]
-  validDefaultLoggers: [String!]!
   versionControlEnabled: Boolean
   workstationConfig: WorkstationConfig!
+  containerSizeDefinitions: [ContainerResources!]
 }
 
 type CommitQueueParams {

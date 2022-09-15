@@ -375,7 +375,7 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 	}
 	u := gimlet.GetUser(ctx).(*user.DBUser)
 
-	if err := data.CreateProject(ctx, dbProjectRef, u); err != nil {
+	if err := data.CreateProject(ctx, evergreen.GetEnvironment(), dbProjectRef, u); err != nil {
 		apiErr, ok := err.(gimlet.ErrorResponse)
 		if ok {
 			if apiErr.StatusCode == http.StatusBadRequest {
@@ -403,7 +403,7 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 }
 
 func (r *mutationResolver) CopyProject(ctx context.Context, project data.CopyProjectOpts) (*restModel.APIProjectRef, error) {
-	projectRef, err := data.CopyProject(ctx, project)
+	projectRef, err := data.CopyProject(ctx, evergreen.GetEnvironment(), project)
 	if projectRef == nil && err != nil {
 		apiErr, ok := err.(gimlet.ErrorResponse) // make sure bad request errors are handled correctly; all else should be treated as internal server error
 		if ok {

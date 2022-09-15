@@ -211,7 +211,7 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 	return nil
 }
 
-// Constructs all versions stored from recent repository revisions
+// StoreRevisions constructs all versions stored from recent repository revisions
 // The additional complexity is due to support for project modifications on patch builds.
 // We need to parse the remote config as it existed when each revision was created.
 // The return value is the most recent version created as a result of storing the revisions.

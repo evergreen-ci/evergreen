@@ -569,6 +569,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 
 			require.Equal(t, stat.Total, 0)
 			startTaskHandler := makeStartTask(env).(*startTaskHandler)
+			startTaskHandler.hostID = "h1"
 			startTaskHandler.taskID = "task1"
 			resp := startTaskHandler.Run(ctx)
 			require.NoError(t, q.Start(ctx))

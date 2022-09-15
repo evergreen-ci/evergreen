@@ -295,8 +295,6 @@ func (sns *ec2SNS) handleInstanceStopped(ctx context.Context, instanceID string)
 
 type ecsSNS struct {
 	baseSNS
-
-	makeECSClient func(*evergreen.Settings) (cocoa.ECSClient, error)
 }
 
 type ecsEventBridgeNotification struct {
@@ -324,15 +322,13 @@ type ecsContainerInstanceEventDetail struct {
 
 func makeECSSNS(env evergreen.Environment, queue amboy.Queue) gimlet.RouteHandler {
 	return &ecsSNS{
-		baseSNS:       makeBaseSNS(env, queue),
-		makeECSClient: cloud.MakeECSClient,
+		baseSNS: makeBaseSNS(env, queue),
 	}
 }
 
 func (sns *ecsSNS) Factory() gimlet.RouteHandler {
 	return &ecsSNS{
-		baseSNS:       makeBaseSNS(sns.env, sns.queue),
-		makeECSClient: sns.makeECSClient,
+		baseSNS: makeBaseSNS(sns.env, sns.queue),
 	}
 }
 
@@ -534,7 +530,7 @@ func (sns *ecsSNS) cleanupUnrecognizedPod(ctx context.Context, detail ecsTaskEve
 		return nil
 	}
 
-	c, err := sns.makeECSClient(sns.env.Settings())
+	c, err := cloud.MakeECSClient(sns.env.Settings())
 	if err != nil {
 		return errors.Wrap(err, "getting ECS client")
 	}
@@ -588,7 +584,7 @@ func (sns *ecsSNS) listECSTasks(ctx context.Context, details ecsContainerInstanc
 		return nil, nil
 	}
 
-	c, err := sns.makeECSClient(sns.env.Settings())
+	c, err := cloud.MakeECSClient(sns.env.Settings())
 	if err != nil {
 		return nil, errors.Wrap(err, "getting ECS client")
 	}
