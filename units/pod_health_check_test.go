@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/pod"
-	"github.com/mongodb/amboy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,7 +24,7 @@ func TestPodHealthCheckJob(t *testing.T) {
 	}()
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, j *podHealthCheckJob){
-		"EventuallyTerminatesPodForStoppedCloudPod": func(ctx context.Context, t *testing.T, j *podHealthCheckJob) {
+		"EnqueuesPodTerminationJobForStoppedCloudPod": func(ctx context.Context, t *testing.T, j *podHealthCheckJob) {
 			require.NoError(t, j.pod.Insert())
 			require.NoError(t, j.ecsPod.Delete(ctx))
 
@@ -40,13 +39,6 @@ func TestPodHealthCheckJob(t *testing.T) {
 				podTerminationJobFound = true
 			}
 			assert.True(t, podTerminationJobFound, "should enqueue pod termination job for unhealthy pod")
-
-			require.True(t, amboy.WaitInterval(ctx, j.env.RemoteQueue(), 100*time.Millisecond))
-
-			dbPod, err := pod.FindOneByID(j.pod.ID)
-			require.NoError(t, err)
-			require.NotZero(t, dbPod)
-			assert.Equal(t, pod.StatusTerminated, dbPod.Status, "pod should have been terminated by pod termination job")
 		},
 		"NoopsForRunningCloudPod": func(ctx context.Context, t *testing.T, j *podHealthCheckJob) {
 			require.NoError(t, j.pod.Insert())
