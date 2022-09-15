@@ -61,10 +61,10 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddWrapper(gimlet.WrapperMiddleware(allowCORS))
 
 	// Agent routes
-	app.AddRoute("/pods/{pod_id}/agent/next_task").Version(2).Get().Wrap(requirePodOrHost).RouteHandler(makePodAgentNextTask(env))
-	app.AddRoute("/pods/{pod_id}/task/{task_id}/end").Version(2).Post().Wrap(requirePodOrHost, requireTask).RouteHandler(makePodAgentEndTask(env))
-	app.AddRoute("/hosts/{host_id}/agent/next_task").Version(2).Get().Wrap(requirePodOrHost).RouteHandler(makeHostAgentNextTask(env, opts.TaskDispatcher, opts.TaskAliasDispatcher))
-	app.AddRoute("/hosts/{host_id}/task/{task_id}/end").Version(2).Post().Wrap(requirePodOrHost, requireTask).RouteHandler(makeHostAgentEndTask(env))
+	app.AddRoute("/pods/{pod_id}/agent/next_task").Version(2).Get().Wrap(requirePod).RouteHandler(makePodAgentNextTask(env))
+	app.AddRoute("/pods/{pod_id}/task/{task_id}/end").Version(2).Post().Wrap(requirePod, requireTask).RouteHandler(makePodAgentEndTask(env))
+	app.AddRoute("/hosts/{host_id}/agent/next_task").Version(2).Get().Wrap(requireHost).RouteHandler(makeHostAgentNextTask(env, opts.TaskDispatcher, opts.TaskAliasDispatcher))
+	app.AddRoute("/hosts/{host_id}/task/{task_id}/end").Version(2).Post().Wrap(requireHost, requireTask).RouteHandler(makeHostAgentEndTask(env))
 	app.AddRoute("/agent/cedar_config").Version(2).Get().Wrap(requirePodOrHost).RouteHandler(makeAgentCedarConfig(env.Settings().Cedar))
 	app.AddRoute("/agent/data_pipes_config").Version(2).Get().Wrap(requirePodOrHost).RouteHandler(makeAgentDataPipesConfig(env.Settings().DataPipes))
 	app.AddRoute("/agent/setup").Version(2).Get().Wrap(requirePodOrHost).RouteHandler(makeAgentSetup(env.Settings()))
