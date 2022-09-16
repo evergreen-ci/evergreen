@@ -1,7 +1,6 @@
 package service
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -639,28 +638,16 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	buffer := new(bytes.Buffer)
-
 	if raw {
 		if logReader != nil {
 			gimlet.WriteText(w, logReader)
 		} else {
-			w.Header().Add(evergreen.ContentLengthHeader, strconv.Itoa(buffer.Len()))
 			uis.renderText.Stream(w, http.StatusOK, data, "base", "task_log_raw.html")
 		}
 		return
 	}
 
 	go apimodels.ReadBuildloggerToChan(r.Context(), projCtx.Task.Id, logReader, data.Buildlogger)
-
-	_, err = buffer.ReadFrom(logReader)
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error reading log data"))
-		return
-	}
-
-	w.Header().Add(evergreen.ContentLengthHeader, strconv.Itoa(buffer.Len()))
-
 	uis.render.Stream(w, http.StatusOK, data, "base", "task_log.html")
 }
 
