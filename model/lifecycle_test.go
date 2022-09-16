@@ -196,7 +196,7 @@ func TestBuildSetPriority(t *testing.T) {
 
 func TestBuildRestart(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(build.Collection, task.Collection, task.OldCollection))
+		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection))
 	}()
 
 	// Running a multi-document transaction requires the collections to exist

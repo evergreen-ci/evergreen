@@ -2540,6 +2540,10 @@ func (t *Task) Archive() error {
 			},
 			updateDisplayTasksAndTasksBson(),
 		)
+		// return nil if the task has already been archived
+		if adb.ResultsNotFound(err) {
+			return nil
+		}
 		return errors.Wrap(err, "updating task")
 	}
 }
@@ -2632,8 +2636,9 @@ func archiveAll(taskIds, execTaskIds, toRestartExecTaskIds []string, archivedTas
 		if len(taskIds) > 0 {
 			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(sessCtx,
 				bson.M{
-					IdKey:     bson.M{"$in": taskIds},
-					StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses},
+					IdKey:       bson.M{"$in": taskIds},
+					StatusKey:   bson.M{"$in": evergreen.TaskCompletedStatuses},
+					CanResetKey: false,
 				},
 				updateDisplayTasksAndTasksBson(),
 			)
