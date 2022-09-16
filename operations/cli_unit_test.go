@@ -22,7 +22,7 @@ func TestGitCmd(t *testing.T) {
 			"run binary and return error", func() {
 			_, err := gitCmd("bad", "args")
 			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldEndWith, "failed with err exit status 1")
+			So(err.Error(), ShouldContainSubstring, "exit status 1")
 		})
 	})
 }
