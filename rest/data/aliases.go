@@ -127,7 +127,11 @@ func updateAliasesForSection(projectId string, updatedAliases []restModel.APIPro
 // validateFeaturesHaveAliases returns an error if project/repo aliases are not defined for a Github/CQ feature.
 // Does not error if version control is enabled.
 func validateFeaturesHaveAliases(pRef *model.ProjectRef, aliases []restModel.APIProjectAlias) error {
-	if pRef.IsVersionControlEnabled() {
+	fullProjectRef, err := model.FindBranchProjectRef(pRef.Id)
+	if err != nil {
+		return errors.Wrapf(err, "finding project ref with id '%s'", pRef.Id)
+	}
+	if fullProjectRef.IsVersionControlEnabled() {
 		return nil
 	}
 
