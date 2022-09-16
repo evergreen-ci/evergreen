@@ -1,3 +1,4 @@
+//go:build !race
 // +build !race
 
 package cloud
@@ -65,7 +66,7 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 	env := testutil.NewEnvironment(ctx, t)
 	testConfig := env.Settings()
 
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestSpawnEC2Instance")
+	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
 	require.NoError(db.Clear(host.Collection))
 
 	opts := &EC2ManagerOptions{
@@ -112,7 +113,7 @@ func TestSpawnEC2InstanceSpot(t *testing.T) {
 	env := testutil.NewEnvironment(ctx, t)
 	testConfig := env.Settings()
 
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestSpawnSpotInstance")
+	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
 	require.NoError(db.Clear(host.Collection))
 	opts := &EC2ManagerOptions{
 		client:   &awsClientImpl{},
@@ -152,7 +153,7 @@ func (s *EC2Suite) TestGetInstanceInfoFailsEarlyForSpotInstanceRequests() {
 
 	info, err := m.client.GetInstanceInfo(ctx, "sir-123456")
 	s.Nil(info)
-	s.Errorf(err, "id appears to be a spot instance request ID, not a host ID (\"sir-123456\")")
+	s.Errorf(err, "ID 'sir-123456' appears to be a spot instance request ID, not a host ID")
 }
 
 func (s *EC2Suite) TestGetInstanceInfoFailsEarlyForIntentHosts() {

@@ -143,7 +143,7 @@ func GetSettings(provider string) (ProviderSettings, error) {
 	case evergreen.ProviderNameVsphere:
 		return &vsphereSettings{}, nil
 	}
-	return nil, errors.Errorf("invalid provider name %s", provider)
+	return nil, errors.Errorf("invalid provider name '%s'", provider)
 }
 
 // GetManager returns an implementation of Manager for the given manager options.
@@ -199,11 +199,11 @@ func GetManager(ctx context.Context, env evergreen.Environment, mgrOpts ManagerO
 	case evergreen.ProviderNameVsphere:
 		provider = &vsphereManager{}
 	default:
-		return nil, errors.Errorf("No known provider for '%s'", mgrOpts.Provider)
+		return nil, errors.Errorf("no known provider '%s'", mgrOpts.Provider)
 	}
 
 	if err := provider.Configure(ctx, env.Settings()); err != nil {
-		return nil, errors.Wrap(err, "Failed to configure cloud provider")
+		return nil, errors.Wrap(err, "configuring cloud provider")
 	}
 
 	return provider, nil
@@ -230,7 +230,7 @@ func GetManagerOptions(d distro.Distro) (ManagerOpts, error) {
 	if IsEc2Provider(d.Provider) {
 		s := &EC2ProviderSettings{}
 		if err := s.FromDistroSettings(d, region); err != nil {
-			return ManagerOpts{}, errors.Wrapf(err, "error getting EC2 provider settings from distro")
+			return ManagerOpts{}, errors.Wrapf(err, "getting EC2 provider settings from distro")
 		}
 
 		return getEC2ManagerOptionsFromSettings(d.Provider, s), nil
@@ -247,5 +247,5 @@ func ConvertContainerManager(m Manager) (ContainerManager, error) {
 	if cm, ok := m.(ContainerManager); ok {
 		return cm, nil
 	}
-	return nil, errors.New("Error converting manager to container manager")
+	return nil, errors.Errorf("converting manager %T to container manager", m)
 }
