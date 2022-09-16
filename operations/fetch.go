@@ -567,7 +567,7 @@ func downloadUrls(root string, urls chan artifactDownload, workers int) error {
 				defer out.Close() // nolint
 				resp, err := http.Get(u.url)
 				if err != nil {
-					errs <- errors.Wrapf(err, "downloading URL '%v': %v", u.url)
+					errs <- errors.Wrapf(err, "downloading URL '%s'", u.url)
 					continue
 				}
 				defer resp.Body.Close() // nolint
