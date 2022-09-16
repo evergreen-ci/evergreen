@@ -47,7 +47,7 @@ func Agent() cli.Command {
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  hostIDFlagName,
-				Usage: "id of machine agent is running on (applies only to host mode)",
+				Usage: "the ID of the host the agent is running on (applies only to host mode)",
 			},
 			cli.StringFlag{
 				Name:  hostSecretFlagName,
@@ -146,7 +146,7 @@ func Agent() cli.Command {
 			}
 
 			if err := os.MkdirAll(opts.WorkingDirectory, 0777); err != nil {
-				return errors.Wrapf(err, "problem creating working directory '%s'", opts.WorkingDirectory)
+				return errors.Wrapf(err, "creating working directory '%s'", opts.WorkingDirectory)
 			}
 
 			grip.Info(message.Fields{
@@ -161,7 +161,7 @@ func Agent() cli.Command {
 
 			agt, err := agent.New(ctx, opts, c.String(agentAPIServerURLFlagName))
 			if err != nil {
-				return errors.Wrap(err, "problem constructing agent")
+				return errors.Wrap(err, "constructing agent")
 			}
 
 			defer agt.Close()
@@ -170,11 +170,11 @@ func Agent() cli.Command {
 
 			sender, err := agt.GetSender(ctx, opts.LogPrefix)
 			if err != nil {
-				return errors.Wrap(err, "problem configuring logger")
+				return errors.Wrap(err, "configuring logger")
 			}
 
 			if err = grip.SetSender(sender); err != nil {
-				return errors.Wrap(err, "problem setting up logger")
+				return errors.Wrap(err, "setting up global logger")
 			}
 			agt.SetDefaultLogger(sender)
 

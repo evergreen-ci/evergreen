@@ -43,7 +43,7 @@ func compareTasks() cli.Command {
 
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
-				return errors.Wrap(err, "problem loading configuration")
+				return errors.Wrap(err, "loading configuration")
 			}
 			ctx := context.Background()
 			client := conf.setupRestCommunicator(ctx)

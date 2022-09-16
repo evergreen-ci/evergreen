@@ -62,7 +62,7 @@ func (m *Make) Generate() (*shrub.Configuration, error) {
 	})
 
 	if err != nil {
-		return nil, errors.Wrap(err, "generating evergreen configuration")
+		return nil, errors.Wrap(err, "generating Evergreen configuration")
 	}
 	return conf, nil
 }

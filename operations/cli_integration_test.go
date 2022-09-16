@@ -617,7 +617,6 @@ func TestCLIFunctions(t *testing.T) {
 					So(patches[0].Tasks, ShouldContain, "timeout_test")
 				})
 			})
-
 		})
 	})
 }

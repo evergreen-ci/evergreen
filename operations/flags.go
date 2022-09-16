@@ -69,7 +69,7 @@ func joinFlagNames(ids ...string) string { return strings.Join(ids, ", ") }
 func addPathFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.StringFlag{
 		Name:  joinFlagNames(pathFlagName, "filename", "file", "f"),
-		Usage: "path to an evergreen project configuration file",
+		Usage: "path to an Evergreen project configuration file",
 	})
 }
 
@@ -81,14 +81,14 @@ func serviceConfigFlags(flags ...cli.Flag) []cli.Flag {
 		},
 		cli.BoolFlag{
 			Name:  overwriteConfFlagName,
-			Usage: "overwrite the configuration in the db with the file",
+			Usage: "overwrite the configuration in the DB with the file",
 		})
 }
 
 func addProjectFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.StringFlag{
 		Name:  joinFlagNames(projectFlagName, "p"),
-		Usage: "specify the name of an existing evergreen project",
+		Usage: "specify the name of an existing Evergreen project",
 	})
 }
 func addLargeFlag(flags ...cli.Flag) []cli.Flag {
@@ -116,7 +116,7 @@ func addPatchFinalizeFlag(flags ...cli.Flag) []cli.Flag {
 func addPatchBrowseFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.BoolFlag{
 		Name:  joinFlagNames(patchBrowseFlagName),
-		Usage: "open patch url in browser",
+		Usage: "open patch URL in browser",
 	})
 }
 

@@ -32,7 +32,7 @@ func CreateVersion() cli.Command {
 			confPath := c.Parent().String(confFlagName)
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
-				return errors.Wrap(err, "problem loading configuration")
+				return errors.Wrap(err, "loading configuration")
 			}
 			ctx := context.Background()
 			client := conf.setupRestCommunicator(ctx)
@@ -41,15 +41,15 @@ func CreateVersion() cli.Command {
 			filePath := c.String(pathFlagName)
 			f, err := os.Open(filePath)
 			if err != nil {
-				return errors.Wrapf(err, "error opening file %s", filePath)
+				return errors.Wrapf(err, "opening file '%s'", filePath)
 			}
 			config, err := ioutil.ReadAll(f)
 			if err != nil {
-				return errors.Wrapf(err, "error reading file %s", filePath)
+				return errors.Wrapf(err, "reading file '%s'", filePath)
 			}
 			v, err := client.CreateVersionFromConfig(ctx, project, c.String(messageFlagName), c.Bool(activeFlagName), config)
 			if err != nil {
-				return errors.Wrap(err, "error creating version")
+				return errors.Wrap(err, "creating version")
 			}
 			if v == nil {
 				return errors.New("no version created due to unknown error")

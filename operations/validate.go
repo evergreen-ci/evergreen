@@ -3,7 +3,6 @@ package operations
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -54,7 +53,7 @@ func Validate() cli.Command {
 
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
-				return errors.Wrap(err, "problem loading configuration")
+				return errors.Wrap(err, "loading configuration")
 			}
 
 			client := conf.setupRestCommunicator(ctx)
@@ -62,26 +61,26 @@ func Validate() cli.Command {
 
 			ac, _, err := conf.getLegacyClients()
 			if err != nil {
-				return errors.Wrap(err, "problem accessing evergreen service")
+				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
 
 			if projectID == "" {
 				cwd, err := os.Getwd()
-				grip.Error(errors.Wrap(err, "unable to get current working directory"))
+				grip.Error(errors.Wrap(err, "getting current working directory"))
 				cwd, err = filepath.EvalSymlinks(cwd)
-				grip.Error(errors.Wrap(err, "unable to resolve symlinks"))
+				grip.Error(errors.Wrapf(err, "resolving symlinks for current working directory '%s'", cwd))
 				projectID = conf.FindDefaultProject(cwd, false)
 			}
 
 			fileInfo, err := os.Stat(path)
 			if err != nil {
-				return errors.Wrap(err, "problem getting file info")
+				return errors.Wrapf(err, "getting file info for path '%s'", path)
 			}
 
 			if fileInfo.Mode()&os.ModeDir != 0 { // directory
 				files, err := ioutil.ReadDir(path)
 				if err != nil {
-					return errors.Wrap(err, "problem reading directory")
+					return errors.Wrapf(err, "reading directory '%s'", path)
 				}
 				catcher := grip.NewSimpleCatcher()
 				for _, file := range files {
@@ -111,7 +110,7 @@ func getLocalModulesFromInput(localModulePaths []string) (map[string]string, err
 func validateFile(path string, ac *legacyClient, quiet, includeLong bool, localModuleMap map[string]string, projectID string) error {
 	confFile, err := ioutil.ReadFile(path)
 	if err != nil {
-		return errors.Wrap(err, "problem reading file")
+		return errors.Wrapf(err, "reading file '%s'", path)
 	}
 	project := &model.Project{}
 	ctx := context.Background()
@@ -130,13 +129,13 @@ func validateFile(path string, ac *legacyClient, quiet, includeLong bool, localM
 
 	projectYaml, err := yaml.Marshal(pp)
 	if err != nil {
-		return errors.Wrapf(err, "Could not marshal parser project into yaml")
+		return errors.Wrapf(err, "marshalling parser project into YAML")
 	}
 
 	if pc != nil {
 		projectConfigYaml, err := yaml.Marshal(pc.ProjectConfigFields)
 		if err != nil {
-			return errors.Wrapf(err, "Could not marshal project config into yaml")
+			return errors.Wrapf(err, "marshalling project config into YAML")
 		}
 		projectBytes := [][]byte{projectYaml, projectConfigYaml}
 		projectYaml = bytes.Join(projectBytes, []byte("\n"))
@@ -181,7 +180,7 @@ func loadProjectIntoWithValidation(ctx context.Context, data []byte, opts *model
 			if err2 == nil {
 				errs = append(errs, validator.ValidationError{
 					Level:   validator.Warning,
-					Message: fmt.Sprintf("error unmarshalling strictly: %s", err.Error()),
+					Message: errors.Wrap(err, "strict unmarshalling YAML").Error(),
 				})
 				return pp, pc, errs
 			}

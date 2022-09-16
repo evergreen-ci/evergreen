@@ -41,7 +41,7 @@ func Pull() cli.Command {
 
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
-				return errors.Wrap(err, "problem loading configuration")
+				return errors.Wrap(err, "loading configuration")
 			}
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -52,12 +52,12 @@ func Pull() cli.Command {
 
 			creds, err := client.GetTaskSyncReadCredentials(ctx)
 			if err != nil {
-				return errors.Wrap(err, "could not fetch credentials")
+				return errors.Wrap(err, "fetching read credentials")
 			}
 
 			remotePath, err := client.GetTaskSyncPath(ctx, taskID)
 			if err != nil {
-				return errors.Wrap(err, "could not get location of task directory in S3")
+				return errors.Wrap(err, "getting location of task directory in S3")
 			}
 
 			httpClient := utility.GetDefaultHTTPRetryableClient()
@@ -74,11 +74,11 @@ func Pull() cli.Command {
 			}
 			bucket, err := pail.NewS3ArchiveBucketWithHTTPClient(httpClient, opts)
 			if err != nil {
-				return errors.Wrap(err, "error setting up S3 bucket")
+				return errors.Wrap(err, "setting up S3 bucket")
 			}
 
 			if err = os.MkdirAll(workingDir, 0755); err != nil {
-				return errors.Wrap(err, "could not make working directory")
+				return errors.Wrapf(err, "creating working directory '%s'", workingDir)
 			}
 
 			_ = grip.SetSender(send.MakePlainLogger())
@@ -89,7 +89,7 @@ func Pull() cli.Command {
 				Local:  workingDir,
 				Remote: remotePath,
 			}); err != nil {
-				return errors.Wrap(err, "error while pulling task directory")
+				return errors.Wrap(err, "pulling task directory from S3")
 			}
 
 			grip.Infof("Download complete.")

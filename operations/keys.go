@@ -15,7 +15,7 @@ func Keys() cli.Command {
 	return cli.Command{
 		Name:    "keys",
 		Aliases: []string{"key", "pubkey"},
-		Usage:   "manage your public keys with the evergreen service",
+		Usage:   "manage your public keys with the Evergreen service",
 		Subcommands: []cli.Command{
 			keysAdd(),
 			keysList(),
@@ -63,7 +63,7 @@ func keysAdd() cli.Command {
 
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
-				return errors.Wrap(err, "problem loading configuration")
+				return errors.Wrap(err, "loading configuration")
 			}
 
 			client := conf.setupRestCommunicator(ctx)
@@ -71,7 +71,7 @@ func keysAdd() cli.Command {
 
 			keyFileContents, err := ioutil.ReadFile(keyFile)
 			if err != nil {
-				return errors.Wrap(err, "can't read public key file")
+				return errors.Wrapf(err, "reading public key file '%s'", keyFile)
 			}
 
 			pubKey := string(keyFileContents)
@@ -102,7 +102,7 @@ func keysList() cli.Command {
 
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
-				return errors.Wrap(err, "problem loading configuration")
+				return errors.Wrap(err, "loading configuration")
 			}
 
 			client := conf.setupRestCommunicator(ctx)
@@ -110,7 +110,7 @@ func keysList() cli.Command {
 
 			keys, err := client.GetCurrentUsersKeys(ctx)
 			if err != nil {
-				return errors.Wrap(err, "problem fetching keys")
+				return errors.Wrap(err, "fetching keys")
 			}
 
 			if len(keys) == 0 {
@@ -150,7 +150,7 @@ func keysDelete() cli.Command {
 
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
-				return errors.Wrap(err, "problem loading configuration")
+				return errors.Wrap(err, "loading configuration")
 			}
 
 			client := conf.setupRestCommunicator(ctx)
@@ -159,7 +159,7 @@ func keysDelete() cli.Command {
 			keyName := c.Args().Get(0)
 
 			if err := client.DeletePublicKey(ctx, keyName); err != nil {
-				return errors.Wrap(err, "problem deleting public key")
+				return errors.Wrap(err, "deleting public key")
 			}
 
 			grip.Infof("Successfully deleted key: '%s'\n", keyName)

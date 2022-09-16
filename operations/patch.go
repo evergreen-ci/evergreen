@@ -67,7 +67,7 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 			},
 			cli.StringFlag{
 				Name:  pathFlagName,
-				Usage: "path to an evergreen project configuration file",
+				Usage: "path to an Evergreen project configuration file",
 			},
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(regexVariantsFlagName, "rv"),
@@ -99,7 +99,7 @@ func Patch() cli.Command {
 			},
 		),
 		Aliases: []string{"create-patch", "submit-patch"},
-		Usage:   "submit a new patch to evergreen",
+		Usage:   "submit a new patch to Evergreen",
 		Flags:   getPatchFlags(),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
@@ -142,7 +142,7 @@ func Patch() cli.Command {
 
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
-				return errors.Wrap(err, "problem loading configuration")
+				return errors.Wrap(err, "loading configuration")
 			}
 
 			params.PreserveCommits = params.PreserveCommits || conf.PreserveCommits
@@ -150,7 +150,7 @@ func Patch() cli.Command {
 				var keepGoing bool
 				keepGoing, err = confirmUncommittedChanges(params.PreserveCommits, params.Uncommitted || conf.UncommittedChanges)
 				if err != nil {
-					return errors.Wrap(err, "can't test for uncommitted changes")
+					return errors.Wrap(err, "confirming uncommitted changes")
 				}
 				if keepGoing && utility.StringSliceContains(params.Variants, "all") && utility.StringSliceContains(params.Tasks, "all") {
 					keepGoing = confirm(`For some projects, scheduling all tasks/variants may result in a very large patch build. Continue? (Y/n)`, true)
@@ -165,7 +165,7 @@ func Patch() cli.Command {
 
 			ac, _, err := conf.getLegacyClients()
 			if err != nil {
-				return errors.Wrap(err, "problem accessing evergreen service")
+				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
 
 			ref, err := params.validatePatchCommand(ctx, conf, ac, comm)
@@ -209,7 +209,7 @@ func getParametersFromInput(params []string) ([]patch.Parameter, error) {
 	for _, param := range params {
 		pair := strings.Split(param, "=")
 		if len(pair) < 2 {
-			catcher.Add(errors.Errorf("problem parsing parameter '%s'", param))
+			catcher.Errorf("could not parse parameter '%s' in key=value format", param)
 		}
 		key := pair[0]
 		val := strings.Join(pair[1:], "=")
@@ -260,7 +260,7 @@ func PatchFile() cli.Command {
 
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
-				return errors.Wrap(err, "problem loading configuration")
+				return errors.Wrap(err, "loading configuration")
 			}
 
 			comm := conf.setupRestCommunicator(ctx)
@@ -268,7 +268,7 @@ func PatchFile() cli.Command {
 
 			ac, _, err := conf.getLegacyClients()
 			if err != nil {
-				return errors.Wrap(err, "problem accessing evergreen service")
+				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
 
 			if _, err = params.validatePatchCommand(ctx, conf, ac, comm); err != nil {
@@ -278,7 +278,7 @@ func PatchFile() cli.Command {
 
 			fullPatch, err := ioutil.ReadFile(diffPath)
 			if err != nil {
-				return errors.Wrap(err, "problem reading diff file")
+				return errors.Wrapf(err, "reading diff file '%s'", diffPath)
 			}
 
 			diffData := &localDiff{

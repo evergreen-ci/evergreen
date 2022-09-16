@@ -37,7 +37,7 @@ func Evaluate() cli.Command {
 
 			configBytes, err := ioutil.ReadFile(path)
 			if err != nil {
-				return errors.Wrap(err, "error reading project config")
+				return errors.Wrap(err, "reading project config")
 			}
 
 			p := &model.Project{}
@@ -47,7 +47,7 @@ func Evaluate() cli.Command {
 			}
 			_, err = model.LoadProjectInto(ctx, configBytes, opts, "", p)
 			if err != nil {
-				return errors.Wrap(err, "error loading project")
+				return errors.Wrap(err, "loading project")
 			}
 
 			var out interface{}
@@ -71,7 +71,7 @@ func Evaluate() cli.Command {
 
 			outYAML, err := yaml.Marshal(out)
 			if err != nil {
-				return errors.Wrap(err, "error marshaling evaluated project YAML")
+				return errors.Wrap(err, "marshalling evaluated project YAML")
 			}
 
 			fmt.Println(string(outYAML))
