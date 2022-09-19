@@ -2534,9 +2534,12 @@ func (t *Task) Archive() error {
 		t.Aborted = false
 		err = UpdateOne(
 			bson.M{
-				IdKey:       t.Id,
-				StatusKey:   bson.M{"$in": evergreen.TaskCompletedStatuses},
-				CanResetKey: false,
+				IdKey:     t.Id,
+				StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses},
+				"$or": []bson.M{{
+					CanResetKey: false,
+					CanResetKey: bson.M{"$exists": false},
+				}},
 			},
 			updateDisplayTasksAndTasksBson(),
 		)
@@ -2636,9 +2639,12 @@ func archiveAll(taskIds, execTaskIds, toRestartExecTaskIds []string, archivedTas
 		if len(taskIds) > 0 {
 			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(sessCtx,
 				bson.M{
-					IdKey:       bson.M{"$in": taskIds},
-					StatusKey:   bson.M{"$in": evergreen.TaskCompletedStatuses},
-					CanResetKey: false,
+					IdKey:     bson.M{"$in": taskIds},
+					StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses},
+					"$or": []bson.M{{
+						CanResetKey: false,
+						CanResetKey: bson.M{"$exists": false},
+					}},
 				},
 				updateDisplayTasksAndTasksBson(),
 			)
