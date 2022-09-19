@@ -2,7 +2,6 @@ package route
 
 import (
 	"context"
-	"github.com/evergreen-ci/gimlet"
 	"net/http"
 	"testing"
 	"time"
@@ -16,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
