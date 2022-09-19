@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"math"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -229,7 +230,7 @@ func CheckProjectWarnings(project *model.Project) ValidationErrors {
 }
 
 func CheckAliasWarnings(project *model.Project, aliases model.ProjectAliases) ValidationErrors {
-	return validateCommitQueueAliasCoverage(project, aliases)
+	return validateAliasCoverage(project, aliases)
 }
 
 // verify that the project configuration syntax is valid
@@ -441,8 +442,8 @@ func validateProjectConfigAliases(pc *model.ProjectConfig) ValidationErrors {
 	return validationErrs
 }
 
-// validateCommitQueueAliasCoverage validates that all commit queue aliases defined match some variants/tasks.
-func validateCommitQueueAliasCoverage(p *model.Project, aliases model.ProjectAliases) ValidationErrors {
+// validateAliasCoverage validates that all commit queue aliases defined match some variants/tasks.
+func validateAliasCoverage(p *model.Project, aliases model.ProjectAliases) ValidationErrors {
 	aliasMap := map[string]model.ProjectAlias{}
 	for _, a := range aliases {
 		aliasMap[a.ID.Hex()] = a
@@ -462,6 +463,7 @@ func validateCommitQueueAliasCoverage(p *model.Project, aliases model.ProjectAli
 // constructAliasWarnings returns validation errors given a map of aliases, and whether they need variants/tasks to match.
 func constructAliasWarnings(aliasMap map[string]model.ProjectAlias, aliasNeedsVariant, aliasNeedsTask map[string]bool) ValidationErrors {
 	res := ValidationErrors{}
+	errs := []string{}
 	for aliasID, a := range aliasMap {
 		needsVariant := aliasNeedsVariant[aliasID]
 		needsTask := aliasNeedsTask[aliasID]
@@ -469,7 +471,19 @@ func constructAliasWarnings(aliasMap map[string]model.ProjectAlias, aliasNeedsVa
 			continue
 		}
 
-		msgComponents := []string{"Commit queue alias"}
+		msgComponents := []string{}
+		switch a.Alias {
+		case evergreen.CommitQueueAlias:
+			msgComponents = append(msgComponents, "Commit queue alias")
+		case evergreen.GithubPRAlias:
+			msgComponents = append(msgComponents, "Github PR alias")
+		case evergreen.GitTagAlias:
+			msgComponents = append(msgComponents, "Git tag alias")
+		case evergreen.GithubChecksAlias:
+			msgComponents = append(msgComponents, "Github check alias")
+		default:
+			msgComponents = append(msgComponents, "Patch alias")
+		}
 		if len(a.VariantTags) > 0 {
 			msgComponents = append(msgComponents, fmt.Sprintf("matching variant tags '%v'", a.VariantTags))
 		} else {
@@ -486,11 +500,13 @@ func constructAliasWarnings(aliasMap map[string]model.ProjectAlias, aliasNeedsVa
 			}
 			msgComponents = append(msgComponents, "has no matching tasks")
 		}
-		res = append(res, ValidationError{
-			Message: strings.Join(msgComponents, " "),
-			Level:   Warning,
-		})
+		errs = append(errs, strings.Join(msgComponents, " "))
 	}
+	sort.Strings(errs)
+	res = append(res, ValidationError{
+		Message: strings.Join(errs, "\n"),
+		Level:   Warning,
+	})
 	return res
 }
 

@@ -1191,7 +1191,7 @@ func TestValidateAliasCoverage(t *testing.T) {
 			for _, matches := range needsTasks {
 				assert.True(t, matches)
 			}
-			errs := validateCommitQueueAliasCoverage(p, model.ProjectAliases{alias1, alias2})
+			errs := validateAliasCoverage(p, model.ProjectAliases{alias1, alias2})
 			require.Len(t, errs, 2)
 			assert.Contains(t, errs[0].Message, "Commit queue alias")
 			assert.Contains(t, errs[0].Message, "has no matching variants")
@@ -1229,7 +1229,7 @@ func TestValidateAliasCoverage(t *testing.T) {
 			for _, matches := range needsTasks {
 				assert.False(t, matches)
 			}
-			errs := validateCommitQueueAliasCoverage(p, model.ProjectAliases{alias1, alias2})
+			errs := validateAliasCoverage(p, model.ProjectAliases{alias1, alias2})
 			assert.Len(t, errs, 0)
 		},
 		"matchesVariantTag": func(t *testing.T, p *model.Project) {
@@ -1257,7 +1257,7 @@ func TestValidateAliasCoverage(t *testing.T) {
 				assert.True(t, matches)
 			}
 
-			errs := validateCommitQueueAliasCoverage(p, model.ProjectAliases{alias1, alias2})
+			errs := validateAliasCoverage(p, model.ProjectAliases{alias1, alias2})
 			require.Len(t, errs, 2)
 			assert.Contains(t, errs[0].Message, "Commit queue alias")
 			assert.Contains(t, errs[0].Message, "has no matching tasks")

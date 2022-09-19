@@ -73,7 +73,16 @@ type ProjectAlias struct {
 	VariantTags []string         `bson:"variant_tags,omitempty" json:"variant_tags" yaml:"variant_tags"`
 	Task        string           `bson:"task,omitempty" json:"task" yaml:"task"`
 	TaskTags    []string         `bson:"tags,omitempty" json:"tags" yaml:"task_tags"`
+
+	// Source is not stored; indicates where the alias is stored for the project.
+	Source string `bson:"-" json:"-" yaml:"-"`
 }
+
+const (
+	AliasSourceProject = "project"
+	AliasSourceConfig  = "config"
+	AliasSourceRepo    = "repo"
+)
 
 type ProjectAliases []ProjectAlias
 
@@ -90,15 +99,23 @@ func FindAliasesForProjectFromDb(projectID string) ([]ProjectAlias, error) {
 	return out, nil
 }
 
-// MergeAliasesWithProjectConfig returns a merged list of project aliases that includes the merged result of aliases defined
+// GetAliasesMergedWithProjectConfig returns a merged list of project aliases that includes the merged result of aliases defined
 // on the project ref and aliases defined in the project YAML.  Aliases defined on the project ref will take precedence over the
 // project YAML in the case that both are defined.
-func MergeAliasesWithProjectConfig(projectID string, dbAliases []ProjectAlias) ([]ProjectAlias, error) {
-	dbAliasMap := aliasesToMap(dbAliases)
+func GetAliasesMergedWithProjectConfig(projectID string, dbAliases []ProjectAlias) ([]ProjectAlias, error) {
 	projectConfig, err := FindProjectConfigForProjectOrVersion(projectID, "")
 	if err != nil {
 		return nil, errors.Wrap(err, "finding project config")
 	}
+	return mergeProjectConfigAndAliases(projectConfig, dbAliases), nil
+}
+
+func mergeProjectConfigAndAliases(projectConfig *ProjectConfig, dbAliases []ProjectAlias) []ProjectAlias {
+	if projectConfig == nil {
+		return dbAliases
+	}
+	dbAliasMap := aliasesToMap(dbAliases)
+
 	patchAliases := []ProjectAlias{}
 	for alias, aliases := range dbAliasMap {
 		if IsPatchAlias(alias) {
@@ -128,7 +145,7 @@ func MergeAliasesWithProjectConfig(projectID string, dbAliases []ProjectAlias) (
 	mergedAliases = append(mergedAliases, dbAliasMap[evergreen.GitTagAlias]...)
 	mergedAliases = append(mergedAliases, dbAliasMap[evergreen.GithubPRAlias]...)
 	mergedAliases = append(mergedAliases, patchAliases...)
-	return mergedAliases, nil
+	return mergedAliases
 }
 
 // FindAliasesForRepo fetches all aliases for a given project
@@ -220,6 +237,14 @@ func aliasesToMap(aliases []ProjectAlias) map[string][]ProjectAlias {
 	return output
 }
 
+func aliasesFromMap(input map[string]ProjectAliases) []ProjectAlias {
+	output := []ProjectAlias{}
+	for _, aliases := range input {
+		output = append(output, aliases...)
+	}
+	return output
+}
+
 // FindAliasInProjectRepoOrConfig finds all aliases with a given name for a project.
 // If the project has no aliases, the repo is checked for aliases.
 func FindAliasInProjectRepoOrConfig(projectID, alias string) ([]ProjectAlias, error) {
@@ -234,6 +259,71 @@ func FindAliasInProjectRepoOrConfig(projectID, alias string) ([]ProjectAlias, er
 		return aliases, nil
 	}
 	return findMatchingAliasForProjectConfig(projectID, alias)
+}
+
+// FindMergedAliasesFromProjectRepoOrProjectConfig returns all aliases tht would be used by this project ref configuration,
+// by merging together repo and config aliases, if defined by the project.
+// Sets source equal to where the alias was defined.
+func FindMergedAliasesFromProjectRepoOrProjectConfig(projectRef *ProjectRef, projectConfig *ProjectConfig) ([]ProjectAlias, error) {
+	if projectRef == nil {
+		return nil, nil
+	}
+	projectAliases, err := FindAliasesForProjectFromDb(projectRef.Id)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding project aliases")
+	}
+	aliasesToReturn := map[string]ProjectAliases{}
+	const patchAliasKey = "patch_alias"
+	for _, alias := range projectAliases {
+		aliasName := alias.Alias
+		if IsPatchAlias(aliasName) {
+			aliasName = patchAliasKey
+		}
+		alias.Source = AliasSourceProject
+		aliasesToReturn[aliasName] = append(aliasesToReturn[aliasName], alias)
+	}
+	// All aliases are covered in the project, so there's no reason to look at other sources
+	aliasesCovered := allAliasesCovered(aliasesToReturn)
+	if !aliasesCovered && projectRef.UseRepoSettings() {
+		// Get repo aliases and merge with project aliases
+		repoAliases, err := FindAliasesForRepo(projectRef.RepoRefId)
+		if err != nil {
+			return nil, errors.Wrap(err, "finding repo aliases")
+		}
+		for _, alias := range repoAliases {
+			aliasName := alias.Alias
+			if IsPatchAlias(aliasName) {
+				aliasName = patchAliasKey
+			}
+			alias.Source = AliasSourceRepo
+			// Only add alias if there aren't project aliases
+			if len(aliasesToReturn[aliasName]) == 0 || aliasesToReturn[aliasName][0].Source == alias.Source {
+				aliasesToReturn[aliasName] = append(aliasesToReturn[aliasName], alias)
+			}
+		}
+		// All aliases covered in project/repo, so no reason to look at config
+		aliasesCovered = allAliasesCovered(aliasesToReturn)
+	}
+	res := aliasesFromMap(aliasesToReturn)
+	if !aliasesCovered && projectRef.IsVersionControlEnabled() {
+		mergedAliases := mergeProjectConfigAndAliases(projectConfig, res)
+		// If we've added any new aliases, ensure they're given the config source
+		if len(mergedAliases) > len(res) {
+			for i, a := range mergedAliases {
+				if a.Source == "" {
+					mergedAliases[i].Source = AliasSourceConfig
+				}
+			}
+		}
+		return mergedAliases, nil
+	}
+	return res, nil
+}
+
+// allAliasesCovered assumes that the input is aliases sorted by alias name,
+// and that patch aliases are grouped together.
+func allAliasesCovered(aliases map[string]ProjectAliases) bool {
+	return len(aliases) == len(evergreen.InternalAliases)+1
 }
 
 // FindAliasInProjectRepoOrProjectConfig finds all aliases with a given name for a project.
