@@ -93,6 +93,39 @@ func PopulateHostMonitoring(env evergreen.Environment) amboy.QueueOperation {
 	}
 }
 
+// PopulatePodHealthCheckJobs enqueues the jobs to check pods that have not
+// checked in recently to determine if they are still healthy.
+func PopulatePodHealthCheckJobs() amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.Wrap(err, "getting service flags")
+		}
+
+		if flags.MonitorDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "monitor is disabled",
+				"impact":  "not detecting pods that have not communicated recently",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		pods, err := pod.FindByLastCommunicatedBefore(time.Now().Add(-podReachabilityThreshold))
+		if err != nil {
+			return errors.Wrap(err, "finding pods that have not communicated recently")
+		}
+
+		catcher := grip.NewBasicCatcher()
+		for _, p := range pods {
+			j := NewPodHealthCheckJob(p.ID, utility.RoundPartOfMinute(0))
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, j), "enqueueing pod health check job for pod '%s'", p.ID)
+		}
+
+		return catcher.Resolve()
+	}
+}
+
 func PopulateEventSendJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
