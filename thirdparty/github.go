@@ -25,19 +25,14 @@ import (
 const (
 	NumGithubAttempts   = 3
 	GithubRetryMinDelay = time.Second
-	GithubStatusBase    = "https://status.github.com"
 	GithubAccessURL     = "https://github.com/login/oauth/access_token"
 	githubHookURL       = "%s/rest/v2/hooks/github"
-
-	GithubAPIStatusMinor = "minor"
-	GithubAPIStatusMajor = "major"
-	GithubAPIStatusGood  = "good"
 
 	Github502Error   = "502 Server Error"
 	commitObjectType = "commit"
 	tagObjectType    = "tag"
 
-	githubInvestigation = "Github API Limit Investigation"
+	GithubInvestigation = "Github API Limit Investigation"
 )
 
 // GithubPatch stores patch data for patches create from GitHub pull requests
@@ -80,7 +75,7 @@ func githubShouldRetry(caller string) utility.HTTPRetryFunction {
 				"temporary": temporary,
 			}))
 			grip.InfoWhen(temporary, message.Fields{
-				"ticket":    githubInvestigation,
+				"ticket":    GithubInvestigation,
 				"message":   "error is temporary",
 				"caller":    caller,
 				"retry_num": index,
@@ -90,7 +85,7 @@ func githubShouldRetry(caller string) utility.HTTPRetryFunction {
 
 		if resp == nil {
 			grip.Info(message.Fields{
-				"ticket":    githubInvestigation,
+				"ticket":    GithubInvestigation,
 				"message":   "resp is nil in githubShouldRetry",
 				"caller":    caller,
 				"retry_num": index,
@@ -115,7 +110,7 @@ func githubShouldRetry(caller string) utility.HTTPRetryFunction {
 
 		if resp.StatusCode == http.StatusBadGateway {
 			grip.Info(message.Fields{
-				"ticket":    githubInvestigation,
+				"ticket":    GithubInvestigation,
 				"message":   fmt.Sprintf("hit %d in githubShouldRetry", http.StatusBadGateway),
 				"caller":    caller,
 				"retry_num": index,
@@ -138,7 +133,7 @@ func githubShouldRetryWith404s(caller string) utility.HTTPRetryFunction {
 
 		if resp == nil {
 			grip.Info(message.Fields{
-				"ticket":    githubInvestigation,
+				"ticket":    GithubInvestigation,
 				"message":   "resp is nil in githubShouldRetryWith404s",
 				"caller":    caller,
 				"retry_num": index,
@@ -154,7 +149,7 @@ func githubShouldRetryWith404s(caller string) utility.HTTPRetryFunction {
 		if resp.StatusCode == http.StatusNotFound {
 			logGitHubRateLimit(limit)
 			grip.Info(message.Fields{
-				"ticket":    githubInvestigation,
+				"ticket":    GithubInvestigation,
 				"message":   fmt.Sprintf("hit %d in githubShouldRetryWith404s", http.StatusNotFound),
 				"caller":    caller,
 				"retry_num": index,
@@ -169,7 +164,7 @@ func githubShouldRetryWith404s(caller string) utility.HTTPRetryFunction {
 
 func getGithubClientRetryWith404s(token, caller string) *http.Client {
 	grip.Info(message.Fields{
-		"ticket":  githubInvestigation,
+		"ticket":  GithubInvestigation,
 		"message": "called getGithubClientRetryWith404s",
 		"caller":  caller,
 	})
@@ -185,7 +180,7 @@ func getGithubClientRetryWith404s(token, caller string) *http.Client {
 
 func getGithubClient(token, caller string) *http.Client {
 	grip.Info(message.Fields{
-		"ticket":  githubInvestigation,
+		"ticket":  GithubInvestigation,
 		"message": "called getGithubClient",
 		"caller":  caller,
 	})
@@ -195,7 +190,7 @@ func getGithubClient(token, caller string) *http.Client {
 
 func getGithubClientRetry(token, caller string) *http.Client {
 	grip.Info(message.Fields{
-		"ticket":  githubInvestigation,
+		"ticket":  GithubInvestigation,
 		"message": "called getGithubClientRetry",
 		"caller":  caller,
 	})
@@ -449,7 +444,7 @@ func tryGithubPost(ctx context.Context, url string, oauthToken string, data inte
 	err = utility.Retry(ctx, func() (bool, error) {
 		grip.Info(message.Fields{
 			"message": "Attempting GitHub API POST",
-			"ticket":  githubInvestigation,
+			"ticket":  GithubInvestigation,
 			"url":     url,
 		})
 		resp, err = githubRequest(ctx, http.MethodPost, url, oauthToken, data)
@@ -604,7 +599,7 @@ func IsUserInGithubTeam(ctx context.Context, teams []string, org, user, oauthTok
 	client := github.NewClient(httpClient)
 
 	grip.Info(message.Fields{
-		"ticket":  githubInvestigation,
+		"ticket":  GithubInvestigation,
 		"message": "number of teams in IsUserInGithubTeam",
 		"teams":   len(teams),
 	})
@@ -912,8 +907,7 @@ func missingHeadSHA(pr *github.PullRequest) bool {
 	return pr.Head == nil || pr.Head.GetSHA() == ""
 }
 
-func SendCommitQueueGithubStatus(pr *github.PullRequest, state message.GithubState, description, versionID string) error {
-	env := evergreen.GetEnvironment()
+func SendCommitQueueGithubStatus(env evergreen.Environment, pr *github.PullRequest, state message.GithubState, description, versionID string) error {
 	sender, err := env.GetSender(evergreen.SenderGithubStatus)
 	if err != nil {
 		return errors.Wrap(err, "can't get GitHub status sender")
@@ -939,7 +933,11 @@ func SendCommitQueueGithubStatus(pr *github.PullRequest, state message.GithubSta
 
 	c := message.NewGithubStatusMessageWithRepo(level.Notice, msg)
 	sender.Send(c)
-
+	grip.Info(message.Fields{
+		"ticket":  GithubInvestigation,
+		"message": "called github status send",
+		"caller":  "commit queue github status",
+	})
 	return nil
 }
 

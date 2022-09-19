@@ -1045,6 +1045,11 @@ func SendCommitQueueResult(p *patch.Patch, status message.GithubState, descripti
 		return errors.Wrap(err, "getting GitHub sender")
 	}
 	sender.Send(message.NewGithubStatusMessageWithRepo(level.Notice, msg))
-
+	grip.Info(message.Fields{
+		"ticket":   thirdparty.GithubInvestigation,
+		"message":  "called github status send",
+		"caller":   "commit queue result",
+		"patch_id": p.Id,
+	})
 	return nil
 }
