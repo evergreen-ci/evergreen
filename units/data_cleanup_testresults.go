@@ -93,7 +93,7 @@ deleteDocs:
 		case <-ctx.Done():
 			break deleteDocs
 		default:
-			if time.Since(startAt) >= 50*time.Second {
+			if time.Since(startAt) >= 45*time.Second {
 				break deleteDocs
 			}
 			opStart := time.Now()
