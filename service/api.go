@@ -355,6 +355,10 @@ func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Reque
 		}
 	}
 	aliasParams, err := model.FindParametersForPatchAlias(t.Project, v)
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
 	for _, param := range aliasParams {
 		// We overwrite parameters set directly on the patch alias over the project config parameters.
 		res.Vars[param.Key] = param.Value
