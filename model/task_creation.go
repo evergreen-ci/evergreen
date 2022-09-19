@@ -1,11 +1,12 @@
 package model
 
 import (
+	"time"
+
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"time"
 )
 
 // TaskCreationInfo contains the needed parameters to construct new builds and tasks for a given version.
