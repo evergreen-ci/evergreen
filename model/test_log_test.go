@@ -1,7 +1,6 @@
 package model
 
 import (
-	"sync"
 	"testing"
 	"time"
 
@@ -58,57 +57,28 @@ func TestDeleteTestLogsWithLimit(t *testing.T) {
 	ctx, cancel := env.Context()
 	defer cancel()
 
+	now := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+
 	t.Run("DetectsOutOfBounds", func(t *testing.T) {
-		assert.Panics(t, func() {
-			_, _ = DeleteTestLogsWithLimit(ctx, env, time.Now(), 200*1000)
-		})
-		assert.NotPanics(t, func() {
-			_, _ = DeleteTestLogsWithLimit(ctx, env, time.Now(), 1)
-		})
+		deletedCount, err := DeleteTestLogsWithLimit(ctx, env, now, maxDeleteCount+1)
+		assert.Error(t, err)
+		assert.Zero(t, deletedCount)
 	})
 	t.Run("QueryValidation", func(t *testing.T) {
 		require.NoError(t, db.Clear(TestLogCollection))
-		require.NoError(t, db.Insert(TestLogCollection, bson.M{"_id": primitive.NewObjectIDFromTimestamp(time.Now().Add(time.Hour)).Hex()}))
-		require.NoError(t, db.Insert(TestLogCollection, bson.M{"_id": primitive.NewObjectIDFromTimestamp(time.Now().Add(-time.Hour)).Hex()}))
+		require.NoError(t, db.Insert(TestLogCollection, bson.M{"_id": primitive.NewObjectIDFromTimestamp(now.Add(time.Hour)).Hex()}))
+		require.NoError(t, db.Insert(TestLogCollection, bson.M{"_id": primitive.NewObjectIDFromTimestamp(now.Add(-time.Hour)).Hex()}))
 
 		num, err := db.Count(TestLogCollection, bson.M{})
 		require.NoError(t, err)
 		assert.Equal(t, 2, num)
 
-		num, err = DeleteTestLogsWithLimit(ctx, env, time.Now(), 2)
+		num, err = DeleteTestLogsWithLimit(ctx, env, now, 2)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, num)
 
 		num, err = db.Count(TestLogCollection, bson.M{})
 		require.NoError(t, err)
 		assert.Equal(t, 1, num)
-	})
-	t.Run("Parallel", func(t *testing.T) {
-		require.NoError(t, db.Clear(TestLogCollection))
-		for i := 0; i < 1000; i++ {
-			if i%2 == 0 {
-				require.NoError(t, db.Insert(TestLogCollection, bson.M{"_id": primitive.NewObjectIDFromTimestamp(time.Now().Add(time.Hour)).Hex()}))
-			} else {
-				require.NoError(t, db.Insert(TestLogCollection, bson.M{"_id": primitive.NewObjectIDFromTimestamp(time.Now().Add(-time.Hour)).Hex()}))
-			}
-		}
-		num, err := db.Count(TestLogCollection, bson.M{})
-		require.NoError(t, err)
-		assert.Equal(t, 1000, num)
-
-		var wg sync.WaitGroup
-		for i := 0; i < 10; i++ {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				_, delErr := DeleteTestLogsWithLimit(ctx, env, time.Now(), 100)
-				require.NoError(t, delErr)
-			}()
-		}
-		wg.Wait()
-
-		num, err = db.Count(TestLogCollection, bson.M{})
-		require.NoError(t, err)
-		assert.Equal(t, 500, num)
 	})
 }
