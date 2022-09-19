@@ -9,7 +9,7 @@
       "result": {
         "errors": [
           {
-            "message": "volume 'not-real' does not exist",
+            "message": "volume 'not-real' not found",
             "path": ["removeVolume"],
             "extensions": { "code": "RESOURCE_NOT_FOUND" }
           }
