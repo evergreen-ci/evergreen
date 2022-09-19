@@ -3,6 +3,7 @@ package task
 import (
 	"context"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"strconv"
 	"testing"
 	"time"
@@ -24,6 +25,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
+
+func init() { testutil.Setup() }
 
 var (
 	oneMs = time.Millisecond
@@ -3261,6 +3264,14 @@ func TestArchiveManyAfterFailedOnly(t *testing.T) {
 	}
 	assert.NoError(t, t4.Insert())
 
+	// During runtime we do not archive the same task multiple times without resetting in between.
+	// For the sake of this test, we manually untoggle CanReset so we can archive the task multiple times in a row.
+	err = UpdateOne(
+		bson.M{IdKey: t3.Id},
+		bson.M{"$set": bson.M{CanResetKey: false}},
+	)
+	require.NoError(t, err)
+
 	t3Pointer, err := FindByIdExecution(t3.Id, nil)
 	assert.NoError(t, err)
 	t3Pointer.ResetFailedWhenFinished = false
@@ -3951,8 +3962,13 @@ func TestArchiveFailedOnly(t *testing.T) {
 
 	// This test is for the edge case of archiving with only failed execution tasks, then archiving all execution tasks
 	t.Run("ArchivesExecutionTasksAfterFailedOnly", func(t *testing.T) {
+		// Manually clear CanReset for the sake of this test.
+		err := UpdateOne(
+			bson.M{IdKey: dt.Id},
+			bson.M{"$set": bson.M{CanResetKey: false}},
+		)
+		require.NoError(t, err)
 		dt.ResetFailedWhenFinished = false
-
 		// Verifies the results from the last test as a basis (more on below comment)
 		require.Equal(t, 1, dt.Execution)
 		t1, err := FindOneId(dt.ExecutionTasks[0])
@@ -4501,6 +4517,11 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByIdAndExecution() {
 	s.NoError(testTask1.Insert())
 	for i := 0; i < 10; i++ {
 		s.NoError(testTask1.Archive())
+		err := UpdateOne(
+			bson.M{IdKey: "task_1"},
+			bson.M{CanResetKey: false},
+		)
+		s.NoError(err)
 		testTask1.Execution += 1
 	}
 	for i := 0; i < 10; i++ {

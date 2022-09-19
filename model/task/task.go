@@ -2536,10 +2536,14 @@ func (t *Task) Archive() error {
 			bson.M{
 				IdKey:     t.Id,
 				StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses},
-				"$or": []bson.M{{
-					CanResetKey: false,
-					CanResetKey: bson.M{"$exists": false},
-				}},
+				"$or": []bson.M{
+					{
+						CanResetKey: bson.M{"$exists": false},
+					},
+					{
+						CanResetKey: false,
+					},
+				},
 			},
 			updateDisplayTasksAndTasksBson(),
 		)
@@ -2641,10 +2645,14 @@ func archiveAll(taskIds, execTaskIds, toRestartExecTaskIds []string, archivedTas
 				bson.M{
 					IdKey:     bson.M{"$in": taskIds},
 					StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses},
-					"$or": []bson.M{{
-						CanResetKey: false,
-						CanResetKey: bson.M{"$exists": false},
-					}},
+					"$or": []bson.M{
+						{
+							CanResetKey: bson.M{"$exists": false},
+						},
+						{
+							CanResetKey: false,
+						},
+					},
 				},
 				updateDisplayTasksAndTasksBson(),
 			)
