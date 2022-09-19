@@ -22,7 +22,7 @@
       "result": {
         "errors": [
           {
-            "message": "must specify volume id",
+            "message": "must specify volume ID",
             "path": ["removeVolume"],
             "extensions": { "code": "INPUT_VALIDATION_ERROR" }
           }
