@@ -293,13 +293,15 @@ func (m *hostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 			return
 		}
 	}
-	if _, statusCode, err := model.ValidateHost(hostID, r); err != nil {
+	h, statusCode, err := model.ValidateHost(hostID, r)
+	if err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: statusCode,
 			Message:    errors.Wrapf(err, "invalid host '%s'", hostID).Error(),
 		}))
 		return
 	}
+	updateHostAccessTime(h)
 	next(rw, r)
 }
 
@@ -342,20 +344,7 @@ func (m *podOrHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Requ
 			}))
 			return
 		}
-		// update host access time
-		if err := h.UpdateLastCommunicated(); err != nil {
-			grip.Warningf("Could not update host last communication time for %s: %+v", h.Id, err)
-		}
-		// Since the host has contacted the app server, we should prevent the
-		// app server from attempting to deploy agents or agent monitors.
-		// Deciding whether we should redeploy agents or agent monitors
-		// is handled within the REST route handler.
-		if h.NeedsNewAgent {
-			grip.Warning(message.WrapError(h.SetNeedsNewAgent(false), "problem clearing host needs new agent"))
-		}
-		if h.NeedsNewAgentMonitor {
-			grip.Warning(message.WrapError(h.SetNeedsNewAgentMonitor(false), "problem clearing host needs new agent monitor"))
-		}
+		updateHostAccessTime(h)
 		next(rw, r)
 		return
 	}
@@ -551,6 +540,24 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 	}
 
 	next(rw, r)
+}
+
+// updateHostAccessTime updates the host access time and disables the host's flags to deploy new a new agent
+// or agent monitor if they are set.
+func updateHostAccessTime(h *host.Host) {
+	if err := h.UpdateLastCommunicated(); err != nil {
+		grip.Warningf("Could not update host last communication time for %s: %+v", h.Id, err)
+	}
+	// Since the host has contacted the app server, we should prevent the
+	// app server from attempting to deploy agents or agent monitors.
+	// Deciding whether we should redeploy agents or agent monitors
+	// is handled within the REST route handler.
+	if h.NeedsNewAgent {
+		grip.Warning(message.WrapError(h.SetNeedsNewAgent(false), "problem clearing host needs new agent"))
+	}
+	if h.NeedsNewAgentMonitor {
+		grip.Warning(message.WrapError(h.SetNeedsNewAgentMonitor(false), "problem clearing host needs new agent monitor"))
+	}
 }
 
 // canAlwaysSubmitPatchesForProject returns true if the user is a superuser or project admin,
