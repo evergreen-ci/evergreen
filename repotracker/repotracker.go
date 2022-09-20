@@ -526,6 +526,12 @@ func addGithubCheckSubscriptions(v *model.Version) error {
 	}
 
 	sender.Send(c)
+	grip.Info(message.Fields{
+		"ticket":  thirdparty.GithubInvestigation,
+		"message": "called github status send",
+		"caller":  "github check subscriptions",
+		"version": v.Id,
+	})
 	return catcher.Resolve()
 }
 
