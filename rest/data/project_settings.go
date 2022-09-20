@@ -213,9 +213,8 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		if err = handleGithubConflicts(mergedProjectRef, "Toggling GitHub features"); err != nil {
 			return nil, err
 		}
-		// At project creation we now insert a commit queue, however older projects still may not have one
-		// so we need to validate that this exists if the feature is being toggled on.
-		if mergedBeforeRef.CommitQueue.IsEnabled() && mergedProjectRef.CommitQueue.IsEnabled() {
+
+		if !mergedBeforeRef.CommitQueue.IsEnabled() && mergedProjectRef.CommitQueue.IsEnabled() {
 			if err = commitqueue.EnsureCommitQueueExistsForProject(mergedProjectRef.Id); err != nil {
 				return nil, err
 			}

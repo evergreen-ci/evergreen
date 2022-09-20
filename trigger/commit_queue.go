@@ -88,7 +88,7 @@ func (t *commitQueueTriggers) makeData(sub *event.Subscription) (*commonTemplate
 	}
 	url := ""
 	if t.patch.Version != "" {
-		url = fmt.Sprintf("%s/version/%s", t.uiConfig.Url, t.patch.Version)
+		url = fmt.Sprintf("%s/version/%s?redirect_spruce_users=true", t.uiConfig.Url, t.patch.Version)
 	}
 	projectName := t.patch.Project
 	identifier, err := model.GetIdentifierForProject(t.patch.Project)

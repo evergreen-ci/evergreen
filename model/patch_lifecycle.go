@@ -1042,7 +1042,7 @@ func SendCommitQueueResult(p *patch.Patch, status message.GithubState, descripti
 		if err != nil {
 			return errors.Wrap(err, "unable to get settings")
 		}
-		url = fmt.Sprintf("%s/version/%s", settings.Ui.Url, p.Version)
+		url = fmt.Sprintf("%s/version/%s?redirect_spruce_users=true", settings.Ui.Url, p.Version)
 	}
 	msg := message.GithubStatus{
 		Owner:       projectRef.Owner,
