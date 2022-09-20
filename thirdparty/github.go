@@ -923,7 +923,7 @@ func SendCommitQueueGithubStatus(pr *github.PullRequest, state message.GithubSta
 	if versionID != "" {
 		uiConfig := evergreen.UIConfig{}
 		if err := uiConfig.Get(env); err == nil {
-			url = fmt.Sprintf("%s/version/%s", uiConfig.Url, versionID)
+			url = fmt.Sprintf("%s/version/%s?redirect_spruce_users=true", uiConfig.Url, versionID)
 		}
 	}
 
