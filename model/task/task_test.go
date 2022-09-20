@@ -3,7 +3,6 @@ package task
 import (
 	"context"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"strconv"
 	"testing"
 	"time"
@@ -25,8 +24,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
-
-func init() { testutil.Setup() }
 
 var (
 	oneMs = time.Millisecond
