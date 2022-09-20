@@ -80,7 +80,8 @@ func CopyProject(ctx context.Context, env evergreen.Environment, opts CopyProjec
 		catcher.Wrapf(err, "updating admins for project '%s'", opts.NewProjectIdentifier)
 	}
 
-	// We can pass in an empty before here since the project is new
+	// Since this is a new project we want to log all settings that were copied,
+	// so we pass in an empty ProjectSettings struct for the original project state.
 	if err := model.GetAndLogProjectModified(projectToCopy.Id, u.Id, false, &model.ProjectSettings{}); err != nil {
 		catcher.Wrapf(err, "logging project modified")
 	}
