@@ -195,6 +195,13 @@ func TestBuildSetPriority(t *testing.T) {
 }
 
 func TestBuildRestart(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection))
+	}()
+
+	// Running a multi-document transaction requires the collections to exist
+	// first before any documents can be inserted.
+	require.NoError(t, db.CreateCollections(task.Collection, task.OldCollection))
 	Convey("Restarting a build", t, func() {
 
 		Convey("with task abort should update the status of"+
@@ -1994,7 +2001,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 
 	// test that restarting a task correctly resets the task and archives it
 	assert.NoError(resetTaskData())
-	assert.NoError(resetTask("displayTask", "caller", false))
+	assert.NoError(resetTask("displayTask", "caller"))
 	archivedTasks, err := task.FindOldWithDisplayTasks(nil)
 	assert.NoError(err)
 	assert.Len(archivedTasks, 3)
@@ -2018,7 +2025,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	dt, err := task.FindOneId("displayTask")
 	assert.NoError(err)
 	assert.NoError(dt.SetResetFailedWhenFinished())
-	assert.NoError(resetTask(dt.Id, "caller", false))
+	assert.NoError(resetTask(dt.Id, "caller"))
 	tasks, err = task.FindAll(db.Query(task.ByIds(allTasks)))
 	assert.NoError(err)
 	assert.Len(tasks, 3)

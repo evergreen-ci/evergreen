@@ -3136,6 +3136,7 @@ func TestArchiveMany(t *testing.T) {
 	assert.NoError(t, et.Insert())
 	dt := Task{
 		Id:             "dt",
+		Status:         evergreen.TaskSucceeded,
 		DisplayOnly:    true,
 		ExecutionTasks: []string{et.Id},
 		Version:        "v",
@@ -3259,6 +3260,14 @@ func TestArchiveManyAfterFailedOnly(t *testing.T) {
 		Version:   "v",
 	}
 	assert.NoError(t, t4.Insert())
+
+	// During runtime we do not archive the same task multiple times without resetting in between.
+	// For the sake of this test, we manually untoggle CanReset so we can archive the task multiple times in a row.
+	err = UpdateOne(
+		bson.M{IdKey: t3.Id},
+		bson.M{"$set": bson.M{CanResetKey: false}},
+	)
+	require.NoError(t, err)
 
 	t3Pointer, err := FindByIdExecution(t3.Id, nil)
 	assert.NoError(t, err)
@@ -3798,6 +3807,7 @@ func TestArchive(t *testing.T) {
 			execTask := Task{
 				Id:            "execTask",
 				DisplayTaskId: utility.ToStringPtr(dt.Id),
+				Status:        evergreen.TaskSucceeded,
 			}
 			archivedExecTaskID := MakeOldID(execTask.Id, execTask.Execution)
 			archivedExecution := execTask.Execution
@@ -3831,7 +3841,8 @@ func TestArchive(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(Collection, OldCollection, event.LegacyEventLogCollection))
 			tsk := Task{
-				Id: "taskID",
+				Id:     "taskID",
+				Status: evergreen.TaskSucceeded,
 			}
 			tCase(t, tsk)
 		})
@@ -3948,8 +3959,13 @@ func TestArchiveFailedOnly(t *testing.T) {
 
 	// This test is for the edge case of archiving with only failed execution tasks, then archiving all execution tasks
 	t.Run("ArchivesExecutionTasksAfterFailedOnly", func(t *testing.T) {
+		// Manually clear CanReset for the sake of this test.
+		err := UpdateOne(
+			bson.M{IdKey: dt.Id},
+			bson.M{"$set": bson.M{CanResetKey: false}},
+		)
+		require.NoError(t, err)
 		dt.ResetFailedWhenFinished = false
-
 		// Verifies the results from the last test as a basis (more on below comment)
 		require.Equal(t, 1, dt.Execution)
 		t1, err := FindOneId(dt.ExecutionTasks[0])
@@ -4493,10 +4509,16 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByIdAndExecution() {
 		Id:        "task_1",
 		Execution: 0,
 		BuildId:   "build_1",
+		Status:    evergreen.TaskSucceeded,
 	}
 	s.NoError(testTask1.Insert())
 	for i := 0; i < 10; i++ {
 		s.NoError(testTask1.Archive())
+		err := UpdateOne(
+			bson.M{IdKey: "task_1"},
+			bson.M{CanResetKey: false},
+		)
+		s.NoError(err)
 		testTask1.Execution += 1
 	}
 	for i := 0; i < 10; i++ {
@@ -4581,6 +4603,7 @@ func (s *TaskConnectorFetchByIdSuite) TestFindOldTasksByIDWithDisplayTasks() {
 		Id:        "task_1",
 		Execution: 0,
 		BuildId:   "build_1",
+		Status:    evergreen.TaskSucceeded,
 	}
 	s.NoError(testTask1.Insert())
 	testTask2 := &Task{
@@ -4588,6 +4611,7 @@ func (s *TaskConnectorFetchByIdSuite) TestFindOldTasksByIDWithDisplayTasks() {
 		Execution:   0,
 		BuildId:     "build_1",
 		DisplayOnly: true,
+		Status:      evergreen.TaskSucceeded,
 	}
 	s.NoError(testTask2.Insert())
 	for i := 0; i < 10; i++ {
