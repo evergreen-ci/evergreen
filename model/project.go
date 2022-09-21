@@ -1769,14 +1769,14 @@ func (p *Project) IsGenerateTask(taskName string) bool {
 	return ok
 }
 
-func FindAliasesForPatch(identifier, alias string, patchDoc *patch.Patch) ([]ProjectAlias, error) {
-	vars, shouldExit, err := FindAliasInProjectOrRepoFromDb(identifier, alias)
+func FindAliasesForPatch(projectId, alias string, patchDoc *patch.Patch) ([]ProjectAlias, error) {
+	vars, shouldExit, err := FindAliasInProjectOrRepoFromDb(projectId, alias)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting alias from project")
 	}
 	if !shouldExit && len(vars) == 0 {
 		if len(patchDoc.PatchedProjectConfig) > 0 {
-			projectConfig, err := CreateProjectConfig([]byte(patchDoc.PatchedProjectConfig), identifier)
+			projectConfig, err := CreateProjectConfig([]byte(patchDoc.PatchedProjectConfig), projectId)
 			if err != nil {
 				return nil, errors.Wrap(err, "retrieving aliases from patched config")
 			}
@@ -1785,7 +1785,7 @@ func FindAliasesForPatch(identifier, alias string, patchDoc *patch.Patch) ([]Pro
 				return nil, errors.Wrapf(err, "retrieving alias '%s' from project config", alias)
 			}
 		} else {
-			vars, err = findMatchingAliasForProjectConfig(identifier, alias)
+			vars, err = findMatchingAliasForProjectConfig(projectId, alias)
 			if err != nil {
 				return nil, errors.Wrapf(err, "retrieving alias '%s' from project config", alias)
 			}
