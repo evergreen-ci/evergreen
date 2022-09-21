@@ -102,11 +102,29 @@ var (
 	// Some functions that one would expect to return quickly have been omitted from having this as a 'before' function since downloading and installing
 	// takes time that would be cumbersome to the user (e.g. list functions, delete functions).
 	autoUpdateCLI = func(c *cli.Context) error {
-		confPath := c.Parent().String(confFlagName)
+		rootCtx := c
+		var i int
+		// Since we don't know at which sub-command context level this can be
+		// called at, we have to search for the parent context until we reach
+		// the root. Parent() should return either nil (no parent) or the exact
+		// same context (the root context's parent is self-referential).
+		for parentCtx := rootCtx.Parent(); parentCtx != nil && parentCtx != rootCtx; parentCtx = rootCtx.Parent() {
+			if i > 10 {
+				// This is just to avoid a potential infinite loop. It seems
+				// really unlikely the CLI will have more than 10 nested
+				// sub-commands.
+				break
+			}
+			rootCtx = parentCtx
+			i++
+		}
+
+		confPath := rootCtx.String(confFlagName)
 		// we do not return an error in case of failure to find a valid config path because we do not want to block the underlying CLI operation.
 		if confPath == "" {
 			return nil
 		}
+
 		conf, err := NewClientSettings(confPath)
 		if err != nil {
 			grip.Errorf("Problem loading configuration: %s", err.Error())
