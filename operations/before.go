@@ -104,9 +104,10 @@ var (
 	autoUpdateCLI = func(c *cli.Context) error {
 		rootCtx := c
 		var i int
-		// Since we don't know at which sub-command context level this can be
-		// called at, we have to search for the parent context until we reach
-		// the root. Parent() should return either nil (no parent) or the exact
+		// Since this could be used at any sub-command context level, walk up
+		// the parent contexts until the root context containing the config flag
+		// is found.
+		// Parent() should return either nil (no parent) or the exact
 		// same context (the root context's parent is self-referential).
 		for parentCtx := rootCtx.Parent(); parentCtx != nil && parentCtx != rootCtx; parentCtx = rootCtx.Parent() {
 			if i > 10 {
