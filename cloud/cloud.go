@@ -247,5 +247,5 @@ func ConvertContainerManager(m Manager) (ContainerManager, error) {
 	if cm, ok := m.(ContainerManager); ok {
 		return cm, nil
 	}
-	return nil, errors.Errorf("converting manager %T to container manager", m)
+	return nil, errors.Errorf("programmer error: cannot convert manager %T to container manager", m)
 }
