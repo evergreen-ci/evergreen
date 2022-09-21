@@ -503,10 +503,13 @@ func constructAliasWarnings(aliasMap map[string]model.ProjectAlias, aliasNeedsVa
 		errs = append(errs, strings.Join(msgComponents, " "))
 	}
 	sort.Strings(errs)
-	res = append(res, ValidationError{
-		Message: strings.Join(errs, "\n"),
-		Level:   Warning,
-	})
+	for _, err := range errs {
+		res = append(res, ValidationError{
+			Message: err,
+			Level:   Warning,
+		})
+	}
+
 	return res
 }
 

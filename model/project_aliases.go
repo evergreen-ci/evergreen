@@ -261,6 +261,9 @@ func FindAliasInProjectRepoOrConfig(projectID, alias string) ([]ProjectAlias, er
 	return findMatchingAliasForProjectConfig(projectID, alias)
 }
 
+// patchAliasKey is used internally to group patch aliases together.
+const patchAliasKey = "patch_alias"
+
 // FindMergedAliasesFromProjectRepoOrProjectConfig returns all aliases tht would be used by this project ref configuration,
 // by merging together repo and config aliases, if defined by the project.
 // Sets source equal to where the alias was defined.
@@ -273,7 +276,6 @@ func FindMergedAliasesFromProjectRepoOrProjectConfig(projectRef *ProjectRef, pro
 		return nil, errors.Wrap(err, "finding project aliases")
 	}
 	aliasesToReturn := map[string]ProjectAliases{}
-	const patchAliasKey = "patch_alias"
 	for _, alias := range projectAliases {
 		aliasName := alias.Alias
 		if IsPatchAlias(aliasName) {
@@ -282,9 +284,9 @@ func FindMergedAliasesFromProjectRepoOrProjectConfig(projectRef *ProjectRef, pro
 		alias.Source = AliasSourceProject
 		aliasesToReturn[aliasName] = append(aliasesToReturn[aliasName], alias)
 	}
-	// All aliases are covered in the project, so there's no reason to look at other sources
-	aliasesCovered := allAliasesCovered(aliasesToReturn)
-	if !aliasesCovered && projectRef.UseRepoSettings() {
+	// If all aliases are covered in the project, so there's no reason to look at other sources
+	uncoveredAliases := uncoveredAliasTypes(aliasesToReturn)
+	if len(uncoveredAliases) > 0 && projectRef.UseRepoSettings() {
 		// Get repo aliases and merge with project aliases
 		repoAliases, err := FindAliasesForRepo(projectRef.RepoRefId)
 		if err != nil {
@@ -295,17 +297,17 @@ func FindMergedAliasesFromProjectRepoOrProjectConfig(projectRef *ProjectRef, pro
 			if IsPatchAlias(aliasName) {
 				aliasName = patchAliasKey
 			}
-			alias.Source = AliasSourceRepo
-			// Only add alias if there aren't project aliases
-			if len(aliasesToReturn[aliasName]) == 0 || aliasesToReturn[aliasName][0].Source == alias.Source {
-				aliasesToReturn[aliasName] = append(aliasesToReturn[aliasName], alias)
+			if !utility.StringSliceContains(uncoveredAliases, aliasName) { // Only add alias if there aren't project aliases
+				continue
 			}
+			alias.Source = AliasSourceRepo
+			aliasesToReturn[aliasName] = append(aliasesToReturn[aliasName], alias)
 		}
-		// All aliases covered in project/repo, so no reason to look at config
-		aliasesCovered = allAliasesCovered(aliasesToReturn)
+		// If all aliases covered in project/repo, then no reason to look at config
+		uncoveredAliases = uncoveredAliasTypes(aliasesToReturn)
 	}
 	res := aliasesFromMap(aliasesToReturn)
-	if !aliasesCovered && projectRef.IsVersionControlEnabled() {
+	if len(uncoveredAliases) > 0 && projectRef.IsVersionControlEnabled() {
 		mergedAliases := mergeProjectConfigAndAliases(projectConfig, res)
 		// If we've added any new aliases, ensure they're given the config source
 		if len(mergedAliases) > len(res) {
@@ -324,6 +326,17 @@ func FindMergedAliasesFromProjectRepoOrProjectConfig(projectRef *ProjectRef, pro
 // and that patch aliases are grouped together.
 func allAliasesCovered(aliases map[string]ProjectAliases) bool {
 	return len(aliases) == len(evergreen.InternalAliases)+1
+}
+
+func uncoveredAliasTypes(aliases map[string]ProjectAliases) []string {
+	res := []string{}
+	aliasesToCheck := append(evergreen.InternalAliases, patchAliasKey)
+	for _, name := range aliasesToCheck {
+		if len(aliases[name]) == 0 {
+			res = append(res, name)
+		}
+	}
+	return res
 }
 
 // FindAliasInProjectRepoOrProjectConfig finds all aliases with a given name for a project.
