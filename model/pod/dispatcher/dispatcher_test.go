@@ -172,7 +172,7 @@ func TestAssignNextTask(t *testing.T) {
 		dbPod, err := pod.FindOneByID(p.ID)
 		require.NoError(t, err)
 		require.NotZero(t, dbPod)
-		assert.Equal(t, tsk.Id, dbPod.RunningTask)
+		assert.Equal(t, tsk.Id, dbPod.TaskRuntimeInfo.RunningTaskID)
 		assert.Equal(t, pod.StatusDecommissioned, dbPod.Status)
 
 		taskEvents, err := event.FindAllByResourceID(dbTask.Id)
@@ -408,7 +408,7 @@ func TestAssignNextTask(t *testing.T) {
 			checkDispatcherTasks(t, params.dispatcher, []string{params.task.Id})
 		},
 		"FailsWithPodAlreadyAssignedTask": func(ctx context.Context, t *testing.T, params testCaseParams) {
-			params.pod.RunningTask = "running-task"
+			params.pod.TaskRuntimeInfo.RunningTaskID = "running-task"
 			require.NoError(t, params.pod.Insert())
 			require.NoError(t, params.task.Insert())
 			require.NoError(t, params.ref.Insert())

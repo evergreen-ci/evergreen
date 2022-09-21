@@ -188,16 +188,8 @@ func (j *podTerminationJob) populateIfUnset(ctx context.Context) error {
 // no pods remaining to run tasks after this one is terminated, it marks the
 // tasks in the dispatcher as needing re-allocation.
 func (j *podTerminationJob) fixStrandedTasks(ctx context.Context) error {
-	if j.pod.RunningTask != "" {
-		// A stranded task will need to be re-allocated to ensure that it
-		// dispatches to a new pod after this one is terminated.
-		if err := task.MarkTasksAsContainerDeallocated([]string{j.pod.RunningTask}); err != nil {
-			return errors.Wrapf(err, "marking stranded container task '%s' running on pod '%s' as deallocated", j.pod.RunningTask, j.pod.ID)
-		}
-
-		if err := model.ClearAndResetStrandedContainerTask(j.pod); err != nil {
-			return errors.Wrapf(err, "resetting stranded container task '%s' running on pod '%s'", j.pod.RunningTask, j.pod.ID)
-		}
+	if err := j.fixStrandedRunningTask(ctx); err != nil {
+		return errors.Wrapf(err, "fixing container task stranded on pod '%s'", j.pod.ID)
 	}
 
 	disp, err := dispatcher.FindOneByPodID(j.pod.ID)
@@ -210,6 +202,46 @@ func (j *podTerminationJob) fixStrandedTasks(ctx context.Context) error {
 
 	if err := disp.RemovePod(ctx, j.env, j.pod.ID); err != nil {
 		return errors.Wrapf(err, "removing pod '%s' from dispatcher '%s'", j.pod.ID, disp.ID)
+	}
+
+	return nil
+}
+
+func (j *podTerminationJob) fixStrandedRunningTask(ctx context.Context) error {
+	if j.pod.TaskRuntimeInfo.RunningTaskID == "" {
+		return nil
+	}
+
+	// A stranded task will need to be re-allocated to ensure that it
+	// dispatches to a new pod after this one is terminated.
+
+	t, err := task.FindOneIdAndExecution(j.pod.TaskRuntimeInfo.RunningTaskID, j.pod.TaskRuntimeInfo.RunningTaskExecution)
+	if err != nil {
+		return errors.Wrapf(err, "finding stranded container task '%s' execution %d", j.pod.TaskRuntimeInfo.RunningTaskID, j.pod.TaskRuntimeInfo.RunningTaskExecution)
+	}
+	if t == nil {
+		return nil
+	}
+	if t.Archived {
+		// This should never log because a task should only be archived once
+		// it's in a finished state. It would be extra complexity to try putting
+		// an already-archived task execution in a finished state, so no-op in
+		// this case.
+		grip.WarningWhen(!t.IsFinished(), message.Fields{
+			"message":   "stranded container task has already been archived but is not in a finished state, refusing to fix it",
+			"task":      t.Id,
+			"execution": t.Execution,
+			"status":    t.Status,
+		})
+		return nil
+	}
+
+	if err := t.MarkAsContainerDeallocated(ctx, j.env); err != nil {
+		return errors.Wrapf(err, "marking stranded container task '%s' execution %d running on pod '%s' as deallocated", j.pod.TaskRuntimeInfo.RunningTaskID, j.pod.TaskRuntimeInfo.RunningTaskExecution, j.pod.ID)
+	}
+
+	if err := model.ClearAndResetStrandedContainerTask(j.pod); err != nil {
+		return errors.Wrapf(err, "resetting stranded container task '%s' execution %d running on pod '%s'", j.pod.TaskRuntimeInfo.RunningTaskID, j.pod.TaskRuntimeInfo.RunningTaskExecution, j.pod.ID)
 	}
 
 	return nil

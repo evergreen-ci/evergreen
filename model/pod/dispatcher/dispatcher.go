@@ -92,8 +92,8 @@ func (pd *PodDispatcher) UpsertAtomically() (*adb.ChangeInfo, error) {
 // there's no task available to run. If the pod is already running a task, this
 // will return an error.
 func (pd *PodDispatcher) AssignNextTask(ctx context.Context, env evergreen.Environment, p *pod.Pod) (*task.Task, error) {
-	if p.RunningTask != "" {
-		return nil, errors.Errorf("cannot assign a new task to a pod that is already running task '%s'", p.RunningTask)
+	if p.TaskRuntimeInfo.RunningTaskID != "" {
+		return nil, errors.Errorf("cannot assign a new task to a pod that is already running task '%s' execution %d", p.TaskRuntimeInfo.RunningTaskID, p.TaskRuntimeInfo.RunningTaskExecution)
 	}
 
 	grip.WarningWhen(len(pd.TaskIDs) > 1, message.Fields{
@@ -179,7 +179,7 @@ func (pd *PodDispatcher) dispatchTaskAtomically(ctx context.Context, env evergre
 
 func (pd *PodDispatcher) dispatchTask(env evergreen.Environment, p *pod.Pod, t *task.Task) func(mongo.SessionContext) (interface{}, error) {
 	return func(sessCtx mongo.SessionContext) (interface{}, error) {
-		if err := p.SetRunningTask(sessCtx, env, t.Id); err != nil {
+		if err := p.SetRunningTask(sessCtx, env, t.Id, t.Execution); err != nil {
 			return nil, errors.Wrapf(err, "setting pod's running task")
 		}
 

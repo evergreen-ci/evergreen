@@ -3808,7 +3808,8 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 			dbPod, err := pod.FindOneByID(p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
-			assert.Zero(t, dbPod.RunningTask)
+			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskID)
+			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskExecution)
 
 			dbArchivedTask, err := task.FindOneOldByIdAndExecution(tsk.Id, 1)
 			require.NoError(t, err)
@@ -3892,24 +3893,26 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 			dbPod, err := pod.FindOneByID(p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
-			assert.Zero(t, dbPod.RunningTask)
+			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskID)
+			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskExecution)
 
 			dbTask, err := task.FindOneId(tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			assert.Equal(t, status, dbTask.Status)
 		},
+		// kim; TODO: add test for non-latest task fixing.
 		"FailsWithConflictingDBAndInMemoryRunningTasks": func(t *testing.T, p pod.Pod, tsk task.Task) {
 			const runningTask = "some_other_task"
-			p.RunningTask = runningTask
+			p.TaskRuntimeInfo.RunningTaskID = runningTask
 			require.NoError(t, p.Insert())
-			p.RunningTask = tsk.Id
+			p.TaskRuntimeInfo.RunningTaskID = tsk.Id
 			require.NoError(t, tsk.Insert())
 
 			assert.Error(t, ClearAndResetStrandedContainerTask(&p))
 		},
 		"ClearsNonexistentTaskFromPod": func(t *testing.T, p pod.Pod, tsk task.Task) {
-			p.RunningTask = "nonexistent_task"
+			p.TaskRuntimeInfo.RunningTaskID = "nonexistent_task"
 			require.NoError(t, p.Insert())
 
 			require.NoError(t, ClearAndResetStrandedContainerTask(&p))
@@ -3917,17 +3920,20 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 			dbPod, err := pod.FindOneByID(p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
-			assert.Zero(t, dbPod.RunningTask)
+			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskID)
+			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskExecution)
 		},
 		"NoopsForPodNotRunningAnyTask": func(t *testing.T, p pod.Pod, tsk task.Task) {
-			p.RunningTask = ""
+			p.TaskRuntimeInfo.RunningTaskID = ""
+			p.TaskRuntimeInfo.RunningTaskExecution = 0
 			require.NoError(t, p.Insert())
 
 			require.NoError(t, ClearAndResetStrandedContainerTask(&p))
 			dbPod, err := pod.FindOneByID(p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
-			assert.Zero(t, dbPod.RunningTask)
+			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskID)
+			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskExecution)
 		},
 		"FailsTaskThatHitsUnschedulableThresholdWithoutRestartingIt": func(t *testing.T, p pod.Pod, tsk task.Task) {
 			require.NoError(t, p.Insert())
@@ -3939,7 +3945,8 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 			dbPod, err := pod.FindOneByID(p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
-			assert.Zero(t, dbPod.RunningTask)
+			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskID)
+			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskExecution)
 
 			dbTask, err := task.FindOneId(tsk.Id)
 			require.NoError(t, err)
@@ -3967,8 +3974,9 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 		},
 		"FailsTaskThatHitsMaxExecutionRestartsWithoutRestartingIt": func(t *testing.T, p pod.Pod, tsk task.Task) {
 			const execNum = evergreen.MaxTaskExecution + 1
-			require.NoError(t, p.Insert())
 			tsk.Execution = execNum
+			p.TaskRuntimeInfo.RunningTaskExecution = execNum
+			require.NoError(t, p.Insert())
 			require.NoError(t, tsk.Insert())
 
 			require.NoError(t, ClearAndResetStrandedContainerTask(&p))
@@ -3976,7 +3984,8 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 			dbPod, err := pod.FindOneByID(p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
-			assert.Zero(t, dbPod.RunningTask)
+			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskID)
+			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskExecution)
 
 			dbTask, err := task.FindOneId(tsk.Id)
 			require.NoError(t, err)
@@ -4028,8 +4037,11 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 				Version:                v.Id,
 			}
 			p := pod.Pod{
-				ID:          "pod_id",
-				RunningTask: tsk.Id,
+				ID: "pod_id",
+				TaskRuntimeInfo: pod.TaskRuntimeInfo{
+					RunningTaskID:        tsk.Id,
+					RunningTaskExecution: tsk.Execution,
+				},
 			}
 			tCase(t, p, tsk)
 		})

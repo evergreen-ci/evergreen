@@ -258,24 +258,10 @@ func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(&apimodels.NextTaskResponse{})
 	}
 
-	if p.RunningTask != "" {
-		var t *task.Task
-		t, err = task.FindOneId(p.RunningTask)
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting running task '%s'", p.RunningTask))
+	if p.TaskRuntimeInfo.RunningTaskID != "" {
+		if resp := h.trySendingBackRunningTask(ctx, p); resp != nil {
+			return resp
 		}
-		if t.IsPartOfDisplay() {
-			if err = model.UpdateDisplayTaskForTask(t); err != nil {
-				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "updating parent display task"))
-			}
-		}
-		return gimlet.NewJSONResponse(&apimodels.NextTaskResponse{
-			TaskId:     t.Id,
-			TaskSecret: t.Secret,
-			TaskGroup:  t.TaskGroup,
-			Version:    t.Version,
-			Build:      t.BuildId,
-		})
 	}
 
 	pd, err := h.findDispatcher()
@@ -285,10 +271,7 @@ func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 
 	nextTask, err := pd.AssignNextTask(ctx, h.env, p)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrap(err, "dispatching next task").Error(),
-		})
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "dispatching next task"))
 	}
 	if nextTask == nil {
 		if err = h.prepareForPodTermination(ctx, p, "dispatch queue has no more tasks to run"); err != nil {
@@ -372,6 +355,46 @@ func (h *podAgentNextTask) findDispatcher() (*dispatcher.PodDispatcher, error) {
 	return pd, nil
 }
 
+func (h *podAgentNextTask) trySendingBackRunningTask(ctx context.Context, p *pod.Pod) gimlet.Responder {
+	t, err := task.FindOneIdAndExecution(p.TaskRuntimeInfo.RunningTaskID, p.TaskRuntimeInfo.RunningTaskExecution)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting running task '%s' execution %d", p.TaskRuntimeInfo.RunningTaskID, p.TaskRuntimeInfo.RunningTaskExecution))
+	}
+	if t == nil {
+		return gimlet.MakeJSONErrorResponder(errors.Errorf("task '%s' execution %d not found", p.TaskRuntimeInfo.RunningTaskID, p.TaskRuntimeInfo.RunningTaskExecution))
+	}
+
+	if t.Archived {
+		grip.Warning(message.Fields{
+			"message":   "attempted to re-dispatch a container task that has already been archived, refusing to fix it",
+			"task":      t.Id,
+			"execution": t.Execution,
+			"status":    t.Status,
+		})
+		if err := p.ClearRunningTask(); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "clearing archived task '%s' execution %d assigned to pod", t.Id, t.Execution))
+		}
+		reason := fmt.Sprintf("cannot re-dispatch task '%s' execution %d assigned to pod because because the task is archived", t.Id, t.Execution)
+		if err := h.prepareForPodTermination(ctx, p, reason); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(err)
+		}
+		return gimlet.NewJSONResponse(struct{}{})
+	}
+
+	if t.IsPartOfDisplay() {
+		if err = model.UpdateDisplayTaskForTask(t); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating parent display task for task '%s'", t.Id))
+		}
+	}
+	return gimlet.NewJSONResponse(&apimodels.NextTaskResponse{
+		TaskId:     t.Id,
+		TaskSecret: t.Secret,
+		TaskGroup:  t.TaskGroup,
+		Version:    t.Version,
+		Build:      t.BuildId,
+	})
+}
+
 // POST /rest/v2/pods/{pod_id}/task/{task_id}/end
 
 type podAgentEndTask struct {
@@ -430,7 +453,7 @@ func (h *podAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 
 	endTaskResp := &apimodels.EndTaskResponse{}
 
-	if p.RunningTask == "" {
+	if p.TaskRuntimeInfo.RunningTaskID == "" {
 		grip.Notice(message.Fields{
 			"message":                 "pod is not assigned task, agent should move onto requesting next task",
 			"task_id":                 t.Id,
@@ -448,7 +471,7 @@ func (h *podAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 
 	projectRef, err := model.FindMergedProjectRef(t.Project, t.Version, true)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding project"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project '%s' for version '%s'", t.Project, t.Version))
 	}
 	if projectRef == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
@@ -460,7 +483,7 @@ func (h *podAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 	deactivatePrevious := utility.FromBoolPtr(projectRef.DeactivatePrevious)
 	err = model.MarkEnd(t, evergreen.APIServerTaskActivator, finishTime, &h.details, deactivatePrevious)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "calling mark finish on task %v", t.Id))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "calling mark finish on task '%s'", t.Id))
 	}
 
 	// Clear the running task on the pod now that the task has finished.
@@ -486,7 +509,7 @@ func (h *podAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.NewJSONResponse(&apimodels.EndTaskResponse{})
 		}
 		grip.Info(message.Fields{
-			"message": fmt.Sprintf("task %s has been aborted", t.Id),
+			"message": fmt.Sprintf("task '%s' has been aborted", t.Id),
 			"task_id": t.Id,
 			"path":    fmt.Sprintf("/rest/v2/pods/%s/task/%s/end", p.ID, t.Id),
 		})

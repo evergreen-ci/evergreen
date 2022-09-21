@@ -1516,7 +1516,8 @@ func CheckAndBlockSingleHostTaskGroup(t *task.Task, status string) {
 // TODO (PM-2618): should probably block single-container task groups once
 // they're supported.
 func ClearAndResetStrandedContainerTask(p *pod.Pod) error {
-	runningTaskID := p.RunningTask
+	runningTaskID := p.TaskRuntimeInfo.RunningTaskID
+	runningTaskExecution := p.TaskRuntimeInfo.RunningTaskExecution
 	if runningTaskID == "" {
 		return nil
 	}
@@ -1527,14 +1528,28 @@ func ClearAndResetStrandedContainerTask(p *pod.Pod) error {
 	// In this case, there are other cleanup jobs to detect when a task is
 	// stranded on a terminated pod.
 	if err := p.ClearRunningTask(); err != nil {
-		return errors.Wrapf(err, "clearing running task '%s' from pod '%s'", runningTaskID, p.ID)
+		return errors.Wrapf(err, "clearing running task '%s' execution %d from pod '%s'", runningTaskID, runningTaskExecution, p.ID)
 	}
 
-	t, err := task.FindOneId(runningTaskID)
+	t, err := task.FindOneIdAndExecution(runningTaskID, runningTaskExecution)
 	if err != nil {
-		return errors.Wrapf(err, "finding running task '%s' from pod '%s'", runningTaskID, p.ID)
+		return errors.Wrapf(err, "finding running task '%s' execution %d from pod '%s'", runningTaskID, runningTaskExecution, p.ID)
 	}
 	if t == nil {
+		return nil
+	}
+
+	if t.Archived {
+		// This should never log because a task should only be archived once
+		// it's in a finished state. It would be extra complexity to try putting
+		// an already-archived task execution in a finished state, so no-op in
+		// this case.
+		grip.WarningWhen(!t.IsFinished(), message.Fields{
+			"message":   "stranded container task has already been archived but is not in a finished state, refusing to fix it",
+			"task":      t.Id,
+			"execution": t.Execution,
+			"status":    t.Status,
+		})
 		return nil
 	}
 
