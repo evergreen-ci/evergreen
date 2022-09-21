@@ -1540,12 +1540,8 @@ func ClearAndResetStrandedContainerTask(p *pod.Pod) error {
 	}
 
 	if t.Archived {
-		// This should never log because a task should only be archived once
-		// it's in a finished state. It would be extra complexity to try putting
-		// an already-archived task execution in a finished state, so no-op in
-		// this case.
-		grip.WarningWhen(!t.IsFinished(), message.Fields{
-			"message":   "stranded container task has already been archived but is not in a finished state, refusing to fix it",
+		grip.Warning(message.Fields{
+			"message":   "stranded container task has already been archived, refusing to fix it",
 			"task":      t.Id,
 			"execution": t.Execution,
 			"status":    t.Status,
