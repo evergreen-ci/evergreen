@@ -43,7 +43,7 @@ func CopyProject(ctx context.Context, env evergreen.Environment, opts CopyProjec
 	}
 
 	oldId := projectToCopy.Id
-	// project ID will be validated or generated during CreateProject
+	// Project ID will be validated or generated during CreateProject
 	if opts.NewProjectId != "" {
 		projectToCopy.Id = opts.NewProjectId
 	} else {
@@ -64,7 +64,7 @@ func CopyProject(ctx context.Context, env evergreen.Environment, opts CopyProjec
 		return nil, errors.Wrap(err, "converting project to API model")
 	}
 
-	// copy variables, aliases, and subscriptions
+	// Copy variables, aliases, and subscriptions
 	catcher := grip.NewBasicCatcher()
 	if err := model.CopyProjectVars(oldId, projectToCopy.Id); err != nil {
 		catcher.Wrapf(err, "copying project vars from project '%s'", oldIdentifier)
@@ -75,9 +75,15 @@ func CopyProject(ctx context.Context, env evergreen.Environment, opts CopyProjec
 	if err := event.CopyProjectSubscriptions(oldId, projectToCopy.Id); err != nil {
 		catcher.Wrapf(err, "copying subscriptions from project '%s'", oldIdentifier)
 	}
-	// set the same admin roles from the old project on the newly copied project.
+	// Set the same admin roles from the old project on the newly copied project.
 	if err := model.UpdateAdminRoles(projectToCopy, projectToCopy.Admins, nil); err != nil {
 		catcher.Wrapf(err, "updating admins for project '%s'", opts.NewProjectIdentifier)
+	}
+
+	// Since this is a new project we want to log all settings that were copied,
+	// so we pass in an empty ProjectSettings struct for the original project state.
+	if err := model.GetAndLogProjectModified(projectToCopy.Id, u.Id, false, &model.ProjectSettings{}); err != nil {
+		catcher.Wrapf(err, "logging project modified")
 	}
 	// Since the errors above are nonfatal and still permit copying the project, return both the new project and any errors that were encountered.
 	return apiProjectRef, catcher.Resolve()
