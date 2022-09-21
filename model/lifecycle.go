@@ -1244,6 +1244,7 @@ func createOneTask(id string, creationInfo TaskCreationInfo, buildVarTask BuildV
 
 	if isStepback {
 		t.ActivatedBy = evergreen.StepbackTaskActivator
+		t.StepbackDepth = activationInfo.getStepbackTaskDepth(b.BuildVariant, buildVarTask.Name)
 	} else if t.Activated {
 		t.ActivatedBy = creationInfo.Version.Author
 	}

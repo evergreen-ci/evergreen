@@ -55,7 +55,7 @@ const (
 var (
 	// A regex that matches either / or \ for splitting directory paths
 	// on either windows or linux paths.
-	eitherSlash *regexp.Regexp = regexp.MustCompile(`[/\\]`)
+	eitherSlash = regexp.MustCompile(`[/\\]`)
 )
 
 type Task struct {
@@ -102,6 +102,11 @@ type Task struct {
 	Activated                bool   `bson:"activated" json:"activated"`
 	ActivatedBy              string `bson:"activated_by" json:"activated_by"`
 	DeactivatedForDependency bool   `bson:"deactivated_for_dependency" json:"deactivated_for_dependency"`
+
+	// TaskDepth indicates how far into stepback this task was activated.
+	// After EVG-17949, should either remove this field/logging or use it to limit stepback depth.
+	StepbackDepth int `bson:"stepback_depth" json:"stepback_depth"`
+
 	// ContainerAllocated indicates whether this task has been allocated a
 	// container to run it. It only applies to tasks running in containers.
 	ContainerAllocated bool `bson:"container_allocated" json:"container_allocated"`
@@ -1386,9 +1391,10 @@ func DisableStaleContainerTasks(caller string) error {
 	return nil
 }
 
-// DeactivateStepbackTasksForProjects deactivates and aborts any scheduled/running tasks
+// LegacyDeactivateStepbackTasksForProject deactivates and aborts any scheduled/running tasks
 // for this project that were activated by stepback.
-func DeactivateStepbackTasksForProject(projectId, caller string) error {
+// TODO: remove as part of EVG-17947
+func LegacyDeactivateStepbackTasksForProject(projectId, caller string) error {
 	tasks, err := FindActivatedStepbackTasks(projectId)
 	if err != nil {
 		return errors.Wrap(err, "finding activated stepback tasks")
@@ -1416,6 +1422,29 @@ func DeactivateStepbackTasksForProject(projectId, caller string) error {
 		return errors.Wrap(err, "aborting in progress tasks")
 	}
 
+	return nil
+}
+
+// DeactivateStepbackTaskForProject deactivates and aborts the matching stepback task.
+// Will be used instead of LegacyDeactivateStepbackTasksForProject as part of EVG-17947
+func DeactivateStepbackTaskForProject(projectId, buildVariantName, taskName, caller string) error {
+	t, err := FindActivatedStepbackTaskByName(projectId, buildVariantName, taskName)
+	if err != nil {
+		return err
+	}
+	if t == nil {
+		return errors.New("no stepback task found")
+	}
+
+	if err = t.DeactivateTask(caller); err != nil {
+		return errors.Wrap(err, "deactivating stepback task")
+	}
+	if t.IsAbortable() {
+		event.LogTaskAbortRequest(t.Id, t.Execution, caller)
+		if err = t.SetAborted(AbortInfo{User: caller}); err != nil {
+			return errors.Wrap(err, "setting task aborted")
+		}
+	}
 	return nil
 }
 
@@ -3656,7 +3685,7 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 		sortFields := bson.D{}
 		for _, singleSort := range opts.Sorts {
 			if singleSort.Key == DisplayStatusKey || singleSort.Key == BaseTaskStatusKey {
-				sortPipeline = append(sortPipeline, addStatusColorSort((singleSort.Key)))
+				sortPipeline = append(sortPipeline, addStatusColorSort(singleSort.Key))
 				sortFields = append(sortFields, bson.E{Key: "__" + singleSort.Key, Value: singleSort.Order})
 			} else if singleSort.Key == TimeTakenKey {
 				sortPipeline = append(sortPipeline, recalculateTimeTaken())
@@ -4060,7 +4089,7 @@ func HasMatchingTasks(versionID string, opts HasMatchingTasksOptions) (bool, err
 }
 
 func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) ([]bson.M, error) {
-	var match bson.M = bson.M{}
+	var match = bson.M{}
 	if !opts.IncludeBuildVariantDisplayName && opts.UseLegacyAddBuildVariantDisplayName {
 		return nil, errors.New("should not use UseLegacyAddBuildVariantDisplayName with !IncludeBuildVariantDisplayName")
 	}

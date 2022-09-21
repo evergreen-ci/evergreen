@@ -417,10 +417,11 @@ func TestActivatePreviousTask(t *testing.T) {
 		So(previousTask.Insert(), ShouldBeNil)
 		So(currentTask.Insert(), ShouldBeNil)
 		Convey("activating a previous task should set the previous task's active field to true", func() {
-			So(activatePreviousTask(currentTask.Id, "", nil), ShouldBeNil)
+			So(activatePreviousTask(currentTask.Id, "", nil, 12), ShouldBeNil)
 			t, err := task.FindOne(db.Query(task.ById(previousTask.Id)))
 			So(err, ShouldBeNil)
 			So(t.Activated, ShouldBeTrue)
+			So(t.StepbackDepth, ShouldEqual, 12)
 		})
 	})
 }
@@ -2348,9 +2349,19 @@ buildvariants:
 			Id: "p1",
 		}
 		So(projRef.Insert(), ShouldBeNil)
-
+		Convey("if the project ref overrides the settings", func() {
+			testTask := &task.Task{Id: "t1", DisplayName: "nil", Project: projRef.Id, Version: ver.Id}
+			So(testTask.Insert(), ShouldBeNil)
+			projRef.StepbackDisabled = utility.TruePtr()
+			So(projRef.Upsert(), ShouldBeNil)
+			Convey("then the value should be false", func() {
+				val, err := getStepback(testTask.Id)
+				So(err, ShouldBeNil)
+				So(val, ShouldBeFalse)
+			})
+		})
 		Convey("if the task does not override the setting", func() {
-			testTask := &task.Task{Id: "t1", DisplayName: "nil", Project: "sample", Version: ver.Id}
+			testTask := &task.Task{Id: "t1", DisplayName: "nil", Project: projRef.Id, Version: ver.Id}
 			So(testTask.Insert(), ShouldBeNil)
 			Convey("then the value should be true", func() {
 				val, err := getStepback(testTask.Id)
@@ -2360,7 +2371,7 @@ buildvariants:
 		})
 
 		Convey("if the task overrides the setting with true", func() {
-			testTask := &task.Task{Id: "t2", DisplayName: "true", Project: "sample", Version: ver.Id}
+			testTask := &task.Task{Id: "t2", DisplayName: "true", Project: projRef.Id, Version: ver.Id}
 			So(testTask.Insert(), ShouldBeNil)
 			Convey("then the value should be true", func() {
 				val, err := getStepback(testTask.Id)
@@ -2370,7 +2381,7 @@ buildvariants:
 		})
 
 		Convey("if the task overrides the setting with false", func() {
-			testTask := &task.Task{Id: "t3", DisplayName: "false", Project: "sample", Version: ver.Id}
+			testTask := &task.Task{Id: "t3", DisplayName: "false", Project: projRef.Id, Version: ver.Id}
 			So(testTask.Insert(), ShouldBeNil)
 			Convey("then the value should be false", func() {
 				val, err := getStepback(testTask.Id)
@@ -2380,7 +2391,7 @@ buildvariants:
 		})
 
 		Convey("if the buildvariant does not override the setting", func() {
-			testTask := &task.Task{Id: "t4", DisplayName: "bvnil", BuildVariant: "sbnil", Project: "sample", Version: ver.Id}
+			testTask := &task.Task{Id: "t4", DisplayName: "bvnil", BuildVariant: "sbnil", Project: projRef.Id, Version: ver.Id}
 			So(testTask.Insert(), ShouldBeNil)
 			Convey("then the value should be true", func() {
 				val, err := getStepback(testTask.Id)
@@ -2390,7 +2401,7 @@ buildvariants:
 		})
 
 		Convey("if the buildvariant overrides the setting with true", func() {
-			testTask := &task.Task{Id: "t5", DisplayName: "bvtrue", BuildVariant: "sbtrue", Project: "sample", Version: ver.Id}
+			testTask := &task.Task{Id: "t5", DisplayName: "bvtrue", BuildVariant: "sbtrue", Project: projRef.Id, Version: ver.Id}
 			So(testTask.Insert(), ShouldBeNil)
 			Convey("then the value should be true", func() {
 				val, err := getStepback(testTask.Id)
@@ -2400,7 +2411,7 @@ buildvariants:
 		})
 
 		Convey("if the buildvariant overrides the setting with false", func() {
-			testTask := &task.Task{Id: "t6", DisplayName: "bvfalse", BuildVariant: "sbfalse", Project: "sample", Version: ver.Id}
+			testTask := &task.Task{Id: "t6", DisplayName: "bvfalse", BuildVariant: "sbfalse", Project: projRef.Id, Version: ver.Id}
 			So(testTask.Insert(), ShouldBeNil)
 			Convey("then the value should be false", func() {
 				val, err := getStepback(testTask.Id)
@@ -4724,7 +4735,7 @@ func TestEvalStepbackDeactivatePrevious(t *testing.T) {
 	}
 	assert.NoError(b3.Insert())
 
-	// should not unschedule previous tasks if the requester is not repotracker.
+	// Should not unschedule previous tasks if the requester is not repotracker.
 	assert.NoError(evalStepback(&finishedTask, "", evergreen.TaskSucceeded, true))
 	checkTask, err := task.FindOneId(stepbackTask.Id)
 	assert.NoError(err)
@@ -4908,7 +4919,7 @@ tasks:
 }
 
 func TestEvalStepbackTaskGroup(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(task.Collection, VersionCollection, build.Collection, event.LegacyEventLogCollection))
+	assert.NoError(t, db.ClearCollections(task.Collection, VersionCollection, build.Collection, event.LegacyEventLogCollection, ProjectRefCollection))
 	yml := `
 stepback: true
 `
@@ -4928,7 +4939,10 @@ stepback: true
 		Requester: evergreen.RepotrackerVersionRequester,
 	}
 	require.NoError(t, db.InsertMany(VersionCollection, v1, v2, v3))
-
+	p1 := ProjectRef{
+		Id: "p1",
+	}
+	require.NoError(t, p1.Insert())
 	b1 := build.Build{
 		Id: "prev_b1",
 	}
@@ -4938,10 +4952,12 @@ stepback: true
 	require.NoError(t, db.InsertMany(build.Collection, b1, b2))
 	t1 := task.Task{
 		Id:                  "t1",
+		Project:             p1.Id,
 		BuildId:             "b1",
 		Version:             "v1",
 		TaskGroup:           "my_group",
 		TaskGroupMaxHosts:   1,
+		BuildVariant:        "bv",
 		DisplayName:         "first",
 		Requester:           evergreen.RepotrackerVersionRequester,
 		Status:              evergreen.TaskSucceeded,
@@ -4950,10 +4966,12 @@ stepback: true
 	}
 	t2 := task.Task{
 		Id:                  "t2",
+		Project:             p1.Id,
 		BuildId:             "b1",
 		Version:             "v1",
 		TaskGroup:           "my_group",
 		TaskGroupMaxHosts:   1,
+		BuildVariant:        "bv",
 		DisplayName:         "second",
 		Requester:           evergreen.RepotrackerVersionRequester,
 		Status:              evergreen.TaskFailed,
@@ -4964,8 +4982,10 @@ stepback: true
 		Id:                  "t3",
 		BuildId:             "b1",
 		Version:             "v1",
+		Project:             p1.Id,
 		TaskGroup:           "my_group",
 		TaskGroupMaxHosts:   1,
+		BuildVariant:        "bv",
 		DisplayName:         "third",
 		Requester:           evergreen.RepotrackerVersionRequester,
 		Status:              evergreen.TaskUndispatched,
@@ -4976,7 +4996,9 @@ stepback: true
 		Id:                  "prev_t1",
 		BuildId:             "prev_b1",
 		Version:             "prev_v1",
+		Project:             p1.Id,
 		TaskGroup:           "my_group",
+		BuildVariant:        "bv",
 		DisplayName:         "first",
 		Requester:           evergreen.RepotrackerVersionRequester,
 		Status:              evergreen.TaskUndispatched,
@@ -4987,7 +5009,9 @@ stepback: true
 		Id:                  "prev_t2",
 		BuildId:             "prev_b1",
 		Version:             "prev_v1",
+		Project:             p1.Id,
 		TaskGroup:           "my_group",
+		BuildVariant:        "bv",
 		DisplayName:         "second",
 		Requester:           evergreen.RepotrackerVersionRequester,
 		Status:              evergreen.TaskUndispatched,
@@ -4998,7 +5022,9 @@ stepback: true
 		Id:                  "prev_t3",
 		BuildId:             "prev_b1",
 		Version:             "prev_v1",
+		Project:             p1.Id,
 		TaskGroup:           "my_group",
+		BuildVariant:        "bv",
 		DisplayName:         "third",
 		Requester:           evergreen.RepotrackerVersionRequester,
 		Status:              evergreen.TaskUndispatched,
@@ -5009,7 +5035,9 @@ stepback: true
 		Id:                  "prev_success_t1",
 		BuildId:             "prev_success_b1",
 		Version:             "prev_success_v1",
+		Project:             p1.Id,
 		TaskGroup:           "my_group",
+		BuildVariant:        "bv",
 		DisplayName:         "first",
 		Requester:           evergreen.RepotrackerVersionRequester,
 		Status:              evergreen.TaskSucceeded,
@@ -5020,7 +5048,9 @@ stepback: true
 		Id:                  "prev_success_t2",
 		BuildId:             "prev_success_b1",
 		Version:             "prev_success_v1",
+		Project:             p1.Id,
 		TaskGroup:           "my_group",
+		BuildVariant:        "bv",
 		DisplayName:         "second",
 		Requester:           evergreen.RepotrackerVersionRequester,
 		Status:              evergreen.TaskSucceeded,
@@ -5031,7 +5061,9 @@ stepback: true
 		Id:                  "prev_success_t3",
 		BuildId:             "prev_success_b1",
 		Version:             "prev_success_v1",
+		Project:             p1.Id,
 		TaskGroup:           "my_group",
+		BuildVariant:        "bv",
 		DisplayName:         "third",
 		Requester:           evergreen.RepotrackerVersionRequester,
 		Status:              evergreen.TaskSucceeded,

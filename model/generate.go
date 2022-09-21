@@ -449,14 +449,19 @@ func (g *GeneratedProject) filterInactiveTasks(tasks TVPairSet, v *Version, p *P
 }
 
 type specificActivationInfo struct {
-	stepbackTasks      map[string][]string
-	activationTasks    map[string][]string // tasks by variant that have batchtime or activate specified
-	activationVariants []string            // variants that have batchtime or activate specified
+	stepbackTasks      map[string][]specificStepbackInfo // tasks by variant that are being stepped back, along with the stepback depth to use
+	activationTasks    map[string][]string               // tasks by variant that have batchtime or activate specified
+	activationVariants []string                          // variants that have batchtime or activate specified
+}
+
+type specificStepbackInfo struct {
+	task  string
+	depth int
 }
 
 func newSpecificActivationInfo() specificActivationInfo {
 	return specificActivationInfo{
-		stepbackTasks:      map[string][]string{},
+		stepbackTasks:      map[string][]specificStepbackInfo{},
 		activationTasks:    map[string][]string{},
 		activationVariants: []string{},
 	}
@@ -475,7 +480,21 @@ func (b *specificActivationInfo) hasActivationTasks() bool {
 }
 
 func (b *specificActivationInfo) isStepbackTask(variant, task string) bool {
-	return utility.StringSliceContains(b.stepbackTasks[variant], task)
+	for _, stepbackInfo := range b.stepbackTasks[variant] {
+		if stepbackInfo.task == task {
+			return true
+		}
+	}
+	return false
+}
+
+func (b *specificActivationInfo) getStepbackTaskDepth(variant, task string) int {
+	for _, stepbackInfo := range b.stepbackTasks[variant] {
+		if stepbackInfo.task == task {
+			return stepbackInfo.depth
+		}
+	}
+	return 0
 }
 
 func (b *specificActivationInfo) taskHasSpecificActivation(variant, task string) bool {
@@ -495,7 +514,8 @@ func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester
 		batchTimeTasks := []string{}
 		for _, bvt := range bv.Tasks {
 			if isStepbackTask(g.Task, bv.Name, bvt.Name) {
-				res.stepbackTasks[bv.Name] = append(res.stepbackTasks[bv.Name], bvt.Name)
+				stepbackInfo := specificStepbackInfo{task: bvt.Name, depth: g.Task.StepbackDepth + 1}
+				res.stepbackTasks[bv.Name] = append(res.stepbackTasks[bv.Name], stepbackInfo)
 				continue // don't consider batchtime/activation if we're stepping back this generated task
 			}
 			if evergreen.ShouldConsiderBatchtime(requester) && (bvt.BatchTime != nil || bvt.CronBatchTime != "") {
