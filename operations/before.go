@@ -121,8 +121,9 @@ var (
 		}
 
 		confPath := rootCtx.String(confFlagName)
-		// we do not return an error in case of failure to find a valid config path because we do not want to block the underlying CLI operation.
+		// we do not return an error in case of failure to find the config path flag because we do not want to block the underlying CLI operation.
 		if confPath == "" {
+			grip.Warning("Config path flag could not be read, skipping auto upgrade CLI check.")
 			return nil
 		}
 
