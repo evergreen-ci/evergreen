@@ -102,7 +102,7 @@ var (
 	// Some functions that one would expect to return quickly have been omitted from having this as a 'before' function since downloading and installing
 	// takes time that would be cumbersome to the user (e.g. list functions, delete functions).
 	autoUpdateCLI = func(c *cli.Context) error {
-		confPath := c.String("conf")
+		confPath := c.Parent().String(confFlagName)
 		// we do not return an error in case of failure to find a valid config path because we do not want to block the underlying CLI operation.
 		if confPath == "" {
 			return nil
