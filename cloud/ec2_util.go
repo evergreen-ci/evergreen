@@ -95,7 +95,7 @@ func ec2StatusToEvergreenStatus(ec2Status string) CloudStatus {
 		return StatusTerminated
 	default:
 		grip.Error(message.Fields{
-			"message": "got an unknown ec2 state name",
+			"message": "got an unknown EC2 state name",
 			"status":  ec2Status,
 		})
 		return StatusUnknown
@@ -260,7 +260,7 @@ func expandUserData(userData string, expansions map[string]string) (string, erro
 	exp := util.NewExpansions(expansions)
 	expanded, err := exp.ExpandString(userData)
 	if err != nil {
-		return "", errors.Wrap(err, "error expanding userdata script")
+		return "", errors.Wrap(err, "expanding user data script")
 	}
 	return expanded, nil
 }
@@ -289,10 +289,10 @@ func cacheHostData(ctx context.Context, h *host.Host, instance *ec2.Instance, cl
 		return errors.New("instance missing launch time")
 	}
 	if instance.PublicDnsName == nil {
-		return errors.New("instance missing public dns name")
+		return errors.New("instance missing public DNS name")
 	}
 	if instance.PrivateIpAddress == nil {
-		return errors.New("instance missing private ip address")
+		return errors.New("instance missing private IP address")
 	}
 	h.Zone = *instance.Placement.AvailabilityZone
 	h.StartTime = *instance.LaunchTime
@@ -301,14 +301,14 @@ func cacheHostData(ctx context.Context, h *host.Host, instance *ec2.Instance, cl
 	h.IPv4 = *instance.PrivateIpAddress
 
 	if err := h.CacheHostData(); err != nil {
-		return errors.Wrap(err, "error updating host document in db")
+		return errors.Wrap(err, "updating host document in DB")
 	}
 
 	// set IPv6 address, if applicable
 	for _, networkInterface := range instance.NetworkInterfaces {
 		if len(networkInterface.Ipv6Addresses) > 0 {
 			if err := h.SetIPv6Address(*networkInterface.Ipv6Addresses[0].Ipv6Address); err != nil {
-				return errors.Wrap(err, "error setting ipv6 address")
+				return errors.Wrap(err, "setting IPv6 address")
 			}
 			break
 		}
@@ -380,7 +380,7 @@ func makeBlockDeviceMappings(mounts []MountPoint) ([]*ec2aws.BlockDeviceMapping,
 				}
 				// This parameter is valid only for gp3 volumes.
 				if utility.FromStringPtr(m.Ebs.VolumeType) != ec2aws.VolumeTypeGp3 {
-					return nil, errors.New(fmt.Sprintf("throughput is not valid for volume type '%s', it is only valid for gp3 volumes", utility.FromStringPtr(m.Ebs.VolumeType)))
+					return nil, errors.Errorf("throughput is not valid for volume type '%s', it is only valid for gp3 volumes", utility.FromStringPtr(m.Ebs.VolumeType))
 				}
 				m.Ebs.Throughput = aws.Int64(mount.Throughput)
 			}
@@ -431,7 +431,7 @@ func makeBlockDeviceMappingsTemplate(mounts []MountPoint) ([]*ec2aws.LaunchTempl
 				}
 				// This parameter is valid only for gp3 volumes.
 				if utility.FromStringPtr(m.Ebs.VolumeType) != ec2aws.VolumeTypeGp3 {
-					return nil, errors.New(fmt.Sprintf("throughput is not valid for volume type '%s', it is only valid for gp3 volumes", utility.FromStringPtr(m.Ebs.VolumeType)))
+					return nil, errors.Errorf("throughput is not valid for volume type '%s', it is only valid for gp3 volumes", utility.FromStringPtr(m.Ebs.VolumeType))
 				}
 				m.Ebs.Throughput = aws.Int64(mount.Throughput)
 			}
@@ -472,10 +472,10 @@ func validateEc2DescribeInstancesOutput(describeInstancesResponse *ec2aws.Descri
 	catcher := grip.NewBasicCatcher()
 	for _, reservation := range describeInstancesResponse.Reservations {
 		if len(reservation.Instances) == 0 {
-			catcher.Add(errors.New("reservation missing instance"))
+			catcher.New("reservation missing instance")
 		} else {
 			instance := reservation.Instances[0]
-			catcher.NewWhen(instance.InstanceId == nil, "instance missing instance id")
+			catcher.NewWhen(instance.InstanceId == nil, "instance missing instance ID")
 			catcher.NewWhen(instance.State == nil || instance.State.Name == nil || len(*instance.State.Name) == 0, "instance missing state name")
 		}
 	}
@@ -518,7 +518,7 @@ func GetEC2Key(s *evergreen.Settings) (string, string, error) {
 
 	// Error if key or secret are blank
 	if key == "" || secret == "" {
-		return "", "", errors.New("AWS ID and Secret must not be blank")
+		return "", "", errors.New("AWS key and secret must not be blank")
 	}
 
 	return key, secret, nil
@@ -526,7 +526,7 @@ func GetEC2Key(s *evergreen.Settings) (string, string, error) {
 
 func validateEC2HostModifyOptions(h *host.Host, opts host.HostModifyOptions) error {
 	if opts.InstanceType != "" && h.Status != evergreen.HostStopped {
-		return errors.New("host must be stopped to modify instance typed")
+		return errors.New("host must be stopped to modify instance type")
 	}
 	if time.Until(h.ExpirationTime.Add(opts.AddHours)) > evergreen.MaxSpawnHostExpirationDurationHours {
 		return errors.Errorf("cannot extend host '%s' expiration by '%s' -- maximum host duration is limited to %s", h.Id, opts.AddHours.String(), evergreen.MaxSpawnHostExpirationDurationHours.String())
@@ -538,7 +538,7 @@ func validateEC2HostModifyOptions(h *host.Host, opts host.HostModifyOptions) err
 func ValidVolumeOptions(v *host.Volume, s *evergreen.Settings) error {
 	catcher := grip.NewBasicCatcher()
 	if !utility.StringSliceContains(ValidVolumeTypes, v.Type) {
-		catcher.Add(errors.Errorf("Valid EBS volume types are: %v", ValidVolumeTypes))
+		catcher.Errorf("invalid volume type '%s', valid EBS volume types are: %s", v.Type, ValidVolumeTypes)
 	}
 
 	_, err := getSubnetForZone(s.Providers.AWS.Subnets, v.AvailabilityZone)
@@ -554,7 +554,7 @@ func getSubnetForZone(subnets []evergreen.Subnet, zone string) (string, error) {
 		}
 		zones = append(zones, subnet.AZ)
 	}
-	return "", errors.Errorf("Valid availability zones are: %v", zones)
+	return "", errors.Errorf("invalid availability zone '%s', valid availability zones are: %s", zone, zones)
 }
 
 // addSSHKey adds an SSH key for the given client. If an SSH key already exists
@@ -567,7 +567,7 @@ func addSSHKey(ctx context.Context, client AWSClient, pair evergreen.SSHKeyPair)
 		if ec2err, ok := err.(awserr.Error); ok && ec2err.Code() == EC2DuplicateKeyPair {
 			return nil
 		}
-		return errors.Wrap(err, "could not add new SSH key")
+		return errors.Wrap(err, "importing public SSH key")
 	}
 	return nil
 }

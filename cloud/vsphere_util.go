@@ -31,7 +31,7 @@ func vsphereToEvgStatus(state types.VirtualMachinePowerState) CloudStatus {
 func (c *vsphereClientImpl) getInstance(ctx context.Context, name string) (*object.VirtualMachine, error) {
 	vm, err := c.Finder.VirtualMachine(ctx, name)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not find vm for host %s", name)
+		return nil, errors.Wrapf(err, "finding VM for host '%s'", name)
 	}
 
 	return vm, err
@@ -46,7 +46,7 @@ func (c *vsphereClientImpl) relocateSpec(ctx context.Context, s *vsphereSettings
 	// resource pool is required
 	rp, err := c.Finder.ResourcePool(ctx, s.ResourcePool)
 	if err != nil {
-		err = errors.Wrapf(err, "error finding pool %s", s.ResourcePool)
+		err = errors.Wrapf(err, "finding pool '%s'", s.ResourcePool)
 		grip.Error(err)
 		return spec, err
 	}
@@ -56,7 +56,7 @@ func (c *vsphereClientImpl) relocateSpec(ctx context.Context, s *vsphereSettings
 	if s.Datastore != "" {
 		ds, err := c.Finder.Datastore(ctx, s.Datastore)
 		if err != nil {
-			err = errors.Wrapf(err, "error finding datastore %s", s.Datastore)
+			err = errors.Wrapf(err, "finding datastore '%s'", s.Datastore)
 			grip.Error(err)
 			return spec, err
 		}
@@ -98,7 +98,7 @@ func (c *vsphereClientImpl) cloneSpec(ctx context.Context, s *vsphereSettings) (
 	cs := c.configSpec(s)
 	rs, err := c.relocateSpec(ctx, s)
 	if err != nil {
-		return spec, errors.Wrap(err, "error making relocate spec")
+		return spec, errors.Wrap(err, "making relocate spec")
 	}
 
 	spec = types.VirtualMachineCloneSpec{

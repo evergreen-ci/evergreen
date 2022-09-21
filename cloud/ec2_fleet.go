@@ -41,7 +41,7 @@ func (c instanceTypeSubnetCache) subnetsWithInstanceType(ctx context.Context, se
 
 	supportingAZs, err := c.getAZs(ctx, settings, client, instanceRegion)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't get supporting AZs")
+		return nil, errors.Wrap(err, "getting supported AZs")
 	}
 
 	subnets := make([]evergreen.Subnet, 0, len(supportingAZs))
@@ -64,10 +64,10 @@ func (c instanceTypeSubnetCache) getAZs(ctx context.Context, settings *evergreen
 		},
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "can't get instance types for '%s' in '%s'", instanceRegion.instanceType, instanceRegion.region)
+		return nil, errors.Wrapf(err, "getting instance types for filter '%s' in region '%s'", instanceRegion.instanceType, instanceRegion.region)
 	}
 	if output == nil {
-		return nil, errors.Errorf("DescribeInstanceTypeOfferings returned nil output for instance type '%s' in '%s'", instanceRegion.instanceType, instanceRegion.region)
+		return nil, errors.Errorf("DescribeInstanceTypeOfferings returned nil output for instance type filter '%s' in '%s'", instanceRegion.instanceType, instanceRegion.region)
 	}
 	supportingAZs := make([]string, 0, len(output.InstanceTypeOfferings))
 	for _, offering := range output.InstanceTypeOfferings {
@@ -107,7 +107,7 @@ func (m *ec2FleetManager) Configure(ctx context.Context, settings *evergreen.Set
 	var err error
 	m.providerKey, m.providerSecret, err = GetEC2Key(settings)
 	if err != nil {
-		return errors.Wrap(err, "Problem getting EC2 keys")
+		return errors.Wrap(err, "getting EC2 keys")
 	}
 	if m.providerKey == "" || m.providerSecret == "" {
 		return errors.New("provider key/secret can't be empty")
@@ -123,21 +123,20 @@ func (m *ec2FleetManager) Configure(ctx context.Context, settings *evergreen.Set
 
 func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, error) {
 	if h.Distro.Provider != evergreen.ProviderNameEc2Fleet {
-		return nil, errors.Errorf("Can't spawn instance for distro %s: provider is %s",
-			h.Distro.Id, h.Distro.Provider)
+		return nil, errors.Errorf("can't spawn instance for distro '%s': distro provider is '%s'", h.Distro.Id, h.Distro.Provider)
 	}
 
 	if err := m.client.Create(m.credentials, m.region); err != nil {
-		return nil, errors.Wrap(err, "error creating client")
+		return nil, errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
 
 	ec2Settings := &EC2ProviderSettings{}
 	if err := ec2Settings.FromDistroSettings(h.Distro, ""); err != nil {
-		return nil, errors.Wrap(err, "error getting EC2 settings")
+		return nil, errors.Wrap(err, "getting EC2 settings")
 	}
 	if err := ec2Settings.Validate(); err != nil {
-		return nil, errors.Wrapf(err, "Invalid EC2 settings in distro %s: %+v", h.Distro.Id, ec2Settings)
+		return nil, errors.Wrapf(err, "invalid EC2 settings in distro '%s': %+v", h.Distro.Id, ec2Settings)
 	}
 
 	if ec2Settings.KeyName == "" && !h.UserHost {
@@ -146,7 +145,7 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 		}
 		k, err := m.client.GetKey(ctx, h)
 		if err != nil {
-			return nil, errors.Wrap(err, "not spawning host, problem creating key")
+			return nil, errors.Wrap(err, "getting public key")
 		}
 		ec2Settings.KeyName = k
 	}
@@ -172,7 +171,7 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 }
 
 func (m *ec2FleetManager) ModifyHost(context.Context, *host.Host, host.HostModifyOptions) error {
-	return errors.New("can't modify instances for ec2 fleet provider")
+	return errors.New("can't modify instances for EC2 fleet provider")
 }
 
 func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.Host) ([]CloudStatus, error) {
@@ -182,7 +181,7 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 	}
 
 	if err := m.client.Create(m.credentials, m.region); err != nil {
-		return nil, errors.Wrap(err, "error creating client")
+		return nil, errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
 
@@ -197,7 +196,7 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 	})
 
 	if err != nil {
-		return nil, errors.Wrap(err, "error describing instances")
+		return nil, errors.Wrap(err, "describing instances")
 	}
 
 	if err = validateEc2DescribeInstancesOutput(describeInstancesOutput); err != nil {
@@ -241,7 +240,7 @@ func (m *ec2FleetManager) GetInstanceStatus(ctx context.Context, h *host.Host) (
 	status := StatusUnknown
 
 	if err := m.client.Create(m.credentials, m.region); err != nil {
-		return status, errors.Wrap(err, "error creating client")
+		return status, errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
 
@@ -256,7 +255,7 @@ func (m *ec2FleetManager) GetInstanceStatus(ctx context.Context, h *host.Host) (
 		if ec2err, ok := err.(awserr.Error); ok && ec2err.Code() == EC2ErrorNotFound {
 			return StatusNonExistent, nil
 		}
-		return status, errors.Wrap(err, "error getting instance info")
+		return status, errors.Wrap(err, "getting instance info")
 	}
 
 	if instance.State == nil || instance.State.Name == nil || *instance.State.Name == "" {
@@ -275,17 +274,17 @@ func (m *ec2FleetManager) GetInstanceStatus(ctx context.Context, h *host.Host) (
 }
 
 func (m *ec2FleetManager) SetPortMappings(context.Context, *host.Host, *host.Host) error {
-	return errors.New("can't set port mappings with ec2 fleet provider")
+	return errors.New("can't set port mappings with EC2 fleet provider")
 }
 
 func (m *ec2FleetManager) CheckInstanceType(ctx context.Context, instanceType string) error {
 	if err := m.client.Create(m.credentials, m.region); err != nil {
-		return errors.Wrap(err, "error creating client")
+		return errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
 	output, err := m.client.DescribeInstanceTypeOfferings(ctx, &ec2.DescribeInstanceTypeOfferingsInput{})
 	if err != nil {
-		return errors.Wrapf(err, "error describe instance types offered for region '%s", m.region)
+		return errors.Wrapf(err, "describing instance types offered for region '%s", m.region)
 	}
 	validTypes := []string{}
 	for _, availableType := range output.InstanceTypeOfferings {
@@ -294,15 +293,15 @@ func (m *ec2FleetManager) CheckInstanceType(ctx context.Context, instanceType st
 		}
 		validTypes = append(validTypes, *availableType.InstanceType)
 	}
-	return errors.Errorf("available types for region '%s' are: %v", m.region, validTypes)
+	return errors.Errorf("available types for region '%s' are: %s", m.region, validTypes)
 }
 
 func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, user, reason string) error {
 	if h.Status == evergreen.HostTerminated {
-		return errors.Errorf("Can not terminate %s - already marked as terminated!", h.Id)
+		return errors.Errorf("cannot terminate host '%s' because it's already marked as terminated", h.Id)
 	}
 	if err := m.client.Create(m.credentials, m.region); err != nil {
-		return errors.Wrap(err, "error creating client")
+		return errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
 
@@ -329,7 +328,7 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 				"host_id":       h.Id,
 				"distro":        h.Distro.Id,
 			})
-			return errors.New("invalid terminate instances response")
+			return errors.New("TerminateInstances response did not contain an instance ID")
 		}
 		grip.Info(message.Fields{
 			"message":       "terminated instance",
@@ -341,23 +340,23 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 		})
 	}
 
-	return errors.Wrap(h.Terminate(user, reason), "failed to terminate instance in db")
+	return errors.Wrap(h.Terminate(user, reason), "terminating instance in DB")
 }
 
 // StopInstance should do nothing for EC2 Fleet.
 func (m *ec2FleetManager) StopInstance(context.Context, *host.Host, string) error {
-	return errors.New("can't stop instances for ec2 fleet provider")
+	return errors.New("can't stop instances for EC2 fleet provider")
 }
 
 // StartInstance should do nothing for EC2 Fleet.
 func (m *ec2FleetManager) StartInstance(context.Context, *host.Host, string) error {
-	return errors.New("can't start instances for ec2 fleet provider")
+	return errors.New("can't start instances for EC2 fleet provider")
 }
 
 func (m *ec2FleetManager) IsUp(ctx context.Context, h *host.Host) (bool, error) {
 	status, err := m.GetInstanceStatus(ctx, h)
 	if err != nil {
-		return false, errors.Wrap(err, "error checking if instance is up")
+		return false, errors.Wrap(err, "checking if instance is up")
 	}
 	if status == StatusRunning {
 		return true, nil
@@ -372,7 +371,7 @@ func (m *ec2FleetManager) OnUp(ctx context.Context, h *host.Host) error {
 
 func (m *ec2FleetManager) Cleanup(ctx context.Context) error {
 	if err := m.client.Create(m.credentials, m.region); err != nil {
-		return errors.Wrap(err, "error creating client")
+		return errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
 
@@ -409,32 +408,32 @@ func (m *ec2FleetManager) Cleanup(ctx context.Context) error {
 }
 
 func (m *ec2FleetManager) AttachVolume(context.Context, *host.Host, *host.VolumeAttachment) error {
-	return errors.New("can't attach volume with ec2 fleet provider")
+	return errors.New("can't attach volume with EC2 fleet provider")
 }
 
 func (m *ec2FleetManager) DetachVolume(context.Context, *host.Host, string) error {
-	return errors.New("can't detach volume with ec2 fleet provider")
+	return errors.New("can't detach volume with EC2 fleet provider")
 }
 
 func (m *ec2FleetManager) CreateVolume(context.Context, *host.Volume) (*host.Volume, error) {
-	return nil, errors.New("can't create volume with ec2 fleet provider")
+	return nil, errors.New("can't create volume with EC2 fleet provider")
 }
 
 func (m *ec2FleetManager) DeleteVolume(context.Context, *host.Volume) error {
-	return errors.New("can't delete volume with ec2 fleet provider")
+	return errors.New("can't delete volume with EC2 fleet provider")
 }
 
 func (m *ec2FleetManager) ModifyVolume(context.Context, *host.Volume, *model.VolumeModifyOptions) error {
-	return errors.New("can't modify volume with ec2 fleet provider")
+	return errors.New("can't modify volume with EC2 fleet provider")
 }
 
 func (m *ec2FleetManager) GetVolumeAttachment(context.Context, string) (*host.VolumeAttachment, error) {
-	return nil, errors.New("can't get volume attachment with ec2 fleet provider")
+	return nil, errors.New("can't get volume attachment with EC2 fleet provider")
 }
 
 func (m *ec2FleetManager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
 	if err := m.client.Create(m.credentials, m.region); err != nil {
-		return "", errors.Wrap(err, "error creating client")
+		return "", errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
 
@@ -457,12 +456,12 @@ func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, 
 	}()
 
 	if err := m.uploadLaunchTemplate(ctx, h, ec2Settings); err != nil {
-		return errors.Wrapf(err, "unable to upload launch template for '%s'", h.Id)
+		return errors.Wrapf(err, "unable to upload launch template for host '%s'", h.Id)
 	}
 
 	instanceID, err := m.requestFleet(ctx, h, ec2Settings)
 	if err != nil {
-		return errors.Wrapf(err, "can't request fleet")
+		return errors.Wrapf(err, "requesting fleet")
 	}
 	h.Id = *instanceID
 
@@ -472,7 +471,7 @@ func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, 
 func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings) error {
 	blockDevices, err := makeBlockDeviceMappingsTemplate(ec2Settings.MountPoints)
 	if err != nil {
-		return errors.Wrap(err, "error making block device mappings")
+		return errors.Wrap(err, "making block device mappings")
 	}
 
 	launchTemplate := &ec2.RequestLaunchTemplateData{
@@ -508,7 +507,7 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 	settings.ServiceFlags = *flags
 	userData, err := makeUserData(ctx, &settings, h, ec2Settings.UserData, ec2Settings.MergeUserDataParts)
 	if err != nil {
-		return errors.Wrap(err, "could not make user data")
+		return errors.Wrap(err, "making user data")
 	}
 	ec2Settings.UserData = userData
 
@@ -516,7 +515,7 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 		var expanded string
 		expanded, err = expandUserData(ec2Settings.UserData, m.settings.Expansions)
 		if err != nil {
-			return errors.Wrap(err, "problem expanding user data")
+			return errors.Wrap(err, "expanding user data")
 		}
 		if err = validateUserDataSize(expanded, h.Distro.Id); err != nil {
 			return errors.WithStack(err)
@@ -541,7 +540,7 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 				"host_tag": h.Tag,
 			})
 		} else {
-			return errors.Wrap(err, "can't upload config template to AWS")
+			return errors.Wrap(err, "uploading config template to AWS")
 		}
 	}
 
@@ -554,7 +553,7 @@ func (m *ec2FleetManager) requestFleet(ctx context.Context, h *host.Host, ec2Set
 	if ec2Settings.VpcName != "" {
 		overrides, err = m.makeOverrides(ctx, ec2Settings)
 		if err != nil {
-			return nil, errors.Wrapf(err, "can't make overrides for VPC '%s'", ec2Settings.VpcName)
+			return nil, errors.Wrapf(err, "making overrides for VPC '%s'", ec2Settings.VpcName)
 		}
 	}
 
@@ -582,7 +581,7 @@ func (m *ec2FleetManager) requestFleet(ctx context.Context, h *host.Host, ec2Set
 
 	createFleetResponse, err := m.client.CreateFleet(ctx, createFleetInput)
 	if err != nil {
-		return nil, errors.Wrap(err, "error creating fleet")
+		return nil, errors.Wrap(err, "creating fleet")
 	}
 	return createFleetResponse.Instances[0].InstanceIds[0], nil
 }
@@ -595,7 +594,7 @@ func (m *ec2FleetManager) makeOverrides(ctx context.Context, ec2Settings *EC2Pro
 
 	supportingSubnets, err := typeCache.subnetsWithInstanceType(ctx, m.settings, m.client, instanceRegionPair{instanceType: ec2Settings.InstanceType, region: ec2Settings.getRegion()})
 	if err != nil {
-		return nil, errors.Wrapf(err, "can't get AZs supporting instance type '%s'", ec2Settings.InstanceType)
+		return nil, errors.Wrapf(err, "getting AZs supporting instance type '%s'", ec2Settings.InstanceType)
 	}
 	if len(supportingSubnets) == 0 || (len(supportingSubnets) == 1 && supportingSubnets[0].SubnetID == ec2Settings.SubnetId) {
 		return nil, nil
@@ -623,9 +622,9 @@ func subnetMatchesAz(subnet *ec2.Subnet) bool {
 
 func (m *ec2FleetManager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) error {
 	if err := m.client.Create(m.credentials, m.region); err != nil {
-		return errors.Wrap(err, "error creating client")
+		return errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
 
-	return errors.Wrap(addSSHKey(ctx, m.client, pair), "could not add SSH key")
+	return errors.Wrap(addSSHKey(ctx, m.client, pair), "adding public SSH key")
 }

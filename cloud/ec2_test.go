@@ -328,7 +328,7 @@ func (s *EC2Suite) TestSpawnHostInvalidInput() {
 	spawned, err := s.onDemandManager.SpawnHost(ctx, h)
 	s.Nil(spawned)
 	s.Error(err)
-	s.EqualError(err, "Can't spawn instance for distro id: provider is foo")
+	s.EqualError(err, "can't spawn EC2 instance for distro 'id': distro provider is 'foo'")
 }
 
 func (s *EC2Suite) TestSpawnHostClassicOnDemand() {

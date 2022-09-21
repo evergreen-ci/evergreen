@@ -5,7 +5,7 @@
       "result": {
         "errors": [
           {
-            "message": "Valid availability zones are: [us-east-1a]",
+            "message": "invalid availability zone 'thangthang', valid availability zones are: [us-east-1a]",
             "path": ["spawnVolume"],
             "extensions": { "code": "INPUT_VALIDATION_ERROR" }
           }

@@ -39,7 +39,7 @@ func (c *gceClientImpl) Init(ctx context.Context, config *jwt.Config) error {
 	// Connect to Google Compute Engine.
 	service, err := compute.New(client)
 	if err != nil {
-		return errors.Wrap(err, "failed to connect to Google Compute Engine service")
+		return errors.Wrap(err, "connecting to Google Compute Engine service")
 	}
 	grip.Debug("connected to Google Compute Engine service")
 
@@ -118,7 +118,7 @@ func (c *gceClientImpl) CreateInstance(h *host.Host, s *GCESettings) (string, er
 
 	// Make the API call to insert the instance
 	if _, err := c.InstancesService.Insert(h.Project, h.Zone, instance).Do(); err != nil {
-		return "", errors.Wrap(err, "API call to insert instance failed")
+		return "", errors.Wrap(err, "inserting instance failed")
 	}
 
 	return instance.Name, nil
@@ -128,7 +128,7 @@ func (c *gceClientImpl) CreateInstance(h *host.Host, s *GCESettings) (string, er
 func (c *gceClientImpl) GetInstance(h *host.Host) (*compute.Instance, error) {
 	instance, err := c.InstancesService.Get(h.Project, h.Zone, h.Id).Do()
 	if err != nil {
-		return nil, errors.Wrap(err, "API call to get instance failed")
+		return nil, errors.Wrap(err, "getting instance failed")
 	}
 
 	return instance, nil
@@ -137,7 +137,7 @@ func (c *gceClientImpl) GetInstance(h *host.Host) (*compute.Instance, error) {
 // DeleteInstance requests an instance previously provisioned to be removed.
 func (c *gceClientImpl) DeleteInstance(h *host.Host) error {
 	if _, err := c.InstancesService.Delete(h.Project, h.Zone, h.Id).Do(); err != nil {
-		return errors.Wrap(err, "API call to delete instance failed")
+		return errors.Wrap(err, "deleting instance failed")
 	}
 
 	return nil

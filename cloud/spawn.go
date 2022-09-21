@@ -48,20 +48,20 @@ type SpawnOptions struct {
 func (so *SpawnOptions) validate(settings *evergreen.Settings) error {
 	d, err := distro.FindOneId(so.DistroId)
 	if err != nil {
-		return errors.Errorf("error finding distro '%s'", so.DistroId)
+		return errors.Errorf("finding distro '%s'", so.DistroId)
 	}
 	if d == nil {
 		return errors.Errorf("distro '%s' not found", so.DistroId)
 	}
 
 	if !d.SpawnAllowed {
-		return errors.Errorf("Invalid spawn options: spawning not allowed for distro %s", so.DistroId)
+		return errors.Errorf("spawn hosts not allowed for distro '%s'", so.DistroId)
 	}
 
 	// if the user already has too many active spawned hosts, deny the request
 	activeSpawnedHosts, err := host.Find(host.ByUserWithRunningStatus(so.UserName))
 	if err != nil {
-		return errors.Wrap(err, "Error occurred finding user's current hosts")
+		return errors.Wrap(err, "finding user's current hosts")
 	}
 
 	if err = checkSpawnHostLimitExceeded(len(activeSpawnedHosts), settings); err != nil {
@@ -70,17 +70,17 @@ func (so *SpawnOptions) validate(settings *evergreen.Settings) error {
 
 	// validate public key
 	if err = evergreen.ValidateSSHKey(so.PublicKey); err != nil {
-		return errors.Wrap(err, "Invalid spawn options")
+		return errors.Wrap(err, "invalid SSH key options")
 	}
 
 	sections := strings.Split(so.PublicKey, " ")
 	if len(sections) < 2 {
-		return errors.Errorf("Invalid spawn options: missing space in key")
+		return errors.Errorf("missing space in public key")
 	}
 
 	// check for valid base64
 	if _, err = base64.StdEncoding.DecodeString(sections[1]); err != nil {
-		return errors.New("Invalid spawn options: key contains invalid base64 string")
+		return errors.New("public key contains invalid base64 string")
 	}
 
 	return nil
@@ -88,8 +88,7 @@ func (so *SpawnOptions) validate(settings *evergreen.Settings) error {
 
 func checkSpawnHostLimitExceeded(numCurrentHosts int, settings *evergreen.Settings) error {
 	if numCurrentHosts >= settings.Spawnhost.SpawnHostsPerUser {
-		return errors.Errorf("User is already running the max allowed number of spawn hosts (%d of %d)",
-			numCurrentHosts, settings.Spawnhost.SpawnHostsPerUser)
+		return errors.Errorf("user is already running the max allowed number of spawn hosts (%d of %d)", numCurrentHosts, settings.Spawnhost.SpawnHostsPerUser)
 	}
 	return nil
 }
@@ -103,7 +102,7 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 	// load in the appropriate distro
 	d, err := distro.FindOneId(so.DistroId)
 	if err != nil {
-		return nil, errors.WithStack(errors.Wrap(err, "error finding distro"))
+		return nil, errors.WithStack(errors.Wrap(err, "finding distro"))
 	}
 	if d == nil {
 		return nil, errors.Errorf("distro '%s' not found", so.DistroId)
@@ -112,13 +111,13 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 		u := gimlet.GetUser(ctx)
 		dbUser, ok := u.(*user.DBUser)
 		if !ok {
-			return nil, errors.Errorf("error getting DBUser from User")
+			return nil, errors.Errorf("getting DBUser from User")
 		}
 		so.Region = dbUser.GetRegion()
 	}
 	if so.Userdata != "" {
 		if !IsEc2Provider(d.Provider) {
-			return nil, errors.Errorf("cannot set userdata for provider '%s'", d.Provider)
+			return nil, errors.Errorf("cannot set user data for non-EC2 provider '%s'", d.Provider)
 		}
 		if _, err = parseUserData(so.Userdata); err != nil {
 			return nil, errors.Wrap(err, "user data is malformed")
@@ -152,12 +151,12 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 
 	d.ProviderSettingsList, err = modifySpawnHostProviderSettings(*d, settings, so.Region, so.HomeVolumeID)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't get new provider settings")
+		return nil, errors.Wrap(err, "getting new provider settings")
 	}
 
 	if so.InstanceType != "" {
 		if err := CheckInstanceTypeValid(ctx, *d, so.InstanceType, settings.Providers.AWS.AllowedInstanceTypes); err != nil {
-			return nil, errors.Wrap(err, "error validating instance type")
+			return nil, errors.Wrap(err, "validating instance type")
 		}
 	}
 
@@ -195,7 +194,7 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 
 	intentHost := host.NewIntent(hostOptions)
 	if intentHost == nil { // theoretically this should not happen
-		return nil, errors.New("unable to intent host: NewIntent did not return a host")
+		return nil, errors.New("could not create new intent host")
 	}
 	return intentHost, nil
 }
@@ -206,20 +205,20 @@ func CheckInstanceTypeValid(ctx context.Context, d distro.Distro, requestedType 
 		// if it's not in the settings list, check the distro
 		originalInstanceType, ok := d.ProviderSettingsList[0].Lookup("instance_type").StringValueOK()
 		if !ok || originalInstanceType != requestedType {
-			return errors.New("This instance type has not been allowed by admins")
+			return errors.New("this instance type has not been allowed by admins")
 		}
 	}
 	env := evergreen.GetEnvironment()
 	opts, err := GetManagerOptions(d)
 	if err != nil {
-		return errors.Wrap(err, "error getting manager options")
+		return errors.Wrap(err, "getting cloud manager options")
 	}
 	m, err := GetManager(ctx, env, opts)
 	if err != nil {
-		return errors.Wrap(err, "error getting manager")
+		return errors.Wrap(err, "getting cloud manager")
 	}
 	if err := m.CheckInstanceType(ctx, requestedType); err != nil {
-		return errors.Wrapf(err, "error checking instance type '%s'", requestedType)
+		return errors.Wrapf(err, "checking instance type '%s'", requestedType)
 	}
 	return nil
 }
@@ -227,10 +226,10 @@ func CheckInstanceTypeValid(ctx context.Context, d distro.Distro, requestedType 
 // SetHostRDPPassword is a shared utility function to change the password on a windows host
 func SetHostRDPPassword(ctx context.Context, env evergreen.Environment, h *host.Host, pwd string) (int, error) {
 	if !h.Distro.IsWindows() {
-		return http.StatusBadRequest, errors.New("rdp password can only be set on Windows hosts")
+		return http.StatusBadRequest, errors.New("RDP password can only be set on Windows hosts")
 	}
 	if !host.ValidateRDPPassword(pwd) {
-		return http.StatusBadRequest, errors.New("Invalid password")
+		return http.StatusBadRequest, errors.New("invalid password")
 	}
 	if h.Status != evergreen.HostRunning {
 		return http.StatusBadRequest, errors.New("RDP passwords can only be set on running hosts")
@@ -245,7 +244,7 @@ func SetHostRDPPassword(ctx context.Context, env evergreen.Environment, h *host.
 func updateRDPPassword(ctx context.Context, env evergreen.Environment, host *host.Host, password string) error {
 	pwdUpdateCmd, err := constructPwdUpdateCommand(ctx, env, host, password)
 	if err != nil {
-		return errors.Wrap(err, "Error constructing host RDP password")
+		return errors.Wrap(err, "constructing host RDP password")
 	}
 
 	stdout := util.NewMBCappedWriter()
@@ -258,18 +257,18 @@ func updateRDPPassword(ctx context.Context, env evergreen.Environment, host *hos
 		grip.Warning(message.Fields{
 			"stdout":    stdout.String(),
 			"stderr":    stderr.String(),
-			"operation": "set host rdp password",
+			"operation": "set host RDP password",
 			"host_id":   host.Id,
 			"cmd":       pwdUpdateCmd.String(),
 			"err":       err.Error(),
 		})
-		return errors.Wrap(err, "Error updating host RDP password")
+		return errors.Wrap(err, "updating host RDP password")
 	}
 
 	grip.Debug(message.Fields{
 		"stdout":    stdout.String(),
 		"stderr":    stderr.String(),
-		"operation": "set host rdp password",
+		"operation": "set host RDP password",
 		"host_id":   host.Id,
 		"cmd":       pwdUpdateCmd.String(),
 	})
@@ -294,10 +293,10 @@ func constructPwdUpdateCommand(ctx context.Context, env evergreen.Environment, h
 
 func TerminateSpawnHost(ctx context.Context, env evergreen.Environment, host *host.Host, user, reason string) error {
 	if host.Status == evergreen.HostTerminated {
-		return errors.New("Host is already terminated")
+		return errors.New("host is already terminated")
 	}
 	if host.Status == evergreen.HostUninitialized {
-		return host.SetTerminated(user, "host never started")
+		return host.SetTerminated(user, "host is an intent host")
 	}
 	cloudHost, err := GetCloudHost(ctx, host, env)
 	if err != nil {
@@ -331,24 +330,24 @@ func MakeExtendedSpawnHostExpiration(host *host.Host, extendBy time.Duration) (t
 func modifySpawnHostProviderSettings(d distro.Distro, settings *evergreen.Settings, region, volumeID string) ([]*birch.Document, error) {
 	ec2Settings := EC2ProviderSettings{}
 	if err := ec2Settings.FromDistroSettings(d, region); err != nil {
-		return nil, errors.Wrapf(err, "error getting ec2 provider from distro")
+		return nil, errors.Wrapf(err, "getting ec2 provider from distro")
 	}
 
 	if volumeID != "" {
 		volume, err := host.FindVolumeByID(volumeID)
 		if err != nil {
-			return nil, errors.Wrapf(err, "can't get volume '%s'", volumeID)
+			return nil, errors.Wrapf(err, "getting volume '%s'", volumeID)
 		}
 
 		ec2Settings.SubnetId, err = getSubnetForZone(settings.Providers.AWS.Subnets, volume.AvailabilityZone)
 		if err != nil {
-			return nil, errors.Wrapf(err, "no subnet found for AZ '%s'", volume.AvailabilityZone)
+			return nil, errors.Wrapf(err, "getting subnet for AZ '%s'", volume.AvailabilityZone)
 		}
 	}
 
 	doc, err := ec2Settings.ToDocument()
 	if err != nil {
-		return nil, errors.Wrap(err, "can't convert ec2Settings back to doc")
+		return nil, errors.Wrap(err, "converting EC2 provider settings back to BSON doc")
 	}
 
 	return []*birch.Document{doc}, nil

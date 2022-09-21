@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAgentScript(t *testing.T) {
+func TestBootstrapContainerCommand(t *testing.T) {
 	const workingDir = "/data/mci"
 
 	settings := evergreen.Settings{

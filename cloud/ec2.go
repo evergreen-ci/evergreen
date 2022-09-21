@@ -109,11 +109,11 @@ func (s *EC2ProviderSettings) Validate() error {
 	}
 
 	if s.BidPrice < 0 {
-		catcher.New("Bid price must not be negative")
+		catcher.New("bid price must not be negative")
 	}
 
 	if s.IsVpc && s.SubnetId == "" {
-		catcher.New("must set a default subnet for a vpc")
+		catcher.New("must set a default subnet for a VPC")
 	}
 
 	_, err := makeBlockDeviceMappings(s.MountPoints)
@@ -124,7 +124,7 @@ func (s *EC2ProviderSettings) Validate() error {
 		catcher.Wrap(err, "user data is malformed")
 	}
 
-	catcher.Wrap(s.FleetOptions.validate(), "invalid Fleet options")
+	catcher.Wrap(s.FleetOptions.validate(), "invalid fleet options")
 
 	return catcher.Resolve()
 }
@@ -145,11 +145,11 @@ func (s *EC2ProviderSettings) ToDocument() (*birch.Document, error) {
 	s.Region = s.getRegion()
 	bytes, err := bson.Marshal(s)
 	if err != nil {
-		return nil, errors.Wrap(err, "error marshalling provider setting into bson")
+		return nil, errors.Wrap(err, "marshalling provider setting into BSON")
 	}
 	doc := birch.Document{}
 	if err = doc.UnmarshalBSON(bytes); err != nil {
-		return nil, errors.Wrap(err, "error umarshalling settings bytes into document")
+		return nil, errors.Wrap(err, "umarshalling settings bytes into document")
 	}
 	return &doc, nil
 }
@@ -157,10 +157,10 @@ func (s *EC2ProviderSettings) ToDocument() (*birch.Document, error) {
 func (s *EC2ProviderSettings) FromDocument(doc *birch.Document) error {
 	bytes, err := doc.MarshalBSON()
 	if err != nil {
-		return errors.Wrap(err, "error marshalling provider setting into bson")
+		return errors.Wrap(err, "marshalling provider setting into BSON")
 	}
 	if err := bson.Unmarshal(bytes, s); err != nil {
-		return errors.Wrap(err, "error unmarshalling bson into provider settings")
+		return errors.Wrap(err, "unmarshalling BSON into EC2 provider settings")
 	}
 	return nil
 }
@@ -302,7 +302,7 @@ func (m *ec2Manager) Configure(ctx context.Context, settings *evergreen.Settings
 	var err error
 	m.providerKey, m.providerSecret, err = GetEC2Key(settings)
 	if err != nil {
-		return errors.Wrap(err, "Problem getting EC2 keys")
+		return errors.Wrap(err, "getting EC2 keys")
 	}
 	if m.providerKey == "" || m.providerSecret == "" {
 		return errors.New("provider key/secret can't be empty")
@@ -346,7 +346,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	if ec2Settings.UserData != "" {
 		expanded, err := expandUserData(ec2Settings.UserData, m.settings.Expansions)
 		if err != nil {
-			return errors.Wrap(err, "problem expanding user data")
+			return errors.Wrap(err, "expanding user data")
 		}
 		ec2Settings.UserData = expanded
 	}
@@ -360,7 +360,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	settings.ServiceFlags = *flags
 	userData, err := makeUserData(ctx, &settings, h, ec2Settings.UserData, ec2Settings.MergeUserDataParts)
 	if err != nil {
-		return errors.Wrap(err, "could not make user data")
+		return errors.Wrap(err, "making user data")
 	}
 	ec2Settings.UserData = userData
 
@@ -481,12 +481,12 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 func (m *ec2Manager) setNextSubnet(ctx context.Context, h *host.Host) error {
 	ec2Settings := &EC2ProviderSettings{}
 	if err := ec2Settings.FromDistroSettings(h.Distro, m.region); err != nil {
-		return errors.Wrap(err, "can't get provider settings")
+		return errors.Wrap(err, "getting provider settings")
 	}
 
 	supportingSubnets, err := typeCache.subnetsWithInstanceType(ctx, m.settings, m.client, instanceRegionPair{instanceType: h.InstanceType, region: ec2Settings.getRegion()})
 	if err != nil {
-		return errors.Wrapf(err, "can't get supported subnets for instance type '%s'", h.InstanceType)
+		return errors.Wrapf(err, "getting supported subnets for instance type '%s'", h.InstanceType)
 	}
 	if len(supportingSubnets) == 0 {
 		return errors.Errorf("instance type '%s' is not supported by any configured subnet for region '%s'", h.InstanceType, ec2Settings.getRegion())
@@ -507,7 +507,7 @@ func (m *ec2Manager) setNextSubnet(ctx context.Context, h *host.Host) error {
 	ec2Settings.SubnetId = supportingSubnets[nextSubnetIndex%len(supportingSubnets)].SubnetID
 	newSettingsDocument, err := ec2Settings.ToDocument()
 	if err != nil {
-		return errors.Wrap(err, "can't convert provider settings to document")
+		return errors.Wrap(err, "convert provider settings to document")
 	}
 
 	return h.UpdateCachedDistroProviderSettings([]*birch.Document{newSettingsDocument})
@@ -544,7 +544,7 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 	if ec2Settings.UserData != "" {
 		expanded, err := expandUserData(ec2Settings.UserData, m.settings.Expansions)
 		if err != nil {
-			return errors.Wrap(err, "problem expanding user data")
+			return errors.Wrap(err, "expanding user data")
 		}
 		ec2Settings.UserData = expanded
 	}
@@ -558,7 +558,7 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 	settings.ServiceFlags = *flags
 	userData, err := makeUserData(ctx, &settings, h, ec2Settings.UserData, ec2Settings.MergeUserDataParts)
 	if err != nil {
-		return errors.Wrap(err, "could not make user data")
+		return errors.Wrap(err, "making user data")
 	}
 	ec2Settings.UserData = userData
 
@@ -586,7 +586,7 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 				"distro":  h.Distro.Id,
 			}))
 		}
-		grip.Error(errors.Wrapf(h.Remove(), "error removing intent host %s", h.Id))
+		grip.Error(errors.Wrapf(h.Remove(), "removing intent host '%s'", h.Id))
 		return errors.Wrap(err, "RequestSpotInstances API call returned an error")
 	}
 
@@ -599,7 +599,7 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 				"distro":  h.Distro.Id,
 			}))
 		}
-		err = errors.Errorf("Spot request %s was found in state %s on intent host %s",
+		err = errors.Errorf("spot request '%s' was found in state '%s' on intent host '%s'",
 			*spotReqRes.SpotInstanceRequestId, *spotReqRes.State, h.Id)
 		return err
 	}
@@ -612,22 +612,22 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, error) {
 	if h.Distro.Provider != evergreen.ProviderNameEc2OnDemand &&
 		h.Distro.Provider != evergreen.ProviderNameEc2Spot {
-		return nil, errors.Errorf("Can't spawn instance for distro %s: provider is %s",
+		return nil, errors.Errorf("can't spawn EC2 instance for distro '%s': distro provider is '%s'",
 			h.Distro.Id, h.Distro.Provider)
 	}
 
 	if err := m.client.Create(m.credentials, m.region); err != nil {
-		return nil, errors.Wrap(err, "error creating client")
+		return nil, errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
 
 	ec2Settings := &EC2ProviderSettings{}
 	err := ec2Settings.FromDistroSettings(h.Distro, m.region)
 	if err != nil {
-		return nil, errors.Wrap(err, "error getting EC2 settings")
+		return nil, errors.Wrap(err, "getting EC2 settings")
 	}
 	if err = ec2Settings.Validate(); err != nil {
-		return nil, errors.Wrapf(err, "Invalid EC2 settings in distro %s: %+v", h.Distro.Id, ec2Settings)
+		return nil, errors.Wrapf(err, "invalid EC2 settings in distro %s: %+v", h.Distro.Id, ec2Settings)
 	}
 	if ec2Settings.KeyName == "" && !h.UserHost {
 		if !h.SpawnOptions.SpawnedByTask {
@@ -636,14 +636,14 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 		var k string
 		k, err = m.client.GetKey(ctx, h)
 		if err != nil {
-			return nil, errors.Wrap(err, "not spawning host, problem creating key")
+			return nil, errors.Wrap(err, "getting key name")
 		}
 		ec2Settings.KeyName = k
 	}
 
 	blockDevices, err := makeBlockDeviceMappings(ec2Settings.MountPoints)
 	if err != nil {
-		return nil, errors.Wrap(err, "error making block device mappings")
+		return nil, errors.Wrap(err, "making block device mappings")
 	}
 
 	if h.InstanceType != "" {
@@ -745,16 +745,16 @@ func (m *ec2Manager) getResources(ctx context.Context, h *host.Host) ([]string, 
 			"distro":        h.Distro.Id,
 		}))
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
+			return nil, errors.Wrapf(err, "getting spot request info for host '%s'", h.Id)
 		}
 		if instanceID == "" {
-			return nil, errors.WithStack(errors.New("spot instance does not yet have an instanceId"))
+			return nil, errors.New("spot instance does not yet have an instanceId")
 		}
 	}
 
 	volumeIDs, err := m.client.GetVolumeIDs(ctx, h)
 	if err != nil {
-		return nil, errors.Wrapf(err, "can't get volume IDs for '%s'", h.Id)
+		return nil, errors.Wrapf(err, "getting volume IDs for host '%s'", h.Id)
 	}
 
 	resources := []string{instanceID}
@@ -766,25 +766,25 @@ func (m *ec2Manager) getResources(ctx context.Context, h *host.Host) ([]string, 
 func (m *ec2Manager) addTags(ctx context.Context, h *host.Host, tags []host.Tag) error {
 	resources, err := m.getResources(ctx, h)
 	if err != nil {
-		return errors.Wrap(err, "error getting host resources")
+		return errors.Wrap(err, "getting host resources")
 	}
 	_, err = m.client.CreateTags(ctx, &ec2.CreateTagsInput{
 		Resources: aws.StringSlice(resources),
 		Tags:      hostToEC2Tags(tags),
 	})
 	if err != nil {
-		return errors.Wrapf(err, "error creating tags using client for '%s'", h.Id)
+		return errors.Wrapf(err, "creating tags using client for host '%s'", h.Id)
 	}
 	h.AddTags(tags)
 
-	return errors.Wrapf(h.SetTags(), "error creating tags in db for '%s'", h.Id)
+	return errors.Wrapf(h.SetTags(), "creating tags in DB for host '%s'", h.Id)
 }
 
 // deleteTags removes the specified tags by their keys in the client and db
 func (m *ec2Manager) deleteTags(ctx context.Context, h *host.Host, keys []string) error {
 	resources, err := m.getResources(ctx, h)
 	if err != nil {
-		return errors.Wrap(err, "error getting host resources")
+		return errors.Wrap(err, "getting host resources")
 	}
 	deleteTagSlice := make([]*ec2.Tag, len(keys))
 	for i := range keys {
@@ -795,11 +795,11 @@ func (m *ec2Manager) deleteTags(ctx context.Context, h *host.Host, keys []string
 		Tags:      deleteTagSlice,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "error deleting tags using client for '%s'", h.Id)
+		return errors.Wrapf(err, "deleting tags using client for host '%s'", h.Id)
 	}
 	h.DeleteTags(keys)
 
-	return errors.Wrapf(h.SetTags(), "error deleting tags in db for '%s'", h.Id)
+	return errors.Wrapf(h.SetTags(), "deleting tags in DB for host '%s'", h.Id)
 }
 
 // setInstanceType changes the instance type in the client and db
@@ -811,27 +811,27 @@ func (m *ec2Manager) setInstanceType(ctx context.Context, h *host.Host, instance
 		},
 	})
 	if err != nil {
-		return errors.Wrapf(err, "error changing instance type using client for '%s'", h.Id)
+		return errors.Wrapf(err, "changing instance type using client for host '%s'", h.Id)
 	}
 
-	return errors.Wrapf(h.SetInstanceType(instanceType), "error changing instance type in db for '%s'", h.Id)
+	return errors.Wrapf(h.SetInstanceType(instanceType), "changing instance type in DB for host '%s'", h.Id)
 }
 
 func (m *ec2Manager) CheckInstanceType(ctx context.Context, instanceType string) error {
 	if err := m.client.Create(m.credentials, m.region); err != nil {
-		return errors.Wrap(err, "error creating client")
+		return errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
 	output, err := m.client.DescribeInstanceTypeOfferings(ctx, &ec2.DescribeInstanceTypeOfferingsInput{})
 	if err != nil {
-		return errors.Wrapf(err, "error describe instance types offered for region '%s", m.region)
+		return errors.Wrapf(err, "describing instance types offered for region '%s'", m.region)
 	}
 	for _, availableType := range output.InstanceTypeOfferings {
 		if availableType.InstanceType != nil && (*availableType.InstanceType) == instanceType {
 			return nil
 		}
 	}
-	return errors.Errorf("type '%s' is unavailable in region '%s'", instanceType, m.region)
+	return errors.Errorf("instance type '%s' is unavailable in region '%s'", instanceType, m.region)
 }
 
 // setNoExpiration changes whether a host should expire
@@ -840,7 +840,7 @@ func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpira
 	if !host.IsIntentHostId(h.Id) {
 		resources, err := m.getResources(ctx, h)
 		if err != nil {
-			return errors.Wrap(err, "error getting host resources")
+			return errors.Wrap(err, "getting host resources")
 		}
 		_, err = m.client.CreateTags(ctx, &ec2.CreateTagsInput{
 			Resources: aws.StringSlice(resources),
@@ -852,31 +852,31 @@ func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpira
 			},
 		})
 		if err != nil {
-			return errors.Wrapf(err, "error changing expire-on tag using client for '%s", h.Id)
+			return errors.Wrapf(err, "changing expire-on tag using client for host '%s", h.Id)
 		}
 	}
 
 	if noExpiration {
-		return errors.Wrapf(h.MarkShouldNotExpire(expireOnValue), "error marking host should not expire in db for '%s'", h.Id)
+		return errors.Wrapf(h.MarkShouldNotExpire(expireOnValue), "marking host should not expire in DB for host '%s'", h.Id)
 	}
-	return errors.Wrapf(h.MarkShouldExpire(expireOnValue), "error marking host should in db for '%s'", h.Id)
+	return errors.Wrapf(h.MarkShouldExpire(expireOnValue), "marking host should in DB for host '%s'", h.Id)
 }
 
 // extendExpiration extends a host's expiration time by the number of hours specified
 func (m *ec2Manager) extendExpiration(ctx context.Context, h *host.Host, extension time.Duration) error {
-	return errors.Wrapf(h.SetExpirationTime(h.ExpirationTime.Add(extension)), "error extending expiration time in db for '%s'", h.Id)
+	return errors.Wrapf(h.SetExpirationTime(h.ExpirationTime.Add(extension)), "extending expiration time in DB for host '%s'", h.Id)
 }
 
 // ModifyHost modifies a spawn host according to the changes specified by a HostModifyOptions struct.
 func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.HostModifyOptions) error {
 	if err := m.client.Create(m.credentials, m.region); err != nil {
-		return errors.Wrap(err, "error creating client")
+		return errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
 
 	// Validate modify options for user errors that should prevent all modifications
 	if err := validateEC2HostModifyOptions(h, opts); err != nil {
-		return errors.Wrap(err, "error validating EC2 host modify options")
+		return errors.Wrap(err, "validating EC2 host modify options")
 	}
 
 	// Attempt all requested modifications and catch errors from client or db
@@ -910,7 +910,7 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 			return catcher.Resolve()
 		}
 		if volume.AvailabilityZone != h.Zone {
-			catcher.Add(errors.Errorf("can't attach volume in zone '%s' to host in zone '%s'", volume.AvailabilityZone, h.Zone))
+			catcher.Errorf("cannot attach volume in zone '%s' to host in zone '%s'", volume.AvailabilityZone, h.Zone)
 			return catcher.Resolve()
 		}
 		attachment := host.VolumeAttachment{VolumeID: opts.AttachVolume, IsHome: false}
@@ -921,7 +921,7 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 
 	if opts.AddKey != "" {
 		if err := addPublicKey(ctx, h, opts.AddKey); err != nil {
-			catcher.Wrapf(err, "adding key to host '%s'", h.Id)
+			catcher.Wrapf(err, "adding public key to host '%s'", h.Id)
 		}
 	}
 
@@ -939,7 +939,7 @@ func addPublicKey(ctx context.Context, h *host.Host, key string) error {
 // GetInstanceStatuses returns the current status of a slice of EC2 instances.
 func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host) ([]CloudStatus, error) {
 	if err := m.client.Create(m.credentials, m.region); err != nil {
-		return nil, errors.Wrap(err, "error creating client")
+		return nil, errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
 
@@ -968,7 +968,7 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 	if len(spotHosts) > 0 {
 		spotOut, err := m.client.DescribeSpotRequestsAndSave(ctx, spotHosts)
 		if err != nil {
-			return nil, errors.Wrap(err, "error describing spot instances")
+			return nil, errors.Wrap(err, "describing spot instances")
 		}
 		if len(spotOut.SpotInstanceRequests) != len(spotHosts) {
 			return nil, errors.New("programmer error: length of spot instance requests != length of spot host IDs")
@@ -993,7 +993,7 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 			InstanceIds: hostsToCheck,
 		})
 		if err != nil {
-			return nil, errors.Wrap(err, "error describing instances")
+			return nil, errors.Wrap(err, "describing instances")
 		}
 		if err = validateEc2DescribeInstancesOutput(out); err != nil {
 			return nil, errors.Wrap(err, "invalid describe instances response")
@@ -1022,7 +1022,7 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 			if status == StatusRunning {
 				// cache instance information so we can make fewer calls to AWS's API
 				if err = cacheHostData(ctx, instanceIdToHostMap[*hostsToCheck[i]], instance, m.client); err != nil {
-					return nil, errors.Wrapf(err, "can't cache host data for '%s'", *hostsToCheck[i])
+					return nil, errors.Wrapf(err, "caching EC2 host data for host '%s'", *hostsToCheck[i])
 				}
 			}
 			hostToStatusMap[instanceIdToHostMap[*hostsToCheck[i]].Id] = status
@@ -1042,7 +1042,7 @@ func (m *ec2Manager) GetInstanceStatus(ctx context.Context, h *host.Host) (Cloud
 	status := StatusUnknown
 
 	if err := m.client.Create(m.credentials, m.region); err != nil {
-		return status, errors.Wrap(err, "error creating client")
+		return status, errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
 
@@ -1053,11 +1053,11 @@ func (m *ec2Manager) GetInstanceStatus(ctx context.Context, h *host.Host) (Cloud
 		} else {
 			spotDetails, err := m.client.DescribeSpotRequestsAndSave(ctx, []*host.Host{h})
 			if err != nil {
-				err = errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
+				err = errors.Wrapf(err, "getting spot request info for host '%s'", h.Id)
 				return status, err
 			}
 			if len(spotDetails.SpotInstanceRequests) == 0 {
-				return status, errors.Errorf("'%s' has no corresponding spot instance request", h.Id)
+				return status, errors.Errorf("host '%s' has no corresponding spot instance request", h.Id)
 			}
 			spotInstance := spotDetails.SpotInstanceRequests[0]
 			if spotInstance.InstanceId == nil || *spotInstance.InstanceId == "" {
@@ -1087,7 +1087,7 @@ func (m *ec2Manager) GetInstanceStatus(ctx context.Context, h *host.Host) (Cloud
 	if status == StatusRunning {
 		// cache instance information so we can make fewer calls to AWS's API
 		if err = cacheHostData(ctx, h, instance, m.client); err != nil {
-			return status, errors.Wrapf(err, "can't cache host data for '%s'", h.Id)
+			return status, errors.Wrapf(err, "caching EC2 host data for host '%s'", h.Id)
 		}
 	}
 
@@ -1095,16 +1095,14 @@ func (m *ec2Manager) GetInstanceStatus(ctx context.Context, h *host.Host) (Cloud
 }
 
 func (m *ec2Manager) SetPortMappings(context.Context, *host.Host, *host.Host) error {
-	return errors.New("can't set port mappings with ec2 provider")
+	return errors.New("can't set port mappings with EC2 provider")
 }
 
 // TerminateInstance terminates the EC2 instance.
 func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, reason string) error {
 	// terminate the instance
 	if h.Status == evergreen.HostTerminated {
-		err := errors.Errorf("Can not terminate %s - already marked as "+
-			"terminated!", h.Id)
-		return err
+		return errors.Errorf("cannot terminate host '%s' because it's already marked as terminated", h.Id)
 	}
 
 	if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
@@ -1116,7 +1114,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 	}
 
 	if err := m.client.Create(m.credentials, m.region); err != nil {
-		return errors.Wrap(err, "error creating client")
+		return errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
 
@@ -1132,16 +1130,16 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 				"user":          user,
 				"distro":        h.Distro.Id,
 			}))
-			return errors.Wrap(err, "error canceling spot request")
+			return errors.Wrap(err, "canceling spot request")
 		}
 		// the spot request wasn't fulfilled, so don't attempt to terminate in ec2
 		if instanceId == "" {
-			return errors.Wrap(h.Terminate(user, "spot request was not fulfilled"), "failed to terminate instance in db")
+			return errors.Wrap(h.Terminate(user, "spot request was not fulfilled"), "terminating host in DB")
 		}
 	}
 
 	if !IsEC2InstanceID(instanceId) {
-		return errors.Wrap(h.Terminate(user, fmt.Sprintf("detected invalid instance ID %s", instanceId)), "failed to terminate instance in db")
+		return errors.Wrap(h.Terminate(user, fmt.Sprintf("detected invalid instance ID '%s'", instanceId)), "terminating instance in DB")
 	}
 	resp, err := m.client.TerminateInstances(ctx, &ec2.TerminateInstancesInput{
 		InstanceIds: []*string{aws.String(instanceId)},
@@ -1171,7 +1169,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 	for _, vol := range h.Volumes {
 		volDB, err := host.FindVolumeByID(vol.VolumeID)
 		if err != nil {
-			return errors.Wrap(err, "can't query for volumes")
+			return errors.Wrap(err, "finding volumes for host")
 		}
 		if volDB == nil {
 			continue
@@ -1185,7 +1183,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 					"host_id": h.Id,
 					"volume":  volDB.ID,
 				}))
-				return errors.Wrapf(err, "error updating volume '%s' expiration", volDB.ID)
+				return errors.Wrapf(err, "updating expiration for volume '%s'", volDB.ID)
 			}
 		}
 
@@ -1199,15 +1197,15 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 		}
 	}
 
-	return errors.Wrap(h.Terminate(user, reason), "failed to terminate instance in db")
+	return errors.Wrap(h.Terminate(user, reason), "terminating host in DB")
 }
 
 // StopInstance stops a running EC2 instance.
 func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string) error {
 	if h.Status == evergreen.HostStopped {
-		return errors.Errorf("cannot stop '%s' - already marked as stopped", h.Id)
+		return errors.Errorf("cannot stop host '%s' because it is already marked as stopped", h.Id)
 	} else if h.Status != evergreen.HostRunning && h.Status != evergreen.HostStopping {
-		return errors.Errorf("cannot stop '%s' - host status is '%s'", h.Id, h.Status)
+		return errors.Errorf("cannot stop host '%s' because its status ('%s') is not a stoppable state", h.Id, h.Status)
 	}
 
 	if err := m.client.Create(m.credentials, m.region); err != nil {
@@ -1284,11 +1282,11 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 // StartInstance starts a stopped EC2 instance.
 func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user string) error {
 	if h.Status != evergreen.HostStopped {
-		return errors.Errorf("cannot start '%s' - host status is '%s'", h.Id, h.Status)
+		return errors.Errorf("cannot start host '%s' because its status is '%s'", h.Id, h.Status)
 	}
 
 	if err := m.client.Create(m.credentials, m.region); err != nil {
-		return errors.Wrap(err, "error creating client")
+		return errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
 
@@ -1296,7 +1294,7 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 		InstanceIds: []*string{aws.String(h.Id)},
 	})
 	if err != nil {
-		return errors.Wrapf(err, "error starting EC2 instance '%s'", h.Id)
+		return errors.Wrapf(err, "starting EC2 instance '%s'", h.Id)
 	}
 
 	var instance *ec2.Instance
@@ -1308,7 +1306,7 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 		func() (bool, error) {
 			instance, err = m.client.GetInstanceInfo(ctx, h.Id)
 			if err != nil {
-				return false, errors.Wrap(err, "error getting instance info")
+				return false, errors.Wrap(err, "getting instance info")
 			}
 			if ec2StatusToEvergreenStatus(*instance.State.Name) == StatusRunning {
 				return false, nil
@@ -1320,11 +1318,11 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 		})
 
 	if err != nil {
-		return errors.Wrap(err, "error checking if spawnhost started")
+		return errors.Wrap(err, "checking if spawn host started")
 	}
 
 	if err = cacheHostData(ctx, h, instance, m.client); err != nil {
-		return errors.Wrapf(err, "can't cache host data for instance '%s'", h.Id)
+		return errors.Wrapf(err, "cache EC2 host data for host '%s'", h.Id)
 	}
 
 	grip.Info(message.Fields{
@@ -1335,7 +1333,7 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 		"distro":        h.Distro.Id,
 	})
 
-	return errors.Wrap(h.SetRunning(user), "failed to mark instance as running in db")
+	return errors.Wrap(h.SetRunning(user), "failed to mark instance as running in DB")
 }
 
 func (m *ec2Manager) cancelSpotRequest(ctx context.Context, h *host.Host) (string, error) {
@@ -1352,7 +1350,7 @@ func (m *ec2Manager) cancelSpotRequest(ctx context.Context, h *host.Host) (strin
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
 		}))
-		return "", errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
+		return "", errors.Wrapf(err, "getting spot request info for host '%s'", h.Id)
 	}
 	if _, err = m.client.CancelSpotInstanceRequests(ctx, &ec2.CancelSpotInstanceRequestsInput{
 		SpotInstanceRequestIds: []*string{aws.String(h.Id)},
@@ -1368,7 +1366,7 @@ func (m *ec2Manager) cancelSpotRequest(ctx context.Context, h *host.Host) (strin
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
 		})
-		return "", errors.Wrapf(err, "Failed to cancel spot request for host %s", h.Id)
+		return "", errors.Wrapf(err, "cancelling spot request for host '%s'", h.Id)
 	}
 	grip.Info(message.Fields{
 		"message":       "canceled spot request",
@@ -1384,7 +1382,7 @@ func (m *ec2Manager) cancelSpotRequest(ctx context.Context, h *host.Host) (strin
 func (m *ec2Manager) IsUp(ctx context.Context, h *host.Host) (bool, error) {
 	status, err := m.GetInstanceStatus(ctx, h)
 	if err != nil {
-		return false, errors.Wrap(err, "error checking if instance is up")
+		return false, errors.Wrap(err, "checking if instance is up")
 	}
 	if status == StatusRunning {
 		return true, nil
@@ -1401,17 +1399,17 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 	}
 
 	if err := m.client.Create(m.credentials, m.region); err != nil {
-		return errors.Wrap(err, "error creating client")
+		return errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
 
 	resources, err := m.getResources(ctx, h)
 	if err != nil {
-		return errors.Wrap(err, "error getting resources")
+		return errors.Wrap(err, "getting resources")
 	}
 
 	if err = m.client.SetTags(ctx, resources, h); err != nil {
-		return errors.Wrap(err, "error settings tags")
+		return errors.Wrap(err, "setting tags")
 	}
 
 	return nil
@@ -1419,7 +1417,7 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 
 func (m *ec2Manager) AttachVolume(ctx context.Context, h *host.Host, attachment *host.VolumeAttachment) error {
 	if err := m.client.Create(m.credentials, m.region); err != nil {
-		return errors.Wrap(err, "error creating client")
+		return errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
 
@@ -1431,7 +1429,7 @@ func (m *ec2Manager) AttachVolume(ctx context.Context, h *host.Host, attachment 
 	if attachment.DeviceName == "" {
 		deviceName, err := generateDeviceNameForVolume(opts)
 		if err != nil {
-			return errors.Wrap(err, "error generating initial device name")
+			return errors.Wrap(err, "generating initial device name")
 		}
 		attachment.DeviceName = deviceName
 	}
@@ -1442,25 +1440,25 @@ func (m *ec2Manager) AttachVolume(ctx context.Context, h *host.Host, attachment 
 		VolumeId:   aws.String(attachment.VolumeID),
 	}, opts)
 	if err != nil {
-		return errors.Wrapf(err, "error attaching volume '%s' to host '%s'", attachment.VolumeID, h.Id)
+		return errors.Wrapf(err, "attaching volume '%s' to host '%s'", attachment.VolumeID, h.Id)
 	}
 	if volume != nil && volume.Device != nil {
 		attachment.DeviceName = *volume.Device
 	}
-	return errors.Wrapf(h.AddVolumeToHost(attachment), "error attaching volume '%s' to host '%s' in db", attachment.VolumeID, h.Id)
+	return errors.Wrapf(h.AddVolumeToHost(attachment), "attaching volume '%s' to host '%s' in DB", attachment.VolumeID, h.Id)
 }
 
 func (m *ec2Manager) DetachVolume(ctx context.Context, h *host.Host, volumeID string) error {
 	v, err := host.FindVolumeByID(volumeID)
 	if err != nil {
-		return errors.Wrapf(err, "can't get volume '%s'", volumeID)
+		return errors.Wrapf(err, "getting volume '%s'", volumeID)
 	}
 	if v == nil {
-		return errors.Errorf("no volume '%s' found", volumeID)
+		return errors.Errorf("volume '%s' not found", volumeID)
 	}
 
 	if err = m.client.Create(m.credentials, m.region); err != nil {
-		return errors.Wrap(err, "error creating client")
+		return errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
 
@@ -1469,21 +1467,21 @@ func (m *ec2Manager) DetachVolume(ctx context.Context, h *host.Host, volumeID st
 		VolumeId:   aws.String(volumeID),
 	})
 	if err != nil {
-		return errors.Wrapf(err, "error detaching volume '%s' from host '%s' in client", volumeID, h.Id)
+		return errors.Wrapf(err, "detaching volume '%s' from host '%s' in client", volumeID, h.Id)
 	}
 
 	if v.Expiration.Before(time.Now().Add(evergreen.DefaultSpawnHostExpiration)) {
 		if err = m.modifyVolumeExpiration(ctx, v, time.Now().Add(evergreen.DefaultSpawnHostExpiration)); err != nil {
-			return errors.Wrapf(err, "can't update expiration for volume '%s'", volumeID)
+			return errors.Wrapf(err, "updating expiration for volume '%s'", volumeID)
 		}
 	}
 
-	return errors.Wrapf(h.RemoveVolumeFromHost(volumeID), "error detaching volume '%s' from host '%s' in db", volumeID, h.Id)
+	return errors.Wrapf(h.RemoveVolumeFromHost(volumeID), "detaching volume '%s' from host '%s' in DB", volumeID, h.Id)
 }
 
 func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*host.Volume, error) {
 	if err := m.client.Create(m.credentials, m.region); err != nil {
-		return nil, errors.Wrap(err, "error creating client")
+		return nil, errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
 
@@ -1503,7 +1501,7 @@ func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*ho
 	})
 
 	if err != nil {
-		return nil, errors.Wrap(err, "error creating volume in client")
+		return nil, errors.Wrap(err, "creating volume in client")
 	}
 	if resp.VolumeId == nil {
 		return nil, errors.New("new volume returned by EC2 does not have an ID")
@@ -1511,7 +1509,7 @@ func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*ho
 
 	volume.ID = *resp.VolumeId
 	if err = volume.Insert(); err != nil {
-		return nil, errors.Wrap(err, "error creating volume in db")
+		return nil, errors.Wrap(err, "creating volume in DB")
 	}
 
 	return volume, nil
@@ -1519,7 +1517,7 @@ func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*ho
 
 func (m *ec2Manager) DeleteVolume(ctx context.Context, volume *host.Volume) error {
 	if err := m.client.Create(m.credentials, m.region); err != nil {
-		return errors.Wrap(err, "error creating client")
+		return errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
 
@@ -1527,15 +1525,15 @@ func (m *ec2Manager) DeleteVolume(ctx context.Context, volume *host.Volume) erro
 		VolumeId: aws.String(volume.ID),
 	})
 	if err != nil {
-		return errors.Wrapf(err, "error deleting volume '%s' in client", volume.ID)
+		return errors.Wrapf(err, "deleting volume '%s' in client", volume.ID)
 	}
 
-	return errors.Wrapf(volume.Remove(), "error deleting volume '%s' in db", volume.ID)
+	return errors.Wrapf(volume.Remove(), "deleting volume '%s' in DB", volume.ID)
 }
 
 func (m *ec2Manager) GetVolumeAttachment(ctx context.Context, volumeID string) (*host.VolumeAttachment, error) {
 	if err := m.client.Create(m.credentials, m.region); err != nil {
-		return nil, errors.Wrap(err, "error creating client")
+		return nil, errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
 
@@ -1543,11 +1541,11 @@ func (m *ec2Manager) GetVolumeAttachment(ctx context.Context, volumeID string) (
 		VolumeIds: aws.StringSlice([]string{volumeID}),
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "error describing volume '%s'", volumeID)
+		return nil, errors.Wrapf(err, "describing volume '%s'", volumeID)
 	}
 
 	if volumeInfo == nil || len(volumeInfo.Volumes) == 0 || volumeInfo.Volumes[0] == nil {
-		return nil, errors.Errorf("no volume '%s' found in ec2", volumeID)
+		return nil, errors.Errorf("no volume '%s' found in EC2", volumeID)
 	}
 
 	// no attachments found
@@ -1560,7 +1558,7 @@ func (m *ec2Manager) GetVolumeAttachment(ctx context.Context, volumeID string) (
 		ec2Attachment.VolumeId == nil ||
 		ec2Attachment.Device == nil ||
 		ec2Attachment.InstanceId == nil {
-		return nil, errors.New("aws returned an invalid volume attachment")
+		return nil, errors.Errorf("AWS returned an invalid volume attachment %+v", ec2Attachment)
 	}
 
 	attachment := &host.VolumeAttachment{
@@ -1574,7 +1572,7 @@ func (m *ec2Manager) GetVolumeAttachment(ctx context.Context, volumeID string) (
 
 func (m *ec2Manager) modifyVolumeExpiration(ctx context.Context, volume *host.Volume, newExpiration time.Time) error {
 	if err := volume.SetExpiration(newExpiration); err != nil {
-		return errors.Wrapf(err, "can't update expiration for volume '%s'", volume.ID)
+		return errors.Wrapf(err, "updating expiration for volume '%s'", volume.ID)
 	}
 
 	_, err := m.client.CreateTags(ctx, &ec2.CreateTagsInput{
@@ -1584,7 +1582,7 @@ func (m *ec2Manager) modifyVolumeExpiration(ctx context.Context, volume *host.Vo
 			Value: aws.String(newExpiration.Add(time.Hour * 24 * evergreen.SpawnHostExpireDays).Format(evergreen.ExpireOnFormat))}},
 	})
 	if err != nil {
-		return errors.Wrapf(err, "can't update expire-on tag for volume '%s'", volume.ID)
+		return errors.Wrapf(err, "updating expire-on tag for volume '%s'", volume.ID)
 	}
 
 	return nil
@@ -1592,35 +1590,35 @@ func (m *ec2Manager) modifyVolumeExpiration(ctx context.Context, volume *host.Vo
 
 func (m *ec2Manager) ModifyVolume(ctx context.Context, volume *host.Volume, opts *model.VolumeModifyOptions) error {
 	if err := m.client.Create(m.credentials, m.region); err != nil {
-		return errors.Wrap(err, "error creating client")
+		return errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
 
 	if !utility.IsZeroTime(opts.Expiration) {
 		if err := m.modifyVolumeExpiration(ctx, volume, opts.Expiration); err != nil {
-			return errors.Wrapf(err, "error modifying volume '%s' expiration", volume.ID)
+			return errors.Wrapf(err, "modifying volume '%s' expiration", volume.ID)
 		}
 		if err := volume.SetNoExpiration(false); err != nil {
-			return errors.Wrapf(err, "error clearing volume '%s' no-expiration in db", volume.ID)
+			return errors.Wrapf(err, "clearing volume '%s' no-expiration in DB", volume.ID)
 		}
 	}
 
 	if opts.NoExpiration && opts.HasExpiration {
-		return errors.New("can't set no expiration and has expiration")
+		return errors.New("can't set both no expiration and has expiration")
 	}
 
 	if opts.NoExpiration {
 		if err := m.modifyVolumeExpiration(ctx, volume, time.Now().Add(evergreen.SpawnHostNoExpirationDuration)); err != nil {
-			return errors.Wrapf(err, "error modifying volume '%s' background expiration", volume.ID)
+			return errors.Wrapf(err, "modifying volume '%s' background expiration", volume.ID)
 		}
 		if err := volume.SetNoExpiration(true); err != nil {
-			return errors.Wrapf(err, "error setting volume '%s' no-expiration in db", volume.ID)
+			return errors.Wrapf(err, "setting volume '%s' no-expiration in DB", volume.ID)
 		}
 	}
 
 	if opts.HasExpiration {
 		if err := volume.SetNoExpiration(false); err != nil {
-			return errors.Wrapf(err, "error clearing volume '%s' no-expiration in db", volume.ID)
+			return errors.Wrapf(err, "clearing volume '%s' no-expiration in DB", volume.ID)
 		}
 	}
 
@@ -1630,16 +1628,16 @@ func (m *ec2Manager) ModifyVolume(ctx context.Context, volume *host.Volume, opts
 			Size:     aws.Int64(int64(opts.Size)),
 		})
 		if err != nil {
-			return errors.Wrapf(err, "error modifying volume '%s' size in client", volume.ID)
+			return errors.Wrapf(err, "modifying volume '%s' size in client", volume.ID)
 		}
 		if err = volume.SetSize(opts.Size); err != nil {
-			return errors.Wrapf(err, "error modifying volume '%s' size in db", volume.ID)
+			return errors.Wrapf(err, "modifying volume '%s' size in DB", volume.ID)
 		}
 	}
 
 	if opts.NewName != "" {
 		if err := volume.SetDisplayName(opts.NewName); err != nil {
-			return errors.Wrapf(err, "error modifying volume '%s' name in db", volume.ID)
+			return errors.Wrapf(err, "modifying volume '%s' name in DB", volume.ID)
 		}
 	}
 	return nil
@@ -1648,7 +1646,7 @@ func (m *ec2Manager) ModifyVolume(ctx context.Context, volume *host.Volume, opts
 // GetDNSName returns the DNS name for the host.
 func (m *ec2Manager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
 	if err := m.client.Create(m.credentials, m.region); err != nil {
-		return "", errors.Wrap(err, "error creating client")
+		return "", errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
 
@@ -1684,11 +1682,11 @@ func cloudStatusFromSpotStatus(state string) CloudStatus {
 
 func (m *ec2Manager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) error {
 	if err := m.client.Create(m.credentials, m.region); err != nil {
-		return errors.Wrap(err, "error creating client")
+		return errors.Wrap(err, "creating client")
 	}
 	defer m.client.Close()
 
-	return errors.Wrap(addSSHKey(ctx, m.client, pair), "could not add SSH key")
+	return errors.Wrap(addSSHKey(ctx, m.client, pair), "adding public SSH key")
 }
 
 func (m *ec2Manager) getProvider(ctx context.Context, h *host.Host, ec2settings *EC2ProviderSettings) (ec2ProviderType, error) {
@@ -1700,5 +1698,5 @@ func (m *ec2Manager) getProvider(ctx context.Context, h *host.Host, ec2settings 
 		h.Distro.Provider = evergreen.ProviderNameEc2Spot
 		return spotProvider, nil
 	}
-	return 0, errors.Errorf("provider is %d, expected %d or %d", m.provider, onDemandProvider, spotProvider)
+	return 0, errors.Errorf("provider type is %d, expected %d or %d", m.provider, onDemandProvider, spotProvider)
 }
