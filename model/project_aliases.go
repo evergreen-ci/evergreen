@@ -346,32 +346,6 @@ func CopyProjectAliases(oldProjectId, newProjectId string) error {
 	return nil
 }
 
-func FindParametersForPatchAlias(identifier string, v *Version) ([]patch.Parameter, error) {
-	if evergreen.IsPatchRequester(v.Requester) {
-		p, err := patch.FindOneId(v.Id)
-		if err != nil {
-			return nil, errors.Wrapf(err, "getting patch for version '%s'", v.Id)
-		}
-		if p == nil {
-			return nil, errors.Errorf("no patch found for version '%s'", v.Id)
-		}
-		var params []patch.Parameter
-		if p.Alias != "" && IsPatchAlias(p.Alias) {
-			aliases, err := FindAliasesForPatch(identifier, p.Alias, p)
-			if err != nil {
-				return nil, errors.Wrapf(err, "retrieving alias '%s' for patched project config '%s'", p.Alias, p.Id.Hex())
-			}
-			for _, alias := range aliases {
-				if len(alias.Parameters) > 0 {
-					params = append(params, alias.Parameters...)
-				}
-			}
-		}
-		return params, nil
-	}
-	return nil, nil
-}
-
 func FindMatchingGitTagAliasesInProject(projectID, tag string) ([]ProjectAlias, error) {
 	aliases, err := FindAliasInProjectRepoOrConfig(projectID, evergreen.GitTagAlias)
 	if err != nil {

@@ -768,14 +768,6 @@ func (h *fetchExpansionsForTaskHandler) Run(ctx context.Context) gimlet.Responde
 			res.Vars[param.Key] = param.Value
 		}
 	}
-	aliasParams, err := model.FindParametersForPatchAlias(t.Project, v)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(err)
-	}
-	for _, param := range aliasParams {
-		// We overwrite parameters set directly on the patch alias over the project config parameters.
-		res.Vars[param.Key] = param.Value
-	}
 	for _, param := range v.Parameters {
 		// We will overwrite empty values here since these were explicitly user-specified.
 		res.Vars[param.Key] = param.Value

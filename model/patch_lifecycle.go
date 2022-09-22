@@ -439,6 +439,11 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		parentPatchNumber = parentPatch.PatchNumber
 	}
 
+	params, err := getFullPatchParams(p)
+	if err != nil {
+		return nil, errors.Wrap(err, "fetching patch parameters")
+	}
+
 	patchVersion := &Version{
 		Id:                  p.Id.Hex(),
 		CreateTime:          time.Now(),
@@ -455,7 +460,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		Branch:              projectRef.Branch,
 		RevisionOrderNumber: p.PatchNumber,
 		AuthorID:            p.Author,
-		Parameters:          p.Parameters,
+		Parameters:          params,
 		Activated:           utility.TruePtr(),
 	}
 	intermediateProject.CreateTime = patchVersion.CreateTime
@@ -610,6 +615,36 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	}
 
 	return patchVersion, nil
+}
+
+// getFullPatchParams will retrieve a merged list of parameters defined on the patch alias (if any)
+// with the parameters that were explicitly user-specified, with the latter taking precedence.
+func getFullPatchParams(p *patch.Patch) ([]patch.Parameter, error) {
+	var paramsMap map[string]string
+	if p.Alias != "" && IsPatchAlias(p.Alias) {
+		aliases, err := findAliasesForPatch(p.Project, p.Alias, p)
+		if err != nil {
+			return nil, errors.Wrapf(err, "retrieving alias '%s' for patched project config '%s'", p.Alias, p.Id.Hex())
+		}
+		for _, alias := range aliases {
+			if len(alias.Parameters) > 0 {
+				for _, aliasParam := range alias.Parameters {
+					paramsMap[aliasParam.Key] = aliasParam.Value
+				}
+			}
+		}
+	}
+	for _, param := range p.Parameters {
+		paramsMap[param.Key] = param.Value
+	}
+	var fullParams []patch.Parameter
+	for k, v := range paramsMap {
+		fullParams = append(fullParams, patch.Parameter{
+			Key:   k,
+			Value: v,
+		})
+	}
+	return fullParams, nil
 }
 
 func getLoadProjectOptsForPatch(p *patch.Patch, githubOauthToken string) (*ProjectRef, *GetProjectOpts, error) {

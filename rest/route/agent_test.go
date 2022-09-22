@@ -51,26 +51,11 @@ func TestAgentFetchExpansionsForTask(t *testing.T) {
 			assert.Equal(t, data.PrivateVars, map[string]bool{"b": true})
 			assert.Equal(t, data.Vars, map[string]string{"a": "1", "b": "3"})
 		},
-		"RunSucceedsWithAliasParameters": func(ctx context.Context, t *testing.T, rh *fetchExpansionsForTaskHandler) {
-			rh.taskID = "t1"
-			resp := rh.Run(ctx)
-			require.NotZero(t, resp)
-			assert.Equal(t, http.StatusOK, resp.Status())
-			data, ok := resp.Data().(apimodels.ExpansionVars)
-			require.True(t, ok)
-			assert.Equal(t, data.PrivateVars, map[string]bool{"b": true})
-			assert.Equal(t, data.Vars, map[string]string{"a": "2", "b": "3"})
-		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, model.VersionCollection, model.ProjectAliasCollection, patch.Collection))
-			t1 := task.Task{
-				Id:      "t1",
-				Project: "p1",
-				Version: "aaaaaaaaaaff001122334455",
-			}
+			require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, model.VersionCollection))
 			t2 := task.Task{
 				Id:      "t2",
 				Project: "p1",
@@ -84,13 +69,6 @@ func TestAgentFetchExpansionsForTask(t *testing.T) {
 				Vars:        map[string]string{"a": "1", "b": "3"},
 				PrivateVars: map[string]bool{"b": true},
 			}
-			v1 := &model.Version{
-				Id:         "aaaaaaaaaaff001122334455",
-				Revision:   "1234",
-				Requester:  evergreen.PatchVersionRequester,
-				CreateTime: time.Now(),
-				Config:     "identifier: sample",
-			}
 			v2 := &model.Version{
 				Id:         "aaaaaaaaaaff001122334456",
 				Revision:   "1234",
@@ -98,30 +76,10 @@ func TestAgentFetchExpansionsForTask(t *testing.T) {
 				CreateTime: time.Now(),
 				Config:     "identifier: sample",
 			}
-			p := patch.Patch{
-				Id:    patch.NewId("aaaaaaaaaaff001122334455"),
-				Alias: "test_alias",
-			}
-			alias := model.ProjectAlias{
-				ProjectID: "p1",
-				Alias:     "test_alias",
-				Variant:   "ubuntu",
-				Task:      "subcommand",
-				Parameters: []patch.Parameter{
-					{
-						Key:   "a",
-						Value: "2",
-					},
-				},
-			}
-			require.NoError(t, t1.Insert())
 			require.NoError(t, t2.Insert())
 			require.NoError(t, pRef.Insert())
 			require.NoError(t, vars.Insert())
-			require.NoError(t, v1.Insert())
 			require.NoError(t, v2.Insert())
-			require.NoError(t, p.Insert())
-			require.NoError(t, alias.Upsert())
 
 			r, ok := makeFetchExpansionsForTask().(*fetchExpansionsForTaskHandler)
 			require.True(t, ok)
