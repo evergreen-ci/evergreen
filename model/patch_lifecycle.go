@@ -620,7 +620,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 // getFullPatchParams will retrieve a merged list of parameters defined on the patch alias (if any)
 // with the parameters that were explicitly user-specified, with the latter taking precedence.
 func getFullPatchParams(p *patch.Patch) ([]patch.Parameter, error) {
-	var paramsMap map[string]string
+	paramsMap := map[string]string{}
 	if p.Alias != "" && IsPatchAlias(p.Alias) {
 		aliases, err := findAliasesForPatch(p.Project, p.Alias, p)
 		if err != nil {
