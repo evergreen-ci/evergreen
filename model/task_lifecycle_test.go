@@ -3901,7 +3901,6 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 			require.NotZero(t, dbTask)
 			assert.Equal(t, status, dbTask.Status)
 		},
-		// kim; TODO: add test for non-latest task fixing.
 		"FailsWithConflictingDBAndInMemoryRunningTasks": func(t *testing.T, p pod.Pod, tsk task.Task) {
 			const runningTask = "some_other_task"
 			p.TaskRuntimeInfo.RunningTaskID = runningTask

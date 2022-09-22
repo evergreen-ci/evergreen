@@ -361,35 +361,21 @@ func (h *podAgentNextTask) checkAndRedispatchRunningTask(ctx context.Context, p 
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting running task '%s' execution %d", p.TaskRuntimeInfo.RunningTaskID, p.TaskRuntimeInfo.RunningTaskExecution))
 	}
 	if t == nil {
-		grip.Warning(message.Fields{
-			"message":   "attempted to re-dispatch a container task that does not exist, clearing it and preparing for pod termination",
-			"task":      t.Id,
-			"execution": t.Execution,
-			"status":    t.Status,
-		})
-		if err := p.ClearRunningTask(); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "clearing nonexistent task '%s' execution %d assigned to pod", t.Id, t.Execution))
-		}
-		reason := fmt.Sprintf("cannot re-dispatch task '%s' execution %d assigned to pod because the task does not exist", p.TaskRuntimeInfo.RunningTaskID, p.TaskRuntimeInfo.RunningTaskExecution)
-		if err := h.prepareForPodTermination(ctx, p, reason); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(err)
+		if err := h.cleanUpPodAfterRedispatchFailure(ctx, p, "", "the task does not exist"); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "cleaning up after attempting to re-dispatch a nonexistent task"))
 		}
 		return gimlet.NewJSONResponse(struct{}{})
 	}
 
 	if t.Archived {
-		grip.Warning(message.Fields{
-			"message":   "attempted to re-dispatch a container task that has already been archived, clearing it and preparing for pod termination",
-			"task":      t.Id,
-			"execution": t.Execution,
-			"status":    t.Status,
-		})
-		if err := p.ClearRunningTask(); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "clearing archived task '%s' execution %d assigned to pod", t.Id, t.Execution))
+		if err := h.cleanUpPodAfterRedispatchFailure(ctx, p, t.Status, "the task is archived"); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "cleaning up after attempting to re-dispatch an archived task"))
 		}
-		reason := fmt.Sprintf("cannot re-dispatch task '%s' execution %d assigned to pod because the task is archived", t.Id, t.Execution)
-		if err := h.prepareForPodTermination(ctx, p, reason); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(err)
+		return gimlet.NewJSONResponse(struct{}{})
+	}
+	if t.IsFinished() {
+		if err := h.cleanUpPodAfterRedispatchFailure(ctx, p, t.Status, "the task is already finished"); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "cleaning up after attempting to re-dispatch an already-finished task"))
 		}
 		return gimlet.NewJSONResponse(struct{}{})
 	}
@@ -407,6 +393,30 @@ func (h *podAgentNextTask) checkAndRedispatchRunningTask(ctx context.Context, p 
 		Version:    t.Version,
 		Build:      t.BuildId,
 	})
+}
+
+// cleanUpPodWithUndispatchableAssignedTask cleans up the state of a pod that
+// has a task assigned to run but is unable to re-dispatch it.
+func (h *podAgentNextTask) cleanUpPodAfterRedispatchFailure(ctx context.Context, p *pod.Pod, taskStatus string, reason string) error {
+	taskID := p.TaskRuntimeInfo.RunningTaskID
+	taskExecution := p.TaskRuntimeInfo.RunningTaskExecution
+	reason = fmt.Sprintf("cannot re-dispatch task '%s' execution %d because %s", taskID, taskExecution, reason)
+
+	grip.Warning(message.Fields{
+		"message":   "clearing pod assigned task and preparing for pod termination due to task that cannot be re-dispatched",
+		"reason":    reason,
+		"task":      taskID,
+		"execution": taskExecution,
+		"status":    taskStatus,
+	})
+
+	if err := p.ClearRunningTask(); err != nil {
+		return errors.Wrapf(err, "clearing task '%s' execution %d assigned to pod", taskID, taskExecution)
+	}
+	if err := h.prepareForPodTermination(ctx, p, reason); err != nil {
+		return err
+	}
+	return nil
 }
 
 // POST /rest/v2/pods/{pod_id}/task/{task_id}/end
