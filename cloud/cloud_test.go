@@ -70,6 +70,6 @@ func TestConvertContainerManager(t *testing.T) {
 	assert.IsType(&dockerManager{}, cm1)
 
 	cm2, err := ConvertContainerManager(m2)
-	assert.EqualError(err, "Error converting manager to container manager")
+	assert.Error(err)
 	assert.Nil(cm2)
 }

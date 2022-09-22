@@ -9,7 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
-	evgMock "github.com/evergreen-ci/evergreen/mock"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/pod/definition"
@@ -141,7 +141,7 @@ func TestPodCreationJob(t *testing.T) {
 			cocoaMock.ResetGlobalSecretCache()
 			cocoaMock.GlobalECSService.Clusters[clusterName] = cocoaMock.ECSCluster{}
 
-			env := &evgMock.Environment{}
+			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
 			env.EvergreenSettings.Providers.AWS.Pod.ECS.Clusters = []evergreen.ECSClusterConfig{
 				{
@@ -172,19 +172,16 @@ func TestPodCreationJob(t *testing.T) {
 			pd := dispatcher.NewPodDispatcher("group_id", []string{}, []string{p.ID})
 			require.NoError(t, pd.Insert())
 
-			ecsClient := &cocoaMock.ECSClient{}
-			defer func() {
-				assert.NoError(t, ecsClient.Close(ctx))
-			}()
-
 			j, ok := NewPodCreationJob(p.ID, utility.RoundPartOfMinute(0).Format(TSFormat)).(*podCreationJob)
 			require.True(t, ok)
 
 			j.pod = p
 			j.env = env
 
-			j.ecsClient = ecsClient
-
+			j.ecsClient = &cocoaMock.ECSClient{}
+			defer func() {
+				assert.NoError(t, j.ecsClient.Close(ctx))
+			}()
 			pc, err := cloud.MakeECSPodCreator(j.ecsClient, nil)
 			require.NoError(t, err)
 			j.ecsPodCreator = cocoaMock.NewECSPodCreator(pc)

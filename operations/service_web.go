@@ -36,12 +36,12 @@ func startWebService() cli.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 
 			env, err := evergreen.NewEnvironment(ctx, confPath, db)
-			grip.EmergencyFatal(errors.Wrap(err, "problem configuring application environment"))
+			grip.EmergencyFatal(errors.Wrap(err, "configuring application environment"))
 			evergreen.SetEnvironment(env)
 			if c.Bool(overwriteConfFlagName) {
-				grip.EmergencyFatal(errors.Wrap(env.SaveConfig(), "problem saving config"))
+				grip.EmergencyFatal(errors.Wrap(env.SaveConfig(), "saving config"))
 			}
-			grip.EmergencyFatal(errors.Wrap(env.RemoteQueue().Start(ctx), "problem starting remote queue"))
+			grip.EmergencyFatal(errors.Wrap(env.RemoteQueue().Start(ctx), "starting remote queue"))
 
 			settings := env.Settings()
 			sender, err := settings.GetSender(ctx, env)
@@ -53,7 +53,7 @@ func startWebService() cli.Command {
 			// Create the user manager before setting up job queues to allow
 			// background reauthorization jobs to start.
 			if err = setupUserManager(env, settings); err != nil {
-				return errors.Wrap(err, "could not set up user manager")
+				return errors.Wrap(err, "setting up user manager")
 			}
 
 			defer cancel()
@@ -68,7 +68,7 @@ func startWebService() cli.Command {
 				"process": grip.Name(),
 			})
 
-			grip.EmergencyFatal(errors.Wrap(startSystemCronJobs(ctx, env), "problem starting background work"))
+			grip.EmergencyFatal(errors.Wrap(startSystemCronJobs(ctx, env), "starting background work"))
 
 			var (
 				apiServer *http.Server
@@ -90,14 +90,14 @@ func startWebService() cli.Command {
 			catcher := grip.NewBasicCatcher()
 			apiWait := make(chan struct{})
 			go func() {
-				defer recovery.LogStackTraceAndContinue("api server")
+				defer recovery.LogStackTraceAndContinue("API server")
 				catcher.Add(apiServer.ListenAndServe())
 				close(apiWait)
 			}()
 
 			uiWait := make(chan struct{})
 			go func() {
-				defer recovery.LogStackTraceAndContinue("ui server")
+				defer recovery.LogStackTraceAndContinue("UI server")
 				catcher.Add(uiServer.ListenAndServe())
 				close(uiWait)
 			}()
@@ -187,12 +187,12 @@ func getServiceRouter(env evergreen.Environment, queue amboy.Queue, remoteQueueG
 
 	uis, err := service.NewUIServer(env, queue, home, functionOptions)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create UI server")
+		return nil, errors.Wrap(err, "creating UI server")
 	}
 
 	as, err := service.NewAPIServer(env, queue)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create API server")
+		return nil, errors.Wrap(err, "creating API server")
 	}
 
 	return service.GetRouter(as, uis)
@@ -239,7 +239,7 @@ func getAdminService(ctx context.Context, env evergreen.Environment, settings *e
 
 	handler, err := gimlet.MergeApplications(apps...)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem assembling handler")
+		return nil, errors.Wrap(err, "merging Gimlet applications")
 	}
 
 	return handler, nil
@@ -249,7 +249,7 @@ func getAdminService(ctx context.Context, env evergreen.Environment, settings *e
 func setupUserManager(env evergreen.Environment, settings *evergreen.Settings) error {
 	um, info, err := auth.LoadUserManager(settings)
 	if err != nil {
-		return errors.Wrap(err, "failed to load user manager")
+		return errors.Wrap(err, "loading user manager")
 	}
 	env.SetUserManager(um)
 	env.SetUserManagerInfo(info)

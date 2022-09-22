@@ -171,11 +171,13 @@ func (j *podTerminationJob) populateIfUnset(ctx context.Context) error {
 		j.ecsClient = client
 	}
 
-	ecsPod, err := cloud.ExportECSPod(j.pod, j.ecsClient, nil)
-	if err != nil {
-		return errors.Wrap(err, "exporting pod")
+	if j.ecsPod == nil {
+		ecsPod, err := cloud.ExportECSPod(j.pod, j.ecsClient, nil)
+		if err != nil {
+			return errors.Wrap(err, "exporting pod")
+		}
+		j.ecsPod = ecsPod
 	}
-	j.ecsPod = ecsPod
 
 	return nil
 }

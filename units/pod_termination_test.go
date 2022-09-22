@@ -7,10 +7,11 @@ import (
 
 	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/cocoa/ecs"
-	"github.com/evergreen-ci/cocoa/mock"
+	cocoaMock "github.com/evergreen-ci/cocoa/mock"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -40,7 +41,7 @@ func TestPodTerminationJob(t *testing.T) {
 	}()
 
 	checkCloudPodDeleteRequests := func(t *testing.T, ecsc cocoa.ECSClient) {
-		ecsClient, ok := ecsc.(*mock.ECSClient)
+		ecsClient, ok := ecsc.(*cocoaMock.ECSClient)
 		require.True(t, ok)
 		assert.NotZero(t, ecsClient.StopTaskInput, "should have requested to stop the cloud pod")
 		assert.Zero(t, ecsClient.DeregisterTaskDefinitionInput, "should not have requested to clean up the ECS task definition")
@@ -290,10 +291,10 @@ func TestPodTerminationJob(t *testing.T) {
 
 			cluster := "cluster"
 
-			mock.ResetGlobalECSService()
-			mock.GlobalECSService.Clusters[cluster] = mock.ECSCluster{}
+			cocoaMock.ResetGlobalECSService()
+			cocoaMock.GlobalECSService.Clusters[cluster] = cocoaMock.ECSCluster{}
 			defer func() {
-				mock.ResetGlobalECSService()
+				cocoaMock.ResetGlobalECSService()
 			}()
 
 			p := pod.Pod{
@@ -311,43 +312,49 @@ func TestPodTerminationJob(t *testing.T) {
 			j, ok := NewPodTerminationJob(p.ID, "reason", utility.RoundPartOfMinute(0)).(*podTerminationJob)
 			require.True(t, ok)
 			j.pod = &p
-			j.ecsClient = &mock.ECSClient{}
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(ctx))
+			j.env = env
+			j.ecsClient = &cocoaMock.ECSClient{}
 			defer func() {
 				assert.NoError(t, j.ecsClient.Close(ctx))
 			}()
-
-			pc, err := ecs.NewBasicECSPodCreator(j.ecsClient, nil)
-			require.NoError(t, err)
-
-			containerDef := cocoa.NewECSContainerDefinition().
-				SetImage(p.TaskContainerCreationOpts.Image).
-				SetCommand([]string{"echo", "hello"})
-
-			execOpts := cocoa.NewECSPodExecutionOptions().SetCluster(cluster)
-			defOpts := cocoa.NewECSPodDefinitionOptions().
-				AddContainerDefinitions(*containerDef).
-				SetMemoryMB(p.TaskContainerCreationOpts.MemoryMB).
-				SetCPU(p.TaskContainerCreationOpts.CPU).
-				SetTaskRole("task_role").
-				SetExecutionRole("execution_role")
-
-			pdm, err := cloud.MakeECSPodDefinitionManager(j.ecsClient, nil)
-			require.NoError(t, err)
-			item, err := pdm.CreatePodDefinition(ctx, *defOpts)
-			require.NoError(t, err)
-
-			podDef, err := definition.FindOneByExternalID(item.ID)
-			require.NoError(t, err)
-			require.NotZero(t, podDef, "pod definition should have been cached")
-
-			ecsPod, err := pc.CreatePodFromExistingDefinition(ctx, cloud.ExportECSPodDefinition(*podDef), *execOpts)
-			require.NoError(t, err)
-			j.ecsPod = ecsPod
-
-			res := j.ecsPod.Resources()
-			j.pod.Resources = cloud.ImportECSPodResources(res)
+			j.ecsPod = generateTestingECSPod(ctx, t, j.ecsClient, cluster, p.TaskContainerCreationOpts)
+			j.pod.Resources = cloud.ImportECSPodResources(j.ecsPod.Resources())
 
 			tCase(ctx, t, j)
 		})
 	}
+}
+
+// generateTestingECSPod creates a pod in ECS from the given options. The
+// cluster must exist before this is called.
+func generateTestingECSPod(ctx context.Context, t *testing.T, client cocoa.ECSClient, cluster string, creationOpts pod.TaskContainerCreationOptions) cocoa.ECSPod {
+	pc, err := ecs.NewBasicECSPodCreator(client, nil)
+	require.NoError(t, err)
+
+	containerDef := cocoa.NewECSContainerDefinition().
+		SetImage(creationOpts.Image).
+		SetCommand([]string{"echo", "hello"})
+
+	execOpts := cocoa.NewECSPodExecutionOptions().SetCluster(cluster)
+	defOpts := cocoa.NewECSPodDefinitionOptions().
+		AddContainerDefinitions(*containerDef).
+		SetMemoryMB(creationOpts.MemoryMB).
+		SetCPU(creationOpts.CPU).
+		SetTaskRole("task_role").
+		SetExecutionRole("execution_role")
+
+	pdm, err := cloud.MakeECSPodDefinitionManager(client, nil)
+	require.NoError(t, err)
+	item, err := pdm.CreatePodDefinition(ctx, *defOpts)
+	require.NoError(t, err)
+
+	podDef, err := definition.FindOneByExternalID(item.ID)
+	require.NoError(t, err)
+	require.NotZero(t, podDef, "pod definition should have been cached")
+
+	ecsPod, err := pc.CreatePodFromExistingDefinition(ctx, cloud.ExportECSPodDefinition(*podDef), *execOpts)
+	require.NoError(t, err)
+	return ecsPod
 }

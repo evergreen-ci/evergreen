@@ -290,6 +290,28 @@ func TestNewTaskIntentPod(t *testing.T) {
 		assert.Error(t, err)
 		assert.Zero(t, p)
 	})
+	t.Run("FailsWithCPUExceedingGlobalMaxCPU", func(t *testing.T) {
+		opts := makeValidOpts()
+		ecsConf := evergreen.ECSConfig{
+			MaxCPU:      1024,
+			MaxMemoryMB: 2048,
+		}
+		opts.CPU = ecsConf.MaxCPU + 1
+		p, err := NewTaskIntentPod(ecsConf, opts)
+		assert.Error(t, err)
+		assert.Zero(t, p)
+	})
+	t.Run("FailsWithCPUExceedingGlobalMaxMemoryMB", func(t *testing.T) {
+		opts := makeValidOpts()
+		ecsConf := evergreen.ECSConfig{
+			MaxCPU:      1024,
+			MaxMemoryMB: 2048,
+		}
+		opts.MemoryMB = ecsConf.MaxMemoryMB + 1
+		p, err := NewTaskIntentPod(ecsConf, opts)
+		assert.Error(t, err)
+		assert.Zero(t, p)
+	})
 }
 
 func TestUpdateStatus(t *testing.T) {
@@ -543,6 +565,7 @@ func TestSetRunningTask(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, taskID, dbPod.RunningTask)
+			assert.Equal(t, StatusDecommissioned, dbPod.Status)
 		},
 		"NoopsWithPodAlreadyRunningSameTask": func(ctx context.Context, t *testing.T, env *mock.Environment, p Pod) {
 			const taskID = "task"
@@ -660,7 +683,7 @@ func TestClearRunningTask(t *testing.T) {
 	}
 }
 
-func TestSetAgentStartTime(t *testing.T) {
+func TestUpdateAgentStartTime(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -668,13 +691,10 @@ func TestSetAgentStartTime(t *testing.T) {
 		assert.NoError(t, db.ClearCollections(Collection))
 	}()
 
-	env := &mock.Environment{}
-	require.NoError(t, env.Configure(ctx))
-
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, p Pod){
-		"Succeeds": func(ctx context.Context, t *testing.T, env *mock.Environment, p Pod) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, p Pod){
+		"Succeeds": func(ctx context.Context, t *testing.T, p Pod) {
 			require.NoError(t, p.Insert())
-			require.NoError(t, p.SetAgentStartTime())
+			require.NoError(t, p.UpdateAgentStartTime())
 
 			dbPod, err := FindOneByID(p.ID)
 			require.NoError(t, err)
@@ -682,8 +702,8 @@ func TestSetAgentStartTime(t *testing.T) {
 			assert.NotZero(t, dbPod.TimeInfo.AgentStarted)
 			assert.Equal(t, p.TimeInfo.AgentStarted, dbPod.TimeInfo.AgentStarted)
 		},
-		"FailsWithNonexistentPod": func(ctx context.Context, t *testing.T, env *mock.Environment, p Pod) {
-			assert.Error(t, p.SetAgentStartTime())
+		"FailsWithNonexistentPod": func(ctx context.Context, t *testing.T, p Pod) {
+			assert.Error(t, p.UpdateAgentStartTime())
 
 			dbPod, err := FindOneByID(p.ID)
 			assert.NoError(t, err)
@@ -699,7 +719,48 @@ func TestSetAgentStartTime(t *testing.T) {
 			p := Pod{
 				ID: "id",
 			}
-			tCase(tctx, t, env, p)
+			tCase(tctx, t, p)
+		})
+	}
+}
+
+func TestUpdateLastCommunicated(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
+
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, p Pod){
+		"Succeeds": func(ctx context.Context, t *testing.T, p Pod) {
+			require.NoError(t, p.Insert())
+			require.NoError(t, p.UpdateLastCommunicated())
+
+			dbPod, err := FindOneByID(p.ID)
+			require.NoError(t, err)
+			require.NotZero(t, dbPod)
+			assert.NotZero(t, dbPod.TimeInfo.LastCommunicated)
+			assert.Equal(t, p.TimeInfo.LastCommunicated, dbPod.TimeInfo.LastCommunicated)
+		},
+		"FailsWithNonexistentPod": func(ctx context.Context, t *testing.T, p Pod) {
+			assert.Error(t, p.UpdateLastCommunicated())
+
+			dbPod, err := FindOneByID(p.ID)
+			assert.NoError(t, err)
+			assert.Zero(t, dbPod)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			tctx, tcancel := context.WithCancel(ctx)
+			defer tcancel()
+
+			require.NoError(t, db.ClearCollections(Collection))
+
+			p := Pod{
+				ID: "id",
+			}
+			tCase(tctx, t, p)
 		})
 	}
 }

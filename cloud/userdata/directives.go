@@ -51,7 +51,7 @@ func DirectiveToContentType(d Directive) (string, error) {
 			return contentType, nil
 		}
 	}
-	return "", errors.Errorf("unrecognized directive '%s'", d)
+	return "", errors.Errorf("unrecognized cloud-init directive '%s'", d)
 }
 
 // NeedsClosingTag returns whether or not this directive must be closed.

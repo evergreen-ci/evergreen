@@ -26,7 +26,7 @@ func deployMigration() cli.Command {
 
 			db := parseDB(c)
 			env, err := evergreen.NewEnvironment(ctx, c.String(confFlagName), db)
-			grip.EmergencyFatal(errors.Wrap(err, "problem configuring application environment"))
+			grip.EmergencyFatal(errors.Wrap(err, "configuring application environment"))
 			evergreen.SetEnvironment(env)
 			settings := env.Settings()
 
@@ -47,17 +47,17 @@ func deployMigration() cli.Command {
 
 			anserEnv, err := opts.Setup(ctx)
 			if err != nil {
-				return errors.Wrap(err, "problem setting up migration environment")
+				return errors.Wrap(err, "setting up migration environment")
 			}
 			defer anserEnv.Close()
 
 			app, err := opts.Application(anserEnv, env)
 			if err != nil {
-				return errors.Wrap(err, "problem configuring migration application")
+				return errors.Wrap(err, "configuring migration application")
 			}
 
 			grip.Debug("completed migration setup running generator and then migrations")
-			return errors.Wrap(app.Run(ctx), "problem running migration operation")
+			return errors.Wrap(app.Run(ctx), "running migration operation")
 		},
 	}
 }
@@ -78,14 +78,14 @@ func deployDataTransforms() cli.Command {
 
 			db := parseDB(c)
 			env, err := evergreen.NewEnvironment(ctx, confPath, db)
-			grip.EmergencyFatal(errors.Wrap(err, "problem configuring application environment"))
+			grip.EmergencyFatal(errors.Wrap(err, "configuring application environment"))
 			evergreen.SetEnvironment(env)
 			settings := env.Settings()
 
 			anserConf := &model.ConfigurationManualMigration{}
 			err = utility.ReadYAMLFile(migrationConfFn, anserConf)
 			if err != nil {
-				return errors.Wrap(err, "problem parsing configuration file")
+				return errors.Wrapf(err, "reading YAML configuration file '%s'", migrationConfFn)
 			}
 
 			opts := migrations.Options{
@@ -101,15 +101,15 @@ func deployDataTransforms() cli.Command {
 
 			anserEnv, err := opts.Setup(ctx)
 			if err != nil {
-				return errors.Wrap(err, "problem setting up migration environment")
+				return errors.Wrap(err, "setting up migration environment")
 			}
 			defer anserEnv.Close()
 
 			app, err := opts.CustomApplication(anserEnv, anserConf)
 			if err != nil {
-				return errors.Wrap(err, "problem creating migration application")
+				return errors.Wrap(err, "creating migration application")
 			}
-			return errors.Wrap(app.Run(ctx), "problem running migration operation")
+			return errors.Wrap(app.Run(ctx), "running migration operation")
 		},
 	}
 }

@@ -228,7 +228,7 @@ func (h *podAgentNextTask) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
-	p, err := data.FindPod(h.podID)
+	p, err := data.FindPodByID(h.podID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -251,8 +251,10 @@ func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving admin settings"))
 	}
 	if flags.TaskDispatchDisabled {
-		// TODO: EVG-17224 Potentially terminate pod when task dispatching is disabled
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), "task dispatch is disabled, returning no task")
+		if err = h.prepareForPodTermination(ctx, p, "task dispatching is disabled"); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(err)
+		}
 		return gimlet.NewJSONResponse(&apimodels.NextTaskResponse{})
 	}
 
@@ -336,7 +338,7 @@ func (h *podAgentNextTask) setAgentFirstContactTime(p *pod.Pod) {
 		return
 	}
 
-	if err := p.SetAgentStartTime(); err != nil {
+	if err := p.UpdateAgentStartTime(); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "could not update pod's agent first contact time",
 			"pod":     p.ID,
@@ -417,7 +419,7 @@ func (h *podAgentEndTask) Parse(ctx context.Context, r *http.Request) error {
 // It then marks the task as finished. If the task is aborted, this will no-op.
 func (h *podAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 	finishTime := time.Now()
-	p, err := data.FindPod(h.podID)
+	p, err := data.FindPodByID(h.podID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}

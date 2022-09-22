@@ -7,9 +7,11 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/cocoa"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -28,7 +30,7 @@ type CopyProjectOpts struct {
 }
 
 // CopyProject copies the passed in project with the given project identifier, and returns the new project.
-func CopyProject(ctx context.Context, opts CopyProjectOpts) (*restModel.APIProjectRef, error) {
+func CopyProject(ctx context.Context, env evergreen.Environment, opts CopyProjectOpts) (*restModel.APIProjectRef, error) {
 	projectToCopy, err := FindProjectById(opts.ProjectIdToCopy, false, false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding project '%s'", opts.ProjectIdToCopy)
@@ -41,7 +43,7 @@ func CopyProject(ctx context.Context, opts CopyProjectOpts) (*restModel.APIProje
 	}
 
 	oldId := projectToCopy.Id
-	// project ID will be validated or generated during CreateProject
+	// Project ID will be validated or generated during CreateProject
 	if opts.NewProjectId != "" {
 		projectToCopy.Id = opts.NewProjectId
 	} else {
@@ -54,7 +56,7 @@ func CopyProject(ctx context.Context, opts CopyProjectOpts) (*restModel.APIProje
 	disableStartingSettings(projectToCopy)
 
 	u := gimlet.GetUser(ctx).(*user.DBUser)
-	if err := CreateProject(ctx, projectToCopy, u); err != nil {
+	if err := CreateProject(ctx, env, projectToCopy, u); err != nil {
 		return nil, err
 	}
 	apiProjectRef := &restModel.APIProjectRef{}
@@ -62,7 +64,7 @@ func CopyProject(ctx context.Context, opts CopyProjectOpts) (*restModel.APIProje
 		return nil, errors.Wrap(err, "converting project to API model")
 	}
 
-	// copy variables, aliases, and subscriptions
+	// Copy variables, aliases, and subscriptions
 	catcher := grip.NewBasicCatcher()
 	if err := model.CopyProjectVars(oldId, projectToCopy.Id); err != nil {
 		catcher.Wrapf(err, "copying project vars from project '%s'", oldIdentifier)
@@ -73,9 +75,15 @@ func CopyProject(ctx context.Context, opts CopyProjectOpts) (*restModel.APIProje
 	if err := event.CopyProjectSubscriptions(oldId, projectToCopy.Id); err != nil {
 		catcher.Wrapf(err, "copying subscriptions from project '%s'", oldIdentifier)
 	}
-	// set the same admin roles from the old project on the newly copied project.
+	// Set the same admin roles from the old project on the newly copied project.
 	if err := model.UpdateAdminRoles(projectToCopy, projectToCopy.Admins, nil); err != nil {
 		catcher.Wrapf(err, "updating admins for project '%s'", opts.NewProjectIdentifier)
+	}
+
+	// Since this is a new project we want to log all settings that were copied,
+	// so we pass in an empty ProjectSettings struct for the original project state.
+	if err := model.GetAndLogProjectModified(projectToCopy.Id, u.Id, false, &model.ProjectSettings{}); err != nil {
+		catcher.Wrapf(err, "logging project modified")
 	}
 	// Since the errors above are nonfatal and still permit copying the project, return both the new project and any errors that were encountered.
 	return apiProjectRef, catcher.Resolve()
@@ -211,9 +219,8 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		if err = handleGithubConflicts(mergedProjectRef, "Toggling GitHub features"); err != nil {
 			return nil, err
 		}
-		// At project creation we now insert a commit queue, however older projects still may not have one
-		// so we need to validate that this exists if the feature is being toggled on.
-		if mergedBeforeRef.CommitQueue.IsEnabled() && mergedProjectRef.CommitQueue.IsEnabled() {
+
+		if !mergedBeforeRef.CommitQueue.IsEnabled() && mergedProjectRef.CommitQueue.IsEnabled() {
 			if err = commitqueue.EnsureCommitQueueExistsForProject(mergedProjectRef.Id); err != nil {
 				return nil, err
 			}
@@ -251,6 +258,14 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			}
 		}
 		catcher.Wrapf(DeleteSubscriptions(projectId, toDelete), "deleting subscriptions")
+	case model.ProjectPageContainerSection:
+		for i := range mergedProjectRef.ContainerSizeDefinitions {
+			err = mergedProjectRef.ContainerSizeDefinitions[i].Validate(evergreen.GetEnvironment().Settings().Providers.AWS.Pod.ECS)
+			catcher.Add(err)
+		}
+		if catcher.HasErrors() {
+			return nil, errors.Wrap(catcher.Resolve(), "invalid container size definition")
+		}
 	case model.ProjectPagePeriodicBuildsSection:
 		for i := range mergedProjectRef.PeriodicBuilds {
 			err = mergedProjectRef.PeriodicBuilds[i].Validate()
@@ -349,6 +364,66 @@ func DeleteContainerSecrets(ctx context.Context, v cocoa.Vault, pRef *model.Proj
 	}
 
 	return remaining, catcher.Resolve()
+}
+
+// getCopiedContainerSecrets gets a copy of an existing set of container
+// secrets. It returns the new secrets to create.
+func getCopiedContainerSecrets(ctx context.Context, settings *evergreen.Settings, v cocoa.Vault, projectID string, toCopy []model.ContainerSecret) ([]model.ContainerSecret, error) {
+	if projectID == "" {
+		return nil, errors.New("cannot copy container secrets without a project ID")
+	}
+
+	var copied []model.ContainerSecret
+	catcher := grip.NewBasicCatcher()
+
+	for _, original := range toCopy {
+		if original.ExternalID == "" {
+			// It's not possible to replicate a project secret without an
+			// external ID to get its value.
+			continue
+		}
+		if original.Type == model.ContainerSecretPodSecret {
+			// Generate a new pod secret rather than copy the existing one.
+			// Since users don't rely on this directly, it's preferable to have
+			// different pod secrets between projects.
+			continue
+		}
+
+		val, err := v.GetValue(ctx, original.ExternalID)
+		if err != nil {
+			catcher.Wrapf(err, "getting value for container secret '%s'", original.Name)
+			continue
+		}
+
+		// Make a new secret that will be stored as a copy of the original.
+		updated := original
+		updated.Value = val
+
+		copied = append(copied, updated)
+	}
+
+	if catcher.HasErrors() {
+		return nil, errors.Wrap(catcher.Resolve(), "copying container secrets")
+	}
+
+	copied = append(copied, newPodSecret())
+
+	validated, err := model.ValidateContainerSecrets(settings, projectID, nil, copied)
+	if err != nil {
+		return nil, errors.Wrap(err, "validating new container secrets")
+	}
+
+	return validated, nil
+}
+
+// newPodSecret returns a new default pod secret with a random value to be
+// stored.
+func newPodSecret() model.ContainerSecret {
+	return model.ContainerSecret{
+		Name:  pod.PodSecretEnvVar,
+		Type:  model.ContainerSecretPodSecret,
+		Value: utility.RandomString(),
+	}
 }
 
 // UpsertContainerSecrets adds new secrets or updates the value of existing

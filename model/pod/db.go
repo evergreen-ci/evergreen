@@ -184,3 +184,13 @@ func UpdateOneStatus(id string, current, updated Status, ts time.Time, reason st
 
 	return nil
 }
+
+// FindByLastCommunicatedBefore finds all active pods whose last communication
+// was before the given threshold.
+func FindByLastCommunicatedBefore(ts time.Time) ([]Pod, error) {
+	lastCommunicatedKey := bsonutil.GetDottedKeyName(TimeInfoKey, TimeInfoLastCommunicatedKey)
+	return Find(db.Query(bson.M{
+		StatusKey:           bson.M{"$in": []Status{StatusStarting, StatusRunning}},
+		lastCommunicatedKey: bson.M{"$lte": ts},
+	}))
+}

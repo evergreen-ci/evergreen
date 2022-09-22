@@ -12,6 +12,7 @@ func TestFullUserSettings(t *testing.T) {
 		Timezone:         "east",
 		Region:           "us-west-1",
 		SlackUsername:    "me",
+		SlackMemberId:    "NOTES25BA",
 		UseSpruceOptions: user.UseSpruceOptions{},
 		GithubUser: user.GithubUser{
 			UID:         5,

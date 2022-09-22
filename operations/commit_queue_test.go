@@ -42,7 +42,7 @@ func TestCommitQueueSuite(t *testing.T) {
 	defer func() {
 		evergreen.SetEnvironment(originalEnv)
 	}()
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestCommitQueueSuite")
+	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
 	require.NoError(t, testConfig.Set())
 	suite.Run(t, new(CommitQueueSuite))
 }
@@ -193,7 +193,7 @@ func (s *CommitQueueSuite) TestListContentsMissingPatch() {
 
 	s.Contains(stringOut, "Project: mci")
 	s.Contains(stringOut, "0:")
-	s.Contains(stringOut, fmt.Sprintf("Error getting patch for issue '%s'", fakeIssue))
+	s.Contains(stringOut, fmt.Sprintf("getting patch for issue '%s'", fakeIssue))
 	s.Contains(stringOut, fmt.Sprintf("ID : %s", p1.Id.Hex()))
 }
 

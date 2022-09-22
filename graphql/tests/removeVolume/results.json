@@ -9,7 +9,7 @@
       "result": {
         "errors": [
           {
-            "message": "volume 'not-real' does not exist",
+            "message": "volume 'not-real' not found",
             "path": ["removeVolume"],
             "extensions": { "code": "RESOURCE_NOT_FOUND" }
           }
@@ -22,7 +22,7 @@
       "result": {
         "errors": [
           {
-            "message": "must specify volume id",
+            "message": "must specify volume ID",
             "path": ["removeVolume"],
             "extensions": { "code": "INPUT_VALIDATION_ERROR" }
           }

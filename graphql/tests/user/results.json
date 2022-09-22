@@ -47,12 +47,14 @@
               "patches": [
                 {
                   "status": "failed",
+                  "projectIdentifier": "myProjectIdentifier",
                   "id": "5e4ff3abe3c3317e352062e7",
                   "description": "222",
                   "alias": "__github"
                 },
                 {
                   "status": "failed",
+                  "projectIdentifier": "myProjectIdentifier",
                   "id": "5e4ff3abe3c3317e352062e9",
                   "description": "222",
                   "alias": "__github"

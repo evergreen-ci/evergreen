@@ -55,15 +55,15 @@ func (opts *GCESettings) Validate() error {
 	customMachine := opts.NumCPUs > 0 && opts.MemoryMB > 0
 
 	if standardMachine == customMachine {
-		return errors.New("Must specify either machine type OR num CPUs and memory")
+		return errors.New("must specify either machine type or num CPUs and memory")
 	}
 
 	if (opts.ImageFamily == "") == (opts.ImageName == "") {
-		return errors.New("Exactly one of image family or image name must be blank")
+		return errors.New("exactly one of image family or image name must be blank")
 	}
 
 	if opts.DiskType == "" {
-		return errors.New("Disk type must not be blank")
+		return errors.New("disk type must not be blank")
 	}
 
 	return nil
@@ -73,10 +73,10 @@ func (opts *GCESettings) FromDistroSettings(d distro.Distro, _ string) error {
 	if len(d.ProviderSettingsList) != 0 {
 		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
 		if err != nil {
-			return errors.Wrap(err, "error marshalling provider setting into bson")
+			return errors.Wrap(err, "marshalling provider setting into BSON")
 		}
 		if err := bson.Unmarshal(bytes, opts); err != nil {
-			return errors.Wrap(err, "error unmarshalling bson into provider settings")
+			return errors.Wrap(err, "unmarshalling BSON into provider settings")
 		}
 	}
 	return nil
@@ -105,7 +105,7 @@ func (m *gceManager) Configure(ctx context.Context, s *evergreen.Settings) error
 	}
 
 	if err := m.client.Init(ctx, jwtConfig); err != nil {
-		return errors.Wrap(err, "Failed to initialize client connection")
+		return errors.Wrap(err, "initializing client connection")
 	}
 
 	return nil
@@ -134,16 +134,15 @@ func (m *gceManager) Configure(ctx context.Context, s *evergreen.Settings) error
 //     - SSHKeys:     username-key pairs
 func (m *gceManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, error) {
 	if h.Distro.Provider != ProviderName {
-		return nil, errors.Errorf("Can't spawn instance of %s for distro %s: provider is %s",
-			ProviderName, h.Distro.Id, h.Distro.Provider)
+		return nil, errors.Errorf("spawning instance for distro '%s': distro provider is '%s'", h.Distro.Id, h.Distro.Provider)
 	}
 
 	s := &GCESettings{}
 	if err := s.FromDistroSettings(h.Distro, ""); err != nil {
-		return nil, errors.Wrapf(err, "Error decoding params for distro %s", h.Distro.Id)
+		return nil, errors.Wrapf(err, "decoding params for distro '%s'", h.Distro.Id)
 	}
 	if err := s.Validate(); err != nil {
-		return nil, errors.Wrapf(err, "Invalid settings in distro %s", h.Distro.Id)
+		return nil, errors.Wrapf(err, "invalid provider settings in distro '%s'", h.Distro.Id)
 	}
 
 	grip.Debugf("Settings validated for distro %s", h.Distro.Id)
@@ -157,10 +156,13 @@ func (m *gceManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	// Start the instance, and remove the intent host document if unsuccessful.
 	if _, err := m.client.CreateInstance(h, s); err != nil {
 		if rmErr := h.Remove(); rmErr != nil {
-			grip.Errorf("Could not remove intent host '%s': %+v", h.Id, rmErr)
+			grip.Error(message.WrapError(rmErr, message.Fields{
+				"message": "could not remove intent host",
+				"host_id": h.Id,
+			}))
 		}
 		grip.Error(err)
-		return nil, errors.Wrapf(err, "Could not start new instance for distro '%s'", h.Distro.Id)
+		return nil, errors.Wrapf(err, "starting new instance for distro '%s'", h.Distro.Id)
 	}
 
 	grip.Debug(message.Fields{"message": "new gce host", "instance": h.Id, "object": h})
@@ -168,7 +170,7 @@ func (m *gceManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 }
 
 func (m *gceManager) ModifyHost(context.Context, *host.Host, host.HostModifyOptions) error {
-	return errors.New("can't modify instances with gce provider")
+	return errors.New("can't modify instances with GCE provider")
 }
 
 // GetInstanceStatus gets the current operational status of the provisioned host,
@@ -182,19 +184,17 @@ func (m *gceManager) GetInstanceStatus(ctx context.Context, host *host.Host) (Cl
 }
 
 func (m *gceManager) SetPortMappings(context.Context, *host.Host, *host.Host) error {
-	return errors.New("can't set port mappings with gce provider")
+	return errors.New("can't set port mappings with GCE provider")
 }
 
 // TerminateInstance requests a server previously provisioned to be removed.
 func (m *gceManager) TerminateInstance(ctx context.Context, host *host.Host, user, reason string) error {
 	if host.Status == evergreen.HostTerminated {
-		err := errors.Errorf("Can not terminate %s - already marked as terminated!", host.Id)
-		grip.Error(err)
-		return err
+		return errors.Errorf("cannot terminate host '%s' because it's already marked as terminated", host.Id)
 	}
 
 	if err := m.client.DeleteInstance(host); err != nil {
-		return errors.Wrap(err, "API call to delete instance failed")
+		return errors.Wrap(err, "deleting instance")
 	}
 
 	// Set the host status as terminated and update its termination time
@@ -202,11 +202,11 @@ func (m *gceManager) TerminateInstance(ctx context.Context, host *host.Host, use
 }
 
 func (m *gceManager) StopInstance(ctx context.Context, host *host.Host, user string) error {
-	return errors.New("StopInstance is not supported for gce provider")
+	return errors.New("StopInstance is not supported for GCE provider")
 }
 
 func (m *gceManager) StartInstance(ctx context.Context, host *host.Host, user string) error {
-	return errors.New("StartInstance is not supported for gce provider")
+	return errors.New("StartInstance is not supported for GCE provider")
 }
 
 // IsUp checks whether the provisioned host is running.
@@ -225,31 +225,31 @@ func (m *gceManager) OnUp(context.Context, *host.Host) error {
 }
 
 func (m *gceManager) AttachVolume(context.Context, *host.Host, *host.VolumeAttachment) error {
-	return errors.New("can't attach volume with gce provider")
+	return errors.New("can't attach volume with GCE provider")
 }
 
 func (m *gceManager) DetachVolume(context.Context, *host.Host, string) error {
-	return errors.New("can't detach volume with gce provider")
+	return errors.New("can't detach volume with GCE provider")
 }
 
 func (m *gceManager) CreateVolume(context.Context, *host.Volume) (*host.Volume, error) {
-	return nil, errors.New("can't create volume with gce provider")
+	return nil, errors.New("can't create volume with GCE provider")
 }
 
 func (m *gceManager) DeleteVolume(context.Context, *host.Volume) error {
-	return errors.New("can't delete volume with gce provider")
+	return errors.New("can't delete volume with GCE provider")
 }
 
 func (m *gceManager) ModifyVolume(context.Context, *host.Volume, *model.VolumeModifyOptions) error {
-	return errors.New("can't modify volume with gce provider")
+	return errors.New("can't modify volume with GCE provider")
 }
 
 func (m *gceManager) GetVolumeAttachment(context.Context, string) (*host.VolumeAttachment, error) {
-	return nil, errors.New("can't get volume attachment with gce provider")
+	return nil, errors.New("can't get volume attachment with GCE provider")
 }
 
 func (m *gceManager) CheckInstanceType(context.Context, string) error {
-	return errors.New("can't specify instance type with gce provider")
+	return errors.New("can't specify instance type with GCE provider")
 }
 
 // Cleanup is a noop for the gce provider.
@@ -312,7 +312,6 @@ func (m *gceManager) TimeTilNextPayment(h *host.Host) time.Duration {
 	return tilEndBufferTime
 }
 
-//  TODO: this must be implemented to support adding SSH keys.
 func (m *gceManager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) error {
 	return nil
 }

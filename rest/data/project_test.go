@@ -1,13 +1,19 @@
 package data
 
 import (
+	"context"
 	"testing"
 	"time"
 
+	"github.com/aws/aws-sdk-go/service/secretsmanager"
+	cocoaMock "github.com/evergreen-ci/cocoa/mock"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
@@ -364,6 +370,72 @@ func TestGetProjectAliasResults(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, variantTasks, 1)
 	assert.Len(t, variantTasks[0].Tasks, 2)
+}
+
+func TestCreateProject(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	defer func() {
+		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, commitqueue.Collection, event.LegacyEventLogCollection, user.Collection))
+
+		cocoaMock.ResetGlobalSecretCache()
+	}()
+
+	smClient := &cocoaMock.SecretsManagerClient{}
+	defer func() {
+		assert.NoError(t, smClient.Close(ctx))
+	}()
+
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, pRef model.ProjectRef, u user.DBUser){
+		"Succeeds": func(ctx context.Context, t *testing.T, env *mock.Environment, pRef model.ProjectRef, u user.DBUser) {
+			require.NoError(t, CreateProject(ctx, env, &pRef, &u))
+
+			dbProjRef, err := model.FindBranchProjectRef(pRef.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbProjRef)
+			require.Len(t, dbProjRef.ContainerSecrets, 1, "should create pod secret for new project")
+			assert.NotZero(t, dbProjRef.ContainerSecrets[0].Name)
+			assert.Equal(t, model.ContainerSecretPodSecret, dbProjRef.ContainerSecrets[0].Type)
+			assert.NotZero(t, dbProjRef.ContainerSecrets[0].ExternalName)
+			assert.NotZero(t, dbProjRef.ContainerSecrets[0].ExternalID)
+
+			getValOut, err := smClient.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{
+				SecretId: utility.ToStringPtr(dbProjRef.ContainerSecrets[0].ExternalID),
+			})
+			require.NoError(t, err, "new pod secret should be stored")
+			assert.NotZero(t, utility.FromStringPtr(getValOut.SecretString))
+		},
+		"FailsWithAlreadyExistingID": func(ctx context.Context, t *testing.T, env *mock.Environment, pRef model.ProjectRef, u user.DBUser) {
+			require.NoError(t, pRef.Insert())
+			assert.Error(t, CreateProject(ctx, env, &pRef, &u))
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			tctx, tcancel := context.WithCancel(context.Background())
+			defer tcancel()
+
+			require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, commitqueue.Collection, event.LegacyEventLogCollection, user.Collection))
+
+			cocoaMock.ResetGlobalSecretCache()
+
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(ctx))
+
+			pRef := model.ProjectRef{
+				Id:    "new_project",
+				Owner: "evergreen-ci",
+				Repo:  "treepo",
+			}
+
+			adminUser := user.DBUser{
+				Id: "the_evergreen_admin",
+			}
+			require.NoError(t, adminUser.Insert())
+
+			tCase(tctx, t, env, pRef, adminUser)
+		})
+	}
 }
 
 func TestGetLegacyProjectEvents(t *testing.T) {

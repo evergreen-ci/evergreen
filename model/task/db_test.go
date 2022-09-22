@@ -269,14 +269,14 @@ func TestFindOneIdAndExecutionWithDisplayStatus(t *testing.T) {
 	assert.NoError(db.ClearCollections(Collection, OldCollection))
 	taskDoc := Task{
 		Id:        "task",
-		Status:    evergreen.TaskUndispatched,
+		Status:    evergreen.TaskSucceeded,
 		Activated: true,
 	}
 	assert.NoError(taskDoc.Insert())
 	task, err := FindOneIdAndExecutionWithDisplayStatus(taskDoc.Id, utility.ToIntPtr(0))
 	assert.NoError(err)
 	assert.NotNil(task)
-	assert.Equal(task.DisplayStatus, evergreen.TaskWillRun)
+	assert.Equal(task.DisplayStatus, evergreen.TaskSucceeded)
 
 	// Should fetch tasks from the old collection
 	assert.NoError(taskDoc.Archive())
@@ -293,7 +293,7 @@ func TestFindOneIdAndExecutionWithDisplayStatus(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(task)
 	assert.Equal(task.Execution, 1)
-	assert.Equal(task.DisplayStatus, evergreen.TaskWillRun)
+	assert.Equal(task.DisplayStatus, evergreen.TaskSucceeded)
 
 	taskDoc = Task{
 		Id:        "task2",
@@ -312,7 +312,8 @@ func TestFindOldTasksByID(t *testing.T) {
 	assert.NoError(db.ClearCollections(Collection, OldCollection))
 
 	taskDoc := Task{
-		Id: "task",
+		Id:     "task",
+		Status: evergreen.TaskSucceeded,
 	}
 	assert.NoError(taskDoc.Insert())
 	assert.NoError(taskDoc.Archive())
@@ -885,6 +886,98 @@ func TestFindNeedsContainerAllocation(t *testing.T) {
 	} {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.Clear(Collection))
+			tCase(t)
+		})
+	}
+}
+
+func TestFindByStaleRunningTask(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
+	for tName, tCase := range map[string]func(t *testing.T){
+		"ReturnsDispatchedStaleTask": func(t *testing.T) {
+			tsk := Task{
+				Id:            "task",
+				Status:        evergreen.TaskDispatched,
+				LastHeartbeat: time.Now().Add(-time.Hour),
+			}
+			require.NoError(t, tsk.Insert())
+
+			found, err := Find(ByStaleRunningTask(30*time.Minute, HeartbeatPastCutoff))
+			require.NoError(t, err)
+			require.Len(t, found, 1)
+			assert.Equal(t, tsk.Id, found[0].Id)
+		},
+		"ReturnsRunningStaleTask": func(t *testing.T) {
+			tsk := Task{
+				Id:            "task",
+				Status:        evergreen.TaskStarted,
+				LastHeartbeat: time.Now().Add(-time.Hour),
+			}
+			require.NoError(t, tsk.Insert())
+
+			found, err := Find(ByStaleRunningTask(30*time.Minute, HeartbeatPastCutoff))
+			require.NoError(t, err)
+			require.Len(t, found, 1)
+			assert.Equal(t, tsk.Id, found[0].Id)
+		},
+		"ReturnsMultipleStaleTasks": func(t *testing.T) {
+			tasks := []Task{
+				{
+					Id:            "task0",
+					Status:        evergreen.TaskDispatched,
+					LastHeartbeat: time.Now().Add(-time.Hour),
+				},
+				{
+					Id:            "task1",
+					Status:        evergreen.TaskStarted,
+					LastHeartbeat: time.Now().Add(-time.Minute),
+				},
+				{
+					Id:            "task2",
+					Status:        evergreen.TaskStarted,
+					LastHeartbeat: time.Now().Add(-time.Hour),
+				},
+			}
+			for _, tsk := range tasks {
+				require.NoError(t, tsk.Insert())
+			}
+
+			found, err := Find(ByStaleRunningTask(30*time.Minute, HeartbeatPastCutoff))
+			require.NoError(t, err)
+			require.Len(t, found, 2)
+			for _, tsk := range found {
+				assert.True(t, utility.StringSliceContains([]string{tasks[0].Id, tasks[2].Id}, tsk.Id))
+			}
+		},
+		"IgnoresRunningTaskWithRecentHeartbeat": func(t *testing.T) {
+			tsk := Task{
+				Id:            "task",
+				Status:        evergreen.TaskStarted,
+				LastHeartbeat: time.Now().Add(-time.Minute),
+			}
+			require.NoError(t, tsk.Insert())
+
+			found, err := Find(ByStaleRunningTask(30*time.Minute, HeartbeatPastCutoff))
+			require.NoError(t, err)
+			assert.Empty(t, found)
+		},
+		"IgnoresDisplayTasksWithNoHeartbeat": func(t *testing.T) {
+			tsk := Task{
+				Id:          "id",
+				DisplayOnly: true,
+				Status:      evergreen.TaskDispatched,
+			}
+			require.NoError(t, tsk.Insert())
+
+			found, err := Find(ByStaleRunningTask(0, HeartbeatPastCutoff))
+			require.NoError(t, err)
+			assert.Empty(t, found)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(Collection))
 			tCase(t)
 		})
 	}

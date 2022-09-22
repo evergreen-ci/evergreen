@@ -72,6 +72,14 @@ tasks:
             set -o verbose
             set -o errexit
             echo "fourth"
+  - name: container_task
+    commands:
+      - command: shell.exec
+        params:
+          script: |
+            set -o verbose
+            set -o errexit
+            echo "container task"
   - name: test
     commands:
       - command: git.get_project
@@ -211,3 +219,24 @@ buildvariants:
       - localhost
     tasks:
       - name: my_group
+  - name: pod_bv
+    display_name: pod_bv
+    run_on:
+      - container
+    tasks:
+      - name: container_task
+
+# TODO (EVG-17658): Refactor smoke tests to allow for faking agent creation
+# The following configuration is currently unused since the container task
+# smoke test does not rely on the repotracker job to create tasks for the version.
+# A real image will be used as a part of the above ticket.
+containers:
+  - name: container
+    working_dir: /
+    image: "not_a_real_image"
+    resources:
+      cpu: 1024
+      memory_mb: 1024
+    system:
+      cpu_architecture: x86_64
+      operating_system: linux

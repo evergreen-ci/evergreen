@@ -22,7 +22,7 @@ type CloudHost struct {
 func GetCloudHost(ctx context.Context, host *host.Host, env evergreen.Environment) (*CloudHost, error) {
 	mgrOpts, err := GetManagerOptions(host.Distro)
 	if err != nil {
-		return nil, errors.Wrapf(err, "can't get ManagerOpts for '%s'", host.Id)
+		return nil, errors.Wrapf(err, "getting cloud manager options for host '%s'", host.Id)
 	}
 	mgr, err := GetManager(ctx, env, mgrOpts)
 	if err != nil {

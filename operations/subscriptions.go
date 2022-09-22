@@ -30,14 +30,14 @@ func subscriptionsList() cli.Command {
 			confPath := c.Parent().Parent().String(confFlagName)
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
-				return errors.Wrap(err, "problem loading configuration")
+				return errors.Wrap(err, "loading configuration")
 			}
 
 			comm := conf.setupRestCommunicator(ctx)
 			defer comm.Close()
 			subs, err := comm.GetSubscriptions(ctx)
 			if err != nil {
-				return errors.Wrap(err, "error fetching subscriptions")
+				return errors.Wrap(err, "fetching subscriptions")
 			}
 
 			if len(subs) == 0 {

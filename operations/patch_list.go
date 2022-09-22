@@ -46,7 +46,7 @@ func PatchList() cli.Command {
 
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
-				return errors.Wrap(err, "problem loading configuration")
+				return errors.Wrap(err, "loading configuration")
 			}
 
 			client := conf.setupRestCommunicator(ctx)
@@ -54,7 +54,7 @@ func PatchList() cli.Command {
 
 			ac, rc, err := conf.getLegacyClients()
 			if err != nil {
-				return errors.Wrap(err, "problem accessing evergreen service")
+				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
 
 			patches := []patch.Patch{}
@@ -76,9 +76,9 @@ func PatchList() cli.Command {
 
 				for _, p := range patches {
 					api := restModel.APIPatch{}
-					err := api.BuildFromService(p)
+					err := api.BuildFromService(p, nil)
 					if err != nil {
-						return errors.Wrap(err, "error trying to build APIPatch from service")
+						return errors.Wrap(err, "converting patch to API model")
 					}
 					api.PatchedParserProject = nil
 					display = append(display, api)

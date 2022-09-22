@@ -47,7 +47,8 @@ func (s *UserRouteSuite) TestUpdateNotifications() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	body := map[string]interface{}{
-		"slack_username": "@test",
+		"slack_username":  "@test",
+		"slack_member_id": "NOTES25BA",
 		"notifications": map[string]string{
 			"build_break":  "slack",
 			"patch_finish": "email",
@@ -69,6 +70,7 @@ func (s *UserRouteSuite) TestUpdateNotifications() {
 	s.EqualValues(user.PreferenceSlack, dbUser.Settings.Notifications.BuildBreak)
 	s.EqualValues(user.PreferenceEmail, dbUser.Settings.Notifications.PatchFinish)
 	s.EqualValues("test", dbUser.Settings.SlackUsername)
+	s.EqualValues("NOTES25BA", dbUser.Settings.SlackMemberId)
 }
 
 func (s *UserRouteSuite) TestUndefinedInput() {
@@ -76,6 +78,7 @@ func (s *UserRouteSuite) TestUndefinedInput() {
 	s.NoError(err)
 	settings := user.UserSettings{
 		SlackUsername: "something",
+		SlackMemberId: "NOTES25BA",
 		GithubUser: user.GithubUser{
 			LastKnownAs: "you",
 		},
@@ -102,6 +105,7 @@ func (s *UserRouteSuite) TestUndefinedInput() {
 	s.NoError(err)
 	s.EqualValues(user.PreferenceSlack, dbUser.Settings.Notifications.BuildBreak)
 	s.EqualValues("something", dbUser.Settings.SlackUsername)
+	s.EqualValues("NOTES25BA", dbUser.Settings.SlackMemberId)
 	s.EqualValues("you", dbUser.Settings.GithubUser.LastKnownAs)
 }
 

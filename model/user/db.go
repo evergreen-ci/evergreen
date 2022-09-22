@@ -49,10 +49,11 @@ var (
 )
 
 var (
-	SettingsTZKey             = bsonutil.MustHaveTag(UserSettings{}, "Timezone")
-	userSettingsGithubUserKey = bsonutil.MustHaveTag(UserSettings{}, "GithubUser")
-	UseSpruceOptionsKey       = bsonutil.MustHaveTag(UserSettings{}, "UseSpruceOptions")
-	SpruceV1Key               = bsonutil.MustHaveTag(UseSpruceOptions{}, "SpruceV1")
+	SettingsTZKey                = bsonutil.MustHaveTag(UserSettings{}, "Timezone")
+	userSettingsGithubUserKey    = bsonutil.MustHaveTag(UserSettings{}, "GithubUser")
+	userSettingsSlackUsernameKey = bsonutil.MustHaveTag(UserSettings{}, "SlackUsername")
+	UseSpruceOptionsKey          = bsonutil.MustHaveTag(UserSettings{}, "UseSpruceOptions")
+	SpruceV1Key                  = bsonutil.MustHaveTag(UseSpruceOptions{}, "SpruceV1")
 )
 
 // ById returns a query that matches a user by ID.
@@ -174,6 +175,22 @@ func FindByGithubName(name string) (*DBUser, error) {
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, "finding user by GitHub name")
+	}
+
+	return &u, nil
+}
+
+// FindBySlackUsername finds a user with the given Slack Username.
+func FindBySlackUsername(userName string) (*DBUser, error) {
+	u := DBUser{}
+	err := db.FindOneQ(Collection, db.Query(bson.M{
+		bsonutil.GetDottedKeyName(SettingsKey, userSettingsSlackUsernameKey): userName,
+	}), &u)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "finding user by Slack Username")
 	}
 
 	return &u, nil

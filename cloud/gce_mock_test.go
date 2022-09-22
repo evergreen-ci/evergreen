@@ -23,7 +23,7 @@ type gceClientMock struct {
 
 func (c *gceClientMock) Init(context.Context, *jwt.Config) error {
 	if c.failInit {
-		return errors.New("failed to initialize Client")
+		return errors.New("failed to initialize client")
 	}
 
 	return nil

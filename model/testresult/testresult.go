@@ -19,6 +19,8 @@ import (
 const (
 	// Collection is the name of the test results collection in the database.
 	Collection = "testresults"
+
+	maxDeleteCount = 100000
 )
 
 // TestResult contains test data for a task.
@@ -265,13 +267,22 @@ func TestResultsFilterSortPaginate(opts TestResultsFilterSortPaginateOpts) ([]Te
 }
 
 func DeleteWithLimit(ctx context.Context, env evergreen.Environment, ts time.Time, limit int) (int, error) {
-	if limit > 100*1000 {
-		panic("cannot delete more than 100k documents in a single operation")
+	if limit > maxDeleteCount {
+		return 0, errors.Errorf("cannot delete more than %d documents in a single operation", maxDeleteCount)
 	}
 
-	ops := make([]mongo.WriteModel, limit)
-	for idx := 0; idx < limit; idx++ {
-		ops[idx] = mongo.NewDeleteOneModel().SetFilter(bson.M{IDKey: bson.M{"$lt": primitive.NewObjectIDFromTimestamp(ts)}})
+	docsToDelete, err := Find(db.Query(bson.M{IDKey: bson.M{"$lt": primitive.NewObjectIDFromTimestamp(ts)}}).WithFields(IDKey).Limit(limit))
+	if err != nil {
+		return 0, errors.Wrap(err, "getting docs to delete")
+	}
+
+	if len(docsToDelete) == 0 {
+		return 0, nil
+	}
+
+	ops := make([]mongo.WriteModel, 0, len(docsToDelete))
+	for _, doc := range docsToDelete {
+		ops = append(ops, mongo.NewDeleteOneModel().SetFilter(bson.M{IDKey: doc.ID}))
 	}
 
 	res, err := env.DB().Collection(Collection).BulkWrite(ctx, ops, options.BulkWrite().SetOrdered(false))

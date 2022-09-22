@@ -150,6 +150,9 @@ type Task struct {
 	// Set to true if the task should be considered for mainline github checks
 	IsGithubCheck bool `bson:"is_github_check,omitempty" json:"is_github_check,omitempty"`
 
+	// CanReset indicates that the task has successfully archived and is in a valid state to be reset.
+	CanReset bool `bson:"can_reset,omitempty" json:"can_reset,omitempty"`
+
 	Execution           int    `bson:"execution" json:"execution"`
 	OldTaskId           string `bson:"old_task_id,omitempty" json:"old_task_id,omitempty"`
 	Archived            bool   `bson:"archived,omitempty" json:"archived,omitempty"`
@@ -321,7 +324,8 @@ func (d *Dependency) UnmarshalBSON(in []byte) error {
 
 // SetBSON allows us to use dependency representation of both
 // just task Ids and of true Dependency structs.
-//  TODO eventually drop all of this switching
+//
+//	TODO eventually drop all of this switching
 func (d *Dependency) SetBSON(raw mgobson.Raw) error {
 	// copy the Dependency type to remove this SetBSON method but preserve bson struct tags
 	type nakedDep Dependency
@@ -551,6 +555,11 @@ func (t *Task) IsHostTask() bool {
 // IsContainerTask returns true if it's a task that runs on containers.
 func (t *Task) IsContainerTask() bool {
 	return t.ExecutionPlatform == ExecutionPlatformContainer
+}
+
+// IsRestartFailedOnly returns true if the task should only restart failed tests.
+func (t *Task) IsRestartFailedOnly() bool {
+	return t.ResetFailedWhenFinished && !t.ResetWhenFinished
 }
 
 // ShouldAllocateContainer indicates whether a task should be allocated a
@@ -1434,6 +1443,9 @@ func (t *Task) MarkSystemFailed(description string) error {
 		Type:        evergreen.CommandTypeSystem,
 		Description: description,
 	}
+	if description == evergreen.TaskDescriptionHeartbeat {
+		t.Details.TimedOut = true
+	}
 
 	event.LogTaskFinished(t.Id, t.Execution, t.HostId, evergreen.TaskSystemFailed)
 	grip.Info(message.Fields{
@@ -1445,15 +1457,22 @@ func (t *Task) MarkSystemFailed(description string) error {
 		"description": description,
 	})
 
+	t.ContainerAllocated = false
+	t.ContainerAllocatedTime = time.Time{}
+
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				StatusKey:     evergreen.TaskFailed,
-				FinishTimeKey: t.FinishTime,
-				DetailsKey:    t.Details,
+				StatusKey:             evergreen.TaskFailed,
+				FinishTimeKey:         t.FinishTime,
+				DetailsKey:            t.Details,
+				ContainerAllocatedKey: false,
+			},
+			"$unset": bson.M{
+				ContainerAllocatedTimeKey: 1,
 			},
 		},
 	)
@@ -1877,13 +1896,17 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 			"project":   t.Project,
 			"details":   t.Details,
 		})
-		detail.Status = evergreen.TaskFailed
+		detail = &apimodels.TaskEndDetail{
+			Status: evergreen.TaskFailed,
+		}
 	}
+
 	// record that the task has finished, in memory and in the db
 	t.Status = detail.Status
 	t.FinishTime = finishTime
 	t.Details = *detail
 	t.ContainerAllocated = false
+	t.ContainerAllocatedTime = time.Time{}
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
@@ -1982,7 +2005,9 @@ func (t *Task) displayTaskPriority() int {
 func (t *Task) Reset() error {
 	return UpdateOne(
 		bson.M{
-			IdKey: t.Id,
+			IdKey:       t.Id,
+			StatusKey:   bson.M{"$in": evergreen.TaskCompletedStatuses},
+			CanResetKey: true,
 		},
 		resetTaskUpdate(t),
 	)
@@ -2000,7 +2025,11 @@ func ResetTasks(tasks []Task) error {
 	}
 
 	if _, err := UpdateAll(
-		bson.M{IdKey: bson.M{"$in": taskIDs}},
+		bson.M{
+			IdKey:       bson.M{"$in": taskIDs},
+			StatusKey:   bson.M{"$in": evergreen.TaskCompletedStatuses},
+			CanResetKey: true,
+		},
 		resetTaskUpdate(nil),
 	); err != nil {
 		return err
@@ -2033,6 +2062,7 @@ func resetTaskUpdate(t *Task) bson.M {
 		t.HostCreateDetails = []HostCreateDetail{}
 		t.OverrideDependencies = false
 		t.ContainerAllocationAttempts = 0
+		t.CanReset = false
 	}
 	update := bson.M{
 		"$set": bson.M{
@@ -2059,6 +2089,7 @@ func resetTaskUpdate(t *Task) bson.M {
 			HostIdKey:                  "",
 			HostCreateDetailsKey:       "",
 			OverrideDependenciesKey:    "",
+			CanResetKey:                "",
 		},
 	}
 	return update
@@ -2473,7 +2504,7 @@ func AbortVersion(versionId string, reason AbortInfo) error {
 	return nil
 }
 
-//String represents the stringified version of a task
+// String represents the stringified version of a task
 func (t *Task) String() (taskStruct string) {
 	taskStruct += fmt.Sprintf("Id: %v\n", t.Id)
 	taskStruct += fmt.Sprintf("Status: %v\n", t.Status)
@@ -2501,20 +2532,44 @@ func (t *Task) Insert() error {
 // into the old_tasks collection. If this is a display task, its execution tasks
 // are also archived.
 func (t *Task) Archive() error {
+	if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, t.Status) {
+		grip.Debug(message.Fields{
+			"message":   "task is in incomplete state, skipping archiving",
+			"task_id":   t.Id,
+			"execution": t.Execution,
+			"func":      "Archive",
+		})
+		return nil
+	}
 	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
 		return errors.Wrapf(ArchiveMany([]Task{*t}), "archiving display task '%s'", t.Id)
 	} else {
 		// Archiving a single task.
 		archiveTask := t.makeArchivedTask()
 		err := db.Insert(OldCollection, archiveTask)
-		if err != nil {
+		if err != nil && !db.IsDuplicateKey(err) {
 			return errors.Wrap(err, "inserting archived task into old tasks")
 		}
 		t.Aborted = false
 		err = UpdateOne(
-			bson.M{IdKey: t.Id},
+			bson.M{
+				IdKey:     t.Id,
+				StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses},
+				"$or": []bson.M{
+					{
+						CanResetKey: bson.M{"$exists": false},
+					},
+					{
+						CanResetKey: false,
+					},
+				},
+			},
 			updateDisplayTasksAndTasksBson(),
 		)
+		// return nil if the task has already been archived
+		if adb.ResultsNotFound(err) {
+			return nil
+		}
 		return errors.Wrap(err, "updating task")
 	}
 }
@@ -2530,16 +2585,25 @@ func ArchiveMany(tasks []Task) error {
 	archivedTasks := []interface{}{}  // Contains all archived tasks (task, display, and execution). Created by Task.makeArchivedTask()
 
 	for _, t := range tasks {
+		if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, t.Status) {
+			grip.Debug(message.Fields{
+				"message":   "task is in incomplete state, skipping archiving",
+				"task_id":   t.Id,
+				"execution": t.Execution,
+				"func":      "ArchiveMany",
+			})
+			continue
+		}
 		allTaskIds = append(allTaskIds, t.Id)
 		archivedTasks = append(archivedTasks, t.makeArchivedTask())
 		if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
 			var execTasks []Task
 			var err error
 
-			if t.ResetFailedWhenFinished && !t.ResetWhenFinished {
+			if t.IsRestartFailedOnly() {
 				execTasks, err = Find(FailedTasksByIds(t.ExecutionTasks))
 			} else {
-				execTasks, err = FindAll(db.Query(ByIds(t.ExecutionTasks)))
+				execTasks, err = FindAll(db.Query(ByIdsAndStatus(t.ExecutionTasks, evergreen.TaskCompletedStatuses)))
 			}
 
 			if err != nil {
@@ -2547,6 +2611,15 @@ func ArchiveMany(tasks []Task) error {
 			}
 			execTaskIds = append(execTaskIds, t.ExecutionTasks...)
 			for _, et := range execTasks {
+				if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, et.Status) {
+					grip.Debug(message.Fields{
+						"message":   "execution task is in incomplete state, skipping archiving",
+						"task_id":   et.Id,
+						"execution": et.Execution,
+						"func":      "ArchiveMany",
+					})
+					continue
+				}
 				archivedTasks = append(archivedTasks, et.makeArchivedTask())
 				toUpdateExecTaskIds = append(toUpdateExecTaskIds, et.Id)
 			}
@@ -2563,10 +2636,10 @@ func ArchiveMany(tasks []Task) error {
 }
 
 // archiveAll takes in:
-// - taskIds               : All tasks and display tasks IDs
-// - execTaskIds           : All execution task IDs
+// - taskIds                : All tasks and display tasks IDs
+// - execTaskIds            : All execution task IDs
 // - toRestartExecTaskIds   : All execution task IDs for execution tasks that will be archived/restarted
-// - archivedTasks         : All archived tasks created by Task.makeArchivedTask()
+// - archivedTasks          : All archived tasks created by Task.makeArchivedTask()
 func archiveAll(taskIds, execTaskIds, toRestartExecTaskIds []string, archivedTasks []interface{}) error {
 	mongoClient := evergreen.GetEnvironment().Client()
 	ctx, cancel := evergreen.GetEnvironment().Context()
@@ -2582,13 +2655,24 @@ func archiveAll(taskIds, execTaskIds, toRestartExecTaskIds []string, archivedTas
 		if len(archivedTasks) > 0 {
 			oldTaskColl := evergreen.GetEnvironment().DB().Collection(OldCollection)
 			_, err = oldTaskColl.InsertMany(sessCtx, archivedTasks)
-			if err != nil {
+			if err != nil && !db.IsDuplicateKey(err) {
 				return nil, errors.Wrap(err, "archiving tasks")
 			}
 		}
 		if len(taskIds) > 0 {
 			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(sessCtx,
-				bson.M{IdKey: bson.M{"$in": taskIds}},
+				bson.M{
+					IdKey:     bson.M{"$in": taskIds},
+					StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses},
+					"$or": []bson.M{
+						{
+							CanResetKey: bson.M{"$exists": false},
+						},
+						{
+							CanResetKey: false,
+						},
+					},
+				},
 				updateDisplayTasksAndTasksBson(),
 			)
 			if err != nil {
@@ -2628,6 +2712,7 @@ func archiveAll(taskIds, execTaskIds, toRestartExecTaskIds []string, archivedTas
 				bson.A{ // Pipeline
 					bson.M{"$set": bson.M{ // Execution = LPE
 						ExecutionKey: "$" + LatestParentExecutionKey,
+						CanResetKey:  true,
 					}},
 					bson.M{"$unset": bson.A{
 						AbortedKey,
@@ -2647,6 +2732,9 @@ func archiveAll(taskIds, execTaskIds, toRestartExecTaskIds []string, archivedTas
 
 func updateDisplayTasksAndTasksBson() bson.M {
 	return bson.M{
+		"$set": bson.M{
+			CanResetKey: true,
+		},
 		"$unset": bson.M{
 			AbortedKey:              "",
 			AbortInfoKey:            "",

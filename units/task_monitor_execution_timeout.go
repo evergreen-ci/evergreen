@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -24,7 +23,7 @@ const (
 	heartbeatTimeoutThreshold             = 7 * time.Minute
 	taskExecutionTimeoutJobName           = "task-execution-timeout"
 	taskExecutionTimeoutPopulationJobName = "task-execution-timeout-populate"
-	maxAttempts                           = 10
+	maxTaskExecutionTimeoutAttempts       = 10
 )
 
 func init() {
@@ -37,12 +36,12 @@ func init() {
 }
 
 type taskExecutionTimeoutJob struct {
-	Task      string `bson:"task_id"`
-	Execution int    `bson:"execution"`
-	Attempt   int    `bson:"attempt"`
+	Task string `bson:"task_id"`
 
-	successful bool
-	job.Base   `bson:"metadata" json:"metadata" yaml:"metadata"`
+	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
+
+	env  evergreen.Environment
+	task *task.Task
 }
 
 func makeTaskExecutionTimeoutMonitorJob() *taskExecutionTimeoutJob {
@@ -57,12 +56,18 @@ func makeTaskExecutionTimeoutMonitorJob() *taskExecutionTimeoutJob {
 	return j
 }
 
-func NewTaskExecutionMonitorJob(taskID string, execution int, attempt int, ts string) amboy.Job {
+// NewTaskExecutionMonitorJob returns a job to check if a running task has
+// failed to send a heartbeat recently. If it has timed out, it is cleaned up.
+func NewTaskExecutionMonitorJob(taskID string, ts string) amboy.Job {
 	j := makeTaskExecutionTimeoutMonitorJob()
 	j.Task = taskID
-	j.Execution = execution
-	j.Attempt = attempt
-	j.SetID(fmt.Sprintf("%s.%s.%d.attempt-%d.%s", taskExecutionTimeoutJobName, taskID, execution, attempt, ts))
+	j.SetID(fmt.Sprintf("%s.%s.%s", taskExecutionTimeoutJobName, taskID, ts))
+	j.SetEnqueueScopes(fmt.Sprintf("%s.%s", taskExecutionTimeoutJobName, taskID))
+	j.UpdateRetryInfo(amboy.JobRetryOptions{
+		Retryable:   utility.TruePtr(),
+		MaxAttempts: utility.ToIntPtr(maxTaskExecutionTimeoutAttempts),
+		WaitUntil:   utility.ToTimeDurationPtr(time.Minute),
+	})
 	return j
 }
 
@@ -74,7 +79,9 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 		j.AddError(err)
 		return
 	}
-	env := evergreen.GetEnvironment()
+	if j.env == nil {
+		j.env = evergreen.GetEnvironment()
+	}
 
 	if flags.MonitorDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
@@ -85,134 +92,101 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 		})
 		return
 	}
-	defer j.tryRequeue(ctx, env)
 
-	t, err := task.FindOneId(j.Task)
-	if err != nil {
-		j.AddError(errors.Wrapf(err, "finding task '%s'", j.Task))
+	if j.task == nil {
+		t, err := task.FindOneId(j.Task)
+		if err != nil {
+			j.AddRetryableError(errors.Wrapf(err, "finding task '%s'", j.Task))
+			return
+		}
+		if t == nil {
+			j.AddError(errors.Errorf("task '%s' not found", j.Task))
+			return
+		}
+		j.task = t
+	}
+
+	// If the task has heartbeat since this job was queued, let it run.
+	if j.task.LastHeartbeat.Add(heartbeatTimeoutThreshold).After(time.Now()) {
 		return
 	}
-	if t == nil {
-		j.AddError(errors.Errorf("task '%s' not found", j.Task))
-		return
-	}
-
-	// if the task has heartbeat since this job was queued, let it run
-	if t.LastHeartbeat.Add(heartbeatTimeoutThreshold).After(time.Now()) {
-		j.successful = true
+	// If the task is already finished, don't try cleaning it up again.
+	if j.task.IsFinished() {
 		return
 	}
 
 	msg := message.Fields{
+		"job":       j.ID(),
 		"operation": j.Type().Name,
 		"id":        j.ID(),
-		"task":      t.Id,
-		"host_id":   t.HostId,
+		"task":      j.task.Id,
+	}
+	if j.task.HostId != "" {
+		msg["host_id"] = j.task.HostId
 	}
 
-	err = cleanUpTimedOutTask(ctx, env, j.ID(), t)
+	err = j.cleanUpTimedOutTask(ctx)
 	if err != nil {
+		msg["message"] = "failed to clean up timed-out task"
 		grip.Warning(message.WrapError(err, msg))
-		j.AddError(err)
-	} else {
-		j.successful = true
+		j.AddRetryableError(err)
+		return
 	}
+
+	msg["message"] = "successfully cleaned up timed-out task"
 	grip.Debug(msg)
 }
 
-func (j *taskExecutionTimeoutJob) tryRequeue(ctx context.Context, env evergreen.Environment) {
-	if j.successful || j.Attempt >= maxAttempts {
-		return
+// cleanUpTimedOutTask cleans up a single stale task that has exceeded the task
+// heartbeat timeout.
+func (j *taskExecutionTimeoutJob) cleanUpTimedOutTask(ctx context.Context) error {
+	if j.task.IsContainerTask() {
+		return errors.Wrapf(model.ResetStaleTask(j.task), "resetting stale task '%s'", j.task.Id)
 	}
-	ts := utility.RoundPartOfHour(15)
-	newJob := NewTaskExecutionMonitorJob(j.Task, j.Execution, j.Attempt+1, ts.Format(TSFormat))
-	newJob.UpdateTimeInfo(amboy.JobTimeInfo{
-		WaitUntil: time.Now().Add(time.Minute),
-	})
-	err := env.RemoteQueue().Put(ctx, newJob)
-	grip.Error(message.WrapError(err, message.Fields{
-		"message":  "failed to requeue task timeout job",
-		"task":     j.Task,
-		"job":      j.ID(),
-		"attempts": j.Attempt,
-	}))
-	j.AddError(err)
-}
 
-// function to clean up a single task
-func cleanUpTimedOutTask(ctx context.Context, env evergreen.Environment, id string, t *task.Task) error {
-	// get the host for the task
-	host, err := host.FindOne(host.ById(t.HostId))
+	host, err := host.FindOne(host.ById(j.task.HostId))
 	if err != nil {
-		return errors.Wrapf(err, "finding host '%s' for task '%s'", t.HostId, t.Id)
+		return errors.Wrapf(err, "finding host '%s' for task '%s'", j.task.HostId, j.task.Id)
 	}
 
 	// if there's no relevant host and the task is not a display task, something went wrong
 	if host == nil {
-		if !t.DisplayOnly {
-			grip.Error(message.Fields{
-				"message":   "no entry found for host",
-				"task":      t.Id,
-				"host_id":   t.HostId,
-				"operation": "cleanup timed out task",
-			})
-		}
-		return errors.WithStack(t.MarkUnscheduled())
-	}
-
-	// For a single-host task group, if a task fails, block and dequeue later tasks in that group.
-	if t.IsPartOfSingleHostTaskGroup() && t.Status != evergreen.TaskSucceeded {
-		if err = model.BlockTaskGroupTasks(t.Id); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "problem blocking task group tasks",
-				"task_id": t.Id,
-			}))
-		}
-		grip.Debug(message.Fields{
-			"message": "blocked task group tasks for task",
-			"task_id": t.Id,
+		grip.ErrorWhen(!j.task.DisplayOnly, message.Fields{
+			"message":   "no entry found for host",
+			"task":      j.task.Id,
+			"host_id":   j.task.HostId,
+			"operation": "cleanup timed out task",
 		})
+		return errors.WithStack(j.task.MarkUnscheduled())
 	}
 
-	// if the host still has the task as its running task, clear it.
-	if host.RunningTask == t.Id {
-		// Check if the host was externally terminated. When the running task is
-		// cleared on the host, an agent or agent monitor deploy might run,
-		// which updates the LCT and prevents detection of external termination
-		// until the deploy job runs out of retries.
-		var terminated bool
-		terminated, err = handleExternallyTerminatedHost(ctx, id, env, host)
+	if host.RunningTask == j.task.Id {
+		// Check if the host was externally terminated before clearing the
+		// host's running task. When the running task is cleared on the host, an
+		// agent or agent monitor deploy might run, which updates the LCT and
+		// prevents detection of external termination until the deploy job runs
+		// out of retries.
+		terminated, err := handleExternallyTerminatedHost(ctx, j.ID(), j.env, host)
 		if err != nil {
-			return errors.Wrapf(err, "checking host '%s 'with timed out task '%s' for external termination", host.Id, t.Id)
+			return errors.Wrapf(err, "checking host '%s 'with timed out task '%s' for external termination", host.Id, j.task.Id)
 		}
 		if terminated {
+			// If the host has been externally terminated, then this is treated
+			// as a task failure due to stranding on a dead host rather than a
+			// stale heartbeat. The host termination process will deal with
+			// fixing the stranded task.
 			return nil
 		}
-		if err = host.ClearRunningAndSetLastTask(t); err != nil {
-			return errors.Wrapf(err, "clearing running task '%s' from host '%s'", t.Id, host.Id)
+		if err = host.ClearRunningAndSetLastTask(j.task); err != nil {
+			return errors.Wrapf(err, "clearing running task '%s' from host '%s'", j.task.Id, host.Id)
 		}
 	}
 
-	detail := &apimodels.TaskEndDetail{
-		Description: evergreen.TaskDescriptionHeartbeat,
-		Type:        evergreen.CommandTypeSystem,
-		TimedOut:    true,
-		Status:      evergreen.TaskFailed,
+	if err := model.ResetStaleTask(j.task); err != nil {
+		return errors.Wrapf(err, "resetting stale task '%s'", j.task.Id)
 	}
 
-	// try to reset the task
-	if t.IsPartOfDisplay() {
-		dt, err := t.GetDisplayTask()
-		if err != nil {
-			return errors.Wrapf(err, "getting display task")
-		}
-		if err = dt.SetResetWhenFinished(); err != nil {
-			return errors.Wrap(err, "marking display task for reset when finished")
-		}
-		return errors.Wrap(model.MarkEnd(t, "monitor", time.Now(), detail, false), "marking execution task ended")
-	}
-
-	return errors.Wrapf(model.TryResetTask(t.Id, "", "monitor", detail), "trying to reset task '%s'", t.Id)
+	return nil
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -220,6 +194,7 @@ func cleanUpTimedOutTask(ctx context.Context, env evergreen.Environment, id stri
 // Population Job
 
 type taskExecutionTimeoutPopulationJob struct {
+	env      evergreen.Environment
 	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
 }
 
@@ -235,6 +210,8 @@ func makeTaskExecutionTimeoutPopulateJob() *taskExecutionTimeoutPopulationJob {
 	return j
 }
 
+// NewTaskExecutionMonitorPopulateJob returns a job to populate the queue with
+// jobs to check for stale tasks.
 func NewTaskExecutionMonitorPopulateJob(id string) amboy.Job {
 	j := makeTaskExecutionTimeoutPopulateJob()
 	j.SetID(fmt.Sprintf("%s.%s", j.Type().Name, id))
@@ -259,16 +236,19 @@ func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
 		return
 	}
 
-	queue := evergreen.GetEnvironment().RemoteQueue()
+	if j.env == nil {
+		j.env = evergreen.GetEnvironment()
+	}
+	queue := j.env.RemoteQueue()
 
-	taskIDs := map[string]int{}
+	taskIDs := map[string]struct{}{}
 	tasks, err := host.FindStaleRunningTasks(heartbeatTimeoutThreshold, host.TaskHeartbeatPastCutoff)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "finding tasks with timed-out or stale heartbeats"))
 		return
 	}
 	for _, t := range tasks {
-		taskIDs[t.Id] = t.Execution
+		taskIDs[t.Id] = struct{}{}
 	}
 	j.logTasks(tasks, "heartbeat past cutoff, on running host")
 	tasks, err = host.FindStaleRunningTasks(heartbeatTimeoutThreshold, host.TaskNoHeartbeatSinceDispatch)
@@ -277,7 +257,7 @@ func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
 		return
 	}
 	for _, t := range tasks {
-		taskIDs[t.Id] = t.Execution
+		taskIDs[t.Id] = struct{}{}
 	}
 	j.logTasks(tasks, "no heartbeat since dispatch, on running host")
 	tasks, err = host.FindStaleRunningTasks(heartbeatTimeoutThreshold, host.TaskUndispatchedHasHeartbeat)
@@ -286,32 +266,33 @@ func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
 		return
 	}
 	for _, t := range tasks {
-		taskIDs[t.Id] = t.Execution
+		taskIDs[t.Id] = struct{}{}
 	}
 	j.logTasks(tasks, "undispatched task has a heartbeat, on running host")
 
-	tasks, err = task.FindWithFields(task.ByStaleRunningTask(heartbeatTimeoutThreshold, task.HeartbeatPastCutoff), task.IdKey, task.ExecutionKey)
+	tasks, err = task.FindWithFields(task.ByStaleRunningTask(heartbeatTimeoutThreshold, task.HeartbeatPastCutoff), task.IdKey)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "finding tasks with timed-out or stale heartbeats"))
 		return
 	}
 	for _, t := range tasks {
-		taskIDs[t.Id] = t.Execution
+		taskIDs[t.Id] = struct{}{}
 	}
 	j.logTasks(tasks, "heartbeat past cutoff")
-	tasks, err = task.FindWithFields(task.ByStaleRunningTask(heartbeatTimeoutThreshold, task.NoHeartbeatSinceDispatch), task.IdKey, task.ExecutionKey)
+
+	tasks, err = task.FindWithFields(task.ByStaleRunningTask(heartbeatTimeoutThreshold, task.NoHeartbeatSinceDispatch), task.IdKey)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "finding tasks with timed-out or stale heartbeats"))
 		return
 	}
 	for _, t := range tasks {
-		taskIDs[t.Id] = t.Execution
+		taskIDs[t.Id] = struct{}{}
 	}
 	j.logTasks(tasks, "no heartbeat since dispatch")
 
-	for id, execution := range taskIDs {
+	for id := range taskIDs {
 		ts := utility.RoundPartOfHour(15)
-		j.AddError(queue.Put(ctx, NewTaskExecutionMonitorJob(id, execution, 1, ts.Format(TSFormat))))
+		j.AddError(amboy.EnqueueUniqueJob(ctx, queue, NewTaskExecutionMonitorJob(id, ts.Format(TSFormat))))
 	}
 	grip.Info(message.Fields{
 		"operation": "task-execution-timeout-populate",
@@ -321,14 +302,17 @@ func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
 }
 
 func (j *taskExecutionTimeoutPopulationJob) logTasks(tasks []task.Task, reason string) {
-	taskIds := []string{}
+	if len(tasks) == 0 {
+		return
+	}
+	var taskIDs []string
 	for _, t := range tasks {
-		taskIds = append(taskIds, t.Id)
+		taskIDs = append(taskIDs, t.Id)
 	}
 	grip.Info(message.Fields{
 		"message":   "found stale tasks",
 		"reason":    reason,
-		"tasks":     taskIds,
+		"tasks":     taskIDs,
 		"operation": j.Type().Name,
 		"job_id":    j.ID(),
 	})

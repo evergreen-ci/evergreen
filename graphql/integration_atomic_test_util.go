@@ -59,6 +59,7 @@ const apiKey = "testapikey"
 
 func setup(t *testing.T, state *AtomicGraphQLState) {
 	const slackUsername = "testslackuser"
+	const slackMemberId = "12345member"
 	const email = "testuser@mongodb.com"
 	const accessToken = "access_token"
 	const refreshToken = "refresh_token"
@@ -81,7 +82,7 @@ func setup(t *testing.T, state *AtomicGraphQLState) {
 		err = usr.AddPublicKey(pk.Name, pk.Key)
 		require.NoError(t, err)
 	}
-	err = usr.UpdateSettings(user.UserSettings{Timezone: "America/New_York", SlackUsername: slackUsername})
+	err = usr.UpdateSettings(user.UserSettings{Timezone: "America/New_York", SlackUsername: slackUsername, SlackMemberId: slackMemberId})
 	require.NoError(t, err)
 
 	for _, role := range systemRoles {

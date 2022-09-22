@@ -55,6 +55,7 @@ func (s *DBUserConnectorSuite) getNotificationSettings(index int) *user.Notifica
 func (s *DBUserConnectorSuite) TestUpdateSettings() {
 	settings := user.UserSettings{
 		SlackUsername: "@test",
+		SlackMemberId: "TESTA25BA",
 		Notifications: user.NotificationPreferences{
 			BuildBreak:  user.PreferenceEmail,
 			PatchFinish: user.PreferenceSlack,
@@ -99,12 +100,14 @@ func (s *DBUserConnectorSuite) TestUpdateSettings() {
 	settings.Notifications = *pref
 
 	settings.SlackUsername = "#Test"
+	settings.SlackMemberId = "NOTES25BA"
 	s.EqualError(UpdateSettings(s.users[0], settings), "400 (Bad Request): expected a Slack username, but got a channel")
 }
 
 func (s *DBUserConnectorSuite) TestUpdateSettingsCommitQueue() {
 	settings := user.UserSettings{
 		SlackUsername: "@test",
+		SlackMemberId: "TESTA25BA",
 		Notifications: user.NotificationPreferences{
 			CommitQueue: user.PreferenceSlack,
 		},

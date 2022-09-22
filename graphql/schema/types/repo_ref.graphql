@@ -7,7 +7,6 @@ input RepoRefInput {
   buildBaronSettings: BuildBaronSettingsInput
   commitQueue: CommitQueueParamsInput
   deactivatePrevious: Boolean
-  defaultLogger: String
   disabledStatsCache: Boolean
   dispatchingDisabled: Boolean
   displayName: String
@@ -38,6 +37,7 @@ input RepoRefInput {
   triggers: [TriggerAliasInput!]
   versionControlEnabled: Boolean
   workstationConfig: WorkstationConfigInput
+  containerSizeDefinitions: [ContainerResourcesInput!]
 }
 
 ###### TYPES ######
@@ -54,7 +54,6 @@ type RepoRef {
   buildBaronSettings: BuildBaronSettings!
   commitQueue: RepoCommitQueueParams!
   deactivatePrevious: Boolean!
-  defaultLogger: String!
   disabledStatsCache: Boolean!
   dispatchingDisabled: Boolean!
   displayName: String!
@@ -83,9 +82,9 @@ type RepoRef {
   taskSync: RepoTaskSyncOptions!
   tracksPushEvents: Boolean!
   triggers: [TriggerAlias!]!
-  validDefaultLoggers: [String!]!
   versionControlEnabled: Boolean!
   workstationConfig: RepoWorkstationConfig!
+  containerSizeDefinitions: [ContainerResources!]
 }
 
 type RepoCommitQueueParams {

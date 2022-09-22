@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -478,6 +479,11 @@ func UpsertAliasesForProject(aliases []ProjectAlias, projectId string) error {
 		}
 		catcher.Add(aliases[i].Upsert())
 	}
+	grip.Debug(message.WrapError(catcher.Resolve(), message.Fields{
+		"ticket":     "EVG-17608",
+		"message":    "problem getting aliases",
+		"project_id": projectId,
+	}))
 	return catcher.Resolve()
 }
 

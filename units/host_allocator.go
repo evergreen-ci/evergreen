@@ -125,6 +125,14 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		return
 	}
 
+	if distro.Disabled {
+		return
+	}
+
+	////////////////////////
+	// host-allocation phase
+	////////////////////////
+
 	existingHosts, err := host.AllActiveHosts(j.DistroID)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "finding active hosts"))
@@ -137,10 +145,6 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrapf(err, "getting distro queue info for distro '%s'", j.DistroID))
 		return
 	}
-
-	////////////////////////
-	// host-allocation phase
-	////////////////////////
 
 	hostAllocationBegins := time.Now()
 

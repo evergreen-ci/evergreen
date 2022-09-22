@@ -23,7 +23,7 @@ import (
 func Admin() cli.Command {
 	return cli.Command{
 		Name:  "admin",
-		Usage: "site administration for an evergreen deployment",
+		Usage: "site administration for an Evergreen deployment",
 		Subcommands: []cli.Command{
 			adminSetBanner(),
 			viewSettings(),
@@ -71,7 +71,7 @@ func adminSetBanner() cli.Command {
 		Before: mergeBeforeFuncs(
 			func(c *cli.Context) error {
 				if c.String(messageFlagName) != "" && c.Bool(clearFlagName) {
-					return errors.New("must specify either a message or the  'clear' option, but not both")
+					return errors.New("must specify either a message or the 'clear' option, but not both")
 				}
 				return nil
 			},
@@ -100,14 +100,13 @@ func adminSetBanner() cli.Command {
 
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
-				return errors.Wrap(err, "problem loading configuration")
+				return errors.Wrap(err, "loading configuration")
 			}
 
 			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
-			return errors.Wrap(client.SetBannerMessage(ctx, msgContent, theme),
-				"problem setting the site-wide banner message")
+			return errors.Wrap(client.SetBannerMessage(ctx, msgContent, theme), "setting the site-wide banner message")
 		},
 	}
 }
@@ -115,7 +114,7 @@ func adminSetBanner() cli.Command {
 func viewSettings() cli.Command {
 	return cli.Command{
 		Name:   "get-settings",
-		Usage:  "view the evergreen configuration settings",
+		Usage:  "view the Evergreen configuration settings",
 		Action: doViewSettings(),
 		Before: setPlainLogger,
 	}
@@ -130,19 +129,19 @@ func doViewSettings() cli.ActionFunc {
 
 		conf, err := NewClientSettings(confPath)
 		if err != nil {
-			return errors.Wrap(err, "problem loading configuration")
+			return errors.Wrap(err, "loading configuration")
 		}
 		client := conf.setupRestCommunicator(ctx)
 		defer client.Close()
 
 		settings, err := client.GetSettings(ctx)
 		if err != nil {
-			return errors.Wrap(err, "problem getting evergreen settings")
+			return errors.Wrap(err, "getting Evergreen settings")
 		}
 
 		settingsYaml, err := json.MarshalIndent(settings, " ", " ")
 		if err != nil {
-			return errors.Wrap(err, "problem marshalling evergreen settings")
+			return errors.Wrap(err, "marshalling Evergreen settings")
 		}
 
 		grip.Info(settingsYaml)
@@ -157,7 +156,7 @@ func updateSettings() cli.Command {
 	return cli.Command{
 		Name:   "update-settings",
 		Before: mergeBeforeFuncs(setPlainLogger, requireStringFlag(updateFlagName)),
-		Usage:  "update the evergreen configuration settings",
+		Usage:  "update the Evergreen configuration settings",
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  joinFlagNames(updateFlagName, "u"),
@@ -171,7 +170,7 @@ func updateSettings() cli.Command {
 			updateSettings := &model.APIAdminSettings{}
 			err := yaml.Unmarshal([]byte(updateString), updateSettings)
 			if err != nil {
-				return errors.Wrap(err, "problem parsing update string as a settings document")
+				return errors.Wrap(err, "parsing update string as a settings document")
 			}
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -179,19 +178,19 @@ func updateSettings() cli.Command {
 
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
-				return errors.Wrap(err, "problem loading configuration")
+				return errors.Wrap(err, "loading configuration")
 			}
 			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
 			settings, err := client.UpdateSettings(ctx, updateSettings)
 			if err != nil {
-				return errors.Wrap(err, "problem updating evergreen settings")
+				return errors.Wrap(err, "updating Evergreen settings")
 			}
 
 			settingsYaml, err := json.MarshalIndent(settings, " ", " ")
 			if err != nil {
-				return errors.Wrap(err, "problem marshalling evergreen settings")
+				return errors.Wrap(err, "marshalling Evergreen settings")
 			}
 
 			grip.Info(settingsYaml)
@@ -215,7 +214,7 @@ func listEvents() cli.Command {
 			if timeString != "" {
 				ts, err = time.Parse(time.RFC3339, timeString)
 				if err != nil {
-					return errors.Wrap(err, "error parsing start time")
+					return errors.Wrap(err, "parsing start time")
 				}
 			} else {
 				ts = time.Now()
@@ -226,19 +225,19 @@ func listEvents() cli.Command {
 
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
-				return errors.Wrap(err, "problem loading configuration")
+				return errors.Wrap(err, "loading configuration")
 			}
 			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
 			events, err := client.GetEvents(ctx, ts, limit)
 			if err != nil {
-				return errors.Wrap(err, "error retrieving events")
+				return errors.Wrap(err, "retrieving events")
 			}
 
 			eventsPretty, err := json.MarshalIndent(events, " ", " ")
 			if err != nil {
-				return errors.Wrap(err, "problem marshalling events")
+				return errors.Wrap(err, "marshalling events")
 			}
 			grip.Info(eventsPretty)
 
@@ -256,14 +255,14 @@ func revert() cli.Command {
 			confPath := c.Parent().Parent().String(confFlagName)
 			guid := c.Args().Get(0)
 			if guid == "" {
-				return errors.New("must specify a guid to revert")
+				return errors.New("must specify a GUID to revert")
 			}
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
-				return errors.Wrap(err, "problem loading configuration")
+				return errors.Wrap(err, "loading configuration")
 			}
 			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
@@ -272,7 +271,7 @@ func revert() cli.Command {
 			if err != nil {
 				return err
 			}
-			grip.Infof("Successfully reverted %s", guid)
+			grip.Infof("Successfully reverted GUID '%s'", guid)
 
 			return nil
 		},
@@ -388,13 +387,13 @@ func updateRoleCmd() cli.Command {
 			confPath := c.Parent().Parent().String(confFlagName)
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
-				return errors.Wrap(err, "problem loading configuration")
+				return errors.Wrap(err, "loading configuration")
 			}
 			client := conf.setupRestCommunicator(context.Background())
 			defer client.Close()
 			ac, _, err := conf.getLegacyClients()
 			if err != nil {
-				return errors.Wrap(err, "problem accessing evergreen service")
+				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
 
 			return ac.UpdateRole(&role)
@@ -463,7 +462,7 @@ func adminDistroExecute() cli.Command {
 				scriptPath := c.String(scriptPathFlagName)
 				b, err := ioutil.ReadFile(scriptPath)
 				if err != nil {
-					return errors.Wrapf(err, "could not read script file '%s'", scriptPath)
+					return errors.Wrapf(err, "reading script file '%s'", scriptPath)
 				}
 				script = string(b)
 			}
@@ -471,7 +470,7 @@ func adminDistroExecute() cli.Command {
 			confPath := c.Parent().Parent().String(confFlagName)
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
-				return errors.Wrap(err, "problem loading configuration")
+				return errors.Wrap(err, "loading configuration")
 			}
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -486,7 +485,7 @@ func adminDistroExecute() cli.Command {
 				SudoUser:          sudoUser,
 			})
 			if err != nil {
-				return errors.Wrapf(err, "failed to execute script on hosts of distro '%s'", distro)
+				return errors.Wrapf(err, "executing script on hosts of distro '%s'", distro)
 			}
 			if len(hostIDs) != 0 {
 				fmt.Printf("Running script on the following hosts:\n%s\n", strings.Join(hostIDs, "\n"))
@@ -510,7 +509,7 @@ func getServiceUsers() cli.Command {
 			confPath := c.Parent().Parent().String(confFlagName)
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
-				return errors.Wrap(err, "problem loading configuration")
+				return errors.Wrap(err, "loading configuration")
 			}
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -561,7 +560,7 @@ func updateServiceUser() cli.Command {
 			confPath := c.Parent().Parent().String(confFlagName)
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
-				return errors.Wrap(err, "problem loading configuration")
+				return errors.Wrap(err, "loading configuration")
 			}
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -593,7 +592,7 @@ func deleteServiceUser() cli.Command {
 			confPath := c.Parent().Parent().String(confFlagName)
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
-				return errors.Wrap(err, "problem loading configuration")
+				return errors.Wrap(err, "loading configuration")
 			}
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()

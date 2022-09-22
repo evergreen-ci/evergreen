@@ -183,7 +183,7 @@ func (c *awsClientImpl) Create(creds *credentials.Credentials, region string) er
 			Credentials: creds,
 		})
 		if err != nil {
-			return errors.Wrap(err, "error creating session")
+			return errors.Wrap(err, "creating session")
 		}
 		c.session = s
 	}
@@ -492,7 +492,7 @@ func (c *awsClientImpl) DescribeSpotRequestsAndSave(ctx context.Context, hosts [
 
 	instances, err := c.DescribeSpotInstanceRequests(ctx, apiInput)
 	if err != nil {
-		return nil, errors.Wrap(err, "error describing spot requests")
+		return nil, errors.Wrap(err, "describing spot instance requests")
 	}
 
 	catcher := grip.NewSimpleCatcher()
@@ -794,7 +794,7 @@ func (c *awsClientImpl) DescribeVpcs(ctx context.Context, input *ec2.DescribeVpc
 
 func (c *awsClientImpl) GetInstanceInfo(ctx context.Context, id string) (*ec2.Instance, error) {
 	if strings.HasPrefix(id, "sir") {
-		return nil, errors.Errorf("id appears to be a spot instance request ID, not a host ID (%s)", id)
+		return nil, errors.Errorf("ID '%s' appears to be a spot instance request ID, not a host ID", id)
 	}
 	if host.IsIntentHostId(id) {
 		return nil, errors.Errorf("host ID '%s' is for an intent host", id)
@@ -812,7 +812,7 @@ func (c *awsClientImpl) GetInstanceInfo(ctx context.Context, id string) (*ec2.In
 
 	instances := reservation[0].Instances
 	if len(instances) == 0 {
-		err = errors.Errorf("'%s' was not found in reservation '%s'",
+		err = errors.Errorf("host '%s' was not found in reservation '%s'",
 			id, *resp.Reservations[0].ReservationId)
 		return nil, err
 	}
@@ -1029,12 +1029,14 @@ func (c *awsClientImpl) CreateFleet(ctx context.Context, input *ec2.CreateFleetI
 			// to the standard `err != nil` case above.
 			if !ec2CreateFleetResponseContainsInstance(output) {
 				if len(output.Errors) > 0 {
-					grip.Debug(message.WrapError(errors.New(output.Errors[0].String()), msg))
-					return true, errors.Errorf("Got error in CreateFleet response: %s", output.Errors[0].String())
+					err := errors.New(output.Errors[0].String())
+					grip.Debug(message.WrapError(err, msg))
+					return true, errors.Wrap(err, "CreateFleet response contained errors")
 				}
-				grip.Error(message.WrapError(errors.New("No instance ID and no error in CreateFleet response"), msg))
+				err := errors.New("CreateFleet response contained neither an instance ID nor error")
+				grip.Error(message.WrapError(err, msg))
 				// This condition is unexpected, so do not retry.
-				return false, errors.New("No instance ID no error in create fleet response")
+				return false, err
 			}
 			grip.Info(msg)
 			return false, nil
@@ -1048,14 +1050,14 @@ func (c *awsClientImpl) CreateFleet(ctx context.Context, input *ec2.CreateFleetI
 func (c *awsClientImpl) GetKey(ctx context.Context, h *host.Host) (string, error) {
 	t, err := task.FindOneId(h.StartedBy)
 	if err != nil {
-		return "", errors.Wrapf(err, "problem finding task %s", h.StartedBy)
+		return "", errors.Wrapf(err, "finding task '%s'", h.StartedBy)
 	}
 	if t == nil {
-		return "", errors.Errorf("no task found %s", h.StartedBy)
+		return "", errors.Errorf("task '%s' not found", h.StartedBy)
 	}
 	k, err := model.GetAWSKeyForProject(t.Project)
 	if err != nil {
-		return "", errors.Wrap(err, "problem getting key for project")
+		return "", errors.Wrap(err, "getting key for project")
 	}
 	if k.Name != "" {
 		return k.Name, nil
@@ -1063,7 +1065,7 @@ func (c *awsClientImpl) GetKey(ctx context.Context, h *host.Host) (string, error
 
 	newKey, err := c.makeNewKey(ctx, t.Project, h)
 	if err != nil {
-		return "", errors.Wrap(err, "problem creating new key")
+		return "", errors.Wrap(err, "creating new key")
 	}
 	return newKey, nil
 }
@@ -1079,11 +1081,11 @@ func (c *awsClientImpl) makeNewKey(ctx context.Context, project string, h *host.
 	}
 	resp, err := c.CreateKeyPair(ctx, &ec2.CreateKeyPairInput{KeyName: aws.String(name)})
 	if err != nil {
-		return "", errors.Wrap(err, "problem creating key pair")
+		return "", errors.Wrap(err, "creating key pair")
 	}
 
 	if err := model.SetAWSKeyForProject(project, &model.AWSSSHKey{Name: name, Value: *resp.KeyMaterial}); err != nil {
-		return "", errors.Wrap(err, "problem setting key")
+		return "", errors.Wrap(err, "setting key for project")
 	}
 
 	return name, nil
@@ -1103,12 +1105,12 @@ func (c *awsClientImpl) SetTags(ctx context.Context, resources []string, h *host
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
 		}))
-		return errors.Wrapf(err, "failed to attach tags for %s", h.Id)
+		return errors.Wrapf(err, "attaching tags for host '%s'", h.Id)
 	}
 
 	// Push instance tag changes to database
 	if err := h.SetTags(); err != nil {
-		return errors.Wrap(err, "failed to update instance tags in database")
+		return errors.Wrap(err, "updating instance tags in the database")
 	}
 
 	grip.Debug(message.Fields{
@@ -1125,12 +1127,12 @@ func (c *awsClientImpl) SetTags(ctx context.Context, resources []string, h *host
 func (c *awsClientImpl) GetInstanceBlockDevices(ctx context.Context, h *host.Host) ([]*ec2.InstanceBlockDeviceMapping, error) {
 	id, err := c.getHostInstanceID(ctx, h)
 	if err != nil {
-		return nil, errors.Wrapf(err, "can't get instance ID for '%s'", h.Id)
+		return nil, errors.Wrapf(err, "getting instance ID for host '%s'", h.Id)
 	}
 
 	instance, err := c.GetInstanceInfo(ctx, id)
 	if err != nil {
-		return nil, errors.Wrap(err, "error getting instance info")
+		return nil, errors.Wrap(err, "getting instance info")
 	}
 
 	return instance.BlockDeviceMappings, nil
@@ -1140,10 +1142,10 @@ func (c *awsClientImpl) GetVolumeIDs(ctx context.Context, h *host.Host) ([]strin
 	if h.Volumes == nil {
 		devices, err := c.GetInstanceBlockDevices(ctx, h)
 		if err != nil {
-			return nil, errors.Wrap(err, "error getting devices")
+			return nil, errors.Wrap(err, "getting devices")
 		}
 		if err := h.SetVolumes(makeVolumeAttachments(devices)); err != nil {
-			return nil, errors.Wrap(err, "error saving host volumes")
+			return nil, errors.Wrap(err, "saving host volumes")
 		}
 	}
 
@@ -1163,12 +1165,12 @@ func (c *awsClientImpl) GetPublicDNSName(ctx context.Context, h *host.Host) (str
 
 	id, err := c.getHostInstanceID(ctx, h)
 	if err != nil {
-		return "", errors.Wrapf(err, "can't get instance ID for '%s'", h.Id)
+		return "", errors.Wrapf(err, "getting instance ID for host '%s'", h.Id)
 	}
 
 	instance, err := c.GetInstanceInfo(ctx, id)
 	if err != nil {
-		return "", errors.Wrap(err, "error getting instance info")
+		return "", errors.Wrap(err, "getting instance info")
 	}
 
 	return *instance.PublicDnsName, nil
@@ -1180,10 +1182,10 @@ func (c *awsClientImpl) getHostInstanceID(ctx context.Context, h *host.Host) (st
 		var err error
 		id, err = c.GetSpotInstanceId(ctx, h)
 		if err != nil {
-			return "", errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
+			return "", errors.Wrapf(err, "getting spot request info for host '%s'", h.Id)
 		}
 		if id == "" {
-			return "", errors.WithStack(errors.New("spot instance does not yet have an instanceId"))
+			return "", errors.New("spot instance does not yet have an instanceId")
 		}
 	}
 
@@ -1667,10 +1669,10 @@ func (c *awsClientMock) GetVolumeIDs(ctx context.Context, h *host.Host) ([]strin
 	if h.Volumes == nil {
 		devices, err := c.GetInstanceBlockDevices(ctx, h)
 		if err != nil {
-			return nil, errors.Wrap(err, "error getting devices")
+			return nil, errors.Wrap(err, "getting devices")
 		}
 		if err := h.SetVolumes(makeVolumeAttachments(devices)); err != nil {
-			return nil, errors.Wrap(err, "error setting host volumes")
+			return nil, errors.Wrap(err, "setting host volumes")
 		}
 	}
 

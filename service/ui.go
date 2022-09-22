@@ -10,7 +10,6 @@ import (
 
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/PuerkitoBio/rehttp"
-	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/model"
@@ -50,8 +49,6 @@ type UIServer struct {
 	env   evergreen.Environment
 
 	plugin.PanelManager
-
-	vault cocoa.Vault
 }
 
 // ViewData contains common data that is provided to all Evergreen pages
@@ -385,7 +382,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/build_variant/{project_id}/{variant}").Wrap(needsContext, viewTasks).Handler(uis.variantHistory).Get()
 
 	// Task queues
-	app.AddRoute("/task_queue/").Wrap(needsLogin, needsContext).Handler(uis.allTaskQueues).Get() // TODO: ¯\_(ツ)_/¯
+	app.AddRoute("/task_queue/{distro}/{task_id}").Wrap(needsLogin, needsContext).Handler(uis.taskQueue).Get()
 
 	// Patch pages
 	app.AddRoute("/patch/{patch_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.patchPage).Get()

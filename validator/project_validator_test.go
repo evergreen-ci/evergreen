@@ -1627,12 +1627,14 @@ func TestValidateProjectConfigContainers(t *testing.T) {
 	t.Run("SucceedsWithValidContainers", func(t *testing.T) {
 		pc := model.ProjectConfig{
 			ProjectConfigFields: model.ProjectConfigFields{
-				ContainerSizes: map[string]model.ContainerResources{
-					"small": {
+				ContainerSizeDefinitions: []model.ContainerResources{
+					{
+						Name:     "small",
 						CPU:      128,
 						MemoryMB: 128,
 					},
-					"large": {
+					{
+						Name:     "large",
 						CPU:      2048,
 						MemoryMB: 2048,
 					},
@@ -1645,8 +1647,9 @@ func TestValidateProjectConfigContainers(t *testing.T) {
 	t.Run("FailsWithInvalidContainerResources", func(t *testing.T) {
 		pc := model.ProjectConfig{
 			ProjectConfigFields: model.ProjectConfigFields{
-				ContainerSizes: map[string]model.ContainerResources{
-					"invalid": {
+				ContainerSizeDefinitions: []model.ContainerResources{
+					{
+						Name:     "invalid",
 						CPU:      -10,
 						MemoryMB: -5,
 					},
@@ -1659,8 +1662,9 @@ func TestValidateProjectConfigContainers(t *testing.T) {
 	t.Run("FailsWithUnnamedContainerSize", func(t *testing.T) {
 		pc := model.ProjectConfig{
 			ProjectConfigFields: model.ProjectConfigFields{
-				ContainerSizes: map[string]model.ContainerResources{
-					"": {
+				ContainerSizeDefinitions: []model.ContainerResources{
+					{
+						Name:     "",
 						CPU:      128,
 						MemoryMB: 128,
 					},
@@ -1669,6 +1673,48 @@ func TestValidateProjectConfigContainers(t *testing.T) {
 		}
 		errs := validateProjectConfigContainers(&pc)
 		assert.NotEmpty(t, errs)
+	})
+	t.Run("FailsWithContainerSizeExceedingGlobalLimits", func(t *testing.T) {
+		env := evergreen.GetEnvironment()
+		originalECSConf := env.Settings().Providers.AWS.Pod.ECS
+		defer func() {
+			env.Settings().Providers.AWS.Pod.ECS = originalECSConf
+		}()
+		env.Settings().Providers.AWS.Pod.ECS = evergreen.ECSConfig{
+			MaxCPU:      1024,
+			MaxMemoryMB: 2048,
+		}
+
+		t.Run("CPU", func(t *testing.T) {
+			pc := model.ProjectConfig{
+				ProjectConfigFields: model.ProjectConfigFields{
+					ContainerSizeDefinitions: []model.ContainerResources{
+						{
+							Name:     "xlarge",
+							CPU:      100000000,
+							MemoryMB: 100,
+						},
+					},
+				},
+			}
+			errs := validateProjectConfigContainers(&pc)
+			assert.NotEmpty(t, errs)
+		})
+		t.Run("Memory", func(t *testing.T) {
+			pc := model.ProjectConfig{
+				ProjectConfigFields: model.ProjectConfigFields{
+					ContainerSizeDefinitions: []model.ContainerResources{
+						{
+							Name:     "xlarge",
+							CPU:      100,
+							MemoryMB: 100000000,
+						},
+					},
+				},
+			}
+			errs := validateProjectConfigContainers(&pc)
+			assert.NotEmpty(t, errs)
+		})
 	})
 }
 
@@ -3075,9 +3121,9 @@ func TestValidateContainers(t *testing.T) {
 			p.Containers[0].Size = "s2"
 			verrs := validateContainers(p, ref, false)
 			require.Len(t, verrs, 1)
-			assert.Contains(t, verrs[0].Message, "size 's2' is not defined anywhere")
+			assert.Contains(t, verrs[0].Message, "container size 's2' not found")
 		},
-		"FailsWithNonexistentRepoCreds": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
+		"FailsWithNonexistentRepoCred": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
 			p.Containers[0].Credential = "nonexistent"
 			verrs := validateContainers(p, ref, false)
 			require.Len(t, verrs, 1)
@@ -3128,10 +3174,16 @@ func TestValidateContainers(t *testing.T) {
 
 			ref := &model.ProjectRef{
 				Identifier: "proj",
-				ContainerSizes: map[string]model.ContainerResources{
-					"s1": {
-						MemoryMB: 100,
+				ContainerSizeDefinitions: []model.ContainerResources{
+					{
+						Name:     "s1",
 						CPU:      1,
+						MemoryMB: 100,
+					},
+					{
+						Name:     "",
+						CPU:      1,
+						MemoryMB: 100,
 					},
 				},
 				ContainerSecrets: []model.ContainerSecret{

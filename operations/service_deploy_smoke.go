@@ -12,6 +12,7 @@ import (
 	"strconv"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent"
 	timberutil "github.com/evergreen-ci/timber/testutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
@@ -25,7 +26,7 @@ import (
 func setupSmokeTest(err error) cli.BeforeFunc {
 	return func(c *cli.Context) error {
 		if err != nil {
-			return errors.Wrap(err, "problem getting working directory")
+			return errors.Wrap(err, "getting working directory")
 		}
 		grip.GetSender().SetName("evergreen.smoke")
 		return nil
@@ -35,16 +36,16 @@ func setupSmokeTest(err error) cli.BeforeFunc {
 func startLocalEvergreen() cli.Command {
 	return cli.Command{
 		Name:  "start-local-evergreen",
-		Usage: "start an evergreen for local development",
+		Usage: "start an Evergreen for local development",
 		Action: func(c *cli.Context) error {
 			exit := make(chan error, 1)
 			wd, err := os.Getwd()
 			if err != nil {
-				return errors.Wrap(err, "couldn't get working directory")
+				return errors.Wrap(err, "getting working directory")
 			}
 			binary := filepath.Join(wd, "clients", runtime.GOOS+"_"+runtime.GOARCH, "evergreen")
 			if err := smokeRunBinary(exit, "web.service", wd, binary, "service", "web", "--db", "evergreen_local"); err != nil {
-				return errors.Wrap(err, "error running web service")
+				return errors.Wrap(err, "running web service")
 			}
 			<-exit
 			return nil
@@ -59,14 +60,15 @@ func smokeStartEvergreen() cli.Command {
 		webFlagName          = "web"
 		agentMonitorFlagName = "monitor"
 		distroIDFlagName     = "distro"
+		modeFlagName         = "mode"
 
 		// apiPort is the local port the API will listen on.
 		apiPort = ":9090"
 
 		cedarPort = 7070
 
-		hostId     = "localhost"
-		hostSecret = "de249183582947721fdfb2ea1796574b"
+		id         = "localhost"
+		secret     = "de249183582947721fdfb2ea1796574b"
 		statusPort = "2287"
 
 		monitorPort = 2288
@@ -81,7 +83,7 @@ func smokeStartEvergreen() cli.Command {
 	return cli.Command{
 		Name:    "start-evergreen",
 		Aliases: []string{},
-		Usage:   "start evergreen web service for smoke tests",
+		Usage:   "start Evergreen web service for smoke tests",
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  confFlagName,
@@ -90,24 +92,28 @@ func smokeStartEvergreen() cli.Command {
 			},
 			cli.StringFlag{
 				Name:  binaryFlagName,
-				Usage: "path to evergreen binary",
+				Usage: "path to Evergreen binary",
 				Value: binary,
 			},
 			cli.BoolFlag{
 				Name:  webFlagName,
-				Usage: "run the evergreen web service",
+				Usage: "run the Evergreen web service",
 			},
 			cli.BoolFlag{
 				Name:  agentFlagName,
-				Usage: "start an evergreen agent",
+				Usage: "start an Evergreen agent",
 			},
 			cli.BoolFlag{
 				Name:  agentMonitorFlagName,
-				Usage: "start an evergreen agent monitor",
+				Usage: "start an Evergreen agent monitor",
 			},
 			cli.StringFlag{
 				Name:  distroIDFlagName,
 				Usage: "the distro ID of the agent monitor",
+			},
+			cli.StringFlag{
+				Name:  modeFlagName,
+				Usage: "run the agent in host or pod mode",
 			},
 		},
 		Before: mergeBeforeFuncs(setupSmokeTest(err), requireFileExists(confFlagName), requireAtLeastOneBool(webFlagName, agentFlagName, agentMonitorFlagName)),
@@ -118,6 +124,7 @@ func smokeStartEvergreen() cli.Command {
 			startAgent := c.Bool(agentFlagName)
 			startAgentMonitor := c.Bool(agentMonitorFlagName)
 			distroID := c.String(distroIDFlagName)
+			mode := c.String(modeFlagName)
 
 			exit := make(chan error, 3)
 
@@ -126,7 +133,7 @@ func smokeStartEvergreen() cli.Command {
 
 			if startWeb {
 				if err := smokeRunBinary(exit, "web.service", wd, binary, "service", "web", "--conf", confPath); err != nil {
-					return errors.Wrap(err, "error running web service")
+					return errors.Wrap(err, "running web service")
 				}
 			}
 			apiServerURL := smokeUrlPrefix + apiPort
@@ -141,9 +148,9 @@ func smokeStartEvergreen() cli.Command {
 					wd,
 					binary,
 					"agent",
-					"--mode=host",
-					"--host_id", hostId,
-					"--host_secret", hostSecret,
+					fmt.Sprintf("--mode=%s", mode),
+					fmt.Sprintf("--%s_id", mode), id,
+					fmt.Sprintf("--%s_secret", mode), secret,
 					"--api_server", apiServerURL,
 					"--log_prefix", evergreen.StandardOutputLoggingOverride,
 					"--status_port", statusPort,
@@ -151,7 +158,7 @@ func smokeStartEvergreen() cli.Command {
 				)
 
 				if err != nil {
-					return errors.Wrap(err, "error running agent")
+					return errors.Wrap(err, "running agent")
 				}
 			} else if startAgentMonitor {
 				_, err = timberutil.NewMockCedarServer(ctx, cedarPort)
@@ -164,15 +171,15 @@ func smokeStartEvergreen() cli.Command {
 				}
 				manager, err := jasper.NewSynchronizedManager(false)
 				if err != nil {
-					return errors.Wrap(err, "error setting up Jasper process manager")
+					return errors.Wrap(err, "setting up Jasper process manager")
 				}
 				jasperAddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%d", jasperPort))
 				if err != nil {
-					return errors.Wrap(err, "error resolving Jasper network address")
+					return errors.Wrap(err, "resolving Jasper network address")
 				}
 				closeServer, err := remote.StartRPCService(ctx, manager, jasperAddr, nil)
 				if err != nil {
-					return errors.Wrap(err, "error setting up Jasper RPC service")
+					return errors.Wrap(err, "setting up Jasper RPC service")
 				}
 				defer func() {
 					grip.Warning(closeServer())
@@ -180,10 +187,10 @@ func smokeStartEvergreen() cli.Command {
 
 				clientFile, err := ioutil.TempFile("", "evergreen")
 				if err != nil {
-					return errors.Wrap(err, "error setting up monitor client directory")
+					return errors.Wrap(err, "setting up agent monitor client directory")
 				}
 				if err = clientFile.Close(); err != nil {
-					return errors.Wrap(err, "closing evergreen client binary")
+					return errors.Wrap(err, "closing Evergreen client binary")
 				}
 
 				err = smokeRunBinary(
@@ -193,8 +200,8 @@ func smokeStartEvergreen() cli.Command {
 					binary,
 					"agent",
 					"--mode=host",
-					"--host_id", hostId,
-					"--host_secret", hostSecret,
+					"--host_id", id,
+					"--host_secret", secret,
 					"--api_server", apiServerURL,
 					"--log_prefix", evergreen.StandardOutputLoggingOverride,
 					"--status_port", statusPort,
@@ -207,7 +214,7 @@ func smokeStartEvergreen() cli.Command {
 					"--jasper_port", strconv.Itoa(jasperPort),
 				)
 				if err != nil {
-					return errors.Wrap(err, "error running monitor")
+					return errors.Wrap(err, "running agent monitor")
 				}
 			}
 
@@ -226,7 +233,7 @@ func smokeRunBinary(exit chan error, name, wd, bin string, cmdParts ...string) e
 	cmd.Stdout = cmdSender
 	cmd.Stderr = cmdSender
 	if err := cmd.Start(); err != nil {
-		return errors.Wrap(err, "error starting cmd service")
+		return errors.Wrap(err, "starting Evergreen binary command")
 	}
 	go func() {
 		exit <- cmd.Wait()
@@ -241,6 +248,7 @@ func smokeTestEndpoints() cli.Command {
 		userNameFlagName = "username"
 		userKeyFlagName  = "key"
 		checkBuildName   = "check-build"
+		modeFlagName     = "mode"
 	)
 
 	wd, err := os.Getwd()
@@ -263,6 +271,10 @@ func smokeTestEndpoints() cli.Command {
 				Name:  userKeyFlagName,
 				Usage: "key to use with the API",
 			},
+			cli.StringFlag{
+				Name:  modeFlagName,
+				Usage: "run host or pod build variant",
+			},
 			cli.BoolFlag{
 				Name:  checkBuildName,
 				Usage: "verify agent has built latest commit",
@@ -273,19 +285,23 @@ func smokeTestEndpoints() cli.Command {
 			testFile := c.String(testFileFlagName)
 			username := c.String(userNameFlagName)
 			key := c.String(userKeyFlagName)
+			mode := c.String(modeFlagName)
 
 			defs, err := ioutil.ReadFile(testFile)
 			if err != nil {
-				return errors.Wrap(err, "error opening test file")
+				return errors.Wrapf(err, "opening smoke endpoint test file '%s'", testFile)
 			}
 			tests := smokeEndpointTestDefinitions{}
 			err = yaml.Unmarshal(defs, &tests)
 			if err != nil {
-				return errors.Wrap(err, "error unmarshalling yaml")
+				return errors.Wrapf(err, "unmarshalling smoke endpoint test YAML '%s'", testFile)
 			}
 
 			if c.Bool(checkBuildName) {
-				return errors.Wrap(checkTaskByCommit(username, key), "check task failed")
+				if mode == string(agent.PodMode) {
+					return errors.Wrap(checkContainerTask(username, key), "checking container task")
+				}
+				return errors.Wrap(checkHostTaskByCommit(username, key), "checking host task")
 			}
 			return errors.WithStack(tests.checkEndpoints(username, key))
 		},

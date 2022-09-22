@@ -9,19 +9,19 @@ replace gopkg.in/20210107192922/yaml.v3 => gopkg.in/yaml.v3 v3.0.0-2021010719292
 require (
 	github.com/99designs/gqlgen v0.14.0
 	github.com/PuerkitoBio/rehttp v1.1.0
-	github.com/aws/aws-sdk-go v1.44.66
+	github.com/aws/aws-sdk-go v1.44.89
 	github.com/cheynewallace/tabby v1.1.1
 	github.com/docker/docker v20.10.12+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/dustin/go-humanize v1.0.0
 	github.com/evergreen-ci/birch v0.0.0-20220401151432-c792c3d8e0eb
 	github.com/evergreen-ci/certdepot v0.0.0-20211117185134-dbedb3d79a10
-	github.com/evergreen-ci/cocoa v0.0.0-20220822162052-df9129525b02
+	github.com/evergreen-ci/cocoa v0.0.0-20220907183415-f36e257bf2fd
 	github.com/evergreen-ci/gimlet v0.0.0-20220419172609-b882e01673e7
 	github.com/evergreen-ci/go-test2json v0.0.0-20180702150328-5b6cfd2e8cb0
 	github.com/evergreen-ci/juniper v0.0.0-20220118233332-0813edc78908
-	github.com/evergreen-ci/pail v0.0.0-20220819171438-1fd2f7732eef
-	github.com/evergreen-ci/poplar v0.0.0-20220801165844-adb53dc1b937
+	github.com/evergreen-ci/pail v0.0.0-20220908201135-8a2090a672b7
+	github.com/evergreen-ci/poplar v0.0.0-20220908212406-a5e2aa799def
 	github.com/evergreen-ci/shrub v0.0.0-20211025143051-a8d91b2e29fd
 	github.com/evergreen-ci/timber v0.0.0-20220809215118-028567bbef72
 	github.com/evergreen-ci/utility v0.0.0-20220725171106-4730479c6118
@@ -37,7 +37,7 @@ require (
 	github.com/mongodb/amboy v0.0.0-20220802154347-d8ddbd5cd2cd
 	github.com/mongodb/anser v0.0.0-20220318141853-005b8ead5b8f
 	github.com/mongodb/ftdc v0.0.0-20220401165013-13e4af55e809
-	github.com/mongodb/grip v0.0.0-20220401165023-6a1d9bb90c21
+	github.com/mongodb/grip v0.0.0-20220906161600-270e5104b9e5
 	github.com/pkg/errors v0.9.1
 	github.com/robbiet480/go.sns v0.0.0-20210223081447-c7c9eb6836cb
 	github.com/robfig/cron v1.2.0
@@ -53,7 +53,7 @@ require (
 	golang.org/x/tools v0.1.9
 	gonum.org/v1/gonum v0.11.0
 	google.golang.org/api v0.60.0
-	google.golang.org/grpc v1.48.0
+	google.golang.org/grpc v1.49.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -67,7 +67,7 @@ require (
 	github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57
 	github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826
 	github.com/mongodb/jasper v0.0.0-20220214215554-82e5a72cff6b
-	github.com/shirou/gopsutil/v3 v3.22.3
+	github.com/shirou/gopsutil/v3 v3.22.8
 	github.com/trinodb/trino-go-client v0.300.0
 	google.golang.org/genproto v0.0.0-20211129164237-f09f9a12af12 // indirect
 	gopkg.in/20210107192922/yaml.v3 v3.0.0-00010101000000-000000000000

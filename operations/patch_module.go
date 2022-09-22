@@ -52,20 +52,20 @@ func PatchSetModule() cli.Command {
 
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
-				return errors.Wrap(err, "problem loading configuration")
+				return errors.Wrap(err, "loading configuration")
 			}
 			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 			ac, rc, err := conf.getLegacyClients()
 			if err != nil {
-				return errors.Wrap(err, "problem accessing evergreen service")
+				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
 
 			var existingPatch *patch.Patch
 			if patchID == "" {
 				patchList, err := ac.GetPatches(1)
 				if err != nil {
-					return errors.Wrapf(err, "problem getting patches from user")
+					return errors.Wrapf(err, "getting latest patch from user")
 				}
 				if len(patchList) == 0 {
 					return errors.New("no patches found from user")
@@ -76,7 +76,7 @@ func PatchSetModule() cli.Command {
 				existingPatch, err = ac.GetPatch(patchID)
 			}
 			if err != nil {
-				return errors.Wrapf(err, "problem getting patch '%s'", patchID)
+				return errors.Wrapf(err, "getting patch '%s'", patchID)
 			}
 			if existingPatch.IsCommitQueuePatch() {
 				return errors.New("Use `commit-queue set-module` instead of `set-module` for commit queue patches")
@@ -86,7 +86,7 @@ func PatchSetModule() cli.Command {
 				var keepGoing bool
 				keepGoing, err = confirmUncommittedChanges(preserveCommits, uncommittedOk || conf.UncommittedChanges)
 				if err != nil {
-					return errors.Wrap(err, "can't test for uncommitted changes")
+					return errors.Wrap(err, "confirming uncommitted changes")
 				}
 				if !keepGoing {
 					return errors.New("patch aborted")
@@ -101,7 +101,7 @@ func PatchSetModule() cli.Command {
 				grip.Error(err)
 				mods, projectIdentifier, merr := ac.GetPatchModules(patchID, existingPatch.Project)
 				if merr != nil {
-					return errors.Wrap(merr, "errors fetching list of available modules")
+					return errors.Wrap(merr, "fetching list of available modules")
 				}
 				if len(mods) == 0 {
 					return errors.Errorf("Project '%s' has no configured modules. Specify different project or "+
@@ -165,7 +165,7 @@ func PatchSetModule() cli.Command {
 			fmt.Println("Module updated.")
 			if finalize {
 				if err = ac.FinalizePatch(patchID); err != nil {
-					return errors.Wrap(err, "error finalizing patch")
+					return errors.Wrapf(err, "finalizing patch '%s'", patchID)
 				}
 				grip.Info("Patch finalized.")
 			}
@@ -191,7 +191,7 @@ func PatchRemoveModule() cli.Command {
 
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
-				return errors.Wrap(err, "problem loading configuration")
+				return errors.Wrap(err, "loading configuration")
 			}
 
 			client := conf.setupRestCommunicator(ctx)
@@ -199,7 +199,7 @@ func PatchRemoveModule() cli.Command {
 
 			ac, _, err := conf.getLegacyClients()
 			if err != nil {
-				return errors.Wrap(err, "problem accessing evergreen service")
+				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
 
 			err = ac.DeletePatchModule(patchID, module)
