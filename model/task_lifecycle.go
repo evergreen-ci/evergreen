@@ -139,7 +139,9 @@ func SetActiveStateById(id, user string, active bool) error {
 // activatePreviousTask will set the Active state for the first task with a
 // revision order number less than the current task's revision order number.
 // originalStepbackTask is only specified if we're first activating the generator for a generated task.
-func activatePreviousTask(taskId, caller string, originalStepbackTask *task.Task) error {
+// StepbackDepth should be reconsidered in EVG-17949 and is currently only used for logging.
+// Depth passed in is the depth we should assign to the previous task.
+func activatePreviousTask(taskId, caller string, originalStepbackTask *task.Task, stepbackDepth int) error {
 	// find the task first
 	t, err := task.FindOneId(taskId)
 	if err != nil {
@@ -159,13 +161,21 @@ func activatePreviousTask(taskId, caller string, originalStepbackTask *task.Task
 
 	// for generated tasks, try to activate the generator instead if the previous task we found isn't the actual last task
 	if t.GeneratedBy != "" && prevTask != nil && prevTask.RevisionOrderNumber+1 != t.RevisionOrderNumber {
-		return activatePreviousTask(t.GeneratedBy, caller, t)
+		return activatePreviousTask(t.GeneratedBy, caller, t, stepbackDepth)
 	}
 
 	// if this is the first time we're running the task, or it's finished, has a negative priority, or already activated
 	if prevTask == nil || prevTask.IsFinished() || prevTask.Priority < 0 || prevTask.Activated {
 		return nil
 	}
+
+	grip.Debug(message.Fields{
+		"ticket":         "EVG-17949",
+		"message":        "stepping back task",
+		"stepback_depth": stepbackDepth,
+		"project_id":     t.Project,
+		"task_id":        t.Id,
+	})
 
 	// activate the task
 	if err = SetActiveState(caller, true, *prevTask); err != nil {
@@ -174,6 +184,9 @@ func activatePreviousTask(taskId, caller string, originalStepbackTask *task.Task
 	// add the task that we're actually stepping back so that we know to activate it
 	if prevTask.GenerateTask && originalStepbackTask != nil {
 		return prevTask.SetGeneratedTasksToActivate(originalStepbackTask.BuildVariant, originalStepbackTask.DisplayName)
+	}
+	if stepbackDepth > 0 {
+		t.SetStepbackDepth(stepbackDepth)
 	}
 	return nil
 }
@@ -337,7 +350,7 @@ func AbortTask(taskId, caller string) error {
 	return t.SetAborted(task.AbortInfo{User: caller})
 }
 
-// Deactivate any previously activated but undispatched
+// DeactivatePreviousTasks deactivates any previously activated but undispatched
 // tasks for the same build variant + display name + project combination
 // as the task.
 func DeactivatePreviousTasks(t *task.Task, caller string) error {
@@ -379,15 +392,6 @@ func DeactivatePreviousTasks(t *task.Task, caller string) error {
 	allTasks = append(allTasks, extraTasks...)
 
 	for _, t := range allTasks {
-		if evergreen.IsPatchRequester(t.Requester) {
-			// EVG-948, the query depends on patches not
-			// having the revision order number, which they
-			// got as part of 948. as we expect to add more
-			// requesters in the future, we're doing this
-			// filtering here rather than in the query.
-			continue
-		}
-
 		if err = SetActiveState(caller, false, t); err != nil {
 			return err
 		}
@@ -398,7 +402,7 @@ func DeactivatePreviousTasks(t *task.Task, caller string) error {
 
 // Returns true if the task should stepback upon failure, and false
 // otherwise. Note that the setting is obtained from the top-level
-// project, if not explicitly set on the task.
+// project, if not explicitly set on the task or disabled at the project level.
 func getStepback(taskId string) (bool, error) {
 	t, err := task.FindOneId(taskId)
 	if err != nil {
@@ -406,6 +410,17 @@ func getStepback(taskId string) (bool, error) {
 	}
 	if t == nil {
 		return false, errors.Errorf("task '%s' not found", taskId)
+	}
+	projectRef, err := FindMergedProjectRef(t.Project, "", false)
+	if err != nil {
+		return false, errors.Wrapf(err, "finding merged project ref for task '%s'", taskId)
+	}
+	if projectRef == nil {
+		return false, errors.Errorf("project 'for task '%s' not found", taskId)
+	}
+	// Disabling the feature at the project level takes precedent.
+	if projectRef.IsStepbackDisabled() {
+		return false, nil
 	}
 
 	project, err := FindProjectFromVersionID(t.Version)
@@ -428,7 +443,6 @@ func getStepback(taskId string) (bool, error) {
 			break
 		}
 	}
-
 	return project.Stepback, nil
 }
 
@@ -460,7 +474,7 @@ func doStepback(t *task.Task) error {
 	}
 
 	// activate the previous task to pinpoint regression
-	return errors.WithStack(activatePreviousTask(t.Id, evergreen.StepbackTaskActivator, nil))
+	return errors.WithStack(activatePreviousTask(t.Id, evergreen.StepbackTaskActivator, nil, t.StepbackDepth+1))
 }
 
 // MarkEnd updates the task as being finished, performs a stepback if necessary, and updates the build status
@@ -869,6 +883,7 @@ func evalStepback(t *task.Task, caller, status string, deactivatePrevious bool) 
 		}
 
 		if t.IsPartOfSingleHostTaskGroup() {
+			fmt.Println("is this part of a task group?")
 			// Stepback earlier task group tasks as well because these need to be run sequentially.
 			catcher := grip.NewBasicCatcher()
 			tasks, err := task.FindTaskGroupFromBuild(t.BuildId, t.TaskGroup)

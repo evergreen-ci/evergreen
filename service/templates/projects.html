@@ -274,14 +274,6 @@ Evergreen Projects
           <div class="muted small">When checked, tasks from previous revisions will be unscheduled when the equivalent task in a newer commit finishes successfully.</div>
         </div>
       </div>
-      <div class="form-group">
-        <div class="col-lg-4 col-header">
-          <label class="control-label">Deactivate currently scheduled stepback tasks on save.&nbsp;
-            <input type="checkbox" name="deactivate_stepback_tasks" ng-model="settingsFormData.deactivate_stepback_tasks" ng-checked="repoChanged" />
-          </label>
-          <div class="muted small">This will not turn off future stepback for the project.</div>
-        </div>
-      </div>
       <div class="h3">Repotracker Settings</div>
       <div class="project-error" ng-hide="github_webhooks_enabled">
         Webhooks must be enabled to run the repotracker. Webhooks are enabled after saving with a valid owner and repo.

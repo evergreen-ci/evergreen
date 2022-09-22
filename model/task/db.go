@@ -78,6 +78,7 @@ var (
 	DurationPredictionKey          = bsonutil.MustHaveTag(Task{}, "DurationPrediction")
 	PriorityKey                    = bsonutil.MustHaveTag(Task{}, "Priority")
 	ActivatedByKey                 = bsonutil.MustHaveTag(Task{}, "ActivatedBy")
+	StepbackDepthKey               = bsonutil.MustHaveTag(Task{}, "StepbackDepth")
 	ExecutionTasksKey              = bsonutil.MustHaveTag(Task{}, "ExecutionTasks")
 	DisplayOnlyKey                 = bsonutil.MustHaveTag(Task{}, "DisplayOnly")
 	DisplayTaskIdKey               = bsonutil.MustHaveTag(Task{}, "DisplayTaskId")
@@ -667,85 +668,6 @@ func ByDifferentFailedBuildVariants(revision, buildVariant, displayName, project
 		ProjectKey:     project,
 		RequesterKey:   requester,
 		RevisionKey:    revision,
-	}
-}
-
-func ByRecentlyFinished(finishTime time.Time, project string, requester string) bson.M {
-	query := bson.M{}
-	andClause := []bson.M{}
-
-	// filter by finish_time
-	timeOpt := bson.M{
-		FinishTimeKey: bson.M{
-			"$gt": finishTime,
-		},
-	}
-
-	// filter by requester
-	requesterOpt := bson.M{
-		RequesterKey: requester,
-	}
-
-	// build query
-	andClause = append(andClause, bson.M{
-		"$or": FinishedOpts,
-	})
-
-	andClause = append(andClause, timeOpt)
-	andClause = append(andClause, requesterOpt)
-
-	// filter by project
-	if project != "" {
-		projectOpt := bson.M{
-			ProjectKey: project,
-		}
-		andClause = append(andClause, projectOpt)
-	}
-
-	query["$and"] = andClause
-	return query
-}
-
-// Returns query which targets list of tasks
-// And allow filter by project_id, status, start_time (gte), finish_time (lte)
-func WithinTimePeriod(startedAfter, finishedBefore time.Time, project string, statuses []string) bson.M {
-	q := []bson.M{}
-
-	if !startedAfter.IsZero() {
-		q = append(q, bson.M{
-			StartTimeKey: bson.M{
-				"$gte": startedAfter,
-			},
-		})
-	}
-
-	// Filter by end date
-	if !finishedBefore.IsZero() {
-		q = append(q, bson.M{
-			FinishTimeKey: bson.M{
-				"$lte": finishedBefore,
-			},
-		})
-	}
-
-	// Filter by status
-	if len(statuses) > 0 {
-		q = append(q, bson.M{
-			StatusKey: bson.M{
-				"$in": statuses,
-			},
-		})
-	}
-
-	// Filter by project id
-	if project != "" {
-		q = append(q, bson.M{
-			ProjectKey: project,
-		})
-	}
-
-	return bson.M{
-		"$and": q,
 	}
 }
 
@@ -1785,7 +1707,39 @@ func FindActivatedStepbackTasks(projectId string) ([]Task, error) {
 		StatusKey:      bson.M{"$in": evergreen.TaskUncompletedStatuses},
 	})
 	if err != nil {
-
+		return nil, err
 	}
 	return tasks, nil
+}
+
+// FindActivatedStepbackTaskByName queries for running/scheduled stepback tasks with
+// matching build variant and task name.
+func FindActivatedStepbackTaskByName(projectId string, variantName string, taskName string) (*Task, error) {
+	t, err := FindOne(db.Query(bson.M{
+		ProjectKey:      projectId,
+		BuildVariantKey: variantName,
+		DisplayNameKey:  taskName,
+		StatusKey:       bson.M{"$in": evergreen.TaskUncompletedStatuses},
+		RequesterKey:    evergreen.RepotrackerVersionRequester,
+		ActivatedKey:    true,
+		ActivatedByKey:  evergreen.StepbackTaskActivator,
+	}))
+	if err != nil {
+		return nil, err
+	}
+	return t, nil
+}
+
+// SetStepbackDepth adds the stepback depth to the task.
+func (t *Task) SetStepbackDepth(stepbackDepth int) error {
+	t.StepbackDepth = stepbackDepth
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				StepbackDepthKey: stepbackDepth,
+			},
+		})
 }

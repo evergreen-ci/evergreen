@@ -1358,12 +1358,15 @@ func TestDisableStaleContainerTasks(t *testing.T) {
 func TestDeactivateStepbackTasksForProject(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
 
-	activatedStepbackTask := Task{
-		Id:          "activated",
-		Activated:   true,
-		Status:      evergreen.TaskUndispatched,
-		Project:     "p1",
-		ActivatedBy: evergreen.StepbackTaskActivator,
+	runningStepbackTask := Task{
+		Id:           "running",
+		Activated:    true,
+		Status:       evergreen.TaskStarted, // should be aborted
+		Project:      "p1",
+		ActivatedBy:  evergreen.StepbackTaskActivator,
+		BuildVariant: "myVariant",
+		DisplayName:  "myTask",
+		Requester:    evergreen.RepotrackerVersionRequester,
 	}
 	taskDependingOnStepbackTask := Task{
 		Id:          "dependent_task",
@@ -1373,38 +1376,59 @@ func TestDeactivateStepbackTasksForProject(t *testing.T) {
 		ActivatedBy: "someone else", // Doesn't matter if dependencies were activated by stepback or not
 		DependsOn: []Dependency{
 			{
-				TaskId: "activated",
+				TaskId: "running",
 				Status: evergreen.TaskSucceeded,
 			},
 		},
+		Requester: evergreen.RepotrackerVersionRequester,
 	}
 	wrongProjectTask := Task{
-		Id:          "wrong_project",
-		Activated:   true,
-		Status:      evergreen.TaskUndispatched,
-		Project:     "p2",
-		ActivatedBy: evergreen.StepbackTaskActivator,
+		Id:           "wrong_project",
+		Activated:    true,
+		Status:       evergreen.TaskUndispatched,
+		Project:      "p2",
+		ActivatedBy:  evergreen.StepbackTaskActivator,
+		BuildVariant: "myVariant",
+		DisplayName:  "myTask",
+		Requester:    evergreen.RepotrackerVersionRequester,
 	}
-	runningStepbackTask := Task{
-		Id:          "running",
-		Activated:   true,
-		Status:      evergreen.TaskStarted, // should be aborted
-		Project:     "p1",
-		ActivatedBy: evergreen.StepbackTaskActivator,
+	wrongTaskNameTask := Task{
+		Id:           "wrong_task",
+		Activated:    true,
+		ActivatedBy:  evergreen.StepbackTaskActivator,
+		Status:       evergreen.TaskUndispatched,
+		Project:      "p1",
+		BuildVariant: "myVariant",
+		DisplayName:  "wrongTaskNameTask",
+		Requester:    evergreen.RepotrackerVersionRequester,
+	}
+	wrongVariantTask := Task{
+		Id:           "wrong_variant",
+		Activated:    true,
+		ActivatedBy:  evergreen.StepbackTaskActivator,
+		Status:       evergreen.TaskUndispatched,
+		Project:      "p1",
+		BuildVariant: "wrongVariantTask",
+		DisplayName:  "myTask",
+		Requester:    evergreen.RepotrackerVersionRequester,
 	}
 	notStepbackTask := Task{
-		Id:          "not_stepback",
-		Activated:   true,
-		Status:      evergreen.TaskUndispatched,
-		Project:     "p1",
-		ActivatedBy: "me",
+		Id:           "not_stepback",
+		Activated:    true,
+		Status:       evergreen.TaskUndispatched,
+		Project:      "p1",
+		ActivatedBy:  "me",
+		BuildVariant: "myVariant",
+		DisplayName:  "myTask",
+		Requester:    evergreen.RepotrackerVersionRequester,
 	}
-	assert.NoError(t, db.InsertMany(Collection, activatedStepbackTask, taskDependingOnStepbackTask, wrongProjectTask, runningStepbackTask, notStepbackTask))
-	assert.NoError(t, DeactivateStepbackTasksForProject("p1", "me"))
+	assert.NoError(t, db.InsertMany(Collection, taskDependingOnStepbackTask, wrongProjectTask,
+		wrongTaskNameTask, wrongVariantTask, runningStepbackTask, notStepbackTask))
+	assert.NoError(t, DeactivateStepbackTaskForProject("p1", "myVariant", "myTask", "me"))
 
 	events, err := event.Find(db.Q{})
 	assert.NoError(t, err)
-	assert.Len(t, events, 4)
+	assert.Len(t, events, 3)
 	var numDeactivated, numAborted int
 	for _, e := range events {
 		if e.EventType == event.TaskAbortRequest {
@@ -1413,13 +1437,13 @@ func TestDeactivateStepbackTasksForProject(t *testing.T) {
 			numDeactivated++
 		}
 	}
-	assert.Equal(t, numDeactivated, 3)
-	assert.Equal(t, numAborted, 1)
+	assert.Equal(t, 2, numDeactivated)
+	assert.Equal(t, 1, numAborted)
 
 	tasks, err := FindAll(db.Q{})
 	assert.NoError(t, err)
 	for _, dbTask := range tasks {
-		if dbTask.Id == activatedStepbackTask.Id || dbTask.Id == taskDependingOnStepbackTask.Id {
+		if dbTask.Id == taskDependingOnStepbackTask.Id {
 			assert.False(t, dbTask.Activated)
 			assert.False(t, dbTask.Aborted)
 		} else if dbTask.Id == runningStepbackTask.Id {
@@ -3095,6 +3119,18 @@ func TestSetGeneratedTasksToActivate(t *testing.T) {
 	assert.NotNil(t, taskFromDb)
 	assert.Equal(t, taskFromDb.GeneratedTasksToActivate["bv2"], []string{"t2", "t2.0"})
 	assert.Equal(t, taskFromDb.GeneratedTasksToActivate["bv3"], []string{"t3"})
+}
+
+func TestSetStepbackDepth(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+	task := Task{Id: "t1"}
+	assert.NoError(t, task.Insert())
+
+	assert.NoError(t, task.SetStepbackDepth(12))
+	taskFromDb, err := FindOneId("t1")
+	assert.NoError(t, err)
+	assert.NotNil(t, taskFromDb)
+	assert.Equal(t, 12, taskFromDb.StepbackDepth)
 }
 
 func TestGetLatestExecution(t *testing.T) {
