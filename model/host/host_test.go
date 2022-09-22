@@ -4516,6 +4516,38 @@ func TestAddVolumeToHost(t *testing.T) {
 	}, foundHost.Volumes)
 }
 
+func TestUnsetHomeVolume(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+	h := &Host{
+		Id:           "host-1",
+		HomeVolumeID: "volume-1",
+		Volumes: []VolumeAttachment{
+			{
+				VolumeID:   "volume-1",
+				DeviceName: "device-1",
+			},
+		},
+	}
+	assert.NoError(t, h.Insert())
+	assert.NoError(t, h.UnsetHomeVolume())
+	assert.Equal(t, "", h.HomeVolumeID)
+	assert.Equal(t, []VolumeAttachment{
+		{
+			VolumeID:   "volume-1",
+			DeviceName: "device-1",
+		},
+	}, h.Volumes)
+	foundHost, err := FindOneId("host-1")
+	assert.NoError(t, err)
+	assert.Equal(t, "", foundHost.HomeVolumeID)
+	assert.Equal(t, []VolumeAttachment{
+		{
+			VolumeID:   "volume-1",
+			DeviceName: "device-1",
+		},
+	}, foundHost.Volumes)
+}
+
 func TestRemoveVolumeFromHost(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
 	h := &Host{
