@@ -1553,6 +1553,13 @@ func ClearAndResetStrandedContainerTask(p *pod.Pod) error {
 		return errors.Wrapf(err, "resetting stranded task '%s'", t.Id)
 	}
 
+	grip.Info(message.Fields{
+		"message":            "successfully fixed stranded container task",
+		"task":               t.Id,
+		"execution":          t.Execution,
+		"execution_platform": t.ExecutionPlatform,
+	})
+
 	return nil
 }
 
@@ -1582,6 +1589,13 @@ func ClearAndResetStrandedHostTask(h *host.Host) error {
 		return errors.Wrapf(err, "resetting stranded task '%s'", t.Id)
 	}
 
+	grip.Info(message.Fields{
+		"message":            "successfully fixed stranded host task",
+		"task":               t.Id,
+		"execution":          t.Execution,
+		"execution_platform": t.ExecutionPlatform,
+	})
+
 	return nil
 }
 
@@ -1594,6 +1608,13 @@ func ResetStaleTask(t *task.Task) error {
 	if err := resetSystemFailedTask(t, evergreen.TaskDescriptionHeartbeat); err != nil {
 		return errors.Wrap(err, "resetting task")
 	}
+
+	grip.Info(message.Fields{
+		"message":            "successfully fixed stale heartbeat task",
+		"task":               t.Id,
+		"execution":          t.Execution,
+		"execution_platform": t.ExecutionPlatform,
+	})
 
 	return nil
 }
