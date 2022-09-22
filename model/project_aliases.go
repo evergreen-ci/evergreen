@@ -322,12 +322,7 @@ func FindMergedAliasesFromProjectRepoOrProjectConfig(projectRef *ProjectRef, pro
 	return res, nil
 }
 
-// allAliasesCovered assumes that the input is aliases sorted by alias name,
-// and that patch aliases are grouped together.
-func allAliasesCovered(aliases map[string]ProjectAliases) bool {
-	return len(aliases) == len(evergreen.InternalAliases)+1
-}
-
+// uncoveredAliasTypes returns a list of alias types that aren't populated keys in the given map.
 func uncoveredAliasTypes(aliases map[string]ProjectAliases) []string {
 	res := []string{}
 	aliasesToCheck := append(evergreen.InternalAliases, patchAliasKey)

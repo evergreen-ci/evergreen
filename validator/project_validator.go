@@ -540,6 +540,7 @@ func getAliasCoverage(p *model.Project, aliasMap map[string]model.ProjectAlias) 
 				continue
 			}
 			aliasNeedsVariant[aliasID] = false
+			// Loop through all tasks to verify if there is task coverage.
 			for _, t := range bv.Tasks {
 				var name string
 				var tags []string

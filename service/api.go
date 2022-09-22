@@ -695,7 +695,6 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 				Level:   validator.Warning,
 			})
 		} else {
-			fmt.Println("len aliases: ", len(aliases))
 			errs = append(errs, validator.CheckAliasWarnings(project, aliases)...)
 		}
 	}
