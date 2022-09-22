@@ -439,13 +439,6 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.PrefixRoute("/plugin").Route("/json/version").Handler(perfGetVersion).Get()
 	app.PrefixRoute("/plugin").Route("/json/version/{version_id}/{name}").Wrap(needsLogin, viewTasks).Handler(perfGetTasksForVersion).Get()
 	app.PrefixRoute("/plugin").Route("/json/version/latest/{project_id}/{name}").Wrap(needsLogin, viewTasks).Handler(perfGetTasksForLatestVersion).Get()
-	app.PrefixRoute("/plugin").Route("/json/task/{task_id}/{name}/").Wrap(needsLogin, viewTasks).Handler(perfGetTaskById).Get()
-	app.PrefixRoute("/plugin").Route("/json/task/{task_id}/{name}/tags").Wrap(needsLogin, viewTasks).Handler(perfGetTags).Get()
-	app.PrefixRoute("/plugin").Route("/json/task/{task_id}/{name}/tag").Wrap(needsLogin, editTasks).Handler(perfHandleTaskTag).Post().Delete()
-	app.PrefixRoute("/plugin").Route("/json/tags/").Handler(perfGetProjectTags).Get()
-	app.PrefixRoute("/plugin").Route("/json/tag/{project_id}/{tag}/{variant}/{task_name}/{name}").Wrap(needsLogin, viewTasks).Handler(perfGetTaskJSONByTag).Get()
-	app.PrefixRoute("/plugin").Route("/json/commit/{project_id}/{revision}/{variant}/{task_name}/{name}").Wrap(needsLogin, viewTasks).Handler(perfGetCommit).Get()
-	app.PrefixRoute("/plugin").Route("/json/history/{task_id}/{name}").Wrap(needsLogin, viewTasks).Handler(perfGetTaskHistory).Get()
 
 	//build baron
 	app.PrefixRoute("/plugin").Route("/buildbaron/jira_bf_search/{task_id}/{execution}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.bbJiraSearch).Get()

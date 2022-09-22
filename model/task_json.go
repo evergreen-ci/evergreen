@@ -1,7 +1,6 @@
 package model
 
 import (
-	"regexp"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -11,7 +10,6 @@ import (
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const (
@@ -77,66 +75,6 @@ var (
 	TaskJSONTagKey                 = bsonutil.MustHaveTag(TaskJSON{}, "Tag")
 )
 
-// Returns distinct list of all tags for given `projectId`
-func GetDistinctTagNames(projectId string) ([]TaskJSONTag, error) {
-	out := []TaskJSONTag{}
-
-	err := db.Aggregate(TaskJSONCollection, []bson.M{
-		{"$match": bson.M{
-			TaskJSONProjectIdKey: projectId,
-			TaskJSONTagKey:       bson.M{"$exists": true, "$ne": ""}}},
-		{"$group": bson.M{
-			"_id": "$" + TaskJSONTagKey,
-			"obj": bson.M{"$first": bson.M{
-				"created":    "$$ROOT." + TaskJSONCreateTimeKey,
-				"revision":   "$$ROOT." + TaskJSONRevisionKey,
-				"version_id": "$$ROOT." + TaskJSONVersionIdKey,
-			}},
-		}},
-		{"$sort": bson.M{"obj.created": -1}},
-	}, &out)
-
-	if err != nil {
-		return nil, errors.Wrap(err, "getting distinct tag names")
-	}
-
-	return out, nil
-}
-
-// GetTags finds TaskJSONs that have tags in the project associated with a
-// given task.
-func GetTaskJSONTags(taskId string) ([]TagContainer, error) {
-	t, err := task.FindOneId(taskId)
-	if err != nil {
-		return nil, err
-	}
-	if t == nil {
-		return nil, errors.Errorf("task '%s' not found", taskId)
-	}
-	tags := []TagContainer{}
-	err = db.Aggregate(TaskJSONCollection, []bson.M{
-		{"$match": bson.M{
-			TaskJSONProjectIdKey: t.Project,
-			TaskJSONTagKey:       bson.M{"$exists": true, "$ne": ""}}},
-		{"$project": bson.M{TaskJSONTagKey: 1}},
-		{"$group": bson.M{"_id": "$tag"}},
-	}, &tags)
-	if err != nil {
-		return nil, err
-	}
-	return tags, nil
-}
-
-// GetTaskById fetches a JSONTask with the corresponding task id.
-func GetTaskJSONById(taskId, name string) (TaskJSON, error) {
-	var jsonForTask TaskJSON
-	err := db.FindOneQ(TaskJSONCollection, db.Query(bson.M{TaskJSONTaskIdKey: taskId, TaskJSONNameKey: name}), &jsonForTask)
-	if err != nil {
-		return TaskJSON{}, err
-	}
-	return jsonForTask, nil
-}
-
 // GetTaskJSONForVariant finds a task by name and variant and finds
 // the document in the json collection associated with that task's id.
 func GetTaskJSONForVariant(version, variantId, taskName, name string) (TaskJSON, error) {
@@ -192,46 +130,6 @@ func GetTaskJSONByName(version, buildId, taskName, name string) (TaskJSON, error
 	return jsonForTask, nil
 }
 
-// GetTaskJSONCommit gets the task data associated with a particular task by using
-// the commit hash to find the data.
-// FIXME Given set of parameters is not specific enough
-//       it drops all other results which matches condition (due to findOne)
-func GetTaskJSONCommit(projectId, revision, variant, taskName, name string) (TaskJSON, error) {
-	var jsonForTask TaskJSON
-	err := db.FindOneQ(TaskJSONCollection,
-		db.Query(bson.M{
-			TaskJSONProjectIdKey: projectId,
-			TaskJSONRevisionKey: primitive.Regex{
-				Pattern: "^" + regexp.QuoteMeta(revision),
-				Options: "i", // make it case insensitive
-			},
-			TaskJSONVariantKey:  variant,
-			TaskJSONTaskNameKey: taskName,
-			TaskJSONNameKey:     name,
-			TaskJSONIsPatchKey:  false,
-		}), &jsonForTask)
-	if err != nil {
-		return TaskJSON{}, err
-	}
-	return jsonForTask, nil
-}
-
-// GetTaskJSONByTag finds a TaskJSON by a tag
-func GetTaskJSONByTag(projectId, tag, variant, taskName, name string) (*TaskJSON, error) {
-	jsonForTask := &TaskJSON{}
-	err := db.FindOneQ(TaskJSONCollection,
-		db.Query(bson.M{"project_id": projectId,
-			TaskJSONTagKey:      tag,
-			TaskJSONVariantKey:  variant,
-			TaskJSONTaskNameKey: taskName,
-			TaskJSONNameKey:     name,
-		}), jsonForTask)
-	if err != nil {
-		return nil, err
-	}
-	return jsonForTask, nil
-}
-
 // GetTagsForTask gets all of the tasks with tags for the given task name and
 // build variant.
 func GetTaskJSONTagsForTask(project, buildVariant, taskName, name string) ([]TaskJSON, error) {
@@ -249,31 +147,7 @@ func GetTaskJSONTagsForTask(project, buildVariant, taskName, name string) ([]Tas
 	return tagged, nil
 }
 
-func DeleteTaskJSONTagFromTask(taskId, name string) error {
-	t, err := task.FindOneId(taskId)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	_, err = db.UpdateAll(TaskJSONCollection,
-		bson.M{TaskJSONVersionIdKey: t.Version, TaskJSONNameKey: name},
-		bson.M{"$unset": bson.M{TaskJSONTagKey: 1}})
-
-	return errors.WithStack(err)
-}
-
-func SetTaskJSONTagForTask(taskId, name, tag string) error {
-	t, err := task.FindOneId(taskId)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	_, err = db.UpdateAll(TaskJSONCollection,
-		bson.M{TaskJSONVersionIdKey: t.Version, TaskJSONNameKey: name},
-		bson.M{"$set": bson.M{TaskJSONTagKey: tag}})
-
-	return errors.WithStack(err)
-}
-
+// TODO EVG-17643 investigate if we can remove this function
 func GetTaskJSONHistory(t *task.Task, name string) ([]TaskJSON, error) {
 	var baseVersion *Version
 	var err error
