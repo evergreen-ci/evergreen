@@ -126,12 +126,8 @@ func updateAliasesForSection(projectId string, updatedAliases []restModel.APIPro
 
 // validateFeaturesHaveAliases returns an error if project/repo aliases are not defined for a Github/CQ feature.
 // Does not error if version control is enabled.
-func validateFeaturesHaveAliases(pRef *model.ProjectRef, aliases []restModel.APIProjectAlias) error {
-	fullProjectRef, err := model.FindBranchProjectRef(pRef.Id)
-	if err != nil {
-		return errors.Wrapf(err, "finding project ref with id '%s'", pRef.Id)
-	}
-	if fullProjectRef.IsVersionControlEnabled() {
+func validateFeaturesHaveAliases(originalProjectRef *model.ProjectRef, newProjectRef *model.ProjectRef, aliases []restModel.APIProjectAlias) error {
+	if originalProjectRef.IsVersionControlEnabled() {
 		return nil
 	}
 
@@ -140,8 +136,8 @@ func validateFeaturesHaveAliases(pRef *model.ProjectRef, aliases []restModel.API
 		aliasesMap[utility.FromStringPtr(a.Alias)] = true
 	}
 
-	if pRef.UseRepoSettings() {
-		repoAliases, err := model.FindAliasesForRepo(pRef.RepoRefId)
+	if newProjectRef.UseRepoSettings() {
+		repoAliases, err := model.FindAliasesForRepo(newProjectRef.RepoRefId)
 		if err != nil {
 			return err
 		}
@@ -153,16 +149,16 @@ func validateFeaturesHaveAliases(pRef *model.ProjectRef, aliases []restModel.API
 
 	msg := "%s cannot be enabled without aliases"
 	catcher := grip.NewBasicCatcher()
-	if pRef.IsPRTestingEnabled() && !aliasesMap[evergreen.GithubPRAlias] {
+	if newProjectRef.IsPRTestingEnabled() && !aliasesMap[evergreen.GithubPRAlias] {
 		catcher.Errorf(msg, "PR testing")
 	}
-	if pRef.CommitQueue.IsEnabled() && !aliasesMap[evergreen.CommitQueueAlias] {
+	if newProjectRef.CommitQueue.IsEnabled() && !aliasesMap[evergreen.CommitQueueAlias] {
 		catcher.Errorf(msg, "Commit queue")
 	}
-	if pRef.IsGitTagVersionsEnabled() && !aliasesMap[evergreen.GitTagAlias] {
+	if newProjectRef.IsGitTagVersionsEnabled() && !aliasesMap[evergreen.GitTagAlias] {
 		catcher.Errorf(msg, "Git tag versions")
 	}
-	if pRef.IsGithubChecksEnabled() && !aliasesMap[evergreen.GithubChecksAlias] {
+	if newProjectRef.IsGithubChecksEnabled() && !aliasesMap[evergreen.GithubChecksAlias] {
 		catcher.Errorf(msg, "Github checks")
 	}
 

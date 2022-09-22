@@ -220,7 +220,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 				return nil, err
 			}
 		}
-		if err = validateFeaturesHaveAliases(mergedProjectRef, changes.Aliases); err != nil {
+		if err = validateFeaturesHaveAliases(mergedBeforeRef, mergedProjectRef, changes.Aliases); err != nil {
 			return nil, err
 		}
 		modified, err = updateAliasesForSection(projectId, changes.Aliases, before.Aliases, section)
