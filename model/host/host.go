@@ -2669,7 +2669,7 @@ func (h *Host) MarkShouldExpire(expireOnValue string) error {
 func (h *Host) UnsetHomeVolume() error {
 	err := UpdateOne(
 		bson.M{IdKey: h.Id},
-		bson.M{"$unset": bson.M{HomeVolumeIDKey: true}},
+		bson.M{"$set": bson.M{HomeVolumeIDKey: ""}},
 	)
 	if err != nil {
 		return err
