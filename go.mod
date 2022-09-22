@@ -37,7 +37,7 @@ require (
 	github.com/mongodb/amboy v0.0.0-20220802154347-d8ddbd5cd2cd
 	github.com/mongodb/anser v0.0.0-20220318141853-005b8ead5b8f
 	github.com/mongodb/ftdc v0.0.0-20220401165013-13e4af55e809
-	github.com/mongodb/grip v0.0.0-20220906161600-270e5104b9e5
+	github.com/mongodb/grip v0.0.0-20220919173159-10f121b545e5
 	github.com/pkg/errors v0.9.1
 	github.com/robbiet480/go.sns v0.0.0-20210223081447-c7c9eb6836cb
 	github.com/robfig/cron v1.2.0
