@@ -46,6 +46,8 @@ func TestTaskBuildFromService(t *testing.T) {
 					ContainerAllocationAttempts: 1,
 					BuildId:                     utility.ToStringPtr("testBuildId"),
 					DistroId:                    utility.ToStringPtr("testDistroId"),
+					HostId:                      utility.ToStringPtr("host"),
+					PodID:                       utility.ToStringPtr("pod"),
 					Container:                   utility.ToStringPtr("container"),
 					ContainerOpts: APIContainerOptions{
 						CPU:        2048,
@@ -97,6 +99,8 @@ func TestTaskBuildFromService(t *testing.T) {
 						OS:         evergreen.LinuxOS,
 						Arch:       evergreen.ArchAMD64,
 					},
+					HostId:       "host",
+					PodID:        "pod",
 					BuildVariant: "testBuildVariant",
 					DependsOn: []task.Dependency{
 						{
@@ -183,6 +187,9 @@ func TestTaskBuildFromService(t *testing.T) {
 				So(utility.FromStringPtr(apiTask.Logs.AgentLogLink), ShouldEqual, utility.FromStringPtr(tc.at.Logs.AgentLogLink))
 				So(utility.FromStringPtr(apiTask.Logs.SystemLogLink), ShouldEqual, utility.FromStringPtr(tc.at.Logs.SystemLogLink))
 				So(utility.FromStringPtr(apiTask.Logs.TaskLogLink), ShouldEqual, utility.FromStringPtr(tc.at.Logs.TaskLogLink))
+
+				So(utility.FromStringPtr(apiTask.HostId), ShouldEqual, utility.FromStringPtr(tc.at.HostId))
+				So(utility.FromStringPtr(apiTask.PodID), ShouldEqual, utility.FromStringPtr(tc.at.PodID))
 
 				So(utility.FromStringPtr(apiTask.Container), ShouldEqual, utility.FromStringPtr(tc.at.Container))
 				So(apiTask.ContainerOpts.CPU, ShouldEqual, tc.at.ContainerOpts.CPU)
