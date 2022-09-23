@@ -371,7 +371,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	origGithubWebhookEnabled := (hook != nil)
+	origGithubWebhookEnabled := hook != nil
 	if hook == nil {
 		hook, err = model.SetupNewGithubHook(ctx, uis.Settings, responseRef.Owner, responseRef.Repo)
 		if err == nil || strings.Contains(err.Error(), "Hook already exists on this repository") {
@@ -967,7 +967,7 @@ func verifyAliasExists(alias, projectId string, newAliasDefinitions []model.Proj
 		return true, nil
 	}
 
-	existingAliasDefinitions, _, err := model.FindAliasInProjectOrRepoFromDb(projectId, alias)
+	existingAliasDefinitions, err := model.FindAliasInProjectRepoOrProjectConfig(projectId, alias, nil)
 	if err != nil {
 		return false, errors.Wrap(err, "error checking for existing aliases")
 	}
