@@ -264,16 +264,16 @@ const (
 
 // ContainerOptions represent options to create the container to run a task.
 type ContainerOptions struct {
-	CPU        int
-	MemoryMB   int
-	WorkingDir string
-	Image      string
+	CPU        int    `bson:"cpu,omitempty" json:"cpu"`
+	MemoryMB   int    `bson:"memory_mb,omitempty" json:"memory_mb"`
+	WorkingDir string `bson:"working_dir,omitempty" json:"working_dir"`
+	Image      string `bson:"image,omitempty" json:"image"`
 	// RepoCredsName is the name of the project container secret containing the
 	// repository credentials.
-	RepoCredsName  string
-	OS             evergreen.ContainerOS
-	Arch           evergreen.ContainerArch
-	WindowsVersion evergreen.WindowsVersion
+	RepoCredsName  string                   `bson:"repo_creds_name,omitempty" json:"repo_creds_name"`
+	OS             evergreen.ContainerOS    `bson:"os,omitempty" json:"os"`
+	Arch           evergreen.ContainerArch  `bson:"arch,omitempty" json:"arch"`
+	WindowsVersion evergreen.WindowsVersion `bson:"windows_version,omitempty" json:"windows_version"`
 }
 
 // IsZero implements the bsoncodec.Zeroer interface for the sake of defining the

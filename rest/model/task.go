@@ -22,60 +22,64 @@ const (
 
 // APITask is the model to be returned by the API whenever tasks are fetched.
 type APITask struct {
-	Id                      *string             `json:"task_id"`
-	ProjectId               *string             `json:"project_id"`
-	ProjectIdentifier       *string             `json:"project_identifier"`
-	CreateTime              *time.Time          `json:"create_time"`
-	DispatchTime            *time.Time          `json:"dispatch_time"`
-	ScheduledTime           *time.Time          `json:"scheduled_time"`
-	ContainerAllocatedTime  *time.Time          `json:"container_allocated_time"`
-	StartTime               *time.Time          `json:"start_time"`
-	FinishTime              *time.Time          `json:"finish_time"`
-	IngestTime              *time.Time          `json:"ingest_time"`
-	ActivatedTime           *time.Time          `json:"activated_time"`
-	Version                 *string             `json:"version_id"`
-	Revision                *string             `json:"revision"`
-	Priority                int64               `json:"priority"`
-	Activated               bool                `json:"activated"`
-	ActivatedBy             *string             `json:"activated_by"`
-	BuildId                 *string             `json:"build_id"`
-	DistroId                *string             `json:"distro_id"`
-	Container               *string             `json:"container"`
-	BuildVariant            *string             `json:"build_variant"`
-	BuildVariantDisplayName *string             `json:"build_variant_display_name"`
-	DependsOn               []APIDependency     `json:"depends_on"`
-	DisplayName             *string             `json:"display_name"`
-	HostId                  *string             `json:"host_id"`
-	Execution               int                 `json:"execution"`
-	Order                   int                 `json:"order"`
-	Status                  *string             `json:"status"`
-	DisplayStatus           *string             `json:"display_status"`
-	Details                 ApiTaskEndDetail    `json:"status_details"`
-	Logs                    LogLinks            `json:"logs"`
-	TimeTaken               APIDuration         `json:"time_taken_ms"`
-	ExpectedDuration        APIDuration         `json:"expected_duration_ms"`
-	EstimatedStart          APIDuration         `json:"est_wait_to_start_ms"`
-	PreviousExecutions      []APITask           `json:"previous_executions,omitempty"`
-	GenerateTask            bool                `json:"generate_task"`
-	GeneratedBy             string              `json:"generated_by"`
-	Artifacts               []APIFile           `json:"artifacts"`
-	DisplayOnly             bool                `json:"display_only"`
-	ParentTaskId            string              `json:"parent_task_id"`
-	ExecutionTasks          []*string           `json:"execution_tasks,omitempty"`
-	Tags                    []*string           `json:"tags,omitempty"`
-	Mainline                bool                `json:"mainline"`
-	TaskGroup               string              `json:"task_group,omitempty"`
-	TaskGroupMaxHosts       int                 `json:"task_group_max_hosts,omitempty"`
-	Blocked                 bool                `json:"blocked"`
-	Requester               *string             `json:"requester"`
-	TestResults             []APITest           `json:"test_results"`
-	Aborted                 bool                `json:"aborted"`
-	AbortInfo               APIAbortInfo        `json:"abort_info,omitempty"`
-	CanSync                 bool                `json:"can_sync,omitempty"`
-	SyncAtEndOpts           APISyncAtEndOptions `json:"sync_at_end_opts"`
-	AMI                     *string             `json:"ami"`
-	MustHaveResults         bool                `json:"must_have_test_results"`
-	BaseTask                APIBaseTaskInfo     `json:"base_task"`
+	Id                          *string             `json:"task_id"`
+	ProjectId                   *string             `json:"project_id"`
+	ProjectIdentifier           *string             `json:"project_identifier"`
+	CreateTime                  *time.Time          `json:"create_time"`
+	DispatchTime                *time.Time          `json:"dispatch_time"`
+	ScheduledTime               *time.Time          `json:"scheduled_time"`
+	ContainerAllocatedTime      *time.Time          `json:"container_allocated_time"`
+	StartTime                   *time.Time          `json:"start_time"`
+	FinishTime                  *time.Time          `json:"finish_time"`
+	IngestTime                  *time.Time          `json:"ingest_time"`
+	ActivatedTime               *time.Time          `json:"activated_time"`
+	Version                     *string             `json:"version_id"`
+	Revision                    *string             `json:"revision"`
+	Priority                    int64               `json:"priority"`
+	Activated                   bool                `json:"activated"`
+	ActivatedBy                 *string             `json:"activated_by"`
+	ContainerAllocated          bool                `json:"container_allocated"`
+	ContainerAllocationAttempts int                 `json:"container_allocation_attempts"`
+	BuildId                     *string             `json:"build_id"`
+	DistroId                    *string             `json:"distro_id"`
+	Container                   *string             `json:"container"`
+	ContainerOpts               APIContainerOptions `json:"container_options"`
+	BuildVariant                *string             `json:"build_variant"`
+	BuildVariantDisplayName     *string             `json:"build_variant_display_name"`
+	DependsOn                   []APIDependency     `json:"depends_on"`
+	DisplayName                 *string             `json:"display_name"`
+	HostId                      *string             `json:"host_id"`
+	PodID                       *string             `json:"pod_id,omitempty"`
+	Execution                   int                 `json:"execution"`
+	Order                       int                 `json:"order"`
+	Status                      *string             `json:"status"`
+	DisplayStatus               *string             `json:"display_status"`
+	Details                     ApiTaskEndDetail    `json:"status_details"`
+	Logs                        LogLinks            `json:"logs"`
+	TimeTaken                   APIDuration         `json:"time_taken_ms"`
+	ExpectedDuration            APIDuration         `json:"expected_duration_ms"`
+	EstimatedStart              APIDuration         `json:"est_wait_to_start_ms"`
+	PreviousExecutions          []APITask           `json:"previous_executions,omitempty"`
+	GenerateTask                bool                `json:"generate_task"`
+	GeneratedBy                 string              `json:"generated_by"`
+	Artifacts                   []APIFile           `json:"artifacts"`
+	DisplayOnly                 bool                `json:"display_only"`
+	ParentTaskId                string              `json:"parent_task_id"`
+	ExecutionTasks              []*string           `json:"execution_tasks,omitempty"`
+	Tags                        []*string           `json:"tags,omitempty"`
+	Mainline                    bool                `json:"mainline"`
+	TaskGroup                   string              `json:"task_group,omitempty"`
+	TaskGroupMaxHosts           int                 `json:"task_group_max_hosts,omitempty"`
+	Blocked                     bool                `json:"blocked"`
+	Requester                   *string             `json:"requester"`
+	TestResults                 []APITest           `json:"test_results"`
+	Aborted                     bool                `json:"aborted"`
+	AbortInfo                   APIAbortInfo        `json:"abort_info,omitempty"`
+	CanSync                     bool                `json:"can_sync,omitempty"`
+	SyncAtEndOpts               APISyncAtEndOptions `json:"sync_at_end_opts"`
+	AMI                         *string             `json:"ami"`
+	MustHaveResults             bool                `json:"must_have_test_results"`
+	BaseTask                    APIBaseTaskInfo     `json:"base_task"`
 	// These fields are used by graphql gen, but do not need to be exposed
 	// via Evergreen's user-facing API.
 	OverrideDependencies bool `json:"-"`
@@ -182,48 +186,51 @@ func (at *APITask) buildTask(t *task.Task) error {
 		id = t.OldTaskId
 	}
 	*at = APITask{
-		Id:                      utility.ToStringPtr(id),
-		ProjectId:               utility.ToStringPtr(t.Project),
-		CreateTime:              ToTimePtr(t.CreateTime),
-		DispatchTime:            ToTimePtr(t.DispatchTime),
-		ScheduledTime:           ToTimePtr(t.ScheduledTime),
-		ContainerAllocatedTime:  ToTimePtr(t.ContainerAllocatedTime),
-		StartTime:               ToTimePtr(t.StartTime),
-		FinishTime:              ToTimePtr(t.FinishTime),
-		IngestTime:              ToTimePtr(t.IngestTime),
-		ActivatedTime:           ToTimePtr(t.ActivatedTime),
-		Version:                 utility.ToStringPtr(t.Version),
-		Revision:                utility.ToStringPtr(t.Revision),
-		Priority:                t.Priority,
-		Activated:               t.Activated,
-		ActivatedBy:             utility.ToStringPtr(t.ActivatedBy),
-		BuildId:                 utility.ToStringPtr(t.BuildId),
-		DistroId:                utility.ToStringPtr(t.DistroId),
-		Container:               utility.ToStringPtr(t.Container),
-		BuildVariant:            utility.ToStringPtr(t.BuildVariant),
-		BuildVariantDisplayName: utility.ToStringPtr(t.BuildVariantDisplayName),
-		DisplayName:             utility.ToStringPtr(t.DisplayName),
-		HostId:                  utility.ToStringPtr(t.HostId),
-		Tags:                    utility.ToStringPtrSlice(t.Tags),
-		Execution:               t.Execution,
-		Order:                   t.RevisionOrderNumber,
-		Status:                  utility.ToStringPtr(t.Status),
-		DisplayStatus:           utility.ToStringPtr(t.GetDisplayStatus()),
-		ExpectedDuration:        NewAPIDuration(t.ExpectedDuration),
-		GenerateTask:            t.GenerateTask,
-		GeneratedBy:             t.GeneratedBy,
-		DisplayOnly:             t.DisplayOnly,
-		Mainline:                (t.Requester == evergreen.RepotrackerVersionRequester),
-		TaskGroup:               t.TaskGroup,
-		TaskGroupMaxHosts:       t.TaskGroupMaxHosts,
-		Blocked:                 t.Blocked(),
-		Requester:               utility.ToStringPtr(t.Requester),
-		Aborted:                 t.Aborted,
-		CanSync:                 t.CanSync,
-		HasCedarResults:         t.HasCedarResults,
-		CedarResultsFailed:      t.CedarResultsFailed,
-		MustHaveResults:         t.MustHaveResults,
-		ParentTaskId:            utility.FromStringPtr(t.DisplayTaskId),
+		Id:                          utility.ToStringPtr(id),
+		ProjectId:                   utility.ToStringPtr(t.Project),
+		CreateTime:                  ToTimePtr(t.CreateTime),
+		DispatchTime:                ToTimePtr(t.DispatchTime),
+		ScheduledTime:               ToTimePtr(t.ScheduledTime),
+		ContainerAllocatedTime:      ToTimePtr(t.ContainerAllocatedTime),
+		StartTime:                   ToTimePtr(t.StartTime),
+		FinishTime:                  ToTimePtr(t.FinishTime),
+		IngestTime:                  ToTimePtr(t.IngestTime),
+		ActivatedTime:               ToTimePtr(t.ActivatedTime),
+		Version:                     utility.ToStringPtr(t.Version),
+		Revision:                    utility.ToStringPtr(t.Revision),
+		Priority:                    t.Priority,
+		Activated:                   t.Activated,
+		ActivatedBy:                 utility.ToStringPtr(t.ActivatedBy),
+		BuildId:                     utility.ToStringPtr(t.BuildId),
+		DistroId:                    utility.ToStringPtr(t.DistroId),
+		Container:                   utility.ToStringPtr(t.Container),
+		BuildVariant:                utility.ToStringPtr(t.BuildVariant),
+		BuildVariantDisplayName:     utility.ToStringPtr(t.BuildVariantDisplayName),
+		DisplayName:                 utility.ToStringPtr(t.DisplayName),
+		ContainerAllocated:          t.ContainerAllocated,
+		ContainerAllocationAttempts: t.ContainerAllocationAttempts,
+		HostId:                      utility.ToStringPtr(t.HostId),
+		PodID:                       utility.ToStringPtr(t.PodID),
+		Tags:                        utility.ToStringPtrSlice(t.Tags),
+		Execution:                   t.Execution,
+		Order:                       t.RevisionOrderNumber,
+		Status:                      utility.ToStringPtr(t.Status),
+		DisplayStatus:               utility.ToStringPtr(t.GetDisplayStatus()),
+		ExpectedDuration:            NewAPIDuration(t.ExpectedDuration),
+		GenerateTask:                t.GenerateTask,
+		GeneratedBy:                 t.GeneratedBy,
+		DisplayOnly:                 t.DisplayOnly,
+		Mainline:                    (t.Requester == evergreen.RepotrackerVersionRequester),
+		TaskGroup:                   t.TaskGroup,
+		TaskGroupMaxHosts:           t.TaskGroupMaxHosts,
+		Blocked:                     t.Blocked(),
+		Requester:                   utility.ToStringPtr(t.Requester),
+		Aborted:                     t.Aborted,
+		CanSync:                     t.CanSync,
+		HasCedarResults:             t.HasCedarResults,
+		CedarResultsFailed:          t.CedarResultsFailed,
+		MustHaveResults:             t.MustHaveResults,
+		ParentTaskId:                utility.FromStringPtr(t.DisplayTaskId),
 		SyncAtEndOpts: APISyncAtEndOptions{
 			Enabled:  t.SyncAtEndOpts.Enabled,
 			Statuses: t.SyncAtEndOpts.Statuses,
@@ -236,6 +243,9 @@ func (at *APITask) buildTask(t *task.Task) error {
 			PRClosed:   t.AbortInfo.PRClosed,
 		},
 	}
+
+	at.ContainerOpts.BuildFromService(t.ContainerOpts)
+
 	if t.BaseTask.Id != "" {
 		at.BaseTask = APIBaseTaskInfo{
 			Id:     utility.ToStringPtr(t.BaseTask.Id),
@@ -364,35 +374,38 @@ func (at *APITask) GetProjectIdentifier() {
 // Wraps ToServiceTask to maintain the model interface.
 func (at *APITask) ToService() (*task.Task, error) {
 	st := &task.Task{
-		Id:                      utility.FromStringPtr(at.Id),
-		Project:                 utility.FromStringPtr(at.ProjectId),
-		Version:                 utility.FromStringPtr(at.Version),
-		Revision:                utility.FromStringPtr(at.Revision),
-		Priority:                at.Priority,
-		Activated:               at.Activated,
-		ActivatedBy:             utility.FromStringPtr(at.ActivatedBy),
-		BuildId:                 utility.FromStringPtr(at.BuildId),
-		DistroId:                utility.FromStringPtr(at.DistroId),
-		Container:               utility.FromStringPtr(at.Container),
-		BuildVariant:            utility.FromStringPtr(at.BuildVariant),
-		BuildVariantDisplayName: utility.FromStringPtr(at.BuildVariantDisplayName),
-		DisplayName:             utility.FromStringPtr(at.DisplayName),
-		HostId:                  utility.FromStringPtr(at.HostId),
-		Execution:               at.Execution,
-		RevisionOrderNumber:     at.Order,
-		Status:                  utility.FromStringPtr(at.Status),
-		DisplayStatus:           utility.FromStringPtr(at.DisplayStatus),
-		TimeTaken:               at.TimeTaken.ToDuration(),
-		ExpectedDuration:        at.ExpectedDuration.ToDuration(),
-		GenerateTask:            at.GenerateTask,
-		GeneratedBy:             at.GeneratedBy,
-		DisplayOnly:             at.DisplayOnly,
-		Requester:               utility.FromStringPtr(at.Requester),
-		CanSync:                 at.CanSync,
-		HasCedarResults:         at.HasCedarResults,
-		CedarResultsFailed:      at.CedarResultsFailed,
-		MustHaveResults:         at.MustHaveResults,
-
+		Id:                          utility.FromStringPtr(at.Id),
+		Project:                     utility.FromStringPtr(at.ProjectId),
+		Version:                     utility.FromStringPtr(at.Version),
+		Revision:                    utility.FromStringPtr(at.Revision),
+		Priority:                    at.Priority,
+		Activated:                   at.Activated,
+		ActivatedBy:                 utility.FromStringPtr(at.ActivatedBy),
+		BuildId:                     utility.FromStringPtr(at.BuildId),
+		DistroId:                    utility.FromStringPtr(at.DistroId),
+		Container:                   utility.FromStringPtr(at.Container),
+		ContainerOpts:               at.ContainerOpts.ToService(),
+		BuildVariant:                utility.FromStringPtr(at.BuildVariant),
+		BuildVariantDisplayName:     utility.FromStringPtr(at.BuildVariantDisplayName),
+		DisplayName:                 utility.FromStringPtr(at.DisplayName),
+		HostId:                      utility.FromStringPtr(at.HostId),
+		PodID:                       utility.FromStringPtr(at.PodID),
+		ContainerAllocated:          at.ContainerAllocated,
+		ContainerAllocationAttempts: at.ContainerAllocationAttempts,
+		Execution:                   at.Execution,
+		RevisionOrderNumber:         at.Order,
+		Status:                      utility.FromStringPtr(at.Status),
+		DisplayStatus:               utility.FromStringPtr(at.DisplayStatus),
+		TimeTaken:                   at.TimeTaken.ToDuration(),
+		ExpectedDuration:            at.ExpectedDuration.ToDuration(),
+		GenerateTask:                at.GenerateTask,
+		GeneratedBy:                 at.GeneratedBy,
+		DisplayOnly:                 at.DisplayOnly,
+		Requester:                   utility.FromStringPtr(at.Requester),
+		CanSync:                     at.CanSync,
+		HasCedarResults:             at.HasCedarResults,
+		CedarResultsFailed:          at.CedarResultsFailed,
+		MustHaveResults:             at.MustHaveResults,
 		SyncAtEndOpts: task.SyncAtEndOptions{
 			Enabled:  at.SyncAtEndOpts.Enabled,
 			Statuses: at.SyncAtEndOpts.Statuses,
@@ -496,4 +509,37 @@ type APIDependency struct {
 func (ad *APIDependency) BuildFromService(dep task.Dependency) {
 	ad.TaskId = dep.TaskId
 	ad.Status = dep.Status
+}
+
+type APIContainerOptions struct {
+	CPU            int     `json:"cpu"`
+	MemoryMB       int     `json:"memory_mb"`
+	WorkingDir     *string `json:"working_dir,omitempty"`
+	Image          *string `json:"image,omitempty"`
+	RepoCredsName  *string `json:"repo_creds_name,omitempty"`
+	OS             *string `json:"os,omitempty"`
+	Arch           *string `json:"arch,omitempty"`
+	WindowsVersion *string `json:"windows_version,omitempty"`
+}
+
+func (o *APIContainerOptions) BuildFromService(dbOpts task.ContainerOptions) {
+	o.CPU = dbOpts.CPU
+	o.MemoryMB = dbOpts.MemoryMB
+	o.WorkingDir = utility.ToStringPtr(dbOpts.WorkingDir)
+	o.Image = utility.ToStringPtr(dbOpts.Image)
+	o.OS = utility.ToStringPtr(string(dbOpts.OS))
+	o.Arch = utility.ToStringPtr(string(dbOpts.Arch))
+	o.WindowsVersion = utility.ToStringPtr(string(dbOpts.WindowsVersion))
+}
+
+func (o *APIContainerOptions) ToService() task.ContainerOptions {
+	return task.ContainerOptions{
+		CPU:            o.CPU,
+		MemoryMB:       o.MemoryMB,
+		WorkingDir:     utility.FromStringPtr(o.WorkingDir),
+		Image:          utility.FromStringPtr(o.Image),
+		OS:             evergreen.ContainerOS(utility.FromStringPtr(o.OS)),
+		Arch:           evergreen.ContainerArch(utility.FromStringPtr(o.Arch)),
+		WindowsVersion: evergreen.WindowsVersion(utility.FromStringPtr(o.WindowsVersion)),
+	}
 }
