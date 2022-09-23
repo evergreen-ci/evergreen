@@ -183,10 +183,14 @@ func activatePreviousTask(taskId, caller string, originalStepbackTask *task.Task
 	}
 	// add the task that we're actually stepping back so that we know to activate it
 	if prevTask.GenerateTask && originalStepbackTask != nil {
-		return prevTask.SetGeneratedTasksToActivate(originalStepbackTask.BuildVariant, originalStepbackTask.DisplayName)
+		if err = prevTask.SetGeneratedTasksToActivate(originalStepbackTask.BuildVariant, originalStepbackTask.DisplayName); err != nil {
+			return errors.Wrap(err, "setting generated tasks to activate")
+		}
 	}
 	if stepbackDepth > 0 {
-		t.SetStepbackDepth(stepbackDepth)
+		if err = prevTask.SetStepbackDepth(stepbackDepth); err != nil {
+			return errors.Wrap(err, "setting stepback depth")
+		}
 	}
 	return nil
 }

@@ -28,7 +28,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	yaml "gopkg.in/20210107192922/yaml.v3"
+	"gopkg.in/20210107192922/yaml.v3"
 )
 
 var (
@@ -384,13 +384,17 @@ func TestSetActiveState(t *testing.T) {
 
 func TestActivatePreviousTask(t *testing.T) {
 	Convey("With two tasks and a build", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, build.Collection))
+		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection))
 		// create two tasks
 		displayName := "testTask"
+		v := Version{
+			Id: "version",
+		}
 		b := &build.Build{
 			Id:      "testBuild",
-			Version: "version",
+			Version: v.Id,
 		}
+
 		previousTask := &task.Task{
 			Id:                  "one",
 			DisplayName:         displayName,
@@ -399,7 +403,7 @@ func TestActivatePreviousTask(t *testing.T) {
 			Activated:           false,
 			BuildId:             b.Id,
 			DistroId:            "arch",
-			Version:             "version",
+			Version:             v.Id,
 		}
 		currentTask := &task.Task{
 			Id:                  "two",
@@ -410,9 +414,10 @@ func TestActivatePreviousTask(t *testing.T) {
 			Activated:           true,
 			BuildId:             b.Id,
 			DistroId:            "arch",
-			Version:             "version",
+			Version:             v.Id,
 		}
 
+		So(v.Insert(), ShouldBeNil)
 		So(b.Insert(), ShouldBeNil)
 		So(previousTask.Insert(), ShouldBeNil)
 		So(currentTask.Insert(), ShouldBeNil)
@@ -1098,8 +1103,10 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 					SystemLogURLs: []apimodels.LogInfo{{Command: "foo3", URL: "system"}},
 				},
 			}
+			pRef := ProjectRef{Id: "sample"}
 
-			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection))
+			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, ProjectRefCollection))
+			So(pRef.Insert(), ShouldBeNil)
 			So(b.Insert(), ShouldBeNil)
 			So(testTask.Insert(), ShouldBeNil)
 			So(v.Insert(), ShouldBeNil)
@@ -1295,7 +1302,7 @@ func TestMarkEnd(t *testing.T) {
 		DisplayName: displayName,
 		Activated:   true,
 		BuildId:     b.Id,
-		Project:     "sample",
+		Project:     "p1",
 		Status:      evergreen.TaskStarted,
 		Version:     b.Version,
 	}
@@ -1303,7 +1310,7 @@ func TestMarkEnd(t *testing.T) {
 		Id:        "dependentTask",
 		Activated: true,
 		BuildId:   b.Id,
-		Project:   "sample",
+		Project:   "p1",
 		Status:    evergreen.TaskUndispatched,
 		Version:   b.Version,
 		DependsOn: []task.Dependency{
