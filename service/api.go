@@ -657,9 +657,8 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 	}
 
 	errs := validator.ValidationErrors{}
-	var projectRef *model.ProjectRef
 	if input.ProjectID != "" {
-		projectRef, err = model.FindMergedProjectRef(input.ProjectID, "", false)
+		projectRef, err := model.FindMergedProjectRef(input.ProjectID, "", false)
 		if err != nil {
 			validationErr = validator.ValidationError{
 				Message: "error finding project; validation will proceed without checking project settings",
@@ -693,16 +692,6 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 		errs = errs.AtLevel(validator.Error)
 	} else {
 		errs = append(errs, validator.CheckProjectWarnings(project)...)
-		// Check project aliases
-		aliases, err := model.FindMergedAliasesFromProjectRepoOrProjectConfig(projectRef, projectConfig)
-		if err != nil {
-			errs = append(errs, validator.ValidationError{
-				Message: "problem finding aliases; validation will proceed without checking alias coverage",
-				Level:   validator.Warning,
-			})
-		} else {
-			errs = append(errs, validator.CheckAliasWarnings(project, aliases)...)
-		}
 	}
 
 	if len(errs) > 0 {

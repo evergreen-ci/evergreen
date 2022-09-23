@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"math"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -136,6 +135,7 @@ var projectErrorValidators = []projectValidator{
 	validateHostCreates,
 	validateDuplicateBVTasks,
 	validateGenerateTasks,
+	validateAliases,
 }
 
 // Functions used to validate the syntax of project configs representing properties found on the project page.
@@ -227,10 +227,6 @@ func CheckProjectWarnings(project *model.Project) ValidationErrors {
 			projectWarningValidator(project)...)
 	}
 	return validationErrs
-}
-
-func CheckAliasWarnings(project *model.Project, aliases model.ProjectAliases) ValidationErrors {
-	return validateAliasCoverage(project, aliases)
 }
 
 // verify that the project configuration syntax is valid
@@ -425,7 +421,18 @@ func validateProjectConfigPeriodicBuilds(pc *model.ProjectConfig) ValidationErro
 
 func validateProjectConfigAliases(pc *model.ProjectConfig) ValidationErrors {
 	errs := []string{}
-	pc.SetInternalAliases()
+	for i := range pc.GitTagAliases {
+		pc.GitTagAliases[i].Alias = evergreen.GitTagAlias
+	}
+	for i := range pc.GitHubChecksAliases {
+		pc.GitHubChecksAliases[i].Alias = evergreen.GithubChecksAlias
+	}
+	for i := range pc.CommitQueueAliases {
+		pc.CommitQueueAliases[i].Alias = evergreen.CommitQueueAlias
+	}
+	for i := range pc.GitHubPRAliases {
+		pc.GitHubPRAliases[i].Alias = evergreen.GithubPRAlias
+	}
 	errs = append(errs, model.ValidateProjectAliases(pc.GitHubPRAliases, "GitHub PR Aliases")...)
 	errs = append(errs, model.ValidateProjectAliases(pc.GitHubChecksAliases, "Github Checks Aliases")...)
 	errs = append(errs, model.ValidateProjectAliases(pc.CommitQueueAliases, "Commit Queue Aliases")...)
@@ -440,132 +447,6 @@ func validateProjectConfigAliases(pc *model.ProjectConfig) ValidationErrors {
 		})
 	}
 	return validationErrs
-}
-
-// validateAliasCoverage validates that all commit queue aliases defined match some variants/tasks.
-func validateAliasCoverage(p *model.Project, aliases model.ProjectAliases) ValidationErrors {
-	aliasMap := map[string]model.ProjectAlias{}
-	for _, a := range aliases {
-		aliasMap[a.ID.Hex()] = a
-	}
-	aliasNeedsVariant, aliasNeedsTask, err := getAliasCoverage(p, aliasMap)
-	if err != nil {
-		return ValidationErrors{
-			{
-				Message: "error checking alias coverage, continuing without validation",
-				Level:   Warning,
-			},
-		}
-	}
-	return constructAliasWarnings(aliasMap, aliasNeedsVariant, aliasNeedsTask)
-}
-
-// constructAliasWarnings returns validation errors given a map of aliases, and whether they need variants/tasks to match.
-func constructAliasWarnings(aliasMap map[string]model.ProjectAlias, aliasNeedsVariant, aliasNeedsTask map[string]bool) ValidationErrors {
-	res := ValidationErrors{}
-	errs := []string{}
-	for aliasID, a := range aliasMap {
-		needsVariant := aliasNeedsVariant[aliasID]
-		needsTask := aliasNeedsTask[aliasID]
-		if !needsVariant && !needsTask {
-			continue
-		}
-
-		msgComponents := []string{}
-		switch a.Alias {
-		case evergreen.CommitQueueAlias:
-			msgComponents = append(msgComponents, "Commit queue alias")
-		case evergreen.GithubPRAlias:
-			msgComponents = append(msgComponents, "Github PR alias")
-		case evergreen.GitTagAlias:
-			msgComponents = append(msgComponents, "Git tag alias")
-		case evergreen.GithubChecksAlias:
-			msgComponents = append(msgComponents, "Github check alias")
-		default:
-			msgComponents = append(msgComponents, "Patch alias")
-		}
-		if len(a.VariantTags) > 0 {
-			msgComponents = append(msgComponents, fmt.Sprintf("matching variant tags '%v'", a.VariantTags))
-		} else {
-			msgComponents = append(msgComponents, fmt.Sprintf("matching variant regexp '%s'", a.Variant))
-		}
-		if needsVariant {
-			msgComponents = append(msgComponents, "has no matching variants")
-		} else {
-			// This is only relevant information if the alias matches the variant but not the task.
-			if len(a.TaskTags) > 0 {
-				msgComponents = append(msgComponents, fmt.Sprintf("and matching task tags '%v'", a.TaskTags))
-			} else {
-				msgComponents = append(msgComponents, fmt.Sprintf("and matching task regexp '%s'", a.Task))
-			}
-			msgComponents = append(msgComponents, "has no matching tasks")
-		}
-		errs = append(errs, strings.Join(msgComponents, " "))
-	}
-	sort.Strings(errs)
-	for _, err := range errs {
-		res = append(res, ValidationError{
-			Message: err,
-			Level:   Warning,
-		})
-	}
-
-	return res
-}
-
-// getAliasCoverage returns a map of aliases that don't match variants and a map of aliases that don't match tasks.
-func getAliasCoverage(p *model.Project, aliasMap map[string]model.ProjectAlias) (map[string]bool, map[string]bool, error) {
-	type taskInfo struct {
-		name string
-		tags []string
-	}
-	aliasNeedsVariant := map[string]bool{}
-	aliasNeedsTask := map[string]bool{}
-	bvtCache := map[string]taskInfo{}
-	for a := range aliasMap {
-		aliasNeedsVariant[a] = true
-		aliasNeedsTask[a] = true
-	}
-	for _, bv := range p.BuildVariants {
-		for aliasID, alias := range aliasMap {
-			if !aliasNeedsVariant[aliasID] && !aliasNeedsTask[aliasID] { // Have already found both variants and tasks.
-				continue
-			}
-			// If we still need a task to match the variant, still check if the alias matches, so we know if checking tasks is needed.
-			matchesThisVariant, err := alias.HasMatchingVariant(bv.Name, bv.Tags)
-			if err != nil {
-				return nil, nil, err
-			}
-			if !matchesThisVariant { // If the variant doesn't match, then there's no reason to keep checking tasks.
-				continue
-			}
-			aliasNeedsVariant[aliasID] = false
-			// Loop through all tasks to verify if there is task coverage.
-			for _, t := range bv.Tasks {
-				var name string
-				var tags []string
-				if info, ok := bvtCache[t.Name]; ok {
-					name = info.name
-					tags = info.tags
-				} else {
-					name, tags, _ = p.GetTaskNameAndTags(t)
-					// Even if we can't find the name/tags, still store it, so we don't try again.
-					bvtCache[t.Name] = taskInfo{name: name, tags: tags}
-				}
-				if name != "" {
-					matchesThisTask, err := alias.HasMatchingTask(name, tags)
-					if err != nil {
-						return nil, nil, err
-					}
-					if matchesThisTask {
-						aliasNeedsTask[aliasID] = false
-						break
-					}
-				}
-			}
-		}
-	}
-	return aliasNeedsVariant, aliasNeedsTask, nil
 }
 
 func validateProjectConfigContainers(pc *model.ProjectConfig) ValidationErrors {
@@ -611,6 +492,24 @@ func validateProjectConfigPlugins(pc *model.ProjectConfig) ValidationErrors {
 		)
 	}
 	return errs
+}
+
+func validateAliases(p *model.Project) ValidationErrors {
+	errs := []string{}
+	errs = append(errs, model.ValidateProjectAliases(p.GitHubPRAliases, "GitHub PR Aliases")...)
+	errs = append(errs, model.ValidateProjectAliases(p.GitHubChecksAliases, "Github Checks Aliases")...)
+	errs = append(errs, model.ValidateProjectAliases(p.CommitQueueAliases, "Commit Queue Aliases")...)
+	errs = append(errs, model.ValidateProjectAliases(p.PatchAliases, "Patch Aliases")...)
+	errs = append(errs, model.ValidateProjectAliases(p.GitTagAliases, "Git Tag Aliases")...)
+
+	validationErrs := ValidationErrors{}
+	for _, errorMsg := range errs {
+		validationErrs = append(validationErrs, ValidationError{
+			Message: errorMsg,
+			Level:   Error,
+		})
+	}
+	return validationErrs
 }
 
 // Ensures that the project has at least one buildvariant and also that all the

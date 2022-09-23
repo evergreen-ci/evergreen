@@ -25,7 +25,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	ignore "github.com/sabhiram/go-gitignore"
-	"gopkg.in/20210107192922/yaml.v3"
+	yaml "gopkg.in/20210107192922/yaml.v3"
 )
 
 const (
@@ -43,34 +43,39 @@ type GetProjectTasksOpts struct {
 }
 
 type Project struct {
-	Enabled            bool                       `yaml:"enabled,omitempty" bson:"enabled"`
-	Stepback           bool                       `yaml:"stepback,omitempty" bson:"stepback"`
-	PreErrorFailsTask  bool                       `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
-	PostErrorFailsTask bool                       `yaml:"post_error_fails_task,omitempty" bson:"post_error_fails_task,omitempty"`
-	OomTracker         bool                       `yaml:"oom_tracker,omitempty" bson:"oom_tracker"`
-	BatchTime          int                        `yaml:"batchtime,omitempty" bson:"batch_time"`
-	Owner              string                     `yaml:"owner,omitempty" bson:"owner_name"`
-	Repo               string                     `yaml:"repo,omitempty" bson:"repo_name"`
-	RemotePath         string                     `yaml:"remote_path,omitempty" bson:"remote_path"`
-	Branch             string                     `yaml:"branch,omitempty" bson:"branch_name"`
-	Identifier         string                     `yaml:"identifier,omitempty" bson:"identifier"`
-	DisplayName        string                     `yaml:"display_name,omitempty" bson:"display_name"`
-	CommandType        string                     `yaml:"command_type,omitempty" bson:"command_type"`
-	Ignore             []string                   `yaml:"ignore,omitempty" bson:"ignore"`
-	Parameters         []ParameterInfo            `yaml:"parameters,omitempty" bson:"parameters,omitempty"`
-	Pre                *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre"`
-	Post               *YAMLCommandSet            `yaml:"post,omitempty" bson:"post"`
-	Timeout            *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout"`
-	EarlyTermination   *YAMLCommandSet            `yaml:"early_termination,omitempty" bson:"early_termination,omitempty"`
-	CallbackTimeout    int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs"`
-	Modules            ModuleList                 `yaml:"modules,omitempty" bson:"modules"`
-	Containers         []Container                `yaml:"containers,omitempty" bson:"containers"`
-	BuildVariants      BuildVariants              `yaml:"buildvariants,omitempty" bson:"build_variants"`
-	Functions          map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions"`
-	TaskGroups         []TaskGroup                `yaml:"task_groups,omitempty" bson:"task_groups"`
-	Tasks              []ProjectTask              `yaml:"tasks,omitempty" bson:"tasks"`
-	ExecTimeoutSecs    int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
-	Loggers            *LoggerConfig              `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
+	Enabled             bool                       `yaml:"enabled,omitempty" bson:"enabled"`
+	Stepback            bool                       `yaml:"stepback,omitempty" bson:"stepback"`
+	PreErrorFailsTask   bool                       `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
+	PostErrorFailsTask  bool                       `yaml:"post_error_fails_task,omitempty" bson:"post_error_fails_task,omitempty"`
+	OomTracker          bool                       `yaml:"oom_tracker,omitempty" bson:"oom_tracker"`
+	BatchTime           int                        `yaml:"batchtime,omitempty" bson:"batch_time"`
+	Owner               string                     `yaml:"owner,omitempty" bson:"owner_name"`
+	Repo                string                     `yaml:"repo,omitempty" bson:"repo_name"`
+	RemotePath          string                     `yaml:"remote_path,omitempty" bson:"remote_path"`
+	Branch              string                     `yaml:"branch,omitempty" bson:"branch_name"`
+	Identifier          string                     `yaml:"identifier,omitempty" bson:"identifier"`
+	DisplayName         string                     `yaml:"display_name,omitempty" bson:"display_name"`
+	CommandType         string                     `yaml:"command_type,omitempty" bson:"command_type"`
+	Ignore              []string                   `yaml:"ignore,omitempty" bson:"ignore"`
+	Parameters          []ParameterInfo            `yaml:"parameters,omitempty" bson:"parameters,omitempty"`
+	Pre                 *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre"`
+	Post                *YAMLCommandSet            `yaml:"post,omitempty" bson:"post"`
+	Timeout             *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout"`
+	EarlyTermination    *YAMLCommandSet            `yaml:"early_termination,omitempty" bson:"early_termination,omitempty"`
+	CallbackTimeout     int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs"`
+	Modules             ModuleList                 `yaml:"modules,omitempty" bson:"modules"`
+	Containers          []Container                `yaml:"containers,omitempty" bson:"containers"`
+	BuildVariants       BuildVariants              `yaml:"buildvariants,omitempty" bson:"build_variants"`
+	Functions           map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions"`
+	TaskGroups          []TaskGroup                `yaml:"task_groups,omitempty" bson:"task_groups"`
+	Tasks               []ProjectTask              `yaml:"tasks,omitempty" bson:"tasks"`
+	ExecTimeoutSecs     int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
+	Loggers             *LoggerConfig              `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
+	CommitQueueAliases  []ProjectAlias             `yaml:"commit_queue_aliases,omitempty" bson:"commit_queue_aliases,omitempty"`
+	GitHubPRAliases     []ProjectAlias             `yaml:"github_pr_aliases,omitempty" bson:"github_pr_aliases,omitempty"`
+	GitTagAliases       []ProjectAlias             `yaml:"git_tag_aliases,omitempty" bson:"git_tag_aliases,omitempty"`
+	GitHubChecksAliases []ProjectAlias             `yaml:"github_checks_aliases,omitempty" bson:"github_checks_aliases,omitempty"`
+	PatchAliases        []ProjectAlias             `yaml:"patch_aliases,omitempty" bson:"patch_aliases,omitempty"`
 
 	// Flag that indicates a project as requiring user authentication
 	Private bool `yaml:"private,omitempty" bson:"private"`
@@ -1765,7 +1770,7 @@ func (p *Project) IsGenerateTask(taskName string) bool {
 }
 
 func (p *Project) findAliasesForPatch(alias string, patchDoc *patch.Patch) ([]ProjectAlias, error) {
-	vars, shouldExit, err := findAliasInProjectOrRepoFromDb(p.Identifier, alias)
+	vars, shouldExit, err := FindAliasInProjectOrRepoFromDb(p.Identifier, alias)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting alias from project")
 	}
@@ -1852,29 +1857,29 @@ func (p *Project) BuildProjectTVPairsWithAlias(vars []ProjectAlias) ([]TVPair, [
 	displayTaskPairs := []TVPair{}
 	for _, v := range vars {
 		var variantRegex *regexp.Regexp
-		variantRegex, err := v.getVariantRegex()
+		variantRegex, err := regexp.Compile(v.Variant)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, errors.Wrapf(err, "compiling regex '%s'", v.Variant)
 		}
 
 		var taskRegex *regexp.Regexp
-		taskRegex, err = v.getTaskRegex()
+		taskRegex, err = regexp.Compile(v.Task)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, errors.Wrapf(err, "compiling regex '%s'", v.Task)
 		}
 
 		for _, variant := range p.BuildVariants {
-			if isValidRegexOrTag(variant.Name, variant.Tags, v.VariantTags, variantRegex) {
-				for _, t := range p.Tasks {
-					if t.Patchable != nil && !(*t.Patchable) {
+			if isValidRegexOrTag(variant.Name, v.Variant, variant.Tags, v.VariantTags, variantRegex) {
+				for _, task := range p.Tasks {
+					if task.Patchable != nil && !(*task.Patchable) {
 						continue
 					}
-					if !isValidRegexOrTag(t.Name, t.Tags, v.TaskTags, taskRegex) {
+					if !isValidRegexOrTag(task.Name, v.Task, task.Tags, v.TaskTags, taskRegex) {
 						continue
 					}
 
-					if p.FindTaskForVariant(t.Name, variant.Name) != nil {
-						pairs = append(pairs, TVPair{variant.Name, t.Name})
+					if p.FindTaskForVariant(task.Name, variant.Name) != nil {
+						pairs = append(pairs, TVPair{variant.Name, task.Name})
 					}
 				}
 

@@ -26,7 +26,6 @@ func FindProjectAliases(projectId, repoId string, aliasesToAdd []restModel.APIPr
 			aliasModels = append(aliasModels, a)
 		}
 	}
-	// TODO EVG-17952: modify to correctly merge aliases based on type
 	if projectId != "" {
 		aliases, err = model.FindAliasesForProjectFromDb(projectId)
 		if err != nil {
@@ -40,7 +39,7 @@ func FindProjectAliases(projectId, repoId string, aliasesToAdd []restModel.APIPr
 		}
 	}
 	if projectId != "" && includeProjectConfig {
-		aliases, err = model.GetAliasesMergedWithProjectConfig(projectId, aliases)
+		aliases, err = model.MergeAliasesWithProjectConfig(projectId, aliases)
 		if err != nil {
 			return nil, err
 		}
