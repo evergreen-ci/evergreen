@@ -140,6 +140,10 @@ type Task struct {
 	// The host the task was run on. This value is only set for host tasks.
 	HostId string `bson:"host_id,omitempty" json:"host_id"`
 
+	// PodID is the pod that was assigned to run the task. This value is only
+	// set for container tasks.
+	PodID string `bson:"pod_id,omitempty" json:"pod_id"`
+
 	// ExecutionPlatform determines the execution environment that the task runs
 	// in.
 	ExecutionPlatform ExecutionPlatform `bson:"execution_platform,omitempty" json:"execution_platform,omitempty"`
@@ -1012,7 +1016,7 @@ func (t *Task) cacheExpectedDuration() error {
 
 // MarkAsContainerDispatched marks that the container task has been dispatched
 // to a pod.
-func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Environment, agentVersion string) error {
+func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Environment, podID, agentVersion string) error {
 	dispatchedAt := time.Now()
 	query := isContainerTaskScheduledQuery()
 	query[StatusKey] = evergreen.TaskUndispatched
@@ -1022,6 +1026,7 @@ func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Envi
 			StatusKey:        evergreen.TaskDispatched,
 			DispatchTimeKey:  dispatchedAt,
 			LastHeartbeatKey: dispatchedAt,
+			PodIDKey:         podID,
 			AgentVersionKey:  agentVersion,
 		},
 	}
@@ -1036,6 +1041,7 @@ func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Envi
 	t.Status = evergreen.TaskDispatched
 	t.DispatchTime = dispatchedAt
 	t.LastHeartbeat = dispatchedAt
+	t.PodID = podID
 	t.AgentVersion = agentVersion
 
 	return nil
