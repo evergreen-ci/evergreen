@@ -104,8 +104,6 @@ type SharedCommunicator interface {
 
 	// These are for the taskdata/json plugin that saves perf data
 	PostJSONData(context.Context, TaskData, string, interface{}) error
-	GetJSONData(context.Context, TaskData, string, string, string) ([]byte, error)
-	GetJSONHistory(context.Context, TaskData, bool, string, string) ([]byte, error)
 
 	// GenerateTasks posts new tasks for the `generate.tasks` command.
 	GenerateTasks(context.Context, TaskData, []json.RawMessage) error
