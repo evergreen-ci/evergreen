@@ -1453,6 +1453,8 @@ func (t *Task) MarkSystemFailed(description string) error {
 		t.Details.TimedOut = true
 	}
 
+	// kim: TODO: replace with two methods event.LogHostTaskFinished and
+	// event.LogContainerTaskFinished depending on host vs. container.
 	event.LogTaskFinished(t.Id, t.Execution, t.HostId, evergreen.TaskSystemFailed)
 	grip.Info(message.Fields{
 		"message":     "marking task system failed",
@@ -2052,6 +2054,7 @@ func resetTaskUpdate(t *Task) bson.M {
 		t.ActivatedTime = now
 		t.Secret = newSecret
 		t.HostId = ""
+		// kim: TODO: reset pod ID.
 		t.Status = evergreen.TaskUndispatched
 		t.DispatchTime = utility.ZeroTime
 		t.StartTime = utility.ZeroTime
@@ -2515,6 +2518,7 @@ func (t *Task) String() (taskStruct string) {
 	taskStruct += fmt.Sprintf("Id: %v\n", t.Id)
 	taskStruct += fmt.Sprintf("Status: %v\n", t.Status)
 	taskStruct += fmt.Sprintf("Host: %v\n", t.HostId)
+	// kim: TODO: add line for pod ID.
 	taskStruct += fmt.Sprintf("ScheduledTime: %v\n", t.ScheduledTime)
 	taskStruct += fmt.Sprintf("ContainerAllocatedTime: %v\n", t.ContainerAllocatedTime)
 	taskStruct += fmt.Sprintf("DispatchTime: %v\n", t.DispatchTime)

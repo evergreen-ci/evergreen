@@ -309,6 +309,8 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var taskHost *host.Host
+	// kim: TODO: see what the host ID is used for here, then set pod ID if
+	// needed.
 	if projCtx.Task.HostId != "" {
 		uiTask.HostDNS = projCtx.Task.HostId
 		uiTask.HostId = projCtx.Task.HostId

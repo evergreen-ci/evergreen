@@ -121,6 +121,7 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 		"id":        j.ID(),
 		"task":      j.task.Id,
 	}
+	// kim: TODO: set pod ID
 	if j.task.HostId != "" {
 		msg["host_id"] = j.task.HostId
 	}
@@ -141,6 +142,7 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 // heartbeat timeout.
 func (j *taskExecutionTimeoutJob) cleanUpTimedOutTask(ctx context.Context) error {
 	if j.task.IsContainerTask() {
+		// kim: TODO: enqueue pod health check job.
 		return errors.Wrapf(model.ResetStaleTask(j.task), "resetting stale task '%s'", j.task.Id)
 	}
 

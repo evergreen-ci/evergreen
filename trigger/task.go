@@ -76,8 +76,9 @@ func newAlertRecord(subID string, t *task.Task, alertType string) *alertrecord.A
 		TaskName:            t.DisplayName,
 		Variant:             t.BuildVariant,
 		TaskId:              t.Id,
-		HostId:              t.HostId,
-		AlertTime:           time.Now(),
+		// kim: TODO: set pod ID instead of host ID.
+		HostId:    t.HostId,
+		AlertTime: time.Now(),
 	}
 }
 
@@ -301,6 +302,7 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, test
 				},
 				{
 					Title: "Host",
+					// kim: TODO: substitute pod link if needed.
 					Value: fmt.Sprintf("<%s|%s>", hostLink(t.uiConfig.Url, t.task.HostId), t.task.HostId),
 				},
 			},
@@ -902,6 +904,7 @@ func JIRATaskPayload(subID, project, uiUrl, eventID, testNames string, t *task.T
 	}
 
 	var hostDoc *host.Host
+	// kim: TODO: use pod ID here if needed.
 	if len(t.HostId) != 0 {
 		hostDoc, err = host.FindOneId(t.HostId)
 		if err != nil {
