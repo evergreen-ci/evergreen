@@ -183,7 +183,7 @@ func (ch *CreateHost) ValidateDocker() error {
 	catcher.Add(ch.validateAgentOptions())
 
 	if ch.Image == "" {
-		catcher.New("docker image must be set")
+		catcher.New("Docker image must be set")
 	}
 	if ch.Distro == "" {
 		settings, err := evergreen.GetConfig()
@@ -197,7 +197,7 @@ func (ch *CreateHost) ValidateDocker() error {
 	if ch.ContainerWaitTimeoutSecs <= 0 {
 		ch.ContainerWaitTimeoutSecs = DefaultContainerWaitTimeoutSecs
 	} else if ch.ContainerWaitTimeoutSecs >= 3600 || ch.ContainerWaitTimeoutSecs <= 10 {
-		catcher.New("container_wait_timeout_secs must be between 10 and 3600 seconds")
+		catcher.New("container wait timeout (seconds) must be between 10 and 3600 seconds")
 	}
 
 	if ch.PollFrequency <= 0 {
@@ -223,23 +223,23 @@ func (ch *CreateHost) ValidateEC2() error {
 	}
 
 	if (ch.AMI != "" && ch.Distro != "") || (ch.AMI == "" && ch.Distro == "") {
-		catcher.New("must set exactly one of ami or distro")
+		catcher.New("must set exactly one of AMI or distro")
 	}
 	if ch.AMI != "" {
 		if ch.InstanceType == "" {
-			catcher.New("instance_type must be set if ami is set")
+			catcher.New("instance type must be set if AMI is set")
 		}
 		if len(ch.SecurityGroups) == 0 {
-			catcher.New("must specify security_group_ids if ami is set")
+			catcher.New("must specify security group IDs if AMI is set")
 		}
 		if ch.Subnet == "" {
-			catcher.New("subnet_id must be set if ami is set")
+			catcher.New("subnet ID must be set if AMI is set")
 		}
 	}
 
 	if !(ch.AWSKeyID == "" && ch.AWSSecret == "" && ch.KeyName == "") &&
 		!(ch.AWSKeyID != "" && ch.AWSSecret != "" && ch.KeyName != "") {
-		catcher.New("aws_access_key_id, aws_secret_access_key, key_name must all be set or unset")
+		catcher.New("AWS access key ID, AWS secret access key, and key name must all be set or unset")
 	}
 
 	return catcher.Resolve()
@@ -263,13 +263,13 @@ func (ch *CreateHost) validateAgentOptions() error {
 		ch.SetupTimeoutSecs = DefaultSetupTimeoutSecs
 	}
 	if ch.SetupTimeoutSecs < 60 || ch.SetupTimeoutSecs > 3600 {
-		catcher.New("timeout_setup_secs must be between 60 and 3600")
+		catcher.New("timeout setup (seconds) must be between 60 and 3600")
 	}
 	if ch.TeardownTimeoutSecs == 0 {
 		ch.TeardownTimeoutSecs = DefaultTeardownTimeoutSecs
 	}
 	if ch.TeardownTimeoutSecs < 60 || ch.TeardownTimeoutSecs > 604800 {
-		catcher.New("timeout_teardown_secs must be between 60 and 604800")
+		catcher.New("timeout teardown (seconds) must be between 60 and 604800")
 	}
 	return catcher.Resolve()
 }
@@ -279,14 +279,14 @@ func (ch *CreateHost) setNumHosts() error {
 		ch.NumHosts = "1"
 	}
 	if ch.CloudProvider == ProviderDocker && ch.NumHosts != "1" {
-		return errors.Errorf("num_hosts cannot be greater than 1 for cloud provider %s", ProviderDocker)
+		return errors.Errorf("num hosts cannot be greater than 1 for cloud provider '%s'", ProviderDocker)
 	} else {
 		numHosts, err := strconv.Atoi(ch.NumHosts)
 		if err != nil {
-			return errors.Errorf("problem parsing '%s' as an int", ch.NumHosts)
+			return errors.Wrapf(err, "parsing num hosts specification '%s' as an int", ch.NumHosts)
 		}
 		if numHosts > 10 || numHosts < 0 {
-			return errors.New("num_hosts must be between 1 and 10")
+			return errors.New("num hosts must be between 1 and 10")
 		} else if numHosts == 0 {
 			ch.NumHosts = "1"
 		}
@@ -304,7 +304,7 @@ func (ch *CreateHost) Validate() error {
 		return ch.ValidateDocker()
 	}
 
-	return errors.Errorf("Cloud provider must be either '%s' or '%s'", ProviderEC2, ProviderDocker)
+	return errors.Errorf("cloud provider must be either '%s' or '%s'", ProviderEC2, ProviderDocker)
 }
 
 func (ch *CreateHost) Expand(exp *util.Expansions) error {

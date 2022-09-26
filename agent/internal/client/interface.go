@@ -88,14 +88,12 @@ type SharedCommunicator interface {
 	// SendLogMessages sends a group of log messages to the API Server
 	SendLogMessages(context.Context, TaskData, []apimodels.LogMessage) error
 
-	// The following operations use the legacy API server and are
-	// used by task commands.
+	// The following operations are used by task commands.
 	SendTestResults(context.Context, TaskData, *task.LocalTestResults) error
 	SendTestLog(context.Context, TaskData, *model.TestLog) (string, error)
 	GetTaskPatch(context.Context, TaskData, string) (*patchmodel.Patch, error)
 	GetPatchFile(context.Context, TaskData, string) (string, error)
 
-	// The following operations are used by
 	NewPush(context.Context, TaskData, *apimodels.S3CopyRequest) (*model.PushLog, error)
 	UpdatePushStatus(context.Context, TaskData, *model.PushLog) error
 	AttachFiles(context.Context, TaskData, []*artifact.File) error

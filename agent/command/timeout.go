@@ -51,7 +51,7 @@ func (c *timeout) Execute(ctx context.Context,
 			return errors.New("could not decode params as either string or int")
 		}
 		if err := util.ExpandValues(t, conf.Expansions); err != nil {
-			return errors.Wrap(err, "error expanding expansion values")
+			return errors.Wrap(err, "applying expansions")
 		}
 		timeout, errTimeout := strconv.Atoi(t.TimeoutSecs)
 		exec, errExec := strconv.Atoi(t.ExecTimeoutSecs)

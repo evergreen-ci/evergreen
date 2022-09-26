@@ -33,22 +33,22 @@ func (c *listHosts) ParseParams(params map[string]interface{}) error {
 		Result:           c,
 	})
 	if err != nil {
-		return errors.Wrap(err, "problem constructing mapstructure decoder")
+		return errors.Wrap(err, "constructing mapstructure decoder")
 	}
 	if err := decoder.Decode(params); err != nil {
-		return errors.Wrapf(err, "error parsing '%s' params", c.Name())
+		return errors.Wrap(err, "decoding mapstrcuture parameters")
 	}
 
 	if c.Wait && (c.NumHosts == "" || c.NumHosts == "0") {
-		return errors.New("cannot reasonably wait for 0 hosts")
+		return errors.New("cannot wait for 0 hosts")
 	}
 
 	if c.Path == "" && c.Silent && !c.Wait {
-		return errors.New("unreasonable combination of output, silent, and wait options")
+		return errors.New("if not waiting for hosts to come up, must specify an output destination (either a file path or non-silent log output)")
 	}
 
 	if c.TimeoutSecs < 0 {
-		return errors.New("unreasonable timeout value")
+		return errors.New("cannot have negative timeout")
 	}
 
 	return nil
@@ -56,13 +56,13 @@ func (c *listHosts) ParseParams(params map[string]interface{}) error {
 
 func (c *listHosts) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	if err := util.ExpandValues(c, conf.Expansions); err != nil {
-		return errors.WithStack(err)
+		return errors.Wrap(err, "applying expansions")
 	}
 
 	// check for this during execution too encase the expansion of
 	// path was empty
 	if c.Path == "" && c.Silent && !c.Wait {
-		return errors.New("unreasonable combination of output, silent, and wait options")
+		return errors.New("if not waiting for hosts to come up, must specify an output destination (either a file path or non-silent log output)")
 	}
 
 	if c.Path != "" {
@@ -120,18 +120,18 @@ waitForHosts:
 	}
 
 	if err != nil {
-		return errors.Wrap(err, "problem getting hosts list")
+		return errors.Wrap(err, "getting host statuses")
 	}
 
 	if c.Path != "" {
 		if len(results.Hosts) > 0 {
 			if err = utility.WriteJSONFile(c.Path, results.Hosts); err != nil {
-				return errors.Wrapf(err, "problem writing host data to file: %s", c.Path)
+				return errors.Wrapf(err, "writing host data to file '%s'", c.Path)
 			}
 		}
 		if len(results.Details) > 0 {
 			if err = utility.WriteJSONFile(c.Path, results.Details); err != nil {
-				return errors.Wrapf(err, "problem writing host data to file: %s", c.Path)
+				return errors.Wrapf(err, "writing host failure details to file '%s'", c.Path)
 			}
 		}
 	}
@@ -139,17 +139,17 @@ waitForHosts:
 	if !c.Silent {
 		if len(results.Hosts) > 0 {
 			jsonBytes, err := json.MarshalIndent(results.Hosts, "  ", "   ")
-			logger.Task().Warning(errors.Wrap(err, "problem json formatting host"))
+			logger.Task().Warning(errors.Wrap(err, "formatting host data as JSON"))
 			logger.Task().Info(string(jsonBytes))
 		}
 		if len(results.Details) > 0 {
 			jsonBytes, err := json.MarshalIndent(results.Details, "  ", "   ")
-			logger.Task().Warning(errors.Wrap(err, "problem json formatting details"))
+			logger.Task().Warning(errors.Wrap(err, "formatting host failure details as JSON"))
 			logger.Task().Info(string(jsonBytes))
 		}
 	}
 	if timeout {
-		return errors.New("reached timeout waiting for hosts")
+		return errors.Errorf("reached timeout (%d seconds) waiting for hosts", c.TimeoutSecs)
 	}
 	if len(results.Details) > 0 {
 		return errors.Errorf("%d hosts of %d failed", len(results.Details), numHosts)

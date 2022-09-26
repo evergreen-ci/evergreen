@@ -45,7 +45,7 @@ func (*perfSend) Name() string { return "perf.send" }
 
 func (c *perfSend) ParseParams(params map[string]interface{}) error {
 	if err := mapstructure.Decode(params, c); err != nil {
-		return errors.Wrapf(err, "error decoding '%v' params", c.Name())
+		return errors.Wrap(err, "decoding params")
 	}
 
 	if c.File == "" {
@@ -57,7 +57,7 @@ func (c *perfSend) ParseParams(params map[string]interface{}) error {
 
 func (c *perfSend) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	if err := util.ExpandValues(c, conf.Expansions); err != nil {
-		return err
+		return errors.Wrap(err, "applying expansions")
 	}
 
 	// Read the file and add the Evergreen info.

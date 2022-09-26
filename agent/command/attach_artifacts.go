@@ -36,12 +36,11 @@ func (c *attachArtifacts) Name() string { return evergreen.AttachArtifactsComman
 
 func (c *attachArtifacts) ParseParams(params map[string]interface{}) error {
 	if err := mapstructure.Decode(params, c); err != nil {
-		return errors.Wrapf(err, "error decoding '%s' params", c.Name())
+		return errors.Wrap(err, "decoding mapstructure params")
 	}
 
 	if len(c.Files) == 0 {
-		return errors.Errorf("error validating params: must specify at least one "+
-			"file pattern to parse: '%+v'", params)
+		return errors.Errorf("must specify at least one file pattern to parse")
 	}
 	return nil
 }
@@ -52,9 +51,7 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 	var err error
 
 	if err = util.ExpandValues(c, conf.Expansions); err != nil {
-		err = errors.Wrap(err, "error expanding params")
-		logger.Task().Error(err)
-		return err
+		return errors.Wrap(err, "applying expansions")
 	}
 
 	workDir := getJoinedWithWorkDir(conf, c.Prefix)
@@ -64,7 +61,7 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 		Include:    include,
 	}
 	if c.Files, err = b.Build(); err != nil {
-		err = errors.Wrap(err, "problem building wildcard paths")
+		err = errors.Wrap(err, "building wildcard paths")
 		logger.Task().Error(err)
 		return err
 	}
@@ -101,7 +98,7 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 		files = append(files, segment...)
 	}
 	if catcher.HasErrors() {
-		err = errors.Wrap(catcher.Resolve(), "encountered errors reading artifact json files")
+		err = errors.Wrap(catcher.Resolve(), "reading artifact JSON files")
 		logger.Task().Error(err)
 		return err
 	}
@@ -135,14 +132,14 @@ func readArtifactsFile(wd, fn string) ([]*artifact.File, error) {
 
 	file, err := os.Open(fn)
 	if err != nil {
-		return nil, errors.Wrapf(err, "problem opening file '%s'", fn)
+		return nil, errors.Wrapf(err, "opening file '%s'", fn)
 	}
 	defer file.Close()
 
 	out := []*artifact.File{}
 
 	if err = utility.ReadJSON(file, &out); err != nil {
-		return nil, errors.Wrapf(err, "problem reading JSON from file '%s'", fn)
+		return nil, errors.Wrapf(err, "reading JSON from file '%s'", fn)
 	}
 
 	return out, nil

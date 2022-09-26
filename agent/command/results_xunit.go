@@ -33,7 +33,7 @@ func (c *xunitResults) Name() string { return evergreen.AttachXUnitResultsComman
 // to satisfy the 'Command' interface
 func (c *xunitResults) ParseParams(params map[string]interface{}) error {
 	if err := mapstructure.Decode(params, c); err != nil {
-		return errors.Wrapf(err, "error decoding '%s' params", c.Name())
+		return errors.Wrap(err, "decoding mapstructure params")
 	}
 
 	if c.File == "" && len(c.Files) == 0 {
@@ -54,10 +54,10 @@ func (c *xunitResults) expandParams(conf *internal.TaskConfig) error {
 	var err error
 	for idx, f := range c.Files {
 		c.Files[idx], err = conf.Expansions.ExpandString(f)
-		catcher.Add(err)
+		catcher.Wrapf(err, "expanding file '%s'", f)
 	}
 
-	return errors.Wrapf(catcher.Resolve(), "problem expanding paths")
+	return catcher.Resolve()
 }
 
 // Execute carries out the AttachResultsCommand command - this is required
@@ -66,7 +66,7 @@ func (c *xunitResults) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	if err := c.expandParams(conf); err != nil {
-		return err
+		return errors.Wrap(err, "applying expansions")
 	}
 
 	errChan := make(chan error)
@@ -78,7 +78,7 @@ func (c *xunitResults) Execute(ctx context.Context,
 	case err := <-errChan:
 		return errors.WithStack(err)
 	case <-ctx.Done():
-		logger.Execution().Info("Received signal to terminate execution of attach xunit results command")
+		logger.Execution().Infof("Received signal to terminate execution of command '%s'", c.Name())
 		return nil
 	}
 }
@@ -138,19 +138,19 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 
 		file, err = os.Open(reportFileLoc)
 		if err != nil {
-			return errors.Wrap(err, "couldn't open xunit file")
+			return errors.Wrapf(err, "opening xunit file '%s'", reportFileLoc)
 		}
 
 		testSuites, err = parseXMLResults(file)
 		if err != nil {
 			catcher := grip.NewBasicCatcher()
-			catcher.Wrap(err, "error parsing xunit file")
+			catcher.Wrap(err, "parsing xunit file")
 			catcher.Wrap(file.Close(), "closing xunit file")
 			return catcher.Resolve()
 		}
 
 		if err = file.Close(); err != nil {
-			return errors.Wrap(err, "error closing xunit file")
+			return errors.Wrap(err, "closing xunit file")
 		}
 
 		// go through all the tests
@@ -170,7 +170,7 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 		}
 
 		if err := sendTestLog(ctx, comm, conf, log); err != nil {
-			logger.Task().Errorf("error posting test log: %v", err)
+			logger.Task().Error(errors.Wrap(err, "sending test log"))
 			continue
 		} else {
 			succeeded++

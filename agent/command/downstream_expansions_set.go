@@ -34,7 +34,7 @@ func (c *setDownstream) Name() string { return "downstream_expansions.set" }
 func (c *setDownstream) ParseParams(params map[string]interface{}) error {
 	err := mapstructure.Decode(params, c)
 	if err != nil {
-		return errors.Wrapf(err, "error parsing '%v' params", c.Name())
+		return errors.Wrap(err, "decoding mapstructure params")
 	}
 
 	if c.YamlFile == "" {
@@ -68,7 +68,7 @@ func (c *setDownstream) Execute(ctx context.Context,
 	if err != nil {
 		return err
 	}
-	logger.Task().Infof("Saving downstream parameters to patch with keys from file: %s", c.YamlFile)
+	logger.Task().Infof("Saving downstream parameters to patch with keys from file '%s'", c.YamlFile)
 
 	if len(c.downstreamParams) == 0 {
 		return nil

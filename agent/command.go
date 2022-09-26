@@ -34,7 +34,7 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 		}
 		cmds, err = command.Render(commandInfo, tc.taskConfig.Project)
 		if err != nil {
-			tc.logger.Task().Errorf("Couldn't parse plugin command '%v': %v", commandInfo.Command, err)
+			tc.logger.Task().Error(errors.Wrapf(err, "Error parsing plugin command '%s'", commandInfo.Command))
 			return err
 		}
 		if err = a.runCommandSet(ctx, tc, commandInfo, cmds, options, i+1, len(commands)); err != nil {
@@ -56,7 +56,7 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 	} else {
 		logger, err = a.makeLoggerProducer(ctx, tc, commandInfo.Loggers, getFunctionName(commandInfo))
 		if err != nil {
-			return errors.Wrap(err, "error making logger")
+			return errors.Wrap(err, "making logger")
 		}
 		defer func() {
 			grip.Error(logger.Close())
@@ -98,7 +98,7 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 			var newVal string
 			newVal, err = tc.taskConfig.Expansions.ExpandString(val)
 			if err != nil {
-				return errors.Wrapf(err, "Can't expand '%v'", val)
+				return errors.Wrapf(err, "expanding '%s'", val)
 			}
 			tc.taskConfig.Expansions.Put(key, newVal)
 		}
@@ -121,7 +121,7 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 			defer func() {
 				// this channel will get read from twice even though we only send once, hence why it's buffered
 				cmdChan <- recovery.HandlePanicWithError(recover(), nil,
-					fmt.Sprintf("problem running command '%s'", cmd.Name()))
+					fmt.Sprintf("running command '%s'", cmd.Name()))
 			}()
 			cmdChan <- cmd.Execute(ctx, a.comm, logger, tc.taskConfig)
 		}()
@@ -141,7 +141,7 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 			} else {
 				tc.logger.Task().Errorf("Command stopped early: %s", ctx.Err())
 			}
-			return errors.Wrap(ctx.Err(), "Agent stopped early")
+			return errors.Wrap(ctx.Err(), "agent stopped early")
 		}
 		tc.logger.Task().Infof("Finished %s in %s", fullCommandName, time.Since(start).String())
 		if (options.isTaskCommands || options.failPreAndPost) && a.endTaskResp != nil && !a.endTaskResp.ShouldContinue {
@@ -161,7 +161,7 @@ func (a *Agent) runTaskCommands(ctx context.Context, tc *taskContext) error {
 	task := conf.Project.FindProjectTask(conf.Task.DisplayName)
 
 	if task == nil {
-		tc.logger.Execution().Errorf("Can't find task: %v", conf.Task.DisplayName)
+		tc.logger.Execution().Errorf("Can't find task '%s'", conf.Task.DisplayName)
 		return errors.New("unable to find task")
 	}
 
@@ -173,7 +173,7 @@ func (a *Agent) runTaskCommands(ctx context.Context, tc *taskContext) error {
 	start := time.Now()
 	opts := runCommandsOptions{isTaskCommands: true}
 	err := a.runCommands(ctx, tc, task.Commands, opts)
-	tc.logger.Execution().Infof("Finished running task commands in %v.", time.Since(start).String())
+	tc.logger.Execution().Infof("Finished running task commands in %s.", time.Since(start).String())
 	if err != nil {
 		tc.logger.Execution().Errorf("Task failed: %v", err)
 		return errors.New("task failed")

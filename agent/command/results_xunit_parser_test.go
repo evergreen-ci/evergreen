@@ -20,7 +20,7 @@ func TestXMLParsing(t *testing.T) {
 	Convey("With some test xml files", t, func() {
 		Convey("with a basic test junit file", func() {
 			file, err := os.Open(filepath.Join(cwd, "testdata", "xunit", "junit_1.xml"))
-			require.NoError(t, err, "Error reading file")
+			require.NoError(t, err)
 			defer file.Close()
 
 			Convey("the file should parse without error", func() {
@@ -68,7 +68,7 @@ func TestXMLParsing(t *testing.T) {
 
 		Convey(`with a "real" pymongo xunit file`, func() {
 			file, err := os.Open(filepath.Join(cwd, "testdata", "xunit", "junit_3.xml"))
-			require.NoError(t, err, "Error reading file")
+			require.NoError(t, err)
 			defer file.Close()
 
 			Convey("the file should parse without error", func() {
@@ -95,7 +95,7 @@ func TestXMLParsing(t *testing.T) {
 		})
 		Convey(`with a "real" java driver xunit file`, func() {
 			file, err := os.Open(filepath.Join(cwd, "testdata", "xunit", "junit_4.xml"))
-			require.NoError(t, err, "Error reading file")
+			require.NoError(t, err)
 			defer file.Close()
 
 			Convey("the file should parse without error", func() {
@@ -117,7 +117,7 @@ func TestXMLParsing(t *testing.T) {
 
 		Convey("with a result file produced by a mocha junit reporter", func() {
 			file, err := os.Open(filepath.Join(cwd, "testdata", "xunit", "mocha.xml"))
-			require.NoError(t, err, "Error reading file")
+			require.NoError(t, err)
 			defer file.Close()
 
 			Convey("the file should parse without error", func() {
@@ -140,7 +140,7 @@ func TestXMLParsing(t *testing.T) {
 
 		Convey("with a result file with errors", func() {
 			file, err := os.Open(filepath.Join(cwd, "testdata", "xunit", "results.xml"))
-			require.NoError(t, err, "Error reading file")
+			require.NoError(t, err)
 			defer file.Close()
 
 			Convey("the file should parse without error", func() {
@@ -162,7 +162,7 @@ func TestXMLParsing(t *testing.T) {
 
 		Convey("with a result file with test suite errors", func() {
 			file, err := os.Open(filepath.Join(cwd, "testdata", "xunit", "junit_5.xml"))
-			require.NoError(t, err, "Error reading file")
+			require.NoError(t, err)
 			defer file.Close()
 
 			Convey("the file should parse without error", func() {
@@ -181,7 +181,7 @@ func TestXMLParsing(t *testing.T) {
 
 		Convey("with nested suites", func() {
 			file, err := os.Open(filepath.Join(cwd, "testdata", "xunit", "junit_6.xml"))
-			require.NoError(t, err, "Error reading file")
+			require.NoError(t, err)
 			defer file.Close()
 
 			Convey("the file should parse without error", func() {
@@ -208,7 +208,7 @@ func TestXMLParsing(t *testing.T) {
 func TestXMLToModelConversion(t *testing.T) {
 	Convey("With a parsed XML file and a task", t, func() {
 		file, err := os.Open(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "xunit", "junit_3.xml"))
-		require.NoError(t, err, "Error reading file")
+		require.NoError(t, err)
 		defer file.Close()
 		res, err := parseXMLResults(file)
 		So(err, ShouldBeNil)

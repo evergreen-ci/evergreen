@@ -50,7 +50,7 @@ func (c *tarballCreate) Name() string { return "archive.targz_pack" }
 // ParseParams reads in the given parameters for the command.
 func (c *tarballCreate) ParseParams(params map[string]interface{}) error {
 	if err := mapstructure.Decode(params, c); err != nil {
-		return errors.Wrapf(err, "error parsing '%v' params", c.Name())
+		return errors.Wrap(err, "decoding mapstructure params")
 	}
 
 	if c.Target == "" {
@@ -58,7 +58,7 @@ func (c *tarballCreate) ParseParams(params map[string]interface{}) error {
 	}
 
 	if c.SourceDir == "" {
-		return errors.New("source_dir cannot be blank")
+		return errors.New("source directory cannot be blank")
 	}
 
 	if len(c.Include) == 0 {
@@ -73,7 +73,7 @@ func (c *tarballCreate) Execute(ctx context.Context,
 	client client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	if err := util.ExpandValues(c, conf.Expansions); err != nil {
-		return errors.Wrap(err, "error expanding params")
+		return errors.Wrap(err, "applying expansions")
 	}
 
 	// if the source dir is a relative path, join it to the working dir
@@ -134,7 +134,7 @@ func (c *tarballCreate) Execute(ctx context.Context,
 func (c *tarballCreate) makeArchive(ctx context.Context, logger grip.Journaler) (int, error) {
 	f, gz, tarWriter, err := agentutil.TarGzWriter(c.Target)
 	if err != nil {
-		return -1, errors.Wrapf(err, "error opening target archive file %s", c.Target)
+		return -1, errors.Wrapf(err, "opening target archive file '%s'", c.Target)
 	}
 	defer func() {
 		logger.Error(tarWriter.Close())

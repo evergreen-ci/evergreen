@@ -35,7 +35,7 @@ func (c *expansionsWriter) Name() string { return "expansions.write" }
 func (c *expansionsWriter) ParseParams(params map[string]interface{}) error {
 	err := mapstructure.Decode(params, c)
 	if err != nil {
-		return errors.Wrap(err, "couldn't decode params")
+		return errors.Wrap(err, "decoding mapstructure params")
 	}
 
 	return nil
@@ -57,12 +57,12 @@ func (c *expansionsWriter) Execute(ctx context.Context,
 	}
 	out, err := yaml.Marshal(expansions)
 	if err != nil {
-		return errors.Wrap(err, "error marshaling expansions")
+		return errors.Wrap(err, "marshalling expansions")
 	}
 	fn := getJoinedWithWorkDir(conf, c.File)
 	if err := ioutil.WriteFile(fn, out, 0600); err != nil {
-		return errors.Wrapf(err, "error writing expansions to file (%s)", fn)
+		return errors.Wrapf(err, "writing expansions to file '%s'", fn)
 	}
-	logger.Task().Infof("expansions written to file (%s)", fn)
+	logger.Task().Infof("expansions written to file '%s'", fn)
 	return nil
 }

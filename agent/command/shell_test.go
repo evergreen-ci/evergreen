@@ -19,6 +19,8 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+// kim: TODO: continue here
+
 type shellExecuteCommandSuite struct {
 	ctx    context.Context
 	cancel context.CancelFunc

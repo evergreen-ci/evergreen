@@ -109,7 +109,7 @@ func (c *s3copy) ParseParams(params map[string]interface{}) error {
 	}
 
 	if err := decoder.Decode(params); err != nil {
-		return errors.Wrapf(err, "error decoding %s params", c.Name())
+		return errors.Wrap(err, "decoding mapstructure params")
 	}
 
 	return c.validate()
@@ -122,18 +122,18 @@ func (c *s3copy) validate() error {
 
 	// make sure the command params are valid
 	if c.AwsKey == "" {
-		catcher.New("aws_key cannot be blank")
+		catcher.New("AWS key cannot be blank")
 	}
 	if c.AwsSecret == "" {
-		catcher.New("aws_secret cannot be blank")
+		catcher.New("AWS secret cannot be blank")
 	}
 
 	for _, s3CopyFile := range c.S3CopyFiles {
 		if s3CopyFile.Source.Path == "" {
-			catcher.New("s3 source path cannot be blank")
+			catcher.New("S3 source path cannot be blank")
 		}
 		if s3CopyFile.Destination.Path == "" {
-			catcher.New("s3 destination path cannot be blank")
+			catcher.New("S3 destination path cannot be blank")
 		}
 		if s3CopyFile.Permissions == "" {
 			s3CopyFile.Permissions = s3.BucketCannedACLPublicRead
@@ -146,10 +146,10 @@ func (c *s3copy) validate() error {
 		}
 		// make sure both buckets are valid
 		if err := validateS3BucketName(s3CopyFile.Source.Bucket); err != nil {
-			catcher.Wrapf(err, "source bucket '%v' is invalid", s3CopyFile.Source.Bucket)
+			catcher.Wrapf(err, "source bucket name '%s' is invalid", s3CopyFile.Source.Bucket)
 		}
 		if err := validateS3BucketName(s3CopyFile.Destination.Bucket); err != nil {
-			catcher.Wrapf(err, "destination bucket '%v' is invalid", s3CopyFile.Destination.Bucket)
+			catcher.Wrapf(err, "destination bucket name '%s' is invalid", s3CopyFile.Destination.Bucket)
 		}
 
 	}
@@ -163,11 +163,11 @@ func (c *s3copy) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	if err := util.ExpandValues(c, conf.Expansions); err != nil {
-		return errors.WithStack(err)
+		return errors.Wrap(err, "applying expansions")
 	}
 	// Re-validate the command here, in case an expansion is not defined.
 	if err := c.validate(); err != nil {
-		return errors.WithStack(err)
+		return errors.Wrap(err, "validating params")
 	}
 
 	errChan := make(chan error)
@@ -179,7 +179,7 @@ func (c *s3copy) Execute(ctx context.Context,
 	case err := <-errChan:
 		return err
 	case <-ctx.Done():
-		logger.Execution().Info("Received signal to terminate execution of S3 copy command")
+		logger.Execution().Infof("Received signal to terminate execution of command '%s'", c.Name())
 		return nil
 	}
 
@@ -193,12 +193,12 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
-	var foundDottedBucketName bool
-
 	client := utility.GetHTTPClient()
 	client.Timeout = 10 * time.Minute
 	defer utility.PutHTTPClient(client)
 	for _, s3CopyFile := range c.S3CopyFiles {
+		logger.Task().WarningWhen(strings.Contains(s3CopyFile.Destination.Bucket, "."), "Destination bucket names containing dots that are created after Sept. 30, 2020 are not guaranteed to have valid attached URLs.")
+
 		timer.Reset(0)
 
 		if len(s3CopyFile.BuildVariants) > 0 && !utility.StringSliceContains(
@@ -207,7 +207,7 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 		}
 
 		if ctx.Err() != nil {
-			return errors.New("s3copy operation was canceled")
+			return errors.Errorf("command '%s' was canceled", c.Name())
 		}
 
 		logger.Execution().Infof("Making API push copy call to "+
@@ -227,7 +227,7 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 		}
 		newPushLog, err := comm.NewPush(ctx, td, &s3CopyReq)
 		if err != nil {
-			return errors.Wrap(err, "error adding pushlog")
+			return errors.Wrap(err, "adding pushlog")
 		}
 		if newPushLog.TaskId == "" {
 			logger.Task().Infof("noop, this version is currently in the process of trying to push, or has already succeeded in pushing the file: '%s/%s'", s3CopyFile.Destination.Bucket, s3CopyFile.Destination.Path)
@@ -246,25 +246,23 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 
 		srcBucket, err := pail.NewS3MultiPartBucketWithHTTPClient(client, srcOpts)
 		if err != nil {
-			bucketErr := errors.Wrap(err, "S3 copy failed, could not establish connection to source bucket")
-			logger.Task().Error(bucketErr)
+			catcher := grip.NewBasicCatcher()
+			catcher.Wrap(err, "initializing S3 source bucket")
 
 			newPushLog.Status = pushLogFailed
-			if pushError := comm.UpdatePushStatus(ctx, td, newPushLog); pushError != nil {
-				return errors.Wrap(pushError, "error updating pushlog to failed after the following s3 bucket error: %s"+bucketErr.Error())
-			}
+			catcher.Wrap(comm.UpdatePushStatus(ctx, td, newPushLog), "updating pushlog to failed")
 
-			return bucketErr
+			return catcher.Resolve()
 		}
 
 		if err := srcBucket.Check(ctx); err != nil {
+			catcher := grip.NewBasicCatcher()
+			catcher.Wrap(err, "checking bucket")
 
 			newPushLog.Status = pushLogFailed
-			if pushError := comm.UpdatePushStatus(ctx, td, newPushLog); pushError != nil {
-				return errors.Wrap(pushError, "error updating pushlog to failed after the following s3 bucket error: %s"+err.Error())
-			}
+			catcher.Wrap(comm.UpdatePushStatus(ctx, td, newPushLog), "updating pushlog to failed")
 
-			return errors.Wrap(err, "invalid bucket")
+			return catcher.Resolve()
 		}
 		destOpts := pail.S3Options{
 			Credentials: pail.CreateAWSCredentials(s3CopyReq.AwsKey, s3CopyReq.AwsSecret, ""),
@@ -274,22 +272,20 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 		}
 		destBucket, err := pail.NewS3MultiPartBucket(destOpts)
 		if err != nil {
-			bucketErr := errors.Wrap(err, "S3 copy failed, could not establish connection to destination bucket")
-			logger.Task().Error(bucketErr)
+			catcher := grip.NewBasicCatcher()
+			catcher.Wrap(err, "initializing S3 destination bucket")
 
 			newPushLog.Status = pushLogFailed
-			if pushError := comm.UpdatePushStatus(ctx, td, newPushLog); pushError != nil {
-				return errors.Wrap(pushError, "error updating pushlog to failed after the following s3 bucket error: %s"+bucketErr.Error())
-			}
+			catcher.Wrap(comm.UpdatePushStatus(ctx, td, newPushLog), "updating pushlog to failed")
 
-			return bucketErr
+			return catcher.Resolve()
 		}
 
 	retryLoop:
 		for i := 0; i < maxS3OpAttempts; i++ {
 			select {
 			case <-ctx.Done():
-				return errors.New("s3 copy operation canceled")
+				return errors.Errorf("command '%s' canceled", c.Name())
 			case <-timer.C:
 				copyOpts := pail.CopyOptions{
 					SourceKey:         s3CopyReq.S3SourcePath,
@@ -303,29 +299,26 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 						return errors.Wrap(err, "updating pushlog status failed for task")
 					}
 					if s3CopyFile.Optional {
-						logger.Execution().Errorf("S3 push copy failed to copy '%s' to '%s'. File is optional, continuing \n error: %s",
-							s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket, err.Error())
+						logger.Execution().Error(err)
+						logger.Execution().Errorf("S3 push copy failed to copy '%s' to '%s' and file is optional, continuing.",
+							s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket)
 						timer.Reset(backoffCounter.Duration())
 						continue retryLoop
 					} else {
-						return errors.Wrapf(err, "S3 push copy failed to copy '%s' to '%s'. File is not optional, exiting \n error:",
-							s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket)
+						logger.Execution().Errorf("S3 push copy failed to copy '%s' to '%s' and file is not optional, exiting.")
+						return errors.Wrapf(err, "S3 push copy failed to copy '%s' to '%s'")
 					}
 				} else {
 					newPushLog.Status = pushLogSuccess
 					if err := comm.UpdatePushStatus(ctx, td, newPushLog); err != nil {
-						return errors.Wrap(err, "updating pushlog status success for task")
+						return errors.Wrap(err, "updating pushlog status to success for task")
 					}
 					if err = c.attachFiles(ctx, comm, logger, td, s3CopyReq); err != nil {
-						return errors.WithStack(err)
+						return errors.Wrap(err, "attaching files")
 					}
 					break retryLoop
 				}
 			}
-		}
-		if !foundDottedBucketName && strings.Contains(s3CopyReq.S3DestinationBucket, ".") {
-			logger.Task().Warning("destination bucket names containing dots that are created after Sept. 30, 2020 are not guaranteed to have valid attached URLs")
-			foundDottedBucketName = true
 		}
 
 		logger.Task().Infof("successfully copied '%s' to '%s'", s3CopyFile.Source.Path, s3CopyFile.Destination.Path)
@@ -334,8 +327,7 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 	return nil
 }
 
-// attachFiles is responsible for sending the
-// specified file to the API Server
+// attachFiles is responsible for sending the specified file to the API Server.
 func (c *s3copy) attachFiles(ctx context.Context, comm client.Communicator,
 	logger client.LoggerProducer, td client.TaskData, request apimodels.S3CopyRequest) error {
 
@@ -345,14 +337,14 @@ func (c *s3copy) attachFiles(ctx context.Context, comm client.Communicator,
 	if displayName == "" {
 		displayName = filepath.Base(request.S3SourcePath)
 	}
-	logger.Execution().Infof("attaching file with name %v", displayName)
+	logger.Execution().Infof("attaching file '%s'", displayName)
 	file := artifact.File{
 		Name: displayName,
 		Link: fileLink,
 	}
 	files := []*artifact.File{&file}
 	if err := comm.AttachFiles(ctx, td, files); err != nil {
-		return errors.Wrap(err, "Attach files failed")
+		return errors.Wrapf(err, "attaching file '%s'", displayName)
 	}
 	logger.Execution().Info("API attach files call succeeded")
 	return nil

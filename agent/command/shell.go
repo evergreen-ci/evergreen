@@ -89,7 +89,7 @@ func (c *shellExec) ParseParams(params map[string]interface{}) error {
 
 	err := mapstructure.Decode(params, c)
 	if err != nil {
-		return errors.Wrapf(err, "error decoding %v params", c.Name())
+		return errors.Wrap(err, "decoding mapstructure params")
 	}
 
 	if c.Silent {
@@ -102,7 +102,7 @@ func (c *shellExec) ParseParams(params map[string]interface{}) error {
 	}
 
 	if c.IgnoreStandardOutput && c.RedirectStandardErrorToOutput {
-		return errors.New("cannot ignore standard out, and redirect standard error to it")
+		return errors.New("cannot ignore standard output and also redirect standard error to it")
 	}
 
 	if c.Env == nil {
@@ -118,7 +118,6 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 
 	var err error
 	if err = c.doExpansions(conf.Expansions); err != nil {
-		logger.Execution().Warning(err.Error())
 		return errors.WithStack(err)
 	}
 
@@ -128,13 +127,12 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 
 	c.WorkingDir, err = conf.GetWorkingDirectory(c.WorkingDir)
 	if err != nil {
-		logger.Execution().Warning(err.Error())
-		return errors.WithStack(err)
+		return errors.Wrap(err, "getting working direcotr")
 	}
 
 	taskTmpDir, err := conf.GetWorkingDirectory("tmp")
 	if err != nil {
-		logger.Execution().Notice(err.Error())
+		logger.Execution().Notice(errors.Wrap(err, "getting task temporary directory"))
 	}
 
 	var exp util.Expansions
@@ -186,7 +184,7 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 			if cancel != nil {
 				grip.Warning(message.WrapError(proc.RegisterTrigger(lctx, func(info jasper.ProcessInfo) {
 					cancel()
-				}), "problem registering cancellation for process"))
+				}), "registering cancellation for process"))
 			}
 
 			pid := proc.Info(ctx).PID
@@ -219,10 +217,10 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 	}
 
 	if c.Silent {
-		logger.Execution().Infof("Executing script with %s (source hidden)...",
+		logger.Execution().Infof("Executing script with shell '%s' (source hidden)...",
 			c.Shell)
 	} else {
-		logger.Execution().Infof("Executing script with %s: %v",
+		logger.Execution().Infof("Executing script with shell '%s': %s",
 			c.Shell, c.Script)
 	}
 

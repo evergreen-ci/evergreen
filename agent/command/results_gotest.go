@@ -40,19 +40,18 @@ func (c *goTestResults) Name() string { return "gotest.parse_files" }
 func (c *goTestResults) ParseParams(params map[string]interface{}) error {
 	var err error
 	if err = mapstructure.Decode(params, c); err != nil {
-		return errors.Wrapf(err, "error decoding '%s' params", c.Name())
+		return errors.Wrap(err, "decoding mapstructure params")
 	}
 
 	if c.OptionalOutput != "" {
 		c.outputIsOptional, err = strconv.ParseBool(c.OptionalOutput)
 		if err != nil {
-			return errors.WithStack(err)
+			return errors.Wrap(err, "parsing optional output parameter as a boolean")
 		}
 	}
 
 	if len(c.Files) == 0 {
-		return errors.Errorf("error validating params: must specify at least one "+
-			"file pattern to parse: '%+v'", params)
+		return errors.Errorf("must specify at least one file pattern to parse")
 	}
 	return nil
 }
@@ -63,9 +62,7 @@ func (c *goTestResults) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	if err := util.ExpandValues(c, conf.Expansions); err != nil {
-		err = errors.Wrap(err, "error expanding params")
-		logger.Task().Errorf("Error parsing goTest files: %+v", err)
-		return err
+		return errors.Wrap(err, "applying expansions")
 	}
 
 	// All file patterns should be relative to the task's working directory.
@@ -91,7 +88,7 @@ func (c *goTestResults) Execute(ctx context.Context,
 	// parse all of the files
 	logs, results, err := parseTestOutputFiles(ctx, logger, conf, outputFiles)
 	if err != nil {
-		return errors.Wrap(err, "error parsing output results")
+		return errors.Wrap(err, "parsing output results")
 	}
 
 	if err := sendTestLogsAndResults(ctx, comm, logger, conf, logs, results); err != nil {
@@ -171,8 +168,7 @@ func parseTestOutputFiles(ctx context.Context, logger client.LoggerProducer,
 		fileReader, err := os.Open(outputFile)
 		if err != nil {
 			// don't bomb out on a single bad file
-			logger.Task().Errorf("Unable to open file '%s' for parsing: %v",
-				outputFile, err)
+			logger.Task().Error(errors.Wrapf(err, "opening file '%s' for parsing", outputFile))
 			continue
 		}
 		defer fileReader.Close() //nolint: evg-lint
@@ -180,7 +176,7 @@ func parseTestOutputFiles(ctx context.Context, logger client.LoggerProducer,
 		log, result, err := parseTestOutput(ctx, conf, fileReader, suiteName)
 		if err != nil {
 			// continue on error
-			logger.Task().Errorf("Error parsing file '%s': %v", outputFile, err)
+			logger.Task().Error(errors.Wrapf(err, "parsing file '%s'", outputFile))
 			continue
 		}
 

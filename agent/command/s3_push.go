@@ -25,27 +25,27 @@ func (*s3Push) Name() string {
 }
 
 func (c *s3Push) ParseParams(params map[string]interface{}) error {
-	return errors.Wrapf(c.s3Base.ParseParams(params), "error decoding %s params", c.Name())
+	return errors.Wrapf(c.s3Base.ParseParams(params), "parsing common S3 parameters")
 }
 
 func (c *s3Push) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	if err := c.expandParams(conf); err != nil {
-		return errors.Wrap(err, "error applying expansions to parameters")
+		return errors.Wrap(err, "applying expansions")
 	}
 
 	httpClient := utility.GetDefaultHTTPRetryableClient()
 	defer utility.PutHTTPClient(httpClient)
 
 	if err := c.createBucket(httpClient, conf); err != nil {
-		return errors.Wrap(err, "could not set up S3 task bucket")
+		return errors.Wrap(err, "creating S3 task bucket")
 	}
 
 	wd, err := conf.GetWorkingDirectory("")
 	if err != nil {
-		return errors.Wrap(err, "could not get working directory")
+		return errors.Wrap(err, "getting working directory")
 	}
 
-	pushMsg := fmt.Sprintf("Pushing task directory files from %s into S3", wd)
+	pushMsg := fmt.Sprintf("Pushing task directory files from directory '%s' into S3", wd)
 	if c.ExcludeFilter != "" {
 		pushMsg += ", excluding files matching filter " + c.ExcludeFilter
 	}
@@ -57,7 +57,7 @@ func (c *s3Push) Execute(ctx context.Context, comm client.Communicator, logger c
 		Remote:  s3Path,
 		Exclude: c.ExcludeFilter,
 	}); err != nil {
-		return errors.Wrap(err, "error pushing task data to S3")
+		return errors.Wrap(err, "pushing task data to S3")
 	}
 
 	logger.Task().Infof("Successfully pushed task directory files")

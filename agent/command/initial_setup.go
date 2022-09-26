@@ -10,6 +10,9 @@ import (
 	"github.com/mongodb/jasper"
 )
 
+// initialSetup is an internal command used as a placeholder when the agent is
+// setting up in preparation to run a task's commands. This is not meant to be
+// invoked by end users.
 type initialSetup struct{}
 
 func initialSetupFactory() Command                                    { return &initialSetup{} }

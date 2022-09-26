@@ -2,7 +2,6 @@ package command
 
 import (
 	"context"
-	"fmt"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -76,11 +75,11 @@ func (macSign *macSign) ParseParams(params map[string]interface{}) error {
 		Result: macSign,
 	})
 	if err != nil {
-		return errors.WithStack(err)
+		return errors.Wrap(err, "constructing mapstructure decoder")
 	}
 
 	if err := decoder.Decode(params); err != nil {
-		return errors.Wrapf(err, "error decoding %s params", macSign.Name())
+		return errors.Wrap(err, "decoding mapstructure params")
 	}
 
 	return macSign.validate()
@@ -91,29 +90,29 @@ func (macSign *macSign) validate() error {
 
 	// make sure the command params are valid
 	if macSign.KeyId == "" {
-		catcher.New("key_id cannot be blank")
+		catcher.New("key ID cannot be blank")
 	}
 	if macSign.Secret == "" {
 		catcher.New("secret cannot be blank")
 	}
 	if macSign.LocalZipFile == "" {
-		catcher.New("local_zip_file cannot be blank")
+		catcher.New("local zip file cannot be blank")
 	}
 	if macSign.OutputZipFile == "" {
-		catcher.New("output_zip_file cannot be blank")
+		catcher.New("output zip file cannot be blank")
 	}
 	if macSign.ServiceUrl == "" {
-		catcher.New("service_url cannot be blank")
+		catcher.New("service URL cannot be blank")
 	}
 	if runtime.GOOS != "darwin" {
 		// do not fail, just set verifying to false.
 		macSign.Verify = false
 	}
 	if !(macSign.ArtifactType == "" || macSign.ArtifactType == "binary" || macSign.ArtifactType == "app") {
-		catcher.New("artifact_type needs to be either blank,'binary' or 'app'")
+		catcher.New("artifact needs to be either empty, 'binary' or 'app'")
 	}
 	if macSign.Notarize && macSign.BundleId == "" {
-		catcher.New("if notarization is requested, bundle_id cannot be blank")
+		catcher.New("if notarization is requested, bundle ID cannot be blank")
 	}
 
 	return catcher.Resolve()
@@ -128,7 +127,7 @@ func (macSign *macSign) expandParams(conf *internal.TaskConfig) error {
 	}
 
 	if err = util.ExpandValues(macSign, conf.Expansions); err != nil {
-		return errors.WithStack(err)
+		return errors.Wrap(err, "applying expansions")
 	}
 
 	if !filepath.IsAbs(macSign.LocalZipFile) {
@@ -172,11 +171,11 @@ func (macSign *macSign) Execute(ctx context.Context,
 	}
 
 	if err := createEnclosingDirectoryIfNeeded(macSign.WorkingDir); err != nil {
-		return errors.Wrap(err, "problem making working directory")
+		return errors.Wrap(err, "making working directory")
 	}
 
 	if !macSign.shouldRunForVariant(conf.BuildVariant.Name) {
-		logger.Task().Infof("Skipping macsign of local file %s for variant %s",
+		logger.Task().Infof("Skipping macsign of local file '%s' for variant '%s'",
 			macSign.LocalZipFile, conf.BuildVariant.Name)
 		return nil
 	}
@@ -207,27 +206,26 @@ func (macSign *macSign) Execute(ctx context.Context,
 
 	cmd := exec.Command(macSign.ClientBinary, args...)
 
-	var exitCode int
-
 	stdout, err := cmd.CombinedOutput()
 	output := string(stdout)
 
 	if err != nil {
+
 		exitErr, ok := err.(*exec.ExitError)
 		if !ok {
-			return errors.Wrapf(err, "unexpected error %s\n%s,%s", output, runtime.GOOS, runtime.GOARCH)
+			logger.Task().Error(output)
+			return errors.Wrapf(err, "unexpected error on OS '%s' arch '%s'", runtime.GOOS, runtime.GOARCH)
 		}
 
-		exitCode = exitErr.ExitCode()
-	}
-
-	if exitCode != 0 {
-		return fmt.Errorf("none zero exit code: %d: \n%s", exitCode, output)
+		if exitErr.ExitCode() != 0 {
+			logger.Task().Error(output)
+			return errors.Errorf("non-zero exit code %d", exitErr.ExitCode())
+		}
 	}
 
 	logger.Task().Info(output)
 
-	logger.Task().Infof("Artifact - %s signed (and/or notarized) and new file created: %s", macSign.LocalZipFile, macSign.OutputZipFile)
+	logger.Task().Infof("Artifact - file '%s' signed (and/or notarized) and new file created: '%s'", macSign.LocalZipFile, macSign.OutputZipFile)
 
 	return nil
 }

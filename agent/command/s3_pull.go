@@ -28,11 +28,11 @@ type s3Base struct {
 }
 
 func (c *s3Base) ParseParams(params map[string]interface{}) error {
-	return errors.Wrapf(mapstructure.Decode(params, c), "error decoding S3 parameters")
+	return errors.Wrapf(mapstructure.Decode(params, c), "decoding mapstructure params")
 }
 
 func (c *s3Base) expandParams(conf *internal.TaskConfig) error {
-	return errors.WithStack(util.ExpandValues(c, conf.Expansions))
+	return errors.Wrap(util.ExpandValues(c, conf.Expansions), "applying expansions")
 }
 
 func (c *s3Base) createBucket(client *http.Client, conf *internal.TaskConfig) error {
@@ -54,7 +54,7 @@ func (c *s3Base) createBucket(client *http.Client, conf *internal.TaskConfig) er
 
 	bucket, err := pail.NewS3ArchiveBucketWithHTTPClient(client, opts)
 	if err != nil {
-		return errors.Wrap(err, "could not create bucket")
+		return errors.Wrap(err, "initializing bucket")
 	}
 	c.bucket = bucket
 
@@ -80,10 +80,10 @@ func (*s3Pull) Name() string {
 
 func (c *s3Pull) ParseParams(params map[string]interface{}) error {
 	if err := c.s3Base.ParseParams(params); err != nil {
-		return errors.Wrapf(err, "error decoding %s params", c.Name())
+		return errors.Wrap(err, "parsing common S3 params")
 	}
 	if err := mapstructure.Decode(params, c); err != nil {
-		return errors.Wrapf(err, "error decoding %s params", c.Name())
+		return errors.Wrap(err, "decoding mapstructure params")
 	}
 	if c.Task == "" {
 		return errors.New("task must not be empty")
@@ -100,7 +100,7 @@ func (c *s3Pull) expandParams(conf *internal.TaskConfig) error {
 
 func (c *s3Pull) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	if err := c.expandParams(conf); err != nil {
-		return errors.Wrap(err, "error applying expansions to parameters")
+		return errors.Wrap(err, "applying expansions")
 	}
 	if c.FromBuildVariant == "" {
 		c.FromBuildVariant = conf.Task.BuildVariant
@@ -116,7 +116,7 @@ func (c *s3Pull) Execute(ctx context.Context, comm client.Communicator, logger c
 	defer utility.PutHTTPClient(httpClient)
 
 	if err := c.createBucket(httpClient, conf); err != nil {
-		return errors.Wrap(err, "could not set up S3 task bucket")
+		return errors.Wrap(err, "creating S3 task bucket")
 	}
 
 	remotePath := conf.Task.S3Path(c.FromBuildVariant, c.Task)
@@ -128,11 +128,11 @@ func (c *s3Pull) Execute(ctx context.Context, comm client.Communicator, logger c
 			c.WorkingDir, conf.WorkDir))
 
 	if err := createEnclosingDirectoryIfNeeded(c.WorkingDir); err != nil {
-		return errors.Wrap(err, "problem making working directory")
+		return errors.Wrapf(err, "creating parent directories for working directory '%s'", c.WorkingDir)
 	}
 	wd, err := conf.GetWorkingDirectory(c.WorkingDir)
 	if err != nil {
-		return errors.Wrap(err, "could not get working directory")
+		return errors.Wrapf(err, "getting working directory")
 	}
 
 	pullMsg := fmt.Sprintf("Pulling task directory files from S3 from task '%s' on build variant '%s'", c.Task, c.FromBuildVariant)
@@ -145,7 +145,7 @@ func (c *s3Pull) Execute(ctx context.Context, comm client.Communicator, logger c
 		Remote:  remotePath,
 		Exclude: c.ExcludeFilter,
 	}); err != nil {
-		return errors.Wrap(err, "error pulling task data from S3")
+		return errors.Wrap(err, "pulling task data from S3")
 	}
 
 	return nil

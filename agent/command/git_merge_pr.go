@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -32,7 +33,7 @@ func (c *gitMergePr) Name() string { return "git.merge_pr" }
 func (c *gitMergePr) ParseParams(params map[string]interface{}) error {
 	err := mapstructure.Decode(params, c)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "decoding mapstructure params")
 	}
 
 	return nil
@@ -41,7 +42,7 @@ func (c *gitMergePr) ParseParams(params map[string]interface{}) error {
 func (c *gitMergePr) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	var err error
 	defer func() {
-		pErr := recovery.HandlePanicWithError(recover(), nil, "unexpected error in git.merge_pr")
+		pErr := recovery.HandlePanicWithError(recover(), nil, fmt.Sprintf("unexpected error in '%s'", c.Name()))
 		status := evergreen.MergeTestSucceeded
 		if err != nil || pErr != nil {
 			status = evergreen.MergeTestFailed
@@ -52,13 +53,13 @@ func (c *gitMergePr) Execute(ctx context.Context, comm client.Communicator, logg
 		logger.Task().Error(comm.ConcludeMerge(ctx, conf.Task.Version, status, td))
 	}()
 	if err = util.ExpandValues(c, conf.Expansions); err != nil {
-		return errors.Wrap(err, "can't apply expansions")
+		return errors.Wrap(err, "applying expansions")
 	}
 
 	var patchDoc *patch.Patch
 	patchDoc, err = comm.GetTaskPatch(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, "")
 	if err != nil {
-		return errors.Wrap(err, "unable to get patch")
+		return errors.Wrap(err, "getting patch")
 	}
 
 	token := c.Token
@@ -70,7 +71,7 @@ func (c *gitMergePr) Execute(ctx context.Context, comm client.Communicator, logg
 		Token: token,
 	}, "")
 	if err != nil {
-		return errors.Wrap(err, "failed to setup github status logger")
+		return errors.Wrap(err, "setting up GitHub status logger")
 	}
 
 	status := evergreen.PatchFailed
