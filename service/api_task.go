@@ -481,6 +481,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		})
 		return nil, false, errors.New("cannot assign a task to a host with a running task")
 	}
+	// kim: TODO: pls remove rhel80-medium debug logging
 	distroToMonitor := "rhel80-medium"
 	runId := utility.RandomString()
 	stepStart := time.Now()
@@ -707,11 +708,23 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			return nil, true, nil
 		}
 
+		// kim: TODO: txn here to set running task and set task to dispatched at
+		// the same time
+		// use a feature flag to turn off the transaction in case it causes
+		// problems
 		// UpdateRunningTask updates the running task in the host document
+
+		if err := model.MarkHostTaskDispatched(nextTask, currentHost); err != nil {
+			err = errors.WithStack(err)
+			grip.Error(err)
+			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
+			return
+		}
 		ok, err := currentHost.UpdateRunningTask(nextTask)
 		if err != nil {
 			return nil, false, errors.WithStack(err)
 		}
+
 		grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 			"message":     "assignNextAvailableTask performance",
 			"step":        "UpdateRunningTask",
@@ -719,6 +732,8 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			"run_id":      runId,
 		})
 		stepStart = time.Now()
+
+		// stops here
 
 		// It's possible for dispatchers on different app servers to race, assigning
 		// different tasks in a task group to more hosts than the task group's max hosts. We
@@ -1040,12 +1055,12 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 
 	// otherwise we've dispatched a task, so we
 	// mark the task as dispatched
-	if err := model.MarkHostTaskDispatched(nextTask, h); err != nil {
-		err = errors.WithStack(err)
-		grip.Error(err)
-		gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
-		return
-	}
+	// if err := model.MarkHostTaskDispatched(nextTask, h); err != nil {
+	//     err = errors.WithStack(err)
+	//     grip.Error(err)
+	//     gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
+	//     return
+	// }
 	setNextTask(nextTask, &response)
 	gimlet.WriteJSON(w, response)
 }
@@ -1225,6 +1240,7 @@ func setNextTask(t *task.Task, response *apimodels.NextTaskResponse) {
 }
 
 func sendBackRunningTask(h *host.Host, response apimodels.NextTaskResponse, w http.ResponseWriter) {
+	// re-check do we really have correct number of hosts for task group
 	var err error
 	var t *task.Task
 	t, err = task.FindOneId(h.RunningTask)

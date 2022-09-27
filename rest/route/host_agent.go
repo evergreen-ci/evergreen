@@ -1179,6 +1179,9 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// mark task as finished
+	// kim: TODO: may have to re-order MarkEnd and ClearRunningTask to make this
+	// work, while ensuring that single-host task groups are blocked before
+	// doing any of this.
 	deactivatePrevious := utility.FromBoolPtr(projectRef.DeactivatePrevious)
 	err = model.MarkEnd(t, evergreen.APIServerTaskActivator, finishTime, &h.details, deactivatePrevious)
 	if err != nil {

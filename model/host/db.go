@@ -666,6 +666,8 @@ func ByNotMonitoredSince(threshold time.Time) db.Q {
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	return db.Query(bson.M{
 		"$and": []bson.M{
+			// kim: NOTE: may make sense to check hosts even if they're running
+			// a task since it'll check the host state is good.
 			{RunningTaskKey: bson.M{"$exists": false}},
 			{StartedByKey: evergreen.User},
 			{"$and": []bson.M{
@@ -767,6 +769,8 @@ func FindStaleRunningTasks(cutoff time.Duration, reason StaleTaskReason) ([]task
 			task.DispatchTimeKey: bson.M{"$lte": time.Now().Add(-2 * cutoff)},
 		}
 	case TaskUndispatchedHasHeartbeat:
+		// kim: TODO: add logging to see when this happens, if ever, and keep it
+		// for the transaction thingy
 		reasonQuery = bson.M{
 			task.StatusKey: evergreen.TaskUndispatched,
 			"$and": []bson.M{
