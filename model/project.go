@@ -1764,8 +1764,8 @@ func (p *Project) IsGenerateTask(taskName string) bool {
 	return ok
 }
 
-func (p *Project) findAliasesForPatch(alias string, patchDoc *patch.Patch) ([]ProjectAlias, error) {
-	vars, shouldExit, err := findAliasInProjectOrRepoFromDb(p.Identifier, alias)
+func findAliasesForPatch(projectId, alias string, patchDoc *patch.Patch) ([]ProjectAlias, error) {
+	vars, shouldExit, err := findAliasInProjectOrRepoFromDb(projectId, alias)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting alias from project")
 	}
