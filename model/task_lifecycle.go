@@ -420,7 +420,7 @@ func getStepback(taskId string) (bool, error) {
 		return false, errors.Wrapf(err, "finding merged project ref for task '%s'", taskId)
 	}
 	if projectRef == nil {
-		return false, errors.Errorf("project 'for task '%s' not found", taskId)
+		return false, errors.Errorf("project for task '%s' not found", taskId)
 	}
 	// Disabling the feature at the project level takes precedent.
 	if projectRef.IsStepbackDisabled() {
@@ -887,7 +887,6 @@ func evalStepback(t *task.Task, caller, status string, deactivatePrevious bool) 
 		}
 
 		if t.IsPartOfSingleHostTaskGroup() {
-			fmt.Println("is this part of a task group?")
 			// Stepback earlier task group tasks as well because these need to be run sequentially.
 			catcher := grip.NewBasicCatcher()
 			tasks, err := task.FindTaskGroupFromBuild(t.BuildId, t.TaskGroup)

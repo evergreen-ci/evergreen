@@ -1085,14 +1085,14 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 				Id:         b.Version,
 				Identifier: "p1",
 				Status:     evergreen.VersionStarted,
-				Config:     "identifier: sample",
+				Config:     "identifier: p1",
 			}
 			testTask = &task.Task{
 				Id:          "testone",
 				DisplayName: displayName,
 				Activated:   false,
 				BuildId:     b.Id,
-				Project:     "sample",
+				Project:     "p1",
 				Version:     b.Version,
 			}
 			detail = &apimodels.TaskEndDetail{
@@ -1103,10 +1103,11 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 					SystemLogURLs: []apimodels.LogInfo{{Command: "foo3", URL: "system"}},
 				},
 			}
-			pRef := ProjectRef{Id: "sample"}
-
-			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, ProjectRefCollection))
+			pRef := ProjectRef{Id: "p1"}
+			pConfig := ProjectConfig{Id: "p1"}
+			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, ProjectRefCollection, ProjectConfigCollection))
 			So(pRef.Insert(), ShouldBeNil)
+			So(pConfig.Insert(), ShouldBeNil)
 			So(b.Insert(), ShouldBeNil)
 			So(testTask.Insert(), ShouldBeNil)
 			So(v.Insert(), ShouldBeNil)

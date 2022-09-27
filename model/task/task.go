@@ -103,7 +103,7 @@ type Task struct {
 	ActivatedBy              string `bson:"activated_by" json:"activated_by"`
 	DeactivatedForDependency bool   `bson:"deactivated_for_dependency" json:"deactivated_for_dependency"`
 
-	// TaskDepth indicates how far into stepback this task was activated.
+	// TaskDepth indicates how far into stepback this task was activated, starting at 1 for stepback tasks.
 	// After EVG-17949, should either remove this field/logging or use it to limit stepback depth.
 	StepbackDepth int `bson:"stepback_depth" json:"stepback_depth"`
 
@@ -1425,15 +1425,15 @@ func LegacyDeactivateStepbackTasksForProject(projectId, caller string) error {
 	return nil
 }
 
-// DeactivateStepbackTaskForProject deactivates and aborts the matching stepback task.
+// DeactivateStepbackTask deactivates and aborts the matching stepback task.
 // Will be used instead of LegacyDeactivateStepbackTasksForProject as part of EVG-17947
-func DeactivateStepbackTaskForProject(projectId, buildVariantName, taskName, caller string) error {
+func DeactivateStepbackTask(projectId, buildVariantName, taskName, caller string) error {
 	t, err := FindActivatedStepbackTaskByName(projectId, buildVariantName, taskName)
 	if err != nil {
 		return err
 	}
 	if t == nil {
-		return errors.New("no stepback task found")
+		return errors.Errorf("no stepback task '%s' for variant '%s' found", taskName, buildVariantName)
 	}
 
 	if err = t.DeactivateTask(caller); err != nil {
@@ -4089,7 +4089,7 @@ func HasMatchingTasks(versionID string, opts HasMatchingTasksOptions) (bool, err
 }
 
 func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) ([]bson.M, error) {
-	var match = bson.M{}
+	match := bson.M{}
 	if !opts.IncludeBuildVariantDisplayName && opts.UseLegacyAddBuildVariantDisplayName {
 		return nil, errors.New("should not use UseLegacyAddBuildVariantDisplayName with !IncludeBuildVariantDisplayName")
 	}
