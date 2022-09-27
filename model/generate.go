@@ -456,7 +456,7 @@ type specificActivationInfo struct {
 
 type specificStepbackInfo struct {
 	task  string
-	depth int
+	depth int // store the depth that the new stepback task should use
 }
 
 func newSpecificActivationInfo() specificActivationInfo {
@@ -504,19 +504,20 @@ func (b *specificActivationInfo) taskHasSpecificActivation(variant, task string)
 func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester string) specificActivationInfo {
 	res := newSpecificActivationInfo()
 	for _, bv := range g.BuildVariants {
-		// only consider batchtime for certain requesters
+		// Only consider batchtime for certain requesters
 		if evergreen.ShouldConsiderBatchtime(requester) && (bv.BatchTime != nil || bv.CronBatchTime != "") {
 			res.activationVariants = append(res.activationVariants, bv.name())
 		} else if bv.Activate != nil {
 			res.activationVariants = append(res.activationVariants, bv.name())
 		}
-		// regardless of whether the build variant has batchtime, there may be tasks with different batchtime
+		// Regardless of whether the build variant has batchtime, there may be tasks with different batchtime
 		batchTimeTasks := []string{}
 		for _, bvt := range bv.Tasks {
 			if isStepbackTask(g.Task, bv.Name, bvt.Name) {
+				// If it's a stepback task, store the depth it should use based on the generator's stepback depth.
 				stepbackInfo := specificStepbackInfo{task: bvt.Name, depth: g.Task.StepbackDepth + 1}
 				res.stepbackTasks[bv.Name] = append(res.stepbackTasks[bv.Name], stepbackInfo)
-				continue // don't consider batchtime/activation if we're stepping back this generated task
+				continue // Don't consider batchtime/activation if we're stepping back this generated task
 			}
 			if evergreen.ShouldConsiderBatchtime(requester) && (bvt.BatchTime != nil || bvt.CronBatchTime != "") {
 				batchTimeTasks = append(batchTimeTasks, bvt.Name)

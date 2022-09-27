@@ -103,7 +103,7 @@ type Task struct {
 	ActivatedBy              string `bson:"activated_by" json:"activated_by"`
 	DeactivatedForDependency bool   `bson:"deactivated_for_dependency" json:"deactivated_for_dependency"`
 
-	// TaskDepth indicates how far into stepback this task was activated, starting at 1 for stepback tasks.
+	// StepbackDepth indicates how far into stepback this task was activated, starting at 1 for stepback tasks.
 	// After EVG-17949, should either remove this field/logging or use it to limit stepback depth.
 	StepbackDepth int `bson:"stepback_depth" json:"stepback_depth"`
 
