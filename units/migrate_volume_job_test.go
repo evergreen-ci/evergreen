@@ -26,13 +26,16 @@ func TestVolumeMigrateJob(t *testing.T) {
 	defer cancel()
 
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, v *host.Volume, d *distro.Distro, spawnOptions cloud.SpawnOptions){
-		"NewVolumeMigrationJob": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, v *host.Volume, d *distro.Distro, spawnOptions cloud.SpawnOptions) {
+		"VolumeMigratesToNewHost": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, v *host.Volume, d *distro.Distro, spawnOptions cloud.SpawnOptions) {
 			require.NoError(t, d.Insert())
 			require.NoError(t, v.Insert())
 			require.NoError(t, h.Insert())
 
 			ts := utility.RoundPartOfMinute(1).Format(TSFormat)
 			j := NewVolumeMigrationJob(env, v.ID, spawnOptions, ts)
+			j.UpdateRetryInfo(amboy.JobRetryOptions{
+				WaitUntil: utility.ToTimeDurationPtr(0),
+			})
 
 			require.NoError(t, env.RemoteQueue().Start(ctx))
 			require.NoError(t, env.RemoteQueue().Put(ctx, j))
@@ -82,6 +85,9 @@ func TestVolumeMigrateJob(t *testing.T) {
 			require.NoError(t, h.Insert())
 
 			j := NewVolumeMigrationJob(env, v.ID, spawnOptions, "123")
+			j.UpdateRetryInfo(amboy.JobRetryOptions{
+				WaitUntil: utility.ToTimeDurationPtr(0),
+			})
 			require.NoError(t, env.RemoteQueue().Start(ctx))
 			require.NoError(t, env.RemoteQueue().Put(ctx, j))
 
@@ -108,12 +114,16 @@ func TestVolumeMigrateJob(t *testing.T) {
 			assert.Equal(t, h.HomeVolumeID, volume.ID)
 		},
 		"VolumeFailsToUnmount": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, v *host.Volume, d *distro.Distro, spawnOptions cloud.SpawnOptions) {
+			// Empty volume ID will prevent the volume from detaching
 			v.ID = ""
 			require.NoError(t, d.Insert())
 			require.NoError(t, v.Insert())
 			require.NoError(t, h.Insert())
 
 			j := NewVolumeMigrationJob(env, v.ID, spawnOptions, "123")
+			j.UpdateRetryInfo(amboy.JobRetryOptions{
+				WaitUntil: utility.ToTimeDurationPtr(0),
+			})
 			require.NoError(t, env.RemoteQueue().Start(ctx))
 			require.NoError(t, env.RemoteQueue().Put(ctx, j))
 
@@ -139,19 +149,23 @@ func TestVolumeMigrateJob(t *testing.T) {
 			assert.Equal(t, h.HomeVolumeID, "v0")
 		},
 		"NewHostFailsToStart": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, v *host.Volume, d *distro.Distro, spawnOptions cloud.SpawnOptions) {
+			// Invalid public key will prevent new host from spinning up
+			spawnOptions.PublicKey = ""
 			require.NoError(t, d.Insert())
 			require.NoError(t, v.Insert())
 			require.NoError(t, h.Insert())
 
-			// Invalid public key will prevent new host from spinning up
-			spawnOptions.PublicKey = ""
 			j := NewVolumeMigrationJob(env, v.ID, spawnOptions, "123")
+			j.UpdateRetryInfo(amboy.JobRetryOptions{
+				WaitUntil: utility.ToTimeDurationPtr(0),
+			})
 			require.NoError(t, env.RemoteQueue().Start(ctx))
 			require.NoError(t, env.RemoteQueue().Put(ctx, j))
 
 			require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond))
 			assert.Error(t, j.Error())
 			assert.Contains(t, j.Error().Error(), "not yet stopped")
+
 			// Second attempt fails to start new host
 			j, updatedJ := env.RemoteQueue().Get(ctx, j.ID())
 			assert.True(t, updatedJ)
