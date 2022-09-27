@@ -212,9 +212,9 @@ mciModule.controller('TaskTimingController', function(
 
     $scope.getLink = function() {
         if ($scope.isAllTasks()) {
-            return "/build/" + $scope.hoverInfo.id;
+            return "/build/" + $scope.hoverInfo.id + "?redirect_spruce_users=true";
         } else {
-            return "/task/" + $scope.hoverInfo.id;
+            return "/task/" + $scope.hoverInfo.id + "?redirect_spruce_users=true";
         }
     }
 

@@ -9,6 +9,7 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
@@ -253,4 +254,9 @@ func (j *githubStatusUpdateJob) Run(_ context.Context) {
 	j.AddError(c.SetPriority(level.Notice))
 
 	j.sender.Send(c)
+	grip.Info(message.Fields{
+		"ticket":  thirdparty.GithubInvestigation,
+		"message": "called github status send",
+		"caller":  githubStatusUpdateJobName,
+	})
 }

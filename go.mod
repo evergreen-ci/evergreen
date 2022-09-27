@@ -37,7 +37,7 @@ require (
 	github.com/mongodb/amboy v0.0.0-20220802154347-d8ddbd5cd2cd
 	github.com/mongodb/anser v0.0.0-20220318141853-005b8ead5b8f
 	github.com/mongodb/ftdc v0.0.0-20220401165013-13e4af55e809
-	github.com/mongodb/grip v0.0.0-20220401165023-6a1d9bb90c21
+	github.com/mongodb/grip v0.0.0-20220906161600-270e5104b9e5
 	github.com/pkg/errors v0.9.1
 	github.com/robbiet480/go.sns v0.0.0-20210223081447-c7c9eb6836cb
 	github.com/robfig/cron v1.2.0
@@ -67,7 +67,7 @@ require (
 	github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57
 	github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826
 	github.com/mongodb/jasper v0.0.0-20220214215554-82e5a72cff6b
-	github.com/shirou/gopsutil/v3 v3.22.3
+	github.com/shirou/gopsutil/v3 v3.22.8
 	github.com/trinodb/trino-go-client v0.300.0
 	google.golang.org/genproto v0.0.0-20211129164237-f09f9a12af12 // indirect
 	gopkg.in/20210107192922/yaml.v3 v3.0.0-00010101000000-000000000000

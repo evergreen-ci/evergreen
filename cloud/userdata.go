@@ -72,20 +72,20 @@ func parseUserData(userData string) (*userData, error) {
 	var persist bool
 	persist, userData, err = extractPersistTags(userData)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem extracting persist tags")
+		return nil, errors.Wrap(err, "extracting persist tags")
 	}
 
 	var directive userdata.Directive
 	directive, userData, err = extractDirective(userData)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem extracting directive")
+		return nil, errors.Wrap(err, "extracting directive")
 	}
 
 	var closingTag userdata.ClosingTag
 	if directive.NeedsClosingTag() {
 		userData, err = extractClosingTag(userData, directive.ClosingTag())
 		if err != nil {
-			return nil, errors.Wrapf(err, "problem extracting closing tag '%s'", closingTag)
+			return nil, errors.Wrapf(err, "extracting closing tag '%s'", closingTag)
 		}
 	}
 
@@ -142,7 +142,7 @@ const (
 func extractPersistTags(userData string) (found bool, userDataWithoutPersist string, err error) {
 	persistRegexp, err := regexp.Compile(persistTagPattern)
 	if err != nil {
-		return false, "", errors.Wrap(err, "could not compile persist tag pattern")
+		return false, "", errors.Wrap(err, "compiling persist tag pattern")
 	}
 	userDataWithoutPersist = persistRegexp.ReplaceAllString(userData, "")
 	return len(userDataWithoutPersist) != len(userData), userDataWithoutPersist, nil
@@ -155,17 +155,17 @@ func makeMultipartUserData(files map[string]*userData) (string, error) {
 	parts := multipart.NewWriter(buf)
 
 	if err := writeUserDataHeaders(buf, parts.Boundary()); err != nil {
-		return "", errors.Wrap(err, "error writing MIME headers")
+		return "", errors.Wrap(err, "writing MIME headers")
 	}
 
 	for fileName, userData := range files {
 		if err := writeUserDataPart(parts, userData, fileName); err != nil {
-			return "", errors.Wrapf(err, "error writing user data '%s'", fileName)
+			return "", errors.Wrapf(err, "writing user data part '%s'", fileName)
 		}
 	}
 
 	if err := parts.Close(); err != nil {
-		return "", errors.Wrap(err, "error closing MIME writer")
+		return "", errors.Wrap(err, "closing MIME writer")
 	}
 
 	return buf.String(), nil
@@ -181,12 +181,12 @@ func writeUserDataHeaders(writer io.Writer, boundary string) error {
 	for key := range topLevelHeaders {
 		header := fmt.Sprintf("%s: %s", key, topLevelHeaders.Get(key))
 		if _, err := writer.Write([]byte(header + "\r\n")); err != nil {
-			return errors.Wrapf(err, "error writing top-level header '%s'", header)
+			return errors.Wrapf(err, "writing top-level header '%s'", header)
 		}
 	}
 
 	if _, err := writer.Write([]byte("\r\n")); err != nil {
-		return errors.Wrap(err, "error writing top-level header line break")
+		return errors.Wrap(err, "writing top-level header line break")
 	}
 
 	return nil
@@ -201,7 +201,7 @@ func writeUserDataPart(writer *multipart.Writer, u *userData, fileName string) e
 
 	contentType, err := userdata.DirectiveToContentType(u.Directive)
 	if err != nil {
-		return errors.Wrap(err, "could not detect MIME content type of user data")
+		return errors.Wrap(err, "detecting MIME content type of user data")
 	}
 
 	header := textproto.MIMEHeader{}
@@ -211,11 +211,11 @@ func writeUserDataPart(writer *multipart.Writer, u *userData, fileName string) e
 
 	part, err := writer.CreatePart(header)
 	if err != nil {
-		return errors.Wrap(err, "error making custom user data part")
+		return errors.Wrap(err, "making custom user data part")
 	}
 
 	if _, err := part.Write([]byte(u.String())); err != nil {
-		return errors.Wrap(err, "error writing custom user data")
+		return errors.Wrap(err, "writing custom user data")
 	}
 
 	return nil
@@ -232,7 +232,7 @@ func makeUserData(ctx context.Context, settings *evergreen.Settings, h *host.Hos
 	if custom != "" {
 		customUserData, err = parseUserData(custom)
 		if err != nil {
-			return "", errors.Wrap(err, "could not parse custom user data")
+			return "", errors.Wrap(err, "parsing custom user data")
 		}
 	}
 
@@ -249,7 +249,7 @@ func makeUserData(ctx context.Context, settings *evergreen.Settings, h *host.Hos
 	}
 	provision, err := newUserData(*provisionOpts)
 	if err != nil {
-		return "", errors.Wrap(err, "could not create provisioning user data from options")
+		return "", errors.Wrap(err, "creating provisioning user data from options")
 	}
 
 	if mergeParts {
@@ -257,7 +257,7 @@ func makeUserData(ctx context.Context, settings *evergreen.Settings, h *host.Hos
 		if customUserData != nil {
 			mergedUserData, err = provision.merge(customUserData)
 			if err != nil {
-				return "", errors.Wrap(err, "could not merge user data parts into single part")
+				return "", errors.Wrap(err, "merging user data parts into single part")
 			}
 		} else {
 			mergedUserData = provision
@@ -274,7 +274,7 @@ func makeUserData(ctx context.Context, settings *evergreen.Settings, h *host.Hos
 	}
 	multipartUserData, err := makeMultipartUserData(parts)
 	if err != nil {
-		return "", errors.Wrap(err, "error creating user data with multiple parts")
+		return "", errors.Wrap(err, "creating user data with multiple parts")
 	}
 
 	return multipartUserData, nil

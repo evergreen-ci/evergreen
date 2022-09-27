@@ -898,7 +898,15 @@ func (j *patchIntentProcessor) verifyValidAlias(projectId string, patchDoc *patc
 	if alias == "" {
 		return nil
 	}
-	aliases, err := model.FindAliasInProjectRepoOrPatchedConfig(projectId, alias, patchDoc.PatchedProjectConfig)
+	var projectConfig *model.ProjectConfig
+	if patchDoc.PatchedProjectConfig != "" {
+		var err error
+		projectConfig, err = model.CreateProjectConfig([]byte(patchDoc.PatchedProjectConfig), "")
+		if err != nil {
+			return errors.Wrap(err, "creating project config")
+		}
+	}
+	aliases, err := model.FindAliasInProjectRepoOrProjectConfig(projectId, alias, projectConfig)
 	if err != nil {
 		return errors.Wrapf(err, "retrieving aliases for project '%s'", projectId)
 	}

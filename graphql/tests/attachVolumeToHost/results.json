@@ -22,7 +22,7 @@
       "result": {
         "errors": [
           {
-            "message": "must specify host id",
+            "message": "must specify host ID",
             "path": ["attachVolumeToHost"],
             "extensions": { "code": "INPUT_VALIDATION_ERROR" }
           }
@@ -35,7 +35,7 @@
       "result": {
         "errors": [
           {
-            "message": "must specify volume id",
+            "message": "must specify volume ID",
             "path": ["attachVolumeToHost"],
             "extensions": { "code": "INPUT_VALIDATION_ERROR" }
           }
@@ -48,7 +48,7 @@
       "result": {
         "errors": [
           {
-            "message": "host 'i-114astast943f' does not exist",
+            "message": "host 'i-114astast943f' not found",
             "path": ["attachVolumeToHost"],
             "extensions": { "code": "RESOURCE_NOT_FOUND" }
           }
@@ -61,7 +61,7 @@
       "result": {
         "errors": [
           {
-            "message": "volume 'vol-4db5' does not exist",
+            "message": "volume 'vol-4db5' not found",
             "path": ["attachVolumeToHost"],
             "extensions": { "code": "RESOURCE_NOT_FOUND" }
           }

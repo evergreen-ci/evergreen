@@ -586,7 +586,7 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 	if utility.FromBoolPtr(projectRef.CommitQueue.RequireSigned) {
 		err = gh.requireSigned(ctx, userRepo, *pr.Head.Ref, pr, prNum)
 		if err != nil {
-			sendErr := thirdparty.SendCommitQueueGithubStatus(pr, message.GithubStateFailure, "can't enqueue with unsigned commits", "")
+			sendErr := thirdparty.SendCommitQueueGithubStatus(evergreen.GetEnvironment(), pr, message.GithubStateFailure, "can't enqueue with unsigned commits", "")
 			grip.Error(message.WrapError(sendErr, message.Fields{
 				"message": "error sending patch creation failure to github",
 				"owner":   userRepo.Owner,
@@ -599,7 +599,7 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 
 	patchId, err := gh.sc.AddPatchForPr(ctx, *projectRef, prNum, cqInfo.Modules, cqInfo.MessageOverride)
 	if err != nil {
-		sendErr := thirdparty.SendCommitQueueGithubStatus(pr, message.GithubStateFailure, "failed to create patch", "")
+		sendErr := thirdparty.SendCommitQueueGithubStatus(evergreen.GetEnvironment(), pr, message.GithubStateFailure, "failed to create patch", "")
 		grip.Error(message.WrapError(sendErr, message.Fields{
 			"message": "error sending patch creation failure to github",
 			"owner":   userRepo.Owner,

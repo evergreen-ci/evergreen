@@ -178,11 +178,10 @@ func TestPodCreationJob(t *testing.T) {
 			j.pod = p
 			j.env = env
 
-			ecsClient := &cocoaMock.ECSClient{}
+			j.ecsClient = &cocoaMock.ECSClient{}
 			defer func() {
-				assert.NoError(t, ecsClient.Close(ctx))
+				assert.NoError(t, j.ecsClient.Close(ctx))
 			}()
-			j.ecsClient = ecsClient
 			pc, err := cloud.MakeECSPodCreator(j.ecsClient, nil)
 			require.NoError(t, err)
 			j.ecsPodCreator = cocoaMock.NewECSPodCreator(pc)

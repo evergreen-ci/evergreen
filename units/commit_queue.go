@@ -21,11 +21,10 @@ import (
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
-	yaml "gopkg.in/20210107192922/yaml.v3"
+	"gopkg.in/20210107192922/yaml.v3"
 )
 
 const (
@@ -266,7 +265,7 @@ func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQ
 				j.AddError(err)
 				return
 			}
-			j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "commit queue entry was stuck with no patch", ""))
+			j.AddError(thirdparty.SendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "commit queue entry was stuck with no patch", ""))
 		}
 		return
 	}
@@ -322,7 +321,7 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 		j.logError(err, "PR not valid for merge", nextItem)
 		if dequeue {
 			if pr != nil {
-				j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "PR not valid for merge", ""))
+				j.AddError(thirdparty.SendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "PR not valid for merge", ""))
 			}
 			j.dequeue(cq, nextItem)
 		}
@@ -332,13 +331,13 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 	patchDoc, err := patch.FindOneId(nextItem.PatchId)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "finding patch '%s'", nextItem.Version))
-		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "no patch found", ""))
+		j.AddError(thirdparty.SendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "no patch found", ""))
 		j.dequeue(cq, nextItem)
 		return
 	}
 	if patchDoc == nil {
 		j.AddError(errors.Errorf("patch '%s' not found", nextItem.Version))
-		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "no patch found", ""))
+		j.AddError(thirdparty.SendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "no patch found", ""))
 		j.dequeue(cq, nextItem)
 		return
 	}
@@ -346,34 +345,34 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 	if err != nil {
 		j.logError(err, "problem getting patched project", nextItem)
 		j.dequeue(cq, nextItem)
-		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't get project config", ""))
+		j.AddError(thirdparty.SendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't get project config", ""))
 	}
 
 	v, err := model.FinalizePatch(ctx, patchDoc, evergreen.MergeTestRequester, githubToken)
 	if err != nil {
 		j.logError(err, "can't finalize patch", nextItem)
 		j.dequeue(cq, nextItem)
-		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't finalize patch", ""))
+		j.AddError(thirdparty.SendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't finalize patch", ""))
 		return
 	}
 	nextItem.Version = v.Id
 	if err = cq.UpdateVersion(nextItem); err != nil {
 		j.logError(err, "problem saving version", nextItem)
 		j.dequeue(cq, nextItem)
-		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't update commit queue item", ""))
+		j.AddError(thirdparty.SendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't update commit queue item", ""))
 		return
 	}
 
-	j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStatePending, "preparing to test merge", v.Id))
+	j.AddError(thirdparty.SendCommitQueueGithubStatus(j.env, pr, message.GithubStatePending, "preparing to test merge", v.Id))
 	modulePRs, _, err := model.GetModulesFromPR(ctx, githubToken, patchDoc.GithubPatchData.PRNumber, nextItem.Modules, projectConfig)
 	if err != nil {
 		j.logError(err, "can't get modules", nextItem)
-		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't get modules", ""))
+		j.AddError(thirdparty.SendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't get modules", ""))
 		j.dequeue(cq, nextItem)
 		return
 	}
 	for _, modulePR := range modulePRs {
-		j.AddError(sendCommitQueueGithubStatus(j.env, modulePR, message.GithubStatePending, "preparing to test merge", patchDoc.Id.Hex()))
+		j.AddError(thirdparty.SendCommitQueueGithubStatus(j.env, modulePR, message.GithubStatePending, "preparing to test merge", patchDoc.Id.Hex()))
 	}
 
 	event.LogCommitQueueStartTestEvent(v.Id)
@@ -471,40 +470,6 @@ func checkPR(ctx context.Context, githubToken, issue, owner, repo string) (*gith
 	}
 
 	return pr, false, nil
-}
-
-func sendCommitQueueGithubStatus(env evergreen.Environment, pr *github.PullRequest, state message.GithubState, description, versionID string) error {
-	if pr == nil {
-		return nil
-	}
-	sender, err := env.GetSender(evergreen.SenderGithubStatus)
-	if err != nil {
-		return errors.Wrap(err, "getting GitHub status sender")
-	}
-
-	var url string
-	if versionID != "" {
-		uiConfig := evergreen.UIConfig{}
-		if err := uiConfig.Get(env); err == nil {
-			urlBase := uiConfig.Url
-			url = fmt.Sprintf("%s/version/%s", urlBase, versionID)
-		}
-	}
-
-	msg := message.GithubStatus{
-		Owner:       *pr.Base.Repo.Owner.Login,
-		Repo:        *pr.Base.Repo.Name,
-		Ref:         *pr.Head.SHA,
-		Context:     commitqueue.GithubContext,
-		State:       state,
-		Description: description,
-		URL:         url,
-	}
-
-	c := message.NewGithubStatusMessageWithRepo(level.Notice, msg)
-	sender.Send(c)
-
-	return nil
 }
 
 func validateBranch(branch *github.Branch) error {

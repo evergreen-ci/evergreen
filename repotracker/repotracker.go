@@ -526,6 +526,12 @@ func addGithubCheckSubscriptions(v *model.Version) error {
 	}
 
 	sender.Send(c)
+	grip.Info(message.Fields{
+		"ticket":  thirdparty.GithubInvestigation,
+		"message": "called github status send",
+		"caller":  "github check subscriptions",
+		"version": v.Id,
+	})
 	return catcher.Resolve()
 }
 
@@ -993,13 +999,13 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			"version":            v.Id,
 			"variant":            buildvariant.Name,
 		}))
-		args := model.BuildCreateArgs{
-			Project:             *projectInfo.Project,
-			ProjectRef:          *projectInfo.Ref,
-			Version:             *v,
+		creationInfo := model.TaskCreationInfo{
+			Project:             projectInfo.Project,
+			ProjectRef:          projectInfo.Ref,
+			Version:             v,
 			TaskIDs:             taskIds,
 			TaskNames:           taskNames,
-			BuildName:           buildvariant.Name,
+			BuildVariantName:    buildvariant.Name,
 			ActivateBuild:       false,
 			SourceRev:           sourceRev,
 			DefinitionID:        metadata.TriggerDefinitionID,
@@ -1009,7 +1015,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			GithubChecksAliases: aliasesMatchingVariant,
 		}
 
-		b, tasks, err := model.CreateBuildFromVersionNoInsert(args)
+		b, tasks, err := model.CreateBuildFromVersionNoInsert(creationInfo)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":            "error creating build",

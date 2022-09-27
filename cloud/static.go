@@ -49,10 +49,10 @@ func (s *StaticSettings) FromDistroSettings(d distro.Distro, _ string) error {
 	if len(d.ProviderSettingsList) != 0 {
 		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
 		if err != nil {
-			return errors.Wrap(err, "error marshalling provider setting into bson")
+			return errors.Wrap(err, "marshalling provider setting into BSON")
 		}
 		if err := bson.Unmarshal(bytes, s); err != nil {
-			return errors.Wrap(err, "error unmarshalling bson into provider settings")
+			return errors.Wrap(err, "unmarshalling BSON into provider settings")
 		}
 	}
 	return nil
@@ -92,12 +92,20 @@ func (staticMgr *staticManager) TerminateInstance(ctx context.Context, host *hos
 			"hostname": host.Host,
 		})
 		if err := host.Remove(); err != nil {
-			grip.Errorf("Error removing decommissioned %s static host (%s): %+v",
-				host.Distro, host.Host, err)
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "could not remove decommissioned static host",
+				"host_id": host.Id,
+				"distro":  host.Distro.Id,
+			}))
 		}
 	}
 
-	grip.Debugf("Not terminating static '%s' host: %s", host.Distro.Id, host.Host)
+	grip.Debug(message.Fields{
+		"message": "cannot terminate a static host",
+		"host_id": host.Id,
+		"distro":  host.Distro.Id,
+	})
+
 	return nil
 }
 

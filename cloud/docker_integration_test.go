@@ -29,7 +29,7 @@ func TestDockerIntegrationSuite(t *testing.T) {
 		t.Skip()
 	}
 	settings := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, settings, "TestDockerIntegrationSuite")
+	testutil.ConfigureIntegrationTest(t, settings, t.Name())
 	s := &DockerIntegrationSuite{
 		host: host.Host{
 			Host: dns,
