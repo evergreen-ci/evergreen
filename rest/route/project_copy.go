@@ -93,14 +93,13 @@ func (p *copyVariablesHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (p *copyVariablesHandler) Run(ctx context.Context) gimlet.Responder {
-	copyToProjectId, errResp := getProjectOrRepoId(p.opts.CopyTo)
-	if errResp != nil {
-		fmt.Println("copy to")
-		return errResp
+	copyToProjectId, err := getProjectOrRepoId(p.opts.CopyTo)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
 	}
-	copyFromProjectId, errResp := getProjectOrRepoId(p.copyFrom)
-	if errResp != nil {
-		return errResp
+	copyFromProjectId, err := getProjectOrRepoId(p.copyFrom)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
 	}
 
 	// Don't redact private variables unless it's a dry run
@@ -130,16 +129,22 @@ func (p *copyVariablesHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
-func getProjectOrRepoId(identifier string) (string, gimlet.Responder) {
+func getProjectOrRepoId(identifier string) (string, error) {
 	id, err := model.GetIdForProject(identifier) // Ensure project is existing
 	if err != nil {
 		// Check if this is a repo project instead
 		repoRef, err := model.FindOneRepoRef(identifier)
 		if err != nil {
-			return "", gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project/repo '%s'", identifier))
+			return "", gimlet.ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    fmt.Sprintf("finding project/repo '%s'", identifier),
+			}
 		}
 		if repoRef == nil {
-			return "", gimlet.MakeJSONErrorResponder(errors.Errorf("couldn't find project/repo '%s'", identifier))
+			return "", gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    fmt.Sprintf("project/repo '%s' not found", identifier),
+			}
 		}
 		return repoRef.Id, nil
 	}
