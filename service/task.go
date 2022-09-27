@@ -877,8 +877,8 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 			}))
 		}
 	} else {
-		// TODO: EVG-17974 Replace this with a more permanent option
-		// Fallback to legacy test results
+		// TODO: EVG-17974 Replace this with a more permanent option.
+		// Fallback to legacy test results.
 		// Direct link to a log document in the database.
 		testLog, err = model.FindOneTestLog(testName, taskID, taskExec)
 		if err != nil {
