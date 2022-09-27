@@ -40,6 +40,7 @@ func init() {
 		"gotest.parse_files":                    goTestFactory,
 		"gotest.parse_json":                     goTest2JSONFactory,
 		"json.send":                             taskDataSendFactory,
+		"json.get_history":                      taskDataHistoryFactory,
 		"keyval.inc":                            keyValIncFactory,
 		"mac.sign":                              macSignFactory,
 		evergreen.ManifestLoadCommandName:       manifestLoadFactory,
