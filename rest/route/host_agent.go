@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -22,6 +21,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // if a host encounters more than this number of system failures, then it should be disabled.
@@ -197,7 +197,7 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 	// if the task queue exists, try to assign a task from it:
 	if taskQueue != nil {
 		// assign the task to a host and retrieve the task
-		nextTask, shouldRunTeardown, err = assignNextAvailableTask(ctx, taskQueue, h.taskDispatcher, h.host, h.details)
+		nextTask, shouldRunTeardown, err = assignNextAvailableTask(ctx, h.env, taskQueue, h.taskDispatcher, h.host, h.details)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
@@ -214,7 +214,7 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
 		if aliasQueue != nil {
-			nextTask, shouldRunTeardown, err = assignNextAvailableTask(ctx, aliasQueue, h.taskAliasDispatcher, h.host, h.details)
+			nextTask, shouldRunTeardown, err = assignNextAvailableTask(ctx, h.env, aliasQueue, h.taskAliasDispatcher, h.host, h.details)
 			if err != nil {
 				return gimlet.MakeJSONErrorResponder(err)
 			}
@@ -245,6 +245,8 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 
 	// otherwise we've dispatched a task, so we
 	// mark the task as dispatched
+	// kim: TODO: move this line to immediately before upating host running
+	// task in non-transaction case.
 	if err = model.MarkHostTaskDispatched(nextTask, h.host); err != nil {
 		err = errors.WithStack(err)
 		grip.Error(err)
@@ -407,7 +409,8 @@ type agentExitParams struct {
 // assignNextAvailableTask gets the next task from the queue and sets the running task field
 // of currentHost. If the host has finished a task group, we return true (and no task) so
 // the host teardown the group before getting a new task.
-func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, dispatcher model.TaskQueueItemDispatcher,
+// kim: TODO: fix tests
+func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, taskQueue *model.TaskQueue, dispatcher model.TaskQueueItemDispatcher,
 	currentHost *host.Host, details *apimodels.GetNextTaskDetails) (*task.Task, bool, error) {
 	if currentHost.RunningTask != "" {
 		grip.Error(message.Fields{
@@ -610,30 +613,18 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			return nil, true, nil
 		}
 
+		// kim: TODO: put this behind feature flag.
 		// UpdateRunningTask updates the running task in the host document
-		lockErr := currentHost.UpdateRunningTask(nextTask)
-		if lockErr != nil && !db.IsDuplicateKey(lockErr) {
-			return nil, false, errors.WithStack(err)
-		}
-		dispatchedTask := lockErr == nil
+		// lockErr := currentHost.UpdateRunningTask(nextTask)
+		// if lockErr != nil && !db.IsDuplicateKey(lockErr) {
+		//     return nil, false, errors.WithStack(err)
+		// }
+		// dispatchedTask := lockErr == nil
 
-		grip.DebugWhen(nextTask.TaskGroup != "", message.Fields{
-			"message":                 "task group lock debugging",
-			"task_distro_id":          nextTask.DistroId,
-			"task_id":                 nextTask.Id,
-			"host_id":                 currentHost.Id,
-			"host_last_group":         currentHost.LastGroup,
-			"host_last_build_variant": currentHost.LastBuildVariant,
-			"host_last_task":          currentHost.LastTask,
-			"host_last_version":       currentHost.LastVersion,
-			"host_last_project":       currentHost.LastProject,
-			"task_group":              nextTask.TaskGroup,
-			"task_build_variant":      nextTask.BuildVariant,
-			"task_version":            nextTask.Version,
-			"task_project":            nextTask.Project,
-			"task_group_max_hosts":    nextTask.TaskGroupMaxHosts,
-			"task_group_order":        nextTask.TaskGroupOrder,
-		})
+		if err := dispatchHostTaskAtomically(ctx, env, currentHost, nextTask); err != nil {
+			return nil, false, errors.Wrapf(err, "dispatching task '%s' to host '%s'", nextTask.Id, currentHost.Id)
+		}
+		dispatchedTask := true
 
 		if dispatchedTask && isTaskGroupNewToHost(currentHost, nextTask) {
 			// If the host just ran a task in the group, then it's eligible for
@@ -655,6 +646,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 					"task_group_max_hosts": nextTask.TaskGroupMaxHosts,
 					"task_group_order":     nextTask.TaskGroupOrder,
 				})
+				// kim: TODO: replace with atomic dispatch abort fn
 				grip.Error(message.WrapError(currentHost.ClearRunningTask(), message.Fields{
 					"message":              "problem clearing task group task from host after dispatch race",
 					"dispatch_race":        err,
@@ -752,6 +744,109 @@ func checkHostTaskGroupAfterDispatch(h *host.Host, t *task.Task) error {
 	}
 
 	return nil
+}
+
+// kim: TODO: test
+func dispatchHostTaskAtomically(ctx context.Context, env evergreen.Environment, h *host.Host, t *task.Task) error {
+	dispatchedAt := time.Now()
+	if err := func() error {
+		session, err := env.Client().StartSession()
+		if err != nil {
+			return errors.Wrap(err, "starting transaction session")
+		}
+		defer session.EndSession(ctx)
+
+		if _, err := session.WithTransaction(ctx, dispatchHostTask(env, h, t, dispatchedAt)); err != nil {
+			return err
+		}
+
+		return nil
+	}(); err != nil {
+		return err
+	}
+
+	event.LogHostTaskDispatched(t.Id, t.Execution, h.Id)
+	event.LogHostRunningTaskSet(h.Id, t.Id, t.Execution)
+
+	if t.IsPartOfDisplay() {
+		// The task is already dispatched at this point, so continue if this
+		// errors.
+		grip.Error(message.WrapError(model.UpdateDisplayTaskForTask(t), message.Fields{
+			"message":      "could not update parent display task after dispatching task",
+			"task":         t.Id,
+			"display_task": t.DisplayTaskId,
+			"host":         h.Id,
+		}))
+	}
+
+	return nil
+}
+
+func dispatchHostTask(env evergreen.Environment, h *host.Host, t *task.Task, dispatchedAt time.Time) func(mongo.SessionContext) (interface{}, error) {
+	return func(sessCtx mongo.SessionContext) (interface{}, error) {
+		if err := h.UpdateRunningTaskWithContext(sessCtx, env, t); err != nil {
+			return nil, errors.Wrapf(err, "updating running task for host '%s' to '%s'", h.Id, t.Id)
+		}
+
+		dispatchedAt := time.Now()
+		if err := t.MarkAsHostDispatchedWithContext(sessCtx, env, h.Id, h.Distro.Id, h.AgentRevision, dispatchedAt); err != nil {
+			return nil, errors.Wrapf(err, "marking task '%s' as dispatched to host '%s'", t.Id, h.Id)
+		}
+
+		return nil, nil
+	}
+}
+
+// kim: TODO: test
+func abortHostTaskDispatchAtomically(ctx context.Context, env evergreen.Environment, h *host.Host, t *task.Task) error {
+	clearedTask := h.RunningTask
+	clearedTaskExec := h.RunningTaskExecution
+
+	if err := func() error {
+		session, err := env.Client().StartSession()
+		if err != nil {
+			return errors.Wrap(err, "starting transaction session")
+		}
+		defer session.EndSession(ctx)
+
+		if _, err := session.WithTransaction(ctx, abortHostTaskDispatch(env, h, t)); err != nil {
+			return err
+		}
+
+		return nil
+	}(); err != nil {
+		return err
+	}
+
+	if clearedTask != "" {
+		event.LogHostRunningTaskCleared(h.Id, clearedTask, clearedTaskExec)
+		event.LogHostTaskUndispatched(clearedTask, clearedTaskExec, h.Id)
+	}
+
+	if t.IsPartOfDisplay() {
+		// The dispatch has already aborted at this point, so continue if this
+		// errors.
+		grip.Error(message.WrapError(model.UpdateDisplayTaskForTask(t), message.Fields{
+			"message":      "could not update parent display task after aborting task dispatch",
+			"task":         t.Id,
+			"display_task": t.DisplayTaskId,
+			"host":         h.Id,
+		}))
+	}
+
+	return nil
+}
+
+func abortHostTaskDispatch(env evergreen.Environment, h *host.Host, t *task.Task) func(mongo.SessionContext) (interface{}, error) {
+	return func(sessCtx mongo.SessionContext) (interface{}, error) {
+		if err := h.ClearRunningTaskWithContext(sessCtx, env); err != nil {
+			return nil, errors.Wrapf(err, "clearing running task '%s' from host '%s'", h.RunningTask, h.Id)
+		}
+		if err := t.MarkAsHostUndispatchedWithContext(sessCtx, env); err != nil {
+			return nil, errors.Wrapf(err, "marking task '%s' as no longer dispatched", t.Id)
+		}
+		return nil, nil
+	}
 }
 
 func isTaskGroupNewToHost(h *host.Host, t *task.Task) bool {
@@ -980,33 +1075,38 @@ func sendBackRunningTask(h *host.Host, response apimodels.NextTaskResponse) giml
 	var t *task.Task
 	t, err = task.FindOneId(h.RunningTask)
 	if err != nil {
-		err = errors.Wrapf(err, "getting running task %s", h.RunningTask)
-		grip.Error(err)
-		return gimlet.MakeJSONInternalErrorResponder(err)
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting running task '%s'", h.RunningTask))
 	}
 	if t == nil {
-		err := errors.Errorf("task '%s' not found", h.RunningTask)
+		if err := h.ClearRunningTask(); err != nil {
+			err = errors.Wrapf(err, "clearing host's nonexistent running task '%s'", h.RunningTask)
+			grip.Error(err)
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "clearing host's nonexistent running task '%s'", h.RunningTask))
+		}
+		err := errors.Errorf("host's running task '%s' not found", h.RunningTask)
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 
 	// if the task can be dispatched and activated dispatch it
 	if t.IsHostDispatchable() {
-		err = errors.WithStack(model.MarkHostTaskDispatched(t, h))
-		if err != nil {
-			grip.Error(errors.Wrapf(err, "while marking task %s as dispatched for host %s", t.Id, h.Id))
+		if err := model.MarkHostTaskDispatched(t, h); err != nil {
+			err = errors.Wrapf(err, "marking host task '%s' dispatched", t.Id)
+			grip.Error(err)
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
 	}
 
 	// if the task is activated return that task
 	if t.Activated {
+		// kim: TODO: re-check if task group max hosts is being respected.
 		setNextTask(t, &response)
 		return gimlet.NewJSONResponse(response)
 	}
+
 	// the task is not activated so the host's running task should be unset
 	// so it can retrieve a new task.
 	if err = h.ClearRunningTask(); err != nil {
-		err = errors.WithStack(err)
+		err = errors.Wrapf(err, "clearing host's running task '%s'", h.RunningTask)
 		grip.Error(err)
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
@@ -1138,6 +1238,9 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// mark task as finished
+	// kim: TODO: may have to re-order MarkEnd and ClearRunningTask to make this
+	// work, while ensuring that single-host task groups are blocked before
+	// doing any of this.
 	deactivatePrevious := utility.FromBoolPtr(projectRef.DeactivatePrevious)
 	err = model.MarkEnd(t, evergreen.APIServerTaskActivator, finishTime, &h.details, deactivatePrevious)
 	if err != nil {

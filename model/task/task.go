@@ -1109,32 +1109,39 @@ func (t *Task) markAsHostDispatchedWithFunc(doUpdate func(update bson.M) error, 
 	return nil
 }
 
-// MarkAsHostUndispatched marks that the host task is undispatched. If the task
-// is already dispatched to a host, it unsets the host ID field on the task. It
-// returns an error if any of the database updates fail.
-func (t *Task) MarkAsHostUndispatched() error {
-	// then, update the task document
-	t.Status = evergreen.TaskUndispatched
+// MarkAsHostUndispatchedWithContext marks that the host task is undispatched.
+// If the task is already dispatched to a host, it aborts the dispatch by
+// undoing the dispatch updates. This is the inverse operation of
+// MarkAsHostDispatchedWithContext.
+// kim: TODO: test
+func (t *Task) MarkAsHostUndispatchedWithContext(ctx context.Context, env evergreen.Environment) error {
+	update := bson.M{
+		"$set": bson.M{
+			StatusKey:        evergreen.TaskUndispatched,
+			DispatchTimeKey:  utility.ZeroTime,
+			LastHeartbeatKey: utility.ZeroTime,
+		},
+		"$unset": bson.M{
+			HostIdKey:       "",
+			AgentVersionKey: "",
+			AbortedKey:      "",
+			AbortInfoKey:    "",
+			DetailsKey:      "",
+		},
+	}
+	// kim: TODO: consider adding more checks like for current task status and
+	// task host ID association.
+	if _, err := env.DB().Collection(Collection).UpdateByID(ctx, t.Id, update); err != nil {
+		return err
+	}
 
-	return UpdateOne(
-		bson.M{
-			IdKey: t.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				StatusKey: evergreen.TaskUndispatched,
-			},
-			"$unset": bson.M{
-				DispatchTimeKey:  utility.ZeroTime,
-				LastHeartbeatKey: utility.ZeroTime,
-				DistroIdKey:      "",
-				HostIdKey:        "",
-				AbortedKey:       "",
-				AbortInfoKey:     "",
-				DetailsKey:       "",
-			},
-		},
-	)
+	t.Status = evergreen.TaskUndispatched
+	t.DispatchTime = utility.ZeroTime
+	t.LastHeartbeat = utility.ZeroTime
+	t.HostId = ""
+	t.AgentVersion = ""
+
+	return nil
 }
 
 // maxContainerAllocationAttempts is the maximum number of times a container
