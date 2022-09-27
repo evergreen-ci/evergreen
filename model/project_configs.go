@@ -65,6 +65,29 @@ func (pc *ProjectConfig) isEmpty() bool {
 	return true
 }
 
+func (pc *ProjectConfig) SetInternalAliases() {
+	for i := range pc.GitTagAliases {
+		pc.GitTagAliases[i].Alias = evergreen.GitTagAlias
+	}
+	for i := range pc.GitHubChecksAliases {
+		pc.GitHubChecksAliases[i].Alias = evergreen.GithubChecksAlias
+	}
+	for i := range pc.CommitQueueAliases {
+		pc.CommitQueueAliases[i].Alias = evergreen.CommitQueueAlias
+	}
+	for i := range pc.GitHubPRAliases {
+		pc.GitHubPRAliases[i].Alias = evergreen.GithubPRAlias
+	}
+}
+
+func (pc *ProjectConfig) AllAliases() ProjectAliases {
+	pc.SetInternalAliases()
+	res := append(pc.PatchAliases, pc.GitTagAliases...)
+	res = append(res, pc.GitHubPRAliases...)
+	res = append(res, pc.CommitQueueAliases...)
+	return append(res, pc.GitHubChecksAliases...)
+}
+
 // CreateProjectConfig marshals the supplied YAML into our
 // intermediate configs representation.
 func CreateProjectConfig(yml []byte, identifier string) (*ProjectConfig, error) {
