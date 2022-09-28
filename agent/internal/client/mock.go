@@ -455,14 +455,6 @@ func (c *Mock) PostJSONData(ctx context.Context, td TaskData, path string, data 
 	return nil
 }
 
-func (c *Mock) GetJSONData(ctx context.Context, td TaskData, tn, dn, vn string) ([]byte, error) {
-	return nil, nil
-}
-
-func (c *Mock) GetJSONHistory(ctx context.Context, td TaskData, tags bool, tn, dn string) ([]byte, error) {
-	return nil, nil
-}
-
 // GenerateTasks posts new tasks for the `generate.tasks` command.
 func (c *Mock) GenerateTasks(ctx context.Context, td TaskData, jsonBytes []json.RawMessage) error {
 	if td.ID != "mock_id" {

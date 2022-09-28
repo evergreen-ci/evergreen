@@ -157,11 +157,6 @@ tasks:
         params:
           name: "foo"
           file: "src/agent/command/testdata/attach/plugin_attach_results.json"
-      - command: json.get_history
-        params:
-          task: ${task_name}
-          file: "foo.json"
-          name: "foo"
       - command: keyval.inc
         params:
           key: "test"
