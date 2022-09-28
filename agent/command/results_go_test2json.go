@@ -71,14 +71,14 @@ func (c *goTest2JSONCommand) executeOneFile(ctx context.Context, file string,
 	}
 
 	if len(results.Tests) == 0 {
-		logger.Task().Warning("parsed no events from test file")
+		logger.Task().Warning("Parsed no tests from test file.")
 		if len(results.Log) == 0 {
-			logger.Task().Warning("test log is empty")
+			logger.Task().Warning("Test log is empty.")
 			return nil
 		}
 	}
 
-	logger.Task().Info("posting test logs...")
+	logger.Task().Info("Posting test logs...")
 	_, suiteName := filepath.Split(file)
 	log := model.TestLog{
 		Name:          suiteName,
@@ -89,7 +89,7 @@ func (c *goTest2JSONCommand) executeOneFile(ctx context.Context, file string,
 	if err := sendTestLog(ctx, comm, conf, &log); err != nil {
 		return errors.Wrap(err, "sending test log")
 	}
-	logger.Task().Info("successfully posted test logs")
+	logger.Task().Info("Successfully posted test logs.")
 
 	if len(results.Tests) == 0 {
 		return nil

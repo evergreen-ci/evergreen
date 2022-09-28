@@ -116,18 +116,18 @@ func (c *createHost) logAMI(ctx context.Context, comm client.Communicator, logge
 		return
 	}
 	if c.CreateHost.AMI != "" {
-		logger.Task().Infof("host.create: using given AMI '%s'", c.CreateHost.AMI)
+		logger.Task().Infof("host.create: using given AMI '%s'.", c.CreateHost.AMI)
 		return
 	}
 
 	ami, err := comm.GetDistroAMI(ctx, c.CreateHost.Distro, c.CreateHost.Region, taskData)
 	if err != nil {
-		logger.Task().Warning(errors.Wrapf(err, "host.create: unable to retrieve AMI from distro '%s'",
+		logger.Task().Warning(errors.Wrapf(err, "host.create: unable to retrieve AMI from distro '%s'.",
 			c.CreateHost.Distro))
 		return
 	}
 
-	logger.Task().Infof("host.create: using AMI '%s' (for distro '%s')", ami, c.CreateHost.Distro)
+	logger.Task().Infof("host.create: using AMI '%s' (for distro '%s').", ami, c.CreateHost.Distro)
 }
 
 type logBatchInfo struct {
@@ -215,13 +215,13 @@ func (c *createHost) waitForLogs(ctx context.Context, comm client.Communicator, 
 	for {
 		select {
 		case <-ctx.Done():
-			logger.Task().Infof("context cancelled waiting for host '%s' to exit", info.hostID)
+			logger.Task().Infof("Context canceled waiting for host '%s' to exit: %s.", info.hostID, ctx.Err())
 			return nil
 		case <-pollTicker.C:
 			info.batchEnd = time.Now()
 			status, err := comm.GetDockerStatus(ctx, info.hostID)
 			if err != nil {
-				logger.Task().Infof("problem receiving docker logs in host.create: '%s'", err.Error())
+				logger.Task().Infof("Problem receiving Docker logs in host.create: '%s'.", err.Error())
 				if startedCollectingLogs {
 					return nil // container has likely exited
 				}
@@ -233,7 +233,7 @@ func (c *createHost) waitForLogs(ctx context.Context, comm client.Communicator, 
 				info.batchStart = info.batchEnd.Add(time.Nanosecond) // to prevent repeat logs
 
 				if !status.IsRunning { // container exited
-					logger.Task().Infof("Logs retrieved for container ID '%s' in %d seconds",
+					logger.Task().Infof("Logs retrieved for container '%s' in %d seconds.",
 						info.hostID, int(time.Since(info.batchStart).Seconds()))
 					return nil
 				}
@@ -247,17 +247,17 @@ func (c *createHost) waitForLogs(ctx context.Context, comm client.Communicator, 
 func (info *logBatchInfo) getAndWriteLogBatch(ctx context.Context, comm client.Communicator, logger client.LoggerProducer) {
 	outLogs, err := comm.GetDockerLogs(ctx, info.hostID, info.batchStart, info.batchEnd, false)
 	if err != nil {
-		logger.Task().Error(errors.Wrap(err, "error retrieving Docker output logs"))
+		logger.Task().Errorf("Error retrieving Docker output logs: %s.", err)
 	}
 	errLogs, err := comm.GetDockerLogs(ctx, info.hostID, info.batchStart, info.batchEnd, true)
 	if err != nil {
-		logger.Task().Error(errors.Wrap(err, "error retrieving Docker error logs"))
+		logger.Task().Errorf("Error retrieving Docker error logs: %s.", err)
 	}
 	if _, err = info.outFile.Write(outLogs); err != nil {
-		logger.Task().Errorf("error writing stdout to file: %s", outLogs)
+		logger.Task().Errorf("Error writing stdout to file: %s.", outLogs)
 	}
 	if _, err = info.errFile.Write(errLogs); err != nil {
-		logger.Task().Errorf("error writing stderr to file: %s", errLogs)
+		logger.Task().Errorf("Error writing stderr to file: %s.", errLogs)
 	}
 }
 

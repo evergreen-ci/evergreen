@@ -10,7 +10,6 @@ import (
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -69,8 +68,7 @@ func (e *tarballExtract) Execute(ctx context.Context,
 	}
 
 	defer func() {
-		logger.Task().Notice(message.WrapError(archive.Close(),
-			message.NewFormatted("problem closing file '%s'", e.ArchivePath)))
+		logger.Task().Notice(errors.Wrapf(archive.Close(), "closing file '%s'", e.ArchivePath))
 	}()
 
 	if err := agentutil.ExtractTarball(ctx, archive, e.TargetDirectory, e.ExcludeFiles); err != nil {

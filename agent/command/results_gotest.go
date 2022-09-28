@@ -157,8 +157,8 @@ func parseTestOutputFiles(ctx context.Context, logger client.LoggerProducer,
 
 	// now, open all the files, and parse the test results
 	for _, outputFile := range outputFiles {
-		if ctx.Err() != nil {
-			return nil, nil, errors.New("command was stopped")
+		if err := ctx.Err(); err != nil {
+			return nil, nil, errors.Wrap(err, "canceled while processing test output files")
 		}
 
 		_, suiteName := filepath.Split(outputFile)

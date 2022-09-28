@@ -61,15 +61,13 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 		Include:    include,
 	}
 	if c.Files, err = b.Build(); err != nil {
-		err = errors.Wrap(err, "building wildcard paths")
-		logger.Task().Error(err)
-		return err
+		return errors.Wrap(err, "building wildcard paths")
 	}
 
 	if len(c.Files) == 0 {
 		err = errors.New("expanded file specification had no items")
-		logger.Task().Error(err)
 		if c.Optional {
+			logger.Task().Error(err)
 			return nil
 		}
 		return err
@@ -98,17 +96,15 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 		files = append(files, segment...)
 	}
 	if catcher.HasErrors() {
-		err = errors.Wrap(catcher.Resolve(), "reading artifact JSON files")
-		logger.Task().Error(err)
-		return err
+		return errors.Wrap(catcher.Resolve(), "reading artifact JSON files")
 	}
 
 	if missedSegments > 0 {
-		logger.Task().Noticef("encountered %d empty file definitions", missedSegments)
+		logger.Task().Noticef("Encountered %d empty file definitions.", missedSegments)
 	}
 
 	if len(files) == 0 {
-		logger.Task().Warning("no artifacts defined")
+		logger.Task().Warning("No artifacts defined.")
 		return nil
 	}
 
@@ -117,7 +113,7 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 		return errors.Wrap(err, "attach artifacts failed")
 	}
 
-	logger.Task().Infof("'%s' attached %d resources to task", c.Name(), len(files))
+	logger.Task().Infof("'%s' attached %d resources to task.", c.Name(), len(files))
 	return nil
 }
 

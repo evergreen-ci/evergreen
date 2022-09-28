@@ -47,8 +47,9 @@ func (c *s3Push) Execute(ctx context.Context, comm client.Communicator, logger c
 
 	pushMsg := fmt.Sprintf("Pushing task directory files from directory '%s' into S3", wd)
 	if c.ExcludeFilter != "" {
-		pushMsg += ", excluding files matching filter " + c.ExcludeFilter
+		pushMsg = fmt.Sprintf("%s, excluding files matching filter '%s'", pushMsg, c.ExcludeFilter)
 	}
+	pushMsg += "."
 	logger.Task().Infof(pushMsg)
 
 	s3Path := conf.Task.S3Path(conf.Task.BuildVariant, conf.Task.DisplayName)
@@ -60,7 +61,7 @@ func (c *s3Push) Execute(ctx context.Context, comm client.Communicator, logger c
 		return errors.Wrap(err, "pushing task data to S3")
 	}
 
-	logger.Task().Infof("Successfully pushed task directory files")
+	logger.Task().Info("Successfully pushed task directory files.")
 
 	return nil
 }

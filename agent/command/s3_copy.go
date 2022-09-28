@@ -179,7 +179,7 @@ func (c *s3copy) Execute(ctx context.Context,
 	case err := <-errChan:
 		return err
 	case <-ctx.Done():
-		logger.Execution().Infof("Received signal to terminate execution of command '%s'", c.Name())
+		logger.Execution().Infof("Canceled while running command '%s'", c.Name())
 		return nil
 	}
 
@@ -206,8 +206,8 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 			continue
 		}
 
-		if ctx.Err() != nil {
-			return errors.Errorf("command '%s' was canceled", c.Name())
+		if err := ctx.Err(); err != nil {
+			return errors.Wrap(err, "command was cancelled")
 		}
 
 		logger.Execution().Infof("Making API push copy call to "+
@@ -227,7 +227,7 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 		}
 		newPushLog, err := comm.NewPush(ctx, td, &s3CopyReq)
 		if err != nil {
-			return errors.Wrap(err, "adding pushlog")
+			return errors.Wrap(err, "adding push log")
 		}
 		if newPushLog.TaskId == "" {
 			logger.Task().Infof("noop, this version is currently in the process of trying to push, or has already succeeded in pushing the file: '%s/%s'", s3CopyFile.Destination.Bucket, s3CopyFile.Destination.Path)
@@ -250,7 +250,7 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 			catcher.Wrap(err, "initializing S3 source bucket")
 
 			newPushLog.Status = pushLogFailed
-			catcher.Wrap(comm.UpdatePushStatus(ctx, td, newPushLog), "updating pushlog to failed")
+			catcher.Wrap(comm.UpdatePushStatus(ctx, td, newPushLog), "updating push log to failed")
 
 			return catcher.Resolve()
 		}
@@ -260,7 +260,7 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 			catcher.Wrap(err, "checking bucket")
 
 			newPushLog.Status = pushLogFailed
-			catcher.Wrap(comm.UpdatePushStatus(ctx, td, newPushLog), "updating pushlog to failed")
+			catcher.Wrap(comm.UpdatePushStatus(ctx, td, newPushLog), "updating push log to failed")
 
 			return catcher.Resolve()
 		}
@@ -276,7 +276,7 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 			catcher.Wrap(err, "initializing S3 destination bucket")
 
 			newPushLog.Status = pushLogFailed
-			catcher.Wrap(comm.UpdatePushStatus(ctx, td, newPushLog), "updating pushlog to failed")
+			catcher.Wrap(comm.UpdatePushStatus(ctx, td, newPushLog), "updating push log to failed")
 
 			return catcher.Resolve()
 		}
@@ -296,7 +296,7 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 				if err != nil {
 					newPushLog.Status = pushLogFailed
 					if err := comm.UpdatePushStatus(ctx, td, newPushLog); err != nil {
-						return errors.Wrap(err, "updating pushlog status failed for task")
+						return errors.Wrap(err, "updating push log status failed for task")
 					}
 					if s3CopyFile.Optional {
 						logger.Execution().Error(err)
@@ -305,13 +305,13 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 						timer.Reset(backoffCounter.Duration())
 						continue retryLoop
 					} else {
-						logger.Execution().Errorf("S3 push copy failed to copy '%s' to '%s' and file is not optional, exiting.")
-						return errors.Wrapf(err, "S3 push copy failed to copy '%s' to '%s'")
+						logger.Execution().Errorf("S3 push copy failed to copy '%s' to '%s' and file is not optional, exiting.", s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket)
+						return errors.Wrapf(err, "S3 push copy failed to copy '%s' to '%s'", s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket)
 					}
 				} else {
 					newPushLog.Status = pushLogSuccess
 					if err := comm.UpdatePushStatus(ctx, td, newPushLog); err != nil {
-						return errors.Wrap(err, "updating pushlog status to success for task")
+						return errors.Wrap(err, "updating push log status to success for task")
 					}
 					if err = c.attachFiles(ctx, comm, logger, td, s3CopyReq); err != nil {
 						return errors.Wrap(err, "attaching files")
@@ -321,7 +321,7 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 			}
 		}
 
-		logger.Task().Infof("successfully copied '%s' to '%s'", s3CopyFile.Source.Path, s3CopyFile.Destination.Path)
+		logger.Task().Infof("Successfully copied source file '%s' to destination path '%s'.", s3CopyFile.Source.Path, s3CopyFile.Destination.Path)
 	}
 
 	return nil
@@ -337,7 +337,7 @@ func (c *s3copy) attachFiles(ctx context.Context, comm client.Communicator,
 	if displayName == "" {
 		displayName = filepath.Base(request.S3SourcePath)
 	}
-	logger.Execution().Infof("attaching file '%s'", displayName)
+	logger.Execution().Infof("Attaching file '%s'.", displayName)
 	file := artifact.File{
 		Name: displayName,
 		Link: fileLink,
@@ -346,6 +346,6 @@ func (c *s3copy) attachFiles(ctx context.Context, comm client.Communicator,
 	if err := comm.AttachFiles(ctx, td, files); err != nil {
 		return errors.Wrapf(err, "attaching file '%s'", displayName)
 	}
-	logger.Execution().Info("API attach files call succeeded")
+	logger.Execution().Infof("Successfully attached file '%s'.", displayName)
 	return nil
 }

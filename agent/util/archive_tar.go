@@ -21,16 +21,16 @@ func BuildArchive(ctx context.Context, tarWriter *tar.Writer, rootPath string, i
 	excludes []string, logger grip.Journaler) (int, error) {
 	pathsToAdd, err := streamArchiveContents(ctx, rootPath, includes, []string{})
 	if err != nil {
-		return 0, errors.Wrap(err, "problem getting archive contents")
+		return 0, errors.Wrap(err, "getting archive contents")
 	}
 
 	numFilesArchived := 0
 	processed := map[string]bool{}
-	logger.Infof("beginning to build archive")
+	logger.Infof("Beginning to build archive.")
 FileLoop:
 	for _, file := range pathsToAdd {
-		if ctx.Err() != nil {
-			return numFilesArchived, errors.Wrap(ctx.Err(), "timeout when building archive")
+		if err := ctx.Err(); err != nil {
+			return numFilesArchived, errors.Wrap(err, "building archive was canceled")
 		}
 
 		var intarball string
@@ -40,13 +40,13 @@ FileLoop:
 		if file.Info.Mode()&os.ModeSymlink > 0 {
 			symlinkPath, err := filepath.EvalSymlinks(file.Path)
 			if err != nil {
-				logger.Warningf("Could not follow symlink %s, ignoring", file.Path)
+				logger.Warningf("Could not follow symlink '%s', ignoring.", file.Path)
 				continue
 			} else {
-				logger.Infof("Following symlink in %s, got: %s", file.Path, symlinkPath)
+				logger.Infof("Following symlink '%s', got path '%s'.", file.Path, symlinkPath)
 				symlinkFileInfo, err := os.Stat(symlinkPath)
 				if err != nil {
-					logger.Warningf("Failed to get underlying file '%s' for symlink '%s', ignoring", symlinkPath, file.Path)
+					logger.Warningf("Failed to get underlying file for symlink '%s', ignoring.", file.Path)
 					continue
 				}
 
@@ -66,7 +66,7 @@ FileLoop:
 		//strip any leading slash from the tarball header path
 		intarball = strings.TrimLeft(intarball, "/")
 
-		logger.Infoln("adding to tarball:", intarball)
+		logger.Infoln("Adding to tarball:", intarball)
 		if _, hasKey := processed[intarball]; hasKey {
 			continue
 		} else {
@@ -92,25 +92,23 @@ FileLoop:
 		numFilesArchived++
 		err := tarWriter.WriteHeader(hdr)
 		if err != nil {
-			return numFilesArchived, errors.Wrapf(err, "Error writing header for %s", intarball)
+			return numFilesArchived, errors.Wrapf(err, "writing header for tarball '%s'", intarball)
 		}
 
 		in, err := os.Open(file.Path)
 		if err != nil {
-			return numFilesArchived, errors.Wrapf(err, "Error opening %s", file.Path)
+			return numFilesArchived, errors.Wrapf(err, "opening file '%s'", file.Path)
 		}
+		logger.Debug(errors.Wrapf(in.Close(), "closing file '%s'", file.Path))
 		amountWrote, err := io.Copy(tarWriter, in)
 		if err != nil {
-			logger.Debug(in.Close())
-			return numFilesArchived, errors.Wrapf(err, "Error writing into tar for %s", file.Path)
+			return numFilesArchived, errors.Wrapf(err, "copying file '%s' into tarball", file.Path)
 		}
 
 		if amountWrote != hdr.Size {
-			logger.Debug(in.Close())
-			return numFilesArchived, errors.Errorf("Error writing to archive for %s: header size %d but wrote %d", intarball, hdr.Size, amountWrote)
+			return numFilesArchived, errors.Errorf("tarball header size is %d but actually wrote %d", hdr.Size, amountWrote)
 		}
-		logger.Debug(in.Close())
-		logger.Warning(tarWriter.Flush())
+		logger.Warning(errors.Wrap(tarWriter.Flush(), "flushing tar writer"))
 	}
 
 	return numFilesArchived, nil
@@ -120,13 +118,13 @@ func ExtractTarball(ctx context.Context, reader io.Reader, rootPath string, excl
 	// wrap the reader in a gzip reader and a tar reader
 	gzipReader, err := gzip.NewReader(reader)
 	if err != nil {
-		return errors.Wrap(err, "error creating gzip reader")
+		return errors.Wrap(err, "creating gzip reader")
 	}
 
 	tarReader := tar.NewReader(gzipReader)
 	err = extractTarArchive(ctx, tarReader, rootPath, excludes)
 	if err != nil {
-		return errors.Wrapf(err, "error extracting %s", rootPath)
+		return errors.Wrapf(err, "extracting path '%s'", rootPath)
 	}
 
 	return nil
@@ -142,8 +140,8 @@ func extractTarArchive(ctx context.Context, tarReader *tar.Reader, rootPath stri
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		if ctx.Err() != nil {
-			return errors.New("extraction operation canceled")
+		if err := ctx.Err(); err != nil {
+			return errors.Wrap(err, "extraction operation canceled")
 		}
 
 		if hdr.Typeflag == tar.TypeDir {
@@ -188,18 +186,19 @@ func extractTarArchive(ctx context.Context, tarReader *tar.Reader, rootPath stri
 			}
 
 			if _, err = io.Copy(f, tarReader); err != nil {
-				grip.Error(f.Close())
-				return errors.WithStack(err)
+				grip.Error(errors.Wrapf(f.Close(), "closing file '%s'", localFile))
+				return errors.Wrap(err, "copying tar contents to local file '%s'")
 			}
 
 			// File's permissions should match what was in the archive
 			if err = os.Chmod(f.Name(), os.FileMode(int32(hdr.Mode))); err != nil {
-				grip.Error(f.Close())
-				return errors.WithStack(err)
+				grip.Error(errors.Wrapf(f.Close(), "closing file '%s'", localFile))
+				return errors.Wrapf(err, "changing file '%s' mode to %d", f.Name(), hdr.Mode)
 			}
-			grip.Error(f.Close())
+
+			grip.Error(errors.Wrapf(f.Close(), "closing file '%s'", localFile))
 		} else {
-			return errors.New("Unknown file type in archive.")
+			return errors.Errorf("unknown file type '%c' in archive", hdr.Typeflag)
 		}
 	}
 }
@@ -209,12 +208,12 @@ func extractTarArchive(ctx context.Context, tarReader *tar.Reader, rootPath stri
 func TarGzReader(path string) (f, gz io.ReadCloser, tarReader *tar.Reader, err error) {
 	f, err = os.Open(path)
 	if err != nil {
-		return nil, nil, nil, errors.WithStack(err)
+		return nil, nil, nil, errors.Wrapf(err, "opening file '%s'", path)
 	}
 	gz, err = gzip.NewReader(f)
 	if err != nil {
 		defer f.Close()
-		return nil, nil, nil, errors.WithStack(err)
+		return nil, nil, nil, errors.Wrap(err, "initializing gzip reader")
 	}
 	tarReader = tar.NewReader(gz)
 	return f, gz, tarReader, nil
@@ -225,7 +224,7 @@ func TarGzReader(path string) (f, gz io.ReadCloser, tarReader *tar.Reader, err e
 func TarGzWriter(path string) (f, gz io.WriteCloser, tarWriter *tar.Writer, err error) {
 	f, err = os.Create(path)
 	if err != nil {
-		return nil, nil, nil, errors.WithStack(err)
+		return nil, nil, nil, errors.Wrapf(err, "creating file '%s'", path)
 	}
 	gz = gzip.NewWriter(f)
 	tarWriter = tar.NewWriter(gz)

@@ -122,12 +122,12 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 	}
 
 	logger.Execution().WarningWhen(filepath.IsAbs(c.WorkingDir) && !strings.HasPrefix(c.WorkingDir, conf.WorkDir),
-		fmt.Sprintf("the working directory is an absolute path [%s], which isn't supported except when prefixed by '%s'",
+		fmt.Sprintf("The working directory is an absolute path [%s], which isn't supported except when prefixed by '%s'.",
 			c.WorkingDir, conf.WorkDir))
 
 	c.WorkingDir, err = conf.GetWorkingDirectory(c.WorkingDir)
 	if err != nil {
-		return errors.Wrap(err, "getting working direcotr")
+		return errors.Wrap(err, "getting working directory")
 	}
 
 	taskTmpDir, err := conf.GetWorkingDirectory("tmp")
@@ -192,9 +192,9 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 			agentutil.TrackProcess(conf.Task.Id, pid, logger.System())
 
 			if c.Background {
-				logger.Execution().Debugf("running command in the background [pid=%d]", pid)
+				logger.Execution().Debugf("Running process with PID %d in the background.", pid)
 			} else {
-				logger.Execution().Infof("started process with pid '%d'", pid)
+				logger.Execution().Infof("Running process with PID %d.", pid)
 			}
 
 			return proc, nil
@@ -220,7 +220,7 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 		logger.Execution().Infof("Executing script with shell '%s' (source hidden)...",
 			c.Shell)
 	} else {
-		logger.Execution().Infof("Executing script with shell '%s': %s",
+		logger.Execution().Infof("Executing script with shell '%s':\n%s",
 			c.Shell, c.Script)
 	}
 
@@ -231,15 +231,15 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 		}
 	}
 	err = errors.Wrapf(err, "shell script encountered problem")
-	if ctx.Err() != nil {
-		logger.System().Debug("dumping running processes before canceling work")
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		logger.System().Debugf("Canceled command '%s', dumping running processes.", c.Name())
 		logger.System().Debug(message.CollectAllProcesses())
 		logger.Execution().Notice(err)
-		return errors.New("shell command interrupted")
+		return errors.Wrapf(ctxErr, "canceled while running command '%s'", c.Name())
 	}
 
 	if c.ContinueOnError {
-		logger.Execution().Notice(err)
+		logger.Execution().Noticef("Script errored, but continue on error is set - continuing task execution. Error: %s.", err)
 		return nil
 	}
 
@@ -251,17 +251,17 @@ func (c *shellExec) doExpansions(exp *util.Expansions) error {
 	var err error
 
 	c.WorkingDir, err = exp.ExpandString(c.WorkingDir)
-	catcher.Add(err)
+	catcher.Wrap(err, "expanding working directory")
 
 	c.Script, err = exp.ExpandString(c.Script)
-	catcher.Add(err)
+	catcher.Wrap(err, "expanding script")
 
 	c.Shell, err = exp.ExpandString(c.Shell)
-	catcher.Add(err)
+	catcher.Wrap(err, "expanding shell")
 
 	for k, v := range c.Env {
 		c.Env[k], err = exp.ExpandString(v)
-		catcher.Add(err)
+		catcher.Wrapf(err, "expanding environment variable '%s'", k)
 	}
 
 	return catcher.Resolve()

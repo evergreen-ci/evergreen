@@ -31,7 +31,7 @@ func (c *baseCommunicator) newRequest(method, path, taskID, taskSecret string, d
 	url := c.getPath(path, evergreen.APIRoutePrefixV2)
 	r, err := http.NewRequest(method, url, nil)
 	if err != nil {
-		return nil, errors.New("Error building request")
+		return nil, errors.New("building request")
 	}
 	if data != nil {
 		if rc, ok := data.(io.ReadCloser); ok {
@@ -63,10 +63,10 @@ func (c *baseCommunicator) newRequest(method, path, taskID, taskSecret string, d
 
 func (c *baseCommunicator) createRequest(info requestInfo, data interface{}) (*http.Request, error) {
 	if info.method == http.MethodPost && data == nil {
-		return nil, errors.New("Attempting to post a nil body")
+		return nil, errors.Errorf("cannot send '%s' request with a nil body", http.MethodPost)
 	}
 	if err := info.validateRequestInfo(); err != nil {
-		return nil, errors.WithStack(err)
+		return nil, errors.Wrap(err, "validating request info")
 	}
 
 	var taskID, secret string
@@ -76,7 +76,7 @@ func (c *baseCommunicator) createRequest(info requestInfo, data interface{}) (*h
 	}
 	r, err := c.newRequest(info.method, info.path, taskID, secret, data)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error creating request")
+		return nil, errors.Wrap(err, "creating request")
 	}
 
 	return r, nil
@@ -85,11 +85,11 @@ func (c *baseCommunicator) createRequest(info requestInfo, data interface{}) (*h
 func (c *baseCommunicator) request(ctx context.Context, info requestInfo, data interface{}) (*http.Response, error) {
 	r, err := c.createRequest(info, data)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, errors.Wrap(err, "creating request")
 	}
 	resp, err := c.doRequest(ctx, r)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, errors.Wrap(err, "sending request")
 	}
 
 	return resp, nil
@@ -139,7 +139,7 @@ func (c *baseCommunicator) retryRequest(ctx context.Context, info requestInfo, d
 
 	r, err := c.createRequest(info, ioutil.NopCloser(bytes.NewReader(out)))
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "creating request")
 	}
 
 	r.Header.Add(evergreen.ContentLengthHeader, strconv.Itoa(len(out)))
@@ -175,7 +175,7 @@ func (r *requestInfo) validateRequestInfo() error {
 	switch r.method {
 	case http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodPatch:
 	default:
-		return errors.New("invalid HTTP method")
+		return errors.Errorf("invalid HTTP method '%s'", r.method)
 	}
 
 	return nil

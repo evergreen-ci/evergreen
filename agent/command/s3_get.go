@@ -18,7 +18,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// A plugin command to fetch a resource from an s3 bucket and download it to
+// s3get is a command to fetch a resource from an S3 bucket and download it to
 // the local machine.
 type s3get struct {
 	// AwsKey and AwsSecret are the user's credentials for
@@ -26,17 +26,17 @@ type s3get struct {
 	AwsKey    string `mapstructure:"aws_key" plugin:"expand"`
 	AwsSecret string `mapstructure:"aws_secret" plugin:"expand"`
 
-	// RemoteFile is the filepath of the file to get, within its bucket
+	// RemoteFile is the file path of the file to get, within its bucket.
 	RemoteFile string `mapstructure:"remote_file" plugin:"expand"`
 
-	// Region is the s3 region where the bucket is located. It defaults to
+	// Region is the S3 region where the bucket is located. It defaults to
 	// "us-east-1".
 	Region string `mapstructure:"region" plugin:"region"`
 
-	// Bucket is the s3 bucket holding the desired file
+	// Bucket is the S3 bucket holding the desired file.
 	Bucket string `mapstructure:"bucket" plugin:"expand"`
 
-	// BuildVariants stores a list of MCI build variants to run the command for.
+	// BuildVariants stores a list of build variants to run the command for.
 	// If the list is empty, it runs for all build variants.
 	BuildVariants []string `mapstructure:"build_variants" plugin:"expand"`
 
@@ -149,7 +149,7 @@ func (c *s3get) Execute(ctx context.Context,
 	}
 
 	if !c.shouldRunForVariant(conf.BuildVariant.Name) {
-		logger.Task().Infof("Skipping S3 get of remote file '%s' for variant '%s'",
+		logger.Task().Infof("Skipping S3 get of remote file '%s' for variant '%s'.",
 			c.RemoteFile, conf.BuildVariant.Name)
 		return nil
 	}
@@ -172,7 +172,7 @@ func (c *s3get) Execute(ctx context.Context,
 		}
 
 		if err := createEnclosingDirectoryIfNeeded(c.ExtractTo); err != nil {
-			return errors.Wrapf(err, "creating enclosing directories for directory '%s'", c.ExtractTo)
+			return errors.Wrapf(err, "creating parent directories for extraction directory '%s'", c.ExtractTo)
 		}
 	}
 
@@ -185,7 +185,7 @@ func (c *s3get) Execute(ctx context.Context,
 	case err := <-errChan:
 		return errors.WithStack(err)
 	case <-ctx.Done():
-		logger.Execution().Infof("Received signal to terminate execution of command '%s'", c.Name())
+		logger.Execution().Infof("Canceled while running command '%s': %s", c.Name(), ctx.Err())
 		return nil
 	}
 
@@ -198,19 +198,19 @@ func (c *s3get) getWithRetry(ctx context.Context, logger client.LoggerProducer) 
 	defer timer.Stop()
 
 	for i := 1; i <= maxS3OpAttempts; i++ {
-		logger.Task().Infof("fetching '%s' from S3 bucket '%s' (attempt %d of %d)",
+		logger.Task().Infof("Fetching remote file '%s' from S3 bucket '%s' (attempt %d of %d).",
 			c.RemoteFile, c.Bucket, i, maxS3OpAttempts)
 
 		select {
 		case <-ctx.Done():
-			return errors.Errorf("command '%s' aborted", c.Name())
+			return errors.Errorf("canceled while running command '%s'", c.Name())
 		case <-timer.C:
 			err := errors.WithStack(c.get(ctx))
 			if err == nil {
 				return nil
 			}
 
-			logger.Execution().Errorf("problem getting remote file '%s' from S3 bucket, retrying. [%s]",
+			logger.Execution().Errorf("Problem getting remote file '%s' from S3 bucket, retrying: %s",
 				c.RemoteFile, err)
 			timer.Reset(backoffCounter.Duration())
 		}
@@ -226,7 +226,7 @@ func (c *s3get) get(ctx context.Context) error {
 		// remove the file, if it exists
 		if utility.FileExists(c.LocalFile) {
 			if err := os.RemoveAll(c.LocalFile); err != nil {
-				return errors.Wrapf(err, "removing local file '%s'", c.LocalFile)
+				return errors.Wrapf(err, "removing already-existing local file '%s'", c.LocalFile)
 			}
 		}
 

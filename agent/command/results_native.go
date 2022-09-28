@@ -88,10 +88,10 @@ func (c *attachResults) Execute(ctx context.Context,
 }
 
 func (c *attachResults) sendTestLogs(ctx context.Context, conf *internal.TaskConfig, logger client.LoggerProducer, comm client.Communicator, results *task.LocalTestResults) error {
-	logger.Execution().Info("posting test logs...")
+	logger.Execution().Info("Posting test logs...")
 	for i, res := range results.Results {
-		if ctx.Err() != nil {
-			return errors.Errorf("operation canceled")
+		if err := ctx.Err(); err != nil {
+			return errors.Wrap(err, "operation canceled")
 		}
 
 		if res.LogRaw != "" {

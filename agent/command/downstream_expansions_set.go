@@ -68,7 +68,7 @@ func (c *setDownstream) Execute(ctx context.Context,
 	if err != nil {
 		return err
 	}
-	logger.Task().Infof("Saving downstream parameters to patch with keys from file '%s'", c.YamlFile)
+	logger.Task().Infof("Saving downstream parameters to patch with keys from file '%s'.", c.YamlFile)
 
 	if len(c.downstreamParams) == 0 {
 		return nil

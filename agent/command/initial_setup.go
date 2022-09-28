@@ -29,6 +29,6 @@ func (*initialSetup) SetJasperManager(_ jasper.Manager)               {}
 func (*initialSetup) Execute(ctx context.Context,
 	client client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
-	logger.Task().Info("performing initial task setup")
+	logger.Task().Info("Performing initial task setup.")
 	return nil
 }

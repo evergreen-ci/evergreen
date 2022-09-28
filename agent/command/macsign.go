@@ -15,7 +15,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// A plugin command to sign and notarize macOS artifacts.
+// macSign is a command to sign and notarize macOS artifacts.
 type macSign struct {
 	// KeyId and Secret are the credentials for
 	// authenticating into the macOS signing and notarization service.
@@ -26,37 +26,37 @@ type macSign struct {
 	ServiceUrl string `mapstructure:"service_url" plugin:"expand"`
 
 	// ClientBinary is the path to the macOS signing and notarization service client.
-	// If empty default location(/usr/local/bin/macnotary) will be used.
+	// If empty, the default location (/usr/local/bin/macnotary) will be used.
 	ClientBinary string `mapstructure:"client_binary" plugin:"expand"`
 
-	// LocalZipFile is the local filepath to the zip file the user
-	// wishes to sign. It should contains the list of artifacts that need to be signed.
+	// LocalZipFile is the local filepath to the zip file the user wishes to
+	// sign. It should contain the artifacts that need to be signed.
 	LocalZipFile string `mapstructure:"local_zip_file" plugin:"expand"`
 
 	// OutputZipFile is the local filepath to the zip file the service outputs
 	// It will contain the list of artifacts that are signed by the server.
 	OutputZipFile string `mapstructure:"output_zip_file" plugin:"expand"`
 
-	// ArtifactType is a type of artifact(s) that need to be signed.
+	// ArtifactType is the type of artifact(s) that need to be signed.
 	// Currently supported list: app, binary.
 	ArtifactType string `mapstructure:"artifact_type" plugin:"expand"`
 
-	// EntitlementsFilePath is the local filepath to the entitlements file that the users
+	// EntitlementsFilePath is the local filepath to the entitlements file that the user
 	// wishes to execute the signing process with. This is optional.
 	EntitlementsFilePath string `mapstructure:"entitlements_file" plugin:"expand"`
 
-	// Verify determines if the signature(or notarization) should be verified.
-	// Verification is only supported on MacOS. It is optional, default value if false.
+	// Verify determines if the signature (or notarization) should be verified.
+	// Verification is only supported on macOS. It is optional, default value if false.
 	Verify bool `mapstructure:"verify"`
 
 	// Notarize determines if the file should also be notarized after signing.
 	Notarize bool `mapstructure:"notarize"`
 
-	// BundleId is the bundle id of the artifact used during notarization.
+	// BundleId is the bundle ID of the artifact used during notarization.
 	// This is mandatory if notarization is requested.
 	BundleId string `mapstructure:"bundle_id"  plugin:"expand"`
 
-	// BuildVariants stores a list of MCI build variants to run the command for.
+	// BuildVariants stores a list of build variants to run the command for.
 	// If the list is empty, it runs for all build variants.
 	BuildVariants []string `mapstructure:"build_variants"`
 
@@ -209,23 +209,23 @@ func (macSign *macSign) Execute(ctx context.Context,
 	stdout, err := cmd.CombinedOutput()
 	output := string(stdout)
 
+	if len(output) != 0 {
+		logger.Task().Info(output)
+	}
+
 	if err != nil {
 
 		exitErr, ok := err.(*exec.ExitError)
 		if !ok {
-			logger.Task().Error(output)
 			return errors.Wrapf(err, "unexpected error on OS '%s' arch '%s'", runtime.GOOS, runtime.GOARCH)
 		}
 
 		if exitErr.ExitCode() != 0 {
-			logger.Task().Error(output)
 			return errors.Errorf("non-zero exit code %d", exitErr.ExitCode())
 		}
 	}
 
-	logger.Task().Info(output)
-
-	logger.Task().Infof("Artifact - file '%s' signed (and/or notarized) and new file created: '%s'", macSign.LocalZipFile, macSign.OutputZipFile)
+	logger.Task().Infof("Artifact - file '%s' signed (and/or notarized) and new file created: '%s'.", macSign.LocalZipFile, macSign.OutputZipFile)
 
 	return nil
 }

@@ -61,15 +61,15 @@ func (a *Agent) GetSender(ctx context.Context, prefix string) (send.Sender, erro
 				Token:     a.opts.SetupData.SplunkClientToken,
 				Channel:   a.opts.SetupData.SplunkChannel,
 			}
-			grip.Info("configuring splunk sender")
+			grip.Info("Configuring splunk sender.")
 			sender, err = send.NewSplunkLogger("evergreen.agent", info, send.LevelInfo{Default: level.Alert, Threshold: level.Alert})
 			if err != nil {
-				return nil, errors.Wrap(err, "problem creating the splunk logger")
+				return nil, errors.Wrap(err, "creating Splunk logger")
 			}
 			senders = append(senders, sender)
 		}
 	} else {
-		grip.Notice("agent started via command - not configuring external logger")
+		grip.Notice("Agent started via command - not configuring external logger.")
 	}
 
 	if prefix == "" {
@@ -77,7 +77,7 @@ func (a *Agent) GetSender(ctx context.Context, prefix string) (send.Sender, erro
 	} else if prefix == evergreen.LocalLoggingOverride || prefix == "--" || prefix == evergreen.StandardOutputLoggingOverride {
 		sender, err = send.NewNativeLogger("evergreen.agent", send.LevelInfo{Default: level.Info, Threshold: level.Debug})
 		if err != nil {
-			return nil, errors.Wrap(err, "problem creating a native console logger")
+			return nil, errors.Wrap(err, "creating native console logger")
 		}
 
 		senders = append(senders, sender)
@@ -85,7 +85,7 @@ func (a *Agent) GetSender(ctx context.Context, prefix string) (send.Sender, erro
 		sender, err = send.NewFileLogger("evergreen.agent",
 			fmt.Sprintf("%s-%d-%d.log", prefix, os.Getpid(), getInc()), send.LevelInfo{Default: level.Info, Threshold: level.Debug})
 		if err != nil {
-			return nil, errors.Wrap(err, "problem creating a file logger")
+			return nil, errors.Wrap(err, "creating file logger")
 		}
 
 		senders = append(senders, sender)
@@ -130,11 +130,11 @@ func (a *Agent) makeLoggerProducer(ctx context.Context, tc *taskContext, c *mode
 
 func (a *Agent) prepLogger(tc *taskContext, c *model.LoggerConfig, commandName string) client.LoggerConfig {
 	logDir := filepath.Join(a.opts.WorkingDirectory, taskLogDirectory)
-	grip.Error(errors.Wrap(os.MkdirAll(logDir, os.ModeDir|os.ModePerm), "error making log directory"))
+	grip.Error(errors.Wrapf(os.MkdirAll(logDir, os.ModeDir|os.ModePerm), "making log directory '%s'", logDir))
 	// if this is a command-specific logger, create a dir for the command's logs separate from the overall task
 	if commandName != "" {
 		logDir = filepath.Join(logDir, commandName)
-		grip.Error(errors.Wrapf(os.MkdirAll(logDir, os.ModeDir|os.ModePerm), "error making log directory for command %s", commandName))
+		grip.Error(errors.Wrapf(os.MkdirAll(logDir, os.ModeDir|os.ModePerm), "making log directory '%s' for command '%s'", logDir, commandName))
 	}
 	config := client.LoggerConfig{}
 
@@ -143,7 +143,7 @@ func (a *Agent) prepLogger(tc *taskContext, c *model.LoggerConfig, commandName s
 		defaultLogger = tc.taskConfig.ProjectRef.DefaultLogger
 	}
 	if !model.IsValidDefaultLogger(defaultLogger) {
-		grip.Warningf("default logger '%s' is not valid, setting Evergreen logger as default", defaultLogger)
+		grip.Warningf("Default logger '%s' is not valid, setting Evergreen logger as default.", defaultLogger)
 		defaultLogger = model.EvergreenLogSender
 	}
 	if len(c.Agent) == 0 {
@@ -179,7 +179,7 @@ func (a *Agent) prepSingleLogger(tc *taskContext, in model.LogOpts, logDir, file
 		grip.Error(errors.Wrap(err, "expanding Splunk token"))
 	}
 	if in.LogDirectory != "" {
-		grip.Error(errors.Wrap(os.MkdirAll(in.LogDirectory, os.ModeDir|os.ModePerm), "error making log directory"))
+		grip.Error(errors.Wrapf(os.MkdirAll(in.LogDirectory, os.ModeDir|os.ModePerm), "making log directory '%s'", in.LogDirectory))
 		logDir = in.LogDirectory
 	}
 	if tc.logDirectories == nil {
@@ -203,12 +203,12 @@ func (a *Agent) uploadToS3(ctx context.Context, tc *taskContext) error {
 	}
 	bucket, err := pail.NewS3Bucket(a.opts.S3Opts)
 	if err != nil {
-		return errors.Wrap(err, "error creating pail")
+		return errors.Wrap(err, "creating Pail bucket")
 	}
 
 	catcher := grip.NewBasicCatcher()
 	for logDir := range tc.logDirectories {
-		catcher.Add(a.uploadLogDir(ctx, tc, bucket, logDir, ""))
+		catcher.Wrapf(a.uploadLogDir(ctx, tc, bucket, logDir, ""), "uploading log directory '%s'", logDir)
 	}
 
 	return catcher.Resolve()
@@ -224,14 +224,14 @@ func (a *Agent) uploadLogDir(ctx context.Context, tc *taskContext, bucket pail.B
 	}
 	dir, err := ioutil.ReadDir(directoryName)
 	if err != nil {
-		catcher.Add(errors.Wrap(err, "error reading log directory"))
+		catcher.Wrapf(err, "reading log directory '%s'", directoryName)
 		return catcher.Resolve()
 	}
 	for _, f := range dir {
 		if f.IsDir() {
-			catcher.Add(a.uploadLogDir(ctx, tc, bucket, directoryName, f.Name()))
+			catcher.Wrapf(a.uploadLogDir(ctx, tc, bucket, directoryName, f.Name()), "uploading log directory '%s'", f.Name())
 		} else {
-			catcher.Add(a.uploadSingleFile(ctx, tc, bucket, f.Name(), tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution, commandName))
+			catcher.Wrapf(a.uploadSingleFile(ctx, tc, bucket, f.Name(), tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution, commandName), "uploading log file '%s'", f.Name())
 		}
 	}
 
@@ -252,10 +252,10 @@ func (a *Agent) uploadSingleFile(ctx context.Context, tc *taskContext, bucket pa
 	}
 	err = bucket.Upload(ctx, fmt.Sprintf("%s/%s", remotePath, file), localPath)
 	if err != nil {
-		return errors.Wrapf(err, "error uploading %s to S3", localPath)
+		return errors.Wrapf(err, "uploading file path '%s' to S3", localPath)
 	}
 	remoteURL := util.S3DefaultURL(a.opts.S3Opts.Name, strings.Join([]string{remotePath, file}, "/"))
-	tc.logger.Execution().Infof("uploaded file %s from %s to %s", file, localPath, remoteURL)
+	tc.logger.Execution().Infof("Uploaded file '%s' from local path '%s' to remote path '%s/%s' (%s).", file, localPath, remotePath, file, remoteURL)
 	switch file {
 	case agentLogFileName:
 		tc.logs.AgentLogURLs = append(tc.logs.AgentLogURLs, apimodels.LogInfo{

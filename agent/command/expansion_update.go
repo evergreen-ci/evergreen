@@ -62,8 +62,8 @@ func (c *update) ParseParams(params map[string]interface{}) error {
 
 func (c *update) ExecuteUpdates(ctx context.Context, conf *internal.TaskConfig) error {
 	for _, update := range c.Updates {
-		if ctx.Err() != nil {
-			return errors.New("operation aborted")
+		if err := ctx.Err(); err != nil {
+			return errors.Wrap(err, "operation aborted")
 		}
 
 		if update.Concat == "" {
@@ -113,7 +113,7 @@ func (c *update) Execute(ctx context.Context,
 			return errors.Errorf("file '%s' does not exist", filename)
 		}
 
-		logger.Task().Infof("Updating expansions with keys from file '%s'", filename)
+		logger.Task().Infof("Updating expansions with keys from file '%s'.", filename)
 		err := conf.Expansions.UpdateFromYaml(filename)
 		if err != nil {
 			return errors.WithStack(err)

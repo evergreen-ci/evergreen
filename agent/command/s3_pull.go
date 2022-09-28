@@ -124,7 +124,7 @@ func (c *s3Pull) Execute(ctx context.Context, comm client.Communicator, logger c
 	// Verify that the contents exist before pulling, otherwise pull may no-op.
 
 	logger.Execution().WarningWhen(filepath.IsAbs(c.WorkingDir) && !strings.HasPrefix(c.WorkingDir, conf.WorkDir),
-		fmt.Sprintf("the working directory ('%s') is an absolute path, which isn't supported except when prefixed by '%s'",
+		fmt.Sprintf("The working directory ('%s') is an absolute path, which isn't supported except when prefixed by '%s'.",
 			c.WorkingDir, conf.WorkDir))
 
 	if err := createEnclosingDirectoryIfNeeded(c.WorkingDir); err != nil {
@@ -137,8 +137,9 @@ func (c *s3Pull) Execute(ctx context.Context, comm client.Communicator, logger c
 
 	pullMsg := fmt.Sprintf("Pulling task directory files from S3 from task '%s' on build variant '%s'", c.Task, c.FromBuildVariant)
 	if c.ExcludeFilter != "" {
-		pullMsg += ", excluding files matching filter " + c.ExcludeFilter
+		pullMsg = fmt.Sprintf("%s, excluding files matching filter '%s'", pullMsg, c.ExcludeFilter)
 	}
+	pullMsg += "."
 	logger.Task().Infof(pullMsg)
 	if err = c.bucket.Pull(ctx, pail.SyncOptions{
 		Local:   wd,
@@ -147,6 +148,8 @@ func (c *s3Pull) Execute(ctx context.Context, comm client.Communicator, logger c
 	}); err != nil {
 		return errors.Wrap(err, "pulling task data from S3")
 	}
+
+	logger.Task().Info("Successfully pulled task directory files.")
 
 	return nil
 }

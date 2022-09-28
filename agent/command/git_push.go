@@ -94,14 +94,14 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		}
 
 		if len(modulePatch.PatchSet.Summary) == 0 {
-			logger.Execution().Infof("Skipping empty patch for module '%s' on patch ID '%s'", modulePatch.ModuleName, p.Id.Hex())
+			logger.Execution().Infof("Skipping empty patch for module '%s' on patch '%s'.", modulePatch.ModuleName, p.Id.Hex())
 			continue
 		}
 
 		var module *model.Module
 		module, err = conf.Project.GetModuleByName(modulePatch.ModuleName)
 		if err != nil {
-			logger.Execution().Errorf("Module '%s' not found", modulePatch.ModuleName)
+			logger.Execution().Errorf("Module '%s' not found.", modulePatch.ModuleName)
 			continue
 		}
 		moduleBase := filepath.Join(expandModulePrefix(conf, module.Name, module.Prefix, logger), module.Name)
@@ -114,7 +114,7 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 			return errors.Wrapf(err, "checking out branch '%s'", module.Branch)
 		}
 
-		logger.Execution().Infof("Pushing patch for module '%s'", module.Name)
+		logger.Execution().Infof("Pushing patch for module '%s'.", module.Name)
 		params.directory = filepath.ToSlash(filepath.Join(conf.WorkDir, c.Directory, moduleBase))
 		params.branch = module.Branch
 		if err = c.pushPatch(ctx, logger, params); err != nil {
@@ -129,11 +129,11 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		}
 
 		if len(mainPatch.PatchSet.Summary) == 0 {
-			logger.Execution().Infof("Skipping empty main patch on patch ID '%s'", p.Id.Hex())
+			logger.Execution().Infof("Skipping empty main patch on patch '%s'.", p.Id.Hex())
 			continue
 		}
 
-		logger.Execution().Info("Pushing patch")
+		logger.Execution().Info("Pushing patch.")
 		params.directory = filepath.ToSlash(getJoinedWithWorkDir(conf, c.Directory))
 		params.branch = conf.ProjectRef.Branch
 		if err = c.pushPatch(ctx, logger, params); err != nil {

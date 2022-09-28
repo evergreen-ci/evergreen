@@ -26,7 +26,7 @@ func sendTestResults(ctx context.Context, comm client.Communicator, logger clien
 		return errors.New("cannot send nil results")
 	}
 
-	logger.Task().Info("attaching test results...")
+	logger.Task().Info("Attaching test results...")
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
 	// TODO (PM-2940): Stop sending Mongo project test results to the
@@ -40,7 +40,7 @@ func sendTestResults(ctx context.Context, comm client.Communicator, logger clien
 	if err := sendTestResultsToCedar(ctx, conf, td, comm, results); err != nil {
 		return errors.Wrap(err, "sending test results to Cedar")
 	}
-	logger.Task().Info("successfully attached results")
+	logger.Task().Info("Successfully attached results.")
 
 	return nil
 }
@@ -53,11 +53,11 @@ func sendTestLog(ctx context.Context, comm client.Communicator, conf *internal.T
 // sendTestLogsAndResults sends the test logs and test results to backend
 // logging results services.
 func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, logs []model.TestLog, results [][]task.TestResult) error {
-	logger.Task().Info("posting test logs...")
+	logger.Task().Info("Posting test logs...")
 	allResults := task.LocalTestResults{}
 	for idx, log := range logs {
-		if ctx.Err() != nil {
-			return errors.New("operation canceled")
+		if err := ctx.Err(); err != nil {
+			return errors.Wrap(err, "canceled while sending test logs")
 		}
 
 		if err := sendTestLog(ctx, comm, conf, &log); err != nil {
@@ -69,7 +69,7 @@ func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logge
 		// the full list of results.
 		allResults.Results = append(allResults.Results, results[idx]...)
 	}
-	logger.Task().Info("finshed posting test logs")
+	logger.Task().Info("Finished posting test logs.")
 
 	return sendTestResults(ctx, comm, logger, conf, &allResults)
 }

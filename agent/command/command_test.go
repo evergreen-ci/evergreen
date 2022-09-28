@@ -13,7 +13,7 @@ import (
 func setupTestPatchData(apiData *modelutil.TestModelData, patchPath string, t *testing.T) error {
 	if patchPath != "" {
 		modulePatchContent, err := ioutil.ReadFile(patchPath)
-		require.NoError(t, err, "should have read test module patch file")
+		require.NoError(t, err)
 
 		patch := &patch.Patch{
 			Status:  evergreen.PatchCreated,
@@ -27,7 +27,7 @@ func setupTestPatchData(apiData *modelutil.TestModelData, patchPath string, t *t
 			},
 		}
 
-		require.NoError(t, patch.Insert(), "should have inserted patch")
+		require.NoError(t, patch.Insert())
 
 	}
 

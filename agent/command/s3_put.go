@@ -25,16 +25,16 @@ import (
 	"github.com/pkg/errors"
 )
 
-// A plugin command to put a resource to an s3 bucket and download it to
+// s3pc is a command to put a resource to an S3 bucket and download it to
 // the local machine.
 type s3put struct {
 	// AwsKey and AwsSecret are the user's credentials for
-	// authenticating interactions with s3.
+	// authenticating interactions with S3.
 	AwsKey    string `mapstructure:"aws_key" plugin:"expand"`
 	AwsSecret string `mapstructure:"aws_secret" plugin:"expand"`
 
 	// LocalFile is the local filepath to the file the user
-	// wishes to store in s3
+	// wishes to store in S3.
 	LocalFile string `mapstructure:"local_file" plugin:"expand"`
 
 	// LocalFilesIncludeFilter is an array of expressions that specify what files should be
@@ -45,26 +45,26 @@ type s3put struct {
 	LocalFilesIncludeFilterPrefix string `mapstructure:"local_files_include_filter_prefix" plugin:"expand"`
 
 	// RemoteFile is the filepath to store the file to,
-	// within an s3 bucket. Is a prefix when multiple files are uploaded via LocalFilesIncludeFilter.
+	// within an S3 bucket. Is a prefix when multiple files are uploaded via LocalFilesIncludeFilter.
 	RemoteFile string `mapstructure:"remote_file" plugin:"expand"`
 
-	// Region is the s3 region where the bucket is located. It defaults to
+	// Region is the S3 region where the bucket is located. It defaults to
 	// "us-east-1".
 	Region string `mapstructure:"region" plugin:"region"`
 
-	// Bucket is the s3 bucket to use when storing the desired file
+	// Bucket is the s3 bucket to use when storing the desired file.
 	Bucket string `mapstructure:"bucket" plugin:"expand"`
 
 	// Permissions is the ACL to apply to the uploaded file. See:
-	//  http://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl
+	// http://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl
 	// for some examples.
 	Permissions string `mapstructure:"permissions"`
 
 	// ContentType is the MIME type of the uploaded file.
-	//  E.g. text/html, application/pdf, image/jpeg, ...
+	// E.g. text/html, application/pdf, image/jpeg, ...
 	ContentType string `mapstructure:"content_type" plugin:"expand"`
 
-	// BuildVariants stores a list of MCI build variants to run the command for.
+	// BuildVariants stores a list of build variants to run the command for.
 	// If the list is empty, it runs for all build variants.
 	BuildVariants []string `mapstructure:"build_variants"`
 
@@ -73,7 +73,7 @@ type s3put struct {
 	ResourceDisplayName string `mapstructure:"display_name" plugin:"expand"`
 
 	// Visibility determines who can see file links in the UI.
-	// Visibility can be set to either
+	// Visibility can be set to either:
 	//  "private", which allows logged-in users to see the file;
 	//  "public", which allows anyone to see the file; or
 	//  "none", which hides the file from the UI for everybody.
@@ -165,7 +165,7 @@ func (s3pc *s3put) validate() error {
 	}
 
 	if !utility.StringSliceContains(artifact.ValidVisibilities, s3pc.Visibility) {
-		catcher.Errorf("invalid visibility setting '%s'", s3pc.Visibility)
+		catcher.Errorf("invalid visibility setting '%s', allowed visibilities are: %s", s3pc.Visibility, artifact.ValidVisibilities)
 	}
 
 	if s3pc.Region == "" {
@@ -263,11 +263,11 @@ func (s3pc *s3put) Execute(ctx context.Context,
 		return errors.Wrap(err, "validating expanded parameters")
 	}
 	if conf.Task.IsPatchRequest() && !s3pc.isPatchable {
-		logger.Task().Infof("Skipping command '%s' because it is not patchable and this task is part of a patch", s3pc.Name())
+		logger.Task().Infof("Skipping command '%s' because it is not patchable and this task is part of a patch.", s3pc.Name())
 		return nil
 	}
 	if !conf.Task.IsPatchRequest() && s3pc.isPatchOnly {
-		logger.Task().Infof("Skipping command '%s' because the command is patch only and this task is not part of a patch", s3pc.Name())
+		logger.Task().Infof("Skipping command '%s' because the command is patch only and this task is not part of a patch.", s3pc.Name())
 		return nil
 	}
 
@@ -286,22 +286,22 @@ func (s3pc *s3put) Execute(ctx context.Context,
 	s3pc.taskdata = client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
 	if !s3pc.shouldRunForVariant(conf.BuildVariant.Name) {
-		logger.Task().Infof("Skipping S3 put of local file '%s' for variant '%s'",
+		logger.Task().Infof("Skipping S3 put of local file '%s' for variant '%s'.",
 			s3pc.LocalFile, conf.BuildVariant.Name)
 		return nil
 	}
 
 	if s3pc.isPrivate(s3pc.Visibility) {
-		logger.Task().Infof("Putting private files into S3")
+		logger.Task().Infof("Putting private files into S3.")
 
 	} else {
 		if s3pc.isMulti() {
-			logger.Task().Infof("Putting files matching filter '%s' into path '%s' in S3 bucket '%s'",
+			logger.Task().Infof("Putting files matching filter '%s' into path '%s' in S3 bucket '%s'.",
 				s3pc.LocalFilesIncludeFilter, s3pc.RemoteFile, s3pc.Bucket)
 		} else if s3pc.isPublic() {
-			logger.Task().Infof("Putting local file '%s' into path '%s/%s' (%s)", s3pc.LocalFile, s3pc.Bucket, s3pc.RemoteFile, agentutil.S3DefaultURL(s3pc.Bucket, s3pc.RemoteFile))
+			logger.Task().Infof("Putting local file '%s' into path '%s/%s' (%s).", s3pc.LocalFile, s3pc.Bucket, s3pc.RemoteFile, agentutil.S3DefaultURL(s3pc.Bucket, s3pc.RemoteFile))
 		} else {
-			logger.Task().Infof("Putting local file '%s' into '%s/%s'", s3pc.LocalFile, s3pc.Bucket, s3pc.RemoteFile)
+			logger.Task().Infof("Putting local file '%s' into '%s/%s'.", s3pc.LocalFile, s3pc.Bucket, s3pc.RemoteFile)
 		}
 	}
 
@@ -314,7 +314,7 @@ func (s3pc *s3put) Execute(ctx context.Context,
 	case err := <-errChan:
 		return err
 	case <-ctx.Done():
-		logger.Execution().Info("Received signal to terminate execution of S3 Put Command")
+		logger.Execution().Infof("Canceled while running command '%s': %s.", s3pc.Name(), ctx.Err())
 		return nil
 	}
 
@@ -336,16 +336,16 @@ func (s3pc *s3put) putWithRetry(ctx context.Context, comm client.Communicator, l
 retryLoop:
 	for i := 1; i <= maxS3OpAttempts; i++ {
 		if s3pc.isPrivate(s3pc.Visibility) {
-			logger.Task().Infof("performing S3 put of a hidden file")
+			logger.Task().Infof("Performing S3 put of a private file.")
 		} else {
-			logger.Task().Infof("performing S3 put to file '%s' in bucket '%s' [%d of %d]",
+			logger.Task().Infof("Performing S3 put to file '%s' in bucket '%s' (attempt %d of %d).",
 				s3pc.RemoteFile, s3pc.Bucket,
 				i, maxS3OpAttempts)
 		}
 
 		select {
 		case <-ctx.Done():
-			return errors.Errorf("command '%s' canceled", s3pc.Name())
+			return errors.Errorf("canceled while running command '%s'", s3pc.Name())
 		case <-timer.C:
 			filesList = []string{s3pc.LocalFile}
 
@@ -358,11 +358,11 @@ retryLoop:
 				}
 				filesList, err = b.Build()
 				if err != nil {
-					return errors.Wrapf(err, "processing local files include filter '%s'",
+					return errors.Wrapf(err, "processing local files include filter '%s'.",
 						strings.Join(s3pc.LocalFilesIncludeFilter, " "))
 				}
 				if len(filesList) == 0 {
-					logger.Task().Infof("file filter '%s' matched no files", strings.Join(s3pc.LocalFilesIncludeFilter, " "))
+					logger.Task().Infof("File filter '%s' matched no files.", strings.Join(s3pc.LocalFilesIncludeFilter, " "))
 					return nil
 				}
 			}
@@ -372,8 +372,8 @@ retryLoop:
 
 		uploadLoop:
 			for _, fpath := range filesList {
-				if ctx.Err() != nil {
-					return errors.Errorf("command '%s' canceled", s3pc.Name())
+				if err := ctx.Err(); err != nil {
+					return errors.Wrapf(err, "canceled while processing file '%s'", fpath)
 				}
 
 				remoteName := s3pc.RemoteFile
@@ -390,7 +390,7 @@ retryLoop:
 						return errors.Wrapf(err, "checking if file '%s' exists", remoteName)
 					}
 					if exists {
-						logger.Task().Infof("noop: not uploading file '%s' because remote file '%s' already exists. Continuing to upload other files.", fpath, remoteName)
+						logger.Task().Infof("Not uploading file '%s' because remote file '%s' already exists. Continuing to upload other files.", fpath, remoteName)
 						continue uploadLoop
 					}
 				}
@@ -402,11 +402,11 @@ retryLoop:
 						if s3pc.isMulti() {
 							// try the remaining multi uploads in the group, effectively ignoring this
 							// error.
-							logger.Task().Infof("file '%s' not found but continuing to upload other files", fpath)
+							logger.Task().Infof("File '%s' not found, but continuing to upload other files.", fpath)
 							continue uploadLoop
 						} else if s3pc.skipMissing {
 							// single optional file uploads should return early.
-							logger.Task().Infof("file '%s' not found but skip missing true", fpath)
+							logger.Task().Infof("File '%s' not found and skip missing is true, exiting without error.", fpath)
 							return nil
 						} else {
 							// single required uploads should return an error asap.
@@ -440,7 +440,7 @@ retryLoop:
 	logger.Task().WarningWhen(strings.Contains(s3pc.Bucket, "."), "Bucket names containing dots that are created after Sept. 30, 2020 are not guaranteed to have valid attached URLs.")
 
 	if len(uploadedFiles) != len(filesList) && !s3pc.skipMissing {
-		logger.Task().Infof("attempted to upload %d files, %d successfully uploaded", len(filesList), len(uploadedFiles))
+		logger.Task().Infof("Attempted to upload %d files, %d successfully uploaded.", len(filesList), len(uploadedFiles))
 		return errors.Errorf("uploaded %d files of %d requested", len(uploadedFiles), len(filesList))
 	}
 
@@ -534,7 +534,7 @@ func (s3pc *s3put) remoteFileExists(remoteName string) (bool, error) {
 		if aerr, ok := err.(awserr.Error); ok && aerr.Code() == notFoundError {
 			return false, nil
 		} else {
-			return false, errors.Wrapf(err, " getting head object for remote file '%s'", remoteName)
+			return false, errors.Wrapf(err, "getting head object for remote file '%s'", remoteName)
 		}
 	}
 	return true, nil

@@ -16,12 +16,12 @@ import (
 
 type perfSend struct {
 	// AWSKey and AWSSecret are the user's credentials for authenticating
-	// interactions with s3. These are required if any of the tests have
+	// interactions with S3. These are required if any of the tests have
 	// artifacts.
 	AWSKey    string `mapstructure:"aws_key" plugin:"expand"`
 	AWSSecret string `mapstructure:"aws_secret" plugin:"expand"`
 
-	// Region is the s3 region where the global bucket is located. It
+	// Region is the S3 region where the global bucket is located. It
 	// defaults to "us-east-1".
 	Region string `mapstructure:"region" plugin:"expand"`
 
@@ -29,11 +29,11 @@ type perfSend struct {
 	// without a bucket specified.
 	Bucket string `mapstructure:"bucket" plugin:"expand"`
 
-	// Prefix specifies the global prefix to use within the s3 bucket for
+	// Prefix specifies the global prefix to use within the S3 bucket for
 	// any artifacts without a prefix specified.
 	Prefix string `mapstructure:"prefix" plugin:"expand"`
 
-	// File is the file containing either the json or yaml representation
+	// File is the file containing either the JSON or YAML representation
 	// of the performance report tests.
 	File string `mapstructure:"file" plugin:"expand"`
 
@@ -49,7 +49,7 @@ func (c *perfSend) ParseParams(params map[string]interface{}) error {
 	}
 
 	if c.File == "" {
-		return errors.New("'file' param must not be blank")
+		return errors.New("file must not be blank")
 	}
 
 	return nil
@@ -64,7 +64,7 @@ func (c *perfSend) Execute(ctx context.Context, comm client.Communicator, logger
 	filename := getJoinedWithWorkDir(conf, c.File)
 	report, err := poplar.LoadTests(filename)
 	if err != nil {
-		return errors.Wrapf(err, "reading tests from '%s'", filename)
+		return errors.Wrapf(err, "reading tests from file '%s'", filename)
 	}
 	c.addEvgData(report, conf)
 

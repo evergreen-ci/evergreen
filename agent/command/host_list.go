@@ -91,7 +91,7 @@ func (c *listHosts) Execute(ctx context.Context, comm client.Communicator, logge
 	if c.NumHosts != "" {
 		numHosts, err = strconv.Atoi(c.NumHosts)
 		if err != nil {
-			return errors.Wrapf(err, "cannot convert '%s' to int", c.NumHosts)
+			return errors.Wrapf(err, "converting num hosts '%s' to int", c.NumHosts)
 		}
 	}
 

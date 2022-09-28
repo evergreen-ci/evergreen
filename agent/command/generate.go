@@ -58,18 +58,18 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 
 	if len(c.Files) == 0 {
 		if c.Optional {
-			logger.Task().Info("no files found and optional is true, skipping generate.tasks")
+			logger.Task().Infof("No files found and optional is true, skipping command '%s'.", c.Name())
 			return nil
 		}
-		return errors.New("no files found for generate.tasks")
+		return errors.Errorf("no files found for command '%s'", c.Name())
 	}
 
 	catcher := grip.NewBasicCatcher()
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	var jsonBytes [][]byte
 	for _, fn := range c.Files {
-		if ctx.Err() != nil {
-			catcher.Add(ctx.Err())
+		if err := ctx.Err(); err != nil {
+			catcher.Wrapf(ctx.Err(), "cancelled while processing file '%s'", fn)
 			break
 		}
 		var data []byte

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/evergreen-ci/utility"
@@ -24,7 +23,7 @@ func SpotHostWillTerminateSoon() bool {
 	defer utility.PutHTTPClient(c)
 	resp, err := c.Get(url)
 	if err != nil {
-		grip.Info(errors.Wrap(err, "problem getting termination endpoint"))
+		grip.Info(errors.Wrap(err, "getting spot host termination time"))
 		return false
 	}
 	defer resp.Body.Close()
@@ -58,10 +57,4 @@ func GetEC2InstanceID(ctx context.Context) (string, error) {
 	}
 
 	return string(instanceID), nil
-
-}
-
-func ExitAgent() {
-	grip.Info("Spot instance terminating, so agent is exiting")
-	os.Exit(1)
 }

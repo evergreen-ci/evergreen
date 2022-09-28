@@ -78,7 +78,7 @@ func (c *xunitResults) Execute(ctx context.Context,
 	case err := <-errChan:
 		return errors.WithStack(err)
 	case <-ctx.Done():
-		logger.Execution().Infof("Received signal to terminate execution of command '%s'", c.Name())
+		logger.Execution().Infof("Canceled while parsing and uploading results for command '%s': %s.", c.Name(), ctx.Err())
 		return nil
 	}
 }
@@ -121,18 +121,18 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 		testSuites []testSuite
 	)
 	for _, reportFileLoc := range reportFilePaths {
-		if ctx.Err() != nil {
-			return errors.New("operation canceled")
+		if err := ctx.Err(); err != nil {
+			return errors.Wrapf(err, "canceled while parsing xunit file '%s'", reportFileLoc)
 		}
 
 		stat, err := os.Stat(reportFileLoc)
 		if os.IsNotExist(err) {
-			logger.Task().Infof("result file '%s' does not exist", reportFileLoc)
+			logger.Task().Infof("Result file '%s' does not exist.", reportFileLoc)
 			continue
 		}
 
 		if stat.IsDir() {
-			logger.Task().Infof("result file '%s' is a directory", reportFileLoc)
+			logger.Task().Infof("Result file '%s' is a directory, not a file.", reportFileLoc)
 			continue
 		}
 
@@ -144,13 +144,13 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 		testSuites, err = parseXMLResults(file)
 		if err != nil {
 			catcher := grip.NewBasicCatcher()
-			catcher.Wrap(err, "parsing xunit file")
-			catcher.Wrap(file.Close(), "closing xunit file")
+			catcher.Wrapf(err, "parsing xunit file '%s'", reportFileLoc)
+			catcher.Wrapf(file.Close(), "closing xunit file '%s'", reportFileLoc)
 			return catcher.Resolve()
 		}
 
 		if err = file.Close(); err != nil {
-			return errors.Wrap(err, "closing xunit file")
+			return errors.Wrapf(err, "closing xunit file '%s'", reportFileLoc)
 		}
 
 		// go through all the tests
@@ -165,8 +165,8 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 
 	succeeded := 0
 	for i, log := range cumulative.logs {
-		if ctx.Err() != nil {
-			return errors.New("operation canceled")
+		if err := ctx.Err(); err != nil {
+			return errors.Wrap(err, "canceled while sending test logs")
 		}
 
 		if err := sendTestLog(ctx, comm, conf, log); err != nil {
@@ -177,7 +177,7 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 		}
 		cumulative.tests[cumulative.logIdxToTestIdx[i]].LineNum = 1
 	}
-	logger.Task().Infof("posting test logs succeeded for %d of %d files", succeeded, len(cumulative.logs))
+	logger.Task().Infof("Posting test logs succeeded for %d of %d files.", succeeded, len(cumulative.logs))
 
 	return sendTestResults(ctx, comm, logger, conf, &task.LocalTestResults{Results: cumulative.tests})
 }

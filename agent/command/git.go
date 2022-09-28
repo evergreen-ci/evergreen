@@ -86,7 +86,7 @@ func (opts cloneOpts) validate() error {
 		catcher.New("missing required location")
 	}
 	if opts.method != "" {
-		catcher.Wrap(evergreen.ValidateCloneMethod(opts.method), "invalid clone method")
+		catcher.Wrapf(evergreen.ValidateCloneMethod(opts.method), "invalid clone method '%s'", opts.method)
 	}
 	if opts.method == evergreen.CloneMethodOAuth && opts.token == "" {
 		catcher.New("cannot clone using OAuth if token is not set")
@@ -174,7 +174,7 @@ func (opts cloneOpts) getCloneCommand() ([]string, error) {
 func (opts cloneOpts) buildHTTPCloneCommand() ([]string, error) {
 	urlLocation, err := url.Parse(opts.location)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse URL from location")
+		return nil, errors.Wrap(err, "parsing URL from location")
 	}
 	clone := fmt.Sprintf("git clone %s '%s'", thirdparty.FormGitUrl(urlLocation.Host, opts.owner, opts.repo, opts.token), opts.dir)
 	if opts.recurseSubmodules {
@@ -236,7 +236,7 @@ func (c *gitFetchProject) manifestLoad(ctx context.Context,
 		conf.Expansions.Put(fmt.Sprintf("%s_owner", moduleName), manifest.Modules[moduleName].Owner)
 	}
 
-	logger.Execution().Info("manifest loaded successfully")
+	logger.Execution().Info("Manifest loaded successfully.")
 	return nil
 }
 
@@ -252,7 +252,7 @@ func (c *gitFetchProject) ParseParams(params map[string]interface{}) error {
 	}
 
 	if c.Directory == "" {
-		return errors.Errorf("directory must not be blank", c.Name())
+		return errors.New("directory must not be blank")
 	}
 
 	return nil
@@ -282,7 +282,7 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, conf *internal.
 			if err != nil {
 				logger.Task().Error(errors.Wrap(err, "checking if pull request is mergeable"))
 				commitToTest = conf.GithubPatchData.HeadHash
-				logger.Task().Warningf("because errors were encountered trying to retrieve the pull request, we will use the last recorded hash to test (%s)", commitToTest)
+				logger.Task().Warningf("Because errors were encountered trying to retrieve the pull request, we will use the last recorded hash to test ('%s').", commitToTest)
 			}
 			ref = "merge"
 			branchName = fmt.Sprintf("evg-merge-test-%s", utility.RandomString())
@@ -329,17 +329,17 @@ func (c *gitFetchProject) waitForMergeableCheck(ctx context.Context, logger clie
 			return false, errors.Wrap(err, "getting pull request data from GitHub")
 		}
 		if pr.Mergeable == nil {
-			logger.Execution().Info("Mergeable check not ready")
+			logger.Execution().Info("Mergeable check is not ready.")
 			return true, nil
 		}
 		if *pr.Mergeable {
 			if pr.MergeCommitSHA != nil {
 				mergeSHA = *pr.MergeCommitSHA
 			} else {
-				return false, errors.New("Pull request is mergeable but GitHub has not created a merge branch")
+				return false, errors.New("pull request is mergeable but GitHub has not created a merge branch")
 			}
 		} else {
-			return false, errors.New("Pull request is not mergeable. This likely means a merge conflict was just introduced")
+			return false, errors.New("pull request is not mergeable, which likely means a merge conflict was just introduced")
 		}
 		return false, nil
 	}, utility.RetryOptions{
@@ -404,11 +404,11 @@ func (c *gitFetchProject) opts(projectMethod, projectToken string, logger client
 		cloneDepth = shallowCloneDepth
 	}
 	if !shallowCloneEnabled && cloneDepth != 0 {
-		logger.Task().Infof("Clone depth is disabled for distro; ignoring user specified clone depth")
+		logger.Task().Infof("Clone depth is disabled for this distro; ignoring-user specified clone depth.")
 	} else {
 		opts.cloneDepth = cloneDepth
 		if c.CloneDepth != 0 && c.ShallowClone {
-			logger.Task().Infof("Specified clone depth of %d will be used instead of shallow_clone (which uses depth %d)", opts.cloneDepth, shallowCloneDepth)
+			logger.Task().Infof("Specified clone depth of %d will be used instead of shallow_clone (which uses depth %d).", opts.cloneDepth, shallowCloneDepth)
 		}
 	}
 
@@ -533,7 +533,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	moduleName string) error {
 
 	var err error
-	logger.Execution().Infof("Fetching module '%s'", moduleName)
+	logger.Execution().Infof("Fetching module '%s'.", moduleName)
 
 	var module *model.Module
 	module, err = conf.Project.GetModuleByName(moduleName)
@@ -639,7 +639,7 @@ func (c *gitFetchProject) applyAdditionalPatch(ctx context.Context,
 	logger client.LoggerProducer,
 	td client.TaskData,
 	patchId string) error {
-	logger.Task().Infof("Applying changes from previous commit queue patch '%s'", patchId)
+	logger.Task().Infof("Applying changes from previous commit queue patch '%s'.", patchId)
 	newPatch, err := comm.GetTaskPatch(ctx, td, patchId)
 	if err != nil {
 		return errors.Wrap(err, "getting additional patch")
@@ -651,7 +651,7 @@ func (c *gitFetchProject) applyAdditionalPatch(ctx context.Context,
 		return errors.Wrap(err, "getting patch contents")
 	}
 	if err = c.applyPatch(ctx, logger, conf, reorderPatches(newPatch.Patches)); err != nil {
-		logger.Task().Warning("Failed to apply previous commit queue patch; try rebasing onto HEAD")
+		logger.Task().Warning("Failed to apply previous commit queue patch; try rebasing onto HEAD.")
 		return errors.Wrapf(err, "applying patch '%s'", newPatch.Id.Hex())
 	}
 	logger.Task().Infof("Applied changes from previous commit queue patch '%s'", patchId)
@@ -698,12 +698,12 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 
 	// Clone the project's modules.
 	for _, moduleName := range conf.BuildVariant.Modules {
-		if ctx.Err() != nil {
-			return errors.New("git.get_project command aborted while applying modules")
+		if err := ctx.Err(); err != nil {
+			return errors.Wrapf(err, "canceled while applying module '%s'", moduleName)
 		}
 		err = c.fetchModuleSource(ctx, conf, logger, jpm, opts.method, opts.token, p, moduleName)
 		if err != nil {
-			logger.Execution().Error(err)
+			logger.Execution().Error(errors.Wrap(err, "fetching module source"))
 		}
 	}
 
@@ -755,7 +755,7 @@ func reorderPatches(originalPatches []patch.ModulePatch) []patch.ModulePatch {
 }
 
 func (c *gitFetchProject) logModuleRevision(logger client.LoggerProducer, revision, module, reason string) {
-	logger.Execution().Infof("Using revision/ref '%s' for module '%s' (reason: %s)", revision, module, reason)
+	logger.Execution().Infof("Using revision/ref '%s' for module '%s' (reason: %s).", revision, module, reason)
 }
 
 // getPatchContents() dereferences any patch files that are stored externally, fetching them from
@@ -774,12 +774,12 @@ func (c *gitFetchProject) getPatchContents(ctx context.Context, comm client.Comm
 			continue
 		}
 
-		if ctx.Err() != nil {
-			return errors.New("operation canceled")
+		if err := ctx.Err(); err != nil {
+			return errors.Wrapf(err, "canceled while getting patch file '%s'", patchPart.ModuleName)
 		}
 
 		// otherwise, fetch the contents and load it into the patch object
-		logger.Execution().Infof("Fetching patch contents for %s", patchPart.PatchSet.PatchFileId)
+		logger.Execution().Infof("Fetching patch contents for patch file '%s'.", patchPart.PatchSet.PatchFileId)
 
 		result, err := comm.GetPatchFile(ctx, td, patchPart.PatchSet.PatchFileId)
 		if err != nil {
@@ -852,8 +852,8 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 
 	// patch sets and contain multiple patches, some of them for modules
 	for _, patchPart := range patches {
-		if ctx.Err() != nil {
-			return errors.New("apply patch operation canceled")
+		if err := ctx.Err(); err != nil {
+			return errors.Wrapf(err, "canceled while applying module patch '%s'", patchPart.ModuleName)
 		}
 
 		var moduleDir string
@@ -870,7 +870,7 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 			// skip the module if this build variant does not use it
 			if !utility.StringSliceContains(conf.BuildVariant.Modules, module.Name) {
 				logger.Execution().Infof(
-					"Skipping patch for module '%s': the current build variant does not use it",
+					"Skipping patch for module '%s': the current build variant does not use it.",
 					module.Name)
 				continue
 			}
@@ -909,8 +909,7 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 		patchCommandStrings := getPatchCommands(patchPart, conf, moduleDir, tempAbsPath)
 		applyCommand, err := c.getApplyCommand(tempAbsPath, conf)
 		if err != nil {
-			logger.Execution().Error(errors.Wrap(err, "getting git apply commands"))
-			return errors.WithStack(err)
+			return errors.Wrap(err, "getting git apply command")
 		}
 		patchCommandStrings = append(patchCommandStrings, applyCommand)
 		cmdsJoined := strings.Join(patchCommandStrings, "\n")

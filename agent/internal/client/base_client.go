@@ -117,7 +117,7 @@ func (c *baseCommunicator) createCedarGRPCConn(ctx context.Context) error {
 	if c.cedarGRPCClient == nil {
 		cc, err := c.GetCedarConfig(ctx)
 		if err != nil {
-			return errors.Wrap(err, "getting cedar config")
+			return errors.Wrap(err, "getting Cedar config")
 		}
 
 		if cc.BaseURL == "" {
@@ -138,7 +138,7 @@ func (c *baseCommunicator) createCedarGRPCConn(ctx context.Context) error {
 		}
 		c.cedarGRPCClient, err = timber.DialCedar(ctx, c.httpClient, dialOpts)
 		if err != nil {
-			return errors.Wrap(err, "creating Cedar grpc client connection")
+			return errors.Wrap(err, "creating Cedar gRPC client connection")
 		}
 	}
 
@@ -159,12 +159,11 @@ func (c *baseCommunicator) GetProjectRef(ctx context.Context, taskData TaskData)
 	info.setTaskPathSuffix("project_ref")
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, "failed to get project ref for task %s: %s", taskData.ID, err.Error())
+		return nil, utility.RespErrorf(resp, errors.Wrap(err, "getting project ref").Error())
 	}
 	defer resp.Body.Close()
 	if err = utility.ReadJSON(resp.Body, projectRef); err != nil {
-		err = errors.Wrapf(err, "failed reading json for task %s", taskData.ID)
-		return nil, err
+		return nil, errors.Wrap(err, "reading project ref from response")
 	}
 	return projectRef, nil
 }
@@ -177,7 +176,7 @@ func (c *baseCommunicator) DisableHost(ctx context.Context, hostID string, detai
 	}
 	resp, err := c.retryRequest(ctx, info, &details)
 	if err != nil {
-		return utility.RespErrorf(resp, "failed to disable host: %s", err.Error())
+		return utility.RespErrorf(resp, errors.Wrapf(err, "disabling host '%s'", hostID).Error())
 	}
 
 	defer resp.Body.Close()
@@ -194,12 +193,11 @@ func (c *baseCommunicator) GetTask(ctx context.Context, taskData TaskData) (*tas
 	info.setTaskPathSuffix("")
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, "failed to get task %s: %s", taskData.ID, err.Error())
+		return nil, utility.RespErrorf(resp, errors.Wrap(err, "getting task info").Error())
 	}
 	defer resp.Body.Close()
 	if err = utility.ReadJSON(resp.Body, task); err != nil {
-		err = errors.Wrapf(err, "failed reading json for task %s", taskData.ID)
-		return nil, err
+		return nil, errors.Wrap(err, "reading task info from response")
 	}
 	return task, nil
 }
@@ -214,14 +212,14 @@ func (c *baseCommunicator) GetDisplayTaskInfoFromExecution(ctx context.Context, 
 	}
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, "failed to get display task of task %s: %s", td.ID, err.Error())
+		return nil, utility.RespErrorf(resp, errors.Wrap(err, "getting parent display task info").Error())
 	}
 	defer resp.Body.Close()
 
 	displayTaskInfo := &apimodels.DisplayTaskInfo{}
 	err = utility.ReadJSON(resp.Body, &displayTaskInfo)
 	if err != nil {
-		return nil, errors.Wrapf(err, "reading display task info of task %s", td.ID)
+		return nil, errors.Wrap(err, "reading parent display task info from response")
 	}
 
 	return displayTaskInfo, nil
@@ -235,13 +233,12 @@ func (c *baseCommunicator) GetDistroView(ctx context.Context, taskData TaskData)
 	info.setTaskPathSuffix("distro_view")
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, "failed to get distro for task %s: %s", taskData.ID, err.Error())
+		return nil, utility.RespErrorf(resp, errors.Wrap(err, "getting distro view").Error())
 	}
 	defer resp.Body.Close()
 	var dv apimodels.DistroView
 	if err = utility.ReadJSON(resp.Body, &dv); err != nil {
-		err = errors.Wrapf(err, "unable to read distro response for task %s", taskData.ID)
-		return nil, err
+		return nil, errors.Wrap(err, "reading distro view from response")
 	}
 	return &dv, nil
 }
@@ -258,12 +255,12 @@ func (c *baseCommunicator) GetDistroAMI(ctx context.Context, distro, region stri
 	}
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return "", utility.RespErrorf(resp, "failed to get distro AMI for task %s: %s", taskData.ID, err.Error())
+		return "", utility.RespErrorf(resp, errors.Wrap(err, "getting distro AMI").Error())
 	}
 	defer resp.Body.Close()
 	out, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return "", errors.Wrapf(err, "problem reading results from body for %s", taskData.ID)
+		return "", errors.Wrap(err, "reading distro AMI from response")
 	}
 	return string(out), nil
 }
@@ -276,11 +273,11 @@ func (c *baseCommunicator) GetProject(ctx context.Context, taskData TaskData) (*
 	info.setTaskPathSuffix("parser_project")
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, "failed to get project for task %s: %s", taskData.ID, err.Error())
+		return nil, utility.RespErrorf(resp, errors.Wrap(err, "getting parser project").Error())
 	}
 	respBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, errors.Wrap(err, "error reading body")
+		return nil, errors.Wrap(err, "reading parser project from response")
 	}
 	return model.GetProjectFromBSON(respBytes)
 }
@@ -294,13 +291,13 @@ func (c *baseCommunicator) GetExpansions(ctx context.Context, taskData TaskData)
 	info.setTaskPathSuffix("expansions")
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, "failed to get expansions for task %s: %s", taskData.ID, err.Error())
+		return nil, utility.RespErrorf(resp, errors.Wrap(err, "getting expansions").Error())
 	}
 	defer resp.Body.Close()
 
 	err = utility.ReadJSON(resp.Body, &e)
 	if err != nil {
-		return nil, errors.Wrapf(err, "unable to read project version response for task %s", taskData.ID)
+		return nil, errors.Wrap(err, "reading expansions from response")
 	}
 	return e, nil
 }
@@ -316,22 +313,19 @@ func (c *baseCommunicator) Heartbeat(ctx context.Context, taskData TaskData) (st
 	info.setTaskPathSuffix("heartbeat")
 	resp, err := c.request(ctx, info, data)
 	if err != nil {
-		err = errors.Wrapf(err, "error sending heartbeat for task %s", taskData.ID)
-		return "", err
+		return "", errors.Wrap(err, "sending heartbeat")
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusConflict {
-		return evergreen.TaskConflict, errors.Errorf("Unauthorized - wrong secret")
+		return evergreen.TaskConflict, errors.Errorf("unauthorized - wrong secret")
 	}
 	if resp.StatusCode != http.StatusOK {
-		return "", errors.Errorf("unexpected status code doing heartbeat: %v",
-			resp.StatusCode)
+		return "", utility.RespErrorf(resp, "sending heartbeat")
 	}
 
 	heartbeatResponse := &apimodels.HeartbeatResponse{}
 	if err = utility.ReadJSON(resp.Body, heartbeatResponse); err != nil {
-		err = errors.Wrapf(err, "Error unmarshaling heartbeat response for task %s", taskData.ID)
-		return "", err
+		return "", errors.Wrap(err, "reading heartbeat reply from response")
 	}
 	if heartbeatResponse.Abort {
 		return evergreen.TaskFailed, nil
@@ -349,12 +343,11 @@ func (c *baseCommunicator) FetchExpansionVars(ctx context.Context, taskData Task
 	info.setTaskPathSuffix("fetch_vars")
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, "failed to get expansion vars for task %s: %s", taskData.ID, err.Error())
+		return nil, utility.RespErrorf(resp, errors.Wrap(err, "fetching project vars and parameters").Error())
 	}
 	defer resp.Body.Close()
 	if err = utility.ReadJSON(resp.Body, resultVars); err != nil {
-		err = errors.Wrapf(err, "failed to read vars from response for task %s", taskData.ID)
-		return nil, err
+		return nil, errors.Wrap(err, "reading project vars and parameters from response")
 	}
 	return resultVars, err
 }
@@ -363,7 +356,7 @@ func (c *baseCommunicator) FetchExpansionVars(ctx context.Context, taskData Task
 // creates it if it doesn't exist.
 func (c *baseCommunicator) GetCedarGRPCConn(ctx context.Context) (*grpc.ClientConn, error) {
 	if err := c.createCedarGRPCConn(ctx); err != nil {
-		return nil, errors.Wrap(err, "setting up cedar grpc connection")
+		return nil, errors.Wrap(err, "setting up Cedar gRPC connection")
 	}
 	return c.cedarGRPCClient, nil
 }
@@ -443,12 +436,12 @@ func (c *baseCommunicator) makeSender(ctx context.Context, td TaskData, opts []L
 			}
 			sender, err = send.NewSplunkLogger(prefix, info, levelInfo)
 			if err != nil {
-				return nil, nil, errors.Wrap(err, "creating splunk logger")
+				return nil, nil, errors.Wrap(err, "creating Splunk logger")
 			}
 			underlyingBufferedSenders = append(underlyingBufferedSenders, sender)
 			sender, err = send.NewBufferedSender(ctx, newAnnotatedWrapper(td.ID, prefix, sender), bufferedSenderOpts)
 			if err != nil {
-				return nil, nil, errors.Wrap(err, "creating buffered splunk logger")
+				return nil, nil, errors.Wrap(err, "creating buffered Splunk logger")
 			}
 		case model.LogkeeperLogSender:
 			config := send.BuildloggerConfig{
@@ -460,12 +453,12 @@ func (c *baseCommunicator) makeSender(ctx context.Context, td TaskData, opts []L
 			}
 			sender, err = send.NewBuildlogger(opt.BuilderID, &config, levelInfo)
 			if err != nil {
-				return nil, nil, errors.Wrap(err, "creating logkeeper logger")
+				return nil, nil, errors.Wrap(err, "creating Logkeeper logger")
 			}
 			underlyingBufferedSenders = append(underlyingBufferedSenders, sender)
 			sender, err = send.NewBufferedSender(ctx, sender, bufferedSenderOpts)
 			if err != nil {
-				return nil, nil, errors.Wrap(err, "creating buffered logkeeper logger")
+				return nil, nil, errors.Wrap(err, "creating buffered Logkeeper logger")
 			}
 
 			metadata := LogkeeperMetadata{
@@ -483,11 +476,11 @@ func (c *baseCommunicator) makeSender(ctx context.Context, td TaskData, opts []L
 		case model.BuildloggerLogSender:
 			tk, err := c.GetTask(ctx, td)
 			if err != nil {
-				return nil, nil, errors.Wrap(err, "setting up buildlogger sender")
+				return nil, nil, errors.Wrap(err, "setting up Buildlogger sender")
 			}
 
 			if err = c.createCedarGRPCConn(ctx); err != nil {
-				return nil, nil, errors.Wrap(err, "setting up cedar grpc connection")
+				return nil, nil, errors.Wrap(err, "setting up Cedar gRPC connection")
 			}
 
 			timberOpts := &buildlogger.LoggerOptions{
@@ -506,7 +499,7 @@ func (c *baseCommunicator) makeSender(ctx context.Context, td TaskData, opts []L
 			}
 			sender, err = buildlogger.NewLoggerWithContext(ctx, opt.BuilderID, levelInfo, timberOpts)
 			if err != nil {
-				return nil, nil, errors.Wrap(err, "creating buildlogger logger")
+				return nil, nil, errors.Wrap(err, "creating Buildlogger logger")
 			}
 		default:
 			sender = newEvergreenLogSender(ctx, c, prefix, td, bufferSize, bufferDuration)
@@ -555,7 +548,7 @@ func (c *baseCommunicator) SendLogMessages(ctx context.Context, taskData TaskDat
 		defer recovery.LogStackTraceAndExit("backup timer")
 		select {
 		case <-ctx.Done():
-			grip.Info("request completed or task ending, stopping backup timer thread")
+			grip.Infof("Request completed or task ending, stopping backup timer thread: %s.", ctx.Err())
 			return
 		case t := <-backupTimer.C:
 			grip.Alert(message.Fields{
@@ -573,7 +566,7 @@ func (c *baseCommunicator) SendLogMessages(ctx context.Context, taskData TaskDat
 	}()
 	resp, err := c.retryRequest(ctx, info, &payload)
 	if err != nil {
-		return utility.RespErrorf(resp, "problem sending %d log messages for task %s: %s", len(msgs), taskData.ID, err.Error())
+		return utility.RespErrorf(resp, errors.Wrapf(err, "sending %d log messages", len(msgs)).Error())
 	}
 	defer resp.Body.Close()
 	return nil
@@ -592,7 +585,7 @@ func (c *baseCommunicator) SendTaskResults(ctx context.Context, taskData TaskDat
 	info.setTaskPathSuffix("results")
 	resp, err := c.retryRequest(ctx, info, r)
 	if err != nil {
-		return utility.RespErrorf(resp, "problem adding %d results to task %s: %s", len(r.Results), taskData.ID, err.Error())
+		return utility.RespErrorf(resp, errors.Wrapf(err, "adding %d results").Error())
 	}
 	defer resp.Body.Close()
 	return nil
@@ -615,12 +608,12 @@ func (c *baseCommunicator) GetTaskPatch(ctx context.Context, taskData TaskData, 
 	info.setTaskPathSuffix(suffix)
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, "failed to get patch for task %s: %s", taskData.ID, err.Error())
+		return nil, utility.RespErrorf(resp, errors.Wrapf(err, "getting patch '%s' for task", patchId).Error())
 	}
 	defer resp.Body.Close()
 
 	if err = utility.ReadJSON(resp.Body, &patch); err != nil {
-		return nil, errors.Wrapf(err, "problem parsing patch response for %s", taskData.ID)
+		return nil, errors.Wrap(err, "reading patch for task from response")
 	}
 
 	return &patch, nil
@@ -635,15 +628,34 @@ func (c *baseCommunicator) GetCedarConfig(ctx context.Context) (*apimodels.Cedar
 
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, "getting the Cedar config: %s", err.Error())
+		return nil, utility.RespErrorf(resp, errors.Wrap(err, "getting the Cedar config").Error())
 	}
 
 	config := &apimodels.CedarConfig{}
 	if err := utility.ReadJSON(resp.Body, config); err != nil {
-		return nil, errors.Wrap(err, "reading the Cedar config from the response")
+		return nil, errors.Wrap(err, "reading the Cedar config from response")
 	}
 
 	return config, nil
+}
+
+func (c *baseCommunicator) GetAgentSetupData(ctx context.Context) (*apimodels.AgentSetupData, error) {
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   "agent/setup",
+	}
+
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return nil, utility.RespErrorf(resp, errors.Wrap(err, "getting agent setup data").Error())
+	}
+
+	var data apimodels.AgentSetupData
+	if err := utility.ReadJSON(resp.Body, data); err != nil {
+		return nil, errors.Wrap(err, "reading agent setup data from response")
+	}
+
+	return &data, nil
 }
 
 // GetDataPipesConfig returns the Data-Pipes service configuration.
@@ -655,12 +667,12 @@ func (c *baseCommunicator) GetDataPipesConfig(ctx context.Context) (*apimodels.D
 
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, "getting the Data-Pipes config: %s", err.Error())
+		return nil, utility.RespErrorf(resp, errors.Wrap(err, "getting the Data-Pipes config").Error())
 	}
 
 	config := &apimodels.DataPipesConfig{}
 	if err := utility.ReadJSON(resp.Body, config); err != nil {
-		return nil, errors.Wrap(err, "reading the Data-Pipes config from the response")
+		return nil, errors.Wrap(err, "reading the Data-Pipes config from response")
 	}
 
 	return config, nil
@@ -676,14 +688,14 @@ func (c *baseCommunicator) GetPatchFile(ctx context.Context, taskData TaskData, 
 	info.setTaskPathSuffix("git/patchfile/" + patchFileID)
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return "", utility.RespErrorf(resp, "failed to get patch file %s for task %s: %s", patchFileID, taskData.ID, err.Error())
+		return "", utility.RespErrorf(resp, errors.Wrapf(err, "getting patch file '%s'", patchFileID).Error())
 	}
 	defer resp.Body.Close()
 
 	var result []byte
 	result, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return "", errors.Wrapf(err, "problem reading file %s for patch %s", patchFileID, taskData.ID)
+		return "", errors.Wrapf(err, "reading patch file '%s' from response", patchFileID)
 	}
 
 	return string(result), nil
@@ -703,7 +715,7 @@ func (c *baseCommunicator) SendTestLog(ctx context.Context, taskData TaskData, l
 	info.setTaskPathSuffix("test_logs")
 	resp, err := c.retryRequest(ctx, info, log)
 	if err != nil {
-		return "", utility.RespErrorf(resp, "failed to send test log for task %s: %s", taskData.ID, err.Error())
+		return "", utility.RespErrorf(resp, errors.Wrap(err, "sending test log").Error())
 	}
 	defer resp.Body.Close()
 
@@ -711,8 +723,7 @@ func (c *baseCommunicator) SendTestLog(ctx context.Context, taskData TaskData, l
 		ID string `json:"_id"`
 	}{}
 	if err = utility.ReadJSON(resp.Body, &logReply); err != nil {
-		message := fmt.Sprintf("Error unmarshalling post test log response: %v", err)
-		return "", errors.New(message)
+		return "", errors.Wrap(err, "reading test log reply from response")
 	}
 	logID := logReply.ID
 
@@ -732,7 +743,7 @@ func (c *baseCommunicator) SendTestResults(ctx context.Context, taskData TaskDat
 	info.setTaskPathSuffix("results")
 	resp, err := c.retryRequest(ctx, info, results)
 	if err != nil {
-		return utility.RespErrorf(resp, "failed to send test results for task %s: %s", taskData.ID, err.Error())
+		return utility.RespErrorf(resp, errors.Wrap(err, "sending test results").Error())
 	}
 	defer resp.Body.Close()
 	return nil
@@ -748,7 +759,7 @@ func (c *baseCommunicator) SetHasCedarResults(ctx context.Context, taskData Task
 	info.path = fmt.Sprintf("tasks/%s/set_has_cedar_results", taskData.ID)
 	resp, err := c.retryRequest(ctx, info, &apimodels.CedarTestResultsTaskInfo{Failed: failed})
 	if err != nil {
-		return utility.RespErrorf(resp, "failed to set HasCedarResults for task %s: %s", taskData.ID, err.Error())
+		return utility.RespErrorf(resp, errors.Wrap(err, "setting HasCedarResults").Error())
 	}
 	defer resp.Body.Close()
 	return nil
@@ -764,18 +775,18 @@ func (c *baseCommunicator) NewPush(ctx context.Context, taskData TaskData, req *
 	info.setTaskPathSuffix("new_push")
 	resp, err := c.retryRequest(ctx, info, req)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, "failed to add pushlog to task %s: %s", taskData.ID, err.Error())
+		return nil, utility.RespErrorf(resp, errors.Wrap(err, "adding push log").Error())
 	}
 	defer resp.Body.Close()
 
 	if err = utility.ReadJSON(resp.Body, &newPushLog); err != nil {
-		return nil, errors.Wrapf(err, "problem parsing response for %s", taskData.ID)
+		return nil, errors.Wrap(err, "reading push log reply from response")
 	}
 
 	return &newPushLog, nil
 }
 
-func (c *baseCommunicator) UpdatePushStatus(ctx context.Context, taskData TaskData, pushlog *model.PushLog) error {
+func (c *baseCommunicator) UpdatePushStatus(ctx context.Context, taskData TaskData, pushLog *model.PushLog) error {
 	newPushLog := model.PushLog{}
 	info := requestInfo{
 		method:   http.MethodPost,
@@ -783,14 +794,14 @@ func (c *baseCommunicator) UpdatePushStatus(ctx context.Context, taskData TaskDa
 	}
 
 	info.setTaskPathSuffix("update_push_status")
-	resp, err := c.retryRequest(ctx, info, pushlog)
+	resp, err := c.retryRequest(ctx, info, pushLog)
 	if err != nil {
-		return utility.RespErrorf(resp, "failed to update pushlog status for task %s: %s", taskData.ID, err.Error())
+		return utility.RespErrorf(resp, errors.Wrap(err, "updating push log status").Error())
 	}
 	defer resp.Body.Close()
 
 	if err = utility.ReadJSON(resp.Body, &newPushLog); err != nil {
-		return errors.Wrapf(err, "problem parsing response for %s", taskData.ID)
+		return errors.Wrap(err, "reading push log reply from response")
 	}
 
 	return nil
@@ -809,7 +820,7 @@ func (c *baseCommunicator) AttachFiles(ctx context.Context, taskData TaskData, t
 	info.setTaskPathSuffix("files")
 	resp, err := c.retryRequest(ctx, info, taskFiles)
 	if err != nil {
-		return utility.RespErrorf(resp, "failed to post files for task %s: %s", taskData.ID, err.Error())
+		return utility.RespErrorf(resp, errors.Wrap(err, "posting files").Error())
 	}
 	defer resp.Body.Close()
 
@@ -825,7 +836,7 @@ func (c *baseCommunicator) SetDownstreamParams(ctx context.Context, downstreamPa
 	info.setTaskPathSuffix("downstreamParams")
 	resp, err := c.retryRequest(ctx, info, downstreamParams)
 	if err != nil {
-		return utility.RespErrorf(resp, "failed to set upstream params for task %s: %s", taskData.ID, err.Error())
+		return utility.RespErrorf(resp, errors.Wrap(err, "setting downstream params").Error())
 	}
 	defer resp.Body.Close()
 
@@ -840,13 +851,13 @@ func (c *baseCommunicator) GetManifest(ctx context.Context, taskData TaskData) (
 	info.setTaskPathSuffix("manifest/load")
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, "failed to load manifest for task %s: %s", taskData.ID, err.Error())
+		return nil, utility.RespErrorf(resp, errors.Wrap(err, "loading manifest").Error())
 	}
 	defer resp.Body.Close()
 
 	mfest := manifest.Manifest{}
 	if err = utility.ReadJSON(resp.Body, &mfest); err != nil {
-		return nil, errors.Wrapf(err, "problem parsing manifest response for %s", taskData.ID)
+		return nil, errors.Wrap(err, "reading manifest from response")
 	}
 
 	return &mfest, nil
@@ -860,12 +871,12 @@ func (c *baseCommunicator) KeyValInc(ctx context.Context, taskData TaskData, kv 
 	info.setTaskPathSuffix("keyval/inc")
 	resp, err := c.retryRequest(ctx, info, kv.Key)
 	if err != nil {
-		return utility.RespErrorf(resp, "failed to increment key for task %s: %s", taskData.ID, err.Error())
+		return utility.RespErrorf(resp, errors.Wrap(err, "incrementing key").Error())
 	}
 	defer resp.Body.Close()
 
 	if err = utility.ReadJSON(resp.Body, kv); err != nil {
-		return errors.Wrapf(err, "problem parsing keyval inc response %s", taskData.ID)
+		return errors.Wrap(err, "reading key-value reply from response")
 	}
 
 	return nil
@@ -879,7 +890,7 @@ func (c *baseCommunicator) PostJSONData(ctx context.Context, taskData TaskData, 
 	info.setTaskPathSuffix(fmt.Sprintf("json/data/%s", path))
 	resp, err := c.retryRequest(ctx, info, data)
 	if err != nil {
-		return utility.RespErrorf(resp, "failed to post json data for task %s: %s", taskData.ID, err.Error())
+		return utility.RespErrorf(resp, errors.Wrap(err, "posting JSON data for task").Error())
 	}
 	defer resp.Body.Close()
 
@@ -895,7 +906,7 @@ func (c *baseCommunicator) GenerateTasks(ctx context.Context, td TaskData, jsonB
 	info.path = fmt.Sprintf("tasks/%s/generate", td.ID)
 	resp, err := c.retryRequest(ctx, info, jsonBytes)
 	if err != nil {
-		return utility.RespErrorf(resp, "problem sending `generate.tasks` request: %s", err.Error())
+		return utility.RespErrorf(resp, errors.Wrap(err, "sending generate.tasks request").Error())
 	}
 	return nil
 }
@@ -909,12 +920,12 @@ func (c *baseCommunicator) GenerateTasksPoll(ctx context.Context, td TaskData) (
 	info.path = fmt.Sprintf("tasks/%s/generate", td.ID)
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, "failed to send generate.tasks request for task %s: %s", td.ID, err.Error())
+		return nil, utility.RespErrorf(resp, errors.Wrap(err, "sending generate.tasks poll request").Error())
 	}
 	defer resp.Body.Close()
 	generated := &apimodels.GeneratePollResponse{}
 	if err := utility.ReadJSON(resp.Body, generated); err != nil {
-		return nil, errors.Wrapf(err, "problem reading generated from response body for '%s'", td.ID)
+		return nil, errors.Wrap(err, "reading generate.tasks poll reply from response")
 	}
 	return generated, nil
 }
@@ -928,13 +939,13 @@ func (c *baseCommunicator) CreateHost(ctx context.Context, td TaskData, options 
 	info.path = fmt.Sprintf("hosts/%s/create", td.ID)
 	resp, err := c.retryRequest(ctx, info, options)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, "failed to send create.host request for task %s: %s", td.ID, err.Error())
+		return nil, utility.RespErrorf(resp, errors.Wrap(err, "sending host.create request").Error())
 	}
 	defer resp.Body.Close()
 
 	ids := []string{}
 	if err = utility.ReadJSON(resp.Body, &ids); err != nil {
-		return nil, errors.Wrap(err, "problem reading ids from `create.host` response")
+		return nil, errors.Wrap(err, "reading host IDs from response")
 	}
 	return ids, nil
 }
@@ -949,12 +960,12 @@ func (c *baseCommunicator) ListHosts(ctx context.Context, td TaskData) (restmode
 	result := restmodel.HostListResults{}
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return result, utility.RespErrorf(resp, "failed to list hosts for task %s: %s", td.ID, err.Error())
+		return result, utility.RespErrorf(resp, errors.Wrap(err, "listing hosts").Error())
 	}
 	defer resp.Body.Close()
 
 	if err := utility.ReadJSON(resp.Body, &result); err != nil {
-		return result, errors.Wrapf(err, "problem reading hosts from response body for '%s'", td.ID)
+		return result, errors.Wrap(err, "reading hosts from response")
 	}
 	return result, nil
 }
@@ -967,13 +978,13 @@ func (c *baseCommunicator) GetDistroByName(ctx context.Context, id string) (*res
 
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, "failed to get distro named %s: %s", id, err.Error())
+		return nil, utility.RespErrorf(resp, errors.Wrapf(err, "getting distro '%s'", id).Error())
 	}
 	defer resp.Body.Close()
 
 	d := &restmodel.APIDistro{}
 	if err = utility.ReadJSON(resp.Body, &d); err != nil {
-		return nil, errors.Wrapf(err, "reading distro from response body for '%s'", id)
+		return nil, errors.Wrapf(err, "reading distro '%s' from response", id)
 	}
 
 	return d, nil
@@ -996,7 +1007,7 @@ func (c *baseCommunicator) StartTask(ctx context.Context, taskData TaskData) err
 	info.setTaskPathSuffix("start")
 	resp, err := c.retryRequest(ctx, info, taskStartRequest)
 	if err != nil {
-		return utility.RespErrorf(resp, "failed to start task %s: %s", taskData.ID, err.Error())
+		return utility.RespErrorf(resp, errors.Wrap(err, "starting task").Error())
 	}
 	defer resp.Body.Close()
 	grip.Info(message.Fields{
@@ -1015,16 +1026,16 @@ func (c *baseCommunicator) GetDockerStatus(ctx context.Context, hostID string) (
 	}
 	resp, err := c.request(ctx, info, nil)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error getting container status for %s", hostID)
+		return nil, errors.Wrapf(err, "getting status for container '%s'", hostID)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "getting container status")
+		return nil, utility.RespErrorf(resp, errors.Wrapf(err, "getting status for container '%s'", hostID).Error())
 	}
 	status := cloud.ContainerStatus{}
 	if err := utility.ReadJSON(resp.Body, &status); err != nil {
-		return nil, errors.Wrap(err, "problem parsing container status")
+		return nil, errors.Wrapf(err, "reading container status from response for container '%s'", hostID)
 	}
 
 	return &status, nil
@@ -1051,17 +1062,17 @@ func (c *baseCommunicator) GetDockerLogs(ctx context.Context, hostID string, sta
 	}
 	resp, err := c.request(ctx, info, "")
 	if err != nil {
-		return nil, errors.Wrapf(err, "problem getting logs for container _id %s", hostID)
+		return nil, errors.Wrapf(err, "getting logs for container '%s'", hostID)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "getting logs for container id '%s'", hostID)
+		return nil, utility.RespErrorf(resp, "getting logs for container '%s'", hostID)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to read response")
+		return nil, errors.Wrap(err, "reading logs from response")
 	}
 
 	return body, nil
@@ -1080,12 +1091,12 @@ func (c *baseCommunicator) ConcludeMerge(ctx context.Context, patchId, status st
 	}
 	resp, err := c.request(ctx, info, body)
 	if err != nil {
-		return errors.Wrapf(err, "error concluding merge")
+		return errors.Wrapf(err, "concluding merge for patch '%s'", patchId)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return utility.RespErrorf(resp, "error concluding merge")
+		return utility.RespErrorf(resp, "concluding merge for patch '%s'", patchId)
 	}
 
 	return nil
@@ -1099,16 +1110,16 @@ func (c *baseCommunicator) GetAdditionalPatches(ctx context.Context, patchId str
 	}
 	resp, err := c.request(ctx, info, nil)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error getting additional patches")
+		return nil, errors.Wrap(err, "getting additional patches")
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "error getting additional patches")
+		return nil, utility.RespErrorf(resp, "getting additional patches")
 	}
 	patches := []string{}
 	if err := utility.ReadJSON(resp.Body, &patches); err != nil {
-		return nil, errors.Wrap(err, "problem parsing response")
+		return nil, errors.Wrap(err, "reading patch IDs from response")
 	}
 
 	return patches, nil

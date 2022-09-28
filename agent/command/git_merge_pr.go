@@ -79,7 +79,7 @@ func (c *gitMergePr) Execute(ctx context.Context, comm client.Communicator, logg
 		status = evergreen.PatchSucceeded
 	}
 	if status != evergreen.PatchSucceeded {
-		logger.Task().Warning("at least 1 task failed, will not merge pull request")
+		logger.Task().Warning("At least 1 task failed, will not merge pull request.")
 		return nil
 	}
 	// only successful patches should get past here. Failed patches will just send the failed

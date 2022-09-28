@@ -105,7 +105,7 @@ func (s *generateSuite) TestExecuteFailsWithGeneratePollError() {
 
 	c := &generateTask{Files: []string{tmpFileBase}}
 	s.comm.GenerateTasksShouldFail = true
-	s.Contains(c.Execute(s.ctx, s.comm, s.logger, s.conf).Error(), "error polling generate tasks!")
+	s.Contains(c.Execute(s.ctx, s.comm, s.logger, s.conf).Error(), "polling generate tasks")
 }
 
 func (s *generateSuite) TestExecuteSuccess() {

@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -105,7 +106,7 @@ func (c *tarballCreate) Execute(ctx context.Context,
 			if c.Attempt < maxRetries {
 				if strings.Contains(err.Error(), retryError) {
 					c.Attempt += 1
-					logger.Execution().Infof("retrying targz pack command due to error: %s", err.Error())
+					logger.Execution().Infof("Retrying command '%s' due to error: %s.", c.Name(), err.Error())
 					return c.Execute(ctx, client, logger, conf)
 				}
 
@@ -115,13 +116,13 @@ func (c *tarballCreate) Execute(ctx context.Context,
 		if filesArchived == 0 {
 			deleteErr := os.Remove(c.Target)
 			if deleteErr != nil {
-				logger.Execution().Infof("problem deleting empty archive: %s", deleteErr.Error())
+				logger.Execution().Infof("Problem deleting empty archive: %s.", deleteErr.Error())
 			}
 		}
 		return nil
 	case <-ctx.Done():
 		logger.Execution().Info(message.Fields{
-			"message": "received signal to terminate execution of targz pack command",
+			"message": fmt.Sprintf("received signal to terminate execution of command '%s'", c.Name()),
 			"task_id": conf.Task.Id,
 		})
 		return nil

@@ -1,3 +1,4 @@
+//go:build darwin || linux
 // +build darwin linux
 
 package util
@@ -31,25 +32,25 @@ func TrackProcess(key string, pid int, logger grip.Journaler) {}
 func KillSpawnedProcs(ctx context.Context, key, workingDir string, logger grip.Journaler) error {
 	pidsToKill, err := getPIDsToKill(ctx, key, workingDir, logger)
 	if err != nil {
-		return errors.Wrap(err, "problem getting list of PIDs to kill")
+		return errors.Wrap(err, "getting list of PIDs to kill")
 	}
 
 	for _, pid := range pidsToKill {
 		p := os.Process{Pid: pid}
 		err := p.Kill()
 		if err != nil {
-			logger.Errorf("Cleanup got error killing pid '%d': %v", pid, err)
+			logger.Errorf("Cleanup got error killing process with PID %d: %s.", pid, err)
 		} else {
-			logger.Infof("Cleanup killed pid '%d'", pid)
+			logger.Infof("Cleanup killed process with PID %d.", pid)
 		}
 	}
 
 	pidsStillRunning, err := waitForExit(ctx, pidsToKill)
 	if err != nil {
-		logger.Infof("Problem waiting for processes to exit: %s", err)
+		logger.Infof("Problem waiting for processes to exit: %s.", err)
 	}
 	for _, pid := range pidsStillRunning {
-		logger.Infof("Failed to clean up process '%d'", pid)
+		logger.Infof("Failed to clean up process with PID %d.", pid)
 	}
 
 	return nil
@@ -135,7 +136,7 @@ func waitForExit(ctx context.Context, pidsToWait []int) ([]int, error) {
 				}
 			}
 			if len(unkilledPids) > 0 {
-				return true, errors.Errorf("'%d' of '%d' processes are still running", len(unkilledPids), len(pidsToWait))
+				return true, errors.Errorf("%d of %d processes are still running", len(unkilledPids), len(pidsToWait))
 			}
 
 			return false, nil
