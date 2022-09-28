@@ -634,20 +634,19 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 // with the parameters that were explicitly user-specified, with the latter taking precedence.
 func getFullPatchParams(p *patch.Patch) ([]patch.Parameter, error) {
 	paramsMap := map[string]string{}
-	if p.Alias != "" && IsPatchAlias(p.Alias) {
-		aliases, err := findAliasesForPatch(p.Project, p.Alias, p)
-		if err != nil {
-			return nil, errors.Wrapf(err, "retrieving alias '%s' for patch '%s'", p.Alias, p.Id.Hex())
-		}
-		for _, alias := range aliases {
-			if len(alias.Parameters) > 0 {
-				for _, aliasParam := range alias.Parameters {
-					paramsMap[aliasParam.Key] = aliasParam.Value
-				}
+	if p.Alias == "" || !IsPatchAlias(p.Alias) {
+		return p.Parameters, nil
+	}
+	aliases, err := findAliasesForPatch(p.Project, p.Alias, p)
+	if err != nil {
+		return nil, errors.Wrapf(err, "retrieving alias '%s' for patch '%s'", p.Alias, p.Id.Hex())
+	}
+	for _, alias := range aliases {
+		if len(alias.Parameters) > 0 {
+			for _, aliasParam := range alias.Parameters {
+				paramsMap[aliasParam.Key] = aliasParam.Value
 			}
 		}
-	} else {
-		return p.Parameters, nil
 	}
 	for _, param := range p.Parameters {
 		paramsMap[param.Key] = param.Value
