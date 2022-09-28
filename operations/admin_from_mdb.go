@@ -32,7 +32,7 @@ func toMdbForLocal() cli.Command {
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  urlFlagName,
-				Usage: "specify the mongodb url",
+				Usage: "specify the MongoDB URL",
 				Value: "mongodb://127.0.0.1:27017",
 			},
 			cli.StringFlag{
@@ -63,24 +63,24 @@ func toMdbForLocal() cli.Command {
 
 			client, err := mongo.NewClient(options.Client().ApplyURI(url))
 			if err != nil {
-				return errors.Wrap(err, "problem creating mongodb client")
+				return errors.Wrap(err, "creating MongoDB client")
 			}
 
 			connCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 			defer cancel()
 			if err = client.Connect(connCtx); err != nil {
-				return errors.Wrap(err, "problem connecting to mongodb")
+				return errors.Wrap(err, "connecting to MongoDB")
 			}
 
 			f, err := os.Open(infn)
 			if err != nil {
-				return errors.Wrapf(err, "problem opening file %s", infn)
+				return errors.Wrapf(err, "opening file '%s'", infn)
 			}
 			defer f.Close()
 
 			gr, err := gzip.NewReader(f)
 			if err != nil {
-				return errors.Wrap(err, "problem creating gzip reader")
+				return errors.Wrap(err, "creating gzip reader")
 			}
 
 			tr := tar.NewReader(gr)
@@ -90,16 +90,16 @@ func toMdbForLocal() cli.Command {
 					break
 				}
 				if err != nil {
-					return errors.Wrap(err, "problem iterating tar reader")
+					return errors.Wrap(err, "iterating tar reader")
 				}
 
 				coll := client.Database(dbName).Collection(header.Name)
 				size, err := coll.CountDocuments(ctx, struct{}{})
 				if err != nil {
-					return errors.Wrap(err, "problem finding number of source documents")
+					return errors.Wrap(err, "finding number of source documents")
 				}
 				if size > 0 && dbName != evergreenLocalDBName {
-					return errors.Errorf("looks like there are already documents in this collection ('%s'), and it's not in the %s database, exiting for safety", header.Name, evergreenLocalDBName)
+					return errors.Errorf("looks like there are already documents in collection '%s', and it's not in the database '%s', exiting for safety", header.Name, evergreenLocalDBName)
 				}
 
 				var buf *bytes.Buffer
@@ -118,12 +118,12 @@ func toMdbForLocal() cli.Command {
 						if err == io.EOF {
 							break
 						}
-						return errors.Wrap(err, "problem reading document from buffer")
+						return errors.Wrap(err, "reading document from buffer")
 					}
 					docs = append(docs, doc)
 				}
 				_, _ = coll.InsertMany(ctx, docs)
-				grip.Infof("inserted %d docs into %s", len(docs), header.Name)
+				grip.Infof("inserted %d docs into collection '%s'", len(docs), header.Name)
 			}
 
 			return nil
@@ -153,7 +153,7 @@ func fromMdbForLocal() cli.Command {
 			},
 			cli.StringFlag{
 				Name:  urlFlagName,
-				Usage: "specify the mongodb url",
+				Usage: "specify the MongoDB URL",
 				Value: "mongodb://127.0.0.1:27017",
 			},
 			cli.StringFlag{
@@ -193,13 +193,13 @@ func fromMdbForLocal() cli.Command {
 
 			client, err := mongo.NewClient(options.Client().ApplyURI(url))
 			if err != nil {
-				return errors.Wrap(err, "problem creating mongodb client")
+				return errors.Wrap(err, "creating MongoDB client")
 			}
 
 			connCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 			defer cancel()
 			if err = client.Connect(connCtx); err != nil {
-				return errors.Wrap(err, "problem connecting to mongodb")
+				return errors.Wrap(err, "connecting to MongoDB")
 			}
 
 			for _, collection := range collections {
@@ -207,20 +207,20 @@ func fromMdbForLocal() cli.Command {
 				var size int64
 				size, err = coll.CountDocuments(ctx, struct{}{})
 				if err != nil {
-					return errors.Wrap(err, "problem finding number of source documents")
+					return errors.Wrap(err, "finding number of source documents")
 				}
 				if size == 0 {
-					return errors.Errorf("cannot write data from collection ('%s') without documents", collection)
+					return errors.Errorf("cannot write data from collection '%s' without documents", collection)
 				}
 			}
 
 			if _, err = os.Stat(outfn); !os.IsNotExist(err) {
-				return errors.Errorf("cannot export to %s, file already exists", outfn)
+				return errors.Errorf("cannot export to file '%s', file already exists", outfn)
 			}
 
 			f, err := os.Create(outfn)
 			if err != nil {
-				return errors.Wrapf(err, "problem opening file %s", outfn)
+				return errors.Wrapf(err, "opening file '%s'", outfn)
 			}
 			gw := gzip.NewWriter(f)
 			defer gw.Close()
@@ -239,7 +239,7 @@ func fromMdbForLocal() cli.Command {
 				}
 				cursor, err := coll.Find(ctx, filter)
 				if err != nil {
-					return errors.Wrap(err, "problem finding documents")
+					return errors.Wrap(err, "finding documents")
 				}
 
 				count := 0
@@ -247,7 +247,7 @@ func fromMdbForLocal() cli.Command {
 				for cursor.Next(ctx) {
 					_, err := collBuf.Write(cursor.Current)
 					if err != nil {
-						return errors.Wrap(err, "problem writing document")
+						return errors.Wrap(err, "writing document")
 					}
 					count++
 				}
@@ -264,10 +264,10 @@ func fromMdbForLocal() cli.Command {
 					Size: int64(collBuf.Len()),
 				}
 				if err := tw.WriteHeader(hdr); err != nil {
-					return errors.Wrap(err, "problem writing tar header")
+					return errors.Wrap(err, "writing tar header")
 				}
 				if _, err := tw.Write(collBuf.Bytes()); err != nil {
-					return errors.Wrap(err, "problem writing buffer to tarball")
+					return errors.Wrap(err, "writing buffer to tarball")
 				}
 
 				grip.Error(cursor.Close(ctx))

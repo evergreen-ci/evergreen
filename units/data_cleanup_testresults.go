@@ -50,6 +50,8 @@ func NewTestResultsCleanupJob(ts time.Time) amboy.Job {
 	j := makeTestResultsCleanupJob()
 	j.SetID(fmt.Sprintf("%s.%s", testResultsCleanupJobName, ts.Format(TSFormat)))
 	j.UpdateTimeInfo(amboy.JobTimeInfo{MaxTime: time.Minute})
+	j.SetScopes([]string{testResultsCleanupJobName})
+	j.SetEnqueueAllScopes(true)
 	return j
 }
 
@@ -91,7 +93,7 @@ deleteDocs:
 		case <-ctx.Done():
 			break deleteDocs
 		default:
-			if time.Since(startAt) >= 50*time.Second {
+			if time.Since(startAt) >= 45*time.Second {
 				break deleteDocs
 			}
 			opStart := time.Now()

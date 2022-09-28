@@ -25,12 +25,12 @@ type openStackClientImpl struct {
 func (c *openStackClientImpl) Init(ao gophercloud.AuthOptions, eo gophercloud.EndpointOpts) error {
 	providerClient, err := openstack.AuthenticatedClient(ao)
 	if err != nil {
-		return errors.Wrap(err, "OpenStack AuthenticatedClient API call failed")
+		return errors.Wrap(err, "authenticating client")
 	}
 
 	c.ServiceClient, err = openstack.NewComputeV2(providerClient, eo)
 	if err != nil {
-		return errors.Wrap(err, "OpenStack NewComputeV2 API call failed")
+		return errors.Wrap(err, "creating compute v2 client")
 	}
 	return nil
 }
@@ -43,17 +43,17 @@ func (c *openStackClientImpl) CreateInstance(opts servers.CreateOpts, keyName st
 		KeyName:           keyName,
 	}
 	server, err := servers.Create(c.ServiceClient, optsExt).Extract()
-	return server, errors.Wrap(err, "OpenStack Create API call failed")
+	return server, errors.Wrap(err, "provisioning new server")
 }
 
 // GetInstance requests details on a single server, by ID.
 func (c *openStackClientImpl) GetInstance(id string) (*servers.Server, error) {
 	server, err := servers.Get(c.ServiceClient, id).Extract()
-	return server, errors.Wrap(err, "OpenStack Get API call failed")
+	return server, errors.Wrap(err, "getting server")
 }
 
 // DeleteInstance requests a server previously provisioned to be removed, by ID.
 func (c *openStackClientImpl) DeleteInstance(id string) error {
 	err := servers.Delete(c.ServiceClient, id).ExtractErr()
-	return errors.Wrap(err, "OpenStack Delete API call failed")
+	return errors.Wrap(err, "deleting server")
 }

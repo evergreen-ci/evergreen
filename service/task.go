@@ -850,7 +850,7 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}()
-	} else {
+	} else if uis.Settings.Cedar.BaseURL != "" {
 		// Search for logs in cedar.
 		opts := apimodels.GetBuildloggerLogsOptions{
 			BaseURL:       uis.Settings.Cedar.BaseURL,
@@ -876,6 +876,39 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 				"message":   "problem getting buildlogger logs",
 			}))
 		}
+	} else {
+		// TODO: EVG-17974 Replace this with a more permanent option.
+		// Fallback to legacy test results.
+		// Direct link to a log document in the database.
+		testLog, err = model.FindOneTestLog(testName, taskID, taskExec)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+
+		if testLog == nil {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+
+		ctx, cancel := context.WithCancel(r.Context())
+		defer cancel()
+
+		data.Data = make(chan apimodels.LogMessage)
+		go func() {
+			defer close(data.Data)
+			for _, line := range testLog.Lines {
+				if ctx.Err() != nil {
+					return
+				}
+				data.Data <- apimodels.LogMessage{
+					Type:     apimodels.TaskLogPrefix,
+					Severity: apimodels.LogInfoPrefix,
+					Version:  evergreen.LogmessageCurrentVersion,
+					Message:  line,
+				}
+			}
+		}()
 	}
 
 	if raw {

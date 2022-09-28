@@ -9,7 +9,7 @@
       "result": {
         "errors": [
           {
-            "message": "must specify volume id",
+            "message": "must specify volume ID",
             "path": ["detachVolumeFromHost"],
             "extensions": { "code": "INPUT_VALIDATION_ERROR" }
           }
@@ -48,7 +48,7 @@
       "result": {
         "errors": [
           {
-            "message": "host 'not-real' for volume 'vol-two' doesn't exist",
+            "message": "host 'not-real' for volume 'vol-two' not found",
             "path": ["detachVolumeFromHost"],
             "extensions": { "code": "INTERNAL_SERVER_ERROR" }
           }

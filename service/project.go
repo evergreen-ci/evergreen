@@ -277,7 +277,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		PatchAliases           []model.ProjectAlias           `json:"patch_aliases,omitempty"`
 		GitTagAliases          []model.ProjectAlias           `json:"git_tag_aliases,omitempty"`
 		DeleteAliases          []string                       `json:"delete_aliases"`
-		DefaultLogger          string                         `json:"default_logger"`
 		PrivateVars            map[string]bool                `json:"private_vars"`
 		AdminOnlyVars          map[string]bool                `json:"admin_only_vars"`
 		Enabled                bool                           `json:"enabled"`
@@ -372,7 +371,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	origGithubWebhookEnabled := (hook != nil)
+	origGithubWebhookEnabled := hook != nil
 	if hook == nil {
 		hook, err = model.SetupNewGithubHook(ctx, uis.Settings, responseRef.Owner, responseRef.Repo)
 		if err == nil || strings.Contains(err.Error(), "Hook already exists on this repository") {
@@ -570,7 +569,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.BatchTime = responseRef.BatchTime
 	projectRef.Branch = responseRef.Branch
 	projectRef.Enabled = &responseRef.Enabled
-	projectRef.DefaultLogger = responseRef.DefaultLogger
 	projectRef.Private = &responseRef.Private
 	projectRef.Restricted = &responseRef.Restricted
 	projectRef.Owner = responseRef.Owner
@@ -969,7 +967,7 @@ func verifyAliasExists(alias, projectId string, newAliasDefinitions []model.Proj
 		return true, nil
 	}
 
-	existingAliasDefinitions, _, err := model.FindAliasInProjectOrRepoFromDb(projectId, alias)
+	existingAliasDefinitions, err := model.FindAliasInProjectRepoOrProjectConfig(projectId, alias, nil)
 	if err != nil {
 		return false, errors.Wrap(err, "error checking for existing aliases")
 	}

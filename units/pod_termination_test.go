@@ -319,39 +319,42 @@ func TestPodTerminationJob(t *testing.T) {
 			defer func() {
 				assert.NoError(t, j.ecsClient.Close(ctx))
 			}()
-
-			pc, err := ecs.NewBasicECSPodCreator(j.ecsClient, nil)
-			require.NoError(t, err)
-
-			containerDef := cocoa.NewECSContainerDefinition().
-				SetImage(p.TaskContainerCreationOpts.Image).
-				SetCommand([]string{"echo", "hello"})
-
-			execOpts := cocoa.NewECSPodExecutionOptions().SetCluster(cluster)
-			defOpts := cocoa.NewECSPodDefinitionOptions().
-				AddContainerDefinitions(*containerDef).
-				SetMemoryMB(p.TaskContainerCreationOpts.MemoryMB).
-				SetCPU(p.TaskContainerCreationOpts.CPU).
-				SetTaskRole("task_role").
-				SetExecutionRole("execution_role")
-
-			pdm, err := cloud.MakeECSPodDefinitionManager(j.ecsClient, nil)
-			require.NoError(t, err)
-			item, err := pdm.CreatePodDefinition(ctx, *defOpts)
-			require.NoError(t, err)
-
-			podDef, err := definition.FindOneByExternalID(item.ID)
-			require.NoError(t, err)
-			require.NotZero(t, podDef, "pod definition should have been cached")
-
-			ecsPod, err := pc.CreatePodFromExistingDefinition(ctx, cloud.ExportECSPodDefinition(*podDef), *execOpts)
-			require.NoError(t, err)
-			j.ecsPod = ecsPod
-
-			res := j.ecsPod.Resources()
-			j.pod.Resources = cloud.ImportECSPodResources(res)
+			j.ecsPod = generateTestingECSPod(ctx, t, j.ecsClient, cluster, p.TaskContainerCreationOpts)
+			j.pod.Resources = cloud.ImportECSPodResources(j.ecsPod.Resources())
 
 			tCase(ctx, t, j)
 		})
 	}
+}
+
+// generateTestingECSPod creates a pod in ECS from the given options. The
+// cluster must exist before this is called.
+func generateTestingECSPod(ctx context.Context, t *testing.T, client cocoa.ECSClient, cluster string, creationOpts pod.TaskContainerCreationOptions) cocoa.ECSPod {
+	pc, err := ecs.NewBasicECSPodCreator(client, nil)
+	require.NoError(t, err)
+
+	containerDef := cocoa.NewECSContainerDefinition().
+		SetImage(creationOpts.Image).
+		SetCommand([]string{"echo", "hello"})
+
+	execOpts := cocoa.NewECSPodExecutionOptions().SetCluster(cluster)
+	defOpts := cocoa.NewECSPodDefinitionOptions().
+		AddContainerDefinitions(*containerDef).
+		SetMemoryMB(creationOpts.MemoryMB).
+		SetCPU(creationOpts.CPU).
+		SetTaskRole("task_role").
+		SetExecutionRole("execution_role")
+
+	pdm, err := cloud.MakeECSPodDefinitionManager(client, nil)
+	require.NoError(t, err)
+	item, err := pdm.CreatePodDefinition(ctx, *defOpts)
+	require.NoError(t, err)
+
+	podDef, err := definition.FindOneByExternalID(item.ID)
+	require.NoError(t, err)
+	require.NotZero(t, podDef, "pod definition should have been cached")
+
+	ecsPod, err := pc.CreatePodFromExistingDefinition(ctx, cloud.ExportECSPodDefinition(*podDef), *execOpts)
+	require.NoError(t, err)
+	return ecsPod
 }

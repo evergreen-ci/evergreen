@@ -98,8 +98,7 @@ func (m *vsphereManager) Configure(ctx context.Context, s *evergreen.Settings) e
 //     -
 func (m *vsphereManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, error) {
 	if h.Distro.Provider != evergreen.ProviderNameVsphere {
-		return nil, errors.Errorf("Can't spawn instance of %s for distro %s: provider is %s",
-			evergreen.ProviderNameVsphere, h.Distro.Id, h.Distro.Provider)
+		return nil, errors.Errorf("can't spawn instance for distro '%s': distro provider is '%s'", h.Distro.Id, h.Distro.Provider)
 	}
 
 	s := &vsphereSettings{}
@@ -195,31 +194,31 @@ func (m *vsphereManager) OnUp(ctx context.Context, host *host.Host) error {
 }
 
 func (m *vsphereManager) AttachVolume(context.Context, *host.Host, *host.VolumeAttachment) error {
-	return errors.New("can't attach volume with vsphere provider")
+	return errors.New("can't attach volume with vSphere provider")
 }
 
 func (m *vsphereManager) DetachVolume(context.Context, *host.Host, string) error {
-	return errors.New("can't detach volume with vsphere provider")
+	return errors.New("can't detach volume with vSphere provider")
 }
 
 func (m *vsphereManager) CreateVolume(context.Context, *host.Volume) (*host.Volume, error) {
-	return nil, errors.New("can't create volumes with vsphere provider")
+	return nil, errors.New("can't create volumes with vSphere provider")
 }
 
 func (m *vsphereManager) DeleteVolume(context.Context, *host.Volume) error {
-	return errors.New("can't delete volumes with vsphere provider")
+	return errors.New("can't delete volumes with vSphere provider")
 }
 
 func (m *vsphereManager) ModifyVolume(context.Context, *host.Volume, *model.VolumeModifyOptions) error {
-	return errors.New("can't modify volume with vsphere provider")
+	return errors.New("can't modify volume with vSphere provider")
 }
 
 func (m *vsphereManager) GetVolumeAttachment(context.Context, string) (*host.VolumeAttachment, error) {
-	return nil, errors.New("can't get volume attachment with vsphere provider")
+	return nil, errors.New("can't get volume attachment with vSphere provider")
 }
 
 func (m *vsphereManager) CheckInstanceType(context.Context, string) error {
-	return errors.New("can't specify instance type with vsphere provider")
+	return errors.New("can't specify instance type with vSphere provider")
 }
 
 // Cleanup is a noop for the vsphere provider.
@@ -231,7 +230,7 @@ func (m *vsphereManager) Cleanup(context.Context) error {
 func (m *vsphereManager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
 	ip, err := m.client.GetIP(ctx, h)
 	if err != nil {
-		return "", errors.Wrapf(err, "client failed to get IP for host %s", h.Id)
+		return "", errors.Wrapf(err, "getting IP for host '%s'", h.Id)
 	}
 
 	return ip, nil
@@ -243,7 +242,6 @@ func (m *vsphereManager) TimeTilNextPayment(host *host.Host) time.Duration {
 	return time.Duration(0)
 }
 
-//  TODO: this must be implemented to support adding SSH keys.
 func (m *vsphereManager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) error {
 	return nil
 }

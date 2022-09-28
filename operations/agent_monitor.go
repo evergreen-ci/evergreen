@@ -162,16 +162,16 @@ func agentMonitor() cli.Command {
 			var err error
 			m.agentArgs, err = getAgentArgs(c, os.Args)
 			if err != nil {
-				return errors.Wrap(err, "error getting agent args")
+				return errors.Wrap(err, "getting agent args")
 			}
 
 			if err = setupLogging(m); err != nil {
-				return errors.Wrap(err, "error setting up logging")
+				return errors.Wrap(err, "setting up logging")
 			}
 
 			// Reserve the given port to prevent other monitors from starting.
 			if _, err = net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", m.port)); err != nil {
-				return errors.Wrapf(err, "failed to listen on port %d", m.port)
+				return errors.Wrapf(err, "listening on port %d", m.port)
 			}
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -179,10 +179,10 @@ func agentMonitor() cli.Command {
 			go handleMonitorSignals(ctx, cancel)
 
 			if err := m.setupJasperConnection(ctx, agentMonitorDefaultRetryOptions()); err != nil {
-				return errors.Wrap(err, "failed to connect to RPC service")
+				return errors.Wrap(err, "connecting to RPC service")
 			}
 			defer func() {
-				grip.Error(errors.Wrap(m.jasperClient.CloseConnection(), "failed to close RPC client connection"))
+				grip.Error(errors.Wrap(m.jasperClient.CloseConnection(), "closing RPC client connection"))
 			}()
 
 			m.run(ctx)
@@ -226,7 +226,7 @@ func setupLogging(m *monitor) error {
 			send.LevelInfo{Default: level.Alert, Threshold: level.Alert},
 		)
 		if err != nil {
-			return errors.Wrap(err, "problem creating Splunk logger")
+			return errors.Wrap(err, "creating Splunk logger")
 		}
 		senders = append(senders, sender)
 	}
@@ -234,13 +234,13 @@ func setupLogging(m *monitor) error {
 	if senderName == evergreen.LocalLoggingOverride || senderName == evergreen.StandardOutputLoggingOverride {
 		sender, err := send.NewNativeLogger(senderName, send.LevelInfo{Default: level.Info, Threshold: level.Debug})
 		if err != nil {
-			return errors.Wrap(err, "problem creating native console logger")
+			return errors.Wrap(err, "creating native console logger")
 		}
 		senders = append(senders, sender)
 	} else {
 		logDir := filepath.Dir(senderName)
 		if err := os.MkdirAll(logDir, 0777); err != nil {
-			return errors.Wrapf(err, "problem creating log directory %s", logDir)
+			return errors.Wrapf(err, "creating log directory '%s'", logDir)
 		}
 		sender, err := send.NewFileLogger(
 			senderName,
@@ -248,12 +248,12 @@ func setupLogging(m *monitor) error {
 			send.LevelInfo{Default: level.Info, Threshold: level.Debug},
 		)
 		if err != nil {
-			return errors.Wrap(err, "problem creating file logger")
+			return errors.Wrap(err, "creating file logger")
 		}
 		senders = append(senders, sender)
 	}
 
-	return errors.Wrap(grip.SetSender(send.NewConfiguredMultiSender(senders...)), "problem setting logger")
+	return errors.Wrap(grip.SetSender(send.NewConfiguredMultiSender(senders...)), "setting logger")
 }
 
 // handleMonitorSignals gracefully shuts down the monitor process when it
@@ -302,7 +302,7 @@ func (m *monitor) fetchClient(ctx context.Context, urls []string, retry utility.
 		return errors.Wrap(catcher.Resolve(), "downloading client")
 	}
 
-	return errors.Wrap(os.Chmod(m.clientPath, 0755), "failed to chmod client")
+	return errors.Wrap(os.Chmod(m.clientPath, 0755), "changing permissions of downloaded client")
 }
 
 // setupJasperConnection attempts to connect to the Jasper RPC service running
@@ -311,17 +311,17 @@ func (m *monitor) setupJasperConnection(ctx context.Context, retry utility.Retry
 	addrStr := fmt.Sprintf("127.0.0.1:%d", m.jasperPort)
 	serverAddr, err := net.ResolveTCPAddr("tcp", addrStr)
 	if err != nil {
-		return errors.Wrapf(err, "failed to resolve Jasper server address at '%s'", addrStr)
+		return errors.Wrapf(err, "resolving Jasper server address '%s'", addrStr)
 	}
 
 	if err = utility.Retry(ctx, func() (bool, error) {
 		m.jasperClient, err = remote.NewRPCClientWithFile(ctx, serverAddr, m.credentialsPath)
 		if err != nil {
-			return true, errors.Wrap(err, "could not connect to Jasper RPC service")
+			return true, errors.Wrap(err, "connecting to Jasper RPC service")
 		}
 		return false, nil
 	}, retry); err != nil {
-		return errors.Wrapf(err, "failed to connect to Jasper RPC service at '%s'", serverAddr)
+		return errors.Wrapf(err, "connecting to Jasper RPC service '%s'", serverAddr)
 	}
 
 	return nil
@@ -347,7 +347,7 @@ func (m *monitor) createAgentProcess(ctx context.Context, retry utility.RetryOpt
 			Environment(env).
 			Background(true)
 		if err = cmd.Run(ctx); err != nil {
-			return true, errors.Wrap(err, "failed to create process")
+			return true, errors.Wrap(err, "starting agent process")
 		}
 
 		jasperIDs := cmd.GetProcIDs()
@@ -359,7 +359,7 @@ func (m *monitor) createAgentProcess(ctx context.Context, retry utility.RetryOpt
 			for _, jasperID := range jasperIDs {
 				proc, err = m.jasperClient.Get(ctx, jasperID)
 				if err != nil {
-					catcher.Add(errors.Wrap(err, "could not find erroneous process"))
+					catcher.Wrapf(err, "finding duplicate agent process '%s'", jasperID)
 					continue
 				}
 				catcher.Add(proc.Signal(ctx, syscall.SIGKILL))
@@ -370,12 +370,12 @@ func (m *monitor) createAgentProcess(ctx context.Context, retry utility.RetryOpt
 
 		proc, err = m.jasperClient.Get(ctx, jasperIDs[0])
 		if err != nil {
-			return true, errors.Wrap(err, "could not find agent process")
+			return true, errors.Wrap(err, "finding agent process")
 		}
 
 		return false, nil
 	}, retry); err != nil {
-		return nil, errors.Wrapf(err, "failed to start agent process '%v'", agentCmdArgs)
+		return nil, errors.Wrapf(err, "starting agent process with args: %s", agentCmdArgs)
 	}
 	return proc, nil
 }
@@ -404,7 +404,7 @@ func waitUntilComplete(ctx context.Context, proc jasper.Process, maxDelay time.D
 func (m *monitor) runAgent(ctx context.Context, retry utility.RetryOptions) error {
 	proc, err := m.createAgentProcess(ctx, retry)
 	if err != nil {
-		return errors.Wrapf(err, "failed to create agent process")
+		return errors.Wrapf(err, "creating agent process")
 	}
 
 	exitCode, err := waitUntilComplete(ctx, proc, defaultMaxRequestDelay)
@@ -440,7 +440,7 @@ func (m *monitor) run(ctx context.Context) {
 			}
 
 			if _, err := os.Stat(m.clientPath); os.IsNotExist(err) {
-				grip.Error(errors.Wrapf(err, "could not stat client '%s'", m.clientPath))
+				grip.Error(errors.Wrapf(err, "getting file stat for client '%s'", m.clientPath))
 				return true, err
 			}
 
@@ -451,7 +451,7 @@ func (m *monitor) run(ctx context.Context) {
 				"jasper_port": m.jasperPort,
 			})
 			if err := m.runAgent(ctx, agentMonitorDefaultRetryOptions()); err != nil {
-				grip.Error(errors.Wrap(err, "error occurred while running the agent"))
+				grip.Error(errors.Wrap(err, "running the agent"))
 				return true, err
 			}
 
@@ -461,7 +461,7 @@ func (m *monitor) run(ctx context.Context) {
 				grip.Warning(errors.Wrap(err, "context cancelled while running monitor"))
 				return
 			}
-			grip.Error(errors.Wrapf(err, "error while managing agent"))
+			grip.Error(errors.Wrapf(err, "managing agent"))
 		}
 	}
 }

@@ -92,17 +92,16 @@ func ValidateTVPairs(p *Project, in []TVPair) error {
 
 // Given a patch version and a list of variant/task pairs, creates the set of new builds that
 // do not exist yet out of the set of pairs, and adds tasks for builds which already exist.
-func addNewTasksAndBuildsForPatch(ctx context.Context, syncOpts patch.SyncAtEndOptions, patchVersion *Version, project *Project,
-	pairs TaskVariantPairs, pRef *ProjectRef) error {
-	existingBuilds, err := build.Find(build.ByIds(patchVersion.BuildIds).WithFields(build.IdKey, build.BuildVariantKey, build.CreateTimeKey, build.RequesterKey))
+func addNewTasksAndBuildsForPatch(ctx context.Context, creationInfo TaskCreationInfo) error {
+	existingBuilds, err := build.Find(build.ByIds(creationInfo.Version.BuildIds).WithFields(build.IdKey, build.BuildVariantKey, build.CreateTimeKey, build.RequesterKey))
 	if err != nil {
 		return err
 	}
-	_, err = addNewBuilds(ctx, specificActivationInfo{}, patchVersion, project, pairs, existingBuilds, syncOpts, pRef, "")
+	_, err = addNewBuilds(ctx, creationInfo, existingBuilds)
 	if err != nil {
 		return errors.Wrap(err, "adding new builds")
 	}
-	_, err = addNewTasks(ctx, specificActivationInfo{}, patchVersion, project, pRef, pairs, existingBuilds, syncOpts, "")
+	_, err = addNewTasks(ctx, creationInfo, existingBuilds)
 	return errors.Wrap(err, "adding new tasks")
 }
 
@@ -164,7 +163,16 @@ func ConfigurePatch(ctx context.Context, p *patch.Patch, version *Version, proj 
 		}
 
 		// First add new tasks to existing builds, if necessary
-		err = addNewTasksAndBuildsForPatch(context.Background(), p.SyncAtEndOpts, version, project, tasks, proj)
+		creationInfo := TaskCreationInfo{
+			Project:        project,
+			ProjectRef:     proj,
+			Version:        version,
+			Pairs:          tasks,
+			SyncAtEndOpts:  p.SyncAtEndOpts,
+			ActivationInfo: specificActivationInfo{},
+			GeneratedBy:    "",
+		}
+		err = addNewTasksAndBuildsForPatch(context.Background(), creationInfo)
 		if err != nil {
 			return http.StatusInternalServerError, errors.Wrapf(err, "creating new tasks/builds for version '%s'", version.Id)
 		}
@@ -486,7 +494,12 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	taskIds := NewPatchTaskIdTable(project, patchVersion, tasks, projectRef.Identifier)
 	variantsProcessed := map[string]bool{}
 
-	createTime, err := getTaskCreateTime(p.Project, patchVersion)
+	creationInfo := TaskCreationInfo{
+		Version:    patchVersion,
+		Project:    project,
+		ProjectRef: projectRef,
+	}
+	createTime, err := getTaskCreateTime(creationInfo)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting create time for tasks in '%s', githash '%s'", p.Project, p.Githash)
 	}
@@ -504,22 +517,22 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			displayNames = append(displayNames, dt.Name)
 		}
 		taskNames := tasks.ExecTasks.TaskNames(vt.Variant)
-		buildArgs := BuildCreateArgs{
-			Project:        *project,
-			ProjectRef:     *projectRef,
-			Version:        *patchVersion,
-			TaskIDs:        taskIds,
-			BuildName:      vt.Variant,
-			ActivateBuild:  true,
-			TaskNames:      taskNames,
-			DisplayNames:   displayNames,
-			DistroAliases:  distroAliases,
-			TaskCreateTime: createTime,
-			SyncAtEndOpts:  p.SyncAtEndOpts,
+		buildCreationArgs := TaskCreationInfo{
+			Project:          creationInfo.Project,
+			ProjectRef:       creationInfo.ProjectRef,
+			Version:          creationInfo.Version,
+			TaskIDs:          taskIds,
+			BuildVariantName: vt.Variant,
+			ActivateBuild:    true,
+			TaskNames:        taskNames,
+			DisplayNames:     displayNames,
+			DistroAliases:    distroAliases,
+			TaskCreateTime:   createTime,
+			SyncAtEndOpts:    p.SyncAtEndOpts,
 		}
 		var build *build.Build
 		var tasks task.Tasks
-		build, tasks, err = CreateBuildFromVersionNoInsert(buildArgs)
+		build, tasks, err = CreateBuildFromVersionNoInsert(buildCreationArgs)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -1029,7 +1042,7 @@ func SendCommitQueueResult(p *patch.Patch, status message.GithubState, descripti
 		if err != nil {
 			return errors.Wrap(err, "unable to get settings")
 		}
-		url = fmt.Sprintf("%s/version/%s", settings.Ui.Url, p.Version)
+		url = fmt.Sprintf("%s/version/%s?redirect_spruce_users=true", settings.Ui.Url, p.Version)
 	}
 	msg := message.GithubStatus{
 		Owner:       projectRef.Owner,
@@ -1045,6 +1058,11 @@ func SendCommitQueueResult(p *patch.Patch, status message.GithubState, descripti
 		return errors.Wrap(err, "getting GitHub sender")
 	}
 	sender.Send(message.NewGithubStatusMessageWithRepo(level.Notice, msg))
-
+	grip.Info(message.Fields{
+		"ticket":   thirdparty.GithubInvestigation,
+		"message":  "called github status send",
+		"caller":   "commit queue result",
+		"patch_id": p.Id,
+	})
 	return nil
 }

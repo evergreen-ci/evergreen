@@ -33,19 +33,19 @@ type openStackSettings struct {
 // Validate verifies a set of ProviderSettings.
 func (opts *openStackSettings) Validate() error {
 	if opts.ImageName == "" {
-		return errors.New("Image name must not be blank")
+		return errors.New("image name must not be blank")
 	}
 
 	if opts.FlavorName == "" {
-		return errors.New("Flavor name must not be blank")
+		return errors.New("flavor name must not be blank")
 	}
 
 	if opts.KeyName == "" {
-		return errors.New("Key name must not be blank")
+		return errors.New("key name must not be blank")
 	}
 
 	if opts.SecurityGroup == "" {
-		return errors.New("Security group must not be blank")
+		return errors.New("security group must not be blank")
 	}
 
 	return nil
@@ -55,10 +55,10 @@ func (opts *openStackSettings) FromDistroSettings(d distro.Distro, _ string) err
 	if len(d.ProviderSettingsList) != 0 {
 		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
 		if err != nil {
-			return errors.Wrap(err, "error marshalling provider setting into bson")
+			return errors.Wrap(err, "marshalling provider setting into BSON")
 		}
 		if err := bson.Unmarshal(bytes, opts); err != nil {
-			return errors.Wrap(err, "error unmarshalling bson into provider settings")
+			return errors.Wrap(err, "unmarshalling BSON into provider settings")
 		}
 	}
 	return nil
@@ -92,7 +92,7 @@ func (m *openStackManager) Configure(ctx context.Context, s *evergreen.Settings)
 	}
 
 	if err := m.client.Init(*m.authOptions, *m.endpointOpts); err != nil {
-		return errors.Wrap(err, "Failed to initialize client connection")
+		return errors.Wrap(err, "initializing client connection")
 	}
 
 	return nil
@@ -108,17 +108,16 @@ func (m *openStackManager) Configure(ctx context.Context, s *evergreen.Settings)
 //     - SecurityGroup: (optional) security group name
 func (m *openStackManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, error) {
 	if h.Distro.Provider != evergreen.ProviderNameOpenstack {
-		return nil, errors.Errorf("Can't spawn instance of %s for distro %s: provider is %s",
-			evergreen.ProviderNameOpenstack, h.Distro.Id, h.Distro.Provider)
+		return nil, errors.Errorf("can't spawn instance for distro '%s': distro provider is '%s'", h.Distro.Id, h.Distro.Provider)
 	}
 
 	settings := &openStackSettings{}
 	if err := settings.FromDistroSettings(h.Distro, ""); err != nil {
-		return nil, errors.Wrapf(err, "error getting settings from distro %s", h.Distro.Id)
+		return nil, errors.Wrapf(err, "getting provider settings from distro '%s'", h.Distro.Id)
 	}
 
 	if err := settings.Validate(); err != nil {
-		return nil, errors.Wrapf(err, "Invalid settings in distro %s", h.Distro.Id)
+		return nil, errors.Wrapf(err, "invalid provider settings in distro '%s'", h.Distro.Id)
 	}
 
 	// Start the instance, and remove the intent host document if unsuccessful.
@@ -132,19 +131,23 @@ func (m *openStackManager) SpawnHost(ctx context.Context, h *host.Host) (*host.H
 				"error":   rmErr,
 			})
 		}
-		return nil, errors.Wrapf(err, "Could not start new instance for distro '%s'", h.Distro.Id)
+		return nil, errors.Wrapf(err, "starting new instances for distro '%s'", h.Distro.Id)
 	}
 
 	// Update the ID of the host with the real one
 	h.Id = server.ID
 
-	grip.Debug(message.Fields{"message": "new openstack host", "instance": h.Id, "object": h})
+	grip.Debug(message.Fields{
+		"message":  "new OpenStack host",
+		"instance": h.Id,
+		"host":     h,
+	})
 
 	return h, nil
 }
 
 func (m *openStackManager) ModifyHost(context.Context, *host.Host, host.HostModifyOptions) error {
-	return errors.New("can't modify instances with openstack provider")
+	return errors.New("can't modify instances with OpenStack provider")
 }
 
 // GetInstanceStatus gets the current operational status of the provisioned host,
@@ -158,15 +161,13 @@ func (m *openStackManager) GetInstanceStatus(ctx context.Context, host *host.Hos
 }
 
 func (m *openStackManager) SetPortMappings(context.Context, *host.Host, *host.Host) error {
-	return errors.New("can't set port mappings with openstack provider")
+	return errors.New("can't set port mappings with OpenStack provider")
 }
 
 // TerminateInstance requests a server previously provisioned to be removed.
 func (m *openStackManager) TerminateInstance(ctx context.Context, host *host.Host, user, reason string) error {
 	if host.Status == evergreen.HostTerminated {
-		err := errors.Errorf("Can not terminate %s - already marked as terminated!", host.Id)
-		grip.Error(err)
-		return err
+		return errors.Errorf("cannot terminate host '%s' because it's already marked as terminated", host.Id)
 	}
 
 	if err := m.client.DeleteInstance(host.Id); err != nil {
@@ -178,11 +179,11 @@ func (m *openStackManager) TerminateInstance(ctx context.Context, host *host.Hos
 }
 
 func (m *openStackManager) StopInstance(ctx context.Context, host *host.Host, user string) error {
-	return errors.New("StopInstance is not supported for openstack provider")
+	return errors.New("StopInstance is not supported for OpenStack provider")
 }
 
 func (m *openStackManager) StartInstance(ctx context.Context, host *host.Host, user string) error {
-	return errors.New("StartInstance is not supported for openstack provider")
+	return errors.New("StartInstance is not supported for OpenStack provider")
 }
 
 // IsUp checks whether the provisioned host is running.
@@ -210,57 +211,54 @@ func (m *openStackManager) GetDNSName(ctx context.Context, host *host.Host) (str
 	for _, subnet := range server.Addresses {
 		addresses, ok := subnet.([]interface{})
 		if !ok {
-			return "", errors.Errorf(
-				"type conversion of %+v to []interface{} for host %s", subnet, host.Id)
+			return "", errors.Errorf("cannot convert type of subnet %+v to []interface{} for host '%s'", subnet, host.Id)
 		}
 
 		for _, address := range addresses {
 			keyvalues, ok := address.(map[string]interface{})
 			if !ok {
-				return "", errors.Errorf(
-					"type conversion of %+v to map[string]interface{} for host %s", address, host.Id)
+				return "", errors.Errorf("cannot convert type of addresses %+v to map[string]interface{} for host '%s'", address, host.Id)
 			}
 
 			if ip := keyvalues["addr"]; ip != nil {
 				ip, ok = ip.(string)
 				if !ok {
-					return "", errors.Errorf(
-						"type conversion of %+v to string for host %s", ip, host.Id)
+					return "", errors.Errorf("cannot convert type of address %+v to string for host '%s'", ip, host.Id)
 				}
 				return ip.(string), nil
 			}
 		}
 	}
 
-	return "", errors.Errorf("could not find IP for host %s", host.Id)
+	return "", errors.Errorf("could not find IP for host '%s'", host.Id)
 }
 
 func (m *openStackManager) AttachVolume(context.Context, *host.Host, *host.VolumeAttachment) error {
-	return errors.New("can't attach volume with openstack provider")
+	return errors.New("can't attach volume with OpenStack provider")
 }
 
 func (m *openStackManager) DetachVolume(context.Context, *host.Host, string) error {
-	return errors.New("can't detach volume with openstack provider")
+	return errors.New("can't detach volume with OpenStack provider")
 }
 
 func (m *openStackManager) CreateVolume(context.Context, *host.Volume) (*host.Volume, error) {
-	return nil, errors.New("can't create volumes with openstack provider")
+	return nil, errors.New("can't create volumes with OpenStack provider")
 }
 
 func (m *openStackManager) DeleteVolume(context.Context, *host.Volume) error {
-	return errors.New("can't delete volumes with openstack provider")
+	return errors.New("can't delete volumes with OpenStack provider")
 }
 
 func (m *openStackManager) ModifyVolume(context.Context, *host.Volume, *model.VolumeModifyOptions) error {
-	return errors.New("can't modify volume with openstack provider")
+	return errors.New("can't modify volume with OpenStack provider")
 }
 
 func (m *openStackManager) GetVolumeAttachment(context.Context, string) (*host.VolumeAttachment, error) {
-	return nil, errors.New("can't get volume attachment with openstack provider")
+	return nil, errors.New("can't get volume attachment with OpenStack provider")
 }
 
 func (m *openStackManager) CheckInstanceType(context.Context, string) error {
-	return errors.New("can't specify instance type with openstack provider")
+	return errors.New("can't specify instance type with OpenStack provider")
 }
 
 // Cleanup is a noop for the openstack provider.
@@ -274,7 +272,6 @@ func (m *openStackManager) TimeTilNextPayment(host *host.Host) time.Duration {
 	return time.Duration(0)
 }
 
-//  TODO: this must be implemented to support adding SSH keys.
 func (m *openStackManager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) error {
 	return nil
 }

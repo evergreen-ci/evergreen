@@ -87,7 +87,6 @@ type ClientSettings struct {
 	AutoUpgradeCLI        bool                `json:"auto_upgrade_cli" yaml:"auto_upgrade_cli,omitempty"`
 	PreserveCommits       bool                `json:"preserve_commits" yaml:"preserve_commits,omitempty"`
 	Projects              []ClientProjectConf `json:"projects" yaml:"projects,omitempty"`
-	Admin                 ClientAdminConf     `json:"admin" yaml:"admin,omitempty"`
 	LoadedFrom            string              `json:"-" yaml:"-"`
 	DisableAutoDefaulting bool                `json:"disable_auto_defaulting" yaml:"disable_auto_defaulting"`
 	ProjectsForDirectory  map[string]string   `json:"projects_for_directory,omitempty" yaml:"projects_for_directory,omitempty"`
@@ -96,17 +95,17 @@ type ClientSettings struct {
 func NewClientSettings(fn string) (*ClientSettings, error) {
 	path, err := findConfigFilePath(fn)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not find file %s", fn)
+		return nil, errors.Wrapf(err, "finding config file '%s'", fn)
 	}
 
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem reading configuration from file")
+		return nil, errors.Wrapf(err, "reading configuration from file '%s'", path)
 	}
 
 	conf := &ClientSettings{}
 	if err = yaml.Unmarshal(data, conf); err != nil {
-		return nil, errors.Wrap(err, "problem reading yaml data from configuration file")
+		return nil, errors.Wrapf(err, "reading YAML data from configuration file '%s'", path)
 	}
 	conf.LoadedFrom = path
 
@@ -114,13 +113,13 @@ func NewClientSettings(fn string) (*ClientSettings, error) {
 	if os.IsNotExist(err) {
 		return conf, nil
 	} else if err != nil {
-		return nil, errors.Wrap(err, "problem reading local configuration from file")
+		return nil, errors.Wrapf(err, "reading local configuration from file '%s'", localConfigPath)
 	}
 
 	// Unmarshalling into the same struct will only override fields which are set
 	// in the new YAML
 	if err = yaml.Unmarshal(localData, conf); err != nil {
-		return nil, errors.Wrap(err, "problem reading yaml data from local configuration file")
+		return nil, errors.Wrapf(err, "unmarshalling YAML data from local configuration file '%s'", localConfigPath)
 	}
 
 	return conf, nil
@@ -138,10 +137,10 @@ func (s *ClientSettings) Write(fn string) error {
 
 	yamlData, err := yaml.Marshal(s)
 	if err != nil {
-		return errors.Wrap(err, "could not marshal data")
+		return errors.Wrap(err, "marshalling data to write")
 	}
 
-	return errors.Wrap(ioutil.WriteFile(fn, yamlData, 0644), "could not write file")
+	return errors.Wrapf(ioutil.WriteFile(fn, yamlData, 0644), "writing file '%s'", fn)
 }
 
 // setupRestCommunicator returns the rest communicator and prints any available info messages.
@@ -196,7 +195,7 @@ func (s *ClientSettings) getLegacyClients() (*legacyClient, *legacyClient, error
 	// create client for the REST APIs
 	apiURL, err := url.Parse(s.APIServerHost)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "Settings file contains an invalid URL")
+		return nil, nil, errors.Wrap(err, "parsing API server URL from settings file")
 	}
 
 	ac := &legacyClient{

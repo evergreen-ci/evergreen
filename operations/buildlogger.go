@@ -54,7 +54,7 @@ func fetch() cli.Command {
 			},
 			cli.StringFlag{
 				Name:  taskIDFlagName,
-				Usage: "The task id of the log(s) you would like to download. (Required)",
+				Usage: "The task ID of the log(s) you would like to download. (Required)",
 			},
 			cli.StringFlag{
 				Name:  testNameFlagName,
@@ -62,7 +62,7 @@ func fetch() cli.Command {
 			},
 			cli.StringFlag{
 				Name:  groupIDFlagName,
-				Usage: "The group id of the log(s) you would like to download.",
+				Usage: "The group ID of the log(s) you would like to download.",
 			},
 			cli.StringFlag{
 				Name:  startFlagName,
@@ -76,7 +76,7 @@ func fetch() cli.Command {
 			},
 			cli.IntFlag{
 				Name:  executionFlagName,
-				Usage: "The execution of the task id. Defaults to the latest.",
+				Usage: "The execution number of the task. Defaults to the latest.",
 			},
 			cli.StringFlag{
 				Name:  processNameFlagName,
@@ -114,7 +114,7 @@ func fetch() cli.Command {
 			confPath := c.Parent().Parent().String(confFlagName)
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
-				return errors.Wrap(err, "problem loading configuration")
+				return errors.Wrap(err, "loading configuration")
 			}
 
 			var execution *int
@@ -123,11 +123,11 @@ func fetch() cli.Command {
 			}
 			start, err := time.Parse(time.RFC3339, c.String(startFlagName))
 			if err != nil {
-				return errors.Wrapf(err, "unable to parse start time '%s' from RFC3339 format", c.String(startFlagName))
+				return errors.Wrapf(err, "parsing start time '%s' from RFC3339 format", c.String(startFlagName))
 			}
 			end, err := time.Parse(time.RFC3339, c.String(endFlagName))
 			if err != nil {
-				return errors.Wrapf(err, "unable to parse end time '%s' from RFC3339 format", c.String(endFlagName))
+				return errors.Wrapf(err, "parsing end time '%s' from RFC3339 format", c.String(endFlagName))
 			}
 			var tags []string
 			if c.String(tagsFlagName) != "" {
@@ -158,7 +158,7 @@ func fetch() cli.Command {
 			}
 			r, err := buildlogger.Get(ctx, opts)
 			if err != nil {
-				return errors.Wrap(err, "problem fetching log(s)")
+				return errors.Wrap(err, "fetching log(s)")
 			}
 			defer r.Close()
 
@@ -167,14 +167,13 @@ func fetch() cli.Command {
 			if fn != "" {
 				out, err = os.Create(fn)
 				if err != nil {
-					return errors.Wrap(err, "problem creating output file")
+					return errors.Wrapf(err, "creating output file '%s'", fn)
 				}
 				defer out.Close()
 			}
 
 			_, err = io.Copy(out, r)
-			return errors.Wrap(err, "problem reading log(s)")
-
+			return errors.Wrap(err, "reading log(s)")
 		},
 	}
 }

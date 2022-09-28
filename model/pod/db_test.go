@@ -422,3 +422,143 @@ func TestUpdateOneStatus(t *testing.T) {
 		})
 	}
 }
+
+func TestFindByLastCommunicatedBefore(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
+	for tName, tCase := range map[string]func(t *testing.T){
+		"FindsStartingStalePod": func(t *testing.T) {
+			p := Pod{
+				ID:     "id",
+				Status: StatusStarting,
+				TimeInfo: TimeInfo{
+					LastCommunicated: time.Now().Add(-time.Hour),
+				},
+			}
+			require.NoError(t, p.Insert())
+
+			found, err := FindByLastCommunicatedBefore(time.Now().Add(-10 * time.Minute))
+			require.NoError(t, err)
+			require.Len(t, found, 1)
+			assert.Equal(t, p.ID, found[0].ID)
+		},
+		"FindsRunningStalePod": func(t *testing.T) {
+			p := Pod{
+				ID:     "id",
+				Status: StatusRunning,
+				TimeInfo: TimeInfo{
+					LastCommunicated: time.Now().Add(-time.Hour),
+				},
+			}
+			require.NoError(t, p.Insert())
+
+			found, err := FindByLastCommunicatedBefore(time.Now().Add(-10 * time.Minute))
+			require.NoError(t, err)
+			require.Len(t, found, 1)
+			assert.Equal(t, p.ID, found[0].ID)
+		},
+		"FindsMultipleStalePods": func(t *testing.T) {
+			pods := []Pod{
+				{
+					ID:     "pod0",
+					Status: StatusDecommissioned,
+					TimeInfo: TimeInfo{
+						LastCommunicated: time.Now().Add(-time.Hour),
+					},
+				},
+				{
+					ID:     "pod1",
+					Status: StatusStarting,
+					TimeInfo: TimeInfo{
+						LastCommunicated: time.Now().Add(-time.Minute),
+					},
+				},
+				{
+					ID:     "pod2",
+					Status: StatusStarting,
+					TimeInfo: TimeInfo{
+						LastCommunicated: time.Now().Add(-time.Hour),
+					},
+				},
+				{
+					ID:     "pod3",
+					Status: StatusRunning,
+					TimeInfo: TimeInfo{
+						LastCommunicated: time.Now().Add(-time.Minute),
+					},
+				},
+				{
+					ID:     "pod4",
+					Status: StatusRunning,
+					TimeInfo: TimeInfo{
+						LastCommunicated: time.Now().Add(-time.Hour),
+					},
+				},
+				{
+					ID:     "pod5",
+					Status: StatusTerminated,
+					TimeInfo: TimeInfo{
+						LastCommunicated: time.Now().Add(-time.Minute),
+					},
+				},
+			}
+			for _, p := range pods {
+				require.NoError(t, p.Insert())
+			}
+
+			found, err := FindByLastCommunicatedBefore(time.Now().Add(-10 * time.Minute))
+			require.NoError(t, err)
+			require.Len(t, found, 2)
+			assert.ElementsMatch(t, []string{pods[2].ID, pods[4].ID}, []string{found[0].ID, found[1].ID})
+		},
+		"IgnoresPodWithRecentCommunication": func(t *testing.T) {
+			p := Pod{
+				ID:     "id",
+				Status: StatusRunning,
+				TimeInfo: TimeInfo{
+					LastCommunicated: time.Now().Add(-time.Minute),
+				},
+			}
+			require.NoError(t, p.Insert())
+
+			found, err := FindByLastCommunicatedBefore(time.Now().Add(-10 * time.Minute))
+			assert.NoError(t, err)
+			assert.Empty(t, found)
+		},
+		"IgnoresAlreadyTerminatedPod": func(t *testing.T) {
+			p := Pod{
+				ID:     "id",
+				Status: StatusTerminated,
+				TimeInfo: TimeInfo{
+					LastCommunicated: time.Now().Add(-time.Hour),
+				},
+			}
+			require.NoError(t, p.Insert())
+
+			found, err := FindByLastCommunicatedBefore(time.Now().Add(-10 * time.Minute))
+			assert.NoError(t, err)
+			assert.Empty(t, found)
+		},
+		"IgnoresIntentPod": func(t *testing.T) {
+			p := Pod{
+				ID:     "id",
+				Status: StatusInitializing,
+				TimeInfo: TimeInfo{
+					LastCommunicated: time.Now().Add(-time.Hour),
+				},
+			}
+			require.NoError(t, p.Insert())
+
+			found, err := FindByLastCommunicatedBefore(time.Now().Add(-10 * time.Minute))
+			assert.NoError(t, err)
+			assert.Empty(t, found)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(Collection))
+
+			tCase(t)
+		})
+	}
+}

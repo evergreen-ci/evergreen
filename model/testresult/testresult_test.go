@@ -2,7 +2,6 @@ package testresult
 
 import (
 	"fmt"
-	"sync"
 	"testing"
 	"time"
 
@@ -227,57 +226,30 @@ func TestDeleteWithLimit(t *testing.T) {
 	ctx, cancel := env.Context()
 	defer cancel()
 
+	now := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+
 	t.Run("DetectsOutOfBounds", func(t *testing.T) {
-		assert.Panics(t, func() {
-			_, _ = DeleteWithLimit(ctx, env, time.Now(), 200*1000)
-		})
-		assert.NotPanics(t, func() {
-			_, _ = DeleteWithLimit(ctx, env, time.Now(), 1)
-		})
+		require.NoError(t, db.Clear(Collection))
+		require.NoError(t, (&TestResult{ID: mgobson.ObjectIdHex(primitive.NewObjectIDFromTimestamp(now.Add(-time.Hour)).Hex())}).Insert())
+		deletedCount, err := DeleteWithLimit(ctx, env, time.Now(), maxDeleteCount+1)
+		assert.Error(t, err)
+		assert.Zero(t, deletedCount)
 	})
 	t.Run("QueryValidation", func(t *testing.T) {
 		require.NoError(t, db.Clear(Collection))
-		require.NoError(t, (&TestResult{ID: mgobson.ObjectIdHex(primitive.NewObjectIDFromTimestamp(time.Now().Add(time.Hour)).Hex())}).Insert())
-		require.NoError(t, (&TestResult{ID: mgobson.ObjectIdHex(primitive.NewObjectIDFromTimestamp(time.Now().Add(-time.Hour)).Hex())}).Insert())
+		require.NoError(t, (&TestResult{ID: mgobson.ObjectIdHex(primitive.NewObjectIDFromTimestamp(now.Add(time.Hour)).Hex())}).Insert())
+		require.NoError(t, (&TestResult{ID: mgobson.ObjectIdHex(primitive.NewObjectIDFromTimestamp(now.Add(-time.Hour)).Hex())}).Insert())
 
 		num, err := db.Count(Collection, bson.M{})
 		require.NoError(t, err)
 		assert.Equal(t, 2, num)
 
-		num, err = DeleteWithLimit(ctx, env, time.Now(), 2)
+		num, err = DeleteWithLimit(ctx, env, now, 2)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, num)
 
 		num, err = db.Count(Collection, bson.M{})
 		require.NoError(t, err)
 		assert.Equal(t, 1, num)
-	})
-	t.Run("Parallel", func(t *testing.T) {
-		require.NoError(t, db.Clear(Collection))
-		for i := 0; i < 10000; i++ {
-			if i%2 == 0 {
-				require.NoError(t, (&TestResult{ID: mgobson.ObjectIdHex(primitive.NewObjectIDFromTimestamp(time.Now().Add(time.Hour)).Hex())}).Insert())
-			} else {
-				require.NoError(t, (&TestResult{ID: mgobson.ObjectIdHex(primitive.NewObjectIDFromTimestamp(time.Now().Add(-time.Hour)).Hex())}).Insert())
-			}
-		}
-		num, err := db.Count(Collection, bson.M{})
-		require.NoError(t, err)
-		assert.Equal(t, 10000, num)
-
-		var wg sync.WaitGroup
-		for i := 0; i < 100; i++ {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				_, delErr := DeleteWithLimit(ctx, env, time.Now(), 1000)
-				require.NoError(t, delErr)
-			}()
-		}
-		wg.Wait()
-
-		num, err = db.Count(Collection, bson.M{})
-		require.NoError(t, err)
-		assert.Equal(t, 5000, num)
 	})
 }

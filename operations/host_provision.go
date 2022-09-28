@@ -64,7 +64,7 @@ func hostProvision() cli.Command {
 
 			opts, err := comm.GetHostProvisioningOptions(ctx, c.String(hostIDFlagName), c.String(hostSecretFlagName))
 			if err != nil {
-				return errors.Wrap(err, "failed to get host provisioning script")
+				return errors.Wrap(err, "getting host provisioning script")
 			}
 
 			workingDir := c.String(workingDirFlagName)
@@ -88,11 +88,11 @@ func hostProvision() cli.Command {
 // makeHostProvisioningScriptFile creates the working directory with the host
 // provisioning script in it. Returns the absolute path to the script.
 // Note: we have to write the host provisioning script to a file instead of
-// running it directly like with 'sh -c "<script>"' because the script will exit
-// before it finishes executing on Windows.
+// running it directly (like with 'sh -c "<script>"') because the script will
+// exit before it finishes executing on Windows.
 func makeHostProvisioningScriptFile(workingDir string, content string) (string, error) {
 	if err := os.MkdirAll(workingDir, 0755); err != nil {
-		return "", errors.Wrap(err, "creating working directory")
+		return "", errors.Wrapf(err, "creating working directory '%s'", workingDir)
 	}
 
 	scriptPath, err := filepath.Abs(filepath.Join(workingDir, "host_provisioning"))

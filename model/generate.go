@@ -269,14 +269,22 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 		return errors.Errorf("project '%s' not found", p.Identifier)
 	}
 
-	activatedTasksInExistingBuilds, err := addNewTasks(ctx, activationInfo, v, p, projectRef, newTVPairsForExistingVariants,
-		existingBuilds, syncAtEndOpts, g.Task.Id)
+	creationInfo := TaskCreationInfo{
+		Project:        p,
+		ProjectRef:     projectRef,
+		Version:        v,
+		Pairs:          newTVPairsForExistingVariants,
+		ActivationInfo: activationInfo,
+		SyncAtEndOpts:  syncAtEndOpts,
+		GeneratedBy:    g.Task.Id,
+	}
+	activatedTasksInExistingBuilds, err := addNewTasks(ctx, creationInfo, existingBuilds)
 	if err != nil {
 		return errors.Wrap(err, "adding new tasks")
 	}
 
-	activatedTasksInNewBuilds, err := addNewBuilds(ctx, activationInfo, v, p, newTVPairsForNewVariants,
-		existingBuilds, syncAtEndOpts, projectRef, g.Task.Id)
+	creationInfo.Pairs = newTVPairsForNewVariants
+	activatedTasksInNewBuilds, err := addNewBuilds(ctx, creationInfo, existingBuilds)
 	if err != nil {
 		return errors.Wrap(err, "adding new builds")
 	}
@@ -315,7 +323,13 @@ func (g *GeneratedProject) CheckForCycles(v *Version, p *Project, projectRef *Pr
 func (g *GeneratedProject) simulateNewTasks(graph task.DependencyGraph, v *Version, p *Project, projectRef *ProjectRef) (task.DependencyGraph, error) {
 	newTasks := g.getNewTasksWithDependencies(v, p)
 
-	taskIDs, err := getTaskIdTables(v, p, newTasks, projectRef.Identifier)
+	creationInfo := TaskCreationInfo{
+		Project:    p,
+		ProjectRef: projectRef,
+		Version:    v,
+		Pairs:      newTasks,
+	}
+	taskIDs, err := getTaskIdTables(creationInfo)
 	if err != nil {
 		return graph, errors.Wrap(err, "getting task ids")
 	}
