@@ -111,11 +111,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	}
 
 	var projects []model.GeneratedProject
-	if len(t.GeneratedJSONAsString) > 0 {
-		projects, err = parseProjectsAsString(t.GeneratedJSONAsString)
-	} else {
-		projects, err = parseProjects(t.GeneratedJSON)
-	}
+	projects, err = parseProjectsAsString(t.GeneratedJSONAsString)
 	if err != nil {
 		return errors.Wrap(err, "parsing JSON from `generate.tasks`")
 	}
