@@ -24,6 +24,11 @@ const (
 	// EventPodAssignedTask represents an event where a pod is assigned a task
 	// to run.
 	EventPodAssignedTask PodEventType = "ASSIGNED_TASK"
+	// EventPodClearedTask represents an event where a pod's current running
+	// task is cleared.
+	EventPodClearedTask PodEventType = "CLEARED_TASK"
+	// EventPodFinishedTask represents an event where a pod's assigned task has
+	// finished running.
 	EventPodFinishedTask PodEventType = "CONTAINER_TASK_FINISHED"
 )
 
@@ -74,4 +79,10 @@ func LogPodStatusChanged(id, oldStatus, newStatus, reason string) {
 // task to run.
 func LogPodAssignedTask(id, taskID string, execution int) {
 	LogPodEvent(id, EventPodAssignedTask, podData{TaskID: taskID, TaskExecution: execution})
+}
+
+// LogPodRunningTaskCleared logs an event indicating that the pod's current
+// running task has been cleared, so it is no longer assigned to run the task.
+func LogPodRunningTaskCleared(id, taskID string, execution int) {
+	LogPodEvent(id, EventPodClearedTask, podData{TaskID: taskID, TaskExecution: execution})
 }
