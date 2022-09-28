@@ -158,7 +158,8 @@ func TestPodTerminationJob(t *testing.T) {
 				ContainerAllocated: true,
 			}
 			require.NoError(t, tsk.Insert())
-			j.pod.RunningTask = tsk.Id
+			j.pod.TaskRuntimeInfo.RunningTaskID = tsk.Id
+			j.pod.TaskRuntimeInfo.RunningTaskExecution = tsk.Execution
 			require.NoError(t, j.pod.Insert())
 
 			j.Run(ctx)

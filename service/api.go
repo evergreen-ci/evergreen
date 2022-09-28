@@ -657,8 +657,9 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 	}
 
 	errs := validator.ValidationErrors{}
+	var projectRef *model.ProjectRef
 	if input.ProjectID != "" {
-		projectRef, err := model.FindMergedProjectRef(input.ProjectID, "", false)
+		projectRef, err = model.FindMergedProjectRef(input.ProjectID, "", false)
 		if err != nil {
 			validationErr = validator.ValidationError{
 				Message: "error finding project; validation will proceed without checking project settings",
@@ -692,6 +693,16 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 		errs = errs.AtLevel(validator.Error)
 	} else {
 		errs = append(errs, validator.CheckProjectWarnings(project)...)
+		// Check project aliases
+		aliases, err := model.FindMergedAliasesFromProjectRepoOrProjectConfig(projectRef, projectConfig)
+		if err != nil {
+			errs = append(errs, validator.ValidationError{
+				Message: "problem finding aliases; validation will proceed without checking alias coverage",
+				Level:   validator.Warning,
+			})
+		} else {
+			errs = append(errs, validator.CheckAliasWarnings(project, aliases)...)
+		}
 	}
 
 	if len(errs) > 0 {
@@ -815,11 +826,7 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/keyval/inc").Wrap(requireTask).Handler(as.keyValPluginInc).Post()
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/manifest/load").Wrap(requireTask).Handler(as.manifestLoadHandler).Get()
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/downstreamParams").Wrap(requireTask).Handler(as.SetDownstreamParams).Post()
-	app.Route().Version(2).Prefix("/task/{taskId}").Route("/json/tags/{task_name}/{name}").Wrap(requireTask).Handler(as.getTaskJSONTagsForTask).Get()
-	app.Route().Version(2).Prefix("/task/{taskId}").Route("/json/history/{task_name}/{name}").Wrap(requireTask).Handler(as.getTaskJSONTaskHistory).Get()
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/json/data/{name}").Wrap(requireTask).Handler(as.insertTaskJSON).Post()
-	app.Route().Version(2).Prefix("/task/{taskId}").Route("/json/data/{task_name}/{name}").Wrap(requireTask).Handler(as.getTaskJSONByName).Get()
-	app.Route().Version(2).Prefix("/task/{taskId}").Route("/json/data/{task_name}/{name}/{variant}").Wrap(requireTask).Handler(as.getTaskJSONForVariant).Get()
 
 	return app
 }

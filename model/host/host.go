@@ -2663,6 +2663,22 @@ func (h *Host) MarkShouldExpire(expireOnValue string) error {
 	)
 }
 
+// UnsetHomeVolume disassociates a home volume from a (stopped) host.
+// This is for internal use, and should only be used on hosts that
+// will be terminated imminently; otherwise, the host will fail to boot.
+func (h *Host) UnsetHomeVolume() error {
+	err := UpdateOne(
+		bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{HomeVolumeIDKey: ""}},
+	)
+	if err != nil {
+		return err
+	}
+
+	h.HomeVolumeID = ""
+	return nil
+}
+
 func (h *Host) SetHomeVolumeID(volumeID string) error {
 	h.HomeVolumeID = volumeID
 	return UpdateOne(bson.M{

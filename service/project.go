@@ -960,7 +960,7 @@ func verifyAliasExists(alias, projectId string, newAliasDefinitions []model.Proj
 		return true, nil
 	}
 
-	existingAliasDefinitions, _, err := model.FindAliasInProjectOrRepoFromDb(projectId, alias)
+	existingAliasDefinitions, err := model.FindAliasInProjectRepoOrProjectConfig(projectId, alias, nil)
 	if err != nil {
 		return false, errors.Wrap(err, "error checking for existing aliases")
 	}

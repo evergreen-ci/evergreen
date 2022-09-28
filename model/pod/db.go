@@ -23,7 +23,7 @@ var (
 	FamilyKey                    = bsonutil.MustHaveTag(Pod{}, "Family")
 	TimeInfoKey                  = bsonutil.MustHaveTag(Pod{}, "TimeInfo")
 	ResourcesKey                 = bsonutil.MustHaveTag(Pod{}, "Resources")
-	RunningTaskKey               = bsonutil.MustHaveTag(Pod{}, "RunningTask")
+	TaskRuntimeInfoKey           = bsonutil.MustHaveTag(Pod{}, "TaskRuntimeInfo")
 
 	TaskContainerCreationOptsImageKey    = bsonutil.MustHaveTag(TaskContainerCreationOptions{}, "Image")
 	TaskContainerCreationOptsMemoryMBKey = bsonutil.MustHaveTag(TaskContainerCreationOptions{}, "MemoryMB")
@@ -42,6 +42,9 @@ var (
 	ResourceInfoDefinitionIDKey = bsonutil.MustHaveTag(ResourceInfo{}, "DefinitionID")
 	ResourceInfoClusterKey      = bsonutil.MustHaveTag(ResourceInfo{}, "Cluster")
 	ResourceInfoContainersKey   = bsonutil.MustHaveTag(ResourceInfo{}, "Containers")
+
+	TaskRuntimeInfoRunningTaskIDKey        = bsonutil.MustHaveTag(TaskRuntimeInfo{}, "RunningTaskID")
+	TaskRuntimeInfoRunningTaskExecutionKey = bsonutil.MustHaveTag(TaskRuntimeInfo{}, "RunningTaskExecution")
 
 	ContainerResourceInfoExternalIDKey = bsonutil.MustHaveTag(ContainerResourceInfo{}, "ExternalID")
 	ContainerResourceInfoNameKey       = bsonutil.MustHaveTag(ContainerResourceInfo{}, "Name")

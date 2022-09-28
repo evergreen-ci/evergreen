@@ -510,7 +510,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	// if owner/repo has changed and the project is attached to repo, update scope and repo accordingly
 	if h.newProjectRef.UseRepoSettings() && h.ownerRepoChanged() {
 		if err = h.newProjectRef.RemoveFromRepoScope(); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error removing project from old repo scope"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "removing project from old repo scope"))
 		}
 		if err = h.newProjectRef.AddToRepoScope(h.user); err != nil { // will re-add using the new owner/repo
 			return gimlet.MakeJSONInternalErrorResponder(err)

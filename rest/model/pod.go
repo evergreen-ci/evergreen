@@ -60,16 +60,21 @@ func (p *APICreatePod) ToService() (*pod.Pod, error) {
 // APIPod represents a pod to be used and returned from the REST API.
 type APIPod struct {
 	ID                        *string                            `json:"id"`
-	Type                      APIPodType                         `json:"type"`
-	Status                    APIPodStatus                       `json:"status"`
-	TaskContainerCreationOpts APIPodTaskContainerCreationOptions `json:"task_container_creation_opts"`
-	TimeInfo                  APIPodTimeInfo                     `json:"time_info"`
-	Resources                 APIPodResourceInfo                 `json:"resources"`
+	Type                      APIPodType                         `json:"type,omitempty"`
+	Status                    APIPodStatus                       `json:"status,omitempty"`
+	TaskContainerCreationOpts APIPodTaskContainerCreationOptions `json:"task_container_creation_opts,omitempty"`
+	Family                    *string                            `json:"family,omitempty"`
+	TimeInfo                  APIPodTimeInfo                     `json:"time_info,omitempty"`
+	Resources                 APIPodResourceInfo                 `json:"resources,omitempty"`
+	TaskRuntimeInfo           APITaskRuntimeInfo                 `json:"task_runtime_info,omitempty"`
+	AgentVersion              *string                            `json:"agent_version,omitempty"`
 }
 
 // BuildFromService converts a service-layer pod model into a REST API model.
 func (p *APIPod) BuildFromService(dbPod *pod.Pod) error {
 	p.ID = utility.ToStringPtr(dbPod.ID)
+	p.Family = utility.ToStringPtr(dbPod.Family)
+	p.AgentVersion = utility.ToStringPtr(dbPod.AgentVersion)
 	if err := p.Type.BuildFromService(dbPod.Type); err != nil {
 		return errors.Wrap(err, "building pod type from service")
 	}
@@ -79,6 +84,7 @@ func (p *APIPod) BuildFromService(dbPod *pod.Pod) error {
 	p.TimeInfo.BuildFromService(dbPod.TimeInfo)
 	p.TaskContainerCreationOpts.BuildFromService(dbPod.TaskContainerCreationOpts)
 	p.Resources.BuildFromService(dbPod.Resources)
+	p.TaskRuntimeInfo.BuildFromService(dbPod.TaskRuntimeInfo)
 	return nil
 }
 
@@ -98,13 +104,17 @@ func (p *APIPod) ToService() (*pod.Pod, error) {
 	}
 	timing := p.TimeInfo.ToService()
 	resources := p.Resources.ToService()
+	taskRuntime := p.TaskRuntimeInfo.ToService()
 	return &pod.Pod{
 		ID:                        utility.FromStringPtr(p.ID),
 		Type:                      *t,
 		Status:                    *s,
 		TaskContainerCreationOpts: *taskCreationOpts,
+		Family:                    utility.FromStringPtr(p.Family),
 		TimeInfo:                  timing,
 		Resources:                 resources,
+		TaskRuntimeInfo:           taskRuntime,
+		AgentVersion:              utility.FromStringPtr(p.AgentVersion),
 	}, nil
 }
 
@@ -433,5 +443,28 @@ func (s *APIPodSecret) ToService() pod.Secret {
 	return pod.Secret{
 		ExternalID: utility.FromStringPtr(s.ExternalID),
 		Value:      utility.FromStringPtr(s.Value),
+	}
+}
+
+// APITaskRuntimeInfo represents information about tasks that a pod is running
+// or has run previously.
+type APITaskRuntimeInfo struct {
+	RunningTaskID        *string `json:"running_task_id,omitempty"`
+	RunningTaskExecution *int    `json:"running_task_execution,omitempty"`
+}
+
+// BuildFromService converts service-layer task runtime information into REST
+// API task runtime information.
+func (i *APITaskRuntimeInfo) BuildFromService(info pod.TaskRuntimeInfo) {
+	i.RunningTaskID = utility.ToStringPtr(info.RunningTaskID)
+	i.RunningTaskExecution = utility.ToIntPtr(info.RunningTaskExecution)
+}
+
+// ToService converts REST API task runtime information into service-layer task
+// runtime information.
+func (i *APITaskRuntimeInfo) ToService() pod.TaskRuntimeInfo {
+	return pod.TaskRuntimeInfo{
+		RunningTaskID:        utility.FromStringPtr(i.RunningTaskID),
+		RunningTaskExecution: utility.FromIntPtr(i.RunningTaskExecution),
 	}
 }

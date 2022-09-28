@@ -29,7 +29,7 @@ func Evaluate() cli.Command {
 				Name:  variantsFlagName,
 				Usage: "only show variant definitions",
 			}),
-		Before: mergeBeforeFuncs(autoUpdateCLI, requirePathFlag),
+		Before: mergeBeforeFuncs(requirePathFlag),
 		Action: func(c *cli.Context) error {
 			path := c.String(pathFlagName)
 			showTasks := c.Bool(taskFlagName)

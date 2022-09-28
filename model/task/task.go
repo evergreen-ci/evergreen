@@ -145,6 +145,10 @@ type Task struct {
 	// The host the task was run on. This value is only set for host tasks.
 	HostId string `bson:"host_id,omitempty" json:"host_id"`
 
+	// PodID is the pod that was assigned to run the task. This value is only
+	// set for container tasks.
+	PodID string `bson:"pod_id,omitempty" json:"pod_id"`
+
 	// ExecutionPlatform determines the execution environment that the task runs
 	// in.
 	ExecutionPlatform ExecutionPlatform `bson:"execution_platform,omitempty" json:"execution_platform,omitempty"`
@@ -265,16 +269,16 @@ const (
 
 // ContainerOptions represent options to create the container to run a task.
 type ContainerOptions struct {
-	CPU        int
-	MemoryMB   int
-	WorkingDir string
-	Image      string
+	CPU        int    `bson:"cpu,omitempty" json:"cpu"`
+	MemoryMB   int    `bson:"memory_mb,omitempty" json:"memory_mb"`
+	WorkingDir string `bson:"working_dir,omitempty" json:"working_dir"`
+	Image      string `bson:"image,omitempty" json:"image"`
 	// RepoCredsName is the name of the project container secret containing the
 	// repository credentials.
-	RepoCredsName  string
-	OS             evergreen.ContainerOS
-	Arch           evergreen.ContainerArch
-	WindowsVersion evergreen.WindowsVersion
+	RepoCredsName  string                   `bson:"repo_creds_name,omitempty" json:"repo_creds_name"`
+	OS             evergreen.ContainerOS    `bson:"os,omitempty" json:"os"`
+	Arch           evergreen.ContainerArch  `bson:"arch,omitempty" json:"arch"`
+	WindowsVersion evergreen.WindowsVersion `bson:"windows_version,omitempty" json:"windows_version"`
 }
 
 // IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
@@ -1017,7 +1021,7 @@ func (t *Task) cacheExpectedDuration() error {
 
 // MarkAsContainerDispatched marks that the container task has been dispatched
 // to a pod.
-func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Environment, agentVersion string) error {
+func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Environment, podID, agentVersion string) error {
 	dispatchedAt := time.Now()
 	query := isContainerTaskScheduledQuery()
 	query[StatusKey] = evergreen.TaskUndispatched
@@ -1027,6 +1031,7 @@ func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Envi
 			StatusKey:        evergreen.TaskDispatched,
 			DispatchTimeKey:  dispatchedAt,
 			LastHeartbeatKey: dispatchedAt,
+			PodIDKey:         podID,
 			AgentVersionKey:  agentVersion,
 		},
 	}
@@ -1041,6 +1046,7 @@ func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Envi
 	t.Status = evergreen.TaskDispatched
 	t.DispatchTime = dispatchedAt
 	t.LastHeartbeat = dispatchedAt
+	t.PodID = podID
 	t.AgentVersion = agentVersion
 
 	return nil

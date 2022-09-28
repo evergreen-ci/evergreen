@@ -138,8 +138,9 @@ func TestCopyVariablesSuite(t *testing.T) {
 	suite.Run(t, new(copyVariablesSuite))
 }
 
-func (s *copyVariablesSuite) SetupSuite() {
-	s.NoError(db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection))
+func (s *copyVariablesSuite) SetupTest() {
+	s.route = &copyVariablesHandler{}
+	s.NoError(db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, model.RepoRefCollection))
 	pRefs := []model.ProjectRef{
 		{
 			Id:      "projectA",
@@ -157,6 +158,10 @@ func (s *copyVariablesSuite) SetupSuite() {
 	for _, pRef := range pRefs {
 		s.NoError(pRef.Insert())
 	}
+	repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
+		Id: "repoRef",
+	}}
+	s.NoError(repoRef.Upsert())
 	projectVar1 := &model.ProjectVars{
 		Id:          "projectA",
 		Vars:        map[string]string{"apple": "red", "hello": "world"},
@@ -167,12 +172,15 @@ func (s *copyVariablesSuite) SetupSuite() {
 		Vars:        map[string]string{"banana": "yellow", "apple": "green", "hello": "its me"},
 		PrivateVars: map[string]bool{},
 	}
+	projectVar3 := model.ProjectVars{
+		Id:          "repoRef",
+		Vars:        map[string]string{"chicago": "cubs"},
+		PrivateVars: map[string]bool{},
+	}
+
 	s.NoError(projectVar1.Insert())
 	s.NoError(projectVar2.Insert())
-}
-
-func (s *copyVariablesSuite) SetupTest() {
-	s.route = &copyVariablesHandler{}
+	s.NoError(projectVar3.Insert())
 }
 
 func (s *copyVariablesSuite) TestParse() {
@@ -290,4 +298,42 @@ func (s *copyVariablesSuite) TestCopyVariablesWithOverwrite() {
 	s.False(projectVars.PrivateVars["apple"])
 	_, ok := projectVars.Vars["banana"] // no longer exists
 	s.False(ok)
+}
+
+func (s *copyVariablesSuite) TestCopyToRepo() {
+	ctx := context.Background()
+	s.route.copyFrom = "projectA"
+	s.route.opts = copyVariablesOptions{
+		CopyTo:         "repoRef",
+		IncludePrivate: true,
+	}
+	resp := s.route.Run(ctx)
+	s.NotNil(resp)
+	s.Equal(http.StatusOK, resp.Status())
+	projectVars, err := model.FindOneProjectVars("repoRef")
+	s.NoError(err)
+	s.Len(projectVars.Vars, 3)
+	s.Equal("world", projectVars.Vars["hello"])
+	s.Equal("red", projectVars.Vars["apple"])
+	s.Equal("cubs", projectVars.Vars["chicago"])
+	s.True(projectVars.PrivateVars["hello"])
+}
+
+func (s *copyVariablesSuite) TestCopyFromRepo() {
+	ctx := context.Background()
+	s.route.copyFrom = "repoRef"
+	s.route.opts = copyVariablesOptions{
+		CopyTo:         "projectA",
+		IncludePrivate: true,
+	}
+	resp := s.route.Run(ctx)
+	s.NotNil(resp)
+	s.Equal(http.StatusOK, resp.Status())
+	projectVars, err := model.FindOneProjectVars("projectA")
+	s.NoError(err)
+	s.Len(projectVars.Vars, 3)
+	s.Equal("world", projectVars.Vars["hello"])
+	s.Equal("red", projectVars.Vars["apple"])
+	s.Equal("cubs", projectVars.Vars["chicago"])
+	s.True(projectVars.PrivateVars["hello"])
 }
