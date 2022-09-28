@@ -2,7 +2,6 @@ package service
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -13,16 +12,19 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/utility"
+	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/require"
 )
 
-// getCTAEndpoint is a helper that creates a test API server,
-// GETs the consistent_task_assignment endpoint, and returns
+func init() { testutil.Setup() }
+
+// getEndPoint is a helper that creates a test API server,
+// GETs the passed int endpoint, and returns
 // the response.
-func getCTAEndpoint(t *testing.T) *httptest.ResponseRecorder {
+func getEndPoint(url string, t *testing.T) *httptest.ResponseRecorder {
 	if err := os.MkdirAll(filepath.Join(evergreen.FindEvergreenHome(), evergreen.ClientDirectory), 0644); err != nil {
 		t.Fatal("could not create client directory required to start the API server:", err.Error())
 	}
@@ -32,33 +34,14 @@ func getCTAEndpoint(t *testing.T) *httptest.ResponseRecorder {
 
 	as, err := NewAPIServer(env, queue)
 	require.NoError(t, err)
-	handler, err := as.GetServiceApp().Handler()
+	app := as.GetServiceApp()
+	app.AddMiddleware(gimlet.NewAuthenticationHandler(gimlet.NewBasicAuthenticator(nil, nil), env.UserManager()))
+	handler, err := app.Handler()
 	require.NoError(t, err)
-	url := "/api/status/consistent_task_assignment"
 	request, err := http.NewRequest("GET", url, nil)
 	require.NoError(t, err)
-
-	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, request)
-	return w
-}
-
-// EVG-1602: this fixture is not used yet. Commented to avoid deadcode lint error.
-func getStuckHostEndpoint(t *testing.T) *httptest.ResponseRecorder {
-	if err := os.MkdirAll(filepath.Join(evergreen.FindEvergreenHome(), evergreen.ClientDirectory), 0644); err != nil {
-		t.Fatal("could not create client directory required to start the API server:", err.Error())
-	}
-
-	env := evergreen.GetEnvironment()
-	queue := env.LocalQueue()
-
-	as, err := NewAPIServer(env, queue)
-	require.NoError(t, err)
-	handler, err := as.GetServiceApp().Handler()
-	require.NoError(t, err)
-	url := "/api/status/stuck_hosts"
-	request, err := http.NewRequest("GET", url, nil)
-	require.NoError(t, err)
+	ctx := gimlet.AttachUser(request.Context(), &user.DBUser{Id: "octocat"})
+	request = request.WithContext(ctx)
 
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, request)
@@ -82,7 +65,7 @@ func TestConsistentTaskAssignment(t *testing.T) {
 			So(t1.Insert(), ShouldBeNil)
 			So(t2.Insert(), ShouldBeNil)
 			So(t3.Insert(), ShouldBeNil)
-			resp := getCTAEndpoint(t)
+			resp := getEndPoint("/api/status/consistent_task_assignment", t)
 			So(resp, ShouldNotBeNil)
 			Convey("should return HTTP 200", func() {
 				So(resp.Code, ShouldEqual, http.StatusOK)
@@ -109,7 +92,7 @@ func TestConsistentTaskAssignment(t *testing.T) {
 			So(t1.Insert(), ShouldBeNil)
 			So(t2.Insert(), ShouldBeNil)
 			So(t3.Insert(), ShouldBeNil)
-			resp := getCTAEndpoint(t)
+			resp := getEndPoint("/api/status/consistent_task_assignment", t)
 			So(resp, ShouldNotBeNil)
 			Convey("should return HTTP 200", func() {
 				So(resp.Code, ShouldEqual, http.StatusOK)
@@ -135,24 +118,15 @@ func TestConsistentTaskAssignment(t *testing.T) {
 }
 
 func TestServiceStatusEndPoints(t *testing.T) {
-	testConfig := testutil.TestConfig()
-	testServer, err := CreateTestServer(testConfig, nil, false)
-	require.NoError(t, err, "Couldn't create apiserver: %v", err)
-	defer testServer.Close()
-
-	url := fmt.Sprintf("%s/api/status/info", testServer.URL)
-
 	Convey("Service Status endpoints should report the status of the service", t, func() {
 		Convey("basic endpoint should have one key, that reports the build id", func() {
-			request, err := http.NewRequest("GET", url, nil)
-			So(err, ShouldBeNil)
+			resp := getEndPoint("/api/status/info", t)
+			So(resp, ShouldNotBeNil)
+			So(resp.Code, ShouldEqual, http.StatusOK)
 
-			resp, err := http.DefaultClient.Do(request)
-			So(err, ShouldBeNil)
-			So(resp.StatusCode, ShouldEqual, 200)
 			out := map[string]string{}
 
-			So(utility.ReadJSON(resp.Body, &out), ShouldBeNil)
+			So(json.NewDecoder(resp.Body).Decode(&out), ShouldBeNil)
 			So(len(out), ShouldEqual, 2)
 			_, ok := out["build_revision"]
 			So(ok, ShouldBeTrue)
@@ -162,14 +136,9 @@ func TestServiceStatusEndPoints(t *testing.T) {
 
 func TestStuckHostEndpoints(t *testing.T) {
 	Convey("With a test server and test config", t, func() {
-		testConfig := testutil.TestConfig()
-		testServer, err := CreateTestServer(testConfig, nil, false)
-		require.NoError(t, err, "Couldn't create apiserver: %v", err)
-		defer testServer.Close()
 
 		require.NoError(t, db.ClearCollections(host.Collection, task.Collection))
 
-		url := fmt.Sprintf("%s/api/status/stuck_hosts", testServer.URL)
 		Convey("With hosts and tasks that are all consistent, the response should success", func() {
 			h1 := host.Host{Id: "h1", Status: evergreen.HostRunning, RunningTask: "t1"}
 			h2 := host.Host{Id: "h2", Status: evergreen.HostRunning, RunningTask: "t2"}
@@ -185,15 +154,12 @@ func TestStuckHostEndpoints(t *testing.T) {
 			So(t2.Insert(), ShouldBeNil)
 			So(t3.Insert(), ShouldBeNil)
 
-			request, err := http.NewRequest("GET", url, nil)
-			So(err, ShouldBeNil)
-
-			resp, err := http.DefaultClient.Do(request)
-			So(err, ShouldBeNil)
-			So(resp.StatusCode, ShouldEqual, 200)
+			resp := getEndPoint("/api/status/stuck_hosts", t)
+			So(resp, ShouldNotBeNil)
+			So(resp.Code, ShouldEqual, http.StatusOK)
 			out := stuckHostResp{}
 
-			So(utility.ReadJSON(resp.Body, &out), ShouldBeNil)
+			So(json.NewDecoder(resp.Body).Decode(&out), ShouldBeNil)
 			So(out.Status, ShouldEqual, apiStatusSuccess)
 
 		})
@@ -212,7 +178,7 @@ func TestStuckHostEndpoints(t *testing.T) {
 			So(t2.Insert(), ShouldBeNil)
 			So(t3.Insert(), ShouldBeNil)
 
-			resp := getStuckHostEndpoint(t)
+			resp := getEndPoint("/api/status/stuck_hosts", t)
 			So(resp, ShouldNotBeNil)
 			So(resp.Code, ShouldEqual, http.StatusOK)
 
