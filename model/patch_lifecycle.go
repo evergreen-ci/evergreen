@@ -637,7 +637,7 @@ func getFullPatchParams(p *patch.Patch) ([]patch.Parameter, error) {
 	if p.Alias != "" && IsPatchAlias(p.Alias) {
 		aliases, err := findAliasesForPatch(p.Project, p.Alias, p)
 		if err != nil {
-			return nil, errors.Wrapf(err, "retrieving alias '%s' for patched project config '%s'", p.Alias, p.Id.Hex())
+			return nil, errors.Wrapf(err, "retrieving alias '%s' for patch '%s'", p.Alias, p.Id.Hex())
 		}
 		for _, alias := range aliases {
 			if len(alias.Parameters) > 0 {
@@ -646,6 +646,8 @@ func getFullPatchParams(p *patch.Patch) ([]patch.Parameter, error) {
 				}
 			}
 		}
+	} else {
+		return p.Parameters, nil
 	}
 	for _, param := range p.Parameters {
 		paramsMap[param.Key] = param.Value

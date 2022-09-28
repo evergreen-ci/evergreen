@@ -51,11 +51,26 @@ func TestAgentFetchExpansionsForTask(t *testing.T) {
 			assert.Equal(t, data.PrivateVars, map[string]bool{"b": true})
 			assert.Equal(t, data.Vars, map[string]string{"a": "1", "b": "3"})
 		},
+		"RunSucceedsWithParamsSetOnVersion": func(ctx context.Context, t *testing.T, rh *fetchExpansionsForTaskHandler) {
+			rh.taskID = "t1"
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+			data, ok := resp.Data().(apimodels.ExpansionVars)
+			require.True(t, ok)
+			assert.Equal(t, data.PrivateVars, map[string]bool{"b": true})
+			assert.Equal(t, data.Vars, map[string]string{"a": "4", "b": "3"})
+		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 			require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, model.VersionCollection))
+			t1 := task.Task{
+				Id:      "t1",
+				Project: "p1",
+				Version: "aaaaaaaaaaff001122334455",
+			}
 			t2 := task.Task{
 				Id:      "t2",
 				Project: "p1",
@@ -69,6 +84,19 @@ func TestAgentFetchExpansionsForTask(t *testing.T) {
 				Vars:        map[string]string{"a": "1", "b": "3"},
 				PrivateVars: map[string]bool{"b": true},
 			}
+			v1 := &model.Version{
+				Id:         "aaaaaaaaaaff001122334455",
+				Revision:   "1234",
+				Requester:  evergreen.GitTagRequester,
+				CreateTime: time.Now(),
+				Config:     "identifier: sample",
+				Parameters: []patch.Parameter{
+					{
+						Key:   "a",
+						Value: "4",
+					},
+				},
+			}
 			v2 := &model.Version{
 				Id:         "aaaaaaaaaaff001122334456",
 				Revision:   "1234",
@@ -76,9 +104,11 @@ func TestAgentFetchExpansionsForTask(t *testing.T) {
 				CreateTime: time.Now(),
 				Config:     "identifier: sample",
 			}
+			require.NoError(t, t1.Insert())
 			require.NoError(t, t2.Insert())
 			require.NoError(t, pRef.Insert())
 			require.NoError(t, vars.Insert())
+			require.NoError(t, v1.Insert())
 			require.NoError(t, v2.Insert())
 
 			r, ok := makeFetchExpansionsForTask().(*fetchExpansionsForTaskHandler)
