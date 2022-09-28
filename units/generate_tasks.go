@@ -2,7 +2,6 @@ package units
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -342,19 +341,6 @@ func parseProjectsAsString(jsonStrings []string) ([]model.GeneratedProject, erro
 	var projects []model.GeneratedProject
 	for _, f := range jsonStrings {
 		p, err := model.ParseProjectFromJSONString(f)
-		if err != nil {
-			catcher.Add(err)
-		}
-		projects = append(projects, p)
-	}
-	return projects, catcher.Resolve()
-}
-
-func parseProjects(jsonBytes []json.RawMessage) ([]model.GeneratedProject, error) {
-	catcher := grip.NewBasicCatcher()
-	var projects []model.GeneratedProject
-	for _, f := range jsonBytes {
-		p, err := model.ParseProjectFromJSON(f)
 		if err != nil {
 			catcher.Add(err)
 		}
