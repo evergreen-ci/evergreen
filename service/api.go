@@ -94,6 +94,22 @@ func MustHaveProject(r *http.Request) *model.Project {
 	return p
 }
 
+// requireUserToggleable
+func (as *APIServer) requireUserToggleable(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving admin settings")))
+		}
+
+		if !flags.RequireAuthAllRoutesDisabled {
+			gimlet.NewRequireAuthHandler().ServeHTTP(w, r, next)
+			return
+		}
+		next(w, r)
+	}
+}
+
 // requireTask get the task from the request header and ensures that there is a task. It checks the secret
 // in the header with the secret in the db to ensure that they are the same.
 func (as *APIServer) requireTask(next http.HandlerFunc) http.HandlerFunc {
@@ -754,6 +770,7 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	requireProject := gimlet.WrapperMiddleware(as.requireProject)
 	requireTaskSecret := gimlet.WrapperMiddleware(as.requireTaskStrict)
 	requireUser := gimlet.NewRequireAuthHandler()
+	requireUserToggleable := gimlet.WrapperMiddleware(as.requireUserToggleable)
 	requireTask := gimlet.WrapperMiddleware(as.requireTask)
 	requireHost := gimlet.WrapperMiddleware(as.requireHost)
 	viewTasks := route.RequiresProjectPermission(evergreen.PermissionTasks, evergreen.TasksView)
@@ -765,15 +782,15 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.SimpleVersions = true
 
 	// Project lookup and validation routes
-	app.AddRoute("/ref/{identifier}").Handler(as.fetchProjectRef).Get()
-	app.AddRoute("/validate").Handler(as.validateProjectConfig).Post()
+	app.AddRoute("/ref/{identifier}").Wrap(requireUserToggleable).Handler(as.fetchProjectRef).Get()
+	app.AddRoute("/validate").Wrap(requireUserToggleable).Handler(as.validateProjectConfig).Post()
 
 	// Internal status reporting
-	app.AddRoute("/status/consistent_task_assignment").Handler(as.consistentTaskAssignment).Get()
-	app.AddRoute("/status/stuck_hosts").Handler(as.getStuckHosts).Get()
-	app.AddRoute("/status/info").Handler(as.serviceStatusSimple).Get()
-	app.AddRoute("/task_queue").Handler(as.getTaskQueueSizes).Get()
-	app.AddRoute("/task_queue/limit").Handler(as.checkTaskQueueSize).Get()
+	app.AddRoute("/status/consistent_task_assignment").Wrap(requireUserToggleable).Handler(as.consistentTaskAssignment).Get()
+	app.AddRoute("/status/stuck_hosts").Wrap(requireUserToggleable).Handler(as.getStuckHosts).Get()
+	app.AddRoute("/status/info").Wrap(requireUserToggleable).Handler(as.serviceStatusSimple).Get()
+	app.AddRoute("/task_queue").Wrap(requireUserToggleable).Handler(as.getTaskQueueSizes).Get()
+	app.AddRoute("/task_queue/limit").Wrap(requireUserToggleable).Handler(as.checkTaskQueueSize).Get()
 
 	// CLI Operation Backends
 	app.AddRoute("/tasks/{projectId}").Wrap(requireUser, requireProject, viewTasks).Handler(as.listTasks).Get()

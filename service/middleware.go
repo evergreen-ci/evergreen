@@ -119,8 +119,19 @@ func (uis *UIServer) GetSettings() evergreen.Settings {
 // requireUser takes a request handler and returns a wrapped version which verifies that requests
 // request are authenticated before proceeding. For a request which is not authenticated, it will
 // execute the onFail handler. If onFail is nil, a simple "unauthorized" error will be sent.
-func requireUser(onSuccess, onFail http.HandlerFunc) http.HandlerFunc {
+// skipWithToggle comment
+func requireUser(skipWithToggle bool, onSuccess, onFail http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if skipWithToggle {
+			flags, err := evergreen.GetServiceFlags()
+			if err != nil {
+				gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving admin settings")))
+			}
+			if flags.RequireAuthAllRoutesDisabled {
+				onSuccess(w, r)
+				return
+			}
+		}
 		if user := gimlet.GetUser(r.Context()); user == nil {
 			if onFail != nil {
 				onFail(w, r)
@@ -134,11 +145,15 @@ func requireUser(onSuccess, onFail http.HandlerFunc) http.HandlerFunc {
 }
 
 func (uis *UIServer) requireLogin(next http.HandlerFunc) http.HandlerFunc {
-	return requireUser(next, uis.RedirectToLogin)
+	return requireUser(false, next, uis.RedirectToLogin)
+}
+
+func (uis *UIServer) requireLoginToggleable(next http.HandlerFunc) http.HandlerFunc {
+	return requireUser(true, next, uis.RedirectToLogin)
 }
 
 func (uis *UIServer) requireLoginStatusUnauthorized(next http.HandlerFunc) http.HandlerFunc {
-	return requireUser(next, nil)
+	return requireUser(false, next, nil)
 }
 
 func (uis *UIServer) setCORSHeaders(next http.HandlerFunc) http.HandlerFunc {

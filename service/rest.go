@@ -84,7 +84,7 @@ func GetRESTv1App(evgService restAPIService) *gimlet.APIApp {
 	app.AddRoute("/tasks/{task_id}").Version(1).Get().Handler(rest.getTaskInfo).Wrap(middleware)
 	app.AddRoute("/tasks/{task_id}/status").Version(1).Get().Handler(rest.getTaskStatus).Wrap(middleware)
 	app.AddRoute("/versions/{version_id}").Version(1).Get().Handler(rest.getVersionInfo).Wrap(middleware)
-	app.AddRoute("/versions/{version_id}").Version(1).Patch().Handler(requireUser(rest.modifyVersionInfo, nil)).Wrap(middleware)
+	app.AddRoute("/versions/{version_id}").Version(1).Patch().Handler(requireUser(false, rest.modifyVersionInfo, nil)).Wrap(middleware)
 	app.AddRoute("/versions/{version_id}/config").Version(1).Get().Handler(rest.getVersionConfig).Wrap(middleware)
 	app.AddRoute("/versions/{version_id}/parser_project").Version(1).Get().Handler(rest.getVersionProject).Wrap(middleware)
 	app.AddRoute("/versions/{version_id}/status").Version(1).Get().Handler(rest.getVersionStatus).Wrap(middleware)
