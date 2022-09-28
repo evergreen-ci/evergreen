@@ -95,7 +95,6 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// kim: TODO: set container-specific info
 	destTask := &RestTask{}
 	destTask.Id = srcTask.Id
 	destTask.CreateTime = srcTask.CreateTime

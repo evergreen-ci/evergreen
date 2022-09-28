@@ -116,14 +116,12 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 	}
 
 	msg := message.Fields{
-		"job":       j.ID(),
-		"operation": j.Type().Name,
-		"id":        j.ID(),
-		"task":      j.task.Id,
-	}
-	// kim: TODO: set pod ID
-	if j.task.HostId != "" {
-		msg["host_id"] = j.task.HostId
+		"job":                j.ID(),
+		"operation":          j.Type().Name,
+		"task":               j.task.Id,
+		"execution_platform": j.task.ExecutionPlatform,
+		"host_id":            j.task.HostId,
+		"pod_id":             j.task.PodID,
 	}
 
 	err = j.cleanUpTimedOutTask(ctx)
@@ -142,7 +140,17 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 // heartbeat timeout.
 func (j *taskExecutionTimeoutJob) cleanUpTimedOutTask(ctx context.Context) error {
 	if j.task.IsContainerTask() {
-		// kim: TODO: enqueue pod health check job.
+		if j.task.PodID != "" {
+			if err := amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewPodHealthCheckJob(j.task.PodID, utility.RoundPartOfHour(0))); err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message": "could not enqueue job to check pod health after stale task timeout",
+					"task":    j.task.Id,
+					"pod":     j.task.PodID,
+					"job":     j.ID(),
+				}))
+			}
+		}
+
 		return errors.Wrapf(model.ResetStaleTask(j.task), "resetting stale task '%s'", j.task.Id)
 	}
 
@@ -158,6 +166,7 @@ func (j *taskExecutionTimeoutJob) cleanUpTimedOutTask(ctx context.Context) error
 			"task":      j.task.Id,
 			"host_id":   j.task.HostId,
 			"operation": "cleanup timed out task",
+			"job":       j.ID(),
 		})
 		return errors.WithStack(j.task.MarkUnscheduled())
 	}

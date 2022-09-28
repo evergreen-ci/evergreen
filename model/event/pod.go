@@ -24,15 +24,19 @@ const (
 	// EventPodAssignedTask represents an event where a pod is assigned a task
 	// to run.
 	EventPodAssignedTask PodEventType = "ASSIGNED_TASK"
+	EventPodFinishedTask PodEventType = "CONTAINER_TASK_FINISHED"
 )
 
 // podData contains information relevant to a pod event.
 type podData struct {
-	OldStatus     string `bson:"old_status,omitempty" json:"old_status,omitempty"`
-	NewStatus     string `bson:"new_status,omitempty" json:"new_status,omitempty"`
-	Reason        string `bson:"reason,omitempty" json:"reason,omitempty"`
+	OldStatus string `bson:"old_status,omitempty" json:"old_status,omitempty"`
+	NewStatus string `bson:"new_status,omitempty" json:"new_status,omitempty"`
+	Reason    string `bson:"reason,omitempty" json:"reason,omitempty"`
+
+	// Fields related to pods running tasks
 	TaskID        string `bson:"task_id,omitempty" json:"task_id,omitempty"`
 	TaskExecution int    `bson:"task_execution,omitempty" json:"task_execution,omitempty"`
+	TaskStatus    string `bson:"task_status,omitempty" json:"task_status,omitempty"`
 }
 
 // LogPodEvent logs an event for a pod to the event log.

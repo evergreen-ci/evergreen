@@ -487,7 +487,10 @@ func versionLink(i versionLinkInput) string {
 	return url
 }
 
-func hostLink(uiBase string, hostID string) string {
+func hostLink(uiBase, hostID string) string {
 	return fmt.Sprintf("%s/host/%s?redirect_spruce_users=true", uiBase, hostID)
+}
 
+func podLink(uiBase, podID string) string {
+	return fmt.Sprintf("%s/pod/%s?redirect_spruce_users=true", uiBase, podID)
 }

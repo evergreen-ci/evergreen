@@ -365,6 +365,9 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/distros/{distro_id}").Wrap(needsContext, editDistroSettings).Handler(uis.modifyDistro).Post()
 	app.AddRoute("/distros/{distro_id}").Wrap(needsContext, removeDistroSettings).Handler(uis.removeDistro).Delete()
 
+	// TODO (EVG-17986): route should require pod-specific permissions.
+	app.AddRoute("/pod/{pod_id}").Wrap(needsLogin).Handler(uis.podPage).Get()
+
 	// Event Logs
 	app.AddRoute("/event_log/{resource_type}/{resource_id:[\\w_\\-\\:\\.\\@]+}").Wrap(needsLogin, needsContext, &route.EventLogPermissionsMiddleware{}).Handler(uis.fullEventLogs).Get()
 

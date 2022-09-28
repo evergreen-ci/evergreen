@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	cocoaMock "github.com/evergreen-ci/cocoa/mock"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
@@ -14,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
@@ -31,6 +33,8 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 	defer func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, model.VersionCollection, model.ProjectRefCollection, host.Collection, event.LegacyEventLogCollection))
 		mp.Reset()
+
+		cocoaMock.ResetGlobalECSService()
 	}()
 
 	checkTaskRestarted := func(t *testing.T, taskID string, oldExecution int, description string) {
@@ -131,6 +135,38 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 
 			checkTaskRestarted(t, j.task.Id, 0, evergreen.TaskDescriptionHeartbeat)
 		},
+		"RestartsStaleContainerTaskAndChecksForUnhealthyPod": func(ctx context.Context, t *testing.T, j *taskExecutionTimeoutJob, v model.Version) {
+			p := pod.Pod{
+				ID:     "pod_id",
+				Status: pod.StatusRunning,
+				TaskRuntimeInfo: pod.TaskRuntimeInfo{
+					RunningTaskID:        j.task.Id,
+					RunningTaskExecution: j.task.Execution,
+				},
+			}
+			j.task.ExecutionPlatform = task.ExecutionPlatformContainer
+			j.task.HostId = ""
+			j.task.ContainerAllocated = true
+			j.task.PodID = p.ID
+
+			require.NoError(t, v.Insert())
+			require.NoError(t, p.Insert())
+			require.NoError(t, j.task.Insert())
+
+			j.Run(ctx)
+			require.NoError(t, j.Error())
+
+			var foundHealthCheckJob bool
+			for info := range j.env.RemoteQueue().JobInfo(ctx) {
+				if info.Type.Name == podHealthCheckJobName {
+					foundHealthCheckJob = true
+					break
+				}
+			}
+			assert.True(t, foundHealthCheckJob, "should have enqueued a pod health check job")
+
+			checkTaskRestarted(t, j.task.Id, 0, evergreen.TaskDescriptionHeartbeat)
+		},
 		"RestartsParentDisplayTaskForStaleHostExecutionTask": func(ctx context.Context, t *testing.T, j *taskExecutionTimeoutJob, v model.Version) {
 			const displayTaskID = "display_task"
 			et0 := task.Task{
@@ -218,6 +254,7 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 
 			require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, model.VersionCollection, model.ProjectRefCollection, host.Collection, event.LegacyEventLogCollection))
 			mp.Reset()
+			cocoaMock.ResetGlobalECSService()
 
 			const taskID = "task_id"
 			h := host.Host{

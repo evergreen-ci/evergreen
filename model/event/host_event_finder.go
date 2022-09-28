@@ -20,7 +20,7 @@ func (s *hostStatusDistro) UnmarshalBSON(in []byte) error { return mgobson.Unmar
 
 func getRecentStatusesForHost(hostId string, n int) (int, []string) {
 	or := ResourceTypeKeyIs(ResourceTypeHost)
-	or[TypeKey] = EventTaskFinished
+	or[TypeKey] = EventHostTaskFinished
 	or[ResourceIdKey] = hostId
 
 	pipeline := []bson.M{
