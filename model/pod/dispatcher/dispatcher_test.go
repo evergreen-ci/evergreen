@@ -167,6 +167,7 @@ func TestAssignNextTask(t *testing.T) {
 		assert.Equal(t, evergreen.TaskDispatched, dbTask.Status)
 		assert.False(t, utility.IsZeroTime(dbTask.DispatchTime))
 		assert.False(t, utility.IsZeroTime(dbTask.LastHeartbeat))
+		assert.Equal(t, p.ID, dbTask.PodID)
 		assert.Equal(t, p.AgentVersion, dbTask.AgentVersion)
 
 		dbPod, err := pod.FindOneByID(p.ID)

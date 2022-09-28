@@ -183,7 +183,7 @@ func (pd *PodDispatcher) dispatchTask(env evergreen.Environment, p *pod.Pod, t *
 			return nil, errors.Wrapf(err, "setting pod's running task")
 		}
 
-		if err := t.MarkAsContainerDispatched(sessCtx, env, p.AgentVersion); err != nil {
+		if err := t.MarkAsContainerDispatched(sessCtx, env, p.ID, p.AgentVersion); err != nil {
 			return nil, errors.Wrapf(err, "marking task as dispatched")
 		}
 

@@ -2205,6 +2205,8 @@ func TestMarkAsContainerDispatched(t *testing.T) {
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
 
+	const podID = "pod_id"
+
 	checkTaskDispatched := func(t *testing.T, taskID string) {
 		dbTask, err := FindOneId(taskID)
 		require.NoError(t, err)
@@ -2212,6 +2214,7 @@ func TestMarkAsContainerDispatched(t *testing.T) {
 		assert.Equal(t, evergreen.TaskDispatched, dbTask.Status)
 		assert.False(t, utility.IsZeroTime(dbTask.DispatchTime))
 		assert.False(t, utility.IsZeroTime(dbTask.LastHeartbeat))
+		assert.Equal(t, podID, dbTask.PodID)
 		assert.Equal(t, evergreen.AgentVersion, dbTask.AgentVersion)
 	}
 
@@ -2219,26 +2222,26 @@ func TestMarkAsContainerDispatched(t *testing.T) {
 		"Succeeds": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
 			require.NoError(t, tsk.Insert())
 
-			require.NoError(t, tsk.MarkAsContainerDispatched(ctx, env, evergreen.AgentVersion))
+			require.NoError(t, tsk.MarkAsContainerDispatched(ctx, env, podID, evergreen.AgentVersion))
 			checkTaskDispatched(t, tsk.Id)
 		},
 		"FailsWithTaskWithoutContainerAllocated": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
 			tsk.ContainerAllocated = false
 			require.NoError(t, tsk.Insert())
 
-			assert.Error(t, tsk.MarkAsContainerDispatched(ctx, env, evergreen.AgentVersion))
+			assert.Error(t, tsk.MarkAsContainerDispatched(ctx, env, podID, evergreen.AgentVersion))
 		},
 		"FailsWithDeactivatedTasks": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
 			tsk.Activated = false
 			require.NoError(t, tsk.Insert())
 
-			assert.Error(t, tsk.MarkAsContainerDispatched(ctx, env, evergreen.AgentVersion))
+			assert.Error(t, tsk.MarkAsContainerDispatched(ctx, env, podID, evergreen.AgentVersion))
 		},
 		"FailsWithDisabledTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
 			tsk.Priority = evergreen.DisabledTaskPriority
 			require.NoError(t, tsk.Insert())
 
-			assert.Error(t, tsk.MarkAsContainerDispatched(ctx, env, evergreen.AgentVersion))
+			assert.Error(t, tsk.MarkAsContainerDispatched(ctx, env, podID, evergreen.AgentVersion))
 		},
 		"FailsWithUnmetDependencies": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
 			tsk.DependsOn = []Dependency{
@@ -2246,10 +2249,10 @@ func TestMarkAsContainerDispatched(t *testing.T) {
 			}
 			require.NoError(t, tsk.Insert())
 
-			assert.Error(t, tsk.MarkAsContainerDispatched(ctx, env, evergreen.AgentVersion))
+			assert.Error(t, tsk.MarkAsContainerDispatched(ctx, env, podID, evergreen.AgentVersion))
 		},
 		"FailsWithNonexistentTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
-			require.Error(t, tsk.MarkAsContainerDispatched(ctx, env, evergreen.AgentVersion))
+			require.Error(t, tsk.MarkAsContainerDispatched(ctx, env, podID, evergreen.AgentVersion))
 
 			dbTask, err := FindOneId(tsk.Id)
 			assert.NoError(t, err)
