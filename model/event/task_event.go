@@ -151,7 +151,7 @@ func LogTaskFinished(taskId string, execution int, status string) {
 // it was assigned to run on a host, it logs an additional host event indicating
 // that its assigned task has finished.
 func LogHostTaskFinished(taskId string, execution int, hostId, status string) {
-	logTaskEvent(taskId, TaskFinished, TaskEventData{Execution: execution, Status: status})
+	LogTaskFinished(taskId, execution, status)
 	if hostId != "" {
 		LogHostEvent(hostId, EventHostTaskFinished, HostEventData{Execution: strconv.Itoa(execution), TaskStatus: status, TaskId: taskId})
 	}
@@ -161,7 +161,7 @@ func LogHostTaskFinished(taskId string, execution int, hostId, status string) {
 // finished. If it was assigned to run on a pod, it logs an additional pod event
 // indicating that its assigned task has finished.
 func LogContainerTaskFinished(taskID string, execution int, podID, status string) {
-	logTaskEvent(taskID, TaskFinished, TaskEventData{Execution: execution, Status: status})
+	LogTaskFinished(taskID, execution, status)
 	if podID != "" {
 		LogPodEvent(podID, EventPodFinishedTask, podData{TaskExecution: execution, TaskStatus: status, TaskID: taskID})
 	}

@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	cocoaMock "github.com/evergreen-ci/cocoa/mock"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
@@ -33,8 +32,6 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 	defer func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, model.VersionCollection, model.ProjectRefCollection, host.Collection, event.LegacyEventLogCollection))
 		mp.Reset()
-
-		cocoaMock.ResetGlobalECSService()
 	}()
 
 	checkTaskRestarted := func(t *testing.T, taskID string, oldExecution int, description string) {
@@ -254,7 +251,6 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 
 			require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, model.VersionCollection, model.ProjectRefCollection, host.Collection, event.LegacyEventLogCollection))
 			mp.Reset()
-			cocoaMock.ResetGlobalECSService()
 
 			const taskID = "task_id"
 			h := host.Host{
