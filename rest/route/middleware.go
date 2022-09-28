@@ -212,7 +212,9 @@ func (m *projectRepoMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reques
 	next(rw, r)
 }
 
-// NewRequireAuthHandler
+// NewRequireAuthHandler provides middleware that wraps gimlet.NewRequireAuthHandler
+// and requires that users be authenticated generally to access the resource.
+// This middleware's active state depends on the admin service flag RequireAuthAllRoutesDisabled
 func NewRequireAuthHandler() gimlet.Middleware { return &requireAuthHandler{} }
 
 type requireAuthHandler struct{}

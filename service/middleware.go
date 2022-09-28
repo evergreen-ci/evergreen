@@ -119,7 +119,9 @@ func (uis *UIServer) GetSettings() evergreen.Settings {
 // requireUser takes a request handler and returns a wrapped version which verifies that requests
 // request are authenticated before proceeding. For a request which is not authenticated, it will
 // execute the onFail handler. If onFail is nil, a simple "unauthorized" error will be sent.
-// skipWithToggle comment
+// skipWithToggle indicates that we will skip the authentication if RequireAuthAllRoutesDisabled flag
+// is set. This is a temporary parameter that is in place while we determine if adding auth to all
+// routes will affect users.
 func requireUser(skipWithToggle bool, onSuccess, onFail http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if skipWithToggle {
