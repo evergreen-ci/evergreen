@@ -287,13 +287,15 @@ func TestPodAgentNextTask(t *testing.T) {
 			require.NotZero(t, dbPod)
 			assert.NotZero(t, dbPod.TimeInfo.AgentStarted)
 			assert.Equal(t, pod.StatusDecommissioned, dbPod.Status)
-			assert.Equal(t, tsk.Id, dbPod.RunningTask)
+			assert.Equal(t, tsk.Id, dbPod.TaskRuntimeInfo.RunningTaskID)
+			assert.Equal(t, tsk.Execution, dbPod.TaskRuntimeInfo.RunningTaskExecution)
 		},
 		"RunReturnsRunningTaskIfItExists": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
 			tsk := getTask()
 			require.NoError(t, tsk.Insert())
 			p := getPod()
-			p.RunningTask = tsk.Id
+			p.TaskRuntimeInfo.RunningTaskID = tsk.Id
+			p.TaskRuntimeInfo.RunningTaskExecution = tsk.Execution
 			require.NoError(t, p.Insert())
 
 			rh.podID = p.ID
@@ -361,12 +363,15 @@ func TestPodAgentEndTask(t *testing.T) {
 	defer func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, pod.Collection, event.LegacyEventLogCollection, model.ProjectRefCollection, build.Collection, model.VersionCollection, commitqueue.Collection, patchmodel.Collection))
 	}()
-	const podID = "pod"
-	const taskID = "task"
-	const buildID = "build"
-	const versionID = "version"
-	const projID = "proj"
-	const patchID = "aabbccddeeff001122334455"
+	const (
+		podID         = "pod"
+		taskID        = "task"
+		taskExecution = 2
+		buildID       = "build"
+		versionID     = "version"
+		projID        = "proj"
+		patchID       = "aabbccddeeff001122334455"
+	)
 	td := &apimodels.TaskEndDetail{
 		Status: evergreen.TaskSucceeded,
 	}
@@ -410,12 +415,16 @@ func TestPodAgentEndTask(t *testing.T) {
 		},
 		"RunNoOpsWithNilRunningTaskAndInvalidStatus": func(ctx context.Context, t *testing.T, rh *podAgentEndTask, env evergreen.Environment) {
 			podToInsert := &pod.Pod{
-				ID:          podID,
-				RunningTask: "",
+				ID: podID,
+				TaskRuntimeInfo: pod.TaskRuntimeInfo{
+					RunningTaskID:        "",
+					RunningTaskExecution: 0,
+				},
 			}
 			require.NoError(t, podToInsert.Insert())
 			taskToInsert := &task.Task{
-				Id: taskID,
+				Id:        taskID,
+				Execution: taskExecution,
 			}
 			require.NoError(t, taskToInsert.Insert())
 			rh.podID = podID
@@ -432,19 +441,25 @@ func TestPodAgentEndTask(t *testing.T) {
 		},
 		"RunSuccessfullyFinishesTask": func(ctx context.Context, t *testing.T, rh *podAgentEndTask, env evergreen.Environment) {
 			podToInsert := &pod.Pod{
-				ID:          podID,
-				RunningTask: taskID,
-				Status:      pod.StatusRunning,
+				ID:     podID,
+				Status: pod.StatusRunning,
+				TaskRuntimeInfo: pod.TaskRuntimeInfo{
+					RunningTaskID:        taskID,
+					RunningTaskExecution: taskExecution,
+				},
 			}
 			require.NoError(t, podToInsert.Insert())
 			taskToInsert := &task.Task{
-				Id:      taskID,
-				BuildId: buildID,
-				Version: versionID,
+				Id:        taskID,
+				Execution: taskExecution,
+				BuildId:   buildID,
+				Version:   versionID,
+				Project:   projID,
 			}
 			require.NoError(t, taskToInsert.Insert())
 			buildToInsert := &build.Build{
-				Id: buildID,
+				Id:      buildID,
+				Project: projID,
 			}
 			require.NoError(t, buildToInsert.Insert())
 			versionToInsert := &model.Version{
@@ -452,7 +467,8 @@ func TestPodAgentEndTask(t *testing.T) {
 			}
 			require.NoError(t, versionToInsert.Insert())
 			projectToInsert := model.ProjectRef{
-				Identifier: taskID,
+				Id:         projID,
+				Identifier: "identifier",
 			}
 			require.NoError(t, projectToInsert.Insert())
 			rh.podID = podID
@@ -468,19 +484,25 @@ func TestPodAgentEndTask(t *testing.T) {
 		},
 		"RunNoOpsOnAbortedTask": func(ctx context.Context, t *testing.T, rh *podAgentEndTask, env evergreen.Environment) {
 			podToInsert := &pod.Pod{
-				ID:          podID,
-				RunningTask: taskID,
-				Status:      pod.StatusRunning,
+				ID:     podID,
+				Status: pod.StatusRunning,
+				TaskRuntimeInfo: pod.TaskRuntimeInfo{
+					RunningTaskID:        taskID,
+					RunningTaskExecution: taskExecution,
+				},
 			}
 			require.NoError(t, podToInsert.Insert())
 			taskToInsert := &task.Task{
-				Id:      taskID,
-				BuildId: buildID,
-				Version: versionID,
+				Id:        taskID,
+				Execution: taskExecution,
+				BuildId:   buildID,
+				Version:   versionID,
+				Project:   projID,
 			}
 			require.NoError(t, taskToInsert.Insert())
 			buildToInsert := &build.Build{
-				Id: buildID,
+				Id:      buildID,
+				Project: projID,
 			}
 			require.NoError(t, buildToInsert.Insert())
 			versionToInsert := &model.Version{
@@ -488,7 +510,8 @@ func TestPodAgentEndTask(t *testing.T) {
 			}
 			require.NoError(t, versionToInsert.Insert())
 			projectToInsert := model.ProjectRef{
-				Identifier: taskID,
+				Id:         projID,
+				Identifier: "identifier",
 			}
 			require.NoError(t, projectToInsert.Insert())
 			rh.podID = podID
@@ -502,13 +525,17 @@ func TestPodAgentEndTask(t *testing.T) {
 		},
 		"RunSuccessfullyDequeuesLaterCommitQueueTask": func(ctx context.Context, t *testing.T, rh *podAgentEndTask, env evergreen.Environment) {
 			podToInsert := &pod.Pod{
-				ID:          podID,
-				RunningTask: taskID,
-				Status:      pod.StatusRunning,
+				ID:     podID,
+				Status: pod.StatusRunning,
+				TaskRuntimeInfo: pod.TaskRuntimeInfo{
+					RunningTaskID:        taskID,
+					RunningTaskExecution: taskExecution,
+				},
 			}
 			require.NoError(t, podToInsert.Insert())
 			taskToInsert := &task.Task{
 				Id:           taskID,
+				Execution:    taskExecution,
 				BuildId:      buildID,
 				Version:      versionID,
 				Project:      projID,
