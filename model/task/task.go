@@ -227,8 +227,6 @@ type Task struct {
 	GeneratedTasks bool `bson:"generated_tasks,omitempty" json:"generated_tasks,omitempty"`
 	// GeneratedBy, if present, is the ID of the task that generated this task.
 	GeneratedBy string `bson:"generated_by,omitempty" json:"generated_by,omitempty"`
-	// GeneratedJSON is no longer used but must be kept for old tasks.
-	GeneratedJSON []json.RawMessage `bson:"generate_json,omitempty" json:"generate_json,omitempty"`
 	// GeneratedJSONAsString is the configuration information to create new tasks from.
 	GeneratedJSONAsString []string `bson:"generated_json,omitempty" json:"generated_json,omitempty"`
 	// GenerateTasksError any encountered while generating tasks.
@@ -1267,7 +1265,7 @@ func GenerateNotRun() ([]Task, error) {
 
 // SetGeneratedJSON sets JSON data to generate tasks from.
 func (t *Task) SetGeneratedJSON(json []json.RawMessage) error {
-	if len(t.GeneratedJSONAsString) > 0 || len(t.GeneratedJSON) > 0 {
+	if len(t.GeneratedJSONAsString) > 0 {
 		return nil
 	}
 	s := []string{}
