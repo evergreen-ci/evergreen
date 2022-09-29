@@ -314,6 +314,56 @@ func TestFinalizePatch(t *testing.T) {
 		})
 }
 
+func TestGetFullPatchParams(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, ProjectAliasCollection, patch.Collection))
+	p := patch.Patch{
+		Id:      patch.NewId("aaaaaaaaaaff001122334455"),
+		Project: "p1",
+		Alias:   "test_alias",
+		Parameters: []patch.Parameter{
+			{
+				Key:   "a",
+				Value: "3",
+			},
+			{
+				Key:   "c",
+				Value: "4",
+			},
+		},
+	}
+	alias := ProjectAlias{
+		ProjectID: "p1",
+		Alias:     "test_alias",
+		Variant:   "ubuntu",
+		Task:      "subcommand",
+		Parameters: []patch.Parameter{
+			{
+				Key:   "a",
+				Value: "1",
+			},
+			{
+				Key:   "b",
+				Value: "2",
+			},
+		},
+	}
+	pRef := ProjectRef{
+		Id: "p1",
+	}
+	require.NoError(t, pRef.Insert())
+	require.NoError(t, p.Insert())
+	require.NoError(t, alias.Upsert())
+
+	params, err := getFullPatchParams(&p)
+	require.NoError(t, err)
+	require.Len(t, params, 3)
+	for _, param := range params {
+		if param.Key == "a" {
+			assert.Equal(t, param.Value, "3")
+		}
+	}
+}
+
 func TestMakePatchedConfig(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

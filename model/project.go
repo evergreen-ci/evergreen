@@ -1669,7 +1669,7 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 
 	if alias != "" {
 		catcher := grip.NewBasicCatcher()
-		vars, err := p.findAliasesForPatch(alias, patchDoc)
+		vars, err := findAliasesForPatch(p.Identifier, alias, patchDoc)
 		catcher.Wrapf(err, "retrieving alias '%s' for patched project config '%s'", alias, patchDoc.Id.Hex())
 
 		var aliasPairs, displayTaskPairs []TVPair
@@ -1764,14 +1764,14 @@ func (p *Project) IsGenerateTask(taskName string) bool {
 	return ok
 }
 
-func (p *Project) findAliasesForPatch(alias string, patchDoc *patch.Patch) ([]ProjectAlias, error) {
-	vars, shouldExit, err := findAliasInProjectOrRepoFromDb(p.Identifier, alias)
+func findAliasesForPatch(projectId, alias string, patchDoc *patch.Patch) ([]ProjectAlias, error) {
+	vars, shouldExit, err := findAliasInProjectOrRepoFromDb(projectId, alias)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting alias from project")
 	}
 	if !shouldExit && len(vars) == 0 {
 		if len(patchDoc.PatchedProjectConfig) > 0 {
-			projectConfig, err := CreateProjectConfig([]byte(patchDoc.PatchedProjectConfig), p.Identifier)
+			projectConfig, err := CreateProjectConfig([]byte(patchDoc.PatchedProjectConfig), projectId)
 			if err != nil {
 				return nil, errors.Wrap(err, "retrieving aliases from patched config")
 			}
@@ -1780,7 +1780,7 @@ func (p *Project) findAliasesForPatch(alias string, patchDoc *patch.Patch) ([]Pr
 				return nil, errors.Wrapf(err, "retrieving alias '%s' from project config", alias)
 			}
 		} else {
-			vars, err = findMatchingAliasForProjectConfig(p.Identifier, alias)
+			vars, err = findMatchingAliasForProjectConfig(projectId, alias)
 			if err != nil {
 				return nil, errors.Wrapf(err, "retrieving alias '%s' from project config", alias)
 			}
