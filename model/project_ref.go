@@ -58,6 +58,7 @@ type ProjectRef struct {
 	PatchingDisabled       *bool               `bson:"patching_disabled,omitempty" json:"patching_disabled,omitempty"`
 	RepotrackerDisabled    *bool               `bson:"repotracker_disabled,omitempty" json:"repotracker_disabled,omitempty" yaml:"repotracker_disabled"`
 	DispatchingDisabled    *bool               `bson:"dispatching_disabled,omitempty" json:"dispatching_disabled,omitempty" yaml:"dispatching_disabled"`
+	StepbackDisabled       *bool               `bson:"stepback_disabled,omitempty" json:"stepback_disabled,omitempty" yaml:"stepback_disabled"`
 	VersionControlEnabled  *bool               `bson:"version_control_enabled,omitempty" json:"version_control_enabled,omitempty" yaml:"version_control_enabled"`
 	PRTestingEnabled       *bool               `bson:"pr_testing_enabled,omitempty" json:"pr_testing_enabled,omitempty" yaml:"pr_testing_enabled"`
 	ManualPRTestingEnabled *bool               `bson:"manual_pr_testing_enabled,omitempty" json:"manual_pr_testing_enabled,omitempty" yaml:"manual_pr_testing_enabled"`
@@ -335,6 +336,10 @@ func (p *ProjectRef) IsDispatchingDisabled() bool {
 
 func (p *ProjectRef) IsPRTestingEnabled() bool {
 	return p.IsAutoPRTestingEnabled() || p.IsManualPRTestingEnabled()
+}
+
+func (p *ProjectRef) IsStepbackDisabled() bool {
+	return utility.FromBoolPtr(p.StepbackDisabled)
 }
 
 func (p *ProjectRef) IsAutoPRTestingEnabled() bool {

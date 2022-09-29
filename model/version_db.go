@@ -107,7 +107,7 @@ func BaseVersionByProjectIdAndRevision(projectId, revision string) db.Q {
 }
 
 func VersionByProjectIdAndRevisionPrefix(projectId, revisionPrefix string) db.Q {
-	lengthHash := (40 - len(revisionPrefix))
+	lengthHash := 40 - len(revisionPrefix)
 	return db.Query(
 		bson.M{
 			VersionIdentifierKey: projectId,
