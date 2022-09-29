@@ -156,13 +156,15 @@ func TestVolumeMigrateJob(t *testing.T) {
 			require.NoError(t, h.Insert())
 
 			j := NewVolumeMigrationJob(env, v.ID, spawnOptions, "123")
+			// Limit retry attempts, since a failure to spawn a host will cause a retry
 			j.UpdateRetryInfo(amboy.JobRetryOptions{
-				WaitUntil: utility.ToTimeDurationPtr(0),
+				WaitUntil:   utility.ToTimeDurationPtr(100 * time.Millisecond),
+				MaxAttempts: utility.ToIntPtr(3),
 			})
 			require.NoError(t, env.RemoteQueue().Start(ctx))
 			require.NoError(t, env.RemoteQueue().Put(ctx, j))
 
-			require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond))
+			require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 1000*time.Millisecond))
 			assert.Error(t, j.Error())
 			assert.Contains(t, j.Error().Error(), "not yet stopped")
 

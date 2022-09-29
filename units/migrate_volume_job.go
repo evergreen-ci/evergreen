@@ -31,12 +31,10 @@ type volumeMigrationJob struct {
 	VolumeID      string             `bson:"volume_id" yaml:"volume_id"`
 	ModifyOptions cloud.SpawnOptions `bson:"modify_options" json:"modify_options" yaml:"modify_options"`
 
-	VolumeDetached        bool   `bson:"volume_detached"`
-	InitialHostID         string `bson:"initial_host_id"`
-	SpawnhostStopJobID    string `bson:"spawnhost_stop_job_id"`
-	InitialHostStopped    bool   `bson:"initial_host_stopped"`
-	InitialHostTerminated bool   `bson:"initial_host_terminated"`
-	NewHostID             string `bson:"new_host_id"`
+	VolumeDetached     bool   `bson:"volume_detached"`
+	InitialHostID      string `bson:"initial_host_id"`
+	SpawnhostStopJobID string `bson:"spawnhost_stop_job_id"`
+	NewHostID          string `bson:"new_host_id"`
 
 	env         evergreen.Environment
 	volume      *host.Volume
@@ -85,13 +83,9 @@ func (j *volumeMigrationJob) Run(ctx context.Context) {
 		return
 	}
 
-	if !j.InitialHostStopped {
-		initialHostStopped, hasErr := j.stopInitialHost(ctx)
-		if hasErr {
-			return
-		}
-		if !initialHostStopped {
-			j.AddRetryableError(errors.Errorf("initial host '%s' not yet stopped", j.InitialHostID))
+	if j.initialHost.Status != evergreen.HostStopped || j.initialHost.Status != evergreen.HostTerminated {
+		j.stopInitialHost(ctx)
+		if j.HasErrors() {
 			return
 		}
 	}
@@ -110,9 +104,13 @@ func (j *volumeMigrationJob) Run(ctx context.Context) {
 		j.VolumeDetached = true
 
 		// Update in-memory volume
-		volume, err := j.getVolume()
+		volume, err := host.FindVolumeByID(j.VolumeID)
 		if err != nil {
-			j.AddError(err)
+			j.AddError(errors.Wrapf(err, "finding volume '%s'", j.VolumeID))
+			return
+		}
+		if volume == nil {
+			j.AddError(errors.Errorf("volume '%s' not found", j.VolumeID))
 			return
 		}
 		j.volume = volume
@@ -120,26 +118,23 @@ func (j *volumeMigrationJob) Run(ctx context.Context) {
 
 	// Avoid recreating new host on retry
 	if j.NewHostID == "" {
-		if hasErr := j.startNewHost(ctx); hasErr {
+		j.startNewHost(ctx)
+		if j.HasErrors() {
 			return
 		}
 	}
 
 	// Terminate initial host
-	if !j.InitialHostTerminated {
-		ts := utility.RoundPartOfMinute(1).Format(TSFormat)
-		terminateJob := NewSpawnHostTerminationJob(j.initialHost, evergreen.User, ts)
-		if err := j.env.RemoteQueue().Put(ctx, terminateJob); err != nil {
-			j.AddRetryableError(errors.Wrapf(err, "enqueueing initial host termination job '%s'", terminateJob.ID()))
-			return
-		}
-		j.InitialHostTerminated = true
+	ts := utility.RoundPartOfMinute(1).Format(TSFormat)
+	terminateJob := NewSpawnHostTerminationJob(j.initialHost, evergreen.User, ts)
+	if err := j.env.RemoteQueue().Put(ctx, terminateJob); err != nil {
+		j.AddRetryableError(errors.Wrapf(err, "enqueueing initial host termination job '%s'", terminateJob.ID()))
+		return
 	}
 }
 
 // stopInitialHost inspects the initial host's status and stops it if the host is still running.
-// It returns a boolean indicating whether the host has stopped and a boolean indicating whether an error was added to the job.
-func (j *volumeMigrationJob) stopInitialHost(ctx context.Context) (bool, bool) {
+func (j *volumeMigrationJob) stopInitialHost(ctx context.Context) {
 	// Stop host if this operation has not been attempted yet
 	if j.SpawnhostStopJobID == "" {
 		ts := utility.RoundPartOfMinute(1).Format(TSFormat)
@@ -147,76 +142,78 @@ func (j *volumeMigrationJob) stopInitialHost(ctx context.Context) (bool, bool) {
 		err := j.env.RemoteQueue().Put(ctx, stopJob)
 		if err != nil {
 			j.AddRetryableError(err)
-			return false, true
+			return
 		}
 		grip.Info(message.Fields{
-			"message": "stopping initial host",
-			"host_id": j.InitialHostID,
+			"message":         "stopping initial host",
+			"job_id":          j.ID(),
+			"initial_host_id": j.InitialHostID,
 		})
 		j.SpawnhostStopJobID = stopJob.ID()
-		return false, false
+		j.AddRetryableError(errors.Errorf("initial host '%s' not yet stopped", j.InitialHostID))
+		return
 	}
 
 	// Mark host as stopped
 	if j.initialHost.Status == evergreen.HostStopped {
 		grip.Info(message.Fields{
-			"message": "initial host stopped",
-			"host_id": j.InitialHostID,
+			"message":         "initial host stopped",
+			"job_id":          j.ID(),
+			"initial_host_id": j.InitialHostID,
 		})
-		j.InitialHostStopped = true
-		return true, false
+		return
 	}
 
-	// If host is not stopped, verify whether the job is still in progress and error if it completed without stopping
+	// If host is not stopped, verify whether the job is still in progress and error if it completed without stopping.
 	stopJob, foundJob := j.env.RemoteQueue().Get(ctx, j.SpawnhostStopJobID)
 	if !foundJob {
-		j.AddRetryableError(errors.Errorf("spawnhost-stop job '%s' could not be found", j.SpawnhostStopJobID))
-		return false, true
+		j.AddError(errors.Errorf("spawnhost-stop job '%s' could not be found", j.SpawnhostStopJobID))
+		return
 	}
 
 	if stopJob.Status().Completed {
 		j.AddError(errors.Errorf("host '%s' failed to stop", j.SpawnhostStopJobID))
-		return false, true
+		return
 	}
 
-	return false, false
+	j.AddRetryableError(errors.Errorf("initial host '%s' not yet stopped", j.InitialHostID))
 }
 
-// startNewHost attempts to start a new host with the volume attached
-// It returns a boolean indicating if an error was added to the job
-func (j *volumeMigrationJob) startNewHost(ctx context.Context) bool {
+// startNewHost attempts to start a new host with the volume attached.
+func (j *volumeMigrationJob) startNewHost(ctx context.Context) {
 	// Ensure volume has been detached
 	if j.volume.Host == j.InitialHostID {
 		j.AddRetryableError(errors.New("volume still attached to host"))
-		return true
+		return
 	}
 
 	j.ModifyOptions.HomeVolumeID = j.VolumeID
 	intentHost, err := cloud.CreateSpawnHost(ctx, j.ModifyOptions, j.env.Settings())
 	if err != nil {
-		j.AddError(errors.Wrapf(err, "creating new intent host"))
-		return true
+		j.AddRetryableError(errors.Wrapf(err, "creating new intent host"))
+		return
 	}
 
 	if err := intentHost.Insert(); err != nil {
 		j.AddError(errors.Wrap(err, "inserting new intent host"))
-		return true
+		return
 	}
 	grip.Info(message.Fields{
-		"message":  "new intent host created",
-		"attempts": j.RetryInfo().CurrentAttempt,
+		"message":        "new intent host created",
+		"job_id":         j.ID(),
+		"intent_host_id": intentHost.Id,
 	})
 	j.NewHostID = intentHost.Id
-	return false
+	return
 }
 
-// finishJob marks the job as completed and attempts some additional cleanup if this is the job's final attempt
+// finishJob marks the job as completed and attempts some additional cleanup if this is the job's final attempt.
 func (j *volumeMigrationJob) finishJob(ctx context.Context) {
-	// Amboy's ShouldRetry() method does not account for reaching MaxAttempts, so manually determine if the current attempt is the last
+	// Amboy's ShouldRetry() method does not account for reaching MaxAttempts, so manually determine if the current attempt is the last.
 	retryInfo := j.RetryInfo()
-	isFinalAttempt := retryInfo.CurrentAttempt == (retryInfo.MaxAttempts - 1)
+	isFinalAttempt := retryInfo.CurrentAttempt >= (retryInfo.MaxAttempts - 1)
 	if !retryInfo.ShouldRetry() || isFinalAttempt {
-		// If a new host was never created, restart initial host with volume attached
+		// If a new host was never created, restart initial host with volume attached.
 		if j.NewHostID == "" {
 			if hasErr := j.restartInitialHost(ctx); hasErr {
 				return
@@ -233,9 +230,9 @@ func (j *volumeMigrationJob) finishJob(ctx context.Context) {
 	j.MarkComplete()
 }
 
-// restartInitialHost restarts the stopped host with the volume attached
-// This is a fallback so that we can attempt to leave users with a usable workstation in case other operations fail
-// It returns a boolean indicating whether an error was added to the job
+// restartInitialHost restarts the stopped host with the volume attached.
+// This is a fallback so that we can attempt to leave users with a usable workstation in case other operations fail.
+// It returns a boolean indicating whether an error was added to the job.
 func (j *volumeMigrationJob) restartInitialHost(ctx context.Context) bool {
 	if j.volume.Host == "" {
 		_, err := cloud.AttachVolume(ctx, j.VolumeID, j.InitialHostID)
@@ -272,9 +269,12 @@ func (j *volumeMigrationJob) populateIfUnset() error {
 	}
 
 	if j.volume == nil {
-		volume, err := j.getVolume()
+		volume, err := host.FindVolumeByID(j.VolumeID)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "finding volume '%s'", j.VolumeID)
+		}
+		if volume == nil {
+			return errors.Errorf("volume '%s' not found", j.VolumeID)
 		}
 		j.volume = volume
 	}
