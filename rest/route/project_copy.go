@@ -2,9 +2,11 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -91,17 +93,17 @@ func (p *copyVariablesHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (p *copyVariablesHandler) Run(ctx context.Context) gimlet.Responder {
-	copyToProject, err := data.FindProjectById(p.opts.CopyTo, false, false) // ensure project is existing
+	copyToProjectId, err := getProjectOrRepoId(p.opts.CopyTo)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding target project '%s'", p.opts.CopyTo))
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+	copyFromProjectId, err := getProjectOrRepoId(p.copyFrom)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
 	}
 
-	copyFromProject, err := data.FindProjectById(p.copyFrom, false, false) // ensure project is existing
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding source project '%s'", p.copyFrom))
-	}
-
-	varsToCopy, err := data.FindProjectVarsById(copyFromProject.Id, "", p.opts.DryRun) //dont redact private variables unless it's a dry run
+	// Don't redact private variables unless it's a dry run
+	varsToCopy, err := data.FindProjectVarsById(copyFromProjectId, "", p.opts.DryRun)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding vars for source project '%s'", p.copyFrom))
 	}
@@ -115,14 +117,36 @@ func (p *copyVariablesHandler) Run(ctx context.Context) gimlet.Responder {
 		varsToCopy.PrivateVars = map[string]bool{}
 	}
 
-	// return the variables that would be copied
+	// Return the variables that would be copied
 	if p.opts.DryRun {
 		return gimlet.NewJSONResponse(varsToCopy)
 	}
 
-	if err := data.UpdateProjectVars(copyToProject.Id, varsToCopy, p.opts.Overwrite); err != nil {
+	if err := data.UpdateProjectVars(copyToProjectId, varsToCopy, p.opts.Overwrite); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "copying project vars from source project '%s' to target project '%s'", p.copyFrom, p.opts.CopyTo))
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
+}
+
+func getProjectOrRepoId(identifier string) (string, error) {
+	id, err := model.GetIdForProject(identifier) // Ensure project is existing
+	if err != nil {
+		// Check if this is a repo project instead
+		repoRef, err := model.FindOneRepoRef(identifier)
+		if err != nil {
+			return "", gimlet.ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    fmt.Sprintf("finding project/repo '%s'", identifier),
+			}
+		}
+		if repoRef == nil {
+			return "", gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    fmt.Sprintf("project/repo '%s' not found", identifier),
+			}
+		}
+		return repoRef.Id, nil
+	}
+	return id, nil
 }

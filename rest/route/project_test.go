@@ -344,7 +344,7 @@ func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
 	s.Nil(p.PatchTriggerAliases)
 }
 
-func (s *ProjectPatchByIDSuite) TestAddingNewAndDeletingExistingContainerSecrets() {
+func (s *ProjectPatchByIDSuite) TestRotateAndDeleteProjectPodSecret() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
@@ -354,12 +354,13 @@ func (s *ProjectPatchByIDSuite) TestAddingNewAndDeletingExistingContainerSecrets
 	cocoaMock.ResetGlobalSecretCache()
 	defer cocoaMock.ResetGlobalSecretCache()
 
+	// Create new pod secret.
 	body := []byte(`{
 	"container_secrets": [
 		{
 			"name": "super_secret",
-			"value": "super_secret_value",
-			"type": "pod_secret"
+			"type": "pod_secret",
+			"should_rotate": true
 		}
 	]}`)
 	req, err := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(body))
@@ -383,10 +384,38 @@ func (s *ProjectPatchByIDSuite) TestAddingNewAndDeletingExistingContainerSecrets
 
 	externalID := dbProjRef.ContainerSecrets[0].ExternalID
 	s.Require().NotNil(h.vault)
-	storedValue, err := h.vault.GetValue(ctx, externalID)
+	initialStoredValue, err := h.vault.GetValue(ctx, externalID)
 	s.Require().NoError(err)
-	s.Equal("super_secret_value", storedValue)
+	s.NotZero(initialStoredValue)
 
+	// Rotate the existing pod secret's value.
+	req, err = http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(body))
+	s.Require().NoError(err)
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
+	s.Require().NoError(s.rm.Parse(ctx, req))
+
+	resp = s.rm.Run(ctx)
+	s.Require().NotNil(resp)
+	s.Require().NotNil(resp.Data())
+	s.Equal(http.StatusOK, resp.Status())
+
+	dbProjRef, err = serviceModel.FindBranchProjectRef("dimoxinil")
+	s.Require().NoError(err)
+	s.Require().NotNil(dbProjRef)
+	s.Require().Len(dbProjRef.ContainerSecrets, 1)
+	s.Equal("super_secret", dbProjRef.ContainerSecrets[0].Name)
+	s.EqualValues(serviceModel.ContainerSecretPodSecret, dbProjRef.ContainerSecrets[0].Type)
+	s.NotZero(dbProjRef.ContainerSecrets[0].ExternalName)
+	s.NotZero(dbProjRef.ContainerSecrets[0].ExternalID)
+
+	externalID = dbProjRef.ContainerSecrets[0].ExternalID
+	s.Require().NotNil(h.vault)
+	newStoredValue, err := h.vault.GetValue(ctx, externalID)
+	s.Require().NoError(err)
+	s.NotZero(newStoredValue)
+	s.NotEqual(initialStoredValue, newStoredValue)
+
+	// Delete the existing pod secret.
 	body = []byte(`{
 		"delete_container_secrets": ["super_secret"]
 	}`)

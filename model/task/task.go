@@ -140,6 +140,10 @@ type Task struct {
 	// The host the task was run on. This value is only set for host tasks.
 	HostId string `bson:"host_id,omitempty" json:"host_id"`
 
+	// PodID is the pod that was assigned to run the task. This value is only
+	// set for container tasks.
+	PodID string `bson:"pod_id,omitempty" json:"pod_id"`
+
 	// ExecutionPlatform determines the execution environment that the task runs
 	// in.
 	ExecutionPlatform ExecutionPlatform `bson:"execution_platform,omitempty" json:"execution_platform,omitempty"`
@@ -223,8 +227,6 @@ type Task struct {
 	GeneratedTasks bool `bson:"generated_tasks,omitempty" json:"generated_tasks,omitempty"`
 	// GeneratedBy, if present, is the ID of the task that generated this task.
 	GeneratedBy string `bson:"generated_by,omitempty" json:"generated_by,omitempty"`
-	// GeneratedJSON is no longer used but must be kept for old tasks.
-	GeneratedJSON []json.RawMessage `bson:"generate_json,omitempty" json:"generate_json,omitempty"`
 	// GeneratedJSONAsString is the configuration information to create new tasks from.
 	GeneratedJSONAsString []string `bson:"generated_json,omitempty" json:"generated_json,omitempty"`
 	// GenerateTasksError any encountered while generating tasks.
@@ -260,16 +262,16 @@ const (
 
 // ContainerOptions represent options to create the container to run a task.
 type ContainerOptions struct {
-	CPU        int
-	MemoryMB   int
-	WorkingDir string
-	Image      string
+	CPU        int    `bson:"cpu,omitempty" json:"cpu"`
+	MemoryMB   int    `bson:"memory_mb,omitempty" json:"memory_mb"`
+	WorkingDir string `bson:"working_dir,omitempty" json:"working_dir"`
+	Image      string `bson:"image,omitempty" json:"image"`
 	// RepoCredsName is the name of the project container secret containing the
 	// repository credentials.
-	RepoCredsName  string
-	OS             evergreen.ContainerOS
-	Arch           evergreen.ContainerArch
-	WindowsVersion evergreen.WindowsVersion
+	RepoCredsName  string                   `bson:"repo_creds_name,omitempty" json:"repo_creds_name"`
+	OS             evergreen.ContainerOS    `bson:"os,omitempty" json:"os"`
+	Arch           evergreen.ContainerArch  `bson:"arch,omitempty" json:"arch"`
+	WindowsVersion evergreen.WindowsVersion `bson:"windows_version,omitempty" json:"windows_version"`
 }
 
 // IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
@@ -1012,7 +1014,7 @@ func (t *Task) cacheExpectedDuration() error {
 
 // MarkAsContainerDispatched marks that the container task has been dispatched
 // to a pod.
-func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Environment, agentVersion string) error {
+func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Environment, podID, agentVersion string) error {
 	dispatchedAt := time.Now()
 	query := isContainerTaskScheduledQuery()
 	query[StatusKey] = evergreen.TaskUndispatched
@@ -1022,6 +1024,7 @@ func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Envi
 			StatusKey:        evergreen.TaskDispatched,
 			DispatchTimeKey:  dispatchedAt,
 			LastHeartbeatKey: dispatchedAt,
+			PodIDKey:         podID,
 			AgentVersionKey:  agentVersion,
 		},
 	}
@@ -1036,6 +1039,7 @@ func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Envi
 	t.Status = evergreen.TaskDispatched
 	t.DispatchTime = dispatchedAt
 	t.LastHeartbeat = dispatchedAt
+	t.PodID = podID
 	t.AgentVersion = agentVersion
 
 	return nil
@@ -1261,7 +1265,7 @@ func GenerateNotRun() ([]Task, error) {
 
 // SetGeneratedJSON sets JSON data to generate tasks from.
 func (t *Task) SetGeneratedJSON(json []json.RawMessage) error {
-	if len(t.GeneratedJSONAsString) > 0 || len(t.GeneratedJSON) > 0 {
+	if len(t.GeneratedJSONAsString) > 0 {
 		return nil
 	}
 	s := []string{}

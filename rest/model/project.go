@@ -282,12 +282,17 @@ type APIWorkstationConfig struct {
 }
 
 type APIContainerSecret struct {
-	Name         *string                   `json:"name"`
-	ExternalName *string                   `json:"external_name"`
-	ExternalID   *string                   `json:"external_id"`
-	Type         *string                   `json:"type"`
-	Value        *string                   `json:"value"`
-	RepoCreds    *APIRepositoryCredentials `json:"repo_creds"`
+	Name         *string `json:"name"`
+	ExternalName *string `json:"external_name"`
+	ExternalID   *string `json:"external_id"`
+	Type         *string `json:"type"`
+	Value        *string `json:"value"`
+	// ShouldRotate indicates that the user requested the pod secret to be
+	// rotated to a new value. This only applies to the project's pod secret.
+	ShouldRotate *bool `json:"should_rotate"`
+	// RepoCreds, if set, are the new repository credentials to store. This only
+	// applies to repository credentials.
+	RepoCreds *APIRepositoryCredentials `json:"repo_creds"`
 }
 
 type APIRepositoryCredentials struct {
@@ -322,14 +327,26 @@ func (cr *APIContainerSecret) ToService() (*model.ContainerSecret, error) {
 		Type:       model.ContainerSecretType(utility.FromStringPtr(cr.Type)),
 		Value:      utility.FromStringPtr(cr.Value),
 	}
-	if model.ContainerSecretType(utility.FromStringPtr(cr.Type)) == model.ContainerSecretRepoCreds && cr.RepoCreds != nil {
-		// If this is a repo cred and the credentials must be stored, the value
-		// to store must be encoded as JSON.
-		b, err := json.Marshal(cr.RepoCreds)
-		if err != nil {
-			return nil, errors.Wrap(err, "marshalling repository credentials as JSON")
+	if utility.FromBoolPtr(cr.ShouldRotate) {
+		if secret.Type == model.ContainerSecretPodSecret {
+			// The user has requested to rotate the pod secret to a new value.
+			secret.Value = utility.RandomString()
+		} else {
+			return nil, errors.Errorf("can only rotate the value for the pod secret, not for container secret '%s' of type '%s'", secret.Name, secret.Type)
 		}
-		secret.Value = string(b)
+	}
+	if cr.RepoCreds != nil {
+		if secret.Type == model.ContainerSecretRepoCreds {
+			// If this is a repo cred and the credentials must be stored, the value
+			// to store must be encoded as JSON.
+			b, err := json.Marshal(cr.RepoCreds)
+			if err != nil {
+				return nil, errors.Wrap(err, "marshalling repository credentials as JSON")
+			}
+			secret.Value = string(b)
+		} else {
+			return nil, errors.Errorf("can only set credentials for repo creds, not for container secret '%s' of type '%s'", secret.Name, secret.Type)
+		}
 	}
 	return &secret, nil
 }

@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -885,57 +884,6 @@ func (c *baseCommunicator) PostJSONData(ctx context.Context, taskData TaskData, 
 	defer resp.Body.Close()
 
 	return nil
-}
-
-func (c *baseCommunicator) GetJSONData(ctx context.Context, taskData TaskData, taskName, dataName, variantName string) ([]byte, error) {
-	pathParts := []string{"json", "data", taskName, dataName}
-	if variantName != "" {
-		pathParts = append(pathParts, variantName)
-	}
-	info := requestInfo{
-		method:   http.MethodGet,
-		taskData: &taskData,
-	}
-	info.setTaskPathSuffix(strings.Join(pathParts, "/"))
-	resp, err := c.retryRequest(ctx, info, nil)
-	if err != nil {
-		return nil, utility.RespErrorf(resp, "failed to get json data for task %s: %s", taskData.ID, err.Error())
-	}
-	defer resp.Body.Close()
-
-	out, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, errors.Wrapf(err, "problem reading results from body for %s", taskData.ID)
-	}
-
-	return out, nil
-}
-
-func (c *baseCommunicator) GetJSONHistory(ctx context.Context, taskData TaskData, tags bool, taskName, dataName string) ([]byte, error) {
-	path := "json/history/"
-	if tags {
-		path = "json/tags/"
-	}
-
-	path += fmt.Sprintf("%s/%s", taskName, dataName)
-
-	info := requestInfo{
-		method:   http.MethodGet,
-		taskData: &taskData,
-	}
-	info.setTaskPathSuffix(path)
-	resp, err := c.retryRequest(ctx, info, nil)
-	if err != nil {
-		return nil, utility.RespErrorf(resp, "failed to get json history for task %s: %s", taskData.ID, err.Error())
-	}
-	defer resp.Body.Close()
-
-	out, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, errors.Wrapf(err, "problem reading results from body for %s", taskData.ID)
-	}
-
-	return out, nil
 }
 
 // GenerateTasks posts new tasks for the `generate.tasks` command.

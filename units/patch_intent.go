@@ -915,7 +915,7 @@ func (j *patchIntentProcessor) verifyValidAlias(projectId string, patchDoc *patc
 			return nil
 		}
 	}
-	return errors.Errorf("alias '%s' is not set on project '%s'", alias, projectId)
+	return errors.Errorf("alias '%s' could not be found on project '%s'", alias, projectId)
 }
 
 func findEvergreenUserForPR(githubUID int) (*user.DBUser, error) {

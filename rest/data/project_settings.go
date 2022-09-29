@@ -119,7 +119,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 
 	// If the project ref doesn't use the repo, or we're using a repo ref, then this will just be the same as the passed in ref.
 	// Used to verify that if something is set to nil, we properly validate using the merged project ref.
-	mergedProjectRef, err := model.GetProjectRefMergedWithRepo(*newProjectRef)
+	mergedSection, err := model.GetProjectRefMergedWithRepo(*newProjectRef)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting merged project ref")
 	}
@@ -132,29 +132,29 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 	modified := false
 	switch section {
 	case model.ProjectPageGeneralSection:
-		if mergedProjectRef.Identifier != mergedBeforeRef.Identifier {
-			if err = handleIdentifierConflict(mergedProjectRef); err != nil {
+		if mergedSection.Identifier != mergedBeforeRef.Identifier {
+			if err = handleIdentifierConflict(mergedSection); err != nil {
 				return nil, err
 			}
 		}
 
 		// Only need to check Github conflicts once so we use else if statements to handle this.
 		// Handle conflicts using the ref from the DB, since only general section settings are passed in from the UI.
-		if mergedProjectRef.Owner != mergedBeforeRef.Owner || mergedProjectRef.Repo != mergedBeforeRef.Repo {
+		if mergedSection.Owner != mergedBeforeRef.Owner || mergedSection.Repo != mergedBeforeRef.Repo {
 			if err = handleGithubConflicts(mergedBeforeRef, "Changing owner/repo"); err != nil {
 				return nil, err
 			}
 			// Check if webhook is enabled if the owner/repo has changed
-			_, err = model.EnableWebhooks(ctx, mergedProjectRef)
+			_, err = model.EnableWebhooks(ctx, mergedSection)
 			if err != nil {
 				return nil, errors.Wrapf(err, "enabling webhooks for project '%s'", projectId)
 			}
 			modified = true
-		} else if mergedProjectRef.IsEnabled() && !mergedBeforeRef.IsEnabled() {
+		} else if mergedSection.IsEnabled() && !mergedBeforeRef.IsEnabled() {
 			if err = handleGithubConflicts(mergedBeforeRef, "Enabling project"); err != nil {
 				return nil, err
 			}
-		} else if mergedProjectRef.Branch != mergedBeforeRef.Branch {
+		} else if mergedSection.Branch != mergedBeforeRef.Branch {
 			if err = handleGithubConflicts(mergedBeforeRef, "Changing branch"); err != nil {
 				return nil, err
 			}
@@ -163,9 +163,9 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 	case model.ProjectPageAccessSection:
 		// For any admins that are only in the original settings, remove access.
 		// For any admins that are only in the updated settings, give them access.
-		adminsToDelete, adminsToAdd := utility.StringSliceSymmetricDifference(mergedBeforeRef.Admins, mergedProjectRef.Admins)
-		makeRestricted := !mergedBeforeRef.IsRestricted() && mergedProjectRef.IsRestricted()
-		makeUnrestricted := mergedBeforeRef.IsRestricted() && !mergedProjectRef.IsRestricted()
+		adminsToDelete, adminsToAdd := utility.StringSliceSymmetricDifference(mergedBeforeRef.Admins, mergedSection.Admins)
+		makeRestricted := !mergedBeforeRef.IsRestricted() && mergedSection.IsRestricted()
+		makeUnrestricted := mergedBeforeRef.IsRestricted() && !mergedSection.IsRestricted()
 		if isRepo {
 			modified = true
 			// For repos, we need to use the repo ref functions, as they update different scopes/roles.
@@ -213,26 +213,27 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		}
 		modified = true
 	case model.ProjectPageGithubAndCQSection:
-		mergedProjectRef.Owner = mergedBeforeRef.Owner
-		mergedProjectRef.Repo = mergedBeforeRef.Repo
-		mergedProjectRef.Branch = mergedBeforeRef.Branch
-		if err = handleGithubConflicts(mergedProjectRef, "Toggling GitHub features"); err != nil {
+		mergedSection.Owner = mergedBeforeRef.Owner
+		mergedSection.Repo = mergedBeforeRef.Repo
+		mergedSection.Branch = mergedBeforeRef.Branch
+		if err = handleGithubConflicts(mergedSection, "Toggling GitHub features"); err != nil {
 			return nil, err
 		}
-
-		if !mergedBeforeRef.CommitQueue.IsEnabled() && mergedProjectRef.CommitQueue.IsEnabled() {
-			if err = commitqueue.EnsureCommitQueueExistsForProject(mergedProjectRef.Id); err != nil {
+		// At project creation we now insert a commit queue, however older projects still may not have one
+		// so we need to validate that this exists if the feature is being toggled on.
+		if mergedBeforeRef.CommitQueue.IsEnabled() && mergedSection.CommitQueue.IsEnabled() {
+			if err = commitqueue.EnsureCommitQueueExistsForProject(mergedSection.Id); err != nil {
 				return nil, err
 			}
 		}
-		if err = validateFeaturesHaveAliases(mergedProjectRef, changes.Aliases); err != nil {
+		if err = validateFeaturesHaveAliases(mergedBeforeRef, mergedSection, changes.Aliases); err != nil {
 			return nil, err
 		}
 		modified, err = updateAliasesForSection(projectId, changes.Aliases, before.Aliases, section)
 		catcher.Add(err)
 	case model.ProjectPagePatchAliasSection:
-		for i := range mergedProjectRef.PatchTriggerAliases {
-			mergedProjectRef.PatchTriggerAliases[i], err = model.ValidateTriggerDefinition(mergedProjectRef.PatchTriggerAliases[i], projectId)
+		for i := range mergedSection.PatchTriggerAliases {
+			mergedSection.PatchTriggerAliases[i], err = model.ValidateTriggerDefinition(mergedSection.PatchTriggerAliases[i], projectId)
 			catcher.Add(err)
 		}
 		if catcher.HasErrors() {
@@ -259,24 +260,24 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		}
 		catcher.Wrapf(DeleteSubscriptions(projectId, toDelete), "deleting subscriptions")
 	case model.ProjectPageContainerSection:
-		for i := range mergedProjectRef.ContainerSizeDefinitions {
-			err = mergedProjectRef.ContainerSizeDefinitions[i].Validate(evergreen.GetEnvironment().Settings().Providers.AWS.Pod.ECS)
+		for i := range mergedSection.ContainerSizeDefinitions {
+			err = mergedSection.ContainerSizeDefinitions[i].Validate(evergreen.GetEnvironment().Settings().Providers.AWS.Pod.ECS)
 			catcher.Add(err)
 		}
 		if catcher.HasErrors() {
 			return nil, errors.Wrap(catcher.Resolve(), "invalid container size definition")
 		}
 	case model.ProjectPagePeriodicBuildsSection:
-		for i := range mergedProjectRef.PeriodicBuilds {
-			err = mergedProjectRef.PeriodicBuilds[i].Validate()
+		for i := range mergedSection.PeriodicBuilds {
+			err = mergedSection.PeriodicBuilds[i].Validate()
 			catcher.Add(err)
 		}
 		if catcher.HasErrors() {
 			return nil, errors.Wrap(catcher.Resolve(), "invalid periodic build definition")
 		}
 	case model.ProjectPageTriggersSection:
-		for i := range mergedProjectRef.Triggers {
-			err = mergedProjectRef.Triggers[i].Validate(projectId)
+		for i := range mergedSection.Triggers {
+			err = mergedSection.Triggers[i].Validate(projectId)
 			catcher.Add(err)
 		}
 		if catcher.HasErrors() {

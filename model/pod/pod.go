@@ -37,11 +37,12 @@ type Pod struct {
 	TimeInfo TimeInfo `bson:"time_info,omitempty" json:"time_info,omitempty"`
 	// Resources are external resources that are owned and managed by this pod.
 	Resources ResourceInfo `bson:"resource_info,omitempty" json:"resource_info,omitempty"`
+	// TaskRuntimeInfo contains information about the tasks that a pod is
+	// assigned.
+	TaskRuntimeInfo TaskRuntimeInfo `bson:"task_runtime_info,omitempty" json:"task_runtime_info,omitempty"`
 	// AgentVersion is the version of the agent running on this pod if it's a
 	// pod that runs tasks.
 	AgentVersion string `bson:"agent_version,omitempty" json:"agent_version,omitempty"`
-	// RunningTask is the ID of the task currently running on the pod.
-	RunningTask string `bson:"running_task,omitempty" json:"running_task,omitempty"`
 }
 
 // TaskIntentPodOptions represents options to create an intent pod that runs
@@ -568,10 +569,10 @@ func (o TaskContainerCreationOptions) IsZero() bool {
 type Secret struct {
 	// ExternalID is the unique external resource identifier for a secret that
 	// already exists in the secrets storage service.
-	ExternalID string `bson:"external_id,omitempty" json:"external_id,omitempty" yaml:"external_id,omitempty"`
+	ExternalID string `bson:"external_id,omitempty" json:"external_id,omitempty"`
 	// Value is the value of the secret. This is a cached copy of the actual
 	// secret value stored in the secrets storage service.
-	Value string `bson:"value,omitempty" json:"value,omitempty" yaml:"value,omitempty"`
+	Value string `bson:"value,omitempty" json:"value,omitempty"`
 }
 
 func (s Secret) hash() string {
@@ -587,6 +588,22 @@ func (s Secret) hash() string {
 // zero value for BSON marshalling.
 func (s Secret) IsZero() bool {
 	return s == Secret{}
+}
+
+// TaskRuntimeInfo contains information for pods running tasks about the tasks
+// that it is running or has run previously.
+type TaskRuntimeInfo struct {
+	// RunningTaskID is the ID of the task currently running on the pod.
+	RunningTaskID string `bson:"running_task_id,omitempty" json:"running_task_id,omitempty"`
+	// RunningTaskExecution is the execution number of the task currently
+	// running on the pod.
+	RunningTaskExecution int `bson:"running_task_execution,omitempty" json:"running_task_execution,omitempty"`
+}
+
+// IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
+// zero value for BSON marshalling.
+func (i TaskRuntimeInfo) IsZero() bool {
+	return i == TaskRuntimeInfo{}
 }
 
 // Insert inserts a new pod into the collection. This relies on the global Anser
@@ -660,22 +677,26 @@ func (p *Pod) GetSecret() (*Secret, error) {
 }
 
 // SetRunningTask sets the task to dispatch to the pod.
-func (p *Pod) SetRunningTask(ctx context.Context, env evergreen.Environment, taskID string) error {
-	if p.RunningTask == taskID {
+func (p *Pod) SetRunningTask(ctx context.Context, env evergreen.Environment, taskID string, taskExecution int) error {
+	if p.TaskRuntimeInfo.RunningTaskID == taskID && p.TaskRuntimeInfo.RunningTaskExecution == taskExecution {
 		return nil
 	}
-	if p.RunningTask != "" {
-		return errors.Errorf("cannot set running task to '%s' when it is already set to '%s'", taskID, p.RunningTask)
+	if p.TaskRuntimeInfo.RunningTaskID != "" {
+		return errors.Errorf("cannot set running task to '%s' execution %d when it is already set to '%s' execution %d", taskID, taskExecution, p.TaskRuntimeInfo.RunningTaskID, p.TaskRuntimeInfo.RunningTaskExecution)
 	}
 
+	runningTaskIDKey := bsonutil.GetDottedKeyName(TaskRuntimeInfoKey, TaskRuntimeInfoRunningTaskIDKey)
+	runningTaskExecutionKey := bsonutil.GetDottedKeyName(TaskRuntimeInfoKey, TaskRuntimeInfoRunningTaskExecutionKey)
 	query := bson.M{
-		IDKey:          p.ID,
-		StatusKey:      StatusRunning,
-		RunningTaskKey: nil,
+		IDKey:                   p.ID,
+		StatusKey:               StatusRunning,
+		runningTaskIDKey:        nil,
+		runningTaskExecutionKey: nil,
 	}
 	update := bson.M{
 		"$set": bson.M{
-			RunningTaskKey: taskID,
+			runningTaskIDKey:        taskID,
+			runningTaskExecutionKey: taskExecution,
 			// Decommissioning ensures that the pod cannot run another task.
 			// TODO (PM-2618): adjust this to handle cases such as
 			// single-container task groups, where the pod may be reused.
@@ -691,7 +712,8 @@ func (p *Pod) SetRunningTask(ctx context.Context, env evergreen.Environment, tas
 		return errors.New("pod was not updated")
 	}
 
-	p.RunningTask = taskID
+	p.TaskRuntimeInfo.RunningTaskID = taskID
+	p.TaskRuntimeInfo.RunningTaskExecution = taskExecution
 	p.Status = StatusDecommissioned
 
 	event.LogPodStatusChanged(p.ID, string(StatusRunning), string(StatusDecommissioned), "pod has been assigned a task and will not be reused")
@@ -701,22 +723,36 @@ func (p *Pod) SetRunningTask(ctx context.Context, env evergreen.Environment, tas
 
 // ClearRunningTask clears the current task dispatched to the pod.
 func (p *Pod) ClearRunningTask() error {
-	if p.RunningTask == "" {
+	if p.TaskRuntimeInfo.RunningTaskID == "" {
 		return nil
 	}
 
-	if err := UpdateOne(bson.M{
-		IDKey:          p.ID,
-		RunningTaskKey: p.RunningTask,
-	}, bson.M{
+	runningTaskIDKey := bsonutil.GetDottedKeyName(TaskRuntimeInfoKey, TaskRuntimeInfoRunningTaskIDKey)
+	runningTaskExecutionKey := bsonutil.GetDottedKeyName(TaskRuntimeInfoKey, TaskRuntimeInfoRunningTaskExecutionKey)
+	query := bson.M{
+		IDKey:            p.ID,
+		runningTaskIDKey: p.TaskRuntimeInfo.RunningTaskID,
+	}
+	if p.TaskRuntimeInfo.RunningTaskExecution == 0 {
+		query["$or"] = []bson.M{
+			{runningTaskExecutionKey: p.TaskRuntimeInfo.RunningTaskExecution},
+			{runningTaskExecutionKey: bson.M{"$exists": false}},
+		}
+	} else {
+		query[runningTaskExecutionKey] = p.TaskRuntimeInfo.RunningTaskExecution
+	}
+
+	if err := UpdateOne(query, bson.M{
 		"$unset": bson.M{
-			RunningTaskKey: 1,
+			runningTaskIDKey:        1,
+			runningTaskExecutionKey: 1,
 		},
 	}); err != nil {
 		return errors.Wrap(err, "clearing running task")
 	}
 
-	p.RunningTask = ""
+	p.TaskRuntimeInfo.RunningTaskID = ""
+	p.TaskRuntimeInfo.RunningTaskExecution = 0
 
 	return nil
 }

@@ -60,6 +60,7 @@ var (
 	DisplayNameKey                 = bsonutil.MustHaveTag(Task{}, "DisplayName")
 	ExecutionPlatformKey           = bsonutil.MustHaveTag(Task{}, "ExecutionPlatform")
 	HostIdKey                      = bsonutil.MustHaveTag(Task{}, "HostId")
+	PodIDKey                       = bsonutil.MustHaveTag(Task{}, "PodID")
 	AgentVersionKey                = bsonutil.MustHaveTag(Task{}, "AgentVersion")
 	ExecutionKey                   = bsonutil.MustHaveTag(Task{}, "Execution")
 	LatestParentExecutionKey       = bsonutil.MustHaveTag(Task{}, "LatestParentExecution")
@@ -93,8 +94,6 @@ var (
 	IsGithubCheckKey               = bsonutil.MustHaveTag(Task{}, "IsGithubCheck")
 	HostCreateDetailsKey           = bsonutil.MustHaveTag(Task{}, "HostCreateDetails")
 
-	// GeneratedJSONKey is no longer used but must be kept for old tasks.
-	GeneratedJSONKey            = bsonutil.MustHaveTag(Task{}, "GeneratedJSON")
 	GeneratedJSONAsStringKey    = bsonutil.MustHaveTag(Task{}, "GeneratedJSONAsString")
 	GenerateTasksErrorKey       = bsonutil.MustHaveTag(Task{}, "GenerateTasksError")
 	GeneratedTasksToActivateKey = bsonutil.MustHaveTag(Task{}, "GeneratedTasksToActivate")

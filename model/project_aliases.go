@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
@@ -25,6 +26,7 @@ var (
 	variantKey     = bsonutil.MustHaveTag(ProjectAlias{}, "Variant")
 	descriptionKey = bsonutil.MustHaveTag(ProjectAlias{}, "Description")
 	taskKey        = bsonutil.MustHaveTag(ProjectAlias{}, "Task")
+	parametersKey  = bsonutil.MustHaveTag(ProjectAlias{}, "Parameters")
 	variantTagsKey = bsonutil.MustHaveTag(ProjectAlias{}, "VariantTags")
 	taskTagsKey    = bsonutil.MustHaveTag(ProjectAlias{}, "TaskTags")
 )
@@ -64,16 +66,17 @@ const (
 // variants/tasks, assuming the tag matches the defined git_tag regex.
 // In this way, users can define different behavior for different kind of tags.
 type ProjectAlias struct {
-	ID          mgobson.ObjectId `bson:"_id,omitempty" json:"_id" yaml:"id"`
-	ProjectID   string           `bson:"project_id" json:"project_id" yaml:"project_id"`
-	Alias       string           `bson:"alias" json:"alias" yaml:"alias"`
-	Variant     string           `bson:"variant,omitempty" json:"variant" yaml:"variant"`
-	Description string           `bson:"description" json:"description" yaml:"description"`
-	GitTag      string           `bson:"git_tag" json:"git_tag" yaml:"git_tag"`
-	RemotePath  string           `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
-	VariantTags []string         `bson:"variant_tags,omitempty" json:"variant_tags" yaml:"variant_tags"`
-	Task        string           `bson:"task,omitempty" json:"task" yaml:"task"`
-	TaskTags    []string         `bson:"tags,omitempty" json:"tags" yaml:"task_tags"`
+	ID          mgobson.ObjectId  `bson:"_id,omitempty" json:"_id" yaml:"id"`
+	ProjectID   string            `bson:"project_id" json:"project_id" yaml:"project_id"`
+	Alias       string            `bson:"alias" json:"alias" yaml:"alias"`
+	Variant     string            `bson:"variant,omitempty" json:"variant" yaml:"variant"`
+	Description string            `bson:"description" json:"description" yaml:"description"`
+	GitTag      string            `bson:"git_tag" json:"git_tag" yaml:"git_tag"`
+	RemotePath  string            `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
+	VariantTags []string          `bson:"variant_tags,omitempty" json:"variant_tags" yaml:"variant_tags"`
+	Task        string            `bson:"task,omitempty" json:"task" yaml:"task"`
+	TaskTags    []string          `bson:"tags,omitempty" json:"tags" yaml:"task_tags"`
+	Parameters  []patch.Parameter `bson:"parameters,omitempty" json:"parameters" yaml:"parameters"`
 
 	// Source is not stored; indicates where the alias is stored for the project.
 	Source string `bson:"-" json:"-" yaml:"-"`
@@ -459,6 +462,7 @@ func (p *ProjectAlias) Upsert() error {
 		variantTagsKey: p.VariantTags,
 		taskTagsKey:    p.TaskTags,
 		taskKey:        p.Task,
+		parametersKey:  p.Parameters,
 	}
 
 	_, err := db.Upsert(ProjectAliasCollection, bson.M{

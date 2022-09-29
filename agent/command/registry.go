@@ -39,8 +39,6 @@ func init() {
 		"git.push":                              gitPushFactory,
 		"gotest.parse_files":                    goTestFactory,
 		"gotest.parse_json":                     goTest2JSONFactory,
-		"json.get":                              taskDataGetFactory,
-		"json.get_history":                      taskDataHistoryFactory,
 		"json.send":                             taskDataSendFactory,
 		"keyval.inc":                            keyValIncFactory,
 		"mac.sign":                              macSignFactory,

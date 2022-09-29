@@ -82,6 +82,7 @@ func TestAPIPod(t *testing.T) {
 				},
 				WorkingDir: "working_dir",
 			},
+			Family: "family",
 			TimeInfo: pod.TimeInfo{
 				Initializing:     time.Now(),
 				Starting:         time.Now(),
@@ -99,6 +100,11 @@ func TestAPIPod(t *testing.T) {
 					},
 				},
 			},
+			TaskRuntimeInfo: pod.TaskRuntimeInfo{
+				RunningTaskID:        "task_id",
+				RunningTaskExecution: 3,
+			},
+			AgentVersion: "2020-01-01",
 		}
 	}
 
@@ -131,6 +137,7 @@ func TestAPIPod(t *testing.T) {
 				},
 				WorkingDir: utility.ToStringPtr("working_dir"),
 			},
+			Family: utility.ToStringPtr("family"),
 			TimeInfo: APIPodTimeInfo{
 				Initializing:     utility.ToTimePtr(time.Now()),
 				Starting:         utility.ToTimePtr(time.Now()),
@@ -148,6 +155,11 @@ func TestAPIPod(t *testing.T) {
 					},
 				},
 			},
+			TaskRuntimeInfo: APITaskRuntimeInfo{
+				RunningTaskID:        utility.ToStringPtr("task_id"),
+				RunningTaskExecution: utility.ToIntPtr(3),
+			},
+			AgentVersion: utility.ToStringPtr("2020-01-01"),
 		}
 	}
 	t.Run("ToService", func(t *testing.T) {
@@ -158,6 +170,7 @@ func TestAPIPod(t *testing.T) {
 			assert.Equal(t, utility.FromStringPtr(apiPod.ID), dbPod.ID)
 			assert.Equal(t, pod.TypeAgent, dbPod.Type)
 			assert.Equal(t, pod.StatusRunning, dbPod.Status)
+			assert.Equal(t, utility.FromStringPtr(apiPod.Family), dbPod.Family)
 			assert.Equal(t, utility.FromStringPtr(apiPod.TaskContainerCreationOpts.Image), dbPod.TaskContainerCreationOpts.Image)
 			assert.Equal(t, utility.FromStringPtr(apiPod.TaskContainerCreationOpts.RepoCredsExternalID), dbPod.TaskContainerCreationOpts.RepoCredsExternalID)
 			assert.Equal(t, utility.FromIntPtr(apiPod.TaskContainerCreationOpts.MemoryMB), dbPod.TaskContainerCreationOpts.MemoryMB)
@@ -189,6 +202,9 @@ func TestAPIPod(t *testing.T) {
 				assert.Empty(t, left, "actual is missing container secret IDs: %s", left)
 				assert.Empty(t, right, "actual has extra unexpected container secret IDs: %s", right)
 			}
+			assert.Equal(t, utility.FromStringPtr(apiPod.TaskRuntimeInfo.RunningTaskID), dbPod.TaskRuntimeInfo.RunningTaskID)
+			assert.Equal(t, utility.FromIntPtr(apiPod.TaskRuntimeInfo.RunningTaskExecution), dbPod.TaskRuntimeInfo.RunningTaskExecution)
+			assert.Equal(t, utility.FromStringPtr(apiPod.AgentVersion), dbPod.AgentVersion)
 		})
 		t.Run("FailsWithInvalidPodType", func(t *testing.T) {
 			apiPod := validAPIPod()
@@ -221,6 +237,8 @@ func TestAPIPod(t *testing.T) {
 			var apiPod APIPod
 			require.NoError(t, apiPod.BuildFromService(&dbPod))
 			assert.Equal(t, dbPod.ID, utility.FromStringPtr(apiPod.ID))
+			assert.Equal(t, dbPod.Family, utility.FromStringPtr(apiPod.Family))
+			assert.Equal(t, dbPod.AgentVersion, utility.FromStringPtr(apiPod.AgentVersion))
 			assert.Equal(t, PodTypeAgent, apiPod.Type)
 			assert.Equal(t, PodStatusRunning, apiPod.Status)
 			assert.Equal(t, dbPod.TaskContainerCreationOpts.Image, utility.FromStringPtr(apiPod.TaskContainerCreationOpts.Image))
@@ -255,6 +273,8 @@ func TestAPIPod(t *testing.T) {
 				assert.Empty(t, left, "actual is missing container secret IDs: %s", left)
 				assert.Empty(t, right, "actual has extra unexpected container secret IDs: %s", right)
 			}
+			assert.Equal(t, dbPod.TaskRuntimeInfo.RunningTaskID, utility.FromStringPtr(apiPod.TaskRuntimeInfo.RunningTaskID))
+			assert.Equal(t, dbPod.TaskRuntimeInfo.RunningTaskExecution, utility.FromIntPtr(apiPod.TaskRuntimeInfo.RunningTaskExecution))
 		})
 		t.Run("FailsWithInvalidPodType", func(t *testing.T) {
 			dbPod := validDBPod()
