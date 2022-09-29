@@ -138,9 +138,11 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/distros/{distro_id}/setup").Version(2).Get().Wrap(editDistroSettings).RouteHandler(makeGetDistroSetup())
 	app.AddRoute("/distros/{distro_id}/setup").Version(2).Patch().Wrap(editDistroSettings).RouteHandler(makeChangeDistroSetup())
 
-	app.AddRoute("/hooks/github").Version(2).Post().Wrap(requireUserToggleable).RouteHandler(makeGithubHooksRoute(sc, opts.APIQueue, opts.GithubSecret, settings))
-	app.AddRoute("/hooks/aws").Version(2).Post().Wrap(requireUserToggleable).RouteHandler(makeEC2SNS(env, opts.APIQueue))
-	app.AddRoute("/hooks/aws/ecs").Version(2).Post().Wrap(requireUserToggleable).RouteHandler(makeECSSNS(env, opts.APIQueue))
+	// Middleware is omitted for webhook routes because they cannot be called by users and validation occurs in Parse function.
+	app.AddRoute("/hooks/github").Version(2).Post().RouteHandler(makeGithubHooksRoute(sc, opts.APIQueue, opts.GithubSecret, settings))
+	app.AddRoute("/hooks/aws").Version(2).Post().RouteHandler(makeEC2SNS(env, opts.APIQueue))
+	app.AddRoute("/hooks/aws/ecs").Version(2).Post().RouteHandler(makeECSSNS(env, opts.APIQueue))
+
 	app.AddRoute("/host/filter").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchHostFilter())
 	app.AddRoute("/host/start_processes").Version(2).Post().Wrap(requireUser).RouteHandler(makeHostStartProcesses(env))
 	app.AddRoute("/host/get_processes").Version(2).Get().Wrap(requireUser).RouteHandler(makeHostGetProcesses(env))
