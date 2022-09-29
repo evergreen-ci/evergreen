@@ -33,6 +33,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	sc.SetURL(opts.URL)
 
 	// Middleware
+	// TODO (EVG-17989) Remove toggleable wrapper from auth middleware
 	requireUserToggleable := NewRequireAuthHandler()
 	requireUser := gimlet.NewRequireAuthHandler()
 	requireTask := NewTaskAuthMiddleware()
@@ -215,7 +216,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/status/cli_version").Version(2).Get().Wrap(requireUserToggleable).RouteHandler(makeFetchCLIVersionRoute())
 	app.AddRoute("/status/hosts/distros").Version(2).Get().Wrap(requireUser).RouteHandler(makeHostStatusByDistroRoute())
 	app.AddRoute("/status/notifications").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchNotifcationStatusRoute())
-	app.AddRoute("/status/recent_tasks").Version(2).Get().RouteHandler(makeRecentTaskStatusHandler())
+	app.AddRoute("/status/recent_tasks").Version(2).Get().Wrap(requireUserToggleable).RouteHandler(makeRecentTaskStatusHandler())
 	app.AddRoute("/subscriptions").Version(2).Delete().Wrap(requireUser).RouteHandler(makeDeleteSubscription())
 	app.AddRoute("/subscriptions").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchSubscription())
 	app.AddRoute("/subscriptions").Version(2).Post().Wrap(requireUser).RouteHandler(makeSetSubscription())

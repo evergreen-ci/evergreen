@@ -94,7 +94,8 @@ func MustHaveProject(r *http.Request) *model.Project {
 	return p
 }
 
-// requireUserToggleable
+// requireUserToggleable wraps gimlet.NewRequireAuthHandler and checks that
+// a user is generally authenticated if the PartialRouteAuthDisabled flag is set.
 func (as *APIServer) requireUserToggleable(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		flags, err := evergreen.GetServiceFlags()
@@ -102,7 +103,7 @@ func (as *APIServer) requireUserToggleable(next http.HandlerFunc) http.HandlerFu
 			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving admin settings")))
 		}
 
-		if !flags.RequireAuthAllRoutesDisabled {
+		if flags.PartialRouteAuthDisabled {
 			gimlet.NewRequireAuthHandler().ServeHTTP(w, r, next)
 			return
 		}
@@ -812,7 +813,7 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.Route().Prefix("/spawns").Wrap(requireUser).Route("/").Handler(as.requestHost).Put()
 	app.Route().Prefix("/spawns").Wrap(requireUser).Route("/{user}/").Handler(as.hostsInfoForUser).Get()
 	app.Route().Prefix("/spawns").Wrap(requireUser).Route("/distros/list/").Handler(as.listDistros).Get()
-	app.AddRoute("/dockerfile").Handler(getDockerfile).Get()
+	app.AddRoute("/dockerfile").Wrap(requireUserToggleable).Handler(getDockerfile).Get()
 
 	// Agent routes
 	// NOTE: new agent routes should be written in REST v2. The ones here are
