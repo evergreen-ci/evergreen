@@ -514,8 +514,8 @@ func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester
 		batchTimeTasks := []string{}
 		for _, bvt := range bv.Tasks {
 			if isStepbackTask(g.Task, bv.Name, bvt.Name) {
-				// If it's a stepback task, store the depth it should use based on the generator's stepback depth.
-				stepbackInfo := specificStepbackInfo{task: bvt.Name, depth: g.Task.StepbackDepth + 1}
+				// If it's a stepback task, it should store the same stepback depth as the generator.
+				stepbackInfo := specificStepbackInfo{task: bvt.Name, depth: g.Task.StepbackDepth}
 				res.stepbackTasks[bv.Name] = append(res.stepbackTasks[bv.Name], stepbackInfo)
 				continue // Don't consider batchtime/activation if we're stepping back this generated task
 			}
