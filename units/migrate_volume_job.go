@@ -83,7 +83,7 @@ func (j *volumeMigrationJob) Run(ctx context.Context) {
 		return
 	}
 
-	if j.initialHost.Status != evergreen.HostStopped || j.initialHost.Status != evergreen.HostTerminated {
+	if !(j.initialHost.Status == evergreen.HostStopped || j.initialHost.Status == evergreen.HostTerminated) {
 		j.stopInitialHost(ctx)
 		if j.HasErrors() {
 			return
@@ -204,7 +204,6 @@ func (j *volumeMigrationJob) startNewHost(ctx context.Context) {
 		"intent_host_id": intentHost.Id,
 	})
 	j.NewHostID = intentHost.Id
-	return
 }
 
 // finishJob marks the job as completed and attempts some additional cleanup if this is the job's final attempt.
@@ -250,17 +249,6 @@ func (j *volumeMigrationJob) restartInitialHost(ctx context.Context) bool {
 	}
 	return false
 
-}
-
-func (j *volumeMigrationJob) getVolume() (*host.Volume, error) {
-	volume, err := host.FindVolumeByID(j.VolumeID)
-	if err != nil {
-		return nil, errors.Wrapf(err, "finding volume '%s'", j.VolumeID)
-	}
-	if volume == nil {
-		return nil, errors.Errorf("volume '%s' not found", j.VolumeID)
-	}
-	return volume, nil
 }
 
 func (j *volumeMigrationJob) populateIfUnset() error {
