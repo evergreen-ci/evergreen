@@ -72,6 +72,7 @@ type cloneOpts struct {
 	branch             string
 	dir                string
 	token              string
+	cloneParams        string
 	recurseSubmodules  bool
 	mergeTestRequester bool
 	cloneDepth         int
@@ -161,7 +162,7 @@ func parseToken(token string) (string, error) {
 	return splitToken[1], nil
 }
 
-func (opts cloneOpts) getCloneCommand(cloneParams string) ([]string, error) {
+func (opts cloneOpts) getCloneCommand() ([]string, error) {
 	if err := opts.validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid clone command options")
 	}
@@ -174,7 +175,7 @@ func (opts cloneOpts) getCloneCommand(cloneParams string) ([]string, error) {
 	return nil, errors.New("unrecognized clone method in options")
 }
 
-func (opts cloneOpts) buildHTTPCloneCommand(cloneParams string) ([]string, error) {
+func (opts cloneOpts) buildHTTPCloneCommand() ([]string, error) {
 	urlLocation, err := url.Parse(opts.location)
 	if err != nil {
 		return nil, errors.Wrap(err, "parsing URL from location")
@@ -189,8 +190,8 @@ func (opts cloneOpts) buildHTTPCloneCommand(cloneParams string) ([]string, error
 	if opts.branch != "" {
 		clone = fmt.Sprintf("%s --branch '%s'", clone, opts.branch)
 	}
-	if cloneParams != "" {
-		clone = fmt.Sprintf("%s %s", clone, cloneParams)
+	if opts.cloneParams != "" {
+		clone = fmt.Sprintf("%s %s", clone, opts.cloneParams)
 	}
 
 	redactedClone := strings.Replace(clone, opts.token, "[redacted oauth token]", -1)
@@ -203,7 +204,7 @@ func (opts cloneOpts) buildHTTPCloneCommand(cloneParams string) ([]string, error
 	}, nil
 }
 
-func (opts cloneOpts) buildSSHCloneCommand(cloneParams string) ([]string, error) {
+func (opts cloneOpts) buildSSHCloneCommand() ([]string, error) {
 	cloneCmd := fmt.Sprintf("git clone '%s' '%s'", opts.location, opts.dir)
 	if opts.recurseSubmodules {
 		cloneCmd = fmt.Sprintf("%s --recurse-submodules", cloneCmd)
@@ -214,8 +215,8 @@ func (opts cloneOpts) buildSSHCloneCommand(cloneParams string) ([]string, error)
 	if opts.branch != "" {
 		cloneCmd = fmt.Sprintf("%s --branch '%s'", cloneCmd, opts.branch)
 	}
-	if cloneParams != "" {
-		cloneCmd = fmt.Sprintf("%s %s", cloneCmd, cloneParams)
+	if opts.cloneParams != "" {
+		cloneCmd = fmt.Sprintf("%s %s", cloneCmd, opts.cloneParams)
 	}
 
 	return []string{
@@ -274,7 +275,7 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, conf *internal.
 		fmt.Sprintf("rm -rf %s", c.Directory),
 	}
 
-	cloneCmd, err := opts.getCloneCommand(c.CloneParams)
+	cloneCmd, err := opts.getCloneCommand()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting command to clone repo")
 	}
@@ -375,7 +376,7 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 		return nil, errors.New("empty ref/branch to check out")
 	}
 
-	cloneCmd, err := opts.getCloneCommand(c.CloneParams)
+	cloneCmd, err := opts.getCloneCommand()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting command to clone repo")
 	}
@@ -404,6 +405,7 @@ func (c *gitFetchProject) opts(projectMethod, projectToken string, logger client
 		branch:             conf.ProjectRef.Branch,
 		dir:                c.Directory,
 		token:              projectToken,
+		cloneParams:        c.CloneParams,
 		recurseSubmodules:  c.RecurseSubmodules,
 		mergeTestRequester: conf.Task.Requester == evergreen.MergeTestRequester,
 	}
