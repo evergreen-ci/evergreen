@@ -585,7 +585,7 @@ func (c *baseCommunicator) SendTaskResults(ctx context.Context, taskData TaskDat
 	info.setTaskPathSuffix("results")
 	resp, err := c.retryRequest(ctx, info, r)
 	if err != nil {
-		return utility.RespErrorf(resp, errors.Wrapf(err, "adding %d results").Error())
+		return utility.RespErrorf(resp, errors.Wrapf(err, "adding %d results", len(r.Results)).Error())
 	}
 	defer resp.Body.Close()
 	return nil
