@@ -2,12 +2,14 @@ package notification
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
@@ -164,12 +166,21 @@ func (n *Notification) Composer(env evergreen.Environment) (message.Composer, er
 			return nil, errors.New("slack subscriber is invalid")
 		}
 
+		formattedTarget, err := FormatSlackTarget(*sub)
+		if err != nil {
+			return nil, errors.Wrap(err, "formatting slack target")
+		}
+
 		payload, ok := n.Payload.(*SlackPayload)
 		if !ok || payload == nil {
 			return nil, errors.New("slack payload is invalid")
 		}
 
-		return message.NewSlackMessage(level.Notice, *sub, payload.Body, payload.Attachments), nil
+		grip.Info(message.Fields{
+			"message": "chayaMTesting model/notification/notification.go",
+			"target":  formattedTarget,
+		})
+		return message.NewSlackMessage(level.Notice, formattedTarget, payload.Body, payload.Attachments), nil
 
 	case event.GithubPullRequestSubscriberType:
 		sub := n.Subscriber.Target.(*event.GithubPullRequestSubscriber)
@@ -258,6 +269,22 @@ func (n *Notification) MarkError(sendErr error) error {
 func (n *Notification) SetTaskMetadata(ID string, execution int) {
 	n.Metadata.TaskID = ID
 	n.Metadata.TaskExecution = execution
+}
+
+func FormatSlackTarget(target string) (string, error) {
+	//check if it's a userID
+	if strings.HasPrefix(target, "@") {
+		//use the memberId if it exists
+		trimmedTarget := strings.TrimPrefix(target, "@")
+		user, err := user.FindBySlackUsername(trimmedTarget)
+		if err != nil {
+			return "", errors.Wrapf(err, "finding user by slack username '%s'", target)
+		}
+		if user != nil && user.Settings.SlackMemberId != "" {
+			return user.Settings.SlackMemberId, nil
+		}
+	}
+	return target, nil
 }
 
 type NotificationStats struct {
