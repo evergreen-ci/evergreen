@@ -259,7 +259,7 @@ func (c *gitFetchProject) ParseParams(params map[string]interface{}) error {
 	return nil
 }
 
-func (c *gitFetchProject) buildCloneCommand(ctx context.Context, conf *internal.TaskConfig, logger client.LoggerProducer, opts cloneOpts) ([]string, error) {
+func (c *gitFetchProject) buildCloneCommand(conf *internal.TaskConfig, opts cloneOpts) ([]string, error) {
 	gitCommands := []string{
 		"set -o xtrace",
 		"set -o errexit",
@@ -274,24 +274,15 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, conf *internal.
 
 	// if there's a PR checkout the ref containing the changes
 	if isGitHub(conf) {
-		var ref, commitToTest, branchName string
+		commitToTest := conf.GithubPatchData.HeadHash
+		var ref, branchName string
 		if conf.Task.Requester == evergreen.MergeTestRequester {
-			// proceed if github has confirmed this pr is mergeable. If it hasn't checked, this request
-			// will make it check.
-			// https://docs.github.com/en/rest/guides/getting-started-with-the-git-database-api#checking-mergeability-of-pull-requests
-			commitToTest, err = c.waitForMergeableCheck(ctx, logger, opts, conf.GithubPatchData.PRNumber)
-			if err != nil {
-				logger.Task().Error(errors.Wrap(err, "error checking if pull request is mergeable"))
-				commitToTest = conf.GithubPatchData.HeadHash
-				logger.Task().Warning(fmt.Sprintf("because errors were encountered trying to retrieve the pull request, we will use the last recorded hash to test (%s)", commitToTest))
-			}
 			ref = "merge"
 			branchName = fmt.Sprintf("evg-merge-test-%s", utility.RandomString())
 		} else {
 			// Github creates a ref called refs/pull/[pr number]/head
 			// that provides the entire tree of changes, including merges
 			ref = "head"
-			commitToTest = conf.GithubPatchData.HeadHash
 			branchName = fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
 		}
 		if commitToTest != "" {
@@ -482,7 +473,7 @@ func (c *gitFetchProject) fetchSource(ctx context.Context,
 	jpm jasper.Manager,
 	opts cloneOpts) error {
 
-	gitCommands, err := c.buildCloneCommand(ctx, conf, logger, opts)
+	gitCommands, err := c.buildCloneCommand(conf, opts)
 	if err != nil {
 		return err
 	}
@@ -669,31 +660,33 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 	defer cancel()
 	jpm := c.JasperManager()
 
-	// Clone the project.
-	err := c.fetchSource(ctx, logger, conf, jpm, opts)
-	if err != nil {
-		return errors.Wrap(err, "problem running fetch command")
-	}
-
-	// Retrieve the patch for the version if one exists.
-	var p *patch.Patch
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
-	if evergreen.IsPatchRequester(conf.Task.Requester) {
-		logger.Execution().Info("Fetching patch.")
-		p, err = comm.GetTaskPatch(ctx, td, "")
-		if err != nil {
-			return errors.Wrap(err, "Failed to get patch")
-		}
-	}
 
 	// Additional patches are for commit queue batch execution. Patches
 	// will be applied in the order returned, with the main patch being
-	// applied last.
+	// applied last. We check this first to avoid cloning if
+	// the task isn't on the commit queue anymore.
+	var err error
 	var additionalPatches []string
 	if conf.Task.Requester == evergreen.MergeTestRequester {
 		additionalPatches, err = c.fetchAdditionalPatches(ctx, conf, comm, logger, td)
 		if err != nil {
 			return errors.WithStack(err)
+		}
+	}
+
+	// Clone the project.
+	if err = c.fetchSource(ctx, logger, conf, jpm, opts); err != nil {
+		return errors.Wrap(err, "problem running fetch command")
+	}
+
+	// Retrieve the patch for the version if one exists.
+	var p *patch.Patch
+	if evergreen.IsPatchRequester(conf.Task.Requester) {
+		logger.Execution().Info("Fetching patch.")
+		p, err = comm.GetTaskPatch(ctx, td, "")
+		if err != nil {
+			return errors.Wrap(err, "Failed to get patch")
 		}
 	}
 
