@@ -52,7 +52,7 @@ func (j *podStatsCollector) Run(ctx context.Context) {
 
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
-		j.AddError(err)
+		j.AddError(errors.Wrap(err, "getting service flags"))
 		return
 	}
 
