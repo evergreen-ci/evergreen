@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/pkg/errors"
 )
 
 func (uis *UIServer) podPage(w http.ResponseWriter, r *http.Request) {
@@ -13,11 +14,11 @@ func (uis *UIServer) podPage(w http.ResponseWriter, r *http.Request) {
 
 	p, err := pod.FindOneByID(id)
 	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "finding pod '%s'", id))
 		return
 	}
 	if p == nil {
-		http.Error(w, "pod not found", http.StatusNotFound)
+		http.Error(w, fmt.Sprintf("pod '%s' not found", id), http.StatusNotFound)
 		return
 	}
 
