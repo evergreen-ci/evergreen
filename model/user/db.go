@@ -52,6 +52,7 @@ var (
 	SettingsTZKey                = bsonutil.MustHaveTag(UserSettings{}, "Timezone")
 	userSettingsGithubUserKey    = bsonutil.MustHaveTag(UserSettings{}, "GithubUser")
 	userSettingsSlackUsernameKey = bsonutil.MustHaveTag(UserSettings{}, "SlackUsername")
+	userSettingsSlackMemberIdKey = bsonutil.MustHaveTag(UserSettings{}, "SlackMemberId")
 	UseSpruceOptionsKey          = bsonutil.MustHaveTag(UserSettings{}, "UseSpruceOptions")
 	SpruceV1Key                  = bsonutil.MustHaveTag(UseSpruceOptions{}, "SpruceV1")
 )
@@ -306,9 +307,6 @@ func GetOrCreateUser(userId, displayName, email, accessToken, refreshToken strin
 		DispNameKey:     displayName,
 		EmailAddressKey: email,
 	}
-	if accessToken != "" {
-		setFields[bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheAccessTokenKey)] = accessToken
-	}
 	if refreshToken != "" {
 		setFields[bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheRefreshTokenKey)] = refreshToken
 	}
@@ -316,6 +314,27 @@ func GetOrCreateUser(userId, displayName, email, accessToken, refreshToken strin
 		APIKeyKey: utility.RandomString(),
 		bsonutil.GetDottedKeyName(SettingsKey, UseSpruceOptionsKey, SpruceV1Key): true,
 	}
+
+	if accessToken != "" {
+		setFields[bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheAccessTokenKey)] = accessToken
+	} else {
+		// only fetch the slack user if the evergreen user doesn't exist (which is the case when there is no access token)
+		// get the slack userID and memberId from the user's email
+		slackEnv := env.Settings().Slack
+		slackUser, err := slackEnv.Options.GetSlackUser(slackEnv.Token, email)
+		if err != nil {
+			return nil, errors.Wrapf(err, "getting Slack user with email address '%s'", email)
+		}
+
+		if slackUser != nil {
+			setOnInsertFields[bsonutil.GetDottedKeyName(SettingsKey, userSettingsSlackMemberIdKey)] = slackUser.ID
+			if slackUser.Name != "" {
+				setOnInsertFields[bsonutil.GetDottedKeyName(SettingsKey, userSettingsSlackUsernameKey)] = slackUser.Name
+			}
+		}
+
+	}
+
 	if len(roles) > 0 {
 		setOnInsertFields[RolesKey] = roles
 	}

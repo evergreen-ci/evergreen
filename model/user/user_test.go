@@ -673,7 +673,7 @@ func TestGetOrCreateUser(t *testing.T) {
 			checkUser(t, user, id, newName, newEmail, accessToken, refreshToken)
 			assert.Equal(t, apiKey, user.GetAPIKey())
 		},
-		"UpdateSetsTokensIfNonempty": func(t *testing.T) {
+		"UpdateSetsRefreshTokenIfNonempty": func(t *testing.T) {
 			user, err := GetOrCreateUser(id, name, email, accessToken, refreshToken, nil)
 			require.NoError(t, err)
 
@@ -687,7 +687,7 @@ func TestGetOrCreateUser(t *testing.T) {
 			checkUser(t, user, id, name, email, accessToken, refreshToken)
 			assert.Equal(t, apiKey, user.GetAPIKey())
 
-			user, err = GetOrCreateUser(id, name, email, "", "", nil)
+			user, err = GetOrCreateUser(id, name, email, accessToken, "", nil)
 			require.NoError(t, err)
 
 			checkUser(t, user, id, name, email, accessToken, refreshToken)
@@ -703,9 +703,9 @@ func TestGetOrCreateUser(t *testing.T) {
 		},
 		"RolesMergeCorrectly": func(t *testing.T) {
 			roles := []string{"one", "two"}
-			user, err := GetOrCreateUser(id, "", "", "", "", roles)
+			user, err := GetOrCreateUser(id, "", "", "token", "", roles)
 			assert.NoError(t, err)
-			checkUser(t, user, id, "id", "", "", "")
+			checkUser(t, user, id, "id", "", "token", "")
 			assert.Equal(t, roles, user.Roles())
 
 			user, err = GetOrCreateUser(id, name, email, accessToken, refreshToken, nil)
