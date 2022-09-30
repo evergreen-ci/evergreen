@@ -1,6 +1,7 @@
 package service
 
 import (
+	"github.com/evergreen-ci/evergreen/rest/route"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
@@ -63,32 +64,33 @@ func MustHaveRESTContext(r *http.Request) *model.Context {
 	return pc
 }
 
-// AttachRESTHandler attaches a router at the given root that hooks up REST endpoint URIs to be
+// GetRESTv1App attaches a router at the given root that hooks up REST endpoint URIs to be
 // handled by the given restAPIService.
 func GetRESTv1App(evgService restAPIService) *gimlet.APIApp {
 	app := gimlet.NewApp()
 	rest := &restAPI{evgService}
 	middleware := &restV1middleware{rest}
+	requireUserToggleable := route.NewRequireAuthHandler()
 	app.SetPrefix(evergreen.RestRoutePrefix)
 
 	// REST routes
-	app.AddRoute("/builds/{build_id}").Version(1).Get().Handler(rest.getBuildInfo).Wrap(middleware)
-	app.AddRoute("/builds/{build_id}/status").Version(1).Get().Handler(rest.getBuildStatus).Wrap(middleware)
-	app.AddRoute("/patches/{patch_id}").Version(1).Get().Handler(rest.getPatch).Wrap(middleware)
-	app.AddRoute("/patches/{patch_id}/config").Version(1).Get().Handler(rest.getPatchConfig).Wrap(middleware)
-	app.AddRoute("/projects").Version(1).Get().Handler(rest.getProjectIds).Wrap(middleware)
-	app.AddRoute("/projects/{project_id}").Version(1).Get().Handler(rest.getProjectRef).Wrap(middleware)
-	app.AddRoute("/projects/{project_id}/last_green").Version(1).Get().Handler(rest.lastGreen).Wrap(middleware)
-	app.AddRoute("/projects/{project_id}/revisions/{revision}").Version(1).Get().Handler(rest.getVersionInfoViaRevision).Wrap(middleware)
-	app.AddRoute("/projects/{project_id}/versions").Version(1).Get().Handler(rest.getRecentVersions).Wrap(middleware)
-	app.AddRoute("/tasks/{task_id}").Version(1).Get().Handler(rest.getTaskInfo).Wrap(middleware)
-	app.AddRoute("/tasks/{task_id}/status").Version(1).Get().Handler(rest.getTaskStatus).Wrap(middleware)
-	app.AddRoute("/versions/{version_id}").Version(1).Get().Handler(rest.getVersionInfo).Wrap(middleware)
-	app.AddRoute("/versions/{version_id}").Version(1).Patch().Handler(requireUser(false, rest.modifyVersionInfo, nil)).Wrap(middleware)
-	app.AddRoute("/versions/{version_id}/config").Version(1).Get().Handler(rest.getVersionConfig).Wrap(middleware)
-	app.AddRoute("/versions/{version_id}/parser_project").Version(1).Get().Handler(rest.getVersionProject).Wrap(middleware)
-	app.AddRoute("/versions/{version_id}/status").Version(1).Get().Handler(rest.getVersionStatus).Wrap(middleware)
-	app.AddRoute("/waterfall/{project_id}").Version(1).Get().Handler(rest.getWaterfallData).Wrap(middleware)
+	app.AddRoute("/builds/{build_id}").Version(1).Get().Handler(rest.getBuildInfo).Wrap(requireUserToggleable, middleware)
+	app.AddRoute("/builds/{build_id}/status").Version(1).Get().Handler(rest.getBuildStatus).Wrap(requireUserToggleable, middleware)
+	app.AddRoute("/patches/{patch_id}").Version(1).Get().Handler(rest.getPatch).Wrap(requireUserToggleable, middleware)
+	app.AddRoute("/patches/{patch_id}/config").Version(1).Get().Handler(rest.getPatchConfig).Wrap(requireUserToggleable, middleware)
+	app.AddRoute("/projects").Version(1).Get().Handler(rest.getProjectIds).Wrap(requireUserToggleable, middleware)
+	app.AddRoute("/projects/{project_id}").Version(1).Get().Handler(rest.getProjectRef).Wrap(requireUserToggleable, middleware)
+	app.AddRoute("/projects/{project_id}/last_green").Version(1).Get().Handler(rest.lastGreen).Wrap(requireUserToggleable, middleware)
+	app.AddRoute("/projects/{project_id}/revisions/{revision}").Version(1).Get().Handler(rest.getVersionInfoViaRevision).Wrap(requireUserToggleable, middleware)
+	app.AddRoute("/projects/{project_id}/versions").Version(1).Get().Handler(rest.getRecentVersions).Wrap(requireUserToggleable, middleware)
+	app.AddRoute("/tasks/{task_id}").Version(1).Get().Handler(rest.getTaskInfo).Wrap(requireUserToggleable, middleware)
+	app.AddRoute("/tasks/{task_id}/status").Version(1).Get().Handler(rest.getTaskStatus).Wrap(requireUserToggleable, middleware)
+	app.AddRoute("/versions/{version_id}").Version(1).Get().Handler(rest.getVersionInfo).Wrap(requireUserToggleable, middleware)
+	app.AddRoute("/versions/{version_id}").Version(1).Patch().Handler(rest.modifyVersionInfo).Wrap(requireUserToggleable, middleware)
+	app.AddRoute("/versions/{version_id}/config").Version(1).Get().Handler(rest.getVersionConfig).Wrap(requireUserToggleable, middleware)
+	app.AddRoute("/versions/{version_id}/parser_project").Version(1).Get().Handler(rest.getVersionProject).Wrap(requireUserToggleable, middleware)
+	app.AddRoute("/versions/{version_id}/status").Version(1).Get().Handler(rest.getVersionStatus).Wrap(requireUserToggleable, middleware)
+	app.AddRoute("/waterfall/{project_id}").Version(1).Get().Handler(rest.getWaterfallData).Wrap(requireUserToggleable, middleware)
 
 	return app
 }

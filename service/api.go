@@ -787,11 +787,9 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/validate").Wrap(requireUserToggleable).Handler(as.validateProjectConfig).Post()
 
 	// Internal status reporting
-	app.AddRoute("/status/consistent_task_assignment").Wrap(requireUserToggleable).Handler(as.consistentTaskAssignment).Get()
-	app.AddRoute("/status/stuck_hosts").Wrap(requireUserToggleable).Handler(as.getStuckHosts).Get()
-	app.AddRoute("/status/info").Wrap(requireUserToggleable).Handler(as.serviceStatusSimple).Get()
-	app.AddRoute("/task_queue").Wrap(requireUserToggleable).Handler(as.getTaskQueueSizes).Get()
-	app.AddRoute("/task_queue/limit").Wrap(requireUserToggleable).Handler(as.checkTaskQueueSize).Get()
+	// This route is called by the app server's setup scripts which
+	// doesn't pass user info, so middleware is omitted.
+	app.AddRoute("/status/info").Handler(as.serviceStatusSimple).Get()
 
 	// CLI Operation Backends
 	app.AddRoute("/tasks/{projectId}").Wrap(requireUser, requireProject, viewTasks).Handler(as.listTasks).Get()
