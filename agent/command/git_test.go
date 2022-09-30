@@ -733,7 +733,7 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevisionSetModule() {
 	ref := strings.Trim(out.String(), "\n")
 	s.Equal(correctHash, ref) // this revision is defined in the patch, returned by GetTaskPatch
 	s.NoError(logger.Close())
-	toCheck := `Using revision/ref 'b27779f856b211ffaf97cbc124b7082a20ea8bc0' for module 'sample' (reason: specified in set-module)`
+	toCheck := `Using revision/ref 'b27779f856b211ffaf97cbc124b7082a20ea8bc0' for module 'sample' (reason: specified in set-module).`
 	foundMsg := false
 	for _, task := range comm.GetMockMessages() {
 		for _, msg := range task {
@@ -777,7 +777,7 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevisionManifest() {
 	ref := strings.Trim(out.String(), "\n")
 	s.Equal(correctHash, ref)
 	s.NoError(logger.Close())
-	toCheck := `Using revision/ref '3585388b1591dfca47ac26a5b9a564ec8f138a5e' for module 'sample' (reason: from manifest)`
+	toCheck := `Using revision/ref '3585388b1591dfca47ac26a5b9a564ec8f138a5e' for module 'sample' (reason: from manifest).`
 	foundMsg := false
 	for _, task := range comm.GetMockMessages() {
 		for _, msg := range task {
