@@ -151,7 +151,7 @@ func (uis *UIServer) requireLogin(next http.HandlerFunc) http.HandlerFunc {
 }
 
 func (uis *UIServer) requireLoginToggleable(next http.HandlerFunc) http.HandlerFunc {
-	return requireUser(true, next, uis.RedirectToLogin)
+	return requireUser(true, next, nil)
 }
 
 func (uis *UIServer) requireLoginStatusUnauthorized(next http.HandlerFunc) http.HandlerFunc {
