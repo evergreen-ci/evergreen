@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/jasper"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -249,7 +250,7 @@ func (s *execCmdSuite) TestCommandIntegrationFailureExpansion() {
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
 	err := cmd.Execute(s.ctx, s.comm, s.logger, s.conf)
 	if s.Error(err) {
-		s.Contains(err.Error(), "problem expanding")
+		s.Contains(err.Error(), "expanding")
 	}
 }
 
@@ -276,7 +277,7 @@ func (s *execCmdSuite) TestExecuteErrorsIfCommandAborts() {
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
 	err := cmd.Execute(s.ctx, s.comm, s.logger, s.conf)
 	if s.Error(err) {
-		s.Contains(err.Error(), "aborted")
+		s.True(utility.IsContextError(errors.Cause(err)))
 	}
 }
 

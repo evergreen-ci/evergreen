@@ -250,8 +250,8 @@ func (s *AgentSuite) TestCancelRunCommands() {
 	}
 	cmds := []model.PluginCommandConf{cmd}
 	err := s.a.runCommands(ctx, s.tc, cmds, runCommandsOptions{})
-	s.Error(err)
-	s.Equal("canceled while running commands", err.Error())
+	s.Require().Error(err)
+	s.Contains(err.Error(), context.Canceled.Error())
 }
 
 func (s *AgentSuite) TestPre() {
@@ -465,9 +465,9 @@ func (s *AgentSuite) TestAbort() {
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
 	shouldFind := map[string]bool{
-		"initial task setup":              false,
-		"Running post-task commands":      false,
-		"Sending final status as: failed": false,
+		"initial task setup":                  false,
+		"Running post-task commands":          false,
+		"Sending final task status: 'failed'": false,
 	}
 	s.Require().NoError(s.tc.logger.Close())
 	for _, m := range s.mockCommunicator.GetMockMessages()["task_id"] {
@@ -814,7 +814,7 @@ task_groups:
 	s.Error(s.a.runPostTaskCommands(ctx, s.tc))
 	s.NoError(s.tc.logger.Close())
 	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
-	s.Contains(msgs[len(msgs)-1].Message, "Error running post-task command.")
+	s.Contains(msgs[len(msgs)-1].Message, "running post-task commands")
 }
 
 func (s *AgentSuite) TestGroupPreTaskCommands() {
@@ -885,7 +885,7 @@ task_groups:
 	_ = s.tc.logger.Close()
 	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
 	s.Equal("Running command 'shell.exec' (step 1 of 1).", msgs[2].Message)
-	s.Contains(msgs[len(msgs)-2].Message, "Finished 'shell.exec'.")
+	s.Contains(msgs[len(msgs)-2].Message, "Finished command 'shell.exec'")
 	s.Contains(msgs[len(msgs)-1].Message, "Finished running post-task commands.")
 }
 
@@ -921,8 +921,8 @@ task_groups:
 	s.a.runPostGroupCommands(ctx, s.tc)
 	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
 	s.Require().True(len(msgs) >= 2)
-	s.Equal("Running command 'shell.exec' (step 1 of 1)", msgs[1].Message)
-	s.Contains(msgs[len(msgs)-1].Message, "Finished 'shell.exec'.")
+	s.Equal("Running command 'shell.exec' (step 1 of 1).", msgs[1].Message)
+	s.Contains(msgs[len(msgs)-1].Message, "Finished command 'shell.exec'")
 }
 
 func (s *AgentSuite) TestGroupTimeoutCommands() {
@@ -961,7 +961,7 @@ task_groups:
 	_ = s.tc.logger.Close()
 	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
 	s.Equal("Running command 'shell.exec' (step 1 of 1).", msgs[2].Message)
-	s.Contains(msgs[len(msgs)-2].Message, "Finished 'shell.exec'.")
+	s.Contains(msgs[len(msgs)-2].Message, "Finished command 'shell.exec'")
 }
 
 func (s *AgentSuite) TestTimeoutDoesNotWaitForChildProcs() {

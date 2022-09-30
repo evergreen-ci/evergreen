@@ -140,6 +140,9 @@ func (s *createHostSuite) TestParamValidation() {
 
 	// verify errors if missing required info for ami
 	s.params["ami"] = "ami"
+	delete(s.params, "security_group_ids")
+	delete(s.params, "subnet_id")
+	delete(s.params, "instance_type")
 	s.NoError(s.cmd.ParseParams(s.params))
 	err := s.cmd.expandAndValidate(s.conf)
 	s.Contains(err.Error(), "must specify security group IDs if AMI is set")
@@ -171,7 +174,7 @@ func (s *createHostSuite) TestParamValidation() {
 	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "scope must be build or task")
 	s.params["timeout_teardown_secs"] = 55
 	s.NoError(s.cmd.ParseParams(s.params))
-	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "timeout teardown seconds must be between 60 and 604800")
+	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "timeout teardown (seconds) must be between 60 and 604800")
 
 	// Validate num_hosts can be an int
 	s.params["timeout_teardown_secs"] = 60

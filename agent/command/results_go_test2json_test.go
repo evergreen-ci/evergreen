@@ -73,7 +73,7 @@ func (s *test2JSONSuite) TestNoFiles() {
 	}
 	err = s.c.ParseParams(s.args)
 	s.Require().Error(err)
-	s.Contains(err, "must specify at least one file pattern to parse")
+	s.Contains(err.Error(), "must specify at least one file pattern to parse")
 
 	err = s.c.ParseParams(nil)
 	s.Require().Error(err)

@@ -66,7 +66,7 @@ FileLoop:
 		//strip any leading slash from the tarball header path
 		intarball = strings.TrimLeft(intarball, "/")
 
-		logger.Infoln("Adding to tarball:", intarball)
+		logger.Infof("Adding file to tarball: '%s'.", intarball)
 		if _, hasKey := processed[intarball]; hasKey {
 			continue
 		} else {
@@ -92,22 +92,25 @@ FileLoop:
 		numFilesArchived++
 		err := tarWriter.WriteHeader(hdr)
 		if err != nil {
-			return numFilesArchived, errors.Wrapf(err, "writing header for tarball '%s'", intarball)
+			return numFilesArchived, errors.Wrapf(err, "writing tarball header for file '%s'", intarball)
 		}
 
 		in, err := os.Open(file.Path)
 		if err != nil {
 			return numFilesArchived, errors.Wrapf(err, "opening file '%s'", file.Path)
 		}
-		logger.Debug(errors.Wrapf(in.Close(), "closing file '%s'", file.Path))
 		amountWrote, err := io.Copy(tarWriter, in)
 		if err != nil {
+			logger.Debug(errors.Wrapf(in.Close(), "closing file '%s'", file.Path))
 			return numFilesArchived, errors.Wrapf(err, "copying file '%s' into tarball", file.Path)
 		}
 
 		if amountWrote != hdr.Size {
+			logger.Debug(errors.Wrapf(in.Close(), "closing file '%s'", file.Path))
 			return numFilesArchived, errors.Errorf("tarball header size is %d but actually wrote %d", hdr.Size, amountWrote)
 		}
+
+		logger.Debug(errors.Wrapf(in.Close(), "closing file '%s'", file.Path))
 		logger.Warning(errors.Wrap(tarWriter.Flush(), "flushing tar writer"))
 	}
 

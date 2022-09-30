@@ -80,16 +80,16 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 		fullCommandName := getCommandName(commandInfo, cmd)
 
 		if !commandInfo.RunOnVariant(tc.taskConfig.BuildVariant.Name) {
-			tc.logger.Task().Infof("Skipping command '%s' on variant %s (step %d of %d).",
+			tc.logger.Task().Infof("Skipping command %s on variant %s (step %d of %d).",
 				fullCommandName, tc.taskConfig.BuildVariant.Name, index, total)
 			continue
 		}
 
 		if len(cmds) == 1 {
-			tc.logger.Task().Infof("Running command '%s' (step %d of %d).", fullCommandName, index, total)
+			tc.logger.Task().Infof("Running command %s (step %d of %d).", fullCommandName, index, total)
 		} else {
 			// for functions with more than one command
-			tc.logger.Task().Infof("Running command '%s' (step %d.%d of %d).", fullCommandName, index, idx+1, total)
+			tc.logger.Task().Infof("Running command %s (step %d.%d of %d).", fullCommandName, index, idx+1, total)
 		}
 		for key, val := range commandInfo.Vars {
 			var newVal string
@@ -140,7 +140,7 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 			}
 			return errors.Wrap(ctx.Err(), "agent stopped early")
 		}
-		tc.logger.Task().Infof("Finished command '%s' in %s.", fullCommandName, time.Since(start).String())
+		tc.logger.Task().Infof("Finished command %s in %s.", fullCommandName, time.Since(start).String())
 		if (options.isTaskCommands || options.failPreAndPost) && a.endTaskResp != nil && !a.endTaskResp.ShouldContinue {
 			// only error if we're running a command that should fail, and we don't want to continue to run other tasks
 			return errors.Errorf("task status has been set to '%s'; triggering end task", a.endTaskResp.Status)
@@ -178,7 +178,7 @@ func getCommandName(commandInfo model.PluginCommandConf, cmd command.Command) st
 	if commandInfo.Function != "" {
 		commandName = fmt.Sprintf(`'%s' in "%s"`, commandName, commandInfo.Function)
 	} else if commandInfo.DisplayName != "" {
-		commandName = fmt.Sprintf(`("%s") %s`, commandInfo.DisplayName, commandName)
+		commandName = fmt.Sprintf(`("%s") '%s'`, commandInfo.DisplayName, commandName)
 	} else {
 		commandName = fmt.Sprintf("'%s'", commandName)
 	}

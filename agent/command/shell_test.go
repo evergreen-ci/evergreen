@@ -15,7 +15,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/jasper"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -176,8 +178,7 @@ func (s *shellExecuteCommandSuite) TestCancellingContextShouldCancelCommand() {
 
 	err := cmd.Execute(ctx, s.comm, s.logger, s.conf)
 	s.Require().NotNil(err)
-	s.Contains(err.Error(), "shell command interrupted")
-	s.NotContains(err.Error(), "error while stopping process")
+	s.True(utility.IsContextError(errors.Cause(err)))
 }
 
 func (s *shellExecuteCommandSuite) TestEnvIsSetAndDefaulted() {
