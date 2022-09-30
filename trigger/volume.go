@@ -39,14 +39,14 @@ func (t *volumeTriggers) Fetch(e *event.EventLogEntry) error {
 	var err error
 	t.volume, err = host.FindVolumeByID(e.ResourceId)
 	if err != nil {
-		return errors.Wrap(err, "failed to fetch volume")
+		return errors.Wrapf(err, "finding volume '%s'", e.ResourceId)
 	}
 	if t.volume == nil {
-		return errors.Errorf("volume '%s' doesn't exist", e.ResourceId)
+		return errors.Errorf("volume '%s' not found", e.ResourceId)
 	}
 
 	if err = t.uiConfig.Get(evergreen.GetEnvironment()); err != nil {
-		return errors.Wrap(err, "Failed to fetch ui config")
+		return errors.Wrap(err, "fetching UI config")
 	}
 
 	t.templateData = hostTemplateData{
@@ -87,7 +87,7 @@ func (t *volumeTriggers) generate(sub *event.Subscription) (*notification.Notifi
 		return nil, nil
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to parse templates")
+		return nil, errors.Wrapf(err, "creating template for event type '%s'", sub.Subscriber.Type)
 	}
 
 	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
@@ -114,15 +114,15 @@ func (t *volumeTriggers) volumeExpiration(sub *event.Subscription) (*notificatio
 func getUserTimeZone(userID string) (*time.Location, error) {
 	user, err := user.FindOneById(userID)
 	if err != nil {
-		return nil, errors.Wrapf(err, "can't get user '%s' for subscription owner", userID)
+		return nil, errors.Wrapf(err, "finding user '%s' for subscription owner", userID)
 	}
 	if user == nil {
-		return nil, errors.Errorf("no user '%s' found", userID)
+		return nil, errors.Errorf("user '%s' not found", userID)
 	}
 
 	userTimeZone, err := time.LoadLocation(user.Settings.Timezone)
 	if err != nil {
-		return nil, errors.Wrapf(err, "can't parse timezone '%s'", user.Settings.Timezone)
+		return nil, errors.Wrapf(err, "parsing user timezone '%s'", user.Settings.Timezone)
 	}
 
 	return userTimeZone, nil

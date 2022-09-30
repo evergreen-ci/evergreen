@@ -24,7 +24,7 @@ const (
 	expiringHostEmailSubject         = `{{.Distro}} host termination reminder`
 	expiringHostEmailBody            = `Your {{.Distro}} host '{{.Name}}' will be terminated at {{.ExpirationTime}}. Visit the <a href={{.URL}}>spawnhost page</a> to extend its lifetime.`
 	expiringHostSlackBody            = `Your {{.Distro}} host '{{.Name}}' will be terminated at {{.ExpirationTime}}. Visit the <{{.URL}}|spawnhost page> to extend its lifetime.`
-	expiringHostSlackAttachmentTitle = "Spawnhost Page"
+	expiringHostSlackAttachmentTitle = "Spawn Host Page"
 )
 
 type hostBase struct {
@@ -46,14 +46,14 @@ func (t *hostBase) Fetch(e *event.EventLogEntry) error {
 
 	t.host, err = host.FindOneId(e.ResourceId)
 	if err != nil {
-		return errors.Wrap(err, "failed to fetch host")
+		return errors.Wrapf(err, "finding host '%s'", e.ResourceId)
 	}
 	if t.host == nil {
-		return errors.New("couldn't find host")
+		return errors.Errorf("host '%s' not found", e.ResourceId)
 	}
 
 	if err = t.uiConfig.Get(evergreen.GetEnvironment()); err != nil {
-		return errors.Wrap(err, "Failed to fetch ui config")
+		return errors.Wrap(err, "fetching UI config")
 	}
 
 	t.event = e
@@ -94,7 +94,7 @@ type hostTriggers struct {
 func (t *hostTriggers) Fetch(e *event.EventLogEntry) error {
 	err := t.hostBase.Fetch(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to fetch host data")
+		return errors.Wrap(err, "fetching host data")
 	}
 
 	t.templateData = hostTemplateData{
@@ -122,7 +122,7 @@ func (t *hostTriggers) generate(sub *event.Subscription) (*notification.Notifica
 		return nil, nil
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to parse templates")
+		return nil, errors.Wrapf(err, "creating template for event type '%s'", sub.Subscriber.Type)
 	}
 
 	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
@@ -158,12 +158,12 @@ func (t *hostTemplateData) hostExpirationEmailPayload(subjectString, bodyString 
 func (t *hostTemplateData) hostExpirationSlackPayload(messageString string, linkTitle string) (*notification.SlackPayload, error) {
 	messageTemplate, err := template.New("subject").Parse(messageString)
 	if err != nil {
-		return nil, errors.Wrap(err, "parsing slack template")
+		return nil, errors.Wrap(err, "parsing Slack template")
 	}
 
 	msgBuf := &bytes.Buffer{}
 	if err = messageTemplate.Execute(msgBuf, t); err != nil {
-		return nil, errors.Wrap(err, "executing slack template")
+		return nil, errors.Wrap(err, "executing Slack template")
 	}
 
 	return &notification.SlackPayload{

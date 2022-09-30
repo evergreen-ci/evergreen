@@ -103,7 +103,7 @@ func getTaskLogURLs(data *jiraTemplateData) ([]taskInfo, error) {
 			result := make([]taskInfo, 0)
 			execTasks, err := task.Find(task.ByIds(data.Task.ExecutionTasks))
 			if err != nil {
-				return nil, errors.Wrap(err, "failed to fetch execution tasks")
+				return nil, errors.Wrapf(err, "finding execution tasks for task '%s'", data.Task.Id)
 			}
 
 			for _, execTask := range execTasks {
@@ -223,7 +223,7 @@ func (j *jiraBuilder) build() (*message.JiraIssue, error) {
 	}
 
 	grip.Info(message.Fields{
-		"message":      "creating jira ticket for failure",
+		"message":      "creating Jira ticket for failure",
 		"type":         j.issueType,
 		"jira_project": j.project,
 		"task":         j.data.Task.Id,

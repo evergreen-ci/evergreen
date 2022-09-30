@@ -26,11 +26,11 @@ import (
 func NotificationsFromEvent(e *event.EventLogEntry) ([]notification.Notification, error) {
 	h := registry.eventHandler(e.ResourceType, e.EventType)
 	if h == nil {
-		return nil, errors.Errorf("unknown event ResourceType '%s' or EventType '%s'", e.ResourceType, e.EventType)
+		return nil, errors.Errorf("unknown event resource type '%s' or event type '%s'", e.ResourceType, e.EventType)
 	}
 
 	if err := h.Fetch(e); err != nil {
-		return nil, errors.Wrapf(err, "error fetching data for event: %s (%s, %s)", e.ID, e.ResourceType, e.EventType)
+		return nil, errors.Wrapf(err, "fetching data for event '%s' (resource type: '%s', event type: '%s')", e.ID, e.ResourceType, e.EventType)
 	}
 
 	subscriptions, err := event.FindSubscriptionsByAttributes(e.ResourceType, h.Attributes())
@@ -44,7 +44,7 @@ func NotificationsFromEvent(e *event.EventLogEntry) ([]notification.Notification
 		"num_subscriptions":   len(subscriptions),
 	}
 	if err != nil {
-		err = errors.Wrapf(err, "error fetching subscriptions for event: %s (%s, %s)", e.ID, e.ResourceType, e.EventType)
+		err = errors.Wrapf(err, "fetching subscriptions for event '%s' (resource type: '%s', event type: '%s')", e.ID, e.ResourceType, e.EventType)
 		grip.Error(message.WrapError(err, msg))
 		return nil, err
 	}
@@ -104,7 +104,7 @@ func EvalProjectTriggers(e *event.EventLogEntry, processor projectProcessor) ([]
 	case event.TaskFinished:
 		t, err := task.FindOneId(e.ResourceId)
 		if err != nil {
-			return nil, errors.Wrap(err, "error finding task")
+			return nil, errors.Wrapf(err, "finding task '%s'", e.ResourceId)
 		}
 		if t == nil {
 			return nil, errors.Errorf("task '%s' not found", e.ResourceId)
@@ -116,14 +116,14 @@ func EvalProjectTriggers(e *event.EventLogEntry, processor projectProcessor) ([]
 		}
 		data, ok := e.Data.(*event.BuildEventData)
 		if !ok {
-			return nil, errors.Errorf("unable to convert %#v to BuildEventData", e.Data)
+			return nil, errors.Errorf("unable to convert %T to BuildEventData", e.Data)
 		}
 		if data.Status != evergreen.BuildFailed && data.Status != evergreen.BuildSucceeded {
 			return nil, nil
 		}
 		b, err := build.FindOneId(e.ResourceId)
 		if err != nil {
-			return nil, errors.Wrap(err, "error finding build")
+			return nil, errors.Wrapf(err, "finding build '%s'", e.ResourceId)
 		}
 		if b == nil {
 			return nil, errors.Errorf("build '%s' not found", e.ResourceId)
@@ -140,11 +140,14 @@ func triggerDownstreamProjectsForTask(t *task.Task, e *event.EventLogEntry, proc
 	}
 	downstreamProjects, err := model.FindDownstreamProjects(t.Project)
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding project ref")
+		return nil, errors.Wrapf(err, "finding downstream projects of project '%s'", t.Project)
 	}
 	sourceVersion, err := model.VersionFindOneId(t.Version)
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding version")
+		return nil, errors.Wrapf(err, "finding source version '%s'", t.Version)
+	}
+	if sourceVersion == nil {
+		return nil, errors.Errorf("source version '%s' not found", t.Version)
 	}
 
 	catcher := grip.NewBasicCatcher()
@@ -220,11 +223,14 @@ func triggerDownstreamProjectsForBuild(b *build.Build, e *event.EventLogEntry, p
 	}
 	downstreamProjects, err := model.FindDownstreamProjects(b.Project)
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding project ref")
+		return nil, errors.Wrapf(err, "finding downstream projects of project '%s'", b.Project)
 	}
 	sourceVersion, err := model.VersionFindOneId(b.Version)
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding version")
+		return nil, errors.Wrapf(err, "finding source version '%s'", b.Version)
+	}
+	if sourceVersion == nil {
+		return nil, errors.Errorf("source version '%s' not found", b.Version)
 	}
 
 	catcher := grip.NewBasicCatcher()
@@ -244,7 +250,7 @@ projectLoop:
 			if trigger.BuildVariantRegex != "" {
 				regex, err := regexp.Compile(trigger.BuildVariantRegex)
 				if err != nil {
-					catcher.Add(err)
+					catcher.Wrapf(err, "compiling build variant regexp '%s'", trigger.BuildVariantRegex)
 					continue
 				}
 				if !regex.MatchString(b.BuildVariant) {
