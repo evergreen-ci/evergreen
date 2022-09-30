@@ -318,7 +318,10 @@ func (p *ProjectRef) IsEnabled() bool {
 // so this function will return false.
 func (p *ProjectRef) IsPrivate() bool {
 	flags, err := evergreen.GetServiceFlags()
-	return err == nil && !flags.PartialRouteAuthDisabled && utility.FromBoolPtr(p.Private)
+	if err != nil {
+		return utility.FromBoolPtr(p.Private)
+	}
+	return !flags.PartialRouteAuthDisabled && utility.FromBoolPtr(p.Private)
 }
 
 func (p *ProjectRef) IsRestricted() bool {

@@ -129,8 +129,8 @@ func requireUser(skipWithToggle bool, onSuccess, onFail http.HandlerFunc) http.H
 			if err != nil {
 				gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving admin settings")))
 			}
-			if flags.PartialRouteAuthDisabled {
-				onFail(w, r)
+			if !flags.PartialRouteAuthDisabled {
+				onSuccess(w, r)
 				return
 			}
 		}
