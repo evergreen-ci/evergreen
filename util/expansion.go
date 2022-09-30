@@ -90,10 +90,10 @@ func (exp *Expansions) ExpandString(toExpand string) (string, error) {
 				malformedFound = true
 			}
 
-			// parse into the name and default value
-			var defaultVal string
+			// parse into the name and secondary value
+			var secondaryValue string
 			if idx := strings.Index(match, "|"); idx != -1 {
-				defaultVal = match[idx+1:]
+				secondaryValue = match[idx+1:]
 				match = match[0:idx]
 			}
 
@@ -102,7 +102,15 @@ func (exp *Expansions) ExpandString(toExpand string) (string, error) {
 				return []byte(exp.Get(match))
 			}
 
-			return []byte(defaultVal)
+			// look for an expansion in the secondary value
+			if strings.HasPrefix(secondaryValue, "*") {
+				// trim off *
+				secondaryValue = secondaryValue[1:]
+				return []byte(exp.Get(secondaryValue))
+			}
+
+			// return the raw value if no expansion is found for either value
+			return []byte(secondaryValue)
 		}))
 
 	if malformedFound || strings.Contains(expanded, "${") {
