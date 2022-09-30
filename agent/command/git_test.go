@@ -437,7 +437,7 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.Equal("set +o xtrace", cmds[0])
-	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir' --branch 'main'\" --filter=tree:0 --single-branch", cmds[1])
+	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir' --branch 'main' --filter=tree:0 --single-branch\"", cmds[1])
 	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir' --branch 'main' --filter=tree:0 --single-branch", cmds[2])
 	s.Equal("set -o xtrace", cmds[3])
 	s.Equal("cd dir", cmds[4])
@@ -448,7 +448,7 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.Equal("set +o xtrace", cmds[0])
-	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir'\" --filter=tree:0 --single-branch", cmds[1])
+	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir' --filter=tree:0 --single-branch\"", cmds[1])
 	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir' --filter=tree:0 --single-branch", cmds[2])
 	s.Equal("set -o xtrace", cmds[3])
 	s.Equal("cd dir", cmds[4])
@@ -460,7 +460,7 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	cmds, err = opts.buildHTTPCloneCommand()
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
-	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir' --branch 'main'\" --filter=tree:0 --single-branch", cmds[1])
+	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir' --branch 'main' --filter=tree:0 --single-branch\"", cmds[1])
 	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir' --branch 'main' --filter=tree:0 --single-branch", cmds[2])
 
 	// ensure that we aren't sending the github oauth token to other
@@ -469,7 +469,7 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	cmds, err = opts.buildHTTPCloneCommand()
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
-	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@someothergithost.com/deafgoat/mci_test.git 'dir' --branch 'main'\" --filter=tree:0 --single-branch", cmds[1])
+	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@someothergithost.com/deafgoat/mci_test.git 'dir' --branch 'main' --filter=tree:0 --single-branch\"", cmds[1])
 	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@someothergithost.com/deafgoat/mci_test.git 'dir' --branch 'main' --filter=tree:0 --single-branch", cmds[2])
 }
 
