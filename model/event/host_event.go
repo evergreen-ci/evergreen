@@ -260,6 +260,7 @@ func LogHostScriptExecuteFailed(hostID string, err error) {
 	LogHostEvent(hostID, EventHostScriptExecuteFailed, HostEventData{Logs: err.Error()})
 }
 
-func LogVolumeMigrationFailed(hostID string) {
-	LogHostEvent(hostID, EventVolumeMigrationFailed, HostEventData{})
+// LogVolumeMigrationFailed is used when a volume is unable to migrate to a new host.
+func LogVolumeMigrationFailed(hostID string, err error) {
+	LogHostEvent(hostID, EventVolumeMigrationFailed, HostEventData{Logs: err.Error()})
 }

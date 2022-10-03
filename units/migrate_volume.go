@@ -32,8 +32,7 @@ type volumeMigrationJob struct {
 	VolumeID      string             `bson:"volume_id" yaml:"volume_id"`
 	ModifyOptions cloud.SpawnOptions `bson:"modify_options" json:"modify_options" yaml:"modify_options"`
 
-	InitialHostID      string `bson:"initial_host_id"`
-	SpawnhostStopJobID string `bson:"spawnhost_stop_job_id"`
+	InitialHostID string `bson:"initial_host_id"`
 
 	env         evergreen.Environment
 	volume      *host.Volume
@@ -147,24 +146,20 @@ func (j *volumeMigrationJob) Run(ctx context.Context) {
 
 // stopInitialHost inspects the initial host's status and stops it if the host is still running.
 func (j *volumeMigrationJob) stopInitialHost(ctx context.Context) {
-	// Stop host if this operation has not been attempted yet
-	if j.SpawnhostStopJobID == "" {
-		ts := utility.RoundPartOfMinute(1).Format(TSFormat)
-		stopJob := NewSpawnhostStopJob(j.initialHost, evergreen.User, ts)
-		err := amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), stopJob)
-		if err != nil {
-			j.AddRetryableError(err)
-			return
-		}
-		grip.Info(message.Fields{
-			"message":         "stopping initial host",
-			"job_id":          j.ID(),
-			"initial_host_id": j.InitialHostID,
-		})
-		j.SpawnhostStopJobID = stopJob.ID()
-		j.AddRetryableError(errors.Errorf("initial host '%s' not yet stopped", j.InitialHostID))
+	ts := utility.RoundPartOfMinute(1).Format(TSFormat)
+	stopJob := NewSpawnhostStopJob(j.initialHost, evergreen.User, ts)
+	err := amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), stopJob)
+	if err != nil {
+		j.AddRetryableError(err)
 		return
 	}
+	grip.Info(message.Fields{
+		"message":         "stopping initial host",
+		"job_id":          j.ID(),
+		"initial_host_id": j.InitialHostID,
+	})
+	j.AddRetryableError(errors.Errorf("initial host '%s' not yet stopped", j.InitialHostID))
+	return
 
 	j.AddRetryableError(errors.Errorf("initial host '%s' not yet stopped", j.InitialHostID))
 }
@@ -198,13 +193,13 @@ func (j *volumeMigrationJob) startNewHost(ctx context.Context) {
 // finishJob marks the job as completed and attempts some additional cleanup if this is the job's final attempt.
 func (j *volumeMigrationJob) finishJob(ctx context.Context) {
 	if !j.RetryInfo().ShouldRetry() || j.RetryInfo().GetRemainingAttempts() == 0 {
-		newHost, err := host.FindHostWithHomeVolume(j.VolumeID)
+		volumeHost, err := host.FindHostWithHomeVolume(j.VolumeID)
 		if err != nil {
 			j.AddRetryableError(errors.Wrapf(err, "finding host with volume '%s'", j.VolumeID))
 			return
 		}
-		if newHost == nil {
-			event.LogVolumeMigrationFailed(j.InitialHostID)
+		if volumeHost == nil || volumeHost.Id == j.InitialHostID {
+			event.LogVolumeMigrationFailed(j.InitialHostID, j.Error())
 			grip.Error(message.Fields{
 				"message": "volume failed to migrate",
 				"job_id":  j.ID(),
