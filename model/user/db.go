@@ -310,18 +310,17 @@ func GetOrCreateUser(userId, displayName, email, accessToken, refreshToken strin
 		DispNameKey:     displayName,
 		EmailAddressKey: email,
 	}
-	if refreshToken != "" {
-		setFields[bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheRefreshTokenKey)] = refreshToken
-	}
 	if accessToken != "" {
 		setFields[bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheAccessTokenKey)] = accessToken
+	}
+	if refreshToken != "" {
+		setFields[bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheRefreshTokenKey)] = refreshToken
 	}
 
 	setOnInsertFields := bson.M{
 		APIKeyKey: utility.RandomString(),
 		bsonutil.GetDottedKeyName(SettingsKey, UseSpruceOptionsKey, SpruceV1Key): true,
 	}
-
 	if len(roles) > 0 {
 		setOnInsertFields[RolesKey] = roles
 	}
