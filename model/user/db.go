@@ -354,6 +354,16 @@ func GetOrCreateUser(userId, displayName, email, accessToken, refreshToken strin
 }
 
 func setSlackInformation(env evergreen.Environment, u *DBUser) error {
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		return errors.Wrap(err, "getting service flags")
+	}
+
+	// TODO (EVG-17988): remove this flag once the slack information has been populated for all users
+	if flags.SlackAppDisabled {
+		return nil
+	}
+
 	if u.Settings.SlackMemberId != "" {
 		// user already has a slack member id set
 		return nil
