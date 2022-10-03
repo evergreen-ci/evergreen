@@ -18,7 +18,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// A plugin command to fetch a resource from an s3 bucket and download it to
+// s3get is a command to fetch a resource from an S3 bucket and download it to
 // the local machine.
 type s3get struct {
 	// AwsKey and AwsSecret are the user's credentials for
@@ -26,17 +26,17 @@ type s3get struct {
 	AwsKey    string `mapstructure:"aws_key" plugin:"expand"`
 	AwsSecret string `mapstructure:"aws_secret" plugin:"expand"`
 
-	// RemoteFile is the filepath of the file to get, within its bucket
+	// RemoteFile is the file path of the file to get, within its bucket.
 	RemoteFile string `mapstructure:"remote_file" plugin:"expand"`
 
-	// Region is the s3 region where the bucket is located. It defaults to
+	// Region is the S3 region where the bucket is located. It defaults to
 	// "us-east-1".
 	Region string `mapstructure:"region" plugin:"region"`
 
-	// Bucket is the s3 bucket holding the desired file
+	// Bucket is the S3 bucket holding the desired file.
 	Bucket string `mapstructure:"bucket" plugin:"expand"`
 
-	// BuildVariants stores a list of MCI build variants to run the command for.
+	// BuildVariants stores a list of build variants to run the command for.
 	// If the list is empty, it runs for all build variants.
 	BuildVariants []string `mapstructure:"build_variants" plugin:"expand"`
 
@@ -58,12 +58,12 @@ func (c *s3get) Name() string { return "s3.get" }
 // s3get-specific implementation of ParseParams.
 func (c *s3get) ParseParams(params map[string]interface{}) error {
 	if err := mapstructure.Decode(params, c); err != nil {
-		return errors.Wrapf(err, "error decoding %v params", c.Name())
+		return errors.Wrap(err, "decoding mapstructure params")
 	}
 
 	// make sure the command params are valid
 	if err := c.validateParams(); err != nil {
-		return errors.Wrapf(err, "error validating %v params", c.Name())
+		return errors.Wrap(err, "validating params")
 	}
 
 	return nil
@@ -73,13 +73,13 @@ func (c *s3get) ParseParams(params map[string]interface{}) error {
 // local_file and extract_to is specified.
 func (c *s3get) validateParams() error {
 	if c.AwsKey == "" {
-		return errors.New("aws_key cannot be blank")
+		return errors.New("AWS key cannot be blank")
 	}
 	if c.AwsSecret == "" {
-		return errors.New("aws_secret cannot be blank")
+		return errors.New("AWS secret cannot be blank")
 	}
 	if c.RemoteFile == "" {
-		return errors.New("remote_file cannot be blank")
+		return errors.New("remote file cannot be blank")
 	}
 
 	if c.Region == "" {
@@ -88,17 +88,17 @@ func (c *s3get) validateParams() error {
 
 	// make sure the bucket is valid
 	if err := validateS3BucketName(c.Bucket); err != nil {
-		return errors.Wrapf(err, "%v is an invalid bucket name", c.Bucket)
+		return errors.Wrapf(err, "validating bucket name '%s'", c.Bucket)
 	}
 
 	// make sure local file and extract-to dir aren't both specified
 	if c.LocalFile != "" && c.ExtractTo != "" {
-		return errors.New("cannot specify both local_file and extract_to directory")
+		return errors.New("cannot specify both local file path and directory to extract to")
 	}
 
 	// make sure one is specified
 	if c.LocalFile == "" && c.ExtractTo == "" {
-		return errors.New("must specify either local_file or extract_to")
+		return errors.New("must specify either local file path or directory to extract to")
 	}
 
 	return nil
@@ -127,12 +127,12 @@ func (c *s3get) Execute(ctx context.Context,
 
 	// expand necessary params
 	if err := c.expandParams(conf); err != nil {
-		return err
+		return errors.Wrap(err, "applying expansions")
 	}
 
 	// validate the params
 	if err := c.validateParams(); err != nil {
-		return errors.Wrap(err, "expanded params are not valid")
+		return errors.Wrap(err, "validating expanded params")
 	}
 
 	// create pail bucket
@@ -141,15 +141,15 @@ func (c *s3get) Execute(ctx context.Context,
 	defer utility.PutHTTPClient(httpClient)
 	err := c.createPailBucket(httpClient)
 	if err != nil {
-		return errors.Wrap(err, "problem connecting to s3")
+		return errors.Wrap(err, "creating S3 bucket")
 	}
 
 	if err := c.bucket.Check(ctx); err != nil {
-		return errors.Wrap(err, "invalid pail bucket")
+		return errors.Wrap(err, "checking bucket")
 	}
 
 	if !c.shouldRunForVariant(conf.BuildVariant.Name) {
-		logger.Task().Infof("Skipping S3 get of remote file %v for variant %v",
+		logger.Task().Infof("Skipping S3 get of remote file '%s' for variant '%s'.",
 			c.RemoteFile, conf.BuildVariant.Name)
 		return nil
 	}
@@ -162,7 +162,7 @@ func (c *s3get) Execute(ctx context.Context,
 		}
 
 		if err := createEnclosingDirectoryIfNeeded(c.LocalFile); err != nil {
-			return errors.Wrap(err, "unable to create local_file directory")
+			return errors.Wrapf(err, "creating parent directories for local file '%s'", c.LocalFile)
 		}
 	}
 
@@ -172,7 +172,7 @@ func (c *s3get) Execute(ctx context.Context,
 		}
 
 		if err := createEnclosingDirectoryIfNeeded(c.ExtractTo); err != nil {
-			return errors.Wrap(err, "unable to create extract_to directory")
+			return errors.Wrapf(err, "creating parent directories for extraction directory '%s'", c.ExtractTo)
 		}
 	}
 
@@ -185,7 +185,7 @@ func (c *s3get) Execute(ctx context.Context,
 	case err := <-errChan:
 		return errors.WithStack(err)
 	case <-ctx.Done():
-		logger.Execution().Info("Received signal to terminate execution of S3 Get Command")
+		logger.Execution().Infof("Canceled while running command '%s': %s", c.Name(), ctx.Err())
 		return nil
 	}
 
@@ -198,25 +198,25 @@ func (c *s3get) getWithRetry(ctx context.Context, logger client.LoggerProducer) 
 	defer timer.Stop()
 
 	for i := 1; i <= maxS3OpAttempts; i++ {
-		logger.Task().Infof("fetching %s from s3 bucket %s (attempt %d of %d)",
+		logger.Task().Infof("Fetching remote file '%s' from S3 bucket '%s' (attempt %d of %d).",
 			c.RemoteFile, c.Bucket, i, maxS3OpAttempts)
 
 		select {
 		case <-ctx.Done():
-			return errors.New("s3 get operation aborted")
+			return errors.Errorf("canceled while running command '%s'", c.Name())
 		case <-timer.C:
 			err := errors.WithStack(c.get(ctx))
 			if err == nil {
 				return nil
 			}
 
-			logger.Execution().Errorf("problem getting %s from s3 bucket, retrying. [%v]",
+			logger.Execution().Errorf("Problem getting remote file '%s' from S3 bucket, retrying: %s",
 				c.RemoteFile, err)
 			timer.Reset(backoffCounter.Duration())
 		}
 	}
 
-	return errors.Errorf("S3 get failed after %d attempts", maxS3OpAttempts)
+	return errors.Errorf("command '%s' failed after %d attempts", c.Name(), maxS3OpAttempts)
 }
 
 // Fetch the specified resource from s3.
@@ -226,22 +226,22 @@ func (c *s3get) get(ctx context.Context) error {
 		// remove the file, if it exists
 		if utility.FileExists(c.LocalFile) {
 			if err := os.RemoveAll(c.LocalFile); err != nil {
-				return errors.Wrapf(err, "error clearing local file %v", c.LocalFile)
+				return errors.Wrapf(err, "removing already-existing local file '%s'", c.LocalFile)
 			}
 		}
 
 		// download to local file
 		return errors.Wrapf(c.bucket.Download(ctx, c.RemoteFile, c.LocalFile),
-			"error downloading %s to %s", c.RemoteFile, c.LocalFile)
+			"downloading remote file '%s' to local file '%s'", c.RemoteFile, c.LocalFile)
 
 	}
 
 	reader, err := c.bucket.Reader(ctx, c.RemoteFile)
 	if err != nil {
-		return errors.WithStack(err)
+		return errors.Wrapf(err, "getting reader for remote file '%s'", c.RemoteFile)
 	}
 	if err := agentutil.ExtractTarball(ctx, reader, c.ExtractTo, []string{}); err != nil {
-		return errors.Wrapf(err, "problem extracting %s from archive", c.RemoteFile)
+		return errors.Wrapf(err, "extracting file '%s' from archive to destination '%s'", c.RemoteFile, c.ExtractTo)
 	}
 
 	return nil

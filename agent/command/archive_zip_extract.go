@@ -28,7 +28,7 @@ func zipExtractFactory() Command   { return &zipExtract{} }
 func (e *zipExtract) Name() string { return "archive.zip_extract" }
 func (e *zipExtract) ParseParams(params map[string]interface{}) error {
 	if err := mapstructure.Decode(params, e); err != nil {
-		return errors.Wrapf(err, "error parsing '%s' params", e.Name())
+		return errors.Wrapf(err, "decoding mapstructure params")
 	}
 
 	if len(e.ExcludeFiles) != 0 {
@@ -46,7 +46,7 @@ func (e *zipExtract) Execute(ctx context.Context,
 	client client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	if err := util.ExpandValues(e, conf.Expansions); err != nil {
-		return errors.Wrap(err, "error expanding params")
+		return errors.Wrap(err, "applying expansions")
 	}
 
 	// if the target is a relative path, join it to the working dir
@@ -63,7 +63,7 @@ func (e *zipExtract) Execute(ctx context.Context,
 	}
 
 	if err := archiver.Zip.Open(e.ArchivePath, e.TargetDirectory); err != nil {
-		return errors.Wrapf(err, "problem extracting archive '%s'", e.ArchivePath)
+		return errors.Wrapf(err, "extracting archive '%s' to directory '%s'", e.ArchivePath, e.TargetDirectory)
 	}
 
 	return nil

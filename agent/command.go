@@ -28,14 +28,12 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 	defer func() { err = recovery.HandlePanicWithError(recover(), err, "run commands") }()
 
 	for i, commandInfo := range commands {
-		if ctx.Err() != nil {
-			grip.Error("runCommands canceled")
-			return errors.New("runCommands canceled")
+		if err := ctx.Err(); err != nil {
+			return errors.Wrap(err, "canceled while running commands")
 		}
 		cmds, err = command.Render(commandInfo, tc.taskConfig.Project)
 		if err != nil {
-			tc.logger.Task().Errorf("Couldn't parse plugin command '%v': %v", commandInfo.Command, err)
-			return err
+			return errors.Wrapf(err, "rendering command '%s'", commandInfo.Command)
 		}
 		if err = a.runCommandSet(ctx, tc, commandInfo, cmds, options, i+1, len(commands)); err != nil {
 			return errors.WithStack(err)
@@ -56,17 +54,16 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 	} else {
 		logger, err = a.makeLoggerProducer(ctx, tc, commandInfo.Loggers, getFunctionName(commandInfo))
 		if err != nil {
-			return errors.Wrap(err, "error making logger")
+			return errors.Wrap(err, "making command logger")
 		}
 		defer func() {
-			grip.Error(logger.Close())
+			grip.Error(errors.Wrap(logger.Close(), "closing command logger"))
 		}()
 	}
 
 	for idx, cmd := range cmds {
-		if ctx.Err() != nil {
-			grip.Error("runCommands canceled")
-			return errors.New("runCommands canceled")
+		if err := ctx.Err(); err != nil {
+			return errors.Wrap(err, "canceled while running command list")
 		}
 		if cmd.DisplayName() == "" {
 			grip.Critical(message.Fields{
@@ -83,22 +80,22 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 		fullCommandName := getCommandName(commandInfo, cmd)
 
 		if !commandInfo.RunOnVariant(tc.taskConfig.BuildVariant.Name) {
-			tc.logger.Task().Infof("Skipping command %s on variant %s (step %d of %d)",
+			tc.logger.Task().Infof("Skipping command %s on variant %s (step %d of %d).",
 				fullCommandName, tc.taskConfig.BuildVariant.Name, index, total)
 			continue
 		}
 
 		if len(cmds) == 1 {
-			tc.logger.Task().Infof("Running command %s (step %d of %d)", fullCommandName, index, total)
+			tc.logger.Task().Infof("Running command %s (step %d of %d).", fullCommandName, index, total)
 		} else {
 			// for functions with more than one command
-			tc.logger.Task().Infof("Running command %v (step %d.%d of %d)", fullCommandName, index, idx+1, total)
+			tc.logger.Task().Infof("Running command %s (step %d.%d of %d).", fullCommandName, index, idx+1, total)
 		}
 		for key, val := range commandInfo.Vars {
 			var newVal string
 			newVal, err = tc.taskConfig.Expansions.ExpandString(val)
 			if err != nil {
-				return errors.Wrapf(err, "Can't expand '%v'", val)
+				return errors.Wrapf(err, "expanding '%s'", val)
 			}
 			tc.taskConfig.Expansions.Put(key, newVal)
 		}
@@ -121,14 +118,14 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 			defer func() {
 				// this channel will get read from twice even though we only send once, hence why it's buffered
 				cmdChan <- recovery.HandlePanicWithError(recover(), nil,
-					fmt.Sprintf("problem running command '%s'", cmd.Name()))
+					fmt.Sprintf("running command '%s'", fullCommandName))
 			}()
 			cmdChan <- cmd.Execute(ctx, a.comm, logger, tc.taskConfig)
 		}()
 		select {
 		case err = <-cmdChan:
 			if err != nil {
-				tc.logger.Task().Errorf("Command failed: %v", err)
+				tc.logger.Task().Errorf("Command '%s' failed: %s.", fullCommandName, err)
 				if options.isTaskCommands || options.failPreAndPost ||
 					(cmd.Name() == "git.get_project" && tc.taskModel.Requester == evergreen.MergeTestRequester) {
 					// any git.get_project in the commit queue should fail
@@ -137,18 +134,16 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 			}
 		case <-ctx.Done():
 			if ctx.Err() == context.DeadlineExceeded {
-				tc.logger.Task().Errorf("Command stopped early, idle timeout duration of %d seconds has been reached: %s", int(tc.timeout.idleTimeoutDuration.Seconds()), ctx.Err())
+				tc.logger.Task().Errorf("Command '%s' stopped early because idle timeout duration of %d seconds has been reached.", fullCommandName, int(tc.timeout.idleTimeoutDuration.Seconds()))
 			} else {
-				tc.logger.Task().Errorf("Command stopped early: %s", ctx.Err())
+				tc.logger.Task().Errorf("Command '%s' stopped early: %s.", fullCommandName, ctx.Err())
 			}
-			return errors.Wrap(ctx.Err(), "Agent stopped early")
+			return errors.Wrap(ctx.Err(), "agent stopped early")
 		}
-		tc.logger.Task().Infof("Finished %s in %s", fullCommandName, time.Since(start).String())
+		tc.logger.Task().Infof("Finished command %s in %s.", fullCommandName, time.Since(start).String())
 		if (options.isTaskCommands || options.failPreAndPost) && a.endTaskResp != nil && !a.endTaskResp.ShouldContinue {
 			// only error if we're running a command that should fail, and we don't want to continue to run other tasks
-			msg := fmt.Sprintf("task status has been set to '%s'; triggering end task", a.endTaskResp.Status)
-			tc.logger.Task().Debug(msg)
-			return errors.New(msg)
+			return errors.Errorf("task status has been set to '%s'; triggering end task", a.endTaskResp.Status)
 		}
 	}
 	return nil
@@ -161,22 +156,19 @@ func (a *Agent) runTaskCommands(ctx context.Context, tc *taskContext) error {
 	task := conf.Project.FindProjectTask(conf.Task.DisplayName)
 
 	if task == nil {
-		tc.logger.Execution().Errorf("Can't find task: %v", conf.Task.DisplayName)
-		return errors.New("unable to find task")
+		return errors.Errorf("unable to find task '%s' in project '%s'", conf.Task.DisplayName, conf.Task.Project)
 	}
 
-	if ctx.Err() != nil {
-		grip.Error("task canceled")
-		return errors.New("task canceled")
+	if err := ctx.Err(); err != nil {
+		return errors.Wrap(err, "canceled while running task commands")
 	}
 	tc.logger.Execution().Info("Running task commands.")
 	start := time.Now()
 	opts := runCommandsOptions{isTaskCommands: true}
 	err := a.runCommands(ctx, tc, task.Commands, opts)
-	tc.logger.Execution().Infof("Finished running task commands in %v.", time.Since(start).String())
+	tc.logger.Execution().Infof("Finished running task commands in %s.", time.Since(start).String())
 	if err != nil {
-		tc.logger.Execution().Errorf("Task failed: %v", err)
-		return errors.New("task failed")
+		return err
 	}
 	return nil
 }
@@ -186,7 +178,7 @@ func getCommandName(commandInfo model.PluginCommandConf, cmd command.Command) st
 	if commandInfo.Function != "" {
 		commandName = fmt.Sprintf(`'%s' in "%s"`, commandName, commandInfo.Function)
 	} else if commandInfo.DisplayName != "" {
-		commandName = fmt.Sprintf(`("%s") %s`, commandInfo.DisplayName, commandName)
+		commandName = fmt.Sprintf(`("%s") '%s'`, commandInfo.DisplayName, commandName)
 	} else {
 		commandName = fmt.Sprintf("'%s'", commandName)
 	}

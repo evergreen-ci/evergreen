@@ -63,7 +63,7 @@ func (l *logHarness) Close() error {
 		catcher.Add(s.Close())
 	}
 
-	return errors.Wrap(catcher.Resolve(), "problem closing log harness")
+	return errors.Wrap(catcher.Resolve(), "closing log harness")
 }
 
 func (l *logHarness) Closed() bool {
@@ -126,7 +126,7 @@ func (l *singleChannelLogHarness) Close() error {
 
 	catcher.Add(l.logger.GetSender().Close())
 
-	return errors.Wrap(catcher.Resolve(), "problem closing log harness")
+	return errors.Wrap(catcher.Resolve(), "closing log harness")
 }
 
 func (l *singleChannelLogHarness) Closed() bool {

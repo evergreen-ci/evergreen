@@ -33,10 +33,10 @@ func (c *generateTask) Name() string { return "generate.tasks" }
 
 func (c *generateTask) ParseParams(params map[string]interface{}) error {
 	if err := mapstructure.Decode(params, c); err != nil {
-		return errors.Wrapf(err, "Error decoding %s params", c.Name())
+		return errors.Wrap(err, "decoding mapstructure params")
 	}
 	if len(c.Files) == 0 {
-		return errors.Errorf("Must provide at least 1 file to '%s'", c.Name())
+		return errors.Errorf("must provide at least 1 file containing task generation definitions")
 	}
 	return nil
 }
@@ -44,7 +44,7 @@ func (c *generateTask) ParseParams(params map[string]interface{}) error {
 func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	var err error
 	if err = util.ExpandValues(c, conf.Expansions); err != nil {
-		return errors.Wrap(err, "expanding params")
+		return errors.Wrap(err, "applying expansions")
 	}
 
 	include := utility.NewGitIgnoreFileMatcher(conf.WorkDir, c.Files...)
@@ -58,18 +58,18 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 
 	if len(c.Files) == 0 {
 		if c.Optional {
-			logger.Task().Info("no files found and optional is true, skipping generate.tasks")
+			logger.Task().Infof("No files found and optional is true, skipping command '%s'.", c.Name())
 			return nil
 		}
-		return errors.New("no files found for generate.tasks")
+		return errors.Errorf("no files found for command '%s'", c.Name())
 	}
 
 	catcher := grip.NewBasicCatcher()
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	var jsonBytes [][]byte
 	for _, fn := range c.Files {
-		if ctx.Err() != nil {
-			catcher.Add(ctx.Err())
+		if err := ctx.Err(); err != nil {
+			catcher.Wrapf(ctx.Err(), "cancelled while processing file '%s'", fn)
 			break
 		}
 		var data []byte
@@ -137,18 +137,18 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 func generateTaskForFile(fn string, conf *internal.TaskConfig) ([]byte, error) {
 	fileLoc := getJoinedWithWorkDir(conf, fn)
 	if _, err := os.Stat(fileLoc); os.IsNotExist(err) {
-		return nil, errors.Wrapf(err, "File '%s' does not exist", fn)
+		return nil, errors.Wrapf(err, "getting information for file '%s'", fn)
 	}
 	jsonFile, err := os.Open(fileLoc)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Couldn't open file '%s'", fn)
+		return nil, errors.Wrapf(err, "opening file '%s'", fn)
 	}
 	defer jsonFile.Close()
 
 	var data []byte
 	data, err = ioutil.ReadAll(jsonFile)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Problem reading from file '%s'", fn)
+		return nil, errors.Wrapf(err, "reading from file '%s'", fn)
 	}
 
 	return data, nil
@@ -162,8 +162,7 @@ func makeJsonOfAllFiles(jsonBytes [][]byte) ([]json.RawMessage, error) {
 	for _, j := range jsonBytes {
 		jsonRaw := json.RawMessage{}
 		if err := json.Unmarshal(j, &jsonRaw); err != nil {
-
-			catcher.Add(errors.Wrap(err, "error unmarshaling JSON for generate.tasks"))
+			catcher.Wrap(err, "unmarshalling JSON from file")
 			continue
 		}
 		post = append(post, jsonRaw)

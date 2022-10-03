@@ -2,7 +2,6 @@ package command
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -65,8 +64,7 @@ func init() {
 }
 
 func RegisterCommand(name string, factory CommandFactory) error {
-	return errors.Wrap(evgRegistry.registerCommand(name, factory),
-		"problem registering command")
+	return errors.Wrapf(evgRegistry.registerCommand(name, factory), "registering command '%s'", name)
 }
 
 func GetCommandFactory(name string) (CommandFactory, bool) {
@@ -111,7 +109,7 @@ func (r *commandRegistry) registerCommand(name string, factory CommandFactory) e
 	defer r.mu.Unlock()
 
 	if name == "" {
-		return errors.New("cannot register a command for the empty string ''")
+		return errors.New("cannot register a command without a name")
 	}
 
 	if _, ok := r.cmds[name]; ok {
@@ -140,18 +138,17 @@ func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 	var (
 		parsed []model.PluginCommandConf
 		out    []Command
-		errs   []string
 	)
+	catcher := grip.NewBasicCatcher()
 
 	if name := commandInfo.Function; name != "" {
 		cmds, ok := project.Functions[name]
 		if !ok {
-			errs = append(errs, fmt.Sprintf("function '%s' not found in project functions", name))
+			catcher.Errorf("function '%s' not found in project functions", name)
 		} else if cmds != nil {
 			for i, c := range cmds.List() {
 				if c.Function != "" {
-					errs = append(errs, fmt.Sprintf("can not reference a function within a "+
-						"function: '%s' referenced within '%s'", c.Function, name))
+					catcher.Errorf("cannot reference a function ('%s') within another function ('%s')", c.Function, name)
 					continue
 				}
 
@@ -178,13 +175,15 @@ func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 	for _, c := range parsed {
 		factory, ok := r.getCommandFactory(c.Command)
 		if !ok {
-			errs = append(errs, fmt.Sprintf("command '%s' is not registered", c.Command))
+			catcher.Errorf("command '%s' is not registered", c.Command)
 			continue
 		}
 
 		cmd := factory()
+		// Note: this parses the parameters before expansions are applied.
+		// Expansions are only available when the command is executed.
 		if err := cmd.ParseParams(c.Params); err != nil {
-			errs = append(errs, errors.Wrapf(err, "problem parsing input of %s (%s)", c.Command, c.DisplayName).Error())
+			catcher.Wrapf(err, "parsing parameters for command '%s' ('%s')", c.Command, c.DisplayName)
 			continue
 		}
 		cmd.SetType(c.GetType(project))
@@ -194,8 +193,8 @@ func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 		out = append(out, cmd)
 	}
 
-	if len(errs) > 0 {
-		return nil, errors.New(strings.Join(errs, "; "))
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
 	}
 
 	return out, nil

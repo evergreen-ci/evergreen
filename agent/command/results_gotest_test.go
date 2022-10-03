@@ -18,7 +18,7 @@ import (
 )
 
 func reset(t *testing.T) {
-	require.NoError(t, db.ClearCollections(task.Collection, model.TestLogCollection), "error clearing test collections")
+	require.NoError(t, db.ClearCollections(task.Collection, model.TestLogCollection))
 }
 
 func TestGotestPluginOnFailingTests(t *testing.T) {
@@ -35,7 +35,7 @@ func TestGotestPluginOnFailingTests(t *testing.T) {
 
 		configPath := filepath.Join(currentDirectory, "testdata", "gotest", "bad.yml")
 		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", configPath, modelutil.NoPatch)
-		require.NoError(t, err, "failed to setup test data")
+		require.NoError(t, err)
 		conf, err := agentutil.MakeTaskConfigFromModelData(testConfig, modelData)
 		require.NoError(t, err)
 		logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
@@ -43,14 +43,14 @@ func TestGotestPluginOnFailingTests(t *testing.T) {
 
 		Convey("all commands in test project should execute successfully", func() {
 			curWD, err := os.Getwd()
-			require.NoError(t, err, "Couldn't get working directory: %s", curWD)
+			require.NoError(t, err)
 			conf.WorkDir = curWD
 
 			for _, testTask := range conf.Project.Tasks {
 				So(len(testTask.Commands), ShouldNotEqual, 0)
 				for _, command := range testTask.Commands {
 					pluginCmds, err := Render(command, conf.Project)
-					require.NoError(t, err, "Couldn't get plugin command: %s", command.Command)
+					require.NoError(t, err)
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
 					err = pluginCmds[0].Execute(ctx, comm, logger, conf)
@@ -94,7 +94,7 @@ func TestGotestPluginOnPassingTests(t *testing.T) {
 		configPath := filepath.Join(currentDirectory, "testdata", "bad.yml")
 
 		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", configPath, modelutil.NoPatch)
-		require.NoError(t, err, "failed to setup test data")
+		require.NoError(t, err)
 
 		conf, err := agentutil.MakeTaskConfigFromModelData(testConfig, modelData)
 		require.NoError(t, err)
@@ -105,14 +105,14 @@ func TestGotestPluginOnPassingTests(t *testing.T) {
 
 		Convey("all commands in test project should execute successfully", func() {
 			curWD, err := os.Getwd()
-			require.NoError(t, err, "Couldn't get working directory: %s", curWD)
+			require.NoError(t, err)
 			conf.WorkDir = curWD
 
 			for _, testTask := range conf.Project.Tasks {
 				So(len(testTask.Commands), ShouldNotEqual, 0)
 				for _, command := range testTask.Commands {
 					pluginCmds, err := Render(command, conf.Project)
-					require.NoError(t, err, "Couldn't get plugin command: %s", command.Command)
+					require.NoError(t, err)
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
 

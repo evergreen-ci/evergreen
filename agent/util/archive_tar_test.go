@@ -34,7 +34,7 @@ func TestArchiveExtract(t *testing.T) {
 		outputDir := t.TempDir()
 
 		f, gz, tarReader, err := TarGzReader(filepath.Join(testDir, "testdata", "artifacts.tar.gz"))
-		require.NoError(t, err, "Couldn't open test tarball")
+		require.NoError(t, err)
 		defer f.Close()
 		defer gz.Close()
 
@@ -65,7 +65,7 @@ func TestMakeArchive(t *testing.T) {
 		require.NoError(t, outputFile.Close())
 
 		f, gz, tarWriter, err := TarGzWriter(outputFile.Name())
-		require.NoError(t, err, "Couldn't open test tarball")
+		require.NoError(t, err)
 		defer f.Close()
 		defer gz.Close()
 		defer tarWriter.Close()
@@ -89,7 +89,7 @@ func TestArchiveRoundTrip(t *testing.T) {
 		}()
 
 		f, gz, tarWriter, err := TarGzWriter(outputFile.Name())
-		require.NoError(t, err, "Couldn't open test tarball")
+		require.NoError(t, err)
 		includes := []string{"dir1/**"}
 		excludes := []string{"*.pdb"}
 		var found int
@@ -102,7 +102,7 @@ func TestArchiveRoundTrip(t *testing.T) {
 
 		outputDir := t.TempDir()
 		f2, gz2, tarReader, err := TarGzReader(outputFile.Name())
-		require.NoError(t, err, "Couldn't open test tarball")
+		require.NoError(t, err)
 		err = extractTarArchive(context.Background(), tarReader, outputDir, []string{})
 		defer f2.Close()
 		defer gz2.Close()
