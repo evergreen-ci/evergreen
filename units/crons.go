@@ -994,7 +994,7 @@ func PopulateBackgroundStatsJobs(env evergreen.Environment, part int) amboy.Queu
 		if flags.BackgroundStatsDisabled {
 			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 				"message": "background stats collection disabled",
-				"impact":  "host, task, latency, amboy, and notification stats disabled",
+				"impact":  "host, pod, task, latency, amboy, and notification stats disabled",
 				"mode":    "degraded",
 			})
 			return nil
@@ -1005,6 +1005,7 @@ func PopulateBackgroundStatsJobs(env evergreen.Environment, part int) amboy.Queu
 
 		catcher.Wrap(queue.Put(ctx, NewRemoteAmboyStatsCollector(env, ts)), "enqueueing remote Amboy stats collector job")
 		catcher.Wrap(queue.Put(ctx, NewHostStatsCollector(ts)), "enqueueing host stats collector job")
+		catcher.Wrap(queue.Put(ctx, NewPodStatsCollector(ts)), "enqueueing pod stats collector job")
 		catcher.Wrap(queue.Put(ctx, NewTaskStatsCollector(ts)), "enqueueing task stats collector job")
 		catcher.Wrap(queue.Put(ctx, NewNotificationStatsCollector(ts)), "enqueueing notification stats collector job")
 		catcher.Wrap(queue.Put(ctx, NewQueueStatsCollector(ts)), "enqueueing task queue stats collector job")
@@ -1362,6 +1363,7 @@ func PopulatePodAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 
 		grip.InfoWhen(remaining <= 0 && ctq.Len() > 0, message.Fields{
 			"message":             "reached max parallel pod request limit, not allocating any more",
+			"usage":               "container task health dashboard",
 			"context":             "pod allocation",
 			"num_remaining_tasks": ctq.Len(),
 		})
