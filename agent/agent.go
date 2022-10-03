@@ -569,10 +569,7 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 	if taskGroup.Timeout != nil {
 		err := a.runCommands(ctx, tc, taskGroup.Timeout.List(), runCommandsOptions{})
 		tc.logger.Execution().Error(errors.Wrap(err, "running timeout commands"))
-		tc.logger.Task().InfoWhen(err == nil, message.Fields{
-			"message":    "finished running timeout commands",
-			"total_time": time.Since(start).String(),
-		})
+		tc.logger.Task().Infof("Finished running timeout commands in %s.", time.Since(start))
 	}
 }
 
@@ -705,10 +702,7 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) error 
 				return err
 			}
 		}
-		tc.logger.Task().InfoWhen(err == nil, message.Fields{
-			"message":    "Finished running post-task commands.",
-			"total_time": time.Since(start).String(),
-		})
+		tc.logger.Task().Infof("Finished running post-task commands in %s.", time.Since(start))
 	}
 	return nil
 }
@@ -776,10 +770,7 @@ func (a *Agent) runEndTaskSync(ctx context.Context, tc *taskContext, detail *api
 		}))
 		return
 	}
-	tc.logger.Task().Info(message.Fields{
-		"message":    "finished running task sync",
-		"total_time": time.Since(start).String(),
-	})
+	tc.logger.Task().Infof("Finished running task sync in %s.", time.Since(start))
 }
 
 func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupCheck bool) {
