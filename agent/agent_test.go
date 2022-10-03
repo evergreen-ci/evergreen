@@ -373,7 +373,7 @@ post:
 	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
 	s.Equal("Running post-task commands.", msgs[1].Message)
 	s.Equal("Running command 'shell.exec' (step 1 of 1).", msgs[2].Message)
-	s.Contains(msgs[len(msgs)-1].Message, "Finished running post-task commands.")
+	s.Contains(msgs[len(msgs)-1].Message, "Finished running post-task commands")
 }
 
 func (s *AgentSuite) TestPostContinuesOnError() {
@@ -408,7 +408,7 @@ post:
 	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
 	s.Equal("Running post-task commands.", msgs[1].Message)
 	s.Equal("Running command 'shell.exec' (step 1 of 2).", msgs[2].Message)
-	s.Contains(msgs[len(msgs)-1].Message, "Finished running post-task commands.")
+	s.Contains(msgs[len(msgs)-1].Message, "Finished running post-task commands")
 	found := map[string]bool{
 		"Running post-task commands.":                 false,
 		"Running command 'shell.exec' (step 1 of 2).": false,
@@ -466,7 +466,7 @@ func (s *AgentSuite) TestAbort() {
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
 	shouldFind := map[string]bool{
 		"initial task setup":                  false,
-		"Running post-task commands":          false,
+		"Running post-task commands.":         false,
 		"Sending final task status: 'failed'": false,
 	}
 	s.Require().NoError(s.tc.logger.Close())
@@ -886,7 +886,7 @@ task_groups:
 	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
 	s.Equal("Running command 'shell.exec' (step 1 of 1).", msgs[2].Message)
 	s.Contains(msgs[len(msgs)-2].Message, "Finished command 'shell.exec'")
-	s.Contains(msgs[len(msgs)-1].Message, "Finished running post-task commands.")
+	s.Contains(msgs[len(msgs)-1].Message, "Finished running post-task commands")
 }
 
 func (s *AgentSuite) TestGroupPostGroupCommands() {
