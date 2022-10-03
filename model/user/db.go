@@ -1,6 +1,7 @@
 package user
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -9,6 +10,8 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -364,6 +367,10 @@ func setSlackInformation(env evergreen.Environment, u *DBUser) error {
 		return errors.Wrapf(err, "getting Slack user with email address '%s'", u.EmailAddress)
 	}
 	if slackUser == nil {
+		grip.Error(message.Fields{
+			"message": fmt.Sprintf("Couldn't find slack user by email address", u.EmailAddress),
+			"userId":  u.Id,
+		})
 		return nil
 	}
 
