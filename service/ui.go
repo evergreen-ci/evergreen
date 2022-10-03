@@ -243,6 +243,7 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	needsLogin := gimlet.WrapperMiddleware(uis.requireLogin)
 	needsLoginToggleable := gimlet.WrapperMiddleware(uis.requireLoginToggleable)
+	needsLoginToggleableRedirect := gimlet.WrapperMiddleware(uis.redirectLoginToggleable)
 	needsLoginNoRedirect := gimlet.WrapperMiddleware(uis.requireLoginStatusUnauthorized)
 	needsContext := gimlet.WrapperMiddleware(uis.loadCtx)
 	allowsCORS := gimlet.WrapperMiddleware(uis.setCORSHeaders)
@@ -305,9 +306,9 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/graphql/query").Wrap(allowsCORS).Handler(func(_ http.ResponseWriter, _ *http.Request) {}).Options()
 
 	// Waterfall pages
-	app.AddRoute("/").Wrap(needsLoginToggleable, needsContext).Handler(uis.mainlineCommitsRedirect).Get().Head()
-	app.AddRoute("/waterfall").Wrap(needsLoginToggleable, needsContext).Handler(uis.waterfallPage).Get()
-	app.AddRoute("/waterfall/{project_id}").Wrap(needsLoginToggleable, needsContext, viewTasks).Handler(uis.waterfallPage).Get()
+	app.AddRoute("/").Wrap(needsLoginToggleableRedirect, needsContext).Handler(uis.mainlineCommitsRedirect).Get().Head()
+	app.AddRoute("/waterfall").Wrap(needsLoginToggleableRedirect, needsContext).Handler(uis.waterfallPage).Get()
+	app.AddRoute("/waterfall/{project_id}").Wrap(needsLoginToggleableRedirect, needsContext, viewTasks).Handler(uis.waterfallPage).Get()
 
 	// Task page (and related routes)
 	app.AddRoute("/task/{task_id}").Wrap(needsLoginToggleable, needsContext, viewTasks).Handler(uis.taskPage).Get()
