@@ -197,3 +197,59 @@ func FindByLastCommunicatedBefore(ts time.Time) ([]Pod, error) {
 		lastCommunicatedKey: bson.M{"$lte": ts},
 	}))
 }
+
+// StatusCount contains the total number of pods and total number of running
+// tasks for a particular pod status.
+type StatusCount struct {
+	Status          Status `bson:"status"`
+	Count           int    `bson:"count"`
+	NumRunningTasks int    `bson:"num_running_tasks"`
+}
+
+// GetStatsByStatus gets aggregate usage statistics on pods that are intended
+// for running tasks. For each pod status, it returns the counts for the number
+// of pods and number of running tasks in that particular status. Terminated
+// pods are excluded from these statistics.
+func GetStatsByStatus(statuses ...Status) ([]StatusCount, error) {
+	if len(statuses) == 0 {
+		return []StatusCount{}, nil
+	}
+
+	runningTaskKey := bsonutil.GetDottedKeyName(TaskRuntimeInfoKey, TaskRuntimeInfoRunningTaskIDKey)
+	pipeline := []bson.M{
+		{
+			"$match": bson.M{
+				StatusKey: bson.M{
+					"$in": statuses,
+				},
+				TypeKey: TypeAgent,
+			},
+		},
+		{
+			"$group": bson.M{
+				"_id": "$" + StatusKey,
+				"count": bson.M{
+					"$sum": 1,
+				},
+				"running_tasks": bson.M{
+					"$addToSet": "$" + runningTaskKey,
+				},
+			},
+		},
+		{
+			"$project": bson.M{
+				"_id":               0,
+				"status":            "$_id",
+				"count":             1,
+				"num_running_tasks": bson.M{"$size": "$running_tasks"},
+			},
+		},
+	}
+
+	stats := []StatusCount{}
+	if err := db.Aggregate(Collection, pipeline, &stats); err != nil {
+		return nil, err
+	}
+
+	return stats, nil
+}

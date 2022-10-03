@@ -58,6 +58,7 @@ type ProjectRef struct {
 	PatchingDisabled       *bool               `bson:"patching_disabled,omitempty" json:"patching_disabled,omitempty"`
 	RepotrackerDisabled    *bool               `bson:"repotracker_disabled,omitempty" json:"repotracker_disabled,omitempty" yaml:"repotracker_disabled"`
 	DispatchingDisabled    *bool               `bson:"dispatching_disabled,omitempty" json:"dispatching_disabled,omitempty" yaml:"dispatching_disabled"`
+	StepbackDisabled       *bool               `bson:"stepback_disabled,omitempty" json:"stepback_disabled,omitempty" yaml:"stepback_disabled"`
 	VersionControlEnabled  *bool               `bson:"version_control_enabled,omitempty" json:"version_control_enabled,omitempty" yaml:"version_control_enabled"`
 	PRTestingEnabled       *bool               `bson:"pr_testing_enabled,omitempty" json:"pr_testing_enabled,omitempty" yaml:"pr_testing_enabled"`
 	ManualPRTestingEnabled *bool               `bson:"manual_pr_testing_enabled,omitempty" json:"manual_pr_testing_enabled,omitempty" yaml:"manual_pr_testing_enabled"`
@@ -313,8 +314,15 @@ func (p *ProjectRef) IsEnabled() bool {
 	return utility.FromBoolPtr(p.Enabled)
 }
 
+// IsPrivate checks if the project ref should be accessed by non-logged in users.
+// If PartialRouteAuthDisabled is set, all project routes require users to be logged in
+// so this function will return false.
 func (p *ProjectRef) IsPrivate() bool {
-	return utility.FromBoolPtr(p.Private)
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		return utility.FromBoolPtr(p.Private)
+	}
+	return !flags.PartialRouteAuthDisabled && utility.FromBoolPtr(p.Private)
 }
 
 func (p *ProjectRef) IsRestricted() bool {
@@ -335,6 +343,10 @@ func (p *ProjectRef) IsDispatchingDisabled() bool {
 
 func (p *ProjectRef) IsPRTestingEnabled() bool {
 	return p.IsAutoPRTestingEnabled() || p.IsManualPRTestingEnabled()
+}
+
+func (p *ProjectRef) IsStepbackDisabled() bool {
+	return utility.FromBoolPtr(p.StepbackDisabled)
 }
 
 func (p *ProjectRef) IsAutoPRTestingEnabled() bool {

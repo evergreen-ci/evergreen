@@ -24,7 +24,7 @@ import (
 
 func TestPatchPluginAPI(t *testing.T) {
 	settings := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, settings, "TestPatchPluginAPI")
+	testutil.ConfigureIntegrationTest(t, settings, t.Name())
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	comm := client.NewMock("http://localhost.com")
@@ -43,14 +43,14 @@ func TestPatchPluginAPI(t *testing.T) {
 
 		testCommand := &gitFetchProject{Directory: "dir"}
 		modelData, err := modelutil.SetupAPITestData(settings, "testTask", "testvar", configPath, modelutil.NoPatch)
-		require.NoError(t, err, "Couldn't set up test documents")
+		require.NoError(t, err)
 		taskConfig, err := agentutil.MakeTaskConfigFromModelData(settings, modelData)
 		require.NoError(t, err)
 		taskConfig.Expansions = util.NewExpansions(settings.Credentials)
 		taskConfig.Distro = &apimodels.DistroView{CloneMethod: evergreen.CloneMethodOAuth}
 
 		err = setupTestPatchData(modelData, patchFile, t)
-		require.NoError(t, err, "Couldn't set up test documents")
+		require.NoError(t, err)
 
 		comm.PatchFiles[""] = patchFile
 
@@ -60,12 +60,11 @@ func TestPatchPluginAPI(t *testing.T) {
 			err = testCommand.getPatchContents(ctx, comm, logger, conf, patch)
 			So(err, ShouldBeNil)
 			So(patch, ShouldNotBeNil)
-			require.NoError(t, db.Clear(model.VersionCollection),
-				"unable to clear versions collection")
+			require.NoError(t, db.Clear(model.VersionCollection))
 		})
 		Convey("calls to non-existing tasks should fail", func() {
 			v := model.Version{Id: ""}
-			require.NoError(t, v.Insert(), "Couldn't insert dummy version")
+			require.NoError(t, v.Insert())
 			modelData.Task = &task.Task{
 				Id: "BAD_TASK_ID",
 			}
@@ -73,24 +72,22 @@ func TestPatchPluginAPI(t *testing.T) {
 			So(err, ShouldNotBeNil)
 			So(err.Error(), ShouldContainSubstring, "not found")
 			So(patch, ShouldBeNil)
-			require.NoError(t, db.Clear(model.VersionCollection),
-				"unable to clear versions collection")
+			require.NoError(t, db.Clear(model.VersionCollection))
 		})
 		Convey("calls to existing tasks without patches should fail", func() {
 			noPatchTask := task.Task{Id: "noPatchTask", BuildId: "a"}
-			require.NoError(t, noPatchTask.Insert(), "Couldn't insert patch task")
+			require.NoError(t, noPatchTask.Insert())
 			noPatchVersion := model.Version{Id: "noPatchVersion", BuildIds: []string{"a"}}
-			require.NoError(t, noPatchVersion.Insert(), "Couldn't insert patch version")
+			require.NoError(t, noPatchVersion.Insert())
 			v := model.Version{Id: ""}
-			require.NoError(t, v.Insert(), "Couldn't insert dummy version")
+			require.NoError(t, v.Insert())
 			modelData.Task = &noPatchTask
 
 			err := testCommand.getPatchContents(ctx, comm, logger, conf, patch)
 			So(err, ShouldNotBeNil)
 			So(err.Error(), ShouldContainSubstring, "no patch found for task")
 			So(patch, ShouldBeNil)
-			require.NoError(t, db.Clear(model.VersionCollection),
-				"unable to clear versions collection")
+			require.NoError(t, db.Clear(model.VersionCollection))
 		})
 
 	})
@@ -102,7 +99,7 @@ func TestPatchPlugin(t *testing.T) {
 	env := testutil.NewEnvironment(ctx, t)
 	settings := env.Settings()
 
-	testutil.ConfigureIntegrationTest(t, settings, "TestPatchPlugin")
+	testutil.ConfigureIntegrationTest(t, settings, t.Name())
 	cwd := testutil.GetDirectoryOfFile()
 	jpm := env.JasperManager()
 
@@ -117,14 +114,14 @@ func TestPatchPlugin(t *testing.T) {
 		patchFile := filepath.Join(cwd, "testdata", "git", "testmodule.patch")
 		configPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "plugin_patch.yml")
 		modelData, err := modelutil.SetupAPITestData(settings, "testtask1", "testvar", configPath, modelutil.InlinePatch)
-		require.NoError(t, err, "Couldn't set up test documents")
+		require.NoError(t, err)
 		taskConfig, err := agentutil.MakeTaskConfigFromModelData(settings, modelData)
 		require.NoError(t, err)
 		taskConfig.Expansions = util.NewExpansions(settings.Credentials)
 		taskConfig.Distro = &apimodels.DistroView{CloneMethod: evergreen.CloneMethodOAuth}
 
 		err = setupTestPatchData(modelData, patchFile, t)
-		require.NoError(t, err, "Couldn't set up patch documents")
+		require.NoError(t, err)
 
 		comm := client.NewMock("http://localhost.com")
 		logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: taskConfig.Task.Id, Secret: taskConfig.Task.Secret}, nil)
@@ -137,7 +134,7 @@ func TestPatchPlugin(t *testing.T) {
 				So(len(task.Commands), ShouldNotEqual, 0)
 				for _, command := range task.Commands {
 					pluginCmds, err := Render(command, taskConfig.Project)
-					require.NoError(t, err, "Couldn't get plugin command: %s", command.Command)
+					require.NoError(t, err)
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
 

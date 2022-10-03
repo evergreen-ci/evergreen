@@ -48,7 +48,7 @@ func (r *ec2AssumeRole) Name() string { return "ec2.assume_role" }
 
 func (r *ec2AssumeRole) ParseParams(params map[string]interface{}) error {
 	if err := mapstructure.Decode(params, r); err != nil {
-		return errors.Wrapf(err, "error parsing '%s' params", r.Name())
+		return errors.Wrap(err, "decoding mapstructure params")
 	}
 
 	return r.validate()
@@ -72,7 +72,7 @@ func (r *ec2AssumeRole) validate() error {
 func (r *ec2AssumeRole) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	if err := util.ExpandValues(r, conf.Expansions); err != nil {
-		return errors.WithStack(err)
+		return errors.Wrap(err, "applying expansions")
 	}
 	// Re-validate the command here, in case an expansion is not defined.
 	if err := r.validate(); err != nil {
@@ -88,7 +88,7 @@ func (r *ec2AssumeRole) Execute(ctx context.Context,
 
 	// Error if key or secret are blank
 	if key == "" || secret == "" {
-		return errors.New("AWS ID and Secret could not be retrieved")
+		return errors.New("AWS key and secret must not be empty")
 	}
 
 	defaultCreds := credentials.NewStaticCredentialsFromCreds(credentials.Value{

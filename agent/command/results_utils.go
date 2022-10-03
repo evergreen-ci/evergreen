@@ -26,23 +26,21 @@ func sendTestResults(ctx context.Context, comm client.Communicator, logger clien
 		return errors.New("cannot send nil results")
 	}
 
-	logger.Task().Info("attaching test results...")
+	logger.Task().Info("Attaching test results...")
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
 	// TODO (PM-2940): Stop sending Mongo project test results to the
 	// database once they can support Presto test results.
 	if model.IsServerResmokeProject(conf.ProjectRef.Identifier) {
 		if err := comm.SendTestResults(ctx, td, results); err != nil {
-			logger.Task().Errorf("error posting parsed results to Evergreen: %+v", err)
-			return errors.Wrap(err, "sending test results to Evergreen")
+			return errors.Wrap(err, "sending parsed test results to Evergreen")
 		}
 	}
 
 	if err := sendTestResultsToCedar(ctx, conf, td, comm, results); err != nil {
-		logger.Task().Errorf("error posting parsed results to Cedar: %+v", err)
 		return errors.Wrap(err, "sending test results to Cedar")
 	}
-	logger.Task().Info("successfully attached results")
+	logger.Task().Info("Successfully attached results.")
 
 	return nil
 }
@@ -55,23 +53,23 @@ func sendTestLog(ctx context.Context, comm client.Communicator, conf *internal.T
 // sendTestLogsAndResults sends the test logs and test results to backend
 // logging results services.
 func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, logs []model.TestLog, results [][]task.TestResult) error {
-	logger.Task().Info("posting test logs...")
+	logger.Task().Info("Posting test logs...")
 	allResults := task.LocalTestResults{}
 	for idx, log := range logs {
-		if ctx.Err() != nil {
-			return errors.New("operation canceled")
+		if err := ctx.Err(); err != nil {
+			return errors.Wrap(err, "canceled while sending test logs")
 		}
 
 		if err := sendTestLog(ctx, comm, conf, &log); err != nil {
 			// Continue on error to let the other logs be posted.
-			logger.Task().Errorf("error posting test log: %+v", err)
+			logger.Task().Error(errors.Wrap(err, "sending test log"))
 		}
 
 		// Add all of the test results that correspond to that log to
 		// the full list of results.
 		allResults.Results = append(allResults.Results, results[idx]...)
 	}
-	logger.Task().Info("finshed posting test logs")
+	logger.Task().Info("Finished posting test logs.")
 
 	return sendTestResults(ctx, comm, logger, conf, &allResults)
 }
@@ -116,7 +114,7 @@ func sendTestResultsToCedar(ctx context.Context, conf *internal.TaskConfig, td c
 func sendTestLogToCedar(ctx context.Context, t *task.Task, comm client.Communicator, log *model.TestLog) error {
 	conn, err := comm.GetCedarGRPCConn(ctx)
 	if err != nil {
-		return errors.Wrapf(err, "getting the Cedar gRPC connection for test %s", log.Name)
+		return errors.Wrapf(err, "getting the Cedar gRPC connection for test '%s'", log.Name)
 	}
 
 	timberOpts := &buildlogger.LoggerOptions{
@@ -134,12 +132,12 @@ func sendTestLogToCedar(ctx context.Context, t *task.Task, comm client.Communica
 	levelInfo := send.LevelInfo{Default: level.Info, Threshold: level.Debug}
 	sender, err := buildlogger.NewLoggerWithContext(ctx, log.Name, levelInfo, timberOpts)
 	if err != nil {
-		return errors.Wrapf(err, "creating buildlogger logger for test result %s", log.Name)
+		return errors.Wrapf(err, "creating buildlogger logger for test result '%s'", log.Name)
 	}
 
 	sender.Send(message.ConvertToComposer(level.Info, strings.Join(log.Lines, "\n")))
 	if err = sender.Close(); err != nil {
-		return errors.Wrapf(err, "closing buildlogger logger for test result %s", log.Name)
+		return errors.Wrapf(err, "closing buildlogger logger for test result '%s'", log.Name)
 	}
 
 	return nil

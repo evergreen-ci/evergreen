@@ -27,14 +27,14 @@ func (a *Agent) startHeartbeat(ctx context.Context, cancel context.CancelFunc, t
 		case <-ticker.C:
 			signalBeat, err = a.doHeartbeat(ctx, tc)
 			if signalBeat == evergreen.TaskConflict {
-				tc.logger.Task().Error("Encountered task conflict while checking heartbeat, aborting task")
+				tc.logger.Task().Error("Encountered task conflict while checking heartbeat, aborting task.")
 				if err != nil {
 					tc.logger.Task().Error(err.Error())
 				}
 				cancel()
 			}
 			if signalBeat == evergreen.TaskFailed {
-				tc.logger.Task().Error("Heartbeat received signal to abort task")
+				tc.logger.Task().Error("Heartbeat received signal to abort task.")
 				heartbeat <- signalBeat
 				return
 			}
@@ -45,7 +45,7 @@ func (a *Agent) startHeartbeat(ctx context.Context, cancel context.CancelFunc, t
 			}
 			if failures == maxHeartbeats {
 				// Presumably this won't work, but we should try to notify the user anyway
-				tc.logger.Task().Error("Hit max heartbeats, aborting task")
+				tc.logger.Task().Error("Hit max heartbeat attempts, aborting task.")
 				heartbeat <- evergreen.TaskFailed
 				return
 			}
@@ -72,14 +72,14 @@ func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, canc
 	for {
 		select {
 		case <-ctx.Done():
-			grip.Info("Idle timeout watch canceled")
+			grip.Info("Idle timeout watcher canceled.")
 			return
 		case <-ticker.C:
 			timeout := tc.getCurrentTimeout()
 			timeSinceLastMessage := time.Since(a.comm.LastMessageAt())
 
 			if timeSinceLastMessage > timeout {
-				tc.logger.Execution().Errorf("Hit idle timeout (no message on stdout for more than %s)", timeout)
+				tc.logger.Execution().Errorf("Hit idle timeout (no message on stdout for more than %s).", timeout)
 				tc.reachTimeOut(idleTimeout, timeout)
 				return
 			}
@@ -96,14 +96,14 @@ func (a *Agent) startMaxExecTimeoutWatch(ctx context.Context, tc *taskContext, c
 	for {
 		select {
 		case <-ctx.Done():
-			grip.Info("Exec timeout watch canceled")
+			grip.Info("Exec timeout watcher canceled.")
 			return
 		case <-ticker.C:
 			timeout := tc.getExecTimeout()
 			timeSinceTickerStarted := time.Since(timeTickerStarted)
 
 			if timeSinceTickerStarted > timeout {
-				tc.logger.Execution().Errorf("Hit exec timeout (%s)", timeout)
+				tc.logger.Execution().Errorf("Hit exec timeout (%s).", timeout)
 				tc.reachTimeOut(execTimeout, timeout)
 				return
 			}
@@ -129,7 +129,7 @@ func (a *Agent) startEarlyTerminationWatcher(ctx context.Context, tc *taskContex
 	for {
 		select {
 		case <-ctx.Done():
-			grip.Info("Early termination watcher canceled")
+			grip.Info("Early termination watcher canceled.")
 			return
 		case <-ticker.C:
 			if check() {

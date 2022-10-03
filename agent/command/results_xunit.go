@@ -33,7 +33,7 @@ func (c *xunitResults) Name() string { return evergreen.AttachXUnitResultsComman
 // to satisfy the 'Command' interface
 func (c *xunitResults) ParseParams(params map[string]interface{}) error {
 	if err := mapstructure.Decode(params, c); err != nil {
-		return errors.Wrapf(err, "error decoding '%s' params", c.Name())
+		return errors.Wrap(err, "decoding mapstructure params")
 	}
 
 	if c.File == "" && len(c.Files) == 0 {
@@ -54,10 +54,10 @@ func (c *xunitResults) expandParams(conf *internal.TaskConfig) error {
 	var err error
 	for idx, f := range c.Files {
 		c.Files[idx], err = conf.Expansions.ExpandString(f)
-		catcher.Add(err)
+		catcher.Wrapf(err, "expanding file '%s'", f)
 	}
 
-	return errors.Wrapf(catcher.Resolve(), "problem expanding paths")
+	return catcher.Resolve()
 }
 
 // Execute carries out the AttachResultsCommand command - this is required
@@ -66,7 +66,7 @@ func (c *xunitResults) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	if err := c.expandParams(conf); err != nil {
-		return err
+		return errors.Wrap(err, "applying expansions")
 	}
 
 	errChan := make(chan error)
@@ -78,7 +78,7 @@ func (c *xunitResults) Execute(ctx context.Context,
 	case err := <-errChan:
 		return errors.WithStack(err)
 	case <-ctx.Done():
-		logger.Execution().Info("Received signal to terminate execution of attach xunit results command")
+		logger.Execution().Infof("Canceled while parsing and uploading results for command '%s': %s.", c.Name(), ctx.Err())
 		return nil
 	}
 }
@@ -121,36 +121,36 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 		testSuites []testSuite
 	)
 	for _, reportFileLoc := range reportFilePaths {
-		if ctx.Err() != nil {
-			return errors.New("operation canceled")
+		if err := ctx.Err(); err != nil {
+			return errors.Wrapf(err, "canceled while parsing xunit file '%s'", reportFileLoc)
 		}
 
 		stat, err := os.Stat(reportFileLoc)
 		if os.IsNotExist(err) {
-			logger.Task().Infof("result file '%s' does not exist", reportFileLoc)
+			logger.Task().Infof("Result file '%s' does not exist.", reportFileLoc)
 			continue
 		}
 
 		if stat.IsDir() {
-			logger.Task().Infof("result file '%s' is a directory", reportFileLoc)
+			logger.Task().Infof("Result file '%s' is a directory, not a file.", reportFileLoc)
 			continue
 		}
 
 		file, err = os.Open(reportFileLoc)
 		if err != nil {
-			return errors.Wrap(err, "couldn't open xunit file")
+			return errors.Wrapf(err, "opening xunit file '%s'", reportFileLoc)
 		}
 
 		testSuites, err = parseXMLResults(file)
 		if err != nil {
 			catcher := grip.NewBasicCatcher()
-			catcher.Wrap(err, "error parsing xunit file")
-			catcher.Wrap(file.Close(), "closing xunit file")
+			catcher.Wrapf(err, "parsing xunit file '%s'", reportFileLoc)
+			catcher.Wrapf(file.Close(), "closing xunit file '%s'", reportFileLoc)
 			return catcher.Resolve()
 		}
 
 		if err = file.Close(); err != nil {
-			return errors.Wrap(err, "error closing xunit file")
+			return errors.Wrapf(err, "closing xunit file '%s'", reportFileLoc)
 		}
 
 		// go through all the tests
@@ -165,19 +165,19 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 
 	succeeded := 0
 	for i, log := range cumulative.logs {
-		if ctx.Err() != nil {
-			return errors.New("operation canceled")
+		if err := ctx.Err(); err != nil {
+			return errors.Wrap(err, "canceled while sending test logs")
 		}
 
 		if err := sendTestLog(ctx, comm, conf, log); err != nil {
-			logger.Task().Errorf("error posting test log: %v", err)
+			logger.Task().Error(errors.Wrap(err, "sending test log"))
 			continue
 		} else {
 			succeeded++
 		}
 		cumulative.tests[cumulative.logIdxToTestIdx[i]].LineNum = 1
 	}
-	logger.Task().Infof("posting test logs succeeded for %d of %d files", succeeded, len(cumulative.logs))
+	logger.Task().Infof("Posting test logs succeeded for %d of %d files.", succeeded, len(cumulative.logs))
 
 	return sendTestResults(ctx, comm, logger, conf, &task.LocalTestResults{Results: cumulative.tests})
 }

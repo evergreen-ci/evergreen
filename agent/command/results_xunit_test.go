@@ -37,7 +37,7 @@ func runTest(t *testing.T, configPath string, customTests func(string)) {
 
 	SkipConvey("With attachResults plugin installed into plugin registry", t, func() {
 		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", configPath, modelutil.NoPatch)
-		require.NoError(t, err, "failed to setup test data")
+		require.NoError(t, err)
 
 		conf, err := agentutil.MakeTaskConfigFromModelData(testConfig, modelData)
 		require.NoError(t, err)
@@ -50,14 +50,14 @@ func runTest(t *testing.T, configPath string, customTests func(string)) {
 				So(len(projTask.Commands), ShouldNotEqual, 0)
 				for _, command := range projTask.Commands {
 					pluginCmds, err := Render(command, conf.Project)
-					require.NoError(t, err, "Couldn't get plugin command: %s", command.Command)
+					require.NoError(t, err)
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
 
 					err = pluginCmds[0].Execute(ctx, comm, logger, conf)
 					So(err, ShouldBeNil)
 					testTask, err := task.FindOne(db.Query(task.ById(conf.Task.Id)))
-					require.NoError(t, err, "Couldn't find task")
+					require.NoError(t, err)
 					So(testTask, ShouldNotBeNil)
 				}
 			}

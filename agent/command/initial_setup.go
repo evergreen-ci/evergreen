@@ -10,6 +10,9 @@ import (
 	"github.com/mongodb/jasper"
 )
 
+// initialSetup is an internal command used as a placeholder when the agent is
+// setting up in preparation to run a task's commands. This is not meant to be
+// invoked by end users.
 type initialSetup struct{}
 
 func initialSetupFactory() Command                                    { return &initialSetup{} }
@@ -26,6 +29,6 @@ func (*initialSetup) SetJasperManager(_ jasper.Manager)               {}
 func (*initialSetup) Execute(ctx context.Context,
 	client client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
-	logger.Task().Info("performing initial task setup")
+	logger.Task().Info("Performing initial task setup.")
 	return nil
 }

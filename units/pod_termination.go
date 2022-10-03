@@ -92,10 +92,10 @@ func (j *podTerminationJob) Run(ctx context.Context) {
 	switch j.pod.Status {
 	case pod.StatusInitializing:
 		grip.Info(message.Fields{
-			"message":                    "not deleting resources because pod has not initialized any yet",
-			"pod":                        j.PodID,
-			"termination_attempt_reason": j.Reason,
-			"job":                        j.ID(),
+			"message":            "not deleting resources because pod has not initialized any yet",
+			"pod":                j.PodID,
+			"termination_reason": j.Reason,
+			"job":                j.ID(),
 		})
 	case pod.StatusStarting, pod.StatusRunning, pod.StatusDecommissioned:
 		if j.ecsPod != nil {
@@ -106,19 +106,19 @@ func (j *podTerminationJob) Run(ctx context.Context) {
 		}
 	case pod.StatusTerminated:
 		grip.Info(message.Fields{
-			"message":                    "pod is already terminated",
-			"pod":                        j.PodID,
-			"termination_attempt_reason": j.Reason,
-			"job":                        j.ID(),
+			"message":            "pod is already terminated",
+			"pod":                j.PodID,
+			"termination_reason": j.Reason,
+			"job":                j.ID(),
 		})
 		return
 	default:
 		grip.Error(message.Fields{
-			"message":                    "could not terminate pod with unrecognized status",
-			"pod":                        j.PodID,
-			"status":                     j.pod.Status,
-			"termination_attempt_reason": j.Reason,
-			"job":                        j.ID(),
+			"message":            "could not terminate pod with unrecognized status",
+			"pod":                j.PodID,
+			"status":             j.pod.Status,
+			"termination_reason": j.Reason,
+			"job":                j.ID(),
 		})
 	}
 
@@ -127,10 +127,11 @@ func (j *podTerminationJob) Run(ctx context.Context) {
 	}
 
 	grip.Info(message.Fields{
-		"message":                    "successfully terminated pod",
-		"pod":                        j.PodID,
-		"termination_attempt_reason": j.Reason,
-		"job":                        j.ID(),
+		"message":            "successfully terminated pod",
+		"pod":                j.PodID,
+		"usage":              "container task health dashboard",
+		"termination_reason": j.Reason,
+		"job":                j.ID(),
 	})
 }
 

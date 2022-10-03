@@ -48,13 +48,12 @@ func (c *update) Name() string         { return "expansions.update" }
 func (c *update) ParseParams(params map[string]interface{}) error {
 	err := mapstructure.Decode(params, c)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "decoding mapstructure params")
 	}
 
-	for _, item := range c.Updates {
+	for i, item := range c.Updates {
 		if item.Key == "" {
-			return errors.Errorf("error parsing '%v' params: key must not be "+
-				"a blank string", c.Name())
+			return errors.Errorf("expansion key at index %d must not be a blank string", i)
 		}
 	}
 
@@ -63,8 +62,8 @@ func (c *update) ParseParams(params map[string]interface{}) error {
 
 func (c *update) ExecuteUpdates(ctx context.Context, conf *internal.TaskConfig) error {
 	for _, update := range c.Updates {
-		if ctx.Err() != nil {
-			return errors.New("operation aborted")
+		if err := ctx.Err(); err != nil {
+			return errors.Wrap(err, "operation aborted")
 		}
 
 		if update.Concat == "" {
@@ -114,7 +113,7 @@ func (c *update) Execute(ctx context.Context,
 			return errors.Errorf("file '%s' does not exist", filename)
 		}
 
-		logger.Task().Infof("Updating expansions with keys from file: %s", filename)
+		logger.Task().Infof("Updating expansions with keys from file '%s'.", filename)
 		err := conf.Expansions.UpdateFromYaml(filename)
 		if err != nil {
 			return errors.WithStack(err)

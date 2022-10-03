@@ -120,7 +120,7 @@ func GetBuildloggerLogs(ctx context.Context, opts GetBuildloggerLogsOptions) (io
 	}
 	logReader, err := buildlogger.Get(ctx, getOpts)
 
-	return logReader, errors.Wrapf(err, "failed to get logs for '%s' from buildlogger, using evergreen logger", opts.TaskID)
+	return logReader, errors.Wrapf(err, "getting logs for '%s' from Buildlogger, using Evergreen logger", opts.TaskID)
 }
 
 // ReadBuildloggerToChan parses Cedar buildlogger log lines by message and

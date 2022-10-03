@@ -26,30 +26,30 @@ func (c *keyValInc) Name() string { return "keyval.inc" }
 func (c *keyValInc) ParseParams(params map[string]interface{}) error {
 	err := mapstructure.Decode(params, c)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "decoding mapstructure params")
 	}
 
 	if c.Key == "" || c.Destination == "" {
-		return errors.Errorf("error parsing '%v' params: key and destination may not be blank",
-			c.Name())
+		return errors.New("both key and destination must be set")
 	}
 
 	return nil
 }
 
-// Execute fetches the expansions from the API server
+// Execute sends the request to increment the value for the key and sets the
+// destination expansion's value.
 func (c *keyValInc) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	if err := util.ExpandValues(c, conf.Expansions); err != nil {
-		return err
+		return errors.Wrap(err, "applying expansions")
 	}
 
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	keyVal := model.KeyVal{Key: c.Key}
-	err := comm.KeyValInc(ctx, td, &keyVal) //.TaskPostJSON(IncRoute, c.Key)
+	err := comm.KeyValInc(ctx, td, &keyVal)
 	if err != nil {
-		return errors.Wrapf(err, "problem incrementing key %s", c.Key)
+		return errors.Wrapf(err, "incrementing key '%s'", c.Key)
 	}
 
 	conf.Expansions.Put(c.Destination, strconv.FormatInt(keyVal.Value, 10))

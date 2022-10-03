@@ -93,7 +93,7 @@ func TestExpansionWriter(t *testing.T) {
 			"password": true,
 		},
 	}
-	f, err := ioutil.TempFile("", "TestExpansionWriter")
+	f, err := ioutil.TempFile("", t.Name())
 	require.NoError(err)
 	defer os.Remove(f.Name())
 

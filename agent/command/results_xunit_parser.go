@@ -73,17 +73,17 @@ func parseXMLResults(reader io.Reader) ([]testSuite, error) {
 	results := testSuites{}
 	fileData, err := ioutil.ReadAll(reader)
 	if err != nil {
-		return nil, errors.Wrap(err, "Unable to read results file")
+		return nil, errors.Wrap(err, "reading results file")
 	}
 	// need to try to unmarshal into 2 different structs since the JUnit XML schema
 	// allows for <testsuite> or <testsuites> to be the root
 	// https://github.com/windyroad/JUnit-Schema/blob/master/JUnit.xsd
 	if err = xml.Unmarshal(fileData, &results); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "unmarshalling XML test suite")
 	}
 	if len(results.Suites) == 0 {
 		if err = xml.Unmarshal(fileData, &results.Suites); err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "unmarshalling XML test suites")
 		}
 	}
 	return results.Suites, nil

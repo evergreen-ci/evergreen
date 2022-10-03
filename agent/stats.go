@@ -12,6 +12,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/jasper"
+	"github.com/pkg/errors"
 )
 
 // StatsCollector samples machine statistics and logs them
@@ -40,7 +41,7 @@ func (sc *StatsCollector) expandCommands(exp *util.Expansions) {
 	for _, cmd := range sc.Cmds {
 		expanded, err := exp.ExpandString(cmd)
 		if err != nil {
-			sc.logger.System().Warningf("Couldn't expand '%s': %v", cmd, err)
+			sc.logger.System().Warning(errors.Wrapf(err, "expanding stats command '%s'", cmd))
 			continue
 		}
 		expandedCmds = append(expandedCmds, expanded)
@@ -50,7 +51,7 @@ func (sc *StatsCollector) expandCommands(exp *util.Expansions) {
 
 func (sc *StatsCollector) logStats(ctx context.Context, exp *util.Expansions) {
 	if sc.Interval < 0 {
-		panic(fmt.Sprintf("Illegal interval: %v", sc.Interval))
+		panic(fmt.Sprintf("Illegal stats collection interval: %s", sc.Interval))
 	}
 	if sc.Interval == 0 {
 		sc.Interval = 60 * time.Second
