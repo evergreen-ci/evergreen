@@ -160,8 +160,6 @@ func (j *volumeMigrationJob) stopInitialHost(ctx context.Context) {
 	})
 	j.AddRetryableError(errors.Errorf("initial host '%s' not yet stopped", j.InitialHostID))
 	return
-
-	j.AddRetryableError(errors.Errorf("initial host '%s' not yet stopped", j.InitialHostID))
 }
 
 // startNewHost attempts to start a new host with the volume attached.
