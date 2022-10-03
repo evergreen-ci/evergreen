@@ -176,10 +176,6 @@ func (n *Notification) Composer(env evergreen.Environment) (message.Composer, er
 			return nil, errors.New("slack payload is invalid")
 		}
 
-		grip.Info(message.Fields{
-			"message": "chayaMTesting model/notification/notification.go",
-			"target":  formattedTarget,
-		})
 		return message.NewSlackMessage(level.Notice, formattedTarget, payload.Body, payload.Attachments), nil
 
 	case event.GithubPullRequestSubscriberType:
@@ -272,7 +268,7 @@ func (n *Notification) SetTaskMetadata(ID string, execution int) {
 }
 
 func FormatSlackTarget(target string) (string, error) {
-	//check if it's a userID
+	//check if it's a userID (can potentially also be a user-group)
 	if strings.HasPrefix(target, "@") {
 		//use the memberId if it exists
 		trimmedTarget := strings.TrimPrefix(target, "@")
