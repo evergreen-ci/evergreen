@@ -132,11 +132,12 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/distros/{distro_id}").Version(2).Delete().Wrap(removeDistroSettings).RouteHandler(makeDeleteDistroByID())
 	app.AddRoute("/distros/{distro_id}").Version(2).Put().Wrap(createDistro).RouteHandler(makePutDistro())
 	app.AddRoute("/distros/{distro_id}/ami").Version(2).Get().Wrap(requireTask).RouteHandler(makeGetDistroAMI())
-	app.AddRoute("/distros/{distro_id}/client_urls").Version(2).Get().Wrap(requireUserToggleable).RouteHandler(makeGetDistroClientURLs(env))
 	app.AddRoute("/distros/{distro_id}/execute").Version(2).Patch().Wrap(editHosts).RouteHandler(makeDistroExecute(env))
 	app.AddRoute("/distros/{distro_id}/icecream_config").Version(2).Patch().Wrap(editHosts).RouteHandler(makeDistroIcecreamConfig(env))
 	app.AddRoute("/distros/{distro_id}/setup").Version(2).Get().Wrap(editDistroSettings).RouteHandler(makeGetDistroSetup())
 	app.AddRoute("/distros/{distro_id}/setup").Version(2).Patch().Wrap(editDistroSettings).RouteHandler(makeChangeDistroSetup())
+	// client_urls is used by the agent monitor deploy job which does not pass in user info
+	app.AddRoute("/distros/{distro_id}/client_urls").Version(2).Get().RouteHandler(makeGetDistroClientURLs(env))
 
 	// Middleware is omitted for webhook routes because they cannot be called by users and validation occurs in Parse function.
 	app.AddRoute("/hooks/github").Version(2).Post().RouteHandler(makeGithubHooksRoute(sc, opts.APIQueue, opts.GithubSecret, settings))
