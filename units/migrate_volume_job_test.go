@@ -59,9 +59,11 @@ func TestVolumeMigrateJob(t *testing.T) {
 
 			initialHost, err := host.FindOneId(h.Id)
 			assert.NoError(t, err)
-			assert.Equal(t, evergreen.HostTerminated, initialHost.Status)
-			assert.Equal(t, "", initialHost.HomeVolumeID)
+			assert.Equal(t, initialHost.Status, evergreen.HostStopped)
+			assert.Equal(t, initialHost.HomeVolumeID, "")
 			assert.Empty(t, initialHost.Volumes)
+			assert.False(t, initialHost.NoExpiration)
+			assert.WithinDuration(t, initialHost.ExpirationTime, time.Now(), (time.Hour*24)+time.Second)
 
 			foundHosts, err := host.Find(host.IsUninitialized)
 			assert.NoError(t, err)
@@ -112,7 +114,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			initialHost, err := host.FindOneId(h.Id)
 			assert.NoError(t, err)
 			assert.Equal(t, initialHost.Status, evergreen.HostRunning)
-			assert.Equal(t, h.HomeVolumeID, volume.ID)
+			assert.Equal(t, initialHost.HomeVolumeID, volume.ID)
 		},
 		"NewHostFailsToStart": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, v *host.Volume, d *distro.Distro, spawnOptions cloud.SpawnOptions) {
 			// Invalid public key will prevent new host from spinning up
@@ -140,17 +142,17 @@ func TestVolumeMigrateJob(t *testing.T) {
 			assert.Error(t, j.Error())
 			assert.Contains(t, j.Error().Error(), "creating new intent host")
 
-			// Initial host should have restarted with volume attached
+			// Should finish with initial host stopped and volume detached
 			volume, err := host.FindVolumeByID(v.ID)
 			assert.NoError(t, err)
 			assert.NotNil(t, volume)
-			assert.Equal(t, h.Id, volume.Host)
+			assert.Equal(t, volume.Host, "")
 			assert.False(t, volume.Migrating)
 
 			initialHost, err := host.FindOneId(h.Id)
 			assert.NoError(t, err)
-			assert.Equal(t, initialHost.Status, evergreen.HostRunning)
-			assert.Equal(t, h.HomeVolumeID, volume.ID)
+			assert.Equal(t, initialHost.Status, evergreen.HostStopped)
+			assert.Equal(t, initialHost.HomeVolumeID, "")
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {

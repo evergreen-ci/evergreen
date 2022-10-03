@@ -33,7 +33,6 @@ type volumeMigrationJob struct {
 
 	InitialHostID      string `bson:"initial_host_id"`
 	SpawnhostStopJobID string `bson:"spawnhost_stop_job_id"`
-	NewHostID          string `bson:"new_host_id"`
 
 	env         evergreen.Environment
 	volume      *host.Volume
@@ -89,19 +88,19 @@ func (j *volumeMigrationJob) Run(ctx context.Context) {
 		}
 	}
 
+	mgrOpts, err := cloud.GetManagerOptions(j.initialHost.Distro)
+	if err != nil {
+		j.AddError(errors.Wrapf(err, "getting cloud manager options for host '%s'", j.initialHost.Id))
+		return
+	}
+	mgr, err := cloud.GetManager(ctx, j.env, mgrOpts)
+	if err != nil {
+		j.AddError(errors.Wrapf(err, "getting cloud manager for host '%s'", j.initialHost.Id))
+		return
+	}
+
 	if j.initialHost.HomeVolumeID != "" {
-		mgrOpts, err := cloud.GetManagerOptions(j.initialHost.Distro)
-		if err != nil {
-			j.AddError(errors.Wrapf(err, "getting cloud manager options for host '%s'", j.initialHost.Id))
-			return
-		}
-		mgr, err := cloud.GetManager(ctx, j.env, mgrOpts)
-		if err != nil {
-			j.AddError(errors.Wrapf(err, "getting cloud manager for host '%s'", j.initialHost.Id))
-			return
-		}
 		if err := mgr.DetachVolume(ctx, j.initialHost, j.VolumeID); err != nil {
-			// if _, err := cloud.DetachVolume(ctx, j.VolumeID); err != nil {
 			j.AddError(errors.Wrapf(err, "detaching volume '%s'", j.VolumeID))
 			return
 		}
@@ -138,11 +137,9 @@ func (j *volumeMigrationJob) Run(ctx context.Context) {
 		}
 	}
 
-	// Terminate initial host
-	ts := utility.RoundPartOfMinute(1).Format(TSFormat)
-	terminateJob := NewSpawnHostTerminationJob(j.initialHost, evergreen.User, ts)
-	if err := amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), terminateJob); err != nil {
-		j.AddRetryableError(errors.Wrapf(err, "enqueueing initial host termination job '%s'", terminateJob.ID()))
+	// Set initial host to have expiration in 24 hours
+	if err := j.initialHost.SetExpirationTime(time.Now().Add(evergreen.DefaultSpawnHostExpiration)); err != nil {
+		j.AddError(errors.Wrapf(err, "setting expiration for host '%s'", j.InitialHostID))
 		return
 	}
 }
@@ -195,13 +192,11 @@ func (j *volumeMigrationJob) startNewHost(ctx context.Context) {
 		"job_id":         j.ID(),
 		"intent_host_id": intentHost.Id,
 	})
-	j.NewHostID = intentHost.Id
 }
 
 // finishJob marks the job as completed and attempts some additional cleanup if this is the job's final attempt.
 func (j *volumeMigrationJob) finishJob(ctx context.Context) {
 	if !j.RetryInfo().ShouldRetry() || j.RetryInfo().GetRemainingAttempts() == 0 {
-		// If a new host was never created, restart initial host with volume attached.
 		newHost, err := host.FindHostWithHomeVolume(j.VolumeID)
 		if err != nil {
 			j.AddRetryableError(errors.Wrapf(err, "finding host with volume '%s'", j.VolumeID))
@@ -209,13 +204,10 @@ func (j *volumeMigrationJob) finishJob(ctx context.Context) {
 		}
 		if newHost == nil {
 			grip.Error(message.Fields{
-				"message": "volume failed to migrate, restarting initial host with volume attached",
+				"message": "volume failed to migrate",
 				"job_id":  j.ID(),
 				"host_id": j.InitialHostID,
 			})
-			if hasErr := j.restartInitialHost(ctx); hasErr {
-				return
-			}
 		}
 
 		if err := j.volume.SetMigrating(false); err != nil {
@@ -226,28 +218,6 @@ func (j *volumeMigrationJob) finishJob(ctx context.Context) {
 	}
 
 	j.MarkComplete()
-}
-
-// restartInitialHost restarts the stopped host with the volume attached.
-// This is a fallback so that we can attempt to leave users with a usable workstation in case other operations fail.
-// It returns a boolean indicating whether an error was added to the job.
-func (j *volumeMigrationJob) restartInitialHost(ctx context.Context) bool {
-	if j.volume.Host == "" {
-		_, err := cloud.AttachVolume(ctx, j.VolumeID, j.InitialHostID)
-		if err != nil {
-			j.AddError(errors.Wrapf(err, "reattaching volume to initial host"))
-			return true
-
-		}
-	}
-
-	ts := utility.RoundPartOfMinute(1).Format(TSFormat)
-	if err := amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewSpawnhostStartJob(j.initialHost, evergreen.User, ts)); err != nil {
-		j.AddError(errors.Wrap(err, "enqueuing job to restart initial host"))
-		return true
-	}
-	return false
-
 }
 
 func (j *volumeMigrationJob) populateIfUnset() error {
