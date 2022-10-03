@@ -70,22 +70,26 @@ func (s *spawnHostTriggersSuite) TestSuccessfulSpawn() {
 	sub.Subscriber.Type = event.JIRAIssueSubscriberType
 	n, err = s.tProvisioning.Process(&sub)
 	s.Nil(n)
-	s.EqualError(err, "unsupported subscriber type: ")
+	s.Require().Error(err)
+	s.Contains(err.Error(), "unsupported subscriber type")
 
 	sub.Subscriber.Type = event.JIRACommentSubscriberType
 	n, err = s.tProvisioning.Process(&sub)
 	s.Nil(n)
-	s.EqualError(err, "unsupported subscriber type: ")
+	s.Require().Error(err)
+	s.Contains(err.Error(), "unsupported subscriber type")
 
 	sub.Subscriber.Type = event.GithubPullRequestSubscriberType
 	n, err = s.tProvisioning.Process(&sub)
 	s.Nil(n)
-	s.EqualError(err, "unsupported subscriber type: ")
+	s.Require().Error(err)
+	s.Contains(err.Error(), "unsupported subscriber type")
 
 	sub.Subscriber.Type = event.EvergreenWebhookSubscriberType
 	n, err = s.tProvisioning.Process(&sub)
 	s.Nil(n)
-	s.EqualError(err, "unsupported subscriber type: ")
+	s.Require().Error(err)
+	s.Contains(err.Error(), "unsupported subscriber type")
 }
 
 func (s *spawnHostTriggersSuite) TestFailedSpawn() {
@@ -111,22 +115,26 @@ func (s *spawnHostTriggersSuite) TestFailedSpawn() {
 	sub.Subscriber.Type = event.JIRAIssueSubscriberType
 	n, err = s.tProvisioning.Process(&sub)
 	s.Nil(n)
-	s.EqualError(err, "unsupported subscriber type: ")
+	s.Require().Error(err)
+	s.Contains(err.Error(), "unsupported subscriber type")
 
 	sub.Subscriber.Type = event.JIRACommentSubscriberType
 	n, err = s.tProvisioning.Process(&sub)
 	s.Nil(n)
-	s.EqualError(err, "unsupported subscriber type: ")
+	s.Require().Error(err)
+	s.Contains(err.Error(), "unsupported subscriber type")
 
 	sub.Subscriber.Type = event.GithubPullRequestSubscriberType
 	n, err = s.tProvisioning.Process(&sub)
 	s.Nil(n)
-	s.EqualError(err, "unsupported subscriber type: ")
+	s.Require().Error(err)
+	s.Contains(err.Error(), "unsupported subscriber type")
 
 	sub.Subscriber.Type = event.EvergreenWebhookSubscriberType
 	n, err = s.tProvisioning.Process(&sub)
 	s.Nil(n)
-	s.EqualError(err, "unsupported subscriber type: ")
+	s.Require().Error(err)
+	s.Contains(err.Error(), "unsupported subscriber type")
 }
 
 func (s *spawnHostTriggersSuite) TestSpawnHostStateChange() {

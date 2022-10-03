@@ -129,7 +129,6 @@ func (t *spawnHostProvisioningTriggers) makePayload(sub *event.Subscription) int
 
 	case event.EmailSubscriberType:
 		return t.email()
-
 	default:
 		return nil
 	}
@@ -138,7 +137,7 @@ func (t *spawnHostProvisioningTriggers) makePayload(sub *event.Subscription) int
 func (t *spawnHostProvisioningTriggers) generate(sub *event.Subscription) (*notification.Notification, error) {
 	payload := t.makePayload(sub)
 	if payload == nil {
-		return nil, errors.Errorf("unsupported subscriber type: %s", sub.ResourceType)
+		return nil, errors.Errorf("unsupported subscriber type '%s'", sub.Subscriber.Type)
 	}
 
 	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
@@ -183,7 +182,7 @@ func (t *spawnHostStateChangeTriggers) spawnHostStateChangeOutcome(sub *event.Su
 	}
 	payload, err := t.makePayload(sub)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't make payload")
+		return nil, errors.Wrap(err, "making payload")
 	}
 
 	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
