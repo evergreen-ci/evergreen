@@ -234,6 +234,7 @@ func (j *podCreationJob) logTaskTimingStats() error {
 
 	msg := message.Fields{
 		"message":          "created pod to run container tasks",
+		"usage":            "container task health dashboard",
 		"pod":              j.pod.ID,
 		"dispatcher_group": disp.GroupID,
 	}

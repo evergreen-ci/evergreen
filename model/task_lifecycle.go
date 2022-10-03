@@ -551,12 +551,14 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 	status := t.GetDisplayStatus()
 	event.LogTaskFinished(t.Id, t.Execution, t.HostId, status)
 	grip.Info(message.Fields{
-		"message":   "marking task finished",
-		"task_id":   t.Id,
-		"execution": t.Execution,
-		"status":    status,
-		"operation": "MarkEnd",
-		"host_id":   t.HostId,
+		"message":            "marking task finished",
+		"usage":              "container task health dashboard",
+		"task_id":            t.Id,
+		"execution":          t.Execution,
+		"status":             status,
+		"operation":          "MarkEnd",
+		"host_id":            t.HostId,
+		"execution_platform": t.ExecutionPlatform,
 	})
 
 	if t.IsPartOfDisplay() {
