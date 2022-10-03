@@ -1,7 +1,6 @@
 package user
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -343,7 +342,12 @@ func GetOrCreateUser(userId, displayName, email, accessToken, refreshToken strin
 	}
 
 	if err := setSlackInformation(env, u); err != nil {
-		return nil, errors.Wrapf(err, "setting slack information for user '%s'", userId)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":       "setting slack information for user",
+			"user_id":       u.Id,
+			"email_address": u.EmailAddress,
+		}))
+		return u, nil
 	}
 
 	return u, nil
@@ -367,8 +371,9 @@ func setSlackInformation(env evergreen.Environment, u *DBUser) error {
 	}
 	if slackUser == nil {
 		grip.Error(message.Fields{
-			"message": fmt.Sprintf("Couldn't find slack user by email address", u.EmailAddress),
-			"userId":  u.Id,
+			"message":       "Couldn't find slack user by email address",
+			"user_id":       u.Id,
+			"email_address": u.EmailAddress,
 		})
 		return nil
 	}
