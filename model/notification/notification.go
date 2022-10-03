@@ -274,7 +274,7 @@ func FormatSlackTarget(target string) (string, error) {
 		user, err := user.FindBySlackUsername(trimmedTarget)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"message": "finding user by slack username",
+				"message": "could not find user by Slack username, falling back to default target instead of using the member ID",
 				"target":  target,
 			}))
 			return target, nil
