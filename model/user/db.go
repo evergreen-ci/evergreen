@@ -310,29 +310,13 @@ func GetOrCreateUser(userId, displayName, email, accessToken, refreshToken strin
 	if refreshToken != "" {
 		setFields[bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheRefreshTokenKey)] = refreshToken
 	}
+	if accessToken != "" {
+		setFields[bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheAccessTokenKey)] = accessToken
+	}
+
 	setOnInsertFields := bson.M{
 		APIKeyKey: utility.RandomString(),
 		bsonutil.GetDottedKeyName(SettingsKey, UseSpruceOptionsKey, SpruceV1Key): true,
-	}
-
-	if accessToken != "" {
-		setFields[bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheAccessTokenKey)] = accessToken
-	} else {
-		// only fetch the slack user if the evergreen user doesn't exist (which is the case when there is no access token)
-		// get the slack userID and memberId from the user's email
-		slackEnv := env.Settings().Slack
-		slackUser, err := slackEnv.Options.GetSlackUser(slackEnv.Token, email)
-		if err != nil {
-			return nil, errors.Wrapf(err, "getting Slack user with email address '%s'", email)
-		}
-
-		if slackUser != nil {
-			setOnInsertFields[bsonutil.GetDottedKeyName(SettingsKey, userSettingsSlackMemberIdKey)] = slackUser.ID
-			if slackUser.Name != "" {
-				setOnInsertFields[bsonutil.GetDottedKeyName(SettingsKey, userSettingsSlackUsernameKey)] = slackUser.Name
-			}
-		}
-
 	}
 
 	if len(roles) > 0 {
@@ -355,7 +339,49 @@ func GetOrCreateUser(userId, displayName, email, accessToken, refreshToken strin
 		return nil, errors.Wrapf(err, "decoding user '%s'", userId)
 
 	}
+
+	if err := setSlackInformation(env, u); err != nil {
+		return nil, errors.Wrapf(err, "setting slack information for user '%s'", userId)
+	}
+
 	return u, nil
+}
+
+func setSlackInformation(env evergreen.Environment, u *DBUser) error {
+	if u.Settings.SlackMemberId != "" {
+		// user already has a slack member id set
+		return nil
+	}
+	if u.EmailAddress == "" {
+		// we can't fetch the slack information without the user's email address
+		return errors.New("user has no email address")
+	}
+
+	// get the slack userID and memberId from the user's email
+	slackEnv := env.Settings().Slack
+	slackUser, err := slackEnv.Options.GetSlackUser(slackEnv.Token, u.EmailAddress)
+	if err != nil {
+		return errors.Wrapf(err, "getting Slack user with email address '%s'", u.EmailAddress)
+	}
+	if slackUser == nil {
+		return nil
+	}
+
+	slackFields := bson.M{
+		bsonutil.GetDottedKeyName(SettingsKey, userSettingsSlackMemberIdKey): slackUser.ID,
+	}
+	if slackUser.Name != "" {
+		slackFields[bsonutil.GetDottedKeyName(SettingsKey, userSettingsSlackUsernameKey)] = slackUser.Name
+	}
+
+	update := bson.M{"$set": slackFields}
+
+	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
+		return errors.Wrap(err, "updating slack information")
+	}
+
+	return nil
+
 }
 
 // FindNeedsReauthorization finds all users that need to be reauthorized after
