@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
@@ -203,6 +204,7 @@ func (j *volumeMigrationJob) finishJob(ctx context.Context) {
 			return
 		}
 		if newHost == nil {
+			event.LogVolumeMigrationFailed(j.InitialHostID)
 			grip.Error(message.Fields{
 				"message": "volume failed to migrate",
 				"job_id":  j.ID(),
