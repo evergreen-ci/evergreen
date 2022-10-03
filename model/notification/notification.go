@@ -267,14 +267,17 @@ func (n *Notification) SetTaskMetadata(ID string, execution int) {
 	n.Metadata.TaskExecution = execution
 }
 
+// FormatSlackTarget uses the slackMemberId instead of the userName when possible.
 func FormatSlackTarget(target string) (string, error) {
-	//check if it's a userID (can potentially also be a user-group)
 	if strings.HasPrefix(target, "@") {
-		//use the memberId if it exists
 		trimmedTarget := strings.TrimPrefix(target, "@")
 		user, err := user.FindBySlackUsername(trimmedTarget)
 		if err != nil {
-			return "", errors.Wrapf(err, "finding user by slack username '%s'", target)
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "finding user by slack username",
+				"target":  target,
+			}))
+			return target, nil
 		}
 		if user != nil && user.Settings.SlackMemberId != "" {
 			return user.Settings.SlackMemberId, nil

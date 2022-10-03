@@ -201,7 +201,6 @@ func (h *slackNotificationPostHandler) Run(ctx context.Context) gimlet.Responder
 	for _, a := range h.APISlack.Attachments {
 		attachments = append(attachments, a.ToService())
 	}
-	// this should be the memberId
 	target := utility.FromStringPtr(h.APISlack.Target)
 	formattedTarget, err := notification.FormatSlackTarget(target)
 	if err != nil {
