@@ -31,7 +31,6 @@ type volumeMigrationJob struct {
 	VolumeID      string             `bson:"volume_id" yaml:"volume_id"`
 	ModifyOptions cloud.SpawnOptions `bson:"modify_options" json:"modify_options" yaml:"modify_options"`
 
-	VolumeDetached     bool   `bson:"volume_detached"`
 	InitialHostID      string `bson:"initial_host_id"`
 	SpawnhostStopJobID string `bson:"spawnhost_stop_job_id"`
 	NewHostID          string `bson:"new_host_id"`
@@ -90,18 +89,28 @@ func (j *volumeMigrationJob) Run(ctx context.Context) {
 		}
 	}
 
-	if !j.VolumeDetached {
+	if j.initialHost.HomeVolumeID != "" {
+		mgrOpts, err := cloud.GetManagerOptions(j.initialHost.Distro)
+		if err != nil {
+			j.AddError(errors.Wrapf(err, "getting cloud manager options for host '%s'", j.initialHost.Id))
+			return
+		}
+		mgr, err := cloud.GetManager(ctx, j.env, mgrOpts)
+		if err != nil {
+			j.AddError(errors.Wrapf(err, "getting cloud manager for host '%s'", j.initialHost.Id))
+			return
+		}
+		if err := mgr.DetachVolume(ctx, j.initialHost, j.VolumeID); err != nil {
+			// if _, err := cloud.DetachVolume(ctx, j.VolumeID); err != nil {
+			j.AddError(errors.Wrapf(err, "detaching volume '%s'", j.VolumeID))
+			return
+		}
+
 		// Unmount volume from initial host
 		if err := j.initialHost.UnsetHomeVolume(); err != nil {
 			j.AddError(errors.Wrapf(err, "unsetting home volume '%s' from host '%s'", j.VolumeID, j.InitialHostID))
 			return
 		}
-
-		if _, err := cloud.DetachVolume(ctx, j.VolumeID); err != nil {
-			j.AddError(errors.Wrapf(err, "detaching volume '%s'", j.VolumeID))
-			return
-		}
-		j.VolumeDetached = true
 
 		// Update in-memory volume
 		volume, err := host.FindVolumeByID(j.VolumeID)
@@ -117,7 +126,12 @@ func (j *volumeMigrationJob) Run(ctx context.Context) {
 	}
 
 	// Avoid recreating new host on retry
-	if j.NewHostID == "" {
+	newHost, err := host.FindHostWithHomeVolume(j.VolumeID)
+	if err != nil {
+		j.AddRetryableError(errors.Wrapf(err, "finding host with volume '%s'", j.VolumeID))
+		return
+	}
+	if newHost == nil {
 		j.startNewHost(ctx)
 		if j.HasErrors() {
 			return
@@ -127,7 +141,7 @@ func (j *volumeMigrationJob) Run(ctx context.Context) {
 	// Terminate initial host
 	ts := utility.RoundPartOfMinute(1).Format(TSFormat)
 	terminateJob := NewSpawnHostTerminationJob(j.initialHost, evergreen.User, ts)
-	if err := j.env.RemoteQueue().Put(ctx, terminateJob); err != nil {
+	if err := amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), terminateJob); err != nil {
 		j.AddRetryableError(errors.Wrapf(err, "enqueueing initial host termination job '%s'", terminateJob.ID()))
 		return
 	}
@@ -139,7 +153,7 @@ func (j *volumeMigrationJob) stopInitialHost(ctx context.Context) {
 	if j.SpawnhostStopJobID == "" {
 		ts := utility.RoundPartOfMinute(1).Format(TSFormat)
 		stopJob := NewSpawnhostStopJob(j.initialHost, evergreen.User, ts)
-		err := j.env.RemoteQueue().Put(ctx, stopJob)
+		err := amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), stopJob)
 		if err != nil {
 			j.AddRetryableError(err)
 			return
@@ -151,28 +165,6 @@ func (j *volumeMigrationJob) stopInitialHost(ctx context.Context) {
 		})
 		j.SpawnhostStopJobID = stopJob.ID()
 		j.AddRetryableError(errors.Errorf("initial host '%s' not yet stopped", j.InitialHostID))
-		return
-	}
-
-	// Mark host as stopped
-	if j.initialHost.Status == evergreen.HostStopped {
-		grip.Info(message.Fields{
-			"message":         "initial host stopped",
-			"job_id":          j.ID(),
-			"initial_host_id": j.InitialHostID,
-		})
-		return
-	}
-
-	// If host is not stopped, verify whether the job is still in progress and error if it completed without stopping.
-	stopJob, foundJob := j.env.RemoteQueue().Get(ctx, j.SpawnhostStopJobID)
-	if !foundJob {
-		j.AddError(errors.Errorf("spawnhost-stop job '%s' could not be found", j.SpawnhostStopJobID))
-		return
-	}
-
-	if stopJob.Status().Completed {
-		j.AddError(errors.Errorf("host '%s' failed to stop", j.SpawnhostStopJobID))
 		return
 	}
 
@@ -208,12 +200,19 @@ func (j *volumeMigrationJob) startNewHost(ctx context.Context) {
 
 // finishJob marks the job as completed and attempts some additional cleanup if this is the job's final attempt.
 func (j *volumeMigrationJob) finishJob(ctx context.Context) {
-	// Amboy's ShouldRetry() method does not account for reaching MaxAttempts, so manually determine if the current attempt is the last.
-	retryInfo := j.RetryInfo()
-	isFinalAttempt := retryInfo.CurrentAttempt >= (retryInfo.MaxAttempts - 1)
-	if !retryInfo.ShouldRetry() || isFinalAttempt {
+	if !j.RetryInfo().ShouldRetry() || j.RetryInfo().GetRemainingAttempts() == 0 {
 		// If a new host was never created, restart initial host with volume attached.
-		if j.NewHostID == "" {
+		newHost, err := host.FindHostWithHomeVolume(j.VolumeID)
+		if err != nil {
+			j.AddRetryableError(errors.Wrapf(err, "finding host with volume '%s'", j.VolumeID))
+			return
+		}
+		if newHost == nil {
+			grip.Error(message.Fields{
+				"message": "volume failed to migrate, restarting initial host with volume attached",
+				"job_id":  j.ID(),
+				"host_id": j.InitialHostID,
+			})
 			if hasErr := j.restartInitialHost(ctx); hasErr {
 				return
 			}
@@ -243,7 +242,7 @@ func (j *volumeMigrationJob) restartInitialHost(ctx context.Context) bool {
 	}
 
 	ts := utility.RoundPartOfMinute(1).Format(TSFormat)
-	if err := j.env.RemoteQueue().Put(ctx, NewSpawnhostStartJob(j.initialHost, evergreen.User, ts)); err != nil {
+	if err := amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewSpawnhostStartJob(j.initialHost, evergreen.User, ts)); err != nil {
 		j.AddError(errors.Wrap(err, "enqueuing job to restart initial host"))
 		return true
 	}

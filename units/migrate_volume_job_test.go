@@ -54,7 +54,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			volume, err := host.FindVolumeByID(v.ID)
 			assert.NoError(t, err)
 			assert.NotNil(t, volume)
-			assert.NotEqual(t, h.Id, volume.Host)
+			assert.NotEqual(t, volume.Host, h.Id)
 			assert.False(t, volume.Migrating)
 
 			initialHost, err := host.FindOneId(h.Id)
@@ -86,7 +86,8 @@ func TestVolumeMigrateJob(t *testing.T) {
 
 			j := NewVolumeMigrationJob(env, v.ID, spawnOptions, "123")
 			j.UpdateRetryInfo(amboy.JobRetryOptions{
-				WaitUntil: utility.ToTimeDurationPtr(0),
+				WaitUntil:   utility.ToTimeDurationPtr(100 * time.Millisecond),
+				MaxAttempts: utility.ToIntPtr(3),
 			})
 			require.NoError(t, env.RemoteQueue().Start(ctx))
 			require.NoError(t, env.RemoteQueue().Put(ctx, j))
@@ -98,7 +99,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			j, updatedJ := env.RemoteQueue().Get(ctx, j.ID())
 			assert.True(t, updatedJ)
 			assert.Error(t, j.Error())
-			assert.Contains(t, j.Error().Error(), "failed to stop")
+			assert.Contains(t, j.Error().Error(), "not yet stopped")
 
 			// Verify volume remains attached to initial host
 			volume, err := host.FindVolumeByID(v.ID)
@@ -112,41 +113,6 @@ func TestVolumeMigrateJob(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, initialHost.Status, evergreen.HostRunning)
 			assert.Equal(t, h.HomeVolumeID, volume.ID)
-		},
-		"VolumeFailsToUnmount": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, v *host.Volume, d *distro.Distro, spawnOptions cloud.SpawnOptions) {
-			// Empty volume ID will prevent the volume from detaching
-			v.ID = ""
-			require.NoError(t, d.Insert())
-			require.NoError(t, v.Insert())
-			require.NoError(t, h.Insert())
-
-			j := NewVolumeMigrationJob(env, v.ID, spawnOptions, "123")
-			j.UpdateRetryInfo(amboy.JobRetryOptions{
-				WaitUntil: utility.ToTimeDurationPtr(0),
-			})
-			require.NoError(t, env.RemoteQueue().Start(ctx))
-			require.NoError(t, env.RemoteQueue().Put(ctx, j))
-
-			require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond))
-			assert.Error(t, j.Error())
-			assert.Contains(t, j.Error().Error(), "not yet stopped")
-
-			j, updatedJ := env.RemoteQueue().Get(ctx, j.ID())
-			assert.True(t, updatedJ)
-			assert.Error(t, j.Error())
-			assert.Contains(t, j.Error().Error(), "detaching volume")
-
-			// Initial host should have restarted with volume attached
-			volume, err := host.FindVolumeByID(v.ID)
-			assert.NoError(t, err)
-			assert.NotNil(t, volume)
-			assert.Equal(t, h.Id, volume.Host)
-			assert.False(t, volume.Migrating)
-
-			initialHost, err := host.FindOneId(h.Id)
-			assert.NoError(t, err)
-			assert.Equal(t, initialHost.Status, evergreen.HostRunning)
-			assert.Equal(t, h.HomeVolumeID, "v0")
 		},
 		"NewHostFailsToStart": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, v *host.Volume, d *distro.Distro, spawnOptions cloud.SpawnOptions) {
 			// Invalid public key will prevent new host from spinning up
