@@ -1094,7 +1094,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 			So(err, ShouldBeNil)
 			So(h.RunningTask, ShouldEqual, task4.Id)
 		})
-		Convey("with many host running task group tasks", func() {
+		Convey("with many hosts running task group tasks", func() {
 			// In this scenario likely host1 and host2 are racing, since host2 has a later
 			// task group order number than what's in the queue, and will clear the running
 			// task when it sees that host2 is running with a smaller task group order number.
@@ -1301,7 +1301,6 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 				Id:           "notatask",
 				Dependencies: []string{},
 			}
-			// taskQueue.Queue = []model.TaskQueueItem{{Id: "notatask"}}
 			taskQueue.Queue = []model.TaskQueueItem{item}
 			So(taskQueue.Save(), ShouldBeNil)
 			t, shouldTeardown, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)

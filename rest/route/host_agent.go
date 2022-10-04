@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -611,7 +612,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 
 		// UpdateRunningTask updates the running task in the host document
 		lockErr := currentHost.UpdateRunningTask(nextTask)
-		if lockErr != nil {
+		if lockErr != nil && !db.IsDuplicateKey(lockErr) {
 			return nil, false, errors.WithStack(err)
 		}
 		dispatchedTask := lockErr == nil
@@ -669,6 +670,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 				}))
 
 				// Continue on trying to dispatch a different task.
+				dispatchedTask = false
 			} else if err != nil {
 				return nil, false, errors.Wrap(err, "checking task group task's dispatchability")
 			}
@@ -688,6 +690,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 
 		return nextTask, false, nil
 	}
+
 	return nil, false, nil
 }
 
@@ -702,11 +705,11 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 // exceeds the max host limit, this will return true to indicate that the host
 // should not run this task.
 func checkHostTaskGroupAfterDispatch(h *host.Host, t *task.Task) (isDispatchable bool, err error) {
-	minTaskGroupOrderNum := 0
+	var minTaskGroupOrderNum int
 	if t.TaskGroupMaxHosts == 1 {
 		// Regardless of how many hosts are running tasks, if this host is
 		// running the earliest task in the task group we should continue.
-		minTaskGroupOrderNum, err := host.MinTaskGroupOrderRunningByTaskSpec(t.TaskGroup, t.BuildVariant, t.Project, t.Version)
+		minTaskGroupOrderNum, err = host.MinTaskGroupOrderRunningByTaskSpec(t.TaskGroup, t.BuildVariant, t.Project, t.Version)
 		if err != nil {
 			return false, errors.Wrap(err, "getting min task group order")
 		}
@@ -737,7 +740,7 @@ func checkHostTaskGroupAfterDispatch(h *host.Host, t *task.Task) (isDispatchable
 	}
 
 	// For multiple-host task groups and single-host task groups without order
-	// cached in the host, check the max hosts is respected.
+	// cached in the host, check that max hosts is respected.
 	if minTaskGroupOrderNum == 0 {
 		numHosts, err := host.NumHostsByTaskSpec(t.TaskGroup, t.BuildVariant, t.Project, t.Version)
 		if err != nil {
