@@ -31,7 +31,7 @@ func ResourceTypeKeyIs(key string) bson.M {
 // by one of the query functions, and returns a slice of events.
 func Find(query db.Q) ([]EventLogEntry, error) {
 	events := []EventLogEntry{}
-	err := db.FindAllQ(LegacyEventLogCollection, query, &events)
+	err := db.FindAllQ(EventCollection, query, &events)
 	if err != nil || adb.ResultsNotFound(err) {
 		return nil, errors.WithStack(err)
 	}
@@ -47,13 +47,13 @@ func FindPaginatedWithTotalCount(hostID, hostTag string, limit, page int) ([]Eve
 		query = query.Skip(skip)
 	}
 
-	err := db.FindAllQ(LegacyEventLogCollection, query, &events)
+	err := db.FindAllQ(EventCollection, query, &events)
 	if err != nil || adb.ResultsNotFound(err) {
 		return nil, 0, errors.WithStack(err)
 	}
 
 	// Count ignores skip and limit by default, so this will return the total number of events.
-	count, err := db.CountQ(LegacyEventLogCollection, query)
+	count, err := db.CountQ(EventCollection, query)
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "fetching total count for host events")
 	}
@@ -61,7 +61,7 @@ func FindPaginatedWithTotalCount(hostID, hostTag string, limit, page int) ([]Eve
 	return events, count, nil
 }
 
-// FindUnprocessedEvents returns all unprocessed events in LegacyEventLogCollection.
+// FindUnprocessedEvents returns all unprocessed events in EventCollection.
 // Events are considered unprocessed if their "processed_at" time IsZero
 func FindUnprocessedEvents(limit int) ([]EventLogEntry, error) {
 	out := []EventLogEntry{}
@@ -69,7 +69,7 @@ func FindUnprocessedEvents(limit int) ([]EventLogEntry, error) {
 	if limit > 0 {
 		query = query.Limit(limit)
 	}
-	err := db.FindAllQ(LegacyEventLogCollection, query, &out)
+	err := db.FindAllQ(EventCollection, query, &out)
 	if err != nil {
 		return nil, errors.Wrap(err, "fetching unprocessed events")
 	}
@@ -84,7 +84,7 @@ func FindByID(eventID string) (*EventLogEntry, error) {
 	}
 
 	var e EventLogEntry
-	if err := db.FindOneQ(LegacyEventLogCollection, db.Query(query), &e); err != nil {
+	if err := db.FindOneQ(EventCollection, db.Query(query), &e); err != nil {
 		if adb.ResultsNotFound(err) {
 			return nil, nil
 		}
@@ -101,7 +101,7 @@ func FindLastProcessedEvent() (*EventLogEntry, error) {
 	}).Sort([]string{"-" + processedAtKey})
 
 	e := EventLogEntry{}
-	if err := db.FindOneQ(LegacyEventLogCollection, q, &e); err != nil {
+	if err := db.FindOneQ(EventCollection, q, &e); err != nil {
 		if adb.ResultsNotFound(err) {
 			return nil, nil
 		}
@@ -114,7 +114,7 @@ func FindLastProcessedEvent() (*EventLogEntry, error) {
 func CountUnprocessedEvents() (int, error) {
 	q := db.Query(unprocessedEvents())
 
-	n, err := db.CountQ(LegacyEventLogCollection, q)
+	n, err := db.CountQ(EventCollection, q)
 	if err != nil {
 		return 0, errors.Wrap(err, "fetching number of unprocessed events")
 	}
@@ -157,7 +157,7 @@ func TaskEventsInOrder(id string) db.Q {
 // FindLatestPrimaryDistroEvents return the most recent non-AMI events for the distro.
 func FindLatestPrimaryDistroEvents(id string, n int) ([]EventLogEntry, error) {
 	events := []EventLogEntry{}
-	err := db.Aggregate(LegacyEventLogCollection, latestDistroEventsPipeline(id, n, false), &events)
+	err := db.Aggregate(EventCollection, latestDistroEventsPipeline(id, n, false), &events)
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +168,7 @@ func FindLatestPrimaryDistroEvents(id string, n int) ([]EventLogEntry, error) {
 func FindLatestAMIModifiedDistroEvent(id string) (EventLogEntry, error) {
 	events := []EventLogEntry{}
 	res := EventLogEntry{}
-	err := db.Aggregate(LegacyEventLogCollection, latestDistroEventsPipeline(id, 1, true), &events)
+	err := db.Aggregate(EventCollection, latestDistroEventsPipeline(id, 1, true), &events)
 	if err != nil {
 		return res, err
 	}

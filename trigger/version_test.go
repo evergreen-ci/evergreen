@@ -31,7 +31,7 @@ type VersionSuite struct {
 }
 
 func (s *VersionSuite) SetupTest() {
-	s.NoError(db.ClearCollections(event.LegacyEventLogCollection, model.VersionCollection, event.SubscriptionsCollection, task.Collection, alertrecord.Collection))
+	s.NoError(db.ClearCollections(event.EventCollection, model.VersionCollection, event.SubscriptionsCollection, task.Collection, alertrecord.Collection))
 	startTime := time.Now().Truncate(time.Millisecond)
 
 	versionID := "5aeb4514f27e4f9984646d97"

@@ -166,7 +166,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 				},
 			}
 
-		s.Require().NoError(db.ClearCollections(event.LegacyEventLogCollection))
+		s.Require().NoError(db.ClearCollections(event.EventCollection))
 		for i := 0; i < projEventCount; i++ {
 			eventShallowCpy := h
 			s.NoError(eventShallowCpy.Log())
@@ -279,7 +279,7 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 }
 
 func TestUpdateProjectVarsByValue(t *testing.T) {
-	require.NoError(t, db.ClearCollections(model.ProjectVarsCollection, event.LegacyEventLogCollection))
+	require.NoError(t, db.ClearCollections(model.ProjectVarsCollection, event.EventCollection))
 
 	vars := &model.ProjectVars{
 		Id:          projectId,
@@ -377,7 +377,7 @@ func TestCreateProject(t *testing.T) {
 	defer cancel()
 
 	defer func() {
-		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, commitqueue.Collection, event.LegacyEventLogCollection, user.Collection))
+		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, commitqueue.Collection, event.EventCollection, user.Collection))
 
 		cocoaMock.ResetGlobalSecretCache()
 	}()
@@ -415,7 +415,7 @@ func TestCreateProject(t *testing.T) {
 			tctx, tcancel := context.WithCancel(context.Background())
 			defer tcancel()
 
-			require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, commitqueue.Collection, event.LegacyEventLogCollection, user.Collection))
+			require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, commitqueue.Collection, event.EventCollection, user.Collection))
 
 			cocoaMock.ResetGlobalSecretCache()
 
@@ -439,7 +439,7 @@ func TestCreateProject(t *testing.T) {
 }
 
 func TestGetLegacyProjectEvents(t *testing.T) {
-	require.NoError(t, db.ClearCollections(event.LegacyEventLogCollection))
+	require.NoError(t, db.ClearCollections(event.EventCollection))
 
 	project := &model.ProjectRef{Id: projectId}
 	require.NoError(t, project.Insert())

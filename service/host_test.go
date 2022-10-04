@@ -28,7 +28,7 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 
 	env := &mock.Environment{}
 	assert.NoError(env.Configure(ctx))
-	require.NoError(db.ClearCollections(host.Collection, event.LegacyEventLogCollection), "error clearing collections")
+	require.NoError(db.ClearCollections(host.Collection, event.EventCollection), "error clearing collections")
 
 	// Normal test, changing a host from running to quarantined
 	t.Run("SuccessfullyModifiesHostStatusWithNote", func(t *testing.T) {

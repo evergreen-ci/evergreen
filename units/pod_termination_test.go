@@ -37,7 +37,7 @@ func TestNewPodTerminationJob(t *testing.T) {
 
 func TestPodTerminationJob(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(pod.Collection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, dispatcher.Collection, event.LegacyEventLogCollection))
+		assert.NoError(t, db.ClearCollections(pod.Collection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, dispatcher.Collection, event.EventCollection))
 	}()
 
 	checkCloudPodDeleteRequests := func(t *testing.T, ecsc cocoa.ECSClient) {
@@ -288,7 +288,7 @@ func TestPodTerminationJob(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			require.NoError(t, db.ClearCollections(pod.Collection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, dispatcher.Collection, event.LegacyEventLogCollection))
+			require.NoError(t, db.ClearCollections(pod.Collection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, dispatcher.Collection, event.EventCollection))
 
 			cluster := "cluster"
 

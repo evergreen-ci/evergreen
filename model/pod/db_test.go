@@ -408,9 +408,9 @@ func TestUpdateOneStatus(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
+			require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 			defer func() {
-				assert.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
+				assert.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 			}()
 
 			p := Pod{

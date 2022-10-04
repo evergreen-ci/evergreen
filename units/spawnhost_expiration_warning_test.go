@@ -26,7 +26,7 @@ func (s *spawnHostExpirationSuite) SetupSuite() {
 }
 
 func (s *spawnHostExpirationSuite) SetupTest() {
-	s.NoError(db.ClearCollections(event.LegacyEventLogCollection, host.Collection, alertrecord.Collection))
+	s.NoError(db.ClearCollections(event.EventCollection, host.Collection, alertrecord.Collection))
 	now := time.Now()
 	h1 := host.Host{
 		Id:             "h1",

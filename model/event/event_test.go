@@ -25,7 +25,7 @@ func TestEventSuite(t *testing.T) {
 }
 
 func (s *eventSuite) SetupTest() {
-	s.NoError(db.ClearCollections(LegacyEventLogCollection))
+	s.NoError(db.ClearCollections(EventCollection))
 }
 
 func (s *eventSuite) TestMarshallAndUnarshallingStructsHaveSameTags() {
@@ -74,7 +74,7 @@ func (s *eventSuite) TestWithRealData() {
 			hostDataStatusKey: "success",
 		},
 	}
-	s.NoError(db.Insert(LegacyEventLogCollection, data))
+	s.NoError(db.Insert(EventCollection, data))
 	entries, err := Find(db.Query(bson.M{idKey: mgobson.ObjectIdHex("5949645c9acd9604fdd202d8")}))
 	s.NoError(err)
 	s.Len(entries, 1)
@@ -109,7 +109,7 @@ func (s *eventSuite) TestWithRealData() {
 			hostDataStatusKey: "success",
 		},
 	}
-	s.NoError(db.Insert(LegacyEventLogCollection, data))
+	s.NoError(db.Insert(EventCollection, data))
 	entries, err = Find(db.Query(bson.M{idKey: mgobson.ObjectIdHex("5949645c9acd9604fdd202d9")}))
 	s.NoError(err)
 	s.Len(entries, 1)
@@ -133,7 +133,7 @@ func (s *eventSuite) TestWithRealData() {
 
 	// check that string IDs are preserved in the DB
 	data[idKey] = "elephant"
-	s.NoError(db.Insert(LegacyEventLogCollection, data))
+	s.NoError(db.Insert(EventCollection, data))
 	entries, err = Find(db.Query(bson.M{idKey: "elephant"}))
 	s.NoError(err)
 	s.Len(entries, 1)
@@ -152,7 +152,7 @@ func (s *eventSuite) TestEventWithNilData() {
 
 	s.NotPanics(func() {
 		// But reading this back should not panic, if it somehow got into the db
-		s.NoError(db.Insert(LegacyEventLogCollection, event))
+		s.NoError(db.Insert(EventCollection, event))
 		fetchedEvents, err := Find(db.Query(bson.M{}))
 		s.Require().Error(err)
 		s.Nil(fetchedEvents)
@@ -279,14 +279,14 @@ func (s *eventSuite) TestMarkProcessed() {
 	s.EqualError(event.MarkProcessed(), "updating 'processed at' time: document not found")
 	s.NoError(event.Log())
 
-	s.NoError(db.UpdateId(LegacyEventLogCollection, event.ID, bson.M{
+	s.NoError(db.UpdateId(EventCollection, event.ID, bson.M{
 		"$set": bson.M{
 			"processed_at": time.Time{},
 		},
 	}))
 
 	var fetchedEvent EventLogEntry
-	s.NoError(db.FindOneQ(LegacyEventLogCollection, db.Q{}, &fetchedEvent))
+	s.NoError(db.FindOneQ(EventCollection, db.Q{}, &fetchedEvent))
 
 	processed, ptime = fetchedEvent.Processed()
 	s.False(processed)
@@ -333,7 +333,7 @@ func (s *eventSuite) TestFindUnprocessedEvents() {
 		},
 	}
 	for i := range data {
-		s.NoError(db.Insert(LegacyEventLogCollection, data[i]))
+		s.NoError(db.Insert(EventCollection, data[i]))
 	}
 	events, err := FindUnprocessedEvents(-1)
 	s.NoError(err)
@@ -385,7 +385,7 @@ func (s *eventSuite) TestFindLastProcessedEvent() {
 		},
 	}
 	for i := range events {
-		s.NoError(db.Insert(LegacyEventLogCollection, events[i]))
+		s.NoError(db.Insert(EventCollection, events[i]))
 	}
 
 	e, err := FindLastProcessedEvent()
@@ -432,7 +432,7 @@ func (s *eventSuite) TestCountUnprocessedEvents() {
 		},
 	}
 	for i := range events {
-		s.NoError(db.Insert(LegacyEventLogCollection, events[i]))
+		s.NoError(db.Insert(EventCollection, events[i]))
 	}
 
 	n, err := CountUnprocessedEvents()
@@ -504,7 +504,7 @@ func (s *eventSuite) TestLogManyEvents() {
 	}
 	s.NoError(LogManyEvents([]EventLogEntry{event1, event2}))
 	events := []EventLogEntry{}
-	s.NoError(db.FindAllQ(LegacyEventLogCollection, db.Query(bson.M{}), &events))
+	s.NoError(db.FindAllQ(EventCollection, db.Query(bson.M{}), &events))
 	s.Len(events, 2)
 	s.Equal(events[0].ResourceId, "resource_id_1")
 	s.Equal(events[0].EventType, "some_type")

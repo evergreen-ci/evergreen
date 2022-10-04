@@ -122,7 +122,7 @@ func TestCheckPodSecret(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(pod.Collection, event.LegacyEventLogCollection))
+			require.NoError(t, db.ClearCollections(pod.Collection, event.EventCollection))
 
 			secretVal := "secret_value"
 			p := pod.Pod{
