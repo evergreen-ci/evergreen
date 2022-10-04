@@ -4,6 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"strings"
+	"time"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -16,15 +21,10 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"io/ioutil"
-	"net/http"
-	"strings"
-	"time"
 )
 
 const (
-	APIServerLockTitle = evergreen.APIServerTaskActivator
-	taskDispatcherTTL  = time.Minute
+	taskDispatcherTTL = time.Minute
 )
 
 // APIServer handles communication with Evergreen agents and other back-end requests.
