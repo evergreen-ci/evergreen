@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"time"
@@ -1339,6 +1340,11 @@ func MarkHostTaskDispatched(t *task.Task, h *host.Host) error {
 	if t.IsPartOfDisplay() {
 		return UpdateDisplayTaskForTask(t)
 	}
+
+	return nil
+}
+
+func MarkHostTaskDispatchedWithContext(ctx context.Context, env evergreen.Environment, t *task.Task, h *host.Host) error {
 
 	return nil
 }

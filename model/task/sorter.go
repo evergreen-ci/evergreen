@@ -44,6 +44,8 @@ func (t Tasks) InsertUnordered(ctx context.Context) error {
 	return err
 }
 
+// ByPriority sorts tasks according to their display statuses (and has nothing
+// to do with its scheduled priority).
 type ByPriority []Task
 
 func (p ByPriority) Len() int      { return len(p) }
