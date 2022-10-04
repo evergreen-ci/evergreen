@@ -1467,6 +1467,14 @@ func (h *Host) updateRunningTaskWithFunc(doUpdate func(query, update bson.M) err
 		return err
 	}
 
+	h.RunningTask = t.Id
+	h.RunningTaskExecution = t.Execution
+	h.RunningTaskGroup = t.TaskGroup
+	h.RunningTaskGroupOrder = t.TaskGroupOrder
+	h.RunningTaskBuildVariant = t.BuildVariant
+	h.RunningTaskVersion = t.Version
+	h.RunningTaskProject = t.Project
+
 	return nil
 }
 
