@@ -79,6 +79,15 @@ func setupPermissions(t *testing.T) {
 
 func TestRequireSuperUser(t *testing.T) {
 	setupPermissions(t)
+	user := &user.DBUser{
+		Id: apiUser,
+		Settings: user.UserSettings{
+			SlackUsername: "testuser",
+			SlackMemberId: "testuser",
+		},
+	}
+	require.NoError(t, user.Insert())
+
 	const email = "testuser@mongodb.com"
 	const accessToken = "access_token"
 	const refreshToken = "refresh_token"
