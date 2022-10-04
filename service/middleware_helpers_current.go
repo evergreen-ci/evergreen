@@ -10,12 +10,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-func setAPIHostContext(r *http.Request, h *host.Host) *http.Request {
-	return r.WithContext(context.WithValue(r.Context(), model.ApiHostKey, h))
-}
-func setAPITaskContext(r *http.Request, t *task.Task) *http.Request {
-	return r.WithContext(context.WithValue(r.Context(), model.ApiTaskKey, t))
-}
 func setProjectContext(r *http.Request, p *model.Project) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), model.ApiProjectKey, p))
 }

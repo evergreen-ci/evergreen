@@ -626,8 +626,21 @@ func TestSetRunningTask(t *testing.T) {
 
 func TestClearRunningTask(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection))
+		assert.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
 	}()
+
+	checkContainerTaskCleared := func(t *testing.T, podID string) {
+		p, err := FindOneByID(podID)
+		require.NoError(t, err)
+		require.NotZero(t, p)
+		assert.Zero(t, p.TaskRuntimeInfo.RunningTaskID)
+		assert.Zero(t, p.TaskRuntimeInfo.RunningTaskExecution)
+
+		events, err := event.FindAllByResourceID(podID)
+		require.NoError(t, err)
+		require.Len(t, events, 1)
+		assert.EqualValues(t, event.EventPodClearedTask, events[0].EventType, "should have logged event indicating task is cleared from pod")
+	}
 
 	for tName, tCase := range map[string]func(t *testing.T, p Pod){
 		"Succeeds": func(t *testing.T, p Pod) {
@@ -639,11 +652,7 @@ func TestClearRunningTask(t *testing.T) {
 			assert.Zero(t, p.TaskRuntimeInfo.RunningTaskID)
 			assert.Zero(t, p.TaskRuntimeInfo.RunningTaskExecution)
 
-			dbPod, err := FindOneByID(p.ID)
-			require.NoError(t, err)
-			require.NotZero(t, dbPod)
-			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskID)
-			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskExecution)
+			checkContainerTaskCleared(t, p.ID)
 		},
 		"SucceedsWithTaskExecutionZero": func(t *testing.T, p Pod) {
 			p.TaskRuntimeInfo.RunningTaskID = "task_id"
@@ -654,11 +663,7 @@ func TestClearRunningTask(t *testing.T) {
 			assert.Zero(t, p.TaskRuntimeInfo.RunningTaskID)
 			assert.Zero(t, p.TaskRuntimeInfo.RunningTaskExecution)
 
-			dbPod, err := FindOneByID(p.ID)
-			require.NoError(t, err)
-			require.NotZero(t, dbPod)
-			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskID)
-			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskExecution)
+			checkContainerTaskCleared(t, p.ID)
 		},
 		"SucceedsWhenNotRunningAnyTask": func(t *testing.T, p Pod) {
 			p.TaskRuntimeInfo.RunningTaskID = ""
@@ -674,6 +679,10 @@ func TestClearRunningTask(t *testing.T) {
 			require.NotZero(t, dbPod)
 			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskID)
 			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskExecution)
+
+			events, err := event.FindAllByResourceID(p.ID)
+			require.NoError(t, err)
+			assert.Empty(t, events)
 		},
 		"DoesNotUpdateDBWhenInMemoryPodDoesNotHaveRunningTask": func(t *testing.T, p Pod) {
 			const taskID = "task_id"
@@ -728,7 +737,7 @@ func TestClearRunningTask(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(Collection))
+			require.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
 
 			p := Pod{
 				ID:     "pod_id",

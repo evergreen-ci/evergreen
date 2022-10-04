@@ -32,7 +32,8 @@ import (
 )
 
 type Host struct {
-	Id              string        `bson:"_id" json:"id"`
+	Id string `bson:"_id" json:"id"`
+	// Host is the DNS name of the host.
 	Host            string        `bson:"host_id" json:"host"`
 	User            string        `bson:"user" json:"user"`
 	Secret          string        `bson:"secret" json:"secret"`

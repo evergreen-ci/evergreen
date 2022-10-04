@@ -549,7 +549,16 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 	}
 
 	status := t.GetDisplayStatus()
-	event.LogTaskFinished(t.Id, t.Execution, t.HostId, status)
+
+	switch t.ExecutionPlatform {
+	case task.ExecutionPlatformHost:
+		event.LogHostTaskFinished(t.Id, t.Execution, t.HostId, status)
+	case task.ExecutionPlatformContainer:
+		event.LogContainerTaskFinished(t.Id, t.Execution, t.PodID, status)
+	default:
+		event.LogTaskFinished(t.Id, t.Execution, status)
+	}
+
 	grip.Info(message.Fields{
 		"message":            "marking task finished",
 		"usage":              "container task health dashboard",
@@ -558,6 +567,7 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		"status":             status,
 		"operation":          "MarkEnd",
 		"host_id":            t.HostId,
+		"pod_id":             t.PodID,
 		"execution_platform": t.ExecutionPlatform,
 	})
 
@@ -1808,7 +1818,7 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 	dt.Details = statusTask.Details
 	dt.TimeTaken = timeTaken
 	if !wasFinished && dt.IsFinished() {
-		event.LogTaskFinished(dt.Id, dt.Execution, "", dt.GetDisplayStatus())
+		event.LogTaskFinished(dt.Id, dt.Execution, dt.GetDisplayStatus())
 		grip.Info(message.Fields{
 			"message":   "display task finished",
 			"task_id":   dt.Id,
