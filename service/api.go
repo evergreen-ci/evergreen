@@ -104,18 +104,6 @@ func (as *APIServer) requireUserToggleable(next http.HandlerFunc) http.HandlerFu
 	}
 }
 
-func (as *APIServer) requireTaskStrict(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		t, code, err := model.ValidateTask(gimlet.GetVars(r)["taskId"], true, r)
-		if err != nil {
-			as.LoggedError(w, r, code, errors.Wrap(err, "invalid task"))
-			return
-		}
-		r = setAPITaskContext(r, t)
-		next(w, r)
-	}
-}
-
 // requireProject finds the projectId in the request and adds the
 // project and project ref to the request context.
 func (as *APIServer) requireProject(next http.HandlerFunc) http.HandlerFunc {
