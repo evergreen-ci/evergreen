@@ -55,6 +55,7 @@ const (
 	EventHostScriptExecuted              = "HOST_SCRIPT_EXECUTED"
 	EventHostScriptExecuteFailed         = "HOST_SCRIPT_EXECUTE_FAILED"
 	EventVolumeExpirationWarningSent     = "VOLUME_EXPIRATION_WARNING_SENT"
+	EventVolumeMigrationFailed           = "VOLUME_MIGRATION_FAILED"
 )
 
 // implements EventData
@@ -257,4 +258,9 @@ func LogHostScriptExecuted(hostID string, logs string) {
 
 func LogHostScriptExecuteFailed(hostID string, err error) {
 	LogHostEvent(hostID, EventHostScriptExecuteFailed, HostEventData{Logs: err.Error()})
+}
+
+// LogVolumeMigrationFailed is used when a volume is unable to migrate to a new host.
+func LogVolumeMigrationFailed(hostID string, err error) {
+	LogHostEvent(hostID, EventVolumeMigrationFailed, HostEventData{Logs: err.Error()})
 }
