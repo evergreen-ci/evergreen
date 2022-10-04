@@ -913,14 +913,16 @@ func JIRATaskPayload(subID, project, uiUrl, eventID, testNames string, t *task.T
 	var hostDoc *host.Host
 	if t.HostId != "" {
 		hostDoc, err = host.FindOneId(t.HostId)
-		return nil, errors.Wrapf(err, "finding host '%s' while building Jira task payload", t.HostId)
+		if err != nil {
+			return nil, errors.Wrapf(err, "finding host '%s' while building Jira task payload", t.HostId)
+		}
 	}
 
 	var podDoc *pod.Pod
 	if t.PodID != "" {
 		podDoc, err = pod.FindOneByID(t.PodID)
 		if err != nil {
-			return nil, errors.Wrapf(err, "finding pod '%s'", t.PodID)
+			return nil, errors.Wrapf(err, "finding pod '%s' while building Jira task payload", t.PodID)
 		}
 	}
 
