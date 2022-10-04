@@ -2683,3 +2683,90 @@ func TestValidateOwnerAndRepo(t *testing.T) {
 	err = disabledProject.ValidateOwnerAndRepo([]string{"evergreen-ci"})
 	assert.NoError(t, err)
 }
+
+func TestProjectCanDispatchTask(t *testing.T) {
+	t.Run("ReturnsTrueWithEnabledProject", func(t *testing.T) {
+		pRef := ProjectRef{
+			Enabled: utility.TruePtr(),
+		}
+		tsk := task.Task{
+			Id: "id",
+		}
+		canDispatch, _ := ProjectCanDispatchTask(&pRef, &tsk)
+		assert.True(t, canDispatch)
+	})
+	t.Run("ReturnsFalseWithDisabledProject", func(t *testing.T) {
+		pRef := ProjectRef{
+			Enabled: utility.FalsePtr(),
+		}
+		tsk := task.Task{
+			Id: "id",
+		}
+		canDispatch, reason := ProjectCanDispatchTask(&pRef, &tsk)
+		assert.False(t, canDispatch)
+		assert.NotZero(t, reason)
+	})
+	t.Run("ReturnsTrueWithDisabledHiddenProjectForGitHubPRTask", func(t *testing.T) {
+		pRef := ProjectRef{
+			Enabled: utility.FalsePtr(),
+			Hidden:  utility.TruePtr(),
+		}
+		tsk := task.Task{
+			Id:        "id",
+			Requester: evergreen.GithubPRRequester,
+		}
+		canDispatch, _ := ProjectCanDispatchTask(&pRef, &tsk)
+		assert.True(t, canDispatch)
+	})
+	t.Run("ReturnsFalseWithDispatchingDisabledForPatchTask", func(t *testing.T) {
+		pRef := ProjectRef{
+			Enabled:             utility.TruePtr(),
+			DispatchingDisabled: utility.TruePtr(),
+		}
+		tsk := task.Task{
+			Id:        "id",
+			Requester: evergreen.PatchVersionRequester,
+		}
+		canDispatch, reason := ProjectCanDispatchTask(&pRef, &tsk)
+		assert.False(t, canDispatch)
+		assert.NotZero(t, reason)
+	})
+	t.Run("ReturnsFalseWithDispatchingDisabledForMainlineTask", func(t *testing.T) {
+		pRef := ProjectRef{
+			Enabled:             utility.TruePtr(),
+			DispatchingDisabled: utility.TruePtr(),
+		}
+		tsk := task.Task{
+			Id:        "id",
+			Requester: evergreen.RepotrackerVersionRequester,
+		}
+		canDispatch, reason := ProjectCanDispatchTask(&pRef, &tsk)
+		assert.False(t, canDispatch)
+		assert.NotZero(t, reason)
+	})
+	t.Run("ReturnsTrueWithPatchingDisabledForMainlineTask", func(t *testing.T) {
+		pRef := ProjectRef{
+			Enabled:          utility.TruePtr(),
+			PatchingDisabled: utility.TruePtr(),
+		}
+		tsk := task.Task{
+			Id:        "id",
+			Requester: evergreen.RepotrackerVersionRequester,
+		}
+		canDispatch, _ := ProjectCanDispatchTask(&pRef, &tsk)
+		assert.True(t, canDispatch)
+	})
+	t.Run("ReturnsFalseWithPatchingDisabledForPatchTask", func(t *testing.T) {
+		pRef := ProjectRef{
+			Enabled:          utility.TruePtr(),
+			PatchingDisabled: utility.TruePtr(),
+		}
+		tsk := task.Task{
+			Id:        "id",
+			Requester: evergreen.PatchVersionRequester,
+		}
+		canDispatch, reason := ProjectCanDispatchTask(&pRef, &tsk)
+		assert.False(t, canDispatch)
+		assert.NotZero(t, reason)
+	})
+}
