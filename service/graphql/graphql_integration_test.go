@@ -58,13 +58,10 @@ func TestGQLQueries(t *testing.T) {
 	defer cancel()
 	require.NoError(t, env.DB().Drop(ctx))
 	testUser := user.DBUser{
-		Id: apiUser,
-		Settings: user.UserSettings{
-			GithubUser: user.GithubUser{
-				UID:         1234,
-				LastKnownAs: "somebody",
-			},
-		},
+		Id:          apiUser,
+		APIKey:      apiKey,
+		Settings:    user.UserSettings{Timezone: "America/New_York"},
+		SystemRoles: []string{"unrestrictedTaskAccess"},
 	}
 	require.NoError(t, testUser.Insert())
 
