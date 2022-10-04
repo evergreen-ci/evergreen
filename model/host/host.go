@@ -1416,7 +1416,8 @@ func (h *Host) UpdateRunningTask(t *task.Task) error {
 	return nil
 }
 
-// UpdateRunningTaskWithContext updates the running task for the host.
+// UpdateRunningTaskWithContext updates the running task for the host. It does
+// not log an event for task assignment.
 func (h *Host) UpdateRunningTaskWithContext(ctx context.Context, env evergreen.Environment, t *task.Task) error {
 	doUpdate := func(query, update bson.M) error {
 		_, err := env.DB().Collection(Collection).UpdateOne(ctx, query, update)

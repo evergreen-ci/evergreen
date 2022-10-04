@@ -21,7 +21,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // if a host encounters more than this number of system failures, then it should be disabled.
@@ -245,7 +244,6 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 
 	// otherwise we've dispatched a task, so we
 	// mark the task as dispatched
-	// kim: TODO: move this into transaction with updating running task.
 	if err = model.MarkHostTaskDispatched(nextTask, h.host); err != nil {
 		err = errors.WithStack(err)
 		grip.Error(err)
@@ -636,13 +634,13 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			"task_group_order":        nextTask.TaskGroupOrder,
 		})
 
-		// If the host just ran a task in the group, then it's eligible for
-		// running more tasks in the group, regardless of how many other hosts
-		// are running tasks in the task group. Only check the number of hosts
-		// running this task group if the task group is new to the host.
 		if dispatchedTask && isTaskGroupNewToHost(currentHost, nextTask) {
-			// kim: TODO: verify that this logic is equivalent to original logic.
-			isDispatchable, err := checkTaskGroupAfterDispatch(currentHost, nextTask)
+			// If the host just ran a task in the group, then it's eligible for
+			// running more tasks in the group, regardless of how many other
+			// hosts are running tasks in the task group. Only check the number
+			// of hosts running this task group if the task group is new to the
+			// host.
+			isDispatchable, err := checkHostTaskGroupAfterDispatch(currentHost, nextTask)
 			if !isDispatchable {
 				grip.Debug(message.Fields{
 					"message":              "failed dispatch task group check due to race, not dispatching",
@@ -674,72 +672,6 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			} else if err != nil {
 				return nil, false, errors.Wrap(err, "checking task group task's dispatchability")
 			}
-			// dispatchRace := ""
-			// minTaskGroupOrderNum := 0
-			// if nextTask.TaskGroupMaxHosts == 1 {
-			//     // regardless of how many hosts are running tasks, if this host is running the earliest task in the task group we should continue
-			//     minTaskGroupOrderNum, err = host.MinTaskGroupOrderRunningByTaskSpec(nextTask.TaskGroup, nextTask.BuildVariant, nextTask.Project, nextTask.Version)
-			//     if err != nil {
-			//         return nil, false, errors.WithStack(err)
-			//     }
-			//     // if minTaskGroupOrderNum is 0 then some host doesn't have order cached, revert to previous logic
-			//     if minTaskGroupOrderNum != 0 && minTaskGroupOrderNum < nextTask.TaskGroupOrder {
-			//         dispatchRace = fmt.Sprintf("current task is order %d but another host is running %d", nextTask.TaskGroupOrder, minTaskGroupOrderNum)
-			//     } else if nextTask.TaskGroupOrder > 1 {
-			//         // If the previous task in the group has yet to run and should run, then wait for it.
-			//         tgTasks, err := task.FindTaskGroupFromBuild(nextTask.BuildId, nextTask.TaskGroup)
-			//         if err != nil {
-			//             return nil, false, errors.WithStack(err)
-			//         }
-			//         for _, tgTask := range tgTasks {
-			//             if tgTask.TaskGroupOrder == nextTask.TaskGroupOrder {
-			//                 break
-			//             }
-			//             if tgTask.TaskGroupOrder < nextTask.TaskGroupOrder && tgTask.IsHostDispatchable() && !tgTask.Blocked() {
-			//                 dispatchRace = fmt.Sprintf("an earlier task ('%s') in the task group is still dispatchable", tgTask.DisplayName)
-			//             }
-			//         }
-			//     }
-			// }
-			// // for multiple-host task groups and single-host task groups without order cached
-			// if minTaskGroupOrderNum == 0 && dispatchRace == "" {
-			//     numHosts, err := host.NumHostsByTaskSpec(nextTask.TaskGroup, nextTask.BuildVariant, nextTask.Project, nextTask.Version)
-			//     if err != nil {
-			//         return nil, false, errors.Wrap(err, "getting number of hosts running task group")
-			//     }
-			//     if numHosts > nextTask.TaskGroupMaxHosts {
-			//         dispatchRace = fmt.Sprintf("tasks found on %d hosts", numHosts)
-			//     }
-			// }
-			//
-			// if dispatchRace != "" {
-			//     grip.Debug(message.Fields{
-			//         "message":              "task group race, not dispatching",
-			//         "dispatch_race":        dispatchRace,
-			//         "task_distro_id":       nextTask.DistroId,
-			//         "task_id":              nextTask.Id,
-			//         "host_id":              currentHost.Id,
-			//         "task_group":           nextTask.TaskGroup,
-			//         "task_build_variant":   nextTask.BuildVariant,
-			//         "task_version":         nextTask.Version,
-			//         "task_project":         nextTask.Project,
-			//         "task_group_max_hosts": nextTask.TaskGroupMaxHosts,
-			//         "task_group_order":     nextTask.TaskGroupOrder,
-			//     })
-			//     grip.Error(message.WrapError(currentHost.ClearRunningTask(), message.Fields{
-			//         "message":              "problem clearing task group task from host after dispatch race",
-			//         "dispatch_race":        dispatchRace,
-			//         "task_distro_id":       nextTask.DistroId,
-			//         "task_id":              nextTask.Id,
-			//         "host_id":              currentHost.Id,
-			//         "task_group":           nextTask.TaskGroup,
-			//         "task_build_variant":   nextTask.BuildVariant,
-			//         "task_version":         nextTask.Version,
-			//         "task_project":         nextTask.Project,
-			//         "task_group_max_hosts": nextTask.TaskGroupMaxHosts,
-			//     }))
-			//     ok = false // continue loop after dequeuing task
-			// }
 		}
 
 		// Dequeue the task so we don't get it on another iteration of the loop.
@@ -759,80 +691,36 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 	return nil, false, nil
 }
 
-func dispatchHostTaskAtomically(ctx context.Context, env evergreen.Environment, h *host.Host, t *task.Task) error {
-	// kim: TODO: incorporate display task logic after the transaction has
-	// already succeeded.
-	dispatchedAt := time.Now()
-	if err := func() error {
-		session, err := env.Client().StartSession()
-		if err != nil {
-			return errors.Wrap(err, "starting transaction session")
-		}
-		defer session.EndSession(ctx)
-
-		if _, err := session.WithTransaction(ctx, dispatchHostTask(env, h, t, dispatchedAt)); err != nil {
-			return err
-		}
-
-		return nil
-	}(); err != nil {
-		return err
-	}
-
-	event.LogHostTaskDispatched(t.Id, t.Execution, h.Id)
-	event.LogHostRunningTaskSet(h.Id, t.Id, t.Execution)
-
-	if t.IsPartOfDisplay() {
-		// kim: TODO: MarkAsHostDispatched can be omitted for the parent display
-		// task because its status will already be updated by
-		// UpdateDisplayTaskForTask, which checks for abortable (i.e.
-		// dispatched) tasks.
-		// if dt, _ := t.GetDisplayTask(); dt != nil && dt.DispatchTime == utility.ZeroTime {
-		//     return dt.MarkAsHostDispatched("", "", "", dispatchedAt)
-		// }
-		return errors.Wrapf(model.UpdateDisplayTaskForTask(t), "updating parent display task '%s'", utility.FromStringPtr(t.DisplayTaskId))
-	}
-
-	return nil
-}
-
-func dispatchHostTask(env evergreen.Environment, h *host.Host, t *task.Task, dispatchedAt time.Time) func(mongo.SessionContext) (interface{}, error) {
-	return func(sessCtx mongo.SessionContext) (interface{}, error) {
-		if err := h.UpdateRunningTaskWithContext(sessCtx, env, t); err != nil {
-			return nil, errors.Wrapf(err, "updating running task for host '%s' to '%s'", h.Id, t.Id)
-		}
-
-		dispatchedAt := time.Now()
-		if err := t.MarkAsHostDispatchedWithContext(sessCtx, env, h.Id, h.Distro.Id, h.AgentRevision, dispatchedAt); err != nil {
-			return nil, errors.Wrapf(err, "marking task '%s' as dispatched to host '%s'", t.Id, h.Id)
-		}
-
-		return nil, nil
-	}
-}
-
-// checkTaskGroupMaxHostsAfterDispatch checks that the task group max hosts is
-// being respected after the task has already been assigned to the host. It's
-// possible for dispatchers on different app servers to race, assigning
+// checkHostTaskGroupAfterDispatch checks that the task group max hosts is
+// still respected after the task has already been assigned to the host and that
+// for single-host task groups, it is dispatching the next task in the group.
+//
+// It's possible for dispatchers on different app servers to race, assigning
 // different tasks in a task group to more hosts than the task group's max
-// hosts. We must therefore check that the number of hosts running this task
-// group does not exceed the max after assigning the task to the host. If
-// it exceeds the max host limit, this will return true to indicate that it
-// should back out of dispatching this task.
-func checkTaskGroupAfterDispatch(h *host.Host, t *task.Task) (isDispatchable bool, err error) {
+// hosts. Therefore, we must check that the number of hosts running this task
+// group does not exceed the max after assigning the task to the host. If it
+// exceeds the max host limit, this will return true to indicate that the host
+// should not run this task.
+func checkHostTaskGroupAfterDispatch(h *host.Host, t *task.Task) (isDispatchable bool, err error) {
 	minTaskGroupOrderNum := 0
 	if t.TaskGroupMaxHosts == 1 {
-		// regardless of how many hosts are running tasks, if this host is running the earliest task in the task group we should continue
+		// Regardless of how many hosts are running tasks, if this host is
+		// running the earliest task in the task group we should continue.
 		minTaskGroupOrderNum, err := host.MinTaskGroupOrderRunningByTaskSpec(t.TaskGroup, t.BuildVariant, t.Project, t.Version)
 		if err != nil {
 			return false, errors.Wrap(err, "getting min task group order")
 		}
-		// if minTaskGroupOrderNum is 0 then some host doesn't have order cached, revert to previous logic
+		// minTaskGroupOrderNum is only available if a host has that information
+		// cached, which was not always the case. If some host doesn't have the
+		// task group order cached, then minTaskGroupOrderNum will be 0. For
+		// backward compatibility in case it is 0, this will later fall back to
+		// counting the hosts to check that max hosts is respected.
 		if minTaskGroupOrderNum != 0 && minTaskGroupOrderNum < t.TaskGroupOrder {
 			return false, errors.Errorf("current task is order %d but another host is running %d", t.TaskGroupOrder, minTaskGroupOrderNum)
 		}
 		if t.TaskGroupOrder > 1 {
-			// If the previous task in the group has yet to run and should run, then wait for it.
+			// If the previous task in the single-host task group has yet to run
+			// and should run, then wait for the previous task to run.
 			tgTasks, err := task.FindTaskGroupFromBuild(t.BuildId, t.TaskGroup)
 			if err != nil {
 				return false, errors.Wrap(err, "finding task group from build")
@@ -842,13 +730,14 @@ func checkTaskGroupAfterDispatch(h *host.Host, t *task.Task) (isDispatchable boo
 					break
 				}
 				if tgTask.TaskGroupOrder < t.TaskGroupOrder && tgTask.IsHostDispatchable() && !tgTask.Blocked() {
-					return false, errors.Errorf("an earlier task ('%s') in the task group is still dispatchable", tgTask.DisplayName)
+					return false, errors.Errorf("an earlier task in the task group ('%s') is still dispatchable", tgTask.DisplayName)
 				}
 			}
 		}
 	}
 
-	// for multiple-host task groups and single-host task groups without order cached
+	// For multiple-host task groups and single-host task groups without order
+	// cached in the host, check the max hosts is respected.
 	if minTaskGroupOrderNum == 0 {
 		numHosts, err := host.NumHostsByTaskSpec(t.TaskGroup, t.BuildVariant, t.Project, t.Version)
 		if err != nil {
@@ -1094,7 +983,6 @@ func sendBackRunningTask(h *host.Host, response apimodels.NextTaskResponse) giml
 	}
 	if t == nil {
 		err := errors.Errorf("task '%s' not found", h.RunningTask)
-		// kim: TODO: clear host's running task.
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 
@@ -1106,8 +994,6 @@ func sendBackRunningTask(h *host.Host, response apimodels.NextTaskResponse) giml
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
 	}
-
-	// kim: TODO: check task group dispatchability in case it was not completed.
 
 	// if the task is activated return that task
 	if t.Activated {
@@ -1249,9 +1135,6 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// mark task as finished
-	// kim: TODO: may have to re-order MarkEnd and ClearRunningTask to make this
-	// work, while ensuring that single-host task groups are blocked before
-	// doing any of this.
 	deactivatePrevious := utility.FromBoolPtr(projectRef.DeactivatePrevious)
 	err = model.MarkEnd(t, evergreen.APIServerTaskActivator, finishTime, &h.details, deactivatePrevious)
 	if err != nil {
