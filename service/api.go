@@ -19,10 +19,12 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 )
 
 const (
 	APIServerLockTitle = evergreen.APIServerTaskActivator
+	taskDispatcherTTL  = time.Minute
 )
 
 // APIServer handles communication with Evergreen agents and other back-end requests.
