@@ -1581,6 +1581,7 @@ func TestTryResetTask(t *testing.T) {
 					Status:                      evergreen.TaskSucceeded,
 					Version:                     b.Version,
 					ExecutionPlatform:           task.ExecutionPlatformContainer,
+					PodID:                       "pod_id",
 					ContainerAllocationAttempts: 2,
 				}
 				So(containerTask.Insert(), ShouldBeNil)
@@ -1595,6 +1596,7 @@ func TestTryResetTask(t *testing.T) {
 					So(dbTask.FinishTime, ShouldResemble, utility.ZeroTime)
 					So(dbTask.Activated, ShouldBeTrue)
 					So(dbTask.ContainerAllocationAttempts, ShouldEqual, 0)
+					So(dbTask.PodID, ShouldBeZeroValue)
 					oldTask, err := task.FindOneOldByIdAndExecution(dbTask.Id, 1)
 					So(err, ShouldBeNil)
 					So(oldTask, ShouldNotBeNil)
@@ -1602,6 +1604,7 @@ func TestTryResetTask(t *testing.T) {
 					So(oldTask.Details, ShouldResemble, *detail)
 					So(oldTask.FinishTime, ShouldNotResemble, utility.ZeroTime)
 					So(oldTask.ContainerAllocationAttempts, ShouldEqual, 2)
+					So(oldTask.PodID, ShouldEqual, containerTask.PodID)
 				})
 			})
 		})

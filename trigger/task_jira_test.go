@@ -4,7 +4,6 @@ import (
 	"regexp"
 	"strings"
 	"testing"
-	"text/template"
 	"time"
 
 	"net/url"
@@ -14,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
@@ -46,7 +46,7 @@ var (
 	loglineRegex = regexp.MustCompile(`\*(.*)\* - \[Logs\|(.*?)\]`)
 )
 
-func TestJIRASummary(t *testing.T) {
+func TestJiraSummary(t *testing.T) {
 	Convey("With failed task alert types:", t, func() {
 		j := jiraBuilder{
 			project: "ABC",
@@ -246,7 +246,7 @@ func TestJIRASummary(t *testing.T) {
 	})
 }
 
-func TestJIRADescription(t *testing.T) {
+func TestJiraDescription(t *testing.T) {
 	Convey("With a failed task context", t, func() {
 		j := jiraBuilder{
 			data: jiraTemplateData{
@@ -266,7 +266,9 @@ func TestJIRADescription(t *testing.T) {
 						{TestFile: "test_file", DisplayTestName: testName2, Status: evergreen.TestFailedStatus, LogId: "123"},
 						{TestFile: testName3, Status: evergreen.TestSucceededStatus},
 					},
-					CreateTime: time.Unix(createTime, 0).UTC(),
+					CreateTime:        time.Unix(createTime, 0).UTC(),
+					HostId:            hostId,
+					ExecutionPlatform: task.ExecutionPlatformHost,
 				},
 				Host:  &host.Host{Id: hostId, Host: hostDNS},
 				Build: &build.Build{DisplayName: buildName, Id: buildId},
@@ -291,6 +293,7 @@ func TestJIRADescription(t *testing.T) {
 				So(d, ShouldContainSubstring, versionMessage)
 				So(d, ShouldContainSubstring, "diff|https://github.com/")
 				So(d, ShouldContainSubstring, "08 Jan 19 11:56 UTC")
+				So(d, ShouldNotContainSubstring, "Pod")
 			})
 			Convey("with links to the task, host, project, logs", func() {
 				So(d, ShouldContainSubstring, url.PathEscape(taskId))
@@ -349,7 +352,22 @@ func TestJIRADescription(t *testing.T) {
 			j.data.Host = nil
 			desc, err := j.getDescription()
 			So(err, ShouldBeNil)
-			So(strings.Contains(desc, "Host: N/A"), ShouldBeTrue)
+			So(desc, ShouldContainSubstring, "Host: N/A")
+		})
+		Convey("can generate a description for a container task", func() {
+			j.data.Task.ExecutionPlatform = task.ExecutionPlatformContainer
+			j.data.Pod = &pod.Pod{ID: "pod_id"}
+			desc, err := j.getDescription()
+			So(err, ShouldBeNil)
+			So(desc, ShouldContainSubstring, "Pod:")
+			So(desc, ShouldContainSubstring, j.data.Pod.ID)
+		})
+		Convey("can generate a description for a container task with no assigned pod", func() {
+			j.data.Task.ExecutionPlatform = task.ExecutionPlatformContainer
+			j.data.Pod = nil
+			desc, err := j.getDescription()
+			So(err, ShouldBeNil)
+			So(desc, ShouldContainSubstring, "Pod: N/A")
 		})
 		Convey("the description should return old_task_id if present", func() {
 			j.data.Task.Id = "new_task#!"
@@ -545,7 +563,7 @@ func TestMakeSummaryPrefix(t *testing.T) {
 	assert.Equal("Setup Failure: ", makeSummaryPrefix(doc, 0))
 }
 
-func TestBuild(t *testing.T) {
+func TestJiraBuilderBuild(t *testing.T) {
 	builder := jiraBuilder{
 		project: "EVG",
 		mappings: &evergreen.JIRANotificationsConfig{
@@ -560,14 +578,23 @@ func TestBuild(t *testing.T) {
 			},
 		},
 		data: jiraTemplateData{
-			Task:    &task.Task{Status: evergreen.TaskSucceeded, HasLegacyResults: utility.ToBoolPtr(true)},
+			Task: &task.Task{
+				DisplayName:       "task_display_name",
+				Status:            evergreen.TaskSucceeded,
+				HasLegacyResults:  utility.ToBoolPtr(true),
+				HostId:            "host_id",
+				ExecutionPlatform: task.ExecutionPlatformHost,
+			},
+			Host: &host.Host{
+				Id:   "host_id",
+				Host: "hostname",
+			},
 			Project: &model.ProjectRef{},
 			Build:   &build.Build{},
 			Version: &model.Version{Revision: "abcdefgh"},
 		},
 	}
 	var err error
-	descriptionTemplate, err = template.New("test").Parse("Status: {{.Task.Status}}")
 	assert.NoError(t, err)
 
 	message, err := builder.build()
@@ -580,4 +607,5 @@ func TestBuild(t *testing.T) {
 	assert.Equal(t, "component0", message.Components[0])
 	assert.Equal(t, "component1", message.Components[1])
 	assert.Empty(t, message.Labels)
+	assert.NotEmpty(t, message.Description)
 }

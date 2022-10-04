@@ -751,6 +751,8 @@ func (p *Pod) ClearRunningTask() error {
 		return errors.Wrap(err, "clearing running task")
 	}
 
+	event.LogPodRunningTaskCleared(p.ID, p.TaskRuntimeInfo.RunningTaskID, p.TaskRuntimeInfo.RunningTaskExecution)
+
 	p.TaskRuntimeInfo.RunningTaskID = ""
 	p.TaskRuntimeInfo.RunningTaskExecution = 0
 

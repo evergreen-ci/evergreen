@@ -1480,7 +1480,14 @@ func (t *Task) MarkSystemFailed(description string) error {
 		t.Details.TimedOut = true
 	}
 
-	event.LogTaskFinished(t.Id, t.Execution, t.HostId, evergreen.TaskSystemFailed)
+	switch t.ExecutionPlatform {
+	case ExecutionPlatformHost:
+		event.LogHostTaskFinished(t.Id, t.Execution, t.HostId, evergreen.TaskSystemFailed)
+	case ExecutionPlatformContainer:
+		event.LogContainerTaskFinished(t.Id, t.Execution, t.PodID, evergreen.TaskSystemFailed)
+	default:
+		event.LogTaskFinished(t.Id, t.Execution, evergreen.TaskSystemFailed)
+	}
 	grip.Info(message.Fields{
 		"message":     "marking task system failed",
 		"usage":       "container task health dashboard",
@@ -2080,6 +2087,7 @@ func resetTaskUpdate(t *Task) bson.M {
 		t.ActivatedTime = now
 		t.Secret = newSecret
 		t.HostId = ""
+		t.PodID = ""
 		t.Status = evergreen.TaskUndispatched
 		t.DispatchTime = utility.ZeroTime
 		t.StartTime = utility.ZeroTime
@@ -2121,6 +2129,7 @@ func resetTaskUpdate(t *Task) bson.M {
 			ResetFailedWhenFinishedKey: "",
 			AgentVersionKey:            "",
 			HostIdKey:                  "",
+			PodIDKey:                   "",
 			HostCreateDetailsKey:       "",
 			OverrideDependenciesKey:    "",
 			CanResetKey:                "",

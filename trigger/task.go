@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/notification"
+	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
@@ -274,36 +275,44 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, test
 		data.PastTenseStatus = pastTenseOverride
 	}
 
+	attachmentFields := []*message.SlackAttachmentField{
+		{
+			Title: "Build",
+			Value: fmt.Sprintf("<%s|%s>", buildLink(t.uiConfig.Url, t.task.BuildId, hasPatch), t.task.BuildVariant),
+		},
+		{
+			Title: "Version",
+			Value: fmt.Sprintf("<%s|%s>", versionLink(
+				versionLinkInput{
+					uiBase:    t.uiConfig.Url,
+					versionID: t.task.Version,
+					hasPatch:  hasPatch,
+					isChild:   false,
+				},
+			), t.task.Version),
+		},
+		{
+			Title: "Duration",
+			Value: t.task.TimeTaken.String(),
+		},
+	}
+	if t.task.HostId != "" {
+		attachmentFields = append(attachmentFields, &message.SlackAttachmentField{
+			Title: "Host",
+			Value: fmt.Sprintf("<%s|%s>", hostLink(t.uiConfig.Url, t.task.HostId), t.task.HostId),
+		})
+	} else if t.task.PodID != "" {
+		attachmentFields = append(attachmentFields, &message.SlackAttachmentField{
+			Title: "Pod",
+			Value: fmt.Sprintf("<%s|%s>", podLink(t.uiConfig.Url, t.task.PodID), t.task.PodID),
+		})
+	}
 	data.slack = []message.SlackAttachment{
 		{
 			Title:     displayName,
 			TitleLink: data.URL,
 			Color:     slackColor,
-			Fields: []*message.SlackAttachmentField{
-				{
-					Title: "Build",
-					Value: fmt.Sprintf("<%s|%s>", buildLink(t.uiConfig.Url, t.task.BuildId, hasPatch), t.task.BuildVariant),
-				},
-				{
-					Title: "Version",
-					Value: fmt.Sprintf("<%s|%s>", versionLink(
-						versionLinkInput{
-							uiBase:    t.uiConfig.Url,
-							versionID: t.task.Version,
-							hasPatch:  hasPatch,
-							isChild:   false,
-						},
-					), t.task.Version),
-				},
-				{
-					Title: "Duration",
-					Value: t.task.TimeTaken.String(),
-				},
-				{
-					Title: "Host",
-					Value: fmt.Sprintf("<%s|%s>", hostLink(t.uiConfig.Url, t.task.HostId), t.task.HostId),
-				},
-			},
+			Fields:    attachmentFields,
 		},
 	}
 
@@ -902,10 +911,18 @@ func JIRATaskPayload(subID, project, uiUrl, eventID, testNames string, t *task.T
 	}
 
 	var hostDoc *host.Host
-	if len(t.HostId) != 0 {
+	if t.HostId != "" {
 		hostDoc, err = host.FindOneId(t.HostId)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding host '%s' while building Jira task payload", t.HostId)
+		}
+	}
+
+	var podDoc *pod.Pod
+	if t.PodID != "" {
+		podDoc, err = pod.FindOneByID(t.PodID)
+		if err != nil {
+			return nil, errors.Wrapf(err, "finding pod '%s' while building Jira task payload", t.PodID)
 		}
 	}
 
@@ -934,6 +951,7 @@ func JIRATaskPayload(subID, project, uiUrl, eventID, testNames string, t *task.T
 		Project:         projectRef,
 		Build:           buildDoc,
 		Host:            hostDoc,
+		Pod:             podDoc,
 		TaskDisplayName: t.DisplayName,
 	}
 	if t.IsPartOfDisplay() {
