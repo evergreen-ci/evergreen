@@ -38,7 +38,7 @@ func (c *createHost) ParseParams(params map[string]interface{}) error {
 		fileName := fmt.Sprintf("%v", params["file"])
 		c.File = fileName
 		if len(params) > 1 {
-			return errors.New("no params should be defined when using a file to parse params")
+			return errors.New("when using a file to parse params, no additional params other than file name should be defined")
 		}
 		return nil
 	}
@@ -48,17 +48,16 @@ func (c *createHost) ParseParams(params map[string]interface{}) error {
 		Result:           c.CreateHost,
 	})
 	if err != nil {
-		return errors.Wrap(err, "problem constructing mapstructure decoder")
+		return errors.Wrap(err, "constructing mapstructure decoder")
 	}
-	return errors.Wrapf(decoder.Decode(params), "error parsing '%s' params", c.Name())
+	return errors.Wrap(decoder.Decode(params), "decoding mapstructure params")
 }
 
 func (c *createHost) parseParamsFromFile(fn string, conf *internal.TaskConfig) error {
 	if !filepath.IsAbs(fn) {
 		fn = getJoinedWithWorkDir(conf, fn)
 	}
-	return errors.Wrapf(utility.ReadYAMLFile(fn, &c.CreateHost),
-		"error reading from file '%s'", fn)
+	return errors.Wrapf(utility.ReadYAMLFile(fn, &c.CreateHost), "reading YAML from file '%s'", fn)
 }
 
 func (c *createHost) expandAndValidate(conf *internal.TaskConfig) error {
@@ -75,7 +74,7 @@ func (c *createHost) expandAndValidate(conf *internal.TaskConfig) error {
 	}
 
 	if err := c.CreateHost.Validate(); err != nil {
-		return errors.Wrap(err, "command is invalid")
+		return errors.Wrap(err, "invalid command options")
 	}
 	return nil
 }
@@ -101,10 +100,10 @@ func (c *createHost) Execute(ctx context.Context, comm client.Communicator,
 	c.logAMI(ctx, comm, logger, taskData)
 	ids, err := comm.CreateHost(ctx, taskData, *c.CreateHost)
 	if err != nil {
-		return errors.Wrap(err, "error creating host")
+		return errors.Wrap(err, "creating host")
 	} else if c.CreateHost.CloudProvider == apimodels.ProviderDocker {
 		if err = c.getLogsFromNewDockerHost(ctx, logger, comm, ids, startTime, conf); err != nil {
-			return errors.Wrap(err, "problem getting logs from created host")
+			return errors.Wrap(err, "getting logs from created host")
 		}
 	}
 
@@ -117,18 +116,18 @@ func (c *createHost) logAMI(ctx context.Context, comm client.Communicator, logge
 		return
 	}
 	if c.CreateHost.AMI != "" {
-		logger.Task().Infof("host.create: using given AMI '%s'", c.CreateHost.AMI)
+		logger.Task().Infof("host.create: using given AMI '%s'.", c.CreateHost.AMI)
 		return
 	}
 
 	ami, err := comm.GetDistroAMI(ctx, c.CreateHost.Distro, c.CreateHost.Region, taskData)
 	if err != nil {
-		logger.Task().Warning(errors.Wrapf(err, "host.create: unable to retrieve AMI from distro '%s'",
+		logger.Task().Warning(errors.Wrapf(err, "host.create: unable to retrieve AMI from distro '%s'.",
 			c.CreateHost.Distro))
 		return
 	}
 
-	logger.Task().Infof("host.create: using AMI '%s' (for distro '%s')", ami, c.CreateHost.Distro)
+	logger.Task().Infof("host.create: using AMI '%s' (for distro '%s').", ami, c.CreateHost.Distro)
 }
 
 type logBatchInfo struct {
@@ -143,7 +142,7 @@ func (c *createHost) getLogsFromNewDockerHost(ctx context.Context, logger client
 	ids []string, startTime time.Time, conf *internal.TaskConfig) error {
 	var err error
 	if len(ids) == 0 {
-		return errors.New("Programmer error: no intent host ID received")
+		return errors.New("programmer error: no intent host ID received")
 	}
 
 	info, err := c.initializeLogBatchInfo(ids[0], conf, startTime)
@@ -154,14 +153,14 @@ func (c *createHost) getLogsFromNewDockerHost(ctx context.Context, logger client
 	if !c.CreateHost.Background {
 		defer info.outFile.Close()
 		defer info.errFile.Close()
-		return errors.Wrapf(c.waitForLogs(ctx, comm, logger, info), "error waiting for logs")
+		return errors.Wrapf(c.waitForLogs(ctx, comm, logger, info), "waiting for logs")
 	}
 
 	go func() {
 		defer info.outFile.Close()
 		defer info.errFile.Close()
 		if err = c.waitForLogs(ctx, comm, logger, info); err != nil {
-			logger.Task().Errorf("error waiting for logs in background: %v", err)
+			logger.Task().Error(errors.Wrap(err, "waiting for logs in the background"))
 		}
 	}()
 
@@ -190,15 +189,15 @@ func (c *createHost) initializeLogBatchInfo(id string, conf *internal.TaskConfig
 	var err error
 	info.outFile, err = os.OpenFile(c.CreateHost.StdoutFile, permissions, 0644)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error creating file %s", c.CreateHost.StdoutFile)
+		return nil, errors.Wrapf(err, "creating file '%s'", c.CreateHost.StdoutFile)
 	}
 	info.errFile, err = os.OpenFile(c.CreateHost.StderrFile, permissions, 0644)
 	if err != nil {
 		// the outfile already exists, so close it
 		if fileErr := info.outFile.Close(); fileErr != nil {
-			return nil, errors.Wrapf(fileErr, "error removing stdout file after failed stderr file creation")
+			return nil, errors.Wrapf(fileErr, "removing stdout file after failed stderr file creation")
 		}
-		return nil, errors.Wrapf(err, "error creating file %s", c.CreateHost.StderrFile)
+		return nil, errors.Wrapf(err, "creating file '%s'", c.CreateHost.StderrFile)
 	}
 	return info, nil
 }
@@ -216,13 +215,13 @@ func (c *createHost) waitForLogs(ctx context.Context, comm client.Communicator, 
 	for {
 		select {
 		case <-ctx.Done():
-			logger.Task().Infof("context cancelled waiting for host %s to exit", info.hostID)
+			logger.Task().Infof("Context canceled waiting for host '%s' to exit: %s.", info.hostID, ctx.Err())
 			return nil
 		case <-pollTicker.C:
 			info.batchEnd = time.Now()
 			status, err := comm.GetDockerStatus(ctx, info.hostID)
 			if err != nil {
-				logger.Task().Infof("problem receiving docker logs in host.create: '%s'", err.Error())
+				logger.Task().Infof("Problem receiving Docker logs in host.create: '%s'.", err.Error())
 				if startedCollectingLogs {
 					return nil // container has likely exited
 				}
@@ -234,7 +233,7 @@ func (c *createHost) waitForLogs(ctx context.Context, comm client.Communicator, 
 				info.batchStart = info.batchEnd.Add(time.Nanosecond) // to prevent repeat logs
 
 				if !status.IsRunning { // container exited
-					logger.Task().Infof("Logs retrieved for container _id %s in %d seconds",
+					logger.Task().Infof("Logs retrieved for container '%s' in %d seconds.",
 						info.hostID, int(time.Since(info.batchStart).Seconds()))
 					return nil
 				}
@@ -248,29 +247,29 @@ func (c *createHost) waitForLogs(ctx context.Context, comm client.Communicator, 
 func (info *logBatchInfo) getAndWriteLogBatch(ctx context.Context, comm client.Communicator, logger client.LoggerProducer) {
 	outLogs, err := comm.GetDockerLogs(ctx, info.hostID, info.batchStart, info.batchEnd, false)
 	if err != nil {
-		logger.Task().Errorf("error retrieving docker out logs: %s", err.Error())
+		logger.Task().Errorf("Error retrieving Docker output logs: %s.", err)
 	}
 	errLogs, err := comm.GetDockerLogs(ctx, info.hostID, info.batchStart, info.batchEnd, true)
 	if err != nil {
-		logger.Task().Errorf("error retrieving docker error logs: %s", err.Error())
+		logger.Task().Errorf("Error retrieving Docker error logs: %s.", err)
 	}
 	if _, err = info.outFile.Write(outLogs); err != nil {
-		logger.Task().Errorf("error writing stdout to file: %s", outLogs)
+		logger.Task().Errorf("Error writing stdout to file: %s.", outLogs)
 	}
 	if _, err = info.errFile.Write(errLogs); err != nil {
-		logger.Task().Errorf("error writing stderr to file: %s", errLogs)
+		logger.Task().Errorf("Error writing stderr to file: %s.", errLogs)
 	}
 }
 
 func (c *createHost) populateUserdata() error {
 	file, err := os.Open(c.CreateHost.UserdataFile)
 	if err != nil {
-		return errors.Wrap(err, "error opening UserData file")
+		return errors.Wrap(err, "opening user data file")
 	}
 	defer file.Close()
 	fileData, err := ioutil.ReadAll(file)
 	if err != nil {
-		return errors.Wrap(err, "error reading UserData file")
+		return errors.Wrap(err, "reading user data file")
 	}
 	c.CreateHost.UserdataCommand = string(fileData)
 

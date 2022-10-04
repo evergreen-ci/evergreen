@@ -93,13 +93,13 @@ func (s *TimeoutSuite) TestExecTimeoutProject() {
 		if msg.Message == "Task completed - FAILURE." {
 			foundSuccessLogMessage = true
 		}
-		if strings.HasPrefix(msg.Message, "Hit exec timeout (1s)") {
+		if strings.HasPrefix(msg.Message, "Hit exec timeout (1s).") {
 			foundTimeoutMessage = true
 		}
-		if strings.HasPrefix(msg.Message, "Running task-timeout commands") {
+		if strings.HasPrefix(msg.Message, "Running task-timeout commands.") {
 			foundShellLogMessage = true
 		}
-		if strings.HasPrefix(msg.Message, "Finished 'shell.exec' in \"timeout\"") {
+		if strings.HasPrefix(msg.Message, "Finished 'shell.exec' in \"timeout\".") {
 			foundShellLogMessage = true
 		}
 	}
@@ -161,13 +161,13 @@ func (s *TimeoutSuite) TestExecTimeoutTask() {
 		if msg.Message == "Task completed - FAILURE." {
 			foundSuccessLogMessage = true
 		}
-		if strings.HasPrefix(msg.Message, "Hit exec timeout (1s)") {
+		if strings.HasPrefix(msg.Message, "Hit exec timeout (1s).") {
 			foundTimeoutMessage = true
 		}
-		if strings.HasPrefix(msg.Message, "Running task-timeout commands") {
+		if strings.HasPrefix(msg.Message, "Running task-timeout commands.") {
 			foundShellLogMessage = true
 		}
-		if strings.HasPrefix(msg.Message, "Finished 'shell.exec' in \"timeout\"") {
+		if strings.HasPrefix(msg.Message, "Finished 'shell.exec' in \"timeout\".") {
 			foundShellLogMessage = true
 		}
 	}
@@ -228,13 +228,13 @@ func (s *TimeoutSuite) TestIdleTimeoutFunc() {
 		if msg.Message == "Task completed - FAILURE." {
 			foundSuccessLogMessage = true
 		}
-		if strings.HasPrefix(msg.Message, "Hit idle timeout (no message on stdout for more than 1s)") {
+		if strings.HasPrefix(msg.Message, "Hit idle timeout (no message on stdout for more than 1s).") {
 			foundTimeoutMessage = true
 		}
-		if strings.HasPrefix(msg.Message, "Running task-timeout commands") {
+		if strings.HasPrefix(msg.Message, "Running task-timeout commands.") {
 			foundShellLogMessage = true
 		}
-		if strings.HasPrefix(msg.Message, "Finished 'shell.exec' in \"timeout\"") {
+		if strings.HasPrefix(msg.Message, "Finished 'shell.exec' in \"timeout\".") {
 			foundShellLogMessage = true
 		}
 	}
@@ -295,13 +295,13 @@ func (s *TimeoutSuite) TestIdleTimeoutCommand() {
 		if msg.Message == "Task completed - FAILURE." {
 			foundSuccessLogMessage = true
 		}
-		if strings.HasPrefix(msg.Message, "Hit idle timeout (no message on stdout for more than 1s)") {
+		if strings.HasPrefix(msg.Message, "Hit idle timeout (no message on stdout for more than 1s).") {
 			foundTimeoutMessage = true
 		}
-		if strings.HasPrefix(msg.Message, "Running task-timeout commands") {
+		if strings.HasPrefix(msg.Message, "Running task-timeout commands.") {
 			foundShellLogMessage = true
 		}
-		if strings.HasPrefix(msg.Message, "Finished 'shell.exec' in \"timeout\"") {
+		if strings.HasPrefix(msg.Message, "Finished 'shell.exec' in \"timeout\".") {
 			foundShellLogMessage = true
 		}
 	}
@@ -362,13 +362,13 @@ func (s *TimeoutSuite) TestDynamicIdleTimeout() {
 		if msg.Message == "Task completed - FAILURE." {
 			foundSuccessLogMessage = true
 		}
-		if strings.HasPrefix(msg.Message, "Hit idle timeout (no message on stdout for more than 2s)") {
+		if strings.HasPrefix(msg.Message, "Hit idle timeout (no message on stdout for more than 2s).") {
 			foundTimeoutMessage = true
 		}
-		if strings.HasPrefix(msg.Message, "Running task-timeout commands") {
+		if strings.HasPrefix(msg.Message, "Running task-timeout commands.") {
 			foundShellLogMessage = true
 		}
-		if strings.HasPrefix(msg.Message, "Finished 'shell.exec' in \"timeout\"") {
+		if strings.HasPrefix(msg.Message, "Finished 'shell.exec' in \"timeout\".") {
 			foundShellLogMessage = true
 		}
 	}
@@ -429,13 +429,13 @@ func (s *TimeoutSuite) TestDynamicExecTimeoutTask() {
 		if msg.Message == "Task completed - FAILURE." {
 			foundSuccessLogMessage = true
 		}
-		if strings.HasPrefix(msg.Message, "Hit exec timeout (2s)") {
+		if strings.HasPrefix(msg.Message, "Hit exec timeout (2s).") {
 			foundTimeoutMessage = true
 		}
-		if strings.HasPrefix(msg.Message, "Running task-timeout commands") {
+		if strings.HasPrefix(msg.Message, "Running task-timeout commands.") {
 			foundShellLogMessage = true
 		}
-		if strings.HasPrefix(msg.Message, "Finished 'shell.exec' in \"timeout\"") {
+		if strings.HasPrefix(msg.Message, "Finished 'shell.exec' in \"timeout\".") {
 			foundShellLogMessage = true
 		}
 	}

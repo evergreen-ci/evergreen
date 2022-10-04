@@ -2723,6 +2723,19 @@ func FindHostWithVolume(volumeID string) (*Host, error) {
 	return FindOne(q)
 }
 
+// FindHostWithVolume finds the host associated with the
+// specified home volume ID.
+func FindHostWithHomeVolume(homeVolumeID string) (*Host, error) {
+	q := db.Query(
+		bson.M{
+			StatusKey:       bson.M{"$in": evergreen.UpHostStatus},
+			UserHostKey:     true,
+			HomeVolumeIDKey: homeVolumeID,
+		},
+	)
+	return FindOne(q)
+}
+
 // FindStaticNeedsNewSSHKeys finds all static hosts that do not have the same
 // set of SSH keys as those in the global settings.
 func FindStaticNeedsNewSSHKeys(settings *evergreen.Settings) ([]Host, error) {

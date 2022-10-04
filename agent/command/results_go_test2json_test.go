@@ -63,15 +63,21 @@ func (s *test2JSONSuite) SetupTest() {
 func (s *test2JSONSuite) TestNoFiles() {
 	s.c.Files = []string{}
 	s.args = map[string]interface{}{}
-	s.EqualError(s.c.ParseParams(s.args), "error validating params: must specify at least one file pattern to parse: 'map[]'")
+	err := s.c.ParseParams(s.args)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "must specify at least one file pattern to parse")
 
 	s.c.Files = []string{}
 	s.args = map[string]interface{}{
 		"files": []string{},
 	}
-	s.EqualError(s.c.ParseParams(s.args), "error validating params: must specify at least one file pattern to parse: 'map[files:[]]'")
+	err = s.c.ParseParams(s.args)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "must specify at least one file pattern to parse")
 
-	s.EqualError(s.c.ParseParams(nil), "error validating params: must specify at least one file pattern to parse: 'map[]'")
+	err = s.c.ParseParams(nil)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "must specify at least one file pattern to parse")
 }
 
 func (s *test2JSONSuite) TestParseArgs() {

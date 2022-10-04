@@ -37,7 +37,7 @@ func (c *zipArchiveCreate) Name() string { return "archive.zip_pack" }
 
 func (c *zipArchiveCreate) ParseParams(params map[string]interface{}) error {
 	if err := mapstructure.Decode(params, c); err != nil {
-		return errors.Wrapf(err, "error parsing '%v' params", c.Name())
+		return errors.Wrap(err, "decoding mapstructure params")
 	}
 
 	if c.Target == "" {
@@ -45,7 +45,7 @@ func (c *zipArchiveCreate) ParseParams(params map[string]interface{}) error {
 	}
 
 	if c.SourceDir == "" {
-		return errors.New("source_dir cannot be blank")
+		return errors.New("source directory cannot be blank")
 	}
 
 	if len(c.Include) == 0 {
@@ -59,7 +59,7 @@ func (c *zipArchiveCreate) Execute(ctx context.Context,
 	client client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	if err := util.ExpandValues(c, conf.Expansions); err != nil {
-		return errors.Wrap(err, "error expanding params")
+		return errors.Wrap(err, "applying expansions")
 	}
 
 	// if the source dir is a relative path, join it to the working dir
@@ -74,7 +74,7 @@ func (c *zipArchiveCreate) Execute(ctx context.Context,
 
 	files, err := agentutil.FindContentsToArchive(ctx, c.SourceDir, c.Include, c.ExcludeFiles)
 	if err != nil {
-		return errors.Wrap(err, "problem finding files to archive")
+		return errors.Wrap(err, "finding files to archive")
 	}
 
 	filenames := make([]string, len(files))
@@ -83,7 +83,7 @@ func (c *zipArchiveCreate) Execute(ctx context.Context,
 	}
 
 	if err := archiver.Zip.Make(c.Target, filenames); err != nil {
-		return errors.Wrapf(err, "problem constructing zip archive '%s'", c.Target)
+		return errors.Wrapf(err, "constructing zip archive '%s'", c.Target)
 	}
 
 	logger.Task().Info(message.Fields{

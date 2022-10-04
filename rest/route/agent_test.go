@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
@@ -24,6 +25,99 @@ import (
 var (
 	taskSecret = "tasksecret"
 )
+
+func TestAgentFetchExpansionsForTask(t *testing.T) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *fetchExpansionsForTaskHandler){
+		"FactorySucceeds": func(ctx context.Context, t *testing.T, rh *fetchExpansionsForTaskHandler) {
+			copied := rh.Factory()
+			assert.NotZero(t, copied)
+			_, ok := copied.(*fetchExpansionsForTaskHandler)
+			assert.True(t, ok)
+		},
+		"ParseSucceeds": func(ctx context.Context, t *testing.T, rh *fetchExpansionsForTaskHandler) {
+			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/agent/task/t1/fetch_vars", nil)
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"task_id": "t1"})
+			assert.NoError(t, rh.Parse(ctx, req))
+			assert.Equal(t, rh.taskID, "t1")
+		},
+		"RunSucceeds": func(ctx context.Context, t *testing.T, rh *fetchExpansionsForTaskHandler) {
+			rh.taskID = "t2"
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+			data, ok := resp.Data().(apimodels.ExpansionVars)
+			require.True(t, ok)
+			assert.Equal(t, data.PrivateVars, map[string]bool{"b": true})
+			assert.Equal(t, data.Vars, map[string]string{"a": "1", "b": "3"})
+		},
+		"RunSucceedsWithParamsSetOnVersion": func(ctx context.Context, t *testing.T, rh *fetchExpansionsForTaskHandler) {
+			rh.taskID = "t1"
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+			data, ok := resp.Data().(apimodels.ExpansionVars)
+			require.True(t, ok)
+			assert.Equal(t, data.PrivateVars, map[string]bool{"b": true})
+			assert.Equal(t, data.Vars, map[string]string{"a": "4", "b": "3"})
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, model.VersionCollection))
+			t1 := task.Task{
+				Id:      "t1",
+				Project: "p1",
+				Version: "aaaaaaaaaaff001122334455",
+			}
+			t2 := task.Task{
+				Id:      "t2",
+				Project: "p1",
+				Version: "aaaaaaaaaaff001122334456",
+			}
+			pRef := model.ProjectRef{
+				Id: "p1",
+			}
+			vars := &model.ProjectVars{
+				Id:          "p1",
+				Vars:        map[string]string{"a": "1", "b": "3"},
+				PrivateVars: map[string]bool{"b": true},
+			}
+			v1 := &model.Version{
+				Id:         "aaaaaaaaaaff001122334455",
+				Revision:   "1234",
+				Requester:  evergreen.GitTagRequester,
+				CreateTime: time.Now(),
+				Config:     "identifier: sample",
+				Parameters: []patch.Parameter{
+					{
+						Key:   "a",
+						Value: "4",
+					},
+				},
+			}
+			v2 := &model.Version{
+				Id:         "aaaaaaaaaaff001122334456",
+				Revision:   "1234",
+				Requester:  evergreen.GitTagRequester,
+				CreateTime: time.Now(),
+				Config:     "identifier: sample",
+			}
+			require.NoError(t, t1.Insert())
+			require.NoError(t, t2.Insert())
+			require.NoError(t, pRef.Insert())
+			require.NoError(t, vars.Insert())
+			require.NoError(t, v1.Insert())
+			require.NoError(t, v2.Insert())
+
+			r, ok := makeFetchExpansionsForTask().(*fetchExpansionsForTaskHandler)
+			require.True(t, ok)
+
+			tCase(ctx, t, r)
+		})
+	}
+}
 
 func TestAgentCedarConfig(t *testing.T) {
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *agentCedarConfig, c evergreen.CedarConfig){

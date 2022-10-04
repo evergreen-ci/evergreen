@@ -651,7 +651,7 @@ func createTestProject(override1, override2 *int) *model.ParserProject {
 	pp.AddBuildVariant("bv2", "bv2", "", override2, []string{"t1"})
 	pp.BuildVariants[1].Tasks[0].RunOn = []string{"test-distro-one"}
 
-	pp.AddTask("t1", []model.PluginCommandConf{model.PluginCommandConf{
+	pp.AddTask("t1", []model.PluginCommandConf{{
 		Command: "shell.exec",
 		Params: map[string]interface{}{
 			"script": "echo hi",

@@ -99,7 +99,7 @@ func taskFinishedTwoOrMoreDaysAgo(taskID string, sub *event.Subscription) (bool,
 			return false, errors.Wrapf(err, "finding old task '%s'", taskID)
 		}
 		if t == nil {
-			return false, errors.Errorf("task %s not found", taskID)
+			return false, errors.Errorf("task '%s' not found", taskID)
 		}
 	}
 
@@ -166,20 +166,20 @@ func (t *taskTriggers) Fetch(e *event.EventLogEntry) error {
 
 	t.task, err = task.FindOneIdOldOrNew(e.ResourceId, t.data.Execution)
 	if err != nil {
-		return errors.Wrap(err, "fetching task")
+		return errors.Wrapf(err, "finding task '%s' execution %d", e.ResourceId, t.data.Execution)
 	}
 	if t.task == nil {
-		return errors.New("couldn't find task")
+		return errors.Errorf("task '%s' execution %d not found", e.ResourceId, t.data.Execution)
 	}
 
 	_, err = t.task.GetDisplayTask()
 	if err != nil {
-		return errors.Wrap(err, "getting display task")
+		return errors.Wrapf(err, "getting parent display task for task '%s'", t.task.Id)
 	}
 
 	author, err := model.GetVersionAuthorID(t.task.Version)
 	if err != nil {
-		return errors.Wrap(err, "getting task owner")
+		return errors.Wrapf(err, "getting owner for version '%s'", t.task.Version)
 	}
 	t.owner = author
 
@@ -216,24 +216,24 @@ func (t *taskTriggers) Attributes() event.Attributes {
 func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, testNames string) (*commonTemplateData, error) {
 	api := restModel.APITask{}
 	if err := api.BuildFromService(t.task, &restModel.APITaskArgs{IncludeProjectIdentifier: true, IncludeAMI: true}); err != nil {
-		return nil, errors.Wrap(err, "error building json model")
+		return nil, errors.Wrap(err, "building JSON model")
 	}
 
 	buildDoc, err := build.FindOne(build.ById(t.task.BuildId))
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to fetch build while building email payload")
+		return nil, errors.Wrapf(err, "finding build '%s' while building email payload", t.task.BuildId)
 	}
 	if buildDoc == nil {
-		return nil, errors.New("could not find build while building email payload")
+		return nil, errors.Errorf("build '%s' not found while building email payload", t.task.BuildId)
 	}
 	hasPatch := evergreen.IsPatchRequester(buildDoc.Requester)
 
 	projectRef, err := model.FindMergedProjectRef(t.task.Project, t.task.Version, true)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to fetch project ref while building email payload")
+		return nil, errors.Wrapf(err, "finding project ref '%s' for version '%s' while building email payload", t.task.Project, t.task.Version)
 	}
 	if projectRef == nil {
-		return nil, errors.New("could not find project ref while building email payload")
+		return nil, errors.Errorf("project ref '%s' for version '%s' not found while building email payload", t.task.Project, t.task.Version)
 	}
 
 	displayName := t.task.DisplayName
@@ -324,7 +324,7 @@ func (t *taskTriggers) generate(sub *event.Subscription, pastTenseOverride, test
 	if sub.Subscriber.Type == event.JIRAIssueSubscriberType {
 		issueSub, ok := sub.Subscriber.Target.(*event.JIRAIssueSubscriber)
 		if !ok {
-			return nil, errors.Errorf("unexpected target data type: '%T'", sub.Subscriber.Target)
+			return nil, errors.Errorf("unexpected target data type %T", sub.Subscriber.Target)
 		}
 		var err error
 		payload, err = t.makeJIRATaskPayload(sub.ID, issueSub.Project, testNames)
@@ -395,7 +395,7 @@ func GetRecordByTriggerType(subID, triggerType string, t *task.Task) (*alertreco
 		rec, err = alertrecord.FindByFirstRegressionInVersion(subID, t.Version)
 	}
 	if err != nil {
-		return nil, errors.Wrapf(err, "fetching alertrecord (%s)", triggerType)
+		return nil, errors.Wrapf(err, "fetching alertrecord for trigger type '%s'", triggerType)
 	}
 	return rec, nil
 }
@@ -664,11 +664,11 @@ func (t *taskTriggers) taskExceedsDuration(sub *event.Subscription) (*notificati
 
 	thresholdString, ok := sub.TriggerData[event.TaskDurationKey]
 	if !ok {
-		return nil, fmt.Errorf("subscription %s has no task time threshold", sub.ID)
+		return nil, errors.Errorf("subscription '%s' has no task time threshold", sub.ID)
 	}
 	threshold, err := strconv.Atoi(thresholdString)
 	if err != nil {
-		return nil, fmt.Errorf("subscription %s has an invalid time threshold", sub.ID)
+		return nil, errors.Errorf("subscription '%s' has an invalid time threshold", sub.ID)
 	}
 
 	maxDuration := time.Duration(threshold) * time.Second
@@ -689,11 +689,11 @@ func (t *taskTriggers) taskRuntimeChange(sub *event.Subscription) (*notification
 
 	percentString, ok := sub.TriggerData[event.TaskPercentChangeKey]
 	if !ok {
-		return nil, fmt.Errorf("subscription %s has no percentage increase", sub.ID)
+		return nil, errors.Errorf("subscription '%s' has no percentage increase", sub.ID)
 	}
 	percent, err := strconv.ParseFloat(percentString, 64)
 	if err != nil {
-		return nil, fmt.Errorf("subscription %s has an invalid percentage", sub.ID)
+		return nil, errors.Errorf("subscription '%s' has an invalid percentage", sub.ID)
 	}
 
 	lastGreen, err := t.task.PreviousCompletedTask(t.task.Project, []string{evergreen.TaskSucceeded})
@@ -784,7 +784,7 @@ func (t *taskTriggers) shouldIncludeTest(sub *event.Subscription, previousTask *
 		}
 		isOld, err := taskFinishedTwoOrMoreDaysAgo(mostRecentAlert.TaskId, sub)
 		if err != nil {
-			return false, errors.Wrap(err, "fetching last alert age")
+			return false, errors.Wrap(err, "getting last alert age")
 		}
 		// resend the alert for this regression if it's past the threshold
 		if isOld {
@@ -820,7 +820,7 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 		evergreen.TaskCompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project, evergreen.SystemVersionRequesterTypes)).Sort([]string{"-" + task.RevisionOrderNumberKey})
 	previousCompleteTask, err := task.FindOne(query)
 	if err != nil {
-		return nil, errors.Wrap(err, "fetching previous task")
+		return nil, errors.Wrap(err, "finding previous task")
 	}
 	if previousCompleteTask != nil {
 		if err = previousCompleteTask.PopulateTestResults(); err != nil {
@@ -904,18 +904,16 @@ func (j *taskTriggers) makeJIRATaskPayload(subID, project, testNames string) (*m
 func JIRATaskPayload(subID, project, uiUrl, eventID, testNames string, t *task.Task) (*message.JiraIssue, error) {
 	buildDoc, err := build.FindOne(build.ById(t.BuildId))
 	if err != nil {
-		return nil, errors.Wrap(err, "fetching build while building Jira task payload")
+		return nil, errors.Wrapf(err, "finding build '%s' while building Jira task payload", t.BuildId)
 	}
 	if buildDoc == nil {
-		return nil, errors.New("could not find build while building Jira task payload")
+		return nil, errors.Errorf("build '%s' not found while building Jira task payload", t.BuildId)
 	}
 
 	var hostDoc *host.Host
 	if t.HostId != "" {
 		hostDoc, err = host.FindOneId(t.HostId)
-		if err != nil {
-			return nil, errors.Wrap(err, "fetching host while building Jira task payload")
-		}
+		return nil, errors.Wrapf(err, "finding host '%s' while building Jira task payload", t.HostId)
 	}
 
 	var podDoc *pod.Pod
@@ -928,18 +926,18 @@ func JIRATaskPayload(subID, project, uiUrl, eventID, testNames string, t *task.T
 
 	versionDoc, err := model.VersionFindOneId(t.Version)
 	if err != nil {
-		return nil, errors.Wrap(err, "fetching version while building Jira task payload")
+		return nil, errors.Wrapf(err, "finding version '%s' while building Jira task payload", t.Version)
 	}
 	if versionDoc == nil {
-		return nil, errors.New("could not find version while building Jira task payload")
+		return nil, errors.Errorf("version '%s' not found while building Jira task payload", t.Version)
 	}
 
 	projectRef, err := model.FindMergedProjectRef(t.Project, t.Version, true)
 	if err != nil {
-		return nil, errors.Wrap(err, "fetching project ref while building Jira task payload")
+		return nil, errors.Wrapf(err, "finding project ref '%s' for version '%s' while building Jira task payload", t.Version, t.Version)
 	}
 	if projectRef == nil {
-		return nil, errors.Errorf("project ref '%s' not found", t.Project)
+		return nil, errors.Errorf("project ref '%s' for version '%s' not found", t.Project, t.Version)
 	}
 
 	data := jiraTemplateData{
@@ -1032,7 +1030,7 @@ func (t *taskTriggers) buildBreak(sub *event.Subscription) (*notification.Notifi
 		evergreen.TaskCompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project, evergreen.SystemVersionRequesterTypes)).Sort([]string{"-" + task.RevisionOrderNumberKey})
 	previousTask, err := task.FindOne(query)
 	if err != nil {
-		return nil, errors.Wrap(err, "fetching previous task")
+		return nil, errors.Wrap(err, "finding previous task")
 	}
 	if previousTask != nil && previousTask.Status == evergreen.TaskFailed {
 		return nil, nil

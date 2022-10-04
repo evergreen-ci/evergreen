@@ -81,7 +81,7 @@ func (s *systemMetricsCollectorOptions) validate() error {
 	}
 
 	if s.conn == nil {
-		return errors.New("must provide an existing client connection to cedar")
+		return errors.New("must provide an existing client connection to Cedar")
 	}
 
 	if s.bufferTimedFlushInterval < 0 {
@@ -116,7 +116,7 @@ func newSystemMetricsCollector(ctx context.Context, opts *systemMetricsCollector
 	}
 	s.client, err = systemmetrics.NewSystemMetricsClientWithExistingConnection(ctx, opts.conn)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem creating new system metrics client")
+		return nil, errors.Wrap(err, "creating new system metrics client")
 	}
 	return s, nil
 }
@@ -130,7 +130,7 @@ func (s *systemMetricsCollector) Start(ctx context.Context) error {
 	var err error
 	s.id, err = s.client.CreateSystemMetricsRecord(ctx, s.taskOpts)
 	if err != nil {
-		return errors.Wrap(err, "problem creating cedar system metrics metadata object")
+		return errors.Wrap(err, "creating Cedar system metrics record")
 	}
 
 	var streamingCtx context.Context
@@ -145,7 +145,7 @@ func (s *systemMetricsCollector) Start(ctx context.Context) error {
 		if err != nil {
 			s.streamingCancel()
 			s.streamingCancel = nil
-			return errors.Wrap(err, fmt.Sprintf("problem creating system metrics stream for id %s and metricType %s", s.id, collector.name()))
+			return errors.Wrap(err, fmt.Sprintf("creating system metrics stream for ID '%s' and metric type '%s'", s.id, collector.name()))
 		}
 
 		s.stream.Add(1)
@@ -160,8 +160,8 @@ func (s *systemMetricsCollector) Start(ctx context.Context) error {
 func (s *systemMetricsCollector) timedCollect(ctx context.Context, mc metricCollector, stream io.WriteCloser) {
 	timer := time.NewTimer(0)
 	defer func() {
-		s.catcher.Add(errors.Wrap(recovery.HandlePanicWithError(recover(), nil, fmt.Sprintf("panic in system metrics stream for id %s and metricType %s", s.id, mc.name())), ""))
-		s.catcher.Add(errors.Wrap(stream.Close(), fmt.Sprintf("problem closing system metrics stream for id %s and metricType %s", s.id, mc.name())))
+		s.catcher.Add(recovery.HandlePanicWithError(recover(), nil, fmt.Sprintf("panic in system metrics stream for ID '%s' and metric type '%s'", s.id, mc.name())))
+		s.catcher.Wrapf(stream.Close(), "closing system metrics stream for ID '%s' and metric type '%s'", s.id, mc.name())
 		timer.Stop()
 		s.stream.Done()
 	}()
@@ -178,7 +178,7 @@ func (s *systemMetricsCollector) timedCollect(ctx context.Context, mc metricColl
 				if ctx.Err() != nil {
 					return
 				}
-				s.catcher.Add(errors.Wrapf(err, "problem collecting system metrics data for id %s and metricType %s", s.id, mc.name()))
+				s.catcher.Wrapf(err, "collecting system metrics data for ID '%s' and metric type  '%s'", s.id, mc.name())
 				return
 			}
 			_, err = stream.Write(data)
@@ -188,7 +188,7 @@ func (s *systemMetricsCollector) timedCollect(ctx context.Context, mc metricColl
 				if ctx.Err() != nil {
 					return
 				}
-				s.catcher.Add(errors.Wrapf(err, "problem writing system metrics data to stream for id %s and metricType %s", s.id, mc.name()))
+				s.catcher.Wrapf(err, "problem writing system metrics data to stream for ID '%s' and metric type '%s'", s.id, mc.name())
 				return
 			}
 			_ = timer.Reset(s.interval)
@@ -205,7 +205,7 @@ func (s *systemMetricsCollector) closeOnCancel(outerCtx, streamingCtx context.Co
 				s.streamingCancel()
 			}
 			s.cleanup()
-			grip.Error(s.catcher.Resolve())
+			grip.Error(errors.Wrap(s.catcher.Resolve(), "closing system metrics collector"))
 			return
 		case <-streamingCtx.Done():
 			s.cleanup()
@@ -223,9 +223,9 @@ func (s *systemMetricsCollector) cleanup() {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 		defer cancel()
 		if s.id != "" {
-			s.catcher.Add(errors.Wrap(s.client.CloseSystemMetrics(ctx, s.id, s.catcher.HasErrors()), fmt.Sprintf("error closing out system metrics object for id %s", s.id)))
+			s.catcher.Wrapf(s.client.CloseSystemMetrics(ctx, s.id, s.catcher.HasErrors()), "closing system metrics object for ID '%s'", s.id)
 		}
-		s.catcher.Add(errors.Wrap(s.client.CloseClient(), fmt.Sprintf("error closing system metrics client for id %s", s.id)))
+		s.catcher.Wrapf(s.client.CloseClient(), "closing system metrics client for ID '%s'", s.id)
 	}
 	s.closed = true
 }
@@ -294,7 +294,7 @@ func (c *diskUsageCollector) format() systemmetrics.DataFormat { return systemme
 func (c *diskUsageCollector) collect(ctx context.Context) ([]byte, error) {
 	usage, err := disk.UsageWithContext(ctx, c.dir)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem capturing metrics with gopsutil")
+		return nil, errors.Wrap(err, "capturing disk usage")
 	}
 	wrapper := diskUsageWrapper{
 		Path:              usage.Path,
@@ -330,7 +330,7 @@ func (c *uptimeCollector) format() systemmetrics.DataFormat { return systemmetri
 func (c *uptimeCollector) collect(ctx context.Context) ([]byte, error) {
 	uptime, err := host.UptimeWithContext(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem capturing metrics with gopsutil")
+		return nil, errors.Wrap(err, "capturing host uptime")
 	}
 
 	uptimeWrap := uptimeWrapper{Uptime: uptime}
@@ -370,14 +370,14 @@ func (c *processCollector) collect(ctx context.Context) ([]byte, error) {
 	var err error
 	procs, err := process.ProcessesWithContext(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem capturing metrics with gopsutil")
+		return nil, errors.Wrap(err, "collecting processes")
 	}
 
 	procMetrics := createProcMetrics(ctx, procs)
 	procWrapper := processesWrapper{Processes: procMetrics}
 
 	results, err := json.Marshal(procWrapper)
-	return results, errors.Wrap(err, "problem marshaling processes into JSON")
+	return results, errors.Wrap(err, "marshalling processes into JSON")
 }
 
 func createProcMetrics(ctx context.Context, procs []*process.Process) []processData {
@@ -442,7 +442,7 @@ func createProcMetrics(ctx context.Context, procs []*process.Process) []processD
 func convertJSONToFTDC(ctx context.Context, metric interface{}) ([]byte, error) {
 	jsonMetrics, err := json.Marshal(metric)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem converting metrics to JSON")
+		return nil, errors.Wrap(err, "converting metrics to JSON")
 	}
 
 	opts := metrics.CollectJSONOptions{
@@ -453,7 +453,7 @@ func convertJSONToFTDC(ctx context.Context, metric interface{}) ([]byte, error) 
 
 	output, err := metrics.CollectJSONStream(ctx, opts)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem converting FTDC to JSON")
+		return nil, errors.Wrap(err, "converting FTDC to JSON")
 	}
 	return output, nil
 }

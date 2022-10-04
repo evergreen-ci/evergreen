@@ -42,7 +42,7 @@ func TestTaskConfigGetWorkingDirectory(t *testing.T) {
 }
 
 func TestTaskConfigGetTaskGroup(t *testing.T) {
-	require.NoError(t, db.ClearCollections(model.VersionCollection), "failed to clear collections")
+	require.NoError(t, db.ClearCollections(model.VersionCollection))
 	tgName := "example_task_group"
 	projYml := `
 timeout:

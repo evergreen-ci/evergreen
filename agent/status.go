@@ -24,7 +24,7 @@ func (a *Agent) startStatusServer(ctx context.Context, port int) error {
 	// that a running task depends on, could run.
 	_, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/status", port))
 	if err == nil {
-		return errors.Errorf("another agent is running on %d", port)
+		return errors.Errorf("another process is running on localhost port %d", port)
 	}
 	app := gimlet.NewApp()
 	if err = app.SetPort(port); err != nil {
@@ -53,7 +53,7 @@ func (a *Agent) startStatusServer(ctx context.Context, port int) error {
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
-	grip.Infoln("starting status server on:", srv.Addr)
+	grip.Infoln("Starting status server on address:", srv.Addr)
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {
@@ -67,7 +67,7 @@ func (a *Agent) startStatusServer(ctx context.Context, port int) error {
 
 	go func() {
 		<-ctx.Done()
-		grip.Info("shutting down status server")
+		grip.Info("Shutting down status server.")
 		grip.Critical(srv.Shutdown(ctx))
 	}()
 
@@ -88,7 +88,7 @@ type statusResponse struct {
 // statusHandler is a function that produces the status handler.
 func (a *Agent) statusHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		grip.Debug("preparing status response")
+		grip.Debug("Preparing status response.")
 		resp := buildResponse(a.opts)
 
 		// in the future we may want to use the same render
@@ -96,14 +96,14 @@ func (a *Agent) statusHandler() http.HandlerFunc {
 		// manually is probably good enough for now.
 		out, err := json.MarshalIndent(resp, " ", " ")
 		if err != nil {
-			grip.Error(err)
+			grip.Error(errors.Wrap(err, "marshalling JSON for status handler response"))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		_, err = w.Write(out)
-		grip.Error(err)
+		grip.Error(errors.Wrap(err, "writing status handler response"))
 	}
 }
 
@@ -121,7 +121,7 @@ func (a *Agent) endTaskHandler(w http.ResponseWriter, r *http.Request) {
 
 	payload, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		_, _ = w.Write([]byte(err.Error()))
+		_, _ = w.Write([]byte(errors.Wrap(err, "reading end task response body").Error()))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -130,7 +130,7 @@ func (a *Agent) endTaskHandler(w http.ResponseWriter, r *http.Request) {
 	if err := json.Unmarshal(payload, &resp); err != nil {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte(errors.Wrap(err, "error unmarshalling task resp body").Error()))
+		_, _ = w.Write([]byte(errors.Wrap(err, "reading end task reply from response").Error()))
 
 		return
 	}
@@ -143,7 +143,7 @@ func terminateAgentHandler(w http.ResponseWriter, r *http.Request) {
 		_ = grip.GetSender().Close()
 	}()
 
-	msg := map[string]interface{}{
+	msg := message.Fields{
 		"message": "terminating agent triggered",
 		"host_id": r.Host,
 	}
@@ -153,14 +153,14 @@ func terminateAgentHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	out, err := json.MarshalIndent(msg, " ", " ")
 	if err != nil {
-		grip.Error(err)
+		grip.Error(errors.Wrap(err, "marshalling JSON response"))
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 	_, err = w.Write(out)
 	if flusher, ok := w.(http.Flusher); ok {
 		flusher.Flush()
 	}
-	grip.Error(err)
+	grip.Error(errors.Wrap(err, "writing response"))
 
 	// need to use os.exit rather than a panic because the panic
 	// handler will recover.

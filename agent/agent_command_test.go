@@ -87,7 +87,7 @@ func (s *CommandSuite) TestShellExec() {
 		if msg.Message == "Task completed - SUCCESS." {
 			foundSuccessLogMessage = true
 		}
-		if strings.HasPrefix(msg.Message, "Finished 'shell.exec'") {
+		if strings.HasPrefix(msg.Message, "Finished command 'shell.exec'") {
 			foundShellLogMessage = true
 		}
 	}

@@ -23,7 +23,7 @@ func TestScripting(t *testing.T) {
 			cmd := &scriptingExec{Harness: "lisp"}
 			err := cmd.ParseParams(map[string]interface{}{"args": true})
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "error decoding")
+			assert.Contains(t, err.Error(), "decoding")
 		})
 		t.Run("NoArgsErrors", func(t *testing.T) {
 			cmd := &scriptingExec{Harness: "lisp"}

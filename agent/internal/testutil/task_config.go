@@ -13,11 +13,11 @@ import (
 func MakeTaskConfigFromModelData(settings *evergreen.Settings, data *testutil.TestModelData) (*internal.TaskConfig, error) {
 	oauthToken, err := settings.GetGithubOauthToken()
 	if err != nil {
-		return nil, errors.Wrap(err, "error getting oauth token")
+		return nil, errors.Wrap(err, "getting global GitHub OAuth token")
 	}
 	exp, err := model.PopulateExpansions(data.Task, data.Host, oauthToken)
 	if err != nil {
-		return nil, errors.Wrap(err, "error populating expansions")
+		return nil, errors.Wrap(err, "populating expansions")
 	}
 	var dv *apimodels.DistroView
 	if data.Host != nil {
@@ -27,7 +27,7 @@ func MakeTaskConfigFromModelData(settings *evergreen.Settings, data *testutil.Te
 	}
 	config, err := internal.NewTaskConfig(data.Host.Distro.WorkDir, dv, data.Project, data.Task, data.ProjectRef, nil, exp)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not make task config from test model data")
+		return nil, errors.Wrap(err, "making task config from test model data")
 	}
 	return config, nil
 }

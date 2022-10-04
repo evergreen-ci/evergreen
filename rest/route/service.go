@@ -33,6 +33,8 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	sc.SetURL(opts.URL)
 
 	// Middleware
+	// TODO (EVG-17989) Remove toggleable wrapper from auth middleware
+	requireUserToggleable := NewRequireAuthHandler()
 	requireUser := gimlet.NewRequireAuthHandler()
 	requireTask := NewTaskAuthMiddleware()
 	requireTaskHost := NewTaskHostAuthMiddleware()
@@ -92,7 +94,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/task/{task_id}/json/data/{name}").Version(2).Post().Wrap(requireTask).RouteHandler(makeInsertTaskJSON())
 
 	// Routes
-	app.AddRoute("/").Version(2).Get().RouteHandler(makePlaceHolder())
+	app.AddRoute("/").Version(2).Get().Wrap(requireUserToggleable).RouteHandler(makePlaceHolder())
 	app.AddRoute("/admin/banner").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchAdminBanner())
 	app.AddRoute("/admin/banner").Version(2).Post().Wrap(adminSettings).RouteHandler(makeSetAdminBanner())
 	app.AddRoute("/admin/uiv2_url").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchAdminUIV2Url())
@@ -109,7 +111,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/admin/service_users").Version(2).Get().Wrap(adminSettings).RouteHandler(makeGetServiceUsers())
 	app.AddRoute("/admin/service_users").Version(2).Post().Wrap(adminSettings).RouteHandler(makeUpdateServiceUser())
 	app.AddRoute("/admin/service_users").Version(2).Delete().Wrap(adminSettings).RouteHandler(makeDeleteServiceUser())
-	app.AddRoute("/alias/{name}").Version(2).Get().RouteHandler(makeFetchAliases())
+	app.AddRoute("/alias/{name}").Version(2).Get().Wrap(requireUserToggleable).RouteHandler(makeFetchAliases())
 	app.AddRoute("/auth").Version(2).Get().Wrap(requireUser).RouteHandler(&authPermissionGetHandler{})
 	app.AddRoute("/builds/{build_id}").Version(2).Get().Wrap(viewTasks).RouteHandler(makeGetBuildByID())
 	app.AddRoute("/builds/{build_id}").Version(2).Patch().Wrap(requireUser, editTasks).RouteHandler(makeChangeStatusForBuild())
@@ -130,19 +132,22 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/distros/{distro_id}").Version(2).Delete().Wrap(removeDistroSettings).RouteHandler(makeDeleteDistroByID())
 	app.AddRoute("/distros/{distro_id}").Version(2).Put().Wrap(createDistro).RouteHandler(makePutDistro())
 	app.AddRoute("/distros/{distro_id}/ami").Version(2).Get().Wrap(requireTask).RouteHandler(makeGetDistroAMI())
-	app.AddRoute("/distros/{distro_id}/client_urls").Version(2).Get().RouteHandler(makeGetDistroClientURLs(env))
 	app.AddRoute("/distros/{distro_id}/execute").Version(2).Patch().Wrap(editHosts).RouteHandler(makeDistroExecute(env))
 	app.AddRoute("/distros/{distro_id}/icecream_config").Version(2).Patch().Wrap(editHosts).RouteHandler(makeDistroIcecreamConfig(env))
 	app.AddRoute("/distros/{distro_id}/setup").Version(2).Get().Wrap(editDistroSettings).RouteHandler(makeGetDistroSetup())
 	app.AddRoute("/distros/{distro_id}/setup").Version(2).Patch().Wrap(editDistroSettings).RouteHandler(makeChangeDistroSetup())
+	// client_urls is used by the agent monitor deploy job which does not pass in user info
+	app.AddRoute("/distros/{distro_id}/client_urls").Version(2).Get().RouteHandler(makeGetDistroClientURLs(env))
 
+	// Middleware is omitted for webhook routes because they cannot be called by users and validation occurs in Parse function.
 	app.AddRoute("/hooks/github").Version(2).Post().RouteHandler(makeGithubHooksRoute(sc, opts.APIQueue, opts.GithubSecret, settings))
 	app.AddRoute("/hooks/aws").Version(2).Post().RouteHandler(makeEC2SNS(env, opts.APIQueue))
 	app.AddRoute("/hooks/aws/ecs").Version(2).Post().RouteHandler(makeECSSNS(env, opts.APIQueue))
+
 	app.AddRoute("/host/filter").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchHostFilter())
 	app.AddRoute("/host/start_processes").Version(2).Post().Wrap(requireUser).RouteHandler(makeHostStartProcesses(env))
 	app.AddRoute("/host/get_processes").Version(2).Get().Wrap(requireUser).RouteHandler(makeHostGetProcesses(env))
-	app.AddRoute("/hosts").Version(2).Get().RouteHandler(makeFetchHosts(opts.URL))
+	app.AddRoute("/hosts").Version(2).Get().Wrap(requireUserToggleable).RouteHandler(makeFetchHosts(opts.URL))
 	app.AddRoute("/hosts").Version(2).Post().Wrap(requireUser).RouteHandler(makeSpawnHostCreateRoute(env.Settings()))
 	app.AddRoute("/hosts").Version(2).Patch().Wrap(requireUser).RouteHandler(makeChangeHostsStatuses())
 	app.AddRoute("/hosts/{host_id}").Version(2).Get().Wrap(requireUser).RouteHandler(makeGetHostByID())
@@ -204,17 +209,17 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/projects/{project_id}/patch_trigger_aliases").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeFetchPatchTriggerAliases())
 	app.AddRoute("/projects/{project_id}/parameters").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeFetchParameters())
 	app.AddRoute("/projects/variables/rotate").Version(2).Put().Wrap(requireUser, createProject).RouteHandler(makeProjectVarsPut())
-	app.AddRoute("/permissions").Version(2).Get().RouteHandler(&permissionsGetHandler{})
+	app.AddRoute("/permissions").Version(2).Get().Wrap(requireUserToggleable).RouteHandler(&permissionsGetHandler{})
 	app.AddRoute("/repos/{repo_id}").Version(2).Get().Wrap(requireUser, viewProjectSettings).RouteHandler(makeGetRepoByID())
 	app.AddRoute("/repos/{repo_id}").Version(2).Patch().Wrap(requireUser, requireRepoAdmin, editProjectSettings).RouteHandler(makePatchRepoByID(env.Settings()))
 	app.AddRoute("/roles").Version(2).Get().Wrap(requireUser).RouteHandler(acl.NewGetAllRolesHandler(env.RoleManager()))
 	app.AddRoute("/roles").Version(2).Post().Wrap(requireUser).RouteHandler(acl.NewUpdateRoleHandler(env.RoleManager()))
 	app.AddRoute("/roles/{role_id}/users").Version(2).Get().Wrap(requireUser).RouteHandler(makeGetUsersWithRole())
 	app.AddRoute("/scheduler/compare_tasks").Version(2).Post().Wrap(requireUser).RouteHandler(makeCompareTasksRoute())
-	app.AddRoute("/status/cli_version").Version(2).Get().RouteHandler(makeFetchCLIVersionRoute())
+	app.AddRoute("/status/cli_version").Version(2).Get().Wrap(requireUserToggleable).RouteHandler(makeFetchCLIVersionRoute())
 	app.AddRoute("/status/hosts/distros").Version(2).Get().Wrap(requireUser).RouteHandler(makeHostStatusByDistroRoute())
 	app.AddRoute("/status/notifications").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchNotifcationStatusRoute())
-	app.AddRoute("/status/recent_tasks").Version(2).Get().RouteHandler(makeRecentTaskStatusHandler())
+	app.AddRoute("/status/recent_tasks").Version(2).Get().Wrap(requireUserToggleable).RouteHandler(makeRecentTaskStatusHandler())
 	app.AddRoute("/subscriptions").Version(2).Delete().Wrap(requireUser).RouteHandler(makeDeleteSubscription())
 	app.AddRoute("/subscriptions").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchSubscription())
 	app.AddRoute("/subscriptions").Version(2).Post().Wrap(requireUser).RouteHandler(makeSetSubscription())

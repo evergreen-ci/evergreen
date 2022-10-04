@@ -102,7 +102,7 @@ func GetProviderCounts() (ProviderStats, error) {
 
 ////////////////////////////////////////////////////////////////////////
 //
-// Pipeline impelementations
+// Pipeline implementations
 
 // statsByDistroPipeline returns a pipeline that will group all up hosts by distro
 // and return the count of hosts as well as how many are running tasks

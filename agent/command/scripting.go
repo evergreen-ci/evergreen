@@ -174,7 +174,7 @@ func (c *scriptingExec) Name() string { return "subprocess.scripting" }
 func (c *scriptingExec) ParseParams(params map[string]interface{}) error {
 	err := mapstructure.Decode(params, c)
 	if err != nil {
-		return errors.Wrapf(err, "error decoding %s params", c.Name())
+		return errors.Wrap(err, "decoding mapstructure params")
 	}
 
 	if !utility.StringSliceContains(validTestingHarnesses(), c.Harness) {
@@ -188,12 +188,12 @@ func (c *scriptingExec) ParseParams(params map[string]interface{}) error {
 
 		c.Args, err = shlex.Split(c.Command)
 		if err != nil {
-			return errors.Wrapf(err, "problem parsing %s command", c.Name())
+			return errors.Wrapf(err, "splitting command '%s' into arguments", c.Command)
 		}
 	}
 
 	if c.TestDir != "" && (c.Script != "" || len(c.Args) != 0) {
-		return errors.New("cannot specify both test directory and a script or command to run")
+		return errors.New("cannot specify both test directory and a script/command to run")
 	}
 	if c.Script == "" && len(c.Args) == 0 && c.TestDir == "" {
 		return errors.New("must specify either a script, a command, or a test directory")
@@ -450,14 +450,14 @@ func (c *scriptingExec) Execute(ctx context.Context, comm client.Communicator, l
 	if c.WorkingDir == "" {
 		c.WorkingDir, err = conf.GetWorkingDirectory(c.WorkingDir)
 		if err != nil {
-			logger.Execution().Warning(err.Error())
+			logger.Execution().Warning(err)
 			return errors.WithStack(err)
 		}
 	}
 
 	taskTmpDir, err := conf.GetWorkingDirectory("tmp")
 	if err != nil {
-		logger.Execution().Notice(err.Error())
+		logger.Execution().Notice(err)
 	}
 
 	addTempDirs(c.Env, taskTmpDir)
@@ -472,20 +472,20 @@ func (c *scriptingExec) Execute(ctx context.Context, comm client.Communicator, l
 	}
 	opts, err := c.getHarnessConfig(output)
 	if err != nil {
-		return errors.WithStack(err)
+		return errors.Wrap(err, "getting harness config")
 	}
 
 	harness, err := scripting.NewHarness(c.JasperManager(), opts)
 	if err != nil {
-		return errors.WithStack(err)
+		return errors.Wrap(err, "creating testing harness")
 	}
 
 	catcher := grip.NewBasicCatcher()
 	if len(c.Args) > 0 {
-		catcher.Add(harness.Run(ctx, c.Args))
+		catcher.Wrap(harness.Run(ctx, c.Args), "running test harness command")
 	}
 	if c.Script != "" {
-		catcher.Add(harness.RunScript(ctx, c.Script))
+		catcher.Wrap(harness.RunScript(ctx, c.Script), "running test harness script")
 	}
 	if c.TestDir != "" {
 		var opts scripting.TestOptions

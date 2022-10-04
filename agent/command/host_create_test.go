@@ -128,7 +128,7 @@ func (s *createHostSuite) TestParseFromFile() {
 	}
 
 	err = s.cmd.ParseParams(s.params)
-	s.Contains(err.Error(), "no params should be defined when using a file to parse params")
+	s.Contains(err.Error(), "when using a file to parse params, no additional params other than file name should be defined")
 
 }
 
@@ -136,15 +136,18 @@ func (s *createHostSuite) TestParamValidation() {
 	// having no ami or distro is an error
 	s.params["distro"] = ""
 	s.NoError(s.cmd.ParseParams(s.params))
-	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "must set exactly one of ami or distro")
+	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "must set exactly one of AMI or distro")
 
 	// verify errors if missing required info for ami
 	s.params["ami"] = "ami"
+	delete(s.params, "security_group_ids")
+	delete(s.params, "subnet_id")
+	delete(s.params, "instance_type")
 	s.NoError(s.cmd.ParseParams(s.params))
 	err := s.cmd.expandAndValidate(s.conf)
-	s.Contains(err.Error(), "instance_type must be set if ami is set")
-	s.Contains(err.Error(), "must specify security_group_ids if ami is set")
-	s.Contains(err.Error(), "instance_type must be set if ami is set")
+	s.Contains(err.Error(), "must specify security group IDs if AMI is set")
+	s.Contains(err.Error(), "subnet ID must be set if AMI is set")
+	s.Contains(err.Error(), "instance type must be set if AMI is set")
 
 	// valid AMI info
 	s.params["instance_type"] = "instance"
@@ -156,7 +159,7 @@ func (s *createHostSuite) TestParamValidation() {
 	// having a key id but nothing else is an error
 	s.params["aws_access_key_id"] = "keyid"
 	s.NoError(s.cmd.ParseParams(s.params))
-	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "aws_access_key_id, aws_secret_access_key, key_name must all be set or unset")
+	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "AWS access key ID, AWS secret access key, and key name must all be set or unset")
 	s.params["aws_secret_access_key"] = "secret"
 	s.params["key_name"] = "key"
 	s.NoError(s.cmd.ParseParams(s.params))
@@ -165,13 +168,13 @@ func (s *createHostSuite) TestParamValidation() {
 	// verify errors for things controlled by the agent
 	s.params["num_hosts"] = "11"
 	s.NoError(s.cmd.ParseParams(s.params))
-	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "num_hosts must be between 1 and 10")
+	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "num hosts must be between 1 and 10")
 	s.params["scope"] = "idk"
 	s.NoError(s.cmd.ParseParams(s.params))
 	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "scope must be build or task")
 	s.params["timeout_teardown_secs"] = 55
 	s.NoError(s.cmd.ParseParams(s.params))
-	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "timeout_teardown_secs must be between 60 and 604800")
+	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "timeout teardown (seconds) must be between 60 and 604800")
 
 	// Validate num_hosts can be an int
 	s.params["timeout_teardown_secs"] = 60
@@ -189,8 +192,8 @@ func (s *createHostSuite) TestParamValidation() {
 	settings.Providers.Docker.DefaultDistro = "my-default-distro"
 	s.NoError(evergreen.UpdateConfig(settings))
 
-	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "docker image must be set")
-	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "num_hosts cannot be greater than 1")
+	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "Docker image must be set")
+	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "num hosts cannot be greater than 1")
 	s.params["image"] = "my-image"
 	s.params["command"] = "echo hi"
 	s.params["num_hosts"] = 1

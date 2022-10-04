@@ -117,7 +117,7 @@ func (vp *goTestParser) Parse(testOutput io.Reader) error {
 	vp.tests = map[string][]*goTestResult{}
 	for testScanner.Scan() {
 		if err := testScanner.Err(); err != nil {
-			return errors.Wrap(err, "error reading test output")
+			return errors.Wrap(err, "reading test output")
 		}
 		// logs are appended at the start of the loop, allowing
 		// len(vp.logs) to represent the current line number [1...]
@@ -153,7 +153,7 @@ func (vp *goTestParser) handleLine(line string) error {
 func (vp *goTestParser) handleEnd(line string, rgx *regexp.Regexp) error {
 	name, status, duration, err := endInfoFromLogLine(line, rgx)
 	if err != nil {
-		return errors.Wrapf(err, "error parsing end line '%s'", line)
+		return errors.Wrapf(err, "parsing end line '%s'", line)
 	}
 	tAry, ok := vp.tests[name]
 	if !ok || tAry == nil {
@@ -174,7 +174,7 @@ func (vp *goTestParser) handleEnd(line string, rgx *regexp.Regexp) error {
 func (vp *goTestParser) handleStart(line string, rgx *regexp.Regexp, defaultFail bool) error {
 	name, err := startInfoFromLogLine(line, rgx)
 	if err != nil {
-		return errors.Wrapf(err, "error parsing start line '%s'", line)
+		return errors.Wrapf(err, "parsing start line '%s'", line)
 	}
 	t := vp.newTestResult(name)
 
@@ -201,7 +201,7 @@ func (vp *goTestParser) handleStart(line string, rgx *regexp.Regexp, defaultFail
 func (vp *goTestParser) handleFailedBuild(line string) error {
 	path, err := pathNameFromLogLine(line)
 	if err != nil {
-		return errors.Wrapf(err, "error parsing start line '%s'", line)
+		return errors.Wrapf(err, "parsing start line '%s'", line)
 	}
 	return errors.Errorf("go test failed for path '%s'", path)
 }
@@ -223,8 +223,7 @@ func startInfoFromLogLine(line string, rgx *regexp.Regexp) (string, error) {
 	if len(matches) < 2 {
 		// futureproofing -- this can't happen as long as we
 		// check Match() before calling startInfoFromLogLine
-		return "", errors.Errorf(
-			"unable to match start line regular expression on line: %s", line)
+		return "", errors.Errorf("unable to match start line regular expression on line '%s'", line)
 	}
 	return matches[1], nil
 }
@@ -237,8 +236,7 @@ func endInfoFromLogLine(line string, rgx *regexp.Regexp) (string, string, time.D
 	if len(matches) < 4 {
 		// this block should never be reached if we call endRegex.Match()
 		// before entering this function
-		return "", "", 0, errors.Errorf(
-			"unable to match end line regular expression on line: %s", line)
+		return "", "", 0, errors.Errorf("unable to match end line regular expression on line '%s'", line)
 	}
 	status := matches[1]
 	name := matches[2]
@@ -247,7 +245,7 @@ func endInfoFromLogLine(line string, rgx *regexp.Regexp) (string, string, time.D
 		var err error
 		duration, err = time.ParseDuration(strings.Replace(matches[3], " ", "", -1))
 		if err != nil {
-			return "", "", 0, errors.Wrap(err, "error parsing test runtime")
+			return "", "", 0, errors.Wrap(err, "parsing test runtime duration")
 		}
 	}
 	return name, status, duration, nil
@@ -257,7 +255,7 @@ func endInfoFromLogLine(line string, rgx *regexp.Regexp) (string, string, time.D
 func pathNameFromLogLine(line string) (string, error) {
 	matches := goTestFailedStatusRegex.FindStringSubmatch(line)
 	if len(matches) < 2 {
-		return "", errors.Errorf("unable to match build line to regular expression on line: %s", line)
+		return "", errors.Errorf("unable to match build line to regular expression on line '%s'", line)
 	}
 	return matches[1], nil
 }

@@ -242,6 +242,8 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 // hard-coded routes as well as those belonging to plugins.
 func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	needsLogin := gimlet.WrapperMiddleware(uis.requireLogin)
+	needsLoginToggleable := gimlet.WrapperMiddleware(uis.requireLoginToggleable)
+	needsLoginToggleableRedirect := gimlet.WrapperMiddleware(uis.redirectLoginToggleable)
 	needsLoginNoRedirect := gimlet.WrapperMiddleware(uis.requireLoginStatusUnauthorized)
 	needsContext := gimlet.WrapperMiddleware(uis.loadCtx)
 	allowsCORS := gimlet.WrapperMiddleware(uis.setCORSHeaders)
@@ -304,46 +306,46 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/graphql/query").Wrap(allowsCORS).Handler(func(_ http.ResponseWriter, _ *http.Request) {}).Options()
 
 	// Waterfall pages
-	app.AddRoute("/").Wrap(needsContext).Handler(uis.mainlineCommitsRedirect).Get().Head()
-	app.AddRoute("/waterfall").Wrap(needsContext).Handler(uis.waterfallPage).Get()
-	app.AddRoute("/waterfall/{project_id}").Wrap(needsContext, viewTasks).Handler(uis.waterfallPage).Get()
+	app.AddRoute("/").Wrap(needsLoginToggleableRedirect, needsContext).Handler(uis.mainlineCommitsRedirect).Get().Head()
+	app.AddRoute("/waterfall").Wrap(needsLoginToggleableRedirect, needsContext).Handler(uis.waterfallPage).Get()
+	app.AddRoute("/waterfall/{project_id}").Wrap(needsLoginToggleableRedirect, needsContext, viewTasks).Handler(uis.waterfallPage).Get()
 
 	// Task page (and related routes)
-	app.AddRoute("/task/{task_id}").Wrap(needsContext, viewTasks).Handler(uis.taskPage).Get()
-	app.AddRoute("/task/{task_id}/{execution}").Wrap(needsContext, viewTasks).Handler(uis.taskPage).Get()
+	app.AddRoute("/task/{task_id}").Wrap(needsLoginToggleable, needsContext, viewTasks).Handler(uis.taskPage).Get()
+	app.AddRoute("/task/{task_id}/{execution}").Wrap(needsLoginToggleable, needsContext, viewTasks).Handler(uis.taskPage).Get()
 	app.AddRoute("/tasks/{task_id}").Wrap(needsLogin, needsContext, editTasks).Handler(uis.taskModify).Put()
-	app.AddRoute("/json/task_log/{task_id}").Wrap(needsContext, viewLogs).Handler(uis.taskLog).Get()
-	app.AddRoute("/json/task_log/{task_id}/{execution}").Wrap(needsContext, viewLogs).Handler(uis.taskLog).Get()
-	app.AddRoute("/task_log_raw/{task_id}/{execution}").Wrap(needsContext, allowsCORS, viewLogs).Handler(uis.taskLogRaw).Get()
+	app.AddRoute("/json/task_log/{task_id}").Wrap(needsLoginToggleable, needsContext, viewLogs).Handler(uis.taskLog).Get()
+	app.AddRoute("/json/task_log/{task_id}/{execution}").Wrap(needsLoginToggleable, needsContext, viewLogs).Handler(uis.taskLog).Get()
+	app.AddRoute("/task_log_raw/{task_id}/{execution}").Wrap(needsLoginToggleable, needsContext, allowsCORS, viewLogs).Handler(uis.taskLogRaw).Get()
 
 	// Performance Discovery pages
 	app.AddRoute("/perfdiscovery/").Wrap(needsLogin, needsContext).Handler(uis.perfdiscoveryPage).Get()
 	app.AddRoute("/perfdiscovery/{project_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.perfdiscoveryPage).Get()
 
 	// Test Logs
-	app.AddRoute("/test_log/{log_id}").Wrap(needsContext, allowsCORS).Handler(uis.testLog).Get()
-	app.AddRoute("/test_log/{task_id}/{task_execution}").Wrap(needsContext, allowsCORS, viewLogs).Handler(uis.testLog).Get()
+	app.AddRoute("/test_log/{log_id}").Wrap(needsLoginToggleable, needsContext, allowsCORS).Handler(uis.testLog).Get()
+	app.AddRoute("/test_log/{task_id}/{task_execution}").Wrap(needsLoginToggleable, needsContext, allowsCORS, viewLogs).Handler(uis.testLog).Get()
 	// TODO: We are keeping this route temporarily for backwards
 	// compatibility. Please use
 	// `/test_log/{task_id}/{task_execution}?test_name={test_name}`.
-	app.AddRoute("/test_log/{task_id}/{task_execution}/{test_name}").Wrap(needsContext, allowsCORS, viewLogs).Handler(uis.testLog).Get()
+	app.AddRoute("/test_log/{task_id}/{task_execution}/{test_name}").Wrap(needsLoginToggleable, needsContext, allowsCORS, viewLogs).Handler(uis.testLog).Get()
 
 	// Build page
-	app.AddRoute("/build/{build_id}").Wrap(needsContext, viewTasks).Handler(uis.buildPage).Get()
+	app.AddRoute("/build/{build_id}").Wrap(needsLoginToggleable, needsContext, viewTasks).Handler(uis.buildPage).Get()
 	app.AddRoute("/builds/{build_id}").Wrap(needsLogin, needsContext, editTasks).Handler(uis.modifyBuild).Put()
-	app.AddRoute("/json/build_history/{build_id}").Wrap(needsContext, viewTasks).Handler(uis.buildHistory).Get()
+	app.AddRoute("/json/build_history/{build_id}").Wrap(needsLoginToggleable, needsContext, viewTasks).Handler(uis.buildHistory).Get()
 
 	// Version page
-	app.AddRoute("/version/{version_id}").Wrap(needsContext, viewTasks).Handler(uis.versionPage).Get()
+	app.AddRoute("/version/{version_id}").Wrap(needsLoginToggleable, needsContext, viewTasks).Handler(uis.versionPage).Get()
 	app.AddRoute("/version/{version_id}").Wrap(needsLogin, needsContext, editTasks).Handler(uis.modifyVersion).Put()
-	app.AddRoute("/json/version_history/{version_id}").Wrap(needsContext, viewTasks).Handler(uis.versionHistory).Get()
-	app.AddRoute("/version/{project_id}/{revision}").Wrap(needsContext, viewTasks).Handler(uis.versionFind).Get()
+	app.AddRoute("/json/version_history/{version_id}").Wrap(needsLoginToggleable, needsContext, viewTasks).Handler(uis.versionHistory).Get()
+	app.AddRoute("/version/{project_id}/{revision}").Wrap(needsLoginToggleable, needsContext, viewTasks).Handler(uis.versionFind).Get()
 
 	// Hosts
 	app.AddRoute("/hosts").Wrap(needsLogin, needsContext).Handler(uis.hostsPage).Get()
 	app.AddRoute("/hosts").Wrap(needsLogin, needsContext).Handler(uis.modifyHosts).Put()
 	app.AddRoute("/host/{host_id}").Wrap(needsLogin, needsContext, viewHosts).Handler(uis.hostPage).Get()
-	app.AddRoute("/host/{host_id}").Wrap(needsContext, editHosts).Handler(uis.modifyHost).Put()
+	app.AddRoute("/host/{host_id}").Wrap(needsLoginToggleable, needsContext, editHosts).Handler(uis.modifyHost).Put()
 	app.AddPrefixRoute("/host/{host_id}/ide/").Wrap(needsLogin, ownsHost, vsCodeRunning).Proxy(gimlet.ProxyOptions{
 		FindTarget:        uis.getHostDNS,
 		StripSourcePrefix: true,
@@ -359,11 +361,11 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 
 	// Distros
 	app.AddRoute("/distros").Wrap(needsLogin, needsContext).Handler(uis.distrosPage).Get()
-	app.AddRoute("/distros").Wrap(needsContext, createDistro).Handler(uis.addDistro).Put()
+	app.AddRoute("/distros").Wrap(needsLoginToggleable, needsContext, createDistro).Handler(uis.addDistro).Put()
 	app.AddRoute("/distros/{distro_id}").Wrap(needsLogin, needsContext, viewDistroSettings).Handler(uis.getDistro).Get()
-	app.AddRoute("/distros/{distro_id}").Wrap(needsContext, createDistro).Handler(uis.addDistro).Put()
-	app.AddRoute("/distros/{distro_id}").Wrap(needsContext, editDistroSettings).Handler(uis.modifyDistro).Post()
-	app.AddRoute("/distros/{distro_id}").Wrap(needsContext, removeDistroSettings).Handler(uis.removeDistro).Delete()
+	app.AddRoute("/distros/{distro_id}").Wrap(needsLoginToggleable, needsContext, createDistro).Handler(uis.addDistro).Put()
+	app.AddRoute("/distros/{distro_id}").Wrap(needsLoginToggleable, needsContext, editDistroSettings).Handler(uis.modifyDistro).Post()
+	app.AddRoute("/distros/{distro_id}").Wrap(needsLoginToggleable, needsContext, removeDistroSettings).Handler(uis.removeDistro).Delete()
 
 	// TODO (EVG-17986): route should require pod-specific permissions.
 	app.AddRoute("/pod/{pod_id}").Wrap(needsLogin).Handler(uis.podPage).Get()
@@ -372,17 +374,17 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/event_log/{resource_type}/{resource_id:[\\w_\\-\\:\\.\\@]+}").Wrap(needsLogin, needsContext, &route.EventLogPermissionsMiddleware{}).Handler(uis.fullEventLogs).Get()
 
 	// Task History
-	app.AddRoute("/task_history/{task_name}").Wrap(needsContext).Handler(uis.taskHistoryPage).Get()
-	app.AddRoute("/task_history/{project_id}/{task_name}").Wrap(needsContext, viewTasks).Handler(uis.taskHistoryPage).Get()
-	app.AddRoute("/task_history/{project_id}/{task_name}/pickaxe").Wrap(needsContext, viewTasks).Handler(uis.taskHistoryPickaxe).Get()
-	app.AddRoute("/task_history/{project_id}/{task_name}/test_names").Wrap(needsContext, viewTasks).Handler(uis.taskHistoryTestNames).Get()
+	app.AddRoute("/task_history/{task_name}").Wrap(needsLoginToggleable, needsContext).Handler(uis.taskHistoryPage).Get()
+	app.AddRoute("/task_history/{project_id}/{task_name}").Wrap(needsLoginToggleable, needsContext, viewTasks).Handler(uis.taskHistoryPage).Get()
+	app.AddRoute("/task_history/{project_id}/{task_name}/pickaxe").Wrap(needsLoginToggleable, needsContext, viewTasks).Handler(uis.taskHistoryPickaxe).Get()
+	app.AddRoute("/task_history/{project_id}/{task_name}/test_names").Wrap(needsLoginToggleable, needsContext, viewTasks).Handler(uis.taskHistoryTestNames).Get()
 
 	// History Drawer Endpoints
-	app.AddRoute("/history/tasks/2/{version_id}/{window}/{variant}/{display_name}").Wrap(needsContext, viewTasks).Handler(uis.taskHistoryDrawer).Get()
-	app.AddRoute("/history/versions/{version_id}/{window}").Wrap(needsContext, viewTasks).Handler(uis.versionHistoryDrawer).Get()
+	app.AddRoute("/history/tasks/2/{version_id}/{window}/{variant}/{display_name}").Wrap(needsLoginToggleable, needsContext, viewTasks).Handler(uis.taskHistoryDrawer).Get()
+	app.AddRoute("/history/versions/{version_id}/{window}").Wrap(needsLoginToggleable, needsContext, viewTasks).Handler(uis.versionHistoryDrawer).Get()
 
 	// Variant History
-	app.AddRoute("/build_variant/{project_id}/{variant}").Wrap(needsContext, viewTasks).Handler(uis.variantHistory).Get()
+	app.AddRoute("/build_variant/{project_id}/{variant}").Wrap(needsLoginToggleable, needsContext, viewTasks).Handler(uis.variantHistory).Get()
 
 	// Task queues
 	app.AddRoute("/task_queue/{distro}/{task_id}").Wrap(needsLogin, needsContext).Handler(uis.taskQueue).Get()
@@ -434,7 +436,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 
 	// Admin routes
 	app.AddRoute("/admin").Wrap(needsLogin, needsContext, adminSettings).Handler(uis.adminSettings).Get()
-	app.AddRoute("/admin/cleartokens").Wrap(adminSettings).Handler(uis.clearAllUserTokens).Post()
+	app.AddRoute("/admin/cleartokens").Wrap(needsLoginToggleable, adminSettings).Handler(uis.clearAllUserTokens).Post()
 	app.AddRoute("/admin/events").Wrap(needsLogin, needsContext, adminSettings).Handler(uis.adminEvents).Get()
 
 	// Plugin routes

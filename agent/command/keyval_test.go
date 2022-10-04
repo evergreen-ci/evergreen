@@ -21,8 +21,8 @@ func TestIncKey(t *testing.T) {
 
 	Convey("With keyval plugin installed", t, func() {
 		err := db.Clear(model.KeyValCollection)
-		require.NoError(t, err, "Couldn't clear test collection: %s", model.KeyValCollection)
-		require.NoError(t, err, "Couldn't register keyval plugin")
+		require.NoError(t, err)
+		require.NoError(t, err)
 
 		testConfig := testutil.TestConfig()
 		configPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "plugin_keyval.yml")
@@ -30,7 +30,7 @@ func TestIncKey(t *testing.T) {
 		comm := client.NewMock("http://localhost.com")
 
 		modelData, err := modelutil.SetupAPITestData(testConfig, "testinc", "rhel55", configPath, modelutil.NoPatch)
-		require.NoError(t, err, "couldn't create test task")
+		require.NoError(t, err)
 		conf, err := agentutil.MakeTaskConfigFromModelData(testConfig, modelData)
 		require.NoError(t, err)
 
@@ -41,7 +41,7 @@ func TestIncKey(t *testing.T) {
 				So(len(task.Commands), ShouldNotEqual, 0)
 				for _, command := range task.Commands {
 					pluginCmds, err := Render(command, &model.Project{})
-					require.NoError(t, err, "Couldn't get plugin command: %s", command.Command)
+					require.NoError(t, err)
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
 					for _, cmd := range pluginCmds {

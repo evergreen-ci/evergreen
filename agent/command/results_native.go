@@ -33,11 +33,11 @@ func (c *attachResults) Name() string { return evergreen.AttachResultsCommandNam
 // to satisfy the 'Command' interface
 func (c *attachResults) ParseParams(params map[string]interface{}) error {
 	if err := mapstructure.Decode(params, c); err != nil {
-		return errors.Wrapf(err, "error decoding '%v' params", c.Name())
+		return errors.Wrap(err, "decoding mapstructure params")
 	}
 
 	if c.FileLoc == "" {
-		return errors.New("file_location cannot be blank")
+		return errors.New("file location cannot be blank")
 	}
 
 	return nil
@@ -48,7 +48,7 @@ func (c *attachResults) expandAttachResultsParams(taskConfig *internal.TaskConfi
 
 	c.FileLoc, err = taskConfig.Expansions.ExpandString(c.FileLoc)
 	if err != nil {
-		return errors.Wrap(err, "error expanding file_location")
+		return errors.Wrap(err, "expanding file location")
 	}
 
 	return nil
@@ -60,7 +60,7 @@ func (c *attachResults) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	if err := c.expandAttachResultsParams(conf); err != nil {
-		return errors.WithStack(err)
+		return errors.Wrap(err, "applying expansions")
 	}
 
 	reportFileLoc := c.FileLoc
@@ -71,13 +71,13 @@ func (c *attachResults) Execute(ctx context.Context,
 	// attempt to open the file
 	reportFile, err := os.Open(reportFileLoc)
 	if err != nil {
-		return errors.Wrapf(err, "couldn't open report file '%s'", reportFileLoc)
+		return errors.Wrapf(err, "opening report file '%s'", reportFileLoc)
 	}
 	defer reportFile.Close()
 
 	results := &task.LocalTestResults{}
 	if err = utility.ReadJSON(reportFile, results); err != nil {
-		return errors.Wrapf(err, "couldn't read report file '%s'", reportFileLoc)
+		return errors.Wrapf(err, "reading report file '%s'", reportFileLoc)
 	}
 
 	if err := c.sendTestLogs(ctx, conf, logger, comm, results); err != nil {
@@ -88,10 +88,10 @@ func (c *attachResults) Execute(ctx context.Context,
 }
 
 func (c *attachResults) sendTestLogs(ctx context.Context, conf *internal.TaskConfig, logger client.LoggerProducer, comm client.Communicator, results *task.LocalTestResults) error {
-	logger.Execution().Info("posting test logs...")
+	logger.Execution().Info("Posting test logs...")
 	for i, res := range results.Results {
-		if ctx.Err() != nil {
-			return errors.Errorf("operation canceled")
+		if err := ctx.Err(); err != nil {
+			return errors.Wrap(err, "operation canceled")
 		}
 
 		if res.LogRaw != "" {
@@ -109,7 +109,7 @@ func (c *attachResults) sendTestLogs(ctx context.Context, conf *internal.TaskCon
 			if err := sendTestLog(ctx, comm, conf, testLogs); err != nil {
 				// Continue on error to let other logs be
 				// posted.
-				logger.Execution().Errorf("error posting test logs: %+v", err)
+				logger.Execution().Error(errors.Wrap(err, "sending test logs"))
 			} else {
 				results.Results[i].LogTestName = testLogs.Name
 			}

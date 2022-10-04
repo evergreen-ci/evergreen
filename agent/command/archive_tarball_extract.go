@@ -10,7 +10,6 @@ import (
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -29,7 +28,7 @@ func tarballExtractFactory() Command   { return &tarballExtract{} }
 func (e *tarballExtract) Name() string { return "archive.targz_extract" }
 func (e *tarballExtract) ParseParams(params map[string]interface{}) error {
 	if err := mapstructure.Decode(params, e); err != nil {
-		return errors.Wrapf(err, "error parsing '%s' params", e.Name())
+		return errors.Wrap(err, "decoding mapstructure params")
 	}
 
 	if e.ArchivePath == "" {
@@ -43,7 +42,7 @@ func (e *tarballExtract) Execute(ctx context.Context,
 	client client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	if err := util.ExpandValues(e, conf.Expansions); err != nil {
-		return errors.Wrap(err, "error expanding params")
+		return errors.Wrap(err, "applying expansions")
 	}
 
 	if e.TargetDirectory == "" {
@@ -65,16 +64,15 @@ func (e *tarballExtract) Execute(ctx context.Context,
 
 	archive, err := os.Open(e.ArchivePath)
 	if err != nil {
-		return errors.Wrapf(err, "problem reading file '%s'", e.ArchivePath)
+		return errors.Wrapf(err, "reading file '%s'", e.ArchivePath)
 	}
 
 	defer func() {
-		logger.Task().Notice(message.WrapError(archive.Close(),
-			message.NewFormatted("problem closing '%s'", e.ArchivePath)))
+		logger.Task().Notice(errors.Wrapf(archive.Close(), "closing file '%s'", e.ArchivePath))
 	}()
 
 	if err := agentutil.ExtractTarball(ctx, archive, e.TargetDirectory, e.ExcludeFiles); err != nil {
-		return errors.Wrapf(err, "problem extracting '%s'", e.ArchivePath)
+		return errors.Wrapf(err, "extracting file '%s'", e.ArchivePath)
 	}
 
 	return nil
