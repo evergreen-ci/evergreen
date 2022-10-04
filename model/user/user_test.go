@@ -630,7 +630,7 @@ func TestServiceUserOperations(t *testing.T) {
 func TestGetOrCreateUser(t *testing.T) {
 	id := "id"
 	name := "name"
-	email := "email"
+	email := ""
 	accessToken := "access_token"
 	refreshToken := "refresh_token"
 
@@ -657,7 +657,7 @@ func TestGetOrCreateUser(t *testing.T) {
 			checkUser(t, dbUser, id, name, email, accessToken, refreshToken)
 			assert.Equal(t, apiKey, dbUser.GetAPIKey())
 		},
-		"UpdateAlwaysSetsNameAndEmail": func(t *testing.T) {
+		"UpdateAlwaysSetsName": func(t *testing.T) {
 			user, err := GetOrCreateUser(id, name, email, accessToken, refreshToken, nil)
 			require.NoError(t, err)
 
@@ -666,11 +666,10 @@ func TestGetOrCreateUser(t *testing.T) {
 			assert.NotEmpty(t, apiKey)
 
 			newName := "new_name"
-			newEmail := "new_email"
-			user, err = GetOrCreateUser(id, newName, newEmail, accessToken, refreshToken, nil)
+			user, err = GetOrCreateUser(id, newName, email, accessToken, refreshToken, nil)
 			require.NoError(t, err)
 
-			checkUser(t, user, id, newName, newEmail, accessToken, refreshToken)
+			checkUser(t, user, id, newName, email, accessToken, refreshToken)
 			assert.Equal(t, apiKey, user.GetAPIKey())
 		},
 		"UpdateSetsRefreshTokenIfNonempty": func(t *testing.T) {
