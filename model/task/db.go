@@ -27,6 +27,8 @@ var (
 		{Key: StatusKey, Value: 1},
 		{Key: ActivatedKey, Value: 1},
 		{Key: PriorityKey, Value: 1},
+		{Key: OverrideDependenciesKey, Value: 1},
+		{Key: bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey), Value: 1},
 	}
 )
 
