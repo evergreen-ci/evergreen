@@ -1054,42 +1054,58 @@ func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Envi
 // particular host. If the task is part of a display task, the display task is
 // also marked as dispatched to a host. Returns an error if any of the database
 // updates fail.
-func (t *Task) MarkAsHostDispatched(hostId, distroId, agentRevision string,
-	dispatchTime time.Time) error {
-	t.DispatchTime = dispatchTime
-	t.Status = evergreen.TaskDispatched
-	t.HostId = hostId
-	t.AgentVersion = agentRevision
-	t.LastHeartbeat = dispatchTime
-	t.DistroId = distroId
-	err := UpdateOne(
-		bson.M{
-			IdKey: t.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				DispatchTimeKey:  dispatchTime,
-				StatusKey:        evergreen.TaskDispatched,
-				HostIdKey:        hostId,
-				LastHeartbeatKey: dispatchTime,
-				DistroIdKey:      distroId,
-				AgentVersionKey:  agentRevision,
-			},
-			"$unset": bson.M{
-				AbortedKey:   "",
-				AbortInfoKey: "",
-				DetailsKey:   "",
-			},
-		},
-	)
-	if err != nil {
-		return errors.Wrapf(err, "marking task '%s' as dispatched", t.Id)
+func (t *Task) MarkAsHostDispatched(hostID, distroID, agentRevision string, dispatchTime time.Time) error {
+	doUpdate := func(update bson.M) error {
+		return UpdateOne(bson.M{IdKey: t.Id}, update)
+	}
+	if err := t.markAsHostDispatchedWithFunc(doUpdate, hostID, distroID, agentRevision, dispatchTime); err != nil {
+		return err
 	}
 
 	//when dispatching an execution task, mark its parent as dispatched
 	if dt, _ := t.GetDisplayTask(); dt != nil && dt.DispatchTime == utility.ZeroTime {
 		return dt.MarkAsHostDispatched("", "", "", dispatchTime)
 	}
+	return nil
+}
+
+// MarkAsHostDispatchedWithContext marks that the task has been dispatched onto
+// a particular host. Unlike MarkAsHostDispatched, this does not update the
+// parent display task.
+func (t *Task) MarkAsHostDispatchedWithContext(ctx context.Context, env evergreen.Environment, hostID, distroID, agentRevision string, dispatchTime time.Time) error {
+	doUpdate := func(update bson.M) error {
+		_, err := env.DB().Collection(Collection).UpdateByID(ctx, t.Id, update)
+		return err
+	}
+	return t.markAsHostDispatchedWithFunc(doUpdate, hostID, distroID, agentRevision, dispatchTime)
+}
+
+func (t *Task) markAsHostDispatchedWithFunc(doUpdate func(update bson.M) error, hostID, distroID, agentRevision string, dispatchTime time.Time) error {
+	if err := doUpdate(bson.M{
+		"$set": bson.M{
+			DispatchTimeKey:  dispatchTime,
+			StatusKey:        evergreen.TaskDispatched,
+			HostIdKey:        hostID,
+			LastHeartbeatKey: dispatchTime,
+			DistroIdKey:      distroID,
+			AgentVersionKey:  agentRevision,
+		},
+		"$unset": bson.M{
+			AbortedKey:   "",
+			AbortInfoKey: "",
+			DetailsKey:   "",
+		},
+	}); err != nil {
+		return err
+	}
+
+	t.DispatchTime = dispatchTime
+	t.Status = evergreen.TaskDispatched
+	t.HostId = hostID
+	t.AgentVersion = agentRevision
+	t.LastHeartbeat = dispatchTime
+	t.DistroId = distroID
+
 	return nil
 }
 
@@ -2038,6 +2054,7 @@ func (t *Task) displayTaskPriority() int {
 	case evergreen.TaskSucceeded:
 		return 110
 	}
+	// Note that this includes evergreen.TaskDispatched.
 	return 1000
 }
 
