@@ -133,6 +133,7 @@ func (j *podAllocatorJob) Run(ctx context.Context) {
 		}
 		grip.Info(message.Fields{
 			"message": "refusing to allocate task because it is not dispatchable",
+			"reason":  reason,
 			"task":    j.task.Id,
 			"project": j.pRef.Identifier,
 			"job":     j.ID(),
