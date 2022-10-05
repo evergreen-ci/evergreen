@@ -641,8 +641,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			// hosts are running tasks in the task group. Only check the number
 			// of hosts running this task group if the task group is new to the
 			// host.
-			isDispatchable, err := checkHostTaskGroupAfterDispatch(currentHost, nextTask)
-			if !isDispatchable {
+			if err := checkHostTaskGroupAfterDispatch(currentHost, nextTask); err != nil {
 				grip.Debug(message.Fields{
 					"message":              "failed dispatch task group check due to race, not dispatching",
 					"task_distro_id":       nextTask.DistroId,
@@ -671,8 +670,6 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 
 				// Continue on trying to dispatch a different task.
 				dispatchedTask = false
-			} else if err != nil {
-				return nil, false, errors.Wrap(err, "checking task group task's dispatchability")
 			}
 		}
 
@@ -696,22 +693,24 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 
 // checkHostTaskGroupAfterDispatch checks that the task group max hosts is
 // still respected after the task has already been assigned to the host and that
-// for single-host task groups, it is dispatching the next task in the group.
+// for single-host task groups, it is dispatching the next task in the group. It
+// will return an error if the task is not dispatchable; otherwise, it returns
+// true.
 //
-// It's possible for dispatchers on different app servers to race, assigning
-// different tasks in a task group to more hosts than the task group's max
-// hosts. Therefore, we must check that the number of hosts running this task
-// group does not exceed the max after assigning the task to the host. If it
-// exceeds the max host limit, this will return true to indicate that the host
-// should not run this task.
-func checkHostTaskGroupAfterDispatch(h *host.Host, t *task.Task) (isDispatchable bool, err error) {
+// The reason this check is necessary is that it's possible for dispatchers on
+// different app servers to race, assigning different tasks in a task group to
+// more hosts than the task group's max hosts. Therefore, we must check that the
+// number of hosts running this task group does not exceed the max after
+// assigning the task to the host. If it exceeds the max host limit, this will
+// return true to indicate that the host should not run this task.
+func checkHostTaskGroupAfterDispatch(h *host.Host, t *task.Task) error {
 	var minTaskGroupOrderNum int
-	if t.TaskGroupMaxHosts == 1 {
+	if t.IsPartOfSingleHostTaskGroup() {
 		// Regardless of how many hosts are running tasks, if this host is
 		// running the earliest task in the task group we should continue.
-		minTaskGroupOrderNum, err = host.MinTaskGroupOrderRunningByTaskSpec(t.TaskGroup, t.BuildVariant, t.Project, t.Version)
+		minTaskGroupOrderNum, err := host.MinTaskGroupOrderRunningByTaskSpec(t.TaskGroup, t.BuildVariant, t.Project, t.Version)
 		if err != nil {
-			return false, errors.Wrap(err, "getting min task group order")
+			return errors.Wrap(err, "getting min task group order")
 		}
 		// minTaskGroupOrderNum is only available if a host has that information
 		// cached, which was not always the case. If some host doesn't have the
@@ -719,21 +718,21 @@ func checkHostTaskGroupAfterDispatch(h *host.Host, t *task.Task) (isDispatchable
 		// backward compatibility in case it is 0, this will later fall back to
 		// counting the hosts to check that max hosts is respected.
 		if minTaskGroupOrderNum != 0 && minTaskGroupOrderNum < t.TaskGroupOrder {
-			return false, errors.Errorf("current task is order %d but another host is running %d", t.TaskGroupOrder, minTaskGroupOrderNum)
+			return errors.Errorf("current task is order %d but another host is running %d", t.TaskGroupOrder, minTaskGroupOrderNum)
 		}
 		if t.TaskGroupOrder > 1 {
 			// If the previous task in the single-host task group has yet to run
 			// and should run, then wait for the previous task to run.
 			tgTasks, err := task.FindTaskGroupFromBuild(t.BuildId, t.TaskGroup)
 			if err != nil {
-				return false, errors.Wrap(err, "finding task group from build")
+				return errors.Wrap(err, "finding task group from build")
 			}
 			for _, tgTask := range tgTasks {
 				if tgTask.TaskGroupOrder == t.TaskGroupOrder {
 					break
 				}
 				if tgTask.TaskGroupOrder < t.TaskGroupOrder && tgTask.IsHostDispatchable() && !tgTask.Blocked() {
-					return false, errors.Errorf("an earlier task in the task group ('%s') is still dispatchable", tgTask.DisplayName)
+					return errors.Errorf("an earlier task in the task group ('%s') is still dispatchable", tgTask.DisplayName)
 				}
 			}
 		}
@@ -744,14 +743,14 @@ func checkHostTaskGroupAfterDispatch(h *host.Host, t *task.Task) (isDispatchable
 	if minTaskGroupOrderNum == 0 {
 		numHosts, err := host.NumHostsByTaskSpec(t.TaskGroup, t.BuildVariant, t.Project, t.Version)
 		if err != nil {
-			return false, errors.Wrap(err, "getting number of hosts running task group")
+			return errors.Wrap(err, "getting number of hosts running task group")
 		}
 		if numHosts > t.TaskGroupMaxHosts {
-			return false, errors.Errorf("tasks found on %d hosts, which exceeds max hosts %d", numHosts, t.TaskGroupMaxHosts)
+			return errors.Errorf("tasks found on %d hosts, which exceeds max hosts %d", numHosts, t.TaskGroupMaxHosts)
 		}
 	}
 
-	return true, nil
+	return nil
 }
 
 func isTaskGroupNewToHost(h *host.Host, t *task.Task) bool {

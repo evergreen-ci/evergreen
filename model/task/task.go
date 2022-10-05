@@ -2055,7 +2055,7 @@ func (t *Task) displayTaskPriority() int {
 	case evergreen.TaskSucceeded:
 		return 110
 	}
-	// Note that this include evergreen.TaskDispatched.
+	// Note that this includes evergreen.TaskDispatched.
 	return 1000
 }
 
