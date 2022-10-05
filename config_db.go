@@ -97,6 +97,7 @@ var (
 	slackAppDisabledKey                = bsonutil.MustHaveTag(ServiceFlags{}, "SlackAppDisabled")
 	partialRouteAuthDisabledKey        = bsonutil.MustHaveTag(ServiceFlags{}, "PartialRouteAuthDisabled")
 	unrecognizedPodCleanupDisabledKey  = bsonutil.MustHaveTag(ServiceFlags{}, "UnrecognizedPodCleanupDisabled")
+	dispatchTransactionDisabledKey     = bsonutil.MustHaveTag(ServiceFlags{}, "DispatchTransactionDisabled")
 
 	// ContainerPoolsConfig keys
 	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")
