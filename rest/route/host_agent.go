@@ -706,9 +706,10 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 func checkHostTaskGroupAfterDispatch(h *host.Host, t *task.Task) error {
 	var minTaskGroupOrderNum int
 	if t.IsPartOfSingleHostTaskGroup() {
+		var err error
 		// Regardless of how many hosts are running tasks, if this host is
 		// running the earliest task in the task group we should continue.
-		minTaskGroupOrderNum, err := host.MinTaskGroupOrderRunningByTaskSpec(t.TaskGroup, t.BuildVariant, t.Project, t.Version)
+		minTaskGroupOrderNum, err = host.MinTaskGroupOrderRunningByTaskSpec(t.TaskGroup, t.BuildVariant, t.Project, t.Version)
 		if err != nil {
 			return errors.Wrap(err, "getting min task group order")
 		}
