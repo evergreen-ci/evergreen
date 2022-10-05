@@ -128,11 +128,8 @@ func (j *podAllocatorJob) Run(ctx context.Context) {
 
 	canDispatch, reason := model.ProjectCanDispatchTask(j.pRef, j.task)
 	if !canDispatch {
-		if reason == "" {
-			reason = "of unknown reason"
-		}
 		grip.Info(message.Fields{
-			"message": "refusing to allocate task because it is not dispatchable",
+			"message": "refusing to allocate task due to project ref settings",
 			"reason":  reason,
 			"task":    j.task.Id,
 			"project": j.pRef.Identifier,
