@@ -1105,6 +1105,9 @@ func (t *Task) markAsHostDispatchedWithFunc(doUpdate func(update bson.M) error, 
 	t.AgentVersion = agentRevision
 	t.LastHeartbeat = dispatchTime
 	t.DistroId = distroID
+	t.Aborted = false
+	t.AbortInfo = AbortInfo{}
+	t.Details = apimodels.TaskEndDetail{}
 
 	return nil
 }
@@ -1163,6 +1166,9 @@ func (t *Task) markAsHostUndispatchedWithFunc(doUpdate func(update bson.M) error
 	t.LastHeartbeat = utility.ZeroTime
 	t.HostId = ""
 	t.AgentVersion = ""
+	t.Aborted = false
+	t.AbortInfo = AbortInfo{}
+	t.Details = apimodels.TaskEndDetail{}
 
 	return nil
 }
