@@ -1350,7 +1350,8 @@ func (h *Host) ClearRunningAndSetLastTask(t *task.Task) error {
 	return nil
 }
 
-// ClearRunningTask unsets the running task on the host.
+// ClearRunningTask unsets the running task on the host and logs an event
+// indicating it is no longer running the task.
 func (h *Host) ClearRunningTask() error {
 	hadRunningTask := h.RunningTask != ""
 	doUpdate := func(update bson.M) error {
@@ -1374,6 +1375,8 @@ func (h *Host) ClearRunningTask() error {
 	return nil
 }
 
+// ClearRunningTaskWithContext unsets the running task on the log. It does not
+// log an event for clearing the task.
 func (h *Host) ClearRunningTaskWithContext(ctx context.Context, env evergreen.Environment) error {
 	doUpdate := func(update bson.M) error {
 		_, err := env.DB().Collection(Collection).UpdateByID(ctx, h.Id, update)
