@@ -52,7 +52,7 @@ func (s *cronsEventSuite) SetupTest() {
 	s.Require().NoError(env.Configure(s.ctx))
 	s.env = env
 
-	s.Require().NoError(db.ClearCollections(event.LegacyEventLogCollection, evergreen.ConfigCollection, notification.Collection,
+	s.Require().NoError(db.ClearCollections(event.EventCollection, evergreen.ConfigCollection, notification.Collection,
 		event.SubscriptionsCollection, patch.Collection, model.ProjectRefCollection))
 
 	events := []event.EventLogEntry{

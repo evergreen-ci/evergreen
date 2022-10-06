@@ -29,7 +29,7 @@ func TestPodAllocatorJob(t *testing.T) {
 	defer func() {
 		cocoaMock.ResetGlobalSecretCache()
 
-		assert.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, pod.Collection, dispatcher.Collection, event.LegacyEventLogCollection))
+		assert.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, pod.Collection, dispatcher.Collection, event.EventCollection, event.LegacyEventLogCollection))
 	}()
 
 	var originalPodLifecycleConf evergreen.PodLifecycleConfig
@@ -258,7 +258,7 @@ func TestPodAllocatorJob(t *testing.T) {
 
 			cocoaMock.ResetGlobalSecretCache()
 
-			require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, pod.Collection, dispatcher.Collection, event.LegacyEventLogCollection))
+			require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, pod.Collection, dispatcher.Collection, event.EventCollection))
 
 			tsk := getTaskThatNeedsContainerAllocation()
 			pRef := model.ProjectRef{

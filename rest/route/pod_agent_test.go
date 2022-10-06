@@ -157,7 +157,7 @@ func TestPodProvisioningScript(t *testing.T) {
 
 func TestPodAgentNextTask(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(task.Collection, pod.Collection, dispatcher.Collection, model.ProjectRefCollection, event.LegacyEventLogCollection))
+		assert.NoError(t, db.ClearCollections(task.Collection, pod.Collection, dispatcher.Collection, model.ProjectRefCollection, event.EventCollection, event.LegacyEventLogCollection))
 	}()
 	getPod := func() pod.Pod {
 		return pod.Pod{
@@ -349,7 +349,7 @@ func TestPodAgentNextTask(t *testing.T) {
 			require.NoError(t, err)
 			env.Remote = rq
 
-			require.NoError(t, db.ClearCollections(task.Collection, pod.Collection, dispatcher.Collection, model.ProjectRefCollection, event.LegacyEventLogCollection))
+			require.NoError(t, db.ClearCollections(task.Collection, pod.Collection, dispatcher.Collection, model.ProjectRefCollection, event.EventCollection))
 
 			rh, ok := makePodAgentNextTask(env).(*podAgentNextTask)
 			require.True(t, ok)
@@ -361,7 +361,7 @@ func TestPodAgentNextTask(t *testing.T) {
 
 func TestPodAgentEndTask(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(task.Collection, pod.Collection, event.LegacyEventLogCollection, model.ProjectRefCollection, build.Collection, model.VersionCollection, commitqueue.Collection, patchmodel.Collection))
+		assert.NoError(t, db.ClearCollections(task.Collection, pod.Collection, event.EventCollection, event.LegacyEventLogCollection, model.ProjectRefCollection, build.Collection, model.VersionCollection, commitqueue.Collection, patchmodel.Collection))
 	}()
 	const (
 		podID         = "pod"
@@ -597,7 +597,7 @@ func TestPodAgentEndTask(t *testing.T) {
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
 
-			require.NoError(t, db.ClearCollections(task.Collection, pod.Collection, event.LegacyEventLogCollection, model.ProjectRefCollection, build.Collection, model.VersionCollection, commitqueue.Collection, patchmodel.Collection))
+			require.NoError(t, db.ClearCollections(task.Collection, pod.Collection, event.EventCollection, model.ProjectRefCollection, build.Collection, model.VersionCollection, commitqueue.Collection, patchmodel.Collection))
 
 			rh, ok := makePodAgentEndTask(env).(*podAgentEndTask)
 			require.True(t, ok)

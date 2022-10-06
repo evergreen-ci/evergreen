@@ -740,7 +740,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			colls := []string{host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection, model.ParserProjectCollection, model.ProjectRefCollection, model.VersionCollection, alertrecord.Collection, event.LegacyEventLogCollection}
+			colls := []string{host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection, model.ParserProjectCollection, model.ProjectRefCollection, model.VersionCollection, alertrecord.Collection, event.EventCollection, event.LegacyEventLogCollection}
 			require.NoError(t, db.DropCollections(colls...))
 			defer func() {
 				assert.NoError(t, db.DropCollections(colls...))
