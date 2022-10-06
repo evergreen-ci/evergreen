@@ -65,58 +65,35 @@ func LegacyFindRunnableTasks(d distro.Distro) ([]task.Task, error) {
 			continue
 		}
 
-		if !ref.IsEnabled() {
-			// PR tasks can still run for hidden projects
-			if ref.IsHidden() && t.Requester == evergreen.GithubPRRequester {
-				grip.Debug(message.Fields{
-					"runner":    RunnerName,
-					"message":   "project disabled but hidden",
-					"outcome":   "not skipping",
-					"task":      t.Id,
-					"requester": t.Requester,
-					"planner":   d.PlannerSettings.Version,
-					"project":   t.Project,
-				})
-			} else {
-				grip.Notice(message.Fields{
-					"runner":  RunnerName,
-					"message": "project disabled",
-					"outcome": "skipping",
-					"task":    t.Id,
-					"planner": d.PlannerSettings.Version,
-					"project": t.Project,
-				})
-				continue
-			}
-		}
-		if ref.IsDispatchingDisabled() {
-			grip.Notice(message.Fields{
-				"runner":  RunnerName,
-				"message": "project dispatching disabled",
-				"outcome": "skipping",
-				"task":    t.Id,
-				"planner": d.PlannerSettings.Version,
-				"project": t.Project,
+		canDispatch, reason := model.ProjectCanDispatchTask(&ref, &t)
+		if !canDispatch {
+			grip.Debug(message.Fields{
+				"message":   "skipping task after checking project ref for dispatchability",
+				"reason":    reason,
+				"runner":    RunnerName,
+				"outcome":   "skipping",
+				"task":      t.Id,
+				"requester": t.Requester,
+				"planner":   d.PlannerSettings.Version,
+				"project":   t.Project,
 			})
 			continue
 		}
+		grip.DebugWhen(reason != "", message.Fields{
+			"message":   "scheduling task after checking project ref for dispatchability",
+			"reason":    reason,
+			"runner":    RunnerName,
+			"outcome":   "not skipping",
+			"task":      t.Id,
+			"requester": t.Requester,
+			"planner":   d.PlannerSettings.Version,
+			"project":   t.Project,
+		})
 
 		if len(d.ValidProjects) > 0 && !utility.StringSliceContains(d.ValidProjects, ref.Id) {
 			grip.Notice(message.Fields{
 				"runner":  RunnerName,
 				"message": "project is not valid for distro",
-				"outcome": "skipping",
-				"planner": d.PlannerSettings.Version,
-				"task":    t.Id,
-				"project": t.Project,
-			})
-			continue
-		}
-
-		if t.IsPatchRequest() && ref.IsPatchingDisabled() {
-			grip.Notice(message.Fields{
-				"runner":  RunnerName,
-				"message": "patch testing disabled",
 				"outcome": "skipping",
 				"planner": d.PlannerSettings.Version,
 				"task":    t.Id,
@@ -203,58 +180,35 @@ func AlternateTaskFinder(d distro.Distro) ([]task.Task, error) {
 			continue
 		}
 
-		if !ref.IsEnabled() {
-			// PR tasks can still run for hidden projects
-			if ref.IsHidden() && t.Requester == evergreen.GithubPRRequester {
-				grip.Debug(message.Fields{
-					"runner":    RunnerName,
-					"message":   "project disabled but hidden",
-					"outcome":   "not skipping",
-					"task":      t.Id,
-					"requester": t.Requester,
-					"planner":   d.PlannerSettings.Version,
-					"project":   t.Project,
-				})
-			} else {
-				grip.Notice(message.Fields{
-					"runner":  RunnerName,
-					"message": "project disabled",
-					"outcome": "skipping",
-					"task":    t.Id,
-					"planner": d.PlannerSettings.Version,
-					"project": t.Project,
-				})
-				continue
-			}
-		}
-		if ref.IsDispatchingDisabled() {
-			grip.Notice(message.Fields{
-				"runner":  RunnerName,
-				"message": "project dispatching disabled",
-				"outcome": "skipping",
-				"task":    t.Id,
-				"planner": d.PlannerSettings.Version,
-				"project": t.Project,
+		canDispatch, reason := model.ProjectCanDispatchTask(&ref, &t)
+		if !canDispatch {
+			grip.Debug(message.Fields{
+				"message":   "skipping task after checking project ref for dispatchability",
+				"reason":    reason,
+				"runner":    RunnerName,
+				"outcome":   "skipping",
+				"task":      t.Id,
+				"requester": t.Requester,
+				"planner":   d.PlannerSettings.Version,
+				"project":   t.Project,
 			})
 			continue
 		}
+		grip.DebugWhen(reason != "", message.Fields{
+			"message":   "scheduling task after checking project ref for dispatchability",
+			"reason":    reason,
+			"runner":    RunnerName,
+			"outcome":   "not skipping",
+			"task":      t.Id,
+			"requester": t.Requester,
+			"planner":   d.PlannerSettings.Version,
+			"project":   t.Project,
+		})
 
 		if len(d.ValidProjects) > 0 && !utility.StringSliceContains(d.ValidProjects, ref.Id) {
 			grip.Notice(message.Fields{
 				"runner":  RunnerName,
 				"message": "project is not valid for distro",
-				"outcome": "skipping",
-				"planner": d.PlannerSettings.Version,
-				"task":    t.Id,
-				"project": t.Project,
-			})
-			continue
-		}
-
-		if t.IsPatchRequest() && ref.IsPatchingDisabled() {
-			grip.Notice(message.Fields{
-				"runner":  RunnerName,
-				"message": "patch testing disabled",
 				"outcome": "skipping",
 				"planner": d.PlannerSettings.Version,
 				"task":    t.Id,
@@ -348,41 +302,30 @@ func ParallelTaskFinder(d distro.Distro) ([]task.Task, error) {
 			continue
 		}
 
-		if !ref.IsEnabled() {
-			// PR tasks can still run for hidden projects
-			if ref.IsHidden() && t.Requester == evergreen.GithubPRRequester {
-				grip.Debug(message.Fields{
-					"runner":    RunnerName,
-					"message":   "project disabled but hidden",
-					"outcome":   "not skipping",
-					"task":      t.Id,
-					"requester": t.Requester,
-					"planner":   d.PlannerSettings.Version,
-					"project":   t.Project,
-				})
-			} else {
-				grip.Notice(message.Fields{
-					"runner":  RunnerName,
-					"message": "project disabled",
-					"outcome": "skipping",
-					"task":    t.Id,
-					"planner": d.PlannerSettings.Version,
-					"project": t.Project,
-				})
-				continue
-			}
-		}
-		if ref.IsDispatchingDisabled() {
-			grip.Notice(message.Fields{
-				"runner":  RunnerName,
-				"message": "project dispatching disabled",
-				"outcome": "skipping",
-				"task":    t.Id,
-				"planner": d.PlannerSettings.Version,
-				"project": t.Project,
+		canDispatch, reason := model.ProjectCanDispatchTask(&ref, &t)
+		if !canDispatch {
+			grip.Debug(message.Fields{
+				"message":   "skipping task after checking project ref for dispatchability",
+				"reason":    reason,
+				"runner":    RunnerName,
+				"outcome":   "skipping",
+				"task":      t.Id,
+				"requester": t.Requester,
+				"planner":   d.PlannerSettings.Version,
+				"project":   t.Project,
 			})
 			continue
 		}
+		grip.DebugWhen(reason != "", message.Fields{
+			"message":   "scheduling task after checking project ref for dispatchability",
+			"reason":    reason,
+			"runner":    RunnerName,
+			"outcome":   "not skipping",
+			"task":      t.Id,
+			"requester": t.Requester,
+			"planner":   d.PlannerSettings.Version,
+			"project":   t.Project,
+		})
 
 		if len(d.ValidProjects) > 0 && !utility.StringSliceContains(d.ValidProjects, ref.Id) {
 			grip.Notice(message.Fields{
@@ -390,17 +333,6 @@ func ParallelTaskFinder(d distro.Distro) ([]task.Task, error) {
 				"message": "project is not valid for distro",
 				"outcome": "skipping",
 				"planner": d.PlannerSettings.Version,
-				"task":    t.Id,
-				"project": t.Project,
-			})
-			continue
-		}
-
-		if t.IsPatchRequest() && ref.IsPatchingDisabled() {
-			grip.Notice(message.Fields{
-				"runner":  RunnerName,
-				"message": "patch testing disabled",
-				"outcome": "skipping",
 				"task":    t.Id,
 				"project": t.Project,
 			})

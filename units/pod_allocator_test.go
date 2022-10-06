@@ -237,6 +237,20 @@ func TestPodAllocatorJob(t *testing.T) {
 			require.NotZero(t, dbTask)
 			assert.False(t, dbTask.ContainerAllocated)
 		},
+		"RunNoopsWhenProjectDoesNotAllowDispatching": func(ctx context.Context, t *testing.T, j *podAllocatorJob, v cocoa.Vault, tsk task.Task, pRef model.ProjectRef) {
+			pRef.Enabled = utility.FalsePtr()
+			require.NoError(t, pRef.Upsert())
+			require.NoError(t, tsk.Insert())
+
+			j.Run(ctx)
+
+			require.NoError(t, j.Error())
+
+			dbTask, err := task.FindOneId(tsk.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.False(t, dbTask.ContainerAllocated)
+		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			tctx, tcancel := context.WithTimeout(ctx, 10*time.Second)

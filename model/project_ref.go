@@ -3045,3 +3045,29 @@ func newContainerSecretExternalName(smConf evergreen.SecretsManagerConfig, proje
 		return "", errors.Errorf("unrecognized secret type '%s' for container secret '%s'", secret.Type, secret.Name)
 	}
 }
+
+// ProjectCanDispatchTask returns a boolean indicating if the task can be
+// dispatched based on the project ref's settings and optionally includes a
+// particular reason that the task can or cannot be dispatched.
+func ProjectCanDispatchTask(pRef *ProjectRef, t *task.Task) (canDispatch bool, reason string) {
+	// GitHub PR tasks are still allowed to run for disabled hidden projects.
+	if !pRef.IsEnabled() {
+		// GitHub PR tasks are still allowed to run for disabled hidden
+		// projects.
+		if t.Requester == evergreen.GithubPRRequester && pRef.IsHidden() {
+			reason = "GitHub PRs are allowed to run tasks for disabled hidden projects"
+		} else {
+			return false, "project is disabled"
+		}
+	}
+
+	if pRef.IsDispatchingDisabled() {
+		return false, "task dispatching is disabled for its project"
+	}
+
+	if t.IsPatchRequest() && pRef.IsPatchingDisabled() {
+		return false, "patch testing is disabled for its project"
+	}
+
+	return true, reason
+}
