@@ -1054,42 +1054,58 @@ func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Envi
 // particular host. If the task is part of a display task, the display task is
 // also marked as dispatched to a host. Returns an error if any of the database
 // updates fail.
-func (t *Task) MarkAsHostDispatched(hostId, distroId, agentRevision string,
-	dispatchTime time.Time) error {
-	t.DispatchTime = dispatchTime
-	t.Status = evergreen.TaskDispatched
-	t.HostId = hostId
-	t.AgentVersion = agentRevision
-	t.LastHeartbeat = dispatchTime
-	t.DistroId = distroId
-	err := UpdateOne(
-		bson.M{
-			IdKey: t.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				DispatchTimeKey:  dispatchTime,
-				StatusKey:        evergreen.TaskDispatched,
-				HostIdKey:        hostId,
-				LastHeartbeatKey: dispatchTime,
-				DistroIdKey:      distroId,
-				AgentVersionKey:  agentRevision,
-			},
-			"$unset": bson.M{
-				AbortedKey:   "",
-				AbortInfoKey: "",
-				DetailsKey:   "",
-			},
-		},
-	)
-	if err != nil {
-		return errors.Wrapf(err, "marking task '%s' as dispatched", t.Id)
+func (t *Task) MarkAsHostDispatched(hostID, distroID, agentRevision string, dispatchTime time.Time) error {
+	doUpdate := func(update bson.M) error {
+		return UpdateOne(bson.M{IdKey: t.Id}, update)
+	}
+	if err := t.markAsHostDispatchedWithFunc(doUpdate, hostID, distroID, agentRevision, dispatchTime); err != nil {
+		return err
 	}
 
 	//when dispatching an execution task, mark its parent as dispatched
 	if dt, _ := t.GetDisplayTask(); dt != nil && dt.DispatchTime == utility.ZeroTime {
 		return dt.MarkAsHostDispatched("", "", "", dispatchTime)
 	}
+	return nil
+}
+
+// MarkAsHostDispatchedWithContext marks that the task has been dispatched onto
+// a particular host. Unlike MarkAsHostDispatched, this does not update the
+// parent display task.
+func (t *Task) MarkAsHostDispatchedWithContext(ctx context.Context, env evergreen.Environment, hostID, distroID, agentRevision string, dispatchTime time.Time) error {
+	doUpdate := func(update bson.M) error {
+		_, err := env.DB().Collection(Collection).UpdateByID(ctx, t.Id, update)
+		return err
+	}
+	return t.markAsHostDispatchedWithFunc(doUpdate, hostID, distroID, agentRevision, dispatchTime)
+}
+
+func (t *Task) markAsHostDispatchedWithFunc(doUpdate func(update bson.M) error, hostID, distroID, agentRevision string, dispatchTime time.Time) error {
+	if err := doUpdate(bson.M{
+		"$set": bson.M{
+			DispatchTimeKey:  dispatchTime,
+			StatusKey:        evergreen.TaskDispatched,
+			HostIdKey:        hostID,
+			LastHeartbeatKey: dispatchTime,
+			DistroIdKey:      distroID,
+			AgentVersionKey:  agentRevision,
+		},
+		"$unset": bson.M{
+			AbortedKey:   "",
+			AbortInfoKey: "",
+			DetailsKey:   "",
+		},
+	}); err != nil {
+		return err
+	}
+
+	t.DispatchTime = dispatchTime
+	t.Status = evergreen.TaskDispatched
+	t.HostId = hostID
+	t.AgentVersion = agentRevision
+	t.LastHeartbeat = dispatchTime
+	t.DistroId = distroID
+
 	return nil
 }
 
@@ -1340,9 +1356,8 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 	return nil
 }
 
-// Removes host tasks older than the unscheduable threshold (e.g. one week) from
+// UnscheduleStaleUnderwaterHostTasks Removes host tasks older than the unscheduable threshold (e.g. one week) from
 // the scheduler queue.
-//
 // If you pass an empty string as an argument to this function, this operation
 // will select tasks from all distros.
 func UnscheduleStaleUnderwaterHostTasks(distroID string) (int, error) {
@@ -1361,7 +1376,7 @@ func UnscheduleStaleUnderwaterHostTasks(distroID string) (int, error) {
 		},
 	}
 
-	// Force the query to use 'distro_1_status_1_activated_1_priority_1'
+	// Force the query to use 'distro_1_status_1_activated_1_priority_1_override_dependencies_1_depends_on.unattainable_1'
 	// instead of defaulting to 'status_1_depends_on.status_1_depends_on.unattainable_1'.
 	info, err := UpdateAllWithHint(query, update, ActivatedTasksByDistroIndex)
 	if err != nil {
@@ -1480,7 +1495,14 @@ func (t *Task) MarkSystemFailed(description string) error {
 		t.Details.TimedOut = true
 	}
 
-	event.LogTaskFinished(t.Id, t.Execution, t.HostId, evergreen.TaskSystemFailed)
+	switch t.ExecutionPlatform {
+	case ExecutionPlatformHost:
+		event.LogHostTaskFinished(t.Id, t.Execution, t.HostId, evergreen.TaskSystemFailed)
+	case ExecutionPlatformContainer:
+		event.LogContainerTaskFinished(t.Id, t.Execution, t.PodID, evergreen.TaskSystemFailed)
+	default:
+		event.LogTaskFinished(t.Id, t.Execution, evergreen.TaskSystemFailed)
+	}
 	grip.Info(message.Fields{
 		"message":     "marking task system failed",
 		"usage":       "container task health dashboard",
@@ -2032,6 +2054,7 @@ func (t *Task) displayTaskPriority() int {
 	case evergreen.TaskSucceeded:
 		return 110
 	}
+	// Note that this includes evergreen.TaskDispatched.
 	return 1000
 }
 
@@ -2080,6 +2103,7 @@ func resetTaskUpdate(t *Task) bson.M {
 		t.ActivatedTime = now
 		t.Secret = newSecret
 		t.HostId = ""
+		t.PodID = ""
 		t.Status = evergreen.TaskUndispatched
 		t.DispatchTime = utility.ZeroTime
 		t.StartTime = utility.ZeroTime
@@ -2121,6 +2145,7 @@ func resetTaskUpdate(t *Task) bson.M {
 			ResetFailedWhenFinishedKey: "",
 			AgentVersionKey:            "",
 			HostIdKey:                  "",
+			PodIDKey:                   "",
 			HostCreateDetailsKey:       "",
 			OverrideDependenciesKey:    "",
 			CanResetKey:                "",

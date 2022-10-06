@@ -34,7 +34,7 @@ func TestDataConnectorSuite(t *testing.T) {
 func (s *AdminDataSuite) SetupSuite() {
 	s.env = &mock.Environment{}
 	s.Require().NoError(s.env.Configure(context.Background()))
-	s.NoError(db.ClearCollections(evergreen.ConfigCollection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, event.LegacyEventLogCollection, model.ProjectRefCollection))
+	s.NoError(db.ClearCollections(evergreen.ConfigCollection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, event.EventCollection, model.ProjectRefCollection))
 	b := &build.Build{
 		Id:      "buildtest",
 		Status:  evergreen.BuildStarted,
@@ -161,6 +161,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.ServiceFlags.S3BinaryDownloadsDisabled, settingsFromConnector.ServiceFlags.S3BinaryDownloadsDisabled)
 	s.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, settingsFromConnector.ServiceFlags.CloudCleanupDisabled)
 	s.EqualValues(testSettings.ServiceFlags.ContainerConfigurationsDisabled, settingsFromConnector.ServiceFlags.ContainerConfigurationsDisabled)
+	s.EqualValues(testSettings.ServiceFlags.DispatchTransactionDisabled, settingsFromConnector.ServiceFlags.DispatchTransactionDisabled)
 	s.EqualValues(testSettings.ServiceFlags.SlackAppDisabled, settingsFromConnector.ServiceFlags.SlackAppDisabled)
 	s.EqualValues(testSettings.Slack.Level, settingsFromConnector.Slack.Level)
 	s.EqualValues(testSettings.Slack.Options.Channel, settingsFromConnector.Slack.Options.Channel)
@@ -288,6 +289,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.ServiceFlags.S3BinaryDownloadsDisabled, settingsFromConnector.ServiceFlags.S3BinaryDownloadsDisabled)
 	s.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, settingsFromConnector.ServiceFlags.CloudCleanupDisabled)
 	s.EqualValues(testSettings.ServiceFlags.ContainerConfigurationsDisabled, settingsFromConnector.ServiceFlags.ContainerConfigurationsDisabled)
+	s.EqualValues(testSettings.ServiceFlags.DispatchTransactionDisabled, settingsFromConnector.ServiceFlags.DispatchTransactionDisabled)
 	s.EqualValues(testSettings.ServiceFlags.SlackAppDisabled, settingsFromConnector.ServiceFlags.SlackAppDisabled)
 	s.EqualValues(testSettings.Slack.Level, settingsFromConnector.Slack.Level)
 	s.EqualValues(testSettings.Slack.Options.Channel, settingsFromConnector.Slack.Options.Channel)

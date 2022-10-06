@@ -49,7 +49,7 @@ const (
 	EventHostRunningTaskSet              = "HOST_RUNNING_TASK_SET"
 	EventHostRunningTaskCleared          = "HOST_RUNNING_TASK_CLEARED"
 	EventHostMonitorFlag                 = "HOST_MONITOR_FLAG"
-	EventTaskFinished                    = "HOST_TASK_FINISHED"
+	EventHostTaskFinished                = "HOST_TASK_FINISHED"
 	EventHostTerminatedExternally        = "HOST_TERMINATED_EXTERNALLY"
 	EventHostExpirationWarningSent       = "HOST_EXPIRATION_WARNING_SENT"
 	EventHostScriptExecuted              = "HOST_SCRIPT_EXECUTED"

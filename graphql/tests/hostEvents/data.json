@@ -6,7 +6,7 @@
         }
 
     ],
-    "event_log": [
+    "events": [
         {
             "_id": "525e7bb857e85a21ceb53cb0",
             "r_type": "TASK",

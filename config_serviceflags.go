@@ -36,6 +36,7 @@ type ServiceFlags struct {
 	ContainerConfigurationsDisabled bool `bson:"container_configurations_disabled" json:"container_configurations_disabled"`
 	SlackAppDisabled                bool `bson:"slack_app_disabled" json:"slack_app_disabled"`
 	PartialRouteAuthDisabled        bool `bson:"partial_route_auth_disabled" json:"partial_route_auth_disabled"`
+	DispatchTransactionDisabled     bool `bson:"dispatch_transaction_disabled" json:"dispatch_transaction_disabled"`
 
 	// Notification Flags
 	EventProcessingDisabled      bool `bson:"event_processing_disabled" json:"event_processing_disabled"`
@@ -102,6 +103,7 @@ func (c *ServiceFlags) Set() error {
 			commitQueueDisabledKey:             c.CommitQueueDisabled,
 			hostAllocatorDisabledKey:           c.HostAllocatorDisabled,
 			podAllocatorDisabledKey:            c.PodAllocatorDisabled,
+			dispatchTransactionDisabledKey:     c.DispatchTransactionDisabled,
 			backgroundCleanupDisabledKey:       c.BackgroundCleanupDisabled,
 			backgroundReauthDisabledKey:        c.BackgroundReauthDisabled,
 			cloudCleanupDisabledKey:            c.CloudCleanupDisabled,

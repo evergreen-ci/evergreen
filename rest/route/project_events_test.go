@@ -74,7 +74,7 @@ func (s *ProjectEventsTestSuite) SetupSuite() {
 		},
 	}
 
-	s.NoError(db.ClearCollections(event.LegacyEventLogCollection, model.ProjectRefCollection))
+	s.NoError(db.ClearCollections(event.EventCollection, model.ProjectRefCollection))
 
 	projectRef := &model.ProjectRef{
 		Id:      "mci2",

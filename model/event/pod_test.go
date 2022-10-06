@@ -48,9 +48,9 @@ func TestPodEvents(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.Clear(LegacyEventLogCollection))
+			require.NoError(t, db.Clear(EventCollection))
 			defer func() {
-				assert.NoError(t, db.Clear(LegacyEventLogCollection))
+				assert.NoError(t, db.ClearCollections(EventCollection, LegacyEventLogCollection))
 			}()
 			tCase(t)
 		})
