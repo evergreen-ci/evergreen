@@ -30,7 +30,7 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 	mp := cloud.GetMockProvider()
 
 	defer func() {
-		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, model.VersionCollection, model.ProjectRefCollection, host.Collection, event.EventCollection))
+		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, model.VersionCollection, model.ProjectRefCollection, host.Collection, event.EventCollection, event.LegacyEventLogCollection))
 		mp.Reset()
 	}()
 

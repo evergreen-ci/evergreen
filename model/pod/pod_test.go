@@ -407,7 +407,7 @@ func TestUpdateStatus(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 			defer func() {
-				assert.NoError(t, db.ClearCollections(Collection, event.EventCollection))
+				assert.NoError(t, db.ClearCollections(Collection, event.EventCollection, event.LegacyEventLogCollection))
 			}()
 			tCase(t, Pod{
 				ID:     "id",
@@ -495,7 +495,7 @@ func TestUpdateResources(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 			defer func() {
-				assert.NoError(t, db.ClearCollections(Collection, event.EventCollection))
+				assert.NoError(t, db.ClearCollections(Collection, event.EventCollection, event.LegacyEventLogCollection))
 			}()
 			tCase(t, Pod{
 				ID:     "id",
@@ -626,7 +626,7 @@ func TestSetRunningTask(t *testing.T) {
 
 func TestClearRunningTask(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
+		assert.NoError(t, db.ClearCollections(Collection, event.EventCollection, event.LegacyEventLogCollection))
 	}()
 
 	checkContainerTaskCleared := func(t *testing.T, podID string) {
@@ -737,7 +737,7 @@ func TestClearRunningTask(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
+			require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 
 			p := Pod{
 				ID:     "pod_id",

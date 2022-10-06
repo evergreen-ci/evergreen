@@ -289,7 +289,7 @@ func TestUpdatingHostStatus(t *testing.T) {
 
 func TestSetStatusAndFields(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection, event.EventCollection))
+		assert.NoError(t, db.ClearCollections(Collection, event.EventCollection, event.LegacyEventLogCollection))
 	}()
 	for tName, tCase := range map[string]func(t *testing.T, h *Host){
 		"FailsIfHostDoesNotExist": func(t *testing.T, h *Host) {

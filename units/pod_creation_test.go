@@ -34,7 +34,7 @@ func TestPodCreationJob(t *testing.T) {
 		cocoaMock.ResetGlobalECSService()
 		cocoaMock.ResetGlobalSecretCache()
 
-		assert.NoError(t, db.ClearCollections(pod.Collection, definition.Collection, dispatcher.Collection, event.EventCollection))
+		assert.NoError(t, db.ClearCollections(pod.Collection, definition.Collection, dispatcher.Collection, event.EventCollection, event.LegacyEventLogCollection))
 	}()
 
 	const clusterName = "cluster"

@@ -3656,7 +3656,7 @@ func TestClearAndResetStrandedHostTaskFailedOnly(t *testing.T) {
 
 func TestMarkUnallocatableContainerTasksSystemFailed(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.EventCollection))
+		assert.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.EventCollection, event.LegacyEventLogCollection))
 	}()
 	for tName, tCase := range map[string]func(t *testing.T, tsk task.Task, b build.Build, v Version){
 		"SystemFailsTaskWithNoRemainingAllocationAttempts": func(t *testing.T, tsk task.Task, b build.Build, v Version) {

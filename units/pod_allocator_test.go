@@ -29,7 +29,7 @@ func TestPodAllocatorJob(t *testing.T) {
 	defer func() {
 		cocoaMock.ResetGlobalSecretCache()
 
-		assert.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, pod.Collection, dispatcher.Collection, event.EventCollection))
+		assert.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, pod.Collection, dispatcher.Collection, event.EventCollection, event.LegacyEventLogCollection))
 	}()
 
 	var originalPodLifecycleConf evergreen.PodLifecycleConfig
