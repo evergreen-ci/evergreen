@@ -343,7 +343,7 @@ func GetOrCreateUser(userId, displayName, email, accessToken, refreshToken strin
 
 	if err := setSlackInformation(env, u); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
-			"message":       "setting slack information for user",
+			"message":       "could not set Slack information for user",
 			"user_id":       u.Id,
 			"email_address": u.EmailAddress,
 		}))
@@ -373,7 +373,6 @@ func setSlackInformation(env evergreen.Environment, u *DBUser) error {
 		return errors.New("user has no email address")
 	}
 
-	// get the slack userID and memberId from the user's email
 	slackEnv := env.Settings().Slack
 	slackUser, err := slackEnv.Options.GetSlackUser(slackEnv.Token, u.EmailAddress)
 	if err != nil {

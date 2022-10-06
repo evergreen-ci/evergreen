@@ -79,6 +79,8 @@ func setupPermissions(t *testing.T) {
 
 func TestRequireSuperUser(t *testing.T) {
 	setupPermissions(t)
+	require.NoError(t, db.Clear(user.Collection),
+		"unable to clear user collection")
 	dbUser := &user.DBUser{
 		Id: apiUser,
 		Settings: user.UserSettings{
