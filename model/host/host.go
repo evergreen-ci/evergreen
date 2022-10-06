@@ -1384,7 +1384,6 @@ func (h *Host) ClearRunningTaskWithContext(ctx context.Context, env evergreen.En
 
 func (h *Host) clearRunningTaskWithFunc(doUpdate func(update bson.M) error) error {
 	if h.RunningTask == "" {
-		// kim: TODO: ensure that this is a sufficient condition to skip the update.
 		return nil
 	}
 
