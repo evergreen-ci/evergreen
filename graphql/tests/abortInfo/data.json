@@ -28,22 +28,5 @@
       "build_variant": "commit-queue",
       "display_name": "~ Commit Queue"
     }
-  ],
-  "users": [
-    {
-      "_id": "apiserver",
-      "display_name": "apiserver",
-      "first_name": "Api",
-      "last_name": "Server",
-      "settings": {
-        "slack_username": "fancy_slack_person",
-        "slack_member_id": "fancy_slack_person",
-        "timezone": "America/New_York",
-        "region": "us-west-1",
-        "github_user": {
-          "last_known_as": "bob_smith_1"
-        }
-      }
-    }
   ]
 }

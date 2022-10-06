@@ -6,6 +6,7 @@
         "data": {
           "task": {
             "abortInfo": {
+              "user": "apiserver",
               "taskID": "2",
               "taskDisplayName": "validate_commit_message",
               "buildVariantDisplayName": "~ Commit Queue"
