@@ -1,32 +1,49 @@
 {
-    "tasks": [
-        {
-            "_id": "1",
-            "display_name": "generate-lint",
-            "status": "failed",
-            "abort" : true,
-            "abort_info" : {
-                "user" : "apiserver",
-                "task_id" : "2"
-            }
-        },
-        {
-            "_id": "2",
-            "build_id": "sys_perf_linux_3",
-            "display_name" : "validate_commit_message"
-        },
-        {
-            "_id": "3",
-            "display_name": "generate-lint",
-            "status": "success"
+  "tasks": [
+    {
+      "_id": "1",
+      "display_name": "generate-lint",
+      "status": "failed",
+      "abort": true,
+      "abort_info": {
+        "user": "apiserver",
+        "task_id": "2"
+      }
+    },
+    {
+      "_id": "2",
+      "build_id": "sys_perf_linux_3",
+      "display_name": "validate_commit_message"
+    },
+    {
+      "_id": "3",
+      "display_name": "generate-lint",
+      "status": "success"
+    }
+  ],
+  "builds": [
+    {
+      "_id": "sys_perf_linux_3",
+      "status": "failed",
+      "build_variant": "commit-queue",
+      "display_name": "~ Commit Queue"
+    }
+  ],
+  "users": [
+    {
+      "_id": "apiserver",
+      "display_name": "apiserver",
+      "first_name": "Api",
+      "last_name": "Server",
+      "settings": {
+        "slack_username": "fancy_slack_person",
+        "slack_member_id": "fancy_slack_person",
+        "timezone": "America/New_York",
+        "region": "us-west-1",
+        "github_user": {
+          "last_known_as": "bob_smith_1"
         }
-    ],
-    "builds": [
-        {
-            "_id": "sys_perf_linux_3",
-            "status" : "failed",
-            "build_variant": "commit-queue",
-            "display_name": "~ Commit Queue"
-        }
-    ]
+      }
+    }
+  ]
 }
