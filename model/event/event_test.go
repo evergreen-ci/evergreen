@@ -528,7 +528,7 @@ func TestEventExpiration(t *testing.T) {
 		{ResourceType: ResourceTypeAdmin, EventType: EventTypeValueChanged, Data: ""}:           false,
 		{ResourceType: ResourceTypeDistro, EventType: EventDistroAdded, Data: ""}:               false,
 		{ResourceType: ResourceTypeCommitQueue, EventType: CommitQueueConcludeTest, Data: ""}:   true,
-		{ResourceType: ResourceTypeTask, EventType: EventTaskFinished, Data: ""}:                true,
+		{ResourceType: ResourceTypeTask, EventType: EventHostTaskFinished, Data: ""}:            true,
 		{ResourceType: ResourceTypeHost, EventType: EventHostCreated, Data: ""}:                 true,
 	} {
 		assert.NoError(t, event.validateEvent())

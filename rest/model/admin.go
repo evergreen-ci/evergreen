@@ -2103,6 +2103,7 @@ type APIServiceFlags struct {
 	ContainerConfigurationsDisabled bool `json:"container_configurations_disabled"`
 	SlackAppDisabled                bool `json:"slack_app_disabled"`
 	PartialRouteAuthDisabled        bool `json:"partial_route_auth_disabled"`
+	DispatchTransactionDisabled     bool `json:"dispatch_transaction_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2389,6 +2390,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.ContainerConfigurationsDisabled = v.ContainerConfigurationsDisabled
 		as.SlackAppDisabled = v.SlackAppDisabled
 		as.PartialRouteAuthDisabled = v.PartialRouteAuthDisabled
+		as.DispatchTransactionDisabled = v.DispatchTransactionDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2431,6 +2433,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		ContainerConfigurationsDisabled: as.ContainerConfigurationsDisabled,
 		SlackAppDisabled:                as.SlackAppDisabled,
 		PartialRouteAuthDisabled:        as.PartialRouteAuthDisabled,
+		DispatchTransactionDisabled:     as.DispatchTransactionDisabled,
 	}, nil
 }
 

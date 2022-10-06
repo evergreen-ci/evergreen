@@ -1,5 +1,5 @@
 mciModule.controller('PerfController', function PerfController(
-  $scope, $window, $http, $location, $filter, ChangePointsService, PERFORMANCE_ANALYSIS_AND_TRIAGE_API, $sce,
+  $scope, $window, $http, $location, $filter, PERFORMANCE_ANALYSIS_AND_TRIAGE_API, $sce,
 ) {
   $scope.conf = $window.plugins["perf"];
   $scope.task = $window.task_data;
