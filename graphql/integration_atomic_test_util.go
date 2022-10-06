@@ -58,6 +58,16 @@ const apiUser = "testuser"
 const apiKey = "testapikey"
 
 func setup(t *testing.T, state *AtomicGraphQLState) {
+	require.NoError(t, db.Clear(user.Collection),
+		"unable to clear user collection")
+	dbUser := &user.DBUser{
+		Id: apiUser,
+		Settings: user.UserSettings{
+			SlackUsername: "testuser",
+			SlackMemberId: "testuser",
+		},
+	}
+	require.NoError(t, dbUser.Insert())
 	const slackUsername = "testslackuser"
 	const slackMemberId = "12345member"
 	const email = "testuser@mongodb.com"
