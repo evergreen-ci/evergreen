@@ -1,7 +1,6 @@
 {
   task(taskId: "1") {
     abortInfo {
-      user
       taskID
       taskDisplayName
       buildVariantDisplayName
