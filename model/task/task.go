@@ -4600,8 +4600,7 @@ func ConvertCedarTestResult(result apimodels.CedarTestResult) TestResult {
 }
 
 // FindAbortingAndResettingForVersion finds dependencies for the task that are
-// in the process of aborting but will eventually reset themselves.
-// kim: TODO: test
+// in the process of aborting and will eventually reset themselves.
 func (t *Task) FindAbortingAndResettingDependencies() ([]Task, error) {
 	var taskIDs []string
 	for _, dep := range t.DependsOn {

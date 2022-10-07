@@ -1653,15 +1653,6 @@ func AbortAndMarkResetTasksForVersion(versionId string, taskIds []string, caller
 			IdKey:      bson.M{"$in": taskIds},
 			StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
 		},
-		// kim: NOTE: this is technically covered by EVG-16860, which should
-		// make aborting less unreliable. The real thing we want to do here is
-		// to abort the tasks _and_ set them to the finished state (without
-		// blocking dependencies, since they will soon be reset), and then
-		// archive/reset them. Resetting will also clear the task secret. The
-		// agent's end task will not be necessary or possible since it will fail
-		// task auth. The agent should ideally assume the app server will deal
-		// with the task and give up on the task instantly once it gets the task
-		// conflict or abort message in the heartbeat.
 		bson.M{"$set": bson.M{
 			AbortedKey:           true,
 			AbortInfoKey:         AbortInfo{User: caller},

@@ -277,23 +277,6 @@ func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQ
 	if mergeTask != nil {
 		// check that the merge task can run. Assume that if we're here the merge task
 		// should in fact run (ie. has not been dequeued due to a task failure)
-
-		// kim: NOTE: check tasks in the same version for the aborted and reset
-		// when finished state.
-		// kim: NOTE: since this is the first item in the commit queue, there
-		// should be no "previous" merge task that this task depends on
-		// (empirically verified), so we don't need to should check for recent
-		// previous merge task completion and back off for a bit if it's still
-		// ending the task.
-		//
-		// This might not be exhaustively possible if it's permanently blocked
-		// due to previous merge task failing to remove the linked list
-		// dependencies on itself (i.e. removeNextMergeTaskDependency fails).
-		// Maybe it's possible to give the previous merge task a small grace
-		// period where it can wait for the previous merge task to unlink
-		// itself? Like, check the previous merge task's finish time and if it's
-		// within the last 1 minute, give it some more time, and have the commit
-		// queue job back off for the moment.
 		if !mergeTask.Activated || mergeTask.Priority < 0 {
 			grip.Error(message.Fields{
 				"message":  "merge task is not dispatchable",
@@ -308,6 +291,12 @@ func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQ
 			event.LogCommitQueueConcludeTest(nextItem.Version, evergreen.EnqueueFailed)
 		}
 		if mergeTask.Blocked() {
+			// The head of the commit queue could be blocked temporarily if its
+			// dependencies are in the process of restarting running tasks and
+			// due to a failure in a previous commit queue item and the
+			// asynchronous nature of aborting/restarting tasks.
+			// Once they're all done resetting, the merge task should be
+			// unblocked.
 			stillResetting, err := mergeTask.FindAbortingAndResettingDependencies()
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "cannot check number of dependencies for blocked merge task that are still waiting to abort and reset",

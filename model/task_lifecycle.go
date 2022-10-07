@@ -732,13 +732,6 @@ func DequeueAndRestartForTask(cq *commitqueue.CommitQueue, t *task.Task, githubS
 
 // HandleEndTaskForCommitQueueTask handles necessary dequeues and stepback restarts for
 // ending tasks that run on a commit queue.
-// kim: NOTE: current theory is that end task ran for commit queue task,
-// which then initiated dequeueAndRestartWithStepback on later commit queue
-// versions (possibly running for batch testing). The tasks started calling end
-// task and resetting one by one, leading to a transient state where the merge
-// task was blocked. At the same time, the commit queue job ran and found the
-// later commit queue version was blocked on merging because of the transient
-// blockage, resulting in it also getting dequeued unnecessarily.
 func HandleEndTaskForCommitQueueTask(t *task.Task, status string) error {
 	cq, err := commitqueue.FindOneId(t.Project)
 	if err != nil {
@@ -845,9 +838,6 @@ func tryDequeueAndAbortCommitQueueVersion(p *patch.Patch, cq commitqueue.CommitQ
 // removeNextMergeTaskDependency basically removes the given merge task from a linked list of
 // merge task dependencies. It makes the next merge not depend on the current one and also makes
 // the next merge depend on the previous one, if there is one
-// kim: NOTE: This currently happens after MarkEnd, but this re-linking may have
-// to occur _before_ MarkEnd to ensure that the later commit queue merge task is
-// not transiently blocked while waiting in between MarkEnd and here.
 func removeNextMergeTaskDependency(cq commitqueue.CommitQueue, currentIssue string) error {
 	currentIndex := cq.FindItem(currentIssue)
 	if currentIndex < 0 {
@@ -872,9 +862,6 @@ func removeNextMergeTaskDependency(cq commitqueue.CommitQueue, currentIssue stri
 	if err != nil {
 		return errors.Wrap(err, "finding current merge task")
 	}
-	// kim: NOTE: this removes the merge task dependency on the current issue
-	// and re-links it to the higher merge task in the queue to remove this
-	// particular one (if there is still a higher one).
 	if err = nextMerge.RemoveDependency(currentMerge.Id); err != nil {
 		return errors.Wrap(err, "removing dependency")
 	}

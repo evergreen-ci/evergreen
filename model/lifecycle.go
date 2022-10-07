@@ -334,9 +334,6 @@ func RestartTasksInVersion(versionId string, abortInProgress bool, caller string
 // If abortInProgress is true, it also sets the abort flag on any in-progress tasks.
 func RestartVersion(versionId string, taskIds []string, abortInProgress bool, caller string) error {
 	if abortInProgress {
-		// kim: NOTE: end of task dequeueAndRestartWithStepback aborts and marks
-		// the tasks for restart. Therefore, the dependencies should not be
-		// blocked, as all the tasks will restart anyways.
 		if err := task.AbortAndMarkResetTasksForVersion(versionId, taskIds, caller); err != nil {
 			return errors.WithStack(err)
 		}
