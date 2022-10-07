@@ -4598,3 +4598,26 @@ func ConvertCedarTestResult(result apimodels.CedarTestResult) TestResult {
 		Status:          result.Status,
 	}
 }
+
+// FindAbortingAndResettingForVersion finds dependencies for the task that are
+// in the process of aborting but will eventually reset themselves.
+// kim: TODO: test
+func (t *Task) FindAbortingAndResettingDependencies() ([]Task, error) {
+	var taskIDs []string
+	for _, dep := range t.DependsOn {
+		taskIDs = append(taskIDs, dep.TaskId)
+	}
+	if len(taskIDs) == 0 {
+		return nil, nil
+	}
+
+	q := db.Query(bson.M{
+		IdKey:      bson.M{"$in": taskIDs},
+		AbortedKey: true,
+		"$or": []bson.M{
+			{ResetWhenFinishedKey: true},
+			{ResetFailedWhenFinishedKey: true},
+		},
+	})
+	return FindAll(q)
+}
