@@ -496,7 +496,7 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		detailsCopy.Status = evergreen.TaskFailed
 	}
 
-	if t.Status == detailsCopy.Status {
+	if detailsCopy.Description != evergreen.TaskDescriptionAborted && t.Status == detailsCopy.Status {
 		grip.Warning(message.Fields{
 			"message": "tried to mark task as finished twice",
 			"task":    t.Id,

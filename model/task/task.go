@@ -1548,6 +1548,10 @@ func SetManyAborted(taskIds []string, reason AbortInfo) error {
 
 // SetAborted sets the abort field of task to aborted
 func (t *Task) SetAborted(reason AbortInfo) error {
+	taskEndDetails := apimodels.TaskEndDetail{
+		Status:      evergreen.TaskFailed,
+		Description: evergreen.TaskDescriptionAborted,
+	}
 	t.Aborted = true
 	return UpdateOne(
 		bson.M{
@@ -1557,6 +1561,8 @@ func (t *Task) SetAborted(reason AbortInfo) error {
 			"$set": bson.M{
 				AbortedKey:   true,
 				AbortInfoKey: reason,
+				StatusKey:    evergreen.TaskFailed,
+				DetailsKey:   taskEndDetails,
 			},
 		},
 	)

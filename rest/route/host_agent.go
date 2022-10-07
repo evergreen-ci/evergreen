@@ -1085,6 +1085,9 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
 		})
 	}
+	if t.Aborted {
+		h.details = t.Details
+	}
 	currentHost, err := host.FindOneId(h.hostID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting host"))
