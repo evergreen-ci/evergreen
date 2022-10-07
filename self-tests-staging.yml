@@ -28,5 +28,5 @@ buildvariants:
       - name: "dist-unsigned"
       - name: ".smoke"
       - name: ".test"
-      - name: "docker-cleanup"
+      - name: "js-test"
       - name: test-db-auth
