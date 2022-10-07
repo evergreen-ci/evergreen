@@ -153,7 +153,7 @@ func TestAllocate(t *testing.T) {
 	defer cancel()
 
 	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection, event.EventCollection, event.LegacyEventLogCollection))
+		assert.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection, event.EventCollection))
 	}()
 
 	env := &mock.Environment{}
