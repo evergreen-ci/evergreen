@@ -561,6 +561,158 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 	}
 }
 
+func TestPromoteVarsToRepo(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "u"})
+
+	for name, test := range map[string]func(t *testing.T, ref model.ProjectRef){
+		"SuccessfullyPromotesAllVariables": func(t *testing.T, ref model.ProjectRef) {
+			projectId := "pId"
+			repoId := "rId"
+
+			varsToPromote := []string{"a", "b", "c"}
+			err := PromoteVarsToRepo(projectId, varsToPromote, "u")
+
+			projectVarsFromDb, err := model.FindOneProjectVars(projectId)
+			assert.NoError(t, err)
+			assert.Len(t, projectVarsFromDb.Vars, 0)
+			assert.Len(t, projectVarsFromDb.PrivateVars, 0)
+			assert.Len(t, projectVarsFromDb.AdminOnlyVars, 0)
+
+			repoVarsFromDb, err := model.FindOneProjectVars(repoId)
+			assert.NoError(t, err)
+			assert.Len(t, repoVarsFromDb.Vars, 4)
+			assert.Len(t, repoVarsFromDb.PrivateVars, 2)
+			assert.Len(t, repoVarsFromDb.AdminOnlyVars, 1)
+			assert.Equal(t, repoVarsFromDb.Vars["a"], "1")
+			assert.Equal(t, repoVarsFromDb.Vars["b"], "2")
+			assert.Equal(t, repoVarsFromDb.Vars["c"], "3")
+
+			projectEvents, err := model.MostRecentProjectEvents(projectId, 10)
+			assert.NoError(t, err)
+			assert.Len(t, projectEvents, 1)
+
+			repoEvents, err := model.MostRecentProjectEvents(repoId, 10)
+			assert.NoError(t, err)
+			assert.Len(t, repoEvents, 1)
+		},
+		"SuccessfullyPromotesSomeVariables": func(t *testing.T, ref model.ProjectRef) {
+			projectId := "pId"
+			repoId := "rId"
+
+			varsToPromote := []string{"a", "b"}
+			err := PromoteVarsToRepo(projectId, varsToPromote, "u")
+
+			varsFromDb, err := model.FindOneProjectVars(projectId)
+			assert.NoError(t, err)
+			assert.Len(t, varsFromDb.Vars, 1)
+			assert.Equal(t, varsFromDb.Vars["c"], "3")
+			assert.Len(t, varsFromDb.PrivateVars, 0)
+			assert.Len(t, varsFromDb.AdminOnlyVars, 0)
+
+			repoVarsFromDb, err := model.FindOneProjectVars(repoId)
+			assert.NoError(t, err)
+			assert.Len(t, repoVarsFromDb.Vars, 3)
+			assert.Len(t, repoVarsFromDb.PrivateVars, 2)
+			assert.Len(t, repoVarsFromDb.AdminOnlyVars, 1)
+			assert.NotContains(t, repoVarsFromDb.Vars, "c")
+			assert.Equal(t, repoVarsFromDb.Vars["a"], "1")
+			assert.Equal(t, repoVarsFromDb.Vars["b"], "2")
+
+			projectEvents, err := model.MostRecentProjectEvents(projectId, 10)
+			assert.NoError(t, err)
+			assert.Len(t, projectEvents, 1)
+
+			repoEvents, err := model.MostRecentProjectEvents(repoId, 10)
+			assert.NoError(t, err)
+			assert.Len(t, repoEvents, 1)
+		},
+		"CorrectlyPromotesNoVariables": func(t *testing.T, ref model.ProjectRef) {
+			projectId := "pId"
+			repoId := "rId"
+
+			varsToPromote := []string{}
+			err := PromoteVarsToRepo(projectId, varsToPromote, "u")
+
+			varsFromDb, err := model.FindOneProjectVars(projectId)
+			assert.NoError(t, err)
+			assert.Len(t, varsFromDb.Vars, 3)
+			assert.Equal(t, varsFromDb.Vars["a"], "1")
+			assert.Equal(t, varsFromDb.Vars["b"], "2")
+			assert.Equal(t, varsFromDb.Vars["c"], "3")
+			assert.Len(t, varsFromDb.PrivateVars, 1)
+			assert.True(t, varsFromDb.PrivateVars["a"])
+			assert.Len(t, varsFromDb.AdminOnlyVars, 0)
+
+			repoVarsFromDb, err := model.FindOneProjectVars(repoId)
+			assert.NoError(t, err)
+			assert.Len(t, repoVarsFromDb.Vars, 1)
+			assert.Len(t, repoVarsFromDb.PrivateVars, 1)
+			assert.True(t, repoVarsFromDb.PrivateVars["d"])
+			assert.True(t, repoVarsFromDb.AdminOnlyVars["d"])
+
+			projectEvents, err := model.MostRecentProjectEvents(projectId, 10)
+			assert.NoError(t, err)
+			assert.Len(t, projectEvents, 0)
+
+			repoEvents, err := model.MostRecentProjectEvents(repoId, 10)
+			assert.NoError(t, err)
+			assert.Len(t, repoEvents, 0)
+		},
+	} {
+		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, model.ProjectAliasCollection,
+			event.SubscriptionsCollection, event.LegacyEventLogCollection, evergreen.ScopeCollection, user.Collection, commitqueue.Collection, model.RepoRefCollection))
+		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
+
+		repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
+			Id:         "rId",
+			Owner:      "evergreen-ci",
+			Repo:       "evergreen",
+			Restricted: utility.FalsePtr(),
+			Admins:     []string{"u"},
+		}}
+		assert.NoError(t, repoRef.Upsert())
+
+		rVars := model.ProjectVars{
+			Id:            repoRef.Id,
+			Vars:          map[string]string{"d": "4"},
+			PrivateVars:   map[string]bool{"d": true},
+			AdminOnlyVars: map[string]bool{"d": true},
+		}
+		assert.NoError(t, rVars.Insert())
+
+		pRef := model.ProjectRef{
+			Id:         "pId",
+			Owner:      "evergreen-ci",
+			Repo:       "evergreen",
+			Branch:     "main",
+			Restricted: utility.FalsePtr(),
+			Admins:     []string{"u"},
+			RepoRefId:  "rId",
+		}
+		assert.NoError(t, pRef.Insert())
+
+		pVars := model.ProjectVars{
+			Id:            pRef.Id,
+			Vars:          map[string]string{"a": "1", "b": "2", "c": "3"},
+			PrivateVars:   map[string]bool{"a": true},
+			AdminOnlyVars: map[string]bool{},
+		}
+		assert.NoError(t, pVars.Insert())
+
+		usr := user.DBUser{
+			Id:          "u",
+			SystemRoles: []string{"admin"},
+		}
+		require.NoError(t, usr.Insert())
+
+		t.Run(name, func(t *testing.T) {
+			test(t, pRef)
+		})
+	}
+}
+
 func TestCopyProject(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

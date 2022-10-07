@@ -97,6 +97,90 @@ func disableStartingSettings(p *model.ProjectRef) {
 	p.CommitQueue.Enabled = utility.FalsePtr()
 }
 
+func PromoteVarsToRepo(projectId string, varNames []string, userId string) error {
+	project, err := model.GetProjectSettingsById(projectId, false)
+	if err != nil {
+		return errors.Wrapf(err, "getting project settings for project '%s'", projectId)
+	}
+	projectVars, err := model.FindOneProjectVars(projectId)
+	if err != nil {
+		return errors.Wrapf(err, "getting project variables for project '%s'", projectId)
+	}
+
+	repo, err := model.GetProjectSettingsById(project.ProjectRef.RepoRefId, true)
+	if err != nil {
+		return errors.Wrapf(err, "getting repo settings for repo '%s'", project.ProjectRef.RepoRefId)
+	}
+	repoVars, err := model.FindOneProjectVars(project.ProjectRef.RepoRefId)
+	if err != nil {
+		return errors.Wrapf(err, "getting repo variables for repo '%s'", project.ProjectRef.RepoRefId)
+	}
+
+	// Add each promoted variable to existing repo vars
+	apiRepoVars := &restModel.APIProjectVars{}
+	apiRepoVars.BuildFromService(*repoVars)
+	for _, varName := range varNames {
+		// Variables promoted from projects will overwrite matching repo variables
+		apiRepoVars.Vars[varName] = projectVars.Vars[varName]
+		if _, contains := projectVars.PrivateVars[varName]; contains {
+			apiRepoVars.PrivateVars[varName] = true
+		}
+		if _, contains := projectVars.AdminOnlyVars[varName]; contains {
+			apiRepoVars.AdminOnlyVars[varName] = true
+		}
+	}
+
+	if err = UpdateProjectVars(project.ProjectRef.RepoRefId, apiRepoVars, true); err != nil {
+		return errors.Wrapf(err, "updating project variables for project '%s'", projectId)
+	}
+
+	// Remove promoted variables from project
+	apiProjectVars := &restModel.APIProjectVars{
+		Vars:          map[string]string{},
+		PrivateVars:   map[string]bool{},
+		AdminOnlyVars: map[string]bool{},
+	}
+	for key, value := range projectVars.Vars {
+		if !utility.StringSliceContains(varNames, key) {
+			apiProjectVars.Vars[key] = value
+		}
+	}
+
+	for key, _ := range projectVars.PrivateVars {
+		if _, contains := apiProjectVars.Vars[key]; contains {
+			apiProjectVars.PrivateVars[key] = true
+		}
+	}
+
+	for key, _ := range projectVars.AdminOnlyVars {
+		if _, contains := apiProjectVars.Vars[key]; contains {
+			apiProjectVars.AdminOnlyVars[key] = true
+		}
+	}
+
+	if err := UpdateProjectVars(projectId, apiProjectVars, true); err != nil {
+		return errors.Wrapf(err, "updating project variables for project '%s'", projectId)
+	}
+
+	// Log project and repo modifications
+	projectAfter, err := model.GetProjectSettingsById(projectId, false)
+	if err != nil {
+		return errors.Wrapf(err, "getting project settings for project '%s'", projectId)
+	}
+	if err = model.LogProjectModified(projectId, userId, project, projectAfter); err != nil {
+		return errors.Wrapf(err, "logging project '%s' modified", projectId)
+	}
+
+	repoAfter, err := model.GetProjectSettingsById(project.ProjectRef.RepoRefId, true)
+	if err != nil {
+		return errors.Wrapf(err, "getting repo settings for project '%s'", projectId)
+	}
+	if err = model.LogProjectModified(project.ProjectRef.RepoRefId, userId, repo, repoAfter); err != nil {
+		return errors.Wrapf(err, "logging project '%s' modified", projectId)
+	}
+	return nil
+}
+
 // SaveProjectSettingsForSection saves the given UI page section and logs it for the given user. If isRepo is true, uses
 // RepoRef related functions and collection instead of ProjectRef.
 func SaveProjectSettingsForSection(ctx context.Context, projectId string, changes *restModel.APIProjectSettings,
