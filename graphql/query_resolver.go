@@ -300,6 +300,7 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 			FieldsToProject:                []string{task.DisplayStatusKey},
 			IncludeBaseTasks:               false,
 			IncludeBuildVariantDisplayName: false,
+			IsMainlineCommit:               false,
 		}
 		tasks, _, err := task.GetTasksByVersion(id, opts)
 		if err != nil {
@@ -1021,9 +1022,10 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 			shouldCollapse = true
 		} else if isPopulated(buildVariantOptions) && utility.FromBoolPtr(options.ShouldCollapse) {
 			opts := task.HasMatchingTasksOptions{
-				TaskNames: buildVariantOptions.Tasks,
-				Variants:  buildVariantOptions.Variants,
-				Statuses:  getValidTaskStatusesFilter(buildVariantOptions.Statuses),
+				TaskNames:        buildVariantOptions.Tasks,
+				Variants:         buildVariantOptions.Variants,
+				Statuses:         getValidTaskStatusesFilter(buildVariantOptions.Statuses),
+				IsMainlineCommit: true,
 			}
 			hasTasks, err := task.HasMatchingTasks(v.Id, opts)
 			if err != nil {

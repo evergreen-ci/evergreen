@@ -4076,9 +4076,10 @@ func GetBaseStatusesForActivatedTasks(versionID string, baseVersionID string) ([
 }
 
 type HasMatchingTasksOptions struct {
-	TaskNames []string
-	Variants  []string
-	Statuses  []string
+	TaskNames        []string
+	Variants         []string
+	Statuses         []string
+	IsMainlineCommit bool
 }
 
 // HasMatchingTasks returns true if the version has tasks with the given statuses
@@ -4088,6 +4089,7 @@ func HasMatchingTasks(versionID string, opts HasMatchingTasksOptions) (bool, err
 		Variants:                       opts.Variants,
 		Statuses:                       opts.Statuses,
 		IncludeBuildVariantDisplayName: true,
+		IsMainlineCommit:               opts.IsMainlineCommit,
 	}
 	if len(opts.Variants) > 0 {
 		options.UseLegacyAddBuildVariantDisplayName = ShouldUseLegacyAddBuildVariantDisplayName(versionID)
@@ -4129,9 +4131,16 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		taskNamesAsRegex := strings.Join(opts.TaskNames, "|")
 		match[DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex, "$options": "i"}
 	}
-	// Activated Time is needed to filter out generated tasks that have been generated but not yet activated
-	if !opts.IncludeEmptyActivation {
-		match[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
+	if !opts.IsMainlineCommit {
+		// Activated Time is needed to filter out generated tasks that have been generated but not yet activated
+		if !opts.IncludeEmptyActivation {
+			match[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
+		}
+	}
+	if opts.IsMainlineCommit {
+		if opts.IncludeEmptyActivation {
+			match[GeneratedByKey] = bson.M{"$exists": false}
+		}
 	}
 	pipeline := []bson.M{
 		{"$match": match},

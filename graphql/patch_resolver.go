@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -170,6 +171,7 @@ func (r *patchResolver) TaskStatuses(ctx context.Context, obj *restModel.APIPatc
 		Sorts:                          defaultSort,
 		IncludeBaseTasks:               false,
 		IncludeBuildVariantDisplayName: false,
+		IsMainlineCommit:               !evergreen.IsPatchRequester(utility.FromStringPtr(obj.Requester)),
 	}
 	tasks, _, err := task.GetTasksByVersion(*obj.Id, opts)
 	if err != nil {
