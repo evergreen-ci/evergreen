@@ -39,7 +39,7 @@ func TestCommitQueueJob(t *testing.T) {
 	s := &commitQueueSuite{}
 	env := testutil.NewEnvironment(context.Background(), t)
 	settings := env.Settings()
-	// testutil.ConfigureIntegrationTest(t, settings, t.Name())
+	testutil.ConfigureIntegrationTest(t, settings, t.Name())
 	s.settings = settings
 
 	suite.Run(t, s)

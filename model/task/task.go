@@ -4614,6 +4614,8 @@ func (t *Task) FindAbortingAndResettingDependencies() ([]Task, error) {
 		return nil, nil
 	}
 
+	// GetRecursiveDependenciesUp only populates a subset of the task's
+	// in-memory fields, so query for them again with the necessary keys.
 	q := db.Query(bson.M{
 		IdKey:      bson.M{"$in": taskIDs},
 		AbortedKey: true,
