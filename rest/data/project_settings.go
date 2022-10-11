@@ -97,6 +97,9 @@ func disableStartingSettings(p *model.ProjectRef) {
 	p.CommitQueue.Enabled = utility.FalsePtr()
 }
 
+// PromoteVarsToRepo moves variables from an attached project to its repo.
+// Promoted vars are removed from the project as part of this operation.
+// Variables whose names already appear in the repo settings will be overwritten.
 func PromoteVarsToRepo(projectId string, varNames []string, userId string) error {
 	project, err := model.GetProjectSettingsById(projectId, false)
 	if err != nil {
