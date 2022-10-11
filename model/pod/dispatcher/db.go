@@ -26,6 +26,7 @@ var (
 	PodIDsKey            = bsonutil.MustHaveTag(PodDispatcher{}, "PodIDs")
 	TaskIDsKey           = bsonutil.MustHaveTag(PodDispatcher{}, "TaskIDs")
 	ModificationCountKey = bsonutil.MustHaveTag(PodDispatcher{}, "ModificationCount")
+	LastModifiedKey      = bsonutil.MustHaveTag(PodDispatcher{}, "LastModified")
 )
 
 // FindOne finds one pod dispatcher for the given query.
@@ -115,7 +116,8 @@ func Allocate(ctx context.Context, env evergreen.Environment, t *task.Task, p *p
 			}
 		}
 
-		res, err := env.DB().Collection(Collection).UpdateOne(sessCtx, pd.atomicUpsertQuery(), pd.atomicUpsertUpdate(), options.Update().SetUpsert(true))
+		lastModified := utility.BSONTime(time.Now())
+		res, err := env.DB().Collection(Collection).UpdateOne(sessCtx, pd.atomicUpsertQuery(), pd.atomicUpsertUpdate(lastModified), options.Update().SetUpsert(true))
 		if err != nil {
 			return nil, errors.Wrap(err, "upserting pod dispatcher")
 		}
@@ -127,6 +129,7 @@ func Allocate(ctx context.Context, env evergreen.Environment, t *task.Task, p *p
 		}
 
 		pd.ModificationCount++
+		pd.LastModified = lastModified
 
 		if utility.StringSliceContains(pd.PodIDs, p.ID) {
 			// A pod will only be allocated if the dispatcher is actually in

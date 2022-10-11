@@ -73,7 +73,7 @@ func (pdc PodDefinitionCache) Put(_ context.Context, item cocoa.ECSPodDefinition
 			LastAccessedKey: time.Now(),
 		},
 		"$setOnInsert": bson.M{
-			IDKey: primitive.NewObjectID().String(),
+			IDKey: primitive.NewObjectID().Hex(),
 		},
 	}
 	if _, err := UpsertOne(idAndFamily, newPodDef); err != nil {
