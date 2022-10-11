@@ -4617,3 +4617,31 @@ func ConvertCedarTestResult(result apimodels.CedarTestResult) TestResult {
 		Status:          result.Status,
 	}
 }
+
+// FindAbortingAndResettingForVersion finds dependencies for the task that are
+// in the process of aborting and will eventually reset themselves.
+func (t *Task) FindAbortingAndResettingDependencies() ([]Task, error) {
+	recursiveDeps, err := GetRecursiveDependenciesUp([]Task{*t}, map[string]Task{})
+	if err != nil {
+		return nil, errors.Wrap(err, "getting recursive parent dependencies")
+	}
+	var taskIDs []string
+	for _, dep := range recursiveDeps {
+		taskIDs = append(taskIDs, dep.Id)
+	}
+	if len(taskIDs) == 0 {
+		return nil, nil
+	}
+
+	// GetRecursiveDependenciesUp only populates a subset of the task's
+	// in-memory fields, so query for them again with the necessary keys.
+	q := db.Query(bson.M{
+		IdKey:      bson.M{"$in": taskIDs},
+		AbortedKey: true,
+		"$or": []bson.M{
+			{ResetWhenFinishedKey: true},
+			{ResetFailedWhenFinishedKey: true},
+		},
+	})
+	return FindAll(q)
+}

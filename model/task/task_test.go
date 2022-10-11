@@ -4697,3 +4697,102 @@ func assertTasksAreEqual(t *testing.T, expected, actual Task, exectedExecution i
 	assert.Equal(t, expected.Status, actual.Status)
 	assert.Equal(t, exectedExecution, actual.Execution)
 }
+
+func TestFindAbortingAndResettingDependencies(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.Clear(Collection))
+	}()
+	for tName, tCase := range map[string]func(t *testing.T, tsk Task, depTasks []Task){
+		"ReturnsAllMatchingDependencies": func(t *testing.T, tsk Task, depTasks []Task) {
+			require.NoError(t, tsk.Insert())
+
+			found, err := tsk.FindAbortingAndResettingDependencies()
+			assert.NoError(t, err)
+			require.Len(t, found, 2)
+			expected := []string{depTasks[1].Id, depTasks[3].Id}
+			for _, foundTask := range found {
+				assert.True(t, utility.StringSliceContains(expected, foundTask.Id), "should not have returned task '%s'", foundTask.Id)
+			}
+		},
+		"ReturnsTransitiveMatchingDependencies": func(t *testing.T, tsk Task, depTasks []Task) {
+			intermediateDepTask := Task{
+				Id: "intermediate_dependency",
+				DependsOn: []Dependency{
+					{TaskId: depTasks[1].Id},
+				},
+			}
+			require.NoError(t, intermediateDepTask.Insert())
+			tsk.DependsOn = []Dependency{{TaskId: intermediateDepTask.Id}}
+			require.NoError(t, tsk.Insert())
+
+			found, err := tsk.FindAbortingAndResettingDependencies()
+			assert.NoError(t, err)
+			require.Len(t, found, 1)
+			assert.Equal(t, depTasks[1].Id, found[0].Id)
+		},
+		"IgnoresNonexistentTasks": func(t *testing.T, tsk Task, depTasks []Task) {
+			tsk.DependsOn = append(tsk.DependsOn, Dependency{TaskId: "nonexistent"})
+			require.NoError(t, tsk.Insert())
+
+			found, err := tsk.FindAbortingAndResettingDependencies()
+			assert.NoError(t, err)
+			require.Len(t, found, 2)
+			expected := []string{depTasks[1].Id, depTasks[3].Id}
+			for _, foundTask := range found {
+				assert.True(t, utility.StringSliceContains(expected, foundTask.Id), "should not have returned task '%s'", foundTask.Id)
+			}
+		},
+		"IgnoresAbortingAndResettingTasksNotInDependencies": func(t *testing.T, tsk Task, depTasks []Task) {
+			tsk.DependsOn = []Dependency{tsk.DependsOn[0], tsk.DependsOn[2], tsk.DependsOn[3]}
+			require.NoError(t, tsk.Insert())
+
+			found, err := tsk.FindAbortingAndResettingDependencies()
+			assert.NoError(t, err)
+			require.Len(t, found, 1)
+			assert.Equal(t, depTasks[3].Id, found[0].Id)
+		},
+		"ReturnsNoResultsForNoDependencies": func(t *testing.T, tsk Task, depTasks []Task) {
+			tsk.DependsOn = nil
+			require.NoError(t, tsk.Insert())
+
+			found, err := tsk.FindAbortingAndResettingDependencies()
+			assert.NoError(t, err)
+			assert.Empty(t, found)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection))
+
+			tsk := Task{
+				Id: "task_id",
+			}
+			depTasks := []Task{
+				{
+					Id:      "dep_task0",
+					Aborted: true,
+				},
+				{
+					Id:                "dep_task1",
+					Aborted:           true,
+					ResetWhenFinished: true,
+				},
+				{
+					Id:                "dep_task3",
+					ResetWhenFinished: true,
+				},
+				{
+					Id:                      "dep_task4",
+					Aborted:                 true,
+					ResetFailedWhenFinished: true,
+					DependsOn:               []Dependency{},
+				},
+			}
+			for _, depTask := range depTasks {
+				require.NoError(t, depTask.Insert())
+				tsk.DependsOn = append(tsk.DependsOn, Dependency{TaskId: depTask.Id})
+			}
+
+			tCase(t, tsk, depTasks)
+		})
+	}
+}
