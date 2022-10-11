@@ -562,10 +562,6 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 }
 
 func TestPromoteVarsToRepo(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "u"})
-
 	for name, test := range map[string]func(t *testing.T, ref model.ProjectRef){
 		"SuccessfullyPromotesAllVariables": func(t *testing.T, ref model.ProjectRef) {
 			projectId := "pId"

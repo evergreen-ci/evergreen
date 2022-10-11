@@ -153,13 +153,13 @@ func PromoteVarsToRepo(projectId string, varNames []string, userId string) error
 		}
 	}
 
-	for key, _ := range projectVars.PrivateVars {
+	for key := range projectVars.PrivateVars {
 		if _, contains := apiProjectVars.Vars[key]; contains {
 			apiProjectVars.PrivateVars[key] = true
 		}
 	}
 
-	for key, _ := range projectVars.AdminOnlyVars {
+	for key := range projectVars.AdminOnlyVars {
 		if _, contains := apiProjectVars.Vars[key]; contains {
 			apiProjectVars.AdminOnlyVars[key] = true
 		}
