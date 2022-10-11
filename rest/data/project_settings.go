@@ -120,6 +120,10 @@ func PromoteVarsToRepo(projectId string, varNames []string, userId string) error
 	apiRepoVars := &restModel.APIProjectVars{}
 	apiRepoVars.BuildFromService(*repoVars)
 	for _, varName := range varNames {
+		// Ignore nonexistent variables
+		if _, contains := projectVars.Vars[varName]; !contains {
+			continue
+		}
 		// Variables promoted from projects will overwrite matching repo variables
 		apiRepoVars.Vars[varName] = projectVars.Vars[varName]
 		if _, contains := projectVars.PrivateVars[varName]; contains {

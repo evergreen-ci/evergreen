@@ -573,6 +573,7 @@ func TestPromoteVarsToRepo(t *testing.T) {
 
 			varsToPromote := []string{"a", "b", "c"}
 			err := PromoteVarsToRepo(projectId, varsToPromote, "u")
+			assert.NoError(t, err)
 
 			projectVarsFromDb, err := model.FindOneProjectVars(projectId)
 			assert.NoError(t, err)
@@ -603,6 +604,7 @@ func TestPromoteVarsToRepo(t *testing.T) {
 
 			varsToPromote := []string{"a", "b"}
 			err := PromoteVarsToRepo(projectId, varsToPromote, "u")
+			assert.NoError(t, err)
 
 			varsFromDb, err := model.FindOneProjectVars(projectId)
 			assert.NoError(t, err)
@@ -634,6 +636,47 @@ func TestPromoteVarsToRepo(t *testing.T) {
 
 			varsToPromote := []string{}
 			err := PromoteVarsToRepo(projectId, varsToPromote, "u")
+			assert.NoError(t, err)
+
+			varsFromDb, err := model.FindOneProjectVars(projectId)
+			assert.NoError(t, err)
+			assert.Len(t, varsFromDb.Vars, 3)
+			assert.Equal(t, varsFromDb.Vars["a"], "1")
+			assert.Equal(t, varsFromDb.Vars["b"], "2")
+			assert.Equal(t, varsFromDb.Vars["c"], "3")
+			assert.Len(t, varsFromDb.PrivateVars, 1)
+			assert.True(t, varsFromDb.PrivateVars["a"])
+			assert.Len(t, varsFromDb.AdminOnlyVars, 0)
+
+			repoVarsFromDb, err := model.FindOneProjectVars(repoId)
+			assert.NoError(t, err)
+			assert.Len(t, repoVarsFromDb.Vars, 1)
+			assert.Len(t, repoVarsFromDb.PrivateVars, 1)
+			assert.True(t, repoVarsFromDb.PrivateVars["d"])
+			assert.True(t, repoVarsFromDb.AdminOnlyVars["d"])
+
+			projectEvents, err := model.MostRecentProjectEvents(projectId, 10)
+			assert.NoError(t, err)
+			assert.Len(t, projectEvents, 0)
+
+			repoEvents, err := model.MostRecentProjectEvents(repoId, 10)
+			assert.NoError(t, err)
+			assert.Len(t, repoEvents, 0)
+		},
+		"FailsOnUnattachedRepo": func(t *testing.T, ref model.ProjectRef) {
+			projectId := "pUnattached"
+
+			varsToPromote := []string{"test"}
+			err := PromoteVarsToRepo(projectId, varsToPromote, "u")
+			assert.Error(t, err)
+		},
+		"IgnoresNonexistentVars": func(t *testing.T, ref model.ProjectRef) {
+			projectId := "pId"
+			repoId := "rId"
+
+			varsToPromote := []string{"test"}
+			err := PromoteVarsToRepo(projectId, varsToPromote, "u")
+			assert.NoError(t, err)
 
 			varsFromDb, err := model.FindOneProjectVars(projectId)
 			assert.NoError(t, err)
@@ -692,6 +735,15 @@ func TestPromoteVarsToRepo(t *testing.T) {
 			RepoRefId:  "rId",
 		}
 		assert.NoError(t, pRef.Insert())
+
+		pUnattached := model.ProjectRef{
+			Id:         "pUnattached",
+			Owner:      "evergreen-ci",
+			Repo:       "evergreen",
+			Branch:     "main",
+			Restricted: utility.FalsePtr(),
+		}
+		assert.NoError(t, pUnattached.Insert())
 
 		pVars := model.ProjectVars{
 			Id:            pRef.Id,
