@@ -1635,6 +1635,17 @@ func ClearAndResetStrandedHostTask(h *host.Host) error {
 func ResetStaleTask(t *task.Task) error {
 	CheckAndBlockSingleHostTaskGroup(t, t.Status)
 
+	// Skip resetting the task if it was marked as aborted by the user
+	if t.Aborted {
+		grip.Info(message.Fields{
+			"message":            "timed out task was aborted, skipping reset",
+			"task":               t.Id,
+			"execution":          t.Execution,
+			"execution_platform": t.ExecutionPlatform,
+		})
+		return nil
+	}
+
 	if err := resetSystemFailedTask(t, evergreen.TaskDescriptionHeartbeat); err != nil {
 		return errors.Wrap(err, "resetting task")
 	}
