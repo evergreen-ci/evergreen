@@ -358,7 +358,7 @@ retryLoop:
 				}
 				filesList, err = b.Build()
 				if err != nil {
-					return errors.Wrapf(err, "processing local files include filter '%s'.",
+					return errors.Wrapf(err, "processing local files include filter '%s'",
 						strings.Join(s3pc.LocalFilesIncludeFilter, " "))
 				}
 				if len(filesList) == 0 {

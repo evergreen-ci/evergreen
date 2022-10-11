@@ -77,12 +77,12 @@ func (j *podAllocatorJob) Run(ctx context.Context) {
 		}
 	}()
 
-	shouldAllocate, err := j.canAllocate()
+	canAllocate, err := j.systemCanAllocate()
 	if err != nil {
 		j.AddRetryableError(errors.Wrap(err, "checking allocation attempt against max parallel pod request limit"))
 		return
 	}
-	if !shouldAllocate {
+	if !canAllocate {
 		grip.Info(message.Fields{
 			"message":            "reached max parallel pod request limit, will re-attempt to allocate container to task later",
 			"task":               j.TaskID,
@@ -107,9 +107,34 @@ func (j *podAllocatorJob) Run(ctx context.Context) {
 			j.AddRetryableError(errors.Wrap(err, "marking unallocatable container task as system-failed"))
 		}
 
+		grip.Info(message.Fields{
+			"message": "refusing to allocate task because it has no more allocation attempts",
+			"task":    j.task.Id,
+			"project": j.pRef.Identifier,
+			"job":     j.ID(),
+		})
+
 		return
 	}
 	if !j.task.ShouldAllocateContainer() {
+		grip.Info(message.Fields{
+			"message": "refusing to allocate task because it is not in a valid state to be allocated",
+			"task":    j.task.Id,
+			"project": j.pRef.Identifier,
+			"job":     j.ID(),
+		})
+		return
+	}
+
+	canDispatch, reason := model.ProjectCanDispatchTask(j.pRef, j.task)
+	if !canDispatch {
+		grip.Info(message.Fields{
+			"message": "refusing to allocate task due to project ref settings",
+			"reason":  reason,
+			"task":    j.task.Id,
+			"project": j.pRef.Identifier,
+			"job":     j.ID(),
+		})
 		return
 	}
 
@@ -149,7 +174,7 @@ func (j *podAllocatorJob) Run(ctx context.Context) {
 	}
 }
 
-func (j *podAllocatorJob) canAllocate() (shouldAllocate bool, err error) {
+func (j *podAllocatorJob) systemCanAllocate() (canAllocate bool, err error) {
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		return false, errors.Wrap(err, "getting service flags")

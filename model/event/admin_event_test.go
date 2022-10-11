@@ -28,7 +28,7 @@ func TestAdminEventSuite(t *testing.T) {
 }
 
 func (s *AdminEventSuite) SetupTest() {
-	s.Require().NoError(db.ClearCollections(LegacyEventLogCollection, evergreen.ConfigCollection))
+	s.Require().NoError(db.ClearCollections(EventCollection, evergreen.ConfigCollection))
 }
 
 func (s *AdminEventSuite) TestEventLogging() {
@@ -204,7 +204,7 @@ func (s *AdminEventSuite) TestRevertingRoot() {
 }
 
 func TestAdminEventsBeforeQuery(t *testing.T) {
-	require.NoError(t, db.Clear(LegacyEventLogCollection))
+	require.NoError(t, db.Clear(EventCollection))
 	assert := assert.New(t)
 	before := &evergreen.ServiceFlags{}
 	after := &evergreen.ServiceFlags{HostInitDisabled: true}

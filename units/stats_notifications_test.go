@@ -24,7 +24,7 @@ func TestNotificationsStatsCollectorJob(t *testing.T) {
 }
 
 func (s *notificationsStatsCollectorSuite) SetupTest() {
-	s.NoError(db.ClearCollections(event.LegacyEventLogCollection, notification.Collection))
+	s.NoError(db.ClearCollections(event.EventCollection, notification.Collection))
 	s.expectedTime = time.Time{}.Add(time.Second)
 
 	events := []event.EventLogEntry{
@@ -47,7 +47,7 @@ func (s *notificationsStatsCollectorSuite) SetupTest() {
 	}
 
 	for i := range events {
-		s.NoError(db.Insert(event.LegacyEventLogCollection, events[i]))
+		s.NoError(db.Insert(event.EventCollection, events[i]))
 	}
 
 	n := []notification.Notification{

@@ -34,7 +34,7 @@ func TestPodCreationJob(t *testing.T) {
 		cocoaMock.ResetGlobalECSService()
 		cocoaMock.ResetGlobalSecretCache()
 
-		assert.NoError(t, db.ClearCollections(pod.Collection, definition.Collection, dispatcher.Collection, event.LegacyEventLogCollection))
+		assert.NoError(t, db.ClearCollections(pod.Collection, definition.Collection, dispatcher.Collection, event.EventCollection, event.LegacyEventLogCollection))
 	}()
 
 	const clusterName = "cluster"
@@ -135,7 +135,7 @@ func TestPodCreationJob(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			require.NoError(t, db.ClearCollections(pod.Collection, definition.Collection, dispatcher.Collection, event.LegacyEventLogCollection))
+			require.NoError(t, db.ClearCollections(pod.Collection, definition.Collection, dispatcher.Collection, event.EventCollection))
 
 			cocoaMock.ResetGlobalECSService()
 			cocoaMock.ResetGlobalSecretCache()

@@ -12,7 +12,7 @@ import (
 func TestLoggingHostEvents(t *testing.T) {
 	Convey("When logging host events", t, func() {
 
-		So(db.Clear(LegacyEventLogCollection), ShouldBeNil)
+		So(db.Clear(EventCollection), ShouldBeNil)
 
 		Convey("all events logged should be persisted to the database, and"+
 			" fetching them in order should sort by the time they were"+

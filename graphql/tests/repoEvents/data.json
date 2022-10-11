@@ -11,7 +11,7 @@
     "private_vars": {"hello":  true, "foo":  false}
     }
   ],
-  "event_log": [
+  "events": [
     {
       "_id": "5e5e7bb857e85a21ceb55678",
       "r_type": "PROJECT",

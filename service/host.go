@@ -88,14 +88,21 @@ func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	spruceLink := fmt.Sprintf("%s/hosts/%s", uis.Settings.Ui.UIv2Url, h.Id)
+	newUILink := ""
+	if len(uis.Settings.Ui.UIv2Url) > 0 {
+		newUILink = spruceLink
+	}
+
 	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Events      []event.EventLogEntry
 		Host        *host.Host
 		Permissions gimlet.Permissions
 		RunningTask *task.Task
 		Containers  []host.Host
+		NewUILink   string
 		ViewData
-	}{events, h, permissions, runningTask, containers, uis.GetCommonViewData(w, r, false, true)},
+	}{events, h, permissions, runningTask, containers, newUILink, uis.GetCommonViewData(w, r, false, true)},
 		"base", "host.html", "base_angular.html", "menu.html")
 }
 
@@ -125,12 +132,18 @@ func (uis *UIServer) hostsPage(w http.ResponseWriter, r *http.Request) {
 			permittedHosts.Hosts = append(permittedHosts.Hosts, hosts.Hosts[i])
 		}
 	}
+	spruceLink := fmt.Sprintf("%s/hosts", uis.Settings.Ui.UIv2Url)
+	newUILink := ""
+	if len(uis.Settings.Ui.UIv2Url) > 0 {
+		newUILink = spruceLink
+	}
 
 	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Hosts               *hostsData
 		IncludeSpawnedHosts bool
+		NewUILink           string
 		ViewData
-	}{permittedHosts, includeSpawnedHosts, uis.GetCommonViewData(w, r, false, true)},
+	}{permittedHosts, includeSpawnedHosts, newUILink, uis.GetCommonViewData(w, r, false, true)},
 		"base", "hosts.html", "base_angular.html", "menu.html")
 }
 

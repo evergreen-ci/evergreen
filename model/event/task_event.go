@@ -142,10 +142,28 @@ func LogTaskStarted(taskId string, execution int) {
 	logTaskEvent(taskId, TaskStarted, TaskEventData{Execution: execution, Status: evergreen.TaskStarted})
 }
 
-func LogTaskFinished(taskId string, execution int, hostId, status string) {
+// LogTaskFinished logs an event indicating that the task has finished.
+func LogTaskFinished(taskId string, execution int, status string) {
 	logTaskEvent(taskId, TaskFinished, TaskEventData{Execution: execution, Status: status})
+}
+
+// LogHostTaskFinished logs an event for a host task being marked finished. If
+// it was assigned to run on a host, it logs an additional host event indicating
+// that its assigned task has finished.
+func LogHostTaskFinished(taskId string, execution int, hostId, status string) {
+	LogTaskFinished(taskId, execution, status)
 	if hostId != "" {
-		LogHostEvent(hostId, EventTaskFinished, HostEventData{Execution: strconv.Itoa(execution), TaskStatus: status, TaskId: taskId})
+		LogHostEvent(hostId, EventHostTaskFinished, HostEventData{Execution: strconv.Itoa(execution), TaskStatus: status, TaskId: taskId})
+	}
+}
+
+// LogContainerTaskFinished logs an event for a container task being marked
+// finished. If it was assigned to run on a pod, it logs an additional pod event
+// indicating that its assigned task has finished.
+func LogContainerTaskFinished(taskID string, execution int, podID, status string) {
+	LogTaskFinished(taskID, execution, status)
+	if podID != "" {
+		LogPodEvent(podID, EventPodFinishedTask, podData{TaskExecution: execution, TaskStatus: status, TaskID: taskID})
 	}
 }
 

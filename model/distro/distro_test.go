@@ -585,7 +585,7 @@ func TestAddPermissions(t *testing.T) {
 }
 
 func TestLogDistroModifiedWithDistroData(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(event.LegacyEventLogCollection))
+	assert.NoError(t, db.ClearCollections(event.EventCollection))
 
 	d := Distro{
 		Id:       "rainbow-lollipop",

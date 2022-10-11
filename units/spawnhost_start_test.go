@@ -15,7 +15,7 @@ import (
 )
 
 func TestSpawnhostStartJob(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(host.Collection, event.LegacyEventLogCollection))
+	assert.NoError(t, db.ClearCollections(host.Collection, event.EventCollection))
 	mock := cloud.GetMockProvider()
 	t.Run("NewSpawnhostStartJobHostNotStopped", func(t *testing.T) {
 		h := host.Host{
