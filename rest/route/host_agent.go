@@ -749,8 +749,7 @@ func checkHostTaskGroupAfterDispatch(h *host.Host, t *task.Task) error {
 }
 
 func dispatchHostTaskAtomically(ctx context.Context, env evergreen.Environment, h *host.Host, t *task.Task) error {
-	dispatchedAt := time.Now()
-	txnStart := time.Now()
+	now := time.Now()
 	if err := func() error {
 		session, err := env.Client().StartSession()
 		if err != nil {
@@ -758,7 +757,7 @@ func dispatchHostTaskAtomically(ctx context.Context, env evergreen.Environment, 
 		}
 		defer session.EndSession(ctx)
 
-		if _, err := session.WithTransaction(ctx, dispatchHostTask(env, h, t, dispatchedAt)); err != nil {
+		if _, err := session.WithTransaction(ctx, dispatchHostTask(env, h, t, now)); err != nil {
 			return err
 		}
 
@@ -769,7 +768,7 @@ func dispatchHostTaskAtomically(ctx context.Context, env evergreen.Environment, 
 
 	grip.Info(message.Fields{
 		"message":     "host task dispatch transaction performance statistics",
-		"duration_ms": int(time.Since(txnStart).Milliseconds()),
+		"duration_ms": int(time.Since(now).Milliseconds()),
 		"host":        h.Id,
 		"task":        t.Id,
 	})

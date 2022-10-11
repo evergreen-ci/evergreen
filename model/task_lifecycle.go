@@ -1320,20 +1320,6 @@ func MarkStart(t *task.Task, updates *StatusChanges) error {
 	return nil
 }
 
-// MarkHostTaskUndispatched marks a task as no longer dispatched to a host. If
-// it's part of a display task, update the display task as necessary.
-func MarkHostTaskUndispatched(t *task.Task) error {
-	if err := t.MarkAsHostUndispatched(); err != nil {
-		return errors.WithStack(err)
-	}
-
-	if t.IsPartOfDisplay() {
-		return UpdateDisplayTaskForTask(t)
-	}
-
-	return nil
-}
-
 // MarkHostTaskDispatched marks a task as being dispatched to the host. If it's
 // part of a display task, update the display task as necessary.
 func MarkHostTaskDispatched(t *task.Task, h *host.Host) error {
