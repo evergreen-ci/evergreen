@@ -874,7 +874,7 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 	}
 	dist, err := distro.FindOneId(spawnHostInput.DistroID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while trying to find distro with id: %s, err:  `%s`", spawnHostInput.DistroID, err))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("trying to find distro with id: %s, err:  `%s`", spawnHostInput.DistroID, err))
 	}
 	if dist == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find Distro with id: %s", spawnHostInput.DistroID))
@@ -909,7 +909,7 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 	if spawnHostInput.TaskID != nil && *spawnHostInput.TaskID != "" {
 		options.TaskID = *spawnHostInput.TaskID
 		if t, err = task.FindOneId(*spawnHostInput.TaskID); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred finding task %s: %s", *spawnHostInput.TaskID, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task %s: %s", *spawnHostInput.TaskID, err.Error()))
 		}
 	}
 
@@ -931,7 +931,7 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 			return nil, ResourceNotFound.Send(ctx, "A valid task id must be supplied when SpawnHostsStartedByTask is set to true")
 		}
 		if err = data.CreateHostsFromTask(t, *usr, spawnHostInput.PublicKey.Key); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error spawning hosts from task: %s : %s", *spawnHostInput.TaskID, err))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("spawning hosts from task %s: %s", *spawnHostInput.TaskID, err))
 		}
 	}
 	return options, nil
