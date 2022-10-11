@@ -461,6 +461,15 @@ func (r *mutationResolver) ForceRepotrackerRun(ctx context.Context, projectID st
 	return true, nil
 }
 
+func (r *mutationResolver) PromoteVarsToRepo(ctx context.Context, projectID string, varNames []string) (bool, error) {
+	usr := mustHaveUser(ctx)
+	if err := data.PromoteVarsToRepo(projectID, varNames, usr.Username()); err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("promoting variables to repo for project '%s': %s", projectID, err.Error()))
+
+	}
+	return true, nil
+}
+
 func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier string) (*restModel.APIProjectRef, error) {
 	p, err := model.FindBranchProjectRef(identifier)
 	if err != nil || p == nil {
