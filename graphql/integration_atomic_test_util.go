@@ -75,6 +75,9 @@ func setup(t *testing.T, state *AtomicGraphQLState) {
 	ctx := context.Background()
 	require.NoError(t, env.DB().Drop(ctx))
 
+	require.NoError(t, db.Clear(user.Collection),
+		"unable to clear user collection")
+
 	usr := user.DBUser{
 		Id:           apiUser,
 		DispName:     apiUser,
