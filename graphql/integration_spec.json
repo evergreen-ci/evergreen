@@ -15,9 +15,7 @@
         "_id": "unrestrictedTaskAccess",
         "name": "unrestricted access",
         "type": "project",
-        "resources": [
-          "curator"
-        ]
+        "resources": ["curator"]
       }
     ],
     "builds": [
@@ -102,18 +100,12 @@
         "create_time": {
           "$date": "2018-01-11T00:01:36.796Z"
         },
-        "build_variants": [
-          "rhel62"
-        ],
-        "tasks": [
-          "test-auth"
-        ],
+        "build_variants": ["rhel62"],
+        "tasks": ["test-auth"],
         "variants_tasks": [
           {
             "variant": "rhel62",
-            "tasks": [
-              "test-model-host"
-            ]
+            "tasks": ["test-model-host"]
           }
         ],
         "patches": [
@@ -281,9 +273,7 @@
           "timed_out": false
         },
         "display_only": true,
-        "execution_tasks": [
-          "fake-exec-task"
-        ],
+        "execution_tasks": ["fake-exec-task"],
         "generate_task": false,
         "generated_by": "something"
       },
@@ -335,9 +325,7 @@
           "timed_out": false
         },
         "display_only": true,
-        "execution_tasks": [
-          "fake-exec-task"
-        ],
+        "execution_tasks": ["fake-exec-task"],
         "generate_task": false,
         "generated_by": "something"
       },
@@ -390,10 +378,7 @@
           "timed_out": false
         },
         "display_only": true,
-        "execution_tasks": [
-          "exec1",
-          "exec2"
-        ],
+        "execution_tasks": ["exec1", "exec2"],
         "generate_task": false,
         "generated_by": "something"
       },
@@ -446,9 +431,7 @@
           "timed_out": false
         },
         "display_only": false,
-        "execution_tasks": [
-          "exec1"
-        ],
+        "execution_tasks": ["exec1"],
         "generate_task": false,
         "generated_by": "something"
       },
@@ -501,9 +484,7 @@
           "timed_out": false
         },
         "display_only": false,
-        "execution_tasks": [
-          "exec1"
-        ],
+        "execution_tasks": ["exec1"],
         "generate_task": false,
         "generated_by": "something"
       },
@@ -556,9 +537,7 @@
           "timed_out": false
         },
         "display_only": true,
-        "execution_tasks": [
-          "exec1"
-        ],
+        "execution_tasks": ["exec1"],
         "generate_task": false,
         "generated_by": "something"
       },
@@ -762,9 +741,7 @@
           "invalid_revision": "",
           "merge_base_revision": ""
         },
-        "admins": [
-          "john.liu"
-        ],
+        "admins": ["john.liu"],
         "tracks_push_events": true,
         "pr_testing_enabled": false,
         "patching_disabled": false,
@@ -840,9 +817,7 @@
         "local_config": "",
         "deactivate_previous": true,
         "hidden": false,
-        "admins": [
-          "sam.kleinman"
-        ],
+        "admins": ["sam.kleinman"],
         "repotracker_error": null,
         "commit_queue": {
           "enabled": false,
@@ -874,9 +849,7 @@
         "local_config": "",
         "deactivate_previous": false,
         "hidden": false,
-        "admins": [
-          "sam.kleinman"
-        ],
+        "admins": ["sam.kleinman"],
         "repotracker_error": {
           "exists": false,
           "invalid_revision": "",
@@ -1114,10 +1087,7 @@
         "pr_testing_enabled": false,
         "hidden": false,
         "patching_disabled": false,
-        "admins": [
-          "john.liu",
-          "william.banfield"
-        ],
+        "admins": ["john.liu", "william.banfield"],
         "notify_on_failure": true,
         "repotracker_error": null,
         "disabled_stats_cache": false,
@@ -1155,9 +1125,7 @@
         },
         "hidden": false,
         "patching_disabled": false,
-        "admins": [
-          "john.liu"
-        ],
+        "admins": ["john.liu"],
         "notify_on_failure": true,
         "repotracker_error": null,
         "disabled_stats_cache": false,
@@ -1221,9 +1189,7 @@
         },
         "hidden": false,
         "patching_disabled": false,
-        "admins": [
-          "annie.black"
-        ],
+        "admins": ["annie.black"],
         "notify_on_failure": false,
         "repotracker_error": null,
         "triggers": [
@@ -1524,10 +1490,7 @@
         },
         "hidden": false,
         "patching_disabled": false,
-        "admins": [
-          "thomas.zembowicz",
-          "annie.black"
-        ],
+        "admins": ["thomas.zembowicz", "annie.black"],
         "notify_on_failure": true,
         "repotracker_error": null,
         "disabled_stats_cache": false,
@@ -1589,9 +1552,7 @@
         },
         "hidden": false,
         "patching_disabled": false,
-        "admins": [
-          "annie.black"
-        ],
+        "admins": ["annie.black"],
         "notify_on_failure": false,
         "repotracker_error": null,
         "disabled_stats_cache": false,
@@ -1676,9 +1637,7 @@
         },
         "hidden": false,
         "patching_disabled": false,
-        "admins": [
-          "ron.neuman"
-        ],
+        "admins": ["ron.neuman"],
         "notify_on_failure": false,
         "repotracker_error": null,
         "disabled_stats_cache": false,
@@ -1709,9 +1668,7 @@
         },
         "hidden": false,
         "patching_disabled": false,
-        "admins": [
-          "ron.neuman"
-        ],
+        "admins": ["ron.neuman"],
         "notify_on_failure": false,
         "repotracker_error": null,
         "disabled_stats_cache": false,
@@ -1742,11 +1699,7 @@
         },
         "hidden": false,
         "patching_disabled": false,
-        "admins": [
-          "ron.neuman",
-          "geoff.mishkin",
-          "cailin.nelson"
-        ],
+        "admins": ["ron.neuman", "geoff.mishkin", "cailin.nelson"],
         "notify_on_failure": false,
         "repotracker_error": null,
         "disabled_stats_cache": false,
@@ -1778,9 +1731,7 @@
         },
         "hidden": false,
         "patching_disabled": false,
-        "admins": [
-          "ron.neuman"
-        ],
+        "admins": ["ron.neuman"],
         "notify_on_failure": false,
         "repotracker_error": null,
         "disabled_stats_cache": false,
@@ -1811,9 +1762,7 @@
         },
         "hidden": false,
         "patching_disabled": false,
-        "admins": [
-          "ron.neuman"
-        ],
+        "admins": ["ron.neuman"],
         "notify_on_failure": false,
         "repotracker_error": null,
         "disabled_stats_cache": false,
@@ -1844,9 +1793,7 @@
         },
         "hidden": false,
         "patching_disabled": false,
-        "admins": [
-          "ron.neuman"
-        ],
+        "admins": ["ron.neuman"],
         "notify_on_failure": false,
         "repotracker_error": null
       },
@@ -1874,11 +1821,7 @@
         "hidden": false,
         "patching_disabled": false,
         "repotracker_disabled": false,
-        "admins": [
-          "ron.neuman",
-          "geoff.mishkin",
-          "cailin.nelson"
-        ],
+        "admins": ["ron.neuman", "geoff.mishkin", "cailin.nelson"],
         "notify_on_failure": false,
         "repotracker_error": null,
         "disabled_stats_cache": false,
@@ -2160,9 +2103,7 @@
         "errors": [
           {
             "message": "cannot add duplicate project 'buildhost-test'",
-            "path": [
-              "addFavoriteProject"
-            ],
+            "path": ["addFavoriteProject"],
             "extensions": {
               "code": "INTERNAL_SERVER_ERROR"
             }
@@ -2177,9 +2118,7 @@
         "errors": [
           {
             "message": "could not find project 'i-dont-exist'",
-            "path": [
-              "addFavoriteProject"
-            ],
+            "path": ["addFavoriteProject"],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
             }
@@ -2304,9 +2243,7 @@
         "errors": [
           {
             "message": "cannot find task with id NOT-A-REAL-TASKID",
-            "path": [
-              "taskFiles"
-            ],
+            "path": ["taskFiles"],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
             }
@@ -2321,9 +2258,7 @@
         "errors": [
           {
             "message": "cannot find task with id task-does-not-exist",
-            "path": [
-              "taskFiles"
-            ],
+            "path": ["taskFiles"],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
             }
@@ -2348,6 +2283,7 @@
       "result": {
         "data": {
           "user": {
+            "id": "testuser",
             "displayName": "testuser"
           }
         }
@@ -2416,9 +2352,7 @@
         "errors": [
           {
             "message": "finding task with id THIS-TASK-DOES-NOT-EXIST-!!!!",
-            "path": [
-              "taskTests"
-            ],
+            "path": ["taskTests"],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
             }
@@ -2457,9 +2391,7 @@
         "errors": [
           {
             "message": "cannot find task with id WRONG-TASK-ID",
-            "path": [
-              "setTaskPriority"
-            ],
+            "path": ["setTaskPriority"],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
             }
@@ -2474,9 +2406,7 @@
         "errors": [
           {
             "message": "Insufficient access to set priority 101, can only set priority less than or equal to 100",
-            "path": [
-              "setTaskPriority"
-            ],
+            "path": ["setTaskPriority"],
             "extensions": {
               "code": "FORBIDDEN"
             }
@@ -2524,9 +2454,7 @@
         "errors": [
           {
             "message": "Error aborting task exec2: dequeueing and restarting task 'exec2': commit queue for project 'logkeeper' not found",
-            "path": [
-              "abortTask"
-            ],
+            "path": ["abortTask"],
             "extensions": {
               "code": "INTERNAL_SERVER_ERROR"
             }
@@ -2541,9 +2469,7 @@
         "errors": [
           {
             "message": "Error aborting task exec1: task 'exec1' currently has status 'pass' - cannot abort task in this status",
-            "path": [
-              "abortTask"
-            ],
+            "path": ["abortTask"],
             "extensions": {
               "code": "INTERNAL_SERVER_ERROR"
             }
@@ -2558,9 +2484,7 @@
         "errors": [
           {
             "message": "cannot find task with id not-for-real-task-id",
-            "path": [
-              "abortTask"
-            ],
+            "path": ["abortTask"],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
             }
