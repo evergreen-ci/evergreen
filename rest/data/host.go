@@ -42,42 +42,12 @@ func FindHostsInRange(apiParams restmodel.APIHostParams, username string) ([]hos
 // The public key can be the name of a saved key or the actual key string
 func NewIntentHost(ctx context.Context, options *restmodel.HostRequestOptions, user *user.DBUser,
 	settings *evergreen.Settings) (*host.Host, error) {
-
-	// Get key value if PublicKey is a name
-	keyVal, err := user.GetPublicKey(options.KeyName)
+	spawnOptions, err := makeSpawnOptions(options, user)
 	if err != nil {
-		// if the keyname is populated but isn't a valid name, it may be the key value itself
-		if options.KeyName == "" {
-			return nil, err
-		}
-		keyVal = options.KeyName
+		return nil, err
 	}
-	if keyVal == "" {
-		return nil, errors.Errorf("public key '%s' cannot have an empty value", options.KeyName)
-	}
-	spawnOptions := cloud.SpawnOptions{
-		DistroId:              options.DistroID,
-		Userdata:              options.UserData,
-		UserName:              user.Username(),
-		PublicKey:             keyVal,
-		InstanceTags:          options.InstanceTags,
-		InstanceType:          options.InstanceType,
-		NoExpiration:          options.NoExpiration,
-		IsVirtualWorkstation:  options.IsVirtualWorkstation,
-		IsCluster:             options.IsCluster,
-		HomeVolumeSize:        options.HomeVolumeSize,
-		HomeVolumeID:          options.HomeVolumeID,
-		Region:                options.Region,
-		Expiration:            options.Expiration,
-		UseProjectSetupScript: options.UseProjectSetupScript,
-		ProvisionOptions: &host.ProvisionOptions{
-			TaskId:      options.TaskID,
-			TaskSync:    options.TaskSync,
-			SetupScript: options.SetupScript,
-			OwnerId:     user.Id,
-		},
-	}
-	intentHost, err := cloud.CreateSpawnHost(ctx, spawnOptions, settings)
+
+	intentHost, err := cloud.CreateSpawnHost(ctx, *spawnOptions, settings)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating spawn host")
 	}
@@ -235,4 +205,44 @@ func StartSpawnHost(ctx context.Context, env evergreen.Environment, u *user.DBUs
 		return http.StatusInternalServerError, err
 	}
 	return http.StatusOK, nil
+}
+
+// makeSpawnOptions is a utility for validating and converting a HostRequestOptions
+// struct into a SpawnOptions struct.
+func makeSpawnOptions(options *restmodel.HostRequestOptions, user *user.DBUser) (*cloud.SpawnOptions, error) {
+	// Get key value if PublicKey is a name
+	keyVal, err := user.GetPublicKey(options.KeyName)
+	if err != nil {
+		// if the keyname is populated but isn't a valid name, it may be the key value itself
+		if options.KeyName == "" {
+			return nil, errors.Wrap(err, "key name is empty")
+		}
+		keyVal = options.KeyName
+	}
+	if keyVal == "" {
+		return nil, errors.Errorf("public key '%s' cannot have an empty value", options.KeyName)
+	}
+	spawnOptions := cloud.SpawnOptions{
+		DistroId:              options.DistroID,
+		Userdata:              options.UserData,
+		UserName:              user.Username(),
+		PublicKey:             keyVal,
+		InstanceTags:          options.InstanceTags,
+		InstanceType:          options.InstanceType,
+		NoExpiration:          options.NoExpiration,
+		IsVirtualWorkstation:  options.IsVirtualWorkstation,
+		IsCluster:             options.IsCluster,
+		HomeVolumeSize:        options.HomeVolumeSize,
+		HomeVolumeID:          options.HomeVolumeID,
+		Region:                options.Region,
+		Expiration:            options.Expiration,
+		UseProjectSetupScript: options.UseProjectSetupScript,
+		ProvisionOptions: &host.ProvisionOptions{
+			TaskId:      options.TaskID,
+			TaskSync:    options.TaskSync,
+			SetupScript: options.SetupScript,
+			OwnerId:     user.Id,
+		},
+	}
+	return &spawnOptions, nil
 }

@@ -62,6 +62,7 @@ type Mutation {
   attachVolumeToHost(volumeAndHost: VolumeHost!): Boolean!
   detachVolumeFromHost(volumeId: String!): Boolean!
   editSpawnHost(spawnHost: EditSpawnHostInput): Host!
+  migrateVolume(volumeId: String!, spawnHostInput: SpawnHostInput): Boolean!
   spawnHost(spawnHostInput: SpawnHostInput): Host!
   spawnVolume(spawnVolumeInput: SpawnVolumeInput!): Boolean!
   removeVolume(volumeId: String!): Boolean!

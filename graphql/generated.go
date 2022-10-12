@@ -425,6 +425,7 @@ type ComplexityRoot struct {
 		EditSpawnHost                 func(childComplexity int, spawnHost *EditSpawnHostInput) int
 		EnqueuePatch                  func(childComplexity int, patchID string, commitMessage *string) int
 		ForceRepotrackerRun           func(childComplexity int, projectID string) int
+		MigrateVolume                 func(childComplexity int, volumeID string, spawnHostInput *SpawnHostInput) int
 		MoveAnnotationIssue           func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
 		OverrideTaskDependencies      func(childComplexity int, taskID string) int
 		RemoveAnnotationIssue         func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
@@ -1244,6 +1245,7 @@ type MutationResolver interface {
 	AttachVolumeToHost(ctx context.Context, volumeAndHost VolumeHost) (bool, error)
 	DetachVolumeFromHost(ctx context.Context, volumeID string) (bool, error)
 	EditSpawnHost(ctx context.Context, spawnHost *EditSpawnHostInput) (*model.APIHost, error)
+	MigrateVolume(ctx context.Context, volumeID string, spawnHostInput *SpawnHostInput) (bool, error)
 	SpawnHost(ctx context.Context, spawnHostInput *SpawnHostInput) (*model.APIHost, error)
 	SpawnVolume(ctx context.Context, spawnVolumeInput SpawnVolumeInput) (bool, error)
 	RemoveVolume(ctx context.Context, volumeID string) (bool, error)
@@ -3072,6 +3074,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.ForceRepotrackerRun(childComplexity, args["projectId"].(string)), true
+
+	case "Mutation.migrateVolume":
+		if e.complexity.Mutation.MigrateVolume == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_migrateVolume_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.MigrateVolume(childComplexity, args["volumeId"].(string), args["spawnHostInput"].(*SpawnHostInput)), true
 
 	case "Mutation.moveAnnotationIssue":
 		if e.complexity.Mutation.MoveAnnotationIssue == nil {
@@ -7391,6 +7405,7 @@ type Mutation {
   attachVolumeToHost(volumeAndHost: VolumeHost!): Boolean!
   detachVolumeFromHost(volumeId: String!): Boolean!
   editSpawnHost(spawnHost: EditSpawnHostInput): Host!
+  migrateVolume(volumeId: String!, spawnHostInput: SpawnHostInput): Boolean!
   spawnHost(spawnHostInput: SpawnHostInput): Host!
   spawnVolume(spawnVolumeInput: SpawnVolumeInput!): Boolean!
   removeVolume(volumeId: String!): Boolean!
@@ -7421,7 +7436,8 @@ type Mutation {
 
   # version
   restartVersions(versionId: String!, abort: Boolean!, versionsToRestart: [VersionToRestart!]!): [Version!]
-}`, BuiltIn: false},
+}
+`, BuiltIn: false},
 	{Name: "graphql/schema/query.graphql", Input: `# This file lists all of the queries. The query definitions can be found in the corresponding files in the resolvers folder.
 type Query {
   # annotations
@@ -9796,6 +9812,30 @@ func (ec *executionContext) field_Mutation_forceRepotrackerRun_args(ctx context.
 		}
 	}
 	args["projectId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_migrateVolume_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["volumeId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("volumeId"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["volumeId"] = arg0
+	var arg1 *SpawnHostInput
+	if tmp, ok := rawArgs["spawnHostInput"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("spawnHostInput"))
+		arg1, err = ec.unmarshalOSpawnHostInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSpawnHostInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["spawnHostInput"] = arg1
 	return args, nil
 }
 
@@ -19176,6 +19216,48 @@ func (ec *executionContext) _Mutation_editSpawnHost(ctx context.Context, field g
 	res := resTmp.(*model.APIHost)
 	fc.Result = res
 	return ec.marshalNHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_migrateVolume(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_migrateVolume_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().MigrateVolume(rctx, args["volumeId"].(string), args["spawnHostInput"].(*SpawnHostInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_spawnHost(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -44163,6 +44245,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			}
 		case "editSpawnHost":
 			out.Values[i] = ec._Mutation_editSpawnHost(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "migrateVolume":
+			out.Values[i] = ec._Mutation_migrateVolume(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
