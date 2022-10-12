@@ -2283,7 +2283,6 @@
       "result": {
         "data": {
           "user": {
-            "id": "testuser",
             "displayName": "testuser"
           }
         }

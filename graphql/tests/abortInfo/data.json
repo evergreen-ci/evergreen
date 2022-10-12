@@ -28,22 +28,5 @@
       "build_variant": "commit-queue",
       "display_name": "~ Commit Queue"
     }
-  ],
-  "users": [
-    {
-      "_id": "testuser",
-      "display_name": "testuser",
-      "first_name": "Bob",
-      "last_name": "Smith",
-      "settings": {
-        "timezone": "America/New_York",
-        "region": "us-west-1",
-        "slack_username": "testuser",
-        "slack_member_id": "12345",
-        "github_user": {
-          "last_known_as": "bob_smith_1"
-        }
-      }
-    }
   ]
 }
