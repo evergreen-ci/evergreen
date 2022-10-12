@@ -24,6 +24,16 @@ func init() {
 const projectId = "evergreen"
 
 func getContext(t *testing.T) context.Context {
+	require.NoError(t, db.Clear(user.Collection),
+		"unable to clear user collection")
+	dbUser := &user.DBUser{
+		Id: apiUser,
+		Settings: user.UserSettings{
+			SlackUsername: "testuser",
+			SlackMemberId: "testuser",
+		},
+	}
+	require.NoError(t, dbUser.Insert())
 	const email = "testuser@mongodb.com"
 	const accessToken = "access_token"
 	const refreshToken = "refresh_token"
