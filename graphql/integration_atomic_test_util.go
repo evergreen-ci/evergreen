@@ -54,7 +54,7 @@ type AtomicGraphQLState struct {
 	Settings    *evergreen.Settings
 }
 
-const apiUser = "testApiUser"
+const apiUser = "testuser"
 const apiKey = "testapikey"
 
 func setup(t *testing.T, state *AtomicGraphQLState) {
