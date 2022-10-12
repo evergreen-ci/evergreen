@@ -35,6 +35,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -74,6 +75,22 @@ func setup(t *testing.T, state *AtomicGraphQLState) {
 	env := evergreen.GetEnvironment()
 	ctx := context.Background()
 	require.NoError(t, env.DB().Drop(ctx))
+
+	userUpdate := bson.M{
+		"$set": bson.M{
+			user.DispNameKey:     apiUser,
+			user.EmailAddressKey: email,
+			bsonutil.GetDottedKeyName(user.LoginCacheKey, user.LoginCacheAccessTokenKey):  accessToken,
+			bsonutil.GetDottedKeyName(user.LoginCacheKey, user.LoginCacheRefreshTokenKey): refreshToken,
+			bsonutil.GetDottedKeyName(user.SettingsKey, "SlackMemberId"):                  slackMemberId,
+			bsonutil.GetDottedKeyName(user.SettingsKey, "SlackUsername"):                  slackUsername,
+		},
+	}
+
+	_, err := user.UpsertOne(bson.M{
+		"Id": apiUser,
+	}, userUpdate)
+	require.NoError(t, err)
 
 	usr, err := user.GetOrCreateUser(apiUser, apiUser, email, accessToken, refreshToken, []string{})
 	require.NoError(t, err)
