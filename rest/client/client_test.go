@@ -4,10 +4,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestEvergreenCommunicatorConstructor(t *testing.T) {
-	client := NewCommunicator("url")
+	client, err := NewCommunicator("url")
+	require.NoError(t, err)
 	defer client.Close()
 
 	c, ok := client.(*communicatorImpl)

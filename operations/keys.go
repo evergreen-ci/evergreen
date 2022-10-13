@@ -66,7 +66,10 @@ func keysAdd() cli.Command {
 				return errors.Wrap(err, "loading configuration")
 			}
 
-			client := conf.setupRestCommunicator(ctx)
+			client, err := conf.setupRestCommunicator(ctx)
+			if err != nil {
+				return errors.Wrap(err, "setting up REST communicator")
+			}
 			defer client.Close()
 
 			keyFileContents, err := ioutil.ReadFile(keyFile)
@@ -105,7 +108,10 @@ func keysList() cli.Command {
 				return errors.Wrap(err, "loading configuration")
 			}
 
-			client := conf.setupRestCommunicator(ctx)
+			client, err := conf.setupRestCommunicator(ctx)
+			if err != nil {
+				return errors.Wrap(err, "setting up REST communicator")
+			}
 			defer client.Close()
 
 			keys, err := client.GetCurrentUsersKeys(ctx)
@@ -153,7 +159,10 @@ func keysDelete() cli.Command {
 				return errors.Wrap(err, "loading configuration")
 			}
 
-			client := conf.setupRestCommunicator(ctx)
+			client, err := conf.setupRestCommunicator(ctx)
+			if err != nil {
+				return errors.Wrap(err, "setting up REST communicator")
+			}
 			defer client.Close()
 
 			keyName := c.Args().Get(0)

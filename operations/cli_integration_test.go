@@ -23,6 +23,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
 	yaml "gopkg.in/20210107192922/yaml.v3"
 )
@@ -149,7 +150,8 @@ func TestCLIFetchSource(t *testing.T) {
 
 		client, err := NewClientSettings(testSetup.settingsFilePath)
 		So(err, ShouldBeNil)
-		comm := client.setupRestCommunicator(ctx)
+		comm, err := client.setupRestCommunicator(ctx)
+		require.NoError(t, err)
 		defer comm.Close()
 		ac, rc, err := client.getLegacyClients()
 		So(err, ShouldBeNil)

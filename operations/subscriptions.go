@@ -33,7 +33,10 @@ func subscriptionsList() cli.Command {
 				return errors.Wrap(err, "loading configuration")
 			}
 
-			comm := conf.setupRestCommunicator(ctx)
+			comm, err := conf.setupRestCommunicator(ctx)
+			if err != nil {
+				return errors.Wrap(err, "setting up REST communicator")
+			}
 			defer comm.Close()
 			subs, err := comm.GetSubscriptions(ctx)
 			if err != nil {

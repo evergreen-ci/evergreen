@@ -147,8 +147,12 @@ func agentMonitor() cli.Command {
 			},
 		),
 		Action: func(c *cli.Context) error {
+			comm, err := client.NewCommunicator(c.Parent().String(agentAPIServerURLFlagName))
+			if err != nil {
+				return errors.Wrap(err, "initializing communicator")
+			}
 			m := &monitor{
-				comm:            client.NewCommunicator(c.Parent().String(agentAPIServerURLFlagName)),
+				comm:            comm,
 				credentialsPath: c.String(credentialsPathFlagName),
 				clientPath:      c.String(clientPathFlagName),
 				distroID:        c.String(distroIDFlagName),
@@ -159,7 +163,6 @@ func agentMonitor() cli.Command {
 				logPrefix:       c.String(logPrefixFlagName),
 			}
 
-			var err error
 			m.agentArgs, err = getAgentArgs(c, os.Args)
 			if err != nil {
 				return errors.Wrap(err, "getting agent args")
