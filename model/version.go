@@ -230,7 +230,7 @@ func (v *Version) GetTimeSpent() (time.Duration, time.Duration, error) {
 func (v *Version) MarkFinished(status string, finishTime time.Time) error {
 	v.Status = status
 	v.FinishTime = finishTime
-	grip.DebugWhen(v.Author == "chaya.malik", message.Fields{
+	grip.DebugWhen(v.Author == "didier.nadeau", message.Fields{
 		"message":     "Version MarkFinished",
 		"ticket":      "EVG-17305",
 		"version":     v.Id,

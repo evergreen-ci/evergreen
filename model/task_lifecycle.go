@@ -1119,7 +1119,7 @@ func updateVersionGithubStatus(v *Version, builds []build.Build) error {
 
 // Update the status of the version based on its constituent builds
 func updateVersionStatus(v *Version) (string, error) {
-	grip.DebugWhen(v.Author == "chaya.malik", message.Fields{
+	grip.DebugWhen(v.Author == "didier.nadeau", message.Fields{
 		"message": "updateVersionStatus",
 		"ticket":  "EVG-17305",
 		"version": v.Id,
@@ -1137,7 +1137,7 @@ func updateVersionStatus(v *Version) (string, error) {
 
 	versionStatus := getVersionStatus(builds)
 
-	grip.DebugWhen(v.Author == "chaya.malik", message.Fields{
+	grip.DebugWhen(v.Author == "didier.nadeau", message.Fields{
 		"message":        "updateVersionStatus getVersionStatus",
 		"ticket":         "EVG-17305",
 		"version":        v.Id,
