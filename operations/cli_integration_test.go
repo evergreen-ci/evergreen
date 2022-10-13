@@ -24,7 +24,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"go.mongodb.org/mongo-driver/bson"
-	yaml "gopkg.in/20210107192922/yaml.v3"
+	yaml "gopkg.in/yaml.v3"
 )
 
 var testConfig = testutil.TestConfig()

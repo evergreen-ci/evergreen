@@ -4,8 +4,8 @@ import (
 	"bytes"
 
 	"github.com/pkg/errors"
-	yaml "gopkg.in/20210107192922/yaml.v3"
 	yaml2 "gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v3"
 )
 
 const UnmarshalStrictError = "error unmarshalling yaml strict"

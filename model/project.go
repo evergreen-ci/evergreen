@@ -25,7 +25,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	ignore "github.com/sabhiram/go-gitignore"
-	"gopkg.in/20210107192922/yaml.v3"
+	"gopkg.in/yaml.v3"
 )
 
 const (

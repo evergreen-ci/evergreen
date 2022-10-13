@@ -20,7 +20,7 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	yaml "gopkg.in/20210107192922/yaml.v3"
+	yaml "gopkg.in/yaml.v3"
 )
 
 func TestTaskExecutionTimeoutJob(t *testing.T) {

@@ -17,7 +17,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
-	yaml "gopkg.in/20210107192922/yaml.v3"
+	yaml "gopkg.in/yaml.v3"
 )
 
 func Admin() cli.Command {
