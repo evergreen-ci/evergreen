@@ -105,18 +105,21 @@ func PromoteVarsToRepo(projectId string, varNames []string, userId string) error
 	if err != nil {
 		return errors.Wrapf(err, "getting project settings for project '%s'", projectId)
 	}
+
+	repoId := project.ProjectRef.RepoRefId
+
 	projectVars, err := model.FindOneProjectVars(projectId)
 	if err != nil {
 		return errors.Wrapf(err, "getting project variables for project '%s'", projectId)
 	}
 
-	repo, err := model.GetProjectSettingsById(project.ProjectRef.RepoRefId, true)
+	repo, err := model.GetProjectSettingsById(repoId, true)
 	if err != nil {
-		return errors.Wrapf(err, "getting repo settings for repo '%s'", project.ProjectRef.RepoRefId)
+		return errors.Wrapf(err, "getting repo settings for repo '%s'", repoId)
 	}
-	repoVars, err := model.FindOneProjectVars(project.ProjectRef.RepoRefId)
+	repoVars, err := model.FindOneProjectVars(repoId)
 	if err != nil {
-		return errors.Wrapf(err, "getting repo variables for repo '%s'", project.ProjectRef.RepoRefId)
+		return errors.Wrapf(err, "getting repo variables for repo '%s'", repoId)
 	}
 
 	// Add each promoted variable to existing repo vars
@@ -137,8 +140,17 @@ func PromoteVarsToRepo(projectId string, varNames []string, userId string) error
 		}
 	}
 
-	if err = UpdateProjectVars(project.ProjectRef.RepoRefId, apiRepoVars, true); err != nil {
-		return errors.Wrapf(err, "updating project variables for project '%s'", projectId)
+	if err = UpdateProjectVars(repoId, apiRepoVars, true); err != nil {
+		return errors.Wrapf(err, "adding variables from project '%s' to repo", projectId)
+	}
+
+	// Log repo update
+	repoAfter, err := model.GetProjectSettingsById(repoId, true)
+	if err != nil {
+		return errors.Wrapf(err, "getting settings for repo '%s' after adding promoted variables", repoId)
+	}
+	if err = model.LogProjectModified(repoId, userId, repo, repoAfter); err != nil {
+		return errors.Wrapf(err, "logging repo '%s' modified", repoId)
 	}
 
 	// Remove promoted variables from project
@@ -154,37 +166,29 @@ func PromoteVarsToRepo(projectId string, varNames []string, userId string) error
 	}
 
 	for key := range projectVars.PrivateVars {
-		if _, contains := apiProjectVars.Vars[key]; contains {
+		if _, ok := apiProjectVars.Vars[key]; ok {
 			apiProjectVars.PrivateVars[key] = true
 		}
 	}
 
 	for key := range projectVars.AdminOnlyVars {
-		if _, contains := apiProjectVars.Vars[key]; contains {
+		if _, ok := apiProjectVars.Vars[key]; ok {
 			apiProjectVars.AdminOnlyVars[key] = true
 		}
 	}
 
 	if err := UpdateProjectVars(projectId, apiProjectVars, true); err != nil {
-		return errors.Wrapf(err, "updating project variables for project '%s'", projectId)
+		return errors.Wrapf(err, "removing promoted project variables from project '%s'", projectId)
 	}
 
-	// Log project and repo modifications
 	projectAfter, err := model.GetProjectSettingsById(projectId, false)
 	if err != nil {
-		return errors.Wrapf(err, "getting project settings for project '%s'", projectId)
+		return errors.Wrapf(err, "getting settings for project '%s' after removing promoted variables", projectId)
 	}
 	if err = model.LogProjectModified(projectId, userId, project, projectAfter); err != nil {
 		return errors.Wrapf(err, "logging project '%s' modified", projectId)
 	}
 
-	repoAfter, err := model.GetProjectSettingsById(project.ProjectRef.RepoRefId, true)
-	if err != nil {
-		return errors.Wrapf(err, "getting repo settings for project '%s'", projectId)
-	}
-	if err = model.LogProjectModified(project.ProjectRef.RepoRefId, userId, repo, repoAfter); err != nil {
-		return errors.Wrapf(err, "logging project '%s' modified", projectId)
-	}
 	return nil
 }
 

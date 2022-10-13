@@ -564,138 +564,124 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 func TestPromoteVarsToRepo(t *testing.T) {
 	for name, test := range map[string]func(t *testing.T, ref model.ProjectRef){
 		"SuccessfullyPromotesAllVariables": func(t *testing.T, ref model.ProjectRef) {
-			projectId := "pId"
-			repoId := "rId"
-
 			varsToPromote := []string{"a", "b", "c"}
-			err := PromoteVarsToRepo(projectId, varsToPromote, "u")
+			err := PromoteVarsToRepo(ref.Id, varsToPromote, "u")
 			assert.NoError(t, err)
 
-			projectVarsFromDb, err := model.FindOneProjectVars(projectId)
+			projectVarsFromDB, err := model.FindOneProjectVars(ref.Id)
 			assert.NoError(t, err)
-			assert.Len(t, projectVarsFromDb.Vars, 0)
-			assert.Len(t, projectVarsFromDb.PrivateVars, 0)
-			assert.Len(t, projectVarsFromDb.AdminOnlyVars, 0)
+			assert.Len(t, projectVarsFromDB.Vars, 0)
+			assert.Len(t, projectVarsFromDB.PrivateVars, 0)
+			assert.Len(t, projectVarsFromDB.AdminOnlyVars, 0)
 
-			repoVarsFromDb, err := model.FindOneProjectVars(repoId)
+			repoVarsFromDB, err := model.FindOneProjectVars(ref.RepoRefId)
 			assert.NoError(t, err)
-			assert.Len(t, repoVarsFromDb.Vars, 4)
-			assert.Len(t, repoVarsFromDb.PrivateVars, 2)
-			assert.Len(t, repoVarsFromDb.AdminOnlyVars, 1)
-			assert.Equal(t, repoVarsFromDb.Vars["a"], "1")
-			assert.Equal(t, repoVarsFromDb.Vars["b"], "2")
-			assert.Equal(t, repoVarsFromDb.Vars["c"], "3")
+			assert.Len(t, repoVarsFromDB.Vars, 4)
+			assert.Len(t, repoVarsFromDB.PrivateVars, 2)
+			assert.Len(t, repoVarsFromDB.AdminOnlyVars, 1)
+			assert.Equal(t, repoVarsFromDB.Vars["a"], "1")
+			assert.Equal(t, repoVarsFromDB.Vars["b"], "2")
+			assert.Equal(t, repoVarsFromDB.Vars["c"], "3")
 
-			projectEvents, err := model.MostRecentProjectEvents(projectId, 10)
+			projectEvents, err := model.MostRecentProjectEvents(ref.Id, 10)
 			assert.NoError(t, err)
 			assert.Len(t, projectEvents, 1)
 
-			repoEvents, err := model.MostRecentProjectEvents(repoId, 10)
+			repoEvents, err := model.MostRecentProjectEvents(ref.RepoRefId, 10)
 			assert.NoError(t, err)
 			assert.Len(t, repoEvents, 1)
 		},
 		"SuccessfullyPromotesSomeVariables": func(t *testing.T, ref model.ProjectRef) {
-			projectId := "pId"
-			repoId := "rId"
-
 			varsToPromote := []string{"a", "b"}
-			err := PromoteVarsToRepo(projectId, varsToPromote, "u")
+			err := PromoteVarsToRepo(ref.Id, varsToPromote, "u")
 			assert.NoError(t, err)
 
-			varsFromDb, err := model.FindOneProjectVars(projectId)
+			varsFromDB, err := model.FindOneProjectVars(ref.Id)
 			assert.NoError(t, err)
-			assert.Len(t, varsFromDb.Vars, 1)
-			assert.Equal(t, varsFromDb.Vars["c"], "3")
-			assert.Len(t, varsFromDb.PrivateVars, 0)
-			assert.Len(t, varsFromDb.AdminOnlyVars, 0)
+			assert.Len(t, varsFromDB.Vars, 1)
+			assert.Equal(t, varsFromDB.Vars["c"], "3")
+			assert.Len(t, varsFromDB.PrivateVars, 0)
+			assert.Len(t, varsFromDB.AdminOnlyVars, 0)
 
-			repoVarsFromDb, err := model.FindOneProjectVars(repoId)
+			repoVarsFromDB, err := model.FindOneProjectVars(ref.RepoRefId)
 			assert.NoError(t, err)
-			assert.Len(t, repoVarsFromDb.Vars, 3)
-			assert.Len(t, repoVarsFromDb.PrivateVars, 2)
-			assert.Len(t, repoVarsFromDb.AdminOnlyVars, 1)
-			assert.NotContains(t, repoVarsFromDb.Vars, "c")
-			assert.Equal(t, repoVarsFromDb.Vars["a"], "1")
-			assert.Equal(t, repoVarsFromDb.Vars["b"], "2")
+			assert.Len(t, repoVarsFromDB.Vars, 3)
+			assert.Len(t, repoVarsFromDB.PrivateVars, 2)
+			assert.Len(t, repoVarsFromDB.AdminOnlyVars, 1)
+			assert.NotContains(t, repoVarsFromDB.Vars, "c")
+			assert.Equal(t, repoVarsFromDB.Vars["a"], "1")
+			assert.Equal(t, repoVarsFromDB.Vars["b"], "2")
 
-			projectEvents, err := model.MostRecentProjectEvents(projectId, 10)
+			projectEvents, err := model.MostRecentProjectEvents(ref.Id, 10)
 			assert.NoError(t, err)
 			assert.Len(t, projectEvents, 1)
 
-			repoEvents, err := model.MostRecentProjectEvents(repoId, 10)
+			repoEvents, err := model.MostRecentProjectEvents(ref.RepoRefId, 10)
 			assert.NoError(t, err)
 			assert.Len(t, repoEvents, 1)
 		},
 		"CorrectlyPromotesNoVariables": func(t *testing.T, ref model.ProjectRef) {
-			projectId := "pId"
-			repoId := "rId"
-
 			varsToPromote := []string{}
-			err := PromoteVarsToRepo(projectId, varsToPromote, "u")
+			err := PromoteVarsToRepo(ref.Id, varsToPromote, "u")
 			assert.NoError(t, err)
 
-			varsFromDb, err := model.FindOneProjectVars(projectId)
+			varsFromDB, err := model.FindOneProjectVars(ref.Id)
 			assert.NoError(t, err)
-			assert.Len(t, varsFromDb.Vars, 3)
-			assert.Equal(t, varsFromDb.Vars["a"], "1")
-			assert.Equal(t, varsFromDb.Vars["b"], "2")
-			assert.Equal(t, varsFromDb.Vars["c"], "3")
-			assert.Len(t, varsFromDb.PrivateVars, 1)
-			assert.True(t, varsFromDb.PrivateVars["a"])
-			assert.Len(t, varsFromDb.AdminOnlyVars, 0)
+			assert.Len(t, varsFromDB.Vars, 3)
+			assert.Equal(t, varsFromDB.Vars["a"], "1")
+			assert.Equal(t, varsFromDB.Vars["b"], "2")
+			assert.Equal(t, varsFromDB.Vars["c"], "3")
+			assert.Len(t, varsFromDB.PrivateVars, 1)
+			assert.True(t, varsFromDB.PrivateVars["a"])
+			assert.Len(t, varsFromDB.AdminOnlyVars, 0)
 
-			repoVarsFromDb, err := model.FindOneProjectVars(repoId)
+			repoVarsFromDB, err := model.FindOneProjectVars(ref.RepoRefId)
 			assert.NoError(t, err)
-			assert.Len(t, repoVarsFromDb.Vars, 1)
-			assert.Len(t, repoVarsFromDb.PrivateVars, 1)
-			assert.True(t, repoVarsFromDb.PrivateVars["d"])
-			assert.True(t, repoVarsFromDb.AdminOnlyVars["d"])
+			assert.Len(t, repoVarsFromDB.Vars, 1)
+			assert.Len(t, repoVarsFromDB.PrivateVars, 1)
+			assert.True(t, repoVarsFromDB.PrivateVars["d"])
+			assert.True(t, repoVarsFromDB.AdminOnlyVars["d"])
 
-			projectEvents, err := model.MostRecentProjectEvents(projectId, 10)
+			projectEvents, err := model.MostRecentProjectEvents(ref.Id, 10)
 			assert.NoError(t, err)
 			assert.Len(t, projectEvents, 0)
 
-			repoEvents, err := model.MostRecentProjectEvents(repoId, 10)
+			repoEvents, err := model.MostRecentProjectEvents(ref.RepoRefId, 10)
 			assert.NoError(t, err)
 			assert.Len(t, repoEvents, 0)
 		},
 		"FailsOnUnattachedRepo": func(t *testing.T, ref model.ProjectRef) {
-			projectId := "pUnattached"
-
 			varsToPromote := []string{"test"}
-			err := PromoteVarsToRepo(projectId, varsToPromote, "u")
+			err := PromoteVarsToRepo("pUnattached", varsToPromote, "u")
 			assert.Error(t, err)
 		},
 		"IgnoresNonexistentVars": func(t *testing.T, ref model.ProjectRef) {
-			projectId := "pId"
-			repoId := "rId"
-
 			varsToPromote := []string{"test"}
-			err := PromoteVarsToRepo(projectId, varsToPromote, "u")
+			err := PromoteVarsToRepo(ref.Id, varsToPromote, "u")
 			assert.NoError(t, err)
 
-			varsFromDb, err := model.FindOneProjectVars(projectId)
+			varsFromDB, err := model.FindOneProjectVars(ref.Id)
 			assert.NoError(t, err)
-			assert.Len(t, varsFromDb.Vars, 3)
-			assert.Equal(t, varsFromDb.Vars["a"], "1")
-			assert.Equal(t, varsFromDb.Vars["b"], "2")
-			assert.Equal(t, varsFromDb.Vars["c"], "3")
-			assert.Len(t, varsFromDb.PrivateVars, 1)
-			assert.True(t, varsFromDb.PrivateVars["a"])
-			assert.Len(t, varsFromDb.AdminOnlyVars, 0)
+			assert.Len(t, varsFromDB.Vars, 3)
+			assert.Equal(t, varsFromDB.Vars["a"], "1")
+			assert.Equal(t, varsFromDB.Vars["b"], "2")
+			assert.Equal(t, varsFromDB.Vars["c"], "3")
+			assert.Len(t, varsFromDB.PrivateVars, 1)
+			assert.True(t, varsFromDB.PrivateVars["a"])
+			assert.Len(t, varsFromDB.AdminOnlyVars, 0)
 
-			repoVarsFromDb, err := model.FindOneProjectVars(repoId)
+			repoVarsFromDB, err := model.FindOneProjectVars(ref.RepoRefId)
 			assert.NoError(t, err)
-			assert.Len(t, repoVarsFromDb.Vars, 1)
-			assert.Len(t, repoVarsFromDb.PrivateVars, 1)
-			assert.True(t, repoVarsFromDb.PrivateVars["d"])
-			assert.True(t, repoVarsFromDb.AdminOnlyVars["d"])
+			assert.Len(t, repoVarsFromDB.Vars, 1)
+			assert.Len(t, repoVarsFromDB.PrivateVars, 1)
+			assert.True(t, repoVarsFromDB.PrivateVars["d"])
+			assert.True(t, repoVarsFromDB.AdminOnlyVars["d"])
 
-			projectEvents, err := model.MostRecentProjectEvents(projectId, 10)
+			projectEvents, err := model.MostRecentProjectEvents(ref.Id, 10)
 			assert.NoError(t, err)
 			assert.Len(t, projectEvents, 0)
 
-			repoEvents, err := model.MostRecentProjectEvents(repoId, 10)
+			repoEvents, err := model.MostRecentProjectEvents(ref.RepoRefId, 10)
 			assert.NoError(t, err)
 			assert.Len(t, repoEvents, 0)
 		},
