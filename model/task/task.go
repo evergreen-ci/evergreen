@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model/annotations"
 	"net/url"
 	"regexp"
 	"strings"
@@ -2009,8 +2010,26 @@ func (t *Task) GetDisplayStatus() string {
 	if t.DisplayStatus != "" {
 		return t.DisplayStatus
 	}
-	if t.Aborted && t.IsFinished() {
+	if t.Aborted {
 		return evergreen.TaskAborted
+	}
+	if t.Status == evergreen.TaskSucceeded {
+		return evergreen.TaskSucceeded
+	}
+	if t.Details.Type == evergreen.CommandTypeSetup {
+		return evergreen.TaskSetupFailed
+	}
+	if t.Details.Type == evergreen.CommandTypeSystem {
+		if t.Details.TimedOut && t.Details.Description == evergreen.TaskDescriptionHeartbeat {
+			return evergreen.TaskSystemUnresponse
+		}
+		if t.Details.TimedOut {
+			return evergreen.TaskSystemTimedOut
+		}
+		return evergreen.TaskSystemFailed
+	}
+	if t.Details.TimedOut {
+		return evergreen.TaskTimedOut
 	}
 	if t.Status == evergreen.TaskUndispatched {
 		if !t.Activated {
@@ -2024,23 +2043,9 @@ func (t *Task) GetDisplayStatus() string {
 	if !t.IsFinished() {
 		return t.Status
 	}
-	if t.Status == evergreen.TaskSucceeded {
-		return evergreen.TaskSucceeded
-	}
-	if t.Details.Type == evergreen.CommandTypeSystem {
-		if t.Details.TimedOut && t.Details.Description == evergreen.TaskDescriptionHeartbeat {
-			return evergreen.TaskSystemUnresponse
-		}
-		if t.Details.TimedOut {
-			return evergreen.TaskSystemTimedOut
-		}
-		return evergreen.TaskSystemFailed
-	}
-	if t.Details.Type == evergreen.CommandTypeSetup {
-		return evergreen.TaskSetupFailed
-	}
-	if t.Details.TimedOut {
-		return evergreen.TaskTimedOut
+	annotation, err := annotations.FindOneByTaskIdAndExecution(t.Id, t.Execution)
+	if err == nil && annotation != nil {
+		return evergreen.TaskKnownIssue
 	}
 	return t.Status
 }
@@ -2048,33 +2053,66 @@ func (t *Task) GetDisplayStatus() string {
 // displayTaskPriority answers the question "if there is a display task whose executions are
 // in these statuses, which overall status would a user expect to see?"
 // for example, if there are both successful and failed tasks, one would expect to see "failed"
+
+/*
+	"branches": []bson.M{
+							{
+								"case": bson.M{
+									"$in": []interface{}{"$" + key, []string{evergreen.TaskFailed, evergreen.TaskTestTimedOut, evergreen.TaskTimedOut}},
+								},
+								"then": 1, // red
+							},
+							{
+								"case": bson.M{
+									"$in": []interface{}{"$" + key, []string{evergreen.TaskKnownIssue}},
+								},
+								"then": 2,
+							},
+							{
+								"case": bson.M{
+									"$eq": []string{"$" + key, evergreen.TaskSetupFailed},
+								},
+								"then": 3, // lavender
+							},
+							{
+								"case": bson.M{
+									"$in": []interface{}{"$" + key, []string{evergreen.TaskSystemFailed, evergreen.TaskSystemUnresponse, evergreen.TaskSystemTimedOut}},
+								},
+								"then": 4, // purple
+							},
+							{
+								"case": bson.M{
+									"$in": []interface{}{"$" + key, []string{evergreen.TaskStarted, evergreen.TaskDispatched}},
+								},
+								"then": 5, // yellow
+							},
+							{
+								"case": bson.M{
+									"$eq": []string{"$" + key, evergreen.TaskSucceeded},
+								},
+								"then": 10, // green
+							},
+						},
+						"default": 6, // all shades of grey
+					},
+*/
 func (t *Task) displayTaskPriority() int {
 	switch t.GetDisplayStatus() {
-	case evergreen.TaskStarted:
+	case evergreen.TaskFailed, evergreen.TaskTestTimedOut, evergreen.TaskTimedOut:
 		return 10
-	case evergreen.TaskFailed:
+	case evergreen.TaskKnownIssue:
 		return 20
-	case evergreen.TaskTestTimedOut:
-		return 30
-	case evergreen.TaskTimedOut:
-		return 40
-	case evergreen.TaskSystemFailed:
-		return 50
-	case evergreen.TaskSystemTimedOut:
-		return 60
-	case evergreen.TaskSystemUnresponse:
-		return 70
 	case evergreen.TaskSetupFailed:
-		return 80
-	case evergreen.TaskUndispatched:
-		return 90
-	case evergreen.TaskInactive:
-		return 100
+		return 30
+	case evergreen.TaskSystemFailed, evergreen.TaskSystemTimedOut, evergreen.TaskSystemUnresponse:
+		return 40
+	case evergreen.TaskStarted, evergreen.TaskDispatched:
+		return 50
 	case evergreen.TaskSucceeded:
-		return 110
+		return 100
 	}
 	// Note that this includes evergreen.TaskDispatched.
-	return 1000
+	return 60
 }
 
 // Reset sets the task state to a state in which it is scheduled to re-run.
