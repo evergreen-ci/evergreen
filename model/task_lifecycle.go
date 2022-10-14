@@ -1645,8 +1645,8 @@ func ClearAndResetStrandedHostTask(h *host.Host) error {
 
 // ResetStaleTask fixes a task that has either exceeded the heartbeat timeout
 // or has been marked as aborted but was never ended by the agent.
-// The current task execution is marked as finished and, if possible, a new
-// execution is created to restart the task.
+// The current task execution is marked as finished and, if the task is not
+// aborted, a new execution is created to restart the task.
 func ResetStaleTask(t *task.Task) error {
 	CheckAndBlockSingleHostTaskGroup(t, t.Status)
 
