@@ -1372,18 +1372,45 @@ func TestMarkEnd(t *testing.T) {
 			Status:    evergreen.TaskStarted,
 			Version:   "version1",
 		}
+		t2 := &task.Task{
+			Id:        "execTask2",
+			Activated: true,
+			BuildId:   b.Id,
+			Status:    evergreen.TaskStarted,
+			Version:   "version1",
+		}
 		So(t1.Insert(), ShouldBeNil)
+		So(t2.Insert(), ShouldBeNil)
 
 		detail := &apimodels.TaskEndDetail{
 			Status: evergreen.TaskSucceeded,
 		}
-		So(MarkEnd(t1, "test", time.Now(), detail, false), ShouldBeNil)
+		endTime := time.Now().Round(time.Second)
+		So(MarkEnd(t1, "test", endTime, detail, false), ShouldBeNil)
 		t1FromDb, err := task.FindOne(db.Query(task.ById(t1.Id)))
 		So(err, ShouldBeNil)
 		So(t1FromDb.Status, ShouldEqual, evergreen.TaskSucceeded)
 		dtFromDb, err := task.FindOne(db.Query(task.ById(dt.Id)))
 		So(err, ShouldBeNil)
 		So(dtFromDb.Status, ShouldEqual, evergreen.TaskSucceeded)
+
+		// Ensure that calling MarkEnd on a non-aborted finished task returns early
+		// by checking that its finish_time hasn't changed
+		So(MarkEnd(t1, "test", time.Now().Add(time.Minute), detail, false), ShouldBeNil)
+		t1FromDb, err = task.FindOne(db.Query(task.ById(t1.Id)))
+		So(err, ShouldBeNil)
+		So(t1FromDb.FinishTime, ShouldEqual, endTime)
+
+		// Ensure that calling MarkEnd on an aborted finished task does not return early.
+		endTime = time.Now().Round(time.Second)
+		So(AbortTask(t2.Id, "testUser"), ShouldBeNil)
+		t2FromDb, err := task.FindOne(db.Query(task.ById(t2.Id)))
+		So(err, ShouldBeNil)
+		So(t2FromDb.FinishTime, ShouldEqual, time.Time{})
+		So(MarkEnd(t2FromDb, "test", endTime, &t2FromDb.Details, false), ShouldBeNil)
+		t2FromDb, err = task.FindOne(db.Query(task.ById(t2.Id)))
+		So(err, ShouldBeNil)
+		So(t2FromDb.FinishTime, ShouldEqual, endTime)
 	})
 }
 
@@ -1843,6 +1870,9 @@ func TestAbortTask(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(testTask.Activated, ShouldEqual, false)
 			So(testTask.Aborted, ShouldEqual, true)
+			So(testTask.Status, ShouldEqual, evergreen.TaskFailed)
+			So(testTask.Details.Description, ShouldEqual, evergreen.TaskDescriptionAborted)
+			So(testTask.Details.Status, ShouldEqual, evergreen.TaskFailed)
 		})
 		Convey("a task that is finished should error when aborting", func() {
 			So(AbortTask(finishedTask.Id, userName), ShouldNotBeNil)
