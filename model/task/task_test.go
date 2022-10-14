@@ -123,22 +123,30 @@ func TestAddStatusColorSort(t *testing.T) {
 		Activated: false,
 		Execution: 1,
 	}
-	//t10 := Task{
-	//	Id:      "t10",
-	//	Version: "v1",
-	//	Status:  evergreen.TaskUndispatched,
-	//	DependsOn: []Dependency{
-	//		{Unattainable: false},
-	//		{Unattainable: false},
-	//		{Unattainable: true},
-	//	},
-	//	Execution: 1,
-	//}
 	t10 := Task{
 		Id:        "t10",
 		Version:   "v1",
 		Status:    evergreen.TaskUndispatched,
 		Activated: true,
+	}
+	t11 := Task{
+		Id:        "t11",
+		Version:   "v1",
+		Status:    evergreen.TaskUndispatched,
+		Activated: true,
+		DependsOn: []Dependency{
+			{
+				TaskId:       "t9",
+				Unattainable: true,
+				Status:       "success",
+			},
+			{
+				TaskId:       "t8",
+				Unattainable: false,
+				Status:       "success",
+			},
+		},
+		Execution: 1,
 	}
 	a := annotations.TaskAnnotation{
 		Id:            "myAnnotation",
@@ -148,7 +156,7 @@ func TestAddStatusColorSort(t *testing.T) {
 			{IssueKey: "EVG-12345"},
 		},
 	}
-	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10))
+	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11))
 	assert.NoError(t, a.Upsert())
 
 	pipeline, err := getTasksByVersionPipeline("v1", GetTasksByVersionOptions{})
@@ -161,7 +169,7 @@ func TestAddStatusColorSort(t *testing.T) {
 	err = Aggregate(pipeline, &taskResults)
 	require.NoError(t, err)
 
-	assert.Len(t, taskResults, 10)
+	assert.Len(t, taskResults, 11)
 	// first, assert the correctness of displayStatusExpression and ensure the display
 	// statuses are computed correctly and that it matches GetDisplayStatus
 	for _, foundTask := range taskResults {
@@ -196,6 +204,9 @@ func TestAddStatusColorSort(t *testing.T) {
 		case t10.Id:
 			assert.Equal(t, foundTask.DisplayStatus, evergreen.TaskWillRun)
 			assert.Equal(t, t10.GetDisplayStatus(), evergreen.TaskWillRun)
+		case t11.Id:
+			assert.Equal(t, foundTask.DisplayStatus, evergreen.TaskStatusBlocked)
+			assert.Equal(t, t11.GetDisplayStatus(), evergreen.TaskStatusBlocked)
 		}
 	}
 	// check correctness of addStatusColorSort
@@ -214,9 +225,10 @@ func checkPriority(t *testing.T, taskResults []Task) {
 	assert.Equal(t, taskResults[4].DisplayStatus, evergreen.TaskSystemTimedOut)
 	assert.Equal(t, taskResults[5].DisplayStatus, evergreen.TaskSystemFailed)
 	assert.Equal(t, taskResults[6].DisplayStatus, evergreen.TaskWillRun)
-	assert.Equal(t, taskResults[7].DisplayStatus, evergreen.TaskAborted)
-	assert.Equal(t, taskResults[8].DisplayStatus, evergreen.TaskUnscheduled)
-	assert.Equal(t, taskResults[9].DisplayStatus, evergreen.TaskSucceeded)
+	assert.Equal(t, taskResults[7].DisplayStatus, evergreen.TaskStatusBlocked)
+	assert.Equal(t, taskResults[8].DisplayStatus, evergreen.TaskAborted)
+	assert.Equal(t, taskResults[9].DisplayStatus, evergreen.TaskUnscheduled)
+	assert.Equal(t, taskResults[10].DisplayStatus, evergreen.TaskSucceeded)
 }
 
 func TestDependenciesMet(t *testing.T) {

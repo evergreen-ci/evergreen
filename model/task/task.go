@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/model/annotations"
 	"net/url"
 	"regexp"
 	"strings"
@@ -14,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -2053,49 +2053,6 @@ func (t *Task) GetDisplayStatus() string {
 // displayTaskPriority answers the question "if there is a display task whose executions are
 // in these statuses, which overall status would a user expect to see?"
 // for example, if there are both successful and failed tasks, one would expect to see "failed"
-
-/*
-	"branches": []bson.M{
-							{
-								"case": bson.M{
-									"$in": []interface{}{"$" + key, []string{evergreen.TaskFailed, evergreen.TaskTestTimedOut, evergreen.TaskTimedOut}},
-								},
-								"then": 1, // red
-							},
-							{
-								"case": bson.M{
-									"$in": []interface{}{"$" + key, []string{evergreen.TaskKnownIssue}},
-								},
-								"then": 2,
-							},
-							{
-								"case": bson.M{
-									"$eq": []string{"$" + key, evergreen.TaskSetupFailed},
-								},
-								"then": 3, // lavender
-							},
-							{
-								"case": bson.M{
-									"$in": []interface{}{"$" + key, []string{evergreen.TaskSystemFailed, evergreen.TaskSystemUnresponse, evergreen.TaskSystemTimedOut}},
-								},
-								"then": 4, // purple
-							},
-							{
-								"case": bson.M{
-									"$in": []interface{}{"$" + key, []string{evergreen.TaskStarted, evergreen.TaskDispatched}},
-								},
-								"then": 5, // yellow
-							},
-							{
-								"case": bson.M{
-									"$eq": []string{"$" + key, evergreen.TaskSucceeded},
-								},
-								"then": 10, // green
-							},
-						},
-						"default": 6, // all shades of grey
-					},
-*/
 func (t *Task) displayTaskPriority() int {
 	switch t.GetDisplayStatus() {
 	case evergreen.TaskFailed, evergreen.TaskTestTimedOut, evergreen.TaskTimedOut:
