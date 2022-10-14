@@ -11,12 +11,12 @@
               "createdBy": "testuser",
               "availabilityZone": "bcc3edcc1ecf38f75c2d62a8a50c99337509bd80a7f42db062efcda148bf6ff7",
               "size": 500,
-              "expiration": "2020-06-06T14:43:06Z",
+              "expiration": "2020-06-06T14:43:06.287Z",
               "deviceName": null,
               "hostID": "7f909d47566126bd39a05c1a5bd5d111c2e68de3830a8be414c18c231a47f4fc",
               "noExpiration": false,
               "homeVolume": true,
-              "creationTime": "2020-06-05T14:43:06Z",
+              "creationTime": "2020-06-05T14:43:06.567Z",
               "host": {
                 "id": "7f909d47566126bd39a05c1a5bd5d111c2e68de3830a8be414c18c231a47f4fc",
                 "displayName": "turtles rule"
@@ -28,12 +28,12 @@
               "createdBy": "testuser",
               "availabilityZone": "bcc3edcc1ecf38f75c2d62a8a50c99337509bd80a7f42db062efcda148bf6ff7",
               "size": 500,
-              "expiration": "2020-06-06T15:43:18Z",
+              "expiration": "2020-06-06T15:43:18.436Z",
               "deviceName": null,
               "hostID": "a99b50cd37b012c53db7207e4ba8b52989aefab551176c07962cea979abcc479",
               "noExpiration": false,
               "homeVolume": true,
-              "creationTime": "2020-06-05T15:43:18Z",
+              "creationTime": "2020-06-05T15:43:18.814Z",
               "host": {
                 "id": "a99b50cd37b012c53db7207e4ba8b52989aefab551176c07962cea979abcc479",
                 "displayName": ""
@@ -45,12 +45,12 @@
               "createdBy": "testuser",
               "availabilityZone": "bcc3edcc1ecf38f75c2d62a8a50c99337509bd80a7f42db062efcda148bf6ff7",
               "size": 500,
-              "expiration": "2020-06-06T15:43:18Z",
+              "expiration": "2020-06-06T15:43:18.436Z",
               "deviceName": null,
               "hostID": "",
               "noExpiration": false,
               "homeVolume": true,
-              "creationTime": "2020-06-05T15:43:18Z",
+              "creationTime": "2020-06-05T15:43:18.814Z",
               "host": null
             }
           ]
