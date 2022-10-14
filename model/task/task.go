@@ -1560,8 +1560,6 @@ func SetManyAborted(taskIds []string, reason AbortInfo) error {
 			"$set": bson.M{
 				AbortedKey:   true,
 				AbortInfoKey: reason,
-				StatusKey:    evergreen.TaskFailed,
-				DetailsKey:   getAbortedFailureDetails(),
 			},
 		},
 	)
@@ -1578,8 +1576,6 @@ func (t *Task) SetAborted(reason AbortInfo) error {
 			"$set": bson.M{
 				AbortedKey:   true,
 				AbortInfoKey: reason,
-				StatusKey:    evergreen.TaskFailed,
-				DetailsKey:   getAbortedFailureDetails(),
 			},
 		},
 	)
@@ -2540,8 +2536,6 @@ func AbortBuild(buildId string, reason AbortInfo) error {
 		bson.M{"$set": bson.M{
 			AbortedKey:   true,
 			AbortInfoKey: reason,
-			StatusKey:    evergreen.TaskFailed,
-			DetailsKey:   getAbortedFailureDetails(),
 		}},
 	)
 	if err != nil {
@@ -2578,8 +2572,6 @@ func AbortVersion(versionId string, reason AbortInfo) error {
 		bson.M{"$set": bson.M{
 			AbortedKey:   true,
 			AbortInfoKey: reason,
-			StatusKey:    evergreen.TaskFailed,
-			DetailsKey:   getAbortedFailureDetails(),
 		}},
 	)
 	if err != nil {

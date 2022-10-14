@@ -497,7 +497,7 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		detailsCopy.Status = evergreen.TaskFailed
 	}
 
-	if detailsCopy.Description != evergreen.TaskDescriptionAborted && t.Status == detailsCopy.Status {
+	if t.Status == detailsCopy.Status {
 		grip.Warning(message.Fields{
 			"message": "tried to mark task as finished twice",
 			"task":    t.Id,
@@ -1643,29 +1643,27 @@ func ClearAndResetStrandedHostTask(h *host.Host) error {
 	return nil
 }
 
-// ResetStaleTask fixes a task that has exceeded the heartbeat timeout by
-// marking the current task execution as finished and, if possible, a new
+// ResetStaleTask fixes a task that has either exceeded the heartbeat timeout
+// or has been marked as aborted but was never ended by the agent.
+// The current task execution is marked as finished and, if possible, a new
 // execution is created to restart the task.
 func ResetStaleTask(t *task.Task) error {
 	CheckAndBlockSingleHostTaskGroup(t, t.Status)
 
-	// Skip resetting the task if it was marked as aborted by the user
+	failureDesc := evergreen.TaskDescriptionHeartbeat
 	if t.Aborted {
-		grip.Info(message.Fields{
-			"message":            "timed out task was aborted, skipping reset",
-			"task":               t.Id,
-			"execution":          t.Execution,
-			"execution_platform": t.ExecutionPlatform,
-		})
-		return nil
-	}
-
-	if err := resetSystemFailedTask(t, evergreen.TaskDescriptionHeartbeat); err != nil {
-		return errors.Wrap(err, "resetting task")
+		failureDesc = evergreen.TaskDescriptionAborted
+		if err := t.MarkSystemFailed(failureDesc); err != nil {
+			return errors.Wrap(err, "marking aborted task as system failed")
+		}
+	} else {
+		if err := resetSystemFailedTask(t, failureDesc); err != nil {
+			return errors.Wrap(err, "resetting heartbeat task")
+		}
 	}
 
 	grip.Info(message.Fields{
-		"message":            "successfully fixed stale heartbeat task",
+		"message":            fmt.Sprintf("successfully fixed stale %s task", failureDesc),
 		"task":               t.Id,
 		"execution":          t.Execution,
 		"execution_platform": t.ExecutionPlatform,

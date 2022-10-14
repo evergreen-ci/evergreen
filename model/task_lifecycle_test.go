@@ -4100,6 +4100,23 @@ func TestResetStaleTask(t *testing.T) {
 			require.NotZero(t, dbVersion)
 			assert.Equal(t, evergreen.VersionCreated, dbVersion.Status, "version status should be updated for restarted task")
 		},
+		"SuccessfullySystemFailsAbortedTask": func(t *testing.T, tsk task.Task) {
+			tsk.Aborted = true
+			require.NoError(t, tsk.Insert())
+			require.NoError(t, ResetStaleTask(&tsk))
+
+			dbArchivedTask, err := task.FindOneOldByIdAndExecution(tsk.Id, 1)
+			require.NoError(t, err)
+			require.Zero(t, dbArchivedTask, "should not have archived the aborted task")
+
+			dbTask, err := task.FindOneId(tsk.Id)
+			assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
+			assert.Equal(t, evergreen.CommandTypeSystem, dbTask.Details.Type)
+			assert.Equal(t, evergreen.TaskDescriptionAborted, dbTask.Details.Description)
+			assert.False(t, utility.IsZeroTime(dbTask.FinishTime))
+			assert.False(t, dbTask.ContainerAllocated)
+			assert.Zero(t, dbTask.ContainerAllocatedTime)
+		},
 		"ResetsParentDisplayTaskForStaleExecutionTask": func(t *testing.T, tsk task.Task) {
 			otherExecTask := task.Task{
 				Id:        "execution_task_id",
