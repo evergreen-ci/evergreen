@@ -1560,6 +1560,8 @@ func SetManyAborted(taskIds []string, reason AbortInfo) error {
 			"$set": bson.M{
 				AbortedKey:   true,
 				AbortInfoKey: reason,
+				StatusKey:    evergreen.TaskFailed,
+				DetailsKey:   getAbortedFailureDetails(),
 			},
 		},
 	)
@@ -1567,10 +1569,6 @@ func SetManyAborted(taskIds []string, reason AbortInfo) error {
 
 // SetAborted sets the abort field of task to aborted
 func (t *Task) SetAborted(reason AbortInfo) error {
-	taskEndDetails := apimodels.TaskEndDetail{
-		Status:      evergreen.TaskFailed,
-		Description: evergreen.TaskDescriptionAborted,
-	}
 	t.Aborted = true
 	return UpdateOne(
 		bson.M{
@@ -1581,7 +1579,7 @@ func (t *Task) SetAborted(reason AbortInfo) error {
 				AbortedKey:   true,
 				AbortInfoKey: reason,
 				StatusKey:    evergreen.TaskFailed,
-				DetailsKey:   taskEndDetails,
+				DetailsKey:   getAbortedFailureDetails(),
 			},
 		},
 	)
@@ -2542,6 +2540,8 @@ func AbortBuild(buildId string, reason AbortInfo) error {
 		bson.M{"$set": bson.M{
 			AbortedKey:   true,
 			AbortInfoKey: reason,
+			StatusKey:    evergreen.TaskFailed,
+			DetailsKey:   getAbortedFailureDetails(),
 		}},
 	)
 	if err != nil {
@@ -2578,6 +2578,8 @@ func AbortVersion(versionId string, reason AbortInfo) error {
 		bson.M{"$set": bson.M{
 			AbortedKey:   true,
 			AbortInfoKey: reason,
+			StatusKey:    evergreen.TaskFailed,
+			DetailsKey:   getAbortedFailureDetails(),
 		}},
 	)
 	if err != nil {
@@ -2947,19 +2949,6 @@ func (t *Task) SetResetFailedWhenFinished() error {
 			},
 		},
 	)
-}
-
-// SetAbortedTasksResetWhenFinished sets all matching aborted tasks as ResetWhenFinished.
-func SetAbortedTasksResetWhenFinished(taskIds []string) error {
-	_, err := UpdateAll(
-		bySubsetAborted(taskIds),
-		bson.M{
-			"$set": bson.M{
-				ResetWhenFinishedKey: true,
-			},
-		},
-	)
-	return err
 }
 
 // MergeTestResultsBulk takes a slice of task structs and returns the slice with

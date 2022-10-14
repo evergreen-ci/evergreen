@@ -1640,6 +1640,8 @@ func AbortTasksForBuild(buildId string, taskIds []string, caller string) error {
 			"$set": bson.M{
 				AbortedKey:   true,
 				AbortInfoKey: AbortInfo{User: caller},
+				StatusKey:    evergreen.TaskFailed,
+				DetailsKey:   getAbortedFailureDetails(),
 			},
 		},
 	)
@@ -1657,6 +1659,8 @@ func AbortAndMarkResetTasksForVersion(versionId string, taskIds []string, caller
 			AbortedKey:           true,
 			AbortInfoKey:         AbortInfo{User: caller},
 			ResetWhenFinishedKey: true,
+			StatusKey:            evergreen.TaskFailed,
+			DetailsKey:           getAbortedFailureDetails(),
 		}},
 	)
 	return err
@@ -1743,4 +1747,11 @@ func (t *Task) SetStepbackDepth(stepbackDepth int) error {
 				StepbackDepthKey: stepbackDepth,
 			},
 		})
+}
+
+func getAbortedFailureDetails() apimodels.TaskEndDetail {
+	return apimodels.TaskEndDetail{
+		Status:      evergreen.TaskFailed,
+		Description: evergreen.TaskDescriptionAborted,
+	}
 }
