@@ -1870,9 +1870,6 @@ func TestAbortTask(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(testTask.Activated, ShouldEqual, false)
 			So(testTask.Aborted, ShouldEqual, true)
-			So(testTask.Status, ShouldEqual, evergreen.TaskFailed)
-			So(testTask.Details.Description, ShouldEqual, evergreen.TaskDescriptionAborted)
-			So(testTask.Details.Status, ShouldEqual, evergreen.TaskFailed)
 		})
 		Convey("a task that is finished should error when aborting", func() {
 			So(AbortTask(finishedTask.Id, userName), ShouldNotBeNil)
