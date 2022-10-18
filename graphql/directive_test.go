@@ -79,6 +79,17 @@ func setupPermissions(t *testing.T) {
 
 func TestRequireSuperUser(t *testing.T) {
 	setupPermissions(t)
+	require.NoError(t, db.Clear(user.Collection),
+		"unable to clear user collection")
+	dbUser := &user.DBUser{
+		Id: apiUser,
+		Settings: user.UserSettings{
+			SlackUsername: "testuser",
+			SlackMemberId: "testuser",
+		},
+	}
+	require.NoError(t, dbUser.Insert())
+
 	const email = "testuser@mongodb.com"
 	const accessToken = "access_token"
 	const refreshToken = "refresh_token"
@@ -116,7 +127,17 @@ func TestRequireSuperUser(t *testing.T) {
 	require.Equal(t, 1, callCount)
 }
 
-func setupUser() (*user.DBUser, error) {
+func setupUser(t *testing.T) (*user.DBUser, error) {
+	require.NoError(t, db.Clear(user.Collection),
+		"unable to clear user collection")
+	dbUser := &user.DBUser{
+		Id: apiUser,
+		Settings: user.UserSettings{
+			SlackUsername: "testuser",
+			SlackMemberId: "testuser",
+		},
+	}
+	require.NoError(t, dbUser.Insert())
 	const email = "testuser@mongodb.com"
 	const accessToken = "access_token"
 	const refreshToken = "refresh_token"
@@ -138,7 +159,7 @@ func TestRequireProjectAccess(t *testing.T) {
 		return nil, nil
 	}
 
-	usr, err := setupUser()
+	usr, err := setupUser(t)
 	require.NoError(t, err)
 	require.NotNil(t, usr)
 

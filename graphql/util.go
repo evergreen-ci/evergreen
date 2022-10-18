@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -863,4 +864,76 @@ func bbGetCreatedTicketsPointers(taskId string) ([]*thirdparty.JiraTicket, error
 	}
 
 	return results, nil
+}
+
+// getHostRequestOptions validates and transforms user-specified spawn host input
+func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput *SpawnHostInput) (*restModel.HostRequestOptions, error) {
+	if spawnHostInput.SavePublicKey {
+		if err := savePublicKey(ctx, *spawnHostInput.PublicKey); err != nil {
+			return nil, err
+		}
+	}
+	dist, err := distro.FindOneId(spawnHostInput.DistroID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("trying to find distro with id: %s, err:  `%s`", spawnHostInput.DistroID, err))
+	}
+	if dist == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find Distro with id: %s", spawnHostInput.DistroID))
+	}
+
+	options := &restModel.HostRequestOptions{
+		DistroID:             spawnHostInput.DistroID,
+		Region:               spawnHostInput.Region,
+		KeyName:              spawnHostInput.PublicKey.Key,
+		IsVirtualWorkstation: spawnHostInput.IsVirtualWorkStation,
+		NoExpiration:         spawnHostInput.NoExpiration,
+	}
+	if spawnHostInput.SetUpScript != nil {
+		options.SetupScript = *spawnHostInput.SetUpScript
+	}
+	if spawnHostInput.UserDataScript != nil {
+		options.UserData = *spawnHostInput.UserDataScript
+	}
+	if spawnHostInput.HomeVolumeSize != nil {
+		options.HomeVolumeSize = *spawnHostInput.HomeVolumeSize
+	}
+	if spawnHostInput.VolumeID != nil {
+		options.HomeVolumeID = *spawnHostInput.VolumeID
+	}
+	if spawnHostInput.Expiration != nil {
+		options.Expiration = spawnHostInput.Expiration
+	}
+
+	// passing an empty string taskId is okay as long as a
+	// taskId is not required by other spawnHostInput parameters
+	var t *task.Task
+	if spawnHostInput.TaskID != nil && *spawnHostInput.TaskID != "" {
+		options.TaskID = *spawnHostInput.TaskID
+		if t, err = task.FindOneId(*spawnHostInput.TaskID); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task %s: %s", *spawnHostInput.TaskID, err.Error()))
+		}
+	}
+
+	if utility.FromBoolPtr(spawnHostInput.UseProjectSetupScript) {
+		if t == nil {
+			return nil, ResourceNotFound.Send(ctx, "A valid task id must be supplied when useProjectSetupScript is set to true")
+		}
+		options.UseProjectSetupScript = *spawnHostInput.UseProjectSetupScript
+	}
+	if utility.FromBoolPtr(spawnHostInput.TaskSync) {
+		if t == nil {
+			return nil, ResourceNotFound.Send(ctx, "A valid task id must be supplied when taskSync is set to true")
+		}
+		options.TaskSync = *spawnHostInput.TaskSync
+	}
+
+	if utility.FromBoolPtr(spawnHostInput.SpawnHostsStartedByTask) {
+		if t == nil {
+			return nil, ResourceNotFound.Send(ctx, "A valid task id must be supplied when SpawnHostsStartedByTask is set to true")
+		}
+		if err = data.CreateHostsFromTask(t, *usr, spawnHostInput.PublicKey.Key); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("spawning hosts from task %s: %s", *spawnHostInput.TaskID, err))
+		}
+	}
+	return options, nil
 }

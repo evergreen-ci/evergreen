@@ -169,9 +169,11 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 	}
 
 	// spawn the host
+	currentTime := time.Now()
 	expiration := evergreen.DefaultSpawnHostExpiration
+
 	if so.Expiration != nil {
-		expiration = time.Until(*so.Expiration)
+		expiration = so.Expiration.Sub(currentTime)
 	}
 	if so.NoExpiration {
 		expiration = evergreen.SpawnHostNoExpirationDuration
@@ -180,7 +182,7 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 		Distro:               *d,
 		ProvisionOptions:     so.ProvisionOptions,
 		UserName:             so.UserName,
-		ExpirationTime:       time.Now().Add(expiration),
+		ExpirationTime:       currentTime.Add(expiration),
 		UserHost:             true,
 		InstanceTags:         so.InstanceTags,
 		InstanceType:         so.InstanceType,

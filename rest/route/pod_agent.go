@@ -505,15 +505,19 @@ func (h *podAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	deactivatePrevious := utility.FromBoolPtr(projectRef.DeactivatePrevious)
-	err = model.MarkEnd(t, evergreen.APIServerTaskActivator, finishTime, &h.details, deactivatePrevious)
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "calling mark finish on task '%s'", t.Id))
-	}
+	// The order of operations here for clearing the task from the pod and
+	// marking the task finished is critical and must be done in this particular
+	// order. See the host end task route for more detailed explanation.
 
 	// Clear the running task on the pod now that the task has finished.
 	if err = p.ClearRunningTask(); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "clearing running task '%s' for pod '%s'", t.Id, p.ID))
+	}
+
+	deactivatePrevious := utility.FromBoolPtr(projectRef.DeactivatePrevious)
+	err = model.MarkEnd(t, evergreen.APIServerTaskActivator, finishTime, &h.details, deactivatePrevious)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "calling mark finish on task '%s'", t.Id))
 	}
 
 	if t.Requester == evergreen.MergeTestRequester {

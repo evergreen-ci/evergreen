@@ -1059,9 +1059,6 @@ func TaskHistoryPickaxe(params PickaxeParams) ([]task.Task, error) {
 		return nil, errors.Wrap(err, "finding build variants")
 	}
 	query := bson.M{
-		task.BuildVariantKey: bson.M{
-			"$in": buildVariants,
-		},
 		task.DisplayNameKey: params.TaskName,
 		task.RevisionOrderNumberKey: bson.M{
 			"$gte": params.OldestOrder,
@@ -1069,10 +1066,13 @@ func TaskHistoryPickaxe(params PickaxeParams) ([]task.Task, error) {
 		},
 		task.ProjectKey: params.Project.Identifier,
 	}
-	// If there are build variants in the filter, use them instead
 	if len(params.BuildVariants) > 0 {
 		query[task.BuildVariantKey] = bson.M{
 			"$in": params.BuildVariants,
+		}
+	} else if len(buildVariants) > 0 {
+		query[task.BuildVariantKey] = bson.M{
+			"$in": buildVariants,
 		}
 	}
 	projection := []string{

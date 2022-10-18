@@ -1,32 +1,32 @@
 {
-    "tasks": [
-        {
-            "_id": "1",
-            "display_name": "generate-lint",
-            "status": "failed",
-            "abort" : true,
-            "abort_info" : {
-                "user" : "apiserver",
-                "task_id" : "2"
-            }
-        },
-        {
-            "_id": "2",
-            "build_id": "sys_perf_linux_3",
-            "display_name" : "validate_commit_message"
-        },
-        {
-            "_id": "3",
-            "display_name": "generate-lint",
-            "status": "success"
-        }
-    ],
-    "builds": [
-        {
-            "_id": "sys_perf_linux_3",
-            "status" : "failed",
-            "build_variant": "commit-queue",
-            "display_name": "~ Commit Queue"
-        }
-    ]
+  "tasks": [
+    {
+      "_id": "1",
+      "display_name": "generate-lint",
+      "status": "failed",
+      "abort": true,
+      "abort_info": {
+        "user": "apiserver",
+        "task_id": "2"
+      }
+    },
+    {
+      "_id": "2",
+      "build_id": "sys_perf_linux_3",
+      "display_name": "validate_commit_message"
+    },
+    {
+      "_id": "3",
+      "display_name": "generate-lint",
+      "status": "success"
+    }
+  ],
+  "builds": [
+    {
+      "_id": "sys_perf_linux_3",
+      "status": "failed",
+      "build_variant": "commit-queue",
+      "display_name": "~ Commit Queue"
+    }
+  ]
 }

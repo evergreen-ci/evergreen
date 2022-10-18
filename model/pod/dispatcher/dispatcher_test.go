@@ -52,6 +52,8 @@ func TestUpsertAtomically(t *testing.T) {
 			assert.Equal(t, pd.TaskIDs, dbDispatcher.TaskIDs)
 			assert.NotZero(t, pd.ModificationCount)
 			assert.Equal(t, pd.ModificationCount, dbDispatcher.ModificationCount)
+			assert.False(t, utility.IsZeroTime(dbDispatcher.LastModified))
+			assert.Equal(t, pd.LastModified, dbDispatcher.LastModified)
 		},
 		"FailsWithMatchingGroupIDButDifferentDispatcherID": func(t *testing.T, pd PodDispatcher) {
 			require.NoError(t, pd.Insert())
