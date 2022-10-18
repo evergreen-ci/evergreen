@@ -70,7 +70,7 @@ func (r *versionResolver) BuildVariants(ctx context.Context, obj *restModel.APIV
 	if !utility.FromBoolPtr(obj.Activated) {
 		return nil, nil
 	}
-	groupedBuildVariants, err := generateBuildVariants(utility.FromStringPtr(obj.Id), !evergreen.IsPatchRequester(utility.FromStringPtr(obj.Requester)), *options)
+	groupedBuildVariants, err := generateBuildVariants(utility.FromStringPtr(obj.Id), evergreen.IsPatchRequester(utility.FromStringPtr(obj.Requester)), *options)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error generating build variants for version %s : %s", *obj.Id, err.Error()))
 	}
@@ -83,7 +83,7 @@ func (r *versionResolver) BuildVariantStats(ctx context.Context, obj *restModel.
 		Variants:                       options.Variants,
 		Statuses:                       options.Statuses,
 		IncludeBuildVariantDisplayName: true,
-		IsMainlineCommit:               !evergreen.IsPatchRequester(utility.FromStringPtr(obj.Requester)),
+		IsPatch:                        evergreen.IsPatchRequester(utility.FromStringPtr(obj.Requester)),
 	}
 	stats, err := task.GetGroupedTaskStatsByVersion(utility.FromStringPtr(obj.Id), opts)
 	if err != nil {
@@ -295,7 +295,7 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *restModel.APIVersion, 
 		IncludeBaseTasks:               true,
 		IncludeEmptyActivation:         utility.FromBoolPtr(options.IncludeEmptyActivation),
 		IncludeBuildVariantDisplayName: true,
-		IsMainlineCommit:               !evergreen.IsPatchRequester(v.Requester),
+		IsPatch:                        evergreen.IsPatchRequester(v.Requester),
 	}
 	tasks, count, err := task.GetTasksByVersion(versionId, opts)
 	if err != nil {
@@ -327,7 +327,7 @@ func (r *versionResolver) TaskStatuses(ctx context.Context, obj *restModel.APIVe
 		IncludeBaseTasks:               false,
 		FieldsToProject:                []string{task.DisplayStatusKey},
 		IncludeBuildVariantDisplayName: false,
-		IsMainlineCommit:               !evergreen.IsPatchRequester(utility.FromStringPtr(obj.Requester)),
+		IsPatch:                        evergreen.IsPatchRequester(utility.FromStringPtr(obj.Requester)),
 	}
 	tasks, _, err := task.GetTasksByVersion(*obj.Id, opts)
 	if err != nil {
@@ -343,7 +343,7 @@ func (r *versionResolver) TaskStatusStats(ctx context.Context, obj *restModel.AP
 		TaskNames:             options.Tasks,
 		Variants:              options.Variants,
 		Statuses:              getValidTaskStatusesFilter(options.Statuses),
-		IsMainlineCommit:      !evergreen.IsPatchRequester(utility.FromStringPtr(obj.Requester)),
+		IsPatch:               evergreen.IsPatchRequester(utility.FromStringPtr(obj.Requester)),
 	}
 	if len(options.Variants) != 0 {
 		opts.IncludeBuildVariantDisplayName = true // we only need the buildVariantDisplayName if we plan on filtering on it.

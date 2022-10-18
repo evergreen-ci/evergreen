@@ -3714,7 +3714,7 @@ type GetTasksByVersionOptions struct {
 	IncludeBaseTasks                    bool
 	IncludeEmptyActivation              bool
 	IncludeBuildVariantDisplayName      bool
-	IsMainlineCommit                    bool
+	IsPatch                             bool
 	UseLegacyAddBuildVariantDisplayName bool
 }
 
@@ -4095,10 +4095,10 @@ func GetBaseStatusesForActivatedTasks(versionID string, baseVersionID string) ([
 }
 
 type HasMatchingTasksOptions struct {
-	TaskNames        []string
-	Variants         []string
-	Statuses         []string
-	IsMainlineCommit bool
+	TaskNames []string
+	Variants  []string
+	Statuses  []string
+	IsPatch   bool
 }
 
 // HasMatchingTasks returns true if the version has tasks with the given statuses
@@ -4108,7 +4108,7 @@ func HasMatchingTasks(versionID string, opts HasMatchingTasksOptions) (bool, err
 		Variants:                       opts.Variants,
 		Statuses:                       opts.Statuses,
 		IncludeBuildVariantDisplayName: true,
-		IsMainlineCommit:               opts.IsMainlineCommit,
+		IsPatch:                        opts.IsPatch,
 	}
 	if len(opts.Variants) > 0 {
 		options.UseLegacyAddBuildVariantDisplayName = ShouldUseLegacyAddBuildVariantDisplayName(versionID)
@@ -4150,13 +4150,14 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		taskNamesAsRegex := strings.Join(opts.TaskNames, "|")
 		match[DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex, "$options": "i"}
 	}
-	if !opts.IsMainlineCommit {
+	// Depending on whether a version is a patch or mainline commit we need to treat how we fetch unscheduled tasks differently.
+	// Unscheduled
+	if opts.IsPatch {
 		// Activated Time is needed to filter out generated tasks that have been generated but not yet activated
 		if !opts.IncludeEmptyActivation {
 			match[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
 		}
-	}
-	if opts.IsMainlineCommit {
+	} else {
 		if opts.IncludeEmptyActivation {
 			match[GeneratedByKey] = bson.M{"$exists": false}
 		}
@@ -4258,7 +4259,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		}
 
 		// If we are requesting a mainline commit's base task we want to use the previous commit instead.
-		if opts.IsMainlineCommit {
+		if !opts.IsPatch {
 			baseCommitMatch = append(baseCommitMatch, bson.M{
 				"$eq": []interface{}{"$" + RevisionOrderNumberKey, bson.M{
 					"$subtract": []interface{}{"$$" + RevisionOrderNumberKey, 1},

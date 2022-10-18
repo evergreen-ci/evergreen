@@ -3608,7 +3608,7 @@ func TestGetTasksByVersionBaseTasks(t *testing.T) {
 	// Normal Patch builds
 	opts := GetTasksByVersionOptions{
 		IncludeBaseTasks: true,
-		IsMainlineCommit: false,
+		IsPatch:          true,
 	}
 	tasks, count, err := GetTasksByVersion("v2", opts)
 	assert.NoError(t, err)
@@ -3622,7 +3622,7 @@ func TestGetTasksByVersionBaseTasks(t *testing.T) {
 	// Mainline builds
 	opts = GetTasksByVersionOptions{
 		IncludeBaseTasks: true,
-		IsMainlineCommit: true,
+		IsPatch:          false,
 	}
 	tasks, count, err = GetTasksByVersion("v3", opts)
 	assert.NoError(t, err)
