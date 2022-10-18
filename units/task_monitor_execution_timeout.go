@@ -265,30 +265,6 @@ func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
 	}
 	j.logTasks(tasks, "heartbeat past cutoff, on running host")
 
-	noHeartbeatSinceDispatchTaskIDs := map[string]struct{}{}
-	tasks, err = host.FindStaleRunningTasks(heartbeatTimeoutThreshold, host.TaskNoHeartbeatSinceDispatch)
-	if err != nil {
-		j.AddError(errors.Wrap(err, "finding tasks with timed-out or stale heartbeats"))
-		return
-	}
-	for _, t := range tasks {
-		taskIDs[t.Id] = struct{}{}
-		noHeartbeatSinceDispatchTaskIDs[t.Id] = struct{}{}
-	}
-	j.logTasks(tasks, "no heartbeat since dispatch, on running host")
-
-	undispatchedWithHeartbeatTaskIDs := map[string]struct{}{}
-	tasks, err = host.FindStaleRunningTasks(heartbeatTimeoutThreshold, host.TaskUndispatchedHasHeartbeat)
-	if err != nil {
-		j.AddError(errors.Wrap(err, "finding tasks with timed-out or stale heartbeats"))
-		return
-	}
-	for _, t := range tasks {
-		taskIDs[t.Id] = struct{}{}
-		undispatchedWithHeartbeatTaskIDs[t.Id] = struct{}{}
-	}
-	j.logTasks(tasks, "undispatched task has a heartbeat, on running host")
-
 	staleTaskIDs := map[string]struct{}{}
 	tasks, err = task.FindWithFields(task.ByStaleRunningTask(heartbeatTimeoutThreshold, task.HeartbeatPastCutoff), task.IdKey)
 	if err != nil {
@@ -328,9 +304,7 @@ func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
 	}
 
 	for reason, taskIDs := range map[string]map[string]struct{}{
-		"heartbeat past cutoff":           heartbeatPastCutoffTaskIDs,
-		"no heartbeat since dispatch":     noHeartbeatSinceDispatchTaskIDs,
-		"undispatched task has heartbeat": undispatchedWithHeartbeatTaskIDs,
+		"heartbeat past cutoff": heartbeatPastCutoffTaskIDs,
 	} {
 		uniqueTaskIDs := getUniqueTaskIDs(taskIDs)
 		grip.InfoWhen(len(uniqueTaskIDs) > 0, message.Fields{
