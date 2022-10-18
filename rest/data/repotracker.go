@@ -104,10 +104,10 @@ func TriggerRepotracker(q amboy.Queue, msgID string, event *github.PushEvent) er
 			continue
 		}
 
-		job := units.NewRepotrackerJob(fmt.Sprintf("github-push-%s", msgID), refs[i].Id)
-		job.SetPriority(1)
+		j := units.NewRepotrackerJob(fmt.Sprintf("github-push-%s", msgID), refs[i].Id, false)
 
-		if err := q.Put(context.TODO(), job); err != nil {
+		// kim: TODO: try using context here
+		if err := amboy.EnqueueUniqueJob(context.Background(), q, j); err != nil {
 			catcher.Wrap(err, "enqueueing repotracker job for GitHub push events")
 			failed = append(failed, refs[i].Id)
 

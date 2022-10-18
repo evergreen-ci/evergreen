@@ -154,6 +154,13 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.Peri
 		return "", errors.Wrap(err, "getting GitHub OAuth token")
 	}
 
+	// kim: NOTE: this uses most recent mainline version as basis for this
+	// periodic build. Since it's always based on the previous mainline commit
+	// (i.e. periodic build, commit, trigger, git tag, etc), it will only try
+	// using a revision from the project's current branch if there is a version
+	// that uses the newer branch. Ever since the project settings branch was
+	// changed, only periodic builds have run, so they keep using the old
+	// branch's revision.
 	mostRecentVersion, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester(j.ProjectID))
 	if err != nil {
 		return "", errors.Wrapf(err, "finding most recent version for project '%s'", j.ProjectID)
@@ -161,6 +168,21 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.Peri
 	if mostRecentVersion == nil {
 		return "", errors.Errorf("no recent version found for project '%s'", j.ProjectID)
 	}
+	// kim: QUESTION: can we check the most recent version's branch vs. the
+	// current project setting's branch? Is there a way to make a version based
+	// on a new branch that has no prior versions and no revision to start off
+	// with?
+	// kim: TODO: look into how repotracker creates versions from commits. Maybe
+	// can pull the most recent commit from the correct branch to use as the
+	// revision rather than use the most recent version's revision. Not sure how much the task
+	// depends on the revision having an associated version, but if it's allowed to be unassociated
+	// with a version, then passing just the most recent revision on the new branch might work.
+	//
+	// Alternatively, it seems like the repotracker never activates the first commit in a project
+	// mainline. Maybe because it can't run? Could we fake trigger the repotracker to make one
+	// inactive version from the latest branch when it switches and a non-commit version needs a
+	// previous revision? That way, it'll set the last revision to one that points to a revision on
+	// the "current" branch
 	configFile, err := thirdparty.GetGithubFile(ctx, token, j.project.Owner, j.project.Repo, definition.ConfigFile, mostRecentVersion.Revision)
 	if err != nil {
 		return "", errors.Wrap(err, "getting config file from GitHub")
@@ -192,6 +214,9 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.Peri
 		Message:         definition.Message,
 		PeriodicBuildID: definition.ID,
 		Alias:           definition.Alias,
+		// kim: QUESTION: should this set the branch right here, rather than
+		// assume it'll be populated later, when the branch and revision might
+		// drift apart?
 		Revision: model.Revision{
 			Revision: mostRecentVersion.Revision,
 		},

@@ -101,6 +101,8 @@ func metadataFromVersion(source model.Version, ref model.ProjectRef) (model.Vers
 	if err != nil {
 		return metadata, errors.Wrap(err, "finding most recent revision")
 	}
+	// kim: TODO: question: same issue here about possibility of most recent revision being invalid
+	// due to switching branch.
 	metadata.Revision.Revision = repo.LastRevision
 	author, err := user.FindOneById(source.AuthorID)
 	if err != nil {

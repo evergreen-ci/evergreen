@@ -14,8 +14,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -194,7 +196,7 @@ func PromoteVarsToRepo(projectId string, varNames []string, userId string) error
 
 // SaveProjectSettingsForSection saves the given UI page section and logs it for the given user. If isRepo is true, uses
 // RepoRef related functions and collection instead of ProjectRef.
-func SaveProjectSettingsForSection(ctx context.Context, projectId string, changes *restModel.APIProjectSettings,
+func SaveProjectSettingsForSection(ctx context.Context, env evergreen.Environment, projectId string, changes *restModel.APIProjectSettings,
 	section model.ProjectPageSection, isRepo bool, userId string) (*restModel.APIProjectSettings, error) {
 	before, err := model.GetProjectSettingsById(projectId, isRepo)
 	if err != nil {
@@ -225,6 +227,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 
 	catcher := grip.NewBasicCatcher()
 	modified := false
+	var shouldTriggerRepotracker bool
 	switch section {
 	case model.ProjectPageGeneralSection:
 		if mergedSection.Identifier != mergedBeforeRef.Identifier {
@@ -245,6 +248,8 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 				return nil, errors.Wrapf(err, "enabling webhooks for project '%s'", projectId)
 			}
 			modified = true
+			// kim: TODO: add test for repotracker job enqueued.
+			shouldTriggerRepotracker = true
 		} else if mergedSection.IsEnabled() && !mergedBeforeRef.IsEnabled() {
 			if err = handleGithubConflicts(mergedBeforeRef, "Enabling project"); err != nil {
 				return nil, err
@@ -253,6 +258,8 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			if err = handleGithubConflicts(mergedBeforeRef, "Changing branch"); err != nil {
 				return nil, err
 			}
+			// kim: TODO: add test for repotracker job enqueued.
+			shouldTriggerRepotracker = true
 		}
 
 	case model.ProjectPageAccessSection:
@@ -356,7 +363,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		catcher.Wrapf(DeleteSubscriptions(projectId, toDelete), "deleting subscriptions")
 	case model.ProjectPageContainerSection:
 		for i := range mergedSection.ContainerSizeDefinitions {
-			err = mergedSection.ContainerSizeDefinitions[i].Validate(evergreen.GetEnvironment().Settings().Providers.AWS.Pod.ECS)
+			err = mergedSection.ContainerSizeDefinitions[i].Validate(env.Settings().Providers.AWS.Pod.ECS)
 			catcher.Add(err)
 		}
 		if catcher.HasErrors() {
@@ -397,6 +404,20 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			}
 		}
 	}
+	if shouldTriggerRepotracker {
+		// kim: TODO: test
+		// kim: TODO: May have to apply to AttachProjectToNewRepo and such since that may also change the
+		// owner/repo/branch.
+		ts := utility.RoundPartOfHour(1).Format(units.TSFormat)
+		// Since the owner/repo/branch have changed, ignore the latest revision cached because it's likely invalid.
+		// kim: TODO: may not be necessary to explicitly set the flag to use the recent revision. The debugging in the
+		// GitHub poller may result in being able to fall back to getting recent revisions if we can detect that the
+		// number of revisions is suspicious.
+		if err := amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectId, false)); err != nil {
+			catcher.Wrapf(err, "enqueueing repotracker job after changing owner/repo/branch")
+		}
+	}
+
 	return &res, errors.Wrapf(catcher.Resolve(), "saving section '%s'", section)
 }
 

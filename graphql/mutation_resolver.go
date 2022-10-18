@@ -30,6 +30,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/amboy"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -453,8 +454,8 @@ func (r *mutationResolver) DetachProjectFromRepo(ctx context.Context, projectID 
 
 func (r *mutationResolver) ForceRepotrackerRun(ctx context.Context, projectID string) (bool, error) {
 	ts := utility.RoundPartOfHour(1).Format(units.TSFormat)
-	j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectID)
-	if err := evergreen.GetEnvironment().RemoteQueue().Put(ctx, j); err != nil {
+	j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectID, false)
+	if err := amboy.EnqueueUniqueJob(ctx, evergreen.GetEnvironment().RemoteQueue(), j); err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("error creating Repotracker job: %s", err.Error()))
 	}
 	return true, nil
@@ -491,7 +492,7 @@ func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier
 func (r *mutationResolver) SaveProjectSettingsForSection(ctx context.Context, projectSettings *restModel.APIProjectSettings, section ProjectSettingsSection) (*restModel.APIProjectSettings, error) {
 	projectId := utility.FromStringPtr(projectSettings.ProjectRef.Id)
 	usr := mustHaveUser(ctx)
-	changes, err := data.SaveProjectSettingsForSection(ctx, projectId, projectSettings, model.ProjectPageSection(section), false, usr.Username())
+	changes, err := data.SaveProjectSettingsForSection(ctx, evergreen.GetEnvironment(), projectId, projectSettings, model.ProjectPageSection(section), false, usr.Username())
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
@@ -501,7 +502,7 @@ func (r *mutationResolver) SaveProjectSettingsForSection(ctx context.Context, pr
 func (r *mutationResolver) SaveRepoSettingsForSection(ctx context.Context, repoSettings *restModel.APIProjectSettings, section ProjectSettingsSection) (*restModel.APIProjectSettings, error) {
 	projectId := utility.FromStringPtr(repoSettings.ProjectRef.Id)
 	usr := mustHaveUser(ctx)
-	changes, err := data.SaveProjectSettingsForSection(ctx, projectId, repoSettings, model.ProjectPageSection(section), true, usr.Username())
+	changes, err := data.SaveProjectSettingsForSection(ctx, evergreen.GetEnvironment(), projectId, repoSettings, model.ProjectPageSection(section), true, usr.Username())
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}

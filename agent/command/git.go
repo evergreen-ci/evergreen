@@ -198,6 +198,9 @@ func (opts cloneOpts) buildHTTPCloneCommand() ([]string, error) {
 }
 
 func (opts cloneOpts) buildSSHCloneCommand() ([]string, error) {
+	// kim: NOTE: clones with commands:
+	// git clone git@github.com:wiredtiger/vendoring-tools.git vendoring-tools --branch main
+	// cd vendoring-tools
 	cloneCmd := fmt.Sprintf("git clone '%s' '%s'", opts.location, opts.dir)
 	if opts.recurseSubmodules {
 		cloneCmd = fmt.Sprintf("%s --recurse-submodules", cloneCmd)
@@ -265,6 +268,7 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, conf *internal.
 		fmt.Sprintf("rm -rf %s", c.Directory),
 	}
 
+	// kim: NOTE: get the git clone invocation for SSH clone.
 	cloneCmd, err := opts.getCloneCommand()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting command to clone repo")
@@ -307,6 +311,9 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, conf *internal.
 			gitCommands = append(gitCommands, fmt.Sprintf("git log HEAD..%s || git fetch --unshallow", conf.Task.Revision))
 		}
 		if !opts.mergeTestRequester {
+			// kim: NOTE: resets to the revision on the old branch here:
+			// git reset --hard 4ac0125e38413ba72ac77b96bf464d7533265dd0
+			// kim: TODO: figure out where this revision comes from
 			gitCommands = append(gitCommands, fmt.Sprintf("git reset --hard %s", conf.Task.Revision))
 		}
 	}

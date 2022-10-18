@@ -42,7 +42,7 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 				ProjectRef: apiProjectRef,
 			}
 			// ensure that we're saving settings without a special case
-			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGeneralSection, true, "me")
+			settings, err := SaveProjectSettingsForSection(ctx, env, ref.Id, apiChanges, model.ProjectPageGeneralSection, true, "me")
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
 			repoRefFromDB, err := model.FindOneRepoRef(ref.Id)
@@ -63,7 +63,7 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
 			}
-			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageAccessSection, true, "me")
+			settings, err := SaveProjectSettingsForSection(ctx, env, ref.Id, apiChanges, model.ProjectPageAccessSection, true, "me")
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
 			repoRefFromDb, err := model.FindOneRepoRef(ref.Id)
@@ -110,7 +110,7 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
 			}
-			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageAccessSection, true, "me")
+			settings, err := SaveProjectSettingsForSection(ctx, env, ref.Id, apiChanges, model.ProjectPageAccessSection, true, "me")
 			// should still add newAdmin and delete oldAdmin even with errors
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "no user 'nonexistent' found")
@@ -142,7 +142,7 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			apiChanges := &restModel.APIProjectSettings{
 				Vars: apiProjectVars,
 			}
-			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageVariablesSection, true, "me")
+			settings, err := SaveProjectSettingsForSection(ctx, env, ref.Id, apiChanges, model.ProjectPageVariablesSection, true, "me")
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
 			varsFromDb, err := model.FindOneProjectVars(updatedVars.Id)
@@ -257,7 +257,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 				ProjectRef: apiProjectRef,
 			}
 			// ensure that we're saving settings without a special case
-			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGeneralSection, false, "me")
+			settings, err := SaveProjectSettingsForSection(ctx, env, ref.Id, apiChanges, model.ProjectPageGeneralSection, false, "me")
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
 			assert.Equal(t, "myRepoId", utility.FromStringPtr(settings.ProjectRef.RepoRefId))
@@ -289,7 +289,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
 			}
-			_, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGeneralSection, false, "me")
+			_, err := SaveProjectSettingsForSection(ctx, env, ref.Id, apiChanges, model.ProjectPageGeneralSection, false, "me")
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "PR testing and commit checks")
 			assert.NotContains(t, err.Error(), "the commit queue")
@@ -318,7 +318,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
 			}
-			_, err := SaveProjectSettingsForSection(ctx, changes.Id, apiChanges, model.ProjectPageGithubAndCQSection, false, "me")
+			_, err := SaveProjectSettingsForSection(ctx, env, changes.Id, apiChanges, model.ProjectPageGithubAndCQSection, false, "me")
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "PR testing")
 			assert.NotContains(t, err.Error(), "the commit queue")
@@ -336,7 +336,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
 			}
-			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageAccessSection, false, "me")
+			settings, err := SaveProjectSettingsForSection(ctx, env, ref.Id, apiChanges, model.ProjectPageAccessSection, false, "me")
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
 			pRefFromDB, err := model.FindBranchProjectRef(ref.Id)
@@ -376,7 +376,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
 			}
-			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageAccessSection, false, "me")
+			settings, err := SaveProjectSettingsForSection(ctx, env, ref.Id, apiChanges, model.ProjectPageAccessSection, false, "me")
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "no user 'nonexistent' found")
 			assert.NotNil(t, settings)
@@ -405,7 +405,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			apiChanges := &restModel.APIProjectSettings{
 				Vars: apiProjectVars,
 			}
-			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageVariablesSection, false, "me")
+			settings, err := SaveProjectSettingsForSection(ctx, env, ref.Id, apiChanges, model.ProjectPageVariablesSection, false, "me")
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
 			// Confirm that private variables are redacted.
@@ -445,7 +445,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			apiChanges := &restModel.APIProjectSettings{
 				Subscriptions: []restModel.APISubscription{apiSub},
 			}
-			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageNotificationsSection, false, "me")
+			settings, err := SaveProjectSettingsForSection(ctx, env, ref.Id, apiChanges, model.ProjectPageNotificationsSection, false, "me")
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
 			subsFromDb, err := event.FindSubscriptionsByOwner(ref.Id, event.OwnerTypeProject)
@@ -464,7 +464,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
 			}
-			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageWorkstationsSection, false, "me")
+			settings, err := SaveProjectSettingsForSection(ctx, env, ref.Id, apiChanges, model.ProjectPageWorkstationsSection, false, "me")
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
 			assert.NotNil(t, settings.ProjectRef.WorkstationConfig.SetupCommands)

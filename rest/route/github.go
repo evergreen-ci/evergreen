@@ -396,6 +396,8 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 				var existingVersion *model.Version
 				// If a version for this revision exists for this project, add tag
 				// Retry in case a commit and a tag are pushed at around the same time, and the version isn't ready yet
+				// kim: NOTE: this might not be good enough either for cases involving a changed
+				// branch without any commit. It may reset to the wrong base revision.
 				existingVersion, err = model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(pRef.Id, hash))
 				if err != nil {
 					retryCatcher.Wrapf(err, "finding version for project '%s' with revision '%s'", pRef.Id, hash)

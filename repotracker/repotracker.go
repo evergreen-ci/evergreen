@@ -72,6 +72,7 @@ type RepoPoller interface {
 	// Fetches the most recent 'numNewRepoRevisionsToFetch' revisions for a
 	// project - with the most recent revision appearing as the first element in
 	// the slice.
+	// kim: TODO: change this doc depending on how it handles not being able to find the revision.
 	GetRecentRevisions(numNewRepoRevisionsToFetch int) ([]model.Revision, error)
 }
 
@@ -87,7 +88,7 @@ func (p projectConfigError) Error() string {
 // The FetchRevisions method is used by a RepoTracker to run the pipeline for
 // tracking repositories. It performs everything from polling the repository to
 // persisting any changes retrieved from the repository reference.
-func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
+func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context, ignoreLatestRevision bool) error {
 	settings := repoTracker.Settings
 	projectRef := repoTracker.ProjectRef
 
@@ -116,7 +117,7 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 		lastRevision = repository.LastRevision
 	}
 
-	if lastRevision == "" {
+	if lastRevision == "" || ignoreLatestRevision {
 		numRevisions := settings.RepoTracker.NumNewRepoRevisionsToFetch
 		if numRevisions <= 0 {
 			numRevisions = DefaultNumNewRepoRevisionsToFetch
@@ -124,11 +125,12 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 		// if this is the first time we're running the tracker for this project,
 		// fetch the most recent `numNewRepoRevisionsToFetch` revisions
 		grip.Debug(message.Fields{
-			"runner":             RunnerName,
-			"project":            projectRef.Id,
-			"project_identifier": projectRef.Identifier,
-			"message":            "no last recorded revision, using most recent revisions",
-			"number":             numRevisions,
+			"runner":                 RunnerName,
+			"project":                projectRef.Id,
+			"project_identifier":     projectRef.Identifier,
+			"message":                "no last recorded revision or ignoring last recorded revision, using most recent revisions",
+			"ignore_latest_revision": ignoreLatestRevision,
+			"number":                 numRevisions,
 		})
 		revisions, err = repoTracker.GetRecentRevisions(numRevisions)
 	} else {
@@ -321,6 +323,8 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			}
 		}
 
+		// kim: NOTE: this is mostly the same logic as for periodic builds, but uses the current
+		// branch information that was just fetched directly from GitHub a moment ago.
 		metadata := model.VersionMetadata{
 			Revision: revisions[i],
 		}
