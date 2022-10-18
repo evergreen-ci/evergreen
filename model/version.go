@@ -21,27 +21,25 @@ import (
 )
 
 type Version struct {
-	Id                  string    `bson:"_id" json:"id,omitempty"`
-	CreateTime          time.Time `bson:"create_time" json:"create_time,omitempty"`
-	StartTime           time.Time `bson:"start_time" json:"start_time,omitempty"`
-	FinishTime          time.Time `bson:"finish_time" json:"finish_time,omitempty"`
-	Revision            string    `bson:"gitspec" json:"revision,omitempty"`
-	Author              string    `bson:"author" json:"author,omitempty"`
-	AuthorEmail         string    `bson:"author_email" json:"author_email,omitempty"`
-	Message             string    `bson:"message" json:"message,omitempty"`
-	Status              string    `bson:"status" json:"status,omitempty"`
-	RevisionOrderNumber int       `bson:"order,omitempty" json:"order,omitempty"`
-	Config              string    `bson:"config" json:"config,omitempty"`
-	ConfigUpdateNumber  int       `bson:"config_number" json:"config_number,omitempty"`
-	Ignored             bool      `bson:"ignored" json:"ignored"`
-	Owner               string    `bson:"owner_name" json:"owner_name,omitempty"`
-	Repo                string    `bson:"repo_name" json:"repo_name,omitempty"`
-	// kim: TODO: figure out when Branch is set, because it's set at a different
-	// place from the revision.
-	Branch          string               `bson:"branch_name" json:"branch_name,omitempty"`
-	BuildVariants   []VersionBuildStatus `bson:"build_variants_status,omitempty" json:"build_variants_status,omitempty"`
-	PeriodicBuildID string               `bson:"periodic_build_id,omitempty" json:"periodic_build_id,omitempty"`
-	Aborted         bool                 `bson:"aborted,omitempty" json:"aborted,omitempty"`
+	Id                  string               `bson:"_id" json:"id,omitempty"`
+	CreateTime          time.Time            `bson:"create_time" json:"create_time,omitempty"`
+	StartTime           time.Time            `bson:"start_time" json:"start_time,omitempty"`
+	FinishTime          time.Time            `bson:"finish_time" json:"finish_time,omitempty"`
+	Revision            string               `bson:"gitspec" json:"revision,omitempty"`
+	Author              string               `bson:"author" json:"author,omitempty"`
+	AuthorEmail         string               `bson:"author_email" json:"author_email,omitempty"`
+	Message             string               `bson:"message" json:"message,omitempty"`
+	Status              string               `bson:"status" json:"status,omitempty"`
+	RevisionOrderNumber int                  `bson:"order,omitempty" json:"order,omitempty"`
+	Config              string               `bson:"config" json:"config,omitempty"`
+	ConfigUpdateNumber  int                  `bson:"config_number" json:"config_number,omitempty"`
+	Ignored             bool                 `bson:"ignored" json:"ignored"`
+	Owner               string               `bson:"owner_name" json:"owner_name,omitempty"`
+	Repo                string               `bson:"repo_name" json:"repo_name,omitempty"`
+	Branch              string               `bson:"branch_name" json:"branch_name,omitempty"`
+	BuildVariants       []VersionBuildStatus `bson:"build_variants_status,omitempty" json:"build_variants_status,omitempty"`
+	PeriodicBuildID     string               `bson:"periodic_build_id,omitempty" json:"periodic_build_id,omitempty"`
+	Aborted             bool                 `bson:"aborted,omitempty" json:"aborted,omitempty"`
 
 	// This stores whether or not a version has tasks which were activated.
 	// We use a bool ptr in order to to distinguish the unset value from the default value

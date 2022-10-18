@@ -564,7 +564,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	// run the repotracker for the project
 	if newRevision != "" {
 		ts := utility.RoundPartOfHour(1).Format(units.TSFormat)
-		j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), h.newProjectRef.Id, false)
+		j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), h.newProjectRef.Id)
 
 		queue := evergreen.GetEnvironment().RemoteQueue()
 		if err = amboy.EnqueueUniqueJob(ctx, queue, j); err != nil {
@@ -715,7 +715,7 @@ func (h *projectRepotrackerHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	ts := utility.RoundPartOfHour(1).Format(units.TSFormat)
-	j := units.NewRepotrackerJob(fmt.Sprintf("rest-%s", ts), projectId, false)
+	j := units.NewRepotrackerJob(fmt.Sprintf("rest-%s", ts), projectId)
 
 	queue := evergreen.GetEnvironment().RemoteQueue()
 	if err := amboy.EnqueueUniqueJob(ctx, queue, j); err != nil {

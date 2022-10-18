@@ -46,12 +46,12 @@ func TestFetchRevisions(t *testing.T) {
 
 		Convey("Fetching commits from the repository should not return any errors", func() {
 			testConfig.RepoTracker.NumNewRepoRevisionsToFetch = 10
-			So(repoTracker.FetchRevisions(ctx, false), ShouldBeNil)
+			So(repoTracker.FetchRevisions(ctx), ShouldBeNil)
 		})
 
 		Convey("Fetching commits for a disabled repotracker should create no versions", func() {
 			evgProjectRef.RepotrackerDisabled = utility.TruePtr()
-			So(repoTracker.FetchRevisions(ctx, false), ShouldBeNil)
+			So(repoTracker.FetchRevisions(ctx), ShouldBeNil)
 			numVersions, err := model.VersionCount(model.VersionAll)
 			require.NoError(t, err, "Error finding all versions")
 			So(numVersions, ShouldEqual, 0)
@@ -61,7 +61,7 @@ func TestFetchRevisions(t *testing.T) {
 		Convey("Only get 2 revisions from the given repository if given a "+
 			"limit of 2 commits where 3 exist", func() {
 			testConfig.RepoTracker.NumNewRepoRevisionsToFetch = 2
-			require.NoError(t, repoTracker.FetchRevisions(ctx, false),
+			require.NoError(t, repoTracker.FetchRevisions(ctx),
 				"Error running repository process %s", repoTracker.Settings.Id)
 			numVersions, err := model.VersionCount(model.VersionAll)
 			require.NoError(t, err, "Error finding all versions")

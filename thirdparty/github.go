@@ -214,8 +214,6 @@ func GetGithubCommits(ctx context.Context, oauthToken, owner, repo, ref string, 
 		SHA: ref,
 		ListOptions: github.ListOptions{
 			Page: commitPage,
-			// kim: NOTE: may have to specify exact number of results per page to figure out how many revisions we're
-			// looking back.
 		},
 	}
 	if !utility.IsZeroTime(until) {
@@ -233,20 +231,6 @@ func GetGithubCommits(ctx context.Context, oauthToken, owner, repo, ref string, 
 		grip.Error(errMsg)
 		return nil, 0, APIResponseError{errMsg}
 	}
-
-	// kim: TODO: try using page information to see if we're getting way too many results from GitHub for it to be
-	// reasonable, in which case we should fall back to getting the N most recent revisions.
-	// kim: TODO: continue here
-	grip.Info(message.Fields{
-		"message":    "kim: GetGithubCommits returned paginated results",
-		"owner":      owner,
-		"repo":       repo,
-		"branch":     ref,
-		"next_page":  resp.NextPage,
-		"prev_page":  resp.PrevPage,
-		"first_page": resp.FirstPage,
-		"last_page":  resp.LastPage,
-	})
 
 	return commits, resp.NextPage, nil
 }

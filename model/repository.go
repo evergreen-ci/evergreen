@@ -12,11 +12,7 @@ import (
 
 // Repository contains fields used to track projects.
 type Repository struct {
-	Project string `bson:"_id"`
-	// kim: QUESTION: does this need to store the branch that the revision came from? It might help with deciding
-	// whether or not we have a valid previous version from the current project settings branch, or if it's from an old
-	// branch. Even if the repotracker is forced to run, it may not necessarily create a new version
-	// (e.g. if the old and new branch have the same latest revision).
+	Project             string `bson:"_id"`
 	LastRevision        string `bson:"last_revision"`
 	RevisionOrderNumber int    `bson:"last_commit_number"`
 }

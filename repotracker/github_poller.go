@@ -103,9 +103,6 @@ func (gRepoPoller *GithubRepositoryPoller) GetChangedFiles(ctx context.Context, 
 
 // GetRevisionsSince fetches the all commits from the corresponding Github
 // ProjectRef that were made after 'revision'
-// kim: TODO: need to make sure that this really respects maxRevisionsToSearch to ensure that it doesn't populate
-// hundreds of revisions. It should theoretically populate the N most recent revisions, but it currently populates an
-// unlimited number of revisions.
 func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string, maxRevisionsToSearch int) ([]model.Revision, error) {
 	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
 	defer cancel()
@@ -125,9 +122,9 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string, ma
 			return nil, err
 		}
 
+		// Note that commits on this commit page are ordered from most recent to least recent commit.
 		for i := range commits {
-			// kim: TODO: ensure this early return makes reasonable sense.
-			if len(revisions) > maxRevisionsToSearch {
+			if len(revisions) >= maxRevisionsToSearch {
 				break
 			}
 
@@ -153,21 +150,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string, ma
 				foundLatest = true
 				break
 			}
-			rev := githubCommitToRevision(commit)
-			revisions = append(revisions)
-			grip.Info(message.Fields{
-				"message": "kim: got GitHub commit revision",
-				// kim: TODO: possibly use (commit page) * (# commits per page) to decide if we're way too far back in
-				// history and should instead revert to using GetRecentRevisions(N) instead.
-				"commit_page":        commitPage,
-				"revision":           rev.Revision,
-				"revision_msg":       rev.RevisionMessage,
-				"project_id":         gRepoPoller.ProjectRef.Id,
-				"project_identifier": gRepoPoller.ProjectRef.Identifier,
-				"project_owner":      gRepoPoller.ProjectRef.Owner,
-				"project_repo":       gRepoPoller.ProjectRef.Repo,
-				"project_branch":     gRepoPoller.ProjectRef.Branch,
-			})
+			revisions = append(revisions, githubCommitToRevision(commit))
 		}
 
 		// stop querying for commits if we've found the latest commit or got back no commits
@@ -181,16 +164,6 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string, ma
 		var revisionError error
 		var err error
 		var baseRevision string
-
-		grip.Info(message.Fields{
-			"message":            "kim: latest GitHub commit revision could not be found, still attempting to find commits",
-			"last_revision":      revision,
-			"project_id":         gRepoPoller.ProjectRef.Id,
-			"project_identifier": gRepoPoller.ProjectRef.Identifier,
-			"project_owner":      gRepoPoller.ProjectRef.Owner,
-			"project_repo":       gRepoPoller.ProjectRef.Repo,
-			"project_branch":     gRepoPoller.ProjectRef.Branch,
-		})
 
 		// attempt to get the merge base commit
 		if firstCommit != nil {
@@ -206,7 +179,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string, ma
 			err = errors.New("no recent commit found")
 		}
 		if len(revision) < 10 {
-			return nil, errors.Errorf("invalid revision: %v", revision)
+			return nil, errors.Errorf("invalid revision '%s'", revision)
 		}
 		if err != nil {
 			// unable to get merge base commit so set projectRef revision details with a blank base revision
@@ -216,49 +189,37 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string, ma
 				MergeBaseRevision: "",
 			}
 			revisionError = errors.Wrapf(err,
-				"unable to find a suggested merge base commit for revision %v, must fix on projects settings page",
+				"unable to find a suggested merge base commit for revision '%s', must fix on projects settings page",
 				revision)
 			gRepoPoller.ProjectRef.RepotrackerError = revisionDetails
 			if err = gRepoPoller.ProjectRef.Upsert(); err != nil {
 				return []model.Revision{}, errors.Wrap(err, "unable to update projectRef revision details")
 			}
 			return []model.Revision{}, revisionError
-		} else {
-			// automatically set the newly found base revision as base revision and append revisions
-			commit, err := thirdparty.GetCommitEvent(ctx,
-				gRepoPoller.OauthToken,
-				gRepoPoller.ProjectRef.Owner,
-				gRepoPoller.ProjectRef.Repo,
-				baseRevision,
-			)
-			if err != nil {
-				return nil, errors.Wrapf(err, "error loading commit '%v'", baseRevision)
-			}
-			rev := githubCommitToRevision(commit)
-			revisions = append(revisions, rev)
-			grip.Info(message.Fields{
-				"message":            "kim: found first commit base revision",
-				"base_revision":      rev.Revision,
-				"base_revision_msg":  rev.RevisionMessage,
-				"project_id":         gRepoPoller.ProjectRef.Id,
-				"project_identifier": gRepoPoller.ProjectRef.Identifier,
-				"project_owner":      gRepoPoller.ProjectRef.Owner,
-				"project_repo":       gRepoPoller.ProjectRef.Repo,
-				"project_branch":     gRepoPoller.ProjectRef.Branch,
-			})
+		}
 
-			grip.Info(message.Fields{
-				"source":             "github poller",
-				"message":            "updating new base revision",
-				"old_revision":       revision,
-				"new_revision":       baseRevision,
-				"project":            gRepoPoller.ProjectRef.Id,
-				"project_identifier": gRepoPoller.ProjectRef.Identifier,
-			})
-			err = model.UpdateLastRevision(gRepoPoller.ProjectRef.Id, baseRevision)
-			if err != nil {
-				return nil, errors.Wrap(err, "error updating last revision")
-			}
+		// automatically set the newly found base revision as base revision and append revisions
+		commit, err := thirdparty.GetCommitEvent(ctx,
+			gRepoPoller.OauthToken,
+			gRepoPoller.ProjectRef.Owner,
+			gRepoPoller.ProjectRef.Repo,
+			baseRevision,
+		)
+		if err != nil {
+			return nil, errors.Wrapf(err, "loading commit '%s'", baseRevision)
+		}
+		rev := githubCommitToRevision(commit)
+		revisions = append(revisions, rev)
+
+		grip.Info(message.Fields{
+			"source":             "github poller",
+			"old_revision":       revision,
+			"new_revision":       baseRevision,
+			"project":            gRepoPoller.ProjectRef.Id,
+			"project_identifier": gRepoPoller.ProjectRef.Identifier,
+		})
+		if err = model.UpdateLastRevision(gRepoPoller.ProjectRef.Id, baseRevision); err != nil {
+			return nil, errors.Wrap(err, "updating last revision")
 		}
 	}
 
@@ -276,11 +237,6 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string, ma
 			"commits":            commitSHAs,
 		})
 	}
-
-	// kim: NOTE: this is temporary hack to avoid actually trying to create versions when it's searching way too many
-	// revisions.
-	// kim: TODO: remove
-	revisions = []model.Revision{}
 
 	return revisions, nil
 }

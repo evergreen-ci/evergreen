@@ -607,7 +607,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 
 	if responseRef.ForceRepotrackerRun {
 		ts := utility.RoundPartOfHour(1).Format(units.TSFormat)
-		j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectRef.Id, false)
+		j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectRef.Id)
 		if err = uis.queue.Put(ctx, j); err != nil {
 			grip.Error(errors.Wrap(err, "problem creating catchup job from UI"))
 		}
@@ -915,7 +915,7 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 
 	// run the repotracker for the project
 	ts := utility.RoundPartOfHour(1).Format(units.TSFormat)
-	j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectRef.Id, false)
+	j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectRef.Id)
 	if err := uis.queue.Put(r.Context(), j); err != nil {
 		grip.Error(errors.Wrap(err, "problem creating catchup job from UI"))
 	}
