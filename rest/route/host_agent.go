@@ -639,7 +639,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 					"task_distro_id":       nextTask.DistroId,
 					"task_id":              nextTask.Id,
 					"host_id":              currentHost.Id,
-					"dispatch_race":        err,
+					"dispatch_race":        err.Error(),
 					"task_group":           nextTask.TaskGroup,
 					"task_build_variant":   nextTask.BuildVariant,
 					"task_version":         nextTask.Version,
@@ -650,7 +650,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 				if err := undoHostTaskDispatchWithFlag(ctx, env, currentHost, nextTask, shouldUseTransaction); err != nil {
 					grip.Error(message.WrapError(err, message.Fields{
 						"message":              "problem undoing task group task dispatch after dispatch race",
-						"dispatch_race":        err,
+						"dispatch_race":        err.Error(),
 						"task_distro_id":       nextTask.DistroId,
 						"task_id":              nextTask.Id,
 						"host_id":              currentHost.Id,
@@ -1225,9 +1225,6 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
 		})
-	}
-	if t.Aborted {
-		h.details = t.Details
 	}
 	currentHost, err := host.FindOneId(h.hostID)
 	if err != nil {

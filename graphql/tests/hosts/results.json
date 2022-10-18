@@ -15,8 +15,8 @@
                 "startedBy": "mci",
                 "hostUrl": "ec2-34-207-222-84.compute-1.amazonaws.com",
                 "totalIdleTime": 54073,
-                "uptime": "2020-07-20T10:48:05-04:00",
-                "elapsed": "2020-07-20T10:49:21-04:00",
+                "uptime": "2020-07-20T10:48:05.256-04:00",
+                "elapsed": "2020-07-20T10:49:21.073-04:00",
                 "runningTask": {
                   "id": "mongo_tools_ubuntu1604_qa_dump_restore_with_archiving_current_patch_b7227e1b7aeaaa6283d53b32fc03968a46b19c2d_5f15ad3c3627e07772ab2d01_20_07_20_14_42_05",
                   "name": "qa-dump-restore-with-archiving-current"
@@ -29,8 +29,8 @@
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-146-18-248.compute-1.amazonaws.com",
                 "totalIdleTime": 46369,
-                "uptime": "2020-07-20T14:05:03-04:00",
-                "elapsed": "2020-07-20T14:07:06-04:00",
+                "uptime": "2020-07-20T14:05:03.174-04:00",
+                "elapsed": "2020-07-20T14:07:06.369-04:00",
                 "runningTask": {
                   "id": "mongodb_mongo_v3.6_debian92_sharding_auth_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
                   "name": "sharding_auth"
@@ -43,7 +43,7 @@
                 "startedBy": "mci",
                 "hostUrl": "macos-1014-68.macstadium.build.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2019-09-16T11:49:05-04:00",
+                "uptime": "2019-09-16T11:49:05.059-04:00",
                 "elapsed": null,
                 "runningTask": {
                   "id": null,
@@ -57,7 +57,7 @@
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1804-ppc-3.pic.build.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2019-01-25T12:40:50-05:00",
+                "uptime": "2019-01-25T12:40:50.223-05:00",
                 "elapsed": null,
                 "runningTask": {
                   "id": null,
@@ -71,8 +71,8 @@
                 "startedBy": "mci",
                 "hostUrl": "build10.ny.cbi.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2018-11-08T10:22:11-05:00",
-                "elapsed": "2020-07-20T14:56:18-04:00",
+                "uptime": "2018-11-08T10:22:11.7-05:00",
+                "elapsed": "2020-07-20T14:56:18.352-04:00",
                 "runningTask": {
                   "id": "performance_3.6_linux_wt_standalone_misc_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
                   "name": "misc"
@@ -98,7 +98,7 @@
                 "startedBy": "mci",
                 "hostUrl": "ec2-35-153-50-124.compute-1.amazonaws.com",
                 "totalIdleTime": 45837,
-                "uptime": "2020-07-20T10:48:05-04:00",
+                "uptime": "2020-07-20T10:48:05.256-04:00",
                 "elapsed": null,
                 "runningTask": {
                   "id": null,
@@ -112,8 +112,8 @@
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-161-252-150.compute-1.amazonaws.com",
                 "totalIdleTime": 50424,
-                "uptime": "2020-07-20T14:01:08-04:00",
-                "elapsed": "2020-07-20T15:00:11-04:00",
+                "uptime": "2020-07-20T14:01:08.213-04:00",
+                "elapsed": "2020-07-20T15:00:11.946-04:00",
                 "runningTask": {
                   "id": "mongodb_mongo_v3.6_enterprise_ubuntu1604_64_jepsen_set_linearizableRead_WT_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
                   "name": "jepsen_set_linearizableRead_WT"
@@ -126,8 +126,8 @@
                 "startedBy": "mci",
                 "hostUrl": "rhel71-ppc-1.pic.build.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2018-09-19T09:32:26-04:00",
-                "elapsed": "2020-07-20T15:16:22-04:00",
+                "uptime": "2018-09-19T09:32:26.568-04:00",
+                "elapsed": "2020-07-20T15:16:22.151-04:00",
                 "runningTask": {
                   "id": "mms_package_rpm_ppc_foliage_7f9f33c48eba3790333bc4ed6ac72eba8dd9f459_20_07_20_14_37_05",
                   "name": "foliage"
@@ -140,7 +140,7 @@
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1604-ppc-1.pic.build.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2018-09-19T09:32:26-04:00",
+                "uptime": "2018-09-19T09:32:26.199-04:00",
                 "elapsed": null,
                 "runningTask": {
                   "id": null,
@@ -167,7 +167,7 @@
                 "startedBy": "mci",
                 "hostUrl": "ec2-35-153-50-124.compute-1.amazonaws.com",
                 "totalIdleTime": 45837,
-                "uptime": "2020-07-20T10:48:05-04:00",
+                "uptime": "2020-07-20T10:48:05.256-04:00",
                 "elapsed": null,
                 "runningTask": {
                   "id": null,
@@ -194,7 +194,7 @@
                 "startedBy": "mci",
                 "hostUrl": "macos-1014-68.macstadium.build.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2019-09-16T11:49:05-04:00",
+                "uptime": "2019-09-16T11:49:05.059-04:00",
                 "elapsed": null,
                 "runningTask": {
                   "id": null,
@@ -221,7 +221,7 @@
                 "startedBy": "mci",
                 "hostUrl": "macos-1014-68.macstadium.build.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2019-09-16T11:49:05-04:00",
+                "uptime": "2019-09-16T11:49:05.059-04:00",
                 "elapsed": null
               }
             ]
@@ -244,8 +244,8 @@
                 "startedBy": "mci",
                 "hostUrl": "build10.ny.cbi.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2018-11-08T10:22:11-05:00",
-                "elapsed": "2020-07-20T14:56:18-04:00",
+                "uptime": "2018-11-08T10:22:11.7-05:00",
+                "elapsed": "2020-07-20T14:56:18.352-04:00",
                 "runningTask": {
                   "id": "performance_3.6_linux_wt_standalone_misc_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
                   "name": "misc"
@@ -271,7 +271,7 @@
                 "startedBy": "mci",
                 "hostUrl": "macos-1014-68.macstadium.build.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2019-09-16T11:49:05-04:00",
+                "uptime": "2019-09-16T11:49:05.059-04:00",
                 "elapsed": null,
                 "runningTask": {
                   "id": null,
@@ -285,7 +285,7 @@
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1804-ppc-3.pic.build.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2019-01-25T12:40:50-05:00",
+                "uptime": "2019-01-25T12:40:50.223-05:00",
                 "elapsed": null,
                 "runningTask": {
                   "id": null,
@@ -299,8 +299,8 @@
                 "startedBy": "mci",
                 "hostUrl": "build10.ny.cbi.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2018-11-08T10:22:11-05:00",
-                "elapsed": "2020-07-20T14:56:18-04:00",
+                "uptime": "2018-11-08T10:22:11.7-05:00",
+                "elapsed": "2020-07-20T14:56:18.352-04:00",
                 "runningTask": {
                   "id": "performance_3.6_linux_wt_standalone_misc_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
                   "name": "misc"
@@ -313,7 +313,7 @@
                 "startedBy": "mci",
                 "hostUrl": "ec2-35-153-50-124.compute-1.amazonaws.com",
                 "totalIdleTime": 45837,
-                "uptime": "2020-07-20T10:48:05-04:00",
+                "uptime": "2020-07-20T10:48:05.256-04:00",
                 "elapsed": null,
                 "runningTask": {
                   "id": null,
@@ -327,8 +327,8 @@
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-161-252-150.compute-1.amazonaws.com",
                 "totalIdleTime": 50424,
-                "uptime": "2020-07-20T14:01:08-04:00",
-                "elapsed": "2020-07-20T15:00:11-04:00",
+                "uptime": "2020-07-20T14:01:08.213-04:00",
+                "elapsed": "2020-07-20T15:00:11.946-04:00",
                 "runningTask": {
                   "id": "mongodb_mongo_v3.6_enterprise_ubuntu1604_64_jepsen_set_linearizableRead_WT_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
                   "name": "jepsen_set_linearizableRead_WT"
@@ -341,8 +341,8 @@
                 "startedBy": "mci",
                 "hostUrl": "rhel71-ppc-1.pic.build.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2018-09-19T09:32:26-04:00",
-                "elapsed": "2020-07-20T15:16:22-04:00",
+                "uptime": "2018-09-19T09:32:26.568-04:00",
+                "elapsed": "2020-07-20T15:16:22.151-04:00",
                 "runningTask": {
                   "id": "mms_package_rpm_ppc_foliage_7f9f33c48eba3790333bc4ed6ac72eba8dd9f459_20_07_20_14_37_05",
                   "name": "foliage"
@@ -355,7 +355,7 @@
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1604-ppc-1.pic.build.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2018-09-19T09:32:26-04:00",
+                "uptime": "2018-09-19T09:32:26.199-04:00",
                 "elapsed": null,
                 "runningTask": {
                   "id": null,
@@ -382,8 +382,8 @@
                 "startedBy": "mci",
                 "hostUrl": "build10.ny.cbi.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2018-11-08T10:22:11-05:00",
-                "elapsed": "2020-07-20T14:56:18-04:00",
+                "uptime": "2018-11-08T10:22:11.7-05:00",
+                "elapsed": "2020-07-20T14:56:18.352-04:00",
                 "runningTask": {
                   "id": "performance_3.6_linux_wt_standalone_misc_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
                   "name": "misc"
@@ -396,8 +396,8 @@
                 "startedBy": "mci",
                 "hostUrl": "ec2-34-207-222-84.compute-1.amazonaws.com",
                 "totalIdleTime": 54073,
-                "uptime": "2020-07-20T10:48:05-04:00",
-                "elapsed": "2020-07-20T10:49:21-04:00",
+                "uptime": "2020-07-20T10:48:05.256-04:00",
+                "elapsed": "2020-07-20T10:49:21.073-04:00",
                 "runningTask": {
                   "id": "mongo_tools_ubuntu1604_qa_dump_restore_with_archiving_current_patch_b7227e1b7aeaaa6283d53b32fc03968a46b19c2d_5f15ad3c3627e07772ab2d01_20_07_20_14_42_05",
                   "name": "qa-dump-restore-with-archiving-current"
@@ -410,7 +410,7 @@
                 "startedBy": "mci",
                 "hostUrl": "ec2-35-153-50-124.compute-1.amazonaws.com",
                 "totalIdleTime": 45837,
-                "uptime": "2020-07-20T10:48:05-04:00",
+                "uptime": "2020-07-20T10:48:05.256-04:00",
                 "elapsed": null,
                 "runningTask": {
                   "id": null,
@@ -424,8 +424,8 @@
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-161-252-150.compute-1.amazonaws.com",
                 "totalIdleTime": 50424,
-                "uptime": "2020-07-20T14:01:08-04:00",
-                "elapsed": "2020-07-20T15:00:11-04:00",
+                "uptime": "2020-07-20T14:01:08.213-04:00",
+                "elapsed": "2020-07-20T15:00:11.946-04:00",
                 "runningTask": {
                   "id": "mongodb_mongo_v3.6_enterprise_ubuntu1604_64_jepsen_set_linearizableRead_WT_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
                   "name": "jepsen_set_linearizableRead_WT"
@@ -438,8 +438,8 @@
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-146-18-248.compute-1.amazonaws.com",
                 "totalIdleTime": 46369,
-                "uptime": "2020-07-20T14:05:03-04:00",
-                "elapsed": "2020-07-20T14:07:06-04:00",
+                "uptime": "2020-07-20T14:05:03.174-04:00",
+                "elapsed": "2020-07-20T14:07:06.369-04:00",
                 "runningTask": {
                   "id": "mongodb_mongo_v3.6_debian92_sharding_auth_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
                   "name": "sharding_auth"
@@ -452,7 +452,7 @@
                 "startedBy": "mci",
                 "hostUrl": "macos-1014-68.macstadium.build.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2019-09-16T11:49:05-04:00",
+                "uptime": "2019-09-16T11:49:05.059-04:00",
                 "elapsed": null,
                 "runningTask": {
                   "id": null,
@@ -466,8 +466,8 @@
                 "startedBy": "mci",
                 "hostUrl": "rhel71-ppc-1.pic.build.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2018-09-19T09:32:26-04:00",
-                "elapsed": "2020-07-20T15:16:22-04:00",
+                "uptime": "2018-09-19T09:32:26.568-04:00",
+                "elapsed": "2020-07-20T15:16:22.151-04:00",
                 "runningTask": {
                   "id": "mms_package_rpm_ppc_foliage_7f9f33c48eba3790333bc4ed6ac72eba8dd9f459_20_07_20_14_37_05",
                   "name": "foliage"
@@ -480,7 +480,7 @@
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1604-ppc-1.pic.build.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2018-09-19T09:32:26-04:00",
+                "uptime": "2018-09-19T09:32:26.199-04:00",
                 "elapsed": null,
                 "runningTask": {
                   "id": null,
@@ -494,7 +494,7 @@
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1804-ppc-3.pic.build.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2019-01-25T12:40:50-05:00",
+                "uptime": "2019-01-25T12:40:50.223-05:00",
                 "elapsed": null,
                 "runningTask": {
                   "id": null,
@@ -521,8 +521,8 @@
                 "startedBy": "mci",
                 "hostUrl": "build10.ny.cbi.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2018-11-08T10:22:11-05:00",
-                "elapsed": "2020-07-20T14:56:18-04:00",
+                "uptime": "2018-11-08T10:22:11.7-05:00",
+                "elapsed": "2020-07-20T14:56:18.352-04:00",
                 "runningTask": {
                   "id": "performance_3.6_linux_wt_standalone_misc_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
                   "name": "misc"
@@ -535,8 +535,8 @@
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-146-18-248.compute-1.amazonaws.com",
                 "totalIdleTime": 46369,
-                "uptime": "2020-07-20T14:05:03-04:00",
-                "elapsed": "2020-07-20T14:07:06-04:00",
+                "uptime": "2020-07-20T14:05:03.174-04:00",
+                "elapsed": "2020-07-20T14:07:06.369-04:00",
                 "runningTask": {
                   "id": "mongodb_mongo_v3.6_debian92_sharding_auth_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
                   "name": "sharding_auth"
@@ -549,7 +549,7 @@
                 "startedBy": "mci",
                 "hostUrl": "macos-1014-68.macstadium.build.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2019-09-16T11:49:05-04:00",
+                "uptime": "2019-09-16T11:49:05.059-04:00",
                 "elapsed": null,
                 "runningTask": {
                   "id": null,
@@ -563,8 +563,8 @@
                 "startedBy": "mci",
                 "hostUrl": "rhel71-ppc-1.pic.build.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2018-09-19T09:32:26-04:00",
-                "elapsed": "2020-07-20T15:16:22-04:00",
+                "uptime": "2018-09-19T09:32:26.568-04:00",
+                "elapsed": "2020-07-20T15:16:22.151-04:00",
                 "runningTask": {
                   "id": "mms_package_rpm_ppc_foliage_7f9f33c48eba3790333bc4ed6ac72eba8dd9f459_20_07_20_14_37_05",
                   "name": "foliage"
@@ -577,8 +577,8 @@
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-161-252-150.compute-1.amazonaws.com",
                 "totalIdleTime": 50424,
-                "uptime": "2020-07-20T14:01:08-04:00",
-                "elapsed": "2020-07-20T15:00:11-04:00",
+                "uptime": "2020-07-20T14:01:08.213-04:00",
+                "elapsed": "2020-07-20T15:00:11.946-04:00",
                 "runningTask": {
                   "id": "mongodb_mongo_v3.6_enterprise_ubuntu1604_64_jepsen_set_linearizableRead_WT_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
                   "name": "jepsen_set_linearizableRead_WT"
@@ -591,7 +591,7 @@
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1604-ppc-1.pic.build.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2018-09-19T09:32:26-04:00",
+                "uptime": "2018-09-19T09:32:26.199-04:00",
                 "elapsed": null,
                 "runningTask": {
                   "id": null,
@@ -605,8 +605,8 @@
                 "startedBy": "mci",
                 "hostUrl": "ec2-34-207-222-84.compute-1.amazonaws.com",
                 "totalIdleTime": 54073,
-                "uptime": "2020-07-20T10:48:05-04:00",
-                "elapsed": "2020-07-20T10:49:21-04:00",
+                "uptime": "2020-07-20T10:48:05.256-04:00",
+                "elapsed": "2020-07-20T10:49:21.073-04:00",
                 "runningTask": {
                   "id": "mongo_tools_ubuntu1604_qa_dump_restore_with_archiving_current_patch_b7227e1b7aeaaa6283d53b32fc03968a46b19c2d_5f15ad3c3627e07772ab2d01_20_07_20_14_42_05",
                   "name": "qa-dump-restore-with-archiving-current"
@@ -619,7 +619,7 @@
                 "startedBy": "mci",
                 "hostUrl": "ec2-35-153-50-124.compute-1.amazonaws.com",
                 "totalIdleTime": 45837,
-                "uptime": "2020-07-20T10:48:05-04:00",
+                "uptime": "2020-07-20T10:48:05.256-04:00",
                 "elapsed": null,
                 "runningTask": {
                   "id": null,
@@ -633,7 +633,7 @@
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1804-ppc-3.pic.build.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2019-01-25T12:40:50-05:00",
+                "uptime": "2019-01-25T12:40:50.223-05:00",
                 "elapsed": null,
                 "runningTask": {
                   "id": null,
@@ -660,7 +660,7 @@
                 "startedBy": "mci",
                 "hostUrl": "ec2-35-153-50-124.compute-1.amazonaws.com",
                 "totalIdleTime": 45837,
-                "uptime": "2020-07-20T10:48:05-04:00",
+                "uptime": "2020-07-20T10:48:05.256-04:00",
                 "elapsed": null,
                 "runningTask": {
                   "id": null,
@@ -674,7 +674,7 @@
                 "startedBy": "mci",
                 "hostUrl": "macos-1014-68.macstadium.build.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2019-09-16T11:49:05-04:00",
+                "uptime": "2019-09-16T11:49:05.059-04:00",
                 "elapsed": null,
                 "runningTask": {
                   "id": null,
@@ -688,7 +688,7 @@
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1604-ppc-1.pic.build.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2018-09-19T09:32:26-04:00",
+                "uptime": "2018-09-19T09:32:26.199-04:00",
                 "elapsed": null,
                 "runningTask": {
                   "id": null,
@@ -702,7 +702,7 @@
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1804-ppc-3.pic.build.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2019-01-25T12:40:50-05:00",
+                "uptime": "2019-01-25T12:40:50.223-05:00",
                 "elapsed": null,
                 "runningTask": {
                   "id": null,
@@ -716,8 +716,8 @@
                 "startedBy": "mci",
                 "hostUrl": "rhel71-ppc-1.pic.build.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2018-09-19T09:32:26-04:00",
-                "elapsed": "2020-07-20T15:16:22-04:00",
+                "uptime": "2018-09-19T09:32:26.568-04:00",
+                "elapsed": "2020-07-20T15:16:22.151-04:00",
                 "runningTask": {
                   "id": "mms_package_rpm_ppc_foliage_7f9f33c48eba3790333bc4ed6ac72eba8dd9f459_20_07_20_14_37_05",
                   "name": "foliage"
@@ -730,8 +730,8 @@
                 "startedBy": "mci",
                 "hostUrl": "ec2-34-207-222-84.compute-1.amazonaws.com",
                 "totalIdleTime": 54073,
-                "uptime": "2020-07-20T10:48:05-04:00",
-                "elapsed": "2020-07-20T10:49:21-04:00",
+                "uptime": "2020-07-20T10:48:05.256-04:00",
+                "elapsed": "2020-07-20T10:49:21.073-04:00",
                 "runningTask": {
                   "id": "mongo_tools_ubuntu1604_qa_dump_restore_with_archiving_current_patch_b7227e1b7aeaaa6283d53b32fc03968a46b19c2d_5f15ad3c3627e07772ab2d01_20_07_20_14_42_05",
                   "name": "qa-dump-restore-with-archiving-current"
@@ -744,8 +744,8 @@
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-146-18-248.compute-1.amazonaws.com",
                 "totalIdleTime": 46369,
-                "uptime": "2020-07-20T14:05:03-04:00",
-                "elapsed": "2020-07-20T14:07:06-04:00",
+                "uptime": "2020-07-20T14:05:03.174-04:00",
+                "elapsed": "2020-07-20T14:07:06.369-04:00",
                 "runningTask": {
                   "id": "mongodb_mongo_v3.6_debian92_sharding_auth_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
                   "name": "sharding_auth"
@@ -758,8 +758,8 @@
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-161-252-150.compute-1.amazonaws.com",
                 "totalIdleTime": 50424,
-                "uptime": "2020-07-20T14:01:08-04:00",
-                "elapsed": "2020-07-20T15:00:11-04:00",
+                "uptime": "2020-07-20T14:01:08.213-04:00",
+                "elapsed": "2020-07-20T15:00:11.946-04:00",
                 "runningTask": {
                   "id": "mongodb_mongo_v3.6_enterprise_ubuntu1604_64_jepsen_set_linearizableRead_WT_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
                   "name": "jepsen_set_linearizableRead_WT"
@@ -772,8 +772,8 @@
                 "startedBy": "mci",
                 "hostUrl": "build10.ny.cbi.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2018-11-08T10:22:11-05:00",
-                "elapsed": "2020-07-20T14:56:18-04:00",
+                "uptime": "2018-11-08T10:22:11.7-05:00",
+                "elapsed": "2020-07-20T14:56:18.352-04:00",
                 "runningTask": {
                   "id": "performance_3.6_linux_wt_standalone_misc_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
                   "name": "misc"
@@ -799,7 +799,7 @@
                 "startedBy": "mci",
                 "hostUrl": "ec2-35-153-50-124.compute-1.amazonaws.com",
                 "totalIdleTime": 45837,
-                "uptime": "2020-07-20T10:48:05-04:00",
+                "uptime": "2020-07-20T10:48:05.256-04:00",
                 "elapsed": null,
                 "runningTask": {
                   "id": null,
@@ -813,7 +813,7 @@
                 "startedBy": "mci",
                 "hostUrl": "macos-1014-68.macstadium.build.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2019-09-16T11:49:05-04:00",
+                "uptime": "2019-09-16T11:49:05.059-04:00",
                 "elapsed": null,
                 "runningTask": {
                   "id": null,
@@ -827,7 +827,7 @@
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1604-ppc-1.pic.build.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2018-09-19T09:32:26-04:00",
+                "uptime": "2018-09-19T09:32:26.199-04:00",
                 "elapsed": null,
                 "runningTask": {
                   "id": null,
@@ -841,7 +841,7 @@
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1804-ppc-3.pic.build.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2019-01-25T12:40:50-05:00",
+                "uptime": "2019-01-25T12:40:50.223-05:00",
                 "elapsed": null,
                 "runningTask": {
                   "id": null,
@@ -855,8 +855,8 @@
                 "startedBy": "mci",
                 "hostUrl": "ec2-34-207-222-84.compute-1.amazonaws.com",
                 "totalIdleTime": 54073,
-                "uptime": "2020-07-20T10:48:05-04:00",
-                "elapsed": "2020-07-20T10:49:21-04:00",
+                "uptime": "2020-07-20T10:48:05.256-04:00",
+                "elapsed": "2020-07-20T10:49:21.073-04:00",
                 "runningTask": {
                   "id": "mongo_tools_ubuntu1604_qa_dump_restore_with_archiving_current_patch_b7227e1b7aeaaa6283d53b32fc03968a46b19c2d_5f15ad3c3627e07772ab2d01_20_07_20_14_42_05",
                   "name": "qa-dump-restore-with-archiving-current"
@@ -869,8 +869,8 @@
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-146-18-248.compute-1.amazonaws.com",
                 "totalIdleTime": 46369,
-                "uptime": "2020-07-20T14:05:03-04:00",
-                "elapsed": "2020-07-20T14:07:06-04:00",
+                "uptime": "2020-07-20T14:05:03.174-04:00",
+                "elapsed": "2020-07-20T14:07:06.369-04:00",
                 "runningTask": {
                   "id": "mongodb_mongo_v3.6_debian92_sharding_auth_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
                   "name": "sharding_auth"
@@ -883,8 +883,8 @@
                 "startedBy": "mci",
                 "hostUrl": "build10.ny.cbi.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2018-11-08T10:22:11-05:00",
-                "elapsed": "2020-07-20T14:56:18-04:00",
+                "uptime": "2018-11-08T10:22:11.7-05:00",
+                "elapsed": "2020-07-20T14:56:18.352-04:00",
                 "runningTask": {
                   "id": "performance_3.6_linux_wt_standalone_misc_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
                   "name": "misc"
@@ -897,8 +897,8 @@
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-161-252-150.compute-1.amazonaws.com",
                 "totalIdleTime": 50424,
-                "uptime": "2020-07-20T14:01:08-04:00",
-                "elapsed": "2020-07-20T15:00:11-04:00",
+                "uptime": "2020-07-20T14:01:08.213-04:00",
+                "elapsed": "2020-07-20T15:00:11.946-04:00",
                 "runningTask": {
                   "id": "mongodb_mongo_v3.6_enterprise_ubuntu1604_64_jepsen_set_linearizableRead_WT_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
                   "name": "jepsen_set_linearizableRead_WT"
@@ -911,8 +911,8 @@
                 "startedBy": "mci",
                 "hostUrl": "rhel71-ppc-1.pic.build.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2018-09-19T09:32:26-04:00",
-                "elapsed": "2020-07-20T15:16:22-04:00",
+                "uptime": "2018-09-19T09:32:26.568-04:00",
+                "elapsed": "2020-07-20T15:16:22.151-04:00",
                 "runningTask": {
                   "id": "mms_package_rpm_ppc_foliage_7f9f33c48eba3790333bc4ed6ac72eba8dd9f459_20_07_20_14_37_05",
                   "name": "foliage"
@@ -938,7 +938,7 @@
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1604-ppc-1.pic.build.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2018-09-19T09:32:26-04:00",
+                "uptime": "2018-09-19T09:32:26.199-04:00",
                 "elapsed": null,
                 "runningTask": {
                   "id": null,
@@ -952,8 +952,8 @@
                 "startedBy": "mci",
                 "hostUrl": "rhel71-ppc-1.pic.build.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2018-09-19T09:32:26-04:00",
-                "elapsed": "2020-07-20T15:16:22-04:00",
+                "uptime": "2018-09-19T09:32:26.568-04:00",
+                "elapsed": "2020-07-20T15:16:22.151-04:00",
                 "runningTask": {
                   "id": "mms_package_rpm_ppc_foliage_7f9f33c48eba3790333bc4ed6ac72eba8dd9f459_20_07_20_14_37_05",
                   "name": "foliage"
@@ -966,8 +966,8 @@
                 "startedBy": "mci",
                 "hostUrl": "build10.ny.cbi.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2018-11-08T10:22:11-05:00",
-                "elapsed": "2020-07-20T14:56:18-04:00",
+                "uptime": "2018-11-08T10:22:11.7-05:00",
+                "elapsed": "2020-07-20T14:56:18.352-04:00",
                 "runningTask": {
                   "id": "performance_3.6_linux_wt_standalone_misc_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
                   "name": "misc"
@@ -980,7 +980,7 @@
                 "startedBy": "mci",
                 "hostUrl": "ubuntu1804-ppc-3.pic.build.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2019-01-25T12:40:50-05:00",
+                "uptime": "2019-01-25T12:40:50.223-05:00",
                 "elapsed": null,
                 "runningTask": {
                   "id": null,
@@ -994,7 +994,7 @@
                 "startedBy": "mci",
                 "hostUrl": "macos-1014-68.macstadium.build.10gen.cc",
                 "totalIdleTime": 0,
-                "uptime": "2019-09-16T11:49:05-04:00",
+                "uptime": "2019-09-16T11:49:05.059-04:00",
                 "elapsed": null,
                 "runningTask": {
                   "id": null,
@@ -1008,8 +1008,8 @@
                 "startedBy": "mci",
                 "hostUrl": "ec2-34-207-222-84.compute-1.amazonaws.com",
                 "totalIdleTime": 54073,
-                "uptime": "2020-07-20T10:48:05-04:00",
-                "elapsed": "2020-07-20T10:49:21-04:00",
+                "uptime": "2020-07-20T10:48:05.256-04:00",
+                "elapsed": "2020-07-20T10:49:21.073-04:00",
                 "runningTask": {
                   "id": "mongo_tools_ubuntu1604_qa_dump_restore_with_archiving_current_patch_b7227e1b7aeaaa6283d53b32fc03968a46b19c2d_5f15ad3c3627e07772ab2d01_20_07_20_14_42_05",
                   "name": "qa-dump-restore-with-archiving-current"
@@ -1022,7 +1022,7 @@
                 "startedBy": "mci",
                 "hostUrl": "ec2-35-153-50-124.compute-1.amazonaws.com",
                 "totalIdleTime": 45837,
-                "uptime": "2020-07-20T10:48:05-04:00",
+                "uptime": "2020-07-20T10:48:05.256-04:00",
                 "elapsed": null,
                 "runningTask": {
                   "id": null,
@@ -1036,8 +1036,8 @@
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-161-252-150.compute-1.amazonaws.com",
                 "totalIdleTime": 50424,
-                "uptime": "2020-07-20T14:01:08-04:00",
-                "elapsed": "2020-07-20T15:00:11-04:00",
+                "uptime": "2020-07-20T14:01:08.213-04:00",
+                "elapsed": "2020-07-20T15:00:11.946-04:00",
                 "runningTask": {
                   "id": "mongodb_mongo_v3.6_enterprise_ubuntu1604_64_jepsen_set_linearizableRead_WT_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
                   "name": "jepsen_set_linearizableRead_WT"
@@ -1050,8 +1050,8 @@
                 "startedBy": "mci",
                 "hostUrl": "ec2-54-146-18-248.compute-1.amazonaws.com",
                 "totalIdleTime": 46369,
-                "uptime": "2020-07-20T14:05:03-04:00",
-                "elapsed": "2020-07-20T14:07:06-04:00",
+                "uptime": "2020-07-20T14:05:03.174-04:00",
+                "elapsed": "2020-07-20T14:07:06.369-04:00",
                 "runningTask": {
                   "id": "mongodb_mongo_v3.6_debian92_sharding_auth_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
                   "name": "sharding_auth"
@@ -1072,39 +1072,39 @@
             "hosts": [
               {
                 "id": "build10.ny.cbi.10gen.cc",
-                "uptime": "2018-11-08T10:22:11-05:00"
+                "uptime": "2018-11-08T10:22:11.7-05:00"
               },
               {
                 "id": "macos-1014-68.macstadium.build.10gen.cc",
-                "uptime": "2019-09-16T11:49:05-04:00"
+                "uptime": "2019-09-16T11:49:05.059-04:00"
               },
               {
                 "id": "rhel71-ppc-1.pic.build.10gen.cc",
-                "uptime": "2018-09-19T09:32:26-04:00"
+                "uptime": "2018-09-19T09:32:26.568-04:00"
               },
               {
                 "id": "ubuntu1604-ppc-1.pic.build.10gen.cc",
-                "uptime": "2018-09-19T09:32:26-04:00"
+                "uptime": "2018-09-19T09:32:26.199-04:00"
               },
               {
                 "id": "ubuntu1804-ppc-3.pic.build.10gen.cc",
-                "uptime": "2019-01-25T12:40:50-05:00"
+                "uptime": "2019-01-25T12:40:50.223-05:00"
               },
               {
                 "id": "i-0d0ae8b83366d22be",
-                "uptime": "2020-07-20T10:48:05-04:00"
+                "uptime": "2020-07-20T10:48:05.256-04:00"
               },
               {
                 "id": "i-0fb9fe0592ea38150",
-                "uptime": "2020-07-20T14:05:03-04:00"
+                "uptime": "2020-07-20T14:05:03.174-04:00"
               },
               {
                 "id": "i-0f81a2d39744003dd",
-                "uptime": "2020-07-20T14:01:08-04:00"
+                "uptime": "2020-07-20T14:01:08.213-04:00"
               },
               {
                 "id": "i-06f80fa6e28f93b7d",
-                "uptime": "2020-07-20T10:48:05-04:00"
+                "uptime": "2020-07-20T10:48:05.256-04:00"
               }
             ]
           }

@@ -64,18 +64,20 @@ func (s *TaskAbortSuite) TestAbort() {
 	s.NoError(err)
 	s.Equal("user1", tasks[0].ActivatedBy)
 	s.Equal("", tasks[1].ActivatedBy)
-	s.Equal("user1", tasks[0].AbortInfo.User)
-	s.Equal("", tasks[1].AbortInfo.User)
 	t, ok := res.Data().(*model.APITask)
 	s.True(ok)
 	s.Equal(utility.ToStringPtr("task1"), t.Id)
 
 	res = rm.Run(ctx)
-	s.Equal(http.StatusInternalServerError, res.Status())
+	s.Equal(http.StatusOK, res.Status())
 	s.NotNil(res)
-	errResp, ok := res.Data().(gimlet.ErrorResponse)
+	tasks, err = task.Find(task.ByIds([]string{"task1", "task2"}))
+	s.NoError(err)
+	s.Equal("user1", tasks[0].AbortInfo.User)
+	s.Equal("", tasks[1].AbortInfo.User)
+	t, ok = (res.Data()).(*model.APITask)
 	s.True(ok)
-	s.Equal(errResp.Message, "task 'task1' currently has status 'failed' - cannot abort task in this status")
+	s.Equal(utility.ToStringPtr("task1"), t.Id)
 }
 
 func TestFetchArtifacts(t *testing.T) {
