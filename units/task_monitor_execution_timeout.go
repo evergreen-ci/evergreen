@@ -106,22 +106,26 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 		j.task = t
 	}
 
-	// If the task has heartbeat since this job was queued, let it run.
-	if j.task.LastHeartbeat.Add(heartbeatTimeoutThreshold).After(time.Now()) {
-		return
-	}
-	// If the task is already finished, don't try cleaning it up again.
-	if j.task.IsFinished() {
-		return
-	}
-
 	msg := message.Fields{
 		"job":                j.ID(),
-		"operation":          j.Type().Name,
+		"job_type":           j.Type().Name,
 		"task":               j.task.Id,
 		"execution_platform": j.task.ExecutionPlatform,
 		"host_id":            j.task.HostId,
 		"pod_id":             j.task.PodID,
+	}
+
+	// If the task has heartbeat since this job was queued, let it run.
+	if j.task.LastHeartbeat.Add(heartbeatTimeoutThreshold).After(time.Now()) {
+		msg["message"] = "refusing to clean up timed-out task because it has a recent heartbeat"
+		grip.Debug(msg)
+		return
+	}
+	// If the task is already finished, don't try cleaning it up again.
+	if j.task.IsFinished() {
+		msg["message"] = "refusing to clean up timed-out task because it is already finished"
+		grip.Debug(msg)
+		return
 	}
 
 	err = j.cleanUpTimedOutTask(ctx)
