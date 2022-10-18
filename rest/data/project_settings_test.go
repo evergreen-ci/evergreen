@@ -687,7 +687,7 @@ func TestPromoteVarsToRepo(t *testing.T) {
 		},
 	} {
 		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, model.ProjectAliasCollection,
-			event.SubscriptionsCollection, event.LegacyEventLogCollection, evergreen.ScopeCollection, user.Collection, commitqueue.Collection, model.RepoRefCollection))
+			event.SubscriptionsCollection, evergreen.ScopeCollection, user.Collection, commitqueue.Collection, model.RepoRefCollection, event.EventCollection))
 		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 		repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
