@@ -211,7 +211,8 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 	return nil
 }
 
-// StoreRevisions constructs all versions stored from recent repository revisions
+// StoreRevisions constructs all versions stored from recent repository revisions. The revisions should be given in
+// order of most recent to least recent commit.
 // The additional complexity is due to support for project modifications on patch builds.
 // We need to parse the remote config as it existed when each revision was created.
 // The return value is the most recent version created as a result of storing the revisions.
@@ -219,6 +220,9 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []model.Revision) error {
 	var newestVersion *model.Version
 	ref := repoTracker.ProjectRef
+
+	// Since the revisions are ordered most to least recent, iterate backwards so that they're processed in order of
+	// least to most recent.
 	for i := len(revisions) - 1; i >= 0; i-- {
 		revision := revisions[i].Revision
 		grip.Infof("Processing revision %s in project %s", revision, ref.Id)

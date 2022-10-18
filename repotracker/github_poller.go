@@ -165,7 +165,8 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string, ma
 		var err error
 		var baseRevision string
 
-		// attempt to get the merge base commit
+		// Attempt to get the merge base commit between the given revision (i.e. what Evergreen thinks is the most
+		// recent revision) and the most recent commit (i.e. the branch's actual most recent commit).
 		if firstCommit != nil {
 			baseRevision, err = thirdparty.GetGithubMergeBaseRevision(
 				ctx,
@@ -208,10 +209,10 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string, ma
 		if err != nil {
 			return nil, errors.Wrapf(err, "loading commit '%s'", baseRevision)
 		}
-		rev := githubCommitToRevision(commit)
-		revisions = append(revisions, rev)
+		revisions = append(revisions, githubCommitToRevision(commit))
 
 		grip.Info(message.Fields{
+			"message":            "updating last repo revision for project",
 			"source":             "github poller",
 			"old_revision":       revision,
 			"new_revision":       baseRevision,

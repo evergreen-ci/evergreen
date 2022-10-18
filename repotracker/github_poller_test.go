@@ -8,17 +8,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v34/github"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -64,6 +63,7 @@ func getDistantEVGRevision() (string, error) {
 }
 
 func resetProjectRefs() {
+	// TODO: should use an evergreen-owned repo for the integration tests.
 	projectRef = &model.ProjectRef{
 		Id:          "mci-test",
 		DisplayName: "MCI Test",
@@ -92,31 +92,19 @@ func init() {
 
 func dropTestDB(t *testing.T) {
 	session, _, err := db.GetGlobalSessionFactory().GetSession()
-	require.NoError(t, err, "Error opening database session")
+	require.NoError(t, err)
 	defer session.Close()
-	require.NoError(t, session.DB(testConfig.Database.DB).DropDatabase(),
-		"Error dropping test database")
-	createTaskCollections()
+	require.NoError(t, session.DB(testConfig.Database.DB).DropDatabase())
+	createTaskCollections(t)
 }
 
-func createTaskCollections() {
-	cmd := map[string]string{
-		"create": task.Collection,
-	}
-	_ = evergreen.GetEnvironment().DB().RunCommand(nil, cmd)
-	cmd["create"] = build.Collection
-	_ = evergreen.GetEnvironment().DB().RunCommand(nil, cmd)
-	cmd["create"] = model.VersionCollection
-	_ = evergreen.GetEnvironment().DB().RunCommand(nil, cmd)
-	cmd["create"] = model.ParserProjectCollection
-	_ = evergreen.GetEnvironment().DB().RunCommand(nil, cmd)
-	cmd["create"] = model.ProjectConfigCollection
-	_ = evergreen.GetEnvironment().DB().RunCommand(nil, cmd)
+func createTaskCollections(t *testing.T) {
+	require.NoError(t, db.CreateCollections(build.Collection, model.VersionCollection, model.ParserProjectCollection, model.ProjectConfigCollection))
 }
 
 func TestGetRevisionsSinceWithPaging(t *testing.T) {
 	dropTestDB(t)
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestGetRevisionsSince")
+	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
 	Convey("When fetching commits from the evergreen repository", t, func() {
 		token, err := testConfig.GetGithubOauthToken()
 		So(err, ShouldBeNil)
@@ -139,24 +127,28 @@ func TestGetRevisionsSinceWithPaging(t *testing.T) {
 
 func TestGetRevisionsSince(t *testing.T) {
 	dropTestDB(t)
-	var self GithubRepositoryPoller
+	var ghp GithubRepositoryPoller
 
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestGetRevisionsSince")
+	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
+
+	// Initialize repo revisions for project
+	_, err := model.GetNewRevisionOrderNumber(projectRef.Id)
+	require.NoError(t, err)
 
 	Convey("When fetching github revisions (by commit) - from a repo "+
 		"containing 3 commits - given a valid Oauth token...", t, func() {
-		self.ProjectRef = projectRef
+		ghp.ProjectRef = projectRef
 		token, err := testConfig.GetGithubOauthToken()
 		So(err, ShouldBeNil)
-		self.OauthToken = token
+		ghp.OauthToken = token
 
 		Convey("There should be only two revisions since the first revision",
 			func() {
 				// The test repository contains only 3 revisions with revision
 				// 99162ee5bc41eb314f5bb01bd12f0c43e9cb5f32 being the first
 				// revision
-				revisions, err := self.GetRevisionsSince(firstRevision, 10)
-				require.NoError(t, err, "Error fetching github revisions")
+				revisions, err := ghp.GetRevisionsSince(firstRevision, 10)
+				require.NoError(t, err)
 				So(len(revisions), ShouldEqual, 2)
 
 				// Friday, February 15, 2008 2:59:14 PM GMT-05:00
@@ -173,8 +165,8 @@ func TestGetRevisionsSince(t *testing.T) {
 		Convey("There should be no revisions since the last revision", func() {
 			// The test repository contains only 3 revisions with revision
 			// d0d878e81b303fd2abbf09331e54af41d6cd0c7d being the last revision
-			revisions, err := self.GetRevisionsSince(lastRevision, 10)
-			require.NoError(t, err, "Error fetching github revisions")
+			revisions, err := ghp.GetRevisionsSince(lastRevision, 10)
+			require.NoError(t, err)
 			So(len(revisions), ShouldEqual, 0)
 		})
 
@@ -182,29 +174,43 @@ func TestGetRevisionsSince(t *testing.T) {
 			"isn't found", func() {
 			// The test repository contains only 3 revisions with revision
 			// d0d878e81b303fd2abbf09331e54af41d6cd0c7d being the last revision
-			revisions, err := self.GetRevisionsSince("lastRevision", 10)
+			revisions, err := ghp.GetRevisionsSince("lastRevision", 10)
 			So(len(revisions), ShouldEqual, 0)
 			So(err, ShouldNotBeNil)
 		})
 		Convey("If the revision is not valid because it has less than 10 characters, should return an error", func() {
-			_, err := self.GetRevisionsSince("master", 10)
+			_, err := ghp.GetRevisionsSince("master", 10)
 			So(err, ShouldNotBeNil)
+		})
+		Convey("should limit number of revisions returned and set last repo revision", func() {
+			const maxRevisions = 1
+			// There are supposed to be 3 revisions in the repo in total, so given the maxRevisions limit, the first
+			// (i.e. earliest) revisions should not be found. The expected behavior here is that if it cannot find the
+			// given revision, it will search for maxRevisions, then add one revision as the new base revision if
+			// necessary.
+			revisions, err := ghp.GetRevisionsSince(firstRevision, maxRevisions)
+			require.NoError(t, err)
+			require.Len(t, revisions, maxRevisions+1, "should find revisions up to limit, plus one for the base revision when the starting revision is not found in the listed revisions")
+			assert.Equal(t, lastRevision, revisions[0].Revision, "revisions should be reverse time ordered")
+			lastRepoRevision, err := model.FindRepository(projectRef.Id)
+			require.NoError(t, err)
+			assert.Equal(t, firstRevision, lastRepoRevision.LastRevision, "last revision should be updated to base revision when the starting revision is not found in listed revisions")
 		})
 	})
 }
 
 func TestGetRemoteConfig(t *testing.T) {
 	dropTestDB(t)
-	var self GithubRepositoryPoller
+	var ghp GithubRepositoryPoller
 
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestGetRemoteConfig")
+	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	Convey("When fetching a specific github revision configuration...",
 		t, func() {
 
-			self.ProjectRef = &model.ProjectRef{
+			ghp.ProjectRef = &model.ProjectRef{
 				Id:          "mci-test",
 				DisplayName: "MCI Test",
 				Owner:       "deafgoat",
@@ -218,27 +224,27 @@ func TestGetRemoteConfig(t *testing.T) {
 			}
 			token, err := testConfig.GetGithubOauthToken()
 			So(err, ShouldBeNil)
-			self.OauthToken = token
+			ghp.OauthToken = token
 
 			Convey("The config file at the requested revision should be "+
 				"exactly what is returned", func() {
-				projectInfo, err := self.GetRemoteConfig(ctx, firstRemoteConfigRef)
+				projectInfo, err := ghp.GetRemoteConfig(ctx, firstRemoteConfigRef)
 				require.NoError(t, err, "Error fetching github "+
 					"configuration file")
 				So(projectInfo.Project, ShouldNotBeNil)
 				So(len(projectInfo.Project.Tasks), ShouldEqual, 0)
-				projectInfo, err = self.GetRemoteConfig(ctx, secondRemoteConfigRef)
+				projectInfo, err = ghp.GetRemoteConfig(ctx, secondRemoteConfigRef)
 				require.NoError(t, err, "Error fetching github "+
 					"configuration file")
 				So(projectInfo.Project, ShouldNotBeNil)
 				So(len(projectInfo.Project.Tasks), ShouldEqual, 1)
 			})
 			Convey("an invalid revision should return an error", func() {
-				_, err := self.GetRemoteConfig(ctx, "firstRemoteConfRef")
+				_, err := ghp.GetRemoteConfig(ctx, "firstRemoteConfRef")
 				So(err, ShouldNotBeNil)
 			})
 			Convey("an invalid project configuration should error out", func() {
-				_, err := self.GetRemoteConfig(ctx, badRemoteConfigRef)
+				_, err := ghp.GetRemoteConfig(ctx, badRemoteConfigRef)
 				So(err, ShouldNotBeNil)
 			})
 		})
@@ -246,40 +252,40 @@ func TestGetRemoteConfig(t *testing.T) {
 
 func TestGetAllRevisions(t *testing.T) {
 	dropTestDB(t)
-	var self GithubRepositoryPoller
+	var ghp GithubRepositoryPoller
 
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestGetAllRevisions")
+	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
 
 	Convey("When fetching recent github revisions (by count) - from a repo "+
 		"containing 3 commits - given a valid Oauth token...", t, func() {
-		self.ProjectRef = projectRef
+		ghp.ProjectRef = projectRef
 		token, err := testConfig.GetGithubOauthToken()
 		So(err, ShouldBeNil)
-		self.OauthToken = token
+		ghp.OauthToken = token
 
 		// Even though we're requesting far more revisions than exists in the
 		// remote repository, we should only get the revisions that actually
 		// exist upstream - a total of 3
 		Convey("There should be only three revisions even if you request more "+
 			"than 3", func() {
-			revisions, err := self.GetRecentRevisions(123)
-			require.NoError(t, err, "Error fetching github revisions")
+			revisions, err := ghp.GetRecentRevisions(123)
+			require.NoError(t, err)
 			So(len(revisions), ShouldEqual, 3)
 		})
 
 		// Get only one recent revision and ensure it's the right revision
 		Convey("There should be only be one if you request 1 and it should be "+
 			"the latest", func() {
-			revisions, err := self.GetRecentRevisions(1)
-			require.NoError(t, err, "Error fetching github revisions")
+			revisions, err := ghp.GetRecentRevisions(1)
+			require.NoError(t, err)
 			So(len(revisions), ShouldEqual, 1)
 			So(revisions[0].Revision, ShouldEqual, lastRevision)
 		})
 
 		// Get no recent revisions
 		Convey("There should be no revisions if you request 0", func() {
-			revisions, err := self.GetRecentRevisions(0)
-			require.NoError(t, err, "Error fetching github revisions")
+			revisions, err := ghp.GetRecentRevisions(0)
+			require.NoError(t, err)
 			So(len(revisions), ShouldEqual, 0)
 		})
 	})
@@ -289,7 +295,7 @@ func TestGetChangedFiles(t *testing.T) {
 	dropTestDB(t)
 	var grp GithubRepositoryPoller
 
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestGetAllRevisions")
+	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
