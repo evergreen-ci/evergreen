@@ -1647,14 +1647,16 @@ func ClearAndResetStrandedHostTask(h *host.Host) error {
 // or has been marked as aborted but was never ended by the agent.
 // The current task execution is marked as finished and, if the task is not
 // aborted, a new execution is created to restart the task.
+// If the task is aborted, the task is marked as failed alongside necessary
+// logic that would typically be run by the agent.
 func ResetStaleTask(t *task.Task) error {
 	CheckAndBlockSingleHostTaskGroup(t, t.Status)
 
 	failureDesc := evergreen.TaskDescriptionHeartbeat
 	if t.Aborted {
 		failureDesc = evergreen.TaskDescriptionAborted
-		if err := t.MarkSystemFailed(failureDesc); err != nil {
-			return errors.Wrap(err, "marking aborted task as system failed")
+		if err := finishStaleAbortedTask(t); err != nil {
+			return errors.Wrapf(err, "finishing stale aborted task '%s'", t.Id)
 		}
 	} else {
 		if err := resetSystemFailedTask(t, failureDesc); err != nil {
@@ -1670,6 +1672,25 @@ func ResetStaleTask(t *task.Task) error {
 		"description":        failureDesc,
 	})
 
+	return nil
+}
+
+func finishStaleAbortedTask(t *task.Task) error {
+	failureDetails := &apimodels.TaskEndDetail{
+		Status:      evergreen.TaskFailed,
+		Type:        evergreen.CommandTypeSystem,
+		Description: evergreen.TaskDescriptionAborted,
+	}
+	projectRef, err := FindMergedProjectRef(t.Project, t.Version, true)
+	if err != nil {
+		return errors.Wrapf(err, "getting project ref for task '%s'", t.Id)
+	}
+	if projectRef == nil {
+		return errors.Errorf("project ref for task '%s' not found", t.Id)
+	}
+	if err = MarkEnd(t, evergreen.APIServerTaskActivator, time.Now(), failureDetails, utility.FromBoolPtr(projectRef.DeactivatePrevious)); err != nil {
+		return errors.Wrapf(err, "calling mark finish on task '%s'", t.Id)
+	}
 	return nil
 }
 
