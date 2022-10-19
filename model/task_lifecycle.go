@@ -1663,10 +1663,11 @@ func ResetStaleTask(t *task.Task) error {
 	}
 
 	grip.Info(message.Fields{
-		"message":            fmt.Sprintf("successfully fixed stale %s task", failureDesc),
+		"message":            "successfully fixed stale task",
 		"task":               t.Id,
 		"execution":          t.Execution,
 		"execution_platform": t.ExecutionPlatform,
+		"description":        failureDesc,
 	})
 
 	return nil
