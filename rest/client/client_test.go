@@ -8,6 +8,11 @@ import (
 )
 
 func TestEvergreenCommunicatorConstructor(t *testing.T) {
+	t.Run("FailsWithoutServerURL", func(t *testing.T) {
+		client, err := NewCommunicator("")
+		assert.Error(t, err)
+		assert.Zero(t, client)
+	})
 	client, err := NewCommunicator("url")
 	require.NoError(t, err)
 	defer client.Close()
