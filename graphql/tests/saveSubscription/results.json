@@ -95,7 +95,7 @@
       "result": {
         "errors": [
           {
-            "message": "Field SubscriptionInput.trigger_data of required type StringMap! was not provided.",
+            "message": "Field \"SubscriptionInput.trigger_data\" of required type \"StringMap!\" was not provided.",
             "locations": [{ "line": 3, "column": 19 }],
             "extensions": { "code": "GRAPHQL_VALIDATION_FAILED" }
           }

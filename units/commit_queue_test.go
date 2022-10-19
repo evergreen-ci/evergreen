@@ -97,7 +97,7 @@ func (s *commitQueueSuite) SetupTest() {
 	s.Require().NoError(commitqueue.InsertQueue(cq))
 }
 
-func (s *commitQueueSuite) TestTryUnstick() {
+func (s *commitQueueSuite) TestTryUnstickDequeuesAlreadyFinishedCommitQueueItem() {
 	job := commitQueueJob{}
 	s.NoError(db.Clear(patch.Collection))
 
@@ -109,7 +109,7 @@ func (s *commitQueueSuite) TestTryUnstick() {
 	}
 	s.NoError(patchDoc.Insert())
 
-	var cq *commitqueue.CommitQueue = &commitqueue.CommitQueue{
+	cq := &commitqueue.CommitQueue{
 		ProjectID: "mci",
 		Queue: []commitqueue.CommitQueueItem{
 			{
@@ -119,8 +119,100 @@ func (s *commitQueueSuite) TestTryUnstick() {
 			},
 		},
 	}
-	job.TryUnstick(context.Background(), cq, s.projectRef, "")
+	job.TryUnstick(s.ctx, cq, s.projectRef, "")
 	s.Len(cq.Queue, 0)
+}
+
+func (s *commitQueueSuite) TestTryUnstickFixesBlockedMergeTask() {
+	j := commitQueueJob{}
+	s.Require().NoError(db.ClearCollections(task.Collection, patch.Collection))
+
+	p := &patch.Patch{
+		Id:     mgobson.NewObjectId(),
+		Status: evergreen.PatchStarted,
+	}
+	s.Require().NoError(p.Insert())
+
+	mergeTask := task.Task{
+		Id:               "merge_task",
+		Activated:        true,
+		CommitQueueMerge: true,
+		Version:          p.Id.Hex(),
+		DependsOn: []task.Dependency{
+			{
+				TaskId:       "some_dependency",
+				Unattainable: true,
+			},
+		},
+	}
+	s.Require().NoError(mergeTask.Insert())
+	s.True(mergeTask.Blocked())
+
+	cq := &commitqueue.CommitQueue{
+		ProjectID: s.projectRef.Id,
+		Queue: []commitqueue.CommitQueueItem{
+			{
+				Issue:   p.Id.Hex(),
+				Source:  commitqueue.SourceDiff,
+				Version: p.Id.Hex(),
+			},
+		},
+	}
+
+	j.TryUnstick(s.ctx, cq, s.projectRef, "")
+	s.NoError(j.Error())
+
+	s.Len(cq.Queue, 0, "commit queue item should be dequeued due to blocked merge task")
+}
+
+func (s *commitQueueSuite) TestTryUnstickDoesNotUnstickMergeTaskBlockedByResettingDependencies() {
+	j := commitQueueJob{}
+	s.Require().NoError(db.ClearCollections(task.Collection, patch.Collection))
+
+	p := &patch.Patch{
+		Id:     mgobson.NewObjectId(),
+		Status: evergreen.PatchStarted,
+	}
+	s.Require().NoError(p.Insert())
+
+	resettingTask := task.Task{
+		Id:                "resetting_task",
+		Status:            evergreen.TaskFailed,
+		Activated:         true,
+		Aborted:           true,
+		ResetWhenFinished: true,
+	}
+	s.Require().NoError(resettingTask.Insert())
+	mergeTask := task.Task{
+		Id:               "merge_task",
+		Activated:        true,
+		CommitQueueMerge: true,
+		Version:          p.Id.Hex(),
+		DependsOn: []task.Dependency{
+			{
+				TaskId:       resettingTask.Id,
+				Unattainable: true,
+			},
+		},
+	}
+	s.Require().NoError(mergeTask.Insert())
+	s.True(mergeTask.Blocked())
+
+	cq := &commitqueue.CommitQueue{
+		ProjectID: s.projectRef.Id,
+		Queue: []commitqueue.CommitQueueItem{
+			{
+				Issue:   p.Id.Hex(),
+				Source:  commitqueue.SourceDiff,
+				Version: p.Id.Hex(),
+			},
+		},
+	}
+
+	j.TryUnstick(s.ctx, cq, s.projectRef, "")
+	s.NoError(j.Error())
+
+	s.Len(cq.Queue, 1, "commit queue item should remain enqueued even when merge task is blocked if waiting to reset dependencies")
 }
 
 func (s *commitQueueSuite) TestNewCommitQueueJob() {

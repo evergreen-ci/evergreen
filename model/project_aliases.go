@@ -484,7 +484,6 @@ func UpsertAliasesForProject(aliases []ProjectAlias, projectId string) error {
 		catcher.Add(aliases[i].Upsert())
 	}
 	grip.Debug(message.WrapError(catcher.Resolve(), message.Fields{
-		"ticket":     "EVG-17608",
 		"message":    "problem getting aliases",
 		"project_id": projectId,
 	}))

@@ -1105,36 +1105,55 @@ func (t *Task) markAsHostDispatchedWithFunc(doUpdate func(update bson.M) error, 
 	t.AgentVersion = agentRevision
 	t.LastHeartbeat = dispatchTime
 	t.DistroId = distroID
+	t.Aborted = false
+	t.AbortInfo = AbortInfo{}
+	t.Details = apimodels.TaskEndDetail{}
 
 	return nil
 }
 
-// MarkAsHostUndispatched marks that the host task is undispatched. If the task
-// is already dispatched to a host, it unsets the host ID field on the task. It
-// returns an error if any of the database updates fail.
-func (t *Task) MarkAsHostUndispatched() error {
-	// then, update the task document
-	t.Status = evergreen.TaskUndispatched
+// MarkAsHostUndispatchedWithContext marks that the host task is undispatched.
+// If the task is already dispatched to a host, it aborts the dispatch by
+// undoing the dispatch updates. This is the inverse operation of
+// MarkAsHostDispatchedWithContext.
+func (t *Task) MarkAsHostUndispatchedWithContext(ctx context.Context, env evergreen.Environment) error {
+	doUpdate := func(update bson.M) error {
+		_, err := env.DB().Collection(Collection).UpdateByID(ctx, t.Id, update)
+		return err
+	}
+	return t.markAsHostUndispatchedWithFunc(doUpdate)
+}
 
-	return UpdateOne(
-		bson.M{
-			IdKey: t.Id,
+func (t *Task) markAsHostUndispatchedWithFunc(doUpdate func(update bson.M) error) error {
+	update := bson.M{
+		"$set": bson.M{
+			StatusKey:        evergreen.TaskUndispatched,
+			DispatchTimeKey:  utility.ZeroTime,
+			LastHeartbeatKey: utility.ZeroTime,
 		},
-		bson.M{
-			"$set": bson.M{
-				StatusKey: evergreen.TaskUndispatched,
-			},
-			"$unset": bson.M{
-				DispatchTimeKey:  utility.ZeroTime,
-				LastHeartbeatKey: utility.ZeroTime,
-				DistroIdKey:      "",
-				HostIdKey:        "",
-				AbortedKey:       "",
-				AbortInfoKey:     "",
-				DetailsKey:       "",
-			},
+		"$unset": bson.M{
+			HostIdKey:       "",
+			AgentVersionKey: "",
+			AbortedKey:      "",
+			AbortInfoKey:    "",
+			DetailsKey:      "",
 		},
-	)
+	}
+
+	if err := doUpdate(update); err != nil {
+		return err
+	}
+
+	t.Status = evergreen.TaskUndispatched
+	t.DispatchTime = utility.ZeroTime
+	t.LastHeartbeat = utility.ZeroTime
+	t.HostId = ""
+	t.AgentVersion = ""
+	t.Aborted = false
+	t.AbortInfo = AbortInfo{}
+	t.Details = apimodels.TaskEndDetail{}
+
+	return nil
 }
 
 // maxContainerAllocationAttempts is the maximum number of times a container
@@ -4597,4 +4616,32 @@ func ConvertCedarTestResult(result apimodels.CedarTestResult) TestResult {
 		EndTime:         float64(result.End.Unix()),
 		Status:          result.Status,
 	}
+}
+
+// FindAbortingAndResettingForVersion finds dependencies for the task that are
+// in the process of aborting and will eventually reset themselves.
+func (t *Task) FindAbortingAndResettingDependencies() ([]Task, error) {
+	recursiveDeps, err := GetRecursiveDependenciesUp([]Task{*t}, map[string]Task{})
+	if err != nil {
+		return nil, errors.Wrap(err, "getting recursive parent dependencies")
+	}
+	var taskIDs []string
+	for _, dep := range recursiveDeps {
+		taskIDs = append(taskIDs, dep.Id)
+	}
+	if len(taskIDs) == 0 {
+		return nil, nil
+	}
+
+	// GetRecursiveDependenciesUp only populates a subset of the task's
+	// in-memory fields, so query for them again with the necessary keys.
+	q := db.Query(bson.M{
+		IdKey:      bson.M{"$in": taskIDs},
+		AbortedKey: true,
+		"$or": []bson.M{
+			{ResetWhenFinishedKey: true},
+			{ResetFailedWhenFinishedKey: true},
+		},
+	})
+	return FindAll(q)
 }

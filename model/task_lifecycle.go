@@ -484,6 +484,7 @@ func doStepback(t *task.Task) error {
 // MarkEnd updates the task as being finished, performs a stepback if necessary, and updates the build status
 func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodels.TaskEndDetail,
 	deactivatePrevious bool) error {
+
 	const slowThreshold = time.Second
 
 	detailsCopy := *detail
@@ -528,6 +529,7 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 	}
 	startPhaseAt := time.Now()
 	err = t.MarkEnd(finishTime, &detailsCopy)
+
 	grip.NoticeWhen(time.Since(startPhaseAt) > slowThreshold, message.Fields{
 		"message":       "slow operation",
 		"function":      "MarkEnd",
@@ -602,10 +604,15 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 			err = evalStepback(t, caller, status, deactivatePrevious)
 		}
 		if err != nil {
-			return err
+			return errors.Wrap(err, "evaluating stepback")
 		}
 	}
 
+	grip.DebugWhen(t.ActivatedBy == "chaya.malik", message.Fields{
+		"message": "calling UpdateBuildAndVersionStatusForTask in MarkEnd",
+		"ticket":  "EVG-17305",
+		"task":    t.Id,
+	})
 	if err := UpdateBuildAndVersionStatusForTask(t); err != nil {
 		return errors.Wrap(err, "updating build/version status")
 	}
@@ -1112,6 +1119,11 @@ func updateVersionGithubStatus(v *Version, builds []build.Build) error {
 
 // Update the status of the version based on its constituent builds
 func updateVersionStatus(v *Version) (string, error) {
+	grip.DebugWhen(v.Author == "didier.nadeau", message.Fields{
+		"message": "updateVersionStatus",
+		"ticket":  "EVG-17305",
+		"version": v.Id,
+	})
 	builds, err := build.Find(build.ByVersion(v.Id).WithFields(build.ActivatedKey, build.StatusKey,
 		build.IsGithubCheckKey, build.GithubCheckStatusKey, build.AbortedKey))
 	if err != nil {
@@ -1124,6 +1136,16 @@ func updateVersionStatus(v *Version) (string, error) {
 	}
 
 	versionStatus := getVersionStatus(builds)
+
+	grip.DebugWhen(v.Author == "didier.nadeau", message.Fields{
+		"message":        "updateVersionStatus getVersionStatus",
+		"ticket":         "EVG-17305",
+		"version":        v.Id,
+		"author":         v.Author,
+		"new_status":     versionStatus,
+		"current_status": v.Status,
+	})
+
 	if versionStatus == v.Status {
 		return versionStatus, nil
 	}
@@ -1198,6 +1220,13 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 	}
 	// If no build has changed status, then we can assume the version and patch statuses have also stayed the same.
 	if !buildStatusChanged {
+
+		grip.DebugWhen(t.ActivatedBy == "chaya.malik", message.Fields{
+			"message": "!buildStatusChanged in UpdateBuildAndVersionStatusForTask",
+			"ticket":  "EVG-17305",
+			"task":    t.Id,
+			"build":   taskBuild.Id,
+		})
 		return nil
 	}
 
@@ -1208,6 +1237,7 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 	if taskVersion == nil {
 		return errors.Errorf("no version '%s' found for task '%s'", t.Version, t.Id)
 	}
+
 	newVersionStatus, err := updateVersionStatus(taskVersion)
 	if err != nil {
 		return errors.Wrapf(err, "updating version '%s' status", taskVersion.Id)
@@ -1312,22 +1342,6 @@ func MarkStart(t *task.Task, updates *StatusChanges) error {
 			return errors.WithStack(err)
 		}
 	}
-
-	if t.IsPartOfDisplay() {
-		return UpdateDisplayTaskForTask(t)
-	}
-
-	return nil
-}
-
-// MarkHostTaskUndispatched marks a task as no longer dispatched to a host. If
-// it's part of a display task, update the display task as necessary.
-func MarkHostTaskUndispatched(t *task.Task) error {
-	if err := t.MarkAsHostUndispatched(); err != nil {
-		return errors.WithStack(err)
-	}
-
-	event.LogHostTaskUndispatched(t.Id, t.Execution, t.HostId)
 
 	if t.IsPartOfDisplay() {
 		return UpdateDisplayTaskForTask(t)

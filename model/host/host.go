@@ -1350,29 +1350,18 @@ func (h *Host) ClearRunningAndSetLastTask(t *task.Task) error {
 	return nil
 }
 
-// ClearRunningTask unsets the running task on the host.
+// ClearRunningTask unsets the running task on the host and logs an event
+// indicating it is no longer running the task.
 func (h *Host) ClearRunningTask() error {
-	err := UpdateOne(
-		bson.M{
-			IdKey: h.Id,
-		},
-		bson.M{
-			"$unset": bson.M{
-				RunningTaskKey:             1,
-				RunningTaskExecutionKey:    1,
-				RunningTaskGroupKey:        1,
-				RunningTaskGroupOrderKey:   1,
-				RunningTaskBuildVariantKey: 1,
-				RunningTaskVersionKey:      1,
-				RunningTaskProjectKey:      1,
-			},
-		})
-
-	if err != nil {
+	hadRunningTask := h.RunningTask != ""
+	doUpdate := func(update bson.M) error {
+		return UpdateOne(bson.M{IdKey: h.Id}, update)
+	}
+	if err := h.clearRunningTaskWithFunc(doUpdate); err != nil {
 		return err
 	}
 
-	if h.RunningTask != "" {
+	if hadRunningTask {
 		event.LogHostRunningTaskCleared(h.Id, h.RunningTask, h.RunningTaskExecution)
 		grip.Info(message.Fields{
 			"message":  "cleared host running task",
@@ -1381,6 +1370,39 @@ func (h *Host) ClearRunningTask() error {
 			"distro":   h.Distro.Id,
 			"task_id":  h.RunningTask,
 		})
+	}
+
+	return nil
+}
+
+// ClearRunningTaskWithContext unsets the running task on the log. It does not
+// log an event for clearing the task.
+func (h *Host) ClearRunningTaskWithContext(ctx context.Context, env evergreen.Environment) error {
+	doUpdate := func(update bson.M) error {
+		_, err := env.DB().Collection(Collection).UpdateByID(ctx, h.Id, update)
+		return err
+	}
+	return h.clearRunningTaskWithFunc(doUpdate)
+}
+
+func (h *Host) clearRunningTaskWithFunc(doUpdate func(update bson.M) error) error {
+	if h.RunningTask == "" {
+		return nil
+	}
+
+	update := bson.M{
+		"$unset": bson.M{
+			RunningTaskKey:             1,
+			RunningTaskExecutionKey:    1,
+			RunningTaskGroupKey:        1,
+			RunningTaskGroupOrderKey:   1,
+			RunningTaskBuildVariantKey: 1,
+			RunningTaskVersionKey:      1,
+			RunningTaskProjectKey:      1,
+		},
+	}
+	if err := doUpdate(update); err != nil {
+		return err
 	}
 
 	h.RunningTask = ""

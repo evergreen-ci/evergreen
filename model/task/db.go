@@ -1589,7 +1589,7 @@ func Aggregate(pipeline []bson.M, results interface{}) error {
 		results)
 }
 
-// Count returns the number of hosts that satisfy the given query.
+// Count returns the number of tasks that satisfy the given query.
 func Count(query db.Q) (int, error) {
 	return db.CountQ(Collection, query)
 }

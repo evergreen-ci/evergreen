@@ -277,20 +277,58 @@ func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQ
 	if mergeTask != nil {
 		// check that the merge task can run. Assume that if we're here the merge task
 		// should in fact run (ie. has not been dequeued due to a task failure)
-		blocked := mergeTask.Blocked()
-		if !mergeTask.Activated || mergeTask.Priority < 0 || blocked {
+		if !mergeTask.Activated || mergeTask.Priority < 0 {
 			grip.Error(message.Fields{
 				"message":  "merge task is not dispatchable",
 				"project":  mergeTask.Project,
 				"task":     mergeTask.Id,
 				"active":   mergeTask.Activated,
 				"priority": mergeTask.Priority,
-				"blocked":  blocked,
 				"source":   "commit queue",
 				"job_id":   j.ID(),
 			})
 			j.dequeue(cq, nextItem)
 			event.LogCommitQueueConcludeTest(nextItem.Version, evergreen.EnqueueFailed)
+		}
+		if mergeTask.Blocked() {
+			// The head of the commit queue could be blocked temporarily if its
+			// dependencies are in the process of restarting running tasks due
+			// to a failure in a previous commit queue item and the asynchronous
+			// nature of aborting/restarting tasks. Once they're all done
+			// resetting, the merge task should be unblocked.
+			stillResetting, err := mergeTask.FindAbortingAndResettingDependencies()
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "cannot check number of dependencies for blocked merge task that are still waiting to abort and reset",
+				"project": mergeTask.Project,
+				"task":    mergeTask.Id,
+				"source":  "commit queue",
+				"job_id":  j.ID(),
+			}))
+
+			var taskIDsResetting []string
+			for _, t := range stillResetting {
+				taskIDsResetting = append(taskIDsResetting, t.Id)
+			}
+			grip.InfoWhen(len(taskIDsResetting) > 0, message.Fields{
+				"message":                "cannot determine if merge task is stuck or not because some tasks are still waiting to abort and reset",
+				"dependencies_resetting": taskIDsResetting,
+				"project":                mergeTask.Project,
+				"task":                   mergeTask.Id,
+				"source":                 "commit queue",
+				"job_id":                 j.ID(),
+			})
+
+			if err == nil && len(stillResetting) == 0 {
+				grip.Error(message.Fields{
+					"message": "merge task is not dispatchable because it is blocked",
+					"project": mergeTask.Project,
+					"task":    mergeTask.Id,
+					"source":  "commit queue",
+					"job_id":  j.ID(),
+				})
+				j.dequeue(cq, nextItem)
+				event.LogCommitQueueConcludeTest(nextItem.Version, evergreen.EnqueueFailed)
+			}
 		}
 	}
 
