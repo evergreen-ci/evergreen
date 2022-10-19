@@ -147,23 +147,29 @@ func (s *ClientSettings) Write(fn string) error {
 // Callers are responsible for calling (Communicator).Close() when finished with the client.
 //
 // To avoid printing these messages, call getRestCommunicator instead.
-func (s *ClientSettings) setupRestCommunicator(ctx context.Context) client.Communicator {
-	c := s.getRestCommunicator(ctx)
+func (s *ClientSettings) setupRestCommunicator(ctx context.Context) (client.Communicator, error) {
+	c, err := s.getRestCommunicator(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting REST communicator")
+	}
 	printUserMessages(ctx, c, !s.AutoUpgradeCLI)
-	return c
+	return c, nil
 }
 
 // getRestCommunicator returns a client for communicating with the API server.
 // Callers are responsible for calling (Communicator).Close() when finished with the client.
 //
 // Most callers should use setupRestCommunicator instead, which prints available info messages.
-func (s *ClientSettings) getRestCommunicator(ctx context.Context) client.Communicator {
-	c := client.NewCommunicator(s.APIServerHost)
+func (s *ClientSettings) getRestCommunicator(ctx context.Context) (client.Communicator, error) {
+	c, err := client.NewCommunicator(s.APIServerHost)
+	if err != nil {
+		return nil, err
+	}
 
 	c.SetAPIUser(s.User)
 	c.SetAPIKey(s.APIKey)
 
-	return c
+	return c, nil
 }
 
 // printUserMessages prints any available info messages.

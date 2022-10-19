@@ -22,7 +22,6 @@ import (
 
 // CreateSpawnHost will insert an intent host into the DB that will be spawned later by the runner
 func (c *communicatorImpl) CreateSpawnHost(ctx context.Context, spawnRequest *model.HostRequestOptions) (*model.APIHost, error) {
-
 	info := requestInfo{
 		method: http.MethodPost,
 		path:   "hosts",
@@ -50,7 +49,6 @@ func (c *communicatorImpl) CreateSpawnHost(ctx context.Context, spawnRequest *mo
 
 // GetSpawnHost will return the host document for the given hostId
 func (c *communicatorImpl) GetSpawnHost(ctx context.Context, hostId string) (*model.APIHost, error) {
-
 	info := requestInfo{
 		method: http.MethodGet,
 		path:   fmt.Sprintf("hosts/%s", hostId),

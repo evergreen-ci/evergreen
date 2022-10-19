@@ -102,7 +102,10 @@ func listProjects(ctx context.Context, confPath string) error {
 	if err != nil {
 		return errors.Wrap(err, "loading configuration")
 	}
-	client := conf.setupRestCommunicator(ctx)
+	client, err := conf.setupRestCommunicator(ctx)
+	if err != nil {
+		return errors.Wrap(err, "setting up REST communicator")
+	}
 	defer client.Close()
 
 	ac, _, err := conf.getLegacyClients()
@@ -142,7 +145,10 @@ func listVariants(ctx context.Context, confPath, project, filename string) error
 	if err != nil {
 		return errors.Wrap(err, "loading configuration")
 	}
-	client := conf.setupRestCommunicator(ctx)
+	client, err := conf.setupRestCommunicator(ctx)
+	if err != nil {
+		return errors.Wrap(err, "setting up REST communicator")
+	}
 	defer client.Close()
 
 	var variants []model.BuildVariant
@@ -193,7 +199,10 @@ func listTasks(ctx context.Context, confPath, project, filename string) error {
 	if err != nil {
 		return errors.Wrap(err, "loading configuration")
 	}
-	client := conf.setupRestCommunicator(ctx)
+	client, err := conf.setupRestCommunicator(ctx)
+	if err != nil {
+		return errors.Wrap(err, "setting up REST communicator")
+	}
 	defer client.Close()
 
 	var tasks []model.ProjectTask
@@ -231,7 +240,10 @@ func listParameters(ctx context.Context, confPath, project, filename string) err
 	if err != nil {
 		return errors.Wrap(err, "loading configuration")
 	}
-	comm := conf.setupRestCommunicator(ctx)
+	comm, err := conf.setupRestCommunicator(ctx)
+	if err != nil {
+		return errors.Wrap(err, "setting up REST communicator")
+	}
 	defer comm.Close()
 
 	var params []model.ParameterInfo
@@ -269,7 +281,10 @@ func listTriggerAliases(ctx context.Context, confPath, project string) error {
 	if err != nil {
 		return errors.Wrap(err, "loading configuration")
 	}
-	comm := conf.setupRestCommunicator(ctx)
+	comm, err := conf.setupRestCommunicator(ctx)
+	if err != nil {
+		return errors.Wrap(err, "setting up REST communicator")
+	}
 	defer comm.Close()
 
 	if project == "" {
@@ -293,7 +308,10 @@ func listPatchAliases(ctx context.Context, confPath, project string) error {
 	if err != nil {
 		return errors.Wrap(err, "loading configuration")
 	}
-	comm := conf.setupRestCommunicator(ctx)
+	comm, err := conf.setupRestCommunicator(ctx)
+	if err != nil {
+		return errors.Wrap(err, "setting up REST communicator")
+	}
 	defer comm.Close()
 
 	if project == "" {
@@ -320,7 +338,10 @@ func listDistros(ctx context.Context, confPath string, onlyUserSpawnable bool) e
 	if err != nil {
 		return errors.Wrap(err, "loading configuration")
 	}
-	client := conf.setupRestCommunicator(ctx)
+	client, err := conf.setupRestCommunicator(ctx)
+	if err != nil {
+		return errors.Wrap(err, "setting up REST communicator")
+	}
 	defer client.Close()
 
 	distros, err := client.GetDistrosList(ctx)

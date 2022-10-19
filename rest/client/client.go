@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/utility"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -31,7 +32,10 @@ type communicatorImpl struct {
 // NewCommunicator returns a Communicator capable of making HTTP REST requests
 // against the API server. To change the default retry behavior, use the
 // SetTimeoutStart, SetTimeoutMax, and SetMaxAttempts methods.
-func NewCommunicator(serverURL string) Communicator {
+func NewCommunicator(serverURL string) (Communicator, error) {
+	if serverURL == "" {
+		return nil, errors.New("API server URL cannot be empty")
+	}
 	c := &communicatorImpl{
 		maxAttempts:  defaultMaxAttempts,
 		timeoutStart: defaultTimeoutStart,
@@ -40,7 +44,7 @@ func NewCommunicator(serverURL string) Communicator {
 	}
 	c.resetClient()
 
-	return c
+	return c, nil
 }
 
 func (c *communicatorImpl) resetClient() {

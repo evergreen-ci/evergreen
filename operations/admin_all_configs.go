@@ -36,7 +36,10 @@ func fetchAllProjectConfigs() cli.Command {
 				return err
 			}
 
-			client := settings.setupRestCommunicator(ctx)
+			client, err := settings.setupRestCommunicator(ctx)
+			if err != nil {
+				return errors.Wrap(err, "setting up REST communicator")
+			}
 			defer client.Close()
 
 			ac, rc, err := settings.getLegacyClients()
