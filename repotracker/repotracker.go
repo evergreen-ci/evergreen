@@ -896,12 +896,12 @@ func makeVersionIdWithTag(project, tag, id string) string {
 func verifyOrderNum(revOrderNum int, projectId, revision string) error {
 	latest, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester(projectId))
 	if err != nil || latest == nil {
-		return errors.Wrap(err, "Error getting latest version")
+		return errors.Wrap(err, "getting latest version")
 	}
 
 	// When there are no versions in the db yet, verification is moot.
 	if revOrderNum <= latest.RevisionOrderNumber {
-		return errors.Errorf("Commit order number isn't greater than last stored version's: %v <= %v",
+		return errors.Errorf("commit order number isn't greater than last stored version's: %d <= %d",
 			revOrderNum, latest.RevisionOrderNumber)
 	}
 	return nil
