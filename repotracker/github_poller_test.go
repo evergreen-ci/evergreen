@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v34/github"
@@ -99,7 +100,7 @@ func dropTestDB(t *testing.T) {
 }
 
 func createTaskCollections(t *testing.T) {
-	require.NoError(t, db.CreateCollections(build.Collection, model.VersionCollection, model.ParserProjectCollection, model.ProjectConfigCollection))
+	require.NoError(t, db.CreateCollections(task.Collection, build.Collection, model.VersionCollection, model.ParserProjectCollection, model.ProjectConfigCollection))
 }
 
 func TestGetRevisionsSinceWithPaging(t *testing.T) {
