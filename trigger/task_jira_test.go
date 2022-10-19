@@ -1,6 +1,7 @@
 package trigger
 
 import (
+	"github.com/evergreen-ci/evergreen/testutil"
 	"regexp"
 	"strings"
 	"testing"
@@ -20,6 +21,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func init() { testutil.Setup() }
 
 const (
 	projectName     = "Test Project"
@@ -513,20 +516,25 @@ func TestMakeSpecificTaskStatus(t *testing.T) {
 
 	assert.Equal(evergreen.TaskSucceeded, doc.GetDisplayStatus())
 
+	doc.DisplayStatus = ""
 	doc.Status = evergreen.TaskFailed
 	assert.Equal(evergreen.TaskFailed, doc.GetDisplayStatus())
 
+	doc.DisplayStatus = ""
 	doc.Details.TimedOut = true
 	assert.Equal(evergreen.TaskTimedOut, doc.GetDisplayStatus())
 
+	doc.DisplayStatus = ""
 	doc.Details.TimedOut = false
 	doc.Details.Type = evergreen.CommandTypeSetup
 	assert.Equal(evergreen.TaskSetupFailed, doc.GetDisplayStatus())
 
+	doc.DisplayStatus = ""
 	doc.Details.Type = evergreen.CommandTypeSystem
 	doc.Details.TimedOut = true
 	assert.Equal(evergreen.TaskSystemTimedOut, doc.GetDisplayStatus())
 
+	doc.DisplayStatus = ""
 	doc.Details.Description = evergreen.TaskDescriptionHeartbeat
 	assert.Equal(evergreen.TaskSystemUnresponse, doc.GetDisplayStatus())
 }
@@ -543,22 +551,28 @@ func TestMakeSummaryPrefix(t *testing.T) {
 	}
 	assert.Equal("Succeeded: ", makeSummaryPrefix(doc, 0))
 
+	doc.DisplayStatus = ""
 	doc.Status = evergreen.TaskFailed
 	assert.Equal("Failure: ", makeSummaryPrefix(doc, 1))
 	assert.Equal("Failed: ", makeSummaryPrefix(doc, 0))
 
+	doc.DisplayStatus = ""
 	doc.Details.TimedOut = true
 	assert.Equal("Timed Out: ", makeSummaryPrefix(doc, 0))
 
+	doc.DisplayStatus = ""
 	doc.Details.Type = evergreen.CommandTypeSystem
 	assert.Equal("System Timed Out: ", makeSummaryPrefix(doc, 0))
 
+	doc.DisplayStatus = ""
 	doc.Details.Description = evergreen.TaskDescriptionHeartbeat
 	assert.Equal("System Unresponsive: ", makeSummaryPrefix(doc, 0))
 
+	doc.DisplayStatus = ""
 	doc.Details.TimedOut = false
 	assert.Equal("System Failure: ", makeSummaryPrefix(doc, 0))
 
+	doc.DisplayStatus = ""
 	doc.Details.Type = evergreen.CommandTypeSetup
 	assert.Equal("Setup Failure: ", makeSummaryPrefix(doc, 0))
 }
