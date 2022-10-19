@@ -12,7 +12,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// GitHubRepositoryPoller is a struct that implements GitHub specific behavior
+// GithubRepositoryPoller is a struct that implements GitHub specific behavior
 // required of a RepoPoller
 type GithubRepositoryPoller struct {
 	ProjectRef *model.ProjectRef
