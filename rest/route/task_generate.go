@@ -3,6 +3,8 @@ package route
 import (
 	"context"
 	"encoding/json"
+	"net/http"
+
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
@@ -11,7 +13,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"net/http"
 )
 
 func makeGenerateTasksHandler(q amboy.QueueGroup) gimlet.RouteHandler {
