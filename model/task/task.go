@@ -2005,11 +2005,17 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 
 }
 
-// GetDisplayStatus should reflect the statuses assigned during the addDisplayStatus aggregation step
+// GetDisplayStatus finds and sets DisplayStatus to the task. It should reflect
+// the statuses assigned during the addDisplayStatus aggregation step.
 func (t *Task) GetDisplayStatus() string {
 	if t.DisplayStatus != "" {
 		return t.DisplayStatus
 	}
+	t.DisplayStatus = t.findDisplayStatus()
+	return t.DisplayStatus
+}
+
+func (t *Task) findDisplayStatus() string {
 	if t.Aborted {
 		return evergreen.TaskAborted
 	}
@@ -2044,7 +2050,7 @@ func (t *Task) GetDisplayStatus() string {
 		return t.Status
 	}
 	annotation, err := annotations.FindOneByTaskIdAndExecution(t.Id, t.Execution)
-	if err == nil && annotation != nil {
+	if err == nil && annotation != nil && len(annotation.Issues) > 0 {
 		return evergreen.TaskKnownIssue
 	}
 	return t.Status
@@ -2053,22 +2059,33 @@ func (t *Task) GetDisplayStatus() string {
 // displayTaskPriority answers the question "if there is a display task whose executions are
 // in these statuses, which overall status would a user expect to see?"
 // for example, if there are both successful and failed tasks, one would expect to see "failed"
+// Priority rankings that share the same tens digit signify that they hold the same rank when
+// determining badge status color in addStatusColorSort.
 func (t *Task) displayTaskPriority() int {
 	switch t.GetDisplayStatus() {
-	case evergreen.TaskFailed, evergreen.TaskTestTimedOut, evergreen.TaskTimedOut:
+	case evergreen.TaskTestTimedOut:
 		return 10
+	case evergreen.TaskTimedOut:
+		return 11
+	case evergreen.TaskFailed:
+		return 12
 	case evergreen.TaskKnownIssue:
 		return 20
 	case evergreen.TaskSetupFailed:
 		return 30
-	case evergreen.TaskSystemFailed, evergreen.TaskSystemTimedOut, evergreen.TaskSystemUnresponse:
+	case evergreen.TaskSystemUnresponse:
 		return 40
-	case evergreen.TaskStarted, evergreen.TaskDispatched:
+	case evergreen.TaskSystemTimedOut:
+		return 41
+	case evergreen.TaskSystemFailed:
+		return 42
+	case evergreen.TaskStarted:
 		return 50
+	case evergreen.TaskDispatched:
+		return 51
 	case evergreen.TaskSucceeded:
 		return 100
 	}
-	// Note that this includes evergreen.TaskDispatched.
 	return 60
 }
 
