@@ -2059,33 +2059,22 @@ func (t *Task) findDisplayStatus() string {
 // displayTaskPriority answers the question "if there is a display task whose executions are
 // in these statuses, which overall status would a user expect to see?"
 // for example, if there are both successful and failed tasks, one would expect to see "failed"
-// Priority rankings that share the same tens digit signify that they hold the same rank when
-// determining badge status color in addStatusColorSort.
 func (t *Task) displayTaskPriority() int {
 	switch t.GetDisplayStatus() {
-	case evergreen.TaskTestTimedOut:
+	case evergreen.TaskFailed, evergreen.TaskTestTimedOut, evergreen.TaskTimedOut:
 		return 10
-	case evergreen.TaskTimedOut:
-		return 11
-	case evergreen.TaskFailed:
-		return 12
 	case evergreen.TaskKnownIssue:
 		return 20
 	case evergreen.TaskSetupFailed:
 		return 30
-	case evergreen.TaskSystemUnresponse:
+	case evergreen.TaskSystemFailed, evergreen.TaskSystemTimedOut, evergreen.TaskSystemUnresponse:
 		return 40
-	case evergreen.TaskSystemTimedOut:
-		return 41
-	case evergreen.TaskSystemFailed:
-		return 42
-	case evergreen.TaskStarted:
+	case evergreen.TaskStarted, evergreen.TaskDispatched:
 		return 50
-	case evergreen.TaskDispatched:
-		return 51
 	case evergreen.TaskSucceeded:
 		return 100
 	}
+	// Note that this includes evergreen.TaskDispatched.
 	return 60
 }
 

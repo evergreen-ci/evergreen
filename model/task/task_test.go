@@ -3,7 +3,6 @@ package task
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strconv"
 	"testing"
 	"time"
@@ -50,7 +49,7 @@ func updateTestDepTasks(t *testing.T) {
 	}
 }
 
-func TestAddStatusColorSort(t *testing.T) {
+func TestGetDisplayStatusAndColorSort(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection, annotations.Collection))
 	t1 := Task{
 		Id:        "t1",
@@ -208,10 +207,6 @@ func TestAddStatusColorSort(t *testing.T) {
 	}
 	// check correctness of addStatusColorSort
 	checkPriority(t, taskResults)
-	sort.Sort(ByPriority(taskResults))
-	// check that ByPriority did not change the order
-	checkPriority(t, taskResults)
-
 }
 
 func checkPriority(t *testing.T, taskResults []Task) {
