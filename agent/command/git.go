@@ -398,9 +398,6 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 
 func (c *gitFetchProject) opts(projectMethod, projectToken string, logger client.LoggerProducer, conf *internal.TaskConfig) (cloneOpts, error) {
 	shallowCloneEnabled := conf.Distro == nil || !conf.Distro.DisableShallowClone
-	if strings.HasPrefix(conf.Distro.CloneMethod, "") {
-
-	}
 	opts := cloneOpts{
 		method:             projectMethod,
 		owner:              conf.ProjectRef.Owner,
