@@ -4107,6 +4107,7 @@ func TestResetStaleTask(t *testing.T) {
 			require.Zero(t, dbArchivedTask, "should not have archived the aborted task")
 
 			dbTask, err := task.FindOneId(tsk.Id)
+			require.NoError(t, err)
 			assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
 			assert.Equal(t, evergreen.CommandTypeSystem, dbTask.Details.Type)
 			assert.Equal(t, evergreen.TaskDescriptionAborted, dbTask.Details.Description)
