@@ -465,10 +465,6 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 		func() (bool, error) {
 			err := c.fetch(ctx, comm, logger, conf, opts)
 			if err != nil {
-				if opts.cloneParams != "" && strings.Contains(err.Error(), "exit status 129") {
-					logger.Execution().Error("Error cloning with clone params, retrying without")
-					opts.cloneParams = ""
-				}
 				return true, err
 			}
 			return false, nil
