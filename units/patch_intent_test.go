@@ -280,18 +280,22 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 		Status:       evergreen.TaskFailed,
 	}
 	tgt1 := task.Task{
-		Id:           "tgt1",
-		DisplayName:  "tgt1",
-		Version:      "v1",
-		BuildVariant: "bv1",
-		Status:       evergreen.TaskSucceeded,
+		Id:                "tgt1",
+		DisplayName:       "tgt1",
+		Version:           "v1",
+		BuildVariant:      "bv1",
+		TaskGroup:         "tg",
+		TaskGroupMaxHosts: 1,
+		Status:            evergreen.TaskSucceeded,
 	}
 	tgt2 := task.Task{
-		Id:           "tgt2",
-		DisplayName:  "tgt2",
-		Version:      "v1",
-		BuildVariant: "bv1",
-		Status:       evergreen.TaskFailed,
+		Id:                "tgt2",
+		DisplayName:       "tgt2",
+		Version:           "v1",
+		BuildVariant:      "bv1",
+		TaskGroup:         "tg",
+		TaskGroupMaxHosts: 1,
+		Status:            evergreen.TaskFailed,
 	}
 	s.NoError(t1.Insert())
 	s.NoError(tgt1.Insert())
@@ -319,7 +323,7 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 				DisplayTasks: []patch.DisplayTask{{Name: "dt2"}},
 			},
 		},
-		Tasks:              []string{"t1", "t2", "tg"},
+		Tasks:              []string{"t1", "t2", "tgt1", "tgt2"},
 		BuildVariants:      []string{"bv_only_dt", "bv_different_dt"},
 		RegexBuildVariants: []string{"bv_$"},
 		RegexTasks:         []string{"1$"},
@@ -338,8 +342,11 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 	j.user = &user.DBUser{Id: "me"}
 	project := model.Project{Identifier: s.project, BuildVariants: model.BuildVariants{
 		{
-			Name:  "bv1",
-			Tasks: []model.BuildVariantTaskUnit{{Name: "t1"}, {Name: "tg", IsGroup: true}},
+			Name: "bv1",
+			Tasks: []model.BuildVariantTaskUnit{
+				{Name: "t1"},
+				{Name: "tg", IsGroup: true},
+			},
 		},
 		{
 			Name:         "bv_only_dt",
@@ -352,8 +359,9 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 	},
 		TaskGroups: []model.TaskGroup{
 			{
-				Name:  "tg",
-				Tasks: []string{"tgt1", "tgt2"},
+				Name:     "tg",
+				Tasks:    []string{"tgt1", "tgt2"},
+				MaxHosts: 1,
 			},
 		},
 	}
@@ -370,7 +378,7 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 	s.NoError(err)
 	s.Equal(previousPatchStatus, "failed")
 	s.Equal(currentPatchDoc.BuildVariants, previousPatchDoc.BuildVariants)
-	s.Equal(currentPatchDoc.Tasks, []string{"t1", "tgt2"})
+	s.Equal(currentPatchDoc.Tasks, []string{"t1", "tgt1", "tgt2"})
 }
 
 func (s *PatchIntentUnitsSuite) TestBuildTasksandVariantsWithRepeatFailed() {

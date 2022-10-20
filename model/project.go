@@ -1439,11 +1439,7 @@ func (p *Project) FindTasksForVariant(build string) []string {
 		if b.Name == build {
 			tasks := make([]string, 0, len(b.Tasks))
 			for _, task := range b.Tasks {
-				if task.IsGroup {
-					tasks = append(tasks, p.FindTaskGroup(task.Name).Tasks...)
-				} else {
-					tasks = append(tasks, task.Name)
-				}
+				tasks = append(tasks, task.Name)
 			}
 			return tasks
 		}
