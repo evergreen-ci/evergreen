@@ -1643,13 +1643,11 @@ func ClearAndResetStrandedHostTask(h *host.Host) error {
 	return nil
 }
 
-// ResetStaleTask fixes a task that has either exceeded the heartbeat timeout
-// or has been marked as aborted but was never ended by the agent.
-// The current task execution is marked as finished and, if the task is not
-// aborted, a new execution is created to restart the task.
-// If the task is aborted, the task is marked as failed alongside necessary
-// logic that would typically be run by the agent.
-func ResetStaleTask(t *task.Task) error {
+// FixStaleTask fixes a task that has exceeded the heartbeat timeout.
+// The current task execution is marked as finished and, if the task was not
+// aborted, the task is reset. If the task was aborted, we do not reset the task
+// and it is just marked as failed alongside other necessary updates to finish the task.
+func FixStaleTask(t *task.Task) error {
 	CheckAndBlockSingleHostTaskGroup(t, t.Status)
 
 	failureDesc := evergreen.TaskDescriptionHeartbeat

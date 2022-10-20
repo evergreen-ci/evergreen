@@ -4068,7 +4068,7 @@ func TestResetStaleTask(t *testing.T) {
 		"SuccessfullyRestartsStaleTask": func(t *testing.T, tsk task.Task) {
 			require.NoError(t, tsk.Insert())
 
-			require.NoError(t, ResetStaleTask(&tsk))
+			require.NoError(t, FixStaleTask(&tsk))
 
 			dbArchivedTask, err := task.FindOneOldByIdAndExecution(tsk.Id, 1)
 			require.NoError(t, err)
@@ -4100,7 +4100,7 @@ func TestResetStaleTask(t *testing.T) {
 		"SuccessfullySystemFailsAbortedTask": func(t *testing.T, tsk task.Task) {
 			tsk.Aborted = true
 			require.NoError(t, tsk.Insert())
-			require.NoError(t, ResetStaleTask(&tsk))
+			require.NoError(t, FixStaleTask(&tsk))
 
 			dbArchivedTask, err := task.FindOneOldByIdAndExecution(tsk.Id, 1)
 			require.NoError(t, err)
@@ -4133,7 +4133,7 @@ func TestResetStaleTask(t *testing.T) {
 			tsk.DisplayTaskId = utility.ToStringPtr(dt.Id)
 			require.NoError(t, tsk.Insert())
 
-			require.NoError(t, ResetStaleTask(&tsk))
+			require.NoError(t, FixStaleTask(&tsk))
 
 			dbDisplayTask, err := task.FindOneId(dt.Id)
 			require.NoError(t, err)
@@ -4163,7 +4163,7 @@ func TestResetStaleTask(t *testing.T) {
 			tsk.ActivatedTime = time.Now().Add(-10 * task.UnschedulableThreshold)
 			require.NoError(t, tsk.Insert())
 
-			require.NoError(t, ResetStaleTask(&tsk))
+			require.NoError(t, FixStaleTask(&tsk))
 
 			dbTask, err := task.FindOneId(tsk.Id)
 			require.NoError(t, err)
@@ -4195,7 +4195,7 @@ func TestResetStaleTask(t *testing.T) {
 			tsk.Execution = execNum
 			require.NoError(t, tsk.Insert())
 
-			require.NoError(t, ResetStaleTask(&tsk))
+			require.NoError(t, FixStaleTask(&tsk))
 
 			dbTask, err := task.FindOneId(tsk.Id)
 			require.NoError(t, err)
