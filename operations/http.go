@@ -147,13 +147,13 @@ func (ac *legacyClient) modifyExisting(patchId, action string) error {
 }
 
 // ValidateLocalConfig validates the local project config with the server
-func (ac *legacyClient) ValidateLocalConfig(data []byte, quiet, includeLong, checkUpgradedYAML bool, projectID string) (validator.ValidationErrors, error) {
+func (ac *legacyClient) ValidateLocalConfig(data []byte, quiet, includeLong, useUpgradedYAML bool, projectID string) (validator.ValidationErrors, error) {
 	input := validator.ValidationInput{
-		ProjectYaml:       data,
-		Quiet:             quiet,
-		IncludeLong:       includeLong,
-		ProjectID:         projectID,
-		CheckUpgradedYAML: checkUpgradedYAML,
+		ProjectYaml:     data,
+		Quiet:           quiet,
+		IncludeLong:     includeLong,
+		ProjectID:       projectID,
+		UseUpgradedYAML: useUpgradedYAML,
 	}
 	rPipe, wPipe := io.Pipe()
 	encoder := json.NewEncoder(wPipe)

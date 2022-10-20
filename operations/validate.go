@@ -35,7 +35,7 @@ func Validate() cli.Command {
 			Name:  joinFlagNames(projectFlagName, "p"),
 			Usage: "specify project identifier in order to run validation requiring project settings",
 		}, cli.BoolFlag{
-			Name:  checkUpgradedYAMLFlagName,
+			Name:  useUpgradedYAMLFlagName,
 			Usage: "check project config against upgraded YAML version",
 		}),
 		Before: mergeBeforeFuncs(autoUpdateCLI, setPlainLogger, requirePathFlag),
@@ -44,7 +44,7 @@ func Validate() cli.Command {
 			path := c.String(pathFlagName)
 			quiet := c.Bool(quietFlagName)
 			long := c.Bool(longFlagName)
-			checkUpgradedYAML := c.Bool(checkUpgradedYAMLFlagName)
+			useUpgradedYAML := c.Bool(useUpgradedYAMLFlagName)
 			projectID := c.String(projectFlagName)
 			localModulePaths := c.StringSlice(localModulesFlagName)
 			localModuleMap, err := getLocalModulesFromInput(localModulePaths)
@@ -90,12 +90,12 @@ func Validate() cli.Command {
 				}
 				catcher := grip.NewSimpleCatcher()
 				for _, file := range files {
-					catcher.Add(validateFile(filepath.Join(path, file.Name()), ac, quiet, long, checkUpgradedYAML, localModuleMap, projectID))
+					catcher.Add(validateFile(filepath.Join(path, file.Name()), ac, quiet, long, useUpgradedYAML, localModuleMap, projectID))
 				}
 				return catcher.Resolve()
 			}
 
-			return validateFile(path, ac, quiet, long, checkUpgradedYAML, localModuleMap, projectID)
+			return validateFile(path, ac, quiet, long, useUpgradedYAML, localModuleMap, projectID)
 		},
 	}
 }
@@ -113,7 +113,7 @@ func getLocalModulesFromInput(localModulePaths []string) (map[string]string, err
 	return moduleMap, catcher.Resolve()
 }
 
-func validateFile(path string, ac *legacyClient, quiet, includeLong, checkUpgradedYAML bool, localModuleMap map[string]string, projectID string) error {
+func validateFile(path string, ac *legacyClient, quiet, includeLong, useUpgradedYAML bool, localModuleMap map[string]string, projectID string) error {
 	confFile, err := ioutil.ReadFile(path)
 	if err != nil {
 		return errors.Wrapf(err, "reading file '%s'", path)
@@ -121,9 +121,9 @@ func validateFile(path string, ac *legacyClient, quiet, includeLong, checkUpgrad
 	project := &model.Project{}
 	ctx := context.Background()
 	opts := &model.GetProjectOpts{
-		LocalModules:      localModuleMap,
-		ReadFileFrom:      model.ReadFromLocal,
-		CheckUpgradedYAML: checkUpgradedYAML,
+		LocalModules:    localModuleMap,
+		ReadFileFrom:    model.ReadFromLocal,
+		UseUpgradedYAML: useUpgradedYAML,
 	}
 	if !quiet {
 		opts.UnmarshalStrict = true
@@ -147,7 +147,7 @@ func validateFile(path string, ac *legacyClient, quiet, includeLong, checkUpgrad
 		projectBytes := [][]byte{projectYaml, projectConfigYaml}
 		projectYaml = bytes.Join(projectBytes, []byte("\n"))
 	}
-	projErrors, err := ac.ValidateLocalConfig(projectYaml, quiet, includeLong, checkUpgradedYAML, projectID)
+	projErrors, err := ac.ValidateLocalConfig(projectYaml, quiet, includeLong, useUpgradedYAML, projectID)
 	if err != nil {
 		return nil
 	}
