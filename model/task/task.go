@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
-	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -2045,13 +2044,6 @@ func (t *Task) findDisplayStatus() string {
 			return evergreen.TaskStatusBlocked
 		}
 		return evergreen.TaskWillRun
-	}
-	if !t.IsFinished() {
-		return t.Status
-	}
-	annotation, err := annotations.FindOneByTaskIdAndExecution(t.Id, t.Execution)
-	if err == nil && annotation != nil && len(annotation.Issues) > 0 {
-		return evergreen.TaskKnownIssue
 	}
 	return t.Status
 }
