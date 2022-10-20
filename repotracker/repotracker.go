@@ -127,7 +127,7 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 			"runner":             RunnerName,
 			"project":            projectRef.Id,
 			"project_identifier": projectRef.Identifier,
-			"message":            "no last recorded revision, using most recent revisions",
+			"message":            "no last recorded revision or ignoring last recorded revision, using most recent revisions",
 			"number":             numRevisions,
 		})
 		revisions, err = repoTracker.GetRecentRevisions(numRevisions)
@@ -211,7 +211,8 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 	return nil
 }
 
-// StoreRevisions constructs all versions stored from recent repository revisions
+// StoreRevisions constructs all versions stored from recent repository revisions. The revisions should be given in
+// order of most recent to least recent commit.
 // The additional complexity is due to support for project modifications on patch builds.
 // We need to parse the remote config as it existed when each revision was created.
 // The return value is the most recent version created as a result of storing the revisions.
@@ -219,6 +220,9 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []model.Revision) error {
 	var newestVersion *model.Version
 	ref := repoTracker.ProjectRef
+
+	// Since the revisions are ordered most to least recent, iterate backwards so that they're processed in order of
+	// least to most recent.
 	for i := len(revisions) - 1; i >= 0; i-- {
 		revision := revisions[i].Revision
 		grip.Infof("Processing revision %s in project %s", revision, ref.Id)
@@ -892,12 +896,12 @@ func makeVersionIdWithTag(project, tag, id string) string {
 func verifyOrderNum(revOrderNum int, projectId, revision string) error {
 	latest, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester(projectId))
 	if err != nil || latest == nil {
-		return errors.Wrap(err, "Error getting latest version")
+		return errors.Wrap(err, "getting latest version")
 	}
 
 	// When there are no versions in the db yet, verification is moot.
 	if revOrderNum <= latest.RevisionOrderNumber {
-		return errors.Errorf("Commit order number isn't greater than last stored version's: %v <= %v",
+		return errors.Errorf("commit order number isn't greater than last stored version's: %d <= %d",
 			revOrderNum, latest.RevisionOrderNumber)
 	}
 	return nil

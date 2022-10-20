@@ -95,8 +95,8 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 			"definition": j.DefinitionID,
 		}))
 	}()
-	versionID, versionError := j.addVersion(ctx, *definition)
 
+	versionID, versionError := j.addVersion(ctx, *definition)
 	if versionError != nil {
 		// if the version fails to be added, create a stub version and
 		// log an event so users can get notified when notifications are configured
