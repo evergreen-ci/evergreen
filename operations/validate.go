@@ -18,8 +18,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// kim: TODO: verify that compass YAML succeeds by default but fails with
-// with --check_upgraded_yaml
 func Validate() cli.Command {
 	return cli.Command{
 		Name:  "validate",
@@ -142,8 +140,6 @@ func validateFile(path string, ac *legacyClient, quiet, includeLong, checkUpgrad
 	}
 
 	if pc != nil {
-		// kim: TODO: need to consider whether this matters when doing optional
-		// validation with YAML v3.0.1
 		projectConfigYaml, err := yaml.Marshal(pc.ProjectConfigFields)
 		if err != nil {
 			return errors.Wrapf(err, "marshalling project config into YAML")
