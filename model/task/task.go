@@ -2061,21 +2061,31 @@ func (t *Task) findDisplayStatus() string {
 // for example, if there are both successful and failed tasks, one would expect to see "failed"
 func (t *Task) displayTaskPriority() int {
 	switch t.GetDisplayStatus() {
-	case evergreen.TaskFailed, evergreen.TaskTestTimedOut, evergreen.TaskTimedOut:
+	case evergreen.TaskStarted:
 		return 10
-	case evergreen.TaskKnownIssue:
+	case evergreen.TaskFailed:
 		return 20
-	case evergreen.TaskSetupFailed:
+	case evergreen.TaskTestTimedOut:
 		return 30
-	case evergreen.TaskSystemFailed, evergreen.TaskSystemTimedOut, evergreen.TaskSystemUnresponse:
+	case evergreen.TaskTimedOut:
 		return 40
-	case evergreen.TaskStarted, evergreen.TaskDispatched:
+	case evergreen.TaskSystemFailed:
 		return 50
-	case evergreen.TaskSucceeded:
+	case evergreen.TaskSystemTimedOut:
+		return 60
+	case evergreen.TaskSystemUnresponse:
+		return 70
+	case evergreen.TaskSetupFailed:
+		return 80
+	case evergreen.TaskUndispatched:
+		return 90
+	case evergreen.TaskInactive:
 		return 100
+	case evergreen.TaskSucceeded:
+		return 110
 	}
 	// Note that this includes evergreen.TaskDispatched.
-	return 60
+	return 1000
 }
 
 // Reset sets the task state to a state in which it is scheduled to re-run.
