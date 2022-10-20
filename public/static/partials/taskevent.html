@@ -11,7 +11,6 @@
     <span ng-switch-when="TASK_JIRA_ALERT_CREATED">Created Jira Alert <strong ng-bind-html="eventLogObj.data.jira | jiraLinkify: jira | ansi"></strong>.</span>
     <span ng-switch-when="TASK_DEACTIVATED">Deactivated by user [[eventLogObj.data.user_id]].</span>
     <span ng-switch-when="TASK_ABORT_REQUEST">Marked to abort by user [[eventLogObj.data.user_id]].</span>
-    <span ng-switch-when="TASK_SCHEDULED">Scheduled at [[eventLogObj.data.timestamp | convertDateToUserTimezone:userTz:'MMM D, YYYY, h:mm:ss a']]</span>
     <span ng-switch-when="TASK_PRIORITY_CHANGED">Priority Changed to [[eventLogObj.data.priority]] by [[eventLogObj.data.user_id]]</span>
     <span ng-switch-when="TASK_DEPENDENCIES_OVERRIDDEN">Dependencies overridden by user [[eventLogObj.data.user_id]].</span>
     <span ng-switch-when="MERGE_TASK_UNSCHEDULED">Merge Task Unscheduled by user [[eventLogObj.data.user_id]].</span>
