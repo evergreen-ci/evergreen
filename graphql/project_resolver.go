@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/utility"
 )
 
+// IsFavorite is the resolver for the isFavorite field.
 func (r *projectResolver) IsFavorite(ctx context.Context, obj *restModel.APIProjectRef) (bool, error) {
 	p, err := model.FindBranchProjectRef(*obj.Identifier)
 	if err != nil || p == nil {
@@ -25,6 +26,7 @@ func (r *projectResolver) IsFavorite(ctx context.Context, obj *restModel.APIProj
 	return false, nil
 }
 
+// Patches is the resolver for the patches field.
 func (r *projectResolver) Patches(ctx context.Context, obj *restModel.APIProjectRef, patchesInput PatchesInput) (*Patches, error) {
 	opts := patch.ByPatchNameStatusesCommitQueuePaginatedOptions{
 		Project:         obj.Id,

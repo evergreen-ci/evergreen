@@ -407,6 +407,7 @@ func MockConfig() *evergreen.Settings {
 			},
 			Token: "token",
 			Level: "info",
+			Name:  "name",
 		},
 		Splunk: evergreen.SplunkConfig{
 			SplunkConnectionInfo: send.SplunkConnectionInfo{
