@@ -1,7 +1,6 @@
 package trigger
 
 import (
-	"github.com/evergreen-ci/evergreen/testutil"
 	"regexp"
 	"strings"
 	"testing"
@@ -21,8 +20,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func init() { testutil.Setup() }
 
 const (
 	projectName     = "Test Project"
