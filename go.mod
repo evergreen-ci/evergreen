@@ -71,4 +71,5 @@ require (
 	github.com/trinodb/trino-go-client v0.300.0
 	google.golang.org/genproto v0.0.0-20211129164237-f09f9a12af12 // indirect
 	gopkg.in/20210107192922/yaml.v3 v3.0.0-00010101000000-000000000000
+	gopkg.in/yaml.v3 v3.0.1
 )

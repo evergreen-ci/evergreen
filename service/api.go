@@ -213,7 +213,8 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 	var projectConfig *model.ProjectConfig
 	ctx := context.Background()
 	opts := &model.GetProjectOpts{
-		ReadFileFrom: model.ReadFromLocal,
+		ReadFileFrom:      model.ReadFromLocal,
+		CheckUpgradedYAML: input.CheckUpgradedYAML,
 	}
 	validationErr := validator.ValidationError{}
 	if _, err = model.LoadProjectInto(ctx, input.ProjectYaml, opts, "", project); err != nil {

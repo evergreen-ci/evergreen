@@ -18,8 +18,9 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// kim: TODO: verify that compass YAML succeeds by default but fails with
+// with --check_upgraded_yaml
 func Validate() cli.Command {
-
 	return cli.Command{
 		Name:  "validate",
 		Usage: "verify that an evergreen project config is valid",
@@ -35,6 +36,9 @@ func Validate() cli.Command {
 		}, cli.StringFlag{
 			Name:  joinFlagNames(projectFlagName, "p"),
 			Usage: "specify project identifier in order to run validation requiring project settings",
+		}, cli.BoolFlag{
+			Name:  checkUpgradedYAMLFlagName,
+			Usage: "check project config against upgraded YAML version",
 		}),
 		Before: mergeBeforeFuncs(autoUpdateCLI, setPlainLogger, requirePathFlag),
 		Action: func(c *cli.Context) error {
@@ -42,6 +46,7 @@ func Validate() cli.Command {
 			path := c.String(pathFlagName)
 			quiet := c.Bool(quietFlagName)
 			long := c.Bool(longFlagName)
+			checkUpgradedYAML := c.Bool(checkUpgradedYAMLFlagName)
 			projectID := c.String(projectFlagName)
 			localModulePaths := c.StringSlice(localModulesFlagName)
 			localModuleMap, err := getLocalModulesFromInput(localModulePaths)
@@ -87,12 +92,12 @@ func Validate() cli.Command {
 				}
 				catcher := grip.NewSimpleCatcher()
 				for _, file := range files {
-					catcher.Add(validateFile(filepath.Join(path, file.Name()), ac, quiet, long, localModuleMap, projectID))
+					catcher.Add(validateFile(filepath.Join(path, file.Name()), ac, quiet, long, checkUpgradedYAML, localModuleMap, projectID))
 				}
 				return catcher.Resolve()
 			}
 
-			return validateFile(path, ac, quiet, long, localModuleMap, projectID)
+			return validateFile(path, ac, quiet, long, checkUpgradedYAML, localModuleMap, projectID)
 		},
 	}
 }
@@ -110,7 +115,7 @@ func getLocalModulesFromInput(localModulePaths []string) (map[string]string, err
 	return moduleMap, catcher.Resolve()
 }
 
-func validateFile(path string, ac *legacyClient, quiet, includeLong bool, localModuleMap map[string]string, projectID string) error {
+func validateFile(path string, ac *legacyClient, quiet, includeLong, checkUpgradedYAML bool, localModuleMap map[string]string, projectID string) error {
 	confFile, err := ioutil.ReadFile(path)
 	if err != nil {
 		return errors.Wrapf(err, "reading file '%s'", path)
@@ -118,8 +123,9 @@ func validateFile(path string, ac *legacyClient, quiet, includeLong bool, localM
 	project := &model.Project{}
 	ctx := context.Background()
 	opts := &model.GetProjectOpts{
-		LocalModules: localModuleMap,
-		ReadFileFrom: model.ReadFromLocal,
+		LocalModules:      localModuleMap,
+		ReadFileFrom:      model.ReadFromLocal,
+		CheckUpgradedYAML: checkUpgradedYAML,
 	}
 	if !quiet {
 		opts.UnmarshalStrict = true
@@ -136,6 +142,8 @@ func validateFile(path string, ac *legacyClient, quiet, includeLong bool, localM
 	}
 
 	if pc != nil {
+		// kim: TODO: need to consider whether this matters when doing optional
+		// validation with YAML v3.0.1
 		projectConfigYaml, err := yaml.Marshal(pc.ProjectConfigFields)
 		if err != nil {
 			return errors.Wrapf(err, "marshalling project config into YAML")
@@ -143,7 +151,7 @@ func validateFile(path string, ac *legacyClient, quiet, includeLong bool, localM
 		projectBytes := [][]byte{projectYaml, projectConfigYaml}
 		projectYaml = bytes.Join(projectBytes, []byte("\n"))
 	}
-	projErrors, err := ac.ValidateLocalConfig(projectYaml, quiet, includeLong, projectID)
+	projErrors, err := ac.ValidateLocalConfig(projectYaml, quiet, includeLong, checkUpgradedYAML, projectID)
 	if err != nil {
 		return nil
 	}
