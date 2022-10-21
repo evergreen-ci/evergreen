@@ -118,13 +118,13 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 	// If the task has heartbeat since this job was queued, let it run.
 	if j.task.LastHeartbeat.Add(heartbeatTimeoutThreshold).After(time.Now()) {
 		msg["message"] = "refusing to clean up timed-out task because it has a recent heartbeat"
-		grip.Debug(msg)
+		grip.Info(msg)
 		return
 	}
 	// If the task is already finished, don't try cleaning it up again.
 	if j.task.IsFinished() {
 		msg["message"] = "refusing to clean up timed-out task because it is already finished"
-		grip.Debug(msg)
+		grip.Info(msg)
 		return
 	}
 
@@ -137,7 +137,7 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 	}
 
 	msg["message"] = "successfully cleaned up timed-out task"
-	grip.Debug(msg)
+	grip.Info(msg)
 }
 
 // cleanUpTimedOutTask cleans up a single stale task that has exceeded the task
@@ -256,28 +256,15 @@ func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
 	}
 	queue := j.env.RemoteQueue()
 
-	heartbeatPastCutoffTaskIDs := map[string]struct{}{}
 	taskIDs := map[string]struct{}{}
-	tasks, err := host.FindStaleRunningTasks(heartbeatTimeoutThreshold, host.TaskHeartbeatPastCutoff)
-	if err != nil {
-		j.AddError(errors.Wrap(err, "finding tasks with timed-out or stale heartbeats"))
-		return
-	}
-	for _, t := range tasks {
-		taskIDs[t.Id] = struct{}{}
-		heartbeatPastCutoffTaskIDs[t.Id] = struct{}{}
-	}
-	j.logTasks(tasks, "heartbeat past cutoff, on running host")
 
-	staleTaskIDs := map[string]struct{}{}
-	tasks, err = task.FindWithFields(task.ByStaleRunningTask(heartbeatTimeoutThreshold, task.HeartbeatPastCutoff), task.IdKey)
+	tasks, err := task.FindWithFields(task.ByStaleRunningTask(heartbeatTimeoutThreshold, task.HeartbeatPastCutoff), task.IdKey)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "finding tasks with timed-out or stale heartbeats"))
 		return
 	}
 	for _, t := range tasks {
 		taskIDs[t.Id] = struct{}{}
-		staleTaskIDs[t.Id] = struct{}{}
 	}
 	j.logTasks(tasks, "heartbeat past cutoff")
 
@@ -288,37 +275,8 @@ func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
 	}
 	for _, t := range tasks {
 		taskIDs[t.Id] = struct{}{}
-		staleTaskIDs[t.Id] = struct{}{}
 	}
 	j.logTasks(tasks, "no heartbeat since dispatch")
-
-	// Log tasks that are found by FindStaleRunningTasks that would not be
-	// detectable using ByStaleRunningTask.
-	// TODO (EVG-17644): remove this logging once there is sufficient confidence
-	// that FindStaleRunningTasks is either unavoidable, or can be safely
-	// removed.
-	getUniqueTaskIDs := func(taskIDsToCheck map[string]struct{}) []string {
-		var uniqueTaskIDs []string
-		for taskID := range taskIDsToCheck {
-			if _, ok := staleTaskIDs[taskID]; !ok {
-				uniqueTaskIDs = append(uniqueTaskIDs, taskID)
-			}
-		}
-		return uniqueTaskIDs
-	}
-
-	for reason, taskIDs := range map[string]map[string]struct{}{
-		"heartbeat past cutoff": heartbeatPastCutoffTaskIDs,
-	} {
-		uniqueTaskIDs := getUniqueTaskIDs(taskIDs)
-		grip.InfoWhen(len(uniqueTaskIDs) > 0, message.Fields{
-			"message":  "FindStaleRunningTasks aggregation found unique stale tasks to check",
-			"reason":   reason,
-			"task_ids": uniqueTaskIDs,
-			"ticket":   "EVG-17644",
-			"job":      j.ID(),
-		})
-	}
 
 	for id := range taskIDs {
 		ts := utility.RoundPartOfHour(15)
