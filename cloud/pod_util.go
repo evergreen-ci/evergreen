@@ -27,7 +27,7 @@ func MakeECSClient(settings *evergreen.Settings) (cocoa.ECSClient, error) {
 		// This should only ever be used for testing purposes.
 		return &cocoaMock.ECSClient{}, nil
 	default:
-		return ecs.NewBasicECSClient(podAWSOptions(settings))
+		return ecs.NewBasicClient(podAWSOptions(settings))
 	}
 }
 
@@ -87,7 +87,7 @@ func MakeECSPodDefinitionManager(c cocoa.ECSClient, v cocoa.Vault) (cocoa.ECSPod
 // MakeECSPodCreator creates a cocoa.ECSPodCreator to create pods backed by ECS
 // and secrets backed by an optional cocoa.Vault.
 func MakeECSPodCreator(c cocoa.ECSClient, v cocoa.Vault) (cocoa.ECSPodCreator, error) {
-	return ecs.NewBasicECSPodCreator(c, v)
+	return ecs.NewBasicPodCreator(c, v)
 }
 
 // ExportECSPod exports the pod DB model to its equivalent cocoa.ECSPod backed
@@ -103,13 +103,13 @@ func ExportECSPod(p *pod.Pod, c cocoa.ECSClient, v cocoa.Vault) (cocoa.ECSPod, e
 		return nil, errors.Wrap(err, "exporting pod resources")
 	}
 
-	opts := ecs.NewBasicECSPodOptions().
+	opts := ecs.NewBasicPodOptions().
 		SetClient(c).
 		SetVault(v).
 		SetResources(res).
 		SetStatusInfo(*stat)
 
-	return ecs.NewBasicECSPod(opts)
+	return ecs.NewBasicPod(opts)
 }
 
 // exportECSPodStatusInfo exports the pod's status information to its equivalent

@@ -9,14 +9,14 @@ replace gopkg.in/20210107192922/yaml.v3 => gopkg.in/yaml.v3 v3.0.0-2021010719292
 require (
 	github.com/99designs/gqlgen v0.17.20
 	github.com/PuerkitoBio/rehttp v1.1.0
-	github.com/aws/aws-sdk-go v1.44.89
+	github.com/aws/aws-sdk-go v1.44.109
 	github.com/cheynewallace/tabby v1.1.1
 	github.com/docker/docker v20.10.12+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/dustin/go-humanize v1.0.0
 	github.com/evergreen-ci/birch v0.0.0-20220401151432-c792c3d8e0eb
 	github.com/evergreen-ci/certdepot v0.0.0-20211117185134-dbedb3d79a10
-	github.com/evergreen-ci/cocoa v0.0.0-20220907183415-f36e257bf2fd
+	github.com/evergreen-ci/cocoa v0.0.0-20221021153157-d4b9d1734588
 	github.com/evergreen-ci/gimlet v0.0.0-20220419172609-b882e01673e7
 	github.com/evergreen-ci/go-test2json v0.0.0-20180702150328-5b6cfd2e8cb0
 	github.com/evergreen-ci/juniper v0.0.0-20220118233332-0813edc78908
