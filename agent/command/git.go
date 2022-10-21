@@ -55,8 +55,11 @@ type gitFetchProject struct {
 
 	RecurseSubmodules bool `mapstructure:"recurse_submodules"`
 
-	CommitterName  string `mapstructure:"committer_name"`
+	CommitterName string `mapstructure:"committer_name"`
+
 	CommitterEmail string `mapstructure:"committer_email"`
+
+	CloneParams string `mapstructure:"clone_params"`
 
 	base
 }
@@ -69,6 +72,7 @@ type cloneOpts struct {
 	branch             string
 	dir                string
 	token              string
+	cloneParams        string
 	recurseSubmodules  bool
 	mergeTestRequester bool
 	cloneDepth         int
@@ -186,6 +190,9 @@ func (opts cloneOpts) buildHTTPCloneCommand() ([]string, error) {
 	if opts.branch != "" {
 		clone = fmt.Sprintf("%s --branch '%s'", clone, opts.branch)
 	}
+	if opts.cloneParams != "" {
+		clone = fmt.Sprintf("%s %s", clone, opts.cloneParams)
+	}
 
 	redactedClone := strings.Replace(clone, opts.token, "[redacted oauth token]", -1)
 	return []string{
@@ -207,6 +214,9 @@ func (opts cloneOpts) buildSSHCloneCommand() ([]string, error) {
 	}
 	if opts.branch != "" {
 		cloneCmd = fmt.Sprintf("%s --branch '%s'", cloneCmd, opts.branch)
+	}
+	if opts.cloneParams != "" {
+		cloneCmd = fmt.Sprintf("%s %s", cloneCmd, opts.cloneParams)
 	}
 
 	return []string{
@@ -395,6 +405,7 @@ func (c *gitFetchProject) opts(projectMethod, projectToken string, logger client
 		branch:             conf.ProjectRef.Branch,
 		dir:                c.Directory,
 		token:              projectToken,
+		cloneParams:        c.CloneParams,
 		recurseSubmodules:  c.RecurseSubmodules,
 		mergeTestRequester: conf.Task.Requester == evergreen.MergeTestRequester,
 	}
