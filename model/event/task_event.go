@@ -36,9 +36,6 @@ const (
 	TaskJiraAlertCreated       = "TASK_JIRA_ALERT_CREATED"
 	TaskDependenciesOverridden = "TASK_DEPENDENCIES_OVERRIDDEN"
 	MergeTaskUnscheduled       = "MERGE_TASK_UNSCHEDULED"
-
-	// TODO (EVG-16969) remove once TaskScheduled events TTL
-	TaskScheduled = "TASK_SCHEDULED"
 )
 
 // implements Data

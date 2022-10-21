@@ -28,7 +28,7 @@ func TestFetchRevisions(t *testing.T) {
 	dropTestDB(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestFetchRevisions")
+	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
 	defer cancel()
 	Convey("With a GithubRepositoryPoller with a valid OAuth token...", t, func() {
 		err := modelutil.CreateTestLocalConfig(testConfig, "mci-test", "")
@@ -1084,7 +1084,7 @@ tasks:
 func TestCreateManifest(t *testing.T) {
 	assert := assert.New(t)
 	settings := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, settings, "TestFetchRevisions")
+	testutil.ConfigureIntegrationTest(t, settings, t.Name())
 	// with a revision from 5/31/15
 	v := model.Version{
 		Id:         "v",
