@@ -204,7 +204,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 			}
 			return gimlet.NewJSONResponse(struct{}{})
 		}
-		if err := data.TriggerRepotracker(gh.queue, gh.msgID, event); err != nil {
+		if err := data.TriggerRepotracker(ctx, gh.queue, gh.msgID, event); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "triggering repotracker"))
 		}
 

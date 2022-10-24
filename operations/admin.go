@@ -103,7 +103,10 @@ func adminSetBanner() cli.Command {
 				return errors.Wrap(err, "loading configuration")
 			}
 
-			client := conf.setupRestCommunicator(ctx)
+			client, err := conf.setupRestCommunicator(ctx)
+			if err != nil {
+				return errors.Wrap(err, "setting up REST communicator")
+			}
 			defer client.Close()
 
 			return errors.Wrap(client.SetBannerMessage(ctx, msgContent, theme), "setting the site-wide banner message")
@@ -131,7 +134,10 @@ func doViewSettings() cli.ActionFunc {
 		if err != nil {
 			return errors.Wrap(err, "loading configuration")
 		}
-		client := conf.setupRestCommunicator(ctx)
+		client, err := conf.setupRestCommunicator(ctx)
+		if err != nil {
+			return errors.Wrap(err, "setting up REST communicator")
+		}
 		defer client.Close()
 
 		settings, err := client.GetSettings(ctx)
@@ -180,7 +186,10 @@ func updateSettings() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client := conf.setupRestCommunicator(ctx)
+			client, err := conf.setupRestCommunicator(ctx)
+			if err != nil {
+				return errors.Wrap(err, "setting up REST communicator")
+			}
 			defer client.Close()
 
 			settings, err := client.UpdateSettings(ctx, updateSettings)
@@ -227,7 +236,10 @@ func listEvents() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client := conf.setupRestCommunicator(ctx)
+			client, err := conf.setupRestCommunicator(ctx)
+			if err != nil {
+				return errors.Wrap(err, "setting up REST communicator")
+			}
 			defer client.Close()
 
 			events, err := client.GetEvents(ctx, ts, limit)
@@ -264,7 +276,10 @@ func revert() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client := conf.setupRestCommunicator(ctx)
+			client, err := conf.setupRestCommunicator(ctx)
+			if err != nil {
+				return errors.Wrap(err, "setting up REST communicator")
+			}
 			defer client.Close()
 
 			err = client.RevertSettings(ctx, guid)
@@ -389,7 +404,12 @@ func updateRoleCmd() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client := conf.setupRestCommunicator(context.Background())
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			client, err := conf.setupRestCommunicator(ctx)
+			if err != nil {
+				return errors.Wrap(err, "setting up REST communicator")
+			}
 			defer client.Close()
 			ac, _, err := conf.getLegacyClients()
 			if err != nil {
@@ -474,7 +494,10 @@ func adminDistroExecute() cli.Command {
 			}
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			client := conf.setupRestCommunicator(ctx)
+			client, err := conf.setupRestCommunicator(ctx)
+			if err != nil {
+				return errors.Wrap(err, "setting up REST communicator")
+			}
 			defer client.Close()
 
 			hostIDs, err := client.ExecuteOnDistro(ctx, distro, model.APIDistroScriptOptions{
@@ -513,7 +536,10 @@ func getServiceUsers() cli.Command {
 			}
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			client := conf.setupRestCommunicator(ctx)
+			client, err := conf.setupRestCommunicator(ctx)
+			if err != nil {
+				return errors.Wrap(err, "setting up REST communicator")
+			}
 			defer client.Close()
 
 			users, err := client.GetServiceUsers(ctx)
@@ -564,7 +590,10 @@ func updateServiceUser() cli.Command {
 			}
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			client := conf.setupRestCommunicator(ctx)
+			client, err := conf.setupRestCommunicator(ctx)
+			if err != nil {
+				return errors.Wrap(err, "setting up REST communicator")
+			}
 			defer client.Close()
 
 			return client.UpdateServiceUser(ctx, id, displayName, roles)
@@ -596,7 +625,10 @@ func deleteServiceUser() cli.Command {
 			}
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			client := conf.setupRestCommunicator(ctx)
+			client, err := conf.setupRestCommunicator(ctx)
+			if err != nil {
+				return errors.Wrap(err, "setting up REST communicator")
+			}
 			defer client.Close()
 
 			return client.DeleteServiceUser(ctx, id)

@@ -69,7 +69,10 @@ func listQueue() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client := conf.setupRestCommunicator(ctx)
+			client, err := conf.setupRestCommunicator(ctx)
+			if err != nil {
+				return errors.Wrap(err, "setting up REST communicator")
+			}
 			defer client.Close()
 
 			ac, _, err := conf.getLegacyClients()
@@ -106,7 +109,10 @@ func deleteItem() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client := conf.setupRestCommunicator(ctx)
+			client, err := conf.setupRestCommunicator(ctx)
+			if err != nil {
+				return errors.Wrap(err, "setting up REST communicator")
+			}
 			defer client.Close()
 
 			if err != nil {
@@ -180,7 +186,10 @@ func mergeCommand() cli.Command {
 				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
 
-			client := conf.setupRestCommunicator(ctx)
+			client, err := conf.setupRestCommunicator(ctx)
+			if err != nil {
+				return errors.Wrap(err, "setting up REST communicator")
+			}
 			defer client.Close()
 
 			return params.mergeBranch(ctx, conf, client, ac)
@@ -219,7 +228,10 @@ func setModuleCommand() cli.Command {
 				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
 			ctx := context.Background()
-			client := conf.setupRestCommunicator(ctx)
+			client, err := conf.setupRestCommunicator(ctx)
+			if err != nil {
+				return errors.Wrap(err, "setting up REST communicator")
+			}
 			defer client.Close()
 			showCQMessageForPatch(ctx, client, params.patchID)
 
@@ -260,7 +272,10 @@ func enqueuePatch() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client := conf.setupRestCommunicator(ctx)
+			client, err := conf.setupRestCommunicator(ctx)
+			if err != nil {
+				return errors.Wrap(err, "setting up REST communicator")
+			}
 			defer client.Close()
 
 			ac, _, err := conf.getLegacyClients()
@@ -388,7 +403,10 @@ func backport() cli.Command {
 				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
 			showCQMessageForProject(ac, patchParams.Project)
-			client := conf.setupRestCommunicator(ctx)
+			client, err := conf.setupRestCommunicator(ctx)
+			if err != nil {
+				return errors.Wrap(err, "setting up REST communicator")
+			}
 			defer client.Close()
 
 			if _, err = patchParams.validatePatchCommand(ctx, conf, ac, client); err != nil {

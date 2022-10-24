@@ -377,7 +377,7 @@ func TestCreateProject(t *testing.T) {
 	defer cancel()
 
 	defer func() {
-		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, commitqueue.Collection, event.EventCollection, event.LegacyEventLogCollection, user.Collection))
+		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, commitqueue.Collection, event.EventCollection, user.Collection))
 
 		cocoaMock.ResetGlobalSecretCache()
 	}()

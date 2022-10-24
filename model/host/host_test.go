@@ -289,7 +289,7 @@ func TestUpdatingHostStatus(t *testing.T) {
 
 func TestSetStatusAndFields(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection, event.EventCollection, event.LegacyEventLogCollection))
+		assert.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 	}()
 	for tName, tCase := range map[string]func(t *testing.T, h *Host){
 		"FailsIfHostDoesNotExist": func(t *testing.T, h *Host) {
@@ -3718,55 +3718,6 @@ func TestMarkStaleBuildingAsFailed(t *testing.T) {
 
 	checkStatus(t, hosts[6], hosts[6].Status)
 	checkStatus(t, hosts[7], evergreen.HostBuildingFailed)
-}
-
-func TestStaleRunningTasks(t *testing.T) {
-	assert := assert.New(t)
-	require.NoError(t, db.ClearCollections(Collection, task.Collection))
-	h1 := Host{
-		Id:          "h1",
-		RunningTask: "t1",
-		Status:      evergreen.HostRunning,
-	}
-	assert.NoError(h1.Insert())
-	h2 := Host{
-		Id:          "h2",
-		RunningTask: "t2",
-		Status:      evergreen.HostRunning,
-	}
-	assert.NoError(h2.Insert())
-	h3 := Host{
-		Id:          "h3",
-		RunningTask: "t3",
-		Status:      evergreen.HostRunning,
-	}
-	assert.NoError(h3.Insert())
-	t1 := task.Task{
-		Id:            "t1",
-		Status:        evergreen.TaskStarted,
-		LastHeartbeat: time.Now().Add(-15 * time.Minute),
-	}
-	assert.NoError(t1.Insert())
-	t2 := task.Task{
-		Id:            "t2",
-		Status:        evergreen.TaskDispatched,
-		LastHeartbeat: time.Now().Add(-25 * time.Minute),
-	}
-	assert.NoError(t2.Insert())
-	t3 := task.Task{
-		Id:            "t3",
-		Status:        evergreen.TaskStarted,
-		LastHeartbeat: time.Now().Add(-1 * time.Minute),
-	}
-	assert.NoError(t3.Insert())
-
-	tasks, err := FindStaleRunningTasks(10*time.Minute, TaskHeartbeatPastCutoff)
-	assert.NoError(err)
-	assert.Len(tasks, 1)
-
-	tasks, err = FindStaleRunningTasks(10*time.Minute, TaskNoHeartbeatSinceDispatch)
-	assert.NoError(err)
-	assert.Len(tasks, 1)
 }
 
 func TestNumNewParentsNeeded(t *testing.T) {

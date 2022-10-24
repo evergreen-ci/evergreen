@@ -23,7 +23,7 @@ const branchRefPrefix = "refs/heads/"
 
 // TriggerRepotracker creates an amboy job to get the commits from a
 // Github Push Event
-func TriggerRepotracker(q amboy.Queue, msgID string, event *github.PushEvent) error {
+func TriggerRepotracker(ctx context.Context, q amboy.Queue, msgID string, event *github.PushEvent) error {
 	branch, err := validatePushEvent(event)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
@@ -104,10 +104,9 @@ func TriggerRepotracker(q amboy.Queue, msgID string, event *github.PushEvent) er
 			continue
 		}
 
-		job := units.NewRepotrackerJob(fmt.Sprintf("github-push-%s", msgID), refs[i].Id)
-		job.SetPriority(1)
+		j := units.NewRepotrackerJob(fmt.Sprintf("github-push-%s", msgID), refs[i].Id)
 
-		if err := q.Put(context.TODO(), job); err != nil {
+		if err := amboy.EnqueueUniqueJob(ctx, q, j); err != nil {
 			catcher.Wrap(err, "enqueueing repotracker job for GitHub push events")
 			failed = append(failed, refs[i].Id)
 

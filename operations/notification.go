@@ -61,7 +61,10 @@ func notificationSlack() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client := conf.setupRestCommunicator(ctx)
+			client, err := conf.setupRestCommunicator(ctx)
+			if err != nil {
+				return errors.Wrap(err, "setting up REST communicator")
+			}
 			defer client.Close()
 
 			if err := client.SendNotification(ctx, "slack", apiSlack); err != nil {
@@ -131,7 +134,10 @@ func notificationEmail() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client := conf.setupRestCommunicator(ctx)
+			client, err := conf.setupRestCommunicator(ctx)
+			if err != nil {
+				return errors.Wrap(err, "setting up REST communicator")
+			}
 			defer client.Close()
 
 			if err := client.SendNotification(ctx, "email", apiEmail); err != nil {

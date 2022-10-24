@@ -4,11 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -93,14 +90,8 @@ func (h *generatePollHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "polling generate tasks for task '%s'", h.taskID))
 	}
 
-	// Exit early if we know the error will keep recurring.
-	// If the parser project is already too big it's not going to get smaller.
-	// If new tasks create a dependency cycle it's going to persist across retries.
-	shouldExit := db.IsDocumentLimit(errors.New(jobErr)) || strings.Contains(jobErr, model.DependencyCycleError.Error())
-
 	return gimlet.NewJSONResponse(&apimodels.GeneratePollResponse{
-		Finished:   finished,
-		ShouldExit: shouldExit,
-		Error:      jobErr,
+		Finished: finished,
+		Error:    jobErr,
 	})
 }

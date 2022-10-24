@@ -54,7 +54,10 @@ func PatchSetModule() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client := conf.setupRestCommunicator(ctx)
+			client, err := conf.setupRestCommunicator(ctx)
+			if err != nil {
+				return errors.Wrap(err, "setting up REST communicator")
+			}
 			defer client.Close()
 			ac, rc, err := conf.getLegacyClients()
 			if err != nil {
@@ -194,7 +197,10 @@ func PatchRemoveModule() cli.Command {
 				return errors.Wrap(err, "loading configuration")
 			}
 
-			client := conf.setupRestCommunicator(ctx)
+			client, err := conf.setupRestCommunicator(ctx)
+			if err != nil {
+				return errors.Wrap(err, "setting up REST communicator")
+			}
 			defer client.Close()
 
 			ac, _, err := conf.getLegacyClients()

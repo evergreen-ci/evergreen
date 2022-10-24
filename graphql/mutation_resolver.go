@@ -30,6 +30,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/amboy"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -454,7 +455,7 @@ func (r *mutationResolver) DetachProjectFromRepo(ctx context.Context, projectID 
 func (r *mutationResolver) ForceRepotrackerRun(ctx context.Context, projectID string) (bool, error) {
 	ts := utility.RoundPartOfHour(1).Format(units.TSFormat)
 	j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectID)
-	if err := evergreen.GetEnvironment().RemoteQueue().Put(ctx, j); err != nil {
+	if err := amboy.EnqueueUniqueJob(ctx, evergreen.GetEnvironment().RemoteQueue(), j); err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("error creating Repotracker job: %s", err.Error()))
 	}
 	return true, nil

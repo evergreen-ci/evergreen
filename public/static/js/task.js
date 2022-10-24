@@ -744,24 +744,9 @@ mciModule.controller('TaskLogCtrl', ['$scope', '$timeout', '$http', '$location',
     $http.get('/json/task_log/' + $scope.taskId + '/' + $scope.task.execution + '?type=' + $scope.currentLogs).then(
       function (resp) {
         $scope.buildlogger = false;
-        // TODO (EVG-16969) remove once TaskScheduled events TTL
-        var taskScheduledStatus = "TASK_SCHEDULED";
         var data = resp.data;
         if ($scope.currentLogs == $scope.eventLogs) {
-          // remove any scheduled events other than the most recent one
-          var tmp = data.reverse();
-          var foundScheduled = false;
-          for (var i = tmp.length - 1; i >= 0; i--) {
-            var event = tmp[i];
-            if (foundScheduled && event.event_type === taskScheduledStatus) {
-              removeFromArray(tmp, i, i);
-              continue;
-            }
-            if (event.event_type === taskScheduledStatus) {
-              foundScheduled = true;
-            }
-          }
-          $scope.eventLogData = tmp;
+          $scope.eventLogData = data.reverse();
         } else {
           if (data && data.LogMessages) {
             //read the log messages out, and reverse their order (since they are returned backwards)

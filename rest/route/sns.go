@@ -542,12 +542,12 @@ func (sns *ecsSNS) cleanupUnrecognizedPod(ctx context.Context, detail ecsTaskEve
 
 	statusInfo := cocoa.NewECSPodStatusInfo().SetStatus(status)
 
-	podOpts := ecs.NewBasicECSPodOptions().
+	podOpts := ecs.NewBasicPodOptions().
 		SetClient(c).
 		SetStatusInfo(*statusInfo).
 		SetResources(*resources)
 
-	p, err := ecs.NewBasicECSPod(podOpts)
+	p, err := ecs.NewBasicPod(podOpts)
 	if err != nil {
 		return errors.Wrap(err, "getting pod")
 	}

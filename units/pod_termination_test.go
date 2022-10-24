@@ -37,7 +37,7 @@ func TestNewPodTerminationJob(t *testing.T) {
 
 func TestPodTerminationJob(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(pod.Collection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, dispatcher.Collection, event.EventCollection, event.LegacyEventLogCollection))
+		assert.NoError(t, db.ClearCollections(pod.Collection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, dispatcher.Collection, event.EventCollection))
 	}()
 
 	checkCloudPodDeleteRequests := func(t *testing.T, ecsc cocoa.ECSClient) {
@@ -331,7 +331,7 @@ func TestPodTerminationJob(t *testing.T) {
 // generateTestingECSPod creates a pod in ECS from the given options. The
 // cluster must exist before this is called.
 func generateTestingECSPod(ctx context.Context, t *testing.T, client cocoa.ECSClient, cluster string, creationOpts pod.TaskContainerCreationOptions) cocoa.ECSPod {
-	pc, err := ecs.NewBasicECSPodCreator(client, nil)
+	pc, err := ecs.NewBasicPodCreator(client, nil)
 	require.NoError(t, err)
 
 	containerDef := cocoa.NewECSContainerDefinition().
