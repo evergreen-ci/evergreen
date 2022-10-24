@@ -539,8 +539,7 @@ func getPreviousFailedTasksAndDisplayTasks(project *model.Project, vt patch.Vari
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding failed tasks in build variant '%s' from previous patch '%s'", vt.Variant, version)
 	}
-	// failedExecutionTasks := []string{}
-	// taskGroupFailedTasks := map[string][]string{}
+	// Verify that the taskgroup/task is in the current project definition and in the previous run.
 	allFailedTasks := []string{}
 	for _, failedTask := range failedTasks {
 		if failedTask.TaskGroup != "" &&
@@ -548,27 +547,16 @@ func getPreviousFailedTasksAndDisplayTasks(project *model.Project, vt patch.Vari
 			utility.StringSliceContains(vt.Tasks, failedTask.DisplayName) {
 			if failedTask.IsPartOfSingleHostTaskGroup() {
 				taskGroup := project.FindTaskGroup(failedTask.TaskGroup)
-				// taskGroupFailedTasks[taskGroup.Name] = append(taskGroupFailedTasks[taskGroup.Name], taskGroup.Tasks...)
 				allFailedTasks = append(allFailedTasks, taskGroup.Tasks...)
 			} else {
-				// taskGroupFailedTasks[failedTask.TaskGroup] = append(taskGroupFailedTasks[failedTask.TaskGroup], failedTask.DisplayName)
 				allFailedTasks = append(allFailedTasks, failedTask.DisplayName)
 			}
 		} else if !failedTask.DisplayOnly &&
 			utility.StringSliceContains(tasksInProjectVariant, failedTask.DisplayName) &&
 			utility.StringSliceContains(vt.Tasks, failedTask.DisplayName) {
-			// failedExecutionTasks = append(failedExecutionTasks, failedTask.DisplayName)
 			allFailedTasks = append(allFailedTasks, failedTask.DisplayName)
 		}
 	}
-	// We want to get the intersection of tasks that are in the current project definition and tasks that failed in the previous run.
-	// failedExecutionTasks = utility.StringSliceIntersection(tasksInProjectVariant, failedExecutionTasks)
-	// tasks := utility.StringSliceIntersection(failedExecutionTasks, vt.Tasks)
-	// for g, t := range taskGroupFailedTasks {
-	// 	if utility.StringSliceContains(tasksInProjectVariant, g) {
-	// 		tasks = append(tasks, utility.StringSliceIntersection(t, vt.Tasks)...)
-	// 	}
-	// }
 	return allFailedTasks, nil
 }
 
