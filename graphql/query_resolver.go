@@ -618,11 +618,17 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string, execution *
 func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string, groupID *string) (*TaskTestResult, error) {
 	dbTask, err := task.FindByIdExecution(taskID, execution)
 	if dbTask == nil || err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding task with id %s", taskID))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding task with id '%s'", taskID))
 	}
-	baseTask, err := dbTask.FindTaskOnBaseCommit()
+
+	var baseTask *task.Task
+	if evergreen.IsPatchRequester(dbTask.Requester) {
+		baseTask, err = dbTask.FindTaskOnBaseCommit()
+	} else {
+		baseTask, err = dbTask.FindTaskOnPreviousCommit()
+	}
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base task for task %s: %s", taskID, err))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base task for task '%s': %s", taskID, err))
 	}
 
 	limitNum := utility.FromIntPtr(limit)
@@ -668,7 +674,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		}
 		cedarTestResults, err := apimodels.GetCedarTestResultsWithStatusError(ctx, opts)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding test results for task %s: %s", taskID, err))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding test results for task '%s': %s", taskID, err))
 		}
 
 		apiTestResults := make([]*restModel.APITest, len(cedarTestResults.Results))
