@@ -12,26 +12,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (c *hostCommunicator) GetAgentSetupData(ctx context.Context) (*apimodels.AgentSetupData, error) {
-	out := &apimodels.AgentSetupData{}
-	info := requestInfo{
-		method: http.MethodGet,
-		path:   "agent/setup",
-	}
-
-	resp, err := c.retryRequest(ctx, info, nil)
-	if err != nil {
-		err = utility.RespErrorf(resp, "failed to get agent setup info: %s", err.Error())
-		grip.Alert(err)
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if err = utility.ReadJSON(resp.Body, out); err != nil {
-		return nil, errors.Wrap(err, "failed to get agent setup info")
-	}
-	return out, nil
-}
-
 // EndTask marks the task as finished with the given status
 func (c *hostCommunicator) EndTask(ctx context.Context, detail *apimodels.TaskEndDetail, taskData TaskData) (*apimodels.EndTaskResponse, error) {
 	grip.Info(message.Fields{
@@ -47,12 +27,11 @@ func (c *hostCommunicator) EndTask(ctx context.Context, detail *apimodels.TaskEn
 	}
 	resp, err := c.retryRequest(ctx, info, detail)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, "failed to end task %s: %s", taskData.ID, err.Error())
+		return nil, utility.RespErrorf(resp, errors.Wrap(err, "ending task").Error())
 	}
 	defer resp.Body.Close()
 	if err = utility.ReadJSON(resp.Body, taskEndResp); err != nil {
-		message := fmt.Sprintf("Error unmarshalling task end response: %v", err)
-		return nil, errors.New(message)
+		return nil, errors.Wrap(err, "reading end task reply from response")
 	}
 	grip.Info(message.Fields{
 		"message":     "finished EndTask",
@@ -71,14 +50,11 @@ func (c *hostCommunicator) GetNextTask(ctx context.Context, details *apimodels.G
 	info.path = fmt.Sprintf("hosts/%s/agent/next_task", c.hostID)
 	resp, err := c.retryRequest(ctx, info, details)
 	if err != nil {
-		err = utility.RespErrorf(resp, "failed to get next task: %s", err.Error())
-		grip.Critical(err)
-		return nil, err
+		return nil, utility.RespErrorf(resp, errors.Wrap(err, "getting next task").Error())
 	}
 	defer resp.Body.Close()
 	if err = utility.ReadJSON(resp.Body, nextTask); err != nil {
-		err = errors.Wrap(err, "failed to read next task from response")
-		return nil, err
+		return nil, errors.Wrap(err, "reading next task reply from response")
 	}
 	return nextTask, nil
 }

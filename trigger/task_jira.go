@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -21,7 +23,7 @@ import (
 // DescriptionTemplateString defines the content of the alert ticket.
 const descriptionTemplateString = `
 h2. [{{.Task.DisplayName}} failed on {{.Build.DisplayName}}|{{taskurl .}}]
-Host: {{host .}}
+{{if isHostTask .}}Host: {{host .}}{{end}}{{if isContainerTask .}}Pod: {{pod .}}{{end}}
 Project: [{{.Project.DisplayName}}|{{.UIRoot}}/waterfall/{{.Project.Id}}?redirect_spruce_users=true]
 Commit: [diff|https://github.com/{{.Project.Owner}}/{{.Project.Repo}}/commit/{{.Version.Revision}}]: {{.Version.Message}} | {{.Task.CreateTime | formatAsTimestamp}}
 Evergreen Subscription: {{.SubscriptionID}}; Evergreen Event: {{.EventID}}
@@ -41,6 +43,9 @@ var descriptionTemplate = template.Must(template.New("Desc").Funcs(template.Func
 	"taskurl":           getTaskURL,
 	"formatAsTimestamp": formatAsTimestamp,
 	"host":              getHostMetadata,
+	"isHostTask":        getIsHostTask,
+	"pod":               getPodMetadata,
+	"isContainerTask":   getIsContainerTask,
 	"taskLogURLs":       getTaskLogURLs,
 }).Parse(descriptionTemplateString))
 
@@ -54,6 +59,32 @@ func getHostMetadata(data *jiraTemplateData) string {
 	}
 
 	return fmt.Sprintf("[%s|%s/host/%s?redirect_spruce_users=true]", data.Host.Host, data.UIRoot, url.PathEscape(data.Host.Id))
+}
+
+func getPodMetadata(data *jiraTemplateData) string {
+	if data.Pod == nil {
+		return "N/A"
+	}
+
+	return fmt.Sprintf("[%s|%s/pod/%s?redirect_spruce_users=true]", data.Pod.ID, data.UIRoot, url.PathEscape(data.Pod.ID))
+}
+
+// getIsContainerTask returns a non-empty string if it is a container task and
+// returns an empty string if it's not a container task.
+func getIsContainerTask(data *jiraTemplateData) string {
+	if data.Task.IsContainerTask() {
+		return strconv.FormatBool(true)
+	}
+	return ""
+}
+
+// getIsHostTask returns a non-empty string it is a host task and returns an
+// empty string if it's not a host task.
+func getIsHostTask(data *jiraTemplateData) string {
+	if data.Task.IsHostTask() {
+		return strconv.FormatBool(true)
+	}
+	return ""
 }
 
 func getTaskURL(data *jiraTemplateData) (string, error) {
@@ -103,7 +134,7 @@ func getTaskLogURLs(data *jiraTemplateData) ([]taskInfo, error) {
 			result := make([]taskInfo, 0)
 			execTasks, err := task.Find(task.ByIds(data.Task.ExecutionTasks))
 			if err != nil {
-				return nil, errors.Wrap(err, "failed to fetch execution tasks")
+				return nil, errors.Wrapf(err, "finding execution tasks for task '%s'", data.Task.Id)
 			}
 
 			for _, execTask := range execTasks {
@@ -153,6 +184,7 @@ type jiraTemplateData struct {
 	Task               *task.Task
 	Build              *build.Build
 	Host               *host.Host
+	Pod                *pod.Pod
 	Project            *model.ProjectRef
 	Version            *model.Version
 	FailedTests        []task.TestResult
@@ -223,7 +255,7 @@ func (j *jiraBuilder) build() (*message.JiraIssue, error) {
 	}
 
 	grip.Info(message.Fields{
-		"message":      "creating jira ticket for failure",
+		"message":      "creating Jira ticket for failure",
 		"type":         j.issueType,
 		"jira_project": j.project,
 		"task":         j.data.Task.Id,
@@ -362,9 +394,11 @@ func (j *jiraBuilder) getDescription() (string, error) {
 
 	buf := &bytes.Buffer{}
 	j.data.Tests = tests
+
 	if err := descriptionTemplate.Execute(buf, &j.data); err != nil {
 		return "", err
 	}
+
 	// Jira description length maximum
 	if buf.Len() > jiraMaxDescLength {
 		buf.Truncate(jiraMaxDescLength)

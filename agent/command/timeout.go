@@ -48,15 +48,15 @@ func (c *timeout) Execute(ctx context.Context,
 		// If destructuring as ints fails, or neither timeout is set, destructure as strings.
 		t := &timeoutStr{}
 		if errStr := mapstructure.Decode(c.params, t); errStr != nil {
-			return errors.New("could not decode params as either string or int")
+			return errors.Wrap(err, "decoding mapstructure params")
 		}
 		if err := util.ExpandValues(t, conf.Expansions); err != nil {
-			return errors.Wrap(err, "error expanding expansion values")
+			return errors.Wrap(err, "applying expansions")
 		}
 		timeout, errTimeout := strconv.Atoi(t.TimeoutSecs)
 		exec, errExec := strconv.Atoi(t.ExecTimeoutSecs)
 		if errTimeout != nil && errExec != nil {
-			return errors.Errorf("could not convert strings to int, %s, %s", t.TimeoutSecs, t.ExecTimeoutSecs)
+			return errors.Errorf("could not convert idle timeout '%s' and exec timeout '%s' to integers", t.TimeoutSecs, t.ExecTimeoutSecs)
 		}
 		c.TimeoutSecs = timeout
 		c.ExecTimeoutSecs = exec
@@ -64,11 +64,11 @@ func (c *timeout) Execute(ctx context.Context,
 
 	if c.TimeoutSecs != 0 {
 		conf.SetIdleTimeout(c.TimeoutSecs)
-		logger.Execution().Infof("Set idle timeout to %d seconds", c.TimeoutSecs)
+		logger.Execution().Infof("Set idle timeout to %d seconds.", c.TimeoutSecs)
 	}
 	if c.ExecTimeoutSecs != 0 {
 		conf.SetExecTimeout(c.ExecTimeoutSecs)
-		logger.Execution().Infof("Set exec timeout to %d seconds", c.ExecTimeoutSecs)
+		logger.Execution().Infof("Set exec timeout to %d seconds.", c.ExecTimeoutSecs)
 	}
 	return nil
 

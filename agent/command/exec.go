@@ -84,20 +84,20 @@ func (c *subprocessExec) Name() string { return "subprocess.exec" }
 func (c *subprocessExec) ParseParams(params map[string]interface{}) error {
 	err := mapstructure.Decode(params, c)
 	if err != nil {
-		return errors.Wrapf(err, "error decoding %s params", c.Name())
+		return errors.Wrap(err, "decoding mapstructure params")
 	}
 
 	if c.Command != "" {
 		if c.Binary != "" || len(c.Args) > 0 {
-			return errors.New("must specify command as either arguments or a command string but not both")
+			return errors.New("must specify command as either binary and arguments, or a command string, but not both")
 		}
 
 		args, err := shlex.Split(c.Command)
 		if err != nil {
-			return errors.Wrapf(err, "problem parsing %s command", c.Name())
+			return errors.Wrapf(err, "parsing command using shell lexing rules")
 		}
 		if len(args) == 0 {
-			return errors.Errorf("no arguments for command %s", c.Name())
+			return errors.Errorf("command could not be split using shell lexing rules")
 		}
 
 		c.Binary = args[0]
@@ -112,7 +112,7 @@ func (c *subprocessExec) ParseParams(params map[string]interface{}) error {
 	}
 
 	if c.IgnoreStandardOutput && c.RedirectStandardErrorToOutput {
-		return errors.New("cannot ignore standard out, and redirect standard error to it")
+		return errors.New("cannot both ignore standard output and redirect standard error to it")
 	}
 
 	if c.Env == nil {
@@ -127,19 +127,19 @@ func (c *subprocessExec) doExpansions(exp *util.Expansions) error {
 	catcher := grip.NewBasicCatcher()
 
 	c.WorkingDir, err = exp.ExpandString(c.WorkingDir)
-	catcher.Add(err)
+	catcher.Wrap(err, "expanding working directory")
 
 	c.Binary, err = exp.ExpandString(c.Binary)
-	catcher.Add(err)
+	catcher.Wrap(err, "expanding binary")
 
 	for idx := range c.Args {
 		c.Args[idx], err = exp.ExpandString(c.Args[idx])
-		catcher.Add(err)
+		catcher.Wrap(err, "expanding args")
 	}
 
 	for k, v := range c.Env {
 		c.Env[k], err = exp.ExpandString(v)
-		catcher.Add(err)
+		catcher.Wrap(err, "expanding environment variables")
 	}
 
 	if len(c.Path) > 0 {
@@ -153,7 +153,7 @@ func (c *subprocessExec) doExpansions(exp *util.Expansions) error {
 		c.Env["PATH"] = strings.Join(path, string(filepath.ListSeparator))
 	}
 
-	return errors.Wrap(catcher.Resolve(), "problem expanding strings")
+	return errors.Wrap(catcher.Resolve(), "expanding strings")
 }
 
 type modifyEnvOptions struct {
@@ -228,7 +228,7 @@ func (c *subprocessExec) getProc(ctx context.Context, taskID string, logger clie
 			if cancel != nil {
 				grip.Warning(message.WrapError(proc.RegisterTrigger(lctx, func(info jasper.ProcessInfo) {
 					cancel()
-				}), "problem registering cancellation for process"))
+				}), "registering canceller for process"))
 			}
 
 			pid := proc.Info(ctx).PID
@@ -236,9 +236,9 @@ func (c *subprocessExec) getProc(ctx context.Context, taskID string, logger clie
 			agentutil.TrackProcess(taskID, pid, logger.System())
 
 			if c.Background {
-				logger.Execution().Debugf("running command in the background [pid=%d]", pid)
+				logger.Execution().Debugf("Running process in the background with pid %d.", pid)
 			} else {
-				logger.Execution().Infof("started process with pid '%d'", pid)
+				logger.Execution().Infof("Started process with pid %d.", pid)
 			}
 
 			return proc, nil
@@ -276,8 +276,7 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 	var err error
 
 	if err = c.doExpansions(conf.Expansions); err != nil {
-		logger.Execution().Error("problem expanding command values")
-		return errors.WithStack(err)
+		return errors.Wrap(err, "expanding command parameters")
 	}
 
 	logger.Execution().WarningWhen(
@@ -289,13 +288,12 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 		})
 	c.WorkingDir, err = conf.GetWorkingDirectory(c.WorkingDir)
 	if err != nil {
-		logger.Execution().Warning(err.Error())
-		return errors.WithStack(err)
+		return errors.Wrap(err, "getting working directory")
 	}
 
 	taskTmpDir, err := conf.GetWorkingDirectory("tmp")
 	if err != nil {
-		logger.Execution().Notice(err.Error())
+		logger.Execution().Notice(errors.Wrap(err, "getting temporary directory"))
 	}
 
 	var exp util.Expansions
@@ -327,12 +325,12 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 
 	err = errors.WithStack(c.runCommand(ctx, conf.Task.Id, c.getProc(ctx, conf.Task.Id, logger), logger))
 
-	if ctx.Err() != nil {
-		logger.System().Debug("dumping running processes")
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		logger.System().Debugf("Canceled command '%s', dumping running processes.", c.Name())
 		logger.System().Debug(message.CollectAllProcesses())
 		logger.Execution().Notice(err)
 
-		return errors.Errorf("%s aborted", c.Name())
+		return errors.Wrapf(ctxErr, "canceled while running command '%s'", c.Name())
 	}
 
 	return err
@@ -340,7 +338,7 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 
 func (c *subprocessExec) runCommand(ctx context.Context, taskID string, cmd *jasper.Command, logger client.LoggerProducer) error {
 	if c.Silent {
-		logger.Execution().Info("executing command in silent mode")
+		logger.Execution().Info("Executing command in silent mode.")
 	}
 
 	err := cmd.Run(ctx)
@@ -358,6 +356,7 @@ func (c *subprocessExec) runCommand(ctx context.Context, taskID string, cmd *jas
 			"silent":     c.Silent,
 			"continue":   c.ContinueOnError,
 		}))
+		logger.Execution().Noticef("Script errored, but continue on error is set - continuing task execution. Error: %s.", err)
 		return nil
 	}
 

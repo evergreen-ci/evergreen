@@ -248,7 +248,7 @@ func makeHeaders(headerMap map[string][]string) http.Header {
 func emailPayload(t *commonTemplateData) (*message.Email, error) {
 	bodyTmpl, err := emailBodyTemplate.Clone()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to clone emailBodyTemplate")
+		return nil, errors.Wrap(err, "cloning email body template")
 	}
 	if t.emailContent == nil {
 		_, err = bodyTmpl.AddParseTree("content", emailDefaultContentTemplate.Tree)
@@ -256,19 +256,19 @@ func emailPayload(t *commonTemplateData) (*message.Email, error) {
 		_, err = bodyTmpl.AddParseTree("content", t.emailContent.Tree)
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to email content")
+		return nil, errors.Wrap(err, "adding email content")
 	}
 	buf := &bytes.Buffer{}
 	err = bodyTmpl.ExecuteTemplate(buf, "emailbody", t)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to execute email template")
+		return nil, errors.Wrap(err, "executing email template")
 	}
 	body := buf.String()
 
 	buf = &bytes.Buffer{}
 	err = subjectTmpl.Execute(buf, t)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to execute subject template")
+		return nil, errors.Wrap(err, "executing email subject template")
 	}
 	subject := buf.String()
 
@@ -290,7 +290,7 @@ func emailPayload(t *commonTemplateData) (*message.Email, error) {
 func webhookPayload(api interface{}, headers http.Header) (*util.EvergreenWebhook, error) {
 	bytes, err := json.Marshal(api)
 	if err != nil {
-		return nil, errors.Wrap(err, "error building json model")
+		return nil, errors.Wrap(err, "building JSON model")
 	}
 
 	return &util.EvergreenWebhook{
@@ -302,12 +302,12 @@ func webhookPayload(api interface{}, headers http.Header) (*util.EvergreenWebhoo
 func jiraComment(t *commonTemplateData) (*string, error) {
 	commentTmpl, err := ttemplate.New("jira-comment").Parse(jiraCommentTemplate)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse jira comment template")
+		return nil, errors.Wrap(err, "parsing Jira comment template")
 	}
 
 	buf := &bytes.Buffer{}
 	if err = commentTmpl.Execute(buf, t); err != nil {
-		return nil, errors.Wrap(err, "failed to make jira comment")
+		return nil, errors.Wrap(err, "generating Jira comment text from template")
 	}
 	comment := buf.String()
 
@@ -319,17 +319,17 @@ func jiraIssue(t *commonTemplateData) (*message.JiraIssue, error) {
 
 	comment, err := jiraComment(t)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to make jira issue")
+		return nil, errors.Wrap(err, "making Jira issue")
 	}
 
 	issueTmpl, err := ttemplate.New("jira-issue").Parse(jiraIssueTitle)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse jira issue template")
+		return nil, errors.Wrap(err, "parsing Jira issue template")
 	}
 
 	buf := &bytes.Buffer{}
 	if err = issueTmpl.Execute(buf, t); err != nil {
-		return nil, errors.Wrap(err, "failed to make jira issue")
+		return nil, errors.Wrap(err, "generating Jira ticket text from template")
 	}
 	title, remainder := truncateString(buf.String(), maxSummary)
 	desc := *comment
@@ -348,12 +348,12 @@ func jiraIssue(t *commonTemplateData) (*message.JiraIssue, error) {
 func slack(t *commonTemplateData) (*notification.SlackPayload, error) {
 	issueTmpl, err := ttemplate.New("slack").Parse(slackTemplate)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse slack template")
+		return nil, errors.Wrap(err, "parsing Slack template")
 	}
 
 	buf := &bytes.Buffer{}
 	if err = issueTmpl.Execute(buf, t); err != nil {
-		return nil, errors.Wrap(err, "failed to make slack message")
+		return nil, errors.Wrap(err, "generating Slack message text from template")
 	}
 	msg := buf.String()
 
@@ -397,14 +397,14 @@ func makeCommonPayload(sub *event.Subscription, eventAttributes event.Attributes
 	if data.Task != nil {
 		data.FailedTests, err = getFailedTestsFromTemplate(*data.Task)
 		if err != nil {
-			return nil, errors.Wrap(err, "error getting failed tests")
+			return nil, errors.Wrap(err, "getting failed tests")
 		}
 	}
 
 	switch sub.Subscriber.Type {
 	case event.GithubPullRequestSubscriberType, event.GithubCheckSubscriberType:
 		if len(data.githubDescription) == 0 {
-			return nil, errors.Errorf("Github subscriber not supported for trigger: '%s'", sub.Trigger)
+			return nil, errors.Errorf("GitHub subscriber not supported for trigger '%s'", sub.Trigger)
 		}
 		msg := &message.GithubStatus{
 			Context:     data.githubContext,
@@ -438,7 +438,7 @@ func makeCommonPayload(sub *event.Subscription, eventAttributes event.Attributes
 		return slack(data)
 	}
 
-	return nil, errors.Errorf("unknown type: '%s'", sub.Subscriber.Type)
+	return nil, errors.Errorf("unknown subscriber type '%s'", sub.Subscriber.Type)
 }
 
 func getFailedTestsFromTemplate(t task.Task) ([]task.TestResult, error) {
@@ -487,7 +487,10 @@ func versionLink(i versionLinkInput) string {
 	return url
 }
 
-func hostLink(uiBase string, hostID string) string {
+func hostLink(uiBase, hostID string) string {
 	return fmt.Sprintf("%s/host/%s?redirect_spruce_users=true", uiBase, hostID)
+}
 
+func podLink(uiBase, podID string) string {
+	return fmt.Sprintf("%s/pod/%s?redirect_spruce_users=true", uiBase, podID)
 }

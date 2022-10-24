@@ -38,7 +38,7 @@ func (m *mockMetricCollector) format() systemmetrics.DataFormat {
 
 func (m *mockMetricCollector) collect(context.Context) ([]byte, error) {
 	if m.collectErr {
-		return nil, errors.New("Error collecting metrics")
+		return nil, errors.New("error collecting metrics")
 	} else {
 		m.count += 1
 		return []byte(fmt.Sprintf("%s-%d", m.name(), m.count)), nil

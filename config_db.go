@@ -12,7 +12,7 @@ var (
 	ConfigDocID      = "global"
 )
 
-//nolint: deadcode, unused
+// nolint: deadcode, unused
 var (
 	idKey                 = bsonutil.MustHaveTag(Settings{}, "Id")
 	bannerKey             = bsonutil.MustHaveTag(Settings{}, "Banner")
@@ -95,7 +95,9 @@ var (
 	cloudCleanupDisabledKey            = bsonutil.MustHaveTag(ServiceFlags{}, "CloudCleanupDisabled")
 	containerConfigurationsDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "ContainerConfigurationsDisabled")
 	slackAppDisabledKey                = bsonutil.MustHaveTag(ServiceFlags{}, "SlackAppDisabled")
+	partialRouteAuthDisabledKey        = bsonutil.MustHaveTag(ServiceFlags{}, "PartialRouteAuthDisabled")
 	unrecognizedPodCleanupDisabledKey  = bsonutil.MustHaveTag(ServiceFlags{}, "UnrecognizedPodCleanupDisabled")
+	dispatchTransactionDisabledKey     = bsonutil.MustHaveTag(ServiceFlags{}, "DispatchTransactionDisabled")
 
 	// ContainerPoolsConfig keys
 	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")

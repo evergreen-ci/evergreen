@@ -20,8 +20,7 @@ import (
 )
 
 func resetTasks(t *testing.T) {
-	require.NoError(t, db.ClearCollections(task.Collection, model.TestLogCollection),
-		"error clearing test collections")
+	require.NoError(t, db.ClearCollections(task.Collection, model.TestLogCollection))
 }
 
 func TestAttachResults(t *testing.T) {
@@ -40,7 +39,7 @@ func TestAttachResults(t *testing.T) {
 		resultsLoc := filepath.Join(cwd, "testdata", "attach", "plugin_attach_results.json")
 
 		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", configFile, modelutil.NoPatch)
-		require.NoError(t, err, "failed to setup test data")
+		require.NoError(t, err)
 		So(err, ShouldBeNil)
 
 		conf, err := agentutil.MakeTaskConfigFromModelData(testConfig, modelData)
@@ -55,24 +54,24 @@ func TestAttachResults(t *testing.T) {
 				So(len(projTask.Commands), ShouldNotEqual, 0)
 				for _, command := range projTask.Commands {
 					pluginCmds, err := Render(command, conf.Project)
-					require.NoError(t, err, "Couldn't get plugin command: %s", command.Command)
+					require.NoError(t, err)
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
 					err = pluginCmds[0].Execute(ctx, comm, logger, conf)
 					So(err, ShouldBeNil)
 					testTask, err := task.FindOne(db.Query(task.ById(conf.Task.Id)))
-					require.NoError(t, err, "Couldn't find task")
+					require.NoError(t, err)
 					So(testTask, ShouldNotBeNil)
 					// ensure test results are exactly as expected
 					// attempt to open the file
 					reportFile, err := os.Open(resultsLoc)
-					require.NoError(t, err, "Couldn't open report file: '%v'", err)
+					require.NoError(t, err)
 					results := &task.LocalTestResults{}
 					err = utility.ReadJSON(reportFile, results)
-					require.NoError(t, err, "Couldn't read report file: '%v'", err)
+					require.NoError(t, err)
 					testResults := *results
 					So(testTask.LocalTestResults, ShouldResemble, testResults.Results)
-					require.NoError(t, err, "Couldn't clean up test temp dir")
+					require.NoError(t, err)
 				}
 			}
 		})
@@ -92,7 +91,7 @@ func TestAttachRawResults(t *testing.T) {
 		resultsLoc := filepath.Join(cwd, "testdata", "attach", "plugin_attach_results_raw.json")
 
 		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", configFile, modelutil.NoPatch)
-		require.NoError(t, err, "failed to setup test data")
+		require.NoError(t, err)
 
 		conf, err := agentutil.MakeTaskConfigFromModelData(testConfig, modelData)
 		require.NoError(t, err)
@@ -106,7 +105,7 @@ func TestAttachRawResults(t *testing.T) {
 				for _, command := range projTask.Commands {
 
 					pluginCmds, err := Render(command, conf.Project)
-					require.NoError(t, err, "Couldn't get plugin command: %s", command.Command)
+					require.NoError(t, err)
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
 					// create a plugin communicator
@@ -116,16 +115,16 @@ func TestAttachRawResults(t *testing.T) {
 					Convey("when retrieving task", func() {
 						// fetch the task
 						testTask, err := task.FindOne(db.Query(task.ById(conf.Task.Id)))
-						require.NoError(t, err, "Couldn't find task")
+						require.NoError(t, err)
 						So(testTask, ShouldNotBeNil)
 
 						Convey("test results should match and raw log should be in appropriate collection", func() {
 
 							reportFile, err := os.Open(resultsLoc)
-							require.NoError(t, err, "Couldn't open report file: '%v'", err)
+							require.NoError(t, err)
 							results := &task.LocalTestResults{}
 							err = utility.ReadJSON(reportFile, results)
-							require.NoError(t, err, "Couldn't read report file: '%v'", err)
+							require.NoError(t, err)
 
 							testResults := *results
 							So(len(testResults.Results), ShouldEqual, 3)

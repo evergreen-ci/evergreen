@@ -3,7 +3,6 @@ package model
 import (
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -66,6 +65,7 @@ func (q *ContainerTaskQueue) populate() error {
 
 	grip.Info(message.Fields{
 		"message":    "generated container task queue",
+		"usage":      "container task health dashboard",
 		"candidates": len(candidates),
 		"queue":      len(readyForAllocation),
 		"duration":   time.Since(startAt),
@@ -96,50 +96,26 @@ func (q *ContainerTaskQueue) filterByProjectRefSettings(tasks []task.Task) ([]ta
 			continue
 		}
 
-		if !ref.IsEnabled() {
-			// GitHub PR tasks are still allowed to run for disabled hidden
-			// projects.
-			if t.Requester == evergreen.GithubPRRequester && ref.IsHidden() {
-				grip.Debug(message.Fields{
-					"message": "queueing task because GitHub PRs are allowed to run tasks for projects that are both hidden and disabled",
-					"outcome": "not skipping",
-					"task":    t.Id,
-					"project": t.Project,
-					"context": "container task queue",
-				})
-			} else {
-				grip.Debug(message.Fields{
-					"message": "skipping task because project is disabled",
-					"outcome": "skipping",
-					"task":    t.Id,
-					"project": t.Project,
-					"context": "container task queue",
-				})
-				continue
-			}
-		}
-
-		if ref.IsDispatchingDisabled() {
+		canDispatch, reason := ProjectCanDispatchTask(&ref, &t)
+		if !canDispatch {
 			grip.Debug(message.Fields{
-				"message": "skipping task because dispatching is disabled for its project",
+				"message": "skipping allocation for undispatchable task",
 				"outcome": "skipping",
+				"reason":  reason,
 				"task":    t.Id,
 				"project": t.Project,
 				"context": "container task queue",
 			})
 			continue
 		}
-
-		if t.IsPatchRequest() && ref.IsPatchingDisabled() {
-			grip.Debug(message.Fields{
-				"message": "skipping task because patch testing is disabled for its project",
-				"outcome": "skipping",
-				"task":    t.Id,
-				"project": t.Project,
-				"context": "container task queue",
-			})
-			continue
-		}
+		grip.DebugWhen(reason != "", message.Fields{
+			"message": "allowing allocation for task that can be dispatched",
+			"outcome": "not skipping",
+			"reason":  reason,
+			"task":    t.Id,
+			"project": t.Project,
+			"context": "container task queue",
+		})
 
 		readyForAllocation = append(readyForAllocation, t)
 	}

@@ -71,7 +71,7 @@ func TestGitGetProjectSuite(t *testing.T) {
 	env := testutil.NewEnvironment(ctx, t)
 	settings := env.Settings()
 
-	testutil.ConfigureIntegrationTest(t, settings, "TestGitGetProjectSuite")
+	testutil.ConfigureIntegrationTest(t, settings, t.Name())
 	s.settings = settings
 	suite.Run(t, s)
 }
@@ -733,7 +733,7 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevisionSetModule() {
 	ref := strings.Trim(out.String(), "\n")
 	s.Equal(correctHash, ref) // this revision is defined in the patch, returned by GetTaskPatch
 	s.NoError(logger.Close())
-	toCheck := `Using revision/ref 'b27779f856b211ffaf97cbc124b7082a20ea8bc0' for module 'sample' (reason: specified in set-module)`
+	toCheck := `Using revision/ref 'b27779f856b211ffaf97cbc124b7082a20ea8bc0' for module 'sample' (reason: specified in set-module).`
 	foundMsg := false
 	for _, task := range comm.GetMockMessages() {
 		for _, msg := range task {
@@ -777,7 +777,7 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevisionManifest() {
 	ref := strings.Trim(out.String(), "\n")
 	s.Equal(correctHash, ref)
 	s.NoError(logger.Close())
-	toCheck := `Using revision/ref '3585388b1591dfca47ac26a5b9a564ec8f138a5e' for module 'sample' (reason: from manifest)`
+	toCheck := `Using revision/ref '3585388b1591dfca47ac26a5b9a564ec8f138a5e' for module 'sample' (reason: from manifest).`
 	foundMsg := false
 	for _, task := range comm.GetMockMessages() {
 		for _, msg := range task {
@@ -999,7 +999,7 @@ func TestManifestLoad(t *testing.T) {
 	env := testutil.NewEnvironment(ctx, t)
 	testConfig := env.Settings()
 
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestManifestFetch")
+	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
 
 	// Skipping: this test runs the manifest command and then
 	// checks that the database records were properly changed, and
@@ -1022,7 +1022,7 @@ func TestManifestLoad(t *testing.T) {
 				So(len(task.Commands), ShouldNotEqual, 0)
 				for _, command := range task.Commands {
 					pluginCmds, err := Render(command, taskConfig.Project)
-					require.NoError(t, err, "Couldn't get plugin command: %s", command.Command)
+					require.NoError(t, err)
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
 
@@ -1050,7 +1050,7 @@ func TestManifestLoad(t *testing.T) {
 				So(len(task.Commands), ShouldNotEqual, 0)
 				for _, command := range task.Commands {
 					pluginCmds, err := Render(command, taskConfig.Project)
-					require.NoError(t, err, "Couldn't get plugin command: %s", command.Command)
+					require.NoError(t, err)
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
 					err = pluginCmds[0].Execute(ctx, comm, logger, taskConfig)

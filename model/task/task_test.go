@@ -1282,7 +1282,7 @@ func TestUnscheduleStaleUnderwaterHostTasksNoDistro(t *testing.T) {
 
 func TestDisableStaleContainerTasks(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
+		assert.NoError(t, db.ClearCollections(Collection, event.EventCollection, event.LegacyEventLogCollection))
 	}()
 	for tName, tCase := range map[string]func(t *testing.T, tsk Task){
 		"DisablesStaleUnallocatedContainerTask": func(t *testing.T, tsk Task) {
@@ -1349,14 +1349,14 @@ func TestDisableStaleContainerTasks(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
+			require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 			tCase(t, getTaskThatNeedsContainerAllocation())
 		})
 	}
 }
 
 func TestDeactivateStepbackTasksForProject(t *testing.T) {
-	require.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
+	require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 
 	runningStepbackTask := Task{
 		Id:           "running",
@@ -2040,7 +2040,7 @@ func TestGetRecursiveDependenciesDown(t *testing.T) {
 }
 
 func TestDeactivateDependencies(t *testing.T) {
-	require.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
+	require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 
 	tasks := []Task{
 		{Id: "t0"},
@@ -2077,7 +2077,7 @@ func TestDeactivateDependencies(t *testing.T) {
 }
 
 func TestActivateDeactivatedDependencies(t *testing.T) {
-	require.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
+	require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 
 	tasks := []Task{
 		{Id: "t0"},
@@ -2137,7 +2137,7 @@ func TestTopologicalSort(t *testing.T) {
 }
 
 func TestActivateTasks(t *testing.T) {
-	require.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
+	require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 
 	tasks := []Task{
 		{Id: "t0"},
@@ -2172,7 +2172,7 @@ func TestActivateTasks(t *testing.T) {
 }
 
 func TestDeactivateTasks(t *testing.T) {
-	require.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
+	require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 
 	tasks := []Task{
 		{Id: "t0"},
@@ -2794,7 +2794,7 @@ func getTaskThatNeedsContainerAllocation() Task {
 
 func TestDisableOneTask(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
+		assert.NoError(t, db.ClearCollections(Collection, event.EventCollection, event.LegacyEventLogCollection))
 	}()
 
 	type disableFunc func(t *testing.T, tsk Task) error
@@ -2868,7 +2868,7 @@ func TestDisableOneTask(t *testing.T) {
 				},
 			} {
 				t.Run(tName, func(t *testing.T) {
-					require.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
+					require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 					tasks := [5]Task{
 						{Id: "display-task0", DisplayOnly: true, ExecutionTasks: []string{"exec-task1", "exec-task2"}, Activated: true},
 						{Id: "exec-task1", DisplayTaskId: utility.ToStringPtr("display-task0"), Activated: true},
@@ -2889,7 +2889,7 @@ func TestDisableOneTask(t *testing.T) {
 
 func TestDisableManyTasks(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
+		assert.NoError(t, db.ClearCollections(Collection, event.EventCollection, event.LegacyEventLogCollection))
 	}()
 
 	for tName, tCase := range map[string]func(t *testing.T){
@@ -3023,7 +3023,7 @@ func TestDisableManyTasks(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
+			require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 			tCase(t)
 		})
 	}
@@ -3798,7 +3798,7 @@ func TestAbortVersion(t *testing.T) {
 
 func TestArchive(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection, OldCollection, event.LegacyEventLogCollection))
+		assert.NoError(t, db.ClearCollections(Collection, OldCollection, event.EventCollection, event.LegacyEventLogCollection))
 	}()
 	checkTaskIsArchived := func(t *testing.T, oldTaskID string) {
 		dbTask, err := FindOneOldId(oldTaskID)
@@ -3878,7 +3878,7 @@ func TestArchive(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(Collection, OldCollection, event.LegacyEventLogCollection))
+			require.NoError(t, db.ClearCollections(Collection, OldCollection, event.EventCollection))
 			tsk := Task{
 				Id:     "taskID",
 				Status: evergreen.TaskSucceeded,
@@ -3890,10 +3890,10 @@ func TestArchive(t *testing.T) {
 
 func TestArchiveFailedOnly(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection, OldCollection, event.LegacyEventLogCollection))
+		assert.NoError(t, db.ClearCollections(Collection, OldCollection, event.EventCollection, event.LegacyEventLogCollection))
 	}()
 
-	assert.NoError(t, db.ClearCollections(Collection, OldCollection, event.LegacyEventLogCollection))
+	assert.NoError(t, db.ClearCollections(Collection, OldCollection, event.EventCollection))
 	t1 := Task{
 		Id:      "t1",
 		Status:  evergreen.TaskFailed,
@@ -4696,4 +4696,103 @@ func assertTasksAreEqual(t *testing.T, expected, actual Task, exectedExecution i
 	assert.Equal(t, expected.Version, actual.Version)
 	assert.Equal(t, expected.Status, actual.Status)
 	assert.Equal(t, exectedExecution, actual.Execution)
+}
+
+func TestFindAbortingAndResettingDependencies(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.Clear(Collection))
+	}()
+	for tName, tCase := range map[string]func(t *testing.T, tsk Task, depTasks []Task){
+		"ReturnsAllMatchingDependencies": func(t *testing.T, tsk Task, depTasks []Task) {
+			require.NoError(t, tsk.Insert())
+
+			found, err := tsk.FindAbortingAndResettingDependencies()
+			assert.NoError(t, err)
+			require.Len(t, found, 2)
+			expected := []string{depTasks[1].Id, depTasks[3].Id}
+			for _, foundTask := range found {
+				assert.True(t, utility.StringSliceContains(expected, foundTask.Id), "should not have returned task '%s'", foundTask.Id)
+			}
+		},
+		"ReturnsTransitiveMatchingDependencies": func(t *testing.T, tsk Task, depTasks []Task) {
+			intermediateDepTask := Task{
+				Id: "intermediate_dependency",
+				DependsOn: []Dependency{
+					{TaskId: depTasks[1].Id},
+				},
+			}
+			require.NoError(t, intermediateDepTask.Insert())
+			tsk.DependsOn = []Dependency{{TaskId: intermediateDepTask.Id}}
+			require.NoError(t, tsk.Insert())
+
+			found, err := tsk.FindAbortingAndResettingDependencies()
+			assert.NoError(t, err)
+			require.Len(t, found, 1)
+			assert.Equal(t, depTasks[1].Id, found[0].Id)
+		},
+		"IgnoresNonexistentTasks": func(t *testing.T, tsk Task, depTasks []Task) {
+			tsk.DependsOn = append(tsk.DependsOn, Dependency{TaskId: "nonexistent"})
+			require.NoError(t, tsk.Insert())
+
+			found, err := tsk.FindAbortingAndResettingDependencies()
+			assert.NoError(t, err)
+			require.Len(t, found, 2)
+			expected := []string{depTasks[1].Id, depTasks[3].Id}
+			for _, foundTask := range found {
+				assert.True(t, utility.StringSliceContains(expected, foundTask.Id), "should not have returned task '%s'", foundTask.Id)
+			}
+		},
+		"IgnoresAbortingAndResettingTasksNotInDependencies": func(t *testing.T, tsk Task, depTasks []Task) {
+			tsk.DependsOn = []Dependency{tsk.DependsOn[0], tsk.DependsOn[2], tsk.DependsOn[3]}
+			require.NoError(t, tsk.Insert())
+
+			found, err := tsk.FindAbortingAndResettingDependencies()
+			assert.NoError(t, err)
+			require.Len(t, found, 1)
+			assert.Equal(t, depTasks[3].Id, found[0].Id)
+		},
+		"ReturnsNoResultsForNoDependencies": func(t *testing.T, tsk Task, depTasks []Task) {
+			tsk.DependsOn = nil
+			require.NoError(t, tsk.Insert())
+
+			found, err := tsk.FindAbortingAndResettingDependencies()
+			assert.NoError(t, err)
+			assert.Empty(t, found)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection))
+
+			tsk := Task{
+				Id: "task_id",
+			}
+			depTasks := []Task{
+				{
+					Id:      "dep_task0",
+					Aborted: true,
+				},
+				{
+					Id:                "dep_task1",
+					Aborted:           true,
+					ResetWhenFinished: true,
+				},
+				{
+					Id:                "dep_task3",
+					ResetWhenFinished: true,
+				},
+				{
+					Id:                      "dep_task4",
+					Aborted:                 true,
+					ResetFailedWhenFinished: true,
+					DependsOn:               []Dependency{},
+				},
+			}
+			for _, depTask := range depTasks {
+				require.NoError(t, depTask.Insert())
+				tsk.DependsOn = append(tsk.DependsOn, Dependency{TaskId: depTask.Id})
+			}
+
+			tCase(t, tsk, depTasks)
+		})
+	}
 }

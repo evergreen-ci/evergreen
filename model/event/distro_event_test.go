@@ -12,7 +12,7 @@ import (
 func TestLoggingDistroEvents(t *testing.T) {
 	Convey("When logging distro events, ", t, func() {
 
-		So(db.Clear(LegacyEventLogCollection), ShouldBeNil)
+		So(db.Clear(EventCollection), ShouldBeNil)
 
 		Convey("logged events should be stored and queryable in sorted order", func() {
 			distroId := "distro_id"

@@ -20,7 +20,7 @@ func (s *hostStatusDistro) UnmarshalBSON(in []byte) error { return mgobson.Unmar
 
 func getRecentStatusesForHost(hostId string, n int) (int, []string) {
 	or := ResourceTypeKeyIs(ResourceTypeHost)
-	or[TypeKey] = EventTaskFinished
+	or[TypeKey] = EventHostTaskFinished
 	or[ResourceIdKey] = hostId
 
 	pipeline := []bson.M{
@@ -40,7 +40,7 @@ func getRecentStatusesForHost(hostId string, n int) (int, []string) {
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()
 	defer cancel()
-	cursor, err := env.DB().Collection(LegacyEventLogCollection).Aggregate(ctx, pipeline, options.Aggregate().SetAllowDiskUse(true))
+	cursor, err := env.DB().Collection(EventCollection).Aggregate(ctx, pipeline, options.Aggregate().SetAllowDiskUse(true))
 	if err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message": "could not get recent host statuses",

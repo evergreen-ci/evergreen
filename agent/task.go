@@ -36,12 +36,12 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 			select {
 			case complete <- evergreen.TaskFailed:
 				tc.getCurrentCommand().SetType(evergreen.CommandTypeSystem)
-				grip.Debug("marked task as system-failed after panic")
+				grip.Debug("Marked task as system-failed after panic.")
 			default:
-				grip.Debug("marking task system failed during panic handling, but complete channel was blocked")
+				grip.Debug("Tried marking task system-failed during panic handling, but complete channel was blocked.")
 			}
 			if tc.logger != nil && !tc.logger.Closed() {
-				tc.logger.Execution().Error("Evergreen agent hit a runtime error, marking task system-failed")
+				tc.logger.Execution().Error("Evergreen agent hit a runtime error, marking task system-failed.")
 			}
 		}
 	}()
@@ -50,37 +50,36 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	defer taskCancel()
 	factory, ok := command.GetCommandFactory("setup.initial")
 	if !ok {
-		tc.logger.Execution().Error("problem during configuring initial state")
+		tc.logger.Execution().Error("Marking task as system-failed because setup.initial command is not registered.")
 		complete <- evergreen.TaskSystemFailed
 		return
 	}
 
 	if taskCtx.Err() != nil {
-		grip.Info("task canceled")
+		grip.Info("Task canceled.")
 		return
 	}
 	tc.setCurrentCommand(factory())
 	a.comm.UpdateLastMessageTime()
 
 	if taskCtx.Err() != nil {
-		grip.Info("task canceled")
+		grip.Info("Task canceled.")
 		return
 	}
-	tc.logger.Task().Infof("Task logger initialized (agent version %s from %s).", evergreen.AgentVersion, evergreen.BuildRevision)
+	tc.logger.Task().Infof("Task logger initialized (agent version '%s' from Evergreen build revision '%s').", evergreen.AgentVersion, evergreen.BuildRevision)
 	tc.logger.Execution().Info("Execution logger initialized.")
 	tc.logger.System().Info("System logger initialized.")
 
 	if taskCtx.Err() != nil {
-		grip.Info("task canceled")
+		grip.Info("Task canceled.")
 		return
 	}
 	hostname, err := os.Hostname()
-	if err != nil {
-		tc.logger.Execution().Infof("Unable to get hostname: %s", err)
-	} else {
-		tc.logger.Execution().Infof("Hostname is %s", hostname)
+	tc.logger.Execution().Info(errors.Wrap(err, "getting hostname"))
+	if hostname != "" {
+		tc.logger.Execution().Infof("Hostname is '%s'.", hostname)
 	}
-	tc.logger.Task().Infof("Starting task %v, execution %v.", tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution)
+	tc.logger.Task().Infof("Starting task '%s', execution %d.", tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution)
 
 	innerCtx, innerCancel := context.WithCancel(ctx)
 	defer innerCancel()
@@ -102,14 +101,14 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	}
 
 	if ctx.Err() != nil {
-		tc.logger.Task().Info("task canceled")
+		tc.logger.Task().Info("Task canceled.")
 		return
 	}
 
 	if !tc.ranSetupGroup {
 		tc.taskDirectory, err = a.createTaskDirectory(tc)
 		if err != nil {
-			tc.logger.Execution().Errorf("error creating task directory: %s", err)
+			tc.logger.Execution().Error(errors.Wrap(err, "creating task directory"))
 			complete <- evergreen.TaskFailed
 			return
 		}
@@ -120,7 +119,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	// notify API server that the task has been started.
 	tc.logger.Execution().Info("Reporting task started.")
 	if err = a.comm.StartTask(ctx, tc.task); err != nil {
-		tc.logger.Execution().Errorf("error marking task started: %v", err)
+		tc.logger.Execution().Error(errors.Wrap(err, "marking task started"))
 		complete <- evergreen.TaskFailed
 		return
 	}
@@ -133,13 +132,14 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	}
 
 	if tc.oomTrackerEnabled(a.opts.CloudProvider) {
-		tc.logger.Execution().Info("OOM tracker clearing system messages")
+		tc.logger.Execution().Info("OOM tracker clearing system messages.")
 		if err = tc.oomTracker.Clear(innerCtx); err != nil {
-			tc.logger.Execution().Errorf("error clearing system messages: %s", err)
+			tc.logger.Execution().Error(errors.Wrap(err, "clearing OOM tracker system messages"))
 		}
 	}
 
 	if err = a.runTaskCommands(innerCtx, tc); err != nil {
+		tc.logger.Execution().Error(errors.Wrap(err, "running task commands"))
 		complete <- evergreen.TaskFailed
 		return
 	}
@@ -149,7 +149,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 func (a *Agent) setupSystemMetricsCollector(ctx context.Context, tc *taskContext) error {
 	conn, err := a.comm.GetCedarGRPCConn(ctx)
 	if err != nil {
-		return errors.Wrap(err, "getting cedar gRPC client connection")
+		return errors.Wrap(err, "getting Cedar gRPC client connection")
 	}
 
 	tc.Lock()
@@ -184,11 +184,11 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 		var cancel context.CancelFunc
 		taskGroup, err := tc.taskConfig.GetTaskGroup(tc.taskGroup)
 		if err != nil {
-			tc.logger.Execution().Error(errors.Wrap(err, "error fetching task group for pre-group commands"))
+			tc.logger.Execution().Error(errors.Wrap(err, "fetching task group for task setup group commands"))
 			return nil
 		}
 		if taskGroup.SetupGroup != nil {
-			tc.logger.Task().Infof("Running setup_group for '%s'.", taskGroup.Name)
+			tc.logger.Task().Infof("Running setup group for task group '%s'.", taskGroup.Name)
 			opts.failPreAndPost = taskGroup.SetupGroupFailTask
 			if taskGroup.SetupGroupTimeoutSecs > 0 {
 				ctx2, cancel = context.WithTimeout(ctx, time.Duration(taskGroup.SetupGroupTimeoutSecs)*time.Second)
@@ -198,29 +198,29 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 			defer cancel()
 			err = a.runCommands(ctx2, tc, taskGroup.SetupGroup.List(), opts)
 			if err != nil {
-				tc.logger.Execution().Error(errors.Wrap(err, "error running task setup group"))
+				tc.logger.Execution().Error(errors.Wrap(err, "running task setup group"))
 				if taskGroup.SetupGroupFailTask {
 					return err
 				}
 			}
-			tc.logger.Task().Infof("Finished running setup_group for '%s'.", taskGroup.Name)
+			tc.logger.Task().Infof("Finished running setup group for task group '%s'.", taskGroup.Name)
 		}
 		tc.ranSetupGroup = true
 	}
 
 	taskGroup, err := tc.taskConfig.GetTaskGroup(tc.taskGroup)
 	if err != nil {
-		tc.logger.Execution().Error(errors.Wrap(err, "error fetching task group for pre-task commands"))
+		tc.logger.Execution().Error(errors.Wrap(err, "fetching task group for pre-task commands"))
 		return nil
 	}
 
 	if taskGroup.SetupTask != nil {
-		tc.logger.Task().Infof("Running setup_task for '%s'.", taskGroup.Name)
+		tc.logger.Task().Infof("Running setup task for task group '%s'.", taskGroup.Name)
 		opts.failPreAndPost = taskGroup.SetupGroupFailTask
 		err = a.runCommands(ctx, tc, taskGroup.SetupTask.List(), opts)
 	}
 	if err != nil {
-		msg := fmt.Sprintf("Running pre-task commands failed: %v", err)
+		msg := fmt.Sprintf("Running pre-task commands failed: %s", err)
 		tc.logger.Task().Error(msg)
 		if opts.failPreAndPost {
 			return errors.New(msg)
@@ -236,7 +236,7 @@ func (tc *taskContext) setCurrentCommand(command command.Command) {
 	tc.currentCommand = command
 
 	if tc.logger != nil {
-		tc.logger.Execution().Infof("Current command set to '%s' (%s)", tc.currentCommand.DisplayName(), tc.currentCommand.Type())
+		tc.logger.Execution().Infof("Current command set to '%s' (%s).", tc.currentCommand.DisplayName(), tc.currentCommand.Type())
 	}
 }
 
@@ -263,10 +263,10 @@ func (tc *taskContext) setCurrentIdleTimeout(cmd command.Command) {
 
 	tc.setIdleTimeout(timeout)
 	if tc.currentCommand != nil {
-		tc.logger.Execution().Debugf("Set idle timeout for '%s' (%s) to %s",
+		tc.logger.Execution().Debugf("Set idle timeout for '%s' (%s) to %s.",
 			tc.currentCommand.DisplayName(), tc.currentCommand.Type(), tc.getIdleTimeout())
 	} else {
-		tc.logger.Execution().Debugf("Set current idle timeout to %s", tc.getIdleTimeout())
+		tc.logger.Execution().Debugf("Set current idle timeout to %s.", tc.getIdleTimeout())
 	}
 }
 
@@ -371,16 +371,14 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 
 	var confPatch *patch.Patch
 	if evergreen.IsGitHubPatchRequester(tc.taskModel.Requester) {
-		grip.Info("Fetching patch document for Github PR request.")
+		grip.Info("Fetching patch document for GitHub PR request.")
 		confPatch, err = a.comm.GetTaskPatch(ctx, tc.task, "")
 		if err != nil {
-			err = errors.Wrap(err, "couldn't fetch patch for Github PR request")
-			grip.Error(err.Error())
-			return nil, err
+			return nil, errors.Wrap(err, "fetching patch for GitHub PR request")
 		}
 	}
 
-	grip.Info("Constructing TaskConfig.")
+	grip.Info("Constructing task config.")
 	taskConfig, err := internal.NewTaskConfig(a.opts.WorkingDirectory, confDistro, tc.project, tc.taskModel, confRef, confPatch, tc.expansions)
 	if err != nil {
 		return nil, err

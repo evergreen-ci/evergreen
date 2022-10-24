@@ -1450,7 +1450,7 @@ func TestFindProjectsSuite(t *testing.T) {
 				},
 			}
 
-		s.Require().NoError(db.ClearCollections(event.LegacyEventLogCollection))
+		s.Require().NoError(db.ClearCollections(event.EventCollection))
 		for i := 0; i < projEventCount; i++ {
 			eventShallowCpy := h
 			s.NoError(eventShallowCpy.Log())

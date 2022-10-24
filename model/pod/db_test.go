@@ -408,9 +408,9 @@ func TestUpdateOneStatus(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
+			require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 			defer func() {
-				assert.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
+				assert.NoError(t, db.ClearCollections(Collection, event.EventCollection, event.LegacyEventLogCollection))
 			}()
 
 			p := Pod{
@@ -553,6 +553,128 @@ func TestFindByLastCommunicatedBefore(t *testing.T) {
 			found, err := FindByLastCommunicatedBefore(time.Now().Add(-10 * time.Minute))
 			assert.NoError(t, err)
 			assert.Empty(t, found)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(Collection))
+
+			tCase(t)
+		})
+	}
+}
+
+func TestGetStatsByStatus(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
+	for tName, tCase := range map[string]func(t *testing.T){
+		"ReturnsEmptyForNoMatchingPods": func(t *testing.T) {
+			stats, err := GetStatsByStatus()
+			assert.NoError(t, err)
+			assert.Empty(t, stats)
+		},
+		"ReturnsStatisticsForMatchingStatusAndType": func(t *testing.T) {
+			for _, p := range []Pod{
+				{
+					ID:     "p0",
+					Status: StatusRunning,
+					Type:   TypeAgent,
+					TaskRuntimeInfo: TaskRuntimeInfo{
+						RunningTaskID:        "t0",
+						RunningTaskExecution: 5,
+					},
+				},
+				{
+					ID:     "p1",
+					Status: StatusTerminated,
+					Type:   TypeAgent,
+				},
+				{
+					ID:     "p2",
+					Status: StatusRunning,
+					Type:   TypeAgent,
+				},
+				{
+					ID:     "p3",
+					Status: StatusRunning,
+				},
+			} {
+				require.NoError(t, p.Insert())
+			}
+
+			stats, err := GetStatsByStatus(StatusRunning)
+			require.NoError(t, err)
+			require.Len(t, stats, 1)
+			assert.Equal(t, StatusRunning, stats[0].Status)
+			assert.Equal(t, 2, stats[0].Count)
+			assert.Equal(t, 1, stats[0].NumRunningTasks)
+		},
+		"ReturnsStatisticsForMultipleMatchingStatuses": func(t *testing.T) {
+			for _, p := range []Pod{
+				{
+					ID:     "p0",
+					Status: StatusRunning,
+					Type:   TypeAgent,
+					TaskRuntimeInfo: TaskRuntimeInfo{
+						RunningTaskID:        "t0",
+						RunningTaskExecution: 2,
+					},
+				},
+				{
+					ID:     "p1",
+					Status: StatusTerminated,
+					Type:   TypeAgent,
+				},
+				{
+					ID:     "p2",
+					Status: StatusInitializing,
+					Type:   TypeAgent,
+				},
+				{
+					ID:     "p3",
+					Status: StatusStarting,
+					Type:   TypeAgent,
+				},
+				{
+					ID:     "p4",
+					Status: StatusInitializing,
+				},
+				{
+					ID:     "p5",
+					Status: StatusDecommissioned,
+					Type:   TypeAgent,
+					TaskRuntimeInfo: TaskRuntimeInfo{
+						RunningTaskID:        "t1",
+						RunningTaskExecution: 0,
+					},
+				},
+				{
+					ID:     "p6",
+					Status: StatusRunning,
+					Type:   TypeAgent,
+				},
+			} {
+				require.NoError(t, p.Insert())
+			}
+
+			stats, err := GetStatsByStatus(StatusInitializing, StatusStarting, StatusRunning)
+			require.NoError(t, err)
+			require.Len(t, stats, 3)
+			for _, s := range stats {
+				switch s.Status {
+				case StatusInitializing:
+					assert.Equal(t, 1, s.Count)
+					assert.Zero(t, s.NumRunningTasks)
+				case StatusStarting:
+					assert.Equal(t, 1, s.Count)
+					assert.Zero(t, s.NumRunningTasks)
+				case StatusRunning:
+					assert.Equal(t, 2, s.Count)
+					assert.Equal(t, 1, s.NumRunningTasks)
+				default:
+					assert.Fail(t, "unexpected pod status '%s'", s.Status)
+				}
+			}
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {

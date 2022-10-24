@@ -153,7 +153,7 @@ func TestAllocate(t *testing.T) {
 	defer cancel()
 
 	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection, event.LegacyEventLogCollection))
+		assert.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection, event.EventCollection, event.LegacyEventLogCollection))
 	}()
 
 	env := &mock.Environment{}
@@ -177,6 +177,8 @@ func TestAllocate(t *testing.T) {
 		assert.Equal(t, pd.PodIDs, dbDispatcher.PodIDs)
 		assert.Equal(t, pd.TaskIDs, dbDispatcher.TaskIDs)
 		assert.Equal(t, pd.ModificationCount, dbDispatcher.ModificationCount)
+		assert.False(t, utility.IsZeroTime(dbDispatcher.LastModified))
+		assert.Equal(t, pd.LastModified, dbDispatcher.LastModified)
 	}
 	checkEventLogged := func(t *testing.T, tsk *task.Task) {
 		dbEvents, err := event.FindAllByResourceID(tsk.Id)
@@ -228,6 +230,7 @@ func TestAllocate(t *testing.T) {
 			assert.Empty(t, right)
 			assert.Equal(t, pd.TaskIDs, updatedDispatcher.TaskIDs)
 			assert.True(t, updatedDispatcher.ModificationCount > pd.ModificationCount)
+			assert.False(t, utility.IsZeroTime(updatedDispatcher.LastModified))
 
 			checkAllocated(t, tsk, p, updatedDispatcher)
 		},
@@ -248,6 +251,7 @@ func TestAllocate(t *testing.T) {
 			assert.Equal(t, pd.PodIDs, updatedDispatcher.PodIDs)
 			assert.Equal(t, pd.TaskIDs, updatedDispatcher.TaskIDs)
 			assert.True(t, updatedDispatcher.ModificationCount > pd.ModificationCount)
+			assert.False(t, utility.IsZeroTime(updatedDispatcher.LastModified))
 
 			checkTaskAllocated(t, tsk)
 			checkDispatcherUpdated(t, tsk, updatedDispatcher)
@@ -279,7 +283,7 @@ func TestAllocate(t *testing.T) {
 			tctx, tcancel := context.WithTimeout(ctx, 10*time.Second)
 			defer tcancel()
 
-			require.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection, event.LegacyEventLogCollection))
+			require.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection, event.EventCollection))
 
 			p, err := pod.NewTaskIntentPod(evergreen.ECSConfig{}, pod.TaskIntentPodOptions{
 				ID:                  primitive.NewObjectID().Hex(),

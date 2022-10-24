@@ -27,6 +27,8 @@ var (
 		{Key: StatusKey, Value: 1},
 		{Key: ActivatedKey, Value: 1},
 		{Key: PriorityKey, Value: 1},
+		{Key: OverrideDependenciesKey, Value: 1},
+		{Key: bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey), Value: 1},
 	}
 )
 
@@ -1587,7 +1589,7 @@ func Aggregate(pipeline []bson.M, results interface{}) error {
 		results)
 }
 
-// Count returns the number of hosts that satisfy the given query.
+// Count returns the number of tasks that satisfy the given query.
 func Count(query db.Q) (int, error) {
 	return db.CountQ(Collection, query)
 }

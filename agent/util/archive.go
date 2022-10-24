@@ -25,7 +25,7 @@ func FindContentsToArchive(ctx context.Context, rootPath string, includes, exclu
 	catcher := grip.NewBasicCatcher()
 	archiveContents, err := streamArchiveContents(ctx, rootPath, includes, excludes)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem getting archive contents")
+		return nil, errors.Wrap(err, "getting archive contents")
 	}
 	for _, fn := range archiveContents {
 		if fn.err != nil {
@@ -55,8 +55,8 @@ func streamArchiveContents(ctx context.Context, rootPath string, includes, exclu
 			continue
 		}
 
-		if ctx.Err() != nil {
-			return nil, errors.New("archive creation operation canceled")
+		if err := ctx.Err(); err != nil {
+			return nil, errors.Wrapf(err, "canceled while streaming archive for include pattern '%s'", includePattern)
 		}
 
 		var walk filepath.WalkFunc
@@ -72,7 +72,7 @@ func streamArchiveContents(ctx context.Context, rootPath string, includes, exclu
 				archiveContents = append(archiveContents, ArchiveContentFile{path, info, nil})
 				return nil
 			}
-			catcher.Add(filepath.Walk(dir, walk))
+			catcher.Wrapf(filepath.Walk(dir, walk), "matching files included in filter '%s' for path '%s'", filematch, dir)
 		} else if strings.Contains(filematch, "**") {
 			globSuffix := filematch[2:]
 			walk = func(path string, info os.FileInfo, err error) error {
@@ -87,7 +87,7 @@ func streamArchiveContents(ctx context.Context, rootPath string, includes, exclu
 				}
 				return nil
 			}
-			catcher.Add(filepath.Walk(dir, walk))
+			catcher.Wrapf(filepath.Walk(dir, walk), "matching files included in filter '%s' for path '%s'", filematch, dir)
 		} else {
 			walk = func(path string, info os.FileInfo, err error) error {
 				a, b := filepath.Split(path)
@@ -108,7 +108,7 @@ func streamArchiveContents(ctx context.Context, rootPath string, includes, exclu
 				}
 				return nil
 			}
-			catcher.Add(filepath.Walk(rootPath, walk))
+			catcher.Wrapf(filepath.Walk(rootPath, walk), "matching files included in filter '%s' for patch '%s'", filematch, rootPath)
 		}
 	}
 	return archiveContents, catcher.Resolve()

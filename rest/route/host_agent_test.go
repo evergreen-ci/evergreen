@@ -69,12 +69,29 @@ func TestHostNextTask(t *testing.T) {
 		StartTime: utility.ZeroTime,
 		BuildId:   buildID,
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
+	originalServiceFlags, err := evergreen.GetServiceFlags()
+	require.NoError(t, err)
+	defer func() {
+		assert.NoError(t, originalServiceFlags.Set())
+	}()
+	newServiceFlags := *originalServiceFlags
+	newServiceFlags.DispatchTransactionDisabled = false
+	require.NoError(t, newServiceFlags.Set())
+
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *hostAgentNextTask){
 		"ShouldSucceedAndSetAgentStartTime": func(ctx context.Context, t *testing.T, rh *hostAgentNextTask) {
 			resp := rh.Run(ctx)
 			assert.NotNil(t, resp)
 			assert.Equal(t, resp.Status(), http.StatusOK)
-			taskResp := resp.Data().(apimodels.NextTaskResponse)
+			taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
+			require.True(t, ok, resp.Data())
 			assert.NotNil(t, taskResp)
 			assert.Equal(t, taskResp.TaskId, "task1")
 			nextTask, err := task.FindOne(db.Query(task.ById(taskResp.TaskId)))
@@ -88,13 +105,16 @@ func TestHostNextTask(t *testing.T) {
 			sampleHost, err := host.FindOneId("h1")
 			require.NoError(t, err)
 			require.NoError(t, sampleHost.SetAgentRevision("out-of-date-string"))
+			defer func() {
+				assert.NoError(t, sampleHost.SetAgentRevision(evergreen.AgentVersion)) // reset
+			}()
 			rh.host = sampleHost
 			rh.details = &apimodels.GetNextTaskDetails{TaskGroup: "task_group"}
 			resp := rh.Run(ctx)
-			taskResp := resp.Data().(apimodels.NextTaskResponse)
+			taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
+			require.True(t, ok, resp.Data())
 			assert.Equal(t, resp.Status(), http.StatusOK)
 			assert.False(t, taskResp.ShouldExit)
-			require.NoError(t, sampleHost.SetAgentRevision(evergreen.AgentVersion)) // reset
 		},
 		"NonLegacyHostThatNeedsReprovision": func(ctx context.Context, t *testing.T, rh *hostAgentNextTask) {
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, handler hostAgentNextTask){
@@ -107,7 +127,8 @@ func TestHostNextTask(t *testing.T) {
 					resp := rh.Run(ctx)
 					assert.NotNil(t, resp)
 					assert.Equal(t, resp.Status(), http.StatusOK)
-					taskResp := resp.Data().(apimodels.NextTaskResponse)
+					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
+					require.True(t, ok, resp.Data())
 					assert.True(t, taskResp.ShouldExit)
 					dbHost, err := host.FindOneId(h.Id)
 					require.NoError(t, err)
@@ -128,7 +149,8 @@ func TestHostNextTask(t *testing.T) {
 					resp := rh.Run(ctx)
 					assert.NotNil(t, resp)
 					assert.Equal(t, resp.Status(), http.StatusOK)
-					taskResp := resp.Data().(apimodels.NextTaskResponse)
+					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
+					require.True(t, ok, resp.Data())
 					assert.False(t, taskResp.ShouldExit)
 					dbHost, err := host.FindOneId(h.Id)
 					require.NoError(t, err)
@@ -158,7 +180,9 @@ func TestHostNextTask(t *testing.T) {
 						NeedsReprovision: host.ReprovisionToNew,
 					}
 					require.NoError(t, h.Insert())
-					handler := hostAgentNextTask{}
+					handler := hostAgentNextTask{
+						env: env,
+					}
 					testCase(ctx, t, handler)
 				})
 			}
@@ -179,7 +203,8 @@ func TestHostNextTask(t *testing.T) {
 
 					assert.NotNil(t, resp)
 					assert.Equal(t, resp.Status(), http.StatusOK)
-					taskResp := resp.Data().(apimodels.NextTaskResponse)
+					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
+					require.True(t, ok, resp.Data())
 					assert.False(t, taskResp.ShouldExit)
 					assert.Empty(t, taskResp.TaskId)
 
@@ -207,7 +232,8 @@ func TestHostNextTask(t *testing.T) {
 
 					assert.NotNil(t, resp)
 					assert.Equal(t, resp.Status(), http.StatusOK)
-					taskResp := resp.Data().(apimodels.NextTaskResponse)
+					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
+					require.True(t, ok, resp.Data())
 					assert.True(t, taskResp.ShouldExit)
 					assert.True(t, taskResp.ShouldExit)
 					assert.Empty(t, taskResp.TaskId)
@@ -236,7 +262,8 @@ func TestHostNextTask(t *testing.T) {
 
 					assert.NotNil(t, resp)
 					assert.Equal(t, resp.Status(), http.StatusOK)
-					taskResp := resp.Data().(apimodels.NextTaskResponse)
+					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
+					require.True(t, ok, resp.Data())
 					assert.True(t, taskResp.ShouldExit)
 					assert.Empty(t, taskResp.TaskId)
 
@@ -295,7 +322,8 @@ func TestHostNextTask(t *testing.T) {
 				resp := rh.Run(ctx)
 				assert.NotNil(t, resp)
 				assert.Equal(t, resp.Status(), http.StatusOK)
-				taskResp := resp.Data().(apimodels.NextTaskResponse)
+				taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
+				require.True(t, ok, resp.Data())
 				assert.True(t, taskResp.ShouldExit)
 				assert.Empty(t, taskResp.TaskId)
 				dbHost, err := host.FindOneId(nonLegacyHost.Id)
@@ -312,7 +340,8 @@ func TestHostNextTask(t *testing.T) {
 					rh.details = &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
 					rh.host = nonLegacyHost
 					resp := rh.Run(ctx)
-					taskResp := resp.Data().(apimodels.NextTaskResponse)
+					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
+					require.True(t, ok, resp.Data())
 					assert.False(t, taskResp.ShouldExit)
 					dbHost, err := host.FindOneId(nonLegacyHost.Id)
 					require.NoError(t, err)
@@ -330,7 +359,8 @@ func TestHostNextTask(t *testing.T) {
 					// next task action
 					rh.host = dbHost
 					resp := rh.Run(ctx)
-					taskResp := resp.Data().(apimodels.NextTaskResponse)
+					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
+					require.True(t, ok, resp.Data())
 					assert.NotEmpty(t, taskResp.TaskId)
 					assert.Equal(t, taskResp.Build, buildID)
 				},
@@ -341,7 +371,8 @@ func TestHostNextTask(t *testing.T) {
 					rh.details = &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
 					resp := rh.Run(ctx)
 					assert.Equal(t, resp.Status(), http.StatusOK)
-					taskResp := resp.Data().(apimodels.NextTaskResponse)
+					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
+					require.True(t, ok, resp.Data())
 					assert.False(t, taskResp.ShouldExit)
 				},
 				"OutdatedAgentRevisionInNextTaskDetails": func(ctx context.Context, t *testing.T, handler hostAgentNextTask) {
@@ -351,7 +382,8 @@ func TestHostNextTask(t *testing.T) {
 					rh.details = &apimodels.GetNextTaskDetails{AgentRevision: "out-of-date"}
 					resp := rh.Run(ctx)
 					assert.Equal(t, resp.Status(), http.StatusOK)
-					taskResp := resp.Data().(apimodels.NextTaskResponse)
+					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
+					require.True(t, ok, resp.Data())
 					assert.True(t, taskResp.ShouldExit)
 				},
 			} {
@@ -391,7 +423,8 @@ func TestHostNextTask(t *testing.T) {
 					resp := rh.Run(ctx)
 					assert.NotNil(t, resp)
 					assert.Equal(t, resp.Status(), http.StatusOK)
-					taskResp := resp.Data().(apimodels.NextTaskResponse)
+					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
+					require.True(t, ok, resp.Data())
 					assert.Equal(t, taskResp.TaskId, "existingTask")
 					nextTask, err := task.FindOne(db.Query(task.ById(taskResp.TaskId)))
 					require.NoError(t, err)
@@ -421,7 +454,8 @@ func TestHostNextTask(t *testing.T) {
 					resp := rh.Run(ctx)
 					assert.NotNil(t, resp)
 					assert.Equal(t, resp.Status(), http.StatusOK)
-					taskResp := resp.Data().(apimodels.NextTaskResponse)
+					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
+					require.True(t, ok, resp.Data())
 					assert.Equal(t, taskResp.TaskId, t1.Id)
 					nextTask, err := task.FindOne(db.Query(task.ById(taskResp.TaskId)))
 					require.NoError(t, err)
@@ -473,16 +507,23 @@ func TestHostNextTask(t *testing.T) {
 						Activated: true,
 					}
 					require.NoError(t, existingTask.Insert())
-					handler := hostAgentNextTask{}
+					handler := hostAgentNextTask{
+						env: env,
+					}
 					testCase(ctx, t, handler)
 				})
 			}
 		},
 		"WithDegradedModeSet": func(ctx context.Context, t *testing.T, rh *hostAgentNextTask) {
-			serviceFlags := evergreen.ServiceFlags{
-				TaskDispatchDisabled: true,
-			}
-			require.NoError(t, evergreen.SetServiceFlags(serviceFlags))
+			originalServiceFlags, err := evergreen.GetServiceFlags()
+			require.NoError(t, err)
+			defer func() {
+				// Reset to original service flags.
+				assert.NoError(t, originalServiceFlags.Set())
+			}()
+			newServiceFlags := *originalServiceFlags
+			newServiceFlags.TaskDispatchDisabled = true
+			require.NoError(t, newServiceFlags.Set())
 			resp := rh.Run(ctx)
 			assert.NotNil(t, resp)
 			assert.Equal(t, resp.Status(), http.StatusOK)
@@ -490,8 +531,6 @@ func TestHostNextTask(t *testing.T) {
 			assert.NotNil(t, taskResp)
 			assert.Equal(t, taskResp.TaskId, "")
 			assert.False(t, taskResp.ShouldExit)
-			serviceFlags.TaskDispatchDisabled = false // unset degraded mode
-			require.NoError(t, evergreen.SetServiceFlags(serviceFlags))
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -504,7 +543,6 @@ func TestHostNextTask(t *testing.T) {
 				assert.NoError(t, db.DropCollections(colls...))
 			}()
 			require.NoError(t, modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey))
-			require.NoError(t, evergreen.SetServiceFlags(evergreen.ServiceFlags{}))
 
 			tq := &model.TaskQueue{
 				Distro: distroID,
@@ -542,7 +580,7 @@ func TestHostNextTask(t *testing.T) {
 			require.NoError(t, sampleHost.Insert())
 			require.NoError(t, tq.Save())
 
-			r, ok := makeHostAgentNextTask(evergreen.GetEnvironment(), nil, nil).(*hostAgentNextTask)
+			r, ok := makeHostAgentNextTask(env, nil, nil).(*hostAgentNextTask)
 			require.True(t, ok)
 
 			r.host = &sampleHost
@@ -740,7 +778,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			colls := []string{host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection, model.ParserProjectCollection, model.ProjectRefCollection, model.VersionCollection, alertrecord.Collection, event.LegacyEventLogCollection}
+			colls := []string{host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection, model.ParserProjectCollection, model.ProjectRefCollection, model.VersionCollection, alertrecord.Collection, event.EventCollection, event.LegacyEventLogCollection}
 			require.NoError(t, db.DropCollections(colls...))
 			defer func() {
 				assert.NoError(t, db.DropCollections(colls...))
@@ -818,6 +856,9 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
 	Convey("with a task queue and a host", t, func() {
 		settings := distro.DispatcherSettings{
 			Version: evergreen.DispatcherVersionLegacy,
@@ -888,7 +929,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 		details := &apimodels.GetNextTaskDetails{}
 
 		Convey("a host should get the task at the top of the queue", func() {
-			t, shouldTeardown, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
+			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, true, details)
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			So(shouldTeardown, ShouldBeFalse)
@@ -907,7 +948,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 			pref.Enabled = utility.FalsePtr()
 			So(pref.Upsert(), ShouldBeNil)
 
-			t, shouldTeardown, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
+			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, true, details)
 			So(err, ShouldBeNil)
 			So(t, ShouldBeNil)
 			So(shouldTeardown, ShouldBeFalse)
@@ -920,7 +961,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 			pref.DispatchingDisabled = utility.TruePtr()
 			So(pref.Upsert(), ShouldBeNil)
 
-			t, shouldTeardown, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
+			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, true, details)
 			So(err, ShouldBeNil)
 			So(t, ShouldBeNil)
 			So(shouldTeardown, ShouldBeFalse)
@@ -935,7 +976,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 			So(currentTq.Length(), ShouldEqual, 2)
 
 			details.TaskGroup = "my-task-group"
-			t, shouldTeardown, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchAliasService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
+			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchAliasService(time.Minute), &theHostWhoCanBoastTheMostRoast, true, details)
 			So(err, ShouldBeNil)
 			So(t, ShouldBeNil)
 			So(shouldTeardown, ShouldBeTrue)
@@ -956,7 +997,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 				Status: evergreen.TaskStarted,
 			}
 			So(undispatchedTask.Insert(), ShouldBeNil)
-			t, shouldTeardown, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
+			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, true, details)
 			So(err, ShouldBeNil)
 			So(shouldTeardown, ShouldBeFalse)
 			So(t.Id, ShouldEqual, "task2")
@@ -968,7 +1009,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 		Convey("an empty task queue should return a nil task", func() {
 			taskQueue.Queue = []model.TaskQueueItem{}
 			So(taskQueue.Save(), ShouldBeNil)
-			t, shouldTeardown, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
+			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, true, details)
 			So(err, ShouldBeNil)
 			So(shouldTeardown, ShouldBeFalse)
 			So(t, ShouldBeNil)
@@ -976,7 +1017,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 		Convey("a tasks queue with a task that does not exist should continue", func() {
 			taskQueue.Queue = []model.TaskQueueItem{{Id: "notatask"}}
 			So(taskQueue.Save(), ShouldBeNil)
-			t, shouldTeardown, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
+			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, true, details)
 			So(err, ShouldBeNil)
 			So(shouldTeardown, ShouldBeFalse)
 			So(t, ShouldBeNil)
@@ -1022,7 +1063,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 			}
 			So(taskQueue.Save(), ShouldBeNil)
 			Convey("the task that is in the other host should not be assigned to another host", func() {
-				t, shouldTeardown, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(time.Minute), &h2, details)
+				t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &h2, true, details)
 				So(err, ShouldBeNil)
 				So(shouldTeardown, ShouldBeFalse)
 				So(t, ShouldNotBeNil)
@@ -1032,7 +1073,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 				So(h.RunningTask, ShouldEqual, t2.Id)
 			})
 			Convey("a host with a running task should return an error", func() {
-				_, _, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(time.Minute), &anotherHost, details)
+				_, _, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &anotherHost, true, details)
 				So(err, ShouldNotBeNil)
 			})
 		})
@@ -1084,7 +1125,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 				{Id: task4.Id},
 			}
 			So(taskQueue.Save(), ShouldBeNil)
-			t, _, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(time.Minute), &host2, details)
+			t, _, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &host2, true, details)
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			// task 3 should not be dispatched, because it's already running on max
@@ -1094,7 +1135,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 			So(err, ShouldBeNil)
 			So(h.RunningTask, ShouldEqual, task4.Id)
 		})
-		Convey("with many host running task group tasks", func() {
+		Convey("with many hosts running task group tasks", func() {
 			// In this scenario likely host1 and host2 are racing, since host2 has a later
 			// task group order number than what's in the queue, and will clear the running
 			// task when it sees that host2 is running with a smaller task group order number.
@@ -1148,7 +1189,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 				{Id: task4.Id},
 			}
 			So(taskQueue.Save(), ShouldBeNil)
-			t, _, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(time.Minute), &host2, details)
+			t, _, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &host2, true, details)
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			// task 3 should not be dispatched, because it has a later task group
@@ -1164,6 +1205,9 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
 
 	Convey("with a task queue and a host", t, func() {
 		settings := distro.DispatcherSettings{
@@ -1235,7 +1279,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 
 		details := &apimodels.GetNextTaskDetails{}
 		Convey("a host should get the task at the top of the queue", func() {
-			t, shouldTeardown, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
+			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, true, details)
 			So(err, ShouldBeNil)
 			So(shouldTeardown, ShouldBeFalse)
 			So(t, ShouldNotBeNil)
@@ -1255,7 +1299,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 			So(currentTq.Length(), ShouldEqual, 2)
 
 			details.TaskGroup = "my-task-group"
-			t, shouldTeardown, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
+			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, true, details)
 			So(err, ShouldBeNil)
 			So(t, ShouldBeNil)
 			So(shouldTeardown, ShouldBeTrue)
@@ -1279,7 +1323,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 				StartTime: utility.ZeroTime,
 			}
 			So(undispatchedTask.Insert(), ShouldBeNil)
-			t, shouldTeardown, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
+			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, true, details)
 			So(err, ShouldBeNil)
 			So(shouldTeardown, ShouldBeFalse)
 			So(t.Id, ShouldEqual, "task2")
@@ -1291,7 +1335,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 		Convey("an empty task queue should return a nil task", func() {
 			taskQueue.Queue = []model.TaskQueueItem{}
 			So(taskQueue.Save(), ShouldBeNil)
-			t, shouldTeardown, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
+			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, true, details)
 			So(err, ShouldBeNil)
 			So(shouldTeardown, ShouldBeFalse)
 			So(t, ShouldBeNil)
@@ -1301,10 +1345,9 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 				Id:           "notatask",
 				Dependencies: []string{},
 			}
-			// taskQueue.Queue = []model.TaskQueueItem{{Id: "notatask"}}
 			taskQueue.Queue = []model.TaskQueueItem{item}
 			So(taskQueue.Save(), ShouldBeNil)
-			t, shouldTeardown, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
+			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, true, details)
 			So(err, ShouldBeNil)
 			So(shouldTeardown, ShouldBeFalse)
 			So(t, ShouldBeNil)
@@ -1352,7 +1395,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 			}
 			So(taskQueue.Save(), ShouldBeNil)
 			Convey("the task that is in the other host should not be assigned to another host", func() {
-				t, shouldTeardown, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(time.Minute), &h2, details)
+				t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &h2, true, details)
 				So(err, ShouldBeNil)
 				So(shouldTeardown, ShouldBeFalse)
 				So(t, ShouldNotBeNil)
@@ -1362,7 +1405,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 				So(h.RunningTask, ShouldEqual, t2.Id)
 			})
 			Convey("a host with a running task should return an error", func() {
-				_, _, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(time.Minute), &anotherHost, details)
+				_, _, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &anotherHost, true, details)
 				So(err, ShouldNotBeNil)
 			})
 		})
@@ -1414,7 +1457,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 				{Id: task4.Id},
 			}
 			So(taskQueue.Save(), ShouldBeNil)
-			t, _, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(time.Minute), &host2, details)
+			t, _, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &host2, true, details)
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			// task 3 should not be dispatched, because it's already running on max

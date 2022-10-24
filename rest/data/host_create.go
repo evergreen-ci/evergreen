@@ -228,11 +228,11 @@ func createHostFromCommand(cmd model.PluginCommandConf) (*apimodels.CreateHost, 
 		Result:           createHost,
 	})
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, errors.Wrap(err, "constructing mapstructure decoder")
 	}
 	err = decoder.Decode(cmd.Params)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, errors.Wrap(err, "parsing params")
 	}
 	return createHost, nil
 }

@@ -136,9 +136,8 @@ func TestExpandString(t *testing.T) {
 				Convey("any variables with default values provided should be"+
 					" replaced with their default value", func() {
 
-					toExpand := "hello ${key1|blah}${key3|blech}hello " +
-						"${key4|}hello"
-					expanded := "hello val1blechhello hello"
+					toExpand := "hello ${key1|blah} ${key3|blech} hello ${key4|}hello ${key5|*key1}"
+					expanded := "hello val1 blech hello hello val1"
 
 					exp, err := expansions.ExpandString(toExpand)
 					So(err, ShouldBeNil)
@@ -149,9 +148,8 @@ func TestExpandString(t *testing.T) {
 				Convey("any variables without default values provided should"+
 					" be replaced with the empty string", func() {
 
-					toExpand := "hello ${key1|blah}${key3}hello ${key4} " +
-						"${key5|blech}hello"
-					expanded := "hello val1hello  blechhello"
+					toExpand := "hello ${key1|blah} ${key3}hello ${key4} ${key5|blech} hello ${key6|*key3}"
+					expanded := "hello val1 hello  blech hello "
 
 					exp, err := expansions.ExpandString(toExpand)
 					So(err, ShouldBeNil)

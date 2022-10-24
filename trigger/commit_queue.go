@@ -39,17 +39,17 @@ func makeCommitQueueTriggers() eventHandler {
 func (t *commitQueueTriggers) Fetch(e *event.EventLogEntry) error {
 	var err error
 	if err = t.uiConfig.Get(evergreen.GetEnvironment()); err != nil {
-		return errors.Wrap(err, "Failed to fetch ui config")
+		return errors.Wrap(err, "fetching UI config")
 	}
 
 	oid := mgobson.ObjectIdHex(e.ResourceId)
 
 	t.patch, err = patch.FindOne(patch.ById(oid))
 	if err != nil {
-		return errors.Wrapf(err, "failed to fetch patch '%s'", e.ResourceId)
+		return errors.Wrapf(err, "finding patch '%s'", e.ResourceId)
 	}
 	if t.patch == nil {
-		return errors.Errorf("can't find patch '%s'", e.ResourceId)
+		return errors.Errorf("patch '%s' not found", e.ResourceId)
 	}
 	var ok bool
 	t.data, ok = e.Data.(*event.CommitQueueEventData)
@@ -70,12 +70,12 @@ func (t *commitQueueTriggers) Attributes() event.Attributes {
 func (t *commitQueueTriggers) commitQueueOutcome(sub *event.Subscription) (*notification.Notification, error) {
 	data, err := t.makeData(sub)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to collect patch data")
+		return nil, errors.Wrap(err, "collecting patch data")
 	}
 
 	payload, err := makeCommonPayload(sub, t.Attributes(), data)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to build notification")
+		return nil, errors.Wrap(err, "building notification")
 	}
 
 	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
@@ -121,7 +121,7 @@ func (t *commitQueueTriggers) makeData(sub *event.Subscription) (*commonTemplate
 
 	if t.patch.IsPRMergePatch() {
 		data.slack = append(data.slack, message.SlackAttachment{
-			Title:     "Github Pull Request",
+			Title:     "GitHub Pull Request",
 			TitleLink: fmt.Sprintf("https://github.com/%s/%s/pull/%d#partial-pull-merging", t.patch.GithubPatchData.BaseOwner, t.patch.GithubPatchData.BaseRepo, t.patch.GithubPatchData.PRNumber),
 			Color:     slackColor,
 		})

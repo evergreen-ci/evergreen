@@ -12,26 +12,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (c *podCommunicator) GetAgentSetupData(ctx context.Context) (*apimodels.AgentSetupData, error) {
-	info := requestInfo{
-		method: http.MethodGet,
-		path:   "agent/setup",
-	}
-
-	resp, err := c.retryRequest(ctx, info, nil)
-	if err != nil {
-		return nil, utility.RespErrorf(resp, "getting agent setup data: %s", err.Error())
-	}
-
-	var data apimodels.AgentSetupData
-	if err := utility.ReadJSON(resp.Body, data); err != nil {
-		return nil, errors.Wrap(err, "reading agent setup data from response")
-	}
-
-	return &data, nil
-}
-
-// EndTask marks the task as finished with the given status
+// EndTask marks the task as finished with the given status.
 func (c *podCommunicator) EndTask(ctx context.Context, detail *apimodels.TaskEndDetail, taskData TaskData) (*apimodels.EndTaskResponse, error) {
 	info := requestInfo{
 		method:   http.MethodPost,
@@ -40,7 +21,7 @@ func (c *podCommunicator) EndTask(ctx context.Context, detail *apimodels.TaskEnd
 	}
 	resp, err := c.retryRequest(ctx, info, detail)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, "ending task '%s': %s", taskData.ID, err.Error())
+		return nil, utility.RespErrorf(resp, errors.Wrap(err, "ending task").Error())
 	}
 	var taskEndResp apimodels.EndTaskResponse
 	if err = utility.ReadJSON(resp.Body, &taskEndResp); err != nil {
@@ -54,7 +35,8 @@ func (c *podCommunicator) EndTask(ctx context.Context, detail *apimodels.TaskEnd
 	return &taskEndResp, nil
 }
 
-// GetNextTask returns a next task response by getting the next task for a given host.
+// GetNextTask returns information about the next task to run, or other
+// miscellaneous actions to take in between tasks.
 func (c *podCommunicator) GetNextTask(ctx context.Context, details *apimodels.GetNextTaskDetails) (*apimodels.NextTaskResponse, error) {
 	info := requestInfo{
 		method: http.MethodGet,
@@ -62,12 +44,12 @@ func (c *podCommunicator) GetNextTask(ctx context.Context, details *apimodels.Ge
 	}
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, "getting next task: %s", err.Error())
+		return nil, utility.RespErrorf(resp, errors.Wrap(err, "getting next task").Error())
 	}
 
 	var nextTask apimodels.NextTaskResponse
 	if err := utility.ReadJSON(resp.Body, &nextTask); err != nil {
-		return nil, errors.Wrap(err, "reading next task from response")
+		return nil, errors.Wrap(err, "reading next task reply from response")
 	}
 
 	return &nextTask, nil

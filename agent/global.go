@@ -18,10 +18,10 @@ const (
 	// timeout_secs can be specified only on a command.
 	defaultIdleTimeout = 2 * time.Hour
 
-	// defaultExecTimeoutSecs specifies in seconds the maximum time a task
-	// is allowed to run for, even if it is not idle. This default is used
-	// if exec_timeout_secs is not specified in the project file.
-	// exec_timeout_secs can be specified only at the project and task level.
+	// DefaultExecTimeout specifies the maximum time a task is allowed to run
+	// for, even if it is not idle. This default is used if exec_timeout_secs is
+	// not specified in the project file. exec_timeout_secs can be specified
+	// only at the project and task level.
 	DefaultExecTimeout = 6 * time.Hour
 
 	// defaultHeartbeatInterval is the interval after which agent sends a

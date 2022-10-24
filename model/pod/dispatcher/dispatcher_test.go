@@ -52,6 +52,8 @@ func TestUpsertAtomically(t *testing.T) {
 			assert.Equal(t, pd.TaskIDs, dbDispatcher.TaskIDs)
 			assert.NotZero(t, pd.ModificationCount)
 			assert.Equal(t, pd.ModificationCount, dbDispatcher.ModificationCount)
+			assert.False(t, utility.IsZeroTime(dbDispatcher.LastModified))
+			assert.Equal(t, pd.LastModified, dbDispatcher.LastModified)
 		},
 		"FailsWithMatchingGroupIDButDifferentDispatcherID": func(t *testing.T, pd PodDispatcher) {
 			require.NoError(t, pd.Insert())
@@ -127,7 +129,7 @@ func TestAssignNextTask(t *testing.T) {
 	defer cancel()
 
 	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection, event.LegacyEventLogCollection))
+		assert.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection, event.EventCollection, event.LegacyEventLogCollection))
 	}()
 
 	env := &mock.Environment{}
@@ -423,7 +425,7 @@ func TestAssignNextTask(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			tctx, tcancel := context.WithTimeout(ctx, 10*time.Second)
 			defer tcancel()
-			require.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection, event.LegacyEventLogCollection))
+			require.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection, event.EventCollection))
 
 			p := pod.Pod{
 				ID:           utility.RandomString(),

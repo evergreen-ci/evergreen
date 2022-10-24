@@ -49,7 +49,7 @@ func TestAdminRouteSuiteWithDB(t *testing.T) {
 
 func (s *AdminRouteSuite) SetupSuite() {
 	// test getting the route handler
-	s.NoError(db.ClearCollections(evergreen.ConfigCollection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, event.LegacyEventLogCollection, model.ProjectRefCollection), "clearing collections")
+	s.NoError(db.ClearCollections(evergreen.ConfigCollection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, event.EventCollection, model.ProjectRefCollection), "clearing collections")
 	b := &build.Build{
 		Id:      "buildtest",
 		Status:  evergreen.BuildStarted,
@@ -196,6 +196,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.ServiceFlags.S3BinaryDownloadsDisabled, settings.ServiceFlags.S3BinaryDownloadsDisabled)
 	s.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, settings.ServiceFlags.CloudCleanupDisabled)
 	s.EqualValues(testSettings.ServiceFlags.ContainerConfigurationsDisabled, settings.ServiceFlags.ContainerConfigurationsDisabled)
+	s.EqualValues(testSettings.ServiceFlags.DispatchTransactionDisabled, settings.ServiceFlags.DispatchTransactionDisabled)
 	s.EqualValues(testSettings.ServiceFlags.SlackAppDisabled, settings.ServiceFlags.SlackAppDisabled)
 	s.EqualValues(testSettings.Slack.Level, settings.Slack.Level)
 	s.EqualValues(testSettings.Slack.Options.Channel, settings.Slack.Options.Channel)
@@ -441,7 +442,7 @@ func (s *AdminRouteSuite) TestRestartVersionsRoute() {
 }
 
 func (s *AdminRouteSuite) TestAdminEventRoute() {
-	s.NoError(db.ClearCollections(evergreen.ConfigCollection, event.LegacyEventLogCollection, distro.Collection), "Error clearing collections")
+	s.NoError(db.ClearCollections(evergreen.ConfigCollection, event.EventCollection, distro.Collection), "Error clearing collections")
 
 	// sd by test to have a valid distro in the collection
 	d1 := &distro.Distro{

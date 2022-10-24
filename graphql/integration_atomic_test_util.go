@@ -75,14 +75,33 @@ func setup(t *testing.T, state *AtomicGraphQLState) {
 	ctx := context.Background()
 	require.NoError(t, env.DB().Drop(ctx))
 
-	usr, err := user.GetOrCreateUser(apiUser, apiUser, email, accessToken, refreshToken, []string{})
-	require.NoError(t, err)
+	require.NoError(t, db.Clear(user.Collection),
+		"unable to clear user collection")
+
+	usr := user.DBUser{
+		Id:           apiUser,
+		DispName:     apiUser,
+		EmailAddress: email,
+		Settings: user.UserSettings{
+			SlackUsername: "testuser",
+			SlackMemberId: "testuser",
+			UseSpruceOptions: user.UseSpruceOptions{
+				SpruceV1: true,
+			},
+		},
+		LoginCache: user.LoginCache{
+			AccessToken:  accessToken,
+			RefreshToken: refreshToken,
+		},
+		APIKey: apiKey,
+	}
+	assert.NoError(t, usr.Insert())
 
 	for _, pk := range pubKeys {
-		err = usr.AddPublicKey(pk.Name, pk.Key)
+		err := usr.AddPublicKey(pk.Name, pk.Key)
 		require.NoError(t, err)
 	}
-	err = usr.UpdateSettings(user.UserSettings{Timezone: "America/New_York", SlackUsername: slackUsername, SlackMemberId: slackMemberId})
+	err := usr.UpdateSettings(user.UserSettings{Timezone: "America/New_York", SlackUsername: slackUsername, SlackMemberId: slackMemberId})
 	require.NoError(t, err)
 
 	for _, role := range systemRoles {

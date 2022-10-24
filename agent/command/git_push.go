@@ -19,7 +19,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// gitMerge is a command that commits tracked changes and pushes the resulting commit to a remote repository
+// gitPush is a command that commits tracked changes and pushes the resulting commit to a remote repository
 type gitPush struct {
 	// The root directory (locally) that the code is checked out into.
 	// Must be a valid non-blank directory name.
@@ -36,12 +36,11 @@ func (c *gitPush) Name() string { return "git.push" }
 func (c *gitPush) ParseParams(params map[string]interface{}) error {
 	err := mapstructure.Decode(params, c)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "decoding mapstructure params")
 	}
 
 	if c.Directory == "" {
-		return errors.Errorf("error parsing '%s' params: value for directory "+
-			"must not be blank", c.Name())
+		return errors.Errorf("directory must not be blank")
 	}
 
 	return nil
@@ -51,7 +50,7 @@ func (c *gitPush) ParseParams(params map[string]interface{}) error {
 func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	var err error
 	defer func() {
-		pErr := recovery.HandlePanicWithError(recover(), nil, "unexpected error in git.push")
+		pErr := recovery.HandlePanicWithError(recover(), nil, fmt.Sprintf("unexpected error in '%s'", c.Name()))
 		status := evergreen.MergeTestSucceeded
 		if err != nil || pErr != nil {
 			status = evergreen.MergeTestFailed
@@ -62,13 +61,13 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		logger.Task().Error(comm.ConcludeMerge(ctx, conf.Task.Version, status, td))
 	}()
 	if err = util.ExpandValues(c, conf.Expansions); err != nil {
-		return errors.Wrap(err, "can't apply expansions")
+		return errors.Wrap(err, "applying expansions")
 	}
 
 	var p *patch.Patch
 	p, err = comm.GetTaskPatch(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, "")
 	if err != nil {
-		return errors.Wrap(err, "Failed to get patch")
+		return errors.Wrap(err, "getting task patch")
 	}
 
 	checkoutCommand := fmt.Sprintf("git checkout %s", conf.ProjectRef.Branch)
@@ -77,14 +76,14 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 	cmd := jpm.CreateCommand(ctx).Directory(filepath.ToSlash(getJoinedWithWorkDir(conf, c.Directory))).Append(checkoutCommand).
 		SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Task().GetSender())
 	if err = cmd.Run(ctx); err != nil {
-		return errors.Wrapf(err, "can't checkout '%s' branch", conf.ProjectRef.Branch)
+		return errors.Wrapf(err, "checking out branch '%s'", conf.ProjectRef.Branch)
 	}
 
 	// get commit information
 	var projectToken string
 	_, projectToken, err = getProjectMethodAndToken(c.Token, conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion), conf.GetCloneMethod())
 	if err != nil {
-		return errors.Wrap(err, "failed to get token")
+		return errors.Wrap(err, "getting token")
 	}
 	params := pushParams{token: projectToken}
 
@@ -95,14 +94,14 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		}
 
 		if len(modulePatch.PatchSet.Summary) == 0 {
-			logger.Execution().Infof("Skipping empty patch for module '%s' on patch ID '%s'", modulePatch.ModuleName, p.Id.Hex())
+			logger.Execution().Infof("Skipping empty patch for module '%s' on patch '%s'.", modulePatch.ModuleName, p.Id.Hex())
 			continue
 		}
 
 		var module *model.Module
 		module, err = conf.Project.GetModuleByName(modulePatch.ModuleName)
 		if err != nil {
-			logger.Execution().Errorf("No module found for %s", modulePatch.ModuleName)
+			logger.Execution().Errorf("Module '%s' not found.", modulePatch.ModuleName)
 			continue
 		}
 		moduleBase := filepath.Join(expandModulePrefix(conf, module.Name, module.Prefix, logger), module.Name)
@@ -112,14 +111,14 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		cmd := jpm.CreateCommand(ctx).Directory(filepath.ToSlash(filepath.Join(conf.WorkDir, c.Directory, moduleBase))).Append(checkoutCommand).
 			SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Task().GetSender())
 		if err = cmd.Run(ctx); err != nil {
-			return errors.Wrapf(err, "can't checkout '%s' branch", module.Branch)
+			return errors.Wrapf(err, "checking out branch '%s'", module.Branch)
 		}
 
-		logger.Execution().Infof("Pushing patch for module %s", module.Name)
+		logger.Execution().Infof("Pushing patch for module '%s'.", module.Name)
 		params.directory = filepath.ToSlash(filepath.Join(conf.WorkDir, c.Directory, moduleBase))
 		params.branch = module.Branch
 		if err = c.pushPatch(ctx, logger, params); err != nil {
-			return errors.Wrap(err, "can't push module patch")
+			return errors.Wrap(err, "pushing module patch")
 		}
 	}
 
@@ -130,15 +129,15 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		}
 
 		if len(mainPatch.PatchSet.Summary) == 0 {
-			logger.Execution().Infof("Skipping empty main patch on patch id '%s'", p.Id.Hex())
+			logger.Execution().Infof("Skipping empty main patch on patch '%s'.", p.Id.Hex())
 			continue
 		}
 
-		logger.Execution().Info("Pushing patch")
+		logger.Execution().Info("Pushing patch.")
 		params.directory = filepath.ToSlash(getJoinedWithWorkDir(conf, c.Directory))
 		params.branch = conf.ProjectRef.Branch
 		if err = c.pushPatch(ctx, logger, params); err != nil {
-			return errors.Wrap(err, "can't push patch")
+			return errors.Wrap(err, "pushing patch")
 		}
 	}
 
@@ -171,7 +170,7 @@ func (c *gitPush) pushPatch(ctx context.Context, logger client.LoggerProducer, p
 		logger.Execution().Error(errorOutput)
 	}
 	if err != nil {
-		return errors.Wrap(err, "can't push to remote")
+		return errors.Wrap(err, "pushing to remote")
 	}
 
 	return nil

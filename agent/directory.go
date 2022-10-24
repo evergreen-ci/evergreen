@@ -24,22 +24,23 @@ func (a *Agent) createTaskDirectory(tc *taskContext) (string, error) {
 	_, err := h.Write([]byte(
 		fmt.Sprintf("%s_%d_%d", tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution, os.Getpid())))
 	if err != nil {
-		tc.logger.Execution().Errorf("Error creating task directory name: %v", err)
+		tc.logger.Execution().Error(errors.Wrap(err, "creating task directory name"))
 		return "", err
 	}
 
 	dirName := hex.EncodeToString(h.Sum(nil))
 	newDir := filepath.Join(a.opts.WorkingDirectory, dirName)
 
-	tc.logger.Execution().Infof("Making new folder for task execution: %v", newDir)
+	tc.logger.Execution().Infof("Making new folder '%s' for task execution.", newDir)
 
 	if err = os.MkdirAll(newDir, 0777); err != nil {
-		tc.logger.Execution().Errorf("Error creating task directory: %v", err)
+		tc.logger.Execution().Error(errors.Wrapf(err, "creating task directory '%s'", newDir))
 		return "", err
 	}
 
-	if err = os.MkdirAll(filepath.Join(newDir, "tmp"), 0777); err != nil {
-		tc.logger.Execution().Warning(message.WrapError(err, "problem creating task temporary, continuing"))
+	tmpDir := filepath.Join(newDir, "tmp")
+	if err = os.MkdirAll(tmpDir, 0777); err != nil {
+		tc.logger.Execution().Warning(errors.Wrapf(err, "creating task temporary directory '%s'", tmpDir))
 	}
 
 	return newDir, nil
@@ -51,35 +52,35 @@ func (a *Agent) createTaskDirectory(tc *taskContext) (string, error) {
 // exits.
 func (a *Agent) removeTaskDirectory(tc *taskContext) {
 	if tc.taskDirectory == "" {
-		grip.Info("Task directory is not set, not removing")
+		grip.Info("Task directory is not set, not removing.")
 		return
 	}
-	grip.Infof("Deleting directory for completed task: %s", tc.taskDirectory)
+	grip.Infof("Deleting task directory '%s' for completed task.", tc.taskDirectory)
 
 	// Removing long relative paths hangs on Windows https://github.com/golang/go/issues/36375,
 	// so we have to convert to an absolute path before removing.
 	abs, err := filepath.Abs(tc.taskDirectory)
 	if err != nil {
-		grip.Critical(errors.Wrap(err, "Problem getting absolute directory for task directory"))
+		grip.Critical(errors.Wrapf(err, "getting absolute path for task directory '%s'", tc.taskDirectory))
 		return
 	}
 	err = a.removeAll(abs)
-	grip.Critical(errors.Wrapf(err, "Error removing working directory for the task: %s", tc.taskDirectory))
+	grip.Critical(errors.Wrapf(err, "removing task directory '%s'", tc.taskDirectory))
 	grip.InfoWhen(err == nil, message.Fields{
-		"message":   "Successfully deleted directory for completed task",
+		"message":   "Successfully deleted directory for completed task.",
 		"directory": tc.taskDirectory,
 	})
 }
 
 // removeAll is the same as os.RemoveAll, but recursively changes permissions for subdirectories and contents before removing
 func (a *Agent) removeAll(dir string) error {
-	grip.Error(filepath.Walk(dir, func(path string, _ os.FileInfo, err error) error {
+	grip.Error(errors.Wrapf(filepath.Walk(dir, func(path string, _ os.FileInfo, err error) error {
 		if err != nil {
 			return nil
 		}
-		grip.Error(os.Chmod(path, 0777))
+		grip.Error(errors.Wrapf(os.Chmod(path, 0777), "changing permission before removal for path '%s'", path))
 		return nil
-	}))
+	}), "recursively walking through path to change permissions"))
 	return os.RemoveAll(dir)
 }
 
@@ -118,18 +119,18 @@ func tryCleanupDirectory(dir string) {
 
 	// Don't run in a development environment
 	if _, err = os.Stat(filepath.Join(dir, ".git")); !os.IsNotExist(err) {
-		grip.Notice("refusing to clean a directory that contains '.git'")
+		grip.Notice("Refusing to clean a directory that contains '.git'.")
 		return
 	}
 
 	usr, err := user.Current()
 	if err != nil {
-		grip.Warning(err)
+		grip.Warning(errors.Wrap(err, "getting current user"))
 		return
 	}
 
 	if strings.HasPrefix(dir, usr.HomeDir) || strings.Contains(dir, "cygwin") {
-		grip.Notice("not cleaning up directory, because it is in the home directory.")
+		grip.Notice("Not cleaning up directory, because it is in the home directory.")
 		return
 	}
 
@@ -159,10 +160,10 @@ func tryCleanupDirectory(dir string) {
 		return
 	}
 
-	grip.Infof("attempting to clean up directory '%s'", dir)
+	grip.Infof("Attempting to clean up directory '%s'.", dir)
 	for _, p := range paths {
 		if err = os.RemoveAll(p); err != nil {
-			grip.Notice(err)
+			grip.Notice(errors.Wrapf(err, "removing path '%s'", p))
 		}
 	}
 }

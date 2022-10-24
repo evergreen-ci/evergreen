@@ -200,7 +200,7 @@ func (c *Mock) Heartbeat(ctx context.Context, td TaskData) (string, error) {
 		return evergreen.TaskFailed, nil
 	}
 	if c.HeartbeatShouldConflict {
-		return evergreen.TaskConflict, errors.Errorf("Unauthorized - wrong secret")
+		return evergreen.TaskConflict, errors.Errorf("unauthorized - wrong secret")
 	}
 	if c.HeartbeatShouldSometimesErr {
 		if c.HeartbeatShouldErr {
@@ -423,7 +423,7 @@ func (c *Mock) NewPush(ctx context.Context, td TaskData, req *apimodels.S3CopyRe
 	return nil, nil
 }
 
-func (c *Mock) UpdatePushStatus(ctx context.Context, td TaskData, pushlog *serviceModel.PushLog) error {
+func (c *Mock) UpdatePushStatus(ctx context.Context, td TaskData, pushLog *serviceModel.PushLog) error {
 	return nil
 }
 

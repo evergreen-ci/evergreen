@@ -1054,36 +1054,12 @@ func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Envi
 // particular host. If the task is part of a display task, the display task is
 // also marked as dispatched to a host. Returns an error if any of the database
 // updates fail.
-func (t *Task) MarkAsHostDispatched(hostId, distroId, agentRevision string,
-	dispatchTime time.Time) error {
-	t.DispatchTime = dispatchTime
-	t.Status = evergreen.TaskDispatched
-	t.HostId = hostId
-	t.AgentVersion = agentRevision
-	t.LastHeartbeat = dispatchTime
-	t.DistroId = distroId
-	err := UpdateOne(
-		bson.M{
-			IdKey: t.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				DispatchTimeKey:  dispatchTime,
-				StatusKey:        evergreen.TaskDispatched,
-				HostIdKey:        hostId,
-				LastHeartbeatKey: dispatchTime,
-				DistroIdKey:      distroId,
-				AgentVersionKey:  agentRevision,
-			},
-			"$unset": bson.M{
-				AbortedKey:   "",
-				AbortInfoKey: "",
-				DetailsKey:   "",
-			},
-		},
-	)
-	if err != nil {
-		return errors.Wrapf(err, "marking task '%s' as dispatched", t.Id)
+func (t *Task) MarkAsHostDispatched(hostID, distroID, agentRevision string, dispatchTime time.Time) error {
+	doUpdate := func(update bson.M) error {
+		return UpdateOne(bson.M{IdKey: t.Id}, update)
+	}
+	if err := t.markAsHostDispatchedWithFunc(doUpdate, hostID, distroID, agentRevision, dispatchTime); err != nil {
+		return err
 	}
 
 	//when dispatching an execution task, mark its parent as dispatched
@@ -1093,32 +1069,91 @@ func (t *Task) MarkAsHostDispatched(hostId, distroId, agentRevision string,
 	return nil
 }
 
-// MarkAsHostUndispatched marks that the host task is undispatched. If the task
-// is already dispatched to a host, it unsets the host ID field on the task. It
-// returns an error if any of the database updates fail.
-func (t *Task) MarkAsHostUndispatched() error {
-	// then, update the task document
-	t.Status = evergreen.TaskUndispatched
+// MarkAsHostDispatchedWithContext marks that the task has been dispatched onto
+// a particular host. Unlike MarkAsHostDispatched, this does not update the
+// parent display task.
+func (t *Task) MarkAsHostDispatchedWithContext(ctx context.Context, env evergreen.Environment, hostID, distroID, agentRevision string, dispatchTime time.Time) error {
+	doUpdate := func(update bson.M) error {
+		_, err := env.DB().Collection(Collection).UpdateByID(ctx, t.Id, update)
+		return err
+	}
+	return t.markAsHostDispatchedWithFunc(doUpdate, hostID, distroID, agentRevision, dispatchTime)
+}
 
-	return UpdateOne(
-		bson.M{
-			IdKey: t.Id,
+func (t *Task) markAsHostDispatchedWithFunc(doUpdate func(update bson.M) error, hostID, distroID, agentRevision string, dispatchTime time.Time) error {
+	if err := doUpdate(bson.M{
+		"$set": bson.M{
+			DispatchTimeKey:  dispatchTime,
+			StatusKey:        evergreen.TaskDispatched,
+			HostIdKey:        hostID,
+			LastHeartbeatKey: dispatchTime,
+			DistroIdKey:      distroID,
+			AgentVersionKey:  agentRevision,
 		},
-		bson.M{
-			"$set": bson.M{
-				StatusKey: evergreen.TaskUndispatched,
-			},
-			"$unset": bson.M{
-				DispatchTimeKey:  utility.ZeroTime,
-				LastHeartbeatKey: utility.ZeroTime,
-				DistroIdKey:      "",
-				HostIdKey:        "",
-				AbortedKey:       "",
-				AbortInfoKey:     "",
-				DetailsKey:       "",
-			},
+		"$unset": bson.M{
+			AbortedKey:   "",
+			AbortInfoKey: "",
+			DetailsKey:   "",
 		},
-	)
+	}); err != nil {
+		return err
+	}
+
+	t.DispatchTime = dispatchTime
+	t.Status = evergreen.TaskDispatched
+	t.HostId = hostID
+	t.AgentVersion = agentRevision
+	t.LastHeartbeat = dispatchTime
+	t.DistroId = distroID
+	t.Aborted = false
+	t.AbortInfo = AbortInfo{}
+	t.Details = apimodels.TaskEndDetail{}
+
+	return nil
+}
+
+// MarkAsHostUndispatchedWithContext marks that the host task is undispatched.
+// If the task is already dispatched to a host, it aborts the dispatch by
+// undoing the dispatch updates. This is the inverse operation of
+// MarkAsHostDispatchedWithContext.
+func (t *Task) MarkAsHostUndispatchedWithContext(ctx context.Context, env evergreen.Environment) error {
+	doUpdate := func(update bson.M) error {
+		_, err := env.DB().Collection(Collection).UpdateByID(ctx, t.Id, update)
+		return err
+	}
+	return t.markAsHostUndispatchedWithFunc(doUpdate)
+}
+
+func (t *Task) markAsHostUndispatchedWithFunc(doUpdate func(update bson.M) error) error {
+	update := bson.M{
+		"$set": bson.M{
+			StatusKey:        evergreen.TaskUndispatched,
+			DispatchTimeKey:  utility.ZeroTime,
+			LastHeartbeatKey: utility.ZeroTime,
+		},
+		"$unset": bson.M{
+			HostIdKey:       "",
+			AgentVersionKey: "",
+			AbortedKey:      "",
+			AbortInfoKey:    "",
+			DetailsKey:      "",
+		},
+	}
+
+	if err := doUpdate(update); err != nil {
+		return err
+	}
+
+	t.Status = evergreen.TaskUndispatched
+	t.DispatchTime = utility.ZeroTime
+	t.LastHeartbeat = utility.ZeroTime
+	t.HostId = ""
+	t.AgentVersion = ""
+	t.Aborted = false
+	t.AbortInfo = AbortInfo{}
+	t.Details = apimodels.TaskEndDetail{}
+
+	return nil
 }
 
 // maxContainerAllocationAttempts is the maximum number of times a container
@@ -1340,9 +1375,8 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 	return nil
 }
 
-// Removes host tasks older than the unscheduable threshold (e.g. one week) from
+// UnscheduleStaleUnderwaterHostTasks Removes host tasks older than the unscheduable threshold (e.g. one week) from
 // the scheduler queue.
-//
 // If you pass an empty string as an argument to this function, this operation
 // will select tasks from all distros.
 func UnscheduleStaleUnderwaterHostTasks(distroID string) (int, error) {
@@ -1361,7 +1395,7 @@ func UnscheduleStaleUnderwaterHostTasks(distroID string) (int, error) {
 		},
 	}
 
-	// Force the query to use 'distro_1_status_1_activated_1_priority_1'
+	// Force the query to use 'distro_1_status_1_activated_1_priority_1_override_dependencies_1_depends_on.unattainable_1'
 	// instead of defaulting to 'status_1_depends_on.status_1_depends_on.unattainable_1'.
 	info, err := UpdateAllWithHint(query, update, ActivatedTasksByDistroIndex)
 	if err != nil {
@@ -1480,9 +1514,17 @@ func (t *Task) MarkSystemFailed(description string) error {
 		t.Details.TimedOut = true
 	}
 
-	event.LogTaskFinished(t.Id, t.Execution, t.HostId, evergreen.TaskSystemFailed)
+	switch t.ExecutionPlatform {
+	case ExecutionPlatformHost:
+		event.LogHostTaskFinished(t.Id, t.Execution, t.HostId, evergreen.TaskSystemFailed)
+	case ExecutionPlatformContainer:
+		event.LogContainerTaskFinished(t.Id, t.Execution, t.PodID, evergreen.TaskSystemFailed)
+	default:
+		event.LogTaskFinished(t.Id, t.Execution, evergreen.TaskSystemFailed)
+	}
 	grip.Info(message.Fields{
 		"message":     "marking task system failed",
+		"usage":       "container task health dashboard",
 		"task_id":     t.Id,
 		"execution":   t.Execution,
 		"status":      t.Status,
@@ -2031,6 +2073,7 @@ func (t *Task) displayTaskPriority() int {
 	case evergreen.TaskSucceeded:
 		return 110
 	}
+	// Note that this includes evergreen.TaskDispatched.
 	return 1000
 }
 
@@ -2079,6 +2122,7 @@ func resetTaskUpdate(t *Task) bson.M {
 		t.ActivatedTime = now
 		t.Secret = newSecret
 		t.HostId = ""
+		t.PodID = ""
 		t.Status = evergreen.TaskUndispatched
 		t.DispatchTime = utility.ZeroTime
 		t.StartTime = utility.ZeroTime
@@ -2120,6 +2164,7 @@ func resetTaskUpdate(t *Task) bson.M {
 			ResetFailedWhenFinishedKey: "",
 			AgentVersionKey:            "",
 			HostIdKey:                  "",
+			PodIDKey:                   "",
 			HostCreateDetailsKey:       "",
 			OverrideDependenciesKey:    "",
 			CanResetKey:                "",
@@ -4571,4 +4616,32 @@ func ConvertCedarTestResult(result apimodels.CedarTestResult) TestResult {
 		EndTime:         float64(result.End.Unix()),
 		Status:          result.Status,
 	}
+}
+
+// FindAbortingAndResettingForVersion finds dependencies for the task that are
+// in the process of aborting and will eventually reset themselves.
+func (t *Task) FindAbortingAndResettingDependencies() ([]Task, error) {
+	recursiveDeps, err := GetRecursiveDependenciesUp([]Task{*t}, map[string]Task{})
+	if err != nil {
+		return nil, errors.Wrap(err, "getting recursive parent dependencies")
+	}
+	var taskIDs []string
+	for _, dep := range recursiveDeps {
+		taskIDs = append(taskIDs, dep.Id)
+	}
+	if len(taskIDs) == 0 {
+		return nil, nil
+	}
+
+	// GetRecursiveDependenciesUp only populates a subset of the task's
+	// in-memory fields, so query for them again with the necessary keys.
+	q := db.Query(bson.M{
+		IdKey:      bson.M{"$in": taskIDs},
+		AbortedKey: true,
+		"$or": []bson.M{
+			{ResetWhenFinishedKey: true},
+			{ResetFailedWhenFinishedKey: true},
+		},
+	})
+	return FindAll(q)
 }

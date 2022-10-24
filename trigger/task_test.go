@@ -148,7 +148,7 @@ func (s *taskSuite) SetupSuite() {
 }
 
 func (s *taskSuite) SetupTest() {
-	s.NoError(db.ClearCollections(event.LegacyEventLogCollection, task.Collection, task.OldCollection, model.VersionCollection, event.SubscriptionsCollection, alertrecord.Collection, testresult.Collection, event.SubscriptionsCollection, build.Collection, model.ProjectRefCollection))
+	s.NoError(db.ClearCollections(event.EventCollection, task.Collection, task.OldCollection, model.VersionCollection, event.SubscriptionsCollection, alertrecord.Collection, testresult.Collection, event.SubscriptionsCollection, build.Collection, model.ProjectRefCollection))
 	startTime := time.Now().Truncate(time.Millisecond).Add(-time.Hour)
 
 	s.task = task.Task{

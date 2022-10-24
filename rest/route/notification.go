@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -201,9 +202,13 @@ func (h *slackNotificationPostHandler) Run(ctx context.Context) gimlet.Responder
 		attachments = append(attachments, a.ToService())
 	}
 	target := utility.FromStringPtr(h.APISlack.Target)
+	formattedTarget, err := notification.FormatSlackTarget(target)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "formatting slack target"))
+	}
 	msg := utility.FromStringPtr(h.APISlack.Msg)
 
-	h.composer = message.NewSlackMessage(level.Notice, target, msg, attachments)
+	h.composer = message.NewSlackMessage(level.Notice, formattedTarget, msg, attachments)
 	s, err := h.environment.GetSender(evergreen.SenderSlack)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting Slack sender"))

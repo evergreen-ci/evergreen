@@ -289,7 +289,7 @@ func TestUpdatingHostStatus(t *testing.T) {
 
 func TestSetStatusAndFields(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
+		assert.NoError(t, db.ClearCollections(Collection, event.EventCollection, event.LegacyEventLogCollection))
 	}()
 	for tName, tCase := range map[string]func(t *testing.T, h *Host){
 		"FailsIfHostDoesNotExist": func(t *testing.T, h *Host) {
@@ -376,7 +376,7 @@ func TestSetStatusAndFields(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(Collection, event.LegacyEventLogCollection))
+			require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 			h := Host{
 				Id:     "host",
 				Status: evergreen.HostRunning,
@@ -829,8 +829,7 @@ func TestUpdateHostRunningTask(t *testing.T) {
 		So(h.Insert(), ShouldBeNil)
 		So(h2.Insert(), ShouldBeNil)
 		Convey("updating the running task id should set proper fields", func() {
-			_, err := h.UpdateRunningTask(&task.Task{Id: newTaskId})
-			So(err, ShouldBeNil)
+			So(h.UpdateRunningTask(&task.Task{Id: newTaskId}), ShouldBeNil)
 			found, err := FindOne(ById(h.Id))
 			So(err, ShouldBeNil)
 			So(found.RunningTask, ShouldEqual, newTaskId)
@@ -839,18 +838,14 @@ func TestUpdateHostRunningTask(t *testing.T) {
 			So(len(runningTaskHosts), ShouldEqual, 1)
 		})
 		Convey("updating the running task to an empty string should error out", func() {
-			_, err := h.UpdateRunningTask(&task.Task{})
-			So(err, ShouldNotBeNil)
+			So(h.UpdateRunningTask(&task.Task{}), ShouldNotBeNil)
 		})
 		Convey("updating the running task when a task is already running should error", func() {
-			_, err := h.UpdateRunningTask(&task.Task{Id: oldTaskId})
-			So(err, ShouldBeNil)
-			_, err = h.UpdateRunningTask(&task.Task{Id: newTaskId})
-			So(err, ShouldNotBeNil)
+			So(h.UpdateRunningTask(&task.Task{Id: oldTaskId}), ShouldBeNil)
+			So(h.UpdateRunningTask(&task.Task{Id: newTaskId}), ShouldNotBeNil)
 		})
 		Convey("updating the running task on a starting user data host should succeed", func() {
-			_, err := h2.UpdateRunningTask(&task.Task{Id: newTaskId})
-			So(err, ShouldBeNil)
+			So(h2.UpdateRunningTask(&task.Task{Id: newTaskId}), ShouldBeNil)
 			found, err := FindOne(ById(h2.Id))
 			So(err, ShouldBeNil)
 			So(found.RunningTask, ShouldEqual, newTaskId)

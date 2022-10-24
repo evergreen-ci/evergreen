@@ -13,7 +13,7 @@
               {
                 "issue": "5e94c2dfe3c3312519b59480",
                 "version": "",
-                "enqueueTime": "2020-04-13T15:52:00-04:00",
+                "enqueueTime": "2020-04-13T15:52:00.182-04:00",
                 "patch": {
                   "id": "5e94c2dfe3c3312519b59480",
                   "author": "mohamed.khelif",
@@ -38,7 +38,7 @@
               {
                 "issue": "1234",
                 "version": "5e6bb9e23066155a993e0f1a",
-                "enqueueTime": "2020-05-12T15:52:00-04:00",
+                "enqueueTime": "2020-05-12T15:52:00.182-04:00",
                 "patch": {
                   "id": "5e6bb9e23066155a993e0f1a",
                   "author": "trey.granderson",

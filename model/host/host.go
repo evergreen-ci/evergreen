@@ -32,7 +32,8 @@ import (
 )
 
 type Host struct {
-	Id              string        `bson:"_id" json:"id"`
+	Id string `bson:"_id" json:"id"`
+	// Host is the DNS name of the host.
 	Host            string        `bson:"host_id" json:"host"`
 	User            string        `bson:"user" json:"user"`
 	Secret          string        `bson:"secret" json:"secret"`
@@ -1349,29 +1350,18 @@ func (h *Host) ClearRunningAndSetLastTask(t *task.Task) error {
 	return nil
 }
 
-// ClearRunningTask unsets the running task on the host.
+// ClearRunningTask unsets the running task on the host and logs an event
+// indicating it is no longer running the task.
 func (h *Host) ClearRunningTask() error {
-	err := UpdateOne(
-		bson.M{
-			IdKey: h.Id,
-		},
-		bson.M{
-			"$unset": bson.M{
-				RunningTaskKey:             1,
-				RunningTaskExecutionKey:    1,
-				RunningTaskGroupKey:        1,
-				RunningTaskGroupOrderKey:   1,
-				RunningTaskBuildVariantKey: 1,
-				RunningTaskVersionKey:      1,
-				RunningTaskProjectKey:      1,
-			},
-		})
-
-	if err != nil {
+	hadRunningTask := h.RunningTask != ""
+	doUpdate := func(update bson.M) error {
+		return UpdateOne(bson.M{IdKey: h.Id}, update)
+	}
+	if err := h.clearRunningTaskWithFunc(doUpdate); err != nil {
 		return err
 	}
 
-	if h.RunningTask != "" {
+	if hadRunningTask {
 		event.LogHostRunningTaskCleared(h.Id, h.RunningTask, h.RunningTaskExecution)
 		grip.Info(message.Fields{
 			"message":  "cleared host running task",
@@ -1380,6 +1370,39 @@ func (h *Host) ClearRunningTask() error {
 			"distro":   h.Distro.Id,
 			"task_id":  h.RunningTask,
 		})
+	}
+
+	return nil
+}
+
+// ClearRunningTaskWithContext unsets the running task on the log. It does not
+// log an event for clearing the task.
+func (h *Host) ClearRunningTaskWithContext(ctx context.Context, env evergreen.Environment) error {
+	doUpdate := func(update bson.M) error {
+		_, err := env.DB().Collection(Collection).UpdateByID(ctx, h.Id, update)
+		return err
+	}
+	return h.clearRunningTaskWithFunc(doUpdate)
+}
+
+func (h *Host) clearRunningTaskWithFunc(doUpdate func(update bson.M) error) error {
+	if h.RunningTask == "" {
+		return nil
+	}
+
+	update := bson.M{
+		"$unset": bson.M{
+			RunningTaskKey:             1,
+			RunningTaskExecutionKey:    1,
+			RunningTaskGroupKey:        1,
+			RunningTaskGroupOrderKey:   1,
+			RunningTaskBuildVariantKey: 1,
+			RunningTaskVersionKey:      1,
+			RunningTaskProjectKey:      1,
+		},
+	}
+	if err := doUpdate(update); err != nil {
+		return err
 	}
 
 	h.RunningTask = ""
@@ -1393,16 +1416,45 @@ func (h *Host) ClearRunningTask() error {
 	return nil
 }
 
-// UpdateRunningTask updates the running task in the host document, returns
-// - true, nil on success
-// - false, nil on duplicate key error, task is already assigned to another host
-// - false, error on all other errors
-func (h *Host) UpdateRunningTask(t *task.Task) (bool, error) {
+// UpdateRunningTask updates the running task in the host document and logs an
+// event indicating that it's been assigned a task.
+func (h *Host) UpdateRunningTask(t *task.Task) error {
+	doUpdate := func(query, update bson.M) error {
+		return UpdateOne(query, update)
+	}
+	if err := h.updateRunningTaskWithFunc(doUpdate, t); err != nil {
+		return err
+	}
+
+	event.LogHostRunningTaskSet(h.Id, t.Id, t.Execution)
+
+	grip.Info(message.Fields{
+		"message":  "host running task set",
+		"host_id":  h.Id,
+		"host_tag": h.Tag,
+		"task_id":  t.Id,
+		"distro":   h.Distro.Id,
+	})
+
+	return nil
+}
+
+// UpdateRunningTaskWithContext updates the running task for the host. It does
+// not log an event for task assignment.
+func (h *Host) UpdateRunningTaskWithContext(ctx context.Context, env evergreen.Environment, t *task.Task) error {
+	doUpdate := func(query, update bson.M) error {
+		_, err := env.DB().Collection(Collection).UpdateOne(ctx, query, update)
+		return err
+	}
+	return h.updateRunningTaskWithFunc(doUpdate, t)
+}
+
+func (h *Host) updateRunningTaskWithFunc(doUpdate func(query, update bson.M) error, t *task.Task) error {
 	if t == nil {
-		return false, errors.New("received nil task, cannot update")
+		return errors.New("received nil task, cannot update")
 	}
 	if t.Id == "" {
-		return false, errors.New("task has empty task ID, cannot update")
+		return errors.New("task has empty task ID, cannot update")
 	}
 
 	statuses := []string{evergreen.HostRunning}
@@ -1411,7 +1463,7 @@ func (h *Host) UpdateRunningTask(t *task.Task) (bool, error) {
 	if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
 		statuses = append(statuses, evergreen.HostStarting)
 	}
-	selector := bson.M{
+	query := bson.M{
 		IdKey:          h.Id,
 		StatusKey:      bson.M{"$in": statuses},
 		RunningTaskKey: bson.M{"$exists": false},
@@ -1429,28 +1481,24 @@ func (h *Host) UpdateRunningTask(t *task.Task) (bool, error) {
 		},
 	}
 
-	err := UpdateOne(selector, update)
-	if err != nil {
-		if db.IsDuplicateKey(err) {
-			grip.Debug(message.Fields{
-				"message": "found duplicate running task",
-				"task":    t.Id,
-				"host_id": h.Id,
-			})
-			return false, nil
-		}
-		return false, errors.Wrapf(err, "setting running task to '%s' for host '%s'", t.Id, h.Id)
+	if err := doUpdate(query, update); err != nil {
+		grip.DebugWhen(db.IsDuplicateKey(err), message.WrapError(err, message.Fields{
+			"message": "found duplicate running task",
+			"task":    t.Id,
+			"host_id": h.Id,
+		}))
+		return err
 	}
-	event.LogHostRunningTaskSet(h.Id, t.Id, t.Execution)
-	grip.Info(message.Fields{
-		"message":  "host running task set",
-		"host_id":  h.Id,
-		"host_tag": h.Tag,
-		"task_id":  t.Id,
-		"distro":   h.Distro.Id,
-	})
 
-	return true, nil
+	h.RunningTask = t.Id
+	h.RunningTaskExecution = t.Execution
+	h.RunningTaskGroup = t.TaskGroup
+	h.RunningTaskGroupOrder = t.TaskGroupOrder
+	h.RunningTaskBuildVariant = t.BuildVariant
+	h.RunningTaskVersion = t.Version
+	h.RunningTaskProject = t.Project
+
+	return nil
 }
 
 // SetAgentRevision sets the updated agent revision for the host
@@ -2717,6 +2765,19 @@ func FindHostWithVolume(volumeID string) (*Host, error) {
 			StatusKey:   bson.M{"$in": evergreen.UpHostStatus},
 			UserHostKey: true,
 			bsonutil.GetDottedKeyName(VolumesKey, VolumeAttachmentIDKey): volumeID,
+		},
+	)
+	return FindOne(q)
+}
+
+// FindHostWithVolume finds the host associated with the
+// specified home volume ID.
+func FindHostWithHomeVolume(homeVolumeID string) (*Host, error) {
+	q := db.Query(
+		bson.M{
+			StatusKey:       bson.M{"$in": evergreen.UpHostStatus},
+			UserHostKey:     true,
+			HomeVolumeIDKey: homeVolumeID,
 		},
 	)
 	return FindOne(q)

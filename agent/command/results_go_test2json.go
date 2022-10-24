@@ -29,12 +29,11 @@ func (c *goTest2JSONCommand) Name() string { return "gotest.parse_json" }
 
 func (c *goTest2JSONCommand) ParseParams(params map[string]interface{}) error {
 	if err := mapstructure.Decode(params, c); err != nil {
-		return errors.Wrapf(err, "error decoding '%s' params", c.Name())
+		return errors.Wrapf(err, "decoding mapstructure params")
 	}
 
 	if len(c.Files) == 0 {
-		return errors.Errorf("error validating params: must specify at least one "+
-			"file pattern to parse: '%+v'", params)
+		return errors.Errorf("must specify at least one file pattern to parse")
 	}
 	return nil
 }
@@ -43,7 +42,7 @@ func (c *goTest2JSONCommand) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	if err := util.ExpandValues(c, conf.Expansions); err != nil {
-		return errors.Wrap(err, "failed to expand files")
+		return errors.Wrap(err, "applying expansions")
 	}
 
 	// All file patterns should be relative to the task's working directory.
@@ -68,19 +67,18 @@ func (c *goTest2JSONCommand) executeOneFile(ctx context.Context, file string,
 	logger.Task().Infof("parsing test file '%s'...", file)
 	results, err := c.loadJSONFile(file, logger, conf)
 	if err != nil {
-		logger.Task().Errorf("error parsing test file: %v", err)
-		return errors.Wrapf(err, "parsing test file: %v", err)
+		return errors.Wrapf(err, "parsing JSON test file")
 	}
 
 	if len(results.Tests) == 0 {
-		logger.Task().Warning("parsed no events from test file")
+		logger.Task().Warning("Parsed no tests from test file.")
 		if len(results.Log) == 0 {
-			logger.Task().Warning("test log is empty")
+			logger.Task().Warning("Test log is empty.")
 			return nil
 		}
 	}
 
-	logger.Task().Info("posting test logs...")
+	logger.Task().Info("Posting test logs...")
 	_, suiteName := filepath.Split(file)
 	log := model.TestLog{
 		Name:          suiteName,
@@ -89,10 +87,9 @@ func (c *goTest2JSONCommand) executeOneFile(ctx context.Context, file string,
 		Lines:         results.Log,
 	}
 	if err := sendTestLog(ctx, comm, conf, &log); err != nil {
-		logger.Task().Errorf("error posting test log: %v", err)
 		return errors.Wrap(err, "sending test log")
 	}
-	logger.Task().Info("successfully posted test logs")
+	logger.Task().Info("Successfully posted test logs.")
 
 	if len(results.Tests) == 0 {
 		return nil
@@ -124,14 +121,12 @@ func (c *goTest2JSONCommand) loadJSONFile(file string, logger client.LoggerProdu
 
 	data, err := ioutil.ReadFile(filePath)
 	if err != nil {
-		logger.Task().Errorf("Failed to open '%s'", filePath)
-		return nil, errors.Wrapf(err, "failed to open: %s", filePath)
+		return nil, errors.Wrapf(err, "reading file '%s'", filePath)
 	}
 
 	results, err := test2json.ProcessBytes(data)
 	if err != nil {
-		logger.Task().Errorf("Failed to process '%s': %+v", filePath, err)
-		return nil, errors.Wrapf(err, "failed to process '%s'", filePath)
+		return nil, errors.Wrapf(err, "processing file '%s'", filePath)
 	}
 
 	return results, nil

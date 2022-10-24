@@ -212,6 +212,26 @@ func (m *projectRepoMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reques
 	next(rw, r)
 }
 
+// NewRequireAuthHandler provides middleware that wraps gimlet.NewRequireAuthHandler
+// and requires that users be authenticated generally to access the resource.
+// This middleware's active state depends on the admin service flag PartialRouteAuthDisabled
+func NewRequireAuthHandler() gimlet.Middleware { return &requireAuthHandler{} }
+
+type requireAuthHandler struct{}
+
+func (*requireAuthHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving admin settings")))
+	}
+
+	if flags.PartialRouteAuthDisabled {
+		gimlet.NewRequireAuthHandler().ServeHTTP(rw, r, next)
+		return
+	}
+	next(rw, r)
+}
+
 // NewTaskHostAuthMiddleware returns route middleware that authenticates a host
 // created by a task and verifies the secret of the host that created this host.
 func NewTaskHostAuthMiddleware() gimlet.Middleware {
