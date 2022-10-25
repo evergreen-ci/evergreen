@@ -2943,19 +2943,6 @@ func (t *Task) SetResetFailedWhenFinished() error {
 	)
 }
 
-// SetAbortedTasksResetWhenFinished sets all matching aborted tasks as ResetWhenFinished.
-func SetAbortedTasksResetWhenFinished(taskIds []string) error {
-	_, err := UpdateAll(
-		bySubsetAborted(taskIds),
-		bson.M{
-			"$set": bson.M{
-				ResetWhenFinishedKey: true,
-			},
-		},
-	)
-	return err
-}
-
 // MergeTestResultsBulk takes a slice of task structs and returns the slice with
 // test results populated. Note that the order may change. The second parameter
 // can be used to use a specific test result filtering query, otherwise all test
