@@ -230,10 +230,11 @@ func runningHostsQuery(distroID string) bson.M {
 	return query
 }
 
-func startedTaskHostsQuery(distroID string) bson.M {
+func idleStartedTaskHostsQuery(distroID string) bson.M {
 	query := bson.M{
-		StatusKey:    bson.M{"$in": evergreen.StartedHostStatus},
-		StartedByKey: evergreen.User,
+		StatusKey:      bson.M{"$in": evergreen.StartedHostStatus},
+		StartedByKey:   evergreen.User,
+		RunningTaskKey: bson.M{"$exists": false},
 	}
 	if distroID != "" {
 		query[bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)] = distroID
@@ -267,14 +268,11 @@ func CountAllRunningDynamicHosts() (int, error) {
 	return num, errors.Wrap(err, "counting running dynamic hosts")
 }
 
-func CountStartedTaskHosts() (int, error) {
-	num, err := Count(db.Query(startedTaskHostsQuery("")))
+// CountIdleStartedTaskHosts returns the count of task hosts that are not
+// currently running a task.
+func CountIdleStartedTaskHosts() (int, error) {
+	num, err := Count(db.Query(idleStartedTaskHostsQuery("")))
 	return num, errors.Wrap(err, "counting starting hosts")
-}
-
-func CountStartedTaskHostsForDistro(distroID string) (int, error) {
-	num, err := Count(db.Query(startedTaskHostsQuery(distroID)))
-	return num, errors.Wrap(err, "counting started task hosts")
 }
 
 // IdleHostsWithDistroID, given a distroID, returns a slice of all idle hosts in that distro
