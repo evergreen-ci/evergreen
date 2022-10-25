@@ -268,8 +268,8 @@ func CountAllRunningDynamicHosts() (int, error) {
 	return num, errors.Wrap(err, "counting running dynamic hosts")
 }
 
-// CountIdleStartedTaskHosts returns the count of task hosts that are not
-// currently running a task.
+// CountIdleStartedTaskHosts returns the count of task hosts that are starting
+// and not currently running a task.
 func CountIdleStartedTaskHosts() (int, error) {
 	num, err := Count(db.Query(idleStartedTaskHostsQuery("")))
 	return num, errors.Wrap(err, "counting starting hosts")
