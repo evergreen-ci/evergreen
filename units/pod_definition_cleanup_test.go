@@ -76,7 +76,7 @@ func TestPodDefinitionCleanupJob(t *testing.T) {
 		"DeletesStrandedPodDefinitionsWithMatchingTag": func(ctx context.Context, t *testing.T, j *podDefinitionCleanupJob) {
 			var podDefIDs []string
 			for i := 0; i < 5; i++ {
-				def := createStrandedPodDef(ctx, t, j.ecsClient, []*awsECS.Tag{{Key: aws.String(cloud.PodCacheTag), Value: aws.String(strconv.FormatBool(false))}})
+				def := createStrandedPodDef(ctx, t, j.ecsClient, []*awsECS.Tag{{Key: aws.String(definition.PodDefinitionTag), Value: aws.String(strconv.FormatBool(false))}})
 				podDefIDs = append(podDefIDs, utility.FromStringPtr(def.TaskDefinitionArn))
 			}
 
@@ -99,7 +99,7 @@ func TestPodDefinitionCleanupJob(t *testing.T) {
 
 			var podDefIDs []string
 			for i := 0; i < 5; i++ {
-				def := createStrandedPodDef(ctx, t, j.ecsClient, []*awsECS.Tag{{Key: aws.String(cloud.PodCacheTag), Value: aws.String(strconv.FormatBool(false))}})
+				def := createStrandedPodDef(ctx, t, j.ecsClient, []*awsECS.Tag{{Key: aws.String(definition.PodDefinitionTag), Value: aws.String(strconv.FormatBool(false))}})
 				podDefIDs = append(podDefIDs, utility.FromStringPtr(def.TaskDefinitionArn))
 			}
 
