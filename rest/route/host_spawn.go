@@ -1296,9 +1296,15 @@ func validateID(id string) (string, error) {
 func makeSpawnHostSubscription(hostID, subscriberType string, user *user.DBUser) (model.APISubscription, error) {
 	var subscriber model.APISubscriber
 	if subscriberType == event.SlackSubscriberType {
+
+		target := fmt.Sprintf("@%s", user.Settings.SlackUsername)
+		if user.Settings.SlackMemberId != "" {
+			target = user.Settings.SlackMemberId
+		}
+
 		subscriber = model.APISubscriber{
 			Type:   utility.ToStringPtr(event.SlackSubscriberType),
-			Target: fmt.Sprintf("@%s", user.Settings.SlackUsername),
+			Target: target,
 		}
 	} else if subscriberType == event.EmailSubscriberType {
 		subscriber = model.APISubscriber{

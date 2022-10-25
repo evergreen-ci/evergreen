@@ -626,7 +626,11 @@ func makeBuildBreakSubscriber(userID string) (*event.Subscriber, error) {
 		if preference == user.PreferenceEmail {
 			subscriber.Target = u.Email()
 		} else if preference == user.PreferenceSlack {
-			subscriber.Target = u.Settings.SlackUsername
+			slackTarget := u.Settings.SlackUsername
+			if u.Settings.SlackMemberId != "" {
+				slackTarget = u.Settings.SlackMemberId
+			}
+			subscriber.Target = slackTarget
 		} else {
 			return nil, errors.Errorf("invalid subscription preference for build break: %s", preference)
 		}
