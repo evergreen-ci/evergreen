@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -29,9 +30,6 @@ type ec2AssumeRole struct {
 	// The Amazon Resource Name (ARN) of the role to assume.
 	// Required.
 	RoleARN string `mapstructure:"role_arn" plugin:"expand"`
-
-	// A unique identifier that might be required when you assume a role in another account.
-	ExternalId string `mapstructure:"external_id" plugin:"expand"`
 
 	// An IAM policy in JSON format that you want to use as an inline session policy.
 	Policy string `mapstructure:"policy" plugin:"expand"`
@@ -102,9 +100,7 @@ func (r *ec2AssumeRole) Execute(ctx context.Context,
 
 	creds := stscreds.NewCredentials(session1, r.RoleARN, func(arp *stscreds.AssumeRoleProvider) {
 		arp.RoleSessionName = strconv.Itoa(int(time.Now().Unix()))
-		if r.ExternalId != "" {
-			arp.ExternalID = utility.ToStringPtr(r.ExternalId)
-		}
+		arp.ExternalID = utility.ToStringPtr(fmt.Sprintf("%s-%s", conf.Task.Project, conf.Task.Requester))
 		if r.Policy != "" {
 			arp.Policy = utility.ToStringPtr(r.Policy)
 		}
