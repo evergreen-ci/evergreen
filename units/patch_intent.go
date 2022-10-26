@@ -9,6 +9,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -521,15 +522,33 @@ func (j *patchIntentProcessor) setToPreviousPatchDefinition(patchDoc *patch.Patc
 		return "", errors.Errorf("no previous patch available")
 	}
 
-	patchDoc.BuildVariants = previousPatch.BuildVariants
-
 	if failedOnly {
+		patchDoc.BuildVariants = previousPatch.BuildVariants
 		if err = setTasksToPreviousFailed(patchDoc, previousPatch, project); err != nil {
 			return "", errors.Wrap(err, "settings tasks to previous failed")
 		}
 
 	} else {
-		patchDoc.Tasks = previousPatch.Tasks
+		// only add activated tasks from previous patch
+		query := db.Query(bson.M{
+			"$and": []bson.M{
+				{task.ProjectKey: project.Identifier},
+				{task.DisplayNameKey: bson.M{"$in": previousPatch.Tasks}},
+				{task.ActivatedKey: true},
+			},
+		}).WithFields(task.DisplayNameKey, task.BuildVariantKey)
+		allActivatedTasks, err := task.FindAll(query)
+		if err != nil {
+			return "", errors.Wrap(err, "getting previous patch tasks")
+		}
+		var activatedTasks, buildVariants []string
+		for _, t := range allActivatedTasks {
+			activatedTasks = append(activatedTasks, t.DisplayName)
+			if utility.StringSliceContains(buildVariants, t.BuildVariant) {
+				buildVariants = append(buildVariants, t.BuildVariant)
+			}
+		}
+		patchDoc.Tasks = activatedTasks
 	}
 
 	return previousPatch.Status, nil

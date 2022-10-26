@@ -278,8 +278,30 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 		Version:      "v1",
 		BuildVariant: "bv1",
 		Status:       evergreen.TaskFailed,
+		Project:      s.project,
+		Activated:    true,
 	}
 	s.NoError(t1.Insert())
+	t2 := task.Task{
+		Id:           "t2",
+		DisplayName:  "t2",
+		Version:      "v1",
+		BuildVariant: "bv1",
+		Status:       evergreen.TaskSucceeded,
+		Project:      s.project,
+		Activated:    true,
+	}
+	s.NoError(t2.Insert())
+	notActivated := task.Task{
+		Id:           "not_activated",
+		DisplayName:  "not_activated",
+		Version:      "v1",
+		BuildVariant: "bv1",
+		Status:       evergreen.TaskInactive,
+		Project:      s.project,
+		Activated:    false,
+	}
+	s.NoError(notActivated.Insert())
 	patchId := "aabbccddeeff001122334455"
 	previousPatchDoc := &patch.Patch{
 		Id:         patch.NewId(patchId),
@@ -292,7 +314,7 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 		VariantsTasks: []patch.VariantTasks{
 			{
 				Variant: "bv1",
-				Tasks:   []string{"t1", "t2"},
+				Tasks:   []string{"t1", "t2", "not_activated"},
 			},
 			{
 				Variant:      "bv_only_dt",
@@ -303,7 +325,7 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 				DisplayTasks: []patch.DisplayTask{{Name: "dt2"}},
 			},
 		},
-		Tasks:              []string{"t1", "t2"},
+		Tasks:              []string{"t1", "t2", "not_activated"},
 		BuildVariants:      []string{"bv_only_dt", "bv_different_dt"},
 		RegexBuildVariants: []string{"bv_$"},
 		RegexTasks:         []string{"1$"},
@@ -341,7 +363,7 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 	s.Equal(previousPatchStatus, "failed")
 
 	s.Equal(currentPatchDoc.BuildVariants, previousPatchDoc.BuildVariants)
-	s.Equal(currentPatchDoc.Tasks, previousPatchDoc.Tasks)
+	s.Equal(currentPatchDoc.Tasks, []string{"t1", "t2"})
 
 	previousPatchStatus, err = j.setToPreviousPatchDefinition(currentPatchDoc, &project, true)
 	s.NoError(err)
@@ -467,6 +489,7 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksandVariantsWithReuse() {
 	tasks := []task.Task{
 		{
 			Id:           "t1",
+			Activated:    true,
 			DependsOn:    []task.Dependency{{TaskId: "t3", Status: evergreen.TaskSucceeded}},
 			Version:      patchId,
 			BuildVariant: "bv1",
