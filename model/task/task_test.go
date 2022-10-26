@@ -1458,7 +1458,7 @@ func TestUnscheduleStaleUnderwaterHostTasksNoDistro(t *testing.T) {
 
 func TestDisableStaleContainerTasks(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection, event.EventCollection, event.LegacyEventLogCollection))
+		assert.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 	}()
 	for tName, tCase := range map[string]func(t *testing.T, tsk Task){
 		"DisablesStaleUnallocatedContainerTask": func(t *testing.T, tsk Task) {
@@ -2970,7 +2970,7 @@ func getTaskThatNeedsContainerAllocation() Task {
 
 func TestDisableOneTask(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection, event.EventCollection, event.LegacyEventLogCollection))
+		assert.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 	}()
 
 	type disableFunc func(t *testing.T, tsk Task) error
@@ -3065,7 +3065,7 @@ func TestDisableOneTask(t *testing.T) {
 
 func TestDisableManyTasks(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection, event.EventCollection, event.LegacyEventLogCollection))
+		assert.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 	}()
 
 	for tName, tCase := range map[string]func(t *testing.T){
@@ -3974,7 +3974,7 @@ func TestAbortVersion(t *testing.T) {
 
 func TestArchive(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection, OldCollection, event.EventCollection, event.LegacyEventLogCollection))
+		assert.NoError(t, db.ClearCollections(Collection, OldCollection, event.EventCollection))
 	}()
 	checkTaskIsArchived := func(t *testing.T, oldTaskID string) {
 		dbTask, err := FindOneOldId(oldTaskID)
@@ -4066,7 +4066,7 @@ func TestArchive(t *testing.T) {
 
 func TestArchiveFailedOnly(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection, OldCollection, event.EventCollection, event.LegacyEventLogCollection))
+		assert.NoError(t, db.ClearCollections(Collection, OldCollection, event.EventCollection))
 	}()
 
 	assert.NoError(t, db.ClearCollections(Collection, OldCollection, event.EventCollection))

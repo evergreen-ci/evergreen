@@ -157,7 +157,7 @@ func TestPodProvisioningScript(t *testing.T) {
 
 func TestPodAgentNextTask(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(task.Collection, pod.Collection, dispatcher.Collection, model.ProjectRefCollection, event.EventCollection, event.LegacyEventLogCollection))
+		assert.NoError(t, db.ClearCollections(task.Collection, pod.Collection, dispatcher.Collection, model.ProjectRefCollection, event.EventCollection))
 	}()
 	getPod := func() pod.Pod {
 		return pod.Pod{
@@ -361,7 +361,7 @@ func TestPodAgentNextTask(t *testing.T) {
 
 func TestPodAgentEndTask(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(task.Collection, pod.Collection, event.EventCollection, event.LegacyEventLogCollection, model.ProjectRefCollection, build.Collection, model.VersionCollection, commitqueue.Collection, patchmodel.Collection))
+		assert.NoError(t, db.ClearCollections(task.Collection, pod.Collection, event.EventCollection, model.ProjectRefCollection, build.Collection, model.VersionCollection, commitqueue.Collection, patchmodel.Collection))
 	}()
 	const (
 		podID         = "pod"

@@ -468,8 +468,7 @@ func (c *Mock) GenerateTasks(ctx context.Context, td TaskData, jsonBytes []json.
 
 func (c *Mock) GenerateTasksPoll(ctx context.Context, td TaskData) (*apimodels.GeneratePollResponse, error) {
 	resp := &apimodels.GeneratePollResponse{
-		Finished:   true,
-		ShouldExit: false,
+		Finished: true,
 	}
 	if c.GenerateTasksShouldFail {
 		resp.Error = "error polling generate tasks!"

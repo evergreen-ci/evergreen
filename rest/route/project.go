@@ -718,7 +718,7 @@ func (h *projectRepotrackerHandler) Run(ctx context.Context) gimlet.Responder {
 	j := units.NewRepotrackerJob(fmt.Sprintf("rest-%s", ts), projectId)
 
 	queue := evergreen.GetEnvironment().RemoteQueue()
-	if err := queue.Put(ctx, j); err != nil {
+	if err := amboy.EnqueueUniqueJob(ctx, queue, j); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "enqueueing catchup job"))
 	}
 	return gimlet.NewJSONResponse(struct{}{})

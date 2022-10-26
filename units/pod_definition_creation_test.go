@@ -172,7 +172,7 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 
 			require.NoError(t, db.ClearCollections(definition.Collection, pod.Collection, event.EventCollection))
 			defer func() {
-				assert.NoError(t, db.ClearCollections(definition.Collection, pod.Collection, event.EventCollection, event.LegacyEventLogCollection))
+				assert.NoError(t, db.ClearCollections(definition.Collection, pod.Collection, event.EventCollection))
 			}()
 
 			cocoaMock.ResetGlobalECSService()

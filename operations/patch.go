@@ -160,7 +160,10 @@ func Patch() cli.Command {
 				}
 			}
 
-			comm := conf.setupRestCommunicator(ctx)
+			comm, err := conf.setupRestCommunicator(ctx)
+			if err != nil {
+				return errors.Wrap(err, "setting up REST communicator")
+			}
 			defer comm.Close()
 
 			ac, _, err := conf.getLegacyClients()
@@ -263,7 +266,10 @@ func PatchFile() cli.Command {
 				return errors.Wrap(err, "loading configuration")
 			}
 
-			comm := conf.setupRestCommunicator(ctx)
+			comm, err := conf.setupRestCommunicator(ctx)
+			if err != nil {
+				return errors.Wrap(err, "setting up REST communicator")
+			}
 			defer comm.Close()
 
 			ac, _, err := conf.getLegacyClients()

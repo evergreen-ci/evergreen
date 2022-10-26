@@ -10,7 +10,7 @@
                                 "id": "99aded497a1326f85c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-01-22T03:45:00-05:00",
-                                "timestamp": "2017-09-30T15:11:16-04:00",
+                                "timestamp": "2017-09-30T15:11:16.252-04:00",
                                 "eventType": "HOST_JASPER_RESTARTING",
                                 "data": {
                                     "agentRevision": "",
@@ -35,7 +35,7 @@
                                 "id": "58aded494a1326f85c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-06-16T08:45:00-04:00",
-                                "timestamp": "2017-09-30T15:11:05-04:00",
+                                "timestamp": "2017-09-30T15:11:05.252-04:00",
                                 "eventType": "HOST_MODIFIED",
                                 "data": {
                                     "agentRevision": "",
@@ -60,7 +60,7 @@
                                 "id": "88aded498a1426f95c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-01-14T01:22:00-05:00",
-                                "timestamp": "2017-08-25T15:46:15-04:00",
+                                "timestamp": "2017-08-25T15:46:15.252-04:00",
                                 "eventType": "HOST_JASPER_RESTARTED",
                                 "data": {
                                     "agentRevision": "",
@@ -85,7 +85,7 @@
                                 "id": "58aded494a1426f95c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-07-25T19:22:00-04:00",
-                                "timestamp": "2017-08-25T15:46:04-04:00",
+                                "timestamp": "2017-08-25T15:46:04.252-04:00",
                                 "eventType": "HOST_AGENT_DEPLOYED",
                                 "data": {
                                     "agentRevision": "1fa212ac4acea6ce2a0123a123456c06e8cf72ea",
@@ -110,7 +110,7 @@
                                 "id": "45aded488a1426f13c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-08-17T22:29:00-04:00",
-                                "timestamp": "2017-08-11T15:13:14-04:00",
+                                "timestamp": "2017-08-11T15:13:14.252-04:00",
                                 "eventType": "HOST_CONVERTING_PROVISIONING",
                                 "data": {
                                     "agentRevision": "",
@@ -135,7 +135,7 @@
                                 "id": "09aded488a1426f13c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-10-17T05:29:00-04:00",
-                                "timestamp": "2017-08-11T15:13:12-04:00",
+                                "timestamp": "2017-08-11T15:13:12.252-04:00",
                                 "eventType": "HOST_CONVERTING_PROVISIONING_ERROR",
                                 "data": {
                                     "agentRevision": "",
@@ -160,7 +160,7 @@
                                 "id": "76aded488a1426f13c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-02-17T21:29:00-05:00",
-                                "timestamp": "2017-08-11T15:13:10-04:00",
+                                "timestamp": "2017-08-11T15:13:10.252-04:00",
                                 "eventType": "HOST_EXPIRATION_WARNING_SENT",
                                 "data": {
                                     "agentRevision": "",
@@ -185,7 +185,7 @@
                                 "id": "44aded488a1426f13c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-06-27T22:29:00-04:00",
-                                "timestamp": "2017-08-11T15:13:09-04:00",
+                                "timestamp": "2017-08-11T15:13:09.252-04:00",
                                 "eventType": "HOST_SCRIPT_EXECUTE_FAILED",
                                 "data": {
                                     "agentRevision": "",
@@ -210,7 +210,7 @@
                                 "id": "58aded494a1426f13c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-12-13T23:29:00-05:00",
-                                "timestamp": "2017-08-11T15:13:07-04:00",
+                                "timestamp": "2017-08-11T15:13:07.252-04:00",
                                 "eventType": "HOST_MONITOR_FLAG",
                                 "data": {
                                     "agentRevision": "",
@@ -235,7 +235,7 @@
                                 "id": "58aded493a1406f55c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-05-15T09:55:00-04:00",
-                                "timestamp": "2017-06-25T15:54:19-04:00",
+                                "timestamp": "2017-06-25T15:54:19.252-04:00",
                                 "eventType": "HOST_STOPPED",
                                 "data": {
                                     "agentRevision": "",
@@ -260,7 +260,7 @@
                                 "id": "58aded494a1406f55c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-03-12T09:55:00-04:00",
-                                "timestamp": "2017-06-25T15:54:07-04:00",
+                                "timestamp": "2017-06-25T15:54:07.252-04:00",
                                 "eventType": "HOST_DNS_NAME_SET",
                                 "data": {
                                     "agentRevision": "",
@@ -285,7 +285,7 @@
                                 "id": "77aded477a1426f14c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-12-25T23:18:00-05:00",
-                                "timestamp": "2017-05-18T15:24:13-04:00",
+                                "timestamp": "2017-05-18T15:24:13.252-04:00",
                                 "eventType": "HOST_JASPER_RESTART_ERROR",
                                 "data": {
                                     "agentRevision": "",
@@ -310,7 +310,7 @@
                                 "id": "58aded494a1426f14c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-10-27T00:18:00-04:00",
-                                "timestamp": "2017-05-18T15:24:02-04:00",
+                                "timestamp": "2017-05-18T15:24:02.252-04:00",
                                 "eventType": "HOST_AGENT_MONITOR_DEPLOY_FAILED",
                                 "data": {
                                     "agentRevision": "",
@@ -335,7 +335,7 @@
                                 "id": "58aded494a1426f45c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-02-21T22:45:00-05:00",
-                                "timestamp": "2017-05-12T15:45:17-04:00",
+                                "timestamp": "2017-05-12T15:45:17.252-04:00",
                                 "eventType": "HOST_TEARDOWN",
                                 "data": {
                                     "agentRevision": "",
@@ -360,7 +360,7 @@
                                 "id": "58aded491a1426f45c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-08-26T17:45:00-04:00",
-                                "timestamp": "2017-05-12T15:45:10-04:00",
+                                "timestamp": "2017-05-12T15:45:10.252-04:00",
                                 "eventType": "HOST_RUNNING_TASK_SET",
                                 "data": {
                                     "agentRevision": "",
@@ -385,7 +385,7 @@
                                 "id": "11aded111a1426f12c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-10-16T09:27:00-04:00",
-                                "timestamp": "2017-04-25T15:22:26-04:00",
+                                "timestamp": "2017-04-25T15:22:26.252-04:00",
                                 "eventType": "HOST_TASK_FINISHED",
                                 "data": {
                                     "agentRevision": "",
@@ -410,7 +410,7 @@
                                 "id": "87aded499a1426f12c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-05-18T21:27:00-04:00",
-                                "timestamp": "2017-04-25T15:22:11-04:00",
+                                "timestamp": "2017-04-25T15:22:11.252-04:00",
                                 "eventType": "HOST_CONVERTED_PROVISIONING",
                                 "data": {
                                     "agentRevision": "",
@@ -435,7 +435,7 @@
                                 "id": "89aded499a1426f12c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-12-30T18:27:00-05:00",
-                                "timestamp": "2017-04-25T15:22:08-04:00",
+                                "timestamp": "2017-04-25T15:22:08.252-04:00",
                                 "eventType": "HOST_PROVISION_ERROR",
                                 "data": {
                                     "agentRevision": "",
@@ -460,7 +460,7 @@
                                 "id": "67aded499a1426f12c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-04-22T21:27:00-04:00",
-                                "timestamp": "2017-04-25T15:22:06-04:00",
+                                "timestamp": "2017-04-25T15:22:06.252-04:00",
                                 "eventType": "HOST_SCRIPT_EXECUTED",
                                 "data": {
                                     "agentRevision": "",
@@ -485,7 +485,7 @@
                                 "id": "33aded499a1426f12c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-11-28T20:27:00-05:00",
-                                "timestamp": "2017-04-25T15:22:03-04:00",
+                                "timestamp": "2017-04-25T15:22:03.252-04:00",
                                 "eventType": "HOST_STATUS_CHANGED",
                                 "data": {
                                     "agentRevision": "",
@@ -510,7 +510,7 @@
                                 "id": "58aded492a1426f35c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-09-25T06:35:00-04:00",
-                                "timestamp": "2017-04-22T15:38:27-04:00",
+                                "timestamp": "2017-04-22T15:38:27.252-04:00",
                                 "eventType": "HOST_RUNNING_TASK_CLEARED",
                                 "data": {
                                     "agentRevision": "",
@@ -535,7 +535,7 @@
                                 "id": "58aded494a1426f35c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-01-29T22:35:00-05:00",
-                                "timestamp": "2017-04-22T15:38:17-04:00",
+                                "timestamp": "2017-04-22T15:38:17.252-04:00",
                                 "eventType": "HOST_PROVISION_FAILED",
                                 "data": {
                                     "agentRevision": "",
@@ -560,7 +560,7 @@
                                 "id": "58aded499a1426f16c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-04-15T01:16:00-04:00",
-                                "timestamp": "2017-04-15T15:35:14-04:00",
+                                "timestamp": "2017-04-15T15:35:14.252-04:00",
                                 "eventType": "HOST_STATUS_CHANGED",
                                 "data": {
                                     "agentRevision": "",
@@ -585,7 +585,7 @@
                                 "id": "58aded494a1426f16c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-09-29T23:16:00-04:00",
-                                "timestamp": "2017-04-15T15:35:03-04:00",
+                                "timestamp": "2017-04-15T15:35:03.252-04:00",
                                 "eventType": "HOST_AGENT_DEPLOY_FAILED",
                                 "data": {
                                     "agentRevision": "",
@@ -610,7 +610,7 @@
                                 "id": "58aded494a1426f25c051955",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-10-22T09:29:00-04:00",
-                                "timestamp": "2017-03-12T15:58:17-04:00",
+                                "timestamp": "2017-03-12T15:58:17.252-04:00",
                                 "eventType": "HOST_STATUS_CHANGED",
                                 "data": {
                                     "agentRevision": "",
@@ -635,7 +635,7 @@
                                 "id": "58aded495a1416f65c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-03-14T08:25:00-04:00",
-                                "timestamp": "2017-02-16T14:13:18-05:00",
+                                "timestamp": "2017-02-16T14:13:18.252-05:00",
                                 "eventType": "HOST_AGENT_DEPLOYED",
                                 "data": {
                                     "agentRevision": "2019-05-25",
@@ -660,7 +660,7 @@
                                 "id": "58aded494a1416f65c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-04-15T19:25:00-04:00",
-                                "timestamp": "2017-02-16T14:13:08-05:00",
+                                "timestamp": "2017-02-16T14:13:08.252-05:00",
                                 "eventType": "HOST_CREATED",
                                 "data": {
                                     "agentRevision": "",
@@ -685,7 +685,7 @@
                                 "id": "09aded496a1226f75c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-02-23T06:26:00-05:00",
-                                "timestamp": "2017-01-26T14:22:17-05:00",
+                                "timestamp": "2017-01-26T14:22:17.252-05:00",
                                 "eventType": "HOST_AGENT_MONITOR_DEPLOYED",
                                 "data": {
                                     "agentRevision": "1fa212ac4acea6ce2a0123a123456c06e8cf72ea",
@@ -710,7 +710,7 @@
                                 "id": "58aded494a1226f75c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-05-22T19:26:00-04:00",
-                                "timestamp": "2017-01-26T14:22:06-05:00",
+                                "timestamp": "2017-01-26T14:22:06.252-05:00",
                                 "eventType": "HOST_STARTED",
                                 "data": {
                                     "agentRevision": "",
@@ -735,7 +735,7 @@
                                 "id": "8912kcddj14td81d8454c8dn",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-10-21T19:29:00-04:00",
-                                "timestamp": "2014-09-12T10:02:05-04:00",
+                                "timestamp": "2014-09-12T10:02:05.272-04:00",
                                 "eventType": "HOST_RUNNING_TASK_SET",
                                 "data": {
                                     "agentRevision": "",
@@ -760,7 +760,7 @@
                                 "id": "5412f498b14ed69l84645p07",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-10-21T19:29:00-04:00",
-                                "timestamp": "2014-09-12T09:25:44-04:00",
+                                "timestamp": "2014-09-12T09:25:44.451-04:00",
                                 "eventType": "HOST_PROVISIONED",
                                 "data": {
                                     "agentRevision": "",
@@ -797,7 +797,7 @@
                                 "id": "58aded494a1406f55c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-03-12T09:55:00-04:00",
-                                "timestamp": "2017-06-25T15:54:07-04:00",
+                                "timestamp": "2017-06-25T15:54:07.252-04:00",
                                 "eventType": "HOST_DNS_NAME_SET",
                                 "data": {
                                     "agentRevision": "",
@@ -822,7 +822,7 @@
                                 "id": "77aded477a1426f14c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-12-25T23:18:00-05:00",
-                                "timestamp": "2017-05-18T15:24:13-04:00",
+                                "timestamp": "2017-05-18T15:24:13.252-04:00",
                                 "eventType": "HOST_JASPER_RESTART_ERROR",
                                 "data": {
                                     "agentRevision": "",
@@ -847,7 +847,7 @@
                                 "id": "58aded494a1426f14c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-10-27T00:18:00-04:00",
-                                "timestamp": "2017-05-18T15:24:02-04:00",
+                                "timestamp": "2017-05-18T15:24:02.252-04:00",
                                 "eventType": "HOST_AGENT_MONITOR_DEPLOY_FAILED",
                                 "data": {
                                     "agentRevision": "",
@@ -872,7 +872,7 @@
                                 "id": "58aded494a1426f45c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-02-21T22:45:00-05:00",
-                                "timestamp": "2017-05-12T15:45:17-04:00",
+                                "timestamp": "2017-05-12T15:45:17.252-04:00",
                                 "eventType": "HOST_TEARDOWN",
                                 "data": {
                                     "agentRevision": "",
@@ -897,7 +897,7 @@
                                 "id": "58aded491a1426f45c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-08-26T17:45:00-04:00",
-                                "timestamp": "2017-05-12T15:45:10-04:00",
+                                "timestamp": "2017-05-12T15:45:10.252-04:00",
                                 "eventType": "HOST_RUNNING_TASK_SET",
                                 "data": {
                                     "agentRevision": "",
@@ -922,7 +922,7 @@
                                 "id": "11aded111a1426f12c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-10-16T09:27:00-04:00",
-                                "timestamp": "2017-04-25T15:22:26-04:00",
+                                "timestamp": "2017-04-25T15:22:26.252-04:00",
                                 "eventType": "HOST_TASK_FINISHED",
                                 "data": {
                                     "agentRevision": "",
@@ -947,7 +947,7 @@
                                 "id": "87aded499a1426f12c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-05-18T21:27:00-04:00",
-                                "timestamp": "2017-04-25T15:22:11-04:00",
+                                "timestamp": "2017-04-25T15:22:11.252-04:00",
                                 "eventType": "HOST_CONVERTED_PROVISIONING",
                                 "data": {
                                     "agentRevision": "",
@@ -972,7 +972,7 @@
                                 "id": "89aded499a1426f12c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-12-30T18:27:00-05:00",
-                                "timestamp": "2017-04-25T15:22:08-04:00",
+                                "timestamp": "2017-04-25T15:22:08.252-04:00",
                                 "eventType": "HOST_PROVISION_ERROR",
                                 "data": {
                                     "agentRevision": "",
@@ -997,7 +997,7 @@
                                 "id": "67aded499a1426f12c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-04-22T21:27:00-04:00",
-                                "timestamp": "2017-04-25T15:22:06-04:00",
+                                "timestamp": "2017-04-25T15:22:06.252-04:00",
                                 "eventType": "HOST_SCRIPT_EXECUTED",
                                 "data": {
                                     "agentRevision": "",
@@ -1022,7 +1022,7 @@
                                 "id": "33aded499a1426f12c051945",
                                 "resourceType": "HOST",
                                 "processedAt": "2015-11-28T20:27:00-05:00",
-                                "timestamp": "2017-04-25T15:22:03-04:00",
+                                "timestamp": "2017-04-25T15:22:03.252-04:00",
                                 "eventType": "HOST_STATUS_CHANGED",
                                 "data": {
                                     "agentRevision": "",

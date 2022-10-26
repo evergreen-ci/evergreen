@@ -484,6 +484,7 @@ func doStepback(t *task.Task) error {
 // MarkEnd updates the task as being finished, performs a stepback if necessary, and updates the build status
 func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodels.TaskEndDetail,
 	deactivatePrevious bool) error {
+
 	const slowThreshold = time.Second
 
 	detailsCopy := *detail
@@ -528,6 +529,7 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 	}
 	startPhaseAt := time.Now()
 	err = t.MarkEnd(finishTime, &detailsCopy)
+
 	grip.NoticeWhen(time.Since(startPhaseAt) > slowThreshold, message.Fields{
 		"message":       "slow operation",
 		"function":      "MarkEnd",
@@ -602,10 +604,15 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 			err = evalStepback(t, caller, status, deactivatePrevious)
 		}
 		if err != nil {
-			return err
+			return errors.Wrap(err, "evaluating stepback")
 		}
 	}
 
+	grip.DebugWhen(t.ActivatedBy == "chaya.malik", message.Fields{
+		"message": "calling UpdateBuildAndVersionStatusForTask in MarkEnd",
+		"ticket":  "EVG-17305",
+		"task":    t.Id,
+	})
 	if err := UpdateBuildAndVersionStatusForTask(t); err != nil {
 		return errors.Wrap(err, "updating build/version status")
 	}
@@ -1112,6 +1119,11 @@ func updateVersionGithubStatus(v *Version, builds []build.Build) error {
 
 // Update the status of the version based on its constituent builds
 func updateVersionStatus(v *Version) (string, error) {
+	grip.DebugWhen(v.Author == "didier.nadeau", message.Fields{
+		"message": "updateVersionStatus",
+		"ticket":  "EVG-17305",
+		"version": v.Id,
+	})
 	builds, err := build.Find(build.ByVersion(v.Id).WithFields(build.ActivatedKey, build.StatusKey,
 		build.IsGithubCheckKey, build.GithubCheckStatusKey, build.AbortedKey))
 	if err != nil {
@@ -1124,6 +1136,16 @@ func updateVersionStatus(v *Version) (string, error) {
 	}
 
 	versionStatus := getVersionStatus(builds)
+
+	grip.DebugWhen(v.Author == "didier.nadeau", message.Fields{
+		"message":        "updateVersionStatus getVersionStatus",
+		"ticket":         "EVG-17305",
+		"version":        v.Id,
+		"author":         v.Author,
+		"new_status":     versionStatus,
+		"current_status": v.Status,
+	})
+
 	if versionStatus == v.Status {
 		return versionStatus, nil
 	}
@@ -1198,6 +1220,13 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 	}
 	// If no build has changed status, then we can assume the version and patch statuses have also stayed the same.
 	if !buildStatusChanged {
+
+		grip.DebugWhen(t.ActivatedBy == "chaya.malik", message.Fields{
+			"message": "!buildStatusChanged in UpdateBuildAndVersionStatusForTask",
+			"ticket":  "EVG-17305",
+			"task":    t.Id,
+			"build":   taskBuild.Id,
+		})
 		return nil
 	}
 
@@ -1208,6 +1237,7 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 	if taskVersion == nil {
 		return errors.Errorf("no version '%s' found for task '%s'", t.Version, t.Id)
 	}
+
 	newVersionStatus, err := updateVersionStatus(taskVersion)
 	if err != nil {
 		return errors.Wrapf(err, "updating version '%s' status", taskVersion.Id)
@@ -1613,23 +1643,52 @@ func ClearAndResetStrandedHostTask(h *host.Host) error {
 	return nil
 }
 
-// ResetStaleTask fixes a task that has exceeded the heartbeat timeout by
-// marking the current task execution as finished and, if possible, a new
-// execution is created to restart the task.
-func ResetStaleTask(t *task.Task) error {
+// FixStaleTask fixes a task that has exceeded the heartbeat timeout.
+// The current task execution is marked as finished and, if the task was not
+// aborted, the task is reset. If the task was aborted, we do not reset the task
+// and it is just marked as failed alongside other necessary updates to finish the task.
+func FixStaleTask(t *task.Task) error {
 	CheckAndBlockSingleHostTaskGroup(t, t.Status)
 
-	if err := resetSystemFailedTask(t, evergreen.TaskDescriptionHeartbeat); err != nil {
-		return errors.Wrap(err, "resetting task")
+	failureDesc := evergreen.TaskDescriptionHeartbeat
+	if t.Aborted {
+		failureDesc = evergreen.TaskDescriptionAborted
+		if err := finishStaleAbortedTask(t); err != nil {
+			return errors.Wrapf(err, "finishing stale aborted task '%s'", t.Id)
+		}
+	} else {
+		if err := resetSystemFailedTask(t, failureDesc); err != nil {
+			return errors.Wrap(err, "resetting heartbeat task")
+		}
 	}
 
 	grip.Info(message.Fields{
-		"message":            "successfully fixed stale heartbeat task",
+		"message":            "successfully fixed stale task",
 		"task":               t.Id,
 		"execution":          t.Execution,
 		"execution_platform": t.ExecutionPlatform,
+		"description":        failureDesc,
 	})
 
+	return nil
+}
+
+func finishStaleAbortedTask(t *task.Task) error {
+	failureDetails := &apimodels.TaskEndDetail{
+		Status:      evergreen.TaskFailed,
+		Type:        evergreen.CommandTypeSystem,
+		Description: evergreen.TaskDescriptionAborted,
+	}
+	projectRef, err := FindMergedProjectRef(t.Project, t.Version, true)
+	if err != nil {
+		return errors.Wrapf(err, "getting project ref for task '%s'", t.Id)
+	}
+	if projectRef == nil {
+		return errors.Errorf("project ref for task '%s' not found", t.Id)
+	}
+	if err = MarkEnd(t, evergreen.APIServerTaskActivator, time.Now(), failureDetails, utility.FromBoolPtr(projectRef.DeactivatePrevious)); err != nil {
+		return errors.Wrapf(err, "calling mark finish on task '%s'", t.Id)
+	}
 	return nil
 }
 

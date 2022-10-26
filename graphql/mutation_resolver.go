@@ -20,7 +20,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -31,6 +30,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/amboy"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -455,8 +455,17 @@ func (r *mutationResolver) DetachProjectFromRepo(ctx context.Context, projectID 
 func (r *mutationResolver) ForceRepotrackerRun(ctx context.Context, projectID string) (bool, error) {
 	ts := utility.RoundPartOfHour(1).Format(units.TSFormat)
 	j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectID)
-	if err := evergreen.GetEnvironment().RemoteQueue().Put(ctx, j); err != nil {
+	if err := amboy.EnqueueUniqueJob(ctx, evergreen.GetEnvironment().RemoteQueue(), j); err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("error creating Repotracker job: %s", err.Error()))
+	}
+	return true, nil
+}
+
+func (r *mutationResolver) PromoteVarsToRepo(ctx context.Context, projectID string, varNames []string) (bool, error) {
+	usr := mustHaveUser(ctx)
+	if err := data.PromoteVarsToRepo(projectID, varNames, usr.Username()); err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("promoting variables to repo for project '%s': %s", projectID, err.Error()))
+
 	}
 	return true, nil
 }
@@ -615,74 +624,20 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 	return &apiHost, nil
 }
 
+func (r *mutationResolver) MigrateVolume(ctx context.Context, volumeID string, spawnHostInput *SpawnHostInput) (bool, error) {
+	usr := mustHaveUser(ctx)
+	options, err := getHostRequestOptions(ctx, usr, spawnHostInput)
+	if err != nil {
+		return false, err
+	}
+	return data.MigrateVolume(ctx, volumeID, options, usr, evergreen.GetEnvironment())
+}
+
 func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnHostInput) (*restModel.APIHost, error) {
 	usr := mustHaveUser(ctx)
-	if spawnHostInput.SavePublicKey {
-		if err := savePublicKey(ctx, *spawnHostInput.PublicKey); err != nil {
-			return nil, err
-		}
-	}
-	dist, err := distro.FindOneId(spawnHostInput.DistroID)
+	options, err := getHostRequestOptions(ctx, usr, spawnHostInput)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while trying to find distro with id: %s, err:  `%s`", spawnHostInput.DistroID, err))
-	}
-	if dist == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find Distro with id: %s", spawnHostInput.DistroID))
-	}
-
-	options := &restModel.HostRequestOptions{
-		DistroID:             spawnHostInput.DistroID,
-		Region:               spawnHostInput.Region,
-		KeyName:              spawnHostInput.PublicKey.Key,
-		IsVirtualWorkstation: spawnHostInput.IsVirtualWorkStation,
-		NoExpiration:         spawnHostInput.NoExpiration,
-	}
-	if spawnHostInput.SetUpScript != nil {
-		options.SetupScript = *spawnHostInput.SetUpScript
-	}
-	if spawnHostInput.UserDataScript != nil {
-		options.UserData = *spawnHostInput.UserDataScript
-	}
-	if spawnHostInput.HomeVolumeSize != nil {
-		options.HomeVolumeSize = *spawnHostInput.HomeVolumeSize
-	}
-	if spawnHostInput.VolumeID != nil {
-		options.HomeVolumeID = *spawnHostInput.VolumeID
-	}
-	if spawnHostInput.Expiration != nil {
-		options.Expiration = spawnHostInput.Expiration
-	}
-
-	// passing an empty string taskId is okay as long as a
-	// taskId is not required by other spawnHostInput parameters
-	var t *task.Task
-	if spawnHostInput.TaskID != nil && *spawnHostInput.TaskID != "" {
-		options.TaskID = *spawnHostInput.TaskID
-		if t, err = task.FindOneId(*spawnHostInput.TaskID); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred finding task %s: %s", *spawnHostInput.TaskID, err.Error()))
-		}
-	}
-
-	if utility.FromBoolPtr(spawnHostInput.UseProjectSetupScript) {
-		if t == nil {
-			return nil, ResourceNotFound.Send(ctx, "A valid task id must be supplied when useProjectSetupScript is set to true")
-		}
-		options.UseProjectSetupScript = *spawnHostInput.UseProjectSetupScript
-	}
-	if utility.FromBoolPtr(spawnHostInput.TaskSync) {
-		if t == nil {
-			return nil, ResourceNotFound.Send(ctx, "A valid task id must be supplied when taskSync is set to true")
-		}
-		options.TaskSync = *spawnHostInput.TaskSync
-	}
-
-	if utility.FromBoolPtr(spawnHostInput.SpawnHostsStartedByTask) {
-		if t == nil {
-			return nil, ResourceNotFound.Send(ctx, "A valid task id must be supplied when SpawnHostsStartedByTask is set to true")
-		}
-		if err = data.CreateHostsFromTask(t, *usr, spawnHostInput.PublicKey.Key); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error spawning hosts from task: %s : %s", *spawnHostInput.TaskID, err))
-		}
+		return nil, err
 	}
 
 	spawnHost, err := data.NewIntentHost(ctx, options, usr, evergreen.GetEnvironment().Settings())

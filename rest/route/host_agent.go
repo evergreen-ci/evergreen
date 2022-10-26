@@ -639,7 +639,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 					"task_distro_id":       nextTask.DistroId,
 					"task_id":              nextTask.Id,
 					"host_id":              currentHost.Id,
-					"dispatch_race":        err,
+					"dispatch_race":        err.Error(),
 					"task_group":           nextTask.TaskGroup,
 					"task_build_variant":   nextTask.BuildVariant,
 					"task_version":         nextTask.Version,
@@ -650,7 +650,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 				if err := undoHostTaskDispatchWithFlag(ctx, env, currentHost, nextTask, shouldUseTransaction); err != nil {
 					grip.Error(message.WrapError(err, message.Fields{
 						"message":              "problem undoing task group task dispatch after dispatch race",
-						"dispatch_race":        err,
+						"dispatch_race":        err.Error(),
 						"task_distro_id":       nextTask.DistroId,
 						"task_id":              nextTask.Id,
 						"host_id":              currentHost.Id,
@@ -1308,7 +1308,14 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	deactivatePrevious := utility.FromBoolPtr(projectRef.DeactivatePrevious)
-	err = model.MarkEnd(t, evergreen.APIServerTaskActivator, finishTime, &h.details, deactivatePrevious)
+	details := &h.details
+	if t.Aborted {
+		details = &apimodels.TaskEndDetail{
+			Status:      evergreen.TaskFailed,
+			Description: evergreen.TaskDescriptionAborted,
+		}
+	}
+	err = model.MarkEnd(t, evergreen.APIServerTaskActivator, finishTime, details, deactivatePrevious)
 	if err != nil {
 		err = errors.Wrapf(err, "calling mark finish on task '%s'", t.Id)
 		return gimlet.MakeJSONInternalErrorResponder(err)
