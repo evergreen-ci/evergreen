@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/cocoa/secret"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/mock"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -28,7 +29,7 @@ func TestContainerSecretCleanupJob(t *testing.T) {
 					Name:         aws.String(fmt.Sprintf("secret_name%d", i)),
 					SecretString: aws.String("secret_string"),
 					Tags: []*secretsmanager.Tag{{
-						Key:   aws.String(cloud.PodCacheTag),
+						Key:   aws.String(model.ContainerSecretTag),
 						Value: aws.String(strconv.FormatBool(false)),
 					}},
 				})
@@ -57,7 +58,7 @@ func TestContainerSecretCleanupJob(t *testing.T) {
 					Name:         aws.String(fmt.Sprintf("secret_name%d", i)),
 					SecretString: aws.String("secret_string"),
 					Tags: []*secretsmanager.Tag{{
-						Key:   aws.String(cloud.PodCacheTag),
+						Key:   aws.String(model.ContainerSecretTag),
 						Value: aws.String(strconv.FormatBool(false)),
 					}},
 				})
@@ -114,8 +115,7 @@ func TestContainerSecretCleanupJob(t *testing.T) {
 			}()
 			v, err := secret.NewBasicSecretsManager(*secret.NewBasicSecretsManagerOptions().
 				SetClient(j.smClient).
-				SetCache(&cloud.NoopSecretCache{}).
-				SetCacheTag(cloud.PodCacheTag))
+				SetCache(&cloud.NoopSecretCache{Tag: model.ContainerSecretTag}))
 			require.NoError(t, err)
 			j.vault = cocoaMock.NewVault(v)
 
