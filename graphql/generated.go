@@ -802,8 +802,7 @@ type ComplexityRoot struct {
 	}
 
 	SlackConfig struct {
-		Level func(childComplexity int) int
-		Name  func(childComplexity int) int
+		Name func(childComplexity int) int
 	}
 
 	Source struct {
@@ -5336,13 +5335,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Selector.Type(childComplexity), true
-
-	case "SlackConfig.level":
-		if e.complexity.SlackConfig.Level == nil {
-			break
-		}
-
-		return e.complexity.SlackConfig.Level(childComplexity), true
 
 	case "SlackConfig.name":
 		if e.complexity.SlackConfig.Name == nil {
@@ -36387,47 +36379,6 @@ func (ec *executionContext) fieldContext_SlackConfig_name(ctx context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _SlackConfig_level(ctx context.Context, field graphql.CollectedField, obj *model.APISlackConfig) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_SlackConfig_level(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Level, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_SlackConfig_level(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "SlackConfig",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Source_author(ctx context.Context, field graphql.CollectedField, obj *model.APISource) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Source_author(ctx, field)
 	if err != nil {
@@ -37045,8 +36996,6 @@ func (ec *executionContext) fieldContext_SpruceConfig_slack(ctx context.Context,
 			switch field.Name {
 			case "name":
 				return ec.fieldContext_SlackConfig_name(ctx, field)
-			case "level":
-				return ec.fieldContext_SlackConfig_level(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SlackConfig", field.Name)
 		},
@@ -61025,10 +60974,6 @@ func (ec *executionContext) _SlackConfig(ctx context.Context, sel ast.SelectionS
 		case "name":
 
 			out.Values[i] = ec._SlackConfig_name(ctx, field, obj)
-
-		case "level":
-
-			out.Values[i] = ec._SlackConfig_level(ctx, field, obj)
 
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
