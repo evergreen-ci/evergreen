@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/google/go-github/v34/github"
 	"github.com/mongodb/grip"
 	"google.golang.org/grpc"
 )
@@ -77,6 +78,9 @@ type SharedCommunicator interface {
 	SetHasCedarResults(context.Context, TaskData, bool) error
 	// GetDataPipesConfig returns the Data-Pipes service configuration.
 	GetDataPipesConfig(context.Context) (*apimodels.DataPipesConfig, error)
+
+	// GetPullRequest takes in a PR number, owner, and repo and returns the corresponding pull request.
+	GetPullRequest(context.Context, TaskData, int, string, string) (*github.PullRequest, error)
 
 	// DisableHost signals to the app server that the host should be disabled.
 	DisableHost(context.Context, string, apimodels.DisableInfo) error

@@ -25,6 +25,7 @@ import (
 	"github.com/evergreen-ci/timber"
 	"github.com/evergreen-ci/timber/buildlogger"
 	"github.com/evergreen-ci/utility"
+	"github.com/google/go-github/v34/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/logging"
@@ -589,6 +590,31 @@ func (c *baseCommunicator) SendTaskResults(ctx context.Context, taskData TaskDat
 	}
 	defer resp.Body.Close()
 	return nil
+}
+
+func (c *baseCommunicator) GetPullRequest(ctx context.Context, taskData TaskData, prNum int, owner, repo string) (*github.PullRequest, error) {
+	info := requestInfo{
+		method:   http.MethodGet,
+		taskData: &taskData,
+	}
+	info.setTaskPathSuffix("pull_request")
+
+	body := apimodels.CheckMergeRequest{
+		PRNum: prNum,
+		Owner: owner,
+		Repo:  repo,
+	}
+	resp, err := c.retryRequest(ctx, info, &body)
+	if err != nil {
+		return nil, utility.RespErrorf(resp, errors.Wrap(err, "getting the pull request").Error())
+	}
+
+	pr := &github.PullRequest{}
+	if err := utility.ReadJSON(resp.Body, pr); err != nil {
+		return nil, errors.Wrap(err, "reading pull request from response")
+	}
+
+	return pr, nil
 }
 
 // GetPatch tries to get the patch data from the server in json format,
