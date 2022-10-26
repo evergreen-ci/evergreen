@@ -17,6 +17,8 @@ amboy:
   pool_size_local: 2
   pool_size_remote: 2
   local_storage_size: 2048
+  # Ensure that tests depending on the global environment don't depend on indexes to exist in a testing DB.
+  skip_preferred_indexes: true
 
 api_url: "https://localhost:8443"
 

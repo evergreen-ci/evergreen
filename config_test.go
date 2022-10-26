@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,8 +18,25 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+func init() {
+	if GetEnvironment() == nil {
+		ctx := context.Background()
+
+		path := testConfigFile()
+		env, err := NewEnvironment(ctx, path, nil)
+		grip.EmergencyPanic(message.WrapError(err, message.Fields{
+			"message": "could not initialize test environment",
+			"path":    path,
+		}))
+
+		SetEnvironment(env)
+	}
+}
+
 const (
-	testDir      = "config_test"
+	testDir = "config_test"
+	// testSettings contains the default admin settings suitable for testing
+	// that depends on the global environment.
 	testSettings = "evg_settings.yml"
 )
 
@@ -93,7 +112,9 @@ func TestGetGithubSettings(t *testing.T) {
 }
 
 type AdminSuite struct {
-	env Environment
+	env              Environment
+	originalEnv      Environment
+	originalSettings *Settings
 	suite.Suite
 }
 
@@ -105,21 +126,31 @@ func TestAdminSuite(t *testing.T) {
 	if configFile == "" {
 		configFile = testConfigFile()
 	}
+
 	originalEnv := GetEnvironment()
+	originalSettings, err := GetConfig()
+	require.NoError(t, err)
+
 	env, err := NewEnvironment(ctx, configFile, nil)
 	require.NoError(t, err)
-	SetEnvironment(env)
-	defer func() {
-		SetEnvironment(originalEnv)
-	}()
 
 	s := new(AdminSuite)
 	s.env = env
+	s.originalEnv = originalEnv
+	s.originalSettings = originalSettings
 	suite.Run(t, s)
 }
 
 func (s *AdminSuite) SetupTest() {
+	SetEnvironment(s.env)
 	s.NoError(resetRegistry())
+}
+
+func (s *AdminSuite) TearDownTest() {
+	// Reset the global env and admin settings after modifications to avoid
+	// affecting other tests that depend on the global test env.
+	SetEnvironment(s.originalEnv)
+	s.NoError(UpdateConfig(s.originalSettings))
 }
 
 func (s *AdminSuite) TestBanner() {
@@ -201,7 +232,7 @@ func (s *AdminSuite) TestServiceFlags() {
 			f := v.Field(i)
 			f.SetBool(true)
 		}
-	}, "error setting all fields to true")
+	})
 
 	err := testFlags.Set()
 	s.NoError(err)
