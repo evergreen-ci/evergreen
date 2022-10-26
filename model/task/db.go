@@ -686,13 +686,6 @@ func ByExecutionTasks(ids []string) bson.M {
 	}
 }
 
-func bySubsetAborted(ids []string) bson.M {
-	return bson.M{
-		IdKey:      bson.M{"$in": ids},
-		AbortedKey: true,
-	}
-}
-
 // ByExecutionPlatform returns the query to find tasks matching the given
 // execution platform. If the empty string is given, the task is assumed to be
 // the default of ExecutionPlatformHost.

@@ -2004,28 +2004,25 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 
 }
 
-// GetDisplayStatus should reflect the statuses assigned during the addDisplayStatus aggregation step
+// GetDisplayStatus finds and sets DisplayStatus to the task. It should reflect
+// the statuses assigned during the addDisplayStatus aggregation step.
 func (t *Task) GetDisplayStatus() string {
 	if t.DisplayStatus != "" {
 		return t.DisplayStatus
 	}
-	if t.Aborted && t.IsFinished() {
+	t.DisplayStatus = t.findDisplayStatus()
+	return t.DisplayStatus
+}
+
+func (t *Task) findDisplayStatus() string {
+	if t.Aborted {
 		return evergreen.TaskAborted
-	}
-	if t.Status == evergreen.TaskUndispatched {
-		if !t.Activated {
-			return evergreen.TaskUnscheduled
-		}
-		if t.Blocked() {
-			return evergreen.TaskStatusBlocked
-		}
-		return evergreen.TaskWillRun
-	}
-	if !t.IsFinished() {
-		return t.Status
 	}
 	if t.Status == evergreen.TaskSucceeded {
 		return evergreen.TaskSucceeded
+	}
+	if t.Details.Type == evergreen.CommandTypeSetup {
+		return evergreen.TaskSetupFailed
 	}
 	if t.Details.Type == evergreen.CommandTypeSystem {
 		if t.Details.TimedOut && t.Details.Description == evergreen.TaskDescriptionHeartbeat {
@@ -2036,11 +2033,17 @@ func (t *Task) GetDisplayStatus() string {
 		}
 		return evergreen.TaskSystemFailed
 	}
-	if t.Details.Type == evergreen.CommandTypeSetup {
-		return evergreen.TaskSetupFailed
-	}
 	if t.Details.TimedOut {
 		return evergreen.TaskTimedOut
+	}
+	if t.Status == evergreen.TaskUndispatched {
+		if !t.Activated {
+			return evergreen.TaskUnscheduled
+		}
+		if t.Blocked() {
+			return evergreen.TaskStatusBlocked
+		}
+		return evergreen.TaskWillRun
 	}
 	return t.Status
 }
@@ -2941,19 +2944,6 @@ func (t *Task) SetResetFailedWhenFinished() error {
 			},
 		},
 	)
-}
-
-// SetAbortedTasksResetWhenFinished sets all matching aborted tasks as ResetWhenFinished.
-func SetAbortedTasksResetWhenFinished(taskIds []string) error {
-	_, err := UpdateAll(
-		bySubsetAborted(taskIds),
-		bson.M{
-			"$set": bson.M{
-				ResetWhenFinishedKey: true,
-			},
-		},
-	)
-	return err
 }
 
 // MergeTestResultsBulk takes a slice of task structs and returns the slice with
