@@ -49,6 +49,182 @@ func updateTestDepTasks(t *testing.T) {
 	}
 }
 
+func TestGetDisplayStatusAndColorSort(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection, annotations.Collection))
+	t1 := Task{
+		Id:        "t1",
+		Version:   "v1",
+		Execution: 3,
+		Status:    evergreen.TaskFailed,
+	}
+	t2 := Task{
+		Id:        "t2",
+		Version:   "v1",
+		Aborted:   true,
+		Execution: 1,
+	}
+	t3 := Task{
+		Id:        "t3",
+		Version:   "v1",
+		Status:    evergreen.TaskSucceeded,
+		Execution: 1,
+	}
+	t4 := Task{
+		Id:      "t4",
+		Version: "v1",
+		Details: apimodels.TaskEndDetail{
+			Type: evergreen.CommandTypeSetup,
+		},
+		Execution: 1,
+	}
+	t5 := Task{
+		Id:      "t5",
+		Version: "v1",
+		Details: apimodels.TaskEndDetail{
+			Type:        evergreen.CommandTypeSystem,
+			Description: evergreen.TaskDescriptionHeartbeat,
+			TimedOut:    true,
+		},
+		Execution: 1,
+	}
+	t6 := Task{
+		Id:      "t6",
+		Version: "v1",
+		Details: apimodels.TaskEndDetail{
+			Type:     evergreen.CommandTypeSystem,
+			TimedOut: true,
+		},
+		Execution: 1,
+	}
+	t7 := Task{
+		Id:      "t7",
+		Version: "v1",
+		Details: apimodels.TaskEndDetail{
+			Type: evergreen.CommandTypeSystem,
+		},
+		Execution: 1,
+	}
+	t8 := Task{
+		Id:      "t8",
+		Version: "v1",
+		Details: apimodels.TaskEndDetail{
+			TimedOut: true,
+		},
+		Execution: 1,
+	}
+	t9 := Task{
+		Id:        "t9",
+		Version:   "v1",
+		Status:    evergreen.TaskUndispatched,
+		Activated: false,
+		Execution: 1,
+	}
+	t10 := Task{
+		Id:        "t10",
+		Version:   "v1",
+		Status:    evergreen.TaskUndispatched,
+		Activated: true,
+	}
+	t11 := Task{
+		Id:        "t11",
+		Version:   "v1",
+		Status:    evergreen.TaskUndispatched,
+		Activated: true,
+		DependsOn: []Dependency{
+			{
+				TaskId:       "t9",
+				Unattainable: true,
+				Status:       "success",
+			},
+			{
+				TaskId:       "t8",
+				Unattainable: false,
+				Status:       "success",
+			},
+		},
+		Execution: 1,
+	}
+	a := annotations.TaskAnnotation{
+		Id:            "myAnnotation",
+		TaskId:        t1.Id,
+		TaskExecution: t1.Execution,
+		Issues: []annotations.IssueLink{
+			{IssueKey: "EVG-12345"},
+		},
+	}
+	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11))
+	assert.NoError(t, a.Upsert())
+
+	pipeline, err := getTasksByVersionPipeline("v1", GetTasksByVersionOptions{})
+	require.NoError(t, err)
+	sortFields := bson.D{bson.E{Key: "__" + DisplayStatusKey, Value: 1}, bson.E{Key: IdKey, Value: 1}}
+	sortPipeline := []bson.M{addStatusColorSort(DisplayStatusKey), {"$sort": sortFields}}
+	pipeline = append(pipeline, sortPipeline...)
+
+	taskResults := []Task{}
+	err = Aggregate(pipeline, &taskResults)
+	require.NoError(t, err)
+
+	assert.Len(t, taskResults, 11)
+	// first, assert the correctness of displayStatusExpression and ensure the display
+	// statuses are computed correctly and that it matches GetDisplayStatus
+	for _, foundTask := range taskResults {
+		switch foundTask.Id {
+		case t1.Id:
+			// GetDisplayStatus should return "failed" for t1 since it does not
+			// check the annotations collection.
+			assert.Equal(t, foundTask.DisplayStatus, evergreen.TaskKnownIssue)
+			assert.Equal(t, t1.GetDisplayStatus(), evergreen.TaskFailed)
+		case t2.Id:
+			assert.Equal(t, foundTask.DisplayStatus, evergreen.TaskAborted)
+			assert.Equal(t, t2.GetDisplayStatus(), evergreen.TaskAborted)
+		case t3.Id:
+			assert.Equal(t, foundTask.DisplayStatus, evergreen.TaskSucceeded)
+			assert.Equal(t, t3.GetDisplayStatus(), evergreen.TaskSucceeded)
+		case t4.Id:
+			assert.Equal(t, foundTask.DisplayStatus, evergreen.TaskSetupFailed)
+			assert.Equal(t, t4.GetDisplayStatus(), evergreen.TaskSetupFailed)
+		case t5.Id:
+			assert.Equal(t, foundTask.DisplayStatus, evergreen.TaskSystemUnresponse)
+			assert.Equal(t, t5.GetDisplayStatus(), evergreen.TaskSystemUnresponse)
+		case t6.Id:
+			assert.Equal(t, foundTask.DisplayStatus, evergreen.TaskSystemTimedOut)
+			assert.Equal(t, t6.GetDisplayStatus(), evergreen.TaskSystemTimedOut)
+		case t7.Id:
+			assert.Equal(t, foundTask.DisplayStatus, evergreen.TaskSystemFailed)
+			assert.Equal(t, t7.GetDisplayStatus(), evergreen.TaskSystemFailed)
+		case t8.Id:
+			assert.Equal(t, foundTask.DisplayStatus, evergreen.TaskTimedOut)
+			assert.Equal(t, t8.GetDisplayStatus(), evergreen.TaskTimedOut)
+		case t9.Id:
+			assert.Equal(t, foundTask.DisplayStatus, evergreen.TaskUnscheduled)
+			assert.Equal(t, t9.GetDisplayStatus(), evergreen.TaskUnscheduled)
+		case t10.Id:
+			assert.Equal(t, foundTask.DisplayStatus, evergreen.TaskWillRun)
+			assert.Equal(t, t10.GetDisplayStatus(), evergreen.TaskWillRun)
+		case t11.Id:
+			assert.Equal(t, foundTask.DisplayStatus, evergreen.TaskStatusBlocked)
+			assert.Equal(t, t11.GetDisplayStatus(), evergreen.TaskStatusBlocked)
+		}
+	}
+	// check correctness of addStatusColorSort
+	checkPriority(t, taskResults)
+}
+
+func checkPriority(t *testing.T, taskResults []Task) {
+	assert.Equal(t, taskResults[0].DisplayStatus, evergreen.TaskTimedOut)
+	assert.Equal(t, taskResults[1].DisplayStatus, evergreen.TaskKnownIssue)
+	assert.Equal(t, taskResults[2].DisplayStatus, evergreen.TaskSetupFailed)
+	assert.Equal(t, taskResults[3].DisplayStatus, evergreen.TaskSystemUnresponse)
+	assert.Equal(t, taskResults[4].DisplayStatus, evergreen.TaskSystemTimedOut)
+	assert.Equal(t, taskResults[5].DisplayStatus, evergreen.TaskSystemFailed)
+	assert.Equal(t, taskResults[6].DisplayStatus, evergreen.TaskWillRun)
+	assert.Equal(t, taskResults[7].DisplayStatus, evergreen.TaskStatusBlocked)
+	assert.Equal(t, taskResults[8].DisplayStatus, evergreen.TaskAborted)
+	assert.Equal(t, taskResults[9].DisplayStatus, evergreen.TaskUnscheduled)
+	assert.Equal(t, taskResults[10].DisplayStatus, evergreen.TaskSucceeded)
+}
+
 func TestDependenciesMet(t *testing.T) {
 
 	var taskId string

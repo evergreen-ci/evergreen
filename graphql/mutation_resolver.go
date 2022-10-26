@@ -827,7 +827,6 @@ func (r *mutationResolver) OverrideTaskDependencies(ctx context.Context, taskID 
 	if err = t.SetOverrideDependencies(currentUser.Username()); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error overriding dependencies for task %s: %s", taskID, err.Error()))
 	}
-	t.DisplayStatus = t.GetDisplayStatus()
 	return getAPITaskFromTask(ctx, r.sc.GetURL(), *t)
 }
 
