@@ -8,8 +8,6 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,21 +15,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
-
-func init() {
-	if GetEnvironment() == nil {
-		ctx := context.Background()
-
-		path := testConfigFile()
-		env, err := NewEnvironment(ctx, path, nil)
-		grip.EmergencyPanic(message.WrapError(err, message.Fields{
-			"message": "could not initialize test environment",
-			"path":    path,
-		}))
-
-		SetEnvironment(env)
-	}
-}
 
 const (
 	testDir = "config_test"

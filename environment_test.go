@@ -8,10 +8,33 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
+
+func init() {
+	if _, ok := os.LookupEnv("AUTH_ENABLED"); ok {
+		// The DB auth test cannot initialize the environment due to
+		// requiring DB auth credentials.
+		return
+	}
+
+	if GetEnvironment() == nil {
+		ctx := context.Background()
+
+		path := testConfigFile()
+		env, err := NewEnvironment(ctx, path, nil)
+		grip.EmergencyFatal(message.WrapError(err, message.Fields{
+			"message": "could not initialize test environment",
+			"path":    path,
+		}))
+
+		SetEnvironment(env)
+	}
+}
 
 type EnvironmentSuite struct {
 	path string
@@ -42,7 +65,6 @@ func (s *EnvironmentSuite) SetupTest() {
 }
 
 func (s *EnvironmentSuite) TestInitDB() {
-
 	db := &DBSettings{
 		Url: "mongodb://localhost:27017",
 		DB:  "mci_test",

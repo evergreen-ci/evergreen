@@ -587,6 +587,7 @@ tasks:
           target: "test-evergreen"
           RUN_TEST: "TestEnvironmentSuite/TestInitDB"
           MONGO_CREDS_FILE: evergreen/test_auth.yml
+          AUTH_ENABLED: 1
 
 task_groups:
   - name: dist-and-upload-clis
