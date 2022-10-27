@@ -2,6 +2,7 @@ package units
 
 import (
 	"context"
+	"github.com/evergreen-ci/evergreen/util"
 	"testing"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	yaml "gopkg.in/20210107192922/yaml.v3"
 )
 
 func TestTaskExecutionTimeoutJob(t *testing.T) {
@@ -79,7 +81,35 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 				Status:            evergreen.TaskUndispatched,
 			}
 			require.NoError(t, otherTask.Insert())
-			require.NoError(t, v.Insert())
+
+			p := model.Project{
+				TaskGroups: []model.TaskGroup{
+					{
+						Name:     taskGroupName,
+						MaxHosts: 1,
+						Tasks:    []string{j.task.DisplayName, otherTask.DisplayName},
+					},
+				},
+				BuildVariants: []model.BuildVariant{
+					{
+						Name: j.task.BuildVariant,
+						Tasks: []model.BuildVariantTaskUnit{
+							{Name: taskGroupName},
+						},
+					},
+				},
+				Tasks: []model.ProjectTask{
+					{Name: j.task.DisplayName},
+					{Name: otherTask.DisplayName},
+				},
+			}
+			yml, err := yaml.Marshal(p)
+			require.NoError(t, err)
+			pp := &model.ParserProject{}
+			err = util.UnmarshalYAMLWithFallback(yml, &pp)
+			require.NoError(t, err)
+			pp.Id = "version"
+			require.NoError(t, pp.Insert())
 
 			j.Run(ctx)
 			require.NoError(t, j.Error())

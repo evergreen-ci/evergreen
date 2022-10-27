@@ -22,6 +22,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/message"
 	. "github.com/smartystreets/goconvey/convey"
@@ -1107,7 +1108,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			}
 			pRef := ProjectRef{Id: "p1"}
 			pConfig := ProjectConfig{Id: "p1"}
-			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, ProjectRefCollection, ProjectConfigCollection))
+			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, ProjectRefCollection, ProjectConfigCollection, ParserProjectCollection))
 			So(pRef.Insert(), ShouldBeNil)
 			So(pConfig.Insert(), ShouldBeNil)
 			So(b.Insert(), ShouldBeNil)
@@ -1283,7 +1284,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 func TestMarkEnd(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	require.NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection, ProjectRefCollection))
+	require.NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection, ProjectRefCollection, ParserProjectCollection))
 
 	displayName := "testName"
 	userName := "testUser"
@@ -1469,8 +1470,14 @@ func TestMarkEndWithTaskGroup(t *testing.T) {
 				Id:     b.Version,
 				Status: evergreen.VersionStarted,
 			}
+			pp := &ParserProject{}
+			err := util.UnmarshalYAMLWithFallback([]byte(sampleProjYmlTaskGroups), &pp)
+			assert.NoError(err)
+			pp.Id = "v1"
+			assert.NoError(pp.Insert())
 			assert.NoError(b.Insert())
 			assert.NoError(v.Insert())
+
 			d := distro.Distro{
 				Id: "my_distro",
 				PlannerSettings: distro.PlannerSettings{
