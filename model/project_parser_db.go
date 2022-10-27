@@ -52,7 +52,14 @@ var (
 
 // ParserProjectFindOneById returns the parser project for the version
 func ParserProjectFindOneById(id string) (*ParserProject, error) {
-	return ParserProjectFindOne(ParserProjectById(id))
+	pp, err := ParserProjectFindOne(ParserProjectById(id))
+	if err != nil {
+		return nil, err
+	}
+	if pp != nil && pp.Functions == nil {
+		pp.Functions = map[string]*YAMLCommandSet{}
+	}
+	return pp, nil
 }
 
 // ParserProjectFindOne finds a parser project with a given query.

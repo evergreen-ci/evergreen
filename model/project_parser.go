@@ -490,9 +490,6 @@ func FindAndTranslateProjectForVersion(v *Version, id string) (*Project, *Parser
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "finding parser project")
 	}
-	if pp.Functions == nil {
-		pp.Functions = map[string]*YAMLCommandSet{}
-	}
 	pp.Identifier = utility.ToStringPtr(id)
 	var p *Project
 	p, err = TranslateProject(pp)

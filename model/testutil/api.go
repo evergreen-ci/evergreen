@@ -2,7 +2,6 @@ package testutil
 
 import (
 	"context"
-	"github.com/evergreen-ci/evergreen/util"
 	"io/ioutil"
 
 	"github.com/evergreen-ci/evergreen"
@@ -14,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
