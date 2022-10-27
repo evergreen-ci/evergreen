@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -16,7 +17,7 @@ import (
 )
 
 func init() {
-	if _, ok := os.LookupEnv("AUTH_ENABLED"); ok {
+	if skip, _ := strconv.ParseBool(os.Getenv("AUTH_ENABLED")); skip {
 		// The DB auth test cannot initialize the environment due to
 		// requiring DB auth credentials.
 		return
