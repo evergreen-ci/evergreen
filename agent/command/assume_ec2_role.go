@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/util"
@@ -78,7 +79,8 @@ func (r *ec2AssumeRole) Execute(ctx context.Context,
 	}
 
 	if len(conf.EC2Keys) == 0 {
-		return errors.New("no EC2 keys in config")
+		env := evergreen.GetEnvironment()
+		conf.EC2Keys = env.Settings().Providers.AWS.EC2Keys
 	}
 
 	key := conf.EC2Keys[0].Key
@@ -100,7 +102,7 @@ func (r *ec2AssumeRole) Execute(ctx context.Context,
 
 	creds := stscreds.NewCredentials(session1, r.RoleARN, func(arp *stscreds.AssumeRoleProvider) {
 		arp.RoleSessionName = strconv.Itoa(int(time.Now().Unix()))
-		arp.ExternalID = utility.ToStringPtr(fmt.Sprintf("%s-%s", conf.Task.Project, conf.Task.Requester))
+		arp.ExternalID = utility.ToStringPtr(fmt.Sprintf("%s-%s", conf.ProjectRef.Id, conf.Task.Requester))
 		if r.Policy != "" {
 			arp.Policy = utility.ToStringPtr(r.Policy)
 		}
