@@ -11,6 +11,7 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 )
 
+// Host is the resolver for the host field.
 func (r *volumeResolver) Host(ctx context.Context, obj *restModel.APIVolume) (*restModel.APIHost, error) {
 	if obj.HostID == nil || *obj.HostID == "" {
 		return nil, nil
