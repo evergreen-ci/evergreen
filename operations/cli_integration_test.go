@@ -3,6 +3,7 @@ package operations
 import (
 	"context"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/util"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -93,10 +94,15 @@ func setupCLITestHarness() cliTestHarness {
 	version := &model.Version{
 		Id:         "sample_version",
 		Identifier: "sample",
-		Config:     string(localConfBytes),
 		Requester:  evergreen.RepotrackerVersionRequester,
 	}
 	So(version.Insert(), ShouldBeNil)
+
+	pp := model.ParserProject{}
+	err = util.UnmarshalYAMLWithFallback(localConfBytes, &pp)
+	So(err, ShouldBeNil)
+	pp.Id = "sample_version"
+	So(pp.Insert(), ShouldBeNil)
 
 	d := distro.Distro{Id: "localtestdistro"}
 	So(d.Insert(), ShouldBeNil)

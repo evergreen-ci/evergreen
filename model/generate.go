@@ -134,7 +134,7 @@ func (g *GeneratedProject) NewVersion(p *Project, pp *ParserProject, v *Version)
 		return nil, pp, v, errors.Wrap(err, "generated project is invalid")
 	}
 
-	newPP, err := g.addGeneratedProjectToConfig(pp, v.Config, cachedProject)
+	newPP, err := g.addGeneratedProjectToConfig(pp, cachedProject)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, "creating config from generated config")
 	}
@@ -575,15 +575,7 @@ func appendTasks(pairs TaskVariantPairs, bv parserBV, p *Project) TaskVariantPai
 
 // addGeneratedProjectToConfig takes a ParserProject and a YML config and returns a new one with the GeneratedProject included.
 // support for YML config will be degraded.
-func (g *GeneratedProject) addGeneratedProjectToConfig(intermediateProject *ParserProject, config string, cachedProject projectMaps) (*ParserProject, error) {
-	var err error
-	if intermediateProject == nil {
-		intermediateProject, err = createIntermediateProject([]byte(config), false)
-		if err != nil {
-			return nil, errors.Wrap(err, "creating intermediate project")
-		}
-	}
-
+func (g *GeneratedProject) addGeneratedProjectToConfig(intermediateProject *ParserProject, cachedProject projectMaps) (*ParserProject, error) {
 	// Append buildvariants, tasks, and functions to the config.
 	intermediateProject.TaskGroups = append(intermediateProject.TaskGroups, g.TaskGroups...)
 	intermediateProject.Tasks = append(intermediateProject.Tasks, g.Tasks...)

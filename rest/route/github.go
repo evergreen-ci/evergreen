@@ -516,7 +516,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 		}
 	} else {
 		// use the standard project config with the git tag alias
-		projectInfo, err = model.LoadProjectForVersion(existingVersion, pRef.Id, false)
+		projectInfo, err = model.LoadProjectForVersion(existingVersion, pRef.Id)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting project '%s'", pRef.Identifier)
 		}

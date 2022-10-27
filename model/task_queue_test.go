@@ -150,20 +150,9 @@ func TestBlockTaskGroupTasks(t *testing.T) {
 
 	projectRef := &ProjectRef{Id: "a"}
 	assert.Nil(projectRef.Insert())
-	yml := `
-task_groups:
-- name: foo
-  tasks:
-  - task_id
-  - one
-tasks:
-- name: task_id
-- name: one
-`
 	v := Version{
 		Id:        "b",
 		Requester: evergreen.RepotrackerVersionRequester,
-		Config:    yml,
 	}
 	require.NoError(v.Insert())
 	tasks := []task.Task{

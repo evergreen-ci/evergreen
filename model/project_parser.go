@@ -486,7 +486,7 @@ func (pss *parserStringSlice) UnmarshalYAML(unmarshal func(interface{}) error) e
 
 // LoadProjectForVersion returns the project for a version, either from the parser project or the config string.
 // If read from the config string and shouldSave is set, the resulting parser project will be saved.
-func LoadProjectForVersion(v *Version, id string, shouldSave bool) (ProjectInfo, error) {
+func LoadProjectForVersion(v *Version, id string) (ProjectInfo, error) {
 	var pp *ParserProject
 	var err error
 
@@ -508,50 +508,17 @@ func LoadProjectForVersion(v *Version, id string, shouldSave bool) (ProjectInfo,
 			return ProjectInfo{}, errors.Wrap(err, "finding project config")
 		}
 	}
-	// if parser project config number is old then we should default to legacy
-	if pp != nil && pp.ConfigUpdateNumber >= v.ConfigUpdateNumber {
-		if pp.Functions == nil {
-			pp.Functions = map[string]*YAMLCommandSet{}
-		}
-		pp.Identifier = utility.ToStringPtr(id)
-		var p *Project
-		p, err = TranslateProject(pp)
-		return ProjectInfo{
-			Project:             p,
-			IntermediateProject: pp,
-			Config:              pc,
-		}, err
+	if pp.Functions == nil {
+		pp.Functions = map[string]*YAMLCommandSet{}
 	}
-
-	if v.Config == "" {
-		return ProjectInfo{}, errors.New("version has no config")
-	}
-	p := &Project{}
-	// opts empty because project yaml with `include` will not hit this case
-	ctx := context.Background()
-	pp, err = LoadProjectInto(ctx, []byte(v.Config), nil, id, p)
-	if err != nil {
-		return ProjectInfo{}, errors.Wrap(err, "loading project")
-	}
-	pp.Id = v.Id
 	pp.Identifier = utility.ToStringPtr(id)
-	pp.ConfigUpdateNumber = v.ConfigUpdateNumber
-	pp.CreateTime = v.CreateTime
-
-	if shouldSave {
-		if err = pp.TryUpsert(); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"project": id,
-				"version": v.Id,
-				"message": "error inserting parser project for version",
-			}))
-			return ProjectInfo{}, errors.Wrap(err, "updating version with project")
-		}
-	}
+	var p *Project
+	p, err = TranslateProject(pp)
 	return ProjectInfo{
 		Project:             p,
 		IntermediateProject: pp,
-	}, nil
+		Config:              pc,
+	}, err
 }
 
 func GetProjectFromBSON(data []byte) (*Project, error) {

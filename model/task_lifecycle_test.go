@@ -28,7 +28,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/20210107192922/yaml.v3"
 )
 
 var (
@@ -1085,7 +1084,6 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 				Id:         b.Version,
 				Identifier: "p1",
 				Status:     evergreen.VersionStarted,
-				Config:     "identifier: p1",
 			}
 			testTask = &task.Task{
 				Id:          "testone",
@@ -1094,6 +1092,10 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 				BuildId:     b.Id,
 				Project:     "p1",
 				Version:     b.Version,
+			}
+			pp := &ParserProject{
+				Id:         b.Version,
+				Identifier: utility.ToStringPtr("p1"),
 			}
 			detail = &apimodels.TaskEndDetail{
 				Status: evergreen.TaskSucceeded,
@@ -1111,6 +1113,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			So(b.Insert(), ShouldBeNil)
 			So(testTask.Insert(), ShouldBeNil)
 			So(v.Insert(), ShouldBeNil)
+			So(pp.Insert(), ShouldBeNil)
 		}
 
 		Convey("task should not fail if there are no failed test, also logs should be updated", func() {
@@ -1293,7 +1296,6 @@ func TestMarkEnd(t *testing.T) {
 		Id:         b.Version,
 		Identifier: "p1",
 		Status:     evergreen.VersionStarted,
-		Config:     "identifier: sample",
 	}
 	projRef := &ProjectRef{
 		Id: "p1",
@@ -1318,11 +1320,16 @@ func TestMarkEnd(t *testing.T) {
 			{TaskId: testTask.Id},
 		},
 	}
+	pp := &ParserProject{
+		Id:         b.Version,
+		Identifier: utility.ToStringPtr("sample"),
+	}
 
 	require.NoError(projRef.Insert())
 	require.NoError(b.Insert())
 	require.NoError(testTask.Insert())
 	require.NoError(v.Insert())
+	require.NoError(pp.Insert())
 	require.NoError(dependentTask.Insert())
 
 	details := apimodels.TaskEndDetail{
@@ -1461,7 +1468,6 @@ func TestMarkEndWithTaskGroup(t *testing.T) {
 			v := &Version{
 				Id:     b.Version,
 				Status: evergreen.VersionStarted,
-				Config: sampleProjYmlTaskGroups,
 			}
 			assert.NoError(b.Insert())
 			assert.NoError(v.Insert())
@@ -1497,7 +1503,6 @@ func TestTryResetTask(t *testing.T) {
 			v := &Version{
 				Id:     b.Version,
 				Status: evergreen.VersionStarted,
-				Config: "identifier: sample",
 			}
 			testTask := &task.Task{
 				Id:          "testone",
@@ -1620,7 +1625,6 @@ func TestTryResetTask(t *testing.T) {
 			v := &Version{
 				Id:     b.Version,
 				Status: evergreen.VersionStarted,
-				Config: "identifier: sample",
 			}
 			testTask := &task.Task{
 				Id:          "testone",
@@ -1685,7 +1689,6 @@ func TestTryResetTask(t *testing.T) {
 		v := &Version{
 			Id:     b.Version,
 			Status: evergreen.VersionStarted,
-			Config: "identifier: sample",
 		}
 		So(v.Insert(), ShouldBeNil)
 		dt := &task.Task{
@@ -1734,7 +1737,6 @@ func TestTryResetTaskWithTaskGroup(t *testing.T) {
 	v := &Version{
 		Id:     b.Version,
 		Status: evergreen.VersionStarted,
-		Config: sampleProjYmlTaskGroups,
 	}
 	assert.NoError(b.Insert())
 	assert.NoError(v.Insert())
@@ -2179,7 +2181,6 @@ func TestMarkStart(t *testing.T) {
 		v := &Version{
 			Id:     b.Version,
 			Status: evergreen.VersionCreated,
-			Config: "identifier: sample",
 		}
 		testTask := &task.Task{
 			Id:          "testTask",
@@ -2222,7 +2223,6 @@ func TestMarkStart(t *testing.T) {
 		v := &Version{
 			Id:     b.Version,
 			Status: evergreen.VersionStarted,
-			Config: "identifier: sample",
 		}
 		So(v.Insert(), ShouldBeNil)
 		dt := &task.Task{
@@ -2298,25 +2298,9 @@ func TestMarkDispatched(t *testing.T) {
 func TestGetStepback(t *testing.T) {
 	Convey("When the project has a stepback policy set to true", t, func() {
 		require.NoError(t, db.ClearCollections(ProjectRefCollection, task.Collection, build.Collection, VersionCollection))
-
-		config := `
-stepback: true
-tasks:
- - name: true
-   stepback: true
- - name: false
-   stepback: false
-buildvariants:
- - name: sbnil
- - name: sbtrue
-   stepback: true
- - name: sbfalse
-   stepback: false
-`
 		ver := &Version{
 			Id:         "version_id",
 			Identifier: "p1",
-			Config:     config,
 		}
 		So(ver.Insert(), ShouldBeNil)
 		projRef := &ProjectRef{
@@ -2409,7 +2393,6 @@ func TestFailedTaskRestart(t *testing.T) {
 	v := &Version{
 		Id:     b.Version,
 		Status: evergreen.VersionStarted,
-		Config: "identifier: sample",
 	}
 	testTask1 := &task.Task{
 		Id:        "taskToRestart",
@@ -2536,7 +2519,6 @@ func TestFailedTaskRestartWithDisplayTasksAndTaskGroup(t *testing.T) {
 	v := &Version{
 		Id:     b.Version,
 		Status: evergreen.VersionStarted,
-		Config: "identifier: sample",
 	}
 	testTask1 := &task.Task{
 		Id:                "taskGroup1",
@@ -3022,7 +3004,6 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 		Id:         "sample_version",
 		Identifier: "sample",
 		Requester:  evergreen.RepotrackerVersionRequester,
-		Config:     "identifier: sample",
 		Status:     evergreen.VersionStarted,
 	}
 	require.NoError(v.Insert())
@@ -3154,7 +3135,6 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 	v := &Version{
 		Id:        "sample_version",
 		Requester: evergreen.RepotrackerVersionRequester,
-		Config:    "identifier: sample",
 		Status:    evergreen.VersionStarted,
 	}
 	require.NoError(v.Insert())
@@ -3226,7 +3206,6 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 	v := &Version{
 		Id:        "sample_version",
 		Requester: evergreen.RepotrackerVersionRequester,
-		Config:    "identifier: sample",
 		Status:    evergreen.VersionStarted,
 	}
 	require.NoError(v.Insert())
@@ -3466,11 +3445,8 @@ func TestCheckAndBlockSingleHostTaskGroup(t *testing.T) {
 					{Name: tasks[4].DisplayName},
 				},
 			}
-			yml, err := yaml.Marshal(p)
-			require.NoError(t, err)
 			v := Version{
-				Id:     versionID,
-				Config: string(yml),
+				Id: versionID,
 			}
 
 			tCase(t, tasks, v, p)
@@ -4240,7 +4216,6 @@ func TestMarkEndWithNoResults(t *testing.T) {
 		Id:        "v",
 		Requester: evergreen.RepotrackerVersionRequester,
 		Status:    evergreen.VersionStarted,
-		Config:    "identifier: sample",
 	}
 	assert.NoError(t, v.Insert())
 	details := &apimodels.TaskEndDetail{
@@ -4585,8 +4560,7 @@ func TestAbortedTaskDelayedRestart(t *testing.T) {
 	}
 	assert.NoError(t, b.Insert())
 	v := Version{
-		Id:     "version",
-		Config: `_id: v`,
+		Id: "version",
 	}
 	assert.NoError(t, v.Insert())
 
@@ -4736,18 +4710,6 @@ func TestEvalStepbackDeactivatePrevious(t *testing.T) {
 func TestEvalStepback(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(task.Collection, ProjectRefCollection, distro.Collection, build.Collection, VersionCollection))
-	yml := `
-stepback: true
-buildvariants:
-- name: "bv"
-  run_on: distro
-  tasks:
-  - name: task
-  - name: generator
-tasks:
-- name: task
-- name: generator
-  `
 	proj := ProjectRef{
 		Id: "proj",
 	}
@@ -4758,7 +4720,6 @@ tasks:
 	require.NoError(t, d.Insert())
 	v := Version{
 		Id:        "sample_version",
-		Config:    yml,
 		Requester: evergreen.RepotrackerVersionRequester,
 	}
 	require.NoError(t, v.Insert())
@@ -4905,22 +4866,16 @@ tasks:
 
 func TestEvalStepbackTaskGroup(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(task.Collection, VersionCollection, build.Collection, event.EventCollection, ProjectRefCollection))
-	yml := `
-stepback: true
-`
 	v1 := Version{
 		Id:        "v1",
-		Config:    yml,
 		Requester: evergreen.RepotrackerVersionRequester,
 	}
 	v2 := Version{
 		Id:        "prev_v1",
-		Config:    yml,
 		Requester: evergreen.RepotrackerVersionRequester,
 	}
 	v3 := Version{
 		Id:        "prev_success_v1",
-		Config:    yml,
 		Requester: evergreen.RepotrackerVersionRequester,
 	}
 	require.NoError(t, db.InsertMany(VersionCollection, v1, v2, v3))

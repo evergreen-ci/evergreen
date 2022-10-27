@@ -83,7 +83,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	if v == nil {
 		return errors.Errorf("version '%s' not found", t.Version)
 	}
-	projectInfo, err := model.LoadProjectForVersion(v, t.Project, false)
+	projectInfo, err := model.LoadProjectForVersion(v, t.Project)
 	if err != nil {
 		return errors.Wrapf(err, "loading project for version '%s'", t.Version)
 	}

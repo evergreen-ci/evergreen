@@ -2,6 +2,7 @@ package testutil
 
 import (
 	"context"
+	"github.com/evergreen-ci/evergreen/util"
 	"io/ioutil"
 
 	"github.com/evergreen-ci/evergreen"
@@ -95,10 +96,18 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		Id:         "sample_version",
 		Identifier: project.DisplayName,
 		Requester:  evergreen.RepotrackerVersionRequester,
-		Config:     string(projectConfig),
 	}
 	if err = version.Insert(); err != nil {
 		return nil, errors.Wrap(err, "inserting version")
+	}
+
+	versionParserProject := &model.ParserProject{}
+	if err = util.UnmarshalYAMLWithFallback(projectConfig, &versionParserProject); err != nil {
+		return nil, errors.Wrap(err, "unmarshalling project config from YAML")
+	}
+	versionParserProject.Id = "sample_version"
+	if err = versionParserProject.Insert(); err != nil {
+		return nil, errors.Wrap(err, "inserting parser project")
 	}
 
 	// Save the project variables

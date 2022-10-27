@@ -80,8 +80,7 @@ task_groups:
 	_, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
 	require.NoError(t, err)
 	v := model.Version{
-		Id:     "v1",
-		Config: projYml,
+		Id: "v1",
 	}
 	t1 := task.Task{
 		Id:        "t1",

@@ -87,15 +87,6 @@ func FindParametersForVersion(v *Version) ([]patch.Parameter, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "finding parser project")
 	}
-	if pp == nil || pp.ConfigUpdateNumber < v.ConfigUpdateNumber { // legacy case
-		if v.Config == "" {
-			return nil, errors.New("version has no config")
-		}
-		pp, err = createIntermediateProject([]byte(v.Config), false)
-		if err != nil {
-			return nil, errors.Wrap(err, "parsing legacy config")
-		}
-	}
 	return pp.GetParameters(), nil
 }
 
@@ -104,16 +95,6 @@ func FindExpansionsForVariant(v *Version, variant string) (util.Expansions, erro
 		ParserProjectBuildVariantsKey, ParserProjectAxesKey))
 	if err != nil {
 		return nil, errors.Wrap(err, "finding parser project")
-	}
-
-	if pp == nil || pp.ConfigUpdateNumber < v.ConfigUpdateNumber { // legacy case
-		if v.Config == "" {
-			return nil, errors.New("version has no config")
-		}
-		pp, err = createIntermediateProject([]byte(v.Config), false)
-		if err != nil {
-			return nil, errors.Wrap(err, "parsing legacy config")
-		}
 	}
 
 	bvs, errs := GetVariantsWithMatrices(nil, pp.Axes, pp.BuildVariants)

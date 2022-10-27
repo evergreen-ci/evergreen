@@ -20,7 +20,6 @@ import (
 	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/units"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -416,16 +415,6 @@ func (h *getParserProjectHandler) Run(ctx context.Context) gimlet.Responder {
 	pp, err := model.ParserProjectFindOneById(t.Version)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
-	}
-	// handle legacy
-	if pp == nil || pp.ConfigUpdateNumber < v.ConfigUpdateNumber {
-		pp = &model.ParserProject{}
-		if err = util.UnmarshalYAMLWithFallback([]byte(v.Config), pp); err != nil {
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusNotFound,
-				Message:    "invalid version config",
-			})
-		}
 	}
 	if pp.Functions == nil {
 		pp.Functions = map[string]*model.YAMLCommandSet{}
@@ -1192,7 +1181,7 @@ func (h *manifestLoadHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "retrieving manifest with version id '%s'", task.Version))
 	}
 
-	projectInfo, err := model.LoadProjectForVersion(v, v.Identifier, false)
+	projectInfo, err := model.LoadProjectForVersion(v, v.Identifier)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "loading project from version"))
 	}

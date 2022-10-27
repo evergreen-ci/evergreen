@@ -1207,7 +1207,7 @@ func FindContainerFromProject(t task.Task) (*Container, error) {
 	if v == nil {
 		return nil, errors.Errorf("version '%s' not found", t.Version)
 	}
-	projectInfo, err := LoadProjectForVersion(v, t.Project, false)
+	projectInfo, err := LoadProjectForVersion(v, t.Project)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting project for version '%s'", t.Version)
 	}
@@ -1228,7 +1228,7 @@ func FindProjectFromVersionID(versionStr string) (*Project, error) {
 		return nil, errors.Errorf("version '%s' not found", versionStr)
 	}
 
-	projectInfo, err := LoadProjectForVersion(ver, ver.Identifier, false)
+	projectInfo, err := LoadProjectForVersion(ver, ver.Identifier)
 	if err != nil {
 		return nil, errors.Wrapf(err, "loading project config for version '%s'", versionStr)
 	}
@@ -1278,7 +1278,7 @@ func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, er
 			continue
 		}
 		if lastGoodVersion != nil {
-			projectInfo, err := LoadProjectForVersion(lastGoodVersion, projectId, true)
+			projectInfo, err := LoadProjectForVersion(lastGoodVersion, projectId)
 			if err != nil {
 				grip.Critical(message.WrapError(err, message.Fields{
 					"message": "last known good version has malformed config",

@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"github.com/evergreen-ci/evergreen/util"
 	"testing"
 	"time"
 
@@ -49,7 +50,7 @@ func TestFindProject(t *testing.T) {
 
 		Convey("if the project file exists and is valid, the project spec within"+
 			"should be unmarshalled and returned", func() {
-			So(db.ClearCollections(VersionCollection), ShouldBeNil)
+			So(db.ClearCollections(VersionCollection, ParserProjectCollection), ShouldBeNil)
 			v := &Version{
 				Id:         "my_version",
 				Owner:      "fakeowner",
@@ -57,7 +58,9 @@ func TestFindProject(t *testing.T) {
 				Branch:     "fakebranch",
 				Identifier: "project_test",
 				Requester:  evergreen.RepotrackerVersionRequester,
-				Config:     "owner: fakeowner\nrepo: fakerepo\nbranch: fakebranch",
+			}
+			pp := ParserProject{
+				Id: "my_version",
 			}
 			p := &ProjectRef{
 				Id:     "project_test",
@@ -65,13 +68,14 @@ func TestFindProject(t *testing.T) {
 				Repo:   "fakerepo",
 				Branch: "fakebranch",
 			}
+			require.NoError(t, pp.Insert())
 			require.NoError(t, v.Insert(), "failed to insert test version: %v", v)
 			_, _, err := FindLatestVersionWithValidProject(p.Id)
 			So(err, ShouldBeNil)
 
 		})
 		Convey("if the first version is somehow malformed, return an earlier one", func() {
-			So(db.ClearCollections(VersionCollection), ShouldBeNil)
+			So(db.ClearCollections(VersionCollection, ParserProjectCollection), ShouldBeNil)
 			badVersion := &Version{
 				Id:                  "bad_version",
 				Owner:               "fakeowner",
@@ -79,8 +83,8 @@ func TestFindProject(t *testing.T) {
 				Branch:              "fakebranch",
 				Identifier:          "project_test",
 				Requester:           evergreen.RepotrackerVersionRequester,
-				Config:              "this is just nonsense",
 				RevisionOrderNumber: 10,
+				Errors:              []string{"this is a bad version"},
 			}
 			goodVersion := &Version{
 				Id:                  "good_version",
@@ -89,11 +93,15 @@ func TestFindProject(t *testing.T) {
 				Branch:              "fakebranch",
 				Identifier:          "project_test",
 				Requester:           evergreen.RepotrackerVersionRequester,
-				Config:              "owner: fakeowner\nrepo: fakerepo\nbranch: fakebranch",
 				RevisionOrderNumber: 8,
 			}
+			pp := &ParserProject{}
+			err := util.UnmarshalYAMLWithFallback([]byte("owner: fakeowner\nrepo: fakerepo\nbranch: fakebranch"), &pp)
+			So(err, ShouldBeNil)
+			pp.Id = "good_version"
 			So(badVersion.Insert(), ShouldBeNil)
 			So(goodVersion.Insert(), ShouldBeNil)
+			So(pp.Insert(), ShouldBeNil)
 			v, p, err := FindLatestVersionWithValidProject("project_test")
 			So(err, ShouldBeNil)
 			So(p, ShouldNotBeNil)
@@ -318,13 +326,17 @@ buildvariants:
 		Author:              "somebody",
 		AuthorEmail:         "somebody@somewhere.com",
 		RevisionOrderNumber: 42,
-		Config:              config,
 		Requester:           evergreen.GitTagRequester,
 		TriggeredByGitTag: GitTag{
 			Tag: "release",
 		},
 	}
 	assert.NoError(v.Insert())
+	pp := &ParserProject{}
+	err := util.UnmarshalYAMLWithFallback([]byte(config), &pp)
+	assert.NoError(err)
+	pp.Id = "v1"
+	assert.NoError(pp.Insert())
 	taskDoc := &task.Task{
 		Id:           "t1",
 		DisplayName:  "magical task",
