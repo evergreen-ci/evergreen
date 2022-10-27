@@ -1,3 +1,4 @@
+# This file contains the default initial admin settings used for tests.
 database:
     url: "mongodb://localhost:27017"
     db: "mci_test"
