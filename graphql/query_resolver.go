@@ -618,14 +618,15 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string, execution *
 func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string, groupID *string) (*TaskTestResult, error) {
 	dbTask, err := task.FindByIdExecution(taskID, execution)
 	if dbTask == nil || err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding task with id '%s'", taskID))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding task with id '%s' and execution '%v'", taskID, execution))
 	}
 
 	var baseTask *task.Task
-	if evergreen.IsPatchRequester(dbTask.Requester) {
-		baseTask, err = dbTask.FindTaskOnBaseCommit()
-	} else {
+
+	if dbTask.Requester == evergreen.RepotrackerVersionRequester {
 		baseTask, err = dbTask.FindTaskOnPreviousCommit()
+	} else {
+		baseTask, err = dbTask.FindTaskOnBaseCommit()
 	}
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base task for task '%s': %s", taskID, err))

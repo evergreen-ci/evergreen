@@ -21,6 +21,26 @@
       }
     },
     {
+      "query_file": "base-status-periodic-build.graphql",
+      "result": {
+        "data": {
+          "taskTests": {
+            "testResults": [{ "status": "pass", "baseStatus": "skip" }]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "base-status-trigger.graphql",
+      "result": {
+        "data": {
+          "taskTests": {
+            "testResults": [{ "status": "skip", "baseStatus": "skip" }]
+          }
+        }
+      }
+    },
+    {
       "query_file": "counts.graphql",
       "result": {
         "data": {
