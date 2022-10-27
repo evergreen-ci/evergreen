@@ -2350,7 +2350,7 @@
       "result": {
         "errors": [
           {
-            "message": "finding task with id 'THIS-TASK-DOES-NOT-EXIST-!!!!'",
+            "message": "finding task with id 'THIS-TASK-DOES-NOT-EXIST-!!!!' and execution 0",
             "path": ["taskTests"],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
