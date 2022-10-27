@@ -499,7 +499,6 @@ func (j *patchIntentProcessor) buildTasksandVariants(patchDoc *patch.Patch, proj
 func setTasksToPreviousFailed(patchDoc, previousPatch *patch.Patch, project *model.Project) error {
 	var failedTasks []string
 	for _, vt := range previousPatch.VariantsTasks {
-		var tasks []string
 		tasks, err := getPreviousFailedTasksAndDisplayTasks(project, vt, previousPatch.Version)
 		if err != nil {
 			return err
@@ -539,22 +538,22 @@ func getPreviousFailedTasksAndDisplayTasks(project *model.Project, vt patch.Vari
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding failed tasks in build variant '%s' from previous patch '%s'", vt.Variant, version)
 	}
-	// Verify that the taskgroup/task is in the current project definition and in the previous run.
+	// Verify that the task group or task is in the current project definition and in the previous run.
 	allFailedTasks := []string{}
 	for _, failedTask := range failedTasks {
-		if failedTask.TaskGroup != "" &&
-			utility.StringSliceContains(tasksInProjectVariant, failedTask.TaskGroup) &&
-			utility.StringSliceContains(vt.Tasks, failedTask.DisplayName) {
-			if failedTask.IsPartOfSingleHostTaskGroup() {
-				taskGroup := project.FindTaskGroup(failedTask.TaskGroup)
-				allFailedTasks = append(allFailedTasks, taskGroup.Tasks...)
-			} else {
+		if utility.StringSliceContains(vt.Tasks, failedTask.DisplayName) {
+			if failedTask.TaskGroup != "" &&
+				utility.StringSliceContains(tasksInProjectVariant, failedTask.TaskGroup) {
+				if failedTask.IsPartOfSingleHostTaskGroup() {
+					taskGroup := project.FindTaskGroup(failedTask.TaskGroup)
+					allFailedTasks = append(allFailedTasks, taskGroup.Tasks...)
+				} else {
+					allFailedTasks = append(allFailedTasks, failedTask.DisplayName)
+				}
+			} else if !failedTask.DisplayOnly &&
+				utility.StringSliceContains(tasksInProjectVariant, failedTask.DisplayName) {
 				allFailedTasks = append(allFailedTasks, failedTask.DisplayName)
 			}
-		} else if !failedTask.DisplayOnly &&
-			utility.StringSliceContains(tasksInProjectVariant, failedTask.DisplayName) &&
-			utility.StringSliceContains(vt.Tasks, failedTask.DisplayName) {
-			allFailedTasks = append(allFailedTasks, failedTask.DisplayName)
 		}
 	}
 	return allFailedTasks, nil
