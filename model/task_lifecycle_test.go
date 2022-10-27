@@ -925,7 +925,7 @@ func TestGetBuildStatus(t *testing.T) {
 		{Status: evergreen.TaskUndispatched},
 	}
 	status, allTasksBlocked := getBuildStatus(buildTasks)
-	assert.Equal(t, evergreen.BuildCreated, status)
+	assert.Equal(t, evergreen.BuildUnscheduled, status)
 	assert.Equal(t, false, allTasksBlocked)
 
 	// Any started tasks should start the build.
@@ -990,7 +990,7 @@ func TestGetBuildStatus(t *testing.T) {
 			DependsOn: []task.Dependency{{Unattainable: true}}},
 	}
 	status, allTasksBlocked = getBuildStatus(buildTasks)
-	assert.Equal(t, evergreen.BuildCreated, status)
+	assert.Equal(t, evergreen.BuildUnscheduled, status)
 	assert.Equal(t, true, allTasksBlocked)
 
 }

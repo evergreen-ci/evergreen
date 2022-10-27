@@ -194,6 +194,18 @@ func (b *Build) SetAborted(aborted bool) error {
 	)
 }
 
+// SetAborted sets the build aborted field to the given boolean.
+func (b *Build) SetActivated(activated bool) error {
+	if b.Activated == activated {
+		return nil
+	}
+	b.Activated = activated
+	return UpdateOne(
+		bson.M{IdKey: b.Id},
+		bson.M{"$set": bson.M{ActivatedKey: activated}},
+	)
+}
+
 // SetAllTasksBlocked sets the build AllTasksBlocked field to the given boolean.
 func (b *Build) SetAllTasksBlocked(blocked bool) error {
 	if b.AllTasksBlocked == blocked {

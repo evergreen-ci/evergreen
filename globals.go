@@ -130,10 +130,11 @@ const (
 	TestSkippedStatus        = "skip"
 	TestSucceededStatus      = "pass"
 
-	BuildStarted   = "started"
-	BuildCreated   = "created"
-	BuildFailed    = "failed"
-	BuildSucceeded = "success"
+	BuildStarted     = "started"
+	BuildCreated     = "created"
+	BuildUnscheduled = "unscheduled"
+	BuildFailed      = "failed"
+	BuildSucceeded   = "success"
 
 	VersionStarted   = "started"
 	VersionCreated   = "created"
