@@ -522,31 +522,26 @@ func (j *patchIntentProcessor) setToPreviousPatchDefinition(patchDoc *patch.Patc
 		return "", errors.Errorf("no previous patch available")
 	}
 
+	patchDoc.BuildVariants = previousPatch.BuildVariants
 	if failedOnly {
-		patchDoc.BuildVariants = previousPatch.BuildVariants
 		if err = setTasksToPreviousFailed(patchDoc, previousPatch, project); err != nil {
 			return "", errors.Wrap(err, "settings tasks to previous failed")
 		}
-
 	} else {
 		// only add activated tasks from previous patch
 		query := db.Query(bson.M{
-			"$and": []bson.M{
-				{task.ProjectKey: project.Identifier},
-				{task.DisplayNameKey: bson.M{"$in": previousPatch.Tasks}},
-				{task.ActivatedKey: true},
-			},
+			task.ProjectKey:     project.Identifier,
+			task.VersionKey:     previousPatch.Version,
+			task.DisplayNameKey: bson.M{"$in": previousPatch.Tasks},
+			task.ActivatedKey:   true,
 		}).WithFields(task.DisplayNameKey, task.BuildVariantKey)
 		allActivatedTasks, err := task.FindAll(query)
 		if err != nil {
 			return "", errors.Wrap(err, "getting previous patch tasks")
 		}
-		var activatedTasks, buildVariants []string
+		activatedTasks := []string{}
 		for _, t := range allActivatedTasks {
 			activatedTasks = append(activatedTasks, t.DisplayName)
-			if utility.StringSliceContains(buildVariants, t.BuildVariant) {
-				buildVariants = append(buildVariants, t.BuildVariant)
-			}
 		}
 		patchDoc.Tasks = activatedTasks
 	}
