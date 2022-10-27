@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 )
 
-// JiraTicket is the resolver for the jiraTicket field.
 func (r *issueLinkResolver) JiraTicket(ctx context.Context, obj *restModel.APIIssueLink) (*thirdparty.JiraTicket, error) {
 	return restModel.GetJiraTicketFromURL(*obj.URL)
 }

@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 )
 
-// AssignedTeam is the resolver for the assignedTeam field.
 func (r *ticketFieldsResolver) AssignedTeam(ctx context.Context, obj *thirdparty.TicketFields) (*string, error) {
 	if obj.AssignedTeam == nil {
 		return nil, nil
@@ -20,7 +19,6 @@ func (r *ticketFieldsResolver) AssignedTeam(ctx context.Context, obj *thirdparty
 	return nil, nil
 }
 
-// AssigneeDisplayName is the resolver for the assigneeDisplayName field.
 func (r *ticketFieldsResolver) AssigneeDisplayName(ctx context.Context, obj *thirdparty.TicketFields) (*string, error) {
 	if obj.Assignee == nil {
 		return nil, nil
@@ -28,7 +26,6 @@ func (r *ticketFieldsResolver) AssigneeDisplayName(ctx context.Context, obj *thi
 	return &obj.Assignee.DisplayName, nil
 }
 
-// ResolutionName is the resolver for the resolutionName field.
 func (r *ticketFieldsResolver) ResolutionName(ctx context.Context, obj *thirdparty.TicketFields) (*string, error) {
 	if obj.Resolution == nil {
 		return nil, nil

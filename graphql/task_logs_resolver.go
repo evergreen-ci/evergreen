@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/utility"
 )
 
-// AgentLogs is the resolver for the agentLogs field.
 func (r *taskLogsResolver) AgentLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error) {
 	const logMessageCount = 100
 	task, taskErr := task.FindOneIdAndExecution(obj.TaskID, obj.Execution)
@@ -61,7 +60,6 @@ func (r *taskLogsResolver) AgentLogs(ctx context.Context, obj *TaskLogs) ([]*api
 	return agentLogPointers, nil
 }
 
-// AllLogs is the resolver for the allLogs field.
 func (r *taskLogsResolver) AllLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error) {
 	const logMessageCount = 100
 	task, taskErr := task.FindOneIdAndExecutionWithDisplayStatus(obj.TaskID, &obj.Execution)
@@ -109,7 +107,6 @@ func (r *taskLogsResolver) AllLogs(ctx context.Context, obj *TaskLogs) ([]*apimo
 	return allLogPointers, nil
 }
 
-// EventLogs is the resolver for the eventLogs field.
 func (r *taskLogsResolver) EventLogs(ctx context.Context, obj *TaskLogs) ([]*restModel.TaskAPIEventLogEntry, error) {
 	const logMessageCount = 100
 	// loggedEvents is ordered ts descending
@@ -137,7 +134,6 @@ func (r *taskLogsResolver) EventLogs(ctx context.Context, obj *TaskLogs) ([]*res
 	return apiEventLogPointers, nil
 }
 
-// SystemLogs is the resolver for the systemLogs field.
 func (r *taskLogsResolver) SystemLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error) {
 	const logMessageCount = 100
 
@@ -184,7 +180,6 @@ func (r *taskLogsResolver) SystemLogs(ctx context.Context, obj *TaskLogs) ([]*ap
 	return systemLogPointers, nil
 }
 
-// TaskLogs is the resolver for the taskLogs field.
 func (r *taskLogsResolver) TaskLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error) {
 	const logMessageCount = 100
 	task, taskErr := task.FindOneIdAndExecutionWithDisplayStatus(obj.TaskID, &obj.Execution)
