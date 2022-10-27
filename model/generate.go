@@ -177,19 +177,13 @@ func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProje
 }
 
 // updateParserProject updates the parser project along with generated task ID and updated config number
-// (if using legacy version config, this comes from version).
 func updateParserProject(v *Version, pp *ParserProject, taskId string) error {
 	if utility.StringSliceContains(pp.UpdatedByGenerators, taskId) {
 		// This generator has already updated the parser project so continue.
 		return nil
 	}
-	updateNum := pp.ConfigUpdateNumber + 1
-	// Legacy: most likely a version for which no parser project exists.
-	if pp.ConfigUpdateNumber < v.ConfigUpdateNumber {
-		updateNum = v.ConfigUpdateNumber + 1
-	}
 	pp.UpdatedByGenerators = append(pp.UpdatedByGenerators, taskId)
-	if err := pp.UpsertWithConfigNumber(updateNum); err != nil {
+	if err := pp.UpsertWithConfigNumber(pp.ConfigUpdateNumber + 1); err != nil {
 		return errors.Wrapf(err, "upserting parser project '%s'", pp.Id)
 	}
 	return nil

@@ -3,7 +3,6 @@ package operations
 import (
 	"context"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/util"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -22,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/require"

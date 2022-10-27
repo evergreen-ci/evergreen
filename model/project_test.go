@@ -2,11 +2,8 @@ package model
 
 import (
 	"context"
-	"github.com/evergreen-ci/evergreen/util"
 	"testing"
 	"time"
-
-	yaml "gopkg.in/20210107192922/yaml.v3"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -19,12 +16,14 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
+	yaml "gopkg.in/20210107192922/yaml.v3"
 )
 
 func init() {

@@ -2,7 +2,6 @@ package units
 
 import (
 	"context"
-	"github.com/evergreen-ci/evergreen/util"
 	"testing"
 	"time"
 
@@ -17,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/stretchr/testify/assert"

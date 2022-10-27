@@ -1207,11 +1207,11 @@ func FindContainerFromProject(t task.Task) (*Container, error) {
 	if v == nil {
 		return nil, errors.Errorf("version '%s' not found", t.Version)
 	}
-	projectInfo, err := LoadProjectForVersion(v, t.Project)
+	project, _, err := FindAndTranslateProjectForVersion(v, t.Project)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting project for version '%s'", t.Version)
 	}
-	for _, container := range projectInfo.Project.Containers {
+	for _, container := range project.Containers {
 		if container.Name == t.Container {
 			return &container, nil
 		}
@@ -1228,11 +1228,11 @@ func FindProjectFromVersionID(versionStr string) (*Project, error) {
 		return nil, errors.Errorf("version '%s' not found", versionStr)
 	}
 
-	projectInfo, err := LoadProjectForVersion(ver, ver.Identifier)
+	project, _, err := FindAndTranslateProjectForVersion(ver, ver.Identifier)
 	if err != nil {
 		return nil, errors.Wrapf(err, "loading project config for version '%s'", versionStr)
 	}
-	return projectInfo.Project, nil
+	return project, nil
 }
 
 func (p *Project) FindDistroNameForTask(t *task.Task) (string, error) {
@@ -1278,7 +1278,7 @@ func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, er
 			continue
 		}
 		if lastGoodVersion != nil {
-			projectInfo, err := LoadProjectForVersion(lastGoodVersion, projectId)
+			project, _, err = FindAndTranslateProjectForVersion(lastGoodVersion, projectId)
 			if err != nil {
 				grip.Critical(message.WrapError(err, message.Fields{
 					"message": "last known good version has malformed config",
@@ -1288,7 +1288,6 @@ func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, er
 				revisionOrderNum = lastGoodVersion.RevisionOrderNumber // look for an older version if the returned version is malformed
 				continue
 			}
-			project = projectInfo.Project
 		}
 		return lastGoodVersion, project, nil
 	}

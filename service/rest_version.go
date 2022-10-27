@@ -61,7 +61,6 @@ type restVersion struct {
 	Remote              bool      `json:"remote"`
 	RemotePath          string    `json:"remote_path"`
 	Requester           string    `json:"requester"`
-	ConfigUpdateNumber  int       `json:"config_number"`
 }
 
 type versionLessInfo struct {
@@ -113,7 +112,6 @@ func copyVersion(srcVersion *model.Version, destVersion *restVersion) {
 	destVersion.Remote = srcVersion.Remote
 	destVersion.RemotePath = srcVersion.RemotePath
 	destVersion.Requester = srcVersion.Requester
-	destVersion.ConfigUpdateNumber = srcVersion.ConfigUpdateNumber
 }
 
 // Returns a JSON response of an array with the NumRecentVersions

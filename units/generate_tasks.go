@@ -83,7 +83,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	if v == nil {
 		return errors.Errorf("version '%s' not found", t.Version)
 	}
-	projectInfo, err := model.LoadProjectForVersion(v, t.Project)
+	project, parserProject, err := model.FindAndTranslateProjectForVersion(v, t.Project)
 	if err != nil {
 		return errors.Wrapf(err, "loading project for version '%s'", t.Version)
 	}
@@ -141,7 +141,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	g.Task = t
 
 	start = time.Now()
-	p, pp, v, err := g.NewVersion(projectInfo.Project, projectInfo.IntermediateProject, v)
+	p, pp, v, err := g.NewVersion(project, parserProject, v)
 	if err != nil {
 		return j.handleError(pp, v, errors.WithStack(err))
 	}
@@ -244,13 +244,6 @@ func (j *generateTasksJob) handleError(pp *model.ParserProject, v *model.Version
 	if v == nil {
 		return handledError
 	}
-	versionFromDB, err := model.VersionFindOne(model.VersionById(v.Id).WithFields(model.VersionConfigNumberKey))
-	if err != nil {
-		return errors.Wrapf(err, "finding version '%s'", v.Id)
-	}
-	if versionFromDB == nil {
-		return errors.Errorf("version '%s' not found", v.Id)
-	}
 	ppFromDB, err := model.ParserProjectFindOne(model.ParserProjectById(v.Id).WithFields(model.ParserProjectConfigNumberKey))
 	if err != nil {
 		return errors.Wrapf(err, "finding parser project '%s'", v.Id)
@@ -258,8 +251,7 @@ func (j *generateTasksJob) handleError(pp *model.ParserProject, v *model.Version
 	// If the config update number has been updated, then another task has raced with us.
 	// The error is therefore not an actual configuration problem but instead a symptom
 	// of the race.
-	if v.ConfigUpdateNumber != versionFromDB.ConfigUpdateNumber ||
-		pp != nil && ppFromDB != nil && pp.ConfigUpdateNumber != ppFromDB.ConfigUpdateNumber {
+	if pp != nil && ppFromDB != nil && pp.ConfigUpdateNumber != ppFromDB.ConfigUpdateNumber {
 		return mongo.ErrNoDocuments
 	}
 	return handledError

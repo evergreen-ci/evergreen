@@ -2,7 +2,6 @@ package data
 
 import (
 	"context"
-	"github.com/evergreen-ci/evergreen/util"
 	"testing"
 	"time"
 
@@ -16,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

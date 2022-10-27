@@ -3,7 +3,9 @@ package model
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/util"
 	"io/ioutil"
 	"path/filepath"
 	"reflect"
@@ -1618,6 +1620,13 @@ func TestTryUpsert(t *testing.T) {
 }
 
 func TestParserProjectRoundtrip(t *testing.T) {
+	conf := "stepback: true\ncommand_type: test\nignore:\n  - \"*.md\"\n  - \".github/*\"\ntasks:\n  - name: compile\n    commands:\n    - func: get-project\n    - func: npm-install\n    - func: npm-build\n    - func: npm-build\n  - name: test\n    commands:\n    - func: get-project\n    - func: npm-install\n    - func: npm-test\n    - func: attach-results\n  - name: lint\n    commands:\n    - func: get-project\n    - func: npm-install\n    - func: npm-lint\n  - name: coverage\n    commands:\n    - func: get-project\n    - func: npm-install\n    - func: npm-coverage\nbuildvariants:\n  - name: ubuntu1804\n    display_name: Ubuntu 18.04\n    run_on:\n    - ubuntu1804-test\n    tasks:\n    - name: compile\n"
+	pp := &ParserProject{}
+	err := util.UnmarshalYAMLWithFallback([]byte(conf), &pp)
+	jsonBytes, err := json.Marshal(pp)
+	s := string(jsonBytes)
+	fmt.Println(s)
+
 	filepath := filepath.Join(testutil.GetDirectoryOfFile(), "..", "self-tests.yml")
 	yml, err := ioutil.ReadFile(filepath)
 	assert.NoError(t, err)
@@ -1628,7 +1637,7 @@ func TestParserProjectRoundtrip(t *testing.T) {
 	// to and from yaml
 	yamlBytes, err := yaml.Marshal(original)
 	assert.NoError(t, err)
-	pp := &ParserProject{}
+	pp = &ParserProject{}
 	assert.NoError(t, yaml.Unmarshal(yamlBytes, pp))
 
 	// to and from BSON

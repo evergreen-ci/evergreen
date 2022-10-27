@@ -484,10 +484,23 @@ func (pss *parserStringSlice) UnmarshalYAML(unmarshal func(interface{}) error) e
 	return nil
 }
 
-// LoadProjectForVersion returns the project for a version, either from the parser project or the config string.
-// If read from the config string and shouldSave is set, the resulting parser project will be saved.
+// FindAndTranslateProjectForVersion translates a parser project for a version into a Project
+func FindAndTranslateProjectForVersion(v *Version, id string) (*Project, *ParserProject, error) {
+	pp, err := ParserProjectFindOneById(v.Id)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "finding parser project")
+	}
+	if pp.Functions == nil {
+		pp.Functions = map[string]*YAMLCommandSet{}
+	}
+	pp.Identifier = utility.ToStringPtr(id)
+	var p *Project
+	p, err = TranslateProject(pp)
+	return p, pp, err
+}
+
+// LoadProjectForVersion returns the project info for a version from its parser project.
 func LoadProjectForVersion(v *Version, id string) (ProjectInfo, error) {
-	var pp *ParserProject
 	var err error
 
 	pRef, err := FindMergedProjectRef(id, "", false)
@@ -497,10 +510,6 @@ func LoadProjectForVersion(v *Version, id string) (ProjectInfo, error) {
 	if pRef == nil {
 		return ProjectInfo{}, errors.Errorf("project ref '%s' not found", id)
 	}
-	pp, err = ParserProjectFindOneById(v.Id)
-	if err != nil {
-		return ProjectInfo{}, errors.Wrap(err, "finding parser project")
-	}
 	var pc *ProjectConfig
 	if pRef.IsVersionControlEnabled() {
 		pc, err = FindProjectConfigForProjectOrVersion(v.Identifier, v.Id)
@@ -508,12 +517,10 @@ func LoadProjectForVersion(v *Version, id string) (ProjectInfo, error) {
 			return ProjectInfo{}, errors.Wrap(err, "finding project config")
 		}
 	}
-	if pp.Functions == nil {
-		pp.Functions = map[string]*YAMLCommandSet{}
+	p, pp, err := FindAndTranslateProjectForVersion(v, id)
+	if err != nil {
+		return ProjectInfo{}, errors.Wrap(err, "translating project")
 	}
-	pp.Identifier = utility.ToStringPtr(id)
-	var p *Project
-	p, err = TranslateProject(pp)
 	return ProjectInfo{
 		Project:             p,
 		IntermediateProject: pp,
