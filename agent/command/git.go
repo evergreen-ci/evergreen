@@ -291,8 +291,8 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, comm client.Com
 			commitToTest, err = c.waitForMergeableCheck(ctx, comm, logger, conf, opts)
 			if err != nil {
 				commitToTest = conf.GithubPatchData.HeadHash
-				logger.Task().Error(errors.Wrap(err, "error checking if pull request is mergeable"))
-				logger.Task().Warning(fmt.Sprintf("Because errors were encountered trying to retrieve the pull request, we will use the last recorded hash to test (%s)", commitToTest))
+				logger.Task().Errorf("Error checking if pull request is mergeable: %s", err)
+				logger.Task().Warningf("Because errors were encountered trying to retrieve the pull request, we will use the last recorded hash to test (%s).", commitToTest)
 			}
 			ref = "merge"
 			branchName = fmt.Sprintf("evg-merge-test-%s", utility.RandomString())

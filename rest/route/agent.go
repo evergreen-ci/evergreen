@@ -161,7 +161,7 @@ func (h *agentCheckGetPullRequestHandler) Run(ctx context.Context) gimlet.Respon
 	}
 	pr, err := thirdparty.GetGithubPullRequest(ctx, token, h.req.Owner, h.req.Repo, h.req.PRNum)
 	if err != nil {
-		return gimlet.NewJSONResponse(err)
+		return gimlet.NewJSONInternalErrorResponse(err)
 	}
 	return gimlet.NewJSONResponse(pr)
 }

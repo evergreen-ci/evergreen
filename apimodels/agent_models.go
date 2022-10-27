@@ -36,12 +36,9 @@ type HeartbeatResponse struct {
 
 // CheckMergeRequest holds information sent by the agent to get a PR and check mergeability.
 type CheckMergeRequest struct {
-	PRNum int
-	Owner string
-	Repo  string
-}
-
-type CheckMergeResp struct {
+	PRNum int    `json:"pr_num"`
+	Owner string `json:"owner"`
+	Repo  string `json:"repo"`
 }
 
 // TaskEndDetail contains data sent from the agent to the API server after each task run.
