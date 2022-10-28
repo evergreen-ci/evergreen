@@ -416,9 +416,6 @@ func (h *getParserProjectHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
-	if pp.Functions == nil {
-		pp.Functions = map[string]*model.YAMLCommandSet{}
-	}
 	projBytes, err := bson.Marshal(pp)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "marshalling project bytes to bson"))
@@ -1181,23 +1178,23 @@ func (h *manifestLoadHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "retrieving manifest with version id '%s'", task.Version))
 	}
 
-	projectInfo, err := model.LoadProjectForVersion(v, v.Identifier)
+	project, _, err := model.FindAndTranslateProjectForVersion(v, v.Identifier)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "loading project from version"))
 	}
-	if projectInfo.Project == nil {
+	if project == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    "unable to find project for version",
 		})
 	}
 
-	if currentManifest != nil && projectInfo.Project.Modules.IsIdentical(*currentManifest) {
+	if currentManifest != nil && project.Modules.IsIdentical(*currentManifest) {
 		return gimlet.NewJSONResponse(currentManifest)
 	}
 
 	// attempt to insert a manifest after making GitHub API calls
-	manifest, err := repotracker.CreateManifest(*v, projectInfo.Project, projectRef, h.settings)
+	manifest, err := repotracker.CreateManifest(*v, project, projectRef, h.settings)
 	if err != nil {
 		if apiErr, ok := errors.Cause(err).(thirdparty.APIRequestError); ok && apiErr.StatusCode == http.StatusNotFound {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "manifest resource not found"))

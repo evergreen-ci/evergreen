@@ -1473,7 +1473,7 @@ func TestMarkEndWithTaskGroup(t *testing.T) {
 			pp := &ParserProject{}
 			err := util.UnmarshalYAMLWithFallback([]byte(sampleProjYmlTaskGroups), &pp)
 			assert.NoError(err)
-			pp.Id = "v1"
+			pp.Id = b.Version
 			assert.NoError(pp.Insert())
 			assert.NoError(b.Insert())
 			assert.NoError(v.Insert())

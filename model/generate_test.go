@@ -703,7 +703,7 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	pp, err = ParserProjectFindOneById(v.Id)
 	s.NoError(err)
 	s.Require().NotNil(pp)
-	s.Equal(5, pp.ConfigUpdateNumber)
+	s.Equal(1, pp.ConfigUpdateNumber)
 	builds, err := build.FindBuildsByVersions([]string{v.Id})
 	s.NoError(err)
 	tasks, err := task.FindAll(db.Query(bson.M{task.VersionKey: v.Id})) // with display
@@ -1348,7 +1348,6 @@ func TestUpdateParserProject(t *testing.T) {
 				assert.Equal(t, 1, pp.ConfigUpdateNumber)
 				return
 			}
-			assert.Equal(t, 6, pp.ConfigUpdateNumber)
 		})
 	}
 }

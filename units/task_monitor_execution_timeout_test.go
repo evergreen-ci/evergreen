@@ -31,7 +31,7 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 	mp := cloud.GetMockProvider()
 
 	defer func() {
-		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, model.VersionCollection, model.ProjectRefCollection, host.Collection, event.EventCollection))
+		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, model.VersionCollection, model.ParserProjectCollection, model.ProjectRefCollection, host.Collection, event.EventCollection))
 		mp.Reset()
 	}()
 
@@ -253,7 +253,7 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
 
-			require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, model.VersionCollection, model.ProjectRefCollection, host.Collection, event.EventCollection))
+			require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, model.VersionCollection, model.ParserProjectCollection, model.ProjectRefCollection, host.Collection, event.EventCollection))
 			mp.Reset()
 
 			const taskID = "task_id"
