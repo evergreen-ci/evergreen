@@ -163,7 +163,11 @@ func (h *agentCheckGetPullRequestHandler) Run(ctx context.Context) gimlet.Respon
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(err)
 	}
-	return gimlet.NewJSONResponse(pr)
+	resp := apimodels.PullRequestInfo{
+		Mergeable:      pr.Mergeable,
+		MergeCommitSHA: pr.GetMergeCommitSHA(),
+	}
+	return gimlet.NewJSONResponse(resp)
 }
 
 // POST /task/{task_id}/update_push_status

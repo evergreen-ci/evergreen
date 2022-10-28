@@ -283,8 +283,7 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, comm client.Com
 
 	// if there's a PR checkout the ref containing the changes
 	if isGitHub(conf) {
-		commitToTest := conf.GithubPatchData.HeadHash
-		var ref, branchName string
+		var ref, branchName, commitToTest string
 		if conf.Task.Requester == evergreen.MergeTestRequester {
 			// Proceed if github has confirmed this pr is mergeable. If it hasn't checked, this request
 			// will make it check.
@@ -300,6 +299,7 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, comm client.Com
 			// Github creates a ref called refs/pull/[pr number]/head
 			// that provides the entire tree of changes, including merges
 			ref = "head"
+			commitToTest = conf.GithubPatchData.HeadHash
 			branchName = fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
 		}
 		if commitToTest != "" {
@@ -335,17 +335,17 @@ func (c *gitFetchProject) waitForMergeableCheck(ctx context.Context, comm client
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
 	err := utility.Retry(ctx, func() (bool, error) {
-		pr, err := comm.GetPullRequest(ctx, td, conf.GithubPatchData.PRNumber, opts.owner, opts.repo)
+		info, err := comm.GetPullRequestInfo(ctx, td, conf.GithubPatchData.PRNumber, opts.owner, opts.repo)
 		if err != nil {
 			return false, errors.Wrap(err, "getting pull request data from GitHub")
 		}
-		if pr.Mergeable == nil {
+		if info.Mergeable == nil {
 			logger.Execution().Info("Mergeable check is not ready.")
 			return true, nil
 		}
-		if *pr.Mergeable {
-			if pr.MergeCommitSHA != nil {
-				mergeSHA = *pr.MergeCommitSHA
+		if *info.Mergeable {
+			if info.MergeCommitSHA != "" {
+				mergeSHA = info.MergeCommitSHA
 			} else {
 				return false, errors.New("pull request is mergeable but GitHub has not created a merge branch")
 			}

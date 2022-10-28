@@ -21,7 +21,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v34/github"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
@@ -508,8 +507,8 @@ func (c *Mock) GetAdditionalPatches(ctx context.Context, patchId string, td Task
 	return []string{"555555555555555555555555"}, nil
 }
 
-func (c *Mock) GetPullRequest(ctx context.Context, taskData TaskData, prNum int, owner, repo string) (*github.PullRequest, error) {
-	return &github.PullRequest{
+func (c *Mock) GetPullRequestInfo(ctx context.Context, taskData TaskData, prNum int, owner, repo string) (*apimodels.PullRequestInfo, error) {
+	return &apimodels.PullRequestInfo{
 		Mergeable: utility.TruePtr(),
 	}, nil
 }
