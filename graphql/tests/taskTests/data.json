@@ -416,7 +416,7 @@
       "build_variant": "ubuntu1604",
       "distro": "ubuntu1604-build",
       "r": "github_pull_request",
-      "display_name": "patch-task",
+      "display_name": "patch-task-test",
       "task_create_time": { "$date": "2020-02-20T20:37:06Z" },
       "test_start_time": { "$date": "2020-02-21T15:15:56Z" },
       "test_end_time": { "$date": "2020-02-21T15:15:56.020Z" }
@@ -436,7 +436,7 @@
       "build_variant": "ubuntu1604",
       "distro": "ubuntu1604-build",
       "r": "gitter_request",
-      "display_name": "patch-task",
+      "display_name": "patch-task-test",
       "task_create_time": { "$date": "2020-02-20T20:37:06Z" },
       "test_start_time": { "$date": "2020-02-21T15:15:56Z" },
       "test_end_time": { "$date": "2020-02-21T15:15:56.020Z" }
@@ -456,7 +456,7 @@
       "build_variant": "ubuntu1604",
       "distro": "ubuntu1604-build",
       "r": "gitter_request",
-      "display_name": "commit-task",
+      "display_name": "commit-task-test",
       "task_create_time": { "$date": "2020-02-20T20:37:06Z" },
       "test_start_time": { "$date": "2020-02-21T15:15:56Z" },
       "test_end_time": { "$date": "2020-02-21T15:15:56.020Z" }
@@ -476,7 +476,7 @@
       "build_variant": "ubuntu1604",
       "distro": "ubuntu1604-build",
       "r": "gitter_request",
-      "display_name": "commit-task",
+      "display_name": "commit-task-test",
       "task_create_time": { "$date": "2020-02-20T20:37:06Z" },
       "test_start_time": { "$date": "2020-02-21T15:15:56Z" },
       "test_end_time": { "$date": "2020-02-21T15:15:56.020Z" }
@@ -496,7 +496,7 @@
       "build_variant": "ubuntu1604",
       "distro": "ubuntu1604-build",
       "r": "ad_hoc",
-      "display_name": "commit-task",
+      "display_name": "commit-task-test",
       "task_create_time": { "$date": "2020-02-20T20:37:06Z" },
       "test_start_time": { "$date": "2020-02-21T15:15:56Z" },
       "test_end_time": { "$date": "2020-02-21T15:15:56.020Z" }
@@ -516,7 +516,7 @@
       "build_variant": "ubuntu1604",
       "distro": "ubuntu1604-build",
       "r": "trigger_request",
-      "display_name": "commit-task",
+      "display_name": "commit-task-test",
       "task_create_time": { "$date": "2020-02-20T20:37:06Z" },
       "test_start_time": { "$date": "2020-02-21T15:15:56Z" },
       "test_end_time": { "$date": "2020-02-21T15:15:56.020Z" }
@@ -541,7 +541,8 @@
       "build_variant": "ubuntu1604",
       "status": "success",
       "display_name": "patch-task",
-      "execution": 0
+      "execution": 0,
+      "order": 38
     },
     {
       "_id": "commit_task",
