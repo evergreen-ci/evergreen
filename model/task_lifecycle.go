@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"time"
@@ -16,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/utility"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
@@ -1197,6 +1199,13 @@ func UpdatePatchStatus(p *patch.Patch, versionStatus string) error {
 	} else {
 		if err = p.UpdateStatus(patchStatus); err != nil {
 			return errors.Wrapf(err, "updating patch '%s' with status '%s'", p.Id.Hex(), patchStatus)
+		}
+		if p.IsGithubPRPatch() {
+			job := units.NewGithubStatusUpdateJobForNewPatch(p.Id.Hex())
+			q := evergreen.GetEnvironment().LocalQueue()
+			if err = q.Put(context.Background(), job); err != nil {
+				return errors.Wrap(err, "adding GitHub status update job to queue")
+			}
 		}
 	}
 
