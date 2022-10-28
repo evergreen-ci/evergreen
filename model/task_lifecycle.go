@@ -1643,23 +1643,52 @@ func ClearAndResetStrandedHostTask(h *host.Host) error {
 	return nil
 }
 
-// ResetStaleTask fixes a task that has exceeded the heartbeat timeout by
-// marking the current task execution as finished and, if possible, a new
-// execution is created to restart the task.
-func ResetStaleTask(t *task.Task) error {
+// FixStaleTask fixes a task that has exceeded the heartbeat timeout.
+// The current task execution is marked as finished and, if the task was not
+// aborted, the task is reset. If the task was aborted, we do not reset the task
+// and it is just marked as failed alongside other necessary updates to finish the task.
+func FixStaleTask(t *task.Task) error {
 	CheckAndBlockSingleHostTaskGroup(t, t.Status)
 
-	if err := resetSystemFailedTask(t, evergreen.TaskDescriptionHeartbeat); err != nil {
-		return errors.Wrap(err, "resetting task")
+	failureDesc := evergreen.TaskDescriptionHeartbeat
+	if t.Aborted {
+		failureDesc = evergreen.TaskDescriptionAborted
+		if err := finishStaleAbortedTask(t); err != nil {
+			return errors.Wrapf(err, "finishing stale aborted task '%s'", t.Id)
+		}
+	} else {
+		if err := resetSystemFailedTask(t, failureDesc); err != nil {
+			return errors.Wrap(err, "resetting heartbeat task")
+		}
 	}
 
 	grip.Info(message.Fields{
-		"message":            "successfully fixed stale heartbeat task",
+		"message":            "successfully fixed stale task",
 		"task":               t.Id,
 		"execution":          t.Execution,
 		"execution_platform": t.ExecutionPlatform,
+		"description":        failureDesc,
 	})
 
+	return nil
+}
+
+func finishStaleAbortedTask(t *task.Task) error {
+	failureDetails := &apimodels.TaskEndDetail{
+		Status:      evergreen.TaskFailed,
+		Type:        evergreen.CommandTypeSystem,
+		Description: evergreen.TaskDescriptionAborted,
+	}
+	projectRef, err := FindMergedProjectRef(t.Project, t.Version, true)
+	if err != nil {
+		return errors.Wrapf(err, "getting project ref for task '%s'", t.Id)
+	}
+	if projectRef == nil {
+		return errors.Errorf("project ref for task '%s' not found", t.Id)
+	}
+	if err = MarkEnd(t, evergreen.APIServerTaskActivator, time.Now(), failureDetails, utility.FromBoolPtr(projectRef.DeactivatePrevious)); err != nil {
+		return errors.Wrapf(err, "calling mark finish on task '%s'", t.Id)
+	}
 	return nil
 }
 

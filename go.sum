@@ -365,8 +365,8 @@ github.com/evergreen-ci/bond v0.0.0-20211109152423-ba2b6b207f56/go.mod h1:EO+Oqm
 github.com/evergreen-ci/certdepot v0.0.0-20211109153348-d681ebe95b66/go.mod h1:X72gmQuA1g8E1vWg1Jfve3zdHoPxJkpwXDMLV1COs5g=
 github.com/evergreen-ci/certdepot v0.0.0-20211117185134-dbedb3d79a10 h1:dVNSXGxztN6t1S3vGxbSKqb5vqIRM5LiM1O5JjnVuCA=
 github.com/evergreen-ci/certdepot v0.0.0-20211117185134-dbedb3d79a10/go.mod h1:KpN0y+4m4oplnmM/PQmKAG+NQDKUbtr1BbdR4mr+6Ww=
-github.com/evergreen-ci/cocoa v0.0.0-20221021153157-d4b9d1734588 h1:5DbnTUtVZVMhs06hnsGPYWlLwpphpxJ84kUOS+FRnng=
-github.com/evergreen-ci/cocoa v0.0.0-20221021153157-d4b9d1734588/go.mod h1:4RjGgSZH0H3Am9AGrr5S72YGHIUXNz5vEQrcghjHi3E=
+github.com/evergreen-ci/cocoa v0.0.0-20221025163056-0ded9f1be935 h1:QuQIgZvlXmlB1Xd4kRAHc4oYrxLq+BtzTdhh7CQF4pk=
+github.com/evergreen-ci/cocoa v0.0.0-20221025163056-0ded9f1be935/go.mod h1:4RjGgSZH0H3Am9AGrr5S72YGHIUXNz5vEQrcghjHi3E=
 github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57 h1:CIUR6i5YWJ/z5RbZ11UomO7aZxQjeHqAjOqGwPh7sCY=
 github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57/go.mod h1:lbmNkNEkJEuhIdctIEbJhx4hMzjRvbUg172mQRvNnKo=
 github.com/evergreen-ci/gimlet v0.0.0-20211018155143-ebbbff34990a/go.mod h1:F2dAoc1x1+JwZH9ylB9tpeOnztafEx2IbZjEz8GQzOM=
@@ -794,8 +794,8 @@ github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742/go.mod h1:bx2lN
 github.com/modern-go/reflect2 v1.0.1/go.mod h1:bx2lNnkwVCuqBIxFjflWJWanXIb3RllmbCylyMrvgv0=
 github.com/mongodb/amboy v0.0.0-20200527191935-07fdffff5b8c/go.mod h1:SfpzZNF2KZUT5zO0/q4eUqW+EQe64MiY8xXmkBHZDqk=
 github.com/mongodb/amboy v0.0.0-20211101161704-2b42087d24e6/go.mod h1:aYcnjrBUtbgB+naQ6FlVltCdprHv9Td2GOkQkZUqPvY=
-github.com/mongodb/amboy v0.0.0-20221018203039-d43fb169e5ca h1:Cj5/b2nq+QRUgQs8QgNsn1gITEbm0NRzS6FseIrbVok=
-github.com/mongodb/amboy v0.0.0-20221018203039-d43fb169e5ca/go.mod h1:UG9g5Su8qPybqe2mTRkGEq80oQbpwN1Cb1uwNMVvnXc=
+github.com/mongodb/amboy v0.0.0-20221025134941-a1f9f6a28caa h1:8+g9Hy5iUmyfOzoCCtClsq2vKlSUBtncUMlmDUCZMGQ=
+github.com/mongodb/amboy v0.0.0-20221025134941-a1f9f6a28caa/go.mod h1:UG9g5Su8qPybqe2mTRkGEq80oQbpwN1Cb1uwNMVvnXc=
 github.com/mongodb/anser v0.0.0-20190422213746-1fb43a6d9968/go.mod h1:ESqf0zBEuYrqL0xADbIAFgdEOaBFpwZ4tkzY84ge+QA=
 github.com/mongodb/anser v0.0.0-20211116195831-fdc43007b59f/go.mod h1:jDikxuo5FKbiTMAb8B5AMT3QqFSNrim2+GiRTSCdazU=
 github.com/mongodb/anser v0.0.0-20220318141853-005b8ead5b8f h1:cOPq9/377MrwRdgMGHsj5szvOGCokC7SYly2o5uEdv8=

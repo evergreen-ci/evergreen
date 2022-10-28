@@ -2952,6 +2952,14 @@ func (c ContainerSecretCache) Delete(_ context.Context, externalID string) error
 	return err
 }
 
+// ContainerSecretTag is the tag used to track container secrets.
+const ContainerSecretTag = "evergreen-tracked"
+
+// GetTag returns the tag used for tracking cloud container secrets.
+func (c ContainerSecretCache) GetTag() string {
+	return ContainerSecretTag
+}
+
 // Constants related to secrets stored in Secrets Manager.
 const (
 	// internalSecretNamespace is the namespace for secrets that are
