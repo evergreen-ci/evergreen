@@ -618,7 +618,7 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string, execution *
 func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string, groupID *string) (*TaskTestResult, error) {
 	dbTask, err := task.FindByIdExecution(taskID, execution)
 	if dbTask == nil || err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding task with id '%s' and execution %v", taskID, utility.FromIntPtr(execution)))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding task with id '%s' and execution %d", taskID, utility.FromIntPtr(execution)))
 	}
 
 	var baseTask *task.Task
