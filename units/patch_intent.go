@@ -557,7 +557,7 @@ func updatePatchDocPatches(ctx context.Context, patchDoc *patch.Patch, project *
 				break
 			}
 		}
-		if !patchFound {
+		if patchFound {
 			continue
 		}
 		branch, err := getBranch(ctx, mod.Repo, mod.Name, mod.Branch, token)
