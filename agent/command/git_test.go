@@ -58,7 +58,7 @@ type GitGetProjectSuite struct {
 
 	comm   *client.Mock
 	jasper jasper.Manager
-
+	ctx    context.Context
 	suite.Suite
 }
 
@@ -68,9 +68,10 @@ func init() {
 
 func TestGitGetProjectSuite(t *testing.T) {
 	s := new(GitGetProjectSuite)
-	ctx, cancel := context.WithCancel(context.Background())
+	var cancel context.CancelFunc
+	s.ctx, cancel = context.WithCancel(context.Background())
 	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
+	env := testutil.NewEnvironment(s.ctx, t)
 	settings := env.Settings()
 
 	testutil.ConfigureIntegrationTest(t, settings, t.Name())
@@ -157,13 +158,12 @@ func (s *GitGetProjectSuite) SetupTest() {
 }
 
 func (s *GitGetProjectSuite) TestBuildCloneCommandUsesHTTPS() {
-	ctx := context.Background()
 	c := &gitFetchProject{
 		Directory: "dir",
 		Token:     projectGitHubToken,
 	}
 	conf := s.taskConfig1
-	logger, err := s.comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+	logger, err := s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 	s.NoError(err)
 	opts := cloneOpts{
 		method: evergreen.CloneMethodOAuth,
@@ -174,17 +174,16 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandUsesHTTPS() {
 		token:  c.Token,
 	}
 	s.Require().NoError(opts.setLocation())
-	cmds, _ := c.buildCloneCommand(ctx, s.comm, logger, conf, opts)
+	cmds, _ := c.buildCloneCommand(s.ctx, s.comm, logger, conf, opts)
 	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir' --branch 'master'", cmds[5])
 }
 
 func (s *GitGetProjectSuite) TestBuildCloneCommandWithHTTPSNeedsToken() {
-	ctx := context.Background()
 	c := &gitFetchProject{
 		Directory: "dir",
 	}
 	conf := s.taskConfig1
-	logger, err := s.comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+	logger, err := s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 	s.NoError(err)
 
 	opts := cloneOpts{
@@ -201,13 +200,12 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandWithHTTPSNeedsToken() {
 }
 
 func (s *GitGetProjectSuite) TestBuildCloneCommandUsesSSH() {
-	ctx := context.Background()
 	c := &gitFetchProject{
 		Directory: "dir",
 		Token:     "",
 	}
 	conf := s.taskConfig2
-	logger, err := s.comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+	logger, err := s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 	s.NoError(err)
 
 	opts := cloneOpts{
@@ -218,18 +216,17 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandUsesSSH() {
 		dir:    c.Directory,
 	}
 	s.Require().NoError(opts.setLocation())
-	cmds, err := c.buildCloneCommand(ctx, s.comm, logger, conf, opts)
+	cmds, err := c.buildCloneCommand(s.ctx, s.comm, logger, conf, opts)
 	s.Require().NoError(err)
 	s.Equal("git clone 'git@github.com:deafgoat/mci_test.git' 'dir' --branch 'main'", cmds[3])
 }
 
 func (s *GitGetProjectSuite) TestBuildCloneCommandDefaultCloneMethodUsesSSH() {
-	ctx := context.Background()
 	c := &gitFetchProject{
 		Directory: "dir",
 	}
 	conf := s.taskConfig2
-	logger, err := s.comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+	logger, err := s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 	s.NoError(err)
 
 	opts := cloneOpts{
@@ -239,18 +236,17 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandDefaultCloneMethodUsesSSH() {
 		dir:    c.Directory,
 	}
 	s.Require().NoError(opts.setLocation())
-	cmds, err := c.buildCloneCommand(ctx, s.comm, logger, conf, opts)
+	cmds, err := c.buildCloneCommand(s.ctx, s.comm, logger, conf, opts)
 	s.Require().NoError(err)
 	s.Equal("git clone 'git@github.com:evergreen-ci/sample.git' 'dir' --branch 'main'", cmds[3])
 }
 
 func (s *GitGetProjectSuite) TestBuildCloneCommandCloneDepth() {
-	ctx := context.Background()
 	c := &gitFetchProject{
 		Directory: "dir",
 	}
 	conf := s.taskConfig2
-	logger, err := s.comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+	logger, err := s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 	s.NoError(err)
 
 	opts := cloneOpts{
@@ -261,7 +257,7 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandCloneDepth() {
 		cloneDepth: 50,
 	}
 	s.Require().NoError(opts.setLocation())
-	cmds, err := c.buildCloneCommand(ctx, s.comm, logger, conf, opts)
+	cmds, err := c.buildCloneCommand(s.ctx, s.comm, logger, conf, opts)
 	s.Require().NoError(err)
 	combined := strings.Join(cmds, " ")
 	s.Contains(combined, "--depth 50")
@@ -269,9 +265,8 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandCloneDepth() {
 }
 
 func (s *GitGetProjectSuite) TestGitPlugin() {
-	ctx := context.Background()
 	conf := s.taskConfig1
-	logger, err := s.comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+	logger, err := s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 	s.NoError(err)
 	token, err := s.settings.GetGithubOauthToken()
 	s.Require().NoError(err)
@@ -516,9 +511,8 @@ func (s *GitGetProjectSuite) TestBuildSSHCloneCommand() {
 }
 
 func (s *GitGetProjectSuite) TestBuildCommand() {
-	ctx := context.Background()
 	conf := s.taskConfig1
-	logger, err := s.comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+	logger, err := s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 	s.NoError(err)
 
 	c := gitFetchProject{
@@ -535,7 +529,7 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 		dir:    c.Directory,
 	}
 	s.Require().NoError(opts.setLocation())
-	cmds, err := c.buildCloneCommand(ctx, s.comm, logger, conf, opts)
+	cmds, err := c.buildCloneCommand(s.ctx, s.comm, logger, conf, opts)
 	s.NoError(err)
 	s.Require().Len(cmds, 7)
 	s.Equal("set -o xtrace", cmds[0])
@@ -552,7 +546,7 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 	opts.token = c.Token
 	s.Require().NoError(opts.setLocation())
 	s.Require().NoError(err)
-	cmds, err = c.buildCloneCommand(ctx, s.comm, logger, conf, opts)
+	cmds, err = c.buildCloneCommand(s.ctx, s.comm, logger, conf, opts)
 	s.NoError(err)
 	s.Require().Len(cmds, 10)
 	s.Equal("set -o xtrace", cmds[0])
@@ -568,9 +562,8 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 }
 
 func (s *GitGetProjectSuite) TestBuildCommandForPullRequests() {
-	ctx := context.Background()
 	conf := s.taskConfig3
-	logger, err := s.comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+	logger, err := s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 	s.NoError(err)
 
 	c := gitFetchProject{
@@ -586,7 +579,7 @@ func (s *GitGetProjectSuite) TestBuildCommandForPullRequests() {
 	}
 	s.Require().NoError(opts.setLocation())
 
-	cmds, err := c.buildCloneCommand(ctx, s.comm, logger, conf, opts)
+	cmds, err := c.buildCloneCommand(s.ctx, s.comm, logger, conf, opts)
 	s.NoError(err)
 	s.Require().Len(cmds, 9)
 	s.True(strings.HasPrefix(cmds[5], "git fetch origin \"pull/9001/head:evg-pr-test-"))
@@ -596,9 +589,8 @@ func (s *GitGetProjectSuite) TestBuildCommandForPullRequests() {
 }
 
 func (s *GitGetProjectSuite) TestBuildCommandForCLIMergeTests() {
-	ctx := context.Background()
 	conf := s.taskConfig2
-	logger, err := s.comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+	logger, err := s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 	s.NoError(err)
 
 	c := gitFetchProject{
@@ -618,7 +610,7 @@ func (s *GitGetProjectSuite) TestBuildCommandForCLIMergeTests() {
 	s.Require().NoError(opts.setLocation())
 
 	s.taskConfig2.Task.Requester = evergreen.MergeTestRequester
-	cmds, err := c.buildCloneCommand(ctx, s.comm, logger, conf, opts)
+	cmds, err := c.buildCloneCommand(s.ctx, s.comm, logger, conf, opts)
 	s.NoError(err)
 	s.Len(cmds, 9)
 	s.True(strings.HasSuffix(cmds[5], fmt.Sprintf("--branch '%s'", s.taskConfig2.ProjectRef.Branch)))
@@ -778,8 +770,7 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevisionManifest() {
 	const correctHash = "3585388b1591dfca47ac26a5b9a564ec8f138a5e"
 	conf := s.taskConfig2
 	conf.Expansions.Put(moduleRevExpansionName("sample"), correctHash)
-	ctx := context.Background()
-	logger, err := s.comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+	logger, err := s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 	s.NoError(err)
 
 	for _, task := range conf.Project.Tasks {
@@ -790,7 +781,7 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevisionManifest() {
 			s.NoError(err)
 			s.NotNil(pluginCmds)
 			pluginCmds[0].SetJasperManager(s.jasper)
-			err = pluginCmds[0].Execute(ctx, s.comm, logger, conf)
+			err = pluginCmds[0].Execute(s.ctx, s.comm, logger, conf)
 			s.NoError(err)
 		}
 	}
