@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/utility"
+	"github.com/google/go-github/v34/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
@@ -284,18 +285,8 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	patchDoc.PatchedParserProject = patchConfig.PatchedParserProject
 	patchDoc.PatchedProjectConfig = patchConfig.PatchedProjectConfig
 
-	for _, modulePatch := range patchDoc.Patches {
-		if modulePatch.ModuleName != "" {
-			// validate the module exists
-			var module *model.Module
-			module, err = project.GetModuleByName(modulePatch.ModuleName)
-			if err != nil {
-				return errors.Wrapf(err, "finding module '%s'", modulePatch.ModuleName)
-			}
-			if module == nil {
-				return errors.Errorf("module '%s' not found", modulePatch.ModuleName)
-			}
-		}
+	if err = updatePatchDocPatches(ctx, patchDoc, project, githubOauthToken); err != nil {
+		return errors.Wrap(err, "updating patches")
 	}
 	if err = j.verifyValidAlias(pref.Id, patchDoc); err != nil {
 		return err
@@ -533,6 +524,69 @@ func (j *patchIntentProcessor) setToPreviousPatchDefinition(patchDoc *patch.Patc
 	}
 
 	return previousPatch.Status, nil
+}
+
+// updatePatchDocPatches updates the commit sha for existing patch modules and adds new modules to the patch for modules
+// that exist in the project but not in the patch.  This is necessary so that the manifest load endpoint will include the
+// updated commit sha in the response's module overrides field.
+func updatePatchDocPatches(ctx context.Context, patchDoc *patch.Patch, project *model.Project, token string) error {
+	var err error
+	for i := range patchDoc.Patches {
+		if patchDoc.Patches[i].ModuleName != "" {
+			// validate the module exists
+			var module *model.Module
+			module, err = project.GetModuleByName(patchDoc.Patches[i].ModuleName)
+			if err != nil {
+				return errors.Wrapf(err, "finding module '%s'", patchDoc.Patches[i].ModuleName)
+			}
+			if module == nil {
+				return errors.Errorf("module '%s' not found", patchDoc.Patches[i].ModuleName)
+			}
+			branch, err := getBranch(ctx, module.Repo, patchDoc.Patches[i].ModuleName, module.Branch, token)
+			if err != nil {
+				return errors.Wrapf(err, "getting branch for module '%s'", patchDoc.Patches[i].ModuleName)
+			}
+			patchDoc.Patches[i].Githash = *branch.Commit.SHA
+		}
+	}
+	for _, mod := range project.Modules {
+		patchFound := false
+		for _, p := range patchDoc.Patches {
+			if p.ModuleName == mod.Name {
+				patchFound = true
+				break
+			}
+		}
+		if !patchFound {
+			continue
+		}
+		branch, err := getBranch(ctx, mod.Repo, mod.Name, mod.Branch, token)
+		if err != nil {
+			return errors.Wrapf(err, "getting branch for module '%s'", mod.Name)
+		}
+		patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{
+			Githash:    *branch.Commit.SHA,
+			ModuleName: mod.Name,
+		})
+
+	}
+	return nil
+}
+
+// getBranch retrieves the branch for the given repo, module, and branch name.
+func getBranch(ctx context.Context, repo, name, moduleBranch, token string) (*github.Branch, error) {
+	owner, repo, err := thirdparty.ParseGitUrl(repo)
+	if err != nil {
+		return nil, errors.Wrapf(err, "module '%s' misconfigured (malformed URL)", name)
+	}
+	branch, err := thirdparty.GetBranchEvent(ctx, token, owner, repo, moduleBranch)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting branch")
+	}
+	if err = validateBranch(branch); err != nil {
+		return nil, errors.Wrap(err, "GitHub returned invalid branch")
+	}
+	return branch, nil
 }
 
 func getPreviousFailedTasksAndDisplayTasks(tasksInProjectVariant []string, vt patch.VariantTasks, version string) ([]string, error) {
