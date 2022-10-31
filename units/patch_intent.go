@@ -544,6 +544,7 @@ func getPreviousFailedTasksAndDisplayTasks(project *model.Project, vt patch.Vari
 		if utility.StringSliceContains(vt.Tasks, failedTask.DisplayName) {
 			if failedTask.TaskGroup != "" &&
 				utility.StringSliceContains(tasksInProjectVariant, failedTask.TaskGroup) {
+				// Schedule all tasks in a single host task group because they may need to execute together to order to succeed.
 				if failedTask.IsPartOfSingleHostTaskGroup() {
 					taskGroup := project.FindTaskGroup(failedTask.TaskGroup)
 					allFailedTasks = append(allFailedTasks, taskGroup.Tasks...)
