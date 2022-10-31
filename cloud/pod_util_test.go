@@ -571,15 +571,15 @@ func TestGetFilteredResourceIDs(t *testing.T) {
 		tagClient.Close(ctx)
 	}()
 
+	sc := &NoopSecretCache{Tag: "cache-tag"}
+
 	smClient := &cocoaMock.SecretsManagerClient{}
 	defer func() {
 		smClient.Close(ctx)
 	}()
-	const cacheTag = "cache_tag"
 	v, err := secret.NewBasicSecretsManager(*secret.NewBasicSecretsManagerOptions().
 		SetClient(smClient).
-		SetCache(&NoopSecretCache{}).
-		SetCacheTag(cacheTag))
+		SetCache(sc))
 	require.NoError(t, err)
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, secretIDs []string){
@@ -625,7 +625,7 @@ func TestGetFilteredResourceIDs(t *testing.T) {
 			require.NoError(t, err)
 
 			ids, err := GetFilteredResourceIDs(ctx, tagClient, []string{SecretsManagerResourceFilter}, map[string][]string{
-				cacheTag: {strconv.FormatBool(true)},
+				sc.GetTag(): {strconv.FormatBool(true)},
 			}, len(secretIDs)+1)
 			require.NoError(t, err)
 			assert.ElementsMatch(t, secretIDs, ids)

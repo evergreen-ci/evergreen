@@ -111,6 +111,9 @@ const (
 	// TaskDescriptionContainerUnallocatable indicates that the reason a
 	// container task failed is because it cannot be allocated a container.
 	TaskDescriptionContainerUnallocatable = "container task cannot be allocated"
+	// TaskDescriptionAborted indicates that the reason a task failed is specifically
+	// because it was manually aborted.
+	TaskDescriptionAborted = "aborted"
 
 	// Task Statuses that are currently used only by the UI, and in tests
 	// (these may be used in old tasks as actual task statuses rather than just
