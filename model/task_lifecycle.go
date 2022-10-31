@@ -1,7 +1,6 @@
 package model
 
 import (
-	"context"
 	"fmt"
 	"sort"
 	"time"
@@ -17,11 +16,13 @@ import (
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	"github.com/evergreen-ci/evergreen/units"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -1201,14 +1202,73 @@ func UpdatePatchStatus(p *patch.Patch, versionStatus string) error {
 			return errors.Wrapf(err, "updating patch '%s' with status '%s'", p.Id.Hex(), patchStatus)
 		}
 		if p.IsGithubPRPatch() {
-			job := units.NewGithubStatusUpdateJobForNewPatch(p.Id.Hex())
-			q := evergreen.GetEnvironment().LocalQueue()
-			if err = q.Put(context.Background(), job); err != nil {
-				return errors.Wrap(err, "adding GitHub status update job to queue")
+			if err = SendVersionStatusToGithub(p.Id.Hex(), p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.HeadHash, "patch status change", "pr-task-reset"); err != nil {
+				return errors.Wrapf(err, "sending patch '%s' status to Github", p.Id.Hex())
 			}
 		}
 	}
 
+	return nil
+}
+
+func SendVersionStatusToGithub(id, owner, repo, ref, desc, job string) error {
+	catcher := grip.NewBasicCatcher()
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		catcher.Add(errors.Wrap(err, "error retrieving admin settings"))
+		return catcher.Resolve()
+	}
+	if flags.GithubStatusAPIDisabled {
+		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+			"job":     job,
+			"message": "GitHub status updates are disabled, not updating status",
+		})
+		return catcher.Resolve()
+	}
+	env := evergreen.GetEnvironment()
+	uiConfig := evergreen.UIConfig{}
+	if err = uiConfig.Get(env); err != nil {
+		catcher.Add(err)
+		return catcher.Resolve()
+	}
+	urlBase := uiConfig.Url
+	if urlBase == "" {
+		catcher.New("url base doesn't exist")
+		return catcher.Resolve()
+	}
+	status := &message.GithubStatus{
+		Owner:       owner,
+		Repo:        repo,
+		Ref:         ref,
+		URL:         fmt.Sprintf("%s/version/%s?redirect_spruce_users=true", urlBase, id),
+		Context:     "evergreen",
+		State:       message.GithubStatePending,
+		Description: desc,
+	}
+	sender, err := env.GetSender(evergreen.SenderGithubStatus)
+	if err != nil {
+		catcher.Add(err)
+		return catcher.Resolve()
+	}
+
+	c := message.MakeGithubStatusMessageWithRepo(*status)
+	if !c.Loggable() {
+		catcher.Add(errors.Errorf("status message is invalid: %+v", status))
+		return catcher.Resolve()
+	}
+
+	if err = c.SetPriority(level.Notice); err != nil {
+		catcher.Add(err)
+		return catcher.Resolve()
+	}
+
+	sender.Send(c)
+	grip.Info(message.Fields{
+		"ticket":  thirdparty.GithubInvestigation,
+		"message": "called github status send",
+		"caller":  "github check subscriptions",
+		"version": id,
+	})
 	return nil
 }
 

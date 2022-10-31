@@ -29,7 +29,6 @@ const (
 	githubUpdateTypePushToCommitQueue     = "commit-queue-push"
 	githubUpdateTypeDeleteFromCommitQueue = "commit-queue-delete"
 	githubUpdateTypeProcessingError       = "processing-error"
-	githubUpdateTypePRTasksReset          = "pr-task-reset"
 
 	evergreenContext = "evergreen"
 )
@@ -78,18 +77,6 @@ func makeGithubStatusUpdateJob() *githubStatusUpdateJob {
 	}
 	j.SetPriority(1)
 	return j
-}
-
-// NewGithubStatusUpdateJobForRestartedPR creates a job to update github's API
-// for a PR patch that has had one of its tasks reset, reporting it as pending.
-func NewGithubStatusUpdateJobForRestartedPR(patchID string) amboy.Job {
-	job := makeGithubStatusUpdateJob()
-	job.FetchID = patchID
-	job.UpdateType = githubUpdateTypePRTasksReset
-
-	job.SetID(fmt.Sprintf("%s:%s-%s-%s", githubStatusUpdateJobName, job.UpdateType, patchID, time.Now().String()))
-
-	return job
 }
 
 // NewGithubStatusUpdateJobForNewPatch creates a job to update github's API
@@ -203,7 +190,7 @@ func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 		status.State = message.GithubStateFailure
 		status.Description = j.Description
 
-	} else if j.UpdateType == githubUpdateTypeNewPatch || j.UpdateType == githubUpdateTypePRTasksReset {
+	} else if j.UpdateType == githubUpdateTypeNewPatch {
 		status.URL = fmt.Sprintf("%s/version/%s?redirect_spruce_users=true", j.urlBase, j.FetchID)
 		status.Context = evergreenContext
 		status.State = message.GithubStatePending
