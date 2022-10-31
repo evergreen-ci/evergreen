@@ -77,22 +77,32 @@ func FindFromVersion(versionID, project, revision, requester string) (*Manifest,
 		return nil, nil
 	}
 
-	if evergreen.IsPatchRequester(requester) {
-		var p *patch.Patch
-		p, err = patch.FindOneId(versionID)
-		if err != nil {
-			return nil, errors.Wrapf(err, "getting patch '%s'", versionID)
-		}
-		if p == nil {
-			return nil, errors.Errorf("no corresponding patch '%s'", versionID)
-		}
-		manifest.ModuleOverrides = make(map[string]string)
-		for _, patchModule := range p.Patches {
-			if patchModule.ModuleName != "" && patchModule.Githash != "" {
-				manifest.ModuleOverrides[patchModule.ModuleName] = patchModule.Githash
-			}
-		}
+	moduleOverrides, err := GetManifestModuleOverrides(requester, versionID)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting module overrides")
 	}
+	manifest.ModuleOverrides = moduleOverrides
 
 	return manifest, err
+}
+
+func GetManifestModuleOverrides(requester, versionID string) (map[string]string, error) {
+	if !evergreen.IsPatchRequester(requester) {
+		return nil, nil
+	}
+	var p *patch.Patch
+	p, err := patch.FindOneId(versionID)
+	if err != nil {
+		return nil, errors.Wrapf(err, "getting patch '%s'", versionID)
+	}
+	if p == nil {
+		return nil, errors.Errorf("no corresponding patch '%s'", versionID)
+	}
+	moduleOverrides := make(map[string]string)
+	for _, patchModule := range p.Patches {
+		if patchModule.ModuleName != "" && patchModule.Githash != "" {
+			moduleOverrides[patchModule.ModuleName] = patchModule.Githash
+		}
+	}
+	return moduleOverrides, nil
 }
