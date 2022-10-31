@@ -500,9 +500,7 @@ func (j *patchIntentProcessor) buildTasksandVariants(patchDoc *patch.Patch, proj
 func setTasksToPreviousFailed(patchDoc, previousPatch *patch.Patch, project *model.Project) error {
 	var failedTasks []string
 	for _, vt := range previousPatch.VariantsTasks {
-		tasksInProjectVariant := project.FindTasksForVariant(vt.Variant)
-		var tasks []string
-		tasks, err := getPreviousFailedTasksAndDisplayTasks(tasksInProjectVariant, vt, previousPatch.Version)
+		tasks, err := getPreviousFailedTasksAndDisplayTasks(project, vt, previousPatch.Version)
 		if err != nil {
 			return err
 		}
@@ -548,22 +546,32 @@ func (j *patchIntentProcessor) setToPreviousPatchDefinition(patchDoc *patch.Patc
 	return previousPatch.Status, nil
 }
 
-func getPreviousFailedTasksAndDisplayTasks(tasksInProjectVariant []string, vt patch.VariantTasks, version string) ([]string, error) {
+func getPreviousFailedTasksAndDisplayTasks(project *model.Project, vt patch.VariantTasks, version string) ([]string, error) {
+	tasksInProjectVariant := project.FindTasksForVariant(vt.Variant)
 	failedTasks, err := task.FindAll(db.Query(task.FailedTasksByVersionAndBV(version, vt.Variant)))
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding failed tasks in build variant '%s' from previous patch '%s'", vt.Variant, version)
 	}
-	failedExecutionTasks := []string{}
+	// Verify that the task group or task is in the current project definition and in the previous run.
+	allFailedTasks := []string{}
 	for _, failedTask := range failedTasks {
-		if !failedTask.DisplayOnly {
-			failedExecutionTasks = append(failedExecutionTasks, failedTask.DisplayName)
+		if utility.StringSliceContains(vt.Tasks, failedTask.DisplayName) {
+			if failedTask.TaskGroup != "" &&
+				utility.StringSliceContains(tasksInProjectVariant, failedTask.TaskGroup) {
+				// Schedule all tasks in a single host task group because they may need to execute together to order to succeed.
+				if failedTask.IsPartOfSingleHostTaskGroup() {
+					taskGroup := project.FindTaskGroup(failedTask.TaskGroup)
+					allFailedTasks = append(allFailedTasks, taskGroup.Tasks...)
+				} else {
+					allFailedTasks = append(allFailedTasks, failedTask.DisplayName)
+				}
+			} else if !failedTask.DisplayOnly &&
+				utility.StringSliceContains(tasksInProjectVariant, failedTask.DisplayName) {
+				allFailedTasks = append(allFailedTasks, failedTask.DisplayName)
+			}
 		}
 	}
-	// We want to get the intersection of tasks that are in the current project definition and tasks that failed in the previous run.
-	failedExecutionTasks = utility.StringSliceIntersection(tasksInProjectVariant, failedExecutionTasks)
-
-	tasks := utility.StringSliceIntersection(failedExecutionTasks, vt.Tasks)
-	return tasks, nil
+	return allFailedTasks, nil
 }
 
 func ProcessTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *model.ProjectRef, env evergreen.Environment, aliasNames []string) error {
