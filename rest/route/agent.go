@@ -1215,6 +1215,9 @@ func (h *manifestLoadHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "storing new manifest"))
 	}
+	if manifest != nil {
+		manifest.ModuleOverrides = currentManifest.ModuleOverrides
+	}
 	return gimlet.NewJSONResponse(manifest)
 }
 
