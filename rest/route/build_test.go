@@ -6,9 +6,11 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -83,6 +85,12 @@ func (s *BuildChangeStatusSuite) SetupSuite() {
 		{Id: "build1", Version: "v1"},
 		{Id: "build2", Version: "v1"},
 	}
+	task := &task.Task{
+		Id:      "task",
+		BuildId: "build1",
+		Status:  evergreen.TaskWillRun,
+	}
+	s.NoError(task.Insert())
 	s.NoError((&serviceModel.Version{Id: "v1"}).Insert())
 	for _, item := range builds {
 		s.Require().NoError(item.Insert())
