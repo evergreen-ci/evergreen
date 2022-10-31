@@ -528,13 +528,13 @@ func (j *patchIntentProcessor) setToPreviousPatchDefinition(patchDoc *patch.Patc
 			return "", errors.Wrap(err, "settings tasks to previous failed")
 		}
 	} else {
-		// only add activated tasks from previous patch
+		// Only add activated tasks from previous patch
 		query := db.Query(bson.M{
 			task.ProjectKey:     project.Identifier,
 			task.VersionKey:     previousPatch.Version,
 			task.DisplayNameKey: bson.M{"$in": previousPatch.Tasks},
 			task.ActivatedKey:   true,
-		}).WithFields(task.DisplayNameKey, task.BuildVariantKey)
+		}).WithFields(task.DisplayNameKey)
 		allActivatedTasks, err := task.FindAll(query)
 		if err != nil {
 			return "", errors.Wrap(err, "getting previous patch tasks")
