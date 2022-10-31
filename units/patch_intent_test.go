@@ -278,7 +278,6 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 		Version:      "v1",
 		BuildVariant: "bv1",
 		Status:       evergreen.TaskFailed,
-		Project:      s.project,
 		Activated:    true,
 	}
 	s.NoError(t1.Insert())
@@ -288,7 +287,6 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 		Version:      "v1",
 		BuildVariant: "bv1",
 		Status:       evergreen.TaskSucceeded,
-		Project:      s.project,
 		Activated:    true,
 	}
 	s.NoError(t2.Insert())
@@ -298,7 +296,6 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 		Version:      "v1",
 		BuildVariant: "bv1",
 		Status:       evergreen.TaskInactive,
-		Project:      s.project,
 		Activated:    false,
 	}
 	s.NoError(notActivated.Insert())

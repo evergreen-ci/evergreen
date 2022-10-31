@@ -530,7 +530,6 @@ func (j *patchIntentProcessor) setToPreviousPatchDefinition(patchDoc *patch.Patc
 	} else {
 		// Only add activated tasks from previous patch
 		query := db.Query(bson.M{
-			task.ProjectKey:     project.Identifier,
 			task.VersionKey:     previousPatch.Version,
 			task.DisplayNameKey: bson.M{"$in": previousPatch.Tasks},
 			task.ActivatedKey:   true,
