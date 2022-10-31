@@ -89,8 +89,7 @@ func ParserProjectUpsertOne(query interface{}, update interface{}) error {
 }
 
 func FindParametersForVersion(v *Version) ([]patch.Parameter, error) {
-	pp, err := ParserProjectFindOne(ParserProjectById(v.Id).WithFields(ParserProjectConfigNumberKey,
-		ParserProjectParametersKey))
+	pp, err := ParserProjectFindOne(ParserProjectById(v.Id).WithFields(ParserProjectParametersKey))
 	if err != nil {
 		return nil, errors.Wrap(err, "finding parser project")
 	}
@@ -98,8 +97,7 @@ func FindParametersForVersion(v *Version) ([]patch.Parameter, error) {
 }
 
 func FindExpansionsForVariant(v *Version, variant string) (util.Expansions, error) {
-	pp, err := ParserProjectFindOne(ParserProjectById(v.Id).WithFields(ParserProjectConfigNumberKey,
-		ParserProjectBuildVariantsKey, ParserProjectAxesKey))
+	pp, err := ParserProjectFindOne(ParserProjectById(v.Id).WithFields(ParserProjectBuildVariantsKey, ParserProjectAxesKey))
 	if err != nil {
 		return nil, errors.Wrap(err, "finding parser project")
 	}

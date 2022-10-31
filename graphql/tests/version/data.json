@@ -189,7 +189,6 @@
       "message" : "EVG-13229: Project Patches Page (#555)",
       "status" : "success",
       "order" : 656,
-      "config" : "",
       "config_number" : 0,
       "ignored" : false,
       "owner_name" : "evergreen-ci",

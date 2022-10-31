@@ -493,11 +493,14 @@ func FindAndTranslateProjectForVersion(v *Version, id string) (*Project, *Parser
 	pp.Identifier = utility.ToStringPtr(id)
 	var p *Project
 	p, err = TranslateProject(pp)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "translating parser project '%s'", v.Id)
+	}
 	return p, pp, err
 }
 
-// LoadProjectForVersion returns the project info for a version from its parser project.
-func LoadProjectForVersion(v *Version, id string) (ProjectInfo, error) {
+// LoadProjectInfoForVersion returns the project info for a version from its parser project.
+func LoadProjectInfoForVersion(v *Version, id string) (ProjectInfo, error) {
 	var err error
 
 	pRef, err := FindMergedProjectRef(id, "", false)
@@ -522,7 +525,7 @@ func LoadProjectForVersion(v *Version, id string) (ProjectInfo, error) {
 		Project:             p,
 		IntermediateProject: pp,
 		Config:              pc,
-	}, err
+	}, nil
 }
 
 func GetProjectFromBSON(data []byte) (*Project, error) {
@@ -535,7 +538,7 @@ func GetProjectFromBSON(data []byte) (*Project, error) {
 
 // LoadProjectInto loads the raw data from the config file into project
 // and sets the project's identifier field to identifier. Tags are evaluated. Returns the intermediate step.
-// If reading from a version config, LoadProjectForVersion should be used to persist the resulting parser project.
+// If reading from a version config, LoadProjectInfoForVersion should be used to persist the resulting parser project.
 // opts is used to look up files on github if the main parser project has an Include.
 func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, identifier string, project *Project) (*ParserProject, error) {
 	unmarshalStrict := false

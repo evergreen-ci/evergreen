@@ -2304,7 +2304,28 @@ func TestMarkDispatched(t *testing.T) {
 
 func TestGetStepback(t *testing.T) {
 	Convey("When the project has a stepback policy set to true", t, func() {
-		require.NoError(t, db.ClearCollections(ProjectRefCollection, task.Collection, build.Collection, VersionCollection))
+		require.NoError(t, db.ClearCollections(ProjectRefCollection, ParserProjectCollection, task.Collection, build.Collection, VersionCollection))
+
+		config := `
+stepback: true
+tasks:
+ - name: true
+   stepback: true
+ - name: false
+   stepback: false
+buildvariants:
+ - name: sbnil
+ - name: sbtrue
+   stepback: true
+ - name: sbfalse
+   stepback: false
+`
+		pp := &ParserProject{}
+		err := util.UnmarshalYAMLWithFallback([]byte(config), &pp)
+		assert.NoError(t, err)
+		pp.Id = "version_id"
+		assert.NoError(t, pp.Insert())
+
 		ver := &Version{
 			Id:         "version_id",
 			Identifier: "p1",
@@ -3001,7 +3022,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	require.NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.EventCollection, ProjectRefCollection))
+	require.NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection, ParserProjectCollection, event.EventCollection, ProjectRefCollection))
 
 	projRef := &ProjectRef{
 		Id: "sample",
@@ -3014,6 +3035,12 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 		Status:     evergreen.VersionStarted,
 	}
 	require.NoError(v.Insert())
+
+	pp := ParserProject{
+		Id:         "sample_version",
+		Identifier: utility.ToStringPtr("sample"),
+	}
+	require.NoError(pp.Insert())
 
 	buildID := "buildtest"
 	testTask := &task.Task{
