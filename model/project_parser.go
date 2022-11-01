@@ -484,23 +484,10 @@ func (pss *parserStringSlice) UnmarshalYAML(unmarshal func(interface{}) error) e
 	return nil
 }
 
-// FindAndTranslateProjectForVersion translates a parser project for a version into a Project
-func FindAndTranslateProjectForVersion(v *Version, id string) (*Project, *ParserProject, error) {
-	pp, err := ParserProjectFindOneById(v.Id)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "finding parser project")
-	}
-	pp.Identifier = utility.ToStringPtr(id)
-	var p *Project
-	p, err = TranslateProject(pp)
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "translating parser project '%s'", v.Id)
-	}
-	return p, pp, err
-}
-
-// LoadProjectInfoForVersion returns the project info for a version from its parser project.
-func LoadProjectInfoForVersion(v *Version, id string) (ProjectInfo, error) {
+// LoadProjectForVersion returns the project for a version, either from the parser project or the config string.
+// If read from the config string and shouldSave is set, the resulting parser project will be saved.
+func LoadProjectForVersion(v *Version, id string, shouldSave bool) (ProjectInfo, error) {
+	var pp *ParserProject
 	var err error
 
 	pRef, err := FindMergedProjectRef(id, "", false)
@@ -510,6 +497,10 @@ func LoadProjectInfoForVersion(v *Version, id string) (ProjectInfo, error) {
 	if pRef == nil {
 		return ProjectInfo{}, errors.Errorf("project ref '%s' not found", id)
 	}
+	pp, err = ParserProjectFindOneById(v.Id)
+	if err != nil {
+		return ProjectInfo{}, errors.Wrap(err, "finding parser project")
+	}
 	var pc *ProjectConfig
 	if pRef.IsVersionControlEnabled() {
 		pc, err = FindProjectConfigForProjectOrVersion(v.Identifier, v.Id)
@@ -517,14 +508,49 @@ func LoadProjectInfoForVersion(v *Version, id string) (ProjectInfo, error) {
 			return ProjectInfo{}, errors.Wrap(err, "finding project config")
 		}
 	}
-	p, pp, err := FindAndTranslateProjectForVersion(v, id)
+	// if parser project config number is old then we should default to legacy
+	if pp != nil && pp.ConfigUpdateNumber >= v.ConfigUpdateNumber {
+		if pp.Functions == nil {
+			pp.Functions = map[string]*YAMLCommandSet{}
+		}
+		pp.Identifier = utility.ToStringPtr(id)
+		var p *Project
+		p, err = TranslateProject(pp)
+		return ProjectInfo{
+			Project:             p,
+			IntermediateProject: pp,
+			Config:              pc,
+		}, err
+	}
+
+	if v.Config == "" {
+		return ProjectInfo{}, errors.New("version has no config")
+	}
+	p := &Project{}
+	// opts empty because project yaml with `include` will not hit this case
+	ctx := context.Background()
+	pp, err = LoadProjectInto(ctx, []byte(v.Config), nil, id, p)
 	if err != nil {
-		return ProjectInfo{}, errors.Wrap(err, "translating project")
+		return ProjectInfo{}, errors.Wrap(err, "loading project")
+	}
+	pp.Id = v.Id
+	pp.Identifier = utility.ToStringPtr(id)
+	pp.ConfigUpdateNumber = v.ConfigUpdateNumber
+	pp.CreateTime = v.CreateTime
+
+	if shouldSave {
+		if err = pp.TryUpsert(); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"project": id,
+				"version": v.Id,
+				"message": "error inserting parser project for version",
+			}))
+			return ProjectInfo{}, errors.Wrap(err, "updating version with project")
+		}
 	}
 	return ProjectInfo{
 		Project:             p,
 		IntermediateProject: pp,
-		Config:              pc,
 	}, nil
 }
 
@@ -538,7 +564,7 @@ func GetProjectFromBSON(data []byte) (*Project, error) {
 
 // LoadProjectInto loads the raw data from the config file into project
 // and sets the project's identifier field to identifier. Tags are evaluated. Returns the intermediate step.
-// If reading from a version config, LoadProjectInfoForVersion should be used to persist the resulting parser project.
+// If reading from a version config, LoadProjectForVersion should be used to persist the resulting parser project.
 // opts is used to look up files on github if the main parser project has an Include.
 func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, identifier string, project *Project) (*ParserProject, error) {
 	unmarshalStrict := false

@@ -837,6 +837,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 			testVersion := model.Version{
 				Id:     versionId,
 				Branch: projectId,
+				Config: "identifier: " + projectId,
 			}
 			require.NoError(t, testVersion.Insert())
 

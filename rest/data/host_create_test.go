@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -137,6 +136,7 @@ buildvariants:
 `
 		v1 := model.Version{
 			Id:         "v1",
+			Config:     versionYaml,
 			Identifier: "p",
 		}
 		assert.NoError(t, v1.Insert())
@@ -155,11 +155,6 @@ buildvariants:
 			RunningTask: t1.Id,
 		}
 		assert.NoError(t, h1.Insert())
-		pp := &model.ParserProject{}
-		err := util.UnmarshalYAMLWithFallback([]byte(versionYaml), &pp)
-		assert.NoError(t, err)
-		pp.Id = "v1"
-		assert.NoError(t, pp.Insert())
 
 		settings := &evergreen.Settings{
 			Credentials: map[string]string{"github": "token globalGitHubOauthToken"},
@@ -209,6 +204,7 @@ buildvariants:
 `
 		v2 := model.Version{
 			Id:         "v2",
+			Config:     versionYaml,
 			Identifier: "p",
 		}
 		assert.NoError(t, v2.Insert())
@@ -227,18 +223,13 @@ buildvariants:
 			RunningTask: t2.Id,
 		}
 		assert.NoError(t, h2.Insert())
-		pp := &model.ParserProject{}
-		err := util.UnmarshalYAMLWithFallback([]byte(versionYaml), &pp)
-		assert.NoError(t, err)
-		pp.Id = "v2"
-		assert.NoError(t, pp.Insert())
 
 		settings := &evergreen.Settings{
 			Credentials: map[string]string{"github": "token globalGitHubOauthToken"},
 		}
 		assert.NoError(t, evergreen.UpdateConfig(settings))
 
-		err = CreateHostsFromTask(&t2, user.DBUser{Id: "me"}, "")
+		err := CreateHostsFromTask(&t2, user.DBUser{Id: "me"}, "")
 		assert.NoError(t, err)
 		createdHosts, err := host.Find(host.IsUninitialized)
 		assert.NoError(t, err)
@@ -276,6 +267,7 @@ buildvariants:
 `
 		v3 := model.Version{
 			Id:         "v3",
+			Config:     versionYaml,
 			Identifier: "p",
 		}
 		assert.NoError(t, v3.Insert())
@@ -294,12 +286,6 @@ buildvariants:
 			RunningTask: t3.Id,
 		}
 		assert.NoError(t, h3.Insert())
-
-		pp := &model.ParserProject{}
-		err := util.UnmarshalYAMLWithFallback([]byte(versionYaml), &pp)
-		assert.NoError(t, err)
-		pp.Id = "v3"
-		assert.NoError(t, pp.Insert())
 
 		settings := &evergreen.Settings{
 			Credentials: map[string]string{"github": "token globalGitHubOauthToken"},
@@ -366,6 +352,7 @@ buildvariants:
 
 	v1 := model.Version{
 		Id:         "v1",
+		Config:     versionYaml,
 		Identifier: "p",
 	}
 	assert.NoError(v1.Insert())
@@ -374,11 +361,6 @@ buildvariants:
 		RunningTask: t1.Id,
 	}
 	assert.NoError(h1.Insert())
-	pp := model.ParserProject{}
-	err := util.UnmarshalYAMLWithFallback([]byte(versionYaml), &pp)
-	require.NoError(err)
-	pp.Id = "v1"
-	require.NoError(pp.Insert())
 
 	parent := distro.Distro{
 		Id:       "parent-distro",

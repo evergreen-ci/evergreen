@@ -21,7 +21,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/require"
@@ -94,15 +93,10 @@ func setupCLITestHarness() cliTestHarness {
 	version := &model.Version{
 		Id:         "sample_version",
 		Identifier: "sample",
+		Config:     string(localConfBytes),
 		Requester:  evergreen.RepotrackerVersionRequester,
 	}
 	So(version.Insert(), ShouldBeNil)
-
-	pp := model.ParserProject{}
-	err = util.UnmarshalYAMLWithFallback(localConfBytes, &pp)
-	So(err, ShouldBeNil)
-	pp.Id = "sample_version"
-	So(pp.Insert(), ShouldBeNil)
 
 	d := distro.Distro{Id: "localtestdistro"}
 	So(d.Insert(), ShouldBeNil)

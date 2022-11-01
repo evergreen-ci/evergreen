@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	yaml "gopkg.in/20210107192922/yaml.v3"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -16,14 +18,12 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
-	yaml "gopkg.in/20210107192922/yaml.v3"
 )
 
 func init() {
@@ -49,7 +49,7 @@ func TestFindProject(t *testing.T) {
 
 		Convey("if the project file exists and is valid, the project spec within"+
 			"should be unmarshalled and returned", func() {
-			So(db.ClearCollections(VersionCollection, ParserProjectCollection), ShouldBeNil)
+			So(db.ClearCollections(VersionCollection), ShouldBeNil)
 			v := &Version{
 				Id:         "my_version",
 				Owner:      "fakeowner",
@@ -57,9 +57,7 @@ func TestFindProject(t *testing.T) {
 				Branch:     "fakebranch",
 				Identifier: "project_test",
 				Requester:  evergreen.RepotrackerVersionRequester,
-			}
-			pp := ParserProject{
-				Id: "my_version",
+				Config:     "owner: fakeowner\nrepo: fakerepo\nbranch: fakebranch",
 			}
 			p := &ProjectRef{
 				Id:     "project_test",
@@ -67,14 +65,13 @@ func TestFindProject(t *testing.T) {
 				Repo:   "fakerepo",
 				Branch: "fakebranch",
 			}
-			require.NoError(t, pp.Insert())
 			require.NoError(t, v.Insert(), "failed to insert test version: %v", v)
 			_, _, err := FindLatestVersionWithValidProject(p.Id)
 			So(err, ShouldBeNil)
 
 		})
 		Convey("if the first version is somehow malformed, return an earlier one", func() {
-			So(db.ClearCollections(VersionCollection, ParserProjectCollection), ShouldBeNil)
+			So(db.ClearCollections(VersionCollection), ShouldBeNil)
 			badVersion := &Version{
 				Id:                  "bad_version",
 				Owner:               "fakeowner",
@@ -82,8 +79,8 @@ func TestFindProject(t *testing.T) {
 				Branch:              "fakebranch",
 				Identifier:          "project_test",
 				Requester:           evergreen.RepotrackerVersionRequester,
+				Config:              "this is just nonsense",
 				RevisionOrderNumber: 10,
-				Errors:              []string{"this is a bad version"},
 			}
 			goodVersion := &Version{
 				Id:                  "good_version",
@@ -92,15 +89,11 @@ func TestFindProject(t *testing.T) {
 				Branch:              "fakebranch",
 				Identifier:          "project_test",
 				Requester:           evergreen.RepotrackerVersionRequester,
+				Config:              "owner: fakeowner\nrepo: fakerepo\nbranch: fakebranch",
 				RevisionOrderNumber: 8,
 			}
-			pp := &ParserProject{}
-			err := util.UnmarshalYAMLWithFallback([]byte("owner: fakeowner\nrepo: fakerepo\nbranch: fakebranch"), &pp)
-			So(err, ShouldBeNil)
-			pp.Id = "good_version"
 			So(badVersion.Insert(), ShouldBeNil)
 			So(goodVersion.Insert(), ShouldBeNil)
-			So(pp.Insert(), ShouldBeNil)
 			v, p, err := FindLatestVersionWithValidProject("project_test")
 			So(err, ShouldBeNil)
 			So(p, ShouldNotBeNil)
@@ -325,17 +318,13 @@ buildvariants:
 		Author:              "somebody",
 		AuthorEmail:         "somebody@somewhere.com",
 		RevisionOrderNumber: 42,
+		Config:              config,
 		Requester:           evergreen.GitTagRequester,
 		TriggeredByGitTag: GitTag{
 			Tag: "release",
 		},
 	}
 	assert.NoError(v.Insert())
-	pp := &ParserProject{}
-	err := util.UnmarshalYAMLWithFallback([]byte(config), &pp)
-	assert.NoError(err)
-	pp.Id = "v1"
-	assert.NoError(pp.Insert())
 	taskDoc := &task.Task{
 		Id:           "t1",
 		DisplayName:  "magical task",

@@ -815,6 +815,7 @@ tasks:
 
 	dbVersion, err := model.VersionFindOneId(v.Id)
 	s.NoError(err)
+	s.Equal(v.Config, dbVersion.Config)
 	s.Equal(evergreen.VersionCreated, dbVersion.Status)
 	s.Equal(s.rev.RevisionMessage, dbVersion.Message)
 
@@ -858,6 +859,7 @@ tasks:
 
 	dbVersion, err := model.VersionFindOneId(v.Id)
 	s.NoError(err)
+	s.Equal(v.Config, dbVersion.Config)
 	s.Require().Len(dbVersion.Errors, 1)
 	s.Require().Len(dbVersion.Warnings, 2)
 	s.Equal("buildvariant 'bv' must either specify run_on field or have every task specify run_on", dbVersion.Errors[0])
@@ -914,6 +916,7 @@ tasks:
 
 	dbVersion, err := model.VersionFindOneId(v.Id)
 	s.NoError(err)
+	s.Equal(v.Config, dbVersion.Config)
 	s.Len(dbVersion.Errors, 2)
 	s.Len(dbVersion.Warnings, 2)
 }
@@ -1063,6 +1066,7 @@ tasks:
 	dbVersion, err := model.VersionFindOneId(v.Id)
 	s.NoError(err)
 	s.Require().NotNil(dbVersion)
+	s.Equal(v.Config, dbVersion.Config)
 	s.Equal(evergreen.VersionCreated, dbVersion.Status)
 	s.Equal(s.rev.RevisionMessage, dbVersion.Message)
 
