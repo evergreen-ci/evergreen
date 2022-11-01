@@ -82,7 +82,6 @@ func TestHostNextTask(t *testing.T) {
 		assert.NoError(t, originalServiceFlags.Set())
 	}()
 	newServiceFlags := *originalServiceFlags
-	newServiceFlags.DispatchTransactionDisabled = false
 	require.NoError(t, newServiceFlags.Set())
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *hostAgentNextTask){
@@ -928,7 +927,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 		details := &apimodels.GetNextTaskDetails{}
 
 		Convey("a host should get the task at the top of the queue", func() {
-			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, true, details)
+			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			So(shouldTeardown, ShouldBeFalse)
@@ -947,7 +946,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 			pref.Enabled = utility.FalsePtr()
 			So(pref.Upsert(), ShouldBeNil)
 
-			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, true, details)
+			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
 			So(err, ShouldBeNil)
 			So(t, ShouldBeNil)
 			So(shouldTeardown, ShouldBeFalse)
@@ -960,7 +959,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 			pref.DispatchingDisabled = utility.TruePtr()
 			So(pref.Upsert(), ShouldBeNil)
 
-			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, true, details)
+			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
 			So(err, ShouldBeNil)
 			So(t, ShouldBeNil)
 			So(shouldTeardown, ShouldBeFalse)
@@ -975,7 +974,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 			So(currentTq.Length(), ShouldEqual, 2)
 
 			details.TaskGroup = "my-task-group"
-			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchAliasService(time.Minute), &theHostWhoCanBoastTheMostRoast, true, details)
+			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchAliasService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
 			So(err, ShouldBeNil)
 			So(t, ShouldBeNil)
 			So(shouldTeardown, ShouldBeTrue)
@@ -996,7 +995,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 				Status: evergreen.TaskStarted,
 			}
 			So(undispatchedTask.Insert(), ShouldBeNil)
-			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, true, details)
+			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
 			So(err, ShouldBeNil)
 			So(shouldTeardown, ShouldBeFalse)
 			So(t.Id, ShouldEqual, "task2")
@@ -1008,7 +1007,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 		Convey("an empty task queue should return a nil task", func() {
 			taskQueue.Queue = []model.TaskQueueItem{}
 			So(taskQueue.Save(), ShouldBeNil)
-			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, true, details)
+			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
 			So(err, ShouldBeNil)
 			So(shouldTeardown, ShouldBeFalse)
 			So(t, ShouldBeNil)
@@ -1016,7 +1015,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 		Convey("a tasks queue with a task that does not exist should continue", func() {
 			taskQueue.Queue = []model.TaskQueueItem{{Id: "notatask"}}
 			So(taskQueue.Save(), ShouldBeNil)
-			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, true, details)
+			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
 			So(err, ShouldBeNil)
 			So(shouldTeardown, ShouldBeFalse)
 			So(t, ShouldBeNil)
@@ -1062,7 +1061,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 			}
 			So(taskQueue.Save(), ShouldBeNil)
 			Convey("the task that is in the other host should not be assigned to another host", func() {
-				t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &h2, true, details)
+				t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &h2, details)
 				So(err, ShouldBeNil)
 				So(shouldTeardown, ShouldBeFalse)
 				So(t, ShouldNotBeNil)
@@ -1072,7 +1071,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 				So(h.RunningTask, ShouldEqual, t2.Id)
 			})
 			Convey("a host with a running task should return an error", func() {
-				_, _, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &anotherHost, true, details)
+				_, _, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &anotherHost, details)
 				So(err, ShouldNotBeNil)
 			})
 		})
@@ -1124,7 +1123,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 				{Id: task4.Id},
 			}
 			So(taskQueue.Save(), ShouldBeNil)
-			t, _, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &host2, true, details)
+			t, _, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &host2, details)
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			// task 3 should not be dispatched, because it's already running on max
@@ -1188,7 +1187,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 				{Id: task4.Id},
 			}
 			So(taskQueue.Save(), ShouldBeNil)
-			t, _, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &host2, true, details)
+			t, _, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &host2, details)
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			// task 3 should not be dispatched, because it has a later task group
@@ -1278,7 +1277,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 
 		details := &apimodels.GetNextTaskDetails{}
 		Convey("a host should get the task at the top of the queue", func() {
-			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, true, details)
+			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
 			So(err, ShouldBeNil)
 			So(shouldTeardown, ShouldBeFalse)
 			So(t, ShouldNotBeNil)
@@ -1298,7 +1297,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 			So(currentTq.Length(), ShouldEqual, 2)
 
 			details.TaskGroup = "my-task-group"
-			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, true, details)
+			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
 			So(err, ShouldBeNil)
 			So(t, ShouldBeNil)
 			So(shouldTeardown, ShouldBeTrue)
@@ -1322,7 +1321,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 				StartTime: utility.ZeroTime,
 			}
 			So(undispatchedTask.Insert(), ShouldBeNil)
-			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, true, details)
+			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
 			So(err, ShouldBeNil)
 			So(shouldTeardown, ShouldBeFalse)
 			So(t.Id, ShouldEqual, "task2")
@@ -1334,7 +1333,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 		Convey("an empty task queue should return a nil task", func() {
 			taskQueue.Queue = []model.TaskQueueItem{}
 			So(taskQueue.Save(), ShouldBeNil)
-			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, true, details)
+			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
 			So(err, ShouldBeNil)
 			So(shouldTeardown, ShouldBeFalse)
 			So(t, ShouldBeNil)
@@ -1346,7 +1345,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 			}
 			taskQueue.Queue = []model.TaskQueueItem{item}
 			So(taskQueue.Save(), ShouldBeNil)
-			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, true, details)
+			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
 			So(err, ShouldBeNil)
 			So(shouldTeardown, ShouldBeFalse)
 			So(t, ShouldBeNil)
@@ -1394,7 +1393,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 			}
 			So(taskQueue.Save(), ShouldBeNil)
 			Convey("the task that is in the other host should not be assigned to another host", func() {
-				t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &h2, true, details)
+				t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &h2, details)
 				So(err, ShouldBeNil)
 				So(shouldTeardown, ShouldBeFalse)
 				So(t, ShouldNotBeNil)
@@ -1404,7 +1403,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 				So(h.RunningTask, ShouldEqual, t2.Id)
 			})
 			Convey("a host with a running task should return an error", func() {
-				_, _, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &anotherHost, true, details)
+				_, _, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &anotherHost, details)
 				So(err, ShouldNotBeNil)
 			})
 		})
@@ -1456,7 +1455,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 				{Id: task4.Id},
 			}
 			So(taskQueue.Save(), ShouldBeNil)
-			t, _, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &host2, true, details)
+			t, _, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &host2, details)
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			// task 3 should not be dispatched, because it's already running on max
