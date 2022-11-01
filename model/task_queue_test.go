@@ -2,7 +2,6 @@ package model
 
 import (
 	"fmt"
-	"github.com/evergreen-ci/evergreen/util"
 	"testing"
 	"time"
 
@@ -10,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
