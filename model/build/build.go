@@ -194,7 +194,7 @@ func (b *Build) SetAborted(aborted bool) error {
 	)
 }
 
-// SetAborted sets the build aborted field to the given boolean.
+// SetActivated sets the build activated field to the given boolean.
 func (b *Build) SetActivated(activated bool) error {
 	if b.Activated == activated {
 		return nil

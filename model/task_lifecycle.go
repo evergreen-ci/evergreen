@@ -946,8 +946,7 @@ func getBuildStatus(buildTasks []task.Task) (string, bool) {
 	allTasksBlocked := true
 	allTasksUnscheduled := true
 	for _, t := range buildTasks {
-		taskUnscheduled := t.Status == evergreen.TaskUndispatched && !t.Activated
-		if !taskUnscheduled {
+		if !t.IsScheduled() {
 			allTasksUnscheduled = false
 		}
 		if !evergreen.IsUnstartedTaskStatus(t.Status) {
@@ -960,7 +959,6 @@ func getBuildStatus(buildTasks []task.Task) (string, bool) {
 		}
 	}
 
-	// if all the tasks are unscheduled, set active to false
 	if allTasksUnscheduled {
 		return evergreen.BuildUnscheduled, allTasksBlocked
 	}
@@ -1022,6 +1020,7 @@ func updateBuildStatus(b *build.Build) (bool, error) {
 	}
 
 	buildStatus, allTasksBlocked := getBuildStatus(buildTasks)
+	// if all the tasks are unscheduled, set active to false
 	if buildStatus == evergreen.BuildUnscheduled {
 		if err = b.SetActivated(false); err != nil {
 			return true, errors.Wrapf(err, "setting build '%s' as inactive", b.Id)
