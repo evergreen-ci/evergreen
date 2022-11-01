@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -155,7 +156,6 @@ func TestGenerateTasks(t *testing.T) {
 	randomVersion := model.Version{
 		Id:         "random_version",
 		Identifier: "mci",
-		Config:     sampleBaseProject,
 		BuildIds:   []string{"sample_build_id"},
 	}
 	require.NoError(randomVersion.Insert())
@@ -167,7 +167,6 @@ func TestGenerateTasks(t *testing.T) {
 	sampleVersion := model.Version{
 		Id:         "sample_version",
 		Identifier: "mci",
-		Config:     sampleBaseProject,
 		BuildIds:   []string{"sample_build_id"},
 	}
 	samplePatch := patch.Patch{
@@ -182,6 +181,14 @@ func TestGenerateTasks(t *testing.T) {
 		Version:      "sample_version",
 	}
 	require.NoError(sampleBuild.Insert())
+
+	pp := model.ParserProject{}
+	err := util.UnmarshalYAMLWithFallback([]byte(sampleBaseProject), &pp)
+	require.NoError(err)
+	pp.Id = "sample_version"
+	require.NoError(pp.Insert())
+	pp.Id = "random_version"
+	require.NoError(pp.Insert())
 	sampleTask := task.Task{
 		Id:                    "sample_task",
 		Version:               "sample_version",
@@ -233,8 +240,7 @@ func TestGenerateTasks(t *testing.T) {
 	// Make sure first project was not changed
 	v, err := model.VersionFindOneId("random_version")
 	assert.NoError(err)
-	projectInfo, err := model.LoadProjectForVersion(v, "mci", true)
-	p := projectInfo.Project
+	p, _, err := model.FindAndTranslateProjectForVersion(v, "mci")
 	assert.NoError(err)
 	require.NotNil(p)
 	assert.Len(p.Tasks, 2)
@@ -245,8 +251,7 @@ func TestGenerateTasks(t *testing.T) {
 	// Verify second project was changed
 	v, err = model.VersionFindOneId("sample_version")
 	assert.NoError(err)
-	projectInfo, err = model.LoadProjectForVersion(v, "mci", true)
-	p = projectInfo.Project
+	p, _, err = model.FindAndTranslateProjectForVersion(v, "mci")
 	assert.NoError(err)
 	require.NotNil(p)
 	assert.Len(p.Tasks, 6)
@@ -334,7 +339,6 @@ buildvariants:
 	sampleVersion := model.Version{
 		Id:         "sample_version",
 		Identifier: "mci",
-		Config:     sampleBaseProject,
 		Requester:  evergreen.RepotrackerVersionRequester,
 		BuildIds:   []string{"sample_build_id"},
 	}
@@ -361,6 +365,12 @@ buildvariants:
 			Id: "ubuntu1604-test",
 		},
 	}
+	sampleParserProject := model.ParserProject{}
+	err := util.UnmarshalYAMLWithFallback([]byte(sampleBaseProject), &sampleParserProject)
+	require.NoError(err)
+	sampleParserProject.Id = "sample_version"
+	require.NoError(sampleParserProject.Insert())
+
 	for _, d := range sampleDistros {
 		require.NoError(d.Insert())
 	}

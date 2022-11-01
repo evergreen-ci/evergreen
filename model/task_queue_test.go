@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -163,9 +164,13 @@ tasks:
 	v := Version{
 		Id:        "b",
 		Requester: evergreen.RepotrackerVersionRequester,
-		Config:    yml,
 	}
 	require.NoError(v.Insert())
+	pp := ParserProject{}
+	err := util.UnmarshalYAMLWithFallback([]byte(yml), &pp)
+	require.NoError(err)
+	pp.Id = "b"
+	require.NoError(pp.Insert())
 	tasks := []task.Task{
 		{
 			Id:                "task_id_1",
