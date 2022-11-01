@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"gopkg.in/20210107192922/yaml.v3"
 	"reflect"
 	"strconv"
 	"testing"
@@ -3401,7 +3402,7 @@ func TestCheckAndBlockSingleHostTaskGroup(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(task.Collection, VersionCollection))
+			require.NoError(t, db.ClearCollections(task.Collection, ParserProjectCollection, VersionCollection))
 
 			const (
 				versionID     = "some_version"
@@ -3479,6 +3480,15 @@ func TestCheckAndBlockSingleHostTaskGroup(t *testing.T) {
 					{Name: tasks[4].DisplayName},
 				},
 			}
+			yml, err := yaml.Marshal(p)
+			require.NoError(t, err)
+
+			pp := &ParserProject{}
+			err = util.UnmarshalYAMLWithFallback(yml, &pp)
+			require.NoError(t, err)
+			pp.Id = versionID
+			require.NoError(t, pp.Insert())
+
 			v := Version{
 				Id: versionID,
 			}
