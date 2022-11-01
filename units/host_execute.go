@@ -89,7 +89,9 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 				args = append(args, fmt.Sprintf("--user=%s", j.SudoUser))
 			}
 		}
-		args = append(args, j.host.Distro.ShellBinary(), "-s")
+		// We read the shell script verbatim from stdin  (i.e. with "bash -s"
+		// instead of "bash -c") to avoid a Windows limitation on exec string length.
+		args = append(args, j.host.Distro.ShellBinary(), "-s", "-l")
 		var output []string
 		output, err := j.host.RunJasperProcess(ctx, j.env, &options.Create{
 			Args:               args,
