@@ -89,10 +89,11 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 				args = append(args, fmt.Sprintf("--user=%s", j.SudoUser))
 			}
 		}
-		args = append(args, j.host.Distro.ShellBinary(), "-l", "-c", j.Script)
+		args = append(args, j.host.Distro.ShellBinary(), "-s")
 		var output []string
 		output, err := j.host.RunJasperProcess(ctx, j.env, &options.Create{
-			Args: args,
+			Args:               args,
+			StandardInputBytes: []byte(j.Script),
 		})
 		if err != nil {
 			event.LogHostScriptExecuteFailed(j.host.Id, err)
