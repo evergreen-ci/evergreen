@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"github.com/evergreen-ci/evergreen/util"
 	"testing"
 	"time"
 
@@ -150,11 +151,26 @@ func TestBlockTaskGroupTasks(t *testing.T) {
 
 	projectRef := &ProjectRef{Id: "a"}
 	assert.Nil(projectRef.Insert())
+	yml := `
+task_groups:
+- name: foo
+  tasks:
+  - task_id
+  - one
+tasks:
+- name: task_id
+- name: one
+`
 	v := Version{
 		Id:        "b",
 		Requester: evergreen.RepotrackerVersionRequester,
 	}
 	require.NoError(v.Insert())
+	pp := ParserProject{}
+	err := util.UnmarshalYAMLWithFallback([]byte(yml), &pp)
+	require.NoError(err)
+	pp.Id = "b"
+	require.NoError(pp.Insert())
 	tasks := []task.Task{
 		{
 			Id:                "task_id_1",

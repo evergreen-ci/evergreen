@@ -4262,6 +4262,11 @@ func TestMarkEndWithNoResults(t *testing.T) {
 		Status:    evergreen.VersionStarted,
 	}
 	assert.NoError(t, v.Insert())
+	pp := ParserProject{
+		Id:         v.Id,
+		Identifier: utility.ToStringPtr("sample"),
+	}
+	assert.NoError(t, pp.Insert())
 	details := &apimodels.TaskEndDetail{
 		Status: evergreen.TaskSucceeded,
 		Type:   "test",
@@ -4753,7 +4758,19 @@ func TestEvalStepbackDeactivatePrevious(t *testing.T) {
 
 func TestEvalStepback(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(task.Collection, ProjectRefCollection, distro.Collection, build.Collection, VersionCollection))
+	assert.NoError(db.ClearCollections(task.Collection, ProjectRefCollection, ParserProjectCollection, distro.Collection, build.Collection, VersionCollection))
+	yml := `
+stepback: true
+buildvariants:
+- name: "bv"
+  run_on: distro
+  tasks:
+  - name: task
+  - name: generator
+tasks:
+- name: task
+- name: generator
+  `
 	proj := ProjectRef{
 		Id: "proj",
 	}
@@ -4767,6 +4784,11 @@ func TestEvalStepback(t *testing.T) {
 		Requester: evergreen.RepotrackerVersionRequester,
 	}
 	require.NoError(t, v.Insert())
+	pp := &ParserProject{}
+	err := util.UnmarshalYAMLWithFallback([]byte(yml), &pp)
+	assert.NoError(err)
+	pp.Id = v.Id
+	assert.NoError(pp.Insert())
 	stepbackTask := task.Task{
 		Id:                  "t2",
 		BuildId:             "b2",
@@ -4909,7 +4931,7 @@ func TestEvalStepback(t *testing.T) {
 }
 
 func TestEvalStepbackTaskGroup(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(task.Collection, VersionCollection, build.Collection, event.EventCollection, ProjectRefCollection))
+	assert.NoError(t, db.ClearCollections(task.Collection, ParserProjectCollection, VersionCollection, build.Collection, event.EventCollection, ProjectRefCollection))
 	v1 := Version{
 		Id:        "v1",
 		Requester: evergreen.RepotrackerVersionRequester,
@@ -4922,6 +4944,15 @@ func TestEvalStepbackTaskGroup(t *testing.T) {
 		Id:        "prev_success_v1",
 		Requester: evergreen.RepotrackerVersionRequester,
 	}
+	pp := ParserProject{
+		Stepback: utility.TruePtr(),
+	}
+	pp.Id = "v1"
+	require.NoError(t, pp.Insert())
+	pp.Id = "prev_v1"
+	require.NoError(t, pp.Insert())
+	pp.Id = "prev_success_v1"
+	require.NoError(t, pp.Insert())
 	require.NoError(t, db.InsertMany(VersionCollection, v1, v2, v3))
 	p1 := ProjectRef{
 		Id: "p1",
