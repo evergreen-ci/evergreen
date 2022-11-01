@@ -187,7 +187,6 @@ functions:
         - RUN_EC2_SPECIFIC_TESTS
         - IS_DOCKER
       env:
-        AUTH_ENABLED: ${with_auth}
         AWS_KEY: ${aws_key}
         AWS_SECRET: ${aws_secret}
         DEBUG_ENABLED: ${debug}
