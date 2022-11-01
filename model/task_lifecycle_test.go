@@ -2,7 +2,6 @@ package model
 
 import (
 	"fmt"
-	"gopkg.in/20210107192922/yaml.v3"
 	"reflect"
 	"strconv"
 	"testing"
@@ -30,6 +29,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"gopkg.in/20210107192922/yaml.v3"
 )
 
 var (
