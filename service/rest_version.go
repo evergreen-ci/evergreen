@@ -1,7 +1,6 @@
 package service
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -62,8 +61,6 @@ type restVersion struct {
 	Remote              bool      `json:"remote"`
 	RemotePath          string    `json:"remote_path"`
 	Requester           string    `json:"requester"`
-	Config              string    `json:"config,omitempty"`
-	ConfigUpdateNumber  int       `json:"config_number"`
 }
 
 type versionLessInfo struct {
@@ -115,8 +112,6 @@ func copyVersion(srcVersion *model.Version, destVersion *restVersion) {
 	destVersion.Remote = srcVersion.Remote
 	destVersion.RemotePath = srcVersion.RemotePath
 	destVersion.Requester = srcVersion.Requester
-	destVersion.Config = srcVersion.Config
-	destVersion.ConfigUpdateNumber = srcVersion.ConfigUpdateNumber
 }
 
 // Returns a JSON response of an array with the NumRecentVersions
@@ -154,7 +149,7 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 	if err == nil {
 		// add one to limit to determine if a new page is necessary
 		versions, err = model.VersionFind(model.VersionBySystemRequesterOrdered(projectId, start).
-			Limit(l + 1).WithoutFields(model.VersionConfigKey))
+			Limit(l + 1))
 		if err != nil {
 			msg := fmt.Sprintf("Error finding recent versions of project '%v'", projectIdentifier)
 			grip.Error(errors.Wrap(err, msg))
@@ -299,16 +294,11 @@ func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) 
 		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem finding parser project"})
 		return
 	}
-	if pp != nil && pp.ConfigUpdateNumber >= srcVersion.ConfigUpdateNumber {
-		config, err = yaml.Marshal(pp)
-		if err != nil {
-			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem marshalling project"})
-			return
-		}
-	} else {
-		config = []byte(projCtx.Version.Config)
+	config, err = yaml.Marshal(pp)
+	if err != nil {
+		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem marshalling project"})
+		return
 	}
-
 	_, err = w.Write(config)
 	grip.Warning(errors.Wrap(err, "problem writing response"))
 }
@@ -327,15 +317,6 @@ func (restapi restAPI) getVersionProject(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem finding parser project"})
 		return
-	}
-	if pp == nil || pp.ConfigUpdateNumber < srcVersion.ConfigUpdateNumber {
-		p := &model.Project{}
-		ctx := context.Background()
-		pp, err = model.LoadProjectInto(ctx, []byte(srcVersion.Config), nil, srcVersion.Identifier, p)
-		if err != nil {
-			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem reading project from version"})
-			return
-		}
 	}
 	bytes, err := bson.Marshal(pp)
 	if err != nil {

@@ -1491,7 +1491,6 @@ func TestCreateTaskGroup(t *testing.T) {
 				ActivationStatus: ActivationStatus{Activated: false},
 			},
 		},
-		Config: projYml,
 	}
 	pRef := ProjectRef{
 		Id:         "projectId",
