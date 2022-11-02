@@ -531,6 +531,7 @@ func (j *patchIntentProcessor) setToPreviousPatchDefinition(patchDoc *patch.Patc
 			task.VersionKey:     previousPatch.Version,
 			task.DisplayNameKey: bson.M{"$in": previousPatch.Tasks},
 			task.ActivatedKey:   true,
+			task.DisplayOnlyKey: bson.M{"$ne": true},
 		}).WithFields(task.DisplayNameKey)
 		allActivatedTasks, err := task.FindAll(query)
 		if err != nil {
@@ -540,7 +541,7 @@ func (j *patchIntentProcessor) setToPreviousPatchDefinition(patchDoc *patch.Patc
 		for _, t := range allActivatedTasks {
 			activatedTasks = append(activatedTasks, t.DisplayName)
 		}
-		patchDoc.Tasks = activatedTasks
+		patchDoc.Tasks = utility.StringSliceIntersection(activatedTasks, previousPatch.Tasks)
 	}
 
 	return previousPatch.Status, nil

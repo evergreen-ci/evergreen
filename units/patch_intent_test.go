@@ -334,24 +334,43 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 		Status:       evergreen.TaskInactive,
 		Activated:    false,
 	}
-	dt := task.Task{
-		Id:             "dt",
-		DisplayName:    "dt",
+	dt1 := task.Task{
+		Id:             "dt1",
+		DisplayName:    "dt1",
 		Version:        "v1",
 		BuildVariant:   "bv_only_dt",
 		DisplayOnly:    true,
-		ExecutionTasks: []string{"et"},
+		ExecutionTasks: []string{"et1"},
 		Status:         evergreen.TaskFailed,
 		Activated:      true,
 	}
-	et := task.Task{
-		Id:            "et",
-		DisplayName:   "et",
+	et1 := task.Task{
+		Id:            "et1",
+		DisplayName:   "et1",
 		Version:       "v1",
 		BuildVariant:  "bv_only_dt",
-		DisplayTaskId: utility.ToStringPtr("dt"),
+		DisplayTaskId: utility.ToStringPtr("dt1"),
 		Status:        evergreen.TaskFailed,
 		Activated:     true,
+	}
+	dt2 := task.Task{
+		Id:             "dt2",
+		DisplayName:    "dt2",
+		Version:        "v1",
+		BuildVariant:   "bv_different_dt",
+		DisplayOnly:    true,
+		ExecutionTasks: []string{"et2"},
+		Status:         evergreen.TaskSucceeded,
+		Activated:      true,
+	}
+	et2 := task.Task{
+		Id:            "et2",
+		DisplayName:   "et2",
+		Version:       "v1",
+		BuildVariant:  "bv_different_dt",
+		DisplayTaskId: utility.ToStringPtr("dt2"),
+		Status:        evergreen.TaskSucceeded,
+		Activated:     false,
 	}
 
 	s.NoError(t1.Insert())
@@ -360,8 +379,10 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 	s.NoError(tgt2.Insert())
 	s.NoError(tgt3.Insert())
 	s.NoError(tgt4.Insert())
-	s.NoError(dt.Insert())
-	s.NoError(et.Insert())
+	s.NoError(dt1.Insert())
+	s.NoError(et1.Insert())
+	s.NoError(dt2.Insert())
+	s.NoError(et2.Insert())
 	s.NoError(notActivated.Insert())
 	patchId := "aabbccddeeff001122334455"
 	previousPatchDoc := &patch.Patch{
@@ -379,14 +400,16 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 			},
 			{
 				Variant:      "bv_only_dt",
-				DisplayTasks: []patch.DisplayTask{{Name: "dt1"}},
+				DisplayTasks: []patch.DisplayTask{{Name: "dt1", ExecTasks: []string{"et1"}}},
+				Tasks:        []string{"et1"},
 			},
 			{
 				Variant:      "bv_different_dt",
-				DisplayTasks: []patch.DisplayTask{{Name: "dt2"}},
+				DisplayTasks: []patch.DisplayTask{{Name: "dt2", ExecTasks: []string{"et2"}}},
+				Tasks:        []string{"et2"},
 			},
 		},
-		Tasks:              []string{"t1", "t2", "tgt1", "tgt2", "tgt3", "tgt4", "not_activated"},
+		Tasks:              []string{"t1", "t2", "tgt1", "tgt2", "tgt3", "tgt4", "dt1", "et1", "dt2", "et2", "not_activated"},
 		BuildVariants:      []string{"bv_only_dt", "bv_different_dt"},
 		RegexBuildVariants: []string{"bv_$"},
 		RegexTasks:         []string{"1$"},
@@ -414,11 +437,14 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 		},
 		{
 			Name:         "bv_only_dt",
-			DisplayTasks: []patch.DisplayTask{{Name: "different_dt"}},
+			DisplayTasks: []patch.DisplayTask{{Name: "dt1", ExecTasks: []string{"et1"}}},
+			Tasks: []model.BuildVariantTaskUnit{
+				{Name: "et1"},
+			},
 		},
 		{
 			Name:         "bv_different_dt",
-			DisplayTasks: []patch.DisplayTask{{Name: "dt2"}},
+			DisplayTasks: []patch.DisplayTask{{Name: "dt2", ExecTasks: []string{"et2"}}},
 		},
 	},
 		TaskGroups: []model.TaskGroup{
@@ -440,13 +466,13 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 	s.Equal(previousPatchStatus, "failed")
 
 	s.Equal(currentPatchDoc.BuildVariants, previousPatchDoc.BuildVariants)
-	s.Equal(currentPatchDoc.Tasks, []string{"t1", "t2", "tgt1", "tgt2", "tgt4"})
+	s.Equal(currentPatchDoc.Tasks, []string{"t1", "t2", "tgt1", "tgt2", "tgt4", "et1"})
 
 	previousPatchStatus, err = j.setToPreviousPatchDefinition(currentPatchDoc, &project, true)
 	s.NoError(err)
 	s.Equal(previousPatchStatus, "failed")
 	s.Equal(currentPatchDoc.BuildVariants, previousPatchDoc.BuildVariants)
-	s.Equal(currentPatchDoc.Tasks, []string{"t1", "tgt1", "tgt2", "tgt4"})
+	s.Equal(currentPatchDoc.Tasks, []string{"t1", "tgt1", "tgt2", "tgt4", "et1"})
 }
 
 func (s *PatchIntentUnitsSuite) TestBuildTasksandVariantsWithRepeatFailed() {
