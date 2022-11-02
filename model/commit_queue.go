@@ -23,7 +23,7 @@ func GetModulesFromPR(ctx context.Context, githubToken string, prNum int, module
 			return nil, nil, errors.Wrapf(err, "malformed URL for module '%s'", mod.Module)
 		}
 
-		pr, err := thirdparty.GetPullRequest(ctx, prNum, githubToken, owner, repo)
+		pr, err := thirdparty.GetMergeablePullRequest(ctx, prNum, githubToken, owner, repo)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "PR not valid for merge")
 		}

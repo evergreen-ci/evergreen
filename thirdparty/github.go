@@ -941,7 +941,8 @@ func SendCommitQueueGithubStatus(env evergreen.Environment, pr *github.PullReque
 	return nil
 }
 
-func GetPullRequest(ctx context.Context, issue int, githubToken, owner, repo string) (*github.PullRequest, error) {
+// GetMergeablePullRequest gets the pull request and returns if the PR is valid and mergeable.
+func GetMergeablePullRequest(ctx context.Context, issue int, githubToken, owner, repo string) (*github.PullRequest, error) {
 	pr, err := GetGithubPullRequest(ctx, githubToken, owner, repo, issue)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get PR from GitHub")
