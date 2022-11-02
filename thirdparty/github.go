@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/mongodb/grip/sometimes"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -20,6 +19,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 )
 
@@ -52,13 +52,15 @@ type GithubPatch struct {
 	CommitMessage  string `bson:"commit_message"`
 }
 
+// SendGithubStatusInput is the input to the SendVersionStatusToGithub function and contains
+// all the information associated with a version necessary to send a status to GitHub.
 type SendGithubStatusInput struct {
-	Id    string
-	Owner string
-	Repo  string
-	Ref   string
-	Desc  string
-	Job   string
+	VersionId string
+	Owner     string
+	Repo      string
+	Ref       string
+	Desc      string
+	Caller    string
 }
 
 var (
@@ -301,7 +303,7 @@ func SendVersionStatusToGithub(input SendGithubStatusInput) error {
 	}
 	if flags.GithubStatusAPIDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-			"job":     input.Job,
+			"job":     input.Caller,
 			"message": "GitHub status updates are disabled, not updating status",
 		})
 		return nil
@@ -319,7 +321,7 @@ func SendVersionStatusToGithub(input SendGithubStatusInput) error {
 		Owner:       input.Owner,
 		Repo:        input.Repo,
 		Ref:         input.Ref,
-		URL:         fmt.Sprintf("%s/version/%s?redirect_spruce_users=true", urlBase, input.Id),
+		URL:         fmt.Sprintf("%s/version/%s?redirect_spruce_users=true", urlBase, input.VersionId),
 		Context:     "evergreen",
 		State:       message.GithubStatePending,
 		Description: input.Desc,
@@ -343,7 +345,7 @@ func SendVersionStatusToGithub(input SendGithubStatusInput) error {
 		"ticket":  GithubInvestigation,
 		"message": "called github status send",
 		"caller":  "github check subscriptions",
-		"version": input.Id,
+		"version": input.VersionId,
 	})
 	return nil
 }

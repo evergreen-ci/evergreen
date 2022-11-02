@@ -479,7 +479,15 @@ func addGithubCheckSubscriptions(v *model.Version) error {
 	if err := buildSub.Upsert(); err != nil {
 		catcher.Wrap(err, "failed to insert build github check subscription")
 	}
-	err := thirdparty.SendVersionStatusToGithub(v.Id, v.Owner, v.Repo, v.Revision, "version created", RunnerName)
+	input := thirdparty.SendGithubStatusInput{
+		VersionId: v.Id,
+		Owner:     v.Owner,
+		Repo:      v.Repo,
+		Ref:       v.Revision,
+		Desc:      "version created",
+		Caller:    RunnerName,
+	}
+	err := thirdparty.SendVersionStatusToGithub(input)
 	if err != nil {
 		catcher.Wrap(err, "failed to send version status to github")
 	}

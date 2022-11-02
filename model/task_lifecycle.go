@@ -1200,7 +1200,15 @@ func UpdatePatchStatus(p *patch.Patch, versionStatus string) error {
 			return errors.Wrapf(err, "updating patch '%s' with status '%s'", p.Id.Hex(), patchStatus)
 		}
 		if p.IsGithubPRPatch() {
-			if err = thirdparty.SendVersionStatusToGithub(p.Id.Hex(), p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.HeadHash, "patch status change", "pr-task-reset"); err != nil {
+			input := thirdparty.SendGithubStatusInput{
+				VersionId: p.Id.Hex(),
+				Owner:     p.GithubPatchData.BaseOwner,
+				Repo:      p.GithubPatchData.BaseRepo,
+				Ref:       p.GithubPatchData.HeadHash,
+				Desc:      "patch status change",
+				Caller:    "pr-task-reset",
+			}
+			if err = thirdparty.SendVersionStatusToGithub(input); err != nil {
 				return errors.Wrapf(err, "sending patch '%s' status to Github", p.Id.Hex())
 			}
 		}
