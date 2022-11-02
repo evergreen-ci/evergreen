@@ -676,7 +676,7 @@ func (c *baseCommunicator) GetAgentSetupData(ctx context.Context) (*apimodels.Ag
 	}
 
 	var data apimodels.AgentSetupData
-	if err := utility.ReadJSON(resp.Body, data); err != nil {
+	if err := utility.ReadJSON(resp.Body, &data); err != nil {
 		return nil, errors.Wrap(err, "reading agent setup data from response")
 	}
 

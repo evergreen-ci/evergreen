@@ -1,3 +1,4 @@
+# This file contains the admin settings used for the smoke test application server.
 log_path: "server_logs.txt"
 
 database:
@@ -5,6 +6,11 @@ database:
   db: "mci_smoke"
   write_concern:
     wmode: majority
+
+amboy:
+  database: amboy_smoke
+  name: evg.service
+  skip_preferred_indexes: true
 
 domain_name: "evergreen.local"
 configdir: "config_test"
