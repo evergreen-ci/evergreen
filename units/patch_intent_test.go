@@ -177,7 +177,7 @@ func (s *PatchIntentUnitsSuite) TearDownTest() {
 	s.cancel()
 }
 
-func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent, patcherParserProject string) *patchIntentProcessor {
+func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent, patchedParserProject string) *patchIntentProcessor {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -188,8 +188,8 @@ func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent, patcherPars
 	j.env = s.env
 
 	patchDoc := intent.NewPatch()
-	if patcherParserProject != "" {
-		patchDoc.PatchedParserProject = patcherParserProject
+	if patchedParserProject != "" {
+		patchDoc.PatchedParserProject = patchedParserProject
 	}
 	s.NoError(j.finishPatch(ctx, patchDoc, githubOauthToken))
 	s.NoError(j.Error())

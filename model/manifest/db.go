@@ -86,11 +86,12 @@ func FindFromVersion(versionID, project, revision, requester string) (*Manifest,
 	return manifest, err
 }
 
+// GetManifestModuleOverrides returns a map of module names that need to use a more
+// recent commit hash than the module hashes on the base version for a given patch.
 func GetManifestModuleOverrides(requester, versionID string) (map[string]string, error) {
 	if !evergreen.IsPatchRequester(requester) {
 		return nil, nil
 	}
-	var p *patch.Patch
 	p, err := patch.FindOneId(versionID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting patch '%s'", versionID)
