@@ -91,7 +91,7 @@ func FindParametersForVersion(v *Version) ([]patch.Parameter, error) {
 		if v.Config == "" {
 			return nil, errors.New("version has no config")
 		}
-		pp, err = createIntermediateProject([]byte(v.Config), false)
+		pp, err = createIntermediateProject([]byte(v.Config), false, false)
 		if err != nil {
 			return nil, errors.Wrap(err, "parsing legacy config")
 		}
@@ -110,7 +110,7 @@ func FindExpansionsForVariant(v *Version, variant string) (util.Expansions, erro
 		if v.Config == "" {
 			return nil, errors.New("version has no config")
 		}
-		pp, err = createIntermediateProject([]byte(v.Config), false)
+		pp, err = createIntermediateProject([]byte(v.Config), false, false)
 		if err != nil {
 			return nil, errors.Wrap(err, "parsing legacy config")
 		}
