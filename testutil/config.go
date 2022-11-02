@@ -391,7 +391,6 @@ func MockConfig() *evergreen.Settings {
 			ContainerConfigurationsDisabled: true,
 			SlackAppDisabled:                true,
 			PartialRouteAuthDisabled:        true,
-			DispatchTransactionDisabled:     true,
 		},
 		SSHKeyDirectory: "/ssh_key_directory",
 		SSHKeyPairs: []evergreen.SSHKeyPair{
