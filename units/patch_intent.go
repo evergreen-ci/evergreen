@@ -534,16 +534,21 @@ func updatePatchDocPatches(ctx context.Context, patchDoc *patch.Patch, project *
 		if err != nil {
 			return errors.Wrapf(err, "getting branch for module '%s'", mod.Branch)
 		}
+		moduleExists := false
 		for i := range patchDoc.Patches {
-			patchName := patchDoc.Patches[i].ModuleName
-			if patchName == mod.Name {
+			patchModuleName := patchDoc.Patches[i].ModuleName
+			if patchModuleName == mod.Name {
 				patchDoc.Patches[i].Githash = sha
+				moduleExists = true
+				break
 			}
 		}
-		patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{
-			Githash:    sha,
-			ModuleName: mod.Name,
-		})
+		if !moduleExists {
+			patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{
+				Githash:    sha,
+				ModuleName: mod.Name,
+			})
+		}
 
 	}
 	return nil
