@@ -110,6 +110,22 @@ func (s *githubSuite) TestGetBranchEvent() {
 	})
 }
 
+func (s *githubSuite) TestValidateBranch() {
+	var branch *github.Branch
+	s.Error(validateBranch(branch))
+
+	branch = &github.Branch{}
+	s.Error(validateBranch(branch))
+
+	branch.Commit = &github.RepositoryCommit{}
+	s.Error(validateBranch(branch))
+
+	sha := "abcdef"
+	branch.Commit.SHA = &sha
+
+	s.NoError(validateBranch(branch))
+}
+
 func (s *githubSuite) TestGithubMergeBaseRevision() {
 	rev, err := GetGithubMergeBaseRevision(s.ctx, s.token, "evergreen-ci", "evergreen",
 		"105bbb4b34e7da59c42cb93d92954710b1f101ee", "49bb297759edd1284ef6adee665180e7b7bac299")
