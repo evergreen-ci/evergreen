@@ -44,6 +44,7 @@
       "message": "EVG-743 add ability to link back to a task",
       "status": "created",
       "order": 3,
+      "config": "",
       "ignored": false,
       "owner_name": "zakhark",
       "repo_name": "logkeeper",

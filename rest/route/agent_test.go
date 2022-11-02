@@ -65,7 +65,7 @@ func TestAgentFetchExpansionsForTask(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, model.VersionCollection, model.ParserProjectCollection))
+			require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, model.VersionCollection))
 			t1 := task.Task{
 				Id:      "t1",
 				Project: "p1",
@@ -89,6 +89,7 @@ func TestAgentFetchExpansionsForTask(t *testing.T) {
 				Revision:   "1234",
 				Requester:  evergreen.GitTagRequester,
 				CreateTime: time.Now(),
+				Config:     "identifier: sample",
 				Parameters: []patch.Parameter{
 					{
 						Key:   "a",
@@ -101,14 +102,7 @@ func TestAgentFetchExpansionsForTask(t *testing.T) {
 				Revision:   "1234",
 				Requester:  evergreen.GitTagRequester,
 				CreateTime: time.Now(),
-			}
-			pp1 := model.ParserProject{
-				Id:         "aaaaaaaaaaff001122334455",
-				Parameters: []model.ParameterInfo{},
-			}
-			pp2 := model.ParserProject{
-				Id:         "aaaaaaaaaaff001122334456",
-				Parameters: []model.ParameterInfo{},
+				Config:     "identifier: sample",
 			}
 			require.NoError(t, t1.Insert())
 			require.NoError(t, t2.Insert())
@@ -116,8 +110,6 @@ func TestAgentFetchExpansionsForTask(t *testing.T) {
 			require.NoError(t, vars.Insert())
 			require.NoError(t, v1.Insert())
 			require.NoError(t, v2.Insert())
-			require.NoError(t, pp1.Insert())
-			require.NoError(t, pp2.Insert())
 
 			r, ok := makeFetchExpansionsForTask().(*fetchExpansionsForTaskHandler)
 			require.True(t, ok)

@@ -9,6 +9,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -520,13 +521,27 @@ func (j *patchIntentProcessor) setToPreviousPatchDefinition(patchDoc *patch.Patc
 	}
 
 	patchDoc.BuildVariants = previousPatch.BuildVariants
-
 	if failedOnly {
 		if err = setTasksToPreviousFailed(patchDoc, previousPatch, project); err != nil {
 			return "", errors.Wrap(err, "settings tasks to previous failed")
 		}
 	} else {
-		patchDoc.Tasks = previousPatch.Tasks
+		// Only add activated tasks from previous patch
+		query := db.Query(bson.M{
+			task.VersionKey:     previousPatch.Version,
+			task.DisplayNameKey: bson.M{"$in": previousPatch.Tasks},
+			task.ActivatedKey:   true,
+			task.DisplayOnlyKey: bson.M{"$ne": true},
+		}).WithFields(task.DisplayNameKey)
+		allActivatedTasks, err := task.FindAll(query)
+		if err != nil {
+			return "", errors.Wrap(err, "getting previous patch tasks")
+		}
+		activatedTasks := []string{}
+		for _, t := range allActivatedTasks {
+			activatedTasks = append(activatedTasks, t.DisplayName)
+		}
+		patchDoc.Tasks = utility.StringSliceIntersection(activatedTasks, previousPatch.Tasks)
 	}
 
 	return previousPatch.Status, nil
