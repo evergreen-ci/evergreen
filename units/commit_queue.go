@@ -650,10 +650,15 @@ func setDefaultNotification(username string) error {
 }
 
 func updatePatch(ctx context.Context, githubToken string, projectRef *model.ProjectRef, patchDoc *patch.Patch) (*model.Project, error) {
-	sha, err := thirdparty.GetBranchCommitHash(ctx, projectRef.Repo, projectRef.Branch, githubToken)
+	branch, err := thirdparty.GetBranchEvent(ctx, githubToken, projectRef.Owner, projectRef.Repo, projectRef.Branch)
 	if err != nil {
-		return nil, errors.Wrapf(err, "getting commit hash for branch '%s'", projectRef.Branch)
+		return nil, errors.Wrap(err, "getting branch")
 	}
+	if err = thirdparty.ValidateBranch(branch); err != nil {
+		return nil, errors.Wrap(err, "GitHub returned an invalid branch")
+	}
+
+	sha := *branch.Commit.SHA
 	patchDoc.Githash = sha
 
 	// Refresh the cached project config

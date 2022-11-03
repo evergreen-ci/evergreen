@@ -112,18 +112,18 @@ func (s *githubSuite) TestGetBranchEvent() {
 
 func (s *githubSuite) TestValidateBranch() {
 	var branch *github.Branch
-	s.Error(validateBranch(branch))
+	s.Error(ValidateBranch(branch))
 
 	branch = &github.Branch{}
-	s.Error(validateBranch(branch))
+	s.Error(ValidateBranch(branch))
 
 	branch.Commit = &github.RepositoryCommit{}
-	s.Error(validateBranch(branch))
+	s.Error(ValidateBranch(branch))
 
 	sha := "abcdef"
 	branch.Commit.SHA = &sha
 
-	s.NoError(validateBranch(branch))
+	s.NoError(ValidateBranch(branch))
 }
 
 func (s *githubSuite) TestGithubMergeBaseRevision() {

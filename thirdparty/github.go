@@ -393,13 +393,13 @@ func GetBranchCommitHash(ctx context.Context, repo, moduleBranch, token string) 
 	if err != nil {
 		return "", errors.Wrap(err, "getting branch")
 	}
-	if err = validateBranch(branch); err != nil {
+	if err = ValidateBranch(branch); err != nil {
 		return "", errors.Wrap(err, "GitHub returned invalid branch")
 	}
 	return utility.FromStringPtr(branch.Commit.SHA), nil
 }
 
-func validateBranch(branch *github.Branch) error {
+func ValidateBranch(branch *github.Branch) error {
 	if branch == nil {
 		return errors.New("branch is nil")
 	}
