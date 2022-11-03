@@ -699,6 +699,11 @@ func CreateManifest(v model.Version, proj *model.Project, projectRef *model.Proj
 
 	}
 	newManifest.Modules = modules
+	moduleOverrides, err := manifest.GetManifestModuleOverrides(v.Requester, v.Id)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting module overrides")
+	}
+	newManifest.ModuleOverrides = moduleOverrides
 	grip.Debug(message.Fields{
 		"message":            "creating manifest",
 		"version_id":         v.Id,
