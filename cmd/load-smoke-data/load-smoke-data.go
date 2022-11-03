@@ -42,7 +42,7 @@ func getFiles(root string) ([]string, error) {
 	})
 
 	if err != nil {
-		return nil, errors.Wrapf(err, "problem finding import files in %s", root)
+		return nil, errors.Wrapf(err, "finding import files in path '%s'", root)
 	}
 
 	return out, nil

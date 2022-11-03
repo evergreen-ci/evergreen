@@ -124,7 +124,7 @@ func (j *podDefinitionCleanupJob) populate() error {
 
 func (j *podDefinitionCleanupJob) cleanupStrandedPodDefinitions(ctx context.Context, limit int) (numDeleted int, err error) {
 	podDefIDs, err := cloud.GetFilteredResourceIDs(ctx, j.tagClient, []string{cloud.PodDefinitionResourceFilter}, map[string][]string{
-		cloud.PodCacheTag: {strconv.FormatBool(false)},
+		definition.PodDefinitionTag: {strconv.FormatBool(false)},
 	}, limit)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "getting un"))

@@ -30,6 +30,11 @@ type AmboyConfig struct {
 	SampleSize                            int                     `bson:"sample_size" json:"sample_size" yaml:"sample_size"`
 	Retry                                 AmboyRetryConfig        `bson:"retry" json:"retry" yaml:"retry"`
 	NamedQueues                           []AmboyNamedQueueConfig `bson:"named_queues" json:"named_queues" yaml:"named_queues"`
+	// SkipPreferredIndexes indicates whether or not to use the preferred
+	// indexes for the remote queues. This is not a value that can or should be
+	// configured in production, but is useful to explicitly set for testing
+	// environments, where the required indexes may not be set up.
+	SkipPreferredIndexes bool `bson:"skip_preferred_indexes" json:"skip_preferred_indexes" yaml:"skip_preferred_indexes"`
 }
 
 // AmboyRetryConfig represents configuration settings for Amboy's retryability

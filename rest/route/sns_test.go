@@ -112,17 +112,23 @@ func TestHandleEC2SNSNotification(t *testing.T) {
 func TestEC2SNSNotificationHandlers(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	defer func() {
+		assert.NoError(t, db.Clear(host.Collection))
+	}()
 	assert.NoError(t, db.Clear(host.Collection))
+
 	agentHost := host.Host{
 		Id:        "agent_host",
 		StartTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
 		StartedBy: evergreen.User,
 		Provider:  evergreen.ProviderNameMock,
+		Status:    evergreen.HostRunning,
 	}
 	spawnHost := host.Host{
 		Id:        "spawn_host",
 		StartedBy: "user",
 		UserHost:  true,
+		Status:    evergreen.HostRunning,
 	}
 	messageID := "m0"
 	rh := ec2SNS{}
@@ -130,17 +136,28 @@ func TestEC2SNSNotificationHandlers(t *testing.T) {
 	assert.NoError(t, agentHost.Insert())
 	assert.NoError(t, spawnHost.Insert())
 
+	checkStatus := func(t *testing.T, hostID, status string) {
+		dbHost, err := host.FindOneId(hostID)
+		require.NoError(t, err)
+		require.NotZero(t, dbHost)
+		assert.Equal(t, status, dbHost.Status)
+	}
+
 	for name, test := range map[string]func(*testing.T){
 		"InstanceTerminatedInitiatesInstanceStatusCheck": func(t *testing.T) {
 			require.NoError(t, rh.handleInstanceTerminated(ctx, agentHost.Id))
+			checkStatus(t, agentHost.Id, evergreen.HostDecommissioned)
 			require.Equal(t, 1, rh.queue.Stats(ctx).Total)
 		},
 		"InstanceStoppedWithAgentHostInitiatesInstanceStatusCheck": func(t *testing.T) {
 			require.NoError(t, rh.handleInstanceStopped(ctx, agentHost.Id))
+			checkStatus(t, agentHost.Id, evergreen.HostDecommissioned)
 			require.Equal(t, 1, rh.queue.Stats(ctx).Total)
 		},
 		"InstanceStoppedWithSpawnHostNoops": func(t *testing.T) {
+			originalStatus := spawnHost.Status
 			require.NoError(t, rh.handleInstanceStopped(ctx, spawnHost.Id))
+			checkStatus(t, spawnHost.Id, originalStatus)
 			assert.Zero(t, rh.queue.Stats(ctx).Total)
 		},
 	} {

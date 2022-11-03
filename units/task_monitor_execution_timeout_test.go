@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/stretchr/testify/assert"
@@ -30,7 +31,7 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 	mp := cloud.GetMockProvider()
 
 	defer func() {
-		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, model.VersionCollection, model.ProjectRefCollection, host.Collection, event.EventCollection))
+		assert.NoError(t, db.ClearCollections(task.Collection, pod.Collection, task.OldCollection, build.Collection, model.VersionCollection, model.ParserProjectCollection, model.ProjectRefCollection, host.Collection, event.EventCollection))
 		mp.Reset()
 	}()
 
@@ -68,6 +69,7 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 			const taskGroupName = "some_task_group"
 			j.task.TaskGroup = taskGroupName
 			j.task.TaskGroupMaxHosts = 1
+			require.NoError(t, v.Insert())
 			require.NoError(t, j.task.Insert())
 			otherTask := task.Task{
 				Id:                "another_task",
@@ -104,8 +106,11 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 			}
 			yml, err := yaml.Marshal(p)
 			require.NoError(t, err)
-			v.Config = string(yml)
-			require.NoError(t, v.Insert())
+			pp := &model.ParserProject{}
+			err = util.UnmarshalYAMLWithFallback(yml, &pp)
+			require.NoError(t, err)
+			pp.Id = v.Id
+			require.NoError(t, pp.Insert())
 
 			j.Run(ctx)
 			require.NoError(t, j.Error())
@@ -249,7 +254,7 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
 
-			require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, model.VersionCollection, model.ProjectRefCollection, host.Collection, event.EventCollection))
+			require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, model.VersionCollection, model.ParserProjectCollection, model.ProjectRefCollection, pod.Collection, host.Collection, event.EventCollection))
 			mp.Reset()
 
 			const taskID = "task_id"

@@ -59,11 +59,16 @@ func ByBaseProjectAndRevision(project, revision string) db.Q {
 }
 
 func FindFromVersion(versionID, project, revision, requester string) (*Manifest, error) {
+	moduleOverrides, err := GetManifestModuleOverrides(requester, versionID)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting module overrides")
+	}
 	manifest, err := FindOne(ById(versionID))
 	if err != nil {
 		return nil, errors.Wrap(err, "finding manifest")
 	}
 	if manifest != nil {
+		manifest.ModuleOverrides = moduleOverrides
 		return manifest, nil
 	}
 
@@ -76,23 +81,28 @@ func FindFromVersion(versionID, project, revision, requester string) (*Manifest,
 	if manifest == nil {
 		return nil, nil
 	}
+	manifest.ModuleOverrides = moduleOverrides
+	return manifest, err
+}
 
-	if evergreen.IsPatchRequester(requester) {
-		var p *patch.Patch
-		p, err = patch.FindOneId(versionID)
-		if err != nil {
-			return nil, errors.Wrapf(err, "getting patch '%s'", versionID)
-		}
-		if p == nil {
-			return nil, errors.Errorf("no corresponding patch '%s'", versionID)
-		}
-		manifest.ModuleOverrides = make(map[string]string)
-		for _, patchModule := range p.Patches {
-			if patchModule.ModuleName != "" && patchModule.Githash != "" {
-				manifest.ModuleOverrides[patchModule.ModuleName] = patchModule.Githash
-			}
+// GetManifestModuleOverrides returns a map of module names that need to use a more
+// recent commit hash than the module hashes on the base version for a given patch.
+func GetManifestModuleOverrides(requester, versionID string) (map[string]string, error) {
+	if !evergreen.IsPatchRequester(requester) {
+		return nil, nil
+	}
+	p, err := patch.FindOneId(versionID)
+	if err != nil {
+		return nil, errors.Wrapf(err, "getting patch '%s'", versionID)
+	}
+	if p == nil {
+		return nil, errors.Errorf("no corresponding patch '%s'", versionID)
+	}
+	moduleOverrides := make(map[string]string)
+	for _, patchModule := range p.Patches {
+		if patchModule.ModuleName != "" && patchModule.Githash != "" {
+			moduleOverrides[patchModule.ModuleName] = patchModule.Githash
 		}
 	}
-
-	return manifest, err
+	return moduleOverrides, nil
 }
