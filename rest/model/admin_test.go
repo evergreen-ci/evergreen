@@ -204,7 +204,6 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ServiceFlags.UnrecognizedPodCleanupDisabled, apiSettings.ServiceFlags.UnrecognizedPodCleanupDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.S3BinaryDownloadsDisabled, apiSettings.ServiceFlags.S3BinaryDownloadsDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.ContainerConfigurationsDisabled, apiSettings.ServiceFlags.ContainerConfigurationsDisabled)
-	assert.EqualValues(testSettings.ServiceFlags.DispatchTransactionDisabled, apiSettings.ServiceFlags.DispatchTransactionDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.SlackAppDisabled, apiSettings.ServiceFlags.SlackAppDisabled)
 	assert.EqualValues(testSettings.Slack.Level, utility.FromStringPtr(apiSettings.Slack.Level))
 	assert.EqualValues(testSettings.Slack.Options.Channel, utility.FromStringPtr(apiSettings.Slack.Options.Channel))
@@ -293,7 +292,6 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, dbSettings.ServiceFlags.CloudCleanupDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.ContainerConfigurationsDisabled, dbSettings.ServiceFlags.ContainerConfigurationsDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.UnrecognizedPodCleanupDisabled, dbSettings.ServiceFlags.UnrecognizedPodCleanupDisabled)
-	assert.EqualValues(testSettings.ServiceFlags.DispatchTransactionDisabled, apiSettings.ServiceFlags.DispatchTransactionDisabled)
 	require.Len(dbSettings.SSHKeyPairs, len(testSettings.SSHKeyPairs))
 	for i := 0; i < len(testSettings.SSHKeyPairs); i++ {
 		assert.Equal(dbSettings.SSHKeyPairs[i].Name, testSettings.SSHKeyPairs[i].Name)

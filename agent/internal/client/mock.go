@@ -506,3 +506,9 @@ func (c *Mock) ConcludeMerge(ctx context.Context, patchId, status string, td Tas
 func (c *Mock) GetAdditionalPatches(ctx context.Context, patchId string, td TaskData) ([]string, error) {
 	return []string{"555555555555555555555555"}, nil
 }
+
+func (c *Mock) GetPullRequestInfo(ctx context.Context, taskData TaskData, prNum int, owner, repo string) (*apimodels.PullRequestInfo, error) {
+	return &apimodels.PullRequestInfo{
+		Mergeable: utility.TruePtr(),
+	}, nil
+}

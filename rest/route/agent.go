@@ -124,6 +124,52 @@ func (h *agentSetup) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(data)
 }
 
+// GET /task/{task_id}/pull_request
+type agentCheckGetPullRequestHandler struct {
+	taskID   string
+	settings *evergreen.Settings
+
+	req apimodels.CheckMergeRequest
+}
+
+func makeAgentGetPullRequest(settings *evergreen.Settings) gimlet.RouteHandler {
+	return &agentCheckGetPullRequestHandler{
+		settings: settings,
+	}
+}
+
+func (h *agentCheckGetPullRequestHandler) Factory() gimlet.RouteHandler {
+	return &agentCheckGetPullRequestHandler{
+		settings: h.settings,
+	}
+}
+
+func (h *agentCheckGetPullRequestHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
+	if err := utility.ReadJSON(r.Body, &h.req); err != nil {
+		return errors.Wrap(err, "reading from JSON request body")
+	}
+	return nil
+}
+
+func (h *agentCheckGetPullRequestHandler) Run(ctx context.Context) gimlet.Responder {
+	token, err := h.settings.GetGithubOauthToken()
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "getting token"))
+	}
+	pr, err := thirdparty.GetGithubPullRequest(ctx, token, h.req.Owner, h.req.Repo, h.req.PRNum)
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(err)
+	}
+	resp := apimodels.PullRequestInfo{
+		Mergeable:      pr.Mergeable,
+		MergeCommitSHA: pr.GetMergeCommitSHA(),
+	}
+	return gimlet.NewJSONResponse(resp)
+}
+
 // POST /task/{task_id}/update_push_status
 type updatePushStatusHandler struct {
 	taskID  string

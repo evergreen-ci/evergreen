@@ -19,7 +19,6 @@ import (
 var ConfigRegistry *ConfigSectionRegistry
 
 func init() {
-
 	if err := resetRegistry(); err != nil {
 		panic(errors.Wrap(err, "registering config sections").Error())
 	}
