@@ -59,11 +59,16 @@ func ByBaseProjectAndRevision(project, revision string) db.Q {
 }
 
 func FindFromVersion(versionID, project, revision, requester string) (*Manifest, error) {
+	moduleOverrides, err := GetManifestModuleOverrides(requester, versionID)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting module overrides")
+	}
 	manifest, err := FindOne(ById(versionID))
 	if err != nil {
 		return nil, errors.Wrap(err, "finding manifest")
 	}
 	if manifest != nil {
+		manifest.ModuleOverrides = moduleOverrides
 		return manifest, nil
 	}
 
@@ -76,13 +81,7 @@ func FindFromVersion(versionID, project, revision, requester string) (*Manifest,
 	if manifest == nil {
 		return nil, nil
 	}
-
-	moduleOverrides, err := GetManifestModuleOverrides(requester, versionID)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting module overrides")
-	}
 	manifest.ModuleOverrides = moduleOverrides
-
 	return manifest, err
 }
 
