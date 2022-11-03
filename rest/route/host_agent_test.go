@@ -537,9 +537,9 @@ func TestHostNextTask(t *testing.T) {
 			defer cancel()
 
 			colls := []string{model.ProjectRefCollection, host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection, evergreen.ConfigCollection}
-			require.NoError(t, db.DropCollections(colls...))
+			require.NoError(t, db.ClearCollections(colls...))
 			defer func() {
-				assert.NoError(t, db.DropCollections(colls...))
+				assert.NoError(t, db.ClearCollections(colls...))
 			}()
 			require.NoError(t, modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey))
 
@@ -778,9 +778,9 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 			defer cancel()
 
 			colls := []string{host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection, model.ParserProjectCollection, model.ProjectRefCollection, model.VersionCollection, alertrecord.Collection, event.EventCollection}
-			require.NoError(t, db.DropCollections(colls...))
+			require.NoError(t, db.ClearCollections(colls...))
 			defer func() {
-				assert.NoError(t, db.DropCollections(colls...))
+				assert.NoError(t, db.ClearCollections(colls...))
 			}()
 
 			env := &mock.Environment{}
@@ -864,9 +864,9 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionLegacy(t *testing.T
 		}
 
 		colls := []string{distro.Collection, host.Collection, task.Collection, model.TaskQueuesCollection, model.ProjectRefCollection}
-		require.NoError(t, db.DropCollections(colls...))
+		require.NoError(t, db.ClearCollections(colls...))
 		defer func() {
-			assert.NoError(t, db.DropCollections(colls...))
+			assert.NoError(t, db.ClearCollections(colls...))
 		}()
 		require.NoError(t, modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey))
 		distroID := "testDistro"
@@ -1213,9 +1213,9 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 			Version: evergreen.DispatcherVersionRevisedWithDependencies,
 		}
 		colls := []string{distro.Collection, host.Collection, task.Collection, model.TaskQueuesCollection, model.ProjectRefCollection}
-		require.NoError(t, db.DropCollections(colls...))
+		require.NoError(t, db.ClearCollections(colls...))
 		defer func() {
-			assert.NoError(t, db.DropCollections(colls...))
+			assert.NoError(t, db.ClearCollections(colls...))
 		}()
 		require.NoError(t, modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey))
 
