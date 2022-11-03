@@ -190,6 +190,7 @@ func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent, patchedPars
 	patchDoc := intent.NewPatch()
 	if patchedParserProject != "" {
 		patchDoc.PatchedParserProject = patchedParserProject
+		patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{ModuleName: "sandbox"})
 	}
 	s.NoError(j.finishPatch(ctx, patchDoc, githubOauthToken))
 	s.NoError(j.Error())
@@ -676,6 +677,9 @@ modules:
   - name: sandbox
     repo: git@github.com:evergreen-ci/commit-queue-sandbox.git
     branch: main
+  - name: evergreen
+    repo: git@github.com:evergreen-ci/evergreen.git
+    branch: main
 buildvariants:
   - name: ubuntu1604-arm64
     display_name: Variant Number One
@@ -727,9 +731,12 @@ tasks:
 	patchDoc, err := patch.FindOne(patch.ById(j.PatchID))
 	s.NoError(err)
 	s.Require().NotNil(patchDoc)
-	s.Len(patchDoc.Patches, 2)
+	s.Len(patchDoc.Patches, 3)
 	s.Equal(patchDoc.Patches[0].ModuleName, "")
 	s.Equal(patchDoc.Patches[1].ModuleName, "sandbox")
+	s.NotNil(patchDoc.Patches[1].Githash)
+	s.Equal(patchDoc.Patches[2].ModuleName, "evergreen")
+	s.NotNil(patchDoc.Patches[2].Githash)
 }
 
 func (s *PatchIntentUnitsSuite) TestFindEvergreenUserForPR() {
