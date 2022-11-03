@@ -116,10 +116,11 @@ clientsLoop:
 				status, ok := statuses[hostID]
 				if !ok {
 					grip.Error(message.WrapError(err, message.Fields{
-						"message": "could not get any cloud instance status for host",
+						"message": "could not get any cloud instance status for host, defaulting to nonexistent status",
 						"host_id": hostID,
+						"job":     j.ID(),
 					}))
-					continue
+					statuses[hostID] = cloud.StatusNonExistent
 				}
 				j.AddError(errors.Wrapf(j.setCloudHostStatus(ctx, m, hosts[i], status), "setting status for host '%s' based on its cloud instance's status", hosts[i].Id))
 			}

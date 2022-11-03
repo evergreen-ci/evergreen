@@ -116,7 +116,9 @@ type BatchManager interface {
 	// GetInstanceStatuses gets the statuses of a slice of instances. It returns
 	// a map of the instance IDs to their current status. If some of the
 	// instance statuses cannot be retrieved, implementations are allowed to
-	// either error or return StatusNonExistent.
+	// either return an error or return StatusNonExistent for those hosts.
+	// If there is no error, implementations should return the same number of
+	// results in the map as there are hosts.
 	GetInstanceStatuses(context.Context, []host.Host) (map[string]CloudStatus, error)
 }
 
