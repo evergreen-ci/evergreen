@@ -10,7 +10,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/util"
@@ -79,8 +78,7 @@ func (r *ec2AssumeRole) Execute(ctx context.Context,
 	}
 
 	if len(conf.EC2Keys) == 0 {
-		env := evergreen.GetEnvironment()
-		conf.EC2Keys = env.Settings().Providers.AWS.EC2Keys
+		return errors.New("no EC2 keys in config")
 	}
 
 	key := conf.EC2Keys[0].Key
