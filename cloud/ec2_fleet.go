@@ -174,7 +174,8 @@ func (m *ec2FleetManager) ModifyHost(context.Context, *host.Host, host.HostModif
 	return errors.New("can't modify instances for EC2 fleet provider")
 }
 
-func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.Host) ([]CloudStatus, error) {
+// kim; TODO: add test for instance not found.
+func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.Host) (map[string]CloudStatus, error) {
 	instanceIDs := make([]*string, 0, len(hosts))
 	for _, h := range hosts {
 		instanceIDs = append(instanceIDs, aws.String(h.Id))
@@ -203,36 +204,30 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 		return nil, errors.Wrap(err, "invalid describe instances response")
 	}
 
-	if len(instanceIDs) != len(describeInstancesOutput.Reservations) {
-		return nil, errors.Errorf("AWS returned %d statuses for %d hosts", len(describeInstancesOutput.Reservations), len(instanceIDs))
-	}
-
+	statuses := map[string]CloudStatus{}
 	instanceMap := map[string]*ec2.Instance{}
 	for i := range describeInstancesOutput.Reservations {
 		instanceMap[*describeInstancesOutput.Reservations[i].Instances[0].InstanceId] = describeInstancesOutput.Reservations[i].Instances[0]
+		instanceInfo := describeInstancesOutput.Reservations[i].Instances[0]
+		instanceID := *instanceInfo.InstanceId
+		status := ec2StatusToEvergreenStatus(*instanceInfo.State.Name)
+		statuses[instanceID] = status
 	}
 
-	// Return as an ordered slice of statuses
-	runningHosts := 0
-	statuses := []CloudStatus{}
-	startAt = time.Now()
 	for _, h := range hosts {
-		status := ec2StatusToEvergreenStatus(*instanceMap[h.Id].State.Name)
+		status, ok := statuses[h.Id]
+		if !ok {
+			statuses[h.Id] = StatusNonExistent
+		}
 		if status == StatusRunning {
 			// cache instance information so we can make fewer calls to AWS's API
 			grip.Error(message.WrapError(cacheHostData(ctx, &h, instanceMap[h.Id], m.client), message.Fields{
 				"message": "can't update host cached data",
 				"host_id": h.Id,
 			}))
-			runningHosts += 1
 		}
-		statuses = append(statuses, status)
 	}
-	grip.Debug(message.Fields{
-		"message":           "finished caching host data",
-		"num_hosts_running": runningHosts,
-		"duration_secs":     time.Since(startAt).Seconds(),
-	})
+
 	return statuses, nil
 }
 

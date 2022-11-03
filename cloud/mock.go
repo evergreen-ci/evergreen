@@ -455,11 +455,11 @@ func (mockMgr *mockManager) GetVolumeAttachment(ctx context.Context, volumeID st
 	return nil, nil
 }
 
-func (mockMgr *mockManager) GetInstanceStatuses(ctx context.Context, hosts []host.Host) ([]CloudStatus, error) {
+func (mockMgr *mockManager) GetInstanceStatuses(ctx context.Context, hosts []host.Host) (map[string]CloudStatus, error) {
 	if len(hosts) != 1 {
 		return nil, errors.New("expecting 1 hosts")
 	}
-	return []CloudStatus{StatusRunning}, nil
+	return map[string]CloudStatus{hosts[0].Id: StatusRunning}, nil
 }
 
 func (m *mockManager) CheckInstanceType(ctx context.Context, instanceType string) error {

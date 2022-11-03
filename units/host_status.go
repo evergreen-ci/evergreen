@@ -101,14 +101,7 @@ clientsLoop:
 			statusesCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 			defer cancel()
 
-			startAt := time.Now()
 			statuses, err := batch.GetInstanceStatuses(statusesCtx, hosts)
-			grip.Debug(message.Fields{
-				"message":       "finished getting instance statuses",
-				"num_hosts":     len(hosts),
-				"provider":      clientOpts.Provider,
-				"duration_secs": time.Since(startAt).Seconds(),
-			})
 			if err != nil {
 				if strings.Contains(err.Error(), cloud.EC2ErrorNotFound) {
 					j.AddError(j.terminateUnknownHosts(ctx, err.Error()))
@@ -117,38 +110,29 @@ clientsLoop:
 				j.AddError(errors.Wrap(err, "getting host statuses for providers"))
 				continue clientsLoop
 			}
-			if len(statuses) != len(hosts) {
-				j.AddError(errors.Errorf("programmer error: length of statuses != length of hosts"))
-				continue clientsLoop
-			}
+
 			for i := range hosts {
-				j.AddError(errors.Wrapf(j.setCloudHostStatus(ctx, m, hosts[i], statuses[i]), "setting status for host '%s' based on its cloud instance's status", hosts[i].Id))
+				hostID := hosts[i].Id
+				status, ok := statuses[hostID]
+				if !ok {
+					grip.Error(message.WrapError(err, message.Fields{
+						"message": "could not get any cloud instance status for host",
+						"host_id": hostID,
+					}))
+					continue
+				}
+				j.AddError(errors.Wrapf(j.setCloudHostStatus(ctx, m, hosts[i], status), "setting status for host '%s' based on its cloud instance's status", hosts[i].Id))
 			}
-			continue clientsLoop
+
+			continue
 		}
+
 		for _, h := range hosts {
 			statusCtx, cancel := context.WithTimeout(ctx, time.Minute)
-			startAt := time.Now()
 			cloudStatus, err := m.GetInstanceStatus(statusCtx, &h)
 			cancel()
-			grip.Debug(message.Fields{
-				"message":       "finished getting instance status",
-				"host_id":       h.Id,
-				"provider":      clientOpts.Provider,
-				"duration_secs": time.Since(startAt).Seconds(),
-			})
 			if err != nil {
 				j.AddError(errors.Wrapf(err, "checking instance status of host '%s'", h.Id))
-				continue clientsLoop
-			}
-			if cloudStatus == cloud.StatusNonExistent {
-				// Terminate unknown host in the DB.
-				grip.Error(message.WrapError(h.Terminate(evergreen.User, "host does not exist"), message.Fields{
-					"message":       "can't mark instance as terminated",
-					"host_id":       h.Id,
-					"host_provider": h.Distro.Provider,
-					"distro":        h.Distro.Id,
-				}))
 				continue clientsLoop
 			}
 			j.AddError(errors.Wrapf(j.setCloudHostStatus(ctx, m, h, cloudStatus), "setting status for host '%s' based on its cloud instance's status", h.Id))
@@ -156,6 +140,8 @@ clientsLoop:
 	}
 }
 
+// terminateUnknownHosts prepares hosts that do not have any status information
+// in their cloud provider to be terminated.
 func (j *cloudHostReadyJob) terminateUnknownHosts(ctx context.Context, awsErr string) error {
 	pieces := strings.Split(awsErr, "'")
 	if len(pieces) != 3 {
@@ -165,6 +151,7 @@ func (j *cloudHostReadyJob) terminateUnknownHosts(ctx context.Context, awsErr st
 	grip.Warning(message.Fields{
 		"message": "host IDs not found in AWS, will terminate",
 		"hosts":   instanceIDs,
+		"job":     j.ID(),
 	})
 	catcher := grip.NewBasicCatcher()
 	for _, hostID := range instanceIDs {
@@ -176,6 +163,13 @@ func (j *cloudHostReadyJob) terminateUnknownHosts(ctx context.Context, awsErr st
 		if h == nil {
 			continue
 		}
+		// Decommission the host to prevent this job from checking it again.
+		grip.Error(message.WrapError(h.SetDecommissioned(evergreen.User, false, ""), message.Fields{
+			"message": "could not set nonexistent host to decommissioned in preparation for termination",
+			"host_id": h.Id,
+			"job":     j.ID(),
+		}))
+
 		terminationJob := NewHostTerminationJob(j.env, h, HostTerminationOptions{
 			TerminateIfBusy:   true,
 			TerminationReason: "instance ID not found",
@@ -191,18 +185,19 @@ func (j *cloudHostReadyJob) terminateUnknownHosts(ctx context.Context, awsErr st
 // Hosts found in an unrecoverable state are terminated.
 func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, m cloud.Manager, h host.Host, cloudStatus cloud.CloudStatus) error {
 	switch cloudStatus {
-	case cloud.StatusFailed, cloud.StatusTerminated, cloud.StatusStopped, cloud.StatusStopping:
+	case cloud.StatusFailed, cloud.StatusTerminated, cloud.StatusStopped, cloud.StatusStopping, cloud.StatusNonExistent:
 		j.logHostStatusMessage(&h, cloudStatus)
 
 		event.LogHostTerminatedExternally(h.Id, h.Status)
 		grip.Info(message.Fields{
-			"message":   "host terminated externally",
-			"operation": "setCloudHostStatus",
-			"host_id":   h.Id,
-			"host_tag":  h.Tag,
-			"distro":    h.Distro.Id,
-			"provider":  h.Provider,
-			"status":    h.Status,
+			"message":      "host terminated externally",
+			"operation":    "setCloudHostStatus",
+			"host_id":      h.Id,
+			"host_tag":     h.Tag,
+			"distro":       h.Distro.Id,
+			"provider":     h.Provider,
+			"status":       h.Status,
+			"cloud_status": cloudStatus,
 		})
 
 		catcher := grip.NewBasicCatcher()
@@ -211,7 +206,7 @@ func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, m cloud.Mana
 		terminationJob := NewHostTerminationJob(j.env, &h, HostTerminationOptions{
 			TerminateIfBusy:          true,
 			TerminationReason:        "instance was found in stopped state",
-			SkipCloudHostTermination: cloudStatus == cloud.StatusTerminated,
+			SkipCloudHostTermination: cloudStatus == cloud.StatusTerminated || cloudStatus == cloud.StatusNonExistent,
 		})
 		catcher.Wrap(amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), terminationJob), "enqueueing job to terminate host")
 

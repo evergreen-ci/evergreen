@@ -113,8 +113,11 @@ type ContainerManager interface {
 
 // BatchManager is an interface for cloud providers that support batch operations.
 type BatchManager interface {
-	// GetInstanceStatuses gets the status of a slice of instances.
-	GetInstanceStatuses(context.Context, []host.Host) ([]CloudStatus, error)
+	// GetInstanceStatuses gets the statuses of a slice of instances. It returns
+	// a map of the instance IDs to their current status. If some of the
+	// instance statuses cannot be retrieved, implementations are allowed to
+	// either error or return StatusNonExistent.
+	GetInstanceStatuses(context.Context, []host.Host) (map[string]CloudStatus, error)
 }
 
 // ManagerOpts is a struct containing the fields needed to get a new cloud manager
