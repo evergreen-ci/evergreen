@@ -52,7 +52,14 @@ var (
 
 // ParserProjectFindOneById returns the parser project for the version
 func ParserProjectFindOneById(id string) (*ParserProject, error) {
-	return ParserProjectFindOne(ParserProjectById(id))
+	pp, err := ParserProjectFindOne(ParserProjectById(id))
+	if err != nil {
+		return nil, err
+	}
+	if pp != nil && pp.Functions == nil {
+		pp.Functions = map[string]*YAMLCommandSet{}
+	}
+	return pp, nil
 }
 
 // ParserProjectFindOne finds a parser project with a given query.
@@ -82,38 +89,17 @@ func ParserProjectUpsertOne(query interface{}, update interface{}) error {
 }
 
 func FindParametersForVersion(v *Version) ([]patch.Parameter, error) {
-	pp, err := ParserProjectFindOne(ParserProjectById(v.Id).WithFields(ParserProjectConfigNumberKey,
-		ParserProjectParametersKey))
+	pp, err := ParserProjectFindOne(ParserProjectById(v.Id).WithFields(ParserProjectParametersKey))
 	if err != nil {
 		return nil, errors.Wrap(err, "finding parser project")
-	}
-	if pp == nil || pp.ConfigUpdateNumber < v.ConfigUpdateNumber { // legacy case
-		if v.Config == "" {
-			return nil, errors.New("version has no config")
-		}
-		pp, err = createIntermediateProject([]byte(v.Config), false, false)
-		if err != nil {
-			return nil, errors.Wrap(err, "parsing legacy config")
-		}
 	}
 	return pp.GetParameters(), nil
 }
 
 func FindExpansionsForVariant(v *Version, variant string) (util.Expansions, error) {
-	pp, err := ParserProjectFindOne(ParserProjectById(v.Id).WithFields(ParserProjectConfigNumberKey,
-		ParserProjectBuildVariantsKey, ParserProjectAxesKey))
+	pp, err := ParserProjectFindOne(ParserProjectById(v.Id).WithFields(ParserProjectBuildVariantsKey, ParserProjectAxesKey))
 	if err != nil {
 		return nil, errors.Wrap(err, "finding parser project")
-	}
-
-	if pp == nil || pp.ConfigUpdateNumber < v.ConfigUpdateNumber { // legacy case
-		if v.Config == "" {
-			return nil, errors.New("version has no config")
-		}
-		pp, err = createIntermediateProject([]byte(v.Config), false, false)
-		if err != nil {
-			return nil, errors.Wrap(err, "parsing legacy config")
-		}
 	}
 
 	bvs, errs := GetVariantsWithMatrices(nil, pp.Axes, pp.BuildVariants)
