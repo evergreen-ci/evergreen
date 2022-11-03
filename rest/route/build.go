@@ -59,9 +59,6 @@ func (b *buildGetHandler) Run(ctx context.Context) gimlet.Responder {
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding tasks in build '%s'", b.buildId))
 		}
-		if len(tasks) == 0 {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("no tasks found in build '%s'", b.buildId))
-		}
 	}
 
 	buildModel := &model.APIBuild{}
