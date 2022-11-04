@@ -285,18 +285,8 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	patchDoc.PatchedParserProject = patchConfig.PatchedParserProject
 	patchDoc.PatchedProjectConfig = patchConfig.PatchedProjectConfig
 
-	for _, modulePatch := range patchDoc.Patches {
-		if modulePatch.ModuleName != "" {
-			// validate the module exists
-			var module *model.Module
-			module, err = project.GetModuleByName(modulePatch.ModuleName)
-			if err != nil {
-				return errors.Wrapf(err, "finding module '%s'", modulePatch.ModuleName)
-			}
-			if module == nil {
-				return errors.Errorf("module '%s' not found", modulePatch.ModuleName)
-			}
-		}
+	if err = updatePatchDocPatches(ctx, patchDoc, project, githubOauthToken); err != nil {
+		return errors.Wrap(err, "updating patches")
 	}
 	if err = j.verifyValidAlias(pref.Id, patchDoc); err != nil {
 		return err
@@ -545,6 +535,35 @@ func (j *patchIntentProcessor) setToPreviousPatchDefinition(patchDoc *patch.Patc
 	}
 
 	return previousPatch.Status, nil
+}
+
+// updatePatchDocPatches updates the commit sha for existing patch modules and adds new modules to the patch for modules
+// that exist in the project but not in the patch. This is necessary so that the manifest load endpoint will include the
+// updated commit sha in the response's module overrides field.
+func updatePatchDocPatches(ctx context.Context, patchDoc *patch.Patch, project *model.Project, token string) error {
+	for _, mod := range project.Modules {
+		sha, err := thirdparty.GetBranchCommitHash(ctx, mod.Repo, mod.Branch, token)
+		if err != nil {
+			return errors.Wrapf(err, "getting branch for module '%s'", mod.Branch)
+		}
+		moduleExists := false
+		for i := range patchDoc.Patches {
+			patchModuleName := patchDoc.Patches[i].ModuleName
+			if patchModuleName == mod.Name {
+				patchDoc.Patches[i].Githash = sha
+				moduleExists = true
+				break
+			}
+		}
+		if !moduleExists {
+			patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{
+				Githash:    sha,
+				ModuleName: mod.Name,
+			})
+		}
+
+	}
+	return nil
 }
 
 func getPreviousFailedTasksAndDisplayTasks(project *model.Project, vt patch.VariantTasks, version string) ([]string, error) {

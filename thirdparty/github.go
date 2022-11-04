@@ -383,6 +383,35 @@ func GetCommitDiff(ctx context.Context, oauthToken, repoOwner, repo, sha string)
 	return commit, nil
 }
 
+// GetBranchCommitHash retrieves the most recent commit hash for branch for the given repo, module, and branch name.
+func GetBranchCommitHash(ctx context.Context, repo, moduleBranch, token string) (string, error) {
+	owner, repo, err := ParseGitUrl(repo)
+	if err != nil {
+		return "", errors.Wrap(err, "repo is misconfigured (malformed URL)")
+	}
+	branch, err := GetBranchEvent(ctx, token, owner, repo, moduleBranch)
+	if err != nil {
+		return "", errors.Wrap(err, "getting branch")
+	}
+	if err = ValidateBranch(branch); err != nil {
+		return "", errors.Wrap(err, "GitHub returned invalid branch")
+	}
+	return utility.FromStringPtr(branch.Commit.SHA), nil
+}
+
+func ValidateBranch(branch *github.Branch) error {
+	if branch == nil {
+		return errors.New("branch is nil")
+	}
+	if branch.Commit == nil {
+		return errors.New("commit is nil")
+	}
+	if branch.Commit.SHA == nil {
+		return errors.New("SHA is nil")
+	}
+	return nil
+}
+
 // GetBranchEvent gets the head of the a given branch via an API call to GitHub
 func GetBranchEvent(ctx context.Context, oauthToken, repoOwner, repo, branch string) (*github.Branch, error) {
 	httpClient := getGithubClientRetry(oauthToken, "GetBranchEvent")
