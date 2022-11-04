@@ -177,7 +177,7 @@ func (s *PatchIntentUnitsSuite) TearDownTest() {
 	s.cancel()
 }
 
-func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent, patchedParserProject string) *patchIntentProcessor {
+func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent) *patchIntentProcessor {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -188,10 +188,6 @@ func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent, patchedPars
 	j.env = s.env
 
 	patchDoc := intent.NewPatch()
-	if patchedParserProject != "" {
-		patchDoc.PatchedParserProject = patchedParserProject
-		patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{ModuleName: "sandbox"})
-	}
 	s.NoError(j.finishPatch(ctx, patchDoc, githubOauthToken))
 	s.NoError(j.Error())
 	s.False(j.HasErrors())
@@ -735,7 +731,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	s.NoError(err)
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert())
-	j := s.makeJobAndPatch(intent, "")
+	j := s.makeJobAndPatch(intent)
 
 	patchDoc, err := patch.FindOne(patch.ById(j.PatchID))
 	s.NoError(err)
@@ -753,85 +749,6 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	out := []event.Subscription{}
 	s.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Query(bson.M{}), &out))
 	s.Require().Empty(out)
-}
-
-func (s *PatchIntentUnitsSuite) TestUpdatePatchDocPatches() {
-	githubOauthToken, err := s.env.Settings().GetGithubOauthToken()
-	s.Require().NoError(err)
-
-	flags := evergreen.ServiceFlags{
-		GithubPRTestingDisabled: true,
-	}
-	s.NoError(evergreen.SetServiceFlags(flags))
-
-	patchContent, _, err := thirdparty.GetGithubPullRequestDiff(context.Background(), githubOauthToken, s.githubPatchData)
-	s.Require().NoError(err)
-
-	patchedParserProject := `
-modules:
-  - name: sandbox
-    repo: git@github.com:evergreen-ci/commit-queue-sandbox.git
-    branch: main
-  - name: evergreen
-    repo: git@github.com:evergreen-ci/evergreen.git
-    branch: main
-buildvariants:
-  - name: ubuntu1604-arm64
-    display_name: Variant Number One
-    run_on:
-    - "arch"
-    tasks:
-    - name: dist
-  - name: ubuntu1604-debug
-    display_name: Variant Number Two
-    run_on:
-    - "arch"
-    tasks:
-    - name: dist
-  - name: race-detector
-    display_name: Variant Number Three
-    run_on:
-    - "arch"
-    tasks:
-    - name: dist
-  - name: ubuntu1604
-    display_name: Variant Number Four
-    run_on:
-    - "arch"
-    tasks:
-    - name: dist
-tasks:
-  - name: dist
-    commands:
-      - command: shell.exec
-        params:
-          script: echo "hi"
-`
-
-	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
-		User:         s.user,
-		Project:      s.project,
-		BaseGitHash:  s.hash,
-		PatchContent: patchContent,
-		Description:  s.desc,
-		Finalize:     true,
-		Variants:     s.variants,
-		Tasks:        s.tasks,
-	})
-	s.NoError(err)
-	s.Require().NotNil(intent)
-	s.NoError(intent.Insert())
-	j := s.makeJobAndPatch(intent, patchedParserProject)
-
-	patchDoc, err := patch.FindOne(patch.ById(j.PatchID))
-	s.NoError(err)
-	s.Require().NotNil(patchDoc)
-	s.Len(patchDoc.Patches, 3)
-	s.Equal(patchDoc.Patches[0].ModuleName, "")
-	s.Equal(patchDoc.Patches[1].ModuleName, "sandbox")
-	s.NotNil(patchDoc.Patches[1].Githash)
-	s.Equal(patchDoc.Patches[2].ModuleName, "evergreen")
-	s.NotNil(patchDoc.Patches[2].Githash)
 }
 
 func (s *PatchIntentUnitsSuite) TestFindEvergreenUserForPR() {
