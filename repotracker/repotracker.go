@@ -486,6 +486,7 @@ func addGithubCheckSubscriptions(v *model.Version) error {
 		Ref:       v.Revision,
 		Desc:      "version created",
 		Caller:    RunnerName,
+		Context:   "evergreen",
 	}
 	err := thirdparty.SendVersionStatusToGithub(input)
 	if err != nil {

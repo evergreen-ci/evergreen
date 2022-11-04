@@ -61,6 +61,7 @@ type SendGithubStatusInput struct {
 	Ref       string
 	Desc      string
 	Caller    string
+	Context   string
 }
 
 var (
@@ -322,7 +323,7 @@ func SendVersionStatusToGithub(input SendGithubStatusInput) error {
 		Repo:        input.Repo,
 		Ref:         input.Ref,
 		URL:         fmt.Sprintf("%s/version/%s?redirect_spruce_users=true", urlBase, input.VersionId),
-		Context:     "evergreen",
+		Context:     input.Context,
 		State:       message.GithubStatePending,
 		Description: input.Desc,
 	}
