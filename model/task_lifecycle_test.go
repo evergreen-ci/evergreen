@@ -990,7 +990,7 @@ func TestGetBuildStatus(t *testing.T) {
 			DependsOn: []task.Dependency{{Unattainable: true}}},
 	}
 	buildStatus = getBuildStatus(buildTasks)
-	assert.Equal(t, evergreen.BuildUnscheduled, buildStatus.status)
+	assert.Equal(t, evergreen.BuildCreated, buildStatus.status)
 	assert.Equal(t, true, buildStatus.allTasksBlocked)
 
 }
