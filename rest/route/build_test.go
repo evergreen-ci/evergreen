@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -35,8 +36,8 @@ func (s *BuildByIdSuite) SetupSuite() {
 	projRef := serviceModel.ProjectRef{Repo: "project", Id: "branch"}
 	s.NoError(projRef.Insert())
 	tasks := []task.Task{
-		{Id: "task1", BuildId: "build1", DisplayOnly: true},
-		{Id: "task2", BuildId: "build2"},
+		{Id: "task1", Status: evergreen.TaskFailed, BuildId: "build1", DisplayOnly: true},
+		{Id: "task2", Status: evergreen.TaskSucceeded, BuildId: "build2"},
 	}
 	for _, task := range tasks {
 		s.Require().NoError(task.Insert())
@@ -77,6 +78,7 @@ func (s *BuildByIdSuite) TestFindBuildById() {
 	s.Equal(utility.ToStringPtr("build1"), b.Id)
 	s.Equal(utility.ToStringPtr("branch"), b.ProjectId)
 	s.Equal("task1", b.TaskCache[0].Id)
+	s.Equal(evergreen.TaskFailed, b.TaskCache[0].Status)
 
 	s.rm.(*buildGetHandler).buildId = "build2"
 	resp = s.rm.Run(context.TODO())
@@ -88,6 +90,7 @@ func (s *BuildByIdSuite) TestFindBuildById() {
 	s.Equal(utility.ToStringPtr("build2"), b.Id)
 	s.Equal(utility.ToStringPtr("notbranch"), b.ProjectId)
 	s.Equal("task2", b.TaskCache[0].Id)
+	s.Equal(evergreen.TaskSucceeded, b.TaskCache[0].Status)
 }
 
 func (s *BuildByIdSuite) TestFindBuildByIdFail() {
