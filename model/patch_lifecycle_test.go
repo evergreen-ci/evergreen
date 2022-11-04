@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -52,7 +53,7 @@ func init() {
 }
 
 func clearAll(t *testing.T) {
-	require.NoError(t, db.ClearCollections(ProjectRefCollection, patch.Collection, VersionCollection, build.Collection, task.Collection, distro.Collection))
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, patch.Collection, VersionCollection, build.Collection, task.Collection, distro.Collection, manifest.Collection))
 }
 
 // resetPatchSetup clears the ProjectRef, Patch, Version, Build, and Task Collections
@@ -231,7 +232,7 @@ func TestGetPatchedProject(t *testing.T) {
 
 func TestFinalizePatch(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, patchTestConfig, "TestFinalizePatch")
-
+	require.NoError(t, evergreen.UpdateConfig(patchTestConfig), ShouldBeNil)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -244,7 +245,17 @@ func TestFinalizePatch(t *testing.T) {
 				project, patchConfig, err := GetPatchedProject(ctx, configPatch, token)
 				So(err, ShouldBeNil)
 				So(project, ShouldNotBeNil)
+				modulesYml := `
+modules:
+  - name: sandbox
+    repo: git@github.com:evergreen-ci/commit-queue-sandbox.git
+    branch: main
+  - name: evergreen
+    repo: git@github.com:evergreen-ci/evergreen.git
+    branch: main
+`
 				configPatch.PatchedParserProject = patchConfig.PatchedParserProject
+				configPatch.PatchedParserProject += modulesYml
 				token, err = patchTestConfig.GetGithubOauthToken()
 				So(err, ShouldBeNil)
 				version, err := FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, token)
@@ -259,6 +270,11 @@ func TestFinalizePatch(t *testing.T) {
 				tasks, err := task.Find(bson.M{})
 				So(err, ShouldBeNil)
 				So(len(tasks), ShouldEqual, 2)
+				// ensure that the manifest was created
+				mfst, err := manifest.FindOne(manifest.ById(configPatch.Id.Hex()))
+				So(err, ShouldBeNil)
+				So(mfst, ShouldNotBeNil)
+				So(mfst.Modules, ShouldHaveLength, 2)
 			})
 
 			Convey("a patch that does not include the remote config should not "+

@@ -387,6 +387,7 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 // Patches a remote project's configuration file if needed.
 // Creates a version for this patch and links it.
 // Creates builds based on the Version
+// Creates a manifest based on the Version
 func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, githubOauthToken string) (*Version, error) {
 	settings, err := evergreen.GetConfig()
 	if githubOauthToken == "" {
