@@ -1106,7 +1106,7 @@ func TestCreateManifest(t *testing.T) {
 		Branch: "main",
 	}
 
-	manifest, err := CreateManifest(v, &proj, projRef, settings)
+	manifest, err := model.CreateManifest(v, &proj, projRef, settings)
 	assert.NoError(err)
 	assert.Equal(v.Id, manifest.Id)
 	assert.Equal(v.Revision, manifest.Revision)
@@ -1131,7 +1131,7 @@ func TestCreateManifest(t *testing.T) {
 			},
 		},
 	}
-	manifest, err = CreateManifest(v, &proj, projRef, settings)
+	manifest, err = model.CreateManifest(v, &proj, projRef, settings)
 	assert.NoError(err)
 	assert.Equal(v.Id, manifest.Id)
 	assert.Equal(v.Revision, manifest.Revision)
@@ -1156,7 +1156,7 @@ func TestCreateManifest(t *testing.T) {
 			},
 		},
 	}
-	manifest, err = CreateManifest(v, &proj, projRef, settings)
+	manifest, err = model.CreateManifest(v, &proj, projRef, settings)
 	assert.Contains(err.Error(), "No commit found for SHA")
 }
 

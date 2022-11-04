@@ -388,8 +388,8 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 // Creates a version for this patch and links it.
 // Creates builds based on the Version
 func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, githubOauthToken string) (*Version, error) {
+	settings, err := evergreen.GetConfig()
 	if githubOauthToken == "" {
-		settings, err := evergreen.GetConfig()
 		if err != nil {
 			return nil, err
 		}
@@ -574,6 +574,10 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		_, err = db.Collection(VersionCollection).InsertOne(sessCtx, patchVersion)
 		if err != nil {
 			return nil, errors.Wrapf(err, "inserting version '%s'", patchVersion.Id)
+		}
+		_, err = CreateManifest(*patchVersion, project, projectRef, settings)
+		if err != nil {
+			return nil, errors.Wrapf(err, "creating manifest for version '%s'", patchVersion.Id)
 		}
 		_, err = db.Collection(ParserProjectCollection).InsertOne(sessCtx, intermediateProject)
 		if err != nil {
