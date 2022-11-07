@@ -52365,9 +52365,6 @@ func (ec *executionContext) unmarshalInputMainlineCommitsOptions(ctx context.Con
 	if _, present := asMap["shouldCollapse"]; !present {
 		asMap["shouldCollapse"] = false
 	}
-	if _, present := asMap["skipOrderNumber"]; !present {
-		asMap["skipOrderNumber"] = 0
-	}
 
 	fieldsInOrder := [...]string{"limit", "projectID", "requesters", "shouldCollapse", "skipOrderNumber"}
 	for _, k := range fieldsInOrder {
@@ -52707,14 +52704,8 @@ func (ec *executionContext) unmarshalInputPatchesInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	if _, present := asMap["includeCommitQueue"]; !present {
-		asMap["includeCommitQueue"] = false
-	}
 	if _, present := asMap["limit"]; !present {
 		asMap["limit"] = 0
-	}
-	if _, present := asMap["onlyCommitQueue"]; !present {
-		asMap["onlyCommitQueue"] = false
 	}
 	if _, present := asMap["page"]; !present {
 		asMap["page"] = 0
