@@ -37,9 +37,6 @@ const (
 
 	HostExternalUserName = "external"
 
-	HostStatusSuccess = "success"
-	HostStatusFailed  = "failed"
-
 	// Task Statuses used in the database models
 
 	// TaskInactive is not assigned to any new tasks, but can be found

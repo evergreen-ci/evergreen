@@ -70,7 +70,7 @@ func GetResultCounts(tasks []Task) *ResultCounts {
 		switch t.ResultStatus() {
 		case evergreen.TaskInactive:
 			out.Inactive++
-		case evergreen.TaskUnscheduled:
+		case evergreen.TaskUndispatched:
 			out.Unstarted++
 		case evergreen.TaskStarted:
 			out.Started++
