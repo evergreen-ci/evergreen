@@ -195,19 +195,6 @@ func (b *Build) SetAborted(aborted bool) error {
 	)
 }
 
-// todo: remove. Should we be calling SetActivated to true now for when tasks are scheduled, since the builds might not be activated?
-// SetActivated sets the build activated field to the given boolean.
-func (b *Build) SetActivated(activated bool) error {
-	if b.Activated == activated {
-		return nil
-	}
-	b.Activated = activated
-	return UpdateOne(
-		bson.M{IdKey: b.Id},
-		bson.M{"$set": bson.M{ActivatedKey: activated}},
-	)
-}
-
 // SetAllTasksBlocked sets the build AllTasksBlocked field to the given boolean.
 func (b *Build) SetAllTasksBlocked(blocked bool) error {
 	if b.AllTasksBlocked == blocked {
