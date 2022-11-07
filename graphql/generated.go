@@ -30913,8 +30913,11 @@ func (ec *executionContext) fieldContext_Query_spruceConfig(ctx context.Context,
 				return ec.fieldContext_SpruceConfig_spawnHost(ctx, field)
 			case "ui":
 				return ec.fieldContext_SpruceConfig_ui(ctx, field)
+<<<<<<< HEAD
 			case "slack":
 				return ec.fieldContext_SpruceConfig_slack(ctx, field)
+=======
+>>>>>>> main
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SpruceConfig", field.Name)
 		},
@@ -36338,8 +36341,13 @@ func (ec *executionContext) fieldContext_Selector_type(ctx context.Context, fiel
 	return fc, nil
 }
 
+<<<<<<< HEAD
 func (ec *executionContext) _SlackConfig_name(ctx context.Context, field graphql.CollectedField, obj *model.APISlackConfig) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_SlackConfig_name(ctx, field)
+=======
+func (ec *executionContext) _Source_author(ctx context.Context, field graphql.CollectedField, obj *model.APISource) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Source_author(ctx, field)
+>>>>>>> main
 	if err != nil {
 		return graphql.Null
 	}
@@ -36350,6 +36358,7 @@ func (ec *executionContext) _SlackConfig_name(ctx context.Context, field graphql
 			ret = graphql.Null
 		}
 	}()
+<<<<<<< HEAD
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.Name, nil
@@ -36391,6 +36400,8 @@ func (ec *executionContext) _Source_author(ctx context.Context, field graphql.Co
 			ret = graphql.Null
 		}
 	}()
+=======
+>>>>>>> main
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.Author, nil
@@ -36958,8 +36969,13 @@ func (ec *executionContext) fieldContext_SpruceConfig_ui(ctx context.Context, fi
 	return fc, nil
 }
 
+<<<<<<< HEAD
 func (ec *executionContext) _SpruceConfig_slack(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_SpruceConfig_slack(ctx, field)
+=======
+func (ec *executionContext) _StatusCount_count(ctx context.Context, field graphql.CollectedField, obj *task.StatusCount) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_StatusCount_count(ctx, field)
+>>>>>>> main
 	if err != nil {
 		return graphql.Null
 	}
@@ -36970,6 +36986,7 @@ func (ec *executionContext) _SpruceConfig_slack(ctx context.Context, field graph
 			ret = graphql.Null
 		}
 	}()
+<<<<<<< HEAD
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.Slack, nil
@@ -37015,6 +37032,8 @@ func (ec *executionContext) _StatusCount_count(ctx context.Context, field graphq
 			ret = graphql.Null
 		}
 	}()
+=======
+>>>>>>> main
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.Count, nil
@@ -52472,9 +52491,12 @@ func (ec *executionContext) unmarshalInputMainlineCommitsOptions(ctx context.Con
 	if _, present := asMap["shouldCollapse"]; !present {
 		asMap["shouldCollapse"] = false
 	}
+<<<<<<< HEAD
 	if _, present := asMap["skipOrderNumber"]; !present {
 		asMap["skipOrderNumber"] = 0
 	}
+=======
+>>>>>>> main
 
 	fieldsInOrder := [...]string{"limit", "projectID", "requesters", "shouldCollapse", "skipOrderNumber"}
 	for _, k := range fieldsInOrder {
@@ -52814,6 +52836,7 @@ func (ec *executionContext) unmarshalInputPatchesInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
+<<<<<<< HEAD
 	if _, present := asMap["includeCommitQueue"]; !present {
 		asMap["includeCommitQueue"] = false
 	}
@@ -52823,6 +52846,11 @@ func (ec *executionContext) unmarshalInputPatchesInput(ctx context.Context, obj 
 	if _, present := asMap["onlyCommitQueue"]; !present {
 		asMap["onlyCommitQueue"] = false
 	}
+=======
+	if _, present := asMap["limit"]; !present {
+		asMap["limit"] = 0
+	}
+>>>>>>> main
 	if _, present := asMap["page"]; !present {
 		asMap["page"] = 0
 	}
@@ -61114,10 +61142,13 @@ func (ec *executionContext) _SpruceConfig(ctx context.Context, sel ast.Selection
 
 			out.Values[i] = ec._SpruceConfig_ui(ctx, field, obj)
 
+<<<<<<< HEAD
 		case "slack":
 
 			out.Values[i] = ec._SpruceConfig_slack(ctx, field, obj)
 
+=======
+>>>>>>> main
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

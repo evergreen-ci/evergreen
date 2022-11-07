@@ -45,7 +45,8 @@ func (r *userResolver) Permissions(ctx context.Context, obj *restModel.APIDBUser
 
 // Target is the resolver for the target field.
 func (r *subscriberInputResolver) Target(ctx context.Context, obj *restModel.APISubscriber, data string) error {
-	panic(fmt.Errorf("not implemented: Target - target"))
+	obj.Target = data
+	return nil
 }
 
 // User returns UserResolver implementation.

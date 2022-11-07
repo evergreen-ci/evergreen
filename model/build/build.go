@@ -23,8 +23,9 @@ type TaskCache struct {
 }
 
 // Build represents a set of tasks on one variant of a Project
-// 	e.g. one build might be "Ubuntu with Python 2.4" and
-//  another might be "OSX with Python 3.0", etc.
+//
+//		e.g. one build might be "Ubuntu with Python 2.4" and
+//	 another might be "OSX with Python 3.0", etc.
 type Build struct {
 	Id                  string        `bson:"_id" json:"_id"`
 	CreateTime          time.Time     `bson:"create_time" json:"create_time,omitempty"`
@@ -191,6 +192,19 @@ func (b *Build) SetAborted(aborted bool) error {
 	return UpdateOne(
 		bson.M{IdKey: b.Id},
 		bson.M{"$set": bson.M{AbortedKey: aborted}},
+	)
+}
+
+// todo: remove. Should we be calling SetActivated to true now for when tasks are scheduled, since the builds might not be activated?
+// SetActivated sets the build activated field to the given boolean.
+func (b *Build) SetActivated(activated bool) error {
+	if b.Activated == activated {
+		return nil
+	}
+	b.Activated = activated
+	return UpdateOne(
+		bson.M{IdKey: b.Id},
+		bson.M{"$set": bson.M{ActivatedKey: activated}},
 	)
 }
 

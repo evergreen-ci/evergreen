@@ -34,7 +34,7 @@ require (
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.4.2
-	github.com/mongodb/amboy v0.0.0-20221025134941-a1f9f6a28caa
+	github.com/mongodb/amboy v0.0.0-20221026174353-681276cbd3a2
 	github.com/mongodb/anser v0.0.0-20220318141853-005b8ead5b8f
 	github.com/mongodb/ftdc v0.0.0-20220401165013-13e4af55e809
 	github.com/mongodb/grip v0.0.0-20221003151935-9c3eaaa08384
@@ -71,4 +71,5 @@ require (
 	github.com/trinodb/trino-go-client v0.300.0
 	google.golang.org/genproto v0.0.0-20211129164237-f09f9a12af12 // indirect
 	gopkg.in/20210107192922/yaml.v3 v3.0.0-00010101000000-000000000000
+	gopkg.in/yaml.v3 v3.0.1
 )

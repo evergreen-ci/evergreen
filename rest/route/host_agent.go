@@ -180,7 +180,7 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 
 	// if there is already a task assigned to the host send back that task
 	if h.host.RunningTask != "" {
-		return sendBackRunningTask(ctx, h.env, h.host, !flags.DispatchTransactionDisabled, nextTaskResponse)
+		return sendBackRunningTask(ctx, h.env, h.host, nextTaskResponse)
 	}
 
 	var nextTask *task.Task
@@ -198,7 +198,7 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 	// if the task queue exists, try to assign a task from it:
 	if taskQueue != nil {
 		// assign the task to a host and retrieve the task
-		nextTask, shouldRunTeardown, err = assignNextAvailableTask(ctx, h.env, taskQueue, h.taskDispatcher, h.host, !flags.DispatchTransactionDisabled, h.details)
+		nextTask, shouldRunTeardown, err = assignNextAvailableTask(ctx, h.env, taskQueue, h.taskDispatcher, h.host, h.details)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
@@ -215,7 +215,7 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
 		if aliasQueue != nil {
-			nextTask, shouldRunTeardown, err = assignNextAvailableTask(ctx, h.env, aliasQueue, h.taskAliasDispatcher, h.host, !flags.DispatchTransactionDisabled, h.details)
+			nextTask, shouldRunTeardown, err = assignNextAvailableTask(ctx, h.env, aliasQueue, h.taskAliasDispatcher, h.host, h.details)
 			if err != nil {
 				return gimlet.MakeJSONErrorResponder(err)
 			}
@@ -244,15 +244,6 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(nextTaskResponse)
 	}
 
-	if flags.DispatchTransactionDisabled {
-		// Fall back to the old behavior of marking the task dispatched only
-		// after checking task group correctness.
-		if err = model.MarkHostTaskDispatched(nextTask, h.host); err != nil {
-			err = errors.WithStack(err)
-			grip.Error(err)
-			return gimlet.MakeJSONInternalErrorResponder(err)
-		}
-	}
 	setNextTask(nextTask, &nextTaskResponse)
 	return gimlet.NewJSONResponse(nextTaskResponse)
 }
@@ -411,7 +402,7 @@ type agentExitParams struct {
 // of currentHost. If the host has finished a task group, we return true (and no task) so
 // the host teardown the group before getting a new task.
 func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, taskQueue *model.TaskQueue, dispatcher model.TaskQueueItemDispatcher,
-	currentHost *host.Host, shouldUseTransaction bool, details *apimodels.GetNextTaskDetails) (*task.Task, bool, error) {
+	currentHost *host.Host, details *apimodels.GetNextTaskDetails) (*task.Task, bool, error) {
 	if currentHost.RunningTask != "" {
 		grip.Error(message.Fields{
 			"message":      "tried to assign task to a host already running task",
@@ -461,7 +452,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 	// 2. Assign the task to the host.
 	// 3. Dequeue the task from the in-memory and DB queue.
 	//
-	// Note that updating the running task on the host must occur before
+	// Note that assigning the task to the host must occur before
 	// dequeueing the task. If these two steps were in the inverse order,
 	// there would be a race that can cause two hosts to run the first two
 	// tasks of a 1-host task group simultaneously, i.e., if one host is
@@ -613,17 +604,9 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 			return nil, true, nil
 		}
 
-		var lockErr error
-		if shouldUseTransaction {
-			lockErr = dispatchHostTaskAtomically(ctx, env, currentHost, nextTask)
-			if err != nil && !db.IsDuplicateKey(lockErr) {
-				return nil, false, errors.Wrapf(err, "dispatching task '%s' to host '%s'", nextTask.Id, currentHost.Id)
-			}
-		} else {
-			lockErr = currentHost.UpdateRunningTask(nextTask)
-			if lockErr != nil && !db.IsDuplicateKey(lockErr) {
-				return nil, false, errors.WithStack(err)
-			}
+		lockErr := dispatchHostTaskAtomically(ctx, env, currentHost, nextTask)
+		if err != nil && !db.IsDuplicateKey(lockErr) {
+			return nil, false, errors.Wrapf(err, "dispatching task '%s' to host '%s'", nextTask.Id, currentHost.Id)
 		}
 		dispatchedTask := lockErr == nil
 
@@ -647,7 +630,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 					"task_group_max_hosts": nextTask.TaskGroupMaxHosts,
 					"task_group_order":     nextTask.TaskGroupOrder,
 				})
-				if err := undoHostTaskDispatchWithFlag(ctx, env, currentHost, nextTask, shouldUseTransaction); err != nil {
+				if err := undoHostTaskDispatchAtomically(ctx, env, currentHost, nextTask); err != nil {
 					grip.Error(message.WrapError(err, message.Fields{
 						"message":              "problem undoing task group task dispatch after dispatch race",
 						"dispatch_race":        err.Error(),
@@ -749,7 +732,6 @@ func checkHostTaskGroupAfterDispatch(h *host.Host, t *task.Task) error {
 }
 
 func dispatchHostTaskAtomically(ctx context.Context, env evergreen.Environment, h *host.Host, t *task.Task) error {
-	now := time.Now()
 	if err := func() error {
 		session, err := env.Client().StartSession()
 		if err != nil {
@@ -757,7 +739,7 @@ func dispatchHostTaskAtomically(ctx context.Context, env evergreen.Environment, 
 		}
 		defer session.EndSession(ctx)
 
-		if _, err := session.WithTransaction(ctx, dispatchHostTask(env, h, t, now)); err != nil {
+		if _, err := session.WithTransaction(ctx, dispatchHostTask(env, h, t, time.Now())); err != nil {
 			return err
 		}
 
@@ -765,13 +747,6 @@ func dispatchHostTaskAtomically(ctx context.Context, env evergreen.Environment, 
 	}(); err != nil {
 		return err
 	}
-
-	grip.Info(message.Fields{
-		"message":     "host task dispatch transaction performance statistics",
-		"duration_ms": int(time.Since(now).Milliseconds()),
-		"host":        h.Id,
-		"task":        t.Id,
-	})
 
 	event.LogHostTaskDispatched(t.Id, t.Execution, h.Id)
 	event.LogHostRunningTaskSet(h.Id, t.Id, t.Execution)
@@ -805,23 +780,10 @@ func dispatchHostTask(env evergreen.Environment, h *host.Host, t *task.Task, dis
 	}
 }
 
-func undoHostTaskDispatchWithFlag(ctx context.Context, env evergreen.Environment, h *host.Host, t *task.Task, shouldUseTransaction bool) error {
-	if shouldUseTransaction {
-		return undoHostTaskDispatchAtomically(ctx, env, h, t)
-	}
-
-	if err := h.ClearRunningTask(); err != nil {
-		return errors.Wrap(err, "clearing host's running task")
-	}
-
-	return nil
-}
-
 func undoHostTaskDispatchAtomically(ctx context.Context, env evergreen.Environment, h *host.Host, t *task.Task) error {
 	clearedTask := h.RunningTask
 	clearedTaskExec := h.RunningTaskExecution
 
-	txnStart := time.Now()
 	if err := func() error {
 		session, err := env.Client().StartSession()
 		if err != nil {
@@ -837,12 +799,6 @@ func undoHostTaskDispatchAtomically(ctx context.Context, env evergreen.Environme
 	}(); err != nil {
 		return err
 	}
-	grip.Info(message.Fields{
-		"message":     "host task undo dispatch transaction performance statistics",
-		"duration_ms": int(time.Since(txnStart).Milliseconds()),
-		"host":        h.Id,
-		"task":        t.Id,
-	})
 
 	if clearedTask != "" {
 		event.LogHostRunningTaskCleared(h.Id, clearedTask, clearedTaskExec)
@@ -1098,7 +1054,7 @@ func handleOldAgentRevision(response apimodels.NextTaskResponse, details *apimod
 
 // sendBackRunningTask re-dispatches a task to a host that has already been
 // assigned to run it.
-func sendBackRunningTask(ctx context.Context, env evergreen.Environment, h *host.Host, shouldUseTransaction bool, response apimodels.NextTaskResponse) gimlet.Responder {
+func sendBackRunningTask(ctx context.Context, env evergreen.Environment, h *host.Host, response apimodels.NextTaskResponse) gimlet.Responder {
 	getMessage := func(msg string) message.Fields {
 		return message.Fields{
 			"message":        msg,
@@ -1128,7 +1084,7 @@ func sendBackRunningTask(ctx context.Context, env evergreen.Environment, h *host
 
 	if isTaskGroupNewToHost(h, t) {
 		if err := checkHostTaskGroupAfterDispatch(h, t); err != nil {
-			if err := undoHostTaskDispatchWithFlag(ctx, env, h, t, shouldUseTransaction); err != nil {
+			if err := undoHostTaskDispatchAtomically(ctx, env, h, t); err != nil {
 				grip.Error(message.WrapError(err, getMessage("could not undo dispatch after task group check failed")))
 				return gimlet.MakeJSONInternalErrorResponder(err)
 			}
