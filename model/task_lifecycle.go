@@ -109,6 +109,13 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 		if err := ActivateVersions(versionIdsToActivate); err != nil {
 			return errors.Wrap(err, "marking version as activated")
 		}
+		buildIdsToActivate := []string{}
+		for b := range buildToTaskMap {
+			buildIdsToActivate = append(buildIdsToActivate, b)
+		}
+		if err := build.UpdateActivation(buildIdsToActivate, true, caller); err != nil {
+			return errors.Wrap(err, "marking builds as activated")
+		}
 	} else {
 		if err := task.DeactivateTasks(tasksToActivate, true, caller); err != nil {
 			return errors.Wrap(err, "deactivating task")
@@ -1034,7 +1041,6 @@ func updateBuildStatus(b *build.Build) (bool, error) {
 		if err = b.SetActivated(false); err != nil {
 			return true, errors.Wrapf(err, "setting build '%s' as inactive", b.Id)
 		}
-
 		return true, nil
 	}
 
