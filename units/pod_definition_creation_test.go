@@ -66,7 +66,7 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 			require.NotZero(t, describeResp)
 			var cacheTagFound bool
 			for _, tag := range describeResp.Tags {
-				if utility.FromStringPtr(tag.Key) == cloud.PodCacheTag {
+				if utility.FromStringPtr(tag.Key) == definition.PodDefinitionTag {
 					assert.Equal(t, "true", utility.FromStringPtr(tag.Value))
 					cacheTagFound = true
 					break
@@ -172,7 +172,7 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 
 			require.NoError(t, db.ClearCollections(definition.Collection, pod.Collection, event.EventCollection))
 			defer func() {
-				assert.NoError(t, db.ClearCollections(definition.Collection, pod.Collection, event.EventCollection, event.LegacyEventLogCollection))
+				assert.NoError(t, db.ClearCollections(definition.Collection, pod.Collection, event.EventCollection))
 			}()
 
 			cocoaMock.ResetGlobalECSService()

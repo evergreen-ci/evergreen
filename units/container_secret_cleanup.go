@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
@@ -71,7 +72,7 @@ func (j *containerSecretCleanupJob) Run(ctx context.Context) {
 	}
 
 	secretIDs, err := cloud.GetFilteredResourceIDs(ctx, j.tagClient, []string{cloud.SecretsManagerResourceFilter}, map[string][]string{
-		cloud.PodCacheTag: {strconv.FormatBool(false)},
+		model.ContainerSecretTag: {strconv.FormatBool(false)},
 	}, j.env.Settings().PodLifecycle.MaxSecretCleanupRate)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "getting stranded Secrets Manager secrets"))

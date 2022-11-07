@@ -180,6 +180,7 @@ functions:
       binary: make
       args: ["${make_args|}", "${target}"]
       include_expansions_in_env:
+        - AUTH_ENABLED
         - GOROOT
         - MONGO_CREDS_FILE
         - RUN_TEST
@@ -585,6 +586,7 @@ tasks:
       - func: run-make
         vars:
           target: "test-evergreen"
+          AUTH_ENABLED: 1
           RUN_TEST: "TestEnvironmentSuite/TestInitDB"
           MONGO_CREDS_FILE: evergreen/test_auth.yml
 

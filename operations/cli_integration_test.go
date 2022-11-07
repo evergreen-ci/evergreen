@@ -21,8 +21,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
 	yaml "gopkg.in/20210107192922/yaml.v3"
 )
@@ -92,10 +94,15 @@ func setupCLITestHarness() cliTestHarness {
 	version := &model.Version{
 		Id:         "sample_version",
 		Identifier: "sample",
-		Config:     string(localConfBytes),
 		Requester:  evergreen.RepotrackerVersionRequester,
 	}
 	So(version.Insert(), ShouldBeNil)
+
+	pp := model.ParserProject{}
+	err = util.UnmarshalYAMLWithFallback(localConfBytes, &pp)
+	So(err, ShouldBeNil)
+	pp.Id = "sample_version"
+	So(pp.Insert(), ShouldBeNil)
 
 	d := distro.Distro{Id: "localtestdistro"}
 	So(d.Insert(), ShouldBeNil)
@@ -149,7 +156,8 @@ func TestCLIFetchSource(t *testing.T) {
 
 		client, err := NewClientSettings(testSetup.settingsFilePath)
 		So(err, ShouldBeNil)
-		comm := client.setupRestCommunicator(ctx)
+		comm, err := client.setupRestCommunicator(ctx)
+		require.NoError(t, err)
 		defer comm.Close()
 		ac, rc, err := client.getLegacyClients()
 		So(err, ShouldBeNil)

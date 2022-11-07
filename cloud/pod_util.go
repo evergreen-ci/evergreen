@@ -27,7 +27,7 @@ func MakeECSClient(settings *evergreen.Settings) (cocoa.ECSClient, error) {
 		// This should only ever be used for testing purposes.
 		return &cocoaMock.ECSClient{}, nil
 	default:
-		return ecs.NewBasicECSClient(podAWSOptions(settings))
+		return ecs.NewBasicClient(podAWSOptions(settings))
 	}
 }
 
@@ -50,13 +50,6 @@ func MakeTagClient(settings *evergreen.Settings) (cocoa.TagClient, error) {
 }
 
 const (
-	// PodCacheTag is the name of the tag in AWS that marks whether pod
-	// resources such as secrets and pod definitions are tracked or not by
-	// Evergreen.
-	PodCacheTag = "evergreen-tracked"
-)
-
-const (
 	// SecretsManagerResourceFilter is the name of the resource filter to find
 	// Secrets Manager secrets.
 	SecretsManagerResourceFilter = "secretsmanager:secret"
@@ -70,8 +63,7 @@ const (
 func MakeSecretsManagerVault(c cocoa.SecretsManagerClient) (cocoa.Vault, error) {
 	return secret.NewBasicSecretsManager(*secret.NewBasicSecretsManagerOptions().
 		SetClient(c).
-		SetCache(model.ContainerSecretCache{}).
-		SetCacheTag(PodCacheTag))
+		SetCache(model.ContainerSecretCache{}))
 }
 
 // MakeECSPodDefinitionManager creates a cocoa.ECSPodDefinitionManager that
@@ -80,14 +72,13 @@ func MakeECSPodDefinitionManager(c cocoa.ECSClient, v cocoa.Vault) (cocoa.ECSPod
 	return ecs.NewBasicPodDefinitionManager(*ecs.NewBasicPodDefinitionManagerOptions().
 		SetClient(c).
 		SetVault(v).
-		SetCache(definition.PodDefinitionCache{}).
-		SetCacheTag(PodCacheTag))
+		SetCache(definition.PodDefinitionCache{}))
 }
 
 // MakeECSPodCreator creates a cocoa.ECSPodCreator to create pods backed by ECS
 // and secrets backed by an optional cocoa.Vault.
 func MakeECSPodCreator(c cocoa.ECSClient, v cocoa.Vault) (cocoa.ECSPodCreator, error) {
-	return ecs.NewBasicECSPodCreator(c, v)
+	return ecs.NewBasicPodCreator(c, v)
 }
 
 // ExportECSPod exports the pod DB model to its equivalent cocoa.ECSPod backed
@@ -103,13 +94,13 @@ func ExportECSPod(p *pod.Pod, c cocoa.ECSClient, v cocoa.Vault) (cocoa.ECSPod, e
 		return nil, errors.Wrap(err, "exporting pod resources")
 	}
 
-	opts := ecs.NewBasicECSPodOptions().
+	opts := ecs.NewBasicPodOptions().
 		SetClient(c).
 		SetVault(v).
 		SetResources(res).
 		SetStatusInfo(*stat)
 
-	return ecs.NewBasicECSPod(opts)
+	return ecs.NewBasicPod(opts)
 }
 
 // exportECSPodStatusInfo exports the pod's status information to its equivalent
@@ -468,7 +459,9 @@ func (c *NoopECSPodDefinitionCache) Delete(context.Context, string) error {
 
 // NoopSecretCache is an implementation of cocoa.SecretCache that no-ops for all
 // operations.
-type NoopSecretCache struct{}
+type NoopSecretCache struct {
+	Tag string
+}
 
 // Put is a no-op.
 func (c *NoopSecretCache) Put(context.Context, cocoa.SecretCacheItem) error {
@@ -478,4 +471,9 @@ func (c *NoopSecretCache) Put(context.Context, cocoa.SecretCacheItem) error {
 // Delete is a no-op.
 func (c *NoopSecretCache) Delete(context.Context, string) error {
 	return nil
+}
+
+// GetTag returns the tag field.
+func (c *NoopSecretCache) GetTag() string {
+	return c.Tag
 }

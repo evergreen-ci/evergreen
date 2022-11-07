@@ -19,6 +19,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 )
 
@@ -49,6 +50,18 @@ type GithubPatch struct {
 	MergeCommitSHA string `bson:"merge_commit_sha"`
 	CommitTitle    string `bson:"commit_title"`
 	CommitMessage  string `bson:"commit_message"`
+}
+
+// SendGithubStatusInput is the input to the SendVersionStatusToGithub function and contains
+// all the information associated with a version necessary to send a status to GitHub.
+type SendGithubStatusInput struct {
+	VersionId string
+	Owner     string
+	Repo      string
+	Ref       string
+	Desc      string
+	Caller    string
+	Context   string
 }
 
 var (
@@ -124,7 +137,6 @@ func githubShouldRetry(caller string) utility.HTTPRetryFunction {
 
 // githubShouldRetryWith404s allows HTTP requests to respond event when 404s
 // are returned.
-
 func githubShouldRetryWith404s(caller string) utility.HTTPRetryFunction {
 	return func(index int, req *http.Request, resp *http.Response, err error) bool {
 		if index >= NumGithubAttempts {
@@ -281,6 +293,62 @@ func GetGithubFile(ctx context.Context, oauthToken, owner, repo, path, ref strin
 	}
 
 	return file, nil
+}
+
+// SendVersionStatusToGithub sends a pending status to a Github PR patch
+// associated with a given version.
+func SendVersionStatusToGithub(input SendGithubStatusInput) error {
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		return errors.Wrap(err, "error retrieving admin settings")
+	}
+	if flags.GithubStatusAPIDisabled {
+		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+			"job":     input.Caller,
+			"message": "GitHub status updates are disabled, not updating status",
+		})
+		return nil
+	}
+	env := evergreen.GetEnvironment()
+	uiConfig := evergreen.UIConfig{}
+	if err = uiConfig.Get(env); err != nil {
+		return errors.Wrap(err, "retrieving UI config")
+	}
+	urlBase := uiConfig.Url
+	if urlBase == "" {
+		return errors.New("url base doesn't exist")
+	}
+	status := &message.GithubStatus{
+		Owner:       input.Owner,
+		Repo:        input.Repo,
+		Ref:         input.Ref,
+		URL:         fmt.Sprintf("%s/version/%s?redirect_spruce_users=true", urlBase, input.VersionId),
+		Context:     input.Context,
+		State:       message.GithubStatePending,
+		Description: input.Desc,
+	}
+	sender, err := env.GetSender(evergreen.SenderGithubStatus)
+	if err != nil {
+		return errors.Wrap(err, "getting github status sender")
+	}
+
+	c := message.MakeGithubStatusMessageWithRepo(*status)
+	if !c.Loggable() {
+		return errors.Errorf("status message is invalid: %+v", status)
+	}
+
+	if err = c.SetPriority(level.Notice); err != nil {
+		return errors.Wrap(err, "setting priority")
+	}
+
+	sender.Send(c)
+	grip.Info(message.Fields{
+		"ticket":  GithubInvestigation,
+		"message": "called github status send",
+		"caller":  "github check subscriptions",
+		"version": input.VersionId,
+	})
+	return nil
 }
 
 func GetGithubMergeBaseRevision(ctx context.Context, oauthToken, repoOwner, repo, baseRevision, currentCommitHash string) (string, error) {
@@ -941,7 +1009,8 @@ func SendCommitQueueGithubStatus(env evergreen.Environment, pr *github.PullReque
 	return nil
 }
 
-func GetPullRequest(ctx context.Context, issue int, githubToken, owner, repo string) (*github.PullRequest, error) {
+// GetMergeablePullRequest gets the pull request and returns if the PR is valid and mergeable.
+func GetMergeablePullRequest(ctx context.Context, issue int, githubToken, owner, repo string) (*github.PullRequest, error) {
 	pr, err := GetGithubPullRequest(ctx, githubToken, owner, repo, issue)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get PR from GitHub")

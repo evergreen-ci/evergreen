@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/utility"
 )
 
+// AgentLogs is the resolver for the agentLogs field.
 func (r *taskLogsResolver) AgentLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error) {
 	const logMessageCount = 100
 	task, taskErr := task.FindOneIdAndExecution(obj.TaskID, obj.Execution)
@@ -60,6 +61,7 @@ func (r *taskLogsResolver) AgentLogs(ctx context.Context, obj *TaskLogs) ([]*api
 	return agentLogPointers, nil
 }
 
+// AllLogs is the resolver for the allLogs field.
 func (r *taskLogsResolver) AllLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error) {
 	const logMessageCount = 100
 	task, taskErr := task.FindOneIdAndExecutionWithDisplayStatus(obj.TaskID, &obj.Execution)
@@ -107,37 +109,24 @@ func (r *taskLogsResolver) AllLogs(ctx context.Context, obj *TaskLogs) ([]*apimo
 	return allLogPointers, nil
 }
 
+// EventLogs is the resolver for the eventLogs field.
 func (r *taskLogsResolver) EventLogs(ctx context.Context, obj *TaskLogs) ([]*restModel.TaskAPIEventLogEntry, error) {
 	const logMessageCount = 100
-	var loggedEvents []event.EventLogEntry
 	// loggedEvents is ordered ts descending
 	loggedEvents, err := event.Find(event.MostRecentTaskEvents(obj.TaskID, logMessageCount))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to find EventLogs for task %s: %s", obj.TaskID, err.Error()))
 	}
 
-	// TODO (EVG-16969) remove once TaskScheduled events TTL
-	// remove all scheduled events except the youngest and push to filteredEvents
-	filteredEvents := []event.EventLogEntry{}
-	foundScheduled := false
-	for i := 0; i < len(loggedEvents); i++ {
-		if !foundScheduled || loggedEvents[i].EventType != event.TaskScheduled {
-			filteredEvents = append(filteredEvents, loggedEvents[i])
-		}
-		if loggedEvents[i].EventType == event.TaskScheduled {
-			foundScheduled = true
-		}
-	}
-
 	// reverse order so it is ascending
-	for i := len(filteredEvents)/2 - 1; i >= 0; i-- {
-		opp := len(filteredEvents) - 1 - i
-		filteredEvents[i], filteredEvents[opp] = filteredEvents[opp], filteredEvents[i]
+	for i := len(loggedEvents)/2 - 1; i >= 0; i-- {
+		opp := len(loggedEvents) - 1 - i
+		loggedEvents[i], loggedEvents[opp] = loggedEvents[opp], loggedEvents[i]
 	}
 
 	// populate eventlogs pointer arrays
 	apiEventLogPointers := []*restModel.TaskAPIEventLogEntry{}
-	for _, e := range filteredEvents {
+	for _, e := range loggedEvents {
 		apiEventLog := restModel.TaskAPIEventLogEntry{}
 		err = apiEventLog.BuildFromService(e)
 		if err != nil {
@@ -148,6 +137,7 @@ func (r *taskLogsResolver) EventLogs(ctx context.Context, obj *TaskLogs) ([]*res
 	return apiEventLogPointers, nil
 }
 
+// SystemLogs is the resolver for the systemLogs field.
 func (r *taskLogsResolver) SystemLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error) {
 	const logMessageCount = 100
 
@@ -194,6 +184,7 @@ func (r *taskLogsResolver) SystemLogs(ctx context.Context, obj *TaskLogs) ([]*ap
 	return systemLogPointers, nil
 }
 
+// TaskLogs is the resolver for the taskLogs field.
 func (r *taskLogsResolver) TaskLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error) {
 	const logMessageCount = 100
 	task, taskErr := task.FindOneIdAndExecutionWithDisplayStatus(obj.TaskID, &obj.Execution)

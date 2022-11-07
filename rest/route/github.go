@@ -204,7 +204,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 			}
 			return gimlet.NewJSONResponse(struct{}{})
 		}
-		if err := data.TriggerRepotracker(gh.queue, gh.msgID, event); err != nil {
+		if err := data.TriggerRepotracker(ctx, gh.queue, gh.msgID, event); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "triggering repotracker"))
 		}
 
@@ -516,7 +516,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 		}
 	} else {
 		// use the standard project config with the git tag alias
-		projectInfo, err = model.LoadProjectForVersion(existingVersion, pRef.Id, false)
+		projectInfo, err = model.LoadProjectInfoForVersion(existingVersion, pRef.Id)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting project '%s'", pRef.Identifier)
 		}

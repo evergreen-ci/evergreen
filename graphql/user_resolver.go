@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/utility"
 )
 
+// Patches is the resolver for the patches field.
 func (r *userResolver) Patches(ctx context.Context, obj *restModel.APIDBUser, patchesInput PatchesInput) (*Patches, error) {
 	opts := patch.ByPatchNameStatusesCommitQueuePaginatedOptions{
 		Author:             obj.UserID,
@@ -37,11 +38,22 @@ func (r *userResolver) Patches(ctx context.Context, obj *restModel.APIDBUser, pa
 	return &Patches{Patches: apiPatches, FilteredPatchCount: count}, nil
 }
 
+// Permissions is the resolver for the permissions field.
 func (r *userResolver) Permissions(ctx context.Context, obj *restModel.APIDBUser) (*Permissions, error) {
 	return &Permissions{UserID: utility.FromStringPtr(obj.UserID)}, nil
+}
+
+// Target is the resolver for the target field.
+func (r *subscriberInputResolver) Target(ctx context.Context, obj *restModel.APISubscriber, data string) error {
+	obj.Target = data
+	return nil
 }
 
 // User returns UserResolver implementation.
 func (r *Resolver) User() UserResolver { return &userResolver{r} }
 
+// SubscriberInput returns SubscriberInputResolver implementation.
+func (r *Resolver) SubscriberInput() SubscriberInputResolver { return &subscriberInputResolver{r} }
+
 type userResolver struct{ *Resolver }
+type subscriberInputResolver struct{ *Resolver }

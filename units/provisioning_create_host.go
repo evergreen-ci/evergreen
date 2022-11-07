@@ -231,7 +231,7 @@ func (j *createHostJob) selfThrottle() bool {
 		err                error
 	)
 
-	numProv, err = host.CountStartedTaskHosts()
+	numProv, err = host.CountIdleStartedTaskHosts()
 	if err != nil {
 		j.AddError(errors.Wrap(err, "counting pending host pool size"))
 		return true

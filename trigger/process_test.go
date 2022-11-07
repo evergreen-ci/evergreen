@@ -28,7 +28,6 @@ func mockTriggerVersion(args ProcessorArgs) (*model.Version, error) {
 	// we're putting the input params into arbitrary fields of the struct so that the tests can inspect them
 	v := model.Version{
 		Branch:      args.DownstreamProject.Id,
-		Config:      args.ConfigFile,
 		Message:     args.Alias,
 		TriggerID:   args.TriggerID,
 		TriggerType: args.TriggerType,
@@ -90,7 +89,6 @@ func (s *projectTriggerSuite) TestSimpleTaskFile() {
 	s.NoError(err)
 	s.Require().Len(versions, 1)
 	s.Equal("simpleTaskFile", versions[0].Branch)
-	s.Equal("configFile", versions[0].Config)
 }
 
 func (s *projectTriggerSuite) TestMultipleProjects() {
@@ -193,7 +191,6 @@ func (s *projectTriggerSuite) TestTaskRegex() {
 	s.NoError(err)
 	s.Require().Len(versions, 1)
 	s.Equal("proj1", versions[0].Branch)
-	s.Equal("configFile1", versions[0].Config)
 }
 
 func (s *projectTriggerSuite) TestMultipleTriggers() {
@@ -240,7 +237,6 @@ func (s *projectTriggerSuite) TestBuildFinish() {
 	s.NoError(err)
 	s.Require().Len(versions, 1)
 	s.Equal("ref", versions[0].Branch)
-	s.Equal("configFile", versions[0].Config)
 }
 
 func TestProjectTriggerIntegration(t *testing.T) {

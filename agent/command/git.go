@@ -55,8 +55,11 @@ type gitFetchProject struct {
 
 	RecurseSubmodules bool `mapstructure:"recurse_submodules"`
 
-	CommitterName  string `mapstructure:"committer_name"`
+	CommitterName string `mapstructure:"committer_name"`
+
 	CommitterEmail string `mapstructure:"committer_email"`
+
+	CloneParams string `mapstructure:"clone_params"`
 
 	base
 }
@@ -69,6 +72,7 @@ type cloneOpts struct {
 	branch             string
 	dir                string
 	token              string
+	cloneParams        string
 	recurseSubmodules  bool
 	mergeTestRequester bool
 	cloneDepth         int
@@ -186,6 +190,9 @@ func (opts cloneOpts) buildHTTPCloneCommand() ([]string, error) {
 	if opts.branch != "" {
 		clone = fmt.Sprintf("%s --branch '%s'", clone, opts.branch)
 	}
+	if opts.cloneParams != "" {
+		clone = fmt.Sprintf("%s %s", clone, opts.cloneParams)
+	}
 
 	redactedClone := strings.Replace(clone, opts.token, "[redacted oauth token]", -1)
 	return []string{
@@ -207,6 +214,9 @@ func (opts cloneOpts) buildSSHCloneCommand() ([]string, error) {
 	}
 	if opts.branch != "" {
 		cloneCmd = fmt.Sprintf("%s --branch '%s'", cloneCmd, opts.branch)
+	}
+	if opts.cloneParams != "" {
+		cloneCmd = fmt.Sprintf("%s %s", cloneCmd, opts.cloneParams)
 	}
 
 	return []string{
@@ -258,7 +268,7 @@ func (c *gitFetchProject) ParseParams(params map[string]interface{}) error {
 	return nil
 }
 
-func (c *gitFetchProject) buildCloneCommand(ctx context.Context, conf *internal.TaskConfig, logger client.LoggerProducer, opts cloneOpts) ([]string, error) {
+func (c *gitFetchProject) buildCloneCommand(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, opts cloneOpts) ([]string, error) {
 	gitCommands := []string{
 		"set -o xtrace",
 		"set -o errexit",
@@ -273,16 +283,15 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, conf *internal.
 
 	// if there's a PR checkout the ref containing the changes
 	if isGitHub(conf) {
-		var ref, commitToTest, branchName string
+		var ref, branchName, commitToTest string
 		if conf.Task.Requester == evergreen.MergeTestRequester {
-			// proceed if github has confirmed this pr is mergeable. If it hasn't checked, this request
+			// Proceed if github has confirmed this pr is mergeable. If it hasn't checked, this request
 			// will make it check.
-			// https://docs.github.com/en/rest/guides/getting-started-with-the-git-database-api#checking-mergeability-of-pull-requests
-			commitToTest, err = c.waitForMergeableCheck(ctx, logger, opts, conf.GithubPatchData.PRNumber)
+			commitToTest, err = c.waitForMergeableCheck(ctx, comm, logger, conf, opts)
 			if err != nil {
-				logger.Task().Error(errors.Wrap(err, "checking if pull request is mergeable"))
 				commitToTest = conf.GithubPatchData.HeadHash
-				logger.Task().Warningf("Because errors were encountered trying to retrieve the pull request, we will use the last recorded hash to test ('%s').", commitToTest)
+				logger.Task().Errorf("Error checking if pull request is mergeable: %s", err)
+				logger.Task().Warningf("Because errors were encountered trying to retrieve the pull request, we will use the last recorded hash to test (%s).", commitToTest)
 			}
 			ref = "merge"
 			branchName = fmt.Sprintf("evg-merge-test-%s", utility.RandomString())
@@ -315,7 +324,7 @@ func (c *gitFetchProject) buildCloneCommand(ctx context.Context, conf *internal.
 	return gitCommands, nil
 }
 
-func (c *gitFetchProject) waitForMergeableCheck(ctx context.Context, logger client.LoggerProducer, opts cloneOpts, prNum int) (string, error) {
+func (c *gitFetchProject) waitForMergeableCheck(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, opts cloneOpts) (string, error) {
 	var mergeSHA string
 
 	const (
@@ -323,18 +332,20 @@ func (c *gitFetchProject) waitForMergeableCheck(ctx context.Context, logger clie
 		getPRRetryMinDelay = time.Second
 		getPRRetryMaxDelay = 15 * time.Second
 	)
+	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
+
 	err := utility.Retry(ctx, func() (bool, error) {
-		pr, err := thirdparty.GetGithubPullRequest(ctx, opts.token, opts.owner, opts.repo, prNum)
+		info, err := comm.GetPullRequestInfo(ctx, td, conf.GithubPatchData.PRNumber, opts.owner, opts.repo)
 		if err != nil {
 			return false, errors.Wrap(err, "getting pull request data from GitHub")
 		}
-		if pr.Mergeable == nil {
+		if info.Mergeable == nil {
 			logger.Execution().Info("Mergeable check is not ready.")
 			return true, nil
 		}
-		if *pr.Mergeable {
-			if pr.MergeCommitSHA != nil {
-				mergeSHA = *pr.MergeCommitSHA
+		if *info.Mergeable {
+			if info.MergeCommitSHA != "" {
+				mergeSHA = info.MergeCommitSHA
 			} else {
 				return false, errors.New("pull request is mergeable but GitHub has not created a merge branch")
 			}
@@ -395,6 +406,7 @@ func (c *gitFetchProject) opts(projectMethod, projectToken string, logger client
 		branch:             conf.ProjectRef.Branch,
 		dir:                c.Directory,
 		token:              projectToken,
+		cloneParams:        c.CloneParams,
 		recurseSubmodules:  c.RecurseSubmodules,
 		mergeTestRequester: conf.Task.Requester == evergreen.MergeTestRequester,
 	}
@@ -476,12 +488,13 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 }
 
 func (c *gitFetchProject) fetchSource(ctx context.Context,
+	comm client.Communicator,
 	logger client.LoggerProducer,
 	conf *internal.TaskConfig,
 	jpm jasper.Manager,
 	opts cloneOpts) error {
 
-	gitCommands, err := c.buildCloneCommand(ctx, conf, logger, opts)
+	gitCommands, err := c.buildCloneCommand(ctx, comm, logger, conf, opts)
 	if err != nil {
 		return err
 	}
@@ -510,9 +523,9 @@ func (c *gitFetchProject) fetchSource(ctx context.Context,
 }
 
 func (c *gitFetchProject) fetchAdditionalPatches(ctx context.Context,
-	conf *internal.TaskConfig,
 	comm client.Communicator,
 	logger client.LoggerProducer,
+	conf *internal.TaskConfig,
 	td client.TaskData) ([]string, error) {
 
 	logger.Execution().Info("Fetching additional patches.")
@@ -634,9 +647,9 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 }
 
 func (c *gitFetchProject) applyAdditionalPatch(ctx context.Context,
-	conf *internal.TaskConfig,
 	comm client.Communicator,
 	logger client.LoggerProducer,
+	conf *internal.TaskConfig,
 	td client.TaskData,
 	patchId string) error {
 	logger.Task().Infof("Applying changes from previous commit queue patch '%s'.", patchId)
@@ -668,31 +681,33 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 	defer cancel()
 	jpm := c.JasperManager()
 
+	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
+
+	// Additional patches are for commit queue batch execution. Patches
+	// will be applied in the order returned, with the main patch being
+	// applied last. We check this first to avoid cloning if
+	// the task isn't on the commit queue anymore.
+	var err error
+	var additionalPatches []string
+	if conf.Task.Requester == evergreen.MergeTestRequester {
+		additionalPatches, err = c.fetchAdditionalPatches(ctx, comm, logger, conf, td)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+	}
+
 	// Clone the project.
-	err := c.fetchSource(ctx, logger, conf, jpm, opts)
-	if err != nil {
-		return errors.Wrap(err, "running fetch command")
+	if err = c.fetchSource(ctx, comm, logger, conf, jpm, opts); err != nil {
+		return errors.Wrap(err, "problem running fetch command")
 	}
 
 	// Retrieve the patch for the version if one exists.
 	var p *patch.Patch
-	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	if evergreen.IsPatchRequester(conf.Task.Requester) {
 		logger.Execution().Info("Fetching patch.")
 		p, err = comm.GetTaskPatch(ctx, td, "")
 		if err != nil {
 			return errors.Wrap(err, "getting patch for task")
-		}
-	}
-
-	// Additional patches are for commit queue batch execution. Patches
-	// will be applied in the order returned, with the main patch being
-	// applied last.
-	var additionalPatches []string
-	if conf.Task.Requester == evergreen.MergeTestRequester {
-		additionalPatches, err = c.fetchAdditionalPatches(ctx, conf, comm, logger, td)
-		if err != nil {
-			return errors.WithStack(err)
 		}
 	}
 
@@ -710,7 +725,7 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 	// Apply additional patches for commit queue batch execution.
 	if conf.Task.Requester == evergreen.MergeTestRequester && !conf.Task.CommitQueueMerge {
 		for _, patchId := range additionalPatches {
-			err := c.applyAdditionalPatch(ctx, conf, comm, logger, td, patchId)
+			err := c.applyAdditionalPatch(ctx, comm, logger, conf, td, patchId)
 			if err != nil {
 				return err
 			}

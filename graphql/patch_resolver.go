@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/utility"
 )
 
+// AuthorDisplayName is the resolver for the authorDisplayName field.
 func (r *patchResolver) AuthorDisplayName(ctx context.Context, obj *restModel.APIPatch) (string, error) {
 	usr, err := user.FindOneById(*obj.Author)
 	if err != nil {
@@ -31,6 +32,7 @@ func (r *patchResolver) AuthorDisplayName(ctx context.Context, obj *restModel.AP
 	return usr.DisplayName(), nil
 }
 
+// BaseTaskStatuses is the resolver for the baseTaskStatuses field.
 func (r *patchResolver) BaseTaskStatuses(ctx context.Context, obj *restModel.APIPatch) ([]string, error) {
 	baseTasks, err := getVersionBaseTasks(*obj.Id)
 	if err != nil {
@@ -39,6 +41,7 @@ func (r *patchResolver) BaseTaskStatuses(ctx context.Context, obj *restModel.API
 	return getAllTaskStatuses(baseTasks), nil
 }
 
+// Builds is the resolver for the builds field.
 func (r *patchResolver) Builds(ctx context.Context, obj *restModel.APIPatch) ([]*restModel.APIBuild, error) {
 	builds, err := build.FindBuildsByVersions([]string{*obj.Version})
 	if err != nil {
@@ -53,6 +56,7 @@ func (r *patchResolver) Builds(ctx context.Context, obj *restModel.APIPatch) ([]
 	return apiBuilds, nil
 }
 
+// CommitQueuePosition is the resolver for the commitQueuePosition field.
 func (r *patchResolver) CommitQueuePosition(ctx context.Context, obj *restModel.APIPatch) (*int, error) {
 	if err := obj.GetCommitQueuePosition(); err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
@@ -60,6 +64,7 @@ func (r *patchResolver) CommitQueuePosition(ctx context.Context, obj *restModel.
 	return obj.CommitQueuePosition, nil
 }
 
+// Duration is the resolver for the duration field.
 func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (*PatchDuration, error) {
 	query := db.Query(task.ByVersion(*obj.Id)).WithFields(task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey, task.DisplayOnlyKey, task.ExecutionKey)
 	tasks, err := task.FindAllFirstExecution(query)
@@ -91,6 +96,7 @@ func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (
 	}, nil
 }
 
+// PatchTriggerAliases is the resolver for the patchTriggerAliases field.
 func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *restModel.APIPatch) ([]*restModel.APIPatchTriggerDefinition, error) {
 	projectRef, err := data.FindProjectById(*obj.ProjectId, true, true)
 	if err != nil || projectRef == nil {
@@ -142,6 +148,7 @@ func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *restModel.
 	return aliases, nil
 }
 
+// Project is the resolver for the project field.
 func (r *patchResolver) Project(ctx context.Context, obj *restModel.APIPatch) (*PatchProject, error) {
 	patchProject, err := getPatchProjectVariantsAndTasksForUI(ctx, obj)
 	if err != nil {
@@ -150,11 +157,13 @@ func (r *patchResolver) Project(ctx context.Context, obj *restModel.APIPatch) (*
 	return patchProject, nil
 }
 
+// ProjectIdentifier is the resolver for the projectIdentifier field.
 func (r *patchResolver) ProjectIdentifier(ctx context.Context, obj *restModel.APIPatch) (string, error) {
 	obj.GetIdentifier()
 	return utility.FromStringPtr(obj.ProjectIdentifier), nil
 }
 
+// TaskCount is the resolver for the taskCount field.
 func (r *patchResolver) TaskCount(ctx context.Context, obj *restModel.APIPatch) (*int, error) {
 	taskCount, err := task.Count(db.Query(task.DisplayTasksByVersion(*obj.Id)))
 	if err != nil {
@@ -163,6 +172,7 @@ func (r *patchResolver) TaskCount(ctx context.Context, obj *restModel.APIPatch) 
 	return &taskCount, nil
 }
 
+// TaskStatuses is the resolver for the taskStatuses field.
 func (r *patchResolver) TaskStatuses(ctx context.Context, obj *restModel.APIPatch) ([]string, error) {
 	defaultSort := []task.TasksSortOrder{
 		{Key: task.DisplayNameKey, Order: 1},
@@ -180,6 +190,7 @@ func (r *patchResolver) TaskStatuses(ctx context.Context, obj *restModel.APIPatc
 	return getAllTaskStatuses(tasks), nil
 }
 
+// Time is the resolver for the time field.
 func (r *patchResolver) Time(ctx context.Context, obj *restModel.APIPatch) (*PatchTime, error) {
 	usr := mustHaveUser(ctx)
 
@@ -203,6 +214,7 @@ func (r *patchResolver) Time(ctx context.Context, obj *restModel.APIPatch) (*Pat
 	}, nil
 }
 
+// VersionFull is the resolver for the versionFull field.
 func (r *patchResolver) VersionFull(ctx context.Context, obj *restModel.APIPatch) (*restModel.APIVersion, error) {
 	if utility.FromStringPtr(obj.Version) == "" {
 		return nil, nil

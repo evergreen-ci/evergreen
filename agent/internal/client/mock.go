@@ -468,8 +468,7 @@ func (c *Mock) GenerateTasks(ctx context.Context, td TaskData, jsonBytes []json.
 
 func (c *Mock) GenerateTasksPoll(ctx context.Context, td TaskData) (*apimodels.GeneratePollResponse, error) {
 	resp := &apimodels.GeneratePollResponse{
-		Finished:   true,
-		ShouldExit: false,
+		Finished: true,
 	}
 	if c.GenerateTasksShouldFail {
 		resp.Error = "error polling generate tasks!"
@@ -506,4 +505,10 @@ func (c *Mock) ConcludeMerge(ctx context.Context, patchId, status string, td Tas
 
 func (c *Mock) GetAdditionalPatches(ctx context.Context, patchId string, td TaskData) ([]string, error) {
 	return []string{"555555555555555555555555"}, nil
+}
+
+func (c *Mock) GetPullRequestInfo(ctx context.Context, taskData TaskData, prNum int, owner, repo string) (*apimodels.PullRequestInfo, error) {
+	return &apimodels.PullRequestInfo{
+		Mergeable: utility.TruePtr(),
+	}, nil
 }

@@ -59,7 +59,10 @@ func hostProvision() cli.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			comm := client.NewCommunicator(c.String(apiServerURLFlagName))
+			comm, err := client.NewCommunicator(c.String(apiServerURLFlagName))
+			if err != nil {
+				return errors.Wrap(err, "initializing client")
+			}
 			defer comm.Close()
 
 			opts, err := comm.GetHostProvisioningOptions(ctx, c.String(hostIDFlagName), c.String(hostSecretFlagName))

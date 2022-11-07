@@ -5,7 +5,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -15,15 +14,7 @@ func (e *EventLogEntry) Log() error {
 		return errors.Wrap(err, "not logging event, event is invalid")
 	}
 
-	grip.Error(message.WrapError(db.Insert(EventCollection, e), message.Fields{
-		"message":       "inserting event",
-		"collection":    EventCollection,
-		"resource_type": e.ResourceType,
-		"event_type":    e.EventType,
-		"event_id":      e.ID,
-	}))
-
-	return errors.Wrap(db.Insert(LegacyEventLogCollection, e), "inserting event")
+	return errors.Wrap(db.Insert(EventCollection, e), "inserting event")
 }
 
 func (e *EventLogEntry) MarkProcessed() error {
@@ -44,13 +35,7 @@ func (e *EventLogEntry) MarkProcessed() error {
 		},
 	}
 
-	grip.Error(message.WrapError(db.Update(EventCollection, filter, update), message.Fields{
-		"message":    "marking event processed",
-		"collection": EventCollection,
-		"event_id":   e.ID,
-	}))
-
-	if err := db.Update(LegacyEventLogCollection, filter, update); err != nil {
+	if err := db.Update(EventCollection, filter, update); err != nil {
 		return errors.Wrap(err, "updating 'processed at' time")
 	}
 
@@ -73,10 +58,5 @@ func LogManyEvents(events []EventLogEntry) error {
 		return errors.Wrap(catcher.Resolve(), "invalid events")
 	}
 
-	grip.Error(message.WrapError(db.InsertMany(EventCollection, interfaces...), message.Fields{
-		"message":    "inserting many events",
-		"collection": EventCollection,
-	}))
-
-	return db.InsertMany(LegacyEventLogCollection, interfaces...)
+	return db.InsertMany(EventCollection, interfaces...)
 }

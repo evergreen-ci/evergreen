@@ -23,6 +23,7 @@ import (
 	werrors "github.com/pkg/errors"
 )
 
+// BaseTaskStatuses is the resolver for the baseTaskStatuses field.
 func (r *versionResolver) BaseTaskStatuses(ctx context.Context, obj *restModel.APIVersion) ([]string, error) {
 	var baseVersion *model.Version
 	var err error
@@ -44,6 +45,7 @@ func (r *versionResolver) BaseTaskStatuses(ctx context.Context, obj *restModel.A
 	return statuses, nil
 }
 
+// BaseVersion is the resolver for the baseVersion field.
 func (r *versionResolver) BaseVersion(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIVersion, error) {
 	baseVersion, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(*obj.Project, *obj.Revision))
 	if baseVersion == nil || err != nil {
@@ -54,6 +56,7 @@ func (r *versionResolver) BaseVersion(ctx context.Context, obj *restModel.APIVer
 	return &apiVersion, nil
 }
 
+// BuildVariants is the resolver for the buildVariants field.
 func (r *versionResolver) BuildVariants(ctx context.Context, obj *restModel.APIVersion, options *BuildVariantOptions) ([]*GroupedBuildVariant, error) {
 	// If activated is nil in the db we should resolve it and cache it for subsequent queries. There is a very low likely hood of this field being hit
 	if obj.Activated == nil {
@@ -77,6 +80,7 @@ func (r *versionResolver) BuildVariants(ctx context.Context, obj *restModel.APIV
 	return groupedBuildVariants, nil
 }
 
+// BuildVariantStats is the resolver for the buildVariantStats field.
 func (r *versionResolver) BuildVariantStats(ctx context.Context, obj *restModel.APIVersion, options *BuildVariantOptions) ([]*task.GroupedTaskStatusCount, error) {
 	opts := task.GetTasksByVersionOptions{
 		TaskNames:                      options.Tasks,
@@ -92,6 +96,7 @@ func (r *versionResolver) BuildVariantStats(ctx context.Context, obj *restModel.
 	return stats, nil
 }
 
+// ChildVersions is the resolver for the childVersions field.
 func (r *versionResolver) ChildVersions(ctx context.Context, obj *restModel.APIVersion) ([]*restModel.APIVersion, error) {
 	if !evergreen.IsPatchRequester(*obj.Requester) {
 		return nil, nil
@@ -142,10 +147,12 @@ func (r *versionResolver) ChildVersions(ctx context.Context, obj *restModel.APIV
 	return nil, nil
 }
 
+// IsPatch is the resolver for the isPatch field.
 func (r *versionResolver) IsPatch(ctx context.Context, obj *restModel.APIVersion) (bool, error) {
 	return evergreen.IsPatchRequester(*obj.Requester), nil
 }
 
+// Manifest is the resolver for the manifest field.
 func (r *versionResolver) Manifest(ctx context.Context, obj *restModel.APIVersion) (*Manifest, error) {
 	m, err := manifest.FindFromVersion(*obj.Id, *obj.Project, *obj.Revision, *obj.Requester)
 	if err != nil {
@@ -171,6 +178,7 @@ func (r *versionResolver) Manifest(ctx context.Context, obj *restModel.APIVersio
 	return &versionManifest, nil
 }
 
+// Patch is the resolver for the patch field.
 func (r *versionResolver) Patch(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIPatch, error) {
 	if !evergreen.IsPatchRequester(*obj.Requester) {
 		return nil, nil
@@ -182,6 +190,7 @@ func (r *versionResolver) Patch(ctx context.Context, obj *restModel.APIVersion) 
 	return apiPatch, nil
 }
 
+// PreviousVersion is the resolver for the previousVersion field.
 func (r *versionResolver) PreviousVersion(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIVersion, error) {
 	if !evergreen.IsPatchRequester(utility.FromStringPtr(obj.Requester)) {
 		previousVersion, err := model.VersionFindOne(model.VersionByProjectIdAndOrder(utility.FromStringPtr(obj.Project), obj.Order-1))
@@ -199,6 +208,7 @@ func (r *versionResolver) PreviousVersion(ctx context.Context, obj *restModel.AP
 	}
 }
 
+// ProjectMetadata is the resolver for the projectMetadata field.
 func (r *versionResolver) ProjectMetadata(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIProjectRef, error) {
 	projectRef, err := model.FindMergedProjectRef(*obj.Project, *obj.Id, false)
 	if err != nil {
@@ -214,6 +224,7 @@ func (r *versionResolver) ProjectMetadata(ctx context.Context, obj *restModel.AP
 	return &apiProjectRef, nil
 }
 
+// Status is the resolver for the status field.
 func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion) (string, error) {
 	collectiveStatusArray, err := getCollectiveStatusArray(*obj)
 	if err != nil {
@@ -223,6 +234,7 @@ func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion)
 	return status, nil
 }
 
+// TaskCount is the resolver for the taskCount field.
 func (r *versionResolver) TaskCount(ctx context.Context, obj *restModel.APIVersion) (*int, error) {
 	taskCount, err := task.Count(db.Query(task.DisplayTasksByVersion(*obj.Id)))
 	if err != nil {
@@ -231,6 +243,7 @@ func (r *versionResolver) TaskCount(ctx context.Context, obj *restModel.APIVersi
 	return &taskCount, nil
 }
 
+// Tasks is the resolver for the tasks field.
 func (r *versionResolver) Tasks(ctx context.Context, obj *restModel.APIVersion, options *TaskFilterOptions) (*VersionTasks, error) {
 	versionId := utility.FromStringPtr(obj.Id)
 	pageParam := 0
@@ -318,6 +331,7 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *restModel.APIVersion, 
 	return &versionTasks, nil
 }
 
+// TaskStatuses is the resolver for the taskStatuses field.
 func (r *versionResolver) TaskStatuses(ctx context.Context, obj *restModel.APIVersion) ([]string, error) {
 	defaultSort := []task.TasksSortOrder{
 		{Key: task.DisplayNameKey, Order: 1},
@@ -336,6 +350,7 @@ func (r *versionResolver) TaskStatuses(ctx context.Context, obj *restModel.APIVe
 	return getAllTaskStatuses(tasks), nil
 }
 
+// TaskStatusStats is the resolver for the taskStatusStats field.
 func (r *versionResolver) TaskStatusStats(ctx context.Context, obj *restModel.APIVersion, options *BuildVariantOptions) (*task.TaskStats, error) {
 	opts := task.GetTasksByVersionOptions{
 		IncludeBaseTasks:      false,
@@ -355,6 +370,7 @@ func (r *versionResolver) TaskStatusStats(ctx context.Context, obj *restModel.AP
 	return stats, nil
 }
 
+// UpstreamProject is the resolver for the upstreamProject field.
 func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.APIVersion) (*UpstreamProject, error) {
 	v, err := model.VersionFindOneId(utility.FromStringPtr(obj.Id))
 	if err != nil {
@@ -430,6 +446,7 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 	return upstreamProject, nil
 }
 
+// VersionTiming is the resolver for the versionTiming field.
 func (r *versionResolver) VersionTiming(ctx context.Context, obj *restModel.APIVersion) (*VersionTiming, error) {
 	v, err := model.VersionFindOneId(*obj.Id)
 	if err != nil {

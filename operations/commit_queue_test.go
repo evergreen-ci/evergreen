@@ -70,7 +70,8 @@ func (s *CommitQueueSuite) SetupSuite() {
 	s.Require().NoError(settingsFile.Close())
 	s.conf, err = NewClientSettings(settingsFile.Name())
 	s.Require().NoError(err)
-	s.client = s.conf.setupRestCommunicator(s.ctx)
+	s.client, err = s.conf.setupRestCommunicator(s.ctx)
+	s.Require().NoError(err)
 }
 
 func (s *CommitQueueSuite) TearDownSuite() {

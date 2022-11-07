@@ -24,7 +24,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -127,7 +126,7 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 			"runner":             RunnerName,
 			"project":            projectRef.Id,
 			"project_identifier": projectRef.Identifier,
-			"message":            "no last recorded revision, using most recent revisions",
+			"message":            "no last recorded revision or ignoring last recorded revision, using most recent revisions",
 			"number":             numRevisions,
 		})
 		revisions, err = repoTracker.GetRecentRevisions(numRevisions)
@@ -211,7 +210,8 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 	return nil
 }
 
-// StoreRevisions constructs all versions stored from recent repository revisions
+// StoreRevisions constructs all versions stored from recent repository revisions. The revisions should be given in
+// order of most recent to least recent commit.
 // The additional complexity is due to support for project modifications on patch builds.
 // We need to parse the remote config as it existed when each revision was created.
 // The return value is the most recent version created as a result of storing the revisions.
@@ -219,6 +219,9 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []model.Revision) error {
 	var newestVersion *model.Version
 	ref := repoTracker.ProjectRef
+
+	// Since the revisions are ordered most to least recent, iterate backwards so that they're processed in order of
+	// least to most recent.
 	for i := len(revisions) - 1; i >= 0; i-- {
 		revision := revisions[i].Revision
 		grip.Infof("Processing revision %s in project %s", revision, ref.Id)
@@ -476,62 +479,19 @@ func addGithubCheckSubscriptions(v *model.Version) error {
 	if err := buildSub.Upsert(); err != nil {
 		catcher.Wrap(err, "failed to insert build github check subscription")
 	}
-	flags, err := evergreen.GetServiceFlags()
+	input := thirdparty.SendGithubStatusInput{
+		VersionId: v.Id,
+		Owner:     v.Owner,
+		Repo:      v.Repo,
+		Ref:       v.Revision,
+		Desc:      "version created",
+		Caller:    RunnerName,
+		Context:   "evergreen",
+	}
+	err := thirdparty.SendVersionStatusToGithub(input)
 	if err != nil {
-		catcher.Add(errors.Wrap(err, "error retrieving admin settings"))
-		return catcher.Resolve()
+		catcher.Wrap(err, "failed to send version status to github")
 	}
-	if flags.GithubStatusAPIDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-			"runner":  RunnerName,
-			"message": "github status updates are disabled, not updating status",
-		})
-		return catcher.Resolve()
-	}
-	env := evergreen.GetEnvironment()
-	uiConfig := evergreen.UIConfig{}
-	if err = uiConfig.Get(env); err != nil {
-		catcher.Add(err)
-		return catcher.Resolve()
-	}
-	urlBase := uiConfig.Url
-	if urlBase == "" {
-		catcher.New("url base doesn't exist")
-		return catcher.Resolve()
-	}
-	status := &message.GithubStatus{
-		Owner:       v.Owner,
-		Repo:        v.Repo,
-		Ref:         v.Revision,
-		URL:         fmt.Sprintf("%s/version/%s", urlBase, v.Id),
-		Context:     "evergreen",
-		State:       message.GithubStatePending,
-		Description: "version created",
-	}
-	sender, err := env.GetSender(evergreen.SenderGithubStatus)
-	if err != nil {
-		catcher.Add(err)
-		return catcher.Resolve()
-	}
-
-	c := message.MakeGithubStatusMessageWithRepo(*status)
-	if !c.Loggable() {
-		catcher.Add(errors.Errorf("status message is invalid: %+v", status))
-		return catcher.Resolve()
-	}
-
-	if err = c.SetPriority(level.Notice); err != nil {
-		catcher.Add(err)
-		return catcher.Resolve()
-	}
-
-	sender.Send(c)
-	grip.Info(message.Fields{
-		"ticket":  thirdparty.GithubInvestigation,
-		"message": "called github status send",
-		"caller":  "github check subscriptions",
-		"version": v.Id,
-	})
 	return catcher.Resolve()
 }
 
@@ -892,12 +852,12 @@ func makeVersionIdWithTag(project, tag, id string) string {
 func verifyOrderNum(revOrderNum int, projectId, revision string) error {
 	latest, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester(projectId))
 	if err != nil || latest == nil {
-		return errors.Wrap(err, "Error getting latest version")
+		return errors.Wrap(err, "getting latest version")
 	}
 
 	// When there are no versions in the db yet, verification is moot.
 	if revOrderNum <= latest.RevisionOrderNumber {
-		return errors.Errorf("Commit order number isn't greater than last stored version's: %v <= %v",
+		return errors.Errorf("commit order number isn't greater than last stored version's: %d <= %d",
 			revOrderNum, latest.RevisionOrderNumber)
 	}
 	return nil

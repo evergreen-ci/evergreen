@@ -9,10 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-const (
-	LegacyEventLogCollection = "event_log"
-	EventCollection          = "events"
-)
+const EventCollection = "events"
 
 var notSubscribableTime = time.Date(2015, time.October, 21, 23, 29, 1, 0, time.UTC)
 
