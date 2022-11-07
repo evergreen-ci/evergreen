@@ -12,6 +12,7 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 )
 
+// WebhookConfigured is the resolver for the webhookConfigured field.
 func (r *annotationResolver) WebhookConfigured(ctx context.Context, obj *restModel.APITaskAnnotation) (bool, error) {
 	t, err := task.FindOneId(*obj.TaskId)
 	if err != nil {
