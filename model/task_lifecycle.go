@@ -938,7 +938,7 @@ func updateMakespans(b *build.Build, buildTasks []task.Task) error {
 	return errors.WithStack(b.UpdateMakespans(depPath.TotalTime, CalculateActualMakespan(buildTasks)))
 }
 
-type BuildStatus struct {
+type buildStatus struct {
 	status              string
 	allTasksBlocked     bool
 	allTasksUnscheduled bool
@@ -946,7 +946,7 @@ type BuildStatus struct {
 
 // getBuildStatus returns a string denoting the status of the build and
 // a boolean denoting if all tasks in the build are blocked.
-func getBuildStatus(buildTasks []task.Task) BuildStatus {
+func getBuildStatus(buildTasks []task.Task) buildStatus {
 	// Check if no tasks have started and if all tasks are blocked.
 	noStartedTasks := true
 	allTasksBlocked := true
@@ -966,7 +966,7 @@ func getBuildStatus(buildTasks []task.Task) BuildStatus {
 	}
 
 	if allTasksUnscheduled {
-		return BuildStatus{
+		return buildStatus{
 			status:              evergreen.BuildCreated,
 			allTasksBlocked:     allTasksBlocked,
 			allTasksUnscheduled: allTasksUnscheduled,
@@ -974,26 +974,26 @@ func getBuildStatus(buildTasks []task.Task) BuildStatus {
 	}
 
 	if noStartedTasks || allTasksBlocked {
-		return BuildStatus{status: evergreen.BuildCreated, allTasksBlocked: allTasksBlocked}
+		return buildStatus{status: evergreen.BuildCreated, allTasksBlocked: allTasksBlocked}
 	}
 
 	// Check if tasks are started but not finished.
 	for _, t := range buildTasks {
 		if t.Status == evergreen.TaskStarted {
-			return BuildStatus{status: evergreen.BuildStarted}
+			return buildStatus{status: evergreen.BuildStarted}
 		}
 		if t.Activated && !t.Blocked() && !t.IsFinished() {
-			return BuildStatus{status: evergreen.BuildStarted}
+			return buildStatus{status: evergreen.BuildStarted}
 		}
 	}
 
 	// Check if all tasks are finished but have failures.
 	for _, t := range buildTasks {
 		if evergreen.IsFailedTaskStatus(t.Status) || t.Aborted {
-			return BuildStatus{status: evergreen.BuildFailed}
+			return buildStatus{status: evergreen.BuildFailed}
 		}
 	}
-	return BuildStatus{status: evergreen.BuildSucceeded}
+	return buildStatus{status: evergreen.BuildSucceeded}
 }
 
 func updateBuildGithubStatus(b *build.Build, buildTasks []task.Task) error {
@@ -1029,7 +1029,7 @@ func updateBuildStatus(b *build.Build) (bool, error) {
 	}
 
 	buildStatus := getBuildStatus(buildTasks)
-	// if all the tasks are unscheduled, set active to false
+	// If all the tasks are unscheduled, set active to false
 	if buildStatus.allTasksUnscheduled {
 		if err = b.SetActivated(false); err != nil {
 			return true, errors.Wrapf(err, "setting build '%s' as inactive", b.Id)
