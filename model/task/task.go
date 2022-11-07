@@ -3320,9 +3320,9 @@ func (t *Task) Blocked() bool {
 	return false
 }
 
-// isScheduled returns if a task is scheduled to run
-func (t *Task) IsScheduled() bool {
-	return t.Status == evergreen.TaskUndispatched && t.Activated
+// isUnscheduled returns if a task is scheduled to run
+func (t *Task) IsUnscheduled() bool {
+	return t.Status == evergreen.TaskUndispatched && !t.Activated
 }
 
 func (t *Task) BlockedState(dependencies map[string]*Task) (string, error) {
