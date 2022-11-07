@@ -952,7 +952,7 @@ func getBuildStatus(buildTasks []task.Task) buildStatus {
 	allTasksBlocked := true
 	allTasksUnscheduled := true
 	for _, t := range buildTasks {
-		if !t.IsScheduled() {
+		if !t.IsUnscheduled() {
 			allTasksUnscheduled = false
 		}
 		if !evergreen.IsUnstartedTaskStatus(t.Status) {
