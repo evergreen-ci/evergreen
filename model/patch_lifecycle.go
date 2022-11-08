@@ -453,8 +453,8 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	}
 
 	authorEmail := p.GitInfo.Email
-	if p.GithubPatchData.AuthorUID != 0 {
-		u, _ := user.FindByGithubUID(p.GithubPatchData.AuthorUID)
+	if p.Author != "" {
+		u, _ := user.FindOneById(p.Author)
 		if u != nil {
 			authorEmail = u.Email()
 		}
