@@ -100,14 +100,14 @@ func (j *volumeMigrationJob) Run(ctx context.Context) {
 	}
 
 	if j.volume.Host != "" {
-		if err := mgr.DetachVolume(ctx, j.initialHost, j.VolumeID); err != nil {
-			j.AddError(errors.Wrapf(err, "detaching volume '%s'", j.VolumeID))
-			return
-		}
-
 		// Unmount volume from initial host
 		if err := j.initialHost.UnsetHomeVolume(); err != nil {
 			j.AddError(errors.Wrapf(err, "unsetting home volume '%s' from host '%s'", j.VolumeID, j.InitialHostID))
+			return
+		}
+
+		if err := mgr.DetachVolume(ctx, j.initialHost, j.VolumeID); err != nil {
+			j.AddError(errors.Wrapf(err, "detaching volume '%s'", j.VolumeID))
 			return
 		}
 
@@ -121,7 +121,6 @@ func (j *volumeMigrationJob) Run(ctx context.Context) {
 			j.AddError(errors.Errorf("volume '%s' not found", j.VolumeID))
 			return
 		}
-		fmt.Println("UPDATING VOLUME")
 		j.volume = volume
 	}
 
@@ -236,9 +235,9 @@ func (j *volumeMigrationJob) populateIfUnset() error {
 	}
 
 	if j.InitialHostID == "" {
-		// If volume was attached to terminated host, query this host by its home volume field.
+		// If volume was initially attached to a now-terminated host, query for this host by its home volume field.
 		if j.volume.Host == "" {
-			initialHost, err := host.FindLatestTerminatedHostWithHomeVolume(j.VolumeID)
+			initialHost, err := host.FindLatestTerminatedHostWithHomeVolume(j.VolumeID, evergreen.User)
 			if err != nil {
 				return errors.Wrapf(err, "getting host attached to volume '%s'", j.VolumeID)
 			}

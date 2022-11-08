@@ -235,6 +235,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			h := &host.Host{
 				Id:           "h0",
 				UserHost:     true,
+				StartedBy:    evergreen.User,
 				Status:       evergreen.HostRunning,
 				Provider:     evergreen.ProviderNameMock,
 				Distro:       *d,
@@ -265,7 +266,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 				Host:             h.Id,
 				HomeVolume:       true,
 				AvailabilityZone: evergreen.DefaultEBSAvailabilityZone,
-				CreatedBy:        "test-user",
+				CreatedBy:        evergreen.User,
 				Type:             "standard",
 				Size:             32,
 				Expiration:       time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
