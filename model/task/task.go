@@ -3320,6 +3320,11 @@ func (t *Task) Blocked() bool {
 	return false
 }
 
+// isUnscheduled returns true if a task is unscheduled and will not run
+func (t *Task) IsUnscheduled() bool {
+	return t.Status == evergreen.TaskUndispatched && !t.Activated
+}
+
 func (t *Task) BlockedState(dependencies map[string]*Task) (string, error) {
 	if t.Blocked() {
 		return evergreen.TaskStatusBlocked, nil
