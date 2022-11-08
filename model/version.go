@@ -29,8 +29,6 @@ type Version struct {
 	Message             string               `bson:"message" json:"message,omitempty"`
 	Status              string               `bson:"status" json:"status,omitempty"`
 	RevisionOrderNumber int                  `bson:"order,omitempty" json:"order,omitempty"`
-	Config              string               `bson:"config" json:"config,omitempty"`
-	ConfigUpdateNumber  int                  `bson:"config_number" json:"config_number,omitempty"`
 	Ignored             bool                 `bson:"ignored" json:"ignored"`
 	Owner               string               `bson:"owner_name" json:"owner_name,omitempty"`
 	Repo                string               `bson:"repo_name" json:"repo_name,omitempty"`
@@ -325,7 +323,7 @@ func VersionGetHistory(versionId string, N int) ([]Version, error) {
 				"$in": evergreen.SystemVersionRequesterTypes,
 			},
 			VersionIdentifierKey: v.Identifier,
-		}).WithoutFields(VersionConfigKey).Sort([]string{VersionRevisionOrderNumberKey}).Limit(2*N + 1))
+		}).Sort([]string{VersionRevisionOrderNumberKey}).Limit(2*N + 1))
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -351,7 +349,7 @@ func VersionGetHistory(versionId string, N int) ([]Version, error) {
 					"$in": evergreen.SystemVersionRequesterTypes,
 				},
 				VersionIdentifierKey: v.Identifier,
-			}).WithoutFields(VersionConfigKey).Sort([]string{VersionRevisionOrderNumberKey}).Limit(N - versionIndex))
+			}).Sort([]string{VersionRevisionOrderNumberKey}).Limit(N - versionIndex))
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -371,7 +369,7 @@ func VersionGetHistory(versionId string, N int) ([]Version, error) {
 				"$in": evergreen.SystemVersionRequesterTypes,
 			},
 			VersionIdentifierKey: v.Identifier,
-		}).WithoutFields(VersionConfigKey).Sort([]string{fmt.Sprintf("-%v", VersionRevisionOrderNumberKey)}).Limit(N))
+		}).Sort([]string{fmt.Sprintf("-%v", VersionRevisionOrderNumberKey)}).Limit(N))
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}

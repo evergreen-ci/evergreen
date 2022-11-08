@@ -23,9 +23,8 @@ type TaskCache struct {
 }
 
 // Build represents a set of tasks on one variant of a Project
-//
-//		e.g. one build might be "Ubuntu with Python 2.4" and
-//	 another might be "OSX with Python 3.0", etc.
+// e.g. one build might be "Ubuntu with Python 2.4" and
+// another might be "OSX with Python 3.0", etc.
 type Build struct {
 	Id                  string        `bson:"_id" json:"_id"`
 	CreateTime          time.Time     `bson:"create_time" json:"create_time,omitempty"`

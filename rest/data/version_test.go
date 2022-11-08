@@ -208,22 +208,22 @@ func (s *VersionConnectorSuite) TestGetVersionsAndVariants() {
 		{
 			Id:      "t211",
 			Version: v2.Id,
-			Status:  evergreen.TaskUnstarted,
+			Status:  evergreen.TaskUnscheduled,
 		},
 		{
 			Id:      "t212",
 			Version: v2.Id,
-			Status:  evergreen.TaskUnstarted,
+			Status:  evergreen.TaskUnscheduled,
 		},
 		{
 			Id:      "t221",
 			Version: v2.Id,
-			Status:  evergreen.TaskUnstarted,
+			Status:  evergreen.TaskUnscheduled,
 		},
 		{
 			Id:      "t222",
 			Version: v2.Id,
-			Status:  evergreen.TaskUnstarted,
+			Status:  evergreen.TaskUnscheduled,
 		},
 	}
 	for _, t := range tasks {
@@ -314,7 +314,6 @@ func TestCreateVersionFromConfig(t *testing.T) {
 	assert.Equal(ref.Id, newVersion.Identifier)
 	assert.Equal(1, newVersion.RevisionOrderNumber)
 	assert.Equal(evergreen.AdHocRequester, newVersion.Requester)
-	assert.Empty(newVersion.Config)
 
 	pp, err = model.ParserProjectFindOneById(newVersion.Id)
 	assert.NoError(err)
@@ -360,7 +359,6 @@ tasks:
 	assert.Equal(ref.Id, newVersion.Identifier)
 	assert.Equal(2, newVersion.RevisionOrderNumber)
 	assert.Equal(evergreen.AdHocRequester, newVersion.Requester)
-	assert.Empty(newVersion.Config)
 
 	pp, err = model.ParserProjectFindOneById(newVersion.Id)
 	assert.NoError(err)

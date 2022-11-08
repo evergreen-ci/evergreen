@@ -32,15 +32,34 @@ func TestBuildSuite(t *testing.T) {
 }
 
 func (s *BuildByIdSuite) SetupSuite() {
-	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, build.Collection))
+	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, build.Collection, task.Collection))
 	projRef := serviceModel.ProjectRef{Repo: "project", Id: "branch"}
 	s.NoError(projRef.Insert())
-	builds := []build.Build{
-		{Id: "build1", Project: "branch"},
-		{Id: "build2", Project: "notbranch"},
+	tasks := []task.Task{
+		{Id: "task1", Status: evergreen.TaskFailed, BuildId: "build1", DisplayOnly: true},
+		{Id: "task2", Status: evergreen.TaskSucceeded, BuildId: "build2"},
 	}
-	for _, item := range builds {
-		s.Require().NoError(item.Insert())
+	for _, task := range tasks {
+		s.Require().NoError(task.Insert())
+	}
+	builds := []build.Build{
+		{
+			Id:      "build1",
+			Project: "branch",
+			Tasks: []build.TaskCache{
+				{Id: "task1"},
+			},
+		},
+		{
+			Id:      "build2",
+			Project: "notbranch",
+			Tasks: []build.TaskCache{
+				{Id: "task2"},
+			},
+		},
+	}
+	for _, build := range builds {
+		s.Require().NoError(build.Insert())
 	}
 }
 
@@ -48,7 +67,7 @@ func (s *BuildByIdSuite) SetupTest() {
 	s.rm = makeGetBuildByID()
 }
 
-func (s *BuildByIdSuite) TestFindByIdProjFound() {
+func (s *BuildByIdSuite) TestFindBuildById() {
 	s.rm.(*buildGetHandler).buildId = "build1"
 	resp := s.rm.Run(context.TODO())
 	s.Equal(resp.Status(), http.StatusOK)
@@ -58,9 +77,23 @@ func (s *BuildByIdSuite) TestFindByIdProjFound() {
 	s.True(ok)
 	s.Equal(utility.ToStringPtr("build1"), b.Id)
 	s.Equal(utility.ToStringPtr("branch"), b.ProjectId)
+	s.Equal("task1", b.TaskCache[0].Id)
+	s.Equal(evergreen.TaskFailed, b.TaskCache[0].Status)
+
+	s.rm.(*buildGetHandler).buildId = "build2"
+	resp = s.rm.Run(context.TODO())
+	s.Equal(resp.Status(), http.StatusOK)
+	s.NotNil(resp.Data())
+
+	b, ok = (resp.Data()).(*model.APIBuild)
+	s.True(ok)
+	s.Equal(utility.ToStringPtr("build2"), b.Id)
+	s.Equal(utility.ToStringPtr("notbranch"), b.ProjectId)
+	s.Equal("task2", b.TaskCache[0].Id)
+	s.Equal(evergreen.TaskSucceeded, b.TaskCache[0].Status)
 }
 
-func (s *BuildByIdSuite) TestFindByIdFail() {
+func (s *BuildByIdSuite) TestFindBuildByIdFail() {
 	s.rm.(*buildGetHandler).buildId = "build3"
 	resp := s.rm.Run(context.TODO())
 	s.NotEqual(resp.Status(), http.StatusOK)

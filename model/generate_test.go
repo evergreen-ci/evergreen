@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -564,7 +565,7 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	s.NoError(err)
 	cachedProject := cacheProjectData(p)
 	g := sampleGeneratedProject
-	newPP, err := g.addGeneratedProjectToConfig(pp, "", cachedProject)
+	newPP, err := g.addGeneratedProjectToConfig(pp, cachedProject)
 	s.NoError(err)
 	s.NotEmpty(newPP)
 	s.Require().Len(newPP.Tasks, 6)
@@ -577,7 +578,7 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	s.Equal(newPP.Tasks[4].Name, "new_task")
 	s.Equal(newPP.Tasks[5].Name, "another_task")
 
-	newPP2, err := g.addGeneratedProjectToConfig(nil, sampleProjYml, cachedProject)
+	newPP2, err := g.addGeneratedProjectToConfig(&ParserProject{Functions: map[string]*YAMLCommandSet{}}, cachedProject)
 	s.NoError(err)
 	s.NotEmpty(newPP2)
 
@@ -599,7 +600,7 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 
 	pp, err = LoadProjectInto(ctx, []byte(sampleProjYmlNoFunctions), nil, "", p)
 	s.NoError(err)
-	newPP, err = g.addGeneratedProjectToConfig(pp, "", cachedProject)
+	newPP, err = g.addGeneratedProjectToConfig(pp, cachedProject)
 	s.NoError(err)
 	s.NotNil(newPP)
 	s.Require().Len(newPP.Tasks, 5)
@@ -609,7 +610,7 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	s.Equal(newPP.Tasks[1].Name, "say-bye")
 	s.Equal(newPP.Tasks[3].Name, "new_task")
 
-	newPP2, err = g.addGeneratedProjectToConfig(nil, sampleProjYmlNoFunctions, cachedProject)
+	newPP2, err = g.addGeneratedProjectToConfig(&ParserProject{Functions: map[string]*YAMLCommandSet{}}, cachedProject)
 	s.NoError(err)
 	s.NotEmpty(newPP2)
 }
@@ -657,11 +658,9 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	}
 	s.NoError(sampleBuild.Insert())
 	v := &Version{
-		Id:                 "version_that_called_generate_task",
-		Identifier:         "proj",
-		BuildIds:           []string{"sample_build"},
-		Config:             sampleProjYml,
-		ConfigUpdateNumber: 4,
+		Id:         "version_that_called_generate_task",
+		Identifier: "proj",
+		BuildIds:   []string{"sample_build"},
 		BuildVariants: []VersionBuildStatus{
 			{
 				BuildId:      "sample_build",
@@ -670,13 +669,18 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 		},
 	}
 	s.NoError(v.Insert())
+	pp := &ParserProject{}
+	err := util.UnmarshalYAMLWithFallback([]byte(sampleProjYml), &pp)
+	s.NoError(err)
+	pp.Id = "version_that_called_generate_task"
+	s.NoError(pp.Insert())
 
 	g := sampleGeneratedProject
 	g.Task = genTask
 
-	projectInfo, err := LoadProjectForVersion(v, "proj", false)
+	p, pp, err := FindAndTranslateProjectForVersion(v, "proj")
 	s.Require().NoError(err)
-	p, pp, v, err := g.NewVersion(projectInfo.Project, projectInfo.IntermediateProject, v)
+	p, pp, v, err = g.NewVersion(p, pp, v)
 	s.Require().NoError(err)
 	s.NoError(g.Save(context.Background(), p, pp, v))
 
@@ -684,7 +688,6 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	v, err = VersionFindOneId(v.Id)
 	s.NoError(err)
 	s.Require().NotNil(v)
-	s.Equal(4, v.ConfigUpdateNumber)
 	s.Require().Len(v.BuildVariants, 2)
 
 	// batchtime task added to existing variant, despite no previous batchtime task
@@ -700,7 +703,7 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	pp, err = ParserProjectFindOneById(v.Id)
 	s.NoError(err)
 	s.Require().NotNil(pp)
-	s.Equal(5, pp.ConfigUpdateNumber)
+	s.Equal(1, pp.ConfigUpdateNumber)
 	builds, err := build.FindBuildsByVersions([]string{v.Id})
 	s.NoError(err)
 	tasks, err := task.FindAll(db.Query(bson.M{task.VersionKey: v.Id})) // with display
@@ -755,19 +758,23 @@ func (s *GenerateSuite) TestSaveWithAlreadyGeneratedTasksAndVariants() {
 	v := &Version{
 		Id:       "version_that_called_generate_task",
 		BuildIds: []string{"new_variant"},
-		Config:   sampleProjYmlTaskGroups,
 	}
 	s.NoError(v.Insert())
+	pp := &ParserProject{}
+	err := util.UnmarshalYAMLWithFallback([]byte(sampleProjYmlTaskGroups), &pp)
+	s.NoError(err)
+	pp.Id = "version_that_called_generate_task"
+	s.NoError(pp.Insert())
 	// Setup parser project to be partially generated.
-	projectInfo, err := LoadProjectForVersion(v, "", false)
+	p, pp, err := FindAndTranslateProjectForVersion(v, "")
 	s.NoError(err)
 
 	g := partiallyGeneratedProject
 	g.Task = generatorTask
-	p, pp, v, err := g.NewVersion(projectInfo.Project, projectInfo.IntermediateProject, v)
+	p, pp, v, err = g.NewVersion(p, pp, v)
 	s.NoError(err)
 	pp.UpdatedByGenerators = []string{generatorTask.Id}
-	s.NoError(pp.Insert())
+	s.NoError(pp.TryUpsert())
 
 	// Shouldn't error trying to add the same generated project.
 	p, pp, v, err = g.NewVersion(p, pp, v)
@@ -833,23 +840,26 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 	v := &Version{
 		Id:       "version_that_called_generate_task",
 		BuildIds: []string{"sample_build"},
-		Config:   sampleProjYmlTaskGroups,
 	}
+	pp := &ParserProject{}
+	err := util.UnmarshalYAMLWithFallback([]byte(sampleProjYmlTaskGroups), &pp)
+	s.NoError(err)
+	pp.Id = "version_that_called_generate_task"
+	s.NoError(pp.Insert())
 	s.NoError(sampleBuild.Insert())
 	s.NoError(v.Insert())
 
 	g := sampleGeneratedProjectAddToBVOnly
 	g.Task = &tasksThatExist[0]
-	projectInfo, err := LoadProjectForVersion(v, "", false)
+	p, pp, err := FindAndTranslateProjectForVersion(v, "")
 	s.Require().NoError(err)
-	p, pp, v, err := g.NewVersion(projectInfo.Project, projectInfo.IntermediateProject, v)
+	p, pp, v, err = g.NewVersion(p, pp, v)
 	s.NoError(err)
 	s.NoError(g.Save(context.Background(), p, pp, v))
 
 	v, err = VersionFindOneId(v.Id)
 	s.NoError(err)
 	s.Require().NotNil(v)
-	s.Equal(0, v.ConfigUpdateNumber)
 
 	pp, err = ParserProjectFindOneById(v.Id)
 	s.NoError(err)
@@ -888,7 +898,9 @@ func (s *GenerateSuite) TestSaveNewTasksWithCrossVariantDependencies() {
 	v := &Version{
 		Id:       "v1",
 		BuildIds: []string{"b1"},
-		Config: `tasks:
+	}
+	parserProj := ParserProject{}
+	config := `tasks:
 - name: say_something
 - name: generator
 
@@ -899,8 +911,11 @@ buildvariants:
   tasks:
   - name: say_something
   - name: generator
-`,
-	}
+`
+	err := util.UnmarshalYAMLWithFallback([]byte(config), &parserProj)
+	s.NoError(err)
+	parserProj.Id = "v1"
+	s.NoError(parserProj.Insert())
 	s.NoError(existingBuild.Insert())
 	s.NoError(v.Insert())
 
@@ -934,9 +949,9 @@ buildvariants:
 		},
 	}
 
-	projectInfo, err := LoadProjectForVersion(v, "", false)
+	p, pp, err := FindAndTranslateProjectForVersion(v, "")
 	s.Require().NoError(err)
-	p, pp, v, err := g.NewVersion(projectInfo.Project, projectInfo.IntermediateProject, v)
+	p, pp, v, err = g.NewVersion(p, pp, v)
 	s.NoError(err)
 	s.NoError(g.Save(context.Background(), p, pp, v))
 
@@ -973,8 +988,12 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 	v := &Version{
 		Id:       "version_that_called_generate_task",
 		BuildIds: []string{"sample_build"},
-		Config:   smallYml,
 	}
+	pp := &ParserProject{}
+	err := util.UnmarshalYAMLWithFallback([]byte(smallYml), &pp)
+	s.NoError(err)
+	pp.Id = "version_that_called_generate_task"
+	s.NoError(pp.Insert())
 	s.NoError(taskThatExists.Insert())
 	s.NoError(taskDisplayGen.Insert())
 	s.NoError(sampleBuild.Insert())
@@ -982,16 +1001,15 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 
 	g := smallGeneratedProject
 	g.Task = &taskThatExists
-	projectInfo, err := LoadProjectForVersion(v, "", false)
+	p, pp, err := FindAndTranslateProjectForVersion(v, "")
 	s.Require().NoError(err)
-	p, pp, v, err := g.NewVersion(projectInfo.Project, projectInfo.IntermediateProject, v)
+	p, pp, v, err = g.NewVersion(p, pp, v)
 	s.Require().NoError(err)
 	s.NoError(g.Save(context.Background(), p, pp, v))
 
 	v, err = VersionFindOneId(v.Id)
 	s.NoError(err)
 	s.Require().NotNil(v)
-	s.Equal(0, v.ConfigUpdateNumber)
 
 	pp, err = ParserProjectFindOneById(v.Id)
 	s.NoError(err)
@@ -1285,23 +1303,19 @@ func TestUpdateParserProject(t *testing.T) {
 	taskId := "tId"
 	for testName, setupTest := range map[string]func(t *testing.T, v *Version, pp *ParserProject){
 		"noParserProject": func(t *testing.T, v *Version, pp *ParserProject) {
-			v.ConfigUpdateNumber = 5
 			assert.NoError(t, v.Insert())
 		},
 		"ParserProjectMoreRecent": func(t *testing.T, v *Version, pp *ParserProject) {
-			v.ConfigUpdateNumber = 1
 			pp.ConfigUpdateNumber = 5
 			assert.NoError(t, v.Insert())
 			assert.NoError(t, pp.Insert())
 		},
 		"ConfigMostRecent": func(t *testing.T, v *Version, pp *ParserProject) {
-			v.ConfigUpdateNumber = 5
 			pp.ConfigUpdateNumber = 1
 			assert.NoError(t, v.Insert())
 			assert.NoError(t, pp.Insert())
 		},
 		withZeroTestName: func(t *testing.T, v *Version, pp *ParserProject) {
-			v.ConfigUpdateNumber = 0
 			assert.NoError(t, v.Insert())
 			assert.NoError(t, pp.Insert())
 		},
@@ -1327,7 +1341,6 @@ func TestUpdateParserProject(t *testing.T) {
 			assert.Len(t, pp.UpdatedByGenerators, 1)
 			assert.Contains(t, pp.UpdatedByGenerators, taskId)
 			if testName == withZeroTestName {
-				assert.Equal(t, 0, v.ConfigUpdateNumber)
 				assert.Equal(t, 1, pp.ConfigUpdateNumber)
 				return
 			} else if testName == alreadyUpdatedTestName {
@@ -1335,8 +1348,6 @@ func TestUpdateParserProject(t *testing.T) {
 				assert.Equal(t, 1, pp.ConfigUpdateNumber)
 				return
 			}
-			assert.NotEqual(t, 6, v.ConfigUpdateNumber)
-			assert.Equal(t, 6, pp.ConfigUpdateNumber)
 		})
 	}
 }

@@ -31,6 +31,7 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -402,6 +403,7 @@ func (e *envState) createApplicationQueue(ctx context.Context) error {
 	opts.Priority = e.settings.Amboy.RequireRemotePriority
 	opts.SkipQueueIndexBuilds = true
 	opts.SkipReportingIndexBuilds = true
+	opts.PreferredIndexes = e.getPreferredRemoteQueueIndexes()
 	opts.UseGroups = false
 	opts.LockTimeout = time.Duration(e.settings.Amboy.LockTimeoutMinutes) * time.Minute
 	opts.SampleSize = e.settings.Amboy.SampleSize
@@ -478,11 +480,34 @@ func (e *envState) getRemoteQueueGroupDBOptions() queue.MongoDBOptions {
 	opts.Priority = e.settings.Amboy.RequireRemotePriority
 	opts.SkipQueueIndexBuilds = true
 	opts.SkipReportingIndexBuilds = true
+	opts.PreferredIndexes = e.getPreferredRemoteQueueIndexes()
 	opts.UseGroups = true
 	opts.GroupName = e.settings.Amboy.Name
 	opts.LockTimeout = time.Duration(e.settings.Amboy.LockTimeoutMinutes) * time.Minute
 	opts.Client = e.client
 	return opts
+}
+
+func (e *envState) getPreferredRemoteQueueIndexes() queue.PreferredIndexOptions {
+	if e.settings.Amboy.SkipPreferredIndexes {
+		return queue.PreferredIndexOptions{}
+	}
+	return queue.PreferredIndexOptions{
+		NextJob: bson.D{
+			bson.E{
+				Key:   "status.completed",
+				Value: 1,
+			},
+			bson.E{
+				Key:   "status.in_prog",
+				Value: 1,
+			},
+			bson.E{
+				Key:   "status.mod_ts",
+				Value: 1,
+			},
+		},
+	}
 }
 
 func (e *envState) getNamedRemoteQueueOptions() (map[string]queue.MongoDBQueueOptions, []queue.RegexpMongoDBQueueOptions, error) {

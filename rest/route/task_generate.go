@@ -9,28 +9,22 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
-func makeGenerateTasksHandler(q amboy.QueueGroup) gimlet.RouteHandler {
-	return &generateHandler{
-		queue: q,
-	}
+func makeGenerateTasksHandler() gimlet.RouteHandler {
+	return &generateHandler{}
 }
 
 type generateHandler struct {
 	files  []json.RawMessage
 	taskID string
-	queue  amboy.QueueGroup
 }
 
 func (h *generateHandler) Factory() gimlet.RouteHandler {
-	return &generateHandler{
-		queue: h.queue,
-	}
+	return &generateHandler{}
 }
 
 func (h *generateHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -50,28 +44,23 @@ func parseJson(r *http.Request) ([]json.RawMessage, error) {
 }
 
 func (h *generateHandler) Run(ctx context.Context) gimlet.Responder {
-	if err := data.GenerateTasks(h.taskID, h.files, h.queue); err != nil {
+	if err := data.GenerateTasks(h.taskID, h.files); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "generating tasks for task '%s'", h.taskID))
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
-func makeGenerateTasksPollHandler(q amboy.QueueGroup) gimlet.RouteHandler {
-	return &generatePollHandler{
-		queue: q,
-	}
+func makeGenerateTasksPollHandler() gimlet.RouteHandler {
+	return &generatePollHandler{}
 }
 
 type generatePollHandler struct {
 	taskID string
-	queue  amboy.QueueGroup
 }
 
 func (h *generatePollHandler) Factory() gimlet.RouteHandler {
-	return &generatePollHandler{
-		queue: h.queue,
-	}
+	return &generatePollHandler{}
 }
 
 func (h *generatePollHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -81,7 +70,7 @@ func (h *generatePollHandler) Parse(ctx context.Context, r *http.Request) error 
 }
 
 func (h *generatePollHandler) Run(ctx context.Context) gimlet.Responder {
-	finished, jobErr, err := data.GeneratePoll(ctx, h.taskID, h.queue)
+	finished, jobErr, err := data.GeneratePoll(ctx, h.taskID)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error polling for generated tasks",

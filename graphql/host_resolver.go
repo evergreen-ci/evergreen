@@ -15,14 +15,17 @@ import (
 	"github.com/mongodb/grip/message"
 )
 
+// DistroID is the resolver for the distroId field.
 func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*string, error) {
 	return obj.Distro.Id, nil
 }
 
+// Elapsed is the resolver for the elapsed field.
 func (r *hostResolver) Elapsed(ctx context.Context, obj *restModel.APIHost) (*time.Time, error) {
 	return obj.RunningTask.StartTime, nil
 }
 
+// HomeVolume is the resolver for the homeVolume field.
 func (r *hostResolver) HomeVolume(ctx context.Context, obj *restModel.APIHost) (*restModel.APIVolume, error) {
 	if utility.FromStringPtr(obj.HomeVolumeID) != "" {
 		volId := utility.FromStringPtr(obj.HomeVolumeID)
@@ -46,10 +49,12 @@ func (r *hostResolver) HomeVolume(ctx context.Context, obj *restModel.APIHost) (
 	return nil, nil
 }
 
+// Uptime is the resolver for the uptime field.
 func (r *hostResolver) Uptime(ctx context.Context, obj *restModel.APIHost) (*time.Time, error) {
 	return obj.CreationTime, nil
 }
 
+// Volumes is the resolver for the volumes field.
 func (r *hostResolver) Volumes(ctx context.Context, obj *restModel.APIHost) ([]*restModel.APIVolume, error) {
 	volumes := make([]*restModel.APIVolume, 0, len(obj.AttachedVolumeIDs))
 	for _, volId := range obj.AttachedVolumeIDs {
