@@ -638,7 +638,12 @@ func CreateManifest(v Version, proj *Project, projectRef *ProjectRef, settings *
 			if commit == nil || commit.Commit == nil || commit.Commit.Committer == nil {
 				return nil, errors.New("malformed GitHub commit response")
 			}
-			revisionTime := commit.Commit.Committer.GetDate()
+			// If this is a mainline commit, retrieve the module's commit from the time of the mainline commit.
+			// Otherwise, retrieve the module's commit from the time of the patch creation.
+			revisionTime := time.Unix(0, 0)
+			if !evergreen.IsPatchRequester(v.Requester) {
+				revisionTime = commit.Commit.Committer.GetDate()
+			}
 			var branchCommits []*github.RepositoryCommit
 			branchCommits, _, err = thirdparty.GetGithubCommits(ctx, token, owner, repo, module.Branch, revisionTime, 0)
 			if err != nil {
