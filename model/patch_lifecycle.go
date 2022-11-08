@@ -456,7 +456,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	if p.GithubPatchData.AuthorUID != 0 {
 		u, err := user.FindByGithubUID(p.GithubPatchData.AuthorUID)
 		grip.Error(message.WrapError(err, message.Fields{
-			"message": fmt.Sprintf("failed to fetch everg user with Github UID %d", p.GithubPatchData.AuthorUID),
+			"message": fmt.Sprintf("failed to fetch evergeen user with Github UID %d", p.GithubPatchData.AuthorUID),
 		}))
 		if u != nil {
 			authorEmail = u.Email()
@@ -481,7 +481,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		AuthorID:            p.Author,
 		Parameters:          params,
 		Activated:           utility.TruePtr(),
-		AuthorEmail:         p.GitInfo.Email,
+		AuthorEmail:         authorEmail,
 	}
 	intermediateProject.CreateTime = patchVersion.CreateTime
 
