@@ -18,8 +18,6 @@ func (t *Task) ResultStatus() string {
 	if t.Status == evergreen.TaskUndispatched {
 		if !t.Activated {
 			status = evergreen.TaskInactive
-		} else {
-			status = evergreen.TaskUnstarted
 		}
 	} else if t.Status == evergreen.TaskFailed {
 		if t.Details.Type == evergreen.CommandTypeSystem {
@@ -72,7 +70,7 @@ func GetResultCounts(tasks []Task) *ResultCounts {
 		switch t.ResultStatus() {
 		case evergreen.TaskInactive:
 			out.Inactive++
-		case evergreen.TaskUnstarted:
+		case evergreen.TaskUndispatched:
 			out.Unstarted++
 		case evergreen.TaskStarted:
 			out.Started++
