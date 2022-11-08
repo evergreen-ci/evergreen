@@ -2792,7 +2792,7 @@ func FindLatestTerminatedHostWithHomeVolume(homeVolumeID string) (*Host, error) 
 			UserHostKey:     true,
 			HomeVolumeIDKey: homeVolumeID,
 		},
-	).Sort([]string{TerminationTimeKey})
+	).Sort([]string{"-" + TerminationTimeKey})
 	return FindOne(q)
 }
 
