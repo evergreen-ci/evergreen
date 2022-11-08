@@ -20,7 +20,6 @@ import (
 	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/units"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -122,6 +121,52 @@ func (h *agentSetup) Run(ctx context.Context) gimlet.Responder {
 		LogkeeperURL:      h.settings.LoggerConfig.LogkeeperURL,
 	}
 	return gimlet.NewJSONResponse(data)
+}
+
+// GET /task/{task_id}/pull_request
+type agentCheckGetPullRequestHandler struct {
+	taskID   string
+	settings *evergreen.Settings
+
+	req apimodels.CheckMergeRequest
+}
+
+func makeAgentGetPullRequest(settings *evergreen.Settings) gimlet.RouteHandler {
+	return &agentCheckGetPullRequestHandler{
+		settings: settings,
+	}
+}
+
+func (h *agentCheckGetPullRequestHandler) Factory() gimlet.RouteHandler {
+	return &agentCheckGetPullRequestHandler{
+		settings: h.settings,
+	}
+}
+
+func (h *agentCheckGetPullRequestHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
+	if err := utility.ReadJSON(r.Body, &h.req); err != nil {
+		return errors.Wrap(err, "reading from JSON request body")
+	}
+	return nil
+}
+
+func (h *agentCheckGetPullRequestHandler) Run(ctx context.Context) gimlet.Responder {
+	token, err := h.settings.GetGithubOauthToken()
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "getting token"))
+	}
+	pr, err := thirdparty.GetGithubPullRequest(ctx, token, h.req.Owner, h.req.Repo, h.req.PRNum)
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(err)
+	}
+	resp := apimodels.PullRequestInfo{
+		Mergeable:      pr.Mergeable,
+		MergeCommitSHA: pr.GetMergeCommitSHA(),
+	}
+	return gimlet.NewJSONResponse(resp)
 }
 
 // POST /task/{task_id}/update_push_status
@@ -416,19 +461,6 @@ func (h *getParserProjectHandler) Run(ctx context.Context) gimlet.Responder {
 	pp, err := model.ParserProjectFindOneById(t.Version)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
-	}
-	// handle legacy
-	if pp == nil || pp.ConfigUpdateNumber < v.ConfigUpdateNumber {
-		pp = &model.ParserProject{}
-		if err = util.UnmarshalYAMLWithFallback([]byte(v.Config), pp); err != nil {
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusNotFound,
-				Message:    "invalid version config",
-			})
-		}
-	}
-	if pp.Functions == nil {
-		pp.Functions = map[string]*model.YAMLCommandSet{}
 	}
 	projBytes, err := bson.Marshal(pp)
 	if err != nil {
@@ -1192,23 +1224,23 @@ func (h *manifestLoadHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "retrieving manifest with version id '%s'", task.Version))
 	}
 
-	projectInfo, err := model.LoadProjectForVersion(v, v.Identifier, false)
+	project, _, err := model.FindAndTranslateProjectForVersion(v, v.Identifier)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "loading project from version"))
 	}
-	if projectInfo.Project == nil {
+	if project == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    "unable to find project for version",
 		})
 	}
 
-	if currentManifest != nil && projectInfo.Project.Modules.IsIdentical(*currentManifest) {
+	if currentManifest != nil && project.Modules.IsIdentical(*currentManifest) {
 		return gimlet.NewJSONResponse(currentManifest)
 	}
 
 	// attempt to insert a manifest after making GitHub API calls
-	manifest, err := repotracker.CreateManifest(*v, projectInfo.Project, projectRef, h.settings)
+	manifest, err := repotracker.CreateManifest(*v, project, projectRef, h.settings)
 	if err != nil {
 		if apiErr, ok := errors.Cause(err).(thirdparty.APIRequestError); ok && apiErr.StatusCode == http.StatusNotFound {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "manifest resource not found"))

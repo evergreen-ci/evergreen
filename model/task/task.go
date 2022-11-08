@@ -725,7 +725,7 @@ func (t *Task) RemoveDependency(dependencyId string) error {
 	return db.Update(Collection, query, update)
 }
 
-// Checks whether the dependencies for the task have all completed successfully.
+// DependenciesMet checks whether the dependencies for the task have all completed successfully.
 // If any of the dependencies exist in the map that is passed in, they are
 // used to check rather than fetching from the database. All queries
 // are cached back into the map for later use.
@@ -1581,6 +1581,20 @@ func (t *Task) SetAborted(reason AbortInfo) error {
 	)
 }
 
+// SetStepbackDepth adds the stepback depth to the task.
+func (t *Task) SetStepbackDepth(stepbackDepth int) error {
+	t.StepbackDepth = stepbackDepth
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				StepbackDepthKey: stepbackDepth,
+			},
+		})
+}
+
 // SetHasCedarResults sets the HasCedarResults field of the task to
 // hasCedarResults and, if failedResults is true, sets CedarResultsFailed to
 // true. If the task is part of a display task, the display tasks's fields are
@@ -2004,28 +2018,25 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 
 }
 
-// GetDisplayStatus should reflect the statuses assigned during the addDisplayStatus aggregation step
+// GetDisplayStatus finds and sets DisplayStatus to the task. It should reflect
+// the statuses assigned during the addDisplayStatus aggregation step.
 func (t *Task) GetDisplayStatus() string {
 	if t.DisplayStatus != "" {
 		return t.DisplayStatus
 	}
-	if t.Aborted && t.IsFinished() {
+	t.DisplayStatus = t.findDisplayStatus()
+	return t.DisplayStatus
+}
+
+func (t *Task) findDisplayStatus() string {
+	if t.Aborted {
 		return evergreen.TaskAborted
-	}
-	if t.Status == evergreen.TaskUndispatched {
-		if !t.Activated {
-			return evergreen.TaskUnscheduled
-		}
-		if t.Blocked() {
-			return evergreen.TaskStatusBlocked
-		}
-		return evergreen.TaskWillRun
-	}
-	if !t.IsFinished() {
-		return t.Status
 	}
 	if t.Status == evergreen.TaskSucceeded {
 		return evergreen.TaskSucceeded
+	}
+	if t.Details.Type == evergreen.CommandTypeSetup {
+		return evergreen.TaskSetupFailed
 	}
 	if t.Details.Type == evergreen.CommandTypeSystem {
 		if t.Details.TimedOut && t.Details.Description == evergreen.TaskDescriptionHeartbeat {
@@ -2036,11 +2047,17 @@ func (t *Task) GetDisplayStatus() string {
 		}
 		return evergreen.TaskSystemFailed
 	}
-	if t.Details.Type == evergreen.CommandTypeSetup {
-		return evergreen.TaskSetupFailed
-	}
 	if t.Details.TimedOut {
 		return evergreen.TaskTimedOut
+	}
+	if t.Status == evergreen.TaskUndispatched {
+		if !t.Activated {
+			return evergreen.TaskUnscheduled
+		}
+		if t.Blocked() {
+			return evergreen.TaskStatusBlocked
+		}
+		return evergreen.TaskWillRun
 	}
 	return t.Status
 }
@@ -2642,7 +2659,7 @@ func (t *Task) Archive() error {
 					},
 				},
 			},
-			updateDisplayTasksAndTasksBson(),
+			updateDisplayTasksAndTasksExpression,
 		)
 		// return nil if the task has already been archived
 		if adb.ResultsNotFound(err) {
@@ -2751,7 +2768,7 @@ func archiveAll(taskIds, execTaskIds, toRestartExecTaskIds []string, archivedTas
 						},
 					},
 				},
-				updateDisplayTasksAndTasksBson(),
+				updateDisplayTasksAndTasksExpression,
 			)
 			if err != nil {
 				return nil, errors.Wrap(err, "archiving tasks")
@@ -2806,20 +2823,6 @@ func archiveAll(taskIds, execTaskIds, toRestartExecTaskIds []string, archivedTas
 	_, err = session.WithTransaction(ctx, txFunc)
 
 	return errors.Wrap(err, "archiving execution tasks and updating execution tasks")
-}
-
-func updateDisplayTasksAndTasksBson() bson.M {
-	return bson.M{
-		"$set": bson.M{
-			CanResetKey: true,
-		},
-		"$unset": bson.M{
-			AbortedKey:              "",
-			AbortInfoKey:            "",
-			OverrideDependenciesKey: "",
-		},
-		"$inc": bson.M{ExecutionKey: 1},
-	}
 }
 
 func (t *Task) makeArchivedTask() *Task {
@@ -2943,19 +2946,6 @@ func (t *Task) SetResetFailedWhenFinished() error {
 	)
 }
 
-// SetAbortedTasksResetWhenFinished sets all matching aborted tasks as ResetWhenFinished.
-func SetAbortedTasksResetWhenFinished(taskIds []string) error {
-	_, err := UpdateAll(
-		bySubsetAborted(taskIds),
-		bson.M{
-			"$set": bson.M{
-				ResetWhenFinishedKey: true,
-			},
-		},
-	)
-	return err
-}
-
 // MergeTestResultsBulk takes a slice of task structs and returns the slice with
 // test results populated. Note that the order may change. The second parameter
 // can be used to use a specific test result filtering query, otherwise all test
@@ -3040,188 +3030,6 @@ func FindHostSchedulableForAlias(id string) ([]Task, error) {
 	return FindAll(db.Query(q))
 }
 
-// FindHostRunnable finds all host tasks that can be scheduled for a distro with
-// an additional consideration for whether the task's dependencies are met. If
-// removeDeps is true, tasks with unmet dependencies are excluded.
-func FindHostRunnable(distroID string, removeDeps bool) ([]Task, error) {
-	match := schedulableHostTasksQuery()
-	var d distro.Distro
-	var err error
-	if distroID != "" {
-		foundDistro, err := distro.FindOne(distro.ById(distroID).WithFields(distro.ValidProjectsKey))
-		if err != nil {
-			return nil, errors.Wrapf(err, "finding distro '%s'", distroID)
-		}
-		if foundDistro != nil {
-			d = *foundDistro
-		}
-	}
-
-	if err = addApplicableDistroFilter(distroID, DistroIdKey, match); err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	matchActivatedUndispatchedTasks := bson.M{
-		"$match": match,
-	}
-
-	filterInvalidDistros := bson.M{
-		"$match": bson.M{ProjectKey: bson.M{"$in": d.ValidProjects}},
-	}
-
-	removeFields := bson.M{
-		"$project": bson.M{
-			LogsKey:      0,
-			OldTaskIdKey: 0,
-			DependsOnKey + "." + DependencyUnattainableKey: 0,
-		},
-	}
-
-	graphLookupTaskDeps := bson.M{
-		"$graphLookup": bson.M{
-			"from":             Collection,
-			"startWith":        "$" + DependsOnKey + "." + IdKey,
-			"connectFromField": DependsOnKey + "." + IdKey,
-			"connectToField":   IdKey,
-			"as":               dependencyKey,
-			// restrict graphLookup to only direct dependencies
-			"maxDepth": 0,
-		},
-	}
-
-	unwindDependencies := bson.M{
-		"$unwind": bson.M{
-			"path":                       "$" + dependencyKey,
-			"preserveNullAndEmptyArrays": true,
-		},
-	}
-
-	unwindDependsOn := bson.M{
-		"$unwind": bson.M{
-			"path":                       "$" + DependsOnKey,
-			"preserveNullAndEmptyArrays": true,
-		},
-	}
-
-	matchIds := bson.M{
-		"$match": bson.M{
-			"$expr": bson.M{"$eq": bson.A{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyTaskIdKey), "$" + bsonutil.GetDottedKeyName(dependencyKey, IdKey)}},
-		},
-	}
-
-	projectSatisfied := bson.M{
-		"$addFields": bson.M{
-			"satisfied_dependencies": bson.M{
-				"$cond": bson.A{
-					bson.M{
-						"$or": []bson.M{
-							{"$eq": bson.A{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyStatusKey), "$" + bsonutil.GetDottedKeyName(dependencyKey, StatusKey)}},
-							{"$and": []bson.M{
-								{"$eq": bson.A{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyStatusKey), "*"}},
-								{"$or": []bson.M{
-									{"$in": bson.A{"$" + bsonutil.GetDottedKeyName(dependencyKey, StatusKey), evergreen.TaskCompletedStatuses}},
-									{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(dependencyKey, DependsOnKey, DependencyUnattainableKey)},
-								}},
-							}},
-						},
-					},
-					true,
-					false,
-				},
-			},
-		},
-	}
-
-	regroupTasks := bson.M{
-		"$group": bson.M{
-			"_id":           "$_id",
-			"satisfied_set": bson.M{"$addToSet": "$satisfied_dependencies"},
-			"root":          bson.M{"$first": "$$ROOT"},
-		},
-	}
-
-	redactUnsatisfiedDependencies := bson.M{
-		"$redact": bson.M{
-			"$cond": bson.A{
-				bson.M{"$allElementsTrue": "$satisfied_set"},
-				"$$KEEP",
-				"$$PRUNE",
-			},
-		},
-	}
-
-	replaceRoot := bson.M{"$replaceRoot": bson.M{"newRoot": "$root"}}
-
-	joinProjectRef := bson.M{
-		"$lookup": bson.M{
-			"from":         "project_ref",
-			"localField":   ProjectKey,
-			"foreignField": "_id",
-			"as":           "project_ref",
-		},
-	}
-
-	filterDisabledProjects := bson.M{
-		"$match": bson.M{
-			bsonutil.GetDottedKeyName("project_ref", "0", "enabled"):              true,
-			bsonutil.GetDottedKeyName("project_ref", "0", "dispatching_disabled"): bson.M{"$ne": true},
-		},
-	}
-
-	filterPatchingDisabledProjects := bson.M{
-		"$match": bson.M{"$or": []bson.M{
-			{
-				RequesterKey: bson.M{"$nin": evergreen.PatchRequesters},
-			},
-			{
-				bsonutil.GetDottedKeyName("project_ref", "0", "patching_disabled"): false,
-			},
-		}},
-	}
-
-	removeProjectRef := bson.M{
-		"$project": bson.M{
-			"project_ref": 0,
-		},
-	}
-
-	pipeline := []bson.M{
-		matchActivatedUndispatchedTasks,
-		removeFields,
-		graphLookupTaskDeps,
-	}
-
-	if distroID != "" && len(d.ValidProjects) > 0 {
-		pipeline = append(pipeline, filterInvalidDistros)
-	}
-
-	if removeDeps {
-		pipeline = append(pipeline,
-			unwindDependencies,
-			unwindDependsOn,
-			matchIds,
-			projectSatisfied,
-			regroupTasks,
-			redactUnsatisfiedDependencies,
-			replaceRoot,
-		)
-	}
-
-	pipeline = append(pipeline,
-		joinProjectRef,
-		filterDisabledProjects,
-		filterPatchingDisabledProjects,
-		removeProjectRef,
-	)
-
-	runnableTasks := []Task{}
-	if err := Aggregate(pipeline, &runnableTasks); err != nil {
-		return nil, errors.Wrap(err, "fetching runnable host tasks")
-	}
-
-	return runnableTasks, nil
-}
-
 func GetTestCountByTaskIdAndFilters(taskId, testName string, statuses []string, execution int) (int, error) {
 	t, err := FindOneIdNewOrOld(taskId)
 	if err != nil {
@@ -3241,38 +3049,6 @@ func GetTestCountByTaskIdAndFilters(taskId, testName string, statuses []string, 
 		return 0, errors.Wrapf(err, "counting test results for task '%s'", taskId)
 	}
 	return count, nil
-}
-
-// FindVariantsWithTask returns a list of build variants between specified commits that contain a specific task name
-func FindVariantsWithTask(taskName, project string, orderMin, orderMax int) ([]string, error) {
-	pipeline := []bson.M{
-		{
-			"$match": bson.M{
-				ProjectKey:     project,
-				RequesterKey:   evergreen.RepotrackerVersionRequester,
-				DisplayNameKey: taskName,
-				"$and": []bson.M{
-					{RevisionOrderNumberKey: bson.M{"$gte": orderMin}},
-					{RevisionOrderNumberKey: bson.M{"$lte": orderMax}},
-				},
-			},
-		},
-		{
-			"$group": bson.M{
-				"_id": "$" + BuildVariantKey,
-			},
-		},
-	}
-	docs := []map[string]string{}
-	err := Aggregate(pipeline, &docs)
-	if err != nil {
-		return nil, errors.Wrapf(err, "finding variants with task named '%s'", taskName)
-	}
-	variants := []string{}
-	for _, doc := range docs {
-		variants = append(variants, doc["_id"])
-	}
-	return variants, nil
 }
 
 func (t *Task) IsPartOfSingleHostTaskGroup() bool {
@@ -3589,30 +3365,6 @@ func (t *Task) CircularDependencies() error {
 	return catcher.Resolve()
 }
 
-func (t *Task) FindAllUnmarkedBlockedDependencies() ([]Task, error) {
-	okStatusSet := []string{AllStatuses, t.Status}
-	query := db.Query(bson.M{
-		DependsOnKey: bson.M{"$elemMatch": bson.M{
-			DependencyTaskIdKey:       t.Id,
-			DependencyStatusKey:       bson.M{"$nin": okStatusSet},
-			DependencyUnattainableKey: false,
-		},
-		}},
-	)
-	return FindAll(query)
-}
-
-func (t *Task) FindAllMarkedUnattainableDependencies() ([]Task, error) {
-	query := db.Query(bson.M{
-		DependsOnKey: bson.M{"$elemMatch": bson.M{
-			DependencyTaskIdKey:       t.Id,
-			DependencyUnattainableKey: true,
-		},
-		}},
-	)
-	return FindAll(query)
-}
-
 func (t *Task) ToTaskNode() TaskNode {
 	return TaskNode{
 		Name:    t.DisplayName,
@@ -3699,688 +3451,6 @@ type GetTasksByProjectAndCommitOptions struct {
 	VariantName    string
 	TaskName       string
 	Limit          int
-}
-
-type GetTasksByVersionOptions struct {
-	Statuses                            []string
-	BaseStatuses                        []string
-	Variants                            []string
-	TaskNames                           []string
-	Page                                int
-	Limit                               int
-	FieldsToProject                     []string
-	Sorts                               []TasksSortOrder
-	IncludeExecutionTasks               bool
-	IncludeBaseTasks                    bool
-	IncludeEmptyActivation              bool
-	IncludeBuildVariantDisplayName      bool
-	IsMainlineCommit                    bool
-	UseLegacyAddBuildVariantDisplayName bool
-}
-
-// GetTasksByVersion gets all tasks for a specific version
-// Query results can be filtered by task name, variant name and status in addition to being paginated and limited
-func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task, int, error) {
-	if opts.IncludeBuildVariantDisplayName {
-		opts.UseLegacyAddBuildVariantDisplayName = ShouldUseLegacyAddBuildVariantDisplayName(versionID)
-	}
-	pipeline, err := getTasksByVersionPipeline(versionID, opts)
-	if err != nil {
-		return nil, 0, errors.Wrap(err, "getting tasks by version pipeline")
-	}
-	if len(opts.Sorts) > 0 {
-		sortPipeline := []bson.M{}
-
-		sortFields := bson.D{}
-		for _, singleSort := range opts.Sorts {
-			if singleSort.Key == DisplayStatusKey || singleSort.Key == BaseTaskStatusKey {
-				sortPipeline = append(sortPipeline, addStatusColorSort(singleSort.Key))
-				sortFields = append(sortFields, bson.E{Key: "__" + singleSort.Key, Value: singleSort.Order})
-			} else if singleSort.Key == TimeTakenKey {
-				sortPipeline = append(sortPipeline, recalculateTimeTaken())
-				sortFields = append(sortFields, bson.E{Key: singleSort.Key, Value: singleSort.Order})
-			} else {
-				sortFields = append(sortFields, bson.E{Key: singleSort.Key, Value: singleSort.Order})
-			}
-		}
-		sortFields = append(sortFields, bson.E{Key: IdKey, Value: 1})
-
-		sortPipeline = append(sortPipeline, bson.M{
-			"$sort": sortFields,
-		})
-
-		pipeline = append(pipeline, sortPipeline...)
-	}
-
-	if len(opts.FieldsToProject) > 0 {
-		fieldKeys := bson.M{}
-		for _, field := range opts.FieldsToProject {
-			fieldKeys[field] = 1
-		}
-		pipeline = append(pipeline, bson.M{
-			"$project": fieldKeys,
-		})
-	}
-
-	// If there is a limit we should calculate the total count before we apply the limit and pagination
-	if opts.Limit > 0 {
-		paginatePipeline := []bson.M{}
-		paginatePipeline = append(paginatePipeline, bson.M{
-			"$skip": opts.Page * opts.Limit,
-		})
-		paginatePipeline = append(paginatePipeline, bson.M{
-			"$limit": opts.Limit,
-		})
-		// Use a $facet to perform separate aggregations for $count and to sort and paginate the results in the same query
-		tasksAndCountPipeline := bson.M{
-			"$facet": bson.M{
-				"count": []bson.M{
-					{"$count": "count"},
-				},
-				"tasks": paginatePipeline,
-			},
-		}
-		pipeline = append(pipeline, tasksAndCountPipeline)
-	}
-
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	var results []Task
-	var count int
-
-	// If there is no limit applied we should just return the tasks and compute the total count in go.
-	// This avoids hitting the 16 MB limit on the aggregation pipeline in the $facet stage https://jira.mongodb.org/browse/EVG-15334
-	if opts.Limit > 0 {
-		type TasksAndCount struct {
-			Tasks []Task           `bson:"tasks"`
-			Count []map[string]int `bson:"count"`
-		}
-		taskAndCountResults := []TasksAndCount{}
-		err = cursor.All(ctx, &taskAndCountResults)
-		if err != nil {
-			return nil, 0, err
-		}
-		if len(taskAndCountResults) > 0 && len(taskAndCountResults[0].Count) > 0 {
-			count = taskAndCountResults[0].Count[0]["count"]
-			results = taskAndCountResults[0].Tasks
-		}
-	} else {
-		taskResults := []Task{}
-		err = cursor.All(ctx, &taskResults)
-		if err != nil {
-			return nil, 0, err
-		}
-		results = taskResults
-		count = len(results)
-	}
-
-	if len(results) == 0 {
-		return nil, 0, nil
-	}
-
-	return results, count, nil
-}
-
-type StatusCount struct {
-	Status string `bson:"status"`
-	Count  int    `bson:"count"`
-}
-
-type TaskStats struct {
-	Counts []StatusCount `bson:"counts"`
-	ETA    *time.Time    `bson:"eta"`
-}
-
-func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) (*TaskStats, error) {
-	if opts.IncludeBuildVariantDisplayName {
-		opts.UseLegacyAddBuildVariantDisplayName = ShouldUseLegacyAddBuildVariantDisplayName(versionID)
-	}
-	pipeline, err := getTasksByVersionPipeline(versionID, opts)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting tasks by version pipeline")
-	}
-	maxEtaPipeline := []bson.M{
-		{
-			"$match": bson.M{
-				ExpectedDurationKey: bson.M{"$exists": true},
-				StartTimeKey:        bson.M{"$exists": true},
-				DisplayStatusKey:    bson.M{"$in": []string{evergreen.TaskStarted, evergreen.TaskDispatched}},
-			},
-		},
-		{
-			"$project": bson.M{
-				"eta": bson.M{
-					"$add": []interface{}{
-						bson.M{"$divide": []interface{}{"$" + ExpectedDurationKey, time.Millisecond}},
-						"$" + StartTimeKey,
-					},
-				},
-			},
-		},
-		{
-			"$group": bson.M{
-				"_id":     nil,
-				"max_eta": bson.M{"$max": "$eta"},
-			},
-		},
-		{
-			"$project": bson.M{
-				"_id":     0,
-				"max_eta": 1,
-			},
-		},
-	}
-	groupPipeline := []bson.M{
-		{"$group": bson.M{
-			"_id":   "$" + DisplayStatusKey,
-			"count": bson.M{"$sum": 1},
-		}},
-		{"$sort": bson.M{"_id": 1}},
-		{"$project": bson.M{
-			"status": "$_id",
-			"count":  1,
-		}},
-	}
-	facet := bson.M{"$facet": bson.M{
-		"counts": groupPipeline,
-		"eta":    maxEtaPipeline,
-	}}
-	pipeline = append(pipeline, facet)
-
-	type maxETAForQuery struct {
-		MaxETA time.Time `bson:"max_eta"`
-	}
-
-	type taskStatsForQueryResult struct {
-		Counts []StatusCount    `bson:"counts"`
-		ETA    []maxETAForQuery `bson:"eta"`
-	}
-
-	taskStats := []taskStatsForQueryResult{}
-	if err := Aggregate(pipeline, &taskStats); err != nil {
-		return nil, errors.Wrap(err, "aggregating task stats for version")
-	}
-	result := TaskStats{}
-	result.Counts = taskStats[0].Counts
-	if len(taskStats[0].ETA) > 0 {
-		result.ETA = &taskStats[0].ETA[0].MaxETA
-	}
-
-	return &result, nil
-}
-
-// ShouldUseLegacyAddBuildVariantDisplayName returns a boolean indicating whether the given version uses the buildVariantDisplayName field that was added in https://jira.mongodb.org/browse/EVG-16761
-// This is used to determine whether we should use the buildVariantDisplayName field in the task document or if we should use a $lookup to retrieve it
-func ShouldUseLegacyAddBuildVariantDisplayName(versionID string) bool {
-	query := db.Query(ByVersion(versionID))
-	task, err := FindOne(query)
-	if err != nil {
-		return false
-	}
-	if task == nil {
-		return false
-	}
-
-	return task.BuildVariantDisplayName == ""
-}
-
-type GroupedTaskStatusCount struct {
-	Variant      string         `bson:"variant"`
-	DisplayName  string         `bson:"display_name"`
-	StatusCounts []*StatusCount `bson:"status_counts"`
-}
-
-func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]*GroupedTaskStatusCount, error) {
-	opts.IncludeBuildVariantDisplayName = true
-	opts.UseLegacyAddBuildVariantDisplayName = ShouldUseLegacyAddBuildVariantDisplayName(versionID)
-	pipeline, err := getTasksByVersionPipeline(versionID, opts)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting tasks by version pipeline")
-	}
-	project := bson.M{"$project": bson.M{
-		BuildVariantKey:            "$" + BuildVariantKey,
-		BuildVariantDisplayNameKey: "$" + BuildVariantDisplayNameKey,
-		DisplayStatusKey:           "$" + DisplayStatusKey,
-	}}
-	pipeline = append(pipeline, project)
-	variantStatusesKey := "variant_statuses"
-	statusCountsKey := "status_counts"
-	groupByStatusPipeline := []bson.M{
-		// Group tasks by variant
-		{
-			"$group": bson.M{
-				"_id": "$" + BuildVariantKey,
-				variantStatusesKey: bson.M{
-					"$push": bson.M{
-						DisplayStatusKey:           "$" + DisplayStatusKey,
-						BuildVariantKey:            "$" + BuildVariantKey,
-						BuildVariantDisplayNameKey: "$" + BuildVariantDisplayNameKey,
-					},
-				},
-			},
-		},
-		{
-			"$unwind": bson.M{
-				"path":                       "$" + variantStatusesKey,
-				"preserveNullAndEmptyArrays": false,
-			},
-		},
-		{
-			"$project": bson.M{
-				variantStatusesKey: 1,
-				"_id":              0,
-			},
-		},
-		// Group tasks by variant and status and calculate count for each status
-		{
-			"$group": bson.M{
-				"_id": bson.M{
-					DisplayStatusKey:           "$" + bsonutil.GetDottedKeyName(variantStatusesKey, DisplayStatusKey),
-					BuildVariantKey:            "$" + bsonutil.GetDottedKeyName(variantStatusesKey, BuildVariantKey),
-					BuildVariantDisplayNameKey: "$" + bsonutil.GetDottedKeyName(variantStatusesKey, BuildVariantDisplayNameKey),
-				},
-				"count": bson.M{"$sum": 1},
-			},
-		},
-		// Sort the values by status so they are sorted before being grouped. This will ensure that they are sorted in the array when they are grouped.
-		{
-			"$sort": bson.M{
-				bsonutil.GetDottedKeyName("_id", DisplayStatusKey): 1,
-			},
-		},
-		// Group the elements by build variant and status_counts
-		{
-			"$group": bson.M{
-				"_id": bson.M{BuildVariantKey: "$" + bsonutil.GetDottedKeyName("_id", BuildVariantKey), BuildVariantDisplayNameKey: "$" + bsonutil.GetDottedKeyName("_id", BuildVariantDisplayNameKey)},
-				statusCountsKey: bson.M{
-					"$push": bson.M{
-						"status": "$" + bsonutil.GetDottedKeyName("_id", DisplayStatusKey),
-						"count":  "$count",
-					},
-				},
-			},
-		},
-		{
-			"$project": bson.M{
-				"variant":       "$" + bsonutil.GetDottedKeyName("_id", BuildVariantKey),
-				"display_name":  "$" + bsonutil.GetDottedKeyName("_id", BuildVariantDisplayNameKey),
-				statusCountsKey: 1,
-			},
-		},
-		// Sort build variants in alphanumeric order for final return
-		{
-			"$sort": bson.M{
-				"display_name": 1,
-			},
-		},
-	}
-	pipeline = append(pipeline, groupByStatusPipeline...)
-	result := []*GroupedTaskStatusCount{}
-
-	if err := Aggregate(pipeline, &result); err != nil {
-		return nil, errors.Wrap(err, "aggregating task stats")
-	}
-	return result, nil
-
-}
-
-// GetBaseStatusesForActivatedTasks returns the base statuses for activated tasks on a version.
-func GetBaseStatusesForActivatedTasks(versionID string, baseVersionID string) ([]string, error) {
-	pipeline := []bson.M{}
-	taskField := "tasks"
-
-	// Fetch all activated tasks from version, and all tasks from base version
-	pipeline = append(pipeline, bson.M{
-		"$match": bson.M{
-			"$or": []bson.M{
-				{VersionKey: baseVersionID},
-				{VersionKey: versionID, ActivatedTimeKey: bson.M{"$ne": utility.ZeroTime}},
-			},
-		}})
-	// Add display status
-	pipeline = append(pipeline, addDisplayStatus)
-	// Group by display name and build variant, and keep track of DisplayStatus and Version fields
-	pipeline = append(pipeline, bson.M{
-		"$group": bson.M{
-			"_id": bson.M{DisplayNameKey: "$" + DisplayNameKey, BuildVariantKey: "$" + BuildVariantKey},
-			taskField: bson.M{"$push": bson.M{
-				DisplayStatusKey: "$" + DisplayStatusKey,
-				VersionKey:       "$" + VersionKey,
-			}},
-		},
-	})
-	// Only keep records that exist both on the version & base version (i.e. there are 2 copies)
-	pipeline = append(pipeline, bson.M{
-		"$match": bson.M{taskField: bson.M{"$size": 2}},
-	})
-	// Unwind to put tasks into a state where it's easier to filter
-	pipeline = append(pipeline, bson.M{
-		"$unwind": bson.M{
-			"path": "$" + taskField,
-		},
-	})
-	// Filter out tasks that aren't from base version
-	pipeline = append(pipeline, bson.M{
-		"$match": bson.M{bsonutil.GetDottedKeyName(taskField, VersionKey): baseVersionID},
-	})
-	// Group to get rid of duplicate statuses
-	pipeline = append(pipeline, bson.M{
-		"$group": bson.M{
-			"_id": "$" + bsonutil.GetDottedKeyName(taskField, DisplayStatusKey),
-		},
-	})
-	// Sort to guarantee order
-	pipeline = append(pipeline, bson.M{
-		"$sort": bson.D{
-			bson.E{Key: "_id", Value: 1},
-		},
-	})
-
-	res := []map[string]string{}
-	err := Aggregate(pipeline, &res)
-	if err != nil {
-		return nil, errors.Wrap(err, "aggregating base task statuses")
-	}
-	statuses := []string{}
-	for _, r := range res {
-		statuses = append(statuses, r["_id"])
-	}
-	return statuses, nil
-}
-
-type HasMatchingTasksOptions struct {
-	TaskNames []string
-	Variants  []string
-	Statuses  []string
-}
-
-// HasMatchingTasks returns true if the version has tasks with the given statuses
-func HasMatchingTasks(versionID string, opts HasMatchingTasksOptions) (bool, error) {
-	options := GetTasksByVersionOptions{
-		TaskNames:                      opts.TaskNames,
-		Variants:                       opts.Variants,
-		Statuses:                       opts.Statuses,
-		IncludeBuildVariantDisplayName: true,
-	}
-	if len(opts.Variants) > 0 {
-		options.UseLegacyAddBuildVariantDisplayName = ShouldUseLegacyAddBuildVariantDisplayName(versionID)
-	}
-	pipeline, err := getTasksByVersionPipeline(versionID, options)
-	if err != nil {
-		return false, errors.Wrap(err, "getting tasks by version pipeline")
-	}
-	pipeline = append(pipeline, bson.M{"$count": "count"})
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
-	if err != nil {
-		return false, err
-	}
-	type Count struct {
-		Count int `bson:"count"`
-	}
-	count := []*Count{}
-	err = cursor.All(ctx, &count)
-	if err != nil {
-		return false, err
-	}
-	if len(count) == 0 {
-		return false, nil
-	}
-	return count[0].Count > 0, nil
-}
-
-func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) ([]bson.M, error) {
-	match := bson.M{}
-	if !opts.IncludeBuildVariantDisplayName && opts.UseLegacyAddBuildVariantDisplayName {
-		return nil, errors.New("should not use UseLegacyAddBuildVariantDisplayName with !IncludeBuildVariantDisplayName")
-	}
-	match[VersionKey] = versionID
-
-	if len(opts.TaskNames) > 0 {
-		taskNamesAsRegex := strings.Join(opts.TaskNames, "|")
-		match[DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex, "$options": "i"}
-	}
-	// Activated Time is needed to filter out generated tasks that have been generated but not yet activated
-	if !opts.IncludeEmptyActivation {
-		match[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
-	}
-	pipeline := []bson.M{
-		{"$match": match},
-	}
-
-	// Add BuildVariantDisplayName to all the results if it we need to match on the entire set of results
-	// This is an expensive operation so we only want to do it if we have to
-	if len(opts.Variants) > 0 && opts.IncludeBuildVariantDisplayName {
-		if opts.UseLegacyAddBuildVariantDisplayName {
-			pipeline = append(pipeline, AddBuildVariantDisplayName...)
-		}
-
-		// Allow searching by either variant name or variant display
-		variantsAsRegex := strings.Join(opts.Variants, "|")
-		match = bson.M{
-			"$or": []bson.M{
-				{BuildVariantDisplayNameKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
-				{BuildVariantKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
-			},
-		}
-		pipeline = append(pipeline, bson.M{"$match": match})
-	}
-
-	if !opts.IncludeExecutionTasks {
-		const tempParentKey = "_parent"
-		// Split tasks so that we only look up if the task is an execution task if display task ID is unset and
-		// display only is false (i.e. we don't know if it's a display task or not).
-		facet := bson.M{
-			"$facet": bson.M{
-				// We skip lookup for anything we already know is not part of a display task
-				"id_empty": []bson.M{
-					{
-						"$match": bson.M{
-							"$or": []bson.M{
-								{DisplayTaskIdKey: ""},
-								{DisplayOnlyKey: true},
-							},
-						},
-					},
-				},
-				// No ID and not display task: lookup if it's an execution task for some task, and then filter it out if it is
-				"no_id": []bson.M{
-					{
-						"$match": bson.M{
-							DisplayTaskIdKey: nil,
-							DisplayOnlyKey:   bson.M{"$ne": true},
-						},
-					},
-					{"$lookup": bson.M{
-						"from":         Collection,
-						"localField":   IdKey,
-						"foreignField": ExecutionTasksKey,
-						"as":           tempParentKey,
-					}},
-					{
-						"$match": bson.M{
-							tempParentKey: []interface{}{},
-						},
-					},
-				},
-			},
-		}
-		pipeline = append(pipeline, facet)
-
-		// Recombine the tasks so that we can continue the pipeline on the joined tasks
-		recombineTasks := []bson.M{
-			{"$project": bson.M{
-				"tasks": bson.M{
-					"$setUnion": []string{"$no_id", "$id_empty"},
-				}},
-			},
-			{"$unwind": "$tasks"},
-			{"$replaceRoot": bson.M{"newRoot": "$tasks"}},
-		}
-
-		pipeline = append(pipeline, recombineTasks...)
-	}
-
-	pipeline = append(pipeline, AddAnnotations...)
-	pipeline = append(pipeline,
-		// Add a field for the display status of each task
-		addDisplayStatus,
-	)
-	// Filter on the computed display status before continuing to add additional fields.
-	if len(opts.Statuses) > 0 {
-		pipeline = append(pipeline, bson.M{
-			"$match": bson.M{
-				DisplayStatusKey: bson.M{"$in": opts.Statuses},
-			},
-		})
-	}
-	if opts.IncludeBaseTasks {
-		baseCommitMatch := []bson.M{
-			{"$eq": []string{"$" + BuildVariantKey, "$$" + BuildVariantKey}},
-			{"$eq": []string{"$" + DisplayNameKey, "$$" + DisplayNameKey}},
-		}
-
-		// If we are requesting a mainline commit's base task we want to use the previous commit instead.
-		if opts.IsMainlineCommit {
-			baseCommitMatch = append(baseCommitMatch, bson.M{
-				"$eq": []interface{}{"$" + RevisionOrderNumberKey, bson.M{
-					"$subtract": []interface{}{"$$" + RevisionOrderNumberKey, 1},
-				}},
-			})
-		} else {
-			baseCommitMatch = append(baseCommitMatch, bson.M{
-				"$eq": []string{"$" + RevisionKey, "$$" + RevisionKey},
-			})
-		}
-		pipeline = append(pipeline, []bson.M{
-			// Add data about the base task
-			{"$lookup": bson.M{
-				"from": Collection,
-				"let": bson.M{
-					RevisionKey:            "$" + RevisionKey,
-					BuildVariantKey:        "$" + BuildVariantKey,
-					DisplayNameKey:         "$" + DisplayNameKey,
-					RevisionOrderNumberKey: "$" + RevisionOrderNumberKey,
-				},
-				"as": BaseTaskKey,
-				"pipeline": []bson.M{
-					{"$match": bson.M{
-						RequesterKey: evergreen.RepotrackerVersionRequester,
-						"$expr": bson.M{
-							"$and": baseCommitMatch,
-						},
-					}},
-					{"$project": bson.M{
-						IdKey:     1,
-						StatusKey: displayStatusExpression,
-					}},
-					{"$limit": 1},
-				},
-			}},
-			{
-				"$unwind": bson.M{
-					"path":                       "$" + BaseTaskKey,
-					"preserveNullAndEmptyArrays": true,
-				},
-			},
-		}...,
-		)
-	}
-	// Add the build variant display name to the returned subset of results if it wasn't added earlier
-	if len(opts.Variants) == 0 && opts.IncludeBuildVariantDisplayName {
-		if opts.UseLegacyAddBuildVariantDisplayName {
-			pipeline = append(pipeline, AddBuildVariantDisplayName...)
-		}
-	}
-
-	if opts.IncludeBaseTasks && len(opts.BaseStatuses) > 0 {
-		pipeline = append(pipeline, bson.M{
-			"$match": bson.M{
-				BaseTaskStatusKey: bson.M{"$in": opts.BaseStatuses},
-			},
-		})
-	}
-
-	return pipeline, nil
-}
-
-func recalculateTimeTaken() bson.M {
-	return bson.M{
-		"$set": bson.M{
-			TimeTakenKey: bson.M{
-				"$cond": bson.M{
-					"if": bson.M{
-						"$eq": []string{"$" + StatusKey, evergreen.TaskStarted},
-					},
-					// Time taken for a task is in nanoseconds. Since subtracting two dates in MongoDB yields milliseconds, we have
-					// to multiply by time.Millisecond (1000000) to keep time taken consistently in nanoseconds.
-					"then": bson.M{"$multiply": []interface{}{time.Millisecond, bson.M{"$subtract": []interface{}{"$$NOW", "$" + StartTimeKey}}}},
-					"else": "$" + TimeTakenKey,
-				},
-			},
-		},
-	}
-}
-
-// addStatusColorSort adds a stage which takes a task display status and returns an integer
-// for the rank at which it should be sorted. the return value groups all statuses with the
-// same color together. this should be kept consistent with the badge status colors in spruce
-func addStatusColorSort(key string) bson.M {
-	return bson.M{
-		"$addFields": bson.M{
-			"__" + key: bson.M{
-				"$switch": bson.M{
-					"branches": []bson.M{
-						{
-							"case": bson.M{
-								"$in": []interface{}{"$" + key, []string{evergreen.TaskFailed, evergreen.TaskTestTimedOut, evergreen.TaskTimedOut}},
-							},
-							"then": 1, // red
-						},
-						{
-							"case": bson.M{
-								"$in": []interface{}{"$" + key, []string{evergreen.TaskKnownIssue}},
-							},
-							"then": 2,
-						},
-						{
-							"case": bson.M{
-								"$eq": []string{"$" + key, evergreen.TaskSetupFailed},
-							},
-							"then": 3, // lavender
-						},
-						{
-							"case": bson.M{
-								"$in": []interface{}{"$" + key, []string{evergreen.TaskSystemFailed, evergreen.TaskSystemUnresponse, evergreen.TaskSystemTimedOut}},
-							},
-							"then": 4, // purple
-						},
-						{
-							"case": bson.M{
-								"$in": []interface{}{"$" + key, []string{evergreen.TaskStarted, evergreen.TaskDispatched}},
-							},
-							"then": 5, // yellow
-						},
-						{
-							"case": bson.M{
-								"$eq": []string{"$" + key, evergreen.TaskSucceeded},
-							},
-							"then": 10, // green
-						},
-					},
-					"default": 6, // all shades of grey
-				},
-			},
-		},
-	}
 }
 
 func AddParentDisplayTasks(tasks []Task) ([]Task, error) {

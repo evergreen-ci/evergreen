@@ -230,10 +230,11 @@ func runningHostsQuery(distroID string) bson.M {
 	return query
 }
 
-func startedTaskHostsQuery(distroID string) bson.M {
+func idleStartedTaskHostsQuery(distroID string) bson.M {
 	query := bson.M{
-		StatusKey:    bson.M{"$in": evergreen.StartedHostStatus},
-		StartedByKey: evergreen.User,
+		StatusKey:      bson.M{"$in": evergreen.StartedHostStatus},
+		StartedByKey:   evergreen.User,
+		RunningTaskKey: bson.M{"$exists": false},
 	}
 	if distroID != "" {
 		query[bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)] = distroID
@@ -267,14 +268,11 @@ func CountAllRunningDynamicHosts() (int, error) {
 	return num, errors.Wrap(err, "counting running dynamic hosts")
 }
 
-func CountStartedTaskHosts() (int, error) {
-	num, err := Count(db.Query(startedTaskHostsQuery("")))
+// CountIdleStartedTaskHosts returns the count of task hosts that are starting
+// and not currently running a task.
+func CountIdleStartedTaskHosts() (int, error) {
+	num, err := Count(db.Query(idleStartedTaskHostsQuery("")))
 	return num, errors.Wrap(err, "counting starting hosts")
-}
-
-func CountStartedTaskHostsForDistro(distroID string) (int, error) {
-	num, err := Count(db.Query(startedTaskHostsQuery(distroID)))
-	return num, errors.Wrap(err, "counting started task hosts")
 }
 
 // IdleHostsWithDistroID, given a distroID, returns a slice of all idle hosts in that distro
@@ -699,98 +697,6 @@ func ByExpiringBetween(lowerBound time.Time, upperBound time.Time) db.Q {
 		},
 		ExpirationTimeKey: bson.M{"$gte": lowerBound, "$lte": upperBound},
 	})
-}
-
-type StaleTaskReason int
-
-const (
-	TaskHeartbeatPastCutoff StaleTaskReason = iota
-	TaskNoHeartbeatSinceDispatch
-	TaskUndispatchedHasHeartbeat
-)
-
-// StateRunningTasks returns tasks documents that are currently run by a host and stale
-func FindStaleRunningTasks(cutoff time.Duration, reason StaleTaskReason) ([]task.Task, error) {
-	pipeline := []bson.M{}
-	pipeline = append(pipeline, bson.M{
-		"$match": bson.M{
-			RunningTaskKey: bson.M{
-				"$exists": true,
-			},
-			StatusKey: bson.M{
-				"$in": evergreen.UpHostStatus,
-			},
-		},
-	})
-	pipeline = append(pipeline, bson.M{
-		"$lookup": bson.M{
-			"from":         task.Collection,
-			"localField":   RunningTaskKey,
-			"foreignField": task.IdKey,
-			"as":           "_task",
-		},
-	})
-	pipeline = append(pipeline, bson.M{
-		"$project": bson.M{
-			"_task": 1,
-			"_id":   0,
-		},
-	})
-	pipeline = append(pipeline, bson.M{
-		"$replaceRoot": bson.M{
-			"newRoot": bson.M{
-				"$mergeObjects": []interface{}{
-					bson.M{"$arrayElemAt": []interface{}{"$_task", 0}},
-					"$$ROOT",
-				},
-			},
-		},
-	})
-	pipeline = append(pipeline, bson.M{
-		"$project": bson.M{
-			"_task": 0,
-		},
-	})
-	var reasonQuery bson.M
-	switch reason {
-	case TaskHeartbeatPastCutoff:
-		reasonQuery = bson.M{
-			task.StatusKey: evergreen.TaskStarted,
-			"$and": []bson.M{
-				{task.LastHeartbeatKey: bson.M{"$lte": time.Now().Add(-cutoff)}},
-				{task.LastHeartbeatKey: bson.M{"$ne": utility.ZeroTime}},
-			},
-		}
-	case TaskNoHeartbeatSinceDispatch:
-		reasonQuery = bson.M{
-			task.StatusKey:       evergreen.TaskDispatched,
-			task.DispatchTimeKey: bson.M{"$lte": time.Now().Add(-2 * cutoff)},
-		}
-	case TaskUndispatchedHasHeartbeat:
-		reasonQuery = bson.M{
-			task.StatusKey: evergreen.TaskUndispatched,
-			"$and": []bson.M{
-				{task.LastHeartbeatKey: bson.M{"$lte": time.Now().Add(-cutoff)}},
-				{task.LastHeartbeatKey: bson.M{"$ne": utility.ZeroTime}},
-			},
-		}
-	}
-	pipeline = append(pipeline, bson.M{
-		"$match": reasonQuery,
-	})
-	pipeline = append(pipeline, bson.M{
-		"$project": bson.M{
-			task.IdKey:        1,
-			task.ExecutionKey: 1,
-		},
-	})
-
-	tasks := []task.Task{}
-	err := db.Aggregate(Collection, pipeline, &tasks)
-	if err != nil {
-		return nil, errors.Wrap(err, "finding stale running tasks")
-	}
-	return tasks, nil
 }
 
 // NeedsAgentDeploy finds hosts which need the agent to be deployed because

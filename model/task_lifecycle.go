@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
@@ -1179,7 +1180,7 @@ func updateVersionStatus(v *Version) (string, error) {
 	return versionStatus, nil
 }
 
-func UpdatePatchStatus(p *patch.Patch, versionStatus string) error {
+func UpdatePatchStatus(p *patch.Patch, versionStatus, buildVariant string) error {
 	patchStatus, err := evergreen.VersionStatusToPatchStatus(versionStatus)
 	if err != nil {
 		return errors.Wrapf(err, "getting patch status from version status '%s'", versionStatus)
@@ -1197,6 +1198,20 @@ func UpdatePatchStatus(p *patch.Patch, versionStatus string) error {
 	} else {
 		if err = p.UpdateStatus(patchStatus); err != nil {
 			return errors.Wrapf(err, "updating patch '%s' with status '%s'", p.Id.Hex(), patchStatus)
+		}
+		if p.IsGithubPRPatch() {
+			input := thirdparty.SendGithubStatusInput{
+				VersionId: p.Id.Hex(),
+				Owner:     p.GithubPatchData.BaseOwner,
+				Repo:      p.GithubPatchData.BaseRepo,
+				Ref:       p.GithubPatchData.HeadHash,
+				Desc:      "patch status change",
+				Caller:    "pr-task-reset",
+				Context:   fmt.Sprintf("evergreen/%s", buildVariant),
+			}
+			if err = thirdparty.SendVersionStatusToGithub(input); err != nil {
+				return errors.Wrapf(err, "sending patch '%s' status to Github", p.Id.Hex())
+			}
 		}
 	}
 
@@ -1251,7 +1266,7 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 		if p == nil {
 			return errors.Errorf("no patch found for version '%s'", taskVersion.Id)
 		}
-		if err = UpdatePatchStatus(p, newVersionStatus); err != nil {
+		if err = UpdatePatchStatus(p, newVersionStatus, taskBuild.BuildVariant); err != nil {
 			return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
 		}
 	}
@@ -1269,6 +1284,7 @@ func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
 	}
 
 	versionsToUpdate := make(map[string]string)
+	bvMap := make(map[string]string)
 	for _, build := range builds {
 		buildStatusChanged, err := updateBuildStatus(&build)
 		if err != nil {
@@ -1280,6 +1296,7 @@ func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
 		}
 
 		versionsToUpdate[build.Version] = build.Id
+		bvMap[build.Id] = build.BuildVariant
 	}
 	for versionId, buildId := range versionsToUpdate {
 		buildVersion, err := VersionFindOneId(versionId)
@@ -1302,7 +1319,7 @@ func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
 			if p == nil {
 				return errors.Errorf("no patch found for version '%s'", buildVersion.Id)
 			}
-			if err = UpdatePatchStatus(p, newVersionStatus); err != nil {
+			if err = UpdatePatchStatus(p, newVersionStatus, bvMap[buildId]); err != nil {
 				return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
 			}
 		}
@@ -1643,23 +1660,52 @@ func ClearAndResetStrandedHostTask(h *host.Host) error {
 	return nil
 }
 
-// ResetStaleTask fixes a task that has exceeded the heartbeat timeout by
-// marking the current task execution as finished and, if possible, a new
-// execution is created to restart the task.
-func ResetStaleTask(t *task.Task) error {
+// FixStaleTask fixes a task that has exceeded the heartbeat timeout.
+// The current task execution is marked as finished and, if the task was not
+// aborted, the task is reset. If the task was aborted, we do not reset the task
+// and it is just marked as failed alongside other necessary updates to finish the task.
+func FixStaleTask(t *task.Task) error {
 	CheckAndBlockSingleHostTaskGroup(t, t.Status)
 
-	if err := resetSystemFailedTask(t, evergreen.TaskDescriptionHeartbeat); err != nil {
-		return errors.Wrap(err, "resetting task")
+	failureDesc := evergreen.TaskDescriptionHeartbeat
+	if t.Aborted {
+		failureDesc = evergreen.TaskDescriptionAborted
+		if err := finishStaleAbortedTask(t); err != nil {
+			return errors.Wrapf(err, "finishing stale aborted task '%s'", t.Id)
+		}
+	} else {
+		if err := resetSystemFailedTask(t, failureDesc); err != nil {
+			return errors.Wrap(err, "resetting heartbeat task")
+		}
 	}
 
 	grip.Info(message.Fields{
-		"message":            "successfully fixed stale heartbeat task",
+		"message":            "successfully fixed stale task",
 		"task":               t.Id,
 		"execution":          t.Execution,
 		"execution_platform": t.ExecutionPlatform,
+		"description":        failureDesc,
 	})
 
+	return nil
+}
+
+func finishStaleAbortedTask(t *task.Task) error {
+	failureDetails := &apimodels.TaskEndDetail{
+		Status:      evergreen.TaskFailed,
+		Type:        evergreen.CommandTypeSystem,
+		Description: evergreen.TaskDescriptionAborted,
+	}
+	projectRef, err := FindMergedProjectRef(t.Project, t.Version, true)
+	if err != nil {
+		return errors.Wrapf(err, "getting project ref for task '%s'", t.Id)
+	}
+	if projectRef == nil {
+		return errors.Errorf("project ref for task '%s' not found", t.Id)
+	}
+	if err = MarkEnd(t, evergreen.APIServerTaskActivator, time.Now(), failureDetails, utility.FromBoolPtr(projectRef.DeactivatePrevious)); err != nil {
+		return errors.Wrapf(err, "calling mark finish on task '%s'", t.Id)
+	}
 	return nil
 }
 

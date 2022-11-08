@@ -57,7 +57,7 @@ func (pc *DBCommitQueueConnector) AddPatchForPr(ctx context.Context, projectRef 
 	if err != nil {
 		return "", errors.Wrap(err, "getting GitHub OAuth token from admin settings")
 	}
-	pr, err := thirdparty.GetPullRequest(ctx, prNum, githubToken, projectRef.Owner, projectRef.Repo)
+	pr, err := thirdparty.GetMergeablePullRequest(ctx, prNum, githubToken, projectRef.Owner, projectRef.Repo)
 	if err != nil {
 		return "", err
 	}

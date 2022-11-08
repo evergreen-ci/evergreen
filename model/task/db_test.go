@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/utility"
 	adb "github.com/mongodb/anser/db"
@@ -892,4 +893,742 @@ func TestFindByStaleRunningTask(t *testing.T) {
 			tCase(t)
 		})
 	}
+}
+
+func TestGetTasksByVersionExecTasks(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+	// test that we can handle the different kinds of tasks
+	t1 := Task{
+		Id:            "execWithDisplayId",
+		Version:       "v1",
+		DisplayTaskId: utility.ToStringPtr("displayTask"),
+	}
+	t2 := Task{
+		Id:            "notAnExec",
+		Version:       "v1",
+		DisplayTaskId: utility.ToStringPtr(""),
+	}
+
+	t3 := Task{
+		Id:      "execWithNoId",
+		Version: "v1",
+	}
+	t4 := Task{
+		Id:      "notAnExecWithNoId",
+		Version: "v1",
+	}
+	dt := Task{
+		Id:             "displayTask",
+		Version:        "v1",
+		DisplayOnly:    true,
+		ExecutionTasks: []string{"execWithDisplayId", "execWithNoId"},
+	}
+	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, dt))
+
+	// execution tasks have been filtered outs
+	opts := GetTasksByVersionOptions{}
+	tasks, count, err := GetTasksByVersion("v1", opts)
+	assert.NoError(t, err)
+	assert.Equal(t, count, 3)
+	// alphabetical order
+	assert.Equal(t, dt.Id, tasks[0].Id)
+	assert.Equal(t, t2.Id, tasks[1].Id)
+	assert.Equal(t, t4.Id, tasks[2].Id)
+}
+
+func TestGetTasksByVersionIncludeEmptyActivation(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+
+	inactiveTask := Task{
+		Id:            "inactiveTask",
+		Version:       "v1",
+		ActivatedTime: utility.ZeroTime,
+	}
+
+	assert.NoError(t, inactiveTask.Insert())
+
+	// inactive tasks should be included
+	opts := GetTasksByVersionOptions{IncludeEmptyActivation: true}
+	_, count, err := GetTasksByVersion("v1", opts)
+	assert.NoError(t, err)
+	assert.Equal(t, count, 1)
+	// inactive tasks should be excluded
+	opts = GetTasksByVersionOptions{IncludeEmptyActivation: false}
+	_, count, err = GetTasksByVersion("v1", opts)
+	assert.NoError(t, err)
+	assert.Equal(t, count, 0)
+}
+
+func TestGetTasksByVersionAnnotations(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection, annotations.Collection))
+	t1 := Task{
+		Id:        "t1",
+		Version:   "v1",
+		Execution: 2,
+		Status:    evergreen.TaskSucceeded,
+	}
+	t2 := Task{
+		Id:        "t2",
+		Version:   "v1",
+		Execution: 3,
+		Status:    evergreen.TaskFailed,
+	}
+	t3 := Task{
+		Id:        "t3",
+		Version:   "v1",
+		Execution: 1,
+		Status:    evergreen.TaskFailed,
+	}
+	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3))
+
+	a := annotations.TaskAnnotation{
+		Id:            "myAnnotation",
+		TaskId:        t2.Id,
+		TaskExecution: t2.Execution,
+		Issues: []annotations.IssueLink{
+			{IssueKey: "EVG-1212"},
+		},
+	}
+	assert.NoError(t, a.Upsert())
+
+	opts := GetTasksByVersionOptions{}
+	tasks, count, err := GetTasksByVersion("v1", opts)
+	assert.NoError(t, err)
+	assert.Equal(t, count, 3)
+	assert.Equal(t, tasks[0].Id, "t1")
+	assert.Equal(t, evergreen.TaskSucceeded, tasks[0].DisplayStatus)
+	assert.Equal(t, tasks[1].Id, "t2")
+	assert.Equal(t, evergreen.TaskKnownIssue, tasks[1].DisplayStatus)
+	assert.Equal(t, tasks[2].Id, "t3")
+	assert.Equal(t, evergreen.TaskFailed, tasks[2].DisplayStatus)
+}
+
+func TestGetTasksByVersionBaseTasks(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+
+	t1 := Task{
+		Id:                  "t1",
+		Version:             "v1",
+		BuildVariant:        "bv",
+		DisplayName:         "displayName",
+		Execution:           0,
+		Status:              evergreen.TaskSucceeded,
+		RevisionOrderNumber: 1,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		Revision:            "abc123",
+	}
+	t2 := Task{
+		Id:           "t2",
+		Version:      "v2",
+		BuildVariant: "bv",
+		DisplayName:  "displayName",
+		Execution:    0,
+		Status:       evergreen.TaskFailed,
+		Requester:    evergreen.GithubPRRequester,
+		Revision:     "abc123",
+	}
+
+	t3 := Task{
+		Id:                  "t3",
+		Version:             "v3",
+		BuildVariant:        "bv",
+		DisplayName:         "displayName",
+		Execution:           0,
+		Status:              evergreen.TaskFailed,
+		RevisionOrderNumber: 2,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		Revision:            "abc125",
+	}
+	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3))
+
+	// Normal Patch builds
+	opts := GetTasksByVersionOptions{
+		IncludeBaseTasks: true,
+		IsMainlineCommit: false,
+	}
+	tasks, count, err := GetTasksByVersion("v2", opts)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, count)
+	assert.Equal(t, "t2", tasks[0].Id)
+	assert.Equal(t, evergreen.TaskFailed, tasks[0].DisplayStatus)
+	assert.NotNil(t, tasks[0].BaseTask)
+	assert.Equal(t, "t1", tasks[0].BaseTask.Id)
+	assert.Equal(t, t1.Status, tasks[0].BaseTask.Status)
+
+	// Mainline builds
+	opts = GetTasksByVersionOptions{
+		IncludeBaseTasks: true,
+		IsMainlineCommit: true,
+	}
+	tasks, count, err = GetTasksByVersion("v3", opts)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, count)
+	assert.Equal(t, "t3", tasks[0].Id)
+	assert.Equal(t, evergreen.TaskFailed, tasks[0].DisplayStatus)
+	assert.NotNil(t, tasks[0].BaseTask)
+	assert.Equal(t, "t1", tasks[0].BaseTask.Id)
+	assert.Equal(t, t1.Status, tasks[0].BaseTask.Status)
+}
+
+func TestGetTasksByVersionSorting(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+
+	t1 := Task{
+		Id:           "t1",
+		Version:      "v1",
+		BuildVariant: "bv_foo",
+		DisplayName:  "displayName_foo",
+		Execution:    0,
+		Status:       evergreen.TaskSucceeded,
+		BaseTask:     BaseTaskInfo{Id: "t1_base", Status: evergreen.TaskSucceeded},
+		StartTime:    time.Date(2022, time.April, 7, 23, 0, 0, 0, time.UTC),
+		TimeTaken:    time.Minute,
+	}
+	t2 := Task{
+		Id:           "t2",
+		Version:      "v1",
+		BuildVariant: "bv_bar",
+		DisplayName:  "displayName_bar",
+		Execution:    0,
+		Status:       evergreen.TaskFailed,
+		BaseTask:     BaseTaskInfo{Id: "t2_base", Status: evergreen.TaskFailed},
+		StartTime:    time.Date(2022, time.April, 7, 23, 0, 0, 0, time.UTC),
+		TimeTaken:    25 * time.Minute,
+	}
+	t3 := Task{
+		Id:           "t3",
+		Version:      "v1",
+		BuildVariant: "bv_qux",
+		DisplayName:  "displayName_qux",
+		Execution:    0,
+		Status:       evergreen.TaskStarted,
+		BaseTask:     BaseTaskInfo{Id: "t3_base", Status: evergreen.TaskSucceeded},
+		StartTime:    time.Date(2021, time.November, 10, 23, 0, 0, 0, time.UTC),
+		TimeTaken:    0,
+	}
+	t4 := Task{
+		Id:           "t4",
+		Version:      "v1",
+		BuildVariant: "bv_baz",
+		DisplayName:  "displayName_baz",
+		Execution:    0,
+		Status:       evergreen.TaskSetupFailed,
+		BaseTask:     BaseTaskInfo{Id: "t4_base", Status: evergreen.TaskSucceeded},
+		StartTime:    time.Date(2022, time.April, 7, 23, 0, 0, 0, time.UTC),
+		TimeTaken:    2 * time.Hour,
+	}
+
+	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4))
+
+	// Sort by display name, asc
+	opts := GetTasksByVersionOptions{
+		Sorts: []TasksSortOrder{
+			{Key: DisplayNameKey, Order: 1},
+		},
+	}
+	tasks, count, err := GetTasksByVersion("v1", opts)
+	assert.NoError(t, err)
+	assert.Equal(t, 4, count)
+	assert.Equal(t, "t2", tasks[0].Id)
+	assert.Equal(t, "t4", tasks[1].Id)
+	assert.Equal(t, "t1", tasks[2].Id)
+	assert.Equal(t, "t3", tasks[3].Id)
+
+	// Sort by build variant name, asc
+	opts = GetTasksByVersionOptions{
+		Sorts: []TasksSortOrder{
+			{Key: BuildVariantKey, Order: 1},
+		},
+	}
+	tasks, count, err = GetTasksByVersion("v1", opts)
+	assert.NoError(t, err)
+	assert.Equal(t, 4, count)
+	assert.Equal(t, "t2", tasks[0].Id)
+	assert.Equal(t, "t4", tasks[1].Id)
+	assert.Equal(t, "t1", tasks[2].Id)
+	assert.Equal(t, "t3", tasks[3].Id)
+
+	// Sort by display status, asc
+	opts = GetTasksByVersionOptions{
+		Sorts: []TasksSortOrder{
+			{Key: DisplayStatusKey, Order: 1},
+		},
+	}
+	tasks, count, err = GetTasksByVersion("v1", opts)
+	assert.NoError(t, err)
+	assert.Equal(t, 4, count)
+	assert.Equal(t, "t2", tasks[0].Id)
+	assert.Equal(t, "t4", tasks[1].Id)
+	assert.Equal(t, "t3", tasks[2].Id)
+	assert.Equal(t, "t1", tasks[3].Id)
+
+	// Sort by base task status, asc
+	opts = GetTasksByVersionOptions{
+		Sorts: []TasksSortOrder{
+			{Key: BaseTaskStatusKey, Order: 1},
+		},
+	}
+	tasks, count, err = GetTasksByVersion("v1", opts)
+	assert.NoError(t, err)
+	assert.Equal(t, 4, count)
+	assert.Equal(t, "t2", tasks[0].Id)
+	assert.Equal(t, "t1", tasks[1].Id)
+	assert.Equal(t, "t3", tasks[2].Id)
+	assert.Equal(t, "t4", tasks[3].Id)
+
+	// Sort by duration, asc
+	opts = GetTasksByVersionOptions{
+		Sorts: []TasksSortOrder{
+			{Key: TimeTakenKey, Order: 1},
+		},
+	}
+	tasks, count, err = GetTasksByVersion("v1", opts)
+	assert.NoError(t, err)
+	assert.Equal(t, 4, count)
+	assert.Equal(t, "t1", tasks[0].Id)
+	assert.Equal(t, "t2", tasks[1].Id)
+	assert.Equal(t, "t4", tasks[2].Id)
+	assert.Equal(t, "t3", tasks[3].Id)
+}
+
+func TestGetTaskStatsByVersion(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	t1 := Task{
+		Id:               "t1",
+		Version:          "v1",
+		Execution:        0,
+		Status:           evergreen.TaskStarted,
+		ExpectedDuration: time.Minute,
+		StartTime:        time.Date(2009, time.November, 10, 12, 0, 0, 0, time.UTC),
+	}
+	t2 := Task{
+		Id:               "t2",
+		Version:          "v1",
+		Execution:        0,
+		Status:           evergreen.TaskStarted,
+		ExpectedDuration: 150 * time.Minute,
+		StartTime:        time.Date(2009, time.November, 10, 12, 0, 0, 0, time.UTC),
+	}
+	t3 := Task{
+		Id:        "t3",
+		Version:   "v1",
+		Execution: 1,
+		Status:    evergreen.TaskSucceeded,
+	}
+	t4 := Task{
+		Id:        "t4",
+		Version:   "v1",
+		Execution: 1,
+		Status:    evergreen.TaskFailed,
+	}
+	t5 := Task{
+		Id:        "t5",
+		Version:   "v1",
+		Execution: 2,
+		Status:    evergreen.TaskStatusPending,
+	}
+	t6 := Task{
+		Id:        "t6",
+		Version:   "v1",
+		Execution: 2,
+		Status:    evergreen.TaskFailed,
+	}
+	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5, t6))
+	opts := GetTasksByVersionOptions{}
+	stats, err := GetTaskStatsByVersion("v1", opts)
+	assert.NoError(t, err)
+	assert.Equal(t, 4, len(stats.Counts))
+	assert.True(t, stats.ETA.Equal(time.Date(2009, time.November, 10, 14, 30, 0, 0, time.UTC)))
+
+	assert.NoError(t, db.ClearCollections(Collection))
+	assert.NoError(t, db.InsertMany(Collection, t3, t4, t5, t6))
+	stats, err = GetTaskStatsByVersion("v1", opts)
+	assert.NoError(t, err)
+	assert.Nil(t, stats.ETA)
+}
+
+func TestGetGroupedTaskStatsByVersion(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+
+	t1 := Task{
+		Id:                      "t1",
+		Version:                 "v1",
+		Execution:               0,
+		Status:                  evergreen.TaskSucceeded,
+		BuildVariant:            "bv1",
+		BuildVariantDisplayName: "Build Variant 1",
+	}
+	t2 := Task{
+		Id:                      "t2",
+		Version:                 "v1",
+		Execution:               0,
+		Status:                  evergreen.TaskFailed,
+		BuildVariant:            "bv1",
+		BuildVariantDisplayName: "Build Variant 1",
+	}
+	t3 := Task{
+		Id:                      "t3",
+		Version:                 "v1",
+		Execution:               1,
+		Status:                  evergreen.TaskSucceeded,
+		BuildVariant:            "bv1",
+		BuildVariantDisplayName: "Build Variant 1",
+	}
+	t4 := Task{
+		Id:                      "t4",
+		Version:                 "v1",
+		Execution:               1,
+		Status:                  evergreen.TaskFailed,
+		BuildVariant:            "bv2",
+		BuildVariantDisplayName: "Build Variant 2",
+	}
+	t5 := Task{
+		Id:                      "t5",
+		Version:                 "v1",
+		Execution:               2,
+		Status:                  evergreen.TaskStatusPending,
+		BuildVariant:            "bv2",
+		BuildVariantDisplayName: "Build Variant 2",
+	}
+	t6 := Task{
+		Id:                      "t6",
+		Version:                 "v1",
+		Execution:               2,
+		Status:                  evergreen.TaskFailed,
+		BuildVariant:            "bv2",
+		BuildVariantDisplayName: "Build Variant 2",
+	}
+	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5, t6))
+
+	t.Run("Fetch GroupedTaskStats with no filters applied", func(t *testing.T) {
+
+		opts := GetTasksByVersionOptions{}
+		variants, err := GetGroupedTaskStatsByVersion("v1", opts)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(variants))
+		expectedValues := []*GroupedTaskStatusCount{
+			{
+				Variant:     "bv1",
+				DisplayName: "Build Variant 1",
+				StatusCounts: []*StatusCount{
+					{
+						Status: evergreen.TaskFailed,
+						Count:  1,
+					},
+					{
+						Status: evergreen.TaskSucceeded,
+						Count:  2,
+					},
+				},
+			},
+			{
+				Variant:     "bv2",
+				DisplayName: "Build Variant 2",
+				StatusCounts: []*StatusCount{
+					{
+						Status: evergreen.TaskFailed,
+						Count:  2,
+					},
+					{
+						Status: evergreen.TaskStatusPending,
+						Count:  1,
+					},
+				},
+			},
+		}
+
+		compareGroupedTaskStatusCounts(t, expectedValues, variants)
+	})
+	t.Run("Fetch GroupedTaskStats with filters applied", func(t *testing.T) {
+
+		opts := GetTasksByVersionOptions{
+			Variants: []string{"bv1"},
+		}
+
+		variants, err := GetGroupedTaskStatsByVersion("v1", opts)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(variants))
+		expectedValues := []*GroupedTaskStatusCount{
+			{
+				Variant:     "bv1",
+				DisplayName: "Build Variant 1",
+				StatusCounts: []*StatusCount{
+					{
+						Status: evergreen.TaskFailed,
+						Count:  1,
+					},
+					{
+						Status: evergreen.TaskSucceeded,
+						Count:  2,
+					},
+				},
+			},
+		}
+		compareGroupedTaskStatusCounts(t, expectedValues, variants)
+	})
+
+}
+
+func compareGroupedTaskStatusCounts(t *testing.T, expected, actual []*GroupedTaskStatusCount) {
+	// reflect.DeepEqual does not work here, it was failing because of the slice ptr values for StatusCounts.
+	for i, e := range expected {
+		a := actual[i]
+		assert.Equal(t, e.Variant, a.Variant)
+		assert.Equal(t, e.DisplayName, a.DisplayName)
+		assert.Equal(t, len(e.StatusCounts), len(a.StatusCounts))
+		for j, expectedCount := range e.StatusCounts {
+			actualCount := a.StatusCounts[j]
+			assert.Equal(t, expectedCount.Status, actualCount.Status)
+			assert.Equal(t, expectedCount.Count, actualCount.Count)
+		}
+	}
+}
+
+func TestGetBaseStatusesForActivatedTasks(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	t1 := Task{
+		Id:            "t1",
+		Version:       "v1",
+		Status:        evergreen.TaskStarted,
+		ActivatedTime: time.Time{},
+		DisplayName:   "task_1",
+		BuildVariant:  "bv_1",
+	}
+	t2 := Task{
+		Id:            "t2",
+		Version:       "v1",
+		Status:        evergreen.TaskSetupFailed,
+		ActivatedTime: time.Time{},
+		DisplayName:   "task_2",
+		BuildVariant:  "bv_2",
+	}
+	t3 := Task{
+		Id:            "t1_base",
+		Version:       "v1_base",
+		Status:        evergreen.TaskSucceeded,
+		ActivatedTime: time.Time{},
+		DisplayName:   "task_1",
+		BuildVariant:  "bv_1",
+	}
+	t4 := Task{
+		Id:            "t2_base",
+		Version:       "v1_base",
+		Status:        evergreen.TaskStarted,
+		ActivatedTime: time.Time{},
+		DisplayName:   "task_2",
+		BuildVariant:  "bv_2",
+	}
+	t5 := Task{
+		Id:            "only_on_base",
+		Version:       "v1_base",
+		Status:        evergreen.TaskFailed,
+		ActivatedTime: time.Time{},
+		DisplayName:   "only_on_base",
+		BuildVariant:  "bv_2",
+	}
+	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5))
+	statuses, err := GetBaseStatusesForActivatedTasks("v1", "v1_base")
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(statuses))
+	assert.Equal(t, statuses[0], evergreen.TaskStarted)
+	assert.Equal(t, statuses[1], evergreen.TaskSucceeded)
+
+	assert.NoError(t, db.ClearCollections(Collection))
+	assert.NoError(t, db.InsertMany(Collection, t1, t2, t5))
+	statuses, err = GetBaseStatusesForActivatedTasks("v1", "v1_base")
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(statuses))
+}
+
+func TestHasMatchingTasks(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+	t1 := Task{
+		Id:           "t1",
+		Version:      "v1",
+		BuildVariant: "bv1",
+		Execution:    0,
+		Status:       evergreen.TaskSucceeded,
+	}
+	t2 := Task{
+		Id:           "t2",
+		Version:      "v1",
+		BuildVariant: "bv1",
+		Execution:    0,
+		Status:       evergreen.TaskFailed,
+	}
+	// TODO: Reenable this test once https://jira.mongodb.org/browse/EVG-16918 is complete
+	// bv1 := build.Build{
+	// 	Id:           "bv1",
+	// 	BuildVariant: "bv1",
+	// 	DisplayName:  "Build Variant 1",
+	// }
+	t3 := Task{
+		Id:           "t3",
+		Version:      "v1",
+		BuildVariant: "bv2",
+		Execution:    1,
+		Status:       evergreen.TaskSucceeded,
+	}
+	t4 := Task{
+		Id:           "t4",
+		Version:      "v1",
+		BuildVariant: "bv2",
+		Execution:    1,
+		Status:       evergreen.TaskFailed,
+	}
+	// bv2 := build.Build{
+	// 	Id:           "bv2",
+	// 	BuildVariant: "bv2",
+	// 	DisplayName:  "Build Variant 2",
+	// }
+	t5 := Task{
+		Id:           "t5",
+		Version:      "v1",
+		BuildVariant: "bv3",
+		Execution:    2,
+		Status:       evergreen.TaskStatusPending,
+	}
+	t6 := Task{
+		Id:           "t6",
+		Version:      "v1",
+		BuildVariant: "bv3",
+		Execution:    2,
+		Status:       evergreen.TaskFailed,
+	}
+	// bv3 := build.Build{
+	// 	Id:           "bv3",
+	// 	BuildVariant: "bv3",
+	// 	DisplayName:  "Build Variant 3",
+	// }
+	// assert.NoError(t, db.InsertMany("build", bv1, bv2, bv3))
+	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5, t6))
+	opts := HasMatchingTasksOptions{
+		Statuses: []string{evergreen.TaskFailed},
+	}
+	hasMatchingTasks, err := HasMatchingTasks("v1", opts)
+	assert.NoError(t, err)
+	assert.True(t, hasMatchingTasks)
+
+	opts.Statuses = []string{evergreen.TaskWillRun}
+
+	hasMatchingTasks, err = HasMatchingTasks("v1", opts)
+	assert.NoError(t, err)
+	assert.False(t, hasMatchingTasks)
+
+	opts = HasMatchingTasksOptions{
+		Variants: []string{"bv1"},
+	}
+	hasMatchingTasks, err = HasMatchingTasks("v1", opts)
+	assert.NoError(t, err)
+	assert.True(t, hasMatchingTasks)
+
+	// TODO: Reenable this test once https://jira.mongodb.org/browse/EVG-16918 is complete
+	// opts.Variants = []string{"Build Variant 2"}
+	// hasMatchingTasks, err = HasMatchingTasks("v1", opts)
+	// assert.NoError(t, err)
+	// assert.True(t, hasMatchingTasks)
+
+	opts.Variants = []string{"DNE"}
+	hasMatchingTasks, err = HasMatchingTasks("v1", opts)
+	assert.NoError(t, err)
+	assert.False(t, hasMatchingTasks)
+}
+
+func TestFindAllUnmarkedBlockedDependencies(t *testing.T) {
+	assert := assert.New(t)
+	require.NoError(t, db.ClearCollections(Collection))
+
+	t1 := &Task{
+		Id:     "t1",
+		Status: evergreen.TaskFailed,
+	}
+
+	tasks := []Task{
+		{
+			Id: "t2",
+			DependsOn: []Dependency{
+				{
+					TaskId: "t1",
+					Status: evergreen.TaskSucceeded,
+				},
+			},
+		},
+		{
+			Id: "t3",
+			DependsOn: []Dependency{
+				{
+					TaskId: "t1",
+					Status: evergreen.TaskFailed,
+				},
+			},
+		},
+		{
+			Id: "t4",
+			DependsOn: []Dependency{
+				{
+					TaskId:       "t1",
+					Status:       evergreen.TaskSucceeded,
+					Unattainable: true,
+				},
+			},
+		},
+		{
+			Id: "t5",
+			DependsOn: []Dependency{
+				{
+					TaskId: "t1",
+					Status: evergreen.TaskFailed,
+				},
+				{
+					TaskId: "t2",
+					Status: evergreen.TaskSucceeded,
+				},
+			},
+		},
+	}
+	for _, task := range tasks {
+		assert.NoError(task.Insert())
+	}
+
+	deps, err := t1.FindAllUnmarkedBlockedDependencies()
+	assert.NoError(err)
+	assert.Len(deps, 1)
+}
+
+func TestFindAllMarkedUnattainableDependencies(t *testing.T) {
+	assert := assert.New(t)
+	require.NoError(t, db.ClearCollections(Collection))
+
+	t1 := &Task{Id: "t1"}
+	tasks := []Task{
+		{
+			Id: "t2",
+			DependsOn: []Dependency{
+				{
+					TaskId:       "t1",
+					Unattainable: true,
+				},
+			},
+		},
+		{
+			Id: "t3",
+			DependsOn: []Dependency{
+				{
+					TaskId: "t1",
+				},
+				{
+					TaskId:       "t2",
+					Unattainable: true,
+				},
+			},
+		},
+	}
+
+	for _, task := range tasks {
+		assert.NoError(task.Insert())
+	}
+
+	unattainableTasks, err := t1.FindAllMarkedUnattainableDependencies()
+	assert.NoError(err)
+	assert.Len(unattainableTasks, 1)
 }

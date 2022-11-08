@@ -253,8 +253,15 @@ func (sns *ec2SNS) handleInstanceTerminated(ctx context.Context, instanceID stri
 		return nil
 	}
 
+	// The host is going to imminently stop work anyways. Decommissioning
+	// ensures that even if the external state check does not terminate the
+	// host, the host is eventually picked up for termination.
+	if err := h.SetDecommissioned(evergreen.User, false, "SNS notification indicates host is terminated"); err != nil {
+		return errors.Wrap(err, "decommissioning host")
+	}
+
 	if err := amboy.EnqueueUniqueJob(ctx, sns.queue, units.NewHostMonitorExternalStateJob(sns.env, h, sns.payload.MessageId)); err != nil {
-		return err
+		return errors.Wrap(err, "enqueueing host external state check job")
 	}
 
 	return nil
@@ -286,8 +293,15 @@ func (sns *ec2SNS) handleInstanceStopped(ctx context.Context, instanceID string)
 		return nil
 	}
 
+	// The host is going to imminently stop work anyways. Decommissioning
+	// ensures that even if the external state check does not terminate the
+	// host, the host is eventually picked up for termination.
+	if err := h.SetDecommissioned(evergreen.User, false, "SNS notification indicates host is stopped"); err != nil {
+		return errors.Wrap(err, "decommissioning host")
+	}
+
 	if err := amboy.EnqueueUniqueJob(ctx, sns.queue, units.NewHostMonitorExternalStateJob(sns.env, h, sns.payload.MessageId)); err != nil {
-		return err
+		return errors.Wrap(err, "enqueueing host external state check job")
 	}
 
 	return nil
@@ -542,12 +556,12 @@ func (sns *ecsSNS) cleanupUnrecognizedPod(ctx context.Context, detail ecsTaskEve
 
 	statusInfo := cocoa.NewECSPodStatusInfo().SetStatus(status)
 
-	podOpts := ecs.NewBasicECSPodOptions().
+	podOpts := ecs.NewBasicPodOptions().
 		SetClient(c).
 		SetStatusInfo(*statusInfo).
 		SetResources(*resources)
 
-	p, err := ecs.NewBasicECSPod(podOpts)
+	p, err := ecs.NewBasicPod(podOpts)
 	if err != nil {
 		return errors.Wrap(err, "getting pod")
 	}

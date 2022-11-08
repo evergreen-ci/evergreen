@@ -16,6 +16,7 @@ const (
 	patchIDFlagName           = "patch"
 	moduleFlagName            = "module"
 	localModulesFlagName      = "local_modules"
+	useUpgradedYAMLFlagName   = "use_upgraded_yaml"
 	skipConfirmFlagName       = "skip_confirm"
 	yesFlagName               = "yes"
 	variantsFlagName          = "variants"

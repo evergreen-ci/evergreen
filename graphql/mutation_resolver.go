@@ -37,6 +37,7 @@ import (
 	werrors "github.com/pkg/errors"
 )
 
+// BbCreateTicket is the resolver for the bbCreateTicket field.
 func (r *mutationResolver) BbCreateTicket(ctx context.Context, taskID string, execution *int) (bool, error) {
 	httpStatus, err := data.BbFileTicket(ctx, taskID, *execution)
 	if err != nil {
@@ -45,6 +46,7 @@ func (r *mutationResolver) BbCreateTicket(ctx context.Context, taskID string, ex
 	return true, nil
 }
 
+// AddAnnotationIssue is the resolver for the addAnnotationIssue field.
 func (r *mutationResolver) AddAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue restModel.APIIssueLink, isIssue bool) (bool, error) {
 	usr := mustHaveUser(ctx)
 	issue := restModel.APIIssueLinkToService(apiIssue)
@@ -64,6 +66,7 @@ func (r *mutationResolver) AddAnnotationIssue(ctx context.Context, taskID string
 	}
 }
 
+// EditAnnotationNote is the resolver for the editAnnotationNote field.
 func (r *mutationResolver) EditAnnotationNote(ctx context.Context, taskID string, execution int, originalMessage string, newMessage string) (bool, error) {
 	usr := mustHaveUser(ctx)
 	if err := annotations.UpdateAnnotationNote(taskID, execution, originalMessage, newMessage, usr.Username()); err != nil {
@@ -72,6 +75,7 @@ func (r *mutationResolver) EditAnnotationNote(ctx context.Context, taskID string
 	return true, nil
 }
 
+// MoveAnnotationIssue is the resolver for the moveAnnotationIssue field.
 func (r *mutationResolver) MoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue restModel.APIIssueLink, isIssue bool) (bool, error) {
 	usr := mustHaveUser(ctx)
 	issue := restModel.APIIssueLinkToService(apiIssue)
@@ -88,6 +92,7 @@ func (r *mutationResolver) MoveAnnotationIssue(ctx context.Context, taskID strin
 	}
 }
 
+// RemoveAnnotationIssue is the resolver for the removeAnnotationIssue field.
 func (r *mutationResolver) RemoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue restModel.APIIssueLink, isIssue bool) (bool, error) {
 	issue := restModel.APIIssueLinkToService(apiIssue)
 	if isIssue {
@@ -103,6 +108,7 @@ func (r *mutationResolver) RemoveAnnotationIssue(ctx context.Context, taskID str
 	}
 }
 
+// ReprovisionToNew is the resolver for the reprovisionToNew field.
 func (r *mutationResolver) ReprovisionToNew(ctx context.Context, hostIds []string) (int, error) {
 	user := mustHaveUser(ctx)
 
@@ -119,6 +125,7 @@ func (r *mutationResolver) ReprovisionToNew(ctx context.Context, hostIds []strin
 	return hostsUpdated, nil
 }
 
+// RestartJasper is the resolver for the restartJasper field.
 func (r *mutationResolver) RestartJasper(ctx context.Context, hostIds []string) (int, error) {
 	user := mustHaveUser(ctx)
 
@@ -135,6 +142,7 @@ func (r *mutationResolver) RestartJasper(ctx context.Context, hostIds []string) 
 	return hostsUpdated, nil
 }
 
+// UpdateHostStatus is the resolver for the updateHostStatus field.
 func (r *mutationResolver) UpdateHostStatus(ctx context.Context, hostIds []string, status string, notes *string) (int, error) {
 	user := mustHaveUser(ctx)
 
@@ -152,6 +160,7 @@ func (r *mutationResolver) UpdateHostStatus(ctx context.Context, hostIds []strin
 	return hostsUpdated, nil
 }
 
+// EnqueuePatch is the resolver for the enqueuePatch field.
 func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, commitMessage *string) (*restModel.APIPatch, error) {
 	user := mustHaveUser(ctx)
 	existingPatch, err := data.FindPatchById(patchID)
@@ -186,6 +195,7 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, com
 	return newPatch, nil
 }
 
+// SchedulePatch is the resolver for the schedulePatch field.
 func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, configure PatchConfigure) (*restModel.APIPatch, error) {
 	patchUpdateReq := buildFromGqlInput(configure)
 	version, err := model.VersionFindOneId(patchID)
@@ -203,6 +213,7 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, co
 	return scheduledPatch, nil
 }
 
+// SchedulePatchTasks is the resolver for the schedulePatchTasks field.
 func (r *mutationResolver) SchedulePatchTasks(ctx context.Context, patchID string) (*string, error) {
 	modifications := model.VersionModification{
 		Action: evergreen.SetActiveAction,
@@ -216,6 +227,7 @@ func (r *mutationResolver) SchedulePatchTasks(ctx context.Context, patchID strin
 	return &patchID, nil
 }
 
+// ScheduleUndispatchedBaseTasks is the resolver for the scheduleUndispatchedBaseTasks field.
 func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, patchID string) ([]*restModel.APITask, error) {
 	opts := task.GetTasksByVersionOptions{
 		Statuses:                       evergreen.TaskFailureStatuses,
@@ -284,6 +296,7 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 	return scheduledTasks, nil
 }
 
+// SetPatchPriority is the resolver for the setPatchPriority field.
 func (r *mutationResolver) SetPatchPriority(ctx context.Context, patchID string, priority int) (*string, error) {
 	modifications := model.VersionModification{
 		Action:   evergreen.SetPriorityAction,
@@ -296,6 +309,7 @@ func (r *mutationResolver) SetPatchPriority(ctx context.Context, patchID string,
 	return &patchID, nil
 }
 
+// UnschedulePatchTasks is the resolver for the unschedulePatchTasks field.
 func (r *mutationResolver) UnschedulePatchTasks(ctx context.Context, patchID string, abort bool) (*string, error) {
 	modifications := model.VersionModification{
 		Action: evergreen.SetActiveAction,
@@ -309,6 +323,7 @@ func (r *mutationResolver) UnschedulePatchTasks(ctx context.Context, patchID str
 	return &patchID, nil
 }
 
+// AddFavoriteProject is the resolver for the addFavoriteProject field.
 func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier string) (*restModel.APIProjectRef, error) {
 	p, err := model.FindBranchProjectRef(identifier)
 	if err != nil || p == nil {
@@ -328,6 +343,7 @@ func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier st
 	return &apiProjectRef, nil
 }
 
+// AttachProjectToNewRepo is the resolver for the attachProjectToNewRepo field.
 func (r *mutationResolver) AttachProjectToNewRepo(ctx context.Context, project MoveProjectInput) (*restModel.APIProjectRef, error) {
 	usr := mustHaveUser(ctx)
 	pRef, err := data.FindProjectById(project.ProjectID, false, false)
@@ -348,6 +364,7 @@ func (r *mutationResolver) AttachProjectToNewRepo(ctx context.Context, project M
 	return res, nil
 }
 
+// AttachProjectToRepo is the resolver for the attachProjectToRepo field.
 func (r *mutationResolver) AttachProjectToRepo(ctx context.Context, projectID string) (*restModel.APIProjectRef, error) {
 	usr := mustHaveUser(ctx)
 	pRef, err := data.FindProjectById(projectID, false, false)
@@ -368,6 +385,7 @@ func (r *mutationResolver) AttachProjectToRepo(ctx context.Context, projectID st
 	return res, nil
 }
 
+// CreateProject is the resolver for the createProject field.
 func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.APIProjectRef) (*restModel.APIProjectRef, error) {
 	dbProjectRef, err := project.ToService()
 	if err != nil {
@@ -402,6 +420,7 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 	return &apiProjectRef, nil
 }
 
+// CopyProject is the resolver for the copyProject field.
 func (r *mutationResolver) CopyProject(ctx context.Context, project data.CopyProjectOpts) (*restModel.APIProjectRef, error) {
 	projectRef, err := data.CopyProject(ctx, evergreen.GetEnvironment(), project)
 	if projectRef == nil && err != nil {
@@ -424,6 +443,7 @@ func (r *mutationResolver) CopyProject(ctx context.Context, project data.CopyPro
 	return projectRef, nil
 }
 
+// DefaultSectionToRepo is the resolver for the defaultSectionToRepo field.
 func (r *mutationResolver) DefaultSectionToRepo(ctx context.Context, projectID string, section ProjectSettingsSection) (*string, error) {
 	usr := mustHaveUser(ctx)
 	if err := model.DefaultSectionToRepo(projectID, model.ProjectPageSection(section), usr.Username()); err != nil {
@@ -432,6 +452,7 @@ func (r *mutationResolver) DefaultSectionToRepo(ctx context.Context, projectID s
 	return &projectID, nil
 }
 
+// DetachProjectFromRepo is the resolver for the detachProjectFromRepo field.
 func (r *mutationResolver) DetachProjectFromRepo(ctx context.Context, projectID string) (*restModel.APIProjectRef, error) {
 	usr := mustHaveUser(ctx)
 	pRef, err := data.FindProjectById(projectID, false, false)
@@ -452,6 +473,7 @@ func (r *mutationResolver) DetachProjectFromRepo(ctx context.Context, projectID 
 	return res, nil
 }
 
+// ForceRepotrackerRun is the resolver for the forceRepotrackerRun field.
 func (r *mutationResolver) ForceRepotrackerRun(ctx context.Context, projectID string) (bool, error) {
 	ts := utility.RoundPartOfHour(1).Format(units.TSFormat)
 	j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectID)
@@ -461,6 +483,7 @@ func (r *mutationResolver) ForceRepotrackerRun(ctx context.Context, projectID st
 	return true, nil
 }
 
+// PromoteVarsToRepo is the resolver for the promoteVarsToRepo field.
 func (r *mutationResolver) PromoteVarsToRepo(ctx context.Context, projectID string, varNames []string) (bool, error) {
 	usr := mustHaveUser(ctx)
 	if err := data.PromoteVarsToRepo(projectID, varNames, usr.Username()); err != nil {
@@ -470,6 +493,7 @@ func (r *mutationResolver) PromoteVarsToRepo(ctx context.Context, projectID stri
 	return true, nil
 }
 
+// RemoveFavoriteProject is the resolver for the removeFavoriteProject field.
 func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier string) (*restModel.APIProjectRef, error) {
 	p, err := model.FindBranchProjectRef(identifier)
 	if err != nil || p == nil {
@@ -489,6 +513,7 @@ func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier
 	return &apiProjectRef, nil
 }
 
+// SaveProjectSettingsForSection is the resolver for the saveProjectSettingsForSection field.
 func (r *mutationResolver) SaveProjectSettingsForSection(ctx context.Context, projectSettings *restModel.APIProjectSettings, section ProjectSettingsSection) (*restModel.APIProjectSettings, error) {
 	projectId := utility.FromStringPtr(projectSettings.ProjectRef.Id)
 	usr := mustHaveUser(ctx)
@@ -499,6 +524,7 @@ func (r *mutationResolver) SaveProjectSettingsForSection(ctx context.Context, pr
 	return changes, nil
 }
 
+// SaveRepoSettingsForSection is the resolver for the saveRepoSettingsForSection field.
 func (r *mutationResolver) SaveRepoSettingsForSection(ctx context.Context, repoSettings *restModel.APIProjectSettings, section ProjectSettingsSection) (*restModel.APIProjectSettings, error) {
 	projectId := utility.FromStringPtr(repoSettings.ProjectRef.Id)
 	usr := mustHaveUser(ctx)
@@ -509,6 +535,7 @@ func (r *mutationResolver) SaveRepoSettingsForSection(ctx context.Context, repoS
 	return changes, nil
 }
 
+// DeactivateStepbackTasks is the resolver for the deactivateStepbackTasks field.
 func (r *mutationResolver) DeactivateStepbackTasks(ctx context.Context, projectID string) (bool, error) {
 	usr := mustHaveUser(ctx)
 	if err := task.LegacyDeactivateStepbackTasksForProject(projectID, usr.Username()); err != nil {
@@ -517,6 +544,7 @@ func (r *mutationResolver) DeactivateStepbackTasks(ctx context.Context, projectI
 	return true, nil
 }
 
+// AttachVolumeToHost is the resolver for the attachVolumeToHost field.
 func (r *mutationResolver) AttachVolumeToHost(ctx context.Context, volumeAndHost VolumeHost) (bool, error) {
 	statusCode, err := cloud.AttachVolume(ctx, volumeAndHost.VolumeID, volumeAndHost.HostID)
 	if err != nil {
@@ -525,6 +553,7 @@ func (r *mutationResolver) AttachVolumeToHost(ctx context.Context, volumeAndHost
 	return statusCode == http.StatusOK, nil
 }
 
+// DetachVolumeFromHost is the resolver for the detachVolumeFromHost field.
 func (r *mutationResolver) DetachVolumeFromHost(ctx context.Context, volumeID string) (bool, error) {
 	statusCode, err := cloud.DetachVolume(ctx, volumeID)
 	if err != nil {
@@ -533,6 +562,7 @@ func (r *mutationResolver) DetachVolumeFromHost(ctx context.Context, volumeID st
 	return statusCode == http.StatusOK, nil
 }
 
+// EditSpawnHost is the resolver for the editSpawnHost field.
 func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpawnHostInput) (*restModel.APIHost, error) {
 	var v *host.Volume
 	usr := mustHaveUser(ctx)
@@ -624,6 +654,7 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 	return &apiHost, nil
 }
 
+// MigrateVolume is the resolver for the migrateVolume field.
 func (r *mutationResolver) MigrateVolume(ctx context.Context, volumeID string, spawnHostInput *SpawnHostInput) (bool, error) {
 	usr := mustHaveUser(ctx)
 	options, err := getHostRequestOptions(ctx, usr, spawnHostInput)
@@ -633,6 +664,7 @@ func (r *mutationResolver) MigrateVolume(ctx context.Context, volumeID string, s
 	return data.MigrateVolume(ctx, volumeID, options, usr, evergreen.GetEnvironment())
 }
 
+// SpawnHost is the resolver for the spawnHost field.
 func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnHostInput) (*restModel.APIHost, error) {
 	usr := mustHaveUser(ctx)
 	options, err := getHostRequestOptions(ctx, usr, spawnHostInput)
@@ -652,6 +684,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 	return &apiHost, nil
 }
 
+// SpawnVolume is the resolver for the spawnVolume field.
 func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput SpawnVolumeInput) (bool, error) {
 	err := validateVolumeExpirationInput(ctx, spawnVolumeInput.Expiration, spawnVolumeInput.NoExpiration)
 	if err != nil {
@@ -696,6 +729,7 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 	return true, nil
 }
 
+// RemoveVolume is the resolver for the removeVolume field.
 func (r *mutationResolver) RemoveVolume(ctx context.Context, volumeID string) (bool, error) {
 	statusCode, err := cloud.DeleteVolume(ctx, volumeID)
 	if err != nil {
@@ -704,6 +738,7 @@ func (r *mutationResolver) RemoveVolume(ctx context.Context, volumeID string) (b
 	return statusCode == http.StatusOK, nil
 }
 
+// UpdateSpawnHostStatus is the resolver for the updateSpawnHostStatus field.
 func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, hostID string, action SpawnHostStatusActions) (*restModel.APIHost, error) {
 	h, err := host.FindOneByIdOrTag(hostID)
 	if err != nil {
@@ -746,6 +781,7 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, hostID str
 	return &apiHost, nil
 }
 
+// UpdateVolume is the resolver for the updateVolume field.
 func (r *mutationResolver) UpdateVolume(ctx context.Context, updateVolumeInput UpdateVolumeInput) (bool, error) {
 	volume, err := host.FindVolumeByID(updateVolumeInput.VolumeID)
 	if err != nil {
@@ -791,6 +827,7 @@ func (r *mutationResolver) UpdateVolume(ctx context.Context, updateVolumeInput U
 	return true, nil
 }
 
+// AbortTask is the resolver for the abortTask field.
 func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
 	t, err := task.FindOneId(taskID)
 	if err != nil {
@@ -815,6 +852,7 @@ func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restM
 	return apiTask, err
 }
 
+// OverrideTaskDependencies is the resolver for the overrideTaskDependencies field.
 func (r *mutationResolver) OverrideTaskDependencies(ctx context.Context, taskID string) (*restModel.APITask, error) {
 	currentUser := mustHaveUser(ctx)
 	t, err := task.FindByIdExecution(taskID, nil)
@@ -827,10 +865,10 @@ func (r *mutationResolver) OverrideTaskDependencies(ctx context.Context, taskID 
 	if err = t.SetOverrideDependencies(currentUser.Username()); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error overriding dependencies for task %s: %s", taskID, err.Error()))
 	}
-	t.DisplayStatus = t.GetDisplayStatus()
 	return getAPITaskFromTask(ctx, r.sc.GetURL(), *t)
 }
 
+// RestartTask is the resolver for the restartTask field.
 func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
 	usr := mustHaveUser(ctx)
 	username := usr.Username()
@@ -848,6 +886,7 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*res
 	return apiTask, err
 }
 
+// ScheduleTasks is the resolver for the scheduleTasks field.
 func (r *mutationResolver) ScheduleTasks(ctx context.Context, taskIds []string) ([]*restModel.APITask, error) {
 	scheduledTasks := []*restModel.APITask{}
 	scheduled, err := setManyTasksScheduled(ctx, r.sc.GetURL(), true, taskIds...)
@@ -858,6 +897,7 @@ func (r *mutationResolver) ScheduleTasks(ctx context.Context, taskIds []string) 
 	return scheduledTasks, nil
 }
 
+// SetTaskPriority is the resolver for the setTaskPriority field.
 func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, priority int) (*restModel.APITask, error) {
 	t, err := task.FindOneId(taskID)
 	if err != nil {
@@ -894,6 +934,7 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 	return apiTask, err
 }
 
+// UnscheduleTask is the resolver for the unscheduleTask field.
 func (r *mutationResolver) UnscheduleTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
 	scheduled, err := setManyTasksScheduled(ctx, r.sc.GetURL(), false, taskID)
 	if err != nil {
@@ -905,6 +946,7 @@ func (r *mutationResolver) UnscheduleTask(ctx context.Context, taskID string) (*
 	return scheduled[0], nil
 }
 
+// ClearMySubscriptions is the resolver for the clearMySubscriptions field.
 func (r *mutationResolver) ClearMySubscriptions(ctx context.Context) (int, error) {
 	usr := mustHaveUser(ctx)
 	username := usr.Username()
@@ -920,6 +962,7 @@ func (r *mutationResolver) ClearMySubscriptions(ctx context.Context) (int, error
 	return len(subIDs), nil
 }
 
+// CreatePublicKey is the resolver for the createPublicKey field.
 func (r *mutationResolver) CreatePublicKey(ctx context.Context, publicKeyInput PublicKeyInput) ([]*restModel.APIPubKey, error) {
 	err := savePublicKey(ctx, publicKeyInput)
 	if err != nil {
@@ -929,6 +972,7 @@ func (r *mutationResolver) CreatePublicKey(ctx context.Context, publicKeyInput P
 	return myPublicKeys, nil
 }
 
+// RemovePublicKey is the resolver for the removePublicKey field.
 func (r *mutationResolver) RemovePublicKey(ctx context.Context, keyName string) ([]*restModel.APIPubKey, error) {
 	if !doesPublicKeyNameAlreadyExist(ctx, keyName) {
 		return nil, InputValidationError.Send(ctx, fmt.Sprintf("Error deleting public key. Provided key name, %s, does not exist.", keyName))
@@ -941,6 +985,7 @@ func (r *mutationResolver) RemovePublicKey(ctx context.Context, keyName string) 
 	return myPublicKeys, nil
 }
 
+// SaveSubscription is the resolver for the saveSubscription field.
 func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription restModel.APISubscription) (bool, error) {
 	usr := mustHaveUser(ctx)
 	username := usr.Username()
@@ -991,6 +1036,7 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 	return true, nil
 }
 
+// UpdatePublicKey is the resolver for the updatePublicKey field.
 func (r *mutationResolver) UpdatePublicKey(ctx context.Context, targetKeyName string, updateInfo PublicKeyInput) ([]*restModel.APIPubKey, error) {
 	if !doesPublicKeyNameAlreadyExist(ctx, targetKeyName) {
 		return nil, InputValidationError.Send(ctx, fmt.Sprintf("Error updating public key. The target key name, %s, does not exist.", targetKeyName))
@@ -1011,6 +1057,7 @@ func (r *mutationResolver) UpdatePublicKey(ctx context.Context, targetKeyName st
 	return myPublicKeys, nil
 }
 
+// UpdateUserSettings is the resolver for the updateUserSettings field.
 func (r *mutationResolver) UpdateUserSettings(ctx context.Context, userSettings *restModel.APIUserSettings) (bool, error) {
 	usr := mustHaveUser(ctx)
 
@@ -1025,6 +1072,7 @@ func (r *mutationResolver) UpdateUserSettings(ctx context.Context, userSettings 
 	return true, nil
 }
 
+// RemoveItemFromCommitQueue is the resolver for the removeItemFromCommitQueue field.
 func (r *mutationResolver) RemoveItemFromCommitQueue(ctx context.Context, commitQueueID string, issue string) (*string, error) {
 	result, err := data.CommitQueueRemoveItem(commitQueueID, issue, gimlet.GetUser(ctx).DisplayName())
 	if err != nil {
@@ -1037,6 +1085,7 @@ func (r *mutationResolver) RemoveItemFromCommitQueue(ctx context.Context, commit
 	return &issue, nil
 }
 
+// RestartVersions is the resolver for the restartVersions field.
 func (r *mutationResolver) RestartVersions(ctx context.Context, versionID string, abort bool, versionsToRestart []*model.VersionToRestart) ([]*restModel.APIVersion, error) {
 	if len(versionsToRestart) == 0 {
 		return nil, InputValidationError.Send(ctx, "No versions provided. You must provide at least one version to restart")

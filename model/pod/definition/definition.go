@@ -93,3 +93,11 @@ func (pdc PodDefinitionCache) Delete(_ context.Context, externalID string) error
 
 	return nil
 }
+
+// PodDefinitionTag is the tag used to track pod definitions.
+const PodDefinitionTag = "evergreen-tracked"
+
+// GetTag returns the tag used for tracking cloud pod definitions.
+func (pdc PodDefinitionCache) GetTag() string {
+	return PodDefinitionTag
+}
