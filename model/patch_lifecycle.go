@@ -452,9 +452,15 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		return nil, errors.Wrap(err, "fetching patch parameters")
 	}
 
-	authorEmail := p.GitInfo.Email
+	authorEmail := ""
+	if p.GitInfo != nil {
+		authorEmail = p.GitInfo.Email
+	}
 	if p.Author != "" {
-		u, _ := user.FindOneById(p.Author)
+		u, err := user.FindOneById(p.Author)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting user")
+		}
 		if u != nil {
 			authorEmail = u.Email()
 		}
