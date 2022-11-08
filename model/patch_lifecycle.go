@@ -454,10 +454,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 
 	authorEmail := p.GitInfo.Email
 	if p.GithubPatchData.AuthorUID != 0 {
-		u, err := user.FindByGithubUID(p.GithubPatchData.AuthorUID)
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": fmt.Sprintf("failed to fetch evergeen user with Github UID %d", p.GithubPatchData.AuthorUID),
-		}))
+		u, _ := user.FindByGithubUID(p.GithubPatchData.AuthorUID)
 		if u != nil {
 			authorEmail = u.Email()
 		}
