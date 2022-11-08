@@ -75,6 +75,7 @@ type Version struct {
 	// AuthorID is an optional reference to the Evergreen user that authored
 	// this comment, if they can be identified
 	AuthorID string `bson:"author_id,omitempty" json:"author_id,omitempty"`
+	// test with a comment
 
 	SatisfiedTriggers []string `bson:"satisfied_triggers,omitempty" json:"satisfied_triggers,omitempty"`
 	// Fields set if triggered by an upstream build
@@ -513,7 +514,7 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 	if opts.StartAfter > 0 {
 		match[VersionRevisionOrderNumberKey] = bson.M{"$lt": opts.StartAfter}
 	}
-	pipeline := []bson.M{bson.M{"$match": match}}
+	pipeline := []bson.M{{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
 
 	// initial projection of version items
