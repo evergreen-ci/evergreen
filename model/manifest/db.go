@@ -69,7 +69,6 @@ func FindFromVersion(versionID, project, revision, requester string) (*Manifest,
 
 	// the version wasn't from the repotracker
 	// find the base commit's manifest
-	// TODO: Remove this legacy case after sufficient time now that all versions are given a manifest
 	manifest, err = FindOne(ByBaseProjectAndRevision(project, revision))
 	if err != nil {
 		return nil, errors.Wrap(err, "finding manifest")
