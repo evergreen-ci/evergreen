@@ -3,6 +3,7 @@ package operations
 import (
 	"context"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -71,6 +72,7 @@ func setupCLITestHarness() cliTestHarness {
 			artifact.Collection,
 			model.VersionCollection,
 			distro.Collection,
+			manifest.Collection,
 		),
 		ShouldBeNil)
 	So(db.Clear(patch.Collection), ShouldBeNil)
