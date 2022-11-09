@@ -510,6 +510,19 @@ func checkPR(ctx context.Context, githubToken, issue, owner, repo string) (*gith
 	return pr, false, nil
 }
 
+func validateBranch(branch *github.Branch) error {
+	if branch == nil {
+		return errors.New("branch is nil")
+	}
+	if branch.Commit == nil {
+		return errors.New("commit is nil")
+	}
+	if branch.Commit.SHA == nil {
+		return errors.New("SHA is nil")
+	}
+	return nil
+}
+
 func AddMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, projectRef *model.ProjectRef, source string) error {
 	settings, err := evergreen.GetConfig()
 	if err != nil {
@@ -654,7 +667,7 @@ func updatePatch(ctx context.Context, githubToken string, projectRef *model.Proj
 	if err != nil {
 		return nil, errors.Wrap(err, "getting branch")
 	}
-	if err = thirdparty.ValidateBranch(branch); err != nil {
+	if err = validateBranch(branch); err != nil {
 		return nil, errors.Wrap(err, "GitHub returned an invalid branch")
 	}
 
@@ -683,7 +696,7 @@ func updatePatch(ctx context.Context, githubToken string, projectRef *model.Proj
 			return nil, errors.Wrapf(err, "getting module '%s'", mod.ModuleName)
 		}
 
-		sha, err = thirdparty.GetBranchCommitHash(ctx, module.Repo, module.Branch, githubToken)
+		sha, err = getBranchCommitHash(ctx, module.Repo, module.Branch, githubToken)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting commit hash for branch '%s'", module.Branch)
 		}
@@ -697,4 +710,20 @@ func updatePatch(ctx context.Context, githubToken string, projectRef *model.Proj
 	project.BuildProjectTVPairs(patchDoc, patchDoc.Alias)
 
 	return project, nil
+}
+
+// getBranchCommitHash retrieves the most recent commit hash for branch for the given repo, module, and branch name.
+func getBranchCommitHash(ctx context.Context, repo, moduleBranch, token string) (string, error) {
+	owner, repo, err := thirdparty.ParseGitUrl(repo)
+	if err != nil {
+		return "", errors.Wrap(err, "repo is misconfigured (malformed URL)")
+	}
+	branch, err := thirdparty.GetBranchEvent(ctx, token, owner, repo, moduleBranch)
+	if err != nil {
+		return "", errors.Wrap(err, "getting branch")
+	}
+	if err = validateBranch(branch); err != nil {
+		return "", errors.Wrap(err, "GitHub returned invalid branch")
+	}
+	return utility.FromStringPtr(branch.Commit.SHA), nil
 }

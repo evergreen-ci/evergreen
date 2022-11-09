@@ -605,7 +605,8 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 	return res, nil
 }
 
-func CreateManifest(v Version, proj *Project, projectRef *ProjectRef, settings *evergreen.Settings) (*manifest.Manifest, error) {
+// ConstructManifest will construct a manifest from the given project and version.
+func ConstructManifest(v *Version, proj *Project, projectRef *ProjectRef, settings *evergreen.Settings) (*manifest.Manifest, error) {
 	if len(proj.Modules) == 0 {
 		return nil, nil
 	}
@@ -618,7 +619,7 @@ func CreateManifest(v Version, proj *Project, projectRef *ProjectRef, settings *
 	}
 	token, err := settings.GetGithubOauthToken()
 	if err != nil {
-		return nil, errors.Wrap(err, "error getting github oauth token")
+		return nil, errors.Wrap(err, "getting github oauth token")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -647,7 +648,7 @@ func CreateManifest(v Version, proj *Project, projectRef *ProjectRef, settings *
 			var branchCommits []*github.RepositoryCommit
 			branchCommits, _, err = thirdparty.GetGithubCommits(ctx, token, owner, repo, module.Branch, revisionTime, 0)
 			if err != nil {
-				return nil, errors.Wrapf(err, "problem retrieving getting git branch for module %s", module.Name)
+				return nil, errors.Wrapf(err, "retrieving getting git branch for module %s", module.Name)
 			}
 			if len(branchCommits) > 0 {
 				sha = branchCommits[0].GetSHA()
@@ -657,7 +658,7 @@ func CreateManifest(v Version, proj *Project, projectRef *ProjectRef, settings *
 			sha = module.Ref
 			gitCommit, err = thirdparty.GetCommitEvent(ctx, token, owner, repo, module.Ref)
 			if err != nil {
-				return nil, errors.Wrapf(err, "problem retrieving getting git commit for module %s with hash %s", module.Name, module.Ref)
+				return nil, errors.Wrapf(err, "retrieving getting git commit for module %s with hash %s", module.Name, module.Ref)
 			}
 			if gitCommit != nil {
 				url = *gitCommit.URL
@@ -683,9 +684,17 @@ func CreateManifest(v Version, proj *Project, projectRef *ProjectRef, settings *
 		"modules":            modules,
 		"branch_info":        gitBranch,
 	})
-	_, err = newManifest.TryInsert()
+	return newManifest, nil
+}
 
-	return newManifest, errors.Wrap(err, "error inserting manifest")
+// CreateManifest inserts a newly constructed manifest into the DB.
+func CreateManifest(v *Version, proj *Project, projectRef *ProjectRef, settings *evergreen.Settings) (*manifest.Manifest, error) {
+	newManifest, err := ConstructManifest(v, proj, projectRef, settings)
+	if err != nil {
+		return nil, errors.Wrap(err, "constructing manifest")
+	}
+	_, err = newManifest.TryInsert()
+	return newManifest, errors.Wrap(err, "inserting manifest")
 }
 
 type VersionsByCreateTime []Version

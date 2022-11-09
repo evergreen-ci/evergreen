@@ -474,6 +474,11 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	}
 	intermediateProject.CreateTime = patchVersion.CreateTime
 
+	manifest, err := ConstructManifest(patchVersion, project, projectRef, settings)
+	if err != nil {
+		return nil, errors.Wrap(err, "constructing manifest")
+	}
+
 	tasks := TaskVariantPairs{}
 	if len(p.VariantsTasks) > 0 {
 		tasks = VariantTasksToTVPairs(p.VariantsTasks)
@@ -576,10 +581,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		if err != nil {
 			return nil, errors.Wrapf(err, "inserting version '%s'", patchVersion.Id)
 		}
-		_, err = CreateManifest(*patchVersion, project, projectRef, settings)
-		if err != nil {
-			return nil, errors.Wrapf(err, "creating manifest for version '%s'", patchVersion.Id)
-		}
 		_, err = db.Collection(ParserProjectCollection).InsertOne(sessCtx, intermediateProject)
 		if err != nil {
 			return nil, errors.Wrapf(err, "inserting parser project for version '%s'", patchVersion.Id)
@@ -588,6 +589,12 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			_, err = db.Collection(ProjectConfigCollection).InsertOne(sessCtx, config)
 			if err != nil {
 				return nil, errors.Wrapf(err, "inserting project config for version '%s'", patchVersion.Id)
+			}
+		}
+		if manifest != nil {
+			_, err = manifest.TryInsert()
+			if err != nil {
+				return nil, errors.Wrapf(err, "creating manifest for version '%s'", patchVersion.Id)
 			}
 		}
 		if err = buildsToInsert.InsertMany(sessCtx, false); err != nil {

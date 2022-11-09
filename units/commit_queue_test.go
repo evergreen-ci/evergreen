@@ -220,6 +220,22 @@ func (s *commitQueueSuite) TestNewCommitQueueJob() {
 	s.Equal("commit-queue:mci_job-1", job.ID())
 }
 
+func (s *commitQueueSuite) TestValidateBranch() {
+	var branch *github.Branch
+	s.Error(validateBranch(branch))
+
+	branch = &github.Branch{}
+	s.Error(validateBranch(branch))
+
+	branch.Commit = &github.RepositoryCommit{}
+	s.Error(validateBranch(branch))
+
+	sha := "abcdef"
+	branch.Commit.SHA = &sha
+
+	s.NoError(validateBranch(branch))
+}
+
 func (s *commitQueueSuite) TestAddMergeTaskAndVariant() {
 	s.NoError(db.ClearCollections(distro.Collection, evergreen.ConfigCollection))
 	config, err := evergreen.GetConfig()
