@@ -605,8 +605,8 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 	return res, nil
 }
 
-// ConstructManifest will construct a manifest from the given project and version.
-func ConstructManifest(v *Version, proj *Project, projectRef *ProjectRef, settings *evergreen.Settings) (*manifest.Manifest, error) {
+// constructManifest will construct a manifest from the given project and version.
+func constructManifest(v *Version, proj *Project, projectRef *ProjectRef, settings *evergreen.Settings) (*manifest.Manifest, error) {
 	if len(proj.Modules) == 0 {
 		return nil, nil
 	}
@@ -624,7 +624,6 @@ func ConstructManifest(v *Version, proj *Project, projectRef *ProjectRef, settin
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	var gitBranch *github.Branch
 	var gitCommit *github.RepositoryCommit
 	modules := map[string]*manifest.Module{}
 	for _, module := range proj.Modules {
@@ -675,21 +674,12 @@ func ConstructManifest(v *Version, proj *Project, projectRef *ProjectRef, settin
 
 	}
 	newManifest.Modules = modules
-	grip.Debug(message.Fields{
-		"message":            "creating manifest",
-		"version_id":         v.Id,
-		"manifest":           newManifest,
-		"project":            v.Identifier,
-		"project_identifier": projectRef.Identifier,
-		"modules":            modules,
-		"branch_info":        gitBranch,
-	})
 	return newManifest, nil
 }
 
 // CreateManifest inserts a newly constructed manifest into the DB.
 func CreateManifest(v *Version, proj *Project, projectRef *ProjectRef, settings *evergreen.Settings) (*manifest.Manifest, error) {
-	newManifest, err := ConstructManifest(v, proj, projectRef, settings)
+	newManifest, err := constructManifest(v, proj, projectRef, settings)
 	if err != nil {
 		return nil, errors.Wrap(err, "constructing manifest")
 	}

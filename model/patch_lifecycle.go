@@ -474,7 +474,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	}
 	intermediateProject.CreateTime = patchVersion.CreateTime
 
-	manifest, err := ConstructManifest(patchVersion, project, projectRef, settings)
+	manifest, err := constructManifest(patchVersion, project, projectRef, settings)
 	if err != nil {
 		return nil, errors.Wrap(err, "constructing manifest")
 	}
@@ -592,9 +592,8 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			}
 		}
 		if manifest != nil {
-			_, err = manifest.TryInsert()
-			if err != nil {
-				return nil, errors.Wrapf(err, "creating manifest for version '%s'", patchVersion.Id)
+			if err = manifest.InsertWithContext(sessCtx); err != nil {
+				return nil, errors.Wrapf(err, "inserting manifest for version '%s'", patchVersion.Id)
 			}
 		}
 		if err = buildsToInsert.InsertMany(sessCtx, false); err != nil {
