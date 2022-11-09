@@ -156,6 +156,7 @@ const (
 	MaxTaskPriority = 100
 
 	DisabledTaskPriority = int64(-1)
+	DefaultPriority      = int64(0)
 
 	// if a patch has NumTasksForLargePatch number of tasks or greater, we log to splunk for investigation
 	NumTasksForLargePatch = 10000

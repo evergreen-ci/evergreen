@@ -1679,6 +1679,7 @@ func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bo
 				ActivatedKey:     true,
 				ActivatedByKey:   caller,
 				ActivatedTimeKey: activationTime,
+				PriorityKey:      evergreen.DefaultPriority,
 			},
 		})
 	if err != nil {
