@@ -23,18 +23,18 @@ var (
 	taskBatchTime          = 30
 	sampleGeneratedProject = GeneratedProject{
 		Tasks: []parserTask{
-			parserTask{
+			{
 				Name: "new_task",
 				Commands: []PluginCommandConf{
-					PluginCommandConf{
+					{
 						Command: "shell.exec",
 					},
-				},
-			},
-			parserTask{
+							},
+						},
+			{
 				Name: "another_task",
 				Commands: []PluginCommandConf{
-					PluginCommandConf{
+					{
 						Command: "shell.exec",
 					},
 				},
@@ -42,16 +42,16 @@ var (
 					{TaskSelector: taskSelector{
 						Name:    "a-depended-on-task",
 						Variant: &variantSelector{StringSelector: "*"},
-					}},
-				},
-			},
+								}},
+							},
+						},
 		},
 		BuildVariants: []parserBV{
-			parserBV{
+			{
 				Name:  "new_buildvariant",
 				RunOn: []string{"arch"},
-			},
-			parserBV{
+						},
+			{
 				Name: "a_variant",
 				Tasks: parserBVTaskUnits{
 					parserBVTaskUnit{
@@ -60,13 +60,13 @@ var (
 					},
 				},
 				DisplayTasks: []displayTask{
-					displayTask{
+					{
 						Name:           "my_display_task_old_variant",
 						ExecutionTasks: []string{"say-bye"},
-					},
-				},
-			},
-			parserBV{
+													},
+							},
+						},
+			{
 				Name:      "another_variant",
 				BatchTime: &bvBatchTime,
 				Tasks: parserBVTaskUnits{
@@ -80,53 +80,53 @@ var (
 				},
 				RunOn: []string{"arch"},
 				DisplayTasks: []displayTask{
-					displayTask{
+					{
 						Name:           "my_display_task_new_variant",
 						ExecutionTasks: []string{"another_task"},
-					},
-				},
-			},
+													},
+							},
+						},
 		},
 		Functions: map[string]*YAMLCommandSet{
-			"new_function": &YAMLCommandSet{
+			"new_function": {
 				MultiCommand: []PluginCommandConf{},
 			},
 		},
 		TaskGroups: []parserTaskGroup{
-			parserTaskGroup{
+			{
 				Name:     "example_task_group",
 				MaxHosts: 1,
 				Tasks: []string{
 					"another_task",
-				},
-			},
+							},
+						},
 		},
 	}
 
 	smallGeneratedProject = GeneratedProject{
 		BuildVariants: []parserBV{
-			parserBV{
+			{
 				Name: "my_build_variant",
 				DisplayTasks: []displayTask{
-					displayTask{
+					{
 						Name:           "my_display_task",
 						ExecutionTasks: []string{"my_display_task_gen"},
 					},
-				},
-			},
+							},
+						},
 		},
 	}
 
 	sampleGeneratedProjectAddToBVOnly = GeneratedProject{
 		BuildVariants: []parserBV{
-			parserBV{
+			{
 				Name: "a_variant",
 				Tasks: parserBVTaskUnits{
 					parserBVTaskUnit{
 						Name: "task_that_has_dependencies",
 					},
-				},
-			},
+							},
+						},
 		},
 	}
 
@@ -440,28 +440,28 @@ func (s *GenerateSuite) TestValidateNoRedefine() {
 	g := GeneratedProject{}
 	s.NoError(g.validateNoRedefine(projectMaps{}))
 
-	g.BuildVariants = []parserBV{parserBV{Name: "buildvariant_name", DisplayName: "I am a buildvariant"}}
-	g.Tasks = []parserTask{parserTask{Name: "task_name"}}
+	g.BuildVariants = []parserBV{{Name: "buildvariant_name", DisplayName: "I am a buildvariant"}}
+	g.Tasks = []parserTask{{Name: "task_name"}}
 	g.Functions = map[string]*YAMLCommandSet{"function_name": nil}
 	s.NoError(g.validateNoRedefine(projectMaps{}))
 
 	cachedProject := projectMaps{
 		buildVariants: map[string]struct{}{
-			"buildvariant_name": struct{}{},
+			"buildvariant_name": {},
 		},
 	}
 	s.Error(g.validateNoRedefine(cachedProject))
 
 	cachedProject = projectMaps{
 		tasks: map[string]*ProjectTask{
-			"task_name": &ProjectTask{},
+			"task_name": {},
 		},
 	}
 	s.Error(g.validateNoRedefine(cachedProject))
 
 	cachedProject = projectMaps{
 		functions: map[string]*YAMLCommandSet{
-			"function_name": &YAMLCommandSet{},
+			"function_name": {},
 		},
 	}
 	s.Error(g.validateNoRedefine(cachedProject))
@@ -475,13 +475,13 @@ func (s *GenerateSuite) TestValidateNoRecursiveGenerateTasks() {
 	cachedProject = projectMaps{}
 	g = GeneratedProject{
 		Tasks: []parserTask{
-			parserTask{
+			{
 				Commands: []PluginCommandConf{
-					PluginCommandConf{
+					{
 						Command: "generate.tasks",
 					},
-				},
-			},
+							},
+						},
 		},
 	}
 	s.Error(g.validateNoRecursiveGenerateTasks(cachedProject))
@@ -489,70 +489,70 @@ func (s *GenerateSuite) TestValidateNoRecursiveGenerateTasks() {
 	cachedProject = projectMaps{}
 	g = GeneratedProject{
 		Functions: map[string]*YAMLCommandSet{
-			"a_function": &YAMLCommandSet{
+			"a_function": {
 				MultiCommand: []PluginCommandConf{
-					PluginCommandConf{
+					{
 						Command: "generate.tasks",
 					},
-				},
-			},
+							},
+						},
 		},
 	}
 	s.Error(g.validateNoRecursiveGenerateTasks(cachedProject))
 
 	cachedProject = projectMaps{
 		tasks: map[string]*ProjectTask{
-			"task_name": &ProjectTask{
+			"task_name": {
 				Commands: []PluginCommandConf{
-					PluginCommandConf{
+					{
 						Command: "generate.tasks",
 					},
-				},
-			},
+							},
+						},
 		},
 	}
 	g = GeneratedProject{
 		BuildVariants: []parserBV{
-			parserBV{
+			{
 				Tasks: []parserBVTaskUnit{
-					parserBVTaskUnit{
+					{
 						Name: "task_name",
 					},
-				},
-			},
+							},
+						},
 		},
 	}
 	s.Error(g.validateNoRecursiveGenerateTasks(cachedProject))
 
 	cachedProject = projectMaps{
 		tasks: map[string]*ProjectTask{
-			"task_name": &ProjectTask{
+			"task_name": {
 				Commands: []PluginCommandConf{
-					PluginCommandConf{
+					{
 						Function: "generate_function",
 					},
-				},
-			},
+							},
+						},
 		},
 		functions: map[string]*YAMLCommandSet{
-			"generate_function": &YAMLCommandSet{
+			"generate_function": {
 				MultiCommand: []PluginCommandConf{
-					PluginCommandConf{
+					{
 						Command: "generate.tasks",
 					},
-				},
-			},
+							},
+						},
 		},
 	}
 	g = GeneratedProject{
 		BuildVariants: []parserBV{
-			parserBV{
+			{
 				Tasks: []parserBVTaskUnit{
-					parserBVTaskUnit{
+					{
 						Name: "task_name",
 					},
-				},
-			},
+							},
+						},
 		},
 	}
 	s.Error(g.validateNoRecursiveGenerateTasks(cachedProject))
@@ -678,7 +678,7 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	g := sampleGeneratedProject
 	g.Task = genTask
 
-	p, pp, err := FindAndTranslateProjectForVersion(v, "proj")
+	p, pp, err := FindAndTranslateProjectForVersion(v.Id, "proj")
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(p, pp, v)
 	s.Require().NoError(err)
@@ -766,7 +766,7 @@ func (s *GenerateSuite) TestSaveWithAlreadyGeneratedTasksAndVariants() {
 	pp.Id = "version_that_called_generate_task"
 	s.NoError(pp.Insert())
 	// Setup parser project to be partially generated.
-	p, pp, err := FindAndTranslateProjectForVersion(v, "")
+	p, pp, err := FindAndTranslateProjectForVersion(v.Id, "")
 	s.NoError(err)
 
 	g := partiallyGeneratedProject
@@ -851,7 +851,7 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 
 	g := sampleGeneratedProjectAddToBVOnly
 	g.Task = &tasksThatExist[0]
-	p, pp, err := FindAndTranslateProjectForVersion(v, "")
+	p, pp, err := FindAndTranslateProjectForVersion(v.Id, "")
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(p, pp, v)
 	s.NoError(err)
@@ -937,7 +937,7 @@ buildvariants:
 			},
 		},
 		BuildVariants: []parserBV{
-			parserBV{
+			{
 				Name: "a_new_variant",
 				Tasks: parserBVTaskUnits{
 					parserBVTaskUnit{
@@ -945,11 +945,11 @@ buildvariants:
 					},
 				},
 				RunOn: []string{"arch"},
-			},
+						},
 		},
 	}
 
-	p, pp, err := FindAndTranslateProjectForVersion(v, "")
+	p, pp, err := FindAndTranslateProjectForVersion(v.Id, "")
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(p, pp, v)
 	s.NoError(err)
@@ -1001,7 +1001,7 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 
 	g := smallGeneratedProject
 	g.Task = &taskThatExists
-	p, pp, err := FindAndTranslateProjectForVersion(v, "")
+	p, pp, err := FindAndTranslateProjectForVersion(v.Id, "")
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(p, pp, v)
 	s.Require().NoError(err)

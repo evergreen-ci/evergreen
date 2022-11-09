@@ -122,7 +122,6 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 				"project":      patchDoc.Project,
 				"alias":        patchDoc.Alias,
 				"patch_id":     patchDoc.Id.Hex(),
-				"config_size":  len(patchDoc.PatchedParserProject) + len(patchDoc.PatchedProjectConfig),
 				"num_modules":  len(patchDoc.Patches),
 			}))
 		}
@@ -176,7 +175,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		catcher.Add(err)
 
 	case patch.TriggerIntentType:
-		catcher.Add(j.buildTriggerPatchDoc(ctx, patchDoc))
+		catcher.Add(j.buildTriggerPatchDoc(patchDoc))
 	default:
 		return errors.Errorf("intent type '%s' is unknown", j.IntentType)
 	}
@@ -854,7 +853,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 	return isMember, nil
 }
 
-func (j *patchIntentProcessor) buildTriggerPatchDoc(ctx context.Context, patchDoc *patch.Patch) error {
+func (j *patchIntentProcessor) buildTriggerPatchDoc(patchDoc *patch.Patch) error {
 	defer func() {
 		grip.Error(message.WrapError(j.intent.SetProcessed(), message.Fields{
 			"message":     "could not mark patch intent as processed",

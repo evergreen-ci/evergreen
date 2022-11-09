@@ -1224,7 +1224,7 @@ func (h *manifestLoadHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "retrieving manifest with version id '%s'", task.Version))
 	}
 
-	project, _, err := model.FindAndTranslateProjectForVersion(v, v.Identifier)
+	project, _, err := model.FindAndTranslateProjectForVersion(v.Id, v.Identifier)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "loading project from version"))
 	}
