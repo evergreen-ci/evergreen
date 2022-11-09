@@ -981,7 +981,7 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 				hostToStatusMap[spotHostID] = StatusNonExistent
 				continue
 			}
-			instanceID := utility.FromStringPtr(spotRequest.InstanceId)
+			instanceID := aws.StringValue(spotRequest.InstanceId)
 			if instanceID == "" {
 				hostToStatusMap[spotHostID] = cloudStatusFromSpotStatus(*spotRequest.State)
 				continue
@@ -1211,7 +1211,7 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 
 	if len(out.StoppingInstances) == 1 {
 		instance := out.StoppingInstances[0]
-		status := ec2StatusToEvergreenStatus(utility.FromStringPtr(instance.CurrentState.Name))
+		status := ec2StatusToEvergreenStatus(aws.StringValue(instance.CurrentState.Name))
 		switch status {
 		case StatusStopping:
 			grip.Error(message.WrapError(h.SetStopping(user), message.Fields{

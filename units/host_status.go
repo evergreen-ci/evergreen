@@ -115,8 +115,8 @@ clientsLoop:
 				hostID := hosts[i].Id
 				status, ok := statuses[hostID]
 				if !ok {
-					grip.Error(message.WrapError(err, message.Fields{
-						"message": "could not get any cloud instance status for host, defaulting to nonexistent status",
+					grip.Alert(message.WrapError(err, message.Fields{
+						"message": "GetInstanceStatuses is violating interface requirements - host instance status was requested but none was returned, defaulting to nonexistent status",
 						"host_id": hostID,
 						"job":     j.ID(),
 					}))

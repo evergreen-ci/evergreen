@@ -174,7 +174,6 @@ func (m *ec2FleetManager) ModifyHost(context.Context, *host.Host, host.HostModif
 	return errors.New("can't modify instances for EC2 fleet provider")
 }
 
-// kim; TODO: add test for instance not found.
 func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.Host) (map[string]CloudStatus, error) {
 	instanceIDs := make([]*string, 0, len(hosts))
 	for _, h := range hosts {
