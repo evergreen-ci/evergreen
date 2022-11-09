@@ -165,11 +165,7 @@ func (j *cloudHostReadyJob) terminateUnknownHosts(ctx context.Context, awsErr st
 			continue
 		}
 		// Decommission the host to prevent this job from checking it again.
-		grip.Error(message.WrapError(h.SetDecommissioned(evergreen.User, false, "cloud host has no status"), message.Fields{
-			"message": "could not set nonexistent host to decommissioned in preparation for termination",
-			"host_id": h.Id,
-			"job":     j.ID(),
-		}))
+		catcher.Wrap(h.SetDecommissioned(evergreen.User, false, "cloud host has no status"), "setting nonexistent host to decommissioned in preparation for termination")
 
 		terminationJob := NewHostTerminationJob(j.env, h, HostTerminationOptions{
 			TerminateIfBusy:   true,
