@@ -29,8 +29,8 @@ var (
 					{
 						Command: "shell.exec",
 					},
-							},
-						},
+				},
+			},
 			{
 				Name: "another_task",
 				Commands: []PluginCommandConf{
@@ -42,15 +42,15 @@ var (
 					{TaskSelector: taskSelector{
 						Name:    "a-depended-on-task",
 						Variant: &variantSelector{StringSelector: "*"},
-								}},
-							},
-						},
+					}},
+				},
+			},
 		},
 		BuildVariants: []parserBV{
 			{
 				Name:  "new_buildvariant",
 				RunOn: []string{"arch"},
-						},
+			},
 			{
 				Name: "a_variant",
 				Tasks: parserBVTaskUnits{
@@ -63,9 +63,9 @@ var (
 					{
 						Name:           "my_display_task_old_variant",
 						ExecutionTasks: []string{"say-bye"},
-													},
-							},
-						},
+					},
+				},
+			},
 			{
 				Name:      "another_variant",
 				BatchTime: &bvBatchTime,
@@ -83,9 +83,9 @@ var (
 					{
 						Name:           "my_display_task_new_variant",
 						ExecutionTasks: []string{"another_task"},
-													},
-							},
-						},
+					},
+				},
+			},
 		},
 		Functions: map[string]*YAMLCommandSet{
 			"new_function": {
@@ -98,8 +98,8 @@ var (
 				MaxHosts: 1,
 				Tasks: []string{
 					"another_task",
-							},
-						},
+				},
+			},
 		},
 	}
 
@@ -112,8 +112,8 @@ var (
 						Name:           "my_display_task",
 						ExecutionTasks: []string{"my_display_task_gen"},
 					},
-							},
-						},
+				},
+			},
 		},
 	}
 
@@ -125,8 +125,8 @@ var (
 					parserBVTaskUnit{
 						Name: "task_that_has_dependencies",
 					},
-							},
-						},
+				},
+			},
 		},
 	}
 
@@ -480,8 +480,8 @@ func (s *GenerateSuite) TestValidateNoRecursiveGenerateTasks() {
 					{
 						Command: "generate.tasks",
 					},
-							},
-						},
+				},
+			},
 		},
 	}
 	s.Error(g.validateNoRecursiveGenerateTasks(cachedProject))
@@ -494,8 +494,8 @@ func (s *GenerateSuite) TestValidateNoRecursiveGenerateTasks() {
 					{
 						Command: "generate.tasks",
 					},
-							},
-						},
+				},
+			},
 		},
 	}
 	s.Error(g.validateNoRecursiveGenerateTasks(cachedProject))
@@ -507,8 +507,8 @@ func (s *GenerateSuite) TestValidateNoRecursiveGenerateTasks() {
 					{
 						Command: "generate.tasks",
 					},
-							},
-						},
+				},
+			},
 		},
 	}
 	g = GeneratedProject{
@@ -518,8 +518,8 @@ func (s *GenerateSuite) TestValidateNoRecursiveGenerateTasks() {
 					{
 						Name: "task_name",
 					},
-							},
-						},
+				},
+			},
 		},
 	}
 	s.Error(g.validateNoRecursiveGenerateTasks(cachedProject))
@@ -531,8 +531,8 @@ func (s *GenerateSuite) TestValidateNoRecursiveGenerateTasks() {
 					{
 						Function: "generate_function",
 					},
-							},
-						},
+				},
+			},
 		},
 		functions: map[string]*YAMLCommandSet{
 			"generate_function": {
@@ -540,8 +540,8 @@ func (s *GenerateSuite) TestValidateNoRecursiveGenerateTasks() {
 					{
 						Command: "generate.tasks",
 					},
-							},
-						},
+				},
+			},
 		},
 	}
 	g = GeneratedProject{
@@ -551,8 +551,8 @@ func (s *GenerateSuite) TestValidateNoRecursiveGenerateTasks() {
 					{
 						Name: "task_name",
 					},
-							},
-						},
+				},
+			},
 		},
 	}
 	s.Error(g.validateNoRecursiveGenerateTasks(cachedProject))
@@ -945,7 +945,7 @@ buildvariants:
 					},
 				},
 				RunOn: []string{"arch"},
-						},
+			},
 		},
 	}
 

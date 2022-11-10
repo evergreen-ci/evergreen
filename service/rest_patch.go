@@ -73,7 +73,9 @@ func (restapi restAPI) getPatchConfig(w http.ResponseWriter, r *http.Request) {
 		if pp != nil {
 			var projBytes []byte
 			projBytes, err = bson.Marshal(pp)
-			_, err = w.Write(projBytes)
+			if err == nil {
+				_, err = w.Write(projBytes)
+			}
 		}
 	}
 
