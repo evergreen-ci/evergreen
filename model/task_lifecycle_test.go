@@ -4902,7 +4902,7 @@ tasks:
 	require.NoError(t, err)
 	assert.True(checkTask.Activated)
 
-	// generated task should step back its generator
+	// Generated task should step back its generator.
 	prevComplete = task.Task{
 		Id:                  "g1",
 		BuildId:             "b1",
@@ -4969,7 +4969,14 @@ tasks:
 		BuildVariant: "bv",
 	}
 	assert.NoError(b5.Insert())
-	// Ensure system failure and classic stepback works.
+	// Ensure system failure doesn't cause a stepback unless we're already stepping back.
+	assert.NoError(evalStepback(&generated, "", evergreen.TaskSystemFailed, false))
+	checkTask, err = task.FindOneId(stepbackTask.Id)
+	assert.NoError(err)
+	assert.False(checkTask.Activated)
+
+	// System failure steps back since activated by stepback (and steps back generator).
+	generated.ActivatedBy = evergreen.StepbackTaskActivator
 	assert.NoError(evalStepback(&generated, "", evergreen.TaskSystemFailed, false))
 	checkTask, err = task.FindOneId(stepbackTask.Id)
 	assert.NoError(err)
