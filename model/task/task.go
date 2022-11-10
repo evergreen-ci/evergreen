@@ -128,13 +128,13 @@ type Task struct {
 	NumDependents           int              `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
 	OverrideDependencies    bool             `bson:"override_dependencies,omitempty" json:"override_dependencies,omitempty"`
 
-	// DistroAliases refer to the optional secondary distros that can be
+	// SecondaryDistros refer to the optional secondary distros that can be
 	// associated with a task. This is used for running tasks in case there are
 	// idle hosts in a distro with an empty primary queue. Despite the variable
 	// name, this is a distinct concept from actual distro aliases (i.e.
 	// alternative distro names).
-	// TODO (EVG-15148): rename this to represent secondary distros.
-	DistroAliases []string `bson:"distro_aliases,omitempty" json:"distro_aliases,omitempty"`
+	// Tags refer to outdated naming; maintained for compatibility.
+	SecondaryDistros []string `bson:"distro_aliases,omitempty" json:"distro_aliases,omitempty"`
 
 	// Human-readable name
 	DisplayName string `bson:"display_name" json:"display_name"`
@@ -3018,7 +3018,7 @@ func addApplicableDistroFilter(id string, fieldName string, query bson.M) error 
 func FindHostSchedulableForAlias(id string) ([]Task, error) {
 	q := schedulableHostTasksQuery()
 
-	if err := addApplicableDistroFilter(id, DistroAliasesKey, q); err != nil {
+	if err := addApplicableDistroFilter(id, SecondaryDistrosKey, q); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
