@@ -898,7 +898,7 @@ func removeNextMergeTaskDependency(cq commitqueue.CommitQueue, currentIssue stri
 }
 
 func evalStepback(t *task.Task, caller, status string, deactivatePrevious bool) error {
-	if status == evergreen.TaskFailed && !t.Aborted {
+	if evergreen.IsFailedTaskStatus(status) && !t.Aborted {
 		var shouldStepBack bool
 		shouldStepBack, err := getStepback(t.Id)
 		if err != nil {

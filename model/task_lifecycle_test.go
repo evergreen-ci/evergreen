@@ -4969,7 +4969,8 @@ tasks:
 		BuildVariant: "bv",
 	}
 	assert.NoError(b5.Insert())
-	assert.NoError(evalStepback(&generated, "", evergreen.TaskFailed, false))
+	// Ensure system failure and classic stepback works.
+	assert.NoError(evalStepback(&generated, "", evergreen.TaskSystemFailed, false))
 	checkTask, err = task.FindOneId(stepbackTask.Id)
 	assert.NoError(err)
 	assert.True(checkTask.Activated)
