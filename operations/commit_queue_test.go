@@ -22,7 +22,7 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	yaml "gopkg.in/20210107192922/yaml.v3"
+	"gopkg.in/20210107192922/yaml.v3"
 )
 
 type CommitQueueSuite struct {
@@ -70,7 +70,7 @@ func (s *CommitQueueSuite) SetupSuite() {
 	s.Require().NoError(settingsFile.Close())
 	s.conf, err = NewClientSettings(settingsFile.Name())
 	s.Require().NoError(err)
-	s.client, err = s.conf.setupRestCommunicator(s.ctx)
+	s.client, err = s.conf.setupRestCommunicator(s.ctx, true)
 	s.Require().NoError(err)
 }
 
