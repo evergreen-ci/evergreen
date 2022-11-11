@@ -386,7 +386,7 @@ func ClearTaskQueue(distroId string) error {
 
 	catcher := grip.NewBasicCatcher()
 
-	// task queue should always exist, so proceed with clearing
+	// Task queue should always exist, so proceed with clearing
 	distroQueueInfo, err := GetDistroQueueInfo(distroId)
 	if err != nil {
 		catcher.Wrap(err, "getting task queue info")
@@ -397,24 +397,24 @@ func ClearTaskQueue(distroId string) error {
 		catcher.Wrap(err, "clearing task queue")
 	}
 
-	// make sure task alias queue actually exists before modifying
-	aliasQuery := bson.M{
+	// Make sure task secondary queue actually exists before modifying
+	secondaryQueueQuery := bson.M{
 		taskQueueDistroKey: distroId,
 	}
-	aliasCount, err := db.Count(TaskSecondaryQueuesCollection, aliasQuery)
+	aliasCount, err := db.Count(TaskSecondaryQueuesCollection, secondaryQueueQuery)
 	if err != nil {
-		catcher.Wrap(err, "counting task alias queues matching distro")
+		catcher.Wrap(err, "counting secondary queues matching distro")
 	}
-	// want to at least try to clear even in the case of an error
+	// Want to at least try to clear even in the case of an error
 	if aliasCount == 0 && err == nil {
 		grip.Info(message.Fields{
-			"message": "alias task queue not found, skipping",
+			"message": "secondary task queue not found, skipping",
 			"distro":  distroId,
 		})
 		return catcher.Resolve()
 	}
 	distroQueueInfo, err = GetDistroSecondaryQueueInfo(distroId)
-	catcher.Wrap(err, "getting task alias queue info")
+	catcher.Wrap(err, "getting task secondary queue info")
 	distroQueueInfo = clearQueueInfo(distroQueueInfo)
 
 	err = clearTaskQueueCollection(distroId, distroQueueInfo)

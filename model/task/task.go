@@ -130,9 +130,8 @@ type Task struct {
 
 	// SecondaryDistros refer to the optional secondary distros that can be
 	// associated with a task. This is used for running tasks in case there are
-	// idle hosts in a distro with an empty primary queue. Despite the variable
-	// name, this is a distinct concept from actual distro aliases (i.e.
-	// alternative distro names).
+	// idle hosts in a distro with an empty primary queue. This is a distinct concept
+	// from distro aliases (i.e. alternative distro names).
 	// Tags refer to outdated naming; maintained for compatibility.
 	SecondaryDistros []string `bson:"distro_aliases,omitempty" json:"distro_aliases,omitempty"`
 
