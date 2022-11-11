@@ -1673,10 +1673,6 @@ func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bo
 	if err != nil {
 		return errors.Wrap(err, "activating tasks")
 	}
-	err = enableDisabledTasks(taskIDs)
-	if err != nil {
-		return errors.Wrap(err, "enabling disabled tasks")
-	}
 	logs := []event.EventLogEntry{}
 	for _, t := range tasks {
 		logs = append(logs, event.GetTaskActivatedEvent(t.Id, t.Execution, caller))
@@ -1700,26 +1696,8 @@ func enableDisabledTasks(taskIDs []string) error {
 			PriorityKey: evergreen.DisabledTaskPriority,
 		},
 		bson.M{
-			"$set": bson.M{
-				PriorityKey: evergreen.DefaultPriority,
-			},
-		})
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func activateTasks(taskIDs []string, caller string, activationTime time.Time) error {
-	_, err := UpdateAll(
-		bson.M{
-			IdKey: bson.M{"$in": taskIDs},
-		},
-		bson.M{
-			"$set": bson.M{
-				ActivatedKey:     true,
-				ActivatedByKey:   caller,
-				ActivatedTimeKey: activationTime,
+			"$unset": bson.M{
+				PriorityKey: 1,
 			},
 		})
 	if err != nil {

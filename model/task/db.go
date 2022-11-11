@@ -2657,3 +2657,25 @@ func (t *Task) FindAllMarkedUnattainableDependencies() ([]Task, error) {
 	)
 	return FindAll(query)
 }
+
+func activateTasks(taskIDs []string, caller string, activationTime time.Time) error {
+	_, err := UpdateAll(
+		bson.M{
+			IdKey: bson.M{"$in": taskIDs},
+		},
+		bson.M{
+			"$set": bson.M{
+				ActivatedKey:     true,
+				ActivatedByKey:   caller,
+				ActivatedTimeKey: activationTime,
+			},
+		})
+	if err != nil {
+		return errors.Wrap(err, "setting tasks to active")
+	}
+	err = enableDisabledTasks(taskIDs)
+	if err != nil {
+		return errors.Wrap(err, "enabling disabled tasks")
+	}
+	return nil
+}
