@@ -77,12 +77,12 @@ func (j *checkBlockedTasksJob) Run(ctx context.Context) {
 
 	if len(taskIds) == 0 {
 		grip.Debug(message.Fields{
-			"message":         "no task IDs found for distro",
-			"len_queue":       len(queue.Queue),
-			"len_alias_queue": len(secondaryQueue.Queue),
-			"distro":          j.DistroId,
-			"job":             j.ID(),
-			"source":          checkBlockedTasks,
+			"message":             "no task IDs found for distro",
+			"len_queue":           len(queue.Queue),
+			"len_secondary_queue": len(secondaryQueue.Queue),
+			"distro":              j.DistroId,
+			"job":                 j.ID(),
+			"source":              checkBlockedTasks,
 		})
 		return
 	}
