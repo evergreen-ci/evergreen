@@ -445,7 +445,7 @@ func backport() cli.Command {
 				return errors.Wrap(err, "uploading backport patch")
 			}
 
-			if err = patchParams.displayPatch(backportPatch, uiV2, true); err != nil {
+			if err = patchParams.displayPatch(backportPatch, uiV2, false); err != nil {
 				return errors.Wrap(err, "getting result display")
 			}
 
