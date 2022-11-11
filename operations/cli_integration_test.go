@@ -26,7 +26,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
-	yaml "gopkg.in/20210107192922/yaml.v3"
+	"gopkg.in/20210107192922/yaml.v3"
 )
 
 var testConfig = testutil.TestConfig()
@@ -156,7 +156,7 @@ func TestCLIFetchSource(t *testing.T) {
 
 		client, err := NewClientSettings(testSetup.settingsFilePath)
 		So(err, ShouldBeNil)
-		comm, err := client.setupRestCommunicator(ctx)
+		comm, err := client.setupRestCommunicator(ctx, true)
 		require.NoError(t, err)
 		defer comm.Close()
 		ac, rc, err := client.getLegacyClients()

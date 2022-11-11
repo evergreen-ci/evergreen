@@ -102,7 +102,7 @@ func listProjects(ctx context.Context, confPath string) error {
 	if err != nil {
 		return errors.Wrap(err, "loading configuration")
 	}
-	client, err := conf.setupRestCommunicator(ctx)
+	client, err := conf.setupRestCommunicator(ctx, false)
 	if err != nil {
 		return errors.Wrap(err, "setting up REST communicator")
 	}
@@ -145,7 +145,7 @@ func listVariants(ctx context.Context, confPath, project, filename string) error
 	if err != nil {
 		return errors.Wrap(err, "loading configuration")
 	}
-	client, err := conf.setupRestCommunicator(ctx)
+	client, err := conf.setupRestCommunicator(ctx, false)
 	if err != nil {
 		return errors.Wrap(err, "setting up REST communicator")
 	}
@@ -199,7 +199,7 @@ func listTasks(ctx context.Context, confPath, project, filename string) error {
 	if err != nil {
 		return errors.Wrap(err, "loading configuration")
 	}
-	client, err := conf.setupRestCommunicator(ctx)
+	client, err := conf.setupRestCommunicator(ctx, false)
 	if err != nil {
 		return errors.Wrap(err, "setting up REST communicator")
 	}
@@ -240,7 +240,7 @@ func listParameters(ctx context.Context, confPath, project, filename string) err
 	if err != nil {
 		return errors.Wrap(err, "loading configuration")
 	}
-	comm, err := conf.setupRestCommunicator(ctx)
+	comm, err := conf.setupRestCommunicator(ctx, false)
 	if err != nil {
 		return errors.Wrap(err, "setting up REST communicator")
 	}
@@ -281,7 +281,7 @@ func listTriggerAliases(ctx context.Context, confPath, project string) error {
 	if err != nil {
 		return errors.Wrap(err, "loading configuration")
 	}
-	comm, err := conf.setupRestCommunicator(ctx)
+	comm, err := conf.setupRestCommunicator(ctx, false)
 	if err != nil {
 		return errors.Wrap(err, "setting up REST communicator")
 	}
@@ -308,7 +308,7 @@ func listPatchAliases(ctx context.Context, confPath, project string) error {
 	if err != nil {
 		return errors.Wrap(err, "loading configuration")
 	}
-	comm, err := conf.setupRestCommunicator(ctx)
+	comm, err := conf.setupRestCommunicator(ctx, false)
 	if err != nil {
 		return errors.Wrap(err, "setting up REST communicator")
 	}
@@ -338,7 +338,7 @@ func listDistros(ctx context.Context, confPath string, onlyUserSpawnable bool) e
 	if err != nil {
 		return errors.Wrap(err, "loading configuration")
 	}
-	client, err := conf.setupRestCommunicator(ctx)
+	client, err := conf.setupRestCommunicator(ctx, false)
 	if err != nil {
 		return errors.Wrap(err, "setting up REST communicator")
 	}
