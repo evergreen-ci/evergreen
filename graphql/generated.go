@@ -51890,7 +51890,11 @@ func (ec *executionContext) unmarshalInputBuildVariantOptions(ctx context.Contex
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"includeBaseTasks", "statuses", "tasks", "variants"}
+	if _, present := asMap["includeInactiveTasks"]; !present {
+		asMap["includeInactiveTasks"] = false
+	}
+
+	fieldsInOrder := [...]string{"includeBaseTasks", "includeInactiveTasks", "statuses", "tasks", "variants"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -51902,6 +51906,14 @@ func (ec *executionContext) unmarshalInputBuildVariantOptions(ctx context.Contex
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeBaseTasks"))
 			it.IncludeBaseTasks, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "includeInactiveTasks":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeInactiveTasks"))
+			it.IncludeInactiveTasks, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}

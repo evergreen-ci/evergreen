@@ -5,6 +5,7 @@ It stores values for statuses, tasks, and variants which are used to filter for 
 """
 input BuildVariantOptions {
   includeBaseTasks: Boolean
+  includeInactiveTasks: Boolean = false
   statuses: [String!]
   tasks: [String!]
   variants: [String!]
