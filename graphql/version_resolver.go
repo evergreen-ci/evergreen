@@ -70,7 +70,7 @@ func (r *versionResolver) BuildVariants(ctx context.Context, obj *restModel.APIV
 		obj.Activated = version.Activated
 	}
 
-	if !utility.FromBoolPtr(obj.Activated) {
+	if !utility.FromBoolPtr(options.IncludeInactiveTasks) && !utility.FromBoolPtr(obj.Activated) {
 		return nil, nil
 	}
 	groupedBuildVariants, err := generateBuildVariants(utility.FromStringPtr(obj.Id), *options)

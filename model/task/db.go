@@ -2029,6 +2029,8 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 	if opts.IncludeBuildVariantDisplayName {
 		opts.UseLegacyAddBuildVariantDisplayName = shouldUseLegacyAddBuildVariantDisplayName(versionID)
 	}
+	fmt.Println("gettaskbyverison")
+	fmt.Println(opts.IncludeEmptyActivation)
 	pipeline, err := getTasksByVersionPipeline(versionID, opts)
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "getting tasks by version pipeline")
@@ -2385,9 +2387,10 @@ func GetBaseStatusesForActivatedTasks(versionID string, baseVersionID string) ([
 }
 
 type HasMatchingTasksOptions struct {
-	TaskNames []string
-	Variants  []string
-	Statuses  []string
+	TaskNames            []string
+	Variants             []string
+	Statuses             []string
+	IncludeInactiveTasks bool
 }
 
 // HasMatchingTasks returns true if the version has tasks with the given statuses
@@ -2396,6 +2399,7 @@ func HasMatchingTasks(versionID string, opts HasMatchingTasksOptions) (bool, err
 		TaskNames:                      opts.TaskNames,
 		Variants:                       opts.Variants,
 		Statuses:                       opts.Statuses,
+		IncludeEmptyActivation:         !opts.IncludeInactiveTasks,
 		IncludeBuildVariantDisplayName: true,
 	}
 	if len(opts.Variants) > 0 {
@@ -2472,6 +2476,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	}
 	// Activated Time is needed to filter out generated tasks that have been generated but not yet activated
 	if !opts.IncludeEmptyActivation {
+		fmt.Println("Omitting empty activation")
 		match[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
 	}
 	pipeline := []bson.M{

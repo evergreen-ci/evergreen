@@ -283,7 +283,9 @@ func generateBuildVariants(versionId string, buildVariantOpts BuildVariantOption
 		Sorts:                          defaultSort,
 		IncludeBaseTasks:               utility.FromBoolPtr(buildVariantOpts.IncludeBaseTasks),
 		IncludeBuildVariantDisplayName: true,
+		IncludeEmptyActivation:         utility.FromBoolPtr(buildVariantOpts.IncludeInactiveTasks),
 	}
+
 	start := time.Now()
 	tasks, _, err := task.GetTasksByVersion(versionId, opts)
 	if err != nil {
