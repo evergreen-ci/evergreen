@@ -56,7 +56,7 @@ var (
 	DeactivatedForDependencyKey    = bsonutil.MustHaveTag(Task{}, "DeactivatedForDependency")
 	BuildIdKey                     = bsonutil.MustHaveTag(Task{}, "BuildId")
 	DistroIdKey                    = bsonutil.MustHaveTag(Task{}, "DistroId")
-	DistroAliasesKey               = bsonutil.MustHaveTag(Task{}, "DistroAliases")
+	SecondaryDistrosKey            = bsonutil.MustHaveTag(Task{}, "SecondaryDistros")
 	BuildVariantKey                = bsonutil.MustHaveTag(Task{}, "BuildVariant")
 	DependsOnKey                   = bsonutil.MustHaveTag(Task{}, "DependsOn")
 	OverrideDependenciesKey        = bsonutil.MustHaveTag(Task{}, "OverrideDependencies")

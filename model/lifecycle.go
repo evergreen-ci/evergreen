@@ -1234,12 +1234,12 @@ func createOneTask(id string, creationInfo TaskCreationInfo, buildVarTask BuildV
 		}
 		t.ContainerOpts = *opts
 	} else {
-		distroID, distroAliases, err := getDistrosFromRunOn(id, buildVarTask, creationInfo.BuildVariant)
+		distroID, secondaryDistros, err := getDistrosFromRunOn(id, buildVarTask, creationInfo.BuildVariant)
 		if err != nil {
 			return nil, err
 		}
 		t.DistroId = distroID
-		t.DistroAliases = distroAliases
+		t.SecondaryDistros = secondaryDistros
 	}
 
 	if isStepback {
@@ -1266,19 +1266,19 @@ func createOneTask(id string, creationInfo TaskCreationInfo, buildVarTask BuildV
 
 func getDistrosFromRunOn(id string, buildVarTask BuildVariantTaskUnit, buildVariant *BuildVariant) (string, []string, error) {
 	if len(buildVarTask.RunOn) > 0 {
-		distroAliases := []string{}
+		secondaryDistros := []string{}
 		distroID := buildVarTask.RunOn[0]
 		if len(buildVarTask.RunOn) > 1 {
-			distroAliases = buildVarTask.RunOn[1:]
+			secondaryDistros = buildVarTask.RunOn[1:]
 		}
-		return distroID, distroAliases, nil
+		return distroID, secondaryDistros, nil
 	} else if len(buildVariant.RunOn) > 0 {
-		distroAliases := []string{}
+		secondaryDistros := []string{}
 		distroID := buildVariant.RunOn[0]
 		if len(buildVariant.RunOn) > 1 {
-			distroAliases = buildVariant.RunOn[1:]
+			secondaryDistros = buildVariant.RunOn[1:]
 		}
-		return distroID, distroAliases, nil
+		return distroID, secondaryDistros, nil
 	}
 	return "", nil, errors.Errorf("task '%s' is not runnable as there is no distro specified", id)
 }
