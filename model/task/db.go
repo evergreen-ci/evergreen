@@ -2029,8 +2029,7 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 	if opts.IncludeBuildVariantDisplayName {
 		opts.UseLegacyAddBuildVariantDisplayName = shouldUseLegacyAddBuildVariantDisplayName(versionID)
 	}
-	fmt.Println("gettaskbyverison")
-	fmt.Println(opts.IncludeEmptyActivation)
+
 	pipeline, err := getTasksByVersionPipeline(versionID, opts)
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "getting tasks by version pipeline")
@@ -2476,7 +2475,6 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	}
 	// Activated Time is needed to filter out generated tasks that have been generated but not yet activated
 	if !opts.IncludeEmptyActivation {
-		fmt.Println("Omitting empty activation")
 		match[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
 	}
 	pipeline := []bson.M{
