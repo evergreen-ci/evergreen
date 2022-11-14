@@ -1689,23 +1689,6 @@ func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bo
 	return nil
 }
 
-func enableDisabledTasks(taskIDs []string) error {
-	_, err := UpdateAll(
-		bson.M{
-			IdKey:       bson.M{"$in": taskIDs},
-			PriorityKey: evergreen.DisabledTaskPriority,
-		},
-		bson.M{
-			"$unset": bson.M{
-				PriorityKey: 1,
-			},
-		})
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 // ActivateTasksByIdsWithDependencies activates the given tasks and their dependencies.
 func ActivateTasksByIdsWithDependencies(ids []string, caller string) error {
 	q := db.Query(bson.M{

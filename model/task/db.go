@@ -2673,9 +2673,22 @@ func activateTasks(taskIDs []string, caller string, activationTime time.Time) er
 	if err != nil {
 		return errors.Wrap(err, "setting tasks to active")
 	}
-	err = enableDisabledTasks(taskIDs)
-	if err != nil {
+	if err = enableDisabledTasks(taskIDs); err != nil {
 		return errors.Wrap(err, "enabling disabled tasks")
 	}
 	return nil
+}
+
+func enableDisabledTasks(taskIDs []string) error {
+	_, err := UpdateAll(
+		bson.M{
+			IdKey:       bson.M{"$in": taskIDs},
+			PriorityKey: evergreen.DisabledTaskPriority,
+		},
+		bson.M{
+			"$unset": bson.M{
+				PriorityKey: 1,
+			},
+		})
+	return err
 }
