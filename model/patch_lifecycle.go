@@ -119,7 +119,6 @@ func ConfigurePatch(ctx context.Context, p *patch.Patch, version *Version, proj 
 	var err error
 	project, _, err := FindAndTranslateProjectForPatch(ctx, p)
 	if err != nil {
-		grip.Debug("issue here")
 		return http.StatusInternalServerError, errors.Wrap(err, "unmarshalling project config")
 	}
 

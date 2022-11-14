@@ -64,20 +64,17 @@ func (restapi restAPI) getPatchConfig(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/x-yaml; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	var err error
 	if projCtx.Patch.PatchedParserProject != "" {
-		_, err = w.Write([]byte(projCtx.Patch.PatchedParserProject))
-	} else {
-		var pp *model.ParserProject
-		pp, err = model.ParserProjectFindOneById(projCtx.Patch.Version)
-		if pp != nil {
-			var projBytes []byte
-			projBytes, err = bson.Marshal(pp)
-			if err == nil {
-				_, err = w.Write(projBytes)
-			}
+		_, err := w.Write([]byte(projCtx.Patch.PatchedParserProject))
+		grip.Warning(errors.Wrap(err, "writing patched parser project"))
+	}
+	pp, err := model.ParserProjectFindOneById(projCtx.Patch.Version)
+	if pp != nil {
+		var projBytes []byte
+		projBytes, err = bson.Marshal(pp)
+		if err == nil {
+			_, err = w.Write(projBytes)
 		}
 	}
-
-	grip.Warning(err)
+	grip.Warning(errors.Wrap(err, "writing parser project"))
 }
