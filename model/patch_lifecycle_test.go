@@ -53,7 +53,7 @@ func init() {
 }
 
 func clearAll(t *testing.T) {
-	require.NoError(t, db.ClearCollections(ProjectRefCollection, patch.Collection, VersionCollection, build.Collection, task.Collection, distro.Collection, manifest.Collection))
+	require.NoError(t, db.ClearCollections(manifest.Collection, ProjectRefCollection, patch.Collection, VersionCollection, build.Collection, task.Collection, distro.Collection))
 }
 
 // resetPatchSetup clears the ProjectRef, Patch, Version, Build, and Task Collections
@@ -236,6 +236,7 @@ func TestFinalizePatch(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	require.NoError(t, db.ClearCollections(manifest.Collection, ProjectRefCollection, patch.Collection, VersionCollection, build.Collection, task.Collection, distro.Collection))
 	Convey("With FinalizePatch on a project and commit event generated from GetPatchedProject path",
 		t, func() {
 			configPatch := resetPatchSetup(t, configFilePath)
@@ -325,7 +326,7 @@ modules:
 				So(err.Error(), ShouldContainSubstring, "no builds or tasks for commit queue version")
 			})
 			Reset(func() {
-				So(db.Clear(distro.Collection), ShouldBeNil)
+				So(db.ClearCollections(distro.Collection, manifest.Collection), ShouldBeNil)
 			})
 		})
 }

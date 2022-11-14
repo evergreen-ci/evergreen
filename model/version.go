@@ -647,7 +647,7 @@ func constructManifest(v *Version, proj *Project, projectRef *ProjectRef, settin
 			var branchCommits []*github.RepositoryCommit
 			branchCommits, _, err = thirdparty.GetGithubCommits(ctx, token, owner, repo, module.Branch, revisionTime, 0)
 			if err != nil {
-				return nil, errors.Wrapf(err, "retrieving getting git branch for module %s", module.Name)
+				return nil, errors.Wrapf(err, "retrieving git branch for module '%s'", module.Name)
 			}
 			if len(branchCommits) > 0 {
 				sha = branchCommits[0].GetSHA()
@@ -659,9 +659,7 @@ func constructManifest(v *Version, proj *Project, projectRef *ProjectRef, settin
 			if err != nil {
 				return nil, errors.Wrapf(err, "retrieving getting git commit for module %s with hash %s", module.Name, module.Ref)
 			}
-			if gitCommit != nil {
-				url = *gitCommit.URL
-			}
+			url = gitCommit.GetURL()
 		}
 
 		modules[module.Name] = &manifest.Module{

@@ -3,7 +3,6 @@ package operations
 import (
 	"context"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/model/manifest"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -16,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -135,6 +135,7 @@ func TestCLIFetchSource(t *testing.T) {
 	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": build.Collection})
 	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": task.Collection})
 	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": model.VersionCollection})
+	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": manifest.Collection})
 	require.NoError(t, evergreen.UpdateConfig(testConfig), ShouldBeNil)
 
 	Convey("with a task containing patches and modules", t, func() {
