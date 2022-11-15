@@ -527,7 +527,7 @@ func LoadProjectInfoForVersion(v *Version, id string) (ProjectInfo, error) {
 	}
 	var pc *ProjectConfig
 	if pRef.IsVersionControlEnabled() {
-		pc, err = FindProjectConfigForProjectOrVersion(v.Identifier, v.Id)
+		pc, err = FindProjectConfigById(v.Id)
 		if err != nil {
 			return ProjectInfo{}, errors.Wrap(err, "finding project config")
 		}

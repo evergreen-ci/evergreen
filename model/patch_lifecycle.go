@@ -449,7 +449,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		parentPatchNumber = parentPatch.PatchNumber
 	}
 
-	params, err := getFullPatchParams(p)
+	params, err := getFullPatchParams(p, config)
 	if err != nil {
 		return nil, errors.Wrap(err, "fetching patch parameters")
 	}
@@ -649,7 +649,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 
 // getFullPatchParams will retrieve a merged list of parameters defined on the patch alias (if any)
 // with the parameters that were explicitly user-specified, with the latter taking precedence.
-func getFullPatchParams(p *patch.Patch) ([]patch.Parameter, error) {
+func getFullPatchParams(p *patch.Patch, config *ProjectConfig) ([]patch.Parameter, error) {
 	paramsMap := map[string]string{}
 	if p.Alias == "" || !IsPatchAlias(p.Alias) {
 		return p.Parameters, nil
