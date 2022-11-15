@@ -114,8 +114,8 @@ func checkHostTaskByCommit(username, key string) error {
 			return errors.Errorf("unable to trigger the repotracker after 5 attempts")
 		}
 		time.Sleep(2 * time.Second)
-		grip.Infof("running repotracker for evergreen project (%d/5)", i)
-		_, err := makeSmokeRequest(username, key, http.MethodPost, client, "/rest/v2/projects/evergreen/repotracker")
+		grip.Infof("running repotracker for smoke project (%d/5)", i)
+		_, err := makeSmokeRequest(username, key, http.MethodPost, client, "/rest/v2/projects/smoke/repotracker")
 		if err != nil {
 			grip.Error(err)
 			continue
