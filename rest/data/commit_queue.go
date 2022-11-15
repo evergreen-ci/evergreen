@@ -108,7 +108,7 @@ func (pc *DBCommitQueueConnector) AddPatchForPr(ctx context.Context, projectRef 
 	for _, module := range modules {
 		serviceModules = append(serviceModules, *restModel.APIModuleToService(module))
 	}
-	modulePRs, modulePatches, err := model.GetModulesFromPR(ctx, githubToken, prNum, serviceModules, proj)
+	modulePRs, modulePatches, err := model.GetModulesFromPR(ctx, githubToken, serviceModules, proj)
 	if err != nil {
 		return "", err
 	}

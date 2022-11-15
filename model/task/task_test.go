@@ -2217,7 +2217,7 @@ func TestActivateTasks(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 
 	tasks := []Task{
-		{Id: "t0"},
+		{Id: "t0", Priority: evergreen.DisabledTaskPriority},
 		{Id: "t1", DependsOn: []Dependency{{TaskId: "t0"}}, Activated: false},
 		{Id: "t2", DependsOn: []Dependency{{TaskId: "t0"}, {TaskId: "t1"}}, Activated: false, DeactivatedForDependency: true},
 		{Id: "t3", DependsOn: []Dependency{{TaskId: "t0"}}, Activated: false, DeactivatedForDependency: true},
@@ -2236,6 +2236,7 @@ func TestActivateTasks(t *testing.T) {
 	assert.Len(t, dbTasks, 5)
 
 	for _, task := range dbTasks {
+		assert.Equal(t, task.Priority, int64(0))
 		if utility.StringSliceContains(updatedIDs, task.Id) {
 			assert.True(t, task.Activated)
 		} else {

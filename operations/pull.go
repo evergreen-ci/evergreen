@@ -47,7 +47,7 @@ func Pull() cli.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			client, err := conf.setupRestCommunicator(ctx)
+			client, err := conf.setupRestCommunicator(ctx, true)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}

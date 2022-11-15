@@ -14,7 +14,7 @@ import (
 	"strings"
 	"sync"
 
-	humanize "github.com/dustin/go-humanize"
+	"github.com/dustin/go-humanize"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/manifest"
@@ -104,7 +104,7 @@ func Fetch() cli.Command {
 				return errors.Wrap(err, "loading configuration")
 			}
 
-			client, err := conf.setupRestCommunicator(ctx)
+			client, err := conf.setupRestCommunicator(ctx, true)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
