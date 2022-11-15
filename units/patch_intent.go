@@ -932,7 +932,7 @@ func (j *patchIntentProcessor) verifyValidAlias(projectId string, configStr stri
 		return errors.Wrapf(err, "retrieving aliases for project '%s'", projectId)
 	}
 	if len(aliases) > 0 {
-
+		return nil
 	}
 	return errors.Errorf("alias '%s' could not be found on project '%s'", alias, projectId)
 }
