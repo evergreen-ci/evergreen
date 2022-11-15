@@ -681,6 +681,9 @@ func CreateManifest(v *Version, proj *Project, projectRef *ProjectRef, settings 
 	if err != nil {
 		return nil, errors.Wrap(err, "constructing manifest")
 	}
+	if newManifest == nil {
+		return nil, nil
+	}
 	_, err = newManifest.TryInsert()
 	return newManifest, errors.Wrap(err, "inserting manifest")
 }
