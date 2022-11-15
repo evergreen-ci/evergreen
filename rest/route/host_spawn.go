@@ -1119,10 +1119,9 @@ func (h *hostExtendExpirationHandler) Run(ctx context.Context) gimlet.Responder 
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
-////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////
 //
 // POST /rest/v2/host/start_process
-//
 type hostStartProcesses struct {
 	env evergreen.Environment
 
@@ -1211,10 +1210,9 @@ func (hs *hostStartProcesses) Run(ctx context.Context) gimlet.Responder {
 	return response
 }
 
-////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////
 //
 // GET /rest/v2/host/get_process
-//
 type hostGetProcesses struct {
 	env evergreen.Environment
 
@@ -1296,9 +1294,15 @@ func validateID(id string) (string, error) {
 func makeSpawnHostSubscription(hostID, subscriberType string, user *user.DBUser) (model.APISubscription, error) {
 	var subscriber model.APISubscriber
 	if subscriberType == event.SlackSubscriberType {
+
+		target := fmt.Sprintf("@%s", user.Settings.SlackUsername)
+		if user.Settings.SlackMemberId != "" {
+			target = user.Settings.SlackMemberId
+		}
+
 		subscriber = model.APISubscriber{
 			Type:   utility.ToStringPtr(event.SlackSubscriberType),
-			Target: fmt.Sprintf("@%s", user.Settings.SlackUsername),
+			Target: target,
 		}
 	} else if subscriberType == event.EmailSubscriberType {
 		subscriber = model.APISubscriber{
