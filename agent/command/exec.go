@@ -348,7 +348,14 @@ func (c *subprocessExec) runCommand(ctx context.Context, taskID string, cmd *jas
 		}
 	}
 
-	if c.ContinueOnError && err != nil {
+	if c.ContinueOnError {
+		logger.Execution().Notice(message.WrapError(err, message.Fields{
+			"task":       taskID,
+			"binary":     c.Binary,
+			"background": c.Background,
+			"silent":     c.Silent,
+			"continue":   c.ContinueOnError,
+		}))
 		logger.Execution().Noticef("Script errored, but continue on error is set - continuing task execution. Error: %s.", err)
 		return nil
 	}

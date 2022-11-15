@@ -105,7 +105,7 @@ func (s *taskDispatchService) ensureQueue(distroID string) (CachedDispatcher, er
 
 	var taskQueue TaskQueue
 	if s.useAliases {
-		taskQueue, err = FindDistroSecondaryTaskQueue(distroID)
+		taskQueue, err = FindDistroAliasTaskQueue(distroID)
 	} else {
 		taskQueue, err = FindDistroTaskQueue(distroID)
 	}

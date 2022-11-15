@@ -56,6 +56,7 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 
 	opts := route.HandlerOpts{
 		APIQueue:            as.queue,
+		QueueGroup:          as.env.RemoteQueueGroup(),
 		URL:                 as.Settings.Ui.Url,
 		GithubSecret:        []byte(as.Settings.Api.GithubWebhookSecret),
 		TaskDispatcher:      as.taskDispatcher,
@@ -72,6 +73,7 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	apiRestV2.SetPrefix(evergreen.APIRoutePrefix + "/" + evergreen.RestRoutePrefix)
 	opts = route.HandlerOpts{
 		APIQueue:            as.queue,
+		QueueGroup:          as.env.RemoteQueueGroup(),
 		URL:                 as.Settings.Ui.Url,
 		GithubSecret:        []byte(as.Settings.Api.GithubWebhookSecret),
 		TaskDispatcher:      as.taskDispatcher,

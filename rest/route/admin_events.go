@@ -85,6 +85,11 @@ func (h *adminEventsGet) Run(ctx context.Context) gimlet.Responder {
 	if catcher.HasErrors() {
 		return gimlet.MakeJSONInternalErrorResponder(catcher.Resolve())
 	}
+
+	if err = resp.SetStatus(http.StatusOK); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(err)
+	}
+
 	return resp
 }
 

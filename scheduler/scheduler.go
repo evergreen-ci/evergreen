@@ -44,7 +44,7 @@ func runTunablePlanner(d *distro.Distro, tasks []task.Task, opts TaskPlannerOpti
 
 	plan := PrepareTasksForPlanning(d, tasks).Export()
 	info := GetDistroQueueInfo(d.Id, plan, d.GetTargetTime(), opts)
-	info.SecondaryQueue = opts.IsSecondaryQueue
+	info.AliasQueue = opts.IsSecondaryQueue
 	info.PlanCreatedAt = opts.StartedAt
 
 	if err = PersistTaskQueue(d.Id, plan, info); err != nil {
@@ -108,7 +108,7 @@ func (s *distroScheduler) scheduleDistro(distroID string, runnableTasks []task.T
 	}
 
 	distroQueueInfo := GetDistroQueueInfo(distroID, prioritizedTasks, maxThreshold, s.opts)
-	distroQueueInfo.SecondaryQueue = isSecondaryQueue
+	distroQueueInfo.AliasQueue = isSecondaryQueue
 	distroQueueInfo.PlanCreatedAt = s.startedAt
 
 	// persist the queue of tasks and its associated distroQueueInfo
@@ -124,7 +124,7 @@ func (s *distroScheduler) scheduleDistro(distroID string, runnableTasks []task.T
 func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold time.Duration, opts TaskPlannerOptions) model.DistroQueueInfo {
 	var distroExpectedDuration, distroDurationOverThreshold time.Duration
 	var distroCountDurationOverThreshold, distroCountWaitOverThreshold int
-	var isSecondaryQueue bool
+	var isAliasQueue bool
 	taskGroupInfosMap := make(map[string]*model.TaskGroupInfo)
 	depCache := make(map[string]task.Task, len(tasks))
 	for _, t := range tasks {
@@ -141,7 +141,7 @@ func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold
 		duration := task.FetchExpectedDuration().Average
 
 		if task.DistroId != distroID {
-			isSecondaryQueue = true
+			isAliasQueue = true
 		}
 
 		var exists bool
@@ -211,7 +211,7 @@ func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold
 		DurationOverThreshold:      distroDurationOverThreshold,
 		CountWaitOverThreshold:     distroCountWaitOverThreshold,
 		TaskGroupInfos:             taskGroupInfos,
-		SecondaryQueue:             isSecondaryQueue,
+		AliasQueue:                 isAliasQueue,
 	}
 
 	return distroQueueInfo

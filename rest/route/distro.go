@@ -619,6 +619,10 @@ func (h *distroGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	resp := gimlet.NewResponseBuilder()
+	if err = resp.SetFormat(gimlet.JSON); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "setting JSON response format"))
+	}
+
 	for _, d := range distros {
 		distroModel := &model.APIDistro{}
 		distroModel.BuildFromService(d)

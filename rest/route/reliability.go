@@ -251,6 +251,10 @@ func (trh *taskReliabilityHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	resp := gimlet.NewResponseBuilder()
+	if err = resp.SetFormat(gimlet.JSON); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(err)
+	}
+
 	requestLimit := trh.filter.Limit
 	if len(taskReliabilityResult) == requestLimit {
 		last := taskReliabilityResult[len(taskReliabilityResult)-1]

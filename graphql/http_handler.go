@@ -19,6 +19,12 @@ import (
 func Handler(apiURL string) func(w http.ResponseWriter, r *http.Request) {
 	srv := handler.NewDefaultServer(NewExecutableSchema(New(apiURL)))
 
+	// Temporarily disable GQL introspection (EVG-18123)
+	srv.AroundOperations(func(ctx context.Context, next graphql.OperationHandler) graphql.ResponseHandler {
+		graphql.GetOperationContext(ctx).DisableIntrospection = true
+		return next(ctx)
+	})
+
 	// Apollo tracing support https://github.com/apollographql/apollo-tracing
 	srv.Use(apollotracing.Tracer{})
 

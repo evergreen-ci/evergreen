@@ -4,7 +4,6 @@ mciModule.controller(
     $scope.availableTriggers = $window.availableTriggers;
     $scope.userId = $window.user.Id;
     $scope.create = $window.canCreate;
-    $scope.slackAppName = $window.slackAppName;
 
     $scope.projectVars = {};
     $scope.patchVariants = [];

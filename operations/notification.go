@@ -2,6 +2,7 @@ package operations
 
 import (
 	"context"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
@@ -44,6 +45,10 @@ func notificationSlack() cli.Command {
 			target := c.String(targetFlagName)
 			msg := c.String(msgFlagName)
 
+			if err := validateTargetHasOctothorpeOrArobase(target); err != nil {
+				return err
+			}
+
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
@@ -56,7 +61,7 @@ func notificationSlack() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client, err := conf.setupRestCommunicator(ctx, true)
+			client, err := conf.setupRestCommunicator(ctx)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -69,6 +74,13 @@ func notificationSlack() cli.Command {
 			return nil
 		},
 	}
+}
+
+func validateTargetHasOctothorpeOrArobase(target string) error {
+	if !strings.HasPrefix(target, "#") && !strings.HasPrefix(target, "@") {
+		return errors.New("target must begin with '#' or '@'")
+	}
+	return nil
 }
 
 func notificationEmail() cli.Command {
@@ -122,7 +134,7 @@ func notificationEmail() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client, err := conf.setupRestCommunicator(ctx, true)
+			client, err := conf.setupRestCommunicator(ctx)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}

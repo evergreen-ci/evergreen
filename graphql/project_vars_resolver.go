@@ -10,7 +10,6 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 )
 
-// AdminOnlyVars is the resolver for the adminOnlyVars field.
 func (r *projectVarsResolver) AdminOnlyVars(ctx context.Context, obj *restModel.APIProjectVars) ([]string, error) {
 	res := []string{}
 	for varAlias, isAdminOnly := range obj.AdminOnlyVars {
@@ -22,7 +21,6 @@ func (r *projectVarsResolver) AdminOnlyVars(ctx context.Context, obj *restModel.
 	return res, nil
 }
 
-// PrivateVars is the resolver for the privateVars field.
 func (r *projectVarsResolver) PrivateVars(ctx context.Context, obj *restModel.APIProjectVars) ([]string, error) {
 	res := []string{}
 	for privateAlias, isPrivate := range obj.PrivateVars {

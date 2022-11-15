@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
@@ -109,13 +108,6 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 		}
 		if err := ActivateVersions(versionIdsToActivate); err != nil {
 			return errors.Wrap(err, "marking version as activated")
-		}
-		buildIdsToActivate := []string{}
-		for b := range buildToTaskMap {
-			buildIdsToActivate = append(buildIdsToActivate, b)
-		}
-		if err := build.UpdateActivation(buildIdsToActivate, true, caller); err != nil {
-			return errors.Wrap(err, "marking builds as activated")
 		}
 	} else {
 		if err := task.DeactivateTasks(tasksToActivate, true, caller); err != nil {
@@ -616,6 +608,11 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		}
 	}
 
+	grip.DebugWhen(t.ActivatedBy == "chaya.malik", message.Fields{
+		"message": "calling UpdateBuildAndVersionStatusForTask in MarkEnd",
+		"ticket":  "EVG-17305",
+		"task":    t.Id,
+	})
 	if err := UpdateBuildAndVersionStatusForTask(t); err != nil {
 		return errors.Wrap(err, "updating build/version status")
 	}
@@ -898,9 +895,7 @@ func removeNextMergeTaskDependency(cq commitqueue.CommitQueue, currentIssue stri
 }
 
 func evalStepback(t *task.Task, caller, status string, deactivatePrevious bool) error {
-	// Stepback if the task failed regularly _or_ if we are currently stepping back and we encountered any failure.
-	if (status == evergreen.TaskFailed && !t.Aborted) ||
-		(evergreen.IsFailedTaskStatus(status) && t.ActivatedBy == evergreen.StepbackTaskActivator) {
+	if status == evergreen.TaskFailed && !t.Aborted {
 		var shouldStepBack bool
 		shouldStepBack, err := getStepback(t.Id)
 		if err != nil {
@@ -948,23 +943,13 @@ func updateMakespans(b *build.Build, buildTasks []task.Task) error {
 	return errors.WithStack(b.UpdateMakespans(depPath.TotalTime, CalculateActualMakespan(buildTasks)))
 }
 
-type buildStatus struct {
-	status              string
-	allTasksBlocked     bool
-	allTasksUnscheduled bool
-}
-
 // getBuildStatus returns a string denoting the status of the build and
 // a boolean denoting if all tasks in the build are blocked.
-func getBuildStatus(buildTasks []task.Task) buildStatus {
+func getBuildStatus(buildTasks []task.Task) (string, bool) {
 	// Check if no tasks have started and if all tasks are blocked.
 	noStartedTasks := true
 	allTasksBlocked := true
-	allTasksUnscheduled := true
 	for _, t := range buildTasks {
-		if !t.IsUnscheduled() {
-			allTasksUnscheduled = false
-		}
 		if !evergreen.IsUnstartedTaskStatus(t.Status) {
 			noStartedTasks = false
 			allTasksBlocked = false
@@ -975,35 +960,28 @@ func getBuildStatus(buildTasks []task.Task) buildStatus {
 		}
 	}
 
-	if allTasksUnscheduled {
-		return buildStatus{
-			status:              evergreen.BuildCreated,
-			allTasksBlocked:     allTasksBlocked,
-			allTasksUnscheduled: allTasksUnscheduled,
-		}
-	}
-
 	if noStartedTasks || allTasksBlocked {
-		return buildStatus{status: evergreen.BuildCreated, allTasksBlocked: allTasksBlocked}
+		return evergreen.BuildCreated, allTasksBlocked
 	}
 
 	// Check if tasks are started but not finished.
 	for _, t := range buildTasks {
 		if t.Status == evergreen.TaskStarted {
-			return buildStatus{status: evergreen.BuildStarted}
+			return evergreen.BuildStarted, false
 		}
 		if t.Activated && !t.Blocked() && !t.IsFinished() {
-			return buildStatus{status: evergreen.BuildStarted}
+			return evergreen.BuildStarted, false
 		}
 	}
 
 	// Check if all tasks are finished but have failures.
 	for _, t := range buildTasks {
 		if evergreen.IsFailedTaskStatus(t.Status) || t.Aborted {
-			return buildStatus{status: evergreen.BuildFailed}
+			return evergreen.BuildFailed, false
 		}
 	}
-	return buildStatus{status: evergreen.BuildSucceeded}
+
+	return evergreen.BuildSucceeded, false
 }
 
 func updateBuildGithubStatus(b *build.Build, buildTasks []task.Task) error {
@@ -1017,17 +995,17 @@ func updateBuildGithubStatus(b *build.Build, buildTasks []task.Task) error {
 		return nil
 	}
 
-	buildStatus := getBuildStatus(githubStatusTasks)
+	githubBuildStatus, _ := getBuildStatus(githubStatusTasks)
 
-	if buildStatus.status == b.GithubCheckStatus {
+	if githubBuildStatus == b.GithubCheckStatus {
 		return nil
 	}
 
-	if evergreen.IsFinishedBuildStatus(buildStatus.status) {
-		event.LogBuildGithubCheckFinishedEvent(b.Id, buildStatus.status)
+	if evergreen.IsFinishedBuildStatus(githubBuildStatus) {
+		event.LogBuildGithubCheckFinishedEvent(b.Id, githubBuildStatus)
 	}
 
-	return b.UpdateGithubCheckStatus(buildStatus.status)
+	return b.UpdateGithubCheckStatus(githubBuildStatus)
 }
 
 // updateBuildStatus updates the status of the build based on its tasks' statuses
@@ -1038,22 +1016,14 @@ func updateBuildStatus(b *build.Build) (bool, error) {
 		return false, errors.Wrapf(err, "getting tasks in build '%s'", b.Id)
 	}
 
-	buildStatus := getBuildStatus(buildTasks)
-	// If all the tasks are unscheduled, set active to false
-	if buildStatus.allTasksUnscheduled {
-		if err = b.SetActivated(false); err != nil {
-			return true, errors.Wrapf(err, "setting build '%s' as inactive", b.Id)
-		}
-		return true, nil
-	}
+	buildStatus, allTasksBlocked := getBuildStatus(buildTasks)
+	blockedChanged := allTasksBlocked != b.AllTasksBlocked
 
-	blockedChanged := buildStatus.allTasksBlocked != b.AllTasksBlocked
-
-	if err = b.SetAllTasksBlocked(buildStatus.allTasksBlocked); err != nil {
+	if err = b.SetAllTasksBlocked(allTasksBlocked); err != nil {
 		return false, errors.Wrapf(err, "setting build '%s' as blocked", b.Id)
 	}
 
-	if buildStatus.status == b.Status {
+	if buildStatus == b.Status {
 		return blockedChanged, nil
 	}
 
@@ -1074,17 +1044,17 @@ func updateBuildStatus(b *build.Build) (bool, error) {
 		}
 	}
 
-	event.LogBuildStateChangeEvent(b.Id, buildStatus.status)
+	event.LogBuildStateChangeEvent(b.Id, buildStatus)
 
-	if evergreen.IsFinishedBuildStatus(buildStatus.status) {
-		if err = b.MarkFinished(buildStatus.status, time.Now()); err != nil {
-			return true, errors.Wrapf(err, "marking build as finished with status '%s'", buildStatus.status)
+	if evergreen.IsFinishedBuildStatus(buildStatus) {
+		if err = b.MarkFinished(buildStatus, time.Now()); err != nil {
+			return true, errors.Wrapf(err, "marking build as finished with status '%s'", buildStatus)
 		}
 		if err = updateMakespans(b, buildTasks); err != nil {
 			return true, errors.Wrapf(err, "updating makespan information for '%s'", b.Id)
 		}
 	} else {
-		if err = b.UpdateStatus(buildStatus.status); err != nil {
+		if err = b.UpdateStatus(buildStatus); err != nil {
 			return true, errors.Wrap(err, "updating build status")
 		}
 	}
@@ -1149,6 +1119,11 @@ func updateVersionGithubStatus(v *Version, builds []build.Build) error {
 
 // Update the status of the version based on its constituent builds
 func updateVersionStatus(v *Version) (string, error) {
+	grip.DebugWhen(v.Author == "didier.nadeau", message.Fields{
+		"message": "updateVersionStatus",
+		"ticket":  "EVG-17305",
+		"version": v.Id,
+	})
 	builds, err := build.Find(build.ByVersion(v.Id).WithFields(build.ActivatedKey, build.StatusKey,
 		build.IsGithubCheckKey, build.GithubCheckStatusKey, build.AbortedKey))
 	if err != nil {
@@ -1161,6 +1136,15 @@ func updateVersionStatus(v *Version) (string, error) {
 	}
 
 	versionStatus := getVersionStatus(builds)
+
+	grip.DebugWhen(v.Author == "didier.nadeau", message.Fields{
+		"message":        "updateVersionStatus getVersionStatus",
+		"ticket":         "EVG-17305",
+		"version":        v.Id,
+		"author":         v.Author,
+		"new_status":     versionStatus,
+		"current_status": v.Status,
+	})
 
 	if versionStatus == v.Status {
 		return versionStatus, nil
@@ -1195,7 +1179,7 @@ func updateVersionStatus(v *Version) (string, error) {
 	return versionStatus, nil
 }
 
-func UpdatePatchStatus(p *patch.Patch, versionStatus, buildVariant string) error {
+func UpdatePatchStatus(p *patch.Patch, versionStatus string) error {
 	patchStatus, err := evergreen.VersionStatusToPatchStatus(versionStatus)
 	if err != nil {
 		return errors.Wrapf(err, "getting patch status from version status '%s'", versionStatus)
@@ -1213,20 +1197,6 @@ func UpdatePatchStatus(p *patch.Patch, versionStatus, buildVariant string) error
 	} else {
 		if err = p.UpdateStatus(patchStatus); err != nil {
 			return errors.Wrapf(err, "updating patch '%s' with status '%s'", p.Id.Hex(), patchStatus)
-		}
-		if p.IsGithubPRPatch() {
-			input := thirdparty.SendGithubStatusInput{
-				VersionId: p.Id.Hex(),
-				Owner:     p.GithubPatchData.BaseOwner,
-				Repo:      p.GithubPatchData.BaseRepo,
-				Ref:       p.GithubPatchData.HeadHash,
-				Desc:      "patch status change",
-				Caller:    "pr-task-reset",
-				Context:   fmt.Sprintf("evergreen/%s", buildVariant),
-			}
-			if err = thirdparty.SendVersionStatusToGithub(input); err != nil {
-				return errors.Wrapf(err, "sending patch '%s' status to Github", p.Id.Hex())
-			}
 		}
 	}
 
@@ -1250,6 +1220,13 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 	}
 	// If no build has changed status, then we can assume the version and patch statuses have also stayed the same.
 	if !buildStatusChanged {
+
+		grip.DebugWhen(t.ActivatedBy == "chaya.malik", message.Fields{
+			"message": "!buildStatusChanged in UpdateBuildAndVersionStatusForTask",
+			"ticket":  "EVG-17305",
+			"task":    t.Id,
+			"build":   taskBuild.Id,
+		})
 		return nil
 	}
 
@@ -1274,7 +1251,7 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 		if p == nil {
 			return errors.Errorf("no patch found for version '%s'", taskVersion.Id)
 		}
-		if err = UpdatePatchStatus(p, newVersionStatus, taskBuild.BuildVariant); err != nil {
+		if err = UpdatePatchStatus(p, newVersionStatus); err != nil {
 			return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
 		}
 	}
@@ -1292,7 +1269,6 @@ func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
 	}
 
 	versionsToUpdate := make(map[string]string)
-	bvMap := make(map[string]string)
 	for _, build := range builds {
 		buildStatusChanged, err := updateBuildStatus(&build)
 		if err != nil {
@@ -1304,7 +1280,6 @@ func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
 		}
 
 		versionsToUpdate[build.Version] = build.Id
-		bvMap[build.Id] = build.BuildVariant
 	}
 	for versionId, buildId := range versionsToUpdate {
 		buildVersion, err := VersionFindOneId(versionId)
@@ -1327,7 +1302,7 @@ func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
 			if p == nil {
 				return errors.Errorf("no patch found for version '%s'", buildVersion.Id)
 			}
-			if err = UpdatePatchStatus(p, newVersionStatus, bvMap[buildId]); err != nil {
+			if err = UpdatePatchStatus(p, newVersionStatus); err != nil {
 				return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
 			}
 		}

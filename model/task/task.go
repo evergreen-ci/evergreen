@@ -128,12 +128,13 @@ type Task struct {
 	NumDependents           int              `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
 	OverrideDependencies    bool             `bson:"override_dependencies,omitempty" json:"override_dependencies,omitempty"`
 
-	// SecondaryDistros refer to the optional secondary distros that can be
+	// DistroAliases refer to the optional secondary distros that can be
 	// associated with a task. This is used for running tasks in case there are
-	// idle hosts in a distro with an empty primary queue. This is a distinct concept
-	// from distro aliases (i.e. alternative distro names).
-	// Tags refer to outdated naming; maintained for compatibility.
-	SecondaryDistros []string `bson:"distro_aliases,omitempty" json:"distro_aliases,omitempty"`
+	// idle hosts in a distro with an empty primary queue. Despite the variable
+	// name, this is a distinct concept from actual distro aliases (i.e.
+	// alternative distro names).
+	// TODO (EVG-15148): rename this to represent secondary distros.
+	DistroAliases []string `bson:"distro_aliases,omitempty" json:"distro_aliases,omitempty"`
 
 	// Human-readable name
 	DisplayName string `bson:"display_name" json:"display_name"`
@@ -1668,7 +1669,18 @@ func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bo
 	for _, t := range tasks {
 		taskIDs = append(taskIDs, t.Id)
 	}
-	err := activateTasks(taskIDs, caller, activationTime)
+
+	_, err := UpdateAll(
+		bson.M{
+			IdKey: bson.M{"$in": taskIDs},
+		},
+		bson.M{
+			"$set": bson.M{
+				ActivatedKey:     true,
+				ActivatedByKey:   caller,
+				ActivatedTimeKey: activationTime,
+			},
+		})
 	if err != nil {
 		return errors.Wrap(err, "activating tasks")
 	}
@@ -3006,7 +3018,7 @@ func addApplicableDistroFilter(id string, fieldName string, query bson.M) error 
 func FindHostSchedulableForAlias(id string) ([]Task, error) {
 	q := schedulableHostTasksQuery()
 
-	if err := addApplicableDistroFilter(id, SecondaryDistrosKey, q); err != nil {
+	if err := addApplicableDistroFilter(id, DistroAliasesKey, q); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
@@ -3306,11 +3318,6 @@ func (t *Task) Blocked() bool {
 	}
 
 	return false
-}
-
-// isUnscheduled returns true if a task is unscheduled and will not run
-func (t *Task) IsUnscheduled() bool {
-	return t.Status == evergreen.TaskUndispatched && !t.Activated
 }
 
 func (t *Task) BlockedState(dependencies map[string]*Task) (string, error) {

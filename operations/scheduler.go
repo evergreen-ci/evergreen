@@ -46,7 +46,7 @@ func compareTasks() cli.Command {
 				return errors.Wrap(err, "loading configuration")
 			}
 			ctx := context.Background()
-			client, err := conf.setupRestCommunicator(ctx, true)
+			client, err := conf.setupRestCommunicator(ctx)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}

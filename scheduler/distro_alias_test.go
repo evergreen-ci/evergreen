@@ -20,23 +20,23 @@ func init() {
 func TestDistroAliases(t *testing.T) {
 	tasks := []task.Task{
 		{
-			Id:               "other",
-			DistroId:         "one",
-			Priority:         200,
-			Version:          "foo",
-			SecondaryDistros: []string{"two"},
+			Id:            "other",
+			DistroId:      "one",
+			Priority:      200,
+			Version:       "foo",
+			DistroAliases: []string{"two"},
 		},
 		{
-			Id:               "one",
-			DistroId:         "one",
-			Priority:         2000,
-			Version:          "foo",
-			SecondaryDistros: []string{"two"},
+			Id:            "one",
+			DistroId:      "one",
+			Priority:      2000,
+			Version:       "foo",
+			DistroAliases: []string{"two"},
 		},
 	}
 
 	require.NoError(t, db.Clear(model.TaskQueuesCollection))
-	require.NoError(t, db.Clear(model.TaskSecondaryQueuesCollection))
+	require.NoError(t, db.Clear(model.TaskAliasQueuesCollection))
 
 	require.NoError(t, db.Clear(model.VersionCollection))
 	require.NoError(t, (&model.Version{Id: "foo"}).Insert())
@@ -60,7 +60,7 @@ func TestDistroAliases(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, 1, ct)
 
-			ct, err = db.Count(model.TaskSecondaryQueuesCollection, bson.M{})
+			ct, err = db.Count(model.TaskAliasQueuesCollection, bson.M{})
 			require.NoError(t, err)
 			require.Equal(t, 0, ct)
 		})
@@ -78,14 +78,14 @@ func TestDistroAliases(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, 1, ct)
 
-			ct, err = db.Count(model.TaskSecondaryQueuesCollection, bson.M{})
+			ct, err = db.Count(model.TaskAliasQueuesCollection, bson.M{})
 			require.NoError(t, err)
 			require.Equal(t, 0, ct)
 		})
 	})
 
 	require.NoError(t, db.Clear(model.TaskQueuesCollection))
-	require.NoError(t, db.Clear(model.TaskSecondaryQueuesCollection))
+	require.NoError(t, db.Clear(model.TaskAliasQueuesCollection))
 
 	t.Run("DistroAlias", func(t *testing.T) {
 		distroTwo := &distro.Distro{
@@ -93,7 +93,7 @@ func TestDistroAliases(t *testing.T) {
 		}
 
 		t.Run("Tunable", func(t *testing.T) {
-			require.NoError(t, db.Clear(model.TaskSecondaryQueuesCollection))
+			require.NoError(t, db.Clear(model.TaskAliasQueuesCollection))
 
 			distroTwo.PlannerSettings.Version = evergreen.PlannerVersionTunable
 			output, err := PrioritizeTasks(distroTwo, tasks, TaskPlannerOptions{ID: "tunable-0", IsSecondaryQueue: true})
@@ -102,7 +102,7 @@ func TestDistroAliases(t *testing.T) {
 			require.Equal(t, "one", output[0].Id)
 			require.Equal(t, "other", output[1].Id)
 
-			ct, err := db.Count(model.TaskSecondaryQueuesCollection, bson.M{})
+			ct, err := db.Count(model.TaskAliasQueuesCollection, bson.M{})
 			require.NoError(t, err)
 			require.Equal(t, 1, ct)
 
@@ -112,7 +112,7 @@ func TestDistroAliases(t *testing.T) {
 
 		})
 		t.Run("UseLegacy", func(t *testing.T) {
-			require.NoError(t, db.Clear(model.TaskSecondaryQueuesCollection))
+			require.NoError(t, db.Clear(model.TaskAliasQueuesCollection))
 
 			distroTwo.PlannerSettings.Version = evergreen.PlannerVersionLegacy
 			output, err := PrioritizeTasks(distroTwo, tasks, TaskPlannerOptions{ID: "legacy-0", IsSecondaryQueue: true})
@@ -121,7 +121,7 @@ func TestDistroAliases(t *testing.T) {
 			require.Equal(t, "one", output[0].Id)
 			require.Equal(t, "other", output[1].Id)
 
-			ct, err := db.Count(model.TaskSecondaryQueuesCollection, bson.M{})
+			ct, err := db.Count(model.TaskAliasQueuesCollection, bson.M{})
 			require.NoError(t, err)
 			require.Equal(t, 1, ct)
 

@@ -603,7 +603,7 @@ func TestDistroDeleteSuite(t *testing.T) {
 }
 
 func (s *DistroDeleteByIDSuite) SetupTest() {
-	s.NoError(db.ClearCollections(distro.Collection, model.TaskSecondaryQueuesCollection, model.TaskQueuesCollection))
+	s.NoError(db.ClearCollections(distro.Collection, model.TaskAliasQueuesCollection, model.TaskQueuesCollection))
 	distros := []*distro.Distro{
 		{
 			Id: "distro1",
@@ -709,16 +709,16 @@ func (s *DistroPatchByIDSuite) SetupTest() {
 				"ConnectTimeout=10"},
 			SpawnAllowed: false,
 			Expansions: []distro.Expansion{
-				{
+				distro.Expansion{
 					Key:   "decompress",
 					Value: "tar zxvf"},
-				{
+				distro.Expansion{
 					Key:   "ps",
 					Value: "ps aux"},
-				{
+				distro.Expansion{
 					Key:   "kill_pid",
 					Value: "kill -- -$(ps opgid= %v)"},
-				{
+				distro.Expansion{
 					Key:   "scons_prune_ratio",
 					Value: "0.8"},
 			},

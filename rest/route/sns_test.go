@@ -143,35 +143,28 @@ func TestEC2SNSNotificationHandlers(t *testing.T) {
 		assert.Equal(t, status, dbHost.Status)
 	}
 
-	for name, test := range map[string]func(ctx context.Context, t *testing.T){
-		"InstanceTerminatedInitiatesInstanceStatusCheck": func(ctx context.Context, t *testing.T) {
+	for name, test := range map[string]func(*testing.T){
+		"InstanceTerminatedInitiatesInstanceStatusCheck": func(t *testing.T) {
 			require.NoError(t, rh.handleInstanceTerminated(ctx, agentHost.Id))
 			checkStatus(t, agentHost.Id, evergreen.HostDecommissioned)
 			require.Equal(t, 1, rh.queue.Stats(ctx).Total)
 		},
-		"InstanceStoppedWithAgentHostInitiatesInstanceStatusCheck": func(ctx context.Context, t *testing.T) {
+		"InstanceStoppedWithAgentHostInitiatesInstanceStatusCheck": func(t *testing.T) {
 			require.NoError(t, rh.handleInstanceStopped(ctx, agentHost.Id))
 			checkStatus(t, agentHost.Id, evergreen.HostDecommissioned)
 			require.Equal(t, 1, rh.queue.Stats(ctx).Total)
 		},
-		"InstanceStoppedWithSpawnHostNoops": func(ctx context.Context, t *testing.T) {
+		"InstanceStoppedWithSpawnHostNoops": func(t *testing.T) {
 			originalStatus := spawnHost.Status
 			require.NoError(t, rh.handleInstanceStopped(ctx, spawnHost.Id))
 			checkStatus(t, spawnHost.Id, originalStatus)
 			assert.Zero(t, rh.queue.Stats(ctx).Total)
 		},
 	} {
-		t.Run(name, func(t *testing.T) {
-			tctx, tcancel := context.WithTimeout(ctx, 5*time.Second)
-			defer tcancel()
+		rh.queue = queue.NewLocalLimitedSize(1, 1)
+		require.NoError(t, rh.queue.Start(ctx))
 
-			queue, err := queue.NewLocalLimitedSizeSerializable(1, 1)
-			require.NoError(t, err)
-			rh.queue = queue
-			require.NoError(t, rh.queue.Start(ctx))
-
-			test(tctx, t)
-		})
+		t.Run(name, test)
 	}
 }
 

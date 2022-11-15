@@ -14,10 +14,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/kardianos/osext"
-	"github.com/mitchellh/go-homedir"
+	homedir "github.com/mitchellh/go-homedir"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"gopkg.in/20210107192922/yaml.v3"
+	yaml "gopkg.in/20210107192922/yaml.v3"
 )
 
 const localConfigPath = ".evergreen.local.yml"
@@ -143,20 +143,32 @@ func (s *ClientSettings) Write(fn string) error {
 	return errors.Wrapf(ioutil.WriteFile(fn, yamlData, 0644), "writing file '%s'", fn)
 }
 
-// setupRestCommunicator returns the rest communicator and prints any available info messages if set.
+// setupRestCommunicator returns the rest communicator and prints any available info messages.
 // Callers are responsible for calling (Communicator).Close() when finished with the client.
-// We want to avoid printing messages if output is requested in a specific format or silenced.
-func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessages bool) (client.Communicator, error) {
-	c, err := client.NewCommunicator(s.APIServerHost)
+//
+// To avoid printing these messages, call getRestCommunicator instead.
+func (s *ClientSettings) setupRestCommunicator(ctx context.Context) (client.Communicator, error) {
+	c, err := s.getRestCommunicator(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting REST communicator")
+	}
+	printUserMessages(ctx, c, !s.AutoUpgradeCLI)
+	return c, nil
+}
+
+// getRestCommunicator returns a client for communicating with the API server.
+// Callers are responsible for calling (Communicator).Close() when finished with the client.
+//
+// Most callers should use setupRestCommunicator instead, which prints available info messages.
+func (s *ClientSettings) getRestCommunicator(ctx context.Context) (client.Communicator, error) {
+	c, err := client.NewCommunicator(s.APIServerHost)
+	if err != nil {
+		return nil, err
 	}
 
 	c.SetAPIUser(s.User)
 	c.SetAPIKey(s.APIKey)
-	if printMessages {
-		printUserMessages(ctx, c, !s.AutoUpgradeCLI)
-	}
+
 	return c, nil
 }
 

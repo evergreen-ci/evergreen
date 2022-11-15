@@ -2,7 +2,6 @@ package model
 
 import (
 	"context"
-	"strconv"
 
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -11,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func GetModulesFromPR(ctx context.Context, githubToken string, modules []commitqueue.Module, projectConfig *Project) ([]*github.PullRequest, []patch.ModulePatch, error) {
+func GetModulesFromPR(ctx context.Context, githubToken string, prNum int, modules []commitqueue.Module, projectConfig *Project) ([]*github.PullRequest, []patch.ModulePatch, error) {
 	var modulePRs []*github.PullRequest
 	var modulePatches []patch.ModulePatch
 	for _, mod := range modules {
@@ -24,10 +23,6 @@ func GetModulesFromPR(ctx context.Context, githubToken string, modules []commitq
 			return nil, nil, errors.Wrapf(err, "malformed URL for module '%s'", mod.Module)
 		}
 
-		prNum, err := strconv.Atoi(mod.Issue)
-		if err != nil {
-			return nil, nil, errors.Wrapf(err, "malformed PR number for module '%s'", mod.Module)
-		}
 		pr, err := thirdparty.GetMergeablePullRequest(ctx, prNum, githubToken, owner, repo)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "PR not valid for merge")

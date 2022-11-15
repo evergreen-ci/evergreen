@@ -2770,9 +2770,9 @@ func FindHostWithVolume(volumeID string) (*Host, error) {
 	return FindOne(q)
 }
 
-// FindUpHostWithHomeVolume finds the up host associated with the
+// FindHostWithVolume finds the host associated with the
 // specified home volume ID.
-func FindUpHostWithHomeVolume(homeVolumeID string) (*Host, error) {
+func FindHostWithHomeVolume(homeVolumeID string) (*Host, error) {
 	q := db.Query(
 		bson.M{
 			StatusKey:       bson.M{"$in": evergreen.UpHostStatus},
@@ -2780,20 +2780,6 @@ func FindUpHostWithHomeVolume(homeVolumeID string) (*Host, error) {
 			HomeVolumeIDKey: homeVolumeID,
 		},
 	)
-	return FindOne(q)
-}
-
-// FindLatestTerminatedHostWithHomeVolume finds the user's most recently terminated host
-// associated with the specified home volume ID.
-func FindLatestTerminatedHostWithHomeVolume(homeVolumeID string, startedBy string) (*Host, error) {
-	q := db.Query(
-		bson.M{
-			StatusKey:       evergreen.HostTerminated,
-			StartedByKey:    startedBy,
-			UserHostKey:     true,
-			HomeVolumeIDKey: homeVolumeID,
-		},
-	).Sort([]string{"-" + TerminationTimeKey})
 	return FindOne(q)
 }
 

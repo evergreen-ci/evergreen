@@ -12,13 +12,13 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/mock"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -39,10 +39,8 @@ type HostsChangeStatusesSuite struct {
 func TestHostsChangeStatusesSuite(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := &mock.Environment{}
-	require.NoError(t, env.Configure(ctx))
 	s := &HostsChangeStatusesSuite{
-		env: env,
+		env: testutil.NewEnvironment(ctx, t),
 	}
 	suite.Run(t, s)
 }
@@ -207,10 +205,8 @@ type HostModifySuite struct {
 func TestHostModifySuite(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := &mock.Environment{}
-	require.NoError(t, env.Configure(ctx))
 	s := &HostModifySuite{
-		env: env,
+		env: testutil.NewEnvironment(ctx, t),
 	}
 	suite.Run(t, s)
 }
@@ -303,10 +299,8 @@ type HostSuite struct {
 func TestHostSuite(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := &mock.Environment{}
-	require.NoError(t, env.Configure(ctx))
 	s := &HostSuite{
-		env: env,
+		env: testutil.NewEnvironment(ctx, t),
 	}
 	suite.Run(t, s)
 }
@@ -382,10 +376,8 @@ type hostTerminateHostHandlerSuite struct {
 func TestTerminateHostHandler(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := &mock.Environment{}
-	require.NoError(t, env.Configure(ctx))
 	s := &hostTerminateHostHandlerSuite{
-		env: env,
+		env: testutil.NewEnvironment(ctx, t),
 	}
 	suite.Run(t, s)
 }
@@ -523,9 +515,7 @@ func TestHostChangeRDPPasswordHandler(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	env := &mock.Environment{}
-	require.NoError(t, env.Configure(ctx))
-	s.env = env
+	s.env = testutil.NewEnvironment(ctx, t)
 
 	s.env.Settings().Keys["ssh_key_name"] = "ssh_key"
 
@@ -654,9 +644,7 @@ func TestHostExtendExpirationHandler(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	s := &hostExtendExpirationHandlerSuite{}
-	env := &mock.Environment{}
-	require.NoError(t, env.Configure(ctx))
-	setupMockHostsConnector(t, env)
+	setupMockHostsConnector(t, testutil.NewEnvironment(ctx, t))
 	suite.Run(t, s)
 }
 
@@ -1005,8 +993,7 @@ func TestRemoveAdminHandler(t *testing.T) {
 	offboardedUser := "user0"
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := &mock.Environment{}
-	require.NoError(t, env.Configure(ctx))
+	env := testutil.NewEnvironment(ctx, t)
 	userManager := env.UserManager()
 
 	handler := offboardUserHandler{
@@ -1102,11 +1089,9 @@ func TestDisableHostHandler(t *testing.T) {
 	for _, hostToAdd := range hosts {
 		assert.NoError(t, hostToAdd.Insert())
 	}
-	env := &mock.Environment{}
-	require.NoError(t, env.Configure(ctx))
 	dh := disableHost{
 		hostID: hostID,
-		env:    env,
+		env:    testutil.NewEnvironment(ctx, t),
 	}
 
 	responder := dh.Run(context.Background())
@@ -1119,8 +1104,7 @@ func TestDisableHostHandler(t *testing.T) {
 func TestHostProvisioningOptionsGetHandler(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := &mock.Environment{}
-	require.NoError(t, env.Configure(ctx))
+	env := testutil.NewEnvironment(ctx, t)
 	require.NoError(t, db.Clear(host.Collection))
 	defer func() {
 		assert.NoError(t, db.Clear(host.Collection))

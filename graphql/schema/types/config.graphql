@@ -1,5 +1,5 @@
 ###### TYPES ######
-"""
+""" 
 SpruceConfig defines settings that apply to all users of Evergreen.
 For example, if the banner field is populated, then a sitewide banner will be shown to all users.
 """
@@ -11,16 +11,11 @@ type SpruceConfig {
   providers: CloudProviderConfig
   spawnHost: SpawnHostConfig!
   ui: UIConfig
-  slack: SlackConfig
 }
 
 type UIConfig {
   defaultProject: String!
   userVoice: String
-}
-
-type SlackConfig {
-  name: String
 }
 
 type JiraConfig {
@@ -41,7 +36,7 @@ type SpawnHostConfig {
   unexpirableVolumesPerUser: Int!
 }
 
-"""
+""" 
 ClientConfig stores information about the binaries for the Evergreen Command-Line Client that are available for
 download on Evergreen.
 """

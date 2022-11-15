@@ -12,12 +12,10 @@ import (
 	"github.com/evergreen-ci/utility"
 )
 
-// Aliases is the resolver for the aliases field.
 func (r *projectSettingsResolver) Aliases(ctx context.Context, obj *restModel.APIProjectSettings) ([]*restModel.APIProjectAlias, error) {
 	return getAPIAliasesForProject(ctx, utility.FromStringPtr(obj.ProjectRef.Id))
 }
 
-// GithubWebhooksEnabled is the resolver for the githubWebhooksEnabled field.
 func (r *projectSettingsResolver) GithubWebhooksEnabled(ctx context.Context, obj *restModel.APIProjectSettings) (bool, error) {
 	hook, err := model.FindGithubHook(utility.FromStringPtr(obj.ProjectRef.Owner), utility.FromStringPtr(obj.ProjectRef.Repo))
 	if err != nil {
@@ -26,12 +24,10 @@ func (r *projectSettingsResolver) GithubWebhooksEnabled(ctx context.Context, obj
 	return hook != nil, nil
 }
 
-// Subscriptions is the resolver for the subscriptions field.
 func (r *projectSettingsResolver) Subscriptions(ctx context.Context, obj *restModel.APIProjectSettings) ([]*restModel.APISubscription, error) {
 	return getAPISubscriptionsForProject(ctx, utility.FromStringPtr(obj.ProjectRef.Id))
 }
 
-// Vars is the resolver for the vars field.
 func (r *projectSettingsResolver) Vars(ctx context.Context, obj *restModel.APIProjectSettings) (*restModel.APIProjectVars, error) {
 	return getRedactedAPIVarsForProject(ctx, utility.FromStringPtr(obj.ProjectRef.Id))
 }

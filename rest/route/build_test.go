@@ -118,12 +118,6 @@ func (s *BuildChangeStatusSuite) SetupSuite() {
 		{Id: "build1", Version: "v1"},
 		{Id: "build2", Version: "v1"},
 	}
-	task := &task.Task{
-		Id:      "task",
-		BuildId: "build1",
-		Status:  evergreen.TaskWillRun,
-	}
-	s.NoError(task.Insert())
 	s.NoError((&serviceModel.Version{Id: "v1"}).Insert())
 	for _, item := range builds {
 		s.Require().NoError(item.Insert())

@@ -1,7 +1,6 @@
 {{define "scripts"}}
 <script>
   window.allTrackedProjects = {{.AllProjects}};
-  window.slackAppName = {{.SlackAppName}};
   {{if .User}}
   window.user = {{.User}};
   {{end}}

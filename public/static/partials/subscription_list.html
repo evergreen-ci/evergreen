@@ -14,11 +14,10 @@
             <button class="pull-right plus-button btn btn-primary" type="button" ng-click="addSubscription()">
                 <i class="fa fa-plus"></i>
             </button>
-            <div class="muted small" >
-                Private slack channels may require further Slack configuration.
-            </div>
-            <div class="muted small" ng-show="slackAppName">
-                Invite evergreen to your private Slack channels by running 'invite [[slackAppName]]' in the channel.
+            <!-- this help text will be updated in EVG-17477 -->
+            <div class="muted small">
+                The Evergreen bot needs to be re-invited to private Slack channels for notifications to go through. You can do so by
+                running 'invite @evergreen-bot' in the channel.
             </div>
         </h4>
         <div ng-show="subscriptions.length === 0">

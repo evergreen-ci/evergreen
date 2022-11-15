@@ -17,7 +17,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
-	"gopkg.in/20210107192922/yaml.v3"
+	yaml "gopkg.in/20210107192922/yaml.v3"
 )
 
 func Admin() cli.Command {
@@ -103,7 +103,7 @@ func adminSetBanner() cli.Command {
 				return errors.Wrap(err, "loading configuration")
 			}
 
-			client, err := conf.setupRestCommunicator(ctx, false)
+			client, err := conf.setupRestCommunicator(ctx)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -134,7 +134,7 @@ func doViewSettings() cli.ActionFunc {
 		if err != nil {
 			return errors.Wrap(err, "loading configuration")
 		}
-		client, err := conf.setupRestCommunicator(ctx, false)
+		client, err := conf.setupRestCommunicator(ctx)
 		if err != nil {
 			return errors.Wrap(err, "setting up REST communicator")
 		}
@@ -186,7 +186,7 @@ func updateSettings() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client, err := conf.setupRestCommunicator(ctx, false)
+			client, err := conf.setupRestCommunicator(ctx)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -236,7 +236,7 @@ func listEvents() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client, err := conf.setupRestCommunicator(ctx, false)
+			client, err := conf.setupRestCommunicator(ctx)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -276,7 +276,7 @@ func revert() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client, err := conf.setupRestCommunicator(ctx, false)
+			client, err := conf.setupRestCommunicator(ctx)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -406,7 +406,7 @@ func updateRoleCmd() cli.Command {
 			}
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			client, err := conf.setupRestCommunicator(ctx, false)
+			client, err := conf.setupRestCommunicator(ctx)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -494,7 +494,7 @@ func adminDistroExecute() cli.Command {
 			}
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			client, err := conf.setupRestCommunicator(ctx, false)
+			client, err := conf.setupRestCommunicator(ctx)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -536,7 +536,7 @@ func getServiceUsers() cli.Command {
 			}
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			client, err := conf.setupRestCommunicator(ctx, false)
+			client, err := conf.setupRestCommunicator(ctx)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -590,7 +590,7 @@ func updateServiceUser() cli.Command {
 			}
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			client, err := conf.setupRestCommunicator(ctx, false)
+			client, err := conf.setupRestCommunicator(ctx)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -625,7 +625,7 @@ func deleteServiceUser() cli.Command {
 			}
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			client, err := conf.setupRestCommunicator(ctx, false)
+			client, err := conf.setupRestCommunicator(ctx)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}

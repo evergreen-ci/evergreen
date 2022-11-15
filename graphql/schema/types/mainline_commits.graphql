@@ -19,7 +19,7 @@ input MainlineCommitsOptions {
   projectID: String!
   requesters: [String!]
   shouldCollapse: Boolean = false # used to determine if unmatching active versions should be collapsed
-  skipOrderNumber: Int 
+  skipOrderNumber: Int = 0
 }
 
 ###### TYPES ######

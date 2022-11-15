@@ -208,22 +208,22 @@ func (s *VersionConnectorSuite) TestGetVersionsAndVariants() {
 		{
 			Id:      "t211",
 			Version: v2.Id,
-			Status:  evergreen.TaskUnscheduled,
+			Status:  evergreen.TaskUnstarted,
 		},
 		{
 			Id:      "t212",
 			Version: v2.Id,
-			Status:  evergreen.TaskUnscheduled,
+			Status:  evergreen.TaskUnstarted,
 		},
 		{
 			Id:      "t221",
 			Version: v2.Id,
-			Status:  evergreen.TaskUnscheduled,
+			Status:  evergreen.TaskUnstarted,
 		},
 		{
 			Id:      "t222",
 			Version: v2.Id,
-			Status:  evergreen.TaskUnscheduled,
+			Status:  evergreen.TaskUnstarted,
 		},
 	}
 	for _, t := range tasks {

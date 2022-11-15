@@ -13,7 +13,6 @@ type SlackConfig struct {
 	Options *send.SlackOptions `bson:"options" json:"options" yaml:"options"`
 	Token   string             `bson:"token" json:"token" yaml:"token"`
 	Level   string             `bson:"level" json:"level" yaml:"level"`
-	Name    string             `bson:"name" json:"name" yaml:"name"`
 }
 
 func (c *SlackConfig) SectionId() string { return "slack" }
@@ -50,7 +49,6 @@ func (c *SlackConfig) Set() error {
 			"options": c.Options,
 			"token":   c.Token,
 			"level":   c.Level,
-			"name":    c.Name,
 		},
 	}, options.Update().SetUpsert(true))
 

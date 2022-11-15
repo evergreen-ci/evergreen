@@ -69,6 +69,10 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	resp := gimlet.NewResponseBuilder()
+	if err = resp.SetFormat(gimlet.JSON); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "setting JSON response format"))
+	}
+
 	lastIndex := len(tasks)
 	if len(tasks) > tbh.limit {
 		lastIndex = tbh.limit

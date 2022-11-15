@@ -482,7 +482,7 @@ func makeRandomTasks() []task.Task {
 	tasks := []task.Task{}
 	statuses := []string{
 		evergreen.TaskStarted,
-		evergreen.TaskUnscheduled,
+		evergreen.TaskUnstarted,
 		evergreen.TaskUndispatched,
 		evergreen.TaskDispatched,
 		evergreen.TaskFailed,

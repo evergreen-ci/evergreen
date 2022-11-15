@@ -49,7 +49,7 @@ func PatchList() cli.Command {
 				return errors.Wrap(err, "loading configuration")
 			}
 
-			client, err := conf.setupRestCommunicator(ctx, !outputJSON)
+			client, err := conf.setupRestCommunicator(ctx)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}

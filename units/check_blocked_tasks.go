@@ -58,18 +58,20 @@ func (j *checkBlockedTasksJob) Run(ctx context.Context) {
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "getting task queue for distro '%s'", j.DistroId))
 	}
-	secondaryQueue, err := model.FindDistroSecondaryTaskQueue(j.DistroId)
+	aliasQueue, err := model.FindDistroAliasTaskQueue(j.DistroId)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "getting alias task queue for distro '%s'", j.DistroId))
 	}
 	taskIds := []string{}
+	lenQueue := len(queue.Queue)
 	for _, item := range queue.Queue {
 		if !item.IsDispatched && len(item.Dependencies) > 0 {
 			taskIds = append(taskIds, item.Id)
 		}
 	}
 
-	for _, item := range secondaryQueue.Queue {
+	lenAliasQueue := len(aliasQueue.Queue)
+	for _, item := range aliasQueue.Queue {
 		if !item.IsDispatched && len(item.Dependencies) > 0 {
 			taskIds = append(taskIds, item.Id)
 		}
@@ -77,12 +79,12 @@ func (j *checkBlockedTasksJob) Run(ctx context.Context) {
 
 	if len(taskIds) == 0 {
 		grip.Debug(message.Fields{
-			"message":             "no task IDs found for distro",
-			"len_queue":           len(queue.Queue),
-			"len_secondary_queue": len(secondaryQueue.Queue),
-			"distro":              j.DistroId,
-			"job":                 j.ID(),
-			"source":              checkBlockedTasks,
+			"message":         "no task IDs found for distro",
+			"len_queue":       lenQueue,
+			"len_alias_queue": lenAliasQueue,
+			"distro":          j.DistroId,
+			"job":             j.ID(),
+			"source":          checkBlockedTasks,
 		})
 		return
 	}

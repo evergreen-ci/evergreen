@@ -20,23 +20,16 @@ func UpdateSettings(dbUser *user.DBUser, settings user.UserSettings) error {
 			Message:    "expected a Slack username, but got a channel",
 		}
 	}
-
 	settings.SlackUsername = strings.TrimPrefix(settings.SlackUsername, "@")
 	settings.Notifications.PatchFinishID = dbUser.Settings.Notifications.PatchFinishID
 	settings.Notifications.SpawnHostOutcomeID = dbUser.Settings.Notifications.SpawnHostOutcomeID
 	settings.Notifications.SpawnHostExpirationID = dbUser.Settings.Notifications.SpawnHostExpirationID
 	settings.Notifications.CommitQueueID = dbUser.Settings.Notifications.CommitQueueID
 
-	slackTarget := fmt.Sprintf("@%s", settings.SlackUsername)
-
-	if settings.SlackMemberId != "" {
-		slackTarget = settings.SlackMemberId
-	}
-
 	var patchSubscriber event.Subscriber
 	switch settings.Notifications.PatchFinish {
 	case user.PreferenceSlack:
-		patchSubscriber = event.NewSlackSubscriber(slackTarget)
+		patchSubscriber = event.NewSlackSubscriber(fmt.Sprintf("@%s", settings.SlackUsername))
 	case user.PreferenceEmail:
 		patchSubscriber = event.NewEmailSubscriber(dbUser.Email())
 	}
@@ -54,7 +47,7 @@ func UpdateSettings(dbUser *user.DBUser, settings user.UserSettings) error {
 	var patchFailureSubscriber event.Subscriber
 	switch settings.Notifications.PatchFirstFailure {
 	case user.PreferenceSlack:
-		patchFailureSubscriber = event.NewSlackSubscriber(slackTarget)
+		patchFailureSubscriber = event.NewSlackSubscriber(fmt.Sprintf("@%s", settings.SlackUsername))
 	case user.PreferenceEmail:
 		patchFailureSubscriber = event.NewEmailSubscriber(dbUser.Email())
 	}
@@ -72,7 +65,7 @@ func UpdateSettings(dbUser *user.DBUser, settings user.UserSettings) error {
 	var buildBreakSubscriber event.Subscriber
 	switch settings.Notifications.BuildBreak {
 	case user.PreferenceSlack:
-		buildBreakSubscriber = event.NewSlackSubscriber(slackTarget)
+		buildBreakSubscriber = event.NewSlackSubscriber(fmt.Sprintf("@%s", settings.SlackUsername))
 	case user.PreferenceEmail:
 		buildBreakSubscriber = event.NewEmailSubscriber(dbUser.Email())
 	}
@@ -90,7 +83,7 @@ func UpdateSettings(dbUser *user.DBUser, settings user.UserSettings) error {
 	var spawnhostSubscriber event.Subscriber
 	switch settings.Notifications.SpawnHostExpiration {
 	case user.PreferenceSlack:
-		spawnhostSubscriber = event.NewSlackSubscriber(slackTarget)
+		spawnhostSubscriber = event.NewSlackSubscriber(fmt.Sprintf("@%s", settings.SlackUsername))
 	case user.PreferenceEmail:
 		spawnhostSubscriber = event.NewEmailSubscriber(dbUser.Email())
 	}
@@ -108,7 +101,7 @@ func UpdateSettings(dbUser *user.DBUser, settings user.UserSettings) error {
 	var spawnHostOutcomeSubscriber event.Subscriber
 	switch settings.Notifications.SpawnHostOutcome {
 	case user.PreferenceSlack:
-		spawnHostOutcomeSubscriber = event.NewSlackSubscriber(slackTarget)
+		spawnHostOutcomeSubscriber = event.NewSlackSubscriber(fmt.Sprintf("@%s", settings.SlackUsername))
 	case user.PreferenceEmail:
 		spawnHostOutcomeSubscriber = event.NewEmailSubscriber(dbUser.Email())
 	}
@@ -126,7 +119,7 @@ func UpdateSettings(dbUser *user.DBUser, settings user.UserSettings) error {
 	var commitQueueSubscriber event.Subscriber
 	switch settings.Notifications.CommitQueue {
 	case user.PreferenceSlack:
-		commitQueueSubscriber = event.NewSlackSubscriber(slackTarget)
+		commitQueueSubscriber = event.NewSlackSubscriber(fmt.Sprintf("@%s", settings.SlackUsername))
 	case user.PreferenceEmail:
 		commitQueueSubscriber = event.NewEmailSubscriber(dbUser.Email())
 	}

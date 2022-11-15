@@ -96,17 +96,9 @@ func (e *Environment) Configure(ctx context.Context) error {
 		ScopeCollection: evergreen.ScopeCollection,
 	})
 
-	catcher := grip.NewBasicCatcher()
-	catcher.Add(e.roleManager.RegisterPermissions(evergreen.ProjectPermissions))
-	catcher.Add(e.roleManager.RegisterPermissions(evergreen.DistroPermissions))
-	catcher.Add(e.roleManager.RegisterPermissions(evergreen.SuperuserPermissions))
-	if catcher.HasErrors() {
-		return errors.Wrap(catcher.Resolve(), "registering role manager permissions")
-	}
-
 	depot, err := BootstrapCredentialsCollection(ctx, e.MongoClient, e.EvergreenSettings.Database.Url, e.EvergreenSettings.Database.DB, e.EvergreenSettings.DomainName)
 	if err != nil {
-		return errors.Wrap(err, "bootstrapping host credentials collection")
+		return errors.WithStack(err)
 	}
 	e.Depot = depot
 
@@ -116,7 +108,7 @@ func (e *Environment) Configure(ctx context.Context) error {
 	// models.
 	um, err := gimlet.NewBasicUserManager(nil, nil)
 	if err != nil {
-		return errors.Wrap(err, "creating user manager")
+		return errors.WithStack(err)
 	}
 	e.userManager = um
 

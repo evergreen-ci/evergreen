@@ -71,6 +71,10 @@ func (p *projectGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	resp := gimlet.NewResponseBuilder()
+	if err = resp.SetFormat(gimlet.JSON); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting JSON response format"))
+	}
+
 	lastIndex := len(projects)
 	if len(projects) > p.limit {
 		lastIndex = p.limit
@@ -1057,11 +1061,11 @@ func (p *GetProjectAliasResultsHandler) Run(ctx context.Context) gimlet.Responde
 	return gimlet.NewJSONResponse(variantTasks)
 }
 
-// //////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
 //
 // Handler for the patch trigger aliases defined for project
 //
-//	/projects/{project_id}/patch_trigger_aliases
+//    /projects/{project_id}/patch_trigger_aliases
 type GetPatchTriggerAliasHandler struct {
 	projectID string
 }

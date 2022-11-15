@@ -210,12 +210,12 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 	if nextTask == nil && !shouldRunTeardown {
 		// if we couldn't find a task in the task queue,
 		// check the alias queue...
-		secondaryQueue, err := model.LoadDistroSecondaryTaskQueue(h.host.Distro.Id)
+		aliasQueue, err := model.LoadDistroAliasTaskQueue(h.host.Distro.Id)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
-		if secondaryQueue != nil {
-			nextTask, shouldRunTeardown, err = assignNextAvailableTask(ctx, h.env, secondaryQueue, h.taskAliasDispatcher, h.host, h.details)
+		if aliasQueue != nil {
+			nextTask, shouldRunTeardown, err = assignNextAvailableTask(ctx, h.env, aliasQueue, h.taskAliasDispatcher, h.host, h.details)
 			if err != nil {
 				return gimlet.MakeJSONErrorResponder(err)
 			}

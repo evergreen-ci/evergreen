@@ -13,7 +13,6 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
-// Subscriber is the resolver for the subscriber field.
 func (r *projectSubscriberResolver) Subscriber(ctx context.Context, obj *restModel.APISubscriber) (*Subscriber, error) {
 	res := &Subscriber{}
 	subscriberType := utility.FromStringPtr(obj.Type)

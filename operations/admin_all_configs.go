@@ -36,7 +36,7 @@ func fetchAllProjectConfigs() cli.Command {
 				return err
 			}
 
-			client, err := settings.setupRestCommunicator(ctx, true)
+			client, err := settings.setupRestCommunicator(ctx)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}

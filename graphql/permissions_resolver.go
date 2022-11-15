@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/gimlet"
 )
 
-// CanCreateProject is the resolver for the canCreateProject field.
 func (r *permissionsResolver) CanCreateProject(ctx context.Context, obj *Permissions) (bool, error) {
 	usr, err := user.FindOneById(obj.UserID)
 	if err != nil {

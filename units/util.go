@@ -51,7 +51,7 @@ func DisableAndNotifyPoisonedHost(ctx context.Context, env evergreen.Environment
 		return errors.Wrap(err, "disabling poisoned host")
 	}
 
-	if err = amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewDecoHostNotifyJob(env, h, nil, reason)); err != nil {
+	if err = env.RemoteQueue().Put(ctx, NewDecoHostNotifyJob(env, h, nil, reason)); err != nil {
 		return errors.Wrap(err, "enqueueing decohost notify job")
 	}
 

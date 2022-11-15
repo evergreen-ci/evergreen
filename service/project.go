@@ -62,15 +62,12 @@ func (uis *UIServer) projectsPage(w http.ResponseWriter, r *http.Request) {
 		newUILink = spruceLink
 	}
 
-	slackAppName := uis.Settings.Slack.Name
-
 	data := struct {
 		AllProjects []model.ProjectRef
 		CanCreate   bool
 		ViewData
-		NewUILink    string
-		SlackAppName string
-	}{allProjects, canCreate, uis.GetCommonViewData(w, r, true, true), newUILink, slackAppName}
+		NewUILink string
+	}{allProjects, canCreate, uis.GetCommonViewData(w, r, true, true), newUILink}
 
 	uis.render.WriteResponse(w, http.StatusOK, data, "base", "projects.html", "base_angular.html", "menu.html")
 }

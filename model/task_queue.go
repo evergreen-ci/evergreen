@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	TaskQueuesCollection          = "task_queues"
-	TaskSecondaryQueuesCollection = "task_alias_queues"
+	TaskQueuesCollection      = "task_queues"
+	TaskAliasQueuesCollection = "task_alias_queues"
 )
 
 type TaskGroupInfo struct {
@@ -43,9 +43,7 @@ type DistroQueueInfo struct {
 	DurationOverThreshold      time.Duration   `bson:"duration_over_threshold" json:"duration_over_threshold"`
 	CountWaitOverThreshold     int             `bson:"count_wait_over_threshold" json:"count_wait_over_threshold"`
 	TaskGroupInfos             []TaskGroupInfo `bson:"task_group_infos" json:"task_group_infos"`
-	// SecondaryQueue refers to whether or not this info refers to a secondary queue.
-	// Tags don't match due to outdated naming convention.
-	SecondaryQueue bool `bson:"alias_queue" json:"alias_queue"`
+	AliasQueue                 bool            `bson:"alias_queue" json:"alias_queue"`
 }
 
 func GetDistroQueueInfo(distroID string) (DistroQueueInfo, error) {
@@ -53,8 +51,8 @@ func GetDistroQueueInfo(distroID string) (DistroQueueInfo, error) {
 	return rval, err
 }
 
-func GetDistroSecondaryQueueInfo(distroID string) (DistroQueueInfo, error) {
-	rval, err := getDistroQueueInfoCollection(distroID, TaskSecondaryQueuesCollection)
+func GetDistroAliasQueueInfo(distroID string) (DistroQueueInfo, error) {
+	rval, err := getDistroQueueInfoCollection(distroID, TaskAliasQueuesCollection)
 	return rval, err
 }
 
@@ -75,15 +73,15 @@ func RemoveTaskQueues(distroID string) error {
 	catcher := grip.NewBasicCatcher()
 	err := db.RemoveAllQ(TaskQueuesCollection, query)
 	catcher.AddWhen(!adb.ResultsNotFound(err), errors.Wrapf(err, "removing task queue for distro '%s'", distroID))
-	err = db.RemoveAllQ(TaskSecondaryQueuesCollection, query)
+	err = db.RemoveAllQ(TaskAliasQueuesCollection, query)
 	catcher.AddWhen(!adb.ResultsNotFound(err), errors.Wrapf(err, "removing task alias queue for distro '%s'", distroID))
 	return catcher.Resolve()
 }
 
 // GetQueueCollection returns the collection associated with this queue.
 func (q *DistroQueueInfo) GetQueueCollection() string {
-	if q.SecondaryQueue {
-		return TaskSecondaryQueuesCollection
+	if q.AliasQueue {
+		return TaskAliasQueuesCollection
 	}
 
 	return TaskQueuesCollection
@@ -171,8 +169,8 @@ func LoadTaskQueue(distro string) (*TaskQueue, error) {
 	return findTaskQueueForDistro(taskQueueQuery{DistroID: distro, Collection: TaskQueuesCollection})
 }
 
-func LoadDistroSecondaryTaskQueue(distroID string) (*TaskQueue, error) {
-	return findTaskQueueForDistro(taskQueueQuery{DistroID: distroID, Collection: TaskSecondaryQueuesCollection})
+func LoadDistroAliasTaskQueue(distroID string) (*TaskQueue, error) {
+	return findTaskQueueForDistro(taskQueueQuery{DistroID: distroID, Collection: TaskAliasQueuesCollection})
 }
 
 func (tq *TaskQueue) Length() int {
@@ -386,7 +384,7 @@ func ClearTaskQueue(distroId string) error {
 
 	catcher := grip.NewBasicCatcher()
 
-	// Task queue should always exist, so proceed with clearing
+	// task queue should always exist, so proceed with clearing
 	distroQueueInfo, err := GetDistroQueueInfo(distroId)
 	if err != nil {
 		catcher.Wrap(err, "getting task queue info")
@@ -397,24 +395,24 @@ func ClearTaskQueue(distroId string) error {
 		catcher.Wrap(err, "clearing task queue")
 	}
 
-	// Make sure task secondary queue actually exists before modifying
-	secondaryQueueQuery := bson.M{
+	// make sure task alias queue actually exists before modifying
+	aliasQuery := bson.M{
 		taskQueueDistroKey: distroId,
 	}
-	aliasCount, err := db.Count(TaskSecondaryQueuesCollection, secondaryQueueQuery)
+	aliasCount, err := db.Count(TaskAliasQueuesCollection, aliasQuery)
 	if err != nil {
-		catcher.Wrap(err, "counting secondary queues matching distro")
+		catcher.Wrap(err, "counting task alias queues matching distro")
 	}
-	// Want to at least try to clear even in the case of an error
+	// want to at least try to clear even in the case of an error
 	if aliasCount == 0 && err == nil {
 		grip.Info(message.Fields{
-			"message": "secondary task queue not found, skipping",
+			"message": "alias task queue not found, skipping",
 			"distro":  distroId,
 		})
 		return catcher.Resolve()
 	}
-	distroQueueInfo, err = GetDistroSecondaryQueueInfo(distroId)
-	catcher.Wrap(err, "getting task secondary queue info")
+	distroQueueInfo, err = GetDistroAliasQueueInfo(distroId)
+	catcher.Wrap(err, "getting task alias queue info")
 	distroQueueInfo = clearQueueInfo(distroQueueInfo)
 
 	err = clearTaskQueueCollection(distroId, distroQueueInfo)
@@ -433,7 +431,7 @@ func clearQueueInfo(distroQueueInfo DistroQueueInfo) DistroQueueInfo {
 		CountDurationOverThreshold: 0,
 		CountWaitOverThreshold:     0,
 		TaskGroupInfos:             []TaskGroupInfo{},
-		SecondaryQueue:             distroQueueInfo.SecondaryQueue,
+		AliasQueue:                 distroQueueInfo.AliasQueue,
 	}
 }
 
@@ -567,7 +565,7 @@ func FindMinimumQueuePositionForTask(taskId string) (int, error) {
 		return -1, err
 	}
 
-	return results[0].Index + 1, err
+	return (results[0].Index + 1), err
 }
 
 // FindEnqueuedTaskIDs finds all tasks IDs that are already in a task queue for
@@ -625,10 +623,10 @@ func FindDistroTaskQueue(distroID string) (TaskQueue, error) {
 	return queue, errors.WithStack(err)
 }
 
-func FindDistroSecondaryTaskQueue(distroID string) (TaskQueue, error) {
+func FindDistroAliasTaskQueue(distroID string) (TaskQueue, error) {
 	queue := TaskQueue{}
 	q := db.Query(bson.M{taskQueueDistroKey: distroID})
-	err := db.FindOneQ(TaskSecondaryQueuesCollection, q, &queue)
+	err := db.FindOneQ(TaskAliasQueuesCollection, q, &queue)
 
 	return queue, errors.WithStack(err)
 }
@@ -726,12 +724,16 @@ func FindTaskQueueGenerationRuntime() (map[string]time.Duration, error) {
 	return runDurationMapAggregation(TaskQueuesCollection, taskQueueGenerationRuntimePipeline())
 }
 
+func FindTaskAliasQueueGenerationRuntime() (map[string]time.Duration, error) {
+	return runDurationMapAggregation(TaskAliasQueuesCollection, taskQueueGenerationRuntimePipeline())
+}
+
 func FindTaskQueueLastGenerationTimes() (map[string]time.Time, error) {
 	return runTimeMapAggregation(TaskQueuesCollection, taskQueueGenerationTimesPipeline())
 }
 
-func FindTaskSecondaryQueueLastGenerationTimes() (map[string]time.Time, error) {
-	return runTimeMapAggregation(TaskSecondaryQueuesCollection, taskQueueGenerationTimesPipeline())
+func FindTaskAliasQueueLastGenerationTimes() (map[string]time.Time, error) {
+	return runTimeMapAggregation(TaskAliasQueuesCollection, taskQueueGenerationTimesPipeline())
 }
 
 // pull out the task with the specified id from both the in-memory and db

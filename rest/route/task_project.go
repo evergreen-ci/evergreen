@@ -86,6 +86,10 @@ func (tph *tasksByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	resp := gimlet.NewResponseBuilder()
+	if err = resp.SetFormat(gimlet.JSON); err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+
 	lastIndex := len(tasks)
 	if len(tasks) > tph.limit {
 		lastIndex = tph.limit

@@ -199,6 +199,10 @@ func (p *patchesByUserHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	resp := gimlet.NewResponseBuilder()
+	if err = resp.SetFormat(gimlet.JSON); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "setting JSON response format"))
+	}
+
 	if len(patches) > p.limit {
 		err = resp.SetPages(&gimlet.ResponsePages{
 			Next: &gimlet.Page{
@@ -276,6 +280,10 @@ func (p *patchesByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	resp := gimlet.NewResponseBuilder()
+	err = resp.SetFormat(gimlet.JSON)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting JSON response format"))
+	}
 	if len(patches) > p.limit {
 		err = resp.SetPages(&gimlet.ResponsePages{
 			Next: &gimlet.Page{
@@ -298,6 +306,11 @@ func (p *patchesByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding response data for patch '%s'", utility.FromStringPtr(model.Id)))
 		}
 	}
+	err = resp.SetStatus(http.StatusOK)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "unable to set response status"))
+	}
+
 	return resp
 }
 
@@ -377,11 +390,11 @@ func (p *patchRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(foundPatch)
 }
 
-// //////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
 //
 // Handler for creating a new merge patch from an existing patch
 //
-//	/patches/{patch_id}/merge_patch
+//    /patches/{patch_id}/merge_patch
 type mergePatchHandler struct {
 	CommitMessage string `json:"commit_message"`
 

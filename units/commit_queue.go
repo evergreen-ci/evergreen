@@ -402,7 +402,7 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 	}
 
 	j.AddError(thirdparty.SendCommitQueueGithubStatus(j.env, pr, message.GithubStatePending, "preparing to test merge", v.Id))
-	modulePRs, _, err := model.GetModulesFromPR(ctx, githubToken, nextItem.Modules, projectConfig)
+	modulePRs, _, err := model.GetModulesFromPR(ctx, githubToken, patchDoc.GithubPatchData.PRNumber, nextItem.Modules, projectConfig)
 	if err != nil {
 		j.logError(err, "can't get modules", nextItem)
 		j.AddError(thirdparty.SendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't get modules", ""))

@@ -211,7 +211,7 @@ func (s *StatusSuite) TaskTaskType() {
 	s.h.minutes = 0
 	s.h.verbose = true
 
-	s.h.taskType = evergreen.TaskUnscheduled
+	s.h.taskType = evergreen.TaskUnstarted
 	resp := s.h.Run(context.Background())
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())

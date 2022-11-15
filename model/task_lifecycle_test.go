@@ -925,27 +925,27 @@ func TestGetBuildStatus(t *testing.T) {
 		{Status: evergreen.TaskUndispatched},
 		{Status: evergreen.TaskUndispatched},
 	}
-	buildStatus := getBuildStatus(buildTasks)
-	assert.Equal(t, evergreen.BuildCreated, buildStatus.status)
-	assert.Equal(t, false, buildStatus.allTasksBlocked)
+	status, allTasksBlocked := getBuildStatus(buildTasks)
+	assert.Equal(t, evergreen.BuildCreated, status)
+	assert.Equal(t, false, allTasksBlocked)
 
 	// Any started tasks should start the build.
 	buildTasks = []task.Task{
 		{Status: evergreen.TaskUndispatched, Activated: true},
 		{Status: evergreen.TaskStarted},
 	}
-	buildStatus = getBuildStatus(buildTasks)
-	assert.Equal(t, evergreen.BuildStarted, buildStatus.status)
-	assert.Equal(t, false, buildStatus.allTasksBlocked)
+	status, allTasksBlocked = getBuildStatus(buildTasks)
+	assert.Equal(t, evergreen.BuildStarted, status)
+	assert.Equal(t, false, allTasksBlocked)
 
 	// Unactivated tasks shouldn't prevent the build from completing.
 	buildTasks = []task.Task{
 		{Status: evergreen.TaskUndispatched, Activated: false},
 		{Status: evergreen.TaskFailed},
 	}
-	buildStatus = getBuildStatus(buildTasks)
-	assert.Equal(t, evergreen.BuildFailed, buildStatus.status)
-	assert.Equal(t, false, buildStatus.allTasksBlocked)
+	status, allTasksBlocked = getBuildStatus(buildTasks)
+	assert.Equal(t, evergreen.BuildFailed, status)
+	assert.Equal(t, false, allTasksBlocked)
 
 	// Blocked tasks shouldn't prevent the build from completing.
 	buildTasks = []task.Task{
@@ -953,9 +953,9 @@ func TestGetBuildStatus(t *testing.T) {
 			DependsOn: []task.Dependency{{Unattainable: true}}},
 		{Status: evergreen.TaskSucceeded},
 	}
-	buildStatus = getBuildStatus(buildTasks)
-	assert.Equal(t, evergreen.BuildSucceeded, buildStatus.status)
-	assert.Equal(t, false, buildStatus.allTasksBlocked)
+	status, allTasksBlocked = getBuildStatus(buildTasks)
+	assert.Equal(t, evergreen.BuildSucceeded, status)
+	assert.Equal(t, false, allTasksBlocked)
 
 	buildTasks = []task.Task{
 		{
@@ -965,9 +965,9 @@ func TestGetBuildStatus(t *testing.T) {
 		},
 		{Status: evergreen.TaskFailed},
 	}
-	buildStatus = getBuildStatus(buildTasks)
-	assert.Equal(t, evergreen.BuildFailed, buildStatus.status)
-	assert.Equal(t, false, buildStatus.allTasksBlocked)
+	status, allTasksBlocked = getBuildStatus(buildTasks)
+	assert.Equal(t, evergreen.BuildFailed, status)
+	assert.Equal(t, false, allTasksBlocked)
 
 	// Blocked tasks that are overriding dependencies should prevent the build from being completed.
 	buildTasks = []task.Task{
@@ -979,9 +979,9 @@ func TestGetBuildStatus(t *testing.T) {
 		},
 		{Status: evergreen.TaskSucceeded},
 	}
-	buildStatus = getBuildStatus(buildTasks)
-	assert.Equal(t, evergreen.BuildStarted, buildStatus.status)
-	assert.Equal(t, false, buildStatus.allTasksBlocked)
+	status, allTasksBlocked = getBuildStatus(buildTasks)
+	assert.Equal(t, evergreen.BuildStarted, status)
+	assert.Equal(t, false, allTasksBlocked)
 
 	// Builds with only blocked tasks should stay as created.
 	buildTasks = []task.Task{
@@ -990,9 +990,9 @@ func TestGetBuildStatus(t *testing.T) {
 		{Status: evergreen.TaskUndispatched,
 			DependsOn: []task.Dependency{{Unattainable: true}}},
 	}
-	buildStatus = getBuildStatus(buildTasks)
-	assert.Equal(t, evergreen.BuildCreated, buildStatus.status)
-	assert.Equal(t, true, buildStatus.allTasksBlocked)
+	status, allTasksBlocked = getBuildStatus(buildTasks)
+	assert.Equal(t, evergreen.BuildCreated, status)
+	assert.Equal(t, true, allTasksBlocked)
 
 }
 
@@ -4902,7 +4902,7 @@ tasks:
 	require.NoError(t, err)
 	assert.True(checkTask.Activated)
 
-	// Generated task should step back its generator.
+	// generated task should step back its generator
 	prevComplete = task.Task{
 		Id:                  "g1",
 		BuildId:             "b1",
@@ -4969,15 +4969,7 @@ tasks:
 		BuildVariant: "bv",
 	}
 	assert.NoError(b5.Insert())
-	// Ensure system failure doesn't cause a stepback unless we're already stepping back.
-	assert.NoError(evalStepback(&generated, "", evergreen.TaskSystemFailed, false))
-	checkTask, err = task.FindOneId(stepbackTask.Id)
-	assert.NoError(err)
-	assert.False(checkTask.Activated)
-
-	// System failure steps back since activated by stepback (and steps back generator).
-	generated.ActivatedBy = evergreen.StepbackTaskActivator
-	assert.NoError(evalStepback(&generated, "", evergreen.TaskSystemFailed, false))
+	assert.NoError(evalStepback(&generated, "", evergreen.TaskFailed, false))
 	checkTask, err = task.FindOneId(stepbackTask.Id)
 	assert.NoError(err)
 	assert.True(checkTask.Activated)

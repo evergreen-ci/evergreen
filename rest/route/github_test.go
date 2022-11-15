@@ -10,7 +10,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -22,6 +21,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v34/github"
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -49,12 +49,11 @@ func (s *GithubWebhookRouteSuite) SetupSuite() {
 	ctx, cancel := context.WithCancel(context.Background())
 	s.canceler = cancel
 
-	env := &mock.Environment{}
-	s.Require().NoError(env.Configure(ctx))
-	s.env = env
+	s.env = testutil.NewEnvironment(ctx, s.T())
 	s.NotNil(s.env.Settings())
 	s.NotNil(s.env.Settings().Api)
 	s.NotEmpty(s.env.Settings().Api.GithubWebhookSecret)
+	s.Require().NoError(db.DropDatabases(s.env.Settings().Amboy.DB))
 
 	s.conf = testutil.TestConfig()
 	s.NotNil(s.conf)
@@ -65,16 +64,18 @@ func (s *GithubWebhookRouteSuite) TearDownSuite() {
 }
 
 func (s *GithubWebhookRouteSuite) SetupTest() {
+	grip.Critical(s.conf.Api)
+
 	s.NoError(db.Clear(model.ProjectRefCollection))
 	s.NoError(db.Clear(commitqueue.Collection))
 
-	s.queue = s.env.LocalQueue()
+	s.queue = evergreen.GetEnvironment().LocalQueue()
 	s.mockSc = &data.MockGitHubConnector{
 		MockGitHubConnectorImpl: data.MockGitHubConnectorImpl{},
 	}
 
-	s.rm = makeGithubHooksRoute(s.sc, s.queue, []byte(s.conf.Api.GithubWebhookSecret), s.env.Settings())
-	s.mockRm = makeGithubHooksRoute(s.mockSc, s.queue, []byte(s.conf.Api.GithubWebhookSecret), s.env.Settings())
+	s.rm = makeGithubHooksRoute(s.sc, s.queue, []byte(s.conf.Api.GithubWebhookSecret), evergreen.GetEnvironment().Settings())
+	s.mockRm = makeGithubHooksRoute(s.mockSc, s.queue, []byte(s.conf.Api.GithubWebhookSecret), evergreen.GetEnvironment().Settings())
 
 	s.Require().NoError(commitqueue.InsertQueue(&commitqueue.CommitQueue{ProjectID: "mci"}))
 

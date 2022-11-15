@@ -562,6 +562,10 @@ func (tsh *taskStatsHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	resp := gimlet.NewResponseBuilder()
+	if err = resp.SetFormat(gimlet.JSON); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting"))
+	}
+
 	requestLimit := tsh.filter.Limit - 1
 	lastIndex := len(taskStatsResult)
 	if len(taskStatsResult) > requestLimit {

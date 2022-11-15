@@ -174,12 +174,6 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 			return errors.Wrap(err, "converting spawn host config to API model")
 		}
 		as.Spawnhost = &spawnHostConfig
-		slackConfig := APISlackConfig{}
-		err = slackConfig.BuildFromService(v.Slack)
-		if err != nil {
-			return errors.Wrap(err, "converting slack config to API model")
-		}
-		as.Slack = &slackConfig
 	default:
 		return errors.Errorf("programmatic error: expected admin settings but got type %T", h)
 	}
@@ -2129,7 +2123,6 @@ type APISlackConfig struct {
 	Options *APISlackOptions `json:"options"`
 	Token   *string          `json:"token"`
 	Level   *string          `json:"level"`
-	Name    *string          `json:"name"`
 }
 
 func (a *APISlackConfig) BuildFromService(h interface{}) error {
@@ -2137,7 +2130,6 @@ func (a *APISlackConfig) BuildFromService(h interface{}) error {
 	case evergreen.SlackConfig:
 		a.Token = utility.ToStringPtr(v.Token)
 		a.Level = utility.ToStringPtr(v.Level)
-		a.Name = utility.ToStringPtr(v.Name)
 		if v.Options != nil {
 			a.Options = &APISlackOptions{}
 			if err := a.Options.BuildFromService(*v.Options); err != nil { //nolint: govet
@@ -2159,7 +2151,6 @@ func (a *APISlackConfig) ToService() (interface{}, error) {
 	return evergreen.SlackConfig{
 		Token:   utility.FromStringPtr(a.Token),
 		Level:   utility.FromStringPtr(a.Level),
-		Name:    utility.FromStringPtr(a.Name),
 		Options: &options,
 	}, nil
 }

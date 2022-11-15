@@ -69,7 +69,7 @@ func listQueue() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client, err := conf.setupRestCommunicator(ctx, true)
+			client, err := conf.setupRestCommunicator(ctx)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -109,7 +109,7 @@ func deleteItem() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client, err := conf.setupRestCommunicator(ctx, true)
+			client, err := conf.setupRestCommunicator(ctx)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -186,7 +186,7 @@ func mergeCommand() cli.Command {
 				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
 
-			client, err := conf.setupRestCommunicator(ctx, true)
+			client, err := conf.setupRestCommunicator(ctx)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -228,7 +228,7 @@ func setModuleCommand() cli.Command {
 				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
 			ctx := context.Background()
-			client, err := conf.setupRestCommunicator(ctx, true)
+			client, err := conf.setupRestCommunicator(ctx)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -272,7 +272,7 @@ func enqueuePatch() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client, err := conf.setupRestCommunicator(ctx, true)
+			client, err := conf.setupRestCommunicator(ctx)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -403,7 +403,7 @@ func backport() cli.Command {
 				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
 			showCQMessageForProject(ac, patchParams.Project)
-			client, err := conf.setupRestCommunicator(ctx, true)
+			client, err := conf.setupRestCommunicator(ctx)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -445,7 +445,7 @@ func backport() cli.Command {
 				return errors.Wrap(err, "uploading backport patch")
 			}
 
-			if err = patchParams.displayPatch(backportPatch, uiV2, false); err != nil {
+			if err = patchParams.displayPatch(backportPatch, uiV2, true); err != nil {
 				return errors.Wrap(err, "getting result display")
 			}
 
