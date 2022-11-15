@@ -12,9 +12,9 @@ PatchesInput is the input value to the patches field for the User and Project ty
 Based on the information in PatchesInput, we return a list of Patches for either an individual user or a project.
 """
 input PatchesInput {
-  includeCommitQueue: Boolean = false
+  includeCommitQueue: Boolean 
   limit: Int! = 0
-  onlyCommitQueue: Boolean = false
+  onlyCommitQueue: Boolean
   page: Int! = 0
   patchName: String! = ""
   statuses: [String!]! = []

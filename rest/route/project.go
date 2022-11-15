@@ -71,10 +71,6 @@ func (p *projectGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	resp := gimlet.NewResponseBuilder()
-	if err = resp.SetFormat(gimlet.JSON); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting JSON response format"))
-	}
-
 	lastIndex := len(projects)
 	if len(projects) > p.limit {
 		lastIndex = p.limit

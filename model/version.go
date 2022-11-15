@@ -18,8 +18,6 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v34/github"
 	"github.com/mongodb/anser/bsonutil"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -232,12 +230,6 @@ func (v *Version) GetTimeSpent() (time.Duration, time.Duration, error) {
 func (v *Version) MarkFinished(status string, finishTime time.Time) error {
 	v.Status = status
 	v.FinishTime = finishTime
-	grip.DebugWhen(v.Author == "didier.nadeau", message.Fields{
-		"message":     "Version MarkFinished",
-		"ticket":      "EVG-17305",
-		"version":     v.Id,
-		"statusInput": status,
-	})
 	return VersionUpdateOne(
 		bson.M{VersionIdKey: v.Id},
 		bson.M{"$set": bson.M{

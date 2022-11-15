@@ -69,10 +69,6 @@ func (h *hostsChangeStatusesHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
 
 	resp := gimlet.NewResponseBuilder()
-	if err := resp.SetFormat(gimlet.JSON); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting JSON response format"))
-	}
-
 	for id, status := range h.HostToStatus {
 		foundHost, err := data.FindHostByIdWithOwner(id, user)
 		if err != nil {
@@ -204,10 +200,6 @@ func (hgh *hostGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	resp := gimlet.NewResponseBuilder()
-	if err = resp.SetFormat(gimlet.JSON); err != nil {
-		return gimlet.MakeJSONErrorResponder(err)
-	}
-
 	lastIndex := len(hosts)
 	if len(hosts) > hgh.limit {
 		lastIndex = hgh.limit
@@ -488,9 +480,6 @@ func (h *hostFilterGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	resp := gimlet.NewResponseBuilder()
-	if err = resp.SetFormat(gimlet.JSON); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting JSON response format"))
-	}
 	for _, h := range hosts {
 		apiHost := &model.APIHost{}
 		apiHost.BuildFromService(&h, nil)
