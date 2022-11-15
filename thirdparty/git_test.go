@@ -72,7 +72,7 @@ diff --git a/units/commit_queue.go b/units/commit_queue.go
 index ce0542e91..718dd8099 100644
 --- a/units/commit_queue.go
 +++ b/units/commit_queue.go
-@@ -512,6 +512,7 @@ func validateBranch(branch *github.Branch) error {
+@@ -512,6 +512,7 @@ func ValidateBranch(branch *github.Branch) error {
  }
 
  func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error {
