@@ -1668,18 +1668,7 @@ func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bo
 	for _, t := range tasks {
 		taskIDs = append(taskIDs, t.Id)
 	}
-
-	_, err := UpdateAll(
-		bson.M{
-			IdKey: bson.M{"$in": taskIDs},
-		},
-		bson.M{
-			"$set": bson.M{
-				ActivatedKey:     true,
-				ActivatedByKey:   caller,
-				ActivatedTimeKey: activationTime,
-			},
-		})
+	err := activateTasks(taskIDs, caller, activationTime)
 	if err != nil {
 		return errors.Wrap(err, "activating tasks")
 	}
