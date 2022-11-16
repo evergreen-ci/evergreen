@@ -172,6 +172,7 @@ functions:
           for i in {1..5}; do
             make mod-tidy;
             [[ $? -eq 0 ]] && break;
+            echo "hello: the src is" ${scr}
           done
   run-make:
     command: subprocess.exec
