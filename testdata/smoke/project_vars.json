@@ -1,4 +1,5 @@
 {"_id":"logkeeper","vars":{}}
 {"_id":"sys-perf","vars":{},"private_vars":{}}
 {"_id":"evergreen","vars":{},"private_vars":{}}
+{"_id":"smoked","vars":{},"private_vars":{}}
 {"_id":"performance","vars":{},"private_vars":{}}

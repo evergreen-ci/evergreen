@@ -70,11 +70,12 @@ func (tests smokeEndpointTestDefinitions) checkEndpoints(username, key string) e
 	return errors.Wrapf(catcher.Resolve(), "testing endpoints")
 }
 
+// maybe change this
 func getLatestGithubCommit() (string, error) {
 	client := utility.GetHTTPClient()
 	defer utility.PutHTTPClient(client)
 
-	resp, err := client.Get("https://api.github.com/repos/evergreen-ci/evergreen/git/refs/heads/main")
+	resp, err := client.Get("https://api.github.com/repos/evergreen-ci/evergreen/git/refs/heads/smoked")
 	if err != nil {
 		return "", errors.Wrap(err, "getting latest commit from GitHub")
 	}
@@ -114,8 +115,8 @@ func checkHostTaskByCommit(username, key string) error {
 			return errors.Errorf("unable to trigger the repotracker after 5 attempts")
 		}
 		time.Sleep(2 * time.Second)
-		grip.Infof("running repotracker for evergreen project (%d/5)", i)
-		_, err := makeSmokeRequest(username, key, http.MethodPost, client, "/rest/v2/projects/evergreen/repotracker")
+		grip.Infof("running repotracker for smoked project (%d/5)", i)
+		_, err := makeSmokeRequest(username, key, http.MethodPost, client, "/rest/v2/projects/smoked/repotracker")
 		if err != nil {
 			grip.Error(err)
 			continue
@@ -134,7 +135,7 @@ func checkHostTaskByCommit(username, key string) error {
 			continue
 		}
 		grip.Infof("checking for a build of %s (%d/30)", latest, i+1)
-		body, err := makeSmokeRequest(username, key, http.MethodGet, client, "/rest/v2/versions/evergreen_"+latest+"/builds")
+		body, err := makeSmokeRequest(username, key, http.MethodGet, client, "/rest/v2/versions/smoked_"+latest+"/builds")
 		if err != nil {
 			grip.Error(err)
 			continue
