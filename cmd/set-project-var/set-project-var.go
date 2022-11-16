@@ -21,7 +21,7 @@ func main() {
 	)
 
 	flag.StringVar(&dbName, "dbName", "mci_smoke", "database name for directory")
-	flag.StringVar(&project, "project", "evergreen", "name of project")
+	flag.StringVar(&project, "project", "smoked", "name of project")
 	flag.StringVar(&key, "key", "", "key to set")
 	flag.StringVar(&value, "value", "", "value of key")
 	flag.Parse()
@@ -32,7 +32,7 @@ func main() {
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost:27017").SetConnectTimeout(5*time.Second))
 	grip.EmergencyFatal(err)
 
-	res, err := client.Database(dbName).Collection("project_vars").UpdateOne(ctx, bson.M{"_id": project}, bson.M{"$set": bson.M{"vars." + key: value}})
+	res, err := client.Database(dbName).Collection("project_vars").UpdateOne(ctx, bson.M{"_id": "smoked"}, bson.M{"$set": bson.M{"vars." + key: value}})
 	grip.EmergencyFatal(err)
 	if res.MatchedCount == 0 {
 		grip.Warningf("no documents updated: %+v", res)

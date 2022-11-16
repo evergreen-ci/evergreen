@@ -116,7 +116,7 @@ variables:
       - command: subprocess.exec
         params:
           silent: true
-          working_dir: evergreen
+          working_dir: evergreen/tree/smoked
           command: bash scripts/setup-smoke-config.sh ${github_token}
       - func: run-make
         vars:
@@ -162,7 +162,7 @@ functions:
     - command: shell.exec
       type: setup
       params:
-        working_dir: evergreen
+        working_dir: evergreen/tree/smoked
         include_expansions_in_env: ["GOROOT"]
         shell: bash
         script: |
@@ -176,7 +176,7 @@ functions:
   run-make:
     command: subprocess.exec
     params:
-      working_dir: evergreen
+      working_dir: evergreen/tree/smoked
       binary: make
       args: ["${make_args|}", "${target}"]
       include_expansions_in_env:
@@ -215,7 +215,7 @@ functions:
     type: setup
     params:
       silent: true
-      working_dir: evergreen
+      working_dir: evergreen/tree/smoked
       env:
         GITHUB_TOKEN: ${github_token}
         JIRA_SERVER: ${jiraserver}
@@ -234,20 +234,20 @@ functions:
         env:
           MONGODB_URL: ${mongodb_url}
           DECOMPRESS: ${decompress}
-        working_dir: evergreen
+        working_dir: evergreen/tree/smoked
         command: make get-mongodb
     - command: subprocess.exec
       type: setup
       params:
         background: true
-        working_dir: evergreen
+        working_dir: evergreen/tree/smoked
         command: make start-mongod
         env:
           AUTH_ENABLED: ${with_auth}
     - command: subprocess.exec
       type: setup
       params:
-        working_dir: evergreen
+        working_dir: evergreen/tree/smoked
         command: make configure-mongod
         env:
           AUTH_ENABLED: ${with_auth}
@@ -273,7 +273,7 @@ functions:
     - command: subprocess.exec
       type: setup
       params:
-        working_dir: evergreen
+        working_dir: evergreen/tree/smoked
         command: make parse-host-file
         include_expansions_in_env: ["GOROOT"]
         env:
@@ -285,7 +285,7 @@ functions:
   verify-agent-version-update:
     - command: subprocess.exec
       params:
-        working_dir: evergreen
+        working_dir: evergreen/tree/smoked
         binary: bash
         args: ["scripts/verify-agent-version-update.sh"]
         env:
@@ -294,7 +294,7 @@ functions:
   verify-client-version-update:
     - command: subprocess.exec
       params:
-        working_dir: evergreen
+        working_dir: evergreen/tree/smoked
         binary: bash
         args: ["scripts/verify-client-version-update.sh"]
         env:
@@ -303,7 +303,7 @@ functions:
   verify-merge-function-update:
     - command: subprocess.exec
       params:
-        working_dir: evergreen
+        working_dir: evergreen/tree/smoked
         binary: bash
         args: ["scripts/verify-merge-function-update.sh"]
         env:
@@ -540,7 +540,7 @@ tasks:
         params:
           binary: make
           args: ["upload-clis"]
-          working_dir: evergreen
+          working_dir: evergreen/tree/smoked
           include_expansions_in_env: ["GOROOT"]
           env:
             AWS_KEY: ${aws_key}
