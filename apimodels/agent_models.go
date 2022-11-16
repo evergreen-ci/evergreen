@@ -34,6 +34,18 @@ type HeartbeatResponse struct {
 	Abort bool `json:"abort,omitempty"`
 }
 
+// CheckMergeRequest holds information sent by the agent to get a PR and check mergeability.
+type CheckMergeRequest struct {
+	PRNum int    `json:"pr_num"`
+	Owner string `json:"owner"`
+	Repo  string `json:"repo"`
+}
+
+type PullRequestInfo struct {
+	Mergeable      *bool  `json:"mergeable"`
+	MergeCommitSHA string `json:"merge_commit_sha"`
+}
+
 // TaskEndDetail contains data sent from the agent to the API server after each task run.
 // This should be used to store data relating to what happened when the task ran
 type TaskEndDetail struct {

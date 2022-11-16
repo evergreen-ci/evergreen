@@ -21,11 +21,12 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
-	yaml "gopkg.in/20210107192922/yaml.v3"
+	"gopkg.in/20210107192922/yaml.v3"
 )
 
 var testConfig = testutil.TestConfig()
@@ -71,6 +72,7 @@ func setupCLITestHarness() cliTestHarness {
 			artifact.Collection,
 			model.VersionCollection,
 			distro.Collection,
+			manifest.Collection,
 		),
 		ShouldBeNil)
 	So(db.Clear(patch.Collection), ShouldBeNil)
@@ -93,10 +95,15 @@ func setupCLITestHarness() cliTestHarness {
 	version := &model.Version{
 		Id:         "sample_version",
 		Identifier: "sample",
-		Config:     string(localConfBytes),
 		Requester:  evergreen.RepotrackerVersionRequester,
 	}
 	So(version.Insert(), ShouldBeNil)
+
+	pp := model.ParserProject{}
+	err = util.UnmarshalYAMLWithFallback(localConfBytes, &pp)
+	So(err, ShouldBeNil)
+	pp.Id = "sample_version"
+	So(pp.Insert(), ShouldBeNil)
 
 	d := distro.Distro{Id: "localtestdistro"}
 	So(d.Insert(), ShouldBeNil)
@@ -128,6 +135,8 @@ func TestCLIFetchSource(t *testing.T) {
 	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": build.Collection})
 	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": task.Collection})
 	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": model.VersionCollection})
+	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": manifest.Collection})
+	require.NoError(t, evergreen.UpdateConfig(testConfig), ShouldBeNil)
 
 	Convey("with a task containing patches and modules", t, func() {
 		testSetup := setupCLITestHarness()
@@ -140,7 +149,7 @@ func TestCLIFetchSource(t *testing.T) {
 			projectName: "sample",
 			patchData:   testPatch,
 			description: "sample patch",
-			base:        "3c7bfeb82d492dc453e7431be664539c35b5db4b",
+			base:        "88dcc12106a40cb4917f552deab7574ececd9a3e",
 			variants:    []string{"all"},
 			tasks:       []string{"all"},
 			finalize:    false,
@@ -150,7 +159,7 @@ func TestCLIFetchSource(t *testing.T) {
 
 		client, err := NewClientSettings(testSetup.settingsFilePath)
 		So(err, ShouldBeNil)
-		comm, err := client.setupRestCommunicator(ctx)
+		comm, err := client.setupRestCommunicator(ctx, true)
 		require.NoError(t, err)
 		defer comm.Close()
 		ac, rc, err := client.getLegacyClients()
@@ -180,21 +189,6 @@ func TestCLIFetchSource(t *testing.T) {
 			}))
 		So(err, ShouldBeNil)
 		So(testTask, ShouldNotBeNil)
-
-		module := manifest.Module{
-			Revision: "1e5232709595db427893826ce19289461cba3f75",
-		}
-		mfest := manifest.Manifest{
-			Id:          testTask.Version,
-			Revision:    testTask.Revision,
-			ProjectName: testTask.Project,
-			Modules: map[string]*manifest.Module{
-				"render-module": &module,
-			},
-		}
-		exists, err := mfest.TryInsert()
-		So(exists, ShouldBeFalse)
-		So(err, ShouldBeNil)
 
 		token, err := testConfig.GetGithubOauthToken()
 		So(err, ShouldBeNil)
@@ -356,6 +350,7 @@ func TestCLIFunctions(t *testing.T) {
 	testutil.DisablePermissionsForTests()
 	defer testutil.EnablePermissionsForTests()
 	evergreen.GetEnvironment().Settings().Credentials = testConfig.Credentials
+	require.NoError(t, evergreen.UpdateConfig(testConfig), ShouldBeNil)
 
 	var patches []patch.Patch
 
@@ -380,7 +375,7 @@ func TestCLIFunctions(t *testing.T) {
 					projectName: "sample",
 					patchData:   testPatch,
 					description: "sample patch",
-					base:        "3c7bfeb82d492dc453e7431be664539c35b5db4b",
+					base:        "88dcc12106a40cb4917f552deab7574ececd9a3e",
 					variants:    []string{"all"},
 					tasks:       []string{"all"},
 					finalize:    false,
@@ -442,7 +437,7 @@ func TestCLIFunctions(t *testing.T) {
 					projectName: "sample",
 					patchData:   testPatch,
 					description: "sample patch",
-					base:        "3c7bfeb82d492dc453e7431be664539c35b5db4b",
+					base:        "88dcc12106a40cb4917f552deab7574ececd9a3e",
 					variants:    []string{"all"},
 					tasks:       []string{},
 					finalize:    false,
@@ -456,7 +451,7 @@ func TestCLIFunctions(t *testing.T) {
 					projectName: "sample",
 					patchData:   testPatch,
 					description: "sample patch #2",
-					base:        "3c7bfeb82d492dc453e7431be664539c35b5db4b",
+					base:        "88dcc12106a40cb4917f552deab7574ececd9a3e",
 					variants:    []string{"osx-108"},
 					tasks:       []string{"failing_test"},
 					finalize:    false,
@@ -499,7 +494,7 @@ func TestCLIFunctions(t *testing.T) {
 					projectName: "sample",
 					patchData:   emptyPatch,
 					description: "sample patch",
-					base:        "3c7bfeb82d492dc453e7431be664539c35b5db4b",
+					base:        "88dcc12106a40cb4917f552deab7574ececd9a3e",
 					variants:    []string{"all"},
 					tasks:       []string{"all"},
 					finalize:    false}
@@ -568,7 +563,7 @@ func TestCLIFunctions(t *testing.T) {
 					projectName: "sample",
 					patchData:   testPatch,
 					description: "sample patch #2",
-					base:        "3c7bfeb82d492dc453e7431be664539c35b5db4b",
+					base:        "88dcc12106a40cb4917f552deab7574ececd9a3e",
 					variants:    []string{"all"},
 					tasks:       []string{"failing_test"},
 					finalize:    false,
@@ -597,7 +592,7 @@ func TestCLIFunctions(t *testing.T) {
 					projectName: "sample",
 					patchData:   testPatch,
 					description: "sample patch #2",
-					base:        "3c7bfeb82d492dc453e7431be664539c35b5db4b",
+					base:        "88dcc12106a40cb4917f552deab7574ececd9a3e",
 					variants:    []string{"osx-108"},
 					tasks:       []string{"all"},
 					finalize:    false,

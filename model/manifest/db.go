@@ -1,6 +1,8 @@
 package manifest
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -43,6 +45,15 @@ func (m *Manifest) TryInsert() (bool, error) {
 		return true, nil
 	}
 	return false, err
+}
+
+// InsertWithContext is the same as Insert, but it respects the given context by
+// avoiding the global Anser DB session.
+func (m *Manifest) InsertWithContext(ctx context.Context) error {
+	if _, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertOne(ctx, m); err != nil {
+		return err
+	}
+	return nil
 }
 
 // ById returns a query that contains an Id selector on the string, id.

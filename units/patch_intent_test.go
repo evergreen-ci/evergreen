@@ -177,7 +177,7 @@ func (s *PatchIntentUnitsSuite) TearDownTest() {
 	s.cancel()
 }
 
-func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent) *patchIntentProcessor {
+func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent, patchedParserProject string) *patchIntentProcessor {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -188,6 +188,10 @@ func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent) *patchInten
 	j.env = s.env
 
 	patchDoc := intent.NewPatch()
+	if patchedParserProject != "" {
+		patchDoc.PatchedParserProject = patchedParserProject
+		patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{ModuleName: "sandbox"})
+	}
 	s.NoError(j.finishPatch(ctx, patchDoc, githubOauthToken))
 	s.NoError(j.Error())
 	s.False(j.HasErrors())
@@ -278,8 +282,112 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 		Version:      "v1",
 		BuildVariant: "bv1",
 		Status:       evergreen.TaskFailed,
+		Activated:    true,
 	}
+	t2 := task.Task{
+		Id:           "t2",
+		DisplayName:  "t2",
+		Version:      "v1",
+		BuildVariant: "bv1",
+		Status:       evergreen.TaskSucceeded,
+		Activated:    true,
+	}
+	tgt1 := task.Task{
+		Id:                "tgt1",
+		DisplayName:       "tgt1",
+		Version:           "v1",
+		BuildVariant:      "bv1",
+		TaskGroup:         "tg",
+		TaskGroupMaxHosts: 1,
+		Status:            evergreen.TaskSucceeded,
+		Activated:         true,
+	}
+	tgt2 := task.Task{
+		Id:                "tgt2",
+		DisplayName:       "tgt2",
+		Version:           "v1",
+		BuildVariant:      "bv1",
+		TaskGroup:         "tg",
+		TaskGroupMaxHosts: 1,
+		Status:            evergreen.TaskFailed,
+		Activated:         true,
+	}
+	tgt3 := task.Task{
+		Id:           "tgt3",
+		DisplayName:  "tgt3",
+		Version:      "v1",
+		BuildVariant: "bv1",
+		TaskGroup:    "tg2",
+		Status:       evergreen.TaskSucceeded,
+		Activated:    false,
+	}
+	tgt4 := task.Task{
+		Id:           "tgt4",
+		DisplayName:  "tgt4",
+		Version:      "v1",
+		BuildVariant: "bv1",
+		TaskGroup:    "tg2",
+		Status:       evergreen.TaskFailed,
+		Activated:    true,
+	}
+	notActivated := task.Task{
+		Id:           "not_activated",
+		DisplayName:  "not_activated",
+		Version:      "v1",
+		BuildVariant: "bv1",
+		Status:       evergreen.TaskInactive,
+		Activated:    false,
+	}
+	dt1 := task.Task{
+		Id:             "dt1",
+		DisplayName:    "dt1",
+		Version:        "v1",
+		BuildVariant:   "bv_only_dt",
+		DisplayOnly:    true,
+		ExecutionTasks: []string{"et1"},
+		Status:         evergreen.TaskFailed,
+		Activated:      true,
+	}
+	et1 := task.Task{
+		Id:            "et1",
+		DisplayName:   "et1",
+		Version:       "v1",
+		BuildVariant:  "bv_only_dt",
+		DisplayTaskId: utility.ToStringPtr("dt1"),
+		Status:        evergreen.TaskFailed,
+		Activated:     true,
+	}
+	dt2 := task.Task{
+		Id:             "dt2",
+		DisplayName:    "dt2",
+		Version:        "v1",
+		BuildVariant:   "bv_different_dt",
+		DisplayOnly:    true,
+		ExecutionTasks: []string{"et2"},
+		Status:         evergreen.TaskSucceeded,
+		Activated:      true,
+	}
+	et2 := task.Task{
+		Id:            "et2",
+		DisplayName:   "et2",
+		Version:       "v1",
+		BuildVariant:  "bv_different_dt",
+		DisplayTaskId: utility.ToStringPtr("dt2"),
+		Status:        evergreen.TaskSucceeded,
+		Activated:     false,
+	}
+
 	s.NoError(t1.Insert())
+	s.NoError(t2.Insert())
+	s.NoError(tgt1.Insert())
+	s.NoError(tgt2.Insert())
+	s.NoError(tgt3.Insert())
+	s.NoError(tgt4.Insert())
+	s.NoError(dt1.Insert())
+	s.NoError(et1.Insert())
+	s.NoError(dt2.Insert())
+	s.NoError(et2.Insert())
+	s.NoError(notActivated.Insert())
 	patchId := "aabbccddeeff001122334455"
 	previousPatchDoc := &patch.Patch{
 		Id:         patch.NewId(patchId),
@@ -292,18 +400,20 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 		VariantsTasks: []patch.VariantTasks{
 			{
 				Variant: "bv1",
-				Tasks:   []string{"t1", "t2"},
+				Tasks:   []string{"t1", "t2", "tgt1", "tgt2", "tgt3", "tgt4", "not_activated"},
 			},
 			{
 				Variant:      "bv_only_dt",
-				DisplayTasks: []patch.DisplayTask{{Name: "dt1"}},
+				DisplayTasks: []patch.DisplayTask{{Name: "dt1", ExecTasks: []string{"et1"}}},
+				Tasks:        []string{"et1"},
 			},
 			{
 				Variant:      "bv_different_dt",
-				DisplayTasks: []patch.DisplayTask{{Name: "dt2"}},
+				DisplayTasks: []patch.DisplayTask{{Name: "dt2", ExecTasks: []string{"et2"}}},
+				Tasks:        []string{"et2"},
 			},
 		},
-		Tasks:              []string{"t1", "t2"},
+		Tasks:              []string{"t1", "t2", "tgt1", "tgt2", "tgt3", "tgt4", "dt1", "et1", "dt2", "et2", "not_activated"},
 		BuildVariants:      []string{"bv_only_dt", "bv_different_dt"},
 		RegexBuildVariants: []string{"bv_$"},
 		RegexTasks:         []string{"1$"},
@@ -322,18 +432,37 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 	j.user = &user.DBUser{Id: "me"}
 	project := model.Project{Identifier: s.project, BuildVariants: model.BuildVariants{
 		{
-			Name:  "bv1",
-			Tasks: []model.BuildVariantTaskUnit{{Name: "t1"}},
+			Name: "bv1",
+			Tasks: []model.BuildVariantTaskUnit{
+				{Name: "t1"},
+				{Name: "tg", IsGroup: true},
+				{Name: "tg2", IsGroup: true},
+			},
 		},
 		{
 			Name:         "bv_only_dt",
-			DisplayTasks: []patch.DisplayTask{{Name: "different_dt"}},
+			DisplayTasks: []patch.DisplayTask{{Name: "dt1", ExecTasks: []string{"et1"}}},
+			Tasks: []model.BuildVariantTaskUnit{
+				{Name: "et1"},
+			},
 		},
 		{
 			Name:         "bv_different_dt",
-			DisplayTasks: []patch.DisplayTask{{Name: "dt2"}},
+			DisplayTasks: []patch.DisplayTask{{Name: "dt2", ExecTasks: []string{"et2"}}},
 		},
-	}}
+	},
+		TaskGroups: []model.TaskGroup{
+			{
+				Name:     "tg",
+				Tasks:    []string{"tgt1", "tgt2"},
+				MaxHosts: 1,
+			},
+			{
+				Name:  "tg2",
+				Tasks: []string{"tgt3", "tgt4"},
+			},
+		},
+	}
 	currentPatchDoc := intent.NewPatch()
 	s.NoError(err)
 	previousPatchStatus, err := j.setToPreviousPatchDefinition(currentPatchDoc, &project, false)
@@ -341,13 +470,13 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 	s.Equal(previousPatchStatus, "failed")
 
 	s.Equal(currentPatchDoc.BuildVariants, previousPatchDoc.BuildVariants)
-	s.Equal(currentPatchDoc.Tasks, previousPatchDoc.Tasks)
+	s.Equal(currentPatchDoc.Tasks, []string{"t1", "t2", "tgt1", "tgt2", "tgt4", "et1"})
 
 	previousPatchStatus, err = j.setToPreviousPatchDefinition(currentPatchDoc, &project, true)
 	s.NoError(err)
 	s.Equal(previousPatchStatus, "failed")
 	s.Equal(currentPatchDoc.BuildVariants, previousPatchDoc.BuildVariants)
-	s.Equal(currentPatchDoc.Tasks, []string{"t1"})
+	s.Equal(currentPatchDoc.Tasks, []string{"t1", "tgt1", "tgt2", "tgt4", "et1"})
 }
 
 func (s *PatchIntentUnitsSuite) TestBuildTasksandVariantsWithRepeatFailed() {
@@ -467,6 +596,7 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksandVariantsWithReuse() {
 	tasks := []task.Task{
 		{
 			Id:           "t1",
+			Activated:    true,
 			DependsOn:    []task.Dependency{{TaskId: "t3", Status: evergreen.TaskSucceeded}},
 			Version:      patchId,
 			BuildVariant: "bv1",
@@ -605,7 +735,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	s.NoError(err)
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert())
-	j := s.makeJobAndPatch(intent)
+	j := s.makeJobAndPatch(intent, "")
 
 	patchDoc, err := patch.FindOne(patch.ById(j.PatchID))
 	s.NoError(err)

@@ -35,13 +35,13 @@ func PatchSetModule() cli.Command {
 		),
 		Action: func(c *cli.Context) error {
 			params := &patchParams{
-				Project:         c.String(moduleFlagName),       // maybe
-				SkipConfirm:     c.Bool(skipConfirmFlagName),    // keep
-				Finalize:        c.Bool(patchFinalizeFlagName),  // keep
-				Large:           c.Bool(largeFlagName),          // keep
-				Ref:             c.String(refFlagName),          // keep
-				Uncommitted:     c.Bool(uncommittedChangesFlag), // keep
-				PreserveCommits: c.Bool(preserveCommitsFlag),    // keep
+				Project:         c.String(moduleFlagName),
+				SkipConfirm:     c.Bool(skipConfirmFlagName),
+				Finalize:        c.Bool(patchFinalizeFlagName),
+				Large:           c.Bool(largeFlagName),
+				Ref:             c.String(refFlagName),
+				Uncommitted:     c.Bool(uncommittedChangesFlag),
+				PreserveCommits: c.Bool(preserveCommitsFlag),
 			}
 			confPath := c.Parent().String(confFlagName)
 			moduleName := c.String(moduleFlagName)

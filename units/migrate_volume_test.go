@@ -47,8 +47,8 @@ func TestVolumeMigrateJob(t *testing.T) {
 			assert.Contains(t, j.Error().Error(), "not yet stopped")
 
 			// Second attempt completes no error
-			j, updatedJ := env.RemoteQueue().Get(ctx, j.ID())
-			assert.True(t, updatedJ)
+			j, ok := env.RemoteQueue().Get(ctx, j.ID())
+			assert.True(t, ok)
 			assert.NoError(t, j.Error())
 
 			volume, err := host.FindVolumeByID(v.ID)
@@ -98,8 +98,8 @@ func TestVolumeMigrateJob(t *testing.T) {
 			assert.Error(t, j.Error())
 			assert.Contains(t, j.Error().Error(), "not yet stopped")
 			// Second attempt fails to stop initial host
-			j, updatedJ := env.RemoteQueue().Get(ctx, j.ID())
-			assert.True(t, updatedJ)
+			j, ok := env.RemoteQueue().Get(ctx, j.ID())
+			assert.True(t, ok)
 			assert.Error(t, j.Error())
 			assert.Contains(t, j.Error().Error(), "not yet stopped")
 
@@ -143,8 +143,8 @@ func TestVolumeMigrateJob(t *testing.T) {
 			assert.Contains(t, j.Error().Error(), "not yet stopped")
 
 			// Second attempt fails to start new host
-			j, updatedJ := env.RemoteQueue().Get(ctx, j.ID())
-			assert.True(t, updatedJ)
+			j, ok := env.RemoteQueue().Get(ctx, j.ID())
+			assert.True(t, ok)
 			assert.Error(t, j.Error())
 			assert.Contains(t, j.Error().Error(), "creating new intent host")
 
@@ -163,6 +163,65 @@ func TestVolumeMigrateJob(t *testing.T) {
 			events, err := event.FindAllByResourceID(h.Id)
 			assert.NoError(t, err)
 			assert.Len(t, events, 4)
+		},
+		"DetachedVolumeMigrates": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, v *host.Volume, d *distro.Distro, spawnOptions cloud.SpawnOptions) {
+			// Spoof documents after a virtual workstation is terminated.
+			// The host document still has its HomeVolumeID set to the volume that was attached while it was running.
+			h.Status = evergreen.HostTerminated
+			v.Host = ""
+			require.NoError(t, d.Insert())
+			require.NoError(t, v.Insert())
+			require.NoError(t, h.Insert())
+
+			j := NewVolumeMigrationJob(env, v.ID, spawnOptions, "123")
+			require.NoError(t, env.RemoteQueue().Start(ctx))
+			require.NoError(t, env.RemoteQueue().Put(ctx, j))
+
+			// First attempt completes with no error since there's no wait for initial host to stop
+			require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 1000*time.Millisecond))
+			assert.NoError(t, j.Error())
+
+			volume, err := host.FindVolumeByID(v.ID)
+			assert.NoError(t, err)
+			assert.NotNil(t, volume)
+			assert.NotEqual(t, volume.Host, h.Id)
+			assert.False(t, volume.Migrating)
+
+			initialHost, err := host.FindOneId(h.Id)
+			assert.NoError(t, err)
+			assert.Equal(t, initialHost.Status, evergreen.HostTerminated)
+			assert.Equal(t, initialHost.HomeVolumeID, "v0")
+
+			foundHosts, err := host.Find(host.IsUninitialized)
+			assert.NoError(t, err)
+			assert.Len(t, foundHosts, 1)
+			assert.Equal(t, foundHosts[0].HomeVolumeID, v.ID)
+		},
+		"NonexistentVolumeFailsGracefully": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, v *host.Volume, d *distro.Distro, spawnOptions cloud.SpawnOptions) {
+			require.NoError(t, d.Insert())
+			require.NoError(t, v.Insert())
+			require.NoError(t, h.Insert())
+
+			j := NewVolumeMigrationJob(env, "foo", spawnOptions, "123")
+			// Limit retry attempts, since a failure to find a volume will cause a retry
+			j.UpdateRetryInfo(amboy.JobRetryOptions{
+				WaitUntil:   utility.ToTimeDurationPtr(100 * time.Millisecond),
+				MaxAttempts: utility.ToIntPtr(2),
+			})
+			require.NoError(t, env.RemoteQueue().Start(ctx))
+			require.NoError(t, env.RemoteQueue().Put(ctx, j))
+
+			require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 1000*time.Millisecond))
+			assert.Error(t, j.Error())
+			assert.Contains(t, j.Error().Error(), "volume 'foo' not found")
+			assert.Equal(t, j.RetryInfo().GetRemainingAttempts(), 1)
+
+			// Second retry fails identically
+			j, ok := env.RemoteQueue().Get(ctx, j.ID())
+			assert.True(t, ok)
+			assert.Error(t, j.Error())
+			assert.Contains(t, j.Error().Error(), "volume 'foo' not found")
+			assert.Equal(t, j.RetryInfo().GetRemainingAttempts(), 0)
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
@@ -202,6 +261,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			h := &host.Host{
 				Id:           "h0",
 				UserHost:     true,
+				StartedBy:    evergreen.User,
 				Status:       evergreen.HostRunning,
 				Provider:     evergreen.ProviderNameMock,
 				Distro:       *d,
@@ -232,7 +292,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 				Host:             h.Id,
 				HomeVolume:       true,
 				AvailabilityZone: evergreen.DefaultEBSAvailabilityZone,
-				CreatedBy:        "test-user",
+				CreatedBy:        evergreen.User,
 				Type:             "standard",
 				Size:             32,
 				Expiration:       time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),

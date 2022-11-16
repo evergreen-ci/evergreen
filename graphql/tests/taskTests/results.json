@@ -1,6 +1,145 @@
 {
   "tests": [
     {
+      "query_file": "base-status-commit.graphql",
+      "result": {
+        "data": {
+          "taskTests": {
+            "testResults": [{ "status": "skip", "baseStatus": "fail" }]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "base-status-patch.graphql",
+      "result": {
+        "data": {
+          "taskTests": {
+            "testResults": [{ "status": "pass", "baseStatus": "fail" }]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "base-status-periodic-build.graphql",
+      "result": {
+        "data": {
+          "taskTests": {
+            "testResults": [{ "status": "pass", "baseStatus": "skip" }]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "base-status-trigger.graphql",
+      "result": {
+        "data": {
+          "taskTests": {
+            "testResults": [{ "status": "skip", "baseStatus": "skip" }]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "counts.graphql",
+      "result": {
+        "data": {
+          "taskTests": {
+            "totalTestCount": 20,
+            "filteredTestCount": 2,
+            "testResults": [{ "status": "skip" }]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "display-task.graphql",
+      "result": {
+        "data": {
+          "taskTests": {
+            "testResults": [
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              },
+              {
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "execution-task-group-id.graphql",
+      "result": {
+        "data": {
+          "taskTests": {
+            "testResults": [
+              {
+                "execution": 0,
+                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+                "groupID": null
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
       "query_file": "filter-statuses.graphql",
       "result": {
         "data": {
@@ -28,50 +167,6 @@
       }
     },
     {
-      "query_file": "counts.graphql",
-      "result": {
-        "data": {
-          "taskTests": {
-            "totalTestCount": 20,
-            "filteredTestCount": 2,
-            "testResults": [{ "status": "skip" }]
-          }
-        }
-      }
-    },
-    {
-      "query_file": "execution-task-group-id.graphql",
-      "result": {
-        "data": {
-          "taskTests": {
-            "testResults": [
-              {
-                "execution": 0,
-                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
-                "groupID": null
-              }
-            ]
-          }
-        }
-      }
-    },
-    {
-      "query_file": "lineNum.graphql",
-      "result": {
-        "data": {
-          "taskTests": {
-            "testResults": [
-              {
-                "logs": {
-                  "lineNum": 22
-                }
-              }
-            ]
-          }
-        }
-      }
-    },
-    {
       "query_file": "groupId.graphql",
       "result": {
         "data": {
@@ -86,72 +181,17 @@
           }
         }
       }
-    },
+    },   
     {
-      "query_file": "display_task.graphql",
+      "query_file": "lineNum.graphql",
       "result": {
         "data": {
           "taskTests": {
             "testResults": [
               {
-                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
-              },
-              {
-                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
-              },
-              {
-                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
-              },
-              {
-                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
-              },
-              {
-                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
-              },
-              {
-                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
-              },
-              {
-                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
-              },
-              {
-                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
-              },
-              {
-                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
-              },
-              {
-                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
-              },
-              {
-                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
-              },
-              {
-                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
-              },
-              {
-                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
-              },
-              {
-                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
-              },
-              {
-                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
-              },
-              {
-                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
-              },
-              {
-                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
-              },
-              {
-                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
-              },
-              {
-                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
-              },
-              {
-                "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+                "logs": {
+                  "lineNum": 22
+                }
               }
             ]
           }

@@ -22,6 +22,7 @@ import (
 	"github.com/evergreen-ci/utility"
 )
 
+// AbortInfo is the resolver for the abortInfo field.
 func (r *taskResolver) AbortInfo(ctx context.Context, obj *restModel.APITask) (*AbortInfo, error) {
 	if !obj.Aborted {
 		return nil, nil
@@ -55,6 +56,7 @@ func (r *taskResolver) AbortInfo(ctx context.Context, obj *restModel.APITask) (*
 	return &info, nil
 }
 
+// Ami is the resolver for the ami field.
 func (r *taskResolver) Ami(ctx context.Context, obj *restModel.APITask) (*string, error) {
 	err := obj.GetAMI()
 	if err != nil {
@@ -63,6 +65,7 @@ func (r *taskResolver) Ami(ctx context.Context, obj *restModel.APITask) (*string
 	return obj.AMI, nil
 }
 
+// Annotation is the resolver for the annotation field.
 func (r *taskResolver) Annotation(ctx context.Context, obj *restModel.APITask) (*restModel.APITaskAnnotation, error) {
 	annotation, err := annotations.FindOneByTaskIdAndExecution(*obj.Id, obj.Execution)
 	if err != nil {
@@ -75,6 +78,7 @@ func (r *taskResolver) Annotation(ctx context.Context, obj *restModel.APITask) (
 	return apiAnnotation, nil
 }
 
+// BaseStatus is the resolver for the baseStatus field.
 func (r *taskResolver) BaseStatus(ctx context.Context, obj *restModel.APITask) (*string, error) {
 	t, err := obj.ToService()
 	if err != nil {
@@ -87,6 +91,7 @@ func (r *taskResolver) BaseStatus(ctx context.Context, obj *restModel.APITask) (
 	return &baseStatus, nil
 }
 
+// BaseTask is the resolver for the baseTask field.
 func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*restModel.APITask, error) {
 	t, err := obj.ToService()
 	if err != nil {
@@ -131,6 +136,7 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 	return apiTask, nil
 }
 
+// BuildVariantDisplayName is the resolver for the buildVariantDisplayName field.
 func (r *taskResolver) BuildVariantDisplayName(ctx context.Context, obj *restModel.APITask) (*string, error) {
 	if obj.BuildVariantDisplayName != nil {
 		return obj.BuildVariantDisplayName, nil
@@ -150,10 +156,12 @@ func (r *taskResolver) BuildVariantDisplayName(ctx context.Context, obj *restMod
 	return &displayName, nil
 }
 
+// CanAbort is the resolver for the canAbort field.
 func (r *taskResolver) CanAbort(ctx context.Context, obj *restModel.APITask) (bool, error) {
 	return *obj.Status == evergreen.TaskDispatched || *obj.Status == evergreen.TaskStarted, nil
 }
 
+// CanModifyAnnotation is the resolver for the canModifyAnnotation field.
 func (r *taskResolver) CanModifyAnnotation(ctx context.Context, obj *restModel.APITask) (bool, error) {
 	authUser := gimlet.GetUser(ctx)
 	permissions := gimlet.PermissionOpts{
@@ -180,6 +188,7 @@ func (r *taskResolver) CanModifyAnnotation(ctx context.Context, obj *restModel.A
 	return false, nil
 }
 
+// CanOverrideDependencies is the resolver for the canOverrideDependencies field.
 func (r *taskResolver) CanOverrideDependencies(ctx context.Context, obj *restModel.APITask) (bool, error) {
 	currentUser := mustHaveUser(ctx)
 	if obj.OverrideDependencies {
@@ -206,6 +215,7 @@ func (r *taskResolver) CanOverrideDependencies(ctx context.Context, obj *restMod
 	return false, nil
 }
 
+// CanRestart is the resolver for the canRestart field.
 func (r *taskResolver) CanRestart(ctx context.Context, obj *restModel.APITask) (bool, error) {
 	t, err := obj.ToService()
 	if err != nil {
@@ -214,6 +224,7 @@ func (r *taskResolver) CanRestart(ctx context.Context, obj *restModel.APITask) (
 	return canRestartTask(t), nil
 }
 
+// CanSchedule is the resolver for the canSchedule field.
 func (r *taskResolver) CanSchedule(ctx context.Context, obj *restModel.APITask) (bool, error) {
 	t, err := obj.ToService()
 	if err != nil {
@@ -222,14 +233,17 @@ func (r *taskResolver) CanSchedule(ctx context.Context, obj *restModel.APITask) 
 	return canScheduleTask(t), nil
 }
 
+// CanSetPriority is the resolver for the canSetPriority field.
 func (r *taskResolver) CanSetPriority(ctx context.Context, obj *restModel.APITask) (bool, error) {
 	return *obj.Status == evergreen.TaskUndispatched, nil
 }
 
+// CanUnschedule is the resolver for the canUnschedule field.
 func (r *taskResolver) CanUnschedule(ctx context.Context, obj *restModel.APITask) (bool, error) {
 	return (obj.Activated && *obj.Status == evergreen.TaskUndispatched), nil
 }
 
+// DependsOn is the resolver for the dependsOn field.
 func (r *taskResolver) DependsOn(ctx context.Context, obj *restModel.APITask) ([]*Dependency, error) {
 	dependencies := []*Dependency{}
 	if len(obj.DependsOn) == 0 {
@@ -294,6 +308,7 @@ func (r *taskResolver) DependsOn(ctx context.Context, obj *restModel.APITask) ([
 	return dependencies, nil
 }
 
+// DisplayTask is the resolver for the displayTask field.
 func (r *taskResolver) DisplayTask(ctx context.Context, obj *restModel.APITask) (*restModel.APITask, error) {
 	t, err := task.FindOneId(*obj.Id)
 	if err != nil || t == nil {
@@ -310,6 +325,7 @@ func (r *taskResolver) DisplayTask(ctx context.Context, obj *restModel.APITask) 
 	return apiTask, nil
 }
 
+// EstimatedStart is the resolver for the estimatedStart field.
 func (r *taskResolver) EstimatedStart(ctx context.Context, obj *restModel.APITask) (*restModel.APIDuration, error) {
 	t, err := obj.ToService()
 	if err != nil {
@@ -323,6 +339,7 @@ func (r *taskResolver) EstimatedStart(ctx context.Context, obj *restModel.APITas
 	return &duration, nil
 }
 
+// ExecutionTasksFull is the resolver for the executionTasksFull field.
 func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.APITask) ([]*restModel.APITask, error) {
 	if len(obj.ExecutionTasks) == 0 {
 		return nil, nil
@@ -343,6 +360,7 @@ func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.AP
 	return apiTasks, nil
 }
 
+// FailedTestCount is the resolver for the failedTestCount field.
 func (r *taskResolver) FailedTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
 	if obj.HasCedarResults {
 		opts := apimodels.GetCedarTestResultsOptions{
@@ -365,6 +383,7 @@ func (r *taskResolver) FailedTestCount(ctx context.Context, obj *restModel.APITa
 	return failedTestCount, nil
 }
 
+// GeneratedByName is the resolver for the generatedByName field.
 func (r *taskResolver) GeneratedByName(ctx context.Context, obj *restModel.APITask) (*string, error) {
 	if obj.GeneratedBy == "" {
 		return nil, nil
@@ -381,6 +400,7 @@ func (r *taskResolver) GeneratedByName(ctx context.Context, obj *restModel.APITa
 	return &name, nil
 }
 
+// IsPerfPluginEnabled is the resolver for the isPerfPluginEnabled field.
 func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.APITask) (bool, error) {
 	if !evergreen.IsFinishedTaskStatus(utility.FromStringPtr(obj.Status)) {
 		return false, nil
@@ -406,10 +426,12 @@ func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.A
 	return true, nil
 }
 
+// LatestExecution is the resolver for the latestExecution field.
 func (r *taskResolver) LatestExecution(ctx context.Context, obj *restModel.APITask) (int, error) {
 	return task.GetLatestExecution(*obj.Id)
 }
 
+// MinQueuePosition is the resolver for the minQueuePosition field.
 func (r *taskResolver) MinQueuePosition(ctx context.Context, obj *restModel.APITask) (int, error) {
 	position, err := model.FindMinimumQueuePositionForTask(*obj.Id)
 	if err != nil {
@@ -421,6 +443,7 @@ func (r *taskResolver) MinQueuePosition(ctx context.Context, obj *restModel.APIT
 	return position, nil
 }
 
+// Patch is the resolver for the patch field.
 func (r *taskResolver) Patch(ctx context.Context, obj *restModel.APITask) (*restModel.APIPatch, error) {
 	if !evergreen.IsPatchRequester(*obj.Requester) {
 		return nil, nil
@@ -432,11 +455,13 @@ func (r *taskResolver) Patch(ctx context.Context, obj *restModel.APITask) (*rest
 	return apiPatch, nil
 }
 
+// PatchNumber is the resolver for the patchNumber field.
 func (r *taskResolver) PatchNumber(ctx context.Context, obj *restModel.APITask) (*int, error) {
 	order := obj.Order
 	return &order, nil
 }
 
+// Project is the resolver for the project field.
 func (r *taskResolver) Project(ctx context.Context, obj *restModel.APITask) (*restModel.APIProjectRef, error) {
 	pRef, err := data.FindProjectById(*obj.ProjectId, true, false)
 	if err != nil {
@@ -452,11 +477,13 @@ func (r *taskResolver) Project(ctx context.Context, obj *restModel.APITask) (*re
 	return &apiProjectRef, nil
 }
 
+// ProjectIdentifier is the resolver for the projectIdentifier field.
 func (r *taskResolver) ProjectIdentifier(ctx context.Context, obj *restModel.APITask) (*string, error) {
 	obj.GetProjectIdentifier()
 	return obj.ProjectIdentifier, nil
 }
 
+// SpawnHostLink is the resolver for the spawnHostLink field.
 func (r *taskResolver) SpawnHostLink(ctx context.Context, obj *restModel.APITask) (*string, error) {
 	host, err := host.FindOne(host.ById(*obj.HostId))
 	if err != nil {
@@ -472,10 +499,12 @@ func (r *taskResolver) SpawnHostLink(ctx context.Context, obj *restModel.APITask
 	return nil, nil
 }
 
+// Status is the resolver for the status field.
 func (r *taskResolver) Status(ctx context.Context, obj *restModel.APITask) (string, error) {
 	return *obj.DisplayStatus, nil
 }
 
+// TotalTestCount is the resolver for the totalTestCount field.
 func (r *taskResolver) TotalTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
 	if obj.HasCedarResults {
 		opts := apimodels.GetCedarTestResultsOptions{
@@ -499,6 +528,7 @@ func (r *taskResolver) TotalTestCount(ctx context.Context, obj *restModel.APITas
 	return testCount, nil
 }
 
+// VersionMetadata is the resolver for the versionMetadata field.
 func (r *taskResolver) VersionMetadata(ctx context.Context, obj *restModel.APITask) (*restModel.APIVersion, error) {
 	v, err := model.VersionFindOneId(utility.FromStringPtr(obj.Version))
 	if err != nil {

@@ -12,19 +12,16 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v34/github"
 	"github.com/jpillora/backoff"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -367,7 +364,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			}
 		}
 
-		_, err = CreateManifest(*v, pInfo.Project, ref, repoTracker.Settings)
+		_, err = model.CreateManifest(v, pInfo.Project, ref, repoTracker.Settings)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":            "error creating manifest",
@@ -480,62 +477,19 @@ func addGithubCheckSubscriptions(v *model.Version) error {
 	if err := buildSub.Upsert(); err != nil {
 		catcher.Wrap(err, "failed to insert build github check subscription")
 	}
-	flags, err := evergreen.GetServiceFlags()
+	input := thirdparty.SendGithubStatusInput{
+		VersionId: v.Id,
+		Owner:     v.Owner,
+		Repo:      v.Repo,
+		Ref:       v.Revision,
+		Desc:      "version created",
+		Caller:    RunnerName,
+		Context:   "evergreen",
+	}
+	err := thirdparty.SendVersionStatusToGithub(input)
 	if err != nil {
-		catcher.Add(errors.Wrap(err, "error retrieving admin settings"))
-		return catcher.Resolve()
+		catcher.Wrap(err, "failed to send version status to github")
 	}
-	if flags.GithubStatusAPIDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-			"runner":  RunnerName,
-			"message": "github status updates are disabled, not updating status",
-		})
-		return catcher.Resolve()
-	}
-	env := evergreen.GetEnvironment()
-	uiConfig := evergreen.UIConfig{}
-	if err = uiConfig.Get(env); err != nil {
-		catcher.Add(err)
-		return catcher.Resolve()
-	}
-	urlBase := uiConfig.Url
-	if urlBase == "" {
-		catcher.New("url base doesn't exist")
-		return catcher.Resolve()
-	}
-	status := &message.GithubStatus{
-		Owner:       v.Owner,
-		Repo:        v.Repo,
-		Ref:         v.Revision,
-		URL:         fmt.Sprintf("%s/version/%s", urlBase, v.Id),
-		Context:     "evergreen",
-		State:       message.GithubStatePending,
-		Description: "version created",
-	}
-	sender, err := env.GetSender(evergreen.SenderGithubStatus)
-	if err != nil {
-		catcher.Add(err)
-		return catcher.Resolve()
-	}
-
-	c := message.MakeGithubStatusMessageWithRepo(*status)
-	if !c.Loggable() {
-		catcher.Add(errors.Errorf("status message is invalid: %+v", status))
-		return catcher.Resolve()
-	}
-
-	if err = c.SetPriority(level.Notice); err != nil {
-		catcher.Add(err)
-		return catcher.Resolve()
-	}
-
-	sender.Send(c)
-	grip.Info(message.Fields{
-		"ticket":  thirdparty.GithubInvestigation,
-		"message": "called github status send",
-		"caller":  "github check subscriptions",
-		"version": v.Id,
-	})
 	return catcher.Resolve()
 }
 
@@ -626,91 +580,17 @@ func makeBuildBreakSubscriber(userID string) (*event.Subscriber, error) {
 		if preference == user.PreferenceEmail {
 			subscriber.Target = u.Email()
 		} else if preference == user.PreferenceSlack {
-			subscriber.Target = u.Settings.SlackUsername
+			slackTarget := u.Settings.SlackUsername
+			if u.Settings.SlackMemberId != "" {
+				slackTarget = u.Settings.SlackMemberId
+			}
+			subscriber.Target = slackTarget
 		} else {
 			return nil, errors.Errorf("invalid subscription preference for build break: %s", preference)
 		}
 	}
 
 	return subscriber, nil
-}
-
-func CreateManifest(v model.Version, proj *model.Project, projectRef *model.ProjectRef, settings *evergreen.Settings) (*manifest.Manifest, error) {
-	if len(proj.Modules) == 0 {
-		return nil, nil
-	}
-	newManifest := &manifest.Manifest{
-		Id:          v.Id,
-		Revision:    v.Revision,
-		ProjectName: v.Identifier,
-		Branch:      projectRef.Branch,
-		IsBase:      v.Requester == evergreen.RepotrackerVersionRequester,
-	}
-	token, err := settings.GetGithubOauthToken()
-	if err != nil {
-		return nil, errors.Wrap(err, "error getting github oauth token")
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	var gitBranch *github.Branch
-	var gitCommit *github.RepositoryCommit
-	modules := map[string]*manifest.Module{}
-	for _, module := range proj.Modules {
-		var sha, url string
-		owner, repo := module.GetRepoOwnerAndName()
-		if module.Ref == "" {
-			var commit *github.RepositoryCommit
-			commit, err = thirdparty.GetCommitEvent(ctx, token, projectRef.Owner, projectRef.Repo, v.Revision)
-			if err != nil {
-				return nil, errors.Wrapf(err, "can't get commit '%s' on '%s/%s'", v.Revision, projectRef.Owner, projectRef.Repo)
-			}
-			if commit == nil || commit.Commit == nil || commit.Commit.Committer == nil {
-				return nil, errors.New("malformed GitHub commit response")
-			}
-			revisionTime := commit.Commit.Committer.GetDate()
-			var branchCommits []*github.RepositoryCommit
-			branchCommits, _, err = thirdparty.GetGithubCommits(ctx, token, owner, repo, module.Branch, revisionTime, 0)
-			if err != nil {
-				return nil, errors.Wrapf(err, "problem retrieving getting git branch for module %s", module.Name)
-			}
-			if len(branchCommits) > 0 {
-				sha = branchCommits[0].GetSHA()
-				url = branchCommits[0].GetURL()
-			}
-		} else {
-			sha = module.Ref
-			gitCommit, err = thirdparty.GetCommitEvent(ctx, token, owner, repo, module.Ref)
-			if err != nil {
-				return nil, errors.Wrapf(err, "problem retrieving getting git commit for module %s with hash %s", module.Name, module.Ref)
-			}
-			if gitCommit != nil {
-				url = *gitCommit.URL
-			}
-		}
-
-		modules[module.Name] = &manifest.Module{
-			Branch:   module.Branch,
-			Revision: sha,
-			Repo:     repo,
-			Owner:    owner,
-			URL:      url,
-		}
-
-	}
-	newManifest.Modules = modules
-	grip.Debug(message.Fields{
-		"message":            "creating manifest",
-		"version_id":         v.Id,
-		"manifest":           newManifest,
-		"project":            v.Identifier,
-		"project_identifier": projectRef.Identifier,
-		"modules":            modules,
-		"branch_info":        gitBranch,
-	})
-	_, err = newManifest.TryInsert()
-
-	return newManifest, errors.Wrap(err, "error inserting manifest")
 }
 
 func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo,

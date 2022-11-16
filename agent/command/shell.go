@@ -238,7 +238,7 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 		return errors.Wrapf(ctxErr, "canceled while running command '%s'", c.Name())
 	}
 
-	if c.ContinueOnError {
+	if c.ContinueOnError && err != nil {
 		logger.Execution().Noticef("Script errored, but continue on error is set - continuing task execution. Error: %s.", err)
 		return nil
 	}

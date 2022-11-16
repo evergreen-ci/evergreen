@@ -29,9 +29,6 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Set the config to blank to avoid writing it to the UI unnecessarily.
-	projCtx.Version.Config = ""
-
 	versionAsUI := uiVersion{
 		Version:   *projCtx.Version,
 		RepoOwner: projCtx.ProjectRef.Owner,
@@ -422,8 +419,8 @@ func (uis *UIServer) versionHistory(w http.ResponseWriter, r *http.Request) {
 	gimlet.WriteJSON(w, versions)
 }
 
-//versionFind redirects to the correct version page based on the gitHash and versionId given.
-//It finds the version associated with the versionId and gitHash and redirects to /version/{version_id}.
+// versionFind redirects to the correct version page based on the gitHash and versionId given.
+// It finds the version associated with the versionId and gitHash and redirects to /version/{version_id}.
 func (uis *UIServer) versionFind(w http.ResponseWriter, r *http.Request) {
 	vars := gimlet.GetVars(r)
 	project := vars["project_id"]

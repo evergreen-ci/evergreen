@@ -378,7 +378,7 @@ func TestSetVersionActivation(t *testing.T) {
 	require.NoError(t, v.Insert())
 
 	builds := []build.Build{
-		{Id: "b0", Version: vID, Activated: true, Tasks: []build.TaskCache{{Id: "t0"}}, Status: evergreen.BuildStarted},
+		{Id: "b0", Version: vID, Activated: true, Tasks: []build.TaskCache{{Id: "t0"}}, Status: evergreen.BuildCreated},
 		{Id: "b1", Version: vID, Activated: true, Tasks: []build.TaskCache{{Id: "t1"}}, Status: evergreen.BuildSucceeded},
 	}
 	for _, build := range builds {
@@ -398,9 +398,6 @@ func TestSetVersionActivation(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, builds, 2)
 	for _, b := range builds {
-		if b.Id == "b0" {
-			assert.Equal(t, evergreen.BuildCreated, b.Status)
-		}
 		assert.False(t, b.Activated)
 	}
 
@@ -1491,7 +1488,6 @@ func TestCreateTaskGroup(t *testing.T) {
 				ActivationStatus: ActivationStatus{Activated: false},
 			},
 		},
-		Config: projYml,
 	}
 	pRef := ProjectRef{
 		Id:         "projectId",
