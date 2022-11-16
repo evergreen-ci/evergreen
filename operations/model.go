@@ -8,16 +8,17 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/kardianos/osext"
-	homedir "github.com/mitchellh/go-homedir"
+	"github.com/mitchellh/go-homedir"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	yaml "gopkg.in/20210107192922/yaml.v3"
+	"gopkg.in/20210107192922/yaml.v3"
 )
 
 const localConfigPath = ".evergreen.local.yml"
@@ -29,6 +30,7 @@ type ClientProjectConf struct {
 	Variants       []string             `json:"variants" yaml:"variants,omitempty"`
 	Tasks          []string             `json:"tasks" yaml:"tasks,omitempty"`
 	Parameters     map[string]string    `json:"parameters" yaml:"parameters,omitempty"`
+	ModulePaths    map[string]string    `json:"module_paths" yaml:"module_paths,omitempty"`
 	TriggerAliases []string             `json:"trigger_aliases" yaml:"trigger_aliases"`
 	LocalAliases   []model.ProjectAlias `json:"local_aliases,omitempty" yaml:"local_aliases,omitempty"`
 }
@@ -223,6 +225,31 @@ func (s *ClientSettings) getLegacyClients() (*legacyClient, *legacyClient, error
 	return ac, rc, nil
 }
 
+func (s *ClientSettings) getModule(patchId, moduleName string) (*model.Module, error) {
+	_, rc, err := s.getLegacyClients()
+	if err != nil {
+		return nil, errors.Wrap(err, "setting up legacy Evergreen client")
+	}
+	proj, err := rc.GetPatchedConfig(patchId)
+	if err != nil {
+		return nil, err
+	}
+	module, err := model.GetModuleByName(proj.Modules, moduleName)
+	if err != nil {
+		if len(proj.Modules) == 0 {
+			return nil, errors.Errorf("Project has no configured modules. Specify different project or " +
+				"see the evergreen configuration file for module configuration.")
+		}
+		moduleNames := []string{}
+		for _, m := range proj.Modules {
+			moduleNames = append(moduleNames, m.Name)
+		}
+		return nil, errors.Errorf("Could not find module named '%s' for project; specify different project or select correct module from:\n\t%s",
+			moduleName, strings.Join(moduleNames, "\n\t"))
+	}
+	return module, nil
+}
+
 func (s *ClientSettings) FindDefaultProject(cwd string, useRoot bool) string {
 	if project, exists := s.ProjectsForDirectory[cwd]; exists {
 		return project
@@ -236,6 +263,35 @@ func (s *ClientSettings) FindDefaultProject(cwd string, useRoot bool) string {
 		}
 	}
 	return ""
+}
+
+func (s *ClientSettings) getModulePath(project, moduleName string) string {
+	var modulePath string
+	for _, p := range s.Projects {
+		if p.Name == project && p.ModulePaths[moduleName] != "" {
+			modulePath = p.ModulePaths[moduleName]
+			break
+		}
+	}
+	return modulePath
+}
+
+func (s *ClientSettings) setModulePath(project, moduleName, modulePath string) {
+	if s.DisableAutoDefaulting {
+		return
+	}
+	grip.Infof("Project module '%s' will be set to use path '%s'. "+
+		"To disable automatic defaulting, set 'disable_auto_defaulting' to true.", moduleName, modulePath)
+	for i, p := range s.Projects {
+		if p.Name == project {
+			s.Projects[i].ModulePaths[moduleName] = modulePath
+			return
+		}
+	}
+	s.Projects = append(s.Projects, ClientProjectConf{
+		Name:        project,
+		ModulePaths: map[string]string{moduleName: modulePath},
+	})
 }
 
 func (s *ClientSettings) FindDefaultVariants(project string) []string {

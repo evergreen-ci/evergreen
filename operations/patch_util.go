@@ -459,6 +459,31 @@ func (p *patchParams) getDescription() string {
 	return description
 }
 
+func (p *patchParams) getModulePath(conf *ClientSettings, module string) (string, error) {
+	modulePath := conf.getModulePath(p.Project, module)
+	if modulePath != "" || p.SkipConfirm {
+		return modulePath, nil
+	}
+
+	modulePath = prompt(fmt.Sprintf("Enter absolute path to module '%s' to include changes (optional):", module))
+	if modulePath == "" {
+		return "", errors.Errorf("no module path given")
+	}
+
+	if !conf.DisableAutoDefaulting {
+		// Verify that the path is correct before auto defaulting
+		if _, err := gitUncommittedChanges(modulePath); err != nil {
+			return "", errors.Wrapf(err, "verifying module '%s''", module)
+		}
+		conf.setModulePath(p.Project, module, modulePath)
+		if err := conf.Write(""); err != nil {
+			grip.Errorf("problem setting module '%s' path in config: %s", module, err.Error())
+		}
+	}
+
+	return modulePath, nil
+}
+
 // Returns an error if the diff is greater than the system limit, or if it's above the large
 // patch threhsold and allowLarge is not set.
 func validatePatchSize(diff *localDiff, allowLarge bool) error {
@@ -546,8 +571,8 @@ func isValidCommitsFormat(commits string) error {
 	return nil
 }
 
-func confirmUncommittedChanges(preserveCommits, includeUncommitedChanges bool) (bool, error) {
-	uncommittedChanges, err := gitUncommittedChanges()
+func confirmUncommittedChanges(dir string, preserveCommits, includeUncommitedChanges bool) (bool, error) {
+	uncommittedChanges, err := gitUncommittedChanges(dir)
 	if err != nil {
 		return false, errors.Wrap(err, "getting uncommitted changes")
 	}
@@ -568,17 +593,18 @@ Continue? (Y/n)`, uncommittedChangesFlag), true), nil
 	return true, nil
 }
 
-// loadGitData inspects the current git working directory and returns a patch and its summary.
+// loadGitData inspects the given git working directory and returns a patch and its summary.
+// If no dir is provided, we use the current working directory.
 // The branch argument is used to determine where to generate the merge base from, and any extra
 // arguments supplied are passed directly in as additional args to git diff.
-func loadGitData(branch, ref, commits string, format bool, extraArgs ...string) (*localDiff, error) {
+func loadGitData(dir, branch, ref, commits string, format bool, extraArgs ...string) (*localDiff, error) {
 	// branch@{upstream} refers to the branch that the branch specified by branchname is set to
 	// build on top of. This allows automatically detecting a branch based on the correct remote,
 	// if the user's repo is a fork, for example. This also works with a commit hash, if given.
 	// In the case a range is passed, we only need one commit to determine the base, so we use the first commit.
 	// For details see: https://git-scm.com/docs/gitrevisions
 
-	mergeBase, err := gitMergeBase(branch+"@{upstream}", ref, commits)
+	mergeBase, err := gitMergeBase(dir, branch+"@{upstream}", ref, commits)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Error getting merge base, "+
 			"may need to create local branch '%s' and have it track upstream", branch)
@@ -587,18 +613,18 @@ func loadGitData(branch, ref, commits string, format bool, extraArgs ...string) 
 	if len(extraArgs) > 0 {
 		statArgs = append(statArgs, extraArgs...)
 	}
-	stat, err := gitDiff(mergeBase, ref, commits, statArgs...)
+	stat, err := gitDiff(dir, mergeBase, ref, commits, statArgs...)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting diff summary")
 	}
-	log, err := gitLog(mergeBase, ref, commits)
+	log, err := gitLog(dir, mergeBase, ref, commits)
 	if err != nil {
 		return nil, errors.Wrap(err, "git log")
 	}
 
 	var fullPatch string
 	if format {
-		fullPatch, err = gitFormatPatch(mergeBase, ref, commits)
+		fullPatch, err = gitFormatPatch(dir, mergeBase, ref, commits)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting git formatted patch")
 		}
@@ -606,7 +632,7 @@ func loadGitData(branch, ref, commits string, format bool, extraArgs ...string) 
 		if !utility.StringSliceContains(extraArgs, "--binary") {
 			extraArgs = append(extraArgs, "--binary")
 		}
-		fullPatch, err = gitDiff(mergeBase, ref, commits, extraArgs...)
+		fullPatch, err = gitDiff(dir, mergeBase, ref, commits, extraArgs...)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting git diff")
 		}
@@ -628,14 +654,11 @@ func loadGitData(branch, ref, commits string, format bool, extraArgs ...string) 
 
 // gitMergeBase runs "git merge-base <branch1> <branch2>" (where branch2 can optionally be a githash)
 // and returns the resulting githash as string
-func gitMergeBase(branch1, ref, commits string) (string, error) {
+func gitMergeBase(dir, branch1, ref, commits string) (string, error) {
 	branch2 := getFeatureBranch(ref, commits)
-	cmd := exec.Command("git", "merge-base", branch1, branch2)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", errors.Wrapf(err, "'git merge-base %s %s' failed: %s (%s)", branch1, branch2, out, err)
-	}
-	return strings.TrimSpace(string(out)), err
+	out, err := gitCmdWithDir("merge-base", dir, branch1, branch2)
+
+	return strings.TrimSpace(out), err
 }
 
 func gitIsAncestor(commit1, commit2 string) (string, error) {
@@ -644,8 +667,9 @@ func gitIsAncestor(commit1, commit2 string) (string, error) {
 }
 
 // gitDiff runs "git diff <base> <ref> <commits> <diffargs ...>" and returns the output of the command as a string,
-// where ref and commits are mutually exclusive (and not required)
-func gitDiff(base, ref, commits string, diffArgs ...string) (string, error) {
+// where ref and commits are mutually exclusive (and not required). If dir is specified, runs the command
+// in the specified directory.
+func gitDiff(dir, base, ref, commits string, diffArgs ...string) (string, error) {
 	args := []string{base}
 	if commits != "" {
 		args = []string{formatCommitRange(commits)}
@@ -655,24 +679,24 @@ func gitDiff(base, ref, commits string, diffArgs ...string) (string, error) {
 	}
 	args = append(args, "--no-ext-diff")
 	args = append(args, diffArgs...)
-	return gitCmd("diff", args...)
+	return gitCmdWithDir("diff", dir, args...)
 }
 
-func gitFormatPatch(base string, ref, commits string) (string, error) {
+func gitFormatPatch(dir, base string, ref, commits string) (string, error) {
 	revisionRange := fmt.Sprintf("%s..%s", base, ref)
 	if commits != "" {
 		revisionRange = formatCommitRange(commits)
 	}
-	return gitCmd("format-patch", "--keep-subject", "--no-signature", "--stdout", "--no-ext-diff", "--binary", revisionRange)
+	return gitCmdWithDir("format-patch", dir, "--keep-subject", "--no-signature", "--stdout", "--no-ext-diff", "--binary", revisionRange)
 }
 
 // getLog runs "git log <base>...<ref> or uses the commit range given
-func gitLog(base, ref, commits string) (string, error) {
+func gitLog(dir, base, ref, commits string) (string, error) {
 	revisionRange := fmt.Sprintf("%s...%s", base, ref)
 	if commits != "" {
 		revisionRange = formatCommitRange(commits)
 	}
-	return gitCmd("log", revisionRange, "--oneline")
+	return gitCmdWithDir("log", dir, revisionRange, "--oneline")
 }
 
 func gitCommitMessages(base, ref, commits string) (string, error) {
@@ -738,9 +762,9 @@ func gitCommitCount(base, ref, commits string) (int, error) {
 	return count, nil
 }
 
-func gitUncommittedChanges() (bool, error) {
+func gitUncommittedChanges(dir string) (bool, error) {
 	args := "--porcelain"
-	out, err := gitCmd("status", args)
+	out, err := gitCmdWithDir("status", dir, args)
 	if err != nil {
 		return false, errors.Wrap(err, "running git status")
 	}
@@ -805,4 +829,26 @@ func gitCmd(cmdName string, gitArgs ...string) (string, error) {
 		return "", errors.Wrapf(err, "command 'git %s' failed", strings.Join(args, " "))
 	}
 	return string(out), nil
+}
+
+func gitCmdWithDir(cmdName, dir string, gitArgs ...string) (string, error) {
+	args := []string{}
+	if dir != "" {
+		args = append(args, moduleDirArgs(dir)...)
+	}
+	args = append(args, cmdName)
+	args = append(args, gitArgs...)
+
+	cmd := exec.Command("git", args...)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", errors.Wrapf(err, "command 'git %s' failed", strings.Join(args, " "))
+	}
+	return string(out), nil
+}
+
+func moduleDirArgs(path string) []string {
+	str1 := fmt.Sprintf("--git-dir=%s/.git", path)
+	str2 := fmt.Sprintf("--work-tree=%s", path)
+	return []string{str1, str2}
 }
