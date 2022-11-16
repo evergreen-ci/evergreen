@@ -234,6 +234,41 @@ func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithNoTasksAndVariants() {
 	s.Equal("patch has no build variants or tasks", err.Error())
 }
 
+func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithBadAlias() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	resp, err := http.Get(s.diffURL)
+	s.Require().NoError(err)
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	s.Require().NoError(err)
+
+	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
+		User:         s.user,
+		Project:      s.project,
+		BaseGitHash:  s.hash,
+		PatchContent: string(body),
+		Description:  s.desc,
+		Finalize:     true,
+		Alias:        "typo",
+	})
+	s.NoError(err)
+	s.Require().NotNil(intent)
+	s.NoError(intent.Insert())
+
+	githubOauthToken, err := s.env.Settings().GetGithubOauthToken()
+	s.Require().NoError(err)
+
+	j := NewPatchIntentProcessor(mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+	j.env = s.env
+
+	patchDoc := intent.NewPatch()
+	err = j.finishPatch(ctx, patchDoc, githubOauthToken)
+	s.Require().Error(err)
+	s.Equal("alias 'typo' could not be found on project 'mci'", err.Error())
+}
+
 func (s *PatchIntentUnitsSuite) TestCantFinishCommitQueuePatchWithNoTasksAndVariants() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

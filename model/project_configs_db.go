@@ -57,14 +57,3 @@ func FindProjectConfigById(id string) (*ProjectConfig, error) {
 	}
 	return project, err
 }
-
-// ProjectConfigUpsertOne updates one project config
-func ProjectConfigUpsertOne(query interface{}, update interface{}) error {
-	_, err := db.Upsert(
-		ProjectConfigCollection,
-		query,
-		update,
-	)
-
-	return err
-}
