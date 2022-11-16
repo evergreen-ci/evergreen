@@ -2398,7 +2398,7 @@ func HasMatchingTasks(versionID string, opts HasMatchingTasksOptions) (bool, err
 		TaskNames:                      opts.TaskNames,
 		Variants:                       opts.Variants,
 		Statuses:                       opts.Statuses,
-		IncludeEmptyActivation:         !opts.IncludeInactiveTasks,
+		IncludeInactiveTasks:           !opts.IncludeInactiveTasks,
 		IncludeBuildVariantDisplayName: true,
 	}
 	if len(opts.Variants) > 0 {
@@ -2456,7 +2456,7 @@ type GetTasksByVersionOptions struct {
 	Sorts                               []TasksSortOrder
 	IncludeExecutionTasks               bool
 	IncludeBaseTasks                    bool
-	IncludeEmptyActivation              bool
+	IncludeInactiveTasks                bool // InactiveTasks are defined as tasks that have been generated but lack an activation time
 	IncludeBuildVariantDisplayName      bool
 	IsMainlineCommit                    bool
 	UseLegacyAddBuildVariantDisplayName bool
@@ -2474,7 +2474,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		match[DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex, "$options": "i"}
 	}
 	// Activated Time is needed to filter out generated tasks that have been generated but not yet activated
-	if !opts.IncludeEmptyActivation {
+	if !opts.IncludeInactiveTasks {
 		match[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
 	}
 	pipeline := []bson.M{

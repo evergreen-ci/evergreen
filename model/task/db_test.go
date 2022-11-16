@@ -936,7 +936,7 @@ func TestGetTasksByVersionExecTasks(t *testing.T) {
 	assert.Equal(t, t4.Id, tasks[2].Id)
 }
 
-func TestGetTasksByVersionIncludeEmptyActivation(t *testing.T) {
+func TestGetTasksByVersionIncludeInactiveTaskss(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
 
 	inactiveTask := Task{
@@ -948,12 +948,12 @@ func TestGetTasksByVersionIncludeEmptyActivation(t *testing.T) {
 	assert.NoError(t, inactiveTask.Insert())
 
 	// inactive tasks should be included
-	opts := GetTasksByVersionOptions{IncludeEmptyActivation: true}
+	opts := GetTasksByVersionOptions{IncludeInactiveTasks: true}
 	_, count, err := GetTasksByVersion("v1", opts)
 	assert.NoError(t, err)
 	assert.Equal(t, count, 1)
 	// inactive tasks should be excluded
-	opts = GetTasksByVersionOptions{IncludeEmptyActivation: false}
+	opts = GetTasksByVersionOptions{IncludeInactiveTasks: false}
 	_, count, err = GetTasksByVersion("v1", opts)
 	assert.NoError(t, err)
 	assert.Equal(t, count, 0)

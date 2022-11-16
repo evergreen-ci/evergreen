@@ -54429,6 +54429,9 @@ func (ec *executionContext) unmarshalInputTaskFilterOptions(ctx context.Context,
 	if _, present := asMap["includeEmptyActivation"]; !present {
 		asMap["includeEmptyActivation"] = false
 	}
+	if _, present := asMap["includeInactiveTasks"]; !present {
+		asMap["includeInactiveTasks"] = false
+	}
 	if _, present := asMap["limit"]; !present {
 		asMap["limit"] = 0
 	}
@@ -54439,7 +54442,7 @@ func (ec *executionContext) unmarshalInputTaskFilterOptions(ctx context.Context,
 		asMap["statuses"] = []interface{}{}
 	}
 
-	fieldsInOrder := [...]string{"baseStatuses", "includeEmptyActivation", "limit", "page", "sorts", "statuses", "taskName", "variant"}
+	fieldsInOrder := [...]string{"baseStatuses", "includeEmptyActivation", "includeInactiveTasks", "limit", "page", "sorts", "statuses", "taskName", "variant"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -54459,6 +54462,14 @@ func (ec *executionContext) unmarshalInputTaskFilterOptions(ctx context.Context,
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeEmptyActivation"))
 			it.IncludeEmptyActivation, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "includeInactiveTasks":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeInactiveTasks"))
+			it.IncludeInactiveTasks, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}

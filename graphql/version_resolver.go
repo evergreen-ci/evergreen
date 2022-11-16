@@ -87,7 +87,7 @@ func (r *versionResolver) BuildVariantStats(ctx context.Context, obj *restModel.
 		Variants:                       options.Variants,
 		Statuses:                       options.Statuses,
 		IncludeBuildVariantDisplayName: true,
-		IncludeEmptyActivation:         utility.FromBoolPtr(options.IncludeInactiveTasks),
+		IncludeInactiveTasks:           utility.FromBoolPtr(options.IncludeInactiveTasks),
 	}
 	stats, err := task.GetGroupedTaskStatsByVersion(utility.FromStringPtr(obj.Id), opts)
 	if err != nil {
@@ -306,7 +306,7 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *restModel.APIVersion, 
 		Limit:                          limitParam,
 		Sorts:                          taskSorts,
 		IncludeBaseTasks:               true,
-		IncludeEmptyActivation:         utility.FromBoolPtr(options.IncludeEmptyActivation),
+		IncludeInactiveTasks:           utility.FromBoolPtr(options.IncludeEmptyActivation) || utility.FromBoolPtr(options.IncludeInactiveTasks),
 		IncludeBuildVariantDisplayName: true,
 		IsMainlineCommit:               !evergreen.IsPatchRequester(v.Requester),
 	}
@@ -352,12 +352,12 @@ func (r *versionResolver) TaskStatuses(ctx context.Context, obj *restModel.APIVe
 // TaskStatusStats is the resolver for the taskStatusStats field.
 func (r *versionResolver) TaskStatusStats(ctx context.Context, obj *restModel.APIVersion, options *BuildVariantOptions) (*task.TaskStats, error) {
 	opts := task.GetTasksByVersionOptions{
-		IncludeBaseTasks:       false,
-		IncludeExecutionTasks:  false,
-		TaskNames:              options.Tasks,
-		Variants:               options.Variants,
-		Statuses:               getValidTaskStatusesFilter(options.Statuses),
-		IncludeEmptyActivation: utility.FromBoolPtr(options.IncludeInactiveTasks),
+		IncludeBaseTasks:      false,
+		IncludeExecutionTasks: false,
+		TaskNames:             options.Tasks,
+		Variants:              options.Variants,
+		Statuses:              getValidTaskStatusesFilter(options.Statuses),
+		IncludeInactiveTasks:  utility.FromBoolPtr(options.IncludeInactiveTasks),
 	}
 	if len(options.Variants) != 0 {
 		opts.IncludeBuildVariantDisplayName = true // we only need the buildVariantDisplayName if we plan on filtering on it.
