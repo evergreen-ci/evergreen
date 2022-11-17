@@ -77,16 +77,6 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 			// If the task was not activated by step back, and either the caller is not evergreen
 			// or the task was originally activated by evergreen, deactivate the task
 		} else if !evergreen.IsSystemActivator(caller) || evergreen.IsSystemActivator(t.ActivatedBy) {
-			// deactivate later tasks in the group as well, since they won't succeed without this one
-			if t.IsPartOfSingleHostTaskGroup() {
-				tasksInGroup, err := task.FindTaskGroupFromBuild(t.BuildId, t.TaskGroup)
-				catcher.Wrapf(err, "finding task group '%s'", t.TaskGroup)
-				for _, taskInGroup := range tasksInGroup {
-					if taskInGroup.TaskGroupOrder > t.TaskGroupOrder {
-						originalTasks = append(originalTasks, taskInGroup)
-					}
-				}
-			}
 			if t.Requester == evergreen.MergeTestRequester {
 				catcher.Wrapf(DequeueAndRestartForTask(nil, &t, message.GithubStateError, caller, fmt.Sprintf("deactivated by '%s'", caller)), "dequeueing and restarting task '%s'", t.Id)
 			}
