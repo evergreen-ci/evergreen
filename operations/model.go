@@ -222,12 +222,12 @@ func (s *ClientSettings) getModule(patchId, moduleName string) (*model.Module, e
 	if err != nil {
 		return nil, err
 	}
+	if len(proj.Modules) == 0 {
+		return nil, errors.Errorf("Project has no configured modules. Specify different project or " +
+			"see the evergreen configuration file for module configuration.")
+	}
 	module, err := model.GetModuleByName(proj.Modules, moduleName)
 	if err != nil {
-		if len(proj.Modules) == 0 {
-			return nil, errors.Errorf("Project has no configured modules. Specify different project or " +
-				"see the evergreen configuration file for module configuration.")
-		}
 		moduleNames := []string{}
 		for _, m := range proj.Modules {
 			moduleNames = append(moduleNames, m.Name)
