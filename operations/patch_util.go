@@ -823,12 +823,7 @@ func gitCmd(cmdName string, gitArgs ...string) (string, error) {
 	args := make([]string, 0, 1+len(gitArgs))
 	args = append(args, cmdName)
 	args = append(args, gitArgs...)
-	cmd := exec.Command("git", args...)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", errors.Wrapf(err, "command 'git %s' failed", strings.Join(args, " "))
-	}
-	return string(out), nil
+	return gitExecCmd(args)
 }
 
 func gitCmdWithDir(cmdName, dir string, gitArgs ...string) (string, error) {
@@ -839,6 +834,11 @@ func gitCmdWithDir(cmdName, dir string, gitArgs ...string) (string, error) {
 	args = append(args, cmdName)
 	args = append(args, gitArgs...)
 
+	return gitExecCmd(args)
+}
+
+// gitExecCmd assumes that the command name has already been added to args, and executes the command.
+func gitExecCmd(args []string) (string, error) {
 	cmd := exec.Command("git", args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
