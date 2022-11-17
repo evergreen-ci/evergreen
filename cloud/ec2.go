@@ -1489,10 +1489,17 @@ func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*ho
 			{ResourceType: aws.String(ec2.ResourceTypeVolume), Tags: volumeTags},
 		},
 	}
-	// Iops is required for io1.
-	if volume.Type == VolumeTypeIo1 {
+
+	if volume.Throughput > 0 {
+		input.Throughput = aws.Int64(int64(volume.Throughput))
+	}
+
+	if volume.IOPS > 0 {
+		input.Iops = aws.Int64(int64(volume.IOPS))
+	} else if volume.Type == VolumeTypeIo1 { // Iops is required for io1.
 		input.Iops = aws.Int64(int64(defaultIops))
 	}
+
 	resp, err := m.client.CreateVolume(ctx, input)
 
 	if err != nil {
