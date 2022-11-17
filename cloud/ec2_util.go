@@ -73,6 +73,36 @@ var (
 	VolumeTypeKey  = bsonutil.MustHaveTag(MountPoint{}, "VolumeType")
 )
 
+var (
+	volumeThroughputTypes = []string{VolumeTypeGp3}
+	volumeThroughputMin   = map[string]int{
+		VolumeTypeGp3: 125,
+	}
+	volumeThroughputMax = map[string]int{
+		VolumeTypeGp3: 1000,
+	}
+	volumeThroughputRatio = map[string]float64{
+		VolumeTypeGp3: 0.25,
+	}
+
+	volumeIOPSTypes = []string{
+		VolumeTypeGp3,
+		VolumeTypeIo1,
+	}
+	volumeIOPSMin = map[string]int{
+		VolumeTypeGp3: 3000,
+		VolumeTypeIo1: 100,
+	}
+	volumeIOPSMax = map[string]int{
+		VolumeTypeGp3: 16000,
+		VolumeTypeIo1: 64000,
+	}
+	volumeIOPSRatio = map[string]int{
+		VolumeTypeGp3: 500,
+		VolumeTypeIo1: 50,
+	}
+)
+
 // AztoRegion takes an availability zone and returns the region id.
 func AztoRegion(az string) string {
 	// an amazon region is just the availability zone minus the final letter
@@ -543,7 +573,53 @@ func ValidVolumeOptions(v *host.Volume, s *evergreen.Settings) error {
 
 	_, err := getSubnetForZone(s.Providers.AWS.Subnets, v.AvailabilityZone)
 	catcher.Add(err)
+
+	validateVolumeIOPS(v)
+	validateVolumeThroughput(v)
+
 	return catcher.Resolve()
+}
+
+func validateVolumeIOPS(v *host.Volume) {
+	if !utility.StringSliceContains(volumeIOPSTypes, v.Type) {
+		v.IOPS = 0
+		return
+	}
+
+	// IOPS can never be less than the type's minimum.
+	if v.IOPS < volumeIOPSMin[v.Type] {
+		v.IOPS = volumeIOPSMin[v.Type]
+		return
+	}
+
+	// IOPS is the minimum of the configured IOPS, the maximum allowed for the volume size, and the type maximum.
+	if maxForSize := volumeIOPSRatio[v.Type] * v.Size; v.IOPS > maxForSize {
+		v.IOPS = maxForSize
+	}
+	if v.IOPS > volumeIOPSMax[v.Type] {
+		v.IOPS = volumeIOPSMax[v.Type]
+	}
+}
+
+func validateVolumeThroughput(v *host.Volume) {
+	if !utility.StringSliceContains(volumeThroughputTypes, v.Type) {
+		v.Throughput = 0
+		return
+	}
+
+	// Throughput can never be less than the type's minimum.
+	if v.Throughput < volumeThroughputMin[v.Type] {
+		v.Throughput = volumeThroughputMin[v.Type]
+		return
+	}
+
+	// Throughput is the minimum of the configured throughput, the maximum allowed for the volume's IOPS, and the type maximum.
+	if maxForIOPS := int(volumeThroughputRatio[v.Type] * float64(v.IOPS)); v.Throughput > maxForIOPS {
+		v.Throughput = maxForIOPS
+	}
+	if v.Throughput > volumeThroughputMax[v.Type] {
+		v.Throughput = volumeThroughputMax[v.Type]
+	}
 }
 
 func getSubnetForZone(subnets []evergreen.Subnet, zone string) (string, error) {
@@ -594,4 +670,30 @@ func ModifyVolumeBadRequest(err error) bool {
 // not.
 func IsEC2InstanceID(id string) bool {
 	return strings.HasPrefix(id, "i-")
+}
+
+// Gp2EquivalentThroughputForGp3 returns a throughput value for gp3 volumes that's at least
+// equivalent to the throughput of gp2 volumes.
+// See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/general-purpose.html for more information.
+func Gp2EquivalentThroughputForGp3(volumeSize int) int {
+	if volumeSize <= 170 {
+		return 128
+	}
+	return 250
+}
+
+// Gp2EquivalentIOPSForGp3 returns an IOPS value for gp3 volumes that's at least
+// equivalent to the IOPS of gp2 volumes.
+// See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/general-purpose.html for more information.
+func Gp2EquivalentIOPSForGp3(volumeSize int) int {
+	iops := volumeSize * 3
+
+	if volumeSize <= 1000 {
+		iops = 3000
+	}
+	if iops >= 16000 {
+		iops = 16000
+	}
+
+	return iops
 }

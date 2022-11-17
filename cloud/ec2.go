@@ -242,7 +242,7 @@ const (
 
 const (
 	VolumeTypeStandard = "standard"
-	VolumeTypeIo2      = "io1"
+	VolumeTypeIo1      = "io1"
 	VolumeTypeGp3      = "gp3"
 	VolumeTypeGp2      = "gp2"
 	VolumeTypeSc1      = "sc1"
@@ -252,7 +252,7 @@ const (
 var (
 	ValidVolumeTypes = []string{
 		VolumeTypeStandard,
-		VolumeTypeIo2,
+		VolumeTypeIo1,
 		VolumeTypeGp3,
 		VolumeTypeGp2,
 		VolumeTypeSc1,
@@ -1491,14 +1491,23 @@ func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*ho
 		{Key: aws.String(evergreen.TagExpireOn), Value: aws.String(expireInDays(evergreen.SpawnHostExpireDays))},
 	}
 
-	resp, err := m.client.CreateVolume(ctx, &ec2.CreateVolumeInput{
+	input := ec2.CreateVolumeInput{
 		AvailabilityZone: aws.String(volume.AvailabilityZone),
 		VolumeType:       aws.String(volume.Type),
 		Size:             aws.Int64(int64(volume.Size)),
 		TagSpecifications: []*ec2.TagSpecification{
 			{ResourceType: aws.String(ec2.ResourceTypeVolume), Tags: volumeTags},
 		},
-	})
+	}
+
+	if volume.Throughput > 0 {
+		input.Throughput = aws.Int64(int64(volume.Throughput))
+	}
+	if volume.IOPS > 0 {
+		input.Iops = aws.Int64(int64(volume.IOPS))
+	}
+
+	resp, err := m.client.CreateVolume(ctx, &input)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "creating volume in client")
