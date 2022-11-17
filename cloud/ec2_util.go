@@ -543,7 +543,6 @@ func ValidVolumeOptions(v *host.Volume, s *evergreen.Settings) error {
 
 	_, err := getSubnetForZone(s.Providers.AWS.Subnets, v.AvailabilityZone)
 	catcher.Add(err)
-
 	return catcher.Resolve()
 }
 
