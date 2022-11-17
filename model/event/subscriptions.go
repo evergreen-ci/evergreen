@@ -22,7 +22,7 @@ const (
 	SubscriptionsCollection = "subscriptions"
 )
 
-//nolint: deadcode, megacheck, unused
+// nolint: deadcode, megacheck, unused
 var (
 	subscriptionIDKey             = bsonutil.MustHaveTag(Subscription{}, "ID")
 	subscriptionResourceTypeKey   = bsonutil.MustHaveTag(Subscription{}, "ResourceType")
@@ -75,9 +75,12 @@ const (
 	ObjectPatch   = "patch"
 
 	TriggerOutcome                   = "outcome"
+	TriggerFamilyOutcome             = "family-outcome"
 	TriggerGithubCheckOutcome        = "github-check-outcome"
 	TriggerFailure                   = "failure"
+	TriggerFamilyFailure             = "family-failure"
 	TriggerSuccess                   = "success"
+	TriggerFamilySuccess             = "family-success"
 	TriggerRegression                = "regression"
 	TriggerExceedsDuration           = "exceeds-duration"
 	TriggerRuntimeChangeByPercent    = "runtime-change"
@@ -734,6 +737,7 @@ func CreateOrUpdateGeneralSubscription(resourceType string, id string,
 
 		sub.OwnerType = OwnerTypePerson
 		sub.Owner = user
+
 		if err := sub.Upsert(); err != nil {
 			return nil, errors.Wrap(err, "upserting subscription")
 		}
@@ -805,7 +809,7 @@ func NewParentPatchSubscription(id string, sub Subscriber) Subscription {
 }
 
 func NewPatchOutcomeSubscriptionByOwner(owner string, sub Subscriber) Subscription {
-	return NewSubscriptionByOwner(owner, sub, ResourceTypePatch, TriggerOutcome)
+	return NewSubscriptionByOwner(owner, sub, ResourceTypePatch, TriggerFamilyOutcome)
 }
 
 func NewSpawnhostExpirationSubscription(owner string, sub Subscriber) Subscription {
