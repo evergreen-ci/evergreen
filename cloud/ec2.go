@@ -1496,7 +1496,7 @@ func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*ho
 
 	if volume.IOPS > 0 {
 		input.Iops = aws.Int64(int64(volume.IOPS))
-	} else if volume.Type == VolumeTypeIo1 {
+	} else if volume.Type == VolumeTypeIo1 { // Iops is required for io1.
 		input.Iops = aws.Int64(int64(defaultIops))
 	}
 
