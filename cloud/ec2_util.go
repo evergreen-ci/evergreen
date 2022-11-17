@@ -73,36 +73,6 @@ var (
 	VolumeTypeKey  = bsonutil.MustHaveTag(MountPoint{}, "VolumeType")
 )
 
-var (
-	volumeThroughputTypes = []string{VolumeTypeGp3}
-	volumeThroughputMin   = map[string]int{
-		VolumeTypeGp3: 125,
-	}
-	volumeThroughputMax = map[string]int{
-		VolumeTypeGp3: 1000,
-	}
-	volumeThroughputRatio = map[string]float64{
-		VolumeTypeGp3: 0.25,
-	}
-
-	volumeIOPSTypes = []string{
-		VolumeTypeGp3,
-		VolumeTypeIo1,
-	}
-	volumeIOPSMin = map[string]int{
-		VolumeTypeGp3: 3000,
-		VolumeTypeIo1: 100,
-	}
-	volumeIOPSMax = map[string]int{
-		VolumeTypeGp3: 16000,
-		VolumeTypeIo1: 64000,
-	}
-	volumeIOPSRatio = map[string]int{
-		VolumeTypeGp3: 500,
-		VolumeTypeIo1: 50,
-	}
-)
-
 // AztoRegion takes an availability zone and returns the region id.
 func AztoRegion(az string) string {
 	// an amazon region is just the availability zone minus the final letter
@@ -574,58 +544,7 @@ func ValidVolumeOptions(v *host.Volume, s *evergreen.Settings) error {
 	_, err := getSubnetForZone(s.Providers.AWS.Subnets, v.AvailabilityZone)
 	catcher.Add(err)
 
-	validateVolumeIOPS(v)
-	validateVolumeThroughput(v)
-
 	return catcher.Resolve()
-}
-
-func validateVolumeIOPS(v *host.Volume) {
-	if v.IOPS == 0 {
-		return
-	}
-
-	if !utility.StringSliceContains(volumeIOPSTypes, v.Type) {
-		v.IOPS = 0
-		return
-	}
-
-	// IOPS is the minimum of the configured IOPS, the maximum allowed for the volume size, and the type maximum.
-	if maxForSize := volumeIOPSRatio[v.Type] * v.Size; v.IOPS > maxForSize {
-		v.IOPS = maxForSize
-	}
-	if v.IOPS > volumeIOPSMax[v.Type] {
-		v.IOPS = volumeIOPSMax[v.Type]
-	}
-
-	// IOPS can never be less than the type's minimum.
-	if v.IOPS < volumeIOPSMin[v.Type] {
-		v.IOPS = volumeIOPSMin[v.Type]
-	}
-}
-
-func validateVolumeThroughput(v *host.Volume) {
-	if v.Throughput == 0 {
-		return
-	}
-
-	if !utility.StringSliceContains(volumeThroughputTypes, v.Type) {
-		v.Throughput = 0
-		return
-	}
-
-	// Throughput is the minimum of the configured throughput, the maximum allowed for the volume's IOPS, and the type maximum.
-	if maxForIOPS := int(volumeThroughputRatio[v.Type] * float64(v.IOPS)); v.Throughput > maxForIOPS {
-		v.Throughput = maxForIOPS
-	}
-	if v.Throughput > volumeThroughputMax[v.Type] {
-		v.Throughput = volumeThroughputMax[v.Type]
-	}
-
-	// Throughput can never be less than the type's minimum.
-	if v.Throughput < volumeThroughputMin[v.Type] {
-		v.Throughput = volumeThroughputMin[v.Type]
-	}
 }
 
 func getSubnetForZone(subnets []evergreen.Subnet, zone string) (string, error) {
