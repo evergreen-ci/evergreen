@@ -47,7 +47,7 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Unmarshall project and get project variants and tasks
-	variantsAndTasksFromProject, err := model.GetVariantsAndTasksFromProject(r.Context(), projCtx.Patch.PatchedParserProject, projCtx.Patch.Project)
+	variantsAndTasksFromProject, err := model.GetVariantsAndTasksFromPatchProject(r.Context(), projCtx.Patch)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
