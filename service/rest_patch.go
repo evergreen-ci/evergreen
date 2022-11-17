@@ -67,6 +67,7 @@ func (restapi restAPI) getPatchConfig(w http.ResponseWriter, r *http.Request) {
 	if projCtx.Patch.PatchedParserProject != "" {
 		_, err := w.Write([]byte(projCtx.Patch.PatchedParserProject))
 		grip.Warning(errors.Wrap(err, "writing patched parser project"))
+		return
 	}
 	pp, err := model.ParserProjectFindOneById(projCtx.Patch.Version)
 	if pp != nil {
