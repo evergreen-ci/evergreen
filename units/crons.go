@@ -516,7 +516,7 @@ func PopulateAliasSchedulerJobs(env evergreen.Environment) amboy.QueueOperation 
 		}
 		catcher := grip.NewBasicCatcher()
 
-		lastPlanned, err := model.FindTaskAliasQueueLastGenerationTimes()
+		lastPlanned, err := model.FindTaskSecondaryQueueLastGenerationTimes()
 		catcher.Add(err)
 
 		// find all active distros

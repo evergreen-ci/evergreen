@@ -37,19 +37,11 @@ const (
 
 	HostExternalUserName = "external"
 
-	HostStatusSuccess = "success"
-	HostStatusFailed  = "failed"
-
 	// Task Statuses used in the database models
 
 	// TaskInactive is not assigned to any new tasks, but can be found
 	// in the database and is used in the UI.
 	TaskInactive = "inactive"
-
-	// TaskUnstarted is assigned to a display task after cleaning up one of
-	// its execution tasks. This indicates that the display task is
-	// pending a rerun
-	TaskUnstarted = "unstarted"
 
 	// TaskUndispatched indicates either:
 	//  1. a task is not scheduled to run (when Task.Activated == false)
@@ -317,7 +309,6 @@ var TaskStatuses = []string{
 	TaskWillRun,
 	TaskUnscheduled,
 	TaskUndispatched,
-	TaskUnstarted,
 	TaskDispatched,
 }
 
@@ -345,7 +336,6 @@ var TaskFailureStatuses = append([]string{TaskFailed}, TaskNonGenericFailureStat
 
 var TaskUnstartedStatuses = []string{
 	TaskInactive,
-	TaskUnstarted,
 	TaskUndispatched,
 }
 
@@ -765,7 +755,6 @@ var (
 	// TaskUncompletedStatuses are all statuses that do not represent a finished state.
 	TaskUncompletedStatuses = []string{
 		TaskStarted,
-		TaskUnstarted,
 		TaskUndispatched,
 		TaskDispatched,
 		TaskConflict,

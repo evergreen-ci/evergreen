@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -9,13 +10,14 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
+	"github.com/google/go-github/v34/github"
 	"github.com/mongodb/anser/bsonutil"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -228,12 +230,6 @@ func (v *Version) GetTimeSpent() (time.Duration, time.Duration, error) {
 func (v *Version) MarkFinished(status string, finishTime time.Time) error {
 	v.Status = status
 	v.FinishTime = finishTime
-	grip.DebugWhen(v.Author == "didier.nadeau", message.Fields{
-		"message":     "Version MarkFinished",
-		"ticket":      "EVG-17305",
-		"version":     v.Id,
-		"statusInput": status,
-	})
 	return VersionUpdateOne(
 		bson.M{VersionIdKey: v.Id},
 		bson.M{"$set": bson.M{
@@ -599,6 +595,89 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 		return nil, errors.Wrap(err, "aggregating versions and builds")
 	}
 	return res, nil
+}
+
+// constructManifest will construct a manifest from the given project and version.
+func constructManifest(v *Version, proj *Project, projectRef *ProjectRef, settings *evergreen.Settings) (*manifest.Manifest, error) {
+	if len(proj.Modules) == 0 {
+		return nil, nil
+	}
+	newManifest := &manifest.Manifest{
+		Id:          v.Id,
+		Revision:    v.Revision,
+		ProjectName: v.Identifier,
+		Branch:      projectRef.Branch,
+		IsBase:      v.Requester == evergreen.RepotrackerVersionRequester,
+	}
+	token, err := settings.GetGithubOauthToken()
+	if err != nil {
+		return nil, errors.Wrap(err, "getting github oauth token")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var gitCommit *github.RepositoryCommit
+	modules := map[string]*manifest.Module{}
+	for _, module := range proj.Modules {
+		var sha, url string
+		owner, repo := module.GetRepoOwnerAndName()
+		if module.Ref == "" {
+			var commit *github.RepositoryCommit
+			commit, err = thirdparty.GetCommitEvent(ctx, token, projectRef.Owner, projectRef.Repo, v.Revision)
+			if err != nil {
+				return nil, errors.Wrapf(err, "can't get commit '%s' on '%s/%s'", v.Revision, projectRef.Owner, projectRef.Repo)
+			}
+			if commit == nil || commit.Commit == nil || commit.Commit.Committer == nil {
+				return nil, errors.New("malformed GitHub commit response")
+			}
+			// If this is a mainline commit, retrieve the module's commit from the time of the mainline commit.
+			// Otherwise, retrieve the module's commit from the time of the patch creation.
+			revisionTime := time.Unix(0, 0)
+			if !evergreen.IsPatchRequester(v.Requester) {
+				revisionTime = commit.Commit.Committer.GetDate()
+			}
+			var branchCommits []*github.RepositoryCommit
+			branchCommits, _, err = thirdparty.GetGithubCommits(ctx, token, owner, repo, module.Branch, revisionTime, 0)
+			if err != nil {
+				return nil, errors.Wrapf(err, "retrieving git branch for module '%s'", module.Name)
+			}
+			if len(branchCommits) > 0 {
+				sha = branchCommits[0].GetSHA()
+				url = branchCommits[0].GetURL()
+			}
+		} else {
+			sha = module.Ref
+			gitCommit, err = thirdparty.GetCommitEvent(ctx, token, owner, repo, module.Ref)
+			if err != nil {
+				return nil, errors.Wrapf(err, "retrieving getting git commit for module %s with hash %s", module.Name, module.Ref)
+			}
+			url = gitCommit.GetURL()
+		}
+
+		modules[module.Name] = &manifest.Module{
+			Branch:   module.Branch,
+			Revision: sha,
+			Repo:     repo,
+			Owner:    owner,
+			URL:      url,
+		}
+
+	}
+	newManifest.Modules = modules
+	return newManifest, nil
+}
+
+// CreateManifest inserts a newly constructed manifest into the DB.
+func CreateManifest(v *Version, proj *Project, projectRef *ProjectRef, settings *evergreen.Settings) (*manifest.Manifest, error) {
+	newManifest, err := constructManifest(v, proj, projectRef, settings)
+	if err != nil {
+		return nil, errors.Wrap(err, "constructing manifest")
+	}
+	if newManifest == nil {
+		return nil, nil
+	}
+	_, err = newManifest.TryInsert()
+	return newManifest, errors.Wrap(err, "inserting manifest")
 }
 
 type VersionsByCreateTime []Version

@@ -232,6 +232,8 @@ const (
 	SpotStatusFailed   = "failed"
 
 	EC2ErrorSpotRequestNotFound = "InvalidSpotInstanceRequestID.NotFound"
+
+	defaultIops = 3000
 )
 
 const (
@@ -937,7 +939,7 @@ func addPublicKey(ctx context.Context, h *host.Host, key string) error {
 }
 
 // GetInstanceStatuses returns the current status of a slice of EC2 instances.
-func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host) ([]CloudStatus, error) {
+func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host) (map[string]CloudStatus, error) {
 	if err := m.client.Create(m.credentials, m.region); err != nil {
 		return nil, errors.Wrap(err, "creating client")
 	}
@@ -970,20 +972,24 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 		if err != nil {
 			return nil, errors.Wrap(err, "describing spot instances")
 		}
-		if len(spotOut.SpotInstanceRequests) != len(spotHosts) {
-			return nil, errors.New("programmer error: length of spot instance requests != length of spot host IDs")
-		}
 		spotInstanceRequestsMap := map[string]*ec2.SpotInstanceRequest{}
 		for i := range spotOut.SpotInstanceRequests {
 			spotInstanceRequestsMap[*spotOut.SpotInstanceRequests[i].SpotInstanceRequestId] = spotOut.SpotInstanceRequests[i]
 		}
 		for i := range spotHosts {
-			if spotInstanceRequestsMap[spotHosts[i].Id].InstanceId == nil || *spotInstanceRequestsMap[spotHosts[i].Id].InstanceId == "" {
-				hostToStatusMap[spotHosts[i].Id] = cloudStatusFromSpotStatus(*spotInstanceRequestsMap[spotHosts[i].Id].State)
+			spotHostID := spotHosts[i].Id
+			spotRequest, ok := spotInstanceRequestsMap[spotHostID]
+			if !ok {
+				hostToStatusMap[spotHostID] = StatusNonExistent
 				continue
 			}
-			hostsToCheck = append(hostsToCheck, spotInstanceRequestsMap[spotHosts[i].Id].InstanceId)
-			instanceIdToHostMap[*spotInstanceRequestsMap[spotHosts[i].Id].InstanceId] = spotHosts[i]
+			instanceID := aws.StringValue(spotRequest.InstanceId)
+			if instanceID == "" {
+				hostToStatusMap[spotHostID] = cloudStatusFromSpotStatus(*spotRequest.State)
+				continue
+			}
+			hostsToCheck = append(hostsToCheck, &instanceID)
+			instanceIdToHostMap[instanceID] = spotHosts[i]
 		}
 	}
 
@@ -1005,18 +1011,8 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 		for i := range hostsToCheck {
 			instance, ok := reservationsMap[*hostsToCheck[i]]
 			if !ok {
-				// Terminate an unknown host in the db
-				for _, h := range hosts {
-					if h.Id == *hostsToCheck[i] {
-						grip.Error(message.WrapError(h.Terminate(evergreen.User, "host is missing from DescribeInstances response"), message.Fields{
-							"message":       "can't mark instance as terminated",
-							"host_id":       h.Id,
-							"host_provider": h.Distro.Provider,
-							"distro":        h.Distro.Id,
-						}))
-					}
-				}
-				return nil, errors.Errorf("host '%s' not included in DescribeInstances response", *hostsToCheck[i])
+				hostToStatusMap[*hostsToCheck[i]] = StatusNonExistent
+				continue
 			}
 			status := ec2StatusToEvergreenStatus(*instance.State.Name)
 			if status == StatusRunning {
@@ -1029,12 +1025,7 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 		}
 	}
 
-	// Populate cloud statuses
-	statuses := []CloudStatus{}
-	for _, h := range hosts {
-		statuses = append(statuses, hostToStatusMap[h.Id])
-	}
-	return statuses, nil
+	return hostToStatusMap, nil
 }
 
 // GetInstanceStatus returns the current status of an EC2 instance.
@@ -1222,7 +1213,7 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 
 	if len(out.StoppingInstances) == 1 {
 		instance := out.StoppingInstances[0]
-		status := ec2StatusToEvergreenStatus(utility.FromStringPtr(instance.CurrentState.Name))
+		status := ec2StatusToEvergreenStatus(aws.StringValue(instance.CurrentState.Name))
 		switch status {
 		case StatusStopping:
 			grip.Error(message.WrapError(h.SetStopping(user), message.Fields{
@@ -1490,8 +1481,7 @@ func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*ho
 		{Key: aws.String(evergreen.TagOwner), Value: aws.String(volume.CreatedBy)},
 		{Key: aws.String(evergreen.TagExpireOn), Value: aws.String(expireInDays(evergreen.SpawnHostExpireDays))},
 	}
-
-	input := ec2.CreateVolumeInput{
+	input := &ec2.CreateVolumeInput{
 		AvailabilityZone: aws.String(volume.AvailabilityZone),
 		VolumeType:       aws.String(volume.Type),
 		Size:             aws.Int64(int64(volume.Size)),
@@ -1503,11 +1493,14 @@ func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*ho
 	if volume.Throughput > 0 {
 		input.Throughput = aws.Int64(int64(volume.Throughput))
 	}
+
 	if volume.IOPS > 0 {
 		input.Iops = aws.Int64(int64(volume.IOPS))
+	} else if volume.Type == VolumeTypeIo1 {
+		input.Iops = aws.Int64(int64(defaultIops))
 	}
 
-	resp, err := m.client.CreateVolume(ctx, &input)
+	resp, err := m.client.CreateVolume(ctx, input)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "creating volume in client")

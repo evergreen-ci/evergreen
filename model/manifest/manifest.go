@@ -7,7 +7,7 @@ import (
 
 const Collection = "manifest"
 
-// Manifest is a representation of the modules associated with the a version.
+// Manifest is a representation of the modules associated with a version.
 // Id is the version id,
 // Revision is the revision of the version on the project
 // ProjectName is the Project Id,
