@@ -199,10 +199,10 @@ func TestGenerateTasks(t *testing.T) {
 		Status:                evergreen.TaskStarted,
 	}
 	sampleDistros := []distro.Distro{
-		{
+		distro.Distro{
 			Id: "ubuntu1604-test",
 		},
-		{
+		distro.Distro{
 			Id: "archlinux-test",
 		},
 	}
@@ -240,7 +240,7 @@ func TestGenerateTasks(t *testing.T) {
 	// Make sure first project was not changed
 	v, err := model.VersionFindOneId("random_version")
 	assert.NoError(err)
-	p, _, err := model.FindAndTranslateProjectForVersion(v.Id, "mci")
+	p, _, err := model.FindAndTranslateProjectForVersion(v, "mci")
 	assert.NoError(err)
 	require.NotNil(p)
 	assert.Len(p.Tasks, 2)
@@ -251,7 +251,7 @@ func TestGenerateTasks(t *testing.T) {
 	// Verify second project was changed
 	v, err = model.VersionFindOneId("sample_version")
 	assert.NoError(err)
-	p, _, err = model.FindAndTranslateProjectForVersion(v.Id, "mci")
+	p, _, err = model.FindAndTranslateProjectForVersion(v, "mci")
 	assert.NoError(err)
 	require.NotNil(p)
 	assert.Len(p.Tasks, 6)
@@ -361,7 +361,7 @@ buildvariants:
 		Requester:             evergreen.RepotrackerVersionRequester,
 	}
 	sampleDistros := []distro.Distro{
-		{
+		distro.Distro{
 			Id: "ubuntu1604-test",
 		},
 	}

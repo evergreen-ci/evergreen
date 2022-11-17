@@ -122,6 +122,7 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 				"project":      patchDoc.Project,
 				"alias":        patchDoc.Alias,
 				"patch_id":     patchDoc.Id.Hex(),
+				"config_size":  len(patchDoc.PatchedParserProject) + len(patchDoc.PatchedProjectConfig),
 				"num_modules":  len(patchDoc.Patches),
 			}))
 		}
@@ -175,7 +176,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		catcher.Add(err)
 
 	case patch.TriggerIntentType:
-		catcher.Add(j.buildTriggerPatchDoc(patchDoc))
+		catcher.Add(j.buildTriggerPatchDoc(ctx, patchDoc))
 	default:
 		return errors.Errorf("intent type '%s' is unknown", j.IntentType)
 	}
@@ -297,7 +298,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			}
 		}
 	}
-	if err = j.verifyValidAlias(pref.Id, patchDoc.PatchedProjectConfig); err != nil {
+	if err = j.verifyValidAlias(pref.Id, patchDoc); err != nil {
 		return err
 	}
 
@@ -853,7 +854,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 	return isMember, nil
 }
 
-func (j *patchIntentProcessor) buildTriggerPatchDoc(patchDoc *patch.Patch) error {
+func (j *patchIntentProcessor) buildTriggerPatchDoc(ctx context.Context, patchDoc *patch.Patch) error {
 	defer func() {
 		grip.Error(message.WrapError(j.intent.SetProcessed(), message.Fields{
 			"message":     "could not mark patch intent as processed",
@@ -914,15 +915,15 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(patchDoc *patch.Patch) error
 	return nil
 }
 
-func (j *patchIntentProcessor) verifyValidAlias(projectId string, configStr string) error {
+func (j *patchIntentProcessor) verifyValidAlias(projectId string, patchDoc *patch.Patch) error {
 	alias := j.intent.GetAlias()
 	if alias == "" {
 		return nil
 	}
 	var projectConfig *model.ProjectConfig
-	if configStr != "" {
+	if patchDoc.PatchedProjectConfig != "" {
 		var err error
-		projectConfig, err = model.CreateProjectConfig([]byte(configStr), "")
+		projectConfig, err = model.CreateProjectConfig([]byte(patchDoc.PatchedProjectConfig), "")
 		if err != nil {
 			return errors.Wrap(err, "creating project config")
 		}
@@ -931,8 +932,10 @@ func (j *patchIntentProcessor) verifyValidAlias(projectId string, configStr stri
 	if err != nil {
 		return errors.Wrapf(err, "retrieving aliases for project '%s'", projectId)
 	}
-	if len(aliases) > 0 {
-		return nil
+	for _, a := range aliases {
+		if a.Alias == alias {
+			return nil
+		}
 	}
 	return errors.Errorf("alias '%s' could not be found on project '%s'", alias, projectId)
 }

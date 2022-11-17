@@ -528,7 +528,7 @@ func (p *ProjectRef) GetPatchTriggerAlias(aliasName string) (patch.PatchTriggerD
 // MergeWithProjectConfig looks up the project config with the given project ref id and modifies
 // the project ref scanning for any properties that can be set on both project ref and project parser.
 // Any values that are set at the project config level will be set on the project ref IF they are not set on
-// the project ref. If the version isn't specified, we get the latest config.
+// the project ref.
 func (p *ProjectRef) MergeWithProjectConfig(version string) (err error) {
 	projectConfig, err := FindProjectConfigForProjectOrVersion(p.Id, version)
 	if err != nil {

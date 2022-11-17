@@ -484,32 +484,17 @@ func (pss *parserStringSlice) UnmarshalYAML(unmarshal func(interface{}) error) e
 	return nil
 }
 
-// FindAndTranslateProjectForPatch translates a parser project for a patch into a project.
-// This assumes that the version may not exist yet; otherwise FindAndTranslateProjectForVersion is equivalent.
-func FindAndTranslateProjectForPatch(ctx context.Context, p *patch.Patch) (*Project, *ParserProject, error) {
-	if p.PatchedParserProject == "" {
-		return FindAndTranslateProjectForVersion(p.Version, p.Project)
-	}
-	project := &Project{}
-	pp, err := LoadProjectInto(ctx, []byte(p.PatchedParserProject), nil, p.Project, project)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "unmarshalling project config")
-	}
-	return project, pp, nil
-}
-
-// FindAndTranslateProjectForVersion translates a parser project for a version into a Project.
-// Also sets the project ID.
-func FindAndTranslateProjectForVersion(versionId, projectId string) (*Project, *ParserProject, error) {
-	pp, err := ParserProjectFindOneById(versionId)
+// FindAndTranslateProjectForVersion translates a parser project for a version into a Project
+func FindAndTranslateProjectForVersion(v *Version, id string) (*Project, *ParserProject, error) {
+	pp, err := ParserProjectFindOneById(v.Id)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "finding parser project")
 	}
-	pp.Identifier = utility.ToStringPtr(projectId)
+	pp.Identifier = utility.ToStringPtr(id)
 	var p *Project
 	p, err = TranslateProject(pp)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "translating parser project '%s'", versionId)
+		return nil, nil, errors.Wrapf(err, "translating parser project '%s'", v.Id)
 	}
 	return p, pp, err
 }
@@ -527,12 +512,12 @@ func LoadProjectInfoForVersion(v *Version, id string) (ProjectInfo, error) {
 	}
 	var pc *ProjectConfig
 	if pRef.IsVersionControlEnabled() {
-		pc, err = FindProjectConfigById(v.Id)
+		pc, err = FindProjectConfigForProjectOrVersion(v.Identifier, v.Id)
 		if err != nil {
 			return ProjectInfo{}, errors.Wrap(err, "finding project config")
 		}
 	}
-	p, pp, err := FindAndTranslateProjectForVersion(v.Id, id)
+	p, pp, err := FindAndTranslateProjectForVersion(v, id)
 	if err != nil {
 		return ProjectInfo{}, errors.Wrap(err, "translating project")
 	}
