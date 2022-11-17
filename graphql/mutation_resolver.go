@@ -626,6 +626,9 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 		opts.AttachVolume = *spawnHost.Volume
 	}
 	if spawnHost.PublicKey != nil {
+		if h.Status != evergreen.HostRunning {
+			return nil, InputValidationError.Send(ctx, "Host must be running to add a public key")
+		}
 		if utility.FromBoolPtr(spawnHost.SavePublicKey) {
 			if err = savePublicKey(ctx, *spawnHost.PublicKey); err != nil {
 				return nil, err
