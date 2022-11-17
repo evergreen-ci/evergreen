@@ -581,14 +581,12 @@ func ValidVolumeOptions(v *host.Volume, s *evergreen.Settings) error {
 }
 
 func validateVolumeIOPS(v *host.Volume) {
-	if !utility.StringSliceContains(volumeIOPSTypes, v.Type) {
-		v.IOPS = 0
+	if v.IOPS == 0 {
 		return
 	}
 
-	// IOPS can never be less than the type's minimum.
-	if v.IOPS < volumeIOPSMin[v.Type] {
-		v.IOPS = volumeIOPSMin[v.Type]
+	if !utility.StringSliceContains(volumeIOPSTypes, v.Type) {
+		v.IOPS = 0
 		return
 	}
 
@@ -599,17 +597,20 @@ func validateVolumeIOPS(v *host.Volume) {
 	if v.IOPS > volumeIOPSMax[v.Type] {
 		v.IOPS = volumeIOPSMax[v.Type]
 	}
+
+	// IOPS can never be less than the type's minimum.
+	if v.IOPS < volumeIOPSMin[v.Type] {
+		v.IOPS = volumeIOPSMin[v.Type]
+	}
 }
 
 func validateVolumeThroughput(v *host.Volume) {
-	if !utility.StringSliceContains(volumeThroughputTypes, v.Type) {
-		v.Throughput = 0
+	if v.Throughput == 0 {
 		return
 	}
 
-	// Throughput can never be less than the type's minimum.
-	if v.Throughput < volumeThroughputMin[v.Type] {
-		v.Throughput = volumeThroughputMin[v.Type]
+	if !utility.StringSliceContains(volumeThroughputTypes, v.Type) {
+		v.Throughput = 0
 		return
 	}
 
@@ -619,6 +620,11 @@ func validateVolumeThroughput(v *host.Volume) {
 	}
 	if v.Throughput > volumeThroughputMax[v.Type] {
 		v.Throughput = volumeThroughputMax[v.Type]
+	}
+
+	// Throughput can never be less than the type's minimum.
+	if v.Throughput < volumeThroughputMin[v.Type] {
+		v.Throughput = volumeThroughputMin[v.Type]
 	}
 }
 
