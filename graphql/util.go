@@ -276,6 +276,14 @@ func generateBuildVariants(versionId string, buildVariantOpts BuildVariantOption
 	if buildVariantOpts.IncludeBaseTasks == nil {
 		buildVariantOpts.IncludeBaseTasks = utility.ToBoolPtr(true)
 	}
+	v, err := model.VersionFindOneId(versionId)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error finding version %s", versionId)
+	}
+	if v == nil {
+		return nil, errors.Errorf("version %s not found", versionId)
+	}
+
 	opts := task.GetTasksByVersionOptions{
 		Statuses:                       getValidTaskStatusesFilter(buildVariantOpts.Statuses),
 		Variants:                       buildVariantOpts.Variants,
@@ -283,7 +291,8 @@ func generateBuildVariants(versionId string, buildVariantOpts BuildVariantOption
 		Sorts:                          defaultSort,
 		IncludeBaseTasks:               utility.FromBoolPtr(buildVariantOpts.IncludeBaseTasks),
 		IncludeBuildVariantDisplayName: true,
-		IncludeInactiveTasks:           utility.FromBoolPtr(buildVariantOpts.IncludeInactiveTasks),
+		// Do not fetch inactive tasks for patches. This is because the UI does not display inactive tasks for patches.
+		IncludeInactiveTasks: !evergreen.IsPatchRequester(v.Requester),
 	}
 
 	start := time.Now()

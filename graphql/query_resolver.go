@@ -1068,7 +1068,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 				TaskNames:            buildVariantOptions.Tasks,
 				Variants:             buildVariantOptions.Variants,
 				Statuses:             getValidTaskStatusesFilter(buildVariantOptions.Statuses),
-				IncludeInactiveTasks: utility.FromBoolPtr(buildVariantOptions.IncludeInactiveTasks),
+				IncludeInactiveTasks: true,
 			}
 			hasTasks, err := task.HasMatchingTasks(v.Id, opts)
 			if err != nil {

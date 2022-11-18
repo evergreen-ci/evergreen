@@ -70,7 +70,7 @@ func (r *versionResolver) BuildVariants(ctx context.Context, obj *restModel.APIV
 		obj.Activated = version.Activated
 	}
 
-	if !utility.FromBoolPtr(options.IncludeInactiveTasks) && !utility.FromBoolPtr(obj.Activated) {
+	if evergreen.IsPatchRequester(utility.FromStringPtr(obj.Requester)) && !utility.FromBoolPtr(obj.Activated) {
 		return nil, nil
 	}
 	groupedBuildVariants, err := generateBuildVariants(utility.FromStringPtr(obj.Id), *options)
@@ -87,7 +87,7 @@ func (r *versionResolver) BuildVariantStats(ctx context.Context, obj *restModel.
 		Variants:                       options.Variants,
 		Statuses:                       options.Statuses,
 		IncludeBuildVariantDisplayName: true,
-		IncludeInactiveTasks:           utility.FromBoolPtr(options.IncludeInactiveTasks),
+		IncludeInactiveTasks:           !evergreen.IsPatchRequester(utility.FromStringPtr(obj.Requester)),
 	}
 	stats, err := task.GetGroupedTaskStatsByVersion(utility.FromStringPtr(obj.Id), opts)
 	if err != nil {
@@ -298,15 +298,16 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *restModel.APIVersion, 
 	}
 
 	opts := task.GetTasksByVersionOptions{
-		Statuses:                       getValidTaskStatusesFilter(options.Statuses),
-		BaseStatuses:                   getValidTaskStatusesFilter(options.BaseStatuses),
-		Variants:                       []string{variantParam},
-		TaskNames:                      []string{taskNameParam},
-		Page:                           pageParam,
-		Limit:                          limitParam,
-		Sorts:                          taskSorts,
-		IncludeBaseTasks:               true,
-		IncludeInactiveTasks:           utility.FromBoolPtr(options.IncludeEmptyActivation) || utility.FromBoolPtr(options.IncludeInactiveTasks),
+		Statuses:         getValidTaskStatusesFilter(options.Statuses),
+		BaseStatuses:     getValidTaskStatusesFilter(options.BaseStatuses),
+		Variants:         []string{variantParam},
+		TaskNames:        []string{taskNameParam},
+		Page:             pageParam,
+		Limit:            limitParam,
+		Sorts:            taskSorts,
+		IncludeBaseTasks: true,
+		// If the version is a patch, we want to include inactive tasks. Otherwise return it only if requested.
+		IncludeInactiveTasks:           !evergreen.IsPatchRequester(v.Requester) || utility.FromBoolPtr(options.IncludeEmptyActivation) || utility.FromBoolPtr(options.IncludeInactiveTasks),
 		IncludeBuildVariantDisplayName: true,
 		IsMainlineCommit:               !evergreen.IsPatchRequester(v.Requester),
 	}
@@ -357,7 +358,8 @@ func (r *versionResolver) TaskStatusStats(ctx context.Context, obj *restModel.AP
 		TaskNames:             options.Tasks,
 		Variants:              options.Variants,
 		Statuses:              getValidTaskStatusesFilter(options.Statuses),
-		IncludeInactiveTasks:  utility.FromBoolPtr(options.IncludeInactiveTasks),
+		// If the version is a patch, we don't want to include inactive tasks.
+		IncludeInactiveTasks: !evergreen.IsPatchRequester(utility.FromStringPtr(obj.Requester)),
 	}
 	if len(options.Variants) != 0 {
 		opts.IncludeBuildVariantDisplayName = true // we only need the buildVariantDisplayName if we plan on filtering on it.
