@@ -134,7 +134,7 @@ func addModuleToPatch(params *patchParams, args cli.Args, conf *ClientSettings,
 			fmt.Println(diffData.patchSummary)
 		}
 
-		if !confirm("This is a summary of the module patch to be submitted. Include this module's changes? (Y/n):", true) {
+		if !confirm("This is a summary of the module patch to be submitted. Include this module's changes?", true) {
 			return nil
 		}
 	}

@@ -159,7 +159,7 @@ func Patch() cli.Command {
 					return errors.Wrap(err, "confirming uncommitted changes")
 				}
 				if keepGoing && utility.StringSliceContains(params.Variants, "all") && utility.StringSliceContains(params.Tasks, "all") {
-					keepGoing = confirm(`For some projects, scheduling all tasks/variants may result in a very large patch build. Continue? (Y/n)`, true)
+					keepGoing = confirm(`For some projects, scheduling all tasks/variants may result in a very large patch build. Continue?`, true)
 				}
 				if !keepGoing {
 					return errors.New("patch aborted")

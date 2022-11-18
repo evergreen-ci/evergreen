@@ -146,7 +146,7 @@ func (p *patchParams) validateSubmission(diffData *localDiff) error {
 		return err
 	}
 	if !p.SkipConfirm && len(diffData.fullPatch) == 0 {
-		if !confirm("Patch submission is empty. Continue? (Y/n)", true) {
+		if !confirm("Patch submission is empty. Continue?", true) {
 			return errors.New("patch aborted")
 		}
 	} else if !p.SkipConfirm && diffData.patchSummary != "" {
@@ -155,7 +155,7 @@ func (p *patchParams) validateSubmission(diffData *localDiff) error {
 			grip.Info(diffData.log)
 		}
 
-		if !confirm("This is a summary of the patch to be submitted. Continue? (Y/n):", true) {
+		if !confirm("This is a summary of the patch to be submitted. Continue?", true) {
 			return errors.New("patch aborted")
 		}
 	}
@@ -581,13 +581,13 @@ func confirmUncommittedChanges(dir string, preserveCommits, includeUncommitedCha
 	}
 
 	if preserveCommits {
-		return confirm("Uncommitted changes are omitted from patches when commits are preserved. Continue? (y/N)", false), nil
+		return confirm("Uncommitted changes are omitted from patches when commits are preserved. Continue?", false), nil
 	}
 
 	if !includeUncommitedChanges {
 		return confirm(fmt.Sprintf(`Uncommitted changes are omitted from patches by default.
 Use the '--%s, -u' flag or set 'patch_uncommitted_changes: true' in your ~/.evergreen.yml file to include uncommitted changes.
-Continue? (Y/n)`, uncommittedChangesFlag), true), nil
+Continue?`, uncommittedChangesFlag), true), nil
 	}
 
 	return true, nil
