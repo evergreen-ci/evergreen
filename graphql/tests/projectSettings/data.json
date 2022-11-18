@@ -11,6 +11,7 @@
       "branch_name" : "main",
       "remote_path" : "evergreen.yml",
       "patching_disabled" : false,
+      "stepback_disabled" : false,
       "pr_testing_enabled" : true,
       "batch_time" : 2,
       "deactivate_previous" : true,

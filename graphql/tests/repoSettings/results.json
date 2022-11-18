@@ -17,6 +17,7 @@
               "githubChecksEnabled": false,
               "patchingDisabled": false,
               "prTestingEnabled": true,
+              "stepbackDisabled": false,
               "batchTime": 2,
               "gitTagAuthorizedUsers": [
                 "ablack12"

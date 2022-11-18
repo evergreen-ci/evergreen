@@ -18,6 +18,7 @@
               "periodicBuilds": null,
               "githubChecksEnabled": null,
               "patchingDisabled": false,
+              "stepbackDisabled": false,
               "prTestingEnabled": true,
               "batchTime": 2,
               "gitTagAuthorizedUsers": [
