@@ -16,8 +16,8 @@
             }
             githubChecksEnabled
             patchingDisabled
-            stepbackDisabled
             prTestingEnabled
+            stepbackDisabled
             batchTime
 
             gitTagAuthorizedUsers

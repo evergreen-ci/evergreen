@@ -18,8 +18,8 @@
               "periodicBuilds": null,
               "githubChecksEnabled": null,
               "patchingDisabled": false,
-              "stepbackDisabled": false,
               "prTestingEnabled": true,
+              "stepbackDisabled": false,
               "batchTime": 2,
               "gitTagAuthorizedUsers": [
                 "ablack12"
