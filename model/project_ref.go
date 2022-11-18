@@ -290,6 +290,7 @@ var (
 	projectRefTaskSyncKey                 = bsonutil.MustHaveTag(ProjectRef{}, "TaskSync")
 	projectRefPatchingDisabledKey         = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
 	projectRefDispatchingDisabledKey      = bsonutil.MustHaveTag(ProjectRef{}, "DispatchingDisabled")
+	projectRefStepbackDisabledKey         = bsonutil.MustHaveTag(ProjectRef{}, "StepbackDisabled")
 	projectRefVersionControlEnabledKey    = bsonutil.MustHaveTag(ProjectRef{}, "VersionControlEnabled")
 	projectRefNotifyOnFailureKey          = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
 	projectRefSpawnHostScriptPathKey      = bsonutil.MustHaveTag(ProjectRef{}, "SpawnHostScriptPath")
@@ -1836,6 +1837,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			ProjectRefRemotePathKey:            p.RemotePath,
 			projectRefSpawnHostScriptPathKey:   p.SpawnHostScriptPath,
 			projectRefDispatchingDisabledKey:   p.DispatchingDisabled,
+			projectRefStepbackDisabledKey:      p.StepbackDisabled,
 			projectRefVersionControlEnabledKey: p.VersionControlEnabled,
 			ProjectRefDeactivatePreviousKey:    p.DeactivatePrevious,
 			projectRefRepotrackerDisabledKey:   p.RepotrackerDisabled,
