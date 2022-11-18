@@ -91,7 +91,6 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/task/{task_id}/keyval/inc").Version(2).Post().Wrap(requireTask).RouteHandler(makeKeyvalPluginInc())
 	app.AddRoute("/task/{task_id}/manifest/load").Version(2).Get().Wrap(requireTask).RouteHandler(makeManifestLoad(env.Settings()))
 	app.AddRoute("/task/{task_id}/downstreamParams").Version(2).Post().Wrap(requireTask).RouteHandler(makeSetDownstreamParams())
-	app.AddRoute("/task/{task_id}/json/data/{name}").Version(2).Post().Wrap(requireTask).RouteHandler(makeInsertTaskJSON())
 
 	// Routes
 	app.AddRoute("/").Version(2).Get().Wrap(requireUserToggleable).RouteHandler(makePlaceHolder())
