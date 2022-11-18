@@ -177,7 +177,7 @@ func (s *PatchIntentUnitsSuite) TearDownTest() {
 	s.cancel()
 }
 
-func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent, patchedParserProject string) *patchIntentProcessor {
+func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent) *patchIntentProcessor {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -188,10 +188,6 @@ func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent, patchedPars
 	j.env = s.env
 
 	patchDoc := intent.NewPatch()
-	if patchedParserProject != "" {
-		patchDoc.PatchedParserProject = patchedParserProject
-		patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{ModuleName: "sandbox"})
-	}
 	s.NoError(j.finishPatch(ctx, patchDoc, githubOauthToken))
 	s.NoError(j.Error())
 	s.False(j.HasErrors())
@@ -232,6 +228,41 @@ func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithNoTasksAndVariants() {
 	err = j.finishPatch(ctx, patchDoc, githubOauthToken)
 	s.Require().Error(err)
 	s.Equal("patch has no build variants or tasks", err.Error())
+}
+
+func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithBadAlias() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	resp, err := http.Get(s.diffURL)
+	s.Require().NoError(err)
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	s.Require().NoError(err)
+
+	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
+		User:         s.user,
+		Project:      s.project,
+		BaseGitHash:  s.hash,
+		PatchContent: string(body),
+		Description:  s.desc,
+		Finalize:     true,
+		Alias:        "typo",
+	})
+	s.NoError(err)
+	s.Require().NotNil(intent)
+	s.NoError(intent.Insert())
+
+	githubOauthToken, err := s.env.Settings().GetGithubOauthToken()
+	s.Require().NoError(err)
+
+	j := NewPatchIntentProcessor(mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+	j.env = s.env
+
+	patchDoc := intent.NewPatch()
+	err = j.finishPatch(ctx, patchDoc, githubOauthToken)
+	s.Require().Error(err)
+	s.Equal("alias 'typo' could not be found on project 'mci'", err.Error())
 }
 
 func (s *PatchIntentUnitsSuite) TestCantFinishCommitQueuePatchWithNoTasksAndVariants() {
@@ -735,7 +766,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	s.NoError(err)
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert())
-	j := s.makeJobAndPatch(intent, "")
+	j := s.makeJobAndPatch(intent)
 
 	patchDoc, err := patch.FindOne(patch.ById(j.PatchID))
 	s.NoError(err)

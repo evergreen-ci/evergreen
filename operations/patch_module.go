@@ -1,9 +1,7 @@
 package operations
 
 import (
-	"context"
 	"fmt"
-	"strings"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -36,30 +34,25 @@ func PatchSetModule() cli.Command {
 			mutuallyExclusiveArgs(false, uncommittedChangesFlag, preserveCommitsFlag),
 		),
 		Action: func(c *cli.Context) error {
+			params := &patchParams{
+				Project:         c.String(moduleFlagName),
+				SkipConfirm:     c.Bool(skipConfirmFlagName),
+				Finalize:        c.Bool(patchFinalizeFlagName),
+				Large:           c.Bool(largeFlagName),
+				Ref:             c.String(refFlagName),
+				Uncommitted:     c.Bool(uncommittedChangesFlag),
+				PreserveCommits: c.Bool(preserveCommitsFlag),
+			}
 			confPath := c.Parent().String(confFlagName)
-			module := c.String(moduleFlagName)
+			moduleName := c.String(moduleFlagName)
 			patchID := c.String(patchIDFlagName)
-			large := c.Bool(largeFlagName)
-			skipConfirm := c.Bool(skipConfirmFlagName)
-			ref := c.String(refFlagName)
-			uncommittedOk := c.Bool(uncommittedChangesFlag)
-			preserveCommits := c.Bool(preserveCommitsFlag)
-			finalize := c.Bool(patchFinalizeFlagName)
 			args := c.Args()
-
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
 
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client, err := conf.setupRestCommunicator(ctx, true)
-			if err != nil {
-				return errors.Wrap(err, "setting up REST communicator")
-			}
-			defer client.Close()
-			ac, rc, err := conf.getLegacyClients()
+			ac, _, err := conf.getLegacyClients()
 			if err != nil {
 				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
@@ -84,89 +77,14 @@ func PatchSetModule() cli.Command {
 			if existingPatch.IsCommitQueuePatch() {
 				return errors.New("Use `commit-queue set-module` instead of `set-module` for commit queue patches")
 			}
-			preserveCommits = preserveCommits || conf.PreserveCommits
-			if !skipConfirm {
-				var keepGoing bool
-				keepGoing, err = confirmUncommittedChanges(preserveCommits, uncommittedOk || conf.UncommittedChanges)
-				if err != nil {
-					return errors.Wrap(err, "confirming uncommitted changes")
-				}
-				if !keepGoing {
-					return errors.New("patch aborted")
-				}
-			}
-			proj, err := rc.GetPatchedConfig(patchID)
+			module, err := conf.getModule(patchID, moduleName)
 			if err != nil {
 				return err
 			}
-			moduleBranch, err := getModuleBranch(module, proj)
-			if err != nil {
-				grip.Error(err)
-				mods, projectIdentifier, merr := ac.GetPatchModules(patchID, existingPatch.Project)
-				if merr != nil {
-					return errors.Wrap(merr, "fetching list of available modules")
-				}
-				if len(mods) == 0 {
-					return errors.Errorf("Project '%s' has no configured modules. Specify different project or "+
-						"see the evergreen configuration file for module configuration.",
-						projectIdentifier)
-				}
-				return errors.Errorf("Could not find module named '%s' for project '%s'; specify different project or select correct module from:\n\t%s",
-					module, projectIdentifier, strings.Join(mods, "\n\t"))
-			}
-
-			if uncommittedOk || conf.UncommittedChanges {
-				ref = ""
-			}
-
-			// diff against the module branch.
-			diffData, err := loadGitData(moduleBranch, ref, "", preserveCommits, args...)
-			if err != nil {
+			if err := addModuleToPatch(params, args, conf, existingPatch, module, ""); err != nil {
 				return err
 			}
-
-			if err = validatePatchSize(diffData, large); err != nil {
-				return err
-			}
-
-			if !skipConfirm {
-				fmt.Printf("Using branch %v for module %v \n", moduleBranch, module)
-				if diffData.patchSummary != "" {
-					fmt.Println(diffData.patchSummary)
-				}
-
-				if !confirm("This is a summary of the patch to be submitted. Continue? (Y/n):", true) {
-					return nil
-				}
-			}
-
-			params := UpdatePatchModuleParams{
-				patchID: patchID,
-				module:  module,
-				patch:   diffData.fullPatch,
-				base:    diffData.base,
-			}
-			err = ac.UpdatePatchModule(params)
-			if err != nil {
-				mods, projectIdentifier, err := ac.GetPatchModules(patchID, existingPatch.Project)
-				var msg string
-				if err != nil {
-					msg = fmt.Sprintf("Could not find module named '%s' for this project",
-						module)
-				} else if len(mods) == 0 {
-					msg = fmt.Sprintf("Project '%s' has no configured modules. Specify different project or "+
-						"see the evergreen configuration file for module configuration.",
-						projectIdentifier)
-				} else {
-					msg = fmt.Sprintf("Could not find module named '%s' for project '%s'. Specify different project or select correct module from:\n\t%s",
-						module, projectIdentifier, strings.Join(mods, "\n\t"))
-				}
-				grip.Error(msg)
-				return err
-
-			}
-			fmt.Println("Module updated.")
-			if finalize {
+			if params.Finalize {
 				if err = ac.FinalizePatch(patchID); err != nil {
 					return errors.Wrapf(err, "finalizing patch '%s'", patchID)
 				}
@@ -175,6 +93,68 @@ func PatchSetModule() cli.Command {
 			return nil
 		},
 	}
+}
+
+func addModuleToPatch(params *patchParams, args cli.Args, conf *ClientSettings,
+	p *patch.Patch, module *model.Module, modulePath string) error {
+	patchId := p.Id.Hex()
+
+	preserveCommits := params.PreserveCommits || conf.PreserveCommits
+	if !params.SkipConfirm {
+		keepGoing, err := confirmUncommittedChanges(modulePath, preserveCommits, params.Uncommitted || conf.UncommittedChanges)
+		if err != nil {
+			return errors.Wrap(err, "confirming uncommitted changes")
+		}
+		if !keepGoing {
+			return errors.New("patch aborted")
+		}
+	}
+
+	ref := params.Ref
+	if params.Uncommitted || conf.UncommittedChanges {
+		ref = ""
+	}
+
+	// Diff against the module branch.
+	diffData, err := loadGitData(modulePath, module.Branch, ref, "", preserveCommits, args...)
+	if err != nil {
+		return err
+	}
+	if err = validatePatchSize(diffData, params.Large); err != nil {
+		return err
+	}
+
+	if len(diffData.fullPatch) == 0 {
+		grip.Infof("No changes for module '%s', continuing.", module.Name)
+		return nil
+	}
+	if !params.SkipConfirm {
+		grip.Infof("Using branch '%s' for module '%s'.", module.Branch, module.Name)
+		if diffData.patchSummary != "" {
+			fmt.Println(diffData.patchSummary)
+		}
+
+		if !confirm("This is a summary of the module patch to be submitted. Include this module's changes? (Y/n):", true) {
+			return nil
+		}
+	}
+
+	moduleParams := UpdatePatchModuleParams{
+		patchID: patchId,
+		module:  module.Name,
+		patch:   diffData.fullPatch,
+		base:    diffData.base,
+	}
+	ac, _, err := conf.getLegacyClients()
+	if err != nil {
+		return errors.Wrap(err, "setting up legacy Evergreen client")
+	}
+	err = ac.UpdatePatchModule(moduleParams)
+	if err != nil {
+		return err
+	}
+	grip.Infof("Module '%s' updated.", module.Name)
+	return nil
 }
 
 func PatchRemoveModule() cli.Command {
@@ -189,19 +169,10 @@ func PatchRemoveModule() cli.Command {
 			patchID := c.String(patchIDFlagName)
 			module := c.String(moduleFlagName)
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-
-			client, err := conf.setupRestCommunicator(ctx, true)
-			if err != nil {
-				return errors.Wrap(err, "setting up REST communicator")
-			}
-			defer client.Close()
 
 			ac, _, err := conf.getLegacyClients()
 			if err != nil {
@@ -217,15 +188,4 @@ func PatchRemoveModule() cli.Command {
 			return nil
 		},
 	}
-}
-
-// getModuleBranch returns the branch for the config.
-func getModuleBranch(moduleName string, proj *model.Project) (string, error) {
-	// find the module of the patch
-	for _, module := range proj.Modules {
-		if module.Name == moduleName {
-			return module.Branch, nil
-		}
-	}
-	return "", errors.Errorf("module '%s' unknown or not found", moduleName)
 }

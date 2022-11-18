@@ -695,12 +695,20 @@ func updatePatch(ctx context.Context, githubToken string, projectRef *model.Proj
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting module '%s'", mod.ModuleName)
 		}
-
-		sha, err = getBranchCommitHash(ctx, module.Repo, module.Branch, githubToken)
+		owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
 		if err != nil {
-			return nil, errors.Wrapf(err, "getting commit hash for branch '%s'", module.Branch)
+			return nil, errors.Wrapf(err, "module '%s' misconfigured (malformed URL)", mod.ModuleName)
 		}
-		patchDoc.Patches[i].Githash = sha
+
+		branch, err = thirdparty.GetBranchEvent(ctx, githubToken, owner, repo, module.Branch)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting branch")
+		}
+		if err = validateBranch(branch); err != nil {
+			return nil, errors.Wrap(err, "GitHub returned invalid branch")
+		}
+
+		patchDoc.Patches[i].Githash = *branch.Commit.SHA
 	}
 
 	// rebuild patch build variants and tasks
@@ -710,20 +718,4 @@ func updatePatch(ctx context.Context, githubToken string, projectRef *model.Proj
 	project.BuildProjectTVPairs(patchDoc, patchDoc.Alias)
 
 	return project, nil
-}
-
-// getBranchCommitHash retrieves the most recent commit hash for branch for the given repo, module, and branch name.
-func getBranchCommitHash(ctx context.Context, repo, moduleBranch, token string) (string, error) {
-	owner, repo, err := thirdparty.ParseGitUrl(repo)
-	if err != nil {
-		return "", errors.Wrap(err, "repo is misconfigured (malformed URL)")
-	}
-	branch, err := thirdparty.GetBranchEvent(ctx, token, owner, repo, moduleBranch)
-	if err != nil {
-		return "", errors.Wrap(err, "getting branch")
-	}
-	if err = validateBranch(branch); err != nil {
-		return "", errors.Wrap(err, "GitHub returned invalid branch")
-	}
-	return utility.FromStringPtr(branch.Commit.SHA), nil
 }

@@ -15,6 +15,7 @@
             githubChecksEnabled
             patchingDisabled
             prTestingEnabled
+            stepbackDisabled
             batchTime
 
             gitTagAuthorizedUsers

@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
-	yaml "gopkg.in/20210107192922/yaml.v3"
+	"gopkg.in/20210107192922/yaml.v3"
 )
 
 func init() {
@@ -296,11 +296,11 @@ func TestPopulateExpansions(t *testing.T) {
 			Id:      "d1",
 			WorkDir: "/home/evg",
 			Expansions: []distro.Expansion{
-				distro.Expansion{
+				{
 					Key:   "note",
 					Value: "huge success",
 				},
-				distro.Expansion{
+				{
 					Key:   "cake",
 					Value: "truth",
 				},
@@ -686,7 +686,7 @@ func (s *projectSuite) SetupTest() {
 			},
 		},
 		Functions: map[string]*YAMLCommandSet{
-			"go generate a thing": &YAMLCommandSet{
+			"go generate a thing": {
 				MultiCommand: []PluginCommandConf{
 					{
 						Command: "shell.exec",
@@ -1206,24 +1206,24 @@ func (s *projectSuite) TestNewPatchTaskIdTable() {
 	p := &Project{
 		Identifier: "project_id",
 		Tasks: []ProjectTask{
-			ProjectTask{
+			{
 				Name: "task1",
 			},
-			ProjectTask{
+			{
 				Name: "task2",
 			},
-			ProjectTask{
+			{
 				Name: "task3",
 			},
 		},
 		BuildVariants: []BuildVariant{
-			BuildVariant{
+			{
 				Name:  "test",
 				Tasks: []BuildVariantTaskUnit{{Name: "group_1"}},
 			},
 		},
 		TaskGroups: []TaskGroup{
-			TaskGroup{
+			{
 				Name: "group_1",
 				Tasks: []string{
 					"task1",
@@ -1590,32 +1590,32 @@ func TestModuleList(t *testing.T) {
 
 	manifest1 := manifest.Manifest{
 		Modules: map[string]*manifest.Module{
-			"wt":         &manifest.Module{Branch: "develop", Repo: "wt", Owner: "else", Revision: "123"},
-			"enterprise": &manifest.Module{Branch: "main", Repo: "enterprise", Owner: "something", Revision: "abc"},
+			"wt":         {Branch: "develop", Repo: "wt", Owner: "else", Revision: "123"},
+			"enterprise": {Branch: "main", Repo: "enterprise", Owner: "something", Revision: "abc"},
 		},
 	}
 	assert.True(projModules.IsIdentical(manifest1))
 
 	manifest2 := manifest.Manifest{
 		Modules: map[string]*manifest.Module{
-			"wt":         &manifest.Module{Branch: "different branch", Repo: "wt", Owner: "else", Revision: "123"},
-			"enterprise": &manifest.Module{Branch: "main", Repo: "enterprise", Owner: "something", Revision: "abc"},
+			"wt":         {Branch: "different branch", Repo: "wt", Owner: "else", Revision: "123"},
+			"enterprise": {Branch: "main", Repo: "enterprise", Owner: "something", Revision: "abc"},
 		},
 	}
 	assert.False(projModules.IsIdentical(manifest2))
 
 	manifest3 := manifest.Manifest{
 		Modules: map[string]*manifest.Module{
-			"wt":         &manifest.Module{Branch: "develop", Repo: "wt", Owner: "else", Revision: "123"},
-			"enterprise": &manifest.Module{Branch: "main", Repo: "enterprise", Owner: "something", Revision: "abc"},
-			"extra":      &manifest.Module{Branch: "main", Repo: "repo", Owner: "something", Revision: "abc"},
+			"wt":         {Branch: "develop", Repo: "wt", Owner: "else", Revision: "123"},
+			"enterprise": {Branch: "main", Repo: "enterprise", Owner: "something", Revision: "abc"},
+			"extra":      {Branch: "main", Repo: "repo", Owner: "something", Revision: "abc"},
 		},
 	}
 	assert.False(projModules.IsIdentical(manifest3))
 
 	manifest4 := manifest.Manifest{
 		Modules: map[string]*manifest.Module{
-			"wt": &manifest.Module{Branch: "develop", Repo: "wt", Owner: "else", Revision: "123"},
+			"wt": {Branch: "develop", Repo: "wt", Owner: "else", Revision: "123"},
 		},
 	}
 	assert.False(projModules.IsIdentical(manifest4))
@@ -1870,7 +1870,7 @@ func TestCommandsRunOnBV(t *testing.T) {
 				},
 			},
 			funcs: map[string]*YAMLCommandSet{
-				"function": &YAMLCommandSet{
+				"function": {
 					SingleCommand: &PluginCommandConf{
 						Command:     cmd,
 						DisplayName: "display",
@@ -1919,7 +1919,7 @@ func TestCommandsRunOnBV(t *testing.T) {
 				},
 			},
 			funcs: map[string]*YAMLCommandSet{
-				"function": &YAMLCommandSet{
+				"function": {
 					SingleCommand: &PluginCommandConf{
 						Command:     cmd,
 						DisplayName: "display1",
@@ -2423,7 +2423,7 @@ func TestDependenciesForTaskUnit(t *testing.T) {
 	}
 }
 
-func TestGetVariantsAndTasksFromProject(t *testing.T) {
+func TestGetVariantsAndTasksFromPatchProject(t *testing.T) {
 	ctx := context.Background()
 	patchedConfig := `
 buildvariants:
@@ -2445,7 +2445,19 @@ tasks:
     disable: true
   - name: task3
 `
-	variantsAndTasks, err := GetVariantsAndTasksFromProject(ctx, patchedConfig, "")
+	p := &patch.Patch{PatchedParserProject: patchedConfig}
+	variantsAndTasks, err := GetVariantsAndTasksFromPatchProject(ctx, p)
+	assert.NoError(t, err)
+	assert.Len(t, variantsAndTasks.Variants["bv1"].Tasks, 1)
+
+	// Verify this still works if the patch config is stored
+	proj := &Project{}
+	pp, err := LoadProjectInto(ctx, []byte(patchedConfig), nil, "", proj)
+	assert.NoError(t, err)
+	assert.NotNil(t, pp)
+	assert.NoError(t, pp.Insert())
+	p.PatchedParserProject = ""
+	variantsAndTasks, err = GetVariantsAndTasksFromPatchProject(ctx, p)
 	assert.NoError(t, err)
 	assert.Len(t, variantsAndTasks.Variants["bv1"].Tasks, 1)
 }

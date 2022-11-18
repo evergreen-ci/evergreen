@@ -64,6 +64,7 @@ input ProjectInput {
   repotrackerDisabled: Boolean
   restricted: Boolean
   spawnHostScriptPath: String
+  stepbackDisabled: Boolean
   taskAnnotationSettings: TaskAnnotationSettingsInput
   taskSync: TaskSyncOptionsInput
   tracksPushEvents: Boolean

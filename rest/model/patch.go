@@ -374,6 +374,7 @@ func (apiPatch *APIPatch) ToService() (patch.Patch, error) {
 	}
 
 	res.GithubPatchData = apiPatch.GithubPatchData.ToService()
+	res.PatchedParserProject = utility.FromStringPtr(apiPatch.PatchedParserProject)
 	return res, catcher.Resolve()
 }
 
