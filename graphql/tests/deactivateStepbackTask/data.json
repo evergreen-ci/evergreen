@@ -1,0 +1,47 @@
+{
+  "tasks": [
+    {
+      "_id": "task_sandbox",
+      "activated": true,
+      "activated_by": "stepback",
+      "branch": "sandbox_project_id",
+      "build_variant": "ubuntu1604",
+      "display_name": "js-test",
+      "r": "gitter_request",
+      "status": "started",
+      "version": "1234567890123456789"
+    },
+    {
+      "_id": "task_evergreen",
+      "activated": true,
+      "activated_by": "stepback",
+      "branch": "evergreen_id",
+      "build_variant": "ubuntu1604",
+      "display_name": "js-test",
+      "r": "gitter_request",
+      "status": "started",
+      "version": "1234567890123456789"
+    }
+  ],
+  "project_ref": [
+    {
+      "_id" : "sandbox_project_id",
+      "identifier" : "sandbox",
+      "display_name" : "Sandbox",
+      "enabled" : null,
+      "owner_name" : "evergreen-ci",
+      "repo_name" : "commit-queue-sandbox",
+      "branch_name" : "main",
+      "admins": ["me"]
+    },
+    {
+      "_id" : "evergreen_id",
+      "identifier" : "evergreen",
+      "display_name" : "evergreem",
+      "enabled" : null,
+      "owner_name" : "evergreen-ci",
+      "repo_name" : "evergreen",
+      "branch_name" : "main"
+    }
+  ]
+}
