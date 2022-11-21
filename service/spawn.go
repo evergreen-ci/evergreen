@@ -521,6 +521,8 @@ func (uis *UIServer) requestNewVolume(w http.ResponseWriter, r *http.Request) {
 	}
 	if volume.Type == "" {
 		volume.Type = evergreen.DefaultEBSType
+		volume.IOPS = cloud.Gp2EquivalentIOPSForGp3(volume.Size)
+		volume.Throughput = cloud.Gp2EquivalentThroughputForGp3(volume.Size)
 	}
 	volume.CreatedBy = MustHaveUser(r).Id
 	_, httpStatusCode, err := cloud.RequestNewVolume(r.Context(), *volume)

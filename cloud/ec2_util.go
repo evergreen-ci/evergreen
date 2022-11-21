@@ -595,3 +595,29 @@ func ModifyVolumeBadRequest(err error) bool {
 func IsEC2InstanceID(id string) bool {
 	return strings.HasPrefix(id, "i-")
 }
+
+// Gp2EquivalentThroughputForGp3 returns a throughput value for gp3 volumes that's at least
+// equivalent to the throughput of gp2 volumes.
+// See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/general-purpose.html for more information.
+func Gp2EquivalentThroughputForGp3(volumeSize int) int {
+	if volumeSize <= 170 {
+		return 128
+	}
+	return 250
+}
+
+// Gp2EquivalentIOPSForGp3 returns an IOPS value for gp3 volumes that's at least
+// equivalent to the IOPS of gp2 volumes.
+// See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/general-purpose.html for more information.
+func Gp2EquivalentIOPSForGp3(volumeSize int) int {
+	iops := volumeSize * 3
+
+	if volumeSize <= 1000 {
+		iops = 3000
+	}
+	if iops >= 16000 {
+		iops = 16000
+	}
+
+	return iops
+}

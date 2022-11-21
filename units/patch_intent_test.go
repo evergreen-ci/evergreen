@@ -177,7 +177,7 @@ func (s *PatchIntentUnitsSuite) TearDownTest() {
 	s.cancel()
 }
 
-func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent, patchedParserProject string) *patchIntentProcessor {
+func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent) *patchIntentProcessor {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -188,10 +188,6 @@ func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent, patchedPars
 	j.env = s.env
 
 	patchDoc := intent.NewPatch()
-	if patchedParserProject != "" {
-		patchDoc.PatchedParserProject = patchedParserProject
-		patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{ModuleName: "sandbox"})
-	}
 	s.NoError(j.finishPatch(ctx, patchDoc, githubOauthToken))
 	s.NoError(j.Error())
 	s.False(j.HasErrors())
@@ -770,7 +766,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	s.NoError(err)
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert())
-	j := s.makeJobAndPatch(intent, "")
+	j := s.makeJobAndPatch(intent)
 
 	patchDoc, err := patch.FindOne(patch.ById(j.PatchID))
 	s.NoError(err)

@@ -14,7 +14,6 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -741,7 +740,7 @@ buildvariants:
   - name: failing_test
   - name: timeout_test`
 	require.NoError(t, db.ClearCollections(serviceModel.ProjectRefCollection, patch.Collection, evergreen.ConfigCollection, task.Collection, serviceModel.VersionCollection, build.Collection))
-	require.NoError(t, db.CreateCollections(build.Collection, task.Collection, serviceModel.VersionCollection, serviceModel.ParserProjectCollection, manifest.Collection))
+	require.NoError(t, db.CreateCollections(build.Collection, task.Collection, serviceModel.VersionCollection, serviceModel.ParserProjectCollection))
 	settings := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, settings, "TestSchedulePatchRoute")
 	require.NoError(t, settings.Set())
