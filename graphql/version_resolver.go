@@ -236,7 +236,7 @@ func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion)
 
 // TaskCount is the resolver for the taskCount field.
 func (r *versionResolver) TaskCount(ctx context.Context, obj *restModel.APIVersion) (*int, error) {
-	taskCount, err := task.Count(db.Query(task.DisplayTasksByVersion(*obj.Id)))
+	taskCount, err := task.Count(db.Query(task.DisplayTasksByVersion(*obj.Id, !evergreen.IsPatchRequester(utility.FromStringPtr(obj.Requester)))))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting task count for version `%s`: %s", *obj.Id, err.Error()))
 	}

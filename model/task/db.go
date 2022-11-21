@@ -436,13 +436,12 @@ func ByVersion(version string) bson.M {
 }
 
 // DisplayTasksByVersion produces a query that returns all display tasks for the given version.
-func DisplayTasksByVersion(version string) bson.M {
+func DisplayTasksByVersion(version string, includeInactiveTasks bool) bson.M {
 	// assumes that all ExecutionTasks know of their corresponding DisplayTask (i.e. DisplayTaskIdKey not null or "")
-	return bson.M{
+	query := bson.M{
 		"$and": []bson.M{
 			{
-				VersionKey:       version,
-				ActivatedTimeKey: bson.M{"$ne": utility.ZeroTime},
+				VersionKey: version,
 			},
 			{"$or": []bson.M{
 				{DisplayTaskIdKey: ""},                       // no 'parent' display task
@@ -453,6 +452,12 @@ func DisplayTasksByVersion(version string) bson.M {
 			},
 		},
 	}
+	if !includeInactiveTasks {
+		query["$and"] = append(query["$and"].([]bson.M), bson.M{
+			ActivatedTimeKey: bson.M{"$ne": utility.ZeroTime},
+		})
+	}
+	return query
 }
 
 // FailedTasksByVersion produces a query that returns all failed tasks for the given version.

@@ -131,7 +131,7 @@ func TestDisplayTasksByVersion(t *testing.T) {
 				So(task.Insert(), ShouldBeNil)
 			}
 
-			dbTasks, err := FindAll(db.Query(DisplayTasksByVersion("v1")))
+			dbTasks, err := FindAll(db.Query(DisplayTasksByVersion("v1", false)))
 			So(err, ShouldBeNil)
 			So(len(dbTasks), ShouldEqual, 4)
 			So(dbTasks[0].Id, ShouldNotEqual, "execution_task_one")
