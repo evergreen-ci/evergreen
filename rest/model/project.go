@@ -453,6 +453,7 @@ type APIProjectRef struct {
 	PatchingDisabled            *bool                     `json:"patching_disabled"`
 	RepotrackerDisabled         *bool                     `json:"repotracker_disabled"`
 	DispatchingDisabled         *bool                     `json:"dispatching_disabled"`
+	StepbackDisabled            *bool                     `json:"stepback_disabled"`
 	VersionControlEnabled       *bool                     `json:"version_control_enabled"`
 	DisabledStatsCache          *bool                     `json:"disabled_stats_cache"`
 	FilesIgnoredFromCache       []*string                 `json:"files_ignored_from_cache"`
@@ -512,6 +513,7 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		PatchingDisabled:       utility.BoolPtrCopy(p.PatchingDisabled),
 		RepotrackerDisabled:    utility.BoolPtrCopy(p.RepotrackerDisabled),
 		DispatchingDisabled:    utility.BoolPtrCopy(p.DispatchingDisabled),
+		StepbackDisabled:       utility.BoolPtrCopy(p.StepbackDisabled),
 		VersionControlEnabled:  utility.BoolPtrCopy(p.VersionControlEnabled),
 		DisabledStatsCache:     utility.BoolPtrCopy(p.DisabledStatsCache),
 		FilesIgnoredFromCache:  utility.FromStringPtrSlice(p.FilesIgnoredFromCache),
@@ -593,6 +595,7 @@ func (p *APIProjectRef) BuildFromService(projectRef model.ProjectRef) error {
 	p.PatchingDisabled = utility.BoolPtrCopy(projectRef.PatchingDisabled)
 	p.RepotrackerDisabled = utility.BoolPtrCopy(projectRef.RepotrackerDisabled)
 	p.DispatchingDisabled = utility.BoolPtrCopy(projectRef.DispatchingDisabled)
+	p.StepbackDisabled = utility.BoolPtrCopy(projectRef.StepbackDisabled)
 	p.VersionControlEnabled = utility.BoolPtrCopy(projectRef.VersionControlEnabled)
 	p.DisabledStatsCache = utility.BoolPtrCopy(projectRef.DisabledStatsCache)
 	p.FilesIgnoredFromCache = utility.ToStringPtrSlice(projectRef.FilesIgnoredFromCache)
