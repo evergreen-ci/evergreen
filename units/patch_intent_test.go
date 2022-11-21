@@ -276,119 +276,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinishCommitQueuePatchWithNoTasksAndVari
 }
 
 func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
-	t1 := task.Task{
-		Id:           "t1",
-		DisplayName:  "t1",
-		Version:      "v1",
-		BuildVariant: "bv1",
-		Status:       evergreen.TaskFailed,
-		Activated:    true,
-	}
-	t2 := task.Task{
-		Id:           "t2",
-		DisplayName:  "t2",
-		Version:      "v1",
-		BuildVariant: "bv1",
-		Status:       evergreen.TaskSucceeded,
-		Activated:    true,
-	}
-	tgt1 := task.Task{
-		Id:                "tgt1",
-		DisplayName:       "tgt1",
-		Version:           "v1",
-		BuildVariant:      "bv1",
-		TaskGroup:         "tg",
-		TaskGroupMaxHosts: 1,
-		Status:            evergreen.TaskSucceeded,
-		Activated:         true,
-	}
-	tgt2 := task.Task{
-		Id:                "tgt2",
-		DisplayName:       "tgt2",
-		Version:           "v1",
-		BuildVariant:      "bv1",
-		TaskGroup:         "tg",
-		TaskGroupMaxHosts: 1,
-		Status:            evergreen.TaskFailed,
-		Activated:         true,
-	}
-	tgt3 := task.Task{
-		Id:           "tgt3",
-		DisplayName:  "tgt3",
-		Version:      "v1",
-		BuildVariant: "bv1",
-		TaskGroup:    "tg2",
-		Status:       evergreen.TaskSucceeded,
-		Activated:    false,
-	}
-	tgt4 := task.Task{
-		Id:           "tgt4",
-		DisplayName:  "tgt4",
-		Version:      "v1",
-		BuildVariant: "bv1",
-		TaskGroup:    "tg2",
-		Status:       evergreen.TaskFailed,
-		Activated:    true,
-	}
-	notActivated := task.Task{
-		Id:           "not_activated",
-		DisplayName:  "not_activated",
-		Version:      "v1",
-		BuildVariant: "bv1",
-		Status:       evergreen.TaskInactive,
-		Activated:    false,
-	}
-	dt1 := task.Task{
-		Id:             "dt1",
-		DisplayName:    "dt1",
-		Version:        "v1",
-		BuildVariant:   "bv_only_dt",
-		DisplayOnly:    true,
-		ExecutionTasks: []string{"et1"},
-		Status:         evergreen.TaskFailed,
-		Activated:      true,
-	}
-	et1 := task.Task{
-		Id:            "et1",
-		DisplayName:   "et1",
-		Version:       "v1",
-		BuildVariant:  "bv_only_dt",
-		DisplayTaskId: utility.ToStringPtr("dt1"),
-		Status:        evergreen.TaskFailed,
-		Activated:     true,
-	}
-	dt2 := task.Task{
-		Id:             "dt2",
-		DisplayName:    "dt2",
-		Version:        "v1",
-		BuildVariant:   "bv_different_dt",
-		DisplayOnly:    true,
-		ExecutionTasks: []string{"et2"},
-		Status:         evergreen.TaskSucceeded,
-		Activated:      true,
-	}
-	et2 := task.Task{
-		Id:            "et2",
-		DisplayName:   "et2",
-		Version:       "v1",
-		BuildVariant:  "bv_different_dt",
-		DisplayTaskId: utility.ToStringPtr("dt2"),
-		Status:        evergreen.TaskSucceeded,
-		Activated:     false,
-	}
-
-	s.NoError(t1.Insert())
-	s.NoError(t2.Insert())
-	s.NoError(tgt1.Insert())
-	s.NoError(tgt2.Insert())
-	s.NoError(tgt3.Insert())
-	s.NoError(tgt4.Insert())
-	s.NoError(dt1.Insert())
-	s.NoError(et1.Insert())
-	s.NoError(dt2.Insert())
-	s.NoError(et2.Insert())
-	s.NoError(notActivated.Insert())
-	patchId := "aabbccddeeff001122334455"
+	patchId := mgobson.NewObjectId().Hex()
 	previousPatchDoc := &patch.Patch{
 		Id:         patch.NewId(patchId),
 		Activated:  true,
@@ -420,16 +308,26 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 	}
 	s.NoError((previousPatchDoc).Insert())
 
-	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
-		User:             "me",
-		Project:          s.project,
-		BaseGitHash:      s.hash,
-		Description:      s.desc,
-		RepeatDefinition: true,
-	})
-	s.NoError(err)
-	j := NewPatchIntentProcessor(mgobson.NewObjectId(), intent).(*patchIntentProcessor)
-	j.user = &user.DBUser{Id: "me"}
+	reusePatchId := mgobson.NewObjectId().Hex()
+	reusePatchDoc := &patch.Patch{
+		Id:         patch.NewId(reusePatchId),
+		Activated:  true,
+		Status:     evergreen.PatchFailed,
+		Project:    s.project,
+		CreateTime: time.Now().Add(-time.Hour),
+		Author:     "me",
+		Version:    "diffVersion",
+		VariantsTasks: []patch.VariantTasks{
+			{
+				Variant: "bv1",
+				Tasks:   []string{"diffTask1", "diffTask2"},
+			},
+		},
+		Tasks:         []string{"diffTask1", "diffTask2"},
+		BuildVariants: []string{"bv1"},
+	}
+	s.NoError((reusePatchDoc).Insert())
+
 	project := model.Project{Identifier: s.project, BuildVariants: model.BuildVariants{
 		{
 			Name: "bv1",
@@ -437,6 +335,8 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 				{Name: "t1"},
 				{Name: "tg", IsGroup: true},
 				{Name: "tg2", IsGroup: true},
+				{Name: "diffTask1"},
+				{Name: "diffTask2"},
 			},
 		},
 		{
@@ -463,23 +363,179 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 			},
 		},
 	}
-	currentPatchDoc := intent.NewPatch()
-	s.NoError(err)
-	previousPatchStatus, err := j.setToPreviousPatchDefinition(currentPatchDoc, &project, false)
-	s.NoError(err)
-	s.Equal(previousPatchStatus, "failed")
+	for testName, testCase := range map[string]func(*patchIntentProcessor, *patch.Patch){
+		"previous/reuse": func(j *patchIntentProcessor, currentPatchDoc *patch.Patch) {
+			previousPatchStatus, err := j.setToPreviousPatchDefinition(currentPatchDoc, &project, "", false)
+			s.NoError(err)
+			s.Equal(previousPatchStatus, "failed")
 
-	s.Equal(currentPatchDoc.BuildVariants, previousPatchDoc.BuildVariants)
-	s.Equal(currentPatchDoc.Tasks, []string{"t1", "t2", "tgt1", "tgt2", "tgt4", "et1"})
+			s.Equal(currentPatchDoc.BuildVariants, previousPatchDoc.BuildVariants)
+			s.Equal(currentPatchDoc.Tasks, []string{"t1", "t2", "tgt1", "tgt2", "tgt4", "et1"})
 
-	previousPatchStatus, err = j.setToPreviousPatchDefinition(currentPatchDoc, &project, true)
-	s.NoError(err)
-	s.Equal(previousPatchStatus, "failed")
-	s.Equal(currentPatchDoc.BuildVariants, previousPatchDoc.BuildVariants)
-	s.Equal(currentPatchDoc.Tasks, []string{"t1", "tgt1", "tgt2", "tgt4", "et1"})
+		},
+		"previous/reuse failed": func(j *patchIntentProcessor, currentPatchDoc *patch.Patch) {
+			previousPatchStatus, err := j.setToPreviousPatchDefinition(currentPatchDoc, &project, "", true)
+			s.NoError(err)
+			s.Equal(previousPatchStatus, "failed")
+			s.Equal(currentPatchDoc.BuildVariants, previousPatchDoc.BuildVariants)
+			s.Equal(currentPatchDoc.Tasks, []string{"t1", "tgt1", "tgt2", "tgt4", "et1"})
+		},
+		"specific patch/reuse": func(j *patchIntentProcessor, currentPatchDoc *patch.Patch) {
+			previousPatchStatus, err := j.setToPreviousPatchDefinition(currentPatchDoc, &project, reusePatchId, false)
+			s.NoError(err)
+			s.Equal(previousPatchStatus, "failed")
+
+			s.Equal(currentPatchDoc.BuildVariants, reusePatchDoc.BuildVariants)
+			s.Equal(currentPatchDoc.Tasks, []string{"diffTask1", "diffTask2"})
+
+		},
+		"specific patch/reuse failed": func(j *patchIntentProcessor, currentPatchDoc *patch.Patch) {
+			previousPatchStatus, err := j.setToPreviousPatchDefinition(currentPatchDoc, &project, reusePatchId, true)
+			s.NoError(err)
+			s.Equal(previousPatchStatus, "failed")
+			s.Equal(currentPatchDoc.BuildVariants, reusePatchDoc.BuildVariants)
+			s.Equal(currentPatchDoc.Tasks, []string{"diffTask1"})
+		},
+	} {
+		s.NoError(db.ClearCollections(task.Collection))
+		t1 := task.Task{
+			Id:           "t1",
+			DisplayName:  "t1",
+			Version:      "v1",
+			BuildVariant: "bv1",
+			Status:       evergreen.TaskFailed,
+			Activated:    true,
+		}
+		t2 := task.Task{
+			Id:           "t2",
+			DisplayName:  "t2",
+			Version:      "v1",
+			BuildVariant: "bv1",
+			Status:       evergreen.TaskSucceeded,
+			Activated:    true,
+		}
+		tgt1 := task.Task{
+			Id:                "tgt1",
+			DisplayName:       "tgt1",
+			Version:           "v1",
+			BuildVariant:      "bv1",
+			TaskGroup:         "tg",
+			TaskGroupMaxHosts: 1,
+			Status:            evergreen.TaskSucceeded,
+			Activated:         true,
+		}
+		tgt2 := task.Task{
+			Id:                "tgt2",
+			DisplayName:       "tgt2",
+			Version:           "v1",
+			BuildVariant:      "bv1",
+			TaskGroup:         "tg",
+			TaskGroupMaxHosts: 1,
+			Status:            evergreen.TaskFailed,
+			Activated:         true,
+		}
+		tgt3 := task.Task{
+			Id:           "tgt3",
+			DisplayName:  "tgt3",
+			Version:      "v1",
+			BuildVariant: "bv1",
+			TaskGroup:    "tg2",
+			Status:       evergreen.TaskSucceeded,
+			Activated:    false,
+		}
+		tgt4 := task.Task{
+			Id:           "tgt4",
+			DisplayName:  "tgt4",
+			Version:      "v1",
+			BuildVariant: "bv1",
+			TaskGroup:    "tg2",
+			Status:       evergreen.TaskFailed,
+			Activated:    true,
+		}
+		notActivated := task.Task{
+			Id:           "not_activated",
+			DisplayName:  "not_activated",
+			Version:      "v1",
+			BuildVariant: "bv1",
+			Status:       evergreen.TaskInactive,
+			Activated:    false,
+		}
+		dt1 := task.Task{
+			Id:             "dt1",
+			DisplayName:    "dt1",
+			Version:        "v1",
+			BuildVariant:   "bv_only_dt",
+			DisplayOnly:    true,
+			ExecutionTasks: []string{"et1"},
+			Status:         evergreen.TaskFailed,
+			Activated:      true,
+		}
+		et1 := task.Task{
+			Id:            "et1",
+			DisplayName:   "et1",
+			Version:       "v1",
+			BuildVariant:  "bv_only_dt",
+			DisplayTaskId: utility.ToStringPtr("dt1"),
+			Status:        evergreen.TaskFailed,
+			Activated:     true,
+		}
+		dt2 := task.Task{
+			Id:             "dt2",
+			DisplayName:    "dt2",
+			Version:        "v1",
+			BuildVariant:   "bv_different_dt",
+			DisplayOnly:    true,
+			ExecutionTasks: []string{"et2"},
+			Status:         evergreen.TaskSucceeded,
+			Activated:      true,
+		}
+		et2 := task.Task{
+			Id:            "et2",
+			DisplayName:   "et2",
+			Version:       "v1",
+			BuildVariant:  "bv_different_dt",
+			DisplayTaskId: utility.ToStringPtr("dt2"),
+			Status:        evergreen.TaskSucceeded,
+			Activated:     false,
+		}
+		diffTask1 := task.Task{
+			Id:           "diffTask1",
+			DisplayName:  "diffTask1",
+			Version:      "diffVersion",
+			BuildVariant: "bv1",
+			Status:       evergreen.TaskFailed,
+			Activated:    true,
+		}
+		diffTask2 := task.Task{
+			Id:           "diffTask2",
+			DisplayName:  "diffTask2",
+			Version:      "diffVersion",
+			BuildVariant: "bv1",
+			Status:       evergreen.TaskSucceeded,
+			Activated:    true,
+		}
+		s.NoError(db.InsertMany(task.Collection, t1, t2, tgt1, tgt2, tgt3, tgt4,
+			dt1, et1, dt2, et2, notActivated, diffTask1, diffTask2))
+
+		intent, err := patch.NewCliIntent(patch.CLIIntentParams{
+			User:             "me",
+			Project:          s.project,
+			BaseGitHash:      s.hash,
+			Description:      s.desc,
+			RepeatDefinition: true,
+		})
+		s.NoError(err)
+		j := NewPatchIntentProcessor(mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+		j.user = &user.DBUser{Id: "me"}
+
+		currentPatchDoc := intent.NewPatch()
+		s.Run(testName, func() {
+			testCase(j, currentPatchDoc)
+		})
+	}
 }
 
-func (s *PatchIntentUnitsSuite) TestBuildTasksandVariantsWithRepeatFailed() {
+func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithRepeatFailed() {
 	s.Require().NoError(db.ClearCollections(task.Collection))
 	s.Require().NoError(db.ClearCollections(patch.Collection))
 
@@ -582,13 +638,13 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksandVariantsWithRepeatFailed() {
 
 	s.NoError(err)
 
-	err = j.buildTasksandVariants(currentPatchDoc, &project)
+	err = j.buildTasksAndVariants(currentPatchDoc, &project)
 	s.NoError(err)
 	sort.Strings(currentPatchDoc.Tasks)
 	s.Equal([]string{"t1", "t3", "t4"}, currentPatchDoc.Tasks)
 }
 
-func (s *PatchIntentUnitsSuite) TestBuildTasksandVariantsWithReuse() {
+func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReuse() {
 	s.Require().NoError(db.ClearCollections(task.Collection))
 	s.Require().NoError(db.ClearCollections(patch.Collection))
 
@@ -693,7 +749,153 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksandVariantsWithReuse() {
 	s.NoError(err)
 
 	// test --reuse
-	err = j.buildTasksandVariants(currentPatchDoc, &project)
+	err = j.buildTasksAndVariants(currentPatchDoc, &project)
+	s.NoError(err)
+	sort.Strings(currentPatchDoc.Tasks)
+	s.Equal([]string{"t1", "t2", "t3", "t4"}, currentPatchDoc.Tasks)
+}
+
+func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReusePatchId() {
+	s.Require().NoError(db.ClearCollections(task.Collection))
+	s.Require().NoError(db.ClearCollections(patch.Collection))
+
+	earlierPatchId := mgobson.NewObjectId().Hex()
+	prevPatchId := mgobson.NewObjectId().Hex()
+	tasks := []task.Task{
+		{
+			Id:           "t1",
+			Activated:    true,
+			DependsOn:    []task.Dependency{{TaskId: "t3", Status: evergreen.TaskSucceeded}},
+			Version:      earlierPatchId,
+			BuildVariant: "bv1",
+			BuildId:      "b0",
+			Status:       evergreen.TaskFailed,
+			Project:      s.project,
+			DisplayName:  "t1",
+		},
+		{
+			Id:           "t2",
+			Activated:    true,
+			BuildVariant: "bv1",
+			BuildId:      "b0",
+			Version:      earlierPatchId,
+			Status:       evergreen.TaskSucceeded,
+			Project:      s.project,
+			DisplayName:  "t2",
+		},
+		{
+			Id:           "t3",
+			Activated:    true,
+			BuildVariant: "bv1",
+			BuildId:      "b00",
+			Version:      prevPatchId,
+			Status:       evergreen.TaskFailed,
+			Project:      s.project,
+			DisplayName:  "prevPatchTask",
+		},
+	}
+
+	for _, t := range tasks {
+		s.NoError(t.Insert())
+	}
+
+	previousPatchDoc := &patch.Patch{
+		Id:            patch.NewId(prevPatchId),
+		Activated:     true,
+		Status:        evergreen.PatchFailed,
+		Project:       s.project,
+		CreateTime:    time.Now(),
+		Author:        s.user,
+		Version:       prevPatchId,
+		Tasks:         []string{"t1", "t2"},
+		BuildVariants: []string{"bv1"},
+		VariantsTasks: []patch.VariantTasks{
+			{
+				Variant: "bv1",
+				Tasks:   []string{"prevPatchTask"},
+			},
+		},
+	}
+	s.NoError((previousPatchDoc).Insert())
+	earlierPatchDoc := &patch.Patch{
+		Id:            patch.NewId(earlierPatchId),
+		Activated:     true,
+		Status:        evergreen.PatchFailed,
+		Project:       s.project,
+		CreateTime:    time.Now().Add(-time.Hour),
+		Author:        s.user,
+		Version:       earlierPatchId,
+		Tasks:         []string{"t1", "t2"},
+		BuildVariants: []string{"bv1"},
+		VariantsTasks: []patch.VariantTasks{
+			{
+				Variant: "bv1",
+				Tasks:   []string{"t1", "t2", "t3", "t4"},
+			},
+		},
+	}
+	s.NoError((earlierPatchDoc).Insert())
+
+	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
+		User:        s.user,
+		Project:     s.project,
+		BaseGitHash: s.hash,
+		Description: s.desc,
+		// --reuse flag with patch ID
+		RepeatDefinition: true,
+		RepeatPatchId:    earlierPatchId,
+	})
+	s.NoError(err)
+	j := NewPatchIntentProcessor(mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+	j.user = &user.DBUser{Id: s.user}
+
+	project := model.Project{
+		Identifier: s.project,
+		BuildVariants: model.BuildVariants{
+			{
+				Name: "bv1",
+				Tasks: []model.BuildVariantTaskUnit{
+					{
+						Name: "t1",
+						DependsOn: []model.TaskUnitDependency{
+							{Name: "t3", Status: evergreen.TaskFailed},
+						},
+					},
+					{
+						Name: "t2",
+					},
+					{
+						Name: "t3",
+						DependsOn: []model.TaskUnitDependency{
+							{Name: "t4", Status: evergreen.TaskFailed},
+						},
+					},
+					{
+						Name: "t4",
+					},
+					{
+						Name: "prevPatchTask",
+					},
+				},
+			},
+		},
+		Tasks: []model.ProjectTask{
+			{Name: "t1"},
+			{Name: "t2"},
+			{Name: "t3"},
+			{Name: "t4"},
+			{Name: "prevPatchTask"},
+		},
+	}
+
+	currentPatchDoc := intent.NewPatch()
+	currentPatchDoc.Tasks = []string{"t1", "t2"}
+	currentPatchDoc.BuildVariants = []string{"bv1"}
+
+	s.NoError(err)
+
+	// test --reuse with patch ID
+	err = j.buildTasksAndVariants(currentPatchDoc, &project)
 	s.NoError(err)
 	sort.Strings(currentPatchDoc.Tasks)
 	s.Equal([]string{"t1", "t2", "t3", "t4"}, currentPatchDoc.Tasks)

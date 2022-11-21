@@ -91,9 +91,12 @@ type cliIntent struct {
 	// GitInfo contains information about the author's git environment.
 	GitInfo *GitMetadata `bson:"git_info,omitempty"`
 
+	// RepeatDefinition reuses the latest patch's task/variants (if no patch ID is provided)
 	RepeatDefinition bool `bson:"reuse_definition"`
-
+	// RepeatFailed reuses the latest patch's failed tasks (if no patch ID is provided)
 	RepeatFailed bool `bson:"repeat_failed"`
+	// RepeatPatchId uses the given patch to reuse the task/variant definitions
+	RepeatPatchId string `bson:"repeat_patch_id"`
 }
 
 // BSON fields for the patches
@@ -165,12 +168,12 @@ func (c *cliIntent) ShouldFinalizePatch() bool {
 	return c.Finalize
 }
 
-func (c *cliIntent) ReusePreviousPatchDefinition() bool {
-	return c.RepeatDefinition
+func (c *cliIntent) RepeatPreviousPatchDefinition() (string, bool) {
+	return c.RepeatPatchId, c.RepeatDefinition
 }
 
-func (c *cliIntent) RepeatFailedTasksAndVariants() bool {
-	return c.RepeatFailed
+func (c *cliIntent) RepeatFailedTasksAndVariants() (string, bool) {
+	return c.RepeatPatchId, c.RepeatFailed
 }
 
 func (g *cliIntent) RequesterIdentity() string {
@@ -236,6 +239,7 @@ type CLIIntentParams struct {
 	TriggerAliases   []string
 	RepeatDefinition bool
 	RepeatFailed     bool
+	RepeatPatchId    string
 	SyncParams       SyncAtEndOptions
 }
 
@@ -299,6 +303,7 @@ func NewCliIntent(params CLIIntentParams) (Intent, error) {
 		GitInfo:            params.GitInfo,
 		RepeatDefinition:   params.RepeatDefinition,
 		RepeatFailed:       params.RepeatFailed,
+		RepeatPatchId:      params.RepeatPatchId,
 	}, nil
 }
 

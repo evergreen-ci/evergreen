@@ -19,6 +19,8 @@ const (
 	patchTriggerAliasFlag      = "trigger-alias"
 	repeatDefinitionFlag       = "repeat"
 	repeatFailedDefinitionFlag = "repeat-failed"
+	repeatPatchIdFlag          = "repeat-patch"
+	repeatFailedPatchFlag      = "repeat-failed-patch"
 )
 
 func getPatchFlags(flags ...cli.Flag) []cli.Flag {
@@ -36,6 +38,7 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 		addSkipConfirmFlag(),
 		addRefFlag(),
 		addUncommittedChangesFlag(),
+		addReuseFlags(),
 		addPreserveCommitsFlag(
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(tasksFlagName, "t"),
@@ -56,14 +59,6 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 			cli.StringSliceFlag{
 				Name:  patchTriggerAliasFlag,
 				Usage: "patch trigger alias (set by project admin) specifying tasks from other projects",
-			},
-			cli.BoolFlag{
-				Name:  joinFlagNames(repeatDefinitionFlag, "reuse"),
-				Usage: "use all of the same tasks/variants defined for the last patch you scheduled for this project",
-			},
-			cli.BoolFlag{
-				Name:  joinFlagNames(repeatFailedDefinitionFlag, "rf"),
-				Usage: "use only the failed tasks/variants defined for the last patch you scheduled for this project",
 			},
 			cli.StringFlag{
 				Name:  pathFlagName,
@@ -87,7 +82,8 @@ func Patch() cli.Command {
 			autoUpdateCLI,
 			setPlainLogger,
 			mutuallyExclusiveArgs(false, preserveCommitsFlag, uncommittedChangesFlag),
-			mutuallyExclusiveArgs(false, repeatDefinitionFlag, repeatFailedDefinitionFlag),
+			mutuallyExclusiveArgs(false, repeatDefinitionFlag, repeatPatchIdFlag,
+				repeatFailedDefinitionFlag, repeatFailedPatchFlag),
 			func(c *cli.Context) error {
 				catcher := grip.NewBasicCatcher()
 				for _, status := range utility.SplitCommas(c.StringSlice(syncStatusesFlagName)) {
@@ -126,9 +122,8 @@ func Patch() cli.Command {
 				Uncommitted:       c.Bool(uncommittedChangesFlag),
 				PreserveCommits:   c.Bool(preserveCommitsFlag),
 				TriggerAliases:    utility.SplitCommas(c.StringSlice(patchTriggerAliasFlag)),
-				RepeatDefinition:  c.Bool(repeatDefinitionFlag),
-				RepeatFailed:      c.Bool(repeatFailedDefinitionFlag),
 			}
+			params.addReuseFlags(c)
 
 			var err error
 			paramsPairs := c.StringSlice(parameterFlagName)
@@ -203,6 +198,20 @@ func Patch() cli.Command {
 			params.setDefaultProject(conf)
 			return nil
 		},
+	}
+}
+
+func (p *patchParams) addReuseFlags(c *cli.Context) {
+	repeatPatchId := c.String(repeatPatchIdFlag)
+	repeatFailedId := c.String(repeatFailedPatchFlag)
+
+	p.RepeatDefinition = c.Bool(repeatDefinitionFlag) || repeatPatchId != ""
+	if p.RepeatDefinition {
+		p.RepeatPatchId = repeatPatchId
+	}
+	p.RepeatFailed = c.Bool(repeatFailedDefinitionFlag) || repeatFailedId != ""
+	if p.RepeatFailed {
+		p.RepeatPatchId = repeatFailedId
 	}
 }
 

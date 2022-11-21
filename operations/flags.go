@@ -1,6 +1,7 @@
 package operations
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -296,6 +297,28 @@ func addUncommittedChangesFlag(flags ...cli.Flag) []cli.Flag {
 		Name:  joinFlagNames(uncommittedChangesFlag, "u"),
 		Usage: "include uncommitted changes",
 	})
+}
+
+func addReuseFlags(flags ...cli.Flag) []cli.Flag {
+	latest := "last patch you scheduled for this project"
+	message := "use the %s tasks/variants defined for the %s"
+	res := append(flags, cli.BoolFlag{
+		Name:  joinFlagNames(repeatDefinitionFlag, "reuse"),
+		Usage: fmt.Sprintf(message, "same", latest),
+	})
+	res = append(res, cli.BoolFlag{
+		Name:  joinFlagNames(repeatFailedDefinitionFlag, "rf"),
+		Usage: fmt.Sprintf(message, "failed", latest),
+	})
+	res = append(res, cli.StringFlag{
+		Name:  joinFlagNames(repeatPatchIdFlag, "reuse-patch"),
+		Usage: fmt.Sprintf(message, "same", "given patch"),
+	})
+	res = append(res, cli.StringFlag{
+		Name:  repeatFailedPatchFlag,
+		Usage: fmt.Sprintf(message, "failed", "given patch"),
+	})
+	return res
 }
 
 func addPreserveCommitsFlag(flags ...cli.Flag) []cli.Flag {
