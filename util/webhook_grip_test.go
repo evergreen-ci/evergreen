@@ -16,20 +16,32 @@ import (
 func TestEvergreenWebhookComposer(t *testing.T) {
 	assert := assert.New(t)
 
-	m := NewWebhookMessage("", "", nil, nil, nil)
+	m := NewWebhookMessage(EvergreenWebhook{})
 	assert.False(m.Loggable())
 
 	url := "https://example.com"
 	header := http.Header{
 		"test": []string{},
 	}
-	m = NewWebhookMessage("evergreen", url, []byte("hi"), []byte("something important"), header)
+	m = NewWebhookMessage(EvergreenWebhook{
+		NotificationID: "evergreen",
+		URL:            url,
+		Secret:         []byte("hi"),
+		Body:           []byte("something important"),
+		Headers:        header,
+	})
 	assert.False(m.Loggable())
 
 	header = http.Header{
 		"Test": []string{"test1", "test2"},
 	}
-	m = NewWebhookMessage("evergreen", url, []byte("hi"), []byte("something important"), header)
+	m = NewWebhookMessage(EvergreenWebhook{
+		NotificationID: "evergreen",
+		URL:            url,
+		Secret:         []byte("hi"),
+		Body:           []byte("something important"),
+		Headers:        header,
+	})
 	assert.True(m.Loggable())
 	m2, ok := m.(*evergreenWebhookMessage)
 	assert.True(ok)
@@ -42,7 +54,13 @@ func TestEvergreenWebhookComposer(t *testing.T) {
 	assert.Contains(m2.raw.Headers["Test"], "test1")
 	assert.Contains(m2.raw.Headers["Test"], "test2")
 
-	m = NewWebhookMessage("evergreen", url, []byte("hi"), []byte("something important"), nil)
+	m = NewWebhookMessage(EvergreenWebhook{
+		NotificationID: "evergreen",
+		URL:            url,
+		Secret:         []byte("hi"),
+		Body:           []byte("something important"),
+		Headers:        nil,
+	})
 	assert.True(m.Loggable())
 }
 
@@ -53,7 +71,13 @@ func TestEvergreenWebhookSender(t *testing.T) {
 		"test": []string{"test1", "test2"},
 	}
 
-	m := NewWebhookMessage("evergreen", "https://example.com", []byte("hi"), []byte("something important"), header)
+	m := NewWebhookMessage(EvergreenWebhook{
+		NotificationID: "evergreen",
+		URL:            "https://example.com",
+		Secret:         []byte("hi"),
+		Body:           []byte("something important"),
+		Headers:        header,
+	})
 	assert.True(m.Loggable())
 	assert.NotNil(m)
 
@@ -84,7 +108,7 @@ func TestEvergreenWebhookSender(t *testing.T) {
 	assert.Contains(transport.header["Test"], "test2")
 
 	// unloggable message shouldn't send
-	m = NewWebhookMessage("", "", nil, nil, nil)
+	m = NewWebhookMessage(EvergreenWebhook{})
 	s.Send(m)
 	assert.NotEqual("", transport.lastUrl)
 }
@@ -92,7 +116,13 @@ func TestEvergreenWebhookSender(t *testing.T) {
 func TestEvergreenWebhookSenderWithBadSecret(t *testing.T) {
 	assert := assert.New(t)
 
-	m := NewWebhookMessage("evergreen", "https://example.com", []byte("bye"), []byte("something forged"), nil)
+	m := NewWebhookMessage(EvergreenWebhook{
+		NotificationID: "evergreen",
+		URL:            "https://example.com",
+		Secret:         []byte("bye"),
+		Body:           []byte("something forged"),
+		Headers:        nil,
+	})
 	assert.True(m.Loggable())
 	assert.NotNil(m)
 

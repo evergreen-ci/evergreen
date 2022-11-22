@@ -21,13 +21,13 @@ const (
 )
 
 type EvergreenWebhook struct {
-	NotificationID string        `bson:"notification_id"`
-	URL            string        `bson:"url"`
-	Secret         []byte        `bson:"secret"`
-	Body           []byte        `bson:"body"`
-	Headers        http.Header   `bson:"headers"`
-	Retries        int           `bson:"retries"`
-	MinDelay       time.Duration `bson:"min_delay"`
+	NotificationID string      `bson:"notification_id"`
+	URL            string      `bson:"url"`
+	Secret         []byte      `bson:"secret"`
+	Body           []byte      `bson:"body"`
+	Headers        http.Header `bson:"headers"`
+	Retries        int         `bson:"retries"`
+	MinDelayMS     int         `bson:"min_delay"`
 }
 
 type evergreenWebhookMessage struct {
@@ -36,21 +36,9 @@ type evergreenWebhookMessage struct {
 	message.Base
 }
 
-func NewWebhookMessageWithStruct(raw EvergreenWebhook) message.Composer {
+func NewWebhookMessage(raw EvergreenWebhook) message.Composer {
 	return &evergreenWebhookMessage{
 		raw: raw,
-	}
-}
-
-func NewWebhookMessage(id string, url string, secret []byte, body []byte, headers map[string][]string) message.Composer {
-	return &evergreenWebhookMessage{
-		raw: EvergreenWebhook{
-			NotificationID: id,
-			URL:            url,
-			Secret:         secret,
-			Body:           body,
-			Headers:        headers,
-		},
 	}
 }
 
@@ -165,7 +153,7 @@ func (w *evergreenWebhookLogger) send(m message.Composer) error {
 		return false, nil
 	}, utility.RetryOptions{
 		MaxAttempts: raw.Retries + 1,
-		MinDelay:    raw.MinDelay,
+		MinDelay:    time.Duration(raw.MinDelayMS) * time.Millisecond,
 	})
 
 	return nil

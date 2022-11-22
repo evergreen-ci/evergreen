@@ -40,9 +40,11 @@ type APIPRInfo struct {
 }
 
 type APIWebhookSubscriber struct {
-	URL     *string            `json:"url" mapstructure:"url"`
-	Secret  *string            `json:"secret" mapstructure:"secret"`
-	Headers []APIWebhookHeader `json:"headers" mapstructure:"headers"`
+	URL        *string            `json:"url" mapstructure:"url"`
+	Secret     *string            `json:"secret" mapstructure:"secret"`
+	Retries    int                `json:"retries" mapstructure:"retries"`
+	MinDelayMS int                `json:"min_delay_ms" mapstructure:"min_delay_ms"`
+	Headers    []APIWebhookHeader `json:"headers" mapstructure:"headers"`
 }
 
 type APIWebhookHeader struct {
@@ -239,6 +241,8 @@ func (s *APIWebhookSubscriber) BuildFromService(h interface{}) error {
 		s.URL = utility.ToStringPtr(v.URL)
 		s.Secret = utility.ToStringPtr(string(v.Secret))
 		s.Headers = []APIWebhookHeader{}
+		s.Retries = v.Retries
+		s.MinDelayMS = v.MinDelayMS
 		for _, header := range v.Headers {
 			apiHeader := APIWebhookHeader{}
 			apiHeader.BuildFromService(header)
@@ -254,9 +258,11 @@ func (s *APIWebhookSubscriber) BuildFromService(h interface{}) error {
 
 func (s *APIWebhookSubscriber) ToService() event.WebhookSubscriber {
 	sub := event.WebhookSubscriber{
-		URL:     utility.FromStringPtr(s.URL),
-		Secret:  []byte(utility.FromStringPtr(s.Secret)),
-		Headers: []event.WebhookHeader{},
+		URL:        utility.FromStringPtr(s.URL),
+		Secret:     []byte(utility.FromStringPtr(s.Secret)),
+		Headers:    []event.WebhookHeader{},
+		Retries:    s.Retries,
+		MinDelayMS: s.MinDelayMS,
 	}
 	for _, apiHeader := range s.Headers {
 		sub.Headers = append(sub.Headers, apiHeader.ToService())

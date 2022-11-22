@@ -109,11 +109,13 @@ func (n *Notification) Composer(env evergreen.Environment) (message.Composer, er
 		payload.Secret = sub.Secret
 		payload.URL = sub.URL
 		payload.NotificationID = n.ID
+		payload.Retries = sub.Retries
+		payload.MinDelayMS = sub.MinDelayMS
 		for _, header := range sub.Headers {
 			payload.Headers.Add(header.Key, header.Value)
 		}
 
-		return util.NewWebhookMessageWithStruct(*payload), nil
+		return util.NewWebhookMessage(*payload), nil
 
 	case event.EmailSubscriberType:
 		sub, ok := n.Subscriber.Target.(*string)

@@ -35,7 +35,7 @@ var SubscriberTypes = []string{
 	RunChildPatchSubscriberType,
 }
 
-//nolint: deadcode, megacheck, unused
+// nolint: deadcode, megacheck, unused
 var (
 	subscriberTypeKey   = bsonutil.MustHaveTag(Subscriber{}, "Type")
 	subscriberTargetKey = bsonutil.MustHaveTag(Subscriber{}, "Target")
@@ -118,9 +118,11 @@ func (s *Subscriber) Validate() error {
 }
 
 type WebhookSubscriber struct {
-	URL     string          `bson:"url"`
-	Secret  []byte          `bson:"secret"`
-	Headers []WebhookHeader `bson:"headers"`
+	URL        string          `bson:"url"`
+	Secret     []byte          `bson:"secret"`
+	Retries    int             `bson:"retries"`
+	MinDelayMS int             `bson:"min_delay_ms"`
+	Headers    []WebhookHeader `bson:"headers"`
 }
 
 type WebhookHeader struct {
