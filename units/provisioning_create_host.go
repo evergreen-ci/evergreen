@@ -72,7 +72,7 @@ func NewHostCreateJob(env evergreen.Environment, h host.Host, id string, current
 		maxAttempts = maxPollAttempts
 	} else {
 		wait = 10 * time.Second
-		maxAttempts = j.host.SpawnOptions.Retries
+		maxAttempts = j.host.SpawnOptions.Retries + 1
 	}
 	j.UpdateRetryInfo(amboy.JobRetryOptions{
 		Retryable:   utility.TruePtr(),

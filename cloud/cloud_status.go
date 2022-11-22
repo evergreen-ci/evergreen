@@ -52,7 +52,11 @@ func (stat CloudStatus) String() string {
 		return "stopped"
 	case StatusTerminated:
 		return "terminated"
-	default:
+	case StatusNonExistent:
+		return "nonexistent"
+	case StatusUnknown:
 		return "unknown"
+	default:
+		return "invalid"
 	}
 }

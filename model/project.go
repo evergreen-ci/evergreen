@@ -1200,14 +1200,7 @@ func (p *Project) FindTaskGroup(name string) *TaskGroup {
 
 // FindContainerFromProject finds the container configuration associated with a given task's Container field.
 func FindContainerFromProject(t task.Task) (*Container, error) {
-	v, err := VersionFindOneId(t.Version)
-	if err != nil {
-		return nil, errors.Wrapf(err, "finding version '%s'", t.Version)
-	}
-	if v == nil {
-		return nil, errors.Errorf("version '%s' not found", t.Version)
-	}
-	project, _, err := FindAndTranslateProjectForVersion(v, t.Project)
+	project, _, err := FindAndTranslateProjectForVersion(t.Version, t.Project)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting project for version '%s'", t.Version)
 	}
@@ -1228,7 +1221,7 @@ func FindProjectFromVersionID(versionStr string) (*Project, error) {
 		return nil, errors.Errorf("version '%s' not found", versionStr)
 	}
 
-	project, _, err := FindAndTranslateProjectForVersion(ver, ver.Identifier)
+	project, _, err := FindAndTranslateProjectForVersion(ver.Id, ver.Identifier)
 	if err != nil {
 		return nil, errors.Wrapf(err, "loading project config for version '%s'", versionStr)
 	}
@@ -1278,7 +1271,7 @@ func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, er
 			continue
 		}
 		if lastGoodVersion != nil {
-			project, _, err = FindAndTranslateProjectForVersion(lastGoodVersion, projectId)
+			project, _, err = FindAndTranslateProjectForVersion(lastGoodVersion.Id, projectId)
 			if err != nil {
 				grip.Critical(message.WrapError(err, message.Fields{
 					"message": "last known good version has malformed config",
@@ -1769,6 +1762,13 @@ func findAliasesForPatch(projectId, alias string, patchDoc *patch.Patch) ([]Proj
 		return nil, errors.Wrap(err, "getting alias from project")
 	}
 	if !shouldExit && len(vars) == 0 {
+		pRef, err := FindMergedProjectRef(projectId, "", false)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting project ref")
+		}
+		if pRef == nil || !pRef.IsVersionControlEnabled() {
+			return vars, nil
+		}
 		if len(patchDoc.PatchedProjectConfig) > 0 {
 			projectConfig, err := CreateProjectConfig([]byte(patchDoc.PatchedProjectConfig), projectId)
 			if err != nil {
@@ -1778,8 +1778,8 @@ func findAliasesForPatch(projectId, alias string, patchDoc *patch.Patch) ([]Proj
 			if err != nil {
 				return nil, errors.Wrapf(err, "retrieving alias '%s' from project config", alias)
 			}
-		} else {
-			vars, err = findMatchingAliasForProjectConfig(projectId, alias)
+		} else if patchDoc.Version != "" {
+			vars, err = getMatchingAliasForVersion(patchDoc.Version, alias)
 			if err != nil {
 				return nil, errors.Wrapf(err, "retrieving alias '%s' from project config", alias)
 			}
@@ -2101,11 +2101,11 @@ type VariantsAndTasksFromProject struct {
 	Project  Project
 }
 
-// GetVariantsAndTasksFromProject formats variants and tasks as used by the UI pages.
-func GetVariantsAndTasksFromProject(ctx context.Context, patchedConfig, patchProject string) (*VariantsAndTasksFromProject, error) {
-	project := &Project{}
-	if _, err := LoadProjectInto(ctx, []byte(patchedConfig), nil, patchProject, project); err != nil {
-		return nil, errors.Wrap(err, "unmarshalling project config")
+// GetVariantsAndTasksFromPatchProject formats variants and tasks as used by the UI pages.
+func GetVariantsAndTasksFromPatchProject(ctx context.Context, p *patch.Patch) (*VariantsAndTasksFromProject, error) {
+	project, _, err := FindAndTranslateProjectForPatch(ctx, p)
+	if err != nil {
+		return nil, err
 	}
 
 	// retrieve tasks and variant mappings' names

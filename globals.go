@@ -442,7 +442,7 @@ const (
 	// DefaultEC2Region is the default region where hosts should be spawned.
 	DefaultEC2Region = "us-east-1"
 	// DefaultEBSType is Amazon's default EBS type.
-	DefaultEBSType = "gp2"
+	DefaultEBSType = "gp3"
 	// DefaultEBSAvailabilityZone is the default availability zone for EBS
 	// volumes. This may be a temporary default.
 	DefaultEBSAvailabilityZone = "us-east-1a"

@@ -197,6 +197,32 @@ func TestVolumeMigrateJob(t *testing.T) {
 			assert.Len(t, foundHosts, 1)
 			assert.Equal(t, foundHosts[0].HomeVolumeID, v.ID)
 		},
+		"NonexistentVolumeFailsGracefully": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, v *host.Volume, d *distro.Distro, spawnOptions cloud.SpawnOptions) {
+			require.NoError(t, d.Insert())
+			require.NoError(t, v.Insert())
+			require.NoError(t, h.Insert())
+
+			j := NewVolumeMigrationJob(env, "foo", spawnOptions, "123")
+			// Limit retry attempts, since a failure to find a volume will cause a retry
+			j.UpdateRetryInfo(amboy.JobRetryOptions{
+				WaitUntil:   utility.ToTimeDurationPtr(100 * time.Millisecond),
+				MaxAttempts: utility.ToIntPtr(2),
+			})
+			require.NoError(t, env.RemoteQueue().Start(ctx))
+			require.NoError(t, env.RemoteQueue().Put(ctx, j))
+
+			require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 1000*time.Millisecond))
+			assert.Error(t, j.Error())
+			assert.Contains(t, j.Error().Error(), "volume 'foo' not found")
+			assert.Equal(t, j.RetryInfo().GetRemainingAttempts(), 1)
+
+			// Second retry fails identically
+			j, ok := env.RemoteQueue().Get(ctx, j.ID())
+			assert.True(t, ok)
+			assert.Error(t, j.Error())
+			assert.Contains(t, j.Error().Error(), "volume 'foo' not found")
+			assert.Equal(t, j.RetryInfo().GetRemainingAttempts(), 0)
+		},
 	} {
 		t.Run(testName, func(t *testing.T) {
 			assert.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection, event.EventCollection, distro.Collection, dispatcher.Collection))

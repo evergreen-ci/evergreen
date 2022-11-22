@@ -188,7 +188,11 @@ func hasEnqueuePatchPermission(u *user.DBUser, existingPatch *restModel.APIPatch
 
 // getPatchProjectVariantsAndTasksForUI gets the variants and tasks for a project for a patch id
 func getPatchProjectVariantsAndTasksForUI(ctx context.Context, apiPatch *restModel.APIPatch) (*PatchProject, error) {
-	patchProjectVariantsAndTasks, err := model.GetVariantsAndTasksFromProject(ctx, *apiPatch.PatchedParserProject, *apiPatch.ProjectId)
+	p, err := apiPatch.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "building patch")
+	}
+	patchProjectVariantsAndTasks, err := model.GetVariantsAndTasksFromPatchProject(ctx, &p)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting project variants and tasks for patch %s: %s", *apiPatch.Id, err.Error()))
 	}
@@ -268,8 +272,8 @@ func getAPITaskFromTask(ctx context.Context, url string, task task.Task) (*restM
 
 // Takes a version id and some filter criteria and returns the matching associated tasks grouped together by their build variant.
 func generateBuildVariants(versionId string, buildVariantOpts BuildVariantOptions) ([]*GroupedBuildVariant, error) {
-	var variantDisplayName map[string]string = map[string]string{}
-	var tasksByVariant map[string][]*restModel.APITask = map[string][]*restModel.APITask{}
+	var variantDisplayName = map[string]string{}
+	var tasksByVariant = map[string][]*restModel.APITask{}
 	defaultSort := []task.TasksSortOrder{
 		{Key: task.DisplayNameKey, Order: 1},
 	}

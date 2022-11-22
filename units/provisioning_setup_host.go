@@ -654,6 +654,8 @@ func attachVolume(ctx context.Context, env evergreen.Environment, h *host.Host) 
 				AvailabilityZone: h.Zone,
 				CreatedBy:        h.StartedBy,
 				Type:             evergreen.DefaultEBSType,
+				IOPS:             cloud.Gp2EquivalentIOPSForGp3(h.HomeVolumeSize),
+				Throughput:       cloud.Gp2EquivalentThroughputForGp3(h.HomeVolumeSize),
 				HomeVolume:       true,
 			})
 			if err != nil {

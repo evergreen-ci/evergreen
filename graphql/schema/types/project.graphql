@@ -191,6 +191,7 @@ type Project {
   repotrackerDisabled: Boolean
   restricted: Boolean
   spawnHostScriptPath: String!
+  stepbackDisabled: Boolean
   taskAnnotationSettings: TaskAnnotationSettings!
   taskSync: TaskSyncOptions!
   tracksPushEvents: Boolean

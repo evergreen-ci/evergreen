@@ -290,6 +290,7 @@ var (
 	projectRefTaskSyncKey                 = bsonutil.MustHaveTag(ProjectRef{}, "TaskSync")
 	projectRefPatchingDisabledKey         = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
 	projectRefDispatchingDisabledKey      = bsonutil.MustHaveTag(ProjectRef{}, "DispatchingDisabled")
+	projectRefStepbackDisabledKey         = bsonutil.MustHaveTag(ProjectRef{}, "StepbackDisabled")
 	projectRefVersionControlEnabledKey    = bsonutil.MustHaveTag(ProjectRef{}, "VersionControlEnabled")
 	projectRefNotifyOnFailureKey          = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
 	projectRefSpawnHostScriptPathKey      = bsonutil.MustHaveTag(ProjectRef{}, "SpawnHostScriptPath")
@@ -528,7 +529,7 @@ func (p *ProjectRef) GetPatchTriggerAlias(aliasName string) (patch.PatchTriggerD
 // MergeWithProjectConfig looks up the project config with the given project ref id and modifies
 // the project ref scanning for any properties that can be set on both project ref and project parser.
 // Any values that are set at the project config level will be set on the project ref IF they are not set on
-// the project ref.
+// the project ref. If the version isn't specified, we get the latest config.
 func (p *ProjectRef) MergeWithProjectConfig(version string) (err error) {
 	projectConfig, err := FindProjectConfigForProjectOrVersion(p.Id, version)
 	if err != nil {
@@ -1836,6 +1837,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			ProjectRefRemotePathKey:            p.RemotePath,
 			projectRefSpawnHostScriptPathKey:   p.SpawnHostScriptPath,
 			projectRefDispatchingDisabledKey:   p.DispatchingDisabled,
+			projectRefStepbackDisabledKey:      p.StepbackDisabled,
 			projectRefVersionControlEnabledKey: p.VersionControlEnabled,
 			ProjectRefDeactivatePreviousKey:    p.DeactivatePrevious,
 			projectRefRepotrackerDisabledKey:   p.RepotrackerDisabled,
