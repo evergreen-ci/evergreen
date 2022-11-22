@@ -2460,7 +2460,7 @@ type GetTasksByVersionOptions struct {
 	Sorts                               []TasksSortOrder
 	IncludeExecutionTasks               bool
 	IncludeBaseTasks                    bool
-	IncludeInactiveTasks                bool // InactiveTasks are defined as tasks that have been generated but lack an activation time
+	IncludeInactiveTasks                bool // InactiveTasks are defined as tasks that lack an activation time
 	IncludeBuildVariantDisplayName      bool
 	IsMainlineCommit                    bool
 	UseLegacyAddBuildVariantDisplayName bool
