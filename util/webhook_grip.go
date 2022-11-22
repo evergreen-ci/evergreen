@@ -15,17 +15,19 @@ import (
 )
 
 const (
-	evergreenWebhookTimeout       = 10 * time.Second
+	evergreenWebhookTimeout       = 30 * time.Second
 	evergreenNotificationIDHeader = "X-Evergreen-Notification-ID"
 	evergreenHMACHeader           = "X-Evergreen-Signature"
 )
 
 type EvergreenWebhook struct {
-	NotificationID string      `bson:"notification_id"`
-	URL            string      `bson:"url"`
-	Secret         []byte      `bson:"secret"`
-	Body           []byte      `bson:"body"`
-	Headers        http.Header `bson:"headers"`
+	NotificationID string        `bson:"notification_id"`
+	URL            string        `bson:"url"`
+	Secret         []byte        `bson:"secret"`
+	Body           []byte        `bson:"body"`
+	Headers        http.Header   `bson:"headers"`
+	Retries        int           `bson:"retries"`
+	MinDelay       time.Duration `bson:"min_delay"`
 }
 
 type evergreenWebhookMessage struct {
@@ -143,21 +145,28 @@ func (w *evergreenWebhookLogger) send(m message.Composer) error {
 	req = req.WithContext(ctx)
 
 	var client *http.Client = w.client
-	if client == nil {
-		client = utility.GetHTTPClient()
-		defer utility.PutHTTPClient(client)
-	}
+	utility.Retry(ctx, func() (bool, error) {
+		if client == nil {
+			client = utility.GetHTTPClient()
+			defer utility.PutHTTPClient(client)
+		}
 
-	resp, err := client.Do(req)
-	if resp != nil {
-		defer resp.Body.Close()
-	}
-	if err != nil {
-		return errors.Wrap(err, "sending webhook data")
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return errors.Errorf("response was %d (%s)", resp.StatusCode, http.StatusText(resp.StatusCode))
-	}
+		resp, err := client.Do(req)
+		if resp != nil {
+			defer resp.Body.Close()
+		}
+		if err != nil {
+			return true, errors.Wrap(err, "sending webhook data")
+		}
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			return false, errors.Errorf("response was %d (%s)", resp.StatusCode, http.StatusText(resp.StatusCode))
+		}
+
+		return false, nil
+	}, utility.RetryOptions{
+		MaxAttempts: raw.Retries + 1,
+		MinDelay:    raw.MinDelay,
+	})
 
 	return nil
 }
