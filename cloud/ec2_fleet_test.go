@@ -32,6 +32,7 @@ func TestFleet(t *testing.T) {
 
 			statuses, err := m.GetInstanceStatuses(context.Background(), hosts)
 			assert.NoError(t, err)
+			assert.Len(t, statuses, len(hosts), "should return same number of statuses as there are hosts")
 			for _, status := range statuses {
 				assert.Equal(t, StatusRunning, status)
 			}

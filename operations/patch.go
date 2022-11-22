@@ -21,6 +21,7 @@ const (
 	repeatFailedDefinitionFlag = "repeat-failed"
 	repeatPatchIdFlag          = "repeat-patch"
 	repeatFailedPatchFlag      = "repeat-failed-patch"
+	includeModulesFlag         = "include-modules"
 )
 
 func getPatchFlags(flags ...cli.Flag) []cli.Flag {
@@ -96,7 +97,12 @@ func Patch() cli.Command {
 		),
 		Aliases: []string{"create-patch", "submit-patch"},
 		Usage:   "submit a new patch to Evergreen",
-		Flags:   getPatchFlags(),
+		Flags: getPatchFlags(
+			cli.BoolFlag{
+				Name:  includeModulesFlag,
+				Usage: "include module diffs using changes from defined module paths",
+			},
+		),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			args := c.Args()
@@ -126,6 +132,7 @@ func Patch() cli.Command {
 			params.addReuseFlags(c)
 
 			var err error
+			includeModules := c.Bool(includeModulesFlag)
 			paramsPairs := c.StringSlice(parameterFlagName)
 			params.Parameters, err = getParametersFromInput(paramsPairs)
 			if err != nil {
@@ -143,12 +150,12 @@ func Patch() cli.Command {
 			params.PreserveCommits = params.PreserveCommits || conf.PreserveCommits
 			if !params.SkipConfirm {
 				var keepGoing bool
-				keepGoing, err = confirmUncommittedChanges(params.PreserveCommits, params.Uncommitted || conf.UncommittedChanges)
+				keepGoing, err = confirmUncommittedChanges("", params.PreserveCommits, params.Uncommitted || conf.UncommittedChanges)
 				if err != nil {
 					return errors.Wrap(err, "confirming uncommitted changes")
 				}
 				if keepGoing && utility.StringSliceContains(params.Variants, "all") && utility.StringSliceContains(params.Tasks, "all") {
-					keepGoing = confirm(`For some projects, scheduling all tasks/variants may result in a very large patch build. Continue? (Y/n)`, true)
+					keepGoing = confirm(`For some projects, scheduling all tasks/variants may result in a very large patch build. Continue?`, true)
 				}
 				if !keepGoing {
 					return errors.New("patch aborted")
@@ -161,7 +168,7 @@ func Patch() cli.Command {
 			}
 			defer comm.Close()
 
-			ac, _, err := conf.getLegacyClients()
+			ac, rc, err := conf.getLegacyClients()
 			if err != nil {
 				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
@@ -180,7 +187,7 @@ func Patch() cli.Command {
 				return errors.Errorf("can't define tasks/variants when reusing previous patch's tasks and variants")
 			}
 
-			diffData, err := loadGitData(ref.Branch, params.Ref, "", params.PreserveCommits, args...)
+			diffData, err := loadGitData("", ref.Branch, params.Ref, "", params.PreserveCommits, args...)
 			if err != nil {
 				return err
 			}
@@ -188,10 +195,41 @@ func Patch() cli.Command {
 			if err = params.validateSubmission(diffData); err != nil {
 				return err
 			}
+			var originalFinalize bool
+			// If including modules, don't finalize the patch until we've checked all modules for changes.
+			if includeModules {
+				originalFinalize = params.Finalize
+				params.Finalize = false
+			}
 			newPatch, err := params.createPatch(ac, diffData)
 			if err != nil {
 				return err
 			}
+			patchId := newPatch.Id.Hex()
+			if includeModules {
+				proj, err := rc.GetPatchedConfig(patchId)
+				if err != nil {
+					return err
+				}
+
+				for _, module := range proj.Modules {
+					modulePath, err := params.getModulePath(conf, module.Name)
+					if err != nil {
+						grip.Error(err)
+						continue
+					}
+					if err = addModuleToPatch(params, args, conf, newPatch, &module, modulePath); err != nil {
+						grip.Errorf("Error adding module '%s' to patch: %s", module.Name, err)
+					}
+				}
+			}
+
+			if originalFinalize {
+				if err = ac.FinalizePatch(patchId); err != nil {
+					return errors.Wrapf(err, "finalizing patch '%s'", patchId)
+				}
+			}
+
 			if err = params.displayPatch(newPatch, conf.UIServerHost, false); err != nil {
 				grip.Error(err)
 			}

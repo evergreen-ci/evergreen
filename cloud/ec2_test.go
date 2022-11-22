@@ -1130,10 +1130,57 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 	// spot IDs returned doesn't match spot IDs submitted
 	mock.DescribeSpotInstanceRequestsOutput = &ec2.DescribeSpotInstanceRequestsOutput{
 		SpotInstanceRequests: []*ec2.SpotInstanceRequest{
-			&ec2.SpotInstanceRequest{
-				InstanceId:            aws.String("sir-1"),
+			{
+				InstanceId:            aws.String("nonexistent"),
 				State:                 aws.String(SpotStatusActive),
 				SpotInstanceRequestId: aws.String("1"),
+			},
+		},
+	}
+	mock.DescribeInstancesOutput = &ec2.DescribeInstancesOutput{
+		Reservations: []*ec2.Reservation{
+			{
+				Instances: []*ec2.Instance{
+					{
+						InstanceId: aws.String("i-6"),
+						State: &ec2.InstanceState{
+							Name: aws.String(ec2.InstanceStateNameShuttingDown),
+						},
+					},
+				},
+			},
+			{
+				Instances: []*ec2.Instance{
+					{
+						InstanceId: aws.String("i-4"),
+						State: &ec2.InstanceState{
+							Name: aws.String(ec2.InstanceStateNameRunning),
+						},
+						PublicDnsName:    aws.String("public_dns_name_3"),
+						PrivateIpAddress: aws.String("3.3.3.3"),
+						Placement: &ec2.Placement{
+							AvailabilityZone: aws.String("us-east-1a"),
+						},
+						LaunchTime: aws.Time(time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)),
+						BlockDeviceMappings: []*ec2.InstanceBlockDeviceMapping{
+							{
+								Ebs: &ec2.EbsInstanceBlockDevice{
+									VolumeId: aws.String("volume_id"),
+								},
+							},
+						},
+					},
+				},
+			},
+			{
+				Instances: []*ec2.Instance{
+					{
+						InstanceId: aws.String("i-5"),
+						State: &ec2.InstanceState{
+							Name: aws.String(ec2.InstanceStateNameTerminated),
+						},
+					},
+				},
 			},
 		},
 	}
@@ -1141,18 +1188,26 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 	batchManager, ok := s.onDemandManager.(BatchManager)
 	s.True(ok)
 	s.NotNil(batchManager)
-	_, err := batchManager.GetInstanceStatuses(ctx, hosts)
-	s.Error(err, "return an error if the number of spot IDs returned is different from submitted")
+	statuses, err := batchManager.GetInstanceStatuses(ctx, hosts)
+	s.NoError(err, "does not error if some of the instances do not exist")
+	s.Equal(map[string]CloudStatus{
+		"i-2":   StatusNonExistent,
+		"i-4":   StatusRunning,
+		"i-5":   StatusTerminated,
+		"i-6":   StatusTerminated,
+		"sir-1": StatusNonExistent,
+		"sir-3": StatusNonExistent,
+	}, statuses)
 
 	mock.DescribeSpotInstanceRequestsOutput = &ec2.DescribeSpotInstanceRequestsOutput{
 		SpotInstanceRequests: []*ec2.SpotInstanceRequest{
 			// This host returns with no id
-			&ec2.SpotInstanceRequest{
+			{
 				InstanceId:            aws.String("i-3"),
 				State:                 aws.String(SpotStatusActive),
 				SpotInstanceRequestId: aws.String("sir-3"),
 			},
-			&ec2.SpotInstanceRequest{
+			{
 				SpotInstanceRequestId: aws.String("sir-1"),
 				State:                 aws.String(ec2.SpotInstanceStateFailed),
 			},
@@ -1174,7 +1229,7 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 						},
 						LaunchTime: aws.Time(time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)),
 						BlockDeviceMappings: []*ec2.InstanceBlockDeviceMapping{
-							&ec2.InstanceBlockDeviceMapping{
+							{
 								Ebs: &ec2.EbsInstanceBlockDevice{
 									VolumeId: aws.String("volume_id"),
 								},
@@ -1197,7 +1252,7 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 						},
 						LaunchTime: aws.Time(time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)),
 						BlockDeviceMappings: []*ec2.InstanceBlockDeviceMapping{
-							&ec2.InstanceBlockDeviceMapping{
+							{
 								Ebs: &ec2.EbsInstanceBlockDevice{
 									VolumeId: aws.String("volume_id"),
 								},
@@ -1230,7 +1285,7 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 						},
 						LaunchTime: aws.Time(time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)),
 						BlockDeviceMappings: []*ec2.InstanceBlockDeviceMapping{
-							&ec2.InstanceBlockDeviceMapping{
+							{
 								Ebs: &ec2.EbsInstanceBlockDevice{
 									VolumeId: aws.String("volume_id"),
 								},
@@ -1251,7 +1306,7 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 			},
 		},
 	}
-	statuses, err := batchManager.GetInstanceStatuses(ctx, hosts)
+	statuses, err = batchManager.GetInstanceStatuses(ctx, hosts)
 	s.NoError(err)
 	s.Len(mock.DescribeSpotInstanceRequestsInput.SpotInstanceRequestIds, 2)
 	s.Len(mock.DescribeInstancesInput.InstanceIds, 5)
@@ -1261,14 +1316,14 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 	s.Equal("i-6", *mock.DescribeInstancesInput.InstanceIds[3])
 	s.Equal("i-3", *mock.DescribeInstancesInput.InstanceIds[4])
 	s.Len(statuses, 6)
-	s.Equal(statuses, []CloudStatus{
-		StatusFailed,
-		StatusRunning,
-		StatusRunning,
-		StatusRunning,
-		StatusTerminated,
-		StatusTerminated,
-	})
+	s.Equal(map[string]CloudStatus{
+		"i-2":   StatusRunning,
+		"i-4":   StatusRunning,
+		"i-5":   StatusTerminated,
+		"i-6":   StatusTerminated,
+		"sir-1": StatusFailed,
+		"sir-3": StatusRunning,
+	}, statuses)
 
 	s.Equal("public_dns_name_1", hosts[1].Host)
 	s.Equal("1.1.1.1", hosts[1].IPv4)
@@ -1280,7 +1335,7 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 	s.Equal("i-3", hosts[2].ExternalIdentifier)
 }
 
-func (s *EC2Suite) TestGetInstanceStatusesTerminate() {
+func (s *EC2Suite) TestGetInstanceStatusesForNonexistentInstances() {
 	hosts := []host.Host{
 		{
 			Id: "i-1",
@@ -1321,7 +1376,7 @@ func (s *EC2Suite) TestGetInstanceStatusesTerminate() {
 						},
 						LaunchTime: aws.Time(time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)),
 						BlockDeviceMappings: []*ec2.InstanceBlockDeviceMapping{
-							&ec2.InstanceBlockDeviceMapping{
+							{
 								Ebs: &ec2.EbsInstanceBlockDevice{
 									VolumeId: aws.String("volume_id"),
 								},
@@ -1335,12 +1390,11 @@ func (s *EC2Suite) TestGetInstanceStatusesTerminate() {
 
 	batchManager := s.onDemandManager.(BatchManager)
 	s.NotNil(batchManager)
-	_, err := batchManager.GetInstanceStatuses(context.Background(), hosts)
-	s.Error(err)
-
-	h, err := host.FindOneId("i-2")
+	statuses, err := batchManager.GetInstanceStatuses(context.Background(), hosts)
 	s.NoError(err)
-	s.Equal(evergreen.HostTerminated, h.Status)
+	s.Len(statuses, len(hosts), "should have one status for the existing host and one for the nonexistent host")
+	s.Equal(statuses[hosts[0].Id], StatusRunning)
+	s.Equal(statuses[hosts[1].Id], StatusNonExistent)
 }
 
 func (s *EC2Suite) TestGetRegion() {
