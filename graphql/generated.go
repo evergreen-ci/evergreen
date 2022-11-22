@@ -1028,6 +1028,7 @@ type ComplexityRoot struct {
 		LineNum    func(childComplexity int) int
 		URL        func(childComplexity int) int
 		URLLobster func(childComplexity int) int
+		URLParsley func(childComplexity int) int
 		URLRaw     func(childComplexity int) int
 	}
 
@@ -6464,6 +6465,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.TestLog.URLLobster(childComplexity), true
+
+	case "TestLog.urlParsley":
+		if e.complexity.TestLog.URLParsley == nil {
+			break
+		}
+
+		return e.complexity.TestLog.URLParsley(childComplexity), true
 
 	case "TestLog.urlRaw":
 		if e.complexity.TestLog.URLRaw == nil {
@@ -44136,6 +44144,47 @@ func (ec *executionContext) fieldContext_TestLog_urlLobster(ctx context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _TestLog_urlParsley(ctx context.Context, field graphql.CollectedField, obj *model.TestLogs) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TestLog_urlParsley(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.URLParsley, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TestLog_urlParsley(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TestLog",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _TestLog_urlRaw(ctx context.Context, field graphql.CollectedField, obj *model.TestLogs) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_TestLog_urlRaw(ctx, field)
 	if err != nil {
@@ -44512,6 +44561,8 @@ func (ec *executionContext) fieldContext_TestResult_logs(ctx context.Context, fi
 				return ec.fieldContext_TestLog_url(ctx, field)
 			case "urlLobster":
 				return ec.fieldContext_TestLog_urlLobster(ctx, field)
+			case "urlParsley":
+				return ec.fieldContext_TestLog_urlParsley(ctx, field)
 			case "urlRaw":
 				return ec.fieldContext_TestLog_urlRaw(ctx, field)
 			}
@@ -63042,6 +63093,10 @@ func (ec *executionContext) _TestLog(ctx context.Context, sel ast.SelectionSet, 
 		case "urlLobster":
 
 			out.Values[i] = ec._TestLog_urlLobster(ctx, field, obj)
+
+		case "urlParsley":
+
+			out.Values[i] = ec._TestLog_urlParsley(ctx, field, obj)
 
 		case "urlRaw":
 
