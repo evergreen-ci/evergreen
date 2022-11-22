@@ -306,7 +306,7 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *restModel.APIVersion, 
 		Limit:            limitParam,
 		Sorts:            taskSorts,
 		IncludeBaseTasks: true,
-		// If the version is a patch, we want to include inactive tasks. Otherwise return it only if requested.
+		// If the version is a patch, we want to exclude inactive tasks by default.
 		IncludeInactiveTasks:           !evergreen.IsPatchRequester(v.Requester) || utility.FromBoolPtr(options.IncludeEmptyActivation) || utility.FromBoolPtr(options.IncludeInactiveTasks),
 		IncludeBuildVariantDisplayName: true,
 		IsMainlineCommit:               !evergreen.IsPatchRequester(v.Requester),
