@@ -1428,42 +1428,7 @@ func DisableStaleContainerTasks(caller string) error {
 	return nil
 }
 
-// LegacyDeactivateStepbackTasksForProject deactivates and aborts any scheduled/running tasks
-// for this project that were activated by stepback.
-// TODO: remove as part of EVG-17947
-func LegacyDeactivateStepbackTasksForProject(projectId, caller string) error {
-	tasks, err := FindActivatedStepbackTasks(projectId)
-	if err != nil {
-		return errors.Wrap(err, "finding activated stepback tasks")
-	}
-
-	if err = DeactivateTasks(tasks, true, caller); err != nil {
-		return errors.Wrap(err, "deactivating active stepback tasks")
-	}
-
-	grip.InfoWhen(len(tasks) > 0, message.Fields{
-		"message":    "deactivated active stepback tasks",
-		"project_id": projectId,
-		"user":       caller,
-		"num_tasks":  len(tasks),
-	})
-
-	abortTaskIds := []string{}
-	for _, t := range tasks {
-		if t.IsAbortable() {
-			abortTaskIds = append(abortTaskIds, t.Id)
-			event.LogTaskAbortRequest(t.Id, t.Execution, caller)
-		}
-	}
-	if err = SetManyAborted(abortTaskIds, AbortInfo{User: caller}); err != nil {
-		return errors.Wrap(err, "aborting in progress tasks")
-	}
-
-	return nil
-}
-
 // DeactivateStepbackTask deactivates and aborts the matching stepback task.
-// Will be used instead of LegacyDeactivateStepbackTasksForProject as part of EVG-17947
 func DeactivateStepbackTask(projectId, buildVariantName, taskName, caller string) error {
 	t, err := FindActivatedStepbackTaskByName(projectId, buildVariantName, taskName)
 	if err != nil {

@@ -544,15 +544,6 @@ func (r *mutationResolver) DeactivateStepbackTask(ctx context.Context, projectID
 	return true, nil
 }
 
-// DeactivateStepbackTasks is the resolver for the deactivateStepbackTasks field.
-func (r *mutationResolver) DeactivateStepbackTasks(ctx context.Context, projectID string) (bool, error) {
-	usr := mustHaveUser(ctx)
-	if err := task.LegacyDeactivateStepbackTasksForProject(projectID, usr.Username()); err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("deactivating current stepback tasks: %s", err.Error()))
-	}
-	return true, nil
-}
-
 // AttachVolumeToHost is the resolver for the attachVolumeToHost field.
 func (r *mutationResolver) AttachVolumeToHost(ctx context.Context, volumeAndHost VolumeHost) (bool, error) {
 	statusCode, err := cloud.AttachVolume(ctx, volumeAndHost.VolumeID, volumeAndHost.HostID)
