@@ -682,8 +682,8 @@
         "end": 10,
         "task_id": "exec1",
         "task_execution": 0,
-        "url": "https://original-url.com",
-        "url_raw": "https://original-raw-url.com"
+        "url": "https://logkeeper.mongodb.org/build/59ef7a2097b1d3148d0004f1/test/123",
+        "url_raw": "https://logkeeper.mongodb.org/build/59ef7a2097b1d3148d0004f1/test/123?raw=true"
       },
       {
         "_id": {
@@ -2360,7 +2360,7 @@
                   "url": "https://localhost:8443/test_log/exec1/0?test_name=apple&group_id=#L126",
                   "urlRaw": "https://localhost:8443/test_log/exec1/0?test_name=apple&group_id=&text=true",
                   "urlLobster": "https://localhost:8443/lobster/evergreen/test/exec1/0/apple/#shareLine=126",
-                  "urlParsley": "https://localhost:4173/evergreen/test_log/exec1/0/apple&selectedLine=1"
+                  "urlParsley": "https://localhost:4173/test/exec1/0/apple?selectedLine=126"
                 },
                 "id": "29ef7a20a7798219e191d00e"
               }
@@ -2370,39 +2370,19 @@
       }
     },
     {
-      "query_file": "task_test-logs-use-original-url-when-provided.graphql",
+      "query_file": "task_test-logs-overwrite-legacy-resmoke-url.graphql",
       "result": {
         "data": {
           "taskTests": {
             "testResults": [
               {
                 "logs": {
-                  "url": "https://original-url.com",
-                  "urlRaw": "https://original-raw-url.com",
+                  "url": "",
+                  "urlRaw": "https://logkeeper.mongodb.org/build/59ef7a2097b1d3148d0004f1/test/123?raw=true",
                   "urlLobster": null,
-                  "urlParsley": null
+                  "urlParsley": "https://localhost:4173/resmoke/59ef7a2097b1d3148d0004f1/test/123?selectedLine=126"
                 },
                 "id": "19ef7a20a7798219e191d00e"
-              }
-            ]
-          }
-        }
-      }
-    },
-    {
-      "query_file": "task_test-formats-url-with-line-num-and-log-id-when-url-empty.graphql",
-      "result": {
-        "data": {
-          "taskTests": {
-            "testResults": [
-              {
-                "logs": {
-                  "url": "https://localhost:8443/test_log/59ef7a2097b1d3148d0004f1#L126",
-                  "urlRaw": "https://localhost:8443/test_log/59ef7a2097b1d3148d0004f1?text=true",
-                  "urlLobster": null,
-                  "urlParsley": null
-                },
-                "id": "39ef7a20a7798219e191d00e"
               }
             ]
           }

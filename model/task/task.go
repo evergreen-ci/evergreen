@@ -470,6 +470,9 @@ func (tr TestResult) GetLogURL(viewer evergreen.LogViewer) string {
 			tr.LineNum,
 		)
 	case evergreen.LogViewerParsley:
+		if parsleyURL == "" {
+			return ""
+		}
 		for _, url := range deprecatedLobsterURLs {
 			if strings.Contains(tr.URL, url) {
 				updatedResmokeParsleyURL := strings.Replace(tr.URL, fmt.Sprintf("%s/build", url), parsleyURL+"/resmoke", 1)
