@@ -1113,6 +1113,7 @@ const (
 	LogViewerRaw     LogViewer = "raw"
 	LogViewerHTML    LogViewer = "html"
 	LogViewerLobster LogViewer = "lobster"
+	LogViewerParsley LogViewer = "parsley"
 )
 
 // ContainerOS denotes the operating system of a running container.

@@ -36,6 +36,7 @@ type TestLogs struct {
 	URL        *string `json:"url"`
 	URLRaw     *string `json:"url_raw"`
 	URLLobster *string `json:"url_lobster,omitempty"`
+	URLParsley *string `json:"url_parsley,omitempty"`
 	LineNum    int     `json:"line_num"`
 	LogID      *string `json:"log_id,omitempty"`
 }
@@ -66,6 +67,9 @@ func (at *APITest) BuildFromService(st interface{}) error {
 		if lobsterURL := tr.GetLogURL(evergreen.LogViewerLobster); lobsterURL != "" {
 			at.Logs.URLLobster = utility.ToStringPtr(lobsterURL)
 		}
+		if parsleyURL := tr.GetLogURL(evergreen.LogViewerParsley); parsleyURL != "" {
+			at.Logs.URLParsley = utility.ToStringPtr(parsleyURL)
+		}
 		if v.LogID != "" {
 			at.Logs.LogID = utility.ToStringPtr(v.LogID)
 		}
@@ -93,6 +97,10 @@ func (at *APITest) BuildFromService(st interface{}) error {
 		if lobsterURL := tr.GetLogURL(evergreen.LogViewerLobster); lobsterURL != "" {
 			at.Logs.URLLobster = utility.ToStringPtr(lobsterURL)
 		}
+		if parsleyURL := tr.GetLogURL(evergreen.LogViewerParsley); parsleyURL != "" {
+			at.Logs.URLParsley = utility.ToStringPtr(parsleyURL)
+		}
+
 	case string:
 		at.TaskID = utility.ToStringPtr(v)
 	default:

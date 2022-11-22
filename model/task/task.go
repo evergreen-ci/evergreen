@@ -412,17 +412,18 @@ func (tr TestResult) GetDisplayTestName() string {
 // generation for other log viewers.
 func (tr TestResult) GetLogURL(viewer evergreen.LogViewer) string {
 	root := evergreen.GetEnvironment().Settings().ApiUrl
+	parsleyURL := evergreen.GetEnvironment().Settings().Ui.ParsleyUrl
 	deprecatedLobsterURLs := []string{"https://logkeeper.mongodb.org", "https://logkeeper2.build.10gen.cc"}
 
 	switch viewer {
 	case evergreen.LogViewerHTML:
+		// Return an empty string for logkeeper urls
 		if tr.URL != "" {
 			for _, url := range deprecatedLobsterURLs {
 				if strings.Contains(tr.URL, url) {
-					return strings.Replace(tr.URL, url, root+"/lobster", 1)
+					return ""
 				}
 			}
-
 			// Some test results may have internal URLs that are
 			// missing the root.
 			if err := util.CheckURL(tr.URL); err != nil {
@@ -454,6 +455,11 @@ func (tr TestResult) GetLogURL(viewer evergreen.LogViewer) string {
 		if tr.URL != "" || tr.URLRaw != "" || tr.LogId != "" {
 			return ""
 		}
+		for _, url := range deprecatedLobsterURLs {
+			if strings.Contains(tr.URL, url) {
+				return strings.Replace(tr.URL, url, root+"/lobster", 1)
+			}
+		}
 
 		return fmt.Sprintf("%s/lobster/evergreen/test/%s/%d/%s/%s#shareLine=%d",
 			root,
@@ -463,6 +469,15 @@ func (tr TestResult) GetLogURL(viewer evergreen.LogViewer) string {
 			url.QueryEscape(tr.GroupID),
 			tr.LineNum,
 		)
+	case evergreen.LogViewerParsley:
+		for _, url := range deprecatedLobsterURLs {
+			if strings.Contains(tr.URL, url) {
+				updatedResmokeParsleyURL := strings.Replace(tr.URL, fmt.Sprintf("%s/build", url), parsleyURL+"/resmoke", 1)
+				return fmt.Sprintf("%s?selectedLine=%d", updatedResmokeParsleyURL, tr.LineNum)
+			}
+		}
+		return fmt.Sprintf("%s/test/%s/%d/%s?selectedLine=%d", parsleyURL, tr.TaskID, tr.Execution, tr.GetLogTestName(), tr.LineNum)
+
 	default:
 		if tr.URLRaw != "" {
 			// Some test results may have internal URLs that are
