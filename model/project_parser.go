@@ -505,6 +505,9 @@ func FindAndTranslateProjectForVersion(versionId, projectId string) (*Project, *
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "finding parser project")
 	}
+	if pp == nil {
+		return nil, nil, errors.Errorf("parser project not found for version '%s'", versionId)
+	}
 	pp.Identifier = utility.ToStringPtr(projectId)
 	var p *Project
 	p, err = TranslateProject(pp)
