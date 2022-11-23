@@ -148,7 +148,7 @@ var sampleGeneratedProject = []string{`
 }
 `}
 
-var sampleBaseProject2 = `
+var dependOnGeneratedTasksConfig = `
 buildvariants:
   - display_name: ! Enterprise Windows
     name: testBV1
@@ -159,6 +159,59 @@ buildvariants:
     depends_on:
       - name: version_gen
         variant: generate-tasks-for-version
+
+  - display_name: Generate Tasks for Version
+    name: generate-tasks-for-version
+    run_on:
+      - ubuntu1604-test
+    tasks:
+      - name: version_gen
+
+  - name: testBV2
+    display_name: "~ Shared Library Enterprise RHEL 8.0 v4 Toolchain Clang C++20 DEBUG"
+    run_on:
+      - ubuntu1604-test
+    tasks:
+      - name: dependencyTask
+
+tasks:
+  - name: placeholder
+    depends_on:
+      - name: version_gen
+        variant: generate-tasks-for-version
+    commands:
+      - command: shell.exec
+        params:
+          working_dir: src
+          script: |
+            echo "noop2"
+  - name: dependencyTask
+    commands:
+      - command: shell.exec
+        params:
+          script: |
+            echo "noop2"
+
+  - name: version_gen
+    commands:
+      - command: generate.tasks
+        params:
+          files:
+            - src/evergreen.json
+`
+
+var dependOnGeneratedTasksDisabledConfig = `
+buildvariants:
+  - display_name: ! Enterprise Windows
+    name: testBV1
+    run_on:
+      - ubuntu1604-test
+    tasks:
+      - name: placeholder
+    depends_on:
+      - name: version_gen
+        variant: generate-tasks-for-version
+        depend_on_generated_tasks_disabled: true
 
   - display_name: Generate Tasks for Version
     name: generate-tasks-for-version
@@ -418,19 +471,18 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 	require.NoError(b3.Insert())
 
 	pp := model.ParserProject{}
-	err := util.UnmarshalYAMLWithFallback([]byte(sampleBaseProject2), &pp)
+	err := util.UnmarshalYAMLWithFallback([]byte(dependOnGeneratedTasksDisabledConfig), &pp)
 	require.NoError(err)
 	pp.Id = "sample_version"
 	require.NoError(pp.Insert())
 	generateTask := task.Task{
-		Id:                               "mci_identifier_generate_tasks_for_version_version_gen__01_01_01_00_00_00",
-		Version:                          "sample_version",
-		BuildId:                          "b1",
-		Project:                          "mci",
-		DisplayName:                      "version_gen",
-		GeneratedJSONAsString:            sampleGeneratedProject2,
-		GeneratedTasksAreNotDependencies: true,
-		Status:                           evergreen.TaskStarted,
+		Id:                    "mci_identifier_generate_tasks_for_version_version_gen__01_01_01_00_00_00",
+		Version:               "sample_version",
+		BuildId:               "b1",
+		Project:               "mci",
+		DisplayName:           "version_gen",
+		GeneratedJSONAsString: sampleGeneratedProject2,
+		Status:                evergreen.TaskStarted,
 	}
 	require.NoError(generateTask.Insert())
 	projectRef := model.ProjectRef{Id: "mci", Identifier: "mci_identifier"}
@@ -447,16 +499,27 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 		case "version_gen":
 			assert.Equal(foundTask.DependsOn, []task.Dependency{})
 		case "shouldDependOnVersionGen":
-			assert.Equal(foundTask.DependsOn, []task.Dependency{{TaskId: "mci_identifier_generate_tasks_for_version_version_gen__01_01_01_00_00_00", Status: evergreen.TaskSucceeded}})
+			assert.Equal(foundTask.DependsOn, []task.Dependency{
+				{
+					TaskId:                         "mci_identifier_generate_tasks_for_version_version_gen__01_01_01_00_00_00",
+					Status:                         evergreen.TaskSucceeded,
+					DependOnGeneratedTasksDisabled: true,
+				},
+			})
 		case "shouldDependOnDependencyTask":
 			assert.Equal(foundTask.DependsOn, []task.Dependency{{TaskId: "mci_identifier_testBV2_dependencyTask__01_01_01_00_00_00", Status: evergreen.TaskSucceeded}})
 		case "dependencyTask":
 			assert.Equal(foundTask.DependsOn, []task.Dependency{})
 		}
 	}
-	require.NoError(db.ClearCollections(task.Collection))
+	require.NoError(db.ClearCollections(task.Collection, model.ParserProjectCollection))
 
 	// check that the generated tasks are included as dependencies by default
+	pp = model.ParserProject{}
+	err = util.UnmarshalYAMLWithFallback([]byte(dependOnGeneratedTasksConfig), &pp)
+	require.NoError(err)
+	pp.Id = "sample_version"
+	require.NoError(pp.Insert())
 	generateTaskWithoutFlag := task.Task{
 		Id:                    "mci_identifier_generate_tasks_for_version_version_gen__01_01_01_00_00_00",
 		Version:               "sample_version",
