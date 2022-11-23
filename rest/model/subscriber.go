@@ -44,6 +44,7 @@ type APIWebhookSubscriber struct {
 	Secret     *string            `json:"secret" mapstructure:"secret"`
 	Retries    int                `json:"retries" mapstructure:"retries"`
 	MinDelayMS int                `json:"min_delay_ms" mapstructure:"min_delay_ms"`
+	TimeoutMS  int                `json:"timeout_ms" mapstructure:"timeout_ms"`
 	Headers    []APIWebhookHeader `json:"headers" mapstructure:"headers"`
 }
 
@@ -243,6 +244,7 @@ func (s *APIWebhookSubscriber) BuildFromService(h interface{}) error {
 		s.Headers = []APIWebhookHeader{}
 		s.Retries = v.Retries
 		s.MinDelayMS = v.MinDelayMS
+		s.TimeoutMS = v.TimeoutMS
 		for _, header := range v.Headers {
 			apiHeader := APIWebhookHeader{}
 			apiHeader.BuildFromService(header)
@@ -263,6 +265,7 @@ func (s *APIWebhookSubscriber) ToService() event.WebhookSubscriber {
 		Headers:    []event.WebhookHeader{},
 		Retries:    s.Retries,
 		MinDelayMS: s.MinDelayMS,
+		TimeoutMS:  s.TimeoutMS,
 	}
 	for _, apiHeader := range s.Headers {
 		sub.Headers = append(sub.Headers, apiHeader.ToService())

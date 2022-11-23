@@ -122,6 +122,7 @@ type WebhookSubscriber struct {
 	Secret     []byte          `bson:"secret"`
 	Retries    int             `bson:"retries"`
 	MinDelayMS int             `bson:"min_delay_ms"`
+	TimeoutMS  int             `bson:"timeout_ms"`
 	Headers    []WebhookHeader `bson:"headers"`
 }
 

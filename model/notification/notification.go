@@ -111,6 +111,7 @@ func (n *Notification) Composer(env evergreen.Environment) (message.Composer, er
 		payload.NotificationID = n.ID
 		payload.Retries = sub.Retries
 		payload.MinDelayMS = sub.MinDelayMS
+		payload.TimeoutMS = sub.TimeoutMS
 		for _, header := range sub.Headers {
 			payload.Headers.Add(header.Key, header.Value)
 		}
