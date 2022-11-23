@@ -283,9 +283,12 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 		return errors.Wrap(err, "adding new builds")
 	}
 
-	// only want to add dependencies to activated tasks
-	if err = g.addDependencies(append(activatedTasksInExistingBuilds, activatedTasksInNewBuilds...)); err != nil {
-		return errors.Wrap(err, "adding dependencies")
+	// only want to add dependencies to activated tasks and GeneratedTasksAreNotDependencies
+	// is not set
+	if !g.Task.GeneratedTasksAreNotDependencies {
+		if err = g.addDependencies(append(activatedTasksInExistingBuilds, activatedTasksInNewBuilds...)); err != nil {
+			return errors.Wrap(err, "adding dependencies")
+		}
 	}
 
 	return nil
