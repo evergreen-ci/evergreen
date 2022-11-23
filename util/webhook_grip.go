@@ -147,7 +147,7 @@ func (w *evergreenWebhookLogger) send(m message.Composer) error {
 			return true, errors.Wrap(err, "sending webhook data")
 		}
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			return false, errors.Errorf("response was %d (%s)", resp.StatusCode, http.StatusText(resp.StatusCode))
+			return true, errors.Errorf("response was %d (%s)", resp.StatusCode, http.StatusText(resp.StatusCode))
 		}
 
 		return false, nil
