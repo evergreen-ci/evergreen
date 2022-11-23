@@ -97,6 +97,10 @@ func (w *EvergreenWebhook) request() (*http.Request, error) {
 		}
 	}
 
+	// Deduplicate the evergreen headers.
+	req.Header.Del(evergreenHMACHeader)
+	req.Header.Del(evergreenNotificationIDHeader)
+
 	req.Header.Add(evergreenHMACHeader, hash)
 	req.Header.Add(evergreenNotificationIDHeader, w.NotificationID)
 
@@ -137,7 +141,7 @@ func (w *evergreenWebhookLogger) send(m message.Composer) error {
 
 	timeout := defaultWebhookTimeout
 	if raw.TimeoutMS > 0 {
-		timeout = time.Duration(raw.TimeoutMS)
+		timeout = time.Duration(raw.TimeoutMS) * time.Millisecond
 	}
 	minDelay := defaultMinDelay
 	if raw.MinDelayMS > 0 {
