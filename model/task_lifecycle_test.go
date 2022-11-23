@@ -3654,6 +3654,7 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 
 	h.RunningTask = "t2"
 	assert.NoError(ClearAndResetStrandedHostTask(h))
+
 }
 
 func TestClearAndResetStaleStrandedHostTask(t *testing.T) {
@@ -3666,6 +3667,7 @@ func TestClearAndResetStaleStrandedHostTask(t *testing.T) {
 		Activated:     true,
 		ActivatedTime: utility.ZeroTime,
 		BuildId:       "b",
+		Version:       "version",
 	}
 	assert.NoError(runningTask.Insert())
 
@@ -3677,6 +3679,10 @@ func TestClearAndResetStaleStrandedHostTask(t *testing.T) {
 
 	b := build.Build{Id: "b"}
 	assert.NoError(b.Insert())
+	v := Version{
+		Id: b.Version,
+	}
+	assert.NoError(v.Insert())
 
 	assert.NoError(ClearAndResetStrandedHostTask(h))
 	runningTask, err := task.FindOne(db.Query(task.ById("t")))
