@@ -51,9 +51,12 @@ func TestSubscriberModelsWebhook(t *testing.T) {
 	assert := assert.New(t)
 
 	target := event.WebhookSubscriber{
-		URL:     "foo",
-		Secret:  []byte("bar"),
-		Headers: []event.WebhookHeader{},
+		URL:        "foo",
+		Secret:     []byte("bar"),
+		Retries:    3,
+		MinDelayMS: 500,
+		TimeoutMS:  10000,
+		Headers:    []event.WebhookHeader{},
 	}
 	webhookSubscriber := event.Subscriber{
 		Type:   event.EvergreenWebhookSubscriberType,
@@ -73,8 +76,11 @@ func TestSubscriberModelsWebhook(t *testing.T) {
 	incoming := APISubscriber{
 		Type: utility.ToStringPtr(event.EvergreenWebhookSubscriberType),
 		Target: map[string]interface{}{
-			"url":    "foo",
-			"secret": "bar",
+			"url":          "foo",
+			"secret":       "bar",
+			"retries":      3,
+			"min_delay_ms": 500,
+			"timeout_ms":   10000,
 		},
 	}
 

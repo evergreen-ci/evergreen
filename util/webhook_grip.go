@@ -145,7 +145,7 @@ func (w *evergreenWebhookLogger) send(m message.Composer) error {
 	}
 
 	var client *http.Client = w.client
-	utility.Retry(context.Background(), func() (bool, error) {
+	return utility.Retry(context.Background(), func() (bool, error) {
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 		req = req.WithContext(ctx)
@@ -171,8 +171,6 @@ func (w *evergreenWebhookLogger) send(m message.Composer) error {
 		MaxAttempts: raw.Retries + 1,
 		MinDelay:    minDelay,
 	})
-
-	return nil
 }
 
 func (w *evergreenWebhookLogger) Flush(_ context.Context) error { return nil }
