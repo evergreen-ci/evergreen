@@ -452,7 +452,7 @@ func (c *Mock) KeyValInc(ctx context.Context, td TaskData, kv *serviceModel.KeyV
 }
 
 // GenerateTasks posts new tasks for the `generate.tasks` command.
-func (c *Mock) GenerateTasks(ctx context.Context, td TaskData, jsonBytes []json.RawMessage, generatedTasksAreNotDependencies bool) error {
+func (c *Mock) GenerateTasks(ctx context.Context, td TaskData, jsonBytes []json.RawMessage) error {
 	if td.ID != "mock_id" {
 		return errors.New("mock failed, wrong id")
 	}

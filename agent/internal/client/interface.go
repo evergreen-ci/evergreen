@@ -104,7 +104,7 @@ type SharedCommunicator interface {
 	KeyValInc(context.Context, TaskData, *model.KeyVal) error
 
 	// GenerateTasks posts new tasks for the `generate.tasks` command.
-	GenerateTasks(context.Context, TaskData, []json.RawMessage, bool) error
+	GenerateTasks(context.Context, TaskData, []json.RawMessage) error
 
 	// GenerateTasksPoll polls for new tasks for the `generate.tasks` command.
 	GenerateTasksPoll(context.Context, TaskData) (*apimodels.GeneratePollResponse, error)

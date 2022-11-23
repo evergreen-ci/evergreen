@@ -19,9 +19,8 @@ func makeGenerateTasksHandler() gimlet.RouteHandler {
 }
 
 type generateHandler struct {
-	files                            []json.RawMessage
-	generatedTasksAreNotDependencies bool
-	taskID                           string
+	files  []json.RawMessage
+	taskID string
 }
 
 func (h *generateHandler) Factory() gimlet.RouteHandler {
@@ -34,8 +33,7 @@ func (h *generateHandler) Parse(ctx context.Context, r *http.Request) error {
 		return errors.Wrap(err, "reading raw JSON from request body")
 	}
 	h.taskID = gimlet.GetVars(r)["task_id"]
-	vals := r.URL.Query()
-	h.generatedTasksAreNotDependencies = vals.Get("generatedTasksAreNotDependencies") == "true"
+
 	return nil
 }
 
@@ -46,7 +44,7 @@ func parseJson(r *http.Request) ([]json.RawMessage, error) {
 }
 
 func (h *generateHandler) Run(ctx context.Context) gimlet.Responder {
-	if err := data.GenerateTasks(h.taskID, h.files, h.generatedTasksAreNotDependencies); err != nil {
+	if err := data.GenerateTasks(h.taskID, h.files); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "generating tasks for task '%s'", h.taskID))
 	}
 

@@ -229,9 +229,6 @@ type Task struct {
 	// GeneratedTasks indicates that the task has already generated other tasks. This fields
 	// allows us to noop future requests, since a task should only generate others once.
 	GeneratedTasks bool `bson:"generated_tasks,omitempty" json:"generated_tasks,omitempty"`
-	// GeneratedTasksAreNotDependencies indicates that tasks that depend on the generator task
-	// will not also depend on the generator's generated tasks.
-	GeneratedTasksAreNotDependencies bool `bson:"generated_tasks_are_not_dependencies,omitempty" json:"generated_tasks_are_not_dependencies,omitempty"`
 	// GeneratedBy, if present, is the ID of the task that generated this task.
 	GeneratedBy string `bson:"generated_by,omitempty" json:"generated_by,omitempty"`
 	// GeneratedJSONAsString is the configuration information to create new tasks from.
@@ -1306,7 +1303,7 @@ func GenerateNotRun() ([]Task, error) {
 }
 
 // SetGeneratedJSON sets JSON data to generate tasks from.
-func (t *Task) SetGeneratedJSON(json []json.RawMessage, generatedTasksAreNotDependencies bool) error {
+func (t *Task) SetGeneratedJSON(json []json.RawMessage) error {
 	if len(t.GeneratedJSONAsString) > 0 {
 		return nil
 	}
@@ -1315,19 +1312,15 @@ func (t *Task) SetGeneratedJSON(json []json.RawMessage, generatedTasksAreNotDepe
 		s = append(s, string(j))
 	}
 	t.GeneratedJSONAsString = s
-	update := bson.M{
-		GeneratedJSONAsStringKey: s,
-	}
-	if generatedTasksAreNotDependencies {
-		update[GeneratedTasksAreNotDependenciesKey] = true
-	}
 	return UpdateOne(
 		bson.M{
 			IdKey:                    t.Id,
 			GeneratedJSONAsStringKey: bson.M{"$exists": false},
 		},
 		bson.M{
-			"$set": update,
+			"$set": bson.M{
+				GeneratedJSONAsStringKey: s,
+			},
 		},
 	)
 }

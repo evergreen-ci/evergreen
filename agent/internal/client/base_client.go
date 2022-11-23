@@ -908,15 +908,12 @@ func (c *baseCommunicator) KeyValInc(ctx context.Context, taskData TaskData, kv 
 }
 
 // GenerateTasks posts new tasks for the `generate.tasks` command.
-func (c *baseCommunicator) GenerateTasks(ctx context.Context, td TaskData, jsonBytes []json.RawMessage, generatedTasksAreNotDependencies bool) error {
+func (c *baseCommunicator) GenerateTasks(ctx context.Context, td TaskData, jsonBytes []json.RawMessage) error {
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &td,
 	}
 	info.path = fmt.Sprintf("tasks/%s/generate", td.ID)
-	if generatedTasksAreNotDependencies {
-		info.path = fmt.Sprintf("%s?generatedTasksAreNotDependencies=%s", info.path, generatedTasksAreNotDependencies)
-	}
 	resp, err := c.retryRequest(ctx, info, jsonBytes)
 	if err != nil {
 		return utility.RespErrorf(resp, errors.Wrap(err, "sending generate.tasks request").Error())

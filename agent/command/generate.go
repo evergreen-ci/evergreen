@@ -25,10 +25,6 @@ type generateTask struct {
 	// Optional causes generate.tasks to noop if no files match
 	Optional bool `mapstructure:"optional"`
 
-	// GeneratedTasksAreNotDependencies causes tasks that depend on a generator task to not also depend on
-	// the generated tasks if this is set to true
-	GeneratedTasksAreNotDependencies bool `mapstructure:"generated_tasks_are_not_dependencies"`
-
 	base
 }
 
@@ -93,7 +89,7 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 	if err != nil {
 		return errors.Wrap(err, "parsing JSON")
 	}
-	if err = comm.GenerateTasks(ctx, td, post, c.GeneratedTasksAreNotDependencies); err != nil {
+	if err = comm.GenerateTasks(ctx, td, post); err != nil {
 		if strings.Contains(err.Error(), evergreen.TasksAlreadyGeneratedError) {
 			logger.Task().Info("Tasks have already been generated, nooping.")
 			return nil
