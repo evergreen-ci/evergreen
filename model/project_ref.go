@@ -2123,7 +2123,7 @@ func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit) (time.Tim
 	if t.CronBatchTime != "" {
 		return GetActivationTimeWithCron(time.Now(), t.CronBatchTime)
 	}
-	// if activated explicitly set to true and we don't have batchtime, then we want to just activate now
+	// If activated explicitly set to true and we don't have batchtime, then we want to just activate now
 	if utility.FromBoolPtr(t.Activate) && t.BatchTime == nil {
 		return time.Now(), nil
 	}

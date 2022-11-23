@@ -1293,8 +1293,10 @@ func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, er
 		"last good version for project '%s'", lastGoodVersion.Identifier)
 }
 
-func (bvt *BuildVariantTaskUnit) HasBatchTime() bool {
-	return bvt.CronBatchTime != "" || bvt.BatchTime != nil || bvt.Activate != nil
+// HasSpecificActivation returns if the build variant specifies an overriding activation,
+// such as cron/batchtime, disabling the task, or explicitly activating it.
+func (bvt *BuildVariantTaskUnit) HasSpecificActivation() bool {
+	return bvt.CronBatchTime != "" || bvt.BatchTime != nil || bvt.Activate != nil || bvt.IsDisabled()
 }
 
 func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit {
