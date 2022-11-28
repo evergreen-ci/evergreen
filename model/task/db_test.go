@@ -936,7 +936,7 @@ func TestGetTasksByVersionExecTasks(t *testing.T) {
 	assert.Equal(t, t4.Id, tasks[2].Id)
 }
 
-func TestGetTasksByVersionIncludeInactiveTaskss(t *testing.T) {
+func TestGetTasksByVersionIncludeInactiveTasks(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
 
 	inactiveTask := Task{
