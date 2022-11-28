@@ -154,7 +154,7 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.Peri
 		return "", errors.Wrap(err, "getting GitHub OAuth token")
 	}
 
-	mostRecentVersion, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester(j.ProjectID))
+	mostRecentVersion, err := model.FindVersionByLastKnownGoodConfig(j.ProjectID, -1)
 	if err != nil {
 		return "", errors.Wrapf(err, "finding most recent version for project '%s'", j.ProjectID)
 	}
