@@ -1544,6 +1544,7 @@ func (t *Task) MarkSystemFailed(description string) error {
 	)
 }
 
+// GetSystemFailureDetails returns a task's end details based on an input description.
 func GetSystemFailureDetails(description string) apimodels.TaskEndDetail {
 	details := apimodels.TaskEndDetail{
 		Status:      evergreen.TaskFailed,

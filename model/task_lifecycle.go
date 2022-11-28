@@ -1731,14 +1731,6 @@ func resetSystemFailedTask(t *task.Task, description string) error {
 		failureDetails := task.GetSystemFailureDetails(description)
 		// If the task has already exceeded the unschedulable threshold, we
 		// don't want to restart it, so just mark it as finished.
-		msg := "task exceeded unschedulable threshold"
-		if maxExecutionTask {
-			msg = "task exceeded max execution threshold"
-		}
-		grip.Warning(message.Fields{
-			"message": fmt.Sprintf("%s, marking as finished", msg),
-			"task":    t.Id,
-		})
 		if t.DisplayOnly {
 			execTasks, err := task.FindAll(db.Query(task.ByIds(t.ExecutionTasks)))
 			if err != nil {
