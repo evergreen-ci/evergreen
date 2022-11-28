@@ -484,15 +484,15 @@ func (pss *parserStringSlice) UnmarshalYAML(unmarshal func(interface{}) error) e
 	return nil
 }
 
-// hasSpecificActivation returns if the build variant task unit specifies an overriding activation,
-// such as cron/batchtime, disabling the task, or explicitly activating it.
+// HasSpecificActivation returns if the build variant task specifies an activation condition that
+// overrides the default, such as cron/batchtime, disabling the task, or explicitly activating it.
 func (bvt *parserBVTaskUnit) hasSpecificActivation() bool {
 	return bvt.BatchTime != nil || bvt.CronBatchTime != "" ||
 		bvt.Activate != nil || utility.FromBoolPtr(bvt.Disable)
 }
 
-// hasSpecificActivation returns if the build variant specifies an overriding activation,
-// such as cron/batchtime, disabling the task, or explicitly activating it.
+// HasSpecificActivation returns if the build variant specifies an activation condition that
+// overrides the default, such as cron/batchtime, disabling the task, or explicitly activating it.
 func (bvt *parserBV) hasSpecificActivation() bool {
 	return bvt.BatchTime != nil || bvt.CronBatchTime != "" ||
 		bvt.Activate != nil || bvt.Disabled
