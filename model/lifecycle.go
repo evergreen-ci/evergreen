@@ -967,7 +967,7 @@ func makeDeps(t BuildVariantTaskUnit, thisTask *task.Task, taskIds TaskIdTable) 
 			if id == thisTask.Id {
 				continue
 			}
-			dependencySet[task.Dependency{TaskId: id, Status: status, DependOnGeneratedTasksDisabled: dep.DependOnGeneratedTasksDisabled}] = true
+			dependencySet[task.Dependency{TaskId: id, Status: status, OmitGeneratedTasks: dep.OmitGeneratedTasks}] = true
 		}
 	}
 

@@ -535,11 +535,11 @@ func (c *YAMLCommandSet) UnmarshalYAML(unmarshal func(interface{}) error) error 
 // TaskUnitDependency holds configuration information about a task/group that must finish before
 // the task/group that contains the dependency can run.
 type TaskUnitDependency struct {
-	Name                           string `yaml:"name,omitempty" bson:"name"`
-	Variant                        string `yaml:"variant,omitempty" bson:"variant,omitempty"`
-	Status                         string `yaml:"status,omitempty" bson:"status,omitempty"`
-	PatchOptional                  bool   `yaml:"patch_optional,omitempty" bson:"patch_optional,omitempty"`
-	DependOnGeneratedTasksDisabled bool   `yaml:"depend_on_generated_tasks_disabled" bson:"depend_on_generated_tasks_disabled"`
+	Name               string `yaml:"name,omitempty" bson:"name"`
+	Variant            string `yaml:"variant,omitempty" bson:"variant,omitempty"`
+	Status             string `yaml:"status,omitempty" bson:"status,omitempty"`
+	PatchOptional      bool   `yaml:"patch_optional,omitempty" bson:"patch_optional,omitempty"`
+	OmitGeneratedTasks bool   `yaml:"omit_generated_tasks" bson:"omit_generated_tasks"`
 }
 
 // UnmarshalYAML allows tasks to be referenced as single selector strings.
