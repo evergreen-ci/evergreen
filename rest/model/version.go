@@ -3,6 +3,7 @@ package model
 import (
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/utility"
 )
@@ -83,4 +84,8 @@ func (apiVersion *APIVersion) BuildFromService(v model.Version) {
 			apiVersion.ProjectIdentifier = utility.ToStringPtr(identifier)
 		}
 	}
+}
+
+func (apiVersion *APIVersion) IsPatchRequester() bool {
+	return evergreen.IsPatchRequester(*apiVersion.Requester)
 }
