@@ -1725,11 +1725,10 @@ func resetSystemFailedTask(t *task.Task, description string) error {
 		return nil
 	}
 
-	if err := t.MarkSystemFailed(description); err != nil {
-		return errors.Wrap(err, "marking task as system failed")
-	}
-
-	if time.Since(t.ActivatedTime) > task.UnschedulableThreshold {
+	unschedulableTask := time.Since(t.ActivatedTime) > task.UnschedulableThreshold
+	maxExecutionTask := t.Execution >= evergreen.MaxTaskExecution
+	if unschedulableTask || maxExecutionTask {
+		failureDetails := task.GetSystemFailureDetails(description)
 		// If the task has already exceeded the unschedulable threshold, we
 		// don't want to restart it, so just mark it as finished.
 		if t.DisplayOnly {
@@ -1739,13 +1738,17 @@ func resetSystemFailedTask(t *task.Task, description string) error {
 			}
 			for _, execTask := range execTasks {
 				if !evergreen.IsFinishedTaskStatus(execTask.Status) {
-					if err := MarkEnd(&execTask, evergreen.MonitorPackage, time.Now(), &t.Details, false); err != nil {
+					if err = MarkEnd(&execTask, evergreen.MonitorPackage, time.Now(), &failureDetails, false); err != nil {
 						return errors.Wrap(err, "marking execution task as ended")
 					}
 				}
 			}
 		}
-		return errors.WithStack(MarkEnd(t, evergreen.MonitorPackage, time.Now(), &t.Details, false))
+		return errors.WithStack(MarkEnd(t, evergreen.MonitorPackage, time.Now(), &failureDetails, false))
+	}
+
+	if err := t.MarkSystemFailed(description); err != nil {
+		return errors.Wrap(err, "marking task as system failed")
 	}
 
 	return errors.Wrap(ResetTaskOrDisplayTask(t, evergreen.User, evergreen.MonitorPackage, true, &t.Details), "resetting task")

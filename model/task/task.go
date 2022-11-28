@@ -1468,15 +1468,7 @@ func (t *Task) MarkFailed() error {
 func (t *Task) MarkSystemFailed(description string) error {
 	t.Status = evergreen.TaskFailed
 	t.FinishTime = time.Now()
-
-	t.Details = apimodels.TaskEndDetail{
-		Status:      evergreen.TaskFailed,
-		Type:        evergreen.CommandTypeSystem,
-		Description: description,
-	}
-	if description == evergreen.TaskDescriptionHeartbeat {
-		t.Details.TimedOut = true
-	}
+	t.Details = GetSystemFailureDetails(description)
 
 	switch t.ExecutionPlatform {
 	case ExecutionPlatformHost:
@@ -1515,6 +1507,19 @@ func (t *Task) MarkSystemFailed(description string) error {
 			},
 		},
 	)
+}
+
+// GetSystemFailureDetails returns a task's end details based on an input description.
+func GetSystemFailureDetails(description string) apimodels.TaskEndDetail {
+	details := apimodels.TaskEndDetail{
+		Status:      evergreen.TaskFailed,
+		Type:        evergreen.CommandTypeSystem,
+		Description: description,
+	}
+	if description == evergreen.TaskDescriptionHeartbeat {
+		details.TimedOut = true
+	}
+	return details
 }
 
 func SetManyAborted(taskIds []string, reason AbortInfo) error {

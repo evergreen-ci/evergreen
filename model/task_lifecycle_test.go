@@ -3537,7 +3537,55 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 		BuildId:       "b",
 		Version:       "version",
 	}
-	assert.NoError(runningTask.Insert())
+	unschedulableTask := &task.Task{
+		Id:            "unschedulableTask",
+		Status:        evergreen.TaskStarted,
+		Activated:     true,
+		ActivatedTime: time.Now().Add(-task.UnschedulableThreshold - time.Minute),
+		BuildId:       "b2",
+		Version:       "version2",
+		Requester:     evergreen.PatchVersionRequester,
+	}
+	dependencyTask := &task.Task{
+		Id:            "dependencyTask",
+		Status:        evergreen.TaskUndispatched,
+		Activated:     true,
+		ActivatedTime: time.Now(),
+		BuildId:       "b2",
+		Version:       "version2",
+		DependsOn: []task.Dependency{
+			{
+				TaskId: unschedulableTask.Id,
+				Status: evergreen.TaskSucceeded,
+			},
+		},
+	}
+	dt := &task.Task{
+		Id:             "displayTask",
+		DisplayName:    "displayTask",
+		BuildId:        "b2",
+		Version:        "version2",
+		Project:        "project",
+		Activated:      false,
+		DisplayOnly:    true,
+		ExecutionTasks: []string{unschedulableTask.Id},
+		Status:         evergreen.TaskStarted,
+		DispatchTime:   time.Now(),
+	}
+	maxExecTask := &task.Task{
+		Id:            "t3",
+		Status:        evergreen.TaskStarted,
+		Activated:     true,
+		ActivatedTime: time.Now(),
+		BuildId:       "b3",
+		Version:       "version3",
+		Execution:     evergreen.MaxTaskExecution,
+	}
+	require.NoError(t, runningTask.Insert())
+	require.NoError(t, maxExecTask.Insert())
+	require.NoError(t, dependencyTask.Insert())
+	require.NoError(t, unschedulableTask.Insert())
+	require.NoError(t, dt.Insert())
 
 	h := &host.Host{
 		Id:          "h1",
@@ -3555,10 +3603,58 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 	}
 	assert.NoError(v.Insert())
 
+	b2 := build.Build{
+		Id:      "b2",
+		Version: "version2",
+	}
+	assert.NoError(b2.Insert())
+	v2 := Version{
+		Id: b2.Version,
+	}
+	assert.NoError(v2.Insert())
+
 	assert.NoError(ClearAndResetStrandedHostTask(h))
+
 	runningTask, err := task.FindOne(db.Query(task.ById("t")))
-	assert.NoError(err)
+	require.NoError(t, err)
 	assert.Equal(evergreen.TaskUndispatched, runningTask.Status)
+
+	foundBuild, err := build.FindOneId("b")
+	require.NoError(t, err)
+	assert.Equal(evergreen.BuildCreated, foundBuild.Status)
+
+	foundVersion, err := VersionFindOneId(b.Version)
+	require.NoError(t, err)
+	assert.Equal(evergreen.VersionCreated, foundVersion.Status)
+
+	h.RunningTask = "unschedulableTask"
+	assert.NoError(ClearAndResetStrandedHostTask(h))
+
+	unschedulableTask, err = task.FindOne(db.Query(task.ById("unschedulableTask")))
+	require.NoError(t, err)
+	assert.Equal(evergreen.TaskFailed, unschedulableTask.Status)
+
+	dependencyTask, err = task.FindOne(db.Query(task.ById("dependencyTask")))
+	require.NoError(t, err)
+	assert.True(dependencyTask.DependsOn[0].Unattainable)
+	assert.True(dependencyTask.DependsOn[0].Finished)
+
+	dt, err = task.FindOne(db.Query(task.ById("displayTask")))
+	require.NoError(t, err)
+	assert.Equal(dt.Status, evergreen.TaskFailed)
+	assert.Equal(dt.Details, task.GetSystemFailureDetails(evergreen.TaskDescriptionStranded))
+
+	foundBuild, err = build.FindOneId("b2")
+	require.NoError(t, err)
+	assert.Equal(evergreen.BuildFailed, foundBuild.Status)
+
+	foundVersion, err = VersionFindOneId(b2.Version)
+	require.NoError(t, err)
+	assert.Equal(evergreen.VersionFailed, foundVersion.Status)
+
+	h.RunningTask = "t2"
+	assert.NoError(ClearAndResetStrandedHostTask(h))
+
 }
 
 func TestClearAndResetStaleStrandedHostTask(t *testing.T) {
@@ -3571,6 +3667,7 @@ func TestClearAndResetStaleStrandedHostTask(t *testing.T) {
 		Activated:     true,
 		ActivatedTime: utility.ZeroTime,
 		BuildId:       "b",
+		Version:       "version",
 	}
 	assert.NoError(runningTask.Insert())
 
@@ -3582,6 +3679,10 @@ func TestClearAndResetStaleStrandedHostTask(t *testing.T) {
 
 	b := build.Build{Id: "b"}
 	assert.NoError(b.Insert())
+	v := Version{
+		Id: b.Version,
+	}
+	assert.NoError(v.Insert())
 
 	assert.NoError(ClearAndResetStrandedHostTask(h))
 	runningTask, err := task.FindOne(db.Query(task.ById("t")))
