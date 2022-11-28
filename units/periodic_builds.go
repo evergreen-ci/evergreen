@@ -96,7 +96,15 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 		}))
 	}()
 
-	versionID, versionError := j.addVersion(ctx, *definition)
+	mostRecentVersion, err := model.FindVersionByLastKnownGoodConfig(j.ProjectID, -1)
+	if err != nil {
+		j.AddError(errors.Wrapf(err, "finding most recent version for project '%s'", j.ProjectID))
+	}
+	if mostRecentVersion == nil {
+		j.AddError(errors.Errorf("no recent version found for project '%s'", j.ProjectID))
+	}
+
+	versionID, versionError := j.addVersion(ctx, *definition, mostRecentVersion.Revision)
 	if versionError != nil {
 		// if the version fails to be added, create a stub version and
 		// log an event so users can get notified when notifications are configured
@@ -105,6 +113,9 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 			Message:         definition.Message,
 			PeriodicBuildID: definition.ID,
 			Alias:           definition.Alias,
+			Revision: model.Revision{
+				Revision: mostRecentVersion.Revision,
+			},
 		}
 		stubVersion, dbErr := repotracker.ShellVersionFromRevision(ctx, j.project, metadata)
 		if dbErr != nil {
@@ -148,20 +159,13 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 
 }
 
-func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.PeriodicBuildDefinition) (string, error) {
+func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.PeriodicBuildDefinition, mostRecentRevision string) (string, error) {
 	token, err := j.env.Settings().GetGithubOauthToken()
 	if err != nil {
 		return "", errors.Wrap(err, "getting GitHub OAuth token")
 	}
 
-	mostRecentVersion, err := model.FindVersionByLastKnownGoodConfig(j.ProjectID, -1)
-	if err != nil {
-		return "", errors.Wrapf(err, "finding most recent version for project '%s'", j.ProjectID)
-	}
-	if mostRecentVersion == nil {
-		return "", errors.Errorf("no recent version found for project '%s'", j.ProjectID)
-	}
-	configFile, err := thirdparty.GetGithubFile(ctx, token, j.project.Owner, j.project.Repo, definition.ConfigFile, mostRecentVersion.Revision)
+	configFile, err := thirdparty.GetGithubFile(ctx, token, j.project.Owner, j.project.Repo, definition.ConfigFile, mostRecentRevision)
 	if err != nil {
 		return "", errors.Wrap(err, "getting config file from GitHub")
 	}
@@ -172,9 +176,9 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.Peri
 	proj := &model.Project{}
 	opts := &model.GetProjectOpts{
 		Ref:          j.project,
-		Revision:     mostRecentVersion.Revision,
+		Revision:     mostRecentRevision,
 		Token:        token,
-		ReadFileFrom: model.ReadfromGithub,
+		ReadFileFrom: model.ReadFromGithub,
 	}
 	intermediateProject, err := model.LoadProjectInto(ctx, configBytes, opts, j.project.Id, proj)
 	if err != nil {
@@ -193,7 +197,7 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.Peri
 		PeriodicBuildID: definition.ID,
 		Alias:           definition.Alias,
 		Revision: model.Revision{
-			Revision: mostRecentVersion.Revision,
+			Revision: mostRecentRevision,
 		},
 	}
 
