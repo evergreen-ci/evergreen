@@ -773,7 +773,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	s.Require().NotNil(patchDoc)
 
 	s.verifyPatchDoc(patchDoc, j.PatchID)
-
+	s.projectExists(j.PatchID.Hex())
 	s.NotZero(patchDoc.CreateTime)
 	s.Zero(patchDoc.GithubPatchData)
 
@@ -814,7 +814,7 @@ func (s *PatchIntentUnitsSuite) verifyPatchDoc(patchDoc *patch.Patch, expectedPa
 	s.Equal(expectedPatchID, patchDoc.Id)
 	s.NotEmpty(patchDoc.Patches)
 	s.True(patchDoc.Activated)
-	s.NotEmpty(patchDoc.PatchedParserProject)
+	s.Empty(patchDoc.PatchedParserProject)
 	s.Zero(patchDoc.StartTime)
 	s.Zero(patchDoc.FinishTime)
 	s.NotEqual(0, patchDoc.PatchNumber)
@@ -836,6 +836,12 @@ func (s *PatchIntentUnitsSuite) verifyPatchDoc(patchDoc *patch.Patch, expectedPa
 	s.Contains(patchDoc.Tasks, "dist")
 	s.Contains(patchDoc.Tasks, "dist-test")
 	s.NotZero(patchDoc.CreateTime)
+}
+
+func (s *PatchIntentUnitsSuite) projectExists(projectId string) {
+	pp, err := model.ParserProjectFindOneById(projectId)
+	s.NoError(err)
+	s.NotNil(pp)
 }
 
 func (s *PatchIntentUnitsSuite) verifyVersionDoc(patchDoc *patch.Patch, expectedRequester string) {
