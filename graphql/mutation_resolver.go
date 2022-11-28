@@ -539,7 +539,7 @@ func (r *mutationResolver) SaveRepoSettingsForSection(ctx context.Context, repoS
 func (r *mutationResolver) DeactivateStepbackTask(ctx context.Context, projectID string, buildVariantName string, taskName string) (bool, error) {
 	usr := mustHaveUser(ctx)
 	if err := task.DeactivateStepbackTask(projectID, buildVariantName, taskName, usr.Username()); err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("deactivating stepback task '%s' for variant '%s': %s", taskName, buildVariantName, err.Error()))
+		return false, InternalServerError.Send(ctx, err.Error())
 	}
 	return true, nil
 }
