@@ -420,7 +420,6 @@ type ComplexityRoot struct {
 		CreateProject                 func(childComplexity int, project model.APIProjectRef) int
 		CreatePublicKey               func(childComplexity int, publicKeyInput PublicKeyInput) int
 		DeactivateStepbackTask        func(childComplexity int, projectID string, buildVariantName string, taskName string) int
-		DeactivateStepbackTasks       func(childComplexity int, projectID string) int
 		DefaultSectionToRepo          func(childComplexity int, projectID string, section ProjectSettingsSection) int
 		DetachProjectFromRepo         func(childComplexity int, projectID string) int
 		DetachVolumeFromHost          func(childComplexity int, volumeID string) int
@@ -1254,7 +1253,6 @@ type MutationResolver interface {
 	SaveProjectSettingsForSection(ctx context.Context, projectSettings *model.APIProjectSettings, section ProjectSettingsSection) (*model.APIProjectSettings, error)
 	SaveRepoSettingsForSection(ctx context.Context, repoSettings *model.APIProjectSettings, section ProjectSettingsSection) (*model.APIProjectSettings, error)
 	DeactivateStepbackTask(ctx context.Context, projectID string, buildVariantName string, taskName string) (bool, error)
-	DeactivateStepbackTasks(ctx context.Context, projectID string) (bool, error)
 	AttachVolumeToHost(ctx context.Context, volumeAndHost VolumeHost) (bool, error)
 	DetachVolumeFromHost(ctx context.Context, volumeID string) (bool, error)
 	EditSpawnHost(ctx context.Context, spawnHost *EditSpawnHostInput) (*model.APIHost, error)
@@ -3007,18 +3005,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.DeactivateStepbackTask(childComplexity, args["projectId"].(string), args["buildVariantName"].(string), args["taskName"].(string)), true
-
-	case "Mutation.deactivateStepbackTasks":
-		if e.complexity.Mutation.DeactivateStepbackTasks == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_deactivateStepbackTasks_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.DeactivateStepbackTasks(childComplexity, args["projectId"].(string)), true
 
 	case "Mutation.defaultSectionToRepo":
 		if e.complexity.Mutation.DefaultSectionToRepo == nil {
@@ -7772,38 +7758,6 @@ func (ec *executionContext) field_Mutation_deactivateStepbackTask_args(ctx conte
 		}
 	}
 	args["taskName"] = arg2
-	return args, nil
-}
-
-func (ec *executionContext) field_Mutation_deactivateStepbackTasks_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 string
-	if tmp, ok := rawArgs["projectId"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			access, err := ec.unmarshalNProjectSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsAccess(ctx, "EDIT")
-			if err != nil {
-				return nil, err
-			}
-			if ec.directives.RequireProjectAccess == nil {
-				return nil, errors.New("directive requireProjectAccess is not implemented")
-			}
-			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, access)
-		}
-
-		tmp, err = directive1(ctx)
-		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if data, ok := tmp.(string); ok {
-			arg0 = data
-		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
-		}
-	}
-	args["projectId"] = arg0
 	return args, nil
 }
 
@@ -21226,61 +21180,6 @@ func (ec *executionContext) fieldContext_Mutation_deactivateStepbackTask(ctx con
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_deactivateStepbackTask_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_deactivateStepbackTasks(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_deactivateStepbackTasks(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().DeactivateStepbackTasks(rctx, fc.Args["projectId"].(string))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_deactivateStepbackTasks(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_deactivateStepbackTasks_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -57876,15 +57775,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_deactivateStepbackTask(ctx, field)
-			})
-
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "deactivateStepbackTasks":
-
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_deactivateStepbackTasks(ctx, field)
 			})
 
 			if out.Values[i] == graphql.Null {

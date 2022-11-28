@@ -539,16 +539,7 @@ func (r *mutationResolver) SaveRepoSettingsForSection(ctx context.Context, repoS
 func (r *mutationResolver) DeactivateStepbackTask(ctx context.Context, projectID string, buildVariantName string, taskName string) (bool, error) {
 	usr := mustHaveUser(ctx)
 	if err := task.DeactivateStepbackTask(projectID, buildVariantName, taskName, usr.Username()); err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("deactivating stepback task '%s' for variant '%s': %s", taskName, buildVariantName, err.Error()))
-	}
-	return true, nil
-}
-
-// DeactivateStepbackTasks is the resolver for the deactivateStepbackTasks field.
-func (r *mutationResolver) DeactivateStepbackTasks(ctx context.Context, projectID string) (bool, error) {
-	usr := mustHaveUser(ctx)
-	if err := task.LegacyDeactivateStepbackTasksForProject(projectID, usr.Username()); err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("deactivating current stepback tasks: %s", err.Error()))
+		return false, InternalServerError.Send(ctx, err.Error())
 	}
 	return true, nil
 }

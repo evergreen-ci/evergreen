@@ -24,7 +24,7 @@
         "data": null,
         "errors": [
           {
-            "message": "deactivating stepback task 'does-not-exist' for variant 'ubuntu1604': no stepback task 'does-not-exist' for variant 'ubuntu1604' found",
+            "message": "no stepback task 'does-not-exist' for variant 'ubuntu1604' found",
             "path": [
               "deactivateStepbackTask"
             ],
