@@ -366,6 +366,7 @@ func (s *execCmdSuite) TestEnvIsSetAndDefaulted() {
 	s.Len(cmd.Env, 8)
 	s.Contains(cmd.Env, agentutil.MarkerTaskID)
 	s.Contains(cmd.Env, agentutil.MarkerAgentPID)
+	s.Contains(cmd.Env, agentutil.MarkerInEvergreen)
 	s.Contains(cmd.Env, "TEMP")
 	s.Contains(cmd.Env, "TMP")
 	s.Contains(cmd.Env, "TMPDIR")
@@ -392,6 +393,7 @@ func (s *execCmdSuite) TestEnvAddsExpansionsAndDefaults() {
 	s.Len(cmd.Env, 9)
 	s.Contains(cmd.Env, agentutil.MarkerTaskID)
 	s.Contains(cmd.Env, agentutil.MarkerAgentPID)
+	s.Contains(cmd.Env, agentutil.MarkerInEvergreen)
 	s.Contains(cmd.Env, "TEMP")
 	s.Contains(cmd.Env, "TMP")
 	s.Contains(cmd.Env, "TMPDIR")
@@ -453,6 +455,7 @@ func TestDefaultAndApplyExpansionsToEnv(t *testing.T) {
 			assert.Contains(t, opts.tmpDir, env["TMPDIR"])
 			assert.Equal(t, filepath.Join(opts.workingDir, ".gocache"), env["GOCACHE"])
 			assert.Equal(t, "true", env["CI"])
+			assert.Equal(t, "true", env[agentutil.MarkerInEvergreen])
 		},
 		"SetsDefaultAndRequiredEnvEvenWhenStandardValuesAreZero": func(t *testing.T, exp util.Expansions) {
 			env := defaultAndApplyExpansionsToEnv(map[string]string{}, modifyEnvOptions{})
@@ -464,6 +467,7 @@ func TestDefaultAndApplyExpansionsToEnv(t *testing.T) {
 			assert.Contains(t, env, "TMPDIR")
 			assert.Equal(t, ".gocache", env["GOCACHE"])
 			assert.Equal(t, "true", env["CI"])
+			assert.Equal(t, "true", env[agentutil.MarkerInEvergreen])
 		},
 		"AgentEnvVarsOverridesExplicitlySetEnvVars": func(t *testing.T, exp util.Expansions) {
 			opts := modifyEnvOptions{
@@ -476,19 +480,22 @@ func TestDefaultAndApplyExpansionsToEnv(t *testing.T) {
 			assert.Equal(t, strconv.Itoa(os.Getpid()), env[agentutil.MarkerAgentPID])
 			assert.Equal(t, opts.taskID, env[agentutil.MarkerTaskID])
 		},
-		"ExplicitlySetEnVVarsOverrideDefaultEnvVars": func(t *testing.T, exp util.Expansions) {
+		"ExplicitlySetEnvVarsOverrideDefaultEnvVars": func(t *testing.T, exp util.Expansions) {
 			gocache := "/path/to/gocache"
 			ci := "definitely not Jenkins"
+			inEvergreen := "yes"
 			tmpDir := "/some/tmpdir"
 			env := defaultAndApplyExpansionsToEnv(map[string]string{
-				"GOCACHE": gocache,
-				"CI":      ci,
-				"TEMP":    tmpDir,
-				"TMP":     "/some/tmpdir",
-				"TMPDIR":  tmpDir,
+				"GOCACHE":                   gocache,
+				"CI":                        ci,
+				agentutil.MarkerInEvergreen: inEvergreen,
+				"TEMP":                      tmpDir,
+				"TMP":                       "/some/tmpdir",
+				"TMPDIR":                    tmpDir,
 			}, modifyEnvOptions{tmpDir: "/tmp"})
 			assert.Equal(t, gocache, env["GOCACHE"])
 			assert.Equal(t, ci, env["CI"])
+			assert.Equal(t, inEvergreen, env[agentutil.MarkerInEvergreen])
 		},
 		"AddExpansionsToEnvAddsAllExpansions": func(t *testing.T, exp util.Expansions) {
 			env := defaultAndApplyExpansionsToEnv(map[string]string{
@@ -506,6 +513,7 @@ func TestDefaultAndApplyExpansionsToEnv(t *testing.T) {
 		},
 		"AddExpansionsToEnvOverridesDefaultEnvVars": func(t *testing.T, exp util.Expansions) {
 			exp.Put("CI", "actually it's Jenkins")
+			exp.Put(agentutil.MarkerInEvergreen, "not")
 			exp.Put("GOCACHE", "/path/to/gocache")
 			env := defaultAndApplyExpansionsToEnv(map[string]string{}, modifyEnvOptions{
 				expansions:         exp,

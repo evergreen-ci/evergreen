@@ -199,6 +199,9 @@ func defaultAndApplyExpansionsToEnv(env map[string]string, opts modifyEnvOptions
 	if _, ok := env["CI"]; !ok {
 		env["CI"] = "true"
 	}
+	if _, ok := env[agentutil.MarkerInEvergreen]; !ok {
+		env[agentutil.MarkerInEvergreen] = "true"
+	}
 
 	return env
 }
