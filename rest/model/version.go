@@ -87,5 +87,5 @@ func (apiVersion *APIVersion) BuildFromService(v model.Version) {
 }
 
 func (apiVersion *APIVersion) IsPatchRequester() bool {
-	return evergreen.IsPatchRequester(*apiVersion.Requester)
+	return evergreen.IsPatchRequester(utility.FromStringPtr(apiVersion.Requester))
 }

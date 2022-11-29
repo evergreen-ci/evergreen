@@ -818,7 +818,7 @@ func getCollectiveStatusArray(v restModel.APIVersion) ([]string, error) {
 	} else {
 		allStatuses = append(allStatuses, status)
 	}
-	if evergreen.IsPatchRequester(*v.Requester) {
+	if v.IsPatchRequester() {
 		p, err := data.FindPatchById(*v.Id)
 		if err != nil {
 			return nil, errors.Wrapf(err, "fetching patch '%s'", *v.Id)
