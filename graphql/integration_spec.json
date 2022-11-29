@@ -2379,7 +2379,7 @@
                 "logs": {
                   "url": "",
                   "urlRaw": "https://logkeeper.mongodb.org/build/59ef7a2097b1d3148d0004f1/test/123?raw=true",
-                  "urlLobster": null,
+                  "urlLobster": "https://localhost:8443/lobster/build/59ef7a2097b1d3148d0004f1/test/123",
                   "urlParsley": "https://localhost:4173/resmoke/59ef7a2097b1d3148d0004f1/test/123?selectedLine=126"
                 },
                 "id": "19ef7a20a7798219e191d00e"
