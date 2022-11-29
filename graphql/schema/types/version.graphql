@@ -13,8 +13,8 @@ TaskFilterOptions defines the parameters that are used when fetching tasks from 
 """
 input TaskFilterOptions {
   baseStatuses: [String!] = []
-  includeEmptyActivation: Boolean = false @deprecated(reason: "Use includeInactiveTasks instead")
-  includeInactiveTasks: Boolean = false
+  includeEmptyActivation: Boolean = false @deprecated(reason: "Use includeNeverActivatedTasks instead")
+  includeNeverActivatedTasks: Boolean = false
   limit: Int = 0
   page: Int = 0
   sorts: [SortOrder!]

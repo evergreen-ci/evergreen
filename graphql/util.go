@@ -289,7 +289,7 @@ func generateBuildVariants(versionId string, buildVariantOpts BuildVariantOption
 		IncludeBaseTasks:               utility.FromBoolPtr(buildVariantOpts.IncludeBaseTasks),
 		IncludeBuildVariantDisplayName: true,
 		// Do not fetch inactive tasks for patches. This is because the UI does not display inactive tasks for patches.
-		IncludeInactiveTasks: !evergreen.IsPatchRequester(requester),
+		IncludeNeverActivatedTasks: !evergreen.IsPatchRequester(requester),
 	}
 
 	start := time.Now()

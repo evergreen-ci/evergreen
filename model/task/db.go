@@ -436,11 +436,11 @@ func ByVersion(version string) bson.M {
 }
 
 // DisplayTasksByVersion produces a query that returns all display tasks for the given version.
-func DisplayTasksByVersion(version string, includeInactiveTasks bool) bson.M {
+func DisplayTasksByVersion(version string, includeNeverActivatedTasks bool) bson.M {
 	// assumes that all ExecutionTasks know of their corresponding DisplayTask (i.e. DisplayTaskIdKey not null or "")
 
 	matchOnVersion := bson.M{VersionKey: version}
-	if !includeInactiveTasks {
+	if !includeNeverActivatedTasks {
 		matchOnVersion[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
 	}
 	query := bson.M{
@@ -2390,10 +2390,10 @@ func GetBaseStatusesForActivatedTasks(versionID string, baseVersionID string) ([
 }
 
 type HasMatchingTasksOptions struct {
-	TaskNames            []string
-	Variants             []string
-	Statuses             []string
-	IncludeInactiveTasks bool
+	TaskNames                  []string
+	Variants                   []string
+	Statuses                   []string
+	IncludeNeverActivatedTasks bool
 }
 
 // HasMatchingTasks returns true if the version has tasks with the given statuses
@@ -2402,7 +2402,7 @@ func HasMatchingTasks(versionID string, opts HasMatchingTasksOptions) (bool, err
 		TaskNames:                      opts.TaskNames,
 		Variants:                       opts.Variants,
 		Statuses:                       opts.Statuses,
-		IncludeInactiveTasks:           !opts.IncludeInactiveTasks,
+		IncludeNeverActivatedTasks:     !opts.IncludeNeverActivatedTasks,
 		IncludeBuildVariantDisplayName: true,
 	}
 	if len(opts.Variants) > 0 {
@@ -2460,7 +2460,7 @@ type GetTasksByVersionOptions struct {
 	Sorts                               []TasksSortOrder
 	IncludeExecutionTasks               bool
 	IncludeBaseTasks                    bool
-	IncludeInactiveTasks                bool // InactiveTasks are defined as tasks that lack an activation time
+	IncludeNeverActivatedTasks          bool // NeverActivated tasks are tasks that lack an activation time
 	IncludeBuildVariantDisplayName      bool
 	IsMainlineCommit                    bool
 	UseLegacyAddBuildVariantDisplayName bool
@@ -2478,7 +2478,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		match[DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex, "$options": "i"}
 	}
 	// Activated Time is needed to filter out generated tasks that have been generated but not yet activated
-	if !opts.IncludeInactiveTasks {
+	if !opts.IncludeNeverActivatedTasks {
 		match[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
 	}
 	pipeline := []bson.M{

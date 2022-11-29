@@ -87,7 +87,7 @@ func (r *versionResolver) BuildVariantStats(ctx context.Context, obj *restModel.
 		Variants:                       options.Variants,
 		Statuses:                       options.Statuses,
 		IncludeBuildVariantDisplayName: true,
-		IncludeInactiveTasks:           !obj.IsPatchRequester(),
+		IncludeNeverActivatedTasks:     !obj.IsPatchRequester(),
 	}
 	stats, err := task.GetGroupedTaskStatsByVersion(utility.FromStringPtr(obj.Id), opts)
 	if err != nil {
@@ -307,7 +307,7 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *restModel.APIVersion, 
 		Sorts:            taskSorts,
 		IncludeBaseTasks: true,
 		// If the version is a patch, we want to exclude inactive tasks by default.
-		IncludeInactiveTasks:           !evergreen.IsPatchRequester(v.Requester) || utility.FromBoolPtr(options.IncludeEmptyActivation) || utility.FromBoolPtr(options.IncludeInactiveTasks),
+		IncludeNeverActivatedTasks:     !evergreen.IsPatchRequester(v.Requester) || utility.FromBoolPtr(options.IncludeEmptyActivation) || utility.FromBoolPtr(options.IncludeNeverActivatedTasks),
 		IncludeBuildVariantDisplayName: true,
 		IsMainlineCommit:               !evergreen.IsPatchRequester(v.Requester),
 	}
@@ -358,8 +358,8 @@ func (r *versionResolver) TaskStatusStats(ctx context.Context, obj *restModel.AP
 		TaskNames:             options.Tasks,
 		Variants:              options.Variants,
 		Statuses:              getValidTaskStatusesFilter(options.Statuses),
-		// If the version is a patch, we don't want to include inactive tasks.
-		IncludeInactiveTasks: !obj.IsPatchRequester(),
+		// If the version is a patch, we don't want to include its never activated tasks.
+		IncludeNeverActivatedTasks: !obj.IsPatchRequester(),
 	}
 	if len(options.Variants) != 0 {
 		opts.IncludeBuildVariantDisplayName = true // we only need the buildVariantDisplayName if we plan on filtering on it.
