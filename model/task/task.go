@@ -312,7 +312,7 @@ type Dependency struct {
 	Finished bool `bson:"finished" json:"finished"`
 	// OmitGeneratedTasks causes tasks that depend on a generator task to not depend on
 	// the generated tasks if this is set
-	OmitGeneratedTasks bool `bson:"omit_generated_tasks" json:"omit_generated_tasks"`
+	OmitGeneratedTasks bool `bson:"omit_generated_tasks,omitempty" json:"omit_generated_tasks,omitempty"`
 }
 
 // BaseTaskInfo is a subset of task fields that should be returned for patch tasks.
@@ -3493,7 +3493,7 @@ func (t *Task) UpdateDependsOn(status string, newDependencyIDs []string) error {
 			DependsOnKey: bson.M{"$elemMatch": bson.M{
 				DependencyTaskIdKey:             t.Id,
 				DependencyStatusKey:             status,
-				DependencyOmitGeneratedTasksKey: false,
+				DependencyOmitGeneratedTasksKey: bson.M{"$ne": true},
 			}},
 		},
 		bson.M{"$push": bson.M{DependsOnKey: bson.M{"$each": newDependencies}}},
