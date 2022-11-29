@@ -208,9 +208,13 @@ func (j *volumeMigrationJob) finishJob(ctx context.Context) {
 			})
 		}
 
-		if err := j.volume.SetMigrating(false); err != nil {
-			j.AddRetryableError(err)
-			return
+		if j.volume != nil {
+			err := j.volume.SetMigrating(false)
+			if err != nil {
+				j.AddRetryableError(err)
+				return
+			}
+
 		}
 
 	}

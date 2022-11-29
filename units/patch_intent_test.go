@@ -230,6 +230,41 @@ func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithNoTasksAndVariants() {
 	s.Equal("patch has no build variants or tasks", err.Error())
 }
 
+func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithBadAlias() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	resp, err := http.Get(s.diffURL)
+	s.Require().NoError(err)
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	s.Require().NoError(err)
+
+	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
+		User:         s.user,
+		Project:      s.project,
+		BaseGitHash:  s.hash,
+		PatchContent: string(body),
+		Description:  s.desc,
+		Finalize:     true,
+		Alias:        "typo",
+	})
+	s.NoError(err)
+	s.Require().NotNil(intent)
+	s.NoError(intent.Insert())
+
+	githubOauthToken, err := s.env.Settings().GetGithubOauthToken()
+	s.Require().NoError(err)
+
+	j := NewPatchIntentProcessor(mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+	j.env = s.env
+
+	patchDoc := intent.NewPatch()
+	err = j.finishPatch(ctx, patchDoc, githubOauthToken)
+	s.Require().Error(err)
+	s.Equal("alias 'typo' could not be found on project 'mci'", err.Error())
+}
+
 func (s *PatchIntentUnitsSuite) TestCantFinishCommitQueuePatchWithNoTasksAndVariants() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -738,7 +773,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	s.Require().NotNil(patchDoc)
 
 	s.verifyPatchDoc(patchDoc, j.PatchID)
-
+	s.projectExists(j.PatchID.Hex())
 	s.NotZero(patchDoc.CreateTime)
 	s.Zero(patchDoc.GithubPatchData)
 
@@ -779,7 +814,7 @@ func (s *PatchIntentUnitsSuite) verifyPatchDoc(patchDoc *patch.Patch, expectedPa
 	s.Equal(expectedPatchID, patchDoc.Id)
 	s.NotEmpty(patchDoc.Patches)
 	s.True(patchDoc.Activated)
-	s.NotEmpty(patchDoc.PatchedParserProject)
+	s.Empty(patchDoc.PatchedParserProject)
 	s.Zero(patchDoc.StartTime)
 	s.Zero(patchDoc.FinishTime)
 	s.NotEqual(0, patchDoc.PatchNumber)
@@ -801,6 +836,12 @@ func (s *PatchIntentUnitsSuite) verifyPatchDoc(patchDoc *patch.Patch, expectedPa
 	s.Contains(patchDoc.Tasks, "dist")
 	s.Contains(patchDoc.Tasks, "dist-test")
 	s.NotZero(patchDoc.CreateTime)
+}
+
+func (s *PatchIntentUnitsSuite) projectExists(projectId string) {
+	pp, err := model.ParserProjectFindOneById(projectId)
+	s.NoError(err)
+	s.NotNil(pp)
 }
 
 func (s *PatchIntentUnitsSuite) verifyVersionDoc(patchDoc *patch.Patch, expectedRequester string) {

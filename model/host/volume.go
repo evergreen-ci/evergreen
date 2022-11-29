@@ -15,6 +15,8 @@ type Volume struct {
 	CreatedBy        string    `bson:"created_by" json:"created_by"`
 	Type             string    `bson:"type" json:"type"`
 	Size             int       `bson:"size" json:"size"`
+	Throughput       int       `bson:"throughput,omitempty" json:"throughput,omitempty"`
+	IOPS             int       `bson:"iops,omitempty" json:"iops,omitempty"`
 	AvailabilityZone string    `bson:"availability_zone" json:"availability_zone"`
 	Expiration       time.Time `bson:"expiration" json:"expiration"`
 	NoExpiration     bool      `bson:"no_expiration" json:"no_expiration"`

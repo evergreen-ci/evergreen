@@ -68,14 +68,14 @@ func (pc *DBCommitQueueConnector) AddPatchForPr(ctx context.Context, projectRef 
 		return "", errors.Wrap(err, "making commit queue patch")
 	}
 
-	p, patchSummaries, projectConfig, err := getPatchInfo(ctx, githubToken, patchDoc)
+	p, patchSummaries, proj, err := getPatchInfo(ctx, githubToken, patchDoc)
 	if err != nil {
 		return "", err
 	}
 
-	errs := validator.CheckProjectErrors(projectConfig, false)
-	isConfigDefined := projectConfig != nil
-	errs = append(errs, validator.CheckProjectSettings(projectConfig, &projectRef, isConfigDefined)...)
+	errs := validator.CheckProjectErrors(proj, false)
+	isConfigDefined := len(patchDoc.PatchedProjectConfig) > 0
+	errs = append(errs, validator.CheckProjectSettings(proj, &projectRef, isConfigDefined)...)
 	errs = append(errs, validator.CheckPatchedProjectConfigErrors(patchDoc.PatchedProjectConfig)...)
 	catcher := grip.NewBasicCatcher()
 	for _, validationErr := range errs.AtLevel(validator.Error) {
@@ -108,16 +108,16 @@ func (pc *DBCommitQueueConnector) AddPatchForPr(ctx context.Context, projectRef 
 	for _, module := range modules {
 		serviceModules = append(serviceModules, *restModel.APIModuleToService(module))
 	}
-	modulePRs, modulePatches, err := model.GetModulesFromPR(ctx, githubToken, serviceModules, projectConfig)
+	modulePRs, modulePatches, err := model.GetModulesFromPR(ctx, githubToken, serviceModules, proj)
 	if err != nil {
 		return "", err
 	}
 	patchDoc.Patches = append(patchDoc.Patches, modulePatches...)
 
 	// populate tasks/variants matching the commitqueue alias
-	projectConfig.BuildProjectTVPairs(patchDoc, patchDoc.Alias)
+	proj.BuildProjectTVPairs(patchDoc, patchDoc.Alias)
 
-	if err = units.AddMergeTaskAndVariant(patchDoc, projectConfig, &projectRef, commitqueue.SourcePullRequest); err != nil {
+	if err = units.AddMergeTaskAndVariant(patchDoc, proj, &projectRef, commitqueue.SourcePullRequest); err != nil {
 		return "", err
 	}
 
@@ -146,6 +146,7 @@ func getPatchInfo(ctx context.Context, githubToken string, patchDoc *patch.Patch
 	}
 
 	patchDoc.PatchedParserProject = patchConfig.PatchedParserProject
+	patchDoc.PatchedProjectConfig = patchConfig.PatchedProjectConfig
 	return patchContent, summaries, config, nil
 }
 

@@ -12,9 +12,10 @@
       "remote_path" : "evergreen.yml",
       "patching_disabled" : false,
       "pr_testing_enabled" : true,
+      "stepback_disabled" : false,
       "batch_time" : 2,
       "deactivate_previous" : true,
-      "triggers" : [ ],
+      "triggers" : [],
       "patch_trigger_aliases" : [
         {
           "alias" : "my_alias_sandbox",

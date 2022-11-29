@@ -893,7 +893,6 @@ buildvariants:
 	_, err = LoadProjectInto(ctx, []byte(yamlWithVariables), opts, "example_project", &proj)
 	require.NoError(t, err)
 
-	fmt.Println("MY TESTS ARE STARTING")
 	// duplicates should error
 	yamlWithDup := `
 tasks:

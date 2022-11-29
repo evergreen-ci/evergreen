@@ -1292,7 +1292,7 @@ func hostRunCommand() cli.Command {
 				}
 
 				if !skipConfirm {
-					if !confirm(fmt.Sprintf("The script will run on %d host(s), \n%s\nContinue? (Y/n): ", len(hostIDs), strings.Join(hostIDs, "\n")), true) {
+					if !confirm(fmt.Sprintf("The script will run on %d host(s), \n%s\nContinue?", len(hostIDs), strings.Join(hostIDs, "\n")), true) {
 						return nil
 					}
 				}
@@ -1680,13 +1680,13 @@ func verifyRsync(localPath, remotePath string, pull bool) bool {
 	remotePathIsDir := strings.HasSuffix(remotePath, "/")
 
 	if localPathIsDir && !pull {
-		ok := confirm(fmt.Sprintf("The local directory '%s' will overwrite any existing contents in the remote directory '%s'. Continue? (y/N)", localPath, remotePath), false)
+		ok := confirm(fmt.Sprintf("The local directory '%s' will overwrite any existing contents in the remote directory '%s'. Continue?", localPath, remotePath), false)
 		if !ok {
 			return false
 		}
 	}
 	if remotePathIsDir && pull {
-		ok := confirm(fmt.Sprintf("The remote directory '%s' will overwrite any existing contents in the local directory '%s'. Continue? (y/N)", remotePath, localPath), false)
+		ok := confirm(fmt.Sprintf("The remote directory '%s' will overwrite any existing contents in the local directory '%s'. Continue?", remotePath, localPath), false)
 		if !ok {
 			return false
 		}

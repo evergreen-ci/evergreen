@@ -2258,6 +2258,7 @@ type APIUIConfig struct {
 	Url            *string  `json:"url"`
 	HelpUrl        *string  `json:"help_url"`
 	UIv2Url        *string  `json:"uiv2_url"`
+	ParsleyUrl     *string  `json:"parsley_url"`
 	HttpListenAddr *string  `json:"http_listen_addr"`
 	Secret         *string  `json:"secret"`
 	DefaultProject *string  `json:"default_project"`
@@ -2274,6 +2275,7 @@ func (a *APIUIConfig) BuildFromService(h interface{}) error {
 		a.Url = utility.ToStringPtr(v.Url)
 		a.HelpUrl = utility.ToStringPtr(v.HelpUrl)
 		a.UIv2Url = utility.ToStringPtr(v.UIv2Url)
+		a.ParsleyUrl = utility.ToStringPtr(v.ParsleyUrl)
 		a.HttpListenAddr = utility.ToStringPtr(v.HttpListenAddr)
 		a.Secret = utility.ToStringPtr(v.Secret)
 		a.DefaultProject = utility.ToStringPtr(v.DefaultProject)
@@ -2293,6 +2295,7 @@ func (a *APIUIConfig) ToService() (interface{}, error) {
 		Url:            utility.FromStringPtr(a.Url),
 		HelpUrl:        utility.FromStringPtr(a.HelpUrl),
 		UIv2Url:        utility.FromStringPtr(a.UIv2Url),
+		ParsleyUrl:     utility.FromStringPtr(a.ParsleyUrl),
 		HttpListenAddr: utility.FromStringPtr(a.HttpListenAddr),
 		Secret:         utility.FromStringPtr(a.Secret),
 		DefaultProject: utility.FromStringPtr(a.DefaultProject),

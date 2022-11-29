@@ -419,7 +419,7 @@ type ComplexityRoot struct {
 		CopyProject                   func(childComplexity int, project data.CopyProjectOpts) int
 		CreateProject                 func(childComplexity int, project model.APIProjectRef) int
 		CreatePublicKey               func(childComplexity int, publicKeyInput PublicKeyInput) int
-		DeactivateStepbackTasks       func(childComplexity int, projectID string) int
+		DeactivateStepbackTask        func(childComplexity int, projectID string, buildVariantName string, taskName string) int
 		DefaultSectionToRepo          func(childComplexity int, projectID string, section ProjectSettingsSection) int
 		DetachProjectFromRepo         func(childComplexity int, projectID string) int
 		DetachVolumeFromHost          func(childComplexity int, volumeID string) int
@@ -600,6 +600,7 @@ type ComplexityRoot struct {
 		RepotrackerDisabled      func(childComplexity int) int
 		Restricted               func(childComplexity int) int
 		SpawnHostScriptPath      func(childComplexity int) int
+		StepbackDisabled         func(childComplexity int) int
 		TaskAnnotationSettings   func(childComplexity int) int
 		TaskSync                 func(childComplexity int) int
 		TracksPushEvents         func(childComplexity int) int
@@ -763,6 +764,7 @@ type ComplexityRoot struct {
 		RepotrackerDisabled      func(childComplexity int) int
 		Restricted               func(childComplexity int) int
 		SpawnHostScriptPath      func(childComplexity int) int
+		StepbackDisabled         func(childComplexity int) int
 		TaskAnnotationSettings   func(childComplexity int) int
 		TaskSync                 func(childComplexity int) int
 		TracksPushEvents         func(childComplexity int) int
@@ -1025,6 +1027,7 @@ type ComplexityRoot struct {
 		LineNum    func(childComplexity int) int
 		URL        func(childComplexity int) int
 		URLLobster func(childComplexity int) int
+		URLParsley func(childComplexity int) int
 		URLRaw     func(childComplexity int) int
 	}
 
@@ -1250,7 +1253,7 @@ type MutationResolver interface {
 	RemoveFavoriteProject(ctx context.Context, identifier string) (*model.APIProjectRef, error)
 	SaveProjectSettingsForSection(ctx context.Context, projectSettings *model.APIProjectSettings, section ProjectSettingsSection) (*model.APIProjectSettings, error)
 	SaveRepoSettingsForSection(ctx context.Context, repoSettings *model.APIProjectSettings, section ProjectSettingsSection) (*model.APIProjectSettings, error)
-	DeactivateStepbackTasks(ctx context.Context, projectID string) (bool, error)
+	DeactivateStepbackTask(ctx context.Context, projectID string, buildVariantName string, taskName string) (bool, error)
 	AttachVolumeToHost(ctx context.Context, volumeAndHost VolumeHost) (bool, error)
 	DetachVolumeFromHost(ctx context.Context, volumeID string) (bool, error)
 	EditSpawnHost(ctx context.Context, spawnHost *EditSpawnHostInput) (*model.APIHost, error)
@@ -2992,17 +2995,17 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.CreatePublicKey(childComplexity, args["publicKeyInput"].(PublicKeyInput)), true
 
-	case "Mutation.deactivateStepbackTasks":
-		if e.complexity.Mutation.DeactivateStepbackTasks == nil {
+	case "Mutation.deactivateStepbackTask":
+		if e.complexity.Mutation.DeactivateStepbackTask == nil {
 			break
 		}
 
-		args, err := ec.field_Mutation_deactivateStepbackTasks_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_deactivateStepbackTask_args(context.TODO(), rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Mutation.DeactivateStepbackTasks(childComplexity, args["projectId"].(string)), true
+		return e.complexity.Mutation.DeactivateStepbackTask(childComplexity, args["projectId"].(string), args["buildVariantName"].(string), args["taskName"].(string)), true
 
 	case "Mutation.defaultSectionToRepo":
 		if e.complexity.Mutation.DefaultSectionToRepo == nil {
@@ -4186,6 +4189,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Project.SpawnHostScriptPath(childComplexity), true
 
+	case "Project.stepbackDisabled":
+		if e.complexity.Project.StepbackDisabled == nil {
+			break
+		}
+
+		return e.complexity.Project.StepbackDisabled(childComplexity), true
+
 	case "Project.taskAnnotationSettings":
 		if e.complexity.Project.TaskAnnotationSettings == nil {
 			break
@@ -5188,6 +5198,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.RepoRef.SpawnHostScriptPath(childComplexity), true
+
+	case "RepoRef.stepbackDisabled":
+		if e.complexity.RepoRef.StepbackDisabled == nil {
+			break
+		}
+
+		return e.complexity.RepoRef.StepbackDisabled(childComplexity), true
 
 	case "RepoRef.taskAnnotationSettings":
 		if e.complexity.RepoRef.TaskAnnotationSettings == nil {
@@ -6434,6 +6451,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.TestLog.URLLobster(childComplexity), true
+
+	case "TestLog.urlParsley":
+		if e.complexity.TestLog.URLParsley == nil {
+			break
+		}
+
+		return e.complexity.TestLog.URLParsley(childComplexity), true
 
 	case "TestLog.urlRaw":
 		if e.complexity.TestLog.URLRaw == nil {
@@ -7695,12 +7719,30 @@ func (ec *executionContext) field_Mutation_createPublicKey_args(ctx context.Cont
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_deactivateStepbackTasks_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Mutation_deactivateStepbackTask_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
 	if tmp, ok := rawArgs["projectId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["projectId"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["buildVariantName"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("buildVariantName"))
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["buildVariantName"] = arg1
+	var arg2 string
+	if tmp, ok := rawArgs["taskName"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskName"))
 		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
 		directive1 := func(ctx context.Context) (interface{}, error) {
 			access, err := ec.unmarshalNProjectSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsAccess(ctx, "EDIT")
@@ -7718,12 +7760,12 @@ func (ec *executionContext) field_Mutation_deactivateStepbackTasks_args(ctx cont
 			return nil, graphql.ErrorOnPath(ctx, err)
 		}
 		if data, ok := tmp.(string); ok {
-			arg0 = data
+			arg2 = data
 		} else {
 			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
 		}
 	}
-	args["projectId"] = arg0
+	args["taskName"] = arg2
 	return args, nil
 }
 
@@ -14188,6 +14230,8 @@ func (ec *executionContext) fieldContext_GroupedProjects_projects(ctx context.Co
 				return ec.fieldContext_Project_restricted(ctx, field)
 			case "spawnHostScriptPath":
 				return ec.fieldContext_Project_spawnHostScriptPath(ctx, field)
+			case "stepbackDisabled":
+				return ec.fieldContext_Project_stepbackDisabled(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "taskSync":
@@ -14307,6 +14351,8 @@ func (ec *executionContext) fieldContext_GroupedProjects_repo(ctx context.Contex
 				return ec.fieldContext_RepoRef_restricted(ctx, field)
 			case "spawnHostScriptPath":
 				return ec.fieldContext_RepoRef_spawnHostScriptPath(ctx, field)
+			case "stepbackDisabled":
+				return ec.fieldContext_RepoRef_stepbackDisabled(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_RepoRef_taskAnnotationSettings(ctx, field)
 			case "taskSync":
@@ -19853,6 +19899,8 @@ func (ec *executionContext) fieldContext_Mutation_addFavoriteProject(ctx context
 				return ec.fieldContext_Project_restricted(ctx, field)
 			case "spawnHostScriptPath":
 				return ec.fieldContext_Project_spawnHostScriptPath(ctx, field)
+			case "stepbackDisabled":
+				return ec.fieldContext_Project_stepbackDisabled(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "taskSync":
@@ -19996,6 +20044,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToNewRepo(ctx con
 				return ec.fieldContext_Project_restricted(ctx, field)
 			case "spawnHostScriptPath":
 				return ec.fieldContext_Project_spawnHostScriptPath(ctx, field)
+			case "stepbackDisabled":
+				return ec.fieldContext_Project_stepbackDisabled(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "taskSync":
@@ -20139,6 +20189,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToRepo(ctx contex
 				return ec.fieldContext_Project_restricted(ctx, field)
 			case "spawnHostScriptPath":
 				return ec.fieldContext_Project_spawnHostScriptPath(ctx, field)
+			case "stepbackDisabled":
+				return ec.fieldContext_Project_stepbackDisabled(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "taskSync":
@@ -20302,6 +20354,8 @@ func (ec *executionContext) fieldContext_Mutation_createProject(ctx context.Cont
 				return ec.fieldContext_Project_restricted(ctx, field)
 			case "spawnHostScriptPath":
 				return ec.fieldContext_Project_spawnHostScriptPath(ctx, field)
+			case "stepbackDisabled":
+				return ec.fieldContext_Project_stepbackDisabled(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "taskSync":
@@ -20465,6 +20519,8 @@ func (ec *executionContext) fieldContext_Mutation_copyProject(ctx context.Contex
 				return ec.fieldContext_Project_restricted(ctx, field)
 			case "spawnHostScriptPath":
 				return ec.fieldContext_Project_spawnHostScriptPath(ctx, field)
+			case "stepbackDisabled":
+				return ec.fieldContext_Project_stepbackDisabled(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "taskSync":
@@ -20660,6 +20716,8 @@ func (ec *executionContext) fieldContext_Mutation_detachProjectFromRepo(ctx cont
 				return ec.fieldContext_Project_restricted(ctx, field)
 			case "spawnHostScriptPath":
 				return ec.fieldContext_Project_spawnHostScriptPath(ctx, field)
+			case "stepbackDisabled":
+				return ec.fieldContext_Project_stepbackDisabled(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "taskSync":
@@ -20913,6 +20971,8 @@ func (ec *executionContext) fieldContext_Mutation_removeFavoriteProject(ctx cont
 				return ec.fieldContext_Project_restricted(ctx, field)
 			case "spawnHostScriptPath":
 				return ec.fieldContext_Project_spawnHostScriptPath(ctx, field)
+			case "stepbackDisabled":
+				return ec.fieldContext_Project_stepbackDisabled(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "taskSync":
@@ -21079,8 +21139,8 @@ func (ec *executionContext) fieldContext_Mutation_saveRepoSettingsForSection(ctx
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_deactivateStepbackTasks(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_deactivateStepbackTasks(ctx, field)
+func (ec *executionContext) _Mutation_deactivateStepbackTask(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_deactivateStepbackTask(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -21093,7 +21153,7 @@ func (ec *executionContext) _Mutation_deactivateStepbackTasks(ctx context.Contex
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().DeactivateStepbackTasks(rctx, fc.Args["projectId"].(string))
+		return ec.resolvers.Mutation().DeactivateStepbackTask(rctx, fc.Args["projectId"].(string), fc.Args["buildVariantName"].(string), fc.Args["taskName"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -21110,7 +21170,7 @@ func (ec *executionContext) _Mutation_deactivateStepbackTasks(ctx context.Contex
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Mutation_deactivateStepbackTasks(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Mutation_deactivateStepbackTask(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Mutation",
 		Field:      field,
@@ -21127,7 +21187,7 @@ func (ec *executionContext) fieldContext_Mutation_deactivateStepbackTasks(ctx co
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_deactivateStepbackTasks_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Mutation_deactivateStepbackTask_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -28126,6 +28186,47 @@ func (ec *executionContext) fieldContext_Project_spawnHostScriptPath(ctx context
 	return fc, nil
 }
 
+func (ec *executionContext) _Project_stepbackDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Project_stepbackDisabled(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StepbackDisabled, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Project_stepbackDisabled(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Project_taskAnnotationSettings(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 	if err != nil {
@@ -29355,6 +29456,8 @@ func (ec *executionContext) fieldContext_ProjectEventSettings_projectRef(ctx con
 				return ec.fieldContext_Project_restricted(ctx, field)
 			case "spawnHostScriptPath":
 				return ec.fieldContext_Project_spawnHostScriptPath(ctx, field)
+			case "stepbackDisabled":
+				return ec.fieldContext_Project_stepbackDisabled(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "taskSync":
@@ -29793,6 +29896,8 @@ func (ec *executionContext) fieldContext_ProjectSettings_projectRef(ctx context.
 				return ec.fieldContext_Project_restricted(ctx, field)
 			case "spawnHostScriptPath":
 				return ec.fieldContext_Project_spawnHostScriptPath(ctx, field)
+			case "stepbackDisabled":
+				return ec.fieldContext_Project_stepbackDisabled(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "taskSync":
@@ -31675,6 +31780,8 @@ func (ec *executionContext) fieldContext_Query_project(ctx context.Context, fiel
 				return ec.fieldContext_Project_restricted(ctx, field)
 			case "spawnHostScriptPath":
 				return ec.fieldContext_Project_spawnHostScriptPath(ctx, field)
+			case "stepbackDisabled":
+				return ec.fieldContext_Project_stepbackDisabled(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "taskSync":
@@ -35210,6 +35317,50 @@ func (ec *executionContext) fieldContext_RepoRef_spawnHostScriptPath(ctx context
 	return fc, nil
 }
 
+func (ec *executionContext) _RepoRef_stepbackDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RepoRef_stepbackDisabled(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StepbackDisabled, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalNBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RepoRef_stepbackDisabled(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoRef",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RepoRef_taskAnnotationSettings(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_RepoRef_taskAnnotationSettings(ctx, field)
 	if err != nil {
@@ -35760,6 +35911,8 @@ func (ec *executionContext) fieldContext_RepoSettings_projectRef(ctx context.Con
 				return ec.fieldContext_RepoRef_restricted(ctx, field)
 			case "spawnHostScriptPath":
 				return ec.fieldContext_RepoRef_spawnHostScriptPath(ctx, field)
+			case "stepbackDisabled":
+				return ec.fieldContext_RepoRef_stepbackDisabled(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_RepoRef_taskAnnotationSettings(ctx, field)
 			case "taskSync":
@@ -40206,6 +40359,8 @@ func (ec *executionContext) fieldContext_Task_project(ctx context.Context, field
 				return ec.fieldContext_Project_restricted(ctx, field)
 			case "spawnHostScriptPath":
 				return ec.fieldContext_Project_spawnHostScriptPath(ctx, field)
+			case "stepbackDisabled":
+				return ec.fieldContext_Project_stepbackDisabled(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "taskSync":
@@ -43888,6 +44043,47 @@ func (ec *executionContext) fieldContext_TestLog_urlLobster(ctx context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _TestLog_urlParsley(ctx context.Context, field graphql.CollectedField, obj *model.TestLogs) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TestLog_urlParsley(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.URLParsley, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TestLog_urlParsley(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TestLog",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _TestLog_urlRaw(ctx context.Context, field graphql.CollectedField, obj *model.TestLogs) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_TestLog_urlRaw(ctx, field)
 	if err != nil {
@@ -44264,6 +44460,8 @@ func (ec *executionContext) fieldContext_TestResult_logs(ctx context.Context, fi
 				return ec.fieldContext_TestLog_url(ctx, field)
 			case "urlLobster":
 				return ec.fieldContext_TestLog_urlLobster(ctx, field)
+			case "urlParsley":
+				return ec.fieldContext_TestLog_urlParsley(ctx, field)
 			case "urlRaw":
 				return ec.fieldContext_TestLog_urlRaw(ctx, field)
 			}
@@ -48040,6 +48238,8 @@ func (ec *executionContext) fieldContext_Version_projectMetadata(ctx context.Con
 				return ec.fieldContext_Project_restricted(ctx, field)
 			case "spawnHostScriptPath":
 				return ec.fieldContext_Project_spawnHostScriptPath(ctx, field)
+			case "stepbackDisabled":
+				return ec.fieldContext_Project_stepbackDisabled(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "taskSync":
@@ -53044,7 +53244,7 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "batchTime", "branch", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "filesIgnoredFromCache", "githubChecksEnabled", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "owner", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "private", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
+	fieldsInOrder := [...]string{"id", "admins", "batchTime", "branch", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "filesIgnoredFromCache", "githubChecksEnabled", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "owner", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "private", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -53327,6 +53527,14 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 			if err != nil {
 				return it, err
 			}
+		case "stepbackDisabled":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("stepbackDisabled"))
+			it.StepbackDisabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		case "taskAnnotationSettings":
 			var err error
 
@@ -53536,7 +53744,7 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "batchTime", "branch", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "filesIgnoredFromCache", "githubChecksEnabled", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "owner", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "private", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
+	fieldsInOrder := [...]string{"id", "admins", "batchTime", "branch", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "filesIgnoredFromCache", "githubChecksEnabled", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "owner", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "private", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -53808,6 +54016,14 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("spawnHostScriptPath"))
 			it.SpawnHostScriptPath, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "stepbackDisabled":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("stepbackDisabled"))
+			it.StepbackDisabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -54417,6 +54633,9 @@ func (ec *executionContext) unmarshalInputTaskFilterOptions(ctx context.Context,
 	if _, present := asMap["includeEmptyActivation"]; !present {
 		asMap["includeEmptyActivation"] = false
 	}
+	if _, present := asMap["includeNeverActivatedTasks"]; !present {
+		asMap["includeNeverActivatedTasks"] = false
+	}
 	if _, present := asMap["limit"]; !present {
 		asMap["limit"] = 0
 	}
@@ -54427,7 +54646,7 @@ func (ec *executionContext) unmarshalInputTaskFilterOptions(ctx context.Context,
 		asMap["statuses"] = []interface{}{}
 	}
 
-	fieldsInOrder := [...]string{"baseStatuses", "includeEmptyActivation", "limit", "page", "sorts", "statuses", "taskName", "variant"}
+	fieldsInOrder := [...]string{"baseStatuses", "includeEmptyActivation", "includeNeverActivatedTasks", "limit", "page", "sorts", "statuses", "taskName", "variant"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -54447,6 +54666,14 @@ func (ec *executionContext) unmarshalInputTaskFilterOptions(ctx context.Context,
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeEmptyActivation"))
 			it.IncludeEmptyActivation, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "includeNeverActivatedTasks":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeNeverActivatedTasks"))
+			it.IncludeNeverActivatedTasks, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -57606,10 +57833,10 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "deactivateStepbackTasks":
+		case "deactivateStepbackTask":
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_deactivateStepbackTasks(ctx, field)
+				return ec._Mutation_deactivateStepbackTask(ctx, field)
 			})
 
 			if out.Values[i] == graphql.Null {
@@ -58857,6 +59084,10 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
+		case "stepbackDisabled":
+
+			out.Values[i] = ec._Project_stepbackDisabled(ctx, field, obj)
+
 		case "taskAnnotationSettings":
 
 			out.Values[i] = ec._Project_taskAnnotationSettings(ctx, field, obj)
@@ -60644,6 +60875,13 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 		case "spawnHostScriptPath":
 
 			out.Values[i] = ec._RepoRef_spawnHostScriptPath(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "stepbackDisabled":
+
+			out.Values[i] = ec._RepoRef_stepbackDisabled(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
@@ -62756,6 +62994,10 @@ func (ec *executionContext) _TestLog(ctx context.Context, sel ast.SelectionSet, 
 		case "urlLobster":
 
 			out.Values[i] = ec._TestLog_urlLobster(ctx, field, obj)
+
+		case "urlParsley":
+
+			out.Values[i] = ec._TestLog_urlParsley(ctx, field, obj)
 
 		case "urlRaw":
 

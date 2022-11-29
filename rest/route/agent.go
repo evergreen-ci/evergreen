@@ -504,7 +504,6 @@ func (h *getDistroViewHandler) Run(ctx context.Context) gimlet.Responder {
 	dv := apimodels.DistroView{
 		CloneMethod:         host.Distro.CloneMethod,
 		DisableShallowClone: host.Distro.DisableShallowClone,
-		WorkDir:             host.Distro.WorkDir,
 	}
 	return gimlet.NewJSONResponse(dv)
 }
@@ -1224,7 +1223,7 @@ func (h *manifestLoadHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "retrieving manifest with version id '%s'", task.Version))
 	}
 
-	project, _, err := model.FindAndTranslateProjectForVersion(v, v.Identifier)
+	project, _, err := model.FindAndTranslateProjectForVersion(v.Id, v.Identifier)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "loading project from version"))
 	}
@@ -1327,50 +1326,4 @@ func (h *setDownstreamParamsHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewJSONResponse(fmt.Sprintf("Downstream patches for %v have successfully been set", p.Id))
-}
-
-// POST /task/{task_id}/data/{name}
-type insertTaskJsonHandler struct {
-	taskID  string
-	name    string
-	rawData map[string]interface{}
-}
-
-func makeInsertTaskJSON() gimlet.RouteHandler {
-	return &insertTaskJsonHandler{}
-}
-
-func (h *insertTaskJsonHandler) Factory() gimlet.RouteHandler {
-	return &insertTaskJsonHandler{}
-}
-
-func (h *insertTaskJsonHandler) Parse(ctx context.Context, r *http.Request) error {
-	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
-		return errors.New("missing task ID")
-	}
-	h.name = gimlet.GetVars(r)["name"]
-
-	if err := utility.ReadJSON(r.Body, &h.rawData); err != nil {
-		return errors.Wrapf(err, "reading raw data from request")
-	}
-	return nil
-}
-
-func (h *insertTaskJsonHandler) Run(ctx context.Context) gimlet.Responder {
-	t, err := task.FindOneId(h.taskID)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
-	}
-	if t == nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
-		})
-	}
-
-	if err = model.InsertTaskJSON(t, h.name, h.rawData); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(err)
-	}
-
-	return gimlet.NewJSONResponse("ok")
 }

@@ -27,6 +27,7 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"gopkg.in/yaml.v2"
 )
@@ -116,8 +117,8 @@ type PatchUpdate struct {
 // Returns an http status code and error.
 func ConfigurePatch(ctx context.Context, p *patch.Patch, version *Version, proj *ProjectRef, patchUpdateReq PatchUpdate) (int, error) {
 	var err error
-	project := &Project{}
-	if _, err := LoadProjectInto(ctx, []byte(p.PatchedParserProject), nil, p.Project, project); err != nil {
+	project, _, err := FindAndTranslateProjectForPatch(ctx, p)
+	if err != nil {
 		return http.StatusInternalServerError, errors.Wrap(err, "unmarshalling project config")
 	}
 
@@ -207,15 +208,15 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 		return nil, nil, errors.Errorf("patch '%s' already finalized", p.Version)
 	}
 
-	project := &Project{}
 	projectRef, opts, err := getLoadProjectOptsForPatch(p, githubOauthToken)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "fetching project options for patch")
 	}
 	// if the patched config exists, use that as the project file bytes.
 	if p.PatchedParserProject != "" {
-		if _, err := LoadProjectInto(ctx, []byte(p.PatchedParserProject), opts, p.Project, project); err != nil {
-			return nil, nil, errors.WithStack(err)
+		project, _, err := FindAndTranslateProjectForPatch(ctx, p)
+		if err != nil {
+			return nil, nil, err
 		}
 		patchConfig := &PatchConfig{
 			PatchedParserProject: p.PatchedParserProject,
@@ -259,6 +260,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 			return nil, nil, errors.Wrap(err, "patching remote configuration file")
 		}
 	}
+	project := &Project{}
 	pp, err := LoadProjectInto(ctx, projectFileBytes, opts, p.Project, project)
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
@@ -910,9 +912,14 @@ func MakeMergePatchFromExisting(ctx context.Context, existingPatch *patch.Patch,
 		return nil, errors.WithStack(err)
 	}
 
-	project := &Project{}
-	if _, err = LoadProjectInto(ctx, []byte(existingPatch.PatchedParserProject), nil, existingPatch.Project, project); err != nil {
-		return nil, errors.Wrap(err, "loading project")
+	project, pp, err := FindAndTranslateProjectForPatch(ctx, existingPatch)
+	if err != nil {
+		return nil, errors.Wrap(err, "loading existing project")
+	}
+
+	projBytes, err := bson.Marshal(pp)
+	if err != nil {
+		return nil, errors.Wrap(err, "marshalling project bytes to bson")
 	}
 
 	patchDoc := &patch.Patch{
@@ -922,7 +929,8 @@ func MakeMergePatchFromExisting(ctx context.Context, existingPatch *patch.Patch,
 		Githash:              existingPatch.Githash,
 		Status:               evergreen.PatchCreated,
 		Alias:                evergreen.CommitQueueAlias,
-		PatchedParserProject: existingPatch.PatchedParserProject,
+		PatchedParserProject: string(projBytes),
+		PatchedProjectConfig: existingPatch.PatchedProjectConfig,
 		CreateTime:           time.Now(),
 		MergedFrom:           existingPatch.Id.Hex(),
 	}

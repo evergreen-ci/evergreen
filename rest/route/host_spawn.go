@@ -594,6 +594,8 @@ func (h *createVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 
 	if h.volume.Type == "" {
 		h.volume.Type = evergreen.DefaultEBSType
+		h.volume.IOPS = cloud.Gp2EquivalentIOPSForGp3(h.volume.Size)
+		h.volume.Throughput = cloud.Gp2EquivalentThroughputForGp3(h.volume.Size)
 	}
 	if h.volume.AvailabilityZone == "" {
 		h.volume.AvailabilityZone = evergreen.DefaultEBSAvailabilityZone

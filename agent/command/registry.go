@@ -38,7 +38,6 @@ func init() {
 		"git.push":                              gitPushFactory,
 		"gotest.parse_files":                    goTestFactory,
 		"gotest.parse_json":                     goTest2JSONFactory,
-		"json.send":                             taskDataSendFactory,
 		"keyval.inc":                            keyValIncFactory,
 		"mac.sign":                              macSignFactory,
 		evergreen.ManifestLoadCommandName:       manifestLoadFactory,

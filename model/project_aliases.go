@@ -107,7 +107,7 @@ func FindAliasesForProjectFromDb(projectID string) ([]ProjectAlias, error) {
 // on the project ref and aliases defined in the project YAML.  Aliases defined on the project ref will take precedence over the
 // project YAML in the case that both are defined.
 func GetAliasesMergedWithProjectConfig(projectID string, dbAliases []ProjectAlias) ([]ProjectAlias, error) {
-	projectConfig, err := FindProjectConfigForProjectOrVersion(projectID, "")
+	projectConfig, err := FindLastKnownGoodProjectConfig(projectID)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding project config")
 	}
@@ -207,9 +207,9 @@ func findMatchingAliasForProjectRef(projectID, alias string) ([]ProjectAlias, bo
 	return out, len(out) > 0, nil
 }
 
-// findMatchingAliasForProjectConfig finds any aliases matching the alias input in the project config.
-func findMatchingAliasForProjectConfig(projectID, alias string) ([]ProjectAlias, error) {
-	projectConfig, err := FindProjectConfigForProjectOrVersion(projectID, "")
+// getMatchingAliasForVersion finds any aliases matching the alias input in the project config.
+func getMatchingAliasForVersion(versionID, alias string) ([]ProjectAlias, error) {
+	projectConfig, err := FindProjectConfigById(versionID)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding project config")
 	}
@@ -262,7 +262,7 @@ func FindAliasInProjectRepoOrConfig(projectID, alias string) ([]ProjectAlias, er
 	if len(aliases) > 0 || shouldExit {
 		return aliases, nil
 	}
-	return findMatchingAliasForProjectConfig(projectID, alias)
+	return getMatchingAliasForVersion(projectID, alias)
 }
 
 // patchAliasKey is used internally to group patch aliases together.

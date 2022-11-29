@@ -907,21 +907,6 @@ func (c *baseCommunicator) KeyValInc(ctx context.Context, taskData TaskData, kv 
 	return nil
 }
 
-func (c *baseCommunicator) PostJSONData(ctx context.Context, taskData TaskData, path string, data interface{}) error {
-	info := requestInfo{
-		method:   http.MethodPost,
-		taskData: &taskData,
-	}
-	info.setTaskPathSuffix(fmt.Sprintf("json/data/%s", path))
-	resp, err := c.retryRequest(ctx, info, data)
-	if err != nil {
-		return utility.RespErrorf(resp, errors.Wrap(err, "posting JSON data for task").Error())
-	}
-	defer resp.Body.Close()
-
-	return nil
-}
-
 // GenerateTasks posts new tasks for the `generate.tasks` command.
 func (c *baseCommunicator) GenerateTasks(ctx context.Context, td TaskData, jsonBytes []json.RawMessage) error {
 	info := requestInfo{
