@@ -417,7 +417,7 @@ func (tr TestResult) GetLogURL(viewer evergreen.LogViewer) string {
 
 	switch viewer {
 	case evergreen.LogViewerHTML:
-		// Return an empty string for logkeeper urls
+		// Return an empty string for logkeeper URLS.
 		if tr.URL != "" {
 			for _, url := range deprecatedLobsterURLs {
 				if strings.Contains(tr.URL, url) {
