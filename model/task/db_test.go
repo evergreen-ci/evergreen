@@ -948,12 +948,12 @@ func TestGetTasksByVersionIncludeNeverActivatedTasks(t *testing.T) {
 	assert.NoError(t, inactiveTask.Insert())
 
 	// inactive tasks should be included
-	opts := GetTasksByVersionOptions{includeNeverActivatedTasks: true}
+	opts := GetTasksByVersionOptions{IncludeNeverActivatedTasks: true}
 	_, count, err := GetTasksByVersion("v1", opts)
 	assert.NoError(t, err)
 	assert.Equal(t, count, 1)
 	// inactive tasks should be excluded
-	opts = GetTasksByVersionOptions{includeNeverActivatedTasks: false}
+	opts = GetTasksByVersionOptions{IncludeNeverActivatedTasks: false}
 	_, count, err = GetTasksByVersion("v1", opts)
 	assert.NoError(t, err)
 	assert.Equal(t, count, 0)
