@@ -85,7 +85,7 @@ func TestTestBuildFromService(t *testing.T) {
 					Logs: TestLogs{
 						URL:        utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerHTML)),
 						URLRaw:     utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerRaw)),
-						URLLobster: nil,
+						URLLobster: utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerLobster)),
 						URLParsley: utility.ToStringPtr(otr.GetLogURL(evergreen.LogViewerParsley)),
 						LineNum:    15,
 						LogID:      utility.ToStringPtr(input.LogID),
