@@ -99,6 +99,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 	mostRecentRevision, err := model.FindLatestRevisionForProject(j.ProjectID)
 	if err != nil {
 		j.AddError(err)
+		return
 	}
 	versionID, versionErr := j.addVersion(ctx, *definition, mostRecentRevision)
 
