@@ -36,6 +36,377 @@ var (
 	oneMs = time.Millisecond
 )
 
+// checkDisabled checks that the given task is disabled and logs the expected
+// events.
+func checkDisabled(t *testing.T, dbTask *task.Task) {
+	assert.Equal(t, evergreen.DisabledTaskPriority, dbTask.Priority, "task '%s' should have disabled priority", dbTask.Id)
+	assert.False(t, dbTask.Activated, "task '%s' should be deactivated", dbTask.Id)
+
+	events, err := event.FindAllByResourceID(dbTask.Id)
+	require.NoError(t, err)
+
+	var loggedDeactivationEvent bool
+	var loggedPriorityChangedEvent bool
+	for _, e := range events {
+		switch e.EventType {
+		case event.TaskPriorityChanged:
+			loggedPriorityChangedEvent = true
+		case event.TaskDeactivated:
+			loggedDeactivationEvent = true
+		}
+	}
+
+	assert.True(t, loggedPriorityChangedEvent, "task '%s' did not log an event indicating its priority was set", dbTask.Id)
+	assert.True(t, loggedDeactivationEvent, "task '%s' did not log an event indicating it was deactivated", dbTask.Id)
+}
+
+// TODO (EVG-16746): these checks for child execution tasks should be replaced
+// by checkDisabled since a child execution tasks should be disabled in the same
+// way as normal tasks and display tasks. However, currently they are not
+// deactivated (even though they should be).
+func checkChildExecutionDisabled(t *testing.T, dbTask *task.Task) {
+	assert.Equal(t, evergreen.DisabledTaskPriority, dbTask.Priority, "execution task '%s' should have disabled priority", dbTask.Id)
+
+	events, err := event.FindAllByResourceID(dbTask.Id)
+	require.NoError(t, err)
+
+	var loggedPriorityChangedEvent bool
+	for _, e := range events {
+		if e.EventType == event.TaskPriorityChanged {
+			loggedPriorityChangedEvent = true
+			break
+		}
+	}
+	assert.True(t, loggedPriorityChangedEvent, "execution task '%s' did not have an event indicating its priority was set", dbTask.Id)
+}
+
+func TestDisableStaleContainerTasks(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(task.Collection, event.EventCollection, build.Collection, VersionCollection))
+	}()
+	for tName, tCase := range map[string]func(t *testing.T, tsk task.Task){
+		"DisablesStaleUnallocatedContainerTask": func(t *testing.T, tsk task.Task) {
+			tsk.ActivatedTime = time.Now().Add(-9000 * 24 * time.Hour)
+			require.NoError(t, tsk.Insert())
+
+			require.NoError(t, DisableStaleContainerTasks(t.Name()))
+
+			dbTask, err := task.FindOneId(tsk.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			checkDisabled(t, dbTask)
+		},
+		"DisablesStaleAllocatedContainerTask": func(t *testing.T, tsk task.Task) {
+			tsk.ActivatedTime = time.Now().Add(-9000 * 24 * time.Hour)
+			tsk.ContainerAllocated = true
+			tsk.ContainerAllocatedTime = time.Now().Add(-5000 * 24 * time.Hour)
+			require.NoError(t, tsk.Insert())
+
+			require.NoError(t, DisableStaleContainerTasks(t.Name()))
+
+			dbTask, err := task.FindOneId(tsk.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			checkDisabled(t, dbTask)
+		},
+		"IgnoresFreshContainerTask": func(t *testing.T, tsk task.Task) {
+			tsk.ActivatedTime = time.Now()
+			require.NoError(t, tsk.Insert())
+
+			require.NoError(t, DisableStaleContainerTasks(t.Name()))
+
+			dbTask, err := task.FindOneId(tsk.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.True(t, dbTask.Activated)
+			assert.Zero(t, dbTask.Priority)
+		},
+		"IgnoresContainerTaskWithStatusOtherThanUndispatched": func(t *testing.T, tsk task.Task) {
+			tsk.ActivatedTime = time.Now().Add(-9000 * 24 * time.Hour)
+			tsk.Status = evergreen.TaskSucceeded
+			require.NoError(t, tsk.Insert())
+
+			require.NoError(t, DisableStaleContainerTasks(t.Name()))
+
+			dbTask, err := task.FindOneId(tsk.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.True(t, dbTask.Activated)
+			assert.Zero(t, dbTask.Priority)
+		},
+		"IgnoresHostTasks": func(t *testing.T, tsk task.Task) {
+			tsk.ActivatedTime = time.Now().Add(-9000 * 24 * time.Hour)
+			tsk.ExecutionPlatform = task.ExecutionPlatformHost
+			require.NoError(t, tsk.Insert())
+
+			require.NoError(t, DisableStaleContainerTasks(t.Name()))
+
+			dbTask, err := task.FindOneId(tsk.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.True(t, dbTask.Activated)
+			assert.Zero(t, dbTask.Priority)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(task.Collection, event.EventCollection, build.Collection, VersionCollection))
+			versionId := bson.NewObjectId()
+			v := &Version{
+				Id: versionId.Hex(),
+			}
+			b := &build.Build{
+				Id:      "build-id",
+				Version: v.Id,
+			}
+			require.NoError(t, b.Insert())
+			require.NoError(t, v.Insert())
+			task := task.Task{
+				Id:                "task-id",
+				BuildId:           b.Id,
+				Version:           v.Id,
+				Status:            evergreen.TaskUndispatched,
+				Activated:         true,
+				ExecutionPlatform: task.ExecutionPlatformContainer,
+			}
+			tCase(t, task)
+		})
+	}
+}
+
+func TestDisableOneTask(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(task.Collection, event.EventCollection))
+	}()
+
+	type disableFunc func(t *testing.T, tsk task.Task) error
+
+	for funcName, disable := range map[string]disableFunc{
+		"DisableTasks": func(t *testing.T, tsk task.Task) error {
+			return DisableTasks(t.Name(), tsk)
+		},
+	} {
+		t.Run(funcName, func(t *testing.T) {
+			for tName, tCase := range map[string]func(t *testing.T, tasks [5]task.Task){
+				"DisablesNormalTask": func(t *testing.T, tasks [5]task.Task) {
+					require.NoError(t, disable(t, tasks[3]))
+
+					dbTask, err := task.FindOneId(tasks[3].Id)
+					require.NoError(t, err)
+					require.NotZero(t, dbTask)
+
+					checkDisabled(t, dbTask)
+				},
+				"DisablesTaskAndDeactivatesItsDependents": func(t *testing.T, tasks [5]task.Task) {
+					require.NoError(t, disable(t, tasks[4]))
+
+					dbTask, err := task.FindOneId(tasks[4].Id)
+					require.NoError(t, err)
+					require.NotZero(t, dbTask)
+
+					checkDisabled(t, dbTask)
+
+					dbDependentTask, err := task.FindOneId(tasks[3].Id)
+					require.NoError(t, err)
+					require.NotZero(t, dbDependentTask)
+
+					assert.Zero(t, dbDependentTask.Priority, "dependent task should not have been disabled")
+					assert.False(t, dbDependentTask.Activated, "dependent task should have been deactivated")
+				},
+				"DisablesDisplayTaskAndItsExecutionTasks": func(t *testing.T, tasks [5]task.Task) {
+					require.NoError(t, disable(t, tasks[0]))
+
+					dbDisplayTask, err := task.FindOneId(tasks[0].Id)
+					require.NoError(t, err)
+					require.NotZero(t, dbDisplayTask)
+					checkDisabled(t, dbDisplayTask)
+
+					dbExecTasks, err := task.FindAll(db.Query(task.ByIds([]string{tasks[1].Id, tasks[2].Id})))
+					require.NoError(t, err)
+					assert.Len(t, dbExecTasks, 2)
+
+					for _, task := range dbExecTasks {
+						checkChildExecutionDisabled(t, &task)
+					}
+				},
+				"DoesNotDisableParentDisplayTask": func(t *testing.T, tasks [5]task.Task) {
+					require.NoError(t, disable(t, tasks[1]))
+
+					dbExecTask, err := task.FindOneId(tasks[1].Id)
+					require.NoError(t, err)
+					require.NotZero(t, dbExecTask)
+
+					checkDisabled(t, dbExecTask)
+
+					dbDisplayTask, err := task.FindOneId(tasks[0].Id)
+					require.NoError(t, err)
+					require.NotZero(t, dbDisplayTask)
+
+					assert.Zero(t, dbDisplayTask.Priority, "display task is not modified when its execution task is disabled")
+					assert.True(t, dbDisplayTask.Activated, "display task is not modified when its execution task is disabled")
+				},
+			} {
+				t.Run(tName, func(t *testing.T) {
+					require.NoError(t, db.ClearCollections(task.Collection, event.EventCollection))
+					tasks := [5]task.Task{
+						{Id: "display-task0", DisplayOnly: true, ExecutionTasks: []string{"exec-task1", "exec-task2"}, Activated: true},
+						{Id: "exec-task1", DisplayTaskId: utility.ToStringPtr("display-task0"), Activated: true},
+						{Id: "exec-task2", DisplayTaskId: utility.ToStringPtr("display-task0"), Activated: true},
+						{Id: "task3", Activated: true, DependsOn: []task.Dependency{{TaskId: "task4"}}},
+						{Id: "task4", Activated: true},
+					}
+					for _, task := range tasks {
+						require.NoError(t, task.Insert())
+					}
+
+					tCase(t, tasks)
+				})
+			}
+		})
+	}
+}
+
+func TestDisableManyTasks(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(task.Collection, event.EventCollection))
+	}()
+
+	for tName, tCase := range map[string]func(t *testing.T){
+		"DisablesIndividualExecutionTasksWithinADisplayTaskAndDoesNotUpdateDisplayTask": func(t *testing.T) {
+			dt := task.Task{
+				Id:             "display-task",
+				DisplayOnly:    true,
+				ExecutionTasks: []string{"exec-task1", "exec-task2", "exec-task3"},
+				Activated:      true,
+			}
+			et1 := task.Task{
+				Id:            "exec-task1",
+				DisplayTaskId: utility.ToStringPtr(dt.Id),
+				Activated:     true,
+			}
+			et2 := task.Task{
+				Id:            "exec-task2",
+				DisplayTaskId: utility.ToStringPtr(dt.Id),
+				Activated:     true,
+			}
+			et3 := task.Task{
+				Id:            "exec-task3",
+				DisplayTaskId: utility.ToStringPtr(dt.Id),
+				Activated:     true,
+			}
+			require.NoError(t, dt.Insert())
+			require.NoError(t, et1.Insert())
+			require.NoError(t, et2.Insert())
+			require.NoError(t, et3.Insert())
+
+			require.NoError(t, DisableTasks(t.Name(), et1, et2))
+
+			dbDisplayTask, err := task.FindOneId(dt.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbDisplayTask)
+
+			assert.Zero(t, dbDisplayTask.Priority, "parent display task priority should not be modified when execution tasks are disabled")
+			assert.True(t, dbDisplayTask.Activated, "parent display task should not be deactivated when execution tasks are disabled")
+
+			dbExecTask1, err := task.FindOneId(et1.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbExecTask1)
+			checkChildExecutionDisabled(t, dbExecTask1)
+
+			dbExecTask2, err := task.FindOneId(et2.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbExecTask2)
+			checkChildExecutionDisabled(t, dbExecTask2)
+
+			dbExecTask3, err := task.FindOneId(et3.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbExecTask3)
+			assert.Zero(t, dbExecTask3.Priority, "priority of execution task under same parent display task as disabled execution tasks should not be modified")
+			assert.True(t, dbExecTask3.Activated, "execution task under same parent display task as disabled execution tasks should not be deactivated")
+		},
+		"DisablesMixOfExecutionTasksAndDisplayTasks": func(t *testing.T) {
+			dt1 := task.Task{
+				Id:             "display-task1",
+				DisplayOnly:    true,
+				ExecutionTasks: []string{"exec-task1", "exec-task2"},
+				Activated:      true,
+			}
+			dt2 := task.Task{
+				Id:             "display-task2",
+				DisplayOnly:    true,
+				ExecutionTasks: []string{"exec-task3", "exec-task4"},
+				Activated:      true,
+			}
+			et1 := task.Task{
+				Id:            "exec-task1",
+				DisplayTaskId: utility.ToStringPtr(dt1.Id),
+				Activated:     true,
+			}
+			et2 := task.Task{
+				Id:            "exec-task2",
+				DisplayTaskId: utility.ToStringPtr(dt1.Id),
+				Activated:     true,
+			}
+			et3 := task.Task{
+				Id:            "exec-task3",
+				DisplayTaskId: utility.ToStringPtr(dt2.Id),
+				Activated:     true,
+			}
+			et4 := task.Task{
+				Id:            "exec-task4",
+				DisplayTaskId: utility.ToStringPtr(dt2.Id),
+				Activated:     true,
+			}
+			require.NoError(t, dt1.Insert())
+			require.NoError(t, dt2.Insert())
+			require.NoError(t, et1.Insert())
+			require.NoError(t, et2.Insert())
+			require.NoError(t, et3.Insert())
+			require.NoError(t, et4.Insert())
+
+			require.NoError(t, DisableTasks(t.Name(), et1, et3, dt2))
+
+			dbDisplayTask1, err := task.FindOneId(dt1.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbDisplayTask1)
+
+			assert.Zero(t, dbDisplayTask1.Priority, "parent display task priority should not be modified when execution tasks are disabled")
+			assert.True(t, dbDisplayTask1.Activated, "parent display task should not be deactivated when execution tasks are disabled")
+
+			dbDisplayTask2, err := task.FindOneId(dt2.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbDisplayTask2)
+
+			checkDisabled(t, dbDisplayTask2)
+
+			dbExecTask1, err := task.FindOneId(et1.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbExecTask1)
+			checkDisabled(t, dbExecTask1)
+
+			dbExecTask2, err := task.FindOneId(et2.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbExecTask2)
+			assert.Zero(t, dbExecTask2.Priority, "priority of execution task under same parent display task as disabled execution tasks should not be modified")
+			assert.True(t, dbExecTask2.Activated, "execution task under same parent display task as disabled execution tasks should not be deactivated")
+
+			dbExecTask3, err := task.FindOneId(et3.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbExecTask3)
+			checkChildExecutionDisabled(t, dbExecTask3)
+
+			dbExecTask4, err := task.FindOneId(et4.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbExecTask4)
+			checkChildExecutionDisabled(t, dbExecTask4)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(task.Collection, event.EventCollection))
+			tCase(t)
+		})
+	}
+}
+
 func TestSetActiveState(t *testing.T) {
 	Convey("With one task with no dependencies", t, func() {
 		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, task.OldCollection, VersionCollection, commitqueue.Collection))
