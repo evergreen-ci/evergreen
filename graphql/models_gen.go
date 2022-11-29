@@ -271,14 +271,15 @@ type TaskFiles struct {
 
 // TaskFilterOptions defines the parameters that are used when fetching tasks from a Version.
 type TaskFilterOptions struct {
-	BaseStatuses           []string     `json:"baseStatuses"`
-	IncludeEmptyActivation *bool        `json:"includeEmptyActivation"`
-	Limit                  *int         `json:"limit"`
-	Page                   *int         `json:"page"`
-	Sorts                  []*SortOrder `json:"sorts"`
-	Statuses               []string     `json:"statuses"`
-	TaskName               *string      `json:"taskName"`
-	Variant                *string      `json:"variant"`
+	BaseStatuses               []string     `json:"baseStatuses"`
+	IncludeEmptyActivation     *bool        `json:"includeEmptyActivation"`
+	IncludeNeverActivatedTasks *bool        `json:"includeNeverActivatedTasks"`
+	Limit                      *int         `json:"limit"`
+	Page                       *int         `json:"page"`
+	Sorts                      []*SortOrder `json:"sorts"`
+	Statuses                   []string     `json:"statuses"`
+	TaskName                   *string      `json:"taskName"`
+	Variant                    *string      `json:"variant"`
 }
 
 // TaskLogs is the return value for the taskLogs query.

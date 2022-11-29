@@ -271,7 +271,7 @@ func getAPITaskFromTask(ctx context.Context, url string, task task.Task) (*restM
 }
 
 // Takes a version id and some filter criteria and returns the matching associated tasks grouped together by their build variant.
-func generateBuildVariants(versionId string, buildVariantOpts BuildVariantOptions) ([]*GroupedBuildVariant, error) {
+func generateBuildVariants(versionId string, buildVariantOpts BuildVariantOptions, requester string) ([]*GroupedBuildVariant, error) {
 	var variantDisplayName = map[string]string{}
 	var tasksByVariant = map[string][]*restModel.APITask{}
 	defaultSort := []task.TasksSortOrder{
@@ -280,6 +280,7 @@ func generateBuildVariants(versionId string, buildVariantOpts BuildVariantOption
 	if buildVariantOpts.IncludeBaseTasks == nil {
 		buildVariantOpts.IncludeBaseTasks = utility.ToBoolPtr(true)
 	}
+
 	opts := task.GetTasksByVersionOptions{
 		Statuses:                       getValidTaskStatusesFilter(buildVariantOpts.Statuses),
 		Variants:                       buildVariantOpts.Variants,
@@ -287,7 +288,10 @@ func generateBuildVariants(versionId string, buildVariantOpts BuildVariantOption
 		Sorts:                          defaultSort,
 		IncludeBaseTasks:               utility.FromBoolPtr(buildVariantOpts.IncludeBaseTasks),
 		IncludeBuildVariantDisplayName: true,
+		// Do not fetch inactive tasks for patches. This is because the UI does not display inactive tasks for patches.
+		IncludeNeverActivatedTasks: !evergreen.IsPatchRequester(requester),
 	}
+
 	start := time.Now()
 	tasks, _, err := task.GetTasksByVersion(versionId, opts)
 	if err != nil {
@@ -814,7 +818,7 @@ func getCollectiveStatusArray(v restModel.APIVersion) ([]string, error) {
 	} else {
 		allStatuses = append(allStatuses, status)
 	}
-	if evergreen.IsPatchRequester(*v.Requester) {
+	if v.IsPatchRequester() {
 		p, err := data.FindPatchById(*v.Id)
 		if err != nil {
 			return nil, errors.Wrapf(err, "fetching patch '%s'", *v.Id)
