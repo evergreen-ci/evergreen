@@ -58,7 +58,7 @@ func (h *versionCreateHandler) Run(ctx context.Context) gimlet.Responder {
 	p := &model.Project{}
 	opts := &model.GetProjectOpts{
 		Ref:          projectInfo.Ref,
-		ReadFileFrom: model.ReadfromGithub,
+		ReadFileFrom: model.ReadFromGithub,
 	}
 	projectInfo.IntermediateProject, err = model.LoadProjectInto(ctx, h.Config, opts, projectInfo.Ref.Id, p)
 	if err != nil {

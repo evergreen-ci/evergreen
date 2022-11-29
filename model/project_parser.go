@@ -631,7 +631,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 }
 
 const (
-	ReadfromGithub    = "github"
+	ReadFromGithub    = "github"
 	ReadFromLocal     = "local"
 	ReadFromPatch     = "patch"
 	ReadFromPatchDiff = "patch_diff"
@@ -743,7 +743,7 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 		RemotePath:   opts.RemotePath,
 		Revision:     module.Branch,
 		Token:        opts.Token,
-		ReadFileFrom: ReadfromGithub,
+		ReadFileFrom: ReadFromGithub,
 		Identifier:   moduleName,
 	}
 	return retrieveFile(ctx, moduleOpts)
