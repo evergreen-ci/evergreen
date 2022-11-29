@@ -456,12 +456,15 @@ func (tr TestResult) GetLogURL(viewer evergreen.LogViewer) string {
 		// Evergreen-hosted lobster does not support external logs nor
 		// logs stored in the database.
 		if tr.URL != "" || tr.URLRaw != "" || tr.LogId != "" {
-			return ""
-		}
-		for _, url := range deprecatedLobsterURLs {
-			if strings.Contains(tr.URL, url) {
-				return strings.Replace(tr.URL, url, root+"/lobster", 1)
+			if tr.URL != "" || tr.URLRaw != "" || tr.LogId != "" {
+				for _, url := range deprecatedLobsterURLs {
+					if strings.Contains(tr.URL, url) {
+						return strings.Replace(tr.URL, url, root+"/lobster", 1)
+					}
+				}
+				return ""
 			}
+			return ""
 		}
 
 		return fmt.Sprintf("%s/lobster/evergreen/test/%s/%d/%s/%s#shareLine=%d",
