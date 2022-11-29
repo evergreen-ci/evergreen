@@ -132,6 +132,7 @@ type uiTestResult struct {
 	URL        string          `json:"url"`
 	URLRaw     string          `json:"url_raw"`
 	URLLobster string          `json:"url_lobster"`
+	URLParsley string          `json:"url_parsley"`
 }
 
 type logData struct {
@@ -980,6 +981,7 @@ func (uis *UIServer) getTestResults(projCtx projectContext, uiTask *uiTaskData) 
 				URL:        tr.GetLogURL(evergreen.LogViewerHTML),
 				URLRaw:     tr.GetLogURL(evergreen.LogViewerRaw),
 				URLLobster: tr.GetLogURL(evergreen.LogViewerLobster),
+				URLParsley: tr.GetLogURL(evergreen.LogViewerParsley),
 			})
 		}
 	} else {
@@ -990,6 +992,7 @@ func (uis *UIServer) getTestResults(projCtx projectContext, uiTask *uiTaskData) 
 				URL:        tr.GetLogURL(evergreen.LogViewerHTML),
 				URLRaw:     tr.GetLogURL(evergreen.LogViewerRaw),
 				URLLobster: tr.GetLogURL(evergreen.LogViewerLobster),
+				URLParsley: tr.GetLogURL(evergreen.LogViewerParsley),
 			})
 		}
 
