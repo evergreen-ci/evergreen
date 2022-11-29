@@ -539,7 +539,7 @@ type TaskUnitDependency struct {
 	Variant            string `yaml:"variant,omitempty" bson:"variant,omitempty"`
 	Status             string `yaml:"status,omitempty" bson:"status,omitempty"`
 	PatchOptional      bool   `yaml:"patch_optional,omitempty" bson:"patch_optional,omitempty"`
-	OmitGeneratedTasks bool   `yaml:"omit_generated_tasks" bson:"omit_generated_tasks"`
+	OmitGeneratedTasks bool   `yaml:"omit_generated_tasks,omitempty" bson:"omit_generated_tasks,omitempty"`
 }
 
 // UnmarshalYAML allows tasks to be referenced as single selector strings.
