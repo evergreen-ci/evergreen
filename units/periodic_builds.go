@@ -96,17 +96,14 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 		}))
 	}()
 
-	mostRecentVersion, err := model.FindVersionByLastKnownGoodConfig(j.ProjectID, -1)
+	mostRecentRevision, err := model.FindLatestRevisionForProject(j.ProjectID)
 	if err != nil {
-		j.AddError(errors.Wrapf(err, "finding most recent version for project '%s'", j.ProjectID))
+		j.AddError(err)
 	}
-	if mostRecentVersion == nil {
-		j.AddError(errors.Errorf("no recent version found for project '%s'", j.ProjectID))
-	}
+	versionID, versionErr := j.addVersion(ctx, *definition, mostRecentRevision)
 
-	versionID, versionError := j.addVersion(ctx, *definition, mostRecentVersion.Revision)
-	if versionError != nil {
-		// if the version fails to be added, create a stub version and
+	if versionErr != nil {
+		// If the version fails to be added, create a stub version and
 		// log an event so users can get notified when notifications are configured
 		metadata := model.VersionMetadata{
 			IsAdHoc:         true,
@@ -114,7 +111,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 			PeriodicBuildID: definition.ID,
 			Alias:           definition.Alias,
 			Revision: model.Revision{
-				Revision: mostRecentVersion.Revision,
+				Revision: mostRecentRevision,
 			},
 		}
 		stubVersion, dbErr := repotracker.ShellVersionFromRevision(ctx, j.project, metadata)
@@ -128,10 +125,10 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 			}))
 		}
 		if stubVersion == nil {
-			j.AddError(versionError)
+			j.AddError(versionErr)
 			return
 		}
-		stubVersion.Errors = []string{versionError.Error()}
+		stubVersion.Errors = []string{versionErr.Error()}
 		insertError := stubVersion.Insert()
 		if err != nil {
 			grip.Error(message.WrapError(insertError, message.Fields{
@@ -144,7 +141,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 		}
 		event.LogVersionStateChangeEvent(stubVersion.Id, evergreen.VersionFailed)
 
-		j.AddError(versionError)
+		j.AddError(versionErr)
 		return
 	}
 

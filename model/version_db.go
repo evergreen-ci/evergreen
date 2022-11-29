@@ -67,10 +67,7 @@ var VersionAll = db.Query(bson.D{})
 // FindVersionByLastKnownGoodConfig filters on versions with valid (i.e., have no errors) config for the given project.
 func FindVersionByLastKnownGoodConfig(projectId string, revisionOrderNumber int) (*Version, error) {
 	const retryLimit = 50
-	q := bson.M{
-		VersionIdentifierKey: projectId,
-		VersionRequesterKey:  evergreen.RepotrackerVersionRequester,
-	}
+	q := byLatestProjectVersion(projectId)
 	if revisionOrderNumber >= 0 {
 		q[VersionRevisionOrderNumberKey] = bson.M{"$lt": revisionOrderNumber}
 	}
@@ -87,6 +84,29 @@ func FindVersionByLastKnownGoodConfig(projectId string, revisionOrderNumber int)
 		q[VersionRevisionOrderNumberKey] = bson.M{"$lt": v.RevisionOrderNumber}
 	}
 	return nil, errors.Errorf("couldn't finding version with good config in last %d commits", retryLimit)
+}
+
+// byLatestProjectVersion finds the latest commit for the given project.
+func byLatestProjectVersion(projectId string) bson.M {
+	return bson.M{
+		VersionIdentifierKey: projectId,
+		VersionRequesterKey:  evergreen.RepotrackerVersionRequester,
+	}
+}
+
+// FindLatestRevisionForProject returns the latest revision for the project, and returns an error if it's not found.
+func FindLatestRevisionForProject(projectId string) (string, error) {
+	v, err := VersionFindOne(db.Query(byLatestProjectVersion(projectId)).WithFields(VersionRevisionKey))
+	if err != nil {
+		return "", errors.Wrapf(err, "finding most recent version for project '%s'", projectId)
+	}
+	if v == nil {
+		return "", errors.Errorf("no recent version found for project '%s'", projectId)
+	}
+	if v.Revision == "" {
+		return "", errors.Errorf("latest version '%s' has no revision", v.Id)
+	}
+	return v.Revision, nil
 }
 
 // BaseVersionByProjectIdAndRevision finds a base version for the given project and revision.
