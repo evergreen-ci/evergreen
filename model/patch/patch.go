@@ -780,11 +780,7 @@ func (p *Patch) GetPatchIndex(parentPatch *Patch) (int, error) {
 
 func (p *Patch) GetFamilyInformation() (bool, *Patch, error) {
 	if !p.IsChild() && !p.IsParent() {
-		if evergreen.IsFinishedPatchStatus(p.Status) {
-			return true, nil, nil
-		} else {
-			return false, nil, nil
-		}
+		return evergreen.IsFinishedPatchStatus(p.Status), nil, nil
 	}
 
 	isDone := false
@@ -794,10 +790,8 @@ func (p *Patch) GetFamilyInformation() (bool, *Patch, error) {
 	}
 
 	// make sure the parent is done, if not, wait for the parent
-	if p.IsChild() {
-		if !evergreen.IsFinishedPatchStatus(parentPatch.Status) {
-			return isDone, parentPatch, nil
-		}
+	if p.IsChild() && !evergreen.IsFinishedPatchStatus(parentPatch.Status) {
+		return isDone, parentPatch, nil
 	}
 	childrenStatus, err := GetChildrenOrSiblingsReadiness(childrenOrSiblings)
 	if err != nil {

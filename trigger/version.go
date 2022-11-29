@@ -246,10 +246,7 @@ func (t *versionTriggers) versionFamilyOutcome(sub *event.Subscription) (*notifi
 }
 
 func (t *versionTriggers) versionFamilyFailure(sub *event.Subscription) (*notification.Notification, error) {
-	if t.data.Status != evergreen.VersionFailed {
-		return nil, nil
-	}
-	if t.event.EventType != event.VersionChildrenCompletion {
+	if t.data.Status != evergreen.VersionFailed || t.event.EventType != event.VersionChildrenCompletion {
 		return nil, nil
 	}
 	failedTasks, err := task.FindAll(db.Query(task.FailedTasksByVersion(t.version.Id)))
@@ -273,11 +270,7 @@ func (t *versionTriggers) versionFamilyFailure(sub *event.Subscription) (*notifi
 }
 
 func (t *versionTriggers) versionFamilySuccess(sub *event.Subscription) (*notification.Notification, error) {
-	if t.data.Status != evergreen.VersionSucceeded {
-		return nil, nil
-	}
-
-	if t.event.EventType != event.VersionChildrenCompletion {
+	if t.data.Status != evergreen.VersionSucceeded || t.event.EventType != event.VersionChildrenCompletion {
 		return nil, nil
 	}
 

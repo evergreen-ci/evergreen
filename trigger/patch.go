@@ -122,18 +122,17 @@ func (t *patchTriggers) patchOutcome(sub *event.Subscription) (*notification.Not
 			// get the children or siblings to wait on
 			childrenOrSiblings, parentPatch, err := t.patch.GetPatchFamily()
 			if err != nil {
-				return nil, errors.Wrap(err, "error getting child or sibling patches")
+				return nil, errors.Wrap(err, "getting child or sibling patches")
 			}
 
 			// make sure the parent is done, if not, wait for the parent
-			if t.patch.IsChild() {
-				if !evergreen.IsFinishedPatchStatus(parentPatch.Status) {
+			if t.patch.IsChild() && !evergreen.IsFinishedPatchStatus(parentPatch.Status) {
 					return nil, nil
 				}
 			}
 			childrenStatus, err := getChildrenOrSiblingsReadiness(childrenOrSiblings)
 			if err != nil {
-				return nil, errors.Wrap(err, "error getting child or sibling information")
+				return nil, errors.Wrap(err, "getting child or sibling information")
 			}
 			if !evergreen.IsFinishedPatchStatus(childrenStatus) {
 				return nil, nil
@@ -377,11 +376,7 @@ func (t *patchTriggers) patchFamilyOutcome(sub *event.Subscription) (*notificati
 }
 
 func (t *patchTriggers) patchFamilySuccess(sub *event.Subscription) (*notification.Notification, error) {
-	if t.data.Status != evergreen.PatchSucceeded {
-		return nil, nil
-	}
-
-	if t.event.EventType != event.PatchChildrenCompletion {
+	if t.data.Status != evergreen.PatchSucceeded || t.event.EventType != event.PatchChildrenCompletion{
 		return nil, nil
 	}
 

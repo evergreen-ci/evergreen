@@ -79,17 +79,16 @@ func isEndTrigger(trigger string) bool {
 }
 
 func triggerToFamilyTrigger(t string) string {
-	var trigger string
 	switch t {
 	case event.TriggerSuccess:
-		trigger = event.TriggerFamilySuccess
+		return event.TriggerFamilySuccess
 	case event.TriggerOutcome:
-		trigger = event.TriggerFamilyOutcome
+		return event.TriggerFamilyOutcome
 	case event.TriggerFailure:
-		trigger = event.TriggerFamilyFailure
+		return event.TriggerFamilyFailure
+	default:
+		return t
 	}
-	return trigger
-
 }
 
 // GetSubscriptions returns the subscriptions that belong to a user
