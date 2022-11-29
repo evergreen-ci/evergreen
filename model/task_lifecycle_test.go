@@ -78,11 +78,6 @@ func TestSetActiveState(t *testing.T) {
 			TaskGroup:         "tg",
 			TaskGroupMaxHosts: 1,
 			TaskGroupOrder:    2,
-			DependsOn: []task.Dependency{
-				{
-					TaskId: testTask.Id,
-					Status: evergreen.TaskSucceeded,
-				}},
 		}
 		p := &patch.Patch{
 			Id:          versionId,
@@ -120,12 +115,19 @@ func TestSetActiveState(t *testing.T) {
 			Convey("deactivating an active task as a normal user should deactivate the task", func() {
 				So(SetActiveState(userName, false, *testTask), ShouldBeNil)
 				testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
+				So(err, ShouldBeNil)
 				So(testTask.Activated, ShouldBeFalse)
 				dependentTask, err = task.FindOne(db.Query(task.ById(dependentTask.Id)))
 				So(dependentTask.Activated, ShouldBeFalse)
 				cq, err := commitqueue.FindOneId("p")
 				assert.NoError(t, err)
 				assert.Len(t, cq.Queue, 0)
+				build, err := build.FindOneId(testTask.BuildId)
+				So(err, ShouldBeNil)
+				So(build.Status, ShouldEqual, evergreen.BuildFailed)
+				version, err := VersionFindOneId(testTask.Version)
+				So(err, ShouldBeNil)
+				So(version.Status, ShouldEqual, evergreen.VersionFailed)
 			})
 		})
 		Convey("when deactivating an active task as evergreen", func() {
@@ -143,6 +145,12 @@ func TestSetActiveState(t *testing.T) {
 				cq, err := commitqueue.FindOneId("p")
 				assert.NoError(t, err)
 				assert.Len(t, cq.Queue, 0)
+				build, err := build.FindOneId(testTask.BuildId)
+				So(err, ShouldBeNil)
+				So(build.Status, ShouldEqual, evergreen.BuildFailed)
+				version, err := VersionFindOneId(testTask.Version)
+				So(err, ShouldBeNil)
+				So(version.Status, ShouldEqual, evergreen.VersionFailed)
 			})
 			Convey("if the task is activated by stepback user, the task should not deactivate", func() {
 				So(SetActiveState(evergreen.StepbackTaskActivator, true, *testTask), ShouldBeNil)
@@ -156,6 +164,12 @@ func TestSetActiveState(t *testing.T) {
 				cq, err := commitqueue.FindOneId("p")
 				assert.NoError(t, err)
 				assert.Len(t, cq.Queue, 1)
+				build, err := build.FindOneId(testTask.BuildId)
+				So(err, ShouldBeNil)
+				So(build.Status, ShouldEqual, evergreen.BuildStarted)
+				version, err := VersionFindOneId(testTask.Version)
+				So(err, ShouldBeNil)
+				So(version.Status, ShouldEqual, evergreen.VersionStarted)
 			})
 			Convey("if the task is not activated by evergreen, the task should not deactivate", func() {
 				So(SetActiveState(userName, true, *testTask), ShouldBeNil)
@@ -169,6 +183,12 @@ func TestSetActiveState(t *testing.T) {
 				cq, err := commitqueue.FindOneId("p")
 				assert.NoError(t, err)
 				assert.Len(t, cq.Queue, 1)
+				build, err := build.FindOneId(testTask.BuildId)
+				So(err, ShouldBeNil)
+				So(build.Status, ShouldEqual, evergreen.BuildStarted)
+				version, err := VersionFindOneId(testTask.Version)
+				So(err, ShouldBeNil)
+				So(version.Status, ShouldEqual, evergreen.VersionStarted)
 			})
 		})
 		Convey("when deactivating an active task a normal user", func() {
@@ -187,6 +207,12 @@ func TestSetActiveState(t *testing.T) {
 				cq, err := commitqueue.FindOneId("p")
 				assert.NoError(t, err)
 				assert.Len(t, cq.Queue, 0)
+				build, err := build.FindOneId(testTask.BuildId)
+				So(err, ShouldBeNil)
+				So(build.Status, ShouldEqual, evergreen.BuildFailed)
+				version, err := VersionFindOneId(testTask.Version)
+				So(err, ShouldBeNil)
+				So(version.Status, ShouldEqual, evergreen.VersionFailed)
 			})
 			Convey("if the task is activated by stepback user, the task should deactivate", func() {
 				So(SetActiveState(evergreen.StepbackTaskActivator, true, *testTask), ShouldBeNil)
@@ -203,6 +229,12 @@ func TestSetActiveState(t *testing.T) {
 				cq, err := commitqueue.FindOneId("p")
 				assert.NoError(t, err)
 				assert.Len(t, cq.Queue, 0)
+				build, err := build.FindOneId(testTask.BuildId)
+				So(err, ShouldBeNil)
+				So(build.Status, ShouldEqual, evergreen.BuildFailed)
+				version, err := VersionFindOneId(testTask.Version)
+				So(err, ShouldBeNil)
+				So(version.Status, ShouldEqual, evergreen.VersionFailed)
 			})
 			Convey("if the task is not activated by evergreen, the task should deactivate", func() {
 				So(SetActiveState(userName, true, *testTask), ShouldBeNil)
@@ -218,6 +250,12 @@ func TestSetActiveState(t *testing.T) {
 				cq, err := commitqueue.FindOneId("p")
 				assert.NoError(t, err)
 				assert.Len(t, cq.Queue, 0)
+				build, err := build.FindOneId(testTask.BuildId)
+				So(err, ShouldBeNil)
+				So(build.Status, ShouldEqual, evergreen.BuildFailed)
+				version, err := VersionFindOneId(testTask.Version)
+				So(err, ShouldBeNil)
+				So(version.Status, ShouldEqual, evergreen.VersionFailed)
 			})
 		})
 	})
@@ -345,7 +383,7 @@ func TestSetActiveState(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(dtFromDb.Activated, ShouldBeTrue)
 		})
-		Convey("that should restart", func() {
+		Convey("that should activate and deactivate", func() {
 			dt.DispatchTime = time.Now()
 			So(SetActiveState("test", true, *dt), ShouldBeNil)
 			t1FromDb, err := task.FindOne(db.Query(task.ById(t1.Id)))
@@ -354,6 +392,14 @@ func TestSetActiveState(t *testing.T) {
 			dtFromDb, err := task.FindOne(db.Query(task.ById(dt.Id)))
 			So(err, ShouldBeNil)
 			So(dtFromDb.Activated, ShouldBeTrue)
+
+			So(SetActiveState("test", false, *t1), ShouldBeNil)
+			t1FromDb, err = task.FindOne(db.Query(task.ById(t1.Id)))
+			So(err, ShouldBeNil)
+			So(t1FromDb.Activated, ShouldBeFalse)
+			dtFromDb, err = task.FindOne(db.Query(task.ById(dt.Id)))
+			So(err, ShouldBeNil)
+			So(dtFromDb.Activated, ShouldBeFalse)
 		})
 	})
 	Convey("with a task that is part of a task group", t, func() {

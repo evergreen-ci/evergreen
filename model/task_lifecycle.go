@@ -77,15 +77,23 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 			// If the task was not activated by step back, and either the caller is not evergreen
 			// or the task was originally activated by evergreen, deactivate the task
 		} else if !evergreen.IsSystemActivator(caller) || evergreen.IsSystemActivator(t.ActivatedBy) {
+			// deactivate later tasks in the group as well, since they won't succeed without this one
+			// TODO EVG-18392: remove this logic once it can be handled by dependencies
+			if t.IsPartOfSingleHostTaskGroup() {
+				tasksInGroup, err := task.FindTaskGroupFromBuild(t.BuildId, t.TaskGroup)
+				catcher.Wrapf(err, "finding task group '%s'", t.TaskGroup)
+				for _, taskInGroup := range tasksInGroup {
+					if taskInGroup.TaskGroupOrder > t.TaskGroupOrder {
+						originalTasks = append(originalTasks, taskInGroup)
+					}
+				}
+			}
 			if t.Requester == evergreen.MergeTestRequester {
 				catcher.Wrapf(DequeueAndRestartForTask(nil, &t, message.GithubStateError, caller, fmt.Sprintf("deactivated by '%s'", caller)), "dequeueing and restarting task '%s'", t.Id)
 			}
 			tasksToActivate = append(tasksToActivate, originalTasks...)
 		} else {
 			continue
-		}
-		if t.IsPartOfDisplay() {
-			catcher.Wrap(UpdateDisplayTaskForTask(&t), "updating display task")
 		}
 	}
 
@@ -113,6 +121,11 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 		}
 	}
 
+	for _, t := range tasksToActivate {
+		if t.IsPartOfDisplay() {
+			catcher.Wrap(UpdateDisplayTaskForTask(&t), "updating display task")
+		}
+	}
 	for b, item := range buildToTaskMap {
 		t := buildToTaskMap[b]
 		if err := UpdateBuildAndVersionStatusForTask(&item); err != nil {
@@ -1802,10 +1815,12 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 	hasTasksToRun := false
 	startTime := time.Unix(1<<62, 0)
 	endTime := utility.ZeroTime
+	noActiveTasks := true
 	for _, execTask := range execTasks {
 		// if any of the execution tasks are scheduled, the display task is too
 		if execTask.Activated {
 			dt.Activated = true
+			noActiveTasks = false
 			if utility.IsZeroTime(dt.ActivatedTime) {
 				dt.ActivatedTime = time.Now()
 			}
@@ -1827,6 +1842,9 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 		if execTask.FinishTime.After(endTime) {
 			endTime = execTask.FinishTime
 		}
+	}
+	if noActiveTasks {
+		dt.Activated = false
 	}
 
 	sort.Sort(task.ByPriority(execTasks))
