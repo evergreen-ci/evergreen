@@ -310,6 +310,9 @@ type Dependency struct {
 	Unattainable bool   `bson:"unattainable" json:"unattainable"`
 	// Finished indicates if the task's dependency has finished running or not.
 	Finished bool `bson:"finished" json:"finished"`
+	// OmitGeneratedTasks causes tasks that depend on a generator task to not depend on
+	// the generated tasks if this is set
+	OmitGeneratedTasks bool `bson:"omit_generated_tasks,omitempty" json:"omit_generated_tasks,omitempty"`
 }
 
 // BaseTaskInfo is a subset of task fields that should be returned for patch tasks.
@@ -3463,6 +3466,7 @@ func AddParentDisplayTasks(tasks []Task) ([]Task, error) {
 }
 
 // UpdateDependsOn appends new dependencies to tasks that already depend on this task
+// if the task does not explicitly omit having generated tasks as dependencies
 func (t *Task) UpdateDependsOn(status string, newDependencyIDs []string) error {
 	newDependencies := make([]Dependency, 0, len(newDependencyIDs))
 	for _, depID := range newDependencyIDs {
@@ -3475,8 +3479,9 @@ func (t *Task) UpdateDependsOn(status string, newDependencyIDs []string) error {
 	_, err := UpdateAll(
 		bson.M{
 			DependsOnKey: bson.M{"$elemMatch": bson.M{
-				DependencyTaskIdKey: t.Id,
-				DependencyStatusKey: status,
+				DependencyTaskIdKey:             t.Id,
+				DependencyStatusKey:             status,
+				DependencyOmitGeneratedTasksKey: bson.M{"$ne": true},
 			}},
 		},
 		bson.M{"$push": bson.M{DependsOnKey: bson.M{"$each": newDependencies}}},

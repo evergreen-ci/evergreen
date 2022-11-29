@@ -132,10 +132,11 @@ var (
 
 var (
 	// BSON fields for task dependency struct
-	DependencyTaskIdKey       = bsonutil.MustHaveTag(Dependency{}, "TaskId")
-	DependencyStatusKey       = bsonutil.MustHaveTag(Dependency{}, "Status")
-	DependencyUnattainableKey = bsonutil.MustHaveTag(Dependency{}, "Unattainable")
-	DependencyFinishedKey     = bsonutil.MustHaveTag(Dependency{}, "Finished")
+	DependencyTaskIdKey             = bsonutil.MustHaveTag(Dependency{}, "TaskId")
+	DependencyStatusKey             = bsonutil.MustHaveTag(Dependency{}, "Status")
+	DependencyUnattainableKey       = bsonutil.MustHaveTag(Dependency{}, "Unattainable")
+	DependencyFinishedKey           = bsonutil.MustHaveTag(Dependency{}, "Finished")
+	DependencyOmitGeneratedTasksKey = bsonutil.MustHaveTag(Dependency{}, "OmitGeneratedTasks")
 )
 
 var BaseTaskStatusKey = bsonutil.GetDottedKeyName(BaseTaskKey, StatusKey)
