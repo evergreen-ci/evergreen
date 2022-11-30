@@ -531,7 +531,7 @@ func (j *patchIntentProcessor) setToPreviousPatchDefinition(patchDoc *patch.Patc
 	} else {
 		reusePatch, err = patch.FindOneId(patchId)
 		if err != nil {
-			return "", errors.Wrap(err, "querying for most recent patch")
+			return "", errors.Wrap(err, "querying for patch '%s'", patchId)
 		}
 		if reusePatch == nil {
 			return "", errors.Errorf("patch '%s' not found", patchId)
