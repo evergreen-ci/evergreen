@@ -5,7 +5,7 @@
             "result": {
             "errors": [
                 {
-                    "message": "Host must be running to add a public key",
+                    "message": "Host must be running to add a public key but is 'provisioning'",
                     "path": ["editSpawnHost"],
                     "extensions": { "code": "INPUT_VALIDATION_ERROR" }
                 }
