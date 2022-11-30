@@ -20,7 +20,6 @@ const (
 	repeatDefinitionFlag       = "repeat"
 	repeatFailedDefinitionFlag = "repeat-failed"
 	repeatPatchIdFlag          = "repeat-patch"
-	repeatFailedPatchFlag      = "repeat-failed-patch"
 	includeModulesFlag         = "include-modules"
 )
 
@@ -84,7 +83,7 @@ func Patch() cli.Command {
 			setPlainLogger,
 			mutuallyExclusiveArgs(false, preserveCommitsFlag, uncommittedChangesFlag),
 			mutuallyExclusiveArgs(false, repeatDefinitionFlag, repeatPatchIdFlag,
-				repeatFailedDefinitionFlag, repeatFailedPatchFlag),
+				repeatFailedDefinitionFlag),
 			func(c *cli.Context) error {
 				catcher := grip.NewBasicCatcher()
 				for _, status := range utility.SplitCommas(c.StringSlice(syncStatusesFlagName)) {
@@ -240,17 +239,9 @@ func Patch() cli.Command {
 }
 
 func (p *patchParams) addReuseFlags(c *cli.Context) {
-	repeatPatchId := c.String(repeatPatchIdFlag)
-	repeatFailedId := c.String(repeatFailedPatchFlag)
-
-	p.RepeatDefinition = c.Bool(repeatDefinitionFlag) || repeatPatchId != ""
-	if p.RepeatDefinition {
-		p.RepeatPatchId = repeatPatchId
-	}
-	p.RepeatFailed = c.Bool(repeatFailedDefinitionFlag) || repeatFailedId != ""
-	if p.RepeatFailed {
-		p.RepeatPatchId = repeatFailedId
-	}
+	p.RepeatDefinition = c.Bool(repeatDefinitionFlag) || p.RepeatPatchId != ""
+	p.RepeatPatchId = c.String(repeatPatchIdFlag)
+	p.RepeatFailed = c.Bool(repeatFailedDefinitionFlag)
 }
 
 func getParametersFromInput(params []string) ([]patch.Parameter, error) {

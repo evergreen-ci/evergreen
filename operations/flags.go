@@ -313,10 +313,6 @@ func addReuseFlags(flags ...cli.Flag) []cli.Flag {
 		Name:  joinFlagNames(repeatPatchIdFlag, "reuse-patch"),
 		Usage: fmt.Sprintf(message, "specific patch", "same", "given"),
 	})
-	res = append(res, cli.StringFlag{
-		Name:  repeatFailedPatchFlag,
-		Usage: fmt.Sprintf(message, "specific patch failed", "failed", "given"),
-	})
 	return res
 }
 
