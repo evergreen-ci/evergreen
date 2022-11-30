@@ -273,6 +273,31 @@ modules:
 			tasks, err := task.Find(bson.M{})
 			require.NoError(t, err)
 			assert.Len(t, tasks, 2)
+		},
+		"VersionCreationWithAutoUpdateModules": func(*testing.T) {
+			token, err := patchTestConfig.GetGithubOauthToken()
+			require.NoError(t, err)
+			configPatch := resetPatchSetup(t, configFilePath)
+			project, patchConfig, err := GetPatchedProject(ctx, configPatch, token)
+			require.NoError(t, err)
+			assert.NotNil(t, project)
+			modulesYml := `
+auto_update_modules: true
+modules:
+  - name: sandbox
+    repo: git@github.com:evergreen-ci/commit-queue-sandbox.git
+    branch: main
+  - name: evergreen
+    repo: git@github.com:evergreen-ci/evergreen.git
+    branch: main
+`
+			configPatch.PatchedParserProject = patchConfig.PatchedParserProject
+			configPatch.PatchedParserProject += modulesYml
+			token, err = patchTestConfig.GetGithubOauthToken()
+			require.NoError(t, err)
+			version, err := FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, token)
+			require.NoError(t, err)
+			assert.NotNil(t, version)
 			// ensure that the manifest was created
 			mfst, err := manifest.FindOne(manifest.ById(configPatch.Id.Hex()))
 			require.NoError(t, err)
@@ -326,7 +351,7 @@ modules:
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			assert.NoError(t, db.ClearCollections(distro.Collection, manifest.Collection))
+			assert.NoError(t, db.ClearCollections(distro.Collection, manifest.Collection, patch.Collection))
 			test(t)
 		})
 	}

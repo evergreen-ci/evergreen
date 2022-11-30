@@ -602,6 +602,10 @@ func constructManifest(v *Version, proj *Project, projectRef *ProjectRef, settin
 	if len(proj.Modules) == 0 {
 		return nil, nil
 	}
+	isPatch := utility.StringSliceContains(evergreen.PatchRequesters, v.Requester)
+	if isPatch && !proj.AutoUpdateModules {
+		return nil, nil
+	}
 	newManifest := &manifest.Manifest{
 		Id:          v.Id,
 		Revision:    v.Revision,
@@ -617,6 +621,7 @@ func constructManifest(v *Version, proj *Project, projectRef *ProjectRef, settin
 	defer cancel()
 
 	var gitCommit *github.RepositoryCommit
+
 	modules := map[string]*manifest.Module{}
 	for _, module := range proj.Modules {
 		var sha, url string
