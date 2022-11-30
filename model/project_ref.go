@@ -121,6 +121,8 @@ type ProjectRef struct {
 	// Hidden determines whether or not the project is discoverable/tracked in the UI
 	Hidden        *bool  `bson:"hidden,omitempty" json:"hidden,omitempty"`
 	DefaultLogger string `bson:"default_logger,omitempty" json:"default_logger,omitempty"`
+
+	//RepoPeriodicBuilds []PeriodicBuildDefinition `bson:"repo_periodic_builds"`
 }
 
 type CommitQueueParams struct {
@@ -1742,9 +1744,12 @@ func UpdateOwnerAndRepoForBranchProjects(repoId, owner, repo string) error {
 		})
 }
 
-func FindProjectRefsWithCommitQueueEnabled() ([]ProjectRef, error) {
+// FindProjectRefIdsWithCommitQueueEnabled returns a list of project IDs that have the commit queue enabled.
+// We don't return the full projects since they aren't actually merged with the repo documents, so they
+// aren't necessarily accurate.
+func FindProjectRefIdsWithCommitQueueEnabled() ([]string, error) {
 	projectRefs := []ProjectRef{}
-
+	res := []string{}
 	err := db.Aggregate(
 		ProjectRefCollection,
 		projectRefPipelineForCommitQueueEnabled(),
@@ -1752,23 +1757,28 @@ func FindProjectRefsWithCommitQueueEnabled() ([]ProjectRef, error) {
 	if err != nil {
 		return nil, err
 	}
+	for _, p := range projectRefs {
+		res = append(res, p.Id)
+	}
 
-	return projectRefs, nil
+	return res, nil
 }
 
+// FindPeriodicProjects returns a list of merged projects that have periodic builds defined.
 func FindPeriodicProjects() ([]ProjectRef, error) {
-	projectRefs := []ProjectRef{}
+	res := []ProjectRef{}
 
-	err := db.Aggregate(
-		ProjectRefCollection,
-		projectRefPipelineForPeriodicBuilds(),
-		&projectRefs,
-	)
+	projectRefs, err := FindAllMergedTrackedProjectRefs()
 	if err != nil {
 		return nil, err
 	}
+	for _, p := range projectRefs {
+		if p.IsEnabled() && len(p.PeriodicBuilds) > 0 {
+			res = append(res, p)
+		}
+	}
 
-	return projectRefs, nil
+	return res, nil
 }
 
 // FindProjectRefs returns limit refs starting at project id key in the sortDir direction.
@@ -2452,6 +2462,10 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 }
 
 func (p *ProjectRef) UpdateNextPeriodicBuild(definition string, nextRun time.Time) error {
+	collection := ProjectRefCollection
+	buildsKey := projectRefPeriodicBuildsKey
+	documentIdKey := ProjectRefIdKey
+	idToUpdate := p.Id
 	for i, d := range p.PeriodicBuilds {
 		if d.ID == definition {
 			d.NextRunTime = nextRun
@@ -2459,11 +2473,9 @@ func (p *ProjectRef) UpdateNextPeriodicBuild(definition string, nextRun time.Tim
 			break
 		}
 	}
-	collection := ProjectRefCollection
-	idKey := ProjectRefIdKey
-	buildsKey := projectRefPeriodicBuildsKey
-	if p.UseRepoSettings() {
-		// if the periodic build is part of the repo then update there instead
+
+	// If periodic builds aren't defined for the project, see if it's part of the repo and update there instead.
+	if p.PeriodicBuilds == nil && p.UseRepoSettings() {
 		repoRef, err := FindOneRepoRef(p.RepoRefId)
 		if err != nil {
 			return err
@@ -2474,15 +2486,15 @@ func (p *ProjectRef) UpdateNextPeriodicBuild(definition string, nextRun time.Tim
 		for _, d := range repoRef.PeriodicBuilds {
 			if d.ID == definition {
 				collection = RepoRefCollection
-				idKey = RepoRefIdKey
 				buildsKey = RepoRefPeriodicBuildsKey
+				documentIdKey = RepoRefIdKey
+				idToUpdate = p.RepoRefId
 			}
 		}
-
 	}
 
 	filter := bson.M{
-		idKey: p.Id,
+		documentIdKey: idToUpdate,
 		buildsKey: bson.M{
 			"$elemMatch": bson.M{
 				"id": definition,
@@ -2876,33 +2888,9 @@ func projectRefPipelineForCommitQueueEnabled() []bson.M {
 				}},
 			}},
 		},
-	}
-}
-
-// projectRefPipelineForPeriodicBuilds is an aggregation pipeline to find projects that are
-// 1) explicitly enabled, or that default to the repo which is enabled, and
-// 2) they have periodic builds defined, or they default to the repo which has periodic builds defined.
-func projectRefPipelineForPeriodicBuilds() []bson.M {
-	nonEmptySize := bson.M{"$gt": bson.M{"$size": 0}}
-	return []bson.M{
-		lookupRepoStep,
-		{"$match": bson.M{
-			"$and": []bson.M{
-				{"$or": []bson.M{
-					{ProjectRefEnabledKey: true},
-					{ProjectRefEnabledKey: nil, bsonutil.GetDottedKeyName("repo_ref", RepoRefEnabledKey): true},
-				}},
-				{"$or": []bson.M{
-					{
-						projectRefPeriodicBuildsKey: nonEmptySize,
-					},
-					{
-						projectRefPeriodicBuildsKey:                                     nil,
-						bsonutil.GetDottedKeyName("repo_ref", RepoRefPeriodicBuildsKey): nonEmptySize,
-					},
-				}},
-			}},
-		},
+		{"$project": bson.M{
+			ProjectRefIdKey: 1,
+		}},
 	}
 }
 

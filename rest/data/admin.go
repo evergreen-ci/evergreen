@@ -160,7 +160,7 @@ func RestartFailedTasks(queue amboy.Queue, opts model.RestartOptions) (*restMode
 func RestartFailedCommitQueueVersions(opts model.RestartOptions) (*restModel.RestartResponse, error) {
 	totalRestarted := []string{}
 	totalNotRestarted := []string{}
-	pRefs, err := model.FindProjectRefsWithCommitQueueEnabled()
+	pRefs, err := model.FindProjectRefIdsWithCommitQueueEnabled()
 	if err != nil {
 		return nil, errors.Wrap(err, "finding project refs with commit queue enabled")
 	}
