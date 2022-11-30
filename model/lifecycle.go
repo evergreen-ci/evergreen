@@ -641,7 +641,7 @@ func CreateBuildFromVersionNoInsert(creationInfo TaskCreationInfo) (*build.Build
 	if len(creationInfo.Aliases) > 0 && len(creationInfo.TaskNames) == 0 {
 		return nil, nil, nil
 	}
-	// find the build variant for this project/build
+	// Find the build variant for this project/build
 	buildVariant := creationInfo.Project.FindBuildVariant(creationInfo.BuildVariantName)
 	if buildVariant == nil {
 		return nil, nil, errors.Errorf("could not find build '%s' in project file '%s'", creationInfo.BuildVariantName, creationInfo.Project.Identifier)
@@ -700,23 +700,24 @@ func CreateBuildFromVersionNoInsert(creationInfo TaskCreationInfo) (*build.Build
 		return nil, nil, errors.Wrapf(err, "creating tasks for build '%s'", b.Id)
 	}
 
-	for _, t := range tasksForBuild {
-		if t.IsGithubCheck {
-			b.IsGithubCheck = true
-		}
-		break
-	}
-
 	// create task caches for all of the tasks, and place them into the build
 	tasks := []task.Task{}
+	containsActivatedTask := false
+
 	for _, taskP := range tasksForBuild {
+		if taskP.IsGithubCheck {
+			b.IsGithubCheck = true
+		}
+		if taskP.Activated {
+			containsActivatedTask = true
+		}
 		if taskP.IsPartOfDisplay() {
 			continue // don't add execution parts of display tasks to the UI cache
 		}
 		tasks = append(tasks, *taskP)
 	}
 	b.Tasks = CreateTasksCache(tasks)
-
+	b.Activated = containsActivatedTask
 	return b, tasksForBuild, nil
 }
 
