@@ -8,12 +8,11 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/mongodb/amboy"
 	"github.com/pkg/errors"
 )
 
 // GenerateTasks parses JSON files for `generate.tasks` and creates the new builds and tasks.
-func GenerateTasks(taskID string, jsonBytes []json.RawMessage, group amboy.QueueGroup) error {
+func GenerateTasks(taskID string, jsonBytes []json.RawMessage) error {
 	t, err := task.FindOneId(taskID)
 	if err != nil {
 		return errors.Wrapf(err, "finding task '%s'", taskID)
@@ -39,7 +38,7 @@ func GenerateTasks(taskID string, jsonBytes []json.RawMessage, group amboy.Queue
 }
 
 // GeneratePoll checks to see if a `generate.tasks` job has finished.
-func GeneratePoll(ctx context.Context, taskID string, group amboy.QueueGroup) (bool, string, error) {
+func GeneratePoll(ctx context.Context, taskID string) (bool, string, error) {
 	t, err := task.FindOneId(taskID)
 	if err != nil {
 		return false, "", errors.Wrapf(err, "finding task '%s'", taskID)

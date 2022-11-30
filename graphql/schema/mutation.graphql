@@ -57,7 +57,7 @@ type Mutation {
   removeFavoriteProject(identifier: String!): Project!
   saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: ProjectSettingsSection!): ProjectSettings!
   saveRepoSettingsForSection(repoSettings: RepoSettingsInput, section: ProjectSettingsSection!): RepoSettings!
-  deactivateStepbackTasks(projectId: String! @requireProjectAccess(access: EDIT)): Boolean!
+  deactivateStepbackTask(projectId: String!, buildVariantName: String!, taskName: String! @requireProjectAccess(access: EDIT)): Boolean!
 
   # spawn
   attachVolumeToHost(volumeAndHost: VolumeHost!): Boolean!

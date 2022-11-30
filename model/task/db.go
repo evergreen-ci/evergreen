@@ -56,7 +56,7 @@ var (
 	DeactivatedForDependencyKey    = bsonutil.MustHaveTag(Task{}, "DeactivatedForDependency")
 	BuildIdKey                     = bsonutil.MustHaveTag(Task{}, "BuildId")
 	DistroIdKey                    = bsonutil.MustHaveTag(Task{}, "DistroId")
-	DistroAliasesKey               = bsonutil.MustHaveTag(Task{}, "DistroAliases")
+	SecondaryDistrosKey            = bsonutil.MustHaveTag(Task{}, "SecondaryDistros")
 	BuildVariantKey                = bsonutil.MustHaveTag(Task{}, "BuildVariant")
 	DependsOnKey                   = bsonutil.MustHaveTag(Task{}, "DependsOn")
 	OverrideDependenciesKey        = bsonutil.MustHaveTag(Task{}, "OverrideDependencies")
@@ -132,10 +132,11 @@ var (
 
 var (
 	// BSON fields for task dependency struct
-	DependencyTaskIdKey       = bsonutil.MustHaveTag(Dependency{}, "TaskId")
-	DependencyStatusKey       = bsonutil.MustHaveTag(Dependency{}, "Status")
-	DependencyUnattainableKey = bsonutil.MustHaveTag(Dependency{}, "Unattainable")
-	DependencyFinishedKey     = bsonutil.MustHaveTag(Dependency{}, "Finished")
+	DependencyTaskIdKey             = bsonutil.MustHaveTag(Dependency{}, "TaskId")
+	DependencyStatusKey             = bsonutil.MustHaveTag(Dependency{}, "Status")
+	DependencyUnattainableKey       = bsonutil.MustHaveTag(Dependency{}, "Unattainable")
+	DependencyFinishedKey           = bsonutil.MustHaveTag(Dependency{}, "Finished")
+	DependencyOmitGeneratedTasksKey = bsonutil.MustHaveTag(Dependency{}, "OmitGeneratedTasks")
 )
 
 var BaseTaskStatusKey = bsonutil.GetDottedKeyName(BaseTaskKey, StatusKey)
@@ -436,14 +437,16 @@ func ByVersion(version string) bson.M {
 }
 
 // DisplayTasksByVersion produces a query that returns all display tasks for the given version.
-func DisplayTasksByVersion(version string) bson.M {
+func DisplayTasksByVersion(version string, includeNeverActivatedTasks bool) bson.M {
 	// assumes that all ExecutionTasks know of their corresponding DisplayTask (i.e. DisplayTaskIdKey not null or "")
-	return bson.M{
+
+	matchOnVersion := bson.M{VersionKey: version}
+	if !includeNeverActivatedTasks {
+		matchOnVersion[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
+	}
+	query := bson.M{
 		"$and": []bson.M{
-			{
-				VersionKey:       version,
-				ActivatedTimeKey: bson.M{"$ne": utility.ZeroTime},
-			},
+			matchOnVersion,
 			{"$or": []bson.M{
 				{DisplayTaskIdKey: ""},                       // no 'parent' display task
 				{DisplayOnlyKey: true},                       // ...
@@ -453,6 +456,8 @@ func DisplayTasksByVersion(version string) bson.M {
 			},
 		},
 	}
+
+	return query
 }
 
 // FailedTasksByVersion produces a query that returns all failed tasks for the given version.
@@ -2029,6 +2034,7 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 	if opts.IncludeBuildVariantDisplayName {
 		opts.UseLegacyAddBuildVariantDisplayName = shouldUseLegacyAddBuildVariantDisplayName(versionID)
 	}
+
 	pipeline, err := getTasksByVersionPipeline(versionID, opts)
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "getting tasks by version pipeline")
@@ -2385,9 +2391,10 @@ func GetBaseStatusesForActivatedTasks(versionID string, baseVersionID string) ([
 }
 
 type HasMatchingTasksOptions struct {
-	TaskNames []string
-	Variants  []string
-	Statuses  []string
+	TaskNames                  []string
+	Variants                   []string
+	Statuses                   []string
+	IncludeNeverActivatedTasks bool
 }
 
 // HasMatchingTasks returns true if the version has tasks with the given statuses
@@ -2396,6 +2403,7 @@ func HasMatchingTasks(versionID string, opts HasMatchingTasksOptions) (bool, err
 		TaskNames:                      opts.TaskNames,
 		Variants:                       opts.Variants,
 		Statuses:                       opts.Statuses,
+		IncludeNeverActivatedTasks:     !opts.IncludeNeverActivatedTasks,
 		IncludeBuildVariantDisplayName: true,
 	}
 	if len(opts.Variants) > 0 {
@@ -2453,7 +2461,7 @@ type GetTasksByVersionOptions struct {
 	Sorts                               []TasksSortOrder
 	IncludeExecutionTasks               bool
 	IncludeBaseTasks                    bool
-	IncludeEmptyActivation              bool
+	IncludeNeverActivatedTasks          bool // NeverActivated tasks are tasks that lack an activation time
 	IncludeBuildVariantDisplayName      bool
 	IsMainlineCommit                    bool
 	UseLegacyAddBuildVariantDisplayName bool
@@ -2471,7 +2479,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		match[DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex, "$options": "i"}
 	}
 	// Activated Time is needed to filter out generated tasks that have been generated but not yet activated
-	if !opts.IncludeEmptyActivation {
+	if !opts.IncludeNeverActivatedTasks {
 		match[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
 	}
 	pipeline := []bson.M{
@@ -2656,4 +2664,39 @@ func (t *Task) FindAllMarkedUnattainableDependencies() ([]Task, error) {
 		}},
 	)
 	return FindAll(query)
+}
+
+func activateTasks(taskIDs []string, caller string, activationTime time.Time) error {
+	_, err := UpdateAll(
+		bson.M{
+			IdKey: bson.M{"$in": taskIDs},
+		},
+		bson.M{
+			"$set": bson.M{
+				ActivatedKey:     true,
+				ActivatedByKey:   caller,
+				ActivatedTimeKey: activationTime,
+			},
+		})
+	if err != nil {
+		return errors.Wrap(err, "setting tasks to active")
+	}
+	if err = enableDisabledTasks(taskIDs); err != nil {
+		return errors.Wrap(err, "enabling disabled tasks")
+	}
+	return nil
+}
+
+func enableDisabledTasks(taskIDs []string) error {
+	_, err := UpdateAll(
+		bson.M{
+			IdKey:       bson.M{"$in": taskIDs},
+			PriorityKey: evergreen.DisabledTaskPriority,
+		},
+		bson.M{
+			"$unset": bson.M{
+				PriorityKey: 1,
+			},
+		})
+	return err
 }

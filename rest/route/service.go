@@ -15,7 +15,6 @@ const defaultLimit = 100
 
 type HandlerOpts struct {
 	APIQueue            amboy.Queue
-	QueueGroup          amboy.QueueGroup
 	TaskDispatcher      model.TaskQueueItemDispatcher
 	TaskAliasDispatcher model.TaskQueueItemDispatcher
 	URL                 string
@@ -92,7 +91,6 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/task/{task_id}/keyval/inc").Version(2).Post().Wrap(requireTask).RouteHandler(makeKeyvalPluginInc())
 	app.AddRoute("/task/{task_id}/manifest/load").Version(2).Get().Wrap(requireTask).RouteHandler(makeManifestLoad(env.Settings()))
 	app.AddRoute("/task/{task_id}/downstreamParams").Version(2).Post().Wrap(requireTask).RouteHandler(makeSetDownstreamParams())
-	app.AddRoute("/task/{task_id}/json/data/{name}").Version(2).Post().Wrap(requireTask).RouteHandler(makeInsertTaskJSON())
 
 	// Routes
 	app.AddRoute("/").Version(2).Get().Wrap(requireUserToggleable).RouteHandler(makePlaceHolder())
@@ -233,8 +231,8 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/tasks/{task_id}/created_ticket").Version(2).Put().Wrap(requireUser, editAnnotations).RouteHandler(makeCreatedTicketByTask())
 	app.AddRoute("/tasks/{task_id}/abort").Version(2).Post().Wrap(requireUser, editTasks).RouteHandler(makeTaskAbortHandler())
 	app.AddRoute("/tasks/{task_id}/display_task").Version(2).Get().Wrap(requireTask).RouteHandler(makeGetDisplayTaskHandler())
-	app.AddRoute("/tasks/{task_id}/generate").Version(2).Post().Wrap(requireTask).RouteHandler(makeGenerateTasksHandler(opts.QueueGroup))
-	app.AddRoute("/tasks/{task_id}/generate").Version(2).Get().Wrap(requireTask).RouteHandler(makeGenerateTasksPollHandler(opts.QueueGroup))
+	app.AddRoute("/tasks/{task_id}/generate").Version(2).Post().Wrap(requireTask).RouteHandler(makeGenerateTasksHandler())
+	app.AddRoute("/tasks/{task_id}/generate").Version(2).Get().Wrap(requireTask).RouteHandler(makeGenerateTasksPollHandler())
 	app.AddRoute("/tasks/{task_id}/manifest").Version(2).Get().Wrap(viewTasks).RouteHandler(makeGetManifestHandler())
 	app.AddRoute("/tasks/{task_id}/restart").Version(2).Post().Wrap(addProject, requireUser, editTasks).RouteHandler(makeTaskRestartHandler())
 	app.AddRoute("/tasks/{task_id}/tests").Version(2).Get().Wrap(addProject, viewTasks).RouteHandler(makeFetchTestsForTask(sc))

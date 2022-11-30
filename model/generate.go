@@ -499,7 +499,7 @@ func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester
 	res := newSpecificActivationInfo()
 	for _, bv := range g.BuildVariants {
 		// Only consider batchtime for certain requesters
-		if evergreen.ShouldConsiderBatchtime(requester) && (bv.BatchTime != nil || bv.CronBatchTime != "") {
+		if evergreen.ShouldConsiderBatchtime(requester) && bv.hasSpecificActivation() {
 			res.activationVariants = append(res.activationVariants, bv.name())
 		} else if bv.Activate != nil {
 			res.activationVariants = append(res.activationVariants, bv.name())
@@ -513,7 +513,7 @@ func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester
 				res.stepbackTasks[bv.Name] = append(res.stepbackTasks[bv.Name], stepbackInfo)
 				continue // Don't consider batchtime/activation if we're stepping back this generated task
 			}
-			if evergreen.ShouldConsiderBatchtime(requester) && (bvt.BatchTime != nil || bvt.CronBatchTime != "") {
+			if evergreen.ShouldConsiderBatchtime(requester) && bvt.hasSpecificActivation() {
 				batchTimeTasks = append(batchTimeTasks, bvt.Name)
 			} else if bvt.Activate != nil {
 				batchTimeTasks = append(batchTimeTasks, bvt.Name)

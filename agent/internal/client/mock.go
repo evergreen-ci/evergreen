@@ -451,10 +451,6 @@ func (c *Mock) KeyValInc(ctx context.Context, td TaskData, kv *serviceModel.KeyV
 	return nil
 }
 
-func (c *Mock) PostJSONData(ctx context.Context, td TaskData, path string, data interface{}) error {
-	return nil
-}
-
 // GenerateTasks posts new tasks for the `generate.tasks` command.
 func (c *Mock) GenerateTasks(ctx context.Context, td TaskData, jsonBytes []json.RawMessage) error {
 	if td.ID != "mock_id" {

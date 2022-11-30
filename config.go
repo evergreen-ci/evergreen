@@ -33,10 +33,10 @@ var (
 	BuildRevision = ""
 
 	// Commandline Version String; used to control auto-updating.
-	ClientVersion = "2022-10-20"
+	ClientVersion = "2022-11-21"
 
 	// Agent version to control agent rollover.
-	AgentVersion = "2022-11-04"
+	AgentVersion = "2022-11-30"
 )
 
 // ConfigSection defines a sub-document in the evergreen config

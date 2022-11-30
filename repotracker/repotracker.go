@@ -24,7 +24,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -480,62 +479,19 @@ func addGithubCheckSubscriptions(v *model.Version) error {
 	if err := buildSub.Upsert(); err != nil {
 		catcher.Wrap(err, "failed to insert build github check subscription")
 	}
-	flags, err := evergreen.GetServiceFlags()
+	input := thirdparty.SendGithubStatusInput{
+		VersionId: v.Id,
+		Owner:     v.Owner,
+		Repo:      v.Repo,
+		Ref:       v.Revision,
+		Desc:      "version created",
+		Caller:    RunnerName,
+		Context:   "evergreen",
+	}
+	err := thirdparty.SendVersionStatusToGithub(input)
 	if err != nil {
-		catcher.Add(errors.Wrap(err, "error retrieving admin settings"))
-		return catcher.Resolve()
+		catcher.Wrap(err, "failed to send version status to github")
 	}
-	if flags.GithubStatusAPIDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-			"runner":  RunnerName,
-			"message": "github status updates are disabled, not updating status",
-		})
-		return catcher.Resolve()
-	}
-	env := evergreen.GetEnvironment()
-	uiConfig := evergreen.UIConfig{}
-	if err = uiConfig.Get(env); err != nil {
-		catcher.Add(err)
-		return catcher.Resolve()
-	}
-	urlBase := uiConfig.Url
-	if urlBase == "" {
-		catcher.New("url base doesn't exist")
-		return catcher.Resolve()
-	}
-	status := &message.GithubStatus{
-		Owner:       v.Owner,
-		Repo:        v.Repo,
-		Ref:         v.Revision,
-		URL:         fmt.Sprintf("%s/version/%s", urlBase, v.Id),
-		Context:     "evergreen",
-		State:       message.GithubStatePending,
-		Description: "version created",
-	}
-	sender, err := env.GetSender(evergreen.SenderGithubStatus)
-	if err != nil {
-		catcher.Add(err)
-		return catcher.Resolve()
-	}
-
-	c := message.MakeGithubStatusMessageWithRepo(*status)
-	if !c.Loggable() {
-		catcher.Add(errors.Errorf("status message is invalid: %+v", status))
-		return catcher.Resolve()
-	}
-
-	if err = c.SetPriority(level.Notice); err != nil {
-		catcher.Add(err)
-		return catcher.Resolve()
-	}
-
-	sender.Send(c)
-	grip.Info(message.Fields{
-		"ticket":  thirdparty.GithubInvestigation,
-		"message": "called github status send",
-		"caller":  "github check subscriptions",
-		"version": v.Id,
-	})
 	return catcher.Resolve()
 }
 
@@ -626,7 +582,11 @@ func makeBuildBreakSubscriber(userID string) (*event.Subscriber, error) {
 		if preference == user.PreferenceEmail {
 			subscriber.Target = u.Email()
 		} else if preference == user.PreferenceSlack {
-			subscriber.Target = u.Settings.SlackUsername
+			slackTarget := u.Settings.SlackUsername
+			if u.Settings.SlackMemberId != "" {
+				slackTarget = u.Settings.SlackMemberId
+			}
+			subscriber.Target = slackTarget
 		} else {
 			return nil, errors.Errorf("invalid subscription preference for build break: %s", preference)
 		}
@@ -699,11 +659,6 @@ func CreateManifest(v model.Version, proj *model.Project, projectRef *model.Proj
 
 	}
 	newManifest.Modules = modules
-	moduleOverrides, err := manifest.GetManifestModuleOverrides(v.Requester, v.Id)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting module overrides")
-	}
-	newManifest.ModuleOverrides = moduleOverrides
 	grip.Debug(message.Fields{
 		"message":            "creating manifest",
 		"version_id":         v.Id,
@@ -1054,7 +1009,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			// add only tasks that require activation times
 			for _, bvt := range buildvariant.Tasks {
 				tId, ok := taskNameToId[bvt.Name]
-				if !ok || !bvt.HasBatchTime() {
+				if !ok || !bvt.HasSpecificActivation() {
 					continue
 				}
 				bvt.Variant = buildvariant.Name

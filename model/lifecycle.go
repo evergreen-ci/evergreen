@@ -550,14 +550,13 @@ func RefreshTasksCache(buildId string) error {
 
 // addTasksToBuild creates/activates the tasks for the given build of a project
 func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build.Build, task.Tasks, error) {
-	// find the build variant for this project/build
+	// Find the build variant for this project/build
 	creationInfo.BuildVariant = creationInfo.Project.FindBuildVariant(creationInfo.Build.BuildVariant)
 	if creationInfo.BuildVariant == nil {
 		return nil, nil, errors.Errorf("finding build '%s' in project file '%s'",
 			creationInfo.Build.BuildVariant, creationInfo.Project.Identifier)
 	}
 
-	// create the new tasks for the build
 	createTime, err := getTaskCreateTime(creationInfo)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "getting create time for tasks in version '%s'", creationInfo.Version.Id)
@@ -575,6 +574,7 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 	}
 	creationInfo.GithubChecksAliases = githubCheckAliases
 	creationInfo.TaskCreateTime = createTime
+	// Create the new tasks for the build
 	tasks, err := createTasksForBuild(creationInfo)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "creating tasks for build '%s'", creationInfo.Build.Id)
@@ -967,7 +967,7 @@ func makeDeps(t BuildVariantTaskUnit, thisTask *task.Task, taskIds TaskIdTable) 
 			if id == thisTask.Id {
 				continue
 			}
-			dependencySet[task.Dependency{TaskId: id, Status: status}] = true
+			dependencySet[task.Dependency{TaskId: id, Status: status, OmitGeneratedTasks: dep.OmitGeneratedTasks}] = true
 		}
 	}
 
@@ -1234,12 +1234,12 @@ func createOneTask(id string, creationInfo TaskCreationInfo, buildVarTask BuildV
 		}
 		t.ContainerOpts = *opts
 	} else {
-		distroID, distroAliases, err := getDistrosFromRunOn(id, buildVarTask, creationInfo.BuildVariant)
+		distroID, secondaryDistros, err := getDistrosFromRunOn(id, buildVarTask, creationInfo.BuildVariant)
 		if err != nil {
 			return nil, err
 		}
 		t.DistroId = distroID
-		t.DistroAliases = distroAliases
+		t.SecondaryDistros = secondaryDistros
 	}
 
 	if isStepback {
@@ -1266,19 +1266,19 @@ func createOneTask(id string, creationInfo TaskCreationInfo, buildVarTask BuildV
 
 func getDistrosFromRunOn(id string, buildVarTask BuildVariantTaskUnit, buildVariant *BuildVariant) (string, []string, error) {
 	if len(buildVarTask.RunOn) > 0 {
-		distroAliases := []string{}
+		secondaryDistros := []string{}
 		distroID := buildVarTask.RunOn[0]
 		if len(buildVarTask.RunOn) > 1 {
-			distroAliases = buildVarTask.RunOn[1:]
+			secondaryDistros = buildVarTask.RunOn[1:]
 		}
-		return distroID, distroAliases, nil
+		return distroID, secondaryDistros, nil
 	} else if len(buildVariant.RunOn) > 0 {
-		distroAliases := []string{}
+		secondaryDistros := []string{}
 		distroID := buildVariant.RunOn[0]
 		if len(buildVariant.RunOn) > 1 {
-			distroAliases = buildVariant.RunOn[1:]
+			secondaryDistros = buildVariant.RunOn[1:]
 		}
-		return distroID, distroAliases, nil
+		return distroID, secondaryDistros, nil
 	}
 	return "", nil, errors.Errorf("task '%s' is not runnable as there is no distro specified", id)
 }

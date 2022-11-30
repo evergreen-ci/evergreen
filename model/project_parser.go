@@ -172,9 +172,10 @@ func (pt *parserTask) tags() []string { return pt.Tags }
 
 // parserDependency represents the intermediary state for referencing dependencies.
 type parserDependency struct {
-	TaskSelector  taskSelector `yaml:",inline"`
-	Status        string       `yaml:"status,omitempty" bson:"status,omitempty"`
-	PatchOptional bool         `yaml:"patch_optional,omitempty" bson:"patch_optional,omitempty"`
+	TaskSelector       taskSelector `yaml:",inline"`
+	Status             string       `yaml:"status,omitempty" bson:"status,omitempty"`
+	PatchOptional      bool         `yaml:"patch_optional,omitempty" bson:"patch_optional,omitempty"`
+	OmitGeneratedTasks bool         `yaml:"omit_generated_tasks,omitempty" bson:"omit_generated_tasks,omitempty"`
 }
 
 // parserDependencies is a type defined for unmarshalling both a single
@@ -484,17 +485,49 @@ func (pss *parserStringSlice) UnmarshalYAML(unmarshal func(interface{}) error) e
 	return nil
 }
 
-// FindAndTranslateProjectForVersion translates a parser project for a version into a Project
-func FindAndTranslateProjectForVersion(v *Version, id string) (*Project, *ParserProject, error) {
-	pp, err := ParserProjectFindOneById(v.Id)
+// HasSpecificActivation returns if the build variant task specifies an activation condition that
+// overrides the default, such as cron/batchtime, disabling the task, or explicitly activating it.
+func (bvt *parserBVTaskUnit) hasSpecificActivation() bool {
+	return bvt.BatchTime != nil || bvt.CronBatchTime != "" ||
+		bvt.Activate != nil || utility.FromBoolPtr(bvt.Disable)
+}
+
+// HasSpecificActivation returns if the build variant specifies an activation condition that
+// overrides the default, such as cron/batchtime, disabling the task, or explicitly activating it.
+func (bvt *parserBV) hasSpecificActivation() bool {
+	return bvt.BatchTime != nil || bvt.CronBatchTime != "" ||
+		bvt.Activate != nil || bvt.Disabled
+}
+
+// FindAndTranslateProjectForPatch translates a parser project for a patch into a project.
+// This assumes that the version may not exist yet; otherwise FindAndTranslateProjectForVersion is equivalent.
+func FindAndTranslateProjectForPatch(ctx context.Context, p *patch.Patch) (*Project, *ParserProject, error) {
+	if p.PatchedParserProject == "" {
+		return FindAndTranslateProjectForVersion(p.Version, p.Project)
+	}
+	project := &Project{}
+	pp, err := LoadProjectInto(ctx, []byte(p.PatchedParserProject), nil, p.Project, project)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "unmarshalling project config")
+	}
+	return project, pp, nil
+}
+
+// FindAndTranslateProjectForVersion translates a parser project for a version into a Project.
+// Also sets the project ID.
+func FindAndTranslateProjectForVersion(versionId, projectId string) (*Project, *ParserProject, error) {
+	pp, err := ParserProjectFindOneById(versionId)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "finding parser project")
 	}
-	pp.Identifier = utility.ToStringPtr(id)
+	if pp == nil {
+		return nil, nil, errors.Errorf("parser project not found for version '%s'", versionId)
+	}
+	pp.Identifier = utility.ToStringPtr(projectId)
 	var p *Project
 	p, err = TranslateProject(pp)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "translating parser project '%s'", v.Id)
+		return nil, nil, errors.Wrapf(err, "translating parser project '%s'", versionId)
 	}
 	return p, pp, err
 }
@@ -512,12 +545,12 @@ func LoadProjectInfoForVersion(v *Version, id string) (ProjectInfo, error) {
 	}
 	var pc *ProjectConfig
 	if pRef.IsVersionControlEnabled() {
-		pc, err = FindProjectConfigForProjectOrVersion(v.Identifier, v.Id)
+		pc, err = FindProjectConfigById(v.Id)
 		if err != nil {
 			return ProjectInfo{}, errors.Wrap(err, "finding project config")
 		}
 	}
-	p, pp, err := FindAndTranslateProjectForVersion(v, id)
+	p, pp, err := FindAndTranslateProjectForVersion(v.Id, id)
 	if err != nil {
 		return ProjectInfo{}, errors.Wrap(err, "translating project")
 	}
@@ -598,7 +631,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 }
 
 const (
-	ReadfromGithub    = "github"
+	ReadFromGithub    = "github"
 	ReadFromLocal     = "local"
 	ReadFromPatch     = "patch"
 	ReadFromPatchDiff = "patch_diff"
@@ -710,7 +743,7 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 		RemotePath:   opts.RemotePath,
 		Revision:     module.Branch,
 		Token:        opts.Token,
-		ReadFileFrom: ReadfromGithub,
+		ReadFileFrom: ReadFromGithub,
 		Identifier:   moduleName,
 	}
 	return retrieveFile(ctx, moduleOpts)
@@ -1297,10 +1330,11 @@ func evaluateDependsOn(tse *tagSelectorEvaluator, tgse *tagSelectorEvaluator, vs
 				// create a newDep by copying the dep that selected it,
 				// so we can preserve the "Status" and "PatchOptional" field.
 				newDep := TaskUnitDependency{
-					Name:          name,
-					Variant:       variant,
-					Status:        d.Status,
-					PatchOptional: d.PatchOptional,
+					Name:               name,
+					Variant:            variant,
+					Status:             d.Status,
+					PatchOptional:      d.PatchOptional,
+					OmitGeneratedTasks: d.OmitGeneratedTasks,
 				}
 				// add the new dep if it doesn't already exist (we must avoid conflicting status fields)
 				if oldDep, ok := newDepsByNameAndVariant[TVPair{newDep.Variant, newDep.Name}]; !ok {

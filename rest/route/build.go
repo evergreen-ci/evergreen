@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -55,12 +56,9 @@ func (b *buildGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	var tasks []task.Task
 	if len(taskIDs) > 0 {
-		tasks, err = task.Find(task.ByIds(taskIDs))
+		tasks, err = task.FindAll(db.Query(task.ByIds(taskIDs)))
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding tasks in build '%s'", b.buildId))
-		}
-		if len(tasks) == 0 {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("no tasks found in build '%s'", b.buildId))
 		}
 	}
 

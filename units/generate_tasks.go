@@ -48,17 +48,15 @@ func makeGenerateTaskJob() *generateTasksJob {
 
 // NewGenerateTasksJob returns a job that dynamically updates the project
 // configuration based on the given task's generate.tasks configuration.
-func NewGenerateTasksJob(versionID, taskID string, ts string, useScopes bool) amboy.Job {
+func NewGenerateTasksJob(versionID, taskID string, ts string) amboy.Job {
 	j := makeGenerateTaskJob()
 	j.TaskID = taskID
 
 	j.SetID(fmt.Sprintf("%s-%s-%s", generateTasksJobName, taskID, ts))
-	if useScopes {
-		versionScope := fmt.Sprintf("%s.%s", generateTasksJobName, versionID)
-		taskScope := fmt.Sprintf("%s.%s", generateTasksJobName, taskID)
-		j.SetScopes([]string{versionScope, taskScope})
-		j.SetEnqueueScopes(taskScope)
-	}
+	versionScope := fmt.Sprintf("%s.%s", generateTasksJobName, versionID)
+	taskScope := fmt.Sprintf("%s.%s", generateTasksJobName, taskID)
+	j.SetScopes([]string{versionScope, taskScope})
+	j.SetEnqueueScopes(taskScope)
 	return j
 }
 
@@ -83,7 +81,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	if v == nil {
 		return errors.Errorf("version '%s' not found", t.Version)
 	}
-	project, parserProject, err := model.FindAndTranslateProjectForVersion(v, t.Project)
+	project, parserProject, err := model.FindAndTranslateProjectForVersion(v.Id, t.Project)
 	if err != nil {
 		return errors.Wrapf(err, "loading project for version '%s'", t.Version)
 	}

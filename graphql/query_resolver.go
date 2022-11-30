@@ -31,6 +31,7 @@ import (
 	werrors "github.com/pkg/errors"
 )
 
+// BbGetCreatedTickets is the resolver for the bbGetCreatedTickets field.
 func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskID string) ([]*thirdparty.JiraTicket, error) {
 	createdTickets, err := bbGetCreatedTicketsPointers(taskID)
 	if err != nil {
@@ -40,6 +41,7 @@ func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskID string) 
 	return createdTickets, nil
 }
 
+// BuildBaron is the resolver for the buildBaron field.
 func (r *queryResolver) BuildBaron(ctx context.Context, taskID string, execution int) (*BuildBaron, error) {
 	execString := strconv.Itoa(execution)
 
@@ -55,10 +57,12 @@ func (r *queryResolver) BuildBaron(ctx context.Context, taskID string, execution
 	}, nil
 }
 
+// AwsRegions is the resolver for the awsRegions field.
 func (r *queryResolver) AwsRegions(ctx context.Context) ([]string, error) {
 	return evergreen.GetEnvironment().Settings().Providers.AWS.AllowedRegions, nil
 }
 
+// ClientConfig is the resolver for the clientConfig field.
 func (r *queryResolver) ClientConfig(ctx context.Context) (*restModel.APIClientConfig, error) {
 	envClientConfig := evergreen.GetEnvironment().ClientConfig()
 	clientConfig := restModel.APIClientConfig{}
@@ -66,6 +70,7 @@ func (r *queryResolver) ClientConfig(ctx context.Context) (*restModel.APIClientC
 	return &clientConfig, nil
 }
 
+// InstanceTypes is the resolver for the instanceTypes field.
 func (r *queryResolver) InstanceTypes(ctx context.Context) ([]string, error) {
 	config, err := evergreen.GetConfig()
 	if err != nil {
@@ -74,6 +79,7 @@ func (r *queryResolver) InstanceTypes(ctx context.Context) ([]string, error) {
 	return config.Providers.AWS.AllowedInstanceTypes, nil
 }
 
+// SpruceConfig is the resolver for the spruceConfig field.
 func (r *queryResolver) SpruceConfig(ctx context.Context) (*restModel.APIAdminSettings, error) {
 	config, err := evergreen.GetConfig()
 	if err != nil {
@@ -88,6 +94,7 @@ func (r *queryResolver) SpruceConfig(ctx context.Context) (*restModel.APIAdminSe
 	return &spruceConfig, nil
 }
 
+// SubnetAvailabilityZones is the resolver for the subnetAvailabilityZones field.
 func (r *queryResolver) SubnetAvailabilityZones(ctx context.Context) ([]string, error) {
 	zones := []string{}
 	for _, subnet := range evergreen.GetEnvironment().Settings().Providers.AWS.Subnets {
@@ -96,6 +103,7 @@ func (r *queryResolver) SubnetAvailabilityZones(ctx context.Context) ([]string, 
 	return zones, nil
 }
 
+// Distros is the resolver for the distros field.
 func (r *queryResolver) Distros(ctx context.Context, onlySpawnable bool) ([]*restModel.APIDistro, error) {
 	apiDistros := []*restModel.APIDistro{}
 
@@ -121,6 +129,7 @@ func (r *queryResolver) Distros(ctx context.Context, onlySpawnable bool) ([]*res
 	return apiDistros, nil
 }
 
+// DistroTaskQueue is the resolver for the distroTaskQueue field.
 func (r *queryResolver) DistroTaskQueue(ctx context.Context, distroID string) ([]*restModel.APITaskQueueItem, error) {
 	distroQueue, err := model.LoadTaskQueue(distroID)
 	if err != nil {
@@ -141,6 +150,7 @@ func (r *queryResolver) DistroTaskQueue(ctx context.Context, distroID string) ([
 	return taskQueue, nil
 }
 
+// Host is the resolver for the host field.
 func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.APIHost, error) {
 	host, err := host.GetHostByIdOrTagWithTask(hostID)
 	if err != nil {
@@ -155,6 +165,7 @@ func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.API
 	return apiHost, nil
 }
 
+// HostEvents is the resolver for the hostEvents field.
 func (r *queryResolver) HostEvents(ctx context.Context, hostID string, hostTag *string, limit *int, page *int) (*HostEvents, error) {
 	h, err := host.FindOneByIdOrTag(hostID)
 	if err != nil {
@@ -184,6 +195,7 @@ func (r *queryResolver) HostEvents(ctx context.Context, hostID string, hostTag *
 	return &hostevents, nil
 }
 
+// Hosts is the resolver for the hosts field.
 func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) (*HostsResponse, error) {
 	hostIDParam := ""
 	if hostID != nil {
@@ -258,6 +270,7 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 	}, nil
 }
 
+// TaskQueueDistros is the resolver for the taskQueueDistros field.
 func (r *queryResolver) TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistro, error) {
 	queues, err := model.FindAllTaskQueues()
 	if err != nil {
@@ -287,6 +300,7 @@ func (r *queryResolver) TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistr
 	return distros, nil
 }
 
+// Patch is the resolver for the patch field.
 func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPatch, error) {
 	patch, err := data.FindPatchById(id)
 	if err != nil {
@@ -328,6 +342,7 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 	return patch, nil
 }
 
+// GithubProjectConflicts is the resolver for the githubProjectConflicts field.
 func (r *queryResolver) GithubProjectConflicts(ctx context.Context, projectID string) (*model.GithubProjectConflicts, error) {
 	pRef, err := model.FindMergedProjectRef(projectID, "", false)
 	if err != nil {
@@ -344,6 +359,7 @@ func (r *queryResolver) GithubProjectConflicts(ctx context.Context, projectID st
 	return &conflicts, nil
 }
 
+// Project is the resolver for the project field.
 func (r *queryResolver) Project(ctx context.Context, projectID string) (*restModel.APIProjectRef, error) {
 	project, err := data.FindProjectById(projectID, true, false)
 	if err != nil {
@@ -357,6 +373,7 @@ func (r *queryResolver) Project(ctx context.Context, projectID string) (*restMod
 	return &apiProjectRef, nil
 }
 
+// Projects is the resolver for the projects field.
 func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error) {
 	allProjects, err := model.FindAllMergedTrackedProjectRefs()
 	if err != nil {
@@ -376,6 +393,7 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error
 	return groupedProjects, nil
 }
 
+// ProjectEvents is the resolver for the projectEvents field.
 func (r *queryResolver) ProjectEvents(ctx context.Context, identifier string, limit *int, before *time.Time) (*ProjectEvents, error) {
 	timestamp := time.Now()
 	if before != nil {
@@ -389,6 +407,7 @@ func (r *queryResolver) ProjectEvents(ctx context.Context, identifier string, li
 	return res, err
 }
 
+// ProjectSettings is the resolver for the projectSettings field.
 func (r *queryResolver) ProjectSettings(ctx context.Context, identifier string) (*restModel.APIProjectSettings, error) {
 	projectRef, err := model.FindBranchProjectRef(identifier)
 	if err != nil {
@@ -411,6 +430,7 @@ func (r *queryResolver) ProjectSettings(ctx context.Context, identifier string) 
 	return res, nil
 }
 
+// RepoEvents is the resolver for the repoEvents field.
 func (r *queryResolver) RepoEvents(ctx context.Context, id string, limit *int, before *time.Time) (*ProjectEvents, error) {
 	timestamp := time.Now()
 	if before != nil {
@@ -424,6 +444,7 @@ func (r *queryResolver) RepoEvents(ctx context.Context, id string, limit *int, b
 	return res, err
 }
 
+// RepoSettings is the resolver for the repoSettings field.
 func (r *queryResolver) RepoSettings(ctx context.Context, id string) (*restModel.APIProjectSettings, error) {
 	repoRef, err := model.FindOneRepoRef(id)
 	if err != nil {
@@ -445,6 +466,7 @@ func (r *queryResolver) RepoSettings(ctx context.Context, id string) (*restModel
 	return res, nil
 }
 
+// ViewableProjectRefs is the resolver for the viewableProjectRefs field.
 func (r *queryResolver) ViewableProjectRefs(ctx context.Context) ([]*GroupedProjects, error) {
 	usr := mustHaveUser(ctx)
 	projectIds, err := usr.GetViewableProjectSettings()
@@ -464,6 +486,7 @@ func (r *queryResolver) ViewableProjectRefs(ctx context.Context) ([]*GroupedProj
 	return groupedProjects, nil
 }
 
+// MyHosts is the resolver for the myHosts field.
 func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, error) {
 	usr := mustHaveUser(ctx)
 	hosts, err := host.Find(host.ByUserWithRunningStatus(usr.Username()))
@@ -489,6 +512,7 @@ func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, erro
 	return apiHosts, nil
 }
 
+// MyVolumes is the resolver for the myVolumes field.
 func (r *queryResolver) MyVolumes(ctx context.Context) ([]*restModel.APIVolume, error) {
 	usr := mustHaveUser(ctx)
 	volumes, err := host.FindSortedVolumesByUser(usr.Username())
@@ -498,6 +522,7 @@ func (r *queryResolver) MyVolumes(ctx context.Context) ([]*restModel.APIVolume, 
 	return getAPIVolumeList(volumes)
 }
 
+// Task is the resolver for the task field.
 func (r *queryResolver) Task(ctx context.Context, taskID string, execution *int) (*restModel.APITask, error) {
 	dbTask, err := task.FindOneIdAndExecutionWithDisplayStatus(taskID, execution)
 	if err != nil {
@@ -513,6 +538,7 @@ func (r *queryResolver) Task(ctx context.Context, taskID string, execution *int)
 	return apiTask, err
 }
 
+// TaskAllExecutions is the resolver for the taskAllExecutions field.
 func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([]*restModel.APITask, error) {
 	latestTask, err := task.FindOneId(taskID)
 	if err != nil {
@@ -546,6 +572,7 @@ func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([
 	return allTasks, nil
 }
 
+// TaskFiles is the resolver for the taskFiles field.
 func (r *queryResolver) TaskFiles(ctx context.Context, taskID string, execution *int) (*TaskFiles, error) {
 	emptyTaskFiles := TaskFiles{
 		FileCount:    0,
@@ -588,6 +615,7 @@ func (r *queryResolver) TaskFiles(ctx context.Context, taskID string, execution 
 	return &taskFiles, nil
 }
 
+// TaskLogs is the resolver for the taskLogs field.
 func (r *queryResolver) TaskLogs(ctx context.Context, taskID string, execution *int) (*TaskLogs, error) {
 	t, err := task.FindByIdExecution(taskID, execution)
 	if err != nil {
@@ -615,6 +643,7 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string, execution *
 	return &TaskLogs{TaskID: taskID, Execution: t.Execution, DefaultLogger: defaultLogger}, nil
 }
 
+// TaskTests is the resolver for the taskTests field.
 func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string, groupID *string) (*TaskTestResult, error) {
 	dbTask, err := task.FindByIdExecution(taskID, execution)
 	if dbTask == nil || err != nil {
@@ -758,6 +787,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 	}, nil
 }
 
+// TaskTestSample is the resolver for the taskTestSample field.
 func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, filters []*TestFilter) ([]*TaskTestResultSample, error) {
 	const testSampleLimit = 10
 	if len(tasks) == 0 {
@@ -833,11 +863,13 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, filt
 	return testResultsToReturn, nil
 }
 
+// MyPublicKeys is the resolver for the myPublicKeys field.
 func (r *queryResolver) MyPublicKeys(ctx context.Context) ([]*restModel.APIPubKey, error) {
 	publicKeys := getMyPublicKeys(ctx)
 	return publicKeys, nil
 }
 
+// User is the resolver for the user field.
 func (r *queryResolver) User(ctx context.Context, userID *string) (*restModel.APIDBUser, error) {
 	usr := mustHaveUser(ctx)
 	var err error
@@ -861,6 +893,7 @@ func (r *queryResolver) User(ctx context.Context, userID *string) (*restModel.AP
 	return &user, nil
 }
 
+// UserConfig is the resolver for the userConfig field.
 func (r *queryResolver) UserConfig(ctx context.Context) (*UserConfig, error) {
 	usr := mustHaveUser(ctx)
 	settings := evergreen.GetEnvironment().Settings()
@@ -873,6 +906,7 @@ func (r *queryResolver) UserConfig(ctx context.Context) (*UserConfig, error) {
 	return config, nil
 }
 
+// UserSettings is the resolver for the userSettings field.
 func (r *queryResolver) UserSettings(ctx context.Context) (*restModel.APIUserSettings, error) {
 	usr := mustHaveUser(ctx)
 	userSettings := restModel.APIUserSettings{}
@@ -880,6 +914,7 @@ func (r *queryResolver) UserSettings(ctx context.Context) (*restModel.APIUserSet
 	return &userSettings, nil
 }
 
+// CommitQueue is the resolver for the commitQueue field.
 func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.APICommitQueue, error) {
 	commitQueue, err := data.FindCommitQueueForProject(id)
 	if err != nil {
@@ -917,6 +952,7 @@ func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.
 	return commitQueue, nil
 }
 
+// BuildVariantsForTaskName is the resolver for the buildVariantsForTaskName field.
 func (r *queryResolver) BuildVariantsForTaskName(ctx context.Context, projectID string, taskName string) ([]*task.BuildVariantTuple, error) {
 	pid, err := model.GetIdForProject(projectID)
 	if err != nil {
@@ -946,6 +982,7 @@ func (r *queryResolver) BuildVariantsForTaskName(ctx context.Context, projectID 
 	return taskBuildVariants, nil
 }
 
+// MainlineCommits is the resolver for the mainlineCommits field.
 func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCommitsOptions, buildVariantOptions *BuildVariantOptions) (*MainlineCommits, error) {
 	projectId, err := model.GetIdForProject(options.ProjectID)
 	if err != nil {
@@ -1028,9 +1065,10 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 			shouldCollapse = true
 		} else if isPopulated(buildVariantOptions) && utility.FromBoolPtr(options.ShouldCollapse) {
 			opts := task.HasMatchingTasksOptions{
-				TaskNames: buildVariantOptions.Tasks,
-				Variants:  buildVariantOptions.Variants,
-				Statuses:  getValidTaskStatusesFilter(buildVariantOptions.Statuses),
+				TaskNames:                  buildVariantOptions.Tasks,
+				Variants:                   buildVariantOptions.Variants,
+				Statuses:                   getValidTaskStatusesFilter(buildVariantOptions.Statuses),
+				IncludeNeverActivatedTasks: true,
 			}
 			hasTasks, err := task.HasMatchingTasks(v.Id, opts)
 			if err != nil {
@@ -1088,6 +1126,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 	return &mainlineCommits, nil
 }
 
+// TaskNamesForBuildVariant is the resolver for the taskNamesForBuildVariant field.
 func (r *queryResolver) TaskNamesForBuildVariant(ctx context.Context, projectID string, buildVariant string) ([]string, error) {
 	pid, err := model.GetIdForProject(projectID)
 	if err != nil {
@@ -1110,6 +1149,7 @@ func (r *queryResolver) TaskNamesForBuildVariant(ctx context.Context, projectID 
 	return buildVariantTasks, nil
 }
 
+// HasVersion is the resolver for the hasVersion field.
 func (r *queryResolver) HasVersion(ctx context.Context, id string) (bool, error) {
 	v, err := model.VersionFindOne(model.VersionById(id))
 	if err != nil {
@@ -1131,6 +1171,7 @@ func (r *queryResolver) HasVersion(ctx context.Context, id string) (bool, error)
 	return false, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find patch or version %s", id))
 }
 
+// Version is the resolver for the version field.
 func (r *queryResolver) Version(ctx context.Context, id string) (*restModel.APIVersion, error) {
 	v, err := model.VersionFindOneId(id)
 	if err != nil {

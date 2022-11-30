@@ -113,6 +113,7 @@ api:
         -----END CERTIFICATE-----
 
 ui:
+    parsley_url: "https://localhost:4173"
     secret: "this is a secret"
     defaultproject: "mongodb-mongo-master"
     logfile: "/tmp/ui_test.log"

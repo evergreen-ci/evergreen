@@ -402,7 +402,7 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 	}
 
 	j.AddError(thirdparty.SendCommitQueueGithubStatus(j.env, pr, message.GithubStatePending, "preparing to test merge", v.Id))
-	modulePRs, _, err := model.GetModulesFromPR(ctx, githubToken, patchDoc.GithubPatchData.PRNumber, nextItem.Modules, projectConfig)
+	modulePRs, _, err := model.GetModulesFromPR(ctx, githubToken, nextItem.Modules, projectConfig)
 	if err != nil {
 		j.logError(err, "can't get modules", nextItem)
 		j.AddError(thirdparty.SendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't get modules", ""))
@@ -508,6 +508,19 @@ func checkPR(ctx context.Context, githubToken, issue, owner, repo string) (*gith
 	}
 
 	return pr, false, nil
+}
+
+func validateBranch(branch *github.Branch) error {
+	if branch == nil {
+		return errors.New("branch is nil")
+	}
+	if branch.Commit == nil {
+		return errors.New("commit is nil")
+	}
+	if branch.Commit.SHA == nil {
+		return errors.New("SHA is nil")
+	}
+	return nil
 }
 
 func AddMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, projectRef *model.ProjectRef, source string) error {
@@ -654,7 +667,7 @@ func updatePatch(ctx context.Context, githubToken string, projectRef *model.Proj
 	if err != nil {
 		return nil, errors.Wrap(err, "getting branch")
 	}
-	if err = thirdparty.ValidateBranch(branch); err != nil {
+	if err = validateBranch(branch); err != nil {
 		return nil, errors.Wrap(err, "GitHub returned an invalid branch")
 	}
 
@@ -682,12 +695,20 @@ func updatePatch(ctx context.Context, githubToken string, projectRef *model.Proj
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting module '%s'", mod.ModuleName)
 		}
-
-		sha, err = thirdparty.GetBranchCommitHash(ctx, module.Repo, module.Branch, githubToken)
+		owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
 		if err != nil {
-			return nil, errors.Wrapf(err, "getting commit hash for branch '%s'", module.Branch)
+			return nil, errors.Wrapf(err, "module '%s' misconfigured (malformed URL)", mod.ModuleName)
 		}
-		patchDoc.Patches[i].Githash = sha
+
+		branch, err = thirdparty.GetBranchEvent(ctx, githubToken, owner, repo, module.Branch)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting branch")
+		}
+		if err = validateBranch(branch); err != nil {
+			return nil, errors.Wrap(err, "GitHub returned invalid branch")
+		}
+
+		patchDoc.Patches[i].Githash = *branch.Commit.SHA
 	}
 
 	// rebuild patch build variants and tasks

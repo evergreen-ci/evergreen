@@ -37,19 +37,11 @@ const (
 
 	HostExternalUserName = "external"
 
-	HostStatusSuccess = "success"
-	HostStatusFailed  = "failed"
-
 	// Task Statuses used in the database models
 
 	// TaskInactive is not assigned to any new tasks, but can be found
 	// in the database and is used in the UI.
 	TaskInactive = "inactive"
-
-	// TaskUnstarted is assigned to a display task after cleaning up one of
-	// its execution tasks. This indicates that the display task is
-	// pending a rerun
-	TaskUnstarted = "unstarted"
 
 	// TaskUndispatched indicates either:
 	//  1. a task is not scheduled to run (when Task.Activated == false)
@@ -317,7 +309,6 @@ var TaskStatuses = []string{
 	TaskWillRun,
 	TaskUnscheduled,
 	TaskUndispatched,
-	TaskUnstarted,
 	TaskDispatched,
 }
 
@@ -345,7 +336,6 @@ var TaskFailureStatuses = append([]string{TaskFailed}, TaskNonGenericFailureStat
 
 var TaskUnstartedStatuses = []string{
 	TaskInactive,
-	TaskUnstarted,
 	TaskUndispatched,
 }
 
@@ -452,7 +442,7 @@ const (
 	// DefaultEC2Region is the default region where hosts should be spawned.
 	DefaultEC2Region = "us-east-1"
 	// DefaultEBSType is Amazon's default EBS type.
-	DefaultEBSType = "gp2"
+	DefaultEBSType = "gp3"
 	// DefaultEBSAvailabilityZone is the default availability zone for EBS
 	// volumes. This may be a temporary default.
 	DefaultEBSAvailabilityZone = "us-east-1a"
@@ -765,7 +755,6 @@ var (
 	// TaskUncompletedStatuses are all statuses that do not represent a finished state.
 	TaskUncompletedStatuses = []string{
 		TaskStarted,
-		TaskUnstarted,
 		TaskUndispatched,
 		TaskDispatched,
 		TaskConflict,
@@ -1124,6 +1113,7 @@ const (
 	LogViewerRaw     LogViewer = "raw"
 	LogViewerHTML    LogViewer = "html"
 	LogViewerLobster LogViewer = "lobster"
+	LogViewerParsley LogViewer = "parsley"
 )
 
 // ContainerOS denotes the operating system of a running container.

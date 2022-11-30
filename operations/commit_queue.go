@@ -69,7 +69,7 @@ func listQueue() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client, err := conf.setupRestCommunicator(ctx)
+			client, err := conf.setupRestCommunicator(ctx, true)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -109,7 +109,7 @@ func deleteItem() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client, err := conf.setupRestCommunicator(ctx)
+			client, err := conf.setupRestCommunicator(ctx, true)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -173,7 +173,8 @@ func mergeCommand() cli.Command {
 				force:        c.Bool(forceFlagName),
 				githubAuthor: c.String(githubAuthorFlag),
 			}
-			if params.force && !params.skipConfirm && !confirm("Forcing item to front of queue will be reported. Continue? (y/N)", false) {
+			if params.force && !params.skipConfirm && !confirm(
+				"Forcing item to front of queue will be reported. Continue?", false) {
 				return errors.New("Merge aborted.")
 			}
 			conf, err := NewClientSettings(c.Parent().Parent().String(confFlagName))
@@ -186,7 +187,7 @@ func mergeCommand() cli.Command {
 				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
 
-			client, err := conf.setupRestCommunicator(ctx)
+			client, err := conf.setupRestCommunicator(ctx, true)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -228,7 +229,7 @@ func setModuleCommand() cli.Command {
 				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
 			ctx := context.Background()
-			client, err := conf.setupRestCommunicator(ctx)
+			client, err := conf.setupRestCommunicator(ctx, true)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -272,7 +273,7 @@ func enqueuePatch() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client, err := conf.setupRestCommunicator(ctx)
+			client, err := conf.setupRestCommunicator(ctx, true)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -300,7 +301,7 @@ func enqueuePatch() cli.Command {
 				}
 			}
 			if multipleCommits && !skipConfirm &&
-				!confirm("Original patch has multiple commits (these will be tested together but merged separately). Continue? (y/N):", false) {
+				!confirm("Original patch has multiple commits (these will be tested together but merged separately). Continue?", false) {
 				return errors.New("enqueue aborted")
 			}
 
@@ -403,7 +404,7 @@ func backport() cli.Command {
 				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
 			showCQMessageForProject(ac, patchParams.Project)
-			client, err := conf.setupRestCommunicator(ctx)
+			client, err := conf.setupRestCommunicator(ctx, true)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -445,7 +446,7 @@ func backport() cli.Command {
 				return errors.Wrap(err, "uploading backport patch")
 			}
 
-			if err = patchParams.displayPatch(backportPatch, uiV2, true); err != nil {
+			if err = patchParams.displayPatch(backportPatch, uiV2, false); err != nil {
 				return errors.Wrap(err, "getting result display")
 			}
 
@@ -606,7 +607,7 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient, u
 		return errors.Wrap(err, "getting commit count")
 	}
 	if commitCount > 1 && !p.skipConfirm &&
-		!confirm("Commit queue patch has multiple commits (these will be tested together but merged separately). Continue? (y/N):", false) {
+		!confirm("Commit queue patch has multiple commits (these will be tested together but merged separately). Continue?", false) {
 		return errors.New("patch aborted")
 	}
 
@@ -614,7 +615,7 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient, u
 		return err
 	}
 
-	diffData, err := loadGitData(ref.Branch, p.ref, p.commits, true)
+	diffData, err := loadGitData("", ref.Branch, p.ref, p.commits, true)
 	if err != nil {
 		return errors.Wrap(err, "generating patches")
 	}
@@ -678,7 +679,7 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 		return errors.New("no commits for module")
 	}
 	if commitCount > 1 && !p.skipConfirm &&
-		!confirm("Commit queue module patch has multiple commits (these will be tested together but merged separately). Continue? (y/N):", false) {
+		!confirm("Commit queue module patch has multiple commits (these will be tested together but merged separately). Continue?", false) {
 		return errors.New("module patch aborted")
 	}
 
@@ -703,7 +704,7 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 		message = fmt.Sprintf("%s %s", commitQueuePatchLabel, commits)
 	}
 
-	diffData, err := loadGitData(module.Branch, p.ref, p.commits, true)
+	diffData, err := loadGitData("", module.Branch, p.ref, p.commits, true)
 	if err != nil {
 		return errors.Wrap(err, "getting patch data")
 	}
@@ -714,7 +715,7 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 	if !p.skipConfirm {
 		grip.InfoWhen(diffData.patchSummary != "", diffData.patchSummary)
 		grip.InfoWhen(diffData.log != "", diffData.log)
-		if !confirm("This is a summary of the patch to be submitted. Continue? (Y/n):", true) {
+		if !confirm("This is a summary of the patch to be submitted. Continue?", true) {
 			return nil
 		}
 	}

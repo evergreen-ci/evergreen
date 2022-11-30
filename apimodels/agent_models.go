@@ -333,5 +333,4 @@ type GeneratePollResponse struct {
 type DistroView struct {
 	CloneMethod         string `json:"clone_method"`
 	DisableShallowClone bool   `json:"disable_shallow_clone"`
-	WorkDir             string `json:"work_dir"`
 }

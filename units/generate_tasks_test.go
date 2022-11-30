@@ -148,6 +148,171 @@ var sampleGeneratedProject = []string{`
 }
 `}
 
+var dependOnGeneratedTasksConfig = `
+buildvariants:
+  - display_name: ! Enterprise Windows
+    name: testBV1
+    run_on:
+      - ubuntu1604-test
+    tasks:
+      - name: placeholder
+    depends_on:
+      - name: version_gen
+        variant: generate-tasks-for-version
+
+  - display_name: Generate Tasks for Version
+    name: generate-tasks-for-version
+    run_on:
+      - ubuntu1604-test
+    tasks:
+      - name: version_gen
+
+  - name: testBV2
+    display_name: "~ Shared Library Enterprise RHEL 8.0 v4 Toolchain Clang C++20 DEBUG"
+    run_on:
+      - ubuntu1604-test
+    tasks:
+      - name: dependencyTask
+
+tasks:
+  - name: placeholder
+    depends_on:
+      - name: version_gen
+        variant: generate-tasks-for-version
+    commands:
+      - command: shell.exec
+        params:
+          working_dir: src
+          script: |
+            echo "noop2"
+  - name: dependencyTask
+    commands:
+      - command: shell.exec
+        params:
+          script: |
+            echo "noop2"
+
+  - name: version_gen
+    commands:
+      - command: generate.tasks
+        params:
+          files:
+            - src/evergreen.json
+`
+
+var omitGeneratedTasksConfig = `
+buildvariants:
+  - display_name: ! Enterprise Windows
+    name: testBV1
+    run_on:
+      - ubuntu1604-test
+    tasks:
+      - name: placeholder
+    depends_on:
+      - name: version_gen
+        variant: generate-tasks-for-version
+        omit_generated_tasks: true
+
+  - display_name: Generate Tasks for Version
+    name: generate-tasks-for-version
+    run_on:
+      - ubuntu1604-test
+    tasks:
+      - name: version_gen
+
+  - name: testBV2
+    display_name: "~ Shared Library Enterprise RHEL 8.0 v4 Toolchain Clang C++20 DEBUG"
+    run_on:
+      - ubuntu1604-test
+    tasks:
+      - name: dependencyTask
+
+tasks:
+  - name: placeholder
+    depends_on:
+      - name: version_gen
+        variant: generate-tasks-for-version
+    commands:
+      - command: shell.exec
+        params:
+          working_dir: src
+          script: |
+            echo "noop2"
+  - name: dependencyTask
+    commands:
+      - command: shell.exec
+        params:
+          script: |
+            echo "noop2"
+
+  - name: version_gen
+    commands:
+      - command: generate.tasks
+        params:
+          files:
+            - src/evergreen.json
+`
+
+var sampleGeneratedProject2 = []string{`
+{
+  "buildvariants": [
+    {
+      "name": "testBV1",
+      "tasks": [
+        {
+          "name": "shouldDependOnVersionGen",
+          "activate": false
+        }
+      ],
+      "activate": false
+    },
+    {
+      "name": "testBV2",
+      "tasks": [
+        {
+          "name": "shouldDependOnDependencyTask",
+          "activate": false
+        }
+      ],
+      "activate": false
+    }
+  ],
+  "tasks":  [
+    {
+      "name": "shouldDependOnVersionGen",
+      "commands": [
+        {
+          "command": "shell.exec",
+          "params":
+            {
+              "working_dir": "src",
+              "script": "echo noop"
+            }
+        }
+      ]
+    },
+    {
+      "name": "shouldDependOnDependencyTask",
+      "commands": [
+        {
+          "command": "shell.exec",
+          "params":
+          {
+            "working_dir": "src",
+            "script": "echo noop"
+          }
+        }
+      ],
+      "depends_on": [
+        {
+          "name": "dependencyTask"
+        }
+      ]
+    }
+  ]
+}
+`}
+
 func TestGenerateTasks(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
@@ -199,10 +364,10 @@ func TestGenerateTasks(t *testing.T) {
 		Status:                evergreen.TaskStarted,
 	}
 	sampleDistros := []distro.Distro{
-		distro.Distro{
+		{
 			Id: "ubuntu1604-test",
 		},
-		distro.Distro{
+		{
 			Id: "archlinux-test",
 		},
 	}
@@ -213,7 +378,7 @@ func TestGenerateTasks(t *testing.T) {
 	projectRef := model.ProjectRef{Id: "mci", Identifier: "mci_identifier"}
 	require.NoError(projectRef.Insert())
 
-	j := NewGenerateTasksJob(sampleTask.Version, sampleTask.Id, "1", false)
+	j := NewGenerateTasksJob(sampleTask.Version, sampleTask.Id, "1")
 	j.Run(context.Background())
 	assert.NoError(j.Error())
 	tasks := []task.Task{}
@@ -240,7 +405,7 @@ func TestGenerateTasks(t *testing.T) {
 	// Make sure first project was not changed
 	v, err := model.VersionFindOneId("random_version")
 	assert.NoError(err)
-	p, _, err := model.FindAndTranslateProjectForVersion(v, "mci")
+	p, _, err := model.FindAndTranslateProjectForVersion(v.Id, "mci")
 	assert.NoError(err)
 	require.NotNil(p)
 	assert.Len(p.Tasks, 2)
@@ -251,7 +416,7 @@ func TestGenerateTasks(t *testing.T) {
 	// Verify second project was changed
 	v, err = model.VersionFindOneId("sample_version")
 	assert.NoError(err)
-	p, _, err = model.FindAndTranslateProjectForVersion(v, "mci")
+	p, _, err = model.FindAndTranslateProjectForVersion(v.Id, "mci")
 	assert.NoError(err)
 	require.NotNil(p)
 	assert.Len(p.Tasks, 6)
@@ -264,6 +429,124 @@ func TestGenerateTasks(t *testing.T) {
 	b, err := build.FindOneId("sample_build_id")
 	assert.NoError(err)
 	assert.Equal("mci_identifier_race_detector_display_my_display_task__01_01_01_00_00_00", b.Tasks[0].Id)
+}
+
+func TestGeneratedTasksAreNotDependencies(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	require.NoError(db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, build.Collection, task.Collection, distro.Collection, patch.Collection, model.ParserProjectCollection))
+	defer require.NoError(db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, build.Collection, task.Collection, distro.Collection, patch.Collection, model.ParserProjectCollection))
+	v := model.Version{
+		Id:         "sample_version",
+		Identifier: "mci",
+		BuildVariants: []model.VersionBuildStatus{{
+			BuildVariant: "generate-tasks-for-version",
+			BuildId:      "b1",
+		}, {
+			BuildVariant: "testBV1",
+			BuildId:      "b2",
+		}, {
+			BuildVariant: "testBV2",
+			BuildId:      "b3",
+		}},
+	}
+	require.NoError(v.Insert())
+	b1 := build.Build{
+		Id:           "b1",
+		BuildVariant: "generate-tasks-for-version",
+		Version:      "sample_version",
+	}
+	b2 := build.Build{
+		Id:           "b2",
+		BuildVariant: "testBV1",
+		Version:      "sample_version",
+	}
+	b3 := build.Build{
+		Id:           "b3",
+		BuildVariant: "testBV2",
+		Version:      "sample_version",
+	}
+	require.NoError(b1.Insert())
+	require.NoError(b2.Insert())
+	require.NoError(b3.Insert())
+
+	pp := model.ParserProject{}
+	err := util.UnmarshalYAMLWithFallback([]byte(omitGeneratedTasksConfig), &pp)
+	require.NoError(err)
+	pp.Id = "sample_version"
+	require.NoError(pp.Insert())
+	generateTask := task.Task{
+		Id:                    "mci_identifier_generate_tasks_for_version_version_gen__01_01_01_00_00_00",
+		Version:               "sample_version",
+		BuildId:               "b1",
+		Project:               "mci",
+		DisplayName:           "version_gen",
+		GeneratedJSONAsString: sampleGeneratedProject2,
+		Status:                evergreen.TaskStarted,
+	}
+	require.NoError(generateTask.Insert())
+	projectRef := model.ProjectRef{Id: "mci", Identifier: "mci_identifier"}
+	require.NoError(projectRef.Insert())
+
+	j := NewGenerateTasksJob(generateTask.Version, generateTask.Id, "1")
+	j.Run(context.Background())
+	assert.NoError(j.Error())
+	tasks := []task.Task{}
+	assert.NoError(db.FindAllQ(task.Collection, db.Query(task.ByVersion("sample_version")), &tasks))
+	assert.Len(tasks, 4)
+	for _, foundTask := range tasks {
+		switch foundTask.DisplayName {
+		case "version_gen", "dependency_task":
+			assert.Equal(foundTask.DependsOn, []task.Dependency{})
+		case "shouldDependOnVersionGen":
+			assert.Equal(foundTask.DependsOn, []task.Dependency{
+				{
+					TaskId:             "mci_identifier_generate_tasks_for_version_version_gen__01_01_01_00_00_00",
+					Status:             evergreen.TaskSucceeded,
+					OmitGeneratedTasks: true,
+				},
+			})
+		case "shouldDependOnDependencyTask":
+			assert.Equal(foundTask.DependsOn, []task.Dependency{{TaskId: "mci_identifier_testBV2_dependencyTask__01_01_01_00_00_00", Status: evergreen.TaskSucceeded}})
+		}
+	}
+	require.NoError(db.ClearCollections(task.Collection, model.ParserProjectCollection))
+
+	// check that the generated tasks are included as dependencies by default
+	pp = model.ParserProject{}
+	err = util.UnmarshalYAMLWithFallback([]byte(dependOnGeneratedTasksConfig), &pp)
+	require.NoError(err)
+	pp.Id = "sample_version"
+	require.NoError(pp.Insert())
+	generateTaskWithoutFlag := task.Task{
+		Id:                    "mci_identifier_generate_tasks_for_version_version_gen__01_01_01_00_00_00",
+		Version:               "sample_version",
+		BuildId:               "b1",
+		Project:               "mci",
+		DisplayName:           "version_gen",
+		GeneratedJSONAsString: sampleGeneratedProject2,
+		Status:                evergreen.TaskStarted,
+	}
+	require.NoError(generateTaskWithoutFlag.Insert())
+	j = NewGenerateTasksJob(generateTask.Version, generateTask.Id, "1")
+	j.Run(context.Background())
+	assert.NoError(j.Error())
+	tasks = []task.Task{}
+	assert.NoError(db.FindAllQ(task.Collection, db.Query(task.ByVersion("sample_version")), &tasks))
+	assert.Len(tasks, 4)
+	for _, foundTask := range tasks {
+		switch foundTask.DisplayName {
+		case "version_gen", "dependency_task":
+			assert.Equal(foundTask.DependsOn, []task.Dependency{})
+		case "shouldDependOnVersionGen":
+			assert.Equal(foundTask.DependsOn, []task.Dependency{
+				{TaskId: "mci_identifier_generate_tasks_for_version_version_gen__01_01_01_00_00_00", Status: evergreen.TaskSucceeded},
+				{TaskId: "mci_identifier_testBV2_dependencyTask__01_01_01_00_00_00", Status: evergreen.TaskSucceeded},
+			})
+		case "shouldDependOnDependencyTask":
+			assert.Equal(foundTask.DependsOn, []task.Dependency{{TaskId: "mci_identifier_testBV2_dependencyTask__01_01_01_00_00_00", Status: evergreen.TaskSucceeded}})
+		}
+	}
 }
 
 func TestParseProjects(t *testing.T) {
@@ -361,7 +644,7 @@ buildvariants:
 		Requester:             evergreen.RepotrackerVersionRequester,
 	}
 	sampleDistros := []distro.Distro{
-		distro.Distro{
+		{
 			Id: "ubuntu1604-test",
 		},
 	}
@@ -378,7 +661,7 @@ buildvariants:
 	projectRef := model.ProjectRef{Id: "mci"}
 	require.NoError(projectRef.Insert())
 
-	j := NewGenerateTasksJob(sampleTask.Version, sampleTask.Id, "1", false)
+	j := NewGenerateTasksJob(sampleTask.Version, sampleTask.Id, "1")
 	j.Run(context.Background())
 	assert.NoError(j.Error())
 
@@ -408,7 +691,7 @@ func TestMarkGeneratedTasksError(t *testing.T) {
 	}
 	require.NoError(t, sampleTask.Insert())
 
-	j := NewGenerateTasksJob(sampleTask.Version, sampleTask.Id, "1", false)
+	j := NewGenerateTasksJob(sampleTask.Version, sampleTask.Id, "1")
 	j.Run(context.Background())
 	assert.Error(t, j.Error())
 	dbTask, err := task.FindOneId(sampleTask.Id)
