@@ -2304,11 +2304,12 @@ func TestGetProjectTasksWithOptions(t *testing.T) {
 
 func TestUpdateNextPeriodicBuild(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
 	now := time.Now().Truncate(time.Second)
 	later := now.Add(1 * time.Hour)
 	muchLater := now.Add(10 * time.Hour)
 	for name, test := range map[string]func(*testing.T){
-		"updatesProject": func(t *testing.T) {
+		"updatesProjectOnly": func(t *testing.T) {
 			p := ProjectRef{
 				Id: "proj",
 				PeriodicBuilds: []PeriodicBuildDefinition{
@@ -2329,17 +2330,17 @@ func TestUpdateNextPeriodicBuild(t *testing.T) {
 			assert.NoError(UpdateNextPeriodicBuild("proj", "2", muchLater))
 			dbProject, err := FindBranchProjectRef(p.Id)
 			assert.NoError(err)
-			assert.NotNil(dbProject)
+			require.NotNil(dbProject)
 			assert.True(now.Equal(dbProject.PeriodicBuilds[0].NextRunTime))
 			assert.True(muchLater.Equal(dbProject.PeriodicBuilds[1].NextRunTime))
 
 			dbRepo, err := FindOneRepoRef(p.RepoRefId)
 			assert.NoError(err)
-			assert.NotNil(dbRepo)
-			// Repo wasn't updated
+			require.NotNil(dbRepo)
+			// Repo wasn't updated because the branch project definitions take precedent.
 			assert.True(later.Equal(dbRepo.PeriodicBuilds[0].NextRunTime))
 		},
-		"updatesRepo": func(t *testing.T) {
+		"updatesRepoOnly": func(t *testing.T) {
 			p := ProjectRef{
 				Id:             "proj",
 				PeriodicBuilds: nil,
@@ -2355,9 +2356,10 @@ func TestUpdateNextPeriodicBuild(t *testing.T) {
 			assert.NoError(repoRef.Upsert())
 			assert.NoError(UpdateNextPeriodicBuild("proj", "2", muchLater))
 
+			// Repo is updated because the branch project doesn't have any periodic build override defined.
 			dbRepo, err := FindOneRepoRef(p.RepoRefId)
 			assert.NoError(err)
-			assert.NotNil(dbRepo)
+			require.NotNil(dbRepo)
 			assert.True(muchLater.Equal(dbRepo.PeriodicBuilds[0].NextRunTime))
 		},
 		"updatesNothing": func(t *testing.T) {
@@ -2374,7 +2376,8 @@ func TestUpdateNextPeriodicBuild(t *testing.T) {
 			}}
 			assert.NoError(p.Insert())
 			assert.NoError(repoRef.Upsert())
-			// Should error because definition doesn't really exist for this project.
+			// Should error because definition isn't relevant for this project, since
+			// we ignore repo definitions when the project has any override defined.
 			assert.Error(UpdateNextPeriodicBuild("proj", "2", muchLater))
 
 			dbRepo, err := FindOneRepoRef(p.RepoRefId)

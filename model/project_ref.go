@@ -2459,37 +2459,38 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 	return cmds, nil
 }
 
-// UpdateNextPeriodicBuild updates the periodic build run time for the relevant collection.
+// UpdateNextPeriodicBuild updates the periodic build run time for either the project
+// or repo ref depending on where it's defined.
 func UpdateNextPeriodicBuild(projectId, definition string, nextRun time.Time) error {
 	// Get the branch project on its own so we can determine where to update the run time.
-	branchProject, err := FindBranchProjectRef(projectId)
+	projectRef, err := FindBranchProjectRef(projectId)
 	if err != nil {
 		return errors.Wrap(err, "finding branch project")
 	}
-	if branchProject == nil {
-		return errors.New("couldn't find project")
+	if projectRef == nil {
+		return errors.Errorf("project '%s' not found", projectId)
 	}
 
 	collection := ProjectRefCollection
 	buildsKey := projectRefPeriodicBuildsKey
 	documentIdKey := ProjectRefIdKey
-	idToUpdate := branchProject.Id
+	idToUpdate := projectRef.Id
 
 	// If periodic builds aren't defined for the project, see if it's part of the repo and update there instead.
-	if branchProject.PeriodicBuilds == nil && branchProject.UseRepoSettings() {
-		repoRef, err := FindOneRepoRef(branchProject.RepoRefId)
+	if projectRef.PeriodicBuilds == nil && projectRef.UseRepoSettings() {
+		repoRef, err := FindOneRepoRef(projectRef.RepoRefId)
 		if err != nil {
 			return err
 		}
 		if repoRef == nil {
-			return errors.New("couldn't find repo")
+			return errors.Errorf("repo '%s' not found", projectRef.RepoRefId)
 		}
 		for _, d := range repoRef.PeriodicBuilds {
 			if d.ID == definition {
 				collection = RepoRefCollection
 				buildsKey = RepoRefPeriodicBuildsKey
 				documentIdKey = RepoRefIdKey
-				idToUpdate = branchProject.RepoRefId
+				idToUpdate = projectRef.RepoRefId
 			}
 		}
 	}
