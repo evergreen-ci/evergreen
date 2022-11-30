@@ -550,7 +550,7 @@ func RefreshTasksCache(buildId string) error {
 
 // addTasksToBuild creates/activates the tasks for the given build of a project
 func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build.Build, task.Tasks, error) {
-	// Find the build variant for this project/build
+	// find the build variant for this project/build
 	creationInfo.BuildVariant = creationInfo.Project.FindBuildVariant(creationInfo.Build.BuildVariant)
 	if creationInfo.BuildVariant == nil {
 		return nil, nil, errors.Errorf("finding build '%s' in project file '%s'",
@@ -709,14 +709,19 @@ func CreateBuildFromVersionNoInsert(creationInfo TaskCreationInfo) (*build.Build
 
 	// create task caches for all of the tasks, and place them into the build
 	tasks := []task.Task{}
+	containsActivatedTask := false
+
 	for _, taskP := range tasksForBuild {
 		if taskP.IsPartOfDisplay() {
 			continue // don't add execution parts of display tasks to the UI cache
 		}
+		if taskP.Activated {
+			containsActivatedTask = true
+		}
 		tasks = append(tasks, *taskP)
 	}
 	b.Tasks = CreateTasksCache(tasks)
-
+	b.Activated = containsActivatedTask
 	return b, tasksForBuild, nil
 }
 
