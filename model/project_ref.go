@@ -121,8 +121,6 @@ type ProjectRef struct {
 	// Hidden determines whether or not the project is discoverable/tracked in the UI
 	Hidden        *bool  `bson:"hidden,omitempty" json:"hidden,omitempty"`
 	DefaultLogger string `bson:"default_logger,omitempty" json:"default_logger,omitempty"`
-
-	//RepoPeriodicBuilds []PeriodicBuildDefinition `bson:"repo_periodic_builds"`
 }
 
 type CommitQueueParams struct {
