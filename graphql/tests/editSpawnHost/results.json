@@ -1,0 +1,17 @@
+{
+    "tests": [
+        {
+            "query_file": "error-add-key-spawn-host.graphql",
+            "result": {
+            "errors": [
+                {
+                    "message": "Host must be running to add a public key but is 'provisioning'",
+                    "path": ["editSpawnHost"],
+                    "extensions": { "code": "INPUT_VALIDATION_ERROR" }
+                }
+            ],
+            "data": null
+            }
+        }
+    ]
+}

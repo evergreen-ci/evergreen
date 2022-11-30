@@ -58,7 +58,6 @@ type Mutation {
   saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: ProjectSettingsSection!): ProjectSettings!
   saveRepoSettingsForSection(repoSettings: RepoSettingsInput, section: ProjectSettingsSection!): RepoSettings!
   deactivateStepbackTask(projectId: String!, buildVariantName: String!, taskName: String! @requireProjectAccess(access: EDIT)): Boolean!
-  deactivateStepbackTasks(projectId: String! @requireProjectAccess(access: EDIT)): Boolean! @deprecated(reason: "deactivateStepbackTasks is deprecated. Use deactivateStepbackTask instead.")
 
   # spawn
   attachVolumeToHost(volumeAndHost: VolumeHost!): Boolean!

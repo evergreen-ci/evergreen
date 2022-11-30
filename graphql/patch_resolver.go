@@ -164,7 +164,7 @@ func (r *patchResolver) ProjectIdentifier(ctx context.Context, obj *restModel.AP
 
 // TaskCount is the resolver for the taskCount field.
 func (r *patchResolver) TaskCount(ctx context.Context, obj *restModel.APIPatch) (*int, error) {
-	taskCount, err := task.Count(db.Query(task.DisplayTasksByVersion(*obj.Id)))
+	taskCount, err := task.Count(db.Query(task.DisplayTasksByVersion(*obj.Id, false)))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting task count for patch %s: %s", *obj.Id, err.Error()))
 	}

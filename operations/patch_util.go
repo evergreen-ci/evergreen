@@ -224,28 +224,31 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 		grip.Warningf("warning - failed to set default project: %v\n", err)
 	}
 
-	if err := p.setLocalAliases(conf); err != nil {
-		grip.Warningf("warning - setting local aliases")
-	}
+	// If reusing a previous definition, ignore defaults.
+	if !p.RepeatFailed && !p.RepeatDefinition {
+		if err := p.setLocalAliases(conf); err != nil {
+			grip.Warningf("warning - setting local aliases")
+		}
 
-	if err := p.loadAlias(conf); err != nil {
-		grip.Warningf("warning - failed to set default alias: %v\n", err)
-	}
+		if err := p.loadAlias(conf); err != nil {
+			grip.Warningf("warning - failed to set default alias: %v\n", err)
+		}
 
-	if err := p.loadVariants(conf); err != nil {
-		grip.Warningf("warning - failed to set default variants: %v\n", err)
-	}
+		if err := p.loadVariants(conf); err != nil {
+			grip.Warningf("warning - failed to set default variants: %v\n", err)
+		}
 
-	if err := p.loadTasks(conf); err != nil {
-		grip.Warningf("warning - failed to set default tasks: %v\n", err)
+		if err := p.loadTasks(conf); err != nil {
+			grip.Warningf("warning - failed to set default tasks: %v\n", err)
+		}
+
+		if err := p.loadTriggerAliases(conf); err != nil {
+			grip.Warningf("warning - failed to set default trigger aliases: %v\n", err)
+		}
 	}
 
 	if err := p.loadParameters(conf); err != nil {
 		grip.Warningf("warning - failed to set default parameters: %v\n", err)
-	}
-
-	if err := p.loadTriggerAliases(conf); err != nil {
-		grip.Warningf("warning - failed to set default trigger aliases: %v\n", err)
 	}
 
 	if p.Uncommitted || conf.UncommittedChanges {

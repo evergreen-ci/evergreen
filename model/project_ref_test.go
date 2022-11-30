@@ -180,6 +180,11 @@ func TestGetActivationTimeForTask(t *testing.T) {
 		Name:      "myTask",
 		Variant:   "bv1",
 	}
+	bvt2 := &BuildVariantTaskUnit{
+		Name:    "notMyTask",
+		Variant: "bv1",
+		Disable: utility.TruePtr(),
+	}
 
 	versionWithoutTask := Version{
 		Id:         "v1",
@@ -229,6 +234,10 @@ func TestGetActivationTimeForTask(t *testing.T) {
 	activationTime, err := projectRef.GetActivationTimeForTask(bvt)
 	assert.NoError(t, err)
 	assert.True(t, activationTime.Equal(prevTime.Add(time.Hour)))
+
+	activationTime, err = projectRef.GetActivationTimeForTask(bvt2)
+	assert.NoError(t, err)
+	assert.True(t, activationTime.Equal(utility.ZeroTime))
 }
 
 func TestGetActivationTimeWithCron(t *testing.T) {
