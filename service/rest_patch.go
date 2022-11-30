@@ -9,7 +9,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"gopkg.in/20210107192922/yaml.v3"
 )
 
 type RestPatch struct {
@@ -72,7 +72,7 @@ func (restapi restAPI) getPatchConfig(w http.ResponseWriter, r *http.Request) {
 	pp, err := model.ParserProjectFindOneById(projCtx.Patch.Version)
 	if pp != nil {
 		var projBytes []byte
-		projBytes, err = bson.Marshal(pp)
+		projBytes, err = yaml.Marshal(pp)
 		if err == nil {
 			_, err = w.Write(projBytes)
 		}
