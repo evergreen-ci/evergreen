@@ -155,6 +155,22 @@ func TestHostTerminationJob(t *testing.T) {
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
 		},
+		"MarksBuildingIntentHostAsTerminated": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
+			h.Status = evergreen.HostBuilding
+			require.NoError(t, h.Insert())
+
+			j := NewHostTerminationJob(env, h, HostTerminationOptions{
+				TerminateIfBusy:   true,
+				TerminationReason: "foo",
+			})
+			j.Run(ctx)
+			require.NoError(t, j.Error())
+
+			dbHost, err := host.FindOneId(h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
+		},
 		"MarksBuildingFailedIntentHostAsTerminated": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
 			h.Status = evergreen.HostBuildingFailed
 			require.NoError(t, h.Insert())
