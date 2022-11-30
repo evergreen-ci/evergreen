@@ -96,7 +96,8 @@ func byLatestProjectVersion(projectId string) bson.M {
 
 // FindLatestRevisionForProject returns the latest revision for the project, and returns an error if it's not found.
 func FindLatestRevisionForProject(projectId string) (string, error) {
-	v, err := VersionFindOne(db.Query(byLatestProjectVersion(projectId)).WithFields(VersionRevisionKey))
+	v, err := VersionFindOne(db.Query(byLatestProjectVersion(projectId)).
+		Sort([]string{"-" + VersionRevisionOrderNumberKey}).WithFields(VersionRevisionKey))
 	if err != nil {
 		return "", errors.Wrapf(err, "finding most recent version for project '%s'", projectId)
 	}
