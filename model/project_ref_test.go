@@ -2326,14 +2326,13 @@ func TestUpdateNextPeriodicBuild(t *testing.T) {
 			assert.NoError(p.Insert())
 			assert.NoError(repoRef.Upsert())
 
-			assert.NoError(p.UpdateNextPeriodicBuild("2", muchLater))
+			assert.NoError(UpdateNextPeriodicBuild("proj", "2", muchLater))
 			dbProject, err := FindBranchProjectRef(p.Id)
 			assert.NoError(err)
 			assert.NotNil(dbProject)
 			assert.True(now.Equal(dbProject.PeriodicBuilds[0].NextRunTime))
-			assert.True(now.Equal(p.PeriodicBuilds[0].NextRunTime))
 			assert.True(muchLater.Equal(dbProject.PeriodicBuilds[1].NextRunTime))
-			assert.True(muchLater.Equal(p.PeriodicBuilds[1].NextRunTime))
+
 			dbRepo, err := FindOneRepoRef(p.RepoRefId)
 			assert.NoError(err)
 			assert.NotNil(dbRepo)
@@ -2354,7 +2353,8 @@ func TestUpdateNextPeriodicBuild(t *testing.T) {
 			}}
 			assert.NoError(p.Insert())
 			assert.NoError(repoRef.Upsert())
-			assert.NoError(p.UpdateNextPeriodicBuild("2", muchLater))
+			assert.NoError(UpdateNextPeriodicBuild("proj", "2", muchLater))
+
 			dbRepo, err := FindOneRepoRef(p.RepoRefId)
 			assert.NoError(err)
 			assert.NotNil(dbRepo)
@@ -2375,7 +2375,8 @@ func TestUpdateNextPeriodicBuild(t *testing.T) {
 			assert.NoError(p.Insert())
 			assert.NoError(repoRef.Upsert())
 			// Should error because definition doesn't really exist for this project.
-			assert.Error(p.UpdateNextPeriodicBuild("2", muchLater))
+			assert.Error(UpdateNextPeriodicBuild("proj", "2", muchLater))
+
 			dbRepo, err := FindOneRepoRef(p.RepoRefId)
 			assert.NoError(err)
 			assert.NotNil(dbRepo)

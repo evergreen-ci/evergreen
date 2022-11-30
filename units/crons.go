@@ -372,12 +372,12 @@ func PopulateCommitQueueJobs(env evergreen.Environment) amboy.QueueOperation {
 		catcher := grip.NewBasicCatcher()
 		ts := utility.RoundPartOfHour(1).Format(TSFormat)
 
-		projectRefs, err := model.FindProjectRefIdsWithCommitQueueEnabled()
+		projectIds, err := model.FindProjectRefIdsWithCommitQueueEnabled()
 		if err != nil {
 			return errors.Wrap(err, "finding project refs with commit queue enabled")
 		}
-		for _, p := range projectRefs {
-			catcher.Wrapf(queue.Put(ctx, NewCommitQueueJob(env, p.Id, ts)), "enqueueing commit queue job for project '%s'", p.Identifier)
+		for _, id := range projectIds {
+			catcher.Wrapf(queue.Put(ctx, NewCommitQueueJob(env, id, ts)), "enqueueing commit queue job for project '%s'", id)
 		}
 		return catcher.Resolve()
 	}
