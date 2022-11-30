@@ -128,9 +128,9 @@ func Patch() cli.Command {
 				PreserveCommits:   c.Bool(preserveCommitsFlag),
 				TriggerAliases:    utility.SplitCommas(c.StringSlice(patchTriggerAliasFlag)),
 			}
-			params.addReuseFlags(c)
 
 			var err error
+			params.addReuseFlags(c)
 			includeModules := c.Bool(includeModulesFlag)
 			paramsPairs := c.StringSlice(parameterFlagName)
 			params.Parameters, err = getParametersFromInput(paramsPairs)
@@ -239,8 +239,8 @@ func Patch() cli.Command {
 }
 
 func (p *patchParams) addReuseFlags(c *cli.Context) {
-	p.RepeatDefinition = c.Bool(repeatDefinitionFlag) || p.RepeatPatchId != ""
 	p.RepeatPatchId = c.String(repeatPatchIdFlag)
+	p.RepeatDefinition = c.Bool(repeatDefinitionFlag) || p.RepeatPatchId != ""
 	p.RepeatFailed = c.Bool(repeatFailedDefinitionFlag)
 }
 
