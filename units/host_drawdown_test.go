@@ -16,13 +16,13 @@ import (
 )
 
 func numHostsTerminated(ctx context.Context, env evergreen.Environment, drawdownInfo DrawdownInfo, t *testing.T) (int, []string) {
-	queue := queue.NewAdaptiveOrderedLocalQueue(3, 1024)
+	queue := queue.NewLocalLimitedSize(3, 1024)
 	require.NoError(t, queue.Start(ctx))
 	defer queue.Runner().Close(ctx)
 
 	require.NoError(t, queue.Put(ctx, NewHostDrawdownJob(env, drawdownInfo, utility.RoundPartOfHour(1).Format(TSFormat))))
 
-	amboy.WaitInterval(ctx, queue, 50*time.Millisecond)
+	assert.True(t, amboy.WaitInterval(ctx, queue, 50*time.Millisecond))
 	out := []string{}
 	num := 0
 	for j := range queue.Results(ctx) {

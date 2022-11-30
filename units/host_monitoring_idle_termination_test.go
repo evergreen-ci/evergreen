@@ -17,7 +17,7 @@ import (
 )
 
 func numIdleHostsFound(ctx context.Context, env evergreen.Environment, t *testing.T) (int, []string) {
-	queue := queue.NewAdaptiveOrderedLocalQueue(3, 1024)
+	queue := queue.NewLocalLimitedSize(3, 1024)
 	require.NoError(t, queue.Start(ctx))
 	defer queue.Runner().Close(ctx)
 

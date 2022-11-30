@@ -37,7 +37,7 @@ func (opts Options) Setup(ctx context.Context) (anser.Environment, error) {
 	env := anser.GetEnvironment()
 	env.RegisterCloser(func() error { cancel(); return nil })
 
-	q := queue.NewAdaptiveOrderedLocalQueue(1, 10*opts.Target*opts.Workers)
+	q := queue.NewLocalLimitedSize(1, 10*opts.Target*opts.Workers)
 	runner, err := pool.NewMovingAverageRateLimitedWorkers(opts.Workers, opts.Target, opts.Period, q)
 	if err != nil {
 		return nil, errors.WithStack(err)
