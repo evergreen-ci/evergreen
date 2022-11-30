@@ -2462,8 +2462,6 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 }
 
 // UpdateNextPeriodicBuild updates the periodic build run time for the relevant collection.
-// It assumes that the project given is a branch project, so we can distinguish between
-// what's defined for the project and what's defined for the repo.
 func UpdateNextPeriodicBuild(projectId, definition string, nextRun time.Time) error {
 	// Get the branch project on its own so we can determine where to update the run time.
 	branchProject, err := FindBranchProjectRef(projectId)
