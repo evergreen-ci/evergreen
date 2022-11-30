@@ -160,15 +160,15 @@ func RestartFailedTasks(queue amboy.Queue, opts model.RestartOptions) (*restMode
 func RestartFailedCommitQueueVersions(opts model.RestartOptions) (*restModel.RestartResponse, error) {
 	totalRestarted := []string{}
 	totalNotRestarted := []string{}
-	pRefs, err := model.FindProjectRefsWithCommitQueueEnabled()
+	projectIds, err := model.FindProjectRefIdsWithCommitQueueEnabled()
 	if err != nil {
 		return nil, errors.Wrap(err, "finding project refs with commit queue enabled")
 	}
-	for _, pRef := range pRefs {
-		restarted, notRestarted, err := model.RetryCommitQueueItems(pRef.Id, opts)
+	for _, id := range projectIds {
+		restarted, notRestarted, err := model.RetryCommitQueueItems(id, opts)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"project":    pRef.Id,
+				"project":    id,
 				"start_time": opts.StartTime,
 				"end_time":   opts.EndTime,
 				"message":    "unable to restart failed commit queue versions for project",

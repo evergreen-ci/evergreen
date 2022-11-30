@@ -67,6 +67,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 	var err error
+	// Use a fully merged project for the rest of the job, since we need it for creating the version
 	j.project, err = model.FindMergedProjectRef(j.ProjectID, "", true)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "finding project '%s'", j.ProjectID))
@@ -88,7 +89,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 		if utility.IsZeroTime(baseTime) {
 			baseTime = time.Now()
 		}
-		err = j.project.UpdateNextPeriodicBuild(definition.ID, baseTime.Add(time.Duration(definition.IntervalHours)*time.Hour))
+		err = model.UpdateNextPeriodicBuild(j.ProjectID, definition.ID, baseTime.Add(time.Duration(definition.IntervalHours)*time.Hour))
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":    "unable to set next periodic build job time",
 			"project":    j.ProjectID,
