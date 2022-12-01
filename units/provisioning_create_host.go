@@ -117,7 +117,6 @@ func (j *createHostJob) Run(ctx context.Context) {
 			//host intent document has been removed by another evergreen process
 			grip.Warning(message.Fields{
 				"host_id": j.HostID,
-				"task_id": j.TaskID,
 				"attempt": j.RetryInfo().CurrentAttempt,
 				"job":     j.ID(),
 				"message": "host intent has been removed",
