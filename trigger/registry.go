@@ -17,7 +17,6 @@ var registry = triggerRegistry{
 
 func init() {
 	registry.registerEventHandler(event.ResourceTypePatch, event.PatchStateChange, makePatchTriggers)
-	registry.registerEventHandler(event.ResourceTypePatch, event.PatchChildrenCompletion, makePatchTriggers)
 }
 
 type registryKey struct {
