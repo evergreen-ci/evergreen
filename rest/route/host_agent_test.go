@@ -1501,6 +1501,7 @@ func TestHandleEndTaskForCommitQueueTask(t *testing.T) {
 		Project:      "my_project",
 		DisplayName:  "important_task",
 		BuildVariant: "best_variant",
+		BuildId:      "build",
 	}
 	taskB := task.Task{
 		Id:           "taskB",
@@ -1508,6 +1509,7 @@ func TestHandleEndTaskForCommitQueueTask(t *testing.T) {
 		Project:      "my_project",
 		DisplayName:  "important_task",
 		BuildVariant: "best_variant",
+		BuildId:      "build",
 	}
 	taskC := task.Task{
 		Id:           "taskC",
@@ -1515,6 +1517,7 @@ func TestHandleEndTaskForCommitQueueTask(t *testing.T) {
 		Project:      "my_project",
 		DisplayName:  "important_task",
 		BuildVariant: "best_variant",
+		BuildId:      "build",
 	}
 	for testName, testCase := range map[string]func(t *testing.T, cq commitqueue.CommitQueue){
 		"next task is failed": func(t *testing.T, cq commitqueue.CommitQueue) {
@@ -1666,7 +1669,7 @@ func TestHandleEndTaskForCommitQueueTask(t *testing.T) {
 	} {
 		t.Run(testName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(commitqueue.Collection, model.VersionCollection,
-				task.Collection, patch.Collection, task.OldCollection))
+				task.Collection, patch.Collection, task.OldCollection, build.Collection))
 			version1 := model.Version{
 				Id: p1,
 			}
@@ -1679,6 +1682,10 @@ func TestHandleEndTaskForCommitQueueTask(t *testing.T) {
 				Id: p3,
 			}
 			assert.NoError(t, version3.Insert())
+			b := &build.Build{
+				Id: "build",
+			}
+			assert.NoError(t, b.Insert())
 			patch1 := patch.Patch{
 				Id: mgobson.ObjectIdHex(p1),
 			}
@@ -1694,18 +1701,21 @@ func TestHandleEndTaskForCommitQueueTask(t *testing.T) {
 				Id:               "mergeA",
 				Version:          p1,
 				CommitQueueMerge: true,
+				BuildId:          "build",
 			}
 			assert.NoError(t, mergeTask1.Insert())
 			mergeTask2 := task.Task{
 				Id:               "mergeB",
 				Version:          p2,
 				CommitQueueMerge: true,
+				BuildId:          "build",
 			}
 			assert.NoError(t, mergeTask2.Insert())
 			mergeTask3 := task.Task{
 				Id:               "mergeC",
 				Version:          p3,
 				CommitQueueMerge: true,
+				BuildId:          "build",
 			}
 			assert.NoError(t, mergeTask3.Insert())
 			assert.NoError(t, patch3.Insert())
