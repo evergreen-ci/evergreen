@@ -53,25 +53,27 @@ func TestDirectoryCleanup(t *testing.T) {
 	assert.True(osExists(err))
 
 	// cannot run the operation on a file, and it will not delete
-	// that files
-	tryCleanupDirectory(fn)
+	// that file
+	a := Agent{}
+	a.tryCleanupDirectory(fn)
 	_, err = os.Stat(fn)
 	assert.True(osExists(err))
 
 	// running the operation on the top level directory does not
-	// delete that directory
-	tryCleanupDirectory(dir)
+	// delete that directory but does delete the files within it
+	a.tryCleanupDirectory(dir)
 	_, err = os.Stat(dir)
 	assert.True(osExists(err))
 
-	// does not clean up files in the root directory
-	_, err = os.Stat(fn)
-	assert.True(osExists(err))
-
-	// verify a subdirectory gets deleted
+	// verify a subdirectory containing a read-only file is deleted
 	toDelete := filepath.Join(dir, "wrapped-dir-cleanup")
 	assert.NoError(os.Mkdir(toDelete, 0777))
-	tryCleanupDirectory(dir)
+	readOnlyFileToDelete := filepath.Join(toDelete, "read-only")
+	assert.NoError(ioutil.WriteFile(readOnlyFileToDelete, []byte("cookies"), 0644))
+	assert.NoError(os.Chmod(readOnlyFileToDelete, 0444))
+	a.tryCleanupDirectory(dir)
+	_, err = os.Stat(readOnlyFileToDelete)
+	assert.True(os.IsNotExist(err))
 	_, err = os.Stat(toDelete)
 	assert.True(os.IsNotExist(err))
 
@@ -80,7 +82,7 @@ func TestDirectoryCleanup(t *testing.T) {
 	assert.NoError(os.MkdirAll(gitDir, 0777))
 	shouldNotDelete := filepath.Join(dir, "dir1", "delete-me")
 	assert.NoError(os.MkdirAll(shouldNotDelete, 0777))
-	tryCleanupDirectory(dir)
+	a.tryCleanupDirectory(dir)
 	_, err = os.Stat(gitDir)
 	assert.False(os.IsNotExist(err))
 	_, err = os.Stat(shouldNotDelete)
