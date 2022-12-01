@@ -21,6 +21,10 @@ const (
 	EnqueuePatchSubscriberType      = "enqueue-patch"
 	SubscriberTypeNone              = "none"
 	RunChildPatchSubscriberType     = "run-child-patch"
+
+	webhookRetryLimit    = 10
+	webhookMinDelayLimit = 10000
+	webhookTimeoutLimit  = 30000
 )
 
 var SubscriberTypes = []string{
@@ -35,7 +39,7 @@ var SubscriberTypes = []string{
 	RunChildPatchSubscriberType,
 }
 
-//nolint: deadcode, megacheck, unused
+// nolint: deadcode, megacheck, unused
 var (
 	subscriberTypeKey   = bsonutil.MustHaveTag(Subscriber{}, "Type")
 	subscriberTargetKey = bsonutil.MustHaveTag(Subscriber{}, "Target")
@@ -114,13 +118,24 @@ func (s *Subscriber) Validate() error {
 	catcher := grip.NewBasicCatcher()
 	catcher.ErrorfWhen(!utility.StringSliceContains(SubscriberTypes, s.Type), "'%s' is not a valid subscriber type", s.Type)
 	catcher.NewWhen(s.Target == nil, "target is required for subscriber")
+
+	switch v := s.Target.(type) {
+	case WebhookSubscriber:
+		catcher.Add(v.validate())
+	case *WebhookSubscriber:
+		catcher.Add(v.validate())
+	}
+
 	return catcher.Resolve()
 }
 
 type WebhookSubscriber struct {
-	URL     string          `bson:"url"`
-	Secret  []byte          `bson:"secret"`
-	Headers []WebhookHeader `bson:"headers"`
+	URL        string          `bson:"url"`
+	Secret     []byte          `bson:"secret"`
+	Retries    int             `bson:"retries"`
+	MinDelayMS int             `bson:"min_delay_ms"`
+	TimeoutMS  int             `bson:"timeout_ms"`
+	Headers    []WebhookHeader `bson:"headers"`
 }
 
 type WebhookHeader struct {
@@ -133,6 +148,28 @@ func (s *WebhookSubscriber) String() string {
 		return "NIL_URL"
 	}
 	return s.URL
+}
+
+func (s *WebhookSubscriber) validate() error {
+	catcher := grip.NewBasicCatcher()
+	catcher.AddWhen(s.URL == "", errors.New("url cannot be empty"))
+	catcher.AddWhen(len(s.Secret) == 0, errors.New("secret cannot be empty"))
+
+	catcher.AddWhen(s.Retries < 0, errors.New("retries cannot be negative"))
+	catcher.AddWhen(s.Retries > webhookRetryLimit, errors.Errorf("cannot retry more than %d times", webhookRetryLimit))
+
+	catcher.AddWhen(s.MinDelayMS < 0, errors.New("min delay cannot be negative"))
+	catcher.AddWhen(s.MinDelayMS > webhookMinDelayLimit, errors.Errorf("min delay cannot be greater than %d ms", webhookMinDelayLimit))
+
+	catcher.AddWhen(s.TimeoutMS < 0, errors.New("timeout cannot be negative"))
+	catcher.AddWhen(s.TimeoutMS > webhookTimeoutLimit, errors.Errorf("timeout cannot be greater than %d ms", webhookTimeoutLimit))
+
+	for _, header := range s.Headers {
+		catcher.AddWhen(header.Key == "", errors.New("header key cannot be empty"))
+		catcher.AddWhen(header.Value == "", errors.New("header value cannot be empty"))
+	}
+
+	return catcher.Resolve()
 }
 
 type JIRAIssueSubscriber struct {
