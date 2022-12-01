@@ -78,6 +78,7 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 			// or the task was originally activated by evergreen, deactivate the task
 		} else if !evergreen.IsSystemActivator(caller) || evergreen.IsSystemActivator(t.ActivatedBy) {
 			// deactivate later tasks in the group as well, since they won't succeed without this one
+			// TODO EVG-18392: remove this logic once it can be handled by dependencies
 			if t.IsPartOfSingleHostTaskGroup() {
 				tasksInGroup, err := task.FindTaskGroupFromBuild(t.BuildId, t.TaskGroup)
 				catcher.Wrapf(err, "finding task group '%s'", t.TaskGroup)
@@ -93,9 +94,6 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 			tasksToActivate = append(tasksToActivate, originalTasks...)
 		} else {
 			continue
-		}
-		if t.IsPartOfDisplay() {
-			catcher.Wrap(UpdateDisplayTaskForTask(&t), "updating display task")
 		}
 	}
 
@@ -123,6 +121,11 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 		}
 	}
 
+	for _, t := range tasksToActivate {
+		if t.IsPartOfDisplay() {
+			catcher.Wrap(UpdateDisplayTaskForTask(&t), "updating display task")
+		}
+	}
 	for b, item := range buildToTaskMap {
 		t := buildToTaskMap[b]
 		if err := UpdateBuildAndVersionStatusForTask(&item); err != nil {
@@ -142,6 +145,91 @@ func SetActiveStateById(id, user string, active bool) error {
 		return errors.Errorf("task '%s' not found", id)
 	}
 	return SetActiveState(user, active, *t)
+}
+
+func DisableTasks(caller string, tasks ...task.Task) error {
+	if len(tasks) == 0 {
+		return nil
+	}
+
+	tasksPresent := map[string]struct{}{}
+	var taskIDs []string
+	var execTaskIDs []string
+	for _, t := range tasks {
+		tasksPresent[t.Id] = struct{}{}
+		taskIDs = append(taskIDs, t.Id)
+		execTaskIDs = append(execTaskIDs, t.ExecutionTasks...)
+	}
+
+	_, err := task.UpdateAll(
+		task.ByIds(append(taskIDs, execTaskIDs...)),
+		bson.M{"$set": bson.M{task.PriorityKey: evergreen.DisabledTaskPriority}},
+	)
+	if err != nil {
+		return errors.Wrap(err, "updating task priorities")
+	}
+
+	execTasks, err := findMissingTasks(execTaskIDs, tasksPresent)
+	if err != nil {
+		return errors.Wrap(err, "finding additional execution tasks")
+	}
+	tasks = append(tasks, execTasks...)
+
+	for _, t := range tasks {
+		t.Priority = evergreen.DisabledTaskPriority
+		event.LogTaskPriority(t.Id, t.Execution, caller, evergreen.DisabledTaskPriority)
+	}
+
+	if err := task.DeactivateTasks(tasks, true, caller); err != nil {
+		return errors.Wrap(err, "deactivating dependencies")
+	}
+
+	return nil
+}
+
+// findMissingTasks finds all tasks whose IDs are missing from tasksPresent.
+func findMissingTasks(taskIDs []string, tasksPresent map[string]struct{}) ([]task.Task, error) {
+	var missingTaskIDs []string
+	for _, id := range taskIDs {
+		if _, ok := tasksPresent[id]; ok {
+			continue
+		}
+		missingTaskIDs = append(missingTaskIDs, id)
+	}
+	if len(missingTaskIDs) == 0 {
+		return nil, nil
+	}
+
+	missingTasks, err := task.FindAll(db.Query(task.ByIds(missingTaskIDs)))
+	if err != nil {
+		return nil, err
+	}
+
+	return missingTasks, nil
+}
+
+// DisableStaleContainerTasks disables all container tasks that have been
+// scheduled to run for a long time without actually dispatching the task.
+func DisableStaleContainerTasks(caller string) error {
+	query := task.IsContainerTaskScheduledQuery()
+	query[task.ActivatedTimeKey] = bson.M{"$lte": time.Now().Add(-task.UnschedulableThreshold)}
+
+	tasks, err := task.FindAll(db.Query(query))
+	if err != nil {
+		return errors.Wrap(err, "finding tasks that need to be disabled")
+	}
+
+	grip.Info(message.Fields{
+		"message":   "disabling container tasks that are still scheduled to run but are stale",
+		"num_tasks": len(tasks),
+		"caller":    caller,
+	})
+
+	if err := DisableTasks(caller, tasks...); err != nil {
+		return errors.Wrap(err, "disabled stale container tasks")
+	}
+
+	return nil
 }
 
 // activatePreviousTask will set the Active state for the first task with a
@@ -818,7 +906,7 @@ func tryDequeueAndAbortCommitQueueVersion(p *patch.Patch, cq commitqueue.CommitQ
 		"patch":   issue,
 	}))
 
-	removed, err := cq.RemoveItemAndPreventMerge(issue, true, caller)
+	removed, err := RemoveItemAndPreventMerge(&cq, issue, true, caller)
 	grip.Debug(message.Fields{
 		"message": "removing commit queue item",
 		"issue":   issue,
@@ -1815,10 +1903,12 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 	hasTasksToRun := false
 	startTime := time.Unix(1<<62, 0)
 	endTime := utility.ZeroTime
+	noActiveTasks := true
 	for _, execTask := range execTasks {
 		// if any of the execution tasks are scheduled, the display task is too
 		if execTask.Activated {
 			dt.Activated = true
+			noActiveTasks = false
 			if utility.IsZeroTime(dt.ActivatedTime) {
 				dt.ActivatedTime = time.Now()
 			}
@@ -1840,6 +1930,9 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 		if execTask.FinishTime.After(endTime) {
 			endTime = execTask.FinishTime
 		}
+	}
+	if noActiveTasks {
+		dt.Activated = false
 	}
 
 	sort.Sort(task.ByPriority(execTasks))

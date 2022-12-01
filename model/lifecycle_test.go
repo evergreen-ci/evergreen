@@ -30,7 +30,10 @@ func TestTaskSetPriority(t *testing.T) {
 
 	Convey("With a task", t, func() {
 
-		require.NoError(t, db.ClearCollections(task.Collection, build.Collection))
+		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection))
+
+		v := &Version{Id: "abcdef"}
+		require.NoError(t, v.Insert())
 
 		tasks := []task.Task{
 			{
@@ -38,29 +41,40 @@ func TestTaskSetPriority(t *testing.T) {
 				DependsOn: []task.Dependency{{TaskId: "two", Status: ""}, {TaskId: "three", Status: ""}, {TaskId: "four", Status: ""}},
 				Activated: true,
 				BuildId:   "b0",
+				Version:   v.Id,
 			},
 			{
 				Id:        "two",
 				Priority:  5,
 				Activated: true,
+				BuildId:   "b0",
+				Version:   v.Id,
 			},
 			{
 				Id:        "three",
 				DependsOn: []task.Dependency{{TaskId: "five", Status: ""}},
 				Activated: true,
+				BuildId:   "b0",
+				Version:   v.Id,
 			},
 			{
 				Id:        "four",
 				DependsOn: []task.Dependency{{TaskId: "five", Status: ""}},
 				Activated: true,
+				BuildId:   "b0",
+				Version:   v.Id,
 			},
 			{
 				Id:        "five",
 				Activated: true,
+				BuildId:   "b0",
+				Version:   v.Id,
 			},
 			{
 				Id:        "six",
 				Activated: true,
+				BuildId:   "b0",
+				Version:   v.Id,
 			},
 		}
 
@@ -161,20 +175,21 @@ func TestBuildSetPriority(t *testing.T) {
 
 	Convey("With a build", t, func() {
 
-		require.NoError(t, db.ClearCollections(build.Collection, task.Collection))
+		require.NoError(t, db.ClearCollections(build.Collection, task.Collection, VersionCollection))
 
-		b := &build.Build{
-			Id: "build",
-		}
+		b := &build.Build{Id: "build"}
 		So(b.Insert(), ShouldBeNil)
 
-		taskOne := &task.Task{Id: "taskOne", BuildId: b.Id}
+		v := &Version{Id: "abcdef"}
+		require.NoError(t, v.Insert())
+
+		taskOne := &task.Task{Id: "taskOne", BuildId: b.Id, Version: v.Id}
 		So(taskOne.Insert(), ShouldBeNil)
 
-		taskTwo := &task.Task{Id: "taskTwo", BuildId: b.Id}
+		taskTwo := &task.Task{Id: "taskTwo", BuildId: b.Id, Version: v.Id}
 		So(taskTwo.Insert(), ShouldBeNil)
 
-		taskThree := &task.Task{Id: "taskThree", BuildId: b.Id}
+		taskThree := &task.Task{Id: "taskThree", BuildId: b.Id, Version: v.Id}
 		So(taskThree.Insert(), ShouldBeNil)
 
 		Convey("setting its priority should update the priority"+

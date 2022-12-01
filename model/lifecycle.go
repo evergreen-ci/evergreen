@@ -252,7 +252,7 @@ func SetTaskPriority(t task.Task, priority int64, caller string) error {
 
 	// negative priority - deactivate the task
 	if priority <= evergreen.DisabledTaskPriority {
-		if err = t.DeactivateTask(caller); err != nil {
+		if err = SetActiveState(caller, false, t); err != nil {
 			return errors.Wrap(err, "deactivating task")
 		}
 	}
@@ -276,7 +276,7 @@ func SetBuildPriority(buildId string, priority int64, caller string) error {
 		if err != nil {
 			return errors.Wrapf(err, "getting tasks for build '%s'", buildId)
 		}
-		if err = task.DeactivateTasks(tasks, true, caller); err != nil {
+		if err = SetActiveState(caller, false, tasks...); err != nil {
 			return errors.Wrapf(err, "deactivating tasks for build '%s'", buildId)
 		}
 	}
@@ -301,7 +301,7 @@ func SetVersionPriority(versionId string, priority int64, caller string) error {
 		if err != nil {
 			return errors.Wrapf(err, "getting tasks for version '%s'", versionId)
 		}
-		err = task.DeactivateTasks(tasks, false, caller)
+		err = SetActiveState(caller, false, tasks...)
 		if err != nil {
 			return errors.Wrapf(err, "deactivating tasks for version '%s'", versionId)
 		}

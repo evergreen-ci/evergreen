@@ -550,6 +550,7 @@ func TestPodAgentEndTask(t *testing.T) {
 				Status:           evergreen.TaskFailed,
 				DisplayName:      "some_task",
 				CommitQueueMerge: true,
+				BuildId:          buildID,
 			}
 			require.NoError(t, taskToInsert2.Insert())
 			require.NoError(t, taskToInsert.Insert())

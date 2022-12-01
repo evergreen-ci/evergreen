@@ -761,12 +761,12 @@ func FindNeedsContainerAllocation() ([]Task, error) {
 // needsContainerAllocation returns the query that filters for a task that
 // currently needs a container to be allocated to run it.
 func needsContainerAllocation() bson.M {
-	q := isContainerTaskScheduledQuery()
+	q := IsContainerTaskScheduledQuery()
 	q[ContainerAllocatedKey] = false
 	return q
 }
 
-func isContainerTaskScheduledQuery() bson.M {
+func IsContainerTaskScheduledQuery() bson.M {
 	return bson.M{
 		StatusKey:            evergreen.TaskUndispatched,
 		ActivatedKey:         true,

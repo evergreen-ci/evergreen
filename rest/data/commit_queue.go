@@ -231,7 +231,7 @@ func CommitQueueRemoveItem(identifier, issue, user string) (*restModel.APICommit
 	if err != nil {
 		return nil, errors.Wrapf(err, "verifying if version exists for issue '%s'", issue)
 	}
-	removed, err := cq.RemoveItemAndPreventMerge(issue, version != nil, user)
+	removed, err := model.RemoveItemAndPreventMerge(cq, issue, version != nil, user)
 	if err != nil {
 		return nil, errors.Wrapf(err, "removing item and preventing merge for commit queue item '%s'", issue)
 	}

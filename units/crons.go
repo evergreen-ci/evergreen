@@ -1316,7 +1316,7 @@ func PopulatePodAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 			return nil
 		}
 
-		if err := task.DisableStaleContainerTasks(evergreen.StaleContainerTaskMonitor); err != nil {
+		if err := model.DisableStaleContainerTasks(evergreen.StaleContainerTaskMonitor); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not disable stale container tasks",
 				"context": "pod allocation",
