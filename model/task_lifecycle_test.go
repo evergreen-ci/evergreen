@@ -154,12 +154,12 @@ func TestDisableStaleContainerTasks(t *testing.T) {
 			v := &Version{
 				Id: versionId.Hex(),
 			}
+			require.NoError(t, v.Insert())
 			b := &build.Build{
 				Id:      "build-id",
 				Version: v.Id,
 			}
 			require.NoError(t, b.Insert())
-			require.NoError(t, v.Insert())
 			task := task.Task{
 				Id:                "task-id",
 				BuildId:           b.Id,
@@ -175,7 +175,7 @@ func TestDisableStaleContainerTasks(t *testing.T) {
 
 func TestDisableOneTask(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(task.Collection, event.EventCollection))
+		assert.NoError(t, db.ClearCollections(task.Collection, event.EventCollection, build.Collection, VersionCollection))
 	}()
 
 	type disableFunc func(t *testing.T, tsk task.Task) error
@@ -246,18 +246,27 @@ func TestDisableOneTask(t *testing.T) {
 				},
 			} {
 				t.Run(tName, func(t *testing.T) {
-					require.NoError(t, db.ClearCollections(task.Collection, event.EventCollection))
+					require.NoError(t, db.ClearCollections(task.Collection, event.EventCollection, build.Collection, VersionCollection))
+					versionId := bson.NewObjectId()
+					v := &Version{
+						Id: versionId.Hex(),
+					}
+					require.NoError(t, v.Insert())
+					b := &build.Build{
+						Id:      "build-id",
+						Version: v.Id,
+					}
+					require.NoError(t, b.Insert())
 					tasks := [5]task.Task{
-						{Id: "display-task0", DisplayOnly: true, ExecutionTasks: []string{"exec-task1", "exec-task2"}, Activated: true},
-						{Id: "exec-task1", DisplayTaskId: utility.ToStringPtr("display-task0"), Activated: true},
-						{Id: "exec-task2", DisplayTaskId: utility.ToStringPtr("display-task0"), Activated: true},
-						{Id: "task3", Activated: true, DependsOn: []task.Dependency{{TaskId: "task4"}}},
-						{Id: "task4", Activated: true},
+						{Id: "display-task0", DisplayOnly: true, ExecutionTasks: []string{"exec-task1", "exec-task2"}, Activated: true, BuildId: b.Id, Version: v.Id},
+						{Id: "exec-task1", DisplayTaskId: utility.ToStringPtr("display-task0"), Activated: true, BuildId: b.Id, Version: v.Id},
+						{Id: "exec-task2", DisplayTaskId: utility.ToStringPtr("display-task0"), Activated: true, BuildId: b.Id, Version: v.Id},
+						{Id: "task3", Activated: true, DependsOn: []task.Dependency{{TaskId: "task4"}}, BuildId: b.Id, Version: v.Id},
+						{Id: "task4", Activated: true, BuildId: b.Id, Version: v.Id},
 					}
 					for _, task := range tasks {
 						require.NoError(t, task.Insert())
 					}
-
 					tCase(t, tasks)
 				})
 			}
@@ -267,7 +276,7 @@ func TestDisableOneTask(t *testing.T) {
 
 func TestDisableManyTasks(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(task.Collection, event.EventCollection))
+		assert.NoError(t, db.ClearCollections(task.Collection, event.EventCollection, build.Collection, VersionCollection))
 	}()
 
 	for tName, tCase := range map[string]func(t *testing.T){
@@ -277,21 +286,29 @@ func TestDisableManyTasks(t *testing.T) {
 				DisplayOnly:    true,
 				ExecutionTasks: []string{"exec-task1", "exec-task2", "exec-task3"},
 				Activated:      true,
+				BuildId:        "build-id",
+				Version:        "abcdefghijk",
 			}
 			et1 := task.Task{
 				Id:            "exec-task1",
 				DisplayTaskId: utility.ToStringPtr(dt.Id),
 				Activated:     true,
+				BuildId:       "build-id",
+				Version:       "abcdefghijk",
 			}
 			et2 := task.Task{
 				Id:            "exec-task2",
 				DisplayTaskId: utility.ToStringPtr(dt.Id),
 				Activated:     true,
+				BuildId:       "build-id",
+				Version:       "abcdefghijk",
 			}
 			et3 := task.Task{
 				Id:            "exec-task3",
 				DisplayTaskId: utility.ToStringPtr(dt.Id),
 				Activated:     true,
+				BuildId:       "build-id",
+				Version:       "abcdefghijk",
 			}
 			require.NoError(t, dt.Insert())
 			require.NoError(t, et1.Insert())
@@ -329,32 +346,44 @@ func TestDisableManyTasks(t *testing.T) {
 				DisplayOnly:    true,
 				ExecutionTasks: []string{"exec-task1", "exec-task2"},
 				Activated:      true,
+				BuildId:        "build-id",
+				Version:        "abcdefghijk",
 			}
 			dt2 := task.Task{
 				Id:             "display-task2",
 				DisplayOnly:    true,
 				ExecutionTasks: []string{"exec-task3", "exec-task4"},
 				Activated:      true,
+				BuildId:        "build-id",
+				Version:        "abcdefghijk",
 			}
 			et1 := task.Task{
 				Id:            "exec-task1",
 				DisplayTaskId: utility.ToStringPtr(dt1.Id),
 				Activated:     true,
+				BuildId:       "build-id",
+				Version:       "abcdefghijk",
 			}
 			et2 := task.Task{
 				Id:            "exec-task2",
 				DisplayTaskId: utility.ToStringPtr(dt1.Id),
 				Activated:     true,
+				BuildId:       "build-id",
+				Version:       "abcdefghijk",
 			}
 			et3 := task.Task{
 				Id:            "exec-task3",
 				DisplayTaskId: utility.ToStringPtr(dt2.Id),
 				Activated:     true,
+				BuildId:       "build-id",
+				Version:       "abcdefghijk",
 			}
 			et4 := task.Task{
 				Id:            "exec-task4",
 				DisplayTaskId: utility.ToStringPtr(dt2.Id),
 				Activated:     true,
+				BuildId:       "build-id",
+				Version:       "abcdefghijk",
 			}
 			require.NoError(t, dt1.Insert())
 			require.NoError(t, dt2.Insert())
@@ -401,7 +430,17 @@ func TestDisableManyTasks(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(task.Collection, event.EventCollection))
+			require.NoError(t, db.ClearCollections(task.Collection, event.EventCollection, build.Collection, VersionCollection))
+			versionId := "abcdefghijk"
+			v := &Version{
+				Id: versionId,
+			}
+			require.NoError(t, v.Insert())
+			b := &build.Build{
+				Id:      "build-id",
+				Version: v.Id,
+			}
+			require.NoError(t, b.Insert())
 			tCase(t)
 		})
 	}
