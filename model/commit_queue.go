@@ -97,7 +97,7 @@ func preventMergeForItem(item commitqueue.CommitQueueItem, user string) error {
 		return errors.New("merge task doesn't exist")
 	}
 	event.LogMergeTaskUnscheduled(mergeTask.Id, mergeTask.Execution, user)
-	if err = task.DeactivateTasks([]task.Task{*mergeTask}, true, user); err != nil {
+	if err = DisableTasks(user, *mergeTask); err != nil {
 		return errors.Wrap(err, "disabling merge task")
 	}
 
