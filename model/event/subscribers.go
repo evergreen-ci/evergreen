@@ -156,7 +156,7 @@ func (s *WebhookSubscriber) validate() error {
 	catcher.AddWhen(len(s.Secret) == 0, errors.New("secret cannot be empty"))
 
 	catcher.AddWhen(s.Retries < 0, errors.New("retries cannot be negative"))
-	catcher.AddWhen(s.Retries > webhookRetryLimit, errors.Errorf("retries cannot be greater than %d", webhookRetryLimit))
+	catcher.AddWhen(s.Retries > webhookRetryLimit, errors.Errorf("cannot retry more than %d times", webhookRetryLimit))
 
 	catcher.AddWhen(s.MinDelayMS < 0, errors.New("min delay cannot be negative"))
 	catcher.AddWhen(s.MinDelayMS > webhookMinDelayLimit, errors.Errorf("min delay cannot be greater than %d ms", webhookMinDelayLimit))
