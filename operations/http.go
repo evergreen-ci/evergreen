@@ -546,6 +546,7 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		GitMetadata       patch.GitMetadata  `json:"git_metadata"`
 		RepeatDefinition  bool               `json:"reuse_definition"`
 		RepeatFailed      bool               `json:"repeat_failed"`
+		RepeatPatchId     string             `json:"repeat_patch_id"`
 		GithubAuthor      string             `json:"github_author"`
 	}{
 		Description:       incomingPatch.description,
@@ -569,6 +570,7 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		GitMetadata:       incomingPatch.gitMetadata,
 		RepeatDefinition:  incomingPatch.repeatDefinition,
 		RepeatFailed:      incomingPatch.repeatFailed,
+		RepeatPatchId:     incomingPatch.repeatPatchId,
 		GithubAuthor:      incomingPatch.githubAuthor,
 	}
 

@@ -74,12 +74,12 @@ func (t *TriggerIntent) ShouldFinalizePatch() bool {
 	return false
 }
 
-func (t *TriggerIntent) ReusePreviousPatchDefinition() bool {
-	return false
+func (t *TriggerIntent) RepeatPreviousPatchDefinition() (string, bool) {
+	return "", false
 }
 
-func (g *TriggerIntent) RepeatFailedTasksAndVariants() bool {
-	return false
+func (g *TriggerIntent) RepeatFailedTasksAndVariants() (string, bool) {
+	return "", false
 }
 
 func (t *TriggerIntent) GetAlias() string {
