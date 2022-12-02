@@ -72,7 +72,10 @@ func (a *Agent) removeTaskDirectory(tc *taskContext) {
 	})
 }
 
-// removeAll is the same as os.RemoveAll, but recursively changes permissions for subdirectories and contents before removing
+// removeAll is the same as os.RemoveAll, but recursively changes permissions
+// for subdirectories and contents before removing. The permissions change fixes
+// an issue where some files may be marked read-only, which prevents
+// os.RemoveAll from deleting them.
 func (a *Agent) removeAll(dir string) error {
 	grip.Error(errors.Wrapf(filepath.Walk(dir, func(path string, _ os.FileInfo, err error) error {
 		if err != nil {
@@ -101,7 +104,7 @@ func (a *Agent) removeAll(dir string) error {
 // management, and only attempts to clean up the agent's working
 // directory, so files not located in a directory may still cause
 // issues.
-func tryCleanupDirectory(dir string) {
+func (a *Agent) tryCleanupDirectory(dir string) {
 	defer recovery.LogStackTraceAndContinue("clean up directories")
 
 	if dir == "" {
@@ -162,7 +165,7 @@ func tryCleanupDirectory(dir string) {
 
 	grip.Infof("Attempting to clean up directory '%s'.", dir)
 	for _, p := range paths {
-		if err = os.RemoveAll(p); err != nil {
+		if err = a.removeAll(p); err != nil {
 			grip.Notice(errors.Wrapf(err, "removing path '%s'", p))
 		}
 	}

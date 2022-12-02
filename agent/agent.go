@@ -174,7 +174,7 @@ func (a *Agent) Start(ctx context.Context) error {
 		return errors.Wrap(err, "starting status server")
 	}
 	if a.opts.Cleanup {
-		tryCleanupDirectory(a.opts.WorkingDirectory)
+		a.tryCleanupDirectory(a.opts.WorkingDirectory)
 	}
 
 	return errors.Wrap(a.loop(ctx), "executing main agent loop")
