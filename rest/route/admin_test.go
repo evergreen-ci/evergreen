@@ -196,7 +196,6 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.ServiceFlags.S3BinaryDownloadsDisabled, settings.ServiceFlags.S3BinaryDownloadsDisabled)
 	s.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, settings.ServiceFlags.CloudCleanupDisabled)
 	s.EqualValues(testSettings.ServiceFlags.ContainerConfigurationsDisabled, settings.ServiceFlags.ContainerConfigurationsDisabled)
-	s.EqualValues(testSettings.ServiceFlags.SlackAppDisabled, settings.ServiceFlags.SlackAppDisabled)
 	s.EqualValues(testSettings.Slack.Level, settings.Slack.Level)
 	s.EqualValues(testSettings.Slack.Options.Channel, settings.Slack.Options.Channel)
 	s.EqualValues(testSettings.Splunk.SplunkConnectionInfo.Channel, settings.Splunk.SplunkConnectionInfo.Channel)
