@@ -94,7 +94,6 @@ var (
 	backgroundCleanupDisabledKey       = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundCleanupDisabled")
 	cloudCleanupDisabledKey            = bsonutil.MustHaveTag(ServiceFlags{}, "CloudCleanupDisabled")
 	containerConfigurationsDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "ContainerConfigurationsDisabled")
-	slackAppDisabledKey                = bsonutil.MustHaveTag(ServiceFlags{}, "SlackAppDisabled")
 	partialRouteAuthDisabledKey        = bsonutil.MustHaveTag(ServiceFlags{}, "PartialRouteAuthDisabled")
 	unrecognizedPodCleanupDisabledKey  = bsonutil.MustHaveTag(ServiceFlags{}, "UnrecognizedPodCleanupDisabled")
 

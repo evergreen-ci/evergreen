@@ -389,7 +389,6 @@ func MockConfig() *evergreen.Settings {
 			UnrecognizedPodCleanupDisabled:  true,
 			CloudCleanupDisabled:            true,
 			ContainerConfigurationsDisabled: true,
-			SlackAppDisabled:                true,
 			PartialRouteAuthDisabled:        true,
 		},
 		SSHKeyDirectory: "/ssh_key_directory",

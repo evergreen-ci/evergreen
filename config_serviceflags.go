@@ -34,7 +34,6 @@ type ServiceFlags struct {
 	BackgroundCleanupDisabled       bool `bson:"background_cleanup_disabled" json:"background_cleanup_disabled"`
 	CloudCleanupDisabled            bool `bson:"cloud_cleanup_disabled" json:"cloud_cleanup_disabled"`
 	ContainerConfigurationsDisabled bool `bson:"container_configurations_disabled" json:"container_configurations_disabled"`
-	SlackAppDisabled                bool `bson:"slack_app_disabled" json:"slack_app_disabled"`
 	PartialRouteAuthDisabled        bool `bson:"partial_route_auth_disabled" json:"partial_route_auth_disabled"`
 
 	// Notification Flags
@@ -107,7 +106,6 @@ func (c *ServiceFlags) Set() error {
 			cloudCleanupDisabledKey:            c.CloudCleanupDisabled,
 			containerConfigurationsDisabledKey: c.ContainerConfigurationsDisabled,
 			partialRouteAuthDisabledKey:        c.PartialRouteAuthDisabled,
-			slackAppDisabledKey:                c.SlackAppDisabled,
 			unrecognizedPodCleanupDisabledKey:  c.UnrecognizedPodCleanupDisabled,
 		},
 	}, options.Update().SetUpsert(true))
