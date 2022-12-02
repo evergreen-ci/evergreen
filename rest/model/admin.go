@@ -2169,7 +2169,6 @@ type APISlackOptions struct {
 	Hostname      *string         `json:"hostname"`
 	Name          *string         `json:"name"`
 	Username      *string         `json:"username"`
-	IconURL       *string         `json:"icon_url"`
 	BasicMetadata bool            `json:"add_basic_metadata"`
 	Fields        bool            `json:"use_fields"`
 	AllFields     bool            `json:"all_fields"`
@@ -2183,7 +2182,6 @@ func (a *APISlackOptions) BuildFromService(h interface{}) error {
 		a.Hostname = utility.ToStringPtr(v.Hostname)
 		a.Name = utility.ToStringPtr(v.Name)
 		a.Username = utility.ToStringPtr(v.Username)
-		a.IconURL = utility.ToStringPtr(v.IconURL)
 		a.BasicMetadata = v.BasicMetadata
 		a.Fields = v.Fields
 		a.AllFields = v.AllFields
@@ -2203,7 +2201,6 @@ func (a *APISlackOptions) ToService() (interface{}, error) {
 		Hostname:      utility.FromStringPtr(a.Hostname),
 		Name:          utility.FromStringPtr(a.Name),
 		Username:      utility.FromStringPtr(a.Username),
-		IconURL:       utility.FromStringPtr(a.IconURL),
 		BasicMetadata: a.BasicMetadata,
 		Fields:        a.Fields,
 		AllFields:     a.AllFields,

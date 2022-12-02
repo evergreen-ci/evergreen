@@ -722,7 +722,6 @@ func (e *envState) initSenders(ctx context.Context) error {
 			Channel:  "#",
 			Name:     "evergreen",
 			Username: "Evergreen",
-			IconURL:  fmt.Sprintf("%s/static/img/evergreen_green_150x150.png", e.settings.Ui.Url),
 		}, slack.Token, levelInfo)
 		if err != nil {
 			return errors.Wrap(err, "setting up Slack logger")
