@@ -149,11 +149,11 @@ func makeMockManager() Manager {
 	}
 }
 
-func (mockMgr *mockManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, error) {
-	l := mockMgr.mutex
+func (m *mockManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, error) {
+	l := m.mutex
 	l.Lock()
 	defer l.Unlock()
-	mockMgr.Instances[h.Id] = MockInstance{
+	m.Instances[h.Id] = MockInstance{
 		IsUp:               false,
 		IsSSHReachable:     false,
 		Status:             StatusInitializing,
@@ -164,12 +164,12 @@ func (mockMgr *mockManager) SpawnHost(ctx context.Context, h *host.Host) (*host.
 	return h, nil
 }
 
-func (mockMgr *mockManager) ModifyHost(ctx context.Context, host *host.Host, changes host.HostModifyOptions) error {
-	l := mockMgr.mutex
+func (m *mockManager) ModifyHost(ctx context.Context, host *host.Host, changes host.HostModifyOptions) error {
+	l := m.mutex
 	l.Lock()
 	defer l.Unlock()
 	var err error
-	instance, ok := mockMgr.Instances[host.Id]
+	instance, ok := m.Instances[host.Id]
 	if !ok {
 		return errors.Errorf("unable to fetch host '%s'", host.Id)
 	}
@@ -177,7 +177,7 @@ func (mockMgr *mockManager) ModifyHost(ctx context.Context, host *host.Host, cha
 	if len(changes.AddInstanceTags) > 0 {
 		host.AddTags(changes.AddInstanceTags)
 		instance.Tags = host.InstanceTags
-		mockMgr.Instances[host.Id] = instance
+		m.Instances[host.Id] = instance
 		if err = host.SetTags(); err != nil {
 			return errors.Errorf("adding tags in DB")
 		}
@@ -185,7 +185,7 @@ func (mockMgr *mockManager) ModifyHost(ctx context.Context, host *host.Host, cha
 
 	if len(changes.DeleteInstanceTags) > 0 {
 		instance.Tags = host.InstanceTags
-		mockMgr.Instances[host.Id] = instance
+		m.Instances[host.Id] = instance
 		host.DeleteTags(changes.DeleteInstanceTags)
 		if err = host.SetTags(); err != nil {
 			return errors.Errorf("deleting tags in DB")
@@ -194,7 +194,7 @@ func (mockMgr *mockManager) ModifyHost(ctx context.Context, host *host.Host, cha
 
 	if changes.InstanceType != "" {
 		instance.Type = host.InstanceType
-		mockMgr.Instances[host.Id] = instance
+		m.Instances[host.Id] = instance
 		if err = host.SetInstanceType(changes.InstanceType); err != nil {
 			return errors.Errorf("setting instance type in DB")
 		}
@@ -221,17 +221,20 @@ func (mockMgr *mockManager) ModifyHost(ctx context.Context, host *host.Host, cha
 	return nil
 }
 
-// get the status of an instance
-func (mockMgr *mockManager) GetInstanceStatus(ctx context.Context, host *host.Host) (CloudStatus, error) {
-	l := mockMgr.mutex
-	l.RLock()
-	instance, ok := mockMgr.Instances[host.Id]
-	l.RUnlock()
-	if !ok {
-		return StatusUnknown, errors.Errorf("unable to fetch host '%s'", host.Id)
-	}
+// GetInstanceStatus gets the status of one instance according to the instance
+// data stored in the mock manager.
+func (m *mockManager) GetInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {
+	return m.getOrDefaultInstanceStatus(ctx, h.Id), nil
+}
 
-	return instance.Status, nil
+func (m *mockManager) getOrDefaultInstanceStatus(ctx context.Context, hostID string) CloudStatus {
+	m.mutex.RLock()
+	instance, ok := m.Instances[hostID]
+	m.mutex.RUnlock()
+	if !ok {
+		return StatusNonExistent
+	}
+	return instance.Status
 }
 
 func (m *mockManager) SetPortMappings(context.Context, *host.Host, *host.Host) error {
@@ -239,10 +242,10 @@ func (m *mockManager) SetPortMappings(context.Context, *host.Host, *host.Host) e
 }
 
 // get instance DNS
-func (mockMgr *mockManager) GetDNSName(ctx context.Context, host *host.Host) (string, error) {
-	l := mockMgr.mutex
+func (m *mockManager) GetDNSName(ctx context.Context, host *host.Host) (string, error) {
+	l := m.mutex
 	l.RLock()
-	instance, ok := mockMgr.Instances[host.Id]
+	instance, ok := m.Instances[host.Id]
 	l.RUnlock()
 	if !ok {
 		return "", errors.Errorf("unable to fetch host '%s'", host.Id)
@@ -255,26 +258,26 @@ func (_ *mockManager) GetSettings() ProviderSettings {
 }
 
 // terminate an instance
-func (mockMgr *mockManager) TerminateInstance(ctx context.Context, host *host.Host, user, reason string) error {
-	l := mockMgr.mutex
+func (m *mockManager) TerminateInstance(ctx context.Context, host *host.Host, user, reason string) error {
+	l := m.mutex
 	l.Lock()
 	defer l.Unlock()
-	instance, ok := mockMgr.Instances[host.Id]
+	instance, ok := m.Instances[host.Id]
 	if !ok {
 		return errors.Errorf("unable to fetch host '%s'", host.Id)
 	}
 
 	instance.Status = StatusTerminated
-	mockMgr.Instances[host.Id] = instance
+	m.Instances[host.Id] = instance
 
 	return errors.WithStack(host.Terminate(user, reason))
 }
 
-func (mockMgr *mockManager) StopInstance(ctx context.Context, host *host.Host, user string) error {
-	l := mockMgr.mutex
+func (m *mockManager) StopInstance(ctx context.Context, host *host.Host, user string) error {
+	l := m.mutex
 	l.Lock()
 	defer l.Unlock()
-	instance, ok := mockMgr.Instances[host.Id]
+	instance, ok := m.Instances[host.Id]
 	if !ok {
 		return errors.Errorf("unable to fetch host '%s'", host.Id)
 	}
@@ -282,17 +285,17 @@ func (mockMgr *mockManager) StopInstance(ctx context.Context, host *host.Host, u
 		return errors.Errorf("cannot stop host '%s' because the instance is not running", host.Id)
 	}
 	instance.Status = StatusStopped
-	mockMgr.Instances[host.Id] = instance
+	m.Instances[host.Id] = instance
 
 	return errors.WithStack(host.SetStopped(user))
 
 }
 
-func (mockMgr *mockManager) StartInstance(ctx context.Context, host *host.Host, user string) error {
-	l := mockMgr.mutex
+func (m *mockManager) StartInstance(ctx context.Context, host *host.Host, user string) error {
+	l := m.mutex
 	l.Lock()
 	defer l.Unlock()
-	instance, ok := mockMgr.Instances[host.Id]
+	instance, ok := m.Instances[host.Id]
 	if !ok {
 		return errors.Errorf("unable to fetch host '%s'", host.Id)
 	}
@@ -300,20 +303,20 @@ func (mockMgr *mockManager) StartInstance(ctx context.Context, host *host.Host, 
 		return errors.Errorf("cannot start host '%s' because the instance is not stopped", host.Id)
 	}
 	instance.Status = StatusRunning
-	mockMgr.Instances[host.Id] = instance
+	m.Instances[host.Id] = instance
 
 	return errors.WithStack(host.SetRunning(user))
 }
 
-func (mockMgr *mockManager) Configure(ctx context.Context, settings *evergreen.Settings) error {
+func (m *mockManager) Configure(ctx context.Context, settings *evergreen.Settings) error {
 	//no-op. maybe will need to load something from settings in the future.
 	return nil
 }
 
-func (mockMgr *mockManager) IsUp(ctx context.Context, host *host.Host) (bool, error) {
-	l := mockMgr.mutex
+func (m *mockManager) IsUp(ctx context.Context, host *host.Host) (bool, error) {
+	l := m.mutex
 	l.RLock()
-	instance, ok := mockMgr.Instances[host.Id]
+	instance, ok := m.Instances[host.Id]
 	l.RUnlock()
 	if !ok {
 		return false, errors.Errorf("unable to fetch host '%s'", host.Id)
@@ -321,24 +324,24 @@ func (mockMgr *mockManager) IsUp(ctx context.Context, host *host.Host) (bool, er
 	return instance.IsUp, nil
 }
 
-func (mockMgr *mockManager) OnUp(ctx context.Context, host *host.Host) error {
-	l := mockMgr.mutex
+func (m *mockManager) OnUp(ctx context.Context, host *host.Host) error {
+	l := m.mutex
 	l.Lock()
 	defer l.Unlock()
-	instance, ok := mockMgr.Instances[host.Id]
+	instance, ok := m.Instances[host.Id]
 	if !ok {
 		return errors.Errorf("unable to fetch host '%s'", host.Id)
 	}
 	instance.OnUpRan = true
-	mockMgr.Instances[host.Id] = instance
+	m.Instances[host.Id] = instance
 
 	return nil
 }
 
-func (mockMgr *mockManager) TimeTilNextPayment(host *host.Host) time.Duration {
-	l := mockMgr.mutex
+func (m *mockManager) TimeTilNextPayment(host *host.Host) time.Duration {
+	l := m.mutex
 	l.RLock()
-	instance, ok := mockMgr.Instances[host.Id]
+	instance, ok := m.Instances[host.Id]
 	l.RUnlock()
 	if !ok {
 		return time.Duration(0)
@@ -346,26 +349,26 @@ func (mockMgr *mockManager) TimeTilNextPayment(host *host.Host) time.Duration {
 	return instance.TimeTilNextPayment
 }
 
-func (mockMgr *mockManager) AttachVolume(ctx context.Context, h *host.Host, attachment *host.VolumeAttachment) error {
-	l := mockMgr.mutex
+func (m *mockManager) AttachVolume(ctx context.Context, h *host.Host, attachment *host.VolumeAttachment) error {
+	l := m.mutex
 	l.Lock()
 	defer l.Unlock()
-	instance, ok := mockMgr.Instances[h.Id]
+	instance, ok := m.Instances[h.Id]
 	if !ok {
 		return errors.Errorf("unable to fetch host '%s'", h.Id)
 	}
 	instance.BlockDevices = append(instance.BlockDevices, attachment.VolumeID)
-	mockMgr.Instances[h.Id] = instance
+	m.Instances[h.Id] = instance
 
 	return errors.WithStack(h.AddVolumeToHost(attachment))
 }
 
-func (mockMgr *mockManager) DetachVolume(ctx context.Context, h *host.Host, volumeID string) error {
-	l := mockMgr.mutex
+func (m *mockManager) DetachVolume(ctx context.Context, h *host.Host, volumeID string) error {
+	l := m.mutex
 	l.Lock()
 	defer l.Unlock()
 
-	instance, ok := mockMgr.Instances[h.Id]
+	instance, ok := m.Instances[h.Id]
 	if !ok {
 		return errors.Errorf("unable to fetch host '%s'", h.Id)
 	}
@@ -374,22 +377,22 @@ func (mockMgr *mockManager) DetachVolume(ctx context.Context, h *host.Host, volu
 			instance.BlockDevices = append(instance.BlockDevices[:i], instance.BlockDevices[i+1:]...)
 		}
 	}
-	mockMgr.Instances[h.Id] = instance
+	m.Instances[h.Id] = instance
 
 	return errors.WithStack(h.RemoveVolumeFromHost(volumeID))
 }
 
-func (mockMgr *mockManager) CreateVolume(ctx context.Context, volume *host.Volume) (*host.Volume, error) {
-	l := mockMgr.mutex
+func (m *mockManager) CreateVolume(ctx context.Context, volume *host.Volume) (*host.Volume, error) {
+	l := m.mutex
 	l.Lock()
 	defer l.Unlock()
-	if mockMgr.Volumes == nil {
-		mockMgr.Volumes = map[string]MockVolume{}
+	if m.Volumes == nil {
+		m.Volumes = map[string]MockVolume{}
 	}
 	if volume.ID == "" {
 		volume.ID = primitive.NewObjectID().String()
 	}
-	mockMgr.Volumes[volume.ID] = MockVolume{}
+	m.Volumes[volume.ID] = MockVolume{}
 	if err := volume.Insert(); err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -397,19 +400,19 @@ func (mockMgr *mockManager) CreateVolume(ctx context.Context, volume *host.Volum
 	return volume, nil
 }
 
-func (mockMgr *mockManager) DeleteVolume(ctx context.Context, volume *host.Volume) error {
-	l := mockMgr.mutex
+func (m *mockManager) DeleteVolume(ctx context.Context, volume *host.Volume) error {
+	l := m.mutex
 	l.Lock()
 	defer l.Unlock()
-	delete(mockMgr.Volumes, volume.ID)
+	delete(m.Volumes, volume.ID)
 	return errors.WithStack(volume.Remove())
 }
 
-func (mockMgr *mockManager) ModifyVolume(ctx context.Context, volume *host.Volume, opts *model.VolumeModifyOptions) error {
-	l := mockMgr.mutex
+func (m *mockManager) ModifyVolume(ctx context.Context, volume *host.Volume, opts *model.VolumeModifyOptions) error {
+	l := m.mutex
 	l.Lock()
 	defer l.Unlock()
-	v, ok := mockMgr.Volumes[volume.ID]
+	v, ok := m.Volumes[volume.ID]
 	if opts.Size > 0 {
 		v.Size = opts.Size
 		volume.Size = opts.Size
@@ -434,18 +437,18 @@ func (mockMgr *mockManager) ModifyVolume(ctx context.Context, volume *host.Volum
 	}
 
 	if ok {
-		mockMgr.Volumes[volume.ID] = v
+		m.Volumes[volume.ID] = v
 	}
 
 	return nil
 }
 
-func (mockMgr *mockManager) GetVolumeAttachment(ctx context.Context, volumeID string) (*host.VolumeAttachment, error) {
-	l := mockMgr.mutex
+func (m *mockManager) GetVolumeAttachment(ctx context.Context, volumeID string) (*host.VolumeAttachment, error) {
+	l := m.mutex
 	l.Lock()
 	defer l.Unlock()
 
-	for id, instance := range mockMgr.Instances {
+	for id, instance := range m.Instances {
 		for _, device := range instance.BlockDevices {
 			if device == volumeID {
 				return &host.VolumeAttachment{HostID: id, VolumeID: volumeID}, nil
@@ -455,11 +458,14 @@ func (mockMgr *mockManager) GetVolumeAttachment(ctx context.Context, volumeID st
 	return nil, nil
 }
 
-func (mockMgr *mockManager) GetInstanceStatuses(ctx context.Context, hosts []host.Host) (map[string]CloudStatus, error) {
-	if len(hosts) != 1 {
-		return nil, errors.New("expecting 1 hosts")
+// GetInstanceStatus gets the status of all the instances in the slice according
+// to the instance data stored in the mock manager.
+func (m *mockManager) GetInstanceStatuses(ctx context.Context, hosts []host.Host) (map[string]CloudStatus, error) {
+	statuses := map[string]CloudStatus{}
+	for _, h := range hosts {
+		statuses[h.Id] = m.getOrDefaultInstanceStatus(ctx, h.Id)
 	}
-	return map[string]CloudStatus{hosts[0].Id: StatusRunning}, nil
+	return statuses, nil
 }
 
 func (m *mockManager) CheckInstanceType(ctx context.Context, instanceType string) error {
