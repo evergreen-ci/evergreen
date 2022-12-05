@@ -43,6 +43,7 @@ func Setup() {
 
 		path := filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings)
 		env, err := evergreen.NewEnvironment(ctx, path, nil)
+
 		grip.EmergencyPanic(message.WrapError(err, message.Fields{
 			"message": "could not initialize test environment",
 			"path":    filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings),
@@ -389,7 +390,6 @@ func MockConfig() *evergreen.Settings {
 			UnrecognizedPodCleanupDisabled:  true,
 			CloudCleanupDisabled:            true,
 			ContainerConfigurationsDisabled: true,
-			SlackAppDisabled:                true,
 			PartialRouteAuthDisabled:        true,
 		},
 		SSHKeyDirectory: "/ssh_key_directory",
