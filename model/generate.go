@@ -218,7 +218,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 	// Only consider batchtime for mainline builds. We should always respect activate if it is set.
 	activationInfo := g.findTasksAndVariantsWithSpecificActivations(v.Requester)
 
-	newTVPairs := g.getNewTasksWithDependencies(v, p)
+	newTVPairs := g.getNewTasksWithDependencies(v, p, &activationInfo)
 
 	existingBuilds, err := build.Find(build.ByVersion(v.Id))
 	if err != nil {
@@ -315,7 +315,7 @@ func (g *GeneratedProject) CheckForCycles(v *Version, p *Project, projectRef *Pr
 // simulateNewTasks adds the tasks we're planning to add to the version to the graph and
 // adds simulated edges from each task that depends on the generator to each of the generated tasks.
 func (g *GeneratedProject) simulateNewTasks(graph task.DependencyGraph, v *Version, p *Project, projectRef *ProjectRef) (task.DependencyGraph, error) {
-	newTasks := g.getNewTasksWithDependencies(v, p)
+	newTasks := g.getNewTasksWithDependencies(v, p, nil)
 
 	creationInfo := TaskCreationInfo{
 		Project:    p,
@@ -333,14 +333,15 @@ func (g *GeneratedProject) simulateNewTasks(graph task.DependencyGraph, v *Versi
 }
 
 // getNewTasksWithDependencies returns the generated tasks and their recursive dependencies.
-func (g *GeneratedProject) getNewTasksWithDependencies(v *Version, p *Project) TaskVariantPairs {
+func (g *GeneratedProject) getNewTasksWithDependencies(v *Version, p *Project, activationInfo *specificActivationInfo) TaskVariantPairs {
 	newTVPairs := TaskVariantPairs{}
 	for _, bv := range g.BuildVariants {
 		newTVPairs = appendTasks(newTVPairs, bv, p)
 	}
 
 	var err error
-	newTVPairs.ExecTasks, err = IncludeDependencies(p, newTVPairs.ExecTasks, v.Requester)
+	// some comment
+	newTVPairs.ExecTasks, err = IncludeDependencies(p, newTVPairs.ExecTasks, v.Requester, activationInfo)
 	grip.Warning(message.WrapError(err, message.Fields{
 		"message": "error including dependencies for generator",
 		"task":    g.Task.Id,
@@ -443,9 +444,10 @@ func (g *GeneratedProject) filterInactiveTasks(tasks TVPairSet, v *Version, p *P
 }
 
 type specificActivationInfo struct {
-	stepbackTasks      map[string][]specificStepbackInfo // tasks by variant that are being stepped back, along with the stepback depth to use
-	activationTasks    map[string][]string               // tasks by variant that have batchtime or activate specified
-	activationVariants []string                          // variants that have batchtime or activate specified
+	stepbackTasks            map[string][]specificStepbackInfo // tasks by variant that are being stepped back, along with the stepback depth to use
+	activationTasks          map[string][]string               // tasks by variant that have batchtime or activate specified
+	activationVariants       []string                          // variants that have batchtime or activate specified
+	generatedProjectVariants []parserBV                        // list of variants that are specified in the generated project
 }
 
 type specificStepbackInfo struct {
@@ -453,12 +455,22 @@ type specificStepbackInfo struct {
 	depth int // store the depth that the new stepback task should use
 }
 
-func newSpecificActivationInfo() specificActivationInfo {
+func newSpecificActivationInfo(buildVariants []parserBV) specificActivationInfo {
 	return specificActivationInfo{
-		stepbackTasks:      map[string][]specificStepbackInfo{},
-		activationTasks:    map[string][]string{},
-		activationVariants: []string{},
+		stepbackTasks:            map[string][]specificStepbackInfo{},
+		activationTasks:          map[string][]string{},
+		activationVariants:       []string{},
+		generatedProjectVariants: buildVariants,
 	}
+}
+
+func (b *specificActivationInfo) variantExistsInGeneratedProject(variant string) bool {
+	for bv := range b.generatedProjectVariants {
+		if b.generatedProjectVariants[bv].Name == variant {
+			return true
+		}
+	}
+	return false
 }
 
 func (b *specificActivationInfo) variantHasSpecificActivation(variant string) bool {
@@ -495,8 +507,12 @@ func (b *specificActivationInfo) taskHasSpecificActivation(variant, task string)
 	return utility.StringSliceContains(b.activationTasks[variant], task)
 }
 
+func (b *specificActivationInfo) taskOrVariantHasSpecificActivation(variant, task string) bool {
+	return b.taskHasSpecificActivation(variant, task) || b.variantHasSpecificActivation(variant)
+}
+
 func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester string) specificActivationInfo {
-	res := newSpecificActivationInfo()
+	res := newSpecificActivationInfo(g.BuildVariants)
 	for _, bv := range g.BuildVariants {
 		// Only consider batchtime for certain requesters
 		if evergreen.ShouldConsiderBatchtime(requester) && bv.hasSpecificActivation() {

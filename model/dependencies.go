@@ -6,9 +6,10 @@ import (
 )
 
 type dependencyIncluder struct {
-	Project   *Project
-	requester string
-	included  map[TVPair]bool
+	Project           *Project
+	requester         string
+	included          map[TVPair]bool
+	generatedVariants map[string]bool
 }
 
 // IncludeDependencies takes a project and a slice of variant/task pairs names
@@ -16,23 +17,23 @@ type dependencyIncluder struct {
 // for the given set of tasks.
 // If any dependency is cross-variant, it will include the variant and task for that dependency.
 // This function can return an error, but it should be treated as an informational warning
-func IncludeDependencies(project *Project, tvpairs []TVPair, requester string) ([]TVPair, error) {
+func IncludeDependencies(project *Project, tvpairs []TVPair, requester string, activationInfo *specificActivationInfo) ([]TVPair, error) {
 	di := &dependencyIncluder{Project: project, requester: requester}
-	return di.include(tvpairs)
+	return di.include(tvpairs, activationInfo)
 }
 
 // include crawls the tasks represented by the combination of variants and tasks and
 // add or removes tasks based on the dependency graph. Dependent tasks
 // are added; tasks that depend on unreachable tasks are pruned. New slices
 // of variants and tasks are returned.
-func (di *dependencyIncluder) include(initialDeps []TVPair) ([]TVPair, error) {
+func (di *dependencyIncluder) include(initialDeps []TVPair, activationInfo *specificActivationInfo) ([]TVPair, error) {
 	di.included = map[TVPair]bool{}
-
+	di.generatedVariants = map[string]bool{}
 	warnings := grip.NewBasicCatcher()
 	// handle each pairing, recursively adding and pruning based
 	// on the task's dependencies
 	for _, d := range initialDeps {
-		_, err := di.handle(d)
+		_, err := di.handle(d, activationInfo)
 		warnings.Add(err)
 	}
 
@@ -42,6 +43,12 @@ func (di *dependencyIncluder) include(initialDeps []TVPair) ([]TVPair, error) {
 			outPairs = append(outPairs, pair)
 		}
 	}
+	// some comment
+	for variant, addToActivationInfo := range di.generatedVariants {
+		if addToActivationInfo {
+			activationInfo.activationVariants = append(activationInfo.activationVariants, variant)
+		}
+	}
 	return outPairs, warnings.Resolve()
 }
 
@@ -49,7 +56,7 @@ func (di *dependencyIncluder) include(initialDeps []TVPair) ([]TVPair, error) {
 // on. Returns true if the task and all of its dependent tasks can be scheduled
 // for the requester. Returns false if it cannot be scheduled, with an error
 // explaining why
-func (di *dependencyIncluder) handle(pair TVPair) (bool, error) {
+func (di *dependencyIncluder) handle(pair TVPair, activationInfo *specificActivationInfo) (bool, error) {
 	if included, ok := di.included[pair]; ok {
 		// we've been here before, so don't redo work
 		return included, nil
@@ -58,7 +65,7 @@ func (di *dependencyIncluder) handle(pair TVPair) (bool, error) {
 	// if the given task is a task group, recurse on each task
 	if tg := di.Project.FindTaskGroup(pair.TaskName); tg != nil {
 		for _, t := range tg.Tasks {
-			ok, err := di.handle(TVPair{TaskName: t, Variant: pair.Variant})
+			ok, err := di.handle(TVPair{TaskName: t, Variant: pair.Variant}, activationInfo)
 			if !ok {
 				di.included[pair] = false
 				return false, errors.Wrapf(err, "task group '%s' in variant '%s' contains unschedulable task '%s'", pair.TaskName, pair.Variant, t)
@@ -89,9 +96,20 @@ func (di *dependencyIncluder) handle(pair TVPair) (bool, error) {
 	di.included[pair] = true
 
 	// queue up all dependencies for recursive inclusion
+	// if the pair is inactive, include the deps in the inactive list
+	// if a generated dependency exists in a build variant that is not
+	// defined in the generated project, it will be added to the inactive list.
 	deps := di.expandDependencies(pair, bvt.DependsOn)
+	setActivation := activationInfo != nil && activationInfo.taskOrVariantHasSpecificActivation(pair.Variant, pair.TaskName)
 	for _, dep := range deps {
-		ok, err := di.handle(dep)
+		if activationInfo != nil && !activationInfo.variantExistsInGeneratedProject(dep.Variant) {
+			if _, ok := di.generatedVariants[dep.Variant]; !ok {
+				di.generatedVariants[dep.Variant] = setActivation
+			} else if !setActivation {
+				di.generatedVariants[dep.Variant] = setActivation
+			}
+		}
+		ok, err := di.handle(dep, activationInfo)
 		if !ok {
 			di.included[pair] = false
 			return false, errors.Wrapf(err, "task '%s' in variant '%s' has an unschedulable dependency", pair.TaskName, pair.Variant)
