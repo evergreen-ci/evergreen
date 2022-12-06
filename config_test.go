@@ -257,10 +257,14 @@ func (s *AdminSuite) TestAlertsConfig() {
 
 func (s *AdminSuite) TestAmboyConfig() {
 	config := AmboyConfig{
-		Name:                                  "amboy",
-		SingleName:                            "single",
-		DBURL:                                 "mongodb://localhost:27017",
-		DB:                                    "db",
+		Name:       "amboy",
+		SingleName: "single",
+		DB: AmboyDBConfig{
+			URL:      "mongodb://localhost:27017",
+			DB:       "db",
+			Username: "user",
+			Password: "password",
+		},
 		PoolSizeLocal:                         10,
 		PoolSizeRemote:                        20,
 		LocalStorage:                          30,

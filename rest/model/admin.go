@@ -355,8 +355,7 @@ func (a *APISMTPConfig) ToService() (interface{}, error) {
 type APIAmboyConfig struct {
 	Name                                  *string                    `json:"name"`
 	SingleName                            *string                    `json:"single_name"`
-	DBURL                                 *string                    `json:"db_url"`
-	DB                                    *string                    `json:"database"`
+	DB                                    APIAmboyDBConfig           `json:"db"`
 	PoolSizeLocal                         int                        `json:"pool_size_local"`
 	PoolSizeRemote                        int                        `json:"pool_size_remote"`
 	LocalStorage                          int                        `json:"local_storage_size"`
@@ -376,8 +375,9 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 	case evergreen.AmboyConfig:
 		a.Name = utility.ToStringPtr(v.Name)
 		a.SingleName = utility.ToStringPtr(v.SingleName)
-		a.DBURL = utility.ToStringPtr(v.DBURL)
-		a.DB = utility.ToStringPtr(v.DB)
+		if err := a.DB.BuildFromService(v.DB); err != nil {
+			return errors.Wrap(err, "converting Amboy DB settings to API model")
+		}
 		a.PoolSizeLocal = v.PoolSizeLocal
 		a.PoolSizeRemote = v.PoolSizeRemote
 		a.LocalStorage = v.LocalStorage
@@ -411,6 +411,16 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 	if !ok {
 		return nil, errors.Errorf("programmatic error: expected Amboy retry config but got type %T", i)
 	}
+
+	i, err = a.DB.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "converting Amboy DB settings to service model")
+	}
+	db, ok := i.(evergreen.AmboyDBConfig)
+	if !ok {
+		return nil, errors.Errorf("programmatic error: expected Amboy DB config but got type %T", i)
+	}
+
 	var dbNamedQueues []evergreen.AmboyNamedQueueConfig
 	for _, apiNamedQueue := range a.NamedQueues {
 		dbNamedQueues = append(dbNamedQueues, apiNamedQueue.ToService())
@@ -418,8 +428,7 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 	return evergreen.AmboyConfig{
 		Name:                                  utility.FromStringPtr(a.Name),
 		SingleName:                            utility.FromStringPtr(a.SingleName),
-		DBURL:                                 utility.FromStringPtr(a.DBURL),
-		DB:                                    utility.FromStringPtr(a.DB),
+		DB:                                    db,
 		PoolSizeLocal:                         a.PoolSizeLocal,
 		PoolSizeRemote:                        a.PoolSizeRemote,
 		LocalStorage:                          a.LocalStorage,
@@ -432,6 +441,35 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 		SampleSize:                            a.SampleSize,
 		Retry:                                 retry,
 		NamedQueues:                           dbNamedQueues,
+	}, nil
+}
+
+type APIAmboyDBConfig struct {
+	URL      *string `json:"url"`
+	DB       *string `json:"database"`
+	Username *string `json:"username"`
+	Password *string `json:"password"`
+}
+
+func (a *APIAmboyDBConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.AmboyDBConfig:
+		a.URL = utility.ToStringPtr(v.URL)
+		a.DB = utility.ToStringPtr(v.DB)
+		a.Username = utility.ToStringPtr(v.Username)
+		a.Password = utility.ToStringPtr(v.Password)
+		return nil
+	default:
+		return errors.Errorf("programmatic error: expected Amboy DB config but got type %T", h)
+	}
+}
+
+func (a *APIAmboyDBConfig) ToService() (interface{}, error) {
+	return evergreen.AmboyDBConfig{
+		URL:      utility.FromStringPtr(a.URL),
+		DB:       utility.FromStringPtr(a.DB),
+		Username: utility.FromStringPtr(a.Username),
+		Password: utility.FromStringPtr(a.Password),
 	}, nil
 }
 

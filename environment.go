@@ -397,8 +397,8 @@ func (e *envState) createApplicationQueue(ctx context.Context) error {
 	// configure the remote mongodb-backed amboy
 	// queue.
 	opts := queue.DefaultMongoDBOptions()
-	opts.URI = e.settings.Amboy.DBURL
-	opts.DB = e.settings.Amboy.DB
+	opts.URI = e.settings.Amboy.DB.URL
+	opts.DB = e.settings.Amboy.DB.DB
 	opts.Collection = e.settings.Amboy.Name
 	opts.Priority = e.settings.Amboy.RequireRemotePriority
 	opts.SkipQueueIndexBuilds = true
@@ -407,7 +407,6 @@ func (e *envState) createApplicationQueue(ctx context.Context) error {
 	opts.UseGroups = false
 	opts.LockTimeout = time.Duration(e.settings.Amboy.LockTimeoutMinutes) * time.Minute
 	opts.SampleSize = e.settings.Amboy.SampleSize
-	opts.Client = e.client
 
 	retryOpts := e.settings.Amboy.Retry.RetryableQueueOptions()
 	queueOpts := queue.MongoDBQueueOptions{
@@ -472,8 +471,8 @@ func (e *envState) createRemoteQueueGroup(ctx context.Context) error {
 
 func (e *envState) getRemoteQueueGroupDBOptions() queue.MongoDBOptions {
 	opts := queue.DefaultMongoDBOptions()
-	opts.URI = e.settings.Amboy.DBURL
-	opts.DB = e.settings.Amboy.DB
+	opts.URI = e.settings.Amboy.DB.URL
+	opts.DB = e.settings.Amboy.DB.DB
 	opts.Collection = e.settings.Amboy.Name
 	opts.Priority = e.settings.Amboy.RequireRemotePriority
 	opts.SkipQueueIndexBuilds = true
@@ -482,7 +481,6 @@ func (e *envState) getRemoteQueueGroupDBOptions() queue.MongoDBOptions {
 	opts.UseGroups = true
 	opts.GroupName = e.settings.Amboy.Name
 	opts.LockTimeout = time.Duration(e.settings.Amboy.LockTimeoutMinutes) * time.Minute
-	opts.Client = e.client
 	return opts
 }
 

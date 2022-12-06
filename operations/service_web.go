@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/management"
-	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/amboy/rest"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -207,11 +206,6 @@ func getAdminService(ctx context.Context, env evergreen.Environment, settings *e
 	if !ok {
 		return nil, errors.New("remote pool is not configured with an abortable pool")
 	}
-
-	opts := queue.DefaultMongoDBOptions()
-	opts.URI = settings.Database.Url
-	opts.DB = settings.Amboy.DB
-	opts.Priority = true
 
 	app := gimlet.NewApp()
 	app.AddMiddleware(gimlet.MakeRecoveryLogger())
