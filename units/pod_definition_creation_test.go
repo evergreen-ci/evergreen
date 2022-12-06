@@ -165,6 +165,23 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusDecommissioned, dbPod.Status, "intent pod should have been decommissioned after pod definition creation failed")
 		},
+		"CreatesSamePodDefinitionForSameInput": func(ctx context.Context, t *testing.T, j *podDefinitionCreationJob, p *pod.Pod) {
+			// opts := pod.TaskContainerCreationOptions{
+			//     Image:    "hadjri/evg-e2e-test-ubuntu",
+			//     MemoryMB: 8192,
+			//     CPU:      4096,
+			//     OS:       "linux",
+			//     Arch:     "amd64",
+			//     // kim: NOTE: because POD_ID is always changing for each new
+			//     // pod, it results in a different pod definition.
+			//     // kim: NOTE: could be resolved by only writing the environment
+			//     // variables in the TaskOverrides to RunTask (and possibly other
+			//     // things like CPU/memory, if we want those to be more
+			//     // dynamically configurable).
+			//     EnvVars: map[string]string{"POD_ID": "638a5a9b99727b1e61a2636e"},
+			//     // EnvSecrets: l
+			// }
+		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
