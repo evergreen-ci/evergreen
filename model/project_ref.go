@@ -1849,7 +1849,10 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			projectRefTaskSyncKey:              p.TaskSync,
 			ProjectRefDisabledStatsCacheKey:    p.DisabledStatsCache,
 			ProjectRefFilesIgnoredFromCacheKey: p.FilesIgnoredFromCache,
-			ProjectRefTracksPushEventsKey:      p.TracksPushEvents,
+		}
+		// Unlike other fields, this will only be set if we're actually modifying it since it's used by the backend.
+		if p.TracksPushEvents != nil {
+			setUpdate[ProjectRefTracksPushEventsKey] = p.TracksPushEvents
 		}
 		// Allow a user to modify owner and repo only if they are editing an unattached project
 		if !isRepo && !p.UseRepoSettings() && !defaultToRepo {
