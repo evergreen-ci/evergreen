@@ -83,6 +83,16 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 	existingContainerSecrets := projectRef.ContainerSecrets
 	projectRef.ContainerSecrets = nil
 
+	_, err = model.EnableWebhooks(ctx, projectRef)
+	if err != nil {
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message":            "error enabling webhooks",
+			"project_id":         projectRef.Id,
+			"project_identifier": projectRef.Identifier,
+			"owner":              projectRef.Owner,
+			"repo":               projectRef.Repo,
+		}))
+	}
 	err = projectRef.Add(u)
 	if err != nil {
 		return gimlet.ErrorResponse{
@@ -116,16 +126,6 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 		"project_identifier": projectRef.Identifier,
 		"user":               u.DisplayName(),
 	}))
-	_, err = model.EnableWebhooks(ctx, projectRef)
-	if err != nil {
-		grip.Debug(message.WrapError(err, message.Fields{
-			"message":            "error enabling webhooks",
-			"project_id":         projectRef.Id,
-			"project_identifier": projectRef.Identifier,
-			"owner":              projectRef.Owner,
-			"repo":               projectRef.Repo,
-		}))
-	}
 	return nil
 }
 
