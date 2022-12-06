@@ -2518,14 +2518,6 @@ func TestAddNewTasks(t *testing.T) {
 	}
 	assert.NoError(t, v.Insert())
 
-	existingTask := task.Task{
-		Id:           "t0",
-		DisplayName:  "t0",
-		BuildId:      "b0",
-		BuildVariant: "bv0",
-		Version:      "v0",
-	}
-
 	tasksToAdd := TaskVariantPairs{
 		ExecTasks: []TVPair{
 			{
@@ -2558,21 +2550,31 @@ func TestAddNewTasks(t *testing.T) {
 	for name, testCase := range map[string]struct {
 		activationInfo specificActivationInfo
 		activatedTasks []string
+		existingTask   task.Task
 	}{
 		"ActivatedNewTask": {
 			activationInfo: specificActivationInfo{},
 			activatedTasks: []string{"t0", "t1"},
+			existingTask: task.Task{
+				Id:           "t0",
+				DisplayName:  "t0",
+				BuildId:      "b0",
+				BuildVariant: "bv0",
+				Version:      "v0",
+				Activated:    true,
+			},
 		},
 		"DeactivatedNewTask": {
 			activationInfo: specificActivationInfo{activationTasks: map[string][]string{
 				b.BuildVariant: {"t1"},
 			}},
 			activatedTasks: []string{},
+			existingTask:   task.Task{},
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(task.Collection))
-			assert.NoError(t, existingTask.Insert())
+			assert.NoError(t, testCase.existingTask.Insert())
 
 			creationInfo := TaskCreationInfo{
 				Project:        &project,
