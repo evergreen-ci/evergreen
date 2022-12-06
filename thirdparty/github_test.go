@@ -42,9 +42,7 @@ func (s *githubSuite) SetupTest() {
 	s.token, err = s.config.GetGithubOauthToken()
 	s.NoError(err)
 
-	s.ctx, s.cancel = context.WithTimeout(context.Background(), 10*time.Second)
-	s.Require().NotNil(s.ctx)
-	s.Require().NotNil(s.cancel)
+	s.ctx, s.cancel = context.WithTimeout(context.Background(), 30*time.Second)
 }
 
 func (s *githubSuite) TearDownTest() {

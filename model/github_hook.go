@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -84,7 +85,9 @@ func FindGithubHookByID(hookID int) (*GithubHook, error) {
 }
 
 func SetupNewGithubHook(ctx context.Context, settings evergreen.Settings, owner string, repo string) (*GithubHook, error) {
-	respHook, err := thirdparty.CreateGithubHook(ctx, settings, owner, repo)
+	githubCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	respHook, err := thirdparty.CreateGithubHook(githubCtx, settings, owner, repo)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +106,9 @@ func SetupNewGithubHook(ctx context.Context, settings evergreen.Settings, owner 
 }
 
 func GetExistingGithubHook(ctx context.Context, settings evergreen.Settings, owner, repo string) (*GithubHook, error) {
-	hook, err := thirdparty.GetExistingGithubHook(ctx, settings, owner, repo)
+	githubCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	hook, err := thirdparty.GetExistingGithubHook(githubCtx, settings, owner, repo)
 	if err != nil {
 		return nil, err
 	}
