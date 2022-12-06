@@ -6,10 +6,10 @@ import (
 )
 
 type dependencyIncluder struct {
-	Project           *Project
-	requester         string
-	included          map[TVPair]bool
-	generatedVariants map[string]bool
+	Project                         *Project
+	requester                       string
+	included                        map[TVPair]bool
+	deactivateGeneratedVariantTasks map[string]bool
 }
 
 // IncludeDependencies takes a project and a slice of variant/task pairs names
@@ -28,7 +28,7 @@ func IncludeDependencies(project *Project, tvpairs []TVPair, requester string, a
 // of variants and tasks are returned.
 func (di *dependencyIncluder) include(initialDeps []TVPair, activationInfo *specificActivationInfo) ([]TVPair, error) {
 	di.included = map[TVPair]bool{}
-	di.generatedVariants = map[string]bool{}
+	di.deactivateGeneratedVariantTasks = map[string]bool{}
 	warnings := grip.NewBasicCatcher()
 	// handle each pairing, recursively adding and pruning based
 	// on the task's dependencies
@@ -43,8 +43,10 @@ func (di *dependencyIncluder) include(initialDeps []TVPair, activationInfo *spec
 			outPairs = append(outPairs, pair)
 		}
 	}
-	// some comment
-	for variant, addToActivationInfo := range di.generatedVariants {
+	// we deactivate variants that do not have specific activation set in the
+	// generated project but have been generated as dependencies of other
+	// explicitly inactive variants
+	for variant, addToActivationInfo := range di.deactivateGeneratedVariantTasks {
 		if addToActivationInfo {
 			activationInfo.activationVariants = append(activationInfo.activationVariants, variant)
 		}
@@ -96,17 +98,22 @@ func (di *dependencyIncluder) handle(pair TVPair, activationInfo *specificActiva
 	di.included[pair] = true
 
 	// queue up all dependencies for recursive inclusion
-	// if the pair is inactive, include the deps in the inactive list
-	// if a generated dependency exists in a build variant that is not
-	// defined in the generated project, it will be added to the inactive list.
 	deps := di.expandDependencies(pair, bvt.DependsOn)
-	setActivation := activationInfo != nil && activationInfo.taskOrVariantHasSpecificActivation(pair.Variant, pair.TaskName)
+
+	// If this function is invoked from generate.tasks, calculate all variants
+	// that need to be included as dependencies, but are not in the generated project.
+	// If all the task / variant pairs that spawn these dependencies are inactive, we
+	// also mark this newly generated variant as inactive.
+	pairSpecifiesActivation := activationInfo != nil && activationInfo.taskOrVariantHasSpecificActivation(pair.Variant, pair.TaskName)
 	for _, dep := range deps {
 		if activationInfo != nil && !activationInfo.variantExistsInGeneratedProject(dep.Variant) {
-			if _, ok := di.generatedVariants[dep.Variant]; !ok {
-				di.generatedVariants[dep.Variant] = setActivation
-			} else if !setActivation {
-				di.generatedVariants[dep.Variant] = setActivation
+			// If the new variant has not yet been added to deactivateGeneratedVariantTasks, or if the
+			// original pair needs to be active, we update deactivateGeneratedVariantTasks.
+			// We ultimately will only deactivate new variants where deactivateGeneratedVariantTasks[variant] = true.
+			// If deactivateGeneratedVariantTasks[variant] = false it signifies that there was at least
+			// one pair that depends on this new variant being active - so we cannot deactivate it.
+			if _, ok := di.deactivateGeneratedVariantTasks[dep.Variant]; !ok || !pairSpecifiesActivation {
+				di.deactivateGeneratedVariantTasks[dep.Variant] = pairSpecifiesActivation
 			}
 		}
 		ok, err := di.handle(dep, activationInfo)

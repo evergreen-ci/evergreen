@@ -340,7 +340,6 @@ func (g *GeneratedProject) getNewTasksWithDependencies(v *Version, p *Project, a
 	}
 
 	var err error
-	// some comment
 	newTVPairs.ExecTasks, err = IncludeDependencies(p, newTVPairs.ExecTasks, v.Requester, activationInfo)
 	grip.Warning(message.WrapError(err, message.Fields{
 		"message": "error including dependencies for generator",
@@ -447,7 +446,7 @@ type specificActivationInfo struct {
 	stepbackTasks            map[string][]specificStepbackInfo // tasks by variant that are being stepped back, along with the stepback depth to use
 	activationTasks          map[string][]string               // tasks by variant that have batchtime or activate specified
 	activationVariants       []string                          // variants that have batchtime or activate specified
-	generatedProjectVariants []parserBV                        // list of variants that are specified in the generated project
+	generatedProjectVariants []parserBV                        // list of all variants that are specified in the generated project
 }
 
 type specificStepbackInfo struct {
