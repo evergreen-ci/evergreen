@@ -301,7 +301,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		return err
 	}
 
-	if err = j.buildTasksandVariants(patchDoc, project); err != nil {
+	if err = j.buildTasksAndVariants(patchDoc, project); err != nil {
 		return err
 	}
 
@@ -450,20 +450,23 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	return catcher.Resolve()
 }
 
-func (j *patchIntentProcessor) buildTasksandVariants(patchDoc *patch.Patch, project *model.Project) error {
+func (j *patchIntentProcessor) buildTasksAndVariants(patchDoc *patch.Patch, project *model.Project) error {
 	var previousPatchStatus string
 	var err error
+	var reuseDef bool
+	reusePatchId, failedOnly := j.intent.RepeatFailedTasksAndVariants()
+	if !failedOnly {
+		reusePatchId, reuseDef = j.intent.RepeatPreviousPatchDefinition()
+	}
 
-	failedOnly := j.intent.RepeatFailedTasksAndVariants()
-
-	if j.intent.ReusePreviousPatchDefinition() || failedOnly {
-		previousPatchStatus, err = j.setToPreviousPatchDefinition(patchDoc, project, failedOnly)
+	if reuseDef || failedOnly {
+		previousPatchStatus, err = j.setToPreviousPatchDefinition(patchDoc, project, reusePatchId, failedOnly)
 		if err != nil {
 			return err
 		}
 	}
 
-	// verify that all variants exists
+	// Verify that all variants exists
 	for _, buildVariant := range patchDoc.BuildVariants {
 		if buildVariant == "all" || buildVariant == "" {
 			continue
@@ -510,25 +513,41 @@ func setTasksToPreviousFailed(patchDoc, previousPatch *patch.Patch, project *mod
 	return nil
 }
 
-func (j *patchIntentProcessor) setToPreviousPatchDefinition(patchDoc *patch.Patch, project *model.Project, failedOnly bool) (string, error) {
-	previousPatch, err := patch.FindOne(patch.MostRecentPatchByUserAndProject(j.user.Username(), project.Identifier))
-	if err != nil {
-		return "", errors.Wrap(err, "querying for most recent patch")
-	}
-	if previousPatch == nil {
-		return "", errors.Errorf("no previous patch available")
+// setToPreviousPatchDefinition sets the tasks/variants based on a previous patch.
+// If failedOnly is set, we only use the tasks/variants that failed.
+// If patchId isn't set, we just use the most recent patch for the project.
+func (j *patchIntentProcessor) setToPreviousPatchDefinition(patchDoc *patch.Patch,
+	project *model.Project, patchId string, failedOnly bool) (string, error) {
+	var reusePatch *patch.Patch
+	var err error
+	if patchId == "" {
+		reusePatch, err = patch.FindOne(patch.MostRecentPatchByUserAndProject(j.user.Username(), project.Identifier))
+		if err != nil {
+			return "", errors.Wrap(err, "querying for most recent patch")
+		}
+		if reusePatch == nil {
+			return "", errors.Errorf("no previous patch available")
+		}
+	} else {
+		reusePatch, err = patch.FindOneId(patchId)
+		if err != nil {
+			return "", errors.Wrapf(err, "querying for patch '%s'", patchId)
+		}
+		if reusePatch == nil {
+			return "", errors.Errorf("patch '%s' not found", patchId)
+		}
 	}
 
-	patchDoc.BuildVariants = previousPatch.BuildVariants
+	patchDoc.BuildVariants = reusePatch.BuildVariants
 	if failedOnly {
-		if err = setTasksToPreviousFailed(patchDoc, previousPatch, project); err != nil {
+		if err = setTasksToPreviousFailed(patchDoc, reusePatch, project); err != nil {
 			return "", errors.Wrap(err, "settings tasks to previous failed")
 		}
 	} else {
 		// Only add activated tasks from previous patch
 		query := db.Query(bson.M{
-			task.VersionKey:     previousPatch.Version,
-			task.DisplayNameKey: bson.M{"$in": previousPatch.Tasks},
+			task.VersionKey:     reusePatch.Version,
+			task.DisplayNameKey: bson.M{"$in": reusePatch.Tasks},
 			task.ActivatedKey:   true,
 			task.DisplayOnlyKey: bson.M{"$ne": true},
 		}).WithFields(task.DisplayNameKey)
@@ -540,10 +559,10 @@ func (j *patchIntentProcessor) setToPreviousPatchDefinition(patchDoc *patch.Patc
 		for _, t := range allActivatedTasks {
 			activatedTasks = append(activatedTasks, t.DisplayName)
 		}
-		patchDoc.Tasks = utility.StringSliceIntersection(activatedTasks, previousPatch.Tasks)
+		patchDoc.Tasks = utility.StringSliceIntersection(activatedTasks, reusePatch.Tasks)
 	}
 
-	return previousPatch.Status, nil
+	return reusePatch.Status, nil
 }
 
 func getPreviousFailedTasksAndDisplayTasks(project *model.Project, vt patch.VariantTasks, version string) ([]string, error) {

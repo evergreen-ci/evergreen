@@ -2107,7 +2107,6 @@ type APIServiceFlags struct {
 	BackgroundCleanupDisabled       bool `json:"background_cleanup_disabled"`
 	CloudCleanupDisabled            bool `json:"cloud_cleanup_disabled"`
 	ContainerConfigurationsDisabled bool `json:"container_configurations_disabled"`
-	SlackAppDisabled                bool `json:"slack_app_disabled"`
 	PartialRouteAuthDisabled        bool `json:"partial_route_auth_disabled"`
 
 	// Notifications Flags
@@ -2169,7 +2168,6 @@ type APISlackOptions struct {
 	Hostname      *string         `json:"hostname"`
 	Name          *string         `json:"name"`
 	Username      *string         `json:"username"`
-	IconURL       *string         `json:"icon_url"`
 	BasicMetadata bool            `json:"add_basic_metadata"`
 	Fields        bool            `json:"use_fields"`
 	AllFields     bool            `json:"all_fields"`
@@ -2183,7 +2181,6 @@ func (a *APISlackOptions) BuildFromService(h interface{}) error {
 		a.Hostname = utility.ToStringPtr(v.Hostname)
 		a.Name = utility.ToStringPtr(v.Name)
 		a.Username = utility.ToStringPtr(v.Username)
-		a.IconURL = utility.ToStringPtr(v.IconURL)
 		a.BasicMetadata = v.BasicMetadata
 		a.Fields = v.Fields
 		a.AllFields = v.AllFields
@@ -2203,7 +2200,6 @@ func (a *APISlackOptions) ToService() (interface{}, error) {
 		Hostname:      utility.FromStringPtr(a.Hostname),
 		Name:          utility.FromStringPtr(a.Name),
 		Username:      utility.FromStringPtr(a.Username),
-		IconURL:       utility.FromStringPtr(a.IconURL),
 		BasicMetadata: a.BasicMetadata,
 		Fields:        a.Fields,
 		AllFields:     a.AllFields,
@@ -2258,6 +2254,7 @@ type APIUIConfig struct {
 	Url            *string  `json:"url"`
 	HelpUrl        *string  `json:"help_url"`
 	UIv2Url        *string  `json:"uiv2_url"`
+	ParsleyUrl     *string  `json:"parsley_url"`
 	HttpListenAddr *string  `json:"http_listen_addr"`
 	Secret         *string  `json:"secret"`
 	DefaultProject *string  `json:"default_project"`
@@ -2274,6 +2271,7 @@ func (a *APIUIConfig) BuildFromService(h interface{}) error {
 		a.Url = utility.ToStringPtr(v.Url)
 		a.HelpUrl = utility.ToStringPtr(v.HelpUrl)
 		a.UIv2Url = utility.ToStringPtr(v.UIv2Url)
+		a.ParsleyUrl = utility.ToStringPtr(v.ParsleyUrl)
 		a.HttpListenAddr = utility.ToStringPtr(v.HttpListenAddr)
 		a.Secret = utility.ToStringPtr(v.Secret)
 		a.DefaultProject = utility.ToStringPtr(v.DefaultProject)
@@ -2293,6 +2291,7 @@ func (a *APIUIConfig) ToService() (interface{}, error) {
 		Url:            utility.FromStringPtr(a.Url),
 		HelpUrl:        utility.FromStringPtr(a.HelpUrl),
 		UIv2Url:        utility.FromStringPtr(a.UIv2Url),
+		ParsleyUrl:     utility.FromStringPtr(a.ParsleyUrl),
 		HttpListenAddr: utility.FromStringPtr(a.HttpListenAddr),
 		Secret:         utility.FromStringPtr(a.Secret),
 		DefaultProject: utility.FromStringPtr(a.DefaultProject),
@@ -2396,7 +2395,6 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.BackgroundReauthDisabled = v.BackgroundReauthDisabled
 		as.CloudCleanupDisabled = v.CloudCleanupDisabled
 		as.ContainerConfigurationsDisabled = v.ContainerConfigurationsDisabled
-		as.SlackAppDisabled = v.SlackAppDisabled
 		as.PartialRouteAuthDisabled = v.PartialRouteAuthDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
@@ -2438,7 +2436,6 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		BackgroundReauthDisabled:        as.BackgroundReauthDisabled,
 		CloudCleanupDisabled:            as.CloudCleanupDisabled,
 		ContainerConfigurationsDisabled: as.ContainerConfigurationsDisabled,
-		SlackAppDisabled:                as.SlackAppDisabled,
 		PartialRouteAuthDisabled:        as.PartialRouteAuthDisabled,
 	}, nil
 }

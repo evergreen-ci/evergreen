@@ -31,13 +31,13 @@ type Intent interface {
 	// intent should be finalized
 	ShouldFinalizePatch() bool
 
-	// ReusePreviousPatchDefinition gives the patch the same tasks/variants
-	// as the previous patch submitted for this project by the user.
-	ReusePreviousPatchDefinition() bool
+	// RepeatPreviousPatchDefinition returns true if we should use the same tasks/variants as a previous patch.
+	// Returns patch ID if specified, otherwise we use the latest patch.
+	RepeatPreviousPatchDefinition() (string, bool)
 
-	// RepeatFailedTasksAndVariants gives the patch the tasks/variants
-	// from the previous patch that had failed.
-	RepeatFailedTasksAndVariants() bool
+	// RepeatFailedTasksAndVariants returns true if we should use the failed tasks/variants from a previous patch.
+	// Returns patch ID if specified, otherwise we use the latest patch.
+	RepeatFailedTasksAndVariants() (string, bool)
 
 	// GetAlias defines the variants and tasks this intent should run on.
 	GetAlias() string

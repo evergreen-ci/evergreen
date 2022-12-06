@@ -15,7 +15,6 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
-	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -153,7 +152,10 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	// nor is the intent host associated with any instance in the cloud that
 	// we're aware of.
 	switch j.host.Status {
-	case evergreen.HostUninitialized, evergreen.HostBuildingFailed:
+	case evergreen.HostUninitialized, evergreen.HostBuilding, evergreen.HostBuildingFailed:
+		// If the host never successfully started, this means the host is an
+		// intent host, and should be marked terminated, and not in the cloud
+		// provider.
 		if err := j.host.Terminate(evergreen.User, j.TerminationReason); err != nil {
 			j.AddError(errors.Wrapf(err, "terminating intent host '%s' in DB", j.host.Id))
 		}
@@ -274,21 +276,6 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			}
 			return
 		}
-	} else if prevStatus == evergreen.HostBuilding {
-		// If the host is not a container and is building, this means the host is an intent
-		// host, and should be terminated in the database, and not in the cloud manager.
-		if err = j.host.Terminate(evergreen.User, "host was never started"); err != nil {
-			// It is possible that the provisioning-create-host job has removed the
-			// intent host from the database before this job got to it. If so, there is
-			// nothing to terminate with a cloud manager, since if there is a
-			// cloud-managed host, it has a different ID.
-			if adb.ResultsNotFound(err) {
-				return
-			}
-			j.AddError(errors.Wrapf(err, "terminating intent host '%s' in DB", j.host.Id))
-		}
-
-		return
 	}
 
 	idleTimeStartsAt := j.host.LastTaskCompletedTime
@@ -353,12 +340,12 @@ func (j *hostTerminationJob) checkAndTerminateCloudHost(ctx context.Context, old
 		catcher := grip.NewBasicCatcher()
 		catcher.Add(errors.Wrap(err, "getting cloud host instance status"))
 		if !utility.StringSliceContains(evergreen.UpHostStatus, oldStatus) {
-			catcher.Wrap(j.host.Terminate(evergreen.User, "unable to get cloud status for host"), "marking host as terminated")
+			catcher.Wrap(j.host.Terminate(evergreen.User, j.TerminationReason), "marking host as terminated")
 		}
 		return catcher.Resolve()
 	}
 	if cloudStatus == cloud.StatusNonExistent {
-		return j.host.Terminate(evergreen.User, "cloud host does not exist")
+		return errors.Wrap(j.host.Terminate(evergreen.User, j.TerminationReason), "marking nonexistent host as terminated")
 	}
 
 	if cloudStatus == cloud.StatusTerminated {

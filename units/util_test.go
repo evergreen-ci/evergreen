@@ -7,6 +7,8 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/stretchr/testify/assert"
@@ -20,10 +22,18 @@ func TestHandlePoisonedHost(t *testing.T) {
 	for testCase, test := range map[string]func(*testing.T){
 		"parent with a container running a task": func(t *testing.T) {
 			t1 := &task.Task{
-				Id:     "t1",
-				Status: evergreen.TaskStarted,
+				Id:      "t1",
+				Status:  evergreen.TaskStarted,
+				BuildId: "b",
+				Version: "v",
 			}
 			require.NoError(t, t1.Insert())
+			b := build.Build{Id: "b", Version: "v"}
+			require.NoError(t, b.Insert())
+			v := model.Version{
+				Id: b.Version,
+			}
+			require.NoError(t, v.Insert())
 
 			parent := &host.Host{
 				Id:            "parent",
@@ -64,10 +74,18 @@ func TestHandlePoisonedHost(t *testing.T) {
 		},
 		"running task": func(t *testing.T) {
 			t1 := &task.Task{
-				Id:     "t1",
-				Status: evergreen.TaskStarted,
+				Id:      "t1",
+				Status:  evergreen.TaskStarted,
+				BuildId: "b",
+				Version: "v",
 			}
 			require.NoError(t, t1.Insert())
+			b := build.Build{Id: "b", Version: "v"}
+			require.NoError(t, b.Insert())
+			v := model.Version{
+				Id: b.Version,
+			}
+			require.NoError(t, v.Insert())
 
 			hostRunningTask := &host.Host{
 				Id:          "runningTask",
@@ -123,7 +141,7 @@ func TestHandlePoisonedHost(t *testing.T) {
 			assert.Equal(t, evergreen.HostTerminated, terminated.Status)
 		},
 	} {
-		require.NoError(t, db.ClearCollections(host.Collection, task.Collection))
+		require.NoError(t, db.ClearCollections(host.Collection, task.Collection, build.Collection, model.VersionCollection))
 		require.NoError(t, env.Configure(ctx))
 
 		t.Run(testCase, test)

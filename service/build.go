@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
@@ -193,7 +192,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			_, err = commitqueue.RemoveCommitQueueItemForVersion(projCtx.ProjectRef.Id, projCtx.Build.Version, user.Id)
+			_, err = model.RemoveCommitQueueItemForVersion(projCtx.ProjectRef.Id, projCtx.Build.Version, user.Id)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -261,7 +260,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			_, err = commitqueue.RemoveCommitQueueItemForVersion(projCtx.ProjectRef.Id, projCtx.Build.Version, user.Id)
+			_, err = model.RemoveCommitQueueItemForVersion(projCtx.ProjectRef.Id, projCtx.Build.Version, user.Id)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return

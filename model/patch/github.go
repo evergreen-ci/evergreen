@@ -224,12 +224,12 @@ func (g *githubIntent) ShouldFinalizePatch() bool {
 	return true
 }
 
-func (g *githubIntent) ReusePreviousPatchDefinition() bool {
-	return false
+func (g *githubIntent) RepeatPreviousPatchDefinition() (string, bool) {
+	return "", false
 }
 
-func (g *githubIntent) RepeatFailedTasksAndVariants() bool {
-	return false
+func (g *githubIntent) RepeatFailedTasksAndVariants() (string, bool) {
+	return "", false
 }
 
 func (g *githubIntent) RequesterIdentity() string {

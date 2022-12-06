@@ -252,7 +252,7 @@ func SetTaskPriority(t task.Task, priority int64, caller string) error {
 
 	// negative priority - deactivate the task
 	if priority <= evergreen.DisabledTaskPriority {
-		if err = t.DeactivateTask(caller); err != nil {
+		if err = SetActiveState(caller, false, t); err != nil {
 			return errors.Wrap(err, "deactivating task")
 		}
 	}
@@ -276,7 +276,7 @@ func SetBuildPriority(buildId string, priority int64, caller string) error {
 		if err != nil {
 			return errors.Wrapf(err, "getting tasks for build '%s'", buildId)
 		}
-		if err = task.DeactivateTasks(tasks, true, caller); err != nil {
+		if err = SetActiveState(caller, false, tasks...); err != nil {
 			return errors.Wrapf(err, "deactivating tasks for build '%s'", buildId)
 		}
 	}
@@ -301,7 +301,7 @@ func SetVersionPriority(versionId string, priority int64, caller string) error {
 		if err != nil {
 			return errors.Wrapf(err, "getting tasks for version '%s'", versionId)
 		}
-		err = task.DeactivateTasks(tasks, false, caller)
+		err = SetActiveState(caller, false, tasks...)
 		if err != nil {
 			return errors.Wrapf(err, "deactivating tasks for version '%s'", versionId)
 		}
@@ -550,14 +550,13 @@ func RefreshTasksCache(buildId string) error {
 
 // addTasksToBuild creates/activates the tasks for the given build of a project
 func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build.Build, task.Tasks, error) {
-	// find the build variant for this project/build
+	// Find the build variant for this project/build
 	creationInfo.BuildVariant = creationInfo.Project.FindBuildVariant(creationInfo.Build.BuildVariant)
 	if creationInfo.BuildVariant == nil {
 		return nil, nil, errors.Errorf("finding build '%s' in project file '%s'",
 			creationInfo.Build.BuildVariant, creationInfo.Project.Identifier)
 	}
 
-	// create the new tasks for the build
 	createTime, err := getTaskCreateTime(creationInfo)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "getting create time for tasks in version '%s'", creationInfo.Version.Id)
@@ -575,6 +574,7 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 	}
 	creationInfo.GithubChecksAliases = githubCheckAliases
 	creationInfo.TaskCreateTime = createTime
+	// Create the new tasks for the build
 	tasks, err := createTasksForBuild(creationInfo)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "creating tasks for build '%s'", creationInfo.Build.Id)
@@ -641,7 +641,7 @@ func CreateBuildFromVersionNoInsert(creationInfo TaskCreationInfo) (*build.Build
 	if len(creationInfo.Aliases) > 0 && len(creationInfo.TaskNames) == 0 {
 		return nil, nil, nil
 	}
-	// find the build variant for this project/build
+	// Find the build variant for this project/build
 	buildVariant := creationInfo.Project.FindBuildVariant(creationInfo.BuildVariantName)
 	if buildVariant == nil {
 		return nil, nil, errors.Errorf("could not find build '%s' in project file '%s'", creationInfo.BuildVariantName, creationInfo.Project.Identifier)
@@ -700,23 +700,24 @@ func CreateBuildFromVersionNoInsert(creationInfo TaskCreationInfo) (*build.Build
 		return nil, nil, errors.Wrapf(err, "creating tasks for build '%s'", b.Id)
 	}
 
-	for _, t := range tasksForBuild {
-		if t.IsGithubCheck {
-			b.IsGithubCheck = true
-		}
-		break
-	}
-
 	// create task caches for all of the tasks, and place them into the build
 	tasks := []task.Task{}
+	containsActivatedTask := false
+
 	for _, taskP := range tasksForBuild {
+		if taskP.IsGithubCheck {
+			b.IsGithubCheck = true
+		}
+		if taskP.Activated {
+			containsActivatedTask = true
+		}
 		if taskP.IsPartOfDisplay() {
 			continue // don't add execution parts of display tasks to the UI cache
 		}
 		tasks = append(tasks, *taskP)
 	}
 	b.Tasks = CreateTasksCache(tasks)
-
+	b.Activated = containsActivatedTask
 	return b, tasksForBuild, nil
 }
 
@@ -967,7 +968,7 @@ func makeDeps(t BuildVariantTaskUnit, thisTask *task.Task, taskIds TaskIdTable) 
 			if id == thisTask.Id {
 				continue
 			}
-			dependencySet[task.Dependency{TaskId: id, Status: status}] = true
+			dependencySet[task.Dependency{TaskId: id, Status: status, OmitGeneratedTasks: dep.OmitGeneratedTasks}] = true
 		}
 	}
 

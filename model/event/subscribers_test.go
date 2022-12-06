@@ -117,3 +117,57 @@ func TestSubscribersStringerWithMissingAttributes(t *testing.T) {
 
 	assert.True(strings.HasSuffix(webhookSub.String(), "NIL_URL"))
 }
+
+func TestValidate(t *testing.T) {
+	for name, testCase := range map[string]struct {
+		s             Subscriber
+		errorExpected bool
+	}{
+		"MissingType": {
+			s:             Subscriber{Target: "a@mongodb.com"},
+			errorExpected: true,
+		},
+		"MissingTarget": {
+			s:             Subscriber{Type: EmailSubscriberType},
+			errorExpected: true,
+		},
+		"WebhookMissingURL": {
+			s: Subscriber{
+				Type:   EvergreenWebhookSubscriberType,
+				Target: WebhookSubscriber{Secret: []byte("shh")},
+			},
+			errorExpected: true,
+		},
+		"WebhookTooManyRetries": {
+			s: Subscriber{
+				Type: EvergreenWebhookSubscriberType,
+				Target: WebhookSubscriber{
+					URL:     "https://evergreen.mongodb.com",
+					Secret:  []byte("shh"),
+					Retries: 1000000,
+				},
+			},
+			errorExpected: true,
+		},
+		"ValidWebhook": {
+			s: Subscriber{
+				Type: EvergreenWebhookSubscriberType,
+				Target: WebhookSubscriber{
+					URL:        "https://evergreen.mongodb.com",
+					Secret:     []byte("shh"),
+					Retries:    3,
+					MinDelayMS: 1000,
+				},
+			},
+			errorExpected: false,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if testCase.errorExpected {
+				assert.Error(t, testCase.s.Validate())
+			} else {
+				assert.NoError(t, testCase.s.Validate())
+			}
+		})
+	}
+}

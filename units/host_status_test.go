@@ -80,7 +80,10 @@ func TestCloudStatusJob(t *testing.T) {
 	mockState.Reset()
 	for _, h := range hosts {
 		require.NoError(h.Insert())
-		mockState.Set(h.Id, cloud.MockInstance{DNSName: "dns_name"})
+		mockState.Set(h.Id, cloud.MockInstance{
+			Status:  cloud.StatusRunning,
+			DNSName: "dns_name",
+		})
 	}
 
 	ctx := context.Background()

@@ -1,0 +1,71 @@
+{
+    "hosts": [
+    {
+      "_id": "i-06f80fa6e28f93b7d",
+      "host_id": "ec2-34-207-222-84.compute-1.amazonaws.com",
+      "user": "ubuntu",
+      "tag": "evg-ubuntu1604-small-20200720144805-8687799505734220270",
+      "distro": {
+        "_id": "ubuntu1604-small",
+        "aliases": [
+          "ubuntu1604",
+          "ubuntu1604-test"
+        ],
+        "arch": "linux_amd64",
+        "work_dir": "/data/mci",
+        "provider": "ec2-fleet",
+        "user": "ubuntu"
+      },
+      "host_type": "ec2-fleet",
+      "ext_identifier": "",
+      "display_name": "",
+      "project": "",
+      "zone": "us-east-1e",
+      "provisioned": true,
+      "priv_attempts": 1,
+      "last_task": "",
+      "no_expiration": false,
+      "creation_time": {
+        "$date": "2020-07-20T14:48:05.256Z"
+      },
+      "start_time": {
+        "$date": "2020-07-20T14:48:27Z"
+      },
+      "agent_start_time": {
+        "$date": "2020-07-20T14:49:20.449Z"
+      },
+      "termination_time": {
+        "$date": "1970-01-01T00:00:00Z"
+      },
+      "task_count": 1,
+      "last_task_completed_time": {
+        "$date": "0001-01-01T00:00:00Z"
+      },
+      "last_communication": {
+        "$date": "2020-07-20T18:58:51.025Z"
+      },
+      "status": "provisioning",
+      "started_by": "mci",
+      "user_host": false,
+      "agent_revision": "2020-07-18",
+      "needs_agent": false,
+      "needs_agent_monitor": false,
+      "instance_type": "",
+      "container_build_attempt": 0,
+      "spawn_options": {},
+      "docker_options": {},
+      "running_task": "mongo_tools_ubuntu1604_qa_dump_restore_with_archiving_current_patch_b7227e1b7aeaaa6283d53b32fc03968a46b19c2d_5f15ad3c3627e07772ab2d01_20_07_20_14_42_05",
+      "running_task_bv": "ubuntu1604",
+      "running_task_group": "",
+      "running_task_group_order": 0,
+      "running_task_project": "mongo-tools",
+      "running_task_version": "5f15ad3c3627e07772ab2d01",
+      "total_idle_time": {
+        "$numberLong": "54073000000"
+      },
+      "prov_time": {
+        "$date": "2020-07-20T14:49:30.784Z"
+      }
+    }
+    ]
+}

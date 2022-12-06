@@ -180,6 +180,11 @@ func TestGetActivationTimeForTask(t *testing.T) {
 		Name:      "myTask",
 		Variant:   "bv1",
 	}
+	bvt2 := &BuildVariantTaskUnit{
+		Name:    "notMyTask",
+		Variant: "bv1",
+		Disable: utility.TruePtr(),
+	}
 
 	versionWithoutTask := Version{
 		Id:         "v1",
@@ -229,6 +234,10 @@ func TestGetActivationTimeForTask(t *testing.T) {
 	activationTime, err := projectRef.GetActivationTimeForTask(bvt)
 	assert.NoError(t, err)
 	assert.True(t, activationTime.Equal(prevTime.Add(time.Hour)))
+
+	activationTime, err = projectRef.GetActivationTimeForTask(bvt2)
+	assert.NoError(t, err)
+	assert.True(t, activationTime.Equal(utility.ZeroTime))
 }
 
 func TestGetActivationTimeWithCron(t *testing.T) {
@@ -1432,14 +1441,14 @@ func TestFindMergedEnabledProjectRefsByOwnerAndRepo(t *testing.T) {
 	assert.NotEqual(t, projectRefs[2].Id, "3")
 }
 
-func TestFindProjectRefsWithCommitQueueEnabled(t *testing.T) {
+func TestFindProjectRefIdsWithCommitQueueEnabled(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
 	require.NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection))
-	projectRefs, err := FindProjectRefsWithCommitQueueEnabled()
+	res, err := FindProjectRefIdsWithCommitQueueEnabled()
 	assert.NoError(err)
-	assert.Empty(projectRefs)
+	assert.Empty(res)
 
 	repoRef := RepoRef{ProjectRef{
 		Id:      "my_repo",
@@ -1455,7 +1464,7 @@ func TestFindProjectRefsWithCommitQueueEnabled(t *testing.T) {
 		Repo:       "mci",
 		Branch:     "main",
 		Identifier: "mci",
-		Id:         "1",
+		Id:         "mci1",
 		RepoRefId:  repoRef.Id,
 		CommitQueue: CommitQueueParams{
 			Enabled: utility.TruePtr(),
@@ -1464,34 +1473,34 @@ func TestFindProjectRefsWithCommitQueueEnabled(t *testing.T) {
 	require.NoError(doc.Insert())
 
 	doc.Branch = "fix"
-	doc.Id = "2"
+	doc.Id = "mci2"
 	require.NoError(doc.Insert())
 
 	doc.Identifier = "grip"
 	doc.Repo = "grip"
-	doc.Id = "3"
+	doc.Id = "mci3"
 	doc.CommitQueue.Enabled = utility.FalsePtr()
 	require.NoError(doc.Insert())
 
-	projectRefs, err = FindProjectRefsWithCommitQueueEnabled()
+	res, err = FindProjectRefIdsWithCommitQueueEnabled()
 	assert.NoError(err)
-	require.Len(projectRefs, 2)
-	assert.Equal("mci", projectRefs[0].Identifier)
-	assert.Equal("mci", projectRefs[1].Identifier)
+	require.Len(res, 2)
+	assert.Equal("mci1", res[0])
+	assert.Equal("mci2", res[1])
 
 	doc.Id = "both_settings_from_repo"
 	doc.Enabled = nil
 	doc.CommitQueue.Enabled = nil
 	assert.NoError(doc.Insert())
-	projectRefs, err = FindProjectRefsWithCommitQueueEnabled()
+	res, err = FindProjectRefIdsWithCommitQueueEnabled()
 	assert.NoError(err)
-	assert.Len(projectRefs, 3)
+	assert.Len(res, 3)
 
 	repoRef.CommitQueue.Enabled = utility.FalsePtr()
 	assert.NoError(repoRef.Upsert())
-	projectRefs, err = FindProjectRefsWithCommitQueueEnabled()
+	res, err = FindProjectRefIdsWithCommitQueueEnabled()
 	assert.NoError(err)
-	assert.Len(projectRefs, 2)
+	assert.Len(res, 2)
 }
 
 func TestValidatePeriodicBuildDefinition(t *testing.T) {
@@ -2295,24 +2304,92 @@ func TestGetProjectTasksWithOptions(t *testing.T) {
 
 func TestUpdateNextPeriodicBuild(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.Clear(ProjectRefCollection))
+	require := require.New(t)
 	now := time.Now().Truncate(time.Second)
-	p := ProjectRef{
-		Id: "proj",
-		PeriodicBuilds: []PeriodicBuildDefinition{
-			{ID: "1", NextRunTime: now},
-			{ID: "2", NextRunTime: now.Add(1 * time.Hour)},
-		},
-	}
-	assert.NoError(p.Insert())
+	later := now.Add(1 * time.Hour)
+	muchLater := now.Add(10 * time.Hour)
+	for name, test := range map[string]func(*testing.T){
+		"updatesProjectOnly": func(t *testing.T) {
+			p := ProjectRef{
+				Id: "proj",
+				PeriodicBuilds: []PeriodicBuildDefinition{
+					{ID: "1", NextRunTime: now},
+					{ID: "2", NextRunTime: later},
+				},
+				RepoRefId: "repo",
+			}
+			repoRef := RepoRef{ProjectRef{
+				Id: "repo",
+				PeriodicBuilds: []PeriodicBuildDefinition{
+					{ID: "2", NextRunTime: later},
+				},
+			}}
+			assert.NoError(p.Insert())
+			assert.NoError(repoRef.Upsert())
 
-	assert.NoError(p.UpdateNextPeriodicBuild("2", now.Add(10*time.Hour)))
-	dbProject, err := FindBranchProjectRef(p.Id)
-	assert.NoError(err)
-	assert.True(now.Equal(dbProject.PeriodicBuilds[0].NextRunTime))
-	assert.True(now.Equal(p.PeriodicBuilds[0].NextRunTime))
-	assert.True(now.Add(10 * time.Hour).Equal(dbProject.PeriodicBuilds[1].NextRunTime))
-	assert.True(now.Add(10 * time.Hour).Equal(p.PeriodicBuilds[1].NextRunTime))
+			assert.NoError(UpdateNextPeriodicBuild("proj", "2", muchLater))
+			dbProject, err := FindBranchProjectRef(p.Id)
+			assert.NoError(err)
+			require.NotNil(dbProject)
+			assert.True(now.Equal(dbProject.PeriodicBuilds[0].NextRunTime))
+			assert.True(muchLater.Equal(dbProject.PeriodicBuilds[1].NextRunTime))
+
+			dbRepo, err := FindOneRepoRef(p.RepoRefId)
+			assert.NoError(err)
+			require.NotNil(dbRepo)
+			// Repo wasn't updated because the branch project definitions take precedent.
+			assert.True(later.Equal(dbRepo.PeriodicBuilds[0].NextRunTime))
+		},
+		"updatesRepoOnly": func(t *testing.T) {
+			p := ProjectRef{
+				Id:             "proj",
+				PeriodicBuilds: nil,
+				RepoRefId:      "repo",
+			}
+			repoRef := RepoRef{ProjectRef{
+				Id: "repo",
+				PeriodicBuilds: []PeriodicBuildDefinition{
+					{ID: "2", NextRunTime: later},
+				},
+			}}
+			assert.NoError(p.Insert())
+			assert.NoError(repoRef.Upsert())
+			assert.NoError(UpdateNextPeriodicBuild("proj", "2", muchLater))
+
+			// Repo is updated because the branch project doesn't have any periodic build override defined.
+			dbRepo, err := FindOneRepoRef(p.RepoRefId)
+			assert.NoError(err)
+			require.NotNil(dbRepo)
+			assert.True(muchLater.Equal(dbRepo.PeriodicBuilds[0].NextRunTime))
+		},
+		"updatesNothing": func(t *testing.T) {
+			p := ProjectRef{
+				Id:             "proj",
+				PeriodicBuilds: []PeriodicBuildDefinition{},
+				RepoRefId:      "repo",
+			}
+			repoRef := RepoRef{ProjectRef{
+				Id: "repo",
+				PeriodicBuilds: []PeriodicBuildDefinition{
+					{ID: "2", NextRunTime: later},
+				},
+			}}
+			assert.NoError(p.Insert())
+			assert.NoError(repoRef.Upsert())
+			// Should error because definition isn't relevant for this project, since
+			// we ignore repo definitions when the project has any override defined.
+			assert.Error(UpdateNextPeriodicBuild("proj", "2", muchLater))
+
+			dbRepo, err := FindOneRepoRef(p.RepoRefId)
+			assert.NoError(err)
+			assert.NotNil(dbRepo)
+			assert.True(later.Equal(dbRepo.PeriodicBuilds[0].NextRunTime))
+		},
+	} {
+		assert.NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection))
+		t.Run(name, test)
+	}
+
 }
 
 func TestGetProjectSetupCommands(t *testing.T) {
@@ -2384,6 +2461,9 @@ func TestFindPeriodicProjects(t *testing.T) {
 	projects, err := FindPeriodicProjects()
 	assert.NoError(t, err)
 	assert.Len(t, projects, 2)
+	for _, p := range projects {
+		assert.Len(t, p.PeriodicBuilds, 1, fmt.Sprintf("project '%s' missing definition", p.Id))
+	}
 }
 
 func TestRemoveAdminFromProjects(t *testing.T) {

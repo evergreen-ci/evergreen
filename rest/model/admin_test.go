@@ -204,7 +204,6 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ServiceFlags.UnrecognizedPodCleanupDisabled, apiSettings.ServiceFlags.UnrecognizedPodCleanupDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.S3BinaryDownloadsDisabled, apiSettings.ServiceFlags.S3BinaryDownloadsDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.ContainerConfigurationsDisabled, apiSettings.ServiceFlags.ContainerConfigurationsDisabled)
-	assert.EqualValues(testSettings.ServiceFlags.SlackAppDisabled, apiSettings.ServiceFlags.SlackAppDisabled)
 	assert.EqualValues(testSettings.Slack.Level, utility.FromStringPtr(apiSettings.Slack.Level))
 	assert.EqualValues(testSettings.Slack.Options.Channel, utility.FromStringPtr(apiSettings.Slack.Options.Channel))
 	assert.EqualValues(testSettings.Splunk.SplunkConnectionInfo.Channel, utility.FromStringPtr(apiSettings.Splunk.SplunkConnectionInfo.Channel))

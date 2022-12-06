@@ -399,15 +399,6 @@ Admin Settings
 												</td>
 											</tr>
 											<tr>
-												<td>Slack App</td>
-												<td colspan="2">
-													<md-radio-group data-ng-model="Settings.service_flags.slack_app_disabled" layout="row">
-														<md-radio-button data-ng-value="false"></md-radio-button>
-														<md-radio-button data-ng-value="true"></md-radio-button>
-													</md-radio-group>
-												</td>
-											</tr>
-											<tr>
 												<td>Partial auth for routes</td>
 												<td colspan="2">
 													<md-radio-group
@@ -911,6 +902,10 @@ Admin Settings
 										<label>UIv2 URL</label>
 										<input type="text" ng-model="Settings.ui.uiv2_url">
 									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Parsley URL</label>
+										<input type="text" ng-model="Settings.ui.parsley_url">
+									</md-input-container>
 									<md-input-container class="control" style="width:45%;  margin-left:50px;">
 										<label>HTTP listener address</label>
 										<input type="text" ng-model="Settings.ui.http_listen_addr">
@@ -1325,17 +1320,13 @@ Admin Settings
 										<input type="text" ng-model="Settings.slack.options.username">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left:50px;">
-										<label>Icon URL</label>
-										<input type="text" ng-model="Settings.slack.options.icon_url">
+										<label>App Name</label>
+										<input type="text" ng-model="Settings.slack.name">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
 										<label>Fields to set</label>
 										<textarea ng-model="Settings.slack.options.fields" ng-list="&#10;"
 											ng-trim="false" rows="3" md-select-on-focus></textarea>
-									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
-										<label>App Name</label>
-										<input type="text" ng-model="Settings.slack.name">
 									</md-input-container>
 									<br />
 									<md-input-container class="control" style="width:170px;">

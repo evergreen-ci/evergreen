@@ -593,6 +593,10 @@ func (p *Patch) SetActivated(ctx context.Context, versionId string) error {
 				ActivatedKey: true,
 				VersionKey:   versionId,
 			},
+			"$unset": bson.M{
+				PatchedParserProjectKey: 1,
+				PatchedProjectConfigKey: 1,
+			},
 		},
 	)
 	return err

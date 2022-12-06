@@ -274,7 +274,11 @@ func exportECSPodContainerDef(settings *evergreen.Settings, opts pod.TaskContain
 // ExportECSPodExecutionOptions exports the ECS configuration into
 // cocoa.ECSPodExecutionOptions.
 func ExportECSPodExecutionOptions(ecsConfig evergreen.ECSConfig, containerOpts pod.TaskContainerCreationOptions) (*cocoa.ECSPodExecutionOptions, error) {
-	execOpts := cocoa.NewECSPodExecutionOptions()
+	execOpts := cocoa.NewECSPodExecutionOptions().
+		// This enables the ability to connect directly to a running container
+		// in ECS (e.g. similar to SSH'ing into a host), which is convenient for
+		// debugging issues.
+		SetSupportsDebugMode(true)
 
 	if len(ecsConfig.AWSVPC.Subnets) != 0 || len(ecsConfig.AWSVPC.SecurityGroups) != 0 {
 		execOpts.SetAWSVPCOptions(*cocoa.NewAWSVPCOptions().

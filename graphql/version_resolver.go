@@ -28,7 +28,7 @@ func (r *versionResolver) BaseTaskStatuses(ctx context.Context, obj *restModel.A
 	var baseVersion *model.Version
 	var err error
 
-	if evergreen.IsPatchRequester(utility.FromStringPtr(obj.Requester)) || utility.FromStringPtr(obj.Requester) == evergreen.AdHocRequester {
+	if obj.IsPatchRequester() || utility.FromStringPtr(obj.Requester) == evergreen.AdHocRequester {
 		// Get base commit if patch or periodic build.
 		baseVersion, err = model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(utility.FromStringPtr(obj.Project), utility.FromStringPtr(obj.Revision)))
 	} else {
@@ -70,10 +70,10 @@ func (r *versionResolver) BuildVariants(ctx context.Context, obj *restModel.APIV
 		obj.Activated = version.Activated
 	}
 
-	if !utility.FromBoolPtr(obj.Activated) {
+	if obj.IsPatchRequester() && !utility.FromBoolPtr(obj.Activated) {
 		return nil, nil
 	}
-	groupedBuildVariants, err := generateBuildVariants(utility.FromStringPtr(obj.Id), *options)
+	groupedBuildVariants, err := generateBuildVariants(utility.FromStringPtr(obj.Id), *options, utility.FromStringPtr(obj.Requester))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error generating build variants for version %s : %s", *obj.Id, err.Error()))
 	}
@@ -87,6 +87,7 @@ func (r *versionResolver) BuildVariantStats(ctx context.Context, obj *restModel.
 		Variants:                       options.Variants,
 		Statuses:                       options.Statuses,
 		IncludeBuildVariantDisplayName: true,
+		IncludeNeverActivatedTasks:     !obj.IsPatchRequester(),
 	}
 	stats, err := task.GetGroupedTaskStatsByVersion(utility.FromStringPtr(obj.Id), opts)
 	if err != nil {
@@ -191,7 +192,7 @@ func (r *versionResolver) Patch(ctx context.Context, obj *restModel.APIVersion) 
 
 // PreviousVersion is the resolver for the previousVersion field.
 func (r *versionResolver) PreviousVersion(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIVersion, error) {
-	if !evergreen.IsPatchRequester(utility.FromStringPtr(obj.Requester)) {
+	if !obj.IsPatchRequester() {
 		previousVersion, err := model.VersionFindOne(model.VersionByProjectIdAndOrder(utility.FromStringPtr(obj.Project), obj.Order-1))
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding previous version for `%s`: %s", *obj.Id, err.Error()))
@@ -235,7 +236,7 @@ func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion)
 
 // TaskCount is the resolver for the taskCount field.
 func (r *versionResolver) TaskCount(ctx context.Context, obj *restModel.APIVersion) (*int, error) {
-	taskCount, err := task.Count(db.Query(task.DisplayTasksByVersion(*obj.Id)))
+	taskCount, err := task.Count(db.Query(task.DisplayTasksByVersion(*obj.Id, !obj.IsPatchRequester())))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting task count for version `%s`: %s", *obj.Id, err.Error()))
 	}
@@ -297,15 +298,16 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *restModel.APIVersion, 
 	}
 
 	opts := task.GetTasksByVersionOptions{
-		Statuses:                       getValidTaskStatusesFilter(options.Statuses),
-		BaseStatuses:                   getValidTaskStatusesFilter(options.BaseStatuses),
-		Variants:                       []string{variantParam},
-		TaskNames:                      []string{taskNameParam},
-		Page:                           pageParam,
-		Limit:                          limitParam,
-		Sorts:                          taskSorts,
-		IncludeBaseTasks:               true,
-		IncludeEmptyActivation:         utility.FromBoolPtr(options.IncludeEmptyActivation),
+		Statuses:         getValidTaskStatusesFilter(options.Statuses),
+		BaseStatuses:     getValidTaskStatusesFilter(options.BaseStatuses),
+		Variants:         []string{variantParam},
+		TaskNames:        []string{taskNameParam},
+		Page:             pageParam,
+		Limit:            limitParam,
+		Sorts:            taskSorts,
+		IncludeBaseTasks: true,
+		// If the version is a patch, we want to exclude inactive tasks by default.
+		IncludeNeverActivatedTasks:     !evergreen.IsPatchRequester(v.Requester) || utility.FromBoolPtr(options.IncludeEmptyActivation) || utility.FromBoolPtr(options.IncludeNeverActivatedTasks),
 		IncludeBuildVariantDisplayName: true,
 		IsMainlineCommit:               !evergreen.IsPatchRequester(v.Requester),
 	}
@@ -356,6 +358,8 @@ func (r *versionResolver) TaskStatusStats(ctx context.Context, obj *restModel.AP
 		TaskNames:             options.Tasks,
 		Variants:              options.Variants,
 		Statuses:              getValidTaskStatusesFilter(options.Statuses),
+		// If the version is a patch, we don't want to include its never activated tasks.
+		IncludeNeverActivatedTasks: !obj.IsPatchRequester(),
 	}
 	if len(options.Variants) != 0 {
 		opts.IncludeBuildVariantDisplayName = true // we only need the buildVariantDisplayName if we plan on filtering on it.

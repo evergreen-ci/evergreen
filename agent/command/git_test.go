@@ -26,10 +26,11 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mongodb/grip"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
+	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/smartystreets/goconvey/convey/reporting"
 	"github.com/stretchr/testify/require"
@@ -965,7 +966,7 @@ func (s *GitGetProjectSuite) TestMergeMultiplePatches() {
 			{Githash: "d0d878e81b303fd2abbf09331e54af41d6cd0c7d", PatchSet: patch.PatchSet{PatchFileId: "patchfile1"}, ModuleName: "evergreen"},
 		},
 	})
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	s.comm.PatchFiles["patchfile1"] = `
 diff --git a/README.md b/README.md
@@ -989,9 +990,13 @@ index edc0c34..8e82862 100644
 			s.NotNil(pluginCmds)
 			pluginCmds[0].SetJasperManager(s.jasper)
 			err = pluginCmds[0].Execute(ctx, s.comm, logger, conf)
-			// this command will error because it'll apply the same patch twice. We are just testing that
-			// there was an attempt to apply the patch the second time
-			grip.Debug(err)
+			// Running the git commands takes time, so it could hit the test's
+			// context timeout if it's slow. Make sure that the error isn't due
+			// to a timeout.
+			s.False(utility.IsContextError(errors.Cause(err)))
+			// This command will error because it'll apply the same patch twice.
+			// We are just testing that there was an attempt to apply the patch
+			// the second time.
 			s.Error(err)
 		}
 	}
