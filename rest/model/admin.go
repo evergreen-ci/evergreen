@@ -355,6 +355,7 @@ func (a *APISMTPConfig) ToService() (interface{}, error) {
 type APIAmboyConfig struct {
 	Name                                  *string                    `json:"name"`
 	SingleName                            *string                    `json:"single_name"`
+	DBURL                                 *string                    `json:"db_url"`
 	DB                                    *string                    `json:"database"`
 	PoolSizeLocal                         int                        `json:"pool_size_local"`
 	PoolSizeRemote                        int                        `json:"pool_size_remote"`
@@ -375,6 +376,7 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 	case evergreen.AmboyConfig:
 		a.Name = utility.ToStringPtr(v.Name)
 		a.SingleName = utility.ToStringPtr(v.SingleName)
+		a.DBURL = utility.ToStringPtr(v.DBURL)
 		a.DB = utility.ToStringPtr(v.DB)
 		a.PoolSizeLocal = v.PoolSizeLocal
 		a.PoolSizeRemote = v.PoolSizeRemote
@@ -416,6 +418,7 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 	return evergreen.AmboyConfig{
 		Name:                                  utility.FromStringPtr(a.Name),
 		SingleName:                            utility.FromStringPtr(a.SingleName),
+		DBURL:                                 utility.FromStringPtr(a.DBURL),
 		DB:                                    utility.FromStringPtr(a.DB),
 		PoolSizeLocal:                         a.PoolSizeLocal,
 		PoolSizeRemote:                        a.PoolSizeRemote,

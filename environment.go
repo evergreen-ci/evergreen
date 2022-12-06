@@ -397,7 +397,7 @@ func (e *envState) createApplicationQueue(ctx context.Context) error {
 	// configure the remote mongodb-backed amboy
 	// queue.
 	opts := queue.DefaultMongoDBOptions()
-	opts.URI = e.settings.Database.Url
+	opts.URI = e.settings.Amboy.DBURL
 	opts.DB = e.settings.Amboy.DB
 	opts.Collection = e.settings.Amboy.Name
 	opts.Priority = e.settings.Amboy.RequireRemotePriority
@@ -472,7 +472,7 @@ func (e *envState) createRemoteQueueGroup(ctx context.Context) error {
 
 func (e *envState) getRemoteQueueGroupDBOptions() queue.MongoDBOptions {
 	opts := queue.DefaultMongoDBOptions()
-	opts.URI = e.settings.Database.Url
+	opts.URI = e.settings.Amboy.DBURL
 	opts.DB = e.settings.Amboy.DB
 	opts.Collection = e.settings.Amboy.Name
 	opts.Priority = e.settings.Amboy.RequireRemotePriority
