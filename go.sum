@@ -796,8 +796,8 @@ github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742/go.mod h1:bx2lN
 github.com/modern-go/reflect2 v1.0.1/go.mod h1:bx2lNnkwVCuqBIxFjflWJWanXIb3RllmbCylyMrvgv0=
 github.com/mongodb/amboy v0.0.0-20200527191935-07fdffff5b8c/go.mod h1:SfpzZNF2KZUT5zO0/q4eUqW+EQe64MiY8xXmkBHZDqk=
 github.com/mongodb/amboy v0.0.0-20211101161704-2b42087d24e6/go.mod h1:aYcnjrBUtbgB+naQ6FlVltCdprHv9Td2GOkQkZUqPvY=
-github.com/mongodb/amboy v0.0.0-20221130184931-151f8470357e h1:o8rxCWagj8utHy0Tf1sh6fRA6WDJEpGBqoR8dxwyPAY=
-github.com/mongodb/amboy v0.0.0-20221130184931-151f8470357e/go.mod h1:ubHgKEE1PO1pZgg0Tv4TR0g5/UZQdtfJf4o1ZzK31Rw=
+github.com/mongodb/amboy v0.0.0-20221207220239-4ab00e3ea9da h1:1sLg2d9tVr6UDunkbYKh1pvSgxKQIYiTvOS0u8UPaV8=
+github.com/mongodb/amboy v0.0.0-20221207220239-4ab00e3ea9da/go.mod h1:a8nLsoZ7xIXS0S6WgZTgILrIU/YAHG/hex1OzcpLk2A=
 github.com/mongodb/anser v0.0.0-20190422213746-1fb43a6d9968/go.mod h1:ESqf0zBEuYrqL0xADbIAFgdEOaBFpwZ4tkzY84ge+QA=
 github.com/mongodb/anser v0.0.0-20211116195831-fdc43007b59f/go.mod h1:jDikxuo5FKbiTMAb8B5AMT3QqFSNrim2+GiRTSCdazU=
 github.com/mongodb/anser v0.0.0-20220318141853-005b8ead5b8f h1:cOPq9/377MrwRdgMGHsj5szvOGCokC7SYly2o5uEdv8=
@@ -1122,8 +1122,8 @@ go.mongodb.org/mongo-driver v1.8.3/go.mod h1:0sQWfOeY63QTntERDJJ/0SuKK0T1uVSgKCu
 go.mongodb.org/mongo-driver v1.8.4/go.mod h1:0sQWfOeY63QTntERDJJ/0SuKK0T1uVSgKCuAROlKEPY=
 go.mongodb.org/mongo-driver v1.10.0/go.mod h1:wsihk0Kdgv8Kqu1Anit4sfK+22vSFbUrAVEYRhCXrA8=
 go.mongodb.org/mongo-driver v1.10.1/go.mod h1:z4XpeoU6w+9Vht+jAFyLgVrD+jGSQQe0+CBWFHNiHt8=
-go.mongodb.org/mongo-driver v1.10.3 h1:XDQEvmh6z1EUsXuIkXE9TaVeqHw6SwS1uf93jFs0HBA=
-go.mongodb.org/mongo-driver v1.10.3/go.mod h1:z4XpeoU6w+9Vht+jAFyLgVrD+jGSQQe0+CBWFHNiHt8=
+go.mongodb.org/mongo-driver v1.11.0 h1:FZKhBSTydeuffHj9CBjXlR8vQLee1cQyTWYPA6/tqiE=
+go.mongodb.org/mongo-driver v1.11.0/go.mod h1:s7p5vEtfbeR1gYi6pnj3c3/urpbLv2T5Sfd6Rp2HBB8=
 go.mozilla.org/pkcs7 v0.0.0-20200128120323-432b2356ecb1/go.mod h1:SNgMg+EgDFwmvSmLRTNKC5fegJjB7v23qTQ0XLGUNHk=
 go.opencensus.io v0.21.0/go.mod h1:mSImk1erAIZhrmZN+AvHh14ztQfjbGwt4TtuofqLduU=
 go.opencensus.io v0.22.0/go.mod h1:+kGneAE2xo2IficOXnaByMWTGM9T73dGwxeWcUqIpI8=
