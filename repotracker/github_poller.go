@@ -172,8 +172,10 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string, ma
 		// thinks is the most recent revision) and the most recent commit (i.e. the branch's actual
 		// most recent commit).
 		if firstCommit != nil {
+			githubCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+			defer cancel()
 			baseRevision, err = thirdparty.GetGithubMergeBaseRevision(
-				ctx,
+				githubCtx,
 				gRepoPoller.OauthToken,
 				gRepoPoller.ProjectRef.Owner,
 				gRepoPoller.ProjectRef.Repo,
