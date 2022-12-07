@@ -343,7 +343,7 @@ tasks:
 		},
 		NewMockRepoPoller(pp, revisions),
 	}
-	assert.NoError(t, repoTracker.StoreRevisions(context.TODO(), revisions))
+	assert.NoError(t, repoTracker.StoreRevisions(ctx, revisions))
 	v, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester("testproject"))
 	assert.NoError(t, err)
 	assert.NotNil(t, v)
@@ -371,7 +371,9 @@ tasks:
 	// now we should update just the task even though the build is activated already
 	for i, bv := range v.BuildVariants {
 		if bv.BuildVariant == "bv1" {
-			v.BuildVariants[i].BatchTimeTasks[0].ActivateAt = time.Now()
+			// Set the activation time before the current timestamp to ensure
+			// that it is already elapsed.
+			v.BuildVariants[i].BatchTimeTasks[0].ActivateAt = time.Now().Add(-time.Millisecond)
 		}
 	}
 	ok, err = model.ActivateElapsedBuildsAndTasks(v)
