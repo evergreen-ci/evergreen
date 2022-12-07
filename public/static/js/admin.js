@@ -185,10 +185,6 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
       $scope.Settings.expansions = {};
     }
 
-    if ($scope.project_creation === null || $scope.project_creation === undefined) {
-      $scope.Settings.project_creation = {};
-    }
-
     mciAdminRestService.saveSettings($scope.Settings, {
       success: successHandler,
       error: errorHandler
@@ -246,7 +242,6 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
   }
 
   $scope.deleteSubnet = function (index) {
-    console.log("bob");
     $scope.Settings.providers.aws.subnets.splice(index, 1);
   }
 
@@ -797,9 +792,9 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
       };
     }
 
-    // if ($scope.Settings.project_creation.repos_to_override === null || $scope.Settings.project_creation.repos_to_override === undefined) {
-    //   $scope.Settings.project_creation.repos_to_override = [];
-    // }
+    if ($scope.Settings.project_creation.repos_to_override === null || $scope.Settings.project_creation.repos_to_override === undefined) {
+      $scope.Settings.project_creation.repos_to_override = [];
+    }
 
     if (!$scope.validOwnerRepo($scope.new_owner_repo)) {
       $scope.invalidOwnerRepo = "Owner and Repo cannot be empty.";
@@ -816,7 +811,6 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
   }
 
   $scope.validOwnerRepo = function (owner_repo) {
-    console.log(owner_repo);
     return owner_repo && owner_repo.owner && owner_repo.repo;
   }
 
