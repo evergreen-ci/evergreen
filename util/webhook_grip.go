@@ -133,12 +133,6 @@ func (w *evergreenWebhookLogger) send(m message.Composer) error {
 	if !ok {
 		return errors.Errorf("received unexpected composer %T", m.Raw())
 	}
-
-	req, err := raw.request()
-	if err != nil {
-		return errors.Wrap(err, "making webhook request")
-	}
-
 	timeout := defaultWebhookTimeout
 	if raw.TimeoutMS > 0 {
 		timeout = time.Duration(raw.TimeoutMS) * time.Millisecond
@@ -148,8 +142,13 @@ func (w *evergreenWebhookLogger) send(m message.Composer) error {
 		minDelay = time.Duration(raw.MinDelayMS) * time.Millisecond
 	}
 
-	var client *http.Client = w.client
+	client := w.client
 	return utility.Retry(context.Background(), func() (bool, error) {
+		req, err := raw.request()
+		if err != nil {
+			return false, errors.Wrap(err, "making webhook request")
+		}
+
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 		req = req.WithContext(ctx)
