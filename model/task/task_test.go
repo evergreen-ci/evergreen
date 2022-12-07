@@ -2185,18 +2185,19 @@ func TestDeactivateTasks(t *testing.T) {
 		{Id: "t4", DependsOn: []Dependency{{TaskId: "t2"}}, Activated: true},
 		{Id: "t5", DependsOn: []Dependency{{TaskId: "t4"}}, Activated: true},
 		{Id: "t6", Activated: true},
+		{Id: "t7", DependsOn: []Dependency{{TaskId: "t6"}}, Activated: true},
 	}
 	for _, task := range tasks {
 		require.NoError(t, task.Insert())
 	}
 
-	updatedIDs := []string{"t0", "t4", "t5", "t6"}
+	updatedIDs := []string{"t0", "t4", "t5", "t6", "t7"}
 	err := DeactivateTasks([]Task{tasks[0]}, true, "")
 	assert.NoError(t, err)
 
 	dbTasks, err := FindAll(All)
 	assert.NoError(t, err)
-	assert.Len(t, dbTasks, 7)
+	assert.Len(t, dbTasks, 8)
 
 	for _, task := range dbTasks {
 		if utility.StringSliceContains(updatedIDs, task.Id) {

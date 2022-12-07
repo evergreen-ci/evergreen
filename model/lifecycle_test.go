@@ -37,11 +37,13 @@ func TestTaskSetPriority(t *testing.T) {
 
 		tasks := []task.Task{
 			{
-				Id:        "one",
-				DependsOn: []task.Dependency{{TaskId: "two", Status: ""}, {TaskId: "three", Status: ""}, {TaskId: "four", Status: ""}},
-				Activated: true,
-				BuildId:   "b0",
-				Version:   v.Id,
+				Id:             "one",
+				DependsOn:      []task.Dependency{{TaskId: "two", Status: ""}, {TaskId: "three", Status: ""}, {TaskId: "four", Status: ""}},
+				Activated:      true,
+				BuildId:        "b0",
+				Version:        v.Id,
+				DisplayOnly:    true,
+				ExecutionTasks: []string{"six"},
 			},
 			{
 				Id:        "two",
@@ -120,11 +122,11 @@ func TestTaskSetPriority(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			So(t.Id, ShouldEqual, "six")
-			So(t.Priority, ShouldEqual, 0)
+			So(t.Priority, ShouldEqual, 1)
 
 		})
 
-		Convey("decreasing priority should update the task but not its dependencies", func() {
+		Convey("decreasing priority should update the task and its execution tasks but not its dependencies", func() {
 			So(SetTaskPriority(tasks[0], 1, "user"), ShouldBeNil)
 			So(tasks[0].Activated, ShouldEqual, true)
 			So(SetTaskPriority(tasks[0], -1, "user"), ShouldBeNil)
@@ -165,8 +167,8 @@ func TestTaskSetPriority(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			So(t.Id, ShouldEqual, "six")
-			So(t.Priority, ShouldEqual, 0)
-			So(t.Activated, ShouldEqual, true)
+			So(t.Priority, ShouldEqual, -1)
+			So(t.Activated, ShouldEqual, false)
 		})
 	})
 }
