@@ -383,11 +383,7 @@ func (t *patchTriggers) patchFamilySuccess(sub *event.Subscription) (*notificati
 }
 
 func (t *patchTriggers) patchFamilyFailure(sub *event.Subscription) (*notification.Notification, error) {
-	if t.data.Status != evergreen.PatchFailed {
-		return nil, nil
-	}
-
-	if t.event.EventType != event.PatchChildrenCompletion {
+	if t.data.Status != evergreen.PatchFailed || t.event.EventType != event.PatchChildrenCompletion {
 		return nil, nil
 	}
 	return t.generate(sub)
