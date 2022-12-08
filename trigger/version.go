@@ -170,7 +170,7 @@ func (t *versionTriggers) generate(sub *event.Subscription, pastTenseOverride st
 	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
 }
 func (t *versionTriggers) versionOutcome(sub *event.Subscription) (*notification.Notification, error) {
-	if t.data.Status != evergreen.VersionSucceeded && t.data.Status != evergreen.VersionFailed {
+	if (t.data.Status != evergreen.VersionSucceeded && t.data.Status != evergreen.VersionFailed) || t.event.EventType == event.VersionChildrenCompletion {
 		return nil, nil
 	}
 
@@ -186,7 +186,7 @@ func (t *versionTriggers) versionGithubCheckOutcome(sub *event.Subscription) (*n
 }
 
 func (t *versionTriggers) versionFailure(sub *event.Subscription) (*notification.Notification, error) {
-	if t.data.Status != evergreen.VersionFailed {
+	if t.data.Status != evergreen.VersionFailed || t.event.EventType == event.VersionChildrenCompletion {
 		return nil, nil
 	}
 	failedTasks, err := task.FindAll(db.Query(task.FailedTasksByVersion(t.version.Id)))
@@ -209,7 +209,7 @@ func (t *versionTriggers) versionFailure(sub *event.Subscription) (*notification
 }
 
 func (t *versionTriggers) versionSuccess(sub *event.Subscription) (*notification.Notification, error) {
-	if t.data.Status != evergreen.VersionSucceeded {
+	if t.data.Status != evergreen.VersionSucceeded || t.event.EventType == event.VersionChildrenCompletion {
 		return nil, nil
 	}
 
