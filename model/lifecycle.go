@@ -1699,7 +1699,7 @@ func addNewTasks(ctx context.Context, creationInfo TaskCreationInfo, existingBui
 		}
 		projectBV := creationInfo.Project.FindBuildVariant(b.BuildVariant)
 		if projectBV != nil && hasActivatedTask {
-			b.Activated = utility.FromBoolTPtr(projectBV.Activate) // activate unless explicitly set otherwise
+			b.Activated = utility.FromBoolTPtr(projectBV.Activate)
 		}
 
 		// Build a list of tasks that haven't been created yet for the given variant, but have
