@@ -93,17 +93,6 @@ const (
 	MaxMainlineCommitVersionLimit     = 300
 )
 
-type GetVersionsOptions struct {
-	StartAfter     int    `json:"start"`
-	Requester      string `json:"requester"`
-	Limit          int    `json:"limit"`
-	Skip           int    `json:"skip"`
-	IncludeBuilds  bool   `json:"include_builds"`
-	IncludeTasks   bool   `json:"include_tasks"`
-	ByBuildVariant string `json:"by_build_variant"`
-	ByTask         string `json:"by_task"`
-}
-
 func (v *Version) LastSuccessful() (*Version, error) {
 	lastGreen, err := VersionFindOne(VersionBySuccessfulBeforeRevision(v.Identifier, v.RevisionOrderNumber).Sort(
 		[]string{"-" + VersionRevisionOrderNumberKey}))
@@ -485,6 +474,17 @@ func GetMainlineCommitVersionsWithOptions(projectId string, opts MainlineCommitV
 	return res, nil
 }
 
+type GetVersionsOptions struct {
+	StartAfter     int    `json:"start"`
+	Requester      string `json:"requester"`
+	Limit          int    `json:"limit"`
+	Skip           int    `json:"skip"`
+	IncludeBuilds  bool   `json:"include_builds"`
+	IncludeTasks   bool   `json:"include_tasks"`
+	ByBuildVariant string `json:"by_build_variant"`
+	ByTask         string `json:"by_task"`
+}
+
 func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Version, error) {
 	projectId, err := GetIdForProject(projectName)
 	if err != nil {
@@ -505,7 +505,7 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 	if opts.StartAfter > 0 {
 		match[VersionRevisionOrderNumberKey] = bson.M{"$lt": opts.StartAfter}
 	}
-	pipeline := []bson.M{bson.M{"$match": match}}
+	pipeline := []bson.M{{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
 
 	// initial projection of version items
