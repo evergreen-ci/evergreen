@@ -1294,6 +1294,7 @@ func UpdatePatchStatus(p *patch.Patch, versionStatus, buildVariant string) error
 	}
 
 	event.LogPatchStateChangeEvent(p.Version, patchStatus)
+
 	if evergreen.IsFinishedPatchStatus(patchStatus) {
 		if err = p.MarkFinished(patchStatus, time.Now()); err != nil {
 			return errors.Wrapf(err, "marking patch '%s' as finished with status '%s'", p.Id.Hex(), patchStatus)
@@ -1315,6 +1316,22 @@ func UpdatePatchStatus(p *patch.Patch, versionStatus, buildVariant string) error
 			if err = thirdparty.SendVersionStatusToGithub(input); err != nil {
 				return errors.Wrapf(err, "sending patch '%s' status to Github", p.Id.Hex())
 			}
+		}
+	}
+
+	isDone, parentPatch, err := p.GetFamilyInformation()
+	if err != nil {
+		return errors.Wrapf(err, "getting family information for patch '%s'", p.Id.Hex())
+	}
+	if isDone {
+		collectiveStatus, err := p.CollectiveStatus()
+		if err != nil {
+			return errors.Wrapf(err, "getting collective status for patch '%s'", p.Id.Hex())
+		}
+		if parentPatch != nil {
+			event.LogPatchChildrenCompletionEvent(parentPatch.Id.Hex(), collectiveStatus, parentPatch.Author)
+		} else {
+			event.LogPatchChildrenCompletionEvent(p.Id.Hex(), collectiveStatus, p.Author)
 		}
 	}
 
@@ -1365,6 +1382,28 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 		if err = UpdatePatchStatus(p, newVersionStatus, taskBuild.BuildVariant); err != nil {
 			return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
 		}
+
+		isDone, parentPatch, err := p.GetFamilyInformation()
+		if err != nil {
+			return errors.Wrapf(err, "getting family information for patch '%s'", p.Id.Hex())
+		}
+		if isDone {
+			collectiveStatus, err := p.CollectiveStatus()
+			if err != nil {
+				return errors.Wrapf(err, "getting collective status for patch '%s'", p.Id.Hex())
+			}
+			versionStatus, err := evergreen.PatchStatusToVersionStatus(collectiveStatus)
+			if err != nil {
+				return errors.Wrapf(err, "getting version status")
+			}
+			if parentPatch != nil {
+				event.LogVersionChildrenCompletionEvent(parentPatch.Id.Hex(), versionStatus, parentPatch.Author)
+			} else {
+				event.LogVersionChildrenCompletionEvent(p.Id.Hex(), versionStatus, p.Author)
+			}
+
+		}
+
 	}
 
 	return nil
