@@ -82,7 +82,7 @@ func (t *patchTriggers) Attributes() event.Attributes {
 }
 
 func (t *patchTriggers) patchOutcome(sub *event.Subscription) (*notification.Notification, error) {
-	if t.data.Status != evergreen.PatchSucceeded && t.data.Status != evergreen.PatchFailed {
+	if (t.data.Status != evergreen.PatchSucceeded && t.data.Status != evergreen.PatchFailed) || t.event.EventType == event.PatchChildrenCompletion {
 		return nil, nil
 	}
 
@@ -150,7 +150,7 @@ func (t *patchTriggers) patchOutcome(sub *event.Subscription) (*notification.Not
 }
 
 func (t *patchTriggers) patchFailure(sub *event.Subscription) (*notification.Notification, error) {
-	if t.data.Status != evergreen.PatchFailed {
+	if t.data.Status != evergreen.PatchFailed || t.event.EventType == event.PatchChildrenCompletion {
 		return nil, nil
 	}
 
@@ -213,7 +213,7 @@ func finalizeChildPatch(sub *event.Subscription) error {
 }
 
 func (t *patchTriggers) patchSuccess(sub *event.Subscription) (*notification.Notification, error) {
-	if t.data.Status != evergreen.PatchSucceeded {
+	if t.data.Status != evergreen.PatchSucceeded || t.event.EventType == event.PatchChildrenCompletion {
 		return nil, nil
 	}
 
