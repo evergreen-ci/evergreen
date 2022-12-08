@@ -268,7 +268,7 @@ func MockConfig() *evergreen.Settings {
 		ProjectCreation: evergreen.ProjectCreationConfig{
 			TotalProjectLimit: 400,
 			RepoProjectLimit:  10,
-			ReposToOverride: []evergreen.OwnerRepo{
+			RepoExceptions: []evergreen.OwnerRepo{
 				{
 					Owner: "owner",
 					Repo:  "repo",

@@ -15,20 +15,20 @@ type OwnerRepo struct {
 
 type ProjectCreationConfig struct {
 
-	// Total number of projects that evergreen is willing to support
+	// TotalProjectLimit is the total number of projects that Evergreen is willing to support
 	TotalProjectLimit int `bson:"total_project_limit" json:"total_project_limit" yaml:"total_project_limit"`
 
-	// Number of projects that evergreen will allow each repo to have
+	// RepoProjectLimit is the number of projects that Evergreen will allow each repo to have
 	RepoProjectLimit int `bson:"repo_project_limit" json:"repo_project_limit" yaml:"repo_project_limit"`
 
-	// List of repos that can override the default repo-project limit but not the total project limit
-	ReposToOverride []OwnerRepo `bson:"repos_to_override" json:"repos_to_override" yaml:"repos_to_override"`
+	// RepoExceptions is a list of repos that can override the default repo-project limit but not the total project limit
+	RepoExceptions []OwnerRepo `bson:"repos_to_override,omitempty" json:"repos_to_override" yaml:"repos_to_override"`
 }
 
 var (
 	ProjectCreationConfigTotalProjectLimitKey = bsonutil.MustHaveTag(ProjectCreationConfig{}, "TotalProjectLimit")
 	ProjectCreationConfigRepoProjectLimitKey  = bsonutil.MustHaveTag(ProjectCreationConfig{}, "RepoProjectLimit")
-	ProjectCreationConfigReposToOverrideKey   = bsonutil.MustHaveTag(ProjectCreationConfig{}, "ReposToOverride")
+	ProjectCreationConfigRepoExceptionsKey    = bsonutil.MustHaveTag(ProjectCreationConfig{}, "RepoExceptions")
 )
 
 func (*ProjectCreationConfig) SectionId() string { return "project_creation" }

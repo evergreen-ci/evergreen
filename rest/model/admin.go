@@ -1284,18 +1284,18 @@ func (a *APIOwnerRepo) ToService() (interface{}, error) {
 type APIProjectCreationConfig struct {
 	TotalProjectLimit int            `json:"total_project_limit"`
 	RepoProjectLimit  int            `json:"repo_project_limit"`
-	ReposToOverride   []APIOwnerRepo `json:"repos_to_override"`
+	RepoExceptions    []APIOwnerRepo `json:"repos_to_override"`
 }
 
 func (a *APIProjectCreationConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.ProjectCreationConfig:
-		for _, ownerRepo := range v.ReposToOverride {
+		for _, ownerRepo := range v.RepoExceptions {
 			apiOwnerRepo := APIOwnerRepo{}
 			if err := apiOwnerRepo.BuildFromService(ownerRepo); err != nil {
 				return err
 			}
-			a.ReposToOverride = append(a.ReposToOverride, apiOwnerRepo)
+			a.RepoExceptions = append(a.RepoExceptions, apiOwnerRepo)
 		}
 		a.TotalProjectLimit = v.TotalProjectLimit
 		a.RepoProjectLimit = v.RepoProjectLimit
@@ -1316,7 +1316,7 @@ func (a *APIProjectCreationConfig) ToService() (interface{}, error) {
 		RepoProjectLimit:  a.RepoProjectLimit,
 	}
 
-	for _, r := range a.ReposToOverride {
+	for _, r := range a.RepoExceptions {
 		i, err := r.ToService()
 		if err != nil {
 			return nil, err
@@ -1325,7 +1325,7 @@ func (a *APIProjectCreationConfig) ToService() (interface{}, error) {
 		if !ok {
 			return nil, errors.Errorf("programmatic error: expected owner and repo but got type %T", i)
 		}
-		config.ReposToOverride = append(config.ReposToOverride, ownerRepo)
+		config.RepoExceptions = append(config.RepoExceptions, ownerRepo)
 	}
 
 	return config, nil
