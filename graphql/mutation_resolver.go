@@ -353,7 +353,7 @@ func (r *mutationResolver) AttachProjectToNewRepo(ctx context.Context, project M
 	pRef.Owner = project.NewOwner
 	pRef.Repo = project.NewRepo
 
-	if err = pRef.AttachToNewRepo(ctx, usr); err != nil {
+	if err = pRef.AttachToNewRepo(usr); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error updating owner/repo: %s", err.Error()))
 	}
 
