@@ -368,7 +368,7 @@ func (t *patchTriggers) patchFamilyOutcome(sub *event.Subscription) (*notificati
 	if t.data.Status != evergreen.PatchSucceeded && t.data.Status != evergreen.PatchFailed {
 		return nil, nil
 	}
-	if t.event.EventType != event.VersionChildrenCompletion {
+	if t.event.EventType != event.PatchChildrenCompletion {
 		return nil, nil
 	}
 	return t.generate(sub)
