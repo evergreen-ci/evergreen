@@ -351,10 +351,9 @@ func SendVersionStatusToGithub(input SendGithubStatusInput) error {
 	return nil
 }
 
+// GetGithubMergeBaseRevision compares baseRevision and currentCommitHash in a
+// GitHub repo and returns the merge base commit's SHA.
 func GetGithubMergeBaseRevision(ctx context.Context, oauthToken, repoOwner, repo, baseRevision, currentCommitHash string) (string, error) {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
 	httpClient := getGithubClientRetry(oauthToken, "GetGithubMergeBaseRevision")
 	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
@@ -367,13 +366,20 @@ func GetGithubMergeBaseRevision(ctx context.Context, oauthToken, repoOwner, repo
 			return "", parseGithubErrorResponse(resp)
 		}
 	} else {
-		errMsg := fmt.Sprintf("nil response from merge base commit response for '%s/%s'@%s..%s: %v", repoOwner, repo, baseRevision, currentCommitHash, err)
-		grip.Error(errMsg)
-		return "", APIResponseError{errMsg}
+		apiErr := errors.Errorf("nil response from merge base commit response for '%s/%s'@%s..%s: %v", repoOwner, repo, baseRevision, currentCommitHash, err)
+		grip.Error(message.WrapError(apiErr, message.Fields{
+			"message":             "failed to compare commits to find merge base commit",
+			"op":                  "GetGithubMergeBaseRevision",
+			"github_error":        fmt.Sprint(err),
+			"repo":                repo,
+			"base_revision":       baseRevision,
+			"current_commit_hash": currentCommitHash,
+		}))
+		return "", APIResponseError{apiErr.Error()}
 	}
 
 	if compare == nil || compare.MergeBaseCommit == nil || compare.MergeBaseCommit.SHA == nil {
-		return "", APIRequestError{Message: "missing data from github compare response"}
+		return "", APIRequestError{Message: "missing data from GitHub compare response"}
 	}
 
 	return *compare.MergeBaseCommit.SHA, nil
@@ -1037,6 +1043,7 @@ func GetMergeablePullRequest(ctx context.Context, issue int, githubToken, owner,
 	return pr, nil
 }
 
+// CreateGithubHook creates a new GitHub webhook for a repo.
 func CreateGithubHook(ctx context.Context, settings evergreen.Settings, owner string, repo string) (*github.Hook, error) {
 	token, err := settings.GetGithubOauthToken()
 	if err != nil {
@@ -1059,10 +1066,8 @@ func CreateGithubHook(ctx context.Context, settings evergreen.Settings, owner st
 			"insecure_ssl": github.String("0"),
 		},
 	}
-	newCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
 
-	respHook, resp, err := client.Repositories.CreateHook(newCtx, owner, repo, &hookObj)
+	respHook, resp, err := client.Repositories.CreateHook(ctx, owner, repo, &hookObj)
 	if err != nil {
 		return nil, err
 	}
@@ -1073,6 +1078,8 @@ func CreateGithubHook(ctx context.Context, settings evergreen.Settings, owner st
 	return respHook, nil
 }
 
+// GetExistingGithubHook gets information from GitHub about an existing webhook
+// for a repo.
 func GetExistingGithubHook(ctx context.Context, settings evergreen.Settings, owner, repo string) (*github.Hook, error) {
 	token, err := settings.GetGithubOauthToken()
 	if err != nil {
@@ -1082,10 +1089,8 @@ func GetExistingGithubHook(ctx context.Context, settings evergreen.Settings, own
 	httpClient := getGithubClient(token, "ListGithubHooks")
 	defer utility.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
-	newCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
 
-	respHooks, _, err := client.Repositories.ListHooks(newCtx, owner, repo, nil)
+	respHooks, _, err := client.Repositories.ListHooks(ctx, owner, repo, nil)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting hooks for owner '%s', repo '%s'", owner, repo)
 	}

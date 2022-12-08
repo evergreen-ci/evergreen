@@ -110,12 +110,12 @@ func TestEvergreenWebhookSender(t *testing.T) {
 			s.Send(m)
 			assert.Equal(t, "", transport.lastUrl)
 		},
-		"WithRetries": func(t *testing.T) {
+		"InvalidWithRetries": func(t *testing.T) {
 			retryCount := 3
 			m := NewWebhookMessage(EvergreenWebhook{
 				NotificationID: "evergreen",
 				URL:            "https://example.com",
-				Secret:         []byte("hi"),
+				Secret:         []byte("forged secret"),
 				Body:           []byte("something important"),
 				Retries:        retryCount,
 			})
@@ -132,6 +132,31 @@ func TestEvergreenWebhookSender(t *testing.T) {
 			assert.Equal(t, retryCount+1, transport.attemptCount)
 			require.Error(t, capturedErr)
 			assert.EqualError(t, capturedErr, "after 4 attempts, operation failed: response was 400 (Bad Request)")
+		},
+		"SucceedsAfterRetry": func(t *testing.T) {
+			attempts := 2
+			transport.minAttempts = attempts
+			secret := []byte("hi")
+			transport.secret = secret
+			body := []byte("something important")
+			m := NewWebhookMessage(EvergreenWebhook{
+				NotificationID: "evergreen",
+				URL:            "https://example.com",
+				Secret:         secret,
+				Body:           body,
+				Retries:        attempts,
+			})
+			assert.True(t, m.Loggable())
+			assert.NotNil(t, m)
+
+			assert.NoError(t, s.SetErrorHandler(func(err error, _ message.Composer) {
+				t.Fatal("error handler was called, but shouldn't have been")
+			}))
+
+			s.Send(m)
+			assert.Equal(t, "https://example.com", transport.lastUrl)
+			assert.Equal(t, attempts, transport.attemptCount)
+			assert.Equal(t, body, transport.lastBody)
 		},
 	} {
 		transport = mockWebhookTransport{}
@@ -182,9 +207,11 @@ func TestEvergreenWebhookSenderWithBadSecret(t *testing.T) {
 
 type mockWebhookTransport struct {
 	lastUrl      string
+	lastBody     []byte
 	secret       []byte
 	header       http.Header
 	attemptCount int
+	minAttempts  int
 }
 
 func (t *mockWebhookTransport) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -195,6 +222,13 @@ func (t *mockWebhookTransport) RoundTrip(req *http.Request) (*http.Response, err
 		StatusCode: http.StatusNoContent,
 		Body:       ioutil.NopCloser(nil),
 	}
+
+	if t.attemptCount < t.minAttempts {
+		resp.StatusCode = http.StatusBadRequest
+		resp.Body = ioutil.NopCloser(bytes.NewBufferString(fmt.Sprintf("won't succeed before %d requests", t.minAttempts)))
+		return resp, nil
+	}
+
 	if req.Method != http.MethodPost {
 		resp.StatusCode = http.StatusMethodNotAllowed
 		resp.Body = ioutil.NopCloser(bytes.NewBufferString(fmt.Sprintf("expected method POST, got %s", req.Method)))
@@ -221,6 +255,7 @@ func (t *mockWebhookTransport) RoundTrip(req *http.Request) (*http.Response, err
 		resp.Body = ioutil.NopCloser(bytes.NewBufferString(err.Error()))
 		return resp, nil
 	}
+	t.lastBody = body
 
 	hash, err := CalculateHMACHash(t.secret, body)
 	if err != nil {
