@@ -2609,6 +2609,7 @@ func TestAddNewTasks(t *testing.T) {
 			assert.NoError(t, err)
 			build, err := build.FindOneId("b0")
 			assert.NoError(t, err)
+			assert.NotNil(t, build)
 			assert.Equal(t, len(testCase.activatedTasks), len(activatedTasks))
 			for _, task := range activatedTasks {
 				assert.Contains(t, testCase.activatedTasks, task.DisplayName)
