@@ -2295,14 +2295,15 @@ func TestGetProjectTasksWithOptions(t *testing.T) {
 		RevisionOrderNumber: 100,
 	}))
 
-	// total of 50 tasks eligible to be found
+	// total of 100 tasks eligible to be found
 	for i := 0; i < 100; i++ {
 		myTask := task.Task{
 			Id:                  fmt.Sprintf("t%d", i),
-			RevisionOrderNumber: i,
+			RevisionOrderNumber: 100 - (i / 2),
 			DisplayName:         "t1",
 			Project:             "my_project",
 			Status:              evergreen.TaskSucceeded,
+			Version:             fmt.Sprintf("v%d", 100-(i/2)),
 		}
 		if i%3 == 0 {
 			myTask.BuildVariant = "bv1"
@@ -2316,22 +2317,22 @@ func TestGetProjectTasksWithOptions(t *testing.T) {
 
 	tasks, err := GetTasksWithOptions("my_ident", "t1", opts)
 	assert.NoError(t, err)
-	assert.Len(t, tasks, defaultVersionLimit)
+	assert.Len(t, tasks, 21)
 
 	opts.Limit = 5
 	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
 	assert.NoError(t, err)
-	assert.Len(t, tasks, 5)
-	assert.Equal(t, tasks[0].RevisionOrderNumber, 99)
-	assert.Equal(t, tasks[4].RevisionOrderNumber, 91)
+	assert.Len(t, tasks, 6)
+	assert.Equal(t, tasks[0].RevisionOrderNumber, 100)
+	assert.Equal(t, tasks[5].RevisionOrderNumber, 95)
 
 	opts.Limit = 10
-	opts.StartAt = 20
+	opts.StartAt = 80
 	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
 	assert.NoError(t, err)
-	assert.Len(t, tasks, 10)
-	assert.Equal(t, tasks[0].RevisionOrderNumber, 19)
-	assert.Equal(t, tasks[9].RevisionOrderNumber, 1)
+	assert.Len(t, tasks, 11)
+	assert.Equal(t, tasks[0].RevisionOrderNumber, 80)
+	assert.Equal(t, tasks[10].RevisionOrderNumber, 70)
 
 	opts.Limit = defaultVersionLimit
 	opts.StartAt = 90
@@ -2339,7 +2340,7 @@ func TestGetProjectTasksWithOptions(t *testing.T) {
 	opts.BuildVariant = "bv1"
 	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
 	assert.NoError(t, err)
-	assert.Len(t, tasks, 15)
+	assert.Len(t, tasks, 7)
 }
 
 func TestUpdateNextPeriodicBuild(t *testing.T) {

@@ -456,8 +456,7 @@ const (
 )
 
 const (
-	tasksByProjectQueryMaxTime   = 90 * time.Second
-	tasksByProjectMaxNumVersions = 1000
+	tasksByProjectQueryMaxTime = 90 * time.Second
 )
 
 var adminPermissions = gimlet.Permissions{
@@ -1198,11 +1197,10 @@ func GetTasksWithOptions(projectName string, taskName string, opts GetProjectTas
 	}
 	match["$and"] = []bson.M{
 		{task.RevisionOrderNumberKey: bson.M{"$lte": startingRevision}},
-		{task.RevisionOrderNumberKey: bson.M{"$gte": startingRevision - tasksByProjectMaxNumVersions}},
+		{task.RevisionOrderNumberKey: bson.M{"$gte": startingRevision - opts.Limit}},
 	}
 	pipeline := []bson.M{{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{task.RevisionOrderNumberKey: -1}})
-	pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
 
 	res := []task.Task{}
 	if _, err = db.AggregateWithMaxTime(task.Collection, pipeline, &res, tasksByProjectQueryMaxTime); err != nil {
