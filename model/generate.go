@@ -340,7 +340,7 @@ func (g *GeneratedProject) getNewTasksWithDependencies(v *Version, p *Project, a
 	}
 
 	var err error
-	newTVPairs.ExecTasks, err = IncludeDependencies(p, newTVPairs.ExecTasks, v.Requester, activationInfo, g.BuildVariants)
+	newTVPairs.ExecTasks, err = IncludeDependenciesWithGenerated(p, newTVPairs.ExecTasks, v.Requester, activationInfo, g.BuildVariants)
 	grip.Warning(message.WrapError(err, message.Fields{
 		"message": "error including dependencies for generator",
 		"task":    g.Task.Id,
@@ -461,18 +461,6 @@ func newSpecificActivationInfo() specificActivationInfo {
 	}
 }
 
-func (b *specificActivationInfo) variantExistsInGeneratedProject(variant string, variants []parserBV) bool {
-	if b == nil {
-		return false
-	}
-	for bv := range variants {
-		if variants[bv].Name == variant {
-			return true
-		}
-	}
-	return false
-}
-
 func (b *specificActivationInfo) variantHasSpecificActivation(variant string) bool {
 	return utility.StringSliceContains(b.activationVariants, variant)
 }
@@ -508,6 +496,9 @@ func (b *specificActivationInfo) taskHasSpecificActivation(variant, task string)
 }
 
 func (b *specificActivationInfo) taskOrVariantHasSpecificActivation(variant, task string) bool {
+	if b == nil {
+		return false
+	}
 	return b.taskHasSpecificActivation(variant, task) || b.variantHasSpecificActivation(variant)
 }
 
@@ -625,6 +616,15 @@ func (g *GeneratedProject) addGeneratedProjectToConfig(intermediateProject *Pars
 		}
 	}
 	return intermediateProject, nil
+}
+
+func variantExistsInGeneratedProject(variants []parserBV, variant string) bool {
+	for bv := range variants {
+		if variants[bv].Name == variant {
+			return true
+		}
+	}
+	return false
 }
 
 // projectMaps is a struct of maps of project fields, which allows efficient comparisons of generated projects to projects.
