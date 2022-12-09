@@ -151,12 +151,6 @@ func (pp *ParserProject) mergeUnique(toMerge *ParserProject) error {
 		pp.BatchTime = toMerge.BatchTime
 	}
 
-	if pp.AutoUpdateModules != nil && toMerge.AutoUpdateModules != nil {
-		catcher.New("auto update modules can only be defined in one YAML")
-	} else if toMerge.AutoUpdateModules != nil {
-		pp.AutoUpdateModules = toMerge.AutoUpdateModules
-	}
-
 	if pp.PreErrorFailsTask != nil && toMerge.PreErrorFailsTask != nil {
 		catcher.New("pre error fails task can only be defined in one YAML")
 	} else if toMerge.PreErrorFailsTask != nil {

@@ -64,7 +64,6 @@ type Project struct {
 	EarlyTermination   *YAMLCommandSet            `yaml:"early_termination,omitempty" bson:"early_termination,omitempty"`
 	CallbackTimeout    int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs"`
 	Modules            ModuleList                 `yaml:"modules,omitempty" bson:"modules"`
-	AutoUpdateModules  bool                       `yaml:"auto_update_modules,omitempty" bson:"auto_update_modules"`
 	Containers         []Container                `yaml:"containers,omitempty" bson:"containers"`
 	BuildVariants      BuildVariants              `yaml:"buildvariants,omitempty" bson:"build_variants"`
 	Functions          map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions"`
@@ -333,11 +332,12 @@ type ContainerSystem struct {
 }
 
 type Module struct {
-	Name   string `yaml:"name,omitempty" bson:"name"`
-	Branch string `yaml:"branch,omitempty" bson:"branch"`
-	Repo   string `yaml:"repo,omitempty" bson:"repo"`
-	Prefix string `yaml:"prefix,omitempty" bson:"prefix"`
-	Ref    string `yaml:"ref,omitempty" bson:"ref"`
+	Name       string `yaml:"name,omitempty" bson:"name"`
+	Branch     string `yaml:"branch,omitempty" bson:"branch"`
+	Repo       string `yaml:"repo,omitempty" bson:"repo"`
+	Prefix     string `yaml:"prefix,omitempty" bson:"prefix"`
+	Ref        string `yaml:"ref,omitempty" bson:"ref"`
+	AutoUpdate bool   `yaml:"auto_update,omitempty" bson:"auto_update"`
 }
 
 type Include struct {
@@ -1428,6 +1428,16 @@ func (p *Project) GetModuleByName(name string) (*Module, error) {
 		}
 	}
 	return nil, errors.New("no such module on this project")
+}
+
+func (p *Project) GetAutoUpdateModules() ModuleList {
+	autoUpdateModules := ModuleList{}
+	for _, module := range p.Modules {
+		if module.AutoUpdate {
+			autoUpdateModules = append(autoUpdateModules, module)
+		}
+	}
+	return autoUpdateModules
 }
 
 func (p *Project) FindTasksForVariant(build string) []string {

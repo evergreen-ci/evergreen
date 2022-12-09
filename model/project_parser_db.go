@@ -39,7 +39,6 @@ var (
 	ParserProjectTimeoutKey           = bsonutil.MustHaveTag(ParserProject{}, "Timeout")
 	ParserProjectCallbackTimeoutKey   = bsonutil.MustHaveTag(ParserProject{}, "CallbackTimeout")
 	ParserProjectModulesKey           = bsonutil.MustHaveTag(ParserProject{}, "Modules")
-	ParserProjectAutoUpdateModulesKey = bsonutil.MustHaveTag(ParserProject{}, "AutoUpdateModules")
 	ParserProjectContainersKey        = bsonutil.MustHaveTag(ParserProject{}, "Containers")
 	ParserProjectBuildVariantsKey     = bsonutil.MustHaveTag(ParserProject{}, "BuildVariants")
 	ParserProjectFunctionsKey         = bsonutil.MustHaveTag(ParserProject{}, "Functions")

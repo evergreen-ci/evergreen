@@ -598,12 +598,8 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 }
 
 // constructManifest will construct a manifest from the given project and version.
-func constructManifest(v *Version, proj *Project, projectRef *ProjectRef, settings *evergreen.Settings) (*manifest.Manifest, error) {
-	if len(proj.Modules) == 0 {
-		return nil, nil
-	}
-	isPatch := utility.StringSliceContains(evergreen.PatchRequesters, v.Requester)
-	if isPatch && !proj.AutoUpdateModules {
+func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList, settings *evergreen.Settings) (*manifest.Manifest, error) {
+	if len(moduleList) == 0 {
 		return nil, nil
 	}
 	newManifest := &manifest.Manifest{
@@ -623,7 +619,7 @@ func constructManifest(v *Version, proj *Project, projectRef *ProjectRef, settin
 	var gitCommit *github.RepositoryCommit
 
 	modules := map[string]*manifest.Module{}
-	for _, module := range proj.Modules {
+	for _, module := range moduleList {
 		var sha, url string
 		owner, repo := module.GetRepoOwnerAndName()
 		if module.Ref == "" {
@@ -674,7 +670,7 @@ func constructManifest(v *Version, proj *Project, projectRef *ProjectRef, settin
 
 // CreateManifest inserts a newly constructed manifest into the DB.
 func CreateManifest(v *Version, proj *Project, projectRef *ProjectRef, settings *evergreen.Settings) (*manifest.Manifest, error) {
-	newManifest, err := constructManifest(v, proj, projectRef, settings)
+	newManifest, err := constructManifest(v, projectRef, proj.Modules, settings)
 	if err != nil {
 		return nil, errors.Wrap(err, "constructing manifest")
 	}

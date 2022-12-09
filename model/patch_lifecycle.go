@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -491,9 +492,26 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	}
 	intermediateProject.CreateTime = patchVersion.CreateTime
 
-	manifest, err := constructManifest(patchVersion, project, projectRef, settings)
+	autoUpdateModules := project.GetAutoUpdateModules()
+
+	mfst, err := constructManifest(patchVersion, projectRef, autoUpdateModules, settings)
 	if err != nil {
 		return nil, errors.Wrap(err, "constructing manifest")
+	}
+	if mfst != nil {
+		baseManifest, err := manifest.FindFromVersion(patchVersion.Id, patchVersion.Identifier, patchVersion.Revision, patchVersion.Requester)
+		if err != nil {
+			return nil, errors.Wrap(err, "constructing base manifest")
+		}
+		if baseManifest != nil {
+			modulesToCopy := baseManifest.Modules
+			for key := range modulesToCopy {
+				if _, ok := mfst.Modules[key]; ok {
+					modulesToCopy[key] = mfst.Modules[key]
+				}
+			}
+			mfst.Modules = modulesToCopy
+		}
 	}
 
 	tasks := TaskVariantPairs{}
@@ -608,8 +626,8 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 				return nil, errors.Wrapf(err, "inserting project config for version '%s'", patchVersion.Id)
 			}
 		}
-		if manifest != nil {
-			if err = manifest.InsertWithContext(sessCtx); err != nil {
+		if mfst != nil {
+			if err = mfst.InsertWithContext(sessCtx); err != nil {
 				return nil, errors.Wrapf(err, "inserting manifest for version '%s'", patchVersion.Id)
 			}
 		}

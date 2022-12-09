@@ -281,12 +281,25 @@ modules:
 			project, patchConfig, err := GetPatchedProject(ctx, configPatch, token)
 			require.NoError(t, err)
 			assert.NotNil(t, project)
+
+			baseManifest := manifest.Manifest{
+				Revision:    patchedRevision,
+				ProjectName: patchedProject,
+				Modules: map[string]*manifest.Module{
+					"sandbox":   {Branch: "main", Repo: "sandbox", Owner: "else", Revision: "123"},
+					"evergreen": {Branch: "main", Repo: "evergreen", Owner: "something", Revision: "abc"},
+				},
+				IsBase: true,
+			}
+			_, err = baseManifest.TryInsert()
+			require.NoError(t, err)
+
 			modulesYml := `
-auto_update_modules: true
 modules:
   - name: sandbox
     repo: git@github.com:evergreen-ci/commit-queue-sandbox.git
     branch: main
+    auto_update: true
   - name: evergreen
     repo: git@github.com:evergreen-ci/evergreen.git
     branch: main
@@ -298,11 +311,14 @@ modules:
 			version, err := FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, token)
 			require.NoError(t, err)
 			assert.NotNil(t, version)
-			// ensure that the manifest was created
+			// ensure that the manifest was created and that auto_update worked for
+			// sandbox module but was skipped for evergreen
 			mfst, err := manifest.FindOne(manifest.ById(configPatch.Id.Hex()))
 			require.NoError(t, err)
 			assert.NotNil(t, mfst)
 			assert.Len(t, mfst.Modules, 2)
+			assert.NotEqual(t, mfst.Modules["sandbox"].Revision, "123")
+			assert.Equal(t, mfst.Modules["evergreen"].Revision, "abc")
 		},
 		"PatchNoRemoteConfigDoesntCreateVersion": func(*testing.T) {
 			patchedConfigFile := "fakeInPatchSoNotPatched"

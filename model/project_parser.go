@@ -82,7 +82,6 @@ type ParserProject struct {
 	EarlyTermination   *YAMLCommandSet            `yaml:"early_termination,omitempty" bson:"early_termination,omitempty"`
 	CallbackTimeout    *int                       `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs,omitempty"`
 	Modules            []Module                   `yaml:"modules,omitempty" bson:"modules,omitempty"`
-	AutoUpdateModules  *bool                      `yaml:"auto_update_modules,omitempty" bson:"auto_update_modules,omitempty"`
 	Containers         []Container                `yaml:"containers,omitempty" bson:"containers,omitempty"`
 	BuildVariants      []parserBV                 `yaml:"buildvariants,omitempty" bson:"buildvariants,omitempty"`
 	Functions          map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions,omitempty"`
@@ -880,7 +879,6 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 		EarlyTermination:   pp.EarlyTermination,
 		Timeout:            pp.Timeout,
 		CallbackTimeout:    utility.FromIntPtr(pp.CallbackTimeout),
-		AutoUpdateModules:  utility.FromBoolTPtr(pp.AutoUpdateModules),
 		Modules:            pp.Modules,
 		Functions:          pp.Functions,
 		ExecTimeoutSecs:    utility.FromIntPtr(pp.ExecTimeoutSecs),
