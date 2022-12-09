@@ -2307,6 +2307,9 @@ func TestGetProjectTasksWithOptions(t *testing.T) {
 		}
 		if i%3 == 0 {
 			myTask.BuildVariant = "bv1"
+			myTask.Requester = evergreen.RepotrackerVersionRequester
+		} else {
+			myTask.Requester = evergreen.PatchVersionRequester
 		}
 		if i%2 == 0 {
 			myTask.Status = evergreen.TaskUndispatched
@@ -2336,6 +2339,22 @@ func TestGetProjectTasksWithOptions(t *testing.T) {
 	assert.Equal(t, tasks[0].RevisionOrderNumber, 80)
 	assert.Equal(t, tasks[10].RevisionOrderNumber, 70)
 
+	opts.PatchOnly = true
+	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
+	assert.NoError(t, err)
+	assert.Len(t, tasks, 8)
+	assert.Equal(t, tasks[0].RevisionOrderNumber, 80)
+	assert.Equal(t, tasks[7].RevisionOrderNumber, 70)
+
+	opts.PatchOnly = false
+	opts.MainlineOnly = true
+	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
+	assert.NoError(t, err)
+	assert.Len(t, tasks, 3)
+	assert.Equal(t, tasks[0].RevisionOrderNumber, 78)
+	assert.Equal(t, tasks[2].RevisionOrderNumber, 72)
+
+	opts.MainlineOnly = false
 	opts.Limit = defaultVersionLimit
 	opts.StartAt = 90
 	opts.BuildVariant = "bv1"

@@ -998,6 +998,9 @@ func (h *getProjectTasksHandler) Parse(ctx context.Context, r *http.Request) err
 	if h.opts.StartAt < 0 {
 		return errors.New("start must be a non-negative integer")
 	}
+	if h.opts.MainlineOnly && h.opts.PatchOnly {
+		return errors.New("cannot specify both mainline and patch only")
+	}
 
 	return nil
 }
