@@ -38,7 +38,7 @@ type APIBuild struct {
 	RevisionOrderNumber int            `json:"order"`
 	TaskCache           []APITaskCache `json:"task_cache,omitempty"`
 	// Tasks is the build's task cache with just the names
-	Tasks             []*string            `json:"tasks"`
+	Tasks             []string             `json:"tasks"`
 	Tags              []*string            `json:"tags,omitempty"`
 	TimeTaken         APIDuration          `json:"time_taken_ms"`
 	DisplayName       *string              `json:"display_name"`
