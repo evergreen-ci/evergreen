@@ -340,7 +340,7 @@ func (g *GeneratedProject) getNewTasksWithDependencies(v *Version, p *Project, a
 	}
 
 	var err error
-	newTVPairs.ExecTasks, err = IncludeDependencies(p, newTVPairs.ExecTasks, v.Requester, activationInfo)
+	newTVPairs.ExecTasks, err = IncludeDependencies(p, newTVPairs.ExecTasks, v.Requester, activationInfo, g.BuildVariants)
 	grip.Warning(message.WrapError(err, message.Fields{
 		"message": "error including dependencies for generator",
 		"task":    g.Task.Id,
@@ -443,10 +443,9 @@ func (g *GeneratedProject) filterInactiveTasks(tasks TVPairSet, v *Version, p *P
 }
 
 type specificActivationInfo struct {
-	stepbackTasks            map[string][]specificStepbackInfo // tasks by variant that are being stepped back, along with the stepback depth to use
-	activationTasks          map[string][]string               // tasks by variant that have batchtime or activate specified
-	activationVariants       []string                          // variants that have batchtime or activate specified
-	generatedProjectVariants []parserBV                        // list of all variants that are specified in the generated project
+	stepbackTasks      map[string][]specificStepbackInfo // tasks by variant that are being stepped back, along with the stepback depth to use
+	activationTasks    map[string][]string               // tasks by variant that have batchtime or activate specified
+	activationVariants []string                          // variants that have batchtime or activate specified
 }
 
 type specificStepbackInfo struct {
@@ -454,18 +453,20 @@ type specificStepbackInfo struct {
 	depth int // store the depth that the new stepback task should use
 }
 
-func newSpecificActivationInfo(buildVariants []parserBV) specificActivationInfo {
+func newSpecificActivationInfo() specificActivationInfo {
 	return specificActivationInfo{
-		stepbackTasks:            map[string][]specificStepbackInfo{},
-		activationTasks:          map[string][]string{},
-		activationVariants:       []string{},
-		generatedProjectVariants: buildVariants,
+		stepbackTasks:      map[string][]specificStepbackInfo{},
+		activationTasks:    map[string][]string{},
+		activationVariants: []string{},
 	}
 }
 
-func (b *specificActivationInfo) variantExistsInGeneratedProject(variant string) bool {
-	for bv := range b.generatedProjectVariants {
-		if b.generatedProjectVariants[bv].Name == variant {
+func (b *specificActivationInfo) variantExistsInGeneratedProject(variant string, variants []parserBV) bool {
+	if b == nil {
+		return false
+	}
+	for bv := range variants {
+		if variants[bv].Name == variant {
 			return true
 		}
 	}
@@ -511,7 +512,7 @@ func (b *specificActivationInfo) taskOrVariantHasSpecificActivation(variant, tas
 }
 
 func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester string) specificActivationInfo {
-	res := newSpecificActivationInfo(g.BuildVariants)
+	res := newSpecificActivationInfo()
 	for _, bv := range g.BuildVariants {
 		// Only consider batchtime for certain requesters
 		if evergreen.ShouldConsiderBatchtime(requester) && bv.hasSpecificActivation() {

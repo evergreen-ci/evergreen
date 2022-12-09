@@ -6,10 +6,10 @@ import (
 )
 
 type dependencyIncluder struct {
-	Project                         *Project
-	requester                       string
-	included                        map[TVPair]bool
-	deactivateGeneratedVariantTasks map[string]bool
+	Project                *Project
+	requester              string
+	included               map[TVPair]bool
+	deactivateGeneratedDep map[TVPair]bool
 }
 
 // IncludeDependencies takes a project and a slice of variant/task pairs names
@@ -17,23 +17,26 @@ type dependencyIncluder struct {
 // for the given set of tasks.
 // If any dependency is cross-variant, it will include the variant and task for that dependency.
 // This function can return an error, but it should be treated as an informational warning
-func IncludeDependencies(project *Project, tvpairs []TVPair, requester string, activationInfo *specificActivationInfo) ([]TVPair, error) {
+// activationInfo and generatedVariants are required in the case for generate tasks to detect if
+// new generated dependency's task/variant pairs are depended on by inactive tasks. If so,
+// we also set these new dependencies to inactive.
+func IncludeDependencies(project *Project, tvpairs []TVPair, requester string, activationInfo *specificActivationInfo, generatedVariants []parserBV) ([]TVPair, error) {
 	di := &dependencyIncluder{Project: project, requester: requester}
-	return di.include(tvpairs, activationInfo)
+	return di.include(tvpairs, activationInfo, generatedVariants)
 }
 
 // include crawls the tasks represented by the combination of variants and tasks and
 // add or removes tasks based on the dependency graph. Dependent tasks
 // are added; tasks that depend on unreachable tasks are pruned. New slices
 // of variants and tasks are returned.
-func (di *dependencyIncluder) include(initialDeps []TVPair, activationInfo *specificActivationInfo) ([]TVPair, error) {
+func (di *dependencyIncluder) include(initialDeps []TVPair, activationInfo *specificActivationInfo, generatedVariants []parserBV) ([]TVPair, error) {
 	di.included = map[TVPair]bool{}
-	di.deactivateGeneratedVariantTasks = map[string]bool{}
+	di.deactivateGeneratedDep = map[TVPair]bool{}
 	warnings := grip.NewBasicCatcher()
 	// handle each pairing, recursively adding and pruning based
 	// on the task's dependencies
 	for _, d := range initialDeps {
-		_, err := di.handle(d, activationInfo)
+		_, err := di.handle(d, activationInfo, generatedVariants)
 		warnings.Add(err)
 	}
 
@@ -43,12 +46,12 @@ func (di *dependencyIncluder) include(initialDeps []TVPair, activationInfo *spec
 			outPairs = append(outPairs, pair)
 		}
 	}
-	// we deactivate variants that do not have specific activation set in the
+	// We deactivate variants that do not have specific activation set in the
 	// generated project but have been generated as dependencies of other
 	// explicitly inactive variants
-	for variant, addToActivationInfo := range di.deactivateGeneratedVariantTasks {
+	for pair, addToActivationInfo := range di.deactivateGeneratedDep {
 		if addToActivationInfo {
-			activationInfo.activationVariants = append(activationInfo.activationVariants, variant)
+			activationInfo.activationTasks[pair.Variant] = append(activationInfo.activationTasks[pair.Variant], pair.TaskName)
 		}
 	}
 	return outPairs, warnings.Resolve()
@@ -58,7 +61,7 @@ func (di *dependencyIncluder) include(initialDeps []TVPair, activationInfo *spec
 // on. Returns true if the task and all of its dependent tasks can be scheduled
 // for the requester. Returns false if it cannot be scheduled, with an error
 // explaining why
-func (di *dependencyIncluder) handle(pair TVPair, activationInfo *specificActivationInfo) (bool, error) {
+func (di *dependencyIncluder) handle(pair TVPair, activationInfo *specificActivationInfo, generatedVariants []parserBV) (bool, error) {
 	if included, ok := di.included[pair]; ok {
 		// we've been here before, so don't redo work
 		return included, nil
@@ -67,7 +70,7 @@ func (di *dependencyIncluder) handle(pair TVPair, activationInfo *specificActiva
 	// if the given task is a task group, recurse on each task
 	if tg := di.Project.FindTaskGroup(pair.TaskName); tg != nil {
 		for _, t := range tg.Tasks {
-			ok, err := di.handle(TVPair{TaskName: t, Variant: pair.Variant}, activationInfo)
+			ok, err := di.handle(TVPair{TaskName: t, Variant: pair.Variant}, activationInfo, generatedVariants)
 			if !ok {
 				di.included[pair] = false
 				return false, errors.Wrapf(err, "task group '%s' in variant '%s' contains unschedulable task '%s'", pair.TaskName, pair.Variant, t)
@@ -103,20 +106,11 @@ func (di *dependencyIncluder) handle(pair TVPair, activationInfo *specificActiva
 	// If this function is invoked from generate.tasks, calculate all variants
 	// that need to be included as dependencies, but are not in the generated project.
 	// If all the task / variant pairs that spawn these dependencies are inactive, we
-	// also mark this newly generated variant as inactive.
+	// also mark this newly generated dependency as inactive.
 	pairSpecifiesActivation := activationInfo != nil && activationInfo.taskOrVariantHasSpecificActivation(pair.Variant, pair.TaskName)
 	for _, dep := range deps {
-		if activationInfo != nil && !activationInfo.variantExistsInGeneratedProject(dep.Variant) {
-			// If the new variant has not yet been added to deactivateGeneratedVariantTasks, or if the
-			// original pair needs to be active, we update deactivateGeneratedVariantTasks.
-			// We ultimately will only deactivate new variants where deactivateGeneratedVariantTasks[variant] = true.
-			// If deactivateGeneratedVariantTasks[variant] = false it signifies that there was at least
-			// one pair that depends on this new variant being active - so we cannot deactivate it.
-			if _, ok := di.deactivateGeneratedVariantTasks[dep.Variant]; !ok || !pairSpecifiesActivation {
-				di.deactivateGeneratedVariantTasks[dep.Variant] = pairSpecifiesActivation
-			}
-		}
-		ok, err := di.handle(dep, activationInfo)
+		di.updateDeactivationMap(activationInfo, dep, generatedVariants, pairSpecifiesActivation)
+		ok, err := di.handle(dep, activationInfo, generatedVariants)
 		if !ok {
 			di.included[pair] = false
 			return false, errors.Wrapf(err, "task '%s' in variant '%s' has an unschedulable dependency", pair.TaskName, pair.Variant)
@@ -125,6 +119,19 @@ func (di *dependencyIncluder) handle(pair TVPair, activationInfo *specificActiva
 
 	// we've reached a point where we know it is safe to include the current task
 	return true, nil
+}
+
+func (di *dependencyIncluder) updateDeactivationMap(activationInfo *specificActivationInfo, dep TVPair, generatedVariants []parserBV, pairSpecifiesActivation bool) {
+	if !activationInfo.variantExistsInGeneratedProject(dep.Variant, generatedVariants) {
+		// If the dependency has not yet been added to deactivateGeneratedDep, or if the
+		// original pair needs to be active, we update deactivateGeneratedDep.
+		// We ultimately will only deactivate new dependencies where deactivateGeneratedDep[pair] = true.
+		// If deactivateGeneratedDep[pair] = false it signifies that there was at least
+		// one pair that depends on this new dep being active - so we cannot deactivate it.
+		if _, ok := di.deactivateGeneratedDep[dep]; !ok || !pairSpecifiesActivation {
+			di.deactivateGeneratedDep[dep] = pairSpecifiesActivation
+		}
+	}
 }
 
 // expandDependencies finds all tasks depended on by the current task/variant pair.

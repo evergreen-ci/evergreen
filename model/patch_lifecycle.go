@@ -124,7 +124,7 @@ func ConfigurePatch(ctx context.Context, p *patch.Patch, version *Version, proj 
 
 	addDisplayTasksToPatchReq(&patchUpdateReq, *project)
 	tasks := VariantTasksToTVPairs(patchUpdateReq.VariantsTasks)
-	tasks.ExecTasks, err = IncludeDependencies(project, tasks.ExecTasks, p.GetRequester(), nil)
+	tasks.ExecTasks, err = IncludeDependencies(project, tasks.ExecTasks, p.GetRequester(), nil, nil)
 	grip.Warning(message.WrapError(err, message.Fields{
 		"message": "error including dependencies for patch",
 		"patch":   p.Id,

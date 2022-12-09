@@ -340,6 +340,17 @@ buildvariants:
       - ubuntu1604-test
     tasks:
       - name: dependencyTask
+      - name: dependencyTask2
+
+  - name: testBV5
+    display_name: TestBV5
+    run_on:
+      - ubuntu1604-test
+    tasks:
+      - name: placeholder
+    depends_on:
+      - name: dependencyTask2
+        variant: testBV4
 
 tasks:
   - name: placeholder
@@ -357,7 +368,13 @@ tasks:
       - command: shell.exec
         params:
           script: |
-            echo "noop2"
+            echo "noop"
+  - name: dependencyTask2
+    commands:
+      - command: shell.exec
+        params:
+          script: |
+            echo "noop"
   - name: version_gen
     commands:
       - command: generate.tasks
@@ -378,6 +395,14 @@ var sampleGeneratedProject3 = []string{`
         }
       ],
       "activate": false
+    },
+    {
+      "name": "testBV5",
+      "tasks": [
+        {
+          "name": "shouldDependOnDependencyTask"
+        }
+      ]
     }
   ],
   "tasks":  [
@@ -471,8 +496,8 @@ func TestGenerateTasks(t *testing.T) {
 	j := NewGenerateTasksJob(sampleTask.Version, sampleTask.Id, "1")
 	j.Run(context.Background())
 	assert.NoError(j.Error())
-	tasks := []task.Task{}
-	assert.NoError(db.FindAllQ(task.Collection, db.Query(task.ByBuildId("sample_build_id")), &tasks))
+	tasks, err := task.FindAll(db.Query(task.ByVersion("sample_version")))
+	assert.NoError(err)
 	assert.Len(tasks, 4)
 	all_tasks := map[string]bool{
 		"sample_task":     false,
@@ -582,8 +607,8 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 	j := NewGenerateTasksJob(generateTask.Version, generateTask.Id, "1")
 	j.Run(context.Background())
 	assert.NoError(j.Error())
-	tasks := []task.Task{}
-	assert.NoError(db.FindAllQ(task.Collection, db.Query(task.ByVersion("sample_version")), &tasks))
+	tasks, err := task.FindAll(db.Query(task.ByVersion("sample_version")))
+	assert.NoError(err)
 	assert.Len(tasks, 4)
 	for _, foundTask := range tasks {
 		switch foundTask.DisplayName {
@@ -622,8 +647,8 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 	j = NewGenerateTasksJob(generateTask.Version, generateTask.Id, "1")
 	j.Run(context.Background())
 	assert.NoError(j.Error())
-	tasks = []task.Task{}
-	assert.NoError(db.FindAllQ(task.Collection, db.Query(task.ByVersion("sample_version")), &tasks))
+	tasks, err = task.FindAll(db.Query(task.ByVersion("sample_version")))
+	assert.NoError(err)
 	assert.Len(tasks, 4)
 	for _, foundTask := range tasks {
 		switch foundTask.DisplayName {
@@ -660,12 +685,16 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 	j = NewGenerateTasksJob(generateTask.Version, generateTask.Id, "1")
 	j.Run(context.Background())
 	assert.NoError(j.Error())
-	tasks = []task.Task{}
-	assert.NoError(db.FindAllQ(task.Collection, db.Query(task.ByVersion("sample_version")), &tasks))
-	assert.Len(tasks, 3)
+	tasks, err = task.FindAll(db.Query(task.ByVersion("sample_version")))
+	assert.NoError(err)
+	assert.Len(tasks, 5)
 	for _, foundTask := range tasks {
 		if foundTask.BuildVariant == "testBV4" {
-			assert.False(foundTask.Activated)
+			if foundTask.DisplayName == "dependencyTask" {
+				assert.False(foundTask.Activated)
+			} else {
+				assert.True(foundTask.Activated)
+			}
 		}
 	}
 }
