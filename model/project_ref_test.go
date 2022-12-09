@@ -2317,6 +2317,8 @@ func TestGetProjectTasksWithOptions(t *testing.T) {
 
 	tasks, err := GetTasksWithOptions("my_ident", "t1", opts)
 	assert.NoError(t, err)
+	// Returns 21 tasks because 40 tasks exist within the default version limit,
+	// but 19 of those are undispatched.
 	assert.Len(t, tasks, 21)
 
 	opts.Limit = 5
