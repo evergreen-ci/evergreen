@@ -266,6 +266,16 @@ func MockConfig() *evergreen.Settings {
 			MaxSecretCleanupRate:        200,
 		},
 		PprofPort: "port",
+		ProjectCreation: evergreen.ProjectCreationConfig{
+			TotalProjectLimit: 400,
+			RepoProjectLimit:  10,
+			RepoExceptions: []evergreen.OwnerRepo{
+				{
+					Owner: "owner",
+					Repo:  "repo",
+				},
+			},
+		},
 		Providers: evergreen.CloudProviders{
 			AWS: evergreen.AWSConfig{
 				EC2Keys: []evergreen.EC2Key{

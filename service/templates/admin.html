@@ -102,6 +102,7 @@ Admin Settings
 						<li class="link" ng-click="scrollTo('host_jasper')">Host Jasper</li>
 						<li class="link" ng-click="scrollTo('jira_notifications')">JIRA Custom Field Mappings</li>
 						<li class="link" ng-click="scrollTo('spawnhosts')">Spawn Hosts</li>
+						<li class="link" ng-click="scrollTo('project_creation')">Project Creation</li>
 						<div>Non-Configuration</div>
 						<li class="link" ng-click="scrollTo('restart')">Restart Tasks/Versions</li>
 						<a class="link" href="/admin/events" style="margin-left:10px;">Event Log</a>
@@ -2557,9 +2558,70 @@ Admin Settings
 								</md-card-content>
 							</md-card>
 						</section>
-
-					</md-card-content>
-
+						<section layout="row" flex>
+							<md-card flex=50 id="project_creation" style="max-width:49%">
+								<md-card-title>
+									<md-card-title-text>
+										<span>Project Creation Settings</span>
+									</md-card-title-text>
+									<md-button ng-click="clearSection('project_creation')">
+										<i class="fa fa-trash"></i>
+									</md-button>
+								</md-card-title>
+								<md-card-content>
+									<section layout="row" flex>
+										<md-input-container class="control" style="width:45%;">
+											<label>Total Project Limit</label>
+											<input type="number" ng-model="Settings.project_creation.total_project_limit">
+										</md-input-container>
+										<md-input-container class="control" style="width:45%;">
+											<label>Project Per Repo Limit</label>
+											<input type="number" ng-model="Settings.project_creation.repo_project_limit">
+										</md-input-container>
+									</section>
+										<md-card style="margin-bottom:20px;">
+											<md-card-title>
+												<md-card-title-text>
+													<span>Repo Exceptions</span>
+												</md-card-title-text>
+											</md-card-title>
+											<md-card-content>
+												<div id="repo-list" class="form-group" ng-repeat="(index, repo_exceptions) in Settings.project_creation.repo_exceptions">
+													<section layout="row" flex>
+														<md-input-container class="control" flex=25>
+															<input class="control" type="text" ng-model="repo_exceptions.owner" placeholder="Owner Name">
+														</md-input-container>
+														<md-input-container class="control" flex=50>
+															<input class="control" type="text" ng-model="repo_exceptions.repo" placeholder="Repo Name">
+														</md-input-container>
+														<div style="margin-top: 1%;">
+															<button class="btn btn-default btn-danger" type="button" style="float: left"
+																ng-click="deleteOwnerRepo(index)">
+																<i class="fa fa-trash"></i>
+															</button>
+														</div>
+													</section>
+												</div>
+												<section layout="row" flex>
+													<md-input-container class="control" flex=25>
+														<input class="control" type="text" ng-model="new_owner_repo.owner" placeholder="Owner Name">
+													</md-input-container>
+	
+													<md-input-container class="control" flex=50>
+														<input class="control" type="text" ng-model="new_owner_repo.repo" placeholder="Repo Name">
+													</md-input-container>
+													<div style="margin-top: 1%;">
+														<button class="plus-button btn btn-primary" ng-disabled="!validOwnerRepo(new_owner_repo)" type="button"
+															style="float: left" ng-click="addOwnerRepo()">
+															<i class="fa fa-plus"></i>
+														</button>
+														<label class="control">[[ invalidOwnerRepo ]]</label>
+													</div>
+												</section>
+										</md-card>
+								</md-card-content>
+							</md-card>
+						</section>
 					<md-card-footer class="squeezeTop">
 						<md-button type="submit" class="md-raised" ng-click="saveSettings()">Save Changes</md-button>
 					</md-card-footer>
