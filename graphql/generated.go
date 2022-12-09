@@ -438,7 +438,7 @@ type ComplexityRoot struct {
 		RemoveVolume                  func(childComplexity int, volumeID string) int
 		ReprovisionToNew              func(childComplexity int, hostIds []string) int
 		RestartJasper                 func(childComplexity int, hostIds []string) int
-		RestartTask                   func(childComplexity int, taskID string) int
+		RestartTask                   func(childComplexity int, taskID string, failedOnly *bool) int
 		RestartVersions               func(childComplexity int, versionID string, abort bool, versionsToRestart []*model1.VersionToRestart) int
 		SaveProjectSettingsForSection func(childComplexity int, projectSettings *model.APIProjectSettings, section ProjectSettingsSection) int
 		SaveRepoSettingsForSection    func(childComplexity int, repoSettings *model.APIProjectSettings, section ProjectSettingsSection) int
@@ -1265,7 +1265,7 @@ type MutationResolver interface {
 	UpdateVolume(ctx context.Context, updateVolumeInput UpdateVolumeInput) (bool, error)
 	AbortTask(ctx context.Context, taskID string) (*model.APITask, error)
 	OverrideTaskDependencies(ctx context.Context, taskID string) (*model.APITask, error)
-	RestartTask(ctx context.Context, taskID string) (*model.APITask, error)
+	RestartTask(ctx context.Context, taskID string, failedOnly *bool) (*model.APITask, error)
 	ScheduleTasks(ctx context.Context, taskIds []string) ([]*model.APITask, error)
 	SetTaskPriority(ctx context.Context, taskID string, priority int) (*model.APITask, error)
 	UnscheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
@@ -3233,7 +3233,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.RestartTask(childComplexity, args["taskId"].(string)), true
+		return e.complexity.Mutation.RestartTask(childComplexity, args["taskId"].(string), args["failedOnly"].(*bool)), true
 
 	case "Mutation.restartVersions":
 		if e.complexity.Mutation.RestartVersions == nil {
@@ -8245,6 +8245,15 @@ func (ec *executionContext) field_Mutation_restartTask_args(ctx context.Context,
 		}
 	}
 	args["taskId"] = arg0
+	var arg1 *bool
+	if tmp, ok := rawArgs["failedOnly"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("failedOnly"))
+		arg1, err = ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["failedOnly"] = arg1
 	return args, nil
 }
 
@@ -22221,7 +22230,7 @@ func (ec *executionContext) _Mutation_restartTask(ctx context.Context, field gra
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().RestartTask(rctx, fc.Args["taskId"].(string))
+		return ec.resolvers.Mutation().RestartTask(rctx, fc.Args["taskId"].(string), fc.Args["failedOnly"].(*bool))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
