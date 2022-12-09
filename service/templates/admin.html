@@ -2599,13 +2599,13 @@ Admin Settings
 												</md-card-title-text>
 											</md-card-title>
 											<md-card-content>
-												<div id="repo-list" class="form-group" ng-repeat="(index, repos_to_override) in Settings.project_creation.repos_to_override">
+												<div id="repo-list" class="form-group" ng-repeat="(index, repo_exceptions) in Settings.project_creation.repo_exceptions">
 													<section layout="row" flex>
 														<md-input-container class="control" flex=25>
-															<input class="control" type="text" ng-model="repos_to_override.owner" placeholder="Owner Name">
+															<input class="control" type="text" ng-model="repo_exceptions.owner" placeholder="Owner Name">
 														</md-input-container>
 														<md-input-container class="control" flex=50>
-															<input class="control" type="text" ng-model="repos_to_override.repo" placeholder="Repo Name">
+															<input class="control" type="text" ng-model="repo_exceptions.repo" placeholder="Repo Name">
 														</md-input-container>
 														<div style="margin-top: 1%;">
 															<button class="btn btn-default btn-danger" type="button" style="float: left"

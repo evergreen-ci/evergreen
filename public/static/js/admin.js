@@ -788,12 +788,12 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
   $scope.addOwnerRepo = function () {
     if ($scope.Settings.project_creation === null || $scope.Settings.project_creation === undefined) {
       $scope.Settings.project_creation = {
-          "repos_to_override": [],
+          "repo_exceptions": [],
       };
     }
 
-    if ($scope.Settings.project_creation.repos_to_override === null || $scope.Settings.project_creation.repos_to_override === undefined) {
-      $scope.Settings.project_creation.repos_to_override = [];
+    if ($scope.Settings.project_creation.repo_exceptions === null || $scope.Settings.project_creation.repo_exceptions === undefined) {
+      $scope.Settings.project_creation.repo_exceptions = [];
     }
 
     if (!$scope.validOwnerRepo($scope.new_owner_repo)) {
@@ -801,13 +801,13 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
       return
     }
 
-    $scope.Settings.project_creation.repos_to_override.push($scope.new_owner_repo);
+    $scope.Settings.project_creation.repo_exceptions.push($scope.new_owner_repo);
     $scope.new_owner_repo = {};
     $scope.invalidOwnerRepo = "";
   }
 
   $scope.deleteOwnerRepo = function (index) {
-    $scope.Settings.project_creation.repos_to_override.splice(index, 1);
+    $scope.Settings.project_creation.repo_exceptions.splice(index, 1);
   }
 
   $scope.validOwnerRepo = function (owner_repo) {

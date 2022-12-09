@@ -22,7 +22,7 @@ type ProjectCreationConfig struct {
 	RepoProjectLimit int `bson:"repo_project_limit" json:"repo_project_limit" yaml:"repo_project_limit"`
 
 	// RepoExceptions is a list of repos that can override the default repo-project limit but not the total project limit
-	RepoExceptions []OwnerRepo `bson:"repos_to_override,omitempty" json:"repos_to_override" yaml:"repos_to_override"`
+	RepoExceptions []OwnerRepo `bson:"repo_exceptions,omitempty" json:"repo_exceptions" yaml:"repo_exceptions"`
 }
 
 var (

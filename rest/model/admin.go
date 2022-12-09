@@ -1284,7 +1284,7 @@ func (a *APIOwnerRepo) ToService() (interface{}, error) {
 type APIProjectCreationConfig struct {
 	TotalProjectLimit int            `json:"total_project_limit"`
 	RepoProjectLimit  int            `json:"repo_project_limit"`
-	RepoExceptions    []APIOwnerRepo `json:"repos_to_override"`
+	RepoExceptions    []APIOwnerRepo `json:"repo_exceptions"`
 }
 
 func (a *APIProjectCreationConfig) BuildFromService(h interface{}) error {
