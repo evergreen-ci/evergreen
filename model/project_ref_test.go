@@ -2318,7 +2318,7 @@ func TestGetProjectTasksWithOptions(t *testing.T) {
 	tasks, err := GetTasksWithOptions("my_ident", "t1", opts)
 	assert.NoError(t, err)
 	// Returns 21 tasks because 40 tasks exist within the default version limit,
-	// but 19 of those are undispatched.
+	// but 1/2 are undispatched
 	assert.Len(t, tasks, 21)
 
 	opts.Limit = 5
@@ -2338,11 +2338,14 @@ func TestGetProjectTasksWithOptions(t *testing.T) {
 
 	opts.Limit = defaultVersionLimit
 	opts.StartAt = 90
-	// 1 in every 6 tasks should qualify for this
 	opts.BuildVariant = "bv1"
 	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
+	// Returns 7 tasks because 40 tasks exist within the default version limit,
+	// but only 1/6 matches the bv and is not undispatched
 	assert.NoError(t, err)
 	assert.Len(t, tasks, 7)
+	assert.Equal(t, tasks[0].RevisionOrderNumber, 90)
+	assert.Equal(t, tasks[6].RevisionOrderNumber, 72)
 }
 
 func TestUpdateNextPeriodicBuild(t *testing.T) {
