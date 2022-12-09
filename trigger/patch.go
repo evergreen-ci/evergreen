@@ -102,7 +102,7 @@ func (t *patchTriggers) patchOutcome(sub *event.Subscription) (*notification.Not
 		anyOutcome := ps == evergreen.PatchAllOutcomes
 
 		if successOutcome || failureOutcome || anyOutcome {
-			aborted, err := t.patch.IsAborted()
+			aborted, err := model.IsAborted(t.patch.Id.Hex())
 			if err != nil {
 				return nil, errors.Errorf("getting aborted status for patch '%s'", t.patch.Id.Hex())
 			}

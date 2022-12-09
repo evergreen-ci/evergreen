@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
@@ -758,17 +757,6 @@ func (p *Patch) CollectiveStatus() (string, error) {
 
 func (p *Patch) IsParent() bool {
 	return len(p.Triggers.ChildPatches) > 0
-}
-
-func (p *Patch) IsAborted() (bool, error) {
-	v, err := model.VersionFindOne(model.VersionById(p.Id.Hex()))
-	if err != nil {
-		return false, errors.Errorf("finding version '%s'", p.Id.Hex())
-	}
-	if v == nil {
-		return false, errors.Errorf("version '%s' not found", p.Id.Hex())
-	}
-	return v.Aborted, nil
 }
 
 // ShouldPatchFileWithDiff returns true if the patch should read with diff
