@@ -24,6 +24,8 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+func init() { testutil.Setup() }
+
 func TestFetchRevisions(t *testing.T) {
 	dropTestDB(t)
 
@@ -1126,7 +1128,6 @@ func TestCreateManifest(t *testing.T) {
 	// the most recent module commit as of the version's revision (from 5/30/15)
 	assert.Equal("b27779f856b211ffaf97cbc124b7082a20ea8bc0", module.Revision)
 
-	proj.AutoUpdateModules = true
 	manifest, err = model.CreateManifest(&patchVersion, &proj, projRef, settings)
 	assert.NoError(err)
 	assert.Equal(patchVersion.Id, manifest.Id)
