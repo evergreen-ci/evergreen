@@ -64,6 +64,7 @@ func (b *buildGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 	buildModel := &model.APIBuild{}
 	buildModel.BuildFromService(*foundBuild)
+	buildModel.PopulateDefinitionInfo(foundBuild.Version, foundBuild.BuildVariant)
 	buildModel.SetTaskCache(tasks)
 
 	return gimlet.NewJSONResponse(buildModel)

@@ -38,7 +38,7 @@ type APIBuild struct {
 	RevisionOrderNumber int            `json:"order"`
 	TaskCache           []APITaskCache `json:"task_cache,omitempty"`
 	// Tasks is the build's task cache with just the names
-	Tasks             []string             `json:"tasks"`
+	Tasks             []*string            `json:"tasks"`
 	Tags              []*string            `json:"tags,omitempty"`
 	TimeTaken         APIDuration          `json:"time_taken_ms"`
 	DisplayName       *string              `json:"display_name"`
@@ -46,6 +46,28 @@ type APIBuild struct {
 	ActualMakespan    APIDuration          `json:"actual_makespan_ms"`
 	Origin            *string              `json:"origin"`
 	StatusCounts      task.TaskStatusCount `json:"status_counts,omitempty"`
+	DefinitionInfo    DefinitionInfo       `json:"definition_info"`
+}
+
+type DefinitionInfo struct {
+	CronBatchTime *string `json:"cron,omitempty"`
+	BatchTime     *int    `json:"batchtime,omitempty"`
+}
+
+// PopulateDefinitionInfo adds cron/batchtime for the variant, if applicable. Not supported for matrices.
+// Only adds cron if populated, to be consistent with batchtime.
+func (apiBuild *APIBuild) PopulateDefinitionInfo(id, variant string) {
+	pp, err := model.ParserProjectFindOne(model.ParserProjectById(id).WithFields(model.ParserProjectBuildVariantsKey))
+	if err == nil {
+		for _, bv := range pp.BuildVariants {
+			if bv.Name == variant {
+				if bv.CronBatchTime != "" {
+					apiBuild.DefinitionInfo.CronBatchTime = utility.ToStringPtr(bv.CronBatchTime)
+				}
+				apiBuild.DefinitionInfo.BatchTime = bv.BatchTime
+			}
+		}
+	}
 }
 
 // BuildFromService converts from service level structs to an APIBuild.
@@ -65,7 +87,7 @@ func (apiBuild *APIBuild) BuildFromService(v build.Build) {
 	apiBuild.RevisionOrderNumber = v.RevisionOrderNumber
 	apiBuild.ProjectId = utility.ToStringPtr(v.Project)
 	for _, t := range v.Tasks {
-		apiBuild.Tasks = append(apiBuild.Tasks, t.Id)
+		apiBuild.Tasks = append(apiBuild.Tasks, utility.ToStringPtr(t.Id))
 	}
 	apiBuild.TimeTaken = NewAPIDuration(v.TimeTaken)
 	apiBuild.DisplayName = utility.ToStringPtr(v.DisplayName)
@@ -103,7 +125,7 @@ func (apiBuild *APIBuild) SetTaskCache(tasks []task.Task) {
 
 	apiBuild.TaskCache = []APITaskCache{}
 	for _, taskID := range apiBuild.Tasks {
-		t, ok := taskMap[taskID]
+		t, ok := taskMap[utility.FromStringPtr(taskID)]
 		if !ok {
 			continue
 		}

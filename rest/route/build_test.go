@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
+	"gopkg.in/20210107192922/yaml.v3"
 )
 
 ////////////////////////////////////////////////////////////////////////
@@ -27,12 +28,12 @@ type BuildByIdSuite struct {
 	suite.Suite
 }
 
-func TestBuildSuite(t *testing.T) {
+func TestBuildByIdSuite(t *testing.T) {
 	suite.Run(t, new(BuildByIdSuite))
 }
 
 func (s *BuildByIdSuite) SetupSuite() {
-	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, build.Collection, task.Collection))
+	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, build.Collection, task.Collection, serviceModel.ParserProjectCollection))
 	projRef := serviceModel.ProjectRef{Repo: "project", Id: "branch"}
 	s.NoError(projRef.Insert())
 	tasks := []task.Task{
@@ -44,15 +45,19 @@ func (s *BuildByIdSuite) SetupSuite() {
 	}
 	builds := []build.Build{
 		{
-			Id:      "build1",
-			Project: "branch",
+			Id:           "build1",
+			Version:      "myVersion",
+			BuildVariant: "build_name",
+			Project:      "branch",
 			Tasks: []build.TaskCache{
 				{Id: "task1"},
 			},
 		},
 		{
-			Id:      "build2",
-			Project: "notbranch",
+			Id:           "build2",
+			Version:      "myVersion",
+			BuildVariant: "other_build_name",
+			Project:      "notbranch",
 			Tasks: []build.TaskCache{
 				{Id: "task2"},
 			},
@@ -61,6 +66,19 @@ func (s *BuildByIdSuite) SetupSuite() {
 	for _, build := range builds {
 		s.Require().NoError(build.Insert())
 	}
+	var configFile = `
+buildvariants:
+- display_name: "My Build"
+  name: "build_name"
+  cron: "@daily"
+  batchtime: 0
+- display_name: "My Other Build"
+  name: "other_build_name"
+`
+	var pp *serviceModel.ParserProject
+	s.NoError(yaml.Unmarshal([]byte(configFile), &pp))
+	pp.Id = "myVersion"
+	s.NoError(pp.Insert())
 }
 
 func (s *BuildByIdSuite) SetupTest() {
@@ -79,6 +97,9 @@ func (s *BuildByIdSuite) TestFindBuildById() {
 	s.Equal(utility.ToStringPtr("branch"), b.ProjectId)
 	s.Equal("task1", b.TaskCache[0].Id)
 	s.Equal(evergreen.TaskFailed, b.TaskCache[0].Status)
+	s.Equal("@daily", utility.FromStringPtr(b.DefinitionInfo.CronBatchTime))
+	s.NotNil(b.DefinitionInfo.BatchTime)
+	s.Equal(0, utility.FromIntPtr(b.DefinitionInfo.BatchTime))
 
 	s.rm.(*buildGetHandler).buildId = "build2"
 	resp = s.rm.Run(context.TODO())
@@ -91,6 +112,8 @@ func (s *BuildByIdSuite) TestFindBuildById() {
 	s.Equal(utility.ToStringPtr("notbranch"), b.ProjectId)
 	s.Equal("task2", b.TaskCache[0].Id)
 	s.Equal(evergreen.TaskSucceeded, b.TaskCache[0].Status)
+	s.Nil(b.DefinitionInfo.CronBatchTime)
+	s.Nil(b.DefinitionInfo.BatchTime)
 }
 
 func (s *BuildByIdSuite) TestFindBuildByIdFail() {
