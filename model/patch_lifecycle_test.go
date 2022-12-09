@@ -311,7 +311,7 @@ modules:
 			version, err := FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, token)
 			require.NoError(t, err)
 			assert.NotNil(t, version)
-			// ensure that the manifest was created and that auto_update worked for
+			// Ensure that the manifest was created and that auto_update worked for
 			// sandbox module but was skipped for evergreen
 			mfst, err := manifest.FindOne(manifest.ById(configPatch.Id.Hex()))
 			require.NoError(t, err)

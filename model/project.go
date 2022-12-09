@@ -1430,6 +1430,8 @@ func (p *Project) GetModuleByName(name string) (*Module, error) {
 	return nil, errors.New("no such module on this project")
 }
 
+// GetAutoUpdateModules returns a list of modules that are set to auto-update
+// in the project.
 func (p *Project) GetAutoUpdateModules() ModuleList {
 	autoUpdateModules := ModuleList{}
 	for _, module := range p.Modules {
