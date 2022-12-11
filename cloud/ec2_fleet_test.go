@@ -2,7 +2,6 @@ package cloud
 
 import (
 	"context"
-	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -65,9 +64,6 @@ func TestFleet(t *testing.T) {
 			mockClient := m.client.(*awsClientMock)
 			mockClient.requestGetInstanceInfoError = wrapped_aws_error
 			status, err := m.GetInstanceStatus(context.Background(), h)
-			fmt.Print("---------------")
-			fmt.Print(err)
-			fmt.Print("---------------")
 			assert.NoError(t, err)
 			assert.Equal(t, StatusNonExistent, status)
 
