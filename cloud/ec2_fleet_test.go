@@ -2,10 +2,9 @@ package cloud
 
 import (
 	"context"
-	"testing"
-	"time"
-
+	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/birch"
@@ -13,8 +12,11 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"testing"
+	"time"
 )
 
 func TestFleet(t *testing.T) {
@@ -54,6 +56,25 @@ func TestFleet(t *testing.T) {
 			hDb, err := host.FindOneId("h1")
 			assert.NoError(t, err)
 			assert.Equal(t, "us-east-1a", hDb.Zone)
+		},
+		"GetInstanceStatusNonExistent": func(*testing.T) {
+			aws_error := awserr.New(EC2ErrorNotFound, "Test error for Insufficient Capacity", nil)
+			wrapped_aws_error := errors.Wrap(
+				errors.Wrap(aws_error, "after 6 attempts, operation failed"),
+				"EC2 API returned error for DescribeInstances")
+			mockClient := m.client.(*awsClientMock)
+			mockClient.requestGetInstanceInfoError = wrapped_aws_error
+			status, err := m.GetInstanceStatus(context.Background(), h)
+			fmt.Print("---------------")
+			fmt.Print(err)
+			fmt.Print("---------------")
+			assert.NoError(t, err)
+			assert.Equal(t, StatusNonExistent, status)
+
+			assert.Equal(t, "", h.Zone)
+			hDb, err := host.FindOneId("h1")
+			assert.NoError(t, err)
+			assert.Equal(t, "", hDb.Zone)
 		},
 		"TerminateInstance": func(*testing.T) {
 			assert.NoError(t, m.TerminateInstance(context.Background(), h, "evergreen", ""))
