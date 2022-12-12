@@ -135,7 +135,7 @@ func TestCanRestartTask(t *testing.T) {
 		Aborted:       true,
 	}
 	canRestart = canRestartTask(abortedTask)
-	assert.Equal(t, canRestart, true)
+	assert.Equal(t, canRestart, false)
 }
 
 func TestCanScheduleTask(t *testing.T) {

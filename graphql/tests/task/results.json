@@ -268,7 +268,7 @@
             "canRestart": false
           },
           "abortedTask": {
-            "canRestart": true
+            "canRestart": false
           }
         }
       }
