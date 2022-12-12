@@ -382,6 +382,16 @@ func (t *patchTriggers) patchFamilyOutcome(sub *event.Subscription) (*notificati
 	if t.event.EventType != event.PatchChildrenCompletion {
 		return nil, nil
 	}
+
+	//Don't notify the user of the patch outcome if they aborted the patch
+	aborted, err := model.IsAborted(t.patch.Id.Hex())
+	if err != nil {
+		return nil, errors.Errorf("getting aborted status for patch '%s'", t.patch.Id.Hex())
+	}
+	if aborted {
+		return nil, nil
+	}
+
 	return t.generate(sub)
 }
 
