@@ -1430,18 +1430,6 @@ func (p *Project) GetModuleByName(name string) (*Module, error) {
 	return nil, errors.New("no such module on this project")
 }
 
-// GetAutoUpdateModules returns a list of modules that are set to auto-update
-// in the project.
-func (p *Project) GetAutoUpdateModules() ModuleList {
-	autoUpdateModules := ModuleList{}
-	for _, module := range p.Modules {
-		if module.AutoUpdate {
-			autoUpdateModules = append(autoUpdateModules, module)
-		}
-	}
-	return autoUpdateModules
-}
-
 func (p *Project) FindTasksForVariant(build string) []string {
 	for _, b := range p.BuildVariants {
 		if b.Name == build {

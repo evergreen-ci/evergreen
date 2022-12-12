@@ -616,10 +616,21 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	var gitCommit *github.RepositoryCommit
+	var baseManifest *manifest.Manifest
+	isPatch := utility.StringSliceContains(evergreen.PatchRequesters, v.Requester)
+	if isPatch {
+		baseManifest, err = manifest.FindFromVersion(v.Id, v.Identifier, v.Revision, v.Requester)
+	}
 
+	var gitCommit *github.RepositoryCommit
 	modules := map[string]*manifest.Module{}
 	for _, module := range moduleList {
+		if isPatch && !module.AutoUpdate && baseManifest != nil {
+			if baseModule, ok := baseManifest.Modules[module.Name]; ok {
+				modules[module.Name] = baseModule
+				continue
+			}
+		}
 		var sha, url string
 		owner, repo := module.GetRepoOwnerAndName()
 		if module.Ref == "" {

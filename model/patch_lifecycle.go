@@ -492,9 +492,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	}
 	intermediateProject.CreateTime = patchVersion.CreateTime
 
-	autoUpdateModules := project.GetAutoUpdateModules()
-
-	mfst, err := constructManifest(patchVersion, projectRef, autoUpdateModules, settings)
+	mfst, err := constructManifest(patchVersion, projectRef, project.Modules, settings)
 	if err != nil {
 		return nil, errors.Wrap(err, "constructing manifest")
 	}
