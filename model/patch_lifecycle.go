@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -496,10 +495,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	if err != nil {
 		return nil, errors.Wrap(err, "constructing manifest")
 	}
-	err = mergeWithBaseManifest(mfst, patchVersion)
-	if err != nil {
-		return nil, errors.Wrap(err, "merging with base manifest")
-	}
 
 	tasks := TaskVariantPairs{}
 	if len(p.VariantsTasks) > 0 {
@@ -661,27 +656,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	}
 
 	return patchVersion, nil
-}
-
-// mergeWithBaseManifest merges the manifest from the patch with the manifest from the
-// most recent base commit.
-func mergeWithBaseManifest(mfst *manifest.Manifest, patchVersion *Version) error {
-	if mfst != nil {
-		baseManifest, err := manifest.FindFromVersion(patchVersion.Id, patchVersion.Identifier, patchVersion.Revision, patchVersion.Requester)
-		if err != nil {
-			return errors.Wrap(err, "constructing base manifest")
-		}
-		if baseManifest != nil {
-			modulesToCopy := baseManifest.Modules
-			for key := range modulesToCopy {
-				if _, ok := mfst.Modules[key]; ok {
-					modulesToCopy[key] = mfst.Modules[key]
-				}
-			}
-			mfst.Modules = modulesToCopy
-		}
-	}
-	return nil
 }
 
 // getFullPatchParams will retrieve a merged list of parameters defined on the patch alias (if any)
