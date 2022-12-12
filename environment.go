@@ -328,6 +328,13 @@ func (e *envState) initAmboyDB(ctx context.Context) error {
 		SetConnectTimeout(5 * time.Second).
 		SetMonitor(apm.NewLoggingMonitor(ctx, time.Minute, apm.NewBasicMonitor(nil)).DriverAPM())
 
+	if e.settings.Amboy.DB.Username != "" && e.settings.Amboy.DB.Password != "" {
+		opts.SetAuth(options.Credential{
+			Username: e.settings.Amboy.DB.Username,
+			Password: e.settings.Amboy.DB.Password,
+		})
+	}
+
 	var err error
 	e.amboyClient, err = mongo.Connect(ctx, opts)
 	if err != nil {
