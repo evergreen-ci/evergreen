@@ -1052,15 +1052,15 @@ func (h *getProjectTaskExecutionsHandler) Parse(ctx context.Context, r *http.Req
 		return errors.Wrapf(err, "parsing 'start_time' %s", h.opts.StartTime)
 	}
 
-	// If not specified, get the latest information.
+	// End time isn't required, since we default to getting up to the current moment.
 	if h.opts.EndTime != "" {
 		h.endTime, err = model.ParseTime(h.opts.EndTime)
 		if err != nil {
 			return errors.Wrapf(err, "parsing 'end_time' %s", h.opts.EndTime)
 		}
-	}
-	if h.startTime.After(h.endTime) {
-		return errors.New("'start_time' must be after 'end_time'")
+		if h.startTime.After(h.endTime) {
+			return errors.New("'start_time' must be after 'end_time'")
+		}
 	}
 
 	h.projectName = gimlet.GetVars(r)["project_id"]

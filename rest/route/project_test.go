@@ -1355,6 +1355,40 @@ func TestGetProjectTaskExecutions(t *testing.T) {
 			assert.Equal(t, rm.startTime, time.Date(2022, 11, 02, 0, 0, 0, 0, time.UTC))
 			assert.Equal(t, rm.endTime, time.Date(2022, 11, 03, 0, 0, 0, 0, time.UTC))
 		},
+		"parseNoStartErrors": func(t *testing.T, rm *getProjectTaskExecutionsHandler) {
+			body := []byte(
+				`{
+                     "task_name": "t1",
+                     "build_variant": "bv1",
+                     "requesters": ["gitter_request"],
+                     "end_time": "2022-11-03T00:00:00.000Z"
+                 }`)
+			req, _ := http.NewRequest(http.MethodGet, "https://example.com/api/rest/v2/projects/myProject/excutions", bytes.NewBuffer(body))
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": "myProject"})
+
+			err := rm.Parse(context.Background(), req)
+			assert.Error(t, err)
+		},
+		"parseNoEndSucceeds": func(t *testing.T, rm *getProjectTaskExecutionsHandler) {
+			body := []byte(
+				`{
+                     "task_name": "t1",
+                     "build_variant": "bv1",
+                     "requesters": ["gitter_request"],
+                     "start_time": "2022-11-02T00:00:00.000Z"
+                 }`)
+			req, _ := http.NewRequest(http.MethodGet, "https://example.com/api/rest/v2/projects/myProject/excutions", bytes.NewBuffer(body))
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": "myProject"})
+
+			err := rm.Parse(context.Background(), req)
+			assert.NoError(t, err)
+			assert.Equal(t, rm.projectId, "123")
+			assert.Equal(t, rm.opts.TaskName, "t1")
+			assert.Equal(t, rm.opts.BuildVariant, "bv1")
+			assert.Equal(t, rm.opts.Requesters, []string{"gitter_request"})
+			assert.Equal(t, rm.startTime, time.Date(2022, 11, 02, 0, 0, 0, 0, time.UTC))
+			assert.True(t, utility.IsZeroTime(rm.endTime))
+		},
 		"parseNoRequesterSuccess": func(t *testing.T, rm *getProjectTaskExecutionsHandler) {
 			body := []byte(
 				`{
