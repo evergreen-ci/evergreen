@@ -43,6 +43,7 @@ func Setup() {
 
 		path := filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings)
 		env, err := evergreen.NewEnvironment(ctx, path, nil)
+
 		grip.EmergencyPanic(message.WrapError(err, message.Fields{
 			"message": "could not initialize test environment",
 			"path":    filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings),
@@ -265,6 +266,16 @@ func MockConfig() *evergreen.Settings {
 			MaxSecretCleanupRate:        200,
 		},
 		PprofPort: "port",
+		ProjectCreation: evergreen.ProjectCreationConfig{
+			TotalProjectLimit: 400,
+			RepoProjectLimit:  10,
+			RepoExceptions: []evergreen.OwnerRepo{
+				{
+					Owner: "owner",
+					Repo:  "repo",
+				},
+			},
+		},
 		Providers: evergreen.CloudProviders{
 			AWS: evergreen.AWSConfig{
 				EC2Keys: []evergreen.EC2Key{
@@ -389,7 +400,6 @@ func MockConfig() *evergreen.Settings {
 			UnrecognizedPodCleanupDisabled:  true,
 			CloudCleanupDisabled:            true,
 			ContainerConfigurationsDisabled: true,
-			SlackAppDisabled:                true,
 			PartialRouteAuthDisabled:        true,
 		},
 		SSHKeyDirectory: "/ssh_key_directory",

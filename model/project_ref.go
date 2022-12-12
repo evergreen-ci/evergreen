@@ -281,6 +281,7 @@ var (
 	ProjectRefAdminsKey                   = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
 	ProjectRefGitTagAuthorizedUsersKey    = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedUsers")
 	ProjectRefGitTagAuthorizedTeamsKey    = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedTeams")
+	ProjectRefTracksPushEventsKey         = bsonutil.MustHaveTag(ProjectRef{}, "TracksPushEvents")
 	projectRefPRTestingEnabledKey         = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
 	projectRefManualPRTestingEnabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "ManualPRTestingEnabled")
 	projectRefGithubChecksEnabledKey      = bsonutil.MustHaveTag(ProjectRef{}, "GithubChecksEnabled")
@@ -455,8 +456,7 @@ const (
 )
 
 const (
-	tasksByProjectQueryMaxTime   = 90 * time.Second
-	tasksByProjectMaxNumVersions = 1000
+	tasksByProjectQueryMaxTime = 90 * time.Second
 )
 
 var adminPermissions = gimlet.Permissions{
@@ -707,7 +707,8 @@ func (p *ProjectRef) AttachToRepo(u *user.DBUser) error {
 	}
 	update = p.addGithubConflictsToUpdate(update)
 	err = db.UpdateId(ProjectRefCollection, p.Id, bson.M{
-		"$set": update,
+		"$set":   update,
+		"$unset": bson.M{ProjectRefTracksPushEventsKey: 1},
 	})
 	if err != nil {
 		return errors.Wrap(err, "attaching repo to scope")
@@ -719,7 +720,7 @@ func (p *ProjectRef) AttachToRepo(u *user.DBUser) error {
 // AttachToNewRepo modifies the project's owner/repo, updates the old and new repo scopes (if relevant), and
 // updates the project to point to the new repo. Any Github project conflicts are disabled.
 // If no repo ref currently exists for the new repo, the user attaching it will be added as the repo ref admin.
-func (p *ProjectRef) AttachToNewRepo(ctx context.Context, u *user.DBUser) error {
+func (p *ProjectRef) AttachToNewRepo(u *user.DBUser) error {
 	before, err := GetProjectSettingsById(p.Id, false)
 	if err != nil {
 		return errors.Wrap(err, "getting before project settings event")
@@ -745,22 +746,15 @@ func (p *ProjectRef) AttachToNewRepo(ctx context.Context, u *user.DBUser) error 
 		ProjectRefRepoRefIdKey: p.RepoRefId,
 	}
 	update = p.addGithubConflictsToUpdate(update)
+
 	err = db.UpdateId(ProjectRefCollection, p.Id, bson.M{
-		"$set": update,
+		"$set":   update,
+		"$unset": bson.M{ProjectRefTracksPushEventsKey: 1},
 	})
 	if err != nil {
 		return errors.Wrap(err, "updating owner/repo in the DB")
 	}
-	_, err = EnableWebhooks(ctx, p)
-	if err != nil {
-		grip.Debug(message.WrapError(err, message.Fields{
-			"message":            "error enabling webhooks",
-			"project_id":         p.Id,
-			"project_identifier": p.Identifier,
-			"owner":              p.Owner,
-			"repo":               p.Repo,
-		}))
-	}
+
 	return GetAndLogProjectModified(p.Id, u.Id, false, before)
 }
 
@@ -1010,6 +1004,15 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 	// Set explicitly in case no project is enabled.
 	repoRef.Owner = p.Owner
 	repoRef.Repo = p.Repo
+	_, err = EnableWebhooks(context.Background(), &repoRef.ProjectRef)
+	if err != nil {
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message": "error enabling webhooks",
+			"repo_id": repoRef.Id,
+			"owner":   repoRef.Owner,
+			"repo":    repoRef.Repo,
+		}))
+	}
 
 	// Creates scope and give user admin access to repo.
 	if err = repoRef.Add(u); err != nil {
@@ -1168,7 +1171,7 @@ type GetProjectTasksOpts struct {
 	StartAt      int    `json:"start_at"`
 }
 
-// GetTasksWithOptions will find the last number of tasks (denoted by Limit) that exist for a given project.
+// GetTasksWithOptions will find the matching tasks run in the last number of versions(denoted by Limit) that exist for a given project.
 // This function may also filter on tasks running on a specific build variant, or tasks that come after a specific revision order number.
 func GetTasksWithOptions(projectName string, taskName string, opts GetProjectTasksOpts) ([]task.Task, error) {
 	projectId, err := GetIdForProject(projectName)
@@ -1200,11 +1203,10 @@ func GetTasksWithOptions(projectName string, taskName string, opts GetProjectTas
 	}
 	match["$and"] = []bson.M{
 		{task.RevisionOrderNumberKey: bson.M{"$lte": startingRevision}},
-		{task.RevisionOrderNumberKey: bson.M{"$gte": startingRevision - tasksByProjectMaxNumVersions}},
+		{task.RevisionOrderNumberKey: bson.M{"$gte": startingRevision - opts.Limit}},
 	}
 	pipeline := []bson.M{{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{task.RevisionOrderNumberKey: -1}})
-	pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
 
 	res := []task.Task{}
 	if _, err = db.AggregateWithMaxTime(task.Collection, pipeline, &res, tasksByProjectQueryMaxTime); err != nil {
@@ -1527,10 +1529,9 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch, calledBy
 	return hiddenProject, nil
 }
 
-// FindBranchProjectRef finds the project ref for this owner/repo/branch that has the commit queue enabled.
-// There should only ever be one project for the query because we only enable commit queue if
-// no other project ref with the same specification has it enabled.
-
+// FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch finds the project ref for this owner/repo/branch
+// that has the commit queue enabled. There should only ever be one project for the query because we only enable commit
+// queue if no other project ref with the same specification has it enabled.
 func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch string) (*ProjectRef, error) {
 	projectRefs, err := FindMergedEnabledProjectRefsByRepoAndBranch(owner, repo, branch)
 	if err != nil {
@@ -1748,9 +1749,12 @@ func UpdateOwnerAndRepoForBranchProjects(repoId, owner, repo string) error {
 		})
 }
 
-func FindProjectRefsWithCommitQueueEnabled() ([]ProjectRef, error) {
+// FindProjectRefIdsWithCommitQueueEnabled returns a list of project IDs that have the commit queue enabled.
+// We don't return the full projects since they aren't actually merged with the repo documents, so they
+// aren't necessarily accurate.
+func FindProjectRefIdsWithCommitQueueEnabled() ([]string, error) {
 	projectRefs := []ProjectRef{}
-
+	res := []string{}
 	err := db.Aggregate(
 		ProjectRefCollection,
 		projectRefPipelineForCommitQueueEnabled(),
@@ -1758,23 +1762,28 @@ func FindProjectRefsWithCommitQueueEnabled() ([]ProjectRef, error) {
 	if err != nil {
 		return nil, err
 	}
+	for _, p := range projectRefs {
+		res = append(res, p.Id)
+	}
 
-	return projectRefs, nil
+	return res, nil
 }
 
+// FindPeriodicProjects returns a list of merged projects that have periodic builds defined.
 func FindPeriodicProjects() ([]ProjectRef, error) {
-	projectRefs := []ProjectRef{}
+	res := []ProjectRef{}
 
-	err := db.Aggregate(
-		ProjectRefCollection,
-		projectRefPipelineForPeriodicBuilds(),
-		&projectRefs,
-	)
+	projectRefs, err := FindAllMergedTrackedProjectRefs()
 	if err != nil {
 		return nil, err
 	}
+	for _, p := range projectRefs {
+		if p.IsEnabled() && len(p.PeriodicBuilds) > 0 {
+			res = append(res, p)
+		}
+	}
 
-	return projectRefs, nil
+	return res, nil
 }
 
 // FindProjectRefs returns limit refs starting at project id key in the sortDir direction.
@@ -1851,6 +1860,10 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			projectRefTaskSyncKey:              p.TaskSync,
 			ProjectRefDisabledStatsCacheKey:    p.DisabledStatsCache,
 			ProjectRefFilesIgnoredFromCacheKey: p.FilesIgnoredFromCache,
+		}
+		// Unlike other fields, this will only be set if we're actually modifying it since it's used by the backend.
+		if p.TracksPushEvents != nil {
+			setUpdate[ProjectRefTracksPushEventsKey] = p.TracksPushEvents
 		}
 		// Allow a user to modify owner and repo only if they are editing an unattached project
 		if !isRepo && !p.UseRepoSettings() && !defaultToRepo {
@@ -2457,38 +2470,44 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 	return cmds, nil
 }
 
-func (p *ProjectRef) UpdateNextPeriodicBuild(definition string, nextRun time.Time) error {
-	for i, d := range p.PeriodicBuilds {
-		if d.ID == definition {
-			d.NextRunTime = nextRun
-			p.PeriodicBuilds[i] = d
-			break
-		}
+// UpdateNextPeriodicBuild updates the periodic build run time for either the project
+// or repo ref depending on where it's defined.
+func UpdateNextPeriodicBuild(projectId, definition string, nextRun time.Time) error {
+	// Get the branch project on its own so we can determine where to update the run time.
+	projectRef, err := FindBranchProjectRef(projectId)
+	if err != nil {
+		return errors.Wrap(err, "finding branch project")
 	}
+	if projectRef == nil {
+		return errors.Errorf("project '%s' not found", projectId)
+	}
+
 	collection := ProjectRefCollection
-	idKey := ProjectRefIdKey
 	buildsKey := projectRefPeriodicBuildsKey
-	if p.UseRepoSettings() {
-		// if the periodic build is part of the repo then update there instead
-		repoRef, err := FindOneRepoRef(p.RepoRefId)
+	documentIdKey := ProjectRefIdKey
+	idToUpdate := projectRef.Id
+
+	// If periodic builds aren't defined for the project, see if it's part of the repo and update there instead.
+	if projectRef.PeriodicBuilds == nil && projectRef.UseRepoSettings() {
+		repoRef, err := FindOneRepoRef(projectRef.RepoRefId)
 		if err != nil {
 			return err
 		}
 		if repoRef == nil {
-			return errors.New("couldn't find repo")
+			return errors.Errorf("repo '%s' not found", projectRef.RepoRefId)
 		}
 		for _, d := range repoRef.PeriodicBuilds {
 			if d.ID == definition {
 				collection = RepoRefCollection
-				idKey = RepoRefIdKey
 				buildsKey = RepoRefPeriodicBuildsKey
+				documentIdKey = RepoRefIdKey
+				idToUpdate = projectRef.RepoRefId
 			}
 		}
-
 	}
 
 	filter := bson.M{
-		idKey: p.Id,
+		documentIdKey: idToUpdate,
 		buildsKey: bson.M{
 			"$elemMatch": bson.M{
 				"id": definition,
@@ -2882,33 +2901,9 @@ func projectRefPipelineForCommitQueueEnabled() []bson.M {
 				}},
 			}},
 		},
-	}
-}
-
-// projectRefPipelineForPeriodicBuilds is an aggregation pipeline to find projects that are
-// 1) explicitly enabled, or that default to the repo which is enabled, and
-// 2) they have periodic builds defined, or they default to the repo which has periodic builds defined.
-func projectRefPipelineForPeriodicBuilds() []bson.M {
-	nonEmptySize := bson.M{"$gt": bson.M{"$size": 0}}
-	return []bson.M{
-		lookupRepoStep,
-		{"$match": bson.M{
-			"$and": []bson.M{
-				{"$or": []bson.M{
-					{ProjectRefEnabledKey: true},
-					{ProjectRefEnabledKey: nil, bsonutil.GetDottedKeyName("repo_ref", RepoRefEnabledKey): true},
-				}},
-				{"$or": []bson.M{
-					{
-						projectRefPeriodicBuildsKey: nonEmptySize,
-					},
-					{
-						projectRefPeriodicBuildsKey:                                     nil,
-						bsonutil.GetDottedKeyName("repo_ref", RepoRefPeriodicBuildsKey): nonEmptySize,
-					},
-				}},
-			}},
-		},
+		{"$project": bson.M{
+			ProjectRefIdKey: 1,
+		}},
 	}
 }
 

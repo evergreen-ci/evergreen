@@ -253,7 +253,7 @@ type ActivationStatus struct {
 }
 
 func (s *ActivationStatus) ShouldActivate(now time.Time) bool {
-	return !s.Activated && now.After(s.ActivateAt) && !s.ActivateAt.IsZero() && !utility.IsZeroTime(s.ActivateAt)
+	return !s.Activated && now.After(s.ActivateAt) && !utility.IsZeroTime(s.ActivateAt)
 }
 
 // VersionMetadata is used to pass information about upstream versions to downstream version creation
@@ -292,6 +292,17 @@ type DuplicateVersionsID struct {
 type DuplicateVersions struct {
 	ID       DuplicateVersionsID `bson:"_id"`
 	Versions []Version           `bson:"versions"`
+}
+
+func IsAborted(id string) (bool, error) {
+	v, err := VersionFindOne(VersionById(id))
+	if err != nil {
+		return false, errors.Errorf("finding version '%s'", id)
+	}
+	if v == nil {
+		return false, errors.Errorf("version '%s' not found", id)
+	}
+	return v.Aborted, nil
 }
 
 func VersionGetHistory(versionId string, N int) ([]Version, error) {

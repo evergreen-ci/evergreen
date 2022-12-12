@@ -67,6 +67,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 	var err error
+	// Use a fully merged project for the rest of the job, since we need it for creating the version
 	j.project, err = model.FindMergedProjectRef(j.ProjectID, "", true)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "finding project '%s'", j.ProjectID))
@@ -88,7 +89,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 		if utility.IsZeroTime(baseTime) {
 			baseTime = time.Now()
 		}
-		err = j.project.UpdateNextPeriodicBuild(definition.ID, baseTime.Add(time.Duration(definition.IntervalHours)*time.Hour))
+		err = model.UpdateNextPeriodicBuild(j.ProjectID, definition.ID, baseTime.Add(time.Duration(definition.IntervalHours)*time.Hour))
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":    "unable to set next periodic build job time",
 			"project":    j.ProjectID,
@@ -96,15 +97,24 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 		}))
 	}()
 
-	versionID, versionError := j.addVersion(ctx, *definition)
-	if versionError != nil {
-		// if the version fails to be added, create a stub version and
+	mostRecentRevision, err := model.FindLatestRevisionForProject(j.ProjectID)
+	if err != nil {
+		j.AddError(err)
+		return
+	}
+	versionID, versionErr := j.addVersion(ctx, *definition, mostRecentRevision)
+
+	if versionErr != nil {
+		// If the version fails to be added, create a stub version and
 		// log an event so users can get notified when notifications are configured
 		metadata := model.VersionMetadata{
 			IsAdHoc:         true,
 			Message:         definition.Message,
 			PeriodicBuildID: definition.ID,
 			Alias:           definition.Alias,
+			Revision: model.Revision{
+				Revision: mostRecentRevision,
+			},
 		}
 		stubVersion, dbErr := repotracker.ShellVersionFromRevision(ctx, j.project, metadata)
 		if dbErr != nil {
@@ -117,10 +127,10 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 			}))
 		}
 		if stubVersion == nil {
-			j.AddError(versionError)
+			j.AddError(versionErr)
 			return
 		}
-		stubVersion.Errors = []string{versionError.Error()}
+		stubVersion.Errors = []string{versionErr.Error()}
 		insertError := stubVersion.Insert()
 		if err != nil {
 			grip.Error(message.WrapError(insertError, message.Fields{
@@ -133,7 +143,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 		}
 		event.LogVersionStateChangeEvent(stubVersion.Id, evergreen.VersionFailed)
 
-		j.AddError(versionError)
+		j.AddError(versionErr)
 		return
 	}
 
@@ -148,20 +158,13 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 
 }
 
-func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.PeriodicBuildDefinition) (string, error) {
+func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.PeriodicBuildDefinition, mostRecentRevision string) (string, error) {
 	token, err := j.env.Settings().GetGithubOauthToken()
 	if err != nil {
 		return "", errors.Wrap(err, "getting GitHub OAuth token")
 	}
 
-	mostRecentVersion, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester(j.ProjectID))
-	if err != nil {
-		return "", errors.Wrapf(err, "finding most recent version for project '%s'", j.ProjectID)
-	}
-	if mostRecentVersion == nil {
-		return "", errors.Errorf("no recent version found for project '%s'", j.ProjectID)
-	}
-	configFile, err := thirdparty.GetGithubFile(ctx, token, j.project.Owner, j.project.Repo, definition.ConfigFile, mostRecentVersion.Revision)
+	configFile, err := thirdparty.GetGithubFile(ctx, token, j.project.Owner, j.project.Repo, definition.ConfigFile, mostRecentRevision)
 	if err != nil {
 		return "", errors.Wrap(err, "getting config file from GitHub")
 	}
@@ -172,9 +175,9 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.Peri
 	proj := &model.Project{}
 	opts := &model.GetProjectOpts{
 		Ref:          j.project,
-		Revision:     mostRecentVersion.Revision,
+		Revision:     mostRecentRevision,
 		Token:        token,
-		ReadFileFrom: model.ReadfromGithub,
+		ReadFileFrom: model.ReadFromGithub,
 	}
 	intermediateProject, err := model.LoadProjectInto(ctx, configBytes, opts, j.project.Id, proj)
 	if err != nil {
@@ -193,7 +196,7 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.Peri
 		PeriodicBuildID: definition.ID,
 		Alias:           definition.Alias,
 		Revision: model.Revision{
-			Revision: mostRecentVersion.Revision,
+			Revision: mostRecentRevision,
 		},
 	}
 

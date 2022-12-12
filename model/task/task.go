@@ -310,6 +310,9 @@ type Dependency struct {
 	Unattainable bool   `bson:"unattainable" json:"unattainable"`
 	// Finished indicates if the task's dependency has finished running or not.
 	Finished bool `bson:"finished" json:"finished"`
+	// OmitGeneratedTasks causes tasks that depend on a generator task to not depend on
+	// the generated tasks if this is set
+	OmitGeneratedTasks bool `bson:"omit_generated_tasks,omitempty" json:"omit_generated_tasks,omitempty"`
 }
 
 // BaseTaskInfo is a subset of task fields that should be returned for patch tasks.
@@ -412,17 +415,18 @@ func (tr TestResult) GetDisplayTestName() string {
 // generation for other log viewers.
 func (tr TestResult) GetLogURL(viewer evergreen.LogViewer) string {
 	root := evergreen.GetEnvironment().Settings().ApiUrl
+	parsleyURL := evergreen.GetEnvironment().Settings().Ui.ParsleyUrl
 	deprecatedLobsterURLs := []string{"https://logkeeper.mongodb.org", "https://logkeeper2.build.10gen.cc"}
 
 	switch viewer {
 	case evergreen.LogViewerHTML:
+		// Return an empty string for logkeeper URLS.
 		if tr.URL != "" {
 			for _, url := range deprecatedLobsterURLs {
 				if strings.Contains(tr.URL, url) {
-					return strings.Replace(tr.URL, url, root+"/lobster", 1)
+					return ""
 				}
 			}
-
 			// Some test results may have internal URLs that are
 			// missing the root.
 			if err := util.CheckURL(tr.URL); err != nil {
@@ -451,8 +455,14 @@ func (tr TestResult) GetLogURL(viewer evergreen.LogViewer) string {
 	case evergreen.LogViewerLobster:
 		// Evergreen-hosted lobster does not support external logs nor
 		// logs stored in the database.
-		if tr.URL != "" || tr.URLRaw != "" || tr.LogId != "" {
+		if tr.URL != "" || tr.URLRaw != "" {
+			for _, url := range deprecatedLobsterURLs {
+				if strings.Contains(tr.URL, url) {
+					return strings.Replace(tr.URL, url, root+"/lobster", 1)
+				}
+			}
 			return ""
+
 		}
 
 		return fmt.Sprintf("%s/lobster/evergreen/test/%s/%d/%s/%s#shareLine=%d",
@@ -463,6 +473,18 @@ func (tr TestResult) GetLogURL(viewer evergreen.LogViewer) string {
 			url.QueryEscape(tr.GroupID),
 			tr.LineNum,
 		)
+	case evergreen.LogViewerParsley:
+		if parsleyURL == "" {
+			return ""
+		}
+		for _, url := range deprecatedLobsterURLs {
+			if strings.Contains(tr.URL, url) {
+				updatedResmokeParsleyURL := strings.Replace(tr.URL, fmt.Sprintf("%s/build", url), parsleyURL+"/resmoke", 1)
+				return fmt.Sprintf("%s?selectedLine=%d", updatedResmokeParsleyURL, tr.LineNum)
+			}
+		}
+		return fmt.Sprintf("%s/test/%s/%d/%s?selectedLine=%d", parsleyURL, tr.TaskID, tr.Execution, tr.GetLogTestName(), tr.LineNum)
+
 	default:
 		if tr.URLRaw != "" {
 			// Some test results may have internal URLs that are
@@ -1020,7 +1042,7 @@ func (t *Task) cacheExpectedDuration() error {
 // to a pod.
 func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Environment, podID, agentVersion string) error {
 	dispatchedAt := time.Now()
-	query := isContainerTaskScheduledQuery()
+	query := IsContainerTaskScheduledQuery()
 	query[StatusKey] = evergreen.TaskUndispatched
 	query[ContainerAllocatedKey] = true
 	update := bson.M{
@@ -1404,30 +1426,6 @@ func UnscheduleStaleUnderwaterHostTasks(distroID string) (int, error) {
 	return info.Updated, nil
 }
 
-// DisableStaleContainerTasks disables all container tasks that have been
-// scheduled to run for a long time without actually dispatching the task.
-func DisableStaleContainerTasks(caller string) error {
-	query := isContainerTaskScheduledQuery()
-	query[ActivatedTimeKey] = bson.M{"$lte": time.Now().Add(-UnschedulableThreshold)}
-
-	tasks, err := FindAll(db.Query(query))
-	if err != nil {
-		return errors.Wrap(err, "finding tasks that need to be disabled")
-	}
-
-	grip.Info(message.Fields{
-		"message":   "disabling container tasks that are still scheduled to run but are stale",
-		"num_tasks": len(tasks),
-		"caller":    caller,
-	})
-
-	if err := DisableTasks(tasks, caller); err != nil {
-		return errors.Wrap(err, "disabled stale container tasks")
-	}
-
-	return nil
-}
-
 // LegacyDeactivateStepbackTasksForProject deactivates and aborts any scheduled/running tasks
 // for this project that were activated by stepback.
 // TODO: remove as part of EVG-17947
@@ -1463,7 +1461,6 @@ func LegacyDeactivateStepbackTasksForProject(projectId, caller string) error {
 }
 
 // DeactivateStepbackTask deactivates and aborts the matching stepback task.
-// Will be used instead of LegacyDeactivateStepbackTasksForProject as part of EVG-17947
 func DeactivateStepbackTask(projectId, buildVariantName, taskName, caller string) error {
 	t, err := FindActivatedStepbackTaskByName(projectId, buildVariantName, taskName)
 	if err != nil {
@@ -1503,15 +1500,7 @@ func (t *Task) MarkFailed() error {
 func (t *Task) MarkSystemFailed(description string) error {
 	t.Status = evergreen.TaskFailed
 	t.FinishTime = time.Now()
-
-	t.Details = apimodels.TaskEndDetail{
-		Status:      evergreen.TaskFailed,
-		Type:        evergreen.CommandTypeSystem,
-		Description: description,
-	}
-	if description == evergreen.TaskDescriptionHeartbeat {
-		t.Details.TimedOut = true
-	}
+	t.Details = GetSystemFailureDetails(description)
 
 	switch t.ExecutionPlatform {
 	case ExecutionPlatformHost:
@@ -1550,6 +1539,19 @@ func (t *Task) MarkSystemFailed(description string) error {
 			},
 		},
 	)
+}
+
+// GetSystemFailureDetails returns a task's end details based on an input description.
+func GetSystemFailureDetails(description string) apimodels.TaskEndDetail {
+	details := apimodels.TaskEndDetail{
+		Status:      evergreen.TaskFailed,
+		Type:        evergreen.CommandTypeSystem,
+		Description: description,
+	}
+	if description == evergreen.TaskDescriptionHeartbeat {
+		details.TimedOut = true
+	}
+	return details
 }
 
 func SetManyAborted(taskIds []string, reason AbortInfo) error {
@@ -1863,6 +1865,9 @@ func (t *Task) DeactivateTask(caller string) error {
 func DeactivateTasks(tasks []Task, updateDependencies bool, caller string) error {
 	taskIDs := make([]string, 0, len(tasks))
 	for _, t := range tasks {
+		if t.DisplayOnly {
+			taskIDs = append(taskIDs, t.ExecutionTasks...)
+		}
 		taskIDs = append(taskIDs, t.Id)
 	}
 
@@ -2191,98 +2196,6 @@ func (t *Task) UpdateHeartbeat() error {
 			},
 		},
 	)
-}
-
-// SetDisabledPriority sets the priority of a task so it will never run. If it's
-// a display task, it will disable the display task and all of its child
-// execution tasks. If it's an execution task, its parent display task will not
-// be updated. It also deactivates the task and any tasks that depend on it.
-func (t *Task) SetDisabledPriority(caller string) error {
-	t.Priority = evergreen.DisabledTaskPriority
-
-	ids := append([]string{t.Id}, t.ExecutionTasks...)
-	_, err := UpdateAll(
-		bson.M{IdKey: bson.M{"$in": ids}},
-		bson.M{"$set": bson.M{PriorityKey: evergreen.DisabledTaskPriority}},
-	)
-	if err != nil {
-		return errors.Wrap(err, "updating priority")
-	}
-
-	query := db.Query(bson.M{
-		IdKey: bson.M{"$in": ids},
-	}).WithFields(ExecutionKey)
-	tasks, err := FindAll(query)
-	if err != nil {
-		return errors.Wrap(err, "finding matching tasks")
-	}
-	for _, task := range tasks {
-		event.LogTaskPriority(task.Id, task.Execution, caller, evergreen.DisabledTaskPriority)
-	}
-
-	return t.DeactivateTask(caller)
-}
-
-// DisableTasks is the same as (*Task).SetDisabledPriority but for many tasks.
-func DisableTasks(tasks []Task, caller string) error {
-	if len(tasks) == 0 {
-		return nil
-	}
-
-	tasksPresent := map[string]struct{}{}
-	var taskIDs []string
-	var execTaskIDs []string
-	for _, t := range tasks {
-		tasksPresent[t.Id] = struct{}{}
-		taskIDs = append(taskIDs, t.Id)
-		execTaskIDs = append(execTaskIDs, t.ExecutionTasks...)
-	}
-
-	_, err := UpdateAll(
-		ByIds(append(taskIDs, execTaskIDs...)),
-		bson.M{"$set": bson.M{PriorityKey: evergreen.DisabledTaskPriority}},
-	)
-	if err != nil {
-		return errors.Wrap(err, "updating task priorities")
-	}
-
-	execTasks, err := findMissingTasks(execTaskIDs, tasksPresent)
-	if err != nil {
-		return errors.Wrap(err, "finding additional execution tasks")
-	}
-	tasks = append(tasks, execTasks...)
-
-	for _, t := range tasks {
-		t.Priority = evergreen.DisabledTaskPriority
-		event.LogTaskPriority(t.Id, t.Execution, caller, evergreen.DisabledTaskPriority)
-	}
-
-	if err := DeactivateTasks(tasks, true, caller); err != nil {
-		return errors.Wrap(err, "deactivating dependencies")
-	}
-
-	return nil
-}
-
-// findMissingTasks finds all tasks whose IDs are missing from tasksPresent.
-func findMissingTasks(taskIDs []string, tasksPresent map[string]struct{}) ([]Task, error) {
-	var missingTaskIDs []string
-	for _, id := range taskIDs {
-		if _, ok := tasksPresent[id]; ok {
-			continue
-		}
-		missingTaskIDs = append(missingTaskIDs, id)
-	}
-	if len(missingTaskIDs) == 0 {
-		return nil, nil
-	}
-
-	missingTasks, err := FindAll(db.Query(ByIds(missingTaskIDs)))
-	if err != nil {
-		return nil, err
-	}
-
-	return missingTasks, nil
 }
 
 // GetRecursiveDependenciesUp returns all tasks recursively depended upon
@@ -3475,6 +3388,7 @@ func AddParentDisplayTasks(tasks []Task) ([]Task, error) {
 }
 
 // UpdateDependsOn appends new dependencies to tasks that already depend on this task
+// if the task does not explicitly omit having generated tasks as dependencies
 func (t *Task) UpdateDependsOn(status string, newDependencyIDs []string) error {
 	newDependencies := make([]Dependency, 0, len(newDependencyIDs))
 	for _, depID := range newDependencyIDs {
@@ -3487,8 +3401,9 @@ func (t *Task) UpdateDependsOn(status string, newDependencyIDs []string) error {
 	_, err := UpdateAll(
 		bson.M{
 			DependsOnKey: bson.M{"$elemMatch": bson.M{
-				DependencyTaskIdKey: t.Id,
-				DependencyStatusKey: status,
+				DependencyTaskIdKey:             t.Id,
+				DependencyStatusKey:             status,
+				DependencyOmitGeneratedTasksKey: bson.M{"$ne": true},
 			}},
 		},
 		bson.M{"$push": bson.M{DependsOnKey: bson.M{"$each": newDependencies}}},

@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 
 	"github.com/evergreen-ci/evergreen"
@@ -36,7 +37,7 @@ func (s *patchSuite) SetupSuite() {
 }
 
 func (s *patchSuite) SetupTest() {
-	s.NoError(db.ClearCollections(event.EventCollection, patch.Collection, event.SubscriptionsCollection, dbModel.ProjectRefCollection))
+	s.NoError(db.ClearCollections(event.EventCollection, patch.Collection, event.SubscriptionsCollection, dbModel.ProjectRefCollection, model.VersionCollection))
 	startTime := time.Now().Truncate(time.Millisecond)
 
 	patchID := mgobson.ObjectIdHex("5aeb4514f27e4f9984646d97")
@@ -83,6 +84,17 @@ func (s *patchSuite) SetupTest() {
 		},
 	}
 	s.NoError(childPatch.Insert())
+
+	version := model.Version{
+		Id:      s.patch.Id.Hex(),
+		Aborted: false,
+	}
+	s.NoError(version.Insert())
+	childVersion := model.Version{
+		Id:      childPatchId,
+		Aborted: false,
+	}
+	s.NoError(childVersion.Insert())
 
 	s.data = &event.PatchEventData{
 		Status: evergreen.PatchCreated,

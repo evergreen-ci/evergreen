@@ -1065,9 +1065,10 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 			shouldCollapse = true
 		} else if isPopulated(buildVariantOptions) && utility.FromBoolPtr(options.ShouldCollapse) {
 			opts := task.HasMatchingTasksOptions{
-				TaskNames: buildVariantOptions.Tasks,
-				Variants:  buildVariantOptions.Variants,
-				Statuses:  getValidTaskStatusesFilter(buildVariantOptions.Statuses),
+				TaskNames:                  buildVariantOptions.Tasks,
+				Variants:                   buildVariantOptions.Variants,
+				Statuses:                   getValidTaskStatusesFilter(buildVariantOptions.Statuses),
+				IncludeNeverActivatedTasks: true,
 			}
 			hasTasks, err := task.HasMatchingTasks(v.Id, opts)
 			if err != nil {

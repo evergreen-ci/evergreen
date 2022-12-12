@@ -79,6 +79,7 @@ type patchParams struct {
 	Parameters        []patch.Parameter
 	RepeatDefinition  bool
 	RepeatFailed      bool
+	RepeatPatchId     string
 	GithubAuthor      string
 }
 
@@ -104,6 +105,7 @@ type patchSubmission struct {
 	gitMetadata       patch.GitMetadata
 	repeatDefinition  bool
 	repeatFailed      bool
+	repeatPatchId     string
 	githubAuthor      string
 }
 
@@ -129,6 +131,7 @@ func (p *patchParams) createPatch(ac *legacyClient, diffData *localDiff) (*patch
 		gitMetadata:       diffData.gitMetadata,
 		repeatDefinition:  p.RepeatDefinition,
 		repeatFailed:      p.RepeatFailed,
+		repeatPatchId:     p.RepeatPatchId,
 		path:              p.Path,
 		githubAuthor:      p.GithubAuthor,
 	}

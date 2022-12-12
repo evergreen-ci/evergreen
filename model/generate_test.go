@@ -617,10 +617,13 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 
 func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	genTask := &task.Task{
-		Id:       "task_that_called_generate_task",
-		Project:  "proj",
-		Version:  "version_that_called_generate_task",
-		Priority: 10,
+		Id:          "task_that_called_generate_task",
+		Project:     "proj",
+		Version:     "version_that_called_generate_task",
+		Priority:    10,
+		BuildId:     "sample_build",
+		Activated:   true,
+		DisplayName: "task_that_called_generate_task",
 	}
 	s.NoError(genTask.Insert())
 	prevBatchTimeVersion := Version{
@@ -712,7 +715,7 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	s.Len(tasks, 7)
 	existingVariantTasks, err := task.Find(task.ByBuildId(sampleBuild.Id)) // without display
 	s.NoError(err)
-	s.Len(existingVariantTasks, 2)
+	s.Len(existingVariantTasks, 3)
 	for _, existingTask := range existingVariantTasks {
 		if existingTask.DisplayName == "say-bye" {
 			s.False(existingTask.Activated)

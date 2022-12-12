@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -55,7 +54,7 @@ func ModifyVersion(version Version, user user.DBUser, modifications VersionModif
 			if err != nil {
 				return http.StatusInternalServerError, errors.Wrap(err, "restarting later commit queue items")
 			}
-			_, err = commitqueue.RemoveCommitQueueItemForVersion(version.Identifier, version.Id, user.DisplayName())
+			_, err = RemoveCommitQueueItemForVersion(version.Identifier, version.Id, user.DisplayName())
 			if err != nil {
 				return http.StatusInternalServerError, errors.Wrap(err, "removing patch from commit queue")
 			}

@@ -21,6 +21,7 @@ api:
   github_webhook_secret: "test"
   httplistenaddr: ":8080"
 ui:
+  parsley_url: "http://localhost:4173"
   secret: "secret for UI"
   defaultproject: "logkeeper"
   url: "http://localhost:9090"

@@ -48,6 +48,7 @@ func resetRegistry() error {
 		&NotifyConfig{},
 		&PodLifecycleConfig{},
 		&PrestoConfig{},
+		&ProjectCreationConfig{},
 		&RepoTrackerConfig{},
 		&SchedulerConfig{},
 		&ServiceFlags{},

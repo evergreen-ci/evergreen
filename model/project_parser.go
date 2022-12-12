@@ -172,9 +172,10 @@ func (pt *parserTask) tags() []string { return pt.Tags }
 
 // parserDependency represents the intermediary state for referencing dependencies.
 type parserDependency struct {
-	TaskSelector  taskSelector `yaml:",inline"`
-	Status        string       `yaml:"status,omitempty" bson:"status,omitempty"`
-	PatchOptional bool         `yaml:"patch_optional,omitempty" bson:"patch_optional,omitempty"`
+	TaskSelector       taskSelector `yaml:",inline"`
+	Status             string       `yaml:"status,omitempty" bson:"status,omitempty"`
+	PatchOptional      bool         `yaml:"patch_optional,omitempty" bson:"patch_optional,omitempty"`
+	OmitGeneratedTasks bool         `yaml:"omit_generated_tasks,omitempty" bson:"omit_generated_tasks,omitempty"`
 }
 
 // parserDependencies is a type defined for unmarshalling both a single
@@ -630,7 +631,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 }
 
 const (
-	ReadfromGithub    = "github"
+	ReadFromGithub    = "github"
 	ReadFromLocal     = "local"
 	ReadFromPatch     = "patch"
 	ReadFromPatchDiff = "patch_diff"
@@ -742,7 +743,7 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 		RemotePath:   opts.RemotePath,
 		Revision:     module.Branch,
 		Token:        opts.Token,
-		ReadFileFrom: ReadfromGithub,
+		ReadFileFrom: ReadFromGithub,
 		Identifier:   moduleName,
 	}
 	return retrieveFile(ctx, moduleOpts)
@@ -1329,10 +1330,11 @@ func evaluateDependsOn(tse *tagSelectorEvaluator, tgse *tagSelectorEvaluator, vs
 				// create a newDep by copying the dep that selected it,
 				// so we can preserve the "Status" and "PatchOptional" field.
 				newDep := TaskUnitDependency{
-					Name:          name,
-					Variant:       variant,
-					Status:        d.Status,
-					PatchOptional: d.PatchOptional,
+					Name:               name,
+					Variant:            variant,
+					Status:             d.Status,
+					PatchOptional:      d.PatchOptional,
+					OmitGeneratedTasks: d.OmitGeneratedTasks,
 				}
 				// add the new dep if it doesn't already exist (we must avoid conflicting status fields)
 				if oldDep, ok := newDepsByNameAndVariant[TVPair{newDep.Variant, newDep.Name}]; !ok {

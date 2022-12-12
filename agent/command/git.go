@@ -500,7 +500,14 @@ func (c *gitFetchProject) fetchSource(ctx context.Context,
 	}
 	fetchScript := strings.Join(gitCommands, "\n")
 
-	stdErr := noopWriteCloser{&bytes.Buffer{}}
+	// This needs to use a thread-safe buffer just in case the context errors
+	// (e.g. due to a timeout) while the command is running. A non-thread-safe
+	// buffer is only safe to read once the command exits, guaranteeing that all
+	// output is finished writing. However, if the context errors, Run will
+	// return early and will stop waiting for the command to exit. In the
+	// context error case, this thread and the still-running command may race to
+	// read/write the buffer, so the buffer has to be thread-safe.
+	stdErr := utility.MakeSafeBuffer(bytes.Buffer{})
 	fetchSourceCmd := jpm.CreateCommand(ctx).Add([]string{"bash", "-c", fetchScript}).Directory(conf.WorkDir).
 		SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorWriter(stdErr)
 
@@ -631,7 +638,14 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		return err
 	}
 
-	stdErr := noopWriteCloser{&bytes.Buffer{}}
+	// This needs to use a thread-safe buffer just in case the context errors
+	// (e.g. due to a timeout) while the command is running. A non-thread-safe
+	// buffer is only safe to read once the command exits, guaranteeing that all
+	// output is finished writing. However, if the context errors, Run will
+	// return early and will stop waiting for the command to exit. In the
+	// context error case, this thread and the still-running command may race to
+	// read/write the buffer, so the buffer has to be thread-safe.
+	stdErr := utility.MakeSafeBuffer(bytes.Buffer{})
 	err = jpm.CreateCommand(ctx).Add([]string{"bash", "-c", strings.Join(moduleCmds, "\n")}).
 		Directory(filepath.ToSlash(getJoinedWithWorkDir(conf, c.Directory))).
 		SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorWriter(stdErr).Run(ctx)

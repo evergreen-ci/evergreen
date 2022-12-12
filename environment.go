@@ -412,7 +412,6 @@ func (e *envState) createApplicationQueue(ctx context.Context) error {
 	retryOpts := e.settings.Amboy.Retry.RetryableQueueOptions()
 	queueOpts := queue.MongoDBQueueOptions{
 		NumWorkers: utility.ToIntPtr(e.settings.Amboy.PoolSizeRemote),
-		Ordered:    utility.FalsePtr(),
 		DB:         &opts,
 		Retryable:  &retryOpts,
 	}
@@ -441,7 +440,6 @@ func (e *envState) createRemoteQueueGroup(ctx context.Context) error {
 	queueOpts := queue.MongoDBQueueOptions{
 		NumWorkers: utility.ToIntPtr(e.settings.Amboy.GroupDefaultWorkers),
 		DB:         &opts,
-		Ordered:    utility.FalsePtr(),
 		Retryable:  &retryOpts,
 	}
 
@@ -724,7 +722,6 @@ func (e *envState) initSenders(ctx context.Context) error {
 			Channel:  "#",
 			Name:     "evergreen",
 			Username: "Evergreen",
-			IconURL:  fmt.Sprintf("%s/static/img/evergreen_green_150x150.png", e.settings.Ui.Url),
 		}, slack.Token, levelInfo)
 		if err != nil {
 			return errors.Wrap(err, "setting up Slack logger")

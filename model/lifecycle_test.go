@@ -30,37 +30,53 @@ func TestTaskSetPriority(t *testing.T) {
 
 	Convey("With a task", t, func() {
 
-		require.NoError(t, db.ClearCollections(task.Collection, build.Collection))
+		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection))
+
+		v := &Version{Id: "abcdef"}
+		require.NoError(t, v.Insert())
 
 		tasks := []task.Task{
 			{
-				Id:        "one",
-				DependsOn: []task.Dependency{{TaskId: "two", Status: ""}, {TaskId: "three", Status: ""}, {TaskId: "four", Status: ""}},
-				Activated: true,
-				BuildId:   "b0",
+				Id:             "one",
+				DependsOn:      []task.Dependency{{TaskId: "two", Status: ""}, {TaskId: "three", Status: ""}, {TaskId: "four", Status: ""}},
+				Activated:      true,
+				BuildId:        "b0",
+				Version:        v.Id,
+				DisplayOnly:    true,
+				ExecutionTasks: []string{"six"},
 			},
 			{
 				Id:        "two",
 				Priority:  5,
 				Activated: true,
+				BuildId:   "b0",
+				Version:   v.Id,
 			},
 			{
 				Id:        "three",
 				DependsOn: []task.Dependency{{TaskId: "five", Status: ""}},
 				Activated: true,
+				BuildId:   "b0",
+				Version:   v.Id,
 			},
 			{
 				Id:        "four",
 				DependsOn: []task.Dependency{{TaskId: "five", Status: ""}},
 				Activated: true,
+				BuildId:   "b0",
+				Version:   v.Id,
 			},
 			{
 				Id:        "five",
 				Activated: true,
+				BuildId:   "b0",
+				Version:   v.Id,
 			},
 			{
 				Id:        "six",
 				Activated: true,
+				BuildId:   "b0",
+				Version:   v.Id,
 			},
 		}
 
@@ -106,11 +122,11 @@ func TestTaskSetPriority(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			So(t.Id, ShouldEqual, "six")
-			So(t.Priority, ShouldEqual, 0)
+			So(t.Priority, ShouldEqual, 1)
 
 		})
 
-		Convey("decreasing priority should update the task but not its dependencies", func() {
+		Convey("decreasing priority should update the task and its execution tasks but not its dependencies", func() {
 			So(SetTaskPriority(tasks[0], 1, "user"), ShouldBeNil)
 			So(tasks[0].Activated, ShouldEqual, true)
 			So(SetTaskPriority(tasks[0], -1, "user"), ShouldBeNil)
@@ -151,8 +167,8 @@ func TestTaskSetPriority(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			So(t.Id, ShouldEqual, "six")
-			So(t.Priority, ShouldEqual, 0)
-			So(t.Activated, ShouldEqual, true)
+			So(t.Priority, ShouldEqual, -1)
+			So(t.Activated, ShouldEqual, false)
 		})
 	})
 }
@@ -161,20 +177,21 @@ func TestBuildSetPriority(t *testing.T) {
 
 	Convey("With a build", t, func() {
 
-		require.NoError(t, db.ClearCollections(build.Collection, task.Collection))
+		require.NoError(t, db.ClearCollections(build.Collection, task.Collection, VersionCollection))
 
-		b := &build.Build{
-			Id: "build",
-		}
+		b := &build.Build{Id: "build"}
 		So(b.Insert(), ShouldBeNil)
 
-		taskOne := &task.Task{Id: "taskOne", BuildId: b.Id}
+		v := &Version{Id: "abcdef"}
+		require.NoError(t, v.Insert())
+
+		taskOne := &task.Task{Id: "taskOne", BuildId: b.Id, Version: v.Id}
 		So(taskOne.Insert(), ShouldBeNil)
 
-		taskTwo := &task.Task{Id: "taskTwo", BuildId: b.Id}
+		taskTwo := &task.Task{Id: "taskTwo", BuildId: b.Id, Version: v.Id}
 		So(taskTwo.Insert(), ShouldBeNil)
 
-		taskThree := &task.Task{Id: "taskThree", BuildId: b.Id}
+		taskThree := &task.Task{Id: "taskThree", BuildId: b.Id, Version: v.Id}
 		So(taskThree.Insert(), ShouldBeNil)
 
 		Convey("setting its priority should update the priority"+
@@ -2494,22 +2511,14 @@ func TestAddNewTasks(t *testing.T) {
 	b := build.Build{
 		Id:           "b0",
 		BuildVariant: "bv0",
+		Activated:    false,
 	}
-	assert.NoError(t, b.Insert())
 
 	v := &Version{
 		Id:       "v0",
 		BuildIds: []string{"b0"},
 	}
 	assert.NoError(t, v.Insert())
-
-	existingTask := task.Task{
-		Id:           "t0",
-		DisplayName:  "t0",
-		BuildId:      "b0",
-		BuildVariant: "bv0",
-		Version:      "v0",
-	}
 
 	tasksToAdd := TaskVariantPairs{
 		ExecTasks: []TVPair{
@@ -2543,22 +2552,50 @@ func TestAddNewTasks(t *testing.T) {
 	for name, testCase := range map[string]struct {
 		activationInfo specificActivationInfo
 		activatedTasks []string
+		existingTask   task.Task
+		bvActive       bool
 	}{
 		"ActivatedNewTask": {
 			activationInfo: specificActivationInfo{},
 			activatedTasks: []string{"t0", "t1"},
+			existingTask: task.Task{
+				Id:           "t0",
+				DisplayName:  "t0",
+				BuildId:      "b0",
+				BuildVariant: "bv0",
+				Version:      "v0",
+				Activated:    true,
+			},
+			bvActive: true,
 		},
 		"DeactivatedNewTask": {
 			activationInfo: specificActivationInfo{activationTasks: map[string][]string{
 				b.BuildVariant: {"t1"},
 			}},
 			activatedTasks: []string{},
+			existingTask:   task.Task{},
+			bvActive:       false,
+		},
+		"OnlyDeactivatedTasks": {
+			activationInfo: specificActivationInfo{activationTasks: map[string][]string{
+				b.BuildVariant: {"t1"},
+			}},
+			activatedTasks: []string{},
+			existingTask: task.Task{
+				Id:           "t0",
+				DisplayName:  "t0",
+				BuildId:      "b0",
+				BuildVariant: "bv0",
+				Version:      "v0",
+				Activated:    false,
+			},
+			bvActive: false,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(task.Collection))
-			assert.NoError(t, existingTask.Insert())
-
+			require.NoError(t, db.ClearCollections(task.Collection, build.Collection))
+			assert.NoError(t, testCase.existingTask.Insert())
+			assert.NoError(t, b.Insert())
 			creationInfo := TaskCreationInfo{
 				Project:        &project,
 				ProjectRef:     &ProjectRef{},
@@ -2572,10 +2609,14 @@ func TestAddNewTasks(t *testing.T) {
 			assert.NoError(t, err)
 			activatedTasks, err := task.FindAll(db.Query(bson.M{task.ActivatedKey: true}))
 			assert.NoError(t, err)
+			build, err := build.FindOneId("b0")
+			assert.NoError(t, err)
+			assert.NotNil(t, build)
 			assert.Equal(t, len(testCase.activatedTasks), len(activatedTasks))
 			for _, task := range activatedTasks {
 				assert.Contains(t, testCase.activatedTasks, task.DisplayName)
 			}
+			assert.Equal(t, testCase.bvActive, build.Activated)
 		})
 	}
 }

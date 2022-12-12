@@ -11,25 +11,38 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestEvergreenWebhookComposer(t *testing.T) {
 	assert := assert.New(t)
 
-	m := NewWebhookMessage("", "", nil, nil, nil)
+	m := NewWebhookMessage(EvergreenWebhook{})
 	assert.False(m.Loggable())
 
 	url := "https://example.com"
 	header := http.Header{
 		"test": []string{},
 	}
-	m = NewWebhookMessage("evergreen", url, []byte("hi"), []byte("something important"), header)
+	m = NewWebhookMessage(EvergreenWebhook{
+		NotificationID: "evergreen",
+		URL:            url,
+		Secret:         []byte("hi"),
+		Body:           []byte("something important"),
+		Headers:        header,
+	})
 	assert.False(m.Loggable())
 
 	header = http.Header{
 		"Test": []string{"test1", "test2"},
 	}
-	m = NewWebhookMessage("evergreen", url, []byte("hi"), []byte("something important"), header)
+	m = NewWebhookMessage(EvergreenWebhook{
+		NotificationID: "evergreen",
+		URL:            url,
+		Secret:         []byte("hi"),
+		Body:           []byte("something important"),
+		Headers:        header,
+	})
 	assert.True(m.Loggable())
 	m2, ok := m.(*evergreenWebhookMessage)
 	assert.True(ok)
@@ -42,57 +55,129 @@ func TestEvergreenWebhookComposer(t *testing.T) {
 	assert.Contains(m2.raw.Headers["Test"], "test1")
 	assert.Contains(m2.raw.Headers["Test"], "test2")
 
-	m = NewWebhookMessage("evergreen", url, []byte("hi"), []byte("something important"), nil)
+	m = NewWebhookMessage(EvergreenWebhook{
+		NotificationID: "evergreen",
+		URL:            url,
+		Secret:         []byte("hi"),
+		Body:           []byte("something important"),
+		Headers:        nil,
+	})
 	assert.True(m.Loggable())
 }
 
 func TestEvergreenWebhookSender(t *testing.T) {
-	assert := assert.New(t)
-
-	header := http.Header{
-		"test": []string{"test1", "test2"},
-	}
-
-	m := NewWebhookMessage("evergreen", "https://example.com", []byte("hi"), []byte("something important"), header)
-	assert.True(m.Loggable())
-	assert.NotNil(m)
-
-	transport := mockWebhookTransport{
-		secret: []byte("hi"),
-	}
-
 	sender, err := NewEvergreenWebhookLogger()
-	assert.NoError(err)
-	assert.NotNil(sender)
+	assert.NoError(t, err)
+	assert.NotNil(t, sender)
 
 	s, ok := sender.(*evergreenWebhookLogger)
-	assert.True(ok)
-	s.client = &http.Client{
-		Transport: &transport,
+	assert.True(t, ok)
+
+	var transport mockWebhookTransport
+
+	for name, test := range map[string]func(*testing.T){
+		"LoggableMessage": func(t *testing.T) {
+			header := http.Header{
+				"test": []string{"test1", "test2"},
+			}
+
+			secret := []byte("hi")
+			transport.secret = secret
+			m := NewWebhookMessage(EvergreenWebhook{
+				NotificationID: "evergreen",
+				URL:            "https://example.com",
+				Secret:         secret,
+				Body:           []byte("something important"),
+				Headers:        header,
+			})
+			assert.True(t, m.Loggable())
+			assert.NotNil(t, m)
+
+			assert.NoError(t, s.SetErrorHandler(func(err error, _ message.Composer) {
+				t.Error("error handler was called, but shouldn't have been")
+				t.FailNow()
+			}))
+			s.Send(m)
+			assert.Equal(t, "https://example.com", transport.lastUrl)
+
+			assert.Len(t, transport.header, 3)
+			assert.Len(t, transport.header["Test"], 2)
+			assert.Contains(t, transport.header["Test"], "test1")
+			assert.Contains(t, transport.header["Test"], "test2")
+		},
+		"UnloggableMessage": func(t *testing.T) {
+			m := NewWebhookMessage(EvergreenWebhook{})
+			s.Send(m)
+			assert.Equal(t, "", transport.lastUrl)
+		},
+		"InvalidWithRetries": func(t *testing.T) {
+			retryCount := 3
+			m := NewWebhookMessage(EvergreenWebhook{
+				NotificationID: "evergreen",
+				URL:            "https://example.com",
+				Secret:         []byte("forged secret"),
+				Body:           []byte("something important"),
+				Retries:        retryCount,
+			})
+			assert.True(t, m.Loggable())
+			assert.NotNil(t, m)
+
+			var capturedErr error
+			assert.NoError(t, s.SetErrorHandler(func(err error, _ message.Composer) {
+				capturedErr = err
+			}))
+
+			s.Send(m)
+			assert.Equal(t, "https://example.com", transport.lastUrl)
+			assert.Equal(t, retryCount+1, transport.attemptCount)
+			require.Error(t, capturedErr)
+			assert.EqualError(t, capturedErr, "after 4 attempts, operation failed: response was 400 (Bad Request)")
+		},
+		"SucceedsAfterRetry": func(t *testing.T) {
+			attempts := 2
+			transport.minAttempts = attempts
+			secret := []byte("hi")
+			transport.secret = secret
+			body := []byte("something important")
+			m := NewWebhookMessage(EvergreenWebhook{
+				NotificationID: "evergreen",
+				URL:            "https://example.com",
+				Secret:         secret,
+				Body:           body,
+				Retries:        attempts,
+			})
+			assert.True(t, m.Loggable())
+			assert.NotNil(t, m)
+
+			assert.NoError(t, s.SetErrorHandler(func(err error, _ message.Composer) {
+				t.Fatal("error handler was called, but shouldn't have been")
+			}))
+
+			s.Send(m)
+			assert.Equal(t, "https://example.com", transport.lastUrl)
+			assert.Equal(t, attempts, transport.attemptCount)
+			assert.Equal(t, body, transport.lastBody)
+		},
+	} {
+		transport = mockWebhookTransport{}
+		s.client = &http.Client{
+			Transport: &transport,
+		}
+
+		t.Run(name, test)
 	}
-
-	assert.NoError(s.SetErrorHandler(func(err error, _ message.Composer) {
-		t.Error("error handler was called, but shouldn't have been")
-		t.FailNow()
-	}))
-	s.Send(m)
-	assert.Equal("https://example.com", transport.lastUrl)
-
-	assert.Len(transport.header, 3)
-	assert.Len(transport.header["Test"], 2)
-	assert.Contains(transport.header["Test"], "test1")
-	assert.Contains(transport.header["Test"], "test2")
-
-	// unloggable message shouldn't send
-	m = NewWebhookMessage("", "", nil, nil, nil)
-	s.Send(m)
-	assert.NotEqual("", transport.lastUrl)
 }
 
 func TestEvergreenWebhookSenderWithBadSecret(t *testing.T) {
 	assert := assert.New(t)
 
-	m := NewWebhookMessage("evergreen", "https://example.com", []byte("bye"), []byte("something forged"), nil)
+	m := NewWebhookMessage(EvergreenWebhook{
+		NotificationID: "evergreen",
+		URL:            "https://example.com",
+		Secret:         []byte("bye"),
+		Body:           []byte("something forged"),
+		Headers:        nil,
+	})
 	assert.True(m.Loggable())
 	assert.NotNil(m)
 
@@ -116,22 +201,34 @@ func TestEvergreenWebhookSenderWithBadSecret(t *testing.T) {
 	}))
 	s.Send(m)
 
-	assert.EqualError(<-channel, "response was 400 (Bad Request)")
+	assert.EqualError(<-channel, "after 1 attempts, operation failed: response was 400 (Bad Request)")
 	assert.Equal("https://example.com", transport.lastUrl)
 }
 
 type mockWebhookTransport struct {
-	lastUrl string
-	secret  []byte
-	header  http.Header
+	lastUrl      string
+	lastBody     []byte
+	secret       []byte
+	header       http.Header
+	attemptCount int
+	minAttempts  int
 }
 
 func (t *mockWebhookTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	t.attemptCount++
+
 	t.lastUrl = req.URL.String()
 	resp := &http.Response{
 		StatusCode: http.StatusNoContent,
 		Body:       ioutil.NopCloser(nil),
 	}
+
+	if t.attemptCount < t.minAttempts {
+		resp.StatusCode = http.StatusBadRequest
+		resp.Body = ioutil.NopCloser(bytes.NewBufferString(fmt.Sprintf("won't succeed before %d requests", t.minAttempts)))
+		return resp, nil
+	}
+
 	if req.Method != http.MethodPost {
 		resp.StatusCode = http.StatusMethodNotAllowed
 		resp.Body = ioutil.NopCloser(bytes.NewBufferString(fmt.Sprintf("expected method POST, got %s", req.Method)))
@@ -158,6 +255,7 @@ func (t *mockWebhookTransport) RoundTrip(req *http.Request) (*http.Response, err
 		resp.Body = ioutil.NopCloser(bytes.NewBufferString(err.Error()))
 		return resp, nil
 	}
+	t.lastBody = body
 
 	hash, err := CalculateHMACHash(t.secret, body)
 	if err != nil {

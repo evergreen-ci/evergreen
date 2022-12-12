@@ -529,10 +529,11 @@ func (c *YAMLCommandSet) UnmarshalYAML(unmarshal func(interface{}) error) error 
 // TaskUnitDependency holds configuration information about a task/group that must finish before
 // the task/group that contains the dependency can run.
 type TaskUnitDependency struct {
-	Name          string `yaml:"name,omitempty" bson:"name"`
-	Variant       string `yaml:"variant,omitempty" bson:"variant,omitempty"`
-	Status        string `yaml:"status,omitempty" bson:"status,omitempty"`
-	PatchOptional bool   `yaml:"patch_optional,omitempty" bson:"patch_optional,omitempty"`
+	Name               string `yaml:"name,omitempty" bson:"name"`
+	Variant            string `yaml:"variant,omitempty" bson:"variant,omitempty"`
+	Status             string `yaml:"status,omitempty" bson:"status,omitempty"`
+	PatchOptional      bool   `yaml:"patch_optional,omitempty" bson:"patch_optional,omitempty"`
+	OmitGeneratedTasks bool   `yaml:"omit_generated_tasks,omitempty" bson:"omit_generated_tasks,omitempty"`
 }
 
 // UnmarshalYAML allows tasks to be referenced as single selector strings.
@@ -1680,7 +1681,7 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 	pairs = p.extractDisplayTasks(pairs)
 	if includeDeps {
 		var err error
-		pairs.ExecTasks, err = IncludeDependencies(p, pairs.ExecTasks, requester)
+		pairs.ExecTasks, err = IncludeDependencies(p, pairs.ExecTasks, requester, nil)
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message": "error including dependencies",
 			"project": p.Identifier,
@@ -1912,7 +1913,7 @@ func (p *Project) VariantTasksForSelectors(definitions []patch.PatchTriggerDefin
 		return nil, errors.Wrap(err, "getting pairs matching patch aliases")
 	}
 	pairs = p.extractDisplayTasks(pairs)
-	pairs.ExecTasks, err = IncludeDependencies(p, pairs.ExecTasks, requester)
+	pairs.ExecTasks, err = IncludeDependencies(p, pairs.ExecTasks, requester, nil)
 	grip.Warning(message.WrapError(err, message.Fields{
 		"message": "error including dependencies",
 		"project": p.Identifier,
