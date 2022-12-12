@@ -208,6 +208,7 @@ func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Envir
 	catcher.Add(e.initSenders(ctx))
 	catcher.Add(e.initPrestoDB(ctx))
 	catcher.Add(e.createLocalQueue(ctx))
+	catcher.Add(e.initAmboyDB(ctx))
 	catcher.Add(e.createApplicationQueue(ctx))
 	catcher.Add(e.createNotificationQueue(ctx))
 	catcher.Add(e.createRemoteQueueGroup(ctx))
@@ -232,6 +233,7 @@ type envState struct {
 	settings                *Settings
 	dbName                  string
 	client                  *mongo.Client
+	amboyClient             *mongo.Client
 	prestoDB                *sql.DB
 	mu                      sync.RWMutex
 	clientConfig            *ClientConfig
@@ -312,13 +314,24 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings) error {
 	}
 
 	var err error
-	e.client, err = mongo.NewClient(opts)
+	e.client, err = mongo.Connect(ctx, opts)
 	if err != nil {
-		return errors.Wrap(err, "initializing MongoDB client")
+		return errors.Wrap(err, "connecting to the Evergreen DB")
 	}
 
-	if err = e.client.Connect(ctx); err != nil {
-		return errors.Wrap(err, "connecting to the DB")
+	return nil
+}
+
+func (e *envState) initAmboyDB(ctx context.Context) error {
+	opts := options.Client().
+		ApplyURI(e.settings.Amboy.DB.URL).
+		SetConnectTimeout(5 * time.Second).
+		SetMonitor(apm.NewLoggingMonitor(ctx, time.Minute, apm.NewBasicMonitor(nil)).DriverAPM())
+
+	var err error
+	e.amboyClient, err = mongo.Connect(ctx, opts)
+	if err != nil {
+		return errors.Wrap(err, "connecting to the Amboy database")
 	}
 
 	return nil
@@ -397,7 +410,7 @@ func (e *envState) createApplicationQueue(ctx context.Context) error {
 	// configure the remote mongodb-backed amboy
 	// queue.
 	opts := queue.DefaultMongoDBOptions()
-	opts.URI = e.settings.Amboy.DB.URL
+	opts.Client = e.amboyClient
 	opts.DB = e.settings.Amboy.DB.DB
 	opts.Collection = e.settings.Amboy.Name
 	opts.Priority = e.settings.Amboy.RequireRemotePriority
@@ -471,7 +484,7 @@ func (e *envState) createRemoteQueueGroup(ctx context.Context) error {
 
 func (e *envState) getRemoteQueueGroupDBOptions() queue.MongoDBOptions {
 	opts := queue.DefaultMongoDBOptions()
-	opts.URI = e.settings.Amboy.DB.URL
+	opts.Client = e.amboyClient
 	opts.DB = e.settings.Amboy.DB.DB
 	opts.Collection = e.settings.Amboy.Name
 	opts.Priority = e.settings.Amboy.RequireRemotePriority
