@@ -87,7 +87,7 @@ func (apiBuild *APIBuild) BuildFromService(v build.Build) {
 	apiBuild.RevisionOrderNumber = v.RevisionOrderNumber
 	apiBuild.ProjectId = utility.ToStringPtr(v.Project)
 	for _, t := range v.Tasks {
-		apiBuild.Tasks = append(apiBuild.Tasks, utility.ToStringPtr(t.Id))
+		apiBuild.Tasks = append(apiBuild.Tasks, t.Id)
 	}
 	apiBuild.TimeTaken = NewAPIDuration(v.TimeTaken)
 	apiBuild.DisplayName = utility.ToStringPtr(v.DisplayName)
@@ -125,7 +125,7 @@ func (apiBuild *APIBuild) SetTaskCache(tasks []task.Task) {
 
 	apiBuild.TaskCache = []APITaskCache{}
 	for _, taskID := range apiBuild.Tasks {
-		t, ok := taskMap[utility.FromStringPtr(taskID)]
+		t, ok := taskMap[taskID]
 		if !ok {
 			continue
 		}
