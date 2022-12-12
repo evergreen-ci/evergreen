@@ -620,6 +620,9 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 	isPatch := utility.StringSliceContains(evergreen.PatchRequesters, v.Requester)
 	if isPatch {
 		baseManifest, err = manifest.FindFromVersion(v.Id, v.Identifier, v.Revision, v.Requester)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting base manifest")
+		}
 	}
 
 	var gitCommit *github.RepositoryCommit
