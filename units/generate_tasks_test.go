@@ -455,16 +455,19 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 		Id:           "b1",
 		BuildVariant: "generate-tasks-for-version",
 		Version:      "sample_version",
+		Activated:    true,
 	}
 	b2 := build.Build{
 		Id:           "b2",
 		BuildVariant: "testBV1",
 		Version:      "sample_version",
+		Activated:    true,
 	}
 	b3 := build.Build{
 		Id:           "b3",
 		BuildVariant: "testBV2",
 		Version:      "sample_version",
+		Activated:    true,
 	}
 	require.NoError(b1.Insert())
 	require.NoError(b2.Insert())
