@@ -58,6 +58,14 @@ func (di *dependencyIncluder) include(initialDeps []TVPair, activationInfo *spec
 	for pair, addToActivationInfo := range di.deactivateGeneratedDeps {
 		if addToActivationInfo {
 			activationInfo.activationTasks[pair.Variant] = append(activationInfo.activationTasks[pair.Variant], pair.TaskName)
+			bvt := di.Project.FindTaskForVariant(pair.TaskName, pair.Variant)
+			// Also need to deactivate the dependencies of the newly deactivated tasks
+			if bvt != nil {
+				deps := di.expandDependencies(pair, bvt.DependsOn)
+				for _, dep := range deps {
+					activationInfo.activationTasks[dep.Variant] = append(activationInfo.activationTasks[dep.Variant], dep.TaskName)
+				}
+			}
 		}
 	}
 	return outPairs, warnings.Resolve()
@@ -115,7 +123,7 @@ func (di *dependencyIncluder) handle(pair TVPair, activationInfo *specificActiva
 	// also mark this newly generated dependency as inactive.
 	pairSpecifiesActivation := activationInfo.taskOrVariantHasSpecificActivation(pair.Variant, pair.TaskName)
 	for _, dep := range deps {
-		di.updateDeactivationMap(activationInfo, dep, generatedVariants, pairSpecifiesActivation)
+		di.updateDeactivationMap(dep, generatedVariants, pairSpecifiesActivation)
 		ok, err := di.handle(dep, activationInfo, generatedVariants)
 		if !ok {
 			di.included[pair] = false
@@ -127,7 +135,7 @@ func (di *dependencyIncluder) handle(pair TVPair, activationInfo *specificActiva
 	return true, nil
 }
 
-func (di *dependencyIncluder) updateDeactivationMap(activationInfo *specificActivationInfo, dep TVPair, generatedVariants []parserBV, pairSpecifiesActivation bool) {
+func (di *dependencyIncluder) updateDeactivationMap(dep TVPair, generatedVariants []parserBV, pairSpecifiesActivation bool) {
 	if !variantExistsInGeneratedProject(generatedVariants, dep.Variant) {
 		// If the dependency has not yet been added to deactivateGeneratedDeps, or if the
 		// original pair needs to be active, we update deactivateGeneratedDeps.
