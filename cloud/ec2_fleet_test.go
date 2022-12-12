@@ -58,7 +58,7 @@ func TestFleet(t *testing.T) {
 			assert.Equal(t, "us-east-1a", hDb.Zone)
 		},
 		"GetInstanceStatusNonExistent": func(*testing.T) {
-			aws_error := awserr.New(EC2ErrorNotFound, "Test error for Insufficient Capacity", nil)
+			aws_error := awserr.New(EC2ErrorNotFound, "The instance ID 'test-id' does not exist", nil)
 			wrapped_aws_error := errors.Wrap(
 				errors.Wrap(aws_error, "after 6 attempts, operation failed"),
 				"EC2 API returned error for DescribeInstances")
@@ -67,11 +67,6 @@ func TestFleet(t *testing.T) {
 			status, err := m.GetInstanceStatus(context.Background(), h)
 			assert.NoError(t, err)
 			assert.Equal(t, StatusNonExistent, status)
-
-			assert.Equal(t, "", h.Zone)
-			hDb, err := host.FindOneId("h1")
-			assert.NoError(t, err)
-			assert.Equal(t, "", hDb.Zone)
 		},
 		"TerminateInstance": func(*testing.T) {
 			assert.NoError(t, m.TerminateInstance(context.Background(), h, "evergreen", ""))
