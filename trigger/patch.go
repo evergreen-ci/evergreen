@@ -200,7 +200,7 @@ func finalizeChildPatch(sub *event.Subscription) error {
 	if childPatch == nil {
 		return errors.Errorf("child patch '%s' not found", target.ChildPatchId)
 	}
-	// return if patch is already finalized
+	// Return if patch is already finalized
 	if childPatch.Version != "" {
 		return nil
 	}
