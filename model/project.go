@@ -37,11 +37,10 @@ const (
 )
 
 type GetProjectTasksOpts struct {
-	Limit        int    `json:"num_versions"`
-	BuildVariant string `json:"build_variant"`
-	StartAt      int    `json:"start_at"`
-	PatchOnly    bool   `json:"patch_only"`
-	MainlineOnly bool   `json:"mainline_only"`
+	Limit        int      `json:"num_versions"`
+	BuildVariant string   `json:"build_variant"`
+	StartAt      int      `json:"start_at"`
+	Requesters   []string `json:"requesters"`
 }
 
 type Project struct {

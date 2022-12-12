@@ -1181,10 +1181,10 @@ func GetTasksWithOptions(projectName string, taskName string, opts GetProjectTas
 		task.DisplayNameKey: taskName,
 		task.StatusKey:      bson.M{"$in": finishedStatuses},
 	}
-	if opts.MainlineOnly {
+	if len(opts.Requesters) > 0 {
+		match[task.RequesterKey] = bson.M{"$in": opts.Requesters}
+	} else {
 		match[task.RequesterKey] = bson.M{"$in": evergreen.SystemVersionRequesterTypes}
-	} else if opts.PatchOnly {
-		match[task.RequesterKey] = evergreen.PatchVersionRequester
 	}
 	if opts.BuildVariant != "" {
 		match[task.BuildVariantKey] = opts.BuildVariant
