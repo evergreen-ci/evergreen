@@ -1085,14 +1085,14 @@ func TestCreateManifest(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, settings, t.Name())
 	// with a revision from 5/31/15
 	v := model.Version{
-		Id:         "v",
+		Id:         "aaaaaaaaaaff001122334455",
 		Revision:   "1bb42195fd415f144abbae509a5d5bef80d829b7",
 		Identifier: "proj",
 		Requester:  evergreen.RepotrackerVersionRequester,
 	}
 
 	patchVersion := model.Version{
-		Id:         "p",
+		Id:         "aaaaaaaaaaff001122334455",
 		Revision:   "1bb42195fd415f144abbae509a5d5bef80d829b7",
 		Identifier: "proj",
 		Requester:  evergreen.GithubPRRequester,
@@ -1128,6 +1128,7 @@ func TestCreateManifest(t *testing.T) {
 	// the most recent module commit as of the version's revision (from 5/30/15)
 	assert.Equal("b27779f856b211ffaf97cbc124b7082a20ea8bc0", module.Revision)
 
+	proj.Modules[0].AutoUpdate = true
 	manifest, err = model.CreateManifest(&patchVersion, &proj, projRef, settings)
 	assert.NoError(err)
 	assert.Equal(patchVersion.Id, manifest.Id)
