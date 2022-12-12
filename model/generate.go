@@ -218,7 +218,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 	// Only consider batchtime for mainline builds. We should always respect activate if it is set.
 	activationInfo := g.findTasksAndVariantsWithSpecificActivations(v.Requester)
 
-	newTVPairs := g.getNewTasksWithDependencies(v, p)
+	newTVPairs := g.getNewTasksWithDependencies(v, p, &activationInfo)
 
 	existingBuilds, err := build.Find(build.ByVersion(v.Id))
 	if err != nil {
@@ -315,7 +315,7 @@ func (g *GeneratedProject) CheckForCycles(v *Version, p *Project, projectRef *Pr
 // simulateNewTasks adds the tasks we're planning to add to the version to the graph and
 // adds simulated edges from each task that depends on the generator to each of the generated tasks.
 func (g *GeneratedProject) simulateNewTasks(graph task.DependencyGraph, v *Version, p *Project, projectRef *ProjectRef) (task.DependencyGraph, error) {
-	newTasks := g.getNewTasksWithDependencies(v, p)
+	newTasks := g.getNewTasksWithDependencies(v, p, nil)
 
 	creationInfo := TaskCreationInfo{
 		Project:    p,
@@ -333,14 +333,14 @@ func (g *GeneratedProject) simulateNewTasks(graph task.DependencyGraph, v *Versi
 }
 
 // getNewTasksWithDependencies returns the generated tasks and their recursive dependencies.
-func (g *GeneratedProject) getNewTasksWithDependencies(v *Version, p *Project) TaskVariantPairs {
+func (g *GeneratedProject) getNewTasksWithDependencies(v *Version, p *Project, activationInfo *specificActivationInfo) TaskVariantPairs {
 	newTVPairs := TaskVariantPairs{}
 	for _, bv := range g.BuildVariants {
 		newTVPairs = appendTasks(newTVPairs, bv, p)
 	}
 
 	var err error
-	newTVPairs.ExecTasks, err = IncludeDependencies(p, newTVPairs.ExecTasks, v.Requester)
+	newTVPairs.ExecTasks, err = IncludeDependenciesWithGenerated(p, newTVPairs.ExecTasks, v.Requester, activationInfo, g.BuildVariants)
 	grip.Warning(message.WrapError(err, message.Fields{
 		"message": "error including dependencies for generator",
 		"task":    g.Task.Id,
@@ -495,6 +495,13 @@ func (b *specificActivationInfo) taskHasSpecificActivation(variant, task string)
 	return utility.StringSliceContains(b.activationTasks[variant], task)
 }
 
+func (b *specificActivationInfo) taskOrVariantHasSpecificActivation(variant, task string) bool {
+	if b == nil {
+		return false
+	}
+	return b.taskHasSpecificActivation(variant, task) || b.variantHasSpecificActivation(variant)
+}
+
 func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester string) specificActivationInfo {
 	res := newSpecificActivationInfo()
 	for _, bv := range g.BuildVariants {
@@ -609,6 +616,15 @@ func (g *GeneratedProject) addGeneratedProjectToConfig(intermediateProject *Pars
 		}
 	}
 	return intermediateProject, nil
+}
+
+func variantExistsInGeneratedProject(variants []parserBV, variant string) bool {
+	for bv := range variants {
+		if variants[bv].Name == variant {
+			return true
+		}
+	}
+	return false
 }
 
 // projectMaps is a struct of maps of project fields, which allows efficient comparisons of generated projects to projects.
