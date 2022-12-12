@@ -147,6 +147,7 @@ const (
 	defaultAmboyPoolSize                         = 2
 	defaultAmboyLocalStorageSize                 = 1024
 	defaultSingleAmboyQueueName                  = "evg.single"
+	defaultAmboyDBName                           = "amboy"
 	defaultGroupWorkers                          = 1
 	defaultGroupBackgroundCreateFrequencyMinutes = 10
 	defaultGroupPruneFrequencyMinutes            = 10
@@ -172,6 +173,10 @@ func (c *AmboyConfig) ValidateAndDefault() error {
 
 	if c.SingleName == "" {
 		c.SingleName = defaultSingleAmboyQueueName
+	}
+
+	if c.DB.DB == "" {
+		c.DB.DB = defaultAmboyDBName
 	}
 
 	if c.PoolSizeLocal == 0 {
