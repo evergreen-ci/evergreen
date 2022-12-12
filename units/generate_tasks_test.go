@@ -597,90 +597,8 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 	require.NoError(b2.Insert())
 	require.NoError(b3.Insert())
 
-	//pp := model.ParserProject{}
-	//err := util.UnmarshalYAMLWithFallback([]byte(omitGeneratedTasksConfig), &pp)
-	//require.NoError(err)
-	//pp.Id = "sample_version"
-	//require.NoError(pp.Insert())
-	//generateTask := task.Task{
-	//	Id:                    "mci_identifier_generate_tasks_for_version_version_gen__01_01_01_00_00_00",
-	//	Version:               "sample_version",
-	//	BuildId:               "b1",
-	//	Project:               "mci",
-	//	DisplayName:           "version_gen",
-	//	BuildVariant:          "generate-tasks-for-version",
-	//	GeneratedJSONAsString: sampleGeneratedProject2,
-	//	Status:                evergreen.TaskStarted,
-	//}
-	//require.NoError(generateTask.Insert())
-	projectRef := model.ProjectRef{Id: "mci", Identifier: "mci_identifier"}
-	require.NoError(projectRef.Insert())
-	//
-	//j := NewGenerateTasksJob(generateTask.Version, generateTask.Id, "1")
-	//j.Run(context.Background())
-	//assert.NoError(j.Error())
-	//tasks, err := task.FindAll(db.Query(task.ByVersion("sample_version")))
-	//assert.NoError(err)
-	//assert.Len(tasks, 4)
-	//for _, foundTask := range tasks {
-	//	switch foundTask.DisplayName {
-	//	case "version_gen", "dependency_task":
-	//		assert.Equal(foundTask.DependsOn, []task.Dependency{})
-	//	case "shouldDependOnVersionGen":
-	//		assert.Equal(foundTask.DependsOn, []task.Dependency{
-	//			{
-	//				TaskId:             "mci_identifier_generate_tasks_for_version_version_gen__01_01_01_00_00_00",
-	//				Status:             evergreen.TaskSucceeded,
-	//				OmitGeneratedTasks: true,
-	//			},
-	//		})
-	//	case "shouldDependOnDependencyTask":
-	//		assert.Equal(foundTask.DependsOn, []task.Dependency{{TaskId: "mci_identifier_testBV2_dependencyTask__01_01_01_00_00_00", Status: evergreen.TaskSucceeded}})
-	//	}
-	//}
-	//require.NoError(db.ClearCollections(task.Collection, model.ParserProjectCollection))
-	//
-	//// check that the generated tasks are included as dependencies by default
-	//pp = model.ParserProject{}
-	//err = util.UnmarshalYAMLWithFallback([]byte(dependOnGeneratedTasksConfig), &pp)
-	//require.NoError(err)
-	//pp.Id = "sample_version"
-	//require.NoError(pp.Insert())
-	//generateTaskWithoutFlag := task.Task{
-	//	Id:                    "mci_identifier_generate_tasks_for_version_version_gen__01_01_01_00_00_00",
-	//	Version:               "sample_version",
-	//	BuildId:               "b1",
-	//	Project:               "mci",
-	//	DisplayName:           "version_gen",
-	//	GeneratedJSONAsString: sampleGeneratedProject2,
-	//	Status:                evergreen.TaskStarted,
-	//}
-	//require.NoError(generateTaskWithoutFlag.Insert())
-	//j = NewGenerateTasksJob(generateTask.Version, generateTask.Id, "1")
-	//j.Run(context.Background())
-	//assert.NoError(j.Error())
-	//tasks, err = task.FindAll(db.Query(task.ByVersion("sample_version")))
-	//assert.NoError(err)
-	//assert.Len(tasks, 4)
-	//for _, foundTask := range tasks {
-	//	switch foundTask.DisplayName {
-	//	case "version_gen", "dependency_task":
-	//		assert.Equal(foundTask.DependsOn, []task.Dependency{})
-	//	case "shouldDependOnVersionGen":
-	//		assert.Equal(foundTask.DependsOn, []task.Dependency{
-	//			{TaskId: "mci_identifier_generate_tasks_for_version_version_gen__01_01_01_00_00_00", Status: evergreen.TaskSucceeded},
-	//			{TaskId: "mci_identifier_testBV2_dependencyTask__01_01_01_00_00_00", Status: evergreen.TaskSucceeded},
-	//		})
-	//	case "shouldDependOnDependencyTask":
-	//		assert.Equal(foundTask.DependsOn, []task.Dependency{{TaskId: "mci_identifier_testBV2_dependencyTask__01_01_01_00_00_00", Status: evergreen.TaskSucceeded}})
-	//	}
-	//}
-
-	require.NoError(db.ClearCollections(task.Collection, model.ParserProjectCollection))
-
-	// check that the generated tasks are included as dependencies by default
 	pp := model.ParserProject{}
-	err := util.UnmarshalYAMLWithFallback([]byte(shouldGenerateNewBVConfig), &pp)
+	err := util.UnmarshalYAMLWithFallback([]byte(omitGeneratedTasksConfig), &pp)
 	require.NoError(err)
 	pp.Id = "sample_version"
 	require.NoError(pp.Insert())
@@ -690,14 +608,96 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 		BuildId:               "b1",
 		Project:               "mci",
 		DisplayName:           "version_gen",
-		GeneratedJSONAsString: sampleGeneratedProject3,
+		BuildVariant:          "generate-tasks-for-version",
+		GeneratedJSONAsString: sampleGeneratedProject2,
 		Status:                evergreen.TaskStarted,
 	}
 	require.NoError(generateTask.Insert())
+	projectRef := model.ProjectRef{Id: "mci", Identifier: "mci_identifier"}
+	require.NoError(projectRef.Insert())
+
 	j := NewGenerateTasksJob(generateTask.Version, generateTask.Id, "1")
 	j.Run(context.Background())
 	assert.NoError(j.Error())
 	tasks, err := task.FindAll(db.Query(task.ByVersion("sample_version")))
+	assert.NoError(err)
+	assert.Len(tasks, 4)
+	for _, foundTask := range tasks {
+		switch foundTask.DisplayName {
+		case "version_gen", "dependency_task":
+			assert.Equal(foundTask.DependsOn, []task.Dependency{})
+		case "shouldDependOnVersionGen":
+			assert.Equal(foundTask.DependsOn, []task.Dependency{
+				{
+					TaskId:             "mci_identifier_generate_tasks_for_version_version_gen__01_01_01_00_00_00",
+					Status:             evergreen.TaskSucceeded,
+					OmitGeneratedTasks: true,
+				},
+			})
+		case "shouldDependOnDependencyTask":
+			assert.Equal(foundTask.DependsOn, []task.Dependency{{TaskId: "mci_identifier_testBV2_dependencyTask__01_01_01_00_00_00", Status: evergreen.TaskSucceeded}})
+		}
+	}
+	require.NoError(db.ClearCollections(task.Collection, model.ParserProjectCollection))
+
+	// check that the generated tasks are included as dependencies by default
+	pp = model.ParserProject{}
+	err = util.UnmarshalYAMLWithFallback([]byte(dependOnGeneratedTasksConfig), &pp)
+	require.NoError(err)
+	pp.Id = "sample_version"
+	require.NoError(pp.Insert())
+	generateTaskWithoutFlag := task.Task{
+		Id:                    "mci_identifier_generate_tasks_for_version_version_gen__01_01_01_00_00_00",
+		Version:               "sample_version",
+		BuildId:               "b1",
+		Project:               "mci",
+		DisplayName:           "version_gen",
+		GeneratedJSONAsString: sampleGeneratedProject2,
+		Status:                evergreen.TaskStarted,
+	}
+	require.NoError(generateTaskWithoutFlag.Insert())
+	j = NewGenerateTasksJob(generateTask.Version, generateTask.Id, "1")
+	j.Run(context.Background())
+	assert.NoError(j.Error())
+	tasks, err = task.FindAll(db.Query(task.ByVersion("sample_version")))
+	assert.NoError(err)
+	assert.Len(tasks, 4)
+	for _, foundTask := range tasks {
+		switch foundTask.DisplayName {
+		case "version_gen", "dependency_task":
+			assert.Equal(foundTask.DependsOn, []task.Dependency{})
+		case "shouldDependOnVersionGen":
+			assert.Equal(foundTask.DependsOn, []task.Dependency{
+				{TaskId: "mci_identifier_generate_tasks_for_version_version_gen__01_01_01_00_00_00", Status: evergreen.TaskSucceeded},
+				{TaskId: "mci_identifier_testBV2_dependencyTask__01_01_01_00_00_00", Status: evergreen.TaskSucceeded},
+			})
+		case "shouldDependOnDependencyTask":
+			assert.Equal(foundTask.DependsOn, []task.Dependency{{TaskId: "mci_identifier_testBV2_dependencyTask__01_01_01_00_00_00", Status: evergreen.TaskSucceeded}})
+		}
+	}
+
+	require.NoError(db.ClearCollections(task.Collection, model.ParserProjectCollection))
+
+	// check that the generated tasks are included as dependencies by default
+	pp = model.ParserProject{}
+	err = util.UnmarshalYAMLWithFallback([]byte(shouldGenerateNewBVConfig), &pp)
+	require.NoError(err)
+	pp.Id = "sample_version"
+	require.NoError(pp.Insert())
+	generateTask = task.Task{
+		Id:                    "mci_identifier_generate_tasks_for_version_version_gen__01_01_01_00_00_00",
+		Version:               "sample_version",
+		BuildId:               "b1",
+		Project:               "mci",
+		DisplayName:           "version_gen",
+		GeneratedJSONAsString: sampleGeneratedProject3,
+		Status:                evergreen.TaskStarted,
+	}
+	require.NoError(generateTask.Insert())
+	j = NewGenerateTasksJob(generateTask.Version, generateTask.Id, "1")
+	j.Run(context.Background())
+	assert.NoError(j.Error())
+	tasks, err = task.FindAll(db.Query(task.ByVersion("sample_version")))
 	assert.NoError(err)
 	assert.Len(tasks, 6)
 	for _, foundTask := range tasks {
