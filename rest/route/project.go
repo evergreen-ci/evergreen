@@ -998,6 +998,11 @@ func (h *getProjectTasksHandler) Parse(ctx context.Context, r *http.Request) err
 	if h.opts.StartAt < 0 {
 		return errors.New("start must be a non-negative integer")
 	}
+	for _, requester := range h.opts.Requesters {
+		if !utility.StringSliceContains(evergreen.AllRequesterTypes, requester) {
+			return errors.Errorf("'%s' is not a valid requester type", requester)
+		}
+	}
 
 	return nil
 }
