@@ -326,6 +326,8 @@ func (e *envState) initAmboyDB(ctx context.Context) error {
 	opts := options.Client().
 		ApplyURI(e.settings.Amboy.DB.URL).
 		SetConnectTimeout(5 * time.Second).
+		SetReadConcern(e.settings.Database.ReadConcernSettings.Resolve()).
+		SetWriteConcern(e.settings.Database.WriteConcernSettings.Resolve()).
 		SetMonitor(apm.NewLoggingMonitor(ctx, time.Minute, apm.NewBasicMonitor(nil)).DriverAPM())
 
 	if e.settings.Amboy.DB.Username != "" && e.settings.Amboy.DB.Password != "" {
