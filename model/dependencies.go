@@ -117,6 +117,9 @@ func (di *dependencyIncluder) handle(pair TVPair, activationInfo *specificActiva
 	// also mark this newly generated dependency as inactive.
 	pairSpecifiesActivation := activationInfo.taskOrVariantHasSpecificActivation(pair.Variant, pair.TaskName)
 	for _, dep := range deps {
+		// Since the only tasks that have activation info set are the initial unexpanded dependencies, we only need
+		// to propagate the deactivateGeneratedDeps for those tasks, which only exist at the root level of each recursion.
+		// Hence, if isRoot is true, we updateDeactivationMap for the full recursive set of dependencies of the task.
 		if isRoot {
 			di.updateDeactivationMap(dep, generatedVariants, pairSpecifiesActivation)
 		}
@@ -140,16 +143,24 @@ func (di *dependencyIncluder) updateDeactivationMap(pair TVPair, generatedVarian
 		// one pair that depends on this new dep being active - so we cannot deactivate it.
 		if _, foundPair := di.deactivateGeneratedDeps[pair]; !foundPair || !pairSpecifiesActivation {
 			di.deactivateGeneratedDeps[pair] = pairSpecifiesActivation
-			bvt := di.Project.FindTaskForVariant(pair.TaskName, pair.Variant)
-			// Also need to deactivate the dependencies of the newly deactivated tasks
-			if bvt != nil {
-				deps := di.expandDependencies(pair, bvt.DependsOn)
-				for _, dep := range deps {
-					if _, foundDep := di.deactivateGeneratedDeps[dep]; !foundDep || !pairSpecifiesActivation {
-						di.deactivateGeneratedDeps[dep] = pairSpecifiesActivation
-					}
-				}
+			di.recursivelyUpdateDeactivationMap(pair, pairSpecifiesActivation)
+		}
+	}
+}
+
+// recursivelyUpdateDeactivationMap recurses through the full dependencies of a task and updates their value
+// in the deactivateGeneratedDeps based on the pairSpecifiesActivation input.
+func (di *dependencyIncluder) recursivelyUpdateDeactivationMap(pair TVPair, pairSpecifiesActivation bool) {
+	bvt := di.Project.FindTaskForVariant(pair.TaskName, pair.Variant)
+	if bvt != nil {
+		deps := di.expandDependencies(pair, bvt.DependsOn)
+		for _, dep := range deps {
+			// Values only get set to true if pairSpecifiesActivation is true, otherwise they are set to false,
+			// which signifies that we must activate the task.
+			if _, foundDep := di.deactivateGeneratedDeps[dep]; !foundDep || !pairSpecifiesActivation {
+				di.deactivateGeneratedDeps[dep] = pairSpecifiesActivation
 			}
+			di.recursivelyUpdateDeactivationMap(dep, pairSpecifiesActivation)
 		}
 	}
 }
