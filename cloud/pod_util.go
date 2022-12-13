@@ -261,7 +261,6 @@ func exportECSPodContainerDef(settings *evergreen.Settings, opts pod.TaskContain
 		SetCPU(opts.CPU).
 		SetWorkingDir(opts.WorkingDir).
 		SetCommand(bootstrapContainerCommand(settings, opts)).
-		// kim: TODO: update tests
 		SetEnvironmentVariables(exportPodEnvSecrets(opts)).
 		AddPortMappings(*cocoa.NewPortMapping().SetContainerPort(agentPort))
 
@@ -276,11 +275,7 @@ func exportECSPodContainerDef(settings *evergreen.Settings, opts pod.TaskContain
 // cocoa.ECSPodExecutionOptions.
 func ExportECSPodExecutionOptions(ecsConfig evergreen.ECSConfig, containerOpts pod.TaskContainerCreationOptions) (*cocoa.ECSPodExecutionOptions, error) {
 	execOpts := cocoa.NewECSPodExecutionOptions().
-		// Explicitly override the pod definitions's environment variables to
-		// inject those that are pod-specific.
-		// kim: TODO: uncomment
-		// kim: TODO: test
-		// SetOverrideOptions(exportECSOverridePodDef(containerOpts)).
+		SetOverrideOptions(exportECSOverridePodDef(containerOpts)).
 		// This enables the ability to connect directly to a running container
 		// in ECS (e.g. similar to SSH'ing into a host), which is convenient for
 		// debugging issues.
@@ -332,18 +327,20 @@ func ExportECSPodExecutionOptions(ecsConfig evergreen.ECSConfig, containerOpts p
 	return execOpts, nil
 }
 
-// kim: TODO: uncomment after upgrade
-// func exportECSOverridePodDef(opts pod.TaskContainerCreationOptions) cocoa.ECSOverridePodDefinitionOptions {
-//     overrideContainerDef := cocoa.NewECSOverrideContainerDefinition().SetName(agentContainerName)
-//
-//     for name, value := range opts.EnvVars {
-//         overrideContainerDef.AddEnvironmentVariables(*cocoa.NewKeyValue().
-//             SetName(name).
-//             SetValue(value))
-//     }
-//
-//     return cocoa.NewECSOverridePodDefinitionOptions().AddContainerDefinitions(*overrideContainerDef)
-// }
+// exportECSOverridePodDef exports the pod definition options that should be
+// overridden when starting the pod. It explicitly overrides the pod
+// definitions's environment variables to inject those that are pod-specific.
+func exportECSOverridePodDef(opts pod.TaskContainerCreationOptions) cocoa.ECSOverridePodDefinitionOptions {
+	overrideContainerDef := cocoa.NewECSOverrideContainerDefinition().SetName(agentContainerName)
+
+	for name, value := range opts.EnvVars {
+		overrideContainerDef.AddEnvironmentVariables(*cocoa.NewKeyValue().
+			SetName(name).
+			SetValue(value))
+	}
+
+	return *cocoa.NewECSOverridePodDefinitionOptions().AddContainerDefinitions(*overrideContainerDef)
+}
 
 // ExportECSPodDefinition exports the pod definition into an
 // cocoa.ECSTaskDefinition.
@@ -369,15 +366,13 @@ func podAWSOptions(settings *evergreen.Settings) awsutil.ClientOptions {
 func exportPodEnvSecrets(opts pod.TaskContainerCreationOptions) []cocoa.EnvironmentVariable {
 	var allEnvVars []cocoa.EnvironmentVariable
 
-	// This does not set the environment variables because some of them (such as
-	// the pod ID) vary between each pod, which reduces the reusability of pod
-	// definitions. Instead of setting these per-pod values in the pod
-	// definition, these environment variables are injected when the pod is
+	// This intentionally does not set the plaintext environment variables
+	// because some of them (such as the pod ID) vary between each pod. If they
+	// were included in the pod definition, it would reduce the reusability of
+	// pod definitions.
+	// Instead of setting these per-pod values in the pod definition, these
+	// environment variables are injected via overriding options when the pod is
 	// started.
-	// kim: TODO: fix tests
-	// for k, v := range opts.EnvVars {
-	//     allEnvVars = append(allEnvVars, *cocoa.NewEnvironmentVariable().SetName(k).SetValue(v))
-	// }
 
 	for envVarName, s := range opts.EnvSecrets {
 		secretOpts := cocoa.NewSecretOptions().SetID(s.ExternalID)
