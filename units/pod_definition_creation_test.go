@@ -88,14 +88,7 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 			assert.NotZero(t, containerDef.Command)
 			assert.Equal(t, j.ContainerOpts.Image, utility.FromStringPtr(containerDef.Image))
 
-			assert.Len(t, containerDef.Environment, len(j.ContainerOpts.EnvVars))
-			for _, envVar := range containerDef.Environment {
-				name := utility.FromStringPtr(envVar.Name)
-				expectedVal, ok := j.ContainerOpts.EnvVars[name]
-				if assert.True(t, ok, "unexpected environment variable '%s'", name) {
-					assert.Equal(t, expectedVal, utility.FromStringPtr(envVar.Value), "incorrect value for environment variable '%s'", name)
-				}
-			}
+			assert.Empty(t, containerDef.Environment, "pod definition should not contain plaintext environment variables")
 
 			assert.Len(t, containerDef.Secrets, len(j.ContainerOpts.EnvSecrets))
 			for _, secret := range containerDef.Secrets {
