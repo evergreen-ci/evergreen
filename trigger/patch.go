@@ -117,42 +117,6 @@ func (t *patchTriggers) patchOutcome(sub *event.Subscription) (*notification.Not
 			return nil, nil
 		}
 	}
-
-	if sub.Subscriber.Type == event.GithubPullRequestSubscriberType {
-		target, ok := sub.Subscriber.Target.(*event.GithubPullRequestSubscriber)
-		if !ok {
-			return nil, errors.Errorf("target '%s' didn't not have expected type", sub.Subscriber.Target)
-		}
-		subType := target.Type
-
-		if t.patch.IsParent() || (t.patch.IsChild() && subType == event.WaitOnChild) {
-			// get the children or siblings to wait on
-			childrenOrSiblings, parentPatch, err := t.patch.GetPatchFamily()
-			if err != nil {
-				return nil, errors.Wrap(err, "getting child or sibling patches")
-			}
-
-			// make sure the parent is done, if not, wait for the parent
-			if t.patch.IsChild() && !evergreen.IsFinishedPatchStatus(parentPatch.Status) {
-				return nil, nil
-			}
-			childrenStatus, err := getChildrenOrSiblingsReadiness(childrenOrSiblings)
-			if err != nil {
-				return nil, errors.Wrap(err, "getting child or sibling information")
-			}
-			if !evergreen.IsFinishedPatchStatus(childrenStatus) {
-				return nil, nil
-			}
-			if childrenStatus == evergreen.PatchFailed {
-				t.data.Status = evergreen.PatchFailed
-			}
-
-			if t.patch.IsChild() {
-				// we want the subscription to be on the parent. now that the children are done, the parent can be considered done.
-				t.patch = parentPatch
-			}
-		}
-	}
 	return t.generate(sub)
 }
 
@@ -162,30 +126,6 @@ func (t *patchTriggers) patchFailure(sub *event.Subscription) (*notification.Not
 	}
 
 	return t.generate(sub)
-}
-
-func getChildrenOrSiblingsReadiness(childrenOrSiblings []string) (string, error) {
-	childrenStatus := evergreen.PatchSucceeded
-	if len(childrenOrSiblings) == 0 {
-		return "", nil
-	}
-	for _, childPatch := range childrenOrSiblings {
-		childPatchDoc, err := patch.FindOneId(childPatch)
-		if err != nil {
-			return "", errors.Wrapf(err, "getting tasks for child patch '%s'", childPatch)
-		}
-		if childPatchDoc == nil {
-			return "", errors.Errorf("child patch '%s' not found", childPatch)
-		}
-		if childPatchDoc.Status == evergreen.PatchFailed {
-			childrenStatus = evergreen.PatchFailed
-		}
-		if !evergreen.IsFinishedPatchStatus(childPatchDoc.Status) {
-			return childPatchDoc.Status, nil
-		}
-	}
-	return childrenStatus, nil
-
 }
 
 func finalizeChildPatch(sub *event.Subscription) error {
