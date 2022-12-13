@@ -102,7 +102,14 @@ func (t *patchTriggers) patchOutcome(sub *event.Subscription) (*notification.Not
 		anyOutcome := ps == evergreen.PatchAllOutcomes
 
 		if successOutcome || failureOutcome || anyOutcome {
-			err := finalizeChildPatch(sub)
+			aborted, err := model.IsAborted(t.patch.Id.Hex())
+			if err != nil {
+				return nil, errors.Errorf("getting aborted status for patch '%s'", t.patch.Id.Hex())
+			}
+			if aborted {
+				return nil, nil
+			}
+			err = finalizeChildPatch(sub)
 
 			if err != nil {
 				return nil, errors.Wrap(err, "finalizing child patch")
@@ -192,6 +199,10 @@ func finalizeChildPatch(sub *event.Subscription) error {
 	}
 	if childPatch == nil {
 		return errors.Errorf("child patch '%s' not found", target.ChildPatchId)
+	}
+	// Return if patch is already finalized
+	if childPatch.Version != "" {
+		return nil
 	}
 
 	ctx, cancel := evergreen.GetEnvironment().Context()

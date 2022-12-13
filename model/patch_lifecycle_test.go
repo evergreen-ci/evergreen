@@ -489,20 +489,20 @@ func TestIncludeDependencies(t *testing.T) {
 		So(p, ShouldNotBeNil)
 
 		Convey("a patch against v1/t1 should remain unchanged", func() {
-			pairs, _ := IncludeDependencies(p, []TVPair{{"v1", "t1"}}, evergreen.PatchVersionRequester)
+			pairs, _ := IncludeDependencies(p, []TVPair{{"v1", "t1"}}, evergreen.PatchVersionRequester, nil)
 			So(len(pairs), ShouldEqual, 1)
 			So(pairs[0], ShouldResemble, TVPair{"v1", "t1"})
 		})
 
 		Convey("a patch against v1/t2 should add t1", func() {
-			pairs, _ := IncludeDependencies(p, []TVPair{{"v1", "t2"}}, evergreen.PatchVersionRequester)
+			pairs, _ := IncludeDependencies(p, []TVPair{{"v1", "t2"}}, evergreen.PatchVersionRequester, nil)
 			So(len(pairs), ShouldEqual, 2)
 			So(pairs, shouldContainPair, TVPair{"v1", "t2"})
 			So(pairs, shouldContainPair, TVPair{"v1", "t1"})
 		})
 
 		Convey("a patch against v2/t3 should add t1,t2, and v1", func() {
-			pairs, _ := IncludeDependencies(p, []TVPair{{"v2", "t3"}}, evergreen.PatchVersionRequester)
+			pairs, _ := IncludeDependencies(p, []TVPair{{"v2", "t3"}}, evergreen.PatchVersionRequester, nil)
 			So(len(pairs), ShouldEqual, 3)
 			So(pairs, shouldContainPair, TVPair{"v1", "t2"})
 			So(pairs, shouldContainPair, TVPair{"v1", "t1"})
@@ -510,10 +510,10 @@ func TestIncludeDependencies(t *testing.T) {
 		})
 
 		Convey("a patch against v2/t5 should be pruned, since its dependency is not patchable", func() {
-			pairs, _ := IncludeDependencies(p, []TVPair{{"v2", "t5"}}, evergreen.PatchVersionRequester)
+			pairs, _ := IncludeDependencies(p, []TVPair{{"v2", "t5"}}, evergreen.PatchVersionRequester, nil)
 			So(len(pairs), ShouldEqual, 0)
 
-			pairs, _ = IncludeDependencies(p, []TVPair{{"v2", "t5"}}, evergreen.RepotrackerVersionRequester)
+			pairs, _ = IncludeDependencies(p, []TVPair{{"v2", "t5"}}, evergreen.RepotrackerVersionRequester, nil)
 			So(len(pairs), ShouldEqual, 2)
 		})
 	})
@@ -547,7 +547,7 @@ func TestIncludeDependencies(t *testing.T) {
 		So(p, ShouldNotBeNil)
 
 		Convey("a patch against v1/t3 should include t2 and t1", func() {
-			pairs, _ := IncludeDependencies(p, []TVPair{{"v1", "t3"}}, evergreen.PatchVersionRequester)
+			pairs, _ := IncludeDependencies(p, []TVPair{{"v1", "t3"}}, evergreen.PatchVersionRequester, nil)
 			So(len(pairs), ShouldEqual, 3)
 			So(pairs, shouldContainPair, TVPair{"v1", "t2"})
 			So(pairs, shouldContainPair, TVPair{"v1", "t1"})
@@ -555,7 +555,7 @@ func TestIncludeDependencies(t *testing.T) {
 		})
 
 		Convey("a patch against v3/t4 should include v1, v2, t3, t2, and t1", func() {
-			pairs, _ := IncludeDependencies(p, []TVPair{{"v3", "t4"}}, evergreen.PatchVersionRequester)
+			pairs, _ := IncludeDependencies(p, []TVPair{{"v3", "t4"}}, evergreen.PatchVersionRequester, nil)
 			So(len(pairs), ShouldEqual, 7)
 
 			So(pairs, shouldContainPair, TVPair{"v3", "t4"})
@@ -571,7 +571,7 @@ func TestIncludeDependencies(t *testing.T) {
 		})
 
 		Convey("a patch against v4/t5 should include v1, v2, v3, t4, t3, t2, and t1", func() {
-			pairs, _ := IncludeDependencies(p, []TVPair{{"v4", "t5"}}, evergreen.PatchVersionRequester)
+			pairs, _ := IncludeDependencies(p, []TVPair{{"v4", "t5"}}, evergreen.PatchVersionRequester, nil)
 			So(len(pairs), ShouldEqual, 8)
 			So(pairs, shouldContainPair, TVPair{"v4", "t5"})
 			So(pairs, shouldContainPair, TVPair{"v1", "t1"})
@@ -604,14 +604,14 @@ func TestIncludeDependencies(t *testing.T) {
 
 		Convey("all tasks should be scheduled no matter which is initially added", func() {
 			Convey("for '1'", func() {
-				pairs, _ := IncludeDependencies(p, []TVPair{{"v1", "1"}}, evergreen.PatchVersionRequester)
+				pairs, _ := IncludeDependencies(p, []TVPair{{"v1", "1"}}, evergreen.PatchVersionRequester, nil)
 				So(len(pairs), ShouldEqual, 3)
 				So(pairs, shouldContainPair, TVPair{"v1", "1"})
 				So(pairs, shouldContainPair, TVPair{"v1", "2"})
 				So(pairs, shouldContainPair, TVPair{"v1", "3"})
 			})
 			Convey("for '2'", func() {
-				pairs, _ := IncludeDependencies(p, []TVPair{{"v1", "2"}, {"v2", "2"}}, evergreen.PatchVersionRequester)
+				pairs, _ := IncludeDependencies(p, []TVPair{{"v1", "2"}, {"v2", "2"}}, evergreen.PatchVersionRequester, nil)
 				So(len(pairs), ShouldEqual, 6)
 				So(pairs, shouldContainPair, TVPair{"v1", "1"})
 				So(pairs, shouldContainPair, TVPair{"v1", "2"})
@@ -621,7 +621,7 @@ func TestIncludeDependencies(t *testing.T) {
 				So(pairs, shouldContainPair, TVPair{"v2", "3"})
 			})
 			Convey("for '3'", func() {
-				pairs, _ := IncludeDependencies(p, []TVPair{{"v2", "3"}}, evergreen.PatchVersionRequester)
+				pairs, _ := IncludeDependencies(p, []TVPair{{"v2", "3"}}, evergreen.PatchVersionRequester, nil)
 				So(len(pairs), ShouldEqual, 3)
 				So(pairs, shouldContainPair, TVPair{"v2", "1"})
 				So(pairs, shouldContainPair, TVPair{"v2", "2"})
@@ -648,7 +648,7 @@ func TestIncludeDependencies(t *testing.T) {
 		So(p, ShouldNotBeNil)
 
 		initDep := TVPair{TaskName: "a", Variant: "initial-variant"}
-		pairs, _ := IncludeDependencies(p, []TVPair{initDep}, evergreen.PatchVersionRequester)
+		pairs, _ := IncludeDependencies(p, []TVPair{initDep}, evergreen.PatchVersionRequester, nil)
 		So(pairs, ShouldHaveLength, 2)
 		So(initDep, ShouldBeIn, pairs)
 	})

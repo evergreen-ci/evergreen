@@ -2511,22 +2511,14 @@ func TestAddNewTasks(t *testing.T) {
 	b := build.Build{
 		Id:           "b0",
 		BuildVariant: "bv0",
+		Activated:    false,
 	}
-	assert.NoError(t, b.Insert())
 
 	v := &Version{
 		Id:       "v0",
 		BuildIds: []string{"b0"},
 	}
 	assert.NoError(t, v.Insert())
-
-	existingTask := task.Task{
-		Id:           "t0",
-		DisplayName:  "t0",
-		BuildId:      "b0",
-		BuildVariant: "bv0",
-		Version:      "v0",
-	}
 
 	tasksToAdd := TaskVariantPairs{
 		ExecTasks: []TVPair{
@@ -2560,22 +2552,50 @@ func TestAddNewTasks(t *testing.T) {
 	for name, testCase := range map[string]struct {
 		activationInfo specificActivationInfo
 		activatedTasks []string
+		existingTask   task.Task
+		bvActive       bool
 	}{
 		"ActivatedNewTask": {
 			activationInfo: specificActivationInfo{},
 			activatedTasks: []string{"t0", "t1"},
+			existingTask: task.Task{
+				Id:           "t0",
+				DisplayName:  "t0",
+				BuildId:      "b0",
+				BuildVariant: "bv0",
+				Version:      "v0",
+				Activated:    true,
+			},
+			bvActive: true,
 		},
 		"DeactivatedNewTask": {
 			activationInfo: specificActivationInfo{activationTasks: map[string][]string{
 				b.BuildVariant: {"t1"},
 			}},
 			activatedTasks: []string{},
+			existingTask:   task.Task{},
+			bvActive:       false,
+		},
+		"OnlyDeactivatedTasks": {
+			activationInfo: specificActivationInfo{activationTasks: map[string][]string{
+				b.BuildVariant: {"t1"},
+			}},
+			activatedTasks: []string{},
+			existingTask: task.Task{
+				Id:           "t0",
+				DisplayName:  "t0",
+				BuildId:      "b0",
+				BuildVariant: "bv0",
+				Version:      "v0",
+				Activated:    false,
+			},
+			bvActive: false,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(task.Collection))
-			assert.NoError(t, existingTask.Insert())
-
+			require.NoError(t, db.ClearCollections(task.Collection, build.Collection))
+			assert.NoError(t, testCase.existingTask.Insert())
+			assert.NoError(t, b.Insert())
 			creationInfo := TaskCreationInfo{
 				Project:        &project,
 				ProjectRef:     &ProjectRef{},
@@ -2589,10 +2609,14 @@ func TestAddNewTasks(t *testing.T) {
 			assert.NoError(t, err)
 			activatedTasks, err := task.FindAll(db.Query(bson.M{task.ActivatedKey: true}))
 			assert.NoError(t, err)
+			build, err := build.FindOneId("b0")
+			assert.NoError(t, err)
+			assert.NotNil(t, build)
 			assert.Equal(t, len(testCase.activatedTasks), len(activatedTasks))
 			for _, task := range activatedTasks {
 				assert.Contains(t, testCase.activatedTasks, task.DisplayName)
 			}
+			assert.Equal(t, testCase.bvActive, build.Activated)
 		})
 	}
 }

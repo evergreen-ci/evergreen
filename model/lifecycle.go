@@ -1669,7 +1669,6 @@ func addNewTasks(ctx context.Context, creationInfo TaskCreationInfo, existingBui
 	if creationInfo.Version.BuildIds == nil {
 		return nil, nil
 	}
-
 	distroAliases, err := distro.NewDistroAliasesLookupTable()
 	if err != nil {
 		return nil, err
@@ -1690,14 +1689,17 @@ func addNewTasks(ctx context.Context, creationInfo TaskCreationInfo, existingBui
 		if err != nil {
 			return nil, err
 		}
-
 		existingTasksIndex := map[string]bool{}
+		hasActivatedTask := false
 		for _, t := range tasksInBuild {
+			if t.Activated {
+				hasActivatedTask = true
+			}
 			existingTasksIndex[t.DisplayName] = true
 		}
 		projectBV := creationInfo.Project.FindBuildVariant(b.BuildVariant)
-		if projectBV != nil {
-			b.Activated = utility.FromBoolTPtr(projectBV.Activate) // activate unless explicitly set otherwise
+		if projectBV != nil && hasActivatedTask {
+			b.Activated = utility.FromBoolTPtr(projectBV.Activate)
 		}
 
 		// Build a list of tasks that haven't been created yet for the given variant, but have
