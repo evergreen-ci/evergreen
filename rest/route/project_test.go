@@ -1473,7 +1473,7 @@ func TestGetProjectTaskExecutions(t *testing.T) {
 			assert.NotNil(t, resp)
 			assert.NotNil(t, resp.Data())
 			respModel := resp.Data().(model.ProjectTaskExecutionResp)
-			assert.Equal(t, 6, respModel.NumExecutions)
+			assert.Equal(t, 6, respModel.NumCompleted)
 		},
 		"emptyRun": func(t *testing.T, rm *getProjectTaskExecutionsHandler) {
 			rm.projectId = "nothing"
@@ -1485,7 +1485,7 @@ func TestGetProjectTaskExecutions(t *testing.T) {
 			assert.NotNil(t, resp)
 			assert.NotNil(t, resp.Data())
 			respModel := resp.Data().(model.ProjectTaskExecutionResp)
-			assert.Equal(t, 0, respModel.NumExecutions)
+			assert.Equal(t, 0, respModel.NumCompleted)
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {

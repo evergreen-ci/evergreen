@@ -1091,7 +1091,7 @@ func (h *getProjectTaskExecutionsHandler) Run(ctx context.Context) gimlet.Respon
 		return gimlet.NewJSONInternalErrorResponse(err)
 	}
 	return gimlet.NewJSONResponse(model.ProjectTaskExecutionResp{
-		NumExecutions: numTasks,
+		NumCompleted: numTasks,
 	})
 }
 

@@ -36,7 +36,7 @@ type GetProjectTaskExecutionReq struct {
 }
 
 type ProjectTaskExecutionResp struct {
-	NumExecutions int `json:"num_executions"`
+	NumCompleted int `json:"num_completed"`
 }
 
 type APITriggerDefinition struct {
