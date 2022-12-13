@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -52,7 +53,7 @@ func init() {
 }
 
 func clearAll(t *testing.T) {
-	require.NoError(t, db.ClearCollections(ProjectRefCollection, patch.Collection, VersionCollection, build.Collection, task.Collection, distro.Collection))
+	require.NoError(t, db.ClearCollections(manifest.Collection, ProjectRefCollection, patch.Collection, VersionCollection, build.Collection, task.Collection, distro.Collection))
 }
 
 // resetPatchSetup clears the ProjectRef, Patch, Version, Build, and Task Collections
@@ -231,87 +232,145 @@ func TestGetPatchedProject(t *testing.T) {
 
 func TestFinalizePatch(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, patchTestConfig, "TestFinalizePatch")
-
+	require.NoError(t, evergreen.UpdateConfig(patchTestConfig), ShouldBeNil)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	Convey("With FinalizePatch on a project and commit event generated from GetPatchedProject path",
-		t, func() {
+	// Running a multi-document transaction requires the collections to exist
+	// first before any documents can be inserted.
+	require.NoError(t, db.CreateCollections(manifest.Collection, VersionCollection, ParserProjectCollection, ProjectConfigCollection))
+
+	configPatch := resetPatchSetup(t, configFilePath)
+	for name, test := range map[string]func(*testing.T){
+		"VersionCreation": func(*testing.T) {
+			token, err := patchTestConfig.GetGithubOauthToken()
+			require.NoError(t, err)
+			project, patchConfig, err := GetPatchedProject(ctx, configPatch, token)
+			require.NoError(t, err)
+			assert.NotNil(t, project)
+			modulesYml := `
+modules:
+  - name: sandbox
+    repo: git@github.com:evergreen-ci/commit-queue-sandbox.git
+    branch: main
+  - name: evergreen
+    repo: git@github.com:evergreen-ci/evergreen.git
+    branch: main
+`
+			configPatch.PatchedParserProject = patchConfig.PatchedParserProject
+			configPatch.PatchedParserProject += modulesYml
+			token, err = patchTestConfig.GetGithubOauthToken()
+			require.NoError(t, err)
+			version, err := FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, token)
+			require.NoError(t, err)
+			assert.NotNil(t, version)
+			assert.Len(t, version.Parameters, 1)
+			// ensure the relevant builds/tasks were created
+			builds, err := build.Find(build.All)
+			require.NoError(t, err)
+			assert.Len(t, builds, 1)
+			assert.Len(t, builds[0].Tasks, 2)
+			tasks, err := task.Find(bson.M{})
+			require.NoError(t, err)
+			assert.Len(t, tasks, 2)
+		},
+		"VersionCreationWithAutoUpdateModules": func(*testing.T) {
+			token, err := patchTestConfig.GetGithubOauthToken()
+			require.NoError(t, err)
 			configPatch := resetPatchSetup(t, configFilePath)
-			Convey("a patched config should drive version creation", func() {
-				token, err := patchTestConfig.GetGithubOauthToken()
-				So(err, ShouldBeNil)
-				project, patchConfig, err := GetPatchedProject(ctx, configPatch, token)
-				So(err, ShouldBeNil)
-				So(project, ShouldNotBeNil)
-				configPatch.PatchedParserProject = patchConfig.PatchedParserProject
-				token, err = patchTestConfig.GetGithubOauthToken()
-				So(err, ShouldBeNil)
-				version, err := FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, token)
-				So(err, ShouldBeNil)
-				So(version, ShouldNotBeNil)
-				So(version.Parameters, ShouldHaveLength, 1)
-				// ensure the relevant builds/tasks were created
-				builds, err := build.Find(build.All)
-				So(err, ShouldBeNil)
-				So(len(builds), ShouldEqual, 1)
-				So(len(builds[0].Tasks), ShouldEqual, 2)
-				tasks, err := task.Find(bson.M{})
-				So(err, ShouldBeNil)
-				So(len(tasks), ShouldEqual, 2)
-			})
+			project, patchConfig, err := GetPatchedProject(ctx, configPatch, token)
+			require.NoError(t, err)
+			assert.NotNil(t, project)
 
-			Convey("a patch that does not include the remote config should not "+
-				"drive version creation", func() {
-				patchedConfigFile := "fakeInPatchSoNotPatched"
-				configPatch := resetPatchSetup(t, patchedConfigFile)
-				token, err := patchTestConfig.GetGithubOauthToken()
-				So(err, ShouldBeNil)
-				project, patchConfig, err := GetPatchedProject(ctx, configPatch, token)
-				So(project, ShouldNotBeNil)
-				So(err, ShouldBeNil)
-				configPatch.PatchedParserProject = patchConfig.PatchedParserProject
-				token, err = patchTestConfig.GetGithubOauthToken()
-				So(err, ShouldBeNil)
-				version, err := FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, token)
-				So(err, ShouldBeNil)
-				So(version, ShouldNotBeNil)
-				So(err, ShouldBeNil)
-				So(version, ShouldNotBeNil)
+			baseManifest := manifest.Manifest{
+				Revision:    patchedRevision,
+				ProjectName: patchedProject,
+				Modules: map[string]*manifest.Module{
+					"sandbox":   {Branch: "main", Repo: "sandbox", Owner: "else", Revision: "123"},
+					"evergreen": {Branch: "main", Repo: "evergreen", Owner: "something", Revision: "abc"},
+				},
+				IsBase: true,
+			}
+			_, err = baseManifest.TryInsert()
+			require.NoError(t, err)
 
-				// ensure the relevant builds/tasks were created
-				builds, err := build.Find(build.All)
-				So(err, ShouldBeNil)
-				So(len(builds), ShouldEqual, 1)
-				So(len(builds[0].Tasks), ShouldEqual, 1)
-				tasks, err := task.FindAll(task.All)
-				So(err, ShouldBeNil)
-				So(len(tasks), ShouldEqual, 1)
-			})
+			modulesYml := `
+modules:
+  - name: sandbox
+    repo: git@github.com:evergreen-ci/commit-queue-sandbox.git
+    branch: main
+    auto_update: true
+  - name: evergreen
+    repo: git@github.com:evergreen-ci/evergreen.git
+    branch: main
+`
+			configPatch.PatchedParserProject = patchConfig.PatchedParserProject
+			configPatch.PatchedParserProject += modulesYml
+			token, err = patchTestConfig.GetGithubOauthToken()
+			require.NoError(t, err)
+			version, err := FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, token)
+			require.NoError(t, err)
+			assert.NotNil(t, version)
+			// Ensure that the manifest was created and that auto_update worked for
+			// sandbox module but was skipped for evergreen
+			mfst, err := manifest.FindOne(manifest.ById(configPatch.Id.Hex()))
+			require.NoError(t, err)
+			assert.NotNil(t, mfst)
+			assert.Len(t, mfst.Modules, 2)
+			assert.NotEqual(t, mfst.Modules["sandbox"].Revision, "123")
+			assert.Equal(t, mfst.Modules["evergreen"].Revision, "abc")
+		},
+		"PatchNoRemoteConfigDoesntCreateVersion": func(*testing.T) {
+			patchedConfigFile := "fakeInPatchSoNotPatched"
+			configPatch := resetPatchSetup(t, patchedConfigFile)
+			token, err := patchTestConfig.GetGithubOauthToken()
+			require.NoError(t, err)
+			project, patchConfig, err := GetPatchedProject(ctx, configPatch, token)
+			assert.NotNil(t, project)
+			require.NoError(t, err)
+			configPatch.PatchedParserProject = patchConfig.PatchedParserProject
+			token, err = patchTestConfig.GetGithubOauthToken()
+			require.NoError(t, err)
+			version, err := FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, token)
+			require.NoError(t, err)
+			assert.NotNil(t, version)
+			require.NoError(t, err)
+			assert.NotNil(t, version)
 
-			Convey("a commit queue patch with no tasks/build variants should not create a version", func() {
-				//normal patch works
-				token, err := patchTestConfig.GetGithubOauthToken()
-				So(err, ShouldBeNil)
-				configPatch := resetPatchSetup(t, configFilePath)
-				configPatch.Tasks = []string{}
-				configPatch.BuildVariants = []string{}
-				configPatch.VariantsTasks = []patch.VariantTasks{}
-				v, err := FinalizePatch(ctx, configPatch, evergreen.MergeTestRequester, token)
-				So(err, ShouldBeNil)
-				So(v, ShouldNotBeNil)
-				So(v.BuildIds, ShouldBeEmpty)
+			// ensure the relevant builds/tasks were created
+			builds, err := build.Find(build.All)
+			require.NoError(t, err)
+			assert.Len(t, builds, 1)
+			assert.Len(t, builds[0].Tasks, 1)
+			tasks, err := task.FindAll(task.All)
+			require.NoError(t, err)
+			assert.Len(t, tasks, 1)
+		},
+		"EmptyCommitQueuePatchDoesntCreateVersion": func(*testing.T) {
+			//normal patch works
+			token, err := patchTestConfig.GetGithubOauthToken()
+			require.NoError(t, err)
+			configPatch := resetPatchSetup(t, configFilePath)
+			configPatch.Tasks = []string{}
+			configPatch.BuildVariants = []string{}
+			configPatch.VariantsTasks = []patch.VariantTasks{}
+			v, err := FinalizePatch(ctx, configPatch, evergreen.MergeTestRequester, token)
+			require.NoError(t, err)
+			assert.NotNil(t, v)
+			assert.Empty(t, v.BuildIds)
 
-				// commit queue patch should not
-				configPatch.Alias = evergreen.CommitQueueAlias
-				_, err = FinalizePatch(ctx, configPatch, evergreen.MergeTestRequester, token)
-				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldContainSubstring, "no builds or tasks for commit queue version")
-			})
-			Reset(func() {
-				So(db.Clear(distro.Collection), ShouldBeNil)
-			})
+			// commit queue patch should not
+			configPatch.Alias = evergreen.CommitQueueAlias
+			_, err = FinalizePatch(ctx, configPatch, evergreen.MergeTestRequester, token)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "no builds or tasks for commit queue version")
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			assert.NoError(t, db.ClearCollections(distro.Collection, manifest.Collection, patch.Collection))
+			test(t)
 		})
+	}
 }
 
 func TestGetFullPatchParams(t *testing.T) {
