@@ -191,7 +191,6 @@ type GithubPullRequestSubscriber struct {
 }
 
 const (
-	WaitOnChild           = "wait-on-child"
 	SendChildPatchOutcome = "send-child-patch-outcome"
 )
 
