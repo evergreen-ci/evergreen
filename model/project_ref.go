@@ -1166,9 +1166,10 @@ func CountProjectRefsWithIdentifier(identifier string) (int, error) {
 }
 
 type GetProjectTasksOpts struct {
-	Limit        int    `json:"num_versions"`
-	BuildVariant string `json:"build_variant"`
-	StartAt      int    `json:"start_at"`
+	Limit        int      `json:"num_versions"`
+	BuildVariant string   `json:"build_variant"`
+	StartAt      int      `json:"start_at"`
+	Requesters   []string `json:"requesters"`
 }
 
 // GetTasksWithOptions will find the matching tasks run in the last number of versions(denoted by Limit) that exist for a given project.
@@ -1186,6 +1187,11 @@ func GetTasksWithOptions(projectName string, taskName string, opts GetProjectTas
 		task.ProjectKey:     projectId,
 		task.DisplayNameKey: taskName,
 		task.StatusKey:      bson.M{"$in": finishedStatuses},
+	}
+	if len(opts.Requesters) > 0 {
+		match[task.RequesterKey] = bson.M{"$in": opts.Requesters}
+	} else {
+		match[task.RequesterKey] = bson.M{"$in": evergreen.SystemVersionRequesterTypes}
 	}
 	if opts.BuildVariant != "" {
 		match[task.BuildVariantKey] = opts.BuildVariant

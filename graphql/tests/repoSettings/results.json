@@ -19,46 +19,46 @@
               "prTestingEnabled": true,
               "stepbackDisabled": false,
               "batchTime": 2,
-              "gitTagAuthorizedUsers": [
-                "ablack12"
-              ],
+              "gitTagAuthorizedUsers": ["ablack12"],
               "gitTagAuthorizedTeams": null,
               "triggers": [],
-              "patchTriggerAliases" : [
+              "patchTriggerAliases": [
                 {
-                  "alias" : "my_alias_sandbox",
-                  "childProjectIdentifier" : "varsTest",
+                  "alias": "my_alias_sandbox",
+                  "childProjectIdentifier": "varsTest",
                   "taskSpecifiers": [
                     {
-                      "taskRegex" : "test-util",
-                      "variantRegex" : "^ubuntu1604$"
+                      "taskRegex": "test-util",
+                      "variantRegex": "^ubuntu1604$"
                     }
                   ]
                 }
               ],
-              "taskSync" : {
-                "configEnabled" : false,
-                "patchEnabled" : true
+              "taskSync": {
+                "configEnabled": false,
+                "patchEnabled": true
               },
-              "perfEnabled" : true,
-              "buildBaronSettings" : {
-                "ticketCreateProject" : "EVG",
-                "ticketSearchProjects" : ["EVG"],
-                "bfSuggestionFeaturesURL" : "",
-                "bfSuggestionPassword" : "",
-                "bfSuggestionServer" : "",
-                "bfSuggestionTimeoutSecs" : 0,
-                "bfSuggestionUsername" : ""
+              "perfEnabled": true,
+              "buildBaronSettings": {
+                "ticketCreateProject": "EVG",
+                "ticketSearchProjects": ["EVG"],
+                "bfSuggestionFeaturesURL": "",
+                "bfSuggestionPassword": "",
+                "bfSuggestionServer": "",
+                "bfSuggestionTimeoutSecs": 0,
+                "bfSuggestionUsername": ""
               },
 
-              "taskAnnotationSettings" : {
-                "jiraCustomFields" : [{
-                  "displayText" : "description",
-                  "field" : "sample_field"
-                }],
-                "fileTicketWebhook" : {
-                  "endpoint" : "endpoint",
-                  "secret" : "shh"
+              "taskAnnotationSettings": {
+                "jiraCustomFields": [
+                  {
+                    "displayText": "description",
+                    "field": "sample_field"
+                  }
+                ],
+                "fileTicketWebhook": {
+                  "endpoint": "endpoint",
+                  "secret": "shh"
                 }
               },
               "containerSizeDefinitions": [
@@ -85,34 +85,34 @@
           "repoSettings": {
             "aliases": [
               {
-                "id" : "5ffe393097b1d3759dd3c1aa",
-                "alias" : "__commit_queue",
-                "gitTag" : "",
-                "remotePath" : "",
-                "task" : "unit_tests",
-                "variant" : "ubuntu1604",
-                "variantTags" : [],
-                "taskTags": []
-              },
-              {
-                "id" : "5ffe393097b1d3759dd3c1ac",
-                "alias" : "__git_tag",
-                "gitTag" : ".*",
-                "variant": "",
-                "task": "",
-                "remotePath" : "release.yml",
+                "id": "5ffe393097b1d3759dd3c1aa",
+                "alias": "__commit_queue",
+                "gitTag": "",
+                "remotePath": "",
+                "task": "unit_tests",
+                "variant": "ubuntu1604",
                 "variantTags": [],
                 "taskTags": []
               },
               {
-                "id" : "5ffe393097b1d3759dd3c1ab",
-                "alias" : "test_alias",
-                "gitTag" : "",
+                "id": "5ffe393097b1d3759dd3c1ac",
+                "alias": "__git_tag",
+                "gitTag": ".*",
                 "variant": "",
-                "task":"",
-                "remotePath" : "",
-                "taskTags" : ["git"],
-                "variantTags" : ["tag"]
+                "task": "",
+                "remotePath": "release.yml",
+                "variantTags": [],
+                "taskTags": []
+              },
+              {
+                "id": "5ffe393097b1d3759dd3c1ab",
+                "alias": "test_alias",
+                "gitTag": "",
+                "variant": "",
+                "task": "",
+                "remotePath": "",
+                "taskTags": ["git"],
+                "variantTags": ["tag"]
               }
             ]
           }
@@ -125,7 +125,7 @@
         "data": {
           "repoSettings": {
             "vars": {
-              "vars": {"hello": "", "foo":  "bar"},
+              "vars": { "hello": "", "foo": "bar" },
               "privateVars": ["hello"]
             }
           }
@@ -141,7 +141,7 @@
               {
                 "id": "61326406a620e4737f57003e",
                 "resourceType": "VERSION",
-                "trigger": "outcome",
+                "trigger": "family-outcome",
                 "selectors": [
                   {
                     "type": "project",
@@ -262,10 +262,7 @@
         "errors": [
           {
             "message": "user testuser does not have permission to access settings for the project evergreen",
-            "path": [
-              "repoSettings",
-              "id"
-            ],
+            "path": ["repoSettings", "id"],
             "extensions": {
               "code": "FORBIDDEN"
             }

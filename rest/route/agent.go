@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
@@ -1239,7 +1238,7 @@ func (h *manifestLoadHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// attempt to insert a manifest after making GitHub API calls
-	manifest, err := repotracker.CreateManifest(*v, project, projectRef, h.settings)
+	manifest, err := model.CreateManifest(v, project, projectRef, h.settings)
 	if err != nil {
 		if apiErr, ok := errors.Cause(err).(thirdparty.APIRequestError); ok && apiErr.StatusCode == http.StatusNotFound {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "manifest resource not found"))

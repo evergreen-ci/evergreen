@@ -24,6 +24,8 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+func init() { testutil.Setup() }
+
 func TestFetchRevisions(t *testing.T) {
 	dropTestDB(t)
 
@@ -1085,9 +1087,17 @@ func TestCreateManifest(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, settings, t.Name())
 	// with a revision from 5/31/15
 	v := model.Version{
-		Id:         "v",
+		Id:         "aaaaaaaaaaff001122334455",
 		Revision:   "1bb42195fd415f144abbae509a5d5bef80d829b7",
 		Identifier: "proj",
+		Requester:  evergreen.RepotrackerVersionRequester,
+	}
+
+	patchVersion := model.Version{
+		Id:         "aaaaaaaaaaff001122334455",
+		Revision:   "1bb42195fd415f144abbae509a5d5bef80d829b7",
+		Identifier: "proj",
+		Requester:  evergreen.GithubPRRequester,
 	}
 
 	// no revision specified
@@ -1108,7 +1118,7 @@ func TestCreateManifest(t *testing.T) {
 		Branch: "main",
 	}
 
-	manifest, err := CreateManifest(v, &proj, projRef, settings)
+	manifest, err := model.CreateManifest(&v, &proj, projRef, settings)
 	assert.NoError(err)
 	assert.Equal(v.Id, manifest.Id)
 	assert.Equal(v.Revision, manifest.Revision)
@@ -1119,6 +1129,20 @@ func TestCreateManifest(t *testing.T) {
 	assert.Equal("main", module.Branch)
 	// the most recent module commit as of the version's revision (from 5/30/15)
 	assert.Equal("b27779f856b211ffaf97cbc124b7082a20ea8bc0", module.Revision)
+
+	proj.Modules[0].AutoUpdate = true
+	manifest, err = model.CreateManifest(&patchVersion, &proj, projRef, settings)
+	assert.NoError(err)
+	assert.Equal(patchVersion.Id, manifest.Id)
+	assert.Equal(patchVersion.Revision, manifest.Revision)
+	assert.Len(manifest.Modules, 1)
+	module, ok = manifest.Modules["module1"]
+	assert.True(ok)
+	assert.Equal("sample", module.Repo)
+	assert.Equal("main", module.Branch)
+	// a patch version should use the most recent module commit as of the current time
+	assert.NotNil(module.Revision)
+	assert.NotEqual("b27779f856b211ffaf97cbc124b7082a20ea8bc0", module.Revision)
 
 	// revision specified
 	hash := "cf46076567e4949f9fc68e0634139d4ac495c89b"
@@ -1133,7 +1157,7 @@ func TestCreateManifest(t *testing.T) {
 			},
 		},
 	}
-	manifest, err = CreateManifest(v, &proj, projRef, settings)
+	manifest, err = model.CreateManifest(&v, &proj, projRef, settings)
 	assert.NoError(err)
 	assert.Equal(v.Id, manifest.Id)
 	assert.Equal(v.Revision, manifest.Revision)
@@ -1158,7 +1182,7 @@ func TestCreateManifest(t *testing.T) {
 			},
 		},
 	}
-	manifest, err = CreateManifest(v, &proj, projRef, settings)
+	manifest, err = model.CreateManifest(&v, &proj, projRef, settings)
 	assert.Contains(err.Error(), "No commit found for SHA")
 }
 

@@ -43,8 +43,8 @@ type Version {
   baseTaskStatuses: [String!]!
   baseVersion: Version
   branch: String!
-  buildVariants(options: BuildVariantOptions): [GroupedBuildVariant]
-  buildVariantStats(options: BuildVariantOptions): [GroupedTaskStatusCount!]
+  buildVariants(options: BuildVariantOptions!): [GroupedBuildVariant]
+  buildVariantStats(options: BuildVariantOptions!): [GroupedTaskStatusCount!]
   childVersions: [Version]
   createTime: Time!
   finishTime: Time
@@ -64,9 +64,9 @@ type Version {
   startTime: Time
   status: String!
   taskCount: Int
-  tasks(options: TaskFilterOptions): VersionTasks!
+  tasks(options: TaskFilterOptions!): VersionTasks!
   taskStatuses: [String!]!
-  taskStatusStats(options: BuildVariantOptions): TaskStats
+  taskStatusStats(options: BuildVariantOptions!): TaskStats
   upstreamProject: UpstreamProject
   versionTiming: VersionTiming
 }
