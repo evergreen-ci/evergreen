@@ -355,7 +355,7 @@ func (a *APISMTPConfig) ToService() (interface{}, error) {
 type APIAmboyConfig struct {
 	Name                                  *string                    `json:"name"`
 	SingleName                            *string                    `json:"single_name"`
-	DBConnection                          APIAmboyDBConfig           `json:"db"`
+	DBConnection                          APIAmboyDBConfig           `json:"db_connection"`
 	PoolSizeLocal                         int                        `json:"pool_size_local"`
 	PoolSizeRemote                        int                        `json:"pool_size_remote"`
 	LocalStorage                          int                        `json:"local_storage_size"`
