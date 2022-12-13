@@ -872,18 +872,26 @@ func (r *mutationResolver) OverrideTaskDependencies(ctx context.Context, taskID 
 }
 
 // RestartTask is the resolver for the restartTask field.
-func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
+func (r *mutationResolver) RestartTask(ctx context.Context, taskID string, failedOnly *bool) (*restModel.APITask, error) {
 	usr := mustHaveUser(ctx)
 	username := usr.Username()
-	if err := model.TryResetTask(taskID, username, evergreen.UIPackage, nil); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error restarting task %s: %s", taskID, err.Error()))
-	}
-	t, err := task.FindOneIdAndExecutionWithDisplayStatus(taskID, nil)
+	t, err := task.FindOneId(taskID)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task %s: %s", taskID, err.Error()))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task '%s': %s", taskID, err.Error()))
 	}
 	if t == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id '%s'", taskID))
+	}
+	// TODO (EVG-15703): Convert *bool to bool once UI has been deployed.
+	if err := model.ResetTaskOrDisplayTask(t, username, evergreen.UIPackage, utility.FromBoolPtr(failedOnly), nil); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error restarting task '%s': %s", taskID, err.Error()))
+	}
+	t, err = task.FindOneIdAndExecutionWithDisplayStatus(taskID, nil)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id '%s': %s", taskID, err.Error()))
+	}
+	if t == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id '%s'", taskID))
 	}
 	apiTask, err := getAPITaskFromTask(ctx, r.sc.GetURL(), *t)
 	return apiTask, err
