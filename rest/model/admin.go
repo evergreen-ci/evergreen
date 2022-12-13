@@ -355,7 +355,7 @@ func (a *APISMTPConfig) ToService() (interface{}, error) {
 type APIAmboyConfig struct {
 	Name                                  *string                    `json:"name"`
 	SingleName                            *string                    `json:"single_name"`
-	DB                                    APIAmboyDBConfig           `json:"db"`
+	DBConnection                          APIAmboyDBConfig           `json:"db"`
 	PoolSizeLocal                         int                        `json:"pool_size_local"`
 	PoolSizeRemote                        int                        `json:"pool_size_remote"`
 	LocalStorage                          int                        `json:"local_storage_size"`
@@ -375,7 +375,7 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 	case evergreen.AmboyConfig:
 		a.Name = utility.ToStringPtr(v.Name)
 		a.SingleName = utility.ToStringPtr(v.SingleName)
-		if err := a.DB.BuildFromService(v.DBConnection); err != nil {
+		if err := a.DBConnection.BuildFromService(v.DBConnection); err != nil {
 			return errors.Wrap(err, "converting Amboy DB settings to API model")
 		}
 		a.PoolSizeLocal = v.PoolSizeLocal
@@ -412,7 +412,7 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 		return nil, errors.Errorf("programmatic error: expected Amboy retry config but got type %T", i)
 	}
 
-	i, err = a.DB.ToService()
+	i, err = a.DBConnection.ToService()
 	if err != nil {
 		return nil, errors.Wrap(err, "converting Amboy DB settings to service model")
 	}
