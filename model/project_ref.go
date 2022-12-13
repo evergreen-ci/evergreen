@@ -2826,13 +2826,6 @@ func GetUpstreamProjectName(triggerID, triggerType string) (string, error) {
 	return upstreamProject.DisplayName, nil
 }
 
-// IsServerResmokeProject returns whether the project is owned by the Server
-// team and uses Resmoke.
-// TODO (PM-2940): Remove this once we migrate Mongo projects to Presto.
-func IsServerResmokeProject(identifier string) bool {
-	return strings.HasPrefix(identifier, "mongodb-mongo-") || strings.HasPrefix(identifier, "mongosync")
-}
-
 // projectRefPipelineForMatchingTrigger is an aggregation pipeline to find projects that have the projectKey
 // explicitly set to the val, OR that default to the repo, which has the repoKey explicitly set to the val
 func projectRefPipelineForValueIsBool(projectKey, repoKey string, val bool) []bson.M {

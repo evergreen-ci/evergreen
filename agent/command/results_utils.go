@@ -29,14 +29,6 @@ func sendTestResults(ctx context.Context, comm client.Communicator, logger clien
 	logger.Task().Info("Attaching test results...")
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
-	// TODO (PM-2940): Stop sending Mongo project test results to the
-	// database once they can support Presto test results.
-	if model.IsServerResmokeProject(conf.ProjectRef.Identifier) {
-		if err := comm.SendTestResults(ctx, td, results); err != nil {
-			return errors.Wrap(err, "sending parsed test results to Evergreen")
-		}
-	}
-
 	if err := sendTestResultsToCedar(ctx, conf, td, comm, results); err != nil {
 		return errors.Wrap(err, "sending test results to Cedar")
 	}

@@ -101,8 +101,8 @@ func (filter TaskReliabilityFilter) buildMatchStageForTask() bson.M {
 			"$lt":  start,
 			"$gte": end,
 		},
-		stats.DbTestStatsIdProjectKeyFull:   filter.Project,
-		stats.DbTestStatsIdRequesterKeyFull: bson.M{"$in": filter.Requesters},
+		stats.DbTaskStatsIdProjectKeyFull:   filter.Project,
+		stats.DbTaskStatsIdRequesterKeyFull: bson.M{"$in": filter.Requesters},
 	}
 	if len(filter.Tasks) > 0 {
 		match[stats.DbTaskStatsIdTaskNameKeyFull] = stats.BuildMatchArrayExpression(filter.Tasks)
@@ -145,19 +145,16 @@ func (filter TaskReliabilityFilter) buildDateStageGroupID(fieldName string, inpu
 
 // buildGroupID builds the _id field for the $group stage corresponding to the GroupBy value.
 func (filter TaskReliabilityFilter) buildGroupID() bson.M {
-	id := bson.M{stats.TestStatsDateKey: filter.buildDateStageGroupID("date", stats.DbTaskStatsIdDateKeyFull)}
+	id := bson.M{stats.TaskStatsDateKey: filter.buildDateStageGroupID("date", stats.DbTaskStatsIdDateKeyFull)}
 	switch filter.GroupBy {
 	case stats.GroupByDistro:
-		id[stats.TestStatsDistroKey] = "$" + stats.DbTestStatsIdDistroKeyFull
+		id[stats.TaskStatsDistroKey] = "$" + stats.DbTaskStatsIdDistroKeyFull
 		fallthrough
 	case stats.GroupByVariant:
-		id[stats.TestStatsBuildVariantKey] = "$" + stats.DbTestStatsIdBuildVariantKeyFull
+		id[stats.TaskStatsBuildVariantKey] = "$" + stats.DbTaskStatsIdBuildVariantKeyFull
 		fallthrough
 	case stats.GroupByTask:
-		id[stats.TestStatsTaskNameKey] = "$" + stats.DbTestStatsIdTaskNameKeyFull
-		fallthrough
-	case stats.GroupByTest:
-		id[stats.TestStatsTestFileKey] = "$" + stats.DbTestStatsIdTestFileKeyFull
+		id[stats.TaskStatsTaskNameKey] = "$" + stats.DbTaskStatsIdTaskNameKeyFull
 	}
 	return id
 }

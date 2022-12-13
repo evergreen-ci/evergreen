@@ -1,7 +1,6 @@
-// Package stats provides functions to generate and query pre-computed test and task statistics.
-// The statistics are aggregated per day and a combination of (test, task, variant, distro, project, requester) for
-// tests and a combination of (task, variant, distro,  project, requester) for tasks.
-// For tests intermediate hourly statistics are also stored to avoid some re-computation.
+// Package stats provides functions to generate and query pre-computed and task
+// statistics. The statistics are aggregated per day and a combination of
+//(task, variant, distro,  project, requester).
 package stats
 
 import (
@@ -76,9 +75,9 @@ func UpdateStatsStatus(projectId string, lastJobRun time.Time, processedTasksUnt
 	return nil
 }
 
-//////////////////////////////////////////////////////
-// Hourly and daily test stats generation functions //
-//////////////////////////////////////////////////////
+///////////////////////////////////////////
+// Daily task stats generation functions //
+///////////////////////////////////////////
 
 type GenerateOptions struct {
 	ProjectID string
@@ -87,54 +86,6 @@ type GenerateOptions struct {
 	Window    time.Time
 	Runtime   time.Time
 }
-
-// GenerateHourlyTestStats aggregates task and testresults prsent in the database and saves the
-// resulting hourly test stats documents for the project, requester, hour, and tasks specified.
-// The hour covered is the UTC hour corresponding to the given `hour` parameter.
-func GenerateHourlyTestStats(ctx context.Context, opts GenerateOptions) error {
-	grip.Info(message.Fields{
-		"message":   "Generating hourly test stats",
-		"project":   opts.ProjectID,
-		"requester": opts.Requester,
-		"hour":      opts.Window,
-		"tasks":     opts.Tasks,
-	})
-	start := utility.GetUTCHour(opts.Window)
-	end := start.Add(time.Hour)
-	// Generate the stats based on tasks.
-	pipeline := hourlyTestStatsPipeline(opts.ProjectID, opts.Requester, start, end, opts.Tasks, opts.Runtime)
-	err := aggregateIntoCollection(ctx, task.Collection, pipeline, HourlyTestStatsCollection)
-	if err != nil {
-		return errors.Wrap(err, "generating hourly stats")
-	}
-
-	return nil
-}
-
-// GenerateDailyTestStatsFromHourly aggregates the hourly test stats present in the database and
-// saves the resulting daily test stats documents for the project, requester, day, and tasks specified.
-// The day covered is the UTC day corresponding to the given `day` parameter.
-func GenerateDailyTestStatsFromHourly(ctx context.Context, opts GenerateOptions) error {
-	grip.Info(message.Fields{
-		"message":   "Generating daily test stats",
-		"project":   opts.ProjectID,
-		"requester": opts.Requester,
-		"hour":      opts.Window,
-		"tasks":     opts.Tasks,
-	})
-	start := utility.GetUTCDay(opts.Window)
-	end := start.Add(24 * time.Hour)
-	pipeline := dailyTestStatsFromHourlyPipeline(opts.ProjectID, opts.Requester, start, end, opts.Tasks, opts.Runtime)
-	err := aggregateIntoCollection(ctx, HourlyTestStatsCollection, pipeline, DailyTestStatsCollection)
-	if err != nil {
-		return errors.Wrap(err, "aggregating hourly stats into daily stats")
-	}
-	return nil
-}
-
-///////////////////////////////////////////
-// Daily task stats generation functions //
-///////////////////////////////////////////
 
 // GenerateDailyTaskStats aggregates the hourly task stats present in the database and saves
 // the resulting daily task stats documents for the project, requester, day, and tasks specified.

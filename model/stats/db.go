@@ -1,42 +1,12 @@
 package stats
 
-// This file provides database layer logic for pre-computed test and task execution statistics.
+// This file provides database layer logic for pre-computed task execution statistics.
 // The database schema is the following:
 // *daily_stats_status*
 // {
 //   "_id": <Project Id (string)>,
 //   "last_job_run": <Date of the last successful job run that updated the project stats (date)>
 //   "processed_tasks_until": <Date before which finished tasks have been processed by a successful job (date)>
-// }
-// *hourly_test_stats*
-// {
-//   "_id": {
-//     "test_file": <Test file (string)>,
-//     "task_name": <Task display name (string)>,
-//     "variant": <Build variant (string)>,
-//     "distro": <Distro (string)>,
-//     "project": <Project Id (string)>,
-//     "date": <UTC hour period this document covers (date)>,
-//   },
-//   "num_pass": <Number of times the test passed (int)>,
-//   "num_fail": <Number of times the test failed (int)>,
-//   "avg_duration_pass": <Average duration in seconds of the passing tests (double)>,
-//   "last_update": <Date of the job run that last updated this document (date)>
-// }
-// *daily_test_stats*
-// {
-//   "_id": {
-//     "test_file": <Test file (string)>,
-//     "task_name": <Task display name (string)>,
-//     "variant": <Build variant (string)>,
-//     "distro": <Distro (string)>,
-//     "project": <Project Id (string)>,
-//     "date": <UTC day period this document covers (date)>,
-//   },
-//   "num_pass": <Number of times the test passed (int)>,
-//   "num_fail": <Number of times the test failed (int)>,
-//   "avg_duration_pass": <Average duration in seconds of the passing tests (double)>,
-//   "last_update": <Date of the job run that last updated this document (date)>
 // }
 // *daily_task_stats*
 // {
@@ -59,7 +29,6 @@ package stats
 
 import (
 	"context"
-	"fmt"
 	"math/rand"
 	"time"
 
@@ -80,8 +49,6 @@ import (
 )
 
 const (
-	HourlyTestStatsCollection  = "hourly_test_stats"
-	DailyTestStatsCollection   = "daily_test_stats"
 	DailyTaskStatsCollection   = "daily_task_stats"
 	DailyStatsStatusCollection = "daily_stats_status"
 	bulkSize                   = 1000
@@ -116,218 +83,6 @@ type Array []interface{}
 // statsStatusQuery returns a query to find a stats status document by project id.
 func statsStatusQuery(projectId string) bson.M {
 	return bson.M{"_id": projectId}
-}
-
-///////////////////////
-// Hourly Test Stats //
-///////////////////////
-
-// DbTestStatsId represents the _id field for hourly_test_stats and daily_test_stats documents.
-type DbTestStatsId struct {
-	TestFile     string    `bson:"test_file"`
-	TaskName     string    `bson:"task_name"`
-	BuildVariant string    `bson:"variant"`
-	Distro       string    `bson:"distro"`
-	Project      string    `bson:"project"`
-	Requester    string    `bson:"requester"`
-	Date         time.Time `bson:"date"`
-}
-
-// DbTestStats represents the hourly_test_stats and daily_test_stats documents.
-type DbTestStats struct {
-	Id              DbTestStatsId    `bson:"_id"`
-	NumPass         int              `bson:"num_pass"`
-	NumFail         int              `bson:"num_fail"`
-	AvgDurationPass float64          `bson:"avg_duration_pass"`
-	LastUpdate      time.Time        `bson:"last_update"`
-	LastID          mgobson.ObjectId `bson:"last_id"`
-}
-
-func (d *DbTestStats) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(d) }
-func (d *DbTestStats) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, d) }
-
-var (
-	// BSON fields for the test stats id struct
-	dbTestStatsIdTestFileKey     = bsonutil.MustHaveTag(DbTestStatsId{}, "TestFile")
-	DbTestStatsIdTaskNameKey     = bsonutil.MustHaveTag(DbTestStatsId{}, "TaskName")
-	DbTestStatsIdBuildVariantKey = bsonutil.MustHaveTag(DbTestStatsId{}, "BuildVariant")
-	DbTestStatsIdDistroKey       = bsonutil.MustHaveTag(DbTestStatsId{}, "Distro")
-	dbTestStatsIdProjectKey      = bsonutil.MustHaveTag(DbTestStatsId{}, "Project")
-	dbTestStatsIdRequesterKey    = bsonutil.MustHaveTag(DbTestStatsId{}, "Requester")
-	dbTestStatsIdDateKey         = bsonutil.MustHaveTag(DbTestStatsId{}, "Date")
-
-	// BSON fields for the test stats struct
-	dbTestStatsIdKey              = bsonutil.MustHaveTag(DbTestStats{}, "Id")
-	dbTestStatsNumPassKey         = bsonutil.MustHaveTag(DbTestStats{}, "NumPass")
-	dbTestStatsNumFailKey         = bsonutil.MustHaveTag(DbTestStats{}, "NumFail")
-	dbTestStatsAvgDurationPassKey = bsonutil.MustHaveTag(DbTestStats{}, "AvgDurationPass")
-	dbTestStatsLastUpdateKey      = bsonutil.MustHaveTag(DbTestStats{}, "LastUpdate")
-	dbTestStatsLastIDKey          = bsonutil.MustHaveTag(DbTestStats{}, "LastID")
-
-	// BSON dotted field names for test stats id elements
-	DbTestStatsIdTestFileKeyFull     = bsonutil.GetDottedKeyName(dbTestStatsIdKey, dbTestStatsIdTestFileKey)
-	DbTestStatsIdTaskNameKeyFull     = bsonutil.GetDottedKeyName(dbTestStatsIdKey, DbTestStatsIdTaskNameKey)
-	DbTestStatsIdBuildVariantKeyFull = bsonutil.GetDottedKeyName(dbTestStatsIdKey, DbTestStatsIdBuildVariantKey)
-	DbTestStatsIdDistroKeyFull       = bsonutil.GetDottedKeyName(dbTestStatsIdKey, DbTestStatsIdDistroKey)
-	DbTestStatsIdProjectKeyFull      = bsonutil.GetDottedKeyName(dbTestStatsIdKey, dbTestStatsIdProjectKey)
-	DbTestStatsIdRequesterKeyFull    = bsonutil.GetDottedKeyName(dbTestStatsIdKey, dbTestStatsIdRequesterKey)
-	DbTestStatsIdDateKeyFull         = bsonutil.GetDottedKeyName(dbTestStatsIdKey, dbTestStatsIdDateKey)
-)
-
-// hourlyTestStatsPipeline returns a pipeline aggregating task documents into hourly test stats.
-func hourlyTestStatsPipeline(projectId string, requester string, start time.Time, end time.Time, tasks []string, lastUpdate time.Time) []bson.M {
-	return getHourlyTestStatsPipeline(projectId, requester, start, end, tasks, lastUpdate, false)
-}
-
-// getHourlyTestStatsPipeline is an internal helper function to create a pipeline aggregating task
-// documents into hourly test stats.
-func getHourlyTestStatsPipeline(projectId string, requester string, start time.Time, end time.Time, tasks []string, lastUpdate time.Time, oldTasks bool) []bson.M {
-	var taskIdExpr string
-	var displayTaskLookupCollection string
-	var comment string
-	if oldTasks {
-		taskIdExpr = taskOldTaskIdKeyRef
-		displayTaskLookupCollection = task.OldCollection
-		comment = "Hourly Test Stats Old Pipeline"
-	} else {
-		taskIdExpr = taskIdKeyRef
-		displayTaskLookupCollection = task.Collection
-		comment = "Hourly Test Stats Pipeline"
-	}
-
-	pipeline := []bson.M{
-		{"$match": bson.M{"$comment": fmt.Sprintf("cache historical test stats: %s", comment)}},
-		{"$match": bson.M{
-			task.ProjectKey:     projectId,
-			task.RequesterKey:   requester,
-			task.CreateTimeKey:  bson.M{"$gte": start, "$lt": end},
-			task.DisplayNameKey: bson.M{"$in": tasks},
-		}},
-		{"$project": bson.M{
-			task.IdKey:                   0,
-			"task_id":                    taskIdExpr,
-			"execution":                  taskExecutionKeyRef,
-			dbTestStatsIdProjectKey:      taskProjectKeyRef,
-			DbTestStatsIdTaskNameKey:     taskDisplayNameKeyRef,
-			DbTestStatsIdBuildVariantKey: taskBuildVariantKeyRef,
-			DbTestStatsIdDistroKey:       taskDistroIdKeyRef,
-			dbTestStatsIdRequesterKey:    taskRequesterKeyRef}},
-		{"$lookup": bson.M{
-			"from":         displayTaskLookupCollection,
-			"localField":   "task_id",
-			"foreignField": task.ExecutionTasksKey,
-			"as":           "display_task"}},
-		{"$unwind": bson.M{
-			"path":                       "$display_task",
-			"preserveNullAndEmptyArrays": true}},
-		{"$lookup": bson.M{
-			"from": testresult.Collection,
-			"let":  bson.M{"task_id": "$task_id", "execution": "$execution"},
-			"pipeline": []bson.M{
-				{"$match": bson.M{"$expr": bson.M{"$and": []bson.M{
-					{"$eq": Array{testResultTaskIdKeyRef, "$$task_id"}},
-					{"$eq": Array{testResultExecutionRef, "$$execution"}}}}}},
-				{"$project": bson.M{
-					testresult.IDKey:              0,
-					dbTestStatsLastIDKey:          "$" + testresult.IDKey,
-					testresult.TestFileKey:        1,
-					testresult.DisplayTestNameKey: 1,
-					testresult.StatusKey:          1,
-					testresult.StartTimeKey:       1,
-					testresult.EndTimeKey:         1}}},
-			"as": "testresults"}},
-		{"$unwind": "$testresults"},
-		{"$project": bson.M{
-			// Use the display test name if there is one.
-			dbTestStatsIdTestFileKey: bson.M{
-				"$cond": bson.M{
-					"if": bson.M{
-						"$ne": []string{bsonutil.GetDottedKeyName("$testresults", testresult.DisplayTestNameKey), ""},
-					},
-					"then": bsonutil.GetDottedKeyName("$testresults", testresult.DisplayTestNameKey),
-					"else": bsonutil.GetDottedKeyName("$testresults", testresult.TestFileKey),
-				},
-			},
-			// We use the name of the display task if there is one.
-			DbTestStatsIdTaskNameKey:     bson.M{"$ifNull": Array{"$display_task." + task.DisplayNameKey, "$task_name"}},
-			DbTestStatsIdBuildVariantKey: 1,
-			DbTestStatsIdDistroKey:       1,
-			dbTestStatsIdProjectKey:      1,
-			dbTestStatsIdRequesterKey:    1,
-			"status":                     "$testresults." + task.StatusKey,
-			dbTestStatsLastIDKey:         "$testresults." + dbTestStatsLastIDKey,
-			"duration":                   bson.M{"$subtract": Array{"$testresults." + testresult.EndTimeKey, "$testresults." + testresult.StartTimeKey}}}},
-		{"$group": bson.M{
-			"_id": bson.D{
-				{Key: dbTestStatsIdTestFileKey, Value: "$" + dbTestStatsIdTestFileKey},
-				{Key: DbTestStatsIdTaskNameKey, Value: "$" + DbTestStatsIdTaskNameKey},
-				{Key: DbTestStatsIdBuildVariantKey, Value: "$" + DbTestStatsIdBuildVariantKey},
-				{Key: DbTestStatsIdDistroKey, Value: "$" + DbTestStatsIdDistroKey},
-				{Key: dbTestStatsIdProjectKey, Value: "$" + dbTestStatsIdProjectKey},
-				{Key: dbTestStatsIdRequesterKey, Value: "$" + dbTestStatsIdRequesterKey},
-			},
-			dbTestStatsLastIDKey:  bson.M{"$max": "$" + dbTestStatsLastIDKey},
-			dbTestStatsNumPassKey: makeSum(bson.M{"$eq": Array{"$status", evergreen.TestSucceededStatus}}),
-			dbTestStatsNumFailKey: makeSum(bson.M{"$in": Array{"$status", Array{evergreen.TestFailedStatus, evergreen.TestSilentlyFailedStatus}}}),
-			// "IGNORE" is not a special value, setting the value to something that is not a number will cause $avg to ignore it
-			dbTestStatsAvgDurationPassKey: bson.M{"$avg": bson.M{"$cond": bson.M{
-				"if":   bson.M{"$eq": Array{"$status", evergreen.TestSucceededStatus}},
-				"then": "$duration",
-				"else": "IGNORE"}}}}},
-		{"$addFields": bson.M{
-			"_id." + dbTestStatsIdDateKey: start,
-			dbTestStatsLastUpdateKey:      lastUpdate,
-		}},
-	}
-	return pipeline
-}
-
-//////////////////////
-// Daily Test Stats //
-//////////////////////
-
-// dailyTestStatsFromHourlyPipeline returns a pipeline aggregating hourly test stats into daily test stats.
-func dailyTestStatsFromHourlyPipeline(projectId string, requester string, start time.Time, end time.Time, tasks []string, lastUpdate time.Time) []bson.M {
-	pipeline := []bson.M{
-		{"$match": bson.M{
-			DbTestStatsIdProjectKeyFull:   projectId,
-			DbTestStatsIdRequesterKeyFull: requester,
-			DbTestStatsIdDateKeyFull:      bson.M{"$gte": start, "$lt": end},
-			DbTestStatsIdTaskNameKeyFull:  bson.M{"$in": tasks},
-		}},
-		{
-			"$group": bson.M{
-				"_id": bson.D{
-					{Key: dbTestStatsIdTestFileKey, Value: "$" + DbTestStatsIdTestFileKeyFull},
-					{Key: DbTestStatsIdTaskNameKey, Value: "$" + DbTestStatsIdTaskNameKeyFull},
-					{Key: DbTestStatsIdBuildVariantKey, Value: "$" + DbTestStatsIdBuildVariantKeyFull},
-					{Key: DbTestStatsIdDistroKey, Value: "$" + DbTestStatsIdDistroKeyFull},
-					{Key: dbTestStatsIdProjectKey, Value: "$" + DbTestStatsIdProjectKeyFull},
-					{Key: dbTestStatsIdRequesterKey, Value: "$" + DbTestStatsIdRequesterKeyFull},
-				},
-				dbTestStatsNumPassKey: bson.M{"$sum": "$" + dbTestStatsNumPassKey},
-				dbTestStatsNumFailKey: bson.M{"$sum": "$" + dbTestStatsNumFailKey},
-				"total_duration_pass": bson.M{"$sum": bson.M{"$multiply": Array{"$num_pass", "$" + dbTestStatsAvgDurationPassKey}}},
-				dbTestStatsLastIDKey:  bson.M{"$max": "$" + dbTestStatsLastIDKey},
-			},
-		},
-		{
-			"$project": bson.M{
-				"_id":                 1,
-				dbTestStatsNumPassKey: 1,
-				dbTestStatsNumFailKey: 1,
-				dbTestStatsAvgDurationPassKey: bson.M{"$cond": bson.M{"if": bson.M{"$ne": Array{"$" + dbTestStatsNumPassKey, 0}},
-					"then": bson.M{"$divide": Array{"$total_duration_pass", "$" + dbTestStatsNumPassKey}},
-					"else": nil}},
-				dbTestStatsLastIDKey: 1,
-			},
-		},
-		{"$addFields": bson.M{
-			"_id." + dbTestStatsIdDateKey: start,
-			dbTestStatsLastUpdateKey:      lastUpdate,
-		}},
-	}
-	return pipeline
 }
 
 //////////////////////
@@ -384,6 +139,8 @@ var (
 	DbTaskStatsIdTaskNameKeyFull     = bsonutil.GetDottedKeyName(DbTaskStatsIdKey, DbTaskStatsIdTaskNameKey)
 	DbTaskStatsIdBuildVariantKeyFull = bsonutil.GetDottedKeyName(DbTaskStatsIdKey, DbTaskStatsIdBuildVariantKey)
 	DbTaskStatsIdDistroKeyFull       = bsonutil.GetDottedKeyName(DbTaskStatsIdKey, DbTaskStatsIdDistroKey)
+	DbTaskStatsIdProjectKeyFull      = bsonutil.GetDottedKeyName(DbTaskStatsIdKey, DbTaskStatsIdProjectKey)
+	DbTaskStatsIdRequesterKeyFull    = bsonutil.GetDottedKeyName(DbTaskStatsIdKey, DbTaskStatsIdRequesterKey)
 	DbTaskStatsIdDateKeyFull         = bsonutil.GetDottedKeyName(DbTaskStatsIdKey, DbTaskStatsIdDateKey)
 )
 
@@ -527,17 +284,6 @@ func statsToUpdatePipeline(projectID string, requester []string, start, end time
 ///////////////////////////////////////////
 
 var (
-	// BSON fields for the test stats struct
-	TestStatsTestFileKey        = bsonutil.MustHaveTag(TestStats{}, "TestFile")
-	TestStatsTaskNameKey        = bsonutil.MustHaveTag(TestStats{}, "TaskName")
-	TestStatsBuildVariantKey    = bsonutil.MustHaveTag(TestStats{}, "BuildVariant")
-	TestStatsDistroKey          = bsonutil.MustHaveTag(TestStats{}, "Distro")
-	TestStatsDateKey            = bsonutil.MustHaveTag(TestStats{}, "Date")
-	TestStatsNumPassKey         = bsonutil.MustHaveTag(TestStats{}, "NumPass")
-	TestStatsNumFailKey         = bsonutil.MustHaveTag(TestStats{}, "NumFail")
-	TestStatsAvgDurationPassKey = bsonutil.MustHaveTag(TestStats{}, "AvgDurationPass")
-	TestStatsLastUpdateKey      = bsonutil.MustHaveTag(TestStats{}, "LastUpdate")
-
 	// BSON fields for the task stats struct
 	TaskStatsTaskNameKey           = bsonutil.MustHaveTag(TaskStats{}, "TaskName")
 	TaskStatsBuildVariantKey       = bsonutil.MustHaveTag(TaskStats{}, "BuildVariant")
@@ -553,91 +299,6 @@ var (
 	TaskStatsAvgDurationSuccessKey = bsonutil.MustHaveTag(TaskStats{}, "AvgDurationSuccess")
 	TaskStatsLastUpdateKey         = bsonutil.MustHaveTag(TaskStats{}, "LastUpdate")
 )
-
-// testStatsQueryPipeline creates an aggregation pipeline to query test statistics.
-func (filter StatsFilter) testStatsQueryPipeline() []bson.M {
-	matchExpr := filter.buildMatchStageForTest()
-
-	return []bson.M{
-		matchExpr,
-		buildAddFieldsDateStage(TestStatsDateKey, DbTestStatsIdDateKeyFull, filter.AfterDate, filter.BeforeDate, filter.GroupNumDays),
-		{"$group": bson.M{
-			"_id":                 buildGroupId(filter.GroupBy),
-			TestStatsNumPassKey:   bson.M{"$sum": "$" + dbTestStatsNumPassKey},
-			TestStatsNumFailKey:   bson.M{"$sum": "$" + dbTestStatsNumFailKey},
-			"total_duration_pass": bson.M{"$sum": bson.M{"$multiply": Array{"$" + dbTestStatsNumPassKey, "$" + dbTestStatsAvgDurationPassKey}}},
-		}},
-		{"$project": bson.M{
-			TestStatsTestFileKey:     "$_id." + TestStatsTestFileKey,
-			TestStatsTaskNameKey:     "$_id." + TestStatsTaskNameKey,
-			TestStatsBuildVariantKey: "$_id." + TestStatsBuildVariantKey,
-			TestStatsDistroKey:       "$_id." + TestStatsDistroKey,
-			TestStatsDateKey:         "$_id." + TestStatsDateKey,
-			TestStatsNumPassKey:      1,
-			TestStatsNumFailKey:      1,
-			TestStatsAvgDurationPassKey: bson.M{"$cond": bson.M{"if": bson.M{"$ne": Array{"$" + TestStatsNumPassKey, 0}},
-				"then": bson.M{"$divide": Array{"$total_duration_pass", "$" + TestStatsNumPassKey}},
-				"else": nil}},
-		}},
-		{"$sort": bson.D{
-			{Key: TestStatsDateKey, Value: SortDateOrder(filter.Sort)},
-			{Key: TestStatsBuildVariantKey, Value: 1},
-			{Key: TestStatsTaskNameKey, Value: 1},
-			{Key: TestStatsTestFileKey, Value: 1},
-			{Key: TestStatsDistroKey, Value: 1},
-		}},
-		{"$limit": filter.Limit},
-	}
-}
-
-// buildMatchStageForTest builds the match stage of the test query pipeline based on the filter options.
-func (filter StatsFilter) buildMatchStageForTest() bson.M {
-	match := bson.M{
-		DbTestStatsIdDateKeyFull: bson.M{
-			"$gte": filter.AfterDate,
-			"$lt":  filter.BeforeDate,
-		},
-		DbTestStatsIdProjectKeyFull:   filter.Project,
-		DbTestStatsIdRequesterKeyFull: bson.M{"$in": filter.Requesters},
-	}
-
-	// After cutting over the a few build variants to use resmoke spawned
-	// with jasper (SERVER-54315), test names are now random UUIDs with
-	// with a human-readble display name. For the period between
-	// 09/01/21-09/14/21, the historical test stats calculations failed to
-	// account for this (EVG-15396). We should ignore any test stats
-	// affected by this bug.
-	//
-	// TODO: (EVG-15408) Remove this code once all affected test stats TTL
-	// on 03/14/2022.
-	or := []bson.M{
-		{DbTaskStatsIdDateKeyFull: bson.M{"$lt": time.Date(2021, time.August, 30, 0, 0, 0, 0, time.UTC)}},
-		{DbTaskStatsIdDateKeyFull: bson.M{"$gt": time.Date(2021, time.September, 14, 0, 0, 0, 0, time.UTC)}},
-	}
-	if filter.StartAt != nil {
-		match["$and"] = []bson.M{
-			{"$or": or},
-			{"$or": filter.buildTestPaginationOrBranches()},
-		}
-	} else {
-		match["$or"] = or
-	}
-
-	if len(filter.Tests) > 0 {
-		match[DbTestStatsIdTestFileKeyFull] = BuildMatchArrayExpression(filter.Tests)
-	}
-	if len(filter.Tasks) > 0 {
-		match[DbTestStatsIdTaskNameKeyFull] = BuildMatchArrayExpression(filter.Tasks)
-	}
-	if len(filter.BuildVariants) > 0 {
-		match[DbTestStatsIdBuildVariantKeyFull] = BuildMatchArrayExpression(filter.BuildVariants)
-	}
-	if len(filter.Distros) > 0 {
-		match[DbTestStatsIdDistroKeyFull] = BuildMatchArrayExpression(filter.Distros)
-	}
-
-	return bson.M{"$match": match}
-}
 
 // buildAddFieldsDateStage builds the $addFields stage that sets the start date of the grouped
 // period the stats document belongs in.
@@ -665,22 +326,21 @@ func buildAddFieldsDateStage(fieldName string, inputDateFieldName string, start 
 	return bson.M{"$addFields": bson.M{fieldName: bson.M{"$switch": bson.M{"branches": branches}}}}
 }
 
-// buildGroupId builds the _id field for the $group stage corresponding to the GroupBy value.
+// buildGroupId builds the _id field for the $group stage corresponding to the
+// GroupBy value.
 func buildGroupId(groupBy GroupBy) bson.M {
-	id := bson.M{TestStatsDateKey: "$" + TestStatsDateKey}
+	id := bson.M{TaskStatsDateKey: "$" + TaskStatsDateKey}
 	switch groupBy {
 	case GroupByDistro:
-		id[TestStatsDistroKey] = "$" + DbTestStatsIdDistroKeyFull
+		id[TaskStatsDistroKey] = "$" + DbTaskStatsIdDistroKeyFull
 		fallthrough
 	case GroupByVariant:
-		id[TestStatsBuildVariantKey] = "$" + DbTestStatsIdBuildVariantKeyFull
+		id[TaskStatsBuildVariantKey] = "$" + DbTaskStatsIdBuildVariantKeyFull
 		fallthrough
 	case GroupByTask:
-		id[TestStatsTaskNameKey] = "$" + DbTestStatsIdTaskNameKeyFull
-		fallthrough
-	case GroupByTest:
-		id[TestStatsTestFileKey] = "$" + DbTestStatsIdTestFileKeyFull
+		id[TaskStatsTaskNameKey] = "$" + DbTaskStatsIdTaskNameKeyFull
 	}
+
 	return id
 }
 
@@ -702,49 +362,6 @@ func (filter StatsFilter) getNextDate() time.Time {
 	} else {
 		return filter.StartAt.Date.Add(numDays)
 	}
-}
-
-// buildTestPaginationOrBranches builds an expression for the conditions imposed by the filter StartAt field.
-func (filter StatsFilter) buildTestPaginationOrBranches() []bson.M {
-	var dateDescending = filter.Sort == SortLatestFirst
-	var nextDate interface{}
-
-	if filter.GroupNumDays > 1 {
-		nextDate = filter.getNextDate()
-	}
-
-	var fields []PaginationField
-
-	switch filter.GroupBy {
-	case GroupByTest:
-		fields = []PaginationField{
-			{Field: DbTestStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
-			{Field: DbTestStatsIdTestFileKeyFull, Strict: false, Value: filter.StartAt.Test},
-		}
-	case GroupByTask:
-		fields = []PaginationField{
-			{Field: DbTestStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
-			{Field: DbTestStatsIdTaskNameKeyFull, Strict: true, Value: filter.StartAt.Task},
-			{Field: DbTestStatsIdTestFileKeyFull, Strict: false, Value: filter.StartAt.Test},
-		}
-	case GroupByVariant:
-		fields = []PaginationField{
-			{Field: DbTestStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
-			{Field: DbTestStatsIdBuildVariantKeyFull, Strict: true, Value: filter.StartAt.BuildVariant},
-			{Field: DbTestStatsIdTaskNameKeyFull, Strict: true, Value: filter.StartAt.Task},
-			{Field: DbTestStatsIdTestFileKeyFull, Strict: false, Value: filter.StartAt.Test},
-		}
-	case GroupByDistro:
-		fields = []PaginationField{
-			{Field: DbTestStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
-			{Field: DbTestStatsIdBuildVariantKeyFull, Strict: true, Value: filter.StartAt.BuildVariant},
-			{Field: DbTestStatsIdTaskNameKeyFull, Strict: true, Value: filter.StartAt.Task},
-			{Field: DbTestStatsIdTestFileKeyFull, Strict: true, Value: filter.StartAt.Test},
-			{Field: DbTestStatsIdDistroKeyFull, Strict: false, Value: filter.StartAt.Distro},
-		}
-	}
-
-	return BuildPaginationOrBranches(fields)
 }
 
 // TaskStatsQueryPipeline creates an aggregation pipeline to query task statistics.
@@ -812,8 +429,8 @@ func (filter StatsFilter) buildMatchStageForTask() bson.M {
 			"$gte": filter.AfterDate,
 			"$lt":  filter.BeforeDate,
 		},
-		DbTestStatsIdProjectKeyFull:   filter.Project,
-		DbTestStatsIdRequesterKeyFull: bson.M{"$in": filter.Requesters},
+		DbTaskStatsIdProjectKeyFull:   filter.Project,
+		DbTaskStatsIdRequesterKeyFull: bson.M{"$in": filter.Requesters},
 	}
 
 	if len(filter.Tasks) > 0 {
@@ -1056,26 +673,6 @@ func makeSum(condition bson.M) bson.M {
 ///////////////////////////////////////////////////////////////////
 // Functions to access pre-computed stats documents for testing. //
 ///////////////////////////////////////////////////////////////////
-
-func GetDailyTestDoc(id DbTestStatsId) (*DbTestStats, error) {
-	doc := DbTestStats{}
-	q := db.Query(bson.M{dbTestStatsIdKey: id})
-	err := db.FindOneQ(DailyTestStatsCollection, q, &doc)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-	return &doc, err
-}
-
-func GetHourlyTestDoc(id DbTestStatsId) (*DbTestStats, error) {
-	doc := DbTestStats{}
-	q := db.Query(bson.M{dbTestStatsIdKey: id})
-	err := db.FindOneQ(HourlyTestStatsCollection, q, &doc)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-	return &doc, err
-}
 
 func GetDailyTaskDoc(id DbTaskStatsId) (*DbTaskStats, error) {
 	doc := DbTaskStats{}
