@@ -100,7 +100,7 @@ func MockConfig() *evergreen.Settings {
 			Name:       "amboy",
 			SingleName: "single",
 			DBConnection: evergreen.AmboyDBConfig{
-				DB:       "db",
+				Database: "db",
 				URL:      "mongodb://localhost:27017",
 				Username: "user",
 				Password: "password",

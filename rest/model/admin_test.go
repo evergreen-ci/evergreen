@@ -94,7 +94,7 @@ func TestModelConversion(t *testing.T) {
 	assert.Equal(len(testSettings.Alerts.SMTP.AdminEmail), len(apiSettings.Alerts.SMTP.AdminEmail))
 	assert.EqualValues(testSettings.Amboy.Name, utility.FromStringPtr(apiSettings.Amboy.Name))
 	assert.EqualValues(testSettings.Amboy.DBConnection.URL, utility.FromStringPtr(apiSettings.Amboy.DBConnection.URL))
-	assert.EqualValues(testSettings.Amboy.DBConnection.DB, utility.FromStringPtr(apiSettings.Amboy.DBConnection.DB))
+	assert.EqualValues(testSettings.Amboy.DBConnection.Database, utility.FromStringPtr(apiSettings.Amboy.DBConnection.Database))
 	assert.EqualValues(testSettings.Amboy.DBConnection.Username, utility.FromStringPtr(apiSettings.Amboy.DBConnection.Username))
 	assert.EqualValues(testSettings.Amboy.DBConnection.Password, utility.FromStringPtr(apiSettings.Amboy.DBConnection.Password))
 	assert.EqualValues(testSettings.Amboy.LocalStorage, apiSettings.Amboy.LocalStorage)

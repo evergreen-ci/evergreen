@@ -446,7 +446,7 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 
 type APIAmboyDBConfig struct {
 	URL      *string `json:"url"`
-	DB       *string `json:"database"`
+	Database *string `json:"database"`
 	Username *string `json:"username"`
 	Password *string `json:"password"`
 }
@@ -455,7 +455,7 @@ func (a *APIAmboyDBConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.AmboyDBConfig:
 		a.URL = utility.ToStringPtr(v.URL)
-		a.DB = utility.ToStringPtr(v.DB)
+		a.Database = utility.ToStringPtr(v.Database)
 		a.Username = utility.ToStringPtr(v.Username)
 		a.Password = utility.ToStringPtr(v.Password)
 		return nil
@@ -467,7 +467,7 @@ func (a *APIAmboyDBConfig) BuildFromService(h interface{}) error {
 func (a *APIAmboyDBConfig) ToService() (interface{}, error) {
 	return evergreen.AmboyDBConfig{
 		URL:      utility.FromStringPtr(a.URL),
-		DB:       utility.FromStringPtr(a.DB),
+		Database: utility.FromStringPtr(a.Database),
 		Username: utility.FromStringPtr(a.Username),
 		Password: utility.FromStringPtr(a.Password),
 	}, nil

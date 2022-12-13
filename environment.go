@@ -419,7 +419,7 @@ func (e *envState) createApplicationQueue(ctx context.Context, client *mongo.Cli
 	// queue.
 	opts := queue.DefaultMongoDBOptions()
 	opts.Client = client
-	opts.DB = e.settings.Amboy.DBConnection.DB
+	opts.DB = e.settings.Amboy.DBConnection.Database
 	opts.Collection = e.settings.Amboy.Name
 	opts.Priority = e.settings.Amboy.RequireRemotePriority
 	opts.SkipQueueIndexBuilds = true
@@ -493,7 +493,7 @@ func (e *envState) createRemoteQueueGroup(ctx context.Context, client *mongo.Cli
 func (e *envState) getRemoteQueueGroupDBOptions(client *mongo.Client) queue.MongoDBOptions {
 	opts := queue.DefaultMongoDBOptions()
 	opts.Client = client
-	opts.DB = e.settings.Amboy.DBConnection.DB
+	opts.DB = e.settings.Amboy.DBConnection.Database
 	opts.Collection = e.settings.Amboy.Name
 	opts.Priority = e.settings.Amboy.RequireRemotePriority
 	opts.SkipQueueIndexBuilds = true

@@ -40,7 +40,7 @@ type AmboyConfig struct {
 // AmboyDBConfig configures Amboy's database connection.
 type AmboyDBConfig struct {
 	URL      string `bson:"url" json:"url" yaml:"url"`
-	DB       string `bson:"database" json:"database" yaml:"database"`
+	Database string `bson:"database" json:"database" yaml:"database"`
 	Username string `bson:"username" json:"username" yaml:"username"`
 	Password string `bson:"password" json:"password" yaml:"password"`
 }
@@ -175,8 +175,8 @@ func (c *AmboyConfig) ValidateAndDefault() error {
 		c.SingleName = defaultSingleAmboyQueueName
 	}
 
-	if c.DBConnection.DB == "" {
-		c.DBConnection.DB = defaultAmboyDBName
+	if c.DBConnection.Database == "" {
+		c.DBConnection.Database = defaultAmboyDBName
 	}
 
 	if c.PoolSizeLocal == 0 {

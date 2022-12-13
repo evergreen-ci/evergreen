@@ -261,7 +261,7 @@ func (s *AdminSuite) TestAmboyConfig() {
 		SingleName: "single",
 		DBConnection: AmboyDBConfig{
 			URL:      "mongodb://localhost:27017",
-			DB:       "db",
+			Database: "db",
 			Username: "user",
 			Password: "password",
 		},
