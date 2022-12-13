@@ -61,10 +61,13 @@ func (b *buildGetHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding tasks in build '%s'", b.buildId))
 		}
 	}
+	pp, err := serviceModel.ParserProjectFindOneById(foundBuild.Version)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting project info"))
+	}
 
 	buildModel := &model.APIBuild{}
-	buildModel.BuildFromService(*foundBuild)
-	buildModel.PopulateDefinitionInfo(foundBuild.Version, foundBuild.BuildVariant)
+	buildModel.BuildFromService(*foundBuild, pp)
 	buildModel.SetTaskCache(tasks)
 
 	return gimlet.NewJSONResponse(buildModel)
@@ -155,7 +158,7 @@ func (b *buildChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	buildModel := &model.APIBuild{}
-	buildModel.BuildFromService(*updatedBuild)
+	buildModel.BuildFromService(*updatedBuild, nil)
 	return gimlet.NewJSONResponse(buildModel)
 }
 
@@ -200,7 +203,7 @@ func (b *buildAbortHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	buildModel := &model.APIBuild{}
-	buildModel.BuildFromService(*foundBuild)
+	buildModel.BuildFromService(*foundBuild, nil)
 	return gimlet.NewJSONResponse(buildModel)
 }
 
@@ -246,6 +249,6 @@ func (b *buildRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	buildModel := &model.APIBuild{}
-	buildModel.BuildFromService(*foundBuild)
+	buildModel.BuildFromService(*foundBuild, nil)
 	return gimlet.NewJSONResponse(buildModel)
 }

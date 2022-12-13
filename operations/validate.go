@@ -3,6 +3,7 @@ package operations
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -174,7 +175,7 @@ func loadProjectIntoWithValidation(ctx context.Context, data []byte, opts *model
 	if err != nil {
 		errs = append(errs, validator.ValidationError{
 			Level:   validator.Error,
-			Message: err.Error(),
+			Message: fmt.Sprintf(err.Error(), "creating project config"),
 		})
 	}
 	pp, err := model.LoadProjectInto(ctx, data, opts, "", project)
@@ -194,7 +195,7 @@ func loadProjectIntoWithValidation(ctx context.Context, data []byte, opts *model
 		}
 		errs = append(errs, validator.ValidationError{
 			Level:   validator.Error,
-			Message: err.Error(),
+			Message: fmt.Sprintf(err.Error(), "Loading project into"),
 		})
 	}
 	return pp, pc, errs

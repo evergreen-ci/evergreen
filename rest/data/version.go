@@ -157,7 +157,7 @@ func GetVersionsAndVariants(skip, numVersionElements int, project *model.Project
 			for _, b := range buildsInVersion {
 				currentRow := buildList[b.BuildVariant]
 				buildsForRow := restModel.APIBuild{}
-				buildsForRow.BuildFromService(b)
+				buildsForRow.BuildFromService(b, nil)
 				buildsForRow.SetTaskCache(tasksByBuild[b.Id])
 
 				currentRow.Builds[versionFromDB.Id] = buildsForRow

@@ -55,24 +55,26 @@ type DefinitionInfo struct {
 }
 
 // PopulateDefinitionInfo adds cron/batchtime for the variant, if applicable. Not supported for matrices.
-// Only adds cron if populated, to be consistent with batchtime.
-func (apiBuild *APIBuild) PopulateDefinitionInfo(id, variant string) {
-	pp, err := model.ParserProjectFindOne(model.ParserProjectById(id).WithFields(model.ParserProjectBuildVariantsKey))
-	if err == nil {
-		for _, bv := range pp.BuildVariants {
-			if bv.Name == variant {
-				if bv.CronBatchTime != "" {
-					apiBuild.DefinitionInfo.CronBatchTime = utility.ToStringPtr(bv.CronBatchTime)
-				}
-				apiBuild.DefinitionInfo.BatchTime = bv.BatchTime
+// Batchtime and cron are nil if not explicitly configured in the project config. Expansions are not expanded.
+func (apiBuild *APIBuild) populateDefinitionInfo(pp *model.ParserProject) {
+	if pp == nil {
+		return
+	}
+	variant := utility.FromStringPtr(apiBuild.BuildVariant)
+	for _, bv := range pp.BuildVariants {
+		if bv.Name == variant {
+			if bv.CronBatchTime != "" {
+				apiBuild.DefinitionInfo.CronBatchTime = utility.ToStringPtr(bv.CronBatchTime)
 			}
+			apiBuild.DefinitionInfo.BatchTime = bv.BatchTime
 		}
 	}
 }
 
 // BuildFromService converts from service level structs to an APIBuild.
 // APIBuild.ProjectId is set in the route builder's Execute method.
-func (apiBuild *APIBuild) BuildFromService(v build.Build) {
+// If ParserProject isn't nil, include info from project (not applicable to matrix builds).
+func (apiBuild *APIBuild) BuildFromService(v build.Build, pp *model.ParserProject) {
 	apiBuild.Id = utility.ToStringPtr(v.Id)
 	apiBuild.CreateTime = ToTimePtr(v.CreateTime)
 	apiBuild.StartTime = ToTimePtr(v.StartTime)
@@ -118,6 +120,7 @@ func (apiBuild *APIBuild) BuildFromService(v build.Build) {
 			apiBuild.ProjectIdentifier = utility.ToStringPtr(identifier)
 		}
 	}
+	apiBuild.populateDefinitionInfo(pp)
 }
 
 func (apiBuild *APIBuild) SetTaskCache(tasks []task.Task) {
