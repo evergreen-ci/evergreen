@@ -875,7 +875,7 @@ func (r *mutationResolver) OverrideTaskDependencies(ctx context.Context, taskID 
 func (r *mutationResolver) RestartTask(ctx context.Context, taskID string, failedOnly *bool) (*restModel.APITask, error) {
 	usr := mustHaveUser(ctx)
 	username := usr.Username()
-	t, err := task.FindOneId(taskId)
+	t, err := task.FindOneId(taskID)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task '%s': %s", taskID, err.Error()))
 	}
@@ -886,7 +886,7 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string, faile
 	if err := model.ResetTaskOrDisplayTask(t, username, evergreen.UIPackage, utility.FromBoolPtr(failedOnly), nil); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error restarting task '%s': %s", taskID, err.Error()))
 	}
-	t, err := task.FindOneIdAndExecutionWithDisplayStatus(taskID, nil)
+	t, err = task.FindOneIdAndExecutionWithDisplayStatus(taskID, nil)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id '%s': %s", taskID, err.Error()))
 	}
