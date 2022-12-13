@@ -174,7 +174,8 @@ func loadProjectIntoWithValidation(ctx context.Context, data []byte, opts *model
 	if err != nil {
 		errs = append(errs, validator.ValidationError{
 			Level:   validator.Error,
-			Message: err.Error()})
+			Message: err.Error(),
+		})
 	}
 	pp, err := model.LoadProjectInto(ctx, data, opts, "", project)
 	if err != nil {
