@@ -497,10 +497,12 @@ var (
 
 const (
 	DefaultServiceConfigurationFileName = "/etc/mci_settings.yml"
-	DefaultDatabaseUrl                  = "mongodb://localhost:27017"
+	DefaultDatabaseURL                  = "mongodb://localhost:27017"
 	DefaultDatabaseName                 = "mci"
 	DefaultDatabaseWriteMode            = "majority"
 	DefaultDatabaseReadMode             = "majority"
+
+	DefaultAmboyDatabaseURL = "mongodb://localhost:27017"
 
 	// database and config directory, set to the testing version by default for safety
 	NotificationsFile = "mci-notifications.yml"

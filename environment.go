@@ -320,8 +320,13 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings) error {
 }
 
 func (e *envState) createRemoteQueues(ctx context.Context) error {
+	url := e.settings.Amboy.DBConnection.URL
+	if url == "" {
+		url = DefaultAmboyDatabaseURL
+	}
+
 	opts := options.Client().
-		ApplyURI(e.settings.Amboy.DBConnection.URL).
+		ApplyURI(url).
 		SetConnectTimeout(5 * time.Second).
 		SetReadConcern(e.settings.Database.ReadConcernSettings.Resolve()).
 		SetWriteConcern(e.settings.Database.WriteConcernSettings.Resolve()).
