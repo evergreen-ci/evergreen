@@ -59,9 +59,6 @@ func SaveSubscriptions(owner string, subscriptions []restModel.APISubscription, 
 				Message:    errors.Wrap(err, "invalid subscription").Error(),
 			}
 		}
-		if dbSubscription.ResourceType == event.ResourceTypeVersion && isEndTrigger(dbSubscription.Trigger) {
-			dbSubscription.Trigger = triggerToFamilyTrigger(dbSubscription.Trigger)
-		}
 
 		dbSubscriptions = append(dbSubscriptions, dbSubscription)
 
@@ -72,23 +69,6 @@ func SaveSubscriptions(owner string, subscriptions []restModel.APISubscription, 
 		catcher.Add(subscription.Upsert())
 	}
 	return catcher.Resolve()
-}
-
-func isEndTrigger(trigger string) bool {
-	return trigger == event.TriggerFailure || trigger == event.TriggerSuccess || trigger == event.TriggerOutcome || trigger == event.TriggerFamilyOutcome
-}
-
-func triggerToFamilyTrigger(t string) string {
-	switch t {
-	case event.TriggerSuccess:
-		return event.TriggerFamilySuccess
-	case event.TriggerOutcome:
-		return event.TriggerFamilyOutcome
-	case event.TriggerFailure:
-		return event.TriggerFamilyFailure
-	default:
-		return t
-	}
 }
 
 // GetSubscriptions returns the subscriptions that belong to a user
