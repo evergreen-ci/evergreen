@@ -2178,24 +2178,26 @@ func TestDeactivateTasks(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 
 	tasks := []Task{
-		{Id: "t0"},
+		{Id: "t0", DisplayOnly: true, ExecutionTasks: []string{"t6"}},
 		{Id: "t1"},
 		{Id: "t2", DependsOn: []Dependency{{TaskId: "t1"}, {TaskId: "t0"}}, Activated: false},
 		{Id: "t3", DependsOn: []Dependency{{TaskId: "t1"}}},
 		{Id: "t4", DependsOn: []Dependency{{TaskId: "t2"}}, Activated: true},
 		{Id: "t5", DependsOn: []Dependency{{TaskId: "t4"}}, Activated: true},
+		{Id: "t6", Activated: true},
+		{Id: "t7", DependsOn: []Dependency{{TaskId: "t6"}}, Activated: true},
 	}
 	for _, task := range tasks {
 		require.NoError(t, task.Insert())
 	}
 
-	updatedIDs := []string{"t0", "t4", "t5"}
+	updatedIDs := []string{"t0", "t4", "t5", "t6", "t7"}
 	err := DeactivateTasks([]Task{tasks[0]}, true, "")
 	assert.NoError(t, err)
 
 	dbTasks, err := FindAll(All)
 	assert.NoError(t, err)
-	assert.Len(t, dbTasks, 6)
+	assert.Len(t, dbTasks, 8)
 
 	for _, task := range dbTasks {
 		if utility.StringSliceContains(updatedIDs, task.Id) {

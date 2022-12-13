@@ -387,6 +387,21 @@ func VersionStatusToPatchStatus(versionStatus string) (string, error) {
 	}
 }
 
+func PatchStatusToVersionStatus(patchStatus string) (string, error) {
+	switch patchStatus {
+	case PatchCreated:
+		return VersionCreated, nil
+	case PatchStarted:
+		return VersionStarted, nil
+	case PatchFailed:
+		return VersionFailed, nil
+	case PatchSucceeded:
+		return VersionSucceeded, nil
+	default:
+		return "", errors.Errorf("unknown patch status: %s", patchStatus)
+	}
+}
+
 type ModificationAction string
 
 const (

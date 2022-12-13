@@ -284,13 +284,128 @@ var sampleGeneratedProject2 = []string{`
         {
           "command": "shell.exec",
           "params":
-            {
-              "working_dir": "src",
-              "script": "echo noop"
-            }
+          {
+            "working_dir": "src",
+            "script": "echo noop"
+          }
         }
       ]
     },
+    {
+      "name": "shouldDependOnDependencyTask",
+      "commands": [
+        {
+          "command": "shell.exec",
+          "params":
+          {
+            "working_dir": "src",
+            "script": "echo noop"
+          }
+        }
+      ],
+      "depends_on": [
+        {
+          "name": "dependencyTask"
+        }
+      ]
+    }
+  ]
+}
+`}
+
+var shouldGenerateNewBVConfig = `
+buildvariants:
+  - display_name: Generate Tasks for Version
+    name: generate-tasks-for-version
+    run_on:
+      - ubuntu1604-test
+    tasks:
+      - name: version_gen
+
+  - name: testBV3
+    display_name: TestBV3
+    run_on:
+      - ubuntu1604-test
+    tasks:
+      - name: placeholder
+    depends_on:
+      - name: version_gen
+        variant: generate-tasks-for-version
+      - name: dependencyTask
+        variant: testBV4
+
+  - name: testBV4
+    display_name: TestBV4
+    run_on:
+      - ubuntu1604-test
+    tasks:
+      - name: dependencyTask
+      - name: dependencyTask2
+
+  - name: testBV5
+    display_name: TestBV5
+    run_on:
+      - ubuntu1604-test
+    tasks:
+      - name: placeholder
+    depends_on:
+      - name: dependencyTask2
+        variant: testBV4
+
+tasks:
+  - name: placeholder
+    depends_on:
+      - name: version_gen
+        variant: generate-tasks-for-version
+    commands:
+      - command: shell.exec
+        params:
+          working_dir: src
+          script: |
+            echo "noop2"
+  - name: dependencyTask
+    commands:
+      - command: shell.exec
+        params:
+          script: |
+            echo "noop"
+  - name: dependencyTask2
+    commands:
+      - command: shell.exec
+        params:
+          script: |
+            echo "noop"
+  - name: version_gen
+    commands:
+      - command: generate.tasks
+        params:
+          files:
+            - src/evergreen.json
+`
+
+var sampleGeneratedProject3 = []string{`
+{
+  "buildvariants": [
+    {
+      "name": "testBV3",
+      "tasks": [
+        {
+          "name": "shouldDependOnDependencyTask",
+          "activate": false
+        }
+      ],
+      "activate": false
+    },
+    {
+      "name": "testBV5",
+      "tasks": [
+        {
+          "name": "shouldDependOnDependencyTask"
+        }
+      ]
+    }
+  ],
+  "tasks":  [
     {
       "name": "shouldDependOnDependencyTask",
       "commands": [
@@ -381,8 +496,8 @@ func TestGenerateTasks(t *testing.T) {
 	j := NewGenerateTasksJob(sampleTask.Version, sampleTask.Id, "1")
 	j.Run(context.Background())
 	assert.NoError(j.Error())
-	tasks := []task.Task{}
-	assert.NoError(db.FindAllQ(task.Collection, db.Query(task.ByBuildId("sample_build_id")), &tasks))
+	tasks, err := task.FindAll(db.Query(task.ByVersion("sample_version")))
+	assert.NoError(err)
 	assert.Len(tasks, 4)
 	all_tasks := map[string]bool{
 		"sample_task":     false,
@@ -455,16 +570,19 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 		Id:           "b1",
 		BuildVariant: "generate-tasks-for-version",
 		Version:      "sample_version",
+		Activated:    true,
 	}
 	b2 := build.Build{
 		Id:           "b2",
 		BuildVariant: "testBV1",
 		Version:      "sample_version",
+		Activated:    true,
 	}
 	b3 := build.Build{
 		Id:           "b3",
 		BuildVariant: "testBV2",
 		Version:      "sample_version",
+		Activated:    true,
 	}
 	require.NoError(b1.Insert())
 	require.NoError(b2.Insert())
@@ -481,6 +599,7 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 		BuildId:               "b1",
 		Project:               "mci",
 		DisplayName:           "version_gen",
+		BuildVariant:          "generate-tasks-for-version",
 		GeneratedJSONAsString: sampleGeneratedProject2,
 		Status:                evergreen.TaskStarted,
 	}
@@ -491,8 +610,8 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 	j := NewGenerateTasksJob(generateTask.Version, generateTask.Id, "1")
 	j.Run(context.Background())
 	assert.NoError(j.Error())
-	tasks := []task.Task{}
-	assert.NoError(db.FindAllQ(task.Collection, db.Query(task.ByVersion("sample_version")), &tasks))
+	tasks, err := task.FindAll(db.Query(task.ByVersion("sample_version")))
+	assert.NoError(err)
 	assert.Len(tasks, 4)
 	for _, foundTask := range tasks {
 		switch foundTask.DisplayName {
@@ -531,8 +650,8 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 	j = NewGenerateTasksJob(generateTask.Version, generateTask.Id, "1")
 	j.Run(context.Background())
 	assert.NoError(j.Error())
-	tasks = []task.Task{}
-	assert.NoError(db.FindAllQ(task.Collection, db.Query(task.ByVersion("sample_version")), &tasks))
+	tasks, err = task.FindAll(db.Query(task.ByVersion("sample_version")))
+	assert.NoError(err)
 	assert.Len(tasks, 4)
 	for _, foundTask := range tasks {
 		switch foundTask.DisplayName {
@@ -545,6 +664,40 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 			})
 		case "shouldDependOnDependencyTask":
 			assert.Equal(foundTask.DependsOn, []task.Dependency{{TaskId: "mci_identifier_testBV2_dependencyTask__01_01_01_00_00_00", Status: evergreen.TaskSucceeded}})
+		}
+	}
+
+	require.NoError(db.ClearCollections(task.Collection, model.ParserProjectCollection))
+
+	// check that the generated tasks are included as dependencies by default
+	pp = model.ParserProject{}
+	err = util.UnmarshalYAMLWithFallback([]byte(shouldGenerateNewBVConfig), &pp)
+	require.NoError(err)
+	pp.Id = "sample_version"
+	require.NoError(pp.Insert())
+	generateTask = task.Task{
+		Id:                    "mci_identifier_generate_tasks_for_version_version_gen__01_01_01_00_00_00",
+		Version:               "sample_version",
+		BuildId:               "b1",
+		Project:               "mci",
+		DisplayName:           "version_gen",
+		GeneratedJSONAsString: sampleGeneratedProject3,
+		Status:                evergreen.TaskStarted,
+	}
+	require.NoError(generateTask.Insert())
+	j = NewGenerateTasksJob(generateTask.Version, generateTask.Id, "1")
+	j.Run(context.Background())
+	assert.NoError(j.Error())
+	tasks, err = task.FindAll(db.Query(task.ByVersion("sample_version")))
+	assert.NoError(err)
+	assert.Len(tasks, 5)
+	for _, foundTask := range tasks {
+		if foundTask.BuildVariant == "testBV4" {
+			if foundTask.DisplayName == "dependencyTask" {
+				assert.False(foundTask.Activated)
+			} else {
+				assert.True(foundTask.Activated)
+			}
 		}
 	}
 }

@@ -3,10 +3,8 @@ package data
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/trigger"
 	"github.com/evergreen-ci/gimlet"
@@ -61,39 +59,11 @@ func SaveSubscriptions(owner string, subscriptions []restModel.APISubscription, 
 				Message:    errors.Wrap(err, "invalid subscription").Error(),
 			}
 		}
+		if dbSubscription.ResourceType == event.ResourceTypeVersion && isEndTrigger(dbSubscription.Trigger) {
+			dbSubscription.Trigger = triggerToFamilyTrigger(dbSubscription.Trigger)
+		}
 
 		dbSubscriptions = append(dbSubscriptions, dbSubscription)
-
-		if dbSubscription.ResourceType == event.ResourceTypeVersion && isEndTrigger(dbSubscription.Trigger) {
-			var versionId string
-			for _, selector := range dbSubscription.Selectors {
-				if selector.Type == event.SelectorID {
-					versionId = selector.Data
-				}
-			}
-			children, err := getVersionChildren(versionId)
-			if err != nil {
-				return gimlet.ErrorResponse{
-					StatusCode: http.StatusInternalServerError,
-					Message:    errors.Wrapf(err, "retrieving child versions for version '%s'", versionId).Error(),
-				}
-			}
-
-			for _, childPatchId := range children {
-				childDbSubscription := dbSubscription
-				childDbSubscription.LastUpdated = time.Now()
-				childDbSubscription.Filter.ID = childPatchId
-				var selectors []event.Selector
-				for _, selector := range dbSubscription.Selectors {
-					if selector.Type == event.SelectorID {
-						selector.Data = childPatchId
-					}
-					selectors = append(selectors, selector)
-				}
-				childDbSubscription.Selectors = selectors
-				dbSubscriptions = append(dbSubscriptions, childDbSubscription)
-			}
-		}
 
 	}
 
@@ -105,19 +75,20 @@ func SaveSubscriptions(owner string, subscriptions []restModel.APISubscription, 
 }
 
 func isEndTrigger(trigger string) bool {
-	return trigger == event.TriggerFailure || trigger == event.TriggerSuccess || trigger == event.TriggerOutcome
+	return trigger == event.TriggerFailure || trigger == event.TriggerSuccess || trigger == event.TriggerOutcome || trigger == event.TriggerFamilyOutcome
 }
 
-func getVersionChildren(versionId string) ([]string, error) {
-	patchDoc, err := patch.FindOne(patch.ByVersion(versionId))
-	if err != nil {
-		return nil, errors.Wrapf(err, "finding patch for version '%s'", versionId)
+func triggerToFamilyTrigger(t string) string {
+	switch t {
+	case event.TriggerSuccess:
+		return event.TriggerFamilySuccess
+	case event.TriggerOutcome:
+		return event.TriggerFamilyOutcome
+	case event.TriggerFailure:
+		return event.TriggerFamilyFailure
+	default:
+		return t
 	}
-	if patchDoc == nil {
-		return nil, errors.Wrapf(err, "patch for version '%s' not found", versionId)
-	}
-	return patchDoc.Triggers.ChildPatches, nil
-
 }
 
 // GetSubscriptions returns the subscriptions that belong to a user

@@ -37,8 +37,7 @@ var (
 )
 
 func (r *RepoRef) Add(creator *user.DBUser) error {
-	err := r.Upsert()
-	if err != nil {
+	if err := r.Upsert(); err != nil {
 		return errors.Wrap(err, "upserting repo ref")
 	}
 	return r.addPermissions(creator)

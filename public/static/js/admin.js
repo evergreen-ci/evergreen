@@ -785,6 +785,35 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     return obj;
   }
 
+  $scope.addOwnerRepo = function () {
+    if ($scope.Settings.project_creation === null || $scope.Settings.project_creation === undefined) {
+      $scope.Settings.project_creation = {
+          "repo_exceptions": [],
+      };
+    }
+
+    if ($scope.Settings.project_creation.repo_exceptions === null || $scope.Settings.project_creation.repo_exceptions === undefined) {
+      $scope.Settings.project_creation.repo_exceptions = [];
+    }
+
+    if (!$scope.validOwnerRepo($scope.new_owner_repo)) {
+      $scope.invalidOwnerRepo = "Owner and Repo cannot be empty.";
+      return
+    }
+
+    $scope.Settings.project_creation.repo_exceptions.push($scope.new_owner_repo);
+    $scope.new_owner_repo = {};
+    $scope.invalidOwnerRepo = "";
+  }
+
+  $scope.deleteOwnerRepo = function (index) {
+    $scope.Settings.project_creation.repo_exceptions.splice(index, 1);
+  }
+
+  $scope.validOwnerRepo = function (owner_repo) {
+    return owner_repo && owner_repo.owner && owner_repo.repo;
+  }
+
   $scope.deleteJIRAProject = function (key) {
     if (!key) {
       return;

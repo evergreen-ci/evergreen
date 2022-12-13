@@ -292,7 +292,7 @@ func TestGetActivationTimeWithCron(t *testing.T) {
 
 func TestAttachToNewRepo(t *testing.T) {
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection,
-		evergreen.RoleCollection, user.Collection, evergreen.ConfigCollection))
+		evergreen.RoleCollection, user.Collection, evergreen.ConfigCollection, GithubHooksCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 	pRef := ProjectRef{
@@ -307,6 +307,7 @@ func TestAttachToNewRepo(t *testing.T) {
 			Enabled: utility.TruePtr(),
 		},
 		PRTestingEnabled: utility.TruePtr(),
+		TracksPushEvents: utility.TruePtr(),
 	}
 	assert.NoError(t, pRef.Insert())
 	repoRef := RepoRef{ProjectRef{
@@ -319,7 +320,13 @@ func TestAttachToNewRepo(t *testing.T) {
 	assert.NoError(t, u.Insert())
 	pRef.Owner = "newOwner"
 	pRef.Repo = "newRepo"
-	assert.NoError(t, pRef.AttachToNewRepo(context.Background(), u))
+	hook := GithubHook{
+		HookID: 12,
+		Owner:  pRef.Owner,
+		Repo:   pRef.Repo,
+	}
+	assert.NoError(t, hook.Insert())
+	assert.NoError(t, pRef.AttachToNewRepo(u))
 
 	pRefFromDB, err := FindBranchProjectRef(pRef.Id)
 	assert.NoError(t, err)
@@ -327,6 +334,17 @@ func TestAttachToNewRepo(t *testing.T) {
 	assert.NotEqual(t, pRefFromDB.RepoRefId, "myRepo")
 	assert.Equal(t, pRefFromDB.Owner, "newOwner")
 	assert.Equal(t, pRefFromDB.Repo, "newRepo")
+	assert.Nil(t, pRefFromDB.TracksPushEvents)
+
+	newRepoRef, err := FindOneRepoRef(pRef.RepoRefId)
+	assert.NoError(t, err)
+	assert.NotNil(t, newRepoRef)
+
+	assert.True(t, newRepoRef.DoesTrackPushEvents())
+
+	mergedRef, err := FindMergedProjectRef(pRef.Id, "", false)
+	assert.NoError(t, err)
+	assert.True(t, mergedRef.DoesTrackPushEvents())
 
 	userFromDB, err := user.FindOneById("me")
 	assert.NoError(t, err)
@@ -350,7 +368,7 @@ func TestAttachToNewRepo(t *testing.T) {
 	assert.NoError(t, pRef.Insert())
 	pRef.Owner = "newOwner"
 	pRef.Repo = "newRepo"
-	assert.NoError(t, pRef.AttachToNewRepo(context.Background(), u))
+	assert.NoError(t, pRef.AttachToNewRepo(u))
 	assert.True(t, pRef.UseRepoSettings())
 	assert.NotEmpty(t, pRef.RepoRefId)
 
@@ -368,7 +386,7 @@ func TestAttachToNewRepo(t *testing.T) {
 
 func TestAttachToRepo(t *testing.T) {
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection,
-		evergreen.RoleCollection, user.Collection))
+		evergreen.RoleCollection, user.Collection, GithubHooksCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 	pRef := ProjectRef{
@@ -382,9 +400,16 @@ func TestAttachToRepo(t *testing.T) {
 		},
 		GithubChecksEnabled: utility.TruePtr(),
 		Enabled:             utility.TruePtr(),
+		TracksPushEvents:    utility.TruePtr(),
 	}
 	assert.NoError(t, pRef.Insert())
 
+	hook := GithubHook{
+		HookID: 12,
+		Owner:  pRef.Owner,
+		Repo:   pRef.Repo,
+	}
+	assert.NoError(t, hook.Insert())
 	u := &user.DBUser{Id: "me"}
 	assert.NoError(t, u.Insert())
 	// No repo exists, but one should be created.
@@ -400,6 +425,12 @@ func TestAttachToRepo(t *testing.T) {
 	assert.True(t, pRefFromDB.IsEnabled())
 	assert.True(t, pRefFromDB.CommitQueue.IsEnabled())
 	assert.True(t, pRefFromDB.IsGithubChecksEnabled())
+	assert.Nil(t, pRefFromDB.TracksPushEvents)
+
+	repoRef, err := FindOneRepoRef(pRef.RepoRefId)
+	assert.NoError(t, err)
+	require.NotNil(t, repoRef)
+	assert.True(t, repoRef.DoesTrackPushEvents())
 
 	u, err = user.FindOneById("me")
 	assert.NoError(t, err)
@@ -450,7 +481,8 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.NotNil(t, pRefFromDB.GitTagVersionsEnabled)
 			assert.True(t, pRefFromDB.IsGitTagVersionsEnabled())
 			assert.True(t, pRefFromDB.IsGithubChecksEnabled())
-			assert.Equal(t, pRefFromDB.GithubTriggerAliases, []string{"my_trigger"}) // why isn't this set to repo :O
+			assert.Equal(t, pRefFromDB.GithubTriggerAliases, []string{"my_trigger"})
+			assert.True(t, pRefFromDB.DoesTrackPushEvents())
 
 			dbUser, err = user.FindOneById("me")
 			assert.NoError(t, err)
@@ -605,6 +637,7 @@ func TestDetachFromRepo(t *testing.T) {
 				Id:                    pRef.RepoRefId,
 				Owner:                 pRef.Owner,
 				Repo:                  pRef.Repo,
+				TracksPushEvents:      utility.TruePtr(),
 				PRTestingEnabled:      utility.TruePtr(),
 				GitTagVersionsEnabled: utility.FalsePtr(),
 				GithubChecksEnabled:   utility.TruePtr(),
@@ -939,7 +972,7 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 
 func TestCreateNewRepoRef(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, user.Collection,
-		evergreen.ScopeCollection, ProjectVarsCollection, ProjectAliasCollection))
+		evergreen.ScopeCollection, ProjectVarsCollection, ProjectAliasCollection, GithubHooksCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -985,6 +1018,12 @@ func TestCreateNewRepoRef(t *testing.T) {
 	}
 	assert.NoError(t, doc3.Insert())
 
+	hook := GithubHook{
+		HookID: 12,
+		Owner:  "mongodb",
+		Repo:   "mongo",
+	}
+	assert.NoError(t, hook.Insert())
 	projectVariables := []ProjectVars{
 		{
 			Id: doc1.Id,
@@ -1069,7 +1108,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 	}
 	u := user.DBUser{Id: "me"}
 	assert.NoError(t, u.Insert())
-	// this will create the new repo ref
+	// This will create the new repo ref
 	assert.NoError(t, doc2.AddToRepoScope(&u))
 	assert.NotEmpty(t, doc2.RepoRefId)
 
@@ -1080,6 +1119,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.Equal(t, "mongodb", repoRef.Owner)
 	assert.Equal(t, "mongo", repoRef.Repo)
 	assert.Equal(t, "main", repoRef.Branch)
+	assert.True(t, repoRef.DoesTrackPushEvents())
 	assert.Contains(t, repoRef.Admins, "bob")
 	assert.Contains(t, repoRef.Admins, "other bob")
 	assert.Contains(t, repoRef.Admins, "me")
@@ -2255,14 +2295,15 @@ func TestGetProjectTasksWithOptions(t *testing.T) {
 		RevisionOrderNumber: 100,
 	}))
 
-	// total of 50 tasks eligible to be found
+	// total of 100 tasks eligible to be found
 	for i := 0; i < 100; i++ {
 		myTask := task.Task{
 			Id:                  fmt.Sprintf("t%d", i),
-			RevisionOrderNumber: i,
+			RevisionOrderNumber: 100 - (i / 2),
 			DisplayName:         "t1",
 			Project:             "my_project",
 			Status:              evergreen.TaskSucceeded,
+			Version:             fmt.Sprintf("v%d", 100-(i/2)),
 		}
 		if i%3 == 0 {
 			myTask.BuildVariant = "bv1"
@@ -2276,30 +2317,35 @@ func TestGetProjectTasksWithOptions(t *testing.T) {
 
 	tasks, err := GetTasksWithOptions("my_ident", "t1", opts)
 	assert.NoError(t, err)
-	assert.Len(t, tasks, defaultVersionLimit)
+	// Returns 21 tasks because 40 tasks exist within the default version limit,
+	// but 1/2 are undispatched
+	assert.Len(t, tasks, 21)
 
 	opts.Limit = 5
 	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
 	assert.NoError(t, err)
-	assert.Len(t, tasks, 5)
-	assert.Equal(t, tasks[0].RevisionOrderNumber, 99)
-	assert.Equal(t, tasks[4].RevisionOrderNumber, 91)
+	assert.Len(t, tasks, 6)
+	assert.Equal(t, tasks[0].RevisionOrderNumber, 100)
+	assert.Equal(t, tasks[5].RevisionOrderNumber, 95)
 
 	opts.Limit = 10
-	opts.StartAt = 20
+	opts.StartAt = 80
 	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
 	assert.NoError(t, err)
-	assert.Len(t, tasks, 10)
-	assert.Equal(t, tasks[0].RevisionOrderNumber, 19)
-	assert.Equal(t, tasks[9].RevisionOrderNumber, 1)
+	assert.Len(t, tasks, 11)
+	assert.Equal(t, tasks[0].RevisionOrderNumber, 80)
+	assert.Equal(t, tasks[10].RevisionOrderNumber, 70)
 
 	opts.Limit = defaultVersionLimit
 	opts.StartAt = 90
-	// 1 in every 6 tasks should qualify for this
 	opts.BuildVariant = "bv1"
 	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
+	// Returns 7 tasks because 40 tasks exist within the default version limit,
+	// but only 1/6 matches the bv and is not undispatched
 	assert.NoError(t, err)
-	assert.Len(t, tasks, 15)
+	assert.Len(t, tasks, 7)
+	assert.Equal(t, tasks[0].RevisionOrderNumber, 90)
+	assert.Equal(t, tasks[6].RevisionOrderNumber, 72)
 }
 
 func TestUpdateNextPeriodicBuild(t *testing.T) {

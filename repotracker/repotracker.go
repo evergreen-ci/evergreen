@@ -935,7 +935,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		}
 	}
 
-	pairsToCreate, err = model.IncludeDependencies(projectInfo.Project, pairsToCreate, v.Requester)
+	pairsToCreate, err = model.IncludeDependencies(projectInfo.Project, pairsToCreate, v.Requester, nil)
 	grip.Warning(message.WrapError(err, message.Fields{
 		"message": "error including dependencies",
 		"project": projectInfo.Project.Identifier,

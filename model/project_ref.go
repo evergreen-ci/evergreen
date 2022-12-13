@@ -281,6 +281,7 @@ var (
 	ProjectRefAdminsKey                   = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
 	ProjectRefGitTagAuthorizedUsersKey    = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedUsers")
 	ProjectRefGitTagAuthorizedTeamsKey    = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedTeams")
+	ProjectRefTracksPushEventsKey         = bsonutil.MustHaveTag(ProjectRef{}, "TracksPushEvents")
 	projectRefPRTestingEnabledKey         = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
 	projectRefManualPRTestingEnabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "ManualPRTestingEnabled")
 	projectRefGithubChecksEnabledKey      = bsonutil.MustHaveTag(ProjectRef{}, "GithubChecksEnabled")
@@ -455,8 +456,7 @@ const (
 )
 
 const (
-	tasksByProjectQueryMaxTime   = 90 * time.Second
-	tasksByProjectMaxNumVersions = 1000
+	tasksByProjectQueryMaxTime = 90 * time.Second
 )
 
 var adminPermissions = gimlet.Permissions{
@@ -707,7 +707,8 @@ func (p *ProjectRef) AttachToRepo(u *user.DBUser) error {
 	}
 	update = p.addGithubConflictsToUpdate(update)
 	err = db.UpdateId(ProjectRefCollection, p.Id, bson.M{
-		"$set": update,
+		"$set":   update,
+		"$unset": bson.M{ProjectRefTracksPushEventsKey: 1},
 	})
 	if err != nil {
 		return errors.Wrap(err, "attaching repo to scope")
@@ -719,7 +720,7 @@ func (p *ProjectRef) AttachToRepo(u *user.DBUser) error {
 // AttachToNewRepo modifies the project's owner/repo, updates the old and new repo scopes (if relevant), and
 // updates the project to point to the new repo. Any Github project conflicts are disabled.
 // If no repo ref currently exists for the new repo, the user attaching it will be added as the repo ref admin.
-func (p *ProjectRef) AttachToNewRepo(ctx context.Context, u *user.DBUser) error {
+func (p *ProjectRef) AttachToNewRepo(u *user.DBUser) error {
 	before, err := GetProjectSettingsById(p.Id, false)
 	if err != nil {
 		return errors.Wrap(err, "getting before project settings event")
@@ -745,22 +746,15 @@ func (p *ProjectRef) AttachToNewRepo(ctx context.Context, u *user.DBUser) error 
 		ProjectRefRepoRefIdKey: p.RepoRefId,
 	}
 	update = p.addGithubConflictsToUpdate(update)
+
 	err = db.UpdateId(ProjectRefCollection, p.Id, bson.M{
-		"$set": update,
+		"$set":   update,
+		"$unset": bson.M{ProjectRefTracksPushEventsKey: 1},
 	})
 	if err != nil {
 		return errors.Wrap(err, "updating owner/repo in the DB")
 	}
-	_, err = EnableWebhooks(ctx, p)
-	if err != nil {
-		grip.Debug(message.WrapError(err, message.Fields{
-			"message":            "error enabling webhooks",
-			"project_id":         p.Id,
-			"project_identifier": p.Identifier,
-			"owner":              p.Owner,
-			"repo":               p.Repo,
-		}))
-	}
+
 	return GetAndLogProjectModified(p.Id, u.Id, false, before)
 }
 
@@ -1010,6 +1004,15 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 	// Set explicitly in case no project is enabled.
 	repoRef.Owner = p.Owner
 	repoRef.Repo = p.Repo
+	_, err = EnableWebhooks(context.Background(), &repoRef.ProjectRef)
+	if err != nil {
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message": "error enabling webhooks",
+			"repo_id": repoRef.Id,
+			"owner":   repoRef.Owner,
+			"repo":    repoRef.Repo,
+		}))
+	}
 
 	// Creates scope and give user admin access to repo.
 	if err = repoRef.Add(u); err != nil {
@@ -1162,7 +1165,7 @@ func CountProjectRefsWithIdentifier(identifier string) (int, error) {
 	return db.CountQ(ProjectRefCollection, byId(identifier))
 }
 
-// GetTasksWithOptions will find the last number of tasks (denoted by Limit) that exist for a given project.
+// GetTasksWithOptions will find the matching tasks run in the last number of versions(denoted by Limit) that exist for a given project.
 // This function may also filter on tasks running on a specific build variant, or tasks that come after a specific revision order number.
 func GetTasksWithOptions(projectName string, taskName string, opts GetProjectTasksOpts) ([]task.Task, error) {
 	projectId, err := GetIdForProject(projectName)
@@ -1194,11 +1197,10 @@ func GetTasksWithOptions(projectName string, taskName string, opts GetProjectTas
 	}
 	match["$and"] = []bson.M{
 		{task.RevisionOrderNumberKey: bson.M{"$lte": startingRevision}},
-		{task.RevisionOrderNumberKey: bson.M{"$gte": startingRevision - tasksByProjectMaxNumVersions}},
+		{task.RevisionOrderNumberKey: bson.M{"$gte": startingRevision - opts.Limit}},
 	}
 	pipeline := []bson.M{{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{task.RevisionOrderNumberKey: -1}})
-	pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
 
 	res := []task.Task{}
 	if _, err = db.AggregateWithMaxTime(task.Collection, pipeline, &res, tasksByProjectQueryMaxTime); err != nil {
@@ -1853,6 +1855,10 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			projectRefTaskSyncKey:              p.TaskSync,
 			ProjectRefDisabledStatsCacheKey:    p.DisabledStatsCache,
 			ProjectRefFilesIgnoredFromCacheKey: p.FilesIgnoredFromCache,
+		}
+		// Unlike other fields, this will only be set if we're actually modifying it since it's used by the backend.
+		if p.TracksPushEvents != nil {
+			setUpdate[ProjectRefTracksPushEventsKey] = p.TracksPushEvents
 		}
 		// Allow a user to modify owner and repo only if they are editing an unattached project
 		if !isRepo && !p.UseRepoSettings() && !defaultToRepo {

@@ -1687,7 +1687,7 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 	pairs = p.extractDisplayTasks(pairs)
 	if includeDeps {
 		var err error
-		pairs.ExecTasks, err = IncludeDependencies(p, pairs.ExecTasks, requester)
+		pairs.ExecTasks, err = IncludeDependencies(p, pairs.ExecTasks, requester, nil)
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message": "error including dependencies",
 			"project": p.Identifier,
@@ -1919,7 +1919,7 @@ func (p *Project) VariantTasksForSelectors(definitions []patch.PatchTriggerDefin
 		return nil, errors.Wrap(err, "getting pairs matching patch aliases")
 	}
 	pairs = p.extractDisplayTasks(pairs)
-	pairs.ExecTasks, err = IncludeDependencies(p, pairs.ExecTasks, requester)
+	pairs.ExecTasks, err = IncludeDependencies(p, pairs.ExecTasks, requester, nil)
 	grip.Warning(message.WrapError(err, message.Fields{
 		"message": "error including dependencies",
 		"project": p.Identifier,

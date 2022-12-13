@@ -841,7 +841,7 @@ func TestGetProjectTasks(t *testing.T) {
 	for i := 0; i <= 20; i++ {
 		myTask := task.Task{
 			Id:                  fmt.Sprintf("t%d", i),
-			RevisionOrderNumber: i,
+			RevisionOrderNumber: 20 - i%2,
 			DisplayName:         "t1",
 			Project:             projectId,
 			Status:              evergreen.TaskSucceeded,
@@ -859,7 +859,7 @@ func TestGetProjectTasks(t *testing.T) {
 
 	resp := h.Run(ctx)
 	assert.Equal(http.StatusOK, resp.Status())
-	assert.Len(resp.Data(), 10)
+	assert.Len(resp.Data(), 21)
 }
 
 func TestGetProjectVersions(t *testing.T) {

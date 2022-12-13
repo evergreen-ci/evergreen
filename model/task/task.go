@@ -1865,6 +1865,9 @@ func (t *Task) DeactivateTask(caller string) error {
 func DeactivateTasks(tasks []Task, updateDependencies bool, caller string) error {
 	taskIDs := make([]string, 0, len(tasks))
 	for _, t := range tasks {
+		if t.DisplayOnly {
+			taskIDs = append(taskIDs, t.ExecutionTasks...)
+		}
 		taskIDs = append(taskIDs, t.Id)
 	}
 

@@ -729,6 +729,32 @@ func (p *Patch) IsChild() bool {
 	return p.Triggers.ParentPatch != ""
 }
 
+func (p *Patch) CollectiveStatus() (string, error) {
+	parentPatch := p
+	if p.IsChild() {
+		parentPatch, err := FindOneId(p.Triggers.ParentPatch)
+		if err != nil {
+			return "", errors.Wrap(err, "getting parent patch")
+		}
+		if parentPatch == nil {
+			return "", errors.Errorf(fmt.Sprintf("parent patch '%s' does not exist", p.Triggers.ParentPatch))
+		}
+	}
+	allStatuses := []string{parentPatch.Status}
+	for _, childPatchId := range parentPatch.Triggers.ChildPatches {
+		cp, err := FindOneId(childPatchId)
+		if err != nil {
+			return "", errors.Wrapf(err, "getting child patch '%s' ", childPatchId)
+		}
+		if cp == nil {
+			return "", errors.Wrapf(err, "child patch '%s' not found", childPatchId)
+		}
+		allStatuses = append(allStatuses, cp.Status)
+	}
+
+	return GetCollectiveStatus(allStatuses), nil
+}
+
 func (p *Patch) IsParent() bool {
 	return len(p.Triggers.ChildPatches) > 0
 }
@@ -756,6 +782,59 @@ func (p *Patch) GetPatchIndex(parentPatch *Patch) (int, error) {
 	return -1, nil
 }
 
+func (p *Patch) GetFamilyInformation() (bool, *Patch, error) {
+	if !p.IsChild() && !p.IsParent() {
+		return evergreen.IsFinishedPatchStatus(p.Status), nil, nil
+	}
+
+	isDone := false
+	childrenOrSiblings, parentPatch, err := p.GetPatchFamily()
+	if err != nil {
+		return isDone, parentPatch, errors.Wrap(err, "getting child or sibling patches")
+	}
+
+	// make sure the parent is done, if not, wait for the parent
+	if p.IsChild() && !evergreen.IsFinishedPatchStatus(parentPatch.Status) {
+		return isDone, parentPatch, nil
+	}
+	childrenStatus, err := GetChildrenOrSiblingsReadiness(childrenOrSiblings)
+	if err != nil {
+		return isDone, parentPatch, errors.Wrap(err, "getting child or sibling information")
+	}
+	if !evergreen.IsFinishedPatchStatus(childrenStatus) {
+		return isDone, parentPatch, nil
+	} else {
+		isDone = true
+	}
+
+	return isDone, parentPatch, err
+}
+
+func GetChildrenOrSiblingsReadiness(childrenOrSiblings []string) (string, error) {
+	if len(childrenOrSiblings) == 0 {
+		return "", nil
+	}
+	childrenStatus := evergreen.PatchSucceeded
+	for _, childPatch := range childrenOrSiblings {
+		childPatchDoc, err := FindOneId(childPatch)
+		if err != nil {
+			return "", errors.Wrapf(err, "getting tasks for child patch '%s'", childPatch)
+		}
+
+		if childPatchDoc == nil {
+			return "", errors.Errorf("child patch '%s' not found", childPatch)
+		}
+		if childPatchDoc.Status == evergreen.PatchFailed {
+			childrenStatus = evergreen.PatchFailed
+		}
+		if !evergreen.IsFinishedPatchStatus(childPatchDoc.Status) {
+			return childPatchDoc.Status, nil
+		}
+	}
+
+	return childrenStatus, nil
+
+}
 func (p *Patch) GetPatchFamily() ([]string, *Patch, error) {
 	var childrenOrSiblings []string
 	var parentPatch *Patch
@@ -774,6 +853,7 @@ func (p *Patch) GetPatchFamily() ([]string, *Patch, error) {
 		}
 		childrenOrSiblings = parentPatch.Triggers.ChildPatches
 	}
+
 	return childrenOrSiblings, parentPatch, nil
 }
 

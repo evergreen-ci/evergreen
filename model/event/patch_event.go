@@ -10,6 +10,7 @@ import (
 func init() {
 	registry.AddType(ResourceTypePatch, patchEventDataFactory)
 	registry.AllowSubscription(ResourceTypePatch, PatchStateChange)
+	registry.AllowSubscription(ResourceTypePatch, PatchChildrenCompletion)
 }
 
 func patchEventDataFactory() interface{} {
@@ -19,11 +20,13 @@ func patchEventDataFactory() interface{} {
 const (
 	ResourceTypePatch = "PATCH"
 
-	PatchStateChange = "STATE_CHANGE"
+	PatchStateChange        = "STATE_CHANGE"
+	PatchChildrenCompletion = "CHILDREN_FINISHED"
 )
 
 type PatchEventData struct {
 	Status string `bson:"status,omitempty" json:"status,omitempty"`
+	Author string `bson:"author,omitempty" json:"author,omitempty"`
 }
 
 func LogPatchStateChangeEvent(id, newStatus string) {
@@ -34,6 +37,27 @@ func LogPatchStateChangeEvent(id, newStatus string) {
 		EventType:    PatchStateChange,
 		Data: &PatchEventData{
 			Status: newStatus,
+		},
+	}
+
+	if err := event.Log(); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"resource_type": ResourceTypePatch,
+			"message":       "error logging event",
+			"source":        "event-log-fail",
+		}))
+	}
+}
+
+func LogPatchChildrenCompletionEvent(id, status, author string) {
+	event := EventLogEntry{
+		Timestamp:    time.Now().Truncate(0).Round(time.Millisecond),
+		ResourceId:   id,
+		ResourceType: ResourceTypePatch,
+		EventType:    PatchChildrenCompletion,
+		Data: &PatchEventData{
+			Status: status,
+			Author: author,
 		},
 	}
 

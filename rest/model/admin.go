@@ -34,6 +34,7 @@ func NewConfigModel() *APIAdminSettings {
 		Plugins:           map[string]map[string]interface{}{},
 		PodLifecycle:      &APIPodLifecycleConfig{},
 		Presto:            &APIPrestoConfig{},
+		ProjectCreation:   &APIProjectCreationConfig{},
 		Providers:         &APICloudProviders{},
 		RepoTracker:       &APIRepoTrackerConfig{},
 		Scheduler:         &APISchedulerConfig{},
@@ -82,6 +83,7 @@ type APIAdminSettings struct {
 	PodLifecycle        *APIPodLifecycleConfig            `json:"pod_lifecycle,omitempty"`
 	PprofPort           *string                           `json:"pprof_port,omitempty"`
 	Presto              *APIPrestoConfig                  `json:"presto,omitempty"`
+	ProjectCreation     *APIProjectCreationConfig         `json:"project_creation,omitempty"`
 	Providers           *APICloudProviders                `json:"providers,omitempty"`
 	RepoTracker         *APIRepoTrackerConfig             `json:"repotracker,omitempty"`
 	Scheduler           *APISchedulerConfig               `json:"scheduler,omitempty"`
@@ -1254,6 +1256,79 @@ func (a *APIPrestoConfig) ToService() (interface{}, error) {
 		Catalog:  utility.FromStringPtr(a.Catalog),
 		Schema:   utility.FromStringPtr(a.Schema),
 	}, nil
+}
+
+type APIOwnerRepo struct {
+	Owner *string `json:"owner"`
+	Repo  *string `json:"repo"`
+}
+
+func (a *APIOwnerRepo) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.OwnerRepo:
+		a.Owner = utility.ToStringPtr(v.Owner)
+		a.Repo = utility.ToStringPtr(v.Repo)
+	default:
+		return errors.Errorf("programmatic error: expected owner and repo config but got type %T", h)
+	}
+	return nil
+}
+
+func (a *APIOwnerRepo) ToService() (interface{}, error) {
+	res := evergreen.OwnerRepo{}
+	res.Owner = utility.FromStringPtr(a.Owner)
+	res.Repo = utility.FromStringPtr(a.Repo)
+	return res, nil
+}
+
+type APIProjectCreationConfig struct {
+	TotalProjectLimit int            `json:"total_project_limit"`
+	RepoProjectLimit  int            `json:"repo_project_limit"`
+	RepoExceptions    []APIOwnerRepo `json:"repo_exceptions"`
+}
+
+func (a *APIProjectCreationConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.ProjectCreationConfig:
+		for _, ownerRepo := range v.RepoExceptions {
+			apiOwnerRepo := APIOwnerRepo{}
+			if err := apiOwnerRepo.BuildFromService(ownerRepo); err != nil {
+				return err
+			}
+			a.RepoExceptions = append(a.RepoExceptions, apiOwnerRepo)
+		}
+		a.TotalProjectLimit = v.TotalProjectLimit
+		a.RepoProjectLimit = v.RepoProjectLimit
+	default:
+		return errors.Errorf("programmatic error: expected Project Creation config but got type %T", h)
+	}
+
+	return nil
+}
+
+func (a *APIProjectCreationConfig) ToService() (interface{}, error) {
+	if a == nil {
+		return nil, nil
+	}
+
+	config := evergreen.ProjectCreationConfig{
+		TotalProjectLimit: a.TotalProjectLimit,
+		RepoProjectLimit:  a.RepoProjectLimit,
+	}
+
+	for _, r := range a.RepoExceptions {
+		i, err := r.ToService()
+		if err != nil {
+			return nil, err
+		}
+		ownerRepo, ok := i.(evergreen.OwnerRepo)
+		if !ok {
+			return nil, errors.Errorf("programmatic error: expected owner and repo but got type %T", i)
+		}
+		config.RepoExceptions = append(config.RepoExceptions, ownerRepo)
+	}
+
+	return config, nil
 }
 
 type APICloudProviders struct {
