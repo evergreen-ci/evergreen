@@ -845,6 +845,7 @@ func TestGetProjectTasks(t *testing.T) {
 			DisplayName:         "t1",
 			Project:             projectId,
 			Status:              evergreen.TaskSucceeded,
+			Requester:           evergreen.RepotrackerVersionRequester,
 		}
 		assert.NoError(myTask.Insert())
 	}

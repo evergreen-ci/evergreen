@@ -2307,6 +2307,9 @@ func TestGetProjectTasksWithOptions(t *testing.T) {
 		}
 		if i%3 == 0 {
 			myTask.BuildVariant = "bv1"
+			myTask.Requester = evergreen.RepotrackerVersionRequester
+		} else {
+			myTask.Requester = evergreen.PatchVersionRequester
 		}
 		if i%2 == 0 {
 			myTask.Status = evergreen.TaskUndispatched
@@ -2317,25 +2320,40 @@ func TestGetProjectTasksWithOptions(t *testing.T) {
 
 	tasks, err := GetTasksWithOptions("my_ident", "t1", opts)
 	assert.NoError(t, err)
-	// Returns 21 tasks because 40 tasks exist within the default version limit,
-	// but 1/2 are undispatched
-	assert.Len(t, tasks, 21)
+	// Returns 7 tasks because 40 tasks exist within the default version limit,
+	// but 1/2 are undispatched and only 1/3 have a system requester
+	assert.Len(t, tasks, 7)
 
 	opts.Limit = 5
 	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
 	assert.NoError(t, err)
-	assert.Len(t, tasks, 6)
-	assert.Equal(t, tasks[0].RevisionOrderNumber, 100)
-	assert.Equal(t, tasks[5].RevisionOrderNumber, 95)
+	assert.Len(t, tasks, 2)
+	assert.Equal(t, tasks[0].RevisionOrderNumber, 99)
+	assert.Equal(t, tasks[1].RevisionOrderNumber, 96)
 
 	opts.Limit = 10
 	opts.StartAt = 80
 	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
 	assert.NoError(t, err)
-	assert.Len(t, tasks, 11)
-	assert.Equal(t, tasks[0].RevisionOrderNumber, 80)
-	assert.Equal(t, tasks[10].RevisionOrderNumber, 70)
+	assert.Len(t, tasks, 3)
+	assert.Equal(t, tasks[0].RevisionOrderNumber, 78)
+	assert.Equal(t, tasks[2].RevisionOrderNumber, 72)
 
+	opts.Requesters = []string{evergreen.PatchVersionRequester}
+	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
+	assert.NoError(t, err)
+	assert.Len(t, tasks, 8)
+	assert.Equal(t, tasks[0].RevisionOrderNumber, 80)
+	assert.Equal(t, tasks[7].RevisionOrderNumber, 70)
+
+	opts.Requesters = []string{evergreen.RepotrackerVersionRequester}
+	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
+	assert.NoError(t, err)
+	assert.Len(t, tasks, 3)
+	assert.Equal(t, tasks[0].RevisionOrderNumber, 78)
+	assert.Equal(t, tasks[2].RevisionOrderNumber, 72)
+
+	opts.Requesters = []string{}
 	opts.Limit = defaultVersionLimit
 	opts.StartAt = 90
 	opts.BuildVariant = "bv1"
