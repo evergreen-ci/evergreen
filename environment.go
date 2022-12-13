@@ -208,10 +208,8 @@ func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Envir
 	catcher.Add(e.initSenders(ctx))
 	catcher.Add(e.initPrestoDB(ctx))
 	catcher.Add(e.createLocalQueue(ctx))
-	catcher.Add(e.initAmboyDB(ctx))
-	catcher.Add(e.createApplicationQueue(ctx))
+	catcher.Add(e.createRemoteQueues(ctx))
 	catcher.Add(e.createNotificationQueue(ctx))
-	catcher.Add(e.createRemoteQueueGroup(ctx))
 	catcher.Add(e.setupRoleManager())
 	catcher.Extend(e.initQueues(ctx))
 
@@ -233,7 +231,6 @@ type envState struct {
 	settings                *Settings
 	dbName                  string
 	client                  *mongo.Client
-	amboyClient             *mongo.Client
 	prestoDB                *sql.DB
 	mu                      sync.RWMutex
 	clientConfig            *ClientConfig
@@ -322,7 +319,7 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings) error {
 	return nil
 }
 
-func (e *envState) initAmboyDB(ctx context.Context) error {
+func (e *envState) createRemoteQueues(ctx context.Context) error {
 	opts := options.Client().
 		ApplyURI(e.settings.Amboy.DB.URL).
 		SetConnectTimeout(5 * time.Second).
@@ -337,13 +334,15 @@ func (e *envState) initAmboyDB(ctx context.Context) error {
 		})
 	}
 
-	var err error
-	e.amboyClient, err = mongo.Connect(ctx, opts)
+	client, err := mongo.Connect(ctx, opts)
 	if err != nil {
 		return errors.Wrap(err, "connecting to the Amboy database")
 	}
 
-	return nil
+	catcher := grip.NewBasicCatcher()
+	catcher.Add(e.createApplicationQueue(ctx, client))
+	catcher.Add(e.createRemoteQueueGroup(ctx, client))
+	return catcher.Resolve()
 }
 
 func (e *envState) initPrestoDB(ctx context.Context) error {
@@ -415,11 +414,11 @@ func (e *envState) createLocalQueue(ctx context.Context) error {
 	return nil
 }
 
-func (e *envState) createApplicationQueue(ctx context.Context) error {
+func (e *envState) createApplicationQueue(ctx context.Context, client *mongo.Client) error {
 	// configure the remote mongodb-backed amboy
 	// queue.
 	opts := queue.DefaultMongoDBOptions()
-	opts.Client = e.amboyClient
+	opts.Client = client
 	opts.DB = e.settings.Amboy.DB.DB
 	opts.Collection = e.settings.Amboy.Name
 	opts.Priority = e.settings.Amboy.RequireRemotePriority
@@ -454,8 +453,8 @@ func (e *envState) createApplicationQueue(ctx context.Context) error {
 	return nil
 }
 
-func (e *envState) createRemoteQueueGroup(ctx context.Context) error {
-	opts := e.getRemoteQueueGroupDBOptions()
+func (e *envState) createRemoteQueueGroup(ctx context.Context, client *mongo.Client) error {
+	opts := e.getRemoteQueueGroupDBOptions(client)
 
 	retryOpts := e.settings.Amboy.Retry.RetryableQueueOptions()
 	queueOpts := queue.MongoDBQueueOptions{
@@ -464,7 +463,7 @@ func (e *envState) createRemoteQueueGroup(ctx context.Context) error {
 		Retryable:  &retryOpts,
 	}
 
-	perQueue, regexpQueue, err := e.getNamedRemoteQueueOptions()
+	perQueue, regexpQueue, err := e.getNamedRemoteQueueOptions(client)
 	if err != nil {
 		return errors.Wrap(err, "getting named remote queue options")
 	}
@@ -491,9 +490,9 @@ func (e *envState) createRemoteQueueGroup(ctx context.Context) error {
 	return nil
 }
 
-func (e *envState) getRemoteQueueGroupDBOptions() queue.MongoDBOptions {
+func (e *envState) getRemoteQueueGroupDBOptions(client *mongo.Client) queue.MongoDBOptions {
 	opts := queue.DefaultMongoDBOptions()
-	opts.Client = e.amboyClient
+	opts.Client = client
 	opts.DB = e.settings.Amboy.DB.DB
 	opts.Collection = e.settings.Amboy.Name
 	opts.Priority = e.settings.Amboy.RequireRemotePriority
@@ -528,7 +527,7 @@ func (e *envState) getPreferredRemoteQueueIndexes() queue.PreferredIndexOptions 
 	}
 }
 
-func (e *envState) getNamedRemoteQueueOptions() (map[string]queue.MongoDBQueueOptions, []queue.RegexpMongoDBQueueOptions, error) {
+func (e *envState) getNamedRemoteQueueOptions(client *mongo.Client) (map[string]queue.MongoDBQueueOptions, []queue.RegexpMongoDBQueueOptions, error) {
 	perQueueOpts := map[string]queue.MongoDBQueueOptions{}
 	var regexpQueueOpts []queue.RegexpMongoDBQueueOptions
 	for _, namedQueue := range e.settings.Amboy.NamedQueues {
@@ -536,7 +535,7 @@ func (e *envState) getNamedRemoteQueueOptions() (map[string]queue.MongoDBQueueOp
 			continue
 		}
 
-		dbOpts := e.getRemoteQueueGroupDBOptions()
+		dbOpts := e.getRemoteQueueGroupDBOptions(client)
 		if namedQueue.SampleSize != 0 {
 			dbOpts.SampleSize = namedQueue.SampleSize
 		}
