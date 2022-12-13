@@ -340,8 +340,9 @@ buildvariants:
       - ubuntu1604-test
     tasks:
       - name: dependencyTask
-      - name: dependencyTask2
+      - name: dependencyTaskShouldActivate
       - name: shouldNotActivate
+      - name: shouldActivate
 
   - name: testBV5
     display_name: TestBV5
@@ -350,7 +351,7 @@ buildvariants:
     tasks:
       - name: placeholder
     depends_on:
-      - name: dependencyTask2
+      - name: dependencyTaskShouldActivate
         variant: testBV4
 
 tasks:
@@ -367,18 +368,27 @@ tasks:
   - name: dependencyTask
     depends_on:
       - name: shouldNotActivate
+      - name: shouldActivate
     commands:
       - command: shell.exec
         params:
           script: |
             echo "noop"
-  - name: dependencyTask2
+  - name: dependencyTaskShouldActivate
     commands:
       - command: shell.exec
         params:
           script: |
             echo "noop"
+    depends_on:
+      - name: shouldActivate
   - name: shouldNotActivate
+    commands:
+      - command: shell.exec
+        params:
+          script: |
+            echo "noop2"
+  - name: shouldActivate
     commands:
       - command: shell.exec
         params:
@@ -699,7 +709,10 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 	assert.NoError(j.Error())
 	tasks, err = task.FindAll(db.Query(task.ByVersion("sample_version")))
 	assert.NoError(err)
-	assert.Len(tasks, 6)
+	assert.Len(tasks, 7)
+	// shouldActivate should be activated because although the inactive dependencyTask has it as a
+	// dependency, dependencyTaskShouldActivate also has shouldActivate as a dependency, so it should
+	// be overridden as active during the handle function's recursion.
 	for _, foundTask := range tasks {
 		if foundTask.BuildVariant == "testBV4" {
 			if foundTask.DisplayName == "dependencyTask" || foundTask.DisplayName == "shouldNotActivate" {
