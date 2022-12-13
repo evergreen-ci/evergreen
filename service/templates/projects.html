@@ -933,7 +933,12 @@ Evergreen Projects
         <div class="form-group">
           <div class="col-header col-lg-6 form-control-static">
             <h3>Periodic Builds</h3>
-            <div class="muted small">Configure tasks to run periodically within this project</div>
+            <div class="muted small">
+              Configure tasks to run at a consistent interval within this project.
+              This will create a new version that can be seen on the Spruce commits page,
+              regardless of whether or not a new commit has been pushed since the last interval,
+              as opposed to batchtime which will activate the tasks on existing commit versions.
+            </div>
           </div>
         </div>
         <div class="form-group" ng-repeat="definition in periodic_builds track by $index">
