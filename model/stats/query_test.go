@@ -17,7 +17,6 @@ var (
 )
 
 type statsQuerySuite struct {
-	baseTestFilter StatsFilter
 	baseTaskFilter StatsFilter
 
 	suite.Suite

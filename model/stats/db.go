@@ -37,7 +37,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
@@ -69,8 +68,6 @@ var (
 	taskDetailsKeyRef      = "$" + task.DetailsKey
 	taskTimeTakenKeyRef    = "$" + task.TimeTakenKey
 	taskOldTaskIdKeyRef    = "$" + task.OldTaskIdKey
-	testResultTaskIdKeyRef = "$" + testresult.TaskIDKey
-	testResultExecutionRef = "$" + testresult.ExecutionKey
 )
 
 // Convenient type to use for arrays in pipeline definitions.
