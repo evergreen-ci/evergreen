@@ -143,7 +143,6 @@ var projectErrorValidators = []projectValidator{
 var projectConfigErrorValidators = []projectConfigValidator{
 	validateProjectConfigAliases,
 	validateProjectConfigPlugins,
-	validateProjectConfigPeriodicBuilds,
 	validateProjectConfigContainers,
 }
 
@@ -409,19 +408,6 @@ func tvToTaskUnit(p *model.Project) map[model.TVPair]model.BuildVariantTaskUnit 
 		}
 	}
 	return tasksByNameAndVariant
-}
-
-func validateProjectConfigPeriodicBuilds(pc *model.ProjectConfig) ValidationErrors {
-	validationErrs := ValidationErrors{}
-	for _, periodicBuild := range pc.PeriodicBuilds {
-		if err := periodicBuild.Validate(); err != nil {
-			validationErrs = append(validationErrs, ValidationError{
-				Message: errors.Wrap(err, "error validating periodic builds").Error(),
-				Level:   Error,
-			})
-		}
-	}
-	return validationErrs
 }
 
 func validateProjectConfigAliases(pc *model.ProjectConfig) ValidationErrors {

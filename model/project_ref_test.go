@@ -2641,6 +2641,7 @@ func TestMergeWithProjectConfig(t *testing.T) {
 			TicketCreateProject:  "EVG",
 			TicketSearchProjects: []string{"BF", "BFG"},
 		},
+		PeriodicBuilds: []PeriodicBuildDefinition{{ID: "p1"}},
 	}
 	projectConfig := &ProjectConfig{
 		Id: "version1",
@@ -2675,7 +2676,6 @@ func TestMergeWithProjectConfig(t *testing.T) {
 				BFSuggestionTimeoutSecs: 10,
 			},
 			GithubTriggerAliases: []string{"one", "two"},
-			PeriodicBuilds:       []PeriodicBuildDefinition{{ID: "p1"}},
 		},
 	}
 	assert.NoError(t, projectRef.Insert())
