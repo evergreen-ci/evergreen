@@ -375,7 +375,7 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 	case evergreen.AmboyConfig:
 		a.Name = utility.ToStringPtr(v.Name)
 		a.SingleName = utility.ToStringPtr(v.SingleName)
-		if err := a.DB.BuildFromService(v.DB); err != nil {
+		if err := a.DB.BuildFromService(v.DBConnection); err != nil {
 			return errors.Wrap(err, "converting Amboy DB settings to API model")
 		}
 		a.PoolSizeLocal = v.PoolSizeLocal
@@ -428,7 +428,7 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 	return evergreen.AmboyConfig{
 		Name:                                  utility.FromStringPtr(a.Name),
 		SingleName:                            utility.FromStringPtr(a.SingleName),
-		DB:                                    db,
+		DBConnection:                          db,
 		PoolSizeLocal:                         a.PoolSizeLocal,
 		PoolSizeRemote:                        a.PoolSizeRemote,
 		LocalStorage:                          a.LocalStorage,

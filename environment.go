@@ -321,16 +321,16 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings) error {
 
 func (e *envState) createRemoteQueues(ctx context.Context) error {
 	opts := options.Client().
-		ApplyURI(e.settings.Amboy.DB.URL).
+		ApplyURI(e.settings.Amboy.DBConnection.URL).
 		SetConnectTimeout(5 * time.Second).
 		SetReadConcern(e.settings.Database.ReadConcernSettings.Resolve()).
 		SetWriteConcern(e.settings.Database.WriteConcernSettings.Resolve()).
 		SetMonitor(apm.NewLoggingMonitor(ctx, time.Minute, apm.NewBasicMonitor(nil)).DriverAPM())
 
-	if e.settings.Amboy.DB.Username != "" && e.settings.Amboy.DB.Password != "" {
+	if e.settings.Amboy.DBConnection.Username != "" && e.settings.Amboy.DBConnection.Password != "" {
 		opts.SetAuth(options.Credential{
-			Username: e.settings.Amboy.DB.Username,
-			Password: e.settings.Amboy.DB.Password,
+			Username: e.settings.Amboy.DBConnection.Username,
+			Password: e.settings.Amboy.DBConnection.Password,
 		})
 	}
 
@@ -419,7 +419,7 @@ func (e *envState) createApplicationQueue(ctx context.Context, client *mongo.Cli
 	// queue.
 	opts := queue.DefaultMongoDBOptions()
 	opts.Client = client
-	opts.DB = e.settings.Amboy.DB.DB
+	opts.DB = e.settings.Amboy.DBConnection.DB
 	opts.Collection = e.settings.Amboy.Name
 	opts.Priority = e.settings.Amboy.RequireRemotePriority
 	opts.SkipQueueIndexBuilds = true
@@ -493,7 +493,7 @@ func (e *envState) createRemoteQueueGroup(ctx context.Context, client *mongo.Cli
 func (e *envState) getRemoteQueueGroupDBOptions(client *mongo.Client) queue.MongoDBOptions {
 	opts := queue.DefaultMongoDBOptions()
 	opts.Client = client
-	opts.DB = e.settings.Amboy.DB.DB
+	opts.DB = e.settings.Amboy.DBConnection.DB
 	opts.Collection = e.settings.Amboy.Name
 	opts.Priority = e.settings.Amboy.RequireRemotePriority
 	opts.SkipQueueIndexBuilds = true

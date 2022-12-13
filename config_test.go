@@ -259,7 +259,7 @@ func (s *AdminSuite) TestAmboyConfig() {
 	config := AmboyConfig{
 		Name:       "amboy",
 		SingleName: "single",
-		DB: AmboyDBConfig{
+		DBConnection: AmboyDBConfig{
 			URL:      "mongodb://localhost:27017",
 			DB:       "db",
 			Username: "user",

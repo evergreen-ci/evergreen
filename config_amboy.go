@@ -17,7 +17,7 @@ import (
 type AmboyConfig struct {
 	Name                                  string                  `bson:"name" json:"name" yaml:"name"`
 	SingleName                            string                  `bson:"single_name" json:"single_name" yaml:"single_name"`
-	DB                                    AmboyDBConfig           `bson:"db" json:"db" yaml:"db"`
+	DBConnection                          AmboyDBConfig           `bson:"db_connection" json:"db_connection" yaml:"db_connection"`
 	PoolSizeLocal                         int                     `bson:"pool_size_local" json:"pool_size_local" yaml:"pool_size_local"`
 	PoolSizeRemote                        int                     `bson:"pool_size_remote" json:"pool_size_remote" yaml:"pool_size_remote"`
 	LocalStorage                          int                     `bson:"local_storage_size" json:"local_storage_size" yaml:"local_storage_size"`
@@ -69,7 +69,7 @@ type AmboyNamedQueueConfig struct {
 var (
 	amboyNameKey                                  = bsonutil.MustHaveTag(AmboyConfig{}, "Name")
 	amboySingleNameKey                            = bsonutil.MustHaveTag(AmboyConfig{}, "SingleName")
-	amboyDBKey                                    = bsonutil.MustHaveTag(AmboyConfig{}, "DB")
+	amboyDBConnectionKey                          = bsonutil.MustHaveTag(AmboyConfig{}, "DBConnection")
 	amboyPoolSizeLocalKey                         = bsonutil.MustHaveTag(AmboyConfig{}, "PoolSizeLocal")
 	amboyPoolSizeRemoteKey                        = bsonutil.MustHaveTag(AmboyConfig{}, "PoolSizeRemote")
 	amboyLocalStorageKey                          = bsonutil.MustHaveTag(AmboyConfig{}, "LocalStorage")
@@ -115,13 +115,13 @@ func (c *AmboyConfig) Set() error {
 
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			amboyNameKey:                c.Name,
-			amboySingleNameKey:          c.SingleName,
-			amboyDBKey:                  c.DB,
-			amboyPoolSizeLocalKey:       c.PoolSizeLocal,
-			amboyPoolSizeRemoteKey:      c.PoolSizeRemote,
-			amboyLocalStorageKey:        c.LocalStorage,
-			amboyGroupDefaultWorkersKey: c.GroupDefaultWorkers,
+			amboyNameKey:                                  c.Name,
+			amboySingleNameKey:                            c.SingleName,
+			amboyDBConnectionKey:                          c.DBConnection,
+			amboyPoolSizeLocalKey:                         c.PoolSizeLocal,
+			amboyPoolSizeRemoteKey:                        c.PoolSizeRemote,
+			amboyLocalStorageKey:                          c.LocalStorage,
+			amboyGroupDefaultWorkersKey:                   c.GroupDefaultWorkers,
 			amboyGroupBackgroundCreateFrequencyMinutesKey: c.GroupBackgroundCreateFrequencyMinutes,
 			amboyGroupPruneFrequencyMinutesKey:            c.GroupPruneFrequencyMinutes,
 			amboyGroupTTLMinutesKey:                       c.GroupTTLMinutes,
@@ -175,8 +175,8 @@ func (c *AmboyConfig) ValidateAndDefault() error {
 		c.SingleName = defaultSingleAmboyQueueName
 	}
 
-	if c.DB.DB == "" {
-		c.DB.DB = defaultAmboyDBName
+	if c.DBConnection.DB == "" {
+		c.DBConnection.DB = defaultAmboyDBName
 	}
 
 	if c.PoolSizeLocal == 0 {
