@@ -698,7 +698,6 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.Nil(t, pRefFromDb.DeactivatePrevious)
 			assert.Empty(t, pRefFromDb.RemotePath)
 			assert.Nil(t, pRefFromDb.TaskSync.ConfigEnabled)
-			assert.Nil(t, pRefFromDb.FilesIgnoredFromCache)
 		},
 		ProjectPageAccessSection: func(t *testing.T, id string) {
 			assert.NoError(t, DefaultSectionToRepo(id, ProjectPageAccessSection, "me"))
@@ -812,7 +811,6 @@ func TestDefaultRepoBySection(t *testing.T) {
 				DeactivatePrevious:    utility.FalsePtr(),
 				RemotePath:            "path.yml",
 				TaskSync:              TaskSyncOptions{ConfigEnabled: utility.TruePtr()},
-				FilesIgnoredFromCache: []string{},
 				Private:               utility.TruePtr(),
 				Restricted:            utility.FalsePtr(),
 				Admins:                []string{"annie"},
@@ -978,35 +976,33 @@ func TestCreateNewRepoRef(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	doc1 := &ProjectRef{
-		Id:                    "id1",
-		Owner:                 "mongodb",
-		Repo:                  "mongo",
-		Branch:                "mci",
-		Enabled:               utility.TruePtr(),
-		FilesIgnoredFromCache: []string{"file1", "file2"},
-		Admins:                []string{"bob", "other bob"},
-		PRTestingEnabled:      utility.TruePtr(),
-		RemotePath:            "evergreen.yml",
-		NotifyOnBuildFailure:  utility.TruePtr(),
-		CommitQueue:           CommitQueueParams{Message: "my message"},
-		TaskSync:              TaskSyncOptions{PatchEnabled: utility.TruePtr()},
+		Id:                   "id1",
+		Owner:                "mongodb",
+		Repo:                 "mongo",
+		Branch:               "mci",
+		Enabled:              utility.TruePtr(),
+		Admins:               []string{"bob", "other bob"},
+		PRTestingEnabled:     utility.TruePtr(),
+		RemotePath:           "evergreen.yml",
+		NotifyOnBuildFailure: utility.TruePtr(),
+		CommitQueue:          CommitQueueParams{Message: "my message"},
+		TaskSync:             TaskSyncOptions{PatchEnabled: utility.TruePtr()},
 	}
 	assert.NoError(t, doc1.Insert())
 	doc2 := &ProjectRef{
-		Id:                    "id2",
-		Identifier:            "identifier",
-		Owner:                 "mongodb",
-		Repo:                  "mongo",
-		Branch:                "mci2",
-		Enabled:               utility.TruePtr(),
-		FilesIgnoredFromCache: []string{"file2"},
-		Admins:                []string{"bob", "other bob"},
-		PRTestingEnabled:      utility.TruePtr(),
-		RemotePath:            "evergreen.yml",
-		NotifyOnBuildFailure:  utility.FalsePtr(),
-		GithubChecksEnabled:   utility.TruePtr(),
-		CommitQueue:           CommitQueueParams{Message: "my message"},
-		TaskSync:              TaskSyncOptions{PatchEnabled: utility.TruePtr(), ConfigEnabled: utility.TruePtr()},
+		Id:                   "id2",
+		Identifier:           "identifier",
+		Owner:                "mongodb",
+		Repo:                 "mongo",
+		Branch:               "mci2",
+		Enabled:              utility.TruePtr(),
+		Admins:               []string{"bob", "other bob"},
+		PRTestingEnabled:     utility.TruePtr(),
+		RemotePath:           "evergreen.yml",
+		NotifyOnBuildFailure: utility.FalsePtr(),
+		GithubChecksEnabled:  utility.TruePtr(),
+		CommitQueue:          CommitQueueParams{Message: "my message"},
+		TaskSync:             TaskSyncOptions{PatchEnabled: utility.TruePtr(), ConfigEnabled: utility.TruePtr()},
 	}
 	assert.NoError(t, doc2.Insert())
 	doc3 := &ProjectRef{
@@ -1123,7 +1119,6 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.Contains(t, repoRef.Admins, "bob")
 	assert.Contains(t, repoRef.Admins, "other bob")
 	assert.Contains(t, repoRef.Admins, "me")
-	assert.Empty(t, repoRef.FilesIgnoredFromCache)
 	assert.True(t, repoRef.IsEnabled())
 	assert.True(t, repoRef.IsPRTestingEnabled())
 	assert.Equal(t, "evergreen.yml", repoRef.RemotePath)
@@ -2691,47 +2686,6 @@ func TestMergeWithProjectConfig(t *testing.T) {
 	assert.NoError(t, err)
 	require.NotNil(t, projectRef)
 	assert.Equal(t, 4, projectRef.ContainerSizeDefinitions[0].CPU)
-}
-
-func TestIsServerResmokeProject(t *testing.T) {
-	for _, test := range []struct {
-		name       string
-		identifier string
-		expected   bool
-	}{
-		{
-			name:       "MongoMaster",
-			identifier: "mongodb-mongo-master",
-			expected:   true,
-		},
-		{
-			name:       "MongoBranch",
-			identifier: "mongodb-mongo-5.0",
-			expected:   true,
-		},
-		{
-			name:       "MongoSync",
-			identifier: "mongosync",
-			expected:   true,
-		},
-		{
-			name:       "MongoSyncCoinbase",
-			identifier: "mongosync-coinbase",
-			expected:   true,
-		},
-		{
-			name:       "Evergreen",
-			identifier: "evergreen",
-		},
-		{
-			name:       "Mongo",
-			identifier: "mongo",
-		},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			assert.Equal(t, test.expected, IsServerResmokeProject(test.identifier))
-		})
-	}
 }
 
 func TestSaveProjectPageForSection(t *testing.T) {

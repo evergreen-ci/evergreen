@@ -23,8 +23,6 @@ type ServiceFlags struct {
 	CLIUpdatesDisabled              bool `bson:"cli_updates_disabled" json:"cli_updates_disabled"`
 	BackgroundStatsDisabled         bool `bson:"background_stats_disabled" json:"background_stats_disabled"`
 	TaskLoggingDisabled             bool `bson:"task_logging_disabled" json:"task_logging_disabled"`
-	CacheStatsJobDisabled           bool `bson:"cache_stats_job_disabled" json:"cache_stats_job_disabled"`
-	CacheStatsEndpointDisabled      bool `bson:"cache_stats_endpoint_disabled" json:"cache_stats_endpoint_disabled"`
 	TaskReliabilityDisabled         bool `bson:"task_reliability_disabled" json:"task_reliability_disabled"`
 	CommitQueueDisabled             bool `bson:"commit_queue_disabled" json:"commit_queue_disabled"`
 	HostAllocatorDisabled           bool `bson:"host_allocator_disabled" json:"host_allocator_disabled"`
@@ -95,8 +93,6 @@ func (c *ServiceFlags) Set() error {
 			webhookNotificationsDisabledKey:    c.WebhookNotificationsDisabled,
 			githubStatusAPIDisabledKey:         c.GithubStatusAPIDisabled,
 			taskLoggingDisabledKey:             c.TaskLoggingDisabled,
-			cacheStatsJobDisabledKey:           c.CacheStatsJobDisabled,
-			cacheStatsEndpointDisabledKey:      c.CacheStatsEndpointDisabled,
 			taskReliabilityDisabledKey:         c.TaskReliabilityDisabled,
 			commitQueueDisabledKey:             c.CommitQueueDisabled,
 			hostAllocatorDisabledKey:           c.HostAllocatorDisabled,

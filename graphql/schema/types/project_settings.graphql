@@ -39,11 +39,9 @@ input ProjectInput {
   buildBaronSettings: BuildBaronSettingsInput
   commitQueue: CommitQueueParamsInput
   deactivatePrevious: Boolean
-  disabledStatsCache: Boolean
   dispatchingDisabled: Boolean
   displayName: String
   enabled: Boolean
-  filesIgnoredFromCache: [String!]
   githubChecksEnabled: Boolean
   githubTriggerAliases: [String]
   gitTagAuthorizedTeams: [String!]

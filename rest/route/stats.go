@@ -15,7 +15,6 @@ import (
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/stats"
 	"github.com/evergreen-ci/evergreen/rest/data"
-	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
@@ -302,20 +301,7 @@ func (tsh *taskStatsHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (tsh *taskStatsHandler) Run(ctx context.Context) gimlet.Responder {
-	flags, err := evergreen.GetServiceFlags()
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting service flags"))
-	}
-	if flags.CacheStatsEndpointDisabled {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			Message:    "endpoint is disabled",
-			StatusCode: http.StatusServiceUnavailable,
-		})
-	}
-
-	var taskStatsResult []model.APITaskStats
-
-	taskStatsResult, err = data.GetTaskStats(tsh.filter)
+	taskStatsResult, err := data.GetTaskStats(tsh.filter)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting task stats"))
 	}

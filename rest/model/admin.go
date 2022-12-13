@@ -33,7 +33,6 @@ func NewConfigModel() *APIAdminSettings {
 		Notify:            &APINotifyConfig{},
 		Plugins:           map[string]map[string]interface{}{},
 		PodLifecycle:      &APIPodLifecycleConfig{},
-		Presto:            &APIPrestoConfig{},
 		ProjectCreation:   &APIProjectCreationConfig{},
 		Providers:         &APICloudProviders{},
 		RepoTracker:       &APIRepoTrackerConfig{},
@@ -82,7 +81,6 @@ type APIAdminSettings struct {
 	Plugins             map[string]map[string]interface{} `json:"plugins,omitempty"`
 	PodLifecycle        *APIPodLifecycleConfig            `json:"pod_lifecycle,omitempty"`
 	PprofPort           *string                           `json:"pprof_port,omitempty"`
-	Presto              *APIPrestoConfig                  `json:"presto,omitempty"`
 	ProjectCreation     *APIProjectCreationConfig         `json:"project_creation,omitempty"`
 	Providers           *APICloudProviders                `json:"providers,omitempty"`
 	RepoTracker         *APIRepoTrackerConfig             `json:"repotracker,omitempty"`
@@ -1216,48 +1214,6 @@ func (a *APINotifyConfig) ToService() (interface{}, error) {
 	}, nil
 }
 
-type APIPrestoConfig struct {
-	BaseURI  *string `json:"base_uri"`
-	Port     int     `json:"port"`
-	TLS      bool    `json:"tls"`
-	Username *string `json:"username"`
-	Password *string `json:"password"`
-	Source   *string `json:"source"`
-	Catalog  *string `json:"catalog"`
-	Schema   *string `json:"schema"`
-}
-
-func (a *APIPrestoConfig) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case evergreen.PrestoConfig:
-		a.BaseURI = utility.ToStringPtr(v.BaseURI)
-		a.Port = v.Port
-		a.TLS = v.TLS
-		a.Username = utility.ToStringPtr(v.Username)
-		a.Password = utility.ToStringPtr(v.Password)
-		a.Source = utility.ToStringPtr(v.Source)
-		a.Catalog = utility.ToStringPtr(v.Catalog)
-		a.Schema = utility.ToStringPtr(v.Schema)
-	default:
-		return errors.Errorf("programmatic error: expected Presto config but got type %T", h)
-	}
-
-	return nil
-}
-
-func (a *APIPrestoConfig) ToService() (interface{}, error) {
-	return evergreen.PrestoConfig{
-		BaseURI:  utility.FromStringPtr(a.BaseURI),
-		Port:     a.Port,
-		TLS:      a.TLS,
-		Username: utility.FromStringPtr(a.Username),
-		Password: utility.FromStringPtr(a.Password),
-		Source:   utility.FromStringPtr(a.Source),
-		Catalog:  utility.FromStringPtr(a.Catalog),
-		Schema:   utility.FromStringPtr(a.Schema),
-	}, nil
-}
-
 type APIOwnerRepo struct {
 	Owner *string `json:"owner"`
 	Repo  *string `json:"repo"`
@@ -2171,8 +2127,6 @@ type APIServiceFlags struct {
 	CLIUpdatesDisabled              bool `json:"cli_updates_disabled"`
 	BackgroundStatsDisabled         bool `json:"background_stats_disabled"`
 	TaskLoggingDisabled             bool `json:"task_logging_disabled"`
-	CacheStatsJobDisabled           bool `json:"cache_stats_job_disabled"`
-	CacheStatsEndpointDisabled      bool `json:"cache_stats_endpoint_disabled"`
 	TaskReliabilityDisabled         bool `json:"task_reliability_disabled"`
 	CommitQueueDisabled             bool `json:"commit_queue_disabled"`
 	HostAllocatorDisabled           bool `json:"host_allocator_disabled"`
@@ -2459,8 +2413,6 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.GithubStatusAPIDisabled = v.GithubStatusAPIDisabled
 		as.BackgroundStatsDisabled = v.BackgroundStatsDisabled
 		as.TaskLoggingDisabled = v.TaskLoggingDisabled
-		as.CacheStatsJobDisabled = v.CacheStatsJobDisabled
-		as.CacheStatsEndpointDisabled = v.CacheStatsEndpointDisabled
 		as.TaskReliabilityDisabled = v.TaskReliabilityDisabled
 		as.CommitQueueDisabled = v.CommitQueueDisabled
 		as.HostAllocatorDisabled = v.HostAllocatorDisabled
@@ -2500,8 +2452,6 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		GithubStatusAPIDisabled:         as.GithubStatusAPIDisabled,
 		BackgroundStatsDisabled:         as.BackgroundStatsDisabled,
 		TaskLoggingDisabled:             as.TaskLoggingDisabled,
-		CacheStatsJobDisabled:           as.CacheStatsJobDisabled,
-		CacheStatsEndpointDisabled:      as.CacheStatsEndpointDisabled,
 		TaskReliabilityDisabled:         as.TaskReliabilityDisabled,
 		CommitQueueDisabled:             as.CommitQueueDisabled,
 		HostAllocatorDisabled:           as.HostAllocatorDisabled,

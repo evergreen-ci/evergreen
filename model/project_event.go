@@ -25,8 +25,9 @@ type ProjectSettings struct {
 type ProjectSettingsEvent struct {
 	ProjectSettings `bson:",inline"`
 
-	// The following boolean fields are flags that indicate that a given field is nil instead of [], since this information is lost when casting the event to a generic interface.
-	FilesIgnoredFromCacheDefault bool `bson:"files_ignored_from_cache_default,omitempty" json:"files_ignored_from_cache_default,omitempty"`
+	// The following boolean fields are flags that indicate that a given
+	// field is nil instead of [], since this information is lost when
+	// casting the event to a generic interface.
 	GitTagAuthorizedTeamsDefault bool `bson:"git_tag_authorized_teams_default,omitempty" json:"git_tag_authorized_teams_default,omitempty"`
 	GitTagAuthorizedUsersDefault bool `bson:"git_tag_authorized_users_default,omitempty" json:"git_tag_authorized_users_default,omitempty"`
 	PatchTriggerAliasesDefault   bool `bson:"patch_trigger_aliases_default,omitempty" json:"patch_trigger_aliases_default,omitempty"`
@@ -53,14 +54,8 @@ func (p *ProjectChangeEvents) ApplyDefaults() {
 			continue
 		}
 
-		// Iterate through all flags for Before and After to properly nullify fields
-		if changeEvent.Before.FilesIgnoredFromCacheDefault {
-			changeEvent.Before.ProjectRef.FilesIgnoredFromCache = nil
-		}
-		if changeEvent.After.FilesIgnoredFromCacheDefault {
-			changeEvent.After.ProjectRef.FilesIgnoredFromCache = nil
-		}
-
+		// Iterate through all flags for Before and After to properly
+		// nullify fields.
 		if changeEvent.Before.GitTagAuthorizedTeamsDefault {
 			changeEvent.Before.ProjectRef.GitTagAuthorizedTeams = nil
 		}
@@ -231,9 +226,6 @@ func (p *ProjectSettings) resolveDefaults() *ProjectSettingsEvent {
 		ProjectSettings: *p,
 	}
 
-	if p.ProjectRef.FilesIgnoredFromCache == nil {
-		projectSettingsEvent.FilesIgnoredFromCacheDefault = true
-	}
 	if p.ProjectRef.GitTagAuthorizedTeams == nil {
 		projectSettingsEvent.GitTagAuthorizedTeamsDefault = true
 	}

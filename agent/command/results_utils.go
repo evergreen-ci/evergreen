@@ -137,18 +137,16 @@ func sendTestLogToCedar(ctx context.Context, t *task.Task, comm client.Communica
 
 func makeCedarTestResultsRecord(conf *internal.TaskConfig, displayTaskInfo *apimodels.DisplayTaskInfo) testresults.CreateOptions {
 	return testresults.CreateOptions{
-		Project:                conf.Task.Project,
-		Version:                conf.Task.Version,
-		Variant:                conf.Task.BuildVariant,
-		TaskID:                 conf.Task.Id,
-		TaskName:               conf.Task.DisplayName,
-		DisplayTaskID:          displayTaskInfo.ID,
-		DisplayTaskName:        displayTaskInfo.Name,
-		Execution:              int32(conf.Task.Execution),
-		RequestType:            conf.Task.Requester,
-		Mainline:               !conf.Task.IsPatchRequest(),
-		HistoricalDataIgnore:   conf.ProjectRef.FilesIgnoredFromCache,
-		HistoricalDataDisabled: conf.ProjectRef.IsStatsCacheDisabled(),
+		Project:         conf.Task.Project,
+		Version:         conf.Task.Version,
+		Variant:         conf.Task.BuildVariant,
+		TaskID:          conf.Task.Id,
+		TaskName:        conf.Task.DisplayName,
+		DisplayTaskID:   displayTaskInfo.ID,
+		DisplayTaskName: displayTaskInfo.Name,
+		Execution:       int32(conf.Task.Execution),
+		RequestType:     conf.Task.Requester,
+		Mainline:        !conf.Task.IsPatchRequest(),
 	}
 }
 
