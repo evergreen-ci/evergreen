@@ -72,12 +72,22 @@ func Evaluate() cli.Command {
 				}{}
 				if showTasks {
 					tmp.Functions = p.Functions
-					tmp.Tasks = p.Tasks
+					if diffable {
+						sortTasksByName := model.ProjectTasksByName(p.Tasks)
+						sort.Sort(sortTasksByName)
+						tmp.Tasks = sortTasksByName
+					} else {
+						tmp.Tasks = p.Tasks
+					}
 				}
 				if showVariants {
-					sortByName := model.BuildVariantsByName(p.BuildVariants)
-					sort.Sort(sortByName)
-					tmp.Variants = sortByName
+					if diffable {
+						sortBVsByName := model.BuildVariantsByName(p.BuildVariants)
+						sort.Sort(sortBVsByName)
+						tmp.Variants = sortBVsByName
+					} else {
+						tmp.Variants = p.BuildVariants
+					}
 				}
 				out = tmp
 			} else if diffable {
