@@ -398,20 +398,11 @@ func TestExportECSPodDefinitionOptions(t *testing.T) {
 		require.Equal(t, containerOpts.WorkingDir, utility.FromStringPtr(cDef.WorkingDir))
 		require.Len(t, cDef.PortMappings, 1)
 		assert.Equal(t, agentPort, utility.FromIntPtr(cDef.PortMappings[0].ContainerPort))
-		require.Len(t, cDef.EnvVars, 2)
-		for _, envVar := range cDef.EnvVars {
-			envVarName := utility.FromStringPtr(envVar.Name)
-			switch envVarName {
-			case "ENV_VAR":
-				assert.Equal(t, containerOpts.EnvVars[utility.FromStringPtr(envVar.Name)], utility.FromStringPtr(envVar.Value))
-			case "SECRET_ENV_VAR":
-				s := containerOpts.EnvSecrets[utility.FromStringPtr(envVar.Name)]
-				assert.Equal(t, s.ExternalID, utility.FromStringPtr(envVar.SecretOpts.ID))
-				assert.False(t, utility.FromBoolPtr(envVar.SecretOpts.Owned))
-			default:
-				require.FailNow(t, "unexpected environment variable '%s'", envVarName)
-			}
-		}
+
+		require.Len(t, cDef.EnvVars, 1, "container definition should contain just the secret environment variable, not the plaintext one")
+		expectedSecret := containerOpts.EnvSecrets[utility.FromStringPtr(cDef.EnvVars[0].Name)]
+		assert.Equal(t, expectedSecret.ExternalID, utility.FromStringPtr(cDef.EnvVars[0].SecretOpts.ID))
+		assert.False(t, utility.FromBoolPtr(cDef.EnvVars[0].SecretOpts.Owned))
 	})
 	t.Run("SucceedsWithRepositoryCredentials", func(t *testing.T) {
 		settings := validSettings()
@@ -473,12 +464,13 @@ func TestExportECSPodExecutionOptions(t *testing.T) {
 	}
 	getContainerOpts := func() pod.TaskContainerCreationOptions {
 		return pod.TaskContainerCreationOptions{
-			OS:   pod.OSLinux,
-			Arch: pod.ArchAMD64,
+			OS:      pod.OSLinux,
+			Arch:    pod.ArchAMD64,
+			EnvVars: map[string]string{"ENV_VAR": "value"},
 		}
 	}
 
-	t.Run("SpecifiesLinuxClusterAndCapacityProviderWithWindowsPod", func(t *testing.T) {
+	t.Run("SpecifiesLinuxClusterAndCapacityProviderWithLinuxPod", func(t *testing.T) {
 		ecsConf := getECSConfig()
 		containerOpts := getContainerOpts()
 		execOpts, err := ExportECSPodExecutionOptions(ecsConf, containerOpts)
@@ -490,6 +482,13 @@ func TestExportECSPodExecutionOptions(t *testing.T) {
 		require.NotZero(t, execOpts.AWSVPCOpts)
 		assert.Equal(t, ecsConf.AWSVPC.Subnets, execOpts.AWSVPCOpts.Subnets)
 		assert.Equal(t, ecsConf.AWSVPC.SecurityGroups, execOpts.AWSVPCOpts.SecurityGroups)
+		require.NotZero(t, execOpts.OverrideOpts)
+		require.Len(t, execOpts.OverrideOpts.ContainerDefinitions, 1, "should override the pod definition's container definition")
+		overrideContainerDef := execOpts.OverrideOpts.ContainerDefinitions[0]
+		require.Len(t, overrideContainerDef.EnvVars, 1, "should override the container definition's plaintext environment variables")
+		overrideEnvVar := overrideContainerDef.EnvVars[0]
+		assert.Equal(t, "ENV_VAR", utility.FromStringPtr(overrideEnvVar.Name), "should override environment variable")
+		assert.Equal(t, containerOpts.EnvVars["ENV_VAR"], utility.FromStringPtr(overrideEnvVar.Value), "should override plaintext environment variable's value")
 	})
 	t.Run("OmitsAWSVPCOptionsWhenUnset", func(t *testing.T) {
 		ecsConf := getECSConfig()
