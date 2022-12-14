@@ -614,6 +614,15 @@ func validateProjectConfigPlugins(pc *model.ProjectConfig) ValidationErrors {
 	return errs
 }
 
+func validateRunOn(runOn []string) bool {
+	for _, d := range runOn {
+		if d != "" {
+			return true
+		}
+	}
+	return false
+}
+
 // Ensures that the project has at least one buildvariant and also that all the
 // fields required for any buildvariant definition are present
 func validateBVFields(project *model.Project) ValidationErrors {
@@ -655,37 +664,24 @@ func validateBVFields(project *model.Project) ValidationErrors {
 
 		hasTaskWithoutDistro := false
 		for _, task := range buildVariant.Tasks {
-			taskHasValidDistro := false
-			for _, d := range task.RunOn {
-				if d != "" {
-					taskHasValidDistro = true
-					break
-				}
-			}
+			taskHasValidDistro := validateRunOn(task.RunOn)
 			if !taskHasValidDistro && task.IsGroup {
-				taskGroupTasksHasDistro := true
+				taskGroupTasksHaveDistro := true
 				for _, t := range project.FindTaskGroup(task.Name).Tasks {
 					pt := project.FindProjectTask(t)
 					if pt != nil {
-						for _, d := range pt.RunOn {
-							if d == "" {
-								taskGroupTasksHasDistro = false
-								break
-							}
+						if !validateRunOn(pt.RunOn) {
+							taskGroupTasksHaveDistro = false
+							break
 						}
 					}
 				}
-				taskHasValidDistro = taskGroupTasksHasDistro
+				taskHasValidDistro = taskGroupTasksHaveDistro
 			} else if !taskHasValidDistro {
 				// check for a default in the task definition
 				pt := project.FindProjectTask(task.Name)
 				if pt != nil {
-					for _, d := range pt.RunOn {
-						if d != "" {
-							taskHasValidDistro = true
-							break
-						}
-					}
+					taskHasValidDistro = validateRunOn(pt.RunOn)
 				}
 			}
 			if !taskHasValidDistro {
