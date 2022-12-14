@@ -248,7 +248,7 @@ func addDbSettingsFlags(flags ...cli.Flag) []cli.Flag {
 		cli.StringFlag{
 			Name:  dbUrlFlagName,
 			Usage: "Database URL(s). For a replica set, list all members separated by a comma.",
-			Value: evergreen.DefaultDatabaseUrl,
+			Value: evergreen.DefaultDatabaseURL,
 		},
 		cli.StringFlag{
 			Name:   dbCredsFileFlagName,
