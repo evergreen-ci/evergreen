@@ -1032,6 +1032,41 @@ func PopulatePeriodicNotificationJobs(parts int) amboy.QueueOperation {
 	}
 }
 
+func PopulateCacheHistoricalTaskDataJob(part int) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.Wrap(err, "getting service flags")
+		}
+		if flags.CacheStatsJobDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "cache historical task data job is disabled",
+				"impact":  "pre-computed task stats are not updated",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		projects, err := model.FindAllMergedTrackedProjectRefs()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		ts := utility.RoundPartOfDay(part).Format(TSFormat)
+
+		catcher := grip.NewBasicCatcher()
+		for _, project := range projects {
+			if !project.IsEnabled() || project.IsStatsCacheDisabled() {
+				continue
+			}
+
+			catcher.Wrapf(queue.Put(ctx, NewCacheHistoricalTaskDataJob(project.Id, ts)), "enqueueing cache historical task data job for project '%s'", project.Identifier)
+		}
+
+		return catcher.Resolve()
+	}
+}
+
 func PopulateSpawnhostExpirationCheckJob() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		hosts, err := host.FindSpawnhostsWithNoExpirationToExtend()
