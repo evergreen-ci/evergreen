@@ -35,7 +35,6 @@ type ProjectConfigFields struct {
 	WorkstationConfig        *WorkstationConfig             `yaml:"workstation_config,omitempty" bson:"workstation_config,omitempty"`
 	TaskSync                 *TaskSyncOptions               `yaml:"task_sync,omitempty" bson:"task_sync,omitempty"`
 	GithubTriggerAliases     []string                       `yaml:"github_trigger_aliases,omitempty" bson:"github_trigger_aliases,omitempty"`
-	PeriodicBuilds           []PeriodicBuildDefinition      `yaml:"periodic_builds,omitempty" bson:"periodic_builds,omitempty"`
 	ContainerSizeDefinitions []ContainerResources           `yaml:"container_size_definitions,omitempty" bson:"container_size_definitions,omitempty"`
 }
 

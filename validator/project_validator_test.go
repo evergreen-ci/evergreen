@@ -1042,30 +1042,6 @@ func TestValidateProjectTaskIdsAndTags(t *testing.T) {
 	})
 }
 
-func TestValidatePeriodicBuilds(t *testing.T) {
-	projectConfig := &model.ProjectConfig{
-		Id: "project-1",
-		ProjectConfigFields: model.ProjectConfigFields{
-			PeriodicBuilds: []model.PeriodicBuildDefinition{
-				{
-					ID:            "so_occasional",
-					ConfigFile:    "build.yml",
-					IntervalHours: -1,
-				},
-				{
-					ID:            "more_frequent",
-					ConfigFile:    "",
-					IntervalHours: 1,
-				},
-			},
-		},
-	}
-	validationErrs := validateProjectConfigPeriodicBuilds(projectConfig)
-	assert.Len(t, validationErrs, 2)
-	assert.Contains(t, validationErrs[0].Message, "interval must be a positive integer")
-	assert.Contains(t, validationErrs[1].Message, "a config file must be specified")
-}
-
 func TestValidatePlugins(t *testing.T) {
 	assert := assert.New(t)
 	require.NoError(t, db.Clear(model.ProjectRefCollection),
