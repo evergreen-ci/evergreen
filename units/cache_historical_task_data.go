@@ -2,13 +2,12 @@ package units
 
 import (
 	"context"
-	"fmt"
-	"regexp"
 	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/stats"
+	"github.com/evergreen-ci/evergreen/model/taskstats"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
@@ -19,7 +18,7 @@ import (
 
 const (
 	cacheHistoricalTaskDataName = "cache-historical-task-data"
-	maxSyncDuration             = time.Hour * 24 // one day
+	maxSyncDuration             = time.Hour * 24
 )
 
 func init() {
@@ -33,14 +32,6 @@ type cacheHistoricalTaskDataJob struct {
 	job.Base   `bson:"job_base" json:"job_base" yaml:"job_base"`
 }
 
-type dailyStatsRollup map[time.Time]map[string][]string
-
-type generateStatsFn func(ctx context.Context, opts stats.GenerateOptions) error
-type generateFunctions struct {
-	HourlyFns map[string]generateStatsFn
-	DailyFns  map[string]generateStatsFn
-}
-
 func NewCacheHistoricalTaskDataJob(projectId string, id string) amboy.Job {
 	j := makeCacheHistoricalTaskDataJob()
 	j.ProjectID = projectId
@@ -49,7 +40,7 @@ func NewCacheHistoricalTaskDataJob(projectId string, id string) amboy.Job {
 }
 
 func makeCacheHistoricalTaskDataJob() *cacheHistoricalTaskDataJob {
-	j := &cacheHistoricalTestDataJob{
+	j := &cacheHistoricalTaskDataJob{
 		Base: job.Base{
 			JobType: amboy.JobType{
 				Name:    cacheHistoricalTaskDataName,
@@ -89,55 +80,55 @@ func (j *cacheHistoricalTaskDataJob) Run(ctx context.Context) {
 		return
 	}
 
-	var statsStatus stats.StatsStatus
+	var statsStatus taskstats.StatsStatus
 	timingMsg["status_check"] = reportTiming(func() {
 		// Lookup last sync date for project.
-		statsStatus, err = stats.GetStatsStatus(j.ProjectID)
+		statsStatus, err = taskstats.GetStatsStatus(j.ProjectID)
 		j.AddError(errors.Wrap(err, "retrieving last sync date"))
 	}).Seconds()
 	if j.HasErrors() {
 		return
 	}
 
-	jobContext := cacheHistoricalJobContext{
-		ProjectID:     j.ProjectID,
-		JobTime:       time.Now(),
-		TasksToIgnore: tasksToIgnore,
-		catcher:       grip.NewBasicCatcher(),
-	}
-
 	syncFromTime := statsStatus.ProcessedTasksUntil
 	syncToTime := findTargetTimeForSync(syncFromTime)
 	timingMsg["sync_from"] = syncFromTime
 	timingMsg["sync_to"] = syncToTime
-	var statsToUpdate []stats.StatsToUpdate
+	var statsToUpdate []taskstats.StatsToUpdate
 	timingMsg["find_stats_to_update"] = reportTiming(func() {
-		statsToUpdate, err = stats.FindStatsToUpdate(stats.FindStatsOptions{
+		statsToUpdate, err = taskstats.FindStatsToUpdate(taskstats.FindStatsToUpdateOptions{
 			ProjectID:  j.ProjectID,
 			Requesters: j.Requesters,
 			Start:      syncFromTime,
 			End:        syncToTime,
 		})
-		j.AddError(errors.Wrap(err, "finding tasks to update"))
+		j.AddError(errors.Wrap(err, "finding stats to update"))
 	}).Seconds()
 	if j.HasErrors() {
 		return
 	}
 
-	generateMap := generateFunctions{
-		DailyFns: map[string]generateStatsFn{
-			"task": stats.GenerateDailyTaskStats,
-		},
-	}
-
-	timingMsg["update_rollups"] = reportTiming(func() {
-		timingInfo := jobContext.updateHourlyAndDailyStats(ctx, statsToUpdate, generateMap)
-		for k, v := range timingInfo {
-			timingMsg[k] = v.Seconds()
+	timingMsg["update_daily_task_stats"] = reportTiming(func() {
+		for _, toUpdate := range statsToUpdate {
+			if len(toUpdate.Tasks) > 0 {
+				err := errors.Wrap(taskstats.GenerateStats(ctx, taskstats.GenerateStatsOptions{
+					ProjectID: j.ProjectID,
+					Requester: toUpdate.Requester,
+					Date:      syncFromTime,
+					Tasks:     toUpdate.Tasks,
+				}), "generating daily task stats")
+				grip.Warning(message.WrapError(err, message.Fields{
+					"project_id": j.ProjectID,
+					"sync_date":  utility.GetUTCDay(syncFromTime),
+					"job_time":   startAt,
+				}))
+				if err != nil {
+					j.AddError(err)
+					return
+				}
+			}
 		}
 	}).Seconds()
-	ctxError := jobContext.catcher.Resolve()
-	j.AddError(ctxError)
 	if j.HasErrors() {
 		errorMsg := j.Error().Error()
 		// The following errors are known to recur. In these cases we
@@ -150,20 +141,9 @@ func (j *cacheHistoricalTaskDataJob) Run(ctx context.Context) {
 
 	timingMsg["save_stats_status"] = reportTiming(func() {
 		// Update last sync.
-		err = stats.UpdateStatsStatus(j.ProjectID, jobContext.JobTime, syncToTime, time.Since(startAt))
+		err = taskstats.UpdateStatsStatus(j.ProjectID, startAt, syncToTime, time.Since(startAt))
 		j.AddError(errors.Wrap(err, "updating last synced date"))
 	}).Seconds()
-	j.AddError(jobContext.catcher.Resolve())
-	if j.HasErrors() {
-		return
-	}
-}
-
-type cacheHistoricalJobContext struct {
-	ProjectID     string
-	JobTime       time.Time
-	TasksToIgnore []*regexp.Regexp
-	catcher       grip.Catcher
 }
 
 func reportTiming(fn func()) time.Duration {
@@ -172,142 +152,15 @@ func reportTiming(fn func()) time.Duration {
 	return time.Since(startAt)
 }
 
-func (c *cacheHistoricalJobContext) updateHourlyAndDailyStats(ctx context.Context, statsToUpdate []stats.StatsToUpdate, generateFns generateFunctions) map[string]time.Duration {
-	timingInfo := map[string]time.Duration{}
-	var err error
-	for name, genFn := range generateFns.HourlyFns {
-		timingInfo[fmt.Sprintf("update_hourly_%s", name)] = reportTiming(func() {
-			err = c.iteratorOverHourlyStats(ctx, statsToUpdate, genFn, name)
-			c.catcher.Add(err)
-		})
-		if err != nil {
-			c.catcher.Wrapf(err, "iterating over hourly stats function '%s'", name)
-		}
-	}
-
-	dailyStats := buildDailyStatsRollup(statsToUpdate)
-
-	for name, genFn := range generateFns.DailyFns {
-		timingInfo[fmt.Sprintf("update_daily_%s", name)] = reportTiming(func() {
-			err = c.iteratorOverDailyStats(ctx, dailyStats, genFn, name)
-			c.catcher.Add(err)
-		})
-		if err != nil {
-			c.catcher.Wrapf(err, "iterating over daily stats function '%s'", name)
-		}
-	}
-
-	return timingInfo
-}
-
-func (c *cacheHistoricalJobContext) iteratorOverDailyStats(ctx context.Context, dailyStats dailyStatsRollup, fn generateStatsFn, queryType string) error {
-	for day, stat := range dailyStats {
-		for requester, tasks := range stat {
-			taskList := c.filterIgnoredTasks(tasks, queryType)
-			if len(taskList) > 0 {
-				err := errors.Wrap(fn(ctx, stats.GenerateOptions{
-					ProjectID: c.ProjectID,
-					Requester: requester,
-					Window:    day,
-					Tasks:     taskList,
-					Runtime:   c.JobTime,
-				}), "syncing daily stats")
-				grip.Warning(message.WrapError(err, message.Fields{
-					"project_id": c.ProjectID,
-					"sync_date":  day,
-					"job_time":   c.JobTime,
-					"query_type": queryType,
-				}))
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
-
-	return nil
-}
-
-func (c *cacheHistoricalJobContext) iteratorOverHourlyStats(ctx context.Context, stat []stats.StatsToUpdate, fn generateStatsFn, queryType string) error {
-	for _, s := range stat {
-		taskList := c.filterIgnoredTasks(s.Tasks, queryType)
-		if len(taskList) > 0 {
-			err := errors.Wrap(fn(ctx, stats.GenerateOptions{
-				ProjectID: s.ProjectId,
-				Requester: s.Requester,
-				Window:    s.Hour,
-				Tasks:     taskList,
-				Runtime:   c.JobTime,
-			}), "syncing hourly stats")
-			grip.Warning(message.WrapError(err, message.Fields{
-				"project_id": s.ProjectId,
-				"sync_date":  s.Hour,
-				"job_time":   c.JobTime,
-				"query_type": queryType,
-			}))
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-// Certain tasks always generate unique names, so they will never have any history. Filter out
-// those tasks, so we don't waste time/space tracking them.
-func (c *cacheHistoricalJobContext) filterIgnoredTasks(taskList []string, queryType string) []string {
-	if !c.ShouldFilterTasks[queryType] {
-		return taskList
-	}
-
-	var filteredTaskList []string
-	for _, task := range taskList {
-		if !anyRegexMatch(task, c.TasksToIgnore) {
-			filteredTaskList = append(filteredTaskList, task)
-		}
-	}
-
-	return filteredTaskList
-}
-
-func anyRegexMatch(value string, regexList []*regexp.Regexp) bool {
-	for _, regexp := range regexList {
-		if regexp.MatchString(value) {
-			return true
-		}
-	}
-
-	return false
-}
-
-// Multiple hourly stats can belong to the same days, we roll up all work for one day into
-// a single batch.
-func buildDailyStatsRollup(hourlyStats []stats.StatsToUpdate) dailyStatsRollup {
-	rollup := make(dailyStatsRollup)
-	for _, stat := range hourlyStats {
-		if rollup[stat.Day] == nil {
-			rollup[stat.Day] = make(map[string][]string)
-		}
-
-		if rollup[stat.Day][stat.Requester] == nil {
-			rollup[stat.Day][stat.Requester] = stat.Tasks
-		} else {
-			rollup[stat.Day][stat.Requester] = append(rollup[stat.Day][stat.Requester], stat.Tasks...)
-		}
-	}
-
-	return rollup
-}
-
-// We only want to sync a max of 1 day of data at a time. So, if the
-// previous sync was more than 1 day ago, only sync 1 day
-// ahead. Otherwise, we can sync to now.
+// We only want to sync a max of 1 day of data at a time. So, if the previous
+// sync was more than 1 day ago, only sync 1 day ahead. Otherwise, we can sync
+// to now.
 func findTargetTimeForSync(previousSyncTime time.Time) time.Time {
 	now := time.Now()
 	maxSyncTime := previousSyncTime.Add(maxSyncDuration)
 
-	// Is the previous sync date within the max time we want to sync?
+	// Check if the previous sync date is within the max time we want to
+	// sync.
 	if maxSyncTime.After(now) {
 		return now
 	}

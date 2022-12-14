@@ -7,6 +7,7 @@ input RepoRefInput {
   buildBaronSettings: BuildBaronSettingsInput
   commitQueue: CommitQueueParamsInput
   deactivatePrevious: Boolean
+  disabledStatsCache: Boolean
   dispatchingDisabled: Boolean
   displayName: String
   enabled: Boolean
@@ -53,6 +54,7 @@ type RepoRef {
   buildBaronSettings: BuildBaronSettings!
   commitQueue: RepoCommitQueueParams!
   deactivatePrevious: Boolean!
+  disabledStatsCache: Boolean!
   dispatchingDisabled: Boolean!
   displayName: String!
   enabled: Boolean!

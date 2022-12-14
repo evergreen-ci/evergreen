@@ -288,6 +288,28 @@ Admin Settings
 													</md-radio-group>
 												</td>
 											</tr>
+                                                                                        <tr>
+												<td>Cache historical statistics</td>
+												<td colspan="2">
+													<md-radio-group
+														data-ng-model="Settings.service_flags.cache_stats_job_disabled"
+														layout="row">
+														<md-radio-button data-ng-value="false"></md-radio-button>
+														<md-radio-button data-ng-value="true"></md-radio-button>
+													</md-radio-group>
+												</td>
+											</tr>
+											<tr>
+												<td>Cache historical statistics endpoint</td>
+												<td colspan="2">
+													<md-radio-group
+														data-ng-model="Settings.service_flags.cache_stats_endpoint_disabled"
+														layout="row">
+														<md-radio-button data-ng-value="false"></md-radio-button>
+														<md-radio-button data-ng-value="true"></md-radio-button>
+													</md-radio-group>
+												</td>
+											</tr>
 											<tr>
 												<td>Process Commit Queue</td>
 												<td colspan="2">

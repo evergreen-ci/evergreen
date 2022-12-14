@@ -12,7 +12,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/reliability"
-	"github.com/evergreen-ci/evergreen/model/stats"
+	"github.com/evergreen-ci/evergreen/model/taskstats"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -69,23 +69,23 @@ func (trh *taskReliabilityHandler) ParseCommonFilter(vals url.Values) error {
 }
 
 // readGroupBy parses a group_by parameter value and returns the corresponding GroupBy struct.
-func (trh *taskReliabilityHandler) readGroupBy(groupByValue string) (stats.GroupBy, error) {
+func (trh *taskReliabilityHandler) readGroupBy(groupByValue string) (taskstats.GroupBy, error) {
 	switch groupByValue {
 
 	// Task query parameters.
 	case StatsAPITaskGroupByDistro:
-		return stats.GroupByDistro, nil
+		return taskstats.GroupByDistro, nil
 	case StatsAPITaskGroupByVariant:
-		return stats.GroupByVariant, nil
+		return taskstats.GroupByVariant, nil
 	case StatsAPITaskGroupByTask:
-		return stats.GroupByTask, nil
+		return taskstats.GroupByTask, nil
 
 	// Default value.
 	case "":
-		return stats.GroupByTask, nil
+		return taskstats.GroupByTask, nil
 
 	default:
-		return stats.GroupBy(""), gimlet.ErrorResponse{
+		return taskstats.GroupBy(""), gimlet.ErrorResponse{
 			Message:    "invalid 'group by'",
 			StatusCode: http.StatusBadRequest,
 		}
@@ -198,16 +198,16 @@ func (trh *taskReliabilityHandler) readString(value string, defaultValue string)
 
 // readSort parses a sort parameter value and returns the corresponding Sort struct.
 // defaults to latest first.
-func (trh *taskReliabilityHandler) readSort(sortValue string) (stats.Sort, error) {
+func (trh *taskReliabilityHandler) readSort(sortValue string) (taskstats.Sort, error) {
 	switch sortValue {
 	case statsAPISortEarliest:
-		return stats.SortEarliestFirst, nil
+		return taskstats.SortEarliestFirst, nil
 	case statsAPISortLatest:
-		return stats.SortLatestFirst, nil
+		return taskstats.SortLatestFirst, nil
 	case "":
-		return stats.SortLatestFirst, nil
+		return taskstats.SortLatestFirst, nil
 	default:
-		return stats.Sort(""), gimlet.ErrorResponse{
+		return taskstats.Sort(""), gimlet.ErrorResponse{
 			Message:    fmt.Sprintf("invalid sort '%s'", sortValue),
 			StatusCode: http.StatusBadRequest,
 		}
@@ -216,7 +216,7 @@ func (trh *taskReliabilityHandler) readSort(sortValue string) (stats.Sort, error
 
 func (trh *taskReliabilityHandler) Parse(ctx context.Context, r *http.Request) error {
 	trh.filter = reliability.TaskReliabilityFilter{
-		StatsFilter:  stats.StatsFilter{Project: gimlet.GetVars(r)["project_id"]},
+		StatsFilter:  taskstats.StatsFilter{Project: gimlet.GetVars(r)["project_id"]},
 		Significance: reliability.DefaultSignificance,
 	}
 

@@ -162,6 +162,7 @@ type Project {
   buildBaronSettings: BuildBaronSettings!
   commitQueue: CommitQueueParams!
   deactivatePrevious: Boolean
+  disabledStatsCache: Boolean
   dispatchingDisabled: Boolean
   displayName: String!
   enabled: Boolean

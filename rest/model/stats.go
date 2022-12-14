@@ -3,7 +3,7 @@ package model
 import (
 	"strings"
 
-	"github.com/evergreen-ci/evergreen/model/stats"
+	"github.com/evergreen-ci/evergreen/model/taskstats"
 	"github.com/evergreen-ci/utility"
 )
 
@@ -25,7 +25,7 @@ type APITaskStats struct {
 }
 
 // BuildFromService converts a service level struct to an API level struct.
-func (ts *APITaskStats) BuildFromService(v stats.TaskStats) {
+func (ts *APITaskStats) BuildFromService(v taskstats.TaskStats) {
 	ts.TaskName = utility.ToStringPtr(v.TaskName)
 	ts.BuildVariant = utility.ToStringPtr(v.BuildVariant)
 	ts.Distro = utility.ToStringPtr(v.Distro)

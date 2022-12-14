@@ -2127,6 +2127,8 @@ type APIServiceFlags struct {
 	CLIUpdatesDisabled              bool `json:"cli_updates_disabled"`
 	BackgroundStatsDisabled         bool `json:"background_stats_disabled"`
 	TaskLoggingDisabled             bool `json:"task_logging_disabled"`
+	CacheStatsJobDisabled           bool `json:"cache_stats_job_disabled"`
+	CacheStatsEndpointDisabled      bool `json:"cache_stats_endpoint_disabled"`
 	TaskReliabilityDisabled         bool `json:"task_reliability_disabled"`
 	CommitQueueDisabled             bool `json:"commit_queue_disabled"`
 	HostAllocatorDisabled           bool `json:"host_allocator_disabled"`
@@ -2413,6 +2415,8 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.GithubStatusAPIDisabled = v.GithubStatusAPIDisabled
 		as.BackgroundStatsDisabled = v.BackgroundStatsDisabled
 		as.TaskLoggingDisabled = v.TaskLoggingDisabled
+		as.CacheStatsJobDisabled = v.CacheStatsJobDisabled
+		as.CacheStatsEndpointDisabled = v.CacheStatsEndpointDisabled
 		as.TaskReliabilityDisabled = v.TaskReliabilityDisabled
 		as.CommitQueueDisabled = v.CommitQueueDisabled
 		as.HostAllocatorDisabled = v.HostAllocatorDisabled
@@ -2452,6 +2456,8 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		GithubStatusAPIDisabled:         as.GithubStatusAPIDisabled,
 		BackgroundStatsDisabled:         as.BackgroundStatsDisabled,
 		TaskLoggingDisabled:             as.TaskLoggingDisabled,
+		CacheStatsJobDisabled:           as.CacheStatsJobDisabled,
+		CacheStatsEndpointDisabled:      as.CacheStatsEndpointDisabled,
 		TaskReliabilityDisabled:         as.TaskReliabilityDisabled,
 		CommitQueueDisabled:             as.CommitQueueDisabled,
 		HostAllocatorDisabled:           as.HostAllocatorDisabled,

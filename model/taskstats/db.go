@@ -1,6 +1,7 @@
-package stats
+package taskstats
 
-// This file provides database layer logic for pre-computed task execution statistics.
+// This file provides database layer logic for pre-computed task execution
+// statistics.
 // The database schema is the following:
 // *daily_stats_status*
 // {
@@ -55,7 +56,7 @@ const (
 )
 
 var (
-	// $ references to the BSON fields of tasks.
+	// '$' references to the BSON fields of tasks.
 	taskIdKeyRef           = "$" + task.IdKey
 	taskExecutionKeyRef    = "$" + task.ExecutionKey
 	taskProjectKeyRef      = "$" + task.ProjectKey
@@ -67,7 +68,6 @@ var (
 	taskStatusKeyRef       = "$" + task.StatusKey
 	taskDetailsKeyRef      = "$" + task.DetailsKey
 	taskTimeTakenKeyRef    = "$" + task.TimeTakenKey
-	taskOldTaskIdKeyRef    = "$" + task.OldTaskIdKey
 )
 
 // Convenient type to use for arrays in pipeline definitions.
@@ -113,7 +113,7 @@ func (d *DbTaskStats) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(d)
 func (d *DbTaskStats) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, d) }
 
 var (
-	// BSON fields for the task stats id struct
+	// BSON fields for the task stats ID struct.
 	DbTaskStatsIdTaskNameKey     = bsonutil.MustHaveTag(DbTaskStatsId{}, "TaskName")
 	DbTaskStatsIdBuildVariantKey = bsonutil.MustHaveTag(DbTaskStatsId{}, "BuildVariant")
 	DbTaskStatsIdDistroKey       = bsonutil.MustHaveTag(DbTaskStatsId{}, "Distro")
@@ -121,7 +121,7 @@ var (
 	DbTaskStatsIdRequesterKey    = bsonutil.MustHaveTag(DbTaskStatsId{}, "Requester")
 	DbTaskStatsIdDateKey         = bsonutil.MustHaveTag(DbTaskStatsId{}, "Date")
 
-	// BSON fields for the test stats struct
+	// BSON fields for the task stats struct.
 	DbTaskStatsIdKey                 = bsonutil.MustHaveTag(DbTaskStats{}, "Id")
 	DbTaskStatsNumSuccessKey         = bsonutil.MustHaveTag(DbTaskStats{}, "NumSuccess")
 	DbTaskStatsNumFailedKey          = bsonutil.MustHaveTag(DbTaskStats{}, "NumFailed")
@@ -132,7 +132,7 @@ var (
 	DbTaskStatsAvgDurationSuccessKey = bsonutil.MustHaveTag(DbTaskStats{}, "AvgDurationSuccess")
 	DbTaskStatsLastUpdateKey         = bsonutil.MustHaveTag(DbTaskStats{}, "LastUpdate")
 
-	// BSON dotted field names for task stats id elements
+	// BSON dotted field names for task stats ID elements.
 	DbTaskStatsIdTaskNameKeyFull     = bsonutil.GetDottedKeyName(DbTaskStatsIdKey, DbTaskStatsIdTaskNameKey)
 	DbTaskStatsIdBuildVariantKeyFull = bsonutil.GetDottedKeyName(DbTaskStatsIdKey, DbTaskStatsIdBuildVariantKey)
 	DbTaskStatsIdDistroKeyFull       = bsonutil.GetDottedKeyName(DbTaskStatsIdKey, DbTaskStatsIdDistroKey)
@@ -141,24 +141,10 @@ var (
 	DbTaskStatsIdDateKeyFull         = bsonutil.GetDottedKeyName(DbTaskStatsIdKey, DbTaskStatsIdDateKey)
 )
 
-// dailyTaskStatsPipeline returns a pipeline aggregating task documents into daily task stats.
-func dailyTaskStatsPipeline(projectId string, requester string, start time.Time, end time.Time, tasks []string, lastUpdate time.Time) []bson.M {
-	return getDailyTaskStatsPipeline(projectId, requester, start, end, tasks, lastUpdate, false)
-}
-
-// getDailyTaskStatsPipeline is an internal helper function to create a pipeline aggregating task
-// documents into daily task stats.
-func getDailyTaskStatsPipeline(projectId string, requester string, start time.Time, end time.Time, tasks []string, lastUpdate time.Time, oldTasks bool) []bson.M {
-	var taskIdExpr string
-	var displayTaskLookupCollection string
-	if oldTasks {
-		taskIdExpr = taskOldTaskIdKeyRef
-		displayTaskLookupCollection = task.OldCollection
-	} else {
-		taskIdExpr = taskIdKeyRef
-		displayTaskLookupCollection = task.Collection
-	}
-	pipeline := []bson.M{
+// statsPipeline returns a pipeline aggregating task documents into daily task
+// stats.
+func statsPipeline(projectId string, requester string, start time.Time, end time.Time, tasks []string) []bson.M {
+	return []bson.M{
 		{"$match": bson.M{
 			task.ProjectKey:     projectId,
 			task.RequesterKey:   requester,
@@ -167,7 +153,7 @@ func getDailyTaskStatsPipeline(projectId string, requester string, start time.Ti
 		}},
 		{"$project": bson.M{
 			task.IdKey:                   0,
-			"task_id":                    taskIdExpr,
+			"task_id":                    taskIdKeyRef,
 			"execution":                  taskExecutionKeyRef,
 			DbTaskStatsIdProjectKey:      taskProjectKeyRef,
 			DbTaskStatsIdTaskNameKey:     taskDisplayNameKeyRef,
@@ -179,7 +165,7 @@ func getDailyTaskStatsPipeline(projectId string, requester string, start time.Ti
 			"time_taken":                 bson.M{"$divide": Array{taskTimeTakenKeyRef, nsInASecond}},
 		}},
 		{"$lookup": bson.M{
-			"from":         displayTaskLookupCollection,
+			"from":         task.Collection,
 			"localField":   "task_id",
 			"foreignField": task.ExecutionTasksKey,
 			"as":           "display_task",
@@ -213,22 +199,13 @@ func getDailyTaskStatsPipeline(projectId string, requester string, start time.Ti
 				"then": "$time_taken", "else": "IGNORE"}}}}},
 		{"$addFields": bson.M{
 			"_id." + DbTaskStatsIdDateKey: start,
-			DbTaskStatsLastUpdateKey:      lastUpdate,
+			DbTaskStatsLastUpdateKey:      time.Now(),
 		}},
 	}
-	return pipeline
 }
 
-var (
-	statsToUpdateProjectKey   = bsonutil.MustHaveTag(StatsToUpdate{}, "ProjectId")
-	statsToUpdateRequesterKey = bsonutil.MustHaveTag(StatsToUpdate{}, "Requester")
-	statsToUpdateDayKey       = bsonutil.MustHaveTag(StatsToUpdate{}, "Day")
-	statsToUpdateHourKey      = bsonutil.MustHaveTag(StatsToUpdate{}, "Hour")
-	statsToUpdateTasksKey     = bsonutil.MustHaveTag(StatsToUpdate{}, "Tasks")
-)
-
-// statsToUpdatePipeline returns a pipeline aggregating task documents into documents describing tasks for which
-// the stats need to be updated.
+// statsToUpdatePipeline returns a pipeline aggregating task documents into
+// documents describing tasks for which the stats need to be updated.
 func statsToUpdatePipeline(projectID string, requester []string, start, end time.Time) []bson.M {
 	match := bson.M{
 		task.ProjectKey:    projectID,
@@ -245,36 +222,35 @@ func statsToUpdatePipeline(projectID string, requester []string, start, end time
 		{"$match": match},
 		{"$project": bson.M{
 			task.IdKey:                0,
-			statsToUpdateProjectKey:   taskProjectKeyRef,
 			statsToUpdateRequesterKey: taskRequesterKeyRef,
-			statsToUpdateHourKey:      bson.M{"$dateToString": bson.M{"date": taskCreateTimeKeyRef, "format": "%Y-%m-%d %H"}},
 			statsToUpdateDayKey:       bson.M{"$dateToString": bson.M{"date": taskCreateTimeKeyRef, "format": "%Y-%m-%d"}},
 			"task_name":               taskDisplayNameKeyRef,
 		}},
 		{"$group": bson.M{
 			"_id": bson.M{
-				statsToUpdateProjectKey:   "$" + statsToUpdateProjectKey,
 				statsToUpdateRequesterKey: "$" + statsToUpdateRequesterKey,
-				statsToUpdateHourKey:      "$" + statsToUpdateHourKey,
 				statsToUpdateDayKey:       "$" + statsToUpdateDayKey,
 			},
 			statsToUpdateTasksKey: bson.M{"$addToSet": "$task_name"},
 		}},
 		{"$project": bson.M{
 			"_id":                     0,
-			statsToUpdateProjectKey:   "$_id." + statsToUpdateProjectKey,
 			statsToUpdateRequesterKey: "$_id." + statsToUpdateRequesterKey,
-			statsToUpdateHourKey:      bson.M{"$dateFromString": bson.M{"dateString": "$_id." + statsToUpdateHourKey, "format": "%Y-%m-%d %H"}},
 			statsToUpdateDayKey:       bson.M{"$dateFromString": bson.M{"dateString": "$_id." + statsToUpdateDayKey, "format": "%Y-%m-%d"}},
 			statsToUpdateTasksKey:     1,
 		}},
 		{"$sort": bson.D{
-			{Key: statsToUpdateProjectKey, Value: 1},
-			{Key: statsToUpdateHourKey, Value: 1},
+			{Key: statsToUpdateDayKey, Value: 1},
 			{Key: statsToUpdateRequesterKey, Value: 1},
 		}},
 	}
 }
+
+var (
+	statsToUpdateRequesterKey = bsonutil.MustHaveTag(StatsToUpdate{}, "Requester")
+	statsToUpdateDayKey       = bsonutil.MustHaveTag(StatsToUpdate{}, "Day")
+	statsToUpdateTasksKey     = bsonutil.MustHaveTag(StatsToUpdate{}, "Tasks")
+)
 
 ///////////////////////////////////////////
 // Queries on the precomputed statistics //

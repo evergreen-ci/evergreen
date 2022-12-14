@@ -96,6 +96,9 @@ type ProjectRef struct {
 	// between what is in GitHub and what is in Evergreen
 	RepotrackerError *RepositoryErrorDetails `bson:"repotracker_error" json:"repotracker_error"`
 
+	// Disable task stats caching for this project.
+	DisabledStatsCache *bool `bson:"disabled_stats_cache,omitempty" json:"disabled_stats_cache,omitempty"`
+
 	// List of commands
 	// Lacks omitempty so that SetupCommands can be identified as either [] or nil in a ProjectSettingsEvent
 	WorkstationConfig WorkstationConfig `bson:"workstation_config" json:"workstation_config"`
@@ -272,6 +275,7 @@ var (
 	ProjectRefRemotePathKey               = bsonutil.MustHaveTag(ProjectRef{}, "RemotePath")
 	ProjectRefHiddenKey                   = bsonutil.MustHaveTag(ProjectRef{}, "Hidden")
 	ProjectRefRepotrackerError            = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerError")
+	ProjectRefDisabledStatsCacheKey       = bsonutil.MustHaveTag(ProjectRef{}, "DisabledStatsCache")
 	ProjectRefAdminsKey                   = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
 	ProjectRefGitTagAuthorizedUsersKey    = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedUsers")
 	ProjectRefGitTagAuthorizedTeamsKey    = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedTeams")
@@ -378,6 +382,10 @@ func (p *ProjectRef) ShouldNotifyOnBuildFailure() bool {
 
 func (p *ProjectRef) IsGitTagVersionsEnabled() bool {
 	return utility.FromBoolPtr(p.GitTagVersionsEnabled)
+}
+
+func (p *ProjectRef) IsStatsCacheDisabled() bool {
+	return utility.FromBoolPtr(p.DisabledStatsCache)
 }
 
 func (p *ProjectRef) IsHidden() bool {
@@ -1843,6 +1851,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			projectRefRepotrackerDisabledKey:   p.RepotrackerDisabled,
 			projectRefPatchingDisabledKey:      p.PatchingDisabled,
 			projectRefTaskSyncKey:              p.TaskSync,
+			ProjectRefDisabledStatsCacheKey:    p.DisabledStatsCache,
 		}
 		// Unlike other fields, this will only be set if we're actually modifying it since it's used by the backend.
 		if p.TracksPushEvents != nil {

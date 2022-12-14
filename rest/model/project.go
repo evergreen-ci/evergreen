@@ -455,6 +455,7 @@ type APIProjectRef struct {
 	DispatchingDisabled         *bool                     `json:"dispatching_disabled"`
 	StepbackDisabled            *bool                     `json:"stepback_disabled"`
 	VersionControlEnabled       *bool                     `json:"version_control_enabled"`
+	DisabledStatsCache          *bool                     `json:"disabled_stats_cache"`
 	Admins                      []*string                 `json:"admins"`
 	DeleteAdmins                []*string                 `json:"delete_admins,omitempty"`
 	GitTagAuthorizedUsers       []*string                 `json:"git_tag_authorized_users" bson:"git_tag_authorized_users"`
@@ -513,6 +514,7 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		DispatchingDisabled:    utility.BoolPtrCopy(p.DispatchingDisabled),
 		StepbackDisabled:       utility.BoolPtrCopy(p.StepbackDisabled),
 		VersionControlEnabled:  utility.BoolPtrCopy(p.VersionControlEnabled),
+		DisabledStatsCache:     utility.BoolPtrCopy(p.DisabledStatsCache),
 		NotifyOnBuildFailure:   utility.BoolPtrCopy(p.NotifyOnBuildFailure),
 		SpawnHostScriptPath:    utility.FromStringPtr(p.SpawnHostScriptPath),
 		Admins:                 utility.FromStringPtrSlice(p.Admins),
@@ -593,6 +595,7 @@ func (p *APIProjectRef) BuildFromService(projectRef model.ProjectRef) error {
 	p.DispatchingDisabled = utility.BoolPtrCopy(projectRef.DispatchingDisabled)
 	p.StepbackDisabled = utility.BoolPtrCopy(projectRef.StepbackDisabled)
 	p.VersionControlEnabled = utility.BoolPtrCopy(projectRef.VersionControlEnabled)
+	p.DisabledStatsCache = utility.BoolPtrCopy(projectRef.DisabledStatsCache)
 	p.NotifyOnBuildFailure = utility.BoolPtrCopy(projectRef.NotifyOnBuildFailure)
 	p.SpawnHostScriptPath = utility.ToStringPtr(projectRef.SpawnHostScriptPath)
 	p.Admins = utility.ToStringPtrSlice(projectRef.Admins)

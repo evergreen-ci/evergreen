@@ -609,6 +609,7 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 	s.Equal(cachedProject.PatchingDisabled, projectRef.PatchingDisabled)
 	s.Equal(cachedProject.Admins, utility.FromStringPtrSlice(projectRef.Admins))
 	s.Equal(cachedProject.NotifyOnBuildFailure, projectRef.NotifyOnBuildFailure)
+	s.Equal(cachedProject.DisabledStatsCache, projectRef.DisabledStatsCache)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -791,6 +792,7 @@ func getTestProjectRef() *serviceModel.ProjectRef {
 		PatchingDisabled:     utility.FalsePtr(),
 		Admins:               []string{"langdon.alger"},
 		NotifyOnBuildFailure: utility.FalsePtr(),
+		DisabledStatsCache:   utility.TruePtr(),
 	}
 }
 

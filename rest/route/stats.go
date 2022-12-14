@@ -1,6 +1,7 @@
 package route
 
-// This file defines the handlers for the endpoints to query the test and task execution statistics.
+// This file defines the handlers for the endpoint to query the task execution
+// statistics.
 
 import (
 	"context"
@@ -13,7 +14,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	dbModel "github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/stats"
+	"github.com/evergreen-ci/evergreen/model/taskstats"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
@@ -50,7 +51,7 @@ const (
 ///////////////////////////////////////////////////////////////////////
 
 type StatsHandler struct {
-	filter stats.StatsFilter
+	filter taskstats.StatsFilter
 }
 
 // ParseCommonFilter parses the query parameter values and fills the struct filter field.
@@ -203,16 +204,16 @@ func (sh *StatsHandler) readInt(intString string, min, max, defaultValue int) (i
 }
 
 // readTestGroupBy parses a sort parameter value and returns the corresponding Sort struct.
-func (sh *StatsHandler) readSort(sortValue string) (stats.Sort, error) {
+func (sh *StatsHandler) readSort(sortValue string) (taskstats.Sort, error) {
 	switch sortValue {
 	case statsAPISortEarliest:
-		return stats.SortEarliestFirst, nil
+		return taskstats.SortEarliestFirst, nil
 	case statsAPISortLatest:
-		return stats.SortLatestFirst, nil
+		return taskstats.SortLatestFirst, nil
 	case "":
-		return stats.SortEarliestFirst, nil
+		return taskstats.SortEarliestFirst, nil
 	default:
-		return stats.Sort(""), gimlet.ErrorResponse{
+		return taskstats.Sort(""), gimlet.ErrorResponse{
 			Message:    fmt.Sprintf("invalid sort '%s'", sortValue),
 			StatusCode: http.StatusBadRequest,
 		}
@@ -220,19 +221,19 @@ func (sh *StatsHandler) readSort(sortValue string) (stats.Sort, error) {
 }
 
 // readGroupBy parses a group_by parameter value and returns the corresponding GroupBy struct.
-func (sh *StatsHandler) readGroupBy(groupByValue string) (stats.GroupBy, error) {
+func (sh *StatsHandler) readGroupBy(groupByValue string) (taskstats.GroupBy, error) {
 	switch groupByValue {
 	case StatsAPITaskGroupByDistro:
-		return stats.GroupByDistro, nil
+		return taskstats.GroupByDistro, nil
 	case StatsAPITaskGroupByVariant:
-		return stats.GroupByVariant, nil
+		return taskstats.GroupByVariant, nil
 	case StatsAPITaskGroupByTask:
-		return stats.GroupByTask, nil
+		return taskstats.GroupByTask, nil
 	// Default value.
 	case "":
-		return stats.GroupByDistro, nil
+		return taskstats.GroupByDistro, nil
 	default:
-		return stats.GroupBy(""), gimlet.ErrorResponse{
+		return taskstats.GroupBy(""), gimlet.ErrorResponse{
 			Message:    fmt.Sprintf("invalid grouping '%s'", groupByValue),
 			StatusCode: http.StatusBadRequest,
 		}
@@ -240,7 +241,7 @@ func (sh *StatsHandler) readGroupBy(groupByValue string) (stats.GroupBy, error) 
 }
 
 // readStartAt parses a start_at key value and returns the corresponding StartAt struct.
-func (sh *StatsHandler) readStartAt(startAtValue string) (*stats.StartAt, error) {
+func (sh *StatsHandler) readStartAt(startAtValue string) (*taskstats.StartAt, error) {
 	if startAtValue == "" {
 		return nil, nil
 	}
@@ -258,7 +259,7 @@ func (sh *StatsHandler) readStartAt(startAtValue string) (*stats.StartAt, error)
 			StatusCode: http.StatusBadRequest,
 		}
 	}
-	return &stats.StartAt{
+	return &taskstats.StartAt{
 		Date:         date,
 		BuildVariant: elements[1],
 		Task:         elements[2],
@@ -289,7 +290,7 @@ func (tsh *taskStatsHandler) Parse(ctx context.Context, r *http.Request) error {
 	if err != nil {
 		return errors.Wrapf(err, "project ID not found for project '%s'", project)
 	}
-	tsh.filter = stats.StatsFilter{Project: projectId}
+	tsh.filter = taskstats.StatsFilter{Project: projectId}
 
 	if err = tsh.StatsHandler.parseStatsFilter(r.URL.Query()); err != nil {
 		return errors.Wrap(err, "invalid query parameters")
@@ -301,12 +302,23 @@ func (tsh *taskStatsHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (tsh *taskStatsHandler) Run(ctx context.Context) gimlet.Responder {
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting service flags"))
+	}
+	if flags.CacheStatsEndpointDisabled {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message:    "endpoint is disabled",
+			StatusCode: http.StatusServiceUnavailable,
+		})
+	}
+
 	taskStatsResult, err := data.GetTaskStats(tsh.filter)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting task stats"))
 	}
 	if len(taskStatsResult) == 0 {
-		statsStatus, err := stats.GetStatsStatus(tsh.filter.Project)
+		statsStatus, err := taskstats.GetStatsStatus(tsh.filter.Project)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting stats status for project '%s'", tsh.filter.Project))
 		}
