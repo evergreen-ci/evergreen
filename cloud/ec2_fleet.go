@@ -241,7 +241,7 @@ func (m *ec2FleetManager) GetInstanceStatus(ctx context.Context, h *host.Host) (
 	instance, err := m.client.GetInstanceInfo(ctx, h.Id)
 	if err != nil {
 
-		if ec2err, ok := errors.Cause(errors.Cause(err)).(awserr.Error); ok && ec2err.Code() == EC2ErrorNotFound {
+		if ec2err, ok := errors.Cause(err).(awserr.Error); ok && ec2err.Code() == EC2ErrorNotFound {
 			return StatusNonExistent, nil
 		}
 		grip.Error(message.WrapError(err, message.Fields{

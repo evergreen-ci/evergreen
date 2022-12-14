@@ -58,12 +58,10 @@ func TestFleet(t *testing.T) {
 			assert.Equal(t, "us-east-1a", hDb.Zone)
 		},
 		"GetInstanceStatusNonExistent": func(*testing.T) {
-			aws_error := awserr.New(EC2ErrorNotFound, "The instance ID 'test-id' does not exist", nil)
-			wrapped_aws_error := errors.Wrap(
-				errors.Wrap(aws_error, "after 6 attempts, operation failed"),
-				"EC2 API returned error for DescribeInstances")
+			awsError := awserr.New(EC2ErrorNotFound, "The instance ID 'test-id' does not exist", nil)
+			wrappedAwsError := errors.Wrap(awsError, "EC2 API returned error for DescribeInstances")
 			mockClient := m.client.(*awsClientMock)
-			mockClient.requestGetInstanceInfoError = wrapped_aws_error
+			mockClient.RequestGetInstanceInfoError = wrappedAwsError
 			status, err := m.GetInstanceStatus(context.Background(), h)
 			assert.NoError(t, err)
 			assert.Equal(t, StatusNonExistent, status)
