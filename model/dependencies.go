@@ -143,14 +143,19 @@ func (di *dependencyIncluder) updateDeactivationMap(pair TVPair, generatedVarian
 		// one pair that depends on this new dep being active - so we cannot deactivate it.
 		if _, foundPair := di.deactivateGeneratedDeps[pair]; !foundPair || !pairSpecifiesActivation {
 			di.deactivateGeneratedDeps[pair] = pairSpecifiesActivation
-			di.recursivelyUpdateDeactivationMap(pair, pairSpecifiesActivation)
+			di.recursivelyUpdateDeactivationMap(pair, map[TVPair]bool{}, pairSpecifiesActivation)
 		}
 	}
 }
 
 // recursivelyUpdateDeactivationMap recurses through the full dependencies of a task and updates their value
 // in the deactivateGeneratedDeps based on the pairSpecifiesActivation input.
-func (di *dependencyIncluder) recursivelyUpdateDeactivationMap(pair TVPair, pairSpecifiesActivation bool) {
+func (di *dependencyIncluder) recursivelyUpdateDeactivationMap(pair TVPair, dependencyIncluded map[TVPair]bool, pairSpecifiesActivation bool) {
+	// If we've been here before, return early to avoid infinite recursion and extra work.
+	if dependencyIncluded[pair] {
+		return
+	}
+	dependencyIncluded[pair] = true
 	bvt := di.Project.FindTaskForVariant(pair.TaskName, pair.Variant)
 	if bvt != nil {
 		deps := di.expandDependencies(pair, bvt.DependsOn)
@@ -160,7 +165,7 @@ func (di *dependencyIncluder) recursivelyUpdateDeactivationMap(pair TVPair, pair
 			if _, foundDep := di.deactivateGeneratedDeps[dep]; !foundDep || !pairSpecifiesActivation {
 				di.deactivateGeneratedDeps[dep] = pairSpecifiesActivation
 			}
-			di.recursivelyUpdateDeactivationMap(dep, pairSpecifiesActivation)
+			di.recursivelyUpdateDeactivationMap(dep, dependencyIncluded, pairSpecifiesActivation)
 		}
 	}
 }
