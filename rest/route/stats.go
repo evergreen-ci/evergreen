@@ -245,9 +245,9 @@ func (sh *StatsHandler) readStartAt(startAtValue string) (*stats.StartAt, error)
 		return nil, nil
 	}
 	elements := strings.Split(startAtValue, "|")
-	if len(elements) != 5 {
+	if len(elements) != 4 {
 		return nil, gimlet.ErrorResponse{
-			Message:    "invalid 'start' time",
+			Message:    "invalid 'start at' value",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
@@ -262,7 +262,7 @@ func (sh *StatsHandler) readStartAt(startAtValue string) (*stats.StartAt, error)
 		Date:         date,
 		BuildVariant: elements[1],
 		Task:         elements[2],
-		Distro:       elements[4],
+		Distro:       elements[3],
 	}, nil
 }
 
