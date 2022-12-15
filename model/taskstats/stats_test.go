@@ -17,7 +17,6 @@ import (
 var baseTime = time.Date(2018, 7, 15, 16, 45, 0, 0, time.UTC)
 var baseHour = time.Date(2018, 7, 15, 16, 0, 0, 0, time.UTC)
 var baseDay = time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC)
-var jobTime = time.Date(1998, 7, 12, 20, 45, 0, 0, time.UTC)
 var commit1 = baseTime
 var commit2 = baseTime.Add(26 * time.Hour)
 var finish1 = baseTime.Add(5 * 24 * time.Hour)
@@ -44,7 +43,6 @@ func (s *statsSuite) SetupTest() {
 }
 
 func (s *statsSuite) TestStatsStatus() {
-
 	// Check that we get a default status when there is no doc in the database.
 	status, err := GetStatsStatus("p1")
 	s.NoError(err)
@@ -66,8 +64,7 @@ func (s *statsSuite) TestStatsStatus() {
 	s.Equal(baseDay.UTC(), status.ProcessedTasksUntil.UTC())
 }
 
-func (s *statsSuite) TestGenerateDailyTaskStats() {
-
+func (s *statsSuite) TestGenerateStats() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -75,23 +72,21 @@ func (s *statsSuite) TestGenerateDailyTaskStats() {
 	s.initTasks()
 
 	// Generate task stats for project p1 and an unknown task.
-	err := GenerateDailyTaskStats(ctx, GenerateOptions{
+	s.Require().NoError(GenerateStats(ctx, GenerateStatsOptions{
 		ProjectID: "p1",
 		Requester: "r1",
-		Window:    baseHour,
+		Date:      baseHour,
 		Tasks:     []string{"unknown_task"},
-		Runtime:   jobTime})
-	s.NoError(err)
+	}))
 	s.Equal(0, s.countDailyTaskDocs())
 
 	// Generate task stats for project p1.
-	err = GenerateDailyTaskStats(ctx, GenerateOptions{
+	s.Require().NoError(GenerateStats(ctx, GenerateStatsOptions{
 		ProjectID: "p1",
 		Requester: "r1",
-		Window:    baseHour,
+		Date:      baseHour,
 		Tasks:     []string{"task1", "task2"},
-		Runtime:   jobTime})
-	s.NoError(err)
+	}))
 	s.Equal(3, s.countDailyTaskDocs())
 	doc, err := GetDailyTaskDoc(DbTaskStatsId{
 		Project:      "p1",
@@ -101,7 +96,7 @@ func (s *statsSuite) TestGenerateDailyTaskStats() {
 		Distro:       "d1",
 		Date:         baseDay,
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(doc)
 	doc, err = GetDailyTaskDoc(DbTaskStatsId{
 		Project:      "p1",
@@ -111,7 +106,7 @@ func (s *statsSuite) TestGenerateDailyTaskStats() {
 		Distro:       "d1",
 		Date:         baseDay,
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(doc)
 	doc, err = GetDailyTaskDoc(DbTaskStatsId{
 		Project:      "p1",
@@ -121,13 +116,12 @@ func (s *statsSuite) TestGenerateDailyTaskStats() {
 		Distro:       "d1",
 		Date:         baseDay,
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(doc)
 
-	// Generate task stats for project p4 to check status aggregation
-	err = GenerateDailyTaskStats(ctx, GenerateOptions{ProjectID: "p4", Requester: "r1", Window: baseHour, Tasks: []string{"task1"}, Runtime: jobTime})
-	s.NoError(err)
-	s.Equal(4, s.countDailyTaskDocs()) // 1 more task combination was added to the collection
+	// Generate task stats for project p4 to check status aggregation.
+	s.Require().NoError(GenerateStats(ctx, GenerateStatsOptions{ProjectID: "p4", Requester: "r1", Date: baseHour, Tasks: []string{"task1"}}))
+	s.Equal(4, s.countDailyTaskDocs()) // 1 more task combination was added to the collection.
 	doc, err = GetDailyTaskDoc(DbTaskStatsId{
 		Project:      "p4",
 		Requester:    "r1",
@@ -136,8 +130,8 @@ func (s *statsSuite) TestGenerateDailyTaskStats() {
 		Distro:       "d1",
 		Date:         baseDay,
 	})
-	s.NoError(err)
-	s.NotNil(doc)
+	s.Require().NoError(err)
+	s.Require().NotNil(doc)
 	s.Equal(2, doc.NumSuccess)
 	s.Equal(8, doc.NumFailed)
 	s.Equal(1, doc.NumTestFailed)
@@ -145,12 +139,11 @@ func (s *statsSuite) TestGenerateDailyTaskStats() {
 	s.Equal(3, doc.NumSetupFailed)
 	s.Equal(2, doc.NumTimeout)
 	s.Equal(float64(150), doc.AvgDurationSuccess)
-	s.WithinDuration(jobTime, doc.LastUpdate, 0)
+	s.WithinDuration(time.Now(), doc.LastUpdate, time.Minute)
 
 	// Generate task for project p2
-	err = GenerateDailyTaskStats(ctx, GenerateOptions{ProjectID: "p2", Requester: "r1", Window: baseHour, Tasks: []string{"task1"}, Runtime: jobTime})
-	s.NoError(err)
-	s.Equal(5, s.countDailyTaskDocs()) // 1 more task combination was added to the collection
+	s.Require().NoError(GenerateStats(ctx, GenerateStatsOptions{ProjectID: "p2", Requester: "r1", Date: baseHour, Tasks: []string{"task1"}}))
+	s.Equal(5, s.countDailyTaskDocs()) // 1 more task combination was added to the collection.
 	doc, err = GetDailyTaskDoc(DbTaskStatsId{
 		Project:      "p2",
 		Requester:    "r1",
@@ -159,104 +152,64 @@ func (s *statsSuite) TestGenerateDailyTaskStats() {
 		Distro:       "d1",
 		Date:         baseDay,
 	})
-	s.NoError(err)
-	s.NotNil(doc)
+	s.Require().NoError(err)
+	s.Require().NotNil(doc)
 	s.Equal(0, doc.NumSuccess)
 	s.Equal(2, doc.NumFailed)
 	s.Equal(2, doc.NumTestFailed)
 	s.Equal(0, doc.NumSystemFailed)
 	s.Equal(0, doc.NumSetupFailed)
 	s.Equal(0, doc.NumTimeout)
-	s.WithinDuration(jobTime, doc.LastUpdate, 0)
+	s.WithinDuration(time.Now(), doc.LastUpdate, time.Minute)
 }
 
 func (s *statsSuite) TestFindStatsToUpdate() {
-
 	// Insert task docs.
 	s.initTasksToUpdate()
 
-	// Find stats for p5 for a period with no finished tasks
+	// Find stats for p5 for a period with no finished tasks.
 	start := baseHour
 	end := baseHour.Add(time.Hour)
-	statsList, err := FindStatsToUpdate(FindStatsOptions{ProjectID: "p5", Requesters: nil, Start: start, End: end})
-	s.NoError(err)
+	statsList, err := FindStatsToUpdate(FindStatsToUpdateOptions{ProjectID: "p5", Requesters: nil, Start: start, End: end})
+	s.Require().NoError(err)
 	s.Len(statsList, 0)
 
-	// Find stats for p5 for a period around finish1
+	// Find stats for p5 for a period around finish1.
 	start = finish1.Add(-1 * time.Hour)
 	end = finish1.Add(time.Hour)
-	statsList, err = FindStatsToUpdate(FindStatsOptions{ProjectID: "p5", Requesters: nil, Start: start, End: end})
-	s.NoError(err)
+	statsList, err = FindStatsToUpdate(FindStatsToUpdateOptions{ProjectID: "p5", Requesters: nil, Start: start, End: end})
+	s.Require().NoError(err)
 	s.Len(statsList, 2)
 
-	// Find stats for p5 for a period around finished1, filtering
-	// by requester
-	statsList, err = FindStatsToUpdate(FindStatsOptions{ProjectID: "p5", Requesters: []string{"r2"}, Start: start, End: end})
-	s.NoError(err)
+	// Find stats for p5 for a period around finished1, filtering by
+	// requester.
+	statsList, err = FindStatsToUpdate(FindStatsToUpdateOptions{ProjectID: "p5", Requesters: []string{"r2"}, Start: start, End: end})
+	s.Require().NoError(err)
 	s.Len(statsList, 1)
-	statsList, err = FindStatsToUpdate(FindStatsOptions{ProjectID: "p5", Requesters: []string{"r1", "r2"}, Start: start, End: end})
-	s.NoError(err)
-	s.Len(statsList, 2)
+	statsList, err = FindStatsToUpdate(FindStatsToUpdateOptions{ProjectID: "p5", Requesters: []string{"r1", "r2"}, Start: start, End: end})
+	s.Require().NoError(err)
+	s.Require().Len(statsList, 2)
 
-	// The results are sorted so we know the order
-	s.Equal("p5", statsList[0].ProjectId)
+	// The results are sorted so we know the order.
 	s.Equal("r1", statsList[0].Requester)
-	s.WithinDuration(utility.GetUTCHour(commit1), statsList[0].Hour, 0)
-	s.WithinDuration(utility.GetUTCDay(commit1), statsList[0].Day, 0)
+	s.Equal(utility.GetUTCDay(commit1), statsList[0].Day)
 	s.Equal([]string{"task1"}, statsList[0].Tasks)
 
 	// Find stats for p5 for a period around finish1
 	start = finish1.Add(-1 * time.Hour)
 	end = finish1.Add(time.Hour)
-	statsList, err = FindStatsToUpdate(FindStatsOptions{ProjectID: "p5", Requesters: nil, Start: start, End: end})
-	s.NoError(err)
-	s.Len(statsList, 2)
+	statsList, err = FindStatsToUpdate(FindStatsToUpdateOptions{ProjectID: "p5", Requesters: nil, Start: start, End: end})
+	s.Require().NoError(err)
+	s.Require().Len(statsList, 2)
 	// The results are sorted so we know the order
-	s.Equal("p5", statsList[0].ProjectId)
 	s.Equal("r1", statsList[0].Requester)
-	s.WithinDuration(utility.GetUTCHour(commit1), statsList[0].Hour, 0)
-	s.WithinDuration(utility.GetUTCDay(commit1), statsList[0].Day, 0)
+	s.Equal(utility.GetUTCDay(commit1), statsList[0].Day)
 	s.Equal([]string{"task1"}, statsList[0].Tasks)
-	s.Equal("p5", statsList[1].ProjectId)
 	s.Equal("r2", statsList[1].Requester)
-	s.WithinDuration(utility.GetUTCHour(commit2), statsList[1].Hour, 0)
-	s.WithinDuration(utility.GetUTCDay(commit2), statsList[1].Day, 0)
-	s.Len(statsList[1].Tasks, 2)
+	s.Equal(utility.GetUTCDay(commit2), statsList[1].Day)
+	s.Require().Len(statsList[1].Tasks, 2)
 	s.Contains(statsList[1].Tasks, "task2")
 	s.Contains(statsList[1].Tasks, "task2bis")
-}
-
-func (s *statsSuite) TestStatsToUpdate() {
-
-	stats1 := StatsToUpdate{"p1", "r1", baseHour, baseDay, []string{"task1", "task2"}}
-	stats1bis := StatsToUpdate{"p1", "r1", baseHour, baseDay, []string{"task1", "task"}}
-	stats1later := StatsToUpdate{"p1", "r1", baseHour.Add(time.Hour), baseDay, []string{"task1", "task2"}}
-	stats1r2 := StatsToUpdate{"p1", "r2", baseHour, baseDay, []string{"task1", "task2"}}
-	stats2 := StatsToUpdate{"p2", "r1", baseHour, baseDay, []string{"task1", "task2"}}
-
-	// canMerge
-	s.True(stats1.canMerge(&stats1))
-	s.True(stats1.canMerge(&stats1bis))
-	s.False(stats1.canMerge(&stats1later))
-	s.False(stats1.canMerge(&stats1r2))
-	// comparison
-	s.True(stats1.lt(&stats2))
-	s.True(stats1.lt(&stats1later))
-	s.True(stats1.lt(&stats1r2))
-	s.False(stats1.lt(&stats1))
-	s.False(stats1.lt(&stats1bis))
-	// merge
-	merged := stats1.merge(&stats1bis)
-	s.Equal(merged.ProjectId, stats1.ProjectId)
-	s.Equal(merged.Requester, stats1.Requester)
-	s.Equal(merged.Hour, stats1.Hour)
-	s.Equal(merged.Day, stats1.Day)
-	for _, t := range stats1.Tasks {
-		s.Contains(merged.Tasks, t)
-	}
-	for _, t := range stats1bis.Tasks {
-		s.Contains(merged.Tasks, t)
-	}
 }
 
 /////////////////////////////////////////
