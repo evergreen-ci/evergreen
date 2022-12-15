@@ -10,7 +10,7 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/reliability"
-	"github.com/evergreen-ci/evergreen/model/stats"
+	"github.com/evergreen-ci/evergreen/model/taskstats"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,21 +20,21 @@ const dayInHours = 24 * time.Hour
 
 func TestMockGetTaskReliability(t *testing.T) {
 	assert := assert.New(t)
-	require.NoError(t, db.ClearCollections(model.ProjectRefCollection, stats.DailyTaskStatsCollection))
+	require.NoError(t, db.ClearCollections(model.ProjectRefCollection, taskstats.DailyTaskStatsCollection))
 
 	proj := model.ProjectRef{
 		Id: "project",
 	}
 	require.NoError(t, proj.Insert())
 	filter := reliability.TaskReliabilityFilter{
-		StatsFilter: stats.StatsFilter{
+		StatsFilter: taskstats.StatsFilter{
 			Limit:        100,
 			Project:      "project",
 			Requesters:   []string{"requester"},
 			Tasks:        []string{"task1"},
 			GroupBy:      "distro",
 			GroupNumDays: 1,
-			Sort:         stats.SortEarliestFirst,
+			Sort:         taskstats.SortEarliestFirst,
 			BeforeDate:   utility.GetUTCDay(time.Now().Add(dayInHours)),
 			AfterDate:    utility.GetUTCDay(time.Now().Add(-dayInHours)),
 		},
@@ -49,8 +49,8 @@ func TestMockGetTaskReliability(t *testing.T) {
 	for i := 0; i < 102; i++ {
 		taskName := fmt.Sprintf("%v%v", "task_", i)
 		tasks = append(tasks, taskName)
-		err = db.Insert(stats.DailyTaskStatsCollection, mgobson.M{
-			"_id": stats.DbTaskStatsId{
+		err = db.Insert(taskstats.DailyTaskStatsCollection, mgobson.M{
+			"_id": taskstats.DbTaskStatsId{
 				Project:      "project",
 				Requester:    "requester",
 				TaskName:     taskName,
@@ -62,14 +62,14 @@ func TestMockGetTaskReliability(t *testing.T) {
 		require.NoError(t, err)
 	}
 	filter = reliability.TaskReliabilityFilter{
-		StatsFilter: stats.StatsFilter{
+		StatsFilter: taskstats.StatsFilter{
 			Limit:        100,
 			Project:      "project",
 			Requesters:   []string{"requester"},
 			Tasks:        tasks,
 			GroupBy:      "distro",
 			GroupNumDays: 1,
-			Sort:         stats.SortEarliestFirst,
+			Sort:         taskstats.SortEarliestFirst,
 			BeforeDate:   utility.GetUTCDay(time.Now().Add(dayInHours)),
 			AfterDate:    utility.GetUTCDay(time.Now().Add(-dayInHours)),
 		},
@@ -94,23 +94,23 @@ func TestMockGetTaskReliability(t *testing.T) {
 
 func TestGetTaskReliability(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(stats.DailyTaskStatsCollection, model.ProjectRefCollection))
+		assert.NoError(t, db.ClearCollections(taskstats.DailyTaskStatsCollection, model.ProjectRefCollection))
 	}()
-	assert.NoError(t, db.ClearCollections(stats.DailyTaskStatsCollection, model.ProjectRefCollection))
+	assert.NoError(t, db.ClearCollections(taskstats.DailyTaskStatsCollection, model.ProjectRefCollection))
 
 	proj := model.ProjectRef{
 		Id: "project",
 	}
 	require.NoError(t, proj.Insert())
-	stat := stats.DbTaskStats{
-		Id: stats.DbTaskStatsId{
+	stat := taskstats.DbTaskStats{
+		Id: taskstats.DbTaskStatsId{
 			Project:   "projectID",
 			TaskName:  "t0",
 			Date:      time.Date(2022, 02, 15, 0, 0, 0, 0, time.UTC),
 			Requester: evergreen.RepotrackerVersionRequester,
 		},
 	}
-	assert.NoError(t, db.Insert(stats.DailyTaskStatsCollection, stat))
+	assert.NoError(t, db.Insert(taskstats.DailyTaskStatsCollection, stat))
 	projectRef := model.ProjectRef{
 		Id:         "projectID",
 		Identifier: "projectName",
@@ -121,8 +121,8 @@ func TestGetTaskReliability(t *testing.T) {
 	filter.Project = "projectName"
 	filter.GroupNumDays = 1
 	filter.Requesters = []string{evergreen.RepotrackerVersionRequester}
-	filter.Sort = stats.SortLatestFirst
-	filter.GroupBy = stats.GroupByTask
+	filter.Sort = taskstats.SortLatestFirst
+	filter.GroupBy = taskstats.GroupByTask
 	filter.AfterDate = time.Time{}
 	filter.BeforeDate = time.Date(2022, 02, 16, 0, 0, 0, 0, time.UTC)
 	filter.Limit = 1
