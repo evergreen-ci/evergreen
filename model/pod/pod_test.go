@@ -836,7 +836,9 @@ func TestTaskContainerCreationOptionsHash(t *testing.T) {
 		baseHash := baseOpts.Hash()
 
 		t.Run("ReturnsSameValueForSameInput", func(t *testing.T) {
-			assert.Equal(t, baseHash, baseOpts.Hash())
+			for i := 0; i < 5; i++ {
+				assert.Equal(t, baseHash, baseOpts.Hash(), "hash attempt %d produced different hash value", i)
+			}
 		})
 		t.Run("ChangesForImage", func(t *testing.T) {
 			var opts TaskContainerCreationOptions
@@ -883,7 +885,7 @@ func TestTaskContainerCreationOptionsHash(t *testing.T) {
 			opts.EnvVars = map[string]string{
 				"ENV_VAR": "value",
 			}
-			assert.NotEqual(t, baseHash, opts.Hash(), "env vars should affect hash")
+			assert.Equal(t, baseHash, opts.Hash(), "env vars should not affect hash")
 		})
 		t.Run("ReturnsSameValueForSameUnorderedEnvVars", func(t *testing.T) {
 			var opts TaskContainerCreationOptions
@@ -894,7 +896,8 @@ func TestTaskContainerCreationOptionsHash(t *testing.T) {
 			}
 			h0 := opts.Hash()
 			h1 := opts.Hash()
-			assert.Equal(t, h0, h1, "order of env vars should not affect hash")
+			assert.Equal(t, baseHash, h0, "env vars should not affect hash")
+			assert.Equal(t, h0, h1, "env vars should not affect hash")
 		})
 		t.Run("ReturnsSameValueForSameUnorderedEnvSecrets", func(t *testing.T) {
 			var opts TaskContainerCreationOptions

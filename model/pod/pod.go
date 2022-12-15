@@ -436,56 +436,6 @@ func ImportWindowsVersion(winVer evergreen.WindowsVersion) (WindowsVersion, erro
 	}
 }
 
-type hashableEnvVar struct {
-	name  string
-	value string
-}
-
-func (hev hashableEnvVar) hash() string {
-	h := utility.NewSHA1Hash()
-	h.Add(hev.name)
-	h.Add(hev.value)
-	return h.Sum()
-}
-
-type hashableEnvVars []hashableEnvVar
-
-func newHashableEnvVars(envVars map[string]string) hashableEnvVars {
-	var hev hashableEnvVars
-	for k, v := range envVars {
-		hev = append(hev, hashableEnvVar{
-			name:  k,
-			value: v,
-		})
-	}
-	sort.Sort(hev)
-	return hev
-}
-
-func (hev hashableEnvVars) hash() string {
-	if !sort.IsSorted(hev) {
-		sort.Sort(hev)
-	}
-
-	h := utility.NewSHA1Hash()
-	for _, ev := range hev {
-		h.Add(ev.hash())
-	}
-	return h.Sum()
-}
-
-func (hev hashableEnvVars) Len() int {
-	return len(hev)
-}
-
-func (hev hashableEnvVars) Less(i, j int) bool {
-	return hev[i].name < hev[j].name
-}
-
-func (hev hashableEnvVars) Swap(i, j int) {
-	hev[i], hev[j] = hev[j], hev[i]
-}
-
 type hashableEnvSecret struct {
 	name   string
 	secret Secret
@@ -536,7 +486,9 @@ func (hes hashableEnvSecrets) Swap(i, j int) {
 	hes[i], hes[j] = hes[j], hes[i]
 }
 
-// Hash returns the hash digest of the creation options for the container.
+// Hash returns the hash digest of the creation options for the container. This
+// is used to create a pod definition, which acts as a template for the actual
+// pod that will run the container.
 func (o *TaskContainerCreationOptions) Hash() string {
 	h := utility.NewSHA1Hash()
 	h.Add(o.Image)
@@ -547,7 +499,13 @@ func (o *TaskContainerCreationOptions) Hash() string {
 	h.Add(string(o.Arch))
 	h.Add(string(o.WindowsVersion))
 	h.Add(o.WorkingDir)
-	h.Add(newHashableEnvVars(o.EnvVars).hash())
+	// This intentionally does not hash the plaintext environment variables
+	// because some of them (such as the pod ID) vary between each pod. If they
+	// were included in the pod definition, it would reduce the reusability of
+	// pod definitions across different pods.
+	// Instead of setting these per-pod values during pod definition creation,
+	// the environment variables are injected via overriding options when the
+	// pod is started, so they are not relevant to the creation options hash.
 	h.Add(newHashableEnvSecrets(o.EnvSecrets).hash())
 	return h.Sum()
 }

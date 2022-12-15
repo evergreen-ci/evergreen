@@ -540,7 +540,6 @@ func (p *ProjectRef) MergeWithProjectConfig(version string) (err error) {
 			err = recovery.HandlePanicWithError(recover(), err, "project ref and project config structures do not match")
 		}()
 		pRefToMerge := ProjectRef{
-			PeriodicBuilds:           projectConfig.PeriodicBuilds,
 			GithubTriggerAliases:     projectConfig.GithubTriggerAliases,
 			ContainerSizeDefinitions: projectConfig.ContainerSizeDefinitions,
 		}
