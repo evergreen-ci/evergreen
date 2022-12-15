@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model/stats"
+	"github.com/evergreen-ci/evergreen/model/taskstats"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 )
@@ -12,7 +12,7 @@ import (
 func TestAPITaskStatsBuildFromService(t *testing.T) {
 	assert := assert.New(t)
 
-	serviceDoc := stats.TaskStats{
+	serviceDoc := taskstats.TaskStats{
 		TaskName:     "task1",
 		BuildVariant: "variant1",
 		Distro:       "distro1",
