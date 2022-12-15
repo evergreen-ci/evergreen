@@ -73,7 +73,7 @@ func getURL(projectID string, parameters map[string]interface{}) string {
 	return url
 }
 
-func TestParseParameters(t *testing.T) {
+func TestReliabilityParseParameters(t *testing.T) {
 
 	groupContext, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -316,7 +316,7 @@ func TestParseParameters(t *testing.T) {
 
 					resp := err.(gimlet.ErrorResponse)
 					require.Equal(t, http.StatusBadRequest, resp.StatusCode)
-					require.Equal(t, "invalid 'start' time", resp.Message)
+					require.Equal(t, "invalid 'start at' value", resp.Message)
 				},
 				"valid: blank": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {
 					err := setupTest(t)
@@ -336,7 +336,7 @@ func TestParseParameters(t *testing.T) {
 
 					values := url.Values{
 						"tasks":    []string{"aggregation_expression_multiversion_fuzzer"},
-						"start_at": []string{"2019-08-21||||"},
+						"start_at": []string{"2019-08-21|||"},
 					}
 
 					err = handler.parseTaskReliabilityFilter(values)
@@ -365,7 +365,7 @@ func TestParseParameters(t *testing.T) {
 	}
 }
 
-func TestParse(t *testing.T) {
+func TestReliabilityParse(t *testing.T) {
 	groupContext, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -470,7 +470,7 @@ func TestParse(t *testing.T) {
 	}
 }
 
-func TestRun(t *testing.T) {
+func TestReliabilityRun(t *testing.T) {
 	groupContext, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	require.NoError(t, db.ClearCollections(taskstats.DailyTaskStatsCollection, model.ProjectRefCollection))
@@ -932,7 +932,7 @@ func TestReliability(t *testing.T) {
 
 					resp := err.(gimlet.ErrorResponse)
 					require.Equal(t, http.StatusBadRequest, resp.StatusCode)
-					require.Equal(t, "invalid 'start' time", resp.Message)
+					require.Equal(t, "invalid 'start at' value", resp.Message)
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
