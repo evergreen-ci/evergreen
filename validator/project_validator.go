@@ -666,17 +666,15 @@ func validateBVFields(project *model.Project) ValidationErrors {
 		for _, task := range buildVariant.Tasks {
 			taskHasValidDistro := validateRunOn(task.RunOn)
 			if !taskHasValidDistro && task.IsGroup {
-				taskGroupTasksHaveDistro := true
 				for _, t := range project.FindTaskGroup(task.Name).Tasks {
 					pt := project.FindProjectTask(t)
 					if pt != nil {
-						if !validateRunOn(pt.RunOn) {
-							taskGroupTasksHaveDistro = false
+						if validateRunOn(pt.RunOn) {
+							taskHasValidDistro = true
 							break
 						}
 					}
 				}
-				taskHasValidDistro = taskGroupTasksHaveDistro
 			} else if !taskHasValidDistro {
 				// check for a default in the task definition
 				pt := project.FindProjectTask(task.Name)
