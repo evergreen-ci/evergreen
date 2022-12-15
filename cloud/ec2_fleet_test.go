@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/birch"
@@ -13,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -54,6 +56,15 @@ func TestFleet(t *testing.T) {
 			hDb, err := host.FindOneId("h1")
 			assert.NoError(t, err)
 			assert.Equal(t, "us-east-1a", hDb.Zone)
+		},
+		"GetInstanceStatusNonExistent": func(*testing.T) {
+			awsError := awserr.New(EC2ErrorNotFound, "The instance ID 'test-id' does not exist", nil)
+			wrappedAwsError := errors.Wrap(awsError, "EC2 API returned error for DescribeInstances")
+			mockClient := m.client.(*awsClientMock)
+			mockClient.RequestGetInstanceInfoError = wrappedAwsError
+			status, err := m.GetInstanceStatus(context.Background(), h)
+			assert.NoError(t, err)
+			assert.Equal(t, StatusNonExistent, status)
 		},
 		"TerminateInstance": func(*testing.T) {
 			assert.NoError(t, m.TerminateInstance(context.Background(), h, "evergreen", ""))
