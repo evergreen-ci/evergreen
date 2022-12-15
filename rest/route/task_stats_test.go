@@ -14,7 +14,7 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/reliability"
-	"github.com/evergreen-ci/evergreen/model/stats"
+	"github.com/evergreen-ci/evergreen/model/taskstats"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
@@ -24,15 +24,15 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
-type StatsSuite struct {
+type TaskStatsSuite struct {
 	suite.Suite
 }
 
-func TestStatsSuite(t *testing.T) {
-	suite.Run(t, new(StatsSuite))
+func TestTaskStatsSuite(t *testing.T) {
+	suite.Run(t, new(TaskStatsSuite))
 }
 
-func (s *StatsSuite) SetupSuite() {
+func (s *TaskStatsSuite) SetupSuite() {
 	s.NoError(db.ClearCollections(model.ProjectRefCollection))
 	proj := model.ProjectRef{
 		Id: "project",
@@ -40,7 +40,7 @@ func (s *StatsSuite) SetupSuite() {
 	s.NoError(proj.Insert())
 }
 
-func (s *StatsSuite) TestParseStatsFilter() {
+func (s *TaskStatsSuite) TestParseStatsFilter() {
 	values := url.Values{
 		"requesters":  []string{statsAPIRequesterMainline, statsAPIRequesterPatch},
 		"after_date":  []string{"1998-07-12"},
@@ -65,13 +65,13 @@ func (s *StatsSuite) TestParseStatsFilter() {
 	s.Equal([]string{"v1", "v2", "v3"}, handler.filter.BuildVariants)
 	s.Nil(handler.filter.Distros)
 	s.Nil(handler.filter.StartAt)
-	s.Equal(stats.GroupByDistro, handler.filter.GroupBy)  // default value
-	s.Equal(stats.SortEarliestFirst, handler.filter.Sort) // default value
-	s.Equal(statsAPIMaxLimit+1, handler.filter.Limit)     // default value
+	s.Equal(taskstats.GroupByDistro, handler.filter.GroupBy)  // default value
+	s.Equal(taskstats.SortEarliestFirst, handler.filter.Sort) // default value
+	s.Equal(statsAPIMaxLimit+1, handler.filter.Limit)         // default value
 }
 
-func (s *StatsSuite) TestRunTaskHandler() {
-	s.Require().NoError(db.ClearCollections(stats.DailyTaskStatsCollection))
+func (s *TaskStatsSuite) TestRunTaskHandler() {
+	s.Require().NoError(db.ClearCollections(taskstats.DailyTaskStatsCollection))
 
 	handler := makeGetProjectTaskStats("https://example.net/task").(*taskStatsHandler)
 
@@ -83,7 +83,7 @@ func (s *StatsSuite) TestRunTaskHandler() {
 	s.Equal(http.StatusOK, resp.Status())
 	s.Nil(resp.Pages())
 
-	s.Require().NoError(db.ClearCollections(stats.DailyTaskStatsCollection))
+	s.Require().NoError(db.ClearCollections(taskstats.DailyTaskStatsCollection))
 
 	// 101 documents will be returned
 	s.insertTaskStats(handler, 101, 101)
@@ -98,14 +98,14 @@ func (s *StatsSuite) TestRunTaskHandler() {
 	s.Equal(docs[handler.filter.Limit-1].StartAtKey(), resp.Pages().Next.Key)
 }
 
-func (s *StatsSuite) insertTaskStats(handler *taskStatsHandler, numTests int, limit int) {
+func (s *TaskStatsSuite) insertTaskStats(handler *taskStatsHandler, numTests int, limit int) {
 	day := time.Now()
 	tasks := []string{}
 	for i := 0; i < numTests; i++ {
 		taskName := fmt.Sprintf("%v%v", "task", i)
 		tasks = append(tasks, taskName)
-		err := db.Insert(stats.DailyTaskStatsCollection, mgobson.M{
-			"_id": stats.DbTaskStatsId{
+		err := db.Insert(taskstats.DailyTaskStatsCollection, mgobson.M{
+			"_id": taskstats.DbTaskStatsId{
 				Project:      "project",
 				Requester:    "requester",
 				TaskName:     taskName,
@@ -116,14 +116,14 @@ func (s *StatsSuite) insertTaskStats(handler *taskStatsHandler, numTests int, li
 		})
 		s.Require().NoError(err)
 	}
-	handler.filter = stats.StatsFilter{
+	handler.filter = taskstats.StatsFilter{
 		Limit:        limit,
 		Project:      "project",
 		Requesters:   []string{"requester"},
 		Tasks:        tasks,
 		GroupBy:      "distro",
 		GroupNumDays: 1,
-		Sort:         stats.SortEarliestFirst,
+		Sort:         taskstats.SortEarliestFirst,
 		BeforeDate:   utility.GetUTCDay(time.Now().Add(dayInHours)),
 		AfterDate:    utility.GetUTCDay(time.Now().Add(-dayInHours)),
 	}

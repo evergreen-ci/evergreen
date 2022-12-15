@@ -16,7 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/reliability"
-	"github.com/evergreen-ci/evergreen/model/stats"
+	"github.com/evergreen-ci/evergreen/model/taskstats"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -384,7 +384,7 @@ func TestParse(t *testing.T) {
 					err = handler.parseTaskReliabilityFilter(values)
 					require.NoError(t, err)
 					require.Equal(t, values["tasks"], handler.filter.Tasks)
-					require.Equal(t, handler.filter.Sort, stats.SortLatestFirst)
+					require.Equal(t, handler.filter.Sort, taskstats.SortLatestFirst)
 					require.Equal(t, handler.filter.Significance, reliability.DefaultSignificance)
 
 					require.Equal(t, handler.filter.Requesters, []string{"gitter_request"})
@@ -473,7 +473,7 @@ func TestParse(t *testing.T) {
 func TestRun(t *testing.T) {
 	groupContext, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	require.NoError(t, db.ClearCollections(stats.DailyTaskStatsCollection, model.ProjectRefCollection))
+	require.NoError(t, db.ClearCollections(taskstats.DailyTaskStatsCollection, model.ProjectRefCollection))
 	proj := model.ProjectRef{
 		Id: "project",
 	}
@@ -499,14 +499,14 @@ func TestRun(t *testing.T) {
 					err := setupTest(t)
 					require.NoError(t, err)
 					handler.filter = reliability.TaskReliabilityFilter{
-						StatsFilter: stats.StatsFilter{
+						StatsFilter: taskstats.StatsFilter{
 							Limit:        100,
 							Project:      "project",
 							Requesters:   []string{"requester"},
 							Tasks:        []string{"no_such_task"},
 							GroupBy:      "distro",
 							GroupNumDays: 1,
-							Sort:         stats.SortEarliestFirst,
+							Sort:         taskstats.SortEarliestFirst,
 							BeforeDate:   utility.GetUTCDay(time.Now().Add(dayInHours)),
 							AfterDate:    utility.GetUTCDay(time.Now().Add(-dayInHours)),
 						},
@@ -530,8 +530,8 @@ func TestRun(t *testing.T) {
 					for i := 0; i < 100; i++ {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
-						err = db.Insert(stats.DailyTaskStatsCollection, mgobson.M{
-							"_id": stats.DbTaskStatsId{
+						err = db.Insert(taskstats.DailyTaskStatsCollection, mgobson.M{
+							"_id": taskstats.DbTaskStatsId{
 								Project:      "project",
 								Requester:    "requester",
 								TaskName:     taskName,
@@ -543,14 +543,14 @@ func TestRun(t *testing.T) {
 						require.NoError(t, err)
 					}
 					handler.filter = reliability.TaskReliabilityFilter{
-						StatsFilter: stats.StatsFilter{
+						StatsFilter: taskstats.StatsFilter{
 							Limit:        1,
 							Project:      "project",
 							Requesters:   []string{"requester"},
 							Tasks:        tasks,
 							GroupBy:      "distro",
 							GroupNumDays: 1,
-							Sort:         stats.SortEarliestFirst,
+							Sort:         taskstats.SortEarliestFirst,
 							BeforeDate:   utility.GetUTCDay(time.Now().Add(dayInHours)),
 							AfterDate:    utility.GetUTCDay(time.Now().Add(-dayInHours)),
 						},
@@ -574,8 +574,8 @@ func TestRun(t *testing.T) {
 					for i := 0; i < 1001; i++ {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
-						err = db.Insert(stats.DailyTaskStatsCollection, mgobson.M{
-							"_id": stats.DbTaskStatsId{
+						err = db.Insert(taskstats.DailyTaskStatsCollection, mgobson.M{
+							"_id": taskstats.DbTaskStatsId{
 								Project:      "project",
 								Requester:    "requester",
 								TaskName:     taskName,
@@ -587,14 +587,14 @@ func TestRun(t *testing.T) {
 						require.NoError(t, err)
 					}
 					handler.filter = reliability.TaskReliabilityFilter{
-						StatsFilter: stats.StatsFilter{
+						StatsFilter: taskstats.StatsFilter{
 							Limit:        1000,
 							Project:      "project",
 							Requesters:   []string{"requester"},
 							Tasks:        tasks,
 							GroupBy:      "distro",
 							GroupNumDays: 1,
-							Sort:         stats.SortEarliestFirst,
+							Sort:         taskstats.SortEarliestFirst,
 							BeforeDate:   utility.GetUTCDay(time.Now().Add(dayInHours)),
 							AfterDate:    utility.GetUTCDay(time.Now().Add(-dayInHours)),
 						},
@@ -613,7 +613,7 @@ func TestRun(t *testing.T) {
 					require.NoError(t, err)
 
 					handler.filter = reliability.TaskReliabilityFilter{
-						StatsFilter: stats.StatsFilter{
+						StatsFilter: taskstats.StatsFilter{
 							Limit: 101,
 						},
 					}
@@ -624,8 +624,8 @@ func TestRun(t *testing.T) {
 					for i := 0; i < 99; i++ {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
-						err = db.Insert(stats.DailyTaskStatsCollection, mgobson.M{
-							"_id": stats.DbTaskStatsId{
+						err = db.Insert(taskstats.DailyTaskStatsCollection, mgobson.M{
+							"_id": taskstats.DbTaskStatsId{
 								Project:      "project",
 								Requester:    "requester",
 								TaskName:     taskName,
@@ -637,14 +637,14 @@ func TestRun(t *testing.T) {
 						require.NoError(t, err)
 					}
 					handler.filter = reliability.TaskReliabilityFilter{
-						StatsFilter: stats.StatsFilter{
+						StatsFilter: taskstats.StatsFilter{
 							Limit:        100,
 							Project:      "project",
 							Requesters:   []string{"requester"},
 							Tasks:        tasks,
 							GroupBy:      "distro",
 							GroupNumDays: 1,
-							Sort:         stats.SortEarliestFirst,
+							Sort:         taskstats.SortEarliestFirst,
 							BeforeDate:   utility.GetUTCDay(time.Now().Add(dayInHours)),
 							AfterDate:    utility.GetUTCDay(time.Now().Add(-dayInHours)),
 						},
@@ -662,7 +662,7 @@ func TestRun(t *testing.T) {
 					require.NoError(t, err)
 
 					handler.filter = reliability.TaskReliabilityFilter{
-						StatsFilter: stats.StatsFilter{
+						StatsFilter: taskstats.StatsFilter{
 							Limit: 100,
 						},
 					}
@@ -673,8 +673,8 @@ func TestRun(t *testing.T) {
 					for i := 0; i < 101; i++ {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
-						err = db.Insert(stats.DailyTaskStatsCollection, mgobson.M{
-							"_id": stats.DbTaskStatsId{
+						err = db.Insert(taskstats.DailyTaskStatsCollection, mgobson.M{
+							"_id": taskstats.DbTaskStatsId{
 								Project:      "project",
 								Requester:    "requester",
 								TaskName:     taskName,
@@ -686,14 +686,14 @@ func TestRun(t *testing.T) {
 						require.NoError(t, err)
 					}
 					handler.filter = reliability.TaskReliabilityFilter{
-						StatsFilter: stats.StatsFilter{
+						StatsFilter: taskstats.StatsFilter{
 							Limit:        100,
 							Project:      "project",
 							Requesters:   []string{"requester"},
 							Tasks:        tasks,
 							GroupBy:      "distro",
 							GroupNumDays: 1,
-							Sort:         stats.SortEarliestFirst,
+							Sort:         taskstats.SortEarliestFirst,
 							BeforeDate:   utility.GetUTCDay(time.Now().Add(dayInHours)),
 							AfterDate:    utility.GetUTCDay(time.Now().Add(-dayInHours)),
 						},
@@ -742,16 +742,16 @@ func setupEnv(ctx context.Context) (*mock.Environment, error) {
 }
 
 func withSetupAndTeardown(t *testing.T, env evergreen.Environment, fn func()) {
-	require.NoError(t, db.ClearCollections(stats.DailyTaskStatsCollection))
+	require.NoError(t, db.ClearCollections(taskstats.DailyTaskStatsCollection))
 	defer func() {
-		assert.NoError(t, db.ClearCollections(stats.DailyTaskStatsCollection))
+		assert.NoError(t, db.ClearCollections(taskstats.DailyTaskStatsCollection))
 	}()
 
 	fn()
 }
 
 func TestReliability(t *testing.T) {
-	require.NoError(t, db.ClearCollections(stats.DailyTaskStatsCollection, model.ProjectRefCollection))
+	require.NoError(t, db.ClearCollections(taskstats.DailyTaskStatsCollection, model.ProjectRefCollection))
 	groupContext, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -781,8 +781,8 @@ func TestReliability(t *testing.T) {
 					for i := 0; i < pageSize; i++ {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
-						err = db.Insert(stats.DailyTaskStatsCollection, mgobson.M{
-							"_id": stats.DbTaskStatsId{
+						err = db.Insert(taskstats.DailyTaskStatsCollection, mgobson.M{
+							"_id": taskstats.DbTaskStatsId{
 								Project:      "project",
 								Requester:    "requester",
 								TaskName:     taskName,
@@ -794,14 +794,14 @@ func TestReliability(t *testing.T) {
 						require.NoError(t, err)
 					}
 					handler.filter = reliability.TaskReliabilityFilter{
-						StatsFilter: stats.StatsFilter{
+						StatsFilter: taskstats.StatsFilter{
 							Limit:        pageSize * 2,
 							Project:      "project",
 							Requesters:   []string{"requester"},
 							Tasks:        tasks,
 							GroupBy:      "distro",
 							GroupNumDays: 1,
-							Sort:         stats.SortEarliestFirst,
+							Sort:         taskstats.SortEarliestFirst,
 							BeforeDate:   utility.GetUTCDay(time.Now().Add(dayInHours)),
 							AfterDate:    utility.GetUTCDay(time.Now().Add(-dayInHours)),
 						},
@@ -831,8 +831,8 @@ func TestReliability(t *testing.T) {
 					for i := 0; i < pageSize; i++ {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
-						err = db.Insert(stats.DailyTaskStatsCollection, mgobson.M{
-							"_id": stats.DbTaskStatsId{
+						err = db.Insert(taskstats.DailyTaskStatsCollection, mgobson.M{
+							"_id": taskstats.DbTaskStatsId{
 								Project:      "project",
 								Requester:    "requester",
 								TaskName:     taskName,
@@ -844,14 +844,14 @@ func TestReliability(t *testing.T) {
 						require.NoError(t, err)
 					}
 					handler.filter = reliability.TaskReliabilityFilter{
-						StatsFilter: stats.StatsFilter{
+						StatsFilter: taskstats.StatsFilter{
 							Limit:        pageSize,
 							Project:      "project",
 							Requesters:   []string{"requester"},
 							Tasks:        tasks,
 							GroupBy:      "distro",
 							GroupNumDays: 1,
-							Sort:         stats.SortEarliestFirst,
+							Sort:         taskstats.SortEarliestFirst,
 							BeforeDate:   utility.GetUTCDay(time.Now().Add(dayInHours)),
 							AfterDate:    utility.GetUTCDay(time.Now().Add(-dayInHours)),
 						},
@@ -884,8 +884,8 @@ func TestReliability(t *testing.T) {
 					for i := 0; i < pageSize*2; i++ {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
-						err = db.Insert(stats.DailyTaskStatsCollection, mgobson.M{
-							"_id": stats.DbTaskStatsId{
+						err = db.Insert(taskstats.DailyTaskStatsCollection, mgobson.M{
+							"_id": taskstats.DbTaskStatsId{
 								Project:      "project",
 								Requester:    "requester",
 								TaskName:     taskName,
@@ -897,14 +897,14 @@ func TestReliability(t *testing.T) {
 						require.NoError(t, err)
 					}
 					handler.filter = reliability.TaskReliabilityFilter{
-						StatsFilter: stats.StatsFilter{
+						StatsFilter: taskstats.StatsFilter{
 							Limit:        pageSize,
 							Project:      "project",
 							Requesters:   []string{"requester"},
 							Tasks:        tasks,
 							GroupBy:      "distro",
 							GroupNumDays: 1,
-							Sort:         stats.SortEarliestFirst,
+							Sort:         taskstats.SortEarliestFirst,
 							BeforeDate:   utility.GetUTCDay(time.Now().Add(dayInHours)),
 							AfterDate:    utility.GetUTCDay(time.Now().Add(-dayInHours)),
 						},
