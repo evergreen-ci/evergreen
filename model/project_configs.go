@@ -55,7 +55,7 @@ func (pc *ProjectConfig) isEmpty() bool {
 	for i := 0; i < reflectedConfig.NumField(); i++ {
 		field := reflectedConfig.Field(i)
 		name := types.Field(i).Name
-		if name != "Id" && name != "Identifier" {
+		if name != "Id" && name != "Identifier" && name != "CreateTime" {
 			if !util.IsFieldUndefined(field) {
 				return false
 			}
