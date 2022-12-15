@@ -9,7 +9,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/stats"
+	"github.com/evergreen-ci/evergreen/model/taskstats"
 	_ "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -53,8 +53,8 @@ var requesters = []string{
 	evergreen.MergeTestRequester,
 }
 
-var task1Item1 = stats.DbTaskStats{
-	Id: stats.DbTaskStatsId{
+var task1Item1 = taskstats.DbTaskStats{
+	Id: taskstats.DbTaskStatsId{
 		Project:      project,
 		Requester:    requesters[0],
 		TaskName:     task1,
@@ -71,8 +71,8 @@ var task1Item1 = stats.DbTaskStats{
 	AvgDurationSuccess: avgDuration,
 }
 
-var task1Item2 = stats.DbTaskStats{
-	Id: stats.DbTaskStatsId{
+var task1Item2 = taskstats.DbTaskStats{
+	Id: taskstats.DbTaskStatsId{
 		Project:      project,
 		Requester:    requesters[0],
 		TaskName:     task1,
@@ -89,8 +89,8 @@ var task1Item2 = stats.DbTaskStats{
 	AvgDurationSuccess: avgDuration1,
 }
 
-var task2Item1 = stats.DbTaskStats{
-	Id: stats.DbTaskStatsId{
+var task2Item1 = taskstats.DbTaskStats{
+	Id: taskstats.DbTaskStatsId{
 		Project:      project,
 		Requester:    requesters[0],
 		TaskName:     task2,
@@ -106,8 +106,8 @@ var task2Item1 = stats.DbTaskStats{
 	NumSetupFailed:     numSetupFailed,
 	AvgDurationSuccess: avgDuration,
 }
-var task2Item2 = stats.DbTaskStats{
-	Id: stats.DbTaskStatsId{
+var task2Item2 = taskstats.DbTaskStats{
+	Id: taskstats.DbTaskStatsId{
 		Project:      project,
 		Requester:    requesters[0],
 		TaskName:     task2,
@@ -124,8 +124,8 @@ var task2Item2 = stats.DbTaskStats{
 	AvgDurationSuccess: avgDuration1,
 }
 
-var task3item1 = stats.DbTaskStats{
-	Id: stats.DbTaskStatsId{
+var task3item1 = taskstats.DbTaskStats{
+	Id: taskstats.DbTaskStatsId{
 		Project:      project,
 		Requester:    requesters[0],
 		TaskName:     task3,
@@ -146,15 +146,15 @@ func createValidFilter() TaskReliabilityFilter {
 	tasks := []string{task1, task2}
 
 	return TaskReliabilityFilter{
-		StatsFilter: stats.StatsFilter{
+		StatsFilter: taskstats.StatsFilter{
 			Project:      project,
 			Requesters:   requesters,
 			AfterDate:    day1,
 			BeforeDate:   day2,
 			Tasks:        tasks,
-			GroupBy:      stats.GroupByDistro,
+			GroupBy:      taskstats.GroupByDistro,
 			GroupNumDays: 1,
-			Sort:         stats.SortLatestFirst,
+			Sort:         taskstats.SortLatestFirst,
 			Limit:        MaxQueryLimit,
 		},
 		Significance: DefaultSignificance,
@@ -163,11 +163,11 @@ func createValidFilter() TaskReliabilityFilter {
 }
 
 func clearCollection() error {
-	return db.Clear(stats.DailyTaskStatsCollection)
+	return db.Clear(taskstats.DailyTaskStatsCollection)
 }
 
 func InsertDailyTaskStats(taskStats ...interface{}) error {
-	err := db.InsertManyUnordered(stats.DailyTaskStatsCollection, taskStats...)
+	err := db.InsertManyUnordered(taskstats.DailyTaskStatsCollection, taskStats...)
 	return err
 }
 
@@ -179,7 +179,7 @@ func handleNoFormat(format string, i int) string {
 	return format
 }
 
-func InsertManyDailyTaskStats(many int, prototype stats.DbTaskStats, projectFmt string, requesterFmt string, taskNameFmt string, variantFmt string, distroFmt string) error {
+func InsertManyDailyTaskStats(many int, prototype taskstats.DbTaskStats, projectFmt string, requesterFmt string, taskNameFmt string, variantFmt string, distroFmt string) error {
 
 	items := make([]interface{}, many)
 	for i := 0; i < many; i++ {
@@ -292,7 +292,7 @@ func TestFilterInvalidSort(t *testing.T) {
 	assert := assert.New(t)
 	filter := createValidFilter()
 
-	filter.Sort = stats.Sort("invalid")
+	filter.Sort = taskstats.Sort("invalid")
 	assert.Error(filter.ValidateForTaskReliability())
 }
 
@@ -300,7 +300,7 @@ func TestFilterInvalidGroupBy(t *testing.T) {
 	assert := assert.New(t)
 	filter := createValidFilter()
 
-	filter.GroupBy = stats.GroupBy("invalid")
+	filter.GroupBy = taskstats.GroupBy("invalid")
 	assert.Error(filter.ValidateForTaskReliability())
 }
 
@@ -485,7 +485,7 @@ func TestValidateForTaskReliability(t *testing.T) {
 	assert := assert.New(t)
 
 	filter := TaskReliabilityFilter{
-		StatsFilter: stats.StatsFilter{
+		StatsFilter: taskstats.StatsFilter{
 			Limit: MaxQueryLimit + 1,
 		},
 		Significance: MaxSignificanceLimit + 1,
@@ -511,7 +511,7 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 
 	commonSetup := func(ctx context.Context, t *testing.T) TaskReliabilityFilter {
 		filter := TaskReliabilityFilter{
-			StatsFilter: stats.StatsFilter{
+			StatsFilter: taskstats.StatsFilter{
 				Project:       project,
 				Requesters:    requesters,
 				Tasks:         []string{task1},
@@ -522,7 +522,7 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 				GroupNumDays:  1,
 				GroupBy:       "distro",
 				Limit:         MaxQueryLimit,
-				Sort:          stats.SortEarliestFirst,
+				Sort:          taskstats.SortEarliestFirst,
 			},
 			Significance: .05,
 		}
@@ -530,8 +530,8 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 		require.NoError(t, err)
 
 		require.NoError(t, InsertDailyTaskStats(
-			stats.DbTaskStats{
-				Id: stats.DbTaskStatsId{
+			taskstats.DbTaskStats{
+				Id: taskstats.DbTaskStatsId{
 					Project:      project,
 					Requester:    requesters[0],
 					TaskName:     task1,
@@ -547,8 +547,8 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 				NumSetupFailed:     numSetupFailed,
 				AvgDurationSuccess: avgDuration,
 			},
-			stats.DbTaskStats{
-				Id: stats.DbTaskStatsId{
+			taskstats.DbTaskStats{
+				Id: taskstats.DbTaskStatsId{
 					Project:      project,
 					Requester:    requesters[0],
 					TaskName:     task2,
@@ -569,8 +569,8 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 		for i := 1; i < 60; i++ {
 			delta := time.Duration(i) * 24 * time.Hour
 			require.NoError(t, InsertDailyTaskStats(
-				stats.DbTaskStats{
-					Id: stats.DbTaskStatsId{
+				taskstats.DbTaskStats{
+					Id: taskstats.DbTaskStatsId{
 						Project:      project,
 						Requester:    requesters[0],
 						TaskName:     task1,
@@ -586,8 +586,8 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 					NumSetupFailed:     numSetupFailed,
 					AvgDurationSuccess: avgDuration,
 				},
-				stats.DbTaskStats{
-					Id: stats.DbTaskStatsId{
+				taskstats.DbTaskStats{
+					Id: taskstats.DbTaskStatsId{
 						Project:      project,
 						Requester:    requesters[0],
 						TaskName:     task2,
@@ -679,7 +679,7 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 					require := require.New(t)
 					withCancelledContext(ctx, func(ctx context.Context) {
 						duration := 7
-						filter.StatsFilter.Sort = stats.SortLatestFirst
+						filter.StatsFilter.Sort = taskstats.SortLatestFirst
 						filter.StatsFilter.GroupNumDays = 1
 						filter.StatsFilter.BeforeDate = day1.Add(time.Duration(duration-1) * 24 * time.Hour)
 						docs, err := GetTaskReliabilityScores(filter)
@@ -701,7 +701,7 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 					require := require.New(t)
 					withCancelledContext(ctx, func(ctx context.Context) {
 						duration := 7
-						filter.StatsFilter.Sort = stats.SortEarliestFirst
+						filter.StatsFilter.Sort = taskstats.SortEarliestFirst
 						filter.StatsFilter.GroupNumDays = 1
 						filter.StatsFilter.BeforeDate = day1.Add(time.Duration(duration-1) * 24 * time.Hour)
 						docs, err := GetTaskReliabilityScores(filter)
@@ -843,7 +843,7 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 					require := require.New(t)
 					withCancelledContext(ctx, func(ctx context.Context) {
 						duration := 7
-						filter.StatsFilter.Sort = stats.SortLatestFirst
+						filter.StatsFilter.Sort = taskstats.SortLatestFirst
 						filter.StatsFilter.GroupNumDays = 1
 						filter.StatsFilter.BeforeDate = day1.Add(time.Duration(duration-1) * 24 * time.Hour)
 						docs, err := GetTaskReliabilityScores(filter)
@@ -866,7 +866,7 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 					require := require.New(t)
 					withCancelledContext(ctx, func(ctx context.Context) {
 						duration := 7
-						filter.StatsFilter.Sort = stats.SortEarliestFirst
+						filter.StatsFilter.Sort = taskstats.SortEarliestFirst
 						filter.StatsFilter.GroupNumDays = 1
 						filter.StatsFilter.BeforeDate = day1.Add(time.Duration(duration-1) * 24 * time.Hour)
 						docs, err := GetTaskReliabilityScores(filter)
