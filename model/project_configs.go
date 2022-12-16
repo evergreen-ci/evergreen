@@ -49,16 +49,13 @@ func (pc *ProjectConfig) MarshalBSON() ([]byte, error) {
 }
 
 func (pc *ProjectConfig) isEmpty() bool {
-	reflectedConfig := reflect.ValueOf(pc).Elem()
-	types := reflect.TypeOf(pc).Elem()
+	// ProjectConfig values outside of ProjectConfigFields are metadata, so we don't want to check those.
+	reflectedConfig := reflect.ValueOf(pc.ProjectConfigFields)
 
 	for i := 0; i < reflectedConfig.NumField(); i++ {
 		field := reflectedConfig.Field(i)
-		name := types.Field(i).Name
-		if name != "Id" && name != "Identifier" {
-			if !util.IsFieldUndefined(field) {
-				return false
-			}
+		if !util.IsFieldUndefined(field) {
+			return false
 		}
 	}
 	return true

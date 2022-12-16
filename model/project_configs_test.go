@@ -16,6 +16,7 @@ task_groups:
   - command: shell.exec
     params:
       script: "echo hi"
+create_time: 2022-12-15T17:18:32Z
 `
 	pc, err := CreateProjectConfig([]byte(projYml), "")
 	assert.Nil(t, err)
