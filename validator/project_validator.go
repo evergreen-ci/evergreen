@@ -614,7 +614,7 @@ func validateProjectConfigPlugins(pc *model.ProjectConfig) ValidationErrors {
 	return errs
 }
 
-func validateRunOn(runOn []string) bool {
+func hasValidRunOn(runOn []string) bool {
 	for _, d := range runOn {
 		if d != "" {
 			return true
@@ -662,14 +662,16 @@ func validateBVFields(project *model.Project) ValidationErrors {
 			continue
 		}
 
-		hasTaskWithoutDistro := false
 		for _, task := range buildVariant.Tasks {
-			taskHasValidDistro := validateRunOn(task.RunOn)
+			taskHasValidDistro := hasValidRunOn(task.RunOn)
+			if taskHasValidDistro {
+				break
+			}
 			if !taskHasValidDistro && task.IsGroup {
 				for _, t := range project.FindTaskGroup(task.Name).Tasks {
 					pt := project.FindProjectTask(t)
 					if pt != nil {
-						if validateRunOn(pt.RunOn) {
+						if hasValidRunOn(pt.RunOn) {
 							taskHasValidDistro = true
 							break
 						}
@@ -679,23 +681,19 @@ func validateBVFields(project *model.Project) ValidationErrors {
 				// check for a default in the task definition
 				pt := project.FindProjectTask(task.Name)
 				if pt != nil {
-					taskHasValidDistro = validateRunOn(pt.RunOn)
+					taskHasValidDistro = hasValidRunOn(pt.RunOn)
 				}
 			}
 			if !taskHasValidDistro {
-				hasTaskWithoutDistro = true
+				errs = append(errs,
+					ValidationError{
+						Message: fmt.Sprintf("buildvariant '%s' "+
+							"must either specify run_on field or have every task specify run_on",
+							buildVariant.Name),
+					},
+				)
 				break
 			}
-		}
-
-		if hasTaskWithoutDistro {
-			errs = append(errs,
-				ValidationError{
-					Message: fmt.Sprintf("buildvariant '%s' "+
-						"must either specify run_on field or have every task specify run_on",
-						buildVariant.Name),
-				},
-			)
 		}
 	}
 	return errs
