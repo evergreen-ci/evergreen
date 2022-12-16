@@ -600,15 +600,6 @@ func validateProjectConfigPlugins(pc *model.ProjectConfig) ValidationErrors {
 	return errs
 }
 
-func hasValidRunOn(runOn []string) bool {
-	for _, d := range runOn {
-		if d != "" {
-			return true
-		}
-	}
-	return false
-}
-
 // Ensures that the project has at least one buildvariant and also that all the
 // fields required for any buildvariant definition are present
 func validateBVFields(project *model.Project) ValidationErrors {
@@ -648,38 +639,41 @@ func validateBVFields(project *model.Project) ValidationErrors {
 			continue
 		}
 
+		hasTaskWithoutDistro := false
 		for _, task := range buildVariant.Tasks {
-			taskHasValidDistro := hasValidRunOn(task.RunOn)
-			if taskHasValidDistro {
-				break
+			taskHasValidDistro := false
+			for _, d := range task.RunOn {
+				if d != "" {
+					taskHasValidDistro = true
+					break
+				}
 			}
-			if !taskHasValidDistro && task.IsGroup {
-				for _, t := range project.FindTaskGroup(task.Name).Tasks {
-					pt := project.FindProjectTask(t)
-					if pt != nil {
-						if hasValidRunOn(pt.RunOn) {
+			if !taskHasValidDistro {
+				// check for a default in the task definition
+				pt := project.FindProjectTask(task.Name)
+				if pt != nil {
+					for _, d := range pt.RunOn {
+						if d != "" {
 							taskHasValidDistro = true
 							break
 						}
 					}
 				}
-			} else if !taskHasValidDistro {
-				// check for a default in the task definition
-				pt := project.FindProjectTask(task.Name)
-				if pt != nil {
-					taskHasValidDistro = hasValidRunOn(pt.RunOn)
-				}
 			}
 			if !taskHasValidDistro {
-				errs = append(errs,
-					ValidationError{
-						Message: fmt.Sprintf("buildvariant '%s' "+
-							"must either specify run_on field or have every task specify run_on",
-							buildVariant.Name),
-					},
-				)
+				hasTaskWithoutDistro = true
 				break
 			}
+		}
+
+		if hasTaskWithoutDistro {
+			errs = append(errs,
+				ValidationError{
+					Message: fmt.Sprintf("buildvariant '%s' "+
+						"must either specify run_on field or have every task specify run_on",
+						buildVariant.Name),
+				},
+			)
 		}
 	}
 	return errs
