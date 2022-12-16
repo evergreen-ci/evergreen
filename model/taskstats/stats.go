@@ -31,8 +31,10 @@ type StatsStatus struct {
 	// been processed. It is usually the same as LastJobRun unless a
 	// previous job has failed and the stats computation has not caught up
 	// yet.
-	ProcessedTasksUntil time.Time     `bson:"processed_tasks_until"`
-	Runtime             time.Duration `bson:"runtime"`
+	ProcessedTasksUntil time.Time `bson:"processed_tasks_until"`
+	// Runtime is the amount of time the last successful pre-computation
+	// job that for the project took to complete.
+	Runtime time.Duration `bson:"runtime"`
 }
 
 // createDefaultStatsStatus creates a StatsStatus for projects that don't have
@@ -66,7 +68,7 @@ func GetStatsStatus(projectId string) (StatsStatus, error) {
 }
 
 // UpdateStatsStatus updates the status of the stats pre-computations for a project.
-func UpdateStatsStatus(projectId string, lastJobRun time.Time, processedTasksUntil time.Time, runtime time.Duration) error {
+func UpdateStatsStatus(projectId string, lastJobRun, processedTasksUntil time.Time, runtime time.Duration) error {
 	status := StatsStatus{
 		ProjectId:           projectId,
 		LastJobRun:          lastJobRun,

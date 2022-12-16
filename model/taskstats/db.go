@@ -8,6 +8,7 @@ package taskstats
 //   "_id": <Project Id (string)>,
 //   "last_job_run": <Date of the last successful job run that updated the project stats (date)>
 //   "processed_tasks_until": <Date before which finished tasks have been processed by a successful job (date)>
+//   "runtime": <Duration (ns) of the last successful job run that updated the project stats>
 // }
 // *daily_task_stats*
 // {
@@ -170,7 +171,7 @@ func statsPipeline(projectId string, requester string, start time.Time, end time
 			"foreignField": task.ExecutionTasksKey,
 			"as":           "display_task",
 		}},
-		{"$match": bson.M{"display_task": Array{}}}, // Excluding the execution tasks
+		{"$match": bson.M{"display_task": Array{}}},
 		{"$group": bson.M{
 			"_id": bson.D{
 				{Key: DbTaskStatsIdTaskNameKey, Value: "$" + DbTaskStatsIdTaskNameKey},
