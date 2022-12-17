@@ -667,7 +667,7 @@ func validateBVFields(project *model.Project) ValidationErrors {
 			if taskHasValidDistro {
 				break
 			}
-			if !taskHasValidDistro && task.IsGroup {
+			if task.IsGroup {
 				for _, t := range project.FindTaskGroup(task.Name).Tasks {
 					pt := project.FindProjectTask(t)
 					if pt != nil {
@@ -677,7 +677,7 @@ func validateBVFields(project *model.Project) ValidationErrors {
 						}
 					}
 				}
-			} else if !taskHasValidDistro {
+			} else {
 				// check for a default in the task definition
 				pt := project.FindProjectTask(task.Name)
 				if pt != nil {
