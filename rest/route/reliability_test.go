@@ -531,7 +531,7 @@ func TestReliabilityRun(t *testing.T) {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
 						err = db.Insert(taskstats.DailyTaskStatsCollection, mgobson.M{
-							"_id": taskstats.DbTaskStatsId{
+							"_id": taskstats.DBTaskStatsID{
 								Project:      "project",
 								Requester:    "requester",
 								TaskName:     taskName,
@@ -575,7 +575,7 @@ func TestReliabilityRun(t *testing.T) {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
 						err = db.Insert(taskstats.DailyTaskStatsCollection, mgobson.M{
-							"_id": taskstats.DbTaskStatsId{
+							"_id": taskstats.DBTaskStatsID{
 								Project:      "project",
 								Requester:    "requester",
 								TaskName:     taskName,
@@ -625,7 +625,7 @@ func TestReliabilityRun(t *testing.T) {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
 						err = db.Insert(taskstats.DailyTaskStatsCollection, mgobson.M{
-							"_id": taskstats.DbTaskStatsId{
+							"_id": taskstats.DBTaskStatsID{
 								Project:      "project",
 								Requester:    "requester",
 								TaskName:     taskName,
@@ -674,7 +674,7 @@ func TestReliabilityRun(t *testing.T) {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
 						err = db.Insert(taskstats.DailyTaskStatsCollection, mgobson.M{
-							"_id": taskstats.DbTaskStatsId{
+							"_id": taskstats.DBTaskStatsID{
 								Project:      "project",
 								Requester:    "requester",
 								TaskName:     taskName,
@@ -782,7 +782,7 @@ func TestReliability(t *testing.T) {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
 						err = db.Insert(taskstats.DailyTaskStatsCollection, mgobson.M{
-							"_id": taskstats.DbTaskStatsId{
+							"_id": taskstats.DBTaskStatsID{
 								Project:      "project",
 								Requester:    "requester",
 								TaskName:     taskName,
@@ -832,7 +832,7 @@ func TestReliability(t *testing.T) {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
 						err = db.Insert(taskstats.DailyTaskStatsCollection, mgobson.M{
-							"_id": taskstats.DbTaskStatsId{
+							"_id": taskstats.DBTaskStatsID{
 								Project:      "project",
 								Requester:    "requester",
 								TaskName:     taskName,
@@ -885,7 +885,7 @@ func TestReliability(t *testing.T) {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
 						err = db.Insert(taskstats.DailyTaskStatsCollection, mgobson.M{
-							"_id": taskstats.DbTaskStatsId{
+							"_id": taskstats.DBTaskStatsID{
 								Project:      "project",
 								Requester:    "requester",
 								TaskName:     taskName,

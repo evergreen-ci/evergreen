@@ -105,7 +105,7 @@ func (s *TaskStatsSuite) insertTaskStats(handler *taskStatsHandler, numTests int
 		taskName := fmt.Sprintf("%v%v", "task", i)
 		tasks = append(tasks, taskName)
 		err := db.Insert(taskstats.DailyTaskStatsCollection, mgobson.M{
-			"_id": taskstats.DbTaskStatsId{
+			"_id": taskstats.DBTaskStatsID{
 				Project:      "project",
 				Requester:    "requester",
 				TaskName:     taskName,

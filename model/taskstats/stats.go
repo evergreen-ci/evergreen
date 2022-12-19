@@ -23,7 +23,7 @@ const (
 
 // StatsStatus represents the status for stats pre-computations for a project.
 type StatsStatus struct {
-	ProjectId string `bson:"_id"`
+	ProjectID string `bson:"_id"`
 	// LastJobRun is the start date of the last successful pre-computation
 	// job that ran for the project.
 	LastJobRun time.Time `bson:"last_job_run"`
@@ -39,10 +39,10 @@ type StatsStatus struct {
 
 // createDefaultStatsStatus creates a StatsStatus for projects that don't have
 // a status in the DB yet.
-func createDefaultStatsStatus(projectId string) StatsStatus {
+func createDefaultStatsStatus(projectID string) StatsStatus {
 	defaultBackFillStart := utility.GetUTCDay(time.Now().Add(-defaultBackFillPeriod))
 	return StatsStatus{
-		ProjectId:           projectId,
+		ProjectID:           projectID,
 		LastJobRun:          defaultBackFillStart,
 		ProcessedTasksUntil: defaultBackFillStart,
 	}
@@ -54,12 +54,12 @@ func createDefaultStatsStatus(projectId string) StatsStatus {
 
 // GetStatsStatus retrieves the status of the stats pre-computations for a
 // project.
-func GetStatsStatus(projectId string) (StatsStatus, error) {
+func GetStatsStatus(projectID string) (StatsStatus, error) {
 	status := StatsStatus{}
-	q := db.Query(statsStatusQuery(projectId))
+	q := db.Query(statsStatusQuery(projectID))
 	err := db.FindOneQ(DailyStatsStatusCollection, q, &status)
 	if adb.ResultsNotFound(err) {
-		return createDefaultStatsStatus(projectId), nil
+		return createDefaultStatsStatus(projectID), nil
 	}
 	if err != nil {
 		return status, errors.Wrap(err, "retrieving test stats status")
@@ -68,14 +68,14 @@ func GetStatsStatus(projectId string) (StatsStatus, error) {
 }
 
 // UpdateStatsStatus updates the status of the stats pre-computations for a project.
-func UpdateStatsStatus(projectId string, lastJobRun, processedTasksUntil time.Time, runtime time.Duration) error {
+func UpdateStatsStatus(projectID string, lastJobRun, processedTasksUntil time.Time, runtime time.Duration) error {
 	status := StatsStatus{
-		ProjectId:           projectId,
+		ProjectID:           projectID,
 		LastJobRun:          lastJobRun,
 		ProcessedTasksUntil: processedTasksUntil,
 		Runtime:             runtime,
 	}
-	_, err := db.Upsert(DailyStatsStatusCollection, bson.M{"_id": projectId}, status)
+	_, err := db.Upsert(DailyStatsStatusCollection, bson.M{"_id": projectID}, status)
 	if err != nil {
 		return errors.Wrap(err, "updating test stats status")
 	}

@@ -49,8 +49,8 @@ func TestGetTaskStats(t *testing.T) {
 	}
 	require.NoError(t, proj.Insert())
 
-	stat := taskstats.DbTaskStats{
-		Id: taskstats.DbTaskStatsId{
+	stat := taskstats.DBTaskStats{
+		Id: taskstats.DBTaskStatsID{
 			Project:   "projectID",
 			TaskName:  "t0",
 			Date:      time.Date(2022, 02, 15, 0, 0, 0, 0, time.UTC),
@@ -86,7 +86,7 @@ func insertTaskStats(filter *taskstats.StatsFilter, numTests int, limit int) err
 		taskName := fmt.Sprintf("%v%v", "task_", i)
 		tasks = append(tasks, taskName)
 		err := db.Insert(taskstats.DailyTaskStatsCollection, mgobson.M{
-			"_id": taskstats.DbTaskStatsId{
+			"_id": taskstats.DBTaskStatsID{
 				Project:      "project",
 				Requester:    "requester",
 				TaskName:     taskName,

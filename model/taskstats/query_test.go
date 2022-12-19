@@ -559,7 +559,7 @@ func (s *statsQuerySuite) clearCollection(name string) {
 func (s *statsQuerySuite) insertDailyTaskStats(project string, requester string, taskName string, variant string, distro string, date time.Time, numSuccess, numFailed, numTimeout, numTestFailed, numSystemFailed, numSetupFailed int, avgDuration float64) {
 
 	err := db.Insert(DailyTaskStatsCollection, bson.M{
-		"_id": DbTaskStatsId{
+		"_id": DBTaskStatsID{
 			Project:      project,
 			Requester:    requester,
 			TaskName:     taskName,

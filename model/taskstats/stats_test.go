@@ -88,7 +88,7 @@ func (s *statsSuite) TestGenerateStats() {
 		Tasks:     []string{"task1", "task2"},
 	}))
 	s.Equal(3, s.countDailyTaskDocs())
-	doc, err := GetDailyTaskDoc(DbTaskStatsId{
+	doc, err := GetDailyTaskDoc(DBTaskStatsID{
 		Project:      "p1",
 		Requester:    "r1",
 		TaskName:     "task1",
@@ -98,7 +98,7 @@ func (s *statsSuite) TestGenerateStats() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(doc)
-	doc, err = GetDailyTaskDoc(DbTaskStatsId{
+	doc, err = GetDailyTaskDoc(DBTaskStatsID{
 		Project:      "p1",
 		Requester:    "r1",
 		TaskName:     "task1",
@@ -108,7 +108,7 @@ func (s *statsSuite) TestGenerateStats() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(doc)
-	doc, err = GetDailyTaskDoc(DbTaskStatsId{
+	doc, err = GetDailyTaskDoc(DBTaskStatsID{
 		Project:      "p1",
 		Requester:    "r1",
 		TaskName:     "task2",
@@ -122,7 +122,7 @@ func (s *statsSuite) TestGenerateStats() {
 	// Generate task stats for project p4 to check status aggregation.
 	s.Require().NoError(GenerateStats(ctx, GenerateStatsOptions{ProjectID: "p4", Requester: "r1", Date: baseHour, Tasks: []string{"task1"}}))
 	s.Equal(4, s.countDailyTaskDocs()) // 1 more task combination was added to the collection.
-	doc, err = GetDailyTaskDoc(DbTaskStatsId{
+	doc, err = GetDailyTaskDoc(DBTaskStatsID{
 		Project:      "p4",
 		Requester:    "r1",
 		TaskName:     "task1",
@@ -144,7 +144,7 @@ func (s *statsSuite) TestGenerateStats() {
 	// Generate task for project p2
 	s.Require().NoError(GenerateStats(ctx, GenerateStatsOptions{ProjectID: "p2", Requester: "r1", Date: baseHour, Tasks: []string{"task1"}}))
 	s.Equal(5, s.countDailyTaskDocs()) // 1 more task combination was added to the collection.
-	doc, err = GetDailyTaskDoc(DbTaskStatsId{
+	doc, err = GetDailyTaskDoc(DBTaskStatsID{
 		Project:      "p2",
 		Requester:    "r1",
 		TaskName:     "task1",

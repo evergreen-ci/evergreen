@@ -87,8 +87,8 @@ func statsStatusQuery(projectId string) bson.M {
 // Daily Task Stats //
 //////////////////////
 
-// DbTaskStatsId represents the _id field for daily_task_stats documents.
-type DbTaskStatsId struct {
+// DBTaskStatsID represents the _id field for daily_task_stats documents.
+type DBTaskStatsID struct {
 	TaskName     string    `bson:"task_name"`
 	BuildVariant string    `bson:"variant"`
 	Distro       string    `bson:"distro"`
@@ -97,9 +97,9 @@ type DbTaskStatsId struct {
 	Date         time.Time `bson:"date"`
 }
 
-// DbTaskStats represents the daily_task_stats documents.
-type DbTaskStats struct {
-	Id                 DbTaskStatsId `bson:"_id"`
+// DBTaskStats represents the daily_task_stats documents.
+type DBTaskStats struct {
+	Id                 DBTaskStatsID `bson:"_id"`
 	NumSuccess         int           `bson:"num_success"`
 	NumFailed          int           `bson:"num_failed"`
 	NumTimeout         int           `bson:"num_timeout"`
@@ -110,36 +110,36 @@ type DbTaskStats struct {
 	LastUpdate         time.Time     `bson:"last_update"`
 }
 
-func (d *DbTaskStats) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(d) }
-func (d *DbTaskStats) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, d) }
+func (d *DBTaskStats) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(d) }
+func (d *DBTaskStats) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, d) }
 
 var (
 	// BSON fields for the task stats ID struct.
-	DbTaskStatsIdTaskNameKey     = bsonutil.MustHaveTag(DbTaskStatsId{}, "TaskName")
-	DbTaskStatsIdBuildVariantKey = bsonutil.MustHaveTag(DbTaskStatsId{}, "BuildVariant")
-	DbTaskStatsIdDistroKey       = bsonutil.MustHaveTag(DbTaskStatsId{}, "Distro")
-	DbTaskStatsIdProjectKey      = bsonutil.MustHaveTag(DbTaskStatsId{}, "Project")
-	DbTaskStatsIdRequesterKey    = bsonutil.MustHaveTag(DbTaskStatsId{}, "Requester")
-	DbTaskStatsIdDateKey         = bsonutil.MustHaveTag(DbTaskStatsId{}, "Date")
+	DBTaskStatsIDTaskNameKey     = bsonutil.MustHaveTag(DBTaskStatsID{}, "TaskName")
+	DBTaskStatsIDBuildVariantKey = bsonutil.MustHaveTag(DBTaskStatsID{}, "BuildVariant")
+	DBTaskStatsIDDistroKey       = bsonutil.MustHaveTag(DBTaskStatsID{}, "Distro")
+	DBTaskStatsIDProjectKey      = bsonutil.MustHaveTag(DBTaskStatsID{}, "Project")
+	DBTaskStatsIDRequesterKey    = bsonutil.MustHaveTag(DBTaskStatsID{}, "Requester")
+	DBTaskStatsIDDateKey         = bsonutil.MustHaveTag(DBTaskStatsID{}, "Date")
 
 	// BSON fields for the task stats struct.
-	DbTaskStatsIdKey                 = bsonutil.MustHaveTag(DbTaskStats{}, "Id")
-	DbTaskStatsNumSuccessKey         = bsonutil.MustHaveTag(DbTaskStats{}, "NumSuccess")
-	DbTaskStatsNumFailedKey          = bsonutil.MustHaveTag(DbTaskStats{}, "NumFailed")
-	DbTaskStatsNumTestFailedKey      = bsonutil.MustHaveTag(DbTaskStats{}, "NumTestFailed")
-	DbTaskStatsNumSetupFailedKey     = bsonutil.MustHaveTag(DbTaskStats{}, "NumSetupFailed")
-	DbTaskStatsNumSystemFailedKey    = bsonutil.MustHaveTag(DbTaskStats{}, "NumSystemFailed")
-	DbTaskStatsNumTimeoutKey         = bsonutil.MustHaveTag(DbTaskStats{}, "NumTimeout")
-	DbTaskStatsAvgDurationSuccessKey = bsonutil.MustHaveTag(DbTaskStats{}, "AvgDurationSuccess")
-	DbTaskStatsLastUpdateKey         = bsonutil.MustHaveTag(DbTaskStats{}, "LastUpdate")
+	DBTaskStatsIDKey                 = bsonutil.MustHaveTag(DBTaskStats{}, "Id")
+	DBTaskStatsNumSuccessKey         = bsonutil.MustHaveTag(DBTaskStats{}, "NumSuccess")
+	DBTaskStatsNumFailedKey          = bsonutil.MustHaveTag(DBTaskStats{}, "NumFailed")
+	DBTaskStatsNumTestFailedKey      = bsonutil.MustHaveTag(DBTaskStats{}, "NumTestFailed")
+	DBTaskStatsNumSetupFailedKey     = bsonutil.MustHaveTag(DBTaskStats{}, "NumSetupFailed")
+	DBTaskStatsNumSystemFailedKey    = bsonutil.MustHaveTag(DBTaskStats{}, "NumSystemFailed")
+	DBTaskStatsNumTimeoutKey         = bsonutil.MustHaveTag(DBTaskStats{}, "NumTimeout")
+	DBTaskStatsAvgDurationSuccessKey = bsonutil.MustHaveTag(DBTaskStats{}, "AvgDurationSuccess")
+	DBTaskStatsLastUpdateKey         = bsonutil.MustHaveTag(DBTaskStats{}, "LastUpdate")
 
 	// BSON dotted field names for task stats ID elements.
-	DbTaskStatsIdTaskNameKeyFull     = bsonutil.GetDottedKeyName(DbTaskStatsIdKey, DbTaskStatsIdTaskNameKey)
-	DbTaskStatsIdBuildVariantKeyFull = bsonutil.GetDottedKeyName(DbTaskStatsIdKey, DbTaskStatsIdBuildVariantKey)
-	DbTaskStatsIdDistroKeyFull       = bsonutil.GetDottedKeyName(DbTaskStatsIdKey, DbTaskStatsIdDistroKey)
-	DbTaskStatsIdProjectKeyFull      = bsonutil.GetDottedKeyName(DbTaskStatsIdKey, DbTaskStatsIdProjectKey)
-	DbTaskStatsIdRequesterKeyFull    = bsonutil.GetDottedKeyName(DbTaskStatsIdKey, DbTaskStatsIdRequesterKey)
-	DbTaskStatsIdDateKeyFull         = bsonutil.GetDottedKeyName(DbTaskStatsIdKey, DbTaskStatsIdDateKey)
+	DBTaskStatsIDTaskNameKeyFull     = bsonutil.GetDottedKeyName(DBTaskStatsIDKey, DBTaskStatsIDTaskNameKey)
+	DBTaskStatsIDBuildVariantKeyFull = bsonutil.GetDottedKeyName(DBTaskStatsIDKey, DBTaskStatsIDBuildVariantKey)
+	DBTaskStatsIDDistroKeyFull       = bsonutil.GetDottedKeyName(DBTaskStatsIDKey, DBTaskStatsIDDistroKey)
+	DBTaskStatsIDProjectKeyFull      = bsonutil.GetDottedKeyName(DBTaskStatsIDKey, DBTaskStatsIDProjectKey)
+	DBTaskStatsIDRequesterKeyFull    = bsonutil.GetDottedKeyName(DBTaskStatsIDKey, DBTaskStatsIDRequesterKey)
+	DBTaskStatsIDDateKeyFull         = bsonutil.GetDottedKeyName(DBTaskStatsIDKey, DBTaskStatsIDDateKey)
 )
 
 // statsPipeline returns a pipeline aggregating task documents into daily task
@@ -156,11 +156,11 @@ func statsPipeline(projectId string, requester string, start time.Time, end time
 			task.IdKey:                   0,
 			"task_id":                    taskIdKeyRef,
 			"execution":                  taskExecutionKeyRef,
-			DbTaskStatsIdProjectKey:      taskProjectKeyRef,
-			DbTaskStatsIdTaskNameKey:     taskDisplayNameKeyRef,
-			DbTaskStatsIdBuildVariantKey: taskBuildVariantKeyRef,
-			DbTaskStatsIdDistroKey:       taskDistroIdKeyRef,
-			DbTaskStatsIdRequesterKey:    taskRequesterKeyRef,
+			DBTaskStatsIDProjectKey:      taskProjectKeyRef,
+			DBTaskStatsIDTaskNameKey:     taskDisplayNameKeyRef,
+			DBTaskStatsIDBuildVariantKey: taskBuildVariantKeyRef,
+			DBTaskStatsIDDistroKey:       taskDistroIdKeyRef,
+			DBTaskStatsIDRequesterKey:    taskRequesterKeyRef,
 			task.StatusKey:               1,
 			task.DetailsKey:              1,
 			"time_taken":                 bson.M{"$divide": Array{taskTimeTakenKeyRef, nsInASecond}},
@@ -174,33 +174,33 @@ func statsPipeline(projectId string, requester string, start time.Time, end time
 		{"$match": bson.M{"display_task": Array{}}},
 		{"$group": bson.M{
 			"_id": bson.D{
-				{Key: DbTaskStatsIdTaskNameKey, Value: "$" + DbTaskStatsIdTaskNameKey},
-				{Key: DbTaskStatsIdBuildVariantKey, Value: "$" + DbTaskStatsIdBuildVariantKey},
-				{Key: DbTaskStatsIdDistroKey, Value: "$" + DbTaskStatsIdDistroKey},
-				{Key: DbTaskStatsIdProjectKey, Value: "$" + DbTaskStatsIdProjectKey},
-				{Key: DbTaskStatsIdRequesterKey, Value: "$" + DbTaskStatsIdRequesterKey}},
-			DbTaskStatsNumSuccessKey: makeSum(bson.M{"$eq": Array{"$status", "success"}}),
-			DbTaskStatsNumFailedKey:  makeSum(bson.M{"$eq": Array{"$status", "failed"}}),
-			DbTaskStatsNumTimeoutKey: makeSum(bson.M{"$and": Array{
+				{Key: DBTaskStatsIDTaskNameKey, Value: "$" + DBTaskStatsIDTaskNameKey},
+				{Key: DBTaskStatsIDBuildVariantKey, Value: "$" + DBTaskStatsIDBuildVariantKey},
+				{Key: DBTaskStatsIDDistroKey, Value: "$" + DBTaskStatsIDDistroKey},
+				{Key: DBTaskStatsIDProjectKey, Value: "$" + DBTaskStatsIDProjectKey},
+				{Key: DBTaskStatsIDRequesterKey, Value: "$" + DBTaskStatsIDRequesterKey}},
+			DBTaskStatsNumSuccessKey: makeSum(bson.M{"$eq": Array{"$status", "success"}}),
+			DBTaskStatsNumFailedKey:  makeSum(bson.M{"$eq": Array{"$status", "failed"}}),
+			DBTaskStatsNumTimeoutKey: makeSum(bson.M{"$and": Array{
 				bson.M{"$eq": Array{taskStatusKeyRef, "failed"}},
 				bson.M{"$eq": Array{bsonutil.GetDottedKeyName(taskDetailsKeyRef, task.TaskEndDetailTimedOut), true}}}}),
-			DbTaskStatsNumTestFailedKey: makeSum(bson.M{"$and": Array{
+			DBTaskStatsNumTestFailedKey: makeSum(bson.M{"$and": Array{
 				bson.M{"$eq": Array{taskStatusKeyRef, "failed"}},
 				bson.M{"$eq": Array{bsonutil.GetDottedKeyName(taskDetailsKeyRef, task.TaskEndDetailType), "test"}},
 				bson.M{"$ne": Array{bsonutil.GetDottedKeyName(taskDetailsKeyRef, task.TaskEndDetailTimedOut), true}}}}),
-			DbTaskStatsNumSystemFailedKey: makeSum(bson.M{"$and": Array{
+			DBTaskStatsNumSystemFailedKey: makeSum(bson.M{"$and": Array{
 				bson.M{"$eq": Array{taskStatusKeyRef, "failed"}},
 				bson.M{"$eq": Array{bsonutil.GetDottedKeyName(taskDetailsKeyRef, task.TaskEndDetailType), evergreen.CommandTypeSystem}},
 				bson.M{"$ne": Array{bsonutil.GetDottedKeyName(taskDetailsKeyRef, task.TaskEndDetailTimedOut), true}}}}),
-			DbTaskStatsNumSetupFailedKey: makeSum(bson.M{"$and": Array{
+			DBTaskStatsNumSetupFailedKey: makeSum(bson.M{"$and": Array{
 				bson.M{"$eq": Array{taskStatusKeyRef, "failed"}},
 				bson.M{"$eq": Array{bsonutil.GetDottedKeyName(taskDetailsKeyRef, task.TaskEndDetailType), evergreen.CommandTypeSetup}},
 				bson.M{"$ne": Array{bsonutil.GetDottedKeyName(taskDetailsKeyRef, task.TaskEndDetailTimedOut), true}}}}),
-			DbTaskStatsAvgDurationSuccessKey: bson.M{"$avg": bson.M{"$cond": bson.M{"if": bson.M{"$eq": Array{taskStatusKeyRef, "success"}},
+			DBTaskStatsAvgDurationSuccessKey: bson.M{"$avg": bson.M{"$cond": bson.M{"if": bson.M{"$eq": Array{taskStatusKeyRef, "success"}},
 				"then": "$time_taken", "else": "IGNORE"}}}}},
 		{"$addFields": bson.M{
-			"_id." + DbTaskStatsIdDateKey: start,
-			DbTaskStatsLastUpdateKey:      time.Now(),
+			"_id." + DBTaskStatsIDDateKey: start,
+			DBTaskStatsLastUpdateKey:      time.Now(),
 		}},
 	}
 }
@@ -306,13 +306,13 @@ func buildGroupId(groupBy GroupBy) bson.M {
 	id := bson.M{TaskStatsDateKey: "$" + TaskStatsDateKey}
 	switch groupBy {
 	case GroupByDistro:
-		id[TaskStatsDistroKey] = "$" + DbTaskStatsIdDistroKeyFull
+		id[TaskStatsDistroKey] = "$" + DBTaskStatsIDDistroKeyFull
 		fallthrough
 	case GroupByVariant:
-		id[TaskStatsBuildVariantKey] = "$" + DbTaskStatsIdBuildVariantKeyFull
+		id[TaskStatsBuildVariantKey] = "$" + DBTaskStatsIDBuildVariantKeyFull
 		fallthrough
 	case GroupByTask:
-		id[TaskStatsTaskNameKey] = "$" + DbTaskStatsIdTaskNameKeyFull
+		id[TaskStatsTaskNameKey] = "$" + DBTaskStatsIDTaskNameKeyFull
 	}
 
 	return id
@@ -343,13 +343,13 @@ func (filter StatsFilter) BuildTaskStatsQueryGroupStage() bson.M {
 	return bson.M{
 		"$group": bson.M{
 			"_id":                       buildGroupId(filter.GroupBy),
-			TaskStatsNumSuccessKey:      bson.M{"$sum": "$" + DbTaskStatsNumSuccessKey},
-			TaskStatsNumFailedKey:       bson.M{"$sum": "$" + DbTaskStatsNumFailedKey},
-			TaskStatsNumTimeoutKey:      bson.M{"$sum": "$" + DbTaskStatsNumTimeoutKey},
-			TaskStatsNumTestFailedKey:   bson.M{"$sum": "$" + DbTaskStatsNumTestFailedKey},
-			TaskStatsNumSystemFailedKey: bson.M{"$sum": "$" + DbTaskStatsNumSystemFailedKey},
-			TaskStatsNumSetupFailedKey:  bson.M{"$sum": "$" + DbTaskStatsNumSetupFailedKey},
-			"total_duration_success":    bson.M{"$sum": bson.M{"$multiply": Array{"$" + DbTaskStatsNumSuccessKey, "$" + DbTaskStatsAvgDurationSuccessKey}}},
+			TaskStatsNumSuccessKey:      bson.M{"$sum": "$" + DBTaskStatsNumSuccessKey},
+			TaskStatsNumFailedKey:       bson.M{"$sum": "$" + DBTaskStatsNumFailedKey},
+			TaskStatsNumTimeoutKey:      bson.M{"$sum": "$" + DBTaskStatsNumTimeoutKey},
+			TaskStatsNumTestFailedKey:   bson.M{"$sum": "$" + DBTaskStatsNumTestFailedKey},
+			TaskStatsNumSystemFailedKey: bson.M{"$sum": "$" + DBTaskStatsNumSystemFailedKey},
+			TaskStatsNumSetupFailedKey:  bson.M{"$sum": "$" + DBTaskStatsNumSetupFailedKey},
+			"total_duration_success":    bson.M{"$sum": bson.M{"$multiply": Array{"$" + DBTaskStatsNumSuccessKey, "$" + DBTaskStatsAvgDurationSuccessKey}}},
 		}}
 }
 
@@ -366,10 +366,10 @@ func (filter StatsFilter) BuildTaskStatsQuerySortStage() bson.M {
 // buildTaskStatsQueryProjectStage creates an aggregation project stage to query task statistics.
 func (filter StatsFilter) BuildTaskStatsQueryProjectStage() bson.M {
 	return bson.M{"$project": bson.M{
-		TaskStatsTaskNameKey:        "$" + DbTaskStatsIdTaskNameKeyFull,
-		TaskStatsBuildVariantKey:    "$" + DbTaskStatsIdBuildVariantKeyFull,
-		TaskStatsDistroKey:          "$" + DbTaskStatsIdDistroKeyFull,
-		TaskStatsDateKey:            "$" + DbTaskStatsIdDateKeyFull,
+		TaskStatsTaskNameKey:        "$" + DBTaskStatsIDTaskNameKeyFull,
+		TaskStatsBuildVariantKey:    "$" + DBTaskStatsIDBuildVariantKeyFull,
+		TaskStatsDistroKey:          "$" + DBTaskStatsIDDistroKeyFull,
+		TaskStatsDateKey:            "$" + DBTaskStatsIDDateKeyFull,
 		TaskStatsNumSuccessKey:      1,
 		TaskStatsNumFailedKey:       1,
 		TaskStatsNumTotalKey:        bson.M{"$add": Array{"$" + TaskStatsNumSuccessKey, "$" + TaskStatsNumFailedKey}},
@@ -388,7 +388,7 @@ func (filter StatsFilter) TaskStatsQueryPipeline() []bson.M {
 
 	return []bson.M{
 		filter.buildMatchStageForTask(),
-		buildAddFieldsDateStage("date", DbTaskStatsIdDateKeyFull, filter.AfterDate, filter.BeforeDate, filter.GroupNumDays),
+		buildAddFieldsDateStage("date", DBTaskStatsIDDateKeyFull, filter.AfterDate, filter.BeforeDate, filter.GroupNumDays),
 		filter.BuildTaskStatsQueryGroupStage(),
 		filter.BuildTaskStatsQueryProjectStage(),
 		filter.BuildTaskStatsQuerySortStage(),
@@ -399,22 +399,22 @@ func (filter StatsFilter) TaskStatsQueryPipeline() []bson.M {
 // BuildMatchStageForTask builds the match stage of the task query pipeline based on the filter options.
 func (filter StatsFilter) buildMatchStageForTask() bson.M {
 	match := bson.M{
-		DbTaskStatsIdDateKeyFull: bson.M{
+		DBTaskStatsIDDateKeyFull: bson.M{
 			"$gte": filter.AfterDate,
 			"$lt":  filter.BeforeDate,
 		},
-		DbTaskStatsIdProjectKeyFull:   filter.Project,
-		DbTaskStatsIdRequesterKeyFull: bson.M{"$in": filter.Requesters},
+		DBTaskStatsIDProjectKeyFull:   filter.Project,
+		DBTaskStatsIDRequesterKeyFull: bson.M{"$in": filter.Requesters},
 	}
 
 	if len(filter.Tasks) > 0 {
-		match[DbTaskStatsIdTaskNameKeyFull] = BuildMatchArrayExpression(filter.Tasks)
+		match[DBTaskStatsIDTaskNameKeyFull] = BuildMatchArrayExpression(filter.Tasks)
 	}
 	if len(filter.BuildVariants) > 0 {
-		match[DbTaskStatsIdBuildVariantKeyFull] = BuildMatchArrayExpression(filter.BuildVariants)
+		match[DBTaskStatsIDBuildVariantKeyFull] = BuildMatchArrayExpression(filter.BuildVariants)
 	}
 	if len(filter.Distros) > 0 {
-		match[DbTaskStatsIdDistroKeyFull] = BuildMatchArrayExpression(filter.Distros)
+		match[DBTaskStatsIDDistroKeyFull] = BuildMatchArrayExpression(filter.Distros)
 	}
 
 	if filter.StartAt != nil {
@@ -438,21 +438,21 @@ func (filter StatsFilter) buildTaskPaginationOrBranches() []bson.M {
 	switch filter.GroupBy {
 	case GroupByTask:
 		fields = []PaginationField{
-			{Field: DbTaskStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
-			{Field: DbTaskStatsIdTaskNameKeyFull, Strict: false, Value: filter.StartAt.Task},
+			{Field: DBTaskStatsIDDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
+			{Field: DBTaskStatsIDTaskNameKeyFull, Strict: false, Value: filter.StartAt.Task},
 		}
 	case GroupByVariant:
 		fields = []PaginationField{
-			{Field: DbTaskStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
-			{Field: DbTaskStatsIdBuildVariantKeyFull, Strict: true, Value: filter.StartAt.BuildVariant},
-			{Field: DbTaskStatsIdTaskNameKeyFull, Strict: false, Value: filter.StartAt.Task},
+			{Field: DBTaskStatsIDDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
+			{Field: DBTaskStatsIDBuildVariantKeyFull, Strict: true, Value: filter.StartAt.BuildVariant},
+			{Field: DBTaskStatsIDTaskNameKeyFull, Strict: false, Value: filter.StartAt.Task},
 		}
 	case GroupByDistro:
 		fields = []PaginationField{
-			{Field: DbTaskStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
-			{Field: DbTaskStatsIdBuildVariantKeyFull, Strict: true, Value: filter.StartAt.BuildVariant},
-			{Field: DbTaskStatsIdTaskNameKeyFull, Strict: true, Value: filter.StartAt.Task},
-			{Field: DbTaskStatsIdDistroKeyFull, Strict: false, Value: filter.StartAt.Distro},
+			{Field: DBTaskStatsIDDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
+			{Field: DBTaskStatsIDBuildVariantKeyFull, Strict: true, Value: filter.StartAt.BuildVariant},
+			{Field: DBTaskStatsIDTaskNameKeyFull, Strict: true, Value: filter.StartAt.Task},
+			{Field: DBTaskStatsIDDistroKeyFull, Strict: false, Value: filter.StartAt.Distro},
 		}
 	}
 
@@ -648,9 +648,9 @@ func makeSum(condition bson.M) bson.M {
 // Functions to access pre-computed stats documents for testing. //
 ///////////////////////////////////////////////////////////////////
 
-func GetDailyTaskDoc(id DbTaskStatsId) (*DbTaskStats, error) {
-	doc := DbTaskStats{}
-	q := db.Query(bson.M{DbTaskStatsIdKey: id})
+func GetDailyTaskDoc(id DBTaskStatsID) (*DBTaskStats, error) {
+	doc := DBTaskStats{}
+	q := db.Query(bson.M{DBTaskStatsIDKey: id})
 	err := db.FindOneQ(DailyTaskStatsCollection, q, &doc)
 	if adb.ResultsNotFound(err) {
 		return nil, nil

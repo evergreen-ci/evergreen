@@ -53,8 +53,8 @@ var requesters = []string{
 	evergreen.MergeTestRequester,
 }
 
-var task1Item1 = taskstats.DbTaskStats{
-	Id: taskstats.DbTaskStatsId{
+var task1Item1 = taskstats.DBTaskStats{
+	Id: taskstats.DBTaskStatsID{
 		Project:      project,
 		Requester:    requesters[0],
 		TaskName:     task1,
@@ -71,8 +71,8 @@ var task1Item1 = taskstats.DbTaskStats{
 	AvgDurationSuccess: avgDuration,
 }
 
-var task1Item2 = taskstats.DbTaskStats{
-	Id: taskstats.DbTaskStatsId{
+var task1Item2 = taskstats.DBTaskStats{
+	Id: taskstats.DBTaskStatsID{
 		Project:      project,
 		Requester:    requesters[0],
 		TaskName:     task1,
@@ -89,8 +89,8 @@ var task1Item2 = taskstats.DbTaskStats{
 	AvgDurationSuccess: avgDuration1,
 }
 
-var task2Item1 = taskstats.DbTaskStats{
-	Id: taskstats.DbTaskStatsId{
+var task2Item1 = taskstats.DBTaskStats{
+	Id: taskstats.DBTaskStatsID{
 		Project:      project,
 		Requester:    requesters[0],
 		TaskName:     task2,
@@ -106,8 +106,8 @@ var task2Item1 = taskstats.DbTaskStats{
 	NumSetupFailed:     numSetupFailed,
 	AvgDurationSuccess: avgDuration,
 }
-var task2Item2 = taskstats.DbTaskStats{
-	Id: taskstats.DbTaskStatsId{
+var task2Item2 = taskstats.DBTaskStats{
+	Id: taskstats.DBTaskStatsID{
 		Project:      project,
 		Requester:    requesters[0],
 		TaskName:     task2,
@@ -124,8 +124,8 @@ var task2Item2 = taskstats.DbTaskStats{
 	AvgDurationSuccess: avgDuration1,
 }
 
-var task3item1 = taskstats.DbTaskStats{
-	Id: taskstats.DbTaskStatsId{
+var task3item1 = taskstats.DBTaskStats{
+	Id: taskstats.DBTaskStatsID{
 		Project:      project,
 		Requester:    requesters[0],
 		TaskName:     task3,
@@ -179,7 +179,7 @@ func handleNoFormat(format string, i int) string {
 	return format
 }
 
-func InsertManyDailyTaskStats(many int, prototype taskstats.DbTaskStats, projectFmt string, requesterFmt string, taskNameFmt string, variantFmt string, distroFmt string) error {
+func InsertManyDailyTaskStats(many int, prototype taskstats.DBTaskStats, projectFmt string, requesterFmt string, taskNameFmt string, variantFmt string, distroFmt string) error {
 
 	items := make([]interface{}, many)
 	for i := 0; i < many; i++ {
@@ -530,8 +530,8 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 		require.NoError(t, err)
 
 		require.NoError(t, InsertDailyTaskStats(
-			taskstats.DbTaskStats{
-				Id: taskstats.DbTaskStatsId{
+			taskstats.DBTaskStats{
+				Id: taskstats.DBTaskStatsID{
 					Project:      project,
 					Requester:    requesters[0],
 					TaskName:     task1,
@@ -547,8 +547,8 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 				NumSetupFailed:     numSetupFailed,
 				AvgDurationSuccess: avgDuration,
 			},
-			taskstats.DbTaskStats{
-				Id: taskstats.DbTaskStatsId{
+			taskstats.DBTaskStats{
+				Id: taskstats.DBTaskStatsID{
 					Project:      project,
 					Requester:    requesters[0],
 					TaskName:     task2,
@@ -569,8 +569,8 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 		for i := 1; i < 60; i++ {
 			delta := time.Duration(i) * 24 * time.Hour
 			require.NoError(t, InsertDailyTaskStats(
-				taskstats.DbTaskStats{
-					Id: taskstats.DbTaskStatsId{
+				taskstats.DBTaskStats{
+					Id: taskstats.DBTaskStatsID{
 						Project:      project,
 						Requester:    requesters[0],
 						TaskName:     task1,
@@ -586,8 +586,8 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 					NumSetupFailed:     numSetupFailed,
 					AvgDurationSuccess: avgDuration,
 				},
-				taskstats.DbTaskStats{
-					Id: taskstats.DbTaskStatsId{
+				taskstats.DBTaskStats{
+					Id: taskstats.DBTaskStatsID{
 						Project:      project,
 						Requester:    requesters[0],
 						TaskName:     task2,
