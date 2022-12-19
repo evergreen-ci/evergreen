@@ -74,7 +74,9 @@ const (
 	ObjectHost    = "host"
 	ObjectPatch   = "patch"
 
-	TriggerOutcome                   = "outcome"
+	TriggerOutcome = "outcome"
+	// TriggerFamilyOutcome indicates that a patch or version completed,
+	// and all their child patches (if there are any) have also completed.
 	TriggerFamilyOutcome             = "family-outcome"
 	TriggerGithubCheckOutcome        = "github-check-outcome"
 	TriggerFailure                   = "failure"
