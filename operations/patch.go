@@ -178,10 +178,6 @@ func Patch() cli.Command {
 			}
 			params.Description = params.getDescription()
 
-			if err = params.setLocalAliases(conf); err != nil {
-				return errors.Wrap(err, "setting local aliases")
-			}
-
 			if (params.RepeatDefinition || params.RepeatFailed) && (len(params.Tasks) > 0 || len(params.Variants) > 0) {
 				return errors.Errorf("can't define tasks/variants when reusing previous patch's tasks and variants")
 			}
