@@ -92,7 +92,7 @@ func (j *cacheHistoricalTaskDataJob) Run(ctx context.Context) {
 	// stats to update, starting with ProcessedTasksUntil (the time before
 	// which all finished tasks have been processed for this project) up
 	// until now. This size of this window is capped at 24 hours to prevent
-	// long-running jobs and overwhelming the databse.
+	// long-running jobs and overwhelming the database.
 	update_window_start := statsStatus.ProcessedTasksUntil
 	update_window_end := time.Now()
 	if max := update_window_start.Add(24 * time.Hour); update_window_end.After(max) {
