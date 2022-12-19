@@ -1,5 +1,5 @@
 mutation {
-  restartTask(taskId: "nonexistent") {
+  restartTask(taskId: "nonexistent", failedOnly: false) {
     status
     id
   }
