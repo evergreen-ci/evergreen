@@ -68,7 +68,7 @@ func (apiVersion *APIVersion) BuildFromService(v model.Version) {
 	}
 	for _, bv := range v.Builds {
 		apiBuild := APIBuild{}
-		apiBuild.BuildFromService(bv)
+		apiBuild.BuildFromService(bv, nil)
 		apiVersion.Builds = append(apiVersion.Builds, apiBuild)
 	}
 

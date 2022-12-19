@@ -71,9 +71,12 @@ func ByVersions(vIds []string) db.Q {
 	return db.Query(bson.M{VersionKey: bson.M{"$in": vIds}})
 }
 
-// ByVariant creates a query that finds all builds for a given variant.
-func ByVariant(bv string) db.Q {
-	return db.Query(bson.M{BuildVariantKey: bv})
+// ByVersionAndVariant creates a query that finds all builds in a version for a given variant.
+func ByVersionAndVariant(version, bv string) db.Q {
+	return db.Query(bson.M{
+		VersionKey:      version,
+		BuildVariantKey: bv,
+	})
 }
 
 // ByProject creates a query that finds all builds for a given project id.

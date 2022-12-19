@@ -46,11 +46,35 @@ type APIBuild struct {
 	ActualMakespan    APIDuration          `json:"actual_makespan_ms"`
 	Origin            *string              `json:"origin"`
 	StatusCounts      task.TaskStatusCount `json:"status_counts,omitempty"`
+	DefinitionInfo    DefinitionInfo       `json:"definition_info"`
+}
+
+type DefinitionInfo struct {
+	CronBatchTime *string `json:"cron,omitempty"`
+	BatchTime     *int    `json:"batchtime,omitempty"`
+}
+
+// PopulateDefinitionInfo adds cron/batchtime for the variant, if applicable. Not supported for matrices.
+// Batchtime and cron are nil if not explicitly configured in the project config. Expansions are not expanded.
+func (apiBuild *APIBuild) populateDefinitionInfo(pp *model.ParserProject) {
+	if pp == nil {
+		return
+	}
+	variant := utility.FromStringPtr(apiBuild.BuildVariant)
+	for _, bv := range pp.BuildVariants {
+		if bv.Name == variant {
+			if bv.CronBatchTime != "" {
+				apiBuild.DefinitionInfo.CronBatchTime = utility.ToStringPtr(bv.CronBatchTime)
+			}
+			apiBuild.DefinitionInfo.BatchTime = bv.BatchTime
+		}
+	}
 }
 
 // BuildFromService converts from service level structs to an APIBuild.
 // APIBuild.ProjectId is set in the route builder's Execute method.
-func (apiBuild *APIBuild) BuildFromService(v build.Build) {
+// If ParserProject isn't nil, include info from project (not applicable to matrix builds).
+func (apiBuild *APIBuild) BuildFromService(v build.Build, pp *model.ParserProject) {
 	apiBuild.Id = utility.ToStringPtr(v.Id)
 	apiBuild.CreateTime = ToTimePtr(v.CreateTime)
 	apiBuild.StartTime = ToTimePtr(v.StartTime)
@@ -96,6 +120,7 @@ func (apiBuild *APIBuild) BuildFromService(v build.Build) {
 			apiBuild.ProjectIdentifier = utility.ToStringPtr(identifier)
 		}
 	}
+	apiBuild.populateDefinitionInfo(pp)
 }
 
 func (apiBuild *APIBuild) SetTaskCache(tasks []task.Task) {

@@ -49,7 +49,7 @@ func (r *patchResolver) Builds(ctx context.Context, obj *restModel.APIPatch) ([]
 	var apiBuilds []*restModel.APIBuild
 	for _, build := range builds {
 		apiBuild := restModel.APIBuild{}
-		apiBuild.BuildFromService(build)
+		apiBuild.BuildFromService(build, nil)
 		apiBuilds = append(apiBuilds, &apiBuild)
 	}
 	return apiBuilds, nil

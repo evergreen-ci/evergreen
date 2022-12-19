@@ -265,7 +265,7 @@ func (t *buildTriggers) buildRuntimeChange(sub *event.Subscription) (*notificati
 
 func (t *buildTriggers) makeData(sub *event.Subscription, pastTenseOverride string) (*commonTemplateData, error) {
 	api := restModel.APIBuild{}
-	api.BuildFromService(*t.build)
+	api.BuildFromService(*t.build, nil)
 	projectName := t.build.Project
 	if api.ProjectIdentifier != nil {
 		projectName = utility.FromStringPtr(api.ProjectIdentifier)
