@@ -1164,6 +1164,13 @@ func CountProjectRefsWithIdentifier(identifier string) (int, error) {
 	return db.CountQ(ProjectRefCollection, byId(identifier))
 }
 
+type GetProjectTasksOpts struct {
+	Limit        int      `json:"num_versions"`
+	BuildVariant string   `json:"build_variant"`
+	StartAt      int      `json:"start_at"`
+	Requesters   []string `json:"requesters"`
+}
+
 // GetTasksWithOptions will find the matching tasks run in the last number of versions(denoted by Limit) that exist for a given project.
 // This function may also filter on tasks running on a specific build variant, or tasks that come after a specific revision order number.
 func GetTasksWithOptions(projectName string, taskName string, opts GetProjectTasksOpts) ([]task.Task, error) {
@@ -1527,10 +1534,9 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch, calledBy
 	return hiddenProject, nil
 }
 
-// FindBranchProjectRef finds the project ref for this owner/repo/branch that has the commit queue enabled.
-// There should only ever be one project for the query because we only enable commit queue if
-// no other project ref with the same specification has it enabled.
-
+// FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch finds the project ref for this owner/repo/branch
+// that has the commit queue enabled. There should only ever be one project for the query because we only enable commit
+// queue if no other project ref with the same specification has it enabled.
 func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch string) (*ProjectRef, error) {
 	projectRefs, err := FindMergedEnabledProjectRefsByRepoAndBranch(owner, repo, branch)
 	if err != nil {

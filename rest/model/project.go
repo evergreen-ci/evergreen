@@ -26,6 +26,19 @@ type UIProjectFields struct {
 	Owner       string `json:"owner_name"`
 }
 
+type GetProjectTaskExecutionReq struct {
+	TaskName     string   `json:"task_name"`
+	BuildVariant string   `json:"build_variant"`
+	Requesters   []string `json:"requesters"`
+
+	StartTime string `json:"start_time"`
+	EndTime   string `json:"end_time"`
+}
+
+type ProjectTaskExecutionResp struct {
+	NumCompleted int `json:"num_completed"`
+}
+
 type APITriggerDefinition struct {
 	Project           *string `json:"project"`
 	Level             *string `json:"level"` //build or task

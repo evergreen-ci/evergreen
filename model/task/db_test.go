@@ -1632,3 +1632,142 @@ func TestFindAllMarkedUnattainableDependencies(t *testing.T) {
 	assert.NoError(err)
 	assert.Len(unattainableTasks, 1)
 }
+
+func TestCountNumExecutionsForInterval(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection, OldCollection))
+
+	now := time.Now()
+	earlier := time.Now().Add(-time.Hour)
+	reallyEarly := now.Add(-12 * time.Hour)
+	tasks := []Task{
+		{
+			Id:           "notFinished",
+			Project:      "myProject",
+			Status:       evergreen.TaskStarted,
+			Requester:    evergreen.RepotrackerVersionRequester,
+			BuildVariant: "bv1",
+			DisplayName:  "task1",
+			Execution:    1,
+		},
+		{
+			Id:           "finished",
+			Project:      "myProject",
+			Status:       evergreen.TaskFailed,
+			Requester:    evergreen.RepotrackerVersionRequester,
+			BuildVariant: "bv1",
+			DisplayName:  "task1",
+			FinishTime:   now,
+			Execution:    1,
+		},
+		{
+			Id:           "finishedEarlier",
+			Project:      "myProject",
+			Status:       evergreen.TaskFailed,
+			Requester:    evergreen.RepotrackerVersionRequester,
+			BuildVariant: "bv1",
+			DisplayName:  "task1",
+			FinishTime:   earlier,
+			Execution:    1,
+		},
+		{
+			Id:           "patch",
+			Project:      "myProject",
+			Status:       evergreen.TaskSucceeded,
+			Requester:    evergreen.PatchVersionRequester,
+			BuildVariant: "bv1",
+			DisplayName:  "task1",
+			FinishTime:   now,
+			Execution:    1,
+		},
+		{
+			Id:           "tooEarly",
+			Project:      "myProject",
+			Status:       evergreen.TaskSucceeded,
+			Requester:    evergreen.RepotrackerVersionRequester,
+			BuildVariant: "bv1",
+			DisplayName:  "task1",
+			FinishTime:   reallyEarly,
+			Execution:    1,
+		},
+		{
+			Id:           "wrongTask",
+			Project:      "myProject",
+			Status:       evergreen.TaskFailed,
+			Requester:    evergreen.RepotrackerVersionRequester,
+			BuildVariant: "bv1",
+			DisplayName:  "task2",
+			FinishTime:   now,
+			Execution:    1,
+		},
+		{
+			Id:           "wrongVariant",
+			Project:      "myProject",
+			Status:       evergreen.TaskFailed,
+			Requester:    evergreen.RepotrackerVersionRequester,
+			BuildVariant: "bv2",
+			DisplayName:  "task1",
+			FinishTime:   now,
+			Execution:    1,
+		},
+	}
+	for _, each := range tasks {
+		assert.NoError(t, each.Insert())
+		each.Execution = 0
+		// Duplicate everything for the old task collection to ensure this is working.
+		assert.NoError(t, db.Insert(OldCollection, each))
+	}
+
+	for testName, test := range map[string]func(*testing.T){
+		"nothingInRange": func(t *testing.T) {
+			input := NumExecutionsForIntervalInput{
+				ProjectId:    "myProject",
+				BuildVarName: "bv1",
+				TaskName:     "task1",
+				StartTime:    time.Now().Add(-20 * time.Hour),
+				EndTime:      time.Now().Add(-18 * time.Hour),
+			}
+			numExecutions, err := CountNumExecutionsForInterval(input)
+			assert.NoError(t, err)
+			assert.Equal(t, 0, numExecutions)
+		},
+		"lotsInRange": func(t *testing.T) {
+			input := NumExecutionsForIntervalInput{
+				ProjectId:    "myProject",
+				BuildVarName: "bv1",
+				TaskName:     "task1",
+				StartTime:    now.Add(-20 * time.Hour),
+			}
+			// Should include the finished tasks in both new and old.
+			numExecutions, err := CountNumExecutionsForInterval(input)
+			assert.NoError(t, err)
+			assert.Equal(t, 6, numExecutions)
+		},
+		"lessInRange": func(t *testing.T) {
+			input := NumExecutionsForIntervalInput{
+				ProjectId:    "myProject",
+				BuildVarName: "bv1",
+				TaskName:     "task1",
+				StartTime:    now.Add(-2 * time.Hour),
+			}
+			// Should include the finished tasks in both new and old except reallyEarly.
+			numExecutions, err := CountNumExecutionsForInterval(input)
+			assert.NoError(t, err)
+			assert.Equal(t, 4, numExecutions)
+		},
+		"onlyPatches": func(t *testing.T) {
+			input := NumExecutionsForIntervalInput{
+				ProjectId:    "myProject",
+				BuildVarName: "bv1",
+				TaskName:     "task1",
+				Requesters:   evergreen.PatchRequesters,
+				StartTime:    now.Add(-2 * time.Hour),
+			}
+			// Should include the patch requester.
+			numExecutions, err := CountNumExecutionsForInterval(input)
+			assert.NoError(t, err)
+			assert.Equal(t, 2, numExecutions)
+		},
+	} {
+		t.Run(testName, test)
+	}
+}
