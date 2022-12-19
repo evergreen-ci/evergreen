@@ -1060,7 +1060,7 @@ func PopulateCacheHistoricalTaskDataJob(part int) amboy.QueueOperation {
 				continue
 			}
 
-			catcher.Wrapf(queue.Put(ctx, NewCacheHistoricalTaskDataJob(project.Id, ts)), "enqueueing cache historical task data job for project '%s'", project.Identifier)
+			catcher.Wrapf(queue.Put(ctx, NewCacheHistoricalTaskDataJob(ts, project.Id)), "enqueueing cache historical task data job for project '%s'", project.Identifier)
 		}
 
 		return catcher.Resolve()

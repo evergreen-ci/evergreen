@@ -2,6 +2,7 @@ package units
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -16,10 +17,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-const (
-	cacheHistoricalTaskDataName = "cache-historical-task-data"
-	maxSyncDuration             = time.Hour * 24
-)
+const cacheHistoricalTaskDataName = "cache-historical-task-data"
 
 func init() {
 	registry.AddJobType(cacheHistoricalTaskDataName,
@@ -32,10 +30,11 @@ type cacheHistoricalTaskDataJob struct {
 	job.Base   `bson:"job_base" json:"job_base" yaml:"job_base"`
 }
 
-func NewCacheHistoricalTaskDataJob(projectId string, id string) amboy.Job {
+func NewCacheHistoricalTaskDataJob(id, projectID string) amboy.Job {
 	j := makeCacheHistoricalTaskDataJob()
-	j.ProjectID = projectId
+	j.ProjectID = projectID
 	j.Requesters = []string{evergreen.RepotrackerVersionRequester}
+	j.SetID(fmt.Sprintf("%s.%s.%s", cacheHistoricalTaskDataName, projectID, id))
 	return j
 }
 
@@ -53,14 +52,15 @@ func makeCacheHistoricalTaskDataJob() *cacheHistoricalTaskDataJob {
 
 func (j *cacheHistoricalTaskDataJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
+
+	startAt := time.Now()
 	timingMsg := message.Fields{
 		"job_id":       j.ID(),
 		"project":      j.ProjectID,
 		"job_type":     j.Type().Name,
 		"message":      "timing-info",
-		"run_start_at": time.Now(),
+		"run_start_at": startAt,
 	}
-	startAt := time.Now()
 	defer func() {
 		timingMsg["has_errors"] = j.HasErrors()
 		timingMsg["aborted"] = ctx.Err() != nil
@@ -69,10 +69,9 @@ func (j *cacheHistoricalTaskDataJob) Run(ctx context.Context) {
 		grip.Info(timingMsg)
 	}()
 
-	// Check for degraded mode flag.
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
-		j.AddError(errors.Wrap(err, "retrieving service flags"))
+		j.AddError(errors.Wrap(err, "getting service flags"))
 		return
 	}
 	if flags.CacheStatsJobDisabled {
@@ -82,27 +81,35 @@ func (j *cacheHistoricalTaskDataJob) Run(ctx context.Context) {
 
 	var statsStatus taskstats.StatsStatus
 	timingMsg["status_check"] = reportTiming(func() {
-		// Lookup last sync date for project.
 		statsStatus, err = taskstats.GetStatsStatus(j.ProjectID)
-		j.AddError(errors.Wrap(err, "retrieving last sync date"))
+		j.AddError(errors.Wrap(err, "getting daily task stats status"))
 	}).Seconds()
 	if j.HasErrors() {
 		return
 	}
 
-	syncFromTime := statsStatus.ProcessedTasksUntil
-	syncToTime := findTargetTimeForSync(syncFromTime)
-	timingMsg["sync_from"] = syncFromTime
-	timingMsg["sync_to"] = syncToTime
+	// Calculate the window of time within which we would like to check for
+	// stats to update, starting with ProcessedTasksUntil (the time before
+	// which all finished tasks have been processed for this project) up
+	// until now. This size of this window is capped at 24 hours to prevent
+	// long-running jobs and overwhelming the databse.
+	update_window_start := statsStatus.ProcessedTasksUntil
+	update_window_end := time.Now()
+	if max := update_window_start.Add(24 * time.Hour); update_window_end.After(max) {
+		update_window_end = max
+	}
+	timingMsg["stats_update_window_start"] = update_window_start
+	timingMsg["stats_update_window_end"] = update_window_end
+
 	var statsToUpdate []taskstats.StatsToUpdate
-	timingMsg["find_stats_to_update"] = reportTiming(func() {
+	timingMsg["find_task_stats_to_update"] = reportTiming(func() {
 		statsToUpdate, err = taskstats.FindStatsToUpdate(taskstats.FindStatsToUpdateOptions{
 			ProjectID:  j.ProjectID,
 			Requesters: j.Requesters,
-			Start:      syncFromTime,
-			End:        syncToTime,
+			Start:      update_window_start,
+			End:        update_window_end,
 		})
-		j.AddError(errors.Wrap(err, "finding stats to update"))
+		j.AddError(errors.Wrap(err, "finding daily task stats to update"))
 	}).Seconds()
 	if j.HasErrors() {
 		return
@@ -114,13 +121,15 @@ func (j *cacheHistoricalTaskDataJob) Run(ctx context.Context) {
 				err := errors.Wrap(taskstats.GenerateStats(ctx, taskstats.GenerateStatsOptions{
 					ProjectID: j.ProjectID,
 					Requester: toUpdate.Requester,
-					Date:      syncFromTime,
+					Date:      toUpdate.Day,
 					Tasks:     toUpdate.Tasks,
 				}), "generating daily task stats")
 				grip.Warning(message.WrapError(err, message.Fields{
-					"project_id": j.ProjectID,
-					"sync_date":  utility.GetUTCDay(syncFromTime),
-					"job_time":   startAt,
+					"job_id":         j.ID(),
+					"project":        j.ProjectID,
+					"job_type":       j.Type().Name,
+					"job_start_time": startAt,
+					"task_date":      utility.GetUTCDay(toUpdate.Day),
 				}))
 				if err != nil {
 					j.AddError(err)
@@ -130,19 +139,17 @@ func (j *cacheHistoricalTaskDataJob) Run(ctx context.Context) {
 		}
 	}).Seconds()
 	if j.HasErrors() {
-		errorMsg := j.Error().Error()
+		errMsg := j.Error().Error()
 		// The following errors are known to recur. In these cases we
-		// continue to update syncToTime to prevent re-processing of
-		// the same error.
-		if !strings.Contains(errorMsg, evergreen.KeyTooLargeToIndexError) && !strings.Contains(errorMsg, evergreen.InvalidDivideInputError) {
+		// continue to update the task stats status to prevent
+		// re-processing of the same error.
+		if !strings.Contains(errMsg, evergreen.KeyTooLargeToIndexError) && !strings.Contains(errMsg, evergreen.InvalidDivideInputError) {
 			return
 		}
 	}
 
 	timingMsg["save_stats_status"] = reportTiming(func() {
-		// Update last sync.
-		err = taskstats.UpdateStatsStatus(j.ProjectID, startAt, syncToTime, time.Since(startAt))
-		j.AddError(errors.Wrap(err, "updating last synced date"))
+		j.AddError(errors.Wrap(taskstats.UpdateStatsStatus(j.ProjectID, startAt, update_window_end, time.Since(startAt)), "updating daily task stats status"))
 	}).Seconds()
 }
 
@@ -150,20 +157,4 @@ func reportTiming(fn func()) time.Duration {
 	startAt := time.Now()
 	fn()
 	return time.Since(startAt)
-}
-
-// We only want to sync a max of 1 day of data at a time. So, if the previous
-// sync was more than 1 day ago, only sync 1 day ahead. Otherwise, we can sync
-// to now.
-func findTargetTimeForSync(previousSyncTime time.Time) time.Time {
-	now := time.Now()
-	maxSyncTime := previousSyncTime.Add(maxSyncDuration)
-
-	// Check if the previous sync date is within the max time we want to
-	// sync.
-	if maxSyncTime.After(now) {
-		return now
-	}
-
-	return maxSyncTime
 }
