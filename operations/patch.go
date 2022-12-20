@@ -178,8 +178,8 @@ func Patch() cli.Command {
 			}
 			params.Description = params.getDescription()
 
-			if (params.RepeatDefinition || params.RepeatFailed) && (len(params.Tasks) > 0 || len(params.Variants) > 0) {
-				return errors.Errorf("can't define tasks/variants when reusing previous patch's tasks and variants")
+			if (params.RepeatDefinition || params.RepeatFailed) && (len(params.Tasks) > 0 || len(params.Variants) > 0 || len(params.Alias) > 0) {
+				return errors.Errorf("can't define tasks, variants or aliases when reusing previous patch's tasks and variants")
 			}
 
 			diffData, err := loadGitData("", ref.Branch, params.Ref, "", params.PreserveCommits, args...)
