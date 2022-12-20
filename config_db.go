@@ -96,6 +96,7 @@ var (
 	containerConfigurationsDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "ContainerConfigurationsDisabled")
 	partialRouteAuthDisabledKey        = bsonutil.MustHaveTag(ServiceFlags{}, "PartialRouteAuthDisabled")
 	unrecognizedPodCleanupDisabledKey  = bsonutil.MustHaveTag(ServiceFlags{}, "UnrecognizedPodCleanupDisabled")
+	parserProjectS3StorageDisabledKey  = bsonutil.MustHaveTag(ServiceFlags{}, "ParserProjectS3StorageDisabled")
 
 	// ContainerPoolsConfig keys
 	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")
