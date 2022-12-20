@@ -74,7 +74,7 @@ func (s *shellExecuteCommandSuite) TearDownTest() {
 func (s *shellExecuteCommandSuite) TestWorksWithEmptyShell() {
 	cmd := &shellExec{
 		WorkingDir: testutil.GetDirectoryOfFile(),
-		Script:     "my script",
+		Script:     "exit 0",
 	}
 	cmd.SetJasperManager(s.jasper)
 	s.Empty(cmd.Shell)
@@ -85,7 +85,7 @@ func (s *shellExecuteCommandSuite) TestWorksWithEmptyShell() {
 
 func (s *shellExecuteCommandSuite) TestSilentAndRedirectToStdOutError() {
 	cmd := &shellExec{
-		Script: "my script",
+		Script: "exit 0",
 	}
 
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
