@@ -223,7 +223,7 @@ func (s *ClientSettings) getModule(patchId, moduleName string) (*model.Module, e
 		return nil, err
 	}
 
-	helpText := "Note: In order to set a module, you need to be in the directory for the module project, not the directory for the project that the module is being applied onto."
+	const helpText = "Note: In order to set a module, you need to be in the directory for the module project, not the directory for the project that the module is being applied onto."
 
 	if len(proj.Modules) == 0 {
 		return nil, errors.Errorf("Project has no configured modules. Specify different project or "+
