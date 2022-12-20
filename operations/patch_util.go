@@ -54,9 +54,12 @@ type localDiff struct {
 }
 
 type patchParams struct {
-	Project           string
-	Path              string
-	Alias             string
+	Project string
+	Path    string
+	Alias   string
+	// isUsingLocalAlias indicates that the user-specified alias matches a local
+	// alias.
+	isUsingLocalAlias bool
 	Variants          []string
 	Tasks             []string
 	RegexVariants     []string
@@ -226,25 +229,7 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 
 	// If reusing a previous definition, ignore defaults.
 	if !p.RepeatFailed && !p.RepeatDefinition {
-		if err := p.setLocalAliases(conf); err != nil {
-			grip.Warningf("warning - setting local aliases")
-		}
-
-		if err := p.loadAlias(conf); err != nil {
-			grip.Warningf("warning - failed to set default alias: %v\n", err)
-		}
-
-		if err := p.loadVariants(conf); err != nil {
-			grip.Warningf("warning - failed to set default variants: %v\n", err)
-		}
-
-		if err := p.loadTasks(conf); err != nil {
-			grip.Warningf("warning - failed to set default tasks: %v\n", err)
-		}
-
-		if err := p.loadTriggerAliases(conf); err != nil {
-			grip.Warningf("warning - failed to set default trigger aliases: %v\n", err)
-		}
+		p.setNonRepeatedDefaults(conf)
 	}
 
 	if err := p.loadParameters(conf); err != nil {
@@ -284,6 +269,28 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 	}
 
 	return ref, nil
+}
+
+func (p *patchParams) setNonRepeatedDefaults(conf *ClientSettings) {
+	if err := p.setLocalAliases(conf); err != nil {
+		grip.Warningf("warning - setting local aliases: %s\n", err)
+	}
+
+	if err := p.loadAlias(conf); err != nil {
+		grip.Warningf("warning - failed to set default alias: %s\n", err)
+	}
+
+	if err := p.loadVariants(conf); err != nil {
+		grip.Warningf("warning - failed to set default variants: %s\n", err)
+	}
+
+	if err := p.loadTasks(conf); err != nil {
+		grip.Warningf("warning - failed to set default tasks: %s\n", err)
+	}
+
+	if err := p.loadTriggerAliases(conf); err != nil {
+		grip.Warningf("warning - failed to set default trigger aliases: %s\n", err)
+	}
 }
 
 func (p *patchParams) loadProject(conf *ClientSettings) error {
@@ -342,6 +349,7 @@ func (p *patchParams) addAliasToPatchParams(alias model.ProjectAlias) {
 		p.Tasks = append(p.Tasks, formattedTags...)
 	}
 	p.Alias = ""
+	p.isUsingLocalAlias = true
 }
 
 func (p *patchParams) setDefaultProject(conf *ClientSettings) {
@@ -394,7 +402,7 @@ func (p *patchParams) loadVariants(conf *ClientSettings) error {
 				return errors.Wrap(err, "setting default variants")
 			}
 		}
-	} else if p.Alias == "" {
+	} else if p.Alias == "" && !p.isUsingLocalAlias {
 		p.Variants = conf.FindDefaultVariants(p.Project)
 	}
 
@@ -437,7 +445,7 @@ func (p *patchParams) loadTasks(conf *ClientSettings) error {
 				return errors.Wrap(err, "setting default tasks")
 			}
 		}
-	} else if p.Alias == "" {
+	} else if p.Alias == "" && !p.isUsingLocalAlias {
 		p.Tasks = conf.FindDefaultTasks(p.Project)
 	}
 
