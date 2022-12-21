@@ -1021,7 +1021,7 @@ func (h *getProjectTasksHandler) Run(ctx context.Context) gimlet.Responder {
 
 ////////////////////////////////////////////////////////////////////////
 //
-// GET /rest/v2/projects/{project_id}/tasks/executions
+// GET /rest/v2/projects/{project_id}/task_executions
 
 type getProjectTaskExecutionsHandler struct {
 	projectName string
