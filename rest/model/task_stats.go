@@ -3,46 +3,9 @@ package model
 import (
 	"strings"
 
-	"github.com/evergreen-ci/evergreen/model/stats"
+	"github.com/evergreen-ci/evergreen/model/taskstats"
 	"github.com/evergreen-ci/utility"
 )
-
-// APITestStats is the model to be returned by the API when querying test execution statistics.
-type APITestStats struct {
-	TestFile     *string `json:"test_file"`
-	TaskName     *string `json:"task_name,omitempty"`
-	BuildVariant *string `json:"variant,omitempty"`
-	Distro       *string `json:"distro,omitempty"`
-	Date         *string `json:"date"`
-
-	NumPass         int     `json:"num_pass"`
-	NumFail         int     `json:"num_fail"`
-	AvgDurationPass float64 `json:"avg_duration_pass"`
-}
-
-// BuildFromService converts a service level struct to an API level struct.
-func (ts *APITestStats) BuildFromService(in stats.TestStats) {
-	ts.TestFile = utility.ToStringPtr(in.TestFile)
-	ts.TaskName = utility.ToStringPtr(in.TaskName)
-	ts.BuildVariant = utility.ToStringPtr(in.BuildVariant)
-	ts.Distro = utility.ToStringPtr(in.Distro)
-	ts.Date = utility.ToStringPtr(in.Date.UTC().Format("2006-01-02"))
-
-	ts.NumPass = in.NumPass
-	ts.NumFail = in.NumFail
-	ts.AvgDurationPass = in.AvgDurationPass
-}
-
-// StartAtKey returns the start_at key parameter that can be used to paginate and start at this element.
-func (ts *APITestStats) StartAtKey() string {
-	return StartAtKey{
-		date:         utility.FromStringPtr(ts.Date),
-		buildVariant: utility.FromStringPtr(ts.BuildVariant),
-		taskName:     utility.FromStringPtr(ts.TaskName),
-		testFile:     utility.FromStringPtr(ts.TestFile),
-		distro:       utility.FromStringPtr(ts.Distro),
-	}.String()
-}
 
 // APITaskStats is the model to be returned by the API when querying task execution statistics
 type APITaskStats struct {
@@ -62,7 +25,7 @@ type APITaskStats struct {
 }
 
 // BuildFromService converts a service level struct to an API level struct.
-func (ts *APITaskStats) BuildFromService(v stats.TaskStats) {
+func (ts *APITaskStats) BuildFromService(v taskstats.TaskStats) {
 	ts.TaskName = utility.ToStringPtr(v.TaskName)
 	ts.BuildVariant = utility.ToStringPtr(v.BuildVariant)
 	ts.Distro = utility.ToStringPtr(v.Distro)
@@ -93,11 +56,10 @@ type StartAtKey struct {
 	date         string
 	buildVariant string
 	taskName     string
-	testFile     string
 	distro       string
 }
 
 func (s StartAtKey) String() string {
-	elements := []string{s.date, s.buildVariant, s.taskName, s.testFile, s.distro}
+	elements := []string{s.date, s.buildVariant, s.taskName, s.distro}
 	return strings.Join(elements, "|")
 }

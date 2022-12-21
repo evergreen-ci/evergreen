@@ -81,7 +81,6 @@ Admin Settings
 						<li class="link" ng-click="scrollTo('newrelic')">New Relic</li>
 						<li class="link" ng-click="scrollTo('data_pipes')">Data-Pipes</li>
 						<li class="link" ng-click="scrollTo('cedar')">Cedar</li>
-						<li class="link" ng-click="scrollTo('presto')">Presto</li>
 						<div>Background Processing</div>
 						<li class="link" ng-click="scrollTo('amboy')">Amboy</li>
 						<li class="link" ng-click="scrollTo('logger_config')">Logger Config</li>
@@ -289,7 +288,7 @@ Admin Settings
 													</md-radio-group>
 												</td>
 											</tr>
-											<tr>
+                                                                                        <tr>
 												<td>Cache historical statistics</td>
 												<td colspan="2">
 													<md-radio-group
@@ -1478,49 +1477,6 @@ Admin Settings
 									<md-input-container class="control" style="width:45%;">
 										<label>API Key</label>
 										<input type="text" ng-model="Settings.cedar.api_key">
-									</md-input-container>
-								</md-card-content>
-							</md-card>
-							<md-card flex=50 id="presto" style="height:auto">
-								<md-card-title>
-									<md-card-title-text>
-										<span>Presto</span>
-									</md-card-title-text>
-									<md-button ng-click="clearSection('presto')">
-										<i class="fa fa-trash"></i>
-									</md-button>
-								</md-card-title>
-								<md-card-content>
-									<md-input-container class="control" style="width:45%;">
-										<label>Base URI</label>
-										<input type="text" ng-model="Settings.presto.base_uri">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>Port</label>
-										<input type="number" ng-model="Settings.presto.port">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<md-checkbox ng-model="Settings.presto.tls">TLS</md-checkbox>
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>Username</label>
-										<input type="text" ng-model="Settings.presto.username">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>Password</label>
-										<input type="text" ng-model="Settings.presto.password">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>Source</label>
-										<input type="text" ng-model="Settings.presto.source">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>Catalog</label>
-										<input type="text" ng-model="Settings.presto.catalog">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>Schema</label>
-										<input type="text" ng-model="Settings.presto.schema">
 									</md-input-container>
 								</md-card-content>
 							</md-card>

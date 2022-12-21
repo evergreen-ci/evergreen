@@ -474,7 +474,7 @@ tasks:
     name: test-model-pod-dispatcher
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
-    name: test-model-stats
+    name: test-model-taskstats
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-task

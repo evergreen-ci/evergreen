@@ -255,31 +255,6 @@ func (s *ProjectPatchByIDSuite) TestGitTagVersionsEnabled() {
 	s.Nil(p.Restricted)
 }
 
-func (s *ProjectPatchByIDSuite) TestFilesIgnoredFromCache() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
-	h := s.rm.(*projectIDPatchHandler)
-	h.user = &user.DBUser{Id: "me"}
-
-	jsonBody := []byte(`{"files_ignored_from_cache": []}`)
-	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
-	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
-	err := s.rm.Parse(ctx, req)
-	s.NoError(err)
-	s.NotNil(s.rm.(*projectIDPatchHandler).user)
-
-	resp := s.rm.Run(ctx)
-	s.NotNil(resp)
-	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
-
-	p, err := data.FindProjectById("dimoxinil", true, false)
-	s.NoError(err)
-	s.False(p.FilesIgnoredFromCache == nil)
-	s.Len(p.FilesIgnoredFromCache, 0)
-}
-
 func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -636,7 +611,6 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 	s.Equal(cachedProject.Admins, utility.FromStringPtrSlice(projectRef.Admins))
 	s.Equal(cachedProject.NotifyOnBuildFailure, projectRef.NotifyOnBuildFailure)
 	s.Equal(cachedProject.DisabledStatsCache, projectRef.DisabledStatsCache)
-	s.Equal(cachedProject.FilesIgnoredFromCache, utility.FromStringPtrSlice(projectRef.FilesIgnoredFromCache))
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -815,12 +789,11 @@ func getTestProjectRef() *serviceModel.ProjectRef {
 		CommitQueue: serviceModel.CommitQueueParams{
 			Enabled: utility.FalsePtr(),
 		},
-		Hidden:                utility.FalsePtr(),
-		PatchingDisabled:      utility.FalsePtr(),
-		Admins:                []string{"langdon.alger"},
-		NotifyOnBuildFailure:  utility.FalsePtr(),
-		DisabledStatsCache:    utility.TruePtr(),
-		FilesIgnoredFromCache: []string{"ignored"},
+		Hidden:               utility.FalsePtr(),
+		PatchingDisabled:     utility.FalsePtr(),
+		Admins:               []string{"langdon.alger"},
+		NotifyOnBuildFailure: utility.FalsePtr(),
+		DisabledStatsCache:   utility.TruePtr(),
 	}
 }
 

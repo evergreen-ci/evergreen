@@ -16,13 +16,13 @@ package reliability
 //      This approach ensures that all the score can be fairly compared as they are for the same number of days.
 //   2. The date field is generated in the $group stage. It doesn't require an $addField pipeline stage.
 //
-// See stats.db.go for details on the structure of the backing daily_task_stats collection.
+// See taskstats.db.go for details on the structure of the backing daily_task_stats collection.
 
 import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/stats"
+	"github.com/evergreen-ci/evergreen/model/taskstats"
 	"github.com/evergreen-ci/utility"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -56,37 +56,37 @@ func (filter TaskReliabilityFilter) dateBoundaries() []time.Time {
 
 // BuildTaskPaginationOrBranches builds an expression for the conditions imposed by the filter StartAt field.
 func (filter TaskReliabilityFilter) buildTaskPaginationOrBranches() []bson.M {
-	var dateDescending = filter.Sort == stats.SortLatestFirst
+	var dateDescending = filter.Sort == taskstats.SortLatestFirst
 	var nextDate interface{}
 
 	if filter.GroupNumDays > 1 {
 		nextDate = filter.StartAt.Date
 	}
 
-	var fields []stats.PaginationField
+	var fields []taskstats.PaginationField
 
 	switch filter.GroupBy {
-	case stats.GroupByTask:
-		fields = []stats.PaginationField{
-			{Field: stats.DbTaskStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
-			{Field: stats.DbTaskStatsIdTaskNameKeyFull, Strict: true, Value: filter.StartAt.Task},
+	case taskstats.GroupByTask:
+		fields = []taskstats.PaginationField{
+			{Field: taskstats.DBTaskStatsIDDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
+			{Field: taskstats.DBTaskStatsIDTaskNameKeyFull, Strict: true, Value: filter.StartAt.Task},
 		}
-	case stats.GroupByVariant:
-		fields = []stats.PaginationField{
-			{Field: stats.DbTaskStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
-			{Field: stats.DbTaskStatsIdBuildVariantKeyFull, Strict: true, Value: filter.StartAt.BuildVariant},
-			{Field: stats.DbTaskStatsIdTaskNameKeyFull, Strict: true, Value: filter.StartAt.Task},
+	case taskstats.GroupByVariant:
+		fields = []taskstats.PaginationField{
+			{Field: taskstats.DBTaskStatsIDDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
+			{Field: taskstats.DBTaskStatsIDBuildVariantKeyFull, Strict: true, Value: filter.StartAt.BuildVariant},
+			{Field: taskstats.DBTaskStatsIDTaskNameKeyFull, Strict: true, Value: filter.StartAt.Task},
 		}
-	case stats.GroupByDistro:
-		fields = []stats.PaginationField{
-			{Field: stats.DbTaskStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
-			{Field: stats.DbTaskStatsIdBuildVariantKeyFull, Strict: true, Value: filter.StartAt.BuildVariant},
-			{Field: stats.DbTaskStatsIdTaskNameKeyFull, Strict: true, Value: filter.StartAt.Task},
-			{Field: stats.DbTaskStatsIdDistroKeyFull, Strict: true, Value: filter.StartAt.Distro},
+	case taskstats.GroupByDistro:
+		fields = []taskstats.PaginationField{
+			{Field: taskstats.DBTaskStatsIDDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
+			{Field: taskstats.DBTaskStatsIDBuildVariantKeyFull, Strict: true, Value: filter.StartAt.BuildVariant},
+			{Field: taskstats.DBTaskStatsIDTaskNameKeyFull, Strict: true, Value: filter.StartAt.Task},
+			{Field: taskstats.DBTaskStatsIDDistroKeyFull, Strict: true, Value: filter.StartAt.Distro},
 		}
 	}
 
-	return stats.BuildPaginationOrBranches(fields)
+	return taskstats.BuildPaginationOrBranches(fields)
 }
 
 // BuildMatchStageForTask builds the match stage of the task query pipeline based on the filter options.
@@ -97,21 +97,21 @@ func (filter TaskReliabilityFilter) buildMatchStageForTask() bson.M {
 	end := boundaries[len(boundaries)-1]
 
 	match := bson.M{
-		stats.DbTaskStatsIdDateKeyFull: bson.M{
+		taskstats.DBTaskStatsIDDateKeyFull: bson.M{
 			"$lt":  start,
 			"$gte": end,
 		},
-		stats.DbTestStatsIdProjectKeyFull:   filter.Project,
-		stats.DbTestStatsIdRequesterKeyFull: bson.M{"$in": filter.Requesters},
+		taskstats.DBTaskStatsIDProjectKeyFull:   filter.Project,
+		taskstats.DBTaskStatsIDRequesterKeyFull: bson.M{"$in": filter.Requesters},
 	}
 	if len(filter.Tasks) > 0 {
-		match[stats.DbTaskStatsIdTaskNameKeyFull] = stats.BuildMatchArrayExpression(filter.Tasks)
+		match[taskstats.DBTaskStatsIDTaskNameKeyFull] = taskstats.BuildMatchArrayExpression(filter.Tasks)
 	}
 	if len(filter.BuildVariants) > 0 {
-		match[stats.DbTaskStatsIdBuildVariantKeyFull] = stats.BuildMatchArrayExpression(filter.BuildVariants)
+		match[taskstats.DBTaskStatsIDBuildVariantKeyFull] = taskstats.BuildMatchArrayExpression(filter.BuildVariants)
 	}
 	if len(filter.Distros) > 0 {
-		match[stats.DbTaskStatsIdDistroKeyFull] = stats.BuildMatchArrayExpression(filter.Distros)
+		match[taskstats.DBTaskStatsIDDistroKeyFull] = taskstats.BuildMatchArrayExpression(filter.Distros)
 	}
 
 	if filter.StartAt != nil {
@@ -133,9 +133,9 @@ func (filter TaskReliabilityFilter) buildDateStageGroupID(fieldName string, inpu
 
 	for i := 0; i < len(boundaries)-1; i++ {
 		branches = append(branches, bson.M{
-			"case": bson.M{"$and": stats.Array{
-				bson.M{"$lt": stats.Array{inputDateFieldRef, boundaries[i]}},
-				bson.M{"$gte": stats.Array{inputDateFieldRef, boundaries[i+1]}},
+			"case": bson.M{"$and": taskstats.Array{
+				bson.M{"$lt": taskstats.Array{inputDateFieldRef, boundaries[i]}},
+				bson.M{"$gte": taskstats.Array{inputDateFieldRef, boundaries[i+1]}},
 			}},
 			"then": boundaries[i+1],
 		})
@@ -145,19 +145,16 @@ func (filter TaskReliabilityFilter) buildDateStageGroupID(fieldName string, inpu
 
 // buildGroupID builds the _id field for the $group stage corresponding to the GroupBy value.
 func (filter TaskReliabilityFilter) buildGroupID() bson.M {
-	id := bson.M{stats.TestStatsDateKey: filter.buildDateStageGroupID("date", stats.DbTaskStatsIdDateKeyFull)}
+	id := bson.M{taskstats.TaskStatsDateKey: filter.buildDateStageGroupID("date", taskstats.DBTaskStatsIDDateKeyFull)}
 	switch filter.GroupBy {
-	case stats.GroupByDistro:
-		id[stats.TestStatsDistroKey] = "$" + stats.DbTestStatsIdDistroKeyFull
+	case taskstats.GroupByDistro:
+		id[taskstats.TaskStatsDistroKey] = "$" + taskstats.DBTaskStatsIDDistroKeyFull
 		fallthrough
-	case stats.GroupByVariant:
-		id[stats.TestStatsBuildVariantKey] = "$" + stats.DbTestStatsIdBuildVariantKeyFull
+	case taskstats.GroupByVariant:
+		id[taskstats.TaskStatsBuildVariantKey] = "$" + taskstats.DBTaskStatsIDBuildVariantKeyFull
 		fallthrough
-	case stats.GroupByTask:
-		id[stats.TestStatsTaskNameKey] = "$" + stats.DbTestStatsIdTaskNameKeyFull
-		fallthrough
-	case stats.GroupByTest:
-		id[stats.TestStatsTestFileKey] = "$" + stats.DbTestStatsIdTestFileKeyFull
+	case taskstats.GroupByTask:
+		id[taskstats.TaskStatsTaskNameKey] = "$" + taskstats.DBTaskStatsIDTaskNameKeyFull
 	}
 	return id
 }
@@ -166,14 +163,14 @@ func (filter TaskReliabilityFilter) buildGroupID() bson.M {
 func (filter TaskReliabilityFilter) BuildTaskStatsQueryGroupStage() bson.M {
 	return bson.M{
 		"$group": bson.M{
-			"_id":                             filter.buildGroupID(),
-			stats.TaskStatsNumSuccessKey:      bson.M{"$sum": "$" + stats.DbTaskStatsNumSuccessKey},
-			stats.TaskStatsNumFailedKey:       bson.M{"$sum": "$" + stats.DbTaskStatsNumFailedKey},
-			stats.TaskStatsNumTimeoutKey:      bson.M{"$sum": "$" + stats.DbTaskStatsNumTimeoutKey},
-			stats.TaskStatsNumTestFailedKey:   bson.M{"$sum": "$" + stats.DbTaskStatsNumTestFailedKey},
-			stats.TaskStatsNumSystemFailedKey: bson.M{"$sum": "$" + stats.DbTaskStatsNumSystemFailedKey},
-			stats.TaskStatsNumSetupFailedKey:  bson.M{"$sum": "$" + stats.DbTaskStatsNumSetupFailedKey},
-			"total_duration_success":          bson.M{"$sum": bson.M{"$multiply": stats.Array{"$" + stats.DbTaskStatsNumSuccessKey, "$" + stats.DbTaskStatsAvgDurationSuccessKey}}},
+			"_id":                                 filter.buildGroupID(),
+			taskstats.TaskStatsNumSuccessKey:      bson.M{"$sum": "$" + taskstats.DBTaskStatsNumSuccessKey},
+			taskstats.TaskStatsNumFailedKey:       bson.M{"$sum": "$" + taskstats.DBTaskStatsNumFailedKey},
+			taskstats.TaskStatsNumTimeoutKey:      bson.M{"$sum": "$" + taskstats.DBTaskStatsNumTimeoutKey},
+			taskstats.TaskStatsNumTestFailedKey:   bson.M{"$sum": "$" + taskstats.DBTaskStatsNumTestFailedKey},
+			taskstats.TaskStatsNumSystemFailedKey: bson.M{"$sum": "$" + taskstats.DBTaskStatsNumSystemFailedKey},
+			taskstats.TaskStatsNumSetupFailedKey:  bson.M{"$sum": "$" + taskstats.DBTaskStatsNumSetupFailedKey},
+			"total_duration_success":              bson.M{"$sum": bson.M{"$multiply": taskstats.Array{"$" + taskstats.DBTaskStatsNumSuccessKey, "$" + taskstats.DBTaskStatsAvgDurationSuccessKey}}},
 		}}
 }
 
@@ -189,8 +186,8 @@ func (filter TaskReliabilityFilter) taskReliabilityQueryPipeline() []bson.M {
 }
 
 // GetTaskStats create an aggregation to find task stats matching the filter state.
-func (filter TaskReliabilityFilter) GetTaskStats() (taskStats []stats.TaskStats, err error) {
+func (filter TaskReliabilityFilter) GetTaskStats() (taskStats []taskstats.TaskStats, err error) {
 	pipeline := filter.taskReliabilityQueryPipeline()
-	err = db.Aggregate(stats.DailyTaskStatsCollection, pipeline, &taskStats)
+	err = db.Aggregate(taskstats.DailyTaskStatsCollection, pipeline, &taskStats)
 	return
 }

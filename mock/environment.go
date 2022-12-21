@@ -3,7 +3,6 @@ package mock
 
 import (
 	"context"
-	"database/sql"
 	"math"
 	"runtime"
 	"sync"
@@ -40,7 +39,6 @@ type Environment struct {
 	DBSession               db.Session
 	EvergreenSettings       *evergreen.Settings
 	MongoClient             *mongo.Client
-	PrestoDBClient          *sql.DB
 	mu                      sync.RWMutex
 	DatabaseName            string
 	EnvContext              context.Context
@@ -212,8 +210,6 @@ func (e *Environment) DB() *mongo.Database {
 
 	return e.MongoClient.Database(e.DatabaseName)
 }
-
-func (e *Environment) PrestoDB() *sql.DB { return nil }
 
 func (e *Environment) JasperManager() jasper.Manager {
 	e.mu.RLock()

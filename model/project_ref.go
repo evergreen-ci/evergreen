@@ -96,9 +96,8 @@ type ProjectRef struct {
 	// between what is in GitHub and what is in Evergreen
 	RepotrackerError *RepositoryErrorDetails `bson:"repotracker_error" json:"repotracker_error"`
 
-	// List of regular expressions describing files to ignore when caching historical test results
-	FilesIgnoredFromCache []string `bson:"files_ignored_from_cache" json:"files_ignored_from_cache"`
-	DisabledStatsCache    *bool    `bson:"disabled_stats_cache,omitempty" json:"disabled_stats_cache,omitempty"`
+	// Disable task stats caching for this project.
+	DisabledStatsCache *bool `bson:"disabled_stats_cache,omitempty" json:"disabled_stats_cache,omitempty"`
 
 	// List of commands
 	// Lacks omitempty so that SetupCommands can be identified as either [] or nil in a ProjectSettingsEvent
@@ -276,7 +275,6 @@ var (
 	ProjectRefRemotePathKey               = bsonutil.MustHaveTag(ProjectRef{}, "RemotePath")
 	ProjectRefHiddenKey                   = bsonutil.MustHaveTag(ProjectRef{}, "Hidden")
 	ProjectRefRepotrackerError            = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerError")
-	ProjectRefFilesIgnoredFromCacheKey    = bsonutil.MustHaveTag(ProjectRef{}, "FilesIgnoredFromCache")
 	ProjectRefDisabledStatsCacheKey       = bsonutil.MustHaveTag(ProjectRef{}, "DisabledStatsCache")
 	ProjectRefAdminsKey                   = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
 	ProjectRefGitTagAuthorizedUsersKey    = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedUsers")
@@ -1864,7 +1862,6 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			projectRefPatchingDisabledKey:      p.PatchingDisabled,
 			projectRefTaskSyncKey:              p.TaskSync,
 			ProjectRefDisabledStatsCacheKey:    p.DisabledStatsCache,
-			ProjectRefFilesIgnoredFromCacheKey: p.FilesIgnoredFromCache,
 		}
 		// Unlike other fields, this will only be set if we're actually modifying it since it's used by the backend.
 		if p.TracksPushEvents != nil {
@@ -2834,13 +2831,6 @@ func GetUpstreamProjectName(triggerID, triggerType string) (string, error) {
 		return "", errors.New("upstream project not found")
 	}
 	return upstreamProject.DisplayName, nil
-}
-
-// IsServerResmokeProject returns whether the project is owned by the Server
-// team and uses Resmoke.
-// TODO (PM-2940): Remove this once we migrate Mongo projects to Presto.
-func IsServerResmokeProject(identifier string) bool {
-	return strings.HasPrefix(identifier, "mongodb-mongo-") || strings.HasPrefix(identifier, "mongosync")
 }
 
 // projectRefPipelineForMatchingTrigger is an aggregation pipeline to find projects that have the projectKey

@@ -29,14 +29,6 @@ func sendTestResults(ctx context.Context, comm client.Communicator, logger clien
 	logger.Task().Info("Attaching test results...")
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
-	// TODO (PM-2940): Stop sending Mongo project test results to the
-	// database once they can support Presto test results.
-	if model.IsServerResmokeProject(conf.ProjectRef.Identifier) {
-		if err := comm.SendTestResults(ctx, td, results); err != nil {
-			return errors.Wrap(err, "sending parsed test results to Evergreen")
-		}
-	}
-
 	if err := sendTestResultsToCedar(ctx, conf, td, comm, results); err != nil {
 		return errors.Wrap(err, "sending test results to Cedar")
 	}
@@ -145,18 +137,16 @@ func sendTestLogToCedar(ctx context.Context, t *task.Task, comm client.Communica
 
 func makeCedarTestResultsRecord(conf *internal.TaskConfig, displayTaskInfo *apimodels.DisplayTaskInfo) testresults.CreateOptions {
 	return testresults.CreateOptions{
-		Project:                conf.Task.Project,
-		Version:                conf.Task.Version,
-		Variant:                conf.Task.BuildVariant,
-		TaskID:                 conf.Task.Id,
-		TaskName:               conf.Task.DisplayName,
-		DisplayTaskID:          displayTaskInfo.ID,
-		DisplayTaskName:        displayTaskInfo.Name,
-		Execution:              int32(conf.Task.Execution),
-		RequestType:            conf.Task.Requester,
-		Mainline:               !conf.Task.IsPatchRequest(),
-		HistoricalDataIgnore:   conf.ProjectRef.FilesIgnoredFromCache,
-		HistoricalDataDisabled: conf.ProjectRef.IsStatsCacheDisabled(),
+		Project:         conf.Task.Project,
+		Version:         conf.Task.Version,
+		Variant:         conf.Task.BuildVariant,
+		TaskID:          conf.Task.Id,
+		TaskName:        conf.Task.DisplayName,
+		DisplayTaskID:   displayTaskInfo.ID,
+		DisplayTaskName: displayTaskInfo.Name,
+		Execution:       int32(conf.Task.Execution),
+		RequestType:     conf.Task.Requester,
+		Mainline:        !conf.Task.IsPatchRequest(),
 	}
 }
 
