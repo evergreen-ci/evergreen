@@ -41,8 +41,8 @@ func testConfig() *Settings {
 	return settings
 }
 
-//Checks that the test settings file can be parsed
-//and returns a settings object.
+// Checks that the test settings file can be parsed
+// and returns a settings object.
 func TestInitSettings(t *testing.T) {
 	assert := assert.New(t)
 
@@ -52,7 +52,7 @@ func TestInitSettings(t *testing.T) {
 	assert.NotNil(settings)
 }
 
-//Checks that trying to parse a non existent file returns non-nil err
+// Checks that trying to parse a non existent file returns non-nil err
 func TestBadInit(t *testing.T) {
 	assert := assert.New(t)
 
@@ -257,9 +257,14 @@ func (s *AdminSuite) TestAlertsConfig() {
 
 func (s *AdminSuite) TestAmboyConfig() {
 	config := AmboyConfig{
-		Name:                                  "amboy",
-		SingleName:                            "single",
-		DB:                                    "db",
+		Name:       "amboy",
+		SingleName: "single",
+		DBConnection: AmboyDBConfig{
+			URL:      "mongodb://localhost:27017",
+			Database: "db",
+			Username: "user",
+			Password: "password",
+		},
 		PoolSizeLocal:                         10,
 		PoolSizeRemote:                        20,
 		LocalStorage:                          30,

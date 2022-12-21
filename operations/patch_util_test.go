@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -158,4 +159,97 @@ func (s *PatchUtilTestSuite) TestParseGitVersionString() {
 		s.NoError(err)
 		s.Equal(version, parsedVersion)
 	}
+}
+
+func (s *PatchUtilTestSuite) TestNonRepeatedDefaultsLoadsExplicitAlias() {
+	pp := patchParams{
+		Project: "project",
+		Alias:   "duck",
+	}
+	conf := &ClientSettings{
+		Projects: []ClientProjectConf{
+			{
+				Name:     "project",
+				Variants: []string{"default-bv0", "default-bv1"},
+				Tasks:    []string{"default-task0", "default-task1"},
+			},
+		},
+	}
+
+	pp.setNonRepeatedDefaults(conf)
+
+	s.Equal("duck", pp.Alias, "alias should not be defaulted")
+	s.Empty(pp.Variants, "variants should not be defaulted for explicit alias")
+	s.Empty(pp.Tasks, "tasks should not be defaulted for explicit alias")
+}
+
+func (s *PatchUtilTestSuite) TestNonRepeatedDefaultsWithLocalAliasOverridesOtherDefaults() {
+	pp := patchParams{
+		Project: "project",
+		Alias:   "duck",
+	}
+	conf := &ClientSettings{
+		Projects: []ClientProjectConf{
+			{
+				Name:     "project",
+				Alias:    "chicken",
+				Variants: []string{"default-bv0", "default-bv1"},
+				Tasks:    []string{"default-task0", "default-task1"},
+				LocalAliases: []model.ProjectAlias{
+					{
+						Alias: "duck",
+					},
+				},
+			},
+		},
+	}
+
+	pp.setNonRepeatedDefaults(conf)
+
+	s.Equal("duck", pp.Alias, "should use local alias instead of default project alias")
+	s.Empty(pp.Variants, "variants should not be defaulted for explicit local alias")
+	s.Empty(pp.Tasks, "tasks should not be defaulted for explicit local alias")
+}
+
+func (s *PatchUtilTestSuite) TestNonRepeatedDefaultsLoadsDefaultAlias() {
+	pp := patchParams{
+		Project: "project",
+	}
+	conf := &ClientSettings{
+		Projects: []ClientProjectConf{
+			{
+				Name:     "project",
+				Alias:    "orange",
+				Variants: []string{"default-bv0", "default-bv1"},
+				Tasks:    []string{"default-task0", "default-task1"},
+			},
+		},
+	}
+
+	pp.setNonRepeatedDefaults(conf)
+
+	s.Equal("orange", pp.Alias, "alias should be defaulted if none is specified")
+	s.Empty(pp.Variants, "variants should not be defaulted when using default alias")
+	s.Empty(pp.Tasks, "tasks should not be defaulted when using default alias")
+}
+
+func (s *PatchUtilTestSuite) TestNonRepeatedDefaultsLoadsDefaultVariantsAndTasksWithoutAlias() {
+	pp := patchParams{
+		Project: "project",
+	}
+	conf := &ClientSettings{
+		Projects: []ClientProjectConf{
+			{
+				Name:     "project",
+				Variants: []string{"default-bv0", "default-bv1"},
+				Tasks:    []string{"default-task0", "default-task1"},
+			},
+		},
+	}
+
+	pp.setNonRepeatedDefaults(conf)
+
+	s.Empty(pp.Alias, "should not set an alias when there is no default")
+	s.ElementsMatch([]string{"default-bv0", "default-bv1"}, pp.Variants, "variants should be defaulted")
+	s.ElementsMatch([]string{"default-task0", "default-task1"}, pp.Tasks, "tasks should be defaulted")
 }

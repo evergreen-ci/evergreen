@@ -12,14 +12,12 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v34/github"
 	"github.com/jpillora/backoff"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -366,7 +364,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			}
 		}
 
-		_, err = CreateManifest(*v, pInfo.Project, ref, repoTracker.Settings)
+		_, err = model.CreateManifest(v, pInfo.Project, ref, repoTracker.Settings)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":            "error creating manifest",
@@ -593,84 +591,6 @@ func makeBuildBreakSubscriber(userID string) (*event.Subscriber, error) {
 	}
 
 	return subscriber, nil
-}
-
-func CreateManifest(v model.Version, proj *model.Project, projectRef *model.ProjectRef, settings *evergreen.Settings) (*manifest.Manifest, error) {
-	if len(proj.Modules) == 0 {
-		return nil, nil
-	}
-	newManifest := &manifest.Manifest{
-		Id:          v.Id,
-		Revision:    v.Revision,
-		ProjectName: v.Identifier,
-		Branch:      projectRef.Branch,
-		IsBase:      v.Requester == evergreen.RepotrackerVersionRequester,
-	}
-	token, err := settings.GetGithubOauthToken()
-	if err != nil {
-		return nil, errors.Wrap(err, "error getting github oauth token")
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	var gitBranch *github.Branch
-	var gitCommit *github.RepositoryCommit
-	modules := map[string]*manifest.Module{}
-	for _, module := range proj.Modules {
-		var sha, url string
-		owner, repo := module.GetRepoOwnerAndName()
-		if module.Ref == "" {
-			var commit *github.RepositoryCommit
-			commit, err = thirdparty.GetCommitEvent(ctx, token, projectRef.Owner, projectRef.Repo, v.Revision)
-			if err != nil {
-				return nil, errors.Wrapf(err, "can't get commit '%s' on '%s/%s'", v.Revision, projectRef.Owner, projectRef.Repo)
-			}
-			if commit == nil || commit.Commit == nil || commit.Commit.Committer == nil {
-				return nil, errors.New("malformed GitHub commit response")
-			}
-			revisionTime := commit.Commit.Committer.GetDate()
-			var branchCommits []*github.RepositoryCommit
-			branchCommits, _, err = thirdparty.GetGithubCommits(ctx, token, owner, repo, module.Branch, revisionTime, 0)
-			if err != nil {
-				return nil, errors.Wrapf(err, "problem retrieving getting git branch for module %s", module.Name)
-			}
-			if len(branchCommits) > 0 {
-				sha = branchCommits[0].GetSHA()
-				url = branchCommits[0].GetURL()
-			}
-		} else {
-			sha = module.Ref
-			gitCommit, err = thirdparty.GetCommitEvent(ctx, token, owner, repo, module.Ref)
-			if err != nil {
-				return nil, errors.Wrapf(err, "problem retrieving getting git commit for module %s with hash %s", module.Name, module.Ref)
-			}
-			if gitCommit != nil {
-				url = *gitCommit.URL
-			}
-		}
-
-		modules[module.Name] = &manifest.Module{
-			Branch:   module.Branch,
-			Revision: sha,
-			Repo:     repo,
-			Owner:    owner,
-			URL:      url,
-		}
-
-	}
-	newManifest.Modules = modules
-	grip.Debug(message.Fields{
-		"message":            "creating manifest",
-		"version_id":         v.Id,
-		"manifest":           newManifest,
-		"project":            v.Identifier,
-		"project_identifier": projectRef.Identifier,
-		"modules":            modules,
-		"branch_info":        gitBranch,
-	})
-	_, err = newManifest.TryInsert()
-
-	return newManifest, errors.Wrap(err, "error inserting manifest")
 }
 
 func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo,

@@ -128,10 +128,16 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 			return false, errors.Wrapf(h.MarkReachable(), "updating reachability for host '%s'", h.Id)
 		}
 		return false, nil
-	case cloud.StatusStopping, cloud.StatusStopped, cloud.StatusTerminated:
+	case cloud.StatusStopping, cloud.StatusStopped, cloud.StatusTerminated, cloud.StatusNonExistent:
+		// The cloud provider could report the host as nonexistent if it's been
+		// terminated for so long that the provider has no information about the
+		// host anymore. Therefore, a nonexistent host is equivalent to one
+		// that's terminated.
+		isTerminated := cloudStatus == cloud.StatusTerminated || cloudStatus == cloud.StatusNonExistent
+
 		// Avoid accidentally terminating non-agent hosts that are stopped (e.g.
 		// spawn hosts).
-		if cloudStatus != cloud.StatusTerminated && (h.UserHost || h.StartedBy != evergreen.User) {
+		if !isTerminated && (h.UserHost || h.StartedBy != evergreen.User) {
 			return false, errors.New("non-agent host is not already terminated and should not be terminated")
 		}
 
@@ -146,19 +152,20 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 
 		event.LogHostTerminatedExternally(h.Id, h.Status)
 		grip.Info(message.Fields{
-			"message":   "host terminated externally",
-			"operation": "handleExternallyTerminatedHost",
-			"host_id":   h.Id,
-			"host_tag":  h.Tag,
-			"distro":    h.Distro.Id,
-			"provider":  h.Provider,
-			"status":    h.Status,
+			"message":      "host terminated externally",
+			"operation":    "handleExternallyTerminatedHost",
+			"host_id":      h.Id,
+			"host_tag":     h.Tag,
+			"distro":       h.Distro.Id,
+			"provider":     h.Provider,
+			"status":       h.Status,
+			"cloud_status": cloudStatus.String(),
 		})
 
 		err = amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewHostTerminationJob(env, h, HostTerminationOptions{
 			TerminateIfBusy:          true,
 			TerminationReason:        fmt.Sprintf("host was found in state '%s'", cloudStatus.String()),
-			SkipCloudHostTermination: cloudStatus == cloud.StatusTerminated,
+			SkipCloudHostTermination: isTerminated,
 		}))
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":      "could not enqueue job to terminate externally-modified host",

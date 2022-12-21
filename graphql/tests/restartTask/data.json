@@ -9,12 +9,33 @@
     {
       "_id": "task2",
       "status": "success"
+    },
+    {
+      "_id": "task3",
+      "build_id": "build1",
+      "version": "version1",
+      "status": "success",
+      "display_only": true,
+      "execution_tasks": [
+        "execution_task_1",
+        "execution_task_2"
+      ]
+    },
+    {
+      "_id": "execution_task_1",
+      "execution": 0,
+      "status": "failed"
+    },
+    {
+      "_id": "execution_task_2",
+      "execution": 0,
+      "status": "success"
     }
   ],
   "builds": [
     {
       "_id": "build1",
-      "tasks": [{ "id": "task1" }],
+      "tasks": [{ "id": "task1" }, { "id": "task3" }],
       "version": "version1"
     }
   ],

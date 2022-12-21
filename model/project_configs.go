@@ -35,7 +35,6 @@ type ProjectConfigFields struct {
 	WorkstationConfig        *WorkstationConfig             `yaml:"workstation_config,omitempty" bson:"workstation_config,omitempty"`
 	TaskSync                 *TaskSyncOptions               `yaml:"task_sync,omitempty" bson:"task_sync,omitempty"`
 	GithubTriggerAliases     []string                       `yaml:"github_trigger_aliases,omitempty" bson:"github_trigger_aliases,omitempty"`
-	PeriodicBuilds           []PeriodicBuildDefinition      `yaml:"periodic_builds,omitempty" bson:"periodic_builds,omitempty"`
 	ContainerSizeDefinitions []ContainerResources           `yaml:"container_size_definitions,omitempty" bson:"container_size_definitions,omitempty"`
 }
 
@@ -50,16 +49,13 @@ func (pc *ProjectConfig) MarshalBSON() ([]byte, error) {
 }
 
 func (pc *ProjectConfig) isEmpty() bool {
-	reflectedConfig := reflect.ValueOf(pc).Elem()
-	types := reflect.TypeOf(pc).Elem()
+	// ProjectConfig values outside of ProjectConfigFields are metadata, so we don't want to check those.
+	reflectedConfig := reflect.ValueOf(pc.ProjectConfigFields)
 
 	for i := 0; i < reflectedConfig.NumField(); i++ {
 		field := reflectedConfig.Field(i)
-		name := types.Field(i).Name
-		if name != "Id" && name != "Identifier" {
-			if !util.IsFieldUndefined(field) {
-				return false
-			}
+		if !util.IsFieldUndefined(field) {
+			return false
 		}
 	}
 	return true

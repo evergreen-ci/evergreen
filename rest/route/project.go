@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/evergreen"
@@ -15,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -967,8 +969,9 @@ func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
 type getProjectTasksHandler struct {
 	projectName string
 	taskName    string
-	opts        dbModel.GetProjectTasksOpts
 	url         string
+
+	opts dbModel.GetProjectTasksOpts
 }
 
 func makeGetProjectTasksHandler(url string) gimlet.RouteHandler {
@@ -998,6 +1001,11 @@ func (h *getProjectTasksHandler) Parse(ctx context.Context, r *http.Request) err
 	if h.opts.StartAt < 0 {
 		return errors.New("start must be a non-negative integer")
 	}
+	for _, requester := range h.opts.Requesters {
+		if !utility.StringSliceContains(evergreen.AllRequesterTypes, requester) {
+			return errors.Errorf("'%s' is not a valid requester type", requester)
+		}
+	}
 
 	return nil
 }
@@ -1009,6 +1017,87 @@ func (h *getProjectTasksHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewJSONResponse(versions)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// GET /rest/v2/projects/{project_id}/tasks/executions
+
+type getProjectTaskExecutionsHandler struct {
+	projectName string
+	opts        model.GetProjectTaskExecutionReq
+
+	startTime time.Time
+	endTime   time.Time
+	projectId string
+}
+
+func makeGetProjectTaskExecutionsHandler() gimlet.RouteHandler {
+	return &getProjectTaskExecutionsHandler{}
+}
+
+func (h *getProjectTaskExecutionsHandler) Factory() gimlet.RouteHandler {
+	return &getProjectTaskExecutionsHandler{}
+}
+
+func (h *getProjectTaskExecutionsHandler) Parse(ctx context.Context, r *http.Request) error {
+	body := utility.NewRequestReader(r)
+	defer body.Close()
+
+	var err error
+	if err = utility.ReadJSON(r.Body, &h.opts); err != nil {
+		return errors.Wrap(err, "reading from JSON request body")
+	}
+
+	if h.opts.BuildVariant == "" || h.opts.TaskName == "" {
+		return errors.New("'build_variant' and 'task_name' are required")
+	}
+	h.startTime, err = model.ParseTime(h.opts.StartTime)
+	if err != nil {
+		return errors.Wrapf(err, "parsing 'start_time' %s", h.opts.StartTime)
+	}
+
+	// End time isn't required, since we default to getting up to the current moment.
+	if h.opts.EndTime != "" {
+		h.endTime, err = model.ParseTime(h.opts.EndTime)
+		if err != nil {
+			return errors.Wrapf(err, "parsing 'end_time' %s", h.opts.EndTime)
+		}
+		if h.startTime.After(h.endTime) {
+			return errors.New("'start_time' must be after 'end_time'")
+		}
+	}
+
+	h.projectName = gimlet.GetVars(r)["project_id"]
+	h.projectId, err = dbModel.GetIdForProject(h.projectName)
+	if err != nil {
+		return errors.Wrap(err, "getting id for project")
+	}
+
+	for _, requester := range h.opts.Requesters {
+		if !utility.StringSliceContains(evergreen.AllRequesterTypes, requester) {
+			return errors.Errorf("'%s' is not a valid requester type", requester)
+		}
+	}
+
+	return nil
+}
+
+func (h *getProjectTaskExecutionsHandler) Run(ctx context.Context) gimlet.Responder {
+	input := task.NumExecutionsForIntervalInput{
+		ProjectId:    h.projectId,
+		BuildVarName: h.opts.BuildVariant,
+		TaskName:     h.opts.TaskName,
+		StartTime:    h.startTime,
+		EndTime:      h.endTime,
+	}
+	numTasks, err := task.CountNumExecutionsForInterval(input)
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(err)
+	}
+	return gimlet.NewJSONResponse(model.ProjectTaskExecutionResp{
+		NumCompleted: numTasks,
+	})
 }
 
 type GetProjectAliasResultsHandler struct {
@@ -1057,11 +1146,11 @@ func (p *GetProjectAliasResultsHandler) Run(ctx context.Context) gimlet.Responde
 	return gimlet.NewJSONResponse(variantTasks)
 }
 
-////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////
 //
 // Handler for the patch trigger aliases defined for project
 //
-//    /projects/{project_id}/patch_trigger_aliases
+//	/projects/{project_id}/patch_trigger_aliases
 type GetPatchTriggerAliasHandler struct {
 	projectID string
 }

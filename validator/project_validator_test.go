@@ -1042,30 +1042,6 @@ func TestValidateProjectTaskIdsAndTags(t *testing.T) {
 	})
 }
 
-func TestValidatePeriodicBuilds(t *testing.T) {
-	projectConfig := &model.ProjectConfig{
-		Id: "project-1",
-		ProjectConfigFields: model.ProjectConfigFields{
-			PeriodicBuilds: []model.PeriodicBuildDefinition{
-				{
-					ID:            "so_occasional",
-					ConfigFile:    "build.yml",
-					IntervalHours: -1,
-				},
-				{
-					ID:            "more_frequent",
-					ConfigFile:    "",
-					IntervalHours: 1,
-				},
-			},
-		},
-	}
-	validationErrs := validateProjectConfigPeriodicBuilds(projectConfig)
-	assert.Len(t, validationErrs, 2)
-	assert.Contains(t, validationErrs[0].Message, "interval must be a positive integer")
-	assert.Contains(t, validationErrs[1].Message, "a config file must be specified")
-}
-
 func TestValidatePlugins(t *testing.T) {
 	assert := assert.New(t)
 	require.NoError(t, db.Clear(model.ProjectRefCollection),
@@ -1775,7 +1751,7 @@ tasks:
 			So(len(validationErrs.AtLevel(Error)), ShouldEqual, 1)
 			So(validationErrs.AtLevel(Error)[0].Message, ShouldContainSubstring, "params cannot be nil")
 		})
-		Convey("an warning should return if a shell.exec command is missing a script", func() {
+		Convey("an error should return if a shell.exec command is missing a script", func() {
 			project := &model.Project{
 				Functions: map[string]*model.YAMLCommandSet{
 					"funcOne": {
@@ -1791,8 +1767,8 @@ tasks:
 			}
 			validationErrs := validatePluginCommands(project)
 			So(validationErrs, ShouldNotResemble, ValidationErrors{})
-			So(len(validationErrs.AtLevel(Warning)), ShouldEqual, 1)
-			So(validationErrs.AtLevel(Warning)[0].Message, ShouldContainSubstring, "specified without a script")
+			So(len(validationErrs.AtLevel(Error)), ShouldEqual, 1)
+			So(validationErrs.AtLevel(Error)[0].Message, ShouldContainSubstring, "must specify a script")
 		})
 		Convey("an error should not be thrown if a shell.exec command is defined with a script", func() {
 			project := &model.Project{
@@ -2396,6 +2372,74 @@ func TestValidateBVFields(t *testing.T) {
 								},
 							},
 						},
+					},
+				},
+			}
+			So(validateBVFields(project),
+				ShouldResemble, ValidationErrors{})
+		})
+		Convey("no error should be thrown if the task group does not "+
+			"have a run_on field specified but all tasks within it have a "+
+			"distro field specified", func() {
+			project := &model.Project{
+				Identifier: "projectId",
+				BuildVariants: []model.BuildVariant{
+					{
+						Name: "import",
+						Tasks: []model.BuildVariantTaskUnit{
+							{
+								Name:    "group",
+								IsGroup: true,
+								RunOn: []string{
+									"echoes",
+								},
+							},
+						},
+					},
+				},
+				Tasks: []model.ProjectTask{
+					{
+						Name: "silhouettes",
+					},
+				},
+				TaskGroups: []model.TaskGroup{
+					{
+						Name:  "group",
+						Tasks: []string{"silhouettes"},
+					},
+				},
+			}
+			So(validateBVFields(project),
+				ShouldResemble, ValidationErrors{})
+		})
+		Convey("no error should be thrown if the buildvariant does not "+
+			"have a run_on field but all tasks within the specified task group has the "+
+			"distro field specified", func() {
+			project := &model.Project{
+				Identifier: "projectId",
+				BuildVariants: []model.BuildVariant{
+					{
+						Name: "import",
+						Tasks: []model.BuildVariantTaskUnit{
+							{
+								Name:    "group",
+								IsGroup: true,
+							},
+						},
+					},
+				},
+				Tasks: []model.ProjectTask{
+					{
+						Name: "silhouettes",
+						RunOn: []string{
+							"echoes",
+						},
+					},
+				},
+				TaskGroups: []model.TaskGroup{
+					{
+						Name:  "group",
+						Tasks: []string{"silhouettes"},
 					},
 				},
 			}

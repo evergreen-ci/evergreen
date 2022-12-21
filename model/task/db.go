@@ -2700,3 +2700,43 @@ func enableDisabledTasks(taskIDs []string) error {
 		})
 	return err
 }
+
+type NumExecutionsForIntervalInput struct {
+	ProjectId    string
+	BuildVarName string
+	TaskName     string
+	Requesters   []string
+	StartTime    time.Time
+	EndTime      time.Time
+}
+
+func CountNumExecutionsForInterval(input NumExecutionsForIntervalInput) (int, error) {
+	query := bson.M{
+		ProjectKey:      input.ProjectId,
+		BuildVariantKey: input.BuildVarName,
+		DisplayNameKey:  input.TaskName,
+		StatusKey:       bson.M{"$in": evergreen.TaskCompletedStatuses},
+	}
+	if len(input.Requesters) > 0 {
+		query[RequesterKey] = bson.M{"$in": input.Requesters}
+	} else {
+		query[RequesterKey] = bson.M{"$in": evergreen.SystemVersionRequesterTypes}
+	}
+	if !utility.IsZeroTime(input.EndTime) {
+		query["$and"] = []bson.M{
+			{FinishTimeKey: bson.M{"$gt": input.StartTime}},
+			{FinishTimeKey: bson.M{"$lte": input.EndTime}},
+		}
+	} else {
+		query[FinishTimeKey] = bson.M{"$gt": input.StartTime}
+	}
+	numTasks, err := db.Count(Collection, query)
+	if err != nil {
+		return 0, errors.Wrap(err, "counting task executions")
+	}
+	numOldTasks, err := db.Count(OldCollection, query)
+	if err != nil {
+		return 0, errors.Wrap(err, "counting old task executions")
+	}
+	return numTasks + numOldTasks, nil
+}
