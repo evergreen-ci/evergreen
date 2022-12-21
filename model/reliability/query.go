@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	MaxQueryLimit        = taskstats.MaxQueryLimit - 1 // 1000 // route.ReliabilityAPIMaxNumTasks
+	MaxQueryLimit        = taskstats.MaxQueryLimit - 1 // (1000) route.ReliabilityAPIMaxNumTasks
 	MaxSignificanceLimit = 1.0
 	MinSignificanceLimit = 0.0
 	DefaultSignificance  = 0.05
@@ -26,7 +26,7 @@ const (
 )
 
 // TaskReliabilityFilter represents search and aggregation parameters when
-// querying the or task statistics.
+// querying task statistics.
 type TaskReliabilityFilter struct {
 	taskstats.StatsFilter
 	Significance float64
