@@ -25,13 +25,15 @@ const (
 	SortLatestFirst   = taskstats.SortLatestFirst
 )
 
-// TaskReliabilityFilter represents search and aggregation parameters when querying the test or task statistics.
+// TaskReliabilityFilter represents search and aggregation parameters when
+// querying the or task statistics.
 type TaskReliabilityFilter struct {
 	taskstats.StatsFilter
 	Significance float64
 }
 
-// ValidateForTaskReliability validates that the StartAt struct is valid for use with test taskstats.
+// ValidateForTaskReliability validates that the StartAt struct is valid for
+// use with task stats.
 func (f *TaskReliabilityFilter) ValidateForTaskReliability() error {
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(f.ValidateCommon())
