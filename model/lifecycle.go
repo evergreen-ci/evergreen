@@ -409,6 +409,19 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 			event.LogTaskRestarted(t.Id, t.Execution, caller)
 		}
 	}
+
+	buildIdsMap := map[string]bool{}
+	var buildIds []string
+	for _, t := range tasksToRestart {
+		buildIdsMap[t.BuildId] = true
+	}
+	for buildId := range buildIdsMap {
+		buildIds = append(buildIds, buildId)
+	}
+	if err = UpdateVersionAndPatchStatusForBuilds(buildIds); err != nil {
+		return errors.Wrapf(err, "updating build and version status for version '%s'", versionId)
+	}
+
 	if err = build.SetBuildStartedForTasks(tasksToRestart, caller); err != nil {
 		return errors.Wrap(err, "setting builds started")
 	}
