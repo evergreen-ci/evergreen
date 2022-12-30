@@ -32,7 +32,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
@@ -110,10 +109,6 @@ func setup(t *testing.T, state *AtomicGraphQLState) {
 	}
 
 	require.NoError(t, usr.UpdateAPIKey(apiKey))
-	require.NoError(t, db.CreateCollections(testresult.Collection))
-	require.NoError(t, db.EnsureIndex(testresult.Collection, mongo.IndexModel{
-		Keys: testresult.TestResultsIndex}))
-
 	// TODO (EVG-15499): Create scope and role collection because the
 	// RoleManager will try creating them in a transaction, which is not allowed
 	// for FCV < 4.4.

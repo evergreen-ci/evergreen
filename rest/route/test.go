@@ -10,7 +10,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -69,8 +68,9 @@ func (tgh *testGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	} else if tgh.latest {
 		tgh.task = projCtx.Task
 	} else {
-
-		execution := 0 // Default to first execution unless latest is specified to maintain backwards compatibility.
+		// Default to first execution unless latest is specified to
+		// maintain backwards compatibility.
+		execution := 0
 		if executionStr != "" {
 			execution, err = strconv.Atoi(executionStr)
 			if err != nil {
@@ -110,80 +110,43 @@ func (tgh *testGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
-	var err error
+	var (
+		page int
+		err  error
+	)
+	if tgh.key != "" {
+		page, err = strconv.Atoi(tgh.key)
+		if err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.New("invalid 'start at' time"))
+		}
+	}
+
+	cedarTestResults, status, err := apimodels.GetCedarTestResults(ctx, apimodels.GetCedarTestResultsOptions{
+		BaseURL:     evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+		TaskID:      tgh.taskID,
+		Execution:   utility.ToIntPtr(tgh.task.Execution),
+		DisplayTask: tgh.task.DisplayOnly,
+		TestName:    tgh.testName,
+		Statuses:    tgh.testStatus,
+		Limit:       tgh.limit,
+		Page:        page,
+	})
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting test results"))
+	}
+	if status != http.StatusOK && status != http.StatusNotFound {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("getting test results from Cedar returned status %d", status))
+	}
+
 	var key string
-
-	if tgh.task.HasCedarResults {
-		var page int
-		if tgh.key != "" {
-			page, err = strconv.Atoi(tgh.key)
-			if err != nil {
-				return gimlet.MakeJSONErrorResponder(errors.New("invalid 'start at' time"))
-			}
-		}
-
-		cedarTestResults, status, err := apimodels.GetCedarTestResults(ctx, apimodels.GetCedarTestResultsOptions{
-			BaseURL:     evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-			TaskID:      tgh.taskID,
-			Execution:   utility.ToIntPtr(tgh.task.Execution),
-			DisplayTask: tgh.task.DisplayOnly,
-			TestName:    tgh.testName,
-			Statuses:    tgh.testStatus,
-			Limit:       tgh.limit,
-			Page:        page,
-		})
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting test results"))
-		}
-		if status != http.StatusOK && status != http.StatusNotFound {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("getting test results from Cedar returned status %d", status))
-		}
-
-		if page*tgh.limit < utility.FromIntPtr(cedarTestResults.Stats.FilteredCount) {
-			key = fmt.Sprintf("%d", page+1)
-		}
-
-		return tgh.buildResponse(cedarTestResults.Results, nil, key)
+	if page*tgh.limit < utility.FromIntPtr(cedarTestResults.Stats.FilteredCount) {
+		key = fmt.Sprintf("%d", page+1)
 	}
 
-	var tests []testresult.TestResult
-	if tgh.testID != "" {
-		// When testID is populated, search the test results collection
-		// for the given ID.
-		tests, err = data.FindTestById(tgh.testID)
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding test '%s'", tgh.testID))
-		}
-	} else {
-
-		// we're going in here, and we've provided nothing so the limit is 101
-		tests, err = tgh.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{
-			Execution:      tgh.task.Execution,
-			Limit:          tgh.limit + 1,
-			Statuses:       tgh.testStatus, // we haven't provided a status or execution or test name
-			TaskID:         tgh.taskID,
-			TestID:         tgh.key, // TESTID IS KEY
-			TestName:       tgh.testName,
-			ExecutionTasks: tgh.task.ExecutionTasks,
-		})
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding tests for task '%s'", tgh.taskID))
-		}
-
-		lastIndex := len(tests)
-		if lastIndex > tgh.limit {
-			key = string(tests[tgh.limit].ID)
-			lastIndex = tgh.limit
-		}
-		// Truncate the test results to just those that will be
-		// returned.
-		tests = tests[:lastIndex]
-	}
-
-	return tgh.buildResponse(nil, tests, key)
+	return tgh.buildResponse(cedarTestResults.Results, key)
 }
 
-func (tgh *testGetHandler) buildResponse(cedarTestResults []apimodels.CedarTestResult, testResults []testresult.TestResult, key string) gimlet.Responder {
+func (tgh *testGetHandler) buildResponse(cedarTestResults []apimodels.CedarTestResult, key string) gimlet.Responder {
 	resp := gimlet.NewResponseBuilder()
 	if err := resp.SetFormat(gimlet.JSON); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting response format"))
@@ -208,11 +171,6 @@ func (tgh *testGetHandler) buildResponse(cedarTestResults []apimodels.CedarTestR
 	for i, testResult := range cedarTestResults {
 		if err := tgh.addDataToResponse(resp, &testResult); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding Cedar test result at index %d", i))
-		}
-	}
-	for i, testResult := range testResults {
-		if err := tgh.addDataToResponse(resp, &testResult); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding test result at index %d", i))
 		}
 	}
 

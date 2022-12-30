@@ -6,7 +6,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
@@ -43,36 +42,6 @@ type TestLogs struct {
 
 func (at *APITest) BuildFromService(st interface{}) error {
 	switch v := st.(type) {
-	case *testresult.TestResult:
-		at.ID = utility.ToStringPtr(v.ID.Hex())
-		at.Execution = v.Execution
-		if v.GroupID != "" {
-			at.GroupID = utility.ToStringPtr(v.GroupID)
-		}
-		at.Status = utility.ToStringPtr(v.Status)
-		at.ExitCode = v.ExitCode
-		startTime := utility.FromPythonTime(v.StartTime)
-		endTime := utility.FromPythonTime(v.EndTime)
-		at.Duration = v.EndTime - v.StartTime
-		at.StartTime = ToTimePtr(startTime)
-		at.EndTime = ToTimePtr(endTime)
-
-		tr := task.ConvertToOld(v)
-		at.TestFile = utility.ToStringPtr(tr.GetDisplayTestName())
-		at.Logs = TestLogs{
-			URL:     utility.ToStringPtr(tr.GetLogURL(evergreen.LogViewerHTML)),
-			URLRaw:  utility.ToStringPtr(tr.GetLogURL(evergreen.LogViewerRaw)),
-			LineNum: v.LineNum,
-		}
-		if lobsterURL := tr.GetLogURL(evergreen.LogViewerLobster); lobsterURL != "" {
-			at.Logs.URLLobster = utility.ToStringPtr(lobsterURL)
-		}
-		if parsleyURL := tr.GetLogURL(evergreen.LogViewerParsley); parsleyURL != "" {
-			at.Logs.URLParsley = utility.ToStringPtr(parsleyURL)
-		}
-		if v.LogID != "" {
-			at.Logs.LogID = utility.ToStringPtr(v.LogID)
-		}
 	case *apimodels.CedarTestResult:
 		at.ID = utility.ToStringPtr(v.TestName)
 		at.Execution = v.Execution

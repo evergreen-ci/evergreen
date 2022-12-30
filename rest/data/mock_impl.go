@@ -5,7 +5,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v34/github"
@@ -17,7 +16,6 @@ type MockGitHubConnectorImpl struct {
 	UserPermissions map[UserRepoInfo]string // map user to permission level in lieu of the Github API
 	CachedPatches   []restModel.APIPatch
 	Aliases         []restModel.APIProjectAlias
-	CachedTests     []testresult.TestResult
 	StoredError     error
 }
 
@@ -85,42 +83,4 @@ func (mvc *MockGitHubConnectorImpl) CreateVersionFromConfig(ctx context.Context,
 		Requester:         evergreen.GitTagRequester,
 		TriggeredByGitTag: metadata.GitTag,
 	}, nil
-}
-
-func (mtc *MockGitHubConnectorImpl) FindTestsByTaskId(opts FindTestsByTaskIdOpts) ([]testresult.TestResult, error) {
-	if mtc.StoredError != nil {
-		return []testresult.TestResult{}, mtc.StoredError
-	}
-
-	// loop until the testId is found
-	for ix, t := range mtc.CachedTests {
-		if string(t.ID) == opts.TestID { // We've found the test to start from
-			if opts.TestName == "" {
-				return mtc.findAllTestsFromIx(ix, opts.Limit), nil
-			}
-			return mtc.findTestsByNameFromIx(opts.TestName, ix, opts.Limit), nil
-		}
-	}
-	return nil, nil
-}
-
-func (mtc *MockGitHubConnectorImpl) findAllTestsFromIx(ix, limit int) []testresult.TestResult {
-	if ix+limit > len(mtc.CachedTests) {
-		return mtc.CachedTests[ix:]
-	}
-	return mtc.CachedTests[ix : ix+limit]
-}
-
-func (mtc *MockGitHubConnectorImpl) findTestsByNameFromIx(name string, ix, limit int) []testresult.TestResult {
-	possibleTests := mtc.CachedTests[ix:]
-	testResults := []testresult.TestResult{}
-	for jx, t := range possibleTests {
-		if t.TestFile == name {
-			testResults = append(testResults, possibleTests[jx])
-		}
-		if len(testResults) == limit {
-			return testResults
-		}
-	}
-	return testResults
 }

@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -20,7 +19,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -649,9 +647,11 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 	if dbTask == nil || err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding task with id '%s' and execution %d", taskID, utility.FromIntPtr(execution)))
 	}
+	if !dbTask.HasCedarResults {
+		return nil, nil
+	}
 
 	var baseTask *task.Task
-
 	if dbTask.Requester == evergreen.RepotrackerVersionRequester {
 		baseTask, err = dbTask.FindTaskOnPreviousCommit()
 	} else {
@@ -661,105 +661,45 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base task for task '%s': %s", taskID, err))
 	}
 
-	limitNum := utility.FromIntPtr(limit)
-	var sortBy, cedarSortBy string
+	var sortBy string
 	if sortCategory != nil {
 		switch *sortCategory {
 		case TestSortCategoryStatus:
-			cedarSortBy = apimodels.CedarTestResultsSortByStatus
-			sortBy = testresult.StatusKey
+			sortBy = apimodels.CedarTestResultsSortByStatus
 		case TestSortCategoryDuration:
-			cedarSortBy = apimodels.CedarTestResultsSortByDuration
-			sortBy = "duration"
+			sortBy = apimodels.CedarTestResultsSortByDuration
 		case TestSortCategoryTestName:
-			cedarSortBy = apimodels.CedarTestResultsSortByTestName
-			sortBy = testresult.TestFileKey
+			sortBy = apimodels.CedarTestResultsSortByTestName
 		case TestSortCategoryStartTime:
-			cedarSortBy = apimodels.CedarTestResultsSortByStart
-			sortBy = testresult.StartTimeKey
+			sortBy = apimodels.CedarTestResultsSortByStart
 		case TestSortCategoryBaseStatus:
-			cedarSortBy = apimodels.CedarTestResultsSortByBaseStatus
-			sortBy = "base_status"
-		}
-	} else if limitNum > 0 { // Don't sort TaskID if unlimited EVG-13965.
-		sortBy = testresult.TaskIDKey
-	}
-
-	if dbTask.HasCedarResults {
-		opts := apimodels.GetCedarTestResultsOptions{
-			BaseURL:      evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-			TaskID:       taskID,
-			Execution:    utility.ToIntPtr(dbTask.Execution),
-			DisplayTask:  dbTask.DisplayOnly,
-			TestName:     utility.FromStringPtr(testName),
-			Statuses:     statuses,
-			GroupID:      utility.FromStringPtr(groupID),
-			SortBy:       cedarSortBy,
-			SortOrderDSC: sortDirection != nil && *sortDirection == SortDirectionDesc,
-			Limit:        limitNum,
-			Page:         utility.FromIntPtr(page),
-		}
-		if baseTask != nil && baseTask.HasCedarResults {
-			opts.BaseTaskID = baseTask.Id
-		}
-		cedarTestResults, err := apimodels.GetCedarTestResultsWithStatusError(ctx, opts)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding test results for task '%s': %s", taskID, err))
-		}
-
-		apiTestResults := make([]*restModel.APITest, len(cedarTestResults.Results))
-		for i, t := range cedarTestResults.Results {
-			apiTest := &restModel.APITest{}
-			if err = apiTest.BuildFromService(t.TaskID); err != nil {
-				return nil, InternalServerError.Send(ctx, err.Error())
-			}
-			if err = apiTest.BuildFromService(&t); err != nil {
-				return nil, InternalServerError.Send(ctx, err.Error())
-			}
-
-			apiTestResults[i] = apiTest
-		}
-
-		return &TaskTestResult{
-			TestResults:       apiTestResults,
-			TotalTestCount:    cedarTestResults.Stats.TotalCount,
-			FilteredTestCount: utility.FromIntPtr(cedarTestResults.Stats.FilteredCount),
-		}, nil
-	}
-
-	baseTestStatusMap := map[string]string{}
-	if baseTask != nil {
-		baseTestResults, _ := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{
-			TaskID:         baseTask.Id,
-			Execution:      baseTask.Execution,
-			ExecutionTasks: baseTask.ExecutionTasks,
-		})
-		for _, t := range baseTestResults {
-			baseTestStatusMap[t.TestFile] = t.Status
+			sortBy = apimodels.CedarTestResultsSortByBaseStatus
 		}
 	}
-	sortDir := 1
-	if sortDirection != nil && *sortDirection == SortDirectionDesc {
-		sortDir = -1
+
+	opts := apimodels.GetCedarTestResultsOptions{
+		BaseURL:      evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+		TaskID:       taskID,
+		Execution:    utility.ToIntPtr(dbTask.Execution),
+		DisplayTask:  dbTask.DisplayOnly,
+		TestName:     utility.FromStringPtr(testName),
+		Statuses:     statuses,
+		GroupID:      utility.FromStringPtr(groupID),
+		SortBy:       sortBy,
+		SortOrderDSC: sortDirection != nil && *sortDirection == SortDirectionDesc,
+		Limit:        utility.FromIntPtr(limit),
+		Page:         utility.FromIntPtr(page),
 	}
-	filteredTestResults, err := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{
-		TaskID:         taskID,
-		Execution:      dbTask.Execution,
-		ExecutionTasks: dbTask.ExecutionTasks,
-		TestName:       utility.FromStringPtr(testName),
-		Statuses:       statuses,
-		SortBy:         sortBy,
-		SortDir:        sortDir,
-		GroupID:        utility.FromStringPtr(groupID),
-		Limit:          limitNum,
-		Page:           utility.FromIntPtr(page),
-	})
+	if baseTask != nil && baseTask.HasCedarResults {
+		opts.BaseTaskID = baseTask.Id
+	}
+	cedarTestResults, err := apimodels.GetCedarTestResultsWithStatusError(ctx, opts)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, err.Error())
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding test results for task '%s': %s", taskID, err))
 	}
 
-	apiTestResults := make([]*restModel.APITest, len(filteredTestResults))
-	for i, t := range filteredTestResults {
+	apiTestResults := make([]*restModel.APITest, len(cedarTestResults.Results))
+	for i, t := range cedarTestResults.Results {
 		apiTest := &restModel.APITest{}
 		if err = apiTest.BuildFromService(t.TaskID); err != nil {
 			return nil, InternalServerError.Send(ctx, err.Error())
@@ -767,23 +707,14 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		if err = apiTest.BuildFromService(&t); err != nil {
 			return nil, InternalServerError.Send(ctx, err.Error())
 		}
-		apiTest.BaseStatus = utility.ToStringPtr(baseTestStatusMap[utility.FromStringPtr(apiTest.TestFile)])
 
 		apiTestResults[i] = apiTest
-	}
-	totalTestCount, err := task.GetTestCountByTaskIdAndFilters(taskID, "", []string{}, dbTask.Execution)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting total test count: %s", err))
-	}
-	filteredTestCount, err := task.GetTestCountByTaskIdAndFilters(taskID, utility.FromStringPtr(testName), statuses, dbTask.Execution)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting filtered test count: %s", err))
 	}
 
 	return &TaskTestResult{
 		TestResults:       apiTestResults,
-		TotalTestCount:    totalTestCount,
-		FilteredTestCount: filteredTestCount,
+		TotalTestCount:    cedarTestResults.Stats.TotalCount,
+		FilteredTestCount: utility.FromIntPtr(cedarTestResults.Stats.FilteredCount),
 	}, nil
 }
 
@@ -802,64 +733,25 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, filt
 	}
 	testResultsToReturn := []*TaskTestResultSample{}
 
-	// We can assume that if one of the tasks has cedar results, all of them do.
-	if dbTasks[0].HasCedarResults {
-		failingTests := []string{}
-		for _, f := range filters {
-			failingTests = append(failingTests, f.TestName)
-		}
-
-		results, err := getCedarFailedTestResultsSample(ctx, dbTasks, failingTests)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting test results sample: %s", err))
-		}
-		for _, r := range results {
-			tr := &TaskTestResultSample{
-				TaskID:                  utility.FromStringPtr(r.TaskID),
-				Execution:               r.Execution,
-				MatchingFailedTestNames: r.MatchingFailedTestNames,
-				TotalTestCount:          r.TotalFailedNames,
-			}
-			testResultsToReturn = append(testResultsToReturn, tr)
-		}
-	} else {
-		testFilters := []string{}
-		for _, f := range filters {
-			testFilters = append(testFilters, f.TestName)
-		}
-		regexFilter := strings.Join(testFilters, "|")
-		for _, t := range dbTasks {
-			filteredTestResults, err := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{
-				TaskID:         t.Id,
-				Execution:      t.Execution,
-				ExecutionTasks: t.ExecutionTasks,
-				TestName:       regexFilter,
-				Statuses:       []string{evergreen.TestFailedStatus},
-				SortBy:         testresult.TaskIDKey,
-				Limit:          testSampleLimit,
-				SortDir:        1,
-				Page:           0,
-			})
-			if err != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting test results sample: %s", err))
-			}
-			failedTestCount, err := task.GetTestCountByTaskIdAndFilters(t.Id, "", []string{evergreen.TestFailedStatus}, t.Execution)
-			if err != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting failed test count: %s", err))
-			}
-			tr := &TaskTestResultSample{
-				TaskID:         t.Id,
-				Execution:      t.Execution,
-				TotalTestCount: failedTestCount,
-			}
-			matchingFailingTestNames := []string{}
-			for _, r := range filteredTestResults {
-				matchingFailingTestNames = append(matchingFailingTestNames, r.TestFile)
-			}
-			tr.MatchingFailedTestNames = matchingFailingTestNames
-			testResultsToReturn = append(testResultsToReturn, tr)
-		}
+	failingTests := []string{}
+	for _, f := range filters {
+		failingTests = append(failingTests, f.TestName)
 	}
+	results, err := getCedarFailedTestResultsSample(ctx, dbTasks, failingTests)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting test results sample: %s", err))
+	}
+
+	for _, r := range results {
+		tr := &TaskTestResultSample{
+			TaskID:                  utility.FromStringPtr(r.TaskID),
+			Execution:               r.Execution,
+			MatchingFailedTestNames: r.MatchingFailedTestNames,
+			TotalTestCount:          r.TotalFailedNames,
+		}
+		testResultsToReturn = append(testResultsToReturn, tr)
+	}
+
 	return testResultsToReturn, nil
 }
 

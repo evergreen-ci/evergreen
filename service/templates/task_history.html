@@ -93,37 +93,7 @@ Evergreen - Task History
       <div class="filter-table" id="filters">
         <div style="position: relative">
           <div>
-            <h3>Filter</h3>
-            <h5>By Tests:</h5>
-
-            <input  ng-model="taskHistoryFilter.testsSearchString"
-                    ng-change="taskHistoryFilter.searchTestNames()"
-                    mci-focus="taskHistoryFilter.showTestNameResults()"
-                    mci-blur="taskHistoryFilter.hideTestNameResults()"
-                    mci-key-return="taskHistoryFilter.filterTest(taskHistoryFilter.testsSearchString, 'fail')">
-            <i  class="fa fa-plus"
-                style="cursor: pointer"
-                ng-click="taskHistoryFilter.filterTest(taskHistoryFilter.testsSearchString, 'fail')"></i>
-            <div  class="autocomplete-container" ng-show="taskHistoryFilter.testsSearchDisplay">
-              <div  class="autocomplete-element"
-                    ng-repeat="testName in taskHistoryFilter.testsSearchResults"
-                    ng-click="taskHistoryFilter.filterTest(testName, 'fail')">
-                [[ testName ]]
-              </div>
-            </div>
-            <div  ng-repeat="(test, status) in taskHistoryFilter.filter.tests" class="filter-atom">
-              <span ng-click="taskHistoryFilter.removeTestFilter(test)" style="cursor: pointer">
-                <i class="fa fa-remove"></i>
-              </span>
-              [[ test ]]
-              <select ng-options="status for status in ['pass', 'fail', 'ran']"
-                      ng-model="taskHistoryFilter.filter.tests[test]"
-                      ng-change=" taskHistoryFilter.setLocationHash();
-                                  taskHistoryFilter.queryServer();"></select>
-            </div>
-
             <h3> Options <span class="small"> ([[tasksByVariantByCommit.length]] Versions)</span></h3>
-
             <div class="checkbox">
               <label>
                 <input type="checkbox" ng-model="hideInactiveVersions.v">
@@ -140,7 +110,6 @@ Evergreen - Task History
           <br>
           <div style="display: none">
             <h4>Build Variants</h4>
-
             <input  ng-model="taskHistoryFilter.buildVariantSearchString"
                     ng-change="taskHistoryFilter.searchBuildVariants(variants)"
                     mci-focus="taskHistoryFilter.showBuildVariantResults()"

@@ -639,51 +639,6 @@ func (h *attachTestLogHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(logReply)
 }
 
-// POST /task/{task_id}/results
-type attachResultsHandler struct {
-	taskID  string
-	results task.LocalTestResults
-}
-
-func makeAttachResults() gimlet.RouteHandler {
-	return &attachResultsHandler{}
-}
-
-func (h *attachResultsHandler) Factory() gimlet.RouteHandler {
-	return &attachResultsHandler{}
-}
-
-func (h *attachResultsHandler) Parse(ctx context.Context, r *http.Request) error {
-	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
-		return errors.New("missing task ID")
-	}
-	err := utility.ReadJSON(r.Body, &h.results)
-	if err != nil {
-		return errors.Wrap(err, "reading test results from JSON request body")
-	}
-	return nil
-}
-
-// Run attaches the received results to the task in the database.
-func (h *attachResultsHandler) Run(ctx context.Context) gimlet.Responder {
-	t, err := task.FindOneId(h.taskID)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
-	}
-	if t == nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
-		})
-	}
-
-	// set test result of task
-	if err = t.SetResults(h.results.Results); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(err)
-	}
-	return gimlet.NewJSONResponse("test results successfully attached")
-}
-
 // POST /task/{task_id}/heartbeat
 type heartbeatHandler struct {
 	taskID string

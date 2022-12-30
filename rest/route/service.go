@@ -77,7 +77,6 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/task/{task_id}/distro_view").Version(2).Get().Wrap(requireTask, requirePodOrHost).RouteHandler(makeGetDistroView())
 	app.AddRoute("/task/{task_id}/files").Version(2).Post().Wrap(requireTask, requirePodOrHost).RouteHandler(makeAttachFiles())
 	app.AddRoute("/task/{task_id}/test_logs").Version(2).Post().Wrap(requireTask, requirePodOrHost).RouteHandler(makeAttachTestLog(env.Settings()))
-	app.AddRoute("/task/{task_id}/results").Version(2).Post().Wrap(requireTask, requirePodOrHost).RouteHandler(makeAttachResults())
 	app.AddRoute("/task/{task_id}/heartbeat").Version(2).Post().Wrap(requireTask, requirePodOrHost).RouteHandler(makeHeartbeat())
 	app.AddRoute("/task/{task_id}/fetch_vars").Version(2).Get().Wrap(requireTask).RouteHandler(makeFetchExpansionsForTask())
 	app.AddRoute("/task/{task_id}/pull_request").Version(2).Get().Wrap(requireTask).RouteHandler(makeAgentGetPullRequest(env.Settings()))

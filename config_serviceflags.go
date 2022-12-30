@@ -31,7 +31,6 @@ type ServiceFlags struct {
 	PodAllocatorDisabled            bool `bson:"pod_allocator_disabled" json:"pod_allocator_disabled"`
 	UnrecognizedPodCleanupDisabled  bool `bson:"unrecognized_pod_cleanup_disabled" json:"unrecognized_pod_cleanup_disabled"`
 	BackgroundReauthDisabled        bool `bson:"background_reauth_disabled" json:"background_reauth_disabled"`
-	BackgroundCleanupDisabled       bool `bson:"background_cleanup_disabled" json:"background_cleanup_disabled"`
 	CloudCleanupDisabled            bool `bson:"cloud_cleanup_disabled" json:"cloud_cleanup_disabled"`
 	ContainerConfigurationsDisabled bool `bson:"container_configurations_disabled" json:"container_configurations_disabled"`
 	PartialRouteAuthDisabled        bool `bson:"partial_route_auth_disabled" json:"partial_route_auth_disabled"`
@@ -102,7 +101,6 @@ func (c *ServiceFlags) Set() error {
 			commitQueueDisabledKey:             c.CommitQueueDisabled,
 			hostAllocatorDisabledKey:           c.HostAllocatorDisabled,
 			podAllocatorDisabledKey:            c.PodAllocatorDisabled,
-			backgroundCleanupDisabledKey:       c.BackgroundCleanupDisabled,
 			backgroundReauthDisabledKey:        c.BackgroundReauthDisabled,
 			cloudCleanupDisabledKey:            c.CloudCleanupDisabled,
 			containerConfigurationsDisabledKey: c.ContainerConfigurationsDisabled,

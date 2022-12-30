@@ -13,10 +13,8 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -243,8 +241,7 @@ func (uis *UIServer) taskHistoryPickaxe(w http.ResponseWriter, r *http.Request) 
 	}
 
 	filter := struct {
-		BuildVariants []string          `json:"buildVariants"`
-		Tests         map[string]string `json:"tests"`
+		BuildVariants []string `json:"buildVariants"`
 	}{}
 
 	err = json.Unmarshal([]byte(r.FormValue("filter")), &filter)
@@ -253,16 +250,12 @@ func (uis *UIServer) taskHistoryPickaxe(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	onlyMatchingTasks := (r.FormValue("only_matching_tasks") == "true")
-
 	params := model.PickaxeParams{
-		Project:           project,
-		TaskName:          taskName,
-		NewestOrder:       highOrder,
-		OldestOrder:       lowOrder,
-		BuildVariants:     filter.BuildVariants,
-		Tests:             filter.Tests,
-		OnlyMatchingTasks: onlyMatchingTasks,
+		Project:       project,
+		TaskName:      taskName,
+		NewestOrder:   highOrder,
+		OldestOrder:   lowOrder,
+		BuildVariants: filter.BuildVariants,
 	}
 	tasks, err := model.TaskHistoryPickaxe(params)
 	if err != nil {
@@ -271,36 +264,6 @@ func (uis *UIServer) taskHistoryPickaxe(w http.ResponseWriter, r *http.Request) 
 	}
 
 	gimlet.WriteJSON(w, tasks)
-}
-
-func (uis *UIServer) taskHistoryTestNames(w http.ResponseWriter, r *http.Request) {
-	taskName := gimlet.GetVars(r)["task_name"]
-
-	projCtx := MustHaveProjectContext(r)
-	project, err := projCtx.GetProject()
-	if err != nil || project == nil {
-		http.Error(w, "not found", http.StatusNotFound)
-		return
-	}
-
-	stepTime := time.Now()
-	taskHistoryIterator := model.NewTaskHistoryIterator(taskName, nil,
-		project.Identifier)
-
-	results, err := taskHistoryIterator.GetDistinctTestNames(r.Context(), NumTasksToSearchForTestNames)
-	testNamesQueryDuration := time.Since(stepTime)
-	msg := message.Fields{
-		"message":               "got test names",
-		"test_names_query_secs": testNamesQueryDuration.Seconds(),
-		"num_test_names":        len(results),
-	}
-	if err != nil {
-		grip.Debug(message.WrapError(err, msg))
-		http.Error(w, fmt.Sprintf("Error finding test names: `%v`", err.Error()), http.StatusInternalServerError)
-		return
-	}
-	grip.Debug(msg)
-	gimlet.WriteJSON(w, results)
 }
 
 // drawerParams contains the parameters from a request to populate a task or version history drawer.
@@ -534,16 +497,6 @@ func getTaskDrawerItems(displayName string, variant string, reverseOrder bool, v
 			taskIds = append(taskIds, t.Id)
 			taskIds = append(taskIds, t.ExecutionTasks...) // also add test results of exuection tasks to the parent
 		}
-	}
-	query := db.Query(bson.M{
-		testresult.TaskIDKey: bson.M{
-			"$in": taskIds,
-		},
-		testresult.StatusKey: evergreen.TestFailedStatus,
-	})
-	tasks, err = task.MergeTestResultsBulk(tasks, &query)
-	if err != nil {
-		return nil, errors.Wrap(err, "error merging test results")
 	}
 
 	return createSiblingTaskGroups(tasks, versions), nil
