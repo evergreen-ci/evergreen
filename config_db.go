@@ -91,7 +91,6 @@ var (
 	hostAllocatorDisabledKey           = bsonutil.MustHaveTag(ServiceFlags{}, "HostAllocatorDisabled")
 	podAllocatorDisabledKey            = bsonutil.MustHaveTag(ServiceFlags{}, "PodAllocatorDisabled")
 	backgroundReauthDisabledKey        = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundReauthDisabled")
-	backgroundCleanupDisabledKey       = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundCleanupDisabled")
 	cloudCleanupDisabledKey            = bsonutil.MustHaveTag(ServiceFlags{}, "CloudCleanupDisabled")
 	containerConfigurationsDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "ContainerConfigurationsDisabled")
 	partialRouteAuthDisabledKey        = bsonutil.MustHaveTag(ServiceFlags{}, "PartialRouteAuthDisabled")
