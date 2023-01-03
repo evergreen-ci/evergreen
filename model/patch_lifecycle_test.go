@@ -231,7 +231,7 @@ func TestGetPatchedProject(t *testing.T) {
 }
 
 func TestFinalizePatch(t *testing.T) {
-	testutil.ConfigureIntegrationTest(t, patchTestConfig, "TestFinalizePatch")
+	testutil.ConfigureIntegrationTest(t, patchTestConfig, t.Name())
 	require.NoError(t, evergreen.UpdateConfig(patchTestConfig), ShouldBeNil)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -265,6 +265,7 @@ modules:
 			require.NoError(t, err)
 			assert.NotNil(t, version)
 			assert.Len(t, version.Parameters, 1)
+			assert.Equal(t, StorageMethodDB, version.StorageMethod, "storage method should initially be DB for new versions")
 			// ensure the relevant builds/tasks were created
 			builds, err := build.Find(build.All)
 			require.NoError(t, err)
@@ -332,8 +333,6 @@ modules:
 			token, err = patchTestConfig.GetGithubOauthToken()
 			require.NoError(t, err)
 			version, err := FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, token)
-			require.NoError(t, err)
-			assert.NotNil(t, version)
 			require.NoError(t, err)
 			assert.NotNil(t, version)
 

@@ -488,6 +488,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		Parameters:          params,
 		Activated:           utility.TruePtr(),
 		AuthorEmail:         authorEmail,
+		StorageMethod:       StorageMethodDB,
 	}
 	intermediateProject.CreateTime = patchVersion.CreateTime
 
