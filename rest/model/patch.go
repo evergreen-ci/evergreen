@@ -151,12 +151,12 @@ func (apiPatch *APIPatch) GetCommitQueuePosition() error {
 }
 
 func (apiPatch *APIPatch) GetIdentifier() {
-	if apiPatch.ProjectIdentifier != nil {
+	if utility.FromStringPtr(apiPatch.ProjectIdentifier) != "" {
 		return
 	}
 	if utility.FromStringPtr(apiPatch.ProjectId) != "" {
 		identifier, err := model.GetIdentifierForProject(utility.FromStringPtr(apiPatch.ProjectId))
-		if err == nil {
+		if err == nil && identifier != "" {
 			apiPatch.ProjectIdentifier = utility.ToStringPtr(identifier)
 		}
 	}
