@@ -752,6 +752,14 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				},
 			},
 		}
+		buildVar5 := parserBV{
+			Name:        "buildVar5",
+			DisplayName: "Build Variant 5",
+			RunOn:       []string{"arch"},
+			Tasks: parserBVTaskUnits{
+				{Name: "singleHostTaskGroup"},
+			},
+		}
 
 		pref := &ProjectRef{
 			Id:         "projectId",
@@ -802,6 +810,13 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		}
 		parserProject := &ParserProject{
 			Identifier: utility.ToStringPtr("projectId"),
+			TaskGroups: []parserTaskGroup{
+				{
+					Name:     "singleHostTaskGroup",
+					MaxHosts: 1,
+					Tasks:    []string{"singleHostTaskGroup1", "singleHostTaskGroup2", "singleHostTaskGroup3"},
+				},
+			},
 			Tasks: []parserTask{
 				{
 					Name:      "taskA",
@@ -843,9 +858,18 @@ func TestCreateBuildFromVersion(t *testing.T) {
 						},
 					},
 				},
+				{
+					Name: "singleHostTaskGroup1",
+				},
+				{
+					Name: "singleHostTaskGroup2",
+				},
+				{
+					Name: "singleHostTaskGroup3",
+				},
 			},
 			Containers:    []Container{container1, container2},
-			BuildVariants: []parserBV{buildVar1, buildVar2, buildVar3, buildVar4},
+			BuildVariants: []parserBV{buildVar1, buildVar2, buildVar3, buildVar4, buildVar5},
 		}
 
 		// the mock version we'll be using
@@ -870,6 +894,10 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				},
 				{
 					BuildVariant:     buildVar4.Name,
+					ActivationStatus: ActivationStatus{Activated: true},
+				},
+				{
+					BuildVariant:     buildVar5.Name,
 					ActivationStatus: ActivationStatus{Activated: true},
 				},
 			},
@@ -1210,7 +1238,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(dbTasks[7].DependsOn, ShouldContain, task.Dependency{TaskId: dbTasks[5].Id, Status: evergreen.TaskSucceeded})
 
 			So(dbTasks[8].DisplayName, ShouldEqual, "taskE")
-			So(len(dbTasks[8].DependsOn), ShouldEqual, 12)
+			So(len(dbTasks[8].DependsOn), ShouldEqual, 15)
 		})
 
 		Convey("all of the build's essential fields should be set correctly", func() {
@@ -1441,6 +1469,60 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			}
 		})
 
+		Convey("single host task group tasks should be assigned child dependencies upon creation", func() {
+			creationInfo := TaskCreationInfo{
+				Project:          project,
+				ProjectRef:       pref,
+				Version:          v,
+				TaskIDs:          table,
+				BuildVariantName: buildVar5.Name,
+				TaskNames:        []string{},
+			}
+			build, tasks, err := CreateBuildFromVersionNoInsert(creationInfo)
+			So(err, ShouldBeNil)
+			So(build.Id, ShouldNotEqual, "")
+
+			So(len(tasks), ShouldEqual, 3)
+			for _, singleHostTgTask := range tasks {
+				switch singleHostTgTask.DisplayName {
+				case "singleHostTaskGroup1":
+					So(singleHostTgTask.DependsOn, ShouldHaveLength, 0)
+				case "singleHostTaskGroup2":
+					So(singleHostTgTask.DependsOn, ShouldHaveLength, 1)
+					So(singleHostTgTask.DependsOn[0].TaskId, ShouldEqual, table.ExecutionTasks.GetId("buildVar5", "singleHostTaskGroup1"))
+				case "singleHostTaskGroup3":
+					So(singleHostTgTask.DependsOn, ShouldHaveLength, 1)
+					So(singleHostTgTask.DependsOn[0].TaskId, ShouldEqual, table.ExecutionTasks.GetId("buildVar5", "singleHostTaskGroup2"))
+				}
+			}
+		})
+
+		Convey("single host task group dependencies should still work if some tasks are missing", func() {
+			// remove singleHostTaskGroup2 from the table
+			table.ExecutionTasks[TVPair{Variant: "buildVar5", TaskName: "singleHostTaskGroup2"}] = ""
+			creationInfo := TaskCreationInfo{
+				Project:          project,
+				ProjectRef:       pref,
+				Version:          v,
+				TaskIDs:          table,
+				BuildVariantName: buildVar5.Name,
+				TaskNames:        []string{"singleHostTaskGroup1", "singleHostTaskGroup3"},
+			}
+			build, tasks, err := CreateBuildFromVersionNoInsert(creationInfo)
+			So(err, ShouldBeNil)
+			So(build.Id, ShouldNotEqual, "")
+			So(len(tasks), ShouldEqual, 2)
+			for _, singleHostTgTask := range tasks {
+				switch singleHostTgTask.DisplayName {
+				case "singleHostTaskGroup1":
+					So(singleHostTgTask.DependsOn, ShouldHaveLength, 0)
+				case "singleHostTaskGroup3":
+					So(singleHostTgTask.DependsOn, ShouldHaveLength, 1)
+					So(singleHostTgTask.DependsOn[0].TaskId, ShouldEqual, table.ExecutionTasks.GetId("buildVar5", "singleHostTaskGroup1"))
+				}
+			}
+		})
+
 	})
 }
 
@@ -1608,7 +1690,7 @@ func TestMakeDeps(t *testing.T) {
 			{Name: AllDependencies, Variant: AllVariants},
 		}
 
-		deps := makeDeps(tSpec, thisTask, table)
+		deps := makeDeps(tSpec.DependsOn, thisTask, table)
 		assert.Len(t, deps, 3)
 		expectedIDs := []string{"bv0_t0", "bv0_t1", "bv1_t0"}
 		for _, dep := range deps {
@@ -1622,7 +1704,7 @@ func TestMakeDeps(t *testing.T) {
 			{Name: AllDependencies, Variant: "bv0"},
 		}
 
-		deps := makeDeps(tSpec, thisTask, table)
+		deps := makeDeps(tSpec.DependsOn, thisTask, table)
 		assert.Len(t, deps, 2)
 		expectedIDs := []string{"bv0_t0", "bv0_t1"}
 		for _, dep := range deps {
@@ -1636,7 +1718,7 @@ func TestMakeDeps(t *testing.T) {
 			{Name: "t0", Variant: "bv0"},
 		}
 
-		deps := makeDeps(tSpec, thisTask, table)
+		deps := makeDeps(tSpec.DependsOn, thisTask, table)
 		assert.Len(t, deps, 1)
 		assert.Equal(t, "bv0_t0", deps[0].TaskId)
 		assert.Equal(t, evergreen.TaskSucceeded, deps[0].Status)
@@ -1648,7 +1730,7 @@ func TestMakeDeps(t *testing.T) {
 			{Name: "t0", Variant: "bv0"},
 		}
 
-		deps := makeDeps(tSpec, thisTask, table)
+		deps := makeDeps(tSpec.DependsOn, thisTask, table)
 		assert.Len(t, deps, 3)
 	})
 
@@ -1657,7 +1739,7 @@ func TestMakeDeps(t *testing.T) {
 			{Name: "t0", Variant: "bv0", Status: evergreen.TaskFailed},
 		}
 
-		deps := makeDeps(tSpec, thisTask, table)
+		deps := makeDeps(tSpec.DependsOn, thisTask, table)
 		assert.Len(t, deps, 1)
 		assert.Equal(t, "bv0_t0", deps[0].TaskId)
 		assert.Equal(t, evergreen.TaskFailed, deps[0].Status)
@@ -1668,7 +1750,7 @@ func TestMakeDeps(t *testing.T) {
 			{Name: AllDependencies},
 		}
 
-		deps := makeDeps(tSpec, thisTask, table)
+		deps := makeDeps(tSpec.DependsOn, thisTask, table)
 		assert.Len(t, deps, 1)
 		assert.Equal(t, "bv1_t0", deps[0].TaskId)
 		assert.Equal(t, evergreen.TaskSucceeded, deps[0].Status)
@@ -1679,7 +1761,7 @@ func TestMakeDeps(t *testing.T) {
 			{Variant: AllVariants},
 		}
 
-		deps := makeDeps(tSpec, thisTask, table)
+		deps := makeDeps(tSpec.DependsOn, thisTask, table)
 		assert.Len(t, deps, 1)
 		assert.Equal(t, "bv0_t1", deps[0].TaskId)
 		assert.Equal(t, evergreen.TaskSucceeded, deps[0].Status)

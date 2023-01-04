@@ -3876,8 +3876,6 @@ func TestCheckAndBlockSingleHostTaskGroup(t *testing.T) {
 			}
 			require.NoError(t, v.Insert())
 
-			CheckAndBlockSingleHostTaskGroup(&tasks[1], tasks[1].Status)
-
 			for i, tsk := range tasks {
 				dbTask, err := task.FindOneId(tsk.Id)
 				require.NoError(t, err)
@@ -3895,8 +3893,6 @@ func TestCheckAndBlockSingleHostTaskGroup(t *testing.T) {
 				require.NoError(t, tsk.Insert())
 			}
 			require.NoError(t, v.Insert())
-
-			CheckAndBlockSingleHostTaskGroup(&tasks[2], tasks[2].Status)
 
 			for i, tsk := range tasks {
 				dbTask, err := task.FindOneId(tsk.Id)
@@ -3917,8 +3913,6 @@ func TestCheckAndBlockSingleHostTaskGroup(t *testing.T) {
 			}
 			require.NoError(t, v.Insert())
 
-			CheckAndBlockSingleHostTaskGroup(&tasks[0], tasks[0].Status)
-
 			for _, tsk := range tasks {
 				dbTask, err := task.FindOneId(tsk.Id)
 				require.NoError(t, err)
@@ -3932,8 +3926,6 @@ func TestCheckAndBlockSingleHostTaskGroup(t *testing.T) {
 				require.NoError(t, tsk.Insert())
 			}
 			require.NoError(t, v.Insert())
-
-			CheckAndBlockSingleHostTaskGroup(&tasks[0], tasks[0].Status)
 
 			for _, tsk := range tasks {
 				dbTask, err := task.FindOneId(tsk.Id)
@@ -3950,8 +3942,6 @@ func TestCheckAndBlockSingleHostTaskGroup(t *testing.T) {
 				require.NoError(t, tsk.Insert())
 			}
 			require.NoError(t, v.Insert())
-
-			CheckAndBlockSingleHostTaskGroup(&tasks[0], tasks[0].Status)
 
 			for _, tsk := range tasks {
 				dbTask, err := task.FindOneId(tsk.Id)

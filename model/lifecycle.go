@@ -816,7 +816,7 @@ func createTasksForBuild(creationInfo TaskCreationInfo) (task.Tasks, error) {
 
 		// set Tags based on the spec
 		newTask.Tags = creationInfo.Project.GetSpecForTask(t.Name).Tags
-		newTask.DependsOn = makeDeps(t, newTask, execTable)
+		newTask.DependsOn = makeDeps(t.DependsOn, newTask, execTable)
 		newTask.GeneratedBy = creationInfo.GeneratedBy
 		if generatorIsGithubCheck {
 			newTask.IsGithubCheck = true
@@ -915,6 +915,7 @@ func createTasksForBuild(creationInfo TaskCreationInfo) (task.Tasks, error) {
 			tasks = append(tasks, newDisplayTask)
 		}
 	}
+	addSingleHostTaskGroupDependencies(taskMap, creationInfo.Project, execTable)
 
 	for _, t := range taskMap {
 		tasks = append(tasks, t)
@@ -930,11 +931,42 @@ func createTasksForBuild(creationInfo TaskCreationInfo) (task.Tasks, error) {
 	return tasks, nil
 }
 
+// addSingleHostTaskGroupDependencies adds dependencies to tasks in a single-host task group
+func addSingleHostTaskGroupDependencies(taskMap map[string]*task.Task, p *Project, taskIds TaskIdTable) {
+	for _, t := range taskMap {
+		if t.TaskGroup == "" {
+			continue
+		}
+		tg := p.FindTaskGroup(t.TaskGroup)
+		if tg == nil || tg.MaxHosts > 1 {
+			continue
+		}
+		singleHostTGDeps := []TaskUnitDependency{}
+		// Iterate backwards until we find a task that exists in the taskMap. This task
+		// will be the parent dependency for the current single host TG task.
+		taskFound := false
+		for i := len(tg.Tasks) - 1; i >= 0; i-- {
+			if t.DisplayName == tg.Tasks[i] {
+				taskFound = true
+				continue
+			}
+			if _, ok := taskMap[taskIds.GetId(t.BuildVariant, tg.Tasks[i])]; ok && taskFound {
+				singleHostTGDeps = append(singleHostTGDeps, TaskUnitDependency{
+					Name:    tg.Tasks[i],
+					Variant: t.BuildVariant,
+				})
+				break
+			}
+		}
+		t.DependsOn = append(t.DependsOn, makeDeps(singleHostTGDeps, t, taskIds)...)
+	}
+}
+
 // makeDeps takes dependency definitions in the project and sets them in the task struct.
 // dependencies between commit queue merges are set outside this function
-func makeDeps(t BuildVariantTaskUnit, thisTask *task.Task, taskIds TaskIdTable) []task.Dependency {
+func makeDeps(deps []TaskUnitDependency, thisTask *task.Task, taskIds TaskIdTable) []task.Dependency {
 	dependencySet := make(map[task.Dependency]bool)
-	for _, dep := range t.DependsOn {
+	for _, dep := range deps {
 		status := evergreen.TaskSucceeded
 		if dep.Status != "" {
 			status = dep.Status

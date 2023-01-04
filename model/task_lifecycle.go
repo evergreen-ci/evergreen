@@ -78,16 +78,6 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 			// or the task was originally activated by evergreen, deactivate the task
 		} else if !evergreen.IsSystemActivator(caller) || evergreen.IsSystemActivator(t.ActivatedBy) {
 			// deactivate later tasks in the group as well, since they won't succeed without this one
-			// TODO EVG-18392: remove this logic once it can be handled by dependencies
-			if t.IsPartOfSingleHostTaskGroup() {
-				tasksInGroup, err := task.FindTaskGroupFromBuild(t.BuildId, t.TaskGroup)
-				catcher.Wrapf(err, "finding task group '%s'", t.TaskGroup)
-				for _, taskInGroup := range tasksInGroup {
-					if taskInGroup.TaskGroupOrder > t.TaskGroupOrder {
-						originalTasks = append(originalTasks, taskInGroup)
-					}
-				}
-			}
 			if t.Requester == evergreen.MergeTestRequester {
 				catcher.Wrapf(DequeueAndRestartForTask(nil, &t, message.GithubStateError, caller, fmt.Sprintf("deactivated by '%s'", caller)), "dequeueing and restarting task '%s'", t.Id)
 			}
@@ -1682,30 +1672,6 @@ func doRestartFailedTasks(tasks []string, user string, results RestartResults) R
 	return results
 }
 
-// CheckAndBlockSingleHostTaskGroup blocks a single-host task group if the given
-// task is part of one and has finished (or is currently finishing) with a
-// failed status. This is a best-effort attempt, so if it fails, it will just
-// log the error.
-func CheckAndBlockSingleHostTaskGroup(t *task.Task, status string) {
-	if !t.IsPartOfSingleHostTaskGroup() || status == evergreen.TaskSucceeded {
-		return
-	}
-
-	// For a single-host task group, block and dequeue later tasks in that group.
-	if err := BlockTaskGroupTasks(t.Id); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "problem blocking task group tasks",
-			"task_id": t.Id,
-		}))
-		return
-	}
-
-	grip.Debug(message.Fields{
-		"message": "blocked task group tasks for task",
-		"task_id": t.Id,
-	})
-}
-
 // ClearAndResetStrandedContainerTask clears the container task dispatched to a
 // pod. It also resets the task so that the current task execution is marked as
 // finished and, if necessary, a new execution is created to restart the task.
@@ -1775,7 +1741,10 @@ func ClearAndResetStrandedHostTask(h *host.Host) error {
 		return nil
 	}
 
-	CheckAndBlockSingleHostTaskGroup(t, t.Status)
+	err = UpdateBlockedDependencies(t)
+	if err != nil {
+		return errors.Wrapf(err, "updating blocked dependencies for task '%s'", t.Id)
+	}
 
 	if err = h.ClearRunningTask(); err != nil {
 		return errors.Wrapf(err, "clearing running task from host '%s'", h.Id)
@@ -1800,7 +1769,10 @@ func ClearAndResetStrandedHostTask(h *host.Host) error {
 // aborted, the task is reset. If the task was aborted, we do not reset the task
 // and it is just marked as failed alongside other necessary updates to finish the task.
 func FixStaleTask(t *task.Task) error {
-	CheckAndBlockSingleHostTaskGroup(t, t.Status)
+	err := UpdateBlockedDependencies(t)
+	if err != nil {
+		return errors.Wrapf(err, "updating blocked dependencies for task '%s'", t.Id)
+	}
 
 	failureDesc := evergreen.TaskDescriptionHeartbeat
 	if t.Aborted {
