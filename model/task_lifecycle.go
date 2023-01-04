@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -1440,10 +1441,10 @@ func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
 	for versionId, buildList := range versionsToUpdate {
 		buildVersion, err := VersionFindOneId(versionId)
 		if err != nil {
-			return errors.Wrapf(err, "getting version '%s' for build '%s'", versionId, buildList[0])
+			return errors.Wrapf(err, "getting version '%s' for builds '%s'", versionId, strings.Join(buildList, ","))
 		}
 		if buildVersion == nil {
-			return errors.Errorf("no version '%s' found for build '%s'", versionId, buildList[0])
+			return errors.Errorf("no version '%s' found for builds '%s'", versionId, strings.Join(buildList, ","))
 		}
 		newVersionStatus, err := updateVersionStatus(buildVersion)
 		if err != nil {
