@@ -1371,7 +1371,7 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 		return errors.Wrapf(err, "updating version '%s' status", taskVersion.Id)
 	}
 
-	if evergreen.IsPatchRequester(taskVersion.Requester) {
+	if evergreen.IsPatchRequester(taskVersion.Requester) || evergreen.IsGitHubPatchRequester(taskVersion.Requester) {
 		p, err := patch.FindOneId(taskVersion.Id)
 		if err != nil {
 			return errors.Wrapf(err, "getting patch for version '%s'", taskVersion.Id)
@@ -1379,10 +1379,11 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 		if p == nil {
 			return errors.Errorf("no patch found for version '%s'", taskVersion.Id)
 		}
-		if err = UpdatePatchStatus(p, newVersionStatus, taskBuild.BuildVariant); err != nil {
-			return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
+		if evergreen.IsPatchRequester(taskVersion.Requester) {
+			if err = UpdatePatchStatus(p, newVersionStatus, taskBuild.BuildVariant); err != nil {
+				return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
+			}
 		}
-
 		isDone, parentPatch, err := p.GetFamilyInformation()
 		if err != nil {
 			return errors.Wrapf(err, "getting family information for patch '%s'", p.Id.Hex())
