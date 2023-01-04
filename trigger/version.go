@@ -105,6 +105,7 @@ func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride st
 	if api.ProjectIdentifier != nil {
 		projectName = utility.FromStringPtr(api.ProjectIdentifier)
 	}
+
 	data := commonTemplateData{
 		ID:             t.version.Id,
 		EventID:        t.event.ID,
