@@ -821,7 +821,7 @@ tasks:
 	s.NoError(err)
 	s.Equal(evergreen.VersionCreated, dbVersion.Status)
 	s.Equal(s.rev.RevisionMessage, dbVersion.Message)
-	s.Equal(model.StorageMethodDB, dbVersion.StorageMethod, "storage method should initially be DB for new versions")
+	s.Equal(model.ProjectStorageMethodDB, dbVersion.ProjectStorageMethod, "storage method should initially be DB for new versions")
 
 	s.Equal(false, utility.FromBoolPtr(dbVersion.Activated))
 	dbBuild, err := build.FindOneId(v.BuildIds[0])

@@ -265,7 +265,7 @@ modules:
 			require.NoError(t, err)
 			assert.NotNil(t, version)
 			assert.Len(t, version.Parameters, 1)
-			assert.Equal(t, StorageMethodDB, version.StorageMethod, "storage method should initially be DB for new versions")
+			assert.Equal(t, ProjectStorageMethodDB, version.ProjectStorageMethod, "storage method should initially be DB for new versions")
 			// ensure the relevant builds/tasks were created
 			builds, err := build.Find(build.All)
 			require.NoError(t, err)
