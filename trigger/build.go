@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
@@ -270,11 +269,6 @@ func (t *buildTriggers) makeData(sub *event.Subscription, pastTenseOverride stri
 	projectName := t.build.Project
 	if api.ProjectIdentifier != nil {
 		projectName = utility.FromStringPtr(api.ProjectIdentifier)
-	} else {
-		identifier, err := model.GetIdentifierForProject(*api.ProjectId)
-		if err == nil && identifier != "" {
-			projectName = identifier
-		}
 	}
 
 	data := commonTemplateData{

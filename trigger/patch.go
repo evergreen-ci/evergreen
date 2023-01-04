@@ -189,11 +189,6 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 	projectName := t.patch.Project
 	if api.ProjectIdentifier != nil {
 		projectName = utility.FromStringPtr(api.ProjectIdentifier)
-	} else {
-		identifier, err := model.GetIdentifierForProject(*api.ProjectId)
-		if err == nil && identifier != "" {
-			projectName = identifier
-		}
 	}
 
 	data := commonTemplateData{
