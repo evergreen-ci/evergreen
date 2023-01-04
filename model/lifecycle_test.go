@@ -222,7 +222,7 @@ func TestBuildRestart(t *testing.T) {
 	Convey("Restarting a build", t, func() {
 
 		Convey("with task abort should update the status of"+
-			" non in-progress tasks and abort in-progress ones", func() {
+			" non in-progress tasks and abort in-progress ones and mark them to be reset", func() {
 
 			require.NoError(t, db.ClearCollections(build.Collection, task.Collection, task.OldCollection))
 			b := &build.Build{Id: "build"}
@@ -258,6 +258,7 @@ func TestBuildRestart(t *testing.T) {
 			taskTwo, err = task.FindOne(db.Query(task.ById("task2")))
 			So(err, ShouldBeNil)
 			So(taskTwo.Aborted, ShouldEqual, true)
+			So(taskTwo.ResetWhenFinished, ShouldBeTrue)
 		})
 
 		Convey("without task abort should update the status"+
@@ -289,7 +290,6 @@ func TestBuildRestart(t *testing.T) {
 			var err error
 			b, err = build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
-			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildStarted)
 			taskThree, err = task.FindOne(db.Query(task.ById("task3")))
 			So(err, ShouldBeNil)
@@ -298,6 +298,105 @@ func TestBuildRestart(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(taskFour.Aborted, ShouldEqual, false)
 			So(taskFour.Status, ShouldEqual, evergreen.TaskDispatched)
+		})
+
+		Convey("single host task group tasks be omitted from the immediate restart logic", func() {
+
+			require.NoError(t, db.ClearCollections(build.Collection))
+			b := &build.Build{Id: "build"}
+			So(b.Insert(), ShouldBeNil)
+
+			taskFive := &task.Task{
+				Id:                "task5",
+				DisplayName:       "task5",
+				BuildId:           b.Id,
+				Status:            evergreen.TaskSucceeded,
+				Activated:         true,
+				TaskGroup:         "tg",
+				TaskGroupMaxHosts: 1,
+			}
+			So(taskFive.Insert(), ShouldBeNil)
+
+			taskSix := &task.Task{
+				Id:                "task6",
+				DisplayName:       "task6",
+				BuildId:           b.Id,
+				Status:            evergreen.TaskDispatched,
+				Activated:         true,
+				TaskGroup:         "tg",
+				TaskGroupMaxHosts: 1,
+			}
+			So(taskSix.Insert(), ShouldBeNil)
+
+			taskSeven := &task.Task{
+				Id:          "task7",
+				DisplayName: "task7",
+				BuildId:     b.Id,
+				Status:      evergreen.TaskSucceeded,
+				Activated:   true,
+			}
+			So(taskSeven.Insert(), ShouldBeNil)
+
+			So(RestartBuild(b.Id, []string{"task5", "task6", "task7"}, false, evergreen.DefaultTaskActivator), ShouldBeNil)
+			var err error
+			b, err = build.FindOne(build.ById(b.Id))
+			So(err, ShouldBeNil)
+			So(b.Status, ShouldEqual, evergreen.BuildStarted)
+			taskFive, err = task.FindOne(db.Query(task.ById("task5")))
+			So(err, ShouldBeNil)
+			So(taskFive.Status, ShouldEqual, evergreen.TaskSucceeded)
+			So(taskFive.ResetWhenFinished, ShouldBeTrue)
+			taskSix, err = task.FindOne(db.Query(task.ById("task6")))
+			So(err, ShouldBeNil)
+			taskSeven, err = task.FindOne(db.Query(task.ById("task7")))
+			So(err, ShouldBeNil)
+			So(taskSeven.Status, ShouldEqual, evergreen.TaskUndispatched)
+		})
+
+		Convey("a fully completed single host task group should get reset", func() {
+
+			require.NoError(t, db.ClearCollections(build.Collection, VersionCollection))
+			b := &build.Build{Id: "build"}
+			So(b.Insert(), ShouldBeNil)
+
+			v := &Version{Id: "version"}
+			So(v.Insert(), ShouldBeNil)
+
+			taskEight := &task.Task{
+				Id:                "task8",
+				DisplayName:       "task8",
+				BuildId:           b.Id,
+				Version:           v.Id,
+				Status:            evergreen.TaskSucceeded,
+				Activated:         true,
+				TaskGroup:         "tg2",
+				TaskGroupMaxHosts: 1,
+			}
+			So(taskEight.Insert(), ShouldBeNil)
+
+			taskNine := &task.Task{
+				Id:                "task9",
+				DisplayName:       "task9",
+				BuildId:           b.Id,
+				Version:           v.Id,
+				Status:            evergreen.TaskSucceeded,
+				Activated:         true,
+				TaskGroup:         "tg2",
+				TaskGroupMaxHosts: 1,
+			}
+			So(taskNine.Insert(), ShouldBeNil)
+
+			So(RestartBuild(b.Id, []string{"task8", "task9"}, false, evergreen.DefaultTaskActivator), ShouldBeNil)
+			var err error
+			b, err = build.FindOne(build.ById(b.Id))
+			So(err, ShouldBeNil)
+			So(b.Status, ShouldEqual, evergreen.BuildStarted)
+			taskEight, err = task.FindOne(db.Query(task.ById("task8")))
+			So(err, ShouldBeNil)
+			So(taskEight.Status, ShouldEqual, evergreen.TaskUndispatched)
+			taskNine, err = task.FindOne(db.Query(task.ById("task9")))
+			So(err, ShouldBeNil)
+			So(taskNine.Status, ShouldEqual, evergreen.TaskUndispatched)
 		})
 
 	})
