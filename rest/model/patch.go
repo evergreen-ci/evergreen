@@ -157,13 +157,12 @@ func (apiPatch *APIPatch) GetIdentifier() {
 	}
 	if utility.FromStringPtr(apiPatch.ProjectId) != "" {
 		identifier, err := model.GetIdentifierForProject(utility.FromStringPtr(apiPatch.ProjectId))
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "could not get identifier for project",
-				"project": apiPatch.ProjectId,
-			}))
 
-		}
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "could not get identifier for project",
+			"project": apiPatch.ProjectId,
+		}))
+
 		if err == nil && identifier != "" {
 			apiPatch.ProjectIdentifier = utility.ToStringPtr(identifier)
 		}
