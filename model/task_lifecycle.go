@@ -3,7 +3,6 @@ package model
 import (
 	"fmt"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -1424,7 +1423,7 @@ func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
 
 	// Maintain a list of builds for each version because we may
 	// be updating many builds for the same version.
-	versionsToUpdate := make(map[string][]string)
+	versionBuildsMap := make(map[string][]string)
 	bvMap := make(map[string]string)
 	for _, build := range builds {
 		buildStatusChanged, err := updateBuildStatus(&build)
@@ -1435,16 +1434,16 @@ func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
 		if !buildStatusChanged {
 			continue
 		}
-		versionsToUpdate[build.Version] = append(versionsToUpdate[build.Version], build.Id)
+		versionBuildsMap[build.Version] = append(versionBuildsMap[build.Version], build.Id)
 		bvMap[build.Id] = build.BuildVariant
 	}
-	for versionId, buildList := range versionsToUpdate {
+	for versionId, buildList := range versionBuildsMap {
 		buildVersion, err := VersionFindOneId(versionId)
 		if err != nil {
-			return errors.Wrapf(err, "getting version '%s' for builds '%s'", versionId, strings.Join(buildList, ","))
+			return errors.Wrapf(err, "getting version '%s'", versionId)
 		}
 		if buildVersion == nil {
-			return errors.Errorf("no version '%s' found for builds '%s'", versionId, strings.Join(buildList, ","))
+			return errors.Errorf("no version '%s' found", versionId)
 		}
 		newVersionStatus, err := updateVersionStatus(buildVersion)
 		if err != nil {
@@ -1459,7 +1458,7 @@ func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
 			if p == nil {
 				return errors.Errorf("no patch found for version '%s'", buildVersion.Id)
 			}
-			for _, buildId := range versionsToUpdate[versionId] {
+			for _, buildId := range buildList {
 				if err = UpdatePatchStatus(p, newVersionStatus, bvMap[buildId]); err != nil {
 					return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
 				}
