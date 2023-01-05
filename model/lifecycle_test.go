@@ -246,7 +246,7 @@ func TestBuildRestart(t *testing.T) {
 			}
 			So(taskTwo.Insert(), ShouldBeNil)
 
-			So(RestartBuild(b.Id, []string{"task1", "task2"}, true, evergreen.DefaultTaskActivator), ShouldBeNil)
+			So(RestartBuild(b, []string{"task1", "task2"}, true, evergreen.DefaultTaskActivator), ShouldBeNil)
 			var err error
 			b, err = build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
@@ -286,7 +286,7 @@ func TestBuildRestart(t *testing.T) {
 			}
 			So(taskFour.Insert(), ShouldBeNil)
 
-			So(RestartBuild(b.Id, []string{"task3", "task4"}, false, evergreen.DefaultTaskActivator), ShouldBeNil)
+			So(RestartBuild(b, []string{"task3", "task4"}, false, evergreen.DefaultTaskActivator), ShouldBeNil)
 			var err error
 			b, err = build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
@@ -337,7 +337,7 @@ func TestBuildRestart(t *testing.T) {
 			}
 			So(taskSeven.Insert(), ShouldBeNil)
 
-			So(RestartBuild(b.Id, []string{"task5", "task6", "task7"}, false, evergreen.DefaultTaskActivator), ShouldBeNil)
+			So(RestartBuild(b, []string{"task5", "task6", "task7"}, false, evergreen.DefaultTaskActivator), ShouldBeNil)
 			var err error
 			b, err = build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
@@ -386,7 +386,7 @@ func TestBuildRestart(t *testing.T) {
 			}
 			So(taskNine.Insert(), ShouldBeNil)
 
-			So(RestartBuild(b.Id, []string{"task8", "task9"}, false, evergreen.DefaultTaskActivator), ShouldBeNil)
+			So(RestartBuild(b, []string{"task8", "task9"}, false, evergreen.DefaultTaskActivator), ShouldBeNil)
 			var err error
 			b, err = build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
@@ -2104,7 +2104,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 
 	// test restarting a build
 	assert.NoError(resetTaskData())
-	assert.NoError(RestartBuild("build3", displayTasks, false, "test"))
+	assert.NoError(RestartBuild(&build.Build{Id: "build3"}, displayTasks, false, "test"))
 	tasks, err = task.FindAll(db.Query(task.ByIds(allTasks)))
 	assert.NoError(err)
 	assert.Len(tasks, 3)
