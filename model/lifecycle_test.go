@@ -213,20 +213,22 @@ func TestBuildSetPriority(t *testing.T) {
 
 func TestBuildRestart(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection))
+		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, VersionCollection, build.Collection))
 	}()
 
 	// Running a multi-document transaction requires the collections to exist
 	// first before any documents can be inserted.
-	require.NoError(t, db.CreateCollections(task.Collection, task.OldCollection))
+	require.NoError(t, db.CreateCollections(task.Collection, task.OldCollection, VersionCollection, build.Collection))
+	v := &Version{Id: "version"}
+	require.NoError(t, v.Insert())
+	b := &build.Build{Id: "build", Version: "version"}
+	require.NoError(t, b.Insert())
 	Convey("Restarting a build", t, func() {
 
 		Convey("with task abort should update the status of"+
 			" non in-progress tasks and abort in-progress ones and mark them to be reset", func() {
 
-			require.NoError(t, db.ClearCollections(build.Collection, task.Collection, task.OldCollection))
-			b := &build.Build{Id: "build"}
-			So(b.Insert(), ShouldBeNil)
+			require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection))
 
 			taskOne := &task.Task{
 				Id:          "task1",
@@ -263,11 +265,6 @@ func TestBuildRestart(t *testing.T) {
 
 		Convey("without task abort should update the status"+
 			" of only those build tasks not in-progress", func() {
-
-			require.NoError(t, db.ClearCollections(build.Collection))
-			b := &build.Build{Id: "build"}
-			So(b.Insert(), ShouldBeNil)
-
 			taskThree := &task.Task{
 				Id:          "task3",
 				DisplayName: "task3",
@@ -301,10 +298,6 @@ func TestBuildRestart(t *testing.T) {
 		})
 
 		Convey("single host task group tasks be omitted from the immediate restart logic", func() {
-
-			require.NoError(t, db.ClearCollections(build.Collection))
-			b := &build.Build{Id: "build"}
-			So(b.Insert(), ShouldBeNil)
 
 			taskFive := &task.Task{
 				Id:                "task5",
@@ -354,14 +347,6 @@ func TestBuildRestart(t *testing.T) {
 		})
 
 		Convey("a fully completed single host task group should get reset", func() {
-
-			require.NoError(t, db.ClearCollections(build.Collection, VersionCollection))
-			b := &build.Build{Id: "build"}
-			So(b.Insert(), ShouldBeNil)
-
-			v := &Version{Id: "version"}
-			So(v.Insert(), ShouldBeNil)
-
 			taskEight := &task.Task{
 				Id:                "task8",
 				DisplayName:       "task8",
@@ -2104,7 +2089,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 
 	// test restarting a build
 	assert.NoError(resetTaskData())
-	assert.NoError(RestartBuild(&build.Build{Id: "build3"}, displayTasks, false, "test"))
+	assert.NoError(RestartBuild(&build.Build{Id: "build3", Version: "version"}, displayTasks, false, "test"))
 	tasks, err = task.FindAll(db.Query(task.ByIds(allTasks)))
 	assert.NoError(err)
 	assert.Len(tasks, 3)
