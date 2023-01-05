@@ -219,12 +219,12 @@ func TestBuildRestart(t *testing.T) {
 	// Running a multi-document transaction requires the collections to exist
 	// first before any documents can be inserted.
 	require.NoError(t, db.CreateCollections(task.Collection, task.OldCollection, VersionCollection, build.Collection))
+	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection))
 	v := &Version{Id: "version"}
 	require.NoError(t, v.Insert())
 	b := &build.Build{Id: "build", Version: "version"}
 	require.NoError(t, b.Insert())
 	Convey("Restarting a build", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection))
 		Convey("with task abort should update the status of"+
 			" non in-progress tasks and abort in-progress ones and mark them to be reset", func() {
 
