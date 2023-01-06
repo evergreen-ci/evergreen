@@ -426,8 +426,8 @@ func restartTasks(allFinishedTasks []task.Task, caller, versionId string) error 
 		}
 	}
 
-	if err := errors.Wrap(build.SetBuildStartedForTasks(allFinishedTasks, caller), "setting builds started"); err != nil {
-		return err
+	if err := build.SetBuildStartedForTasks(allFinishedTasks, caller); err != nil {
+		return errors.Wrap(err, "setting builds started")
 	}
 
 	return errors.Wrap(setVersionStatus(versionId, evergreen.VersionStarted), "changing version status")
