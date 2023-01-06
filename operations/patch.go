@@ -178,12 +178,12 @@ func Patch() cli.Command {
 			}
 			params.Description = params.getDescription()
 
-			if err = params.setLocalAliases(conf); err != nil {
-				return errors.Wrap(err, "setting local aliases")
-			}
+			isReusing := params.RepeatDefinition || params.RepeatFailed
+			hasTasksOrVariants := len(params.Tasks) > 0 || len(params.Variants) > 0
+			hasRegexTasksOrVariants := len(params.RegexTasks) > 0 || len(params.RegexVariants) > 0
 
-			if (params.RepeatDefinition || params.RepeatFailed) && (len(params.Tasks) > 0 || len(params.Variants) > 0) {
-				return errors.Errorf("can't define tasks/variants when reusing previous patch's tasks and variants")
+			if isReusing && (hasTasksOrVariants || hasRegexTasksOrVariants || len(params.Alias) > 0) {
+				return errors.Errorf("can't define tasks, variants, regex tasks, regex variants or aliases when reusing previous patch's tasks and variants")
 			}
 
 			diffData, err := loadGitData("", ref.Branch, params.Ref, "", params.PreserveCommits, args...)

@@ -9,7 +9,9 @@ credentials: { github: "token xxx" }
 
 amboy:
   name: test_queue
-  database: amboy_test
+  db_connection:
+    database: amboy_test
+    url: "mongodb://localhost:27017"
   pool_size_local: 2
   pool_size_remote: 2
   local_storage_size: 2048

@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -9,10 +10,13 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
+	"github.com/google/go-github/v34/github"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -82,7 +86,23 @@ type Version struct {
 
 	// this is only used for aggregations, and is not stored in the DB
 	Builds []build.Build `bson:"build_variants,omitempty" json:"build_variants,omitempty"`
+
+	// ProjectStorageMethod describes how the parser project for this version is
+	// stored. If this is empty, the default storage method is StorageMethodDB.
+	ProjectStorageMethod ProjectConfigStorageMethod `bson:"storage_method" json:"storage_method,omitempty"`
 }
+
+// ProjectConfigStorageMethod represents a means to store the parser project.
+type ProjectConfigStorageMethod string
+
+const (
+	// ProjectStorageMethodDB indicates that the parser project is stored as a
+	// single document in a DB collection.
+	ProjectStorageMethodDB ProjectConfigStorageMethod = "db"
+	// ProjectStorageMethodS3 indicates that the parser project is stored as a
+	// single object in S3.
+	ProjectStorageMethodS3 ProjectConfigStorageMethod = "s3"
+)
 
 func (v *Version) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(v) }
 func (v *Version) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, v) }
@@ -92,17 +112,6 @@ const (
 	DefaultMainlineCommitVersionLimit = 7
 	MaxMainlineCommitVersionLimit     = 300
 )
-
-type GetVersionsOptions struct {
-	StartAfter     int    `json:"start"`
-	Requester      string `json:"requester"`
-	Limit          int    `json:"limit"`
-	Skip           int    `json:"skip"`
-	IncludeBuilds  bool   `json:"include_builds"`
-	IncludeTasks   bool   `json:"include_tasks"`
-	ByBuildVariant string `json:"by_build_variant"`
-	ByTask         string `json:"by_task"`
-}
 
 func (v *Version) LastSuccessful() (*Version, error) {
 	lastGreen, err := VersionFindOne(VersionBySuccessfulBeforeRevision(v.Identifier, v.RevisionOrderNumber).Sort(
@@ -496,6 +505,17 @@ func GetMainlineCommitVersionsWithOptions(projectId string, opts MainlineCommitV
 	return res, nil
 }
 
+type GetVersionsOptions struct {
+	StartAfter     int    `json:"start"`
+	Requester      string `json:"requester"`
+	Limit          int    `json:"limit"`
+	Skip           int    `json:"skip"`
+	IncludeBuilds  bool   `json:"include_builds"`
+	IncludeTasks   bool   `json:"include_tasks"`
+	ByBuildVariant string `json:"by_build_variant"`
+	ByTask         string `json:"by_task"`
+}
+
 func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Version, error) {
 	projectId, err := GetIdForProject(projectName)
 	if err != nil {
@@ -516,7 +536,7 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 	if opts.StartAfter > 0 {
 		match[VersionRevisionOrderNumberKey] = bson.M{"$lt": opts.StartAfter}
 	}
-	pipeline := []bson.M{bson.M{"$match": match}}
+	pipeline := []bson.M{{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
 
 	// initial projection of version items
@@ -602,6 +622,104 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 		return nil, errors.Wrap(err, "aggregating versions and builds")
 	}
 	return res, nil
+}
+
+// constructManifest will construct a manifest from the given project and version.
+func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList, settings *evergreen.Settings) (*manifest.Manifest, error) {
+	if len(moduleList) == 0 {
+		return nil, nil
+	}
+	newManifest := &manifest.Manifest{
+		Id:          v.Id,
+		Revision:    v.Revision,
+		ProjectName: v.Identifier,
+		Branch:      projectRef.Branch,
+		IsBase:      v.Requester == evergreen.RepotrackerVersionRequester,
+	}
+	token, err := settings.GetGithubOauthToken()
+	if err != nil {
+		return nil, errors.Wrap(err, "getting github oauth token")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var baseManifest *manifest.Manifest
+	isPatch := utility.StringSliceContains(evergreen.PatchRequesters, v.Requester)
+	if isPatch {
+		baseManifest, err = manifest.FindFromVersion(v.Id, v.Identifier, v.Revision, v.Requester)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting base manifest")
+		}
+	}
+
+	var gitCommit *github.RepositoryCommit
+	modules := map[string]*manifest.Module{}
+	for _, module := range moduleList {
+		if isPatch && !module.AutoUpdate && baseManifest != nil {
+			if baseModule, ok := baseManifest.Modules[module.Name]; ok {
+				modules[module.Name] = baseModule
+				continue
+			}
+		}
+		var sha, url string
+		owner, repo := module.GetRepoOwnerAndName()
+		if module.Ref == "" {
+			var commit *github.RepositoryCommit
+			commit, err = thirdparty.GetCommitEvent(ctx, token, projectRef.Owner, projectRef.Repo, v.Revision)
+			if err != nil {
+				return nil, errors.Wrapf(err, "can't get commit '%s' on '%s/%s'", v.Revision, projectRef.Owner, projectRef.Repo)
+			}
+			if commit == nil || commit.Commit == nil || commit.Commit.Committer == nil {
+				return nil, errors.New("malformed GitHub commit response")
+			}
+			// If this is a mainline commit, retrieve the module's commit from the time of the mainline commit.
+			// Otherwise, retrieve the module's commit from the time of the patch creation.
+			revisionTime := time.Unix(0, 0)
+			if !evergreen.IsPatchRequester(v.Requester) {
+				revisionTime = commit.Commit.Committer.GetDate()
+			}
+			var branchCommits []*github.RepositoryCommit
+			branchCommits, _, err = thirdparty.GetGithubCommits(ctx, token, owner, repo, module.Branch, revisionTime, 0)
+			if err != nil {
+				return nil, errors.Wrapf(err, "retrieving git branch for module '%s'", module.Name)
+			}
+			if len(branchCommits) > 0 {
+				sha = branchCommits[0].GetSHA()
+				url = branchCommits[0].GetURL()
+			}
+		} else {
+			sha = module.Ref
+			gitCommit, err = thirdparty.GetCommitEvent(ctx, token, owner, repo, module.Ref)
+			if err != nil {
+				return nil, errors.Wrapf(err, "retrieving getting git commit for module %s with hash %s", module.Name, module.Ref)
+			}
+			url = gitCommit.GetURL()
+		}
+
+		modules[module.Name] = &manifest.Module{
+			Branch:   module.Branch,
+			Revision: sha,
+			Repo:     repo,
+			Owner:    owner,
+			URL:      url,
+		}
+
+	}
+	newManifest.Modules = modules
+	return newManifest, nil
+}
+
+// CreateManifest inserts a newly constructed manifest into the DB.
+func CreateManifest(v *Version, proj *Project, projectRef *ProjectRef, settings *evergreen.Settings) (*manifest.Manifest, error) {
+	newManifest, err := constructManifest(v, projectRef, proj.Modules, settings)
+	if err != nil {
+		return nil, errors.Wrap(err, "constructing manifest")
+	}
+	if newManifest == nil {
+		return nil, nil
+	}
+	_, err = newManifest.TryInsert()
+	return newManifest, errors.Wrap(err, "inserting manifest")
 }
 
 type VersionsByCreateTime []Version

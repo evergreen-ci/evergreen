@@ -144,40 +144,29 @@ func (h *buildsForVersionHandler) Parse(ctx context.Context, r *http.Request) er
 	return nil
 }
 
-// Execute calls the model.VersionFindOneId function to find the version by its ID, calls build.FindOneId for each
-// build variant for the version, and returns the data.
+// Run returns the variants for a version, filtered by variant if specified.
 func (h *buildsForVersionHandler) Run(ctx context.Context) gimlet.Responder {
-	// First, find the version by its ID.
-	foundVersion, err := dbModel.VersionFindOneId(h.versionId)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding version '%s'", h.versionId))
+	var builds []build.Build
+	var err error
+
+	if h.variant == "" {
+		builds, err = build.Find(build.ByVersion(h.versionId))
+	} else {
+		builds, err = build.Find(build.ByVersionAndVariant(h.versionId, h.variant))
 	}
-	if foundVersion == nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("version '%s' not found", h.versionId),
-		})
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "getting builds"))
 	}
 
-	// Then, find each build variant in the found version by its ID.
+	pp, err := dbModel.ParserProjectFindOneById(h.versionId)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting project info"))
+	}
+
 	buildModels := []model.APIBuild{}
-	for _, buildStatus := range foundVersion.BuildVariants {
-		// If a variant was specified, only retrieve that variant
-		if h.variant != "" && buildStatus.BuildVariant != h.variant {
-			continue
-		}
-		foundBuild, err := build.FindOneId(buildStatus.BuildId)
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding build '%s'", buildStatus.BuildId))
-		}
-		if foundBuild == nil {
-			return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusNotFound,
-				Message:    fmt.Sprintf("build '%s' not found", buildStatus.BuildId),
-			})
-		}
+	for _, b := range builds {
 		buildModel := model.APIBuild{}
-		buildModel.BuildFromService(*foundBuild)
+		buildModel.BuildFromService(b, pp)
 		buildModels = append(buildModels, buildModel)
 	}
 	return gimlet.NewJSONResponse(buildModels)

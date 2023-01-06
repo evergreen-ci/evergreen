@@ -14,7 +14,6 @@ import (
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/evergreen-ci/timber/buildlogger"
 	timberutil "github.com/evergreen-ci/timber/testutil"
-	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -52,10 +51,6 @@ func TestSendTestResults(t *testing.T) {
 			Execution:    5,
 			Requester:    evergreen.GithubPRRequester,
 		},
-		ProjectRef: &model.ProjectRef{
-			FilesIgnoredFromCache: []string{"ignoreMe"},
-			DisabledStatsCache:    utility.ToBoolPtr(true),
-		},
 	}
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	comm := client.NewMock("url")
@@ -80,8 +75,6 @@ func TestSendTestResults(t *testing.T) {
 			assert.Equal(t, displayTaskInfo.ID, srv.Create.DisplayTaskId)
 			assert.Equal(t, displayTaskInfo.Name, srv.Create.DisplayTaskName)
 			assert.False(t, srv.Create.Mainline)
-			assert.Equal(t, conf.ProjectRef.FilesIgnoredFromCache, srv.Create.HistoricalDataIgnore)
-			assert.Equal(t, conf.ProjectRef.IsStatsCacheDisabled(), srv.Create.HistoricalDataDisabled)
 		}
 		checkResults := func(t *testing.T, srv *timberutil.MockTestResultsServer) {
 			require.Len(t, srv.Results, 1)
@@ -157,21 +150,6 @@ func TestSendTestResults(t *testing.T) {
 				assert.True(t, comm.HasCedarResults)
 				assert.False(t, comm.CedarResultsFailed)
 				results.Results[0].LogTestName = logTestName
-			},
-			"ResmokeProject": func(ctx context.Context, t *testing.T, srv *timberutil.MockTestResultsServer, comm *client.Mock) {
-				conf.ProjectRef.Identifier = "mongodb-mongo-master"
-				defer func() {
-					conf.ProjectRef.Identifier = ""
-				}()
-				require.NoError(t, sendTestResults(ctx, comm, logger, conf, results))
-
-				assert.Equal(t, srv.Close.TestResultsRecordId, conf.CedarTestResultsID)
-				checkRecord(t, srv)
-				checkResults(t, srv)
-				assert.NotZero(t, srv.Close.TestResultsRecordId)
-				assert.True(t, comm.HasCedarResults)
-				assert.False(t, comm.CedarResultsFailed)
-				assert.Equal(t, results, comm.LocalTestResults)
 			},
 			"FailsIfCreatingRecordFails": func(ctx context.Context, t *testing.T, srv *timberutil.MockTestResultsServer, comm *client.Mock) {
 				srv.CreateErr = true

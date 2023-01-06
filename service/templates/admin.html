@@ -81,7 +81,6 @@ Admin Settings
 						<li class="link" ng-click="scrollTo('newrelic')">New Relic</li>
 						<li class="link" ng-click="scrollTo('data_pipes')">Data-Pipes</li>
 						<li class="link" ng-click="scrollTo('cedar')">Cedar</li>
-						<li class="link" ng-click="scrollTo('presto')">Presto</li>
 						<div>Background Processing</div>
 						<li class="link" ng-click="scrollTo('amboy')">Amboy</li>
 						<li class="link" ng-click="scrollTo('logger_config')">Logger Config</li>
@@ -289,7 +288,7 @@ Admin Settings
 													</md-radio-group>
 												</td>
 											</tr>
-											<tr>
+                                                                                        <tr>
 												<td>Cache historical statistics</td>
 												<td colspan="2">
 													<md-radio-group
@@ -405,6 +404,17 @@ Admin Settings
 													<md-radio-group
 															data-ng-model="Settings.service_flags.partial_route_auth_disabled"
 															layout="row">
+														<md-radio-button data-ng-value="false"></md-radio-button>
+														<md-radio-button data-ng-value="true"></md-radio-button>
+													</md-radio-group>
+												</td>
+											</tr>
+											<tr>
+												<td>Allow parser projects to be stored in S3</td>
+												<td colspan="2">
+													<md-radio-group
+														data-ng-model="Settings.service_flags.parser_project_s3_storage_disabled"
+														layout="row">
 														<md-radio-button data-ng-value="false"></md-radio-button>
 														<md-radio-button data-ng-value="true"></md-radio-button>
 													</md-radio-group>
@@ -1470,49 +1480,6 @@ Admin Settings
 									</md-input-container>
 								</md-card-content>
 							</md-card>
-							<md-card flex=50 id="presto" style="height:auto">
-								<md-card-title>
-									<md-card-title-text>
-										<span>Presto</span>
-									</md-card-title-text>
-									<md-button ng-click="clearSection('presto')">
-										<i class="fa fa-trash"></i>
-									</md-button>
-								</md-card-title>
-								<md-card-content>
-									<md-input-container class="control" style="width:45%;">
-										<label>Base URI</label>
-										<input type="text" ng-model="Settings.presto.base_uri">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>Port</label>
-										<input type="number" ng-model="Settings.presto.port">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<md-checkbox ng-model="Settings.presto.tls">TLS</md-checkbox>
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>Username</label>
-										<input type="text" ng-model="Settings.presto.username">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>Password</label>
-										<input type="text" ng-model="Settings.presto.password">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>Source</label>
-										<input type="text" ng-model="Settings.presto.source">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>Catalog</label>
-										<input type="text" ng-model="Settings.presto.catalog">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>Schema</label>
-										<input type="text" ng-model="Settings.presto.schema">
-									</md-input-container>
-								</md-card-content>
-							</md-card>
 						</section>
 
 						<section layout="row" flex>
@@ -1535,71 +1502,83 @@ Admin Settings
 										<input type="text" ng-model="Settings.amboy.single_name">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
-										<label>DB name</label>
-										<input type="text" ng-model="Settings.amboy.database">
+										<label>DB URL</label>
+										<input type="text" ng-model="Settings.amboy.db_connection.url">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>DB name</label>
+										<input type="text" ng-model="Settings.amboy.db_connection.database">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>DB user</label>
+										<input type="text" ng-model="Settings.amboy.db_connection.username">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>DB password</label>
+										<input type="text" ng-model="Settings.amboy.db_connection.password">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%">
 										<label>Local pool size</label>
 										<input type="number" ng-model="Settings.amboy.pool_size_local">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Remote pool size</label>
 										<input type="number" ng-model="Settings.amboy.pool_size_remote">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%">
 										<label>Local storage size</label>
 										<input type="number" ng-model="Settings.amboy.local_storage_size">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<md-checkbox ng-model="Settings.amboy.remote_require_priority">Remote Require
 											Priority</md-checkbox>
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Lock timeout (minutes)</label>
 										<input type="number" ng-model="Settings.amboy.lock_timeout_minutes">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Sample size</label>
 										<input type="number" ng-model="Settings.amboy.sample_size">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Retry Handler Workers</label>
 										<input type="number" ng-model="Settings.amboy.retry.num_workers">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Retry Handler Max Job Capacity</label>
 										<input type="number" ng-model="Settings.amboy.retry.max_capacity">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Max Retry Handler Attempts per Job</label>
 										<input type="number" ng-model="Settings.amboy.retry.max_retry_attempts">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Max Retry Handler Total Time per Job (Seconds)</label>
 										<input type="number" ng-model="Settings.amboy.retry.max_retry_time_seconds">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Retry Backoff per Job Attempt (Seconds)</label>
 										<input type="number" ng-model="Settings.amboy.retry.retry_backoff_seconds">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Frequency of Checking for Stale Retrying Jobs (Seconds)</label>
 										<input type="number" ng-model="Settings.amboy.retry.stale_retrying_monitor_interval_seconds">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Group default workers</label>
 										<input type="number" ng-model="Settings.amboy.group_default_workers">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Group background create frequency</label>
 										<input type="number"
 											ng-model="Settings.amboy.group_background_create_frequency">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px">
+									<md-input-container class="control" style="width:45%;">
 										<label>Group prune frequency</label>
 										<input type="number" ng-model="Settings.amboy.group_prune_frequency">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Group TTL</label>
 										<input type="number" ng-model="Settings.amboy.group_ttl">
 									</md-input-container>

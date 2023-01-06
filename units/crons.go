@@ -1032,7 +1032,7 @@ func PopulatePeriodicNotificationJobs(parts int) amboy.QueueOperation {
 	}
 }
 
-func PopulateCacheHistoricalTestDataJob(part int) amboy.QueueOperation {
+func PopulateCacheHistoricalTaskDataJob(part int) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
@@ -1040,8 +1040,8 @@ func PopulateCacheHistoricalTestDataJob(part int) amboy.QueueOperation {
 		}
 		if flags.CacheStatsJobDisabled {
 			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-				"message": "cache stats job is disabled",
-				"impact":  "pre-computed test and task stats are not updated",
+				"message": "cache historical task data job is disabled",
+				"impact":  "pre-computed task stats are not updated",
 				"mode":    "degraded",
 			})
 			return nil
@@ -1060,7 +1060,7 @@ func PopulateCacheHistoricalTestDataJob(part int) amboy.QueueOperation {
 				continue
 			}
 
-			catcher.Wrapf(queue.Put(ctx, NewCacheHistoricalTestDataJob(project.Id, ts)), "enqueueing cache historical test data job for project '%s'", project.Identifier)
+			catcher.Wrapf(queue.Put(ctx, NewCacheHistoricalTaskDataJob(ts, project.Id)), "enqueueing cache historical task data job for project '%s'", project.Identifier)
 		}
 
 		return catcher.Resolve()

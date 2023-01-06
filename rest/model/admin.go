@@ -33,7 +33,6 @@ func NewConfigModel() *APIAdminSettings {
 		Notify:            &APINotifyConfig{},
 		Plugins:           map[string]map[string]interface{}{},
 		PodLifecycle:      &APIPodLifecycleConfig{},
-		Presto:            &APIPrestoConfig{},
 		ProjectCreation:   &APIProjectCreationConfig{},
 		Providers:         &APICloudProviders{},
 		RepoTracker:       &APIRepoTrackerConfig{},
@@ -82,7 +81,6 @@ type APIAdminSettings struct {
 	Plugins             map[string]map[string]interface{} `json:"plugins,omitempty"`
 	PodLifecycle        *APIPodLifecycleConfig            `json:"pod_lifecycle,omitempty"`
 	PprofPort           *string                           `json:"pprof_port,omitempty"`
-	Presto              *APIPrestoConfig                  `json:"presto,omitempty"`
 	ProjectCreation     *APIProjectCreationConfig         `json:"project_creation,omitempty"`
 	Providers           *APICloudProviders                `json:"providers,omitempty"`
 	RepoTracker         *APIRepoTrackerConfig             `json:"repotracker,omitempty"`
@@ -357,7 +355,7 @@ func (a *APISMTPConfig) ToService() (interface{}, error) {
 type APIAmboyConfig struct {
 	Name                                  *string                    `json:"name"`
 	SingleName                            *string                    `json:"single_name"`
-	DB                                    *string                    `json:"database"`
+	DBConnection                          APIAmboyDBConfig           `json:"db_connection"`
 	PoolSizeLocal                         int                        `json:"pool_size_local"`
 	PoolSizeRemote                        int                        `json:"pool_size_remote"`
 	LocalStorage                          int                        `json:"local_storage_size"`
@@ -377,7 +375,9 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 	case evergreen.AmboyConfig:
 		a.Name = utility.ToStringPtr(v.Name)
 		a.SingleName = utility.ToStringPtr(v.SingleName)
-		a.DB = utility.ToStringPtr(v.DB)
+		if err := a.DBConnection.BuildFromService(v.DBConnection); err != nil {
+			return errors.Wrap(err, "converting Amboy DB settings to API model")
+		}
 		a.PoolSizeLocal = v.PoolSizeLocal
 		a.PoolSizeRemote = v.PoolSizeRemote
 		a.LocalStorage = v.LocalStorage
@@ -411,6 +411,16 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 	if !ok {
 		return nil, errors.Errorf("programmatic error: expected Amboy retry config but got type %T", i)
 	}
+
+	i, err = a.DBConnection.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "converting Amboy DB settings to service model")
+	}
+	db, ok := i.(evergreen.AmboyDBConfig)
+	if !ok {
+		return nil, errors.Errorf("programmatic error: expected Amboy DB config but got type %T", i)
+	}
+
 	var dbNamedQueues []evergreen.AmboyNamedQueueConfig
 	for _, apiNamedQueue := range a.NamedQueues {
 		dbNamedQueues = append(dbNamedQueues, apiNamedQueue.ToService())
@@ -418,7 +428,7 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 	return evergreen.AmboyConfig{
 		Name:                                  utility.FromStringPtr(a.Name),
 		SingleName:                            utility.FromStringPtr(a.SingleName),
-		DB:                                    utility.FromStringPtr(a.DB),
+		DBConnection:                          db,
 		PoolSizeLocal:                         a.PoolSizeLocal,
 		PoolSizeRemote:                        a.PoolSizeRemote,
 		LocalStorage:                          a.LocalStorage,
@@ -431,6 +441,35 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 		SampleSize:                            a.SampleSize,
 		Retry:                                 retry,
 		NamedQueues:                           dbNamedQueues,
+	}, nil
+}
+
+type APIAmboyDBConfig struct {
+	URL      *string `json:"url"`
+	Database *string `json:"database"`
+	Username *string `json:"username"`
+	Password *string `json:"password"`
+}
+
+func (a *APIAmboyDBConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.AmboyDBConfig:
+		a.URL = utility.ToStringPtr(v.URL)
+		a.Database = utility.ToStringPtr(v.Database)
+		a.Username = utility.ToStringPtr(v.Username)
+		a.Password = utility.ToStringPtr(v.Password)
+		return nil
+	default:
+		return errors.Errorf("programmatic error: expected Amboy DB config but got type %T", h)
+	}
+}
+
+func (a *APIAmboyDBConfig) ToService() (interface{}, error) {
+	return evergreen.AmboyDBConfig{
+		URL:      utility.FromStringPtr(a.URL),
+		Database: utility.FromStringPtr(a.Database),
+		Username: utility.FromStringPtr(a.Username),
+		Password: utility.FromStringPtr(a.Password),
 	}, nil
 }
 
@@ -1213,48 +1252,6 @@ func (a *APINotifyConfig) ToService() (interface{}, error) {
 		BufferTargetPerInterval: a.BufferTargetPerInterval,
 		BufferIntervalSeconds:   a.BufferIntervalSeconds,
 		SMTP:                    smtp.(evergreen.SMTPConfig),
-	}, nil
-}
-
-type APIPrestoConfig struct {
-	BaseURI  *string `json:"base_uri"`
-	Port     int     `json:"port"`
-	TLS      bool    `json:"tls"`
-	Username *string `json:"username"`
-	Password *string `json:"password"`
-	Source   *string `json:"source"`
-	Catalog  *string `json:"catalog"`
-	Schema   *string `json:"schema"`
-}
-
-func (a *APIPrestoConfig) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case evergreen.PrestoConfig:
-		a.BaseURI = utility.ToStringPtr(v.BaseURI)
-		a.Port = v.Port
-		a.TLS = v.TLS
-		a.Username = utility.ToStringPtr(v.Username)
-		a.Password = utility.ToStringPtr(v.Password)
-		a.Source = utility.ToStringPtr(v.Source)
-		a.Catalog = utility.ToStringPtr(v.Catalog)
-		a.Schema = utility.ToStringPtr(v.Schema)
-	default:
-		return errors.Errorf("programmatic error: expected Presto config but got type %T", h)
-	}
-
-	return nil
-}
-
-func (a *APIPrestoConfig) ToService() (interface{}, error) {
-	return evergreen.PrestoConfig{
-		BaseURI:  utility.FromStringPtr(a.BaseURI),
-		Port:     a.Port,
-		TLS:      a.TLS,
-		Username: utility.FromStringPtr(a.Username),
-		Password: utility.FromStringPtr(a.Password),
-		Source:   utility.FromStringPtr(a.Source),
-		Catalog:  utility.FromStringPtr(a.Catalog),
-		Schema:   utility.FromStringPtr(a.Schema),
 	}, nil
 }
 
@@ -2183,6 +2180,7 @@ type APIServiceFlags struct {
 	CloudCleanupDisabled            bool `json:"cloud_cleanup_disabled"`
 	ContainerConfigurationsDisabled bool `json:"container_configurations_disabled"`
 	PartialRouteAuthDisabled        bool `json:"partial_route_auth_disabled"`
+	ParserProjectS3StorageDisabled  bool `json:"parser_project_s3_storage_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2471,6 +2469,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.CloudCleanupDisabled = v.CloudCleanupDisabled
 		as.ContainerConfigurationsDisabled = v.ContainerConfigurationsDisabled
 		as.PartialRouteAuthDisabled = v.PartialRouteAuthDisabled
+		as.ParserProjectS3StorageDisabled = v.ParserProjectS3StorageDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2512,6 +2511,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		CloudCleanupDisabled:            as.CloudCleanupDisabled,
 		ContainerConfigurationsDisabled: as.ContainerConfigurationsDisabled,
 		PartialRouteAuthDisabled:        as.PartialRouteAuthDisabled,
+		ParserProjectS3StorageDisabled:  as.ParserProjectS3StorageDisabled,
 	}, nil
 }
 

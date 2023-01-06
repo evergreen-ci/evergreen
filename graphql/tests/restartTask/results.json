@@ -11,12 +11,33 @@
       "result": {
         "errors": [
           {
-            "message": "error restarting task nonexistent: cannot restart task 'nonexistent' because it could not be found",
+            "message": "cannot find task with id 'nonexistent'",
             "path": ["restartTask"],
-            "extensions": { "code": "INTERNAL_SERVER_ERROR" }
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
           }
         ],
         "data": null
+      }
+    },
+    {
+      "query_file": "success_failedOnly.graphql",
+      "result": {
+        "data": {
+          "restartTask": {
+            "id": "task3",
+            "status": "will-run",
+            "executionTasksFull": [
+              {
+                "id": "execution_task_1",
+                "status": "will-run"
+              },
+              {
+                "id": "execution_task_2",
+                "status": "success"
+              }
+            ]
+          }
+        }
       }
     }
   ]

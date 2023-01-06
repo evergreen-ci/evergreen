@@ -80,6 +80,7 @@ type APITask struct {
 	AMI                         *string             `json:"ami"`
 	MustHaveResults             bool                `json:"must_have_test_results"`
 	BaseTask                    APIBaseTaskInfo     `json:"base_task"`
+	ResetWhenFinished           bool                `json:"reset_when_finished"`
 	// These fields are used by graphql gen, but do not need to be exposed
 	// via Evergreen's user-facing API.
 	OverrideDependencies bool `json:"-"`
@@ -172,7 +173,7 @@ func (at *APITask) BuildPreviousExecutions(tasks []task.Task, url string) error 
 	return nil
 }
 
-// BuildFromService converts from a service level task by loading the data
+// buildTask converts from a service level task by loading the data
 // into the appropriate fields of the APITask.
 func (at *APITask) buildTask(t *task.Task) error {
 	id := t.Id
@@ -230,6 +231,7 @@ func (at *APITask) buildTask(t *task.Task) error {
 		HasCedarResults:             t.HasCedarResults,
 		CedarResultsFailed:          t.CedarResultsFailed,
 		MustHaveResults:             t.MustHaveResults,
+		ResetWhenFinished:           t.ResetWhenFinished,
 		ParentTaskId:                utility.FromStringPtr(t.DisplayTaskId),
 		SyncAtEndOpts: APISyncAtEndOptions{
 			Enabled:  t.SyncAtEndOpts.Enabled,

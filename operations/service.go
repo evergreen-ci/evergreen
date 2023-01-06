@@ -46,7 +46,7 @@ func parseDB(c *cli.Context) *evergreen.DBSettings {
 	}
 	url := c.String(dbUrlFlagName)
 	envUrl := os.Getenv(evergreen.MongodbUrl)
-	if url == evergreen.DefaultDatabaseUrl && envUrl != "" {
+	if url == evergreen.DefaultDatabaseURL && envUrl != "" {
 		url = envUrl
 	}
 	auth := c.String(dbCredsFileFlagName)

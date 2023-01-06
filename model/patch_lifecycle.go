@@ -389,9 +389,10 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 // Patches a remote project's configuration file if needed.
 // Creates a version for this patch and links it.
 // Creates builds based on the Version
+// Creates a manifest based on the Version
 func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, githubOauthToken string) (*Version, error) {
+	settings, err := evergreen.GetConfig()
 	if githubOauthToken == "" {
-		settings, err := evergreen.GetConfig()
 		if err != nil {
 			return nil, err
 		}
@@ -469,26 +470,32 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	}
 
 	patchVersion := &Version{
-		Id:                  p.Id.Hex(),
-		CreateTime:          time.Now(),
-		Identifier:          p.Project,
-		Revision:            p.Githash,
-		Author:              p.Author,
-		Message:             p.Description,
-		BuildIds:            []string{},
-		BuildVariants:       []VersionBuildStatus{},
-		Status:              evergreen.PatchCreated,
-		Requester:           requester,
-		ParentPatchID:       p.Triggers.ParentPatch,
-		ParentPatchNumber:   parentPatchNumber,
-		Branch:              projectRef.Branch,
-		RevisionOrderNumber: p.PatchNumber,
-		AuthorID:            p.Author,
-		Parameters:          params,
-		Activated:           utility.TruePtr(),
-		AuthorEmail:         authorEmail,
+		Id:                   p.Id.Hex(),
+		CreateTime:           time.Now(),
+		Identifier:           p.Project,
+		Revision:             p.Githash,
+		Author:               p.Author,
+		Message:              p.Description,
+		BuildIds:             []string{},
+		BuildVariants:        []VersionBuildStatus{},
+		Status:               evergreen.PatchCreated,
+		Requester:            requester,
+		ParentPatchID:        p.Triggers.ParentPatch,
+		ParentPatchNumber:    parentPatchNumber,
+		Branch:               projectRef.Branch,
+		RevisionOrderNumber:  p.PatchNumber,
+		AuthorID:             p.Author,
+		Parameters:           params,
+		Activated:            utility.TruePtr(),
+		AuthorEmail:          authorEmail,
+		ProjectStorageMethod: ProjectStorageMethodDB,
 	}
 	intermediateProject.CreateTime = patchVersion.CreateTime
+
+	mfst, err := constructManifest(patchVersion, projectRef, project.Modules, settings)
+	if err != nil {
+		return nil, errors.Wrap(err, "constructing manifest")
+	}
 
 	tasks := TaskVariantPairs{}
 	if len(p.VariantsTasks) > 0 {
@@ -600,6 +607,11 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			_, err = db.Collection(ProjectConfigCollection).InsertOne(sessCtx, config)
 			if err != nil {
 				return nil, errors.Wrapf(err, "inserting project config for version '%s'", patchVersion.Id)
+			}
+		}
+		if mfst != nil {
+			if err = mfst.InsertWithContext(sessCtx); err != nil {
+				return nil, errors.Wrapf(err, "inserting manifest for version '%s'", patchVersion.Id)
 			}
 		}
 		if err = buildsToInsert.InsertMany(sessCtx, false); err != nil {

@@ -12,14 +12,12 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v34/github"
 	"github.com/jpillora/backoff"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -366,7 +364,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			}
 		}
 
-		_, err = CreateManifest(*v, pInfo.Project, ref, repoTracker.Settings)
+		_, err = model.CreateManifest(v, pInfo.Project, ref, repoTracker.Settings)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":            "error creating manifest",
@@ -595,84 +593,6 @@ func makeBuildBreakSubscriber(userID string) (*event.Subscriber, error) {
 	return subscriber, nil
 }
 
-func CreateManifest(v model.Version, proj *model.Project, projectRef *model.ProjectRef, settings *evergreen.Settings) (*manifest.Manifest, error) {
-	if len(proj.Modules) == 0 {
-		return nil, nil
-	}
-	newManifest := &manifest.Manifest{
-		Id:          v.Id,
-		Revision:    v.Revision,
-		ProjectName: v.Identifier,
-		Branch:      projectRef.Branch,
-		IsBase:      v.Requester == evergreen.RepotrackerVersionRequester,
-	}
-	token, err := settings.GetGithubOauthToken()
-	if err != nil {
-		return nil, errors.Wrap(err, "error getting github oauth token")
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	var gitBranch *github.Branch
-	var gitCommit *github.RepositoryCommit
-	modules := map[string]*manifest.Module{}
-	for _, module := range proj.Modules {
-		var sha, url string
-		owner, repo := module.GetRepoOwnerAndName()
-		if module.Ref == "" {
-			var commit *github.RepositoryCommit
-			commit, err = thirdparty.GetCommitEvent(ctx, token, projectRef.Owner, projectRef.Repo, v.Revision)
-			if err != nil {
-				return nil, errors.Wrapf(err, "can't get commit '%s' on '%s/%s'", v.Revision, projectRef.Owner, projectRef.Repo)
-			}
-			if commit == nil || commit.Commit == nil || commit.Commit.Committer == nil {
-				return nil, errors.New("malformed GitHub commit response")
-			}
-			revisionTime := commit.Commit.Committer.GetDate()
-			var branchCommits []*github.RepositoryCommit
-			branchCommits, _, err = thirdparty.GetGithubCommits(ctx, token, owner, repo, module.Branch, revisionTime, 0)
-			if err != nil {
-				return nil, errors.Wrapf(err, "problem retrieving getting git branch for module %s", module.Name)
-			}
-			if len(branchCommits) > 0 {
-				sha = branchCommits[0].GetSHA()
-				url = branchCommits[0].GetURL()
-			}
-		} else {
-			sha = module.Ref
-			gitCommit, err = thirdparty.GetCommitEvent(ctx, token, owner, repo, module.Ref)
-			if err != nil {
-				return nil, errors.Wrapf(err, "problem retrieving getting git commit for module %s with hash %s", module.Name, module.Ref)
-			}
-			if gitCommit != nil {
-				url = *gitCommit.URL
-			}
-		}
-
-		modules[module.Name] = &manifest.Module{
-			Branch:   module.Branch,
-			Revision: sha,
-			Repo:     repo,
-			Owner:    owner,
-			URL:      url,
-		}
-
-	}
-	newManifest.Modules = modules
-	grip.Debug(message.Fields{
-		"message":            "creating manifest",
-		"version_id":         v.Id,
-		"manifest":           newManifest,
-		"project":            v.Identifier,
-		"project_identifier": projectRef.Identifier,
-		"modules":            modules,
-		"branch_info":        gitBranch,
-	})
-	_, err = newManifest.TryInsert()
-
-	return newManifest, errors.Wrap(err, "error inserting manifest")
-}
-
 func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo,
 	metadata model.VersionMetadata, ignore bool, versionErrs *VersionErrors) (*model.Version, error) {
 	if projectInfo.NotPopulated() {
@@ -769,7 +689,7 @@ func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 	if metadata.Revision.AuthorGithubUID != 0 {
 		u, err = user.FindByGithubUID(metadata.Revision.AuthorGithubUID)
 		grip.Error(message.WrapError(err, message.Fields{
-			"message": fmt.Sprintf("failed to fetch everg user with Github UID %d", metadata.Revision.AuthorGithubUID),
+			"message": fmt.Sprintf("failed to fetch Evergreen user with Github UID %d", metadata.Revision.AuthorGithubUID),
 		}))
 	}
 
@@ -778,24 +698,25 @@ func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 		return nil, err
 	}
 	v := &model.Version{
-		Author:              metadata.Revision.Author,
-		AuthorID:            metadata.Revision.AuthorID,
-		AuthorEmail:         metadata.Revision.AuthorEmail,
-		Branch:              ref.Branch,
-		CreateTime:          metadata.Revision.CreateTime,
-		Identifier:          ref.Id,
-		Message:             metadata.Revision.RevisionMessage,
-		Owner:               ref.Owner,
-		RemotePath:          ref.RemotePath,
-		Repo:                ref.Repo,
-		Requester:           evergreen.RepotrackerVersionRequester,
-		Revision:            metadata.Revision.Revision,
-		Status:              evergreen.VersionCreated,
-		RevisionOrderNumber: number,
-		TriggerID:           metadata.TriggerID,
-		TriggerType:         metadata.TriggerType,
-		TriggerEvent:        metadata.EventID,
-		PeriodicBuildID:     metadata.PeriodicBuildID,
+		Author:               metadata.Revision.Author,
+		AuthorID:             metadata.Revision.AuthorID,
+		AuthorEmail:          metadata.Revision.AuthorEmail,
+		Branch:               ref.Branch,
+		CreateTime:           metadata.Revision.CreateTime,
+		Identifier:           ref.Id,
+		Message:              metadata.Revision.RevisionMessage,
+		Owner:                ref.Owner,
+		RemotePath:           ref.RemotePath,
+		Repo:                 ref.Repo,
+		Requester:            evergreen.RepotrackerVersionRequester,
+		Revision:             metadata.Revision.Revision,
+		Status:               evergreen.VersionCreated,
+		RevisionOrderNumber:  number,
+		TriggerID:            metadata.TriggerID,
+		TriggerType:          metadata.TriggerType,
+		TriggerEvent:         metadata.EventID,
+		PeriodicBuildID:      metadata.PeriodicBuildID,
+		ProjectStorageMethod: model.ProjectStorageMethodDB,
 	}
 	if metadata.TriggerType != "" {
 		v.Id = util.CleanName(fmt.Sprintf("%s_%s_%s", ref.Identifier, metadata.SourceVersion.Revision, metadata.TriggerDefinitionID))
@@ -1077,7 +998,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 	txFunc := func(sessCtx mongo.SessionContext) error {
 		err := sessCtx.StartTransaction()
 		if err != nil {
-			return errors.Wrap(err, "error starting transaction")
+			return errors.Wrap(err, "starting transaction")
 		}
 		db := evergreen.GetEnvironment().DB()
 		_, err = db.Collection(model.VersionCollection).InsertOne(sessCtx, v)
@@ -1088,9 +1009,9 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 				"version": v.Id,
 			}))
 			if abortErr := sessCtx.AbortTransaction(sessCtx); abortErr != nil {
-				return errors.Wrap(abortErr, "error aborting transaction")
+				return errors.Wrap(abortErr, "aborting transaction")
 			}
-			return errors.Wrapf(err, "error inserting version '%s'", v.Id)
+			return errors.Wrapf(err, "inserting version '%s'", v.Id)
 		}
 		if projectInfo.Config != nil {
 			_, err = db.Collection(model.ProjectConfigCollection).InsertOne(sessCtx, projectInfo.Config)
@@ -1101,9 +1022,9 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 					"version": v.Id,
 				}))
 				if abortErr := sessCtx.AbortTransaction(sessCtx); abortErr != nil {
-					return errors.Wrap(abortErr, "error aborting transaction")
+					return errors.Wrap(abortErr, "aborting transaction")
 				}
-				return errors.Wrapf(err, "error inserting project config '%s'", v.Id)
+				return errors.Wrapf(err, "inserting project config '%s'", v.Id)
 			}
 		}
 		_, err = db.Collection(model.ParserProjectCollection).InsertOne(sessCtx, projectInfo.IntermediateProject)
@@ -1114,9 +1035,9 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 				"version": v.Id,
 			}))
 			if abortErr := sessCtx.AbortTransaction(sessCtx); abortErr != nil {
-				return errors.Wrap(abortErr, "error aborting transaction")
+				return errors.Wrap(abortErr, "aborting transaction")
 			}
-			return errors.Wrapf(err, "error inserting parser project '%s'", v.Id)
+			return errors.Wrapf(err, "inserting parser project '%s'", v.Id)
 		}
 		_, err = db.Collection(build.Collection).InsertMany(sessCtx, buildsToCreate)
 		if err != nil {
@@ -1126,10 +1047,10 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 				"version": v.Id,
 			}))
 			if abortErr := sessCtx.AbortTransaction(sessCtx); abortErr != nil {
-				return errors.Wrap(abortErr, "error aborting transaction")
+				return errors.Wrap(abortErr, "aborting transaction")
 			}
 
-			return errors.Wrap(err, "error inserting builds")
+			return errors.Wrap(err, "inserting builds")
 		}
 		err = tasksToCreate.InsertUnordered(sessCtx)
 		if err != nil {
@@ -1139,9 +1060,9 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 				"version": v.Id,
 			}))
 			if abortErr := sessCtx.AbortTransaction(sessCtx); abortErr != nil {
-				return errors.Wrap(abortErr, "error aborting transaction")
+				return errors.Wrap(abortErr, "aborting transaction")
 			}
-			return errors.Wrap(err, "error inserting tasks")
+			return errors.Wrap(err, "inserting tasks")
 		}
 		err = sessCtx.CommitTransaction(sessCtx)
 		if err != nil {
@@ -1151,10 +1072,10 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 				"version": v.Id,
 			}))
 			if abortErr := sessCtx.AbortTransaction(sessCtx); abortErr != nil {
-				return errors.Wrap(abortErr, "error aborting transaction")
+				return errors.Wrap(abortErr, "aborting transaction")
 			}
 
-			return errors.Wrapf(err, "error committing transaction for version '%s'", v.Id)
+			return errors.Wrapf(err, "committing transaction for version '%s'", v.Id)
 		}
 		grip.Info(message.Fields{
 			"message": "successfully created version",

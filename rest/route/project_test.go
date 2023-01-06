@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	cocoaMock "github.com/evergreen-ci/cocoa/mock"
 	"github.com/evergreen-ci/evergreen"
@@ -252,31 +253,6 @@ func (s *ProjectPatchByIDSuite) TestGitTagVersionsEnabled() {
 	s.Require().NotNil(p)
 	s.Empty(p.GitTagAuthorizedUsers)
 	s.Nil(p.Restricted)
-}
-
-func (s *ProjectPatchByIDSuite) TestFilesIgnoredFromCache() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
-	h := s.rm.(*projectIDPatchHandler)
-	h.user = &user.DBUser{Id: "me"}
-
-	jsonBody := []byte(`{"files_ignored_from_cache": []}`)
-	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
-	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
-	err := s.rm.Parse(ctx, req)
-	s.NoError(err)
-	s.NotNil(s.rm.(*projectIDPatchHandler).user)
-
-	resp := s.rm.Run(ctx)
-	s.NotNil(resp)
-	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
-
-	p, err := data.FindProjectById("dimoxinil", true, false)
-	s.NoError(err)
-	s.False(p.FilesIgnoredFromCache == nil)
-	s.Len(p.FilesIgnoredFromCache, 0)
 }
 
 func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
@@ -635,7 +611,6 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 	s.Equal(cachedProject.Admins, utility.FromStringPtrSlice(projectRef.Admins))
 	s.Equal(cachedProject.NotifyOnBuildFailure, projectRef.NotifyOnBuildFailure)
 	s.Equal(cachedProject.DisabledStatsCache, projectRef.DisabledStatsCache)
-	s.Equal(cachedProject.FilesIgnoredFromCache, utility.FromStringPtrSlice(projectRef.FilesIgnoredFromCache))
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -654,22 +629,22 @@ func TestProjectGetSuite(t *testing.T) {
 
 func (s *ProjectGetSuite) SetupSuite() {
 	pRefs := []serviceModel.ProjectRef{
-		serviceModel.ProjectRef{
+		{
 			Id: "projectA",
 		},
-		serviceModel.ProjectRef{
+		{
 			Id: "projectB",
 		},
-		serviceModel.ProjectRef{
+		{
 			Id: "projectC",
 		},
-		serviceModel.ProjectRef{
+		{
 			Id: "projectD",
 		},
-		serviceModel.ProjectRef{
+		{
 			Id: "projectE",
 		},
-		serviceModel.ProjectRef{
+		{
 			Id: "projectF",
 		},
 	}
@@ -781,13 +756,13 @@ func getTestProjectConfig() *serviceModel.ProjectConfig {
 
 func getTestAliases() []serviceModel.ProjectAlias {
 	return []serviceModel.ProjectAlias{
-		serviceModel.ProjectAlias{
+		{
 			ProjectID: "dimoxinil",
 			Task:      ".*",
 			Variant:   ".*",
 			Alias:     evergreen.GithubPRAlias,
 		},
-		serviceModel.ProjectAlias{
+		{
 			ProjectID:   "dimoxinil",
 			Task:        ".*",
 			VariantTags: []string{"v1"},
@@ -814,12 +789,11 @@ func getTestProjectRef() *serviceModel.ProjectRef {
 		CommitQueue: serviceModel.CommitQueueParams{
 			Enabled: utility.FalsePtr(),
 		},
-		Hidden:                utility.FalsePtr(),
-		PatchingDisabled:      utility.FalsePtr(),
-		Admins:                []string{"langdon.alger"},
-		NotifyOnBuildFailure:  utility.FalsePtr(),
-		DisabledStatsCache:    utility.TruePtr(),
-		FilesIgnoredFromCache: []string{"ignored"},
+		Hidden:               utility.FalsePtr(),
+		PatchingDisabled:     utility.FalsePtr(),
+		Admins:               []string{"langdon.alger"},
+		NotifyOnBuildFailure: utility.FalsePtr(),
+		DisabledStatsCache:   utility.TruePtr(),
 	}
 }
 
@@ -845,6 +819,7 @@ func TestGetProjectTasks(t *testing.T) {
 			DisplayName:         "t1",
 			Project:             projectId,
 			Status:              evergreen.TaskSucceeded,
+			Requester:           evergreen.RepotrackerVersionRequester,
 		}
 		assert.NoError(myTask.Insert())
 	}
@@ -1239,4 +1214,257 @@ func (s *ProjectPutRotateSuite) TestRotateProjectVars() {
 	s.Contains(respMap["dimoxinil"], "banana")
 	s.Contains(respMap["dimoxinil"], "lemon")
 	s.Equal(resp.Status(), http.StatusOK)
+}
+
+func TestGetProjectTaskExecutions(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, serviceModel.ProjectRefCollection))
+	projRef := serviceModel.ProjectRef{
+		Id:         "123",
+		Identifier: "myProject",
+	}
+	assert.NoError(t, projRef.Insert())
+
+	assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection))
+
+	now := time.Now()
+	earlier := time.Now().Add(-time.Hour)
+	reallyEarly := now.Add(-12 * time.Hour)
+	tasks := []task.Task{
+		{
+			Id:           "notFinished",
+			Project:      "123",
+			Status:       evergreen.TaskStarted,
+			Requester:    evergreen.RepotrackerVersionRequester,
+			BuildVariant: "bv1",
+			DisplayName:  "task1",
+			Execution:    1,
+		},
+		{
+			Id:           "finished",
+			Project:      "123",
+			Status:       evergreen.TaskFailed,
+			Requester:    evergreen.RepotrackerVersionRequester,
+			BuildVariant: "bv1",
+			DisplayName:  "task1",
+			FinishTime:   now,
+			Execution:    1,
+		},
+		{
+			Id:           "finishedEarlier",
+			Project:      "123",
+			Status:       evergreen.TaskFailed,
+			Requester:    evergreen.RepotrackerVersionRequester,
+			BuildVariant: "bv1",
+			DisplayName:  "task1",
+			FinishTime:   earlier,
+			Execution:    1,
+		},
+		{
+			Id:           "patch",
+			Project:      "123",
+			Status:       evergreen.TaskSucceeded,
+			Requester:    evergreen.PatchVersionRequester,
+			BuildVariant: "bv1",
+			DisplayName:  "task1",
+			FinishTime:   now,
+			Execution:    1,
+		},
+		{
+			Id:           "tooEarly",
+			Project:      "123",
+			Status:       evergreen.TaskSucceeded,
+			Requester:    evergreen.RepotrackerVersionRequester,
+			BuildVariant: "bv1",
+			DisplayName:  "task1",
+			FinishTime:   reallyEarly,
+			Execution:    1,
+		},
+		{
+			Id:           "wrongTask",
+			Project:      "123",
+			Status:       evergreen.TaskFailed,
+			Requester:    evergreen.RepotrackerVersionRequester,
+			BuildVariant: "bv1",
+			DisplayName:  "task2",
+			FinishTime:   now,
+			Execution:    1,
+		},
+		{
+			Id:           "wrongVariant",
+			Project:      "123",
+			Status:       evergreen.TaskFailed,
+			Requester:    evergreen.RepotrackerVersionRequester,
+			BuildVariant: "bv2",
+			DisplayName:  "task1",
+			FinishTime:   now,
+			Execution:    1,
+		},
+	}
+	for _, each := range tasks {
+		assert.NoError(t, each.Insert())
+		each.Execution = 0
+		// Duplicate everything for the old task collection to ensure this is working.
+		assert.NoError(t, db.Insert(task.OldCollection, each))
+	}
+	for testName, test := range map[string]func(*testing.T, *getProjectTaskExecutionsHandler){
+		"parseSuccess": func(t *testing.T, rm *getProjectTaskExecutionsHandler) {
+			body := []byte(
+				`{
+                     "task_name": "t1",
+                     "build_variant": "bv1",
+                     "requesters": ["gitter_request"],
+                     "start_time": "2022-11-02T00:00:00.000Z",
+                     "end_time": "2022-11-03T00:00:00.000Z"
+                 }`)
+			req, _ := http.NewRequest(http.MethodGet, "https://example.com/api/rest/v2/projects/myProject/excutions", bytes.NewBuffer(body))
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": "myProject"})
+
+			err := rm.Parse(context.Background(), req)
+
+			assert.NoError(t, err)
+			assert.Equal(t, rm.projectId, "123")
+			assert.Equal(t, rm.opts.TaskName, "t1")
+			assert.Equal(t, rm.opts.BuildVariant, "bv1")
+			assert.Equal(t, rm.opts.Requesters, []string{"gitter_request"})
+			assert.Equal(t, rm.startTime, time.Date(2022, 11, 02, 0, 0, 0, 0, time.UTC))
+			assert.Equal(t, rm.endTime, time.Date(2022, 11, 03, 0, 0, 0, 0, time.UTC))
+		},
+		"parseNoStartErrors": func(t *testing.T, rm *getProjectTaskExecutionsHandler) {
+			body := []byte(
+				`{
+                     "task_name": "t1",
+                     "build_variant": "bv1",
+                     "requesters": ["gitter_request"],
+                     "end_time": "2022-11-03T00:00:00.000Z"
+                 }`)
+			req, _ := http.NewRequest(http.MethodGet, "https://example.com/api/rest/v2/projects/myProject/excutions", bytes.NewBuffer(body))
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": "myProject"})
+
+			err := rm.Parse(context.Background(), req)
+			assert.Error(t, err)
+		},
+		"parseNoEndSucceeds": func(t *testing.T, rm *getProjectTaskExecutionsHandler) {
+			body := []byte(
+				`{
+                     "task_name": "t1",
+                     "build_variant": "bv1",
+                     "requesters": ["gitter_request"],
+                     "start_time": "2022-11-02T00:00:00.000Z"
+                 }`)
+			req, _ := http.NewRequest(http.MethodGet, "https://example.com/api/rest/v2/projects/myProject/excutions", bytes.NewBuffer(body))
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": "myProject"})
+
+			err := rm.Parse(context.Background(), req)
+			assert.NoError(t, err)
+			assert.Equal(t, rm.projectId, "123")
+			assert.Equal(t, rm.opts.TaskName, "t1")
+			assert.Equal(t, rm.opts.BuildVariant, "bv1")
+			assert.Equal(t, rm.opts.Requesters, []string{"gitter_request"})
+			assert.Equal(t, rm.startTime, time.Date(2022, 11, 02, 0, 0, 0, 0, time.UTC))
+			assert.True(t, utility.IsZeroTime(rm.endTime))
+		},
+		"parseNoRequesterSuccess": func(t *testing.T, rm *getProjectTaskExecutionsHandler) {
+			body := []byte(
+				`{
+                     "task_name": "t1",
+                     "build_variant": "bv1",
+                     "start_time": "2022-11-02T00:00:00.000Z",
+                     "end_time": "2022-11-03T00:00:00.000Z"
+                 }`)
+			req, _ := http.NewRequest(http.MethodGet, "https://example.com/api/rest/v2/projects/myProject/executions", bytes.NewBuffer(body))
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": "myProject"})
+
+			err := rm.Parse(context.Background(), req)
+			assert.NoError(t, err)
+		},
+		"parseInvalidRequester": func(t *testing.T, rm *getProjectTaskExecutionsHandler) {
+			body := []byte(
+				`{
+                     "task_name": "t1",
+                     "build_variant": "bv1",
+                     "requesters": ["what_am_i"],
+                     "start_time": "2022-11-02T00:00:00.000Z",
+                     "end_time": "2022-11-03T00:00:00.000Z"
+                 }`)
+			req, _ := http.NewRequest(http.MethodGet, "https://example.com/api/rest/v2/projects/proj/num_excutions", bytes.NewBuffer(body))
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj"})
+
+			err := rm.Parse(context.Background(), req)
+			assert.Error(t, err)
+		},
+		"parseInvalidTime": func(t *testing.T, rm *getProjectTaskExecutionsHandler) {
+			body := []byte(
+				`{
+                     "task_name": "t1",
+                     "build_variant": "bv1",
+                     "requesters": ["gitter_request"],
+                     "start_time": "2022-11-02T00:00:00",
+                     "end_time": "2022-11-03T00:00:00"
+                 }`)
+			req, _ := http.NewRequest(http.MethodGet, "https://example.com/api/rest/v2/projects/myProject/excutions", bytes.NewBuffer(body))
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": "myProject"})
+
+			err := rm.Parse(context.Background(), req)
+			assert.Error(t, err)
+		},
+		"parseInvalidTimeRange": func(t *testing.T, rm *getProjectTaskExecutionsHandler) {
+			body := []byte(
+				`{
+                     "task_name": "t1",
+                     "build_variant": "bv1",
+                     "requesters": ["gitter_request"],
+                     "start_time": "2022-11-04T00:00:00.000Z",
+                     "end_time": "2022-11-03T00:00:00.000Z"
+                 }`)
+			req, _ := http.NewRequest(http.MethodGet, "https://example.com/api/rest/v2/projects/myProject/excutions", bytes.NewBuffer(body))
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": "myProject"})
+
+			err := rm.Parse(context.Background(), req)
+			assert.Error(t, err)
+		},
+		"parseNoBuildVariant": func(t *testing.T, rm *getProjectTaskExecutionsHandler) {
+			body := []byte(
+				`{
+                     "task_name": "t1",
+                     "requesters": ["gitter_request"],
+                     "start_time": "2022-11-02T00:00:00.000Z",
+                     "end_time": "2022-11-03T00:00:00.000Z"
+                 }`)
+			req, _ := http.NewRequest(http.MethodGet, "https://example.com/api/rest/v2/projects/myProject/excutions", bytes.NewBuffer(body))
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": "myProject"})
+
+			err := rm.Parse(context.Background(), req)
+			assert.Error(t, err)
+		},
+		"successfulRun": func(t *testing.T, rm *getProjectTaskExecutionsHandler) {
+			rm.projectId = "123"
+			rm.opts.BuildVariant = "bv1"
+			rm.opts.TaskName = "task1"
+			rm.startTime = now.Add(-20 * time.Hour)
+
+			// Should include the finished tasks in both new and old.
+			resp := rm.Run(context.Background())
+			assert.NotNil(t, resp)
+			assert.NotNil(t, resp.Data())
+			respModel := resp.Data().(model.ProjectTaskExecutionResp)
+			assert.Equal(t, 6, respModel.NumCompleted)
+		},
+		"emptyRun": func(t *testing.T, rm *getProjectTaskExecutionsHandler) {
+			rm.projectId = "nothing"
+			rm.opts.BuildVariant = "bv1"
+			rm.opts.TaskName = "task1"
+			rm.startTime = now.Add(-20 * time.Hour)
+
+			resp := rm.Run(context.Background())
+			assert.NotNil(t, resp)
+			assert.NotNil(t, resp.Data())
+			respModel := resp.Data().(model.ProjectTaskExecutionResp)
+			assert.Equal(t, 0, respModel.NumCompleted)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			rm := makeGetProjectTaskExecutionsHandler().(*getProjectTaskExecutionsHandler)
+			test(t, rm)
+		})
+	}
 }

@@ -1228,6 +1228,7 @@ type awsClientMock struct { //nolint
 	*ec2.Instance
 	*ec2.DescribeSpotInstanceRequestsOutput
 	*ec2.DescribeInstancesOutput
+	RequestGetInstanceInfoError error
 	*ec2.DescribeInstanceTypeOfferingsOutput
 
 	launchTemplates []*ec2.LaunchTemplate
@@ -1529,6 +1530,10 @@ func (c *awsClientMock) DescribeVpcs(ctx context.Context, input *ec2.DescribeVpc
 }
 
 func (c *awsClientMock) GetInstanceInfo(ctx context.Context, id string) (*ec2.Instance, error) {
+	if c.RequestGetInstanceInfoError != nil {
+		return nil, c.RequestGetInstanceInfoError
+	}
+
 	if c.Instance != nil {
 		return c.Instance, nil
 	}

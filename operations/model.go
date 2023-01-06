@@ -222,9 +222,12 @@ func (s *ClientSettings) getModule(patchId, moduleName string) (*model.Module, e
 	if err != nil {
 		return nil, err
 	}
+
+	const helpText = "Note: In order to set a module, you need to be in the directory for the module project, not the directory for the project that the module is being applied onto."
+
 	if len(proj.Modules) == 0 {
-		return nil, errors.Errorf("Project has no configured modules. Specify different project or " +
-			"see the evergreen configuration file for module configuration.")
+		return nil, errors.Errorf("Project has no configured modules. Specify different project or "+
+			"see the evergreen configuration file for module configuration.\n %s", helpText)
 	}
 	module, err := model.GetModuleByName(proj.Modules, moduleName)
 	if err != nil {
@@ -232,8 +235,8 @@ func (s *ClientSettings) getModule(patchId, moduleName string) (*model.Module, e
 		for _, m := range proj.Modules {
 			moduleNames = append(moduleNames, m.Name)
 		}
-		return nil, errors.Errorf("Could not find module named '%s' for project; specify different project or select correct module from:\n\t%s",
-			moduleName, strings.Join(moduleNames, "\n\t"))
+		return nil, errors.Errorf("Could not find module named '%s' for project; specify different project or select correct module from:\n\t%s\n%s",
+			moduleName, strings.Join(moduleNames, "\n\t"), helpText)
 	}
 	return module, nil
 }

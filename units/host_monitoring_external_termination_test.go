@@ -2,6 +2,7 @@ package units
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -68,12 +69,14 @@ func TestHostMonitoringCheckJob(t *testing.T) {
 func TestHandleExternallyTerminatedHost(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	for statusName, status := range map[string]cloud.CloudStatus{
-		"Terminated": cloud.StatusTerminated,
-		"Stopped":    cloud.StatusStopped,
+	for _, status := range []cloud.CloudStatus{
+		cloud.StatusTerminated,
+		cloud.StatusNonExistent,
+		cloud.StatusStopped,
 	} {
-		t.Run("InstanceStatus"+statusName, func(t *testing.T) {
+		t.Run("InstanceStatus"+strings.Title(status.String()), func(t *testing.T) {
 			t.Run("TerminatesHostAndClearsTask", func(t *testing.T) {
+				strings.Title(status.String())
 				tctx, tcancel := context.WithTimeout(ctx, 5*time.Second)
 				defer tcancel()
 
@@ -116,7 +119,7 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 				require.NoError(t, err)
 				assert.True(t, terminated)
 
-				require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond))
+				require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond), "failed while waiting for host termination job to complete")
 
 				dbHost, err := host.FindOneId(h.Id)
 				require.NoError(t, err)
@@ -146,7 +149,7 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, terminated)
 
-		require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond))
+		require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond), "failed while waiting for host termination job to complete")
 
 		dbHost, err := host.FindOneId(h.Id)
 		require.NoError(t, err)
@@ -159,13 +162,37 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 		"TerminatedInstanceStatusTerminatesHostAndClearTask": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
 			testCloudStatusTerminatesHostAndClearsTask(ctx, t, env, h, cloud.StatusTerminated)
 		},
+		"NonexistentInstanceStatusTerminatesHostAndClearTask": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
+			testCloudStatusTerminatesHostAndClearsTask(ctx, t, env, h, cloud.StatusNonExistent)
+		},
 		"StoppedInstanceStatusTerminatesHostAndClearsTask": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
 			testCloudStatusTerminatesHostAndClearsTask(ctx, t, env, h, cloud.StatusStopped)
+		},
+		"NonexistentInstanceStatusTerminatesSpawnHost": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
+			h.UserHost = true
+			h.StartedBy = "user"
+			require.NoError(t, h.Insert())
+
+			terminated, err := handleExternallyTerminatedHost(ctx, t.Name(), env, h)
+			require.NoError(t, err)
+			assert.True(t, terminated)
+
+			require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond), "failed while waiting for host termination job to complete")
+
+			dbHost, err := host.FindOneId(h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
 		},
 		"StoppedInstanceStatusErrorsWithSpawnHost": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
 			h.UserHost = true
 			h.StartedBy = "user"
 			require.NoError(t, h.Insert())
+
+			mockInstance := cloud.MockInstance{
+				Status: cloud.StatusStopped,
+			}
+			cloud.GetMockProvider().Set(h.Id, mockInstance)
 
 			terminated, err := handleExternallyTerminatedHost(ctx, t.Name(), env, h)
 			assert.Error(t, err)

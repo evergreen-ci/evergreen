@@ -97,9 +97,14 @@ func MockConfig() *evergreen.Settings {
 			},
 		},
 		Amboy: evergreen.AmboyConfig{
-			Name:                                  "amboy",
-			SingleName:                            "single",
-			DB:                                    "db",
+			Name:       "amboy",
+			SingleName: "single",
+			DBConnection: evergreen.AmboyDBConfig{
+				Database: "db",
+				URL:      "mongodb://localhost:27017",
+				Username: "user",
+				Password: "password",
+			},
 			PoolSizeLocal:                         10,
 			PoolSizeRemote:                        20,
 			LocalStorage:                          30,
@@ -401,6 +406,7 @@ func MockConfig() *evergreen.Settings {
 			CloudCleanupDisabled:            true,
 			ContainerConfigurationsDisabled: true,
 			PartialRouteAuthDisabled:        true,
+			ParserProjectS3StorageDisabled:  true,
 		},
 		SSHKeyDirectory: "/ssh_key_directory",
 		SSHKeyPairs: []evergreen.SSHKeyPair{

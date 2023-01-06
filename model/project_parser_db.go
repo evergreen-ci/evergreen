@@ -120,8 +120,8 @@ func checkConfigNumberQuery(id string, configNum int) bson.M {
 	q := bson.M{ParserProjectIdKey: id}
 	if configNum == 0 {
 		q["$or"] = []bson.M{
-			bson.M{ParserProjectConfigNumberKey: bson.M{"$exists": false}},
-			bson.M{ParserProjectConfigNumberKey: configNum},
+			{ParserProjectConfigNumberKey: bson.M{"$exists": false}},
+			{ParserProjectConfigNumberKey: configNum},
 		}
 		return q
 	}

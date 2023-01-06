@@ -33,10 +33,10 @@ var (
 	BuildRevision = ""
 
 	// Commandline Version String; used to control auto-updating.
-	ClientVersion = "2022-11-30"
+	ClientVersion = "2022-12-20"
 
 	// Agent version to control agent rollover.
-	AgentVersion = "2022-12-05"
+	AgentVersion = "2022-12-21"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -94,7 +94,6 @@ type Settings struct {
 	PluginsNew          util.KeyValuePairSlice  `yaml:"plugins_new" bson:"plugins_new" json:"plugins_new"`
 	PodLifecycle        PodLifecycleConfig      `yaml:"pod_lifecycle" bson:"pod_lifecycle" json:"pod_lifecycle" id:"pod_lifecycle"`
 	PprofPort           string                  `yaml:"pprof_port" bson:"pprof_port" json:"pprof_port"`
-	Presto              PrestoConfig            `yaml:"presto" bson:"presto" json:"presto" id:"presto"`
 	ProjectCreation     ProjectCreationConfig   `yaml:"project_creation" bson:"project_creation" json:"project_creation" id:"project_creation"`
 	Providers           CloudProviders          `yaml:"providers" bson:"providers" json:"providers" id:"providers"`
 	RepoTracker         RepoTrackerConfig       `yaml:"repotracker" bson:"repotracker" json:"repotracker" id:"repotracker"`

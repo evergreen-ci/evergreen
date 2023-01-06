@@ -143,7 +143,6 @@ var projectErrorValidators = []projectValidator{
 var projectConfigErrorValidators = []projectConfigValidator{
 	validateProjectConfigAliases,
 	validateProjectConfigPlugins,
-	validateProjectConfigPeriodicBuilds,
 	validateProjectConfigContainers,
 }
 
@@ -411,19 +410,6 @@ func tvToTaskUnit(p *model.Project) map[model.TVPair]model.BuildVariantTaskUnit 
 	return tasksByNameAndVariant
 }
 
-func validateProjectConfigPeriodicBuilds(pc *model.ProjectConfig) ValidationErrors {
-	validationErrs := ValidationErrors{}
-	for _, periodicBuild := range pc.PeriodicBuilds {
-		if err := periodicBuild.Validate(); err != nil {
-			validationErrs = append(validationErrs, ValidationError{
-				Message: errors.Wrap(err, "error validating periodic builds").Error(),
-				Level:   Error,
-			})
-		}
-	}
-	return validationErrs
-}
-
 func validateProjectConfigAliases(pc *model.ProjectConfig) ValidationErrors {
 	errs := []string{}
 	pc.SetInternalAliases()
@@ -614,6 +600,15 @@ func validateProjectConfigPlugins(pc *model.ProjectConfig) ValidationErrors {
 	return errs
 }
 
+func hasValidRunOn(runOn []string) bool {
+	for _, d := range runOn {
+		if d != "" {
+			return true
+		}
+	}
+	return false
+}
+
 // Ensures that the project has at least one buildvariant and also that all the
 // fields required for any buildvariant definition are present
 func validateBVFields(project *model.Project) ValidationErrors {
@@ -653,41 +648,38 @@ func validateBVFields(project *model.Project) ValidationErrors {
 			continue
 		}
 
-		hasTaskWithoutDistro := false
 		for _, task := range buildVariant.Tasks {
-			taskHasValidDistro := false
-			for _, d := range task.RunOn {
-				if d != "" {
-					taskHasValidDistro = true
-					break
-				}
+			taskHasValidDistro := hasValidRunOn(task.RunOn)
+			if taskHasValidDistro {
+				break
 			}
-			if !taskHasValidDistro {
-				// check for a default in the task definition
-				pt := project.FindProjectTask(task.Name)
-				if pt != nil {
-					for _, d := range pt.RunOn {
-						if d != "" {
+			if task.IsGroup {
+				for _, t := range project.FindTaskGroup(task.Name).Tasks {
+					pt := project.FindProjectTask(t)
+					if pt != nil {
+						if hasValidRunOn(pt.RunOn) {
 							taskHasValidDistro = true
 							break
 						}
 					}
 				}
+			} else {
+				// check for a default in the task definition
+				pt := project.FindProjectTask(task.Name)
+				if pt != nil {
+					taskHasValidDistro = hasValidRunOn(pt.RunOn)
+				}
 			}
 			if !taskHasValidDistro {
-				hasTaskWithoutDistro = true
+				errs = append(errs,
+					ValidationError{
+						Message: fmt.Sprintf("buildvariant '%s' "+
+							"must either specify run_on field or have every task specify run_on",
+							buildVariant.Name),
+					},
+				)
 				break
 			}
-		}
-
-		if hasTaskWithoutDistro {
-			errs = append(errs,
-				ValidationError{
-					Message: fmt.Sprintf("buildvariant '%s' "+
-						"must either specify run_on field or have every task specify run_on",
-						buildVariant.Name),
-				},
-			)
 		}
 	}
 	return errs
@@ -1199,12 +1191,6 @@ func validateCommands(section string, project *model.Project,
 			errs = append(errs, ValidationError{
 				Level:   Error,
 				Message: fmt.Sprintf("cannot specify both command '%s' and function '%s'", cmd.Command, cmd.Function),
-			})
-		}
-		if cmd.Command == evergreen.ShellExecCommandName && cmd.Params["script"] == nil {
-			errs = append(errs, ValidationError{
-				Level:   Warning,
-				Message: fmt.Sprintf("%s section: command '%s' specified without a script.", section, cmd.Command),
 			})
 		}
 	}

@@ -36,12 +36,6 @@ const (
 	waterfallTasksQueryMaxTime = 90 * time.Second
 )
 
-type GetProjectTasksOpts struct {
-	Limit        int    `json:"num_versions"`
-	BuildVariant string `json:"build_variant"`
-	StartAt      int    `json:"start_at"`
-}
-
 type Project struct {
 	Enabled            bool                       `yaml:"enabled,omitempty" bson:"enabled"`
 	Stepback           bool                       `yaml:"stepback,omitempty" bson:"stepback"`
@@ -205,8 +199,31 @@ func (bvt *BuildVariantTaskUnit) Populate(pt ProjectTask) {
 	if bvt.Stepback == nil {
 		bvt.Stepback = pt.Stepback
 	}
-
 }
+
+// BuildVariantsByName represents a slice of project config build variants that
+// can be sorted by name.
+type BuildVariantsByName []BuildVariant
+
+func (b BuildVariantsByName) Len() int           { return len(b) }
+func (b BuildVariantsByName) Swap(i, j int)      { b[i], b[j] = b[j], b[i] }
+func (b BuildVariantsByName) Less(i, j int) bool { return b[i].Name < b[j].Name }
+
+// ProjectTasksByName represents a slice of project config tasks that can be
+// sorted by name.
+type ProjectTasksByName []ProjectTask
+
+func (pt ProjectTasksByName) Len() int           { return len(pt) }
+func (pt ProjectTasksByName) Swap(i, j int)      { pt[i], pt[j] = pt[j], pt[i] }
+func (pt ProjectTasksByName) Less(i, j int) bool { return pt[i].Name < pt[j].Name }
+
+// TaskGroupsByName represents a slice of project config task grups that can be
+// sorted by name.
+type TaskGroupsByName []TaskGroup
+
+func (tg TaskGroupsByName) Len() int           { return len(tg) }
+func (tg TaskGroupsByName) Swap(i, j int)      { tg[i], tg[j] = tg[j], tg[i] }
+func (tg TaskGroupsByName) Less(i, j int) bool { return tg[i].Name < tg[j].Name }
 
 // UnmarshalYAML allows tasks to be referenced as single selector strings.
 // This works by first attempting to unmarshal the YAML into a string
@@ -332,11 +349,12 @@ type ContainerSystem struct {
 }
 
 type Module struct {
-	Name   string `yaml:"name,omitempty" bson:"name"`
-	Branch string `yaml:"branch,omitempty" bson:"branch"`
-	Repo   string `yaml:"repo,omitempty" bson:"repo"`
-	Prefix string `yaml:"prefix,omitempty" bson:"prefix"`
-	Ref    string `yaml:"ref,omitempty" bson:"ref"`
+	Name       string `yaml:"name,omitempty" bson:"name"`
+	Branch     string `yaml:"branch,omitempty" bson:"branch"`
+	Repo       string `yaml:"repo,omitempty" bson:"repo"`
+	Prefix     string `yaml:"prefix,omitempty" bson:"prefix"`
+	Ref        string `yaml:"ref,omitempty" bson:"ref"`
+	AutoUpdate bool   `yaml:"auto_update,omitempty" bson:"auto_update"`
 }
 
 type Include struct {
