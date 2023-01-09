@@ -501,6 +501,8 @@ func (bvt *parserBV) hasSpecificActivation() bool {
 
 // FindAndTranslateProjectForPatch translates a parser project for a patch into a project.
 // This assumes that the version may not exist yet; otherwise FindAndTranslateProjectForVersion is equivalent.
+// kim: TODO: need to include parser project storage method somehow using the
+// patch.
 func FindAndTranslateProjectForPatch(ctx context.Context, p *patch.Patch) (*Project, *ParserProject, error) {
 	if p.PatchedParserProject == "" {
 		return FindAndTranslateProjectForVersion(p.Version, p.Project)
@@ -515,6 +517,8 @@ func FindAndTranslateProjectForPatch(ctx context.Context, p *patch.Patch) (*Proj
 
 // FindAndTranslateProjectForVersion translates a parser project for a version into a Project.
 // Also sets the project ID.
+// kim: TODO: update find one by ID and function parameters to include parser
+// project storage method.
 func FindAndTranslateProjectForVersion(versionId, projectId string) (*Project, *ParserProject, error) {
 	pp, err := ParserProjectFindOneById(versionId)
 	if err != nil {
@@ -550,6 +554,7 @@ func LoadProjectInfoForVersion(v *Version, id string) (ProjectInfo, error) {
 			return ProjectInfo{}, errors.Wrap(err, "finding project config")
 		}
 	}
+	// kim: TODO: need to use parser project storage method here.
 	p, pp, err := FindAndTranslateProjectForVersion(v.Id, id)
 	if err != nil {
 		return ProjectInfo{}, errors.Wrap(err, "translating project")

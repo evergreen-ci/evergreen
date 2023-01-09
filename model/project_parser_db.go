@@ -51,6 +51,7 @@ var (
 )
 
 // ParserProjectFindOneById returns the parser project for the version
+// kim: TODO: put find one by ID behind interface.
 func ParserProjectFindOneById(id string) (*ParserProject, error) {
 	pp, err := ParserProjectFindOne(ParserProjectById(id))
 	if err != nil {
@@ -63,6 +64,7 @@ func ParserProjectFindOneById(id string) (*ParserProject, error) {
 }
 
 // ParserProjectFindOne finds a parser project with a given query.
+// kim: TODO: put find one with fields behind interface.
 func ParserProjectFindOne(query db.Q) (*ParserProject, error) {
 	project := &ParserProject{}
 	err := db.FindOneQ(ParserProjectCollection, query, project)
@@ -78,6 +80,7 @@ func ParserProjectById(id string) db.Q {
 }
 
 // ParserProjectUpsertOne updates one project
+// kim: TODO: put upsert one into interface.
 func ParserProjectUpsertOne(query interface{}, update interface{}) error {
 	_, err := db.Upsert(
 		ParserProjectCollection,
@@ -88,6 +91,8 @@ func ParserProjectUpsertOne(query interface{}, update interface{}) error {
 	return err
 }
 
+// kim: TODO: use parser project storage method to decide how to do find one.
+// kim: TODO: add doc comment
 func FindParametersForVersion(v *Version) ([]patch.Parameter, error) {
 	pp, err := ParserProjectFindOne(ParserProjectById(v.Id).WithFields(ParserProjectParametersKey))
 	if err != nil {
@@ -96,6 +101,8 @@ func FindParametersForVersion(v *Version) ([]patch.Parameter, error) {
 	return pp.GetParameters(), nil
 }
 
+// kim: TODO: use parser project storage method to decide how to do find one.
+// kim: TODO: add doc comment
 func FindExpansionsForVariant(v *Version, variant string) (util.Expansions, error) {
 	pp, err := ParserProjectFindOne(ParserProjectById(v.Id).WithFields(ParserProjectBuildVariantsKey, ParserProjectAxesKey))
 	if err != nil {
@@ -172,3 +179,8 @@ func (pp *ParserProject) GetParameters() []patch.Parameter {
 	}
 	return res
 }
+
+// ParserProjectDBStorage implements the ParserProjectStorage interface to
+// access parser projects from the DB.
+// kim: TODO: implement
+type ParserProjectDBStorage struct{}
