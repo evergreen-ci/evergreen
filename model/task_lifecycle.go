@@ -1164,6 +1164,16 @@ func updateBuildStatus(b *build.Build) (bool, error) {
 
 	event.LogBuildStateChangeEvent(b.Id, buildStatus.status)
 
+	notBlockedOrUnscheduled := !buildStatus.allTasksBlocked && !buildStatus.allTasksUnscheduled
+
+	// if the status has changed, re-activate the build if it's not blocked
+	if !b.Activated && notBlockedOrUnscheduled {
+		if err = b.SetActivated(true); err != nil {
+			return true, errors.Wrapf(err, "setting build '%s' as active", b.Id)
+		}
+
+	}
+
 	if evergreen.IsFinishedBuildStatus(buildStatus.status) {
 		if err = b.MarkFinished(buildStatus.status, time.Now()); err != nil {
 			return true, errors.Wrapf(err, "marking build as finished with status '%s'", buildStatus.status)
