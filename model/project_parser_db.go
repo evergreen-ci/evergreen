@@ -1,6 +1,8 @@
 package model
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -52,6 +54,7 @@ var (
 
 // ParserProjectFindOneById returns the parser project for the version
 // kim: TODO: put find one by ID behind interface.
+// kim: TODO: replace usages of this.
 func ParserProjectFindOneById(id string) (*ParserProject, error) {
 	pp, err := ParserProjectFindOne(ParserProjectById(id))
 	if err != nil {
@@ -139,6 +142,7 @@ func checkConfigNumberQuery(id string, configNum int) bson.M {
 
 // TryUpsert suppresses the error of inserting if it's a duplicate key error
 // and attempts to upsert if config number matches.
+// kim: TODO: add function parameter for storage method.
 func (pp *ParserProject) TryUpsert() error {
 	err := ParserProjectUpsertOne(checkConfigNumberQuery(pp.Id, pp.ConfigUpdateNumber), pp)
 	if !db.IsDuplicateKey(err) {
@@ -159,6 +163,8 @@ func (pp *ParserProject) TryUpsert() error {
 // UpsertWithConfigNumber inserts project if it DNE. Otherwise, updates if the
 // existing config number is less than or equal to the new config number.
 // If shouldEqual, only update if the config update number matches.
+// kim: TODO: replace with just TryUpsert, since generate.tasks run with a job
+// scope.
 func (pp *ParserProject) UpsertWithConfigNumber(updateNum int) error {
 	if pp.Id == "" {
 		return errors.New("no version ID given")
@@ -172,15 +178,25 @@ func (pp *ParserProject) UpsertWithConfigNumber(updateNum int) error {
 	return nil
 }
 
-func (pp *ParserProject) GetParameters() []patch.Parameter {
-	res := []patch.Parameter{}
-	for _, param := range pp.Parameters {
-		res = append(res, param.Parameter)
-	}
-	return res
-}
-
 // ParserProjectDBStorage implements the ParserProjectStorage interface to
 // access parser projects from the DB.
-// kim: TODO: implement
 type ParserProjectDBStorage struct{}
+
+// FindOneByID finds a parser project from the DB by its ID. This ignores the
+// context parameter.
+func (s ParserProjectDBStorage) FindOneByID(_ context.Context, id string) (*ParserProject, error) {
+	return ParserProjectFindOneById(id)
+}
+
+// FindOneByIDWithFields returns the parser project from the DB with only the
+// requested fields populated. This may be more efficient than fetching the
+// entire parser project. This ignores the context parameter.
+func (s ParserProjectDBStorage) FindOneByIDWithFields(_ context.Context, id string, fields ...string) (*ParserProject, error) {
+	return ParserProjectFindOne(ParserProjectById(id).WithFields(fields...))
+}
+
+// UpsertOne replaces a parser project in the DB if one exists with the same ID.
+// Otherwise, if it does not exist yet, it inserts a new parser project.
+func (s ParserProjectDBStorage) UpsertOne(ctx context.Context, pp *ParserProject) error {
+	return ParserProjectUpsertOne(ParserProjectById(pp.Id), pp)
+}

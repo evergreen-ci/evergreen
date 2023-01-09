@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	yaml "gopkg.in/20210107192922/yaml.v3"
@@ -289,7 +290,7 @@ func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusOK)
 
 	var config []byte
-	pp, err := model.ParserProjectFindOneById(projCtx.Version.Id)
+	pp, err := model.GetParserProjectStorage(projCtx.Version.ProjectStorageMethod).FindOneByID(r.Context(), projCtx.Version.Id)
 	if err != nil {
 		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem finding parser project"})
 		return
@@ -300,27 +301,35 @@ func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	_, err = w.Write(config)
-	grip.Warning(errors.Wrap(err, "problem writing response"))
+	grip.Warning(message.WrapError(err, message.Fields{
+		"message":    "could not write parser project to response",
+		"version_id": projCtx.Version.Id,
+		"route":      "/versions/{version_id}/config",
+	}))
 }
 
 // Returns a JSON response with the marshaled output of the version
 // specified in the request.
 func (restapi restAPI) getVersionProject(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
-	srcVersion := projCtx.Version
-	if srcVersion == nil {
+	if projCtx.Version == nil {
 		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{Message: "version not found"})
 		return
 	}
 
-	pp, err := model.ParserProjectFindOneById(projCtx.Version.Id)
+	pp, err := model.GetParserProjectStorage(projCtx.Version.ProjectStorageMethod).FindOneByID(r.Context(), projCtx.Version.Id)
 	if err != nil {
 		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem finding parser project"})
 		return
 	}
+	if pp == nil {
+		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{Message: fmt.Sprintf("parser project '%s' not found", projCtx.Version.Id)})
+	}
+
 	bytes, err := bson.Marshal(pp)
 	if err != nil {
 		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem reading to bson"})
+		return
 	}
 	gimlet.WriteBinary(w, bytes)
 }

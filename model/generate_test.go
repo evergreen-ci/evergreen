@@ -362,6 +362,8 @@ buildvariants:
 
 type GenerateSuite struct {
 	suite.Suite
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 func TestGenerateSuite(t *testing.T) {
@@ -378,6 +380,11 @@ func (s *GenerateSuite) SetupTest() {
 		Id: "",
 	}
 	s.Require().NoError(ref2.Insert())
+	s.ctx, s.cancel = context.WithCancel(context.Background())
+}
+
+func (s *GenerateSuite) TearDownTest() {
+	s.cancel()
 }
 
 func (s *GenerateSuite) TestParseProjectFromJSON() {
@@ -560,8 +567,7 @@ func (s *GenerateSuite) TestValidateNoRecursiveGenerateTasks() {
 
 func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	p := &Project{}
-	ctx := context.Background()
-	pp, err := LoadProjectInto(ctx, []byte(sampleProjYml), nil, "", p)
+	pp, err := LoadProjectInto(s.ctx, []byte(sampleProjYml), nil, "", p)
 	s.NoError(err)
 	cachedProject := cacheProjectData(p)
 	g := sampleGeneratedProject
@@ -598,7 +604,7 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	_, ok = newPP.Functions["new_function"]
 	s.True(ok)
 
-	pp, err = LoadProjectInto(ctx, []byte(sampleProjYmlNoFunctions), nil, "", p)
+	pp, err = LoadProjectInto(s.ctx, []byte(sampleProjYmlNoFunctions), nil, "", p)
 	s.NoError(err)
 	newPP, err = g.addGeneratedProjectToConfig(pp, cachedProject)
 	s.NoError(err)
@@ -703,7 +709,7 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	s.Require().Len(v.BuildVariants[1].BatchTimeTasks, 1)
 	s.InDelta(time.Now().Add(15*time.Minute).Unix(), v.BuildVariants[1].BatchTimeTasks[0].ActivateAt.Unix(), 1)
 
-	pp, err = ParserProjectFindOneById(v.Id)
+	pp, err = GetParserProjectStorage(v.ProjectStorageMethod).FindOneByID(s.ctx, v.Id)
 	s.NoError(err)
 	s.Require().NotNil(pp)
 	s.Equal(1, pp.ConfigUpdateNumber)
@@ -864,7 +870,7 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 	s.NoError(err)
 	s.Require().NotNil(v)
 
-	pp, err = ParserProjectFindOneById(v.Id)
+	pp, err = GetParserProjectStorage(v.ProjectStorageMethod).FindOneByID(s.ctx, v.Id)
 	s.NoError(err)
 	s.Require().NotNil(pp)
 	s.Equal(1, pp.ConfigUpdateNumber)
@@ -1014,7 +1020,7 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 	s.NoError(err)
 	s.Require().NotNil(v)
 
-	pp, err = ParserProjectFindOneById(v.Id)
+	pp, err = GetParserProjectStorage(v.ProjectStorageMethod).FindOneByID(s.ctx, v.Id)
 	s.NoError(err)
 	s.Require().NotNil(pp)
 	s.Equal(1, pp.ConfigUpdateNumber)
@@ -1301,6 +1307,9 @@ func (s *GenerateSuite) TestMergeGeneratedProjectsWithNoTasks() {
 }
 
 func TestUpdateParserProject(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	alreadyUpdatedTestName := "TaskAlreadyUpdatedParserProject"
 	withZeroTestName := "WithZero"
 	taskId := "tId"
@@ -1338,7 +1347,7 @@ func TestUpdateParserProject(t *testing.T) {
 			v, err := VersionFindOneId(v.Id)
 			assert.NoError(t, err)
 			require.NotNil(t, v)
-			pp, err = ParserProjectFindOneById(v.Id)
+			pp, err = GetParserProjectStorage(v.ProjectStorageMethod).FindOneByID(ctx, v.Id)
 			assert.NoError(t, err)
 			require.NotNil(t, pp)
 			assert.Len(t, pp.UpdatedByGenerators, 1)

@@ -1564,7 +1564,11 @@ func TestAddBuildVariant(t *testing.T) {
 	assert.Len(t, pp.BuildVariants[0].Tasks, 1)
 }
 
+// kim: TODO: replace with UpsertOne
 func TestTryUpsert(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for testName, testCase := range map[string]func(t *testing.T){
 		"configNumberMatches": func(t *testing.T) {
 			pp := &ParserProject{
@@ -1575,7 +1579,7 @@ func TestTryUpsert(t *testing.T) {
 			assert.NoError(t, pp.TryUpsert()) // new project should work
 			pp.Owner = utility.ToStringPtr("you")
 			assert.NoError(t, pp.TryUpsert())
-			pp, err := ParserProjectFindOneById(pp.Id)
+			pp, err := GetParserProjectStorage(ProjectStorageMethodDB).FindOneByID(ctx, pp.Id)
 			assert.NoError(t, err)
 			require.NotNil(t, pp)
 			assert.Equal(t, "you", utility.FromStringPtr(pp.Owner))
@@ -1588,7 +1592,7 @@ func TestTryUpsert(t *testing.T) {
 			assert.NoError(t, pp.TryUpsert()) // new project should work
 			pp.Owner = utility.ToStringPtr("you")
 			assert.NoError(t, pp.TryUpsert())
-			pp, err := ParserProjectFindOneById(pp.Id)
+			pp, err := GetParserProjectStorage(ProjectStorageMethodDB).FindOneByID(ctx, pp.Id)
 			assert.NoError(t, err)
 			require.NotNil(t, pp)
 			assert.Equal(t, "you", utility.FromStringPtr(pp.Owner))
@@ -1603,7 +1607,7 @@ func TestTryUpsert(t *testing.T) {
 			pp.ConfigUpdateNumber = 5
 			pp.Owner = utility.ToStringPtr("you")
 			assert.NoError(t, pp.TryUpsert()) // should not update and should not error
-			pp, err := ParserProjectFindOneById(pp.Id)
+			pp, err := GetParserProjectStorage(ProjectStorageMethodDB).FindOneByID(ctx, pp.Id)
 			assert.NoError(t, err)
 			require.NotNil(t, pp)
 			assert.Equal(t, "me", utility.FromStringPtr(pp.Owner))
@@ -1710,6 +1714,9 @@ buildvariants:
 }
 
 func checkProjectPersists(t *testing.T, yml []byte) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	pp, err := createIntermediateProject(yml, false, false)
 	assert.NoError(t, err)
 	pp.Id = "my-project"
@@ -1720,8 +1727,9 @@ func checkProjectPersists(t *testing.T, yml []byte) {
 	assert.NoError(t, err)
 	assert.NoError(t, pp.TryUpsert())
 
-	newPP, err := ParserProjectFindOneById(pp.Id)
+	newPP, err := GetParserProjectStorage(ProjectStorageMethodDB).FindOneByID(ctx, pp.Id)
 	assert.NoError(t, err)
+	require.NotZero(t, newPP)
 
 	newYaml, err := yaml.Marshal(newPP)
 	assert.NoError(t, err)
@@ -1736,8 +1744,9 @@ func checkProjectPersists(t *testing.T, yml []byte) {
 
 	assert.NoError(t, pp.TryUpsert())
 
-	newPP, err = ParserProjectFindOneById(pp.Id)
+	newPP, err = GetParserProjectStorage(ProjectStorageMethodDB).FindOneByID(ctx, pp.Id)
 	assert.NoError(t, err)
+	require.NotZero(t, newPP)
 
 	assert.Equal(t, newPP.Identifier, pp.Identifier)
 

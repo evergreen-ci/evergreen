@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/20210107192922/yaml.v3"
 )
@@ -69,13 +70,21 @@ func (restapi restAPI) getPatchConfig(w http.ResponseWriter, r *http.Request) {
 		grip.Warning(errors.Wrap(err, "writing patched parser project"))
 		return
 	}
-	pp, err := model.ParserProjectFindOneById(projCtx.Patch.Version)
-	if pp != nil {
-		var projBytes []byte
-		projBytes, err = yaml.Marshal(pp)
-		if err == nil {
-			_, err = w.Write(projBytes)
+	// kim: NOTE: as part of LoadContext, this loads the version if it exists
+	// (and therefore, will load if the parser project exists).
+	if v := projCtx.Version; v != nil {
+		pp, err := model.GetParserProjectStorage(v.ProjectStorageMethod).FindOneByID(r.Context(), v.Id)
+		if pp != nil {
+			var projBytes []byte
+			projBytes, err = yaml.Marshal(pp)
+			if err == nil {
+				_, err = w.Write(projBytes)
+			}
+			grip.Warning(message.WrapError(err, message.Fields{
+				"message":  "could not marshal and write parser project to response",
+				"route":    "/patches/{patch_id}/config",
+				"patch_id": projCtx.Patch.Id.Hex(),
+			}))
 		}
 	}
-	grip.Warning(errors.Wrap(err, "writing parser project"))
 }

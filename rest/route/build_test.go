@@ -24,8 +24,10 @@ import (
 // Tests for fetch build by id
 
 type BuildByIdSuite struct {
-	rm gimlet.RouteHandler
 	suite.Suite
+	rm     gimlet.RouteHandler
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 func TestBuildByIdSuite(t *testing.T) {
@@ -33,7 +35,7 @@ func TestBuildByIdSuite(t *testing.T) {
 }
 
 func (s *BuildByIdSuite) SetupSuite() {
-	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, build.Collection, task.Collection, serviceModel.ParserProjectCollection))
+	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, build.Collection, task.Collection, serviceModel.VersionCollection, serviceModel.ParserProjectCollection))
 	projRef := serviceModel.ProjectRef{Repo: "project", Id: "branch"}
 	s.NoError(projRef.Insert())
 	tasks := []task.Task{
@@ -66,7 +68,13 @@ func (s *BuildByIdSuite) SetupSuite() {
 	for _, build := range builds {
 		s.Require().NoError(build.Insert())
 	}
-	var configFile = `
+
+	v := serviceModel.Version{
+		Id: "myVersion",
+	}
+	s.Require().NoError(v.Insert())
+
+	configFile := `
 buildvariants:
 - display_name: "My Build"
   name: "build_name"
@@ -83,13 +91,18 @@ buildvariants:
 
 func (s *BuildByIdSuite) SetupTest() {
 	s.rm = makeGetBuildByID()
+	s.ctx, s.cancel = context.WithCancel(context.Background())
+}
+
+func (s *BuildByIdSuite) TearDownTest() {
+	s.cancel()
 }
 
 func (s *BuildByIdSuite) TestFindBuildById() {
 	s.rm.(*buildGetHandler).buildId = "build1"
-	resp := s.rm.Run(context.TODO())
+	resp := s.rm.Run(s.ctx)
 	s.Equal(resp.Status(), http.StatusOK)
-	s.NotNil(resp.Data())
+	s.Require().NotNil(resp.Data())
 
 	b, ok := (resp.Data()).(*model.APIBuild)
 	s.True(ok)
@@ -102,7 +115,7 @@ func (s *BuildByIdSuite) TestFindBuildById() {
 	s.Equal(0, utility.FromIntPtr(b.DefinitionInfo.BatchTime))
 
 	s.rm.(*buildGetHandler).buildId = "build2"
-	resp = s.rm.Run(context.TODO())
+	resp = s.rm.Run(s.ctx)
 	s.Equal(resp.Status(), http.StatusOK)
 	s.NotNil(resp.Data())
 
@@ -118,7 +131,7 @@ func (s *BuildByIdSuite) TestFindBuildById() {
 
 func (s *BuildByIdSuite) TestFindBuildByIdFail() {
 	s.rm.(*buildGetHandler).buildId = "build3"
-	resp := s.rm.Run(context.TODO())
+	resp := s.rm.Run(s.ctx)
 	s.NotEqual(resp.Status(), http.StatusOK)
 }
 

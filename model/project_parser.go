@@ -519,8 +519,9 @@ func FindAndTranslateProjectForPatch(ctx context.Context, p *patch.Patch) (*Proj
 // Also sets the project ID.
 // kim: TODO: update find one by ID and function parameters to include parser
 // project storage method.
+// func FindAndTranslateProjectForVersion(ctx context.Context, versionId, projectId string, ppStorageMethod ParserProjectStorageMethod) (*Project, *ParserProject, error) {
 func FindAndTranslateProjectForVersion(versionId, projectId string) (*Project, *ParserProject, error) {
-	pp, err := ParserProjectFindOneById(versionId)
+	pp, err := GetParserProjectStorage(ProjectStorageMethodDB).FindOneByID(context.Background(), versionId)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "finding parser project")
 	}
@@ -925,6 +926,14 @@ func (pp *ParserProject) AddBuildVariant(name, displayName, runOn string, batchT
 		bv.RunOn = []string{runOn}
 	}
 	pp.BuildVariants = append(pp.BuildVariants, bv)
+}
+
+func (pp *ParserProject) GetParameters() []patch.Parameter {
+	res := []patch.Parameter{}
+	for _, param := range pp.Parameters {
+		res = append(res, param.Parameter)
+	}
+	return res
 }
 
 // sieveMatrixVariants takes a set of parserBVs and groups them into regular
