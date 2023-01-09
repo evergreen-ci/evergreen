@@ -215,28 +215,23 @@ func FindCommitQueueForProject(name string) (*restModel.APICommitQueue, error) {
 	return apiCommitQueue, nil
 }
 
-func CommitQueueRemoveItem(identifier, issue, user string) (*restModel.APICommitQueueItem, error) {
-	id, err := model.GetIdForProject(identifier)
+func CommitQueueRemoveItem(cqId, issue, user string) (*restModel.APICommitQueueItem, error) {
+	cq, err := commitqueue.FindOneId(cqId)
 	if err != nil {
-		return nil, errors.Wrapf(err, "finding project ref '%s'", identifier)
-	}
-	cq, err := commitqueue.FindOneId(id)
-	if err != nil {
-		return nil, errors.Wrapf(err, "getting commit queue for project '%s'", identifier)
+		return nil, errors.Wrapf(err, "getting commit queue '%s'", cqId)
 	}
 	if cq == nil {
-		return nil, errors.Errorf("commit queue not found for project '%s'", identifier)
+		return nil, errors.Errorf("commit queue '%s' not found", cqId)
 	}
-	version, err := model.GetVersionForCommitQueueItem(cq, issue)
-	if err != nil {
-		return nil, errors.Wrapf(err, "verifying if version exists for issue '%s'", issue)
-	}
-	removed, err := model.RemoveItemAndPreventMerge(cq, issue, version != nil, user)
+	removed, err := model.RemoveItemAndPreventMerge(cq, issue, user)
 	if err != nil {
 		return nil, errors.Wrapf(err, "removing item and preventing merge for commit queue item '%s'", issue)
 	}
 	if removed == nil {
-		return nil, errors.Errorf("item '%s' not found in commit queue", issue)
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    errors.Errorf("item '%s' not found in commit queue", issue).Error(),
+		}
 	}
 	apiRemovedItem := restModel.APICommitQueueItem{}
 	apiRemovedItem.BuildFromService(*removed)

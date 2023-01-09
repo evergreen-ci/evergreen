@@ -906,7 +906,7 @@ func tryDequeueAndAbortCommitQueueVersion(p *patch.Patch, cq commitqueue.CommitQ
 		"patch":   issue,
 	}))
 
-	removed, err := RemoveItemAndPreventMerge(&cq, issue, true, caller)
+	removed, err := RemoveItemAndPreventMerge(&cq, issue, caller)
 	grip.Debug(message.Fields{
 		"message": "removing commit queue item",
 		"issue":   issue,

@@ -92,7 +92,7 @@ func deleteItem() cli.Command {
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  joinFlagNames(itemFlagName, "i"),
-				Usage: "delete `ITEM`",
+				Usage: "specify the patch ID for the item to delete",
 			},
 		},
 		Before: mergeBeforeFuncs(
