@@ -194,7 +194,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/projects/{project_id}/detach_from_repo").Version(2).Post().Wrap(requireUser, addProject, requireProjectAdmin, editProjectSettings).RouteHandler(makeDetachProjectFromRepoHandler())
 	app.AddRoute("/projects/{project_id}/repotracker").Version(2).Post().Wrap(requireUser, addProject).RouteHandler(makeRunRepotrackerForProject())
 	app.AddRoute("/projects/{project_id}").Version(2).Put().Wrap(createProject).RouteHandler(makePutProjectByID(env))
-	app.AddRoute("/projects/{project_id}/copy").Version(2).Post().Wrap(requireUser, addProject, requireProjectAdmin, editProjectSettings).RouteHandler(makeCopyProject(env))
+	app.AddRoute("/projects/{project_id}/copy").Version(2).Post().Wrap(createProject).RouteHandler(makeCopyProject(env))
 	app.AddRoute("/projects/{project_id}/copy/variables").Version(2).Post().Wrap(requireUser, addProject, requireProjectAdmin, editProjectSettings).RouteHandler(makeCopyVariables())
 	app.AddRoute("/projects/{project_id}/events").Version(2).Get().Wrap(requireUser, addProject, requireProjectAdmin, viewProjectSettings).RouteHandler(makeFetchProjectEvents(opts.URL))
 	app.AddRoute("/projects/{project_id}/patches").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makePatchesByProjectRoute(opts.URL))

@@ -56,6 +56,15 @@ func CopyProject(ctx context.Context, env evergreen.Environment, opts CopyProjec
 	disableStartingSettings(projectToCopy)
 
 	u := gimlet.GetUser(ctx).(*user.DBUser)
+	isAdmin := u.HasPermission(gimlet.PermissionOpts{
+		Resource:      oldId,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
+		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+	})
+	if !isAdmin {
+		return nil, errors.Errorf("must be admin of project '%s' to duplicate", oldId)
+	}
 	if err := CreateProject(ctx, env, projectToCopy, u); err != nil {
 		return nil, err
 	}

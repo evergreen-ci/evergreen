@@ -2303,6 +2303,19 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) (bool, error) {
 		return false, nil
 	}
 	rm := evergreen.GetEnvironment().RoleManager()
+	projectCreateRole, err := rm.FindRoleWithPermissions(
+		evergreen.SuperUserResourceType,
+		[]string{evergreen.SuperUserPermissionsID},
+		gimlet.Permissions{
+			evergreen.PermissionProjectCreate: evergreen.ProjectCreate.Value,
+		},
+	)
+	if err != nil {
+		return false, errors.Wrap(err, "finding role with project create permissions")
+	}
+	if projectCreateRole == nil {
+		return false, errors.New("project create role not found")
+	}
 	role, err := rm.FindRoleWithPermissions(evergreen.ProjectResourceType, []string{p.Id}, adminPermissions)
 	if err != nil {
 		return false, errors.Wrap(err, "finding role with admin permissions")
@@ -2333,8 +2346,9 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) (bool, error) {
 			p.removeFromAdminsList(addedUser)
 			continue
 		}
-		if err = adminUser.AddRole(role.ID); err != nil {
-			catcher.Wrapf(err, "adding role '%s' to user '%s'", role.ID, addedUser)
+		rolesToAdd := []string{role.ID, projectCreateRole.ID}
+		if err = adminUser.AddRoles(rolesToAdd); err != nil {
+			catcher.Wrapf(err, "adding roles '%s' to user '%s'", rolesToAdd, addedUser)
 			p.removeFromAdminsList(addedUser)
 			continue
 		}
@@ -2366,6 +2380,13 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) (bool, error) {
 				continue
 			}
 		}
+		if !adminUser.IsAdmin() {
+			if err = adminUser.RemoveRole(projectCreateRole.ID); err != nil {
+				catcher.Wrapf(err, "removing role '%s' from user '%s'", projectCreateRole.ID, removedUser)
+				continue
+			}
+		}
+
 	}
 	return true, errors.Wrap(catcher.Resolve(), "updating some admin roles")
 }

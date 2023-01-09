@@ -1,6 +1,7 @@
 package user
 
 import (
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -319,6 +320,22 @@ func (u *DBUser) AddRole(role string) error {
 	return event.LogUserEvent(u.Id, event.UserEventTypeRolesUpdate, u.SystemRoles[:len(u.SystemRoles)-1], u.SystemRoles)
 }
 
+func (u *DBUser) AddRoles(roles []string) error {
+	_, rolesToAdd := utility.StringSliceSymmetricDifference(u.SystemRoles, roles)
+	if len(rolesToAdd) == 0 {
+		return nil
+	}
+	update := bson.M{
+		"$addToSet": bson.M{RolesKey: bson.M{"$each": rolesToAdd}},
+	}
+	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
+		return err
+	}
+	u.SystemRoles = append(u.SystemRoles, roles...)
+
+	return event.LogUserEvent(u.Id, event.UserEventTypeRolesUpdate, u.SystemRoles[:len(u.SystemRoles)-len(rolesToAdd)], u.SystemRoles)
+}
+
 func (u *DBUser) RemoveRole(role string) error {
 	before := u.SystemRoles
 	update := bson.M{
@@ -334,6 +351,15 @@ func (u *DBUser) RemoveRole(role string) error {
 	}
 
 	return event.LogUserEvent(u.Id, event.UserEventTypeRolesUpdate, before, u.SystemRoles)
+}
+
+func (u *DBUser) IsAdmin() bool {
+	for _, role := range u.SystemRoles {
+		if strings.HasPrefix(role, "admin_") {
+			return true
+		}
+	}
+	return false
 }
 
 // GetViewableProjects returns the lists of projects/repos the user can view.
