@@ -1852,7 +1852,8 @@ func updateAllMatchingDependenciesForTask(taskId, dependencyId string, unattaina
 	return res.Err()
 }
 
-func AbortTasksForBuild(buildId string, taskIds []string, caller string) error {
+// AbortAndMarkResetTasksForBuild aborts and marks tasks for a build to reset when finished.
+func AbortAndMarkResetTasksForBuild(buildId string, taskIds []string, caller string) error {
 	q := bson.M{
 		BuildIdKey: buildId,
 		StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
@@ -1864,8 +1865,9 @@ func AbortTasksForBuild(buildId string, taskIds []string, caller string) error {
 		q,
 		bson.M{
 			"$set": bson.M{
-				AbortedKey:   true,
-				AbortInfoKey: AbortInfo{User: caller},
+				AbortedKey:           true,
+				AbortInfoKey:         AbortInfo{User: caller},
+				ResetWhenFinishedKey: true,
 			},
 		},
 	)
