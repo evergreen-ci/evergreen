@@ -446,6 +446,7 @@ func TestBuildSetActivated(t *testing.T) {
 					Activated:    true,
 					BuildVariant: "bv",
 					Version:      vID,
+					Status:       evergreen.BuildStarted,
 				}
 				So(b.Insert(), ShouldBeNil)
 
