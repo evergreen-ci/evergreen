@@ -418,6 +418,9 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	for buildId := range buildIdsMap {
 		buildIds = append(buildIds, buildId)
 	}
+	if err = build.SetBuildStartedForTasks(tasksToRestart, caller); err != nil {
+		return errors.Wrap(err, "updating build activation")
+	}
 	return errors.Wrap(UpdateVersionAndPatchStatusForBuilds(buildIds), "updating version status")
 }
 

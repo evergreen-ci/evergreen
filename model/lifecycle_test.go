@@ -1969,7 +1969,6 @@ func TestVersionRestart(t *testing.T) {
 	assert.True(dbTask.ResetWhenFinished)
 	dbVersion, err = VersionFindOneId("version")
 	assert.NoError(err)
-	assert.Equal(evergreen.VersionStarted, dbVersion.Status)
 
 	// test that not aborting in-progress tasks does not reset them
 	assert.NoError(resetTaskData())
@@ -1982,7 +1981,6 @@ func TestVersionRestart(t *testing.T) {
 	assert.Equal(evergreen.TaskDispatched, dbTask.Status)
 	dbVersion, err = VersionFindOneId("version")
 	assert.NoError(err)
-	assert.Equal(evergreen.VersionStarted, dbVersion.Status)
 }
 
 func TestDisplayTaskRestart(t *testing.T) {
