@@ -946,6 +946,8 @@ func addSingleHostTaskGroupDependencies(taskMap map[string]*task.Task, p *Projec
 		// will be the parent dependency for the current single host TG task.
 		taskFound := false
 		for i := len(tg.Tasks) - 1; i >= 0; i-- {
+			// Check the task display names since no display name will appear twice
+			// within the same task group
 			if t.DisplayName == tg.Tasks[i] {
 				taskFound = true
 				continue
