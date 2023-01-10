@@ -2337,9 +2337,9 @@ func TestGetProjectTasksWithOptions(t *testing.T) {
 	opts.Requesters = []string{evergreen.PatchVersionRequester}
 	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
 	assert.NoError(t, err)
-	assert.Len(t, tasks, 8)
+	assert.Len(t, tasks, 7)
 	assert.Equal(t, tasks[0].RevisionOrderNumber, 80)
-	assert.Equal(t, tasks[7].RevisionOrderNumber, 70)
+	assert.Equal(t, tasks[6].RevisionOrderNumber, 71)
 
 	opts.Requesters = []string{evergreen.RepotrackerVersionRequester}
 	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)

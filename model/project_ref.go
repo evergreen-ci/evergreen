@@ -1206,7 +1206,7 @@ func GetTasksWithOptions(projectName string, taskName string, opts GetProjectTas
 	}
 	match["$and"] = []bson.M{
 		{task.RevisionOrderNumberKey: bson.M{"$lte": startingRevision}},
-		{task.RevisionOrderNumberKey: bson.M{"$gte": startingRevision - opts.Limit}},
+		{task.RevisionOrderNumberKey: bson.M{"$gte": startingRevision - opts.Limit + 1}},
 	}
 	pipeline := []bson.M{{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{task.RevisionOrderNumberKey: -1}})
