@@ -501,10 +501,16 @@ func (bvt *parserBV) hasSpecificActivation() bool {
 
 // FindAndTranslateProjectForPatch translates a parser project for a patch into a project.
 // This assumes that the version may not exist yet; otherwise FindAndTranslateProjectForVersion is equivalent.
-func FindAndTranslateProjectForPatch(ctx context.Context, p *patch.Patch, ppStorageMethod ParserProjectStorageMethod) (*Project, *ParserProject, error) {
+func FindAndTranslateProjectForPatch(ctx context.Context, p *patch.Patch) (*Project, *ParserProject, error) {
 	if p.PatchedParserProject == "" {
-		// kim: TODO: Pass parser project storage method.
-		return FindAndTranslateProjectForVersion(p.Version, p.Project)
+		v, err := VersionFindOneId(p.Version)
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "finding version '%s' for patch '%s'", p.Version, p.Id.Hex())
+		}
+		if v == nil {
+			return nil, nil, errors.Errorf("version '%s' not found for patch '%s'", p.Version, p.Id.Hex())
+		}
+		return FindAndTranslateProjectForVersion(p.Version, p.Project, v.ProjectStorageMethod)
 	}
 	project := &Project{}
 	pp, err := LoadProjectInto(ctx, []byte(p.PatchedParserProject), nil, p.Project, project)
@@ -516,10 +522,7 @@ func FindAndTranslateProjectForPatch(ctx context.Context, p *patch.Patch, ppStor
 
 // FindAndTranslateProjectForVersion translates a parser project for a version into a Project.
 // Also sets the project ID.
-// kim: TODO: update find one by ID and function parameters to include parser
-// project storage method.
-// func FindAndTranslateProjectForVersion(ctx context.Context, versionId, projectId string, ppStorageMethod ParserProjectStorageMethod) (*Project, *ParserProject, error) {
-func FindAndTranslateProjectForVersion(versionId, projectId string) (*Project, *ParserProject, error) {
+func FindAndTranslateProjectForVersion(versionId, projectId string, ppStorageMethod ParserProjectStorageMethod) (*Project, *ParserProject, error) {
 	pp, err := GetParserProjectStorage(ProjectStorageMethodDB).FindOneByID(context.Background(), versionId)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "finding parser project")
@@ -554,8 +557,7 @@ func LoadProjectInfoForVersion(v *Version, id string) (ProjectInfo, error) {
 			return ProjectInfo{}, errors.Wrap(err, "finding project config")
 		}
 	}
-	// kim: TODO: need to use parser project storage method here.
-	p, pp, err := FindAndTranslateProjectForVersion(v.Id, id)
+	p, pp, err := FindAndTranslateProjectForVersion(v.Id, id, v.ProjectStorageMethod)
 	if err != nil {
 		return ProjectInfo{}, errors.Wrap(err, "translating project")
 	}

@@ -1642,43 +1642,6 @@ func TestLoggerConfigValidate(t *testing.T) {
 	assert.EqualError(config.IsValid(), "invalid system logger config: Splunk logger requires a server URL\nSplunk logger requires a token")
 }
 
-func TestFindContainerFromProject(t *testing.T) {
-	assert := assert.New(t)
-	require.NoError(t, db.ClearCollections(VersionCollection, ParserProjectCollection, ProjectRefCollection))
-	ref := ProjectRef{
-		Id: "p1",
-	}
-
-	pp := ParserProject{
-		Id:         "v1",
-		Identifier: utility.ToStringPtr("p1"),
-		Containers: []Container{
-			{
-				Name: "container1",
-			},
-		},
-	}
-
-	v := &Version{Id: "v1"}
-	require.NoError(t, pp.TryUpsert())
-	require.NoError(t, v.Insert())
-	require.NoError(t, ref.Insert())
-
-	task := task.Task{
-		Version:   "v1",
-		Project:   "p1",
-		Container: "container1",
-	}
-	container, err := FindContainerFromProject(task)
-	require.NoError(t, err)
-	assert.Equal(container.Name, "container1")
-
-	task.Container = "nonexistent"
-	_, err = FindContainerFromProject(task)
-	require.Error(t, err)
-	assert.Equal(err.Error(), "no such container 'nonexistent' defined on project 'p1'")
-}
-
 func TestLoggerMerge(t *testing.T) {
 	assert := assert.New(t)
 

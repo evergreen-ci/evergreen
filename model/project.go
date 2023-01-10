@@ -1217,20 +1217,6 @@ func (p *Project) FindTaskGroup(name string) *TaskGroup {
 	return nil
 }
 
-// FindContainerFromProject finds the container configuration associated with a given task's Container field.
-func FindContainerFromProject(t task.Task) (*Container, error) {
-	project, _, err := FindAndTranslateProjectForVersion(t.Version, t.Project)
-	if err != nil {
-		return nil, errors.Wrapf(err, "getting project for version '%s'", t.Version)
-	}
-	for _, container := range project.Containers {
-		if container.Name == t.Container {
-			return &container, nil
-		}
-	}
-	return nil, errors.Errorf("no such container '%s' defined on project '%s'", t.Container, t.Project)
-}
-
 func FindProjectFromVersionID(versionStr string) (*Project, error) {
 	ver, err := VersionFindOne(VersionById(versionStr))
 	if err != nil {
@@ -1240,7 +1226,7 @@ func FindProjectFromVersionID(versionStr string) (*Project, error) {
 		return nil, errors.Errorf("version '%s' not found", versionStr)
 	}
 
-	project, _, err := FindAndTranslateProjectForVersion(ver.Id, ver.Identifier)
+	project, _, err := FindAndTranslateProjectForVersion(ver.Id, ver.Identifier, ver.ProjectStorageMethod)
 	if err != nil {
 		return nil, errors.Wrapf(err, "loading project config for version '%s'", versionStr)
 	}
@@ -1290,7 +1276,7 @@ func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, er
 			continue
 		}
 		if lastGoodVersion != nil {
-			project, _, err = FindAndTranslateProjectForVersion(lastGoodVersion.Id, projectId)
+			project, _, err = FindAndTranslateProjectForVersion(lastGoodVersion.Id, projectId, lastGoodVersion.ProjectStorageMethod)
 			if err != nil {
 				grip.Critical(message.WrapError(err, message.Fields{
 					"message": "last known good version has malformed config",
@@ -2124,19 +2110,9 @@ type VariantsAndTasksFromProject struct {
 
 // GetVariantsAndTasksFromPatchProject formats variants and tasks as used by the UI pages.
 func GetVariantsAndTasksFromPatchProject(ctx context.Context, p *patch.Patch) (*VariantsAndTasksFromProject, error) {
-	var ppStorageMethod ParserProjectStorageMethod
-	if p.Version != "" {
-		v, err := VersionFindOneId(p.Version)
-		if err != nil {
-			return nil, errors.Wrapf(err, "finding version '%s' for patch '%s'", p.Version, p.Id.Hex())
-		}
-		if v == nil {
-			return nil, errors.Errorf("version '%s' for patch '%s' not found", p.Version, p.Id.Hex())
-		}
-	}
-	project, _, err := FindAndTranslateProjectForPatch(ctx, p, ppStorageMethod)
+	project, _, err := FindAndTranslateProjectForPatch(ctx, p)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "finding and translating project")
 	}
 
 	// retrieve tasks and variant mappings' names

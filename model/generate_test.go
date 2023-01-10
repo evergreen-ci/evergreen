@@ -687,7 +687,7 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	g := sampleGeneratedProject
 	g.Task = genTask
 
-	p, pp, err := FindAndTranslateProjectForVersion(v.Id, "proj")
+	p, pp, err := FindAndTranslateProjectForVersion(v.Id, "proj", v.ProjectStorageMethod)
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(p, pp, v)
 	s.Require().NoError(err)
@@ -775,7 +775,7 @@ func (s *GenerateSuite) TestSaveWithAlreadyGeneratedTasksAndVariants() {
 	pp.Id = "version_that_called_generate_task"
 	s.NoError(pp.Insert())
 	// Setup parser project to be partially generated.
-	p, pp, err := FindAndTranslateProjectForVersion(v.Id, "")
+	p, pp, err := FindAndTranslateProjectForVersion(v.Id, "", v.ProjectStorageMethod)
 	s.NoError(err)
 
 	g := partiallyGeneratedProject
@@ -860,7 +860,7 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 
 	g := sampleGeneratedProjectAddToBVOnly
 	g.Task = &tasksThatExist[0]
-	p, pp, err := FindAndTranslateProjectForVersion(v.Id, "")
+	p, pp, err := FindAndTranslateProjectForVersion(v.Id, "", v.ProjectStorageMethod)
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(p, pp, v)
 	s.NoError(err)
@@ -958,7 +958,7 @@ buildvariants:
 		},
 	}
 
-	p, pp, err := FindAndTranslateProjectForVersion(v.Id, "")
+	p, pp, err := FindAndTranslateProjectForVersion(v.Id, "", v.ProjectStorageMethod)
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(p, pp, v)
 	s.NoError(err)
@@ -1010,7 +1010,7 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 
 	g := smallGeneratedProject
 	g.Task = &taskThatExists
-	p, pp, err := FindAndTranslateProjectForVersion(v.Id, "")
+	p, pp, err := FindAndTranslateProjectForVersion(v.Id, "", v.ProjectStorageMethod)
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(p, pp, v)
 	s.Require().NoError(err)
