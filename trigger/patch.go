@@ -249,7 +249,6 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 		data.githubState = message.GithubStateFailure
 		data.githubDescription = fmt.Sprintf("patch finished in %s", finishTime.Sub(t.patch.StartTime).String())
 	}
-
 	if t.patch.IsGithubPRPatch() {
 		data.slack = append(data.slack, message.SlackAttachment{
 			Title:     "GitHub Pull Request",
