@@ -1125,6 +1125,17 @@ func (p PatchesByCreateTime) Swap(i, j int) {
 	p[i], p[j] = p[j], p[i]
 }
 
+func CollectiveStatus(patchId string) (string, error) {
+	p, err := FindOneId(patchId)
+	if err != nil {
+		return "", errors.Wrapf(err, "getting patch for version '%s'", patchId)
+	}
+	if p == nil {
+		return "", errors.Errorf("no patch found for version '%s'", patchId)
+	}
+	return p.CollectiveStatus()
+}
+
 // GetCollectiveStatus answers the question of what the patch status should be
 // when the patch status and the status of it's children are different
 func GetCollectiveStatus(statuses []string) string {

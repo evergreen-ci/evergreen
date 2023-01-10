@@ -1280,6 +1280,35 @@ func updateVersionStatus(v *Version) (string, error) {
 		}
 	}
 
+	p, err := patch.FindOneId(v.Id)
+	if err != nil {
+		return "", errors.Wrapf(err, "getting patch for version '%s'", v.Id)
+	}
+	if p == nil {
+		return "", errors.Errorf("no patch found for version '%s'", v.Id)
+	}
+
+	isDone, parentPatch, err := p.GetFamilyInformation()
+	if err != nil {
+		return "", errors.Wrapf(err, "getting family information for patch '%s'", p.Id.Hex())
+	}
+	if isDone {
+		collectiveStatus, err := p.CollectiveStatus()
+		if err != nil {
+			return "", errors.Wrapf(err, "getting collective status for patch '%s'", p.Id.Hex())
+		}
+		versionStatus, err := evergreen.PatchStatusToVersionStatus(collectiveStatus)
+		if err != nil {
+			return "", errors.Wrapf(err, "getting version status")
+		}
+		if parentPatch != nil {
+			event.LogVersionChildrenCompletionEvent(parentPatch.Id.Hex(), versionStatus, parentPatch.Author)
+		} else {
+			event.LogVersionChildrenCompletionEvent(p.Id.Hex(), versionStatus, p.Author)
+		}
+
+	}
+
 	return versionStatus, nil
 }
 
@@ -1382,28 +1411,6 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 		if err = UpdatePatchStatus(p, newVersionStatus, taskBuild.BuildVariant); err != nil {
 			return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
 		}
-
-		isDone, parentPatch, err := p.GetFamilyInformation()
-		if err != nil {
-			return errors.Wrapf(err, "getting family information for patch '%s'", p.Id.Hex())
-		}
-		if isDone {
-			collectiveStatus, err := p.CollectiveStatus()
-			if err != nil {
-				return errors.Wrapf(err, "getting collective status for patch '%s'", p.Id.Hex())
-			}
-			versionStatus, err := evergreen.PatchStatusToVersionStatus(collectiveStatus)
-			if err != nil {
-				return errors.Wrapf(err, "getting version status")
-			}
-			if parentPatch != nil {
-				event.LogVersionChildrenCompletionEvent(parentPatch.Id.Hex(), versionStatus, parentPatch.Author)
-			} else {
-				event.LogVersionChildrenCompletionEvent(p.Id.Hex(), versionStatus, p.Author)
-			}
-
-		}
-
 	}
 
 	return nil

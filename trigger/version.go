@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
@@ -106,6 +107,11 @@ func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride st
 		projectName = utility.FromStringPtr(api.ProjectIdentifier)
 	}
 
+	collectiveStatus, err := patch.CollectiveStatus(t.version.Id)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting collective status for patch")
+	}
+
 	data := commonTemplateData{
 		ID:             t.version.Id,
 		EventID:        t.event.ID,
@@ -119,7 +125,7 @@ func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride st
 			hasPatch:  evergreen.IsPatchRequester(t.version.Requester),
 			isChild:   false,
 		}),
-		PastTenseStatus:   t.data.Status,
+		PastTenseStatus:   collectiveStatus,
 		apiModel:          &api,
 		githubState:       message.GithubStatePending,
 		githubContext:     "evergreen",
