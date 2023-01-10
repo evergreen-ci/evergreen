@@ -19,7 +19,7 @@ func TestVersionByMostRecentNonIgnored(t *testing.T) {
 		Id:         "v1",
 		Identifier: "proj",
 		Requester:  evergreen.RepotrackerVersionRequester,
-		CreateTime: ts,
+		CreateTime: ts.Add(-1 * time.Second),
 	}
 	v2 := Version{
 		Id:         "v2",
@@ -31,10 +31,17 @@ func TestVersionByMostRecentNonIgnored(t *testing.T) {
 		Id:         "v3",
 		Identifier: "proj",
 		Requester:  evergreen.RepotrackerVersionRequester,
-		CreateTime: ts.Add(time.Second), // created too late
+		CreateTime: ts.Add(time.Minute), // created too late
+	}
+	// Should not get picked even though it is the most recent
+	v4 := Version{
+		Id:         "v4",
+		Identifier: "proj",
+		Requester:  evergreen.AdHocRequester,
+		CreateTime: ts,
 	}
 
-	assert.NoError(t, db.InsertMany(VersionCollection, v1, v2, v3))
+	assert.NoError(t, db.InsertMany(VersionCollection, v1, v2, v3, v4))
 
 	v, err := VersionFindOne(VersionByMostRecentNonIgnored("proj", ts))
 	assert.NoError(t, err)
