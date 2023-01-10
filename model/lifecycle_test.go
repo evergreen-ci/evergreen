@@ -213,20 +213,20 @@ func TestBuildSetPriority(t *testing.T) {
 
 func TestBuildRestart(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection))
+		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, VersionCollection, build.Collection))
 	}()
 
 	// Running a multi-document transaction requires the collections to exist
 	// first before any documents can be inserted.
-	require.NoError(t, db.CreateCollections(task.Collection, task.OldCollection))
+	require.NoError(t, db.CreateCollections(task.Collection, task.OldCollection, VersionCollection, build.Collection))
+	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection))
+	v := &Version{Id: "version"}
+	require.NoError(t, v.Insert())
+	b := &build.Build{Id: "build", Version: "version"}
+	require.NoError(t, b.Insert())
 	Convey("Restarting a build", t, func() {
-
 		Convey("with task abort should update the status of"+
-			" non in-progress tasks and abort in-progress ones", func() {
-
-			require.NoError(t, db.ClearCollections(build.Collection, task.Collection, task.OldCollection))
-			b := &build.Build{Id: "build"}
-			So(b.Insert(), ShouldBeNil)
+			" non in-progress tasks and abort in-progress ones and mark them to be reset", func() {
 
 			taskOne := &task.Task{
 				Id:          "task1",
@@ -246,7 +246,7 @@ func TestBuildRestart(t *testing.T) {
 			}
 			So(taskTwo.Insert(), ShouldBeNil)
 
-			So(RestartBuild(b.Id, []string{"task1", "task2"}, true, evergreen.DefaultTaskActivator), ShouldBeNil)
+			So(RestartBuild(b, []string{"task1", "task2"}, true, evergreen.DefaultTaskActivator), ShouldBeNil)
 			var err error
 			b, err = build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
@@ -258,15 +258,11 @@ func TestBuildRestart(t *testing.T) {
 			taskTwo, err = task.FindOne(db.Query(task.ById("task2")))
 			So(err, ShouldBeNil)
 			So(taskTwo.Aborted, ShouldEqual, true)
+			So(taskTwo.ResetWhenFinished, ShouldBeTrue)
 		})
 
 		Convey("without task abort should update the status"+
 			" of only those build tasks not in-progress", func() {
-
-			require.NoError(t, db.ClearCollections(build.Collection))
-			b := &build.Build{Id: "build"}
-			So(b.Insert(), ShouldBeNil)
-
 			taskThree := &task.Task{
 				Id:          "task3",
 				DisplayName: "task3",
@@ -285,10 +281,9 @@ func TestBuildRestart(t *testing.T) {
 			}
 			So(taskFour.Insert(), ShouldBeNil)
 
-			So(RestartBuild(b.Id, []string{"task3", "task4"}, false, evergreen.DefaultTaskActivator), ShouldBeNil)
+			So(RestartBuild(b, []string{"task3", "task4"}, false, evergreen.DefaultTaskActivator), ShouldBeNil)
 			var err error
 			b, err = build.FindOne(build.ById(b.Id))
-			So(err, ShouldBeNil)
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildStarted)
 			taskThree, err = task.FindOne(db.Query(task.ById("task3")))
@@ -298,6 +293,93 @@ func TestBuildRestart(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(taskFour.Aborted, ShouldEqual, false)
 			So(taskFour.Status, ShouldEqual, evergreen.TaskDispatched)
+		})
+
+		Convey("single host task group tasks be omitted from the immediate restart logic", func() {
+
+			taskFive := &task.Task{
+				Id:                "task5",
+				DisplayName:       "task5",
+				BuildId:           b.Id,
+				Status:            evergreen.TaskSucceeded,
+				Activated:         true,
+				TaskGroup:         "tg",
+				TaskGroupMaxHosts: 1,
+			}
+			So(taskFive.Insert(), ShouldBeNil)
+
+			taskSix := &task.Task{
+				Id:                "task6",
+				DisplayName:       "task6",
+				BuildId:           b.Id,
+				Status:            evergreen.TaskDispatched,
+				Activated:         true,
+				TaskGroup:         "tg",
+				TaskGroupMaxHosts: 1,
+			}
+			So(taskSix.Insert(), ShouldBeNil)
+
+			taskSeven := &task.Task{
+				Id:          "task7",
+				DisplayName: "task7",
+				BuildId:     b.Id,
+				Status:      evergreen.TaskSucceeded,
+				Activated:   true,
+			}
+			So(taskSeven.Insert(), ShouldBeNil)
+
+			So(RestartBuild(b, []string{"task5", "task6", "task7"}, false, evergreen.DefaultTaskActivator), ShouldBeNil)
+			var err error
+			b, err = build.FindOne(build.ById(b.Id))
+			So(err, ShouldBeNil)
+			So(b.Status, ShouldEqual, evergreen.BuildStarted)
+			taskFive, err = task.FindOne(db.Query(task.ById("task5")))
+			So(err, ShouldBeNil)
+			So(taskFive.Status, ShouldEqual, evergreen.TaskSucceeded)
+			So(taskFive.ResetWhenFinished, ShouldBeTrue)
+			taskSix, err = task.FindOne(db.Query(task.ById("task6")))
+			So(err, ShouldBeNil)
+			taskSeven, err = task.FindOne(db.Query(task.ById("task7")))
+			So(err, ShouldBeNil)
+			So(taskSeven.Status, ShouldEqual, evergreen.TaskUndispatched)
+		})
+
+		Convey("a fully completed single host task group should get reset", func() {
+			taskEight := &task.Task{
+				Id:                "task8",
+				DisplayName:       "task8",
+				BuildId:           b.Id,
+				Version:           v.Id,
+				Status:            evergreen.TaskSucceeded,
+				Activated:         true,
+				TaskGroup:         "tg2",
+				TaskGroupMaxHosts: 1,
+			}
+			So(taskEight.Insert(), ShouldBeNil)
+
+			taskNine := &task.Task{
+				Id:                "task9",
+				DisplayName:       "task9",
+				BuildId:           b.Id,
+				Version:           v.Id,
+				Status:            evergreen.TaskSucceeded,
+				Activated:         true,
+				TaskGroup:         "tg2",
+				TaskGroupMaxHosts: 1,
+			}
+			So(taskNine.Insert(), ShouldBeNil)
+
+			So(RestartBuild(b, []string{"task8", "task9"}, false, evergreen.DefaultTaskActivator), ShouldBeNil)
+			var err error
+			b, err = build.FindOne(build.ById(b.Id))
+			So(err, ShouldBeNil)
+			So(b.Status, ShouldEqual, evergreen.BuildStarted)
+			taskEight, err = task.FindOne(db.Query(task.ById("task8")))
+			So(err, ShouldBeNil)
+			So(taskEight.Status, ShouldEqual, evergreen.TaskUndispatched)
+			taskNine, err = task.FindOne(db.Query(task.ById("task9")))
+			So(err, ShouldBeNil)
+			So(taskNine.Status, ShouldEqual, evergreen.TaskUndispatched)
 		})
 
 	})
@@ -1969,6 +2051,8 @@ func TestVersionRestart(t *testing.T) {
 	assert.True(dbTask.ResetWhenFinished)
 	dbVersion, err = VersionFindOneId("version")
 	assert.NoError(err)
+	// Version status should not update if only aborting tasks
+	assert.Equal("", dbVersion.Status)
 
 	// test that not aborting in-progress tasks does not reset them
 	assert.NoError(resetTaskData())
@@ -1981,6 +2065,8 @@ func TestVersionRestart(t *testing.T) {
 	assert.Equal(evergreen.TaskDispatched, dbTask.Status)
 	dbVersion, err = VersionFindOneId("version")
 	assert.NoError(err)
+	// Version status should not update if no tasks are being reset.
+	assert.Equal("", dbVersion.Status)
 }
 
 func TestDisplayTaskRestart(t *testing.T) {
@@ -2001,7 +2087,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 
 	// test restarting a build
 	assert.NoError(resetTaskData())
-	assert.NoError(RestartBuild("build3", displayTasks, false, "test"))
+	assert.NoError(RestartBuild(&build.Build{Id: "build3", Version: "version"}, displayTasks, false, "test"))
 	tasks, err = task.FindAll(db.Query(task.ByIds(allTasks)))
 	assert.NoError(err)
 	assert.Len(tasks, 3)

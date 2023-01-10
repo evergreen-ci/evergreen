@@ -176,9 +176,6 @@ func (s *BuildConnectorRestartSuite) SetupSuite() {
 }
 
 func (s *BuildConnectorRestartSuite) TestRestart() {
-	err := RestartAllBuildTasks("build1", "user1")
-	s.NoError(err)
-
-	err = RestartAllBuildTasks("build1", "user1")
+	err := RestartBuild(&build.Build{Id: "build1"}, []string{}, true, "user1")
 	s.NoError(err)
 }

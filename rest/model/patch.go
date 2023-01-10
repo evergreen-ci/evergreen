@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -151,12 +152,18 @@ func (apiPatch *APIPatch) GetCommitQueuePosition() error {
 }
 
 func (apiPatch *APIPatch) GetIdentifier() {
-	if apiPatch.ProjectIdentifier != nil {
+	if utility.FromStringPtr(apiPatch.ProjectIdentifier) != "" {
 		return
 	}
 	if utility.FromStringPtr(apiPatch.ProjectId) != "" {
 		identifier, err := model.GetIdentifierForProject(utility.FromStringPtr(apiPatch.ProjectId))
-		if err == nil {
+
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "could not get identifier for project",
+			"project": apiPatch.ProjectId,
+		}))
+
+		if err == nil && identifier != "" {
 			apiPatch.ProjectIdentifier = utility.ToStringPtr(identifier)
 		}
 	}
