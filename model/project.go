@@ -2124,7 +2124,17 @@ type VariantsAndTasksFromProject struct {
 
 // GetVariantsAndTasksFromPatchProject formats variants and tasks as used by the UI pages.
 func GetVariantsAndTasksFromPatchProject(ctx context.Context, p *patch.Patch) (*VariantsAndTasksFromProject, error) {
-	project, _, err := FindAndTranslateProjectForPatch(ctx, p)
+	var ppStorageMethod ParserProjectStorageMethod
+	if p.Version != "" {
+		v, err := VersionFindOneId(p.Version)
+		if err != nil {
+			return nil, errors.Wrapf(err, "finding version '%s' for patch '%s'", p.Version, p.Id.Hex())
+		}
+		if v == nil {
+			return nil, errors.Errorf("version '%s' for patch '%s' not found", p.Version, p.Id.Hex())
+		}
+	}
+	project, _, err := FindAndTranslateProjectForPatch(ctx, p, ppStorageMethod)
 	if err != nil {
 		return nil, err
 	}

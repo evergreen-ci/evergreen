@@ -117,7 +117,8 @@ type PatchUpdate struct {
 // Returns an http status code and error.
 func ConfigurePatch(ctx context.Context, p *patch.Patch, version *Version, proj *ProjectRef, patchUpdateReq PatchUpdate) (int, error) {
 	var err error
-	project, _, err := FindAndTranslateProjectForPatch(ctx, p)
+	// kim: TODO: make sure version is guaranteed non-nil here.
+	project, _, err := FindAndTranslateProjectForPatch(ctx, p, version.ProjectStorageMethod)
 	if err != nil {
 		return http.StatusInternalServerError, errors.Wrap(err, "unmarshalling project config")
 	}
@@ -214,7 +215,10 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 	}
 	// if the patched config exists, use that as the project file bytes.
 	if p.PatchedParserProject != "" {
-		project, _, err := FindAndTranslateProjectForPatch(ctx, p)
+		// The parser project storage method does not matter here because this
+		// function will load from the patched parser project string stored in
+		// the patch document.
+		project, _, err := FindAndTranslateProjectForPatch(ctx, p, "")
 		if err != nil {
 			return nil, nil, err
 		}
@@ -870,6 +874,7 @@ func (e *EnqueuePatch) String() string {
 	return fmt.Sprintf("enqueue patch '%s'", e.PatchID)
 }
 
+// kim: NOTE: this is to fulfill the grip sender interface.
 func (e *EnqueuePatch) Send() error {
 	existingPatch, err := patch.FindOneId(e.PatchID)
 	if err != nil {
@@ -892,6 +897,8 @@ func (e *EnqueuePatch) Send() error {
 		return errors.Errorf("no commit queue for project '%s'", existingPatch.Project)
 	}
 
+	// kim: QUESTION: not sure if parser project storage method matters here or
+	// not, but if it does, we have to use it.
 	ctx := context.Background()
 	mergePatch, err := MakeMergePatchFromExisting(ctx, existingPatch, "")
 	if err != nil {
@@ -924,7 +931,10 @@ func MakeMergePatchFromExisting(ctx context.Context, existingPatch *patch.Patch,
 		return nil, errors.WithStack(err)
 	}
 
-	project, pp, err := FindAndTranslateProjectForPatch(ctx, existingPatch)
+	// kim: QUESTION: not sure if parser project storage matters here? It
+	// depends on whether PatchedParserProject is guaranteed to be set or not
+	// here.
+	project, pp, err := FindAndTranslateProjectForPatch(ctx, existingPatch, "")
 	if err != nil {
 		return nil, errors.Wrap(err, "loading existing project")
 	}

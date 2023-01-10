@@ -61,8 +61,8 @@ func (b *buildGetHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding tasks in build '%s'", b.buildId))
 		}
 	}
-	// kim: NOTE: had to add a find for the version. Make sure this doesn't
-	// break anything.
+	// kim: NOTE: had to add a find for the version. Make sure this doesn't need
+	// to fall back to using the patched parser project.
 	v, err := serviceModel.VersionFindOneId(foundBuild.Version)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding version '%s'", foundBuild.Version))
