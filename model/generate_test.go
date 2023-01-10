@@ -712,7 +712,8 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	pp, err = GetParserProjectStorage(v.ProjectStorageMethod).FindOneByID(s.ctx, v.Id)
 	s.NoError(err)
 	s.Require().NotNil(pp)
-	s.Equal(1, pp.ConfigUpdateNumber)
+	s.Len(pp.BuildVariants, 3)
+	s.Len(pp.Tasks, 6)
 	builds, err := build.FindBuildsByVersions([]string{v.Id})
 	s.NoError(err)
 	tasks, err := task.FindAll(db.Query(bson.M{task.VersionKey: v.Id})) // with display
@@ -741,6 +742,9 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 }
 
 func (s *GenerateSuite) TestSaveWithAlreadyGeneratedTasksAndVariants() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	generatorTask := &task.Task{
 		Id:      "generator",
 		BuildId: "generate_build",
@@ -783,7 +787,7 @@ func (s *GenerateSuite) TestSaveWithAlreadyGeneratedTasksAndVariants() {
 	p, pp, v, err = g.NewVersion(p, pp, v)
 	s.NoError(err)
 	pp.UpdatedByGenerators = []string{generatorTask.Id}
-	s.NoError(pp.TryUpsert())
+	s.NoError(GetParserProjectStorage(ProjectStorageMethodDB).UpsertOne(ctx, pp))
 
 	// Shouldn't error trying to add the same generated project.
 	p, pp, v, err = g.NewVersion(p, pp, v)
@@ -873,12 +877,21 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 	pp, err = GetParserProjectStorage(v.ProjectStorageMethod).FindOneByID(s.ctx, v.Id)
 	s.NoError(err)
 	s.Require().NotNil(pp)
-	s.Equal(1, pp.ConfigUpdateNumber)
+	s.Require().Len(pp.BuildVariants, 1, "parser project should have same build variant")
+	var taskWithDepsFound bool
+	const expectedTask = "task_that_has_dependencies"
+	for _, t := range pp.BuildVariants[0].Tasks {
+		if t.Name == expectedTask {
+			taskWithDepsFound = true
+			break
+		}
+	}
+	s.True(taskWithDepsFound, "task '%s' should have been added to build variant", expectedTask)
 
 	tasks := []task.Task{}
 	err = db.FindAllQ(task.Collection, db.Query(bson.M{}), &tasks)
 	s.NoError(err)
-	err = db.FindAllQ(task.Collection, db.Query(bson.M{"display_name": "task_that_has_dependencies"}), &tasks)
+	err = db.FindAllQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: expectedTask}), &tasks)
 	s.NoError(err)
 	s.Require().Len(tasks, 1)
 	s.Require().Len(tasks[0].DependsOn, 3)
@@ -966,12 +979,12 @@ buildvariants:
 
 	// the depended-on task is created in the existing variant
 	saySomething := task.Task{}
-	err = db.FindOneQ(task.Collection, db.Query(bson.M{"display_name": "say_something"}), &saySomething)
+	err = db.FindOneQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: "say_something"}), &saySomething)
 	s.NoError(err)
 
 	// the dependent task depends on the depended-on task
 	taskWithDeps := task.Task{}
-	err = db.FindOneQ(task.Collection, db.Query(bson.M{"display_name": "task_that_has_dependencies"}), &taskWithDeps)
+	err = db.FindOneQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: "task_that_has_dependencies"}), &taskWithDeps)
 	s.NoError(err)
 	s.Require().Len(taskWithDeps.DependsOn, 1)
 	s.Equal(taskWithDeps.DependsOn[0].TaskId, saySomething.Id)
@@ -1023,7 +1036,16 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 	pp, err = GetParserProjectStorage(v.ProjectStorageMethod).FindOneByID(s.ctx, v.Id)
 	s.NoError(err)
 	s.Require().NotNil(pp)
-	s.Equal(1, pp.ConfigUpdateNumber)
+	s.Require().Len(pp.BuildVariants, 1, "parser project should have same build variant")
+	const expectedDisplayTask = "my_display_task"
+	var dtFound bool
+	for _, dt := range pp.BuildVariants[0].DisplayTasks {
+		if dt.Name == expectedDisplayTask {
+			dtFound = true
+			break
+		}
+	}
+	s.True(dtFound, "display task '%s' should have been added", expectedDisplayTask)
 
 	tasks := []task.Task{}
 	s.NoError(db.FindAllQ(task.Collection, db.Query(bson.M{}), &tasks))
@@ -1304,64 +1326,6 @@ func (s *GenerateSuite) TestMergeGeneratedProjectsWithNoTasks() {
 	s.Require().NotNil(merged)
 	s.Require().Len(merged.BuildVariants, 1)
 	s.Len(merged.BuildVariants[0].DisplayTasks, 1)
-}
-
-func TestUpdateParserProject(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	alreadyUpdatedTestName := "TaskAlreadyUpdatedParserProject"
-	withZeroTestName := "WithZero"
-	taskId := "tId"
-	for testName, setupTest := range map[string]func(t *testing.T, v *Version, pp *ParserProject){
-		"noParserProject": func(t *testing.T, v *Version, pp *ParserProject) {
-			assert.NoError(t, v.Insert())
-		},
-		"ParserProjectMoreRecent": func(t *testing.T, v *Version, pp *ParserProject) {
-			pp.ConfigUpdateNumber = 5
-			assert.NoError(t, v.Insert())
-			assert.NoError(t, pp.Insert())
-		},
-		"ConfigMostRecent": func(t *testing.T, v *Version, pp *ParserProject) {
-			pp.ConfigUpdateNumber = 1
-			assert.NoError(t, v.Insert())
-			assert.NoError(t, pp.Insert())
-		},
-		withZeroTestName: func(t *testing.T, v *Version, pp *ParserProject) {
-			assert.NoError(t, v.Insert())
-			assert.NoError(t, pp.Insert())
-		},
-		alreadyUpdatedTestName: func(t *testing.T, v *Version, pp *ParserProject) {
-			pp.UpdatedByGenerators = []string{taskId}
-			pp.ConfigUpdateNumber = 1
-			assert.NoError(t, v.Insert())
-			assert.NoError(t, pp.Insert())
-		},
-	} {
-		t.Run(testName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(VersionCollection, ParserProjectCollection))
-			v := &Version{Id: "my-version"}
-			pp := &ParserProject{Id: "my-version"}
-			setupTest(t, v, pp)
-			assert.NoError(t, updateParserProject(v, pp, taskId))
-			v, err := VersionFindOneId(v.Id)
-			assert.NoError(t, err)
-			require.NotNil(t, v)
-			pp, err = GetParserProjectStorage(v.ProjectStorageMethod).FindOneByID(ctx, v.Id)
-			assert.NoError(t, err)
-			require.NotNil(t, pp)
-			assert.Len(t, pp.UpdatedByGenerators, 1)
-			assert.Contains(t, pp.UpdatedByGenerators, taskId)
-			if testName == withZeroTestName {
-				assert.Equal(t, 1, pp.ConfigUpdateNumber)
-				return
-			} else if testName == alreadyUpdatedTestName {
-				// Not changed because we've already updated.
-				assert.Equal(t, 1, pp.ConfigUpdateNumber)
-				return
-			}
-		})
-	}
 }
 
 func TestAddDependencies(t *testing.T) {

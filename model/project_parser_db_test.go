@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -9,6 +10,9 @@ import (
 )
 
 func TestFindExpansionsForVariant(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert.NoError(t, db.ClearCollections(ParserProjectCollection))
 	pp := ParserProject{
 		Id: "v1",
@@ -58,7 +62,7 @@ func TestFindExpansionsForVariant(t *testing.T) {
 	}
 
 	v := &Version{Id: "v1"}
-	assert.NoError(t, pp.TryUpsert())
+	assert.NoError(t, GetParserProjectStorage(ProjectStorageMethodS3).UpsertOne(ctx, &pp))
 	expansions, err := FindExpansionsForVariant(v, "myBV")
 	assert.NoError(t, err)
 	assert.Equal(t, expansions["hello"], "world")

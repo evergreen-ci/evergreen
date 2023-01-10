@@ -53,8 +53,7 @@ const EmptyConfigurationError = "received empty configuration file"
 // to allow for flexible handling.
 type ParserProject struct {
 	// Id and ConfigdUpdateNumber are not pointers because they are only used internally
-	Id                 string `yaml:"_id" bson:"_id"` // should be the same as the version's ID
-	ConfigUpdateNumber int    `yaml:"config_number,omitempty" bson:"config_number,omitempty"`
+	Id string `yaml:"_id" bson:"_id"` // should be the same as the version's ID
 	// UpdatedByGenerators is used to determine if the parser project needs to be re-saved or not.
 	UpdatedByGenerators []string `yaml:"updated_by_generators,omitempty" bson:"updated_by_generators,omitempty"`
 	// List of yamls to merge

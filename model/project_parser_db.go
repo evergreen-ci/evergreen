@@ -10,7 +10,6 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -20,7 +19,6 @@ const (
 
 var (
 	ParserProjectIdKey                = bsonutil.MustHaveTag(ParserProject{}, "Id")
-	ParserProjectConfigNumberKey      = bsonutil.MustHaveTag(ParserProject{}, "ConfigUpdateNumber")
 	ParserProjectEnabledKey           = bsonutil.MustHaveTag(ParserProject{}, "Enabled")
 	ParserProjectStepbackKey          = bsonutil.MustHaveTag(ParserProject{}, "Stepback")
 	ParserProjectPreErrorFailsTaskKey = bsonutil.MustHaveTag(ParserProject{}, "PreErrorFailsTask")
@@ -126,58 +124,6 @@ func FindExpansionsForVariant(v *Version, variant string) (util.Expansions, erro
 	return nil, errors.New("could not find variant")
 }
 
-func checkConfigNumberQuery(id string, configNum int) bson.M {
-	q := bson.M{ParserProjectIdKey: id}
-	if configNum == 0 {
-		q["$or"] = []bson.M{
-			{ParserProjectConfigNumberKey: bson.M{"$exists": false}},
-			{ParserProjectConfigNumberKey: configNum},
-		}
-		return q
-	}
-
-	q[ParserProjectConfigNumberKey] = configNum
-	return q
-}
-
-// TryUpsert suppresses the error of inserting if it's a duplicate key error
-// and attempts to upsert if config number matches.
-// kim: TODO: add function parameter for storage method.
-func (pp *ParserProject) TryUpsert() error {
-	err := ParserProjectUpsertOne(checkConfigNumberQuery(pp.Id, pp.ConfigUpdateNumber), pp)
-	if !db.IsDuplicateKey(err) {
-		return err
-	}
-
-	// log this error but don't return it
-	grip.Debug(message.WrapError(err, message.Fields{
-		"message":                      "parser project not upserted",
-		"operation":                    "TryUpsert",
-		"version":                      pp.Id,
-		"attempted_to_update_with_num": pp.ConfigUpdateNumber,
-	}))
-
-	return nil
-}
-
-// UpsertWithConfigNumber inserts project if it DNE. Otherwise, updates if the
-// existing config number is less than or equal to the new config number.
-// If shouldEqual, only update if the config update number matches.
-// kim: TODO: replace with just TryUpsert, since generate.tasks run with a job
-// scope.
-func (pp *ParserProject) UpsertWithConfigNumber(updateNum int) error {
-	if pp.Id == "" {
-		return errors.New("no version ID given")
-	}
-	expectedNum := pp.ConfigUpdateNumber
-	pp.ConfigUpdateNumber = updateNum
-	if err := ParserProjectUpsertOne(checkConfigNumberQuery(pp.Id, expectedNum), pp); err != nil {
-		// expose all errors to check duplicate key errors for a race
-		return errors.Wrapf(err, "upserting parser project '%s'", pp.Id)
-	}
-	return nil
-}
-
 // ParserProjectDBStorage implements the ParserProjectStorage interface to
 // access parser projects from the DB.
 type ParserProjectDBStorage struct{}
@@ -198,5 +144,5 @@ func (s ParserProjectDBStorage) FindOneByIDWithFields(_ context.Context, id stri
 // UpsertOne replaces a parser project in the DB if one exists with the same ID.
 // Otherwise, if it does not exist yet, it inserts a new parser project.
 func (s ParserProjectDBStorage) UpsertOne(ctx context.Context, pp *ParserProject) error {
-	return ParserProjectUpsertOne(ParserProjectById(pp.Id), pp)
+	return ParserProjectUpsertOne(bson.M{ParserProjectIdKey: pp.Id}, pp)
 }

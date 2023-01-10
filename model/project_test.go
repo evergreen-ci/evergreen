@@ -2387,6 +2387,7 @@ func TestDependenciesForTaskUnit(t *testing.T) {
 }
 
 func TestGetVariantsAndTasksFromPatchProject(t *testing.T) {
+	require.NoError(t, db.ClearCollections(VersionCollection, ParserProjectCollection))
 	ctx := context.Background()
 	patchedConfig := `
 buildvariants:
@@ -2408,19 +2409,33 @@ tasks:
     disable: true
   - name: task3
 `
-	p := &patch.Patch{PatchedParserProject: patchedConfig}
+
+	const versionID = "version"
+	p := &patch.Patch{
+		Version:              versionID,
+		PatchedParserProject: patchedConfig,
+	}
 	variantsAndTasks, err := GetVariantsAndTasksFromPatchProject(ctx, p)
 	assert.NoError(t, err)
 	assert.Len(t, variantsAndTasks.Variants["bv1"].Tasks, 1)
 
-	// Verify this still works if the patch config is stored
+	// Verify this still works if the patch document doesn't have a patched
+	// parser project, meaning it should use the actual parser project document.
+	v := Version{
+		Id:                   versionID,
+		ProjectStorageMethod: ProjectStorageMethodDB,
+	}
+	require.NoError(t, v.Insert())
+
 	proj := &Project{}
 	pp, err := LoadProjectInto(ctx, []byte(patchedConfig), nil, "", proj)
+	pp.Id = v.Id
 	assert.NoError(t, err)
 	assert.NotNil(t, pp)
 	assert.NoError(t, pp.Insert())
 	p.PatchedParserProject = ""
 	variantsAndTasks, err = GetVariantsAndTasksFromPatchProject(ctx, p)
 	assert.NoError(t, err)
+	require.NotZero(t, variantsAndTasks)
 	assert.Len(t, variantsAndTasks.Variants["bv1"].Tasks, 1)
 }

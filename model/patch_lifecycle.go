@@ -870,7 +870,6 @@ func (e *EnqueuePatch) String() string {
 	return fmt.Sprintf("enqueue patch '%s'", e.PatchID)
 }
 
-// kim: NOTE: this is to fulfill the grip sender interface.
 func (e *EnqueuePatch) Send() error {
 	existingPatch, err := patch.FindOneId(e.PatchID)
 	if err != nil {

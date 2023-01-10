@@ -55,6 +55,10 @@ func NewGenerateTasksJob(versionID, taskID string, ts string) amboy.Job {
 	j.SetID(fmt.Sprintf("%s-%s-%s", generateTasksJobName, taskID, ts))
 	versionScope := fmt.Sprintf("%s.%s", generateTasksJobName, versionID)
 	taskScope := fmt.Sprintf("%s.%s", generateTasksJobName, taskID)
+	// Setting the version as one of the scopes ensures that, for a given
+	// version, only one generate.tasks job can run at a time. Setting the task
+	// scope as an enqueued scope ensures that, for a given task in a version,
+	// there's only one job that runs generate.tasks on behalf of that task.
 	j.SetScopes([]string{versionScope, taskScope})
 	j.SetEnqueueScopes(taskScope)
 	return j
@@ -217,7 +221,8 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	return nil
 }
 
-// handleError return mongo.ErrNoDocuments if another job has raced, the passed in error otherwise.
+// handleError return mongo.ErrNoDocuments if generate.tasks has already run.
+// Otherwise, it returns the given error.
 func (j *generateTasksJob) handleError(pp *model.ParserProject, v *model.Version, handledError error) error {
 	// Get task again, to exit nil if another generator finished, which caused us to error.
 	// Checking this again here makes it very unlikely that there is a race, because both
@@ -239,19 +244,6 @@ func (j *generateTasksJob) handleError(pp *model.ParserProject, v *model.Version
 		return mongo.ErrNoDocuments
 	}
 
-	if v == nil {
-		return handledError
-	}
-	ppFromDB, err := model.ParserProjectFindOne(model.ParserProjectById(v.Id).WithFields(model.ParserProjectConfigNumberKey))
-	if err != nil {
-		return errors.Wrapf(err, "finding parser project '%s'", v.Id)
-	}
-	// If the config update number has been updated, then another task has raced with us.
-	// The error is therefore not an actual configuration problem but instead a symptom
-	// of the race.
-	if pp != nil && ppFromDB != nil && pp.ConfigUpdateNumber != ppFromDB.ConfigUpdateNumber {
-		return mongo.ErrNoDocuments
-	}
 	return handledError
 }
 
