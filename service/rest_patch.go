@@ -63,16 +63,16 @@ func (restapi restAPI) getPatchConfig(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{Message: "patch not found"})
 		return
 	}
+
 	w.Header().Set("Content-Type", "application/x-yaml; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
+
 	if projCtx.Patch.PatchedParserProject != "" {
 		_, err := w.Write([]byte(projCtx.Patch.PatchedParserProject))
 		grip.Warning(errors.Wrap(err, "writing patched parser project"))
 		return
 	}
 
-	// kim: NOTE: as part of LoadContext, this loads the version if it exists
-	// (and therefore, will load if the parser project exists).
 	if projCtx.Version == nil {
 		grip.Warning(message.Fields{
 			"message":  "cannot get parser project because version is nil",
@@ -89,10 +89,10 @@ func (restapi restAPI) getPatchConfig(w http.ResponseWriter, r *http.Request) {
 		if err == nil {
 			_, err = w.Write(projBytes)
 		}
-		grip.Warning(message.WrapError(err, message.Fields{
-			"message":  "could not marshal and write parser project to response",
-			"route":    "/patches/{patch_id}/config",
-			"patch_id": projCtx.Patch.Id.Hex(),
-		}))
 	}
+	grip.Warning(message.WrapError(err, message.Fields{
+		"message":  "could not marshal and write parser project to response",
+		"route":    "/patches/{patch_id}/config",
+		"patch_id": projCtx.Patch.Id.Hex(),
+	}))
 }

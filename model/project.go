@@ -1125,7 +1125,11 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 		}
 	}
 
-	bvExpansions, err := FindExpansionsForVariant(v, t.BuildVariant)
+	// kim: TODO: reconsider putting an untimed context here.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	bvExpansions, err := FindExpansionsForVariant(ctx, v, t.BuildVariant)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting expansions for variant")
 	}

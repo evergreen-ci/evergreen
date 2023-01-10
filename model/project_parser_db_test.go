@@ -62,13 +62,13 @@ func TestFindExpansionsForVariant(t *testing.T) {
 	}
 
 	v := &Version{Id: "v1"}
-	assert.NoError(t, GetParserProjectStorage(ProjectStorageMethodS3).UpsertOne(ctx, &pp))
-	expansions, err := FindExpansionsForVariant(v, "myBV")
+	assert.NoError(t, GetParserProjectStorage(ProjectStorageMethodDB).UpsertOne(ctx, &pp))
+	expansions, err := FindExpansionsForVariant(ctx, v, "myBV")
 	assert.NoError(t, err)
 	assert.Equal(t, expansions["hello"], "world")
 	assert.Equal(t, expansions["goodbye"], "mars")
 	assert.Empty(t, expansions["milky"])
-	expansions, err = FindExpansionsForVariant(v, "test__version~latest_os~windows-64")
+	expansions, err = FindExpansionsForVariant(ctx, v, "test__version~latest_os~windows-64")
 	assert.NoError(t, err)
 	assert.Equal(t, expansions["VERSION"], "latest")
 	assert.Equal(t, expansions["OS"], "windows-64")

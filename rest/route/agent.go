@@ -792,7 +792,7 @@ func (h *fetchExpansionsForTaskHandler) Run(ctx context.Context) gimlet.Responde
 			Message:    fmt.Sprintf("version '%s' not found", t.Version),
 		})
 	}
-	projParams, err := model.FindParametersForVersion(v)
+	projParams, err := model.FindParametersForVersion(ctx, v)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}

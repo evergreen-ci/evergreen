@@ -894,8 +894,7 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(patchDoc *patch.Patch) error
 	}
 
 	patchDoc.Githash = v.Revision
-	// kim: TODO: make ticket for this issue.
-	// TODO (EVG-XXX): This is storing the entire parser project of the latest
+	// TODO (EVG-18700): This is storing the entire parser project of the latest
 	// version on the waterfall into the patch document, which is not really an
 	// intended usage of the patched parser project field. The patched parser
 	// project is supposed to be the parser project directly from the YAML file

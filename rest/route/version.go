@@ -158,9 +158,16 @@ func (h *buildsForVersionHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "getting builds"))
 	}
 
-	pp, err := dbModel.ParserProjectFindOneById(h.versionId)
+	v, err := dbModel.VersionFindOneId(h.versionId)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting project info"))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "getting version '%s'", h.versionId))
+	}
+	var pp *dbModel.ParserProject
+	if v != nil {
+		pp, err = dbModel.GetParserProjectStorage(v.ProjectStorageMethod).FindOneByID(ctx, h.versionId)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting project info"))
+		}
 	}
 
 	buildModels := []model.APIBuild{}

@@ -924,9 +924,6 @@ func MakeMergePatchFromExisting(ctx context.Context, existingPatch *patch.Patch,
 		return nil, errors.WithStack(err)
 	}
 
-	// kim: QUESTION: not sure if parser project storage matters here? It
-	// depends on whether PatchedParserProject is guaranteed to be set or not
-	// here.
 	project, pp, err := FindAndTranslateProjectForPatch(ctx, existingPatch)
 	if err != nil {
 		return nil, errors.Wrap(err, "loading existing project")

@@ -50,11 +50,10 @@ var (
 	ParserProjectCreateTimeKey        = bsonutil.MustHaveTag(ParserProject{}, "CreateTime")
 )
 
-// ParserProjectFindOneById returns the parser project for the version
-// kim: TODO: put find one by ID behind interface.
-// kim: TODO: replace usages of this.
-func ParserProjectFindOneById(id string) (*ParserProject, error) {
-	pp, err := ParserProjectFindOne(ParserProjectById(id))
+// ParserProjectFindOneById returns the parser project from the DB for the
+// given ID.
+func parserProjectFindOneById(id string) (*ParserProject, error) {
+	pp, err := parserProjectFindOne(parserProjectById(id))
 	if err != nil {
 		return nil, err
 	}
@@ -64,9 +63,8 @@ func ParserProjectFindOneById(id string) (*ParserProject, error) {
 	return pp, nil
 }
 
-// ParserProjectFindOne finds a parser project with a given query.
-// kim: TODO: put find one with fields behind interface.
-func ParserProjectFindOne(query db.Q) (*ParserProject, error) {
+// parserProjectFindOne finds a parser project in the DB with a given query.
+func parserProjectFindOne(query db.Q) (*ParserProject, error) {
 	project := &ParserProject{}
 	err := db.FindOneQ(ParserProjectCollection, query, project)
 	if adb.ResultsNotFound(err) {
@@ -75,14 +73,13 @@ func ParserProjectFindOne(query db.Q) (*ParserProject, error) {
 	return project, err
 }
 
-// ParserProjectById returns a query to find a parser project by id.
-func ParserProjectById(id string) db.Q {
+// parserProjectById returns a DB query to find a parser project by ID.
+func parserProjectById(id string) db.Q {
 	return db.Query(bson.M{ParserProjectIdKey: id})
 }
 
-// ParserProjectUpsertOne updates one project
-// kim: TODO: put upsert one into interface.
-func ParserProjectUpsertOne(query interface{}, update interface{}) error {
+// parserProjectUpsertOne updates one parser project in the DB.
+func parserProjectUpsertOne(query interface{}, update interface{}) error {
 	_, err := db.Upsert(
 		ParserProjectCollection,
 		query,
@@ -92,20 +89,16 @@ func ParserProjectUpsertOne(query interface{}, update interface{}) error {
 	return err
 }
 
-// kim: TODO: use parser project storage method to decide how to do find one.
-// kim: TODO: add doc comment
-func FindParametersForVersion(v *Version) ([]patch.Parameter, error) {
-	pp, err := ParserProjectFindOne(ParserProjectById(v.Id).WithFields(ParserProjectParametersKey))
+func FindParametersForVersion(ctx context.Context, v *Version) ([]patch.Parameter, error) {
+	pp, err := GetParserProjectStorage(v.ProjectStorageMethod).FindOneByIDWithFields(ctx, v.Id, ParserProjectParametersKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding parser project")
 	}
 	return pp.GetParameters(), nil
 }
 
-// kim: TODO: use parser project storage method to decide how to do find one.
-// kim: TODO: add doc comment
-func FindExpansionsForVariant(v *Version, variant string) (util.Expansions, error) {
-	pp, err := ParserProjectFindOne(ParserProjectById(v.Id).WithFields(ParserProjectBuildVariantsKey, ParserProjectAxesKey))
+func FindExpansionsForVariant(ctx context.Context, v *Version, variant string) (util.Expansions, error) {
+	pp, err := GetParserProjectStorage(v.ProjectStorageMethod).FindOneByIDWithFields(ctx, v.Id, ParserProjectBuildVariantsKey, ParserProjectAxesKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding parser project")
 	}
@@ -125,24 +118,24 @@ func FindExpansionsForVariant(v *Version, variant string) (util.Expansions, erro
 }
 
 // ParserProjectDBStorage implements the ParserProjectStorage interface to
-// access parser projects from the DB.
+// access parser projects stored in the DB.
 type ParserProjectDBStorage struct{}
 
 // FindOneByID finds a parser project from the DB by its ID. This ignores the
 // context parameter.
 func (s ParserProjectDBStorage) FindOneByID(_ context.Context, id string) (*ParserProject, error) {
-	return ParserProjectFindOneById(id)
+	return parserProjectFindOneById(id)
 }
 
 // FindOneByIDWithFields returns the parser project from the DB with only the
 // requested fields populated. This may be more efficient than fetching the
 // entire parser project. This ignores the context parameter.
 func (s ParserProjectDBStorage) FindOneByIDWithFields(_ context.Context, id string, fields ...string) (*ParserProject, error) {
-	return ParserProjectFindOne(ParserProjectById(id).WithFields(fields...))
+	return parserProjectFindOne(parserProjectById(id).WithFields(fields...))
 }
 
 // UpsertOne replaces a parser project in the DB if one exists with the same ID.
 // Otherwise, if it does not exist yet, it inserts a new parser project.
 func (s ParserProjectDBStorage) UpsertOne(ctx context.Context, pp *ParserProject) error {
-	return ParserProjectUpsertOne(bson.M{ParserProjectIdKey: pp.Id}, pp)
+	return parserProjectUpsertOne(bson.M{ParserProjectIdKey: pp.Id}, pp)
 }
