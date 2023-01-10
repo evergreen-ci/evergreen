@@ -5,11 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -142,135 +140,6 @@ func TestFindTask(t *testing.T) {
 	assert.Equal("six", item.Id)
 	item, _ = q.FindNextTask(TaskSpec{Group: "bar", Project: "a", Version: "b", BuildVariant: "a"})
 	assert.Equal("two", item.Id)
-}
-
-func TestBlockTaskGroupTasks(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-	require.NoError(db.ClearCollections(TaskQueuesCollection, task.Collection, ProjectRefCollection, VersionCollection))
-
-	projectRef := &ProjectRef{Id: "a"}
-	assert.Nil(projectRef.Insert())
-	yml := `
-task_groups:
-- name: foo
-  tasks:
-  - task_id
-  - one
-tasks:
-- name: task_id
-- name: one
-`
-	v := Version{
-		Id:        "b",
-		Requester: evergreen.RepotrackerVersionRequester,
-	}
-	require.NoError(v.Insert())
-	pp := ParserProject{}
-	err := util.UnmarshalYAMLWithFallback([]byte(yml), &pp)
-	require.NoError(err)
-	pp.Id = "b"
-	require.NoError(pp.Insert())
-	tasks := []task.Task{
-		{
-			Id:                "task_id_1",
-			DisplayName:       "task_id",
-			TaskGroup:         "foo",
-			TaskGroupMaxHosts: 1,
-			BuildVariant:      "a",
-			Version:           "b",
-			Project:           "a",
-			Revision:          "b",
-			DistroId:          "distro_1",
-		},
-		{
-			Id:                "one_1",
-			DisplayName:       "one",
-			TaskGroup:         "foo",
-			TaskGroupMaxHosts: 1,
-			BuildVariant:      "a",
-			Version:           "b",
-			Project:           "a",
-			Revision:          "b",
-			DistroId:          "distro_1",
-		},
-	}
-	for _, t := range tasks {
-		require.NoError(t.Insert())
-	}
-	assert.NoError(updateTaskQueue(
-		"distro_1",
-		[]TaskQueueItem{
-			{
-				Id: tasks[1].Id,
-			},
-		},
-		DistroQueueInfo{
-			Length: 1,
-		},
-	))
-	queue, err := LoadTaskQueue("distro_1")
-	assert.NoError(err)
-	assert.Len(queue.Queue, 1)
-
-	assert.NoError(BlockTaskGroupTasks("task_id_1"))
-	found, err := task.FindOneId("one_1")
-	assert.NoError(err)
-	require.NotNil(found)
-	require.NotEmpty(found.DependsOn)
-	assert.Equal("task_id_1", found.DependsOn[0].TaskId)
-
-	queue, err = LoadTaskQueue("distro_1")
-	assert.NoError(err)
-	assert.Nil(queue)
-}
-
-func TestBlockTaskGroupTasksFailsWithCircularDependencies(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-	require.NoError(db.ClearCollections(TaskQueuesCollection, task.Collection))
-
-	tasks := []task.Task{
-		{
-			Id:                "task_id",
-			TaskGroup:         "foo",
-			TaskGroupMaxHosts: 1,
-			BuildVariant:      "a",
-			Version:           "b",
-			DependsOn: []task.Dependency{
-				{
-					TaskId: "outside_group",
-					Status: evergreen.TaskSucceeded,
-				},
-			},
-		},
-		{
-			Id:           "one",
-			TaskGroup:    "foo",
-			Project:      "a",
-			Version:      "b",
-			BuildVariant: "a",
-		},
-		{
-			Id:           "outside_group",
-			Project:      "a",
-			Version:      "b",
-			BuildVariant: "a",
-			DependsOn: []task.Dependency{
-				{
-					TaskId: "one",
-					Status: evergreen.TaskSucceeded,
-				},
-			},
-		},
-	}
-	for _, t := range tasks {
-		require.NoError(t.Insert())
-	}
-	assert.Error(BlockTaskGroupTasks("task_id"))
-	found, err := task.FindOneId("one")
-	assert.NoError(err)
-	assert.Empty(found.DependsOn)
 }
 
 func TestFindNextTaskEmptySpec(t *testing.T) {
