@@ -1604,12 +1604,12 @@ func MarkTasksReset(taskIds []string) error {
 	return catcher.Resolve()
 }
 
-// RestartFailedTasks attempts to restart failed tasks that started between 2 times
+// RestartFailedTasks attempts to restart failed tasks that started or failed between 2 times.
 // It returns a slice of task IDs that were successfully restarted as well as a slice
-// of task IDs that failed to restart
-// opts.dryRun will return the tasks that will be restarted if sent true
+// of task IDs that failed to restart.
+// opts.dryRun will return the tasks that will be restarted if set to true.
 // opts.red and opts.purple will only restart tasks that were failed due to the test
-// or due to the system, respectively
+// or due to the system, respectively.
 func RestartFailedTasks(opts RestartOptions) (RestartResults, error) {
 	results := RestartResults{}
 	if !opts.IncludeTestFailed && !opts.IncludeSysFailed && !opts.IncludeSetupFailed {
