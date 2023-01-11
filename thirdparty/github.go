@@ -1026,7 +1026,7 @@ func GetMergeablePullRequest(ctx context.Context, issue int, githubToken, owner,
 		return nil, errors.Wrap(err, "GitHub returned an incomplete PR")
 	}
 
-	if !(utility.FromBoolTPtr(pr.Mergeable)) {
+	if !utility.FromBoolTPtr(pr.Mergeable) {
 		return pr, errors.New("PR is not mergeable")
 	}
 
