@@ -208,6 +208,7 @@ const (
 	PlannerVersionLegacy  = "legacy"
 	PlannerVersionTunable = "tunable"
 
+	// TODO: EVG-18706 all distros use DispatcherVersionRevisedWithDependencies, we may be able to remove these and their custom logic
 	DispatcherVersionLegacy                  = "legacy"
 	DispatcherVersionRevised                 = "revised"
 	DispatcherVersionRevisedWithDependencies = "revised-with-dependencies"

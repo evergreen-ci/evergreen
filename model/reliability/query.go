@@ -4,7 +4,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model/stats"
+	"github.com/evergreen-ci/evergreen/model/taskstats"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -13,25 +13,27 @@ import (
 )
 
 const (
-	MaxQueryLimit        = stats.MaxQueryLimit - 1 // 1000 // route.ReliabilityAPIMaxNumTasks
+	MaxQueryLimit        = taskstats.MaxQueryLimit - 1 // (1000) route.ReliabilityAPIMaxNumTasks
 	MaxSignificanceLimit = 1.0
 	MinSignificanceLimit = 0.0
 	DefaultSignificance  = 0.05
 
-	GroupByTask       = stats.GroupByTask
-	GroupByVariant    = stats.GroupByVariant
-	GroupByDistro     = stats.GroupByDistro
-	SortEarliestFirst = stats.SortEarliestFirst
-	SortLatestFirst   = stats.SortLatestFirst
+	GroupByTask       = taskstats.GroupByTask
+	GroupByVariant    = taskstats.GroupByVariant
+	GroupByDistro     = taskstats.GroupByDistro
+	SortEarliestFirst = taskstats.SortEarliestFirst
+	SortLatestFirst   = taskstats.SortLatestFirst
 )
 
-// TaskReliabilityFilter represents search and aggregation parameters when querying the test or task statistics.
+// TaskReliabilityFilter represents search and aggregation parameters when
+// querying task statistics.
 type TaskReliabilityFilter struct {
-	stats.StatsFilter
+	taskstats.StatsFilter
 	Significance float64
 }
 
-// ValidateForTaskReliability validates that the StartAt struct is valid for use with test stats.
+// ValidateForTaskReliability validates that the StartAt struct is valid for
+// use with task stats.
 func (f *TaskReliabilityFilter) ValidateForTaskReliability() error {
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(f.ValidateCommon())
@@ -118,7 +120,7 @@ func (s *TaskReliability) calculateSuccessRate() {
 
 // Create a TaskReliability struct from the task stats and calculate the success rate
 // using the z score.
-func newTaskReliability(taskStat stats.TaskStats, z float64) TaskReliability {
+func newTaskReliability(taskStat taskstats.TaskStats, z float64) TaskReliability {
 	reliability := TaskReliability{
 		TaskName:           taskStat.TaskName,
 		BuildVariant:       taskStat.BuildVariant,

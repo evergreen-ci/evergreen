@@ -76,6 +76,7 @@ type Task {
   projectId: String!
   projectIdentifier: String
   requester: String!
+  resetWhenFinished: Boolean!
   revision: String
   scheduledTime: Time
   spawnHostLink: String

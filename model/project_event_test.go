@@ -31,13 +31,12 @@ const (
 func getMockProjectSettings() ProjectSettings {
 	return ProjectSettings{
 		ProjectRef: ProjectRef{
-			Owner:                 "admin",
-			Enabled:               utility.TruePtr(),
-			Private:               utility.TruePtr(),
-			Id:                    projectId,
-			Admins:                []string{},
-			FilesIgnoredFromCache: []string{},
-			PeriodicBuilds:        nil,
+			Owner:          "admin",
+			Enabled:        utility.TruePtr(),
+			Private:        utility.TruePtr(),
+			Id:             projectId,
+			Admins:         []string{},
+			PeriodicBuilds: nil,
 		},
 		GithubHooksEnabled: true,
 		Vars: ProjectVars{
@@ -92,7 +91,6 @@ func (s *ProjectEventSuite) TestModifyProjectEvent() {
 	s.Empty(before.ProjectRef.Triggers, eventData.Before.ProjectRef.Triggers)
 	s.Equal(before.ProjectRef.Id, eventData.Before.ProjectRef.Id)
 	s.Equal(before.ProjectRef.Admins, eventData.Before.ProjectRef.Admins)
-	s.False(eventData.Before.FilesIgnoredFromCacheDefault)
 	s.True(eventData.Before.PeriodicBuildsDefault)
 	s.Equal(before.GithubHooksEnabled, eventData.Before.GithubHooksEnabled)
 	s.Equal(before.Vars, eventData.Before.Vars)

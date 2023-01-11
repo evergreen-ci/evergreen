@@ -596,7 +596,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.Triggers = responseRef.Triggers
 	projectRef.PatchTriggerAliases = responseRef.PatchTriggerAliases
 	projectRef.GithubTriggerAliases = responseRef.GithubTriggerAliases
-	projectRef.FilesIgnoredFromCache = responseRef.FilesIgnoredFromCache
 	projectRef.DisabledStatsCache = &responseRef.DisabledStatsCache
 	projectRef.PeriodicBuilds = []model.PeriodicBuildDefinition{}
 	projectRef.PerfEnabled = &responseRef.PerfEnabled

@@ -19,7 +19,7 @@ func TestVersionByMostRecentNonIgnored(t *testing.T) {
 		Id:         "v1",
 		Identifier: "proj",
 		Requester:  evergreen.RepotrackerVersionRequester,
-		CreateTime: ts,
+		CreateTime: ts.Add(-1 * time.Second),
 	}
 	v2 := Version{
 		Id:         "v2",
@@ -31,10 +31,17 @@ func TestVersionByMostRecentNonIgnored(t *testing.T) {
 		Id:         "v3",
 		Identifier: "proj",
 		Requester:  evergreen.RepotrackerVersionRequester,
-		CreateTime: ts.Add(time.Second), // created too late
+		CreateTime: ts.Add(time.Minute), // created too late
+	}
+	// Should not get picked even though it is the most recent
+	v4 := Version{
+		Id:         "v4",
+		Identifier: "proj",
+		Requester:  evergreen.AdHocRequester,
+		CreateTime: ts,
 	}
 
-	assert.NoError(t, db.InsertMany(VersionCollection, v1, v2, v3))
+	assert.NoError(t, db.InsertMany(VersionCollection, v1, v2, v3, v4))
 
 	v, err := VersionFindOne(VersionByMostRecentNonIgnored("proj", ts))
 	assert.NoError(t, err)
@@ -45,13 +52,15 @@ func TestRestartVersion(t *testing.T) {
 	// Insert data for the test paths
 	assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, task.OldCollection))
 	versions := []*Version{
-		{Id: "version3"},
+		{Id: "version1"},
 	}
 	tasks := []*task.Task{
-		{Id: "task5", Version: "version3", Aborted: false, Status: evergreen.TaskSucceeded, BuildId: "build1"},
+		{Id: "task1", Version: "version1", Aborted: false, Status: evergreen.TaskSucceeded, BuildId: "build1"},
+		{Id: "task2", Version: "version1", Aborted: false, Status: evergreen.TaskSucceeded, BuildId: "build2"},
 	}
 	builds := []*build.Build{
-		{Id: "build1"},
+		{Id: "build1", Version: "version1"},
+		{Id: "build2", Version: "version1"},
 	}
 	for _, item := range versions {
 		require.NoError(t, item.Insert())
@@ -63,21 +72,21 @@ func TestRestartVersion(t *testing.T) {
 		require.NoError(t, item.Insert())
 	}
 
-	versionId := "version3"
-	err := RestartTasksInVersion(versionId, true, "caller3")
+	versionId := "version1"
+	err := RestartTasksInVersion(versionId, true, "caller")
 	assert.NoError(t, err)
 
 	// When a version is restarted, all of its completed tasks should be reset.
 	// (task.Status should be undispatched)
-	t5, _ := task.FindOneId("task5")
-	assert.Equal(t, versionId, t5.Version)
-	assert.Equal(t, evergreen.TaskUndispatched, t5.Status)
+	t1, _ := task.FindOneId("task1")
+	assert.Equal(t, versionId, t1.Version)
+	assert.Equal(t, evergreen.TaskUndispatched, t1.Status)
 
 	// Build status for all builds containing the tasks that we touched
 	// should be updated.
 	b1, _ := build.FindOneId("build1")
-	assert.Equal(t, evergreen.BuildStarted, b1.Status)
-	assert.Equal(t, "caller3", b1.ActivatedBy)
+	assert.Equal(t, evergreen.BuildCreated, b1.Status)
+	assert.Equal(t, "caller", b1.ActivatedBy)
 }
 
 func TestFindVersionByIdFail(t *testing.T) {

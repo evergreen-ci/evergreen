@@ -8,7 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
-	"github.com/evergreen-ci/evergreen/model/stats"
+	"github.com/evergreen-ci/evergreen/model/taskstats"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,9 +25,9 @@ func setupEnv(ctx context.Context) (*mock.Environment, error) {
 }
 
 func withSetupAndTeardown(t *testing.T, env evergreen.Environment, fn func()) {
-	require.NoError(t, db.ClearCollections(stats.DailyTaskStatsCollection))
+	require.NoError(t, db.ClearCollections(taskstats.DailyTaskStatsCollection))
 	defer func() {
-		assert.NoError(t, db.ClearCollections(stats.DailyTaskStatsCollection))
+		assert.NoError(t, db.ClearCollections(taskstats.DailyTaskStatsCollection))
 	}()
 
 	fn()
@@ -58,7 +58,7 @@ func TestPipeline(t *testing.T) {
 			"num_system_failed":      bson.M{"$sum": "$num_system_failed"},
 			"num_test_failed":        bson.M{"$sum": "$num_test_failed"},
 			"num_timeout":            bson.M{"$sum": "$num_timeout"},
-			"total_duration_success": bson.M{"$sum": bson.M{"$multiply": stats.Array{"$num_success", "$avg_duration_success"}}},
+			"total_duration_success": bson.M{"$sum": bson.M{"$multiply": taskstats.Array{"$num_success", "$avg_duration_success"}}},
 		},
 	}
 
@@ -112,7 +112,7 @@ func TestPipeline(t *testing.T) {
 				t.Run(testName, func(t *testing.T) {
 					withSetupAndTeardown(t, env, func() {
 						filter := TaskReliabilityFilter{
-							StatsFilter: stats.StatsFilter{
+							StatsFilter: taskstats.StatsFilter{
 								Project:    project,
 								Requesters: requesters,
 								AfterDate:  after,
@@ -141,7 +141,7 @@ func TestPipeline(t *testing.T) {
 					})
 				},
 				"Sort Earliest, GroupBy task, Num Days 1": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter) {
-					filter.StatsFilter.Sort = stats.SortEarliestFirst
+					filter.StatsFilter.Sort = taskstats.SortEarliestFirst
 					withCancelledContext(ctx, func(ctx context.Context) {
 						expected := []bson.M{
 							bson.M{"_id.date": bson.M{"$gt": filter.StatsFilter.StartAt.Date}},
@@ -168,7 +168,7 @@ func TestPipeline(t *testing.T) {
 				},
 				// Variant
 				"Sort Latest, GroupBy variant, Num Days 1": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter) {
-					filter.StatsFilter.GroupBy = stats.GroupByVariant
+					filter.StatsFilter.GroupBy = taskstats.GroupByVariant
 					withCancelledContext(ctx, func(ctx context.Context) {
 						expected := []bson.M{
 							bson.M{"_id.date": bson.M{"$lt": filter.StatsFilter.StartAt.Date}},
@@ -180,8 +180,8 @@ func TestPipeline(t *testing.T) {
 					})
 				},
 				"Sort Earliest, GroupBy variant, Num Days 1": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter) {
-					filter.StatsFilter.Sort = stats.SortEarliestFirst
-					filter.StatsFilter.GroupBy = stats.GroupByVariant
+					filter.StatsFilter.Sort = taskstats.SortEarliestFirst
+					filter.StatsFilter.GroupBy = taskstats.GroupByVariant
 					withCancelledContext(ctx, func(ctx context.Context) {
 						expected := []bson.M{
 							bson.M{"_id.date": bson.M{"$gt": filter.StatsFilter.StartAt.Date}},
@@ -197,7 +197,7 @@ func TestPipeline(t *testing.T) {
 					startAtDate := after.Add(28 * 24 * time.Hour)
 					filter.StatsFilter.GroupNumDays = groupNumDays
 					filter.StatsFilter.StartAt.Date = startAtDate
-					filter.StatsFilter.GroupBy = stats.GroupByVariant
+					filter.StatsFilter.GroupBy = taskstats.GroupByVariant
 
 					withCancelledContext(ctx, func(ctx context.Context) {
 						expected := []bson.M{
@@ -211,7 +211,7 @@ func TestPipeline(t *testing.T) {
 				},
 				// Distro
 				"Sort Latest, GroupBy distro, Num Days 1": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter) {
-					filter.StatsFilter.GroupBy = stats.GroupByDistro
+					filter.StatsFilter.GroupBy = taskstats.GroupByDistro
 					filter.StatsFilter.StartAt.Date = after.Add(24 * time.Hour)
 
 					withCancelledContext(ctx, func(ctx context.Context) {
@@ -226,8 +226,8 @@ func TestPipeline(t *testing.T) {
 					})
 				},
 				"Sort Earliest, GroupBy distro, Num Days 1": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter) {
-					filter.StatsFilter.GroupBy = stats.GroupByDistro
-					filter.StatsFilter.Sort = stats.SortEarliestFirst
+					filter.StatsFilter.GroupBy = taskstats.GroupByDistro
+					filter.StatsFilter.Sort = taskstats.SortEarliestFirst
 					filter.StatsFilter.StartAt.Date = after.Add(24 * time.Hour)
 					withCancelledContext(ctx, func(ctx context.Context) {
 						expected := []bson.M{
@@ -241,7 +241,7 @@ func TestPipeline(t *testing.T) {
 					})
 				},
 				"Sort Latest, GroupBy distro, Num Days 28": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter) {
-					filter.StatsFilter.GroupBy = stats.GroupByDistro
+					filter.StatsFilter.GroupBy = taskstats.GroupByDistro
 					groupNumDays := 28
 					startAtDate := after.Add(28 * 24 * time.Hour)
 					filter.StatsFilter.GroupNumDays = groupNumDays
@@ -297,15 +297,15 @@ func TestPipeline(t *testing.T) {
 				t.Run(testName, func(t *testing.T) {
 					withSetupAndTeardown(t, env, func() {
 						filter := TaskReliabilityFilter{
-							StatsFilter: stats.StatsFilter{
+							StatsFilter: taskstats.StatsFilter{
 								Project:      project,
 								Requesters:   requesters,
 								GroupNumDays: 1,
-								GroupBy:      stats.GroupByTask,
-								Sort:         stats.SortLatestFirst,
+								GroupBy:      taskstats.GroupByTask,
+								Sort:         taskstats.SortLatestFirst,
 								AfterDate:    after,
 								BeforeDate:   before,
-								StartAt: &stats.StartAt{
+								StartAt: &taskstats.StartAt{
 									Date:         after.Add(24 * time.Hour),
 									Task:         task,
 									BuildVariant: variant,
@@ -378,7 +378,7 @@ func TestPipeline(t *testing.T) {
 				},
 				"Pagination": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter, expected bson.M) {
 					startAt := after.Add(24 * time.Hour)
-					filter.StatsFilter.StartAt = &stats.StartAt{
+					filter.StatsFilter.StartAt = &taskstats.StartAt{
 						Date:         startAt,
 						Task:         task,
 						BuildVariant: variant,
@@ -399,12 +399,12 @@ func TestPipeline(t *testing.T) {
 				t.Run(testName, func(t *testing.T) {
 					withSetupAndTeardown(t, env, func() {
 						filter := TaskReliabilityFilter{
-							StatsFilter: stats.StatsFilter{
+							StatsFilter: taskstats.StatsFilter{
 								Project:    project,
 								Requesters: requesters,
 								AfterDate:  after,
 								BeforeDate: before,
-								GroupBy:    stats.GroupByDistro,
+								GroupBy:    taskstats.GroupByDistro,
 							},
 						}
 						match := bson.M{
@@ -442,15 +442,15 @@ func TestPipeline(t *testing.T) {
 											"branches": []bson.M{
 												bson.M{
 													"case": bson.M{
-														"$and": stats.Array{
+														"$and": taskstats.Array{
 															bson.M{
-																"$lt": stats.Array{
+																"$lt": taskstats.Array{
 																	"$_id.date",
 																	before.Add(24 * time.Hour),
 																},
 															},
 															bson.M{
-																"$gte": stats.Array{
+																"$gte": taskstats.Array{
 																	"$_id.date",
 																	after,
 																},
@@ -469,7 +469,7 @@ func TestPipeline(t *testing.T) {
 								"num_system_failed":      bson.M{"$sum": "$num_system_failed"},
 								"num_test_failed":        bson.M{"$sum": "$num_test_failed"},
 								"num_timeout":            bson.M{"$sum": "$num_timeout"},
-								"total_duration_success": bson.M{"$sum": bson.M{"$multiply": stats.Array{"$num_success", "$avg_duration_success"}}},
+								"total_duration_success": bson.M{"$sum": bson.M{"$multiply": taskstats.Array{"$num_success", "$avg_duration_success"}}},
 							},
 						})
 					})
@@ -478,7 +478,7 @@ func TestPipeline(t *testing.T) {
 				t.Run(testName, func(t *testing.T) {
 					withSetupAndTeardown(t, env, func() {
 						filter := TaskReliabilityFilter{
-							StatsFilter: stats.StatsFilter{
+							StatsFilter: taskstats.StatsFilter{
 								Project:    project,
 								Requesters: requesters},
 						}
@@ -501,13 +501,13 @@ func TestPipeline(t *testing.T) {
 						"$cond": bson.M{
 							"else": nil,
 							"if": bson.M{
-								"$ne": stats.Array{
+								"$ne": taskstats.Array{
 									"$num_success",
 									0,
 								},
 							},
 							"then": bson.M{
-								"$divide": stats.Array{
+								"$divide": taskstats.Array{
 									"$total_duration_success",
 									"$num_success",
 								},
@@ -522,7 +522,7 @@ func TestPipeline(t *testing.T) {
 					"num_system_failed": 1,
 					"num_test_failed":   1,
 					"num_timeout":       1,
-					"num_total":         bson.M{"$add": stats.Array{"$num_success", "$num_failed"}},
+					"num_total":         bson.M{"$add": taskstats.Array{"$num_success", "$num_failed"}},
 					"task_name":         "$_id.task_name",
 					"variant":           "$_id.variant",
 				},
@@ -558,7 +558,7 @@ func TestPipeline(t *testing.T) {
 				t.Run(testName, func(t *testing.T) {
 					withSetupAndTeardown(t, env, func() {
 						filter := TaskReliabilityFilter{
-							StatsFilter: stats.StatsFilter{
+							StatsFilter: taskstats.StatsFilter{
 								Project:    project,
 								Requesters: requesters},
 						}

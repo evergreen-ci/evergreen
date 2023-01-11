@@ -4,62 +4,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model/stats"
+	"github.com/evergreen-ci/evergreen/model/taskstats"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestAPITestStatsBuildFromService(t *testing.T) {
-	assert := assert.New(t)
-
-	serviceDoc := stats.TestStats{
-		TestFile:     "test1",
-		TaskName:     "task1",
-		BuildVariant: "variant1",
-		Distro:       "distro1",
-		Date:         time.Now().UTC(),
-
-		NumPass:         17,
-		NumFail:         99,
-		AvgDurationPass: float64(12.34),
-	}
-
-	apiDoc := APITestStats{}
-	apiDoc.BuildFromService(serviceDoc)
-
-	assert.Equal(serviceDoc.TestFile, *apiDoc.TestFile)
-	assert.Equal(serviceDoc.TaskName, *apiDoc.TaskName)
-	assert.Equal(serviceDoc.BuildVariant, *apiDoc.BuildVariant)
-	assert.Equal(serviceDoc.Distro, *apiDoc.Distro)
-	assert.Equal(serviceDoc.Date.Format("2006-01-02"), *apiDoc.Date)
-	assert.Equal(serviceDoc.NumPass, apiDoc.NumPass)
-	assert.Equal(serviceDoc.NumFail, apiDoc.NumFail)
-	assert.Equal(serviceDoc.AvgDurationPass, apiDoc.AvgDurationPass)
-}
-
-func TestAPITestStatsStartAtKey(t *testing.T) {
-	assert := assert.New(t)
-
-	apiDoc := APITestStats{
-		TestFile:     utility.ToStringPtr("test1"),
-		TaskName:     utility.ToStringPtr("task1"),
-		BuildVariant: utility.ToStringPtr("variant1"),
-		Distro:       utility.ToStringPtr("distro1"),
-		Date:         utility.ToStringPtr("2018-07-15"),
-	}
-	assert.Equal("2018-07-15|variant1|task1|test1|distro1", apiDoc.StartAtKey())
-
-	apiDoc = APITestStats{
-		TestFile: utility.ToStringPtr("test1"),
-		Date:     utility.ToStringPtr("2018-07-15"),
-	}
-	assert.Equal("2018-07-15|||test1|", apiDoc.StartAtKey())
-}
-
 func TestAPITaskStatsBuildFromService(t *testing.T) {
 	assert := assert.New(t)
 
-	serviceDoc := stats.TaskStats{
+	serviceDoc := taskstats.TaskStats{
 		TaskName:     "task1",
 		BuildVariant: "variant1",
 		Distro:       "distro1",
@@ -101,11 +54,11 @@ func TestAPITaskStatsStartAtKey(t *testing.T) {
 		Distro:       utility.ToStringPtr("distro1"),
 		Date:         utility.ToStringPtr("2018-07-15"),
 	}
-	assert.Equal("2018-07-15|variant1|task1||distro1", apiDoc.StartAtKey())
+	assert.Equal("2018-07-15|variant1|task1|distro1", apiDoc.StartAtKey())
 
 	apiDoc = APITaskStats{
 		TaskName: utility.ToStringPtr("task1"),
 		Date:     utility.ToStringPtr("2018-07-15"),
 	}
-	assert.Equal("2018-07-15||task1||", apiDoc.StartAtKey())
+	assert.Equal("2018-07-15||task1|", apiDoc.StartAtKey())
 }

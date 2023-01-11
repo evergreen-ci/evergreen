@@ -1751,7 +1751,7 @@ tasks:
 			So(len(validationErrs.AtLevel(Error)), ShouldEqual, 1)
 			So(validationErrs.AtLevel(Error)[0].Message, ShouldContainSubstring, "params cannot be nil")
 		})
-		Convey("an warning should return if a shell.exec command is missing a script", func() {
+		Convey("an error should return if a shell.exec command is missing a script", func() {
 			project := &model.Project{
 				Functions: map[string]*model.YAMLCommandSet{
 					"funcOne": {
@@ -1767,8 +1767,8 @@ tasks:
 			}
 			validationErrs := validatePluginCommands(project)
 			So(validationErrs, ShouldNotResemble, ValidationErrors{})
-			So(len(validationErrs.AtLevel(Warning)), ShouldEqual, 1)
-			So(validationErrs.AtLevel(Warning)[0].Message, ShouldContainSubstring, "specified without a script")
+			So(len(validationErrs.AtLevel(Error)), ShouldEqual, 1)
+			So(validationErrs.AtLevel(Error)[0].Message, ShouldContainSubstring, "must specify a script")
 		})
 		Convey("an error should not be thrown if a shell.exec command is defined with a script", func() {
 			project := &model.Project{

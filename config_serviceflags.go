@@ -35,6 +35,7 @@ type ServiceFlags struct {
 	CloudCleanupDisabled            bool `bson:"cloud_cleanup_disabled" json:"cloud_cleanup_disabled"`
 	ContainerConfigurationsDisabled bool `bson:"container_configurations_disabled" json:"container_configurations_disabled"`
 	PartialRouteAuthDisabled        bool `bson:"partial_route_auth_disabled" json:"partial_route_auth_disabled"`
+	ParserProjectS3StorageDisabled  bool `bson:"parser_project_s3_storage_disabled" json:"parser_project_s3_storage_disabled"`
 
 	// Notification Flags
 	EventProcessingDisabled      bool `bson:"event_processing_disabled" json:"event_processing_disabled"`
@@ -107,6 +108,7 @@ func (c *ServiceFlags) Set() error {
 			containerConfigurationsDisabledKey: c.ContainerConfigurationsDisabled,
 			partialRouteAuthDisabledKey:        c.PartialRouteAuthDisabled,
 			unrecognizedPodCleanupDisabledKey:  c.UnrecognizedPodCleanupDisabled,
+			parserProjectS3StorageDisabledKey:  c.ParserProjectS3StorageDisabled,
 		},
 	}, options.Update().SetUpsert(true))
 

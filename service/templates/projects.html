@@ -1005,37 +1005,11 @@ Evergreen Projects
           </div>
         </div>
         <div id="caching-info">
-          <div class="h3">Historical Data Caching Info </div>
+          <div class="h3">Historical Task Data Caching Info </div>
           <div class="form-group">
             <div class="col-lg-4 col-header">
               <input type="checkbox" id="disable-stats-cache" ng-model="settingsFormData.disabled_stats_cache"/>
               <label for="disable-stats-cache">Disable caching</label>
-            </div>
-          </div>
-          <div class="muted small">List of regular expression patterns that specify test filenames to ignore when caching test and task history.</div>
-          <div class="form-group">
-            <div class="col-lg-5 col-header">
-              <label class="control-label">File patterns to ignore</label>
-            </div>
-          </div>
-          <div class="form-group" ng-repeat="(index, pattern) in settingsFormData.files_ignored_from_cache">
-            <div class="col-lg-4">
-              <label class="control-label">[[pattern]]</label>
-            </div>
-            <div class="col-lg-2">
-              <button class="btn btn-default btn-danger" type="button" ng-click="removeCacheIgnoreFile(index)">
-              <i class="fa fa-trash"></i>
-              </button>
-            </div>
-          </div>
-          <div class="form-group">
-            <div class="col-lg-4">
-              <input class="form-control" type="text" ng-model="cache_ignore_file_pattern" placeholder="file pattern">
-            </div>
-            <div class="col-lg-2">
-              <button class="plus-button btn btn-primary" ng-disabled="!(cache_ignore_file_pattern)" type="button" ng-click="addCacheIgnoreFile()">
-              <i class="fa fa-plus"></i>
-              </button>
             </div>
           </div>
         </div>

@@ -574,7 +574,6 @@ type ComplexityRoot struct {
 		DispatchingDisabled      func(childComplexity int) int
 		DisplayName              func(childComplexity int) int
 		Enabled                  func(childComplexity int) int
-		FilesIgnoredFromCache    func(childComplexity int) int
 		GitTagAuthorizedTeams    func(childComplexity int) int
 		GitTagAuthorizedUsers    func(childComplexity int) int
 		GitTagVersionsEnabled    func(childComplexity int) int
@@ -743,7 +742,6 @@ type ComplexityRoot struct {
 		DispatchingDisabled      func(childComplexity int) int
 		DisplayName              func(childComplexity int) int
 		Enabled                  func(childComplexity int) int
-		FilesIgnoredFromCache    func(childComplexity int) int
 		GitTagAuthorizedTeams    func(childComplexity int) int
 		GitTagAuthorizedUsers    func(childComplexity int) int
 		GitTagVersionsEnabled    func(childComplexity int) int
@@ -901,6 +899,7 @@ type ComplexityRoot struct {
 		ProjectId               func(childComplexity int) int
 		ProjectIdentifier       func(childComplexity int) int
 		Requester               func(childComplexity int) int
+		ResetWhenFinished       func(childComplexity int) int
 		Revision                func(childComplexity int) int
 		ScheduledTime           func(childComplexity int) int
 		SpawnHostLink           func(childComplexity int) int
@@ -4002,13 +4001,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Project.Enabled(childComplexity), true
 
-	case "Project.filesIgnoredFromCache":
-		if e.complexity.Project.FilesIgnoredFromCache == nil {
-			break
-		}
-
-		return e.complexity.Project.FilesIgnoredFromCache(childComplexity), true
-
 	case "Project.gitTagAuthorizedTeams":
 		if e.complexity.Project.GitTagAuthorizedTeams == nil {
 			break
@@ -5052,13 +5044,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.RepoRef.Enabled(childComplexity), true
 
-	case "RepoRef.filesIgnoredFromCache":
-		if e.complexity.RepoRef.FilesIgnoredFromCache == nil {
-			break
-		}
-
-		return e.complexity.RepoRef.FilesIgnoredFromCache(childComplexity), true
-
 	case "RepoRef.gitTagAuthorizedTeams":
 		if e.complexity.RepoRef.GitTagAuthorizedTeams == nil {
 			break
@@ -5905,6 +5890,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Task.Requester(childComplexity), true
+
+	case "Task.resetWhenFinished":
+		if e.complexity.Task.ResetWhenFinished == nil {
+			break
+		}
+
+		return e.complexity.Task.ResetWhenFinished(childComplexity), true
 
 	case "Task.revision":
 		if e.complexity.Task.Revision == nil {
@@ -13923,6 +13915,8 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(ctx context.C
 				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
+			case "resetWhenFinished":
+				return ec.fieldContext_Task_resetWhenFinished(ctx, field)
 			case "revision":
 				return ec.fieldContext_Task_revision(ctx, field)
 			case "scheduledTime":
@@ -14189,8 +14183,6 @@ func (ec *executionContext) fieldContext_GroupedProjects_projects(ctx context.Co
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
-			case "filesIgnoredFromCache":
-				return ec.fieldContext_Project_filesIgnoredFromCache(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -14320,8 +14312,6 @@ func (ec *executionContext) fieldContext_GroupedProjects_repo(ctx context.Contex
 				return ec.fieldContext_RepoRef_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_RepoRef_enabled(ctx, field)
-			case "filesIgnoredFromCache":
-				return ec.fieldContext_RepoRef_filesIgnoredFromCache(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_RepoRef_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -19655,6 +19645,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
+			case "resetWhenFinished":
+				return ec.fieldContext_Task_resetWhenFinished(ctx, field)
 			case "revision":
 				return ec.fieldContext_Task_revision(ctx, field)
 			case "scheduledTime":
@@ -19858,8 +19850,6 @@ func (ec *executionContext) fieldContext_Mutation_addFavoriteProject(ctx context
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
-			case "filesIgnoredFromCache":
-				return ec.fieldContext_Project_filesIgnoredFromCache(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -20003,8 +19993,6 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToNewRepo(ctx con
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
-			case "filesIgnoredFromCache":
-				return ec.fieldContext_Project_filesIgnoredFromCache(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -20148,8 +20136,6 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToRepo(ctx contex
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
-			case "filesIgnoredFromCache":
-				return ec.fieldContext_Project_filesIgnoredFromCache(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -20313,8 +20299,6 @@ func (ec *executionContext) fieldContext_Mutation_createProject(ctx context.Cont
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
-			case "filesIgnoredFromCache":
-				return ec.fieldContext_Project_filesIgnoredFromCache(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -20478,8 +20462,6 @@ func (ec *executionContext) fieldContext_Mutation_copyProject(ctx context.Contex
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
-			case "filesIgnoredFromCache":
-				return ec.fieldContext_Project_filesIgnoredFromCache(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -20675,8 +20657,6 @@ func (ec *executionContext) fieldContext_Mutation_detachProjectFromRepo(ctx cont
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
-			case "filesIgnoredFromCache":
-				return ec.fieldContext_Project_filesIgnoredFromCache(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -20930,8 +20910,6 @@ func (ec *executionContext) fieldContext_Mutation_removeFavoriteProject(ctx cont
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
-			case "filesIgnoredFromCache":
-				return ec.fieldContext_Project_filesIgnoredFromCache(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -21991,6 +21969,8 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
+			case "resetWhenFinished":
+				return ec.fieldContext_Task_resetWhenFinished(ctx, field)
 			case "revision":
 				return ec.fieldContext_Task_revision(ctx, field)
 			case "scheduledTime":
@@ -22178,6 +22158,8 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
+			case "resetWhenFinished":
+				return ec.fieldContext_Task_resetWhenFinished(ctx, field)
 			case "revision":
 				return ec.fieldContext_Task_revision(ctx, field)
 			case "scheduledTime":
@@ -22365,6 +22347,8 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
+			case "resetWhenFinished":
+				return ec.fieldContext_Task_resetWhenFinished(ctx, field)
 			case "revision":
 				return ec.fieldContext_Task_revision(ctx, field)
 			case "scheduledTime":
@@ -22552,6 +22536,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
+			case "resetWhenFinished":
+				return ec.fieldContext_Task_resetWhenFinished(ctx, field)
 			case "revision":
 				return ec.fieldContext_Task_revision(ctx, field)
 			case "scheduledTime":
@@ -22739,6 +22725,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
+			case "resetWhenFinished":
+				return ec.fieldContext_Task_resetWhenFinished(ctx, field)
 			case "revision":
 				return ec.fieldContext_Task_revision(ctx, field)
 			case "scheduledTime":
@@ -22926,6 +22914,8 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
+			case "resetWhenFinished":
+				return ec.fieldContext_Task_resetWhenFinished(ctx, field)
 			case "revision":
 				return ec.fieldContext_Task_revision(ctx, field)
 			case "scheduledTime":
@@ -27099,47 +27089,6 @@ func (ec *executionContext) fieldContext_Project_enabled(ctx context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _Project_filesIgnoredFromCache(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Project_filesIgnoredFromCache(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.FilesIgnoredFromCache, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.([]*string)
-	fc.Result = res
-	return ec.marshalOString2ᚕᚖstringᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Project_filesIgnoredFromCache(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Project",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Project_githubChecksEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 	if err != nil {
@@ -29415,8 +29364,6 @@ func (ec *executionContext) fieldContext_ProjectEventSettings_projectRef(ctx con
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
-			case "filesIgnoredFromCache":
-				return ec.fieldContext_Project_filesIgnoredFromCache(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -29855,8 +29802,6 @@ func (ec *executionContext) fieldContext_ProjectSettings_projectRef(ctx context.
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
-			case "filesIgnoredFromCache":
-				return ec.fieldContext_Project_filesIgnoredFromCache(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -31739,8 +31684,6 @@ func (ec *executionContext) fieldContext_Query_project(ctx context.Context, fiel
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
-			case "filesIgnoredFromCache":
-				return ec.fieldContext_Project_filesIgnoredFromCache(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -32495,6 +32438,8 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
+			case "resetWhenFinished":
+				return ec.fieldContext_Task_resetWhenFinished(ctx, field)
 			case "revision":
 				return ec.fieldContext_Task_revision(ctx, field)
 			case "scheduledTime":
@@ -32682,6 +32627,8 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
+			case "resetWhenFinished":
+				return ec.fieldContext_Task_resetWhenFinished(ctx, field)
 			case "revision":
 				return ec.fieldContext_Task_revision(ctx, field)
 			case "scheduledTime":
@@ -34434,47 +34381,6 @@ func (ec *executionContext) fieldContext_RepoRef_enabled(ctx context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _RepoRef_filesIgnoredFromCache(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_RepoRef_filesIgnoredFromCache(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.FilesIgnoredFromCache, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.([]*string)
-	fc.Result = res
-	return ec.marshalOString2ᚕᚖstringᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_RepoRef_filesIgnoredFromCache(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "RepoRef",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _RepoRef_githubChecksEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_RepoRef_githubChecksEnabled(ctx, field)
 	if err != nil {
@@ -35880,8 +35786,6 @@ func (ec *executionContext) fieldContext_RepoSettings_projectRef(ctx context.Con
 				return ec.fieldContext_RepoRef_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_RepoRef_enabled(ctx, field)
-			case "filesIgnoredFromCache":
-				return ec.fieldContext_RepoRef_filesIgnoredFromCache(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_RepoRef_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -38128,6 +38032,8 @@ func (ec *executionContext) fieldContext_Task_baseTask(ctx context.Context, fiel
 				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
+			case "resetWhenFinished":
+				return ec.fieldContext_Task_resetWhenFinished(ctx, field)
 			case "revision":
 				return ec.fieldContext_Task_revision(ctx, field)
 			case "scheduledTime":
@@ -39142,6 +39048,8 @@ func (ec *executionContext) fieldContext_Task_displayTask(ctx context.Context, f
 				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
+			case "resetWhenFinished":
+				return ec.fieldContext_Task_resetWhenFinished(ctx, field)
 			case "revision":
 				return ec.fieldContext_Task_revision(ctx, field)
 			case "scheduledTime":
@@ -39485,6 +39393,8 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(ctx context.Con
 				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
+			case "resetWhenFinished":
+				return ec.fieldContext_Task_resetWhenFinished(ctx, field)
 			case "revision":
 				return ec.fieldContext_Task_revision(ctx, field)
 			case "scheduledTime":
@@ -40318,8 +40228,6 @@ func (ec *executionContext) fieldContext_Task_project(ctx context.Context, field
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
-			case "filesIgnoredFromCache":
-				return ec.fieldContext_Project_filesIgnoredFromCache(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -40515,6 +40423,50 @@ func (ec *executionContext) fieldContext_Task_requester(ctx context.Context, fie
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Task_resetWhenFinished(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Task_resetWhenFinished(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ResetWhenFinished, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Task_resetWhenFinished(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -45758,6 +45710,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(ctx context.Contex
 				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
+			case "resetWhenFinished":
+				return ec.fieldContext_Task_resetWhenFinished(ctx, field)
 			case "revision":
 				return ec.fieldContext_Task_revision(ctx, field)
 			case "scheduledTime":
@@ -48197,8 +48151,6 @@ func (ec *executionContext) fieldContext_Version_projectMetadata(ctx context.Con
 				return ec.fieldContext_Project_displayName(ctx, field)
 			case "enabled":
 				return ec.fieldContext_Project_enabled(ctx, field)
-			case "filesIgnoredFromCache":
-				return ec.fieldContext_Project_filesIgnoredFromCache(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
 			case "githubTriggerAliases":
@@ -48992,6 +48944,8 @@ func (ec *executionContext) fieldContext_VersionTasks_data(ctx context.Context, 
 				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
+			case "resetWhenFinished":
+				return ec.fieldContext_Task_resetWhenFinished(ctx, field)
 			case "revision":
 				return ec.fieldContext_Task_revision(ctx, field)
 			case "scheduledTime":
@@ -53253,7 +53207,7 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "batchTime", "branch", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "filesIgnoredFromCache", "githubChecksEnabled", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "owner", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "private", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
+	fieldsInOrder := [...]string{"id", "admins", "batchTime", "branch", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "githubChecksEnabled", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "owner", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "private", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -53365,14 +53319,6 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
 			it.Enabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "filesIgnoredFromCache":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("filesIgnoredFromCache"))
-			it.FilesIgnoredFromCache, err = ec.unmarshalOString2ᚕᚖstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -53753,7 +53699,7 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "batchTime", "branch", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "filesIgnoredFromCache", "githubChecksEnabled", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "owner", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "private", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
+	fieldsInOrder := [...]string{"id", "admins", "batchTime", "branch", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "githubChecksEnabled", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "owner", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "private", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -53865,14 +53811,6 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
 			it.Enabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "filesIgnoredFromCache":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("filesIgnoredFromCache"))
-			it.FilesIgnoredFromCache, err = ec.unmarshalOString2ᚕᚖstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -58943,10 +58881,6 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 
 			out.Values[i] = ec._Project_enabled(ctx, field, obj)
 
-		case "filesIgnoredFromCache":
-
-			out.Values[i] = ec._Project_filesIgnoredFromCache(ctx, field, obj)
-
 		case "githubChecksEnabled":
 
 			out.Values[i] = ec._Project_githubChecksEnabled(ctx, field, obj)
@@ -60766,10 +60700,6 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "filesIgnoredFromCache":
-
-			out.Values[i] = ec._RepoRef_filesIgnoredFromCache(ctx, field, obj)
-
 		case "githubChecksEnabled":
 
 			out.Values[i] = ec._RepoRef_githubChecksEnabled(ctx, field, obj)
@@ -62090,6 +62020,13 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 		case "requester":
 
 			out.Values[i] = ec._Task_requester(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "resetWhenFinished":
+
+			out.Values[i] = ec._Task_resetWhenFinished(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)

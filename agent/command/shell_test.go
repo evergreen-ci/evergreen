@@ -74,6 +74,7 @@ func (s *shellExecuteCommandSuite) TearDownTest() {
 func (s *shellExecuteCommandSuite) TestWorksWithEmptyShell() {
 	cmd := &shellExec{
 		WorkingDir: testutil.GetDirectoryOfFile(),
+		Script:     "exit 0",
 	}
 	cmd.SetJasperManager(s.jasper)
 	s.Empty(cmd.Shell)
@@ -83,7 +84,9 @@ func (s *shellExecuteCommandSuite) TestWorksWithEmptyShell() {
 }
 
 func (s *shellExecuteCommandSuite) TestSilentAndRedirectToStdOutError() {
-	cmd := &shellExec{}
+	cmd := &shellExec{
+		Script: "exit 0",
+	}
 
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
 	s.False(cmd.IgnoreStandardError)
@@ -138,7 +141,7 @@ func (s *shellExecuteCommandSuite) TestTerribleQuotingIsHandledProperly() {
 	}
 }
 
-func (s *shellExecuteCommandSuite) TestShellIsntChangedDuringExecution() {
+func (s *shellExecuteCommandSuite) TestShellIsNotChangedDuringExecution() {
 	for _, sh := range s.shells {
 		cmd := &shellExec{Shell: sh, WorkingDir: testutil.GetDirectoryOfFile()}
 		cmd.SetJasperManager(s.jasper)

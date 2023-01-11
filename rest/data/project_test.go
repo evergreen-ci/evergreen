@@ -41,13 +41,12 @@ const (
 func getMockProjectSettings() model.ProjectSettings {
 	return model.ProjectSettings{
 		ProjectRef: model.ProjectRef{
-			Owner:                 "admin",
-			Enabled:               utility.TruePtr(),
-			Private:               utility.TruePtr(),
-			Id:                    projectId,
-			Admins:                []string{},
-			FilesIgnoredFromCache: []string{},
-			PeriodicBuilds:        nil,
+			Owner:          "admin",
+			Enabled:        utility.TruePtr(),
+			Private:        utility.TruePtr(),
+			Id:             projectId,
+			Admins:         []string{},
+			PeriodicBuilds: nil,
 			WorkstationConfig: model.WorkstationConfig{
 				SetupCommands: nil,
 				GitClone:      nil,
@@ -198,8 +197,6 @@ func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
 		s.NotEmpty(eventLog.Before.Aliases[0].ID)
 		s.NotEmpty(eventLog.After.Aliases[0].ID)
 		s.Nil(eventLog.Before.ProjectRef.PeriodicBuilds)
-		s.NotNil(eventLog.Before.ProjectRef.FilesIgnoredFromCache)
-		s.Len(eventLog.Before.ProjectRef.FilesIgnoredFromCache, 0)
 		s.Nil(eventLog.Before.ProjectRef.WorkstationConfig.SetupCommands)
 		s.NotNil(eventLog.After.ProjectRef.WorkstationConfig.SetupCommands)
 		s.Len(eventLog.After.ProjectRef.WorkstationConfig.SetupCommands, 0)
@@ -471,8 +468,6 @@ func TestGetLegacyProjectEvents(t *testing.T) {
 	// Because this document does not use <Fieldname>Default flags, it returns empty arrays instead of nil
 	require.NotNil(t, eventLog.Before.ProjectRef.PeriodicBuilds)
 	require.Len(t, eventLog.Before.ProjectRef.PeriodicBuilds, 0)
-	require.NotNil(t, eventLog.Before.ProjectRef.FilesIgnoredFromCache)
-	require.Len(t, eventLog.Before.ProjectRef.FilesIgnoredFromCache, 0)
 	require.NotNil(t, eventLog.Before.ProjectRef.WorkstationConfig.SetupCommands)
 	require.Len(t, eventLog.Before.ProjectRef.WorkstationConfig.SetupCommands, 0)
 }
