@@ -1396,10 +1396,11 @@ func (a *APICloudProviders) ToService() (interface{}, error) {
 }
 
 type APICommitQueueConfig struct {
-	MergeTaskDistro *string `json:"merge_task_distro"`
-	CommitterName   *string `json:"committer_name"`
-	CommitterEmail  *string `json:"committer_email"`
-	BatchSize       int     `json:"batch_size"`
+	MergeTaskDistro            *string `json:"merge_task_distro"`
+	CommitterName              *string `json:"committer_name"`
+	CommitterEmail             *string `json:"committer_email"`
+	BatchSize                  int     `json:"batch_size"`
+	MaxSystemFailedTaskRetries int     `json:"max_system_failed_task_retries"`
 }
 
 func (a *APICommitQueueConfig) BuildFromService(h interface{}) error {
@@ -1408,6 +1409,7 @@ func (a *APICommitQueueConfig) BuildFromService(h interface{}) error {
 		a.CommitterName = utility.ToStringPtr(v.CommitterName)
 		a.CommitterEmail = utility.ToStringPtr(v.CommitterEmail)
 		a.BatchSize = v.BatchSize
+		a.MaxSystemFailedTaskRetries = v.MaxSystemFailedTaskRetries
 
 		return nil
 	}
@@ -1417,10 +1419,11 @@ func (a *APICommitQueueConfig) BuildFromService(h interface{}) error {
 
 func (a *APICommitQueueConfig) ToService() (interface{}, error) {
 	return evergreen.CommitQueueConfig{
-		MergeTaskDistro: utility.FromStringPtr(a.MergeTaskDistro),
-		CommitterName:   utility.FromStringPtr(a.CommitterName),
-		CommitterEmail:  utility.FromStringPtr(a.CommitterEmail),
-		BatchSize:       a.BatchSize,
+		MergeTaskDistro:            utility.FromStringPtr(a.MergeTaskDistro),
+		CommitterName:              utility.FromStringPtr(a.CommitterName),
+		CommitterEmail:             utility.FromStringPtr(a.CommitterEmail),
+		BatchSize:                  a.BatchSize,
+		MaxSystemFailedTaskRetries: a.MaxSystemFailedTaskRetries,
 	}, nil
 }
 

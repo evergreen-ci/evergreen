@@ -307,8 +307,13 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 
 	var execTask *task.Task
 
+	reachedMaxExecutions := t.Execution >= evergreen.MaxTaskExecution
+
+	if evergreen.IsCommitQueueRequester(t.Requester) && evergreen.IsSystemFailedTaskStatus(t.Status) {
+		reachedMaxExecutions = t.Execution >= evergreen.GetEnvironment().Settings().CommitQueue.MaxSystemFailedTaskRetries
+	}
 	// if we've reached the max number of executions for this task, mark it as finished and failed
-	if t.Execution >= evergreen.MaxTaskExecution {
+	if reachedMaxExecutions {
 		// restarting from the UI bypasses the restart cap
 		msg := fmt.Sprintf("task '%s' reached max execution %d: ", t.Id, evergreen.MaxTaskExecution)
 		if origin == evergreen.UIPackage || origin == evergreen.RESTV2Package {

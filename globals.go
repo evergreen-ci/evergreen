@@ -331,6 +331,14 @@ var TaskNonGenericFailureStatuses = []string{
 	TaskSystemTimedOut,
 }
 
+var TaskSystemFailures = []string{
+	TaskSystemFailed,
+	TaskTimedOut,
+	TaskSystemUnresponse,
+	TaskSystemTimedOut,
+	TaskTestTimedOut,
+}
+
 // TaskFailureStatuses represent all the ways that a completed task can fail,
 // inclusive of display statuses such as system failures.
 var TaskFailureStatuses = append([]string{TaskFailed}, TaskNonGenericFailureStatuses...)
@@ -355,6 +363,10 @@ func IsFinishedTaskStatus(status string) bool {
 
 func IsFailedTaskStatus(status string) bool {
 	return utility.StringSliceContains(TaskFailureStatuses, status)
+}
+
+func IsSystemFailedTaskStatus(status string) bool {
+	return utility.StringSliceContains(TaskSystemFailures, status)
 }
 
 func IsValidTaskEndStatus(status string) bool {
@@ -830,6 +842,10 @@ func IsGitHubPatchRequester(requester string) bool {
 
 func IsGitTagRequester(requester string) bool {
 	return requester == GitTagRequester
+}
+
+func IsCommitQueueRequester(requester string) bool {
+	return requester == MergeTestRequester
 }
 
 func ShouldConsiderBatchtime(requester string) bool {
