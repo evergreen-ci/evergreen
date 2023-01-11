@@ -77,7 +77,10 @@ func (h *commitQueueDeleteItemHandler) Parse(ctx context.Context, r *http.Reques
 		return errors.Wrapf(err, "finding commit queue item '%s'", h.item)
 	}
 	if requestedPatch == nil {
-		return errors.New("commit queue item not found")
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    "commit queue item not found",
+		}
 	}
 	h.project = requestedPatch.Project
 	return nil

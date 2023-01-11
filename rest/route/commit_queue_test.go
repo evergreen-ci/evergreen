@@ -69,10 +69,10 @@ func (s *CommitQueueSuite) TestGetCommitQueue() {
 			Issue:  utility.ToStringPtr("1"),
 			Source: utility.ToStringPtr(commitqueue.SourceDiff),
 			Modules: []model.APIModule{
-				model.APIModule{
+				{
 					Module: utility.ToStringPtr("test_module"),
 					Issue:  utility.ToStringPtr("1234"),
-				},
+								},
 			},
 		}, false)
 	s.NoError(err)
@@ -114,7 +114,7 @@ func (s *CommitQueueSuite) TestDeleteItem() {
 
 	// Already deleted
 	response = route.Run(ctx)
-	s.Equal(500, response.Status())
+	s.Equal(404, response.Status())
 
 	// Invalid project
 	route.project = "not_here"
