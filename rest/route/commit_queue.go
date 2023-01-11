@@ -63,52 +63,50 @@ func makeDeleteCommitQueueItems(env evergreen.Environment) gimlet.RouteHandler {
 	}
 }
 
-func (cq commitQueueDeleteItemHandler) Factory() gimlet.RouteHandler {
+func (h commitQueueDeleteItemHandler) Factory() gimlet.RouteHandler {
 	return &commitQueueDeleteItemHandler{
-		env: cq.env,
+		env: h.env,
 	}
 }
 
-func (cq *commitQueueDeleteItemHandler) Parse(ctx context.Context, r *http.Request) error {
+func (h *commitQueueDeleteItemHandler) Parse(ctx context.Context, r *http.Request) error {
 	vars := gimlet.GetVars(r)
-	cq.item = vars["patch_id"]
-	requestedPatch, err := patch.FindOneId(cq.item)
+	h.item = vars["patch_id"]
+	requestedPatch, err := patch.FindOneId(h.item)
 	if err != nil {
-		return errors.Wrapf(err, "finding commit queue item '%s'", cq.item)
+		return errors.Wrapf(err, "finding commit queue item '%s'", h.item)
 	}
 	if requestedPatch == nil {
-		return errors.New("commit queue item not found")
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    "commit queue item not found",
+		}
 	}
-	cq.project = requestedPatch.Project
+	h.project = requestedPatch.Project
 	return nil
 }
 
-func (cq *commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responder {
+func (h *commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responder {
 	dc := data.DBCommitQueueConnector{}
 
-	removed, err := data.CommitQueueRemoveItem(cq.project, cq.item, gimlet.GetUser(ctx).DisplayName())
+	removed, err := data.CommitQueueRemoveItem(h.project, h.item, gimlet.GetUser(ctx).DisplayName())
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "deleting commit queue item '%s' from commit queue for project '%s'", cq.item, cq.project))
-	}
-	if removed == nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("commit queue item '%s' for project '%s' not found", cq.item, cq.project),
-		})
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "deleting commit queue item '%s' from commit queue for project '%s'", h.item, h.project))
 	}
 
 	// Send GitHub status
 	if utility.FromStringPtr(removed.Source) == commitqueue.SourcePullRequest {
-		projectRef, err := data.FindProjectById(cq.project, true, false)
+		projectRef, err := data.FindProjectById(h.project, true, false)
 		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project '%s'", cq.project))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project '%s'", h.project))
 		}
 		if projectRef == nil {
-			return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' doesn't exist", cq.project))
+			return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' doesn't exist", h.project))
 		}
-		itemInt, err := strconv.Atoi(cq.item)
+
+		itemInt, err := strconv.Atoi(utility.FromStringPtr(removed.Issue))
 		if err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "item '%s' is not an integer", cq.item))
+			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "item '%s' is not an integer", h.item))
 		}
 		pr, err := dc.GetGitHubPR(ctx, projectRef.Owner, projectRef.Repo, itemInt)
 		if err != nil {
@@ -118,7 +116,7 @@ func (cq *commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responde
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "GitHub returned a PR missing a HEAD SHA"))
 		}
 		pushJob := units.NewGithubStatusUpdateJobForDeleteFromCommitQueue(projectRef.Owner, projectRef.Repo, *pr.Head.SHA, itemInt)
-		q := cq.env.LocalQueue()
+		q := h.env.LocalQueue()
 		err = q.Put(ctx, pushJob)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "enqueueing GitHub status update job"))
