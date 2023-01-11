@@ -284,6 +284,8 @@ func boolPtr(b bool) *bool {
 }
 
 func TestPopulateExpansions(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(VersionCollection, patch.Collection, ProjectRefCollection, task.Collection))
 	defer func() {
@@ -352,7 +354,7 @@ buildvariants:
 	}
 	oauthToken, err := settings.GetGithubOauthToken()
 	assert.NoError(err)
-	expansions, err := PopulateExpansions(taskDoc, &h, oauthToken)
+	expansions, err := PopulateExpansions(ctx, taskDoc, &h, oauthToken)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 24)
 	assert.Equal("0", expansions.Get("execution"))
@@ -390,7 +392,7 @@ buildvariants:
 	}
 	require.NoError(t, p.Insert())
 
-	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
+	expansions, err = PopulateExpansions(ctx, taskDoc, &h, oauthToken)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 24)
 	assert.Equal("true", expansions.Get("is_patch"))
@@ -410,7 +412,7 @@ buildvariants:
 		Description: "commit queue message",
 	}
 	require.NoError(t, p.Insert())
-	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
+	expansions, err = PopulateExpansions(ctx, taskDoc, &h, oauthToken)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 26)
 	assert.Equal("true", expansions.Get("is_patch"))
@@ -425,7 +427,7 @@ buildvariants:
 		Version: v.Id,
 	}
 	require.NoError(t, p.Insert())
-	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
+	expansions, err = PopulateExpansions(ctx, taskDoc, &h, oauthToken)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 27)
 	assert.Equal("true", expansions.Get("is_patch"))
@@ -450,7 +452,7 @@ buildvariants:
 	}
 	assert.NoError(patchDoc.Insert())
 
-	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
+	expansions, err = PopulateExpansions(ctx, taskDoc, &h, oauthToken)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 27)
 	assert.Equal("github_pr", expansions.Get("requester"))
@@ -475,7 +477,7 @@ buildvariants:
 	assert.NoError(upstreamProject.Insert())
 	taskDoc.TriggerID = "upstreamTask"
 	taskDoc.TriggerType = ProjectTriggerLevelTask
-	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
+	expansions, err = PopulateExpansions(ctx, taskDoc, &h, oauthToken)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 35)
 	assert.Equal(taskDoc.TriggerID, expansions.Get("trigger_event_identifier"))

@@ -81,7 +81,7 @@ func ListHostsForTask(ctx context.Context, taskID string) ([]host.Host, error) {
 	return hosts, nil
 }
 
-func CreateHostsFromTask(t *task.Task, user user.DBUser, keyNameOrVal string) error {
+func CreateHostsFromTask(ctx context.Context, t *task.Task, user user.DBUser, keyNameOrVal string) error {
 	if t == nil {
 		return errors.New("no task to create hosts from")
 	}
@@ -90,7 +90,7 @@ func CreateHostsFromTask(t *task.Task, user user.DBUser, keyNameOrVal string) er
 		keyVal = keyNameOrVal
 	}
 
-	proj, expansions, err := makeProjectAndExpansionsFromTask(t)
+	proj, expansions, err := makeProjectAndExpansionsFromTask(ctx, t)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -160,7 +160,7 @@ func CreateHostsFromTask(t *task.Task, user user.DBUser, keyNameOrVal string) er
 	return catcher.Resolve()
 }
 
-func makeProjectAndExpansionsFromTask(t *task.Task) (*model.Project, *util.Expansions, error) {
+func makeProjectAndExpansionsFromTask(ctx context.Context, t *task.Task) (*model.Project, *util.Expansions, error) {
 	v, err := model.VersionFindOne(model.VersionById(t.Version))
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "finding version '%s'", t.Version)
@@ -184,7 +184,7 @@ func makeProjectAndExpansionsFromTask(t *task.Task) (*model.Project, *util.Expan
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "getting GitHub OAuth token from admin settings")
 	}
-	expansions, err := model.PopulateExpansions(t, h, oauthToken)
+	expansions, err := model.PopulateExpansions(ctx, t, h, oauthToken)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "populating expansions")
 	}

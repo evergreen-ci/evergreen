@@ -979,7 +979,7 @@ var (
 	ProjectTasksKey         = bsonutil.MustHaveTag(Project{}, "Tasks")
 )
 
-func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Expansions, error) {
+func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, oauthToken string) (util.Expansions, error) {
 	if t == nil {
 		return nil, errors.New("task cannot be nil")
 	}
@@ -1124,10 +1124,6 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 			expansions.Put(e.Key, e.Value)
 		}
 	}
-
-	// kim: TODO: reconsider putting an untimed context here.
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	bvExpansions, err := FindExpansionsForVariant(ctx, v, t.BuildVariant)
 	if err != nil {

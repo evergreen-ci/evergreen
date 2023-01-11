@@ -1,6 +1,8 @@
 package testutil
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -10,12 +12,12 @@ import (
 )
 
 // MakeTaskConfigFromModelData converts an API TestModelData to a TaskConfig.
-func MakeTaskConfigFromModelData(settings *evergreen.Settings, data *testutil.TestModelData) (*internal.TaskConfig, error) {
+func MakeTaskConfigFromModelData(ctx context.Context, settings *evergreen.Settings, data *testutil.TestModelData) (*internal.TaskConfig, error) {
 	oauthToken, err := settings.GetGithubOauthToken()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting global GitHub OAuth token")
 	}
-	exp, err := model.PopulateExpansions(data.Task, data.Host, oauthToken)
+	exp, err := model.PopulateExpansions(ctx, data.Task, data.Host, oauthToken)
 	if err != nil {
 		return nil, errors.Wrap(err, "populating expansions")
 	}

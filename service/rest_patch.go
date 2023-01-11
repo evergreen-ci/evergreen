@@ -57,7 +57,6 @@ func (restapi restAPI) getPatch(w http.ResponseWriter, r *http.Request) {
 }
 
 // getPatchConfig returns the patched config for a given patch.
-// kim: TODO: check this in staging
 func (restapi restAPI) getPatchConfig(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
 	if projCtx.Patch == nil {

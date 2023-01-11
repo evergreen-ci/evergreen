@@ -354,7 +354,7 @@ func (h *getExpansionsHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting GitHub OAuth token"))
 	}
 
-	e, err := model.PopulateExpansions(t, foundHost, oauthToken)
+	e, err := model.PopulateExpansions(ctx, t, foundHost, oauthToken)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(err)
 	}
