@@ -1026,17 +1026,7 @@ func GetMergeablePullRequest(ctx context.Context, issue int, githubToken, owner,
 		return nil, errors.Wrap(err, "GitHub returned an incomplete PR")
 	}
 
-	if pr.Mergeable == nil {
-		if *pr.Merged {
-			return pr, errors.New("PR is already merged")
-		}
-		// GitHub hasn't yet tested if the PR is mergeable.
-		// Check back later
-		// See: https://developer.github.com/v3/pulls/#response-1
-		return pr, errors.New("GitHub hasn't yet generated a merge commit")
-	}
-
-	if !*pr.Mergeable {
+	if !utility.FromBoolTPtr(pr.Mergeable) {
 		return pr, errors.New("PR is not mergeable")
 	}
 
