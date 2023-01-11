@@ -158,7 +158,7 @@ func (s *GitGetProjectSuite) SetupTest() {
 	s.taskConfig6.BuildVariant.Modules = []string{"evergreen"}
 }
 
-func (s *GitGetProjectSuite) TearDownTest() {
+func (s *GitGetProjectSuite) TearDownSuite() {
 	s.cancel()
 }
 
