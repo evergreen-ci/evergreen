@@ -1164,10 +1164,10 @@ func updateBuildStatus(b *build.Build) (bool, error) {
 
 	event.LogBuildStateChangeEvent(b.Id, buildStatus.status)
 
-	notBlockedOrUnscheduled := !buildStatus.allTasksBlocked && !buildStatus.allTasksUnscheduled
+	shouldActivate := !buildStatus.allTasksBlocked && !buildStatus.allTasksUnscheduled
 
 	// if the status has changed, re-activate the build if it's not blocked
-	if notBlockedOrUnscheduled {
+	if shouldActivate {
 		if err = b.SetActivated(true); err != nil {
 			return true, errors.Wrapf(err, "setting build '%s' as active", b.Id)
 		}
