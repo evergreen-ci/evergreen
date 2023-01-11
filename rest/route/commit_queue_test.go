@@ -72,7 +72,7 @@ func (s *CommitQueueSuite) TestGetCommitQueue() {
 				{
 					Module: utility.ToStringPtr("test_module"),
 					Issue:  utility.ToStringPtr("1234"),
-								},
+				},
 			},
 		}, false)
 	s.NoError(err)
