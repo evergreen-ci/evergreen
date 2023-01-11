@@ -57,6 +57,7 @@ func (restapi restAPI) getPatch(w http.ResponseWriter, r *http.Request) {
 }
 
 // getPatchConfig returns the patched config for a given patch.
+// kim: TODO: check this in staging
 func (restapi restAPI) getPatchConfig(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
 	if projCtx.Patch == nil {
@@ -64,12 +65,16 @@ func (restapi restAPI) getPatchConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/x-yaml; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-
 	if projCtx.Patch.PatchedParserProject != "" {
+		w.Header().Set("Content-Type", "application/x-yaml; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+
 		_, err := w.Write([]byte(projCtx.Patch.PatchedParserProject))
-		grip.Warning(errors.Wrap(err, "writing patched parser project"))
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":  "could not write patched parser project",
+			"patch_id": projCtx.Patch.Id.Hex(),
+			"route":    "/patches/{patch_id}/config",
+		}))
 		return
 	}
 
@@ -79,20 +84,46 @@ func (restapi restAPI) getPatchConfig(w http.ResponseWriter, r *http.Request) {
 			"route":    "/patches/{patch_id}/config",
 			"patch_id": projCtx.Patch.Id.Hex(),
 		})
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	pp, err := model.GetParserProjectStorage(projCtx.Version.ProjectStorageMethod).FindOneByID(r.Context(), projCtx.Version.Id)
-	if pp != nil {
-		var projBytes []byte
-		projBytes, err = yaml.Marshal(pp)
-		if err == nil {
-			_, err = w.Write(projBytes)
-		}
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":           "could not get parser project from persistent storage",
+			"parser_project_id": projCtx.Version.Id,
+			"patch_id":          projCtx.Patch.Id.Hex(),
+			"route":             "/patches/{patch_id}/config",
+		}))
+		return
 	}
-	grip.Warning(message.WrapError(err, message.Fields{
-		"message":  "could not marshal and write parser project to response",
-		"route":    "/patches/{patch_id}/config",
-		"patch_id": projCtx.Patch.Id.Hex(),
-	}))
+	if pp == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":           "parser project not found in persistent storage",
+			"parser_project_id": projCtx.Version.Id,
+			"patch_id":          projCtx.Patch.Id.Hex(),
+			"route":             "/patches/{patch_id}/config",
+		}))
+		return
+	}
+
+	var projBytes []byte
+	projBytes, err = yaml.Marshal(pp)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":  "could not marshal and write parser project to response",
+			"route":    "/patches/{patch_id}/config",
+			"patch_id": projCtx.Patch.Id.Hex(),
+		}))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/x-yaml; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(projBytes)
+	return
 }

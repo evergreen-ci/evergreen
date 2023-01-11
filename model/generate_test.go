@@ -1049,9 +1049,9 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 
 	tasks := []task.Task{}
 	s.NoError(db.FindAllQ(task.Collection, db.Query(bson.M{}), &tasks))
-	s.NoError(db.FindAllQ(task.Collection, db.Query(bson.M{"display_name": "my_display_task_gen"}), &tasks))
+	s.NoError(db.FindAllQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: "my_display_task_gen"}), &tasks))
 	s.Len(tasks, 1)
-	s.NoError(db.FindAllQ(task.Collection, db.Query(bson.M{"display_name": "my_display_task"}), &tasks))
+	s.NoError(db.FindAllQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: "my_display_task"}), &tasks))
 	s.Len(tasks, 1)
 	s.Len(tasks[0].ExecutionTasks, 1)
 }
