@@ -158,10 +158,6 @@ func (s *GitGetProjectSuite) SetupTest() {
 	s.taskConfig6.BuildVariant.Modules = []string{"evergreen"}
 }
 
-func (s *GitGetProjectSuite) TearDownSuite() {
-	s.cancel()
-}
-
 func (s *GitGetProjectSuite) TestBuildCloneCommandUsesHTTPS() {
 	c := &gitFetchProject{
 		Directory: "dir",
@@ -820,6 +816,7 @@ func (s *GitGetProjectSuite) TearDownSuite() {
 	if s.taskConfig2 != nil {
 		s.NoError(os.RemoveAll(s.taskConfig2.WorkDir))
 	}
+	s.cancel()
 }
 
 func (s *GitGetProjectSuite) TestAllowsEmptyPatches() {
