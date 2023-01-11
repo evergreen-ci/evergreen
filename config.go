@@ -504,6 +504,7 @@ func (s *Settings) GetSender(ctx context.Context, env Environment) (send.Sender,
 		retryConf := utility.NewDefaultHTTPRetryConf()
 		retryConf.MaxDelay = time.Second
 		retryConf.BaseDelay = 10 * time.Millisecond
+		// not this probably
 		retryConf.MaxRetries = 10
 		client := utility.GetHTTPRetryableClient(retryConf)
 

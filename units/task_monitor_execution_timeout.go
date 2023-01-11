@@ -23,7 +23,8 @@ const (
 	heartbeatTimeoutThreshold             = 7 * time.Minute
 	taskExecutionTimeoutJobName           = "task-execution-timeout"
 	taskExecutionTimeoutPopulationJobName = "task-execution-timeout-populate"
-	maxTaskExecutionTimeoutAttempts       = 10
+	// this?
+	maxTaskExecutionTimeoutAttempts = 10
 )
 
 func init() {

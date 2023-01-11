@@ -67,8 +67,9 @@ type monitor struct {
 }
 
 const (
-	defaultMonitorPort        = defaultAgentStatusPort - 1
-	defaultMaxRequestDelay    = 30 * time.Second
+	defaultMonitorPort     = defaultAgentStatusPort - 1
+	defaultMaxRequestDelay = 30 * time.Second
+	// or this?
 	defaultMaxRequestAttempts = 10
 
 	monitorLoggerName = "evergreen.agent.monitor"

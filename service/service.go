@@ -13,10 +13,11 @@ import (
 )
 
 const (
-	WebRootPath  = "service"
-	Templates    = "templates"
-	Static       = "static"
-	DefaultSkip  = 0
+	WebRootPath = "service"
+	Templates   = "templates"
+	Static      = "static"
+	DefaultSkip = 0
+	// and this?
 	DefaultLimit = 10
 )
 

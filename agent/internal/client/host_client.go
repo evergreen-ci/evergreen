@@ -7,6 +7,7 @@ import (
 )
 
 const (
+	//what's this?
 	defaultMaxAttempts  = 10
 	defaultTimeoutStart = time.Second * 2
 	defaultTimeoutMax   = time.Minute * 10

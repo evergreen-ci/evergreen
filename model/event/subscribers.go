@@ -22,6 +22,7 @@ const (
 	SubscriberTypeNone              = "none"
 	RunChildPatchSubscriberType     = "run-child-patch"
 
+	// or this?
 	webhookRetryLimit    = 10
 	webhookMinDelayLimit = 10000
 	webhookTimeoutLimit  = 30000

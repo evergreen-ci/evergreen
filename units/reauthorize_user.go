@@ -20,7 +20,8 @@ import (
 const (
 	reauthorizeUserJobName  = "reauthorize-user"
 	defaultBackgroundReauth = time.Hour
-	maxReauthAttempts       = 10
+	// and this
+	maxReauthAttempts = 10
 )
 
 type reauthorizeUserJob struct {

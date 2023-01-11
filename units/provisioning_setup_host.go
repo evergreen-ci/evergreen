@@ -30,10 +30,11 @@ import (
 
 const (
 	provisionRetryLimit = 40
-	mountRetryLimit     = 10
-	mountSleepDuration  = time.Second * 10
-	setupHostJobName    = "provisioning-setup-host"
-	scpTimeout          = time.Minute
+	// this?
+	mountRetryLimit    = 10
+	mountSleepDuration = time.Second * 10
+	setupHostJobName   = "provisioning-setup-host"
+	scpTimeout         = time.Minute
 )
 
 func init() {
