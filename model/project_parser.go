@@ -509,7 +509,7 @@ func FindAndTranslateProjectForPatch(ctx context.Context, p *patch.Patch) (*Proj
 		if v == nil {
 			return nil, nil, errors.Errorf("version '%s' not found for patch '%s'", p.Version, p.Id.Hex())
 		}
-		return FindAndTranslateProjectForVersion(v, p.Project)
+		return FindAndTranslateProjectForVersion(v)
 	}
 	project := &Project{}
 	pp, err := LoadProjectInto(ctx, []byte(p.PatchedParserProject), nil, p.Project, project)
@@ -521,7 +521,7 @@ func FindAndTranslateProjectForPatch(ctx context.Context, p *patch.Patch) (*Proj
 
 // FindAndTranslateProjectForVersion translates a parser project for a version into a Project.
 // Also sets the project ID.
-func FindAndTranslateProjectForVersion(v *Version, projectId string) (*Project, *ParserProject, error) {
+func FindAndTranslateProjectForVersion(v *Version) (*Project, *ParserProject, error) {
 	pp, err := GetParserProjectStorage(v.ProjectStorageMethod).FindOneByID(context.Background(), v.Id)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "finding parser project")
@@ -529,7 +529,7 @@ func FindAndTranslateProjectForVersion(v *Version, projectId string) (*Project, 
 	if pp == nil {
 		return nil, nil, errors.Errorf("parser project not found for version '%s'", v.Id)
 	}
-	pp.Identifier = utility.ToStringPtr(projectId)
+	pp.Identifier = utility.ToStringPtr(v.Identifier)
 	var p *Project
 	p, err = TranslateProject(pp)
 	if err != nil {
@@ -556,7 +556,7 @@ func LoadProjectInfoForVersion(v *Version, id string) (ProjectInfo, error) {
 			return ProjectInfo{}, errors.Wrap(err, "finding project config")
 		}
 	}
-	p, pp, err := FindAndTranslateProjectForVersion(v, id)
+	p, pp, err := FindAndTranslateProjectForVersion(v)
 	if err != nil {
 		return ProjectInfo{}, errors.Wrap(err, "translating project")
 	}

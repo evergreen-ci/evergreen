@@ -1226,7 +1226,7 @@ func FindProjectFromVersionID(versionStr string) (*Project, error) {
 		return nil, errors.Errorf("version '%s' not found", versionStr)
 	}
 
-	project, _, err := FindAndTranslateProjectForVersion(ver, ver.Identifier)
+	project, _, err := FindAndTranslateProjectForVersion(ver)
 	if err != nil {
 		return nil, errors.Wrapf(err, "loading project config for version '%s'", versionStr)
 	}
@@ -1276,7 +1276,7 @@ func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, er
 			continue
 		}
 		if lastGoodVersion != nil {
-			project, _, err = FindAndTranslateProjectForVersion(lastGoodVersion, projectId)
+			project, _, err = FindAndTranslateProjectForVersion(lastGoodVersion)
 			if err != nil {
 				grip.Critical(message.WrapError(err, message.Fields{
 					"message": "last known good version has malformed config",
