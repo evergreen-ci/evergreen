@@ -168,7 +168,7 @@ func makeProjectAndExpansionsFromTask(ctx context.Context, t *task.Task) (*model
 	if v == nil {
 		return nil, nil, errors.Errorf("version '%s' not found", t.Version)
 	}
-	project, _, err := model.FindAndTranslateProjectForVersion(v.Id, v.Identifier, v.ProjectStorageMethod)
+	project, _, err := model.FindAndTranslateProjectForVersion(v, v.Identifier)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "loading project")
 	}
