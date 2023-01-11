@@ -157,7 +157,7 @@ func (c *gitPush) pushPatch(ctx context.Context, logger client.LoggerProducer, p
 
 	jpm := c.JasperManager()
 	stdErr := noopWriteCloser{&bytes.Buffer{}}
-	pushCommand := fmt.Sprintf("git push origin %s", p.branch)
+	pushCommand := fmt.Sprintf("git push origin refs/heads/%s", p.branch)
 	logger.Execution().Debugf("git push command: %s", pushCommand)
 	cmd := jpm.CreateCommand(ctx).Directory(p.directory).Append(pushCommand).
 		SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorWriter(stdErr)
