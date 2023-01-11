@@ -11,7 +11,7 @@ type ParserProjectStorage interface {
 	// parser project with only the requested fields populated.
 	// Implementations may or may not respect the context.
 	FindOneByIDWithFields(ctx context.Context, id string, fields ...string) (*ParserProject, error)
-	// UpsertOneByID replaces a parser project if the parser project with the
+	// UpsertOne replaces a parser project if the parser project with the
 	// same ID already exists. If it does not exist yet, it inserts a new parser
 	// project.
 	UpsertOne(ctx context.Context, pp *ParserProject) error
