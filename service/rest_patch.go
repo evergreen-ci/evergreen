@@ -68,7 +68,7 @@ func (restapi restAPI) getPatchConfig(w http.ResponseWriter, r *http.Request) {
 	if projCtx.Patch.PatchedParserProject != "" {
 		w.Header().Set("Content-Type", "application/x-yaml; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
-		_, err := w.Write(projCtx.Patch.PatchedParserProject)
+		_, err := w.Write([]byte(projCtx.Patch.PatchedParserProject))
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message":  "could not write patched parser project to response",
 			"patch_id": projCtx.Patch.Id.Hex(),
