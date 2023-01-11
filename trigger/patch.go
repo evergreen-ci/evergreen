@@ -190,6 +190,10 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 	if api.ProjectIdentifier != nil {
 		projectName = utility.FromStringPtr(api.ProjectIdentifier)
 	}
+	collectiveStatus, err := patch.CollectiveStatus(t.patch.Id.Hex())
+	if err != nil {
+		return nil, errors.Wrap(err, "getting collective status for patch")
+	}
 
 	data := commonTemplateData{
 		ID:                t.patch.Id.Hex(),
@@ -199,7 +203,7 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 		Description:       t.patch.Description,
 		Object:            event.ObjectPatch,
 		Project:           projectName,
-		PastTenseStatus:   t.data.Status,
+		PastTenseStatus:   collectiveStatus,
 		apiModel:          &api,
 		githubState:       message.GithubStatePending,
 		githubDescription: "tasks are running",
@@ -236,14 +240,16 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 	if utility.IsZeroTime(finishTime) {
 		finishTime = time.Now()
 	}
-	if t.data.Status == evergreen.PatchSucceeded {
+
+	if collectiveStatus == evergreen.PatchSucceeded {
 		slackColor = evergreenSuccessColor
 		data.githubState = message.GithubStateSuccess
 		data.githubDescription = fmt.Sprintf("patch finished in %s", finishTime.Sub(t.patch.StartTime).String())
-	} else if t.data.Status == evergreen.PatchFailed {
+	} else if collectiveStatus == evergreen.PatchFailed {
 		data.githubState = message.GithubStateFailure
 		data.githubDescription = fmt.Sprintf("patch finished in %s", finishTime.Sub(t.patch.StartTime).String())
 	}
+
 	if t.patch.IsGithubPRPatch() {
 		data.slack = append(data.slack, message.SlackAttachment{
 			Title:     "GitHub Pull Request",
