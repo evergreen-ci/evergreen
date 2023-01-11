@@ -8,6 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/20210107192922/yaml.v3"
 )
@@ -65,7 +67,13 @@ func (restapi restAPI) getPatchConfig(w http.ResponseWriter, r *http.Request) {
 
 	if projCtx.Patch.PatchedParserProject != "" {
 		w.Header().Set("Content-Type", "application/x-yaml; charset=utf-8")
-		gimlet.WriteJSONInternalError(w, projCtx.Patch.PatchedParserProject)
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(projCtx.Patch.PatchedParserProject))
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":  "could not write patched parser project to response",
+			"patch_id": projCtx.Patch.Id.Hex(),
+			"route":    "/rest/v1/patches/{patch_id}/config",
+		}))
 		return
 	}
 
@@ -92,5 +100,11 @@ func (restapi restAPI) getPatchConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/x-yaml; charset=utf-8")
-	gimlet.WriteText(w, projBytes)
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write([]byte(projBytes))
+	grip.Warning(message.WrapError(err, message.Fields{
+		"message":  "could not write parser project to response",
+		"patch_id": projCtx.Patch.Id.Hex(),
+		"route":    "/rest/v1/patches/{patch_id}/config",
+	}))
 }
