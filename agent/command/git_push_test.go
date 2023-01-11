@@ -77,7 +77,7 @@ func TestGitPush(t *testing.T) {
 
 			commands := []string{
 				"git checkout main",
-				"git push origin main",
+				"git push origin refs/heads/main",
 			}
 
 			assert.Len(t, manager.Procs, len(commands))
@@ -152,7 +152,7 @@ func TestGitPush(t *testing.T) {
 
 			assert.NoError(t, c.pushPatch(context.Background(), logger, params))
 			commands := []string{
-				"git push origin main",
+				"git push origin refs/heads/main",
 			}
 			require.Len(t, manager.Procs, len(commands))
 			for i, proc := range manager.Procs {
