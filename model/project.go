@@ -979,7 +979,7 @@ var (
 	ProjectTasksKey         = bsonutil.MustHaveTag(Project{}, "Tasks")
 )
 
-func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Expansions, error) {
+func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, oauthToken string) (util.Expansions, error) {
 	if t == nil {
 		return nil, errors.New("task cannot be nil")
 	}
@@ -1125,7 +1125,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 		}
 	}
 
-	bvExpansions, err := FindExpansionsForVariant(v, t.BuildVariant)
+	bvExpansions, err := FindExpansionsForVariant(ctx, v, t.BuildVariant)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting expansions for variant")
 	}
@@ -1217,20 +1217,6 @@ func (p *Project) FindTaskGroup(name string) *TaskGroup {
 	return nil
 }
 
-// FindContainerFromProject finds the container configuration associated with a given task's Container field.
-func FindContainerFromProject(t task.Task) (*Container, error) {
-	project, _, err := FindAndTranslateProjectForVersion(t.Version, t.Project)
-	if err != nil {
-		return nil, errors.Wrapf(err, "getting project for version '%s'", t.Version)
-	}
-	for _, container := range project.Containers {
-		if container.Name == t.Container {
-			return &container, nil
-		}
-	}
-	return nil, errors.Errorf("no such container '%s' defined on project '%s'", t.Container, t.Project)
-}
-
 func FindProjectFromVersionID(versionStr string) (*Project, error) {
 	ver, err := VersionFindOne(VersionById(versionStr))
 	if err != nil {
@@ -1240,7 +1226,7 @@ func FindProjectFromVersionID(versionStr string) (*Project, error) {
 		return nil, errors.Errorf("version '%s' not found", versionStr)
 	}
 
-	project, _, err := FindAndTranslateProjectForVersion(ver.Id, ver.Identifier)
+	project, _, err := FindAndTranslateProjectForVersion(ver)
 	if err != nil {
 		return nil, errors.Wrapf(err, "loading project config for version '%s'", versionStr)
 	}
@@ -1290,7 +1276,7 @@ func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, er
 			continue
 		}
 		if lastGoodVersion != nil {
-			project, _, err = FindAndTranslateProjectForVersion(lastGoodVersion.Id, projectId)
+			project, _, err = FindAndTranslateProjectForVersion(lastGoodVersion)
 			if err != nil {
 				grip.Critical(message.WrapError(err, message.Fields{
 					"message": "last known good version has malformed config",
@@ -2126,7 +2112,7 @@ type VariantsAndTasksFromProject struct {
 func GetVariantsAndTasksFromPatchProject(ctx context.Context, p *patch.Patch) (*VariantsAndTasksFromProject, error) {
 	project, _, err := FindAndTranslateProjectForPatch(ctx, p)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "finding and translating project")
 	}
 
 	// retrieve tasks and variant mappings' names

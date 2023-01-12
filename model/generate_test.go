@@ -362,6 +362,8 @@ buildvariants:
 
 type GenerateSuite struct {
 	suite.Suite
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 func TestGenerateSuite(t *testing.T) {
@@ -378,6 +380,11 @@ func (s *GenerateSuite) SetupTest() {
 		Id: "",
 	}
 	s.Require().NoError(ref2.Insert())
+	s.ctx, s.cancel = context.WithCancel(context.Background())
+}
+
+func (s *GenerateSuite) TearDownTest() {
+	s.cancel()
 }
 
 func (s *GenerateSuite) TestParseProjectFromJSON() {
@@ -560,8 +567,7 @@ func (s *GenerateSuite) TestValidateNoRecursiveGenerateTasks() {
 
 func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	p := &Project{}
-	ctx := context.Background()
-	pp, err := LoadProjectInto(ctx, []byte(sampleProjYml), nil, "", p)
+	pp, err := LoadProjectInto(s.ctx, []byte(sampleProjYml), nil, "", p)
 	s.NoError(err)
 	cachedProject := cacheProjectData(p)
 	g := sampleGeneratedProject
@@ -598,7 +604,7 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	_, ok = newPP.Functions["new_function"]
 	s.True(ok)
 
-	pp, err = LoadProjectInto(ctx, []byte(sampleProjYmlNoFunctions), nil, "", p)
+	pp, err = LoadProjectInto(s.ctx, []byte(sampleProjYmlNoFunctions), nil, "", p)
 	s.NoError(err)
 	newPP, err = g.addGeneratedProjectToConfig(pp, cachedProject)
 	s.NoError(err)
@@ -681,7 +687,7 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	g := sampleGeneratedProject
 	g.Task = genTask
 
-	p, pp, err := FindAndTranslateProjectForVersion(v.Id, "proj")
+	p, pp, err := FindAndTranslateProjectForVersion(v)
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(p, pp, v)
 	s.Require().NoError(err)
@@ -703,10 +709,11 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	s.Require().Len(v.BuildVariants[1].BatchTimeTasks, 1)
 	s.InDelta(time.Now().Add(15*time.Minute).Unix(), v.BuildVariants[1].BatchTimeTasks[0].ActivateAt.Unix(), 1)
 
-	pp, err = ParserProjectFindOneById(v.Id)
+	pp, err = GetParserProjectStorage(v.ProjectStorageMethod).FindOneByID(s.ctx, v.Id)
 	s.NoError(err)
 	s.Require().NotNil(pp)
-	s.Equal(1, pp.ConfigUpdateNumber)
+	s.Len(pp.BuildVariants, 3)
+	s.Len(pp.Tasks, 6)
 	builds, err := build.FindBuildsByVersions([]string{v.Id})
 	s.NoError(err)
 	tasks, err := task.FindAll(db.Query(bson.M{task.VersionKey: v.Id})) // with display
@@ -735,6 +742,9 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 }
 
 func (s *GenerateSuite) TestSaveWithAlreadyGeneratedTasksAndVariants() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	generatorTask := &task.Task{
 		Id:      "generator",
 		BuildId: "generate_build",
@@ -769,7 +779,7 @@ func (s *GenerateSuite) TestSaveWithAlreadyGeneratedTasksAndVariants() {
 	pp.Id = "version_that_called_generate_task"
 	s.NoError(pp.Insert())
 	// Setup parser project to be partially generated.
-	p, pp, err := FindAndTranslateProjectForVersion(v.Id, "")
+	p, pp, err := FindAndTranslateProjectForVersion(v)
 	s.NoError(err)
 
 	g := partiallyGeneratedProject
@@ -777,7 +787,7 @@ func (s *GenerateSuite) TestSaveWithAlreadyGeneratedTasksAndVariants() {
 	p, pp, v, err = g.NewVersion(p, pp, v)
 	s.NoError(err)
 	pp.UpdatedByGenerators = []string{generatorTask.Id}
-	s.NoError(pp.TryUpsert())
+	s.NoError(GetParserProjectStorage(ProjectStorageMethodDB).UpsertOne(ctx, pp))
 
 	// Shouldn't error trying to add the same generated project.
 	p, pp, v, err = g.NewVersion(p, pp, v)
@@ -854,7 +864,7 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 
 	g := sampleGeneratedProjectAddToBVOnly
 	g.Task = &tasksThatExist[0]
-	p, pp, err := FindAndTranslateProjectForVersion(v.Id, "")
+	p, pp, err := FindAndTranslateProjectForVersion(v)
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(p, pp, v)
 	s.NoError(err)
@@ -864,15 +874,24 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 	s.NoError(err)
 	s.Require().NotNil(v)
 
-	pp, err = ParserProjectFindOneById(v.Id)
+	pp, err = GetParserProjectStorage(v.ProjectStorageMethod).FindOneByID(s.ctx, v.Id)
 	s.NoError(err)
 	s.Require().NotNil(pp)
-	s.Equal(1, pp.ConfigUpdateNumber)
+	s.Require().Len(pp.BuildVariants, 1, "parser project should have same build variant")
+	var taskWithDepsFound bool
+	const expectedTask = "task_that_has_dependencies"
+	for _, t := range pp.BuildVariants[0].Tasks {
+		if t.Name == expectedTask {
+			taskWithDepsFound = true
+			break
+		}
+	}
+	s.True(taskWithDepsFound, "task '%s' should have been added to build variant", expectedTask)
 
 	tasks := []task.Task{}
 	err = db.FindAllQ(task.Collection, db.Query(bson.M{}), &tasks)
 	s.NoError(err)
-	err = db.FindAllQ(task.Collection, db.Query(bson.M{"display_name": "task_that_has_dependencies"}), &tasks)
+	err = db.FindAllQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: expectedTask}), &tasks)
 	s.NoError(err)
 	s.Require().Len(tasks, 1)
 	s.Require().Len(tasks[0].DependsOn, 3)
@@ -952,7 +971,7 @@ buildvariants:
 		},
 	}
 
-	p, pp, err := FindAndTranslateProjectForVersion(v.Id, "")
+	p, pp, err := FindAndTranslateProjectForVersion(v)
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(p, pp, v)
 	s.NoError(err)
@@ -960,12 +979,12 @@ buildvariants:
 
 	// the depended-on task is created in the existing variant
 	saySomething := task.Task{}
-	err = db.FindOneQ(task.Collection, db.Query(bson.M{"display_name": "say_something"}), &saySomething)
+	err = db.FindOneQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: "say_something"}), &saySomething)
 	s.NoError(err)
 
 	// the dependent task depends on the depended-on task
 	taskWithDeps := task.Task{}
-	err = db.FindOneQ(task.Collection, db.Query(bson.M{"display_name": "task_that_has_dependencies"}), &taskWithDeps)
+	err = db.FindOneQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: "task_that_has_dependencies"}), &taskWithDeps)
 	s.NoError(err)
 	s.Require().Len(taskWithDeps.DependsOn, 1)
 	s.Equal(taskWithDeps.DependsOn[0].TaskId, saySomething.Id)
@@ -1004,7 +1023,7 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 
 	g := smallGeneratedProject
 	g.Task = &taskThatExists
-	p, pp, err := FindAndTranslateProjectForVersion(v.Id, "")
+	p, pp, err := FindAndTranslateProjectForVersion(v)
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(p, pp, v)
 	s.Require().NoError(err)
@@ -1014,16 +1033,25 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 	s.NoError(err)
 	s.Require().NotNil(v)
 
-	pp, err = ParserProjectFindOneById(v.Id)
+	pp, err = GetParserProjectStorage(v.ProjectStorageMethod).FindOneByID(s.ctx, v.Id)
 	s.NoError(err)
 	s.Require().NotNil(pp)
-	s.Equal(1, pp.ConfigUpdateNumber)
+	s.Require().Len(pp.BuildVariants, 1, "parser project should have same build variant")
+	const expectedDisplayTask = "my_display_task"
+	var dtFound bool
+	for _, dt := range pp.BuildVariants[0].DisplayTasks {
+		if dt.Name == expectedDisplayTask {
+			dtFound = true
+			break
+		}
+	}
+	s.True(dtFound, "display task '%s' should have been added", expectedDisplayTask)
 
 	tasks := []task.Task{}
 	s.NoError(db.FindAllQ(task.Collection, db.Query(bson.M{}), &tasks))
-	s.NoError(db.FindAllQ(task.Collection, db.Query(bson.M{"display_name": "my_display_task_gen"}), &tasks))
+	s.NoError(db.FindAllQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: "my_display_task_gen"}), &tasks))
 	s.Len(tasks, 1)
-	s.NoError(db.FindAllQ(task.Collection, db.Query(bson.M{"display_name": "my_display_task"}), &tasks))
+	s.NoError(db.FindAllQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: "my_display_task"}), &tasks))
 	s.Len(tasks, 1)
 	s.Len(tasks[0].ExecutionTasks, 1)
 }
@@ -1298,61 +1326,6 @@ func (s *GenerateSuite) TestMergeGeneratedProjectsWithNoTasks() {
 	s.Require().NotNil(merged)
 	s.Require().Len(merged.BuildVariants, 1)
 	s.Len(merged.BuildVariants[0].DisplayTasks, 1)
-}
-
-func TestUpdateParserProject(t *testing.T) {
-	alreadyUpdatedTestName := "TaskAlreadyUpdatedParserProject"
-	withZeroTestName := "WithZero"
-	taskId := "tId"
-	for testName, setupTest := range map[string]func(t *testing.T, v *Version, pp *ParserProject){
-		"noParserProject": func(t *testing.T, v *Version, pp *ParserProject) {
-			assert.NoError(t, v.Insert())
-		},
-		"ParserProjectMoreRecent": func(t *testing.T, v *Version, pp *ParserProject) {
-			pp.ConfigUpdateNumber = 5
-			assert.NoError(t, v.Insert())
-			assert.NoError(t, pp.Insert())
-		},
-		"ConfigMostRecent": func(t *testing.T, v *Version, pp *ParserProject) {
-			pp.ConfigUpdateNumber = 1
-			assert.NoError(t, v.Insert())
-			assert.NoError(t, pp.Insert())
-		},
-		withZeroTestName: func(t *testing.T, v *Version, pp *ParserProject) {
-			assert.NoError(t, v.Insert())
-			assert.NoError(t, pp.Insert())
-		},
-		alreadyUpdatedTestName: func(t *testing.T, v *Version, pp *ParserProject) {
-			pp.UpdatedByGenerators = []string{taskId}
-			pp.ConfigUpdateNumber = 1
-			assert.NoError(t, v.Insert())
-			assert.NoError(t, pp.Insert())
-		},
-	} {
-		t.Run(testName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(VersionCollection, ParserProjectCollection))
-			v := &Version{Id: "my-version"}
-			pp := &ParserProject{Id: "my-version"}
-			setupTest(t, v, pp)
-			assert.NoError(t, updateParserProject(v, pp, taskId))
-			v, err := VersionFindOneId(v.Id)
-			assert.NoError(t, err)
-			require.NotNil(t, v)
-			pp, err = ParserProjectFindOneById(v.Id)
-			assert.NoError(t, err)
-			require.NotNil(t, pp)
-			assert.Len(t, pp.UpdatedByGenerators, 1)
-			assert.Contains(t, pp.UpdatedByGenerators, taskId)
-			if testName == withZeroTestName {
-				assert.Equal(t, 1, pp.ConfigUpdateNumber)
-				return
-			} else if testName == alreadyUpdatedTestName {
-				// Not changed because we've already updated.
-				assert.Equal(t, 1, pp.ConfigUpdateNumber)
-				return
-			}
-		})
-	}
 }
 
 func TestAddDependencies(t *testing.T) {

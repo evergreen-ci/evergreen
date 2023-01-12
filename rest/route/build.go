@@ -61,7 +61,18 @@ func (b *buildGetHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding tasks in build '%s'", b.buildId))
 		}
 	}
-	pp, err := serviceModel.ParserProjectFindOneById(foundBuild.Version)
+
+	v, err := serviceModel.VersionFindOneId(foundBuild.Version)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding version '%s'", foundBuild.Version))
+	}
+	if v == nil {
+		return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("version '%s' not found", foundBuild.Version),
+		})
+	}
+	pp, err := serviceModel.GetParserProjectStorage(v.ProjectStorageMethod).FindOneByID(ctx, v.Id)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting project info"))
 	}

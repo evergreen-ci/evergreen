@@ -216,7 +216,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 	if p.PatchedParserProject != "" {
 		project, _, err := FindAndTranslateProjectForPatch(ctx, p)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, errors.Wrap(err, "finding and translating project")
 		}
 		patchConfig := &PatchConfig{
 			PatchedParserProject: p.PatchedParserProject,

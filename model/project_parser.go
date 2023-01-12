@@ -53,8 +53,7 @@ const EmptyConfigurationError = "received empty configuration file"
 // to allow for flexible handling.
 type ParserProject struct {
 	// Id and ConfigdUpdateNumber are not pointers because they are only used internally
-	Id                 string `yaml:"_id" bson:"_id"` // should be the same as the version's ID
-	ConfigUpdateNumber int    `yaml:"config_number,omitempty" bson:"config_number,omitempty"`
+	Id string `yaml:"_id" bson:"_id"` // should be the same as the version's ID
 	// UpdatedByGenerators is used to determine if the parser project needs to be re-saved or not.
 	UpdatedByGenerators []string `yaml:"updated_by_generators,omitempty" bson:"updated_by_generators,omitempty"`
 	// List of yamls to merge
@@ -503,7 +502,14 @@ func (bvt *parserBV) hasSpecificActivation() bool {
 // This assumes that the version may not exist yet; otherwise FindAndTranslateProjectForVersion is equivalent.
 func FindAndTranslateProjectForPatch(ctx context.Context, p *patch.Patch) (*Project, *ParserProject, error) {
 	if p.PatchedParserProject == "" {
-		return FindAndTranslateProjectForVersion(p.Version, p.Project)
+		v, err := VersionFindOneId(p.Version)
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "finding version '%s' for patch '%s'", p.Version, p.Id.Hex())
+		}
+		if v == nil {
+			return nil, nil, errors.Errorf("version '%s' not found for patch '%s'", p.Version, p.Id.Hex())
+		}
+		return FindAndTranslateProjectForVersion(v)
 	}
 	project := &Project{}
 	pp, err := LoadProjectInto(ctx, []byte(p.PatchedParserProject), nil, p.Project, project)
@@ -515,19 +521,19 @@ func FindAndTranslateProjectForPatch(ctx context.Context, p *patch.Patch) (*Proj
 
 // FindAndTranslateProjectForVersion translates a parser project for a version into a Project.
 // Also sets the project ID.
-func FindAndTranslateProjectForVersion(versionId, projectId string) (*Project, *ParserProject, error) {
-	pp, err := ParserProjectFindOneById(versionId)
+func FindAndTranslateProjectForVersion(v *Version) (*Project, *ParserProject, error) {
+	pp, err := GetParserProjectStorage(v.ProjectStorageMethod).FindOneByID(context.Background(), v.Id)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "finding parser project")
 	}
 	if pp == nil {
-		return nil, nil, errors.Errorf("parser project not found for version '%s'", versionId)
+		return nil, nil, errors.Errorf("parser project not found for version '%s'", v.Id)
 	}
-	pp.Identifier = utility.ToStringPtr(projectId)
+	pp.Identifier = utility.ToStringPtr(v.Identifier)
 	var p *Project
 	p, err = TranslateProject(pp)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "translating parser project '%s'", versionId)
+		return nil, nil, errors.Wrapf(err, "translating parser project '%s'", v.Id)
 	}
 	return p, pp, err
 }
@@ -550,7 +556,7 @@ func LoadProjectInfoForVersion(v *Version, id string) (ProjectInfo, error) {
 			return ProjectInfo{}, errors.Wrap(err, "finding project config")
 		}
 	}
-	p, pp, err := FindAndTranslateProjectForVersion(v.Id, id)
+	p, pp, err := FindAndTranslateProjectForVersion(v)
 	if err != nil {
 		return ProjectInfo{}, errors.Wrap(err, "translating project")
 	}
@@ -920,6 +926,14 @@ func (pp *ParserProject) AddBuildVariant(name, displayName, runOn string, batchT
 		bv.RunOn = []string{runOn}
 	}
 	pp.BuildVariants = append(pp.BuildVariants, bv)
+}
+
+func (pp *ParserProject) GetParameters() []patch.Parameter {
+	res := []patch.Parameter{}
+	for _, param := range pp.Parameters {
+		res = append(res, param.Parameter)
+	}
+	return res
 }
 
 // sieveMatrixVariants takes a set of parserBVs and groups them into regular

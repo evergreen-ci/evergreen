@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/20210107192922/yaml.v3"
 )
@@ -62,20 +64,47 @@ func (restapi restAPI) getPatchConfig(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{Message: "patch not found"})
 		return
 	}
-	w.Header().Set("Content-Type", "application/x-yaml; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
+
 	if projCtx.Patch.PatchedParserProject != "" {
+		w.Header().Set("Content-Type", "application/x-yaml; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
 		_, err := w.Write([]byte(projCtx.Patch.PatchedParserProject))
-		grip.Warning(errors.Wrap(err, "writing patched parser project"))
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":  "could not write patched parser project to response",
+			"patch_id": projCtx.Patch.Id.Hex(),
+			"route":    "/rest/v1/patches/{patch_id}/config",
+		}))
 		return
 	}
-	pp, err := model.ParserProjectFindOneById(projCtx.Patch.Version)
-	if pp != nil {
-		var projBytes []byte
-		projBytes, err = yaml.Marshal(pp)
-		if err == nil {
-			_, err = w.Write(projBytes)
-		}
+
+	if projCtx.Version == nil {
+		gimlet.WriteJSONInternalError(w, fmt.Sprintf("cannot get parser project for patch '%s' because version is nil", projCtx.Patch.Id.Hex()))
+		return
 	}
-	grip.Warning(errors.Wrap(err, "writing parser project"))
+
+	pp, err := model.GetParserProjectStorage(projCtx.Version.ProjectStorageMethod).FindOneByID(r.Context(), projCtx.Version.Id)
+	if err != nil {
+		gimlet.WriteJSONInternalError(w, errors.Wrapf(err, "finding parser project '%s' for patch '%s'", projCtx.Version.Id, projCtx.Patch.Id.Hex()))
+		return
+	}
+	if pp == nil {
+		gimlet.WriteJSONInternalError(w, fmt.Sprintf("parser project '%s' for patch '%s' not found", projCtx.Version.Id, projCtx.Patch.Id.Hex()))
+		return
+	}
+
+	var projBytes []byte
+	projBytes, err = yaml.Marshal(pp)
+	if err != nil {
+		gimlet.WriteJSONInternalError(w, errors.Wrapf(err, "marshalling parser project '%s' to YAML", pp.Id))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/x-yaml; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(projBytes)
+	grip.Warning(message.WrapError(err, message.Fields{
+		"message":  "could not write parser project to response",
+		"patch_id": projCtx.Patch.Id.Hex(),
+		"route":    "/rest/v1/patches/{patch_id}/config",
+	}))
 }

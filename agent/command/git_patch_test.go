@@ -44,7 +44,7 @@ func TestPatchPluginAPI(t *testing.T) {
 		testCommand := &gitFetchProject{Directory: "dir"}
 		modelData, err := modelutil.SetupAPITestData(settings, "testTask", "testvar", configPath, modelutil.NoPatch)
 		require.NoError(t, err)
-		taskConfig, err := agentutil.MakeTaskConfigFromModelData(settings, modelData)
+		taskConfig, err := agentutil.MakeTaskConfigFromModelData(ctx, settings, modelData)
 		require.NoError(t, err)
 		taskConfig.Expansions = util.NewExpansions(settings.Credentials)
 		taskConfig.Distro = &apimodels.DistroView{CloneMethod: evergreen.CloneMethodOAuth}
@@ -115,7 +115,7 @@ func TestPatchPlugin(t *testing.T) {
 		configPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "plugin_patch.yml")
 		modelData, err := modelutil.SetupAPITestData(settings, "testtask1", "testvar", configPath, modelutil.InlinePatch)
 		require.NoError(t, err)
-		taskConfig, err := agentutil.MakeTaskConfigFromModelData(settings, modelData)
+		taskConfig, err := agentutil.MakeTaskConfigFromModelData(ctx, settings, modelData)
 		require.NoError(t, err)
 		taskConfig.Expansions = util.NewExpansions(settings.Credentials)
 		taskConfig.Distro = &apimodels.DistroView{CloneMethod: evergreen.CloneMethodOAuth}

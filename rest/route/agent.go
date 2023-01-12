@@ -354,7 +354,7 @@ func (h *getExpansionsHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting GitHub OAuth token"))
 	}
 
-	e, err := model.PopulateExpansions(t, foundHost, oauthToken)
+	e, err := model.PopulateExpansions(ctx, t, foundHost, oauthToken)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(err)
 	}
@@ -457,9 +457,15 @@ func (h *getParserProjectHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("version '%s' not found", t.Version),
 		})
 	}
-	pp, err := model.ParserProjectFindOneById(t.Version)
+	pp, err := model.GetParserProjectStorage(v.ProjectStorageMethod).FindOneByID(ctx, v.Id)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(err)
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding parser project '%s'", v.Id))
+	}
+	if pp == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("parser project '%s' not found", v.Id),
+		})
 	}
 	projBytes, err := bson.Marshal(pp)
 	if err != nil {
@@ -786,7 +792,7 @@ func (h *fetchExpansionsForTaskHandler) Run(ctx context.Context) gimlet.Responde
 			Message:    fmt.Sprintf("version '%s' not found", t.Version),
 		})
 	}
-	projParams, err := model.FindParametersForVersion(v)
+	projParams, err := model.FindParametersForVersion(ctx, v)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
@@ -1222,7 +1228,7 @@ func (h *manifestLoadHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "retrieving manifest with version id '%s'", task.Version))
 	}
 
-	project, _, err := model.FindAndTranslateProjectForVersion(v.Id, v.Identifier)
+	project, _, err := model.FindAndTranslateProjectForVersion(v)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "loading project from version"))
 	}

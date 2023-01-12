@@ -259,6 +259,9 @@ func (s *VersionConnectorSuite) TestGetVersionsAndVariants() {
 }
 
 func TestCreateVersionFromConfig(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ParserProjectCollection, model.VersionCollection, distro.Collection, task.Collection, build.Collection, user.Collection))
 	require.NoError(t, db.CreateCollections(model.ParserProjectCollection))
@@ -292,8 +295,6 @@ func TestCreateVersionFromConfig(t *testing.T) {
 		}`
 
 	p := &model.Project{}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	pp, err := model.LoadProjectInto(ctx, []byte(config1), nil, ref.Id, p)
 	assert.NoError(err)
 	projectInfo := &model.ProjectInfo{
@@ -307,7 +308,7 @@ func TestCreateVersionFromConfig(t *testing.T) {
 		IsAdHoc: true,
 	}
 	dc := DBVersionConnector{}
-	newVersion, err := dc.CreateVersionFromConfig(context.Background(), projectInfo, metadata, true)
+	newVersion, err := dc.CreateVersionFromConfig(ctx, projectInfo, metadata, true)
 	assert.NoError(err)
 	assert.Equal("my message", newVersion.Message)
 	assert.Equal(evergreen.VersionCreated, newVersion.Status)
@@ -315,7 +316,7 @@ func TestCreateVersionFromConfig(t *testing.T) {
 	assert.Equal(1, newVersion.RevisionOrderNumber)
 	assert.Equal(evergreen.AdHocRequester, newVersion.Requester)
 
-	pp, err = model.ParserProjectFindOneById(newVersion.Id)
+	pp, err = model.GetParserProjectStorage(newVersion.ProjectStorageMethod).FindOneByID(ctx, newVersion.Id)
 	assert.NoError(err)
 	assert.NotNil(pp)
 	assert.True(utility.FromBoolPtr(pp.Stepback))
@@ -360,7 +361,7 @@ tasks:
 	assert.Equal(2, newVersion.RevisionOrderNumber)
 	assert.Equal(evergreen.AdHocRequester, newVersion.Requester)
 
-	pp, err = model.ParserProjectFindOneById(newVersion.Id)
+	pp, err = model.GetParserProjectStorage(newVersion.ProjectStorageMethod).FindOneByID(ctx, newVersion.Id)
 	assert.NoError(err)
 	assert.NotNil(pp)
 	assert.True(utility.FromBoolPtr(pp.Stepback))

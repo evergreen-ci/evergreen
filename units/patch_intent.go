@@ -894,6 +894,15 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(patchDoc *patch.Patch) error
 	}
 
 	patchDoc.Githash = v.Revision
+	// TODO (EVG-18700): This is storing the entire parser project of the latest
+	// version on the waterfall into the patch document, which is not really an
+	// intended usage of the patched parser project field. The patched parser
+	// project is supposed to be the parser project directly from the YAML file
+	// before generate.tasks. The version this trigger is based off of may have
+	// already run generate.tasks, which can result in a very large parser
+	// project. Therefore, it is not possible to stuff the entire parser project
+	// with generated tasks into the patch document like this, because it may
+	// exceed the 16 MB document limit.
 	patchDoc.PatchedParserProject = string(yamlBytes)
 	patchDoc.VariantsTasks = matchingTasks
 

@@ -36,7 +36,7 @@ func TestGotestPluginOnFailingTests(t *testing.T) {
 		configPath := filepath.Join(currentDirectory, "testdata", "gotest", "bad.yml")
 		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", configPath, modelutil.NoPatch)
 		require.NoError(t, err)
-		conf, err := agentutil.MakeTaskConfigFromModelData(testConfig, modelData)
+		conf, err := agentutil.MakeTaskConfigFromModelData(ctx, testConfig, modelData)
 		require.NoError(t, err)
 		logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 		So(err, ShouldBeNil)
@@ -96,7 +96,7 @@ func TestGotestPluginOnPassingTests(t *testing.T) {
 		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", configPath, modelutil.NoPatch)
 		require.NoError(t, err)
 
-		conf, err := agentutil.MakeTaskConfigFromModelData(testConfig, modelData)
+		conf, err := agentutil.MakeTaskConfigFromModelData(ctx, testConfig, modelData)
 		require.NoError(t, err)
 		comm := client.NewMock("http://localhost.com")
 
