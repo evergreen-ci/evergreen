@@ -352,6 +352,9 @@ func findAliasInProjectOrRepoFromDb(projectID, alias string) ([]ProjectAlias, er
 	if err != nil {
 		return aliases, errors.Wrapf(err, "finding aliases for project ref '%s'", projectID)
 	}
+	if len(aliases) > 0 {
+		return aliases, nil
+	}
 	return tryGetRepoAliases(projectID, alias, aliases)
 }
 
