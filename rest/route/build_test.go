@@ -289,14 +289,16 @@ func TestBuildRestartSuite(t *testing.T) {
 }
 
 func (s *BuildRestartSuite) SetupSuite() {
-	s.NoError(db.ClearCollections(build.Collection))
+	s.NoError(db.ClearCollections(build.Collection, serviceModel.VersionCollection))
 	builds := []build.Build{
-		{Id: "build1", Project: "branch"},
-		{Id: "build2", Project: "notbranch"},
+		{Id: "build1", Project: "branch", Version: "version"},
+		{Id: "build2", Project: "notbranch", Version: "version"},
 	}
 	for _, item := range builds {
 		s.Require().NoError(item.Insert())
 	}
+	v := &serviceModel.Version{Id: "version"}
+	s.Require().NoError(v.Insert())
 }
 
 func (s *BuildRestartSuite) SetupTest() {

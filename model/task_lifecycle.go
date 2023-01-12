@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -77,16 +78,6 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 			// or the task was originally activated by evergreen, deactivate the task
 		} else if !evergreen.IsSystemActivator(caller) || evergreen.IsSystemActivator(t.ActivatedBy) {
 			// deactivate later tasks in the group as well, since they won't succeed without this one
-			// TODO EVG-18392: remove this logic once it can be handled by dependencies
-			if t.IsPartOfSingleHostTaskGroup() {
-				tasksInGroup, err := task.FindTaskGroupFromBuild(t.BuildId, t.TaskGroup)
-				catcher.Wrapf(err, "finding task group '%s'", t.TaskGroup)
-				for _, taskInGroup := range tasksInGroup {
-					if taskInGroup.TaskGroupOrder > t.TaskGroupOrder {
-						originalTasks = append(originalTasks, taskInGroup)
-					}
-				}
-			}
 			if t.Requester == evergreen.MergeTestRequester {
 				catcher.Wrapf(DequeueAndRestartForTask(nil, &t, message.GithubStateError, caller, fmt.Sprintf("deactivated by '%s'", caller)), "dequeueing and restarting task '%s'", t.Id)
 			}
@@ -897,7 +888,7 @@ func tryDequeueAndAbortCommitQueueVersion(p *patch.Patch, cq commitqueue.CommitQ
 		"patch":   issue,
 	}))
 
-	removed, err := RemoveItemAndPreventMerge(&cq, issue, true, caller)
+	removed, err := RemoveItemAndPreventMerge(&cq, issue, caller)
 	grip.Debug(message.Fields{
 		"message": "removing commit queue item",
 		"issue":   issue,
@@ -1109,6 +1100,36 @@ func updateBuildGithubStatus(b *build.Build, buildTasks []task.Task) error {
 	return b.UpdateGithubCheckStatus(buildStatus.status)
 }
 
+// checkUpdateBuildPRStatus checks if the build is coming from a PR, and if so
+// sends its updated status to GitHub to reflect the status of the build.
+func checkUpdateBuildPRStatus(b *build.Build) error {
+	if !evergreen.IsGitHubPatchRequester(b.Requester) {
+		return nil
+	}
+	p, err := patch.FindOneId(b.Version)
+	if err != nil {
+		return errors.Wrapf(err, "finding patch '%s'", b.Version)
+	}
+	if p == nil {
+		return errors.Errorf("patch '%s' not found", b.Version)
+	}
+	if p.IsGithubPRPatch() && !evergreen.IsFinishedPatchStatus(p.Status) {
+		input := thirdparty.SendGithubStatusInput{
+			VersionId: p.Id.Hex(),
+			Owner:     p.GithubPatchData.BaseOwner,
+			Repo:      p.GithubPatchData.BaseRepo,
+			Ref:       p.GithubPatchData.HeadHash,
+			Desc:      "patch status change",
+			Caller:    "pr-task-reset",
+			Context:   fmt.Sprintf("evergreen/%s", b.BuildVariant),
+		}
+		if err = thirdparty.SendVersionStatusToGithub(input); err != nil {
+			return errors.Wrapf(err, "sending patch '%s' status to Github", p.Id.Hex())
+		}
+	}
+	return nil
+}
+
 // updateBuildStatus updates the status of the build based on its tasks' statuses
 // Returns true if the build's status has changed or if all of the build's tasks become blocked.
 func updateBuildStatus(b *build.Build) (bool, error) {
@@ -1154,6 +1175,15 @@ func updateBuildStatus(b *build.Build) (bool, error) {
 	}
 
 	event.LogBuildStateChangeEvent(b.Id, buildStatus.status)
+
+	shouldActivate := !buildStatus.allTasksBlocked && !buildStatus.allTasksUnscheduled
+
+	// if the status has changed, re-activate the build if it's not blocked
+	if shouldActivate {
+		if err = b.SetActivated(true); err != nil {
+			return true, errors.Wrapf(err, "setting build '%s' as active", b.Id)
+		}
+	}
 
 	if evergreen.IsFinishedBuildStatus(buildStatus.status) {
 		if err = b.MarkFinished(buildStatus.status, time.Now()); err != nil {
@@ -1274,7 +1304,9 @@ func updateVersionStatus(v *Version) (string, error) {
 	return versionStatus, nil
 }
 
-func UpdatePatchStatus(p *patch.Patch, versionStatus, buildVariant string) error {
+// UpdatePatchStatus updates the status of a patch. For PR patches, the build associated
+// with the passed in buildVariant has its GitHub status updated.
+func UpdatePatchStatus(p *patch.Patch, versionStatus string) error {
 	patchStatus, err := evergreen.VersionStatusToPatchStatus(versionStatus)
 	if err != nil {
 		return errors.Wrapf(err, "getting patch status from version status '%s'", versionStatus)
@@ -1290,24 +1322,8 @@ func UpdatePatchStatus(p *patch.Patch, versionStatus, buildVariant string) error
 		if err = p.MarkFinished(patchStatus, time.Now()); err != nil {
 			return errors.Wrapf(err, "marking patch '%s' as finished with status '%s'", p.Id.Hex(), patchStatus)
 		}
-	} else {
-		if err = p.UpdateStatus(patchStatus); err != nil {
-			return errors.Wrapf(err, "updating patch '%s' with status '%s'", p.Id.Hex(), patchStatus)
-		}
-		if p.IsGithubPRPatch() {
-			input := thirdparty.SendGithubStatusInput{
-				VersionId: p.Id.Hex(),
-				Owner:     p.GithubPatchData.BaseOwner,
-				Repo:      p.GithubPatchData.BaseRepo,
-				Ref:       p.GithubPatchData.HeadHash,
-				Desc:      "patch status change",
-				Caller:    "pr-task-reset",
-				Context:   fmt.Sprintf("evergreen/%s", buildVariant),
-			}
-			if err = thirdparty.SendVersionStatusToGithub(input); err != nil {
-				return errors.Wrapf(err, "sending patch '%s' status to Github", p.Id.Hex())
-			}
-		}
+	} else if err = p.UpdateStatus(patchStatus); err != nil {
+		return errors.Wrapf(err, "updating patch '%s' with status '%s'", p.Id.Hex(), patchStatus)
 	}
 
 	isDone, parentPatch, err := p.GetFamilyInformation()
@@ -1349,6 +1365,10 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 		return nil
 	}
 
+	if err = checkUpdateBuildPRStatus(taskBuild); err != nil {
+		return errors.Wrapf(err, "updating build '%s' PR status", taskBuild.Id)
+	}
+
 	taskVersion, err := VersionFindOneId(t.Version)
 	if err != nil {
 		return errors.Wrapf(err, "getting version '%s' for task '%s'", t.Version, t.Id)
@@ -1370,7 +1390,7 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 		if p == nil {
 			return errors.Errorf("no patch found for version '%s'", taskVersion.Id)
 		}
-		if err = UpdatePatchStatus(p, newVersionStatus, taskBuild.BuildVariant); err != nil {
+		if err = UpdatePatchStatus(p, newVersionStatus); err != nil {
 			return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
 		}
 
@@ -1400,6 +1420,8 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 	return nil
 }
 
+// UpdateVersionAndPatchStatusForBuilds updates the status of all versions, patches and
+// builds associated with the given input list of build IDs.
 func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
 	if len(buildIds) == 0 {
 		return nil
@@ -1409,8 +1431,9 @@ func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
 		return errors.Wrapf(err, "fetching builds")
 	}
 
-	versionsToUpdate := make(map[string]string)
-	bvMap := make(map[string]string)
+	// Maintain a list of builds for each version because we may
+	// be updating many builds for the same version.
+	versionSet := make(map[string]bool)
 	for _, build := range builds {
 		buildStatusChanged, err := updateBuildStatus(&build)
 		if err != nil {
@@ -1420,17 +1443,18 @@ func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
 		if !buildStatusChanged {
 			continue
 		}
-
-		versionsToUpdate[build.Version] = build.Id
-		bvMap[build.Id] = build.BuildVariant
+		if err = checkUpdateBuildPRStatus(&build); err != nil {
+			return errors.Wrapf(err, "updating build '%s' PR status", build.Id)
+		}
+		versionSet[build.Version] = true
 	}
-	for versionId, buildId := range versionsToUpdate {
+	for versionId := range versionSet {
 		buildVersion, err := VersionFindOneId(versionId)
 		if err != nil {
-			return errors.Wrapf(err, "getting version '%s' for build '%s'", versionId, buildId)
+			return errors.Wrapf(err, "getting version '%s'", versionId)
 		}
 		if buildVersion == nil {
-			return errors.Errorf("no version '%s' found for build '%s'", versionId, buildId)
+			return errors.Errorf("no version '%s' found", versionId)
 		}
 		newVersionStatus, err := updateVersionStatus(buildVersion)
 		if err != nil {
@@ -1445,7 +1469,7 @@ func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
 			if p == nil {
 				return errors.Errorf("no patch found for version '%s'", buildVersion.Id)
 			}
-			if err = UpdatePatchStatus(p, newVersionStatus, bvMap[buildId]); err != nil {
+			if err = UpdatePatchStatus(p, newVersionStatus); err != nil {
 				return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
 			}
 		}
@@ -1677,6 +1701,7 @@ func doRestartFailedTasks(tasks []string, user string, results RestartResults) R
 // task is part of one and has finished (or is currently finishing) with a
 // failed status. This is a best-effort attempt, so if it fails, it will just
 // log the error.
+// TODO: EVG-18685 remove this function
 func CheckAndBlockSingleHostTaskGroup(t *task.Task, status string) {
 	if !t.IsPartOfSingleHostTaskGroup() || status == evergreen.TaskSucceeded {
 		return
@@ -1695,6 +1720,62 @@ func CheckAndBlockSingleHostTaskGroup(t *task.Task, status string) {
 		"message": "blocked task group tasks for task",
 		"task_id": t.Id,
 	})
+}
+
+// TODO: EVG-18685 remove this function
+func BlockTaskGroupTasks(taskID string) error {
+	t, err := task.FindOneId(taskID)
+	if err != nil {
+		return errors.Wrapf(err, "finding task '%s'", taskID)
+	}
+	if t == nil {
+		return errors.Errorf("task '%s' not found", taskID)
+	}
+
+	p, err := FindProjectFromVersionID(t.Version)
+	if err != nil {
+		return errors.Wrapf(err, "getting project for task '%s'", t.Id)
+	}
+	tg := p.FindTaskGroup(t.TaskGroup)
+	if tg == nil {
+		return errors.Errorf("unable to find task group '%s' for task '%s'", t.TaskGroup, taskID)
+	}
+	indexOfTask := -1
+	for i, tgTask := range tg.Tasks {
+		if t.DisplayName == tgTask {
+			indexOfTask = i
+			break
+		}
+	}
+	if indexOfTask == -1 {
+		return errors.Errorf("could not find task '%s' in task group", t.DisplayName)
+	}
+	taskNamesToBlock := []string{}
+	for i := indexOfTask + 1; i < len(tg.Tasks); i++ {
+		taskNamesToBlock = append(taskNamesToBlock, tg.Tasks[i])
+	}
+	tasksToBlock, err := task.Find(task.ByVersionsForNameAndVariant([]string{t.Version}, taskNamesToBlock, t.BuildVariant))
+	if err != nil {
+		return errors.Wrapf(err, "finding tasks '%s'", strings.Join(taskNamesToBlock, ", "))
+	}
+	if err = ValidateNewGraph(t, tasksToBlock); err != nil {
+		return errors.Wrap(err, "validating proposed dependencies")
+	}
+
+	catcher := grip.NewBasicCatcher()
+	for _, taskToBlock := range tasksToBlock {
+		catcher.Add(taskToBlock.AddDependency(task.Dependency{
+			TaskId:       taskID,
+			Status:       evergreen.TaskSucceeded,
+			Unattainable: true,
+		}))
+		err = dequeue(taskToBlock.Id, taskToBlock.DistroId)
+		catcher.AddWhen(!adb.ResultsNotFound(err), err) // it's not an error if the task already isn't on the queue
+		// this operation is recursive, maybe be refactorable
+		// to use some kind of cache.
+		catcher.Add(UpdateBlockedDependencies(&taskToBlock))
+	}
+	return catcher.Resolve()
 }
 
 // ClearAndResetStrandedContainerTask clears the container task dispatched to a
@@ -1766,7 +1847,10 @@ func ClearAndResetStrandedHostTask(h *host.Host) error {
 		return nil
 	}
 
-	CheckAndBlockSingleHostTaskGroup(t, t.Status)
+	err = UpdateBlockedDependencies(t)
+	if err != nil {
+		return errors.Wrapf(err, "updating blocked dependencies for task '%s'", t.Id)
+	}
 
 	if err = h.ClearRunningTask(); err != nil {
 		return errors.Wrapf(err, "clearing running task from host '%s'", h.Id)
@@ -1791,7 +1875,10 @@ func ClearAndResetStrandedHostTask(h *host.Host) error {
 // aborted, the task is reset. If the task was aborted, we do not reset the task
 // and it is just marked as failed alongside other necessary updates to finish the task.
 func FixStaleTask(t *task.Task) error {
-	CheckAndBlockSingleHostTaskGroup(t, t.Status)
+	err := UpdateBlockedDependencies(t)
+	if err != nil {
+		return errors.Wrapf(err, "updating blocked dependencies for task '%s'", t.Id)
+	}
 
 	failureDesc := evergreen.TaskDescriptionHeartbeat
 	if t.Aborted {

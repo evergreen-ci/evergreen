@@ -86,7 +86,23 @@ type Version struct {
 
 	// this is only used for aggregations, and is not stored in the DB
 	Builds []build.Build `bson:"build_variants,omitempty" json:"build_variants,omitempty"`
+
+	// ProjectStorageMethod describes how the parser project for this version is
+	// stored. If this is empty, the default storage method is StorageMethodDB.
+	ProjectStorageMethod ProjectConfigStorageMethod `bson:"storage_method" json:"storage_method,omitempty"`
 }
+
+// ProjectConfigStorageMethod represents a means to store the parser project.
+type ProjectConfigStorageMethod string
+
+const (
+	// ProjectStorageMethodDB indicates that the parser project is stored as a
+	// single document in a DB collection.
+	ProjectStorageMethodDB ProjectConfigStorageMethod = "db"
+	// ProjectStorageMethodS3 indicates that the parser project is stored as a
+	// single object in S3.
+	ProjectStorageMethodS3 ProjectConfigStorageMethod = "s3"
+)
 
 func (v *Version) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(v) }
 func (v *Version) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, v) }
