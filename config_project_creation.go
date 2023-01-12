@@ -64,3 +64,12 @@ func (c *ProjectCreationConfig) Set() error {
 }
 
 func (c *ProjectCreationConfig) ValidateAndDefault() error { return nil }
+
+func (c *ProjectCreationConfig) IsException(owner, repo string) bool {
+	for _, exception := range c.RepoExceptions {
+		if exception.Owner == owner && exception.Repo == repo {
+			return true
+		}
+	}
+	return false
+}

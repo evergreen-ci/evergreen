@@ -62,12 +62,19 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 		}
 	}
 
-	if err := projectRef.ValidateOwnerAndRepo(config.GithubOrgs); err != nil {
+	valid, err := validateProjectCreation(config, projectRef)
+	if valid && err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "validating owner and repo for project: %s", projectRef.Identifier).Error(),
+			Message:    errors.Wrapf(err, "validating project creation").Error(),
 		}
 	}
+	grip.WarningWhen(!valid, message.WrapError(err, message.Fields{
+		"message":            "project creation limit reached",
+		"project_identifier": projectRef.Identifier,
+		"Owner":              projectRef.Owner,
+		"Repo":               projectRef.Repo,
+	}))
 
 	if projectRef.Identifier != "" {
 		if err := VerifyUniqueProject(projectRef.Identifier); err != nil {

@@ -921,6 +921,37 @@ func FindMergedProjectRef(identifier string, version string, includeProjectConfi
 	return pRef, nil
 }
 
+func GetNumberOfProjects() (int, error) {
+	query := db.Query(
+		bson.M{
+			ProjectRefEnabledKey: true,
+		},
+	)
+	if num, err := db.CountQ(ProjectRefCollection, query); err != nil {
+		return 0, errors.Wrap(err, "counting projects")
+	} else {
+		return num, nil
+	}
+}
+
+func GetNumberOfProjectsForOwnerRepo(owner, repo string) (int, error) {
+	if owner != "" || repo != "" {
+		return 0, errors.New("owner and repo must be specified")
+	}
+	query := db.Query(
+		bson.M{
+			ProjectRefOwnerKey:     owner,
+			ProjectRefRepoRefIdKey: repo,
+			ProjectRefEnabledKey:   true,
+		},
+	)
+	if num, err := db.CountQ(ProjectRefCollection, query); err != nil {
+		return 0, errors.Wrap(err, "error counting projects")
+	} else {
+		return num, nil
+	}
+}
+
 // GetProjectRefMergedWithRepo merges the project with the repo, if one exists.
 // Otherwise, it will return the project as given.
 func GetProjectRefMergedWithRepo(pRef ProjectRef) (*ProjectRef, error) {
@@ -1867,10 +1898,18 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 		if p.TracksPushEvents != nil {
 			setUpdate[ProjectRefTracksPushEventsKey] = p.TracksPushEvents
 		}
-		// Allow a user to modify owner and repo only if they are editing an unattached project
-		if !isRepo && !p.UseRepoSettings() && !defaultToRepo {
-			allowedOrgs := evergreen.GetEnvironment().Settings().GithubOrgs
-			if err := p.ValidateOwnerAndRepo(allowedOrgs); err != nil {
+		config := evergreen.GetEnvironment().Settings()
+		if utility.FromBoolPtr(p.Enabled) {
+			valid, err := ValidateProjectCreation(config, p)
+			if valid && err != nil {
+				return false, errors.Wrap(err, "validating project creation")
+			}
+			if !valid {
+				return false, errors.Wrap(err, "cannot enable project")
+			}
+		} else if !isRepo && !p.UseRepoSettings() && !defaultToRepo {
+			// Allow a user to modify owner and repo only if they are editing an unattached project
+			if err := p.ValidateOwnerAndRepo(config.GithubOrgs); err != nil {
 				return false, errors.Wrap(err, "validating new owner/repo")
 			}
 
@@ -2201,6 +2240,27 @@ func (p *ProjectRef) GetGithubProjectConflicts() (GithubProjectConflicts, error)
 		}
 	}
 	return res, nil
+}
+
+func ValidateProjectCreation(config *evergreen.Settings, projectRef *ProjectRef) (bool, error) {
+	if err := projectRef.ValidateOwnerAndRepo(config.GithubOrgs); err != nil {
+		return true, errors.Errorf("validating owner and repo for project: '%s'", projectRef.Identifier)
+	}
+	allEnabledProjects, err := GetNumberOfProjects()
+	if err != nil {
+		return true, errors.Wrap(err, "getting number of projects")
+	}
+	if allEnabledProjects >= config.ProjectCreation.TotalProjectLimit {
+		return false, errors.Errorf("total project limit of %d reached", config.ProjectCreation.TotalProjectLimit)
+	}
+	enabledOwnerRepoProjects, err := GetNumberOfProjectsForOwnerRepo(projectRef.Owner, projectRef.Repo)
+	if err != nil {
+		return true, errors.Wrapf(err, "getting number of projects for '%s'/'%s'", projectRef.Owner, projectRef.Repo)
+	}
+	if enabledOwnerRepoProjects >= config.ProjectCreation.RepoProjectLimit && !config.ProjectCreation.IsException(projectRef.Owner, projectRef.Repo) {
+		return false, errors.Errorf("owner repo limit of %d reached for '%s'/'%s'", config.ProjectCreation.RepoProjectLimit, projectRef.Owner, projectRef.Repo)
+	}
+	return true, nil
 }
 
 func (p *ProjectRef) ValidateOwnerAndRepo(validOrgs []string) error {
