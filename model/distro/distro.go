@@ -22,14 +22,25 @@ import (
 )
 
 type Distro struct {
-	Id                      string                `bson:"_id" json:"_id,omitempty" mapstructure:"_id,omitempty"`
-	Aliases                 []string              `bson:"aliases,omitempty" json:"aliases,omitempty" mapstructure:"aliases,omitempty"`
-	Arch                    string                `bson:"arch" json:"arch,omitempty" mapstructure:"arch,omitempty"`
-	WorkDir                 string                `bson:"work_dir" json:"work_dir,omitempty" mapstructure:"work_dir,omitempty"`
-	Provider                string                `bson:"provider" json:"provider,omitempty" mapstructure:"provider,omitempty"`
-	ProviderSettingsList    []*birch.Document     `bson:"provider_settings,omitempty" json:"provider_settings,omitempty" mapstructure:"provider_settings,omitempty"`
-	SetupAsSudo             bool                  `bson:"setup_as_sudo,omitempty" json:"setup_as_sudo,omitempty" mapstructure:"setup_as_sudo,omitempty"`
-	Setup                   string                `bson:"setup,omitempty" json:"setup,omitempty" mapstructure:"setup,omitempty"`
+	Id                   string            `bson:"_id" json:"_id,omitempty" mapstructure:"_id,omitempty"`
+	Aliases              []string          `bson:"aliases,omitempty" json:"aliases,omitempty" mapstructure:"aliases,omitempty"`
+	Arch                 string            `bson:"arch" json:"arch,omitempty" mapstructure:"arch,omitempty"`
+	WorkDir              string            `bson:"work_dir" json:"work_dir,omitempty" mapstructure:"work_dir,omitempty"`
+	Provider             string            `bson:"provider" json:"provider,omitempty" mapstructure:"provider,omitempty"`
+	ProviderSettingsList []*birch.Document `bson:"provider_settings,omitempty" json:"provider_settings,omitempty" mapstructure:"provider_settings,omitempty"`
+	SetupAsSudo          bool              `bson:"setup_as_sudo,omitempty" json:"setup_as_sudo,omitempty" mapstructure:"setup_as_sudo,omitempty"`
+	// Setup is the script run on this distro during host provisioning.
+	Setup string `bson:"setup,omitempty" json:"setup,omitempty" mapstructure:"setup,omitempty"`
+	// ExtraProvisioningScript is a script that runs on hosts after other
+	// essential provisioning is finished. For task hosts, this runs after all
+	// other provisioning steps and before running any task. For spawn hosts,
+	// this runs after the standard provisioning but before any spawn
+	// host-specific provisioning such as fetching task data or running user
+	// scripts.
+	// The major differentiation between using extra provisioning script and the
+	// setup script is that the setup script runs earlier and that the setup
+	// script has size and time limitations; in contrast, the extra provisioning
+	// scriptis allowed run for a much longer time and can be arbitrary length.
 	ExtraProvisioningScript string                `bson:"extra_provisioning_script,omitempty" json:"extra_provisioning_script,omitempty" mapstructure:"extra_provisioning_script,omitempty"`
 	User                    string                `bson:"user,omitempty" json:"user,omitempty" mapstructure:"user,omitempty"`
 	BootstrapSettings       BootstrapSettings     `bson:"bootstrap_settings" json:"bootstrap_settings" mapstructure:"bootstrap_settings"`
