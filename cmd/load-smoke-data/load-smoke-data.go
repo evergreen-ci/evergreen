@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
@@ -61,13 +60,6 @@ func insertFileDocsToDB(ctx context.Context, fn string, db *mongo.Database, logs
 	// task_logg collection belongs to the logs db
 	if collName == model.TaskLogCollection {
 		collection = logsDb.Collection(collName)
-	}
-	if collName == testresult.Collection { // add the necessary test results index
-		if _, err = collection.Indexes().CreateOne(ctx, mongo.IndexModel{
-			Keys: testresult.TestResultsIndex,
-		}); err != nil {
-			return errors.Wrap(err, "creating test results index")
-		}
 	}
 	if collName == task.Collection { // add the necessary tasks index
 		if _, err = collection.Indexes().CreateOne(ctx, mongo.IndexModel{
