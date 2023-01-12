@@ -810,6 +810,12 @@ Evergreen - Distros
           <textarea ng-readonly="readOnly" name="script" type="text" wrap="off" class="form-control" rows="7" ng-model="activeDistro.setup"
             style="margin-left: 0px; font-family: monospace"></textarea>
 
+          <div>
+            <label class="distro-label">Extra Provisioning Script:</label>
+          </div>
+          <textarea ng-readonly="readOnly" name="script" type="text" wrap="off" class="form-control" rows="7" ng-model="activeDistro.extra_provisioning_script"
+            style="margin-left: 0px; font-family: monospace"></textarea>
+
           <div class="dropdown">
             <span class="distro-menu-title">SSH Key:</span>
             <button class="btn btn-default dropdown-toggle" ng-disabled="readOnly" type="button" data-toggle="dropdown">

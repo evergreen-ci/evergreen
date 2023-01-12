@@ -334,35 +334,36 @@ func (s *APIIceCreamSettings) ToService() distro.IceCreamSettings {
 // APIDistro is the model to be returned by the API whenever distros are fetched
 
 type APIDistro struct {
-	Name                  *string                  `json:"name"`
-	Aliases               []string                 `json:"aliases"`
-	UserSpawnAllowed      bool                     `json:"user_spawn_allowed"`
-	Provider              *string                  `json:"provider"`
-	ProviderSettingsList  []*birch.Document        `json:"provider_settings"`
-	Arch                  *string                  `json:"arch"`
-	WorkDir               *string                  `json:"work_dir"`
-	SetupAsSudo           bool                     `json:"setup_as_sudo"`
-	Setup                 *string                  `json:"setup"`
-	User                  *string                  `json:"user"`
-	BootstrapSettings     APIBootstrapSettings     `json:"bootstrap_settings"`
-	CloneMethod           *string                  `json:"clone_method"`
-	SSHKey                *string                  `json:"ssh_key"`
-	SSHOptions            []string                 `json:"ssh_options"`
-	AuthorizedKeysFile    *string                  `json:"authorized_keys_file"`
-	Expansions            []APIExpansion           `json:"expansions"`
-	Disabled              bool                     `json:"disabled"`
-	ContainerPool         *string                  `json:"container_pool"`
-	FinderSettings        APIFinderSettings        `json:"finder_settings"`
-	PlannerSettings       APIPlannerSettings       `json:"planner_settings"`
-	DispatcherSettings    APIDispatcherSettings    `json:"dispatcher_settings"`
-	HostAllocatorSettings APIHostAllocatorSettings `json:"host_allocator_settings"`
-	DisableShallowClone   bool                     `json:"disable_shallow_clone"`
-	HomeVolumeSettings    APIHomeVolumeSettings    `json:"home_volume_settings"`
-	IcecreamSettings      APIIceCreamSettings      `json:"icecream_settings"`
-	IsVirtualWorkstation  bool                     `json:"is_virtual_workstation"`
-	IsCluster             bool                     `json:"is_cluster"`
-	Note                  *string                  `json:"note"`
-	ValidProjects         []*string                `json:"valid_projects"`
+	Name                    *string                  `json:"name"`
+	Aliases                 []string                 `json:"aliases"`
+	UserSpawnAllowed        bool                     `json:"user_spawn_allowed"`
+	Provider                *string                  `json:"provider"`
+	ProviderSettingsList    []*birch.Document        `json:"provider_settings"`
+	Arch                    *string                  `json:"arch"`
+	WorkDir                 *string                  `json:"work_dir"`
+	SetupAsSudo             bool                     `json:"setup_as_sudo"`
+	Setup                   *string                  `json:"setup"`
+	ExtraProvisioningScript *string                  `json:"extra_provisioning_script"`
+	User                    *string                  `json:"user"`
+	BootstrapSettings       APIBootstrapSettings     `json:"bootstrap_settings"`
+	CloneMethod             *string                  `json:"clone_method"`
+	SSHKey                  *string                  `json:"ssh_key"`
+	SSHOptions              []string                 `json:"ssh_options"`
+	AuthorizedKeysFile      *string                  `json:"authorized_keys_file"`
+	Expansions              []APIExpansion           `json:"expansions"`
+	Disabled                bool                     `json:"disabled"`
+	ContainerPool           *string                  `json:"container_pool"`
+	FinderSettings          APIFinderSettings        `json:"finder_settings"`
+	PlannerSettings         APIPlannerSettings       `json:"planner_settings"`
+	DispatcherSettings      APIDispatcherSettings    `json:"dispatcher_settings"`
+	HostAllocatorSettings   APIHostAllocatorSettings `json:"host_allocator_settings"`
+	DisableShallowClone     bool                     `json:"disable_shallow_clone"`
+	HomeVolumeSettings      APIHomeVolumeSettings    `json:"home_volume_settings"`
+	IcecreamSettings        APIIceCreamSettings      `json:"icecream_settings"`
+	IsVirtualWorkstation    bool                     `json:"is_virtual_workstation"`
+	IsCluster               bool                     `json:"is_cluster"`
+	Note                    *string                  `json:"note"`
+	ValidProjects           []*string                `json:"valid_projects"`
 }
 
 // BuildFromService converts from service level distro.Distro to an APIDistro
@@ -376,6 +377,7 @@ func (apiDistro *APIDistro) BuildFromService(d distro.Distro) {
 	apiDistro.WorkDir = utility.ToStringPtr(d.WorkDir)
 	apiDistro.SetupAsSudo = d.SetupAsSudo
 	apiDistro.Setup = utility.ToStringPtr(d.Setup)
+	apiDistro.ExtraProvisioningScript = utility.ToStringPtr(d.ExtraProvisioningScript)
 	apiDistro.User = utility.ToStringPtr(d.User)
 
 	if d.CloneMethod == "" {
@@ -440,6 +442,7 @@ func (apiDistro *APIDistro) ToService() *distro.Distro {
 	d.ProviderSettingsList = apiDistro.ProviderSettingsList
 	d.SetupAsSudo = apiDistro.SetupAsSudo
 	d.Setup = utility.FromStringPtr(apiDistro.Setup)
+	d.ExtraProvisioningScript = utility.FromStringPtr(apiDistro.ExtraProvisioningScript)
 	d.User = utility.FromStringPtr(apiDistro.User)
 	d.BootstrapSettings = apiDistro.BootstrapSettings.ToService()
 	d.CloneMethod = utility.FromStringPtr(apiDistro.CloneMethod)
