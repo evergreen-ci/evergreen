@@ -278,15 +278,12 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		}
 	}
 
-	idleTimeStartsAt := j.host.LastTaskCompletedTime
-	if idleTimeStartsAt.IsZero() || idleTimeStartsAt == utility.ZeroTime {
-		idleTimeStartsAt = j.host.StartTime
-	}
-
 	if err := j.checkAndTerminateCloudHost(ctx, prevStatus); err != nil {
 		j.AddError(err)
 		return
 	}
+
+	j.AddError(j.incrementIdleTime(ctx))
 
 	grip.Info(message.Fields{
 		"message":           "host successfully terminated",
@@ -313,6 +310,27 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			"spawn_host":  j.host.StartedBy != evergreen.User,
 		})
 	}
+}
+
+func (j *hostTerminationJob) incrementIdleTime(ctx context.Context) error {
+	cloudHost, err := cloud.GetCloudHost(ctx, j.host, j.env)
+	if err != nil {
+		return errors.Wrapf(err, "getting cloud host for host '%s'", j.HostID)
+	}
+
+	idleTimeStartsAt := j.host.LastTaskCompletedTime
+	if idleTimeStartsAt.IsZero() || idleTimeStartsAt == utility.ZeroTime {
+		idleTimeStartsAt = j.host.StartTime
+	}
+
+	hostBillingEnds := j.host.TerminationTime
+	pad := cloudHost.CloudMgr.TimeTilNextPayment(j.host)
+	if pad > time.Second {
+		hostBillingEnds = hostBillingEnds.Add(pad)
+	}
+
+	idleTime := idleTimeStartsAt.Sub(hostBillingEnds)
+	return errors.Wrap(j.host.IncIdleTime(idleTime), "incrementing idle time")
 }
 
 // checkAndTerminateCloudHost checks if the host is still up according to the
