@@ -1320,7 +1320,7 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 					}],
 				"setup_as_sudo" : false,
 				"setup" : "~Set-up script",
-				"extra_provisioning_script": "echo hello world",
+				"extended_provisioning_script": "echo hello world",
 				"user" : "~root",
 				"bootstrap_settings": {
 					"method": "legacy-ssh",
@@ -1402,7 +1402,7 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 
 	s.Equal(apiDistro.SetupAsSudo, false)
 	s.Equal(apiDistro.Setup, utility.ToStringPtr("~Set-up script"))
-	s.Equal(apiDistro.ExtraProvisioningScript, utility.ToStringPtr("echo hello world"))
+	s.Equal(apiDistro.ExtendedProvisioningScript, utility.ToStringPtr("echo hello world"))
 	s.Equal(utility.ToStringPtr(distro.BootstrapMethodLegacySSH), apiDistro.BootstrapSettings.Method)
 	s.Equal(utility.ToStringPtr(distro.CommunicationMethodLegacySSH), apiDistro.BootstrapSettings.Communication)
 	s.Equal(utility.ToStringPtr(evergreen.CloneMethodLegacySSH), apiDistro.CloneMethod)
@@ -1488,11 +1488,11 @@ func getMockDistrosdata() error {
 					"device_name":  "/dev/xvdb",
 					"virtual_name": "ephemeral0"}),
 			)},
-			SetupAsSudo:             true,
-			Setup:                   "Set-up script",
-			ExtraProvisioningScript: "echo hello world",
-			User:                    "root",
-			SSHKey:                  "SSH key string",
+			SetupAsSudo:                true,
+			Setup:                      "Set-up script",
+			ExtendedProvisioningScript: "echo hello world",
+			User:                       "root",
+			SSHKey:                     "SSH key string",
 			SSHOptions: []string{
 				"StrictHostKeyChecking=no",
 				"BatchMode=yes",
