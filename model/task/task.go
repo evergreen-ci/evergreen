@@ -2650,7 +2650,7 @@ func (t *Task) PopulateTestResults() error {
 
 	results, err := t.getCedarTestResults()
 	if err != nil {
-		return errors.Wrap(err, "getting test results from cedar")
+		return errors.Wrap(err, "getting test results from Cedar")
 	}
 	t.LocalTestResults = append(t.LocalTestResults, results...)
 	t.testResultsPopulated = true

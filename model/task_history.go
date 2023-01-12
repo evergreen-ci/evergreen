@@ -8,8 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
-	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -45,7 +45,7 @@ type ExhaustedIterator struct {
 
 type TaskHistory struct {
 	Id    string                  `bson:"_id" json:"_id"`
-	Order string                  `bson:"order" json:"order"`
+	Order int                     `bson:"order" json:"order"`
 	Tasks []aggregatedTaskHistory `bson:"tasks" json:"tasks"`
 }
 
@@ -132,14 +132,10 @@ func (iter *taskHistoryIterator) findAllVersions(v *Version, numRevisions int, b
 	return versions, exhausted, err
 }
 
-// GetChunk Returns tasks grouped by their versions, and sorted with the most
+// GetChunk returns tasks grouped by their versions, and sorted with the most
 // recent first (i.e. descending commit order number).
 func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, include bool) (TaskHistoryChunk, error) {
-	chunk := TaskHistoryChunk{
-		Tasks:       []bson.M{},
-		Versions:    []Version{},
-		FailedTests: map[string][]task.TestResult{},
-	}
+	var chunk TaskHistoryChunk
 
 	versionsBefore, exhausted, err := iter.findAllVersions(v, numBefore, true, include)
 	if err != nil {
@@ -193,16 +189,16 @@ func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, i
 		task.RevisionOrderNumberKey: 1,
 	}
 	groupStage := bson.M{
-		"_id":   fmt.Sprintf("$%v", task.RevisionKey),
-		"order": bson.M{"$first": fmt.Sprintf("$%v", task.RevisionOrderNumberKey)},
+		"_id":   fmt.Sprintf("$%s", task.RevisionKey),
+		"order": bson.M{"$first": fmt.Sprintf("$%s", task.RevisionOrderNumberKey)},
 		"tasks": bson.M{
 			"$push": bson.M{
-				task.IdKey:           fmt.Sprintf("$%v", task.IdKey),
-				task.StatusKey:       fmt.Sprintf("$%v", task.StatusKey),
-				task.DetailsKey:      fmt.Sprintf("$%v", task.DetailsKey),
-				task.ActivatedKey:    fmt.Sprintf("$%v", task.ActivatedKey),
-				task.TimeTakenKey:    fmt.Sprintf("$%v", task.TimeTakenKey),
-				task.BuildVariantKey: fmt.Sprintf("$%v", task.BuildVariantKey),
+				task.IdKey:           fmt.Sprintf("$%s", task.IdKey),
+				task.StatusKey:       fmt.Sprintf("$%s", task.StatusKey),
+				task.DetailsKey:      fmt.Sprintf("$%s", task.DetailsKey),
+				task.ActivatedKey:    fmt.Sprintf("$%s", task.ActivatedKey),
+				task.TimeTakenKey:    fmt.Sprintf("$%s", task.TimeTakenKey),
+				task.BuildVariantKey: fmt.Sprintf("$%s", task.BuildVariantKey),
 			},
 		},
 	}
@@ -213,56 +209,57 @@ func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, i
 		{"$group": groupStage},
 		{"$sort": bson.M{task.RevisionOrderNumberKey: -1}},
 	}
-	var aggregatedTasks []bson.M
-	var agg adb.Aggregation
-	if agg, err = db.AggregateWithMaxTime(task.Collection, pipeline, &aggregatedTasks, taskHistoryMaxTime); err != nil {
-		return chunk, errors.WithStack(err)
+
+	var rawAggregatedTasks []bson.M
+	if _, err = db.AggregateWithMaxTime(task.Collection, pipeline, &rawAggregatedTasks, taskHistoryMaxTime); err != nil {
+		return chunk, errors.Wrap(err, "aggregating task history data")
 	}
-	chunk.Tasks = aggregatedTasks
-	failedTests, err := iter.GetFailedTests(agg)
+	var aggregatedTasks []TaskHistory
+	if _, err = db.AggregateWithMaxTime(task.Collection, pipeline, &aggregatedTasks, taskHistoryMaxTime); err != nil {
+		return chunk, errors.Wrap(err, "aggregating task history data")
+	}
+	chunk.Tasks = rawAggregatedTasks
+	failedTests, err := iter.GetFailedTests(aggregatedTasks)
 	if err != nil {
-		return chunk, errors.WithStack(err)
+		return chunk, errors.Wrap(err, "getting failed tasks for aggregated task history data")
 	}
 
 	chunk.FailedTests = failedTests
+	grip.Info(message.Fields{
+		"name":  "julian:",
+		"chunk": chunk,
+	})
 	return chunk, nil
 }
 
 // GetFailedTests returns a mapping of task id to a slice of failed tasks
 // extracted from a pipeline of aggregated tasks.
-func (thi *taskHistoryIterator) GetFailedTests(aggregatedTasks adb.Results) (map[string][]task.TestResult, error) {
-	var (
-		failedTaskIds []string
-		taskHistory   TaskHistory
-	)
-	iter := aggregatedTasks.Iter()
-	for iter.Next(&taskHistory) {
-		for _, task := range taskHistory.Tasks {
+func (thi *taskHistoryIterator) GetFailedTests(aggregatedTasks []TaskHistory) (map[string][]task.TestResult, error) {
+	var failedTaskIds []string
+	for _, group := range aggregatedTasks {
+		for _, task := range group.Tasks {
 			if task.Status == evergreen.TaskFailed {
 				failedTaskIds = append(failedTaskIds, task.Id)
 			}
 		}
 	}
-	if err := iter.Err(); err != nil {
-		return nil, errors.WithStack(err)
-	}
 	if failedTaskIds == nil {
 		// This is an added hack to make tests pass when transitioning
 		// between Mongo drivers.
-		return nil, nil
+		return map[string][]task.TestResult{}, nil
 	}
 
 	// Find all the relevant failed tests.
 	failedTestsMap := make(map[string][]task.TestResult)
 	tasks, err := task.Find(task.ByIds(failedTaskIds))
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, errors.Wrap(err, "finding tasks")
 	}
 
 	// Create the mapping of the task ID to the list of failed tasks.
 	for _, task := range tasks {
 		if err := task.PopulateTestResults(); err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "populating test results for task")
 		}
 		for _, test := range task.LocalTestResults {
 			if test.Status == evergreen.TestFailedStatus {
@@ -283,9 +280,9 @@ type PickaxeParams struct {
 }
 
 func TaskHistoryPickaxe(params PickaxeParams) ([]task.Task, error) {
-	// If there are no build variants, use all of them for the given task name.
-	// Need this because without the build_variant specified, no amount of hinting
-	// will get sort to use the proper index
+	// If there are no build variants, use all of them for the given task
+	// name. We need this because without the build variant specified, no
+	// amount of hinting will get sort to use the proper index.
 	repo, err := FindRepository(params.Project.Identifier)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding repository")

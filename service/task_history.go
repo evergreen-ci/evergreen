@@ -119,7 +119,7 @@ func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
 			chunk, err = taskHistoryIterator.GetChunk(v, InitRevisionsBefore, InitRevisionsAfter, true)
 		} else {
 			// Load the most recent MaxNumRevisions if a particular
-			// version was unspecified
+			// version was unspecified.
 			chunk, err = taskHistoryIterator.GetChunk(v, MaxNumRevisions, NoRevisions, false)
 		}
 	} else if before {

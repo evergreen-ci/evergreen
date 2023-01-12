@@ -142,7 +142,6 @@ mciModule.factory('taskHistoryFilter', function($http, $window, $filter) {
       "/pickaxe" +
       "?low=" + ret.constraints.low +
       "&high=" + ret.constraints.high +
-      "&only_matching_tasks=true" +
       "&filter=" + uriFilterStr
     ).then(function(resp) {
         var tasks = resp.data;
@@ -170,7 +169,6 @@ mciModule.controller('TaskHistoryController', function($scope, $window, $http,
   $scope.failedTestsByTaskId = [];
   $scope.versionsByGitspec = {};
   $scope.tasksByVariantByCommit = [];
-  $scope.testNames = {};
   $scope.taskHistoryFilter = taskHistoryFilter;
   $scope.isTaskGroupInactive = {};
   $scope.inactiveTaskGroupCount = {};
@@ -218,8 +216,6 @@ mciModule.controller('TaskHistoryController', function($scope, $window, $http,
   }
 
   function buildTasksByVariantCommitMap(tasksByCommit, before) {
-    $scope.testNames = {};
-
     if (!tasksByCommit || !tasksByCommit.length) {
       return;
     }
