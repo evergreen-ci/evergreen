@@ -332,7 +332,7 @@ $scope.getTaskTooltip = function(testGroup, buildvariant) {
       var displayedTests = [];
       for (var i = 0; i < failedTests.length; i++) {
         if (i < failedTestLimit) {
-          displayedTests.push($filter('endOfPath')(failedTests[i].test_file));
+          displayedTests.push($filter('endOfPath')(failedTests[i]));
         }
       }
       tooltip += failedTests.length + ' ' + $filter('pluralize')(failedTests.length, 'test') +

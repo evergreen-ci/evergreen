@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -8,8 +9,8 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -35,7 +36,7 @@ type taskHistoryIterator struct {
 type TaskHistoryChunk struct {
 	Tasks       []bson.M
 	Versions    []Version
-	FailedTests map[string][]task.TestResult
+	FailedTests map[string][]string
 	Exhausted   ExhaustedIterator
 }
 
@@ -56,6 +57,7 @@ type aggregatedTaskHistory struct {
 	TimeTaken        time.Duration            `bson:"time_taken" json:"time_taken"`
 	BuildVariant     string                   `bson:"build_variant" json:"build_variant"`
 	LocalTestResults apimodels.TaskEndDetails `bson:"status_details" json:"status_details"`
+	DisplayOnly      bool                     `bson:"display_only" json:"display_only"`
 }
 type TaskDetails struct {
 	TimedOut bool   `bson:"timed_out"`
@@ -199,6 +201,7 @@ func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, i
 				task.ActivatedKey:    fmt.Sprintf("$%s", task.ActivatedKey),
 				task.TimeTakenKey:    fmt.Sprintf("$%s", task.TimeTakenKey),
 				task.BuildVariantKey: fmt.Sprintf("$%s", task.BuildVariantKey),
+				task.DisplayOnlyKey:  fmt.Sprintf("$%s", task.DisplayOnlyKey),
 			},
 		},
 	}
@@ -223,48 +226,44 @@ func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, i
 	if err != nil {
 		return chunk, errors.Wrap(err, "getting failed tasks for aggregated task history data")
 	}
-
 	chunk.FailedTests = failedTests
-	grip.Info(message.Fields{
-		"name":  "julian:",
-		"chunk": chunk,
-	})
+
 	return chunk, nil
 }
 
 // GetFailedTests returns a mapping of task id to a slice of failed tasks
 // extracted from a pipeline of aggregated tasks.
-func (thi *taskHistoryIterator) GetFailedTests(aggregatedTasks []TaskHistory) (map[string][]task.TestResult, error) {
-	var failedTaskIds []string
+func (thi *taskHistoryIterator) GetFailedTests(aggregatedTasks []TaskHistory) (map[string][]string, error) {
+	var failedTasks []apimodels.CedarTaskInfo
 	for _, group := range aggregatedTasks {
 		for _, task := range group.Tasks {
 			if task.Status == evergreen.TaskFailed {
-				failedTaskIds = append(failedTaskIds, task.Id)
+				failedTasks = append(failedTasks, apimodels.CedarTaskInfo{
+					TaskID:      task.Id,
+					DisplayTask: task.DisplayOnly,
+				})
 			}
 		}
 	}
-	if failedTaskIds == nil {
+	if failedTasks == nil {
 		// This is an added hack to make tests pass when transitioning
 		// between Mongo drivers.
-		return map[string][]task.TestResult{}, nil
+		return map[string][]string{}, nil
 	}
 
-	// Find all the relevant failed tests.
-	failedTestsMap := make(map[string][]task.TestResult)
-	tasks, err := task.Find(task.ByIds(failedTaskIds))
+	// Find the relevant failed tests.
+	results, err := apimodels.GetCedarFilteredFailedSamples(context.Background(), apimodels.GetCedarFailedTestResultsSampleOptions{
+		BaseURL:       evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+		SampleOptions: apimodels.CedarFailedTestSampleOptions{Tasks: failedTasks},
+	})
 	if err != nil {
-		return nil, errors.Wrap(err, "finding tasks")
+		return nil, errors.Wrap(err, "getting failed test results samples from Cedar")
 	}
 
-	// Create the mapping of the task ID to the list of failed tasks.
-	for _, task := range tasks {
-		if err := task.PopulateTestResults(); err != nil {
-			return nil, errors.Wrap(err, "populating test results for task")
-		}
-		for _, test := range task.LocalTestResults {
-			if test.Status == evergreen.TestFailedStatus {
-				failedTestsMap[task.Id] = append(failedTestsMap[task.Id], test)
-			}
+	failedTestsMap := make(map[string][]string)
+	for _, result := range results {
+		if len(result.MatchingFailedTestNames) > 0 {
+			failedTestsMap[utility.FromStringPtr(result.TaskID)] = result.MatchingFailedTestNames
 		}
 	}
 

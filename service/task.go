@@ -434,7 +434,7 @@ type taskHistoryPageData struct {
 	TaskName    string
 	Tasks       []bson.M
 	Variants    []string
-	FailedTests map[string][]task.TestResult
+	FailedTests map[string][]string
 	Versions    []model.Version
 
 	// Flags that indicate whether the beginning/end of history has been reached
