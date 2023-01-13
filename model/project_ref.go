@@ -1899,15 +1899,12 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			setUpdate[ProjectRefTracksPushEventsKey] = p.TracksPushEvents
 		}
 		config := evergreen.GetEnvironment().Settings()
-		if utility.FromBoolPtr(p.Enabled) {
-			valid, err := ValidateProjectCreation(config, p)
-			if valid && err != nil {
-				return false, errors.Wrap(err, "validating project creation")
-			}
-			if !valid {
-				return false, errors.Wrap(err, "cannot enable project")
-			}
-		} else if !isRepo && !p.UseRepoSettings() && !defaultToRepo {
+		// Cannot enable projects if the project creation limits have been reached.
+		_, err := ValidateProjectCreation(config, p)
+		if err != nil {
+			return false, errors.Wrap(err, "validating project creation")
+		}
+		if !isRepo && !p.UseRepoSettings() && !defaultToRepo {
 			// Allow a user to modify owner and repo only if they are editing an unattached project
 			if err := p.ValidateOwnerAndRepo(config.GithubOrgs); err != nil {
 				return false, errors.Wrap(err, "validating new owner/repo")
