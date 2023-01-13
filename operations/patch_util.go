@@ -74,6 +74,7 @@ type patchParams struct {
 	Browse            bool
 	Large             bool
 	ShowSummary       bool
+	AutoDescription   bool
 	Uncommitted       bool
 	PreserveCommits   bool
 	Ref               string
@@ -409,7 +410,7 @@ func (p *patchParams) loadVariants(conf *ClientSettings) error {
 	return nil
 }
 
-//Option to set default parameters no longer supported to prevent unwanted parameters from persisting within future patches
+// Option to set default parameters no longer supported to prevent unwanted parameters from persisting within future patches
 func (p *patchParams) loadParameters(conf *ClientSettings) error {
 	if len(p.Parameters) == 0 {
 		p.Parameters = conf.FindDefaultParameters(p.Project)
@@ -455,6 +456,12 @@ func (p *patchParams) loadTasks(conf *ClientSettings) error {
 func (p *patchParams) getDescription() string {
 	if p.Description != "" {
 		return p.Description
+	} else if p.AutoDescription {
+		description, err := getDefaultDescription()
+		if err != nil {
+			grip.Error(err)
+		}
+		return description
 	}
 
 	description := ""

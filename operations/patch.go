@@ -21,6 +21,7 @@ const (
 	repeatFailedDefinitionFlag = "repeat-failed"
 	repeatPatchIdFlag          = "repeat-patch"
 	includeModulesFlag         = "include-modules"
+	autoDescriptionFlag        = "auto-description"
 )
 
 func getPatchFlags(flags ...cli.Flag) []cli.Flag {
@@ -53,6 +54,10 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 				Usage: "description for the patch",
 			},
 			cli.BoolFlag{
+				Name:  autoDescriptionFlag,
+				Usage: "use last commit message as the patch description",
+			},
+			cli.BoolFlag{
 				Name:  patchVerboseFlagName,
 				Usage: "show patch summary",
 			},
@@ -81,6 +86,7 @@ func Patch() cli.Command {
 		Before: mergeBeforeFuncs(
 			autoUpdateCLI,
 			setPlainLogger,
+			mutuallyExclusiveArgs(false, patchDescriptionFlagName, autoDescriptionFlag),
 			mutuallyExclusiveArgs(false, preserveCommitsFlag, uncommittedChangesFlag),
 			mutuallyExclusiveArgs(false, repeatDefinitionFlag, repeatPatchIdFlag,
 				repeatFailedDefinitionFlag),
@@ -118,6 +124,7 @@ func Patch() cli.Command {
 				SyncTimeout:       c.Duration(syncTimeoutFlagName),
 				SkipConfirm:       c.Bool(skipConfirmFlagName),
 				Description:       c.String(patchDescriptionFlagName),
+				AutoDescription:   c.Bool(autoDescriptionFlag),
 				Finalize:          c.Bool(patchFinalizeFlagName),
 				Browse:            c.Bool(patchBrowseFlagName),
 				ShowSummary:       c.Bool(patchVerboseFlagName),
@@ -278,20 +285,25 @@ func PatchFile() cli.Command {
 				Usage: "path to a file for diff of the patch",
 			},
 		),
-		Before: mergeBeforeFuncs(autoUpdateCLI, requireFileExists(diffPathFlagName)),
+		Before: mergeBeforeFuncs(
+			autoUpdateCLI,
+			requireFileExists(diffPathFlagName),
+			mutuallyExclusiveArgs(false, patchDescriptionFlagName, autoDescriptionFlag),
+		),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			params := &patchParams{
-				Project:     c.String(projectFlagName),
-				Variants:    utility.SplitCommas(c.StringSlice(variantsFlagName)),
-				Tasks:       utility.SplitCommas(c.StringSlice(tasksFlagName)),
-				Alias:       c.String(patchAliasFlagName),
-				SkipConfirm: c.Bool(skipConfirmFlagName),
-				Description: c.String(patchDescriptionFlagName),
-				Finalize:    c.Bool(patchFinalizeFlagName),
-				ShowSummary: c.Bool(patchVerboseFlagName),
-				Large:       c.Bool(largeFlagName),
-				SyncTasks:   utility.SplitCommas(c.StringSlice(syncTasksFlagName)),
+				Project:         c.String(projectFlagName),
+				Variants:        utility.SplitCommas(c.StringSlice(variantsFlagName)),
+				Tasks:           utility.SplitCommas(c.StringSlice(tasksFlagName)),
+				Alias:           c.String(patchAliasFlagName),
+				SkipConfirm:     c.Bool(skipConfirmFlagName),
+				Description:     c.String(patchDescriptionFlagName),
+				AutoDescription: c.Bool(autoDescriptionFlag),
+				Finalize:        c.Bool(patchFinalizeFlagName),
+				ShowSummary:     c.Bool(patchVerboseFlagName),
+				Large:           c.Bool(largeFlagName),
+				SyncTasks:       utility.SplitCommas(c.StringSlice(syncTasksFlagName)),
 			}
 			diffPath := c.String(diffPathFlagName)
 			base := c.String(baseFlagName)
