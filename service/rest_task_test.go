@@ -16,14 +16,13 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-func insertTaskForTesting(taskId, versionId, projectName string, testResults []testresult.TestResult) (*task.Task, error) {
+func insertTaskForTesting(taskId, versionId, projectName string) (*task.Task, error) {
 	task := &task.Task{
 		Id:                  taskId,
 		CreateTime:          time.Now().Add(-20 * time.Minute),
@@ -55,13 +54,10 @@ func insertTaskForTesting(taskId, versionId, projectName string, testResults []t
 		Aborted:          false,
 		TimeTaken:        100 * time.Millisecond,
 		ExpectedDuration: 99 * time.Millisecond,
+		HasCedarResults:  true,
 	}
 
-	err := task.Insert()
-	if err != nil {
-		return nil, err
-	}
-	return task, testresult.InsertMany(testResults)
+	return task, task.Insert()
 }
 
 func TestGetTaskInfo(t *testing.T) {
@@ -72,15 +68,18 @@ func TestGetTaskInfo(t *testing.T) {
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(t, err, "error setting up router")
 
+	cedarSrv, cedarHandler := mock.NewCedarServer(nil)
+	defer cedarSrv.Close()
+
 	Convey("When finding info on a particular task", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, testresult.Collection),
+		require.NoError(t, db.ClearCollections(task.Collection),
 			"Error clearing '%v' collection", task.Collection)
 
 		taskId := "my-task"
 		versionId := "my-version"
 		projectName := "project_test"
 
-		testResult := testresult.TestResult{
+		testResult := task.TestResult{
 			Status:    "success",
 			TaskID:    taskId,
 			Execution: 0,
@@ -89,8 +88,9 @@ func TestGetTaskInfo(t *testing.T) {
 			StartTime: float64(time.Now().Add(-9 * time.Minute).Unix()),
 			EndTime:   float64(time.Now().Add(-1 * time.Minute).Unix()),
 		}
-		testTask, err := insertTaskForTesting(taskId, versionId, projectName, []testresult.TestResult{testResult})
+		testTask, err := insertTaskForTesting(taskId, versionId, projectName)
 		So(err, ShouldBeNil)
+		So(cedarHandler.SetTestResults([]task.TestResult{testResult}, nil), ShouldBeNil)
 
 		file := artifact.File{
 			Name: "Some Artifact",
@@ -111,7 +111,6 @@ func TestGetTaskInfo(t *testing.T) {
 		// Need match variables to be set so can call mux.Vars(request)
 		// in the actual handler function
 		router.ServeHTTP(response, request)
-
 		So(response.Code, ShouldEqual, http.StatusOK)
 
 		Convey("response should match contents of database", func() {
@@ -255,8 +254,11 @@ func TestGetTaskStatus(t *testing.T) {
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(t, err, "error setting up router")
 
+	cedarSrv, cedarHandler := mock.NewCedarServer(nil)
+	defer cedarSrv.Close()
+
 	Convey("When finding the status of a particular task", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, testresult.Collection),
+		require.NoError(t, db.ClearCollections(task.Collection),
 			"Error clearing '%v' collection", task.Collection)
 
 		taskId := "my-task"
@@ -269,8 +271,9 @@ func TestGetTaskStatus(t *testing.T) {
 				TimedOut:    false,
 				Description: "some-stage",
 			},
+			HasCedarResults: true,
 		}
-		testResult := testresult.TestResult{
+		testResult := task.TestResult{
 			Status:    "success",
 			TaskID:    testTask.Id,
 			Execution: testTask.Execution,
@@ -280,7 +283,7 @@ func TestGetTaskStatus(t *testing.T) {
 			EndTime:   float64(time.Now().Add(-1 * time.Minute).Unix()),
 		}
 		So(testTask.Insert(), ShouldBeNil)
-		So(testresult.InsertMany([]testresult.TestResult{testResult}), ShouldBeNil)
+		So(cedarHandler.SetTestResults([]task.TestResult{testResult}, nil), ShouldBeNil)
 
 		url := "/rest/v1/tasks/" + taskId + "/status"
 
@@ -372,14 +375,21 @@ func TestGetDisplayTaskInfo(t *testing.T) {
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(err, "error setting up router")
 
-	require.NoError(db.ClearCollections(task.Collection, testresult.Collection))
+	cedarSrv, cedarHandler := mock.NewCedarServer(nil)
+	defer cedarSrv.Close()
+
+	require.NoError(db.ClearCollections(task.Collection))
 
 	executionTaskId := "execution-task"
 	displayTaskId := "display-task"
 	versionId := "my-version"
 	projectName := "project_test"
+	_, err = insertTaskForTesting(executionTaskId, versionId, projectName)
+	require.NoError(err)
+	displayTask, err := insertTaskForTesting(displayTaskId, versionId, projectName)
+	require.NoError(err)
 
-	testResult := testresult.TestResult{
+	testResult := task.TestResult{
 		Status:    "success",
 		TaskID:    executionTaskId,
 		Execution: 0,
@@ -388,10 +398,8 @@ func TestGetDisplayTaskInfo(t *testing.T) {
 		StartTime: float64(time.Now().Add(-9 * time.Minute).Unix()),
 		EndTime:   float64(time.Now().Add(-1 * time.Minute).Unix()),
 	}
-	_, err = insertTaskForTesting(executionTaskId, versionId, projectName, []testresult.TestResult{testResult})
-	assert.NoError(err)
-	displayTask, err := insertTaskForTesting(displayTaskId, versionId, projectName, []testresult.TestResult{})
-	assert.NoError(err)
+	require.NoError(cedarHandler.SetTestResults([]task.TestResult{testResult}, nil))
+
 	displayTask.ExecutionTasks = []string{executionTaskId}
 	err = db.Update(task.Collection,
 		bson.M{task.IdKey: displayTaskId},

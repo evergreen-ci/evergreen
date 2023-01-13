@@ -3302,14 +3302,12 @@ func (t *Task) getCedarTestResults() ([]TestResult, error) {
 		taskID = t.OldTaskId
 	}
 
-	opts := apimodels.GetCedarTestResultsOptions{
+	cedarResults, err := apimodels.GetCedarTestResultsWithStatusError(ctx, apimodels.GetCedarTestResultsOptions{
 		BaseURL:     evergreen.GetEnvironment().Settings().Cedar.BaseURL,
 		TaskID:      taskID,
 		Execution:   utility.ToIntPtr(t.Execution),
 		DisplayTask: t.DisplayOnly,
-	}
-
-	cedarResults, err := apimodels.GetCedarTestResultsWithStatusError(ctx, opts)
+	})
 	if err != nil {
 		return nil, errors.Wrap(err, "getting test results from cedar")
 	}

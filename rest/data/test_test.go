@@ -4,13 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"net/http/httptest"
 	"strconv"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -37,10 +36,8 @@ func TestCountTestsByTaskID(t *testing.T) {
 			DisplayOnly:     true,
 		}
 		require.NoError(t, displayTask.Insert())
-		handler := &mockCedarHandler{}
-		srv := httptest.NewServer(handler)
+		srv, handler := mock.NewCedarServer(nil)
 		defer srv.Close()
-		evergreen.GetEnvironment().Settings().Cedar.BaseURL = srv.URL
 
 		for _, test := range []struct {
 			name       string
@@ -118,16 +115,4 @@ func TestCountTestsByTaskID(t *testing.T) {
 			})
 		}
 	})
-}
-
-type mockCedarHandler struct {
-	Response    []byte
-	StatusCode  int
-	LastRequest *http.Request
-}
-
-func (h *mockCedarHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.LastRequest = r
-	w.WriteHeader(h.StatusCode)
-	_, _ = w.Write(h.Response)
 }
