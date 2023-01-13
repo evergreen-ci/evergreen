@@ -484,11 +484,6 @@ func (s *ProjectAliasSuite) TestFindAliasInProjectOrRepo() {
 	s.NoError(err)
 	s.Len(found, 2)
 
-	// Test project doesn't match alias but other patch aliases are defined so we don't continue to repo
-	found, err = FindAliasInProjectRepoOrConfig(pRef1.Id, "alias-1")
-	s.NoError(err)
-	s.Len(found, 0)
-
 	// Test non-existent project
 	found, err = FindAliasInProjectRepoOrConfig("bad-project", "alias-1")
 	s.Error(err)

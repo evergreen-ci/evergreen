@@ -215,13 +215,6 @@ func findAliasFromProjectConfig(projectConfig *ProjectConfig, alias string) ([]P
 	return projectConfigAliases[alias], nil
 }
 
-func countPatchAliases(projectID string) (int, error) {
-	return db.Count(ProjectAliasCollection, bson.M{
-		projectIDKey: projectID,
-		aliasKey:     bson.M{"$nin": evergreen.InternalAliases},
-	})
-}
-
 func aliasesToMap(aliases []ProjectAlias) map[string][]ProjectAlias {
 	output := make(map[string][]ProjectAlias)
 	for _, alias := range aliases {
