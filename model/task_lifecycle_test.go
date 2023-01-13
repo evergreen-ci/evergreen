@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -20,7 +19,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
@@ -1627,12 +1625,13 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 				Status:     evergreen.VersionStarted,
 			}
 			testTask = &task.Task{
-				Id:          "testone",
-				DisplayName: displayName,
-				Activated:   false,
-				BuildId:     b.Id,
-				Project:     "p1",
-				Version:     b.Version,
+				Id:              "testone",
+				DisplayName:     displayName,
+				Activated:       false,
+				BuildId:         b.Id,
+				Project:         "p1",
+				Version:         b.Version,
+				HasCedarResults: true,
 			}
 			pp := &ParserProject{
 				Id:         b.Version,
@@ -1678,18 +1677,6 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 
 		Convey("task should not fail if there are only passing or silently failing tests", func() {
 			reset()
-			err := testTask.SetResults([]task.TestResult{
-				{
-					Status: evergreen.TestSilentlyFailedStatus,
-				},
-				{
-					Status: evergreen.TestSucceededStatus,
-				},
-				{
-					Status: evergreen.TestSilentlyFailedStatus,
-				},
-			})
-			So(err, ShouldBeNil)
 			So(MarkEnd(testTask, "", time.Now(), detail, true), ShouldBeNil)
 
 			v, err := VersionFindOneId(v.Id)
@@ -1707,13 +1694,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 
 		Convey("task should fail if there is one failed test", func() {
 			reset()
-			err := testTask.SetResults([]task.TestResult{
-				{
-					Status: evergreen.TestFailedStatus,
-				},
-			})
-
-			So(err, ShouldBeNil)
+			testTask.CedarResultsFailed = true
 			detail.Status = evergreen.TaskFailed
 			So(MarkEnd(testTask, "", time.Now(), detail, true), ShouldBeNil)
 
@@ -1801,12 +1782,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 				Status:    evergreen.BuildCreated,
 			}
 			So(b2.Insert(), ShouldBeNil)
-			err := testTask.SetResults([]task.TestResult{
-				{
-					Status: evergreen.TestFailedStatus,
-				},
-			})
-			So(err, ShouldBeNil)
+			testTask.CedarResultsFailed = true
 			detail.Status = evergreen.TaskFailed
 			So(MarkEnd(testTask, "", time.Now(), detail, true), ShouldBeNil)
 
@@ -4720,7 +4696,7 @@ func TestResetStaleTask(t *testing.T) {
 }
 
 func TestMarkEndWithNoResults(t *testing.T) {
-	require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.EventCollection, testresult.Collection))
+	require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.EventCollection))
 	testTask1 := task.Task{
 		Id:              "t1",
 		Status:          evergreen.TaskStarted,
@@ -4739,6 +4715,7 @@ func TestMarkEndWithNoResults(t *testing.T) {
 		BuildId:         "b",
 		Version:         "v",
 		MustHaveResults: true,
+		HasCedarResults: true,
 	}
 	assert.NoError(t, testTask2.Insert())
 	b := build.Build{
@@ -4769,11 +4746,6 @@ func TestMarkEndWithNoResults(t *testing.T) {
 	assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
 	assert.Equal(t, evergreen.TaskDescriptionNoResults, dbTask.Details.Description)
 
-	results := testresult.TestResult{
-		ID:     mgobson.NewObjectId(),
-		TaskID: testTask2.Id,
-	}
-	assert.NoError(t, results.Insert())
 	err = MarkEnd(&testTask2, "", time.Now(), details, false)
 	assert.NoError(t, err)
 	dbTask, err = task.FindOneId(testTask2.Id)

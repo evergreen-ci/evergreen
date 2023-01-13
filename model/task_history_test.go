@@ -3,12 +3,10 @@ package model
 import (
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -105,109 +103,6 @@ func TestTaskHistory(t *testing.T) {
 
 }
 
-func TestSetDefaultsAndValidate(t *testing.T) {
-	Convey("With various test parameters", t, func() {
-		Convey("an empty test history parameters struct should not be valid", func() {
-			params := TestHistoryParameters{}
-			So(params.SetDefaultsAndValidate(), ShouldNotBeNil)
-		})
-		Convey("a test history parameters struct without a project should not be valid", func() {
-			params := TestHistoryParameters{
-				TestNames: []string{"blah"},
-				TaskNames: []string{"blah"},
-			}
-			So(params.SetDefaultsAndValidate(), ShouldNotBeNil)
-		})
-		Convey("a test history parameters struct without a set of test or task names should not be valid", func() {
-			params := TestHistoryParameters{
-				Project: "p",
-			}
-			So(params.SetDefaultsAndValidate(), ShouldNotBeNil)
-		})
-		Convey("a test history parameters struct without a task status should have a default set", func() {
-			params := TestHistoryParameters{
-				Project:      "project",
-				TestNames:    []string{"test"},
-				TestStatuses: []string{evergreen.TestFailedStatus, evergreen.TestSucceededStatus},
-				Limit:        10,
-			}
-			So(len(params.TaskStatuses), ShouldEqual, 0)
-			So(params.SetDefaultsAndValidate(), ShouldBeNil)
-			So(len(params.TaskStatuses), ShouldEqual, 1)
-			So(params.TaskStatuses[0], ShouldEqual, evergreen.TaskFailed)
-
-		})
-		Convey("a test history parameters struct without a test status should have a default set", func() {
-			params := TestHistoryParameters{
-				Project:      "project",
-				TestNames:    []string{"test"},
-				TaskStatuses: []string{evergreen.TaskFailed},
-				Limit:        10,
-			}
-			So(len(params.TestStatuses), ShouldEqual, 0)
-			So(params.SetDefaultsAndValidate(), ShouldBeNil)
-			So(len(params.TestStatuses), ShouldEqual, 1)
-			So(params.TestStatuses[0], ShouldEqual, evergreen.TestFailedStatus)
-		})
-		Convey("a test history parameters struct with an invalid test status should not be valid", func() {
-			params := TestHistoryParameters{
-				Project:      "project",
-				TestNames:    []string{"test"},
-				TestStatuses: []string{"blah"},
-			}
-			So(params.SetDefaultsAndValidate(), ShouldNotBeNil)
-		})
-		Convey("a test history parameters struct with an invalid task status should not be valid", func() {
-			params := TestHistoryParameters{
-				Project:      "project",
-				TestNames:    []string{"test"},
-				TaskStatuses: []string{"blah"},
-			}
-			So(params.SetDefaultsAndValidate(), ShouldNotBeNil)
-		})
-		Convey("a test history parameters struct with both a date and revision should not be valid", func() {
-			params := TestHistoryParameters{
-				Project:       "project",
-				TestNames:     []string{"test"},
-				AfterRevision: "abc",
-				BeforeDate:    time.Now(),
-			}
-			So(params.SetDefaultsAndValidate(), ShouldNotBeNil)
-			params = TestHistoryParameters{
-				Project:        "project",
-				TestNames:      []string{"test"},
-				BeforeRevision: "abc",
-				BeforeDate:     time.Now(),
-			}
-			So(params.SetDefaultsAndValidate(), ShouldNotBeNil)
-			params = TestHistoryParameters{
-				Project:       "project",
-				TestNames:     []string{"test"},
-				AfterRevision: "abc",
-				AfterDate:     time.Now(),
-			}
-			So(params.SetDefaultsAndValidate(), ShouldNotBeNil)
-			params = TestHistoryParameters{
-				Project:        "project",
-				TestNames:      []string{"test"},
-				BeforeRevision: "abc",
-				AfterDate:      time.Now(),
-			}
-			So(params.SetDefaultsAndValidate(), ShouldNotBeNil)
-			params = TestHistoryParameters{
-				Project:        "project",
-				TestNames:      []string{"test"},
-				AfterRevision:  "abc",
-				BeforeDate:     time.Now(),
-				BeforeRevision: "abc",
-				AfterDate:      time.Now(),
-			}
-			So(params.SetDefaultsAndValidate(), ShouldNotBeNil)
-		})
-
-	})
-}
-
 func TestTaskHistoryPickaxe(t *testing.T) {
 	require.NoError(t, db.ClearCollections(task.Collection, RepositoriesCollection))
 	assert := assert.New(t)
@@ -266,35 +161,4 @@ func TestTaskHistoryPickaxe(t *testing.T) {
 		assert.Equal("test", r.LocalTestResults[0].TestFile)
 		assert.Equal(evergreen.TestFailedStatus, r.LocalTestResults[0].Status)
 	}
-
-	// test that a suite-style test result is found
-	r5 := testresult.TestResult{
-		TaskID:   t4.Id,
-		TestFile: "foo/bar/test",
-		Status:   evergreen.TestFailedStatus,
-	}
-	assert.NoError(r5.Insert())
-	results, err = TaskHistoryPickaxe(params)
-	assert.NoError(err)
-	assert.Len(results, 3)
-	for _, r := range results {
-		if r.Id == t4.Id {
-			assert.Len(r.LocalTestResults, 2)
-		}
-	}
-
-	// test that the only matching tasks param works
-	t5 := task.Task{
-		Id:                  "t5",
-		Project:             proj.Identifier,
-		DisplayName:         "matchingName",
-		BuildVariant:        "bv",
-		RevisionOrderNumber: 5,
-	}
-	assert.NoError(t5.Insert())
-	params.NewestOrder = 5
-	params.OnlyMatchingTasks = true
-	results, err = TaskHistoryPickaxe(params)
-	assert.NoError(err)
-	assert.Len(results, 3)
 }

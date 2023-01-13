@@ -956,7 +956,7 @@ func (t *Task) MarkDependenciesFinished(finished bool) error {
 
 // HasFailedTests returns true if the task had any failed tests.
 func (t *Task) HasFailedTests() (bool, error) {
-	if t.CedarResultsFailed {
+	if t.HasCedarResults && t.CedarResultsFailed {
 		return true, nil
 	}
 
