@@ -2243,24 +2243,33 @@ func (p *ProjectRef) GetGithubProjectConflicts() (GithubProjectConflicts, error)
 }
 
 func ValidateProjectCreation(config *evergreen.Settings, projectRef *ProjectRef) (bool, error) {
-	if err := projectRef.ValidateOwnerAndRepo(config.GithubOrgs); err != nil {
-		return true, errors.Errorf("validating owner and repo for project: '%s'", projectRef.Identifier)
-	}
+	catcher := grip.NewBasicCatcher()
 	allEnabledProjects, err := GetNumberOfProjects()
 	if err != nil {
-		return true, errors.Wrap(err, "getting number of projects")
+		return false, errors.Wrap(err, "getting number of projects")
 	}
 	if allEnabledProjects >= config.ProjectCreation.TotalProjectLimit {
-		return false, errors.Errorf("total project limit of %d reached", config.ProjectCreation.TotalProjectLimit)
+		catcher.Errorf("total project limit of %d reached", config.ProjectCreation.TotalProjectLimit)
 	}
 	enabledOwnerRepoProjects, err := GetNumberOfProjectsForOwnerRepo(projectRef.Owner, projectRef.Repo)
 	if err != nil {
-		return true, errors.Wrapf(err, "getting number of projects for '%s'/'%s'", projectRef.Owner, projectRef.Repo)
+		return false, errors.Wrapf(err, "getting number of projects for '%s'/'%s'", projectRef.Owner, projectRef.Repo)
 	}
 	if enabledOwnerRepoProjects >= config.ProjectCreation.RepoProjectLimit && !config.ProjectCreation.IsException(projectRef.Owner, projectRef.Repo) {
-		return false, errors.Errorf("owner repo limit of %d reached for '%s'/'%s'", config.ProjectCreation.RepoProjectLimit, projectRef.Owner, projectRef.Repo)
+		catcher.Errorf("owner repo limit of %d reached for '%s'/'%s'", config.ProjectCreation.RepoProjectLimit, projectRef.Owner, projectRef.Repo)
 	}
-	return true, nil
+
+	// If the project is not enabled, warn the user while still allowing project creation.
+	if !utility.FromBoolPtr(projectRef.Enabled) && catcher.HasErrors() {
+		grip.Warning(message.WrapError(catcher.Resolve(), message.Fields{
+			"message":            "project creation limit reached",
+			"project_identifier": projectRef.Identifier,
+			"Owner":              projectRef.Owner,
+			"Repo":               projectRef.Repo,
+		}))
+		return true, nil
+	}
+	return true, catcher.Resolve()
 }
 
 func (p *ProjectRef) ValidateOwnerAndRepo(validOrgs []string) error {
