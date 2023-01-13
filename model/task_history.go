@@ -214,17 +214,18 @@ func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, i
 	}
 
 	var rawAggregatedTasks []bson.M
-	if _, err = db.AggregateWithMaxTime(task.Collection, pipeline, &rawAggregatedTasks, taskHistoryMaxTime); err != nil {
-		return chunk, errors.Wrap(err, "aggregating task history data")
-	}
-	var aggregatedTasks []TaskHistory
-	if _, err = db.AggregateWithMaxTime(task.Collection, pipeline, &aggregatedTasks, taskHistoryMaxTime); err != nil {
+	if err = db.AggregateWithMaxTime(task.Collection, pipeline, &rawAggregatedTasks, taskHistoryMaxTime); err != nil {
 		return chunk, errors.Wrap(err, "aggregating task history data")
 	}
 	chunk.Tasks = rawAggregatedTasks
+
+	var aggregatedTasks []TaskHistory
+	if err = db.AggregateWithMaxTime(task.Collection, pipeline, &aggregatedTasks, taskHistoryMaxTime); err != nil {
+		return chunk, errors.Wrap(err, "aggregating task history data")
+	}
 	failedTests, err := iter.GetFailedTests(aggregatedTasks)
 	if err != nil {
-		return chunk, errors.Wrap(err, "getting failed tasks for aggregated task history data")
+		return chunk, errors.Wrap(err, "getting failed tests for aggregated task history data")
 	}
 	chunk.FailedTests = failedTests
 
