@@ -1,4 +1,8 @@
-# This file contains the admin settings used for the smoke test application server.
+# This file contains the admin settings used for the smoke test's app server.
+# This does not contain the entire configuration that will be used in the smoke
+# test, because it excludes the sensitive credentials necessary for the smoke
+# test to run (which are populated during task runtime).
+
 log_path: "server_logs.txt"
 
 database:

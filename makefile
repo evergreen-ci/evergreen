@@ -136,11 +136,11 @@ $(buildDir)/set-project-var:cmd/set-project-var/set-project-var.go
 	$(gobin) build -o $@ $<
 set-var:$(buildDir)/set-var
 set-project-var:$(buildDir)/set-project-var
-set-smoke-vars:$(buildDir)/.load-smoke-data
-	@./bin/set-project-var -dbName mci_smoke -key aws_key -value $(AWS_KEY)
-	@./bin/set-project-var -dbName mci_smoke -key aws_secret -value $(AWS_SECRET)
-	@./bin/set-var -dbName=mci_smoke -collection=hosts -id=localhost -key=agent_revision -value=$(agentVersion)
-	@./bin/set-var -dbName=mci_smoke -collection=pods -id=localhost -key=agent_version -value=$(agentVersion)
+set-smoke-vars:$(buildDir)/.load-smoke-data $(buildDir)/set-project-var $(buildDir)/set-var
+	@$(buildDir)/set-project-var -dbName mci_smoke -key aws_key -value $(AWS_KEY)
+	@$(buildDir)/set-project-var -dbName mci_smoke -key aws_secret -value $(AWS_SECRET)
+	@$(buildDir)/set-var -dbName=mci_smoke -collection=hosts -id=localhost -key=agent_revision -value=$(agentVersion)
+	@$(buildDir)/set-var -dbName=mci_smoke -collection=pods -id=localhost -key=agent_version -value=$(agentVersion)
 load-smoke-data:$(buildDir)/.load-smoke-data
 load-local-data:$(buildDir)/.load-local-data
 $(buildDir)/.load-smoke-data:$(buildDir)/load-smoke-data
