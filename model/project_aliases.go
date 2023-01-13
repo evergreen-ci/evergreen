@@ -182,9 +182,6 @@ func findMatchingAliasForRepo(repoID, alias string) ([]ProjectAlias, error) {
 }
 
 // findMatchingAliasForProjectRef finds all aliases with a given name for a project.
-// Typically FindAliasInProjectRepoOrConfig should be used.
-// Returns true if we have an alias match or the alias doesn't match but
-// other aliases in the category are defined, in which case we shouldn't check other sources.
 func findMatchingAliasForProjectRef(projectID, alias string) ([]ProjectAlias, error) {
 	var out []ProjectAlias
 	q := db.Query(bson.M{
