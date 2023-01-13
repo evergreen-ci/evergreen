@@ -16,15 +16,12 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
@@ -771,158 +768,6 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				}
 
 				validatePaginatedResponse(t, tbh, expectedTasks, expectedPages)
-			})
-		})
-	})
-}
-
-func TestTestPaginator(t *testing.T) {
-	numTests := 300
-	Convey("When paginating with a Connector", t, func() {
-		serviceContext := data.MockGitHubConnector{
-			URL: "http://evergreen.example.net",
-		}
-		Convey("and there are tasks with tests to be found", func() {
-			cachedTests := []testresult.TestResult{}
-			for i := 0; i < numTests; i++ {
-				status := "pass"
-				if i%2 == 0 {
-					status = "fail"
-				}
-				nextTest := testresult.TestResult{
-					ID:     mgobson.ObjectId(fmt.Sprintf("object_id_%d_", i)),
-					TaskID: "myTask",
-					Status: status,
-				}
-				cachedTests = append(cachedTests, nextTest)
-			}
-			myTask := task.Task{
-				Id: "myTask",
-			}
-			serviceContext.CachedTests = cachedTests
-			Convey("then finding a key in the middle of the set should produce"+
-				" a full next and previous page and a full set of models", func() {
-				testToStartAt := 100
-				limit := 100
-				expectedTests := []interface{}{}
-				for i := testToStartAt; i < testToStartAt+limit; i++ {
-					nextModelTest := &model.APITest{}
-					_ = nextModelTest.BuildFromService(&cachedTests[i])
-					_ = nextModelTest.BuildFromService("")
-					expectedTests = append(expectedTests, nextModelTest)
-				}
-				expectedPages := &gimlet.ResponsePages{
-					Next: &gimlet.Page{
-						Key:             fmt.Sprintf("object_id_%d_", testToStartAt+limit),
-						Limit:           limit,
-						Relation:        "next",
-						BaseURL:         "http://evergreen.example.net",
-						KeyQueryParam:   "start_at",
-						LimitQueryParam: "limit",
-					},
-				}
-
-				handler := &testGetHandler{
-					limit: limit,
-					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
-					sc:    &serviceContext,
-					task:  &myTask,
-				}
-
-				validatePaginatedResponse(t, handler, expectedTests, expectedPages)
-			})
-			Convey("then finding a key in the near the end of the set should produce"+
-				" a limited next and full previous page and a full set of models", func() {
-				testToStartAt := 150
-				limit := 50
-				expectedTests := []interface{}{}
-				for i := testToStartAt; i < testToStartAt+limit; i++ {
-					nextModelTest := &model.APITest{}
-					_ = nextModelTest.BuildFromService(&cachedTests[i])
-					_ = nextModelTest.BuildFromService("")
-					expectedTests = append(expectedTests, nextModelTest)
-				}
-				expectedPages := &gimlet.ResponsePages{
-					Next: &gimlet.Page{
-						Key:             fmt.Sprintf("object_id_%d_", testToStartAt+50),
-						Limit:           50,
-						Relation:        "next",
-						BaseURL:         "http://evergreen.example.net",
-						KeyQueryParam:   "start_at",
-						LimitQueryParam: "limit",
-					},
-				}
-
-				handler := &testGetHandler{
-					limit: 50,
-					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
-					sc:    &serviceContext,
-					task:  &myTask,
-				}
-
-				validatePaginatedResponse(t, handler, expectedTests, expectedPages)
-			})
-			Convey("then finding a key in the near the beginning of the set should produce"+
-				" a full next and a limited previous page and a full set of models", func() {
-				testToStartAt := 50
-				limit := 100
-				expectedTests := []interface{}{}
-				for i := testToStartAt; i < testToStartAt+limit; i++ {
-					nextModelTest := &model.APITest{}
-					_ = nextModelTest.BuildFromService(&cachedTests[i])
-					_ = nextModelTest.BuildFromService("")
-					expectedTests = append(expectedTests, nextModelTest)
-				}
-				expectedPages := &gimlet.ResponsePages{
-					Next: &gimlet.Page{
-						Key:             fmt.Sprintf("object_id_%d_", testToStartAt+limit),
-						Limit:           limit,
-						Relation:        "next",
-						BaseURL:         "http://evergreen.example.net",
-						KeyQueryParam:   "start_at",
-						LimitQueryParam: "limit",
-					},
-				}
-
-				handler := &testGetHandler{
-					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
-					limit: limit,
-					sc:    &serviceContext,
-					task:  &myTask,
-				}
-
-				validatePaginatedResponse(t, handler, expectedTests, expectedPages)
-			})
-			Convey("then finding the first key should produce only a next"+
-				" page and a full set of models", func() {
-				testToStartAt := 0
-				limit := 100
-				expectedTests := []interface{}{}
-				for i := testToStartAt; i < testToStartAt+limit; i++ {
-					nextModelTest := &model.APITest{}
-					_ = nextModelTest.BuildFromService(&cachedTests[i])
-					_ = nextModelTest.BuildFromService("")
-					expectedTests = append(expectedTests, nextModelTest)
-				}
-				expectedPages := &gimlet.ResponsePages{
-					Next: &gimlet.Page{
-						Key:             fmt.Sprintf("object_id_%d_", testToStartAt+limit),
-						Limit:           limit,
-						Relation:        "next",
-						BaseURL:         "http://evergreen.example.net",
-						KeyQueryParam:   "start_at",
-						LimitQueryParam: "limit",
-					},
-				}
-
-				handler := &testGetHandler{
-					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
-					sc:    &serviceContext,
-					limit: limit,
-					task:  &myTask,
-				}
-
-				validatePaginatedResponse(t, handler, expectedTests, expectedPages)
 			})
 		})
 	})
