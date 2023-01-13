@@ -54,7 +54,7 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 				Usage: "description for the patch",
 			},
 			cli.BoolFlag{
-				Name:  autoDescriptionFlag,
+				Name:  joinFlagNames(autoDescriptionFlag, "ad"),
 				Usage: "use last commit message as the patch description",
 			},
 			cli.BoolFlag{
