@@ -2989,9 +2989,9 @@ func TestFailedTaskRestart(t *testing.T) {
 		Id:     b.Version,
 		Status: evergreen.VersionStarted,
 	}
-	testTask1 := &task.Task{
-		Id:        "taskToRestart",
-		Activated: false,
+	systemFailTask := &task.Task{
+		Id:        "systemFail",
+		Activated: true,
 		BuildId:   b.Id,
 		Execution: 1,
 		Project:   "sample",
@@ -3000,9 +3000,9 @@ func TestFailedTaskRestart(t *testing.T) {
 		Details:   apimodels.TaskEndDetail{Type: evergreen.CommandTypeSystem},
 		Version:   b.Version,
 	}
-	testTask2 := &task.Task{
+	successfulTask := &task.Task{
 		Id:        "taskThatSucceeded",
-		Activated: false,
+		Activated: true,
 		BuildId:   b.Id,
 		Execution: 1,
 		Project:   "sample",
@@ -3010,9 +3010,9 @@ func TestFailedTaskRestart(t *testing.T) {
 		Status:    evergreen.TaskSucceeded,
 		Version:   b.Version,
 	}
-	testTask3 := &task.Task{
-		Id:        "taskOutsideOfTimeRange",
-		Activated: false,
+	inLargerRangeTask := &task.Task{
+		Id:        "taskOutsideOfSmallTimeRange",
+		Activated: true,
 		BuildId:   b.Id,
 		Execution: 1,
 		Project:   "sample",
@@ -3021,9 +3021,9 @@ func TestFailedTaskRestart(t *testing.T) {
 		Details:   apimodels.TaskEndDetail{Type: "test"},
 		Version:   b.Version,
 	}
-	testTask4 := &task.Task{
+	setupFailTask := &task.Task{
 		Id:        "setupFailed",
-		Activated: false,
+		Activated: true,
 		BuildId:   b.Id,
 		Execution: 1,
 		Project:   "sample",
@@ -3032,12 +3032,38 @@ func TestFailedTaskRestart(t *testing.T) {
 		Details:   apimodels.TaskEndDetail{Type: "setup"},
 		Version:   b.Version,
 	}
+	ranInRangeTask := &task.Task{
+		Id:         "ranInRange",
+		Activated:  true,
+		BuildId:    b.Id,
+		Execution:  1,
+		Project:    "sample",
+		StartTime:  time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
+		FinishTime: time.Date(2017, time.June, 12, 12, 30, 0, 0, time.Local),
+		Status:     evergreen.TaskFailed,
+		Details:    apimodels.TaskEndDetail{Type: "test"},
+		Version:    b.Version,
+	}
+	startedOutOfRangeTask := &task.Task{
+		Id:         "startedOutOfRange",
+		Activated:  true,
+		BuildId:    b.Id,
+		Execution:  1,
+		Project:    "sample",
+		StartTime:  time.Date(2017, time.June, 11, 10, 0, 0, 0, time.Local),
+		FinishTime: time.Date(2017, time.June, 12, 12, 30, 0, 0, time.Local),
+		Status:     evergreen.TaskFailed,
+		Details:    apimodels.TaskEndDetail{Type: "test"},
+		Version:    b.Version,
+	}
 	assert.NoError(b.Insert())
 	assert.NoError(v.Insert())
-	assert.NoError(testTask1.Insert())
-	assert.NoError(testTask2.Insert())
-	assert.NoError(testTask3.Insert())
-	assert.NoError(testTask4.Insert())
+	assert.NoError(systemFailTask.Insert())
+	assert.NoError(successfulTask.Insert())
+	assert.NoError(inLargerRangeTask.Insert())
+	assert.NoError(setupFailTask.Insert())
+	assert.NoError(ranInRangeTask.Insert())
+	assert.NoError(startedOutOfRangeTask.Insert())
 
 	// test a dry run
 	opts := RestartOptions{
@@ -3053,16 +3079,18 @@ func TestFailedTaskRestart(t *testing.T) {
 	results, err := RestartFailedTasks(opts)
 	assert.NoError(err)
 	assert.Nil(results.ItemsErrored)
-	assert.Equal(1, len(results.ItemsRestarted))
-	assert.Equal("taskOutsideOfTimeRange", results.ItemsRestarted[0])
+	assert.Equal(3, len(results.ItemsRestarted))
+	restarted := []string{inLargerRangeTask.Id, ranInRangeTask.Id, startedOutOfRangeTask.Id}
+	assert.EqualValues(restarted, results.ItemsRestarted)
 
 	opts.IncludeTestFailed = true
 	opts.IncludeSysFailed = true
 	results, err = RestartFailedTasks(opts)
 	assert.NoError(err)
 	assert.Nil(results.ItemsErrored)
-	assert.Equal(2, len(results.ItemsRestarted))
-	assert.Equal("taskToRestart", results.ItemsRestarted[0])
+	assert.Equal(4, len(results.ItemsRestarted))
+	restarted = []string{systemFailTask.Id, inLargerRangeTask.Id, ranInRangeTask.Id, startedOutOfRangeTask.Id}
+	assert.EqualValues(restarted, results.ItemsRestarted)
 
 	opts.IncludeTestFailed = false
 	opts.IncludeSysFailed = false
@@ -3073,7 +3101,7 @@ func TestFailedTaskRestart(t *testing.T) {
 	assert.Equal(1, len(results.ItemsRestarted))
 	assert.Equal("setupFailed", results.ItemsRestarted[0])
 
-	// test restarting all tasks
+	// Test restarting all tasks but with a smaller time range
 	opts.StartTime = time.Date(2017, time.June, 12, 11, 0, 0, 0, time.Local)
 	opts.DryRun = false
 	opts.IncludeTestFailed = false
@@ -3082,21 +3110,22 @@ func TestFailedTaskRestart(t *testing.T) {
 	results, err = RestartFailedTasks(opts)
 	assert.NoError(err)
 	assert.Equal(0, len(results.ItemsErrored))
-	assert.Equal(2, len(results.ItemsRestarted))
-	assert.Equal(testTask1.Id, results.ItemsRestarted[0])
-	dbTask, err := task.FindOne(db.Query(task.ById(testTask1.Id)))
+	assert.Equal(4, len(results.ItemsRestarted))
+	restarted = []string{systemFailTask.Id, setupFailTask.Id, ranInRangeTask.Id, startedOutOfRangeTask.Id}
+	assert.EqualValues(restarted, results.ItemsRestarted)
+	dbTask, err := task.FindOne(db.Query(task.ById(systemFailTask.Id)))
 	assert.NoError(err)
 	assert.Equal(dbTask.Status, evergreen.TaskUndispatched)
 	assert.True(dbTask.Execution > 1)
-	dbTask, err = task.FindOne(db.Query(task.ById(testTask2.Id)))
+	dbTask, err = task.FindOne(db.Query(task.ById(successfulTask.Id)))
 	assert.NoError(err)
 	assert.Equal(dbTask.Status, evergreen.TaskSucceeded)
 	assert.Equal(1, dbTask.Execution)
-	dbTask, err = task.FindOne(db.Query(task.ById(testTask3.Id)))
+	dbTask, err = task.FindOne(db.Query(task.ById(inLargerRangeTask.Id)))
 	assert.NoError(err)
 	assert.Equal(dbTask.Status, evergreen.TaskFailed)
 	assert.Equal(1, dbTask.Execution)
-	dbTask, err = task.FindOne(db.Query(task.ById(testTask4.Id)))
+	dbTask, err = task.FindOne(db.Query(task.ById(setupFailTask.Id)))
 	assert.NoError(err)
 	assert.Equal(dbTask.Status, evergreen.TaskUndispatched)
 	assert.Equal(2, dbTask.Execution)
