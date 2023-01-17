@@ -950,6 +950,9 @@ func countEnabledProjects(owner, repo string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	if len(counter) == 0 {
+		return 0, errors.New("no enabled projects found")
+	}
 	return counter[0].Count, nil
 }
 
@@ -1899,13 +1902,8 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 		if p.TracksPushEvents != nil {
 			setUpdate[ProjectRefTracksPushEventsKey] = p.TracksPushEvents
 		}
-		config := evergreen.GetEnvironment().Settings()
-		// Cannot enable projects if the project creation limits have been reached.
-		err = ValidateProjectCreation(config, p)
-		if err != nil {
-			return false, errors.Wrap(err, "validating project creation")
-		}
 		if !isRepo && !p.UseRepoSettings() && !defaultToRepo {
+			config := evergreen.GetEnvironment().Settings()
 			// Allow a user to modify owner and repo only if they are editing an unattached project
 			if err := p.ValidateOwnerAndRepo(config.GithubOrgs); err != nil {
 				return false, errors.Wrap(err, "validating new owner/repo")
@@ -1913,6 +1911,12 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 
 			setUpdate[ProjectRefOwnerKey] = p.Owner
 			setUpdate[ProjectRefRepoKey] = p.Repo
+
+			// Cannot enable projects if the project creation limits have been reached.
+			err = ValidateProjectCreation(config, p)
+			if err != nil {
+				return false, errors.Wrap(err, "validating project creation")
+			}
 		}
 		// some fields shouldn't be set to nil when defaulting to the repo
 		if !defaultToRepo {
@@ -2240,6 +2244,8 @@ func (p *ProjectRef) GetGithubProjectConflicts() (GithubProjectConflicts, error)
 	return res, nil
 }
 
+// ValidateProjectCreation returns an error if the total or owner/repo project limit set by the admin settings
+// has been reached. If the project is not enabled, it will grip a warning but not error.
 func ValidateProjectCreation(config *evergreen.Settings, projectRef *ProjectRef) error {
 	catcher := grip.NewBasicCatcher()
 	allEnabledProjects, err := GetNumberOfProjects()
