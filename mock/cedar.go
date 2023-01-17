@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 )
 
+// CedarHandler is a simple handler for an instance a mock Cedar server.
 type CedarHandler struct {
 	Responses   [][]byte
 	StatusCode  int
@@ -27,6 +28,8 @@ func (h *CedarHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// NewCedarServer returns a test server and handler for mocking the Cedar
+// service. Callers are responsible for closing the server.
 func NewCedarServer(env evergreen.Environment) (*httptest.Server, *CedarHandler) {
 	handler := &CedarHandler{}
 	srv := httptest.NewServer(handler)
