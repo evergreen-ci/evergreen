@@ -150,9 +150,19 @@ $(buildDir)/.load-local-data:$(buildDir)/load-smoke-data
 	./$< -path testdata/local -dbName evergreen_local -amboyDBName amboy_local
 	@touch $@
 smoke-test-agent-monitor:$(localClientBinary) load-smoke-data
+	# Start the smoke test's Evergreen app server.
 	./$< service deploy start-evergreen --web --binary ./$< &
+	# Start the smoke test's agent monitor, which will run the Evergreen agent based on the locally-compiled Evergreen
+	# executable. This agent will coordinate with the app server to run the smoke test's tasks.
+	# It is necessary to set up this locally-running agent because the app server can't actually start hosts to run
+	# tasks.
+	# Note that the distro comes from the smoke test's DB files.
 	./$< service deploy start-evergreen --monitor --binary ./$< --distro localhost &
+	# Run the smoke test's actual tests.
+	# The username/password to is used to authenticate to the app server, and these credentials come from the smoke
+	# test's DB files.
 	./$< service deploy test-endpoints --check-build --username admin --key abb623665fdbf368a1db980dde6ee0f0
+	# Clean up all smoke test Evergreen executable processes.
 	pkill -f $<
 smoke-test-host-task:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web --binary ./$< &

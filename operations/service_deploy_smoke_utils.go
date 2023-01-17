@@ -73,7 +73,7 @@ func (td smokeEndpointTestDefinitions) waitForEvergreen(client *http.Client) err
 		return nil
 	}
 
-	return errors.Errorf("Evergreen was not up after %d check attempts.", attempts)
+	return errors.Errorf("Evergreen app server was not up after %d check attempts.", attempts)
 }
 
 // getLatestGithubCommit gets the latest commit on the main branch of Evergreen.
@@ -110,6 +110,8 @@ func checkContainerTask(username, key string) error {
 	return checkTaskStatusAndLogs(client, agent.PodMode, []string{smokeContainerTaskID}, username, key)
 }
 
+// checkHostTaskByCommit runs host tasks in the smoke test based on the project
+// YAML (agent.yml).
 func checkHostTaskByCommit(username, key string) error {
 	client := utility.GetHTTPClient()
 	defer utility.PutHTTPClient(client)
@@ -132,10 +134,15 @@ func checkHostTaskByCommit(username, key string) error {
 }
 
 // triggerRepotracker makes a request to the Evergreen app server's REST API to
-// run the repotracker. Note that this returning success means that the
-// repotracker will run eventually. It does *not* guarantee that it has already
-// run, nor that it has actually managed to pick up the latest commits from
-// GitHub.
+// run the repotracker. This is a necessary entry point to create the smoke
+// test's tasks.
+// Note that this returning success means that the repotracker will run
+// eventually. It does *not* guarantee that it has already run, nor that it has
+// actually managed to pick up the latest commits from GitHub.
+// Also note that because it picks up commits from GitHub to make the versions
+// to run for the smoke test, the project YAML it will use (agent.yml) is based
+// on the latest committed YAML on the project's tracked branch, *not* the
+// locally-modified project YAML.
 func triggerRepotracker(username, key string, client *http.Client) error {
 	grip.Info("Attempting to trigger repotracker to run.")
 
