@@ -2,7 +2,6 @@ command_type: test
 stepback: true
 ignore:
   - "*.md" # don't schedule tests if a commit only changes markdown files
-  - "scripts/*" # our scripts are untested, so don't schedule tests for them
   - ".github/*" # github CODEOWNERS configuration
 
 post:
