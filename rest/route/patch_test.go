@@ -1071,10 +1071,8 @@ tasks:
 		PatchedParserProject: config,
 	}
 	require.NoError(t, unfinalized.Insert())
-	handler := makeSchedulePatchHandler().(*schedulePatchHandler)
-
 	// schedule patch with task generator for the first run
-	handler = makeSchedulePatchHandler().(*schedulePatchHandler)
+	handler := makeSchedulePatchHandler().(*schedulePatchHandler)
 	description := "some text"
 	body := patchTasks{
 		Description: description,

@@ -1682,7 +1682,7 @@ func addNewTasks(ctx context.Context, creationInfo TaskCreationInfo, existingBui
 	for _, b := range existingBuilds {
 		wasActivated := b.Activated
 		// Find the set of task names that already exist for the given build, including display tasks.
-		tasksInBuild, err := task.FindAll(db.Query(task.ByBuildId(b.Id)).WithFields(task.DisplayNameKey, task.ActivatedKey, task.BuildIdKey))
+		tasksInBuild, err := task.FindAll(db.Query(task.ByBuildId(b.Id)).WithFields(task.DisplayNameKey, task.ActivatedKey, task.BuildIdKey, task.VersionKey))
 		if err != nil {
 			return nil, err
 		}
