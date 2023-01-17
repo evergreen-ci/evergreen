@@ -1900,7 +1900,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 		}
 		config := evergreen.GetEnvironment().Settings()
 		// Cannot enable projects if the project creation limits have been reached.
-		_, err := ValidateProjectCreation(config, p)
+		err = ValidateProjectCreation(config, p)
 		if err != nil {
 			return false, errors.Wrap(err, "validating project creation")
 		}
@@ -2239,18 +2239,18 @@ func (p *ProjectRef) GetGithubProjectConflicts() (GithubProjectConflicts, error)
 	return res, nil
 }
 
-func ValidateProjectCreation(config *evergreen.Settings, projectRef *ProjectRef) (bool, error) {
+func ValidateProjectCreation(config *evergreen.Settings, projectRef *ProjectRef) error {
 	catcher := grip.NewBasicCatcher()
 	allEnabledProjects, err := GetNumberOfProjects()
 	if err != nil {
-		return false, errors.Wrap(err, "getting number of projects")
+		return errors.Wrap(err, "getting number of projects")
 	}
 	if allEnabledProjects >= config.ProjectCreation.TotalProjectLimit {
 		catcher.Errorf("total project limit of %d reached", config.ProjectCreation.TotalProjectLimit)
 	}
 	enabledOwnerRepoProjects, err := GetNumberOfProjectsForOwnerRepo(projectRef.Owner, projectRef.Repo)
 	if err != nil {
-		return false, errors.Wrapf(err, "getting number of projects for '%s'/'%s'", projectRef.Owner, projectRef.Repo)
+		return errors.Wrapf(err, "getting number of projects for '%s'/'%s'", projectRef.Owner, projectRef.Repo)
 	}
 	if enabledOwnerRepoProjects >= config.ProjectCreation.RepoProjectLimit && !config.ProjectCreation.IsException(projectRef.Owner, projectRef.Repo) {
 		catcher.Errorf("owner repo limit of %d reached for '%s'/'%s'", config.ProjectCreation.RepoProjectLimit, projectRef.Owner, projectRef.Repo)
@@ -2264,9 +2264,9 @@ func ValidateProjectCreation(config *evergreen.Settings, projectRef *ProjectRef)
 			"Owner":              projectRef.Owner,
 			"Repo":               projectRef.Repo,
 		}))
-		return true, nil
+		return nil
 	}
-	return true, catcher.Resolve()
+	return catcher.Resolve()
 }
 
 func (p *ProjectRef) ValidateOwnerAndRepo(validOrgs []string) error {

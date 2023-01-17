@@ -62,7 +62,7 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 		}
 	}
 
-	_, err = model.ValidateProjectCreation(config, projectRef)
+	err = model.ValidateProjectCreation(config, projectRef)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
