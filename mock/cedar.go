@@ -13,7 +13,7 @@ import (
 )
 
 type CedarHandler struct {
-	Response    []byte
+	Responses   [][]byte
 	StatusCode  int
 	LastRequest *http.Request
 }
@@ -23,11 +23,17 @@ func (h *CedarHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if h.StatusCode > 0 {
 		w.WriteHeader(h.StatusCode)
 	}
-	_, _ = w.Write(h.Response)
+
+	if len(h.Responses) > 0 {
+		_, _ = w.Write(h.Responses[0])
+		h.Responses = h.Responses[1:]
+	} else {
+		_, _ = w.Write(nil)
+	}
 }
 
 func (h *CedarHandler) SetTestResults(results []task.TestResult, filteredCount *int) error {
-	cedarTestResults := apimodels.CedarTestResults{
+	cedarResults := apimodels.CedarTestResults{
 		Stats: apimodels.CedarTestResultsStats{
 			TotalCount:    len(results),
 			FilteredCount: filteredCount,
@@ -35,7 +41,7 @@ func (h *CedarHandler) SetTestResults(results []task.TestResult, filteredCount *
 		Results: make([]apimodels.CedarTestResult, len(results)),
 	}
 	for i, result := range results {
-		cedarTestResults.Results[i] = apimodels.CedarTestResult{
+		cedarResults.Results[i] = apimodels.CedarTestResult{
 			TaskID:          result.TaskID,
 			Execution:       result.Execution,
 			TestName:        result.TestFile,
@@ -50,13 +56,17 @@ func (h *CedarHandler) SetTestResults(results []task.TestResult, filteredCount *
 			Status:          result.Status,
 		}
 		if result.Status == evergreen.TestFailedStatus {
-			cedarTestResults.Stats.FailedCount++
+			cedarResults.Stats.FailedCount++
 		}
 	}
 
-	var err error
-	h.Response, err = json.Marshal(&cedarTestResults)
-	return errors.Wrap(err, "marshalling Cedar test results")
+	response, err := json.Marshal(&cedarResults)
+	if err != nil {
+		return errors.Wrap(err, "marshalling Cedar test results into JSON")
+	}
+	h.Responses = append(h.Responses, response)
+
+	return nil
 }
 
 func NewCedarServer(env evergreen.Environment) (*httptest.Server, *CedarHandler) {

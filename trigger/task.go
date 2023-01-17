@@ -810,7 +810,7 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 	if !matchingFailureType(sub.TriggerData[keyFailureType], t.task.Details.Type) {
 		return nil, nil
 	}
-	// if no tests, alert only if it's a regression in task status
+	// If no tests, alert only if it's a regression in task status.
 	if len(t.task.LocalTestResults) == 0 {
 		return t.taskRegression(sub)
 	}
