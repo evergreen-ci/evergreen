@@ -140,6 +140,61 @@ func TestFindMergedProjectRef(t *testing.T) {
 	assert.Equal(t, "random2", mergedProject.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
 }
 
+func TestGetNumberOfProjects(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection))
+
+	enabled1 := &ProjectRef{
+		Id:      "enabled1",
+		Owner:   "10gen",
+		Repo:    "repo",
+		Enabled: utility.TruePtr(),
+	}
+	assert.NoError(t, enabled1.Insert())
+	enabled2 := &ProjectRef{
+		Id:      "enabled2",
+		Owner:   "mongodb",
+		Repo:    "mci",
+		Enabled: utility.TruePtr(),
+	}
+	assert.NoError(t, enabled2.Insert())
+	disabled1 := &ProjectRef{
+		Id:      "disabled1",
+		Owner:   "mongodb",
+		Repo:    "mci",
+		Enabled: utility.FalsePtr(),
+	}
+	assert.NoError(t, disabled1.Insert())
+	disabled2 := &ProjectRef{
+		Id:      "disabled2",
+		Owner:   "mongodb",
+		Repo:    "mci",
+		Enabled: utility.TruePtr(),
+	}
+	assert.NoError(t, disabled2.Insert())
+	enabledByRepo := &ProjectRef{
+		Id:        "enabledByRepo",
+		Owner:     "mongodb",
+		Repo:      "mci",
+		RepoRefId: "mongodb_mci",
+	}
+	assert.NoError(t, enabledByRepo.Insert())
+
+	repoRef := &RepoRef{ProjectRef{
+		Id:      "mongodb_mci",
+		Owner:   "mongodb",
+		Repo:    "mci",
+		Enabled: utility.TruePtr(),
+	}}
+	assert.NoError(t, repoRef.Upsert())
+
+	numProjects, err := GetNumberOfProjects()
+	assert.NoError(t, err)
+	assert.Equal(t, 3, numProjects)
+	numProjectsOwnerRepo, err := GetNumberOfProjectsForOwnerRepo(enabled2.Owner, enabled2.Repo)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, numProjectsOwnerRepo)
+}
+
 func TestGetBatchTimeDoesNotExceedMaxBatchTime(t *testing.T) {
 	assert := assert.New(t)
 

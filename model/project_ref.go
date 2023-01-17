@@ -921,35 +921,36 @@ func FindMergedProjectRef(identifier string, version string, includeProjectConfi
 	return pRef, nil
 }
 
+// GetNumberOfProjects returns the current number of enabled projects on evergreen.
 func GetNumberOfProjects() (int, error) {
-	query := db.Query(
-		bson.M{
-			ProjectRefEnabledKey: true,
-		},
-	)
-	if num, err := db.CountQ(ProjectRefCollection, query); err != nil {
-		return 0, errors.Wrap(err, "counting projects")
-	} else {
-		return num, nil
-	}
+	return countEnabledProjects("", "")
 }
 
+// GetNumberOfProjectsForOwnerRepo returns the number of enabled projects for a given owner/repo.
 func GetNumberOfProjectsForOwnerRepo(owner, repo string) (int, error) {
-	if owner != "" || repo != "" {
+	if owner == "" || repo == "" {
 		return 0, errors.New("owner and repo must be specified")
 	}
-	query := db.Query(
-		bson.M{
-			ProjectRefOwnerKey:     owner,
-			ProjectRefRepoRefIdKey: repo,
-			ProjectRefEnabledKey:   true,
-		},
-	)
-	if num, err := db.CountQ(ProjectRefCollection, query); err != nil {
-		return 0, errors.Wrap(err, "error counting projects")
-	} else {
-		return num, nil
+	return countEnabledProjects(owner, repo)
+}
+
+func countEnabledProjects(owner, repo string) (int, error) {
+	query := bson.M{ProjectRefEnabledKey: true}
+	if owner != "" && repo != "" {
+		query[ProjectRefOwnerKey] = owner
+		query[ProjectRefRepoKey] = repo
 	}
+	pipeline := projectRefPipelineForValueIsBool(ProjectRefEnabledKey, RepoRefEnabledKey, true)
+	pipeline = append(pipeline, bson.M{"$match": query})
+	pipeline = append(pipeline, bson.M{"$count": "count"})
+	counter := []struct {
+		Count int `bson:"count"`
+	}{}
+	err := db.Aggregate(ProjectRefCollection, pipeline, &counter)
+	if err != nil {
+		return 0, err
+	}
+	return counter[0].Count, nil
 }
 
 // GetProjectRefMergedWithRepo merges the project with the repo, if one exists.
