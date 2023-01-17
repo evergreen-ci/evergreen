@@ -1,3 +1,5 @@
+# This project YAML is used to run the smoke test.
+
 command_type: test
 stepback: false
 
@@ -101,6 +103,9 @@ tasks:
             # file to s3.put
             mkdir upload
             echo ${task_name} > upload/s3
+
+            # miscellaneous files written by commands
+            mkdir output
       - command: subprocess.exec
         params:
           working_dir: archive
@@ -148,7 +153,17 @@ tasks:
           file: "src/agent/command/testdata/xunit/junit_4.xml"
       - command: expansions.update
         params:
-          foo: bar
+          updates:
+            - key: foo
+              value: bar
+      - command: expansions.write
+        display_name: "Test expansions.write"
+        params:
+          file: output/expansions.yaml
+      - command: subprocess.exec
+        display_name: "Check updated expansions are in written expansions file"
+        params:
+          command: grep "foo.*bar" output/expansions.yaml
       - command: gotest.parse_files
         params:
           files:
