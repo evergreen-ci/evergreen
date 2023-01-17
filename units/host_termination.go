@@ -319,7 +319,7 @@ func (j *hostTerminationJob) incrementIdleTime(ctx context.Context) error {
 	}
 
 	idleTimeStartsAt := j.host.LastTaskCompletedTime
-	if idleTimeStartsAt.IsZero() || idleTimeStartsAt == utility.ZeroTime {
+	if utility.IsZeroTime(idleTimeStartsAt) {
 		idleTimeStartsAt = j.host.StartTime
 	}
 
@@ -329,7 +329,7 @@ func (j *hostTerminationJob) incrementIdleTime(ctx context.Context) error {
 		hostBillingEnds = hostBillingEnds.Add(pad)
 	}
 
-	idleTime := idleTimeStartsAt.Sub(hostBillingEnds)
+	idleTime := hostBillingEnds.Sub(idleTimeStartsAt)
 	return errors.Wrap(j.host.IncIdleTime(idleTime), "incrementing idle time")
 }
 
