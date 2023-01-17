@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -90,7 +91,7 @@ func TestGetTaskInfo(t *testing.T) {
 		}
 		testTask, err := insertTaskForTesting(taskId, versionId, projectName)
 		So(err, ShouldBeNil)
-		So(cedarHandler.SetTestResults([]task.TestResult{testResult}, nil), ShouldBeNil)
+		So(testutil.SetMockCedarTestResults(cedarHandler, []task.TestResult{testResult}, nil), ShouldBeNil)
 
 		file := artifact.File{
 			Name: "Some Artifact",
@@ -283,7 +284,7 @@ func TestGetTaskStatus(t *testing.T) {
 			EndTime:   float64(time.Now().Add(-1 * time.Minute).Unix()),
 		}
 		So(testTask.Insert(), ShouldBeNil)
-		So(cedarHandler.SetTestResults([]task.TestResult{testResult}, nil), ShouldBeNil)
+		So(testutil.SetMockCedarTestResults(cedarHandler, []task.TestResult{testResult}, nil), ShouldBeNil)
 
 		url := "/rest/v1/tasks/" + taskId + "/status"
 
@@ -398,7 +399,7 @@ func TestGetDisplayTaskInfo(t *testing.T) {
 		StartTime: float64(time.Now().Add(-9 * time.Minute).Unix()),
 		EndTime:   float64(time.Now().Add(-1 * time.Minute).Unix()),
 	}
-	require.NoError(cedarHandler.SetTestResults([]task.TestResult{testResult}, nil))
+	require.NoError(testutil.SetMockCedarTestResults(cedarHandler, []task.TestResult{testResult}, nil))
 
 	displayTask.ExecutionTasks = []string{executionTaskId}
 	err = db.Update(task.Collection,
