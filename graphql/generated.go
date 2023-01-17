@@ -858,6 +858,7 @@ type ComplexityRoot struct {
 		BuildVariant            func(childComplexity int) int
 		BuildVariantDisplayName func(childComplexity int) int
 		CanAbort                func(childComplexity int) int
+		CanDisable              func(childComplexity int) int
 		CanModifyAnnotation     func(childComplexity int) int
 		CanOverrideDependencies func(childComplexity int) int
 		CanRestart              func(childComplexity int) int
@@ -1379,6 +1380,7 @@ type TaskResolver interface {
 
 	BuildVariantDisplayName(ctx context.Context, obj *model.APITask) (*string, error)
 	CanAbort(ctx context.Context, obj *model.APITask) (bool, error)
+	CanDisable(ctx context.Context, obj *model.APITask) (bool, error)
 	CanModifyAnnotation(ctx context.Context, obj *model.APITask) (bool, error)
 	CanOverrideDependencies(ctx context.Context, obj *model.APITask) (bool, error)
 	CanRestart(ctx context.Context, obj *model.APITask) (bool, error)
@@ -5603,6 +5605,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Task.CanAbort(childComplexity), true
+
+	case "Task.canDisable":
+		if e.complexity.Task.CanDisable == nil {
+			break
+		}
+
+		return e.complexity.Task.CanDisable(childComplexity), true
 
 	case "Task.canModifyAnnotation":
 		if e.complexity.Task.CanModifyAnnotation == nil {
@@ -13835,6 +13844,8 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(ctx context.C
 				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
 			case "canAbort":
 				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
 			case "canModifyAnnotation":
 				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
 			case "canOverrideDependencies":
@@ -19565,6 +19576,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
 			case "canAbort":
 				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
 			case "canModifyAnnotation":
 				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
 			case "canOverrideDependencies":
@@ -21889,6 +21902,8 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
 			case "canAbort":
 				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
 			case "canModifyAnnotation":
 				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
 			case "canOverrideDependencies":
@@ -22078,6 +22093,8 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
 			case "canAbort":
 				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
 			case "canModifyAnnotation":
 				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
 			case "canOverrideDependencies":
@@ -22267,6 +22284,8 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
 			case "canAbort":
 				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
 			case "canModifyAnnotation":
 				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
 			case "canOverrideDependencies":
@@ -22456,6 +22475,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
 			case "canAbort":
 				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
 			case "canModifyAnnotation":
 				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
 			case "canOverrideDependencies":
@@ -22645,6 +22666,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
 			case "canAbort":
 				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
 			case "canModifyAnnotation":
 				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
 			case "canOverrideDependencies":
@@ -22834,6 +22857,8 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
 			case "canAbort":
 				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
 			case "canModifyAnnotation":
 				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
 			case "canOverrideDependencies":
@@ -32358,6 +32383,8 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
 			case "canAbort":
 				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
 			case "canModifyAnnotation":
 				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
 			case "canOverrideDependencies":
@@ -32547,6 +32574,8 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
 			case "canAbort":
 				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
 			case "canModifyAnnotation":
 				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
 			case "canOverrideDependencies":
@@ -37952,6 +37981,8 @@ func (ec *executionContext) fieldContext_Task_baseTask(ctx context.Context, fiel
 				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
 			case "canAbort":
 				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
 			case "canModifyAnnotation":
 				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
 			case "canOverrideDependencies":
@@ -38266,6 +38297,50 @@ func (ec *executionContext) _Task_canAbort(ctx context.Context, field graphql.Co
 }
 
 func (ec *executionContext) fieldContext_Task_canAbort(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Task_canDisable(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Task_canDisable(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().CanDisable(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Task_canDisable(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Task",
 		Field:      field,
@@ -38968,6 +39043,8 @@ func (ec *executionContext) fieldContext_Task_displayTask(ctx context.Context, f
 				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
 			case "canAbort":
 				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
 			case "canModifyAnnotation":
 				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
 			case "canOverrideDependencies":
@@ -39313,6 +39390,8 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(ctx context.Con
 				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
 			case "canAbort":
 				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
 			case "canModifyAnnotation":
 				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
 			case "canOverrideDependencies":
@@ -45630,6 +45709,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(ctx context.Contex
 				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
 			case "canAbort":
 				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
 			case "canModifyAnnotation":
 				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
 			case "canOverrideDependencies":
@@ -48864,6 +48945,8 @@ func (ec *executionContext) fieldContext_VersionTasks_data(ctx context.Context, 
 				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
 			case "canAbort":
 				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
 			case "canModifyAnnotation":
 				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
 			case "canOverrideDependencies":
@@ -61553,6 +61636,26 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 					}
 				}()
 				res = ec._Task_canAbort(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
+		case "canDisable":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_canDisable(ctx, field, obj)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}

@@ -161,6 +161,11 @@ func (r *taskResolver) CanAbort(ctx context.Context, obj *restModel.APITask) (bo
 	return *obj.Status == evergreen.TaskDispatched || *obj.Status == evergreen.TaskStarted, nil
 }
 
+// CanDisable is the resolver for the canDisable field.
+func (r *taskResolver) CanDisable(ctx context.Context, obj *restModel.APITask) (bool, error) {
+	return obj.ParentTaskId == "", nil
+}
+
 // CanModifyAnnotation is the resolver for the canModifyAnnotation field.
 func (r *taskResolver) CanModifyAnnotation(ctx context.Context, obj *restModel.APITask) (bool, error) {
 	authUser := gimlet.GetUser(ctx)
@@ -240,7 +245,7 @@ func (r *taskResolver) CanSetPriority(ctx context.Context, obj *restModel.APITas
 
 // CanUnschedule is the resolver for the canUnschedule field.
 func (r *taskResolver) CanUnschedule(ctx context.Context, obj *restModel.APITask) (bool, error) {
-	return (obj.Activated && *obj.Status == evergreen.TaskUndispatched), nil
+	return (obj.Activated && *obj.Status == evergreen.TaskUndispatched && obj.ParentTaskId == ""), nil
 }
 
 // DependsOn is the resolver for the dependsOn field.
