@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/evergreen-ci/utility"
@@ -782,7 +783,7 @@ func (s *taskSuite) makeTest(n, execution int, testName, testStatus string) {
 		Execution: execution,
 		Status:    testStatus,
 	}
-	s.Require().NoError(s.cedarHandler.SetTestResults([]task.TestResult{tr}, nil))
+	s.Require().NoError(testutil.SetMockCedarTestResults(s.cedarHandler, []task.TestResult{tr}, nil))
 }
 
 func (s *taskSuite) tryDoubleTrigger(shouldGenerate bool) {
@@ -1023,12 +1024,12 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 		{TaskID: "t1", TestFile: "test1", Status: evergreen.TestFailedStatus},
 		{TaskID: "t1", TestFile: "something", Status: evergreen.TestSucceededStatus},
 	}
-	s.Require().NoError(s.cedarHandler.SetTestResults(results, nil))
+	s.Require().NoError(testutil.SetMockCedarTestResults(s.cedarHandler, results, nil))
 	results = []task.TestResult{
 		{TaskID: "t2", TestFile: "test1", Status: evergreen.TestSucceededStatus},
 		{TaskID: "t2", TestFile: "something", Status: evergreen.TestFailedStatus},
 	}
-	s.Require().NoError(s.cedarHandler.SetTestResults(results, nil))
+	s.Require().NoError(testutil.SetMockCedarTestResults(s.cedarHandler, results, nil))
 
 	ref := model.ProjectRef{
 		Id: "myproj",
@@ -1385,8 +1386,8 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 			tr.task, err = task.FindOneId(test.taskID)
 			require.NoError(t, err)
 			cedarHandler.Responses = nil
-			require.NoError(t, cedarHandler.SetTestResults(test.testResults, nil))
-			require.NoError(t, cedarHandler.SetTestResults(test.prevTestResults, nil))
+			require.NoError(t, testutil.SetMockCedarTestResults(cedarHandler, test.testResults, nil))
+			require.NoError(t, testutil.SetMockCedarTestResults(cedarHandler, test.prevTestResults, nil))
 
 			notification, err := tr.taskRegressionByTest(&event.Subscription{ID: "s1", Subscriber: subscriber, Trigger: "t1"})
 			require.NoError(t, err)

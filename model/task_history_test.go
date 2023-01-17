@@ -146,7 +146,7 @@ func TestTaskHistoryPickaxe(t *testing.T) {
 		assert.NoError(err)
 	}
 
-	// test that a basic case returns the correct results
+	// Test that a basic case returns the correct results.
 	params := PickaxeParams{
 		Project:       &proj,
 		TaskName:      "matchingName",
@@ -157,8 +157,4 @@ func TestTaskHistoryPickaxe(t *testing.T) {
 	results, err := TaskHistoryPickaxe(params)
 	require.NoError(t, err)
 	require.Len(t, results, 3)
-	for _, r := range results {
-		assert.Equal("test", r.LocalTestResults[0].TestFile)
-		assert.Equal(evergreen.TestFailedStatus, r.LocalTestResults[0].Status)
-	}
 }

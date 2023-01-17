@@ -94,7 +94,7 @@ func TestCountTestsByTaskID(t *testing.T) {
 			t.Run(test.name, func(t *testing.T) {
 				responseData, err := json.Marshal(&test.response)
 				require.NoError(t, err)
-				handler.Response = responseData
+				handler.Responses = [][]byte{responseData}
 				handler.StatusCode = test.statusCode
 
 				count, err := CountTestsByTaskID(ctx, test.task.Id, test.execution)
