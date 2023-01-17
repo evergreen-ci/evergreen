@@ -1782,28 +1782,29 @@ func findAliasesForPatch(projectId, alias string, patchDoc *patch.Patch) ([]Proj
 	if err != nil {
 		return nil, errors.Wrap(err, "getting alias from project")
 	}
-	if len(vars) == 0 {
-		pRef, err := FindMergedProjectRef(projectId, "", false)
+	if len(vars) > 0 {
+		return vars, nil
+	}
+	pRef, err := FindMergedProjectRef(projectId, "", false)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting project ref")
+	}
+	if pRef == nil || !pRef.IsVersionControlEnabled() {
+		return vars, nil
+	}
+	if len(patchDoc.PatchedProjectConfig) > 0 {
+		projectConfig, err := CreateProjectConfig([]byte(patchDoc.PatchedProjectConfig), projectId)
 		if err != nil {
-			return nil, errors.Wrap(err, "getting project ref")
+			return nil, errors.Wrap(err, "retrieving aliases from patched config")
 		}
-		if pRef == nil || !pRef.IsVersionControlEnabled() {
-			return vars, nil
+		vars, err = findAliasFromProjectConfig(projectConfig, alias)
+		if err != nil {
+			return nil, errors.Wrapf(err, "retrieving alias '%s' from project config", alias)
 		}
-		if len(patchDoc.PatchedProjectConfig) > 0 {
-			projectConfig, err := CreateProjectConfig([]byte(patchDoc.PatchedProjectConfig), projectId)
-			if err != nil {
-				return nil, errors.Wrap(err, "retrieving aliases from patched config")
-			}
-			vars, err = findAliasFromProjectConfig(projectConfig, alias)
-			if err != nil {
-				return nil, errors.Wrapf(err, "retrieving alias '%s' from project config", alias)
-			}
-		} else if patchDoc.Version != "" {
-			vars, err = getMatchingAliasForVersion(patchDoc.Version, alias)
-			if err != nil {
-				return nil, errors.Wrapf(err, "retrieving alias '%s' from project config", alias)
-			}
+	} else if patchDoc.Version != "" {
+		vars, err = getMatchingAliasForVersion(patchDoc.Version, alias)
+		if err != nil {
+			return nil, errors.Wrapf(err, "retrieving alias '%s' from project config", alias)
 		}
 	}
 	return vars, nil

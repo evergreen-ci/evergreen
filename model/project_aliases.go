@@ -182,6 +182,7 @@ func findMatchingAliasForRepo(repoID, alias string) ([]ProjectAlias, error) {
 }
 
 // findMatchingAliasForProjectRef finds all aliases with a given name for a project.
+// Typically FindAliasInProjectRepoOrConfig should be used.
 func findMatchingAliasForProjectRef(projectID, alias string) ([]ProjectAlias, error) {
 	var out []ProjectAlias
 	q := db.Query(bson.M{
@@ -238,9 +239,7 @@ func FindAliasInProjectRepoOrConfig(projectID, alias string) ([]ProjectAlias, er
 	if err != nil {
 		return nil, errors.Wrap(err, "checking for existing aliases")
 	}
-	// If nothing is defined in the DB, check the project config,
-	// unless the alias defined is a patch alias and there are patch aliases
-	// defined on the project page.
+	// If nothing is defined in the DB, check the project config.
 	if len(aliases) > 0 {
 		return aliases, nil
 	}
@@ -336,7 +335,6 @@ func FindAliasInProjectRepoOrProjectConfig(projectID, alias string, projectConfi
 
 // findAliasInProjectOrRepoFromDb finds all aliases with a given name for a project without merging with parser project.
 // If the project has no aliases, the repo is checked for aliases.
-// Returns true if we should continue to look for repos from a different source.
 func findAliasInProjectOrRepoFromDb(projectID, alias string) ([]ProjectAlias, error) {
 	aliases, err := findMatchingAliasForProjectRef(projectID, alias)
 	if err != nil {
