@@ -164,7 +164,7 @@ func triggerRepotracker(username, key string, client *http.Client) error {
 }
 
 // getAndCheckBuilds gets build information from the Evergreen app server's REST
-// API for the builds that it expects to be eventaully created. These checks are
+// API for the builds that it expects to be eventually created. These checks are
 // assuming that, by triggering the repotracker to run, a version should
 // eventually be created for the latest commit to Evergreen.
 func getAndCheckBuilds(username, key string, client *http.Client) ([]apimodels.APIBuild, error) {
