@@ -21,11 +21,13 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 ////////////////////////////////////////////////////////////////////////
@@ -864,4 +866,266 @@ buildvariants:
 	tasks, err = task.Find(task.ByVersion(*respVersion.Id))
 	assert.NoError(t, err)
 	assert.Len(t, tasks, 4)
+}
+
+func TestSchedulePatchActivatesInactiveTasks(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var generatedProject = []string{`
+{
+  "buildvariants": [
+    {
+      "name": "testBV1",
+      "tasks": [
+        {
+          "name": "shouldDependOnVersionGen",
+          "activate": false
+        }
+      ],
+      "activate": false
+    },
+    {
+      "name": "testBV2",
+      "tasks": [
+        {
+          "name": "shouldDependOnDependencyTask",
+          "activate": false
+        }
+      ],
+      "activate": false
+    },
+    {
+      "name": "testBV3",
+      "tasks": [
+        {
+          "name": "shouldDependOnDependencyTask",
+          "activate": false
+        }
+      ],
+      "activate": false
+    }
+  ],
+  "tasks": [
+    {
+      "name": "shouldDependOnVersionGen",
+      "commands": [
+        {
+          "command": "shell.exec",
+          "params": {
+            "working_dir": "src",
+            "script": "echo noop"
+          }
+        }
+      ]
+    },
+    {
+      "name": "shouldDependOnDependencyTask",
+      "commands": [
+        {
+          "command": "shell.exec",
+          "params": {
+            "working_dir": "src",
+            "script": "echo noop"
+          }
+        }
+      ],
+      "depends_on": [
+        {
+          "name": "dependencyTask"
+        }
+      ]
+    }
+  ]
+}
+`}
+	const config = `
+buildvariants:
+  - display_name: Generate Tasks for Version
+    name: generate-tasks-for-version
+    run_on:
+      - ubuntu1604-test
+    tasks:
+      - name: version_gen
+
+  - display_name: TestBV1
+    name: testBV1
+    run_on:
+      - ubuntu1604-test
+    tasks:
+      - name: placeholder
+        depends_on:
+          - name: version_gen
+            variant: generate-tasks-for-version
+            omit_generated_tasks: true
+
+  - name: testBV2
+    display_name: TestBV2
+    run_on:
+      - ubuntu1604-test
+    tasks:
+      - name: dependencyTask
+      - name: placeholder
+
+  - name: testBV3
+    display_name: TestBV3
+    run_on:
+      - ubuntu1604-test
+    tasks:
+      - name: placeholder
+    depends_on:
+      - name: version_gen
+        variant: generate-tasks-for-version
+      - name: dependencyTask
+        variant: testBV4
+
+  - name: testBV4
+    display_name: TestBV4
+    run_on:
+      - ubuntu1604-test
+    tasks:
+      - name: dependencyTask
+      - name: dependencyTaskShouldActivate
+      - name: shouldNotActivate
+      - name: depOfShouldNotActivate
+      - name: shouldActivate
+
+tasks:
+  - name: placeholder
+    depends_on:
+        - name: version_gen
+          variant: generate-tasks-for-version
+    commands:
+        - command: shell.exec
+          params:
+            working_dir: src
+            script: |
+              echo "noop2"
+
+  - name: dependencyTask
+    depends_on:
+      - name: shouldNotActivate
+    commands:
+        - command: shell.exec
+          params:
+               script: |
+                echo "noop2"
+
+  - name: dependencyTaskShouldActivate
+    depends_on:
+      - name: shouldActivate
+    commands:
+        - command: shell.exec
+          params:
+               script: |
+                echo "noop2"
+
+  - name: shouldNotActivate
+    depends_on:
+      - name: depOfShouldNotActivate
+    commands:
+        - command: shell.exec
+          params:
+            script: |
+                echo "noop2"
+
+  - name: shouldActivate
+    commands:
+        - command: shell.exec
+          params:
+            script: |
+                echo "noop2"
+
+  - name: depOfShouldNotActivate
+    commands:
+        - command: shell.exec
+          params:
+            script: |
+                echo "noop2"
+
+  - name: version_gen
+    commands:
+        - command: generate.tasks
+          params:
+            files:
+              - src/evergreen.json
+`
+	require.NoError(t, db.ClearCollections(serviceModel.ProjectRefCollection, patch.Collection, evergreen.ConfigCollection, task.Collection, serviceModel.VersionCollection, build.Collection))
+	require.NoError(t, db.CreateCollections(build.Collection, task.Collection, serviceModel.VersionCollection, serviceModel.ParserProjectCollection, manifest.Collection))
+	settings := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, settings, "TestSchedulePatchRoute")
+	require.NoError(t, settings.Set())
+	projectRef := &serviceModel.ProjectRef{
+		Id:         "sample",
+		Owner:      "evergreen-ci",
+		Repo:       "sample",
+		Branch:     "main",
+		RemotePath: "evergreen.yml",
+		Enabled:    utility.TruePtr(),
+		BatchTime:  180,
+	}
+	require.NoError(t, projectRef.Insert())
+	unfinalized := patch.Patch{
+		Id:                   mgobson.NewObjectId(),
+		Project:              projectRef.Id,
+		Githash:              "3c7bfeb82d492dc453e7431be664539c35b5db4b",
+		PatchedParserProject: config,
+	}
+	require.NoError(t, unfinalized.Insert())
+	handler := makeSchedulePatchHandler().(*schedulePatchHandler)
+
+	// schedule patch with task generator for the first run
+	handler = makeSchedulePatchHandler().(*schedulePatchHandler)
+	description := "some text"
+	body := patchTasks{
+		Description: description,
+		Variants:    []variant{{Id: "generate-tasks-for-version", Tasks: []string{"version_gen"}}},
+	}
+	jsonBody, err := json.Marshal(&body)
+	assert.NoError(t, err)
+	req, err := http.NewRequest(http.MethodPost, "", bytes.NewBuffer(jsonBody))
+	req = gimlet.SetURLVars(req, map[string]string{"patch_id": unfinalized.Id.Hex()})
+	assert.NoError(t, err)
+	assert.NoError(t, handler.Parse(ctx, req))
+	resp := handler.Run(ctx)
+	respVersion := resp.Data().(model.APIVersion)
+	assert.Equal(t, unfinalized.Id.Hex(), *respVersion.Id)
+	assert.Equal(t, description, *respVersion.Message)
+	tasks, err := task.Find(task.ByVersion(*respVersion.Id))
+	assert.NoError(t, err)
+	assert.Len(t, tasks, 1)
+	// manually set the task as running and its generated JSON for simplicity
+	err = task.UpdateOne(task.ById(tasks[0].Id), bson.M{
+		"$set": bson.M{
+			task.StatusKey:                evergreen.TaskStarted,
+			task.GeneratedJSONAsStringKey: generatedProject,
+		}})
+	assert.NoError(t, err)
+	j := units.NewGenerateTasksJob(tasks[0].Version, tasks[0].Id, "1")
+	j.Run(context.Background())
+	assert.NoError(t, j.Error())
+
+	// now re-configure with tasks that have already been generated but are inactive
+	// this task has two dependencies which should also be activated
+	handler = makeSchedulePatchHandler().(*schedulePatchHandler)
+	body = patchTasks{
+		Variants: []variant{{Id: "testBV4", Tasks: []string{"dependencyTask"}}},
+	}
+	jsonBody, err = json.Marshal(&body)
+	assert.NoError(t, err)
+	req, err = http.NewRequest(http.MethodPost, "", bytes.NewBuffer(jsonBody))
+	req = gimlet.SetURLVars(req, map[string]string{"patch_id": unfinalized.Id.Hex()})
+	assert.NoError(t, err)
+	assert.NoError(t, handler.Parse(ctx, req))
+	resp = handler.Run(ctx)
+	respVersion = resp.Data().(model.APIVersion)
+	assert.Equal(t, unfinalized.Id.Hex(), *respVersion.Id)
+	assert.Equal(t, description, *respVersion.Message)
+	tasks, err = task.Find(task.ByVersion(*respVersion.Id))
+	assert.NoError(t, err)
+	// affirm that pre-existing inactive tasks are all activated now
+	for _, foundTask := range tasks {
+		if foundTask.BuildVariant == "testBV4" {
+			assert.True(t, foundTask.Activated)
+		}
+	}
 }

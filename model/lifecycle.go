@@ -1682,17 +1682,17 @@ func addNewTasks(ctx context.Context, creationInfo TaskCreationInfo, existingBui
 	for _, b := range existingBuilds {
 		wasActivated := b.Activated
 		// Find the set of task names that already exist for the given build, including display tasks.
-		tasksInBuild, err := task.FindAll(db.Query(task.ByBuildId(b.Id)).WithFields(task.DisplayNameKey, task.ActivatedKey))
+		tasksInBuild, err := task.FindAll(db.Query(task.ByBuildId(b.Id)).WithFields(task.DisplayNameKey, task.ActivatedKey, task.BuildIdKey))
 		if err != nil {
 			return nil, err
 		}
-		existingTasksIndex := map[string]bool{}
+		existingTasksIndex := map[string]*task.Task{}
 		hasActivatedTask := false
-		for _, t := range tasksInBuild {
-			if t.Activated {
+		for i := range tasksInBuild {
+			if tasksInBuild[i].Activated {
 				hasActivatedTask = true
 			}
-			existingTasksIndex[t.DisplayName] = true
+			existingTasksIndex[tasksInBuild[i].DisplayName] = &tasksInBuild[i]
 		}
 		projectBV := creationInfo.Project.FindBuildVariant(b.BuildVariant)
 		if projectBV != nil && hasActivatedTask {
@@ -1703,14 +1703,24 @@ func addNewTasks(ctx context.Context, creationInfo TaskCreationInfo, existingBui
 		// a record in the TVPairSet indicating that it should exist
 		tasksToAdd := []string{}
 		for _, taskName := range creationInfo.Pairs.ExecTasks.TaskNames(b.BuildVariant) {
-			if ok := existingTasksIndex[taskName]; ok {
+			if t, ok := existingTasksIndex[taskName]; ok {
+				if !t.Activated {
+					if err = SetActiveState(evergreen.DefaultTaskActivator, true, *t); err != nil {
+						return nil, errors.Wrapf(err, "setting task '%s' to active", t.Id)
+					}
+				}
 				continue
 			}
 			tasksToAdd = append(tasksToAdd, taskName)
 		}
 		displayTasksToAdd := []string{}
 		for _, taskName := range creationInfo.Pairs.DisplayTasks.TaskNames(b.BuildVariant) {
-			if ok := existingTasksIndex[taskName]; ok {
+			if t, ok := existingTasksIndex[taskName]; ok {
+				if !t.Activated {
+					if err = SetActiveState(evergreen.DefaultTaskActivator, true, *t); err != nil {
+						return nil, errors.Wrapf(err, "setting task '%s' to active", t.Id)
+					}
+				}
 				continue
 			}
 			displayTasksToAdd = append(displayTasksToAdd, taskName)
