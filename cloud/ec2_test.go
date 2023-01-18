@@ -1021,12 +1021,13 @@ func (s *EC2Suite) TestTimeTilNextPaymentLinux() {
 	s.Equal(time.Second, s.onDemandManager.TimeTilNextPayment(h))
 }
 
-func (s *EC2Suite) TestTimeTilNextPaymentWindows() {
+func (s *EC2Suite) TestTimeTilNextPaymentSUSE() {
 	now := time.Now()
 	thirtyMinutesAgo := now.Add(-30 * time.Minute)
 	h := &host.Host{
 		Distro: distro.Distro{
-			Arch: "windows",
+			Id:   "suse15-large",
+			Arch: "linux",
 		},
 		CreationTime: thirtyMinutesAgo,
 		StartTime:    thirtyMinutesAgo.Add(time.Minute),
