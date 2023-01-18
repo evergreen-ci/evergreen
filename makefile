@@ -136,11 +136,11 @@ $(buildDir)/set-project-var:cmd/set-project-var/set-project-var.go
 	$(gobin) build -o $@ $<
 set-var:$(buildDir)/set-var
 set-project-var:$(buildDir)/set-project-var
-set-smoke-vars:$(buildDir)/.load-smoke-data
-	@./bin/set-project-var -dbName mci_smoke -key aws_key -value $(AWS_KEY)
-	@./bin/set-project-var -dbName mci_smoke -key aws_secret -value $(AWS_SECRET)
-	@./bin/set-var -dbName=mci_smoke -collection=hosts -id=localhost -key=agent_revision -value=$(agentVersion)
-	@./bin/set-var -dbName=mci_smoke -collection=pods -id=localhost -key=agent_version -value=$(agentVersion)
+set-smoke-vars:$(buildDir)/.load-smoke-data $(buildDir)/set-project-var $(buildDir)/set-var
+	@$(buildDir)/set-project-var -dbName mci_smoke -key aws_key -value $(AWS_KEY)
+	@$(buildDir)/set-project-var -dbName mci_smoke -key aws_secret -value $(AWS_SECRET)
+	@$(buildDir)/set-var -dbName=mci_smoke -collection=hosts -id=localhost -key=agent_revision -value=$(agentVersion)
+	@$(buildDir)/set-var -dbName=mci_smoke -collection=pods -id=localhost -key=agent_version -value=$(agentVersion)
 load-smoke-data:$(buildDir)/.load-smoke-data
 load-local-data:$(buildDir)/.load-local-data
 $(buildDir)/.load-smoke-data:$(buildDir)/load-smoke-data
@@ -150,9 +150,19 @@ $(buildDir)/.load-local-data:$(buildDir)/load-smoke-data
 	./$< -path testdata/local -dbName evergreen_local -amboyDBName amboy_local
 	@touch $@
 smoke-test-agent-monitor:$(localClientBinary) load-smoke-data
+	# Start the smoke test's Evergreen app server.
 	./$< service deploy start-evergreen --web --binary ./$< &
+	# Start the smoke test's agent monitor, which will run the Evergreen agent based on the locally-compiled Evergreen
+	# executable. This agent will coordinate with the app server to run the smoke test's tasks.
+	# It is necessary to set up this locally-running agent because the app server can't actually start hosts to run
+	# tasks.
+	# Note that the distro comes from the smoke test's DB files.
 	./$< service deploy start-evergreen --monitor --binary ./$< --distro localhost &
+	# Run the smoke test's actual tests.
+	# The username/password to is used to authenticate to the app server, and these credentials come from the smoke
+	# test's DB files.
 	./$< service deploy test-endpoints --check-build --username admin --key abb623665fdbf368a1db980dde6ee0f0
+	# Clean up all smoke test Evergreen executable processes.
 	pkill -f $<
 smoke-test-host-task:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web --binary ./$< &
