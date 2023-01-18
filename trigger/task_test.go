@@ -133,14 +133,16 @@ func TestTaskTriggers(t *testing.T) {
 }
 
 type taskSuite struct {
-	event        event.EventLogEntry
-	data         *event.TaskEventData
-	task         task.Task
-	build        build.Build
-	projectRef   model.ProjectRef
-	subs         []event.Subscription
-	cedarSrv     *httptest.Server
-	cedarHandler *mock.CedarHandler
+	event           event.EventLogEntry
+	data            *event.TaskEventData
+	task            task.Task
+	testResults     []task.TestResult
+	prevTestResults []task.TestResult
+	build           build.Build
+	projectRef      model.ProjectRef
+	subs            []event.Subscription
+	cedarSrv        *httptest.Server
+	cedarHandler    *mock.CedarHandler
 
 	t *taskTriggers
 
@@ -168,6 +170,7 @@ func (s *taskSuite) SetupTest() {
 		build.Collection,
 		model.ProjectRefCollection,
 	))
+	s.cedarHandler.Responses = nil
 	startTime := time.Now().Truncate(time.Millisecond).Add(-time.Hour)
 
 	s.task = task.Task{
@@ -184,6 +187,9 @@ func (s *taskSuite) SetupTest() {
 		Requester:           evergreen.RepotrackerVersionRequester,
 	}
 	s.NoError(s.task.Insert())
+
+	s.testResults = nil
+	s.prevTestResults = nil
 
 	s.projectRef = model.ProjectRef{
 		Id: "test_project",
@@ -770,24 +776,30 @@ func (s *taskSuite) makeTask(n int, taskStatus string) {
 
 	s.build.Id = s.task.BuildId
 	s.NoError(s.build.Insert())
+
+	s.prevTestResults = s.testResults
+	s.testResults = nil
 }
 
-func (s *taskSuite) makeTest(n, execution int, testName, testStatus string) {
-	if len(testName) == 0 {
-		testName = "test_0"
+func (s *taskSuite) makeTest(testName, testStatus string) {
+	failed := testStatus == evergreen.TestFailedStatus
+	if !s.task.HasCedarResults || (failed && !s.task.CedarResultsFailed) {
+		s.Require().NoError(s.task.SetHasCedarResults(true, failed))
 	}
 
-	tr := task.TestResult{
+	s.testResults = append(s.testResults, task.TestResult{
 		TestFile:  testName,
 		TaskID:    s.task.Id,
-		Execution: execution,
+		Execution: s.task.Execution,
 		Status:    testStatus,
-	}
-	s.Require().NoError(testutil.SetMockCedarTestResults(s.cedarHandler, []task.TestResult{tr}, nil))
+	})
 }
 
 func (s *taskSuite) tryDoubleTrigger(shouldGenerate bool) {
 	s.t = s.makeTaskTriggers(s.task.Id, s.task.Execution)
+	s.cedarHandler.Responses = nil
+	s.Require().NoError(testutil.SetMockCedarTestResults(s.cedarHandler, s.testResults, nil))
+	s.Require().NoError(testutil.SetMockCedarTestResults(s.cedarHandler, s.prevTestResults, nil))
 	n, err := s.t.taskRegressionByTest(&s.subs[2])
 	s.NoError(err)
 	msg := fmt.Sprintf("expected nil notification; got '%s'", s.task.Id)
@@ -796,7 +808,10 @@ func (s *taskSuite) tryDoubleTrigger(shouldGenerate bool) {
 	}
 	s.Equal(shouldGenerate, n != nil, msg)
 
-	// triggering the notification again should not generate anything
+	// Triggering the notification again should not generate anything.
+	s.cedarHandler.Responses = nil
+	s.Require().NoError(testutil.SetMockCedarTestResults(s.cedarHandler, s.testResults, nil))
+	s.Require().NoError(testutil.SetMockCedarTestResults(s.cedarHandler, s.prevTestResults, nil))
 	n, err = s.t.taskRegressionByTest(&s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
@@ -805,89 +820,84 @@ func (s *taskSuite) tryDoubleTrigger(shouldGenerate bool) {
 func (s *taskSuite) TestRegressionByTestSimpleRegression() {
 	s.NoError(db.ClearCollections(task.Collection))
 
-	// brand new test fails should generate
+	// A brand new test fails should generate.
 	s.makeTask(1, evergreen.TaskFailed)
-	s.makeTest(1, 0, "", evergreen.TestFailedStatus)
+	s.makeTest("test0", evergreen.TestFailedStatus)
 	s.tryDoubleTrigger(true)
 
-	// next fail with same test shouldn't generate
+	// Next fail with same test shouldn't generate.
 	s.makeTask(2, evergreen.TaskFailed)
-	s.makeTest(2, 0, "", evergreen.TestFailedStatus)
+	s.makeTest("test0", evergreen.TestFailedStatus)
 	s.tryDoubleTrigger(false)
 
-	// but if we add a new failed test, it should notify
+	// If we add a new failed test, it should generate.
 	s.makeTask(3, evergreen.TaskFailed)
-	s.makeTest(3, 0, "test_1", evergreen.TestFailedStatus)
-	s.makeTest(3, 0, "", evergreen.TestFailedStatus)
+	s.makeTest("test0", evergreen.TestFailedStatus)
+	s.makeTest("test1", evergreen.TestFailedStatus)
 	s.tryDoubleTrigger(true)
 
-	// transition to failure
+	// Failing test that was previously passing should generate.
 	s.makeTask(4, evergreen.TaskSucceeded)
-	s.makeTest(4, 0, "", evergreen.TestSucceededStatus)
+	s.makeTest("test0", evergreen.TestSucceededStatus)
 	s.tryDoubleTrigger(false)
 
 	s.makeTask(5, evergreen.TaskFailed)
-	s.makeTest(5, 0, "test_1", evergreen.TestFailedStatus)
+	s.makeTest("test0", evergreen.TestFailedStatus)
 	s.tryDoubleTrigger(true)
 }
 
 func (s *taskSuite) TestRegressionByTestWithNonAlertingStatuses() {
 	s.NoError(db.ClearCollections(task.Collection))
 
-	// brand new task that succeeds should not generate
+	// Brand new task that succeeds should not generate.
 	s.makeTask(10, evergreen.TaskSucceeded)
-	s.makeTest(11, 0, "", evergreen.TestSucceededStatus)
+	s.makeTest("test0", evergreen.TestSucceededStatus)
 	s.tryDoubleTrigger(false)
 
-	// even after a failed task
+	// Two tasks ran, if the test failed in between but passed on the
+	// latest, should not generate.
 	s.makeTask(12, evergreen.TaskFailed)
-	s.makeTest(12, 0, "", evergreen.TestFailedStatus)
+	s.makeTest("test0", evergreen.TestFailedStatus)
 
 	s.makeTask(13, evergreen.TaskSucceeded)
-	s.makeTest(13, 0, "", evergreen.TestSucceededStatus)
+	s.makeTest("test0", evergreen.TestSucceededStatus)
 	s.tryDoubleTrigger(false)
 }
 
 func (s *taskSuite) TestRegressionByTestWithTestChanges() {
 	s.NoError(db.ClearCollections(task.Collection))
 
-	// given a task with a failing test, and a succeeding one...
+	// New failing test should generate.
 	s.makeTask(14, evergreen.TaskFailed)
-	s.makeTest(14, 0, "", evergreen.TestFailedStatus)
-	s.makeTest(14, 0, "test_1", evergreen.TestSucceededStatus)
+	s.makeTest("test0", evergreen.TestFailedStatus)
+	s.makeTest("test1", evergreen.TestSucceededStatus)
 	s.tryDoubleTrigger(true)
 
 	// Remove the successful test, but leave the failing one. Since we
-	// already notified, this should not generate
-	// failed test
+	// already notified, this should not generate.
 	s.makeTask(15, evergreen.TaskFailed)
-	s.makeTest(15, 0, "", evergreen.TestFailedStatus)
+	s.makeTest("test0", evergreen.TestFailedStatus)
 	s.tryDoubleTrigger(false)
 
-	// add some successful tests, this should not notify
+	// Add some successful tests, this should not generate.
 	s.makeTask(16, evergreen.TaskFailed)
-	s.makeTest(16, 0, "", evergreen.TestFailedStatus)
-	s.makeTest(16, 0, "test_1", evergreen.TestSucceededStatus)
-	s.makeTest(16, 0, "test_2", evergreen.TestSucceededStatus)
+	s.makeTest("test0", evergreen.TestFailedStatus)
+	s.makeTest("test1", evergreen.TestSucceededStatus)
+	s.makeTest("test2", evergreen.TestSucceededStatus)
 	s.tryDoubleTrigger(false)
 }
 
 func (s *taskSuite) TestRegressionByTestWithReruns() {
 	s.NoError(db.ClearCollections(task.Collection))
 
-	// insert a couple of successful tasks
 	s.makeTask(17, evergreen.TaskSucceeded)
-	s.makeTest(17, 0, "", evergreen.TestSucceededStatus)
-
+	s.makeTest("test0", evergreen.TestSucceededStatus)
+	testResults17 := s.testResults
 	s.makeTask(18, evergreen.TaskSucceeded)
-	s.makeTest(18, 0, "", evergreen.TestSucceededStatus)
-
+	s.makeTask(19, evergreen.TaskSucceeded)
 	task18 := s.task
 
-	s.makeTask(19, evergreen.TaskSucceeded)
-	s.makeTest(19, 0, "", evergreen.TestSucceededStatus)
-
-	// now simulate a rerun of task18 failing
+	// Simulate a rerun of task18 failing.
 	s.task = task18
 	s.NoError(s.task.Archive())
 	s.task.Status = evergreen.TaskFailed
@@ -895,43 +905,44 @@ func (s *taskSuite) TestRegressionByTestWithReruns() {
 	s.event.ResourceId = s.task.Id
 	s.data.Status = s.task.Status
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
-
-	s.makeTest(18, 1, "", evergreen.TestFailedStatus)
+	s.makeTest("test0", evergreen.TestFailedStatus)
 	s.tryDoubleTrigger(true)
 
-	// make it fail again; it shouldn't generate
+	// Make it fail again, it shouldn't generate.
 	s.NoError(s.task.Archive())
 	s.task.Status = evergreen.TaskFailed
 	s.task.Execution = 2
 	s.event.ResourceId = s.task.Id
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
-	s.makeTest(18, 2, "", evergreen.TestFailedStatus)
+	s.testResults = nil // Clear previous execution's results.
+	s.makeTest("test0", evergreen.TestFailedStatus)
+	s.prevTestResults = testResults17 // Need to return task 17's test results.
 	s.tryDoubleTrigger(false)
 }
 
 func (s *taskSuite) TestRegressionByTestWithTestsWithoutTasks() {
 	s.NoError(db.ClearCollections(task.Collection))
 
-	// TaskFailed with no tests should generate
+	// TaskFailed with no tests should generate.
 	s.makeTask(22, evergreen.TaskSucceeded)
 	s.makeTask(23, evergreen.TaskFailed)
 	s.tryDoubleTrigger(true)
 
-	// but not in a subsequent task
+	// Subsequent task failure with no tests should not generate.
 	s.makeTask(24, evergreen.TaskFailed)
 	s.tryDoubleTrigger(false)
 
-	// try same error status, but now with tests
+	// Same error status, but now with tests, should generate.
 	s.makeTask(25, evergreen.TaskFailed)
-	s.makeTest(25, 0, "", evergreen.TestFailedStatus)
+	s.makeTest("test0", evergreen.TestFailedStatus)
 	s.tryDoubleTrigger(true)
 
-	// force fully move the time of task 25 back 48 hours
+	// Forcefully move the time of task 25 back 48 hours.
 	s.task.FinishTime = time.Now().Add(-48 * time.Hour)
 	s.NoError(db.Update(task.Collection, bson.M{task.IdKey: s.task.Id}, &s.task))
 
 	s.makeTask(26, evergreen.TaskFailed)
-	s.makeTest(26, 0, "", evergreen.TestFailedStatus)
+	s.makeTest("test0", evergreen.TestFailedStatus)
 	s.tryDoubleTrigger(true)
 }
 
@@ -939,35 +950,39 @@ func (s *taskSuite) TestRegressionByTestWithDuplicateTestNames() {
 	s.NoError(db.ClearCollections(task.Collection))
 
 	s.makeTask(26, evergreen.TaskFailed)
-	s.makeTest(26, 0, "", evergreen.TestFailedStatus)
-	s.makeTest(26, 0, "", evergreen.TestSucceededStatus)
+	s.makeTest("test0", evergreen.TestFailedStatus)
+	s.makeTest("test0", evergreen.TestSucceededStatus)
 	s.tryDoubleTrigger(true)
 }
 
 func (s *taskSuite) TestRegressionByTestWithTestsWithStepback() {
 	s.NoError(db.ClearCollections(task.Collection))
 
-	// TestFailed should generate
+	// Failing tests should generate.
 	s.makeTask(22, evergreen.TaskSucceeded)
-	s.makeTest(22, 0, "", evergreen.TestSucceededStatus)
+	s.makeTest("test0", evergreen.TestSucceededStatus)
+	testResults22 := s.testResults
 	s.makeTask(24, evergreen.TaskFailed)
-	s.makeTest(24, 0, "", evergreen.TestFailedStatus)
+	s.makeTest("test0", evergreen.TestFailedStatus)
 	s.tryDoubleTrigger(true)
 
-	// but not when we run the earlier task
+	// If run a stepback (in-between task) with failing test, should not
+	// generate.
 	s.makeTask(23, evergreen.TaskFailed)
-	s.makeTest(23, 0, "", evergreen.TestFailedStatus)
+	s.makeTest("test0", evergreen.TestFailedStatus)
+	s.prevTestResults = testResults22 // Need to return task 22's test results.
 	s.tryDoubleTrigger(false)
 }
 
-func (s *taskSuite) TestRegressionByTestWithPassingTests() {
+func (s *taskSuite) TestRegressionByTestWithFailingTaskAndPassingTests() {
 	s.NoError(db.ClearCollections(task.Collection))
 
-	// all passing tests should fall back to task regression
+	// All passing tests but failing task should fall back to task
+	// regression.
 	s.makeTask(27, evergreen.TaskSucceeded)
 	s.makeTask(28, evergreen.TaskFailed)
-	s.makeTest(28, 0, "", evergreen.TestSucceededStatus)
-	s.makeTest(28, 0, "", evergreen.TestSucceededStatus)
+	s.makeTest("test0", evergreen.TestSucceededStatus)
+	s.makeTest("test1", evergreen.TestSucceededStatus)
 	s.tryDoubleTrigger(true)
 }
 
@@ -1000,42 +1015,44 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 	s.NoError(v1.Insert())
 
 	t1 := task.Task{
-		Id:          "t1",
-		Requester:   evergreen.RepotrackerVersionRequester,
-		Status:      evergreen.TaskFailed,
-		DisplayName: "task1",
-		Version:     "v1",
-		BuildId:     "test_build_id",
-		Project:     "myproj",
+		Id:                 "t1",
+		Requester:          evergreen.RepotrackerVersionRequester,
+		Status:             evergreen.TaskFailed,
+		DisplayName:        "task1",
+		Version:            "v1",
+		BuildId:            "test_build_id",
+		Project:            "myproj",
+		HasCedarResults:    true,
+		CedarResultsFailed: true,
 	}
-	s.NoError(t1.Insert())
-	t2 := task.Task{
-		Id:          "t2",
-		Requester:   evergreen.RepotrackerVersionRequester,
-		Status:      evergreen.TaskFailed,
-		DisplayName: "task2",
-		Version:     "v1",
-		BuildId:     "test_build_id",
-		Project:     "myproj",
-	}
-	s.NoError(t2.Insert())
-
-	results := []task.TestResult{
+	testResults1 := []task.TestResult{
 		{TaskID: "t1", TestFile: "test1", Status: evergreen.TestFailedStatus},
 		{TaskID: "t1", TestFile: "something", Status: evergreen.TestSucceededStatus},
 	}
-	s.Require().NoError(testutil.SetMockCedarTestResults(s.cedarHandler, results, nil))
-	results = []task.TestResult{
+	s.NoError(t1.Insert())
+	t2 := task.Task{
+		Id:                 "t2",
+		Requester:          evergreen.RepotrackerVersionRequester,
+		Status:             evergreen.TaskFailed,
+		DisplayName:        "task2",
+		Version:            "v1",
+		BuildId:            "test_build_id",
+		Project:            "myproj",
+		HasCedarResults:    true,
+		CedarResultsFailed: true,
+	}
+	testResults2 := []task.TestResult{
 		{TaskID: "t2", TestFile: "test1", Status: evergreen.TestSucceededStatus},
 		{TaskID: "t2", TestFile: "something", Status: evergreen.TestFailedStatus},
 	}
-	s.Require().NoError(testutil.SetMockCedarTestResults(s.cedarHandler, results, nil))
+	s.NoError(t2.Insert())
 
 	ref := model.ProjectRef{
 		Id: "myproj",
 	}
 	s.NoError(ref.Insert())
 
+	s.Require().NoError(testutil.SetMockCedarTestResults(s.cedarHandler, testResults1, nil))
 	willNotify := event.EventLogEntry{
 		ResourceType: event.ResourceTypeTask,
 		ResourceId:   "t1",
@@ -1047,6 +1064,10 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 	s.Len(n, 1)
 	payload := n[0].Payload.(*message.Email)
 	s.Contains(payload.Subject, "task1 (test1)")
+
+	s.cedarHandler.Responses = nil
+	s.Require().NoError(testutil.SetMockCedarTestResults(s.cedarHandler, testResults2, nil))
+	s.Require().NoError(testutil.SetMockCedarTestResults(s.cedarHandler, testResults1, nil))
 	wontNotify := event.EventLogEntry{
 		ResourceType: event.ResourceTypeTask,
 		ResourceId:   "t2",
