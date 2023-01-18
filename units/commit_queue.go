@@ -563,9 +563,13 @@ func AddMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, proje
 	}
 
 	mergeTask := model.ProjectTask{
-		Name: evergreen.MergeTaskName,
-		Commands: []model.PluginCommandConf{
-			{
+		Name:      evergreen.MergeTaskName,
+		DependsOn: dependencies,
+	}
+
+	if source == commitqueue.SourceDiff {
+		mergeTask.Commands = append(mergeTask.Commands,
+			model.PluginCommandConf{
 				Command: "git.get_project",
 				Type:    evergreen.CommandTypeSetup,
 				Params: map[string]interface{}{
@@ -574,12 +578,6 @@ func AddMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, proje
 					"committer_email": settings.CommitQueue.CommitterEmail,
 				},
 			},
-		},
-		DependsOn: dependencies,
-	}
-
-	if source == commitqueue.SourceDiff {
-		mergeTask.Commands = append(mergeTask.Commands,
 			model.PluginCommandConf{
 				Command: "git.push",
 				Params: map[string]interface{}{
@@ -587,6 +585,7 @@ func AddMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, proje
 				},
 			})
 	} else if source == commitqueue.SourcePullRequest {
+		// kim: TODO: verify that PRs do not need to git clone.
 		mergeTask.Commands = append(mergeTask.Commands,
 			model.PluginCommandConf{
 				Command: "git.merge_pr",
