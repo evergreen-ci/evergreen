@@ -28,6 +28,18 @@ post:
       content_type: text/plain
       permissions: public-read
       display_name: "(txt) coverage:"
+  - command: s3.put
+    display_name: Upload smoke test's app server logs to S3
+    type: system
+    params:
+      aws_key: ${aws_key}
+      aws_secret: ${aws_secret}
+      local_file: evergreen/server_logs.txt
+      remote_file: evergreen/${task_id}/app_server_logs.txt
+      bucket: mciuploads
+      content_type: text/plain
+      permissions: public-read
+      display_name: Evergreen test application server logs
 
 #######################################
 #         YAML Templates              #
@@ -119,18 +131,6 @@ variables:
       - func: run-make
         vars:
           target: "${task_name}"
-      - command: s3.put
-        display_name: Upload app server logs to S3
-        type: system
-        params:
-          aws_key: ${aws_key}
-          aws_secret: ${aws_secret}
-          local_file: evergreen/server_logs.txt
-          remote_file: evergreen/${task_id}/app_server_logs.txt
-          bucket: mciuploads
-          content_type: text/plain
-          permissions: public-read
-          display_name: Evergreen test application server logs
 
   - &version-constants
     nodejs_version: "6.11.1"
