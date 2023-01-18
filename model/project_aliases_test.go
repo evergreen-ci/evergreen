@@ -207,9 +207,8 @@ func (s *ProjectAliasSuite) TestFindAliasInProject() {
 	s.NoError(a2.Upsert())
 	s.NoError(a3.Upsert())
 
-	found, shouldExit, err := findMatchingAliasForProjectRef("project-1", "alias-1")
+	found, err := findMatchingAliasForProjectRef("project-1", "alias-1")
 	s.NoError(err)
-	s.True(shouldExit)
 	s.Len(found, 2)
 }
 
@@ -237,10 +236,16 @@ func (s *ProjectAliasSuite) TestFindAliasInProjectOrConfig() {
 		ProjectID: "project-1",
 		Alias:     "alias-0",
 	}
+	duplicateAlias := ProjectAlias{
+		ProjectID:   "project-1",
+		Alias:       "duplicate",
+		Description: "from UI",
+	}
 	s.NoError(a1.Upsert())
 	s.NoError(a2.Upsert())
 	s.NoError(a3.Upsert())
 	s.NoError(patchAlias.Upsert())
+	s.NoError(duplicateAlias.Upsert())
 
 	projectConfig := &ProjectConfig{
 		Id:      "project-1",
@@ -254,6 +259,11 @@ func (s *ProjectAliasSuite) TestFindAliasInProjectOrConfig() {
 				{
 					ID:    mgobson.NewObjectId(),
 					Alias: "alias-1",
+				},
+				{
+					ID:          mgobson.NewObjectId(),
+					Alias:       "duplicate",
+					Description: "from project config",
 				},
 			},
 			CommitQueueAliases: []ProjectAlias{
@@ -286,29 +296,19 @@ func (s *ProjectAliasSuite) TestFindAliasInProjectOrConfig() {
 	projectAliases, err = FindAliasInProjectRepoOrConfig("project-1", "alias-0")
 	s.NoError(err)
 	s.Len(projectAliases, 1)
-
-	// Even with version control enabled, we ignore the config aliases
-	// since the project also has patch aliases enabled.
-	projectAliases, err = FindAliasInProjectRepoOrConfig("project-1", "alias-1")
-	s.NoError(err)
-	s.Len(projectAliases, 0)
-
-	projectAliases, err = FindAliasInProjectRepoOrConfig("project-1", "alias-2")
-	s.NoError(err)
-	s.Len(projectAliases, 0)
-
-	projectAliases, err = FindAliasInProjectRepoOrConfig("project-1", "nonexistent")
-	s.NoError(err)
-	s.Len(projectAliases, 0)
-
-	s.NoError(RemoveProjectAlias(patchAlias.ID.Hex()))
-	// Version control patch aliases can now be found
 	projectAliases, err = FindAliasInProjectRepoOrConfig("project-1", "alias-1")
 	s.NoError(err)
 	s.Len(projectAliases, 1)
 	projectAliases, err = FindAliasInProjectRepoOrConfig("project-1", "alias-2")
 	s.NoError(err)
 	s.Len(projectAliases, 1)
+
+	// If the same alias is defined in both UI and project config,
+	// UI takes precedence.
+	projectAliases, err = FindAliasInProjectRepoOrConfig("project-1", "duplicate")
+	s.NoError(err)
+	s.Len(projectAliases, 1)
+	s.Equal("from UI", projectAliases[0].Description)
 
 }
 
@@ -483,11 +483,6 @@ func (s *ProjectAliasSuite) TestFindAliasInProjectOrRepo() {
 	found, err = FindAliasInProjectRepoOrConfig(pRef2.Id, "alias-1")
 	s.NoError(err)
 	s.Len(found, 2)
-
-	// Test project doesn't match alias but other patch aliases are defined so we don't continue to repo
-	found, err = FindAliasInProjectRepoOrConfig(pRef1.Id, "alias-1")
-	s.NoError(err)
-	s.Len(found, 0)
 
 	// Test non-existent project
 	found, err = FindAliasInProjectRepoOrConfig("bad-project", "alias-1")
