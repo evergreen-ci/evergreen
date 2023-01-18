@@ -2360,7 +2360,7 @@
                   "url": "https://localhost:8443/test_log/exec1/0?test_name=apple&group_id=#L126",
                   "urlRaw": "https://localhost:8443/test_log/exec1/0?test_name=apple&group_id=&text=true",
                   "urlLobster": "https://localhost:8443/lobster/evergreen/test/exec1/0/apple/#shareLine=126",
-                  "urlParsley": "https://localhost:4173/test/exec1/0/apple?selectedLine=126"
+                  "urlParsley": "https://localhost:4173/test/exec1/0/apple?shareLine=126"
                 },
                 "id": "29ef7a20a7798219e191d00e"
               }
@@ -2380,7 +2380,7 @@
                   "url": "",
                   "urlRaw": "https://logkeeper.mongodb.org/build/59ef7a2097b1d3148d0004f1/test/123?raw=true",
                   "urlLobster": "https://localhost:8443/lobster/build/59ef7a2097b1d3148d0004f1/test/123",
-                  "urlParsley": "https://localhost:4173/resmoke/59ef7a2097b1d3148d0004f1/test/123?selectedLine=126"
+                  "urlParsley": "https://localhost:4173/resmoke/59ef7a2097b1d3148d0004f1/test/123?shareLine=126"
                 },
                 "id": "19ef7a20a7798219e191d00e"
               }
