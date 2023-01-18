@@ -24,7 +24,6 @@ import (
 type testGetHandler struct {
 	taskID     string
 	testStatus []string
-	testID     string
 	testName   string
 	key        string
 	limit      int

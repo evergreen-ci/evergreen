@@ -720,7 +720,6 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 
 // TaskTestSample is the resolver for the taskTestSample field.
 func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, filters []*TestFilter) ([]*TaskTestResultSample, error) {
-	const testSampleLimit = 10
 	if len(tasks) == 0 {
 		return nil, nil
 	}

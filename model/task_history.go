@@ -20,10 +20,6 @@ const (
 	TaskSystemFailure = "sysfail"
 	TaskSetupFailure  = "setup-fail"
 
-	// this regex either matches against the exact 'test' string, or
-	// against the 'test' string at the end of some kind of filepath.
-	testMatchRegex = `(\Q%s\E|.*(\\|/)\Q%s\E)$`
-
 	taskHistoryMaxTime = 90 * time.Second
 )
 
