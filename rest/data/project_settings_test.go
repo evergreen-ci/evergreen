@@ -850,6 +850,7 @@ func TestCopyProject(t *testing.T) {
 			Repo:       "evergreen",
 			Branch:     "main",
 			Restricted: utility.FalsePtr(),
+			Enabled:    utility.TruePtr(),
 			Admins:     []string{"oldAdmin"},
 			ContainerSecrets: []model.ContainerSecret{
 				{

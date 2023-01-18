@@ -951,7 +951,7 @@ func countEnabledProjects(owner, repo string) (int, error) {
 		return 0, err
 	}
 	if len(counter) == 0 {
-		return 0, errors.New("no enabled projects found")
+		return 0, nil
 	}
 	return counter[0].Count, nil
 }
