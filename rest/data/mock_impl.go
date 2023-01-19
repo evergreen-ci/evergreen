@@ -2,11 +2,11 @@ package data
 
 import (
 	"context"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
-	"github.com/evergreen-ci/evergreen/model/patch"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
