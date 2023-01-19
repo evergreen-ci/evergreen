@@ -93,10 +93,6 @@ type ec2FleetManager struct {
 	env         evergreen.Environment
 }
 
-func (m *ec2FleetManager) GetSettings() ProviderSettings {
-	return &EC2ProviderSettings{}
-}
-
 func (m *ec2FleetManager) Configure(ctx context.Context, settings *evergreen.Settings) error {
 	m.settings = settings
 

@@ -10,11 +10,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 // dockerManager implements the Manager interface for Docker.
@@ -23,44 +21,15 @@ type dockerManager struct {
 	env    evergreen.Environment
 }
 
-// ProviderSettings specifies the settings used to configure a host instance.
-type dockerSettings struct {
-	// ImageURL is the url of the Docker image to use when building the container.
-	ImageURL string `mapstructure:"image_url" json:"image_url" bson:"image_url"`
-}
+// dockerSettings are an empty placeholder to fulfill the ProviderSettings
+// interface.
+type dockerSettings struct{}
 
-// nolint
-var (
-	// bson fields for the ProviderSettings struct
-	imageURLKey = bsonutil.MustHaveTag(dockerSettings{}, "ImageURL")
-)
+// Validate is a no-op.
+func (*dockerSettings) Validate() error { return nil }
 
-// Validate checks that the settings from the config file are sane.
-func (settings *dockerSettings) Validate() error {
-	if settings.ImageURL == "" {
-		return errors.New("image must not be empty")
-	}
-
-	return nil
-}
-
-func (s *dockerSettings) FromDistroSettings(d distro.Distro, _ string) error {
-	if len(d.ProviderSettingsList) != 0 {
-		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
-		if err != nil {
-			return errors.Wrap(err, "marshalling provider setting into BSON")
-		}
-		if err := bson.Unmarshal(bytes, s); err != nil {
-			return errors.Wrap(err, "unmarshalling BSON into provider settings")
-		}
-	}
-	return nil
-}
-
-// GetSettings returns an empty ProviderSettings struct.
-func (*dockerManager) GetSettings() ProviderSettings {
-	return &dockerSettings{}
-}
+// FromDistroSettings is a no-op.
+func (*dockerSettings) FromDistroSettings(distro.Distro, string) error { return nil }
 
 // SpawnHost creates and starts a new Docker container
 func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, error) {

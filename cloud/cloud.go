@@ -25,9 +25,6 @@ type ProviderSettings interface {
 //Manager is an interface which handles creating new hosts or modifying
 //them via some third-party API.
 type Manager interface {
-	// Returns a pointer to the manager's configuration settings struct
-	GetSettings() ProviderSettings
-
 	// Load credentials or other settings from the config file
 	Configure(context.Context, *evergreen.Settings) error
 
@@ -131,6 +128,8 @@ type ManagerOpts struct {
 	ProviderSecret string
 }
 
+// GetSettings returns an uninitialized ProviderSettings based on the given
+// provider.
 func GetSettings(provider string) (ProviderSettings, error) {
 	switch provider {
 	case evergreen.ProviderNameEc2OnDemand, evergreen.ProviderNameEc2Spot, evergreen.ProviderNameEc2Fleet:
