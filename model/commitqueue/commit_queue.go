@@ -207,3 +207,11 @@ func ClearAllCommitQueues() (int, error) {
 
 	return clearedCount, nil
 }
+
+type PRInfo struct {
+	Username      string
+	Owner         string
+	Repo          string
+	PR            int
+	CommitMessage string
+}

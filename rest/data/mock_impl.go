@@ -2,6 +2,8 @@ package data
 
 import (
 	"context"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/patch"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -36,8 +38,8 @@ func (pc *MockGitHubConnectorImpl) GetGitHubPR(ctx context.Context, owner, repo 
 	}, nil
 }
 
-func (pc *MockGitHubConnectorImpl) AddPatchForPr(ctx context.Context, projectRef model.ProjectRef, prNum int, modules []restModel.APIModule, messageOverride string) (string, error) {
-	return "", nil
+func (pc *MockGitHubConnectorImpl) AddPatchForPr(ctx context.Context, projectRef model.ProjectRef, prNum int, modules []restModel.APIModule, messageOverride string) (*patch.Patch, error) {
+	return nil, nil
 }
 
 func (pc *MockGitHubConnectorImpl) IsAuthorizedToPatchAndMerge(ctx context.Context, settings *evergreen.Settings, args UserRepoInfo) (bool, error) {
@@ -53,6 +55,10 @@ func (pc *MockGitHubConnectorImpl) IsAuthorizedToPatchAndMerge(ctx context.Conte
 	mergePermissions := []string{"admin", "write"}
 	hasPermission := utility.StringSliceContains(mergePermissions, permission)
 	return hasPermission, nil
+}
+
+func (pc *MockGitHubConnectorImpl) EnqueuePR(ctx context.Context, settings *evergreen.Settings, info commitqueue.PRInfo) (*restModel.APIPatch, error) {
+	return nil, nil
 }
 
 func (pc *MockGitHubConnectorImpl) GetProjectFromFile(ctx context.Context, pRef model.ProjectRef, file string, token string) (model.ProjectInfo, error) {
