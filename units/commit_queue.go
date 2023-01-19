@@ -585,7 +585,6 @@ func AddMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, proje
 				},
 			})
 	} else if source == commitqueue.SourcePullRequest {
-		// kim: TODO: verify that PRs do not need to git clone.
 		mergeTask.Commands = append(mergeTask.Commands,
 			model.PluginCommandConf{
 				Command: "git.merge_pr",
