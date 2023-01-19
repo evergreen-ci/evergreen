@@ -871,7 +871,7 @@ buildvariants:
 func TestSchedulePatchActivatesInactiveTasks(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	var generatedProject = []string{`
+	generatedProject := []string{`
 {
   "buildvariants": [
     {

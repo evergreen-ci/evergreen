@@ -1682,17 +1682,17 @@ func addNewTasks(ctx context.Context, creationInfo TaskCreationInfo, existingBui
 	for _, b := range existingBuilds {
 		wasActivated := b.Activated
 		// Find the set of task names that already exist for the given build, including display tasks.
-		tasksInBuild, err := task.FindAll(db.Query(task.ByBuildId(b.Id)).WithFields(task.DisplayNameKey, task.ActivatedKey, task.BuildIdKey, task.VersionKey))
+		tasksInBuild, err := task.FindAll(db.Query(task.ByBuildId(b.Id)))
 		if err != nil {
 			return nil, err
 		}
-		existingTasksIndex := map[string]*task.Task{}
+		existingTasksIndex := map[string]task.Task{}
 		hasActivatedTask := false
 		for i := range tasksInBuild {
 			if tasksInBuild[i].Activated {
 				hasActivatedTask = true
 			}
-			existingTasksIndex[tasksInBuild[i].DisplayName] = &tasksInBuild[i]
+			existingTasksIndex[tasksInBuild[i].DisplayName] = tasksInBuild[i]
 		}
 		projectBV := creationInfo.Project.FindBuildVariant(b.BuildVariant)
 		if projectBV != nil && hasActivatedTask {
@@ -1702,12 +1702,11 @@ func addNewTasks(ctx context.Context, creationInfo TaskCreationInfo, existingBui
 		// Build a list of tasks that haven't been created yet for the given variant, but have
 		// a record in the TVPairSet indicating that it should exist
 		tasksToAdd := []string{}
+		existingTasksToActivate := []task.Task{}
 		for _, taskName := range creationInfo.Pairs.ExecTasks.TaskNames(b.BuildVariant) {
 			if t, ok := existingTasksIndex[taskName]; ok {
 				if !t.Activated {
-					if err = SetActiveState(evergreen.DefaultTaskActivator, true, *t); err != nil {
-						return nil, errors.Wrapf(err, "setting task '%s' to active", t.Id)
-					}
+					existingTasksToActivate = append(existingTasksToActivate, t)
 				}
 				continue
 			}
@@ -1717,13 +1716,14 @@ func addNewTasks(ctx context.Context, creationInfo TaskCreationInfo, existingBui
 		for _, taskName := range creationInfo.Pairs.DisplayTasks.TaskNames(b.BuildVariant) {
 			if t, ok := existingTasksIndex[taskName]; ok {
 				if !t.Activated {
-					if err = SetActiveState(evergreen.DefaultTaskActivator, true, *t); err != nil {
-						return nil, errors.Wrapf(err, "setting task '%s' to active", t.Id)
-					}
+					existingTasksToActivate = append(existingTasksToActivate, t)
 				}
 				continue
 			}
 			displayTasksToAdd = append(displayTasksToAdd, taskName)
+		}
+		if err = SetActiveState(evergreen.DefaultTaskActivator, true, existingTasksToActivate...); err != nil {
+			return nil, errors.Wrap(err, "setting tasks to active")
 		}
 		if len(tasksToAdd) == 0 && len(displayTasksToAdd) == 0 { // no tasks to add, so we do nothing.
 			continue
