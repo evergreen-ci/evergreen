@@ -343,6 +343,18 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NoError(t, apiProjectRef.BuildFromService(changes))
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
+				Aliases: []restModel.APIProjectAlias{
+					{
+						Alias:   utility.ToStringPtr(evergreen.CommitQueueAlias),
+						Task:    utility.ToStringPtr("new_task"),
+						Variant: utility.ToStringPtr("new_variant"),
+					},
+					{
+						Alias:   utility.ToStringPtr(evergreen.GithubPRAlias),
+						Task:    utility.ToStringPtr("new_task"),
+						Variant: utility.ToStringPtr("new_variant"),
+					},
+				},
 			}
 			_, err := SaveProjectSettingsForSection(ctx, changes.Id, apiChanges, model.ProjectPageGithubAndCQSection, false, "me")
 			assert.NoError(t, err)
