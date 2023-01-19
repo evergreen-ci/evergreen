@@ -589,9 +589,6 @@ func AddMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, proje
 		mergeTask.Commands = append(mergeTask.Commands,
 			model.PluginCommandConf{
 				Command: "git.merge_pr",
-				Params: map[string]interface{}{
-					"url": fmt.Sprintf("%s/version/%s", settings.Ui.Url, patchDoc.Id.Hex()),
-				},
 			})
 	} else {
 		return errors.Errorf("unknown commit queue source '%s'", source)
