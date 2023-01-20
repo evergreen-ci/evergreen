@@ -670,7 +670,7 @@ func (gh *githubHookApi) requireSigned(ctx context.Context, settings *evergreen.
 	for _, c := range commits {
 		commit := c.GetCommit()
 		if commit.Verification != nil && !utility.FromBoolPtr(commit.Verification.Verified) &&
-			utility.FromStringPtr(commit.Verification.Reason) == commitUnsigned {
+			utility.FromStringPtr(commit.Verification.Reason) == githubCommitUnsigned {
 			return errors.Errorf("commit '%s' is not signed", utility.FromStringPtr(commit.SHA))
 		}
 
@@ -691,7 +691,7 @@ func (gh *githubHookApi) checkPRApprovals(ctx context.Context, settings *evergre
 
 	var numApprovals int
 	for _, r := range reviews {
-		if r.GetState() == reviewApproved {
+		if r.GetState() == githubReviewApproved {
 			numApprovals += 1
 		}
 	}
