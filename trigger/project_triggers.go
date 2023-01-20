@@ -19,15 +19,10 @@ func TriggerDownstreamVersion(args ProcessorArgs) (*model.Version, error) {
 	}
 
 	// propagate version metadata to the downstream version
-	metadata, err := metadataFromVersion(*args.SourceVersion, args.DownstreamProject)
+	metadata, err := metadataFromVersion(args)
 	if err != nil {
 		return nil, err
 	}
-	metadata.TriggerID = args.TriggerID
-	metadata.TriggerType = args.TriggerType
-	metadata.EventID = args.EventID
-	metadata.TriggerDefinitionID = args.DefinitionID
-	metadata.Alias = args.Alias
 
 	// get the downstream config
 	projectInfo := model.ProjectInfo{}
@@ -82,24 +77,30 @@ func TriggerDownstreamVersion(args ProcessorArgs) (*model.Version, error) {
 	return v, nil
 }
 
-func metadataFromVersion(source model.Version, ref model.ProjectRef) (model.VersionMetadata, error) {
+func metadataFromVersion(args ProcessorArgs) (model.VersionMetadata, error) {
 	metadata := model.VersionMetadata{
-		SourceVersion: &source,
+		SourceVersion:       args.SourceVersion,
+		Activate:            true,
+		TriggerID:           args.TriggerID,
+		TriggerType:         args.TriggerType,
+		EventID:             args.EventID,
+		TriggerDefinitionID: args.DefinitionID,
+		Alias:               args.Alias,
 	}
 	metadata.Revision = model.Revision{
-		Author:          source.Author,
-		AuthorEmail:     source.AuthorEmail,
-		CreateTime:      source.CreateTime,
-		RevisionMessage: source.Message,
+		Author:          args.SourceVersion.Author,
+		AuthorEmail:     args.SourceVersion.AuthorEmail,
+		CreateTime:      args.SourceVersion.CreateTime,
+		RevisionMessage: args.SourceVersion.Message,
 	}
-	repo, err := model.FindRepository(ref.Id)
+	repo, err := model.FindRepository(args.DownstreamProject.Id)
 	if err != nil {
 		return metadata, errors.Wrap(err, "finding most recent revision")
 	}
 	metadata.Revision.Revision = repo.LastRevision
-	author, err := user.FindOneById(source.AuthorID)
+	author, err := user.FindOneById(args.SourceVersion.AuthorID)
 	if err != nil {
-		return metadata, errors.Wrapf(err, "finding version author '%s'", source.AuthorID)
+		return metadata, errors.Wrapf(err, "finding version author '%s'", args.SourceVersion.AuthorID)
 	}
 	if author != nil {
 		metadata.Revision.AuthorGithubUID = author.Settings.GithubUser.UID

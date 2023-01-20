@@ -102,7 +102,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 		j.AddError(err)
 		return
 	}
-	versionID, versionErr := j.addVersion(ctx, *definition, mostRecentRevision)
+	versionErr := j.addVersion(ctx, *definition, mostRecentRevision)
 
 	if versionErr != nil {
 		// If the version fails to be added, create a stub version and
@@ -146,31 +146,21 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 		j.AddError(versionErr)
 		return
 	}
-
-	err = model.SetVersionActivation(versionID, true, evergreen.User)
-	if err != nil {
-		// if the version fails to activate, log an event so users
-		// can get notified when notifications are configured
-		event.LogVersionStateChangeEvent(versionID, evergreen.VersionFailed)
-		j.AddError(err)
-		return
-	}
-
 }
 
-func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.PeriodicBuildDefinition, mostRecentRevision string) (string, error) {
+func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.PeriodicBuildDefinition, mostRecentRevision string) error {
 	token, err := j.env.Settings().GetGithubOauthToken()
 	if err != nil {
-		return "", errors.Wrap(err, "getting GitHub OAuth token")
+		return errors.Wrap(err, "getting GitHub OAuth token")
 	}
 
 	configFile, err := thirdparty.GetGithubFile(ctx, token, j.project.Owner, j.project.Repo, definition.ConfigFile, mostRecentRevision)
 	if err != nil {
-		return "", errors.Wrap(err, "getting config file from GitHub")
+		return errors.Wrap(err, "getting config file from GitHub")
 	}
 	configBytes, err := base64.StdEncoding.DecodeString(*configFile.Content)
 	if err != nil {
-		return "", errors.Wrap(err, "decoding config file")
+		return errors.Wrap(err, "decoding config file")
 	}
 	proj := &model.Project{}
 	opts := &model.GetProjectOpts{
@@ -181,17 +171,18 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.Peri
 	}
 	intermediateProject, err := model.LoadProjectInto(ctx, configBytes, opts, j.project.Id, proj)
 	if err != nil {
-		return "", errors.Wrap(err, "parsing config file")
+		return errors.Wrap(err, "parsing config file")
 	}
 	var config *model.ProjectConfig
 	if j.project.IsVersionControlEnabled() {
 		config, err = model.CreateProjectConfig(configBytes, j.project.Id)
 		if err != nil {
-			return "", errors.Wrap(err, "parsing project config")
+			return errors.Wrap(err, "parsing project config")
 		}
 	}
 	metadata := model.VersionMetadata{
 		IsAdHoc:         true,
+		Activate:        true,
 		Message:         definition.Message,
 		PeriodicBuildID: definition.ID,
 		Alias:           definition.Alias,
@@ -208,10 +199,10 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.Peri
 	}
 	v, err := repotracker.CreateVersionFromConfig(ctx, projectInfo, metadata, false, nil)
 	if err != nil {
-		return "", errors.Wrap(err, "creating version from config")
+		return errors.Wrap(err, "creating version from config")
 	}
 	if v == nil {
-		return "", errors.New("no version created")
+		return errors.New("no version created")
 	}
-	return v.Id, nil
+	return nil
 }

@@ -276,7 +276,7 @@ func (s *ActivationStatus) ShouldActivate(now time.Time) bool {
 	return !s.Activated && now.After(s.ActivateAt) && !utility.IsZeroTime(s.ActivateAt)
 }
 
-// VersionMetadata is used to pass information about upstream versions to downstream version creation
+// VersionMetadata is used to pass information about version creation
 type VersionMetadata struct {
 	Revision            Revision
 	TriggerID           string
@@ -285,6 +285,7 @@ type VersionMetadata struct {
 	TriggerDefinitionID string
 	SourceVersion       *Version
 	IsAdHoc             bool
+	Activate            bool
 	User                *user.DBUser
 	Message             string
 	Alias               string

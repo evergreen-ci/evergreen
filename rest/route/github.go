@@ -501,6 +501,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 		Revision:   revision,
 		GitTag:     tag,
 		RemotePath: remotePath,
+		Activate:   true,
 	}
 	var projectInfo model.ProjectInfo
 	if remotePath != "" {
@@ -524,7 +525,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 		metadata.Alias = evergreen.GitTagAlias
 	}
 	projectInfo.Ref = &pRef
-	return gh.sc.CreateVersionFromConfig(ctx, &projectInfo, metadata, true)
+	return gh.sc.CreateVersionFromConfig(ctx, &projectInfo, metadata)
 }
 
 func validatePushTagEvent(event *github.PushEvent) error {
