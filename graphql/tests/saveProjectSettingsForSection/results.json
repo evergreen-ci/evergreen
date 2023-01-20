@@ -11,7 +11,7 @@
               "spawnHostScriptPath": ""
             },
             "vars": {
-              "vars": {"hello": "", "foo":  "bar"}
+              "vars": { "hello": "", "foo": "bar" }
             }
           }
         }
@@ -25,11 +25,12 @@
             "projectRef": {
               "commitQueue": {
                 "enabled": true,
-                "requireSigned": true
+                "requireSigned": true,
+                "requiredApprovalCount": 1
               }
             },
             "vars": {
-              "vars": {"hello": "", "foo":  "bar"}
+              "vars": { "hello": "", "foo": "bar" }
             }
           }
         }
@@ -41,7 +42,7 @@
         "data": {
           "saveProjectSettingsForSection": {
             "vars": {
-              "vars": {"goodbye":  ""},
+              "vars": { "goodbye": "" },
               "privateVars": ["goodbye"]
             }
           }
@@ -55,9 +56,7 @@
         "errors": [
           {
             "message": "identifier 'sandbox_project_id' is already being used for another project",
-            "path": [
-              "saveProjectSettingsForSection"
-            ],
+            "path": ["saveProjectSettingsForSection"],
             "extensions": {
               "code": "INTERNAL_SERVER_ERROR"
             }
