@@ -31,6 +31,7 @@ const (
 	githubActionSynchronize = "synchronize"
 	githubActionReopened    = "reopened"
 	commitUnsigned          = "unsigned"
+	reviewApproved          = "APPROVED"
 
 	retryComment = "evergreen retry"
 	patchComment = "evergreen patch"
@@ -584,7 +585,7 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 	}
 
 	if utility.FromBoolPtr(projectRef.CommitQueue.RequireSigned) {
-		err = gh.requireSigned(ctx, userRepo, *pr.Head.Ref, pr, prNum)
+		err = gh.requireSigned(ctx, userRepo, prNum)
 		if err != nil {
 			sendErr := thirdparty.SendCommitQueueGithubStatus(evergreen.GetEnvironment(), pr, message.GithubStateFailure, "can't enqueue with unsigned commits", "")
 			grip.Error(message.WrapError(sendErr, message.Fields{
@@ -594,6 +595,21 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 				"pr":      prNum,
 			}))
 			return errors.Wrapf(err, "checking commit signing")
+		}
+	}
+
+	requiredApprovalCount := projectRef.CommitQueue.RequiredApprovalCount
+	if requiredApprovalCount != 0 {
+		err = gh.requireApprovals(ctx, userRepo, prNum, requiredApprovalCount)
+		if err != nil {
+			sendErr := thirdparty.SendCommitQueueGithubStatus(evergreen.GetEnvironment(), pr, message.GithubStateFailure, "can't enqueue without required number of approvals", "")
+			grip.Error(message.WrapError(sendErr, message.Fields{
+				"message": "error sending patch creation failure to github",
+				"owner":   userRepo.Owner,
+				"repo":    userRepo.Repo,
+				"pr":      prNum,
+			}))
+			return errors.Wrapf(err, "checking pull request approvals")
 		}
 	}
 
@@ -640,7 +656,7 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 	return nil
 }
 
-func (gh *githubHookApi) requireSigned(ctx context.Context, userRepo data.UserRepoInfo, baseBranch string, pr *github.PullRequest, prNum int) error {
+func (gh *githubHookApi) requireSigned(ctx context.Context, userRepo data.UserRepoInfo, prNum int) error {
 	settings, err := evergreen.GetConfig()
 	if err != nil {
 		return errors.Wrap(err, "getting admin settings")
@@ -663,6 +679,36 @@ func (gh *githubHookApi) requireSigned(ctx context.Context, userRepo data.UserRe
 			return errors.Errorf("commit '%s' is not signed", utility.FromStringPtr(commit.SHA))
 		}
 
+	}
+	return nil
+}
+
+func (gh *githubHookApi) requireApprovals(ctx context.Context, userRepo data.UserRepoInfo, prNum, requiredApprovalCount int) error {
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return errors.Wrap(err, "getting admin settings")
+	}
+
+	githubToken, err := settings.GetGithubOauthToken()
+	if err != nil {
+		return errors.Wrap(err, "getting GitHub OAuth token from settings")
+	}
+
+	reviews, err := thirdparty.GetGithubPullRequestReviews(ctx, githubToken, userRepo.Owner, userRepo.Repo, prNum)
+	if err != nil {
+		return errors.Wrap(err, "getting GitHub commits")
+	}
+
+	var num_approvals int
+	for _, r := range reviews {
+		state := r.GetState()
+		if state == reviewApproved {
+			num_approvals += 1
+		}
+	}
+
+	if num_approvals < requiredApprovalCount {
+		return errors.Errorf("PR '%d' does not have enough approvals", prNum)
 	}
 	return nil
 }
