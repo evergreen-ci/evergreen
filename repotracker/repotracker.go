@@ -620,7 +620,6 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 		projectInfo.Config.Id = v.Id
 	}
 	v.Ignored = ignore
-	v.Activated = utility.FalsePtr()
 
 	// validate the project
 	isConfigDefined := projectInfo.Config != nil
@@ -717,11 +716,13 @@ func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 		TriggerEvent:         metadata.EventID,
 		PeriodicBuildID:      metadata.PeriodicBuildID,
 		ProjectStorageMethod: model.ProjectStorageMethodDB,
+		Activated:            utility.FalsePtr(),
 	}
 	if metadata.TriggerType != "" {
 		v.Id = util.CleanName(fmt.Sprintf("%s_%s_%s", ref.Identifier, metadata.SourceVersion.Revision, metadata.TriggerDefinitionID))
 		v.Requester = evergreen.TriggerRequester
 		v.CreateTime = metadata.SourceVersion.CreateTime
+		v.Activated = utility.TruePtr()
 	} else if metadata.IsAdHoc {
 		v.Id = mgobson.NewObjectId().Hex()
 		v.Requester = evergreen.AdHocRequester
@@ -898,6 +899,9 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			DistroAliases:       distroAliases,
 			TaskCreateTime:      v.CreateTime,
 			GithubChecksAliases: aliasesMatchingVariant,
+		}
+		if v.Requester == evergreen.TriggerRequester {
+			creationInfo.ActivateBuild = true
 		}
 
 		b, tasks, err := model.CreateBuildFromVersionNoInsert(creationInfo)

@@ -79,11 +79,6 @@ func TriggerDownstreamVersion(args ProcessorArgs) (*model.Version, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "adding build break subscriptions")
 	}
-	_, err = model.DoProjectActivation(args.DownstreamProject.Id, time.Now())
-	if err != nil {
-		return nil, errors.Wrapf(err, "activating downstream project '%s'", args.DownstreamProject.Id)
-	}
-
 	return v, nil
 }
 

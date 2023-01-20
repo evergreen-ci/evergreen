@@ -315,6 +315,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 	require.Len(dbVersions, 1)
 	versions := []model.Version{downstreamVersions[0], dbVersions[0]}
 	for _, v := range versions {
+		assert.True(utility.FromBoolPtr(v.Activated))
 		assert.Equal("downstream_abc_def1", v.Id)
 		assert.Equal(downstreamRevision, v.Revision)
 		assert.Equal(evergreen.VersionCreated, v.Status)
@@ -328,6 +329,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 	assert.NoError(err)
 	assert.True(len(builds) > 0)
 	for _, b := range builds {
+		assert.True(b.Activated)
 		assert.Equal(downstreamProjectRef.Id, b.Project)
 		assert.Equal(evergreen.TriggerRequester, b.Requester)
 		assert.Equal(evergreen.BuildCreated, b.Status)
@@ -340,6 +342,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 	assert.NoError(err)
 	assert.True(len(tasks) > 0)
 	for _, t := range tasks {
+		assert.True(t.Activated)
 		assert.Equal(downstreamProjectRef.Id, t.Project)
 		assert.Equal(evergreen.TriggerRequester, t.Requester)
 		assert.Equal(evergreen.TaskUndispatched, t.Status)
