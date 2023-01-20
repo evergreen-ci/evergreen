@@ -5,7 +5,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -45,5 +44,4 @@ type Connector interface {
 	GetGitHubPR(context.Context, string, string, int) (*github.PullRequest, error)
 	AddPatchForPr(ctx context.Context, projectRef model.ProjectRef, prNum int, modules []restModel.APIModule, messageOverride string) (*patch.Patch, error)
 	IsAuthorizedToPatchAndMerge(context.Context, *evergreen.Settings, UserRepoInfo) (bool, error)
-	EnqueuePR(context.Context, *evergreen.Settings, commitqueue.PRInfo) (*restModel.APIPatch, error)
 }

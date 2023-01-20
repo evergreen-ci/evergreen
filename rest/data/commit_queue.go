@@ -283,13 +283,14 @@ func (pc *DBCommitQueueConnector) IsAuthorizedToPatchAndMerge(ctx context.Contex
 	return hasPermission, nil
 }
 
-func (pc *DBCommitQueueConnector) EnqueuePR(ctx context.Context, settings *evergreen.Settings, info commitqueue.PRInfo) (*restModel.APIPatch, error) {
+// EnqueuePRToCommitQueue enqueues an existing pull request to the commit queue.
+func EnqueuePRToCommitQueue(ctx context.Context, sc Connector, settings *evergreen.Settings, info commitqueue.PRInfo) (*restModel.APIPatch, error) {
 	userRepo := UserRepoInfo{
 		Username: info.Username,
 		Owner:    info.Owner,
 		Repo:     info.Repo,
 	}
-	authorized, err := pc.IsAuthorizedToPatchAndMerge(ctx, settings, userRepo)
+	authorized, err := sc.IsAuthorizedToPatchAndMerge(ctx, settings, userRepo)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting user info from GitHub API")
 	}
@@ -298,7 +299,7 @@ func (pc *DBCommitQueueConnector) EnqueuePR(ctx context.Context, settings *everg
 	}
 
 	prNum := info.PR
-	pr, err := pc.GetGitHubPR(ctx, userRepo.Owner, userRepo.Repo, prNum)
+	pr, err := sc.GetGitHubPR(ctx, userRepo.Owner, userRepo.Repo, prNum)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting PR from GitHub API")
 	}
@@ -331,7 +332,7 @@ func (pc *DBCommitQueueConnector) EnqueuePR(ctx context.Context, settings *everg
 		}
 	}
 
-	patchDoc, err := pc.AddPatchForPr(ctx, *projectRef, prNum, cqInfo.Modules, cqInfo.MessageOverride)
+	patchDoc, err := sc.AddPatchForPr(ctx, *projectRef, prNum, cqInfo.Modules, cqInfo.MessageOverride)
 	if err != nil {
 		sendErr := thirdparty.SendCommitQueueGithubStatus(evergreen.GetEnvironment(), pr, message.GithubStateFailure, "failed to create patch", "")
 		grip.Error(message.WrapError(sendErr, message.Fields{

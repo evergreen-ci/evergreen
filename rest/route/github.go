@@ -217,7 +217,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 					"user":      *event.Sender.Login,
 					"message":   "commit queue triggered",
 				})
-				if _, err := gh.sc.EnqueuePR(ctx, gh.settings, createPRInfo(event)); err != nil {
+				if _, err := data.EnqueuePRToCommitQueue(ctx, gh.sc, gh.settings, createPRInfo(event)); err != nil {
 					grip.Error(message.WrapError(err, message.Fields{
 						"source":    "GitHub hook",
 						"msg_id":    gh.msgID,
