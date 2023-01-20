@@ -899,7 +899,7 @@ func GetGithubPullRequestReviews(ctx context.Context, token, owner, repo string,
 		return nil, err
 	}
 	if len(reviews) == 0 {
-		errors.New("no PR reviews received from GitHub")
+		return nil, errors.New("no PR reviews received from GitHub")
 	}
 
 	return reviews, nil
