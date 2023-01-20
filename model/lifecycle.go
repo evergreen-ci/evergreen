@@ -1682,17 +1682,17 @@ func addNewTasks(ctx context.Context, creationInfo TaskCreationInfo, existingBui
 	for _, b := range existingBuilds {
 		wasActivated := b.Activated
 		// Find the set of task names that already exist for the given build, including display tasks.
-		tasksInBuild, err := task.FindAll(db.Query(task.ByBuildId(b.Id)))
+		tasksInBuild, err := task.FindAll(db.Query(task.ByBuildId(b.Id)).WithFields(task.DisplayNameKey, task.ActivatedKey))
 		if err != nil {
 			return nil, err
 		}
-		existingTasksIndex := map[string]task.Task{}
+		existingTasksIndex := map[string]bool{}
 		hasActivatedTask := false
-		for i := range tasksInBuild {
-			if tasksInBuild[i].Activated {
+		for _, t := range tasksInBuild {
+			if t.Activated {
 				hasActivatedTask = true
 			}
-			existingTasksIndex[tasksInBuild[i].DisplayName] = tasksInBuild[i]
+			existingTasksIndex[t.DisplayName] = true
 		}
 		projectBV := creationInfo.Project.FindBuildVariant(b.BuildVariant)
 		if projectBV != nil && hasActivatedTask {
@@ -1702,28 +1702,18 @@ func addNewTasks(ctx context.Context, creationInfo TaskCreationInfo, existingBui
 		// Build a list of tasks that haven't been created yet for the given variant, but have
 		// a record in the TVPairSet indicating that it should exist
 		tasksToAdd := []string{}
-		existingTasksToActivate := []task.Task{}
 		for _, taskName := range creationInfo.Pairs.ExecTasks.TaskNames(b.BuildVariant) {
-			if t, ok := existingTasksIndex[taskName]; ok {
-				if !t.Activated {
-					existingTasksToActivate = append(existingTasksToActivate, t)
-				}
+			if ok := existingTasksIndex[taskName]; ok {
 				continue
 			}
 			tasksToAdd = append(tasksToAdd, taskName)
 		}
 		displayTasksToAdd := []string{}
 		for _, taskName := range creationInfo.Pairs.DisplayTasks.TaskNames(b.BuildVariant) {
-			if t, ok := existingTasksIndex[taskName]; ok {
-				if !t.Activated {
-					existingTasksToActivate = append(existingTasksToActivate, t)
-				}
+			if ok := existingTasksIndex[taskName]; ok {
 				continue
 			}
 			displayTasksToAdd = append(displayTasksToAdd, taskName)
-		}
-		if err = SetActiveState(evergreen.DefaultTaskActivator, true, existingTasksToActivate...); err != nil {
-			return nil, errors.Wrap(err, "setting tasks to active")
 		}
 		if len(tasksToAdd) == 0 && len(displayTasksToAdd) == 0 { // no tasks to add, so we do nothing.
 			continue
@@ -1779,6 +1769,34 @@ func addNewTasks(ctx context.Context, creationInfo TaskCreationInfo, existingBui
 	}
 
 	return activatedTaskIds, nil
+}
+
+// activateExistingInactiveTasks will find existing inactive tasks in the patch that need to be activated as
+// part of the patch re-configuration.
+func activateExistingInactiveTasks(creationInfo TaskCreationInfo, existingBuilds []build.Build) error {
+	for _, b := range existingBuilds {
+		tasksInBuild, err := task.FindAll(db.Query(task.ByBuildId(b.Id)))
+		if err != nil {
+			return err
+		}
+		existingTasksIndex := map[string]task.Task{}
+		for i := range tasksInBuild {
+			existingTasksIndex[tasksInBuild[i].DisplayName] = tasksInBuild[i]
+		}
+		existingTasksToActivate := []task.Task{}
+		execAndDisplayTasks := append(creationInfo.Pairs.ExecTasks.TaskNames(b.BuildVariant), creationInfo.Pairs.DisplayTasks.TaskNames(b.BuildVariant)...)
+		for _, taskName := range execAndDisplayTasks {
+			if t, ok := existingTasksIndex[taskName]; ok && !t.Activated {
+				existingTasksToActivate = append(existingTasksToActivate, t)
+			}
+		}
+		if len(existingTasksToActivate) > 0 {
+			if err = SetActiveState(evergreen.DefaultTaskActivator, true, existingTasksToActivate...); err != nil {
+				return errors.Wrap(err, "setting tasks to active")
+			}
+		}
+	}
+	return nil
 }
 
 func getTaskIdTables(creationInfo TaskCreationInfo) (TaskIdConfig, error) {
