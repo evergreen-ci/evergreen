@@ -921,13 +921,13 @@ func FindMergedProjectRef(identifier string, version string, includeProjectConfi
 	return pRef, nil
 }
 
-// GetNumberOfProjects returns the current number of enabled projects on evergreen.
-func GetNumberOfProjects() (int, error) {
+// GetNumberOfEnabledProjects returns the current number of enabled projects on evergreen.
+func GetNumberOfEnabledProjects() (int, error) {
 	return countEnabledProjects("", "")
 }
 
-// GetNumberOfProjectsForOwnerRepo returns the number of enabled projects for a given owner/repo.
-func GetNumberOfProjectsForOwnerRepo(owner, repo string) (int, error) {
+// GetNumberOfEnabledProjectsForOwnerRepo returns the number of enabled projects for a given owner/repo.
+func GetNumberOfEnabledProjectsForOwnerRepo(owner, repo string) (int, error) {
 	if owner == "" || repo == "" {
 		return 0, errors.New("owner and repo must be specified")
 	}
@@ -935,25 +935,34 @@ func GetNumberOfProjectsForOwnerRepo(owner, repo string) (int, error) {
 }
 
 func countEnabledProjects(owner, repo string) (int, error) {
-	query := bson.M{ProjectRefEnabledKey: true}
-	if owner != "" && repo != "" {
-		query[ProjectRefOwnerKey] = owner
-		query[ProjectRefRepoKey] = repo
-	}
 	pipeline := projectRefPipelineForValueIsBool(ProjectRefEnabledKey, RepoRefEnabledKey, true)
-	pipeline = append(pipeline, bson.M{"$match": query})
-	pipeline = append(pipeline, bson.M{"$count": "count"})
-	counter := []struct {
-		Count int `bson:"count"`
-	}{}
-	err := db.Aggregate(ProjectRefCollection, pipeline, &counter)
-	if err != nil {
-		return 0, err
+	if owner != "" && repo != "" {
+		// Check owner and repos in project ref or repo ref.
+		query := bson.M{
+			"$or": []bson.M{
+				{ProjectRefOwnerKey: owner, ProjectRefRepoKey: repo},
+				{"repo_ref": bson.M{
+					"$elemMatch": bson.M{RepoRefOwnerKey: owner, RepoRefRepoKey: repo},
+				}},
+			},
+		}
+		pipeline = append(pipeline, bson.M{"$match": query})
 	}
-	if len(counter) == 0 {
-		return 0, nil
-	}
-	return counter[0].Count, nil
+	// pipeline = append(pipeline, bson.M{"$count": "count"})
+	// counter := []struct {
+	// 	Count int `bson:"count"`
+	// }{}
+	debugging := []ProjectRef{}
+	err := db.Aggregate(ProjectRefCollection, pipeline, &debugging)
+	fmt.Println(debugging)
+	// if err != nil {
+	// 	return 0, err
+	// }
+	// if len(counter) == 0 {
+	// 	return 0, nil
+	// }
+	// return counter[0].Count, nil
+	return 0, err
 }
 
 // GetProjectRefMergedWithRepo merges the project with the repo, if one exists.
@@ -2248,19 +2257,19 @@ func (p *ProjectRef) GetGithubProjectConflicts() (GithubProjectConflicts, error)
 // has been reached. If the project is not enabled, it will grip a warning but not error.
 func ValidateProjectCreation(config *evergreen.Settings, projectRef *ProjectRef) error {
 	catcher := grip.NewBasicCatcher()
-	allEnabledProjects, err := GetNumberOfProjects()
+	allEnabledProjects, err := GetNumberOfEnabledProjects()
 	if err != nil {
 		return errors.Wrap(err, "getting number of projects")
 	}
 	if allEnabledProjects >= config.ProjectCreation.TotalProjectLimit {
 		catcher.Errorf("total project limit of %d reached", config.ProjectCreation.TotalProjectLimit)
 	}
-	enabledOwnerRepoProjects, err := GetNumberOfProjectsForOwnerRepo(projectRef.Owner, projectRef.Repo)
+	enabledOwnerRepoProjects, err := GetNumberOfEnabledProjectsForOwnerRepo(projectRef.Owner, projectRef.Repo)
 	if err != nil {
 		return errors.Wrapf(err, "getting number of projects for '%s'/'%s'", projectRef.Owner, projectRef.Repo)
 	}
-	if enabledOwnerRepoProjects >= config.ProjectCreation.RepoProjectLimit && !config.ProjectCreation.IsException(projectRef.Owner, projectRef.Repo) {
-		catcher.Errorf("owner repo limit of %d reached for '%s'/'%s'", config.ProjectCreation.RepoProjectLimit, projectRef.Owner, projectRef.Repo)
+	if !config.ProjectCreation.IsExceptionToRepoLimit(projectRef.Owner, projectRef.Repo) && enabledOwnerRepoProjects >= config.ProjectCreation.RepoProjectLimit {
+		catcher.Errorf("owner repo limit of %d reached for '%s/%s'", config.ProjectCreation.RepoProjectLimit, projectRef.Owner, projectRef.Repo)
 	}
 
 	// If the project is not enabled, warn the user while still allowing project creation.
@@ -2914,7 +2923,9 @@ func projectRefPipelineForValueIsBool(projectKey, repoKey string, val bool) []bs
 		{"$match": bson.M{
 			"$or": []bson.M{
 				{projectKey: val},
-				{projectKey: nil, bsonutil.GetDottedKeyName("repo_ref", repoKey): val},
+				{projectKey: nil, "repo_ref": bson.M{
+					"$elemMatch": bson.M{repoKey: val},
+				}},
 			},
 		}},
 	}

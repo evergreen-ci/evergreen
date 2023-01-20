@@ -140,7 +140,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 	assert.Equal(t, "random2", mergedProject.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
 }
 
-func TestGetNumberOfProjects(t *testing.T) {
+func TestGetNumberOfEnabledProjects(t *testing.T) {
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection))
 
 	enabled1 := &ProjectRef{
@@ -168,29 +168,40 @@ func TestGetNumberOfProjects(t *testing.T) {
 		Id:      "disabled2",
 		Owner:   "mongodb",
 		Repo:    "mci",
-		Enabled: utility.TruePtr(),
+		Enabled: utility.FalsePtr(),
 	}
 	assert.NoError(t, disabled2.Insert())
 	enabledByRepo := &ProjectRef{
 		Id:        "enabledByRepo",
-		Owner:     "mongodb",
-		Repo:      "mci",
-		RepoRefId: "mongodb_mci",
+		RepoRefId: "mongodb_mci_enabled",
 	}
 	assert.NoError(t, enabledByRepo.Insert())
 
-	repoRef := &RepoRef{ProjectRef{
-		Id:      "mongodb_mci",
+	enableRef := &RepoRef{ProjectRef{
+		Id:      "mongodb_mci_enabled",
 		Owner:   "mongodb",
 		Repo:    "mci",
 		Enabled: utility.TruePtr(),
 	}}
-	assert.NoError(t, repoRef.Upsert())
+	assert.NoError(t, enableRef.Upsert())
+	disabledByRepo := &ProjectRef{
+		Id:        "disabledByRepo",
+		RepoRefId: "mongodb_mci_disabled",
+	}
+	assert.NoError(t, disabledByRepo.Insert())
 
-	numProjects, err := GetNumberOfProjects()
+	disableRepo := &RepoRef{ProjectRef{
+		Id:      "mongodb_mci_disabled",
+		Owner:   "mongodb",
+		Repo:    "mci",
+		Enabled: utility.FalsePtr(),
+	}}
+	assert.NoError(t, disableRepo.Upsert())
+
+	numProjects, err := GetNumberOfEnabledProjects()
 	assert.NoError(t, err)
 	assert.Equal(t, 3, numProjects)
-	numProjectsOwnerRepo, err := GetNumberOfProjectsForOwnerRepo(enabled2.Owner, enabled2.Repo)
+	numProjectsOwnerRepo, err := GetNumberOfEnabledProjectsForOwnerRepo(enabled2.Owner, enabled2.Repo)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, numProjectsOwnerRepo)
 }
