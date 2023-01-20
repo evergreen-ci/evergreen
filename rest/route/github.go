@@ -697,7 +697,7 @@ func (gh *githubHookApi) checkPRApprovals(ctx context.Context, settings *evergre
 	}
 
 	if numApprovals < requiredApprovalCount {
-		return errors.Errorf("PR %d does not have enough approvals. '%s' approval(s) required", prNum, requiredApprovalCount)
+		return errors.Errorf("PR %d does not have enough approvals. %d approval(s) required", prNum, requiredApprovalCount)
 	}
 	return nil
 }

@@ -856,13 +856,13 @@ func GetPullRequestMergeBase(ctx context.Context, token string, data GithubPatch
 	return *commit.Parents[0].SHA, nil
 }
 
-func GetGithubPullRequest(ctx context.Context, token, baseOwner, baseRepo string, PRNumber int) (*github.PullRequest, error) {
+func GetGithubPullRequest(ctx context.Context, token, baseOwner, baseRepo string, prNumber int) (*github.PullRequest, error) {
 	httpClient := getGithubClientRetryWith404s(token, "GetGithubPullRequest")
 	defer utility.PutHTTPClient(httpClient)
 
 	client := github.NewClient(httpClient)
 
-	pr, _, err := client.PullRequests.Get(ctx, baseOwner, baseRepo, PRNumber)
+	pr, _, err := client.PullRequests.Get(ctx, baseOwner, baseRepo, prNumber)
 	if err != nil {
 		return nil, err
 	}
@@ -870,13 +870,13 @@ func GetGithubPullRequest(ctx context.Context, token, baseOwner, baseRepo string
 	return pr, nil
 }
 
-func GetGithubPullRequestCommits(ctx context.Context, token, owner, repo string, PRNumber int) ([]*github.RepositoryCommit, error) {
+func GetGithubPullRequestCommits(ctx context.Context, token, owner, repo string, prNumber int) ([]*github.RepositoryCommit, error) {
 	httpClient := getGithubClientRetryWith404s(token, "GetGithubPullRequestCommits")
 	defer utility.PutHTTPClient(httpClient)
 
 	client := github.NewClient(httpClient)
 
-	commits, _, err := client.PullRequests.ListCommits(ctx, owner, repo, PRNumber, nil)
+	commits, _, err := client.PullRequests.ListCommits(ctx, owner, repo, prNumber, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -888,13 +888,13 @@ func GetGithubPullRequestCommits(ctx context.Context, token, owner, repo string,
 }
 
 // GetGithubPullRequestReviews retrieves a list of reviews for the given PR.
-func GetGithubPullRequestReviews(ctx context.Context, token, owner, repo string, PRNumber int) ([]*github.PullRequestReview, error) {
+func GetGithubPullRequestReviews(ctx context.Context, token, owner, repo string, prNumber int) ([]*github.PullRequestReview, error) {
 	httpClient := getGithubClientRetryWith404s(token, "GetGithubPullRequestCommits")
 	defer utility.PutHTTPClient(httpClient)
 
 	client := github.NewClient(httpClient)
 
-	reviews, _, err := client.PullRequests.ListReviews(ctx, owner, repo, PRNumber, nil)
+	reviews, _, err := client.PullRequests.ListReviews(ctx, owner, repo, prNumber, nil)
 	if err != nil {
 		return nil, err
 	}
