@@ -221,7 +221,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 					"user":      *event.Sender.Login,
 					"message":   "commit queue triggered",
 				})
-				if err := gh.commitQueueEnqueue(ctx, event); err != nil {
+				if err := gh.commitQueueEnqueue(ctx, gh.settings, event); err != nil {
 					grip.Error(message.WrapError(err, message.Fields{
 						"source":    "GitHub hook",
 						"msg_id":    gh.msgID,
@@ -550,7 +550,7 @@ func validatePushTagEvent(event *github.PushEvent) error {
 	return nil
 }
 
-func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.IssueCommentEvent) error {
+func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, settings *evergreen.Settings, event *github.IssueCommentEvent) error {
 	userRepo := data.UserRepoInfo{
 		Username: *event.Comment.User.Login,
 		Owner:    *event.Repo.Owner.Login,
@@ -585,7 +585,7 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 	}
 
 	if utility.FromBoolPtr(projectRef.CommitQueue.RequireSigned) {
-		err = gh.requireSigned(ctx, userRepo, prNum)
+		err = gh.requireSigned(ctx, settings, userRepo, prNum)
 		if err != nil {
 			sendErr := thirdparty.SendCommitQueueGithubStatus(evergreen.GetEnvironment(), pr, message.GithubStateFailure, "can't enqueue with unsigned commits", "")
 			grip.Error(message.WrapError(sendErr, message.Fields{
@@ -600,7 +600,7 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 
 	requiredApprovalCount := projectRef.CommitQueue.RequiredApprovalCount
 	if requiredApprovalCount != 0 {
-		err = gh.requireApprovals(ctx, userRepo, prNum, requiredApprovalCount)
+		err = gh.checkPRApprovals(ctx, settings, userRepo, prNum, requiredApprovalCount)
 		if err != nil {
 			sendErr := thirdparty.SendCommitQueueGithubStatus(evergreen.GetEnvironment(), pr, message.GithubStateFailure, "can't enqueue without required number of approvals", "")
 			grip.Error(message.WrapError(sendErr, message.Fields{
@@ -656,12 +656,7 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 	return nil
 }
 
-func (gh *githubHookApi) requireSigned(ctx context.Context, userRepo data.UserRepoInfo, prNum int) error {
-	settings, err := evergreen.GetConfig()
-	if err != nil {
-		return errors.Wrap(err, "getting admin settings")
-	}
-
+func (gh *githubHookApi) requireSigned(ctx context.Context, settings *evergreen.Settings, userRepo data.UserRepoInfo, prNum int) error {
 	githubToken, err := settings.GetGithubOauthToken()
 	if err != nil {
 		return errors.Wrap(err, "getting GitHub OAuth token from settings")
@@ -683,12 +678,7 @@ func (gh *githubHookApi) requireSigned(ctx context.Context, userRepo data.UserRe
 	return nil
 }
 
-func (gh *githubHookApi) requireApprovals(ctx context.Context, userRepo data.UserRepoInfo, prNum, requiredApprovalCount int) error {
-	settings, err := evergreen.GetConfig()
-	if err != nil {
-		return errors.Wrap(err, "getting admin settings")
-	}
-
+func (gh *githubHookApi) checkPRApprovals(ctx context.Context, settings *evergreen.Settings, userRepo data.UserRepoInfo, prNum, requiredApprovalCount int) error {
 	githubToken, err := settings.GetGithubOauthToken()
 	if err != nil {
 		return errors.Wrap(err, "getting GitHub OAuth token from settings")
@@ -696,19 +686,18 @@ func (gh *githubHookApi) requireApprovals(ctx context.Context, userRepo data.Use
 
 	reviews, err := thirdparty.GetGithubPullRequestReviews(ctx, githubToken, userRepo.Owner, userRepo.Repo, prNum)
 	if err != nil {
-		return errors.Wrap(err, "getting GitHub commits")
+		return errors.Wrap(err, "getting GitHub PR reviews")
 	}
 
-	var num_approvals int
+	var numApprovals int
 	for _, r := range reviews {
-		state := r.GetState()
-		if state == reviewApproved {
-			num_approvals += 1
+		if r.GetState() == reviewApproved {
+			numApprovals += 1
 		}
 	}
 
-	if num_approvals < requiredApprovalCount {
-		return errors.Errorf("PR '%d' does not have enough approvals", prNum)
+	if numApprovals < requiredApprovalCount {
+		return errors.Errorf("PR %d does not have enough approvals. '%s' approval(s) required", prNum, requiredApprovalCount)
 	}
 	return nil
 }

@@ -887,6 +887,7 @@ func GetGithubPullRequestCommits(ctx context.Context, token, owner, repo string,
 	return commits, nil
 }
 
+// GetGithubPullRequestReviews retrieves a list of reviews for the given PR.
 func GetGithubPullRequestReviews(ctx context.Context, token, owner, repo string, PRNumber int) ([]*github.PullRequestReview, error) {
 	httpClient := getGithubClientRetryWith404s(token, "GetGithubPullRequestCommits")
 	defer utility.PutHTTPClient(httpClient)
@@ -898,7 +899,7 @@ func GetGithubPullRequestReviews(ctx context.Context, token, owner, repo string,
 		return nil, err
 	}
 	if len(reviews) == 0 {
-		return nil, errors.New("No commits received from github")
+		errors.New("no PR reviews received from GitHub")
 	}
 
 	return reviews, nil
