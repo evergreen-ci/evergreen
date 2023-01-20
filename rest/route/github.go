@@ -30,8 +30,8 @@ const (
 	githubActionOpened      = "opened"
 	githubActionSynchronize = "synchronize"
 	githubActionReopened    = "reopened"
-	commitUnsigned          = "unsigned"
-	reviewApproved          = "APPROVED"
+	githubCommitUnsigned    = "unsigned"
+	githubReviewApproved    = "APPROVED"
 
 	retryComment = "evergreen retry"
 	patchComment = "evergreen patch"
