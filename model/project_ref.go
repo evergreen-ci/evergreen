@@ -2272,7 +2272,7 @@ func ValidateProjectCreation(config *evergreen.Settings, projectRef *ProjectRef)
 	// If the project is not enabled, warn the user while still allowing project creation.
 	if !utility.FromBoolPtr(projectRef.Enabled) && catcher.HasErrors() {
 		grip.Warning(message.WrapError(catcher.Resolve(), message.Fields{
-			"message":            "project creation limit reached",
+			"message":            "enable project limit reached",
 			"project_identifier": projectRef.Identifier,
 			"Owner":              projectRef.Owner,
 			"Repo":               projectRef.Repo,
