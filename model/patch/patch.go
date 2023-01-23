@@ -729,6 +729,7 @@ func (p *Patch) IsChild() bool {
 	return p.Triggers.ParentPatch != ""
 }
 
+// CollectiveStatus returns the aggregate status of all tasks and child patches.
 func (p *Patch) CollectiveStatus() (string, error) {
 	parentPatch := p
 	if p.IsChild() {
@@ -1125,6 +1126,7 @@ func (p PatchesByCreateTime) Swap(i, j int) {
 	p[i], p[j] = p[j], p[i]
 }
 
+// CollectiveStatus gets the collective status for a patch given by its ID.
 func CollectiveStatus(patchId string) (string, error) {
 	p, err := FindOneId(patchId)
 	if err != nil {

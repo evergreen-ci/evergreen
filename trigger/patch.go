@@ -194,6 +194,14 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 	if err != nil {
 		return nil, errors.Wrap(err, "getting collective status for patch")
 	}
+	grip.NoticeWhen(collectiveStatus != t.data.Status, message.Fields{
+		"message":                 "patch's current collective status does not match the patch event data's status",
+		"patch_collective_status": collectiveStatus,
+		"patch_status":            t.patch.Status,
+		"patch_event_status":      t.data.Status,
+		"patch":                   t.patch.Id.Hex(),
+		"subscription":            sub.ID,
+	})
 
 	data := commonTemplateData{
 		ID:                t.patch.Id.Hex(),
