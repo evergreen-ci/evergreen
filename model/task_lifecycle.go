@@ -830,7 +830,7 @@ func HandleEndTaskForCommitQueueTask(t *task.Task, status string) error {
 		return errors.Errorf("no commit queue found for '%s'", t.Project)
 	}
 	if status != evergreen.TaskSucceeded && !t.Aborted {
-		return dequeueAndRestartWithStepback(cq, t, evergreen.APIServerTaskActivator, fmt.Sprintf("task '%s' failed", t.DisplayName))
+		return dequeueAndRestartWithStepback(cq, t, evergreen.MergeTestRequester, fmt.Sprintf("task '%s' failed", t.DisplayName))
 	} else if status == evergreen.TaskSucceeded {
 		// Query for all cq version tasks after this one; they may have been waiting to see if this
 		// one was the cause of the failure, in which case we should dequeue and restart.
