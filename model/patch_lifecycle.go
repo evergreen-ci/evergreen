@@ -103,7 +103,11 @@ func addNewTasksAndBuildsForPatch(ctx context.Context, creationInfo TaskCreation
 		return errors.Wrap(err, "adding new builds")
 	}
 	_, err = addNewTasks(ctx, creationInfo, existingBuilds)
-	return errors.Wrap(err, "adding new tasks")
+	if err != nil {
+		return errors.Wrap(err, "adding new tasks")
+	}
+	err = activateExistingInactiveTasks(creationInfo, existingBuilds)
+	return errors.Wrap(err, "activating existing inactive tasks")
 }
 
 type PatchUpdate struct {
