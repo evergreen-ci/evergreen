@@ -1774,8 +1774,9 @@ func addNewTasks(ctx context.Context, creationInfo TaskCreationInfo, existingBui
 // activateExistingInactiveTasks will find existing inactive tasks in the patch that need to be activated as
 // part of the patch re-configuration.
 func activateExistingInactiveTasks(creationInfo TaskCreationInfo, existingBuilds []build.Build) error {
+	existingTasksToActivate := []task.Task{}
 	for _, b := range existingBuilds {
-		tasksInBuild, err := task.FindAll(db.Query(task.ByBuildId(b.Id)))
+		tasksInBuild, err := task.FindAll(db.Query(task.ByBuildId(b.Id)).WithFields(task.DisplayNameKey, task.ActivatedKey, task.BuildIdKey, task.VersionKey))
 		if err != nil {
 			return err
 		}
@@ -1783,17 +1784,16 @@ func activateExistingInactiveTasks(creationInfo TaskCreationInfo, existingBuilds
 		for i := range tasksInBuild {
 			existingTasksIndex[tasksInBuild[i].DisplayName] = tasksInBuild[i]
 		}
-		existingTasksToActivate := []task.Task{}
 		execAndDisplayTasks := append(creationInfo.Pairs.ExecTasks.TaskNames(b.BuildVariant), creationInfo.Pairs.DisplayTasks.TaskNames(b.BuildVariant)...)
 		for _, taskName := range execAndDisplayTasks {
 			if t, ok := existingTasksIndex[taskName]; ok && !t.Activated {
 				existingTasksToActivate = append(existingTasksToActivate, t)
 			}
 		}
-		if len(existingTasksToActivate) > 0 {
-			if err = SetActiveState(evergreen.DefaultTaskActivator, true, existingTasksToActivate...); err != nil {
-				return errors.Wrap(err, "setting tasks to active")
-			}
+	}
+	if len(existingTasksToActivate) > 0 {
+		if err := SetActiveState(evergreen.DefaultTaskActivator, true, existingTasksToActivate...); err != nil {
+			return errors.Wrap(err, "setting tasks to active")
 		}
 	}
 	return nil
