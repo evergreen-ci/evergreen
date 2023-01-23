@@ -938,15 +938,7 @@ func countEnabledProjects(owner, repo string) (int, error) {
 	pipeline := projectRefPipelineForValueIsBool(ProjectRefEnabledKey, RepoRefEnabledKey, true)
 	if owner != "" && repo != "" {
 		// Check owner and repos in project ref or repo ref.
-		query := bson.M{
-			"$or": []bson.M{
-				{ProjectRefOwnerKey: owner, ProjectRefRepoKey: repo},
-				{"repo_ref": bson.M{
-					"$elemMatch": bson.M{RepoRefOwnerKey: owner, RepoRefRepoKey: repo},
-				}},
-			},
-		}
-		pipeline = append(pipeline, bson.M{"$match": query})
+		pipeline = append(pipeline, bson.M{"$match": byOwnerAndRepo(owner, repo)})
 	}
 	pipeline = append(pipeline, bson.M{"$count": "count"})
 	counter := []struct {
@@ -2261,12 +2253,14 @@ func ValidateProjectCreation(config *evergreen.Settings, projectRef *ProjectRef)
 	if allEnabledProjects >= config.ProjectCreation.TotalProjectLimit {
 		catcher.Errorf("total project limit of %d reached", config.ProjectCreation.TotalProjectLimit)
 	}
-	enabledOwnerRepoProjects, err := GetNumberOfEnabledProjectsForOwnerRepo(projectRef.Owner, projectRef.Repo)
-	if err != nil {
-		return errors.Wrapf(err, "getting number of projects for '%s'/'%s'", projectRef.Owner, projectRef.Repo)
-	}
-	if !config.ProjectCreation.IsExceptionToRepoLimit(projectRef.Owner, projectRef.Repo) && enabledOwnerRepoProjects >= config.ProjectCreation.RepoProjectLimit {
-		catcher.Errorf("owner repo limit of %d reached for '%s/%s'", config.ProjectCreation.RepoProjectLimit, projectRef.Owner, projectRef.Repo)
+	if !config.ProjectCreation.IsExceptionToRepoLimit(projectRef.Owner, projectRef.Repo) {
+		enabledOwnerRepoProjects, err := GetNumberOfEnabledProjectsForOwnerRepo(projectRef.Owner, projectRef.Repo)
+		if err != nil {
+			return errors.Wrapf(err, "getting number of projects for '%s/%s'", projectRef.Owner, projectRef.Repo)
+		}
+		if enabledOwnerRepoProjects >= config.ProjectCreation.RepoProjectLimit {
+			catcher.Errorf("owner repo limit of %d reached for '%s/%s'", config.ProjectCreation.RepoProjectLimit, projectRef.Owner, projectRef.Repo)
+		}
 	}
 
 	// If the project is not enabled, warn the user while still allowing project creation.

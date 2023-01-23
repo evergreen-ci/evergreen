@@ -173,6 +173,8 @@ func TestGetNumberOfEnabledProjects(t *testing.T) {
 	assert.NoError(t, disabled2.Insert())
 	enabledByRepo := &ProjectRef{
 		Id:        "enabledByRepo",
+		Owner:     "mongodb",
+		Repo:      "mci",
 		RepoRefId: "mongodb_mci_enabled",
 	}
 	assert.NoError(t, enabledByRepo.Insert())
