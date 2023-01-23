@@ -948,21 +948,18 @@ func countEnabledProjects(owner, repo string) (int, error) {
 		}
 		pipeline = append(pipeline, bson.M{"$match": query})
 	}
-	// pipeline = append(pipeline, bson.M{"$count": "count"})
-	// counter := []struct {
-	// 	Count int `bson:"count"`
-	// }{}
-	debugging := []ProjectRef{}
-	err := db.Aggregate(ProjectRefCollection, pipeline, &debugging)
-	fmt.Println(debugging)
-	// if err != nil {
-	// 	return 0, err
-	// }
-	// if len(counter) == 0 {
-	// 	return 0, nil
-	// }
-	// return counter[0].Count, nil
-	return 0, err
+	pipeline = append(pipeline, bson.M{"$count": "count"})
+	counter := []struct {
+		Count int `bson:"count"`
+	}{}
+	err := db.Aggregate(ProjectRefCollection, pipeline, &counter)
+	if err != nil {
+		return 0, err
+	}
+	if len(counter) == 0 {
+		return 0, nil
+	}
+	return counter[0].Count, nil
 }
 
 // GetProjectRefMergedWithRepo merges the project with the repo, if one exists.
@@ -2923,9 +2920,7 @@ func projectRefPipelineForValueIsBool(projectKey, repoKey string, val bool) []bs
 		{"$match": bson.M{
 			"$or": []bson.M{
 				{projectKey: val},
-				{projectKey: nil, "repo_ref": bson.M{
-					"$elemMatch": bson.M{repoKey: val},
-				}},
+				{projectKey: nil, bsonutil.GetDottedKeyName("repo_ref", repoKey): val},
 			},
 		}},
 	}
