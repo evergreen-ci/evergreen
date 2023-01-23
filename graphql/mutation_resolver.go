@@ -181,14 +181,14 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, com
 	}
 
 	if utility.FromStringPtr(existingPatch.Requester) == evergreen.GithubPRRequester {
-		info := commitqueue.PRInfo{
+		info := commitqueue.EnqueuePRInfo{
 			PR:            existingPatch.GithubPatchData.PRNumber,
 			Repo:          utility.FromStringPtr(existingPatch.GithubPatchData.BaseRepo),
 			Owner:         utility.FromStringPtr(existingPatch.GithubPatchData.BaseOwner),
 			CommitMessage: utility.FromStringPtr(commitMessage),
 			Username:      utility.FromStringPtr(existingPatch.GithubPatchData.Author),
 		}
-		newPatch, err := data.EnqueuePRToCommitQueue(ctx, r.sc, evergreen.GetEnvironment().Settings(), info)
+		newPatch, err := data.EnqueuePRToCommitQueue(ctx, evergreen.GetEnvironment(), r.sc, info, false)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("enqueueing patch '%s': %s", patchID, err.Error()))
 		}

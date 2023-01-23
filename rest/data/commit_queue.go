@@ -283,8 +283,9 @@ func (pc *DBCommitQueueConnector) IsAuthorizedToPatchAndMerge(ctx context.Contex
 	return hasPermission, nil
 }
 
-// EnqueuePRToCommitQueue enqueues an existing pull request to the commit queue.
-func EnqueuePRToCommitQueue(ctx context.Context, sc Connector, settings *evergreen.Settings, info commitqueue.PRInfo) (*restModel.APIPatch, error) {
+// EnqueuePRToCommitQueue enqueues an item to the commit queue to test and merge a PR.
+func EnqueuePRToCommitQueue(ctx context.Context, env evergreen.Environment, sc Connector, info commitqueue.EnqueuePRInfo, isGithubHook bool) (*restModel.APIPatch, error) {
+	settings := env.Settings()
 	userRepo := UserRepoInfo{
 		Username: info.Username,
 		Owner:    info.Owner,
@@ -298,8 +299,7 @@ func EnqueuePRToCommitQueue(ctx context.Context, sc Connector, settings *evergre
 		return nil, errors.Errorf("user '%s' is not authorized to merge", userRepo.Username)
 	}
 
-	prNum := info.PR
-	pr, err := sc.GetGitHubPR(ctx, userRepo.Owner, userRepo.Repo, prNum)
+	pr, err := sc.GetGitHubPR(ctx, userRepo.Owner, userRepo.Repo, info.PR)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting PR from GitHub API")
 	}
@@ -319,60 +319,52 @@ func EnqueuePRToCommitQueue(ctx context.Context, sc Connector, settings *evergre
 	}
 
 	if utility.FromBoolPtr(projectRef.CommitQueue.RequireSigned) {
-		err = requireSigned(ctx, userRepo, prNum)
+		err = checkSignedCommit(ctx, settings, userRepo, info.PR)
 		if err != nil {
 			sendErr := thirdparty.SendCommitQueueGithubStatus(evergreen.GetEnvironment(), pr, message.GithubStateFailure, "can't enqueue with unsigned commits", "")
 			grip.Error(message.WrapError(sendErr, message.Fields{
 				"message": "error sending patch creation failure to github",
 				"owner":   userRepo.Owner,
 				"repo":    userRepo.Repo,
-				"pr":      prNum,
+				"pr":      info.PR,
 			}))
 			return nil, errors.Wrapf(err, "checking commit signing")
 		}
 	}
 
-	patchDoc, err := sc.AddPatchForPr(ctx, *projectRef, prNum, cqInfo.Modules, cqInfo.MessageOverride)
+	patchDoc, err := sc.AddPatchForPr(ctx, *projectRef, info.PR, cqInfo.Modules, cqInfo.MessageOverride)
 	if err != nil {
-		sendErr := thirdparty.SendCommitQueueGithubStatus(evergreen.GetEnvironment(), pr, message.GithubStateFailure, "failed to create patch", "")
-		grip.Error(message.WrapError(sendErr, message.Fields{
-			"message": "error sending patch creation failure to github",
-			"owner":   userRepo.Owner,
-			"repo":    userRepo.Repo,
-			"pr":      prNum,
-		}))
+		if isGithubHook {
+			sendErr := thirdparty.SendCommitQueueGithubStatus(evergreen.GetEnvironment(), pr, message.GithubStateFailure, "failed to create patch", "")
+			grip.Error(message.WrapError(sendErr, message.Fields{
+				"message": "error sending patch creation failure to github",
+				"owner":   userRepo.Owner,
+				"repo":    userRepo.Repo,
+				"pr":      info.PR,
+			}))
+		}
 		return nil, errors.Wrap(err, "adding patch for PR")
 	}
 
 	item := restModel.APICommitQueueItem{
-		Issue:           utility.ToStringPtr(strconv.Itoa(prNum)),
+		Issue:           utility.ToStringPtr(strconv.Itoa(info.PR)),
 		MessageOverride: &cqInfo.MessageOverride,
 		Modules:         cqInfo.Modules,
 		Source:          utility.ToStringPtr(commitqueue.SourcePullRequest),
 		PatchId:         utility.ToStringPtr(patchDoc.Id.Hex()),
 	}
-	_, err = EnqueueItem(projectRef.Id, item, false)
-	if err != nil {
+	if _, err = EnqueueItem(projectRef.Id, item, false); err != nil {
 		return nil, errors.Wrap(err, "enqueueing commit queue item")
 	}
 
 	if pr == nil || pr.Head == nil || pr.Head.SHA == nil {
 		return nil, errors.New("PR contains no head branch SHA")
 	}
-	pushJob := units.NewGithubStatusUpdateJobForPushToCommitQueue(userRepo.Owner, userRepo.Repo, *pr.Head.SHA, prNum, patchDoc.Id.Hex())
-	q := evergreen.GetEnvironment().LocalQueue()
-	// TODO FIX THIS
-	grip.Error(message.WrapError(q.Put(ctx, pushJob), message.Fields{
-		"source":  "GitHub hook",
-		"msg_id":  "gh.msgID",
-		"event":   "gh.eventType",
-		"action":  "event.Action",
-		"owner":   userRepo.Owner,
-		"repo":    userRepo.Repo,
-		"item":    prNum,
-		"message": "failed to queue notification for commit queue push",
-	}))
-
+	pushJob := units.NewGithubStatusUpdateJobForPushToCommitQueue(userRepo.Owner, userRepo.Repo, *pr.Head.SHA, info.PR, patchDoc.Id.Hex())
+	q := env.LocalQueue()
+	if err = q.Put(ctx, pushJob); err != nil {
+		return nil, errors.Wrapf(err, "queueing notification for commit queue push for item '%d'", info.PR)
+	}
 	apiPatch := &restModel.APIPatch{}
 	if err = apiPatch.BuildFromService(*patchDoc, nil); err != nil {
 		return nil, errors.Wrap(err, "converting patch to API model")
@@ -489,12 +481,7 @@ func GetAdditionalPatches(patchId string) ([]string, error) {
 	}
 }
 
-func requireSigned(ctx context.Context, userRepo UserRepoInfo, prNum int) error {
-	settings, err := evergreen.GetConfig()
-	if err != nil {
-		return errors.Wrap(err, "getting admin settings")
-	}
-
+func checkSignedCommit(ctx context.Context, settings *evergreen.Settings, userRepo UserRepoInfo, prNum int) error {
 	githubToken, err := settings.GetGithubOauthToken()
 	if err != nil {
 		return errors.Wrap(err, "getting GitHub OAuth token from settings")
@@ -507,7 +494,7 @@ func requireSigned(ctx context.Context, userRepo UserRepoInfo, prNum int) error 
 
 	for _, c := range commits {
 		commit := c.GetCommit()
-		if commit.Verification != nil && !utility.FromBoolPtr(commit.Verification.Verified) &&
+		if commit.Verification != nil || !utility.FromBoolPtr(commit.Verification.Verified) ||
 			utility.FromStringPtr(commit.Verification.Reason) == commitUnsigned {
 			return errors.Errorf("commit '%s' is not signed", utility.FromStringPtr(commit.SHA))
 		}
