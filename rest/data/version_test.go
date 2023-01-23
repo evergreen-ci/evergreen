@@ -303,12 +303,13 @@ func TestCreateVersionFromConfig(t *testing.T) {
 		Ref:                 &ref,
 	}
 	metadata := model.VersionMetadata{
-		Message: "my message",
-		User:    &u,
-		IsAdHoc: true,
+		Message:  "my message",
+		User:     &u,
+		IsAdHoc:  true,
+		Activate: true,
 	}
 	dc := DBVersionConnector{}
-	newVersion, err := dc.CreateVersionFromConfig(ctx, projectInfo, metadata, true)
+	newVersion, err := dc.CreateVersionFromConfig(ctx, projectInfo, metadata)
 	assert.NoError(err)
 	assert.Equal("my message", newVersion.Message)
 	assert.Equal(evergreen.VersionCreated, newVersion.Status)
@@ -349,11 +350,12 @@ tasks:
 	projectInfo.Project = p
 	projectInfo.IntermediateProject = pp
 	metadata = model.VersionMetadata{
-		Message: "message 2",
-		User:    &u,
-		IsAdHoc: true,
+		Message:  "message 2",
+		User:     &u,
+		IsAdHoc:  true,
+		Activate: true,
 	}
-	newVersion, err = dc.CreateVersionFromConfig(context.Background(), projectInfo, metadata, true)
+	newVersion, err = dc.CreateVersionFromConfig(context.Background(), projectInfo, metadata)
 	assert.NoError(err)
 	assert.Equal("message 2", newVersion.Message)
 	assert.Equal(evergreen.VersionCreated, newVersion.Status)
