@@ -26,7 +26,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-const commitUnsigned = "unsigned"
+const (
+	githubCommitUnsigned = "unsigned"
+	githubReviewApproved = "APPROVED"
+)
 
 type DBCommitQueueConnector struct{}
 
@@ -332,6 +335,21 @@ func EnqueuePRToCommitQueue(ctx context.Context, env evergreen.Environment, sc C
 		}
 	}
 
+	requiredApprovalCount := projectRef.CommitQueue.RequiredApprovalCount
+	if requiredApprovalCount != 0 {
+		err = checkPRApprovals(ctx, settings, userRepo, info.PR, requiredApprovalCount)
+		if err != nil {
+			sendErr := thirdparty.SendCommitQueueGithubStatus(evergreen.GetEnvironment(), pr, message.GithubStateFailure, "can't enqueue without required number of approvals", "")
+			grip.Error(message.WrapError(sendErr, message.Fields{
+				"message": "error sending patch creation failure to github",
+				"owner":   userRepo.Owner,
+				"repo":    userRepo.Repo,
+				"pr":      info.PR,
+			}))
+			return nil, errors.Wrapf(err, "checking pull request approvals")
+		}
+	}
+
 	patchDoc, err := sc.AddPatchForPr(ctx, *projectRef, info.PR, cqInfo.Modules, cqInfo.MessageOverride)
 	if err != nil {
 		if isGithubHook {
@@ -370,6 +388,30 @@ func EnqueuePRToCommitQueue(ctx context.Context, env evergreen.Environment, sc C
 		return nil, errors.Wrap(err, "converting patch to API model")
 	}
 	return apiPatch, nil
+}
+
+func checkPRApprovals(ctx context.Context, settings *evergreen.Settings, userRepo UserRepoInfo, prNum, requiredApprovalCount int) error {
+	githubToken, err := settings.GetGithubOauthToken()
+	if err != nil {
+		return errors.Wrap(err, "getting GitHub OAuth token from settings")
+	}
+
+	reviews, err := thirdparty.GetGithubPullRequestReviews(ctx, githubToken, userRepo.Owner, userRepo.Repo, prNum)
+	if err != nil {
+		return errors.Wrap(err, "getting GitHub PR reviews")
+	}
+
+	var numApprovals int
+	for _, r := range reviews {
+		if r.GetState() == githubReviewApproved {
+			numApprovals += 1
+		}
+	}
+
+	if numApprovals < requiredApprovalCount {
+		return errors.Errorf("PR %d does not have enough approvals. %d approval(s) required", prNum, requiredApprovalCount)
+	}
+	return nil
 }
 
 func CreatePatchForMerge(ctx context.Context, existingPatchID, commitMessage string) (*restModel.APIPatch, error) {
@@ -495,7 +537,7 @@ func checkSignedCommit(ctx context.Context, settings *evergreen.Settings, userRe
 	for _, c := range commits {
 		commit := c.GetCommit()
 		if commit.Verification != nil || !utility.FromBoolPtr(commit.Verification.Verified) ||
-			utility.FromStringPtr(commit.Verification.Reason) == commitUnsigned {
+			utility.FromStringPtr(commit.Verification.Reason) == githubCommitUnsigned {
 			return errors.Errorf("commit '%s' is not signed", utility.FromStringPtr(commit.SHA))
 		}
 
