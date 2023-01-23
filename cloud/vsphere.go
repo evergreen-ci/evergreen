@@ -63,12 +63,6 @@ func (opts *vsphereSettings) FromDistroSettings(d distro.Distro, _ string) error
 	return nil
 }
 
-// GetSettings returns an empty vsphereSettings struct
-// since settings are configured on instance creation.
-func (m *vsphereManager) GetSettings() ProviderSettings {
-	return &vsphereSettings{}
-}
-
 // Configure loads the necessary credentials from the global config object.
 func (m *vsphereManager) Configure(ctx context.Context, s *evergreen.Settings) error {
 	ao := authOptions(s.Providers.VSphere)

@@ -61,7 +61,7 @@ func runTunablePlanner(d *distro.Distro, tasks []task.Task, opts TaskPlannerOpti
 func runLegacyPlanner(d *distro.Distro, tasks []task.Task, opts TaskPlannerOptions) ([]task.Task, error) {
 	runnableTasks, versions, err := FilterTasksWithVersionCache(tasks)
 	if err != nil {
-		return nil, errors.Wrap(err, "error while filtering tasks against the versions' cache")
+		return nil, errors.Wrap(err, "filtering tasks against the versions' cache")
 	}
 
 	ds := &distroScheduler{
@@ -75,7 +75,7 @@ func runLegacyPlanner(d *distro.Distro, tasks []task.Task, opts TaskPlannerOptio
 
 	prioritizedTasks, err := ds.scheduleDistro(d.Id, runnableTasks, versions, d.GetTargetTime(), opts.IsSecondaryQueue)
 	if err != nil {
-		return nil, errors.Wrapf(err, "problem calculating distro plan for distro '%s'", d.Id)
+		return nil, errors.Wrapf(err, "calculating distro plan for distro '%s'", d.Id)
 	}
 
 	return prioritizedTasks, nil
@@ -103,7 +103,7 @@ type distroScheduler struct {
 func (s *distroScheduler) scheduleDistro(distroID string, runnableTasks []task.Task, versions map[string]model.Version, maxThreshold time.Duration, isSecondaryQueue bool) ([]task.Task, error) {
 	prioritizedTasks, _, err := s.PrioritizeTasks(distroID, runnableTasks, versions)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error prioritizing tasks for distro '%s'", distroID)
+		return nil, errors.Wrapf(err, "prioritizing tasks for distro '%s'", distroID)
 
 	}
 
@@ -114,7 +114,7 @@ func (s *distroScheduler) scheduleDistro(distroID string, runnableTasks []task.T
 	// persist the queue of tasks and its associated distroQueueInfo
 	err = PersistTaskQueue(distroID, prioritizedTasks, distroQueueInfo)
 	if err != nil {
-		return nil, errors.Wrapf(err, "database error saving the task queue for distro '%s'", distroID)
+		return nil, errors.Wrapf(err, "saving the task queue for distro '%s'", distroID)
 	}
 
 	return prioritizedTasks, nil
@@ -247,11 +247,11 @@ func SpawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 	if pool != nil {
 		hostOptions, err := getCreateOptionsFromDistro(d)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Error getting docker options from distro %s", d.Id)
+			return nil, errors.Wrapf(err, "getting Docker options from distro '%s'", d.Id)
 		}
 		newContainers, newParents, err := host.MakeContainersAndParents(d, pool, newHostsNeeded, *hostOptions)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Error creating container intents for distro %s", d.Id)
+			return nil, errors.Wrapf(err, "creating container intents for distro '%s'", d.Id)
 		}
 		hostsSpawned = append(hostsSpawned, newContainers...)
 		hostsSpawned = append(hostsSpawned, newParents...)
@@ -269,14 +269,14 @@ func SpawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 		for i := 0; i < numHostsToSpawn; i++ {
 			intent, err := generateIntentHost(d, pool)
 			if err != nil {
-				return nil, errors.Wrap(err, "error generating intent host")
+				return nil, errors.Wrap(err, "generating intent host")
 			}
 			hostsSpawned = append(hostsSpawned, *intent)
 		}
 	}
 
 	if err := host.InsertMany(hostsSpawned); err != nil {
-		return nil, errors.Wrap(err, "problem inserting host documents")
+		return nil, errors.Wrap(err, "inserting intent host documents")
 	}
 
 	grip.Info(message.Fields{
@@ -292,7 +292,7 @@ func SpawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 func getCreateOptionsFromDistro(d distro.Distro) (*host.CreateOptions, error) {
 	dockerOptions := &host.DockerOptions{}
 	if err := dockerOptions.FromDistroSettings(d, ""); err != nil {
-		return nil, errors.Wrapf(err, "Error getting docker options from distro %s", d.Id)
+		return nil, errors.Wrapf(err, "getting Docker options from distro '%s'", d.Id)
 	}
 	if err := dockerOptions.Validate(); err != nil {
 		return nil, errors.WithStack(err)
