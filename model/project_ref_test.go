@@ -206,6 +206,59 @@ func TestGetNumberOfEnabledProjects(t *testing.T) {
 	assert.Equal(t, 2, numProjectsOwnerRepo)
 }
 
+func TestValidateProjectCreation(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(ProjectRefCollection))
+	enabled1 := &ProjectRef{
+		Id:      "enabled1",
+		Owner:   "mongodb",
+		Repo:    "mci",
+		Enabled: utility.TruePtr(),
+	}
+	assert.NoError(t, enabled1.Insert())
+	enabled2 := &ProjectRef{
+		Id:      "enabled2",
+		Owner:   "owner_exception",
+		Repo:    "repo_exception",
+		Enabled: utility.TruePtr(),
+	}
+	assert.NoError(t, enabled2.Insert())
+	disabled1 := &ProjectRef{
+		Id:      "disabled1",
+		Owner:   "mongodb",
+		Repo:    "mci",
+		Enabled: utility.FalsePtr(),
+	}
+	assert.NoError(t, disabled1.Insert())
+
+	var settings evergreen.Settings
+	settings.ProjectCreation.TotalProjectLimit = 3
+	settings.ProjectCreation.RepoProjectLimit = 1
+	settings.ProjectCreation.RepoExceptions = []evergreen.OwnerRepo{
+		{
+			Owner: "owner_exception",
+			Repo:  "repo_exception",
+		},
+	}
+	exception := &ProjectRef{
+		Id:      "exception",
+		Owner:   "owner_exception",
+		Repo:    "repo_exception",
+		Enabled: utility.TruePtr(),
+	}
+	assert.NoError(t, ValidateProjectCreation(&settings, exception))
+
+	notException := &ProjectRef{
+		Id:      "not_exception",
+		Owner:   "mongodb",
+		Repo:    "mci",
+		Enabled: utility.TruePtr(),
+	}
+	assert.Error(t, ValidateProjectCreation(&settings, notException))
+
+	settings.ProjectCreation.TotalProjectLimit = 2
+	assert.Error(t, ValidateProjectCreation(&settings, exception))
+}
+
 func TestGetBatchTimeDoesNotExceedMaxBatchTime(t *testing.T) {
 	assert := assert.New(t)
 
