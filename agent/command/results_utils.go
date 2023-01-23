@@ -3,7 +3,6 @@ package command
 import (
 	"context"
 	"strings"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
@@ -11,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/timber/buildlogger"
 	"github.com/evergreen-ci/timber/testresults"
 	"github.com/evergreen-ci/utility"
@@ -21,8 +21,8 @@ import (
 )
 
 // sendTestResults sends the test results to the backend results service.
-func sendTestResults(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, results *task.LocalTestResults) error {
-	if results == nil || len(results.Results) == 0 {
+func sendTestResults(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, results []testresult.TestResult) error {
+	if len(results) == 0 {
 		return errors.New("cannot send nil results")
 	}
 
@@ -44,9 +44,9 @@ func sendTestLog(ctx context.Context, comm client.Communicator, conf *internal.T
 
 // sendTestLogsAndResults sends the test logs and test results to backend
 // logging results services.
-func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, logs []model.TestLog, results [][]task.TestResult) error {
+func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, logs []model.TestLog, results [][]testresult.TestResult) error {
 	logger.Task().Info("Posting test logs...")
-	allResults := task.LocalTestResults{}
+	var allResults []testresult.TestResult
 	for idx, log := range logs {
 		if err := ctx.Err(); err != nil {
 			return errors.Wrap(err, "canceled while sending test logs")
@@ -59,14 +59,14 @@ func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logge
 
 		// Add all of the test results that correspond to that log to
 		// the full list of results.
-		allResults.Results = append(allResults.Results, results[idx]...)
+		allResults = append(allResults, results[idx]...)
 	}
 	logger.Task().Info("Finished posting test logs.")
 
-	return sendTestResults(ctx, comm, logger, conf, &allResults)
+	return sendTestResults(ctx, comm, logger, conf, allResults)
 }
 
-func sendTestResultsToCedar(ctx context.Context, conf *internal.TaskConfig, td client.TaskData, comm client.Communicator, results *task.LocalTestResults) error {
+func sendTestResultsToCedar(ctx context.Context, conf *internal.TaskConfig, td client.TaskData, comm client.Communicator, results []testresult.TestResult) error {
 	conn, err := comm.GetCedarGRPCConn(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting Cedar connection")
@@ -96,8 +96,8 @@ func sendTestResultsToCedar(ctx context.Context, conf *internal.TaskConfig, td c
 		return errors.Wrap(err, "closing test results record")
 	}
 
-	if err = comm.SetHasCedarResults(ctx, td, failed); err != nil {
-		return errors.Wrap(err, "setting HasCedarResults flag in task")
+	if err = comm.SetHasResults(ctx, td, failed); err != nil {
+		return errors.Wrap(err, "setting HasResults flag in task")
 	}
 
 	return nil
@@ -150,15 +150,15 @@ func makeCedarTestResultsRecord(conf *internal.TaskConfig, displayTaskInfo *apim
 	}
 }
 
-func makeCedarTestResults(id string, t *task.Task, results *task.LocalTestResults) (testresults.Results, bool) {
+func makeCedarTestResults(id string, t *task.Task, results []testresult.TestResult) (testresults.Results, bool) {
 	rs := testresults.Results{ID: id}
 	failed := false
-	for _, r := range results.Results {
+	for _, r := range results {
 		if r.DisplayTestName == "" {
-			r.DisplayTestName = r.TestFile
+			r.DisplayTestName = r.TestName
 		}
 		if r.LogTestName == "" {
-			r.LogTestName = r.TestFile
+			r.LogTestName = r.TestName
 		}
 		rs.Results = append(rs.Results, testresults.Result{
 			TestName:        utility.RandomString(),
@@ -166,12 +166,12 @@ func makeCedarTestResults(id string, t *task.Task, results *task.LocalTestResult
 			GroupID:         r.GroupID,
 			Status:          r.Status,
 			LogTestName:     r.LogTestName,
-			LogURL:          r.URL,
-			RawLogURL:       r.URLRaw,
+			LogURL:          r.LogURL,
+			RawLogURL:       r.RawLogURL,
 			LineNum:         int32(r.LineNum),
 			TaskCreated:     t.CreateTime,
-			TestStarted:     time.Unix(int64(r.StartTime), 0),
-			TestEnded:       time.Unix(int64(r.EndTime), 0),
+			TestStarted:     r.Start,
+			TestEnded:       r.End,
 		})
 
 		if r.Status == evergreen.TestFailedStatus {

@@ -205,7 +205,8 @@ func addFailedAndStartedTests(rows map[string]restModel.BuildList, failedAndStar
 		failedTests := []string{}
 		for _, r := range t.LocalTestResults {
 			if r.Status == evergreen.TestFailedStatus {
-				failedTests = append(failedTests, r.TestFile)
+				// TODO: Should this get the display test name?
+				failedTests = append(failedTests, r.TestName)
 			}
 		}
 		failedTestsByTaskId[t.Id] = failedTests

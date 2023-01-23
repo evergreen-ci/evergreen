@@ -94,8 +94,8 @@ var (
 	GeneratedTasksKey              = bsonutil.MustHaveTag(Task{}, "GeneratedTasks")
 	GeneratedByKey                 = bsonutil.MustHaveTag(Task{}, "GeneratedBy")
 	HasLegacyResultsKey            = bsonutil.MustHaveTag(Task{}, "HasLegacyResults")
-	HasCedarResultsKey             = bsonutil.MustHaveTag(Task{}, "HasCedarResults")
-	CedarResultsFailedKey          = bsonutil.MustHaveTag(Task{}, "CedarResultsFailed")
+	HasResultsKey                  = bsonutil.MustHaveTag(Task{}, "HasResults")
+	ResultsFailedKey               = bsonutil.MustHaveTag(Task{}, "ResultsFailed")
 	IsGithubCheckKey               = bsonutil.MustHaveTag(Task{}, "IsGithubCheck")
 	HostCreateDetailsKey           = bsonutil.MustHaveTag(Task{}, "HostCreateDetails")
 
@@ -109,17 +109,6 @@ var (
 	DisplayStatusKey            = bsonutil.MustHaveTag(Task{}, "DisplayStatus")
 	BaseTaskKey                 = bsonutil.MustHaveTag(Task{}, "BaseTask")
 	BuildVariantDisplayNameKey  = bsonutil.MustHaveTag(Task{}, "BuildVariantDisplayName")
-
-	// BSON fields for the test result struct
-	TestResultStatusKey    = bsonutil.MustHaveTag(TestResult{}, "Status")
-	TestResultLineNumKey   = bsonutil.MustHaveTag(TestResult{}, "LineNum")
-	TestResultTestFileKey  = bsonutil.MustHaveTag(TestResult{}, "TestFile")
-	TestResultURLKey       = bsonutil.MustHaveTag(TestResult{}, "URL")
-	TestResultLogIdKey     = bsonutil.MustHaveTag(TestResult{}, "LogId")
-	TestResultURLRawKey    = bsonutil.MustHaveTag(TestResult{}, "URLRaw")
-	TestResultExitCodeKey  = bsonutil.MustHaveTag(TestResult{}, "ExitCode")
-	TestResultStartTimeKey = bsonutil.MustHaveTag(TestResult{}, "StartTime")
-	TestResultEndTimeKey   = bsonutil.MustHaveTag(TestResult{}, "EndTime")
 )
 
 var (

@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
@@ -55,13 +56,13 @@ type Mock struct {
 
 	CedarGRPCConn *grpc.ClientConn
 
-	AttachedFiles      map[string][]*artifact.File
-	LogID              string
-	LocalTestResults   *task.LocalTestResults
-	HasCedarResults    bool
-	CedarResultsFailed bool
-	TestLogs           []*serviceModel.TestLog
-	TestLogCount       int
+	AttachedFiles    map[string][]*artifact.File
+	LogID            string
+	LocalTestResults []testresult.TestResult
+	HasResults       bool
+	ResultsFailed    bool
+	TestLogs         []*serviceModel.TestLog
+	TestLogCount     int
 
 	// data collected by mocked methods
 	logMessages      map[string][]apimodels.LogMessage
@@ -382,18 +383,11 @@ func (*Mock) CreateSpawnHost(ctx context.Context, spawnRequest *model.HostReques
 	return mockHost, nil
 }
 
-// SendResults posts a set of test results for the communicator's task.
-// If results are empty or nil, this operation is a noop.
-func (c *Mock) SendTestResults(ctx context.Context, td TaskData, results *task.LocalTestResults) error {
-	c.LocalTestResults = results
-	return nil
-}
-
-// SetHasCedarResults sets the HasCedarResults flag in the task.
-func (c *Mock) SetHasCedarResults(ctx context.Context, td TaskData, failed bool) error {
-	c.HasCedarResults = true
+// SetHasResults sets the HasResults flag in the task.
+func (c *Mock) SetHasResults(ctx context.Context, td TaskData, failed bool) error {
+	c.HasResults = true
 	if failed {
-		c.CedarResultsFailed = true
+		c.ResultsFailed = true
 	}
 	return nil
 }

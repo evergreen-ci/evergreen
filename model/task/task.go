@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -81,19 +80,18 @@ type Task struct {
 	DependenciesMetTime    time.Time `bson:"dependencies_met_time,omitempty" json:"dependencies_met_time,omitempty"`
 	ContainerAllocatedTime time.Time `bson:"container_allocated_time,omitempty" json:"container_allocated_time,omitempty"`
 
-	Version            string              `bson:"version" json:"version,omitempty"`
-	Project            string              `bson:"branch" json:"branch,omitempty"`
-	Revision           string              `bson:"gitspec" json:"gitspec"`
-	Priority           int64               `bson:"priority" json:"priority"`
-	TaskGroup          string              `bson:"task_group" json:"task_group"`
-	TaskGroupMaxHosts  int                 `bson:"task_group_max_hosts,omitempty" json:"task_group_max_hosts,omitempty"`
-	TaskGroupOrder     int                 `bson:"task_group_order,omitempty" json:"task_group_order,omitempty"`
-	Logs               *apimodels.TaskLogs `bson:"logs,omitempty" json:"logs,omitempty"`
-	MustHaveResults    bool                `bson:"must_have_results,omitempty" json:"must_have_results,omitempty"`
-	HasCedarResults    bool                `bson:"has_cedar_results,omitempty" json:"has_cedar_results,omitempty"`
-	CedarResultsFailed bool                `bson:"cedar_results_failed,omitempty" json:"cedar_results_failed,omitempty"`
-	// we use a pointer for HasLegacyResults to distinguish the default from an intentional "false"
-	HasLegacyResults *bool `bson:"has_legacy_results,omitempty" json:"has_legacy_results,omitempty"`
+	Version           string              `bson:"version" json:"version,omitempty"`
+	Project           string              `bson:"branch" json:"branch,omitempty"`
+	Revision          string              `bson:"gitspec" json:"gitspec"`
+	Priority          int64               `bson:"priority" json:"priority"`
+	TaskGroup         string              `bson:"task_group" json:"task_group"`
+	TaskGroupMaxHosts int                 `bson:"task_group_max_hosts,omitempty" json:"task_group_max_hosts,omitempty"`
+	TaskGroupOrder    int                 `bson:"task_group_order,omitempty" json:"task_group_order,omitempty"`
+	Logs              *apimodels.TaskLogs `bson:"logs,omitempty" json:"logs,omitempty"`
+	MustHaveResults   bool                `bson:"must_have_results,omitempty" json:"must_have_results,omitempty"`
+	HasResults        bool                `bson:"has_results" json:"has_results"`
+	ResultsFailed     bool                `bson:"results_failed" json:"results_failed"`
+	ResultsService    string              `bson:"test_results_service,omitempty" json:"test_results_service,omitempty"`
 	// only relevant if the task is running.  the time of the last heartbeat
 	// sent back by the agent
 	LastHeartbeat time.Time `bson:"last_heartbeat" json:"last_heartbeat"`
@@ -205,7 +203,7 @@ type Task struct {
 	DurationPrediction     util.CachedDurationValue `bson:"duration_prediction,omitempty" json:"-"`
 
 	// test results embedded from the testresults collection
-	LocalTestResults []TestResult `bson:"-" json:"test_results"`
+	LocalTestResults []testresult.TestResult `bson:"-" json:"test_results"`
 
 	// display task fields
 	DisplayOnly           bool     `bson:"display_only,omitempty" json:"display_only,omitempty"`
@@ -248,10 +246,6 @@ type Task struct {
 
 	CanSync       bool             `bson:"can_sync" json:"can_sync"`
 	SyncAtEndOpts SyncAtEndOptions `bson:"sync_at_end_opts,omitempty" json:"sync_at_end_opts,omitempty"`
-
-	// testResultsPopulated is a local field that indicates whether the
-	// task's test results are successfully cached in LocalTestResults.
-	testResultsPopulated bool
 }
 
 // ExecutionPlatform indicates the type of environment that the task runs in.
@@ -360,157 +354,6 @@ func (d *Dependency) SetBSON(raw mgobson.Raw) error {
 	}
 
 	return mgobson.SetZero
-}
-
-// LocalTestResults is only used when transferring data from agent to api.
-type LocalTestResults struct {
-	Results []TestResult `json:"results"`
-}
-
-type TestResult struct {
-	Status          string  `json:"status" bson:"status"`
-	TestFile        string  `json:"test_file" bson:"test_file"`
-	DisplayTestName string  `json:"display_test_name" bson:"display_test_name"`
-	GroupID         string  `json:"group_id,omitempty" bson:"group_id,omitempty"`
-	URL             string  `json:"url" bson:"url,omitempty"`
-	URLRaw          string  `json:"url_raw" bson:"url_raw,omitempty"`
-	LogId           string  `json:"log_id,omitempty" bson:"log_id,omitempty"`
-	LineNum         int     `json:"line_num,omitempty" bson:"line_num,omitempty"`
-	ExitCode        int     `json:"exit_code" bson:"exit_code"`
-	StartTime       float64 `json:"start" bson:"start"`
-	EndTime         float64 `json:"end" bson:"end"`
-	TaskID          string  `json:"task_id" bson:"task_id"`
-	Execution       int     `json:"execution" bson:"execution"`
-
-	// LogRaw and LogTestName are not saved in the task
-	LogRaw      string `json:"log_raw" bson:"log_raw,omitempty"`
-	LogTestName string `json:"log_test_name" bson:"log_test_name"`
-}
-
-// GetLogTestName returns the name of the test in the logging backend. This is
-// used for test logs in Cedar where the name of the test in the logging
-// service may differ from that in the test results service.
-func (tr TestResult) GetLogTestName() string {
-	if tr.LogTestName != "" {
-		return tr.LogTestName
-	}
-
-	return tr.TestFile
-}
-
-// GetDisplayTestName returns the name of the test that should be displayed in
-// the UI. In most cases, this will just be TestFile.
-func (tr TestResult) GetDisplayTestName() string {
-	if tr.DisplayTestName != "" {
-		return tr.DisplayTestName
-	}
-
-	return tr.TestFile
-}
-
-// GetLogURL returns the external or internal log URL for this test result.
-//
-// It is not advisable to set URL or URLRaw with the output of this function as
-// those fields are reserved for external logs and used to determine URL
-// generation for other log viewers.
-func (tr TestResult) GetLogURL(viewer evergreen.LogViewer) string {
-	root := evergreen.GetEnvironment().Settings().ApiUrl
-	parsleyURL := evergreen.GetEnvironment().Settings().Ui.ParsleyUrl
-	deprecatedLobsterURLs := []string{"https://logkeeper.mongodb.org", "https://logkeeper2.build.10gen.cc"}
-
-	switch viewer {
-	case evergreen.LogViewerHTML:
-		// Return an empty string for logkeeper URLS.
-		if tr.URL != "" {
-			for _, url := range deprecatedLobsterURLs {
-				if strings.Contains(tr.URL, url) {
-					return ""
-				}
-			}
-			// Some test results may have internal URLs that are
-			// missing the root.
-			if err := util.CheckURL(tr.URL); err != nil {
-				return root + tr.URL
-			}
-
-			return tr.URL
-		}
-
-		if tr.LogId != "" {
-			return fmt.Sprintf("%s/test_log/%s#L%d",
-				root,
-				url.PathEscape(tr.LogId),
-				tr.LineNum,
-			)
-		}
-
-		return fmt.Sprintf("%s/test_log/%s/%d?test_name=%s&group_id=%s#L%d",
-			root,
-			url.PathEscape(tr.TaskID),
-			tr.Execution,
-			url.QueryEscape(tr.GetLogTestName()),
-			url.QueryEscape(tr.GroupID),
-			tr.LineNum,
-		)
-	case evergreen.LogViewerLobster:
-		// Evergreen-hosted lobster does not support external logs nor
-		// logs stored in the database.
-		if tr.URL != "" || tr.URLRaw != "" {
-			for _, url := range deprecatedLobsterURLs {
-				if strings.Contains(tr.URL, url) {
-					return strings.Replace(tr.URL, url, root+"/lobster", 1)
-				}
-			}
-			return ""
-
-		}
-
-		return fmt.Sprintf("%s/lobster/evergreen/test/%s/%d/%s/%s#shareLine=%d",
-			root,
-			url.PathEscape(tr.TaskID),
-			tr.Execution,
-			url.QueryEscape(tr.GetLogTestName()),
-			url.QueryEscape(tr.GroupID),
-			tr.LineNum,
-		)
-	case evergreen.LogViewerParsley:
-		if parsleyURL == "" {
-			return ""
-		}
-		for _, url := range deprecatedLobsterURLs {
-			if strings.Contains(tr.URL, url) {
-				updatedResmokeParsleyURL := strings.Replace(tr.URL, fmt.Sprintf("%s/build", url), parsleyURL+"/resmoke", 1)
-				return fmt.Sprintf("%s?selectedLine=%d", updatedResmokeParsleyURL, tr.LineNum)
-			}
-		}
-		return fmt.Sprintf("%s/test/%s/%d/%s?selectedLine=%d", parsleyURL, tr.TaskID, tr.Execution, tr.GetLogTestName(), tr.LineNum)
-
-	default:
-		if tr.URLRaw != "" {
-			// Some test results may have internal URLs that are
-			// missing the root.
-			if err := util.CheckURL(tr.URL); err != nil {
-				return root + tr.URL
-			}
-
-			return tr.URLRaw
-		}
-
-		if tr.LogId != "" {
-			return fmt.Sprintf("%s/test_log/%s?text=true",
-				root,
-				url.PathEscape(tr.LogId),
-			)
-		}
-
-		return fmt.Sprintf("%s/test_log/%s/%d?test_name=%s&group_id=%s&text=true",
-			root,
-			url.PathEscape(tr.TaskID),
-			tr.Execution,
-			url.QueryEscape(tr.GetLogTestName()),
-			url.QueryEscape(tr.GroupID),
-		)
-	}
 }
 
 type DisplayTaskCache struct {
@@ -953,30 +796,6 @@ func (t *Task) MarkDependenciesFinished(finished bool) error {
 	}
 
 	return nil
-}
-
-// HasFailedTests returns true if the task had any failed tests.
-func (t *Task) HasFailedTests() (bool, error) {
-	// Check Cedar flags before populating test results to avoid
-	// unnecessarily fetching test results.
-	if t.HasCedarResults {
-		if t.CedarResultsFailed {
-			return true, nil
-		}
-
-		return false, nil
-	}
-
-	if err := t.PopulateTestResults(); err != nil {
-		return false, errors.WithStack(err)
-	}
-	for _, test := range t.LocalTestResults {
-		if test.Status == evergreen.TestFailedStatus {
-			return true, nil
-		}
-	}
-
-	return false, nil
 }
 
 // FindTaskOnBaseCommit returns the task that is on the base commit.
@@ -1596,26 +1415,26 @@ func (t *Task) SetStepbackDepth(stepbackDepth int) error {
 		})
 }
 
-// SetHasCedarResults sets the HasCedarResults field of the task to
-// hasCedarResults and, if failedResults is true, sets CedarResultsFailed to
-// true. If the task is part of a display task, the display tasks's fields are
-// also set. An error is returned if hasCedarResults is false and failedResults
-// is true as this is an invalid state. Note that if failedResults is false,
-// CedarResultsFailed is not set. This is because in cases where separate calls
-// to attach test results are made, only one call needs to have a test failure
-// for the CedarResultsFailed to be set to true.
-func (t *Task) SetHasCedarResults(hasCedarResults, failedResults bool) error {
-	if !hasCedarResults && failedResults {
-		return errors.New("cannot set Cedar results as failed when task does not have Cedar results")
+// SetHasResults sets the HasResults field of the task to hasResults and, if
+// failedResults is true, sets the ResultsFailed to true. If the task is part
+// of a display task, the display tasks's fields are also set. An error is
+// returned if hasResults is false and failedResults is true as this is an
+// invalid state. Note that if failedResults is false, ResultsFailed is not
+// set. This is because in cases where separate calls to attach test results
+// are made, only one call needs to have a test failure for the ResultsFailed
+// field to be set to true.
+func (t *Task) SetHasResults(hasResults, failedResults bool) error {
+	if !hasResults && failedResults {
+		return errors.New("cannot set results as failed when task does not have results")
 	}
 
-	t.HasCedarResults = hasCedarResults
+	t.HasResults = hasResults
 	set := bson.M{
-		HasCedarResultsKey: hasCedarResults,
+		HasResultsKey: hasResults,
 	}
 	if failedResults {
-		t.CedarResultsFailed = true
-		set[CedarResultsFailedKey] = true
+		t.ResultsFailed = true
+		set[ResultsFailedKey] = true
 	}
 
 	if err := UpdateOne(
@@ -1634,24 +1453,10 @@ func (t *Task) SetHasCedarResults(hasCedarResults, failedResults bool) error {
 		if err != nil {
 			return errors.Wrap(err, "getting display task")
 		}
-		return displayTask.SetHasCedarResults(hasCedarResults, failedResults)
+		return displayTask.SetHasResults(hasResults, failedResults)
 	}
 
 	return nil
-}
-
-func (t *Task) SetHasLegacyResults(hasLegacyResults bool) error {
-	t.HasLegacyResults = utility.ToBoolPtr(hasLegacyResults)
-	return UpdateOne(
-		bson.M{
-			IdKey: t.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				HasLegacyResultsKey: t.HasLegacyResults,
-			},
-		},
-	)
 }
 
 // ActivateTask will set the ActivatedBy field to the caller and set the active state to be true.
@@ -2001,7 +1806,6 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 				DetailsKey:            detail,
 				StartTimeKey:          t.StartTime,
 				LogsKey:               detail.Logs,
-				HasLegacyResultsKey:   t.HasLegacyResults,
 				ContainerAllocatedKey: false,
 			},
 			"$unset": bson.M{
@@ -2142,7 +1946,7 @@ func resetTaskUpdate(t *Task) bson.M {
 		t.TimeTaken = 0
 		t.LastHeartbeat = utility.ZeroTime
 		t.Details = apimodels.TaskEndDetail{}
-		t.HasCedarResults = false
+		t.HasResults = false
 		t.ResetWhenFinished = false
 		t.ResetFailedWhenFinished = false
 		t.AgentVersion = ""
@@ -2168,8 +1972,8 @@ func resetTaskUpdate(t *Task) bson.M {
 		},
 		"$unset": bson.M{
 			DetailsKey:                 "",
-			HasCedarResultsKey:         "",
-			CedarResultsFailedKey:      "",
+			HasResultsKey:              "",
+			ResultsFailedKey:           "",
 			ResetWhenFinishedKey:       "",
 			ResetFailedWhenFinishedKey: "",
 			AgentVersionKey:            "",
@@ -2311,82 +2115,6 @@ func (t *Task) MarkStart(startTime time.Time) error {
 			},
 		},
 	)
-}
-
-// SetResults sets the results of the task in LocalTestResults
-func (t *Task) SetResults(results []TestResult) error {
-	docs := make([]testresult.TestResult, len(results))
-
-	for idx, result := range results {
-		docs[idx] = result.convertToNewStyleTestResult(t)
-	}
-
-	grip.Debug(message.Fields{
-		"message":        "writing test results",
-		"task":           t.Id,
-		"project":        t.Project,
-		"requester":      t.Requester,
-		"version":        t.Version,
-		"display_name":   t.DisplayName,
-		"results_length": len(results),
-	})
-
-	return errors.Wrap(testresult.InsertMany(docs), "inserting test results")
-}
-
-func (t TestResult) convertToNewStyleTestResult(task *Task) testresult.TestResult {
-	ExecutionDisplayName := ""
-	if displayTask, _ := task.GetDisplayTask(); displayTask != nil {
-		ExecutionDisplayName = displayTask.DisplayName
-	}
-	return testresult.TestResult{
-		// copy fields from local test result.
-		Status:          t.Status,
-		TestFile:        t.TestFile,
-		DisplayTestName: t.DisplayTestName,
-		GroupID:         t.GroupID,
-		URL:             t.URL,
-		URLRaw:          t.URLRaw,
-		LogID:           t.LogId,
-		LineNum:         t.LineNum,
-		ExitCode:        t.ExitCode,
-		StartTime:       t.StartTime,
-		EndTime:         t.EndTime,
-
-		// copy field values from enclosing tasks.
-		TaskID:               task.Id,
-		Execution:            task.Execution,
-		Project:              task.Project,
-		BuildVariant:         task.BuildVariant,
-		DistroId:             task.DistroId,
-		Container:            task.Container,
-		Requester:            task.Requester,
-		DisplayName:          task.DisplayName,
-		TaskCreateTime:       task.CreateTime,
-		ExecutionDisplayName: ExecutionDisplayName,
-
-		TestStartTime: utility.FromPythonTime(t.StartTime).In(time.UTC),
-		TestEndTime:   utility.FromPythonTime(t.EndTime).In(time.UTC),
-	}
-}
-
-func ConvertToOld(in *testresult.TestResult) TestResult {
-	return TestResult{
-		Status:          in.Status,
-		TestFile:        in.TestFile,
-		DisplayTestName: in.DisplayTestName,
-		GroupID:         in.GroupID,
-		URL:             in.URL,
-		URLRaw:          in.URLRaw,
-		LogId:           in.LogID,
-		LineNum:         in.LineNum,
-		ExitCode:        in.ExitCode,
-		StartTime:       in.StartTime,
-		EndTime:         in.EndTime,
-		LogRaw:          in.LogRaw,
-		TaskID:          in.TaskID,
-		Execution:       in.Execution,
-	}
 }
 
 // MarkUnscheduled marks the task as undispatched and updates it in the database
@@ -2737,74 +2465,33 @@ func (t *Task) makeArchivedTask() *Task {
 
 // Aggregation
 
-// PopulateTestResults returns the task with both old (embedded in the tasks
-// collection) and new (from the testresults collection) OR Cedar test results
-// merged into the Task's LocalTestResults field.
+// PopulateTestResults returns populates the task's LocalTestResults field with
+// any test results the task may have. If the results are already populated,
+// this task noops.
 func (t *Task) PopulateTestResults() error {
-	if t.testResultsPopulated {
-		return nil
-	}
 	if !evergreen.IsFinishedTaskStatus(t.Status) && t.Status != evergreen.TaskStarted {
 		// Task won't have test results.
 		return nil
 	}
-
-	if t.DisplayOnly && !t.hasCedarResults() {
-		return t.populateTestResultsForDisplayTask()
-	}
-	if !t.hasCedarResults() {
-		return t.populateNewTestResults()
+	if !t.HasResults || len(t.LocalTestResults) > 0 {
+		return nil
 	}
 
-	results, err := t.getCedarTestResults()
+	// TODO: See if this function can accept a passed-in env.
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+
+	taskTestResults, err := testresult.GetTaskTestResults(ctx, env, testresult.TaskOptions{
+		TaskID:         t.Id,
+		Execution:      t.Execution,
+		DisplayTask:    t.DisplayOnly,
+		ResultsService: t.ResultsService,
+	}, testresult.FilterOptions{})
 	if err != nil {
-		return errors.Wrap(err, "getting test results from cedar")
+		return errors.Wrap(err, "populating test results")
 	}
-	t.LocalTestResults = append(t.LocalTestResults, results...)
-	t.testResultsPopulated = true
-
-	return nil
-}
-
-// populateNewTestResults returns the task with both old (embedded in the tasks
-// collection) and new (from the testresults collection) test results merged in
-// the Task's LocalTestResults field.
-func (t *Task) populateNewTestResults() error {
-	id := t.Id
-	if t.Archived {
-		id = t.OldTaskId
-	}
-
-	newTestResults, err := testresult.FindByTaskIDAndExecution(id, t.Execution)
-	if err != nil {
-		return errors.Wrap(err, "finding test results")
-	}
-	for i := range newTestResults {
-		t.LocalTestResults = append(t.LocalTestResults, ConvertToOld(&newTestResults[i]))
-	}
-	t.testResultsPopulated = true
-
-	// Store whether or not results exist so we know if we should look them
-	// up in the future.
-	if t.HasLegacyResults == nil && !t.Archived {
-		return t.SetHasLegacyResults(len(newTestResults) > 0)
-	}
-	return nil
-}
-
-// populateTestResultsForDisplayTask returns the test results for the execution
-// tasks of a display task.
-func (t *Task) populateTestResultsForDisplayTask() error {
-	if !t.DisplayOnly {
-		return errors.Errorf("'%s' is not a display task", t.Id)
-	}
-
-	out, err := MergeTestResultsBulk([]Task{*t}, nil)
-	if err != nil {
-		return errors.Wrap(err, "merging test results for display task")
-	}
-	t.LocalTestResults = out[0].LocalTestResults
-	t.testResultsPopulated = true
+	t.LocalTestResults = taskTestResults.Results
 
 	return nil
 }
@@ -2845,42 +2532,6 @@ func (t *Task) SetResetFailedWhenFinished() error {
 			},
 		},
 	)
-}
-
-// MergeTestResultsBulk takes a slice of task structs and returns the slice with
-// test results populated. Note that the order may change. The second parameter
-// can be used to use a specific test result filtering query, otherwise all test
-// results for the passed in tasks will be merged. Display tasks will have
-// the execution task results merged.
-//
-// Keeping this function public for backwards compatibility (legacy test
-// results uses this for test history).
-func MergeTestResultsBulk(tasks []Task, query *db.Q) ([]Task, error) {
-	out := []Task{}
-	if query == nil {
-		taskIds := []string{}
-		for _, t := range tasks {
-			taskIds = append(taskIds, t.Id)
-			taskIds = append(taskIds, t.ExecutionTasks...)
-		}
-		q := testresult.ByTaskIDs(taskIds)
-		query = &q
-	}
-	results, err := testresult.Find(*query)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, t := range tasks {
-		for _, result := range results {
-			if (result.TaskID == t.Id || utility.StringSliceContains(t.ExecutionTasks, result.TaskID)) && result.Execution == t.Execution {
-				t.LocalTestResults = append(t.LocalTestResults, ConvertToOld(&result))
-			}
-		}
-		out = append(out, t)
-	}
-
-	return out, nil
 }
 
 // FindHostSchedulable finds all tasks that can be scheduled for a distro
@@ -2929,27 +2580,6 @@ func FindHostSchedulableForAlias(id string) ([]Task, error) {
 	q[TaskGroupMaxHostsKey] = bson.M{"$ne": 1}
 
 	return FindAll(db.Query(q))
-}
-
-func GetTestCountByTaskIdAndFilters(taskId, testName string, statuses []string, execution int) (int, error) {
-	t, err := FindOneIdNewOrOld(taskId)
-	if err != nil {
-		return 0, errors.Wrapf(err, "finding task '%s'", taskId)
-	}
-	if t == nil {
-		return 0, errors.Errorf("task '%s' not found", taskId)
-	}
-	var taskIds []string
-	if t.DisplayOnly {
-		taskIds = t.ExecutionTasks
-	} else {
-		taskIds = []string{taskId}
-	}
-	count, err := testresult.TestResultCount(taskIds, testName, statuses, execution)
-	if err != nil {
-		return 0, errors.Wrapf(err, "counting test results for task '%s'", taskId)
-	}
-	return count, nil
 }
 
 func (t *Task) IsPartOfSingleHostTaskGroup() bool {
@@ -3194,7 +2824,7 @@ func (t *Task) GetJQL(searchProjects []string) string {
 	var jqlClause string
 	for _, testResult := range t.LocalTestResults {
 		if testResult.Status == evergreen.TestFailedStatus {
-			fileParts := eitherSlash.Split(testResult.TestFile, -1)
+			fileParts := eitherSlash.Split(testResult.TestName, -1)
 			jqlParts = append(jqlParts, fmt.Sprintf("text~\"%v\"", util.EscapeJQLReservedChars(fileParts[len(fileParts)-1])))
 		}
 	}
@@ -3489,114 +3119,6 @@ func AddExecTasksToDisplayTask(displayTaskId string, execTasks []string, display
 	)
 }
 
-////////////////
-// Cedar Helpers
-////////////////
-
-// getCedarTestResults fetches the task's test results from the Cedar service.
-// If the task does not have test results in Cedar, (nil, nil) is returned. If
-// the task is a display task, all of its execution tasks' test results are
-// returned.
-func (t *Task) getCedarTestResults() ([]TestResult, error) {
-	ctx, cancel := evergreen.GetEnvironment().Context()
-	defer cancel()
-
-	if !t.hasCedarResults() {
-		return nil, nil
-	}
-
-	taskID := t.Id
-	if t.Archived {
-		taskID = t.OldTaskId
-	}
-
-	opts := apimodels.GetCedarTestResultsOptions{
-		BaseURL:     evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-		TaskID:      taskID,
-		Execution:   utility.ToIntPtr(t.Execution),
-		DisplayTask: t.DisplayOnly,
-	}
-
-	cedarResults, err := apimodels.GetCedarTestResultsWithStatusError(ctx, opts)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting test results from cedar")
-	}
-
-	results := make([]TestResult, len(cedarResults.Results))
-	for i, result := range cedarResults.Results {
-		results[i] = ConvertCedarTestResult(result)
-	}
-
-	return results, nil
-}
-
-func (t *Task) hasCedarResults() bool {
-	if !t.DisplayOnly || t.HasCedarResults {
-		return t.HasCedarResults
-	}
-
-	// Older display tasks may incorrectly indicate that they do not have
-	// test results in Cedar. In the case that the execution tasks have
-	// results in Cedar, this will attempt to update the display task
-	// accordingly.
-	if len(t.ExecutionTasks) > 0 {
-		var (
-			execTasks []Task
-			err       error
-		)
-		if t.Archived {
-			// This is a display task from the old task collection,
-			// we need to look there for its execution tasks.
-			execTasks, err = FindAllOld(db.Query(bson.M{
-				OldTaskIdKey: bson.M{"$in": t.ExecutionTasks},
-				ExecutionKey: t.Execution,
-			}))
-		} else {
-			execTasks, err = FindAll(db.Query(ByIds(t.ExecutionTasks)))
-		}
-		if err != nil {
-			return false
-		}
-
-		for _, execTask := range execTasks {
-			if execTask.HasCedarResults {
-				// Attempt to update the display task's
-				// HasCedarResults field. We will not update
-				// the CedarResultsFailed field since we do
-				// want to iterate through all of the execution
-				// tasks and it isn't really needed for display
-				// tasks. Since we do not want to fail here, we
-				// can ignore the error.
-				_ = t.SetHasCedarResults(true, false)
-
-				return true
-			}
-		}
-	}
-
-	return false
-}
-
-// ConvertCedarTestResult converts a CedarTestResult struct into a TestResult
-// struct.
-func ConvertCedarTestResult(result apimodels.CedarTestResult) TestResult {
-	return TestResult{
-		TaskID:          result.TaskID,
-		Execution:       result.Execution,
-		TestFile:        result.TestName,
-		DisplayTestName: result.DisplayTestName,
-		GroupID:         result.GroupID,
-		LogTestName:     result.LogTestName,
-		URL:             result.LogURL,
-		URLRaw:          result.RawLogURL,
-		LineNum:         result.LineNum,
-		StartTime:       float64(result.Start.Unix()),
-		EndTime:         float64(result.End.Unix()),
-		Status:          result.Status,
-	}
-}
-
-// FindAbortingAndResettingForVersion finds dependencies for the task that are
 // in the process of aborting and will eventually reset themselves.
 func (t *Task) FindAbortingAndResettingDependencies() ([]Task, error) {
 	recursiveDeps, err := GetRecursiveDependenciesUp([]Task{*t}, map[string]Task{})

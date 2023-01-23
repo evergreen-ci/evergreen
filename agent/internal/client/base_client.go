@@ -572,25 +572,6 @@ func (c *baseCommunicator) SendLogMessages(ctx context.Context, taskData TaskDat
 	return nil
 }
 
-// SendTaskResults posts a task's results, used by the attach results operations.
-func (c *baseCommunicator) SendTaskResults(ctx context.Context, taskData TaskData, r *task.LocalTestResults) error {
-	if r == nil || len(r.Results) == 0 {
-		return nil
-	}
-
-	info := requestInfo{
-		method:   http.MethodPost,
-		taskData: &taskData,
-	}
-	info.setTaskPathSuffix("results")
-	resp, err := c.retryRequest(ctx, info, r)
-	if err != nil {
-		return utility.RespErrorf(resp, errors.Wrapf(err, "adding %d results", len(r.Results)).Error())
-	}
-	defer resp.Body.Close()
-	return nil
-}
-
 func (c *baseCommunicator) GetPullRequestInfo(ctx context.Context, taskData TaskData, prNum int, owner, repo string) (*apimodels.PullRequestInfo, error) {
 	info := requestInfo{
 		method:   http.MethodGet,
@@ -755,36 +736,17 @@ func (c *baseCommunicator) SendTestLog(ctx context.Context, taskData TaskData, l
 	return logID, nil
 }
 
-// SendResults posts a set of test results for the communicator's task.
-// If results are empty or nil, this operation is a noop.
-func (c *baseCommunicator) SendTestResults(ctx context.Context, taskData TaskData, results *task.LocalTestResults) error {
-	if results == nil || len(results.Results) == 0 {
-		return nil
-	}
+// SetHasResults sets the HasResults flag to true in the given task in the
+// database.
+func (c *baseCommunicator) SetHasResults(ctx context.Context, taskData TaskData, failed bool) error {
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
 	}
-	info.setTaskPathSuffix("results")
-	resp, err := c.retryRequest(ctx, info, results)
+	info.path = fmt.Sprintf("tasks/%s/set_has_results", taskData.ID)
+	resp, err := c.retryRequest(ctx, info, &apimodels.TaskTestResultsInfo{Failed: failed})
 	if err != nil {
-		return utility.RespErrorf(resp, errors.Wrap(err, "sending test results").Error())
-	}
-	defer resp.Body.Close()
-	return nil
-}
-
-// SetHasCedarResults sets the HasCedarResults flag to true in the given task
-// in the database.
-func (c *baseCommunicator) SetHasCedarResults(ctx context.Context, taskData TaskData, failed bool) error {
-	info := requestInfo{
-		method:   http.MethodPost,
-		taskData: &taskData,
-	}
-	info.path = fmt.Sprintf("tasks/%s/set_has_cedar_results", taskData.ID)
-	resp, err := c.retryRequest(ctx, info, &apimodels.CedarTestResultsTaskInfo{Failed: failed})
-	if err != nil {
-		return utility.RespErrorf(resp, errors.Wrap(err, "setting HasCedarResults").Error())
+		return utility.RespErrorf(resp, errors.Wrap(err, "setting HasResults").Error())
 	}
 	defer resp.Body.Close()
 	return nil

@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -367,25 +368,21 @@ func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.AP
 
 // FailedTestCount is the resolver for the failedTestCount field.
 func (r *taskResolver) FailedTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
-	if obj.HasCedarResults {
-		opts := apimodels.GetCedarTestResultsOptions{
-			BaseURL:     evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-			TaskID:      utility.FromStringPtr(obj.Id),
-			Execution:   utility.ToIntPtr(obj.Execution),
-			DisplayTask: obj.DisplayOnly,
-		}
-		stats, err := apimodels.GetCedarTestResultsStatsWithStatusError(ctx, opts)
-		if err != nil {
-			return 0, InternalServerError.Send(ctx, fmt.Sprintf("getting failed test count: %s", err))
-		}
-		return stats.FailedCount, nil
+	if !obj.HasResults || !obj.ResultsFailed {
+		return 0, nil
 	}
 
-	failedTestCount, err := task.GetTestCountByTaskIdAndFilters(*obj.Id, "", []string{evergreen.TestFailedStatus}, obj.Execution)
+	stats, err := testresult.GetTaskTestResultsStats(ctx, evergreen.GetEnvironment(), testresult.TaskOptions{
+		TaskID:         utility.FromStringPtr(obj.Id),
+		Execution:      obj.Execution,
+		DisplayTask:    obj.DisplayOnly,
+		ResultsService: obj.ResultsService,
+	})
 	if err != nil {
 		return 0, InternalServerError.Send(ctx, fmt.Sprintf("getting failed test count: %s", err))
 	}
-	return failedTestCount, nil
+
+	return stats.FailedCount, nil
 }
 
 // GeneratedByName is the resolver for the generatedByName field.
@@ -511,26 +508,21 @@ func (r *taskResolver) Status(ctx context.Context, obj *restModel.APITask) (stri
 
 // TotalTestCount is the resolver for the totalTestCount field.
 func (r *taskResolver) TotalTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
-	if obj.HasCedarResults {
-		opts := apimodels.GetCedarTestResultsOptions{
-			BaseURL:     evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-			TaskID:      utility.FromStringPtr(obj.Id),
-			Execution:   utility.ToIntPtr(obj.Execution),
-			DisplayTask: obj.DisplayOnly,
-		}
-		stats, err := apimodels.GetCedarTestResultsStatsWithStatusError(ctx, opts)
-		if err != nil {
-			return 0, InternalServerError.Send(ctx, fmt.Sprintf("getting test count: %s", err))
-		}
-
-		return stats.TotalCount, nil
+	if !obj.HasResults {
+		return 0, nil
 	}
-	testCount, err := task.GetTestCountByTaskIdAndFilters(*obj.Id, "", nil, obj.Execution)
+
+	stats, err := testresult.GetTaskTestResultsStats(ctx, evergreen.GetEnvironment(), testresult.TaskOptions{
+		TaskID:         utility.FromStringPtr(obj.Id),
+		Execution:      obj.Execution,
+		DisplayTask:    obj.DisplayOnly,
+		ResultsService: obj.ResultsService,
+	})
 	if err != nil {
 		return 0, InternalServerError.Send(ctx, fmt.Sprintf("getting test count: %s", err))
 	}
 
-	return testCount, nil
+	return stats.TotalCount, nil
 }
 
 // VersionMetadata is the resolver for the versionMetadata field.

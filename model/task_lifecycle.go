@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	adb "github.com/mongodb/anser/db"
@@ -575,11 +574,7 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 	const slowThreshold = time.Second
 
 	detailsCopy := *detail
-	hasFailedTests, err := t.HasFailedTests()
-	if err != nil {
-		return errors.Wrap(err, "checking for failed tests")
-	}
-	if hasFailedTests && detailsCopy.Status != evergreen.TaskFailed {
+	if t.ResultsFailed && detailsCopy.Status != evergreen.TaskFailed {
 		detailsCopy.Type = evergreen.CommandTypeTest
 		detailsCopy.Status = evergreen.TaskFailed
 	}
@@ -591,17 +586,9 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		})
 		return nil
 	}
-	if !t.HasCedarResults { // Results not in cedar, check the db.
-		count, err := testresult.Count(testresult.FilterByTaskIDAndExecution(t.Id, t.Execution))
-		if err != nil {
-			return errors.Wrap(err, "unable to count test results")
-		}
-		t.HasLegacyResults = utility.ToBoolPtr(count > 0) // cache if we even need to look this up in the future
-
-		if detailsCopy.Status == evergreen.TaskSucceeded && count == 0 && t.MustHaveResults {
-			detailsCopy.Status = evergreen.TaskFailed
-			detailsCopy.Description = evergreen.TaskDescriptionNoResults
-		}
+	if detailsCopy.Status == evergreen.TaskSucceeded && t.MustHaveResults && !t.HasResults {
+		detailsCopy.Status = evergreen.TaskFailed
+		detailsCopy.Description = evergreen.TaskDescriptionNoResults
 	}
 
 	t.Details = detailsCopy
@@ -615,7 +602,7 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		})
 	}
 	startPhaseAt := time.Now()
-	err = t.MarkEnd(finishTime, &detailsCopy)
+	err := t.MarkEnd(finishTime, &detailsCopy)
 
 	grip.NoticeWhen(time.Since(startPhaseAt) > slowThreshold, message.Fields{
 		"message":       "slow operation",

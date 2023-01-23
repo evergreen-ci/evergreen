@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -27,17 +26,19 @@ type testGetHandler struct {
 	testStatus []string
 	testID     string
 	testName   string
-	key        string
+	key        int
 	limit      int
-	sc         data.Connector
 	latest     bool
 
 	task *task.Task
+	env  evergreen.Environment
+	sc   data.Connector
 }
 
-func makeFetchTestsForTask(sc data.Connector) gimlet.RouteHandler {
+func makeFetchTestsForTask(env evergreen.Environment, sc data.Connector) gimlet.RouteHandler {
 	return &testGetHandler{
-		sc: sc,
+		env: env,
+		sc:  sc,
 	}
 }
 
@@ -99,7 +100,12 @@ func (tgh *testGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	if status := vals.Get("status"); status != "" {
 		tgh.testStatus = []string{status}
 	}
-	tgh.key = vals.Get("start_at")
+	if startAt := vals.Get("start_at"); startAt != "" {
+		tgh.key, err = strconv.Atoi(startAt)
+		if err != nil {
+			return errors.New("invalid 'start at' value")
+		}
+	}
 	tgh.testName = vals.Get("test_name")
 	tgh.limit, err = getLimit(vals)
 	if err != nil {
@@ -110,80 +116,35 @@ func (tgh *testGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
-	var err error
-	var key string
-
-	if tgh.task.HasCedarResults {
-		var page int
-		if tgh.key != "" {
-			page, err = strconv.Atoi(tgh.key)
-			if err != nil {
-				return gimlet.MakeJSONErrorResponder(errors.New("invalid 'start at' time"))
-			}
-		}
-
-		cedarTestResults, status, err := apimodels.GetCedarTestResults(ctx, apimodels.GetCedarTestResultsOptions{
-			BaseURL:     evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-			TaskID:      tgh.taskID,
-			Execution:   utility.ToIntPtr(tgh.task.Execution),
-			DisplayTask: tgh.task.DisplayOnly,
-			TestName:    tgh.testName,
-			Statuses:    tgh.testStatus,
-			Limit:       tgh.limit,
-			Page:        page,
-		})
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting test results"))
-		}
-		if status != http.StatusOK && status != http.StatusNotFound {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("getting test results from Cedar returned status %d", status))
-		}
-
-		if page*tgh.limit < utility.FromIntPtr(cedarTestResults.Stats.FilteredCount) {
-			key = fmt.Sprintf("%d", page+1)
-		}
-
-		return tgh.buildResponse(cedarTestResults.Results, nil, key)
-	}
-
-	var tests []testresult.TestResult
-	if tgh.testID != "" {
-		// When testID is populated, search the test results collection
-		// for the given ID.
-		tests, err = data.FindTestById(tgh.testID)
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding test '%s'", tgh.testID))
-		}
-	} else {
-
-		// we're going in here, and we've provided nothing so the limit is 101
-		tests, err = tgh.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{
+	results, err := testresult.GetTaskTestResults(
+		ctx,
+		tgh.env,
+		testresult.TaskOptions{
+			TaskID:         tgh.task.Id,
 			Execution:      tgh.task.Execution,
-			Limit:          tgh.limit + 1,
-			Statuses:       tgh.testStatus, // we haven't provided a status or execution or test name
-			TaskID:         tgh.taskID,
-			TestID:         tgh.key, // TESTID IS KEY
-			TestName:       tgh.testName,
-			ExecutionTasks: tgh.task.ExecutionTasks,
-		})
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding tests for task '%s'", tgh.taskID))
-		}
-
-		lastIndex := len(tests)
-		if lastIndex > tgh.limit {
-			key = string(tests[tgh.limit].ID)
-			lastIndex = tgh.limit
-		}
-		// Truncate the test results to just those that will be
-		// returned.
-		tests = tests[:lastIndex]
+			DisplayTask:    tgh.task.DisplayOnly,
+			ResultsService: tgh.task.ResultsService,
+		},
+		testresult.FilterOptions{
+			TestName: tgh.testName,
+			Statuses: tgh.testStatus,
+			Limit:    tgh.limit,
+			Page:     tgh.key,
+		},
+	)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting test results"))
 	}
 
-	return tgh.buildResponse(nil, tests, key)
+	var nextKey string
+	if tgh.key*tgh.limit < utility.FromIntPtr(results.Stats.FilteredCount) {
+		nextKey = fmt.Sprintf("%d", tgh.key+1)
+	}
+
+	return tgh.buildResponse(results.Results, nextKey)
 }
 
-func (tgh *testGetHandler) buildResponse(cedarTestResults []apimodels.CedarTestResult, testResults []testresult.TestResult, key string) gimlet.Responder {
+func (tgh *testGetHandler) buildResponse(results []testresult.TestResult, key string) gimlet.Responder {
 	resp := gimlet.NewResponseBuilder()
 	if err := resp.SetFormat(gimlet.JSON); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting response format"))
@@ -205,13 +166,8 @@ func (tgh *testGetHandler) buildResponse(cedarTestResults []apimodels.CedarTestR
 		}
 	}
 
-	for i, testResult := range cedarTestResults {
-		if err := tgh.addDataToResponse(resp, &testResult); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding Cedar test result at index %d", i))
-		}
-	}
-	for i, testResult := range testResults {
-		if err := tgh.addDataToResponse(resp, &testResult); err != nil {
+	for i, result := range results {
+		if err := tgh.addDataToResponse(resp, &result); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding test result at index %d", i))
 		}
 	}
@@ -219,7 +175,7 @@ func (tgh *testGetHandler) buildResponse(cedarTestResults []apimodels.CedarTestR
 	return resp
 }
 
-func (tgh *testGetHandler) addDataToResponse(resp gimlet.Responder, testResult interface{}) error {
+func (tgh *testGetHandler) addDataToResponse(resp gimlet.Responder, result interface{}) error {
 	at := &model.APITest{}
 	if err := at.BuildFromService(tgh.taskID); err != nil {
 		return gimlet.ErrorResponse{
@@ -227,8 +183,7 @@ func (tgh *testGetHandler) addDataToResponse(resp gimlet.Responder, testResult i
 			StatusCode: http.StatusInternalServerError,
 		}
 	}
-
-	if err := at.BuildFromService(testResult); err != nil {
+	if err := at.BuildFromService(result); err != nil {
 		return gimlet.ErrorResponse{
 			Message:    errors.Wrap(err, "adding test result to task API model").Error(),
 			StatusCode: http.StatusInternalServerError,
@@ -243,53 +198,4 @@ func (tgh *testGetHandler) addDataToResponse(resp gimlet.Responder, testResult i
 	}
 
 	return nil
-}
-
-///////////////////////////////////////////////////////////////////////////////
-//
-// GET /tasks/{task_id}/tests/count
-
-type testCountGetHandler struct {
-	taskID    string
-	execution int
-}
-
-func makeFetchTestCountForTask() gimlet.RouteHandler {
-	return &testCountGetHandler{}
-}
-
-func (h *testCountGetHandler) Factory() gimlet.RouteHandler {
-	return &testCountGetHandler{}
-}
-
-func (h *testCountGetHandler) Parse(ctx context.Context, r *http.Request) error {
-	projCtx := MustHaveProjectContext(ctx)
-	if projCtx.Task == nil {
-		return gimlet.ErrorResponse{
-			Message:    "task not found",
-			StatusCode: http.StatusNotFound,
-		}
-	}
-	h.taskID = projCtx.Task.Id
-
-	var err error
-	vals := r.URL.Query()
-	execution := vals.Get("execution")
-	if execution != "" {
-		h.execution, err = strconv.Atoi(execution)
-		if err != nil {
-			return errors.Wrap(err, "invalid execution")
-		}
-	}
-
-	return nil
-}
-
-func (h *testCountGetHandler) Run(ctx context.Context) gimlet.Responder {
-	count, err := data.CountTestsByTaskID(ctx, h.taskID, h.execution)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(err)
-	}
-
-	return gimlet.NewTextResponse(count)
 }

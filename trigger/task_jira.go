@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -187,7 +188,7 @@ type jiraTemplateData struct {
 	Pod                *pod.Pod
 	Project            *model.ProjectRef
 	Version            *model.Version
-	FailedTests        []task.TestResult
+	FailedTests        []testresult.TestResult
 	FailedTestNames    []string
 	Tests              []jiraTestFailure
 	SpecificTaskStatus string
@@ -384,8 +385,8 @@ func (j *jiraBuilder) getDescription() (string, error) {
 		if test.Status == evergreen.TestFailedStatus {
 			tests = append(tests, jiraTestFailure{
 				Name:       cleanTestName(test.GetDisplayTestName()),
-				URL:        test.GetLogURL(evergreen.LogViewerHTML),
-				HistoryURL: historyURL(j.data.Task, cleanTestName(test.TestFile), j.data.UIRoot),
+				URL:        test.GetLogURL(evergreen.GetEnvironment(), evergreen.LogViewerHTML),
+				HistoryURL: historyURL(j.data.Task, cleanTestName(test.TestName), j.data.UIRoot),
 				TaskID:     test.TaskID,
 				Execution:  test.Execution,
 			})
