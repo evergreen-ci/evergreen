@@ -11,6 +11,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -62,18 +63,29 @@ func insertFileDocsToDB(ctx context.Context, fn string, db *mongo.Database, logs
 	if collName == model.TaskLogCollection {
 		collection = logsDb.Collection(collName)
 	}
-	if collName == testresult.Collection { // add the necessary test results index
+	switch collName {
+	case testresult.Collection:
 		if _, err = collection.Indexes().CreateOne(ctx, mongo.IndexModel{
 			Keys: testresult.TestResultsIndex,
 		}); err != nil {
 			return errors.Wrap(err, "creating test results index")
 		}
-	}
-	if collName == task.Collection { // add the necessary tasks index
-		if _, err = collection.Indexes().CreateOne(ctx, mongo.IndexModel{
-			Keys: task.ActivatedTasksByDistroIndex,
+	case task.Collection:
+		if _, err = collection.Indexes().CreateMany(ctx, []mongo.IndexModel{
+			{
+				Keys: task.ActivatedTasksByDistroIndex,
+			},
+			{
+				Keys: task.DurationIndex,
+			},
 		}); err != nil {
-			return errors.Wrap(err, "creating activated tasks by distro index")
+			return errors.Wrap(err, "creating task indexes")
+		}
+	case host.Collection:
+		if _, err = collection.Indexes().CreateOne(ctx, mongo.IndexModel{
+			Keys: host.StatusIndex,
+		}); err != nil {
+			return errors.Wrap(err, "creating host index")
 		}
 	}
 	scanner := bufio.NewScanner(file)

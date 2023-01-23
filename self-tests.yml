@@ -2,7 +2,6 @@ command_type: test
 stepback: true
 ignore:
   - "*.md" # don't schedule tests if a commit only changes markdown files
-  - "scripts/*" # our scripts are untested, so don't schedule tests for them
   - ".github/*" # github CODEOWNERS configuration
 
 post:
@@ -29,6 +28,18 @@ post:
       content_type: text/plain
       permissions: public-read
       display_name: "(txt) coverage:"
+  - command: s3.put
+    display_name: Upload smoke test's app server logs to S3
+    type: system
+    params:
+      aws_key: ${aws_key}
+      aws_secret: ${aws_secret}
+      local_file: evergreen/server_logs.txt
+      remote_file: evergreen/${task_id}/app_server_logs.txt
+      bucket: mciuploads
+      content_type: text/plain
+      permissions: public-read
+      display_name: Evergreen test application server logs
 
 #######################################
 #         YAML Templates              #
@@ -108,10 +119,6 @@ variables:
       - func: get-project-and-modules
       - func: setup-mongodb
       - func: run-make
-        vars: { target: "set-var" }
-      - func: run-make
-        vars: { target: "set-project-var" }
-      - func: run-make
         vars: { target: "load-smoke-data" }
       - command: subprocess.exec
         params:
@@ -124,6 +131,7 @@ variables:
       - func: run-make
         vars:
           target: "${task_name}"
+
   - &version-constants
     nodejs_version: "6.11.1"
   - &run-generate-lint

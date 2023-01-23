@@ -774,6 +774,7 @@ func SubscribeOnParentOutcome(parentStatus string, childPatchId string, parentPa
 	return nil
 }
 
+// CancelPatch aborts all of a patch's in-progress tasks and deactivates its undispatched tasks.
 func CancelPatch(p *patch.Patch, reason task.AbortInfo) error {
 	if p.Version != "" {
 		if err := SetVersionActivation(p.Version, false, reason.User); err != nil {

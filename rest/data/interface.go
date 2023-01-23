@@ -38,7 +38,7 @@ type Connector interface {
 	GetURL() string
 	SetURL(string)
 	GetProjectFromFile(context.Context, model.ProjectRef, string, string) (model.ProjectInfo, error)
-	CreateVersionFromConfig(context.Context, *model.ProjectInfo, model.VersionMetadata, bool) (*model.Version, error)
+	CreateVersionFromConfig(context.Context, *model.ProjectInfo, model.VersionMetadata) (*model.Version, error)
 	FindTestsByTaskId(FindTestsByTaskIdOpts) ([]testresult.TestResult, error)
 	GetGitHubPR(context.Context, string, string, int) (*github.PullRequest, error)
 	AddPatchForPr(ctx context.Context, projectRef model.ProjectRef, prNum int, modules []restModel.APIModule, messageOverride string) (string, error)

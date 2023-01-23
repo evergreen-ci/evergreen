@@ -39,6 +39,14 @@ const (
 var (
 	EC2InsufficientCapacityError = errors.New(EC2InsufficientCapacity)
 	ec2TemplateNameExistsError   = errors.New(ec2TemplateNameExists)
+
+	// Linux and Windows are billed by the second.
+	// See https://aws.amazon.com/ec2/pricing/on-demand/
+	byTheSecondBillingOS = []string{"linux", "windows"}
+
+	// Commercial Linux distributions are billed by the hour
+	// See https://aws.amazon.com/linux/commercial-linux/faqs/#Pricing_and_Billing
+	commercialLinuxDistros = []string{"suse"}
 )
 
 type MountPoint struct {
@@ -79,8 +87,8 @@ func AztoRegion(az string) string {
 	return az[:len(az)-1]
 }
 
-//ec2StatusToEvergreenStatus returns a "universal" status code based on EC2's
-//provider-specific status codes.
+// ec2StatusToEvergreenStatus returns a "universal" status code based on EC2's
+// provider-specific status codes.
 func ec2StatusToEvergreenStatus(ec2Status string) CloudStatus {
 	switch ec2Status {
 	case ec2.InstanceStateNamePending:
@@ -216,19 +224,19 @@ func timeTilNextEC2Payment(h *host.Host) time.Duration {
 	return time.Second
 }
 
-// UsesHourlyBilling checks if a distro name to see if it is billed hourly,
-// and returns true if so (for example, most linux distros are by-the-minute).
+// UsesHourlyBilling returns if a distro is billed hourly.
 func UsesHourlyBilling(d *distro.Distro) bool {
-	if !strings.Contains(d.Arch, "linux") {
-		// windows or osx
-		return true
+	byTheSecondOS := false
+	for _, arch := range byTheSecondBillingOS {
+		byTheSecondOS = byTheSecondOS || strings.Contains(d.Arch, arch)
 	}
-	// one exception is OK. If we start adding more,
-	// might be time to add some more abstract handling
-	if strings.Contains(d.Id, "suse") {
-		return true
+
+	commercialLinuxDistro := false
+	for _, distro := range commercialLinuxDistros {
+		commercialLinuxDistro = commercialLinuxDistro || strings.Contains(d.Id, distro)
 	}
-	return false
+
+	return !byTheSecondOS || commercialLinuxDistro
 }
 
 // Determines how long until a payment is due for the specified host, for hosts

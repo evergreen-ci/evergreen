@@ -13,6 +13,7 @@
               "commitQueue": {
                 "enabled": true,
                 "requireSigned": false,
+                "requiredApprovalCount": 0,
                 "mergeMethod": "squash"
               },
               "periodicBuilds": null,

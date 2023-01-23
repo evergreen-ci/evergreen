@@ -53,11 +53,15 @@ type Distro struct {
 	IceCreamSettings      IceCreamSettings      `bson:"icecream_settings,omitempty" json:"icecream_settings,omitempty" mapstructure:"icecream_settings,omitempty"`
 }
 
+// DistroData is the same as a distro, with the only difference being that all
+// the provider settings are stored as maps instead of Birch BSON documents.
 type DistroData struct {
 	Distro              Distro                   `bson:",inline"`
 	ProviderSettingsMap []map[string]interface{} `bson:"provider_settings_list" json:"provider_settings_list"`
 }
 
+// NewDistroData creates distro data from this distro. The provider settings are
+// converted into maps instead of Birch BSON documents.
 func (d *Distro) NewDistroData() DistroData {
 	res := DistroData{ProviderSettingsMap: []map[string]interface{}{}}
 	res.Distro = *d

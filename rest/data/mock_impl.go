@@ -80,7 +80,7 @@ tasks:
 	}, err
 }
 
-func (mvc *MockGitHubConnectorImpl) CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo, metadata model.VersionMetadata, active bool) (*model.Version, error) {
+func (mvc *MockGitHubConnectorImpl) CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo, metadata model.VersionMetadata) (*model.Version, error) {
 	return &model.Version{
 		Requester:         evergreen.GitTagRequester,
 		TriggeredByGitTag: metadata.GitTag,

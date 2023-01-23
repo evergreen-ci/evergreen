@@ -281,10 +281,6 @@ func (s *EC2Suite) TestMakeDeviceMappingsTemplate() {
 	s.Equal("snapshot-1", *b[0].Ebs.SnapshotId)
 }
 
-func (s *EC2Suite) TestGetSettings() {
-	s.Equal(&EC2ProviderSettings{}, s.onDemandManager.GetSettings())
-}
-
 func (s *EC2Suite) TestConfigure() {
 	settings := &evergreen.Settings{}
 	ctx, cancel := context.WithCancel(s.ctx)
@@ -1021,12 +1017,13 @@ func (s *EC2Suite) TestTimeTilNextPaymentLinux() {
 	s.Equal(time.Second, s.onDemandManager.TimeTilNextPayment(h))
 }
 
-func (s *EC2Suite) TestTimeTilNextPaymentWindows() {
+func (s *EC2Suite) TestTimeTilNextPaymentSUSE() {
 	now := time.Now()
 	thirtyMinutesAgo := now.Add(-30 * time.Minute)
 	h := &host.Host{
 		Distro: distro.Distro{
-			Arch: "windows",
+			Id:   "suse15-large",
+			Arch: "linux",
 		},
 		CreationTime: thirtyMinutesAgo,
 		StartTime:    thirtyMinutesAgo.Add(time.Minute),

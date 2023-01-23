@@ -117,10 +117,6 @@ func (staticMgr *staticManager) StartInstance(ctx context.Context, host *host.Ho
 	return errors.New("StartInstance is not supported for static provider")
 }
 
-func (staticMgr *staticManager) GetSettings() ProviderSettings {
-	return &StaticSettings{}
-}
-
 func (staticMgr *staticManager) Configure(ctx context.Context, settings *evergreen.Settings) error {
 	//no-op. maybe will need to load something from settings in the future.
 	return nil
