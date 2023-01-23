@@ -188,7 +188,7 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, com
 			CommitMessage: utility.FromStringPtr(commitMessage),
 			Username:      utility.FromStringPtr(existingPatch.GithubPatchData.Author),
 		}
-		newPatch, err := data.EnqueuePRToCommitQueue(ctx, evergreen.GetEnvironment(), r.sc, info, false)
+		newPatch, err := data.EnqueuePRToCommitQueue(ctx, evergreen.GetEnvironment(), r.sc, info)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("enqueueing patch '%s': %s", patchID, err.Error()))
 		}

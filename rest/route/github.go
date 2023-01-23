@@ -217,7 +217,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 					"user":      *event.Sender.Login,
 					"message":   "commit queue triggered",
 				})
-				if _, err := data.EnqueuePRToCommitQueue(ctx, evergreen.GetEnvironment(), gh.sc, createPRInfo(event), true); err != nil {
+				if _, err := data.EnqueuePRToCommitQueue(ctx, evergreen.GetEnvironment(), gh.sc, createEnqueuePRInfo(event)); err != nil {
 					grip.Error(message.WrapError(err, message.Fields{
 						"source":    "GitHub hook",
 						"msg_id":    gh.msgID,
@@ -575,7 +575,7 @@ func (gh *githubHookApi) tryDequeueCommitQueueItemForPR(pr *github.PullRequest) 
 	return nil
 }
 
-func createPRInfo(event *github.IssueCommentEvent) commitqueue.EnqueuePRInfo {
+func createEnqueuePRInfo(event *github.IssueCommentEvent) commitqueue.EnqueuePRInfo {
 	return commitqueue.EnqueuePRInfo{
 		Username:      *event.Comment.User.Login,
 		Owner:         *event.Repo.Owner.Login,
