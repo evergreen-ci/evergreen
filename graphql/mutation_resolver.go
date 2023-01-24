@@ -180,7 +180,7 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, com
 		commitMessage = existingPatch.Description
 	}
 
-	newPatch, err := data.CreatePatchForMerge(ctx, patchID, utility.FromStringPtr(commitMessage))
+	newPatch, err := data.CreatePatchForMerge(ctx, evergreen.GetEnvironment().Settings(), patchID, utility.FromStringPtr(commitMessage))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating new patch: %s", err.Error()))
 	}
@@ -202,7 +202,7 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, co
 	if err != nil && !adb.ResultsNotFound(err) {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred fetching patch `%s`: %s", patchID, err.Error()))
 	}
-	statusCode, err := units.SchedulePatch(ctx, patchID, version, patchUpdateReq)
+	statusCode, err := units.SchedulePatch(ctx, evergreen.GetEnvironment(), patchID, version, patchUpdateReq)
 	if err != nil {
 		return nil, mapHTTPStatusToGqlError(ctx, statusCode, werrors.Errorf("Error scheduling patch `%s`: %s", patchID, err.Error()))
 	}

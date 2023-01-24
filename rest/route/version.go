@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -121,15 +122,16 @@ func (vh *versionPatchHandler) Run(ctx context.Context) gimlet.Responder {
 type buildsForVersionHandler struct {
 	versionId string
 	variant   string
+	env       evergreen.Environment
 }
 
-func makeGetVersionBuilds() gimlet.RouteHandler {
-	return &buildsForVersionHandler{}
+func makeGetVersionBuilds(env evergreen.Environment) gimlet.RouteHandler {
+	return &buildsForVersionHandler{env: env}
 }
 
 // Handler returns a pointer to a new buildsForVersionHandler.
 func (h *buildsForVersionHandler) Factory() gimlet.RouteHandler {
-	return &buildsForVersionHandler{}
+	return &buildsForVersionHandler{env: h.env}
 }
 
 // ParseAndValidate fetches the versionId from the http request.
@@ -164,7 +166,12 @@ func (h *buildsForVersionHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	var pp *dbModel.ParserProject
 	if v != nil {
-		pp, err = dbModel.GetParserProjectStorage(v.ProjectStorageMethod).FindOneByID(ctx, h.versionId)
+		ppStorage, err := dbModel.GetParserProjectStorage(h.env.Settings(), v.ProjectStorageMethod)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting parser project storage"))
+		}
+		defer ppStorage.Close(ctx)
+		pp, err = ppStorage.FindOneByID(ctx, h.versionId)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting project info"))
 		}

@@ -26,6 +26,13 @@ const LoadProjectError = "load project error(s)"
 const TranslateProjectError = "error translating project"
 const EmptyConfigurationError = "received empty configuration file"
 
+// DefaultParserProjectAccessTimeout is the default timeout for accessing a
+// parser project. In general, the context timeout should prefer to be inherited
+// from a higher-level context (e.g. a REST request's context), so this timeout
+// should only be used as a last resort if the context cannot be easily passed
+// to the place where the parser project is accessed.
+const DefaultParserProjectAccessTimeout = 60 * time.Second
+
 // This file contains the infrastructure for turning a YAML project configuration
 // into a usable Project struct. A basic overview of the project parsing process is:
 //
@@ -500,7 +507,7 @@ func (bvt *parserBV) hasSpecificActivation() bool {
 
 // FindAndTranslateProjectForPatch translates a parser project for a patch into a project.
 // This assumes that the version may not exist yet; otherwise FindAndTranslateProjectForVersion is equivalent.
-func FindAndTranslateProjectForPatch(ctx context.Context, p *patch.Patch) (*Project, *ParserProject, error) {
+func FindAndTranslateProjectForPatch(ctx context.Context, settings *evergreen.Settings, p *patch.Patch) (*Project, *ParserProject, error) {
 	if p.PatchedParserProject == "" {
 		v, err := VersionFindOneId(p.Version)
 		if err != nil {
@@ -509,7 +516,7 @@ func FindAndTranslateProjectForPatch(ctx context.Context, p *patch.Patch) (*Proj
 		if v == nil {
 			return nil, nil, errors.Errorf("version '%s' not found for patch '%s'", p.Version, p.Id.Hex())
 		}
-		return FindAndTranslateProjectForVersion(v)
+		return FindAndTranslateProjectForVersion(ctx, settings, v)
 	}
 	project := &Project{}
 	pp, err := LoadProjectInto(ctx, []byte(p.PatchedParserProject), nil, p.Project, project)
@@ -521,8 +528,13 @@ func FindAndTranslateProjectForPatch(ctx context.Context, p *patch.Patch) (*Proj
 
 // FindAndTranslateProjectForVersion translates a parser project for a version into a Project.
 // Also sets the project ID.
-func FindAndTranslateProjectForVersion(v *Version) (*Project, *ParserProject, error) {
-	pp, err := GetParserProjectStorage(v.ProjectStorageMethod).FindOneByID(context.Background(), v.Id)
+func FindAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.Settings, v *Version) (*Project, *ParserProject, error) {
+	ppStorage, err := GetParserProjectStorage(settings, v.ProjectStorageMethod)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "getting parser project storage '%s'", v.ProjectStorageMethod)
+	}
+	defer ppStorage.Close(ctx)
+	pp, err := ppStorage.FindOneByID(ctx, v.Id)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "finding parser project")
 	}
@@ -539,7 +551,7 @@ func FindAndTranslateProjectForVersion(v *Version) (*Project, *ParserProject, er
 }
 
 // LoadProjectInfoForVersion returns the project info for a version from its parser project.
-func LoadProjectInfoForVersion(v *Version, id string) (ProjectInfo, error) {
+func LoadProjectInfoForVersion(ctx context.Context, settings *evergreen.Settings, v *Version, id string) (ProjectInfo, error) {
 	var err error
 
 	pRef, err := FindMergedProjectRef(id, "", false)
@@ -556,7 +568,7 @@ func LoadProjectInfoForVersion(v *Version, id string) (ProjectInfo, error) {
 			return ProjectInfo{}, errors.Wrap(err, "finding project config")
 		}
 	}
-	p, pp, err := FindAndTranslateProjectForVersion(v)
+	p, pp, err := FindAndTranslateProjectForVersion(ctx, settings, v)
 	if err != nil {
 		return ProjectInfo{}, errors.Wrap(err, "translating project")
 	}

@@ -1,6 +1,11 @@
 package model
 
-import "context"
+import (
+	"context"
+
+	"github.com/evergreen-ci/evergreen"
+	"github.com/pkg/errors"
+)
 
 // ParserProjectStorage is an interface for accessing the parser project.
 type ParserProjectStorage interface {
@@ -15,10 +20,22 @@ type ParserProjectStorage interface {
 	// same ID already exists. If it does not exist yet, it inserts a new parser
 	// project.
 	UpsertOne(ctx context.Context, pp *ParserProject) error
+	// Close cleans up the accessor to the parser project storage. Users of
+	// ParserProjectStorage implementations must call Close once they are
+	// finished using it.
+	Close(ctx context.Context) error
 }
 
 // GetParserProjectStorage returns the parser project storage mechanism to
-// access the persistent copy of it.
-func GetParserProjectStorage(method ParserProjectStorageMethod) ParserProjectStorage {
-	return ParserProjectDBStorage{}
+// access the persistent copy of it. Users of the returned ParserProjectStorage
+// must call Close once they are finished using it.
+func GetParserProjectStorage(settings *evergreen.Settings, method ParserProjectStorageMethod) (ParserProjectStorage, error) {
+	switch method {
+	case "", ProjectStorageMethodDB:
+		return ParserProjectDBStorage{}, nil
+	case ProjectStorageMethodS3:
+		return nil, errors.New("TODO (EVG-17537): implement")
+	default:
+		return nil, errors.Errorf("unrecognized parser project storage method '%s'", method)
+	}
 }

@@ -24,14 +24,15 @@ import (
 
 type buildGetHandler struct {
 	buildId string
+	env     evergreen.Environment
 }
 
-func makeGetBuildByID() gimlet.RouteHandler {
-	return &buildGetHandler{}
+func makeGetBuildByID(env evergreen.Environment) gimlet.RouteHandler {
+	return &buildGetHandler{env: env}
 }
 
 func (b *buildGetHandler) Factory() gimlet.RouteHandler {
-	return &buildGetHandler{}
+	return &buildGetHandler{env: b.env}
 }
 
 func (b *buildGetHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -72,7 +73,14 @@ func (b *buildGetHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("version '%s' not found", foundBuild.Version),
 		})
 	}
-	pp, err := serviceModel.GetParserProjectStorage(v.ProjectStorageMethod).FindOneByID(ctx, v.Id)
+
+	ppStorage, err := serviceModel.GetParserProjectStorage(b.env.Settings(), v.ProjectStorageMethod)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting parser project storage"))
+	}
+	defer ppStorage.Close(ctx)
+
+	pp, err := ppStorage.FindOneByID(ctx, v.Id)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting project info"))
 	}

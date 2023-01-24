@@ -192,7 +192,7 @@ func getPatchProjectVariantsAndTasksForUI(ctx context.Context, apiPatch *restMod
 	if err != nil {
 		return nil, errors.Wrap(err, "building patch")
 	}
-	patchProjectVariantsAndTasks, err := model.GetVariantsAndTasksFromPatchProject(ctx, &p)
+	patchProjectVariantsAndTasks, err := model.GetVariantsAndTasksFromPatchProject(ctx, evergreen.GetEnvironment().Settings(), &p)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting project variants and tasks for patch %s: %s", *apiPatch.Id, err.Error()))
 	}
@@ -933,7 +933,7 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 		if t == nil {
 			return nil, ResourceNotFound.Send(ctx, "A valid task id must be supplied when SpawnHostsStartedByTask is set to true")
 		}
-		if err = data.CreateHostsFromTask(ctx, t, *usr, spawnHostInput.PublicKey.Key); err != nil {
+		if err = data.CreateHostsFromTask(ctx, evergreen.GetEnvironment().Settings(), t, *usr, spawnHostInput.PublicKey.Key); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("spawning hosts from task %s: %s", *spawnHostInput.TaskID, err))
 		}
 	}

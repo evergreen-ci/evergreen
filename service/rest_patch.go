@@ -82,7 +82,14 @@ func (restapi restAPI) getPatchConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pp, err := model.GetParserProjectStorage(projCtx.Version.ProjectStorageMethod).FindOneByID(r.Context(), projCtx.Version.Id)
+	settings := restapi.GetSettings()
+	ppStorage, err := model.GetParserProjectStorage(&settings, projCtx.Version.ProjectStorageMethod)
+	if err != nil {
+		gimlet.WriteJSONInternalError(w, errors.Wrap(err, "getting parser project storage"))
+		return
+	}
+	defer ppStorage.Close(r.Context())
+	pp, err := ppStorage.FindOneByID(r.Context(), projCtx.Version.Id)
 	if err != nil {
 		gimlet.WriteJSONInternalError(w, errors.Wrapf(err, "finding parser project '%s' for patch '%s'", projCtx.Version.Id, projCtx.Patch.Id.Hex()))
 		return

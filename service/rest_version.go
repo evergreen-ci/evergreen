@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -289,8 +290,15 @@ func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) 
 	w.Header().Set("Content-Type", "application/x-yaml; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 
+	settings := restapi.GetSettings()
+	ppStorage, err := model.GetParserProjectStorage(&settings, projCtx.Version.ProjectStorageMethod)
+	if err != nil {
+		gimlet.WriteJSONInternalError(w, errors.Wrap(err, "getting parser project storage"))
+		return
+	}
+	defer ppStorage.Close(r.Context())
 	var config []byte
-	pp, err := model.GetParserProjectStorage(projCtx.Version.ProjectStorageMethod).FindOneByID(r.Context(), projCtx.Version.Id)
+	pp, err := ppStorage.FindOneByID(r.Context(), projCtx.Version.Id)
 	if err != nil {
 		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem finding parser project"})
 		return
@@ -317,7 +325,14 @@ func (restapi restAPI) getVersionProject(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	pp, err := model.GetParserProjectStorage(projCtx.Version.ProjectStorageMethod).FindOneByID(r.Context(), projCtx.Version.Id)
+	env := evergreen.GetEnvironment()
+	ppStorage, err := model.GetParserProjectStorage(env.Settings(), projCtx.Version.ProjectStorageMethod)
+	if err != nil {
+		gimlet.WriteJSONInternalError(w, errors.Wrap(err, "getting parser project storage"))
+		return
+	}
+	defer ppStorage.Close(r.Context())
+	pp, err := ppStorage.FindOneByID(r.Context(), projCtx.Version.Id)
 	if err != nil {
 		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem finding parser project"})
 		return
