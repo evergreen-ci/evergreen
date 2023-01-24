@@ -395,7 +395,11 @@ mongodb/.get-mongodb:
 get-mongodb:mongodb/.get-mongodb
 	@touch $<
 start-mongod:mongodb/.get-mongodb
-	./mongodb/mongod $(if $(AUTH_ENABLED),--auth --keyFile cmd/mongo-auth/replset_key.txt,) --dbpath ./mongodb/db_files --port 27017 --replSet evg --oplogSize 10
+ifdef $(AUTH_ENABLED)
+	echo "replica set key" > ./mongodb/keyfile.txt
+	chmod 600 ./mongodb/keyfile.txt
+endif
+	./mongodb/mongod $(if $(AUTH_ENABLED),--auth --keyFile ./mongodb/keyfile.txt,) --dbpath ./mongodb/db_files --port 27017 --replSet evg --oplogSize 10
 configure-mongod:mongodb/.get-mongodb
 	./mongodb/mongo --nodb --eval "assert.soon(function(x){try{var d = new Mongo(\"localhost:27017\"); return true}catch(e){return false}}, \"timed out connecting\")"
 	@echo "mongod is up"
