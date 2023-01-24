@@ -311,7 +311,7 @@ func TryResetTask(settings *evergreen.Settings, taskId, user, origin string, det
 
 	if evergreen.IsCommitQueueRequester(t.Requester) && evergreen.IsSystemFailedTaskStatus(t.Status) {
 		maxSystemFailedTaskRetries := settings.CommitQueue.MaxSystemFailedTaskRetries
-		if maxSystemFailedTaskRetries != 0 {
+		if maxSystemFailedTaskRetries > 0 {
 			maxExecution = maxSystemFailedTaskRetries
 		}
 	}
@@ -1928,7 +1928,7 @@ func resetSystemFailedTask(settings *evergreen.Settings, t *task.Task, descripti
 
 	if evergreen.IsCommitQueueRequester(t.Requester) && evergreen.IsSystemFailedTaskStatus(t.Status) {
 		maxSystemFailedTaskRetries := settings.CommitQueue.MaxSystemFailedTaskRetries
-		if maxSystemFailedTaskRetries != 0 {
+		if maxSystemFailedTaskRetries > 0 {
 			maxExecutionTask = t.Execution >= maxSystemFailedTaskRetries
 		}
 	}
