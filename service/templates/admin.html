@@ -1870,10 +1870,14 @@ Admin Settings
 										<input type="text" ng-model="Settings.providers.aws.task_sync_read.bucket">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>Parser Project S3 Bucket</label>
+										<input type="text" ng-model="Settings.providers.aws.parser_project_s3_bucket">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
 										<label>Default Security Group</label>
 										<input type="text" ng-model="Settings.providers.aws.default_security_group">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Total EBS Volume Size Per User</label>
 										<input type="number" ng-model="Settings.providers.aws.max_volume_size">
 									</md-input-container>
