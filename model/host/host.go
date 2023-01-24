@@ -215,7 +215,9 @@ func GetPortMap(m nat.PortMap) PortMap {
 	return res
 }
 
-// DockerOptions contains options for starting a container
+// DockerOptions contains options for starting a container. This fulfills the
+// ProviderSettings interface to populate container information from the distro
+// settings.
 type DockerOptions struct {
 	// Optional parameters to define a registry name and authentication
 	RegistryName     string `mapstructure:"docker_registry_name" bson:"docker_registry_name,omitempty" json:"docker_registry_name,omitempty"`
@@ -239,6 +241,8 @@ type DockerOptions struct {
 	EnvironmentVars []string `mapstructure:"environment_vars" bson:"environment_vars,omitempty" json:"environment_vars,omitempty"`
 }
 
+// FromDistroSettings loads the Docker container options from the provider
+// settings.
 func (opts *DockerOptions) FromDistroSettings(d distro.Distro, _ string) error {
 	if len(d.ProviderSettingsList) != 0 {
 		bytes, err := d.ProviderSettingsList[0].MarshalBSON()

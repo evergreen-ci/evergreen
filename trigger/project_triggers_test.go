@@ -37,12 +37,17 @@ func TestMetadataFromVersion(t *testing.T) {
 	assert.NoError(err)
 	assert.NoError(model.UpdateLastRevision(ref.Id, "def"))
 
-	metadata, err := metadataFromVersion(source, ref)
+	args := ProcessorArgs{
+		SourceVersion:     &source,
+		DownstreamProject: ref,
+	}
+	metadata, err := metadataFromVersion(args)
 	assert.NoError(err)
 	assert.Equal(source.Author, metadata.Revision.Author)
 	assert.Equal(source.CreateTime, metadata.Revision.CreateTime)
 	assert.Equal("def", metadata.Revision.Revision)
 	assert.Equal(123, metadata.Revision.AuthorGithubUID)
+	assert.True(metadata.Activate)
 }
 
 func TestMakeDownstreamConfigFromFile(t *testing.T) {

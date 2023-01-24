@@ -324,6 +324,44 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NotContains(t, err.Error(), "the commit queue")
 			assert.NotContains(t, err.Error(), "commit checks")
 		},
+		"a commit queue document exists after the feature is turned on": func(t *testing.T, ref model.ProjectRef) {
+			oldRef := model.ProjectRef{
+				Owner:   ref.Owner,
+				Repo:    ref.Repo,
+				Branch:  ref.Branch,
+				Enabled: utility.TruePtr(),
+			}
+			assert.NoError(t, oldRef.Insert())
+
+			changes := model.ProjectRef{
+				Id: ref.Id,
+				CommitQueue: model.CommitQueueParams{
+					Enabled: utility.TruePtr(),
+				},
+			}
+			apiProjectRef := restModel.APIProjectRef{}
+			assert.NoError(t, apiProjectRef.BuildFromService(changes))
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+				Aliases: []restModel.APIProjectAlias{
+					{
+						Alias:   utility.ToStringPtr(evergreen.CommitQueueAlias),
+						Task:    utility.ToStringPtr("new_task"),
+						Variant: utility.ToStringPtr("new_variant"),
+					},
+					{
+						Alias:   utility.ToStringPtr(evergreen.GithubPRAlias),
+						Task:    utility.ToStringPtr("new_task"),
+						Variant: utility.ToStringPtr("new_variant"),
+					},
+				},
+			}
+			_, err := SaveProjectSettingsForSection(ctx, changes.Id, apiChanges, model.ProjectPageGithubAndCQSection, false, "me")
+			assert.NoError(t, err)
+			cq, err := commitqueue.FindOneId(ref.Id)
+			assert.NoError(t, err)
+			assert.NotNil(t, cq)
+		},
 		model.ProjectPageAccessSection: func(t *testing.T, ref model.ProjectRef) {
 			newAdmin := user.DBUser{
 				Id: "newAdmin",

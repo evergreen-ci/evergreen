@@ -276,20 +276,6 @@ func VersionBySuccessfulBeforeRevision(project string, beforeRevision int) db.Q 
 	)
 }
 
-func VersionsByRequesterOrdered(project, requester string, limit, startOrder int) db.Q {
-	q := bson.M{
-		VersionIdentifierKey: project,
-		VersionRequesterKey:  requester,
-	}
-
-	if startOrder > 0 {
-		q[VersionRevisionOrderNumberKey] = bson.M{
-			"$lt": startOrder,
-		}
-	}
-	return db.Query(q).Limit(limit).Sort([]string{"-" + VersionRevisionOrderNumberKey})
-}
-
 func VersionFindOne(query db.Q) (*Version, error) {
 	version := &Version{}
 	err := db.FindOneQ(VersionCollection, query, version)

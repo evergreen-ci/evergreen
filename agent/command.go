@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
@@ -64,15 +63,6 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 	for idx, cmd := range cmds {
 		if err := ctx.Err(); err != nil {
 			return errors.Wrap(err, "canceled while running command list")
-		}
-		if cmd.DisplayName() == "" {
-			grip.Critical(message.Fields{
-				"message": "attempting to run an undefined command",
-				"name":    cmd.Name(),
-				"type":    cmd.Type(),
-				"raw":     fmt.Sprintf("%#v", cmd),
-				"info":    commandInfo,
-			})
 		}
 
 		cmd.SetJasperManager(a.jasper)
