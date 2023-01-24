@@ -2219,7 +2219,12 @@ func TestDisplayTaskRestart(t *testing.T) {
 
 	// test that execution tasks cannot be restarted
 	assert.NoError(resetTaskData())
-	assert.Error(TryResetTask("task5", "", "", nil))
+	settings := &evergreen.Settings{
+		CommitQueue: evergreen.CommitQueueConfig{
+			MaxSystemFailedTaskRetries: 2,
+		},
+	}
+	assert.Error(TryResetTask(settings, "task5", "", "", nil))
 
 	// trying to restart execution tasks should restart the entire display task, if it's done
 	assert.NoError(resetTaskData())
@@ -2234,13 +2239,18 @@ func TestDisplayTaskRestart(t *testing.T) {
 }
 
 func TestResetTaskOrDisplayTask(t *testing.T) {
+	settings := &evergreen.Settings{
+		CommitQueue: evergreen.CommitQueueConfig{
+			MaxSystemFailedTaskRetries: 2,
+		},
+	}
 	assert.NoError(t, resetTaskData())
 	et, err := task.FindOneId("task5")
 	assert.NoError(t, err)
 	require.NotNil(t, et)
 
 	// restarting execution tasks should restart display task
-	assert.NoError(t, ResetTaskOrDisplayTask(et, "me", evergreen.StepbackTaskActivator, false, nil))
+	assert.NoError(t, ResetTaskOrDisplayTask(settings, et, "me", evergreen.StepbackTaskActivator, false, nil))
 	dt, err := task.FindOneId("displayTask")
 	assert.NoError(t, err)
 	require.NotNil(t, dt)
@@ -2250,7 +2260,7 @@ func TestResetTaskOrDisplayTask(t *testing.T) {
 
 	// restarting display task should mark the display task for restart if it's not complete
 	// ResetFailedWhenFinished should be set to true if failedOnly is passed in
-	assert.NoError(t, ResetTaskOrDisplayTask(dt, "me", evergreen.StepbackTaskActivator, true, nil))
+	assert.NoError(t, ResetTaskOrDisplayTask(settings, dt, "me", evergreen.StepbackTaskActivator, true, nil))
 	dt, err = task.FindOneId("displayTask")
 	assert.NoError(t, err)
 	require.NotNil(t, dt)
