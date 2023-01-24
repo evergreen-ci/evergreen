@@ -259,7 +259,6 @@ functions:
         command: make configure-mongod
         env:
           AUTH_ENABLED: ${with_auth}
-          FCV: "4.0"
 
   setup-docker-host:
     - command: host.create
@@ -609,18 +608,18 @@ task_groups:
 #            Buildvariants            #
 #######################################
 buildvariants:
-  - name: ubuntu1604
-    display_name: Ubuntu 16.04
+  - name: ubuntu2004
+    display_name: Ubuntu 20.04
     run_on:
-      - ubuntu1604-small
-      - ubuntu1604-large
+      - ubuntu2004-small
+      - ubuntu2004-large
     expansions:
       goos: linux
       goarch: amd64
       nodebin: /opt/node/bin
       GOROOT: /opt/golang/go1.16
       RUN_EC2_SPECIFIC_TESTS: true
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.2.18.tgz
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2004-4.4.18.tgz
       notary_client_url: https://macos-notary-1628249594.s3.amazonaws.com/releases/client/v3.1.2/linux_amd64.zip
       sign_macos: true
     tasks:
@@ -639,12 +638,12 @@ buildvariants:
   - name: race-detector
     display_name: Race Detector
     run_on:
-      - ubuntu1604-small
-      - ubuntu1604-large
+      - ubuntu2004-small
+      - ubuntu2004-large
     expansions:
       GOROOT: /opt/golang/go1.16
       RUN_EC2_SPECIFIC_TESTS: true
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.2.18.tgz
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2004-4.4.18.tgz
       race_detector: true
       test_timeout: 15m
     tasks:
@@ -668,7 +667,7 @@ buildvariants:
     expansions:
       GOROOT: c:/golang/go1.16
       RUN_EC2_SPECIFIC_TESTS: true
-      mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2012plus-4.2.18.zip
+      mongodb_url: https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-4.4.18.zip
       extension: ".exe"
       archiveExt: ".zip"
     tasks:
@@ -686,7 +685,7 @@ buildvariants:
       goos: linux
       GOROOT: /opt/golang/go1.16
       RUN_EC2_SPECIFIC_TESTS: true
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu1804-4.2.18.tgz
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu1804-4.4.18.tgz
     tasks:
       - name: ".agent .test"
 
@@ -697,7 +696,7 @@ buildvariants:
       - macos-1014
     expansions:
       GOROOT: /opt/golang/go1.16
-      mongodb_url: https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-4.2.18.tgz
+      mongodb_url: https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-4.4.18.tgz
     tasks:
       - name: ".agent .test"
       - name: ".cli .test"
