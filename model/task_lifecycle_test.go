@@ -2228,6 +2228,20 @@ func TestTryResetTask(t *testing.T) {
 			So(v.Insert(), ShouldBeNil)
 			So(anotherTask.Insert(), ShouldBeNil)
 
+			commitQueueMax := evergreen.GetEnvironment().Settings().CommitQueue.MaxSystemFailedTaskRetries
+			commitQueueTask := &task.Task{
+				Id:          "commit_queue_task",
+				DisplayName: displayName,
+				Activated:   false,
+				BuildId:     b.Id,
+				Execution:   commitQueueMax,
+				Project:     "sample",
+				Status:      evergreen.TaskSystemFailed,
+				Version:     b.Version,
+				Requester:   evergreen.MergeTestRequester,
+			}
+			So(commitQueueTask.Insert(), ShouldBeNil)
+
 			var err error
 
 			Convey("should reset if ui package tries to reset", func() {
@@ -2249,6 +2263,13 @@ func TestTryResetTask(t *testing.T) {
 				So(a.Details, ShouldResemble, apimodels.TaskEndDetail{})
 				So(a.Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(a.FinishTime, ShouldResemble, utility.ZeroTime)
+			})
+			Convey("merge tasks not reset if they've reached the admin setting limit", func() {
+				So(TryResetTask(commitQueueTask.Id, userName, "", detail), ShouldBeNil)
+				commitQueueTask, err = task.FindOne(db.Query(task.ById(commitQueueTask.Id)))
+				So(err, ShouldBeNil)
+				So(commitQueueTask.Details, ShouldNotResemble, *detail)
+				So(commitQueueTask.Status, ShouldNotEqual, detail.Status)
 			})
 		})
 	})

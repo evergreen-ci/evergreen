@@ -1278,7 +1278,7 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 
-	if t.Requester == evergreen.MergeTestRequester {
+	if evergreen.IsCommitQueueRequester(t.Requester) {
 		if err = model.HandleEndTaskForCommitQueueTask(t, h.details.Status); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}

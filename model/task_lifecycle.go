@@ -79,7 +79,7 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 			// or the task was originally activated by evergreen, deactivate the task
 		} else if !evergreen.IsSystemActivator(caller) || evergreen.IsSystemActivator(t.ActivatedBy) {
 			// deactivate later tasks in the group as well, since they won't succeed without this one
-			if t.Requester == evergreen.MergeTestRequester {
+			if evergreen.IsCommitQueueRequester(t.Requester) {
 				catcher.Wrapf(DequeueAndRestartForTask(nil, &t, message.GithubStateError, caller, fmt.Sprintf("deactivated by '%s'", caller)), "dequeueing and restarting task '%s'", t.Id)
 			}
 			tasksToActivate = append(tasksToActivate, originalTasks...)
@@ -307,15 +307,18 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 
 	var execTask *task.Task
 
-	reachedMaxExecutions := t.Execution >= evergreen.MaxTaskExecution
+	maxExecution := evergreen.MaxTaskExecution
 
 	if evergreen.IsCommitQueueRequester(t.Requester) && evergreen.IsSystemFailedTaskStatus(t.Status) {
-		reachedMaxExecutions = t.Execution >= evergreen.GetEnvironment().Settings().CommitQueue.MaxSystemFailedTaskRetries
+		maxSystemFailedTaskRetries := evergreen.GetEnvironment().Settings().CommitQueue.MaxSystemFailedTaskRetries
+		if maxSystemFailedTaskRetries != 0 {
+			maxExecution = maxSystemFailedTaskRetries
+		}
 	}
 	// if we've reached the max number of executions for this task, mark it as finished and failed
-	if reachedMaxExecutions {
+	if t.Execution >= maxExecution {
 		// restarting from the UI bypasses the restart cap
-		msg := fmt.Sprintf("task '%s' reached max execution %d: ", t.Id, evergreen.MaxTaskExecution)
+		msg := fmt.Sprintf("task '%s' reached max execution %d: ", t.Id, maxExecution)
 		if origin == evergreen.UIPackage || origin == evergreen.RESTV2Package {
 			grip.Debugln(msg, "allowing exception for", user)
 		} else if !t.IsFinished() {
@@ -1922,6 +1925,14 @@ func resetSystemFailedTask(t *task.Task, description string) error {
 
 	unschedulableTask := time.Since(t.ActivatedTime) > task.UnschedulableThreshold
 	maxExecutionTask := t.Execution >= evergreen.MaxTaskExecution
+
+	if evergreen.IsCommitQueueRequester(t.Requester) && evergreen.IsSystemFailedTaskStatus(t.Status) {
+		maxSystemFailedTaskRetries := evergreen.GetEnvironment().Settings().CommitQueue.MaxSystemFailedTaskRetries
+		if maxSystemFailedTaskRetries != 0 {
+			maxExecutionTask = t.Execution >= maxSystemFailedTaskRetries
+		}
+	}
+
 	if unschedulableTask || maxExecutionTask {
 		failureDetails := task.GetSystemFailureDetails(description)
 		// If the task has already exceeded the unschedulable threshold, we
