@@ -882,7 +882,7 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string, faile
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id '%s'", taskID))
 	}
-	if err := model.ResetTaskOrDisplayTask(t, username, evergreen.UIPackage, failedOnly, nil); err != nil {
+	if err := model.ResetTaskOrDisplayTask(evergreen.GetEnvironment().Settings(), t, username, evergreen.UIPackage, failedOnly, nil); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error restarting task '%s': %s", taskID, err.Error()))
 	}
 	t, err = task.FindOneIdAndExecutionWithDisplayStatus(taskID, nil)

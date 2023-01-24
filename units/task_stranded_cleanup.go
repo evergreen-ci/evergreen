@@ -74,7 +74,7 @@ func (j *taskStrandedCleanupJob) fixTasksStrandedOnTerminatedHosts() error {
 		taskIDs = append(taskIDs, h.RunningTask)
 		hostIDs = append(hostIDs, h.Id)
 
-		catcher.Wrapf(model.ClearAndResetStrandedHostTask(&h), "fixing stranded host task '%s' on host '%s'", h.RunningTask, h.Id)
+		catcher.Wrapf(model.ClearAndResetStrandedHostTask(evergreen.GetEnvironment().Settings(), &h), "fixing stranded host task '%s' on host '%s'", h.RunningTask, h.Id)
 	}
 
 	grip.Info(message.Fields{
@@ -108,7 +108,7 @@ func (j *taskStrandedCleanupJob) fixTasksStuckDispatching() error {
 				Status:      evergreen.TaskFailed,
 				Description: evergreen.TaskDescriptionStranded,
 			}
-			catcher.Wrapf(model.TryResetTask(t.Id, evergreen.User, j.ID(), details), "resetting task '%s'", t.Id)
+			catcher.Wrapf(model.TryResetTask(evergreen.GetEnvironment().Settings(), t.Id, evergreen.User, j.ID(), details), "resetting task '%s'", t.Id)
 			tasksReset = append(tasksReset, t)
 		}
 	}

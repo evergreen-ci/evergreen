@@ -1272,7 +1272,7 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 			Description: evergreen.TaskDescriptionAborted,
 		}
 	}
-	err = model.MarkEnd(t, evergreen.APIServerTaskActivator, finishTime, details, deactivatePrevious)
+	err = model.MarkEnd(h.env.Settings(), t, evergreen.APIServerTaskActivator, finishTime, details, deactivatePrevious)
 	if err != nil {
 		err = errors.Wrapf(err, "calling mark finish on task '%s'", t.Id)
 		return gimlet.MakeJSONInternalErrorResponder(err)

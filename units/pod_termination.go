@@ -237,7 +237,7 @@ func (j *podTerminationJob) fixStrandedRunningTask(ctx context.Context) error {
 		return errors.Wrapf(err, "marking stranded container task '%s' execution %d running on pod '%s' as deallocated", j.pod.TaskRuntimeInfo.RunningTaskID, j.pod.TaskRuntimeInfo.RunningTaskExecution, j.pod.ID)
 	}
 
-	if err := model.ClearAndResetStrandedContainerTask(j.pod); err != nil {
+	if err := model.ClearAndResetStrandedContainerTask(j.env.Settings(), j.pod); err != nil {
 		return errors.Wrapf(err, "resetting stranded container task '%s' execution %d running on pod '%s'", j.pod.TaskRuntimeInfo.RunningTaskID, j.pod.TaskRuntimeInfo.RunningTaskExecution, j.pod.ID)
 	}
 
