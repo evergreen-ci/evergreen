@@ -79,6 +79,7 @@ func (s *EnvironmentSuite) TestInitDB() {
 	}
 	err := localEnv.initDB(ctx, *db)
 	s.NoError(err)
+	localEnv.client.ListDatabases(ctx, nil)
 }
 
 func (s *EnvironmentSuite) TestLoadingConfig() {

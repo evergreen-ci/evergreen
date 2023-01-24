@@ -395,7 +395,7 @@ mongodb/.get-mongodb:
 get-mongodb:mongodb/.get-mongodb
 	@touch $<
 start-mongod:mongodb/.get-mongodb
-ifdef $(AUTH_ENABLED)
+ifdef AUTH_ENABLED
 	echo "replica set key" > ./mongodb/keyfile.txt
 	chmod 600 ./mongodb/keyfile.txt
 endif
@@ -404,7 +404,7 @@ configure-mongod:mongodb/.get-mongodb
 	./mongodb/mongo --nodb --eval "assert.soon(function(x){try{var d = new Mongo(\"localhost:27017\"); return true}catch(e){return false}}, \"timed out connecting\")"
 	@echo "mongod is up"
 	./mongodb/mongo --eval 'rs.initiate()'
-ifdef $(AUTH_ENABLED)
+ifdef AUTH_ENABLED
 	./mongodb/mongo --host `./mongodb/mongo --quiet --eval "db.isMaster()['primary']"` cmd/mongo-auth/create_auth_user.js
 endif
 	@echo "configured mongod"
