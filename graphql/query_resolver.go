@@ -681,15 +681,9 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 	if baseTask != nil && baseTask.HasResults && baseTask.ResultsService == dbTask.ResultsService {
 		baseTaskID = baseTask.Id
 	}
-	taskResults, err := testresult.GetTaskTestResults(
+	taskResults, err := dbTask.GetTestResults(
 		ctx,
 		evergreen.GetEnvironment(),
-		testresult.TaskOptions{
-			TaskID:         taskID,
-			Execution:      dbTask.Execution,
-			DisplayTask:    dbTask.DisplayOnly,
-			ResultsService: dbTask.ResultsService,
-		},
 		testresult.FilterOptions{
 			TestName:     utility.FromStringPtr(testName),
 			Statuses:     statuses,
@@ -747,7 +741,6 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, filt
 	for i, dbTask := range dbTasks {
 		taskOpts[i].TaskID = dbTask.Id
 		taskOpts[i].Execution = dbTask.Execution
-		taskOpts[i].DisplayTask = dbTask.DisplayOnly
 		taskOpts[i].ResultsService = dbTask.ResultsService
 	}
 	samples, err := testresult.GetFailedTestSamples(ctx, evergreen.GetEnvironment(), taskOpts, failingTests)

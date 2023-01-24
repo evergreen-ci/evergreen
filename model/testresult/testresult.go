@@ -181,15 +181,48 @@ func GetTaskTestResultsStats(ctx context.Context, env evergreen.Environment, tas
 	return svc.GetTaskTestResultsStats(ctx, taskOpts)
 }
 
-func GetFailedTestSamples(ctx context.Context, env evergreen.Environment, taskOpts []TaskOptions, regexFilters []string) ([]TaskTestResultsFailedSample, error) {
-	var servicesToTasks map[string][]TaskOptions
-	for _, task := range taskOpts {
-		if tasks, ok := servicesToTasks[task.ResultsService]; ok {
-			servicesToTasks[task.ResultsService] = append(tasks, task)
-		} else {
-			servicesToTasks[task.ResultsService] = []TaskOptions{task}
+func GetTestResults(ctx context.Context, env evergreen.Environment, taskOpts []TaskOptions, filterOptions FilterOptions) ([]TaskTestResults, error) {
+	servicesToTasks := groupTasksByService(taskOpts)
+
+	var allTaskTestResults []TaskTestResults
+	for service, tasks := range servicesToTasks {
+		svc, err := getService(env, service)
+		if err != nil {
+			return nil, err
 		}
+
+		results, err := svc.GetTestResults(ctx, tasks, filterOptions)
+		if err != nil {
+			return nil, err
+		}
+		allTaskTestResults = append(allTaskTestResults, results...)
 	}
+
+	return allTaskTestResults, nil
+}
+
+func GetTestResultsStats(ctx context.Context, env evergreen.Environment, taskOpts []TaskOptions) ([]TaskTestResultsStats, error) {
+	servicesToTasks := groupTasksByService(taskOpts)
+
+	var allStats []TaskTestResultsStats
+	for service, tasks := range servicesToTasks {
+		svc, err := getService(env, service)
+		if err != nil {
+			return nil, err
+		}
+
+		stats, err := svc.GetTestResultsStats(ctx, tasks)
+		if err != nil {
+			return nil, err
+		}
+		allStats = append(allStats, stats...)
+	}
+
+	return allStats, nil
+}
+
+func GetFailedTestSamples(ctx context.Context, env evergreen.Environment, taskOpts []TaskOptions, regexFilters []string) ([]TaskTestResultsFailedSample, error) {
+	servicesToTasks := groupTasksByService(taskOpts)
 
 	var allSamples []TaskTestResultsFailedSample
 	for service, tasks := range servicesToTasks {
@@ -208,12 +241,24 @@ func GetFailedTestSamples(ctx context.Context, env evergreen.Environment, taskOp
 	return allSamples, nil
 }
 
+func groupTasksByService(taskOpts []TaskOptions) map[string][]TaskOptions {
+	var servicesToTasks map[string][]TaskOptions
+	for _, task := range taskOpts {
+		if tasks, ok := servicesToTasks[task.ResultsService]; ok {
+			servicesToTasks[task.ResultsService] = append(tasks, task)
+		} else {
+			servicesToTasks[task.ResultsService] = []TaskOptions{task}
+		}
+	}
+
+	return servicesToTasks
+}
+
 // TaskOptions represents the task-level information required to fetch test
 // results from an Evergreen test run.
 type TaskOptions struct {
 	TaskID         string
 	Execution      int
-	DisplayTask    bool
 	ResultsService string
 }
 

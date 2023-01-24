@@ -91,7 +91,7 @@ type Task struct {
 	MustHaveResults   bool                `bson:"must_have_results,omitempty" json:"must_have_results,omitempty"`
 	HasResults        bool                `bson:"has_results" json:"has_results"`
 	ResultsFailed     bool                `bson:"results_failed" json:"results_failed"`
-	ResultsService    string              `bson:"test_results_service,omitempty" json:"test_results_service,omitempty"`
+	ResultsService    string              `bson:"results_service,omitempty" json:"results_service,omitempty"`
 	// only relevant if the task is running.  the time of the last heartbeat
 	// sent back by the agent
 	LastHeartbeat time.Time `bson:"last_heartbeat" json:"last_heartbeat"`
@@ -1415,22 +1415,25 @@ func (t *Task) SetStepbackDepth(stepbackDepth int) error {
 		})
 }
 
-// SetHasResults sets the HasResults field of the task to hasResults and, if
-// failedResults is true, sets the ResultsFailed to true. If the task is part
-// of a display task, the display tasks's fields are also set. An error is
-// returned if hasResults is false and failedResults is true as this is an
-// invalid state. Note that if failedResults is false, ResultsFailed is not
-// set. This is because in cases where separate calls to attach test results
-// are made, only one call needs to have a test failure for the ResultsFailed
-// field to be set to true.
-func (t *Task) SetHasResults(hasResults, failedResults bool) error {
-	if !hasResults && failedResults {
-		return errors.New("cannot set results as failed when task does not have results")
+func (t *Task) SetResultsService(env evergreen.Environment) error {
+	return nil
+}
+
+// SetHasResults sets the HasResults field of the task to true and, if
+// failedResults is true, sets the ResultsFailed to true. If the task is a
+// display task, this noops. Note that if failedResults is false, ResultsFailed
+// is not set. This is because in cases where multiple calls to attach test
+// results are made for a task, only one call needs to have a test failure for
+// the ResultsFailed field to be set to true.
+func (t *Task) SetHasResults(failedResults bool) error {
+	// TODO: Should this error instead of noop?
+	if t.DisplayOnly {
+		return nil
 	}
 
-	t.HasResults = hasResults
+	t.HasResults = true
 	set := bson.M{
-		HasResultsKey: hasResults,
+		HasResultsKey: true,
 	}
 	if failedResults {
 		t.ResultsFailed = true
@@ -1446,14 +1449,6 @@ func (t *Task) SetHasResults(hasResults, failedResults bool) error {
 		},
 	); err != nil {
 		return err
-	}
-
-	if !t.DisplayOnly && t.IsPartOfDisplay() {
-		displayTask, err := t.GetDisplayTask()
-		if err != nil {
-			return errors.Wrap(err, "getting display task")
-		}
-		return displayTask.SetHasResults(hasResults, failedResults)
 	}
 
 	return nil
@@ -1947,6 +1942,8 @@ func resetTaskUpdate(t *Task) bson.M {
 		t.LastHeartbeat = utility.ZeroTime
 		t.Details = apimodels.TaskEndDetail{}
 		t.HasResults = false
+		t.ResultsFailed = false
+		t.ResultsService = ""
 		t.ResetWhenFinished = false
 		t.ResetFailedWhenFinished = false
 		t.AgentVersion = ""
@@ -1974,6 +1971,7 @@ func resetTaskUpdate(t *Task) bson.M {
 			DetailsKey:                 "",
 			HasResultsKey:              "",
 			ResultsFailedKey:           "",
+			ResultsServiceKey:          "",
 			ResetWhenFinishedKey:       "",
 			ResetFailedWhenFinishedKey: "",
 			AgentVersionKey:            "",
@@ -2469,11 +2467,7 @@ func (t *Task) makeArchivedTask() *Task {
 // any test results the task may have. If the results are already populated,
 // this task noops.
 func (t *Task) PopulateTestResults() error {
-	if !evergreen.IsFinishedTaskStatus(t.Status) && t.Status != evergreen.TaskStarted {
-		// Task won't have test results.
-		return nil
-	}
-	if !t.HasResults || len(t.LocalTestResults) > 0 {
+	if len(t.LocalTestResults) > 0 {
 		return nil
 	}
 
@@ -2482,18 +2476,97 @@ func (t *Task) PopulateTestResults() error {
 	ctx, cancel := env.Context()
 	defer cancel()
 
-	taskTestResults, err := testresult.GetTaskTestResults(ctx, env, testresult.TaskOptions{
-		TaskID:         t.Id,
-		Execution:      t.Execution,
-		DisplayTask:    t.DisplayOnly,
-		ResultsService: t.ResultsService,
-	}, testresult.FilterOptions{})
+	taskTestResults, err := t.GetTestResults(ctx, env, testresult.FilterOptions{})
 	if err != nil {
 		return errors.Wrap(err, "populating test results")
 	}
 	t.LocalTestResults = taskTestResults.Results
 
 	return nil
+}
+
+func (t *Task) GetTestResults(ctx context.Context, env evergreen.Environment, filterOpts testresult.FilterOptions) (testresult.TaskTestResults, error) {
+	if t.DisplayOnly {
+		query := ByIds(t.ExecutionTasks)
+		query[HasResultsKey] = true
+		execTasksWithResults, err := FindWithFields(query, ExecutionKey, ResultsServiceKey)
+		if err != nil {
+			return testresult.TaskTestResults{}, errors.Wrap(err, "getting execution tasks for display task")
+		}
+
+		taskOpts := make([]testresult.TaskOptions, len(execTasksWithResults))
+		for i, execTask := range execTasksWithResults {
+			taskOpts[i].TaskID = execTask.Id
+			taskOpts[i].Execution = execTask.Execution
+			taskOpts[i].ResultsService = execTask.ResultsService
+		}
+		execTasksResults, err := testresult.GetTestResults(ctx, env, taskOpts, filterOpts)
+		if err != nil {
+			return testresult.TaskTestResults{}, errors.Wrap(err, "getting test results for execution tasks")
+		}
+
+		var mergedTaskResults testresult.TaskTestResults
+		for _, execTaskResults := range execTasksResults {
+			mergedTaskResults.Stats.TotalCount += execTaskResults.Stats.TotalCount
+			mergedTaskResults.Stats.FailedCount += execTaskResults.Stats.FailedCount
+			if mergedTaskResults.Stats.FilteredCount != nil {
+				mergedTaskResults.Stats.FilteredCount = utility.ToIntPtr(
+					utility.FromIntPtr(mergedTaskResults.Stats.FilteredCount) + utility.FromIntPtr(execTaskResults.Stats.FilteredCount),
+				)
+			}
+			mergedTaskResults.Results = append(mergedTaskResults.Results, execTaskResults.Results...)
+		}
+
+		return mergedTaskResults, nil
+	}
+
+	if !t.HasResults {
+		return testresult.TaskTestResults{}, nil
+	}
+	return testresult.GetTaskTestResults(ctx, env, testresult.TaskOptions{
+		TaskID:         t.Id,
+		Execution:      t.Execution,
+		ResultsService: t.ResultsService,
+	}, filterOpts)
+}
+
+func (t *Task) GetTestResultsStats(ctx context.Context, env evergreen.Environment) (testresult.TaskTestResultsStats, error) {
+	if t.DisplayOnly {
+		query := ByIds(t.ExecutionTasks)
+		query[HasResultsKey] = true
+		execTasksWithResults, err := FindWithFields(query, ExecutionKey, ResultsServiceKey)
+		if err != nil {
+			return testresult.TaskTestResultsStats{}, errors.Wrap(err, "getting execution tasks for display task")
+		}
+
+		taskOpts := make([]testresult.TaskOptions, len(execTasksWithResults))
+		for i, execTask := range execTasksWithResults {
+			taskOpts[i].TaskID = execTask.Id
+			taskOpts[i].Execution = execTask.Execution
+			taskOpts[i].ResultsService = execTask.ResultsService
+		}
+		execTasksStats, err := testresult.GetTestResultsStats(ctx, env, taskOpts)
+		if err != nil {
+			return testresult.TaskTestResultsStats{}, errors.Wrap(err, "getting test results stats for execution tasks")
+		}
+
+		var mergedStats testresult.TaskTestResultsStats
+		for _, execTaskStats := range execTasksStats {
+			mergedStats.TotalCount += execTaskStats.TotalCount
+			mergedStats.FailedCount += execTaskStats.FailedCount
+		}
+
+		return mergedStats, nil
+	}
+
+	if !t.HasResults {
+		return testresult.TaskTestResultsStats{}, nil
+	}
+	return testresult.GetTaskTestResultsStats(ctx, env, testresult.TaskOptions{
+		TaskID:         t.Id,
+		Execution:      t.Execution,
+		ResultsService: t.ResultsService,
+	})
 }
 
 // SetResetWhenFinished requests that a display task or single-host task group

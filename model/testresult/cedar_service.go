@@ -69,6 +69,14 @@ func (s *cedarService) GetTaskTestResultsStats(ctx context.Context, taskOpts Tas
 	return stats, nil
 }
 
+func (s *cedarService) GetTestResults(ctx context.Context, taskOpts []TaskOptions, filterOpts FilterOptions) ([]TaskTestResults, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (s *cedarService) GetTestResultsStats(ctx context.Context, taskOpts []TaskOptions) ([]TaskTestResultsStats, error) {
+	return nil, errors.New("not implemented")
+}
+
 func (s *cedarService) GetFailedTestSamples(ctx context.Context, taskOpts []TaskOptions, regexFilters []string) ([]TaskTestResultsFailedSample, error) {
 	opts := testresults.GetFailedSampleOptions{
 		Cedar: timber.GetOptions{
@@ -80,9 +88,8 @@ func (s *cedarService) GetFailedTestSamples(ctx context.Context, taskOpts []Task
 	}
 	for i, t := range taskOpts {
 		opts.SampleOptions.Tasks[i] = testresults.TaskInfo{
-			TaskID:      t.TaskID,
-			Execution:   t.Execution,
-			DisplayTask: t.DisplayTask,
+			TaskID:    t.TaskID,
+			Execution: t.Execution,
 		}
 	}
 
@@ -106,7 +113,6 @@ func (s *cedarService) convertFilterOpts(taskOpts TaskOptions, filterOpts Filter
 		},
 		TaskID:       taskOpts.TaskID,
 		Execution:    utility.ToIntPtr(taskOpts.Execution),
-		DisplayTask:  taskOpts.DisplayTask,
 		TestName:     filterOpts.TestName,
 		Statuses:     filterOpts.Statuses,
 		GroupID:      filterOpts.GroupID,

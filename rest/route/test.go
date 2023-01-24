@@ -116,15 +116,9 @@ func (tgh *testGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
-	results, err := testresult.GetTaskTestResults(
+	results, err := tgh.task.GetTestResults(
 		ctx,
 		tgh.env,
-		testresult.TaskOptions{
-			TaskID:         tgh.task.Id,
-			Execution:      tgh.task.Execution,
-			DisplayTask:    tgh.task.DisplayOnly,
-			ResultsService: tgh.task.ResultsService,
-		},
 		testresult.FilterOptions{
 			TestName: tgh.testName,
 			Statuses: tgh.testStatus,

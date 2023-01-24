@@ -15,6 +15,15 @@ const (
 
 const defaultService = TestResultsServiceCedar
 
+func ValidateService(service string) error {
+	switch service {
+	case TestResultsServiceInMem, TestResultsServiceCedar:
+		return nil
+	default:
+		return errors.Errorf("unsupported test results service '%s'", service)
+	}
+}
+
 var serviceRegistry = map[string]testResultsServiceFactory{
 	TestResultsServiceCedar: NewCedarTestResultsService,
 }
@@ -24,6 +33,8 @@ type testResultsServiceFactory func(evergreen.Environment) testResultsService
 type testResultsService interface {
 	GetTaskTestResults(context.Context, TaskOptions, FilterOptions) (TaskTestResults, error)
 	GetTaskTestResultsStats(context.Context, TaskOptions) (TaskTestResultsStats, error)
+	GetTestResults(context.Context, []TaskOptions, FilterOptions) ([]TaskTestResults, error)
+	GetTestResultsStats(context.Context, []TaskOptions) ([]TaskTestResultsStats, error)
 	GetFailedTestSamples(context.Context, []TaskOptions, []string) ([]TaskTestResultsFailedSample, error)
 }
 

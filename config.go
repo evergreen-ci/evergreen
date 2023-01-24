@@ -103,6 +103,7 @@ type Settings struct {
 	SSHKeyPairs         []SSHKeyPair            `yaml:"ssh_key_pairs" bson:"ssh_key_pairs" json:"ssh_key_pairs"`
 	Slack               SlackConfig             `yaml:"slack" bson:"slack" json:"slack" id:"slack"`
 	Splunk              SplunkConfig            `yaml:"splunk" bson:"splunk" json:"splunk" id:"splunk"`
+	TestResultsService  string                  `yaml:"test_results_service" bson:"test_results_service" json:"test_results_service"`
 	Triggers            TriggerConfig           `yaml:"triggers" bson:"triggers" json:"triggers" id:"triggers"`
 	Ui                  UIConfig                `yaml:"ui" bson:"ui" json:"ui" id:"ui"`
 	Spawnhost           SpawnHostConfig         `yaml:"spawnhost" bson:"spawnhost" json:"spawnhost" id:"spawnhost"`
@@ -168,6 +169,7 @@ func (c *Settings) Set() error {
 			sshKeyPairsKey:        c.SSHKeyPairs,
 			spawnhostKey:          c.Spawnhost,
 			shutdownWaitKey:       c.ShutdownWaitSeconds,
+			testResultsServiceKey: c.TestResultsService,
 		},
 	}, options.Update().SetUpsert(true))
 
@@ -183,6 +185,7 @@ func (c *Settings) ValidateAndDefault() error {
 	if c.ConfigDir == "" {
 		catcher.Add(errors.New("config directory must not be empty"))
 	}
+
 	if len(c.CredentialsNew) > 0 {
 		if c.Credentials, err = c.CredentialsNew.Map(); err != nil {
 			catcher.Add(errors.Wrap(err, "parsing credentials"))

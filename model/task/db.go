@@ -96,6 +96,7 @@ var (
 	HasLegacyResultsKey            = bsonutil.MustHaveTag(Task{}, "HasLegacyResults")
 	HasResultsKey                  = bsonutil.MustHaveTag(Task{}, "HasResults")
 	ResultsFailedKey               = bsonutil.MustHaveTag(Task{}, "ResultsFailed")
+	ResultsServiceKey              = bsonutil.MustHaveTag(Task{}, "ResultsService")
 	IsGithubCheckKey               = bsonutil.MustHaveTag(Task{}, "IsGithubCheck")
 	HostCreateDetailsKey           = bsonutil.MustHaveTag(Task{}, "HostCreateDetails")
 

@@ -326,7 +326,7 @@ func (rh *taskSetHasResultsHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	if err = t.SetHasResults(true, rh.info.Failed); err != nil {
+	if err = t.SetHasResults(rh.info.Failed); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting HasResults flag for task '%s'", rh.taskID))
 	}
 	return gimlet.NewTextResponse("HasResults flag set in task")
