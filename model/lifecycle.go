@@ -426,18 +426,11 @@ func restartTasks(allFinishedTasks []task.Task, caller, versionId string) error 
 		}
 	}
 
-	buildIdsMap := map[string]bool{}
-	var buildIds []string
-	for _, t := range allFinishedTasks {
-		buildIdsMap[t.BuildId] = true
-	}
-	for buildId := range buildIdsMap {
-		buildIds = append(buildIds, buildId)
-	}
 	if err := build.SetBuildStartedForTasks(allFinishedTasks, caller); err != nil {
 		return errors.Wrap(err, "setting builds started")
 	}
-	return errors.Wrap(UpdateVersionAndPatchStatusForBuilds(buildIds), "updating version status")
+
+	return errors.Wrap(setVersionStatus(versionId, evergreen.VersionStarted), "changing version status")
 }
 
 // RestartVersions restarts selected tasks for a set of versions.
