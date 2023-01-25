@@ -876,6 +876,10 @@ buildvariants:
 func TestSchedulePatchActivatesInactiveTasks(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
 	generatedProject := []string{`
 {
   "buildvariants": [
@@ -1077,7 +1081,7 @@ tasks:
 	}
 	require.NoError(t, unfinalized.Insert())
 	// schedule patch with task generator for the first run
-	handler := makeSchedulePatchHandler().(*schedulePatchHandler)
+	handler := makeSchedulePatchHandler(env).(*schedulePatchHandler)
 	description := "some text"
 	body := patchTasks{
 		Description: description,
@@ -1109,7 +1113,7 @@ tasks:
 
 	// now re-configure with tasks that have already been generated but are inactive
 	// this task has two dependencies which should also be activated
-	handler = makeSchedulePatchHandler().(*schedulePatchHandler)
+	handler = makeSchedulePatchHandler(env).(*schedulePatchHandler)
 	body = patchTasks{
 		Variants: []variant{{Id: "testBV4", Tasks: []string{"dependencyTask"}}},
 	}
