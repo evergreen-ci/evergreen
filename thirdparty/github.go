@@ -894,7 +894,10 @@ func GetGithubPullRequestReviews(ctx context.Context, token, owner, repo string,
 
 	client := github.NewClient(httpClient)
 
-	reviews, _, err := client.PullRequests.ListReviews(ctx, owner, repo, prNumber, nil)
+	opts := &github.ListOptions{
+		PerPage: 100,
+	}
+	reviews, _, err := client.PullRequests.ListReviews(ctx, owner, repo, prNumber, opts)
 	if err != nil {
 		return nil, err
 	}
