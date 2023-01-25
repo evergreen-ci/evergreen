@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -59,16 +60,23 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 			return err
 		}
 	}
-	if projectRef.Id != "" {
-		if err := VerifyUniqueProject(projectRef.Id); err != nil {
-			return err
+	if projectRef.Id == "" {
+		if projectRef.Id == "" {
+			projectRef.Id = mgobson.NewObjectId().Hex()
 		}
+	}
+	if err := VerifyUniqueProject(projectRef.Id); err != nil {
+		return err
+	}
+	err, _ := model.ValidateProjectCreation(projectRef.Id, env.Settings(), projectRef)
+	if err != nil {
+		return err
 	}
 
 	existingContainerSecrets := projectRef.ContainerSecrets
 	projectRef.ContainerSecrets = nil
 
-	_, err := model.EnableWebhooks(ctx, projectRef)
+	_, err = model.EnableWebhooks(ctx, projectRef)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"message":            "error enabling webhooks",
