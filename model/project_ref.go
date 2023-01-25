@@ -2244,6 +2244,7 @@ func (p *ProjectRef) GetGithubProjectConflicts() (GithubProjectConflicts, error)
 
 // ValidateProjectCreation returns an error if the total or owner/repo project limit set by the admin settings
 // has been reached. If the project is not enabled, it will grip a warning but not error.
+// The boolean returns true if you should error. Otherwise, warn.
 func ValidateProjectCreation(projectId string, config *evergreen.Settings, projectRef *ProjectRef) (error, bool) {
 	shouldError := false
 	pRef, err := findOneProjectRefQ(byId(projectId))
