@@ -1911,7 +1911,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			setUpdate[ProjectRefRepoKey] = p.Repo
 
 			// Cannot enable projects if the project creation limits have been reached.
-			err = ValidateProjectCreation(config, p)
+			err, _ = ValidateProjectCreation(projectId, config, p)
 			if err != nil {
 				return false, errors.Wrap(err, "validating project creation")
 			}
@@ -2244,36 +2244,49 @@ func (p *ProjectRef) GetGithubProjectConflicts() (GithubProjectConflicts, error)
 
 // ValidateProjectCreation returns an error if the total or owner/repo project limit set by the admin settings
 // has been reached. If the project is not enabled, it will grip a warning but not error.
-func ValidateProjectCreation(config *evergreen.Settings, projectRef *ProjectRef) error {
+func ValidateProjectCreation(projectId string, config *evergreen.Settings, projectRef *ProjectRef) (error, bool) {
+	shouldError := false
+	pRef, err := findOneProjectRefQ(byId(projectId))
+	if err != nil {
+		return errors.Wrapf(err, "getting project '%s", projectId), true
+	}
+	newProject := pRef == nil
+	if pRef != nil {
+		// Defaulting to repo
+		if projectRef == nil {
+			mergedProject, err := GetProjectRefMergedWithRepo(*pRef)
+			if err != nil {
+				return errors.Wrapf(err, "getting merged project for '%s'", projectId), true
+			}
+			shouldError = !pRef.IsEnabled() && !mergedProject.IsEnabled()
+		} else {
+			shouldError = !pRef.IsEnabled() && projectRef.IsEnabled()
+		}
+	}
 	catcher := grip.NewBasicCatcher()
 	allEnabledProjects, err := GetNumberOfEnabledProjects()
 	if err != nil {
-		return errors.Wrap(err, "getting number of projects")
+		return errors.Wrap(err, "getting number of projects"), true
 	}
-	if allEnabledProjects >= config.ProjectCreation.TotalProjectLimit {
+	if newProject {
+		allEnabledProjects++
+	}
+	if allEnabledProjects > config.ProjectCreation.TotalProjectLimit {
 		catcher.Errorf("total project limit of %d reached", config.ProjectCreation.TotalProjectLimit)
 	}
 	if !config.ProjectCreation.IsExceptionToRepoLimit(projectRef.Owner, projectRef.Repo) {
 		enabledOwnerRepoProjects, err := GetNumberOfEnabledProjectsForOwnerRepo(projectRef.Owner, projectRef.Repo)
 		if err != nil {
-			return errors.Wrapf(err, "getting number of projects for '%s/%s'", projectRef.Owner, projectRef.Repo)
+			return errors.Wrapf(err, "getting number of projects for '%s/%s'", projectRef.Owner, projectRef.Repo), true
 		}
-		if enabledOwnerRepoProjects >= config.ProjectCreation.RepoProjectLimit {
+		if newProject {
+			enabledOwnerRepoProjects++
+		}
+		if enabledOwnerRepoProjects > config.ProjectCreation.RepoProjectLimit {
 			catcher.Errorf("owner repo limit of %d reached for '%s/%s'", config.ProjectCreation.RepoProjectLimit, projectRef.Owner, projectRef.Repo)
 		}
 	}
-
-	// If the project is not enabled, warn the user while still allowing project creation.
-	if !utility.FromBoolPtr(projectRef.Enabled) && catcher.HasErrors() {
-		grip.Warning(message.WrapError(catcher.Resolve(), message.Fields{
-			"message":            "enable project limit reached",
-			"project_identifier": projectRef.Identifier,
-			"Owner":              projectRef.Owner,
-			"Repo":               projectRef.Repo,
-		}))
-		return nil
-	}
-	return catcher.Resolve()
+	return catcher.Resolve(), shouldError
 }
 
 func (p *ProjectRef) ValidateOwnerAndRepo(validOrgs []string) error {

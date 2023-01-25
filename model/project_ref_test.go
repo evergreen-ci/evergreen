@@ -209,7 +209,7 @@ func TestGetNumberOfEnabledProjects(t *testing.T) {
 }
 
 func TestValidateProjectCreation(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(ProjectRefCollection))
+	assert.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection))
 	enabled1 := &ProjectRef{
 		Id:      "enabled1",
 		Owner:   "mongodb",
@@ -231,9 +231,37 @@ func TestValidateProjectCreation(t *testing.T) {
 		Enabled: utility.FalsePtr(),
 	}
 	assert.NoError(t, disabled1.Insert())
+	enabledByRepo := &ProjectRef{
+		Id:        "enabledByRepo",
+		Owner:     "enable_mongodb",
+		Repo:      "enable_mci",
+		RepoRefId: "enable_repo",
+	}
+	assert.NoError(t, enabledByRepo.Insert())
+	enableRef := &RepoRef{ProjectRef{
+		Id:      "enable_repo",
+		Owner:   "enable_mongodb",
+		Repo:    "enable_mci",
+		Enabled: utility.TruePtr(),
+	}}
+	assert.NoError(t, enableRef.Upsert())
+	disabledByRepo := &ProjectRef{
+		Id:        "disabledByRepo",
+		Owner:     "disable_mongodb",
+		Repo:      "disable_mci",
+		RepoRefId: "disable_repo",
+	}
+	assert.NoError(t, disabledByRepo.Insert())
+	disableRepo := &RepoRef{ProjectRef{
+		Id:      "disable_repo",
+		Owner:   "disable_mongodb",
+		Repo:    "disable_mci",
+		Enabled: utility.FalsePtr(),
+	}}
+	assert.NoError(t, disableRepo.Upsert())
 
 	var settings evergreen.Settings
-	settings.ProjectCreation.TotalProjectLimit = 3
+	settings.ProjectCreation.TotalProjectLimit = 5
 	settings.ProjectCreation.RepoProjectLimit = 1
 	settings.ProjectCreation.RepoExceptions = []evergreen.OwnerRepo{
 		{
@@ -241,24 +269,37 @@ func TestValidateProjectCreation(t *testing.T) {
 			Repo:  "repo_exception",
 		},
 	}
+
+	// Should not error if owner/repo is part of exception.
 	exception := &ProjectRef{
 		Id:      "exception",
 		Owner:   "owner_exception",
 		Repo:    "repo_exception",
 		Enabled: utility.TruePtr(),
 	}
-	assert.NoError(t, ValidateProjectCreation(&settings, exception))
+	err, _ := ValidateProjectCreation(enabled1.Id, &settings, exception)
+	assert.NoError(t, err)
 
+	// Should error if owner/repo is not part of exception.
 	notException := &ProjectRef{
 		Id:      "not_exception",
 		Owner:   "mongodb",
 		Repo:    "mci",
 		Enabled: utility.TruePtr(),
 	}
-	assert.Error(t, ValidateProjectCreation(&settings, notException))
+	err, _ = ValidateProjectCreation(notException.Id, &settings, notException)
+	assert.Error(t, err)
 
+	// Should not error if a repo defaulted project is enabled.
+	disabledByRepo.Enabled = utility.TruePtr()
+	assert.NoError(t, disabledByRepo.Upsert())
+	err, _ = ValidateProjectCreation(disabledByRepo.Id, &settings, disabledByRepo)
+	assert.NoError(t, err)
+
+	// Total project limit cannot be exceeded. Even with the exception.
 	settings.ProjectCreation.TotalProjectLimit = 2
-	assert.Error(t, ValidateProjectCreation(&settings, exception))
+	err, _ = ValidateProjectCreation(enabled1.Id, &settings, exception)
+	assert.Error(t, err)
 }
 
 func TestGetBatchTimeDoesNotExceedMaxBatchTime(t *testing.T) {

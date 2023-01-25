@@ -54,7 +54,7 @@ func FindProjectById(id string, includeRepo bool, includeProjectConfig bool) (*m
 // and creating new webhooks. If the given project ref already has container
 // secrets, the new project ref receives copies of the existing ones.
 func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *model.ProjectRef, u *user.DBUser) error {
-	config, err := evergreen.GetConfig()
+	_, err := evergreen.GetConfig()
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -62,13 +62,13 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 		}
 	}
 
-	err = model.ValidateProjectCreation(config, projectRef)
-	if err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "validating project creation").Error(),
-		}
-	}
+	// err = model.ValidateProjectCreation(config, projectRef)
+	// if err != nil {
+	// 	return gimlet.ErrorResponse{
+	// 		StatusCode: http.StatusInternalServerError,
+	// 		Message:    errors.Wrapf(err, "validating project creation").Error(),
+	// 	}
+	// }
 
 	if projectRef.Identifier != "" {
 		if err := VerifyUniqueProject(projectRef.Identifier); err != nil {
