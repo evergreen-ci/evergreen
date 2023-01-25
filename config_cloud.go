@@ -1,11 +1,20 @@
 package evergreen
 
 import (
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+)
+
+var (
+	cloudProvidersAWSKey       = bsonutil.MustHaveTag(CloudProviders{}, "AWS")
+	cloudProvidersDockerKey    = bsonutil.MustHaveTag(CloudProviders{}, "Docker")
+	cloudProvidersGCEKey       = bsonutil.MustHaveTag(CloudProviders{}, "GCE")
+	cloudProvidersOpenStackKey = bsonutil.MustHaveTag(CloudProviders{}, "OpenStack")
+	cloudProvidersVSphereKey   = bsonutil.MustHaveTag(CloudProviders{}, "VSphere")
 )
 
 // CloudProviders stores configuration settings for the supported cloud host providers.
@@ -48,11 +57,11 @@ func (c *CloudProviders) Set() error {
 
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			"aws":       c.AWS,
-			"docker":    c.Docker,
-			"gce":       c.GCE,
-			"openstack": c.OpenStack,
-			"vsphere":   c.VSphere,
+			cloudProvidersAWSKey:       c.AWS,
+			cloudProvidersDockerKey:    c.Docker,
+			cloudProvidersGCEKey:       c.GCE,
+			cloudProvidersOpenStackKey: c.OpenStack,
+			cloudProvidersVSphereKey:   c.VSphere,
 		},
 	}, options.Update().SetUpsert(true))
 
@@ -89,6 +98,10 @@ type AWSConfig struct {
 	TaskSync S3Credentials `bson:"task_sync" json:"task_sync" yaml:"task_sync"`
 	// TaskSyncRead stores credentials for reading task data in S3.
 	TaskSyncRead S3Credentials `bson:"task_sync_read" json:"task_sync_read" yaml:"task_sync_read"`
+
+	// ParserProjectS3Bucket is the name of the S3 bucket used to store parser
+	// projects for versions.
+	ParserProjectS3Bucket string `bson:"parser_project_s3_bucket" json:"parser_project_s3_bucket" yaml:"parser_project_s3_bucket"`
 
 	DefaultSecurityGroup string `bson:"default_security_group" json:"default_security_group" yaml:"default_security_group"`
 
