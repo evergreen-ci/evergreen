@@ -200,12 +200,12 @@ func TestGetNumberOfEnabledProjects(t *testing.T) {
 	}}
 	assert.NoError(t, disableRepo.Upsert())
 
-	numProjects, err := GetNumberOfEnabledProjects()
+	enabledProjects, err := GetEnabledProjects()
 	assert.NoError(t, err)
-	assert.Equal(t, 3, numProjects)
-	numProjectsOwnerRepo, err := GetNumberOfEnabledProjectsForOwnerRepo(enabled2.Owner, enabled2.Repo)
+	assert.Equal(t, 3, len(enabledProjects))
+	enabledProjectsOwnerRepo, err := GetEnabledProjectsForOwnerRepo(enabled2.Owner, enabled2.Repo)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, numProjectsOwnerRepo)
+	assert.Equal(t, 2, len(enabledProjectsOwnerRepo))
 }
 
 func TestValidateProjectCreation(t *testing.T) {
@@ -261,7 +261,7 @@ func TestValidateProjectCreation(t *testing.T) {
 	assert.NoError(t, disableRepo.Upsert())
 
 	var settings evergreen.Settings
-	settings.ProjectCreation.TotalProjectLimit = 5
+	settings.ProjectCreation.TotalProjectLimit = 4
 	settings.ProjectCreation.RepoProjectLimit = 1
 	settings.ProjectCreation.RepoExceptions = []evergreen.OwnerRepo{
 		{
@@ -270,6 +270,12 @@ func TestValidateProjectCreation(t *testing.T) {
 		},
 	}
 
+	// Should error when trying to enable an existing project past limits.
+	disabled1.Enabled = utility.TruePtr()
+	err, shouldError := ValidateProjectCreation(disabled1.Id, &settings, disabled1)
+	assert.Error(t, err)
+	assert.True(t, shouldError)
+
 	// Should not error if owner/repo is part of exception.
 	exception := &ProjectRef{
 		Id:      "exception",
@@ -277,7 +283,7 @@ func TestValidateProjectCreation(t *testing.T) {
 		Repo:    "repo_exception",
 		Enabled: utility.TruePtr(),
 	}
-	err, _ := ValidateProjectCreation(enabled1.Id, &settings, exception)
+	err, _ = ValidateProjectCreation(enabled1.Id, &settings, exception)
 	assert.NoError(t, err)
 
 	// Should error if owner/repo is not part of exception.
@@ -287,8 +293,9 @@ func TestValidateProjectCreation(t *testing.T) {
 		Repo:    "mci",
 		Enabled: utility.TruePtr(),
 	}
-	err, _ = ValidateProjectCreation(notException.Id, &settings, notException)
+	err, shouldError = ValidateProjectCreation(notException.Id, &settings, notException)
 	assert.Error(t, err)
+	assert.False(t, shouldError)
 
 	// Should not error if a repo defaulted project is enabled.
 	disabledByRepo.Enabled = utility.TruePtr()
@@ -298,8 +305,9 @@ func TestValidateProjectCreation(t *testing.T) {
 
 	// Total project limit cannot be exceeded. Even with the exception.
 	settings.ProjectCreation.TotalProjectLimit = 2
-	err, _ = ValidateProjectCreation(enabled1.Id, &settings, exception)
+	err, shouldError = ValidateProjectCreation(exception.Id, &settings, exception)
 	assert.Error(t, err)
+	assert.False(t, shouldError)
 }
 
 func TestGetBatchTimeDoesNotExceedMaxBatchTime(t *testing.T) {
