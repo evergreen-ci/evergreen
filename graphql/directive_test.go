@@ -22,11 +22,6 @@ func setupPermissions(t *testing.T) {
 	ctx := context.Background()
 	require.NoError(t, env.DB().Drop(ctx))
 
-	// TODO (EVG-15499): Create scope and role collection because the
-	// RoleManager will try inserting in a transaction, which is not allowed for
-	// FCV < 4.4.
-	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection, evergreen.RoleCollection))
-
 	roleManager := env.RoleManager()
 
 	roles, err := roleManager.GetAllRoles()
