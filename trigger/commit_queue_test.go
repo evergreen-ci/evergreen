@@ -1,6 +1,9 @@
 package trigger
 
 import (
+	"strings"
+	"testing"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
@@ -10,8 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/suite"
-	"strings"
-	"testing"
 )
 
 func init() { testutil.Setup() }
