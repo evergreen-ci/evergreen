@@ -91,8 +91,12 @@ func (c *tarballCreate) Execute(ctx context.Context,
 	filesArchived := -1
 	go func() {
 		defer func() {
-			errChan <- recovery.HandlePanicWithError(recover(), nil,
-				"making archive")
+			select {
+			case errChan <- recovery.HandlePanicWithError(recover(), nil, "making archive"):
+				return
+			case <-ctx.Done():
+				return
+			}
 		}()
 		var err error
 		filesArchived, err = c.makeArchive(ctx, logger.Execution())
