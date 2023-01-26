@@ -89,7 +89,16 @@ some more lines
 	assert.Len(data.Modules, 1)
 	assert.Equal(utility.ToStringPtr("module1"), data.Modules[0].Module)
 	assert.Equal(utility.ToStringPtr("1234"), data.Modules[0].Issue)
-	assert.Equal(`this is my commit message
-some more lines
-    extra whitespace  `, data.MessageOverride)
+	assert.Equal("this is my commit message some more lines extra whitespace", data.MessageOverride)
+
+	comment = `evergreen merge --unknown-option blah_blah --module module1:1234 
+This is a very long string that needs to be wrapped around 72 characters for readability.
+Here is another shorter line.
+											Whitespace over here.`
+	data = ParseGitHubComment(comment)
+	assert.Len(data.Modules, 1)
+	assert.Equal(utility.ToStringPtr("module1"), data.Modules[0].Module)
+	assert.Equal(utility.ToStringPtr("1234"), data.Modules[0].Issue)
+	assert.Equal(`This is a very long string that needs to be wrapped around 72 characters
+for readability. Here is another shorter line. Whitespace over here.`, data.MessageOverride)
 }
