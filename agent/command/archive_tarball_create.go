@@ -96,7 +96,13 @@ func (c *tarballCreate) Execute(ctx context.Context,
 		}()
 		var err error
 		filesArchived, err = c.makeArchive(ctx, logger.Execution())
-		errChan <- errors.WithStack(err)
+		select {
+		case errChan <- errors.WithStack(err):
+			return
+		case <-ctx.Done():
+			logger.Task().Infof("Context canceled waiting for archive creation: %s.", ctx.Err())
+			return
+		}
 	}()
 
 	select {

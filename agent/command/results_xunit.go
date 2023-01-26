@@ -71,7 +71,14 @@ func (c *xunitResults) Execute(ctx context.Context,
 
 	errChan := make(chan error)
 	go func() {
-		errChan <- c.parseAndUploadResults(ctx, conf, logger, comm)
+		err := c.parseAndUploadResults(ctx, conf, logger, comm)
+		select {
+		case errChan <- err:
+			return
+		case <-ctx.Done():
+			logger.Task().Infof("Context canceled waiting to parse and upload results: %s.", ctx.Err())
+			return
+		}
 	}()
 
 	select {
