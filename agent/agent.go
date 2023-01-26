@@ -489,8 +489,8 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 
 	innerCtx, innerCancel := context.WithCancel(tskCtx)
 
-	// Pass in idle timeout context(innerCtx) to heartbeat to enforce the idle timeout.
-	// Pass in task cancel context to heartbeat because it's responsible for aborting the task.
+	// Pass in idle timeout context to heartbeat to enforce the idle timeout.
+	// Pass in the task context canceller to heartbeat because it's responsible for aborting the task.
 	heartbeat := make(chan string, 1)
 	go a.startHeartbeat(innerCtx, tskCancel, tc, heartbeat)
 	go a.startIdleTimeoutWatch(tskCtx, tc, innerCancel)
