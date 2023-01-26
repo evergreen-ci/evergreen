@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
@@ -174,6 +175,13 @@ func (sns *ec2SNS) handleNotification(ctx context.Context) error {
 		}
 	case instanceStateChangeType:
 		switch notification.Detail.State {
+		case ec2.InstanceStateNameRunning:
+			if err := sns.handleInstanceRunning(ctx, notification.Detail.InstanceID); err != nil {
+				return gimlet.ErrorResponse{
+					StatusCode: http.StatusInternalServerError,
+					Message:    errors.Wrap(err, "processing running instance").Error(),
+				}
+			}
 		case ec2.InstanceStateNameTerminated:
 			if err := sns.handleInstanceTerminated(ctx, notification.Detail.InstanceID); err != nil {
 				return gimlet.ErrorResponse{
@@ -263,6 +271,25 @@ func (sns *ec2SNS) handleInstanceTerminated(ctx context.Context, instanceID stri
 	if err := amboy.EnqueueUniqueJob(ctx, sns.queue, units.NewHostMonitorExternalStateJob(sns.env, h, sns.payload.MessageId)); err != nil {
 		return errors.Wrap(err, "enqueueing host external state check job")
 	}
+
+	return nil
+}
+
+func (sns *ec2SNS) handleInstanceRunning(ctx context.Context, instanceID string) error {
+	h, err := host.FindOneId(instanceID)
+	if err != nil {
+		return err
+	}
+	if h == nil {
+		return nil
+	}
+
+	runningTime, err := time.Parse(time.RFC3339, sns.payload.Timestamp)
+	if err != nil {
+		runningTime = time.Now()
+	}
+
+	h.SetBillingStartTime(runningTime)
 
 	return nil
 }

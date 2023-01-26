@@ -85,6 +85,8 @@ type Host struct {
 	// creation is when the host document was inserted to the DB, start is when it was started on the cloud provider
 	CreationTime time.Time `bson:"creation_time" json:"creation_time"`
 	StartTime    time.Time `bson:"start_time" json:"start_time"`
+	// BillingStartTime is when billing started for the host.
+	BillingStartTime time.Time `bson:"billing_start_time" json:"billing_start_time"`
 	// AgentStartTime is when the agent first initiates contact with the app
 	// server.
 	AgentStartTime  time.Time `bson:"agent_start_time" json:"agent_start_time"`
@@ -704,6 +706,17 @@ func (h *Host) CreateSecret() error {
 		return err
 	}
 	h.Secret = secret
+	return nil
+}
+
+func (h *Host) SetBillingStartTime(startTime time.Time) error {
+	if err := UpdateOne(
+		bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{BillingStartTimeKey: startTime}},
+	); err != nil {
+		return errors.Wrap(err, "setting billing start time")
+	}
+	h.BillingStartTime = startTime
 	return nil
 }
 

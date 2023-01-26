@@ -77,6 +77,7 @@ var (
 	ProvisionOptionsKey                = bsonutil.MustHaveTag(Host{}, "ProvisionOptions")
 	TaskCountKey                       = bsonutil.MustHaveTag(Host{}, "TaskCount")
 	StartTimeKey                       = bsonutil.MustHaveTag(Host{}, "StartTime")
+	BillingStartTimeKey                = bsonutil.MustHaveTag(Host{}, "BillingStartTime")
 	AgentStartTimeKey                  = bsonutil.MustHaveTag(Host{}, "AgentStartTime")
 	TotalIdleTimeKey                   = bsonutil.MustHaveTag(Host{}, "TotalIdleTime")
 	HasContainersKey                   = bsonutil.MustHaveTag(Host{}, "HasContainers")
