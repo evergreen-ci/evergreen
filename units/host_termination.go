@@ -285,7 +285,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 
 	j.AddError(j.incrementIdleTime(ctx))
 
-	grip.Info(message.Fields{
+	terminationMessage := message.Fields{
 		"message":           "host successfully terminated",
 		"host_id":           j.host.Id,
 		"distro":            j.host.Distro.Id,
@@ -295,7 +295,13 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		"total_uptime_secs": j.host.TerminationTime.Sub(j.host.CreationTime).Seconds(),
 		"termination_time":  j.host.TerminationTime,
 		"creation_time":     j.host.CreationTime,
-	})
+	}
+	if !utility.IsZeroTime(j.host.BillingStartTime) {
+		terminationMessage["total_billable_secs"] = j.host.TerminationTime.Sub(j.host.BillingStartTime).Seconds()
+	} else {
+		terminationMessage["total_billable_secs"] = j.host.TerminationTime.Sub(j.host.StartTime).Seconds()
+	}
+	grip.Info(terminationMessage)
 
 	if utility.StringSliceContains(evergreen.ProvisioningHostStatus, prevStatus) && j.host.TaskCount == 0 {
 		event.LogHostProvisionFailed(j.HostID, fmt.Sprintf("terminating host in status '%s'", prevStatus))
@@ -320,6 +326,16 @@ func (j *hostTerminationJob) incrementIdleTime(ctx context.Context) error {
 
 	idleTimeStartsAt := j.host.LastTaskCompletedTime
 	if utility.IsZeroTime(idleTimeStartsAt) {
+		idleTimeStartsAt = j.host.BillingStartTime
+	}
+	if utility.IsZeroTime(idleTimeStartsAt) {
+		grip.Debug(message.Fields{
+			"message":   "zero billing start time",
+			"operation": "host_termination",
+			"distro":    j.host.Distro.Id,
+			"host_id":   j.host.Id,
+			"host_tag":  j.host.Tag,
+		})
 		idleTimeStartsAt = j.host.StartTime
 	}
 

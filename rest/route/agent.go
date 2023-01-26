@@ -996,7 +996,17 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 
 		idleTimeStartAt := host.LastTaskCompletedTime
-		if idleTimeStartAt.IsZero() || idleTimeStartAt == utility.ZeroTime {
+		if utility.IsZeroTime(idleTimeStartAt) {
+			idleTimeStartAt = host.BillingStartTime
+		}
+		if utility.IsZeroTime(idleTimeStartAt) {
+			grip.Debug(message.Fields{
+				"message":   "zero billing start time",
+				"operation": "startTask",
+				"distro":    host.Distro.Id,
+				"host_id":   host.Id,
+				"host_tag":  host.Tag,
+			})
 			idleTimeStartAt = host.StartTime
 		}
 
