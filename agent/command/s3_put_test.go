@@ -285,7 +285,7 @@ func TestExpandS3PutParams(t *testing.T) {
 			cmd = &s3put{}
 
 			for _, v := range []string{"", "false", "False", "0", "F", "f", "${foo|false}", "${foo|}", "${foo}"} {
-				cmd.skipMissing = true
+				cmd.SkipExisting = "true"
 				cmd.Optional = v
 				So(cmd.expandParams(conf), ShouldBeNil)
 				So(cmd.skipMissing, ShouldBeFalse)
