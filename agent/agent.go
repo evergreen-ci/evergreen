@@ -487,11 +487,12 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 	defer a.killProcs(ctx, tc, false)
 	defer tskCancel()
 
-	heartbeat := make(chan string, 1)
-	go a.startHeartbeat(tskCtx, tskCancel, tc, heartbeat)
-
 	innerCtx, innerCancel := context.WithCancel(tskCtx)
 
+	// Pass in idle timeout context to heartbeat to enforce the idle timeout.
+	// Pass in the task context canceller to heartbeat because it's responsible for aborting the task.
+	heartbeat := make(chan string, 1)
+	go a.startHeartbeat(innerCtx, tskCancel, tc, heartbeat)
 	go a.startIdleTimeoutWatch(tskCtx, tc, innerCancel)
 	if utility.StringSliceContains(evergreen.ProviderSpotEc2Type, a.opts.CloudProvider) {
 		exitAgent := func() {
