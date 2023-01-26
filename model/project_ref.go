@@ -1906,9 +1906,12 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			setUpdate[ProjectRefRepoKey] = p.Repo
 
 			// Cannot enable projects if the project creation limits have been reached.
-			err, _ = ValidateProjectCreation(projectId, config, p)
+			err, shouldError := ValidateProjectCreation(projectId, config, p)
 			if err != nil {
-				return false, errors.Wrap(err, "validating project creation")
+				if shouldError {
+					return false, errors.Wrap(err, "validating project creation")
+				}
+				// TODO EVG-18784: Return graphql warning
 			}
 		}
 		// some fields shouldn't be set to nil when defaulting to the repo
