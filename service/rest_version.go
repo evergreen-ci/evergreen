@@ -291,18 +291,12 @@ func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusOK)
 
 	settings := restapi.GetSettings()
-	ppStorage, err := model.GetParserProjectStorage(&settings, projCtx.Version.ProjectStorageMethod)
-	if err != nil {
-		gimlet.WriteJSONInternalError(w, errors.Wrap(err, "getting parser project storage"))
-		return
-	}
-	defer ppStorage.Close(r.Context())
-	var config []byte
-	pp, err := ppStorage.FindOneByID(r.Context(), projCtx.Version.Id)
+	pp, err := model.ParserProjectFindOneByID(r.Context(), &settings, projCtx.Version.ProjectStorageMethod, projCtx.Version.Id)
 	if err != nil {
 		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem finding parser project"})
 		return
 	}
+	var config []byte
 	config, err = yaml.Marshal(pp)
 	if err != nil {
 		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem marshalling project"})
@@ -326,19 +320,14 @@ func (restapi restAPI) getVersionProject(w http.ResponseWriter, r *http.Request)
 	}
 
 	env := evergreen.GetEnvironment()
-	ppStorage, err := model.GetParserProjectStorage(env.Settings(), projCtx.Version.ProjectStorageMethod)
-	if err != nil {
-		gimlet.WriteJSONInternalError(w, errors.Wrap(err, "getting parser project storage"))
-		return
-	}
-	defer ppStorage.Close(r.Context())
-	pp, err := ppStorage.FindOneByID(r.Context(), projCtx.Version.Id)
+	pp, err := model.ParserProjectFindOneByID(r.Context(), env.Settings(), projCtx.Version.ProjectStorageMethod, projCtx.Version.Id)
 	if err != nil {
 		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem finding parser project"})
 		return
 	}
 	if pp == nil {
 		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{Message: fmt.Sprintf("parser project '%s' not found", projCtx.Version.Id)})
+		return
 	}
 
 	bytes, err := bson.Marshal(pp)

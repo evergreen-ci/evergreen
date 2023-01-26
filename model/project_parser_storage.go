@@ -39,3 +39,36 @@ func GetParserProjectStorage(settings *evergreen.Settings, method ParserProjectS
 		return nil, errors.Errorf("unrecognized parser project storage method '%s'", method)
 	}
 }
+
+// ParserProjectFindOneByID is a convenience wrapper to find one parser project
+// by ID from persistent storage.
+func ParserProjectFindOneByID(ctx context.Context, settings *evergreen.Settings, method ParserProjectStorageMethod, id string) (*ParserProject, error) {
+	ppStorage, err := GetParserProjectStorage(settings, method)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting parser project storage")
+	}
+	defer ppStorage.Close(ctx)
+	return ppStorage.FindOneByID(ctx, id)
+}
+
+// ParserProjectFindOneByIDWithFields is a convenience wrapper to find one
+// parser project by ID from persistent storage with the given fields populated.
+func ParserProjectFindOneByIDWithFields(ctx context.Context, settings *evergreen.Settings, method ParserProjectStorageMethod, id string, fields ...string) (*ParserProject, error) {
+	ppStorage, err := GetParserProjectStorage(settings, method)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting parser project storage")
+	}
+	defer ppStorage.Close(ctx)
+	return ppStorage.FindOneByIDWithFields(ctx, id, fields...)
+}
+
+// ParserProjectUpsertOne is a convenience wrapper to upsert one parser project
+// to persistent storage.
+func ParserProjectUpsertOne(ctx context.Context, settings *evergreen.Settings, method ParserProjectStorageMethod, pp *ParserProject) error {
+	ppStorage, err := GetParserProjectStorage(settings, method)
+	if err != nil {
+		return errors.Wrap(err, "getting parser project storage")
+	}
+	defer ppStorage.Close(ctx)
+	return ppStorage.UpsertOne(ctx, pp)
+}

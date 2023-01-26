@@ -183,12 +183,7 @@ func updateParserProject(ctx context.Context, settings *evergreen.Settings, v *V
 		return nil
 	}
 	pp.UpdatedByGenerators = append(pp.UpdatedByGenerators, taskId)
-	ppStorage, err := GetParserProjectStorage(settings, v.ProjectStorageMethod)
-	if err != nil {
-		return errors.Wrapf(err, "getting parser project storage '%s'", v.ProjectStorageMethod)
-	}
-	defer ppStorage.Close(ctx)
-	if err := ppStorage.UpsertOne(ctx, pp); err != nil {
+	if err := ParserProjectUpsertOne(ctx, settings, v.ProjectStorageMethod, pp); err != nil {
 		return errors.Wrapf(err, "upserting parser project '%s'", pp.Id)
 	}
 	return nil

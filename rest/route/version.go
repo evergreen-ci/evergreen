@@ -166,12 +166,7 @@ func (h *buildsForVersionHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	var pp *dbModel.ParserProject
 	if v != nil {
-		ppStorage, err := dbModel.GetParserProjectStorage(h.env.Settings(), v.ProjectStorageMethod)
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting parser project storage"))
-		}
-		defer ppStorage.Close(ctx)
-		pp, err = ppStorage.FindOneByID(ctx, h.versionId)
+		pp, err = dbModel.ParserProjectFindOneByID(ctx, h.env.Settings(), v.ProjectStorageMethod, v.Id)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting project info"))
 		}

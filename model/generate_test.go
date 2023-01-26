@@ -723,7 +723,7 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	ppStorage, err := GetParserProjectStorage(s.env.Settings(), v.ProjectStorageMethod)
 	s.Require().NoError(err)
 	defer ppStorage.Close(s.ctx)
-	pp, err = ppStorage.FindOneByID(s.ctx, v.Id)
+	pp, err = ParserProjectFindOneByID(s.ctx, s.env.Settings(), v.ProjectStorageMethod, v.Id)
 	s.NoError(err)
 	s.Require().NotNil(pp)
 	s.Len(pp.BuildVariants, 3)
@@ -801,10 +801,7 @@ func (s *GenerateSuite) TestSaveWithAlreadyGeneratedTasksAndVariants() {
 	p, pp, v, err = g.NewVersion(p, pp, v)
 	s.NoError(err)
 	pp.UpdatedByGenerators = []string{generatorTask.Id}
-	ppStorage, err := GetParserProjectStorage(s.env.Settings(), v.ProjectStorageMethod)
-	s.Require().NoError(err)
-	defer ppStorage.Close(ctx)
-	s.NoError(ppStorage.UpsertOne(ctx, pp))
+	s.NoError(ParserProjectUpsertOne(ctx, s.env.Settings(), v.ProjectStorageMethod, pp))
 
 	// Shouldn't error trying to add the same generated project.
 	p, pp, v, err = g.NewVersion(p, pp, v)
@@ -891,10 +888,7 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 	s.NoError(err)
 	s.Require().NotNil(v)
 
-	ppStorage, err := GetParserProjectStorage(s.env.Settings(), v.ProjectStorageMethod)
-	s.Require().NoError(err)
-	defer ppStorage.Close(s.ctx)
-	pp, err = ppStorage.FindOneByID(s.ctx, v.Id)
+	pp, err = ParserProjectFindOneByID(s.ctx, s.env.Settings(), v.ProjectStorageMethod, v.Id)
 	s.NoError(err)
 	s.Require().NotNil(pp)
 	s.Require().Len(pp.BuildVariants, 1, "parser project should have same build variant")
@@ -1053,10 +1047,7 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 	s.NoError(err)
 	s.Require().NotNil(v)
 
-	ppStorage, err := GetParserProjectStorage(s.env.Settings(), v.ProjectStorageMethod)
-	s.Require().NoError(err)
-	defer ppStorage.Close(s.ctx)
-	pp, err = ppStorage.FindOneByID(s.ctx, v.Id)
+	pp, err = ParserProjectFindOneByID(s.ctx, s.env.Settings(), v.ProjectStorageMethod, v.Id)
 	s.NoError(err)
 	s.Require().NotNil(pp)
 	s.Require().Len(pp.BuildVariants, 1, "parser project should have same build variant")

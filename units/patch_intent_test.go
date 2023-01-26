@@ -1021,10 +1021,7 @@ func (s *PatchIntentUnitsSuite) verifyPatchDoc(patchDoc *patch.Patch, expectedPa
 }
 
 func (s *PatchIntentUnitsSuite) projectExists(projectId string) {
-	ppStorage, err := model.GetParserProjectStorage(s.env.Settings(), model.ProjectStorageMethodDB)
-	s.Require().NoError(err)
-	defer ppStorage.Close(s.ctx)
-	pp, err := ppStorage.FindOneByID(s.ctx, projectId)
+	pp, err := model.ParserProjectFindOneByID(s.ctx, s.env.Settings(), model.ProjectStorageMethodDB, projectId)
 	s.NoError(err)
 	s.NotNil(pp)
 }

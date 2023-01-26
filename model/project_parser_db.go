@@ -91,12 +91,7 @@ func parserProjectUpsertOne(query interface{}, update interface{}) error {
 }
 
 func FindParametersForVersion(ctx context.Context, settings *evergreen.Settings, v *Version) ([]patch.Parameter, error) {
-	ppStorage, err := GetParserProjectStorage(settings, v.ProjectStorageMethod)
-	if err != nil {
-		return nil, errors.Wrapf(err, "getting parser project storage '%s'", v.ProjectStorageMethod)
-	}
-	defer ppStorage.Close(ctx)
-	pp, err := ppStorage.FindOneByIDWithFields(ctx, v.Id, ParserProjectParametersKey)
+	pp, err := ParserProjectFindOneByIDWithFields(ctx, settings, v.ProjectStorageMethod, v.Id, ParserProjectParametersKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding parser project")
 	}
@@ -104,12 +99,7 @@ func FindParametersForVersion(ctx context.Context, settings *evergreen.Settings,
 }
 
 func FindExpansionsForVariant(ctx context.Context, settings *evergreen.Settings, v *Version, variant string) (util.Expansions, error) {
-	ppStorage, err := GetParserProjectStorage(settings, v.ProjectStorageMethod)
-	if err != nil {
-		return nil, errors.Wrapf(err, "getting parser project storage '%s'", v.ProjectStorageMethod)
-	}
-	defer ppStorage.Close(ctx)
-	pp, err := ppStorage.FindOneByIDWithFields(ctx, v.Id, ParserProjectBuildVariantsKey, ParserProjectAxesKey)
+	pp, err := ParserProjectFindOneByIDWithFields(ctx, settings, v.ProjectStorageMethod, v.Id, ParserProjectBuildVariantsKey, ParserProjectAxesKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding parser project")
 	}

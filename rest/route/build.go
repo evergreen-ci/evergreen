@@ -74,13 +74,7 @@ func (b *buildGetHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	ppStorage, err := serviceModel.GetParserProjectStorage(b.env.Settings(), v.ProjectStorageMethod)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting parser project storage"))
-	}
-	defer ppStorage.Close(ctx)
-
-	pp, err := ppStorage.FindOneByID(ctx, v.Id)
+	pp, err := serviceModel.ParserProjectFindOneByID(ctx, b.env.Settings(), v.ProjectStorageMethod, v.Id)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting project info"))
 	}

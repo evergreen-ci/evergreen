@@ -529,12 +529,7 @@ func FindAndTranslateProjectForPatch(ctx context.Context, settings *evergreen.Se
 // FindAndTranslateProjectForVersion translates a parser project for a version into a Project.
 // Also sets the project ID.
 func FindAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.Settings, v *Version) (*Project, *ParserProject, error) {
-	ppStorage, err := GetParserProjectStorage(settings, v.ProjectStorageMethod)
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "getting parser project storage '%s'", v.ProjectStorageMethod)
-	}
-	defer ppStorage.Close(ctx)
-	pp, err := ppStorage.FindOneByID(ctx, v.Id)
+	pp, err := ParserProjectFindOneByID(ctx, settings, v.ProjectStorageMethod, v.Id)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "finding parser project")
 	}
