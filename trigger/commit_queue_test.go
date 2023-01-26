@@ -21,10 +21,9 @@ func TestCommitQueueTriggers(t *testing.T) {
 }
 
 type commitQueueSuite struct {
-	event      event.EventLogEntry
-	data       *event.CommitQueueEventData
-	projectRef model.ProjectRef
-	subs       []event.Subscription
+	event event.EventLogEntry
+	data  *event.CommitQueueEventData
+	subs  []event.Subscription
 
 	t *commitQueueTriggers
 
