@@ -48,6 +48,10 @@ type s3put struct {
 	// within an S3 bucket. Is a prefix when multiple files are uploaded via LocalFilesIncludeFilter.
 	RemoteFile string `mapstructure:"remote_file" plugin:"expand"`
 
+	// PreservePath, when set to true, causes multi part uploads uploaded with LocalFilesIncludeFilter to
+	// preserve the original folder structure instead of putting all the files into the same folder
+	PreservePath string ` mapstructure:"preserve_path" plugin:"expand"`
+
 	// Region is the S3 region where the bucket is located. It defaults to
 	// "us-east-1".
 	Region string `mapstructure:"region" plugin:"region"`
@@ -99,6 +103,7 @@ type s3put struct {
 	// workDir will be empty if an absolute path is provided to the file.
 	workDir          string
 	skipMissing      bool
+	preservePath     bool
 	skipExistingBool bool
 	isPatchable      bool
 	isPatchOnly      bool
@@ -147,6 +152,9 @@ func (s3pc *s3put) validate() error {
 	}
 	if s3pc.LocalFile != "" && s3pc.isMulti() {
 		catcher.New("local file and local files include filter cannot both be specified")
+	}
+	if s3pc.PreservePath != "" && !s3pc.isMulti() {
+		catcher.New("preserve path can only be used with local files include filter")
 	}
 	if s3pc.skipMissing && s3pc.isMulti() {
 		catcher.New("cannot use optional upload with local files include filter")
@@ -198,7 +206,6 @@ func (s3pc *s3put) expandParams(conf *internal.TaskConfig) error {
 		s3pc.workDir = ""
 	}
 
-	s3pc.skipMissing = false
 	if s3pc.Optional != "" {
 		s3pc.skipMissing, err = strconv.ParseBool(s3pc.Optional)
 		if err != nil {
@@ -206,7 +213,13 @@ func (s3pc *s3put) expandParams(conf *internal.TaskConfig) error {
 		}
 	}
 
-	s3pc.skipExistingBool = false
+	if s3pc.PreservePath != "" {
+		s3pc.preservePath, err = strconv.ParseBool(s3pc.PreservePath)
+		if err != nil {
+			return errors.Wrap(err, "parsing preserve path parameter as a boolean")
+		}
+	}
+
 	if s3pc.SkipExisting != "" {
 		s3pc.skipExistingBool, err = strconv.ParseBool(s3pc.SkipExisting)
 		if err != nil {
@@ -214,7 +227,6 @@ func (s3pc *s3put) expandParams(conf *internal.TaskConfig) error {
 		}
 	}
 
-	s3pc.isPatchOnly = false
 	if s3pc.PatchOnly != "" {
 		s3pc.isPatchOnly, err = strconv.ParseBool(s3pc.PatchOnly)
 		if err != nil {
@@ -378,8 +390,13 @@ retryLoop:
 
 				remoteName := s3pc.RemoteFile
 				if s3pc.isMulti() {
-					fname := filepath.Base(fpath)
-					remoteName = fmt.Sprintf("%s%s", s3pc.RemoteFile, fname)
+					if s3pc.preservePath {
+						remoteName = filepath.Join(s3pc.RemoteFile, fpath)
+					} else {
+						// put all files in the same directory
+						fname := filepath.Base(fpath)
+						remoteName = fmt.Sprintf("%s%s", s3pc.RemoteFile, fname)
+					}
 				}
 
 				fpath = filepath.Join(filepath.Join(s3pc.workDir, s3pc.LocalFilesIncludeFilterPrefix), fpath)
@@ -420,7 +437,7 @@ retryLoop:
 					continue retryLoop
 				}
 
-				uploadedFiles = append(uploadedFiles, fpath)
+				uploadedFiles = append(uploadedFiles, remoteName)
 			}
 
 			break retryLoop
@@ -454,8 +471,14 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 
 	for _, fn := range localFiles {
 		remoteFileName := filepath.ToSlash(remoteFile)
+
 		if s3pc.isMulti() {
-			remoteFileName = fmt.Sprintf("%s%s", remoteFile, filepath.Base(fn))
+			if s3pc.preservePath {
+				remoteFileName = fn
+			} else {
+				remoteFileName = fmt.Sprintf("%s%s", remoteFile, filepath.Base(fn))
+			}
+
 		}
 
 		fileLink := agentutil.S3DefaultURL(s3pc.Bucket, remoteFileName)
