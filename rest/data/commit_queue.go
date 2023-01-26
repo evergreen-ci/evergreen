@@ -525,7 +525,7 @@ func checkSignedCommit(ctx context.Context, settings *evergreen.Settings, userRe
 
 	for _, c := range commits {
 		commit := c.GetCommit()
-		if commit.Verification != nil || !utility.FromBoolPtr(commit.Verification.Verified) ||
+		if commit.Verification != nil && !utility.FromBoolPtr(commit.Verification.Verified) &&
 			utility.FromStringPtr(commit.Verification.Reason) == githubCommitUnsigned {
 			return errors.Errorf("commit '%s' is not signed", utility.FromStringPtr(commit.SHA))
 		}
