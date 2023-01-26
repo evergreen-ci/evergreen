@@ -2,7 +2,6 @@ package trigger
 
 import (
 	"fmt"
-	"html/template"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -209,7 +208,7 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 		EventID:           t.event.ID,
 		SubscriptionID:    sub.ID,
 		DisplayName:       t.patch.Id.Hex(),
-		Description:       template.HTML(t.patch.Description),
+		Description:       t.patch.Description,
 		Object:            event.ObjectPatch,
 		Project:           projectName,
 		PastTenseStatus:   collectiveStatus,

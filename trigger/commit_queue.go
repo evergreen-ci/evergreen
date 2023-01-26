@@ -2,8 +2,6 @@ package trigger
 
 import (
 	"fmt"
-	"html/template"
-
 	"github.com/evergreen-ci/evergreen"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
@@ -27,6 +25,10 @@ type commitQueueTriggers struct {
 	uiConfig evergreen.UIConfig
 
 	base
+}
+
+type commitQueueTemplateData struct {
+	commonTemplateData
 }
 
 func makeCommitQueueTriggers() eventHandler {
@@ -101,7 +103,7 @@ func (t *commitQueueTriggers) makeData(sub *event.Subscription) (*commonTemplate
 		EventID:         t.event.ID,
 		SubscriptionID:  sub.ID,
 		DisplayName:     t.patch.Id.Hex(),
-		Description:     template.HTML(text),
+		Description:     text,
 		Object:          "merge",
 		Project:         projectName,
 		URL:             url,

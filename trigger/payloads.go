@@ -42,7 +42,7 @@ type commonTemplateData struct {
 	DisplayName     string
 	Object          string
 	Project         string
-	Description     template.HTML
+	Description     string
 	URL             string
 	PastTenseStatus string
 	Headers         http.Header
@@ -60,6 +60,11 @@ type commonTemplateData struct {
 	githubDescription string
 
 	emailContent *template.Template
+}
+
+type emailTemplateData struct {
+	commonTemplateData
+	Description template.HTML
 }
 
 const emailSubjectTemplateString string = `Evergreen: {{ .Object }} {{.DisplayName}} in '{{ .Project }}' has {{ .PastTenseStatus }}!`
@@ -246,20 +251,24 @@ func makeHeaders(headerMap map[string][]string) http.Header {
 }
 
 func emailPayload(t *commonTemplateData) (*message.Email, error) {
+	emailData := &emailTemplateData{
+		commonTemplateData: *t,
+		Description:        template.HTML(t.Description),
+	}
 	bodyTmpl, err := emailBodyTemplate.Clone()
 	if err != nil {
 		return nil, errors.Wrap(err, "cloning email body template")
 	}
-	if t.emailContent == nil {
+	if emailData.emailContent == nil {
 		_, err = bodyTmpl.AddParseTree("content", emailDefaultContentTemplate.Tree)
 	} else {
-		_, err = bodyTmpl.AddParseTree("content", t.emailContent.Tree)
+		_, err = bodyTmpl.AddParseTree("content", emailData.emailContent.Tree)
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, "adding email content")
 	}
 	buf := &bytes.Buffer{}
-	err = bodyTmpl.ExecuteTemplate(buf, "emailbody", t)
+	err = bodyTmpl.ExecuteTemplate(buf, "emailbody", emailData)
 	if err != nil {
 		return nil, errors.Wrap(err, "executing email template")
 	}
