@@ -682,6 +682,26 @@ func TestHostCreateSecret(t *testing.T) {
 	})
 }
 
+func TestHostSetBillingStartTime(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+	defer func() {
+		assert.NoError(t, db.Clear(Collection))
+	}()
+
+	h := &Host{
+		Id: "id",
+	}
+	require.NoError(t, h.Insert())
+
+	now := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+	require.NoError(t, h.SetBillingStartTime(now))
+	assert.True(t, now.Equal(h.BillingStartTime))
+
+	dbHost, err := FindOneId(h.Id)
+	require.NoError(t, err)
+	assert.True(t, now.Equal(dbHost.BillingStartTime))
+}
+
 func TestHostSetAgentStartTime(t *testing.T) {
 	require.NoError(t, db.Clear(Collection))
 	defer func() {
