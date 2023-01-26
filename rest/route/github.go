@@ -13,7 +13,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v34/github"
@@ -28,6 +30,8 @@ const (
 	githubActionOpened      = "opened"
 	githubActionSynchronize = "synchronize"
 	githubActionReopened    = "reopened"
+	githubCommitUnsigned    = "unsigned"
+	githubReviewApproved    = "APPROVED"
 
 	retryComment = "evergreen retry"
 	patchComment = "evergreen patch"
@@ -217,7 +221,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 					"user":      *event.Sender.Login,
 					"message":   "commit queue triggered",
 				})
-				if _, err := data.EnqueuePRToCommitQueue(ctx, evergreen.GetEnvironment(), gh.sc, createEnqueuePRInfo(event)); err != nil {
+				if err := gh.commitQueueEnqueue(ctx, gh.settings, event); err != nil {
 					grip.Error(message.WrapError(err, message.Fields{
 						"source":    "GitHub hook",
 						"msg_id":    gh.msgID,
@@ -547,6 +551,158 @@ func validatePushTagEvent(event *github.PushEvent) error {
 	return nil
 }
 
+func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, settings *evergreen.Settings, event *github.IssueCommentEvent) error {
+	userRepo := data.UserRepoInfo{
+		Username: *event.Comment.User.Login,
+		Owner:    *event.Repo.Owner.Login,
+		Repo:     *event.Repo.Name,
+	}
+	authorized, err := gh.sc.IsAuthorizedToPatchAndMerge(ctx, gh.settings, userRepo)
+	if err != nil {
+		return errors.Wrap(err, "getting user info from GitHub API")
+	}
+	if !authorized {
+		return errors.Errorf("user '%s' is not authorized to merge", userRepo.Username)
+	}
+
+	prNum := *event.Issue.Number
+	pr, err := gh.sc.GetGitHubPR(ctx, userRepo.Owner, userRepo.Repo, prNum)
+	if err != nil {
+		return errors.Wrap(err, "getting PR from GitHub API")
+	}
+
+	if pr == nil || pr.Base == nil || pr.Base.Ref == nil {
+		return errors.New("PR contains no base branch label")
+	}
+
+	cqInfo := restModel.ParseGitHubComment(*event.Comment.Body)
+	baseBranch := *pr.Base.Ref
+	projectRef, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(userRepo.Owner, userRepo.Repo, baseBranch)
+	if err != nil {
+		return errors.Wrapf(err, "getting project for '%s:%s' tracking branch '%s'", userRepo.Owner, userRepo.Repo, baseBranch)
+	}
+	if projectRef == nil {
+		return errors.Errorf("no project with commit queue enabled for '%s:%s' tracking branch '%s'", userRepo.Owner, userRepo.Repo, baseBranch)
+	}
+
+	if utility.FromBoolPtr(projectRef.CommitQueue.RequireSigned) {
+		err = gh.requireSigned(ctx, settings, userRepo, prNum)
+		if err != nil {
+			sendErr := thirdparty.SendCommitQueueGithubStatus(evergreen.GetEnvironment(), pr, message.GithubStateFailure, "can't enqueue with unsigned commits", "")
+			grip.Error(message.WrapError(sendErr, message.Fields{
+				"message": "error sending patch creation failure to github",
+				"owner":   userRepo.Owner,
+				"repo":    userRepo.Repo,
+				"pr":      prNum,
+			}))
+			return errors.Wrapf(err, "checking commit signing")
+		}
+	}
+
+	requiredApprovalCount := projectRef.CommitQueue.RequiredApprovalCount
+	if requiredApprovalCount != 0 {
+		err = gh.checkPRApprovals(ctx, settings, userRepo, prNum, requiredApprovalCount)
+		if err != nil {
+			sendErr := thirdparty.SendCommitQueueGithubStatus(evergreen.GetEnvironment(), pr, message.GithubStateFailure, "can't enqueue without required number of approvals", "")
+			grip.Error(message.WrapError(sendErr, message.Fields{
+				"message": "error sending patch creation failure to github",
+				"owner":   userRepo.Owner,
+				"repo":    userRepo.Repo,
+				"pr":      prNum,
+			}))
+			return errors.Wrapf(err, "checking pull request approvals")
+		}
+	}
+
+	patchId, err := gh.sc.AddPatchForPr(ctx, *projectRef, prNum, cqInfo.Modules, cqInfo.MessageOverride)
+	if err != nil {
+		sendErr := thirdparty.SendCommitQueueGithubStatus(evergreen.GetEnvironment(), pr, message.GithubStateFailure, "failed to create patch", "")
+		grip.Error(message.WrapError(sendErr, message.Fields{
+			"message": "error sending patch creation failure to github",
+			"owner":   userRepo.Owner,
+			"repo":    userRepo.Repo,
+			"pr":      prNum,
+		}))
+		return errors.Wrap(err, "adding patch for PR")
+	}
+
+	item := restModel.APICommitQueueItem{
+		Issue:           utility.ToStringPtr(strconv.Itoa(prNum)),
+		MessageOverride: &cqInfo.MessageOverride,
+		Modules:         cqInfo.Modules,
+		Source:          utility.ToStringPtr(commitqueue.SourcePullRequest),
+		PatchId:         &patchId,
+	}
+	_, err = data.EnqueueItem(projectRef.Id, item, false)
+	if err != nil {
+		return errors.Wrap(err, "enqueueing commit queue item")
+	}
+
+	if pr == nil || pr.Head == nil || pr.Head.SHA == nil {
+		return errors.New("PR contains no head branch SHA")
+	}
+	pushJob := units.NewGithubStatusUpdateJobForPushToCommitQueue(userRepo.Owner, userRepo.Repo, *pr.Head.SHA, prNum, patchId)
+	q := evergreen.GetEnvironment().LocalQueue()
+	grip.Error(message.WrapError(q.Put(ctx, pushJob), message.Fields{
+		"source":  "GitHub hook",
+		"msg_id":  gh.msgID,
+		"event":   gh.eventType,
+		"action":  event.Action,
+		"owner":   userRepo.Owner,
+		"repo":    userRepo.Repo,
+		"item":    prNum,
+		"message": "failed to queue notification for commit queue push",
+	}))
+
+	return nil
+}
+
+func (gh *githubHookApi) requireSigned(ctx context.Context, settings *evergreen.Settings, userRepo data.UserRepoInfo, prNum int) error {
+	githubToken, err := settings.GetGithubOauthToken()
+	if err != nil {
+		return errors.Wrap(err, "getting GitHub OAuth token from settings")
+	}
+
+	commits, err := thirdparty.GetGithubPullRequestCommits(ctx, githubToken, userRepo.Owner, userRepo.Repo, prNum)
+	if err != nil {
+		return errors.Wrap(err, "getting GitHub commits")
+	}
+
+	for _, c := range commits {
+		commit := c.GetCommit()
+		if commit.Verification != nil && !utility.FromBoolPtr(commit.Verification.Verified) &&
+			utility.FromStringPtr(commit.Verification.Reason) == githubCommitUnsigned {
+			return errors.Errorf("commit '%s' is not signed", utility.FromStringPtr(commit.SHA))
+		}
+
+	}
+	return nil
+}
+
+func (gh *githubHookApi) checkPRApprovals(ctx context.Context, settings *evergreen.Settings, userRepo data.UserRepoInfo, prNum, requiredApprovalCount int) error {
+	githubToken, err := settings.GetGithubOauthToken()
+	if err != nil {
+		return errors.Wrap(err, "getting GitHub OAuth token from settings")
+	}
+
+	reviews, err := thirdparty.GetGithubPullRequestReviews(ctx, githubToken, userRepo.Owner, userRepo.Repo, prNum)
+	if err != nil {
+		return errors.Wrap(err, "getting GitHub PR reviews")
+	}
+
+	var numApprovals int
+	for _, r := range reviews {
+		if r.GetState() == githubReviewApproved {
+			numApprovals += 1
+		}
+	}
+
+	if numApprovals < requiredApprovalCount {
+		return errors.Errorf("PR %d does not have enough approvals. %d approval(s) required", prNum, requiredApprovalCount)
+	}
+	return nil
+}
+
 // Because the PR isn't necessarily on a commit queue, we only error if item is on the queue and can't be removed correctly
 func (gh *githubHookApi) tryDequeueCommitQueueItemForPR(pr *github.PullRequest) error {
 	err := thirdparty.ValidatePR(pr)
@@ -574,16 +730,6 @@ func (gh *githubHookApi) tryDequeueCommitQueueItemForPR(pr *github.PullRequest) 
 		return errors.Wrapf(err, "can't remove item %d from commit queue for project '%s'", *pr.Number, projRef.Id)
 	}
 	return nil
-}
-
-func createEnqueuePRInfo(event *github.IssueCommentEvent) commitqueue.EnqueuePRInfo {
-	return commitqueue.EnqueuePRInfo{
-		Username:      *event.Comment.User.Login,
-		Owner:         *event.Repo.Owner.Login,
-		Repo:          *event.Repo.Name,
-		PR:            *event.Issue.Number,
-		CommitMessage: *event.Comment.Body,
-	}
 }
 
 func isItemOnCommitQueue(id, item string) (bool, error) {

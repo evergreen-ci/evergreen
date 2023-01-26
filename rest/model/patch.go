@@ -221,7 +221,7 @@ func (apiPatch *APIPatch) buildBasePatch(p patch.Patch) {
 	}
 
 	apiPatch.PatchedParserProject = utility.ToStringPtr(p.PatchedParserProject)
-	apiPatch.CanEnqueueToCommitQueue = p.HasValidGitInfo() || p.IsGithubPRPatch()
+	apiPatch.CanEnqueueToCommitQueue = p.HasValidGitInfo()
 	apiPatch.GithubPatchData.BuildFromService(p.GithubPatchData)
 }
 
