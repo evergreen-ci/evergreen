@@ -2,6 +2,7 @@ package trigger
 
 import (
 	"fmt"
+	"html/template"
 
 	"github.com/evergreen-ci/evergreen"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
@@ -100,7 +101,7 @@ func (t *commitQueueTriggers) makeData(sub *event.Subscription) (*commonTemplate
 		EventID:         t.event.ID,
 		SubscriptionID:  sub.ID,
 		DisplayName:     t.patch.Id.Hex(),
-		Description:     text,
+		Description:     template.HTML(text),
 		Object:          "merge",
 		Project:         projectName,
 		URL:             url,

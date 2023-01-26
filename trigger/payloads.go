@@ -42,7 +42,7 @@ type commonTemplateData struct {
 	DisplayName     string
 	Object          string
 	Project         string
-	Description     string
+	Description     template.HTML
 	URL             string
 	PastTenseStatus string
 	Headers         http.Header
