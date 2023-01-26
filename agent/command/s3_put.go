@@ -206,7 +206,6 @@ func (s3pc *s3put) expandParams(conf *internal.TaskConfig) error {
 		s3pc.workDir = ""
 	}
 
-	s3pc.skipMissing = false
 	if s3pc.Optional != "" {
 		s3pc.skipMissing, err = strconv.ParseBool(s3pc.Optional)
 		if err != nil {
@@ -214,7 +213,6 @@ func (s3pc *s3put) expandParams(conf *internal.TaskConfig) error {
 		}
 	}
 
-	s3pc.preservePath = false
 	if s3pc.PreservePath != "" {
 		s3pc.preservePath, err = strconv.ParseBool(s3pc.PreservePath)
 		if err != nil {
@@ -222,7 +220,6 @@ func (s3pc *s3put) expandParams(conf *internal.TaskConfig) error {
 		}
 	}
 
-	s3pc.skipExistingBool = false
 	if s3pc.SkipExisting != "" {
 		s3pc.skipExistingBool, err = strconv.ParseBool(s3pc.SkipExisting)
 		if err != nil {
@@ -230,7 +227,6 @@ func (s3pc *s3put) expandParams(conf *internal.TaskConfig) error {
 		}
 	}
 
-	s3pc.isPatchOnly = false
 	if s3pc.PatchOnly != "" {
 		s3pc.isPatchOnly, err = strconv.ParseBool(s3pc.PatchOnly)
 		if err != nil {
@@ -393,12 +389,14 @@ retryLoop:
 				}
 
 				remoteName := s3pc.RemoteFile
-				if s3pc.isMulti() && s3pc.preservePath {
-					remoteName = filepath.Join(s3pc.RemoteFile, fpath)
-				} else if s3pc.isMulti() && !s3pc.preservePath {
-					// here it squishes the file structure
-					fname := filepath.Base(fpath)
-					remoteName = fmt.Sprintf("%s%s", s3pc.RemoteFile, fname)
+				if s3pc.isMulti() {
+					if s3pc.preservePath {
+						remoteName = filepath.Join(s3pc.RemoteFile, fpath)
+					} else {
+						// put all files in the same directory
+						fname := filepath.Base(fpath)
+						remoteName = fmt.Sprintf("%s%s", s3pc.RemoteFile, fname)
+					}
 				}
 
 				fpath = filepath.Join(filepath.Join(s3pc.workDir, s3pc.LocalFilesIncludeFilterPrefix), fpath)
@@ -473,10 +471,14 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 
 	for _, fn := range localFiles {
 		remoteFileName := filepath.ToSlash(remoteFile)
-		if s3pc.isMulti() && s3pc.preservePath {
-			remoteFileName = fn
-		} else if s3pc.isMulti() && !s3pc.preservePath {
-			remoteFileName = fmt.Sprintf("%s%s", remoteFile, filepath.Base(fn))
+
+		if s3pc.isMulti() {
+			if s3pc.preservePath {
+				remoteFileName = fn
+			} else {
+				remoteFileName = fmt.Sprintf("%s%s", remoteFile, filepath.Base(fn))
+			}
+
 		}
 
 		fileLink := agentutil.S3DefaultURL(s3pc.Bucket, remoteFileName)

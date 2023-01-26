@@ -432,7 +432,6 @@ func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {
 func TestPreservePath(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	var err error
 
 	dir := t.TempDir()
 	f, err := os.Create(filepath.Join(dir, "foo"))
@@ -455,7 +454,7 @@ func TestPreservePath(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 
-	// Create the files in the assetes/images directory
+	// Create the files in the assets/images directory
 	f, err = os.Create(filepath.Join(dir, "myWebsite", "assets", "images", "image1"))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
