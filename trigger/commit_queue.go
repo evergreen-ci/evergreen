@@ -27,10 +27,6 @@ type commitQueueTriggers struct {
 	base
 }
 
-type commitQueueTemplateData struct {
-	commonTemplateData
-}
-
 func makeCommitQueueTriggers() eventHandler {
 	t := &commitQueueTriggers{}
 	t.base.triggers = map[string]trigger{

@@ -275,7 +275,7 @@ func emailPayload(t *commonTemplateData) (*message.Email, error) {
 	body := buf.String()
 
 	buf = &bytes.Buffer{}
-	err = subjectTmpl.Execute(buf, t)
+	err = subjectTmpl.Execute(buf, emailData)
 	if err != nil {
 		return nil, errors.Wrap(err, "executing email subject template")
 	}
@@ -285,13 +285,13 @@ func emailPayload(t *commonTemplateData) (*message.Email, error) {
 		Subject:           subject,
 		Body:              body,
 		PlainTextContents: false,
-		Headers:           t.Headers,
+		Headers:           emailData.Headers,
 	}
 
 	// prevent Gmail from threading notifications with similar subjects
-	m.Headers["X-Entity-Ref-Id"] = []string{fmt.Sprintf("%s-%s-%s", t.Object, t.SubscriptionID, t.EventID)}
-	m.Headers["X-Evergreen-Event-Id"] = []string{t.EventID}
-	m.Headers["X-Evergreen-Subscription-Id"] = []string{t.SubscriptionID}
+	m.Headers["X-Entity-Ref-Id"] = []string{fmt.Sprintf("%s-%s-%s", emailData.Object, emailData.SubscriptionID, emailData.EventID)}
+	m.Headers["X-Evergreen-Event-Id"] = []string{emailData.EventID}
+	m.Headers["X-Evergreen-Subscription-Id"] = []string{emailData.SubscriptionID}
 
 	return &m, nil
 }
