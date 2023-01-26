@@ -698,7 +698,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 	// determine what action needs to be taken
 	switch putParams.Action {
 	case evergreen.RestartAction:
-		if err = model.TryResetTask(projCtx.Task.Id, authName, evergreen.UIPackage, nil); err != nil {
+		if err = model.TryResetTask(uis.env.Settings(), projCtx.Task.Id, authName, evergreen.UIPackage, nil); err != nil {
 			http.Error(w, fmt.Sprintf("Error restarting task %v: %v", projCtx.Task.Id, err), http.StatusInternalServerError)
 			return
 		}
