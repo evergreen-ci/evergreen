@@ -2,6 +2,7 @@ package trigger
 
 import (
 	"fmt"
+
 	"github.com/evergreen-ci/evergreen"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
