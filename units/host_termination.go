@@ -286,20 +286,19 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	j.AddError(j.incrementIdleTime(ctx))
 
 	terminationMessage := message.Fields{
-		"message":           "host successfully terminated",
-		"host_id":           j.host.Id,
-		"distro":            j.host.Distro.Id,
-		"job":               j.ID(),
-		"reason":            j.TerminationReason,
-		"total_idle_secs":   j.host.TotalIdleTime.Seconds(),
-		"total_uptime_secs": j.host.TerminationTime.Sub(j.host.CreationTime).Seconds(),
-		"termination_time":  j.host.TerminationTime,
-		"creation_time":     j.host.CreationTime,
+		"message":            "host successfully terminated",
+		"host_id":            j.host.Id,
+		"distro":             j.host.Distro.Id,
+		"job":                j.ID(),
+		"reason":             j.TerminationReason,
+		"total_idle_secs":    j.host.TotalIdleTime.Seconds(),
+		"total_started_secs": j.host.TerminationTime.Sub(j.host.StartTime).Seconds(),
+		"total_uptime_secs":  j.host.TerminationTime.Sub(j.host.CreationTime).Seconds(),
+		"termination_time":   j.host.TerminationTime,
+		"creation_time":      j.host.CreationTime,
 	}
 	if !utility.IsZeroTime(j.host.BillingStartTime) {
 		terminationMessage["total_billable_secs"] = j.host.TerminationTime.Sub(j.host.BillingStartTime).Seconds()
-	} else {
-		terminationMessage["total_billable_secs"] = j.host.TerminationTime.Sub(j.host.StartTime).Seconds()
 	}
 	grip.Info(terminationMessage)
 
