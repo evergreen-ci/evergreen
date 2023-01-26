@@ -147,6 +147,7 @@ func (sns *ec2SNS) Run(ctx context.Context) gimlet.Responder {
 }
 
 type ec2EventBridgeNotification struct {
+	EventTime  string         `json:"time"`
 	DetailType string         `json:"detail-type"`
 	Detail     ec2EventDetail `json:"detail"`
 }
@@ -176,7 +177,7 @@ func (sns *ec2SNS) handleNotification(ctx context.Context) error {
 	case instanceStateChangeType:
 		switch notification.Detail.State {
 		case ec2.InstanceStateNameRunning:
-			if err := sns.handleInstanceRunning(ctx, notification.Detail.InstanceID); err != nil {
+			if err := sns.handleInstanceRunning(ctx, notification.Detail.InstanceID, notification.EventTime); err != nil {
 				return gimlet.ErrorResponse{
 					StatusCode: http.StatusInternalServerError,
 					Message:    errors.Wrap(err, "processing running instance").Error(),
@@ -275,7 +276,7 @@ func (sns *ec2SNS) handleInstanceTerminated(ctx context.Context, instanceID stri
 	return nil
 }
 
-func (sns *ec2SNS) handleInstanceRunning(ctx context.Context, instanceID string) error {
+func (sns *ec2SNS) handleInstanceRunning(ctx context.Context, instanceID, eventTimestamp string) error {
 	h, err := host.FindOneId(instanceID)
 	if err != nil {
 		return err
@@ -284,8 +285,15 @@ func (sns *ec2SNS) handleInstanceRunning(ctx context.Context, instanceID string)
 		return nil
 	}
 
-	runningTime, err := time.Parse(time.RFC3339, sns.payload.Timestamp)
+	runningTime, err := time.Parse(time.RFC3339, eventTimestamp)
 	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":   "got malformed timestamp",
+			"timestamp": eventTimestamp,
+			"operation": "handleInstanceRunning",
+			"host_id":   h.Id,
+			"distro":    h.Distro.Id,
+		}))
 		runningTime = time.Now()
 	}
 
