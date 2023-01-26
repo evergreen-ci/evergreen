@@ -319,7 +319,14 @@ func (s3pc *s3put) Execute(ctx context.Context,
 
 	errChan := make(chan error)
 	go func() {
-		errChan <- errors.WithStack(s3pc.putWithRetry(ctx, comm, logger))
+		err := errors.WithStack(s3pc.putWithRetry(ctx, comm, logger))
+		select {
+		case errChan <- err:
+			return
+		case <-ctx.Done():
+			logger.Task().Infof("Context canceled waiting for s3 put: %s.", ctx.Err())
+			return
+		}
 	}()
 
 	select {
