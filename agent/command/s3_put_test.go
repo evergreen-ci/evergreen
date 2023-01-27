@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -437,30 +436,29 @@ func TestPreservePath(t *testing.T) {
 	dir := t.TempDir()
 
 	// Create the directories
-	require.NoError(t, os.Mkdir(strings.Join([]string{dir, "myWebsite"}, "/"), 0755))
-	require.NoError(t, os.Mkdir(strings.Join([]string{dir, "myWebsite", "assets"}, "/"), 0755))
-	require.NoError(t, os.Mkdir(strings.Join([]string{dir, "myWebsite", "assets", "images"}, "/"), 0755))
+	require.NoError(t, os.Mkdir(filepath.Join(dir, "myWebsite"), 0755))
+	require.NoError(t, os.Mkdir(filepath.Join(dir, "myWebsite", "assets"), 0755))
+	require.NoError(t, os.Mkdir(filepath.Join(dir, "myWebsite", "assets", "images"), 0755))
 
 	// Create the files in in the assets directory
-	f, err := os.Create(strings.Join([]string{dir, "foo"}, "/"))
+	f, err := os.Create(filepath.Join(dir, "foo"))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
-
-	f, err = os.Create(strings.Join([]string{dir, "myWebsite", "assets", "asset1"}, "/"))
+	f, err = os.Create(filepath.Join(dir, "myWebsite", "assets", "asset1"))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
-	f, err = os.Create(strings.Join([]string{dir, "myWebsite", "assets", "asset2"}, "/"))
+	f, err = os.Create(filepath.Join(dir, "myWebsite", "assets", "asset2"))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
-	f, err = os.Create(strings.Join([]string{dir, "myWebsite", "assets", "asset3"}, "/"))
+	f, err = os.Create(filepath.Join(dir, "myWebsite", "assets", "asset3"))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 
 	// Create the files in the assets/images directory
-	f, err = os.Create(strings.Join([]string{dir, "myWebsite", "assets", "images", "image1"}, "/"))
+	f, err = os.Create(filepath.Join(dir, "myWebsite", "assets", "images", "image1"))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
-	f, err = os.Create(strings.Join([]string{dir, "myWebsite", "assets", "images", "image2"}, "/"))
+	f, err = os.Create(filepath.Join(dir, "myWebsite", "assets", "images", "image2"))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 
@@ -475,9 +473,9 @@ func TestPreservePath(t *testing.T) {
 		RemoteFile:              "remote",
 		PreservePath:            "true",
 	}
-	require.NoError(t, os.Mkdir(strings.Join([]string{dir, "destination"}, "/"), 0755))
+	require.NoError(t, os.Mkdir(filepath.Join(dir, "destination"), 0755))
 	opts := pail.LocalOptions{
-		Path: strings.Join([]string{dir, "destination"}, "/"),
+		Path: filepath.Join(dir, "destination"),
 	}
 	s.bucket, err = pail.NewLocalBucket(opts)
 	require.NoError(t, err)
