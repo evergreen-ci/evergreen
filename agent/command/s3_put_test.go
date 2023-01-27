@@ -506,7 +506,6 @@ func TestPreservePath(t *testing.T) {
 	grip.Infof("recieved: ")
 	for it.Next(ctx) {
 		grip.Infof("\n: %s", it.Item().Name())
-		grip.Infof("\n: %s", it.Item().Name())
 
 		expected[it.Item().Name()] = true
 	}
