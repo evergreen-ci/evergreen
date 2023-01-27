@@ -6,3 +6,4 @@
 { "_id" : "providers", "aws": {"pod": {"ecs": {"client_type": "mock"}, "secrets_manager": {"client_type": "mock"}}, "allowed_regions": ["us-east-1"]}}
 { "_id": "spawnhost", "unexpirable_hosts_per_user": 2, "unexpirable_volumes_per_user": 1, "spawn_hosts_per_user": 6 }
 { "_id": "jira",  "host": "jira.example.com", "basic_auth": { "username": "mohamed.khelif", "password": "password" }, "default_project": "", "oath1": {"private_key": "", "access_token": "", "token_secret": "", "consumer_key": ""} }
+{ "_id": "project_creation",  "total_project_limit": 10, "repo_project_limit": 2 }

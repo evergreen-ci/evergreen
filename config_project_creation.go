@@ -64,3 +64,13 @@ func (c *ProjectCreationConfig) Set() error {
 }
 
 func (c *ProjectCreationConfig) ValidateAndDefault() error { return nil }
+
+// IsExceptionToRepoLimit returns bool if the given owner repo combination has been specified as an exception in admin settings
+func (c *ProjectCreationConfig) IsExceptionToRepoLimit(owner, repo string) bool {
+	for _, exception := range c.RepoExceptions {
+		if exception.Owner == owner && exception.Repo == repo {
+			return true
+		}
+	}
+	return false
+}

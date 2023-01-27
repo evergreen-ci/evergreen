@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -54,30 +55,23 @@ func FindProjectById(id string, includeRepo bool, includeProjectConfig bool) (*m
 // and creating new webhooks. If the given project ref already has container
 // secrets, the new project ref receives copies of the existing ones.
 func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *model.ProjectRef, u *user.DBUser) error {
-	config, err := evergreen.GetConfig()
-	if err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "getting evergreen config").Error(),
-		}
-	}
-
-	if err := projectRef.ValidateOwnerAndRepo(config.GithubOrgs); err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "validating owner and repo for project: %s", projectRef.Identifier).Error(),
-		}
-	}
-
 	if projectRef.Identifier != "" {
 		if err := VerifyUniqueProject(projectRef.Identifier); err != nil {
 			return err
 		}
 	}
-	if projectRef.Id != "" {
-		if err := VerifyUniqueProject(projectRef.Id); err != nil {
-			return err
+	if projectRef.Id == "" {
+		if projectRef.Id == "" {
+			projectRef.Id = mgobson.NewObjectId().Hex()
 		}
+	}
+	if err := VerifyUniqueProject(projectRef.Id); err != nil {
+		return err
+	}
+	// Always warn because created projects are never enabled.
+	err, _ := model.ValidateProjectCreation(projectRef.Id, env.Settings(), projectRef)
+	if err != nil {
+		// TODO EVG-18784: Return graphql warning
 	}
 
 	existingContainerSecrets := projectRef.ContainerSecrets
