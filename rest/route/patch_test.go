@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/mock"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/manifest"
@@ -620,6 +621,10 @@ func TestPatchRawHandler(t *testing.T) {
 func TestSchedulePatchRoute(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
 	const config = `
 functions:
   "fetch source" :
@@ -764,7 +769,7 @@ buildvariants:
 		PatchedParserProject: config,
 	}
 	require.NoError(t, unfinalized.Insert())
-	handler := makeSchedulePatchHandler().(*schedulePatchHandler)
+	handler := makeSchedulePatchHandler(env).(*schedulePatchHandler)
 
 	// nonexistent patch ID should error
 	req, err := http.NewRequest(http.MethodPost, "", nil)
@@ -773,7 +778,7 @@ buildvariants:
 	assert.Error(t, handler.Parse(ctx, req))
 
 	// valid request, scheduling patch for the first time
-	handler = makeSchedulePatchHandler().(*schedulePatchHandler)
+	handler = makeSchedulePatchHandler(env).(*schedulePatchHandler)
 	description := "some text"
 	body := patchTasks{
 		Description: description,
@@ -806,7 +811,7 @@ buildvariants:
 	assert.True(t, foundPassing)
 
 	// valid request, reconfiguring a finalized patch
-	handler = makeSchedulePatchHandler().(*schedulePatchHandler)
+	handler = makeSchedulePatchHandler(env).(*schedulePatchHandler)
 	body = patchTasks{
 		Variants: []variant{{Id: "ubuntu", Tasks: []string{"failing_test"}}},
 	}
@@ -849,7 +854,7 @@ buildvariants:
 		PatchedParserProject: config,
 	}
 	assert.NoError(t, patch2.Insert())
-	handler = makeSchedulePatchHandler().(*schedulePatchHandler)
+	handler = makeSchedulePatchHandler(env).(*schedulePatchHandler)
 	body = patchTasks{
 		Variants: []variant{{Id: "ubuntu", Tasks: []string{"*"}}},
 	}
@@ -871,6 +876,10 @@ buildvariants:
 func TestSchedulePatchActivatesInactiveTasks(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
 	generatedProject := []string{`
 {
   "buildvariants": [
@@ -1072,7 +1081,7 @@ tasks:
 	}
 	require.NoError(t, unfinalized.Insert())
 	// schedule patch with task generator for the first run
-	handler := makeSchedulePatchHandler().(*schedulePatchHandler)
+	handler := makeSchedulePatchHandler(env).(*schedulePatchHandler)
 	description := "some text"
 	body := patchTasks{
 		Description: description,
@@ -1104,7 +1113,7 @@ tasks:
 
 	// now re-configure with tasks that have already been generated but are inactive
 	// this task has two dependencies which should also be activated
-	handler = makeSchedulePatchHandler().(*schedulePatchHandler)
+	handler = makeSchedulePatchHandler(env).(*schedulePatchHandler)
 	body = patchTasks{
 		Variants: []variant{{Id: "testBV4", Tasks: []string{"dependencyTask"}}},
 	}

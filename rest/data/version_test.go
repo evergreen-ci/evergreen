@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -262,6 +263,9 @@ func TestCreateVersionFromConfig(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ParserProjectCollection, model.VersionCollection, distro.Collection, task.Collection, build.Collection, user.Collection))
 	require.NoError(t, db.CreateCollections(model.ParserProjectCollection))
@@ -317,7 +321,11 @@ func TestCreateVersionFromConfig(t *testing.T) {
 	assert.Equal(1, newVersion.RevisionOrderNumber)
 	assert.Equal(evergreen.AdHocRequester, newVersion.Requester)
 
-	pp, err = model.GetParserProjectStorage(newVersion.ProjectStorageMethod).FindOneByID(ctx, newVersion.Id)
+	ppStorage, err := model.GetParserProjectStorage(env.Settings(), newVersion.ProjectStorageMethod)
+	require.NoError(t, err)
+	defer ppStorage.Close(ctx)
+
+	pp, err = ppStorage.FindOneByID(ctx, newVersion.Id)
 	assert.NoError(err)
 	assert.NotNil(pp)
 	assert.True(utility.FromBoolPtr(pp.Stepback))
@@ -363,7 +371,7 @@ tasks:
 	assert.Equal(2, newVersion.RevisionOrderNumber)
 	assert.Equal(evergreen.AdHocRequester, newVersion.Requester)
 
-	pp, err = model.GetParserProjectStorage(newVersion.ProjectStorageMethod).FindOneByID(ctx, newVersion.Id)
+	pp, err = ppStorage.FindOneByID(ctx, newVersion.Id)
 	assert.NoError(err)
 	assert.NotNil(pp)
 	assert.True(utility.FromBoolPtr(pp.Stepback))

@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -65,6 +66,10 @@ func TestAgentFetchExpansionsForTask(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
+
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(ctx))
+
 			require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, model.VersionCollection, model.ParserProjectCollection))
 			t1 := task.Task{
 				Id:      "t1",
@@ -119,7 +124,7 @@ func TestAgentFetchExpansionsForTask(t *testing.T) {
 			require.NoError(t, pp1.Insert())
 			require.NoError(t, pp2.Insert())
 
-			r, ok := makeFetchExpansionsForTask().(*fetchExpansionsForTaskHandler)
+			r, ok := makeFetchExpansionsForTask(env).(*fetchExpansionsForTaskHandler)
 			require.True(t, ok)
 
 			tCase(ctx, t, r)

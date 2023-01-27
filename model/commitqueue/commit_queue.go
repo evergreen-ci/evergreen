@@ -207,3 +207,12 @@ func ClearAllCommitQueues() (int, error) {
 
 	return clearedCount, nil
 }
+
+// EnqueuePRInfo holds information necessary to enqueue a PR to the commit queue.
+type EnqueuePRInfo struct {
+	Username      string
+	Owner         string
+	Repo          string
+	PR            int
+	CommitMessage string
+}

@@ -438,7 +438,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 		}
 
 		var patchConfig *model.PatchConfig
-		_, patchConfig, err = model.GetPatchedProject(ctx, p, githubOauthToken)
+		_, patchConfig, err = model.GetPatchedProject(ctx, &as.Settings, p, githubOauthToken)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return

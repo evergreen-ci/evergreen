@@ -88,12 +88,7 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	githubOauthToken, err := j.env.Settings().GetGithubOauthToken()
-	if err != nil {
-		j.AddError(errors.Wrap(err, "getting global GitHub OAuth token"))
-		return
-	}
-
+	var err error
 	if j.intent == nil {
 		j.intent, err = patch.FindIntent(j.IntentID, j.IntentType)
 		if err != nil {
@@ -105,7 +100,7 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 
 	patchDoc := j.intent.NewPatch()
 
-	if err = j.finishPatch(ctx, patchDoc, githubOauthToken); err != nil {
+	if err = j.finishPatch(ctx, patchDoc); err != nil {
 		if j.IntentType == patch.GithubIntentType {
 			if j.gitHubError == "" {
 				j.gitHubError = OtherErrors
@@ -156,10 +151,14 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 	}
 }
 
-func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.Patch, githubOauthToken string) error {
+func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.Patch) error {
+	githubOauthToken, err := j.env.Settings().GetGithubOauthToken()
+	if err != nil {
+		return errors.Wrap(err, "getting GitHub OAuth token")
+	}
+
 	catcher := grip.NewBasicCatcher()
 
-	var err error
 	canFinalize := true
 	switch j.IntentType {
 	case patch.CliIntentType:
@@ -237,7 +236,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 
 	validationCatcher := grip.NewBasicCatcher()
 	// Get and validate patched config
-	project, patchConfig, err := model.GetPatchedProject(ctx, patchDoc, githubOauthToken)
+	project, patchConfig, err := model.GetPatchedProject(ctx, j.env.Settings(), patchDoc, githubOauthToken)
 	if err != nil {
 		if strings.Contains(err.Error(), model.EmptyConfigurationError) {
 			j.gitHubError = EmptyConfig
