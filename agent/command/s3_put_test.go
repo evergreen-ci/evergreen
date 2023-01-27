@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
+	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -434,9 +435,6 @@ func TestPreservePath(t *testing.T) {
 	defer cancel()
 
 	dir := t.TempDir()
-	f, err := os.Create(filepath.Join(dir, "foo"))
-	require.NoError(t, err)
-	require.NoError(t, f.Close())
 
 	// Create the directories
 	require.NoError(t, os.Mkdir(filepath.Join(dir, "myWebsite"), 0755))
@@ -444,6 +442,9 @@ func TestPreservePath(t *testing.T) {
 	require.NoError(t, os.Mkdir(filepath.Join(dir, "myWebsite", "assets", "images"), 0755))
 
 	// Create the files in in the assets directory
+	f, err := os.Create(filepath.Join(dir, "foo"))
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
 	f, err = os.Create(filepath.Join(dir, "myWebsite", "assets", "asset1"))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
@@ -501,7 +502,11 @@ func TestPreservePath(t *testing.T) {
 		"remote/myWebsite/assets/images/image1": false,
 		"remote/myWebsite/assets/images/image2": false,
 	}
+	grip.Infof("expected: %s", expected)
+	grip.Infof("received: ")
 	for it.Next(ctx) {
+		grip.Infof("\n: %s", it.Item().Name())
+
 		expected[it.Item().Name()] = true
 	}
 
