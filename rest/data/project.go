@@ -68,9 +68,10 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 	if err := VerifyUniqueProject(projectRef.Id); err != nil {
 		return err
 	}
+	// Always warn because created projects are never enabled.
 	err, _ := model.ValidateProjectCreation(projectRef.Id, env.Settings(), projectRef)
 	if err != nil {
-		return err
+		// TODO EVG-18784: Return graphql warning
 	}
 
 	existingContainerSecrets := projectRef.ContainerSecrets
