@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -354,7 +355,7 @@ buildvariants:
 	}
 	oauthToken, err := settings.GetGithubOauthToken()
 	assert.NoError(err)
-	expansions, err := PopulateExpansions(ctx, taskDoc, &h, oauthToken)
+	expansions, err := PopulateExpansions(ctx, settings, taskDoc, &h, oauthToken)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 24)
 	assert.Equal("0", expansions.Get("execution"))
@@ -392,7 +393,7 @@ buildvariants:
 	}
 	require.NoError(t, p.Insert())
 
-	expansions, err = PopulateExpansions(ctx, taskDoc, &h, oauthToken)
+	expansions, err = PopulateExpansions(ctx, settings, taskDoc, &h, oauthToken)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 24)
 	assert.Equal("true", expansions.Get("is_patch"))
@@ -412,7 +413,7 @@ buildvariants:
 		Description: "commit queue message",
 	}
 	require.NoError(t, p.Insert())
-	expansions, err = PopulateExpansions(ctx, taskDoc, &h, oauthToken)
+	expansions, err = PopulateExpansions(ctx, settings, taskDoc, &h, oauthToken)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 26)
 	assert.Equal("true", expansions.Get("is_patch"))
@@ -427,7 +428,7 @@ buildvariants:
 		Version: v.Id,
 	}
 	require.NoError(t, p.Insert())
-	expansions, err = PopulateExpansions(ctx, taskDoc, &h, oauthToken)
+	expansions, err = PopulateExpansions(ctx, settings, taskDoc, &h, oauthToken)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 27)
 	assert.Equal("true", expansions.Get("is_patch"))
@@ -452,7 +453,7 @@ buildvariants:
 	}
 	assert.NoError(patchDoc.Insert())
 
-	expansions, err = PopulateExpansions(ctx, taskDoc, &h, oauthToken)
+	expansions, err = PopulateExpansions(ctx, settings, taskDoc, &h, oauthToken)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 27)
 	assert.Equal("github_pr", expansions.Get("requester"))
@@ -477,7 +478,7 @@ buildvariants:
 	assert.NoError(upstreamProject.Insert())
 	taskDoc.TriggerID = "upstreamTask"
 	taskDoc.TriggerType = ProjectTriggerLevelTask
-	expansions, err = PopulateExpansions(ctx, taskDoc, &h, oauthToken)
+	expansions, err = PopulateExpansions(ctx, settings, taskDoc, &h, oauthToken)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 35)
 	assert.Equal(taskDoc.TriggerID, expansions.Get("trigger_event_identifier"))
@@ -2390,7 +2391,12 @@ func TestDependenciesForTaskUnit(t *testing.T) {
 
 func TestGetVariantsAndTasksFromPatchProject(t *testing.T) {
 	require.NoError(t, db.ClearCollections(VersionCollection, ParserProjectCollection))
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
 	patchedConfig := `
 buildvariants:
   - name: bv1
@@ -2417,7 +2423,7 @@ tasks:
 		Version:              versionID,
 		PatchedParserProject: patchedConfig,
 	}
-	variantsAndTasks, err := GetVariantsAndTasksFromPatchProject(ctx, p)
+	variantsAndTasks, err := GetVariantsAndTasksFromPatchProject(ctx, env.Settings(), p)
 	assert.NoError(t, err)
 	assert.Len(t, variantsAndTasks.Variants["bv1"].Tasks, 1)
 
@@ -2436,7 +2442,7 @@ tasks:
 	assert.NotNil(t, pp)
 	assert.NoError(t, pp.Insert())
 	p.PatchedParserProject = ""
-	variantsAndTasks, err = GetVariantsAndTasksFromPatchProject(ctx, p)
+	variantsAndTasks, err = GetVariantsAndTasksFromPatchProject(ctx, env.Settings(), p)
 	assert.NoError(t, err)
 	require.NotZero(t, variantsAndTasks)
 	assert.Len(t, variantsAndTasks.Variants["bv1"].Tasks, 1)

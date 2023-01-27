@@ -11,7 +11,7 @@ import (
 )
 
 // SchedulePatch schedules a patch. It returns an error and an HTTP status code.
-func SchedulePatch(ctx context.Context, patchId string, version *model.Version, patchUpdateReq model.PatchUpdate) (int, error) {
+func SchedulePatch(ctx context.Context, env evergreen.Environment, patchId string, version *model.Version, patchUpdateReq model.PatchUpdate) (int, error) {
 	var err error
 	p, err := patch.FindOneId(patchId)
 	if err != nil {
@@ -32,7 +32,7 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 		return http.StatusInternalServerError, errors.Errorf("project '%s' for version '%s' not found", p.Project, p.Version)
 	}
 
-	statusCode, err := model.ConfigurePatch(ctx, p, version, projectRef, patchUpdateReq)
+	statusCode, err := model.ConfigurePatch(ctx, env.Settings(), p, version, projectRef, patchUpdateReq)
 	if err != nil {
 		return statusCode, err
 	}
@@ -45,7 +45,7 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 	newCxt := context.Background()
 	// Process additional patch trigger aliases added via UI.
 	// Child patches created with the CLI --trigger-alias flag go through a separate flow, so ensure that new child patches are also created before the parent is finalized.
-	if err := ProcessTriggerAliases(ctx, p, projectRef, evergreen.GetEnvironment(), patchUpdateReq.PatchTriggerAliases); err != nil {
+	if err := ProcessTriggerAliases(ctx, p, projectRef, env, patchUpdateReq.PatchTriggerAliases); err != nil {
 		return http.StatusInternalServerError, errors.Wrap(err, "processing patch trigger aliases")
 	}
 	if len(patchUpdateReq.PatchTriggerAliases) > 0 {

@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -20,6 +21,9 @@ import (
 // VersionSuite enables testing for version related routes.
 type VersionSuite struct {
 	bv, bi []string // build variants and build indices for testing
+	env    evergreen.Environment
+	ctx    context.Context
+	cancel context.CancelFunc
 
 	suite.Suite
 }
@@ -34,6 +38,12 @@ var versionId, revision, author, authorEmail, msg, status, repo, branch, project
 // SetupSuite sets up the test suite for routes related to version.
 // More version-related routes will be implemented later.
 func (s *VersionSuite) SetupSuite() {
+	s.ctx, s.cancel = context.WithCancel(context.Background())
+
+	env := &mock.Environment{}
+	s.Require().NoError(env.Configure(s.ctx))
+	s.env = env
+
 	// Initialize values for version field variables.
 	versionId = "versionId"
 	revision = "revision"
@@ -104,6 +114,10 @@ func (s *VersionSuite) SetupSuite() {
 	}
 }
 
+func (s *VersionSuite) TearDownSuite() {
+	s.cancel()
+}
+
 // TestFindByVersionId tests the route for finding version by its ID.
 func (s *VersionSuite) TestFindByVersionId() {
 	handler := &versionHandler{versionId: "versionId"}
@@ -156,7 +170,10 @@ func (s *VersionSuite) TestPatchVersionVersion() {
 
 // TestFindAllBuildsForVersion tests the route for finding all builds for a version.
 func (s *VersionSuite) TestFindAllBuildsForVersion() {
-	handler := &buildsForVersionHandler{versionId: "versionId"}
+	handler := &buildsForVersionHandler{
+		versionId: "versionId",
+		env:       s.env,
+	}
 	res := handler.Run(context.TODO())
 	s.Equal(http.StatusOK, res.Status())
 	s.NotNil(res)
@@ -174,11 +191,14 @@ func (s *VersionSuite) TestFindAllBuildsForVersion() {
 }
 
 func (s *VersionSuite) TestFindBuildsForVersionByVariant() {
-	handler := &buildsForVersionHandler{versionId: "versionId"}
+	handler := &buildsForVersionHandler{
+		versionId: "versionId",
+		env:       s.env,
+	}
 
 	for i, variant := range s.bv {
 		handler.variant = variant
-		res := handler.Run(context.Background())
+		res := handler.Run(s.ctx)
 		s.Equal(http.StatusOK, res.Status())
 		s.NotNil(res)
 

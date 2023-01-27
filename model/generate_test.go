@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
@@ -364,6 +365,7 @@ type GenerateSuite struct {
 	suite.Suite
 	ctx    context.Context
 	cancel context.CancelFunc
+	env    evergreen.Environment
 }
 
 func TestGenerateSuite(t *testing.T) {
@@ -381,6 +383,9 @@ func (s *GenerateSuite) SetupTest() {
 	}
 	s.Require().NoError(ref2.Insert())
 	s.ctx, s.cancel = context.WithCancel(context.Background())
+	env := &mock.Environment{}
+	s.Require().NoError(env.Configure(s.ctx))
+	s.env = env
 }
 
 func (s *GenerateSuite) TearDownTest() {
@@ -622,6 +627,12 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 }
 
 func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	env := &mock.Environment{}
+	s.Require().NoError(env.Configure(ctx))
+
 	genTask := &task.Task{
 		Id:          "task_that_called_generate_task",
 		Project:     "proj",
@@ -687,11 +698,11 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	g := sampleGeneratedProject
 	g.Task = genTask
 
-	p, pp, err := FindAndTranslateProjectForVersion(v)
+	p, pp, err := FindAndTranslateProjectForVersion(ctx, env.Settings(), v)
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(p, pp, v)
 	s.Require().NoError(err)
-	s.NoError(g.Save(context.Background(), p, pp, v))
+	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	// verify we stopped saving versions
 	v, err = VersionFindOneId(v.Id)
@@ -709,7 +720,10 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	s.Require().Len(v.BuildVariants[1].BatchTimeTasks, 1)
 	s.InDelta(time.Now().Add(15*time.Minute).Unix(), v.BuildVariants[1].BatchTimeTasks[0].ActivateAt.Unix(), 1)
 
-	pp, err = GetParserProjectStorage(v.ProjectStorageMethod).FindOneByID(s.ctx, v.Id)
+	ppStorage, err := GetParserProjectStorage(s.env.Settings(), v.ProjectStorageMethod)
+	s.Require().NoError(err)
+	defer ppStorage.Close(s.ctx)
+	pp, err = ParserProjectFindOneByID(s.ctx, s.env.Settings(), v.ProjectStorageMethod, v.Id)
 	s.NoError(err)
 	s.Require().NotNil(pp)
 	s.Len(pp.BuildVariants, 3)
@@ -779,7 +793,7 @@ func (s *GenerateSuite) TestSaveWithAlreadyGeneratedTasksAndVariants() {
 	pp.Id = "version_that_called_generate_task"
 	s.NoError(pp.Insert())
 	// Setup parser project to be partially generated.
-	p, pp, err := FindAndTranslateProjectForVersion(v)
+	p, pp, err := FindAndTranslateProjectForVersion(s.ctx, s.env.Settings(), v)
 	s.NoError(err)
 
 	g := partiallyGeneratedProject
@@ -787,14 +801,14 @@ func (s *GenerateSuite) TestSaveWithAlreadyGeneratedTasksAndVariants() {
 	p, pp, v, err = g.NewVersion(p, pp, v)
 	s.NoError(err)
 	pp.UpdatedByGenerators = []string{generatorTask.Id}
-	s.NoError(GetParserProjectStorage(ProjectStorageMethodDB).UpsertOne(ctx, pp))
+	s.NoError(ParserProjectUpsertOne(ctx, s.env.Settings(), v.ProjectStorageMethod, pp))
 
 	// Shouldn't error trying to add the same generated project.
 	p, pp, v, err = g.NewVersion(p, pp, v)
 	s.NoError(err)
 	s.Len(pp.UpdatedByGenerators, 1) // Not modified again.
 
-	s.NoError(g.Save(context.Background(), p, pp, v))
+	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	tasks := []task.Task{}
 	taskQuery := db.Query(bson.M{task.GeneratedByKey: "generator"}).Sort([]string{task.CreateTimeKey})
@@ -864,17 +878,17 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 
 	g := sampleGeneratedProjectAddToBVOnly
 	g.Task = &tasksThatExist[0]
-	p, pp, err := FindAndTranslateProjectForVersion(v)
+	p, pp, err := FindAndTranslateProjectForVersion(s.ctx, s.env.Settings(), v)
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(p, pp, v)
 	s.NoError(err)
-	s.NoError(g.Save(context.Background(), p, pp, v))
+	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	v, err = VersionFindOneId(v.Id)
 	s.NoError(err)
 	s.Require().NotNil(v)
 
-	pp, err = GetParserProjectStorage(v.ProjectStorageMethod).FindOneByID(s.ctx, v.Id)
+	pp, err = ParserProjectFindOneByID(s.ctx, s.env.Settings(), v.ProjectStorageMethod, v.Id)
 	s.NoError(err)
 	s.Require().NotNil(pp)
 	s.Require().Len(pp.BuildVariants, 1, "parser project should have same build variant")
@@ -971,11 +985,11 @@ buildvariants:
 		},
 	}
 
-	p, pp, err := FindAndTranslateProjectForVersion(v)
+	p, pp, err := FindAndTranslateProjectForVersion(s.ctx, s.env.Settings(), v)
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(p, pp, v)
 	s.NoError(err)
-	s.NoError(g.Save(context.Background(), p, pp, v))
+	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	// the depended-on task is created in the existing variant
 	saySomething := task.Task{}
@@ -1023,17 +1037,17 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 
 	g := smallGeneratedProject
 	g.Task = &taskThatExists
-	p, pp, err := FindAndTranslateProjectForVersion(v)
+	p, pp, err := FindAndTranslateProjectForVersion(s.ctx, s.env.Settings(), v)
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(p, pp, v)
 	s.Require().NoError(err)
-	s.NoError(g.Save(context.Background(), p, pp, v))
+	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	v, err = VersionFindOneId(v.Id)
 	s.NoError(err)
 	s.Require().NotNil(v)
 
-	pp, err = GetParserProjectStorage(v.ProjectStorageMethod).FindOneByID(s.ctx, v.Id)
+	pp, err = ParserProjectFindOneByID(s.ctx, s.env.Settings(), v.ProjectStorageMethod, v.Id)
 	s.NoError(err)
 	s.Require().NotNil(pp)
 	s.Require().Len(pp.BuildVariants, 1, "parser project should have same build variant")

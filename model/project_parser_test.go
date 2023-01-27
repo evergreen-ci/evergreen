@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -1572,29 +1573,37 @@ func TestParserProjectStorage(t *testing.T) {
 		"DB": ProjectStorageMethodDB,
 	} {
 		t.Run("StorageMethod"+methodName, func(t *testing.T) {
-			for testName, testCase := range map[string]func(t *testing.T){
-				"UpsertCreatesNewParserProject": func(t *testing.T) {
+			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment){
+				"UpsertCreatesNewParserProject": func(ctx context.Context, t *testing.T, env *mock.Environment) {
 					pp := &ParserProject{
 						Id:    "my-project",
 						Owner: utility.ToStringPtr("me"),
 					}
-					assert.NoError(t, GetParserProjectStorage(ppStorageMethod).UpsertOne(ctx, pp))
+					ppStorage, err := GetParserProjectStorage(env.Settings(), ppStorageMethod)
+					require.NoError(t, err)
+					defer ppStorage.Close(ctx)
 
-					pp, err := GetParserProjectStorage(ppStorageMethod).FindOneByID(ctx, pp.Id)
+					assert.NoError(t, ppStorage.UpsertOne(ctx, pp))
+
+					pp, err = ppStorage.FindOneByID(ctx, pp.Id)
 					assert.NoError(t, err)
 					require.NotNil(t, pp)
 					assert.Equal(t, "me", utility.FromStringPtr(pp.Owner))
 				},
-				"UpsertUpdatesExistingParserProject": func(t *testing.T) {
+				"UpsertUpdatesExistingParserProject": func(ctx context.Context, t *testing.T, env *mock.Environment) {
 					pp := &ParserProject{
 						Id:    "my-project",
 						Owner: utility.ToStringPtr("me"),
 					}
-					assert.NoError(t, GetParserProjectStorage(ppStorageMethod).UpsertOne(ctx, pp))
-					pp.Owner = utility.ToStringPtr("you")
-					assert.NoError(t, GetParserProjectStorage(ppStorageMethod).UpsertOne(ctx, pp))
+					ppStorage, err := GetParserProjectStorage(env.Settings(), ppStorageMethod)
+					require.NoError(t, err)
+					defer ppStorage.Close(ctx)
 
-					pp, err := GetParserProjectStorage(ppStorageMethod).FindOneByID(ctx, pp.Id)
+					assert.NoError(t, ppStorage.UpsertOne(ctx, pp))
+					pp.Owner = utility.ToStringPtr("you")
+					assert.NoError(t, ppStorage.UpsertOne(ctx, pp))
+
+					pp, err = ppStorage.FindOneByID(ctx, pp.Id)
 					assert.NoError(t, err)
 					require.NotNil(t, pp)
 					assert.Equal(t, "you", utility.FromStringPtr(pp.Owner))
@@ -1602,7 +1611,9 @@ func TestParserProjectStorage(t *testing.T) {
 			} {
 				t.Run(testName, func(t *testing.T) {
 					require.NoError(t, db.ClearCollections(ParserProjectCollection))
-					testCase(t)
+					env := &mock.Environment{}
+					require.NoError(t, env.Configure(ctx))
+					testCase(ctx, t, env)
 				})
 			}
 		})
@@ -1712,16 +1723,24 @@ func checkProjectPersists(t *testing.T, yml []byte, ppStorageMethod ParserProjec
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
 	pp, err := createIntermediateProject(yml, false, false)
 	assert.NoError(t, err)
 	pp.Id = "my-project"
 	pp.Identifier = utility.ToStringPtr("old-project-identifier")
 
+	ppStorage, err := GetParserProjectStorage(env.Settings(), ppStorageMethod)
+	require.NoError(t, err)
+	defer ppStorage.Close(ctx)
+
 	yamlToCompare, err := yaml.Marshal(pp)
 	assert.NoError(t, err)
-	assert.NoError(t, GetParserProjectStorage(ppStorageMethod).UpsertOne(ctx, pp))
 
-	newPP, err := GetParserProjectStorage(ppStorageMethod).FindOneByID(ctx, pp.Id)
+	assert.NoError(t, ppStorage.UpsertOne(ctx, pp))
+
+	newPP, err := ppStorage.FindOneByID(ctx, pp.Id)
 	assert.NoError(t, err)
 	require.NotZero(t, newPP)
 
@@ -1736,9 +1755,9 @@ func checkProjectPersists(t *testing.T, yml []byte, ppStorageMethod ParserProjec
 	pp.Id = "my-project"
 	pp.Identifier = utility.ToStringPtr("new-project-identifier")
 
-	assert.NoError(t, GetParserProjectStorage(ppStorageMethod).UpsertOne(ctx, pp))
+	assert.NoError(t, ppStorage.UpsertOne(ctx, pp))
 
-	newPP, err = GetParserProjectStorage(ppStorageMethod).FindOneByID(ctx, pp.Id)
+	newPP, err = ppStorage.FindOneByID(ctx, pp.Id)
 	assert.NoError(t, err)
 	require.NotZero(t, newPP)
 

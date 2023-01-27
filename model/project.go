@@ -979,7 +979,7 @@ var (
 	ProjectTasksKey         = bsonutil.MustHaveTag(Project{}, "Tasks")
 )
 
-func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, oauthToken string) (util.Expansions, error) {
+func PopulateExpansions(ctx context.Context, settings *evergreen.Settings, t *task.Task, h *host.Host, oauthToken string) (util.Expansions, error) {
 	if t == nil {
 		return nil, errors.New("task cannot be nil")
 	}
@@ -1125,7 +1125,7 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, oauthTo
 		}
 	}
 
-	bvExpansions, err := FindExpansionsForVariant(ctx, v, t.BuildVariant)
+	bvExpansions, err := FindExpansionsForVariant(ctx, settings, v, t.BuildVariant)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting expansions for variant")
 	}
@@ -1226,7 +1226,11 @@ func FindProjectFromVersionID(versionStr string) (*Project, error) {
 		return nil, errors.Errorf("version '%s' not found", versionStr)
 	}
 
-	project, _, err := FindAndTranslateProjectForVersion(ver)
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultParserProjectAccessTimeout)
+	defer cancel()
+	env := evergreen.GetEnvironment()
+
+	project, _, err := FindAndTranslateProjectForVersion(ctx, env.Settings(), ver)
 	if err != nil {
 		return nil, errors.Wrapf(err, "loading project config for version '%s'", versionStr)
 	}
@@ -1276,7 +1280,10 @@ func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, er
 			continue
 		}
 		if lastGoodVersion != nil {
-			project, _, err = FindAndTranslateProjectForVersion(lastGoodVersion)
+			ctx, cancel := context.WithTimeout(context.Background(), DefaultParserProjectAccessTimeout)
+			defer cancel()
+			env := evergreen.GetEnvironment()
+			project, _, err = FindAndTranslateProjectForVersion(ctx, env.Settings(), lastGoodVersion)
 			if err != nil {
 				grip.Critical(message.WrapError(err, message.Fields{
 					"message": "last known good version has malformed config",
@@ -2110,8 +2117,8 @@ type VariantsAndTasksFromProject struct {
 }
 
 // GetVariantsAndTasksFromPatchProject formats variants and tasks as used by the UI pages.
-func GetVariantsAndTasksFromPatchProject(ctx context.Context, p *patch.Patch) (*VariantsAndTasksFromProject, error) {
-	project, _, err := FindAndTranslateProjectForPatch(ctx, p)
+func GetVariantsAndTasksFromPatchProject(ctx context.Context, settings *evergreen.Settings, p *patch.Patch) (*VariantsAndTasksFromProject, error) {
+	project, _, err := FindAndTranslateProjectForPatch(ctx, settings, p)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding and translating project")
 	}
