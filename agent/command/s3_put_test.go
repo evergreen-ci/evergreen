@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -14,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
-	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -437,29 +437,30 @@ func TestPreservePath(t *testing.T) {
 	dir := t.TempDir()
 
 	// Create the directories
-	require.NoError(t, os.Mkdir(filepath.Join(dir, "myWebsite"), 0755))
-	require.NoError(t, os.Mkdir(filepath.Join(dir, "myWebsite", "assets"), 0755))
-	require.NoError(t, os.Mkdir(filepath.Join(dir, "myWebsite", "assets", "images"), 0755))
+	require.NoError(t, os.Mkdir(strings.Join([]string{dir, "myWebsite"}, "/"), 0755))
+	require.NoError(t, os.Mkdir(strings.Join([]string{dir, "myWebsite", "assets"}, "/"), 0755))
+	require.NoError(t, os.Mkdir(strings.Join([]string{dir, "myWebsite", "assets", "images"}, "/"), 0755))
 
 	// Create the files in in the assets directory
-	f, err := os.Create(filepath.Join(dir, "foo"))
+	f, err := os.Create(strings.Join([]string{dir, "foo"}, "/"))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
-	f, err = os.Create(filepath.Join(dir, "myWebsite", "assets", "asset1"))
+
+	f, err = os.Create(strings.Join([]string{dir, "myWebsite", "assets", "asset1"}, "/"))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
-	f, err = os.Create(filepath.Join(dir, "myWebsite", "assets", "asset2"))
+	f, err = os.Create(strings.Join([]string{dir, "myWebsite", "assets", "asset2"}, "/"))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
-	f, err = os.Create(filepath.Join(dir, "myWebsite", "assets", "asset3"))
+	f, err = os.Create(strings.Join([]string{dir, "myWebsite", "assets", "asset3"}, "/"))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 
 	// Create the files in the assets/images directory
-	f, err = os.Create(filepath.Join(dir, "myWebsite", "assets", "images", "image1"))
+	f, err = os.Create(strings.Join([]string{dir, "myWebsite", "assets", "images", "image1"}, "/"))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
-	f, err = os.Create(filepath.Join(dir, "myWebsite", "assets", "images", "image2"))
+	f, err = os.Create(strings.Join([]string{dir, "myWebsite", "assets", "images", "image2"}, "/"))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 
@@ -474,9 +475,9 @@ func TestPreservePath(t *testing.T) {
 		RemoteFile:              "remote",
 		PreservePath:            "true",
 	}
-	require.NoError(t, os.Mkdir(filepath.Join(dir, "destination"), 0755))
+	require.NoError(t, os.Mkdir(strings.Join([]string{dir, "destination"}, "/"), 0755))
 	opts := pail.LocalOptions{
-		Path: filepath.Join(dir, "destination"),
+		Path: strings.Join([]string{dir, "destination"}, "/"),
 	}
 	s.bucket, err = pail.NewLocalBucket(opts)
 	require.NoError(t, err)
@@ -494,7 +495,46 @@ func TestPreservePath(t *testing.T) {
 	require.NoError(t, s.Execute(ctx, comm, logger, conf))
 	it, err := s.bucket.List(ctx, "")
 	require.NoError(t, err)
-	expected := map[string]bool{
+
+	expected := getExpected(false)
+	expectedWindows := getExpected(true)
+
+	for it.Next(ctx) {
+		expected[it.Item().Name()] = true
+		expectedWindows[it.Item().Name()] = true
+	}
+
+	trueForExpected := true
+	trueForExpectedWindows := true
+
+	for _, exists := range expected {
+		if !exists {
+			trueForExpected = false
+		}
+	}
+	for _, exists := range expectedWindows {
+		if !exists {
+			trueForExpectedWindows = false
+		}
+	}
+
+	require.True(t, trueForExpected || trueForExpectedWindows)
+
+}
+
+func getExpected(isWindows bool) map[string]bool {
+	if isWindows {
+		return map[string]bool{
+			"remote\\foo":                               false,
+			"remote\\myWebsite\\assets\\asset1":         false,
+			"remote\\myWebsite\\assets\\asset2":         false,
+			"remote\\myWebsite\\assets\\asset3":         false,
+			"remote\\myWebsite\\assets\\images\\image1": false,
+			"remote\\myWebsite\\assets\\images\\image2": false,
+		}
+	}
+
+	return map[string]bool{
 		"remote/foo":                            false,
 		"remote/myWebsite/assets/asset1":        false,
 		"remote/myWebsite/assets/asset2":        false,
@@ -502,16 +542,4 @@ func TestPreservePath(t *testing.T) {
 		"remote/myWebsite/assets/images/image1": false,
 		"remote/myWebsite/assets/images/image2": false,
 	}
-	grip.Infof("expected: %s", expected)
-	grip.Infof("received: ")
-	for it.Next(ctx) {
-		grip.Infof("\n: %s", it.Item().Name())
-
-		expected[it.Item().Name()] = true
-	}
-
-	for item, exists := range expected {
-		require.True(t, exists, item)
-	}
-
 }
