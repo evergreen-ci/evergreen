@@ -1571,9 +1571,28 @@ func TestParserProjectStorage(t *testing.T) {
 
 	for methodName, ppStorageMethod := range map[string]ParserProjectStorageMethod{
 		"DB": ProjectStorageMethodDB,
+		"S3": ProjectStorageMethodS3,
 	} {
 		t.Run("StorageMethod"+methodName, func(t *testing.T) {
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment){
+				"FindOneByIDReturnsNilErrorAndResultForNonexistentParserProject": func(ctx context.Context, t *testing.T, env *mock.Environment) {
+					ppStorage, err := GetParserProjectStorage(env.Settings(), ppStorageMethod)
+					require.NoError(t, err)
+					defer ppStorage.Close(ctx)
+
+					pp, err := ppStorage.FindOneByID(ctx, "nonexistent")
+					assert.NoError(t, err)
+					assert.Zero(t, pp)
+				},
+				"FindOneByIDWithFieldsReturnsNilErrorAndResultForNonexistentParserProject": func(ctx context.Context, t *testing.T, env *mock.Environment) {
+					ppStorage, err := GetParserProjectStorage(env.Settings(), ppStorageMethod)
+					require.NoError(t, err)
+					defer ppStorage.Close(ctx)
+
+					pp, err := ppStorage.FindOneByIDWithFields(ctx, "nonexistent", ParserProjectBuildVariantsKey)
+					assert.NoError(t, err)
+					assert.Zero(t, pp)
+				},
 				"UpsertCreatesNewParserProject": func(ctx context.Context, t *testing.T, env *mock.Environment) {
 					pp := &ParserProject{
 						Id:    "my-project",
@@ -1611,6 +1630,7 @@ func TestParserProjectStorage(t *testing.T) {
 			} {
 				t.Run(testName, func(t *testing.T) {
 					require.NoError(t, db.ClearCollections(ParserProjectCollection))
+					// kim: TODO: clear the S3 bucket
 					env := &mock.Environment{}
 					require.NoError(t, env.Configure(ctx))
 					testCase(ctx, t, env)

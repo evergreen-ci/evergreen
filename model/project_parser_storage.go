@@ -9,11 +9,16 @@ import (
 
 // ParserProjectStorage is an interface for accessing the parser project.
 type ParserProjectStorage interface {
-	// FindOneByID finds a parser project using its ID. Implementations may or
-	// may not respect the context.
+	// FindOneByID finds a parser project using its ID. If the parser project
+	// does not exist in the underlying storage, implementations must return a
+	// nil parser project and nil error. Implementations may or may not respect
+	// the context.
 	FindOneByID(ctx context.Context, id string) (*ParserProject, error)
 	// FindOneByIDWithFields finds a parser project using its ID and returns the
-	// parser project with only the requested fields populated.
+	// parser project with at least the requested fields populated.
+	// Implementations may choose to return more fields than those explicitly
+	// requested. If the parser project does not exist in the underlying
+	// storage, implementations must return a nil parser project and nil error.
 	// Implementations may or may not respect the context.
 	FindOneByIDWithFields(ctx context.Context, id string, fields ...string) (*ParserProject, error)
 	// UpsertOne replaces a parser project if the parser project with the
@@ -34,7 +39,7 @@ func GetParserProjectStorage(settings *evergreen.Settings, method ParserProjectS
 	case "", ProjectStorageMethodDB:
 		return ParserProjectDBStorage{}, nil
 	case ProjectStorageMethodS3:
-		return nil, errors.New("TODO (EVG-17537): implement")
+		return NewParserProjectS3Storage(settings.Providers.AWS)
 	default:
 		return nil, errors.Errorf("unrecognized parser project storage method '%s'", method)
 	}

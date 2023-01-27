@@ -474,25 +474,26 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	}
 
 	patchVersion := &Version{
-		Id:                   p.Id.Hex(),
-		CreateTime:           time.Now(),
-		Identifier:           p.Project,
-		Revision:             p.Githash,
-		Author:               p.Author,
-		Message:              p.Description,
-		BuildIds:             []string{},
-		BuildVariants:        []VersionBuildStatus{},
-		Status:               evergreen.PatchCreated,
-		Requester:            requester,
-		ParentPatchID:        p.Triggers.ParentPatch,
-		ParentPatchNumber:    parentPatchNumber,
-		Branch:               projectRef.Branch,
-		RevisionOrderNumber:  p.PatchNumber,
-		AuthorID:             p.Author,
-		Parameters:           params,
-		Activated:            utility.TruePtr(),
-		AuthorEmail:          authorEmail,
-		ProjectStorageMethod: ProjectStorageMethodDB,
+		Id:                  p.Id.Hex(),
+		CreateTime:          time.Now(),
+		Identifier:          p.Project,
+		Revision:            p.Githash,
+		Author:              p.Author,
+		Message:             p.Description,
+		BuildIds:            []string{},
+		BuildVariants:       []VersionBuildStatus{},
+		Status:              evergreen.PatchCreated,
+		Requester:           requester,
+		ParentPatchID:       p.Triggers.ParentPatch,
+		ParentPatchNumber:   parentPatchNumber,
+		Branch:              projectRef.Branch,
+		RevisionOrderNumber: p.PatchNumber,
+		AuthorID:            p.Author,
+		Parameters:          params,
+		Activated:           utility.TruePtr(),
+		AuthorEmail:         authorEmail,
+		// kim: TODO: revert back to DB when done testing.
+		ProjectStorageMethod: ProjectStorageMethodS3,
 	}
 	intermediateProject.CreateTime = patchVersion.CreateTime
 
@@ -590,23 +591,28 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			},
 		)
 	}
-	mongoClient := evergreen.GetEnvironment().Client()
+	env := evergreen.GetEnvironment()
+	mongoClient := env.Client()
 	session, err := mongoClient.StartSession()
 	if err != nil {
 		return nil, errors.Wrap(err, "starting DB session")
 	}
 	defer session.EndSession(ctx)
 
+	// kim: TODO: delete this temp code probably
+	if err := ParserProjectUpsertOne(ctx, env.Settings(), patchVersion.ProjectStorageMethod, intermediateProject); err != nil {
+		return nil, errors.Wrapf(err, "inserting parser project for version '%s'", patchVersion.Id)
+	}
 	txFunc := func(sessCtx mongo.SessionContext) (interface{}, error) {
-		db := evergreen.GetEnvironment().DB()
+		db := env.DB()
 		_, err = db.Collection(VersionCollection).InsertOne(sessCtx, patchVersion)
 		if err != nil {
 			return nil, errors.Wrapf(err, "inserting version '%s'", patchVersion.Id)
 		}
-		_, err = db.Collection(ParserProjectCollection).InsertOne(sessCtx, intermediateProject)
-		if err != nil {
-			return nil, errors.Wrapf(err, "inserting parser project for version '%s'", patchVersion.Id)
-		}
+		// _, err = db.Collection(ParserProjectCollection).InsertOne(sessCtx, intermediateProject)
+		// if err != nil {
+		//     return nil, errors.Wrapf(err, "inserting parser project for version '%s'", patchVersion.Id)
+		// }
 		if config != nil {
 			_, err = db.Collection(ProjectConfigCollection).InsertOne(sessCtx, config)
 			if err != nil {
