@@ -36,6 +36,7 @@ type Task {
   buildVariant: String!
   buildVariantDisplayName: String
   canAbort: Boolean!
+  canDisable: Boolean!
   canModifyAnnotation: Boolean!
   canOverrideDependencies: Boolean!
   canRestart: Boolean!
@@ -205,4 +206,3 @@ type TaskTestResultSample {
   taskId: String!
   totalTestCount: Int!
 }
-

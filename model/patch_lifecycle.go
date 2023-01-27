@@ -103,7 +103,11 @@ func addNewTasksAndBuildsForPatch(ctx context.Context, creationInfo TaskCreation
 		return errors.Wrap(err, "adding new builds")
 	}
 	_, err = addNewTasks(ctx, creationInfo, existingBuilds)
-	return errors.Wrap(err, "adding new tasks")
+	if err != nil {
+		return errors.Wrap(err, "adding new tasks")
+	}
+	err = activateExistingInactiveTasks(creationInfo, existingBuilds)
+	return errors.Wrap(err, "activating existing inactive tasks")
 }
 
 type PatchUpdate struct {
@@ -770,6 +774,7 @@ func SubscribeOnParentOutcome(parentStatus string, childPatchId string, parentPa
 	return nil
 }
 
+// CancelPatch aborts all of a patch's in-progress tasks and deactivates its undispatched tasks.
 func CancelPatch(p *patch.Patch, reason task.AbortInfo) error {
 	if p.Version != "" {
 		if err := SetVersionActivation(p.Version, false, reason.User); err != nil {

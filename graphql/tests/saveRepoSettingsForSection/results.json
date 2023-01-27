@@ -11,9 +11,8 @@
               "spawnHostScriptPath": ""
             },
             "vars": {
-              "vars": {"hello": ""},
+              "vars": { "hello": "" },
               "privateVars": ["hello"]
-
             }
           }
         }
@@ -27,13 +26,13 @@
             "projectRef": {
               "commitQueue": {
                 "enabled": true,
-                "requireSigned": false
+                "requireSigned": false,
+                "requiredApprovalCount": 0
               }
             },
             "vars": {
-              "vars": {"hello": ""},
+              "vars": { "hello": "" },
               "privateVars": ["hello"]
-
             }
           }
         }
@@ -45,7 +44,7 @@
         "data": {
           "saveRepoSettingsForSection": {
             "vars": {
-              "vars": {"goodbye":  ""},
+              "vars": { "goodbye": "" },
               "privateVars": ["goodbye"]
             }
           }

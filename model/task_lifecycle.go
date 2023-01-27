@@ -830,7 +830,7 @@ func HandleEndTaskForCommitQueueTask(t *task.Task, status string) error {
 		return errors.Errorf("no commit queue found for '%s'", t.Project)
 	}
 	if status != evergreen.TaskSucceeded && !t.Aborted {
-		return dequeueAndRestartWithStepback(cq, t, evergreen.APIServerTaskActivator, fmt.Sprintf("task '%s' failed", t.DisplayName))
+		return dequeueAndRestartWithStepback(cq, t, evergreen.MergeTestRequester, fmt.Sprintf("task '%s' failed", t.DisplayName))
 	} else if status == evergreen.TaskSucceeded {
 		// Query for all cq version tasks after this one; they may have been waiting to see if this
 		// one was the cause of the failure, in which case we should dequeue and restart.
@@ -1109,36 +1109,6 @@ func updateBuildGithubStatus(b *build.Build, buildTasks []task.Task) error {
 	return b.UpdateGithubCheckStatus(buildStatus.status)
 }
 
-// checkUpdateBuildPRStatus checks if the build is coming from a PR, and if so
-// sends its updated status to GitHub to reflect the status of the build.
-func checkUpdateBuildPRStatus(b *build.Build) error {
-	if !evergreen.IsGitHubPatchRequester(b.Requester) {
-		return nil
-	}
-	p, err := patch.FindOneId(b.Version)
-	if err != nil {
-		return errors.Wrapf(err, "finding patch '%s'", b.Version)
-	}
-	if p == nil {
-		return errors.Errorf("patch '%s' not found", b.Version)
-	}
-	if p.IsGithubPRPatch() && !evergreen.IsFinishedPatchStatus(p.Status) {
-		input := thirdparty.SendGithubStatusInput{
-			VersionId: p.Id.Hex(),
-			Owner:     p.GithubPatchData.BaseOwner,
-			Repo:      p.GithubPatchData.BaseRepo,
-			Ref:       p.GithubPatchData.HeadHash,
-			Desc:      "patch status change",
-			Caller:    "pr-task-reset",
-			Context:   fmt.Sprintf("evergreen/%s", b.BuildVariant),
-		}
-		if err = thirdparty.SendVersionStatusToGithub(input); err != nil {
-			return errors.Wrapf(err, "sending patch '%s' status to Github", p.Id.Hex())
-		}
-	}
-	return nil
-}
-
 // updateBuildStatus updates the status of the build based on its tasks' statuses
 // Returns true if the build's status has changed or if all of the build's tasks become blocked.
 func updateBuildStatus(b *build.Build) (bool, error) {
@@ -1313,9 +1283,7 @@ func updateVersionStatus(v *Version) (string, error) {
 	return versionStatus, nil
 }
 
-// UpdatePatchStatus updates the status of a patch. For PR patches, the build associated
-// with the passed in buildVariant has its GitHub status updated.
-func UpdatePatchStatus(p *patch.Patch, versionStatus string) error {
+func UpdatePatchStatus(p *patch.Patch, versionStatus, buildVariant string) error {
 	patchStatus, err := evergreen.VersionStatusToPatchStatus(versionStatus)
 	if err != nil {
 		return errors.Wrapf(err, "getting patch status from version status '%s'", versionStatus)
@@ -1331,8 +1299,24 @@ func UpdatePatchStatus(p *patch.Patch, versionStatus string) error {
 		if err = p.MarkFinished(patchStatus, time.Now()); err != nil {
 			return errors.Wrapf(err, "marking patch '%s' as finished with status '%s'", p.Id.Hex(), patchStatus)
 		}
-	} else if err = p.UpdateStatus(patchStatus); err != nil {
-		return errors.Wrapf(err, "updating patch '%s' with status '%s'", p.Id.Hex(), patchStatus)
+	} else {
+		if err = p.UpdateStatus(patchStatus); err != nil {
+			return errors.Wrapf(err, "updating patch '%s' with status '%s'", p.Id.Hex(), patchStatus)
+		}
+		if p.IsGithubPRPatch() {
+			input := thirdparty.SendGithubStatusInput{
+				VersionId: p.Id.Hex(),
+				Owner:     p.GithubPatchData.BaseOwner,
+				Repo:      p.GithubPatchData.BaseRepo,
+				Ref:       p.GithubPatchData.HeadHash,
+				Desc:      "patch status change",
+				Caller:    "pr-task-reset",
+				Context:   fmt.Sprintf("evergreen/%s", buildVariant),
+			}
+			if err = thirdparty.SendVersionStatusToGithub(input); err != nil {
+				return errors.Wrapf(err, "sending patch '%s' status to Github", p.Id.Hex())
+			}
+		}
 	}
 
 	isDone, parentPatch, err := p.GetFamilyInformation()
@@ -1374,10 +1358,6 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 		return nil
 	}
 
-	if err = checkUpdateBuildPRStatus(taskBuild); err != nil {
-		return errors.Wrapf(err, "updating build '%s' PR status", taskBuild.Id)
-	}
-
 	taskVersion, err := VersionFindOneId(t.Version)
 	if err != nil {
 		return errors.Wrapf(err, "getting version '%s' for task '%s'", t.Version, t.Id)
@@ -1399,7 +1379,7 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 		if p == nil {
 			return errors.Errorf("no patch found for version '%s'", taskVersion.Id)
 		}
-		if err = UpdatePatchStatus(p, newVersionStatus); err != nil {
+		if err = UpdatePatchStatus(p, newVersionStatus, taskBuild.BuildVariant); err != nil {
 			return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
 		}
 
@@ -1429,8 +1409,6 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 	return nil
 }
 
-// UpdateVersionAndPatchStatusForBuilds updates the status of all versions, patches and
-// builds associated with the given input list of build IDs.
 func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
 	if len(buildIds) == 0 {
 		return nil
@@ -1440,9 +1418,8 @@ func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
 		return errors.Wrapf(err, "fetching builds")
 	}
 
-	// Maintain a list of builds for each version because we may
-	// be updating many builds for the same version.
-	versionSet := make(map[string]bool)
+	versionsToUpdate := make(map[string]string)
+	bvMap := make(map[string]string)
 	for _, build := range builds {
 		buildStatusChanged, err := updateBuildStatus(&build)
 		if err != nil {
@@ -1452,18 +1429,17 @@ func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
 		if !buildStatusChanged {
 			continue
 		}
-		if err = checkUpdateBuildPRStatus(&build); err != nil {
-			return errors.Wrapf(err, "updating build '%s' PR status", build.Id)
-		}
-		versionSet[build.Version] = true
+
+		versionsToUpdate[build.Version] = build.Id
+		bvMap[build.Id] = build.BuildVariant
 	}
-	for versionId := range versionSet {
+	for versionId, buildId := range versionsToUpdate {
 		buildVersion, err := VersionFindOneId(versionId)
 		if err != nil {
-			return errors.Wrapf(err, "getting version '%s'", versionId)
+			return errors.Wrapf(err, "getting version '%s' for build '%s'", versionId, buildId)
 		}
 		if buildVersion == nil {
-			return errors.Errorf("no version '%s' found", versionId)
+			return errors.Errorf("no version '%s' found for build '%s'", versionId, buildId)
 		}
 		newVersionStatus, err := updateVersionStatus(buildVersion)
 		if err != nil {
@@ -1478,7 +1454,7 @@ func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
 			if p == nil {
 				return errors.Errorf("no patch found for version '%s'", buildVersion.Id)
 			}
-			if err = UpdatePatchStatus(p, newVersionStatus); err != nil {
+			if err = UpdatePatchStatus(p, newVersionStatus, bvMap[buildId]); err != nil {
 				return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
 			}
 		}
@@ -1604,12 +1580,12 @@ func MarkTasksReset(taskIds []string) error {
 	return catcher.Resolve()
 }
 
-// RestartFailedTasks attempts to restart failed tasks that started between 2 times
+// RestartFailedTasks attempts to restart failed tasks that started or failed between 2 times.
 // It returns a slice of task IDs that were successfully restarted as well as a slice
-// of task IDs that failed to restart
-// opts.dryRun will return the tasks that will be restarted if sent true
+// of task IDs that failed to restart.
+// opts.dryRun will return the tasks that will be restarted if set to true.
 // opts.red and opts.purple will only restart tasks that were failed due to the test
-// or due to the system, respectively
+// or due to the system, respectively.
 func RestartFailedTasks(opts RestartOptions) (RestartResults, error) {
 	results := RestartResults{}
 	if !opts.IncludeTestFailed && !opts.IncludeSysFailed && !opts.IncludeSetupFailed {

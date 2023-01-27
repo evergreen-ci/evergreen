@@ -20,7 +20,6 @@ import (
 )
 
 type gitMergePr struct {
-	URL   string `mapstructure:"url"`
 	Token string `mapstructure:"token"`
 
 	statusSender send.Sender

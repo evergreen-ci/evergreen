@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
@@ -65,15 +64,6 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 		if err := ctx.Err(); err != nil {
 			return errors.Wrap(err, "canceled while running command list")
 		}
-		if cmd.DisplayName() == "" {
-			grip.Critical(message.Fields{
-				"message": "attempting to run an undefined command",
-				"name":    cmd.Name(),
-				"type":    cmd.Type(),
-				"raw":     fmt.Sprintf("%#v", cmd),
-				"info":    commandInfo,
-			})
-		}
 
 		cmd.SetJasperManager(a.jasper)
 
@@ -118,14 +108,14 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 			defer func() {
 				// this channel will get read from twice even though we only send once, hence why it's buffered
 				cmdChan <- recovery.HandlePanicWithError(recover(), nil,
-					fmt.Sprintf("running command '%s'", fullCommandName))
+					fmt.Sprintf("running command %s", fullCommandName))
 			}()
 			cmdChan <- cmd.Execute(ctx, a.comm, logger, tc.taskConfig)
 		}()
 		select {
 		case err = <-cmdChan:
 			if err != nil {
-				tc.logger.Task().Errorf("Command '%s' failed: %s.", fullCommandName, err)
+				tc.logger.Task().Errorf("Command %s failed: %s.", fullCommandName, err)
 				if options.isTaskCommands || options.failPreAndPost ||
 					(cmd.Name() == "git.get_project" && tc.taskModel.Requester == evergreen.MergeTestRequester) {
 					// any git.get_project in the commit queue should fail
@@ -134,9 +124,9 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 			}
 		case <-ctx.Done():
 			if ctx.Err() == context.DeadlineExceeded {
-				tc.logger.Task().Errorf("Command '%s' stopped early because idle timeout duration of %d seconds has been reached.", fullCommandName, int(tc.timeout.idleTimeoutDuration.Seconds()))
+				tc.logger.Task().Errorf("Command %s stopped early because idle timeout duration of %d seconds has been reached.", fullCommandName, int(tc.timeout.idleTimeoutDuration.Seconds()))
 			} else {
-				tc.logger.Task().Errorf("Command '%s' stopped early: %s.", fullCommandName, ctx.Err())
+				tc.logger.Task().Errorf("Command %s stopped early: %s.", fullCommandName, ctx.Err())
 			}
 			return errors.Wrap(ctx.Err(), "agent stopped early")
 		}
@@ -174,14 +164,14 @@ func (a *Agent) runTaskCommands(ctx context.Context, tc *taskContext) error {
 }
 
 func getCommandName(commandInfo model.PluginCommandConf, cmd command.Command) string {
-	commandName := cmd.Name()
-	if commandInfo.Function != "" {
-		commandName = fmt.Sprintf(`'%s' in "%s"`, commandName, commandInfo.Function)
-	} else if commandInfo.DisplayName != "" {
-		commandName = fmt.Sprintf(`("%s") '%s'`, commandInfo.DisplayName, commandName)
-	} else {
-		commandName = fmt.Sprintf("'%s'", commandName)
+	commandName := fmt.Sprintf(`'%s'`, cmd.Name())
+	if commandInfo.DisplayName != "" {
+		commandName = fmt.Sprintf(`'%s' (%s)`, commandInfo.DisplayName, commandName)
 	}
+	if commandInfo.Function != "" {
+		commandName = fmt.Sprintf(`%s in function '%s'`, commandName, commandInfo.Function)
+	}
+
 	return commandName
 }
 

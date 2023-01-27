@@ -716,11 +716,11 @@ func TestVariantTasksToTVPairs(t *testing.T) {
 	assert := assert.New(t)
 
 	input := []patch.VariantTasks{
-		patch.VariantTasks{
+		{
 			Variant: "variant",
 			Tasks:   []string{"task1", "task2", "task3"},
 			DisplayTasks: []patch.DisplayTask{
-				patch.DisplayTask{
+				{
 					Name: "displaytask1",
 				},
 			},
@@ -767,13 +767,13 @@ func TestAddNewPatch(t *testing.T) {
 	proj := &Project{
 		Identifier: "project",
 		BuildVariants: []BuildVariant{
-			BuildVariant{
+			{
 				Name: "variant",
 				Tasks: []BuildVariantTaskUnit{
 					{Name: "task1"}, {Name: "task2"}, {Name: "task3"},
 				},
 				DisplayTasks: []patch.DisplayTask{
-					patch.DisplayTask{
+					{
 						Name:      "displaytask1",
 						ExecTasks: []string{"task1", "task2"},
 					},
@@ -782,15 +782,15 @@ func TestAddNewPatch(t *testing.T) {
 			},
 		},
 		Tasks: []ProjectTask{
-			ProjectTask{Name: "task1"}, ProjectTask{Name: "task2"}, ProjectTask{Name: "task3"},
+			{Name: "task1"}, {Name: "task2"}, {Name: "task3"},
 		},
 	}
 	tasks := VariantTasksToTVPairs([]patch.VariantTasks{
-		patch.VariantTasks{
+		{
 			Variant: "variant",
 			Tasks:   []string{"task1", "task2", "task3"},
 			DisplayTasks: []patch.DisplayTask{
-				patch.DisplayTask{
+				{
 					Name: "displaytask1",
 				},
 			},
@@ -856,13 +856,13 @@ func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 	proj := &Project{
 		Identifier: "project",
 		BuildVariants: []BuildVariant{
-			BuildVariant{
+			{
 				Name: "variant",
 				Tasks: []BuildVariantTaskUnit{
 					{Name: "task1"}, {Name: "task2"}, {Name: "task3"},
 				},
 				DisplayTasks: []patch.DisplayTask{
-					patch.DisplayTask{
+					{
 						Name:      "displaytask1",
 						ExecTasks: []string{"task1", "task2"},
 					},
@@ -871,15 +871,15 @@ func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 			},
 		},
 		Tasks: []ProjectTask{
-			ProjectTask{Name: "task1"}, ProjectTask{Name: "task2"}, ProjectTask{Name: "task3"},
+			{Name: "task1"}, {Name: "task2"}, {Name: "task3"},
 		},
 	}
 	tasks := VariantTasksToTVPairs([]patch.VariantTasks{
-		patch.VariantTasks{
+		{
 			Variant: "variant",
 			Tasks:   []string{"task1", "task2", "task3"},
 			DisplayTasks: []patch.DisplayTask{
-				patch.DisplayTask{
+				{
 					Name: "displaytask1",
 				},
 			},
@@ -1010,15 +1010,14 @@ func TestRetryCommitQueueItems(t *testing.T) {
 			require.Len(t, cq.Queue, 1)
 			assert.Equal(t, "123", cq.Queue[0].Issue)
 		},
-		"UnstartedPatch": func(*testing.T) {
+		"FinishedPatch": func(*testing.T) {
 			assert.NoError(t, projectRef.Insert())
 
-			// not started but terminated within time range
 			p := patch.Patch{
 				Id:         mgobson.NewObjectId(),
 				Project:    projectRef.Id,
 				Githash:    patchedRevision,
-				StartTime:  time.Time{},
+				StartTime:  startTime.Add(-30 * time.Minute), // started out of range
 				FinishTime: startTime.Add(30 * time.Minute),
 				Status:     evergreen.PatchFailed,
 				Alias:      evergreen.CommitQueueAlias,
@@ -1051,19 +1050,6 @@ func TestRetryCommitQueueItems(t *testing.T) {
 					Author:      "me",
 					GithubPatchData: thirdparty.GithubPatch{
 						PRNumber: 123,
-					},
-					Patches: []patch.ModulePatch{
-						{
-							Githash:    "revision",
-							ModuleName: "name",
-							PatchSet: patch.PatchSet{
-								Patch: "456",
-								Summary: []thirdparty.Summary{
-									{Name: configFilePath, Additions: 4, Deletions: 80},
-									{Name: "random.txt", Additions: 6, Deletions: 0},
-								},
-							},
-						},
 					},
 				},
 				{ // within time frame, not failed

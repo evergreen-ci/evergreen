@@ -317,7 +317,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		}
 		// At project creation we now insert a commit queue, however older projects still may not have one
 		// so we need to validate that this exists if the feature is being toggled on.
-		if mergedBeforeRef.CommitQueue.IsEnabled() && mergedSection.CommitQueue.IsEnabled() {
+		if !mergedBeforeRef.CommitQueue.IsEnabled() && mergedSection.CommitQueue.IsEnabled() {
 			if err = commitqueue.EnsureCommitQueueExistsForProject(mergedSection.Id); err != nil {
 				return nil, err
 			}

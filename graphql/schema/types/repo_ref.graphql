@@ -92,6 +92,7 @@ type RepoCommitQueueParams {
   mergeMethod: String!
   message: String!
   requireSigned: Boolean!
+  requiredApprovalCount: Int!
 }
 
 type RepoTaskSyncOptions {

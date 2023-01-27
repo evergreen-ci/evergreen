@@ -562,40 +562,15 @@ func AddMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, proje
 		}
 	}
 
-	mergeTask := model.ProjectTask{
-		Name: evergreen.MergeTaskName,
-		Commands: []model.PluginCommandConf{
-			{
-				Command: "git.get_project",
-				Type:    evergreen.CommandTypeSetup,
-				Params: map[string]interface{}{
-					"directory":       "src",
-					"committer_name":  settings.CommitQueue.CommitterName,
-					"committer_email": settings.CommitQueue.CommitterEmail,
-				},
-			},
-		},
-		DependsOn: dependencies,
+	mergeTaskCmds, err := getMergeTaskCommands(settings, source)
+	if err != nil {
+		return errors.Wrap(err, "getting merge task commands")
 	}
 
-	if source == commitqueue.SourceDiff {
-		mergeTask.Commands = append(mergeTask.Commands,
-			model.PluginCommandConf{
-				Command: "git.push",
-				Params: map[string]interface{}{
-					"directory": "src",
-				},
-			})
-	} else if source == commitqueue.SourcePullRequest {
-		mergeTask.Commands = append(mergeTask.Commands,
-			model.PluginCommandConf{
-				Command: "git.merge_pr",
-				Params: map[string]interface{}{
-					"url": fmt.Sprintf("%s/version/%s", settings.Ui.Url, patchDoc.Id.Hex()),
-				},
-			})
-	} else {
-		return errors.Errorf("unknown commit queue source '%s'", source)
+	mergeTask := model.ProjectTask{
+		Name:      evergreen.MergeTaskName,
+		DependsOn: dependencies,
+		Commands:  mergeTaskCmds,
 	}
 
 	// Define as part of a task group with no pre to skip
@@ -634,6 +609,37 @@ func AddMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, proje
 	})
 
 	return nil
+}
+
+func getMergeTaskCommands(settings *evergreen.Settings, source string) ([]model.PluginCommandConf, error) {
+	switch source {
+	case commitqueue.SourceDiff:
+		return []model.PluginCommandConf{
+			{
+				Command: "git.get_project",
+				Type:    evergreen.CommandTypeSetup,
+				Params: map[string]interface{}{
+					"directory":       "src",
+					"committer_name":  settings.CommitQueue.CommitterName,
+					"committer_email": settings.CommitQueue.CommitterEmail,
+				},
+			},
+			{
+				Command: "git.push",
+				Params: map[string]interface{}{
+					"directory": "src",
+				},
+			},
+		}, nil
+	case commitqueue.SourcePullRequest:
+		return []model.PluginCommandConf{
+			{
+				Command: "git.merge_pr",
+			},
+		}, nil
+	default:
+		return nil, errors.Errorf("unknown commit queue source '%s'", source)
+	}
 }
 
 func setDefaultNotification(username string) error {

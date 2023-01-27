@@ -42,9 +42,10 @@ func (h *versionCreateHandler) Parse(ctx context.Context, r *http.Request) error
 func (h *versionCreateHandler) Run(ctx context.Context) gimlet.Responder {
 	u := gimlet.GetUser(ctx).(*user.DBUser)
 	metadata := model.VersionMetadata{
-		Message: h.Message,
-		IsAdHoc: h.IsAdHoc,
-		User:    u,
+		Message:  h.Message,
+		IsAdHoc:  h.IsAdHoc,
+		User:     u,
+		Activate: h.Active,
 	}
 	projectInfo := &model.ProjectInfo{}
 	var err error
@@ -71,7 +72,7 @@ func (h *versionCreateHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 	projectInfo.Project = p
-	newVersion, err := h.sc.CreateVersionFromConfig(ctx, projectInfo, metadata, h.Active)
+	newVersion, err := h.sc.CreateVersionFromConfig(ctx, projectInfo, metadata)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "creating version from config for project '%s'", h.ProjectID))
 	}

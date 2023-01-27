@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
@@ -107,9 +108,21 @@ func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride st
 		projectName = utility.FromStringPtr(api.ProjectIdentifier)
 	}
 
-	collectiveStatus, err := patch.CollectiveStatus(t.version.Id)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting collective status for patch")
+	status := t.data.Status
+	if evergreen.IsPatchRequester(t.version.Requester) {
+		var err error
+		status, err = patch.CollectiveStatus(t.version.Id)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting collective status for patch")
+		}
+		grip.NoticeWhen(status != t.data.Status, message.Fields{
+			"message":                 "patch's current collective status does not match the version event data's status",
+			"patch_collective_status": status,
+			"version_event_status":    t.data.Status,
+			"patch_and_version_id":    t.version.Id,
+			"version_status":          t.version.Status,
+			"subscription":            sub.ID,
+		})
 	}
 
 	data := commonTemplateData{
@@ -125,7 +138,7 @@ func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride st
 			hasPatch:  evergreen.IsPatchRequester(t.version.Requester),
 			isChild:   false,
 		}),
-		PastTenseStatus:   collectiveStatus,
+		PastTenseStatus:   status,
 		apiModel:          &api,
 		githubState:       message.GithubStatePending,
 		githubContext:     "evergreen",

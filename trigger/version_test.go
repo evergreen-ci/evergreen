@@ -10,7 +10,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -31,14 +33,16 @@ type VersionSuite struct {
 }
 
 func (s *VersionSuite) SetupTest() {
-	s.NoError(db.ClearCollections(event.EventCollection, model.VersionCollection, event.SubscriptionsCollection, task.Collection, alertrecord.Collection))
+	s.NoError(db.ClearCollections(event.EventCollection, model.VersionCollection, event.SubscriptionsCollection, task.Collection, alertrecord.Collection, patch.Collection))
 	startTime := time.Now().Truncate(time.Millisecond)
 
 	versionID := "5aeb4514f27e4f9984646d97"
+	const versionStatus = evergreen.VersionStarted
 
 	s.version = model.Version{
 		Id:                  versionID,
 		Identifier:          "test",
+		Status:              versionStatus,
 		StartTime:           startTime,
 		FinishTime:          startTime.Add(10 * time.Minute),
 		Branch:              "mci",
@@ -48,9 +52,10 @@ func (s *VersionSuite) SetupTest() {
 	s.NoError(s.version.Insert())
 
 	s.data = &event.VersionEventData{
-		Status: evergreen.VersionStarted,
+		Status: versionStatus,
 	}
 	s.event = event.EventLogEntry{
+		ID:           utility.RandomString(),
 		ResourceType: event.ResourceTypeVersion,
 		EventType:    event.VersionStateChange,
 		ResourceId:   versionID,
@@ -124,6 +129,10 @@ func (s *VersionSuite) SetupTest() {
 	s.t.data = s.data
 	s.t.version = &s.version
 	s.t.uiConfig = *ui
+}
+
+func (s *VersionSuite) TearDownSuite() {
+	s.NoError(db.ClearCollections(event.EventCollection, model.VersionCollection, event.SubscriptionsCollection, task.Collection, alertrecord.Collection, patch.Collection))
 }
 
 func (s *VersionSuite) TestAllTriggers() {
@@ -324,4 +333,37 @@ func (s *VersionSuite) TestVersionRuntimeChange() {
 	n, err = s.t.versionRuntimeChange(&s.subs[5])
 	s.NoError(err)
 	s.NotNil(n)
+}
+
+func (s *VersionSuite) TestMakeDataForRepotrackerVersion() {
+	sub := s.subs[0]
+	data, err := s.t.makeData(&sub, "")
+
+	s.Require().NoError(err)
+	s.Equal(s.version.Id, data.ID)
+	s.Equal(s.event.ID, data.EventID)
+	s.Equal(sub.ID, data.SubscriptionID)
+	s.Equal(s.version.Id, data.DisplayName)
+	s.Equal(event.ObjectVersion, data.Object)
+	s.Equal(data.PastTenseStatus, s.version.Status)
+}
+
+func (s *VersionSuite) TestMakeDataForPatchVersion() {
+	p := patch.Patch{
+		Id:     mgobson.ObjectIdHex(s.version.Id),
+		Status: evergreen.PatchSucceeded,
+	}
+	s.Require().NoError(p.Insert())
+
+	s.version.Requester = evergreen.PatchVersionRequester
+	sub := s.subs[0]
+	data, err := s.t.makeData(&sub, "")
+
+	s.Require().NoError(err)
+	s.Equal(s.version.Id, data.ID)
+	s.Equal(s.event.ID, data.EventID)
+	s.Equal(sub.ID, data.SubscriptionID)
+	s.Equal(s.version.Id, data.DisplayName)
+	s.Equal(event.ObjectVersion, data.Object)
+	s.Equal(data.PastTenseStatus, evergreen.PatchSucceeded)
 }

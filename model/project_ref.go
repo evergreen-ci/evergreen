@@ -123,10 +123,11 @@ type ProjectRef struct {
 }
 
 type CommitQueueParams struct {
-	Enabled       *bool  `bson:"enabled" json:"enabled" yaml:"enabled"`
-	RequireSigned *bool  `bson:"require_signed" json:"require_signed" yaml:"require_signed"`
-	MergeMethod   string `bson:"merge_method" json:"merge_method" yaml:"merge_method"`
-	Message       string `bson:"message,omitempty" json:"message,omitempty" yaml:"message"`
+	Enabled               *bool  `bson:"enabled" json:"enabled" yaml:"enabled"`
+	RequireSigned         *bool  `bson:"require_signed" json:"require_signed" yaml:"require_signed"`
+	RequiredApprovalCount int    `bson:"required_approval_count" json:"required_approval_count" yaml:"required_approval_count"`
+	MergeMethod           string `bson:"merge_method" json:"merge_method" yaml:"merge_method"`
+	Message               string `bson:"message,omitempty" json:"message,omitempty" yaml:"message"`
 }
 
 // TaskSyncOptions contains information about which features are allowed for
