@@ -895,7 +895,8 @@ func GetGithubPullRequestReviews(ctx context.Context, token, owner, repo string,
 	client := github.NewClient(httpClient)
 
 	opts := &github.ListOptions{
-		Page: reviewPage,
+		PerPage: 100,
+		Page:    reviewPage,
 	}
 	reviews, resp, err := client.PullRequests.ListReviews(ctx, owner, repo, prNumber, opts)
 	if resp != nil {
@@ -905,7 +906,6 @@ func GetGithubPullRequestReviews(ctx context.Context, token, owner, repo string,
 		}
 	} else {
 		errMsg := fmt.Sprintf("nil response from query for PR reviews in '%s/%s' prNumber %d : %v", owner, repo, prNumber, err)
-		grip.Error(errMsg)
 		return nil, 0, APIResponseError{errMsg}
 	}
 
