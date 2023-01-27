@@ -101,7 +101,7 @@ func TestMainlineCommits(t *testing.T) {
 
 	// Should return all mainline commits while folding up inactive ones when there are no filters
 	mainlineCommitOptions := MainlineCommitsOptions{
-		ProjectID:       projectId,
+		ProjectID:       utility.ToStringPtr(projectId),
 		SkipOrderNumber: nil,
 		Limit:           utility.ToIntPtr(2),
 		ShouldCollapse:  utility.FalsePtr(),
