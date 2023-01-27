@@ -386,7 +386,7 @@ func checkPRApprovals(ctx context.Context, settings *evergreen.Settings, userRep
 	}
 
 	var numApprovals int
-	reviewsPage := 0
+	var reviewsPage int
 	var reviews []*github.PullRequestReview
 
 	for numApprovals < requiredApprovalCount {
