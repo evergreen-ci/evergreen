@@ -503,7 +503,7 @@ func TestPreservePath(t *testing.T) {
 		"remote/myWebsite/assets/images/image2": false,
 	}
 	grip.Infof("expected: %s", expected)
-	grip.Infof("recieved: ")
+	grip.Infof("received: ")
 	for it.Next(ctx) {
 		grip.Infof("\n: %s", it.Item().Name())
 
