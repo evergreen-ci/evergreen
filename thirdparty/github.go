@@ -898,6 +898,7 @@ func GetGithubPullRequestReviews(ctx context.Context, token, owner, repo string,
 		PerPage: 100,
 		Page:    reviewPage,
 	}
+
 	reviews, resp, err := client.PullRequests.ListReviews(ctx, owner, repo, prNumber, opts)
 	if resp != nil {
 		defer resp.Body.Close()
