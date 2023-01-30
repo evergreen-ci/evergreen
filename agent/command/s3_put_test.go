@@ -494,12 +494,17 @@ func TestPreservePath(t *testing.T) {
 	it, err := s.bucket.List(ctx, "")
 	require.NoError(t, err)
 
-	expected := getExpected(false)
-	expectedWindows := getExpected(true)
+	expected := map[string]bool{
+		filepath.Join("remote", "foo"):                                     false,
+		filepath.Join("remote", "myWebsite", "assets", "asset1"):           false,
+		filepath.Join("remote", "myWebsite", "assets", "asset2"):           false,
+		filepath.Join("remote", "myWebsite", "assets", "asset3"):           false,
+		filepath.Join("remote", "myWebsite", "assets", "images", "image1"): false,
+		filepath.Join("remote", "myWebsite", "assets", "images", "image2"): false,
+	}
 
 	for it.Next(ctx) {
 		expected[it.Item().Name()] = true
-		expectedWindows[it.Item().Name()] = true
 	}
 
 	trueForExpected := true
@@ -510,34 +515,7 @@ func TestPreservePath(t *testing.T) {
 			trueForExpected = false
 		}
 	}
-	for _, exists := range expectedWindows {
-		if !exists {
-			trueForExpectedWindows = false
-		}
-	}
 
 	require.True(t, trueForExpected || trueForExpectedWindows)
 
-}
-
-func getExpected(isWindows bool) map[string]bool {
-	if isWindows {
-		return map[string]bool{
-			"remote\\foo":                               false,
-			"remote\\myWebsite\\assets\\asset1":         false,
-			"remote\\myWebsite\\assets\\asset2":         false,
-			"remote\\myWebsite\\assets\\asset3":         false,
-			"remote\\myWebsite\\assets\\images\\image1": false,
-			"remote\\myWebsite\\assets\\images\\image2": false,
-		}
-	}
-
-	return map[string]bool{
-		"remote/foo":                            false,
-		"remote/myWebsite/assets/asset1":        false,
-		"remote/myWebsite/assets/asset2":        false,
-		"remote/myWebsite/assets/asset3":        false,
-		"remote/myWebsite/assets/images/image1": false,
-		"remote/myWebsite/assets/images/image2": false,
-	}
 }
