@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
-	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -551,19 +550,17 @@ func TestPreservePath(t *testing.T) {
 	require.NoError(t, s.Execute(ctx, comm, logger, conf))
 	it, err := s.bucket.List(ctx, "")
 	require.NoError(t, err)
-	expected := map[string]bool{
-		"remote/foo":                            false,
-		"remote/myWebsite/assets/asset1":        false,
-		"remote/myWebsite/assets/asset2":        false,
-		"remote/myWebsite/assets/asset3":        false,
-		"remote/myWebsite/assets/images/image1": false,
-		"remote/myWebsite/assets/images/image2": false,
-	}
-	grip.Infof("expected: %s", expected)
-	grip.Infof("received: ")
-	for it.Next(ctx) {
-		grip.Infof("\n: %s", it.Item().Name())
 
+	expected := map[string]bool{
+		filepath.Join("remote", "foo"):                                     false,
+		filepath.Join("remote", "myWebsite", "assets", "asset1"):           false,
+		filepath.Join("remote", "myWebsite", "assets", "asset2"):           false,
+		filepath.Join("remote", "myWebsite", "assets", "asset3"):           false,
+		filepath.Join("remote", "myWebsite", "assets", "images", "image1"): false,
+		filepath.Join("remote", "myWebsite", "assets", "images", "image2"): false,
+	}
+
+	for it.Next(ctx) {
 		expected[it.Item().Name()] = true
 	}
 
