@@ -433,7 +433,6 @@ func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {
 func TestFileUploadNaming(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	var err error
 
 	dir := t.TempDir()
 	require.NoError(t, os.Mkdir(filepath.Join(dir, "subDir"), 0755))
@@ -476,9 +475,9 @@ func TestFileUploadNaming(t *testing.T) {
 		"remoteremotebar": false,
 	}
 
-	for _, file := range attachedFiles {
-		for _, file := range file {
-			link := file.Link
+	for _, files := range attachedFiles {
+		for _, f := range files {
+			link := f.Link
 
 			expected[filepath.Base(link)] = true
 		}
