@@ -297,9 +297,7 @@ func (sns *ec2SNS) handleInstanceRunning(ctx context.Context, instanceID, eventT
 		runningTime = time.Now()
 	}
 
-	h.SetBillingStartTime(runningTime)
-
-	return nil
+	return errors.Wrap(h.SetBillingStartTime(runningTime), "setting billing start time")
 }
 
 // handleInstanceStopped handles an agent host when AWS reports that it is
