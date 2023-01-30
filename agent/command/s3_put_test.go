@@ -507,15 +507,8 @@ func TestPreservePath(t *testing.T) {
 		expected[it.Item().Name()] = true
 	}
 
-	trueForExpected := true
-	trueForExpectedWindows := true
-
-	for _, exists := range expected {
-		if !exists {
-			trueForExpected = false
-		}
+	for item, exists := range expected {
+		require.True(t, exists, item)
 	}
-
-	require.True(t, trueForExpected || trueForExpectedWindows)
 
 }
