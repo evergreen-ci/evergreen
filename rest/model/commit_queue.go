@@ -101,9 +101,9 @@ func ParseGitHubComment(comment string) GithubCommentCqData {
 // wrapString manually splits a string into smaller chunks and appends them to a new string.
 func wrapString(str string, limit int) string {
 	var b strings.Builder
-	currentLine := ""
 	lines := strings.Split(str, "\n")
 	for i, line := range lines {
+		var currentLine string
 		words := strings.Fields(line)
 		for _, word := range words {
 			lineLength := len(currentLine + word)
@@ -112,7 +112,9 @@ func wrapString(str string, limit int) string {
 				lineLength += 1
 			}
 			if lineLength > limit {
-				b.WriteString(currentLine + "\n")
+				if len(currentLine) > 0 {
+					b.WriteString(currentLine + "\n")
+				}
 				currentLine = ""
 			}
 			if currentLine == "" {
@@ -124,7 +126,6 @@ func wrapString(str string, limit int) string {
 		b.WriteString(currentLine)
 		if i < len(lines)-1 {
 			b.WriteString("\n")
-			currentLine = ""
 		}
 	}
 	return b.String()

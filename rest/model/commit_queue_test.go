@@ -162,4 +162,12 @@ Singlewordthatis72characterslonganditshouldntbebrokenupbythewrappingfunc`
 	assert.Equal(utility.ToStringPtr("module1"), data.Modules[0].Module)
 	assert.Equal(utility.ToStringPtr("1234"), data.Modules[0].Issue)
 	assert.Equal("Singlewordthatis72characterslonganditshouldntbebrokenupbythewrappingfunc", data.MessageOverride)
+
+	comment = `evergreen merge --unknown-option blah_blah --module module1:1234 
+Singlewordthatis73characterslonganditshouldnotbebrokenupbythewrappingfunc`
+	data = ParseGitHubComment(comment)
+	assert.Len(data.Modules, 1)
+	assert.Equal(utility.ToStringPtr("module1"), data.Modules[0].Module)
+	assert.Equal(utility.ToStringPtr("1234"), data.Modules[0].Issue)
+	assert.Equal("Singlewordthatis73characterslonganditshouldnotbebrokenupbythewrappingfunc", data.MessageOverride)
 }
