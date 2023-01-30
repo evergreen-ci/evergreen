@@ -91,7 +91,7 @@ func addAtPosition(id string, queue []CommitQueueItem, item CommitQueueItem, pos
 	return err
 }
 
-func addVersionID(id string, item CommitQueueItem) error {
+func addVersionAndTime(id string, item CommitQueueItem) error {
 	return updateOne(
 		bson.M{
 			IdKey: id,

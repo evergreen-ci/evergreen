@@ -1620,7 +1620,7 @@ func TestHandleEndTaskForCommitQueueTask(t *testing.T) {
 			require.Len(t, cq.Queue, 3)
 			itemToChange := cq.Queue[1]
 			itemToChange.Version = ""
-			assert.NoError(t, cq.UpdateVersion(itemToChange))
+			assert.NoError(t, cq.UpdateVersion(&itemToChange))
 			assert.Empty(t, cq.Queue[1].Version)
 
 			taskA.Status = evergreen.TaskSucceeded
