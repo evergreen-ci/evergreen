@@ -317,7 +317,7 @@ func (pd *PodDispatcher) RemovePod(ctx context.Context, env evergreen.Environmen
 		// The last pod is about to be removed, so there will be no pod
 		// remaining to run the tasks still in the dispatch queue.
 
-		if err := model.MarkUnallocatableContainerTasksSystemFailed(pd.TaskIDs); err != nil {
+		if err := model.MarkUnallocatableContainerTasksSystemFailed(env.Settings(), pd.TaskIDs); err != nil {
 			return errors.Wrap(err, "marking unallocatable container tasks as system-failed")
 		}
 

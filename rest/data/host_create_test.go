@@ -168,7 +168,7 @@ buildvariants:
 		}
 		assert.NoError(t, evergreen.UpdateConfig(settings))
 
-		assert.NoError(t, CreateHostsFromTask(ctx, &t1, user.DBUser{Id: "me"}, ""))
+		assert.NoError(t, CreateHostsFromTask(ctx, settings, &t1, user.DBUser{Id: "me"}, ""))
 		createdHosts, err := host.Find(host.IsUninitialized)
 		assert.NoError(t, err)
 		assert.Len(t, createdHosts, 3)
@@ -240,7 +240,7 @@ buildvariants:
 		}
 		assert.NoError(t, evergreen.UpdateConfig(settings))
 
-		err = CreateHostsFromTask(ctx, &t2, user.DBUser{Id: "me"}, "")
+		err = CreateHostsFromTask(ctx, settings, &t2, user.DBUser{Id: "me"}, "")
 		assert.NoError(t, err)
 		createdHosts, err := host.Find(host.IsUninitialized)
 		assert.NoError(t, err)
@@ -308,7 +308,7 @@ buildvariants:
 		}
 		assert.NoError(t, evergreen.UpdateConfig(settings))
 
-		assert.NoError(t, CreateHostsFromTask(ctx, &t3, user.DBUser{Id: "me"}, ""))
+		assert.NoError(t, CreateHostsFromTask(ctx, settings, &t3, user.DBUser{Id: "me"}, ""))
 		createdHosts, err := host.Find(host.IsUninitialized)
 		assert.NoError(t, err)
 		assert.Len(t, createdHosts, 3)
@@ -426,7 +426,7 @@ buildvariants:
 	}
 	assert.NoError(pvars.Insert())
 
-	assert.NoError(CreateHostsFromTask(ctx, &t1, user.DBUser{Id: "me"}, ""))
+	assert.NoError(CreateHostsFromTask(ctx, settings, &t1, user.DBUser{Id: "me"}, ""))
 
 	createdHosts, err := host.Find(host.IsUninitialized)
 	assert.NoError(err)

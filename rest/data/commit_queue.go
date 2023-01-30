@@ -74,7 +74,7 @@ func (pc *DBCommitQueueConnector) AddPatchForPr(ctx context.Context, projectRef 
 		return nil, errors.Wrap(err, "making commit queue patch")
 	}
 
-	p, patchSummaries, proj, err := getPatchInfo(ctx, githubToken, patchDoc)
+	p, patchSummaries, proj, err := getPatchInfo(ctx, settings, githubToken, patchDoc)
 	if err != nil {
 		return nil, err
 	}
@@ -139,14 +139,14 @@ func (pc *DBCommitQueueConnector) AddPatchForPr(ctx context.Context, projectRef 
 	return patchDoc, catcher.Resolve()
 }
 
-func getPatchInfo(ctx context.Context, githubToken string, patchDoc *patch.Patch) (string, []thirdparty.Summary, *model.Project, error) {
+func getPatchInfo(ctx context.Context, settings *evergreen.Settings, githubToken string, patchDoc *patch.Patch) (string, []thirdparty.Summary, *model.Project, error) {
 	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(ctx, githubToken, patchDoc.GithubPatchData)
 	if err != nil {
 		return "", nil, nil, errors.Wrap(err, "getting GitHub PR diff")
 	}
 
 	// fetch the latest config file
-	config, patchConfig, err := model.GetPatchedProject(ctx, patchDoc, githubToken)
+	config, patchConfig, err := model.GetPatchedProject(ctx, settings, patchDoc, githubToken)
 	if err != nil {
 		return "", nil, nil, errors.Wrap(err, "getting remote config file")
 	}
@@ -415,7 +415,9 @@ func checkPRApprovals(ctx context.Context, settings *evergreen.Settings, userRep
 	return nil
 }
 
-func CreatePatchForMerge(ctx context.Context, existingPatchID, commitMessage string) (*restModel.APIPatch, error) {
+// CreatePatchForMerge creates a merge patch from an existing patch and enqueues
+// it in the commit queue.
+func CreatePatchForMerge(ctx context.Context, settings *evergreen.Settings, existingPatchID, commitMessage string) (*restModel.APIPatch, error) {
 	existingPatch, err := patch.FindOneId(existingPatchID)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding patch")
@@ -424,7 +426,7 @@ func CreatePatchForMerge(ctx context.Context, existingPatchID, commitMessage str
 		return nil, errors.Errorf("patch '%s' not found", existingPatchID)
 	}
 
-	newPatch, err := model.MakeMergePatchFromExisting(ctx, existingPatch, commitMessage)
+	newPatch, err := model.MakeMergePatchFromExisting(ctx, settings, existingPatch, commitMessage)
 	if err != nil {
 		return nil, errors.Wrapf(err, "creating new patch from existing patch '%s'", existingPatchID)
 	}
@@ -537,7 +539,7 @@ func checkSignedCommit(ctx context.Context, settings *evergreen.Settings, userRe
 
 	for _, c := range commits {
 		commit := c.GetCommit()
-		if commit.Verification != nil || !utility.FromBoolPtr(commit.Verification.Verified) ||
+		if commit.Verification != nil && !utility.FromBoolPtr(commit.Verification.Verified) &&
 			utility.FromStringPtr(commit.Verification.Reason) == githubCommitUnsigned {
 			return errors.Errorf("commit '%s' is not signed", utility.FromStringPtr(commit.SHA))
 		}

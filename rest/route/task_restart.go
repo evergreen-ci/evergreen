@@ -69,7 +69,7 @@ func (trh *taskRestartHandler) Parse(ctx context.Context, r *http.Request) error
 // Execute calls the data ResetTask function and returns the refreshed
 // task from the service.
 func (trh *taskRestartHandler) Run(ctx context.Context) gimlet.Responder {
-	err := resetTask(trh.taskId, trh.username, trh.FailedOnly)
+	err := resetTask(evergreen.GetEnvironment().Settings(), trh.taskId, trh.username, trh.FailedOnly)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -95,7 +95,7 @@ func (trh *taskRestartHandler) Run(ctx context.Context) gimlet.Responder {
 
 // resetTask sets the task to be in an unexecuted state and prepares it to be run again.
 // If given an execution task, marks the display task for reset.
-func resetTask(taskId, username string, failedOnly bool) error {
+func resetTask(settings *evergreen.Settings, taskId, username string, failedOnly bool) error {
 	t, err := task.FindOneId(taskId)
 	if err != nil {
 		return gimlet.ErrorResponse{
@@ -109,5 +109,5 @@ func resetTask(taskId, username string, failedOnly bool) error {
 			Message:    fmt.Sprintf("task '%s' not found", taskId),
 		}
 	}
-	return errors.Wrapf(serviceModel.ResetTaskOrDisplayTask(t, username, evergreen.RESTV2Package, failedOnly, nil), "resetting task '%s'", taskId)
+	return errors.Wrapf(serviceModel.ResetTaskOrDisplayTask(settings, t, username, evergreen.RESTV2Package, failedOnly, nil), "resetting task '%s'", taskId)
 }

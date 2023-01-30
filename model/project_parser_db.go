@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -89,16 +90,16 @@ func parserProjectUpsertOne(query interface{}, update interface{}) error {
 	return err
 }
 
-func FindParametersForVersion(ctx context.Context, v *Version) ([]patch.Parameter, error) {
-	pp, err := GetParserProjectStorage(v.ProjectStorageMethod).FindOneByIDWithFields(ctx, v.Id, ParserProjectParametersKey)
+func FindParametersForVersion(ctx context.Context, settings *evergreen.Settings, v *Version) ([]patch.Parameter, error) {
+	pp, err := ParserProjectFindOneByIDWithFields(ctx, settings, v.ProjectStorageMethod, v.Id, ParserProjectParametersKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding parser project")
 	}
 	return pp.GetParameters(), nil
 }
 
-func FindExpansionsForVariant(ctx context.Context, v *Version, variant string) (util.Expansions, error) {
-	pp, err := GetParserProjectStorage(v.ProjectStorageMethod).FindOneByIDWithFields(ctx, v.Id, ParserProjectBuildVariantsKey, ParserProjectAxesKey)
+func FindExpansionsForVariant(ctx context.Context, settings *evergreen.Settings, v *Version, variant string) (util.Expansions, error) {
+	pp, err := ParserProjectFindOneByIDWithFields(ctx, settings, v.ProjectStorageMethod, v.Id, ParserProjectBuildVariantsKey, ParserProjectAxesKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding parser project")
 	}
@@ -138,4 +139,9 @@ func (s ParserProjectDBStorage) FindOneByIDWithFields(_ context.Context, id stri
 // Otherwise, if it does not exist yet, it inserts a new parser project.
 func (s ParserProjectDBStorage) UpsertOne(ctx context.Context, pp *ParserProject) error {
 	return parserProjectUpsertOne(bson.M{ParserProjectIdKey: pp.Id}, pp)
+}
+
+// Close is a no-op.
+func (s ParserProjectDBStorage) Close(ctx context.Context) error {
+	return nil
 }

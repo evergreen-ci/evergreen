@@ -379,7 +379,7 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 		j.dequeue(cq, nextItem)
 		return
 	}
-	projectConfig, _, err := model.GetPatchedProject(ctx, patchDoc, githubToken)
+	projectConfig, _, err := model.GetPatchedProject(ctx, j.env.Settings(), patchDoc, githubToken)
 	if err != nil {
 		j.logError(err, "problem getting patched project", nextItem)
 		j.dequeue(cq, nextItem)
@@ -431,7 +431,7 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 		return
 	}
 
-	project, err := updatePatch(ctx, githubToken, projectRef, patchDoc)
+	project, err := updatePatch(ctx, j.env.Settings(), githubToken, projectRef, patchDoc)
 	if err != nil {
 		j.logError(err, "can't update patch", nextItem)
 		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
@@ -668,7 +668,7 @@ func setDefaultNotification(username string) error {
 	return nil
 }
 
-func updatePatch(ctx context.Context, githubToken string, projectRef *model.ProjectRef, patchDoc *patch.Patch) (*model.Project, error) {
+func updatePatch(ctx context.Context, settings *evergreen.Settings, githubToken string, projectRef *model.ProjectRef, patchDoc *patch.Patch) (*model.Project, error) {
 	branch, err := thirdparty.GetBranchEvent(ctx, githubToken, projectRef.Owner, projectRef.Repo, projectRef.Branch)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting branch")
@@ -683,7 +683,7 @@ func updatePatch(ctx context.Context, githubToken string, projectRef *model.Proj
 	// Refresh the cached project config
 	patchDoc.PatchedParserProject = ""
 	patchDoc.PatchedProjectConfig = ""
-	project, patchConfig, err := model.GetPatchedProject(ctx, patchDoc, githubToken)
+	project, patchConfig, err := model.GetPatchedProject(ctx, settings, patchDoc, githubToken)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting updated project config")
 	}

@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -467,6 +468,13 @@ func TestGenerateTasks(t *testing.T) {
 	require := require.New(t)
 	require.NoError(db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, build.Collection, task.Collection, distro.Collection, patch.Collection, model.ParserProjectCollection))
 	defer require.NoError(db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, build.Collection, task.Collection, distro.Collection, patch.Collection, model.ParserProjectCollection))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	env := &mock.Environment{}
+	require.NoError(env.Configure(ctx))
+
 	randomVersion := model.Version{
 		Id:         "random_version",
 		Identifier: "mci",
@@ -554,7 +562,7 @@ func TestGenerateTasks(t *testing.T) {
 	// Make sure first project was not changed
 	v, err := model.VersionFindOneId("random_version")
 	assert.NoError(err)
-	p, _, err := model.FindAndTranslateProjectForVersion(v)
+	p, _, err := model.FindAndTranslateProjectForVersion(ctx, env.Settings(), v)
 	assert.NoError(err)
 	require.NotNil(p)
 	assert.Len(p.Tasks, 2)
@@ -565,7 +573,7 @@ func TestGenerateTasks(t *testing.T) {
 	// Verify second project was changed
 	v, err = model.VersionFindOneId("sample_version")
 	assert.NoError(err)
-	p, _, err = model.FindAndTranslateProjectForVersion(v)
+	p, _, err = model.FindAndTranslateProjectForVersion(ctx, env.Settings(), v)
 	assert.NoError(err)
 	require.NotNil(p)
 	assert.Len(p.Tasks, 6)
