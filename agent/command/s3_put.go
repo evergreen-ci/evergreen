@@ -444,11 +444,12 @@ retryLoop:
 					continue retryLoop
 				}
 
-				if s3pc.preservePath {
-					uploadedFiles = append(uploadedFiles, remoteName)
-				} else {
-					uploadedFiles = append(uploadedFiles, fpath)
-				}
+				uploadedFiles = append(uploadedFiles, fpath)
+				// if s3pc.preservePath {
+				// 	uploadedFiles = append(uploadedFiles, remoteName)
+				// } else {
+				// 	uploadedFiles = append(uploadedFiles, fpath)
+				// }
 			}
 
 			break retryLoop
