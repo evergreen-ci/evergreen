@@ -90,7 +90,7 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 			tc.taskConfig.Expansions.Put(key, newVal)
 		}
 
-		if options.isTaskCommands {
+		if options.isTaskCommands || options.failPreAndPost {
 			tc.setCurrentCommand(cmd)
 			tc.setCurrentIdleTimeout(cmd)
 			a.comm.UpdateLastMessageTime()
