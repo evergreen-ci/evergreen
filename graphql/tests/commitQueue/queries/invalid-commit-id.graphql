@@ -1,5 +1,5 @@
 {
-  commitQueue(id: "no_queue") {
+  commitQueue(projectIdentifier: "no_queue") {
     projectId
     queue {
       issue

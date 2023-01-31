@@ -1,5 +1,5 @@
 {
-  commitQueue(id: "mongodb-mongo-master") {
+  commitQueue(projectIdentifier: "mongodb-mongo-master") {
     projectId
     owner
     repo

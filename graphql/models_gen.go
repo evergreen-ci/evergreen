@@ -120,11 +120,12 @@ type MainlineCommits struct {
 // MainlineCommitsOptions is an input to the mainlineCommits query.
 // Its fields determine what mainline commits we fetch for a given projectID.
 type MainlineCommitsOptions struct {
-	Limit           *int     `json:"limit"`
-	ProjectID       string   `json:"projectID"`
-	Requesters      []string `json:"requesters"`
-	ShouldCollapse  *bool    `json:"shouldCollapse"`
-	SkipOrderNumber *int     `json:"skipOrderNumber"`
+	Limit             *int     `json:"limit"`
+	ProjectID         *string  `json:"projectID"`
+	ProjectIdentifier *string  `json:"projectIdentifier"`
+	Requesters        []string `json:"requesters"`
+	ShouldCollapse    *bool    `json:"shouldCollapse"`
+	SkipOrderNumber   *int     `json:"skipOrderNumber"`
 }
 
 type Manifest struct {
