@@ -12,6 +12,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -176,17 +177,72 @@ func (g *GeneratedProject) Save(ctx context.Context, settings *evergreen.Setting
 	return nil
 }
 
-// updateParserProject updates the parser project along with generated task ID and updated config number
+const largeParserProjectThresholdBytes = 15 * 1000 * 1000
+
+// updateParserProject updates the parser project along with generated task ID
+// and updated config number. If the parser project is currently stored in the
+// DB and the new parser project exceeds the document limit, it will be moved to
+// S3.
 func updateParserProject(ctx context.Context, settings *evergreen.Settings, v *Version, pp *ParserProject, taskId string) error {
 	if utility.StringSliceContains(pp.UpdatedByGenerators, taskId) {
 		// This generator has already updated the parser project so continue.
 		return nil
 	}
+
 	pp.UpdatedByGenerators = append(pp.UpdatedByGenerators, taskId)
+
+	didMoveToS3, err := tryMovingLargeParserProjectToS3(ctx, settings, v, pp)
+	if err != nil {
+		return errors.Wrap(err, "moving parser project from the DB into S3")
+	}
+	if didMoveToS3 {
+		return nil
+	}
+
 	if err := ParserProjectUpsertOne(ctx, settings, v.ProjectStorageMethod, pp); err != nil {
 		return errors.Wrapf(err, "upserting parser project '%s'", pp.Id)
 	}
 	return nil
+}
+
+// tryMovingLargeParserProjectToS3 attempts to move a parser project currently
+// stored in the DB into S3 if it is close to or exceeds the DB document size
+// limit of 16 MB.
+// kim: TODO: test
+func tryMovingLargeParserProjectToS3(ctx context.Context, settings *evergreen.Settings, v *Version, pp *ParserProject) (didMove bool, err error) {
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		return false, errors.Wrap(err, "getting service flags")
+	}
+	if flags.ParserProjectS3StorageDisabled {
+		return false, nil
+	}
+
+	if v.ProjectStorageMethod == ProjectStorageMethodS3 {
+		return false, nil
+	}
+
+	bsonPP, err := bson.Marshal(pp)
+	if err != nil {
+		return false, errors.Wrap(err, "marshalling parser project to BSON")
+	}
+	if len(bsonPP) < largeParserProjectThresholdBytes {
+		return false, nil
+	}
+
+	ppStorage, err := NewParserProjectS3Storage(settings.Providers.AWS.ParserProject)
+	if err != nil {
+		return false, errors.Wrap(err, "initializing parser project S3 storage")
+	}
+	if err := ppStorage.UpsertOneBSON(ctx, pp.Id, bsonPP); err != nil {
+		return false, errors.Wrap(err, "upserting BSON parser project into S3")
+	}
+
+	if err := v.UpdateProjectStorageMethod(ProjectStorageMethodS3); err != nil {
+		return false, errors.Wrap(err, "updating version's parser project storage method to S3")
+	}
+
+	return true, nil
 }
 
 func cacheProjectData(p *Project) projectMaps {
