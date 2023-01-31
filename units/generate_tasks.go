@@ -128,7 +128,6 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	})
 	start = time.Now()
 
-	// kim: NOTE: this is the generated tasks before merging.
 	g, err := model.MergeGeneratedProjects(projects)
 	grip.Debug(message.Fields{
 		"message":       "generate.tasks timing",

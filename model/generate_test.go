@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
-	"github.com/k0kubun/pp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -334,7 +333,6 @@ buildvariants:
     - name: a-depended-on-task
 `
 
-	// kim: TODO: finish filling in this sample project and test it with caching
 	sampleProjYAMLWithMultiFields = `
 tasks:
 - name: blueberry
@@ -1487,7 +1485,6 @@ func TestFilterInactiveTasks(t *testing.T) {
 	})
 }
 
-// kim: TODO: add onto this test to check for multiple functions
 func (s *GenerateSuite) TestMergeGeneratedProjects() {
 	projects := []GeneratedProject{sampleGeneratedProjectWithAllMultiFields}
 	merged, err := MergeGeneratedProjects(projects)
@@ -1547,7 +1544,6 @@ func (s *GenerateSuite) TestMergeGeneratedProjects() {
 		expected, ok := expectedFuncs[funcName]
 		s.True(ok, "unexpected function '%s'", funcName)
 		s.Len(funcCmds.List(), expected.numCmds, "unexpected number of commands for function '%s'", funcName)
-		pp.Println(funcName, funcCmds)
 
 		expected.found = true
 		expectedFuncs[funcName] = expected
