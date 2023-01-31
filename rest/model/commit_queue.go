@@ -2,11 +2,14 @@ package model
 
 import (
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/utility"
 )
+
+const commitMessageLineLength = 72
 
 type APICommitQueue struct {
 	ProjectID *string              `json:"queue_id"`
@@ -88,11 +91,44 @@ func ParseGitHubComment(comment string) GithubCommentCqData {
 		if index == 1 {
 			data = parseFirstLine(line)
 		} else if index == 2 {
-			data.MessageOverride = line
+			data.MessageOverride = wrapString(line, commitMessageLineLength)
 		}
 	}
 
 	return data
+}
+
+// wrapString manually splits a string into smaller chunks and appends them to a new string.
+func wrapString(str string, limit int) string {
+	var b strings.Builder
+	lines := strings.Split(str, "\n")
+	for i, line := range lines {
+		var currentLine string
+		words := strings.Fields(line)
+		for _, word := range words {
+			lineLength := len(currentLine + word)
+			// Only factor in spaces if the current line is not empty.
+			if len(currentLine) > 0 {
+				lineLength += 1
+			}
+			if lineLength > limit {
+				if len(currentLine) > 0 {
+					b.WriteString(currentLine + "\n")
+				}
+				currentLine = ""
+			}
+			if currentLine == "" {
+				currentLine += word
+			} else {
+				currentLine += " " + word
+			}
+		}
+		b.WriteString(currentLine)
+		if i < len(lines)-1 {
+			b.WriteString("\n")
+		}
+	}
+	return b.String()
 }
 
 func parseFirstLine(comment string) GithubCommentCqData {

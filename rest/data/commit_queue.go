@@ -385,15 +385,27 @@ func checkPRApprovals(ctx context.Context, settings *evergreen.Settings, userRep
 		return errors.Wrap(err, "getting GitHub OAuth token from settings")
 	}
 
-	reviews, err := thirdparty.GetGithubPullRequestReviews(ctx, githubToken, userRepo.Owner, userRepo.Repo, prNum)
-	if err != nil {
-		return errors.Wrap(err, "getting GitHub PR reviews")
-	}
-
 	var numApprovals int
-	for _, r := range reviews {
-		if r.GetState() == githubReviewApproved {
-			numApprovals += 1
+	var reviewsPage int
+	var reviews []*github.PullRequestReview
+
+	for numApprovals < requiredApprovalCount {
+		reviews, reviewsPage, err = thirdparty.GetGithubPullRequestReviews(
+			ctx, githubToken, userRepo.Owner, userRepo.Repo, prNum, reviewsPage,
+		)
+		if err != nil {
+			return errors.Wrap(err, "getting GitHub PR reviews")
+		}
+		for _, r := range reviews {
+			if r.GetState() == githubReviewApproved {
+				numApprovals += 1
+			}
+			if numApprovals >= requiredApprovalCount {
+				break
+			}
+		}
+		if reviewsPage == 0 {
+			break
 		}
 	}
 
