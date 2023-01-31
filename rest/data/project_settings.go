@@ -382,7 +382,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 	}
 	modifiedProjectRef, err := model.SaveProjectPageForSection(projectId, newProjectRef, section, isRepo)
 	if err != nil {
-		return nil, errors.Wrapf(err, "defaulting project ref to repo for section '%s'", section)
+		return nil, errors.Wrapf(err, "saving project for section '%s'", section)
 	}
 	res := restModel.APIProjectSettings{}
 	if modified || modifiedProjectRef {
