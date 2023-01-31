@@ -1899,7 +1899,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 		if !isRepo && !p.UseRepoSettings() && !defaultToRepo {
 			config, err := evergreen.GetConfig()
 			if err != nil {
-				return false, errors.Wrap(err, "can't get evergreen config")
+				return false, errors.Wrap(err, "getting evergreen config")
 			}
 			// Allow a user to modify owner and repo only if they are editing an unattached project
 			if err := p.ValidateOwnerAndRepo(config.GithubOrgs); err != nil {
