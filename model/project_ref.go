@@ -1897,7 +1897,10 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			setUpdate[ProjectRefTracksPushEventsKey] = p.TracksPushEvents
 		}
 		if !isRepo && !p.UseRepoSettings() && !defaultToRepo {
-			config := evergreen.GetEnvironment().Settings()
+			config, err := evergreen.GetConfig()
+			if err != nil {
+				return false, errors.Wrap(err, "can't get evergreen config")
+			}
 			// Allow a user to modify owner and repo only if they are editing an unattached project
 			if err := p.ValidateOwnerAndRepo(config.GithubOrgs); err != nil {
 				return false, errors.Wrap(err, "validating new owner/repo")
@@ -2245,7 +2248,7 @@ func (p *ProjectRef) GetGithubProjectConflicts() (GithubProjectConflicts, error)
 // The boolean returns true if you should error. Otherwise, warn.
 func ValidateProjectCreation(projectId string, config *evergreen.Settings, projectRef *ProjectRef) (error, bool) {
 	if config.ProjectCreation.TotalProjectLimit == 0 || config.ProjectCreation.RepoProjectLimit == 0 {
-		return errors.New("project limits not set"), true
+		return nil, false
 	}
 	catcher := grip.NewBasicCatcher()
 	allEnabledProjects, err := GetEnabledProjects()
