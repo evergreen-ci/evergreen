@@ -92,6 +92,10 @@ func MergeGeneratedProjects(projects []GeneratedProject) (*GeneratedProject, err
 	for i := range taskGroups {
 		g.TaskGroups = append(g.TaskGroups, *taskGroups[i])
 	}
+	grip.Info(message.Fields{
+		"message":           "kim: successfully merged generated fields",
+		"generated_project": g,
+	})
 	return g, catcher.Resolve()
 }
 
@@ -122,7 +126,14 @@ func ParseProjectFromJSON(data []byte) (GeneratedProject, error) {
 // from a generated project config to a project, and returns the previous config number.
 func (g *GeneratedProject) NewVersion(p *Project, pp *ParserProject, v *Version) (*Project, *ParserProject, *Version, error) {
 	// Cache project data in maps for quick lookup
+	// kim: NOTE: this is caching the *existing* project, before generation. g
+	// contains the merged project.
 	cachedProject := cacheProjectData(p)
+	grip.Info(message.Fields{
+		"message":        "kim: successfully cached merged project",
+		"cached_project": cachedProject,
+		"version_id":     v.Id,
+	})
 
 	// We've updated the parser project in a previous iteration of the generator job, so we don't try to update.
 	if utility.StringSliceContains(pp.UpdatedByGenerators, g.Task.Id) {
@@ -189,6 +200,7 @@ func updateParserProject(ctx context.Context, settings *evergreen.Settings, v *V
 	return nil
 }
 
+// kim: TODO: test multi-fields are populated correctly by caching
 func cacheProjectData(p *Project) projectMaps {
 	cachedProject := projectMaps{
 		buildVariants: map[string]struct{}{},
@@ -199,8 +211,10 @@ func cacheProjectData(p *Project) projectMaps {
 	for _, bv := range p.BuildVariants {
 		cachedProject.buildVariants[bv.Name] = struct{}{}
 	}
-	for _, t := range p.Tasks {
-		cachedProject.tasks[t.Name] = &t
+	for i, t := range p.Tasks {
+		// kim: TODO: this probably doesn't work? Add a test to see if
+		// cacheProjectData is really populating this field correctly.
+		cachedProject.tasks[t.Name] = &p.Tasks[i]
 	}
 	// functions is already a map, cache it anyway for convenience
 	cachedProject.functions = p.Functions
@@ -686,6 +700,11 @@ func (g *GeneratedProject) validateNoRecursiveGenerateTasks(cachedProject projec
 	catcher := grip.NewBasicCatcher()
 	for _, t := range g.Tasks {
 		for _, cmd := range t.Commands {
+			grip.Info(message.Fields{
+				"message": "kim: validating generated task's commands",
+				"task":    t.Name,
+				"command": cmd,
+			})
 			if cmd.Command == evergreen.GenerateTasksCommandName {
 				catcher.New("cannot define 'generate.tasks' from a 'generate.tasks' block")
 			}
@@ -693,6 +712,10 @@ func (g *GeneratedProject) validateNoRecursiveGenerateTasks(cachedProject projec
 	}
 	for _, f := range g.Functions {
 		for _, cmd := range f.List() {
+			grip.Info(message.Fields{
+				"message":  "kim: validating generated task's functions",
+				"function": f,
+			})
 			if cmd.Command == evergreen.GenerateTasksCommandName {
 				catcher.New("cannot define 'generate.tasks' from a 'generate.tasks' block")
 			}
@@ -700,8 +723,25 @@ func (g *GeneratedProject) validateNoRecursiveGenerateTasks(cachedProject projec
 	}
 	for _, bv := range g.BuildVariants {
 		for _, t := range bv.Tasks {
+			// kim: NOTE: this is looking through the build variant tasks to be
+			// generated (without merging) against *existing* project tasks.
+			// generate.tasks can only appear in an existing project task.
+			// kim: NOTE: this doesn't check task groups, so the new build
+			// variant task could be a task group containing generate.tasks.
+			// Should make a follow-up ticket to address this.
 			if projectTask, ok := cachedProject.tasks[t.Name]; ok {
+				grip.Info(message.Fields{
+					"message":            "kim: validating generated task's build variant tasks",
+					"build_variant":      bv.Name,
+					"build_variant_task": t.Name,
+				})
 				catcher.Add(validateCommands(projectTask, cachedProject, t))
+			} else {
+				grip.Info(message.Fields{
+					"message":            "kim: could not find task to validate for build variant, probably because it's a newly generated task or a bug",
+					"build_variant":      bv.Name,
+					"build_variant_task": t.Name,
+				})
 			}
 		}
 	}
@@ -712,6 +752,7 @@ func validateCommands(projectTask *ProjectTask, cachedProject projectMaps, pvt p
 	catcher := grip.NewBasicCatcher()
 	for _, cmd := range projectTask.Commands {
 		if cmd.Command == evergreen.GenerateTasksCommandName {
+			// kim: NOTE: this is the bug line. I can't reproduce though.
 			catcher.Errorf("cannot assign a task that calls 'generate.tasks' from a 'generate.tasks' block (%s)", pvt.Name)
 		}
 		if cmd.Function != "" {
@@ -721,6 +762,13 @@ func validateCommands(projectTask *ProjectTask, cachedProject projectMaps, pvt p
 						catcher.Errorf("cannot assign a task that calls 'generate.tasks' from a 'generate.tasks' block (%s)", cmd.Function)
 					}
 				}
+			} else {
+				grip.Error(message.Fields{
+					"message":            "kim: could not find function to validate for task in build variant, probably because of a bug",
+					"build_variant":      pvt.Name,
+					"build_variant_task": projectTask.Name,
+					"function":           cmd.Function,
+				})
 			}
 		}
 	}
