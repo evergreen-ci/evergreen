@@ -39,7 +39,10 @@ type Query {
 
   # project
   githubProjectConflicts(projectId: String!): GithubProjectConflicts!
-  project(projectId: String, projectIdentifier: String): Project!
+  project(
+    projectId: String @deprecated(reason: "projectID is deprecated. Use projectIdentifier instead."),
+    projectIdentifier: String
+  ): Project!
   projects: [GroupedProjects]!
   projectEvents(
     identifier: String!
@@ -89,12 +92,23 @@ type Query {
   userSettings: UserSettings
 
   # commit queue
-  commitQueue(id: String, projectIdentifier: String): CommitQueue!
+  commitQueue(
+    id: String @deprecated(reason: "id is deprecated. Use projectIdentifier instead."),
+    projectIdentifier: String
+  ): CommitQueue!
 
   # mainline commits
-  buildVariantsForTaskName(projectId: String, projectIdentifier: String, taskName: String!): [BuildVariantTuple]
+  buildVariantsForTaskName(
+    projectId: String @deprecated(reason: "projectId is deprecated. Use projectIdentifier instead."),
+    projectIdentifier: String,
+    taskName: String!
+  ): [BuildVariantTuple]
   mainlineCommits(options: MainlineCommitsOptions!, buildVariantOptions: BuildVariantOptions): MainlineCommits
-  taskNamesForBuildVariant(projectId: String, projectIdentifier: String, buildVariant: String!): [String!]
+  taskNamesForBuildVariant(
+    projectId: String @deprecated(reason: "projectId is deprecated. Use projectIdentifier instead."),
+    projectIdentifier: String,
+    buildVariant: String!
+  ): [String!]
 
   # version
   hasVersion(id: String!): Boolean!
