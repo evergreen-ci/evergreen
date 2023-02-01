@@ -57,6 +57,28 @@ func (s *CommandSuite) SetupTest() {
 	}
 }
 
+func (s *CommandSuite) TestPreErrorFailsWithSetup() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	taskID := "pre_error"
+	s.tc.task.ID = taskID
+	s.tc.ranSetupGroup = false
+
+	defer s.a.removeTaskDirectory(s.tc)
+	_, err := s.a.runTask(ctx, s.tc)
+	s.NoError(err)
+	detail := s.mockCommunicator.GetEndTaskDetail()
+	s.Equal(evergreen.TaskFailed, detail.Status)
+	s.Equal(evergreen.CommandTypeSetup, detail.Type)
+	s.Contains(detail.Description, "shell.exec")
+	s.False(detail.TimedOut)
+
+	taskData := s.mockCommunicator.EndTaskResult.TaskData
+	s.Equal(taskID, taskData.ID)
+	s.Equal(s.tc.task.Secret, taskData.Secret)
+}
+
 func (s *CommandSuite) TestShellExec() {
 	f, err := ioutil.TempFile(s.tmpDirName, "shell-exec-")
 	s.Require().NoError(err)
