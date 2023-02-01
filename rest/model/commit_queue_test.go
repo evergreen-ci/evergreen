@@ -91,5 +91,83 @@ some more lines
 	assert.Equal(utility.ToStringPtr("1234"), data.Modules[0].Issue)
 	assert.Equal(`this is my commit message
 some more lines
-    extra whitespace  `, data.MessageOverride)
+extra whitespace`, data.MessageOverride)
+
+	comment = `evergreen merge --unknown-option blah_blah --module module1:1234 
+This is a very long string that needs to be wrapped around 72 characters for readability.
+Here is another shorter line.
+											Whitespace over here.`
+	data = ParseGitHubComment(comment)
+	assert.Len(data.Modules, 1)
+	assert.Equal(utility.ToStringPtr("module1"), data.Modules[0].Module)
+	assert.Equal(utility.ToStringPtr("1234"), data.Modules[0].Issue)
+	assert.Equal(`This is a very long string that needs to be wrapped around 72 characters
+for readability.
+Here is another shorter line.
+Whitespace over here.`, data.MessageOverride)
+
+	comment = "evergreen merge --unknown-option blah_blah --module module1:1234\nEVG-123: Some commit header.\n\nAdds some logging and random functions. They are named ```TestFunc1()``` that returns ```stdout```, ```stderr```, and the actual command executed. All output is formatted and printed after execution in the order of its input."
+	data = ParseGitHubComment(comment)
+	assert.Len(data.Modules, 1)
+	assert.Equal(utility.ToStringPtr("module1"), data.Modules[0].Module)
+	assert.Equal(utility.ToStringPtr("1234"), data.Modules[0].Issue)
+	assert.Equal("EVG-123: Some commit header.\n\nAdds some logging and random functions. They are named ```TestFunc1()```\nthat returns ```stdout```, ```stderr```, and the actual command\nexecuted. All output is formatted and printed after execution in the\norder of its input.", data.MessageOverride)
+
+	comment = `evergreen merge --unknown-option blah_blah --module module1:1234 
+This is a 71 character statement which hopefully won't have any issues.`
+	data = ParseGitHubComment(comment)
+	assert.Len(data.Modules, 1)
+	assert.Equal(utility.ToStringPtr("module1"), data.Modules[0].Module)
+	assert.Equal(utility.ToStringPtr("1234"), data.Modules[0].Issue)
+	assert.Equal("This is a 71 character statement which hopefully won't have any issues.", data.MessageOverride)
+
+	comment = `evergreen merge --unknown-option blah_blah --module module1:1234 
+This is a 72 character statement which hopefully won't have any issues..`
+	data = ParseGitHubComment(comment)
+	assert.Len(data.Modules, 1)
+	assert.Equal(utility.ToStringPtr("module1"), data.Modules[0].Module)
+	assert.Equal(utility.ToStringPtr("1234"), data.Modules[0].Issue)
+	assert.Equal("This is a 72 character statement which hopefully won't have any issues..", data.MessageOverride)
+
+	comment = `evergreen merge --unknown-option blah_blah --module module1:1234 
+This is a 73 character statement which hopefully won't have any issues...`
+	data = ParseGitHubComment(comment)
+	assert.Len(data.Modules, 1)
+	assert.Equal(utility.ToStringPtr("module1"), data.Modules[0].Module)
+	assert.Equal(utility.ToStringPtr("1234"), data.Modules[0].Issue)
+	assert.Equal(`This is a 73 character statement which hopefully won't have any
+issues...`, data.MessageOverride)
+
+	comment = `evergreen merge --unknown-option blah_blah --module module1:1234 
+A much shorter line.`
+	data = ParseGitHubComment(comment)
+	assert.Len(data.Modules, 1)
+	assert.Equal(utility.ToStringPtr("module1"), data.Modules[0].Module)
+	assert.Equal(utility.ToStringPtr("1234"), data.Modules[0].Issue)
+	assert.Equal("A much shorter line.", data.MessageOverride)
+
+	comment = `evergreen merge --unknown-option blah_blah --module module1:1234 
+A message with a word that is longggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg`
+	data = ParseGitHubComment(comment)
+	assert.Len(data.Modules, 1)
+	assert.Equal(utility.ToStringPtr("module1"), data.Modules[0].Module)
+	assert.Equal(utility.ToStringPtr("1234"), data.Modules[0].Issue)
+	assert.Equal(`A message with a word that is
+longggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg`, data.MessageOverride)
+
+	comment = `evergreen merge --unknown-option blah_blah --module module1:1234 
+Singlewordthatis72characterslonganditshouldntbebrokenupbythewrappingfunc`
+	data = ParseGitHubComment(comment)
+	assert.Len(data.Modules, 1)
+	assert.Equal(utility.ToStringPtr("module1"), data.Modules[0].Module)
+	assert.Equal(utility.ToStringPtr("1234"), data.Modules[0].Issue)
+	assert.Equal("Singlewordthatis72characterslonganditshouldntbebrokenupbythewrappingfunc", data.MessageOverride)
+
+	comment = `evergreen merge --unknown-option blah_blah --module module1:1234 
+Singlewordthatis73characterslonganditshouldnotbebrokenupbythewrappingfunc`
+	data = ParseGitHubComment(comment)
+	assert.Len(data.Modules, 1)
+	assert.Equal(utility.ToStringPtr("module1"), data.Modules[0].Module)
+	assert.Equal(utility.ToStringPtr("1234"), data.Modules[0].Issue)
+	assert.Equal("Singlewordthatis73characterslonganditshouldnotbebrokenupbythewrappingfunc", data.MessageOverride)
 }

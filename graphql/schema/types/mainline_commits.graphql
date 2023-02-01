@@ -16,7 +16,8 @@ Its fields determine what mainline commits we fetch for a given projectID.
 """
 input MainlineCommitsOptions {
   limit: Int = 7
-  projectID: String!
+  projectID: String @deprecated(reason: "projectID is deprecated. Use projectIdentifier instead.")
+  projectIdentifier: String
   requesters: [String!]
   shouldCollapse: Boolean = false # used to determine if unmatching active versions should be collapsed
   skipOrderNumber: Int 

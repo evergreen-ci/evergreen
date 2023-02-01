@@ -685,9 +685,9 @@ type ComplexityRoot struct {
 		AwsRegions               func(childComplexity int) int
 		BbGetCreatedTickets      func(childComplexity int, taskID string) int
 		BuildBaron               func(childComplexity int, taskID string, execution int) int
-		BuildVariantsForTaskName func(childComplexity int, projectID string, taskName string) int
+		BuildVariantsForTaskName func(childComplexity int, projectID *string, projectIdentifier *string, taskName string) int
 		ClientConfig             func(childComplexity int) int
-		CommitQueue              func(childComplexity int, id string) int
+		CommitQueue              func(childComplexity int, id *string, projectIdentifier *string) int
 		DistroTaskQueue          func(childComplexity int, distroID string) int
 		Distros                  func(childComplexity int, onlySpawnable bool) int
 		GithubProjectConflicts   func(childComplexity int, projectID string) int
@@ -701,7 +701,7 @@ type ComplexityRoot struct {
 		MyPublicKeys             func(childComplexity int) int
 		MyVolumes                func(childComplexity int) int
 		Patch                    func(childComplexity int, id string) int
-		Project                  func(childComplexity int, projectID string) int
+		Project                  func(childComplexity int, projectID *string, projectIdentifier *string) int
 		ProjectEvents            func(childComplexity int, identifier string, limit *int, before *time.Time) int
 		ProjectSettings          func(childComplexity int, identifier string) int
 		Projects                 func(childComplexity int) int
@@ -713,7 +713,7 @@ type ComplexityRoot struct {
 		TaskAllExecutions        func(childComplexity int, taskID string) int
 		TaskFiles                func(childComplexity int, taskID string, execution *int) int
 		TaskLogs                 func(childComplexity int, taskID string, execution *int) int
-		TaskNamesForBuildVariant func(childComplexity int, projectID string, buildVariant string) int
+		TaskNamesForBuildVariant func(childComplexity int, projectID *string, projectIdentifier *string, buildVariant string) int
 		TaskQueueDistros         func(childComplexity int) int
 		TaskTestSample           func(childComplexity int, tasks []string, filters []*TestFilter) int
 		TaskTests                func(childComplexity int, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string, groupID *string) int
@@ -1339,7 +1339,7 @@ type QueryResolver interface {
 	TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistro, error)
 	Patch(ctx context.Context, id string) (*model.APIPatch, error)
 	GithubProjectConflicts(ctx context.Context, projectID string) (*model1.GithubProjectConflicts, error)
-	Project(ctx context.Context, projectID string) (*model.APIProjectRef, error)
+	Project(ctx context.Context, projectID *string, projectIdentifier *string) (*model.APIProjectRef, error)
 	Projects(ctx context.Context) ([]*GroupedProjects, error)
 	ProjectEvents(ctx context.Context, identifier string, limit *int, before *time.Time) (*ProjectEvents, error)
 	ProjectSettings(ctx context.Context, identifier string) (*model.APIProjectSettings, error)
@@ -1358,10 +1358,10 @@ type QueryResolver interface {
 	User(ctx context.Context, userID *string) (*model.APIDBUser, error)
 	UserConfig(ctx context.Context) (*UserConfig, error)
 	UserSettings(ctx context.Context) (*model.APIUserSettings, error)
-	CommitQueue(ctx context.Context, id string) (*model.APICommitQueue, error)
-	BuildVariantsForTaskName(ctx context.Context, projectID string, taskName string) ([]*task.BuildVariantTuple, error)
+	CommitQueue(ctx context.Context, id *string, projectIdentifier *string) (*model.APICommitQueue, error)
+	BuildVariantsForTaskName(ctx context.Context, projectID *string, projectIdentifier *string, taskName string) ([]*task.BuildVariantTuple, error)
 	MainlineCommits(ctx context.Context, options MainlineCommitsOptions, buildVariantOptions *BuildVariantOptions) (*MainlineCommits, error)
-	TaskNamesForBuildVariant(ctx context.Context, projectID string, buildVariant string) ([]string, error)
+	TaskNamesForBuildVariant(ctx context.Context, projectID *string, projectIdentifier *string, buildVariant string) ([]string, error)
 	HasVersion(ctx context.Context, id string) (bool, error)
 	Version(ctx context.Context, id string) (*model.APIVersion, error)
 }
@@ -4576,7 +4576,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.BuildVariantsForTaskName(childComplexity, args["projectId"].(string), args["taskName"].(string)), true
+		return e.complexity.Query.BuildVariantsForTaskName(childComplexity, args["projectId"].(*string), args["projectIdentifier"].(*string), args["taskName"].(string)), true
 
 	case "Query.clientConfig":
 		if e.complexity.Query.ClientConfig == nil {
@@ -4595,7 +4595,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.CommitQueue(childComplexity, args["id"].(string)), true
+		return e.complexity.Query.CommitQueue(childComplexity, args["id"].(*string), args["projectIdentifier"].(*string)), true
 
 	case "Query.distroTaskQueue":
 		if e.complexity.Query.DistroTaskQueue == nil {
@@ -4743,7 +4743,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Project(childComplexity, args["projectId"].(string)), true
+		return e.complexity.Query.Project(childComplexity, args["projectId"].(*string), args["projectIdentifier"].(*string)), true
 
 	case "Query.projectEvents":
 		if e.complexity.Query.ProjectEvents == nil {
@@ -4872,7 +4872,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.TaskNamesForBuildVariant(childComplexity, args["projectId"].(string), args["buildVariant"].(string)), true
+		return e.complexity.Query.TaskNamesForBuildVariant(childComplexity, args["projectId"].(*string), args["projectIdentifier"].(*string), args["buildVariant"].(string)), true
 
 	case "Query.taskQueueDistros":
 		if e.complexity.Query.TaskQueueDistros == nil {
@@ -8739,39 +8739,57 @@ func (ec *executionContext) field_Query_buildBaron_args(ctx context.Context, raw
 func (ec *executionContext) field_Query_buildVariantsForTaskName_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
+	var arg0 *string
 	if tmp, ok := rawArgs["projectId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		arg0, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
 	args["projectId"] = arg0
-	var arg1 string
-	if tmp, ok := rawArgs["taskName"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskName"))
-		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+	var arg1 *string
+	if tmp, ok := rawArgs["projectIdentifier"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdentifier"))
+		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["taskName"] = arg1
+	args["projectIdentifier"] = arg1
+	var arg2 string
+	if tmp, ok := rawArgs["taskName"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskName"))
+		arg2, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["taskName"] = arg2
 	return args, nil
 }
 
 func (ec *executionContext) field_Query_commitQueue_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
+	var arg0 *string
 	if tmp, ok := rawArgs["id"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		arg0, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
 	args["id"] = arg0
+	var arg1 *string
+	if tmp, ok := rawArgs["projectIdentifier"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdentifier"))
+		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["projectIdentifier"] = arg1
 	return args, nil
 }
 
@@ -9105,15 +9123,24 @@ func (ec *executionContext) field_Query_projectSettings_args(ctx context.Context
 func (ec *executionContext) field_Query_project_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
+	var arg0 *string
 	if tmp, ok := rawArgs["projectId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		arg0, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
 	args["projectId"] = arg0
+	var arg1 *string
+	if tmp, ok := rawArgs["projectIdentifier"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdentifier"))
+		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["projectIdentifier"] = arg1
 	return args, nil
 }
 
@@ -9267,24 +9294,33 @@ func (ec *executionContext) field_Query_taskLogs_args(ctx context.Context, rawAr
 func (ec *executionContext) field_Query_taskNamesForBuildVariant_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
+	var arg0 *string
 	if tmp, ok := rawArgs["projectId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		arg0, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
 	args["projectId"] = arg0
-	var arg1 string
-	if tmp, ok := rawArgs["buildVariant"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("buildVariant"))
-		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+	var arg1 *string
+	if tmp, ok := rawArgs["projectIdentifier"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdentifier"))
+		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["buildVariant"] = arg1
+	args["projectIdentifier"] = arg1
+	var arg2 string
+	if tmp, ok := rawArgs["buildVariant"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("buildVariant"))
+		arg2, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["buildVariant"] = arg2
 	return args, nil
 }
 
@@ -31721,7 +31757,7 @@ func (ec *executionContext) _Query_project(ctx context.Context, field graphql.Co
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Project(rctx, fc.Args["projectId"].(string))
+		return ec.resolvers.Query().Project(rctx, fc.Args["projectId"].(*string), fc.Args["projectIdentifier"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -33255,7 +33291,7 @@ func (ec *executionContext) _Query_commitQueue(ctx context.Context, field graphq
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().CommitQueue(rctx, fc.Args["id"].(string))
+		return ec.resolvers.Query().CommitQueue(rctx, fc.Args["id"].(*string), fc.Args["projectIdentifier"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -33322,7 +33358,7 @@ func (ec *executionContext) _Query_buildVariantsForTaskName(ctx context.Context,
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().BuildVariantsForTaskName(rctx, fc.Args["projectId"].(string), fc.Args["taskName"].(string))
+		return ec.resolvers.Query().BuildVariantsForTaskName(rctx, fc.Args["projectId"].(*string), fc.Args["projectIdentifier"].(*string), fc.Args["taskName"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -33440,7 +33476,7 @@ func (ec *executionContext) _Query_taskNamesForBuildVariant(ctx context.Context,
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().TaskNamesForBuildVariant(rctx, fc.Args["projectId"].(string), fc.Args["buildVariant"].(string))
+		return ec.resolvers.Query().TaskNamesForBuildVariant(rctx, fc.Args["projectId"].(*string), fc.Args["projectIdentifier"].(*string), fc.Args["buildVariant"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -52832,7 +52868,7 @@ func (ec *executionContext) unmarshalInputMainlineCommitsOptions(ctx context.Con
 		asMap["shouldCollapse"] = false
 	}
 
-	fieldsInOrder := [...]string{"limit", "projectID", "requesters", "shouldCollapse", "skipOrderNumber"}
+	fieldsInOrder := [...]string{"limit", "projectID", "projectIdentifier", "requesters", "shouldCollapse", "skipOrderNumber"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -52851,7 +52887,15 @@ func (ec *executionContext) unmarshalInputMainlineCommitsOptions(ctx context.Con
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectID"))
-			it.ProjectID, err = ec.unmarshalNString2string(ctx, v)
+			it.ProjectID, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "projectIdentifier":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdentifier"))
+			it.ProjectIdentifier, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}

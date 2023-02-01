@@ -1,5 +1,5 @@
 {
-  project(projectId: "evergreen") {
+  project(projectIdentifier: "evergreen") {
     patches(patchesInput: { includeCommitQueue: true, statuses: ["failed"] }) {
       patches {
         id

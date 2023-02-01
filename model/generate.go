@@ -199,8 +199,8 @@ func cacheProjectData(p *Project) projectMaps {
 	for _, bv := range p.BuildVariants {
 		cachedProject.buildVariants[bv.Name] = struct{}{}
 	}
-	for _, t := range p.Tasks {
-		cachedProject.tasks[t.Name] = &t
+	for i, t := range p.Tasks {
+		cachedProject.tasks[t.Name] = &p.Tasks[i]
 	}
 	// functions is already a map, cache it anyway for convenience
 	cachedProject.functions = p.Functions
