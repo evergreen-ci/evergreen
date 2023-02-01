@@ -10,8 +10,7 @@ functions:
       type: setup
       params:
         shell: bash
-        script: |
-          exit 1
+        script: exit 1
 
 
 tasks:
@@ -20,8 +19,7 @@ tasks:
       - command: shell.exec
         params:
           working_dir: src
-          script: |
-            echo "noop"
+          script: echo "noop"
 
 
 buildvariants:
