@@ -121,8 +121,7 @@ type MainlineCommits struct {
 // Its fields determine what mainline commits we fetch for a given projectID.
 type MainlineCommitsOptions struct {
 	Limit             *int     `json:"limit"`
-	ProjectID         *string  `json:"projectID"`
-	ProjectIdentifier *string  `json:"projectIdentifier"`
+	ProjectIdentifier string   `json:"projectIdentifier"`
 	Requesters        []string `json:"requesters"`
 	ShouldCollapse    *bool    `json:"shouldCollapse"`
 	SkipOrderNumber   *int     `json:"skipOrderNumber"`
