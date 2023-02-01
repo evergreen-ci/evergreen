@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
-	yaml "gopkg.in/20210107192922/yaml.v3"
+	yaml "gopkg.in/yaml.v3"
 )
 
 // ShouldContainResembling tests whether a slice contains an element that DeepEquals

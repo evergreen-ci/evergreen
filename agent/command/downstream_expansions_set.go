@@ -11,7 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
-	yaml "gopkg.in/20210107192922/yaml.v3"
+	"gopkg.in/yaml.v3"
 )
 
 // setExpansions takes a file of key value pairs and
