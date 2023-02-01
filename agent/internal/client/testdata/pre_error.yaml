@@ -1,0 +1,33 @@
+command_type: system
+pre_error_fails_task: true
+
+pre:
+  - func: foo
+
+functions:
+  "foo":
+    - command: shell.exec
+      type: setup
+      params:
+        shell: bash
+        script: |
+          exit 1
+
+
+tasks:
+  - name: build
+    commands:
+      - command: shell.exec
+        params:
+          working_dir: src
+          script: |
+            echo "noop"
+
+
+buildvariants:
+  - name: mock_build_variant
+    display_name: Mock Buildvariant
+    run_on:
+      - mock_distro_id
+    tasks: ["*"]
+
