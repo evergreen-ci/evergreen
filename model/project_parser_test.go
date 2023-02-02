@@ -1587,7 +1587,9 @@ func TestParserProjectStorage(t *testing.T) {
 		Credentials: pail.CreateAWSCredentials(ppConf.Key, ppConf.Secret, ""),
 	})
 	require.NoError(t, err)
-	defer bucket.RemovePrefix(ctx, ppConf.Prefix)
+	defer func() {
+		assert.NoError(t, bucket.RemovePrefix(ctx, ppConf.Prefix))
+	}()
 
 	for methodName, ppStorageMethod := range map[string]ParserProjectStorageMethod{
 		"DB": ProjectStorageMethodDB,
