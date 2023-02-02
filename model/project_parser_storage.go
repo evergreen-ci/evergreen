@@ -39,7 +39,7 @@ func GetParserProjectStorage(settings *evergreen.Settings, method ParserProjectS
 	case "", ProjectStorageMethodDB:
 		return ParserProjectDBStorage{}, nil
 	case ProjectStorageMethodS3:
-		return NewParserProjectS3Storage(settings.Providers.AWS)
+		return NewParserProjectS3Storage(settings.Providers.AWS.ParserProject)
 	default:
 		return nil, errors.Errorf("unrecognized parser project storage method '%s'", method)
 	}

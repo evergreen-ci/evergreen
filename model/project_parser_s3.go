@@ -26,16 +26,16 @@ type ParserProjectS3Storage struct {
 // NewParserProjectS3Storage sets up access to parser projects stored in S3.
 // If this returns a non-nil ParserProjectS3Storage, callers are expected to
 // call Close when they are finished with it.
-func NewParserProjectS3Storage(awsConf evergreen.AWSConfig) (*ParserProjectS3Storage, error) {
+func NewParserProjectS3Storage(ppConf evergreen.ParserProjectS3Config) (*ParserProjectS3Storage, error) {
 	c := utility.GetHTTPClient()
 
 	var creds *credentials.Credentials
-	if awsConf.ParserProject.Key != "" && awsConf.ParserProject.Secret != "" {
-		creds = pail.CreateAWSCredentials(awsConf.ParserProject.Key, awsConf.ParserProject.Secret, "")
+	if ppConf.Key != "" && ppConf.Secret != "" {
+		creds = pail.CreateAWSCredentials(ppConf.Key, ppConf.Secret, "")
 	}
 	b, err := pail.NewS3MultiPartBucketWithHTTPClient(c, pail.S3Options{
-		Name:        awsConf.ParserProject.Bucket,
-		Prefix:      awsConf.ParserProject.Prefix,
+		Name:        ppConf.Bucket,
+		Prefix:      ppConf.Prefix,
 		Region:      endpoints.UsEast1RegionID,
 		Credentials: creds,
 	})
