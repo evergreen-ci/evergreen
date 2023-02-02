@@ -2907,10 +2907,7 @@ func TestSaveProjectPageForSection(t *testing.T) {
 		Owner:   "invalid",
 		Repo:    "nonexistent",
 	}
-	settings := evergreen.Settings{
-		GithubOrgs: []string{"evergreen-ci", "newOwner"},
-	}
-	assert.NoError(settings.Set())
+
 	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
 	assert.Error(err)
 

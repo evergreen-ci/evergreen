@@ -1897,8 +1897,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			setUpdate[ProjectRefTracksPushEventsKey] = p.TracksPushEvents
 		}
 		if !isRepo && !p.UseRepoSettings() && !defaultToRepo {
-			// config, err := evergreen.GetConfig()
-			config := evergreen.GetEnvironment().Settings()
+			config, err := evergreen.GetConfig()
 			if err != nil {
 				return false, errors.Wrap(err, "getting evergreen config")
 			}
