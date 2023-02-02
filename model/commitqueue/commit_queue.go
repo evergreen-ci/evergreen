@@ -59,18 +59,18 @@ func (q *CommitQueue) Enqueue(item CommitQueueItem) (int, error) {
 	}
 
 	item.EnqueueTime = time.Now()
-	if err := add(q.ProjectID, q.Queue, item); err != nil {
+	if err := add(q.ProjectID, item); err != nil {
 		return 0, errors.Wrapf(err, "adding '%s' to queue for project '%s'", item.Issue, q.ProjectID)
 	}
+
+	q.Queue = append(q.Queue, item)
 	grip.Info(message.Fields{
 		"source":       "commit queue",
-		"item_id":      item.Issue,
+		"item":         item,
 		"project_id":   q.ProjectID,
 		"queue_length": len(q.Queue),
 		"message":      "enqueued commit queue item",
 	})
-
-	q.Queue = append(q.Queue, item)
 	return len(q.Queue) - 1, nil
 }
 
@@ -90,23 +90,23 @@ func (q *CommitQueue) EnqueueAtFront(item CommitQueueItem) (int, error) {
 		}
 	}
 	item.EnqueueTime = time.Now()
-	if err := addAtPosition(q.ProjectID, q.Queue, item, newPos); err != nil {
+	if err := addAtPosition(q.ProjectID, item, newPos); err != nil {
 		return 0, errors.Wrapf(err, "force adding '%s' to queue for project '%s'", item.Issue, q.ProjectID)
 	}
-
-	grip.Warning(message.Fields{
-		"source":       "commit queue",
-		"item_id":      item.Issue,
-		"project_id":   q.ProjectID,
-		"queue_length": len(q.Queue) + 1,
-		"position":     newPos,
-		"message":      "enqueued commit queue item at front",
-	})
 	if len(q.Queue) == 0 {
 		q.Queue = append(q.Queue, item)
 		return newPos, nil
 	}
 	q.Queue = append(q.Queue[:newPos], append([]CommitQueueItem{item}, q.Queue[newPos:]...)...)
+
+	grip.Info(message.Fields{
+		"source":       "commit queue",
+		"item":         item,
+		"project_id":   q.ProjectID,
+		"queue_length": len(q.Queue),
+		"position":     newPos,
+		"message":      "enqueued commit queue item at front",
+	})
 	return newPos, nil
 }
 
@@ -155,7 +155,13 @@ func (q *CommitQueue) Remove(issue string) (*CommitQueueItem, error) {
 	}
 
 	q.Queue = append(q.Queue[:itemIndex], q.Queue[itemIndex+1:]...)
-
+	grip.Info(message.Fields{
+		"source":       "commit queue",
+		"item":         item,
+		"project_id":   q.ProjectID,
+		"queue_length": len(q.Queue),
+		"message":      "removed item from commit queue",
+	})
 	return &item, nil
 }
 

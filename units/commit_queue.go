@@ -119,9 +119,10 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 	grip.InfoWhen(hasItem, message.Fields{
 		"source":       "commit queue",
 		"job_id":       j.ID(),
-		"item_id":      front.Issue,
+		"item":         front,
 		"project_id":   cq.ProjectID,
 		"waiting_secs": time.Since(front.EnqueueTime).Seconds(),
+		"message":      "found item at the front of commit queue",
 	})
 
 	conf, err := evergreen.GetConfig()
@@ -148,18 +149,26 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 	if len(nextItems) == 0 {
 		return
 	}
-
+	beginBatchProcessingTime := time.Now()
+	grip.Info(message.Fields{
+		"source":       "commit queue",
+		"job_id":       j.ID(),
+		"items":        nextItems,
+		"project_id":   cq.ProjectID,
+		"queue_length": len(cq.Queue),
+		"batch_size":   batchSize,
+		"message":      "starting processing batch of commit queue items",
+	})
 	for _, nextItem := range nextItems {
 		// log time waiting in queue
 		grip.Info(message.Fields{
 			"source":       "commit queue",
 			"job_id":       j.ID(),
-			"item_id":      nextItem.Issue,
+			"item":         nextItem,
 			"project_id":   cq.ProjectID,
 			"time_waiting": time.Since(nextItem.EnqueueTime).Seconds(),
-			"time_elapsed": time.Since(nextItem.ProcessingStartTime).Seconds(),
 			"queue_length": len(cq.Queue),
-			"message":      "started testing commit queue item",
+			"message":      "starting processing of commit queue item",
 		})
 
 		if nextItem.Version != "" {
@@ -173,6 +182,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		}
 
 		// create a version with the item and subscribe to its completion
+		beginProcessingTime := time.Now()
 		if nextItem.Source == commitqueue.SourcePullRequest {
 			j.processGitHubPRItem(ctx, cq, nextItem, projectRef, githubToken)
 		} else if nextItem.Source == commitqueue.SourceDiff {
@@ -187,12 +197,20 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		}
 
 		grip.Info(message.Fields{
-			"source":  "commit queue",
-			"job_id":  j.ID(),
-			"item":    nextItem,
-			"message": "finished processing item",
+			"source":               "commit queue",
+			"job_id":               j.ID(),
+			"item":                 nextItem,
+			"message":              "finished processing commit queue item",
+			"processing_time_secs": time.Since(beginProcessingTime).Seconds(),
 		})
 	}
+	grip.Info(message.Fields{
+		"source":               "commit queue",
+		"job_id":               j.ID(),
+		"items":                nextItems,
+		"message":              "finished processing batch of commit queue items",
+		"processing_time_secs": time.Since(beginBatchProcessingTime).Seconds(),
+	})
 	j.AddError(j.addMergeTaskDependencies(*cq))
 }
 
@@ -344,7 +362,7 @@ func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQ
 			"source":                "commit queue",
 			"patch status":          status,
 			"job_id":                j.ID(),
-			"item_id":               nextItem.Issue,
+			"item":                  nextItem,
 			"project_id":            cq.ProjectID,
 			"time_since_enqueue":    time.Since(nextItem.EnqueueTime).Seconds(),
 			"time_since_patch_done": time.Since(patchDoc.FinishTime).Seconds(),
