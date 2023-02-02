@@ -1,10 +1,11 @@
 package operations
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"strings"
+
+	"golang.org/x/term"
 
 	"github.com/evergreen-ci/utility"
 )
@@ -12,9 +13,10 @@ import (
 // prompt writes a prompt to the user on stdout, reads a newline-terminated response from stdin,
 // and returns the result as a string.
 func prompt(message string) string {
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Print(message + " ")
-	text, _ := reader.ReadString('\n')
+	oldState, _ := term.MakeRaw(int(os.Stdin.Fd()))
+	defer term.Restore(int(os.Stdin.Fd()), oldState)
+	terminal := term.NewTerminal(os.Stdin, fmt.Sprint(message+" "))
+	text, _ := terminal.ReadLine()
 	return strings.TrimSpace(text)
 }
 
