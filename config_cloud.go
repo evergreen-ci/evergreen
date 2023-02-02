@@ -99,8 +99,8 @@ type AWSConfig struct {
 	// TaskSyncRead stores credentials for reading task data in S3.
 	TaskSyncRead S3Credentials `bson:"task_sync_read" json:"task_sync_read" yaml:"task_sync_read"`
 
-	// ParserProject stores credentials for storing and accessing parser
-	// projects in S3.
+	// ParserProject is configuration for storing and accessing parser projects
+	// in S3.
 	ParserProject ParserProjectS3Config `bson:"parser_project" json:"parser_project" yaml:"parser_project"`
 
 	DefaultSecurityGroup string `bson:"default_security_group" json:"default_security_group" yaml:"default_security_group"`
