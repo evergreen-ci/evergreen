@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
@@ -26,18 +28,16 @@ type ParserProjectS3Storage struct {
 // call Close when they are finished with it.
 func NewParserProjectS3Storage(awsConf evergreen.AWSConfig) (*ParserProjectS3Storage, error) {
 	c := utility.GetHTTPClient()
+
+	var creds *credentials.Credentials
+	if awsConf.ParserProject.Key != "" && awsConf.ParserProject.Secret != "" {
+		creds = pail.CreateAWSCredentials(awsConf.ParserProject.Key, awsConf.ParserProject.Bucket, "")
+	}
 	b, err := pail.NewS3MultiPartBucketWithHTTPClient(c, pail.S3Options{
-		// kim: TODO: remove temporary testing namespace once
-		// evergreen-projects-test is set up a way to access it.
-		// Name: bucket,
-		Name: "boxes.10gen.com",
-		// kim: TODO: may need a prefix to handle self-testing in
-		// staging/production projects.
-		Prefix: "kim.tao/parser-projects-test",
-		// kim: TODO: need to add admin setting for region.
-		Region: "us-east-1",
-		// kim: TODO: remove credentials and replace with the ones for testing.
-		Credentials: pail.CreateAWSCredentials("", "", ""),
+		Name:        awsConf.ParserProject.Bucket,
+		Prefix:      awsConf.ParserProject.Prefix,
+		Region:      endpoints.UsEast1RegionID,
+		Credentials: creds,
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "setting up S3 multipart bucket")

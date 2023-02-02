@@ -234,6 +234,7 @@ functions:
         JIRA_ACCESS_TOKEN: ${jira_access_token}
         JIRA_TOKEN_SECRET: ${jira_token_secret}
         JIRA_CONSUMER_KEY: ${jira_consumer_key}
+        PARSER_PROJECT_S3_PREFIX: ${task_id}/
       command: bash scripts/setup-credentials.sh
   setup-mongodb:
     - command: subprocess.exec
