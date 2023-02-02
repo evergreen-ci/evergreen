@@ -10,10 +10,13 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -48,6 +51,38 @@ func FindProjectById(id string, includeRepo bool, includeProjectConfig bool) (*m
 		}
 	}
 	return p, nil
+}
+
+// RequestAWSAccess creates a JIRA ticket that requests build to create an AWS user for the specified project.
+func RequestAWSAccess(projectIdentifier string) error {
+	if projectIdentifier == "" {
+		return errors.New("project identifier cannot be empty")
+	}
+	settings, err := evergreen.GetConfig()
+	summary := fmt.Sprintf("Create AWS key for s3 uploads for %s project", projectIdentifier)
+	description := fmt.Sprintf("Could you create an s3 key for the new [%s|%s/project/%s/settings/general] project?", projectIdentifier, settings.Ui.UIv2Url, projectIdentifier)
+	jiraIssue := message.JiraIssue{
+		Project:     "BUILD",
+		Summary:     summary,
+		Description: description,
+		Components:  []string{"Access"},
+	}
+	sub := event.Subscriber{
+		Type: event.JIRAIssueSubscriberType,
+		Target: event.JIRAIssueSubscriber{
+			Project:   "BUILD",
+			IssueType: jiraIssueType,
+		},
+	}
+	n, err := notification.New("", utility.RandomString(), &sub, jiraIssue)
+	if err != nil {
+		return err
+	}
+	err = notification.InsertMany(*n)
+	if err != nil {
+		return errors.Wrap(err, "batch inserting notifications")
+	}
+	return nil
 }
 
 // CreateProject creates a new project ref from the given one and performs other

@@ -472,3 +472,8 @@ func TestGetLegacyProjectEvents(t *testing.T) {
 	require.NotNil(t, eventLog.Before.ProjectRef.WorkstationConfig.SetupCommands)
 	require.Len(t, eventLog.Before.ProjectRef.WorkstationConfig.SetupCommands, 0)
 }
+
+func TestRequestAWSAccess(t *testing.T) {
+	assert.Error(t, RequestAWSAccess(""))
+	assert.NoError(t, RequestAWSAccess("identifier"))
+}
