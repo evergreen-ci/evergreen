@@ -230,11 +230,11 @@ functions:
         CROWD_SERVER: ${crowdserver}
         AWS_KEY: ${aws_key}
         AWS_SECRET: ${aws_secret}
+        PARSER_PROJECT_S3_PREFIX: ${task_id}
         JIRA_PRIVATE_KEY: ${jira_private_key}
         JIRA_ACCESS_TOKEN: ${jira_access_token}
         JIRA_TOKEN_SECRET: ${jira_token_secret}
         JIRA_CONSUMER_KEY: ${jira_consumer_key}
-        PARSER_PROJECT_S3_PREFIX: ${task_id}/
       command: bash scripts/setup-credentials.sh
   setup-mongodb:
     - command: subprocess.exec

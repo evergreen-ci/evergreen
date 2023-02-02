@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # This script sets up the SETTINGS_OVERRIDE file used as the admin settings when
-# running an integration test that requires sensitive credentials.
+# running an integration test that requires secret credentials.
 
 set -o errexit
 

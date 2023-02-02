@@ -31,7 +31,7 @@ func NewParserProjectS3Storage(awsConf evergreen.AWSConfig) (*ParserProjectS3Sto
 
 	var creds *credentials.Credentials
 	if awsConf.ParserProject.Key != "" && awsConf.ParserProject.Secret != "" {
-		creds = pail.CreateAWSCredentials(awsConf.ParserProject.Key, awsConf.ParserProject.Bucket, "")
+		creds = pail.CreateAWSCredentials(awsConf.ParserProject.Key, awsConf.ParserProject.Secret, "")
 	}
 	b, err := pail.NewS3MultiPartBucketWithHTTPClient(c, pail.S3Options{
 		Name:        awsConf.ParserProject.Bucket,
