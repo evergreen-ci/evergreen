@@ -124,12 +124,12 @@ func (j *hostDrawdownJob) checkAndTerminateHost(ctx context.Context, h *host.Hos
 
 	// don't drawdown hosts that are running task groups
 	if h.RunningTaskGroup != "" {
-		t, err := task.FindOneId(h.RunningTask)
+		t, err := task.FindOneIdAndExecution(h.RunningTask, h.RunningTaskExecution)
 		if err != nil {
-			return errors.Wrapf(err, "finding task '%s' running on host '%s'", h.RunningTask, h.Id)
+			return errors.Wrapf(err, "finding task '%s' execution '%d' running on host '%s'", h.RunningTask, h.RunningTaskExecution, h.Id)
 		}
 		if t == nil {
-			return errors.Errorf("task '%s' running on host '%s' not found", h.RunningTask, h.Id)
+			return errors.Errorf("task '%s' running on host '%s' execution '%d' not found", h.RunningTask, h.RunningTaskExecution, h.Id)
 		}
 		if t.IsPartOfSingleHostTaskGroup() {
 			return nil

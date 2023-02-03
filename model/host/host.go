@@ -61,8 +61,8 @@ type Host struct {
 	ProvisionOptions *ProvisionOptions `bson:"provision_options,omitempty" json:"provision_options,omitempty"`
 
 	// the task that is currently running on the host
-	RunningTask             string `bson:"running_task,omitempty" json:"running_task,omitempty"`
-	RunningTaskExecution    int    `bson:"running_task_execution,omitempty" json:"running_task_execution,omitempty"`
+	RunningTask             string `bson:"running_task" json:"running_task"`
+	RunningTaskExecution    int    `bson:"running_task_execution" json:"running_task_execution"`
 	RunningTaskBuildVariant string `bson:"running_task_bv,omitempty" json:"running_task_bv,omitempty"`
 	RunningTaskVersion      string `bson:"running_task_version,omitempty" json:"running_task_version,omitempty"`
 	RunningTaskProject      string `bson:"running_task_project,omitempty" json:"running_task_project,omitempty"`
@@ -1300,8 +1300,9 @@ func (h *Host) ClearRunningAndSetLastTask(t *task.Task) error {
 	now := time.Now()
 	err := UpdateOne(
 		bson.M{
-			IdKey:          h.Id,
-			RunningTaskKey: h.RunningTask,
+			IdKey:                   h.Id,
+			RunningTaskKey:          h.RunningTask,
+			RunningTaskExecutionKey: h.RunningTaskExecution,
 		},
 		bson.M{
 			"$set": bson.M{
@@ -1334,6 +1335,7 @@ func (h *Host) ClearRunningAndSetLastTask(t *task.Task) error {
 		"host_tag":        h.Tag,
 		"distro":          h.Distro.Id,
 		"running_task_id": h.RunningTask,
+		"task_execution":  h.RunningTaskExecution,
 		"last_task_id":    t.Id,
 	})
 
@@ -1368,11 +1370,12 @@ func (h *Host) ClearRunningTask() error {
 	if hadRunningTask {
 		event.LogHostRunningTaskCleared(h.Id, h.RunningTask, h.RunningTaskExecution)
 		grip.Info(message.Fields{
-			"message":  "cleared host running task",
-			"host_id":  h.Id,
-			"host_tag": h.Tag,
-			"distro":   h.Distro.Id,
-			"task_id":  h.RunningTask,
+			"message":        "cleared host running task",
+			"host_id":        h.Id,
+			"host_tag":       h.Tag,
+			"distro":         h.Distro.Id,
+			"task_id":        h.RunningTask,
+			"task_execution": h.RunningTaskExecution,
 		})
 	}
 
