@@ -31,10 +31,8 @@ var serviceRegistry = map[string]testResultsServiceFactory{
 type testResultsServiceFactory func(evergreen.Environment) testResultsService
 
 type testResultsService interface {
-	GetTaskTestResults(context.Context, TaskOptions, FilterOptions) (TaskTestResults, error)
-	GetTaskTestResultsStats(context.Context, TaskOptions) (TaskTestResultsStats, error)
-	GetTestResults(context.Context, []TaskOptions, FilterOptions) ([]TaskTestResults, error)
-	GetTestResultsStats(context.Context, []TaskOptions) ([]TaskTestResultsStats, error)
+	GetMergedTaskTestResults(context.Context, []TaskOptions, *FilterOptions) (TaskTestResults, error)
+	GetMergedTaskTestResultsStats(context.Context, []TaskOptions) (TaskTestResultsStats, error)
 	GetFailedTestSamples(context.Context, []TaskOptions, []string) ([]TaskTestResultsFailedSample, error)
 }
 

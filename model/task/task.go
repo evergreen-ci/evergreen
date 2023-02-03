@@ -2476,7 +2476,7 @@ func (t *Task) PopulateTestResults() error {
 	ctx, cancel := env.Context()
 	defer cancel()
 
-	taskTestResults, err := t.GetTestResults(ctx, env, testresult.FilterOptions{})
+	taskTestResults, err := t.GetTestResults(ctx, env, nil)
 	if err != nil {
 		return errors.Wrap(err, "populating test results")
 	}
@@ -2485,88 +2485,55 @@ func (t *Task) PopulateTestResults() error {
 	return nil
 }
 
-func (t *Task) GetTestResults(ctx context.Context, env evergreen.Environment, filterOpts testresult.FilterOptions) (testresult.TaskTestResults, error) {
-	if t.DisplayOnly {
-		query := ByIds(t.ExecutionTasks)
-		query[HasResultsKey] = true
-		execTasksWithResults, err := FindWithFields(query, ExecutionKey, ResultsServiceKey)
-		if err != nil {
-			return testresult.TaskTestResults{}, errors.Wrap(err, "getting execution tasks for display task")
-		}
-
-		taskOpts := make([]testresult.TaskOptions, len(execTasksWithResults))
-		for i, execTask := range execTasksWithResults {
-			taskOpts[i].TaskID = execTask.Id
-			taskOpts[i].Execution = execTask.Execution
-			taskOpts[i].ResultsService = execTask.ResultsService
-		}
-		execTasksResults, err := testresult.GetTestResults(ctx, env, taskOpts, filterOpts)
-		if err != nil {
-			return testresult.TaskTestResults{}, errors.Wrap(err, "getting test results for execution tasks")
-		}
-
-		var mergedTaskResults testresult.TaskTestResults
-		for _, execTaskResults := range execTasksResults {
-			mergedTaskResults.Stats.TotalCount += execTaskResults.Stats.TotalCount
-			mergedTaskResults.Stats.FailedCount += execTaskResults.Stats.FailedCount
-			if mergedTaskResults.Stats.FilteredCount != nil {
-				mergedTaskResults.Stats.FilteredCount = utility.ToIntPtr(
-					utility.FromIntPtr(mergedTaskResults.Stats.FilteredCount) + utility.FromIntPtr(execTaskResults.Stats.FilteredCount),
-				)
-			}
-			mergedTaskResults.Results = append(mergedTaskResults.Results, execTaskResults.Results...)
-		}
-
-		return mergedTaskResults, nil
+func (t *Task) GetTestResults(ctx context.Context, env evergreen.Environment, filterOpts *testresult.FilterOptions) (testresult.TaskTestResults, error) {
+	taskOpts, err := t.createTestResultsTaskOptions()
+	if err != nil {
+		return testresult.TaskTestResults{}, errors.Wrap(err, "creating test results task options")
 	}
-
-	if !t.HasResults {
+	if len(taskOpts) == 0 {
 		return testresult.TaskTestResults{}, nil
 	}
-	return testresult.GetTaskTestResults(ctx, env, testresult.TaskOptions{
-		TaskID:         t.Id,
-		Execution:      t.Execution,
-		ResultsService: t.ResultsService,
-	}, filterOpts)
+
+	return testresult.GetMergedTaskTestResults(ctx, env, taskOpts, filterOpts)
 }
 
 func (t *Task) GetTestResultsStats(ctx context.Context, env evergreen.Environment) (testresult.TaskTestResultsStats, error) {
+	taskOpts, err := t.createTestResultsTaskOptions()
+	if err != nil {
+		return testresult.TaskTestResultsStats{}, errors.Wrap(err, "creating test results task options")
+	}
+	if len(taskOpts) == 0 {
+		return testresult.TaskTestResultsStats{}, nil
+	}
+
+	return testresult.GetMergedTaskTestResultsStats(ctx, env, taskOpts)
+}
+
+func (t *Task) createTestResultsTaskOptions() ([]testresult.TaskOptions, error) {
+	var taskOpts []testresult.TaskOptions
 	if t.DisplayOnly {
 		query := ByIds(t.ExecutionTasks)
 		query[HasResultsKey] = true
 		execTasksWithResults, err := FindWithFields(query, ExecutionKey, ResultsServiceKey)
 		if err != nil {
-			return testresult.TaskTestResultsStats{}, errors.Wrap(err, "getting execution tasks for display task")
+			return nil, errors.Wrap(err, "getting execution tasks for display task")
 		}
 
-		taskOpts := make([]testresult.TaskOptions, len(execTasksWithResults))
+		taskOpts = make([]testresult.TaskOptions, len(execTasksWithResults))
 		for i, execTask := range execTasksWithResults {
 			taskOpts[i].TaskID = execTask.Id
 			taskOpts[i].Execution = execTask.Execution
 			taskOpts[i].ResultsService = execTask.ResultsService
 		}
-		execTasksStats, err := testresult.GetTestResultsStats(ctx, env, taskOpts)
-		if err != nil {
-			return testresult.TaskTestResultsStats{}, errors.Wrap(err, "getting test results stats for execution tasks")
-		}
-
-		var mergedStats testresult.TaskTestResultsStats
-		for _, execTaskStats := range execTasksStats {
-			mergedStats.TotalCount += execTaskStats.TotalCount
-			mergedStats.FailedCount += execTaskStats.FailedCount
-		}
-
-		return mergedStats, nil
+	} else if t.HasResults {
+		taskOpts = append(taskOpts, testresult.TaskOptions{
+			TaskID:         t.Id,
+			Execution:      t.Execution,
+			ResultsService: t.ResultsService,
+		})
 	}
 
-	if !t.HasResults {
-		return testresult.TaskTestResultsStats{}, nil
-	}
-	return testresult.GetTaskTestResultsStats(ctx, env, testresult.TaskOptions{
-		TaskID:         t.Id,
-		Execution:      t.Execution,
-		ResultsService: t.ResultsService,
-	})
+	return taskOpts, nil
 }
 
 // SetResetWhenFinished requests that a display task or single-host task group

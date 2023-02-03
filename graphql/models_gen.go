@@ -328,6 +328,24 @@ type TestFilter struct {
 	TestStatus string `json:"testStatus"`
 }
 
+// TestFilterOptions is an input for the task.Tests query.
+// It's used to filter, sort, and paginate test results of a task.
+type TestFilterOptions struct {
+	TestName string             `json:"testName"`
+	Statuses []string           `json:"statuses"`
+	GroupID  string             `json:"groupID"`
+	Sort     []*TestSortOptions `json:"sort"`
+	Limit    int                `json:"limit"`
+	Page     int                `json:"page"`
+}
+
+// TestSortOptions is an input for the task.Tests query.
+// It's used to define sort criteria for test results of a task.
+type TestSortOptions struct {
+	SortBy    TestSortCategory `json:"sortBy"`
+	Direction SortDirection    `json:"direction"`
+}
+
 // UpdateVolumeInput is the input to the updateVolume mutation.
 // Its fields determine how a given volume will be modified.
 type UpdateVolumeInput struct {

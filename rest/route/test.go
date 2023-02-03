@@ -119,7 +119,7 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 	results, err := tgh.task.GetTestResults(
 		ctx,
 		tgh.env,
-		testresult.FilterOptions{
+		&testresult.FilterOptions{
 			TestName: tgh.testName,
 			Statuses: tgh.testStatus,
 			Limit:    tgh.limit,

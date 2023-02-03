@@ -367,9 +367,9 @@ func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.AP
 
 // FailedTestCount is the resolver for the failedTestCount field.
 func (r *taskResolver) FailedTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
-	dbTask, err := task.FindByIdExecution(utility.FromStringPtr(obj.Id), &obj.Execution)
-	if dbTask == nil || err != nil {
-		return 0, ResourceNotFound.Send(ctx, fmt.Sprintf("finding task with id '%s' and execution %d", utility.FromStringPtr(obj.Id), obj.Execution))
+	dbTask, err := obj.ToService()
+	if err != nil {
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *obj.Id, err.Error()))
 	}
 
 	stats, err := dbTask.GetTestResultsStats(ctx, evergreen.GetEnvironment())
@@ -501,11 +501,16 @@ func (r *taskResolver) Status(ctx context.Context, obj *restModel.APITask) (stri
 	return *obj.DisplayStatus, nil
 }
 
+// Tests is the resolver for the tests field.
+func (r *taskResolver) Tests(ctx context.Context, obj *restModel.APITask, options *TestFilterOptions) (*TaskTestResult, error) {
+	panic(fmt.Errorf("not implemented: Tests - tests"))
+}
+
 // TotalTestCount is the resolver for the totalTestCount field.
 func (r *taskResolver) TotalTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
-	dbTask, err := task.FindByIdExecution(utility.FromStringPtr(obj.Id), &obj.Execution)
-	if dbTask == nil || err != nil {
-		return 0, ResourceNotFound.Send(ctx, fmt.Sprintf("finding task with id '%s' and execution %d", utility.FromStringPtr(obj.Id), obj.Execution))
+	dbTask, err := obj.ToService()
+	if err != nil {
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *obj.Id, err.Error()))
 	}
 
 	stats, err := dbTask.GetTestResultsStats(ctx, evergreen.GetEnvironment())

@@ -649,7 +649,6 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 	}
 
 	var baseTask *task.Task
-
 	if dbTask.Requester == evergreen.RepotrackerVersionRequester {
 		baseTask, err = dbTask.FindTaskOnPreviousCommit()
 	} else {
@@ -684,7 +683,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 	taskResults, err := dbTask.GetTestResults(
 		ctx,
 		evergreen.GetEnvironment(),
-		testresult.FilterOptions{
+		&testresult.FilterOptions{
 			TestName:     utility.FromStringPtr(testName),
 			Statuses:     statuses,
 			GroupID:      utility.FromStringPtr(groupID),

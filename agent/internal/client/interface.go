@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
@@ -180,4 +181,11 @@ type LoggerProducer interface {
 	Close() error
 	// Closed returns true if this logger has been closed, false otherwise.
 	Closed() bool
+}
+
+// TestResultSender provides a mechanism for agents to send test results
+// produced during a task directly to the backend result service.
+type TestResultsSender interface {
+	Send(context.Context, []testresult.TestResult) error
+	Close(context.Context) error
 }

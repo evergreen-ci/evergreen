@@ -17,6 +17,8 @@ type cedarService struct {
 	baseURL string
 }
 
+// NewCedarTestResultsService returns a Cedar backed test results service
+// implementation.
 func NewCedarTestResultsService(env evergreen.Environment) testResultsService {
 	cedarSettings := env.Settings().Cedar
 	httpScheme := "https"
@@ -27,8 +29,8 @@ func NewCedarTestResultsService(env evergreen.Environment) testResultsService {
 	return &cedarService{baseURL: fmt.Sprintf("%s://%s", httpScheme, cedarSettings.BaseURL)}
 }
 
-func (s *cedarService) GetTaskTestResults(ctx context.Context, taskOpts TaskOptions, filterOpts FilterOptions) (TaskTestResults, error) {
-	data, status, err := testresults.Get(ctx, s.convertFilterOpts(taskOpts, filterOpts))
+func (s *cedarService) GetMergedTaskTestResults(ctx context.Context, taskOpts []TaskOptions, filterOpts *FilterOptions) (TaskTestResults, error) {
+	data, status, err := testresults.Get(ctx, s.convertFilterOpts(taskOpts[0], filterOpts))
 	if err != nil {
 		return TaskTestResults{}, errors.Wrap(err, "getting test results from Cedar")
 	}
@@ -47,8 +49,8 @@ func (s *cedarService) GetTaskTestResults(ctx context.Context, taskOpts TaskOpti
 	return testResults, nil
 }
 
-func (s *cedarService) GetTaskTestResultsStats(ctx context.Context, taskOpts TaskOptions) (TaskTestResultsStats, error) {
-	opts := s.convertFilterOpts(taskOpts, FilterOptions{})
+func (s *cedarService) GetMergedTaskTestResultsStats(ctx context.Context, taskOpts []TaskOptions) (TaskTestResultsStats, error) {
+	opts := s.convertFilterOpts(taskOpts[0], nil)
 	opts.Stats = true
 	data, status, err := testresults.Get(ctx, opts)
 	if err != nil {
@@ -67,14 +69,6 @@ func (s *cedarService) GetTaskTestResultsStats(ctx context.Context, taskOpts Tas
 	}
 
 	return stats, nil
-}
-
-func (s *cedarService) GetTestResults(ctx context.Context, taskOpts []TaskOptions, filterOpts FilterOptions) ([]TaskTestResults, error) {
-	return nil, errors.New("not implemented")
-}
-
-func (s *cedarService) GetTestResultsStats(ctx context.Context, taskOpts []TaskOptions) ([]TaskTestResultsStats, error) {
-	return nil, errors.New("not implemented")
 }
 
 func (s *cedarService) GetFailedTestSamples(ctx context.Context, taskOpts []TaskOptions, regexFilters []string) ([]TaskTestResultsFailedSample, error) {
@@ -106,7 +100,11 @@ func (s *cedarService) GetFailedTestSamples(ctx context.Context, taskOpts []Task
 	return samples, nil
 }
 
-func (s *cedarService) convertFilterOpts(taskOpts TaskOptions, filterOpts FilterOptions) testresults.GetOptions {
+func (s *cedarService) convertFilterOpts(taskOpts TaskOptions, filterOpts *FilterOptions) testresults.GetOptions {
+	if filterOpts == nil {
+		filterOpts = &FilterOptions{}
+	}
+
 	return testresults.GetOptions{
 		Cedar: timber.GetOptions{
 			BaseURL: s.baseURL,
