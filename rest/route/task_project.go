@@ -14,14 +14,15 @@ import (
 // taskByProjectHandler implements the GET /projects/{project_id}/revisions/{commit_hash}/tasks.
 // It fetches the associated tasks and returns them to the user.
 type tasksByProjectHandler struct {
-	project    string
-	commitHash string
-	taskName   string
-	variant    string
-	status     string
-	limit      int
-	key        string
-	url        string
+	project      string
+	commitHash   string
+	taskName     string
+	variant      string
+	variantRegex string
+	status       string
+	limit        int
+	key          string
+	url          string
 }
 
 func makeTasksByProjectAndCommitHandler(url string) gimlet.RouteHandler {
@@ -45,11 +46,19 @@ func (tph *tasksByProjectHandler) Parse(ctx context.Context, r *http.Request) er
 	tph.status = vals.Get("status")
 	tph.key = vals.Get("start_at")
 	tph.variant = vals.Get("variant")
+	tph.variantRegex = vals.Get("variant_regex")
 	tph.taskName = vals.Get("task_name")
 
 	if tph.project == "" {
 		return gimlet.ErrorResponse{
 			Message:    "project_id cannot be empty",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	if tph.variant != "" && tph.variantRegex != "" {
+		return gimlet.ErrorResponse{
+			Message:    "variant and variant regex cannot be used together",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
@@ -77,6 +86,7 @@ func (tph *tasksByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 		StartingTaskId: tph.key,
 		Status:         tph.status,
 		VariantName:    tph.variant,
+		VariantRegex:   tph.variantRegex,
 		TaskName:       tph.taskName,
 		Limit:          tph.limit + 1,
 	}
