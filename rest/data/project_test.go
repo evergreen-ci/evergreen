@@ -129,7 +129,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 
 		vars := &model.ProjectVars{
 			Id:          projectId,
-			Vars:        map[string]string{"a": "1", "b": "3"},
+			Vars:        map[string]string{"a": "1", "b": "3", "d": "4"},
 			PrivateVars: map[string]bool{"b": true},
 		}
 		s.NoError(vars.Insert())
@@ -256,13 +256,14 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 	//successful update
 	varsToDelete := []string{"a"}
 	newVars := restModel.APIProjectVars{
-		Vars:         map[string]string{"b": "2", "c": "3"},
+		Vars:         map[string]string{"b": "2", "c": "3", "d": ""},
 		PrivateVars:  map[string]bool{"b": false, "c": true},
 		VarsToDelete: varsToDelete,
 	}
 	s.NoError(UpdateProjectVars(projectId, &newVars, false))
 	s.Equal(newVars.Vars["b"], "") // can't unredact previously redacted  variables
 	s.Equal(newVars.Vars["c"], "")
+	s.Equal(newVars.Vars["d"], "4") // can't overwrite a value with the empty string
 	_, ok := newVars.Vars["a"]
 	s.False(ok)
 
