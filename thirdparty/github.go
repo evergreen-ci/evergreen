@@ -856,13 +856,13 @@ func GetPullRequestMergeBase(ctx context.Context, token string, data GithubPatch
 	return *commit.Parents[0].SHA, nil
 }
 
-func GetGithubPullRequest(ctx context.Context, token, baseOwner, baseRepo string, PRNumber int) (*github.PullRequest, error) {
+func GetGithubPullRequest(ctx context.Context, token, baseOwner, baseRepo string, prNumber int) (*github.PullRequest, error) {
 	httpClient := getGithubClientRetryWith404s(token, "GetGithubPullRequest")
 	defer utility.PutHTTPClient(httpClient)
 
 	client := github.NewClient(httpClient)
 
-	pr, _, err := client.PullRequests.Get(ctx, baseOwner, baseRepo, PRNumber)
+	pr, _, err := client.PullRequests.Get(ctx, baseOwner, baseRepo, prNumber)
 	if err != nil {
 		return nil, err
 	}
@@ -870,13 +870,13 @@ func GetGithubPullRequest(ctx context.Context, token, baseOwner, baseRepo string
 	return pr, nil
 }
 
-func GetGithubPullRequestCommits(ctx context.Context, token, owner, repo string, PRNumber int) ([]*github.RepositoryCommit, error) {
+func GetGithubPullRequestCommits(ctx context.Context, token, owner, repo string, prNumber int) ([]*github.RepositoryCommit, error) {
 	httpClient := getGithubClientRetryWith404s(token, "GetGithubPullRequestCommits")
 	defer utility.PutHTTPClient(httpClient)
 
 	client := github.NewClient(httpClient)
 
-	commits, _, err := client.PullRequests.ListCommits(ctx, owner, repo, PRNumber, nil)
+	commits, _, err := client.PullRequests.ListCommits(ctx, owner, repo, prNumber, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -885,6 +885,32 @@ func GetGithubPullRequestCommits(ctx context.Context, token, owner, repo string,
 	}
 
 	return commits, nil
+}
+
+// GetGithubPullRequestReviews retrieves a list of reviews for the given PR.
+func GetGithubPullRequestReviews(ctx context.Context, token, owner, repo string, prNumber int, reviewPage int) ([]*github.PullRequestReview, int, error) {
+	httpClient := getGithubClientRetryWith404s(token, "GetGithubPullRequestCommits")
+	defer utility.PutHTTPClient(httpClient)
+
+	client := github.NewClient(httpClient)
+
+	opts := &github.ListOptions{
+		PerPage: 100,
+		Page:    reviewPage,
+	}
+
+	reviews, resp, err := client.PullRequests.ListReviews(ctx, owner, repo, prNumber, opts)
+	if resp != nil {
+		defer resp.Body.Close()
+		if err != nil {
+			return nil, 0, parseGithubErrorResponse(resp)
+		}
+	} else {
+		errMsg := fmt.Sprintf("nil response from query for PR reviews in '%s/%s' prNumber %d : %v", owner, repo, prNumber, err)
+		return nil, 0, APIResponseError{errMsg}
+	}
+
+	return reviews, resp.NextPage, nil
 }
 
 // GetGithubPullRequestDiff downloads a diff from a Github Pull Request diff
@@ -1026,17 +1052,7 @@ func GetMergeablePullRequest(ctx context.Context, issue int, githubToken, owner,
 		return nil, errors.Wrap(err, "GitHub returned an incomplete PR")
 	}
 
-	if pr.Mergeable == nil {
-		if *pr.Merged {
-			return pr, errors.New("PR is already merged")
-		}
-		// GitHub hasn't yet tested if the PR is mergeable.
-		// Check back later
-		// See: https://developer.github.com/v3/pulls/#response-1
-		return pr, errors.New("GitHub hasn't yet generated a merge commit")
-	}
-
-	if !*pr.Mergeable {
+	if !utility.FromBoolTPtr(pr.Mergeable) {
 		return pr, errors.New("PR is not mergeable")
 	}
 

@@ -31,6 +31,7 @@ import (
 type PatchIntentUnitsSuite struct {
 	sender *send.InternalSender
 	env    *mock.Environment
+	ctx    context.Context
 	cancel context.CancelFunc
 
 	repo            string
@@ -58,9 +59,8 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	s.sender = send.MakeInternalLogger()
 	s.env = &mock.Environment{}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	s.cancel = cancel
-	s.Require().NoError(s.env.Configure(ctx))
+	s.ctx, s.cancel = context.WithCancel(context.Background())
+	s.Require().NoError(s.env.Configure(s.ctx))
 
 	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings(), "TestPatchIntentUnitsSuite")
 	s.NotNil(s.env.Settings())
@@ -178,12 +178,6 @@ func (s *PatchIntentUnitsSuite) TearDownTest() {
 }
 
 func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent, patchedParserProject string) *patchIntentProcessor {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	githubOauthToken, err := s.env.Settings().GetGithubOauthToken()
-	s.Require().NoError(err)
-
 	j := NewPatchIntentProcessor(mgobson.NewObjectId(), intent).(*patchIntentProcessor)
 	j.env = s.env
 
@@ -192,7 +186,7 @@ func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent, patchedPars
 		patchDoc.PatchedParserProject = patchedParserProject
 		patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{ModuleName: "sandbox"})
 	}
-	s.NoError(j.finishPatch(ctx, patchDoc, githubOauthToken))
+	s.NoError(j.finishPatch(s.ctx, patchDoc))
 	s.NoError(j.Error())
 	s.False(j.HasErrors())
 
@@ -200,9 +194,6 @@ func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent, patchedPars
 }
 
 func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithNoTasksAndVariants() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	resp, err := http.Get(s.diffURL)
 	s.Require().NoError(err)
 	defer resp.Body.Close()
@@ -222,22 +213,16 @@ func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithNoTasksAndVariants() {
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert())
 
-	githubOauthToken, err := s.env.Settings().GetGithubOauthToken()
-	s.Require().NoError(err)
-
 	j := NewPatchIntentProcessor(mgobson.NewObjectId(), intent).(*patchIntentProcessor)
 	j.env = s.env
 
 	patchDoc := intent.NewPatch()
-	err = j.finishPatch(ctx, patchDoc, githubOauthToken)
+	err = j.finishPatch(s.ctx, patchDoc)
 	s.Require().Error(err)
 	s.Equal("patch has no build variants or tasks", err.Error())
 }
 
 func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithBadAlias() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	resp, err := http.Get(s.diffURL)
 	s.Require().NoError(err)
 	defer resp.Body.Close()
@@ -257,22 +242,16 @@ func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithBadAlias() {
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert())
 
-	githubOauthToken, err := s.env.Settings().GetGithubOauthToken()
-	s.Require().NoError(err)
-
 	j := NewPatchIntentProcessor(mgobson.NewObjectId(), intent).(*patchIntentProcessor)
 	j.env = s.env
 
 	patchDoc := intent.NewPatch()
-	err = j.finishPatch(ctx, patchDoc, githubOauthToken)
+	err = j.finishPatch(s.ctx, patchDoc)
 	s.Require().Error(err)
 	s.Equal("alias 'typo' could not be found on project 'mci'", err.Error())
 }
 
 func (s *PatchIntentUnitsSuite) TestCantFinishCommitQueuePatchWithNoTasksAndVariants() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	resp, err := http.Get(s.diffURL)
 	s.Require().NoError(err)
 	defer resp.Body.Close()
@@ -298,14 +277,11 @@ func (s *PatchIntentUnitsSuite) TestCantFinishCommitQueuePatchWithNoTasksAndVari
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert())
 
-	githubOauthToken, err := s.env.Settings().GetGithubOauthToken()
-	s.Require().NoError(err)
-
 	j := NewPatchIntentProcessor(mgobson.NewObjectId(), intent).(*patchIntentProcessor)
 	j.env = s.env
 
 	patchDoc := intent.NewPatch()
-	err = j.finishPatch(ctx, patchDoc, githubOauthToken)
+	err = j.finishPatch(s.ctx, patchDoc)
 	s.Require().Error(err)
 	s.Equal("patch has no build variants or tasks", err.Error())
 }
@@ -1045,7 +1021,7 @@ func (s *PatchIntentUnitsSuite) verifyPatchDoc(patchDoc *patch.Patch, expectedPa
 }
 
 func (s *PatchIntentUnitsSuite) projectExists(projectId string) {
-	pp, err := model.ParserProjectFindOneById(projectId)
+	pp, err := model.ParserProjectFindOneByID(s.ctx, s.env.Settings(), model.ProjectStorageMethodDB, projectId)
 	s.NoError(err)
 	s.NotNil(pp)
 }
@@ -1250,15 +1226,12 @@ func (s *PatchIntentUnitsSuite) TestProcessTriggerAliases() {
 	}
 	s.NoError(u.Insert())
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	projectRef, err := model.FindBranchProjectRef(s.project)
 	s.NotNil(projectRef)
 	s.NoError(err)
 
 	s.Len(p.Triggers.ChildPatches, 0)
-	s.NoError(ProcessTriggerAliases(ctx, p, projectRef, s.env, []string{"patch-alias"}))
+	s.NoError(ProcessTriggerAliases(s.ctx, p, projectRef, s.env, []string{"patch-alias"}))
 	s.Len(p.Triggers.ChildPatches, 1)
 
 	dbPatch, err := patch.FindOneId(p.Id.Hex())

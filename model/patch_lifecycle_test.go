@@ -184,14 +184,14 @@ func TestGetPatchedProject(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	testutil.ConfigureIntegrationTest(t, patchTestConfig, "TestConfigurePatch")
+	testutil.ConfigureIntegrationTest(t, patchTestConfig, t.Name())
+	token, err := patchTestConfig.GetGithubOauthToken()
+	require.NoError(t, err)
 	Convey("With calling GetPatchedProject with a config and remote configuration path",
 		t, func() {
 			Convey("Calling GetPatchedProject returns a valid project given a patch and settings", func() {
 				configPatch := resetPatchSetup(t, configFilePath)
-				token, err := patchTestConfig.GetGithubOauthToken()
-				So(err, ShouldBeNil)
-				project, patchConfig, err := GetPatchedProject(ctx, configPatch, token)
+				project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, configPatch, token)
 				So(err, ShouldBeNil)
 				So(patchConfig, ShouldNotBeEmpty)
 				So(project, ShouldNotBeNil)
@@ -199,9 +199,7 @@ func TestGetPatchedProject(t *testing.T) {
 
 			Convey("Calling GetPatchedProject on a project-less version returns a valid project", func() {
 				configPatch := resetProjectlessPatchSetup(t)
-				token, err := patchTestConfig.GetGithubOauthToken()
-				So(err, ShouldBeNil)
-				project, patchConfig, err := GetPatchedProject(ctx, configPatch, token)
+				project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, configPatch, token)
 				So(err, ShouldBeNil)
 				So(patchConfig, ShouldNotBeEmpty)
 				So(project, ShouldNotBeNil)
@@ -215,9 +213,7 @@ func TestGetPatchedProject(t *testing.T) {
 				configPatch.Patches[0].PatchSet.Patch = ""
 				configPatch.Patches[0].PatchSet.PatchFileId = patchFileID.Hex()
 
-				token, err := patchTestConfig.GetGithubOauthToken()
-				So(err, ShouldBeNil)
-				project, patchConfig, err := GetPatchedProject(ctx, configPatch, token)
+				project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, configPatch, token)
 				So(err, ShouldBeNil)
 				So(patchConfig, ShouldNotBeEmpty)
 				So(project, ShouldNotBeNil)
@@ -241,11 +237,11 @@ func TestFinalizePatch(t *testing.T) {
 	require.NoError(t, db.CreateCollections(manifest.Collection, VersionCollection, ParserProjectCollection, ProjectConfigCollection))
 
 	configPatch := resetPatchSetup(t, configFilePath)
+	token, err := patchTestConfig.GetGithubOauthToken()
+	require.NoError(t, err)
 	for name, test := range map[string]func(*testing.T){
 		"VersionCreation": func(*testing.T) {
-			token, err := patchTestConfig.GetGithubOauthToken()
-			require.NoError(t, err)
-			project, patchConfig, err := GetPatchedProject(ctx, configPatch, token)
+			project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, configPatch, token)
 			require.NoError(t, err)
 			assert.NotNil(t, project)
 			modulesYml := `
@@ -259,8 +255,6 @@ modules:
 `
 			configPatch.PatchedParserProject = patchConfig.PatchedParserProject
 			configPatch.PatchedParserProject += modulesYml
-			token, err = patchTestConfig.GetGithubOauthToken()
-			require.NoError(t, err)
 			version, err := FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, token)
 			require.NoError(t, err)
 			assert.NotNil(t, version)
@@ -276,10 +270,8 @@ modules:
 			assert.Len(t, tasks, 2)
 		},
 		"VersionCreationWithAutoUpdateModules": func(*testing.T) {
-			token, err := patchTestConfig.GetGithubOauthToken()
-			require.NoError(t, err)
 			configPatch := resetPatchSetup(t, configFilePath)
-			project, patchConfig, err := GetPatchedProject(ctx, configPatch, token)
+			project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, configPatch, token)
 			require.NoError(t, err)
 			assert.NotNil(t, project)
 
@@ -307,8 +299,6 @@ modules:
 `
 			configPatch.PatchedParserProject = patchConfig.PatchedParserProject
 			configPatch.PatchedParserProject += modulesYml
-			token, err = patchTestConfig.GetGithubOauthToken()
-			require.NoError(t, err)
 			version, err := FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, token)
 			require.NoError(t, err)
 			assert.NotNil(t, version)
@@ -324,14 +314,10 @@ modules:
 		"PatchNoRemoteConfigDoesntCreateVersion": func(*testing.T) {
 			patchedConfigFile := "fakeInPatchSoNotPatched"
 			configPatch := resetPatchSetup(t, patchedConfigFile)
-			token, err := patchTestConfig.GetGithubOauthToken()
-			require.NoError(t, err)
-			project, patchConfig, err := GetPatchedProject(ctx, configPatch, token)
+			project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, configPatch, token)
 			assert.NotNil(t, project)
 			require.NoError(t, err)
 			configPatch.PatchedParserProject = patchConfig.PatchedParserProject
-			token, err = patchTestConfig.GetGithubOauthToken()
-			require.NoError(t, err)
 			version, err := FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, token)
 			require.NoError(t, err)
 			assert.NotNil(t, version)
@@ -347,8 +333,6 @@ modules:
 		},
 		"EmptyCommitQueuePatchDoesntCreateVersion": func(*testing.T) {
 			//normal patch works
-			token, err := patchTestConfig.GetGithubOauthToken()
-			require.NoError(t, err)
 			configPatch := resetPatchSetup(t, configFilePath)
 			configPatch.Tasks = []string{}
 			configPatch.BuildVariants = []string{}
@@ -716,11 +700,11 @@ func TestVariantTasksToTVPairs(t *testing.T) {
 	assert := assert.New(t)
 
 	input := []patch.VariantTasks{
-		patch.VariantTasks{
+		{
 			Variant: "variant",
 			Tasks:   []string{"task1", "task2", "task3"},
 			DisplayTasks: []patch.DisplayTask{
-				patch.DisplayTask{
+				{
 					Name: "displaytask1",
 				},
 			},
@@ -767,13 +751,13 @@ func TestAddNewPatch(t *testing.T) {
 	proj := &Project{
 		Identifier: "project",
 		BuildVariants: []BuildVariant{
-			BuildVariant{
+			{
 				Name: "variant",
 				Tasks: []BuildVariantTaskUnit{
 					{Name: "task1"}, {Name: "task2"}, {Name: "task3"},
 				},
 				DisplayTasks: []patch.DisplayTask{
-					patch.DisplayTask{
+					{
 						Name:      "displaytask1",
 						ExecTasks: []string{"task1", "task2"},
 					},
@@ -782,15 +766,15 @@ func TestAddNewPatch(t *testing.T) {
 			},
 		},
 		Tasks: []ProjectTask{
-			ProjectTask{Name: "task1"}, ProjectTask{Name: "task2"}, ProjectTask{Name: "task3"},
+			{Name: "task1"}, {Name: "task2"}, {Name: "task3"},
 		},
 	}
 	tasks := VariantTasksToTVPairs([]patch.VariantTasks{
-		patch.VariantTasks{
+		{
 			Variant: "variant",
 			Tasks:   []string{"task1", "task2", "task3"},
 			DisplayTasks: []patch.DisplayTask{
-				patch.DisplayTask{
+				{
 					Name: "displaytask1",
 				},
 			},
@@ -856,13 +840,13 @@ func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 	proj := &Project{
 		Identifier: "project",
 		BuildVariants: []BuildVariant{
-			BuildVariant{
+			{
 				Name: "variant",
 				Tasks: []BuildVariantTaskUnit{
 					{Name: "task1"}, {Name: "task2"}, {Name: "task3"},
 				},
 				DisplayTasks: []patch.DisplayTask{
-					patch.DisplayTask{
+					{
 						Name:      "displaytask1",
 						ExecTasks: []string{"task1", "task2"},
 					},
@@ -871,15 +855,15 @@ func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 			},
 		},
 		Tasks: []ProjectTask{
-			ProjectTask{Name: "task1"}, ProjectTask{Name: "task2"}, ProjectTask{Name: "task3"},
+			{Name: "task1"}, {Name: "task2"}, {Name: "task3"},
 		},
 	}
 	tasks := VariantTasksToTVPairs([]patch.VariantTasks{
-		patch.VariantTasks{
+		{
 			Variant: "variant",
 			Tasks:   []string{"task1", "task2", "task3"},
 			DisplayTasks: []patch.DisplayTask{
-				patch.DisplayTask{
+				{
 					Name: "displaytask1",
 				},
 			},
@@ -1010,15 +994,14 @@ func TestRetryCommitQueueItems(t *testing.T) {
 			require.Len(t, cq.Queue, 1)
 			assert.Equal(t, "123", cq.Queue[0].Issue)
 		},
-		"UnstartedPatch": func(*testing.T) {
+		"FinishedPatch": func(*testing.T) {
 			assert.NoError(t, projectRef.Insert())
 
-			// not started but terminated within time range
 			p := patch.Patch{
 				Id:         mgobson.NewObjectId(),
 				Project:    projectRef.Id,
 				Githash:    patchedRevision,
-				StartTime:  time.Time{},
+				StartTime:  startTime.Add(-30 * time.Minute), // started out of range
 				FinishTime: startTime.Add(30 * time.Minute),
 				Status:     evergreen.PatchFailed,
 				Alias:      evergreen.CommitQueueAlias,
@@ -1051,19 +1034,6 @@ func TestRetryCommitQueueItems(t *testing.T) {
 					Author:      "me",
 					GithubPatchData: thirdparty.GithubPatch{
 						PRNumber: 123,
-					},
-					Patches: []patch.ModulePatch{
-						{
-							Githash:    "revision",
-							ModuleName: "name",
-							PatchSet: patch.PatchSet{
-								Patch: "456",
-								Summary: []thirdparty.Summary{
-									{Name: configFilePath, Additions: 4, Deletions: 80},
-									{Name: "random.txt", Additions: 6, Deletions: 0},
-								},
-							},
-						},
 					},
 				},
 				{ // within time frame, not failed

@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -1564,54 +1565,57 @@ func TestAddBuildVariant(t *testing.T) {
 	assert.Len(t, pp.BuildVariants[0].Tasks, 1)
 }
 
-func TestTryUpsert(t *testing.T) {
-	for testName, testCase := range map[string]func(t *testing.T){
-		"configNumberMatches": func(t *testing.T) {
-			pp := &ParserProject{
-				Id:                 "my-project",
-				ConfigUpdateNumber: 4,
-				Owner:              utility.ToStringPtr("me"),
-			}
-			assert.NoError(t, pp.TryUpsert()) // new project should work
-			pp.Owner = utility.ToStringPtr("you")
-			assert.NoError(t, pp.TryUpsert())
-			pp, err := ParserProjectFindOneById(pp.Id)
-			assert.NoError(t, err)
-			require.NotNil(t, pp)
-			assert.Equal(t, "you", utility.FromStringPtr(pp.Owner))
-		},
-		"noConfigNumber": func(t *testing.T) {
-			pp := &ParserProject{
-				Id:    "my-project",
-				Owner: utility.ToStringPtr("me"),
-			}
-			assert.NoError(t, pp.TryUpsert()) // new project should work
-			pp.Owner = utility.ToStringPtr("you")
-			assert.NoError(t, pp.TryUpsert())
-			pp, err := ParserProjectFindOneById(pp.Id)
-			assert.NoError(t, err)
-			require.NotNil(t, pp)
-			assert.Equal(t, "you", utility.FromStringPtr(pp.Owner))
-		},
-		"configNumberDoesNotMatch": func(t *testing.T) {
-			pp := &ParserProject{
-				Id:                 "my-project",
-				ConfigUpdateNumber: 4,
-				Owner:              utility.ToStringPtr("me"),
-			}
-			assert.NoError(t, pp.TryUpsert()) // new project should work
-			pp.ConfigUpdateNumber = 5
-			pp.Owner = utility.ToStringPtr("you")
-			assert.NoError(t, pp.TryUpsert()) // should not update and should not error
-			pp, err := ParserProjectFindOneById(pp.Id)
-			assert.NoError(t, err)
-			require.NotNil(t, pp)
-			assert.Equal(t, "me", utility.FromStringPtr(pp.Owner))
-		},
+func TestParserProjectStorage(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for methodName, ppStorageMethod := range map[string]ParserProjectStorageMethod{
+		"DB": ProjectStorageMethodDB,
 	} {
-		t.Run(testName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(ParserProjectCollection))
-			testCase(t)
+		t.Run("StorageMethod"+methodName, func(t *testing.T) {
+			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment){
+				"UpsertCreatesNewParserProject": func(ctx context.Context, t *testing.T, env *mock.Environment) {
+					pp := &ParserProject{
+						Id:    "my-project",
+						Owner: utility.ToStringPtr("me"),
+					}
+					ppStorage, err := GetParserProjectStorage(env.Settings(), ppStorageMethod)
+					require.NoError(t, err)
+					defer ppStorage.Close(ctx)
+
+					assert.NoError(t, ppStorage.UpsertOne(ctx, pp))
+
+					pp, err = ppStorage.FindOneByID(ctx, pp.Id)
+					assert.NoError(t, err)
+					require.NotNil(t, pp)
+					assert.Equal(t, "me", utility.FromStringPtr(pp.Owner))
+				},
+				"UpsertUpdatesExistingParserProject": func(ctx context.Context, t *testing.T, env *mock.Environment) {
+					pp := &ParserProject{
+						Id:    "my-project",
+						Owner: utility.ToStringPtr("me"),
+					}
+					ppStorage, err := GetParserProjectStorage(env.Settings(), ppStorageMethod)
+					require.NoError(t, err)
+					defer ppStorage.Close(ctx)
+
+					assert.NoError(t, ppStorage.UpsertOne(ctx, pp))
+					pp.Owner = utility.ToStringPtr("you")
+					assert.NoError(t, ppStorage.UpsertOne(ctx, pp))
+
+					pp, err = ppStorage.FindOneByID(ctx, pp.Id)
+					assert.NoError(t, err)
+					require.NotNil(t, pp)
+					assert.Equal(t, "you", utility.FromStringPtr(pp.Owner))
+				},
+			} {
+				t.Run(testName, func(t *testing.T) {
+					require.NoError(t, db.ClearCollections(ParserProjectCollection))
+					env := &mock.Environment{}
+					require.NoError(t, env.Configure(ctx))
+					testCase(ctx, t, env)
+				})
+			}
 		})
 	}
 }
@@ -1690,38 +1694,55 @@ buildvariants:
       batchtime: 60
 `
 
-	for name, test := range map[string]func(t *testing.T){
-		"simpleYaml": func(t *testing.T) {
-			checkProjectPersists(t, []byte(simpleYaml))
-		},
-		"self-tests.yml": func(t *testing.T) {
-			filepath := filepath.Join(testutil.GetDirectoryOfFile(), "..", "self-tests.yml")
-
-			yml, err := ioutil.ReadFile(filepath)
-			assert.NoError(t, err)
-			checkProjectPersists(t, yml)
-		},
+	for methodName, method := range map[string]ParserProjectStorageMethod{
+		"DB": ProjectStorageMethodDB,
 	} {
-		t.Run(name, func(t *testing.T) {
-			assert.NoError(t, db.ClearCollections(ParserProjectCollection))
-			test(t)
+		t.Run("ParserProjectStorageMethod"+methodName, func(t *testing.T) {
+			for name, test := range map[string]func(t *testing.T){
+				"simpleYaml": func(t *testing.T) {
+					checkProjectPersists(t, []byte(simpleYaml), method)
+				},
+				"self-tests.yml": func(t *testing.T) {
+					filepath := filepath.Join(testutil.GetDirectoryOfFile(), "..", "self-tests.yml")
+
+					yml, err := ioutil.ReadFile(filepath)
+					assert.NoError(t, err)
+					checkProjectPersists(t, yml, method)
+				},
+			} {
+				t.Run(name, func(t *testing.T) {
+					assert.NoError(t, db.ClearCollections(ParserProjectCollection))
+					test(t)
+				})
+			}
 		})
 	}
 }
 
-func checkProjectPersists(t *testing.T, yml []byte) {
+func checkProjectPersists(t *testing.T, yml []byte, ppStorageMethod ParserProjectStorageMethod) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
 	pp, err := createIntermediateProject(yml, false, false)
 	assert.NoError(t, err)
 	pp.Id = "my-project"
 	pp.Identifier = utility.ToStringPtr("old-project-identifier")
-	pp.ConfigUpdateNumber = 1
+
+	ppStorage, err := GetParserProjectStorage(env.Settings(), ppStorageMethod)
+	require.NoError(t, err)
+	defer ppStorage.Close(ctx)
 
 	yamlToCompare, err := yaml.Marshal(pp)
 	assert.NoError(t, err)
-	assert.NoError(t, pp.TryUpsert())
 
-	newPP, err := ParserProjectFindOneById(pp.Id)
+	assert.NoError(t, ppStorage.UpsertOne(ctx, pp))
+
+	newPP, err := ppStorage.FindOneByID(ctx, pp.Id)
 	assert.NoError(t, err)
+	require.NotZero(t, newPP)
 
 	newYaml, err := yaml.Marshal(newPP)
 	assert.NoError(t, err)
@@ -1734,10 +1755,11 @@ func checkProjectPersists(t *testing.T, yml []byte) {
 	pp.Id = "my-project"
 	pp.Identifier = utility.ToStringPtr("new-project-identifier")
 
-	assert.NoError(t, pp.TryUpsert())
+	assert.NoError(t, ppStorage.UpsertOne(ctx, pp))
 
-	newPP, err = ParserProjectFindOneById(pp.Id)
+	newPP, err = ppStorage.FindOneByID(ctx, pp.Id)
 	assert.NoError(t, err)
+	require.NotZero(t, newPP)
 
 	assert.Equal(t, newPP.Identifier, pp.Identifier)
 

@@ -1,0 +1,8 @@
+{
+  yes: task(taskId: "some_task_3") {
+    canDisable
+  }
+  noBecauseExecutionTask: task(taskId: "execution_task") {
+    canDisable
+  }
+}

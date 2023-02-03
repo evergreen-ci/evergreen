@@ -1,6 +1,9 @@
 package model
 
 import (
+	"context"
+
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -8,7 +11,6 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -18,7 +20,6 @@ const (
 
 var (
 	ParserProjectIdKey                = bsonutil.MustHaveTag(ParserProject{}, "Id")
-	ParserProjectConfigNumberKey      = bsonutil.MustHaveTag(ParserProject{}, "ConfigUpdateNumber")
 	ParserProjectEnabledKey           = bsonutil.MustHaveTag(ParserProject{}, "Enabled")
 	ParserProjectStepbackKey          = bsonutil.MustHaveTag(ParserProject{}, "Stepback")
 	ParserProjectPreErrorFailsTaskKey = bsonutil.MustHaveTag(ParserProject{}, "PreErrorFailsTask")
@@ -50,9 +51,10 @@ var (
 	ParserProjectCreateTimeKey        = bsonutil.MustHaveTag(ParserProject{}, "CreateTime")
 )
 
-// ParserProjectFindOneById returns the parser project for the version
-func ParserProjectFindOneById(id string) (*ParserProject, error) {
-	pp, err := ParserProjectFindOne(ParserProjectById(id))
+// ParserProjectFindOneById returns the parser project from the DB for the
+// given ID.
+func parserProjectFindOneById(id string) (*ParserProject, error) {
+	pp, err := parserProjectFindOne(parserProjectById(id))
 	if err != nil {
 		return nil, err
 	}
@@ -62,8 +64,8 @@ func ParserProjectFindOneById(id string) (*ParserProject, error) {
 	return pp, nil
 }
 
-// ParserProjectFindOne finds a parser project with a given query.
-func ParserProjectFindOne(query db.Q) (*ParserProject, error) {
+// parserProjectFindOne finds a parser project in the DB with a given query.
+func parserProjectFindOne(query db.Q) (*ParserProject, error) {
 	project := &ParserProject{}
 	err := db.FindOneQ(ParserProjectCollection, query, project)
 	if adb.ResultsNotFound(err) {
@@ -72,13 +74,13 @@ func ParserProjectFindOne(query db.Q) (*ParserProject, error) {
 	return project, err
 }
 
-// ParserProjectById returns a query to find a parser project by id.
-func ParserProjectById(id string) db.Q {
+// parserProjectById returns a DB query to find a parser project by ID.
+func parserProjectById(id string) db.Q {
 	return db.Query(bson.M{ParserProjectIdKey: id})
 }
 
-// ParserProjectUpsertOne updates one project
-func ParserProjectUpsertOne(query interface{}, update interface{}) error {
+// parserProjectUpsertOne updates one parser project in the DB.
+func parserProjectUpsertOne(query interface{}, update interface{}) error {
 	_, err := db.Upsert(
 		ParserProjectCollection,
 		query,
@@ -88,16 +90,16 @@ func ParserProjectUpsertOne(query interface{}, update interface{}) error {
 	return err
 }
 
-func FindParametersForVersion(v *Version) ([]patch.Parameter, error) {
-	pp, err := ParserProjectFindOne(ParserProjectById(v.Id).WithFields(ParserProjectParametersKey))
+func FindParametersForVersion(ctx context.Context, settings *evergreen.Settings, v *Version) ([]patch.Parameter, error) {
+	pp, err := ParserProjectFindOneByIDWithFields(ctx, settings, v.ProjectStorageMethod, v.Id, ParserProjectParametersKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding parser project")
 	}
 	return pp.GetParameters(), nil
 }
 
-func FindExpansionsForVariant(v *Version, variant string) (util.Expansions, error) {
-	pp, err := ParserProjectFindOne(ParserProjectById(v.Id).WithFields(ParserProjectBuildVariantsKey, ParserProjectAxesKey))
+func FindExpansionsForVariant(ctx context.Context, settings *evergreen.Settings, v *Version, variant string) (util.Expansions, error) {
+	pp, err := ParserProjectFindOneByIDWithFields(ctx, settings, v.ProjectStorageMethod, v.Id, ParserProjectBuildVariantsKey, ParserProjectAxesKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding parser project")
 	}
@@ -116,59 +118,30 @@ func FindExpansionsForVariant(v *Version, variant string) (util.Expansions, erro
 	return nil, errors.New("could not find variant")
 }
 
-func checkConfigNumberQuery(id string, configNum int) bson.M {
-	q := bson.M{ParserProjectIdKey: id}
-	if configNum == 0 {
-		q["$or"] = []bson.M{
-			{ParserProjectConfigNumberKey: bson.M{"$exists": false}},
-			{ParserProjectConfigNumberKey: configNum},
-		}
-		return q
-	}
+// ParserProjectDBStorage implements the ParserProjectStorage interface to
+// access parser projects stored in the DB.
+type ParserProjectDBStorage struct{}
 
-	q[ParserProjectConfigNumberKey] = configNum
-	return q
+// FindOneByID finds a parser project from the DB by its ID. This ignores the
+// context parameter.
+func (s ParserProjectDBStorage) FindOneByID(_ context.Context, id string) (*ParserProject, error) {
+	return parserProjectFindOneById(id)
 }
 
-// TryUpsert suppresses the error of inserting if it's a duplicate key error
-// and attempts to upsert if config number matches.
-func (pp *ParserProject) TryUpsert() error {
-	err := ParserProjectUpsertOne(checkConfigNumberQuery(pp.Id, pp.ConfigUpdateNumber), pp)
-	if !db.IsDuplicateKey(err) {
-		return err
-	}
+// FindOneByIDWithFields returns the parser project from the DB with only the
+// requested fields populated. This may be more efficient than fetching the
+// entire parser project. This ignores the context parameter.
+func (s ParserProjectDBStorage) FindOneByIDWithFields(_ context.Context, id string, fields ...string) (*ParserProject, error) {
+	return parserProjectFindOne(parserProjectById(id).WithFields(fields...))
+}
 
-	// log this error but don't return it
-	grip.Debug(message.WrapError(err, message.Fields{
-		"message":                      "parser project not upserted",
-		"operation":                    "TryUpsert",
-		"version":                      pp.Id,
-		"attempted_to_update_with_num": pp.ConfigUpdateNumber,
-	}))
+// UpsertOne replaces a parser project in the DB if one exists with the same ID.
+// Otherwise, if it does not exist yet, it inserts a new parser project.
+func (s ParserProjectDBStorage) UpsertOne(ctx context.Context, pp *ParserProject) error {
+	return parserProjectUpsertOne(bson.M{ParserProjectIdKey: pp.Id}, pp)
+}
 
+// Close is a no-op.
+func (s ParserProjectDBStorage) Close(ctx context.Context) error {
 	return nil
-}
-
-// UpsertWithConfigNumber inserts project if it DNE. Otherwise, updates if the
-// existing config number is less than or equal to the new config number.
-// If shouldEqual, only update if the config update number matches.
-func (pp *ParserProject) UpsertWithConfigNumber(updateNum int) error {
-	if pp.Id == "" {
-		return errors.New("no version ID given")
-	}
-	expectedNum := pp.ConfigUpdateNumber
-	pp.ConfigUpdateNumber = updateNum
-	if err := ParserProjectUpsertOne(checkConfigNumberQuery(pp.Id, expectedNum), pp); err != nil {
-		// expose all errors to check duplicate key errors for a race
-		return errors.Wrapf(err, "upserting parser project '%s'", pp.Id)
-	}
-	return nil
-}
-
-func (pp *ParserProject) GetParameters() []patch.Parameter {
-	res := []patch.Parameter{}
-	for _, param := range pp.Parameters {
-		res = append(res, param.Parameter)
-	}
-	return res
 }

@@ -318,8 +318,7 @@ func PatchesByProject(projectId string, ts time.Time, limit int) db.Q {
 	}).Sort([]string{"-" + CreateTimeKey}).Limit(limit)
 }
 
-// FindFailedCommitQueuePatchesInTimeRange returns failed patches if they started within range,
-// or if they were never started but finished within time range. (i.e. timed out)
+// FindFailedCommitQueuePatchesInTimeRange returns failed patches if they started or failed within range.
 func FindFailedCommitQueuePatchesInTimeRange(projectID string, startTime, endTime time.Time) ([]Patch, error) {
 	query := bson.M{
 		ProjectKey: projectID,
@@ -331,7 +330,6 @@ func FindFailedCommitQueuePatchesInTimeRange(projectID string, startTime, endTim
 				{StartTimeKey: bson.M{"$gte": startTime}},
 			}},
 			{"$and": []bson.M{
-				{StartTimeKey: time.Time{}},
 				{FinishTimeKey: bson.M{"$lte": endTime}},
 				{FinishTimeKey: bson.M{"$gte": startTime}},
 			}},

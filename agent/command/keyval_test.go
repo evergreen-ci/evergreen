@@ -31,7 +31,7 @@ func TestIncKey(t *testing.T) {
 
 		modelData, err := modelutil.SetupAPITestData(testConfig, "testinc", "rhel55", configPath, modelutil.NoPatch)
 		require.NoError(t, err)
-		conf, err := agentutil.MakeTaskConfigFromModelData(testConfig, modelData)
+		conf, err := agentutil.MakeTaskConfigFromModelData(ctx, testConfig, modelData)
 		require.NoError(t, err)
 
 		Convey("Inc command should increment a key successfully", func() {

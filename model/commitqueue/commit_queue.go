@@ -159,13 +159,14 @@ func (q *CommitQueue) Remove(issue string) (*CommitQueueItem, error) {
 	return &item, nil
 }
 
-func (q *CommitQueue) UpdateVersion(item CommitQueueItem) error {
+func (q *CommitQueue) UpdateVersion(item *CommitQueueItem) error {
 	for i, currentEntry := range q.Queue {
 		if currentEntry.Issue == item.Issue {
 			q.Queue[i].Version = item.Version
+			q.Queue[i].ProcessingStartTime = item.ProcessingStartTime
 		}
 	}
-	return errors.Wrap(addVersionID(q.ProjectID, item), "updating version")
+	return errors.Wrap(addVersionAndTime(q.ProjectID, *item), "updating version")
 }
 
 func (q *CommitQueue) FindItem(issue string) int {
@@ -206,4 +207,13 @@ func ClearAllCommitQueues() (int, error) {
 	}
 
 	return clearedCount, nil
+}
+
+// EnqueuePRInfo holds information necessary to enqueue a PR to the commit queue.
+type EnqueuePRInfo struct {
+	Username      string
+	Owner         string
+	Repo          string
+	PR            int
+	CommitMessage string
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -284,6 +285,8 @@ func boolPtr(b bool) *bool {
 }
 
 func TestPopulateExpansions(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(VersionCollection, patch.Collection, ProjectRefCollection, task.Collection))
 	defer func() {
@@ -352,7 +355,7 @@ buildvariants:
 	}
 	oauthToken, err := settings.GetGithubOauthToken()
 	assert.NoError(err)
-	expansions, err := PopulateExpansions(taskDoc, &h, oauthToken)
+	expansions, err := PopulateExpansions(ctx, settings, taskDoc, &h, oauthToken)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 24)
 	assert.Equal("0", expansions.Get("execution"))
@@ -390,7 +393,7 @@ buildvariants:
 	}
 	require.NoError(t, p.Insert())
 
-	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
+	expansions, err = PopulateExpansions(ctx, settings, taskDoc, &h, oauthToken)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 24)
 	assert.Equal("true", expansions.Get("is_patch"))
@@ -410,7 +413,7 @@ buildvariants:
 		Description: "commit queue message",
 	}
 	require.NoError(t, p.Insert())
-	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
+	expansions, err = PopulateExpansions(ctx, settings, taskDoc, &h, oauthToken)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 26)
 	assert.Equal("true", expansions.Get("is_patch"))
@@ -425,7 +428,7 @@ buildvariants:
 		Version: v.Id,
 	}
 	require.NoError(t, p.Insert())
-	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
+	expansions, err = PopulateExpansions(ctx, settings, taskDoc, &h, oauthToken)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 27)
 	assert.Equal("true", expansions.Get("is_patch"))
@@ -450,7 +453,7 @@ buildvariants:
 	}
 	assert.NoError(patchDoc.Insert())
 
-	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
+	expansions, err = PopulateExpansions(ctx, settings, taskDoc, &h, oauthToken)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 27)
 	assert.Equal("github_pr", expansions.Get("requester"))
@@ -475,7 +478,7 @@ buildvariants:
 	assert.NoError(upstreamProject.Insert())
 	taskDoc.TriggerID = "upstreamTask"
 	taskDoc.TriggerType = ProjectTriggerLevelTask
-	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
+	expansions, err = PopulateExpansions(ctx, settings, taskDoc, &h, oauthToken)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 35)
 	assert.Equal(taskDoc.TriggerID, expansions.Get("trigger_event_identifier"))
@@ -1642,43 +1645,6 @@ func TestLoggerConfigValidate(t *testing.T) {
 	assert.EqualError(config.IsValid(), "invalid system logger config: Splunk logger requires a server URL\nSplunk logger requires a token")
 }
 
-func TestFindContainerFromProject(t *testing.T) {
-	assert := assert.New(t)
-	require.NoError(t, db.ClearCollections(VersionCollection, ParserProjectCollection, ProjectRefCollection))
-	ref := ProjectRef{
-		Id: "p1",
-	}
-
-	pp := ParserProject{
-		Id:         "v1",
-		Identifier: utility.ToStringPtr("p1"),
-		Containers: []Container{
-			{
-				Name: "container1",
-			},
-		},
-	}
-
-	v := &Version{Id: "v1"}
-	require.NoError(t, pp.TryUpsert())
-	require.NoError(t, v.Insert())
-	require.NoError(t, ref.Insert())
-
-	task := task.Task{
-		Version:   "v1",
-		Project:   "p1",
-		Container: "container1",
-	}
-	container, err := FindContainerFromProject(task)
-	require.NoError(t, err)
-	assert.Equal(container.Name, "container1")
-
-	task.Container = "nonexistent"
-	_, err = FindContainerFromProject(task)
-	require.Error(t, err)
-	assert.Equal(err.Error(), "no such container 'nonexistent' defined on project 'p1'")
-}
-
 func TestLoggerMerge(t *testing.T) {
 	assert := assert.New(t)
 
@@ -2424,7 +2390,13 @@ func TestDependenciesForTaskUnit(t *testing.T) {
 }
 
 func TestGetVariantsAndTasksFromPatchProject(t *testing.T) {
-	ctx := context.Background()
+	require.NoError(t, db.ClearCollections(VersionCollection, ParserProjectCollection))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
 	patchedConfig := `
 buildvariants:
   - name: bv1
@@ -2445,19 +2417,33 @@ tasks:
     disable: true
   - name: task3
 `
-	p := &patch.Patch{PatchedParserProject: patchedConfig}
-	variantsAndTasks, err := GetVariantsAndTasksFromPatchProject(ctx, p)
+
+	const versionID = "version"
+	p := &patch.Patch{
+		Version:              versionID,
+		PatchedParserProject: patchedConfig,
+	}
+	variantsAndTasks, err := GetVariantsAndTasksFromPatchProject(ctx, env.Settings(), p)
 	assert.NoError(t, err)
 	assert.Len(t, variantsAndTasks.Variants["bv1"].Tasks, 1)
 
-	// Verify this still works if the patch config is stored
+	// Verify this still works if the patch document doesn't have a patched
+	// parser project, meaning it should use the actual parser project document.
+	v := Version{
+		Id:                   versionID,
+		ProjectStorageMethod: ProjectStorageMethodDB,
+	}
+	require.NoError(t, v.Insert())
+
 	proj := &Project{}
 	pp, err := LoadProjectInto(ctx, []byte(patchedConfig), nil, "", proj)
+	pp.Id = v.Id
 	assert.NoError(t, err)
 	assert.NotNil(t, pp)
 	assert.NoError(t, pp.Insert())
 	p.PatchedParserProject = ""
-	variantsAndTasks, err = GetVariantsAndTasksFromPatchProject(ctx, p)
+	variantsAndTasks, err = GetVariantsAndTasksFromPatchProject(ctx, env.Settings(), p)
 	assert.NoError(t, err)
+	require.NotZero(t, variantsAndTasks)
 	assert.Len(t, variantsAndTasks.Variants["bv1"].Tasks, 1)
 }

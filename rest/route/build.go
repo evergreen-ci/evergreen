@@ -24,14 +24,15 @@ import (
 
 type buildGetHandler struct {
 	buildId string
+	env     evergreen.Environment
 }
 
-func makeGetBuildByID() gimlet.RouteHandler {
-	return &buildGetHandler{}
+func makeGetBuildByID(env evergreen.Environment) gimlet.RouteHandler {
+	return &buildGetHandler{env: env}
 }
 
 func (b *buildGetHandler) Factory() gimlet.RouteHandler {
-	return &buildGetHandler{}
+	return &buildGetHandler{env: b.env}
 }
 
 func (b *buildGetHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -61,7 +62,19 @@ func (b *buildGetHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding tasks in build '%s'", b.buildId))
 		}
 	}
-	pp, err := serviceModel.ParserProjectFindOneById(foundBuild.Version)
+
+	v, err := serviceModel.VersionFindOneId(foundBuild.Version)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding version '%s'", foundBuild.Version))
+	}
+	if v == nil {
+		return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("version '%s' not found", foundBuild.Version),
+		})
+	}
+
+	pp, err := serviceModel.ParserProjectFindOneByID(ctx, b.env.Settings(), v.ProjectStorageMethod, v.Id)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting project info"))
 	}
@@ -232,11 +245,10 @@ func (b *buildRestartHandler) Parse(ctx context.Context, r *http.Request) error 
 
 func (b *buildRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	usr := MustHaveUser(ctx)
-	err := serviceModel.RestartAllBuildTasks(b.buildId, usr.Id)
+	taskIds, err := task.FindAllTaskIDsFromBuild(b.buildId)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "restarting all tasks in build '%s'", b.buildId))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting tasks for build '%s'", b.buildId))
 	}
-
 	foundBuild, err := build.FindOneId(b.buildId)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding build '%s'", b.buildId))
@@ -248,7 +260,23 @@ func (b *buildRestartHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
+	err = serviceModel.RestartBuild(foundBuild, taskIds, true, usr.Id)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "restarting all tasks in build '%s'", b.buildId))
+	}
+
+	updatedBuild, err := build.FindOneId(b.buildId)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding build '%s'", b.buildId))
+	}
+	if updatedBuild == nil {
+		return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("build '%s' not found", b.buildId),
+		})
+	}
+
 	buildModel := &model.APIBuild{}
-	buildModel.BuildFromService(*foundBuild, nil)
+	buildModel.BuildFromService(*updatedBuild, nil)
 	return gimlet.NewJSONResponse(buildModel)
 }

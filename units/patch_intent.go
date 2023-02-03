@@ -88,12 +88,7 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	githubOauthToken, err := j.env.Settings().GetGithubOauthToken()
-	if err != nil {
-		j.AddError(errors.Wrap(err, "getting global GitHub OAuth token"))
-		return
-	}
-
+	var err error
 	if j.intent == nil {
 		j.intent, err = patch.FindIntent(j.IntentID, j.IntentType)
 		if err != nil {
@@ -105,7 +100,7 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 
 	patchDoc := j.intent.NewPatch()
 
-	if err = j.finishPatch(ctx, patchDoc, githubOauthToken); err != nil {
+	if err = j.finishPatch(ctx, patchDoc); err != nil {
 		if j.IntentType == patch.GithubIntentType {
 			if j.gitHubError == "" {
 				j.gitHubError = OtherErrors
@@ -156,10 +151,14 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 	}
 }
 
-func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.Patch, githubOauthToken string) error {
+func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.Patch) error {
+	githubOauthToken, err := j.env.Settings().GetGithubOauthToken()
+	if err != nil {
+		return errors.Wrap(err, "getting GitHub OAuth token")
+	}
+
 	catcher := grip.NewBasicCatcher()
 
-	var err error
 	canFinalize := true
 	switch j.IntentType {
 	case patch.CliIntentType:
@@ -237,7 +236,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 
 	validationCatcher := grip.NewBasicCatcher()
 	// Get and validate patched config
-	project, patchConfig, err := model.GetPatchedProject(ctx, patchDoc, githubOauthToken)
+	project, patchConfig, err := model.GetPatchedProject(ctx, j.env.Settings(), patchDoc, githubOauthToken)
 	if err != nil {
 		if strings.Contains(err.Error(), model.EmptyConfigurationError) {
 			j.gitHubError = EmptyConfig
@@ -894,6 +893,15 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(patchDoc *patch.Patch) error
 	}
 
 	patchDoc.Githash = v.Revision
+	// TODO (EVG-18700): This is storing the entire parser project of the latest
+	// version on the waterfall into the patch document, which is not really an
+	// intended usage of the patched parser project field. The patched parser
+	// project is supposed to be the parser project directly from the YAML file
+	// before generate.tasks. The version this trigger is based off of may have
+	// already run generate.tasks, which can result in a very large parser
+	// project. Therefore, it is not possible to stuff the entire parser project
+	// with generated tasks into the patch document like this, because it may
+	// exceed the 16 MB document limit.
 	patchDoc.PatchedParserProject = string(yamlBytes)
 	patchDoc.VariantsTasks = matchingTasks
 

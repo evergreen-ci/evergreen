@@ -480,10 +480,23 @@ func (tr TestResult) GetLogURL(viewer evergreen.LogViewer) string {
 		for _, url := range deprecatedLobsterURLs {
 			if strings.Contains(tr.URL, url) {
 				updatedResmokeParsleyURL := strings.Replace(tr.URL, fmt.Sprintf("%s/build", url), parsleyURL+"/resmoke", 1)
-				return fmt.Sprintf("%s?selectedLine=%d", updatedResmokeParsleyURL, tr.LineNum)
+				return fmt.Sprintf("%s?shareLine=%d", updatedResmokeParsleyURL, tr.LineNum)
 			}
 		}
-		return fmt.Sprintf("%s/test/%s/%d/%s?selectedLine=%d", parsleyURL, tr.TaskID, tr.Execution, tr.GetLogTestName(), tr.LineNum)
+
+		groupIdPath := ""
+		if tr.GroupID != "" {
+			groupIdPath = "/" + url.QueryEscape(tr.GroupID)
+		}
+
+		return fmt.Sprintf("%s/test/%s/%d/%s%s?shareLine=%d",
+			parsleyURL,
+			url.PathEscape(tr.TaskID),
+			tr.Execution,
+			url.QueryEscape(tr.GetLogTestName()),
+			groupIdPath,
+			tr.LineNum,
+		)
 
 	default:
 		if tr.URLRaw != "" {

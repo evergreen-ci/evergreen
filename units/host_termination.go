@@ -187,7 +187,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 				"task":     j.host.RunningTask,
 			})
 
-			j.AddError(model.ClearAndResetStrandedHostTask(j.host))
+			j.AddError(model.ClearAndResetStrandedHostTask(j.env.Settings(), j.host))
 		} else {
 			return
 		}
@@ -212,7 +212,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 				if tasks[len(tasks)-1].Id != lastTask.Id {
 					// If we aren't looking at the last task in the group, then we should mark the whole thing for restart,
 					// because later tasks in the group need to run on the same host as the earlier ones.
-					j.AddError(errors.Wrapf(model.TryResetTask(lastTask.Id, evergreen.User, evergreen.MonitorPackage, nil), "resetting task '%s'", lastTask.Id))
+					j.AddError(errors.Wrapf(model.TryResetTask(j.env.Settings(), lastTask.Id, evergreen.User, evergreen.MonitorPackage, nil), "resetting task '%s'", lastTask.Id))
 				}
 			}
 		}
@@ -254,7 +254,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 				"task":     j.host.RunningTask,
 			})
 
-			j.AddError(errors.Wrapf(model.ClearAndResetStrandedHostTask(j.host), "fixing stranded task '%s'", j.host.RunningTask))
+			j.AddError(errors.Wrapf(model.ClearAndResetStrandedHostTask(j.env.Settings(), j.host), "fixing stranded task '%s'", j.host.RunningTask))
 		} else {
 			return
 		}
@@ -278,15 +278,12 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		}
 	}
 
-	idleTimeStartsAt := j.host.LastTaskCompletedTime
-	if idleTimeStartsAt.IsZero() || idleTimeStartsAt == utility.ZeroTime {
-		idleTimeStartsAt = j.host.StartTime
-	}
-
 	if err := j.checkAndTerminateCloudHost(ctx, prevStatus); err != nil {
 		j.AddError(err)
 		return
 	}
+
+	j.AddError(j.incrementIdleTime(ctx))
 
 	grip.Info(message.Fields{
 		"message":           "host successfully terminated",
@@ -313,6 +310,27 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			"spawn_host":  j.host.StartedBy != evergreen.User,
 		})
 	}
+}
+
+func (j *hostTerminationJob) incrementIdleTime(ctx context.Context) error {
+	cloudHost, err := cloud.GetCloudHost(ctx, j.host, j.env)
+	if err != nil {
+		return errors.Wrapf(err, "getting cloud host for host '%s'", j.HostID)
+	}
+
+	idleTimeStartsAt := j.host.LastTaskCompletedTime
+	if utility.IsZeroTime(idleTimeStartsAt) {
+		idleTimeStartsAt = j.host.StartTime
+	}
+
+	hostBillingEnds := j.host.TerminationTime
+	pad := cloudHost.CloudMgr.TimeTilNextPayment(j.host)
+	if pad > time.Second {
+		hostBillingEnds = hostBillingEnds.Add(pad)
+	}
+
+	idleTime := hostBillingEnds.Sub(idleTimeStartsAt)
+	return errors.Wrap(j.host.IncIdleTime(idleTime), "incrementing idle time")
 }
 
 // checkAndTerminateCloudHost checks if the host is still up according to the

@@ -354,7 +354,7 @@ func (h *getExpansionsHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting GitHub OAuth token"))
 	}
 
-	e, err := model.PopulateExpansions(t, foundHost, oauthToken)
+	e, err := model.PopulateExpansions(ctx, h.settings, t, foundHost, oauthToken)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(err)
 	}
@@ -418,14 +418,15 @@ func (h *getProjectRefHandler) Run(ctx context.Context) gimlet.Responder {
 // GET /task/{task_id}/parser_project
 type getParserProjectHandler struct {
 	taskID string
+	env    evergreen.Environment
 }
 
-func makeGetParserProject() gimlet.RouteHandler {
-	return &getParserProjectHandler{}
+func makeGetParserProject(env evergreen.Environment) gimlet.RouteHandler {
+	return &getParserProjectHandler{env: env}
 }
 
 func (h *getParserProjectHandler) Factory() gimlet.RouteHandler {
-	return &getParserProjectHandler{}
+	return &getParserProjectHandler{env: h.env}
 }
 
 func (h *getParserProjectHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -457,9 +458,16 @@ func (h *getParserProjectHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("version '%s' not found", t.Version),
 		})
 	}
-	pp, err := model.ParserProjectFindOneById(t.Version)
+
+	pp, err := model.ParserProjectFindOneByID(ctx, h.env.Settings(), v.ProjectStorageMethod, v.Id)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(err)
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding parser project '%s'", v.Id))
+	}
+	if pp == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("parser project '%s' not found", v.Id),
+		})
 	}
 	projBytes, err := bson.Marshal(pp)
 	if err != nil {
@@ -733,14 +741,15 @@ func (h *heartbeatHandler) Run(ctx context.Context) gimlet.Responder {
 // GET /task/{task_id}/fetch_vars
 type fetchExpansionsForTaskHandler struct {
 	taskID string
+	env    evergreen.Environment
 }
 
-func makeFetchExpansionsForTask() gimlet.RouteHandler {
-	return &fetchExpansionsForTaskHandler{}
+func makeFetchExpansionsForTask(env evergreen.Environment) gimlet.RouteHandler {
+	return &fetchExpansionsForTaskHandler{env: env}
 }
 
 func (h *fetchExpansionsForTaskHandler) Factory() gimlet.RouteHandler {
-	return &fetchExpansionsForTaskHandler{}
+	return &fetchExpansionsForTaskHandler{env: h.env}
 }
 
 func (h *fetchExpansionsForTaskHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -786,7 +795,7 @@ func (h *fetchExpansionsForTaskHandler) Run(ctx context.Context) gimlet.Responde
 			Message:    fmt.Sprintf("version '%s' not found", t.Version),
 		})
 	}
-	projParams, err := model.FindParametersForVersion(v)
+	projParams, err := model.FindParametersForVersion(ctx, h.env.Settings(), v)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
@@ -1222,7 +1231,8 @@ func (h *manifestLoadHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "retrieving manifest with version id '%s'", task.Version))
 	}
 
-	project, _, err := model.FindAndTranslateProjectForVersion(v.Id, v.Identifier)
+	env := evergreen.GetEnvironment()
+	project, _, err := model.FindAndTranslateProjectForVersion(ctx, env.Settings(), v)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "loading project from version"))
 	}

@@ -1,5 +1,5 @@
 {
-  project(projectId: "not a real project") {
+  project(projectIdentifier: "not a real project") {
     patches(patchesInput: {}) {
       patches {
         id

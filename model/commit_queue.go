@@ -68,10 +68,11 @@ func RemoveCommitQueueItemForVersion(projectId, version string, user string) (*c
 		return nil, nil
 	}
 
-	return RemoveItemAndPreventMerge(cq, issue, true, user)
+	return RemoveItemAndPreventMerge(cq, issue, user)
 }
 
-func RemoveItemAndPreventMerge(cq *commitqueue.CommitQueue, issue string, versionExists bool, user string) (*commitqueue.CommitQueueItem, error) {
+// RemoveItemAndPreventMerge removes an item from the commit queue and disables the merge task, if applicable.
+func RemoveItemAndPreventMerge(cq *commitqueue.CommitQueue, issue string, user string) (*commitqueue.CommitQueueItem, error) {
 	removed, err := cq.Remove(issue)
 	if err != nil {
 		return removed, errors.Wrapf(err, "removing item '%s' from commit queue for project '%s'", issue, cq.ProjectID)
@@ -80,7 +81,7 @@ func RemoveItemAndPreventMerge(cq *commitqueue.CommitQueue, issue string, versio
 	if removed == nil {
 		return nil, nil
 	}
-	if versionExists {
+	if removed.Version != "" {
 		err = preventMergeForItem(*removed, user)
 	}
 

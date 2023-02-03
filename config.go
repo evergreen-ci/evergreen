@@ -33,10 +33,10 @@ var (
 	BuildRevision = ""
 
 	// Commandline Version String; used to control auto-updating.
-	ClientVersion = "2022-12-20"
+	ClientVersion = "2023-01-31"
 
 	// Agent version to control agent rollover.
-	AgentVersion = "2022-12-21"
+	AgentVersion = "2023-02-01"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -586,7 +586,7 @@ func (s *Settings) makeSplunkSender(ctx context.Context, client *http.Client, le
 
 func (s *Settings) GetGithubOauthStrings() ([]string, error) {
 	var tokens []string
-	var token_name string
+	var tokenName string
 
 	token, ok := s.Credentials["github"]
 	if ok && token != "" {
@@ -597,8 +597,8 @@ func (s *Settings) GetGithubOauthStrings() ([]string, error) {
 	}
 
 	for i := 1; i < 10; i++ {
-		token_name = fmt.Sprintf("github_alt%d", i)
-		token, ok := s.Credentials[token_name]
+		tokenName = fmt.Sprintf("github_alt%d", i)
+		token, ok := s.Credentials[tokenName]
 		if ok && token != "" {
 			tokens = append(tokens, token)
 		} else {

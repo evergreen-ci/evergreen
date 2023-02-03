@@ -93,6 +93,8 @@ func TestListHostsForTask(t *testing.T) {
 }
 
 func TestCreateHostsFromTask(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	assert.NoError(t, db.ClearCollections(task.Collection, model.VersionCollection, distro.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, host.Collection, model.ParserProjectCollection))
 	settingsList := []*birch.Document{birch.NewDocument(
 		birch.EC.String("region", "us-east-1"),
@@ -166,7 +168,7 @@ buildvariants:
 		}
 		assert.NoError(t, evergreen.UpdateConfig(settings))
 
-		assert.NoError(t, CreateHostsFromTask(&t1, user.DBUser{Id: "me"}, ""))
+		assert.NoError(t, CreateHostsFromTask(ctx, settings, &t1, user.DBUser{Id: "me"}, ""))
 		createdHosts, err := host.Find(host.IsUninitialized)
 		assert.NoError(t, err)
 		assert.Len(t, createdHosts, 3)
@@ -238,7 +240,7 @@ buildvariants:
 		}
 		assert.NoError(t, evergreen.UpdateConfig(settings))
 
-		err = CreateHostsFromTask(&t2, user.DBUser{Id: "me"}, "")
+		err = CreateHostsFromTask(ctx, settings, &t2, user.DBUser{Id: "me"}, "")
 		assert.NoError(t, err)
 		createdHosts, err := host.Find(host.IsUninitialized)
 		assert.NoError(t, err)
@@ -306,7 +308,7 @@ buildvariants:
 		}
 		assert.NoError(t, evergreen.UpdateConfig(settings))
 
-		assert.NoError(t, CreateHostsFromTask(&t3, user.DBUser{Id: "me"}, ""))
+		assert.NoError(t, CreateHostsFromTask(ctx, settings, &t3, user.DBUser{Id: "me"}, ""))
 		createdHosts, err := host.Find(host.IsUninitialized)
 		assert.NoError(t, err)
 		assert.Len(t, createdHosts, 3)
@@ -327,6 +329,8 @@ buildvariants:
 }
 
 func TestCreateContainerFromTask(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	assert := assert.New(t)
 	require := require.New(t)
 	assert.NoError(db.ClearCollections(task.Collection, model.VersionCollection, distro.Collection, model.ProjectRefCollection,
@@ -422,7 +426,7 @@ buildvariants:
 	}
 	assert.NoError(pvars.Insert())
 
-	assert.NoError(CreateHostsFromTask(&t1, user.DBUser{Id: "me"}, ""))
+	assert.NoError(CreateHostsFromTask(ctx, settings, &t1, user.DBUser{Id: "me"}, ""))
 
 	createdHosts, err := host.Find(host.IsUninitialized)
 	assert.NoError(err)

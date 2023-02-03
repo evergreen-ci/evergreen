@@ -39,7 +39,7 @@ func runTest(t *testing.T, configPath string, customTests func(string)) {
 		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", configPath, modelutil.NoPatch)
 		require.NoError(t, err)
 
-		conf, err := agentutil.MakeTaskConfigFromModelData(testConfig, modelData)
+		conf, err := agentutil.MakeTaskConfigFromModelData(ctx, testConfig, modelData)
 		require.NoError(t, err)
 		conf.WorkDir = "."
 		logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
@@ -150,7 +150,7 @@ func TestXUnitParseAndUpload(t *testing.T) {
 	comm := client.NewMock("/dev/null")
 	modelData, err := modelutil.SetupAPITestData(testConfig, "aggregation", "rhel55", WildcardConfig, modelutil.NoPatch)
 	require.NoError(t, err, "failed to setup test data")
-	conf, err := agentutil.MakeTaskConfigFromModelData(testConfig, modelData)
+	conf, err := agentutil.MakeTaskConfigFromModelData(ctx, testConfig, modelData)
 	require.NoError(t, err)
 	conf.WorkDir = filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "xunit")
 

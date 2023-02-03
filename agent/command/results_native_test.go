@@ -42,7 +42,7 @@ func TestAttachResults(t *testing.T) {
 		require.NoError(t, err)
 		So(err, ShouldBeNil)
 
-		conf, err := agentutil.MakeTaskConfigFromModelData(testConfig, modelData)
+		conf, err := agentutil.MakeTaskConfigFromModelData(ctx, testConfig, modelData)
 		require.NoError(t, err)
 		conf.WorkDir = "."
 
@@ -93,7 +93,7 @@ func TestAttachRawResults(t *testing.T) {
 		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", configFile, modelutil.NoPatch)
 		require.NoError(t, err)
 
-		conf, err := agentutil.MakeTaskConfigFromModelData(testConfig, modelData)
+		conf, err := agentutil.MakeTaskConfigFromModelData(ctx, testConfig, modelData)
 		require.NoError(t, err)
 		conf.WorkDir = "."
 		logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)

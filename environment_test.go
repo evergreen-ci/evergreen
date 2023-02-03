@@ -14,6 +14,7 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func init() {
@@ -78,6 +79,8 @@ func (s *EnvironmentSuite) TestInitDB() {
 		db.AuthFile = envAuth
 	}
 	err := localEnv.initDB(ctx, *db)
+	s.NoError(err)
+	_, err = localEnv.client.ListDatabases(ctx, bson.M{})
 	s.NoError(err)
 }
 

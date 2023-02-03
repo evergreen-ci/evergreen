@@ -32,6 +32,7 @@ func init() {
 type generateTasksJob struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
 	TaskID   string `bson:"task_id" json:"task_id" yaml:"task_id"`
+	env      evergreen.Environment
 }
 
 func makeGenerateTaskJob() *generateTasksJob {
@@ -55,6 +56,10 @@ func NewGenerateTasksJob(versionID, taskID string, ts string) amboy.Job {
 	j.SetID(fmt.Sprintf("%s-%s-%s", generateTasksJobName, taskID, ts))
 	versionScope := fmt.Sprintf("%s.%s", generateTasksJobName, versionID)
 	taskScope := fmt.Sprintf("%s.%s", generateTasksJobName, taskID)
+	// Setting the version as one of the scopes ensures that, for a given
+	// version, only one generate.tasks job can run at a time. Setting the task
+	// scope as an enqueued scope ensures that, for a given task in a version,
+	// there's only one job that runs generate.tasks on behalf of that task.
 	j.SetScopes([]string{versionScope, taskScope})
 	j.SetEnqueueScopes(taskScope)
 	return j
@@ -81,7 +86,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	if v == nil {
 		return errors.Errorf("version '%s' not found", t.Version)
 	}
-	project, parserProject, err := model.FindAndTranslateProjectForVersion(v.Id, t.Project)
+	project, parserProject, err := model.FindAndTranslateProjectForVersion(ctx, j.env.Settings(), v)
 	if err != nil {
 		return errors.Wrapf(err, "loading project for version '%s'", t.Version)
 	}
@@ -192,7 +197,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 
 	// Don't use the job's context, because it's better to finish than to exit early after a
 	// SIGTERM from a deploy. This should maybe be a context with timeout.
-	err = g.Save(context.Background(), p, pp, v)
+	err = g.Save(context.Background(), j.env.Settings(), p, pp, v)
 
 	// If the version or parser project has changed there was a race. Another generator will try again.
 	if adb.ResultsNotFound(err) || db.IsDuplicateKey(err) {
@@ -217,7 +222,8 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	return nil
 }
 
-// handleError return mongo.ErrNoDocuments if another job has raced, the passed in error otherwise.
+// handleError return mongo.ErrNoDocuments if generate.tasks has already run.
+// Otherwise, it returns the given error.
 func (j *generateTasksJob) handleError(pp *model.ParserProject, v *model.Version, handledError error) error {
 	// Get task again, to exit nil if another generator finished, which caused us to error.
 	// Checking this again here makes it very unlikely that there is a race, because both
@@ -239,19 +245,6 @@ func (j *generateTasksJob) handleError(pp *model.ParserProject, v *model.Version
 		return mongo.ErrNoDocuments
 	}
 
-	if v == nil {
-		return handledError
-	}
-	ppFromDB, err := model.ParserProjectFindOne(model.ParserProjectById(v.Id).WithFields(model.ParserProjectConfigNumberKey))
-	if err != nil {
-		return errors.Wrapf(err, "finding parser project '%s'", v.Id)
-	}
-	// If the config update number has been updated, then another task has raced with us.
-	// The error is therefore not an actual configuration problem but instead a symptom
-	// of the race.
-	if pp != nil && ppFromDB != nil && pp.ConfigUpdateNumber != ppFromDB.ConfigUpdateNumber {
-		return mongo.ErrNoDocuments
-	}
 	return handledError
 }
 
@@ -267,6 +260,9 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 	if t == nil {
 		j.AddError(errors.Errorf("task '%s' not found", j.TaskID))
 		return
+	}
+	if j.env == nil {
+		j.env = evergreen.GetEnvironment()
 	}
 
 	err = j.generate(ctx, t)

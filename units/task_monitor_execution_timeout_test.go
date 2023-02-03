@@ -80,6 +80,12 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 				TaskGroupMaxHosts: 1,
 				DisplayName:       "display_name_for_another_task",
 				Status:            evergreen.TaskUndispatched,
+				DependsOn: []task.Dependency{
+					{
+						TaskId: j.task.Id,
+						Status: evergreen.TaskSucceeded,
+					},
+				},
 			}
 			require.NoError(t, otherTask.Insert())
 

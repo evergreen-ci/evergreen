@@ -88,7 +88,7 @@ func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	spruceLink := fmt.Sprintf("%s/hosts/%s", uis.Settings.Ui.UIv2Url, h.Id)
+	spruceLink := fmt.Sprintf("%s/host/%s", uis.Settings.Ui.UIv2Url, h.Id)
 	newUILink := ""
 	if len(uis.Settings.Ui.UIv2Url) > 0 {
 		newUILink = spruceLink

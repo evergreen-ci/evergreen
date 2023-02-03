@@ -640,8 +640,7 @@ func ByBeforeRevisionWithStatusesAndRequesters(revisionOrder int, statuses []str
 	}
 }
 
-// ByTimeStartedAndFailed returns all failed tasks that started between 2 given times
-// If task not started (but is failed), returns if finished within the time range
+// ByTimeStartedAndFailed returns all failed tasks that started or finished between 2 given times
 func ByTimeStartedAndFailed(startTime, endTime time.Time, commandTypes []string) bson.M {
 	query := bson.M{
 		"$or": []bson.M{
@@ -650,7 +649,6 @@ func ByTimeStartedAndFailed(startTime, endTime time.Time, commandTypes []string)
 				{StartTimeKey: bson.M{"$gte": startTime}},
 			}},
 			{"$and": []bson.M{
-				{StartTimeKey: time.Time{}},
 				{FinishTimeKey: bson.M{"$lte": endTime}},
 				{FinishTimeKey: bson.M{"$gte": startTime}},
 			}},
@@ -1852,7 +1850,8 @@ func updateAllMatchingDependenciesForTask(taskId, dependencyId string, unattaina
 	return res.Err()
 }
 
-func AbortTasksForBuild(buildId string, taskIds []string, caller string) error {
+// AbortAndMarkResetTasksForBuild aborts and marks tasks for a build to reset when finished.
+func AbortAndMarkResetTasksForBuild(buildId string, taskIds []string, caller string) error {
 	q := bson.M{
 		BuildIdKey: buildId,
 		StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
@@ -1864,8 +1863,9 @@ func AbortTasksForBuild(buildId string, taskIds []string, caller string) error {
 		q,
 		bson.M{
 			"$set": bson.M{
-				AbortedKey:   true,
-				AbortInfoKey: AbortInfo{User: caller},
+				AbortedKey:           true,
+				AbortInfoKey:         AbortInfo{User: caller},
+				ResetWhenFinishedKey: true,
 			},
 		},
 	)

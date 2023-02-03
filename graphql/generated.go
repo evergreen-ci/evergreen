@@ -164,10 +164,11 @@ type ComplexityRoot struct {
 	}
 
 	CommitQueueParams struct {
-		Enabled       func(childComplexity int) int
-		MergeMethod   func(childComplexity int) int
-		Message       func(childComplexity int) int
-		RequireSigned func(childComplexity int) int
+		Enabled               func(childComplexity int) int
+		MergeMethod           func(childComplexity int) int
+		Message               func(childComplexity int) int
+		RequireSigned         func(childComplexity int) int
+		RequiredApprovalCount func(childComplexity int) int
 	}
 
 	ContainerResources struct {
@@ -684,9 +685,9 @@ type ComplexityRoot struct {
 		AwsRegions               func(childComplexity int) int
 		BbGetCreatedTickets      func(childComplexity int, taskID string) int
 		BuildBaron               func(childComplexity int, taskID string, execution int) int
-		BuildVariantsForTaskName func(childComplexity int, projectID string, taskName string) int
+		BuildVariantsForTaskName func(childComplexity int, projectIdentifier string, taskName string) int
 		ClientConfig             func(childComplexity int) int
-		CommitQueue              func(childComplexity int, id string) int
+		CommitQueue              func(childComplexity int, projectIdentifier string) int
 		DistroTaskQueue          func(childComplexity int, distroID string) int
 		Distros                  func(childComplexity int, onlySpawnable bool) int
 		GithubProjectConflicts   func(childComplexity int, projectID string) int
@@ -700,7 +701,7 @@ type ComplexityRoot struct {
 		MyPublicKeys             func(childComplexity int) int
 		MyVolumes                func(childComplexity int) int
 		Patch                    func(childComplexity int, id string) int
-		Project                  func(childComplexity int, projectID string) int
+		Project                  func(childComplexity int, projectIdentifier string) int
 		ProjectEvents            func(childComplexity int, identifier string, limit *int, before *time.Time) int
 		ProjectSettings          func(childComplexity int, identifier string) int
 		Projects                 func(childComplexity int) int
@@ -712,7 +713,7 @@ type ComplexityRoot struct {
 		TaskAllExecutions        func(childComplexity int, taskID string) int
 		TaskFiles                func(childComplexity int, taskID string, execution *int) int
 		TaskLogs                 func(childComplexity int, taskID string, execution *int) int
-		TaskNamesForBuildVariant func(childComplexity int, projectID string, buildVariant string) int
+		TaskNamesForBuildVariant func(childComplexity int, projectIdentifier string, buildVariant string) int
 		TaskQueueDistros         func(childComplexity int) int
 		TaskTestSample           func(childComplexity int, tasks []string, filters []*TestFilter) int
 		TaskTests                func(childComplexity int, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string, groupID *string) int
@@ -724,10 +725,11 @@ type ComplexityRoot struct {
 	}
 
 	RepoCommitQueueParams struct {
-		Enabled       func(childComplexity int) int
-		MergeMethod   func(childComplexity int) int
-		Message       func(childComplexity int) int
-		RequireSigned func(childComplexity int) int
+		Enabled               func(childComplexity int) int
+		MergeMethod           func(childComplexity int) int
+		Message               func(childComplexity int) int
+		RequireSigned         func(childComplexity int) int
+		RequiredApprovalCount func(childComplexity int) int
 	}
 
 	RepoRef struct {
@@ -858,6 +860,7 @@ type ComplexityRoot struct {
 		BuildVariant            func(childComplexity int) int
 		BuildVariantDisplayName func(childComplexity int) int
 		CanAbort                func(childComplexity int) int
+		CanDisable              func(childComplexity int) int
 		CanModifyAnnotation     func(childComplexity int) int
 		CanOverrideDependencies func(childComplexity int) int
 		CanRestart              func(childComplexity int) int
@@ -1336,7 +1339,7 @@ type QueryResolver interface {
 	TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistro, error)
 	Patch(ctx context.Context, id string) (*model.APIPatch, error)
 	GithubProjectConflicts(ctx context.Context, projectID string) (*model1.GithubProjectConflicts, error)
-	Project(ctx context.Context, projectID string) (*model.APIProjectRef, error)
+	Project(ctx context.Context, projectIdentifier string) (*model.APIProjectRef, error)
 	Projects(ctx context.Context) ([]*GroupedProjects, error)
 	ProjectEvents(ctx context.Context, identifier string, limit *int, before *time.Time) (*ProjectEvents, error)
 	ProjectSettings(ctx context.Context, identifier string) (*model.APIProjectSettings, error)
@@ -1355,10 +1358,10 @@ type QueryResolver interface {
 	User(ctx context.Context, userID *string) (*model.APIDBUser, error)
 	UserConfig(ctx context.Context) (*UserConfig, error)
 	UserSettings(ctx context.Context) (*model.APIUserSettings, error)
-	CommitQueue(ctx context.Context, id string) (*model.APICommitQueue, error)
-	BuildVariantsForTaskName(ctx context.Context, projectID string, taskName string) ([]*task.BuildVariantTuple, error)
+	CommitQueue(ctx context.Context, projectIdentifier string) (*model.APICommitQueue, error)
+	BuildVariantsForTaskName(ctx context.Context, projectIdentifier string, taskName string) ([]*task.BuildVariantTuple, error)
 	MainlineCommits(ctx context.Context, options MainlineCommitsOptions, buildVariantOptions *BuildVariantOptions) (*MainlineCommits, error)
-	TaskNamesForBuildVariant(ctx context.Context, projectID string, buildVariant string) ([]string, error)
+	TaskNamesForBuildVariant(ctx context.Context, projectIdentifier string, buildVariant string) ([]string, error)
 	HasVersion(ctx context.Context, id string) (bool, error)
 	Version(ctx context.Context, id string) (*model.APIVersion, error)
 }
@@ -1379,6 +1382,7 @@ type TaskResolver interface {
 
 	BuildVariantDisplayName(ctx context.Context, obj *model.APITask) (*string, error)
 	CanAbort(ctx context.Context, obj *model.APITask) (bool, error)
+	CanDisable(ctx context.Context, obj *model.APITask) (bool, error)
 	CanModifyAnnotation(ctx context.Context, obj *model.APITask) (bool, error)
 	CanOverrideDependencies(ctx context.Context, obj *model.APITask) (bool, error)
 	CanRestart(ctx context.Context, obj *model.APITask) (bool, error)
@@ -1879,6 +1883,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.CommitQueueParams.RequireSigned(childComplexity), true
+
+	case "CommitQueueParams.requiredApprovalCount":
+		if e.complexity.CommitQueueParams.RequiredApprovalCount == nil {
+			break
+		}
+
+		return e.complexity.CommitQueueParams.RequiredApprovalCount(childComplexity), true
 
 	case "ContainerResources.cpu":
 		if e.complexity.ContainerResources.CPU == nil {
@@ -4565,7 +4576,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.BuildVariantsForTaskName(childComplexity, args["projectId"].(string), args["taskName"].(string)), true
+		return e.complexity.Query.BuildVariantsForTaskName(childComplexity, args["projectIdentifier"].(string), args["taskName"].(string)), true
 
 	case "Query.clientConfig":
 		if e.complexity.Query.ClientConfig == nil {
@@ -4584,7 +4595,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.CommitQueue(childComplexity, args["id"].(string)), true
+		return e.complexity.Query.CommitQueue(childComplexity, args["projectIdentifier"].(string)), true
 
 	case "Query.distroTaskQueue":
 		if e.complexity.Query.DistroTaskQueue == nil {
@@ -4732,7 +4743,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Project(childComplexity, args["projectId"].(string)), true
+		return e.complexity.Query.Project(childComplexity, args["projectIdentifier"].(string)), true
 
 	case "Query.projectEvents":
 		if e.complexity.Query.ProjectEvents == nil {
@@ -4861,7 +4872,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.TaskNamesForBuildVariant(childComplexity, args["projectId"].(string), args["buildVariant"].(string)), true
+		return e.complexity.Query.TaskNamesForBuildVariant(childComplexity, args["projectIdentifier"].(string), args["buildVariant"].(string)), true
 
 	case "Query.taskQueueDistros":
 		if e.complexity.Query.TaskQueueDistros == nil {
@@ -4966,6 +4977,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.RepoCommitQueueParams.RequireSigned(childComplexity), true
+
+	case "RepoCommitQueueParams.requiredApprovalCount":
+		if e.complexity.RepoCommitQueueParams.RequiredApprovalCount == nil {
+			break
+		}
+
+		return e.complexity.RepoCommitQueueParams.RequiredApprovalCount(childComplexity), true
 
 	case "RepoRef.admins":
 		if e.complexity.RepoRef.Admins == nil {
@@ -5603,6 +5621,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Task.CanAbort(childComplexity), true
+
+	case "Task.canDisable":
+		if e.complexity.Task.CanDisable == nil {
+			break
+		}
+
+		return e.complexity.Task.CanDisable(childComplexity), true
 
 	case "Task.canModifyAnnotation":
 		if e.complexity.Task.CanModifyAnnotation == nil {
@@ -8715,14 +8740,14 @@ func (ec *executionContext) field_Query_buildVariantsForTaskName_args(ctx contex
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
-	if tmp, ok := rawArgs["projectId"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
+	if tmp, ok := rawArgs["projectIdentifier"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdentifier"))
 		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["projectId"] = arg0
+	args["projectIdentifier"] = arg0
 	var arg1 string
 	if tmp, ok := rawArgs["taskName"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskName"))
@@ -8739,14 +8764,14 @@ func (ec *executionContext) field_Query_commitQueue_args(ctx context.Context, ra
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
-	if tmp, ok := rawArgs["id"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+	if tmp, ok := rawArgs["projectIdentifier"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdentifier"))
 		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["id"] = arg0
+	args["projectIdentifier"] = arg0
 	return args, nil
 }
 
@@ -9081,14 +9106,14 @@ func (ec *executionContext) field_Query_project_args(ctx context.Context, rawArg
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
-	if tmp, ok := rawArgs["projectId"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
+	if tmp, ok := rawArgs["projectIdentifier"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdentifier"))
 		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["projectId"] = arg0
+	args["projectIdentifier"] = arg0
 	return args, nil
 }
 
@@ -9243,14 +9268,14 @@ func (ec *executionContext) field_Query_taskNamesForBuildVariant_args(ctx contex
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
-	if tmp, ok := rawArgs["projectId"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
+	if tmp, ok := rawArgs["projectIdentifier"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdentifier"))
 		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["projectId"] = arg0
+	args["projectIdentifier"] = arg0
 	var arg1 string
 	if tmp, ok := rawArgs["buildVariant"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("buildVariant"))
@@ -12057,6 +12082,47 @@ func (ec *executionContext) fieldContext_CommitQueueParams_requireSigned(ctx con
 	return fc, nil
 }
 
+func (ec *executionContext) _CommitQueueParams_requiredApprovalCount(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueueParams) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CommitQueueParams_requiredApprovalCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RequiredApprovalCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CommitQueueParams_requiredApprovalCount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CommitQueueParams",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ContainerResources_name(ctx context.Context, field graphql.CollectedField, obj *model.APIContainerResources) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ContainerResources_name(ctx, field)
 	if err != nil {
@@ -13835,6 +13901,8 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(ctx context.C
 				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
 			case "canAbort":
 				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
 			case "canModifyAnnotation":
 				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
 			case "canOverrideDependencies":
@@ -19565,6 +19633,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
 			case "canAbort":
 				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
 			case "canModifyAnnotation":
 				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
 			case "canOverrideDependencies":
@@ -21889,6 +21959,8 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
 			case "canAbort":
 				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
 			case "canModifyAnnotation":
 				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
 			case "canOverrideDependencies":
@@ -22078,6 +22150,8 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
 			case "canAbort":
 				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
 			case "canModifyAnnotation":
 				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
 			case "canOverrideDependencies":
@@ -22267,6 +22341,8 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
 			case "canAbort":
 				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
 			case "canModifyAnnotation":
 				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
 			case "canOverrideDependencies":
@@ -22456,6 +22532,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
 			case "canAbort":
 				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
 			case "canModifyAnnotation":
 				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
 			case "canOverrideDependencies":
@@ -22645,6 +22723,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
 			case "canAbort":
 				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
 			case "canModifyAnnotation":
 				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
 			case "canOverrideDependencies":
@@ -22834,6 +22914,8 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
 			case "canAbort":
 				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
 			case "canModifyAnnotation":
 				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
 			case "canOverrideDependencies":
@@ -26874,6 +26956,8 @@ func (ec *executionContext) fieldContext_Project_commitQueue(ctx context.Context
 				return ec.fieldContext_CommitQueueParams_message(ctx, field)
 			case "requireSigned":
 				return ec.fieldContext_CommitQueueParams_requireSigned(ctx, field)
+			case "requiredApprovalCount":
+				return ec.fieldContext_CommitQueueParams_requiredApprovalCount(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type CommitQueueParams", field.Name)
 		},
@@ -31637,7 +31721,7 @@ func (ec *executionContext) _Query_project(ctx context.Context, field graphql.Co
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Project(rctx, fc.Args["projectId"].(string))
+		return ec.resolvers.Query().Project(rctx, fc.Args["projectIdentifier"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -32358,6 +32442,8 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
 			case "canAbort":
 				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
 			case "canModifyAnnotation":
 				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
 			case "canOverrideDependencies":
@@ -32547,6 +32633,8 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
 			case "canAbort":
 				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
 			case "canModifyAnnotation":
 				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
 			case "canOverrideDependencies":
@@ -33167,7 +33255,7 @@ func (ec *executionContext) _Query_commitQueue(ctx context.Context, field graphq
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().CommitQueue(rctx, fc.Args["id"].(string))
+		return ec.resolvers.Query().CommitQueue(rctx, fc.Args["projectIdentifier"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -33234,7 +33322,7 @@ func (ec *executionContext) _Query_buildVariantsForTaskName(ctx context.Context,
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().BuildVariantsForTaskName(rctx, fc.Args["projectId"].(string), fc.Args["taskName"].(string))
+		return ec.resolvers.Query().BuildVariantsForTaskName(rctx, fc.Args["projectIdentifier"].(string), fc.Args["taskName"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -33352,7 +33440,7 @@ func (ec *executionContext) _Query_taskNamesForBuildVariant(ctx context.Context,
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().TaskNamesForBuildVariant(rctx, fc.Args["projectId"].(string), fc.Args["buildVariant"].(string))
+		return ec.resolvers.Query().TaskNamesForBuildVariant(rctx, fc.Args["projectIdentifier"].(string), fc.Args["buildVariant"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -33871,6 +33959,50 @@ func (ec *executionContext) fieldContext_RepoCommitQueueParams_requireSigned(ctx
 	return fc, nil
 }
 
+func (ec *executionContext) _RepoCommitQueueParams_requiredApprovalCount(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueueParams) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RepoCommitQueueParams_requiredApprovalCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RequiredApprovalCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalNInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RepoCommitQueueParams_requiredApprovalCount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoCommitQueueParams",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RepoRef_id(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_RepoRef_id(ctx, field)
 	if err != nil {
@@ -34154,6 +34286,8 @@ func (ec *executionContext) fieldContext_RepoRef_commitQueue(ctx context.Context
 				return ec.fieldContext_RepoCommitQueueParams_message(ctx, field)
 			case "requireSigned":
 				return ec.fieldContext_RepoCommitQueueParams_requireSigned(ctx, field)
+			case "requiredApprovalCount":
+				return ec.fieldContext_RepoCommitQueueParams_requiredApprovalCount(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RepoCommitQueueParams", field.Name)
 		},
@@ -37952,6 +38086,8 @@ func (ec *executionContext) fieldContext_Task_baseTask(ctx context.Context, fiel
 				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
 			case "canAbort":
 				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
 			case "canModifyAnnotation":
 				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
 			case "canOverrideDependencies":
@@ -38266,6 +38402,50 @@ func (ec *executionContext) _Task_canAbort(ctx context.Context, field graphql.Co
 }
 
 func (ec *executionContext) fieldContext_Task_canAbort(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Task_canDisable(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Task_canDisable(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().CanDisable(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Task_canDisable(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Task",
 		Field:      field,
@@ -38968,6 +39148,8 @@ func (ec *executionContext) fieldContext_Task_displayTask(ctx context.Context, f
 				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
 			case "canAbort":
 				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
 			case "canModifyAnnotation":
 				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
 			case "canOverrideDependencies":
@@ -39313,6 +39495,8 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(ctx context.Con
 				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
 			case "canAbort":
 				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
 			case "canModifyAnnotation":
 				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
 			case "canOverrideDependencies":
@@ -45627,6 +45811,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(ctx context.Contex
 				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
 			case "canAbort":
 				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
 			case "canModifyAnnotation":
 				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
 			case "canOverrideDependencies":
@@ -48861,6 +49047,8 @@ func (ec *executionContext) fieldContext_VersionTasks_data(ctx context.Context, 
 				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
 			case "canAbort":
 				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
 			case "canModifyAnnotation":
 				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
 			case "canOverrideDependencies":
@@ -52102,7 +52290,7 @@ func (ec *executionContext) unmarshalInputCommitQueueParamsInput(ctx context.Con
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"enabled", "mergeMethod", "message", "requireSigned"}
+	fieldsInOrder := [...]string{"enabled", "mergeMethod", "message", "requireSigned", "requiredApprovalCount"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -52138,6 +52326,14 @@ func (ec *executionContext) unmarshalInputCommitQueueParamsInput(ctx context.Con
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requireSigned"))
 			it.RequireSigned, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "requiredApprovalCount":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requiredApprovalCount"))
+			it.RequiredApprovalCount, err = ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -52633,7 +52829,7 @@ func (ec *executionContext) unmarshalInputMainlineCommitsOptions(ctx context.Con
 		asMap["shouldCollapse"] = false
 	}
 
-	fieldsInOrder := [...]string{"limit", "projectID", "requesters", "shouldCollapse", "skipOrderNumber"}
+	fieldsInOrder := [...]string{"limit", "projectIdentifier", "requesters", "shouldCollapse", "skipOrderNumber"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -52648,11 +52844,11 @@ func (ec *executionContext) unmarshalInputMainlineCommitsOptions(ctx context.Con
 			if err != nil {
 				return it, err
 			}
-		case "projectID":
+		case "projectIdentifier":
 			var err error
 
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectID"))
-			it.ProjectID, err = ec.unmarshalNString2string(ctx, v)
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdentifier"))
+			it.ProjectIdentifier, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -55958,6 +56154,10 @@ func (ec *executionContext) _CommitQueueParams(ctx context.Context, sel ast.Sele
 		case "requireSigned":
 
 			out.Values[i] = ec._CommitQueueParams_requireSigned(ctx, field, obj)
+
+		case "requiredApprovalCount":
+
+			out.Values[i] = ec._CommitQueueParams_requiredApprovalCount(ctx, field, obj)
 
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -60599,6 +60799,13 @@ func (ec *executionContext) _RepoCommitQueueParams(ctx context.Context, sel ast.
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "requiredApprovalCount":
+
+			out.Values[i] = ec._RepoCommitQueueParams_requiredApprovalCount(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -61550,6 +61757,26 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 					}
 				}()
 				res = ec._Task_canAbort(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
+		case "canDisable":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_canDisable(ctx, field, obj)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}

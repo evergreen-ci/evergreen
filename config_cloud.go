@@ -1,11 +1,20 @@
 package evergreen
 
 import (
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+)
+
+var (
+	cloudProvidersAWSKey       = bsonutil.MustHaveTag(CloudProviders{}, "AWS")
+	cloudProvidersDockerKey    = bsonutil.MustHaveTag(CloudProviders{}, "Docker")
+	cloudProvidersGCEKey       = bsonutil.MustHaveTag(CloudProviders{}, "GCE")
+	cloudProvidersOpenStackKey = bsonutil.MustHaveTag(CloudProviders{}, "OpenStack")
+	cloudProvidersVSphereKey   = bsonutil.MustHaveTag(CloudProviders{}, "VSphere")
 )
 
 // CloudProviders stores configuration settings for the supported cloud host providers.
@@ -48,11 +57,11 @@ func (c *CloudProviders) Set() error {
 
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			"aws":       c.AWS,
-			"docker":    c.Docker,
-			"gce":       c.GCE,
-			"openstack": c.OpenStack,
-			"vsphere":   c.VSphere,
+			cloudProvidersAWSKey:       c.AWS,
+			cloudProvidersDockerKey:    c.Docker,
+			cloudProvidersGCEKey:       c.GCE,
+			cloudProvidersOpenStackKey: c.OpenStack,
+			cloudProvidersVSphereKey:   c.VSphere,
 		},
 	}, options.Update().SetUpsert(true))
 
@@ -90,6 +99,10 @@ type AWSConfig struct {
 	// TaskSyncRead stores credentials for reading task data in S3.
 	TaskSyncRead S3Credentials `bson:"task_sync_read" json:"task_sync_read" yaml:"task_sync_read"`
 
+	// ParserProject is configuration for storing and accessing parser projects
+	// in S3.
+	ParserProject ParserProjectS3Config `bson:"parser_project" json:"parser_project" yaml:"parser_project"`
+
 	DefaultSecurityGroup string `bson:"default_security_group" json:"default_security_group" yaml:"default_security_group"`
 
 	AllowedRegions []string `bson:"allowed_regions" json:"allowed_regions" yaml:"allowed_regions"`
@@ -114,6 +127,15 @@ func (c *S3Credentials) Validate() error {
 	catcher.NewWhen(c.Bucket == "", "bucket must not be empty")
 	return catcher.Resolve()
 }
+
+// ParserProjectS3Config is the configuration options for storing and accessing
+// parser projects in S3.
+type ParserProjectS3Config struct {
+	S3Credentials `bson:",inline" yaml:",inline"`
+	Prefix        string `bson:"prefix" json:"prefix" yaml:"prefix"`
+}
+
+func (c *ParserProjectS3Config) Validate() error { return nil }
 
 // AWSPodConfig represents configuration for using pods backed by AWS.
 type AWSPodConfig struct {

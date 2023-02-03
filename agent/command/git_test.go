@@ -60,6 +60,7 @@ type GitGetProjectSuite struct {
 	comm   *client.Mock
 	jasper jasper.Manager
 	ctx    context.Context
+	cancel context.CancelFunc
 	suite.Suite
 }
 
@@ -69,14 +70,6 @@ func init() {
 
 func TestGitGetProjectSuite(t *testing.T) {
 	s := new(GitGetProjectSuite)
-	var cancel context.CancelFunc
-	s.ctx, cancel = context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(s.ctx, t)
-	settings := env.Settings()
-
-	testutil.ConfigureIntegrationTest(t, settings, t.Name())
-	s.settings = settings
 	suite.Run(t, s)
 }
 
@@ -86,6 +79,13 @@ func (s *GitGetProjectSuite) SetupSuite() {
 	s.Require().NoError(err)
 
 	s.comm = client.NewMock("http://localhost.com")
+
+	s.ctx, s.cancel = context.WithCancel(context.Background())
+	env := testutil.NewEnvironment(s.ctx, s.T())
+	settings := env.Settings()
+
+	testutil.ConfigureIntegrationTest(s.T(), settings, s.T().Name())
+	s.settings = settings
 }
 
 func (s *GitGetProjectSuite) SetupTest() {
@@ -101,18 +101,18 @@ func (s *GitGetProjectSuite) SetupTest() {
 
 	s.modelData1, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath1, modelutil.NoPatch)
 	s.Require().NoError(err)
-	s.taskConfig1, err = agentutil.MakeTaskConfigFromModelData(s.settings, s.modelData1)
+	s.taskConfig1, err = agentutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData1)
 	s.Require().NoError(err)
 	s.taskConfig1.Expansions = util.NewExpansions(map[string]string{evergreen.GlobalGitHubTokenExpansion: fmt.Sprintf("token " + globalGitHubToken)})
 	s.Require().NoError(err)
 
 	s.modelData2, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath2, modelutil.NoPatch)
 	s.Require().NoError(err)
-	s.taskConfig2, err = agentutil.MakeTaskConfigFromModelData(s.settings, s.modelData2)
+	s.taskConfig2, err = agentutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData2)
 	s.Require().NoError(err)
 	s.taskConfig2.Expansions = util.NewExpansions(s.settings.Credentials)
 	s.taskConfig2.Expansions.Put("prefixpath", "hello")
-	//SetupAPITestData always creates BuildVariant with no modules so this line works around that
+	// SetupAPITestData always creates BuildVariant with no modules so this line works around that
 	s.taskConfig2.BuildVariant.Modules = []string{"sample"}
 	s.modelData2.Task.Requester = evergreen.PatchVersionRequester
 	err = setupTestPatchData(s.modelData1, patchPath, s.T())
@@ -120,7 +120,7 @@ func (s *GitGetProjectSuite) SetupTest() {
 
 	s.modelData3, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath2, modelutil.NoPatch)
 	s.Require().NoError(err)
-	s.taskConfig3, err = agentutil.MakeTaskConfigFromModelData(s.settings, s.modelData3)
+	s.taskConfig3, err = agentutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData3)
 	s.Require().NoError(err)
 	s.taskConfig3.Expansions = util.NewExpansions(s.settings.Credentials)
 	s.taskConfig3.GithubPatchData = thirdparty.GithubPatch{
@@ -136,7 +136,7 @@ func (s *GitGetProjectSuite) SetupTest() {
 
 	s.modelData4, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath2, modelutil.MergePatch)
 	s.Require().NoError(err)
-	s.taskConfig4, err = agentutil.MakeTaskConfigFromModelData(s.settings, s.modelData4)
+	s.taskConfig4, err = agentutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData4)
 	s.Require().NoError(err)
 	s.taskConfig4.Expansions = util.NewExpansions(s.settings.Credentials)
 	s.taskConfig4.GithubPatchData = thirdparty.GithubPatch{
@@ -145,14 +145,14 @@ func (s *GitGetProjectSuite) SetupTest() {
 	}
 	s.modelData5, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath3, modelutil.MergePatch)
 	s.Require().NoError(err)
-	s.taskConfig5, err = agentutil.MakeTaskConfigFromModelData(s.settings, s.modelData5)
+	s.taskConfig5, err = agentutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData5)
 	s.Require().NoError(err)
 
 	s.modelData6, err = modelutil.SetupAPITestData(s.settings, "testtask1", "linux-64", configPath4, modelutil.InlinePatch)
 	s.Require().NoError(err)
 	s.modelData6.Task.Requester = evergreen.MergeTestRequester
 	s.Require().NoError(err)
-	s.taskConfig6, err = agentutil.MakeTaskConfigFromModelData(s.settings, s.modelData6)
+	s.taskConfig6, err = agentutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData6)
 	s.Require().NoError(err)
 	s.taskConfig6.Expansions = util.NewExpansions(map[string]string{evergreen.GlobalGitHubTokenExpansion: fmt.Sprintf("token " + globalGitHubToken)})
 	s.taskConfig6.BuildVariant.Modules = []string{"evergreen"}
@@ -816,6 +816,7 @@ func (s *GitGetProjectSuite) TearDownSuite() {
 	if s.taskConfig2 != nil {
 		s.NoError(os.RemoveAll(s.taskConfig2.WorkDir))
 	}
+	s.cancel()
 }
 
 func (s *GitGetProjectSuite) TestAllowsEmptyPatches() {
@@ -1034,7 +1035,7 @@ func TestManifestLoad(t *testing.T) {
 		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", configPath, modelutil.NoPatch)
 		require.NoError(t, err, "failed to setup test data")
 
-		taskConfig, err := agentutil.MakeTaskConfigFromModelData(testConfig, modelData)
+		taskConfig, err := agentutil.MakeTaskConfigFromModelData(ctx, testConfig, modelData)
 		require.NoError(t, err)
 		logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: taskConfig.Task.Id, Secret: taskConfig.Task.Secret}, nil)
 		So(err, ShouldBeNil)

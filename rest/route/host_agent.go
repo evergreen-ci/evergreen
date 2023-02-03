@@ -1221,6 +1221,7 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 	// For a single-host task group, if a task fails, block and dequeue later tasks in that group.
 	// Call before MarkEnd so the version is marked finished when this is the last task in the version to finish,
 	// and before clearing the running task from the host so later tasks in the group aren't picked up by the host.
+	// TODO: EVG-18685 remove this
 	model.CheckAndBlockSingleHostTaskGroup(t, h.details.Status)
 
 	projectRef, err := model.FindMergedProjectRef(t.Project, t.Version, true)
@@ -1271,13 +1272,13 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 			Description: evergreen.TaskDescriptionAborted,
 		}
 	}
-	err = model.MarkEnd(t, evergreen.APIServerTaskActivator, finishTime, details, deactivatePrevious)
+	err = model.MarkEnd(h.env.Settings(), t, evergreen.APIServerTaskActivator, finishTime, details, deactivatePrevious)
 	if err != nil {
 		err = errors.Wrapf(err, "calling mark finish on task '%s'", t.Id)
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 
-	if t.Requester == evergreen.MergeTestRequester {
+	if evergreen.IsCommitQueueRequester(t.Requester) {
 		if err = model.HandleEndTaskForCommitQueueTask(t, h.details.Status); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}

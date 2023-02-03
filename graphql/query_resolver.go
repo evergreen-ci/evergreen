@@ -360,10 +360,10 @@ func (r *queryResolver) GithubProjectConflicts(ctx context.Context, projectID st
 }
 
 // Project is the resolver for the project field.
-func (r *queryResolver) Project(ctx context.Context, projectID string) (*restModel.APIProjectRef, error) {
-	project, err := data.FindProjectById(projectID, true, false)
+func (r *queryResolver) Project(ctx context.Context, projectIdentifier string) (*restModel.APIProjectRef, error) {
+	project, err := data.FindProjectById(projectIdentifier, true, false)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding project by id %s: %s", projectID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding project by id %s: %s", projectIdentifier, err.Error()))
 	}
 	apiProjectRef := restModel.APIProjectRef{}
 	err = apiProjectRef.BuildFromService(*project)
@@ -915,17 +915,17 @@ func (r *queryResolver) UserSettings(ctx context.Context) (*restModel.APIUserSet
 }
 
 // CommitQueue is the resolver for the commitQueue field.
-func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.APICommitQueue, error) {
-	commitQueue, err := data.FindCommitQueueForProject(id)
+func (r *queryResolver) CommitQueue(ctx context.Context, projectIdentifier string) (*restModel.APICommitQueue, error) {
+	commitQueue, err := data.FindCommitQueueForProject(projectIdentifier)
 	if err != nil {
 		if werrors.Cause(err) == err {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding commit queue for %s: %s", id, err.Error()))
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding commit queue for %s: %s", projectIdentifier, err.Error()))
 		}
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding commit queue for %s: %s", id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding commit queue for %s: %s", projectIdentifier, err.Error()))
 	}
-	project, err := data.FindProjectById(id, true, true)
+	project, err := data.FindProjectById(projectIdentifier, true, true)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding project %s: %s", id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding project %s: %s", projectIdentifier, err.Error()))
 	}
 	if project.CommitQueue.Message != "" {
 		commitQueue.Message = &project.CommitQueue.Message
@@ -953,17 +953,17 @@ func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.
 }
 
 // BuildVariantsForTaskName is the resolver for the buildVariantsForTaskName field.
-func (r *queryResolver) BuildVariantsForTaskName(ctx context.Context, projectID string, taskName string) ([]*task.BuildVariantTuple, error) {
-	pid, err := model.GetIdForProject(projectID)
+func (r *queryResolver) BuildVariantsForTaskName(ctx context.Context, projectIdentifier string, taskName string) ([]*task.BuildVariantTuple, error) {
+	pid, err := model.GetIdForProject(projectIdentifier)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with id: %s", projectID))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with id: %s", projectIdentifier))
 	}
 	repo, err := model.FindRepository(pid)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting repository for '%s': %s", projectID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting repository for '%s': %s", pid, err.Error()))
 	}
 	if repo == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find repository '%s'", projectID))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find repository '%s'", pid))
 	}
 	taskBuildVariants, err := task.FindUniqueBuildVariantNamesByTask(pid, taskName, repo.RevisionOrderNumber, false)
 	if err != nil {
@@ -984,9 +984,9 @@ func (r *queryResolver) BuildVariantsForTaskName(ctx context.Context, projectID 
 
 // MainlineCommits is the resolver for the mainlineCommits field.
 func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCommitsOptions, buildVariantOptions *BuildVariantOptions) (*MainlineCommits, error) {
-	projectId, err := model.GetIdForProject(options.ProjectID)
+	projectId, err := model.GetIdForProject(options.ProjectIdentifier)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with id: %s", options.ProjectID))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with id: %s", options.ProjectIdentifier))
 	}
 	limit := model.DefaultMainlineCommitVersionLimit
 	if utility.FromIntPtr(options.Limit) != 0 {
@@ -1127,14 +1127,14 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 }
 
 // TaskNamesForBuildVariant is the resolver for the taskNamesForBuildVariant field.
-func (r *queryResolver) TaskNamesForBuildVariant(ctx context.Context, projectID string, buildVariant string) ([]string, error) {
-	pid, err := model.GetIdForProject(projectID)
+func (r *queryResolver) TaskNamesForBuildVariant(ctx context.Context, projectIdentifier string, buildVariant string) ([]string, error) {
+	pid, err := model.GetIdForProject(projectIdentifier)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with id: %s", projectID))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with id: %s", projectIdentifier))
 	}
 	repo, err := model.FindRepository(pid)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting repository for '%s': %s", projectID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting repository for '%s': %s", pid, err.Error()))
 	}
 	if repo == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find repository '%s'", pid))

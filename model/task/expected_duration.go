@@ -13,7 +13,15 @@ import (
 
 // this is about a month.
 const oneMonthIsh = 30 * 24 * time.Hour
-const durationIndex = "branch_1_build_variant_1_display_name_1_status_1_finish_time_1_start_time_1"
+
+var DurationIndex = bson.D{
+	{Key: ProjectKey, Value: 1},
+	{Key: BuildVariantKey, Value: 1},
+	{Key: DisplayNameKey, Value: 1},
+	{Key: StatusKey, Value: 1},
+	{Key: FinishTimeKey, Value: 1},
+	{Key: StartTimeKey, Value: 1},
+}
 
 type expectedDurationResults struct {
 	DisplayName      string  `bson:"_id"`
@@ -73,7 +81,7 @@ func getExpectedDurationsForWindow(name, project, buildvariant string, start, en
 	coll := evergreen.GetEnvironment().DB().Collection(Collection)
 	ctx, cancel := evergreen.GetEnvironment().Context()
 	defer cancel()
-	cursor, err := coll.Aggregate(ctx, pipeline, &options.AggregateOptions{Hint: durationIndex})
+	cursor, err := coll.Aggregate(ctx, pipeline, &options.AggregateOptions{Hint: DurationIndex})
 	if err != nil {
 		return nil, errors.Wrap(err, "aggregating task average duration")
 	}

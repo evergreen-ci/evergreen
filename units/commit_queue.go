@@ -171,12 +171,11 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 			j.AddError(j.addMergeTaskDependencies(*cq))
 			return
 		}
-
 		// create a version with the item and subscribe to its completion
 		if nextItem.Source == commitqueue.SourcePullRequest {
-			j.processGitHubPRItem(ctx, cq, nextItem, projectRef, githubToken)
+			j.processGitHubPRItem(ctx, cq, &nextItem, projectRef, githubToken)
 		} else if nextItem.Source == commitqueue.SourceDiff {
-			j.processCLIPatchItem(ctx, cq, nextItem, projectRef, githubToken)
+			j.processCLIPatchItem(ctx, cq, &nextItem, projectRef, githubToken)
 		} else {
 			grip.Error(message.Fields{
 				"message": "commit queue entry has unknown source",
@@ -353,15 +352,15 @@ func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQ
 	}
 }
 
-func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueue.CommitQueue, nextItem commitqueue.CommitQueueItem, projectRef *model.ProjectRef, githubToken string) {
+func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueue.CommitQueue, nextItem *commitqueue.CommitQueueItem, projectRef *model.ProjectRef, githubToken string) {
 	pr, dequeue, err := checkPR(ctx, githubToken, nextItem.Issue, projectRef.Owner, projectRef.Repo)
 	if err != nil {
-		j.logError(err, "PR not valid for merge", nextItem)
+		j.logError(err, "PR not valid for merge", *nextItem)
 		if dequeue {
 			if pr != nil {
 				j.AddError(thirdparty.SendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "PR not valid for merge", ""))
 			}
-			j.dequeue(cq, nextItem)
+			j.dequeue(cq, *nextItem)
 		}
 		return
 	}
@@ -370,33 +369,34 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "finding patch '%s'", nextItem.Version))
 		j.AddError(thirdparty.SendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "no patch found", ""))
-		j.dequeue(cq, nextItem)
+		j.dequeue(cq, *nextItem)
 		return
 	}
 	if patchDoc == nil {
 		j.AddError(errors.Errorf("patch '%s' not found", nextItem.Version))
 		j.AddError(thirdparty.SendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "no patch found", ""))
-		j.dequeue(cq, nextItem)
+		j.dequeue(cq, *nextItem)
 		return
 	}
-	projectConfig, _, err := model.GetPatchedProject(ctx, patchDoc, githubToken)
+	projectConfig, _, err := model.GetPatchedProject(ctx, j.env.Settings(), patchDoc, githubToken)
 	if err != nil {
-		j.logError(err, "problem getting patched project", nextItem)
-		j.dequeue(cq, nextItem)
+		j.logError(err, "problem getting patched project", *nextItem)
+		j.dequeue(cq, *nextItem)
 		j.AddError(thirdparty.SendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't get project config", ""))
 	}
 
 	v, err := model.FinalizePatch(ctx, patchDoc, evergreen.MergeTestRequester, githubToken)
 	if err != nil {
-		j.logError(err, "can't finalize patch", nextItem)
-		j.dequeue(cq, nextItem)
+		j.logError(err, "can't finalize patch", *nextItem)
+		j.dequeue(cq, *nextItem)
 		j.AddError(thirdparty.SendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't finalize patch", ""))
 		return
 	}
 	nextItem.Version = v.Id
+	nextItem.ProcessingStartTime = time.Now()
 	if err = cq.UpdateVersion(nextItem); err != nil {
-		j.logError(err, "problem saving version", nextItem)
-		j.dequeue(cq, nextItem)
+		j.logError(err, "problem saving version", *nextItem)
+		j.dequeue(cq, *nextItem)
 		j.AddError(thirdparty.SendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't update commit queue item", ""))
 		return
 	}
@@ -404,9 +404,9 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 	j.AddError(thirdparty.SendCommitQueueGithubStatus(j.env, pr, message.GithubStatePending, "preparing to test merge", v.Id))
 	modulePRs, _, err := model.GetModulesFromPR(ctx, githubToken, nextItem.Modules, projectConfig)
 	if err != nil {
-		j.logError(err, "can't get modules", nextItem)
+		j.logError(err, "can't get modules", *nextItem)
 		j.AddError(thirdparty.SendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't get modules", ""))
-		j.dequeue(cq, nextItem)
+		j.dequeue(cq, *nextItem)
 		return
 	}
 	for _, modulePR := range modulePRs {
@@ -416,59 +416,62 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 	event.LogCommitQueueStartTestEvent(v.Id)
 }
 
-func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueue.CommitQueue, nextItem commitqueue.CommitQueueItem, projectRef *model.ProjectRef, githubToken string) {
+func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueue.CommitQueue, nextItem *commitqueue.CommitQueueItem, projectRef *model.ProjectRef, githubToken string) {
 	patchDoc, err := patch.FindOneId(nextItem.Issue)
 	if err != nil {
-		j.logError(err, "can't find patch", nextItem)
+		j.logError(err, "can't find patch", *nextItem)
 		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
-		j.dequeue(cq, nextItem)
+		j.dequeue(cq, *nextItem)
 		return
 	}
 	if patchDoc == nil {
-		j.logError(err, "patch not found", nextItem)
+		j.logError(err, "patch not found", *nextItem)
 		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
-		j.dequeue(cq, nextItem)
+		j.dequeue(cq, *nextItem)
 		return
 	}
 
-	project, err := updatePatch(ctx, githubToken, projectRef, patchDoc)
+	project, err := updatePatch(ctx, j.env.Settings(), githubToken, projectRef, patchDoc)
 	if err != nil {
-		j.logError(err, "can't update patch", nextItem)
+		j.logError(err, "can't update patch", *nextItem)
 		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
-		j.dequeue(cq, nextItem)
+		j.dequeue(cq, *nextItem)
 		return
 	}
 
 	if err = AddMergeTaskAndVariant(patchDoc, project, projectRef, commitqueue.SourceDiff); err != nil {
-		j.logError(err, "can't set patch project config", nextItem)
+		j.logError(err, "can't set patch project config", *nextItem)
 		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
-		j.dequeue(cq, nextItem)
+		j.dequeue(cq, *nextItem)
 		return
 	}
 
 	if err = patchDoc.UpdateGithashProjectAndTasks(); err != nil {
-		j.logError(err, "can't update patch in db", nextItem)
+		j.logError(err, "can't update patch in db", *nextItem)
 		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
-		j.dequeue(cq, nextItem)
+		j.dequeue(cq, *nextItem)
 		return
 	}
 
 	v, err := model.FinalizePatch(ctx, patchDoc, evergreen.MergeTestRequester, githubToken)
 	if err != nil {
-		j.logError(err, "can't finalize patch", nextItem)
+		j.logError(err, "can't finalize patch", *nextItem)
 		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
-		j.dequeue(cq, nextItem)
+		j.dequeue(cq, *nextItem)
 		return
 	}
+
 	nextItem.Version = v.Id
+	nextItem.ProcessingStartTime = time.Now()
 	if err = cq.UpdateVersion(nextItem); err != nil {
-		j.logError(err, "problem saving version", nextItem)
-		j.dequeue(cq, nextItem)
+
+		j.logError(err, "problem saving version", *nextItem)
+		j.dequeue(cq, *nextItem)
 		return
 	}
 
 	if err = setDefaultNotification(patchDoc.Author); err != nil {
-		j.logError(err, "failed to set default notification", nextItem)
+		j.logError(err, "failed to set default notification", *nextItem)
 	}
 	event.LogCommitQueueStartTestEvent(v.Id)
 }
@@ -562,40 +565,15 @@ func AddMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, proje
 		}
 	}
 
-	mergeTask := model.ProjectTask{
-		Name: evergreen.MergeTaskName,
-		Commands: []model.PluginCommandConf{
-			{
-				Command: "git.get_project",
-				Type:    evergreen.CommandTypeSetup,
-				Params: map[string]interface{}{
-					"directory":       "src",
-					"committer_name":  settings.CommitQueue.CommitterName,
-					"committer_email": settings.CommitQueue.CommitterEmail,
-				},
-			},
-		},
-		DependsOn: dependencies,
+	mergeTaskCmds, err := getMergeTaskCommands(settings, source)
+	if err != nil {
+		return errors.Wrap(err, "getting merge task commands")
 	}
 
-	if source == commitqueue.SourceDiff {
-		mergeTask.Commands = append(mergeTask.Commands,
-			model.PluginCommandConf{
-				Command: "git.push",
-				Params: map[string]interface{}{
-					"directory": "src",
-				},
-			})
-	} else if source == commitqueue.SourcePullRequest {
-		mergeTask.Commands = append(mergeTask.Commands,
-			model.PluginCommandConf{
-				Command: "git.merge_pr",
-				Params: map[string]interface{}{
-					"url": fmt.Sprintf("%s/version/%s", settings.Ui.Url, patchDoc.Id.Hex()),
-				},
-			})
-	} else {
-		return errors.Errorf("unknown commit queue source '%s'", source)
+	mergeTask := model.ProjectTask{
+		Name:      evergreen.MergeTaskName,
+		DependsOn: dependencies,
+		Commands:  mergeTaskCmds,
 	}
 
 	// Define as part of a task group with no pre to skip
@@ -636,6 +614,37 @@ func AddMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, proje
 	return nil
 }
 
+func getMergeTaskCommands(settings *evergreen.Settings, source string) ([]model.PluginCommandConf, error) {
+	switch source {
+	case commitqueue.SourceDiff:
+		return []model.PluginCommandConf{
+			{
+				Command: "git.get_project",
+				Type:    evergreen.CommandTypeSetup,
+				Params: map[string]interface{}{
+					"directory":       "src",
+					"committer_name":  settings.CommitQueue.CommitterName,
+					"committer_email": settings.CommitQueue.CommitterEmail,
+				},
+			},
+			{
+				Command: "git.push",
+				Params: map[string]interface{}{
+					"directory": "src",
+				},
+			},
+		}, nil
+	case commitqueue.SourcePullRequest:
+		return []model.PluginCommandConf{
+			{
+				Command: "git.merge_pr",
+			},
+		}, nil
+	default:
+		return nil, errors.Errorf("unknown commit queue source '%s'", source)
+	}
+}
+
 func setDefaultNotification(username string) error {
 	u, err := user.FindOneById(username)
 	if err != nil {
@@ -662,7 +671,7 @@ func setDefaultNotification(username string) error {
 	return nil
 }
 
-func updatePatch(ctx context.Context, githubToken string, projectRef *model.ProjectRef, patchDoc *patch.Patch) (*model.Project, error) {
+func updatePatch(ctx context.Context, settings *evergreen.Settings, githubToken string, projectRef *model.ProjectRef, patchDoc *patch.Patch) (*model.Project, error) {
 	branch, err := thirdparty.GetBranchEvent(ctx, githubToken, projectRef.Owner, projectRef.Repo, projectRef.Branch)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting branch")
@@ -677,7 +686,7 @@ func updatePatch(ctx context.Context, githubToken string, projectRef *model.Proj
 	// Refresh the cached project config
 	patchDoc.PatchedParserProject = ""
 	patchDoc.PatchedProjectConfig = ""
-	project, patchConfig, err := model.GetPatchedProject(ctx, patchDoc, githubToken)
+	project, patchConfig, err := model.GetPatchedProject(ctx, settings, patchDoc, githubToken)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting updated project config")
 	}

@@ -1,16 +1,14 @@
 # This file contains the default initial admin settings used for tests.
 database:
-    url: "mongodb://localhost:27017"
-    db: "mci_test"
-    write_concern:
-      wmode: "majority"
+  url: "mongodb://localhost:27017"
+  db: "mci_test"
+  write_concern:
+    wmode: "majority"
 
 domain_name: "evergreen.localhost"
 
 configdir: "config_test"
-credentials:  {
-        github: "token xxx",
-}
+credentials: { github: "token xxx" }
 
 amboy:
   name: test_queue
@@ -26,136 +24,140 @@ amboy:
 api_url: "https://localhost:8443"
 
 providers:
-    aws:
-        ec2_keys:
-          - name: "test_region"
-            key: "aws id"
-            secret: "aws secret"
-        allowed_instance_types:
-        - "test_instance_type"
-        # Ensure that tests depending on global settings use the mock AWS clients by default instead of actually
-        # connecting to AWS.
-        pod:
-          ecs:
-            client_type: "mock"
-          secrets_manager:
-            client_type: "mock"
-    docker:
-        api_version: 1.32
+  aws:
+    ec2_keys:
+      - name: "test_region"
+        key: "aws id"
+        secret: "aws secret"
+    allowed_instance_types:
+      - "test_instance_type"
+    # Ensure that tests depending on global settings use the mock AWS clients by default instead of actually
+    # connecting to AWS.
+    pod:
+      ecs:
+        client_type: "mock"
+      secrets_manager:
+        client_type: "mock"
+  docker:
+    api_version: 1.32
 
 auth:
-    naive:
-      users:
+  naive:
+    users:
       - username: "mci-nonprod"
         password: "change me"
         display_name: "MCI Nonprod"
 
 keys:
-    mci: "/data/home/etc/mci.pem"
+  mci: "/data/home/etc/mci.pem"
 
 repotracker:
-    logfile: "/tmp/repotracker_test.log"
+  logfile: "/tmp/repotracker_test.log"
 
 api:
-    github_webhook_secret: "test"
-    logfile: "/tmp/api_test.log"
-    httplistenaddr: ":9090"
-    httpslistenaddr: ":8443"
-    httpskey: |
-        -----BEGIN RSA PRIVATE KEY-----
-        MIIEpAIBAAKCAQEA2SBDCXd1kTytRA6tVn/RFIVBl9D54FdTEslq/jxRL5lHOoU1
-        TwaMmQh3pjNPxqvzWsFNXdKoypLlmp8f9o9EDlBteSH6P4JSSbIcyx9PKjgitRKo
-        lgJK20d/NkWHf8PYOrsMwK3FNF27gyL2edODtqATX0P2Ksxjt1M4coOdLDr9rpAJ
-        rB5NKezHa2CDSgiJRL0Gm71dHNW0YOClbpfMs56MEPj5v74uAcsAzvqDmwy7LyRR
-        Wv/j5ftxhBVgqTMErsHLmpF1iS2weEKZJ7qsWproJPw+DgwV6xhLHkriiPmXURm7
-        PshEgjmQI6gkyvXutPRebTjogTQUmuekZElF9QIDAQABAoIBAFrQPpmwCFFl0oZ7
-        qQ5byYROs/+enVSy0YEzE3ggnEhPUNZuLrzN3XKIcxrlrUFIXDGiVgye9pA73qLM
-        WV8TzwA5rYATsQptJKPERnzCrKbY8dNQaYjMjqimf9OgQysyK7ds0smoJKphZfNU
-        ZUjRKe7xhwi6cTS3ZiGgQiTLXarIgF1Poku4eoaIsrQRvGrfAYR4UYKsnK10Fp/X
-        i/8eSiubqYyBpnIw+P6/lA62COTNrsk+B0098rrmP2ATk/+RbwtKET+nbKi60lZO
-        UF5T5H3ZyFk3ySPWZEwxez+NicAp32KIqNcV0o504zTNIlu9FT32V5nXSWxR2Kqy
-        GeFL3mUCgYEA8Kjhujwo4IvwGHRu5FuMQIJkKsXVjKfowrX8PTk8LdQAEZHzsfpj
-        WKGIv1D9PDuPOYAP4re2CciFzzlPXPFpO9++spc5q69nIQGMpn/nAT61NKJwCTNS
-        DxWzXzMTcstN1c9KfzUYubc9FCwKlu5sEGAH4RJLSqrAhElOWpvnIjcCgYEA5vda
-        uiK+SsCuNll6ljGTPveVLnqv8XYV+I0gT5o6qzYyMm6z9p+CDCwhd6EkRi3YrkoH
-        t16yvfyJ42vkIhQkA+HlKQErf57P4WMSywXaReHs8lhJOLcOCrtgf/vobEwnsV1s
-        UX4c3x1wXqBC+t8EyI1RhsbfgJv8GswMeVW3szMCgYBKRbS0h1COTGHjCjwXGfHl
-        DtjfIoNPj5qUTRn1wy5BboY+5e5x5Ta36dKMSPB+oFsJge5lKBF0X4B8fdFye8bg
-        haMS9v0DcXTAiPvhfuPKTJIcFm3BSSdwJGBhZx//c6Mn83uoWriwyE5/ZUA3aInN
-        W/XSjpTSDHSx3vXhnO/ubQKBgQCe6tE1Q5SVULBN2xFa6G99ItM1sNsAlBSX+Vqj
-        CuaVSWwOgVc4ORY9E9xPOMQBuafefDeE9xabXHjvzxugSyVgunx300M/w2EbnpSe
-        tr8x2Dq1oQN4j5OM1NKYHRcV9OxWwIY4KELrTZE0uqZ7gRoEeCABUTMVhb5YHc/z
-        aIRGOwKBgQDXJmmVP9gkajOnkSwnIrha6OSNUrrFJciTPGzaT/wfH7eaO5t9ycTq
-        2SknqdTIM1yj3hy6vCGbY1uPcWdKzvcRiREC9Loix4bKt185QarmLR2tvQ18E6q8
-        8XLHVbSHOFGOI5U7lZl9Xv6C6OXWEfowHkk874CK634sT9DkWtAVLg==
-        -----END RSA PRIVATE KEY-----
-    httpscert: |
-        -----BEGIN CERTIFICATE-----
-        MIID0DCCArigAwIBAgIJALziNSK2Y3WFMA0GCSqGSIb3DQEBBQUAME4xCzAJBgNV
-        BAYTAlVTMQswCQYDVQQIEwJOWTEMMAoGA1UEBxMDTllDMRAwDgYDVQQKEwdNb25n
-        b0RCMRIwEAYDVQQDEwlsb2NhbGhvc3QwHhcNMTUwNTE0MTE1NjU4WhcNNDIwOTI5
-        MTE1NjU4WjBOMQswCQYDVQQGEwJVUzELMAkGA1UECBMCTlkxDDAKBgNVBAcTA05Z
-        QzEQMA4GA1UEChMHTW9uZ29EQjESMBAGA1UEAxMJbG9jYWxob3N0MIIBIjANBgkq
-        hkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2SBDCXd1kTytRA6tVn/RFIVBl9D54FdT
-        Eslq/jxRL5lHOoU1TwaMmQh3pjNPxqvzWsFNXdKoypLlmp8f9o9EDlBteSH6P4JS
-        SbIcyx9PKjgitRKolgJK20d/NkWHf8PYOrsMwK3FNF27gyL2edODtqATX0P2Ksxj
-        t1M4coOdLDr9rpAJrB5NKezHa2CDSgiJRL0Gm71dHNW0YOClbpfMs56MEPj5v74u
-        AcsAzvqDmwy7LyRRWv/j5ftxhBVgqTMErsHLmpF1iS2weEKZJ7qsWproJPw+DgwV
-        6xhLHkriiPmXURm7PshEgjmQI6gkyvXutPRebTjogTQUmuekZElF9QIDAQABo4Gw
-        MIGtMB0GA1UdDgQWBBSan1gKjf8CwHfrem9lVCyH8ZWZSzB+BgNVHSMEdzB1gBSa
-        n1gKjf8CwHfrem9lVCyH8ZWZS6FSpFAwTjELMAkGA1UEBhMCVVMxCzAJBgNVBAgT
-        Ak5ZMQwwCgYDVQQHEwNOWUMxEDAOBgNVBAoTB01vbmdvREIxEjAQBgNVBAMTCWxv
-        Y2FsaG9zdIIJALziNSK2Y3WFMAwGA1UdEwQFMAMBAf8wDQYJKoZIhvcNAQEFBQAD
-        ggEBAIdu3Tpe/6HszdsBmI9lPHZmpuB4ntmPexJKhYCSkk214Rz8ljjbdRCpoTfb
-        03wwzLr56ZpUUZCp6tDe+3rJ1aakMNxxPJ+16KVXKCrih5bAMIapqan74yezeaEM
-        fGorLC0DdUg6NLoAPayJFezrSGEJXjrOMRDGJiC0RPooM+eml02O2g8F9bxYkITx
-        7tCAaPyd68NC4o71GJgTfMqM8cioqhha9NYhDm57XU6D18rKj7UXgOuvgDO4P7HK
-        9XchfjSLxTBcPhzkTbqvDzPHosVdfxwSqnCtUaNlR5FetadloEark9oyiqQKO2d2
-        QTCMAQiibc5urfUsXCSy8klj6w4=
-        -----END CERTIFICATE-----
+  github_webhook_secret: "test"
+  logfile: "/tmp/api_test.log"
+  httplistenaddr: ":9090"
+  httpslistenaddr: ":8443"
+  httpskey: |
+    -----BEGIN RSA PRIVATE KEY-----
+    MIIEpAIBAAKCAQEA2SBDCXd1kTytRA6tVn/RFIVBl9D54FdTEslq/jxRL5lHOoU1
+    TwaMmQh3pjNPxqvzWsFNXdKoypLlmp8f9o9EDlBteSH6P4JSSbIcyx9PKjgitRKo
+    lgJK20d/NkWHf8PYOrsMwK3FNF27gyL2edODtqATX0P2Ksxjt1M4coOdLDr9rpAJ
+    rB5NKezHa2CDSgiJRL0Gm71dHNW0YOClbpfMs56MEPj5v74uAcsAzvqDmwy7LyRR
+    Wv/j5ftxhBVgqTMErsHLmpF1iS2weEKZJ7qsWproJPw+DgwV6xhLHkriiPmXURm7
+    PshEgjmQI6gkyvXutPRebTjogTQUmuekZElF9QIDAQABAoIBAFrQPpmwCFFl0oZ7
+    qQ5byYROs/+enVSy0YEzE3ggnEhPUNZuLrzN3XKIcxrlrUFIXDGiVgye9pA73qLM
+    WV8TzwA5rYATsQptJKPERnzCrKbY8dNQaYjMjqimf9OgQysyK7ds0smoJKphZfNU
+    ZUjRKe7xhwi6cTS3ZiGgQiTLXarIgF1Poku4eoaIsrQRvGrfAYR4UYKsnK10Fp/X
+    i/8eSiubqYyBpnIw+P6/lA62COTNrsk+B0098rrmP2ATk/+RbwtKET+nbKi60lZO
+    UF5T5H3ZyFk3ySPWZEwxez+NicAp32KIqNcV0o504zTNIlu9FT32V5nXSWxR2Kqy
+    GeFL3mUCgYEA8Kjhujwo4IvwGHRu5FuMQIJkKsXVjKfowrX8PTk8LdQAEZHzsfpj
+    WKGIv1D9PDuPOYAP4re2CciFzzlPXPFpO9++spc5q69nIQGMpn/nAT61NKJwCTNS
+    DxWzXzMTcstN1c9KfzUYubc9FCwKlu5sEGAH4RJLSqrAhElOWpvnIjcCgYEA5vda
+    uiK+SsCuNll6ljGTPveVLnqv8XYV+I0gT5o6qzYyMm6z9p+CDCwhd6EkRi3YrkoH
+    t16yvfyJ42vkIhQkA+HlKQErf57P4WMSywXaReHs8lhJOLcOCrtgf/vobEwnsV1s
+    UX4c3x1wXqBC+t8EyI1RhsbfgJv8GswMeVW3szMCgYBKRbS0h1COTGHjCjwXGfHl
+    DtjfIoNPj5qUTRn1wy5BboY+5e5x5Ta36dKMSPB+oFsJge5lKBF0X4B8fdFye8bg
+    haMS9v0DcXTAiPvhfuPKTJIcFm3BSSdwJGBhZx//c6Mn83uoWriwyE5/ZUA3aInN
+    W/XSjpTSDHSx3vXhnO/ubQKBgQCe6tE1Q5SVULBN2xFa6G99ItM1sNsAlBSX+Vqj
+    CuaVSWwOgVc4ORY9E9xPOMQBuafefDeE9xabXHjvzxugSyVgunx300M/w2EbnpSe
+    tr8x2Dq1oQN4j5OM1NKYHRcV9OxWwIY4KELrTZE0uqZ7gRoEeCABUTMVhb5YHc/z
+    aIRGOwKBgQDXJmmVP9gkajOnkSwnIrha6OSNUrrFJciTPGzaT/wfH7eaO5t9ycTq
+    2SknqdTIM1yj3hy6vCGbY1uPcWdKzvcRiREC9Loix4bKt185QarmLR2tvQ18E6q8
+    8XLHVbSHOFGOI5U7lZl9Xv6C6OXWEfowHkk874CK634sT9DkWtAVLg==
+    -----END RSA PRIVATE KEY-----
+  httpscert: |
+    -----BEGIN CERTIFICATE-----
+    MIID0DCCArigAwIBAgIJALziNSK2Y3WFMA0GCSqGSIb3DQEBBQUAME4xCzAJBgNV
+    BAYTAlVTMQswCQYDVQQIEwJOWTEMMAoGA1UEBxMDTllDMRAwDgYDVQQKEwdNb25n
+    b0RCMRIwEAYDVQQDEwlsb2NhbGhvc3QwHhcNMTUwNTE0MTE1NjU4WhcNNDIwOTI5
+    MTE1NjU4WjBOMQswCQYDVQQGEwJVUzELMAkGA1UECBMCTlkxDDAKBgNVBAcTA05Z
+    QzEQMA4GA1UEChMHTW9uZ29EQjESMBAGA1UEAxMJbG9jYWxob3N0MIIBIjANBgkq
+    hkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2SBDCXd1kTytRA6tVn/RFIVBl9D54FdT
+    Eslq/jxRL5lHOoU1TwaMmQh3pjNPxqvzWsFNXdKoypLlmp8f9o9EDlBteSH6P4JS
+    SbIcyx9PKjgitRKolgJK20d/NkWHf8PYOrsMwK3FNF27gyL2edODtqATX0P2Ksxj
+    t1M4coOdLDr9rpAJrB5NKezHa2CDSgiJRL0Gm71dHNW0YOClbpfMs56MEPj5v74u
+    AcsAzvqDmwy7LyRRWv/j5ftxhBVgqTMErsHLmpF1iS2weEKZJ7qsWproJPw+DgwV
+    6xhLHkriiPmXURm7PshEgjmQI6gkyvXutPRebTjogTQUmuekZElF9QIDAQABo4Gw
+    MIGtMB0GA1UdDgQWBBSan1gKjf8CwHfrem9lVCyH8ZWZSzB+BgNVHSMEdzB1gBSa
+    n1gKjf8CwHfrem9lVCyH8ZWZS6FSpFAwTjELMAkGA1UEBhMCVVMxCzAJBgNVBAgT
+    Ak5ZMQwwCgYDVQQHEwNOWUMxEDAOBgNVBAoTB01vbmdvREIxEjAQBgNVBAMTCWxv
+    Y2FsaG9zdIIJALziNSK2Y3WFMAwGA1UdEwQFMAMBAf8wDQYJKoZIhvcNAQEFBQAD
+    ggEBAIdu3Tpe/6HszdsBmI9lPHZmpuB4ntmPexJKhYCSkk214Rz8ljjbdRCpoTfb
+    03wwzLr56ZpUUZCp6tDe+3rJ1aakMNxxPJ+16KVXKCrih5bAMIapqan74yezeaEM
+    fGorLC0DdUg6NLoAPayJFezrSGEJXjrOMRDGJiC0RPooM+eml02O2g8F9bxYkITx
+    7tCAaPyd68NC4o71GJgTfMqM8cioqhha9NYhDm57XU6D18rKj7UXgOuvgDO4P7HK
+    9XchfjSLxTBcPhzkTbqvDzPHosVdfxwSqnCtUaNlR5FetadloEark9oyiqQKO2d2
+    QTCMAQiibc5urfUsXCSy8klj6w4=
+    -----END CERTIFICATE-----
 
 ui:
-    parsley_url: "https://localhost:4173"
-    secret: "this is a secret"
-    defaultproject: "mongodb-mongo-master"
-    logfile: "/tmp/ui_test.log"
-    url: "http://localhost"
-    httplistenaddr: ":9090"
+  parsley_url: "https://localhost:4173"
+  secret: "this is a secret"
+  defaultproject: "mongodb-mongo-master"
+  logfile: "/tmp/ui_test.log"
+  url: "http://localhost"
+  httplistenaddr: ":9090"
 
 monitor:
-    logfile: ""
+  logfile: ""
 
 hostinit:
-    logfile: "/tmp/hostinit_test.log"
+  logfile: "/tmp/hostinit_test.log"
 
 notify:
-    logfile: "/tmp/notify_test.log"
+  logfile: "/tmp/notify_test.log"
 
 arranger:
-    logfile: "/tmp/arranger_test.log"
-    mockexecution: true
+  logfile: "/tmp/arranger_test.log"
+  mockexecution: true
 
 scheduler:
-    logfile: "/tmp/scheduler_test.log"
+  logfile: "/tmp/scheduler_test.log"
 
 taskrunner:
-    logfile: "/tmp/taskrunner_test.log"
+  logfile: "/tmp/taskrunner_test.log"
 
 expansions:
-    buildlogger_creds: "mci.buildlogger"
-    github_private_key: |-
-        -----BEGIN RSA PRIVATE KEY-----
-        GH PRIVATE KEY
-        -----END RSA PRIVATE KEY-----
-    github_public_key: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDOKHeJ/AfWWTnwhiZYSPQ4HRSe84sf4qUgyAGGU+rJkq6Pwuk064/wh+D2vx1dOMQMETAcV4xB3AYw3S04ZHKwz61SLJSyjvJ3NItU7SKa8dNxr1EJywfk63tTAudleH4DjAFzHdRMqZT1penOhEJtKruyzxVuSpwFjkjJY/3vhawu9oNiolGhGvm/QzbxF8CjhWsLk/oAT8poWCsbvz5WlU6ttSMc6dkPLIB4kj0nlq8QDHdK6GnB9DRIGActa6fJaDRxGqgmnYIk5W44nFTGqIcfvqBC7LM83rnVeaseVWytSlbAQL11b+ZDw+UaQeT4CZ9Ft9Wi2MNuqU+NHu4f builder@10gen.com
-    api_httpscert_path: "/data/api_httpscert_path.pem"
+  buildlogger_creds: "mci.buildlogger"
+  github_private_key: |-
+    -----BEGIN RSA PRIVATE KEY-----
+    GH PRIVATE KEY
+    -----END RSA PRIVATE KEY-----
+  github_public_key: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDOKHeJ/AfWWTnwhiZYSPQ4HRSe84sf4qUgyAGGU+rJkq6Pwuk064/wh+D2vx1dOMQMETAcV4xB3AYw3S04ZHKwz61SLJSyjvJ3NItU7SKa8dNxr1EJywfk63tTAudleH4DjAFzHdRMqZT1penOhEJtKruyzxVuSpwFjkjJY/3vhawu9oNiolGhGvm/QzbxF8CjhWsLk/oAT8poWCsbvz5WlU6ttSMc6dkPLIB4kj0nlq8QDHdK6GnB9DRIGActa6fJaDRxGqgmnYIk5W44nFTGqIcfvqBC7LM83rnVeaseVWytSlbAQL11b+ZDw+UaQeT4CZ9Ft9Wi2MNuqU+NHu4f builder@10gen.com
+  api_httpscert_path: "/data/api_httpscert_path.pem"
 
 github_orgs: ["evergreen-ci", "newOwner"]
 github_pr_creator_org: "10gen"
 
 spawnhost:
-    unexpirable_hosts_per_user: 2
-    unexpirable_volumes_per_user: 2
-    spawn_hosts_per_user: 6
+  unexpirable_hosts_per_user: 2
+  unexpirable_volumes_per_user: 2
+  spawn_hosts_per_user: 6
 
 shutdown_wait_seconds: 10
+
+project_creation:
+  total_project_limit: 20
+  repo_project_limit: 5

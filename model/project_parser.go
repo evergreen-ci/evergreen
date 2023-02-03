@@ -26,6 +26,13 @@ const LoadProjectError = "load project error(s)"
 const TranslateProjectError = "error translating project"
 const EmptyConfigurationError = "received empty configuration file"
 
+// DefaultParserProjectAccessTimeout is the default timeout for accessing a
+// parser project. In general, the context timeout should prefer to be inherited
+// from a higher-level context (e.g. a REST request's context), so this timeout
+// should only be used as a last resort if the context cannot be easily passed
+// to the place where the parser project is accessed.
+const DefaultParserProjectAccessTimeout = 60 * time.Second
+
 // This file contains the infrastructure for turning a YAML project configuration
 // into a usable Project struct. A basic overview of the project parsing process is:
 //
@@ -53,8 +60,7 @@ const EmptyConfigurationError = "received empty configuration file"
 // to allow for flexible handling.
 type ParserProject struct {
 	// Id and ConfigdUpdateNumber are not pointers because they are only used internally
-	Id                 string `yaml:"_id" bson:"_id"` // should be the same as the version's ID
-	ConfigUpdateNumber int    `yaml:"config_number,omitempty" bson:"config_number,omitempty"`
+	Id string `yaml:"_id" bson:"_id"` // should be the same as the version's ID
 	// UpdatedByGenerators is used to determine if the parser project needs to be re-saved or not.
 	UpdatedByGenerators []string `yaml:"updated_by_generators,omitempty" bson:"updated_by_generators,omitempty"`
 	// List of yamls to merge
@@ -486,24 +492,31 @@ func (pss *parserStringSlice) UnmarshalYAML(unmarshal func(interface{}) error) e
 }
 
 // HasSpecificActivation returns if the build variant task specifies an activation condition that
-// overrides the default, such as cron/batchtime, disabling the task, or explicitly activating it.
+// overrides the default, such as cron/batchtime, disabling the task, or explicitly deactivating it.
 func (bvt *parserBVTaskUnit) hasSpecificActivation() bool {
 	return bvt.BatchTime != nil || bvt.CronBatchTime != "" ||
-		bvt.Activate != nil || utility.FromBoolPtr(bvt.Disable)
+		!utility.FromBoolTPtr(bvt.Activate) || utility.FromBoolPtr(bvt.Disable)
 }
 
 // HasSpecificActivation returns if the build variant specifies an activation condition that
-// overrides the default, such as cron/batchtime, disabling the task, or explicitly activating it.
+// overrides the default, such as cron/batchtime, disabling the task, or explicitly deactivating it.
 func (bvt *parserBV) hasSpecificActivation() bool {
 	return bvt.BatchTime != nil || bvt.CronBatchTime != "" ||
-		bvt.Activate != nil || bvt.Disabled
+		!utility.FromBoolTPtr(bvt.Activate) || bvt.Disabled
 }
 
 // FindAndTranslateProjectForPatch translates a parser project for a patch into a project.
 // This assumes that the version may not exist yet; otherwise FindAndTranslateProjectForVersion is equivalent.
-func FindAndTranslateProjectForPatch(ctx context.Context, p *patch.Patch) (*Project, *ParserProject, error) {
+func FindAndTranslateProjectForPatch(ctx context.Context, settings *evergreen.Settings, p *patch.Patch) (*Project, *ParserProject, error) {
 	if p.PatchedParserProject == "" {
-		return FindAndTranslateProjectForVersion(p.Version, p.Project)
+		v, err := VersionFindOneId(p.Version)
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "finding version '%s' for patch '%s'", p.Version, p.Id.Hex())
+		}
+		if v == nil {
+			return nil, nil, errors.Errorf("version '%s' not found for patch '%s'", p.Version, p.Id.Hex())
+		}
+		return FindAndTranslateProjectForVersion(ctx, settings, v)
 	}
 	project := &Project{}
 	pp, err := LoadProjectInto(ctx, []byte(p.PatchedParserProject), nil, p.Project, project)
@@ -515,25 +528,25 @@ func FindAndTranslateProjectForPatch(ctx context.Context, p *patch.Patch) (*Proj
 
 // FindAndTranslateProjectForVersion translates a parser project for a version into a Project.
 // Also sets the project ID.
-func FindAndTranslateProjectForVersion(versionId, projectId string) (*Project, *ParserProject, error) {
-	pp, err := ParserProjectFindOneById(versionId)
+func FindAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.Settings, v *Version) (*Project, *ParserProject, error) {
+	pp, err := ParserProjectFindOneByID(ctx, settings, v.ProjectStorageMethod, v.Id)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "finding parser project")
 	}
 	if pp == nil {
-		return nil, nil, errors.Errorf("parser project not found for version '%s'", versionId)
+		return nil, nil, errors.Errorf("parser project not found for version '%s'", v.Id)
 	}
-	pp.Identifier = utility.ToStringPtr(projectId)
+	pp.Identifier = utility.ToStringPtr(v.Identifier)
 	var p *Project
 	p, err = TranslateProject(pp)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "translating parser project '%s'", versionId)
+		return nil, nil, errors.Wrapf(err, "translating parser project '%s'", v.Id)
 	}
 	return p, pp, err
 }
 
 // LoadProjectInfoForVersion returns the project info for a version from its parser project.
-func LoadProjectInfoForVersion(v *Version, id string) (ProjectInfo, error) {
+func LoadProjectInfoForVersion(ctx context.Context, settings *evergreen.Settings, v *Version, id string) (ProjectInfo, error) {
 	var err error
 
 	pRef, err := FindMergedProjectRef(id, "", false)
@@ -550,7 +563,7 @@ func LoadProjectInfoForVersion(v *Version, id string) (ProjectInfo, error) {
 			return ProjectInfo{}, errors.Wrap(err, "finding project config")
 		}
 	}
-	p, pp, err := FindAndTranslateProjectForVersion(v.Id, id)
+	p, pp, err := FindAndTranslateProjectForVersion(ctx, settings, v)
 	if err != nil {
 		return ProjectInfo{}, errors.Wrap(err, "translating project")
 	}
@@ -920,6 +933,14 @@ func (pp *ParserProject) AddBuildVariant(name, displayName, runOn string, batchT
 		bv.RunOn = []string{runOn}
 	}
 	pp.BuildVariants = append(pp.BuildVariants, bv)
+}
+
+func (pp *ParserProject) GetParameters() []patch.Parameter {
+	res := []patch.Parameter{}
+	for _, param := range pp.Parameters {
+		res = append(res, param.Parameter)
+	}
+	return res
 }
 
 // sieveMatrixVariants takes a set of parserBVs and groups them into regular
