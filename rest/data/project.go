@@ -59,7 +59,10 @@ func RequestAWSAccess(projectIdentifier string) error {
 		return errors.New("project identifier cannot be empty")
 	}
 	settings, err := evergreen.GetConfig()
-	summary := fmt.Sprintf("Create AWS key for s3 uploads for %s project", projectIdentifier)
+	if err != nil {
+		return errors.Wrap(err, "getting evergreen settings")
+	}
+	summary := fmt.Sprintf("Create AWS key for s3 uploads for '%s' project", projectIdentifier)
 	description := fmt.Sprintf("Could you create an s3 key for the new [%s|%s/project/%s/settings/general] project?", projectIdentifier, settings.Ui.UIv2Url, projectIdentifier)
 	jiraIssue := message.JiraIssue{
 		Project:     "BUILD",
@@ -70,8 +73,7 @@ func RequestAWSAccess(projectIdentifier string) error {
 	sub := event.Subscriber{
 		Type: event.JIRAIssueSubscriberType,
 		Target: event.JIRAIssueSubscriber{
-			Project:   "BUILD",
-			IssueType: jiraIssueType,
+			Project: "BUILD",
 		},
 	}
 	n, err := notification.New("", utility.RandomString(), &sub, jiraIssue)

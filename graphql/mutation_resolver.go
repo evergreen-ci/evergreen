@@ -401,7 +401,7 @@ func (r *mutationResolver) AttachProjectToRepo(ctx context.Context, projectID st
 }
 
 // CreateProject is the resolver for the createProject field.
-func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.APIProjectRef, createAws *bool) (*restModel.APIProjectRef, error) {
+func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.APIProjectRef, requestS3Creds *bool) (*restModel.APIProjectRef, error) {
 	dbProjectRef, err := project.ToService()
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error converting project ref to service model: %s", err.Error()))
@@ -432,7 +432,7 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
 	}
 
-	if utility.FromBoolPtr(createAws) {
+	if utility.FromBoolPtr(requestS3Creds) {
 		if err = data.RequestAWSAccess(*apiProjectRef.Identifier); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating jira ticket to request AWS access: %s", err.Error()))
 		}
@@ -441,7 +441,7 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 }
 
 // CopyProject is the resolver for the copyProject field.
-func (r *mutationResolver) CopyProject(ctx context.Context, project data.CopyProjectOpts, createAws *bool) (*restModel.APIProjectRef, error) {
+func (r *mutationResolver) CopyProject(ctx context.Context, project data.CopyProjectOpts, requestS3Creds *bool) (*restModel.APIProjectRef, error) {
 	projectRef, err := data.CopyProject(ctx, evergreen.GetEnvironment(), project)
 	if projectRef == nil && err != nil {
 		apiErr, ok := err.(gimlet.ErrorResponse) // make sure bad request errors are handled correctly; all else should be treated as internal server error
@@ -460,7 +460,7 @@ func (r *mutationResolver) CopyProject(ctx context.Context, project data.CopyPro
 		// https://github.com/99designs/gqlgen/issues/1191
 		graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
 	}
-	if utility.FromBoolPtr(createAws) {
+	if utility.FromBoolPtr(requestS3Creds) {
 		if err = data.RequestAWSAccess(*projectRef.Identifier); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating jira ticket to request AWS access: %s", err.Error()))
 		}
