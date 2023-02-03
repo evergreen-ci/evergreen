@@ -930,7 +930,7 @@ func tryDequeueAndAbortCommitQueueVersion(p *patch.Patch, cq commitqueue.CommitQ
 	// If the commit queue merge task failed on setup, there is likely a merge conflict.
 	var mergeError error
 	if t.Details.Type == evergreen.CommandTypeSetup {
-		mergeError = errors.New("merge task failed on setup, which likely means a merge conflict was introduced")
+		mergeError = errors.New("merge task failed on setup, which likely means a merge conflict was introduced, please try merging with the base branch")
 	}
 	event.LogCommitQueueConcludeWithError(p.Id.Hex(), evergreen.MergeTestFailed, mergeError)
 	return errors.Wrap(CancelPatch(p, task.AbortInfo{TaskID: t.Id, User: caller}), "aborting failed commit queue patch")
