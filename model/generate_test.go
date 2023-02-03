@@ -104,6 +104,64 @@ var (
 		},
 	}
 
+	sampleGeneratedProjectWithAllMultiFields = GeneratedProject{
+		BuildVariants: []parserBV{
+			{
+				Name: "honeydew",
+				Tasks: []parserBVTaskUnit{
+					{Name: "cat"},
+					{Name: "doge"},
+					{Name: "pika"},
+				},
+				DisplayTasks: []displayTask{},
+			},
+			{
+				Name: "cantaloupe",
+				Tasks: []parserBVTaskUnit{
+					{Name: "quokka"},
+				},
+				DisplayTasks: []displayTask{
+					{Name: "grouse"},
+					{Name: "albatross"},
+				},
+			},
+		},
+		Tasks: []parserTask{
+			{
+				Name: "quokka",
+				Commands: []PluginCommandConf{
+					{Command: "shell.exec"},
+					{Command: "shell.exec"},
+				},
+			},
+			{
+				Name: "pika",
+				Commands: []PluginCommandConf{
+					{Command: "shell.exec"},
+				},
+			},
+		},
+		TaskGroups: []parserTaskGroup{
+			{
+				Name:  "sea-bunny",
+				Tasks: []string{"quokka", "pika"},
+			},
+			{
+				Name:  "mola-mola",
+				Tasks: []string{"quokka"},
+			},
+		},
+		Functions: map[string]*YAMLCommandSet{
+			"brownie": {MultiCommand: []PluginCommandConf{
+				{Command: "shell.exec"},
+				{Command: "shell.exec"},
+			}},
+			"cookie": {MultiCommand: []PluginCommandConf{
+				{Command: "shell.exec"},
+			}},
+		},
+	}
+
 	smallGeneratedProject = GeneratedProject{
 		BuildVariants: []parserBV{
 			{
@@ -274,6 +332,47 @@ buildvariants:
     - name: say-hi
     - name: a-depended-on-task
 `
+
+	sampleProjYAMLWithMultiFields = `
+tasks:
+- name: blueberry
+  commands:
+    - command: shell.exec
+- name: strawberry
+  commands:
+    - command: shell.exec
+- name: banana-is-a-berry
+  commands:
+    - command: shell.exec
+
+buildvariants:
+- name: rutabaga
+  tasks:
+    - name: blueberry
+    - name: strawberry
+- name: sweet-potato
+  tasks:
+    - name: strawberry
+    - name: lotta-fruits
+
+functions:
+  purple:
+    - command: shell.exec
+    - command: shell.exec
+  orange:
+    - command: shell.exec
+
+task_groups:
+- name: i-am-a-fruitarian
+  tasks:
+    - blueberry
+    - strawberry
+- name: lotta-fruits
+  tasks:
+    - blueberry
+    - banana-is-a-berry
+`
+
 	sampleGenerateTasksYml = `
 {
     "functions": {
@@ -568,6 +667,59 @@ func (s *GenerateSuite) TestValidateNoRecursiveGenerateTasks() {
 		},
 	}
 	s.Error(g.validateNoRecursiveGenerateTasks(cachedProject))
+}
+
+func (s *GenerateSuite) TestCacheProjectData() {
+	var p Project
+	_, err := LoadProjectInto(s.ctx, []byte(sampleProjYAMLWithMultiFields), nil, "", &p)
+	s.Require().NoError(err)
+	cached := cacheProjectData(&p)
+	expectedBVs := map[string]bool{
+		"rutabaga":     false,
+		"sweet-potato": false,
+	}
+	for bvName := range cached.buildVariants {
+		_, ok := expectedBVs[bvName]
+		s.True(ok, "unexpected build variant '%s'", bvName)
+		expectedBVs[bvName] = true
+	}
+	for bvName, found := range expectedBVs {
+		s.True(found, "did not find expected build variant '%s'", bvName)
+	}
+
+	expectedTasks := map[string]bool{
+		"blueberry":         false,
+		"strawberry":        false,
+		"banana-is-a-berry": false,
+	}
+	for taskName, tsk := range cached.tasks {
+		_, ok := expectedTasks[taskName]
+		s.True(ok, "unexpected build variant '%s'", taskName)
+		s.Equal(taskName, tsk.Name, "task name key does not match the task it maps to")
+		expectedTasks[taskName] = true
+	}
+	for taskName, found := range expectedTasks {
+		s.True(found, "did not find expected task '%s'", taskName)
+	}
+
+	expectedFuncs := map[string]struct {
+		numCmds int
+		found   bool
+	}{
+		"purple": {numCmds: 2},
+		"orange": {numCmds: 1},
+	}
+	for funcName, funcCmds := range cached.functions {
+		expected, ok := expectedFuncs[funcName]
+		s.True(ok, "unexpected function '%s'", funcName)
+		s.Len(funcCmds.List(), expected.numCmds)
+
+		expected.found = true
+		expectedFuncs[funcName] = expected
+	}
+	for funcName, expected := range expectedFuncs {
+		s.True(expected.found, "did not find expected function '%s'", funcName)
+	}
 }
 
 func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
@@ -1331,6 +1483,93 @@ func TestFilterInactiveTasks(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Empty(t, tasks)
 	})
+}
+
+func (s *GenerateSuite) TestMergeGeneratedProjects() {
+	projects := []GeneratedProject{sampleGeneratedProjectWithAllMultiFields}
+	merged, err := MergeGeneratedProjects(projects)
+	s.Require().NoError(err)
+
+	expectedBVs := map[string]struct {
+		numTasks        int
+		numDisplayTasks int
+		found           bool
+	}{
+		"honeydew": {numTasks: 3},
+		"cantaloupe": {
+			numTasks:        1,
+			numDisplayTasks: 2,
+		},
+	}
+	for _, bv := range merged.BuildVariants {
+		expected, ok := expectedBVs[bv.Name]
+		s.True(ok, "unexpected build variant '%s'", bv.Name)
+		s.Len(bv.Tasks, expected.numTasks, "unexpected number of tasks for build variant '%s'", bv.Name)
+		s.Len(bv.DisplayTasks, expected.numDisplayTasks, "unexpected number of display tasks for build variant '%s'", bv.DisplayName)
+
+		expected.found = true
+		expectedBVs[bv.Name] = expected
+	}
+	for bvName, expected := range expectedBVs {
+		s.True(expected.found, "did not find expected build variant '%s'", bvName)
+	}
+
+	expectedTasks := map[string]struct {
+		numCmds int
+		found   bool
+	}{
+		"quokka": {numCmds: 2},
+		"pika":   {numCmds: 1},
+	}
+	for _, tsk := range merged.Tasks {
+		expected, ok := expectedTasks[tsk.Name]
+		s.True(ok, "unexpected task '%s'", tsk.Name)
+		s.Len(tsk.Commands, expected.numCmds, "unexpected number of commands for task '%s'", tsk.Name)
+
+		expected.found = true
+		expectedTasks[tsk.Name] = expected
+	}
+	for taskName, expected := range expectedTasks {
+		s.True(expected.found, "did not find expected task '%s'", taskName)
+	}
+
+	expectedFuncs := map[string]struct {
+		numCmds int
+		found   bool
+	}{
+		"brownie": {numCmds: 2},
+		"cookie":  {numCmds: 1},
+	}
+	for funcName, funcCmds := range merged.Functions {
+		expected, ok := expectedFuncs[funcName]
+		s.True(ok, "unexpected function '%s'", funcName)
+		s.Len(funcCmds.List(), expected.numCmds, "unexpected number of commands for function '%s'", funcName)
+
+		expected.found = true
+		expectedFuncs[funcName] = expected
+	}
+	for funcName, expected := range expectedFuncs {
+		s.True(expected.found, "did not find expected function '%s'", funcName)
+	}
+
+	expectedTaskGroups := map[string]struct {
+		numTasks int
+		found    bool
+	}{
+		"sea-bunny": {numTasks: 2},
+		"mola-mola": {numTasks: 1},
+	}
+	for _, tg := range merged.TaskGroups {
+		expected, ok := expectedTaskGroups[tg.Name]
+		s.True(ok, "unexpected task group '%s'", tg.Name)
+		s.Len(tg.Tasks, expected.numTasks, "unexpected number of tasks for task group '%s'", tg.Name)
+
+		expected.found = true
+		expectedTaskGroups[tg.Name] = expected
+	}
+	for tgName, expected := range expectedTaskGroups {
+		s.True(expected.found, "did not find expected task group '%s'", tgName)
+	}
 }
 
 func (s *GenerateSuite) TestMergeGeneratedProjectsWithNoTasks() {
