@@ -325,7 +325,7 @@ func (j *hostTerminationJob) incrementIdleTime(ctx context.Context) error {
 		return errors.Wrapf(err, "getting cloud host for host '%s'", j.HostID)
 	}
 	if pad := cloudHost.CloudMgr.TimeTilNextPayment(j.host); pad > time.Second {
-		idleTime = idleTime + pad
+		idleTime += pad
 	}
 
 	return j.host.IncIdleTime(idleTime)
