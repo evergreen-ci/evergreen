@@ -29,12 +29,13 @@ type CommitQueueItem struct {
 	Issue   string `bson:"issue"`
 	PatchId string `bson:"patch_id,omitempty"`
 	// Version is the ID of the version that is running the patch. It's also used to determine what entries are processing
-	Version             string    `bson:"version,omitempty"`
-	EnqueueTime         time.Time `bson:"enqueue_time"`
-	ProcessingStartTime time.Time `bson:"processing_start_time"`
-	Modules             []Module  `bson:"modules"`
-	MessageOverride     string    `bson:"message_override"`
-	Source              string    `bson:"source"`
+	Version              string    `bson:"version,omitempty"`
+	EnqueueTime          time.Time `bson:"enqueue_time"`
+	ProcessingStartTime  time.Time `bson:"processing_start_time"`
+	Modules              []Module  `bson:"modules"`
+	MessageOverride      string    `bson:"message_override"`
+	Source               string    `bson:"source"`
+	QueueLengthAtEnqueue int       `bson:"queue_length_at_enqueue"`
 }
 
 func (i *CommitQueueItem) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(i) }
@@ -59,6 +60,7 @@ func (q *CommitQueue) Enqueue(item CommitQueueItem) (int, error) {
 	}
 
 	item.EnqueueTime = time.Now()
+	item.QueueLengthAtEnqueue = len(q.Queue)
 	if err := add(q.ProjectID, item); err != nil {
 		return 0, errors.Wrapf(err, "adding '%s' to queue for project '%s'", item.Issue, q.ProjectID)
 	}
@@ -90,6 +92,7 @@ func (q *CommitQueue) EnqueueAtFront(item CommitQueueItem) (int, error) {
 		}
 	}
 	item.EnqueueTime = time.Now()
+	item.QueueLengthAtEnqueue = len(q.Queue)
 	if err := addAtPosition(q.ProjectID, item, newPos); err != nil {
 		return 0, errors.Wrapf(err, "force adding '%s' to queue for project '%s'", item.Issue, q.ProjectID)
 	}

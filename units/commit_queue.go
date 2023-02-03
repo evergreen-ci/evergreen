@@ -117,12 +117,13 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 
 	front, hasItem := cq.Next()
 	grip.InfoWhen(hasItem, message.Fields{
-		"source":       "commit queue",
-		"job_id":       j.ID(),
-		"item":         front,
-		"project_id":   cq.ProjectID,
-		"waiting_secs": time.Since(front.EnqueueTime).Seconds(),
-		"message":      "found item at the front of commit queue",
+		"source":                  "commit queue",
+		"job_id":                  j.ID(),
+		"item":                    front,
+		"project_id":              cq.ProjectID,
+		"waiting_secs":            time.Since(front.EnqueueTime).Seconds(),
+		"queue_length_at_enqueue": front.QueueLengthAtEnqueue,
+		"message":                 "found item at the front of commit queue",
 	})
 
 	conf, err := evergreen.GetConfig()
