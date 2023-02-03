@@ -1025,6 +1025,7 @@ func logTaskStartMessage(h *host.Host, t *task.Task) {
 		"scheduled_time":         t.ScheduledTime,
 		"activated_latency_secs": t.StartTime.Sub(t.ActivatedTime).Seconds(),
 		"scheduled_latency_secs": t.StartTime.Sub(t.ScheduledTime).Seconds(),
+		"started_latency_secs":   t.StartTime.Sub(t.DispatchTime).Seconds(),
 		"distro":                 h.Distro.Id,
 		"generator":              t.GenerateTask,
 		"group":                  t.TaskGroup,
