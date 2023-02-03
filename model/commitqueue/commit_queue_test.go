@@ -106,7 +106,7 @@ func (s *CommitQueueSuite) TestEnqueueAtFront() {
 
 	// check that it's enqueued at the end of the processing items
 	item.Version = "critical1"
-	s.NoError(dbq.UpdateVersion(item))
+	s.NoError(dbq.UpdateVersion(&item))
 	item = sampleCommitQueueItem
 	item.Issue = "critical2"
 	pos, err = dbq.EnqueueAtFront(item)
@@ -142,7 +142,7 @@ func (s *CommitQueueSuite) TestUpdateVersion() {
 	item := s.q.Queue[0]
 	item.Version = "my_version"
 	now := time.Now()
-	s.NoError(s.q.UpdateVersion(item))
+	s.NoError(s.q.UpdateVersion(&item))
 
 	dbq, err := FindOneId("mci")
 	s.NoError(err)
