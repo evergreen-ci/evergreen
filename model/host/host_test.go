@@ -2528,31 +2528,31 @@ func TestIsIdleParent(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 
-	provisionTimeRecent := time.Now().Add(-5 * time.Minute)
-	provisionTimeOld := time.Now().Add(-1 * time.Hour)
+	billingTimeRecent := time.Now().Add(-5 * time.Minute)
+	billingTimeOld := time.Now().Add(-1 * time.Hour)
 
 	host1 := &Host{
-		Id:            "host1",
-		Status:        evergreen.HostRunning,
-		ProvisionTime: provisionTimeOld,
+		Id:               "host1",
+		Status:           evergreen.HostRunning,
+		BillingStartTime: billingTimeOld,
 	}
 	host2 := &Host{
-		Id:            "host2",
-		Status:        evergreen.HostRunning,
-		HasContainers: true,
-		ProvisionTime: provisionTimeRecent,
+		Id:               "host2",
+		Status:           evergreen.HostRunning,
+		HasContainers:    true,
+		BillingStartTime: billingTimeRecent,
 	}
 	host3 := &Host{
-		Id:            "host3",
-		Status:        evergreen.HostRunning,
-		HasContainers: true,
-		ProvisionTime: provisionTimeOld,
+		Id:               "host3",
+		Status:           evergreen.HostRunning,
+		HasContainers:    true,
+		BillingStartTime: billingTimeOld,
 	}
 	host4 := &Host{
-		Id:            "host4",
-		Status:        evergreen.HostRunning,
-		HasContainers: true,
-		ProvisionTime: provisionTimeOld,
+		Id:               "host4",
+		Status:           evergreen.HostRunning,
+		HasContainers:    true,
+		BillingStartTime: billingTimeOld,
 	}
 	host5 := &Host{
 		Id:       "host5",
@@ -2591,7 +2591,7 @@ func TestIsIdleParent(t *testing.T) {
 	assert.True(idle)
 	assert.NoError(err)
 
-	// ios a container --> false
+	// is a container --> false
 	idle, err = host5.IsIdleParent()
 	assert.False(idle)
 	assert.NoError(err)
