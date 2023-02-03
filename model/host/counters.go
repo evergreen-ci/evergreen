@@ -58,9 +58,10 @@ func (h *Host) IncContainerBuildAttempt() error {
 	return nil
 }
 
-func (h *Host) IncIdleTime(dur time.Duration) error {
-	if dur < 0 {
-		return errors.Errorf("cannot increment idle time by a negative duration %s", dur)
+// IncIdleTime increments the host's TotalIdleTime. Noop if idleTime is non-positive.
+func (h *Host) IncIdleTime(idleTime time.Duration) error {
+	if idleTime <= 0 {
+		return nil
 	}
 
 	query := bson.M{
@@ -70,7 +71,7 @@ func (h *Host) IncIdleTime(dur time.Duration) error {
 	change := adb.Change{
 		ReturnNew: true,
 		Update: bson.M{
-			"$inc": bson.M{TotalIdleTimeKey: dur},
+			"$inc": bson.M{TotalIdleTimeKey: idleTime},
 		},
 	}
 

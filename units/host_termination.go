@@ -318,34 +318,17 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 }
 
 func (j *hostTerminationJob) incrementIdleTime(ctx context.Context) error {
+	idleTime := j.host.IdleTime()
+
 	cloudHost, err := cloud.GetCloudHost(ctx, j.host, j.env)
 	if err != nil {
 		return errors.Wrapf(err, "getting cloud host for host '%s'", j.HostID)
 	}
-
-	idleTimeStartsAt := j.host.LastTaskCompletedTime
-	if utility.IsZeroTime(idleTimeStartsAt) {
-		idleTimeStartsAt = j.host.BillingStartTime
-	}
-	if utility.IsZeroTime(idleTimeStartsAt) {
-		grip.Debug(message.Fields{
-			"message":   "zero billing start time",
-			"operation": "host_termination",
-			"distro":    j.host.Distro.Id,
-			"host_id":   j.host.Id,
-			"host_tag":  j.host.Tag,
-		})
-		idleTimeStartsAt = j.host.StartTime
+	if pad := cloudHost.CloudMgr.TimeTilNextPayment(j.host); pad > time.Second {
+		idleTime = idleTime + pad
 	}
 
-	hostBillingEnds := j.host.TerminationTime
-	pad := cloudHost.CloudMgr.TimeTilNextPayment(j.host)
-	if pad > time.Second {
-		hostBillingEnds = hostBillingEnds.Add(pad)
-	}
-
-	idleTime := hostBillingEnds.Sub(idleTimeStartsAt)
-	return errors.Wrap(j.host.IncIdleTime(idleTime), "incrementing idle time")
+	return j.host.IncIdleTime(idleTime)
 }
 
 // checkAndTerminateCloudHost checks if the host is still up according to the

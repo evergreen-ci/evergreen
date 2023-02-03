@@ -390,25 +390,51 @@ func (h *Host) GetTaskGroupString() string {
 // IdleTime returns how long has this host been idle
 func (h *Host) IdleTime() time.Duration {
 
-	// if the host is currently running a task, it is not idle
+	// If the host is currently running a task, it is not idle.
 	if h.RunningTask != "" {
-		return time.Duration(0)
+		return 0
 	}
 
-	// if the host has run a task before, then the idle time is just the time
-	// passed since the last task finished
+	// If the host has run a task, then the idle time is the time
+	// passed since the last task finished.
 	if h.LastTask != "" {
 		return time.Since(h.LastTaskCompletedTime)
 	}
 
-	// if the host has been provisioned, the idle time is how long it has been provisioned
-	if !utility.IsZeroTime(h.ProvisionTime) {
-		return time.Since(h.ProvisionTime)
+	// If the host has not yet run a task, the idle time is how long it has been billable.
+	if !utility.IsZeroTime(h.BillingStartTime) {
+		return time.Since(h.BillingStartTime)
 	}
 
-	// if the host has not run a task before, the idle time is just
-	// how long is has been since the host was created
-	return time.Since(h.CreationTime)
+	// If the host hasn't run a task and its billing start time is not set, the idle time is
+	// how long it has been since the host was started.
+	return time.Since(h.StartTime)
+}
+
+func (h *Host) IdleStatsMessage() message.Fields {
+	msg := message.Fields{
+		"stat":            "host-idle",
+		"distro":          h.Distro.Id,
+		"provider":        h.Distro.Provider,
+		"provisioning":    h.Distro.BootstrapSettings.Method,
+		"host_id":         h.Id,
+		"status":          h.Status,
+		"idle_secs":       h.IdleTime().Seconds(),
+		"spawn_host":      h.StartedBy != evergreen.User && !h.SpawnOptions.SpawnedByTask,
+		"task_spawn_host": h.SpawnOptions.SpawnedByTask,
+		"has_containers":  h.HasContainers,
+		"task_host":       h.StartedBy == evergreen.User && !h.HasContainers,
+	}
+
+	if strings.HasPrefix(h.Distro.Provider, "ec2") {
+		msg["provider"] = "ec2"
+	}
+
+	if h.Provider != evergreen.ProviderNameStatic {
+		msg["host_task_count"] = h.TaskCount
+	}
+
+	return msg
 }
 
 func (h *Host) GetAMI() string {
