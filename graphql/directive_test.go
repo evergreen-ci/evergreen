@@ -4,13 +4,16 @@ import (
 	"context"
 	"testing"
 
+	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/require"
+	"github.com/vektah/gqlparser/v2/ast"
 )
 
 func init() {
@@ -235,4 +238,60 @@ func TestRequireProjectAccess(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 4, callCount)
+}
+
+func TestRestrictProjectAccess(t *testing.T) {
+	setupPermissions(t)
+	config := New("/graphql")
+	require.NotNil(t, config)
+	ctx := context.Background()
+
+	// callCount keeps track of how many times the function is called
+	callCount := 0
+	next := func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		callCount++
+		return nil, nil
+	}
+
+	usr, err := setupUser(t)
+	require.NoError(t, err)
+	require.NotNil(t, usr)
+
+	ctx = gimlet.AttachUser(ctx, usr)
+	require.NotNil(t, ctx)
+
+	projectRef := model.ProjectRef{
+		Id:         "project_id",
+		Identifier: "project_identifier",
+		Admins:     []string{"admin_1", "admin_2", "admin_3"},
+	}
+	err = projectRef.Insert()
+	require.NoError(t, err)
+
+	apiProjectRef := &restModel.APIProjectRef{}
+	err = apiProjectRef.BuildFromService(projectRef)
+	require.NoError(t, err)
+
+	fieldCtx := &graphql.FieldContext{
+		Field: graphql.CollectedField{
+			Field: &ast.Field{
+				Alias: "admins",
+			},
+		},
+	}
+	ctx = graphql.WithFieldContext(ctx, fieldCtx)
+
+	res, err := config.Directives.RestrictProjectAccess(ctx, apiProjectRef, next)
+	require.Error(t, err, "user does not have permission to access the field admins for project with ID 'project_id")
+	require.Nil(t, res)
+	require.Equal(t, 0, callCount)
+
+	err = usr.AddRole("view_project")
+	require.NoError(t, err)
+
+	res, err = config.Directives.RestrictProjectAccess(ctx, apiProjectRef, next)
+	require.NoError(t, err)
+	require.Nil(t, res)
+	require.Equal(t, 1, callCount)
 }

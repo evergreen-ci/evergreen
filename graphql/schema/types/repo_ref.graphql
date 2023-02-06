@@ -48,43 +48,43 @@ exactly.
 """
 type RepoRef {
   id: String!
-  admins: [String!]!
-  batchTime: Int!
+  admins: [String!]! @restrictProjectAccess
+  batchTime: Int! @restrictProjectAccess
   branch: String!
-  buildBaronSettings: BuildBaronSettings!
-  commitQueue: RepoCommitQueueParams!
-  deactivatePrevious: Boolean!
-  disabledStatsCache: Boolean!
-  dispatchingDisabled: Boolean!
+  buildBaronSettings: BuildBaronSettings! @restrictProjectAccess
+  commitQueue: RepoCommitQueueParams! @restrictProjectAccess
+  containerSizeDefinitions: [ContainerResources!] @restrictProjectAccess
+  deactivatePrevious: Boolean! @restrictProjectAccess
+  disabledStatsCache: Boolean! @restrictProjectAccess
+  dispatchingDisabled: Boolean! @restrictProjectAccess
   displayName: String!
   enabled: Boolean!
-  githubChecksEnabled: Boolean!
-  githubTriggerAliases: [String!]
-  gitTagAuthorizedTeams: [String!]
-  gitTagAuthorizedUsers: [String!]
-  gitTagVersionsEnabled: Boolean!
-  manualPrTestingEnabled: Boolean!
-  notifyOnBuildFailure: Boolean!
+  githubChecksEnabled: Boolean! @restrictProjectAccess
+  githubTriggerAliases: [String!] @restrictProjectAccess
+  gitTagAuthorizedTeams: [String!] @restrictProjectAccess
+  gitTagAuthorizedUsers: [String!] @restrictProjectAccess
+  gitTagVersionsEnabled: Boolean! @restrictProjectAccess
+  manualPrTestingEnabled: Boolean! @restrictProjectAccess
+  notifyOnBuildFailure: Boolean! @restrictProjectAccess
   owner: String!
-  patchingDisabled: Boolean!
-  patchTriggerAliases: [PatchTriggerAlias!]
-  perfEnabled: Boolean!
-  periodicBuilds: [PeriodicBuild!]
+  patchingDisabled: Boolean! @restrictProjectAccess
+  patchTriggerAliases: [PatchTriggerAlias!] @restrictProjectAccess
+  perfEnabled: Boolean! @restrictProjectAccess
+  periodicBuilds: [PeriodicBuild!] @restrictProjectAccess
   private: Boolean!
-  prTestingEnabled: Boolean!
-  remotePath: String!
+  prTestingEnabled: Boolean! @restrictProjectAccess
+  remotePath: String! @restrictProjectAccess
   repo: String!
-  repotrackerDisabled: Boolean!
-  restricted: Boolean!
-  spawnHostScriptPath: String!
-  stepbackDisabled: Boolean!
-  taskAnnotationSettings: TaskAnnotationSettings!
-  taskSync: RepoTaskSyncOptions!
-  tracksPushEvents: Boolean!
-  triggers: [TriggerAlias!]!
-  versionControlEnabled: Boolean!
-  workstationConfig: RepoWorkstationConfig!
-  containerSizeDefinitions: [ContainerResources!]
+  repotrackerDisabled: Boolean! @restrictProjectAccess
+  restricted: Boolean! @restrictProjectAccess
+  spawnHostScriptPath: String! @restrictProjectAccess
+  stepbackDisabled: Boolean! @restrictProjectAccess
+  taskAnnotationSettings: TaskAnnotationSettings! @restrictProjectAccess
+  taskSync: RepoTaskSyncOptions! @restrictProjectAccess
+  tracksPushEvents: Boolean! @restrictProjectAccess
+  triggers: [TriggerAlias!]! @restrictProjectAccess
+  versionControlEnabled: Boolean! @restrictProjectAccess
+  workstationConfig: RepoWorkstationConfig! @restrictProjectAccess
 }
 
 type RepoCommitQueueParams {

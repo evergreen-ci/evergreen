@@ -11,7 +11,9 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 )
 
 type Resolver struct {
@@ -67,6 +69,33 @@ func New(apiURL string) Config {
 			return hasProjectPermission(ctx, pid, next, permissionLevel)
 		}
 		return nil, ResourceNotFound.Send(ctx, "Could not find project")
+	}
+	c.Directives.RestrictProjectAccess = func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error) {
+		user := gimlet.GetUser(ctx)
+		if user == nil {
+			return nil, Forbidden.Send(ctx, "user not logged in")
+		}
+
+		projectRef, isProjectRef := obj.(*restModel.APIProjectRef)
+		if !isProjectRef {
+			return nil, ResourceNotFound.Send(ctx, "project not valid")
+		}
+
+		projectId := utility.FromStringPtr(projectRef.Id)
+		if projectId == "" {
+			return nil, ResourceNotFound.Send(ctx, "project not specified")
+		}
+
+		opts := gimlet.PermissionOpts{
+			Resource:      projectId,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionProjectSettings,
+			RequiredLevel: evergreen.ProjectSettingsView.Value,
+		}
+		if user.HasPermission(opts) {
+			return next(ctx)
+		}
+		return nil, Forbidden.Send(ctx, fmt.Sprintf("user does not have permission to access the field %s for project with ID '%s'", graphql.GetFieldContext(ctx).Path(), projectId))
 	}
 	return c
 }
