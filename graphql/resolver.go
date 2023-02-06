@@ -78,7 +78,7 @@ func New(apiURL string) Config {
 
 		projectRef, isProjectRef := obj.(*restModel.APIProjectRef)
 		if !isProjectRef {
-			return nil, ResourceNotFound.Send(ctx, "project not valid")
+			return nil, InternalServerError.Send(ctx, "project not valid")
 		}
 
 		projectId := utility.FromStringPtr(projectRef.Id)
