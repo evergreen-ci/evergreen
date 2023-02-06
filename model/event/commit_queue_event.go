@@ -69,12 +69,10 @@ func LogCommitQueueConcludeTest(patchID, status string) {
 	logCommitQueueEvent(patchID, CommitQueueConcludeTest, data)
 }
 
-func LogCommitQueueConcludeWithError(patchID, status string, err error) {
+func LogCommitQueueConcludeWithErrorMessage(patchID, status, errMsg string) {
 	data := &CommitQueueEventData{
 		Status: status,
-	}
-	if err != nil {
-		data.Error = err.Error()
+		Error:  errMsg,
 	}
 	logCommitQueueEvent(patchID, CommitQueueConcludeTest, data)
 }
