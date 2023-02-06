@@ -24,7 +24,14 @@
               "batchTime": 2,
               "gitTagAuthorizedUsers": ["ablack12"],
               "gitTagAuthorizedTeams": null,
-              "triggers": [],
+              "triggers": [
+                {
+                  "project": "spruce",
+                  "level": "task",
+                  "configFile": ".evergreen.yml",
+                  "dateCutoff": null
+                }
+              ],
               "patchTriggerAliases": [
                 {
                   "alias": "my_alias_sandbox",

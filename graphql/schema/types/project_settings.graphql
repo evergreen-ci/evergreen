@@ -107,7 +107,7 @@ type TriggerAlias {
   alias: String!
   buildVariantRegex: String!
   configFile: String!
-  dateCutoff: Int!
+  dateCutoff: Int
   level: String!
   project: String!
   status: String!
