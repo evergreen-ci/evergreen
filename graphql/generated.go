@@ -45244,14 +45244,11 @@ func (ec *executionContext) _TriggerAlias_dateCutoff(ctx context.Context, field 
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*int)
 	fc.Result = res
-	return ec.marshalNInt2ᚖint(ctx, field.Selections, res)
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_TriggerAlias_dateCutoff(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -55032,7 +55029,7 @@ func (ec *executionContext) unmarshalInputTriggerAliasInput(ctx context.Context,
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("dateCutoff"))
-			it.DateCutoff, err = ec.unmarshalNInt2ᚖint(ctx, v)
+			it.DateCutoff, err = ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -63403,9 +63400,6 @@ func (ec *executionContext) _TriggerAlias(ctx context.Context, sel ast.Selection
 
 			out.Values[i] = ec._TriggerAlias_dateCutoff(ctx, field, obj)
 
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		case "level":
 
 			out.Values[i] = ec._TriggerAlias_level(ctx, field, obj)
