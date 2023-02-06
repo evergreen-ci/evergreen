@@ -2879,7 +2879,7 @@ func TestMergeWithProjectConfig(t *testing.T) {
 func TestSaveProjectPageForSection(t *testing.T) {
 	assert := assert.New(t)
 
-	assert.NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection))
+	assert.NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ConfigCollection))
 
 	projectRef := &ProjectRef{
 		Owner:            "evergreen-ci",
@@ -2895,6 +2895,11 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	projectRef, err := FindBranchProjectRef("identifier")
 	assert.NoError(err)
 	assert.NotNil(t, projectRef)
+
+	settings := evergreen.Settings{
+		GithubOrgs: []string{"newOwner", "evergreen-ci"},
+	}
+	assert.NoError(settings.Set())
 
 	update := &ProjectRef{
 		Id:      "iden_",
@@ -2925,7 +2930,12 @@ func TestSaveProjectPageForSection(t *testing.T) {
 }
 
 func TestValidateOwnerAndRepo(t *testing.T) {
-	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection))
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ConfigCollection))
+
+	settings := evergreen.Settings{
+		GithubOrgs: []string{"newOwner", "evergreen-ci"},
+	}
+	assert.NoError(t, settings.Set())
 
 	// a project with no owner should error
 	project := ProjectRef{

@@ -92,7 +92,7 @@ func addAtPosition(id string, item CommitQueueItem, pos int) error {
 	return err
 }
 
-func addVersionID(id string, item CommitQueueItem) error {
+func addVersionAndTime(id string, item CommitQueueItem) error {
 	return updateOne(
 		bson.M{
 			IdKey: id,
