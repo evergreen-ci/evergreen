@@ -29,13 +29,15 @@ type CommitQueueItem struct {
 	Issue   string `bson:"issue"`
 	PatchId string `bson:"patch_id,omitempty"`
 	// Version is the ID of the version that is running the patch. It's also used to determine what entries are processing
-	Version              string    `bson:"version,omitempty"`
-	EnqueueTime          time.Time `bson:"enqueue_time"`
-	ProcessingStartTime  time.Time `bson:"processing_start_time"`
-	Modules              []Module  `bson:"modules"`
-	MessageOverride      string    `bson:"message_override"`
-	Source               string    `bson:"source"`
-	QueueLengthAtEnqueue int       `bson:"queue_length_at_enqueue"`
+	Version             string    `bson:"version,omitempty"`
+	EnqueueTime         time.Time `bson:"enqueue_time"`
+	ProcessingStartTime time.Time `bson:"processing_start_time"`
+	Modules             []Module  `bson:"modules"`
+	MessageOverride     string    `bson:"message_override"`
+	Source              string    `bson:"source"`
+	// QueueLengthAtEnqueue is the length of the queue when the item was enqueued. Used for tracking the speed of the
+	// commit queue as this value is logged when a commit queue item is processed.
+	QueueLengthAtEnqueue int `bson:"queue_length_at_enqueue"`
 }
 
 func (i *CommitQueueItem) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(i) }

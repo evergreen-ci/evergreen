@@ -119,7 +119,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 	grip.InfoWhen(hasItem, message.Fields{
 		"source":                  "commit queue",
 		"job_id":                  j.ID(),
-		"item":                    front,
+		"item":                    front.Issue,
 		"project_id":              cq.ProjectID,
 		"waiting_secs":            time.Since(front.EnqueueTime).Seconds(),
 		"queue_length_at_enqueue": front.QueueLengthAtEnqueue,
@@ -154,7 +154,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 	grip.Info(message.Fields{
 		"source":       "commit queue",
 		"job_id":       j.ID(),
-		"items":        nextItems,
+		"items":        len(nextItems),
 		"project_id":   cq.ProjectID,
 		"queue_length": len(cq.Queue),
 		"batch_size":   batchSize,
@@ -183,7 +183,6 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		}
 
 		// create a version with the item and subscribe to its completion
-		beginProcessingTime := time.Now()
 		if nextItem.Source == commitqueue.SourcePullRequest {
 			j.processGitHubPRItem(ctx, cq, nextItem, projectRef, githubToken)
 		} else if nextItem.Source == commitqueue.SourceDiff {
@@ -198,17 +197,16 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		}
 
 		grip.Info(message.Fields{
-			"source":               "commit queue",
-			"job_id":               j.ID(),
-			"item":                 nextItem,
-			"message":              "finished processing commit queue item",
-			"processing_time_secs": time.Since(beginProcessingTime).Seconds(),
+			"source":  "commit queue",
+			"job_id":  j.ID(),
+			"item":    nextItem,
+			"message": "finished processing commit queue item",
 		})
 	}
 	grip.Info(message.Fields{
 		"source":               "commit queue",
 		"job_id":               j.ID(),
-		"items":                nextItems,
+		"items":                len(nextItems),
 		"message":              "finished processing batch of commit queue items",
 		"processing_time_secs": time.Since(beginBatchProcessingTime).Seconds(),
 	})
