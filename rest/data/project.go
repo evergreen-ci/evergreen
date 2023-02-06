@@ -77,7 +77,8 @@ func RequestS3Creds(projectIdentifier string) error {
 	sub := event.Subscriber{
 		Type: event.JIRAIssueSubscriberType,
 		Target: event.JIRAIssueSubscriber{
-			Project: settings.ProjectCreation.JiraProject,
+			Project:   settings.ProjectCreation.JiraProject,
+			IssueType: "Task",
 		},
 	}
 	n, err := notification.New("", utility.RandomString(), &sub, jiraIssue)
