@@ -1105,6 +1105,9 @@ func PopulateExpansions(ctx context.Context, settings *evergreen.Settings, t *ta
 		if v.Requester == evergreen.MergeTestRequester {
 			expansions.Put("is_commit_queue", "true")
 			expansions.Put("commit_message", p.Description)
+			if p.IsPRMergePatch() {
+				expansions.Put("github_pr_number", fmt.Sprintf("%d", p.GithubPatchData.PRNumber))
+			}
 		}
 
 		if v.Requester == evergreen.GithubPRRequester {

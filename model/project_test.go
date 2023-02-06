@@ -288,9 +288,11 @@ func TestPopulateExpansions(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(VersionCollection, patch.Collection, ProjectRefCollection, task.Collection))
+	assert.NoError(db.ClearCollections(VersionCollection, patch.Collection, ProjectRefCollection,
+		task.Collection, ParserProjectCollection))
 	defer func() {
-		assert.NoError(db.ClearCollections(VersionCollection, patch.Collection, ProjectRefCollection, task.Collection))
+		assert.NoError(db.ClearCollections(VersionCollection, patch.Collection, ProjectRefCollection,
+			task.Collection, ParserProjectCollection))
 	}()
 
 	h := host.Host{
@@ -411,13 +413,18 @@ buildvariants:
 	p = patch.Patch{
 		Version:     v.Id,
 		Description: "commit queue message",
+		GithubPatchData: thirdparty.GithubPatch{
+			PRNumber:       12,
+			MergeCommitSHA: "21",
+		},
 	}
 	require.NoError(t, p.Insert())
 	expansions, err = PopulateExpansions(ctx, settings, taskDoc, &h, oauthToken)
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 26)
+	assert.Len(map[string]string(expansions), 27)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("true", expansions.Get("is_commit_queue"))
+	assert.Equal("12", expansions.Get("github_pr_number"))
 	assert.Equal("commit queue message", expansions.Get("commit_message"))
 	require.NoError(t, db.ClearCollections(patch.Collection))
 
