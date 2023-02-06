@@ -53,8 +53,8 @@ func FindProjectById(id string, includeRepo bool, includeProjectConfig bool) (*m
 	return p, nil
 }
 
-// RequestAWSAccess creates a JIRA ticket that requests build to create an AWS user for the specified project.
-func RequestAWSAccess(projectIdentifier string) error {
+// RequestS3Creds creates a JIRA ticket that requests build to create an AWS user for the specified project.
+func RequestS3Creds(projectIdentifier string) error {
 	if projectIdentifier == "" {
 		return errors.New("project identifier cannot be empty")
 	}
@@ -62,10 +62,13 @@ func RequestAWSAccess(projectIdentifier string) error {
 	if err != nil {
 		return errors.Wrap(err, "getting evergreen settings")
 	}
+	if settings.ProjectCreation.JiraProject == "" {
+		return nil
+	}
 	summary := fmt.Sprintf("Create AWS key for s3 uploads for '%s' project", projectIdentifier)
 	description := fmt.Sprintf("Could you create an s3 key for the new [%s|%s/project/%s/settings/general] project?", projectIdentifier, settings.Ui.UIv2Url, projectIdentifier)
 	jiraIssue := message.JiraIssue{
-		Project:     "BUILD",
+		Project:     settings.ProjectCreation.JiraProject,
 		Summary:     summary,
 		Description: description,
 		Components:  []string{"Access"},
@@ -73,7 +76,7 @@ func RequestAWSAccess(projectIdentifier string) error {
 	sub := event.Subscriber{
 		Type: event.JIRAIssueSubscriberType,
 		Target: event.JIRAIssueSubscriber{
-			Project: "BUILD",
+			Project: settings.ProjectCreation.JiraProject,
 		},
 	}
 	n, err := notification.New("", utility.RandomString(), &sub, jiraIssue)

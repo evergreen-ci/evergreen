@@ -7,6 +7,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/service/secretsmanager"
 	cocoaMock "github.com/evergreen-ci/cocoa/mock"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
@@ -475,11 +476,22 @@ func TestGetLegacyProjectEvents(t *testing.T) {
 	require.Len(t, eventLog.Before.ProjectRef.WorkstationConfig.SetupCommands, 0)
 }
 
-func TestRequestAWSAccess(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(notification.Collection))
-	assert.Error(t, RequestAWSAccess(""))
-	assert.NoError(t, RequestAWSAccess("identifier"))
+func TestRequestS3Creds(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(notification.Collection, evergreen.ConfigCollection))
+	assert.Error(t, RequestS3Creds(""))
+	assert.NoError(t, RequestS3Creds("identifier"))
 	n, err := notification.FindUnprocessed()
+	assert.NoError(t, err)
+	assert.Len(t, n, 0)
+	settings := evergreen.Settings{
+		ProjectCreation: evergreen.ProjectCreationConfig{
+			JiraProject:       "BUILD",
+			TotalProjectLimit: 100,
+		},
+	}
+	assert.NoError(t, settings.Set())
+	assert.NoError(t, RequestS3Creds("identifier"))
+	n, err = notification.FindUnprocessed()
 	assert.NoError(t, err)
 	assert.Len(t, n, 1)
 	assert.Equal(t, event.JIRAIssueSubscriberType, n[0].Subscriber.Type)
