@@ -483,13 +483,10 @@ func TestRequestS3Creds(t *testing.T) {
 	n, err := notification.FindUnprocessed()
 	assert.NoError(t, err)
 	assert.Len(t, n, 0)
-	settings := evergreen.Settings{
-		ProjectCreation: evergreen.ProjectCreationConfig{
-			JiraProject:       "BUILD",
-			TotalProjectLimit: 100,
-		},
+	projectCreationConfig := evergreen.ProjectCreationConfig{
+		JiraProject: "BUILD",
 	}
-	assert.NoError(t, settings.Set())
+	assert.NoError(t, projectCreationConfig.Set())
 	assert.NoError(t, RequestS3Creds("identifier"))
 	n, err = notification.FindUnprocessed()
 	assert.NoError(t, err)

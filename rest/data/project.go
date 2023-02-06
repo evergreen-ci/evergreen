@@ -54,6 +54,7 @@ func FindProjectById(id string, includeRepo bool, includeProjectConfig bool) (*m
 }
 
 // RequestS3Creds creates a JIRA ticket that requests build to create an AWS user for the specified project.
+// TODO PM-3212: Remove the function after project completion.
 func RequestS3Creds(projectIdentifier string) error {
 	if projectIdentifier == "" {
 		return errors.New("project identifier cannot be empty")
