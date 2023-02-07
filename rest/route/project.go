@@ -362,6 +362,15 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "merging project ref '%s' with repo settings", h.newProjectRef.Identifier))
 	}
 
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting evergreen settings"))
+	}
+	_, err = dbModel.ValidateProjectCreation(h.newProjectRef.Id, settings, mergedProjectRef)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "validating project creation for project '%s'", h.newProjectRef.Identifier))
+	}
+
 	if h.newProjectRef.IsEnabled() {
 		var hasHook bool
 		hasHook, err = dbModel.EnableWebhooks(ctx, h.newProjectRef)
