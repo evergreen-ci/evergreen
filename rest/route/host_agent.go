@@ -974,11 +974,13 @@ func setAgentFirstContactTime(h *host.Host) {
 	}
 
 	grip.InfoWhen(h.Provider != evergreen.ProviderNameStatic, message.Fields{
-		"message":                   "agent initiated first contact with server",
-		"host_id":                   h.Id,
-		"distro":                    h.Distro.Id,
-		"provisioning":              h.Distro.BootstrapSettings.Method,
-		"agent_start_duration_secs": time.Since(h.CreationTime).Seconds(),
+		"message":                             "agent initiated first contact with server",
+		"host_id":                             h.Id,
+		"distro":                              h.Distro.Id,
+		"provisioning":                        h.Distro.BootstrapSettings.Method,
+		"agent_start_duration_secs":           time.Since(h.CreationTime).Seconds(),
+		"agent_start_from_billing_start_secs": time.Since(h.BillingStartTime).Seconds(),
+		"agent_start_from_requested_secs":     time.Since(h.StartTime).Seconds(),
 	})
 }
 

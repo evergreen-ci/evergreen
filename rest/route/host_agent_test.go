@@ -22,7 +22,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelUtil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -601,42 +600,16 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *hostAgentEndTask, env *mock.Environment){
 		"test task should start a background job": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
-			q := handler.env.RemoteQueue()
-			stat := q.Stats(ctx)
-
-			require.Equal(t, stat.Total, 0)
 			startTaskHandler := makeStartTask(env).(*startTaskHandler)
 			startTaskHandler.hostID = "h1"
 			startTaskHandler.taskID = "task1"
 			resp := startTaskHandler.Run(ctx)
-			require.NoError(t, q.Start(ctx))
-			stat = q.Stats(ctx)
 			require.Equal(t, resp.Status(), http.StatusOK)
 			require.NotNil(t, resp)
-			require.Equal(t, stat.Total, 1)
-			amboy.WaitInterval(ctx, env.RemoteQueue(), time.Millisecond)
 
-			counter := 0
-			for job := range q.Results(ctx) {
-				require.NotNil(t, job)
-
-				switch job.Type().Name {
-				case "collect-host-idle-data":
-					counter++
-
-					timeInfo := job.TimeInfo()
-					require.True(t, timeInfo.Start.Before(timeInfo.End))
-					require.False(t, timeInfo.Start.IsZero())
-					require.False(t, timeInfo.End.IsZero())
-
-				case "collect-task-start-data":
-					counter++
-				default:
-					counter--
-				}
-			}
-
-			require.Equal(t, counter, stat.Total)
+			h, err := host.FindOneId(hostId)
+			require.NoError(t, err)
+			assert.Equal(t, 1, h.TaskCount)
 		},
 		"with a set of task end details indicating that task has succeeded": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
 			details := &apimodels.TaskEndDetail{

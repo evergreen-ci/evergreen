@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -998,26 +997,70 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 			})
 		}
 
-		idleTimeStartAt := host.LastTaskCompletedTime
-		if idleTimeStartAt.IsZero() || idleTimeStartAt == utility.ZeroTime {
-			idleTimeStartAt = host.StartTime
-		}
-
 		msg = fmt.Sprintf("task %s started on host %s", t.Id, host.Id)
 
 		if host.Distro.IsEphemeral() {
-			queue := h.env.RemoteQueue()
-			job := units.NewCollectHostIdleDataJob(host, t, idleTimeStartAt, t.StartTime)
-			if err = queue.Put(ctx, job); err != nil {
-				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "queuing host idle stats for %s", msg))
+			if err = host.IncTaskCount(); err != nil {
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "incrementing task count for task '%s' on host '%s'", t.Id, host.Id))
 			}
+			if err = host.IncIdleTime(host.SinceLastTaskCompletion()); err != nil {
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "incrementing total idle time on host '%s'", host.Id))
+			}
+			grip.Info(host.TaskStartMessage())
 		}
+
+		logTaskStartMessage(host, t)
 	} else {
 		// TODO: EVG-17647 Create job to collect data on idle pods
 		msg = fmt.Sprintf("task '%s' started on pod '%s'", t.Id, h.podID)
 	}
 
 	return gimlet.NewJSONResponse(msg)
+}
+
+func logTaskStartMessage(h *host.Host, t *task.Task) {
+	msg := message.Fields{
+		"stat":                   "task-start-stats",
+		"task_id":                t.Id,
+		"execution":              t.Execution,
+		"version":                t.Version,
+		"build":                  t.BuildId,
+		"scheduled_time":         t.ScheduledTime,
+		"activated_latency_secs": t.StartTime.Sub(t.ActivatedTime).Seconds(),
+		"scheduled_latency_secs": t.StartTime.Sub(t.ScheduledTime).Seconds(),
+		"started_latency_secs":   t.StartTime.Sub(t.DispatchTime).Seconds(),
+		"distro":                 h.Distro.Id,
+		"generator":              t.GenerateTask,
+		"group":                  t.TaskGroup,
+		"group_max_hosts":        t.TaskGroupMaxHosts,
+		"host_id":                h.Id,
+		"project":                t.Project,
+		"provider":               h.Distro.Provider,
+		"provisioning":           h.Distro.BootstrapSettings.Method,
+		"requester":              t.Requester,
+		"priority":               t.Priority,
+		"task":                   t.DisplayName,
+		"display_task":           t.DisplayOnly,
+		"variant":                t.BuildVariant,
+	}
+
+	if strings.HasPrefix(h.Distro.Provider, "ec2") {
+		msg["provider"] = "ec2"
+	}
+
+	if t.ActivatedBy != "" {
+		msg["activated_by"] = t.ActivatedBy
+	}
+
+	if h.Provider != evergreen.ProviderNameStatic {
+		msg["host_task_count"] = h.TaskCount
+
+		if h.TaskCount == 1 {
+			msg["host_provision_time"] = h.TotalIdleTime.Seconds()
+		}
+	}
+
+	grip.Info(msg)
 }
 
 // GET /task/{task_id}/git/patchfile/{patchfile_id}
