@@ -48,8 +48,8 @@ type Mutation {
   addFavoriteProject(identifier: String!): Project!
   attachProjectToNewRepo(project: MoveProjectInput!): Project!
   attachProjectToRepo(projectId: String! @requireProjectAccess(access: EDIT)): Project!
-  createProject(project: CreateProjectInput!): Project! @requireSuperUser
-  copyProject(project: CopyProjectInput!): Project! @requireSuperUser
+  createProject(project: CreateProjectInput!, requestS3Creds: Boolean): Project! @requireSuperUser
+  copyProject(project: CopyProjectInput!, requestS3Creds: Boolean): Project! @requireSuperUser
   defaultSectionToRepo(projectId: String! @requireProjectAccess(access: EDIT), section: ProjectSettingsSection!): String
   detachProjectFromRepo(projectId: String! @requireProjectAccess(access: EDIT)): Project!
   forceRepotrackerRun(projectId: String! @requireProjectAccess(access: EDIT)): Boolean!

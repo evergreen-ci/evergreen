@@ -788,7 +788,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
   $scope.addOwnerRepo = function () {
     if ($scope.Settings.project_creation === null || $scope.Settings.project_creation === undefined) {
       $scope.Settings.project_creation = {
-          "repo_exceptions": [],
+        "repo_exceptions": [],
       };
     }
 

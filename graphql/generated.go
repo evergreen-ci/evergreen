@@ -417,8 +417,8 @@ type ComplexityRoot struct {
 		AttachVolumeToHost            func(childComplexity int, volumeAndHost VolumeHost) int
 		BbCreateTicket                func(childComplexity int, taskID string, execution *int) int
 		ClearMySubscriptions          func(childComplexity int) int
-		CopyProject                   func(childComplexity int, project data.CopyProjectOpts) int
-		CreateProject                 func(childComplexity int, project model.APIProjectRef) int
+		CopyProject                   func(childComplexity int, project data.CopyProjectOpts, requestS3Creds *bool) int
+		CreateProject                 func(childComplexity int, project model.APIProjectRef, requestS3Creds *bool) int
 		CreatePublicKey               func(childComplexity int, publicKeyInput PublicKeyInput) int
 		DeactivateStepbackTask        func(childComplexity int, projectID string, buildVariantName string, taskName string) int
 		DefaultSectionToRepo          func(childComplexity int, projectID string, section ProjectSettingsSection) int
@@ -1246,8 +1246,8 @@ type MutationResolver interface {
 	AddFavoriteProject(ctx context.Context, identifier string) (*model.APIProjectRef, error)
 	AttachProjectToNewRepo(ctx context.Context, project MoveProjectInput) (*model.APIProjectRef, error)
 	AttachProjectToRepo(ctx context.Context, projectID string) (*model.APIProjectRef, error)
-	CreateProject(ctx context.Context, project model.APIProjectRef) (*model.APIProjectRef, error)
-	CopyProject(ctx context.Context, project data.CopyProjectOpts) (*model.APIProjectRef, error)
+	CreateProject(ctx context.Context, project model.APIProjectRef, requestS3Creds *bool) (*model.APIProjectRef, error)
+	CopyProject(ctx context.Context, project data.CopyProjectOpts, requestS3Creds *bool) (*model.APIProjectRef, error)
 	DefaultSectionToRepo(ctx context.Context, projectID string, section ProjectSettingsSection) (*string, error)
 	DetachProjectFromRepo(ctx context.Context, projectID string) (*model.APIProjectRef, error)
 	ForceRepotrackerRun(ctx context.Context, projectID string) (bool, error)
@@ -2979,7 +2979,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.CopyProject(childComplexity, args["project"].(data.CopyProjectOpts)), true
+		return e.complexity.Mutation.CopyProject(childComplexity, args["project"].(data.CopyProjectOpts), args["requestS3Creds"].(*bool)), true
 
 	case "Mutation.createProject":
 		if e.complexity.Mutation.CreateProject == nil {
@@ -2991,7 +2991,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.CreateProject(childComplexity, args["project"].(model.APIProjectRef)), true
+		return e.complexity.Mutation.CreateProject(childComplexity, args["project"].(model.APIProjectRef), args["requestS3Creds"].(*bool)), true
 
 	case "Mutation.createPublicKey":
 		if e.complexity.Mutation.CreatePublicKey == nil {
@@ -7703,6 +7703,15 @@ func (ec *executionContext) field_Mutation_copyProject_args(ctx context.Context,
 		}
 	}
 	args["project"] = arg0
+	var arg1 *bool
+	if tmp, ok := rawArgs["requestS3Creds"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestS3Creds"))
+		arg1, err = ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["requestS3Creds"] = arg1
 	return args, nil
 }
 
@@ -7718,6 +7727,15 @@ func (ec *executionContext) field_Mutation_createProject_args(ctx context.Contex
 		}
 	}
 	args["project"] = arg0
+	var arg1 *bool
+	if tmp, ok := rawArgs["requestS3Creds"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestS3Creds"))
+		arg1, err = ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["requestS3Creds"] = arg1
 	return args, nil
 }
 
@@ -20303,7 +20321,7 @@ func (ec *executionContext) _Mutation_createProject(ctx context.Context, field g
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		directive0 := func(rctx context.Context) (interface{}, error) {
 			ctx = rctx // use context from middleware stack in children
-			return ec.resolvers.Mutation().CreateProject(rctx, fc.Args["project"].(model.APIProjectRef))
+			return ec.resolvers.Mutation().CreateProject(rctx, fc.Args["project"].(model.APIProjectRef), fc.Args["requestS3Creds"].(*bool))
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
 			if ec.directives.RequireSuperUser == nil {
@@ -20466,7 +20484,7 @@ func (ec *executionContext) _Mutation_copyProject(ctx context.Context, field gra
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		directive0 := func(rctx context.Context) (interface{}, error) {
 			ctx = rctx // use context from middleware stack in children
-			return ec.resolvers.Mutation().CopyProject(rctx, fc.Args["project"].(data.CopyProjectOpts))
+			return ec.resolvers.Mutation().CopyProject(rctx, fc.Args["project"].(data.CopyProjectOpts), fc.Args["requestS3Creds"].(*bool))
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
 			if ec.directives.RequireSuperUser == nil {
