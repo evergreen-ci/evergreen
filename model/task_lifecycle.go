@@ -1868,6 +1868,8 @@ func ClearAndResetStrandedHostTask(settings *evergreen.Settings, h *host.Host) e
 		"task":               t.Id,
 		"execution":          t.Execution,
 		"execution_platform": t.ExecutionPlatform,
+		"version":            t.Version,
+		"failure_desc":       t.Details.Description,
 	})
 
 	return nil
