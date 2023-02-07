@@ -11,11 +11,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/aws/aws-sdk-go/aws/endpoints"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -1569,11 +1572,49 @@ func TestParserProjectStorage(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
+	testutil.ConfigureIntegrationTest(t, env.Settings(), t.Name())
+
+	c := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(c)
+
+	ppConf := env.Settings().Providers.AWS.ParserProject
+	bucket, err := pail.NewS3BucketWithHTTPClient(c, pail.S3Options{
+		Name:        ppConf.Bucket,
+		Region:      endpoints.UsEast1RegionID,
+		Credentials: pail.CreateAWSCredentials(ppConf.Key, ppConf.Secret, ""),
+	})
+	require.NoError(t, err)
+	defer func() {
+		assert.NoError(t, bucket.RemovePrefix(ctx, ppConf.Prefix))
+	}()
+
 	for methodName, ppStorageMethod := range map[string]ParserProjectStorageMethod{
 		"DB": ProjectStorageMethodDB,
+		"S3": ProjectStorageMethodS3,
 	} {
 		t.Run("StorageMethod"+methodName, func(t *testing.T) {
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment){
+				"FindOneByIDReturnsNilErrorAndResultForNonexistentParserProject": func(ctx context.Context, t *testing.T, env *mock.Environment) {
+					ppStorage, err := GetParserProjectStorage(env.Settings(), ppStorageMethod)
+					require.NoError(t, err)
+					defer ppStorage.Close(ctx)
+
+					pp, err := ppStorage.FindOneByID(ctx, "nonexistent")
+					assert.NoError(t, err)
+					assert.Zero(t, pp)
+				},
+				"FindOneByIDWithFieldsReturnsNilErrorAndResultForNonexistentParserProject": func(ctx context.Context, t *testing.T, env *mock.Environment) {
+					ppStorage, err := GetParserProjectStorage(env.Settings(), ppStorageMethod)
+					require.NoError(t, err)
+					defer ppStorage.Close(ctx)
+
+					pp, err := ppStorage.FindOneByIDWithFields(ctx, "nonexistent", ParserProjectBuildVariantsKey)
+					assert.NoError(t, err)
+					assert.Zero(t, pp)
+				},
 				"UpsertCreatesNewParserProject": func(ctx context.Context, t *testing.T, env *mock.Environment) {
 					pp := &ParserProject{
 						Id:    "my-project",
@@ -1608,46 +1649,8 @@ func TestParserProjectStorage(t *testing.T) {
 					require.NotNil(t, pp)
 					assert.Equal(t, "you", utility.FromStringPtr(pp.Owner))
 				},
-			} {
-				t.Run(testName, func(t *testing.T) {
-					require.NoError(t, db.ClearCollections(ParserProjectCollection))
-					env := &mock.Environment{}
-					require.NoError(t, env.Configure(ctx))
-					testCase(ctx, t, env)
-				})
-			}
-		})
-	}
-}
-
-func TestParserProjectRoundtrip(t *testing.T) {
-	filepath := filepath.Join(testutil.GetDirectoryOfFile(), "..", "self-tests.yml")
-	yml, err := ioutil.ReadFile(filepath)
-	assert.NoError(t, err)
-
-	original, err := createIntermediateProject(yml, false, false)
-	assert.NoError(t, err)
-
-	// to and from yaml
-	yamlBytes, err := yaml.Marshal(original)
-	assert.NoError(t, err)
-	pp := &ParserProject{}
-	assert.NoError(t, yaml.Unmarshal(yamlBytes, pp))
-
-	// to and from BSON
-	bsonBytes, err := bson.Marshal(original)
-	assert.NoError(t, err)
-	bsonPP := &ParserProject{}
-	assert.NoError(t, bson.Unmarshal(bsonBytes, bsonPP))
-
-	// ensure bson actually worked
-	newBytes, err := yaml.Marshal(bsonPP)
-	assert.NoError(t, err)
-	assert.True(t, bytes.Equal(yamlBytes, newBytes))
-}
-
-func TestParserProjectPersists(t *testing.T) {
-	simpleYaml := `
+				"PersistsSimpleYAML": func(ctx context.Context, t *testing.T, env *mock.Environment) {
+					simpleYAML := `
 loggers:
   agent:
     - type: something
@@ -1693,39 +1696,27 @@ buildvariants:
     - name: "task_1"
       batchtime: 60
 `
-
-	for methodName, method := range map[string]ParserProjectStorageMethod{
-		"DB": ProjectStorageMethodDB,
-	} {
-		t.Run("ParserProjectStorageMethod"+methodName, func(t *testing.T) {
-			for name, test := range map[string]func(t *testing.T){
-				"simpleYaml": func(t *testing.T) {
-					checkProjectPersists(t, []byte(simpleYaml), method)
+					checkProjectPersists(ctx, t, env, []byte(simpleYAML), ppStorageMethod)
 				},
-				"self-tests.yml": func(t *testing.T) {
+				"PersistsEvergreenSelfTestsYAML": func(ctx context.Context, t *testing.T, env *mock.Environment) {
 					filepath := filepath.Join(testutil.GetDirectoryOfFile(), "..", "self-tests.yml")
-
 					yml, err := ioutil.ReadFile(filepath)
 					assert.NoError(t, err)
-					checkProjectPersists(t, yml, method)
+					checkProjectPersists(ctx, t, env, yml, ppStorageMethod)
 				},
 			} {
-				t.Run(name, func(t *testing.T) {
-					assert.NoError(t, db.ClearCollections(ParserProjectCollection))
-					test(t)
+				t.Run(testName, func(t *testing.T) {
+					require.NoError(t, db.ClearCollections(ParserProjectCollection))
+					require.NoError(t, bucket.RemovePrefix(ctx, ppConf.Prefix))
+
+					testCase(ctx, t, env)
 				})
 			}
 		})
 	}
 }
 
-func checkProjectPersists(t *testing.T, yml []byte, ppStorageMethod ParserProjectStorageMethod) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	env := &mock.Environment{}
-	require.NoError(t, env.Configure(ctx))
-
+func checkProjectPersists(ctx context.Context, t *testing.T, env evergreen.Environment, yml []byte, ppStorageMethod ParserProjectStorageMethod) {
 	pp, err := createIntermediateProject(yml, false, false)
 	assert.NoError(t, err)
 	pp.Id = "my-project"
@@ -1772,6 +1763,32 @@ func checkProjectPersists(t *testing.T, yml []byte, ppStorageMethod ParserProjec
 	}
 }
 
+func TestParserProjectRoundtrip(t *testing.T) {
+	filepath := filepath.Join(testutil.GetDirectoryOfFile(), "..", "self-tests.yml")
+	yml, err := ioutil.ReadFile(filepath)
+	assert.NoError(t, err)
+
+	original, err := createIntermediateProject(yml, false, false)
+	assert.NoError(t, err)
+
+	// to and from yaml
+	yamlBytes, err := yaml.Marshal(original)
+	assert.NoError(t, err)
+	pp := &ParserProject{}
+	assert.NoError(t, yaml.Unmarshal(yamlBytes, pp))
+
+	// to and from BSON
+	bsonBytes, err := bson.Marshal(original)
+	assert.NoError(t, err)
+	bsonPP := &ParserProject{}
+	assert.NoError(t, bson.Unmarshal(bsonBytes, bsonPP))
+
+	// ensure bson actually worked
+	newBytes, err := yaml.Marshal(bsonPP)
+	assert.NoError(t, err)
+	assert.True(t, bytes.Equal(yamlBytes, newBytes))
+}
+
 func TestMergeUnorderedUnique(t *testing.T) {
 	main := &ParserProject{
 		Tasks: []parserTask{
@@ -1804,12 +1821,12 @@ func TestMergeUnorderedUnique(t *testing.T) {
 			},
 		},
 		Functions: map[string]*YAMLCommandSet{
-			"func1": &YAMLCommandSet{
+			"func1": {
 				SingleCommand: &PluginCommandConf{
 					Command: "single_command",
 				},
 			},
-			"func2": &YAMLCommandSet{
+			"func2": {
 				MultiCommand: []PluginCommandConf{
 					{
 						Command: "multi_command1",

@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# This script sets up the SETTINGS_OVERRIDE file used as the admin settings when
+# running an integration test that requires secret credentials.
+
 set -o errexit
 
 echo "building creds file!"
@@ -46,6 +49,11 @@ jira:
 
 providers:
   aws:
+    parser_project:
+      key: "$AWS_KEY"
+      secret: "$AWS_SECRET"
+      bucket: "evergreen-projects-testing"
+      prefix: "$PARSER_PROJECT_S3_PREFIX"
     ec2_keys:
       - region: "us-east-1"
         key: "$AWS_KEY"

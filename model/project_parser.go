@@ -40,7 +40,7 @@ const DefaultParserProjectAccessTimeout = 60 * time.Second
 // The ParserProject's internal types define custom YAML unmarshal hooks, allowing
 // users to do things like offer a single definition where we expect a list, e.g.
 //   `tags: "single_tag"` instead of the more verbose `tags: ["single_tag"]`
-// or refer to task by a single selector. Custom YAML handling allows us to
+// or refer to a task by a single selector. Custom YAML handling allows us to
 // add other useful features like detecting fatal errors and reporting them
 // through the YAML parser's error code, which supplies helpful line number information
 // that we would lose during validation against already-parsed data. In the future,
@@ -58,6 +58,15 @@ const DefaultParserProjectAccessTimeout = 60 * time.Second
 // ParserProject serves as an intermediary struct for parsing project
 // configuration YAML. It implements the Unmarshaler interface
 // to allow for flexible handling.
+// From a mental model perspective, the ParserProject is the project
+// configuration after YAML rules have been evaluated (e.g. matching YAML fields
+// to Go struct fields, evaluating YAML anchors and aliases), but before any
+// Evergreen-specific evaluation rules have been applied. For example, Evergreen
+// has a custom feature to support tagging a set of tasks and expanding those
+// tags into a list of tasks under the build variant's list of tasks (i.e.
+// ".tagname" syntax). In the ParserProject, these are stored as the unexpanded
+// tag text (i.e. ".tagname"), and these tags are not evaluated until the
+// ParserProject is turned into a final Project.
 type ParserProject struct {
 	// Id and ConfigdUpdateNumber are not pointers because they are only used internally
 	Id string `yaml:"_id" bson:"_id"` // should be the same as the version's ID
