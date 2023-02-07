@@ -283,7 +283,7 @@ func TestRestrictProjectAccess(t *testing.T) {
 	ctx = graphql.WithFieldContext(ctx, fieldCtx)
 
 	res, err := config.Directives.RestrictProjectAccess(ctx, apiProjectRef, next)
-	require.Error(t, err, "user does not have permission to access the field admins for project with ID 'project_id")
+	require.Error(t, err, "user does not have permission to access the field 'admins' for project with ID 'project_id")
 	require.Nil(t, res)
 	require.Equal(t, 0, callCount)
 

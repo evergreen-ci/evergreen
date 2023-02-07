@@ -95,7 +95,7 @@ func New(apiURL string) Config {
 		if user.HasPermission(opts) {
 			return next(ctx)
 		}
-		return nil, Forbidden.Send(ctx, fmt.Sprintf("user does not have permission to access the field %s for project with ID '%s'", graphql.GetFieldContext(ctx).Path(), projectId))
+		return nil, Forbidden.Send(ctx, fmt.Sprintf("user does not have permission to access the field '%s' for project with ID '%s'", graphql.GetFieldContext(ctx).Path(), projectId))
 	}
 	return c
 }
