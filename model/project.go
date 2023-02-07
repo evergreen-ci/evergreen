@@ -959,10 +959,10 @@ func generateIdsForVariant(vt TVPair, proj *Project, v *Version, tasks TVPairSet
 }
 
 // generateId generates a unique project ID. For tasks created for untracked branches,
-// use owner/repo in addition to the project ID to keep the task ID readable.
+// use owner/repo/branch in lieu of a user-defined project identifier.
 func generateId(name string, projectIdentifier string, projBV *BuildVariant, rev string, v *Version) string {
 	if projectIdentifier == "" {
-		projectIdentifier = fmt.Sprintf("%s_%s_%s", v.Owner, v.Repo, v.Identifier)
+		projectIdentifier = fmt.Sprintf("%s_%s_%s", v.Owner, v.Repo, v.Branch)
 	}
 	return fmt.Sprintf("%s_%s_%s_%s_%s",
 		projectIdentifier,
