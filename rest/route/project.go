@@ -888,7 +888,7 @@ func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) 
 	if err != nil {
 		return err
 	}
-	h.opts = *opts
+	h.opts = opts.GetVersionsOptions
 	return nil
 }
 
@@ -929,7 +929,7 @@ func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
 type versionsSetPriorityHandler struct {
 	projectId string
 	url       string
-	opts      dbModel.GetVersionsOptions
+	opts      dbModel.SetVersionsPriorityOptions
 }
 
 func makeSetPriorityProjectVersionsHandler(url string) gimlet.RouteHandler {
@@ -962,7 +962,7 @@ func (h *versionsSetPriorityHandler) Parse(ctx context.Context, r *http.Request)
 func (h *versionsSetPriorityHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
 	priority := utility.FromInt64Ptr(h.opts.Priority)
-	versions, err := data.GetProjectVersionsWithOptions(h.projectId, h.opts)
+	versions, err := data.GetProjectVersionsWithOptions(h.projectId, h.opts.GetVersionsOptions)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting versions for project '%s'", h.projectId))
 	}
@@ -970,6 +970,8 @@ func (h *versionsSetPriorityHandler) Run(ctx context.Context) gimlet.Responder {
 	for _, v := range versions {
 		versionIds = append(versionIds, utility.FromStringPtr(v.Id))
 	}
+
+	// Check for a valid priority and perform the update.
 	if ok := validPriority(priority, h.projectId, user); !ok {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			Message: fmt.Sprintf("insufficient privilege to set priority to %d, "+
@@ -980,6 +982,8 @@ func (h *versionsSetPriorityHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = dbModel.SetVersionsPriority(versionIds, priority, user.Id); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting version priorities"))
 	}
+
+	// Construct the response.
 	foundVersions, err := dbModel.VersionFind(dbModel.VersionByIds(versionIds))
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting versions"))
@@ -993,8 +997,10 @@ func (h *versionsSetPriorityHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(apiVersions)
 }
 
-func parseGetVersionsOptions(body []byte, params url.Values) (*dbModel.GetVersionsOptions, error) {
-	opts := &dbModel.GetVersionsOptions{}
+// parseGetVersionsOptions parses the request body and query parameters and returns a GetVersionsOptions struct.
+// If both are specified, the values set in the query parameters take precedence.
+func parseGetVersionsOptions(body []byte, params url.Values) (*dbModel.SetVersionsPriorityOptions, error) {
+	opts := &dbModel.SetVersionsPriorityOptions{}
 	if len(body) > 0 {
 		if err := json.Unmarshal(body, opts); err != nil {
 			return nil, errors.Wrap(err, "unmarshalling JSON request body into version options")

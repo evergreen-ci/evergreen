@@ -506,6 +506,14 @@ func GetMainlineCommitVersionsWithOptions(projectId string, opts MainlineCommitV
 	return res, nil
 }
 
+// SetVersionsPriorityOptions is a struct for setting the priority of versions.
+// It uses all the options in the GetVersionsOptions struct, as well as a priority field.
+type SetVersionsPriorityOptions struct {
+	Priority *int64 `json:"priority"`
+	GetVersionsOptions
+}
+
+// GetVersionsOptions is a struct that holds the options for retrieving a list of versions
 type GetVersionsOptions struct {
 	Priority       *int64 `json:"priority"`
 	StartAfter     int    `json:"start"`
@@ -519,6 +527,8 @@ type GetVersionsOptions struct {
 	ByTask         string `json:"by_task"`
 }
 
+// GetVersionsWithOptions returns versions for a project, that satisfy a set of query parameters defined by
+// the input GetVersionsOptions.
 func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Version, error) {
 	projectId, err := GetIdForProject(projectName)
 	if err != nil {
