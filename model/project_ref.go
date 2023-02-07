@@ -312,9 +312,6 @@ var (
 )
 
 func (p *ProjectRef) IsEnabled() bool {
-	if p.Enabled == nil {
-
-	}
 	return utility.FromBoolPtr(p.Enabled)
 }
 
