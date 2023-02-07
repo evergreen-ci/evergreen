@@ -1650,8 +1650,8 @@ func TestTryMovingLargeParserProjectToS3(t *testing.T) {
 	}()
 
 	for tName, tCase := range map[string]func(t *testing.T, v *Version, pp *ParserProject){
-		"PutsParserProjectInS3WhenSizeThresholdIsExceeded": func(t *testing.T, v *Version, pp *ParserProject) {
-			didPutInS3, err := tryPuttingLargeParserProjectInS3(ctx, env.Settings(), v, pp, 0)
+		"PutsParserProjectInS3": func(t *testing.T, v *Version, pp *ParserProject) {
+			didPutInS3, err := putParserProjectInS3(ctx, env.Settings(), v, pp)
 			require.NoError(t, err)
 			assert.True(t, didPutInS3)
 
@@ -1668,31 +1668,18 @@ func TestTryMovingLargeParserProjectToS3(t *testing.T) {
 		"NoopsWhenVersionIndicatesParserProjectIsAlreadyStoredInS3": func(t *testing.T, v *Version, pp *ParserProject) {
 			v.ProjectStorageMethod = ProjectStorageMethodS3
 
-			didPutInS3, err := tryPuttingLargeParserProjectInS3(ctx, env.Settings(), v, pp, 0)
+			didPutInS3, err := putParserProjectInS3(ctx, env.Settings(), v, pp)
 			require.NoError(t, err)
 			assert.False(t, didPutInS3)
 
 			ppFromS3, err := ParserProjectFindOneByID(ctx, env.Settings(), ProjectStorageMethodS3, pp.Id)
 			assert.NoError(t, err)
 			assert.Zero(t, ppFromS3, "parser project should not be stored in S3")
-		},
-		"NoopsWhenParserProjectSizeThresholdIsNotExceeded": func(t *testing.T, v *Version, pp *ParserProject) {
-			didPutInS3, err := tryPuttingLargeParserProjectInS3(ctx, env.Settings(), v, pp, 1000*1000)
-			require.NoError(t, err)
-			assert.False(t, didPutInS3)
-
-			ppFromS3, err := ParserProjectFindOneByID(ctx, env.Settings(), ProjectStorageMethodS3, pp.Id)
-			assert.NoError(t, err)
-			assert.Zero(t, ppFromS3, "parser project should not be stored in S3")
-
-			dbVersion, err := VersionFindOneId(v.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbVersion)
-			assert.Equal(t, ProjectStorageMethodDB, dbVersion.ProjectStorageMethod, "parser project should still be stored in the DB")
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(ParserProjectCollection, VersionCollection))
+			require.NoError(t, bucket.RemovePrefix(ctx, ppConf.Prefix))
 			pp := ParserProject{
 				Id: "parser_project_id",
 			}

@@ -205,10 +205,6 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	if adb.ResultsNotFound(err) || db.IsDuplicateKey(err) {
 		return err
 	}
-	// If the document hit the size limit, retrying won't help.
-	if db.IsDocumentLimit(err) {
-		return err
-	}
 	if err != nil {
 		return errors.Wrap(err, evergreen.SaveGenerateTasksError)
 	}

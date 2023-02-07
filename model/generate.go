@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -12,7 +13,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -168,6 +168,17 @@ func (g *GeneratedProject) Save(ctx context.Context, settings *evergreen.Setting
 	}
 
 	if err := updateParserProject(ctx, settings, v, pp, t.Id); err != nil {
+		if db.IsDocumentLimit(err) {
+			// The parser project has reached the DB document size limit, so put
+			// it in S3.
+			didPutInS3, err := putParserProjectInS3(ctx, settings, v, pp)
+			if err != nil {
+				return errors.Wrap(err, "moving parser project from the DB into S3")
+			}
+			if didPutInS3 {
+				return nil
+			}
+		}
 		return errors.WithStack(err)
 	}
 
@@ -177,12 +188,8 @@ func (g *GeneratedProject) Save(ctx context.Context, settings *evergreen.Setting
 	return nil
 }
 
-const largeParserProjectThresholdBytes = 15 * 1000 * 1000
-
 // updateParserProject updates the parser project along with generated task ID
-// and updated config number. If the parser project is currently stored in the
-// DB and the new parser project exceeds the document limit, it will be moved to
-// S3.
+// and updated config number.
 func updateParserProject(ctx context.Context, settings *evergreen.Settings, v *Version, pp *ParserProject, taskId string) error {
 	if utility.StringSliceContains(pp.UpdatedByGenerators, taskId) {
 		// This generator has already updated the parser project so continue.
@@ -191,24 +198,16 @@ func updateParserProject(ctx context.Context, settings *evergreen.Settings, v *V
 
 	pp.UpdatedByGenerators = append(pp.UpdatedByGenerators, taskId)
 
-	didPutInS3, err := tryPuttingLargeParserProjectInS3(ctx, settings, v, pp, largeParserProjectThresholdBytes)
-	if err != nil {
-		return errors.Wrap(err, "moving parser project from the DB into S3")
-	}
-	if didPutInS3 {
-		return nil
-	}
-
 	if err := ParserProjectUpsertOne(ctx, settings, v.ProjectStorageMethod, pp); err != nil {
 		return errors.Wrapf(err, "upserting parser project '%s'", pp.Id)
 	}
 	return nil
 }
 
-// tryPuttingLargeParserProjectInS3 attempts to put a parser project that's
-// currently stored in the DB into S3 if it is close to or exceeds the DB
-// document size limit of 16 MB.
-func tryPuttingLargeParserProjectInS3(ctx context.Context, settings *evergreen.Settings, v *Version, pp *ParserProject, ppSizeThreshold int) (didPutInS3 bool, err error) {
+// putParserProjectInS3 puts a parser project that's currently stored in
+// the DB into S3. If the parser project is already stored in S3, this is a
+// no-op.
+func putParserProjectInS3(ctx context.Context, settings *evergreen.Settings, v *Version, pp *ParserProject) (didPutInS3 bool, err error) {
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		return false, errors.Wrap(err, "getting service flags")
@@ -221,20 +220,8 @@ func tryPuttingLargeParserProjectInS3(ctx context.Context, settings *evergreen.S
 		return false, nil
 	}
 
-	bsonPP, err := bson.Marshal(pp)
-	if err != nil {
-		return false, errors.Wrap(err, "marshalling parser project to BSON")
-	}
-	if len(bsonPP) < ppSizeThreshold {
-		return false, nil
-	}
-
-	ppStorage, err := NewParserProjectS3Storage(settings.Providers.AWS.ParserProject)
-	if err != nil {
-		return false, errors.Wrap(err, "initializing parser project S3 storage")
-	}
-	if err := ppStorage.UpsertOneBSON(ctx, pp.Id, bsonPP); err != nil {
-		return false, errors.Wrap(err, "upserting BSON parser project into S3")
+	if err := ParserProjectUpsertOne(ctx, settings, ProjectStorageMethodS3, pp); err != nil {
+		return false, errors.Wrap(err, "upserting parser project into S3")
 	}
 
 	if err := v.UpdateProjectStorageMethod(ProjectStorageMethodS3); err != nil {
