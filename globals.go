@@ -433,9 +433,10 @@ func IsPatchComment(comment string) bool {
 	return trimComment(comment) == PatchComment
 }
 
-// The trigger comment may be followed by a newline and a message.
+// ContainsTriggerComment checks if "evergreen merge" is present in the comment, as
+// it may be followed by a newline and a message.
 func ContainsTriggerComment(comment string) bool {
-	return strings.HasPrefix(trimComment(comment), "evergreen merge")
+	return strings.HasPrefix(trimComment(comment), TriggerComment)
 }
 
 type ModificationAction string
