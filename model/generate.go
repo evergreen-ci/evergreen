@@ -191,11 +191,11 @@ func updateParserProject(ctx context.Context, settings *evergreen.Settings, v *V
 
 	pp.UpdatedByGenerators = append(pp.UpdatedByGenerators, taskId)
 
-	didMoveToS3, err := tryMovingLargeParserProjectToS3(ctx, settings, v, pp)
+	didPutInS3, err := tryPuttingLargeParserProjectInS3(ctx, settings, v, pp, largeParserProjectThresholdBytes)
 	if err != nil {
 		return errors.Wrap(err, "moving parser project from the DB into S3")
 	}
-	if didMoveToS3 {
+	if didPutInS3 {
 		return nil
 	}
 
@@ -205,11 +205,10 @@ func updateParserProject(ctx context.Context, settings *evergreen.Settings, v *V
 	return nil
 }
 
-// tryMovingLargeParserProjectToS3 attempts to move a parser project currently
-// stored in the DB into S3 if it is close to or exceeds the DB document size
-// limit of 16 MB.
-// kim: TODO: test
-func tryMovingLargeParserProjectToS3(ctx context.Context, settings *evergreen.Settings, v *Version, pp *ParserProject) (didMove bool, err error) {
+// tryPuttingLargeParserProjectInS3 attempts to put a parser project that's
+// currently stored in the DB into S3 if it is close to or exceeds the DB
+// document size limit of 16 MB.
+func tryPuttingLargeParserProjectInS3(ctx context.Context, settings *evergreen.Settings, v *Version, pp *ParserProject, ppSizeThreshold int) (didPutInS3 bool, err error) {
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		return false, errors.Wrap(err, "getting service flags")
@@ -226,7 +225,7 @@ func tryMovingLargeParserProjectToS3(ctx context.Context, settings *evergreen.Se
 	if err != nil {
 		return false, errors.Wrap(err, "marshalling parser project to BSON")
 	}
-	if len(bsonPP) < largeParserProjectThresholdBytes {
+	if len(bsonPP) < ppSizeThreshold {
 		return false, nil
 	}
 

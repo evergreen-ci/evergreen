@@ -6,12 +6,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1222,6 +1225,102 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 	s.Len(tasks[0].ExecutionTasks, 1)
 }
 
+func (s *GenerateSuite) TestMergeGeneratedProjects() {
+	projects := []GeneratedProject{sampleGeneratedProjectWithAllMultiFields}
+	merged, err := MergeGeneratedProjects(projects)
+	s.Require().NoError(err)
+
+	expectedBVs := map[string]struct {
+		numTasks        int
+		numDisplayTasks int
+		found           bool
+	}{
+		"honeydew": {numTasks: 3},
+		"cantaloupe": {
+			numTasks:        1,
+			numDisplayTasks: 2,
+		},
+	}
+	for _, bv := range merged.BuildVariants {
+		expected, ok := expectedBVs[bv.Name]
+		s.True(ok, "unexpected build variant '%s'", bv.Name)
+		s.Len(bv.Tasks, expected.numTasks, "unexpected number of tasks for build variant '%s'", bv.Name)
+		s.Len(bv.DisplayTasks, expected.numDisplayTasks, "unexpected number of display tasks for build variant '%s'", bv.DisplayName)
+
+		expected.found = true
+		expectedBVs[bv.Name] = expected
+	}
+	for bvName, expected := range expectedBVs {
+		s.True(expected.found, "did not find expected build variant '%s'", bvName)
+	}
+
+	expectedTasks := map[string]struct {
+		numCmds int
+		found   bool
+	}{
+		"quokka": {numCmds: 2},
+		"pika":   {numCmds: 1},
+	}
+	for _, tsk := range merged.Tasks {
+		expected, ok := expectedTasks[tsk.Name]
+		s.True(ok, "unexpected task '%s'", tsk.Name)
+		s.Len(tsk.Commands, expected.numCmds, "unexpected number of commands for task '%s'", tsk.Name)
+
+		expected.found = true
+		expectedTasks[tsk.Name] = expected
+	}
+	for taskName, expected := range expectedTasks {
+		s.True(expected.found, "did not find expected task '%s'", taskName)
+	}
+
+	expectedFuncs := map[string]struct {
+		numCmds int
+		found   bool
+	}{
+		"brownie": {numCmds: 2},
+		"cookie":  {numCmds: 1},
+	}
+	for funcName, funcCmds := range merged.Functions {
+		expected, ok := expectedFuncs[funcName]
+		s.True(ok, "unexpected function '%s'", funcName)
+		s.Len(funcCmds.List(), expected.numCmds, "unexpected number of commands for function '%s'", funcName)
+
+		expected.found = true
+		expectedFuncs[funcName] = expected
+	}
+	for funcName, expected := range expectedFuncs {
+		s.True(expected.found, "did not find expected function '%s'", funcName)
+	}
+
+	expectedTaskGroups := map[string]struct {
+		numTasks int
+		found    bool
+	}{
+		"sea-bunny": {numTasks: 2},
+		"mola-mola": {numTasks: 1},
+	}
+	for _, tg := range merged.TaskGroups {
+		expected, ok := expectedTaskGroups[tg.Name]
+		s.True(ok, "unexpected task group '%s'", tg.Name)
+		s.Len(tg.Tasks, expected.numTasks, "unexpected number of tasks for task group '%s'", tg.Name)
+
+		expected.found = true
+		expectedTaskGroups[tg.Name] = expected
+	}
+	for tgName, expected := range expectedTaskGroups {
+		s.True(expected.found, "did not find expected task group '%s'", tgName)
+	}
+}
+
+func (s *GenerateSuite) TestMergeGeneratedProjectsWithNoTasks() {
+	projects := []GeneratedProject{smallGeneratedProject}
+	merged, err := MergeGeneratedProjects(projects)
+	s.Require().NoError(err)
+	s.Require().NotNil(merged)
+	s.Require().Len(merged.BuildVariants, 1)
+	s.Len(merged.BuildVariants[0].DisplayTasks, 1)
+}
+
 func TestSimulateNewDependencyGraph(t *testing.T) {
 	defer func() {
 		assert.NoError(t, db.Clear(task.Collection))
@@ -1485,102 +1584,6 @@ func TestFilterInactiveTasks(t *testing.T) {
 	})
 }
 
-func (s *GenerateSuite) TestMergeGeneratedProjects() {
-	projects := []GeneratedProject{sampleGeneratedProjectWithAllMultiFields}
-	merged, err := MergeGeneratedProjects(projects)
-	s.Require().NoError(err)
-
-	expectedBVs := map[string]struct {
-		numTasks        int
-		numDisplayTasks int
-		found           bool
-	}{
-		"honeydew": {numTasks: 3},
-		"cantaloupe": {
-			numTasks:        1,
-			numDisplayTasks: 2,
-		},
-	}
-	for _, bv := range merged.BuildVariants {
-		expected, ok := expectedBVs[bv.Name]
-		s.True(ok, "unexpected build variant '%s'", bv.Name)
-		s.Len(bv.Tasks, expected.numTasks, "unexpected number of tasks for build variant '%s'", bv.Name)
-		s.Len(bv.DisplayTasks, expected.numDisplayTasks, "unexpected number of display tasks for build variant '%s'", bv.DisplayName)
-
-		expected.found = true
-		expectedBVs[bv.Name] = expected
-	}
-	for bvName, expected := range expectedBVs {
-		s.True(expected.found, "did not find expected build variant '%s'", bvName)
-	}
-
-	expectedTasks := map[string]struct {
-		numCmds int
-		found   bool
-	}{
-		"quokka": {numCmds: 2},
-		"pika":   {numCmds: 1},
-	}
-	for _, tsk := range merged.Tasks {
-		expected, ok := expectedTasks[tsk.Name]
-		s.True(ok, "unexpected task '%s'", tsk.Name)
-		s.Len(tsk.Commands, expected.numCmds, "unexpected number of commands for task '%s'", tsk.Name)
-
-		expected.found = true
-		expectedTasks[tsk.Name] = expected
-	}
-	for taskName, expected := range expectedTasks {
-		s.True(expected.found, "did not find expected task '%s'", taskName)
-	}
-
-	expectedFuncs := map[string]struct {
-		numCmds int
-		found   bool
-	}{
-		"brownie": {numCmds: 2},
-		"cookie":  {numCmds: 1},
-	}
-	for funcName, funcCmds := range merged.Functions {
-		expected, ok := expectedFuncs[funcName]
-		s.True(ok, "unexpected function '%s'", funcName)
-		s.Len(funcCmds.List(), expected.numCmds, "unexpected number of commands for function '%s'", funcName)
-
-		expected.found = true
-		expectedFuncs[funcName] = expected
-	}
-	for funcName, expected := range expectedFuncs {
-		s.True(expected.found, "did not find expected function '%s'", funcName)
-	}
-
-	expectedTaskGroups := map[string]struct {
-		numTasks int
-		found    bool
-	}{
-		"sea-bunny": {numTasks: 2},
-		"mola-mola": {numTasks: 1},
-	}
-	for _, tg := range merged.TaskGroups {
-		expected, ok := expectedTaskGroups[tg.Name]
-		s.True(ok, "unexpected task group '%s'", tg.Name)
-		s.Len(tg.Tasks, expected.numTasks, "unexpected number of tasks for task group '%s'", tg.Name)
-
-		expected.found = true
-		expectedTaskGroups[tg.Name] = expected
-	}
-	for tgName, expected := range expectedTaskGroups {
-		s.True(expected.found, "did not find expected task group '%s'", tgName)
-	}
-}
-
-func (s *GenerateSuite) TestMergeGeneratedProjectsWithNoTasks() {
-	projects := []GeneratedProject{smallGeneratedProject}
-	merged, err := MergeGeneratedProjects(projects)
-	s.Require().NoError(err)
-	s.Require().NotNil(merged)
-	s.Require().Len(merged.BuildVariants, 1)
-	s.Len(merged.BuildVariants[0].DisplayTasks, 1)
-}
-
 func TestAddDependencies(t *testing.T) {
 	require.NoError(t, db.Clear(task.Collection))
 
@@ -1607,5 +1610,101 @@ func TestAddDependencies(t *testing.T) {
 	assert.Len(t, t2.DependsOn, 2)
 	for _, dep := range t2.DependsOn {
 		assert.Equal(t, task.AllStatuses, dep.Status)
+	}
+}
+
+func TestTryMovingLargeParserProjectToS3(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
+	testutil.ConfigureIntegrationTest(t, env.Settings(), t.Name())
+
+	c := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(c)
+
+	ppConf := env.Settings().Providers.AWS.ParserProject
+	bucket, err := pail.NewS3BucketWithHTTPClient(c, pail.S3Options{
+		Name:        ppConf.Bucket,
+		Region:      endpoints.UsEast1RegionID,
+		Credentials: pail.CreateAWSCredentials(ppConf.Key, ppConf.Secret, ""),
+	})
+	require.NoError(t, err)
+	defer func() {
+		assert.NoError(t, bucket.RemovePrefix(ctx, ppConf.Prefix))
+	}()
+
+	defer func() {
+		assert.NoError(t, db.ClearCollections(ParserProjectCollection, VersionCollection))
+	}()
+
+	originalFlags, err := evergreen.GetServiceFlags()
+	require.NoError(t, err)
+	newFlags := *originalFlags
+	newFlags.ParserProjectS3StorageDisabled = false
+	require.NoError(t, newFlags.Set())
+	defer func() {
+		assert.NoError(t, originalFlags.Set())
+	}()
+
+	for tName, tCase := range map[string]func(t *testing.T, v *Version, pp *ParserProject){
+		"PutsParserProjectInS3WhenSizeThresholdIsExceeded": func(t *testing.T, v *Version, pp *ParserProject) {
+			didPutInS3, err := tryPuttingLargeParserProjectInS3(ctx, env.Settings(), v, pp, 0)
+			require.NoError(t, err)
+			assert.True(t, didPutInS3)
+
+			ppFromS3, err := ParserProjectFindOneByID(ctx, env.Settings(), ProjectStorageMethodS3, pp.Id)
+			require.NoError(t, err)
+			require.NotZero(t, ppFromS3, "parser project should be stored in S3")
+			assert.Equal(t, pp.Id, ppFromS3.Id, "parser project should the expected one")
+
+			dbVersion, err := VersionFindOneId(v.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbVersion)
+			assert.Equal(t, ProjectStorageMethodS3, dbVersion.ProjectStorageMethod, "parser project should be stored in S3")
+		},
+		"NoopsWhenVersionIndicatesParserProjectIsAlreadyStoredInS3": func(t *testing.T, v *Version, pp *ParserProject) {
+			v.ProjectStorageMethod = ProjectStorageMethodS3
+
+			didPutInS3, err := tryPuttingLargeParserProjectInS3(ctx, env.Settings(), v, pp, 0)
+			require.NoError(t, err)
+			assert.False(t, didPutInS3)
+
+			ppFromS3, err := ParserProjectFindOneByID(ctx, env.Settings(), ProjectStorageMethodS3, pp.Id)
+			assert.NoError(t, err)
+			assert.Zero(t, ppFromS3, "parser project should not be stored in S3")
+		},
+		"NoopsWhenParserProjectSizeThresholdIsNotExceeded": func(t *testing.T, v *Version, pp *ParserProject) {
+			didPutInS3, err := tryPuttingLargeParserProjectInS3(ctx, env.Settings(), v, pp, 1000*1000)
+			require.NoError(t, err)
+			assert.False(t, didPutInS3)
+
+			ppFromS3, err := ParserProjectFindOneByID(ctx, env.Settings(), ProjectStorageMethodS3, pp.Id)
+			assert.NoError(t, err)
+			assert.Zero(t, ppFromS3, "parser project should not be stored in S3")
+
+			dbVersion, err := VersionFindOneId(v.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbVersion)
+			assert.Equal(t, ProjectStorageMethodDB, dbVersion.ProjectStorageMethod, "parser project should still be stored in the DB")
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(ParserProjectCollection, VersionCollection))
+			pp := ParserProject{
+				Id: "parser_project_id",
+			}
+			require.NoError(t, pp.Insert())
+
+			v := Version{
+				Id:                   "version_id",
+				ProjectStorageMethod: ProjectStorageMethodDB,
+			}
+			require.NoError(t, v.Insert())
+
+			tCase(t, &v, &pp)
+		})
 	}
 }
