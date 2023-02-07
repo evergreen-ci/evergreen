@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -883,51 +884,11 @@ func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) 
 
 	// body is optional
 	b, _ := ioutil.ReadAll(r.Body)
-	if len(b) > 0 {
-		if err := json.Unmarshal(b, &h.opts); err != nil {
-			return errors.Wrap(err, "unmarshalling JSON request body into version options")
-		}
+	opts, err := parseGetVersionsOptions(b, params)
+	if err != nil {
+		return err
 	}
-
-	if h.opts.IncludeTasks && !h.opts.IncludeBuilds {
-		return errors.New("cannot include tasks without builds")
-	}
-
-	// get some options from the query parameters for legacy usage
-	limitStr := params.Get("limit")
-	if limitStr != "" {
-		limit, err := strconv.Atoi(limitStr)
-		if err != nil {
-			return errors.Wrap(err, "invalid limit")
-		}
-		h.opts.Limit = limit
-	}
-	if h.opts.Limit == 0 {
-		h.opts.Limit = defaultVersionLimit
-	}
-	if h.opts.Limit < 1 {
-		return errors.New("limit must be a positive integer")
-	}
-
-	startStr := params.Get("start")
-	if startStr != "" {
-		startOrder, err := strconv.Atoi(params.Get("start"))
-		if err != nil {
-			return errors.Wrap(err, "invalid start query parameter")
-		}
-		h.opts.StartAfter = startOrder
-	}
-	if h.opts.StartAfter < 0 {
-		return errors.New("start must be a non-negative integer")
-	}
-
-	requester := params.Get("requester")
-	if requester != "" {
-		h.opts.Requester = requester
-	}
-	if h.opts.Requester == "" {
-		h.opts.Requester = evergreen.RepotrackerVersionRequester
-	}
+	h.opts = *opts
 	return nil
 }
 
@@ -960,6 +921,141 @@ func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return resp
+}
+
+// POST /rest/v2/projects/{project_id}/versions
+
+// versionsSetPriorityHandler is a RequestHandler for disabling versions.
+type versionsSetPriorityHandler struct {
+	projectId string
+	url       string
+	opts      dbModel.GetVersionsOptions
+}
+
+func makeSetPriorityProjectVersionsHandler(url string) gimlet.RouteHandler {
+	return &versionsSetPriorityHandler{url: url}
+}
+
+func (h *versionsSetPriorityHandler) Factory() gimlet.RouteHandler {
+	return &versionsSetPriorityHandler{url: h.url}
+}
+
+func (h *versionsSetPriorityHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.projectId = gimlet.GetVars(r)["project_id"]
+	params := r.URL.Query()
+
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return errors.Wrap(err, "reading request body")
+	}
+	opts, err := parseGetVersionsOptions(b, params)
+	if err != nil {
+		return err
+	}
+	if opts.Priority == nil {
+		return errors.New("must specify a priority")
+	}
+	h.opts = *opts
+	return nil
+}
+
+func (h *versionsSetPriorityHandler) Run(ctx context.Context) gimlet.Responder {
+	user := MustHaveUser(ctx)
+	priority := utility.FromInt64Ptr(h.opts.Priority)
+	versions, err := data.GetProjectVersionsWithOptions(h.projectId, h.opts)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting versions for project '%s'", h.projectId))
+	}
+	var versionIds []string
+	for _, v := range versions {
+		versionIds = append(versionIds, utility.FromStringPtr(v.Id))
+	}
+	if ok := validPriority(priority, h.projectId, user); !ok {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message: fmt.Sprintf("insufficient privilege to set priority to %d, "+
+				"non-superusers can only set priority at or below %d", priority, evergreen.MaxTaskPriority),
+			StatusCode: http.StatusForbidden,
+		})
+	}
+	if err = dbModel.SetVersionsPriority(versionIds, priority, user.Id); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting version priorities"))
+	}
+	foundVersions, err := dbModel.VersionFind(dbModel.VersionByIds(versionIds))
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting versions"))
+	}
+	apiVersions := []model.APIVersion{}
+	for _, v := range foundVersions {
+		apiVersion := model.APIVersion{}
+		apiVersion.BuildFromService(v)
+		apiVersions = append(apiVersions, apiVersion)
+	}
+	return gimlet.NewJSONResponse(apiVersions)
+}
+
+func parseGetVersionsOptions(body []byte, params url.Values) (*dbModel.GetVersionsOptions, error) {
+	opts := &dbModel.GetVersionsOptions{}
+	if len(body) > 0 {
+		if err := json.Unmarshal(body, opts); err != nil {
+			return nil, errors.Wrap(err, "unmarshalling JSON request body into version options")
+		}
+	}
+
+	if opts.IncludeTasks && !opts.IncludeBuilds {
+		return nil, errors.New("cannot include tasks without builds")
+	}
+
+	// get some options from the query parameters for legacy usage
+	limitStr := params.Get("limit")
+	if limitStr != "" {
+		limit, err := strconv.Atoi(limitStr)
+		if err != nil {
+			return nil, errors.Wrap(err, "invalid limit")
+		}
+		opts.Limit = limit
+	}
+	if opts.Limit == 0 {
+		opts.Limit = defaultVersionLimit
+	}
+	if opts.Limit < 1 {
+		return nil, errors.New("limit must be a positive integer")
+	}
+
+	startStr := params.Get("start")
+	if startStr != "" {
+		startOrder, err := strconv.Atoi(params.Get("start"))
+		if err != nil {
+			return nil, errors.Wrap(err, "invalid start query parameter")
+		}
+		opts.StartAfter = startOrder
+	}
+	if opts.StartAfter < 0 {
+		return nil, errors.New("start must be a non-negative integer")
+	}
+
+	endStr := params.Get("end")
+	if endStr != "" {
+		endOrder, err := strconv.Atoi(params.Get("end"))
+		if err != nil {
+			return nil, errors.Wrap(err, "invalid end query parameter")
+		}
+		opts.EndAt = endOrder
+	}
+	if opts.EndAt < 0 {
+		return nil, errors.New("end must be a non-negative integer")
+	}
+	if opts.EndAt > opts.StartAfter {
+		return nil, errors.New("end must be less than or equal to start")
+	}
+
+	requester := params.Get("requester")
+	if requester != "" {
+		opts.Requester = requester
+	}
+	if opts.Requester == "" {
+		opts.Requester = evergreen.RepotrackerVersionRequester
+	}
+	return opts, nil
 }
 
 ////////////////////////////////////////////////////////////////////////

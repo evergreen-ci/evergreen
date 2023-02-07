@@ -507,7 +507,9 @@ func GetMainlineCommitVersionsWithOptions(projectId string, opts MainlineCommitV
 }
 
 type GetVersionsOptions struct {
+	Priority       *int64 `json:"priority"`
 	StartAfter     int    `json:"start"`
+	EndAt          int    `json:"end"`
 	Requester      string `json:"requester"`
 	Limit          int    `json:"limit"`
 	Skip           int    `json:"skip"`
@@ -534,7 +536,9 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 		match[bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusVariantKey)] = opts.ByBuildVariant
 	}
 
-	if opts.StartAfter > 0 {
+	if opts.EndAt > 0 && opts.StartAfter > 0 {
+		match[VersionRevisionOrderNumberKey] = bson.M{"$lt": opts.StartAfter, "$gt": opts.EndAt}
+	} else if opts.StartAfter > 0 {
 		match[VersionRevisionOrderNumberKey] = bson.M{"$lt": opts.StartAfter}
 	}
 	pipeline := []bson.M{{"$match": match}}
