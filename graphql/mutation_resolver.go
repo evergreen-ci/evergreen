@@ -434,7 +434,7 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 
 	if utility.FromBoolPtr(requestS3Creds) {
 		if err = data.RequestS3Creds(*apiProjectRef.Identifier); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating jira ticket to request AWS access: %s", err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating jira ticket to request S3 credentials: %s", err.Error()))
 		}
 	}
 	return &apiProjectRef, nil
