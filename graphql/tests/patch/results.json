@@ -334,8 +334,8 @@
             "patch": {
               "id": "5e4ff3abe3c3317e352062e4",
               "projectMetadata": {
-                "owner_name": "evergreen-ci",
-                "repo_name": "evergreen",
+                "owner": "evergreen-ci",
+                "repo": "evergreen",
                 "identifier": "evergreenIdentifier"
               }
             }
