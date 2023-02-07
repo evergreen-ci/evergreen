@@ -180,7 +180,22 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, com
 		commitMessage = existingPatch.Description
 	}
 
-	newPatch, err := data.CreatePatchForMerge(ctx, patchID, utility.FromStringPtr(commitMessage))
+	if utility.FromStringPtr(existingPatch.Requester) == evergreen.GithubPRRequester {
+		info := commitqueue.EnqueuePRInfo{
+			PR:            existingPatch.GithubPatchData.PRNumber,
+			Repo:          utility.FromStringPtr(existingPatch.GithubPatchData.BaseRepo),
+			Owner:         utility.FromStringPtr(existingPatch.GithubPatchData.BaseOwner),
+			CommitMessage: utility.FromStringPtr(commitMessage),
+			Username:      utility.FromStringPtr(existingPatch.GithubPatchData.Author),
+		}
+		newPatch, err := data.EnqueuePRToCommitQueue(ctx, evergreen.GetEnvironment(), r.sc, info)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("enqueueing patch '%s': %s", patchID, err.Error()))
+		}
+		return newPatch, nil
+	}
+
+	newPatch, err := data.CreatePatchForMerge(ctx, evergreen.GetEnvironment().Settings(), patchID, utility.FromStringPtr(commitMessage))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating new patch: %s", err.Error()))
 	}
@@ -202,7 +217,7 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, co
 	if err != nil && !adb.ResultsNotFound(err) {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred fetching patch `%s`: %s", patchID, err.Error()))
 	}
-	statusCode, err := units.SchedulePatch(ctx, patchID, version, patchUpdateReq)
+	statusCode, err := units.SchedulePatch(ctx, evergreen.GetEnvironment(), patchID, version, patchUpdateReq)
 	if err != nil {
 		return nil, mapHTTPStatusToGqlError(ctx, statusCode, werrors.Errorf("Error scheduling patch `%s`: %s", patchID, err.Error()))
 	}

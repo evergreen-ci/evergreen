@@ -1,5 +1,5 @@
 {
-  mainlineCommits(options: { projectID: "evergreen" }) {
+  mainlineCommits(options: { projectIdentifier: "evergreen" }) {
     versions {
       version {
         id

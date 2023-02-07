@@ -146,7 +146,7 @@ func (g *GeneratedProject) NewVersion(p *Project, pp *ParserProject, v *Version)
 	return p, newPP, v, nil
 }
 
-func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProject, v *Version) error {
+func (g *GeneratedProject) Save(ctx context.Context, settings *evergreen.Settings, p *Project, pp *ParserProject, v *Version) error {
 	// Get task again, to exit early if another generator finished early.
 	t, err := task.FindOneId(g.Task.Id)
 	if err != nil {
@@ -166,7 +166,7 @@ func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProje
 		return mongo.ErrNoDocuments
 	}
 
-	if err := updateParserProject(ctx, v, pp, t.Id); err != nil {
+	if err := updateParserProject(ctx, settings, v, pp, t.Id); err != nil {
 		return errors.WithStack(err)
 	}
 
@@ -177,13 +177,13 @@ func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProje
 }
 
 // updateParserProject updates the parser project along with generated task ID and updated config number
-func updateParserProject(ctx context.Context, v *Version, pp *ParserProject, taskId string) error {
+func updateParserProject(ctx context.Context, settings *evergreen.Settings, v *Version, pp *ParserProject, taskId string) error {
 	if utility.StringSliceContains(pp.UpdatedByGenerators, taskId) {
 		// This generator has already updated the parser project so continue.
 		return nil
 	}
 	pp.UpdatedByGenerators = append(pp.UpdatedByGenerators, taskId)
-	if err := GetParserProjectStorage(v.ProjectStorageMethod).UpsertOne(ctx, pp); err != nil {
+	if err := ParserProjectUpsertOne(ctx, settings, v.ProjectStorageMethod, pp); err != nil {
 		return errors.Wrapf(err, "upserting parser project '%s'", pp.Id)
 	}
 	return nil
@@ -199,8 +199,8 @@ func cacheProjectData(p *Project) projectMaps {
 	for _, bv := range p.BuildVariants {
 		cachedProject.buildVariants[bv.Name] = struct{}{}
 	}
-	for _, t := range p.Tasks {
-		cachedProject.tasks[t.Name] = &t
+	for i, t := range p.Tasks {
+		cachedProject.tasks[t.Name] = &p.Tasks[i]
 	}
 	// functions is already a map, cache it anyway for convenience
 	cachedProject.functions = p.Functions

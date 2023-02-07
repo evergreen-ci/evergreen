@@ -386,14 +386,15 @@ type mergePatchHandler struct {
 	CommitMessage string `json:"commit_message"`
 
 	patchId string
+	env     evergreen.Environment
 }
 
-func makeMergePatch() gimlet.RouteHandler {
-	return &mergePatchHandler{}
+func makeMergePatch(env evergreen.Environment) gimlet.RouteHandler {
+	return &mergePatchHandler{env: env}
 }
 
 func (p *mergePatchHandler) Factory() gimlet.RouteHandler {
-	return &mergePatchHandler{}
+	return &mergePatchHandler{env: p.env}
 }
 
 func (p *mergePatchHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -409,7 +410,7 @@ func (p *mergePatchHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (p *mergePatchHandler) Run(ctx context.Context) gimlet.Responder {
-	apiPatch, err := data.CreatePatchForMerge(ctx, p.patchId, p.CommitMessage)
+	apiPatch, err := data.CreatePatchForMerge(ctx, p.env.Settings(), p.patchId, p.CommitMessage)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating merge patch '%s'", p.patchId))
 	}
@@ -431,14 +432,15 @@ type schedulePatchHandler struct {
 
 	patchId string
 	patch   patch.Patch
+	env     evergreen.Environment
 }
 
-func makeSchedulePatchHandler() gimlet.RouteHandler {
-	return &schedulePatchHandler{}
+func makeSchedulePatchHandler(env evergreen.Environment) gimlet.RouteHandler {
+	return &schedulePatchHandler{env: env}
 }
 
 func (p *schedulePatchHandler) Factory() gimlet.RouteHandler {
-	return &schedulePatchHandler{}
+	return &schedulePatchHandler{env: p.env}
 }
 
 func (p *schedulePatchHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -475,18 +477,15 @@ func (p *schedulePatchHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
-	settings, err := evergreen.GetConfig()
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting admin settings"))
-	}
-	token, err := settings.GetGithubOauthToken()
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting GitHub OAuth token"))
-	}
 	dbVersion, _ := dbModel.VersionFindOneId(p.patchId)
 	var project *dbModel.Project
+	var err error
 	if dbVersion == nil {
-		project, _, err = dbModel.GetPatchedProject(ctx, &p.patch, token)
+		githubOauthToken, err := p.env.Settings().GetGithubOauthToken()
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting GitHub OAuth token"))
+		}
+		project, _, err = dbModel.GetPatchedProject(ctx, p.env.Settings(), &p.patch, githubOauthToken)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project for patch '%s'", p.patchId))
 		}
@@ -525,7 +524,7 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 		patchUpdateReq.VariantsTasks = append(patchUpdateReq.VariantsTasks, variantToSchedule)
 	}
-	code, err := units.SchedulePatch(ctx, p.patchId, dbVersion, patchUpdateReq)
+	code, err := units.SchedulePatch(ctx, p.env, p.patchId, dbVersion, patchUpdateReq)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "scheduling patch"))
 	}

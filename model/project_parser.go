@@ -26,6 +26,13 @@ const LoadProjectError = "load project error(s)"
 const TranslateProjectError = "error translating project"
 const EmptyConfigurationError = "received empty configuration file"
 
+// DefaultParserProjectAccessTimeout is the default timeout for accessing a
+// parser project. In general, the context timeout should prefer to be inherited
+// from a higher-level context (e.g. a REST request's context), so this timeout
+// should only be used as a last resort if the context cannot be easily passed
+// to the place where the parser project is accessed.
+const DefaultParserProjectAccessTimeout = 60 * time.Second
+
 // This file contains the infrastructure for turning a YAML project configuration
 // into a usable Project struct. A basic overview of the project parsing process is:
 //
@@ -33,7 +40,7 @@ const EmptyConfigurationError = "received empty configuration file"
 // The ParserProject's internal types define custom YAML unmarshal hooks, allowing
 // users to do things like offer a single definition where we expect a list, e.g.
 //   `tags: "single_tag"` instead of the more verbose `tags: ["single_tag"]`
-// or refer to task by a single selector. Custom YAML handling allows us to
+// or refer to a task by a single selector. Custom YAML handling allows us to
 // add other useful features like detecting fatal errors and reporting them
 // through the YAML parser's error code, which supplies helpful line number information
 // that we would lose during validation against already-parsed data. In the future,
@@ -51,6 +58,15 @@ const EmptyConfigurationError = "received empty configuration file"
 // ParserProject serves as an intermediary struct for parsing project
 // configuration YAML. It implements the Unmarshaler interface
 // to allow for flexible handling.
+// From a mental model perspective, the ParserProject is the project
+// configuration after YAML rules have been evaluated (e.g. matching YAML fields
+// to Go struct fields, evaluating YAML anchors and aliases), but before any
+// Evergreen-specific evaluation rules have been applied. For example, Evergreen
+// has a custom feature to support tagging a set of tasks and expanding those
+// tags into a list of tasks under the build variant's list of tasks (i.e.
+// ".tagname" syntax). In the ParserProject, these are stored as the unexpanded
+// tag text (i.e. ".tagname"), and these tags are not evaluated until the
+// ParserProject is turned into a final Project.
 type ParserProject struct {
 	// Id and ConfigdUpdateNumber are not pointers because they are only used internally
 	Id string `yaml:"_id" bson:"_id"` // should be the same as the version's ID
@@ -500,7 +516,7 @@ func (bvt *parserBV) hasSpecificActivation() bool {
 
 // FindAndTranslateProjectForPatch translates a parser project for a patch into a project.
 // This assumes that the version may not exist yet; otherwise FindAndTranslateProjectForVersion is equivalent.
-func FindAndTranslateProjectForPatch(ctx context.Context, p *patch.Patch) (*Project, *ParserProject, error) {
+func FindAndTranslateProjectForPatch(ctx context.Context, settings *evergreen.Settings, p *patch.Patch) (*Project, *ParserProject, error) {
 	if p.PatchedParserProject == "" {
 		v, err := VersionFindOneId(p.Version)
 		if err != nil {
@@ -509,7 +525,7 @@ func FindAndTranslateProjectForPatch(ctx context.Context, p *patch.Patch) (*Proj
 		if v == nil {
 			return nil, nil, errors.Errorf("version '%s' not found for patch '%s'", p.Version, p.Id.Hex())
 		}
-		return FindAndTranslateProjectForVersion(v)
+		return FindAndTranslateProjectForVersion(ctx, settings, v)
 	}
 	project := &Project{}
 	pp, err := LoadProjectInto(ctx, []byte(p.PatchedParserProject), nil, p.Project, project)
@@ -521,8 +537,8 @@ func FindAndTranslateProjectForPatch(ctx context.Context, p *patch.Patch) (*Proj
 
 // FindAndTranslateProjectForVersion translates a parser project for a version into a Project.
 // Also sets the project ID.
-func FindAndTranslateProjectForVersion(v *Version) (*Project, *ParserProject, error) {
-	pp, err := GetParserProjectStorage(v.ProjectStorageMethod).FindOneByID(context.Background(), v.Id)
+func FindAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.Settings, v *Version) (*Project, *ParserProject, error) {
+	pp, err := ParserProjectFindOneByID(ctx, settings, v.ProjectStorageMethod, v.Id)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "finding parser project")
 	}
@@ -539,7 +555,7 @@ func FindAndTranslateProjectForVersion(v *Version) (*Project, *ParserProject, er
 }
 
 // LoadProjectInfoForVersion returns the project info for a version from its parser project.
-func LoadProjectInfoForVersion(v *Version, id string) (ProjectInfo, error) {
+func LoadProjectInfoForVersion(ctx context.Context, settings *evergreen.Settings, v *Version, id string) (ProjectInfo, error) {
 	var err error
 
 	pRef, err := FindMergedProjectRef(id, "", false)
@@ -556,7 +572,7 @@ func LoadProjectInfoForVersion(v *Version, id string) (ProjectInfo, error) {
 			return ProjectInfo{}, errors.Wrap(err, "finding project config")
 		}
 	}
-	p, pp, err := FindAndTranslateProjectForVersion(v)
+	p, pp, err := FindAndTranslateProjectForVersion(ctx, settings, v)
 	if err != nil {
 		return ProjectInfo{}, errors.Wrap(err, "translating project")
 	}

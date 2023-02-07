@@ -285,7 +285,7 @@ func TestExpandS3PutParams(t *testing.T) {
 			cmd = &s3put{}
 
 			for _, v := range []string{"", "false", "False", "0", "F", "f", "${foo|false}", "${foo|}", "${foo}"} {
-				cmd.skipMissing = true
+				cmd.SkipExisting = "true"
 				cmd.Optional = v
 				So(cmd.expandParams(conf), ShouldBeNil)
 				So(cmd.skipMissing, ShouldBeFalse)
@@ -427,4 +427,145 @@ func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestFileUploadNaming(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	dir := t.TempDir()
+	require.NoError(t, os.Mkdir(filepath.Join(dir, "subDir"), 0755))
+	f, err := os.Create(filepath.Join(dir, "subDir", "bar"))
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+
+	s := s3put{
+		AwsKey:                        "key",
+		AwsSecret:                     "secret",
+		Bucket:                        "bucket",
+		BuildVariants:                 []string{},
+		ContentType:                   "content-type",
+		LocalFilesIncludeFilter:       []string{"*"},
+		Permissions:                   s3.BucketCannedACLPublicRead,
+		LocalFilesIncludeFilterPrefix: "",
+		RemoteFile:                    "remote",
+	}
+	require.NoError(t, os.Mkdir(filepath.Join(dir, "destination"), 0755))
+	opts := pail.LocalOptions{
+		Path: filepath.Join(dir, "destination"),
+	}
+	s.bucket, err = pail.NewLocalBucket(opts)
+	require.NoError(t, err)
+	comm := client.NewMock("http://localhost.com")
+	conf := &internal.TaskConfig{
+		Expansions:   &util.Expansions{},
+		Task:         &task.Task{Id: "mock_id", Secret: "mock_secret"},
+		Project:      &model.Project{},
+		WorkDir:      dir,
+		BuildVariant: &model.BuildVariant{},
+	}
+	logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+	require.NoError(t, err)
+
+	require.NoError(t, s.Execute(ctx, comm, logger, conf))
+	attachedFiles := comm.AttachedFiles
+	expected := map[string]bool{
+		"remotebar":       false,
+		"remoteremotebar": false,
+	}
+
+	for _, files := range attachedFiles {
+		for _, f := range files {
+			link := f.Link
+
+			expected[filepath.Base(link)] = true
+		}
+	}
+
+	require.True(t, expected["remotebar"])
+	require.False(t, expected["remoteremotebar"])
+}
+
+func TestPreservePath(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	dir := t.TempDir()
+
+	// Create the directories
+	require.NoError(t, os.Mkdir(filepath.Join(dir, "myWebsite"), 0755))
+	require.NoError(t, os.Mkdir(filepath.Join(dir, "myWebsite", "assets"), 0755))
+	require.NoError(t, os.Mkdir(filepath.Join(dir, "myWebsite", "assets", "images"), 0755))
+
+	// Create the files in in the assets directory
+	f, err := os.Create(filepath.Join(dir, "foo"))
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+	f, err = os.Create(filepath.Join(dir, "myWebsite", "assets", "asset1"))
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+	f, err = os.Create(filepath.Join(dir, "myWebsite", "assets", "asset2"))
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+	f, err = os.Create(filepath.Join(dir, "myWebsite", "assets", "asset3"))
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+
+	// Create the files in the assets/images directory
+	f, err = os.Create(filepath.Join(dir, "myWebsite", "assets", "images", "image1"))
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+	f, err = os.Create(filepath.Join(dir, "myWebsite", "assets", "images", "image2"))
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+
+	s := s3put{
+		AwsKey:                  "key",
+		AwsSecret:               "secret",
+		Bucket:                  "bucket",
+		BuildVariants:           []string{},
+		ContentType:             "content-type",
+		LocalFilesIncludeFilter: []string{"*"},
+		Permissions:             s3.BucketCannedACLPublicRead,
+		RemoteFile:              "remote",
+		PreservePath:            "true",
+	}
+	require.NoError(t, os.Mkdir(filepath.Join(dir, "destination"), 0755))
+	opts := pail.LocalOptions{
+		Path: filepath.Join(dir, "destination"),
+	}
+	s.bucket, err = pail.NewLocalBucket(opts)
+	require.NoError(t, err)
+	comm := client.NewMock("http://localhost.com")
+	conf := &internal.TaskConfig{
+		Expansions:   &util.Expansions{},
+		Task:         &task.Task{Id: "mock_id", Secret: "mock_secret"},
+		Project:      &model.Project{},
+		WorkDir:      dir,
+		BuildVariant: &model.BuildVariant{},
+	}
+	logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+	require.NoError(t, err)
+
+	require.NoError(t, s.Execute(ctx, comm, logger, conf))
+	it, err := s.bucket.List(ctx, "")
+	require.NoError(t, err)
+
+	expected := map[string]bool{
+		filepath.Join("remote", "foo"):                                     false,
+		filepath.Join("remote", "myWebsite", "assets", "asset1"):           false,
+		filepath.Join("remote", "myWebsite", "assets", "asset2"):           false,
+		filepath.Join("remote", "myWebsite", "assets", "asset3"):           false,
+		filepath.Join("remote", "myWebsite", "assets", "images", "image1"): false,
+		filepath.Join("remote", "myWebsite", "assets", "images", "image2"): false,
+	}
+
+	for it.Next(ctx) {
+		expected[it.Item().Name()] = true
+	}
+
+	for item, exists := range expected {
+		require.True(t, exists, item)
+	}
+
 }

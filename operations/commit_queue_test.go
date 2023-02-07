@@ -219,7 +219,7 @@ func (s *CommitQueueSuite) TestListContentsForPRs() {
 	}
 	s.Require().NoError(commitqueue.InsertQueue(cq))
 	cq.Queue[0].Version = "my_version"
-	s.NoError(cq.UpdateVersion(cq.Queue[0]))
+	s.NoError(cq.UpdateVersion(&cq.Queue[0]))
 	pRef := &model.ProjectRef{
 		Id:    "mci",
 		Owner: "evergreen-ci",

@@ -32,6 +32,7 @@ func init() {
 type generateTasksJob struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
 	TaskID   string `bson:"task_id" json:"task_id" yaml:"task_id"`
+	env      evergreen.Environment
 }
 
 func makeGenerateTaskJob() *generateTasksJob {
@@ -85,7 +86,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	if v == nil {
 		return errors.Errorf("version '%s' not found", t.Version)
 	}
-	project, parserProject, err := model.FindAndTranslateProjectForVersion(v)
+	project, parserProject, err := model.FindAndTranslateProjectForVersion(ctx, j.env.Settings(), v)
 	if err != nil {
 		return errors.Wrapf(err, "loading project for version '%s'", t.Version)
 	}
@@ -196,7 +197,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 
 	// Don't use the job's context, because it's better to finish than to exit early after a
 	// SIGTERM from a deploy. This should maybe be a context with timeout.
-	err = g.Save(context.Background(), p, pp, v)
+	err = g.Save(context.Background(), j.env.Settings(), p, pp, v)
 
 	// If the version or parser project has changed there was a race. Another generator will try again.
 	if adb.ResultsNotFound(err) || db.IsDuplicateKey(err) {
@@ -259,6 +260,9 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 	if t == nil {
 		j.AddError(errors.Errorf("task '%s' not found", j.TaskID))
 		return
+	}
+	if j.env == nil {
+		j.env = evergreen.GetEnvironment()
 	}
 
 	err = j.generate(ctx, t)

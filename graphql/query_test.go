@@ -101,10 +101,10 @@ func TestMainlineCommits(t *testing.T) {
 
 	// Should return all mainline commits while folding up inactive ones when there are no filters
 	mainlineCommitOptions := MainlineCommitsOptions{
-		ProjectID:       projectId,
-		SkipOrderNumber: nil,
-		Limit:           utility.ToIntPtr(2),
-		ShouldCollapse:  utility.FalsePtr(),
+		ProjectIdentifier: "evergreen",
+		SkipOrderNumber:   nil,
+		Limit:             utility.ToIntPtr(2),
+		ShouldCollapse:    utility.FalsePtr(),
 	}
 	buildVariantOptions := BuildVariantOptions{}
 	res, err := config.Resolvers.Query().MainlineCommits(ctx, mainlineCommitOptions, &buildVariantOptions)

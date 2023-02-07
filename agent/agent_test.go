@@ -738,6 +738,7 @@ task_groups:
 		},
 		Project: p,
 		WorkDir: s.tc.taskDirectory,
+		Timeout: &internal.Timeout{},
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

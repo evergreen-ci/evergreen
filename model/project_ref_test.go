@@ -140,6 +140,176 @@ func TestFindMergedProjectRef(t *testing.T) {
 	assert.Equal(t, "random2", mergedProject.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
 }
 
+func TestGetNumberOfEnabledProjects(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection))
+
+	enabled1 := &ProjectRef{
+		Id:      "enabled1",
+		Owner:   "10gen",
+		Repo:    "repo",
+		Enabled: utility.TruePtr(),
+	}
+	assert.NoError(t, enabled1.Insert())
+	enabled2 := &ProjectRef{
+		Id:      "enabled2",
+		Owner:   "mongodb",
+		Repo:    "mci",
+		Enabled: utility.TruePtr(),
+	}
+	assert.NoError(t, enabled2.Insert())
+	disabled1 := &ProjectRef{
+		Id:      "disabled1",
+		Owner:   "mongodb",
+		Repo:    "mci",
+		Enabled: utility.FalsePtr(),
+	}
+	assert.NoError(t, disabled1.Insert())
+	disabled2 := &ProjectRef{
+		Id:      "disabled2",
+		Owner:   "mongodb",
+		Repo:    "mci",
+		Enabled: utility.FalsePtr(),
+	}
+	assert.NoError(t, disabled2.Insert())
+	enabledByRepo := &ProjectRef{
+		Id:        "enabledByRepo",
+		Owner:     "mongodb",
+		Repo:      "mci",
+		RepoRefId: "mongodb_mci_enabled",
+	}
+	assert.NoError(t, enabledByRepo.Insert())
+
+	enableRef := &RepoRef{ProjectRef{
+		Id:      "mongodb_mci_enabled",
+		Owner:   "mongodb",
+		Repo:    "mci",
+		Enabled: utility.TruePtr(),
+	}}
+	assert.NoError(t, enableRef.Upsert())
+	disabledByRepo := &ProjectRef{
+		Id:        "disabledByRepo",
+		RepoRefId: "mongodb_mci_disabled",
+	}
+	assert.NoError(t, disabledByRepo.Insert())
+
+	disableRepo := &RepoRef{ProjectRef{
+		Id:      "mongodb_mci_disabled",
+		Owner:   "mongodb",
+		Repo:    "mci",
+		Enabled: utility.FalsePtr(),
+	}}
+	assert.NoError(t, disableRepo.Upsert())
+
+	enabledProjects, err := GetEnabledProjects()
+	assert.NoError(t, err)
+	assert.Equal(t, 3, len(enabledProjects))
+	enabledProjectsOwnerRepo, err := GetEnabledProjectsForOwnerRepo(enabled2.Owner, enabled2.Repo)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(enabledProjectsOwnerRepo))
+}
+
+func TestValidateProjectCreation(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection))
+	enabled1 := &ProjectRef{
+		Id:      "enabled1",
+		Owner:   "mongodb",
+		Repo:    "mci",
+		Enabled: utility.TruePtr(),
+	}
+	assert.NoError(t, enabled1.Insert())
+	enabled2 := &ProjectRef{
+		Id:      "enabled2",
+		Owner:   "owner_exception",
+		Repo:    "repo_exception",
+		Enabled: utility.TruePtr(),
+	}
+	assert.NoError(t, enabled2.Insert())
+	disabled1 := &ProjectRef{
+		Id:      "disabled1",
+		Owner:   "mongodb",
+		Repo:    "mci",
+		Enabled: utility.FalsePtr(),
+	}
+	assert.NoError(t, disabled1.Insert())
+	enabledByRepo := &ProjectRef{
+		Id:        "enabledByRepo",
+		Owner:     "enable_mongodb",
+		Repo:      "enable_mci",
+		RepoRefId: "enable_repo",
+	}
+	assert.NoError(t, enabledByRepo.Insert())
+	enableRef := &RepoRef{ProjectRef{
+		Id:      "enable_repo",
+		Owner:   "enable_mongodb",
+		Repo:    "enable_mci",
+		Enabled: utility.TruePtr(),
+	}}
+	assert.NoError(t, enableRef.Upsert())
+	disabledByRepo := &ProjectRef{
+		Id:        "disabledByRepo",
+		Owner:     "disable_mongodb",
+		Repo:      "disable_mci",
+		RepoRefId: "disable_repo",
+	}
+	assert.NoError(t, disabledByRepo.Insert())
+	disableRepo := &RepoRef{ProjectRef{
+		Id:      "disable_repo",
+		Owner:   "disable_mongodb",
+		Repo:    "disable_mci",
+		Enabled: utility.FalsePtr(),
+	}}
+	assert.NoError(t, disableRepo.Upsert())
+
+	var settings evergreen.Settings
+	settings.ProjectCreation.TotalProjectLimit = 4
+	settings.ProjectCreation.RepoProjectLimit = 1
+	settings.ProjectCreation.RepoExceptions = []evergreen.OwnerRepo{
+		{
+			Owner: "owner_exception",
+			Repo:  "repo_exception",
+		},
+	}
+
+	// Should error when trying to enable an existing project past limits.
+	disabled1.Enabled = utility.TruePtr()
+	err, shouldError := ValidateProjectCreation(disabled1.Id, &settings, disabled1)
+	assert.Error(t, err)
+	assert.True(t, shouldError)
+
+	// Should not error if owner/repo is part of exception.
+	exception := &ProjectRef{
+		Id:      "exception",
+		Owner:   "owner_exception",
+		Repo:    "repo_exception",
+		Enabled: utility.TruePtr(),
+	}
+	err, _ = ValidateProjectCreation(enabled1.Id, &settings, exception)
+	assert.NoError(t, err)
+
+	// Should error if owner/repo is not part of exception.
+	notException := &ProjectRef{
+		Id:      "not_exception",
+		Owner:   "mongodb",
+		Repo:    "mci",
+		Enabled: utility.TruePtr(),
+	}
+	err, shouldError = ValidateProjectCreation(notException.Id, &settings, notException)
+	assert.Error(t, err)
+	assert.False(t, shouldError)
+
+	// Should not error if a repo defaulted project is enabled.
+	disabledByRepo.Enabled = utility.TruePtr()
+	assert.NoError(t, disabledByRepo.Upsert())
+	err, _ = ValidateProjectCreation(disabledByRepo.Id, &settings, disabledByRepo)
+	assert.NoError(t, err)
+
+	// Total project limit cannot be exceeded. Even with the exception.
+	settings.ProjectCreation.TotalProjectLimit = 2
+	err, shouldError = ValidateProjectCreation(exception.Id, &settings, exception)
+	assert.Error(t, err)
+	assert.False(t, shouldError)
+}
+
 func TestGetBatchTimeDoesNotExceedMaxBatchTime(t *testing.T) {
 	assert := assert.New(t)
 
@@ -2709,7 +2879,7 @@ func TestMergeWithProjectConfig(t *testing.T) {
 func TestSaveProjectPageForSection(t *testing.T) {
 	assert := assert.New(t)
 
-	assert.NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection))
+	assert.NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ConfigCollection))
 
 	projectRef := &ProjectRef{
 		Owner:            "evergreen-ci",
@@ -2725,6 +2895,11 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	projectRef, err := FindBranchProjectRef("identifier")
 	assert.NoError(err)
 	assert.NotNil(t, projectRef)
+
+	settings := evergreen.Settings{
+		GithubOrgs: []string{"newOwner", "evergreen-ci"},
+	}
+	assert.NoError(settings.Set())
 
 	update := &ProjectRef{
 		Id:      "iden_",
@@ -2755,7 +2930,12 @@ func TestSaveProjectPageForSection(t *testing.T) {
 }
 
 func TestValidateOwnerAndRepo(t *testing.T) {
-	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection))
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ConfigCollection))
+
+	settings := evergreen.Settings{
+		GithubOrgs: []string{"newOwner", "evergreen-ci"},
+	}
+	assert.NoError(t, settings.Set())
 
 	// a project with no owner should error
 	project := ProjectRef{

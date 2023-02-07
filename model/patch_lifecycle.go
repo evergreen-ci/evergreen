@@ -119,9 +119,9 @@ type PatchUpdate struct {
 
 // ConfigurePatch validates and creates the updated tasks/variants, and updates description if needed.
 // Returns an http status code and error.
-func ConfigurePatch(ctx context.Context, p *patch.Patch, version *Version, proj *ProjectRef, patchUpdateReq PatchUpdate) (int, error) {
+func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.Patch, version *Version, proj *ProjectRef, patchUpdateReq PatchUpdate) (int, error) {
 	var err error
-	project, _, err := FindAndTranslateProjectForPatch(ctx, p)
+	project, _, err := FindAndTranslateProjectForPatch(ctx, settings, p)
 	if err != nil {
 		return http.StatusInternalServerError, errors.Wrap(err, "unmarshalling project config")
 	}
@@ -207,7 +207,7 @@ func addDisplayTasksToPatchReq(req *PatchUpdate, p Project) {
 // GetPatchedProject creates and validates a project created by fetching latest commit information from GitHub
 // and applying the patch to the latest remote configuration. Also returns the condensed yaml string for storage.
 // The error returned can be a validation error.
-func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken string) (*Project, *PatchConfig, error) {
+func GetPatchedProject(ctx context.Context, settings *evergreen.Settings, p *patch.Patch, githubOauthToken string) (*Project, *PatchConfig, error) {
 	if p.Version != "" {
 		return nil, nil, errors.Errorf("patch '%s' already finalized", p.Version)
 	}
@@ -218,7 +218,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 	}
 	// if the patched config exists, use that as the project file bytes.
 	if p.PatchedParserProject != "" {
-		project, _, err := FindAndTranslateProjectForPatch(ctx, p)
+		project, _, err := FindAndTranslateProjectForPatch(ctx, settings, p)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "finding and translating project")
 		}
@@ -590,7 +590,8 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			},
 		)
 	}
-	mongoClient := evergreen.GetEnvironment().Client()
+	env := evergreen.GetEnvironment()
+	mongoClient := env.Client()
 	session, err := mongoClient.StartSession()
 	if err != nil {
 		return nil, errors.Wrap(err, "starting DB session")
@@ -598,7 +599,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	defer session.EndSession(ctx)
 
 	txFunc := func(sessCtx mongo.SessionContext) (interface{}, error) {
-		db := evergreen.GetEnvironment().DB()
+		db := env.DB()
 		_, err = db.Collection(VersionCollection).InsertOne(sessCtx, patchVersion)
 		if err != nil {
 			return nil, errors.Wrapf(err, "inserting version '%s'", patchVersion.Id)
@@ -897,8 +898,9 @@ func (e *EnqueuePatch) Send() error {
 		return errors.Errorf("no commit queue for project '%s'", existingPatch.Project)
 	}
 
-	ctx := context.Background()
-	mergePatch, err := MakeMergePatchFromExisting(ctx, existingPatch, "")
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultParserProjectAccessTimeout)
+	defer cancel()
+	mergePatch, err := MakeMergePatchFromExisting(ctx, evergreen.GetEnvironment().Settings(), existingPatch, "")
 	if err != nil {
 		return errors.Wrap(err, "making merge patch")
 	}
@@ -912,12 +914,13 @@ func (e *EnqueuePatch) Valid() bool {
 	return patch.IsValidId(e.PatchID)
 }
 
-func MakeMergePatchFromExisting(ctx context.Context, existingPatch *patch.Patch, commitMessage string) (*patch.Patch, error) {
+// MakeMergePatchFromExisting creates a merge patch from an existing one to be
+// put in the commit queue.
+func MakeMergePatchFromExisting(ctx context.Context, settings *evergreen.Settings, existingPatch *patch.Patch, commitMessage string) (*patch.Patch, error) {
 	if !existingPatch.HasValidGitInfo() {
 		return nil, errors.Errorf("enqueueing patch '%s' without metadata", existingPatch.Id.Hex())
 	}
 
-	// verify the commit queue is on
 	projectRef, err := FindMergedProjectRef(existingPatch.Project, existingPatch.Version, true)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting project ref '%s'", existingPatch.Project)
@@ -929,7 +932,7 @@ func MakeMergePatchFromExisting(ctx context.Context, existingPatch *patch.Patch,
 		return nil, errors.WithStack(err)
 	}
 
-	project, pp, err := FindAndTranslateProjectForPatch(ctx, existingPatch)
+	project, pp, err := FindAndTranslateProjectForPatch(ctx, settings, existingPatch)
 	if err != nil {
 		return nil, errors.Wrap(err, "loading existing project")
 	}

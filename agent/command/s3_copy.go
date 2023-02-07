@@ -172,7 +172,14 @@ func (c *s3copy) Execute(ctx context.Context,
 
 	errChan := make(chan error)
 	go func() {
-		errChan <- errors.WithStack(c.copyWithRetry(ctx, comm, logger, conf))
+		err := errors.WithStack(c.copyWithRetry(ctx, comm, logger, conf))
+		select {
+		case errChan <- err:
+			return
+		case <-ctx.Done():
+			logger.Task().Infof("Context canceled waiting for s3 copy: %s.", ctx.Err())
+			return
+		}
 	}()
 
 	select {

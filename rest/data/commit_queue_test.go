@@ -26,6 +26,9 @@ type CommitQueueSuite struct {
 	settings *evergreen.Settings
 	suite.Suite
 
+	ctx    context.Context
+	cancel context.CancelFunc
+
 	projectRef *model.ProjectRef
 	queue      *commitqueue.CommitQueue
 }
@@ -37,6 +40,7 @@ func TestCommitQueueSuite(t *testing.T) {
 }
 
 func (s *CommitQueueSuite) SetupTest() {
+	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.Require().NoError(db.ClearCollections(commitqueue.Collection, model.ProjectRefCollection))
 	s.projectRef = &model.ProjectRef{
 		Id:               "mci",
@@ -66,6 +70,10 @@ func (s *CommitQueueSuite) SetupTest() {
 	s.Require().NoError(logkeeper.Insert())
 	s.queue = &commitqueue.CommitQueue{ProjectID: "logkeeper"}
 	s.Require().NoError(commitqueue.InsertQueue(s.queue))
+}
+
+func (s *CommitQueueSuite) TearDownTest() {
+	s.cancel()
 }
 
 func (s *CommitQueueSuite) TestEnqueue() {
@@ -139,12 +147,11 @@ func (s *CommitQueueSuite) TestIsAuthorizedToPatchAndMerge() {
 			args2: "read",
 		},
 	}
-	ctx := context.Background()
-	authorized, err := c.IsAuthorizedToPatchAndMerge(ctx, s.settings, args1)
+	authorized, err := c.IsAuthorizedToPatchAndMerge(s.ctx, s.settings, args1)
 	s.NoError(err)
 	s.True(authorized)
 
-	authorized, err = c.IsAuthorizedToPatchAndMerge(ctx, s.settings, args2)
+	authorized, err = c.IsAuthorizedToPatchAndMerge(s.ctx, s.settings, args2)
 	s.NoError(err)
 	s.False(authorized)
 }
@@ -184,7 +191,7 @@ buildvariants:
 	s.Require().NoError(err)
 	s.Require().NotNil(existingPatch)
 
-	newPatch, err := CreatePatchForMerge(context.Background(), existingPatch.Id.Hex(), "")
+	newPatch, err := CreatePatchForMerge(s.ctx, s.settings, existingPatch.Id.Hex(), "")
 	s.NoError(err)
 	s.NotNil(newPatch)
 
@@ -194,7 +201,7 @@ buildvariants:
 }
 
 func (s *CommitQueueSuite) TestMockGetGitHubPR() {
-	pr, err := s.mockCtx.GetGitHubPR(context.Background(), "evergreen-ci", "evergreen", 1234)
+	pr, err := s.mockCtx.GetGitHubPR(s.ctx, "evergreen-ci", "evergreen", 1234)
 	s.NoError(err)
 
 	s.Require().NotNil(pr.User.ID)
