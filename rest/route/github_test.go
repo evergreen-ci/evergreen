@@ -300,7 +300,7 @@ func (s *GithubWebhookRouteSuite) TestRetryCommentTrigger() {
 	issueComment, ok := event.(*github.IssueCommentEvent)
 	s.True(ok)
 	commentString := issueComment.Comment.GetBody()
-	s.Equal(retryComment, commentString)
+	s.Equal(evergreen.RetryComment, commentString)
 
 	s.True(triggersPatch("created", commentString))
 	s.False(triggersPatch("deleted", commentString))
@@ -317,7 +317,7 @@ func (s *GithubWebhookRouteSuite) TestPatchCommentTrigger() {
 	issueComment, ok := event.(*github.IssueCommentEvent)
 	s.True(ok)
 	commentString := issueComment.Comment.GetBody()
-	s.Equal(patchComment, commentString)
+	s.Equal(evergreen.PatchComment, commentString)
 
 	s.True(triggersPatch("created", commentString))
 	s.False(triggersPatch("deleted", commentString))

@@ -265,7 +265,7 @@ func (s *CommitQueueSuite) TestCommentTrigger() {
 	action := "created"
 	s.False(TriggersCommitQueue(action, comment))
 
-	comment = triggerComment
+	comment = evergreen.TriggerComment
 	s.True(TriggersCommitQueue(action, comment))
 
 	action = "deleted"
