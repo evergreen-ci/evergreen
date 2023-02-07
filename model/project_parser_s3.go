@@ -75,7 +75,6 @@ func (s *ParserProjectS3Storage) FindOneByID(ctx context.Context, id string) (*P
 		return nil, errors.Wrapf(err, "unmarshalling parser project '%s' from BSON", id)
 	}
 
-	// TODO: this is in the equivalent DB method, but is it necessary?
 	if pp.Functions == nil {
 		pp.Functions = map[string]*YAMLCommandSet{}
 	}
