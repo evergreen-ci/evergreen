@@ -389,41 +389,47 @@ func (h *Host) GetTaskGroupString() string {
 
 // IdleTime returns how long has this host been idle
 func (h *Host) IdleTime() time.Duration {
-
 	// If the host is currently running a task, it is not idle.
 	if h.RunningTask != "" {
 		return 0
 	}
 
-	// If the host has run a task, then the idle time is the time
-	// passed since the last task finished.
+	// If the host is not running a task then the idle time is the time
+	// elapsed since the last task finished.
+	return h.SinceLastTaskCompletion()
+}
+
+// SinceLastTaskCompletion returns the duration since the last task to run on the host
+// completed or, if no task has run, the host's uptime.
+func (h *Host) SinceLastTaskCompletion() time.Duration {
+	// If the host has run a task, return the time the last task finished running.
 	if h.LastTask != "" {
 		return time.Since(h.LastTaskCompletedTime)
 	}
 
-	// If the host has not yet run a task, the idle time is how long it has been billable.
+	// If the host has not yet run a task, return how long it has been billable.
 	if !utility.IsZeroTime(h.BillingStartTime) {
 		return time.Since(h.BillingStartTime)
 	}
 
-	// If the host hasn't run a task and its billing start time is not set, the idle time is
+	// If the host hasn't run a task and its billing start time is not set, return
 	// how long it has been since the host was started.
 	return time.Since(h.StartTime)
 }
 
-func (h *Host) IdleStatsMessage() message.Fields {
+func (h *Host) TaskStartMessage() message.Fields {
 	msg := message.Fields{
-		"stat":            "host-idle",
-		"distro":          h.Distro.Id,
-		"provider":        h.Distro.Provider,
-		"provisioning":    h.Distro.BootstrapSettings.Method,
-		"host_id":         h.Id,
-		"status":          h.Status,
-		"idle_secs":       h.IdleTime().Seconds(),
-		"spawn_host":      h.StartedBy != evergreen.User && !h.SpawnOptions.SpawnedByTask,
-		"task_spawn_host": h.SpawnOptions.SpawnedByTask,
-		"has_containers":  h.HasContainers,
-		"task_host":       h.StartedBy == evergreen.User && !h.HasContainers,
+		"stat":                 "host-start-task",
+		"distro":               h.Distro.Id,
+		"provider":             h.Distro.Provider,
+		"provisioning":         h.Distro.BootstrapSettings.Method,
+		"host_id":              h.Id,
+		"status":               h.Status,
+		"since_last_task_secs": h.SinceLastTaskCompletion().Seconds(),
+		"spawn_host":           h.StartedBy != evergreen.User && !h.SpawnOptions.SpawnedByTask,
+		"task_spawn_host":      h.SpawnOptions.SpawnedByTask,
+		"has_containers":       h.HasContainers,
+		"task_host":            h.StartedBy == evergreen.User && !h.HasContainers,
 	}
 
 	if strings.HasPrefix(h.Distro.Provider, "ec2") {

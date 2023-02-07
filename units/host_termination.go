@@ -318,7 +318,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 }
 
 func (j *hostTerminationJob) incrementIdleTime(ctx context.Context) error {
-	idleTime := j.host.IdleTime()
+	idleTime := j.host.SinceLastTaskCompletion()
 
 	cloudHost, err := cloud.GetCloudHost(ctx, j.host, j.env)
 	if err != nil {

@@ -1000,10 +1000,10 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 			if err = host.IncTaskCount(); err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "incrementing task count for task '%s' on host '%s'", t.Id, host.Id))
 			}
-			if err = host.IncIdleTime(host.IdleTime()); err != nil {
+			if err = host.IncIdleTime(host.SinceLastTaskCompletion()); err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "incrementing total idle time on host '%s'", host.Id))
 			}
-			grip.Info(host.IdleStatsMessage())
+			grip.Info(host.TaskStartMessage())
 		}
 
 		logTaskStartMessage(host, t)
