@@ -925,7 +925,7 @@ func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
 
 // POST /rest/v2/projects/{project_id}/versions
 
-// versionsSetPriorityHandler is a RequestHandler for disabling versions.
+// versionsSetPriorityHandler is a RequestHandler for setting the priority of versions.
 type versionsSetPriorityHandler struct {
 	projectId string
 	url       string
