@@ -350,21 +350,19 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if !origProjectRef.IsEnabled() && responseRef.Enabled {
-		settings, err := evergreen.GetConfig()
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-		_, err = model.ValidateProjectCreation(responseRef.Id, settings, &model.ProjectRef{
-			Enabled: utility.ToBoolPtr(responseRef.Enabled),
-			Owner:   responseRef.Owner,
-			Repo:    responseRef.Repo,
-		})
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+	_, err = model.ValidateProjectCreation(responseRef.Id, settings, &model.ProjectRef{
+		Enabled: utility.ToBoolPtr(responseRef.Enabled),
+		Owner:   responseRef.Owner,
+		Repo:    responseRef.Repo,
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	errs := []string{}
