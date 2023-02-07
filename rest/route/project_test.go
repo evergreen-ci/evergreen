@@ -1524,12 +1524,14 @@ func TestModifyProjectVersions(t *testing.T) {
 		},
 		"runSucceeds": func(t *testing.T, rm *versionsSetPriorityHandler) {
 			rm.projectId = projectId
-			rm.opts = serviceModel.GetVersionsOptions{
-				Priority:   utility.ToInt64Ptr(evergreen.DisabledTaskPriority),
-				StartAfter: 4,
-				EndAt:      1,
-				Requester:  evergreen.RepotrackerVersionRequester,
-				Limit:      20,
+			rm.opts = serviceModel.SetVersionsPriorityOptions{
+				Priority: utility.ToInt64Ptr(evergreen.DisabledTaskPriority),
+				GetVersionsOptions: serviceModel.GetVersionsOptions{
+					StartAfter: 4,
+					EndAt:      1,
+					Requester:  evergreen.RepotrackerVersionRequester,
+					Limit:      20,
+				},
 			}
 			resp := rm.Run(ctx)
 			assert.NotNil(resp)
