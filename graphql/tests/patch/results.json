@@ -330,9 +330,14 @@
       "query_file": "project-metadata.graphql",
       "result": {
         "data": {
-          "patch": {
-            "versionFull": {
-              "id": "5dd2e89cd1fe07048e43bb9c"
+          "data": {
+            "patch": {
+              "id": "5e4ff3abe3c3317e352062e4",
+              "projectMetadata": {
+                "owner_name": "evergreen-ci",
+                "repo_name": "evergreen",
+                "identifier": "evergreenIdentifier"
+              }
             }
           }
         }
