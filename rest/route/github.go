@@ -29,8 +29,37 @@ const (
 	githubActionSynchronize = "synchronize"
 	githubActionReopened    = "reopened"
 
+	// pull request comments
+	retryComment   = "evergreen retry"
+	patchComment   = "evergreen patch"
+	triggerComment = "evergreen merge"
+
 	refTags = "refs/tags/"
 )
+
+func trimComment(comment string) string {
+	return strings.Join(strings.Fields(strings.ToLower(comment)), " ")
+}
+
+func isRetryComment(comment string) bool {
+	return trimComment(comment) == retryComment
+}
+func isPatchComment(comment string) bool {
+	return trimComment(comment) == patchComment
+}
+
+// ContainsTriggerComment checks if "evergreen merge" is present in the comment, as
+// it may be followed by a newline and a message.
+func containsTriggerComment(comment string) bool {
+	return strings.HasPrefix(trimComment(comment), triggerComment)
+}
+
+func triggersCommitQueue(commentAction string, comment string) bool {
+	if commentAction == "deleted" {
+		return false
+	}
+	return containsTriggerComment(comment)
+}
 
 type githubHookApi struct {
 	queue  amboy.Queue
@@ -205,7 +234,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 
 	case *github.IssueCommentEvent:
 		if event.Issue.IsPullRequest() {
-			if commitqueue.TriggersCommitQueue(*event.Action, *event.Comment.Body) {
+			if triggersCommitQueue(*event.Action, *event.Comment.Body) {
 				grip.Info(message.Fields{
 					"source":    "GitHub hook",
 					"msg_id":    gh.msgID,
@@ -607,10 +636,10 @@ func triggersPatch(action, comment string) (bool, string) {
 		return false, ""
 	}
 
-	if evergreen.IsPatchComment(comment) {
+	if isPatchComment(comment) {
 		return true, patch.ManualCaller
 	}
-	if evergreen.IsRetryComment(comment) {
+	if isRetryComment(comment) {
 		return true, patch.AllCallers
 	}
 

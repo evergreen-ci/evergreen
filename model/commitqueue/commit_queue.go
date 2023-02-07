@@ -3,7 +3,6 @@ package commitqueue
 import (
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -190,13 +189,6 @@ func EnsureCommitQueueExistsForProject(id string) error {
 		}
 	}
 	return nil
-}
-
-func TriggersCommitQueue(commentAction string, comment string) bool {
-	if commentAction == "deleted" {
-		return false
-	}
-	return evergreen.ContainsTriggerComment(comment)
 }
 
 func ClearAllCommitQueues() (int, error) {

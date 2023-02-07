@@ -300,7 +300,7 @@ func (s *GithubWebhookRouteSuite) TestRetryCommentTrigger() {
 	issueComment, ok := event.(*github.IssueCommentEvent)
 	s.True(ok)
 	commentString := issueComment.Comment.GetBody()
-	s.Equal(evergreen.RetryComment, commentString)
+	s.Equal(retryComment, commentString)
 
 	s.True(triggersPatch("created", commentString))
 	s.False(triggersPatch("deleted", commentString))
@@ -317,13 +317,25 @@ func (s *GithubWebhookRouteSuite) TestPatchCommentTrigger() {
 	issueComment, ok := event.(*github.IssueCommentEvent)
 	s.True(ok)
 	commentString := issueComment.Comment.GetBody()
-	s.Equal(evergreen.PatchComment, commentString)
+	s.Equal(patchComment, commentString)
 
 	s.True(triggersPatch("created", commentString))
 	s.False(triggersPatch("deleted", commentString))
 
 	//test whitespace trimming
 	s.True(triggersPatch("created", "  evergreen patch "))
+}
+
+func (s *CommitQueueSuite) TestCommentTrigger() {
+	comment := "no dice"
+	action := "created"
+	s.False(triggersCommitQueue(action, comment))
+
+	comment = triggerComment
+	s.True(triggersCommitQueue(action, comment))
+
+	action = "deleted"
+	s.False(triggersCommitQueue(action, comment))
 }
 
 func (s *GithubWebhookRouteSuite) TestUnknownEventType() {
