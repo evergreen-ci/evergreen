@@ -415,6 +415,29 @@ func PatchStatusToVersionStatus(patchStatus string) (string, error) {
 	}
 }
 
+// Constants for pull request comments.
+const (
+	RetryComment   = "evergreen retry"
+	PatchComment   = "evergreen patch"
+	TriggerComment = "evergreen merge"
+)
+
+func trimComment(comment string) string {
+	return strings.Join(strings.Fields(strings.ToLower(comment)), " ")
+}
+
+func IsRetryComment(comment string) bool {
+	return trimComment(comment) == RetryComment
+}
+func IsPatchComment(comment string) bool {
+	return trimComment(comment) == PatchComment
+}
+
+// The trigger comment may be followed by a newline and a message.
+func ContainsTriggerComment(comment string) bool {
+	return strings.HasPrefix(trimComment(comment), "evergreen merge")
+}
+
 type ModificationAction string
 
 const (

@@ -1,9 +1,9 @@
 package commitqueue
 
 import (
-	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -11,7 +11,6 @@ import (
 )
 
 const (
-	triggerComment    = "evergreen merge"
 	SourcePullRequest = "PR"
 	SourceDiff        = "diff"
 	GithubContext     = "evergreen/commitqueue"
@@ -197,7 +196,7 @@ func TriggersCommitQueue(commentAction string, comment string) bool {
 	if commentAction == "deleted" {
 		return false
 	}
-	return strings.HasPrefix(comment, triggerComment)
+	return evergreen.ContainsTriggerComment(comment)
 }
 
 func ClearAllCommitQueues() (int, error) {

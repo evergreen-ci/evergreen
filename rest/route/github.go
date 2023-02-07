@@ -29,9 +29,7 @@ const (
 	githubActionSynchronize = "synchronize"
 	githubActionReopened    = "reopened"
 
-	retryComment = "evergreen retry"
-	patchComment = "evergreen patch"
-	refTags      = "refs/tags/"
+	refTags = "refs/tags/"
 )
 
 type githubHookApi struct {
@@ -608,15 +606,15 @@ func triggersPatch(action, comment string) (bool, string) {
 	if action == "deleted" {
 		return false, ""
 	}
-	comment = strings.TrimSpace(comment)
-	switch comment {
-	case patchComment:
+
+	if evergreen.IsPatchComment(comment) {
 		return true, patch.ManualCaller
-	case retryComment:
-		return true, patch.AllCallers
-	default:
-		return false, ""
 	}
+	if evergreen.IsRetryComment(comment) {
+		return true, patch.AllCallers
+	}
+
+	return false, ""
 }
 
 func isTag(ref string) bool {
