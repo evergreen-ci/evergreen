@@ -14,12 +14,13 @@ const Collection = "commit_queue"
 
 var (
 	// bson fields for the CommitQueue struct
-	IdKey                  = bsonutil.MustHaveTag(CommitQueue{}, "ProjectID")
-	QueueKey               = bsonutil.MustHaveTag(CommitQueue{}, "Queue")
-	IssueKey               = bsonutil.MustHaveTag(CommitQueueItem{}, "Issue")
-	VersionKey             = bsonutil.MustHaveTag(CommitQueueItem{}, "Version")
-	EnqueueTimeKey         = bsonutil.MustHaveTag(CommitQueueItem{}, "EnqueueTime")
-	ProcessingStartTimeKey = bsonutil.MustHaveTag(CommitQueueItem{}, "ProcessingStartTime")
+	IdKey                   = bsonutil.MustHaveTag(CommitQueue{}, "ProjectID")
+	QueueKey                = bsonutil.MustHaveTag(CommitQueue{}, "Queue")
+	IssueKey                = bsonutil.MustHaveTag(CommitQueueItem{}, "Issue")
+	VersionKey              = bsonutil.MustHaveTag(CommitQueueItem{}, "Version")
+	EnqueueTimeKey          = bsonutil.MustHaveTag(CommitQueueItem{}, "EnqueueTime")
+	ProcessingStartTimeKey  = bsonutil.MustHaveTag(CommitQueueItem{}, "ProcessingStartTime")
+	QueueLengthAtEnqueueKey = bsonutil.MustHaveTag(CommitQueueItem{}, "QueueLengthAtEnqueue")
 )
 
 func updateOne(query interface{}, update interface{}) error {
@@ -58,7 +59,7 @@ func insert(q *CommitQueue) error {
 	return db.Insert(Collection, q)
 }
 
-func add(id string, queue []CommitQueueItem, item CommitQueueItem) error {
+func add(id string, item CommitQueueItem) error {
 	err := updateOne(
 		bson.M{
 			IdKey: id,
@@ -73,7 +74,7 @@ func add(id string, queue []CommitQueueItem, item CommitQueueItem) error {
 	return err
 }
 
-func addAtPosition(id string, queue []CommitQueueItem, item CommitQueueItem, pos int) error {
+func addAtPosition(id string, item CommitQueueItem, pos int) error {
 	err := updateOne(
 		bson.M{
 			IdKey: id,

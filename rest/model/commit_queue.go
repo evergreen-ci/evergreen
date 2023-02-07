@@ -20,14 +20,15 @@ type APICommitQueue struct {
 }
 
 type APICommitQueueItem struct {
-	Issue           *string     `json:"issue"`
-	PatchId         *string     `json:"patch_id"`
-	Version         *string     `json:"version"`
-	EnqueueTime     *time.Time  `json:"enqueueTime"`
-	Modules         []APIModule `json:"modules"`
-	Patch           *APIPatch   `json:"patch"`
-	MessageOverride *string     `json:"message_override"`
-	Source          *string     `json:"source"`
+	Issue                *string     `json:"issue"`
+	PatchId              *string     `json:"patch_id"`
+	Version              *string     `json:"version"`
+	EnqueueTime          *time.Time  `json:"enqueueTime"`
+	Modules              []APIModule `json:"modules"`
+	Patch                *APIPatch   `json:"patch"`
+	MessageOverride      *string     `json:"message_override"`
+	Source               *string     `json:"source"`
+	QueueLengthAtEnqueue *int        `json:"queue_length_at_enqueue"`
 }
 
 type APICommitQueuePosition struct {
@@ -54,6 +55,7 @@ func (item *APICommitQueueItem) BuildFromService(cqItemService commitqueue.Commi
 	item.MessageOverride = utility.ToStringPtr(cqItemService.MessageOverride)
 	item.Source = utility.ToStringPtr(cqItemService.Source)
 	item.PatchId = utility.ToStringPtr(cqItemService.PatchId)
+	item.QueueLengthAtEnqueue = utility.ToIntPtr(cqItemService.QueueLengthAtEnqueue)
 
 	for _, module := range cqItemService.Modules {
 		item.Modules = append(item.Modules, *APIModuleBuildFromService(module))
