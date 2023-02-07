@@ -508,6 +508,7 @@ type ComplexityRoot struct {
 		Project                 func(childComplexity int) int
 		ProjectId               func(childComplexity int) int
 		ProjectIdentifier       func(childComplexity int) int
+		ProjectMetadata         func(childComplexity int) int
 		Status                  func(childComplexity int) int
 		TaskCount               func(childComplexity int) int
 		TaskStatuses            func(childComplexity int) int
@@ -1293,6 +1294,7 @@ type PatchResolver interface {
 	Project(ctx context.Context, obj *model.APIPatch) (*PatchProject, error)
 
 	ProjectIdentifier(ctx context.Context, obj *model.APIPatch) (string, error)
+	ProjectMetadata(ctx context.Context, obj *model.APIPatch) (*model.APIProjectRef, error)
 
 	TaskCount(ctx context.Context, obj *model.APIPatch) (*int, error)
 
@@ -3710,6 +3712,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Patch.ProjectIdentifier(childComplexity), true
+
+	case "Patch.projectMetadata":
+		if e.complexity.Patch.ProjectMetadata == nil {
+			break
+		}
+
+		return e.complexity.Patch.ProjectMetadata(childComplexity), true
 
 	case "Patch.status":
 		if e.complexity.Patch.Status == nil {
@@ -11807,6 +11816,8 @@ func (ec *executionContext) fieldContext_CommitQueueItem_patch(ctx context.Conte
 				return ec.fieldContext_Patch_projectID(ctx, field)
 			case "projectIdentifier":
 				return ec.fieldContext_Patch_projectIdentifier(ctx, field)
+			case "projectMetadata":
+				return ec.fieldContext_Patch_projectMetadata(ctx, field)
 			case "status":
 				return ec.fieldContext_Patch_status(ctx, field)
 			case "taskCount":
@@ -19364,6 +19375,8 @@ func (ec *executionContext) fieldContext_Mutation_enqueuePatch(ctx context.Conte
 				return ec.fieldContext_Patch_projectID(ctx, field)
 			case "projectIdentifier":
 				return ec.fieldContext_Patch_projectIdentifier(ctx, field)
+			case "projectMetadata":
+				return ec.fieldContext_Patch_projectMetadata(ctx, field)
 			case "status":
 				return ec.fieldContext_Patch_status(ctx, field)
 			case "taskCount":
@@ -19481,6 +19494,8 @@ func (ec *executionContext) fieldContext_Mutation_schedulePatch(ctx context.Cont
 				return ec.fieldContext_Patch_projectID(ctx, field)
 			case "projectIdentifier":
 				return ec.fieldContext_Patch_projectIdentifier(ctx, field)
+			case "projectMetadata":
+				return ec.fieldContext_Patch_projectMetadata(ctx, field)
 			case "status":
 				return ec.fieldContext_Patch_status(ctx, field)
 			case "taskCount":
@@ -24546,6 +24561,8 @@ func (ec *executionContext) fieldContext_Patch_childPatches(ctx context.Context,
 				return ec.fieldContext_Patch_projectID(ctx, field)
 			case "projectIdentifier":
 				return ec.fieldContext_Patch_projectIdentifier(ctx, field)
+			case "projectMetadata":
+				return ec.fieldContext_Patch_projectMetadata(ctx, field)
 			case "status":
 				return ec.fieldContext_Patch_status(ctx, field)
 			case "taskCount":
@@ -25124,6 +25141,135 @@ func (ec *executionContext) fieldContext_Patch_projectIdentifier(ctx context.Con
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Patch_projectMetadata(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Patch_projectMetadata(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Patch().ProjectMetadata(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIProjectRef)
+	fc.Result = res
+	return ec.marshalOProject2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Patch_projectMetadata(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Patch",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Project_id(ctx, field)
+			case "admins":
+				return ec.fieldContext_Project_admins(ctx, field)
+			case "batchTime":
+				return ec.fieldContext_Project_batchTime(ctx, field)
+			case "branch":
+				return ec.fieldContext_Project_branch(ctx, field)
+			case "buildBaronSettings":
+				return ec.fieldContext_Project_buildBaronSettings(ctx, field)
+			case "commitQueue":
+				return ec.fieldContext_Project_commitQueue(ctx, field)
+			case "deactivatePrevious":
+				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
+			case "disabledStatsCache":
+				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
+			case "dispatchingDisabled":
+				return ec.fieldContext_Project_dispatchingDisabled(ctx, field)
+			case "displayName":
+				return ec.fieldContext_Project_displayName(ctx, field)
+			case "enabled":
+				return ec.fieldContext_Project_enabled(ctx, field)
+			case "githubChecksEnabled":
+				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
+			case "githubTriggerAliases":
+				return ec.fieldContext_Project_githubTriggerAliases(ctx, field)
+			case "gitTagAuthorizedTeams":
+				return ec.fieldContext_Project_gitTagAuthorizedTeams(ctx, field)
+			case "gitTagAuthorizedUsers":
+				return ec.fieldContext_Project_gitTagAuthorizedUsers(ctx, field)
+			case "gitTagVersionsEnabled":
+				return ec.fieldContext_Project_gitTagVersionsEnabled(ctx, field)
+			case "hidden":
+				return ec.fieldContext_Project_hidden(ctx, field)
+			case "identifier":
+				return ec.fieldContext_Project_identifier(ctx, field)
+			case "isFavorite":
+				return ec.fieldContext_Project_isFavorite(ctx, field)
+			case "manualPrTestingEnabled":
+				return ec.fieldContext_Project_manualPrTestingEnabled(ctx, field)
+			case "notifyOnBuildFailure":
+				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
+			case "owner":
+				return ec.fieldContext_Project_owner(ctx, field)
+			case "patches":
+				return ec.fieldContext_Project_patches(ctx, field)
+			case "patchingDisabled":
+				return ec.fieldContext_Project_patchingDisabled(ctx, field)
+			case "patchTriggerAliases":
+				return ec.fieldContext_Project_patchTriggerAliases(ctx, field)
+			case "perfEnabled":
+				return ec.fieldContext_Project_perfEnabled(ctx, field)
+			case "periodicBuilds":
+				return ec.fieldContext_Project_periodicBuilds(ctx, field)
+			case "private":
+				return ec.fieldContext_Project_private(ctx, field)
+			case "prTestingEnabled":
+				return ec.fieldContext_Project_prTestingEnabled(ctx, field)
+			case "remotePath":
+				return ec.fieldContext_Project_remotePath(ctx, field)
+			case "repo":
+				return ec.fieldContext_Project_repo(ctx, field)
+			case "repoRefId":
+				return ec.fieldContext_Project_repoRefId(ctx, field)
+			case "repotrackerDisabled":
+				return ec.fieldContext_Project_repotrackerDisabled(ctx, field)
+			case "restricted":
+				return ec.fieldContext_Project_restricted(ctx, field)
+			case "spawnHostScriptPath":
+				return ec.fieldContext_Project_spawnHostScriptPath(ctx, field)
+			case "stepbackDisabled":
+				return ec.fieldContext_Project_stepbackDisabled(ctx, field)
+			case "taskAnnotationSettings":
+				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
+			case "taskSync":
+				return ec.fieldContext_Project_taskSync(ctx, field)
+			case "tracksPushEvents":
+				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
+			case "triggers":
+				return ec.fieldContext_Project_triggers(ctx, field)
+			case "versionControlEnabled":
+				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
+			case "workstationConfig":
+				return ec.fieldContext_Project_workstationConfig(ctx, field)
+			case "containerSizeDefinitions":
+				return ec.fieldContext_Project_containerSizeDefinitions(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
 	}
 	return fc, nil
@@ -26301,6 +26447,8 @@ func (ec *executionContext) fieldContext_Patches_patches(ctx context.Context, fi
 				return ec.fieldContext_Patch_projectID(ctx, field)
 			case "projectIdentifier":
 				return ec.fieldContext_Patch_projectIdentifier(ctx, field)
+			case "projectMetadata":
+				return ec.fieldContext_Patch_projectMetadata(ctx, field)
 			case "status":
 				return ec.fieldContext_Patch_status(ctx, field)
 			case "taskCount":
@@ -31610,6 +31758,8 @@ func (ec *executionContext) fieldContext_Query_patch(ctx context.Context, field 
 				return ec.fieldContext_Patch_projectID(ctx, field)
 			case "projectIdentifier":
 				return ec.fieldContext_Patch_projectIdentifier(ctx, field)
+			case "projectMetadata":
+				return ec.fieldContext_Patch_projectMetadata(ctx, field)
 			case "status":
 				return ec.fieldContext_Patch_status(ctx, field)
 			case "taskCount":
@@ -40249,6 +40399,8 @@ func (ec *executionContext) fieldContext_Task_patch(ctx context.Context, field g
 				return ec.fieldContext_Patch_projectID(ctx, field)
 			case "projectIdentifier":
 				return ec.fieldContext_Patch_projectIdentifier(ctx, field)
+			case "projectMetadata":
+				return ec.fieldContext_Patch_projectMetadata(ctx, field)
 			case "status":
 				return ec.fieldContext_Patch_status(ctx, field)
 			case "taskCount":
@@ -48061,6 +48213,8 @@ func (ec *executionContext) fieldContext_Version_patch(ctx context.Context, fiel
 				return ec.fieldContext_Patch_projectID(ctx, field)
 			case "projectIdentifier":
 				return ec.fieldContext_Patch_projectIdentifier(ctx, field)
+			case "projectMetadata":
+				return ec.fieldContext_Patch_projectMetadata(ctx, field)
 			case "status":
 				return ec.fieldContext_Patch_status(ctx, field)
 			case "taskCount":
@@ -58588,6 +58742,23 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
+		case "projectMetadata":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Patch_projectMetadata(ctx, field, obj)
 				return res
 			}
 
