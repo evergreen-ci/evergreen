@@ -350,6 +350,23 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if !utility.FromBoolPtr(origProjectRef.Enabled) && responseRef.Enabled {
+		settings, err := evergreen.GetConfig()
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+		err, _ = model.ValidateProjectCreation(responseRef.Identifier, settings, &model.ProjectRef{
+			Enabled: utility.ToBoolPtr(responseRef.Enabled),
+			Owner:   responseRef.Owner,
+			Repo:    responseRef.Repo,
+		})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+	}
+
 	errs := []string{}
 	errs = append(errs, model.ValidateProjectAliases(responseRef.GitHubPRAliases, "GitHub PR Aliases")...)
 	errs = append(errs, model.ValidateProjectAliases(responseRef.GithubChecksAliases, "Github Checks Aliases")...)
