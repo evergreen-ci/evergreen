@@ -1423,29 +1423,6 @@ func (h *Host) clearRunningTaskWithFunc(doUpdate func(update bson.M) error) erro
 	return nil
 }
 
-// UpdateRunningTask updates the running task in the host document and logs an
-// event indicating that it's been assigned a task.
-func (h *Host) UpdateRunningTask(t *task.Task) error {
-	doUpdate := func(query, update bson.M) error {
-		return UpdateOne(query, update)
-	}
-	if err := h.updateRunningTaskWithFunc(doUpdate, t); err != nil {
-		return err
-	}
-
-	event.LogHostRunningTaskSet(h.Id, t.Id, t.Execution)
-
-	grip.Info(message.Fields{
-		"message":  "host running task set",
-		"host_id":  h.Id,
-		"host_tag": h.Tag,
-		"task_id":  t.Id,
-		"distro":   h.Distro.Id,
-	})
-
-	return nil
-}
-
 // UpdateRunningTaskWithContext updates the running task for the host. It does
 // not log an event for task assignment.
 func (h *Host) UpdateRunningTaskWithContext(ctx context.Context, env evergreen.Environment, t *task.Task) error {
