@@ -836,7 +836,7 @@ func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject
 			// to a non-existent variables field.
 			Variables interface{} `yaml:"variables,omitempty" bson:"-"`
 		}{}
-		if err := util.UnmarshalYAMLWithFallback(yml, &strictProjectWithVariables); err != nil {
+		if err := util.UnmarshalYAMLStrictWithFallback(yml, &strictProjectWithVariables); err != nil {
 			return nil, err
 		}
 		p = strictProjectWithVariables.ParserProject
