@@ -811,7 +811,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		if ctx.Err() != nil {
 			return errors.Wrapf(err, "aborting version creation for version %s", v.Id)
 		}
-		if buildvariant.Disabled {
+		if buildvariant.Disable {
 			continue
 		}
 		if len(aliases) > 0 {

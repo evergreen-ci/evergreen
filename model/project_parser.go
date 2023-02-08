@@ -319,7 +319,7 @@ type parserBV struct {
 	Expansions    util.Expansions    `yaml:"expansions,omitempty" bson:"expansions,omitempty"`
 	Tags          parserStringSlice  `yaml:"tags,omitempty,omitempty" bson:"tags,omitempty"`
 	Modules       parserStringSlice  `yaml:"modules,omitempty" bson:"modules,omitempty"`
-	Disabled      bool               `yaml:"disabled,omitempty" bson:"disabled,omitempty"`
+	Disable       bool               `yaml:"disable,omitempty" bson:"disable,omitempty"`
 	Push          bool               `yaml:"push,omitempty" bson:"push,omitempty"`
 	BatchTime     *int               `yaml:"batchtime,omitempty" bson:"batchtime,omitempty"`
 	CronBatchTime string             `yaml:"cron,omitempty" bson:"cron,omitempty"`
@@ -386,7 +386,7 @@ func (pbv *parserBV) canMerge() bool {
 		pbv.Expansions == nil &&
 		pbv.Tags == nil &&
 		pbv.Modules == nil &&
-		!pbv.Disabled &&
+		!pbv.Disable &&
 		!pbv.Push &&
 		pbv.BatchTime == nil &&
 		pbv.CronBatchTime == "" &&
@@ -511,7 +511,7 @@ func (bvt *parserBVTaskUnit) hasSpecificActivation() bool {
 // overrides the default, such as cron/batchtime, disabling the task, or explicitly deactivating it.
 func (bvt *parserBV) hasSpecificActivation() bool {
 	return bvt.BatchTime != nil || bvt.CronBatchTime != "" ||
-		!utility.FromBoolTPtr(bvt.Activate) || bvt.Disabled
+		!utility.FromBoolTPtr(bvt.Activate) || bvt.Disable
 }
 
 // FindAndTranslateProjectForPatch translates a parser project for a patch into a project.
@@ -1040,7 +1040,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 			Name:          pbv.Name,
 			Expansions:    pbv.Expansions,
 			Modules:       pbv.Modules,
-			Disabled:      pbv.Disabled,
+			Disable:       pbv.Disable,
 			Push:          pbv.Push,
 			BatchTime:     pbv.BatchTime,
 			CronBatchTime: pbv.CronBatchTime,
