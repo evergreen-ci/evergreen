@@ -338,6 +338,18 @@ func (s *CommitQueueSuite) TestCommentTrigger() {
 	s.False(triggersCommitQueue(action, comment))
 }
 
+func (s *CommitQueueSuite) TestCommentCleanup() {
+	trigger := " \n Evergreen       \n  Merge \n It's me, hi, I'm the comment it's me \n "
+	patch := " \n Evergreen       \n  Patch \n "
+	retry := " \n Evergreen       \n  Retry \n "
+
+	s.True(containsTriggerComment(trigger))
+
+	s.True(isPatchComment(patch))
+
+	s.True(isRetryComment(retry))
+}
+
 func (s *GithubWebhookRouteSuite) TestUnknownEventType() {
 	var emptyPayload []byte
 	event, err := github.ParseWebHook("unknown_type", emptyPayload)
