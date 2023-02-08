@@ -111,7 +111,7 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 		return err
 	}
 	// Always warn because created projects are never enabled.
-	err, _ := model.ValidateProjectCreation(projectRef.Id, env.Settings(), projectRef)
+	_, err := model.ValidateProjectCreation(projectRef.Id, env.Settings(), projectRef)
 	if err != nil {
 		// TODO EVG-18784: Return graphql warning
 	}
