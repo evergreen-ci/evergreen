@@ -984,6 +984,8 @@ var (
 	ProjectTasksKey         = bsonutil.MustHaveTag(Project{}, "Tasks")
 )
 
+// PopulateExpansions returns all expansions for a task, except for build
+// variant expansions, project variables, and project/version parameters.
 func PopulateExpansions(ctx context.Context, settings *evergreen.Settings, t *task.Task, h *host.Host, oauthToken string) (util.Expansions, error) {
 	if t == nil {
 		return nil, errors.New("task cannot be nil")
@@ -1133,11 +1135,14 @@ func PopulateExpansions(ctx context.Context, settings *evergreen.Settings, t *ta
 		}
 	}
 
-	bvExpansions, err := FindExpansionsForVariant(ctx, settings, v, t.BuildVariant)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting expansions for variant")
-	}
-	expansions.Update(bvExpansions)
+	// kim: TODO: try changing PopulateExpansions to not set build variant
+	// expansions since that requires looking up the entire parser project here.
+	// kim: TODO: remove
+	// bvExpansions, err := FindExpansionsForVariant(ctx, settings, v, t.BuildVariant)
+	// if err != nil {
+	//     return nil, errors.Wrap(err, "getting expansions for variant")
+	// }
+	// expansions.Update(bvExpansions)
 	return expansions, nil
 }
 

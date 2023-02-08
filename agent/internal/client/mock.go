@@ -195,6 +195,18 @@ func (c *Mock) GetExpansions(ctx context.Context, taskData TaskData) (util.Expan
 	return e, nil
 }
 
+// GetExpansionsAndVars returns a mock ExpansionsAndVars.
+func (c *Mock) GetExpansionsAndVars(ctx context.Context, taskData TaskData) (*apimodels.ExpansionsAndVars, error) {
+	return &apimodels.ExpansionsAndVars{
+		Expansions: util.Expansions{"foo": "bar"},
+		Vars: map[string]string{
+			"shellexec_fn":   c.ShellExecFilename,
+			"timeout_fn":     c.TimeoutFilename,
+			"my_new_timeout": "2",
+		},
+	}, nil
+}
+
 func (c *Mock) Heartbeat(ctx context.Context, td TaskData) (string, error) {
 	if c.HeartbeatShouldAbort {
 		return evergreen.TaskFailed, nil

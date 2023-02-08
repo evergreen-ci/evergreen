@@ -27,6 +27,8 @@ var (
 	taskSecret = "tasksecret"
 )
 
+// kim: TODO: test GetExpansionsAndVars instead of FetchExpansions and
+// GetExpansionVars
 func TestAgentFetchExpansionsForTask(t *testing.T) {
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *fetchExpansionsForTaskHandler){
 		"FactorySucceeds": func(ctx context.Context, t *testing.T, rh *fetchExpansionsForTaskHandler) {

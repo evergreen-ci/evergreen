@@ -323,6 +323,7 @@ func (h *getExpansionsHandler) Parse(ctx context.Context, r *http.Request) error
 	return nil
 }
 
+// TODO (EVG-18820): remove this route once agent versions have rolled over.
 func (h *getExpansionsHandler) Run(ctx context.Context) gimlet.Responder {
 	t, err := task.FindOneId(h.taskID)
 	if err != nil {
@@ -359,6 +360,108 @@ func (h *getExpansionsHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewJSONResponse(e)
+}
+
+// GET /task/{task_id}/expansions_and_vars
+type getExpansionsAndVarsHandler struct {
+	settings *evergreen.Settings
+	taskID   string
+	hostID   string
+}
+
+func makeGetExpansionsAndVars(settings *evergreen.Settings) gimlet.RouteHandler {
+	return &getExpansionsHandler{
+		settings: settings,
+	}
+}
+
+func (h *getExpansionsAndVarsHandler) Factory() gimlet.RouteHandler {
+	return &getExpansionsHandler{
+		settings: h.settings,
+	}
+}
+
+func (h *getExpansionsAndVarsHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
+	h.hostID = r.Header.Get(evergreen.HostHeader)
+	podID := r.Header.Get(evergreen.PodHeader)
+	if h.hostID == "" && podID == "" {
+		return errors.New("missing both host and pod ID")
+	}
+	return nil
+}
+
+func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder {
+	t, err := task.FindOneId(h.taskID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
+	}
+	if t == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+		})
+	}
+	var foundHost *host.Host
+	if h.hostID != "" {
+		foundHost, err = host.FindOneId(h.hostID)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting host"))
+		}
+		if foundHost == nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("host '%s' not found", h.hostID)},
+			)
+		}
+	}
+
+	oauthToken, err := h.settings.GetGithubOauthToken()
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting GitHub OAuth token"))
+	}
+
+	e, err := model.PopulateExpansions(ctx, h.settings, t, foundHost, oauthToken)
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "populating expansions"))
+	}
+
+	res := apimodels.ExpansionsAndVars{
+		Expansions:  e,
+		Vars:        map[string]string{},
+		PrivateVars: map[string]bool{},
+	}
+
+	projectVars, err := model.FindMergedProjectVars(t.Project)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting merged project vars"))
+	}
+	if projectVars != nil {
+		res.Vars = projectVars.GetVars(t)
+		if projectVars.PrivateVars != nil {
+			res.PrivateVars = projectVars.PrivateVars
+		}
+	}
+
+	v, err := model.VersionFindOne(model.VersionById(t.Version))
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding version '%s'", t.Version))
+	}
+	if v == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("version '%s' not found", t.Version),
+		})
+	}
+	for _, param := range v.Parameters {
+		// Overwrite empty values here since these were explicitly
+		// user-specified.
+		res.Vars[param.Key] = param.Value
+	}
+
+	return gimlet.NewJSONResponse(res)
 }
 
 // GET /task/{task_id}/project_ref
@@ -758,6 +861,7 @@ func (h *fetchExpansionsForTaskHandler) Parse(ctx context.Context, r *http.Reque
 	return nil
 }
 
+// TODO (EVG-18820): remove this route after agents have rolled over.
 func (h *fetchExpansionsForTaskHandler) Run(ctx context.Context) gimlet.Responder {
 	t, err := task.FindOneId(h.taskID)
 	if err != nil {
@@ -794,6 +898,7 @@ func (h *fetchExpansionsForTaskHandler) Run(ctx context.Context) gimlet.Responde
 			Message:    fmt.Sprintf("version '%s' not found", t.Version),
 		})
 	}
+	// kim: TODO: move logic for appending project parameters to the agent side.
 	projParams, err := model.FindParametersForVersion(ctx, h.env.Settings(), v)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
@@ -805,6 +910,7 @@ func (h *fetchExpansionsForTaskHandler) Run(ctx context.Context) gimlet.Responde
 			res.Vars[param.Key] = param.Value
 		}
 	}
+
 	for _, param := range v.Parameters {
 		// We will overwrite empty values here since these were explicitly user-specified.
 		res.Vars[param.Key] = param.Value
