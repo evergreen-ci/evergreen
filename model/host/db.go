@@ -842,18 +842,18 @@ func FindOneId(id string) (*Host, error) {
 	return FindOne(ById(id))
 }
 
-// FindOneTaskIdAndExecution returns a single host with the given running task ID and execution.
-func FindOneTaskIdAndExecution(id string, execution int) (*Host, error) {
+// FindOneByTaskIdAndExecution returns a single host with the given running task ID and execution.
+func FindOneByTaskIdAndExecution(id string, execution int) (*Host, error) {
 	h := &Host{}
 	query := db.Query(bson.M{
 		RunningTaskKey:          id,
 		RunningTaskExecutionKey: execution,
 	})
 	err := db.FindOneQ(Collection, query, h)
-	if err != nil {
-		return nil, errors.Wrap(err, "finding task by ID and execution")
+	if adb.ResultsNotFound(err) {
+		return nil, nil
 	}
-	return h, nil
+	return h, err
 }
 
 // FindOneByIdOrTag finds a host where the given id is stored in either the _id or tag field.

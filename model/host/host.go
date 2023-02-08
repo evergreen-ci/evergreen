@@ -1426,14 +1426,6 @@ func (h *Host) clearRunningTaskWithFunc(doUpdate func(update bson.M) error) erro
 // UpdateRunningTaskWithContext updates the running task for the host. It does
 // not log an event for task assignment.
 func (h *Host) UpdateRunningTaskWithContext(ctx context.Context, env evergreen.Environment, t *task.Task) error {
-	doUpdate := func(query, update bson.M) error {
-		_, err := env.DB().Collection(Collection).UpdateOne(ctx, query, update)
-		return err
-	}
-	return h.updateRunningTaskWithFunc(doUpdate, t)
-}
-
-func (h *Host) updateRunningTaskWithFunc(doUpdate func(query, update bson.M) error, t *task.Task) error {
 	if t == nil {
 		return errors.New("received nil task, cannot update")
 	}
@@ -1441,6 +1433,10 @@ func (h *Host) updateRunningTaskWithFunc(doUpdate func(query, update bson.M) err
 		return errors.New("task has empty task ID, cannot update")
 	}
 
+	doUpdate := func(query, update bson.M) error {
+		_, err := env.DB().Collection(Collection).UpdateOne(ctx, query, update)
+		return err
+	}
 	statuses := []string{evergreen.HostRunning}
 	// User data can start anytime after the instance is created, so the app
 	// server may not have marked it as running yet.

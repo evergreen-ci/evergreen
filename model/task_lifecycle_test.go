@@ -4063,44 +4063,44 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 			MaxSystemFailedTaskRetries: 2,
 		},
 	}
-	//assert.NoError(ClearAndResetStrandedHostTask(settings, h))
-	//
-	//runningTask, err := task.FindOne(db.Query(task.ById("t")))
-	//require.NoError(t, err)
-	//assert.Equal(evergreen.TaskUndispatched, runningTask.Status)
-	//
-	//foundBuild, err := build.FindOneId("b")
-	//require.NoError(t, err)
-	//assert.Equal(evergreen.BuildCreated, foundBuild.Status)
-	//
-	//foundVersion, err := VersionFindOneId(b.Version)
-	//require.NoError(t, err)
-	//assert.Equal(evergreen.VersionCreated, foundVersion.Status)
-	//
-	//h.RunningTask = "unschedulableTask"
-	//assert.NoError(ClearAndResetStrandedHostTask(settings, h))
-	//
-	//unschedulableTask, err := task.FindOne(db.Query(task.ById("unschedulableTask")))
-	//require.NoError(t, err)
-	//assert.Equal(evergreen.TaskFailed, unschedulableTask.Status)
-	//
-	//dependencyTask, err := task.FindOne(db.Query(task.ById("dependencyTask")))
-	//require.NoError(t, err)
-	//assert.True(dependencyTask.DependsOn[0].Unattainable)
-	//assert.True(dependencyTask.DependsOn[0].Finished)
-	//
-	//dt, err := task.FindOne(db.Query(task.ById("displayTask")))
-	//require.NoError(t, err)
-	//assert.Equal(dt.Status, evergreen.TaskFailed)
-	//assert.Equal(dt.Details, task.GetSystemFailureDetails(evergreen.TaskDescriptionStranded))
-	//
-	//foundBuild, err = build.FindOneId("b2")
-	//require.NoError(t, err)
-	//assert.Equal(evergreen.BuildFailed, foundBuild.Status)
-	//
-	//foundVersion, err = VersionFindOneId(b2.Version)
-	//require.NoError(t, err)
-	//assert.Equal(evergreen.VersionFailed, foundVersion.Status)
+	assert.NoError(ClearAndResetStrandedHostTask(settings, h))
+
+	runningTask, err := task.FindOne(db.Query(task.ById("t")))
+	require.NoError(t, err)
+	assert.Equal(evergreen.TaskUndispatched, runningTask.Status)
+
+	foundBuild, err := build.FindOneId("b")
+	require.NoError(t, err)
+	assert.Equal(evergreen.BuildCreated, foundBuild.Status)
+
+	foundVersion, err := VersionFindOneId(b.Version)
+	require.NoError(t, err)
+	assert.Equal(evergreen.VersionCreated, foundVersion.Status)
+
+	h.RunningTask = "unschedulableTask"
+	assert.NoError(ClearAndResetStrandedHostTask(settings, h))
+
+	unschedulableTask, err := task.FindOne(db.Query(task.ById("unschedulableTask")))
+	require.NoError(t, err)
+	assert.Equal(evergreen.TaskFailed, unschedulableTask.Status)
+
+	dependencyTask, err := task.FindOne(db.Query(task.ById("dependencyTask")))
+	require.NoError(t, err)
+	assert.True(dependencyTask.DependsOn[0].Unattainable)
+	assert.True(dependencyTask.DependsOn[0].Finished)
+
+	dt, err := task.FindOne(db.Query(task.ById("displayTask")))
+	require.NoError(t, err)
+	assert.Equal(dt.Status, evergreen.TaskFailed)
+	assert.Equal(dt.Details, task.GetSystemFailureDetails(evergreen.TaskDescriptionStranded))
+
+	foundBuild, err = build.FindOneId("b2")
+	require.NoError(t, err)
+	assert.Equal(evergreen.BuildFailed, foundBuild.Status)
+
+	foundVersion, err = VersionFindOneId(b2.Version)
+	require.NoError(t, err)
+	assert.Equal(evergreen.VersionFailed, foundVersion.Status)
 
 	h.RunningTask = "t2"
 	assert.NoError(resetTask("t2", ""))
