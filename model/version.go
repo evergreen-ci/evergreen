@@ -244,6 +244,22 @@ func (v *Version) MarkFinished(status string, finishTime time.Time) error {
 	)
 }
 
+// UpdateProjectStorageMethod updates the version's parser project storage
+// method.
+func (v *Version) UpdateProjectStorageMethod(method ParserProjectStorageMethod) error {
+	if method == v.ProjectStorageMethod {
+		return nil
+	}
+
+	if err := VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
+		"$set": bson.M{VersionProjectStorageMethodKey: method},
+	}); err != nil {
+		return err
+	}
+	v.ProjectStorageMethod = method
+	return nil
+}
+
 func GetVersionForCommitQueueItem(cq *commitqueue.CommitQueue, issue string) (*Version, error) {
 	spot := cq.FindItem(issue)
 	if spot == -1 {

@@ -97,14 +97,24 @@ func (s *ParserProjectS3Storage) UpsertOne(ctx context.Context, pp *ParserProjec
 		return errors.New("cannot access parser project S3 storage when it is closed")
 	}
 
-	b, err := bson.Marshal(pp)
+	bsonPP, err := bson.Marshal(pp)
 	if err != nil {
 		return errors.Wrapf(err, "marshalling parser project '%s' to BSON", pp.Id)
 	}
 
-	r := bytes.NewBuffer(b)
-	if err := s.bucket.Put(ctx, pp.Id, r); err != nil {
-		return errors.Wrapf(err, "upserting parser project '%s'", pp.Id)
+	return s.UpsertOneBSON(ctx, pp.Id, bsonPP)
+}
+
+// UpsertOneBSON upserts a parser project by its ID when has already been
+// marshalled to BSON.
+func (s *ParserProjectS3Storage) UpsertOneBSON(ctx context.Context, id string, bsonPP []byte) error {
+	if s.closed {
+		return errors.New("cannot access parser project S3 storage when it is closed")
+	}
+
+	r := bytes.NewBuffer(bsonPP)
+	if err := s.bucket.Put(ctx, id, r); err != nil {
+		return errors.Wrapf(err, "upserting BSON parser project '%s'", id)
 	}
 
 	return nil
