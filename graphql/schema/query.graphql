@@ -62,7 +62,7 @@ type Query {
   myVolumes: [Volume!]!
 
   # logkeeper
-  getLogkeeperBuildMetadata(buildId: String!): LogkeeperBuild!
+  logkeeperBuildMetadata(buildId: String!): LogkeeperBuild!
 
   # task
   task(taskId: String!, execution: Int): Task

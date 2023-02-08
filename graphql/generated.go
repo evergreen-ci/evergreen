@@ -702,47 +702,47 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		AwsRegions                func(childComplexity int) int
-		BbGetCreatedTickets       func(childComplexity int, taskID string) int
-		BuildBaron                func(childComplexity int, taskID string, execution int) int
-		BuildVariantsForTaskName  func(childComplexity int, projectIdentifier string, taskName string) int
-		ClientConfig              func(childComplexity int) int
-		CommitQueue               func(childComplexity int, projectIdentifier string) int
-		DistroTaskQueue           func(childComplexity int, distroID string) int
-		Distros                   func(childComplexity int, onlySpawnable bool) int
-		GetLogkeeperBuildMetadata func(childComplexity int, buildID string) int
-		GithubProjectConflicts    func(childComplexity int, projectID string) int
-		HasVersion                func(childComplexity int, id string) int
-		Host                      func(childComplexity int, hostID string) int
-		HostEvents                func(childComplexity int, hostID string, hostTag *string, limit *int, page *int) int
-		Hosts                     func(childComplexity int, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) int
-		InstanceTypes             func(childComplexity int) int
-		MainlineCommits           func(childComplexity int, options MainlineCommitsOptions, buildVariantOptions *BuildVariantOptions) int
-		MyHosts                   func(childComplexity int) int
-		MyPublicKeys              func(childComplexity int) int
-		MyVolumes                 func(childComplexity int) int
-		Patch                     func(childComplexity int, id string) int
-		Project                   func(childComplexity int, projectIdentifier string) int
-		ProjectEvents             func(childComplexity int, identifier string, limit *int, before *time.Time) int
-		ProjectSettings           func(childComplexity int, identifier string) int
-		Projects                  func(childComplexity int) int
-		RepoEvents                func(childComplexity int, id string, limit *int, before *time.Time) int
-		RepoSettings              func(childComplexity int, id string) int
-		SpruceConfig              func(childComplexity int) int
-		SubnetAvailabilityZones   func(childComplexity int) int
-		Task                      func(childComplexity int, taskID string, execution *int) int
-		TaskAllExecutions         func(childComplexity int, taskID string) int
-		TaskFiles                 func(childComplexity int, taskID string, execution *int) int
-		TaskLogs                  func(childComplexity int, taskID string, execution *int) int
-		TaskNamesForBuildVariant  func(childComplexity int, projectIdentifier string, buildVariant string) int
-		TaskQueueDistros          func(childComplexity int) int
-		TaskTestSample            func(childComplexity int, tasks []string, filters []*TestFilter) int
-		TaskTests                 func(childComplexity int, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string, groupID *string) int
-		User                      func(childComplexity int, userID *string) int
-		UserConfig                func(childComplexity int) int
-		UserSettings              func(childComplexity int) int
-		Version                   func(childComplexity int, id string) int
-		ViewableProjectRefs       func(childComplexity int) int
+		AwsRegions               func(childComplexity int) int
+		BbGetCreatedTickets      func(childComplexity int, taskID string) int
+		BuildBaron               func(childComplexity int, taskID string, execution int) int
+		BuildVariantsForTaskName func(childComplexity int, projectIdentifier string, taskName string) int
+		ClientConfig             func(childComplexity int) int
+		CommitQueue              func(childComplexity int, projectIdentifier string) int
+		DistroTaskQueue          func(childComplexity int, distroID string) int
+		Distros                  func(childComplexity int, onlySpawnable bool) int
+		GithubProjectConflicts   func(childComplexity int, projectID string) int
+		HasVersion               func(childComplexity int, id string) int
+		Host                     func(childComplexity int, hostID string) int
+		HostEvents               func(childComplexity int, hostID string, hostTag *string, limit *int, page *int) int
+		Hosts                    func(childComplexity int, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) int
+		InstanceTypes            func(childComplexity int) int
+		LogkeeperBuildMetadata   func(childComplexity int, buildID string) int
+		MainlineCommits          func(childComplexity int, options MainlineCommitsOptions, buildVariantOptions *BuildVariantOptions) int
+		MyHosts                  func(childComplexity int) int
+		MyPublicKeys             func(childComplexity int) int
+		MyVolumes                func(childComplexity int) int
+		Patch                    func(childComplexity int, id string) int
+		Project                  func(childComplexity int, projectIdentifier string) int
+		ProjectEvents            func(childComplexity int, identifier string, limit *int, before *time.Time) int
+		ProjectSettings          func(childComplexity int, identifier string) int
+		Projects                 func(childComplexity int) int
+		RepoEvents               func(childComplexity int, id string, limit *int, before *time.Time) int
+		RepoSettings             func(childComplexity int, id string) int
+		SpruceConfig             func(childComplexity int) int
+		SubnetAvailabilityZones  func(childComplexity int) int
+		Task                     func(childComplexity int, taskID string, execution *int) int
+		TaskAllExecutions        func(childComplexity int, taskID string) int
+		TaskFiles                func(childComplexity int, taskID string, execution *int) int
+		TaskLogs                 func(childComplexity int, taskID string, execution *int) int
+		TaskNamesForBuildVariant func(childComplexity int, projectIdentifier string, buildVariant string) int
+		TaskQueueDistros         func(childComplexity int) int
+		TaskTestSample           func(childComplexity int, tasks []string, filters []*TestFilter) int
+		TaskTests                func(childComplexity int, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string, groupID *string) int
+		User                     func(childComplexity int, userID *string) int
+		UserConfig               func(childComplexity int) int
+		UserSettings             func(childComplexity int) int
+		Version                  func(childComplexity int, id string) int
+		ViewableProjectRefs      func(childComplexity int) int
 	}
 
 	RepoCommitQueueParams struct {
@@ -1370,7 +1370,7 @@ type QueryResolver interface {
 	ViewableProjectRefs(ctx context.Context) ([]*GroupedProjects, error)
 	MyHosts(ctx context.Context) ([]*model.APIHost, error)
 	MyVolumes(ctx context.Context) ([]*model.APIVolume, error)
-	GetLogkeeperBuildMetadata(ctx context.Context, buildID string) (*plank.Build, error)
+	LogkeeperBuildMetadata(ctx context.Context, buildID string) (*plank.Build, error)
 	Task(ctx context.Context, taskID string, execution *int) (*model.APITask, error)
 	TaskAllExecutions(ctx context.Context, taskID string) ([]*model.APITask, error)
 	TaskFiles(ctx context.Context, taskID string, execution *int) (*TaskFiles, error)
@@ -4736,18 +4736,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.Distros(childComplexity, args["onlySpawnable"].(bool)), true
 
-	case "Query.getLogkeeperBuildMetadata":
-		if e.complexity.Query.GetLogkeeperBuildMetadata == nil {
-			break
-		}
-
-		args, err := ec.field_Query_getLogkeeperBuildMetadata_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.GetLogkeeperBuildMetadata(childComplexity, args["buildId"].(string)), true
-
 	case "Query.githubProjectConflicts":
 		if e.complexity.Query.GithubProjectConflicts == nil {
 			break
@@ -4814,6 +4802,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.InstanceTypes(childComplexity), true
+
+	case "Query.logkeeperBuildMetadata":
+		if e.complexity.Query.LogkeeperBuildMetadata == nil {
+			break
+		}
+
+		args, err := ec.field_Query_logkeeperBuildMetadata_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.LogkeeperBuildMetadata(childComplexity, args["buildId"].(string)), true
 
 	case "Query.mainlineCommits":
 		if e.complexity.Query.MainlineCommits == nil {
@@ -8958,21 +8958,6 @@ func (ec *executionContext) field_Query_distros_args(ctx context.Context, rawArg
 	return args, nil
 }
 
-func (ec *executionContext) field_Query_getLogkeeperBuildMetadata_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 string
-	if tmp, ok := rawArgs["buildId"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("buildId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["buildId"] = arg0
-	return args, nil
-}
-
 func (ec *executionContext) field_Query_githubProjectConflicts_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -9144,6 +9129,21 @@ func (ec *executionContext) field_Query_hosts_args(ctx context.Context, rawArgs 
 		}
 	}
 	args["limit"] = arg8
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_logkeeperBuildMetadata_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["buildId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("buildId"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["buildId"] = arg0
 	return args, nil
 }
 
@@ -33148,8 +33148,8 @@ func (ec *executionContext) fieldContext_Query_myVolumes(ctx context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_getLogkeeperBuildMetadata(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_getLogkeeperBuildMetadata(ctx, field)
+func (ec *executionContext) _Query_logkeeperBuildMetadata(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_logkeeperBuildMetadata(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -33162,7 +33162,7 @@ func (ec *executionContext) _Query_getLogkeeperBuildMetadata(ctx context.Context
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().GetLogkeeperBuildMetadata(rctx, fc.Args["buildId"].(string))
+		return ec.resolvers.Query().LogkeeperBuildMetadata(rctx, fc.Args["buildId"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -33179,7 +33179,7 @@ func (ec *executionContext) _Query_getLogkeeperBuildMetadata(ctx context.Context
 	return ec.marshalNLogkeeperBuild2ᚖgithubᚗcomᚋevergreenᚑciᚋplankᚐBuild(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Query_getLogkeeperBuildMetadata(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_logkeeperBuildMetadata(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -33210,7 +33210,7 @@ func (ec *executionContext) fieldContext_Query_getLogkeeperBuildMetadata(ctx con
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_getLogkeeperBuildMetadata_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Query_logkeeperBuildMetadata_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -61429,7 +61429,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			out.Concurrently(i, func() graphql.Marshaler {
 				return rrm(innerCtx)
 			})
-		case "getLogkeeperBuildMetadata":
+		case "logkeeperBuildMetadata":
 			field := field
 
 			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
@@ -61438,7 +61438,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_getLogkeeperBuildMetadata(ctx, field)
+				res = ec._Query_logkeeperBuildMetadata(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}

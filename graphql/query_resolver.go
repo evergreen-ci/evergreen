@@ -523,8 +523,8 @@ func (r *queryResolver) MyVolumes(ctx context.Context) ([]*restModel.APIVolume, 
 	return getAPIVolumeList(volumes)
 }
 
-// GetLogkeeperBuildMetadata is the resolver for the getLogkeeperBuildMetadata field.
-func (r *queryResolver) GetLogkeeperBuildMetadata(ctx context.Context, buildID string) (*plank.Build, error) {
+// LogkeeperBuildMetadata is the resolver for the logkeeperBuildMetadata field.
+func (r *queryResolver) LogkeeperBuildMetadata(ctx context.Context, buildID string) (*plank.Build, error) {
 	client := plank.NewLogkeeperClient(plank.NewLogkeeperClientOptions{
 		BaseURL: evergreen.GetEnvironment().Settings().LoggerConfig.LogkeeperURL,
 	})
