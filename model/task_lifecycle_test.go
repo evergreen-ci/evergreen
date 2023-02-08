@@ -3980,7 +3980,7 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 			Status:        evergreen.TaskSucceeded,
 			Activated:     true,
 			ActivatedTime: time.Now(),
-			BuildId:       "b",
+			BuildId:       "b2",
 			Version:       "version",
 		},
 		{
