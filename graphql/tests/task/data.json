@@ -618,6 +618,29 @@
       "order": 1
     }
   ],
+  "artifact_files": [
+    {
+      "_id": "some_task_files",
+      "task": "some_task",
+      "task_name": "test-thirdparty-docker",
+      "build": "some_task_build_id",
+      "execution": 1,
+      "files": [
+        {
+          "name": "File 1",
+          "link": "link-to-file-1",
+          "visibility": "",
+          "fetch_ignore": false
+        },
+        {
+          "name": "File 2",
+          "link": "link-to-file-2",
+          "visibility": "",
+          "fetch_ignore": false
+        }
+      ]
+    }
+  ],
   "hosts": [
     {
       "_id": "host1",

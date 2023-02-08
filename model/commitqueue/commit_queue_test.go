@@ -260,18 +260,6 @@ func (s *CommitQueueSuite) TestClearAll() {
 	s.Equal(2, clearedCount)
 }
 
-func (s *CommitQueueSuite) TestCommentTrigger() {
-	comment := "no dice"
-	action := "created"
-	s.False(TriggersCommitQueue(action, comment))
-
-	comment = triggerComment
-	s.True(TriggersCommitQueue(action, comment))
-
-	action = "deleted"
-	s.False(TriggersCommitQueue(action, comment))
-}
-
 func (s *CommitQueueSuite) TestFindOneId() {
 	s.NoError(db.ClearCollections(Collection))
 	cq := &CommitQueue{ProjectID: "mci"}
