@@ -343,10 +343,12 @@ func (s *CommitQueueSuite) TestCommentCleanup() {
 	patch := " \n Evergreen       \n  Patch \n "
 	retry := " \n Evergreen       \n  Retry \n "
 
+	s.False(containsTriggerComment(patch))
+	s.False(isPatchComment(retry))
+	s.False(isRetryComment(trigger))
+
 	s.True(containsTriggerComment(trigger))
-
 	s.True(isPatchComment(patch))
-
 	s.True(isRetryComment(retry))
 }
 
