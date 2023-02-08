@@ -178,9 +178,6 @@ func (s *PatchIntentUnitsSuite) TearDownTest() {
 }
 
 func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent, patchedParserProject string) *patchIntentProcessor {
-	githubOauthToken, err := s.env.Settings().GetGithubOauthToken()
-	s.Require().NoError(err)
-
 	j := NewPatchIntentProcessor(mgobson.NewObjectId(), intent).(*patchIntentProcessor)
 	j.env = s.env
 
@@ -189,7 +186,7 @@ func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent, patchedPars
 		patchDoc.PatchedParserProject = patchedParserProject
 		patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{ModuleName: "sandbox"})
 	}
-	s.NoError(j.finishPatch(s.ctx, patchDoc, githubOauthToken))
+	s.NoError(j.finishPatch(s.ctx, patchDoc))
 	s.NoError(j.Error())
 	s.False(j.HasErrors())
 
@@ -216,14 +213,11 @@ func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithNoTasksAndVariants() {
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert())
 
-	githubOauthToken, err := s.env.Settings().GetGithubOauthToken()
-	s.Require().NoError(err)
-
 	j := NewPatchIntentProcessor(mgobson.NewObjectId(), intent).(*patchIntentProcessor)
 	j.env = s.env
 
 	patchDoc := intent.NewPatch()
-	err = j.finishPatch(s.ctx, patchDoc, githubOauthToken)
+	err = j.finishPatch(s.ctx, patchDoc)
 	s.Require().Error(err)
 	s.Equal("patch has no build variants or tasks", err.Error())
 }
@@ -248,14 +242,11 @@ func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithBadAlias() {
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert())
 
-	githubOauthToken, err := s.env.Settings().GetGithubOauthToken()
-	s.Require().NoError(err)
-
 	j := NewPatchIntentProcessor(mgobson.NewObjectId(), intent).(*patchIntentProcessor)
 	j.env = s.env
 
 	patchDoc := intent.NewPatch()
-	err = j.finishPatch(s.ctx, patchDoc, githubOauthToken)
+	err = j.finishPatch(s.ctx, patchDoc)
 	s.Require().Error(err)
 	s.Equal("alias 'typo' could not be found on project 'mci'", err.Error())
 }
@@ -286,14 +277,11 @@ func (s *PatchIntentUnitsSuite) TestCantFinishCommitQueuePatchWithNoTasksAndVari
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert())
 
-	githubOauthToken, err := s.env.Settings().GetGithubOauthToken()
-	s.Require().NoError(err)
-
 	j := NewPatchIntentProcessor(mgobson.NewObjectId(), intent).(*patchIntentProcessor)
 	j.env = s.env
 
 	patchDoc := intent.NewPatch()
-	err = j.finishPatch(s.ctx, patchDoc, githubOauthToken)
+	err = j.finishPatch(s.ctx, patchDoc)
 	s.Require().Error(err)
 	s.Equal("patch has no build variants or tasks", err.Error())
 }
@@ -1033,7 +1021,7 @@ func (s *PatchIntentUnitsSuite) verifyPatchDoc(patchDoc *patch.Patch, expectedPa
 }
 
 func (s *PatchIntentUnitsSuite) projectExists(projectId string) {
-	pp, err := model.GetParserProjectStorage(model.ProjectStorageMethodDB).FindOneByID(s.ctx, projectId)
+	pp, err := model.ParserProjectFindOneByID(s.ctx, s.env.Settings(), model.ProjectStorageMethodDB, projectId)
 	s.NoError(err)
 	s.NotNil(pp)
 }

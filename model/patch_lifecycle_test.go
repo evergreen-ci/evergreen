@@ -184,14 +184,14 @@ func TestGetPatchedProject(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	testutil.ConfigureIntegrationTest(t, patchTestConfig, "TestConfigurePatch")
+	testutil.ConfigureIntegrationTest(t, patchTestConfig, t.Name())
+	token, err := patchTestConfig.GetGithubOauthToken()
+	require.NoError(t, err)
 	Convey("With calling GetPatchedProject with a config and remote configuration path",
 		t, func() {
 			Convey("Calling GetPatchedProject returns a valid project given a patch and settings", func() {
 				configPatch := resetPatchSetup(t, configFilePath)
-				token, err := patchTestConfig.GetGithubOauthToken()
-				So(err, ShouldBeNil)
-				project, patchConfig, err := GetPatchedProject(ctx, configPatch, token)
+				project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, configPatch, token)
 				So(err, ShouldBeNil)
 				So(patchConfig, ShouldNotBeEmpty)
 				So(project, ShouldNotBeNil)
@@ -199,9 +199,7 @@ func TestGetPatchedProject(t *testing.T) {
 
 			Convey("Calling GetPatchedProject on a project-less version returns a valid project", func() {
 				configPatch := resetProjectlessPatchSetup(t)
-				token, err := patchTestConfig.GetGithubOauthToken()
-				So(err, ShouldBeNil)
-				project, patchConfig, err := GetPatchedProject(ctx, configPatch, token)
+				project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, configPatch, token)
 				So(err, ShouldBeNil)
 				So(patchConfig, ShouldNotBeEmpty)
 				So(project, ShouldNotBeNil)
@@ -215,9 +213,7 @@ func TestGetPatchedProject(t *testing.T) {
 				configPatch.Patches[0].PatchSet.Patch = ""
 				configPatch.Patches[0].PatchSet.PatchFileId = patchFileID.Hex()
 
-				token, err := patchTestConfig.GetGithubOauthToken()
-				So(err, ShouldBeNil)
-				project, patchConfig, err := GetPatchedProject(ctx, configPatch, token)
+				project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, configPatch, token)
 				So(err, ShouldBeNil)
 				So(patchConfig, ShouldNotBeEmpty)
 				So(project, ShouldNotBeNil)
@@ -241,11 +237,11 @@ func TestFinalizePatch(t *testing.T) {
 	require.NoError(t, db.CreateCollections(manifest.Collection, VersionCollection, ParserProjectCollection, ProjectConfigCollection))
 
 	configPatch := resetPatchSetup(t, configFilePath)
+	token, err := patchTestConfig.GetGithubOauthToken()
+	require.NoError(t, err)
 	for name, test := range map[string]func(*testing.T){
 		"VersionCreation": func(*testing.T) {
-			token, err := patchTestConfig.GetGithubOauthToken()
-			require.NoError(t, err)
-			project, patchConfig, err := GetPatchedProject(ctx, configPatch, token)
+			project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, configPatch, token)
 			require.NoError(t, err)
 			assert.NotNil(t, project)
 			modulesYml := `
@@ -259,8 +255,6 @@ modules:
 `
 			configPatch.PatchedParserProject = patchConfig.PatchedParserProject
 			configPatch.PatchedParserProject += modulesYml
-			token, err = patchTestConfig.GetGithubOauthToken()
-			require.NoError(t, err)
 			version, err := FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, token)
 			require.NoError(t, err)
 			assert.NotNil(t, version)
@@ -276,10 +270,8 @@ modules:
 			assert.Len(t, tasks, 2)
 		},
 		"VersionCreationWithAutoUpdateModules": func(*testing.T) {
-			token, err := patchTestConfig.GetGithubOauthToken()
-			require.NoError(t, err)
 			configPatch := resetPatchSetup(t, configFilePath)
-			project, patchConfig, err := GetPatchedProject(ctx, configPatch, token)
+			project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, configPatch, token)
 			require.NoError(t, err)
 			assert.NotNil(t, project)
 
@@ -307,8 +299,6 @@ modules:
 `
 			configPatch.PatchedParserProject = patchConfig.PatchedParserProject
 			configPatch.PatchedParserProject += modulesYml
-			token, err = patchTestConfig.GetGithubOauthToken()
-			require.NoError(t, err)
 			version, err := FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, token)
 			require.NoError(t, err)
 			assert.NotNil(t, version)
@@ -324,14 +314,10 @@ modules:
 		"PatchNoRemoteConfigDoesntCreateVersion": func(*testing.T) {
 			patchedConfigFile := "fakeInPatchSoNotPatched"
 			configPatch := resetPatchSetup(t, patchedConfigFile)
-			token, err := patchTestConfig.GetGithubOauthToken()
-			require.NoError(t, err)
-			project, patchConfig, err := GetPatchedProject(ctx, configPatch, token)
+			project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, configPatch, token)
 			assert.NotNil(t, project)
 			require.NoError(t, err)
 			configPatch.PatchedParserProject = patchConfig.PatchedParserProject
-			token, err = patchTestConfig.GetGithubOauthToken()
-			require.NoError(t, err)
 			version, err := FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, token)
 			require.NoError(t, err)
 			assert.NotNil(t, version)
@@ -347,8 +333,6 @@ modules:
 		},
 		"EmptyCommitQueuePatchDoesntCreateVersion": func(*testing.T) {
 			//normal patch works
-			token, err := patchTestConfig.GetGithubOauthToken()
-			require.NoError(t, err)
 			configPatch := resetPatchSetup(t, configFilePath)
 			configPatch.Tasks = []string{}
 			configPatch.BuildVariants = []string{}

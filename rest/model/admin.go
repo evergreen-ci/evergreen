@@ -1282,6 +1282,7 @@ type APIProjectCreationConfig struct {
 	TotalProjectLimit int            `json:"total_project_limit"`
 	RepoProjectLimit  int            `json:"repo_project_limit"`
 	RepoExceptions    []APIOwnerRepo `json:"repo_exceptions"`
+	JiraProject       string         `json:"jira_project"`
 }
 
 func (a *APIProjectCreationConfig) BuildFromService(h interface{}) error {
@@ -1296,6 +1297,7 @@ func (a *APIProjectCreationConfig) BuildFromService(h interface{}) error {
 		}
 		a.TotalProjectLimit = v.TotalProjectLimit
 		a.RepoProjectLimit = v.RepoProjectLimit
+		a.JiraProject = v.JiraProject
 	default:
 		return errors.Errorf("programmatic error: expected Project Creation config but got type %T", h)
 	}
@@ -1311,6 +1313,7 @@ func (a *APIProjectCreationConfig) ToService() (interface{}, error) {
 	config := evergreen.ProjectCreationConfig{
 		TotalProjectLimit: a.TotalProjectLimit,
 		RepoProjectLimit:  a.RepoProjectLimit,
+		JiraProject:       a.JiraProject,
 	}
 
 	for _, r := range a.RepoExceptions {
@@ -1545,17 +1548,17 @@ func (a *APISubnet) ToService() (interface{}, error) {
 }
 
 type APIAWSConfig struct {
-	EC2Keys               []APIEC2Key       `json:"ec2_keys"`
-	Subnets               []APISubnet       `json:"subnets"`
-	S3                    *APIS3Credentials `json:"s3_credentials"`
-	TaskSync              *APIS3Credentials `json:"task_sync"`
-	TaskSyncRead          *APIS3Credentials `json:"task_sync_read"`
-	ParserProjectS3Bucket *string           `json:"parser_project_s3_bucket"`
-	DefaultSecurityGroup  *string           `json:"default_security_group"`
-	AllowedInstanceTypes  []*string         `json:"allowed_instance_types"`
-	AllowedRegions        []*string         `json:"allowed_regions"`
-	MaxVolumeSizePerUser  *int              `json:"max_volume_size"`
-	Pod                   *APIAWSPodConfig  `json:"pod"`
+	EC2Keys              []APIEC2Key               `json:"ec2_keys"`
+	Subnets              []APISubnet               `json:"subnets"`
+	S3                   *APIS3Credentials         `json:"s3_credentials"`
+	TaskSync             *APIS3Credentials         `json:"task_sync"`
+	TaskSyncRead         *APIS3Credentials         `json:"task_sync_read"`
+	ParserProject        *APIParserProjectS3Config `json:"parser_project"`
+	DefaultSecurityGroup *string                   `json:"default_security_group"`
+	AllowedInstanceTypes []*string                 `json:"allowed_instance_types"`
+	AllowedRegions       []*string                 `json:"allowed_regions"`
+	MaxVolumeSizePerUser *int                      `json:"max_volume_size"`
+	Pod                  *APIAWSPodConfig          `json:"pod"`
 }
 
 func (a *APIAWSConfig) BuildFromService(h interface{}) error {
@@ -1595,7 +1598,11 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 		}
 		a.TaskSyncRead = taskSyncRead
 
-		a.ParserProjectS3Bucket = utility.ToStringPtr(v.ParserProjectS3Bucket)
+		parserProject := &APIParserProjectS3Config{}
+		if err := parserProject.BuildFromService(v.ParserProject); err != nil {
+			return errors.Wrap(err, "converting parser project S3 config to API model")
+		}
+		a.ParserProject = parserProject
 
 		a.DefaultSecurityGroup = utility.ToStringPtr(v.DefaultSecurityGroup)
 		a.MaxVolumeSizePerUser = &v.MaxVolumeSizePerUser
@@ -1663,7 +1670,18 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 	}
 	config.TaskSyncRead = taskSyncRead
 
-	config.ParserProjectS3Bucket = utility.FromStringPtr(a.ParserProjectS3Bucket)
+	i, err = a.ParserProject.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "converting parser project S3 credentials to service model")
+	}
+	var parserProject evergreen.ParserProjectS3Config
+	if i != nil {
+		parserProject, ok = i.(evergreen.ParserProjectS3Config)
+		if !ok {
+			return nil, errors.Errorf("programmatic error: expected parser project S3 config but got type %T", i)
+		}
+	}
+	config.ParserProject = parserProject
 
 	if a.MaxVolumeSizePerUser != nil {
 		config.MaxVolumeSizePerUser = *a.MaxVolumeSizePerUser
@@ -1731,6 +1749,40 @@ func (a *APIS3Credentials) ToService() (interface{}, error) {
 		Key:    utility.FromStringPtr(a.Key),
 		Secret: utility.FromStringPtr(a.Secret),
 		Bucket: utility.FromStringPtr(a.Bucket),
+	}, nil
+}
+
+// APIParserProjectS3Config represents configuration options for storing and
+// accessing parser projects in S3.
+type APIParserProjectS3Config struct {
+	APIS3Credentials
+	Prefix *string `json:"prefix"`
+}
+
+func (a *APIParserProjectS3Config) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.ParserProjectS3Config:
+		a.Key = utility.ToStringPtr(v.Key)
+		a.Secret = utility.ToStringPtr(v.Secret)
+		a.Bucket = utility.ToStringPtr(v.Bucket)
+		a.Prefix = utility.ToStringPtr(v.Prefix)
+		return nil
+	default:
+		return errors.Errorf("programmatic error: expected parser project S3 config but got type %T", h)
+	}
+}
+
+func (a *APIParserProjectS3Config) ToService() (interface{}, error) {
+	if a == nil {
+		return nil, nil
+	}
+	return evergreen.ParserProjectS3Config{
+		S3Credentials: evergreen.S3Credentials{
+			Key:    utility.FromStringPtr(a.Key),
+			Secret: utility.FromStringPtr(a.Secret),
+			Bucket: utility.FromStringPtr(a.Bucket),
+		},
+		Prefix: utility.FromStringPtr(a.Prefix),
 	}, nil
 }
 

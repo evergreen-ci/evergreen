@@ -272,7 +272,7 @@ func TestValidateProjectCreation(t *testing.T) {
 
 	// Should error when trying to enable an existing project past limits.
 	disabled1.Enabled = utility.TruePtr()
-	err, shouldError := ValidateProjectCreation(disabled1.Id, &settings, disabled1)
+	shouldError, err := ValidateProjectCreation(disabled1.Id, &settings, disabled1)
 	assert.Error(t, err)
 	assert.True(t, shouldError)
 
@@ -283,7 +283,7 @@ func TestValidateProjectCreation(t *testing.T) {
 		Repo:    "repo_exception",
 		Enabled: utility.TruePtr(),
 	}
-	err, _ = ValidateProjectCreation(enabled1.Id, &settings, exception)
+	_, err = ValidateProjectCreation(enabled1.Id, &settings, exception)
 	assert.NoError(t, err)
 
 	// Should error if owner/repo is not part of exception.
@@ -293,19 +293,19 @@ func TestValidateProjectCreation(t *testing.T) {
 		Repo:    "mci",
 		Enabled: utility.TruePtr(),
 	}
-	err, shouldError = ValidateProjectCreation(notException.Id, &settings, notException)
+	shouldError, err = ValidateProjectCreation(notException.Id, &settings, notException)
 	assert.Error(t, err)
 	assert.False(t, shouldError)
 
 	// Should not error if a repo defaulted project is enabled.
 	disabledByRepo.Enabled = utility.TruePtr()
 	assert.NoError(t, disabledByRepo.Upsert())
-	err, _ = ValidateProjectCreation(disabledByRepo.Id, &settings, disabledByRepo)
+	_, err = ValidateProjectCreation(disabledByRepo.Id, &settings, disabledByRepo)
 	assert.NoError(t, err)
 
 	// Total project limit cannot be exceeded. Even with the exception.
 	settings.ProjectCreation.TotalProjectLimit = 2
-	err, shouldError = ValidateProjectCreation(exception.Id, &settings, exception)
+	shouldError, err = ValidateProjectCreation(exception.Id, &settings, exception)
 	assert.Error(t, err)
 	assert.False(t, shouldError)
 }
@@ -2879,7 +2879,7 @@ func TestMergeWithProjectConfig(t *testing.T) {
 func TestSaveProjectPageForSection(t *testing.T) {
 	assert := assert.New(t)
 
-	assert.NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection))
+	assert.NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ConfigCollection))
 
 	projectRef := &ProjectRef{
 		Owner:            "evergreen-ci",
@@ -2896,12 +2896,18 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(t, projectRef)
 
+	settings := evergreen.Settings{
+		GithubOrgs: []string{"newOwner", "evergreen-ci"},
+	}
+	assert.NoError(settings.Set())
+
 	update := &ProjectRef{
 		Id:      "iden_",
 		Enabled: utility.TruePtr(),
 		Owner:   "invalid",
 		Repo:    "nonexistent",
 	}
+
 	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
 	assert.Error(err)
 
@@ -2925,7 +2931,12 @@ func TestSaveProjectPageForSection(t *testing.T) {
 }
 
 func TestValidateOwnerAndRepo(t *testing.T) {
-	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection))
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ConfigCollection))
+
+	settings := evergreen.Settings{
+		GithubOrgs: []string{"newOwner", "evergreen-ci"},
+	}
+	assert.NoError(t, settings.Set())
 
 	// a project with no owner should error
 	project := ProjectRef{

@@ -12,16 +12,13 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func TestPlanner(t *testing.T) {
-	index := mongo.IndexModel{
-		Keys: bson.D{{Key: "branch", Value: 1}, {Key: "build_variant", Value: 1}, {Key: "display_name", Value: 1}, {Key: "status", Value: 1}, {Key: "finish_time", Value: 1}, {Key: "start_time", Value: 1}},
-	}
-	_, err := evergreen.GetEnvironment().DB().Collection(task.Collection).Indexes().CreateOne(context.Background(), index)
+	_, err := evergreen.GetEnvironment().DB().Collection(task.Collection).Indexes().CreateOne(context.Background(), mongo.IndexModel{Keys: task.DurationIndex})
 	assert.NoError(t, err)
+
 	t.Run("Caches", func(t *testing.T) {
 		t.Run("StringSet", func(t *testing.T) {
 			t.Run("ZeroValue", func(t *testing.T) {

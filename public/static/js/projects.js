@@ -55,121 +55,121 @@ mciModule.controller(
       default: "gitter_request",
     };
     $scope.triggers = [{
-        trigger: "outcome",
-        resource_type: "VERSION",
-        label: "any version finishes",
-        extraFields: [requesterSubscriberConfig],
+      trigger: "outcome",
+      resource_type: "VERSION",
+      label: "any version finishes",
+      extraFields: [requesterSubscriberConfig],
+    },
+    {
+      trigger: "failure",
+      resource_type: "VERSION",
+      label: "any version fails",
+      extraFields: [requesterSubscriberConfig],
+    },
+    {
+      trigger: "outcome",
+      resource_type: "BUILD",
+      label: "any build finishes",
+      regex_selectors: buildRegexSelectors(),
+      extraFields: [requesterSubscriberConfig],
+    },
+    {
+      trigger: "failure",
+      resource_type: "BUILD",
+      label: "any build fails",
+      regex_selectors: buildRegexSelectors(),
+      extraFields: [requesterSubscriberConfig],
+    },
+    {
+      trigger: "outcome",
+      resource_type: "TASK",
+      label: "any task finishes",
+      regex_selectors: taskRegexSelectors(),
+      extraFields: [requesterSubscriberConfig],
+    },
+    {
+      trigger: "failure",
+      resource_type: "TASK",
+      label: "any task fails",
+      regex_selectors: taskRegexSelectors(),
+      extraFields: [failureTypeSubscriberConfig, requesterSubscriberConfig],
+    },
+    {
+      trigger: "first-failure-in-version",
+      resource_type: "TASK",
+      label: "the first failure in a version occurs",
+      regex_selectors: taskRegexSelectors(),
+      extraFields: [requesterSubscriberConfig],
+    },
+    {
+      trigger: "first-failure-in-build",
+      resource_type: "TASK",
+      label: "the first failure in each build occurs",
+      regex_selectors: taskRegexSelectors(),
+      extraFields: [requesterSubscriberConfig],
+    },
+    {
+      trigger: "first-failure-in-version-with-name",
+      resource_type: "TASK",
+      label: "the first failure in each version for each task name occurs",
+      regex_selectors: taskRegexSelectors(),
+      extraFields: [requesterSubscriberConfig],
+    },
+    {
+      trigger: "regression",
+      resource_type: "TASK",
+      label: "a previously passing task fails",
+      regex_selectors: taskRegexSelectors(),
+      extraFields: [{
+        text: "Re-notify after how many hours",
+        key: "renotify-interval",
+        validator: validateDuration,
+        default: "48",
+      },
+        failureTypeSubscriberConfig,
+      ],
+    },
+    {
+      trigger: "regression-by-test",
+      resource_type: "TASK",
+      label: "a previously passing test in a task fails",
+      regex_selectors: taskRegexSelectors(),
+      extraFields: [{
+        text: "Test names matching regex",
+        key: "test-regex",
+        validator: null,
       },
       {
-        trigger: "failure",
-        resource_type: "VERSION",
-        label: "any version fails",
-        extraFields: [requesterSubscriberConfig],
+        text: "Re-notify after how many hours",
+        key: "renotify-interval",
+        validator: validateDuration,
+        default: "48",
       },
-      {
-        trigger: "outcome",
-        resource_type: "BUILD",
-        label: "any build finishes",
-        regex_selectors: buildRegexSelectors(),
-        extraFields: [requesterSubscriberConfig],
-      },
-      {
-        trigger: "failure",
-        resource_type: "BUILD",
-        label: "any build fails",
-        regex_selectors: buildRegexSelectors(),
-        extraFields: [requesterSubscriberConfig],
-      },
-      {
-        trigger: "outcome",
-        resource_type: "TASK",
-        label: "any task finishes",
-        regex_selectors: taskRegexSelectors(),
-        extraFields: [requesterSubscriberConfig],
-      },
-      {
-        trigger: "failure",
-        resource_type: "TASK",
-        label: "any task fails",
-        regex_selectors: taskRegexSelectors(),
-        extraFields: [failureTypeSubscriberConfig, requesterSubscriberConfig],
-      },
-      {
-        trigger: "first-failure-in-version",
-        resource_type: "TASK",
-        label: "the first failure in a version occurs",
-        regex_selectors: taskRegexSelectors(),
-        extraFields: [requesterSubscriberConfig],
-      },
-      {
-        trigger: "first-failure-in-build",
-        resource_type: "TASK",
-        label: "the first failure in each build occurs",
-        regex_selectors: taskRegexSelectors(),
-        extraFields: [requesterSubscriberConfig],
-      },
-      {
-        trigger: "first-failure-in-version-with-name",
-        resource_type: "TASK",
-        label: "the first failure in each version for each task name occurs",
-        regex_selectors: taskRegexSelectors(),
-        extraFields: [requesterSubscriberConfig],
-      },
-      {
-        trigger: "regression",
-        resource_type: "TASK",
-        label: "a previously passing task fails",
-        regex_selectors: taskRegexSelectors(),
-        extraFields: [{
-            text: "Re-notify after how many hours",
-            key: "renotify-interval",
-            validator: validateDuration,
-            default: "48",
-          },
-          failureTypeSubscriberConfig,
-        ],
-      },
-      {
-        trigger: "regression-by-test",
-        resource_type: "TASK",
-        label: "a previously passing test in a task fails",
-        regex_selectors: taskRegexSelectors(),
-        extraFields: [{
-            text: "Test names matching regex",
-            key: "test-regex",
-            validator: null,
-          },
-          {
-            text: "Re-notify after how many hours",
-            key: "renotify-interval",
-            validator: validateDuration,
-            default: "48",
-          },
-          failureTypeSubscriberConfig,
-        ],
-      },
-      {
-        trigger: "exceeds-duration",
-        resource_type: "TASK",
-        label: "the runtime for a task exceeds some duration",
-        regex_selectors: taskRegexSelectors(),
-        extraFields: [{
-          text: "Task duration (seconds)",
-          key: "task-duration-secs",
-          validator: validateDuration,
-        }, ],
-      },
-      {
-        trigger: "runtime-change",
-        resource_type: "TASK",
-        label: "the runtime for a successful task changes by some percentage",
-        regex_selectors: taskRegexSelectors(),
-        extraFields: [{
-          text: "Percent change",
-          key: "task-percent-change",
-          validator: validatePercentage,
-        }, ],
-      },
+        failureTypeSubscriberConfig,
+      ],
+    },
+    {
+      trigger: "exceeds-duration",
+      resource_type: "TASK",
+      label: "the runtime for a task exceeds some duration",
+      regex_selectors: taskRegexSelectors(),
+      extraFields: [{
+        text: "Task duration (seconds)",
+        key: "task-duration-secs",
+        validator: validateDuration,
+      },],
+    },
+    {
+      trigger: "runtime-change",
+      resource_type: "TASK",
+      label: "the runtime for a successful task changes by some percentage",
+      regex_selectors: taskRegexSelectors(),
+      extraFields: [{
+        text: "Percent change",
+        key: "task-percent-change",
+        validator: validatePercentage,
+      },],
+    },
     ];
 
     // refreshTrackedProjects will populate the list of projects that should be displayed
@@ -201,28 +201,28 @@ mciModule.controller(
 
     $scope.shouldDisableWebhook = function () {
       return $scope.settingsFormData.build_baron_settings
-          && (($scope.settingsFormData.build_baron_settings.ticket_search_projects !== null
-              && $scope.settingsFormData.build_baron_settings.ticket_search_projects !== undefined
-              && $scope.settingsFormData.build_baron_settings.ticket_search_projects.length > 0)
+        && (($scope.settingsFormData.build_baron_settings.ticket_search_projects !== null
+          && $scope.settingsFormData.build_baron_settings.ticket_search_projects !== undefined
+          && $scope.settingsFormData.build_baron_settings.ticket_search_projects.length > 0)
           || $scope.settingsFormData.build_baron_settings.ticket_create_project
           || $scope.ticket_search_project);
     };
 
     $scope.shouldDisableBB = function () {
       return $scope.settingsFormData.task_annotation_settings && ($scope.settingsFormData.task_annotation_settings.web_hook.endpoint
-          || $scope.settingsFormData.task_annotation_settings.web_hook.secret);
+        || $scope.settingsFormData.task_annotation_settings.web_hook.secret);
     };
 
     $scope.bbConfigIsValid = function () {
-      if ($scope.settingsFormData.build_baron_settings.ticket_create_project){
-          return $scope.settingsFormData.build_baron_settings.ticket_search_projects !== null
-              && $scope.settingsFormData.build_baron_settings.ticket_search_projects !== undefined
-              && $scope.settingsFormData.build_baron_settings.ticket_search_projects.length > 0
+      if ($scope.settingsFormData.build_baron_settings.ticket_create_project) {
+        return $scope.settingsFormData.build_baron_settings.ticket_search_projects !== null
+          && $scope.settingsFormData.build_baron_settings.ticket_search_projects !== undefined
+          && $scope.settingsFormData.build_baron_settings.ticket_search_projects.length > 0
       }
       else {
-          return $scope.settingsFormData.build_baron_settings.ticket_search_projects === null
-              || $scope.settingsFormData.build_baron_settings.ticket_search_projects === undefined
-              || $scope.settingsFormData.build_baron_settings.ticket_search_projects.length <= 0
+        return $scope.settingsFormData.build_baron_settings.ticket_search_projects === null
+          || $scope.settingsFormData.build_baron_settings.ticket_search_projects === undefined
+          || $scope.settingsFormData.build_baron_settings.ticket_search_projects.length <= 0
       }
     };
 
@@ -253,10 +253,10 @@ mciModule.controller(
 
     // addJiraField adds a jira field to the task annotation settings
     $scope.addJiraField = function () {
-      if(!$scope.settingsFormData.task_annotation_settings.jira_custom_fields){
-          $scope.settingsFormData.task_annotation_settings.jira_custom_fields = []
+      if (!$scope.settingsFormData.task_annotation_settings.jira_custom_fields) {
+        $scope.settingsFormData.task_annotation_settings.jira_custom_fields = []
       }
-      $scope.settingsFormData.task_annotation_settings.jira_custom_fields.push({"field" : $scope.jira_field, "display_text" : $scope.jira_display_text});
+      $scope.settingsFormData.task_annotation_settings.jira_custom_fields.push({ "field": $scope.jira_field, "display_text": $scope.jira_display_text });
       $scope.jira_display_text = "";
       $scope.jira_field = "";
     };
@@ -269,8 +269,8 @@ mciModule.controller(
 
     // addTicketSearchProject adds an ticket search project name to the build baron settings
     $scope.addTicketSearchProject = function () {
-      if(!$scope.settingsFormData.build_baron_settings.ticket_search_projects){
-          $scope.settingsFormData.build_baron_settings.ticket_search_projects = []
+      if (!$scope.settingsFormData.build_baron_settings.ticket_search_projects) {
+        $scope.settingsFormData.build_baron_settings.ticket_search_projects = []
       }
       $scope.settingsFormData.build_baron_settings.ticket_search_projects.push($scope.ticket_search_project);
       $scope.ticket_search_project = "";
@@ -308,23 +308,23 @@ mciModule.controller(
       $scope.isDirty = true;
     };
 
-    $scope.isValidGitTagUser = function(user) {
-        if ($scope.settingsFormData.git_tag_authorized_users === undefined) {
-            return true;
-        }
-        return !$scope.settingsFormData.git_tag_authorized_users.includes(user);
+    $scope.isValidGitTagUser = function (user) {
+      if ($scope.settingsFormData.git_tag_authorized_users === undefined) {
+        return true;
+      }
+      return !$scope.settingsFormData.git_tag_authorized_users.includes(user);
     }
-    $scope.isValidGitTagTeam = function(team) {
-        if ($scope.settingsFormData.git_tag_authorized_teams === undefined) {
-            return true;
-        }
-        return !$scope.settingsFormData.git_tag_authorized_teams.includes(team);
+    $scope.isValidGitTagTeam = function (team) {
+      if ($scope.settingsFormData.git_tag_authorized_teams === undefined) {
+        return true;
+      }
+      return !$scope.settingsFormData.git_tag_authorized_teams.includes(team);
     }
-    $scope.isValidAdmin = function(admin) {
-        if ($scope.settingsFormData.admins == undefined) {
-            return true;
-        }
-        return !$scope.settingsFormData.admins.includes(admin);
+    $scope.isValidAdmin = function (admin) {
+      if ($scope.settingsFormData.admins == undefined) {
+        return true;
+      }
+      return !$scope.settingsFormData.admins.includes(admin);
     }
 
     $scope.addGitTagTeam = function () {
@@ -1426,35 +1426,35 @@ mciModule.directive("adminNewProject", function () {
     restrict: "E",
     template: '' +
       '<div class="row">' +
-        '<div class="col-lg-12">' +
-         "Enter project identifier " +
-          '<input type="text" id="project-name" placeholder="project name" ng-model="newProject.identifier">' +
-        "</div>" +
+      '<div class="col-lg-12">' +
+      "Enter project identifier " +
+      '<input type="text" id="project-name" placeholder="project name" ng-model="newProject.identifier">' +
+      "</div>" +
       '</div>' +
       '<div class="row">' +
-        '<div class="col-lg-12">' +
-          "Optionally enter immutable project ID " +
-          '<div class="muted small">' +
-            "(Used by Evergreen internally and defaults to a random hash; should only be user-specified with good reason, such as if the project will be using performance tooling. Cannot be changed!)" +
-          '</div>' +
-          '<div class="warning-text" ng-show="newProject.copyProject && projectRef.perf_enabled">' +
-               "When copying a project using performance, the immutable project ID should be set to match the identifier." +
-          '</div>' +
-          '<input type="text" id="project-name" placeholder="immutable project ID" ng-model="newProject.id">' +
-        '</div>' +
+      '<div class="col-lg-12">' +
+      "Optionally enter immutable project ID " +
+      '<div class="muted small">' +
+      "(Used by Evergreen internally and defaults to a random hash; should only be user-specified with good reason, such as if the project will be using performance tooling. Cannot be changed!)" +
+      '</div>' +
+      '<div class="warning-text" ng-show="newProject.copyProject && projectRef.perf_enabled">' +
+      "When copying a project using performance, the immutable project ID should be set to match the identifier." +
+      '</div>' +
+      '<input type="text" id="project-name" placeholder="immutable project ID" ng-model="newProject.id">' +
+      '</div>' +
       '</div>' +
       '<div class="row">' +
-        '<div class="col-lg-12">' +
-        '<form style="display: inline">' +
-          '<input type="checkbox" id="copy-project" ng-model="newProject.copyProject">' +
-          " Duplicate current project " +
-        "</form>" +
-        '</div>' +
+      '<div class="col-lg-12">' +
+      '<form style="display: inline">' +
+      '<input type="checkbox" id="copy-project" ng-model="newProject.copyProject">' +
+      " Duplicate current project " +
+      "</form>" +
       '</div>' +
-      '<div class="row">'  +
-        '<div class="col-lg-12">' +
-          '<button type="submit" class="btn btn-primary" style="float: right; margin-left: 10px;" ng-disabled="!newProject.identifier" ng-click="addProject()">Create Project</button>' +
-        '</div>' +
+      '</div>' +
+      '<div class="row">' +
+      '<div class="col-lg-12">' +
+      '<button type="submit" class="btn btn-primary" style="float: right; margin-left: 10px;" ng-disabled="!newProject.identifier" ng-click="addProject()">Create Project</button>' +
+      '</div>' +
       '</div>',
   };
 });

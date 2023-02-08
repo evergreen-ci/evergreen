@@ -2551,7 +2551,7 @@ func TestTryDequeueAndAbortBlockedCommitQueueVersion(t *testing.T) {
 	assert.NoError(t, t1.Insert())
 	assert.NoError(t, commitqueue.InsertQueue(cq))
 
-	assert.NoError(t, tryDequeueAndAbortCommitQueueVersion(p, *cq, "t1", evergreen.User))
+	assert.NoError(t, tryDequeueAndAbortCommitQueueVersion(p, *cq, t1, evergreen.User))
 	cq, err := commitqueue.FindOneId("my-project")
 	assert.NoError(t, err)
 	assert.Equal(t, cq.FindItem(patchID), -1)
@@ -2635,7 +2635,7 @@ func TestTryDequeueAndAbortCommitQueueVersion(t *testing.T) {
 	assert.NoError(t, m.Insert())
 	assert.NoError(t, commitqueue.InsertQueue(cq))
 
-	assert.NoError(t, tryDequeueAndAbortCommitQueueVersion(p, *cq, "t1", evergreen.User))
+	assert.NoError(t, tryDequeueAndAbortCommitQueueVersion(p, *cq, t1, evergreen.User))
 	cq, err := commitqueue.FindOneId("my-project")
 	assert.NoError(t, err)
 	assert.Equal(t, cq.FindItem("12"), -1)

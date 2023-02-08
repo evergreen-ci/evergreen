@@ -330,7 +330,7 @@ func (s *commitQueueSuite) TestUpdatePatch() {
 		},
 	}
 
-	projectConfig, err := updatePatch(context.Background(), githubToken, projectRef, patchDoc)
+	projectConfig, err := updatePatch(s.ctx, s.settings, githubToken, projectRef, patchDoc)
 	s.NoError(err)
 	s.NotEqual("abcdef", patchDoc.Patches[0].Githash)
 	s.NotEqual(model.Project{}, projectConfig)

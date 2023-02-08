@@ -29,10 +29,37 @@ const (
 	githubActionSynchronize = "synchronize"
 	githubActionReopened    = "reopened"
 
-	retryComment = "evergreen retry"
-	patchComment = "evergreen patch"
-	refTags      = "refs/tags/"
+	// pull request comments
+	retryComment   = "evergreen retry"
+	patchComment   = "evergreen patch"
+	triggerComment = "evergreen merge"
+
+	refTags = "refs/tags/"
 )
+
+func trimComment(comment string) string {
+	return strings.Join(strings.Fields(strings.ToLower(comment)), " ")
+}
+
+func isRetryComment(comment string) bool {
+	return trimComment(comment) == retryComment
+}
+func isPatchComment(comment string) bool {
+	return trimComment(comment) == patchComment
+}
+
+// containsTriggerComment checks if "evergreen merge" is present in the comment, as
+// it may be followed by a newline and a message.
+func containsTriggerComment(comment string) bool {
+	return strings.HasPrefix(trimComment(comment), triggerComment)
+}
+
+func triggersCommitQueue(commentAction string, comment string) bool {
+	if commentAction == "deleted" {
+		return false
+	}
+	return containsTriggerComment(comment)
+}
 
 type githubHookApi struct {
 	queue  amboy.Queue
@@ -207,7 +234,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 
 	case *github.IssueCommentEvent:
 		if event.Issue.IsPullRequest() {
-			if commitqueue.TriggersCommitQueue(*event.Action, *event.Comment.Body) {
+			if triggersCommitQueue(*event.Action, *event.Comment.Body) {
 				grip.Info(message.Fields{
 					"source":    "GitHub hook",
 					"msg_id":    gh.msgID,
@@ -514,7 +541,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 		}
 	} else {
 		// use the standard project config with the git tag alias
-		projectInfo, err = model.LoadProjectInfoForVersion(existingVersion, pRef.Id)
+		projectInfo, err = model.LoadProjectInfoForVersion(ctx, gh.settings, existingVersion, pRef.Id)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting project '%s'", pRef.Identifier)
 		}
@@ -608,15 +635,15 @@ func triggersPatch(action, comment string) (bool, string) {
 	if action == "deleted" {
 		return false, ""
 	}
-	comment = strings.TrimSpace(comment)
-	switch comment {
-	case patchComment:
+
+	if isPatchComment(comment) {
 		return true, patch.ManualCaller
-	case retryComment:
-		return true, patch.AllCallers
-	default:
-		return false, ""
 	}
+	if isRetryComment(comment) {
+		return true, patch.AllCallers
+	}
+
+	return false, ""
 }
 
 func isTag(ref string) bool {

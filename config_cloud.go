@@ -99,9 +99,9 @@ type AWSConfig struct {
 	// TaskSyncRead stores credentials for reading task data in S3.
 	TaskSyncRead S3Credentials `bson:"task_sync_read" json:"task_sync_read" yaml:"task_sync_read"`
 
-	// ParserProjectS3Bucket is the name of the S3 bucket used to store parser
-	// projects for versions.
-	ParserProjectS3Bucket string `bson:"parser_project_s3_bucket" json:"parser_project_s3_bucket" yaml:"parser_project_s3_bucket"`
+	// ParserProject is configuration for storing and accessing parser projects
+	// in S3.
+	ParserProject ParserProjectS3Config `bson:"parser_project" json:"parser_project" yaml:"parser_project"`
 
 	DefaultSecurityGroup string `bson:"default_security_group" json:"default_security_group" yaml:"default_security_group"`
 
@@ -127,6 +127,15 @@ func (c *S3Credentials) Validate() error {
 	catcher.NewWhen(c.Bucket == "", "bucket must not be empty")
 	return catcher.Resolve()
 }
+
+// ParserProjectS3Config is the configuration options for storing and accessing
+// parser projects in S3.
+type ParserProjectS3Config struct {
+	S3Credentials `bson:",inline" yaml:",inline"`
+	Prefix        string `bson:"prefix" json:"prefix" yaml:"prefix"`
+}
+
+func (c *ParserProjectS3Config) Validate() error { return nil }
 
 // AWSPodConfig represents configuration for using pods backed by AWS.
 type AWSPodConfig struct {

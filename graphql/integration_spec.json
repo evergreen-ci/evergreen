@@ -2208,43 +2208,6 @@
       }
     },
     {
-      "query_file": "task-files-query-display.graphql",
-      "result": {
-        "data": {
-          "taskFiles": {
-            "fileCount": 3,
-            "groupedFiles": [
-              {
-                "taskName": "exec 1 display!!",
-                "files": [
-                  {
-                    "name": "awesome_test!!!",
-                    "link": "www.wikipedia.com",
-                    "visibility": "the whole world"
-                  }
-                ]
-              },
-              {
-                "taskName": "exec 2 display!!",
-                "files": [
-                  {
-                    "name": "THIS IS REALLY COOL",
-                    "link": "www.wikipedia.com",
-                    "visibility": "the whole world"
-                  },
-                  {
-                    "name": "really cool test file",
-                    "link": "www.wikipedia.com",
-                    "visibility": "the whole world"
-                  }
-                ]
-              }
-            ]
-          }
-        }
-      }
-    },
-    {
       "query_file": "patch-time-1.graphql",
       "result": {
         "data": {
@@ -2276,65 +2239,93 @@
       "query_file": "task-files-query-exec.graphql",
       "result": {
         "data": {
-          "taskFiles": {
-            "fileCount": 1,
-            "groupedFiles": [
-              {
-                "taskName": "exec 1 display!!",
-                "files": [
-                  {
-                    "name": "awesome_test!!!",
-                    "link": "www.wikipedia.com",
-                    "visibility": "the whole world"
-                  }
-                ]
-              }
-            ]
+          "task": {
+            "taskFiles": {
+              "fileCount": 1,
+              "groupedFiles": [
+                {
+                  "taskName": "exec 1 display!!",
+                  "files": [
+                    {
+                      "name": "awesome_test!!!",
+                      "link": "www.wikipedia.com",
+                      "visibility": "the whole world"
+                    }
+                  ]
+                }
+              ]
+            }
           }
         }
       }
     },
     {
-      "query_file": "task-files-query-err1.graphql",
+      "query_file": "task-files-query-display.graphql",
       "result": {
-        "errors": [
-          {
-            "message": "cannot find task with id NOT-A-REAL-TASKID",
-            "path": [
-              "taskFiles"
-            ],
-            "extensions": {
-              "code": "RESOURCE_NOT_FOUND"
+        "data": {
+          "task": {
+            "taskFiles": {
+              "fileCount": 3,
+              "groupedFiles": [
+                {
+                  "taskName": "exec 1 display!!",
+                  "files": [
+                    {
+                      "name": "awesome_test!!!",
+                      "link": "www.wikipedia.com",
+                      "visibility": "the whole world"
+                    }
+                  ]
+                },
+                {
+                  "taskName": "exec 2 display!!",
+                  "files": [
+                    {
+                      "name": "THIS IS REALLY COOL",
+                      "link": "www.wikipedia.com",
+                      "visibility": "the whole world"
+                    },
+                    {
+                      "name": "really cool test file",
+                      "link": "www.wikipedia.com",
+                      "visibility": "the whole world"
+                    }
+                  ]
+                }
+              ]
             }
           }
-        ],
-        "data": null
+        }
       }
     },
     {
-      "query_file": "task-files-query-err2.graphql",
+      "query_file": "task-files-query-err.graphql",
       "result": {
         "errors": [
           {
-            "message": "cannot find task with id task-does-not-exist",
+            "message": "task not found",
             "path": [
-              "taskFiles"
+              "task"
             ],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
             }
           }
         ],
-        "data": null
+        "data": {
+          "task": null
+        }
       }
     },
     {
       "query_file": "task-files-query-empty.graphql",
       "result": {
         "data": {
-          "taskFiles": {
-            "fileCount": 0,
-            "groupedFiles": []
+          "task": {
+            "taskFiles": {
+              "fileCount": 0,
+              "groupedFiles": []
+            }
           }
         }
       }

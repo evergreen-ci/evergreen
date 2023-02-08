@@ -15,7 +15,13 @@
       "stepback_disabled": false,
       "batch_time": 2,
       "deactivate_previous": true,
-      "triggers": [],
+      "triggers": [
+        {
+          "project": "spruce",
+          "level": "task",
+          "config_file": ".evergreen.yml"
+        }
+      ],
       "patch_trigger_aliases": [
         {
           "alias": "my_alias_sandbox",

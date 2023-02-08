@@ -117,11 +117,13 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 
 	front, hasItem := cq.Next()
 	grip.InfoWhen(hasItem, message.Fields{
-		"source":       "commit queue",
-		"job_id":       j.ID(),
-		"item_id":      front.Issue,
-		"project_id":   cq.ProjectID,
-		"waiting_secs": time.Since(front.EnqueueTime).Seconds(),
+		"source":                  "commit queue",
+		"job_id":                  j.ID(),
+		"item":                    front.Issue,
+		"project_id":              cq.ProjectID,
+		"waiting_secs":            time.Since(front.EnqueueTime).Seconds(),
+		"queue_length_at_enqueue": front.QueueLengthAtEnqueue,
+		"message":                 "found item at the front of commit queue",
 	})
 
 	conf, err := evergreen.GetConfig()
@@ -148,18 +150,26 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 	if len(nextItems) == 0 {
 		return
 	}
-
+	beginBatchProcessingTime := time.Now()
+	grip.Info(message.Fields{
+		"source":       "commit queue",
+		"job_id":       j.ID(),
+		"items":        len(nextItems),
+		"project_id":   cq.ProjectID,
+		"queue_length": len(cq.Queue),
+		"batch_size":   batchSize,
+		"message":      "starting processing batch of commit queue items",
+	})
 	for _, nextItem := range nextItems {
 		// log time waiting in queue
 		grip.Info(message.Fields{
 			"source":       "commit queue",
 			"job_id":       j.ID(),
-			"item_id":      nextItem.Issue,
+			"item":         nextItem,
 			"project_id":   cq.ProjectID,
 			"time_waiting": time.Since(nextItem.EnqueueTime).Seconds(),
-			"time_elapsed": time.Since(nextItem.ProcessingStartTime).Seconds(),
 			"queue_length": len(cq.Queue),
-			"message":      "started testing commit queue item",
+			"message":      "starting processing of commit queue item",
 		})
 
 		if nextItem.Version != "" {
@@ -171,12 +181,11 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 			j.AddError(j.addMergeTaskDependencies(*cq))
 			return
 		}
-
 		// create a version with the item and subscribe to its completion
 		if nextItem.Source == commitqueue.SourcePullRequest {
-			j.processGitHubPRItem(ctx, cq, nextItem, projectRef, githubToken)
+			j.processGitHubPRItem(ctx, cq, &nextItem, projectRef, githubToken)
 		} else if nextItem.Source == commitqueue.SourceDiff {
-			j.processCLIPatchItem(ctx, cq, nextItem, projectRef, githubToken)
+			j.processCLIPatchItem(ctx, cq, &nextItem, projectRef, githubToken)
 		} else {
 			grip.Error(message.Fields{
 				"message": "commit queue entry has unknown source",
@@ -190,9 +199,16 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 			"source":  "commit queue",
 			"job_id":  j.ID(),
 			"item":    nextItem,
-			"message": "finished processing item",
+			"message": "finished processing commit queue item",
 		})
 	}
+	grip.Info(message.Fields{
+		"source":               "commit queue",
+		"job_id":               j.ID(),
+		"items":                len(nextItems),
+		"message":              "finished processing batch of commit queue items",
+		"processing_time_secs": time.Since(beginBatchProcessingTime).Seconds(),
+	})
 	j.AddError(j.addMergeTaskDependencies(*cq))
 }
 
@@ -344,7 +360,7 @@ func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQ
 			"source":                "commit queue",
 			"patch status":          status,
 			"job_id":                j.ID(),
-			"item_id":               nextItem.Issue,
+			"item":                  nextItem,
 			"project_id":            cq.ProjectID,
 			"time_since_enqueue":    time.Since(nextItem.EnqueueTime).Seconds(),
 			"time_since_patch_done": time.Since(patchDoc.FinishTime).Seconds(),
@@ -353,15 +369,15 @@ func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQ
 	}
 }
 
-func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueue.CommitQueue, nextItem commitqueue.CommitQueueItem, projectRef *model.ProjectRef, githubToken string) {
+func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueue.CommitQueue, nextItem *commitqueue.CommitQueueItem, projectRef *model.ProjectRef, githubToken string) {
 	pr, dequeue, err := checkPR(ctx, githubToken, nextItem.Issue, projectRef.Owner, projectRef.Repo)
 	if err != nil {
-		j.logError(err, "PR not valid for merge", nextItem)
+		j.logError(err, "PR not valid for merge", *nextItem)
 		if dequeue {
 			if pr != nil {
 				j.AddError(thirdparty.SendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "PR not valid for merge", ""))
 			}
-			j.dequeue(cq, nextItem)
+			j.dequeue(cq, *nextItem)
 		}
 		return
 	}
@@ -370,33 +386,34 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "finding patch '%s'", nextItem.Version))
 		j.AddError(thirdparty.SendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "no patch found", ""))
-		j.dequeue(cq, nextItem)
+		j.dequeue(cq, *nextItem)
 		return
 	}
 	if patchDoc == nil {
 		j.AddError(errors.Errorf("patch '%s' not found", nextItem.Version))
 		j.AddError(thirdparty.SendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "no patch found", ""))
-		j.dequeue(cq, nextItem)
+		j.dequeue(cq, *nextItem)
 		return
 	}
-	projectConfig, _, err := model.GetPatchedProject(ctx, patchDoc, githubToken)
+	projectConfig, _, err := model.GetPatchedProject(ctx, j.env.Settings(), patchDoc, githubToken)
 	if err != nil {
-		j.logError(err, "problem getting patched project", nextItem)
-		j.dequeue(cq, nextItem)
+		j.logError(err, "problem getting patched project", *nextItem)
+		j.dequeue(cq, *nextItem)
 		j.AddError(thirdparty.SendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't get project config", ""))
 	}
 
 	v, err := model.FinalizePatch(ctx, patchDoc, evergreen.MergeTestRequester, githubToken)
 	if err != nil {
-		j.logError(err, "can't finalize patch", nextItem)
-		j.dequeue(cq, nextItem)
+		j.logError(err, "can't finalize patch", *nextItem)
+		j.dequeue(cq, *nextItem)
 		j.AddError(thirdparty.SendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't finalize patch", ""))
 		return
 	}
 	nextItem.Version = v.Id
+	nextItem.ProcessingStartTime = time.Now()
 	if err = cq.UpdateVersion(nextItem); err != nil {
-		j.logError(err, "problem saving version", nextItem)
-		j.dequeue(cq, nextItem)
+		j.logError(err, "problem saving version", *nextItem)
+		j.dequeue(cq, *nextItem)
 		j.AddError(thirdparty.SendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't update commit queue item", ""))
 		return
 	}
@@ -404,9 +421,9 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 	j.AddError(thirdparty.SendCommitQueueGithubStatus(j.env, pr, message.GithubStatePending, "preparing to test merge", v.Id))
 	modulePRs, _, err := model.GetModulesFromPR(ctx, githubToken, nextItem.Modules, projectConfig)
 	if err != nil {
-		j.logError(err, "can't get modules", nextItem)
+		j.logError(err, "can't get modules", *nextItem)
 		j.AddError(thirdparty.SendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't get modules", ""))
-		j.dequeue(cq, nextItem)
+		j.dequeue(cq, *nextItem)
 		return
 	}
 	for _, modulePR := range modulePRs {
@@ -416,59 +433,62 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 	event.LogCommitQueueStartTestEvent(v.Id)
 }
 
-func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueue.CommitQueue, nextItem commitqueue.CommitQueueItem, projectRef *model.ProjectRef, githubToken string) {
+func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueue.CommitQueue, nextItem *commitqueue.CommitQueueItem, projectRef *model.ProjectRef, githubToken string) {
 	patchDoc, err := patch.FindOneId(nextItem.Issue)
 	if err != nil {
-		j.logError(err, "can't find patch", nextItem)
+		j.logError(err, "can't find patch", *nextItem)
 		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
-		j.dequeue(cq, nextItem)
+		j.dequeue(cq, *nextItem)
 		return
 	}
 	if patchDoc == nil {
-		j.logError(err, "patch not found", nextItem)
+		j.logError(err, "patch not found", *nextItem)
 		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
-		j.dequeue(cq, nextItem)
+		j.dequeue(cq, *nextItem)
 		return
 	}
 
-	project, err := updatePatch(ctx, githubToken, projectRef, patchDoc)
+	project, err := updatePatch(ctx, j.env.Settings(), githubToken, projectRef, patchDoc)
 	if err != nil {
-		j.logError(err, "can't update patch", nextItem)
+		j.logError(err, "can't update patch", *nextItem)
 		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
-		j.dequeue(cq, nextItem)
+		j.dequeue(cq, *nextItem)
 		return
 	}
 
 	if err = AddMergeTaskAndVariant(patchDoc, project, projectRef, commitqueue.SourceDiff); err != nil {
-		j.logError(err, "can't set patch project config", nextItem)
+		j.logError(err, "can't set patch project config", *nextItem)
 		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
-		j.dequeue(cq, nextItem)
+		j.dequeue(cq, *nextItem)
 		return
 	}
 
 	if err = patchDoc.UpdateGithashProjectAndTasks(); err != nil {
-		j.logError(err, "can't update patch in db", nextItem)
+		j.logError(err, "can't update patch in db", *nextItem)
 		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
-		j.dequeue(cq, nextItem)
+		j.dequeue(cq, *nextItem)
 		return
 	}
 
 	v, err := model.FinalizePatch(ctx, patchDoc, evergreen.MergeTestRequester, githubToken)
 	if err != nil {
-		j.logError(err, "can't finalize patch", nextItem)
+		j.logError(err, "can't finalize patch", *nextItem)
 		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
-		j.dequeue(cq, nextItem)
+		j.dequeue(cq, *nextItem)
 		return
 	}
+
 	nextItem.Version = v.Id
+	nextItem.ProcessingStartTime = time.Now()
 	if err = cq.UpdateVersion(nextItem); err != nil {
-		j.logError(err, "problem saving version", nextItem)
-		j.dequeue(cq, nextItem)
+
+		j.logError(err, "problem saving version", *nextItem)
+		j.dequeue(cq, *nextItem)
 		return
 	}
 
 	if err = setDefaultNotification(patchDoc.Author); err != nil {
-		j.logError(err, "failed to set default notification", nextItem)
+		j.logError(err, "failed to set default notification", *nextItem)
 	}
 	event.LogCommitQueueStartTestEvent(v.Id)
 }
@@ -668,7 +688,7 @@ func setDefaultNotification(username string) error {
 	return nil
 }
 
-func updatePatch(ctx context.Context, githubToken string, projectRef *model.ProjectRef, patchDoc *patch.Patch) (*model.Project, error) {
+func updatePatch(ctx context.Context, settings *evergreen.Settings, githubToken string, projectRef *model.ProjectRef, patchDoc *patch.Patch) (*model.Project, error) {
 	branch, err := thirdparty.GetBranchEvent(ctx, githubToken, projectRef.Owner, projectRef.Repo, projectRef.Branch)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting branch")
@@ -683,7 +703,7 @@ func updatePatch(ctx context.Context, githubToken string, projectRef *model.Proj
 	// Refresh the cached project config
 	patchDoc.PatchedParserProject = ""
 	patchDoc.PatchedProjectConfig = ""
-	project, patchConfig, err := model.GetPatchedProject(ctx, patchDoc, githubToken)
+	project, patchConfig, err := model.GetPatchedProject(ctx, settings, patchDoc, githubToken)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting updated project config")
 	}

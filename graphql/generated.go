@@ -417,8 +417,8 @@ type ComplexityRoot struct {
 		AttachVolumeToHost            func(childComplexity int, volumeAndHost VolumeHost) int
 		BbCreateTicket                func(childComplexity int, taskID string, execution *int) int
 		ClearMySubscriptions          func(childComplexity int) int
-		CopyProject                   func(childComplexity int, project data.CopyProjectOpts) int
-		CreateProject                 func(childComplexity int, project model.APIProjectRef) int
+		CopyProject                   func(childComplexity int, project data.CopyProjectOpts, requestS3Creds *bool) int
+		CreateProject                 func(childComplexity int, project model.APIProjectRef, requestS3Creds *bool) int
 		CreatePublicKey               func(childComplexity int, publicKeyInput PublicKeyInput) int
 		DeactivateStepbackTask        func(childComplexity int, projectID string, buildVariantName string, taskName string) int
 		DefaultSectionToRepo          func(childComplexity int, projectID string, section ProjectSettingsSection) int
@@ -685,9 +685,9 @@ type ComplexityRoot struct {
 		AwsRegions               func(childComplexity int) int
 		BbGetCreatedTickets      func(childComplexity int, taskID string) int
 		BuildBaron               func(childComplexity int, taskID string, execution int) int
-		BuildVariantsForTaskName func(childComplexity int, projectID string, taskName string) int
+		BuildVariantsForTaskName func(childComplexity int, projectIdentifier string, taskName string) int
 		ClientConfig             func(childComplexity int) int
-		CommitQueue              func(childComplexity int, id string) int
+		CommitQueue              func(childComplexity int, projectIdentifier string) int
 		DistroTaskQueue          func(childComplexity int, distroID string) int
 		Distros                  func(childComplexity int, onlySpawnable bool) int
 		GithubProjectConflicts   func(childComplexity int, projectID string) int
@@ -701,7 +701,7 @@ type ComplexityRoot struct {
 		MyPublicKeys             func(childComplexity int) int
 		MyVolumes                func(childComplexity int) int
 		Patch                    func(childComplexity int, id string) int
-		Project                  func(childComplexity int, projectID string) int
+		Project                  func(childComplexity int, projectIdentifier string) int
 		ProjectEvents            func(childComplexity int, identifier string, limit *int, before *time.Time) int
 		ProjectSettings          func(childComplexity int, identifier string) int
 		Projects                 func(childComplexity int) int
@@ -713,7 +713,7 @@ type ComplexityRoot struct {
 		TaskAllExecutions        func(childComplexity int, taskID string) int
 		TaskFiles                func(childComplexity int, taskID string, execution *int) int
 		TaskLogs                 func(childComplexity int, taskID string, execution *int) int
-		TaskNamesForBuildVariant func(childComplexity int, projectID string, buildVariant string) int
+		TaskNamesForBuildVariant func(childComplexity int, projectIdentifier string, buildVariant string) int
 		TaskQueueDistros         func(childComplexity int) int
 		TaskTestSample           func(childComplexity int, tasks []string, filters []*TestFilter) int
 		TaskTests                func(childComplexity int, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string, groupID *string) int
@@ -908,6 +908,7 @@ type ComplexityRoot struct {
 		SpawnHostLink           func(childComplexity int) int
 		StartTime               func(childComplexity int) int
 		Status                  func(childComplexity int) int
+		TaskFiles               func(childComplexity int) int
 		TaskGroup               func(childComplexity int) int
 		TaskGroupMaxHosts       func(childComplexity int) int
 		TimeTaken               func(childComplexity int) int
@@ -1246,8 +1247,8 @@ type MutationResolver interface {
 	AddFavoriteProject(ctx context.Context, identifier string) (*model.APIProjectRef, error)
 	AttachProjectToNewRepo(ctx context.Context, project MoveProjectInput) (*model.APIProjectRef, error)
 	AttachProjectToRepo(ctx context.Context, projectID string) (*model.APIProjectRef, error)
-	CreateProject(ctx context.Context, project model.APIProjectRef) (*model.APIProjectRef, error)
-	CopyProject(ctx context.Context, project data.CopyProjectOpts) (*model.APIProjectRef, error)
+	CreateProject(ctx context.Context, project model.APIProjectRef, requestS3Creds *bool) (*model.APIProjectRef, error)
+	CopyProject(ctx context.Context, project data.CopyProjectOpts, requestS3Creds *bool) (*model.APIProjectRef, error)
 	DefaultSectionToRepo(ctx context.Context, projectID string, section ProjectSettingsSection) (*string, error)
 	DetachProjectFromRepo(ctx context.Context, projectID string) (*model.APIProjectRef, error)
 	ForceRepotrackerRun(ctx context.Context, projectID string) (bool, error)
@@ -1339,7 +1340,7 @@ type QueryResolver interface {
 	TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistro, error)
 	Patch(ctx context.Context, id string) (*model.APIPatch, error)
 	GithubProjectConflicts(ctx context.Context, projectID string) (*model1.GithubProjectConflicts, error)
-	Project(ctx context.Context, projectID string) (*model.APIProjectRef, error)
+	Project(ctx context.Context, projectIdentifier string) (*model.APIProjectRef, error)
 	Projects(ctx context.Context) ([]*GroupedProjects, error)
 	ProjectEvents(ctx context.Context, identifier string, limit *int, before *time.Time) (*ProjectEvents, error)
 	ProjectSettings(ctx context.Context, identifier string) (*model.APIProjectSettings, error)
@@ -1358,10 +1359,10 @@ type QueryResolver interface {
 	User(ctx context.Context, userID *string) (*model.APIDBUser, error)
 	UserConfig(ctx context.Context) (*UserConfig, error)
 	UserSettings(ctx context.Context) (*model.APIUserSettings, error)
-	CommitQueue(ctx context.Context, id string) (*model.APICommitQueue, error)
-	BuildVariantsForTaskName(ctx context.Context, projectID string, taskName string) ([]*task.BuildVariantTuple, error)
+	CommitQueue(ctx context.Context, projectIdentifier string) (*model.APICommitQueue, error)
+	BuildVariantsForTaskName(ctx context.Context, projectIdentifier string, taskName string) ([]*task.BuildVariantTuple, error)
 	MainlineCommits(ctx context.Context, options MainlineCommitsOptions, buildVariantOptions *BuildVariantOptions) (*MainlineCommits, error)
-	TaskNamesForBuildVariant(ctx context.Context, projectID string, buildVariant string) ([]string, error)
+	TaskNamesForBuildVariant(ctx context.Context, projectIdentifier string, buildVariant string) ([]string, error)
 	HasVersion(ctx context.Context, id string) (bool, error)
 	Version(ctx context.Context, id string) (*model.APIVersion, error)
 }
@@ -1418,6 +1419,7 @@ type TaskResolver interface {
 	SpawnHostLink(ctx context.Context, obj *model.APITask) (*string, error)
 
 	Status(ctx context.Context, obj *model.APITask) (string, error)
+	TaskFiles(ctx context.Context, obj *model.APITask) (*TaskFiles, error)
 
 	TotalTestCount(ctx context.Context, obj *model.APITask) (int, error)
 	VersionMetadata(ctx context.Context, obj *model.APITask) (*model.APIVersion, error)
@@ -2979,7 +2981,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.CopyProject(childComplexity, args["project"].(data.CopyProjectOpts)), true
+		return e.complexity.Mutation.CopyProject(childComplexity, args["project"].(data.CopyProjectOpts), args["requestS3Creds"].(*bool)), true
 
 	case "Mutation.createProject":
 		if e.complexity.Mutation.CreateProject == nil {
@@ -2991,7 +2993,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.CreateProject(childComplexity, args["project"].(model.APIProjectRef)), true
+		return e.complexity.Mutation.CreateProject(childComplexity, args["project"].(model.APIProjectRef), args["requestS3Creds"].(*bool)), true
 
 	case "Mutation.createPublicKey":
 		if e.complexity.Mutation.CreatePublicKey == nil {
@@ -4576,7 +4578,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.BuildVariantsForTaskName(childComplexity, args["projectId"].(string), args["taskName"].(string)), true
+		return e.complexity.Query.BuildVariantsForTaskName(childComplexity, args["projectIdentifier"].(string), args["taskName"].(string)), true
 
 	case "Query.clientConfig":
 		if e.complexity.Query.ClientConfig == nil {
@@ -4595,7 +4597,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.CommitQueue(childComplexity, args["id"].(string)), true
+		return e.complexity.Query.CommitQueue(childComplexity, args["projectIdentifier"].(string)), true
 
 	case "Query.distroTaskQueue":
 		if e.complexity.Query.DistroTaskQueue == nil {
@@ -4743,7 +4745,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Project(childComplexity, args["projectId"].(string)), true
+		return e.complexity.Query.Project(childComplexity, args["projectIdentifier"].(string)), true
 
 	case "Query.projectEvents":
 		if e.complexity.Query.ProjectEvents == nil {
@@ -4872,7 +4874,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.TaskNamesForBuildVariant(childComplexity, args["projectId"].(string), args["buildVariant"].(string)), true
+		return e.complexity.Query.TaskNamesForBuildVariant(childComplexity, args["projectIdentifier"].(string), args["buildVariant"].(string)), true
 
 	case "Query.taskQueueDistros":
 		if e.complexity.Query.TaskQueueDistros == nil {
@@ -5957,6 +5959,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Task.Status(childComplexity), true
+
+	case "Task.taskFiles":
+		if e.complexity.Task.TaskFiles == nil {
+			break
+		}
+
+		return e.complexity.Task.TaskFiles(childComplexity), true
 
 	case "Task.taskGroup":
 		if e.complexity.Task.TaskGroup == nil {
@@ -7703,6 +7712,15 @@ func (ec *executionContext) field_Mutation_copyProject_args(ctx context.Context,
 		}
 	}
 	args["project"] = arg0
+	var arg1 *bool
+	if tmp, ok := rawArgs["requestS3Creds"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestS3Creds"))
+		arg1, err = ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["requestS3Creds"] = arg1
 	return args, nil
 }
 
@@ -7718,6 +7736,15 @@ func (ec *executionContext) field_Mutation_createProject_args(ctx context.Contex
 		}
 	}
 	args["project"] = arg0
+	var arg1 *bool
+	if tmp, ok := rawArgs["requestS3Creds"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestS3Creds"))
+		arg1, err = ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["requestS3Creds"] = arg1
 	return args, nil
 }
 
@@ -8740,14 +8767,14 @@ func (ec *executionContext) field_Query_buildVariantsForTaskName_args(ctx contex
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
-	if tmp, ok := rawArgs["projectId"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
+	if tmp, ok := rawArgs["projectIdentifier"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdentifier"))
 		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["projectId"] = arg0
+	args["projectIdentifier"] = arg0
 	var arg1 string
 	if tmp, ok := rawArgs["taskName"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskName"))
@@ -8764,14 +8791,14 @@ func (ec *executionContext) field_Query_commitQueue_args(ctx context.Context, ra
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
-	if tmp, ok := rawArgs["id"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+	if tmp, ok := rawArgs["projectIdentifier"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdentifier"))
 		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["id"] = arg0
+	args["projectIdentifier"] = arg0
 	return args, nil
 }
 
@@ -9106,14 +9133,14 @@ func (ec *executionContext) field_Query_project_args(ctx context.Context, rawArg
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
-	if tmp, ok := rawArgs["projectId"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
+	if tmp, ok := rawArgs["projectIdentifier"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdentifier"))
 		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["projectId"] = arg0
+	args["projectIdentifier"] = arg0
 	return args, nil
 }
 
@@ -9268,14 +9295,14 @@ func (ec *executionContext) field_Query_taskNamesForBuildVariant_args(ctx contex
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
-	if tmp, ok := rawArgs["projectId"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
+	if tmp, ok := rawArgs["projectIdentifier"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdentifier"))
 		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["projectId"] = arg0
+	args["projectIdentifier"] = arg0
 	var arg1 string
 	if tmp, ok := rawArgs["buildVariant"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("buildVariant"))
@@ -13995,6 +14022,8 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(ctx context.C
 				return ec.fieldContext_Task_startTime(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "taskFiles":
+				return ec.fieldContext_Task_taskFiles(ctx, field)
 			case "taskGroup":
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
@@ -19727,6 +19756,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_startTime(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "taskFiles":
+				return ec.fieldContext_Task_taskFiles(ctx, field)
 			case "taskGroup":
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
@@ -20303,7 +20334,7 @@ func (ec *executionContext) _Mutation_createProject(ctx context.Context, field g
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		directive0 := func(rctx context.Context) (interface{}, error) {
 			ctx = rctx // use context from middleware stack in children
-			return ec.resolvers.Mutation().CreateProject(rctx, fc.Args["project"].(model.APIProjectRef))
+			return ec.resolvers.Mutation().CreateProject(rctx, fc.Args["project"].(model.APIProjectRef), fc.Args["requestS3Creds"].(*bool))
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
 			if ec.directives.RequireSuperUser == nil {
@@ -20466,7 +20497,7 @@ func (ec *executionContext) _Mutation_copyProject(ctx context.Context, field gra
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		directive0 := func(rctx context.Context) (interface{}, error) {
 			ctx = rctx // use context from middleware stack in children
-			return ec.resolvers.Mutation().CopyProject(rctx, fc.Args["project"].(data.CopyProjectOpts))
+			return ec.resolvers.Mutation().CopyProject(rctx, fc.Args["project"].(data.CopyProjectOpts), fc.Args["requestS3Creds"].(*bool))
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
 			if ec.directives.RequireSuperUser == nil {
@@ -22053,6 +22084,8 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_startTime(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "taskFiles":
+				return ec.fieldContext_Task_taskFiles(ctx, field)
 			case "taskGroup":
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
@@ -22244,6 +22277,8 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_startTime(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "taskFiles":
+				return ec.fieldContext_Task_taskFiles(ctx, field)
 			case "taskGroup":
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
@@ -22435,6 +22470,8 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_startTime(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "taskFiles":
+				return ec.fieldContext_Task_taskFiles(ctx, field)
 			case "taskGroup":
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
@@ -22626,6 +22663,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_startTime(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "taskFiles":
+				return ec.fieldContext_Task_taskFiles(ctx, field)
 			case "taskGroup":
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
@@ -22817,6 +22856,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_startTime(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "taskFiles":
+				return ec.fieldContext_Task_taskFiles(ctx, field)
 			case "taskGroup":
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
@@ -23008,6 +23049,8 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_startTime(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "taskFiles":
+				return ec.fieldContext_Task_taskFiles(ctx, field)
 			case "taskGroup":
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
@@ -31721,7 +31764,7 @@ func (ec *executionContext) _Query_project(ctx context.Context, field graphql.Co
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Project(rctx, fc.Args["projectId"].(string))
+		return ec.resolvers.Query().Project(rctx, fc.Args["projectIdentifier"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -32536,6 +32579,8 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_startTime(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "taskFiles":
+				return ec.fieldContext_Task_taskFiles(ctx, field)
 			case "taskGroup":
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
@@ -32727,6 +32772,8 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_startTime(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "taskFiles":
+				return ec.fieldContext_Task_taskFiles(ctx, field)
 			case "taskGroup":
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
@@ -33255,7 +33302,7 @@ func (ec *executionContext) _Query_commitQueue(ctx context.Context, field graphq
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().CommitQueue(rctx, fc.Args["id"].(string))
+		return ec.resolvers.Query().CommitQueue(rctx, fc.Args["projectIdentifier"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -33322,7 +33369,7 @@ func (ec *executionContext) _Query_buildVariantsForTaskName(ctx context.Context,
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().BuildVariantsForTaskName(rctx, fc.Args["projectId"].(string), fc.Args["taskName"].(string))
+		return ec.resolvers.Query().BuildVariantsForTaskName(rctx, fc.Args["projectIdentifier"].(string), fc.Args["taskName"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -33440,7 +33487,7 @@ func (ec *executionContext) _Query_taskNamesForBuildVariant(ctx context.Context,
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().TaskNamesForBuildVariant(rctx, fc.Args["projectId"].(string), fc.Args["buildVariant"].(string))
+		return ec.resolvers.Query().TaskNamesForBuildVariant(rctx, fc.Args["projectIdentifier"].(string), fc.Args["buildVariant"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -38180,6 +38227,8 @@ func (ec *executionContext) fieldContext_Task_baseTask(ctx context.Context, fiel
 				return ec.fieldContext_Task_startTime(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "taskFiles":
+				return ec.fieldContext_Task_taskFiles(ctx, field)
 			case "taskGroup":
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
@@ -39242,6 +39291,8 @@ func (ec *executionContext) fieldContext_Task_displayTask(ctx context.Context, f
 				return ec.fieldContext_Task_startTime(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "taskFiles":
+				return ec.fieldContext_Task_taskFiles(ctx, field)
 			case "taskGroup":
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
@@ -39589,6 +39640,8 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(ctx context.Con
 				return ec.fieldContext_Task_startTime(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "taskFiles":
+				return ec.fieldContext_Task_taskFiles(ctx, field)
 			case "taskGroup":
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
@@ -40859,6 +40912,56 @@ func (ec *executionContext) fieldContext_Task_status(ctx context.Context, field 
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Task_taskFiles(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Task_taskFiles(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().TaskFiles(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*TaskFiles)
+	fc.Result = res
+	return ec.marshalNTaskFiles2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskFiles(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Task_taskFiles(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "fileCount":
+				return ec.fieldContext_TaskFiles_fileCount(ctx, field)
+			case "groupedFiles":
+				return ec.fieldContext_TaskFiles_groupedFiles(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TaskFiles", field.Name)
 		},
 	}
 	return fc, nil
@@ -45244,14 +45347,11 @@ func (ec *executionContext) _TriggerAlias_dateCutoff(ctx context.Context, field 
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*int)
 	fc.Result = res
-	return ec.marshalNInt2ᚖint(ctx, field.Selections, res)
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_TriggerAlias_dateCutoff(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -45908,6 +46008,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(ctx context.Contex
 				return ec.fieldContext_Task_startTime(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "taskFiles":
+				return ec.fieldContext_Task_taskFiles(ctx, field)
 			case "taskGroup":
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
@@ -49144,6 +49246,8 @@ func (ec *executionContext) fieldContext_VersionTasks_data(ctx context.Context, 
 				return ec.fieldContext_Task_startTime(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "taskFiles":
+				return ec.fieldContext_Task_taskFiles(ctx, field)
 			case "taskGroup":
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
@@ -52832,7 +52936,7 @@ func (ec *executionContext) unmarshalInputMainlineCommitsOptions(ctx context.Con
 		asMap["shouldCollapse"] = false
 	}
 
-	fieldsInOrder := [...]string{"limit", "projectID", "requesters", "shouldCollapse", "skipOrderNumber"}
+	fieldsInOrder := [...]string{"limit", "projectIdentifier", "requesters", "shouldCollapse", "skipOrderNumber"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -52847,11 +52951,11 @@ func (ec *executionContext) unmarshalInputMainlineCommitsOptions(ctx context.Con
 			if err != nil {
 				return it, err
 			}
-		case "projectID":
+		case "projectIdentifier":
 			var err error
 
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectID"))
-			it.ProjectID, err = ec.unmarshalNString2string(ctx, v)
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdentifier"))
+			it.ProjectIdentifier, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -55032,7 +55136,7 @@ func (ec *executionContext) unmarshalInputTriggerAliasInput(ctx context.Context,
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("dateCutoff"))
-			it.DateCutoff, err = ec.unmarshalNInt2ᚖint(ctx, v)
+			it.DateCutoff, err = ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -62307,6 +62411,26 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 				return innerFunc(ctx)
 
 			})
+		case "taskFiles":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_taskFiles(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
 		case "taskGroup":
 
 			out.Values[i] = ec._Task_taskGroup(ctx, field, obj)
@@ -63403,9 +63527,6 @@ func (ec *executionContext) _TriggerAlias(ctx context.Context, sel ast.Selection
 
 			out.Values[i] = ec._TriggerAlias_dateCutoff(ctx, field, obj)
 
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		case "level":
 
 			out.Values[i] = ec._TriggerAlias_level(ctx, field, obj)

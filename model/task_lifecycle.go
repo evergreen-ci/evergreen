@@ -814,10 +814,16 @@ func DequeueAndRestartForTask(cq *commitqueue.CommitQueue, t *task.Task, githubS
 	if p == nil {
 		return errors.Errorf("patch '%s' not found", t.Version)
 	}
-	if err := tryDequeueAndAbortCommitQueueVersion(p, *cq, t.Id, caller); err != nil {
+	if err := tryDequeueAndAbortCommitQueueVersion(p, *cq, t, caller); err != nil {
 		return err
 	}
-
+	grip.Info(message.Fields{
+		"source":       "commit queue",
+		"version":      t.Version,
+		"project_id":   cq.ProjectID,
+		"queue_length": len(cq.Queue),
+		"message":      "commit queue item failed, dequeueing and restarting later versions",
+	})
 	err = SendCommitQueueResult(p, githubState, reason)
 	grip.Error(message.WrapError(err, message.Fields{
 		"message": "unable to send github status",
@@ -897,7 +903,7 @@ func dequeueAndRestartWithStepback(cq *commitqueue.CommitQueue, t *task.Task, ca
 	return DequeueAndRestartForTask(cq, t, message.GithubStateFailure, caller, reason)
 }
 
-func tryDequeueAndAbortCommitQueueVersion(p *patch.Patch, cq commitqueue.CommitQueue, taskId string, caller string) error {
+func tryDequeueAndAbortCommitQueueVersion(p *patch.Patch, cq commitqueue.CommitQueue, t *task.Task, caller string) error {
 	issue := p.Id.Hex()
 	err := removeNextMergeTaskDependency(cq, issue)
 	grip.Error(message.WrapError(err, message.Fields{
@@ -927,9 +933,13 @@ func tryDequeueAndAbortCommitQueueVersion(p *patch.Patch, cq commitqueue.CommitQ
 			"patch":   p.Id.Hex(),
 		}))
 	}
-
-	event.LogCommitQueueConcludeTest(p.Id.Hex(), evergreen.MergeTestFailed)
-	return errors.Wrap(CancelPatch(p, task.AbortInfo{TaskID: taskId, User: caller}), "aborting failed commit queue patch")
+	// If the commit queue merge task failed on setup, there is likely a merge conflict.
+	var mergeError string
+	if t.Details.Type == evergreen.CommandTypeSetup {
+		mergeError = "Merge task failed on setup, which likely means a merge conflict was introduced. Please try merging with the base branch."
+	}
+	event.LogCommitQueueConcludeWithErrorMessage(p.Id.Hex(), evergreen.MergeTestFailed, mergeError)
+	return errors.Wrap(CancelPatch(p, task.AbortInfo{TaskID: t.Id, User: caller}), "aborting failed commit queue patch")
 }
 
 // removeNextMergeTaskDependency basically removes the given merge task from a linked list of
@@ -1858,6 +1868,8 @@ func ClearAndResetStrandedHostTask(settings *evergreen.Settings, h *host.Host) e
 		"task":               t.Id,
 		"execution":          t.Execution,
 		"execution_platform": t.ExecutionPlatform,
+		"version":            t.Version,
+		"failure_desc":       t.Details.Description,
 	})
 
 	return nil

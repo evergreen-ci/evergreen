@@ -69,6 +69,14 @@ func LogCommitQueueConcludeTest(patchID, status string) {
 	logCommitQueueEvent(patchID, CommitQueueConcludeTest, data)
 }
 
+func LogCommitQueueConcludeWithErrorMessage(patchID, status, errMsg string) {
+	data := &CommitQueueEventData{
+		Status: status,
+		Error:  errMsg,
+	}
+	logCommitQueueEvent(patchID, CommitQueueConcludeTest, data)
+}
+
 func LogCommitQueueEnqueueFailed(patchID string, err error) {
 	data := &CommitQueueEventData{
 		Status: evergreen.EnqueueFailed,

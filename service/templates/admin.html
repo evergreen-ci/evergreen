@@ -1874,14 +1874,26 @@ Admin Settings
 										<input type="text" ng-model="Settings.providers.aws.task_sync_read.bucket">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left:50px;">
-										<label>Parser Project S3 Bucket</label>
-										<input type="text" ng-model="Settings.providers.aws.parser_project_s3_bucket">
+										<label>Parser Project S3 Key</label>
+										<input type="text" ng-model="Settings.providers.aws.parser_project.key">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
+										<label>Parser Project S3 Secret</label>
+										<input type="text" ng-model="Settings.providers.aws.parser_project.secret">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>Parser Project S3 Bucket</label>
+										<input type="text" ng-model="Settings.providers.aws.parser_project.bucket">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Parser Project S3 Prefix</label>
+										<input type="text" ng-model="Settings.providers.aws.parser_project.prefix">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Default Security Group</label>
 										<input type="text" ng-model="Settings.providers.aws.default_security_group">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Total EBS Volume Size Per User</label>
 										<input type="number" ng-model="Settings.providers.aws.max_volume_size">
 									</md-input-container>
@@ -1891,7 +1903,7 @@ Admin Settings
 										<textarea ng-model="Settings.providers.aws.allowed_instance_types"
 											ng-list="&#10;" ng-trim="false" rows="3" md-select-on-focus></textarea>
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Allowed Regions</label>
 										<textarea ng-model="Settings.providers.aws.allowed_regions" ng-list="&#10;"
 											ng-trim="false" rows="3" md-select-on-focus></textarea>
@@ -2565,6 +2577,13 @@ Admin Settings
 											<label>Project Per Repo Limit</label>
 											<input type="number" ng-model="Settings.project_creation.repo_project_limit">
 										</md-input-container>
+									</section>
+									<section layout="row" flex>
+										<md-input-container class="control" style="width:45%;">
+											<label>Jira Project to Request S3 Credentials From</label>
+											<input type="text" ng-model="Settings.project_creation.jira_project">
+										</md-input-container>
+									
 									</section>
 										<md-card style="margin-bottom:20px;">
 											<md-card-title>
