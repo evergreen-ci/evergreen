@@ -1,0 +1,18 @@
+type LogkeeperTest {
+  id: String!
+  name: String!
+  buildId: String!
+  taskId: String!
+  taskExecution: Int!
+  phase: String!
+  command: String!
+}
+
+type LogkeeperBuild {
+  id: String!
+  builder: String!
+  buildNum: Int!
+  taskId: String!
+  taskExecution: Int!
+  tests: [LogkeeperTest!]!
+}

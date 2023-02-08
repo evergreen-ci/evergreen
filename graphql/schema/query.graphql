@@ -61,6 +61,9 @@ type Query {
   myHosts: [Host!]!
   myVolumes: [Volume!]!
 
+  # logkeeper
+  getLogkeeperBuildMetadata(buildId: String!): LogkeeperBuild!
+
   # task
   task(taskId: String!, execution: Int): Task
   taskAllExecutions(taskId: String!): [Task!]!

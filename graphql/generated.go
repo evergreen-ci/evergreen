@@ -22,6 +22,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/plank"
 	gqlparser "github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
 )
@@ -375,6 +376,25 @@ type ComplexityRoot struct {
 		Version   func(childComplexity int) int
 	}
 
+	LogkeeperBuild struct {
+		BuildNum      func(childComplexity int) int
+		Builder       func(childComplexity int) int
+		ID            func(childComplexity int) int
+		TaskExecution func(childComplexity int) int
+		TaskID        func(childComplexity int) int
+		Tests         func(childComplexity int) int
+	}
+
+	LogkeeperTest struct {
+		BuildID       func(childComplexity int) int
+		Command       func(childComplexity int) int
+		ID            func(childComplexity int) int
+		Name          func(childComplexity int) int
+		Phase         func(childComplexity int) int
+		TaskExecution func(childComplexity int) int
+		TaskID        func(childComplexity int) int
+	}
+
 	MainlineCommitVersion struct {
 		RolledUpVersions func(childComplexity int) int
 		Version          func(childComplexity int) int
@@ -682,46 +702,47 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		AwsRegions               func(childComplexity int) int
-		BbGetCreatedTickets      func(childComplexity int, taskID string) int
-		BuildBaron               func(childComplexity int, taskID string, execution int) int
-		BuildVariantsForTaskName func(childComplexity int, projectIdentifier string, taskName string) int
-		ClientConfig             func(childComplexity int) int
-		CommitQueue              func(childComplexity int, projectIdentifier string) int
-		DistroTaskQueue          func(childComplexity int, distroID string) int
-		Distros                  func(childComplexity int, onlySpawnable bool) int
-		GithubProjectConflicts   func(childComplexity int, projectID string) int
-		HasVersion               func(childComplexity int, id string) int
-		Host                     func(childComplexity int, hostID string) int
-		HostEvents               func(childComplexity int, hostID string, hostTag *string, limit *int, page *int) int
-		Hosts                    func(childComplexity int, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) int
-		InstanceTypes            func(childComplexity int) int
-		MainlineCommits          func(childComplexity int, options MainlineCommitsOptions, buildVariantOptions *BuildVariantOptions) int
-		MyHosts                  func(childComplexity int) int
-		MyPublicKeys             func(childComplexity int) int
-		MyVolumes                func(childComplexity int) int
-		Patch                    func(childComplexity int, id string) int
-		Project                  func(childComplexity int, projectIdentifier string) int
-		ProjectEvents            func(childComplexity int, identifier string, limit *int, before *time.Time) int
-		ProjectSettings          func(childComplexity int, identifier string) int
-		Projects                 func(childComplexity int) int
-		RepoEvents               func(childComplexity int, id string, limit *int, before *time.Time) int
-		RepoSettings             func(childComplexity int, id string) int
-		SpruceConfig             func(childComplexity int) int
-		SubnetAvailabilityZones  func(childComplexity int) int
-		Task                     func(childComplexity int, taskID string, execution *int) int
-		TaskAllExecutions        func(childComplexity int, taskID string) int
-		TaskFiles                func(childComplexity int, taskID string, execution *int) int
-		TaskLogs                 func(childComplexity int, taskID string, execution *int) int
-		TaskNamesForBuildVariant func(childComplexity int, projectIdentifier string, buildVariant string) int
-		TaskQueueDistros         func(childComplexity int) int
-		TaskTestSample           func(childComplexity int, tasks []string, filters []*TestFilter) int
-		TaskTests                func(childComplexity int, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string, groupID *string) int
-		User                     func(childComplexity int, userID *string) int
-		UserConfig               func(childComplexity int) int
-		UserSettings             func(childComplexity int) int
-		Version                  func(childComplexity int, id string) int
-		ViewableProjectRefs      func(childComplexity int) int
+		AwsRegions                func(childComplexity int) int
+		BbGetCreatedTickets       func(childComplexity int, taskID string) int
+		BuildBaron                func(childComplexity int, taskID string, execution int) int
+		BuildVariantsForTaskName  func(childComplexity int, projectIdentifier string, taskName string) int
+		ClientConfig              func(childComplexity int) int
+		CommitQueue               func(childComplexity int, projectIdentifier string) int
+		DistroTaskQueue           func(childComplexity int, distroID string) int
+		Distros                   func(childComplexity int, onlySpawnable bool) int
+		GetLogkeeperBuildMetadata func(childComplexity int, buildID string) int
+		GithubProjectConflicts    func(childComplexity int, projectID string) int
+		HasVersion                func(childComplexity int, id string) int
+		Host                      func(childComplexity int, hostID string) int
+		HostEvents                func(childComplexity int, hostID string, hostTag *string, limit *int, page *int) int
+		Hosts                     func(childComplexity int, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) int
+		InstanceTypes             func(childComplexity int) int
+		MainlineCommits           func(childComplexity int, options MainlineCommitsOptions, buildVariantOptions *BuildVariantOptions) int
+		MyHosts                   func(childComplexity int) int
+		MyPublicKeys              func(childComplexity int) int
+		MyVolumes                 func(childComplexity int) int
+		Patch                     func(childComplexity int, id string) int
+		Project                   func(childComplexity int, projectIdentifier string) int
+		ProjectEvents             func(childComplexity int, identifier string, limit *int, before *time.Time) int
+		ProjectSettings           func(childComplexity int, identifier string) int
+		Projects                  func(childComplexity int) int
+		RepoEvents                func(childComplexity int, id string, limit *int, before *time.Time) int
+		RepoSettings              func(childComplexity int, id string) int
+		SpruceConfig              func(childComplexity int) int
+		SubnetAvailabilityZones   func(childComplexity int) int
+		Task                      func(childComplexity int, taskID string, execution *int) int
+		TaskAllExecutions         func(childComplexity int, taskID string) int
+		TaskFiles                 func(childComplexity int, taskID string, execution *int) int
+		TaskLogs                  func(childComplexity int, taskID string, execution *int) int
+		TaskNamesForBuildVariant  func(childComplexity int, projectIdentifier string, buildVariant string) int
+		TaskQueueDistros          func(childComplexity int) int
+		TaskTestSample            func(childComplexity int, tasks []string, filters []*TestFilter) int
+		TaskTests                 func(childComplexity int, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string, groupID *string) int
+		User                      func(childComplexity int, userID *string) int
+		UserConfig                func(childComplexity int) int
+		UserSettings              func(childComplexity int) int
+		Version                   func(childComplexity int, id string) int
+		ViewableProjectRefs       func(childComplexity int) int
 	}
 
 	RepoCommitQueueParams struct {
@@ -1349,6 +1370,7 @@ type QueryResolver interface {
 	ViewableProjectRefs(ctx context.Context) ([]*GroupedProjects, error)
 	MyHosts(ctx context.Context) ([]*model.APIHost, error)
 	MyVolumes(ctx context.Context) ([]*model.APIVolume, error)
+	GetLogkeeperBuildMetadata(ctx context.Context, buildID string) (*plank.Build, error)
 	Task(ctx context.Context, taskID string, execution *int) (*model.APITask, error)
 	TaskAllExecutions(ctx context.Context, taskID string) ([]*model.APITask, error)
 	TaskFiles(ctx context.Context, taskID string, execution *int) (*TaskFiles, error)
@@ -2753,6 +2775,97 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.LogMessage.Version(childComplexity), true
+
+	case "LogkeeperBuild.buildNum":
+		if e.complexity.LogkeeperBuild.BuildNum == nil {
+			break
+		}
+
+		return e.complexity.LogkeeperBuild.BuildNum(childComplexity), true
+
+	case "LogkeeperBuild.builder":
+		if e.complexity.LogkeeperBuild.Builder == nil {
+			break
+		}
+
+		return e.complexity.LogkeeperBuild.Builder(childComplexity), true
+
+	case "LogkeeperBuild.id":
+		if e.complexity.LogkeeperBuild.ID == nil {
+			break
+		}
+
+		return e.complexity.LogkeeperBuild.ID(childComplexity), true
+
+	case "LogkeeperBuild.taskExecution":
+		if e.complexity.LogkeeperBuild.TaskExecution == nil {
+			break
+		}
+
+		return e.complexity.LogkeeperBuild.TaskExecution(childComplexity), true
+
+	case "LogkeeperBuild.taskId":
+		if e.complexity.LogkeeperBuild.TaskID == nil {
+			break
+		}
+
+		return e.complexity.LogkeeperBuild.TaskID(childComplexity), true
+
+	case "LogkeeperBuild.tests":
+		if e.complexity.LogkeeperBuild.Tests == nil {
+			break
+		}
+
+		return e.complexity.LogkeeperBuild.Tests(childComplexity), true
+
+	case "LogkeeperTest.buildId":
+		if e.complexity.LogkeeperTest.BuildID == nil {
+			break
+		}
+
+		return e.complexity.LogkeeperTest.BuildID(childComplexity), true
+
+	case "LogkeeperTest.command":
+		if e.complexity.LogkeeperTest.Command == nil {
+			break
+		}
+
+		return e.complexity.LogkeeperTest.Command(childComplexity), true
+
+	case "LogkeeperTest.id":
+		if e.complexity.LogkeeperTest.ID == nil {
+			break
+		}
+
+		return e.complexity.LogkeeperTest.ID(childComplexity), true
+
+	case "LogkeeperTest.name":
+		if e.complexity.LogkeeperTest.Name == nil {
+			break
+		}
+
+		return e.complexity.LogkeeperTest.Name(childComplexity), true
+
+	case "LogkeeperTest.phase":
+		if e.complexity.LogkeeperTest.Phase == nil {
+			break
+		}
+
+		return e.complexity.LogkeeperTest.Phase(childComplexity), true
+
+	case "LogkeeperTest.taskExecution":
+		if e.complexity.LogkeeperTest.TaskExecution == nil {
+			break
+		}
+
+		return e.complexity.LogkeeperTest.TaskExecution(childComplexity), true
+
+	case "LogkeeperTest.taskId":
+		if e.complexity.LogkeeperTest.TaskID == nil {
+			break
+		}
+
+		return e.complexity.LogkeeperTest.TaskID(childComplexity), true
 
 	case "MainlineCommitVersion.rolledUpVersions":
 		if e.complexity.MainlineCommitVersion.RolledUpVersions == nil {
@@ -4622,6 +4735,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.Distros(childComplexity, args["onlySpawnable"].(bool)), true
+
+	case "Query.getLogkeeperBuildMetadata":
+		if e.complexity.Query.GetLogkeeperBuildMetadata == nil {
+			break
+		}
+
+		args, err := ec.field_Query_getLogkeeperBuildMetadata_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.GetLogkeeperBuildMetadata(childComplexity, args["buildId"].(string)), true
 
 	case "Query.githubProjectConflicts":
 		if e.complexity.Query.GithubProjectConflicts == nil {
@@ -7482,7 +7607,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 	return introspection.WrapTypeFromDef(parsedSchema, parsedSchema.Types[name]), nil
 }
 
-//go:embed "schema/directives.graphql" "schema/mutation.graphql" "schema/query.graphql" "schema/scalars.graphql" "schema/types/annotation.graphql" "schema/types/commit_queue.graphql" "schema/types/config.graphql" "schema/types/host.graphql" "schema/types/issue_link.graphql" "schema/types/mainline_commits.graphql" "schema/types/patch.graphql" "schema/types/permissions.graphql" "schema/types/project.graphql" "schema/types/project_settings.graphql" "schema/types/project_subscriber.graphql" "schema/types/project_vars.graphql" "schema/types/repo_ref.graphql" "schema/types/repo_settings.graphql" "schema/types/spawn.graphql" "schema/types/task.graphql" "schema/types/task_logs.graphql" "schema/types/task_queue_item.graphql" "schema/types/ticket_fields.graphql" "schema/types/user.graphql" "schema/types/version.graphql" "schema/types/volume.graphql"
+//go:embed "schema/directives.graphql" "schema/mutation.graphql" "schema/query.graphql" "schema/scalars.graphql" "schema/types/annotation.graphql" "schema/types/commit_queue.graphql" "schema/types/config.graphql" "schema/types/host.graphql" "schema/types/issue_link.graphql" "schema/types/logkeeper.graphql" "schema/types/mainline_commits.graphql" "schema/types/patch.graphql" "schema/types/permissions.graphql" "schema/types/project.graphql" "schema/types/project_settings.graphql" "schema/types/project_subscriber.graphql" "schema/types/project_vars.graphql" "schema/types/repo_ref.graphql" "schema/types/repo_settings.graphql" "schema/types/spawn.graphql" "schema/types/task.graphql" "schema/types/task_logs.graphql" "schema/types/task_queue_item.graphql" "schema/types/ticket_fields.graphql" "schema/types/user.graphql" "schema/types/version.graphql" "schema/types/volume.graphql"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -7503,6 +7628,7 @@ var sources = []*ast.Source{
 	{Name: "schema/types/config.graphql", Input: sourceData("schema/types/config.graphql"), BuiltIn: false},
 	{Name: "schema/types/host.graphql", Input: sourceData("schema/types/host.graphql"), BuiltIn: false},
 	{Name: "schema/types/issue_link.graphql", Input: sourceData("schema/types/issue_link.graphql"), BuiltIn: false},
+	{Name: "schema/types/logkeeper.graphql", Input: sourceData("schema/types/logkeeper.graphql"), BuiltIn: false},
 	{Name: "schema/types/mainline_commits.graphql", Input: sourceData("schema/types/mainline_commits.graphql"), BuiltIn: false},
 	{Name: "schema/types/patch.graphql", Input: sourceData("schema/types/patch.graphql"), BuiltIn: false},
 	{Name: "schema/types/permissions.graphql", Input: sourceData("schema/types/permissions.graphql"), BuiltIn: false},
@@ -8829,6 +8955,21 @@ func (ec *executionContext) field_Query_distros_args(ctx context.Context, rawArg
 		}
 	}
 	args["onlySpawnable"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_getLogkeeperBuildMetadata_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["buildId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("buildId"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["buildId"] = arg0
 	return args, nil
 }
 
@@ -17947,6 +18088,594 @@ func (ec *executionContext) fieldContext_LogMessage_version(ctx context.Context,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LogkeeperBuild_id(ctx context.Context, field graphql.CollectedField, obj *plank.Build) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LogkeeperBuild_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LogkeeperBuild_id(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LogkeeperBuild",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LogkeeperBuild_builder(ctx context.Context, field graphql.CollectedField, obj *plank.Build) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LogkeeperBuild_builder(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Builder, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LogkeeperBuild_builder(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LogkeeperBuild",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LogkeeperBuild_buildNum(ctx context.Context, field graphql.CollectedField, obj *plank.Build) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LogkeeperBuild_buildNum(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BuildNum, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LogkeeperBuild_buildNum(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LogkeeperBuild",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LogkeeperBuild_taskId(ctx context.Context, field graphql.CollectedField, obj *plank.Build) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LogkeeperBuild_taskId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TaskID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LogkeeperBuild_taskId(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LogkeeperBuild",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LogkeeperBuild_taskExecution(ctx context.Context, field graphql.CollectedField, obj *plank.Build) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LogkeeperBuild_taskExecution(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TaskExecution, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LogkeeperBuild_taskExecution(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LogkeeperBuild",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LogkeeperBuild_tests(ctx context.Context, field graphql.CollectedField, obj *plank.Build) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LogkeeperBuild_tests(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Tests, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]plank.Test)
+	fc.Result = res
+	return ec.marshalNLogkeeperTest2ᚕgithubᚗcomᚋevergreenᚑciᚋplankᚐTestᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LogkeeperBuild_tests(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LogkeeperBuild",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_LogkeeperTest_id(ctx, field)
+			case "name":
+				return ec.fieldContext_LogkeeperTest_name(ctx, field)
+			case "buildId":
+				return ec.fieldContext_LogkeeperTest_buildId(ctx, field)
+			case "taskId":
+				return ec.fieldContext_LogkeeperTest_taskId(ctx, field)
+			case "taskExecution":
+				return ec.fieldContext_LogkeeperTest_taskExecution(ctx, field)
+			case "phase":
+				return ec.fieldContext_LogkeeperTest_phase(ctx, field)
+			case "command":
+				return ec.fieldContext_LogkeeperTest_command(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LogkeeperTest", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LogkeeperTest_id(ctx context.Context, field graphql.CollectedField, obj *plank.Test) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LogkeeperTest_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LogkeeperTest_id(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LogkeeperTest",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LogkeeperTest_name(ctx context.Context, field graphql.CollectedField, obj *plank.Test) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LogkeeperTest_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LogkeeperTest_name(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LogkeeperTest",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LogkeeperTest_buildId(ctx context.Context, field graphql.CollectedField, obj *plank.Test) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LogkeeperTest_buildId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BuildID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LogkeeperTest_buildId(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LogkeeperTest",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LogkeeperTest_taskId(ctx context.Context, field graphql.CollectedField, obj *plank.Test) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LogkeeperTest_taskId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TaskID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LogkeeperTest_taskId(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LogkeeperTest",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LogkeeperTest_taskExecution(ctx context.Context, field graphql.CollectedField, obj *plank.Test) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LogkeeperTest_taskExecution(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TaskExecution, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LogkeeperTest_taskExecution(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LogkeeperTest",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LogkeeperTest_phase(ctx context.Context, field graphql.CollectedField, obj *plank.Test) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LogkeeperTest_phase(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Phase, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LogkeeperTest_phase(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LogkeeperTest",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LogkeeperTest_command(ctx context.Context, field graphql.CollectedField, obj *plank.Test) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LogkeeperTest_command(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Command, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LogkeeperTest_command(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LogkeeperTest",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -32415,6 +33144,75 @@ func (ec *executionContext) fieldContext_Query_myVolumes(ctx context.Context, fi
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Volume", field.Name)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_getLogkeeperBuildMetadata(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_getLogkeeperBuildMetadata(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().GetLogkeeperBuildMetadata(rctx, fc.Args["buildId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*plank.Build)
+	fc.Result = res
+	return ec.marshalNLogkeeperBuild2ᚖgithubᚗcomᚋevergreenᚑciᚋplankᚐBuild(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_getLogkeeperBuildMetadata(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_LogkeeperBuild_id(ctx, field)
+			case "builder":
+				return ec.fieldContext_LogkeeperBuild_builder(ctx, field)
+			case "buildNum":
+				return ec.fieldContext_LogkeeperBuild_buildNum(ctx, field)
+			case "taskId":
+				return ec.fieldContext_LogkeeperBuild_taskId(ctx, field)
+			case "taskExecution":
+				return ec.fieldContext_LogkeeperBuild_taskExecution(ctx, field)
+			case "tests":
+				return ec.fieldContext_LogkeeperBuild_tests(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LogkeeperBuild", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_getLogkeeperBuildMetadata_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
 	}
 	return fc, nil
 }
@@ -57639,6 +58437,139 @@ func (ec *executionContext) _LogMessage(ctx context.Context, sel ast.SelectionSe
 	return out
 }
 
+var logkeeperBuildImplementors = []string{"LogkeeperBuild"}
+
+func (ec *executionContext) _LogkeeperBuild(ctx context.Context, sel ast.SelectionSet, obj *plank.Build) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, logkeeperBuildImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("LogkeeperBuild")
+		case "id":
+
+			out.Values[i] = ec._LogkeeperBuild_id(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "builder":
+
+			out.Values[i] = ec._LogkeeperBuild_builder(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "buildNum":
+
+			out.Values[i] = ec._LogkeeperBuild_buildNum(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "taskId":
+
+			out.Values[i] = ec._LogkeeperBuild_taskId(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "taskExecution":
+
+			out.Values[i] = ec._LogkeeperBuild_taskExecution(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "tests":
+
+			out.Values[i] = ec._LogkeeperBuild_tests(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var logkeeperTestImplementors = []string{"LogkeeperTest"}
+
+func (ec *executionContext) _LogkeeperTest(ctx context.Context, sel ast.SelectionSet, obj *plank.Test) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, logkeeperTestImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("LogkeeperTest")
+		case "id":
+
+			out.Values[i] = ec._LogkeeperTest_id(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "name":
+
+			out.Values[i] = ec._LogkeeperTest_name(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "buildId":
+
+			out.Values[i] = ec._LogkeeperTest_buildId(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "taskId":
+
+			out.Values[i] = ec._LogkeeperTest_taskId(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "taskExecution":
+
+			out.Values[i] = ec._LogkeeperTest_taskExecution(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "phase":
+
+			out.Values[i] = ec._LogkeeperTest_phase(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "command":
+
+			out.Values[i] = ec._LogkeeperTest_command(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var mainlineCommitVersionImplementors = []string{"MainlineCommitVersion"}
 
 func (ec *executionContext) _MainlineCommitVersion(ctx context.Context, sel ast.SelectionSet, obj *MainlineCommitVersion) graphql.Marshaler {
@@ -60485,6 +61416,29 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_myVolumes(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return rrm(innerCtx)
+			})
+		case "getLogkeeperBuildMetadata":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_getLogkeeperBuildMetadata(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -65916,6 +66870,68 @@ func (ec *executionContext) marshalNLogMessage2ᚖgithubᚗcomᚋevergreenᚑci�
 		return graphql.Null
 	}
 	return ec._LogMessage(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNLogkeeperBuild2githubᚗcomᚋevergreenᚑciᚋplankᚐBuild(ctx context.Context, sel ast.SelectionSet, v plank.Build) graphql.Marshaler {
+	return ec._LogkeeperBuild(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNLogkeeperBuild2ᚖgithubᚗcomᚋevergreenᚑciᚋplankᚐBuild(ctx context.Context, sel ast.SelectionSet, v *plank.Build) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._LogkeeperBuild(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNLogkeeperTest2githubᚗcomᚋevergreenᚑciᚋplankᚐTest(ctx context.Context, sel ast.SelectionSet, v plank.Test) graphql.Marshaler {
+	return ec._LogkeeperTest(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNLogkeeperTest2ᚕgithubᚗcomᚋevergreenᚑciᚋplankᚐTestᚄ(ctx context.Context, sel ast.SelectionSet, v []plank.Test) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNLogkeeperTest2githubᚗcomᚋevergreenᚑciᚋplankᚐTest(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalNMainlineCommitVersion2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMainlineCommitVersionᚄ(ctx context.Context, sel ast.SelectionSet, v []*MainlineCommitVersion) graphql.Marshaler {
