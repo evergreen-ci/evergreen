@@ -590,7 +590,8 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			},
 		)
 	}
-	mongoClient := evergreen.GetEnvironment().Client()
+	env := evergreen.GetEnvironment()
+	mongoClient := env.Client()
 	session, err := mongoClient.StartSession()
 	if err != nil {
 		return nil, errors.Wrap(err, "starting DB session")
@@ -598,7 +599,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	defer session.EndSession(ctx)
 
 	txFunc := func(sessCtx mongo.SessionContext) (interface{}, error) {
-		db := evergreen.GetEnvironment().DB()
+		db := env.DB()
 		_, err = db.Collection(VersionCollection).InsertOne(sessCtx, patchVersion)
 		if err != nil {
 			return nil, errors.Wrapf(err, "inserting version '%s'", patchVersion.Id)

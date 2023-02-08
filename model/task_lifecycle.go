@@ -817,7 +817,13 @@ func DequeueAndRestartForTask(cq *commitqueue.CommitQueue, t *task.Task, githubS
 	if err := tryDequeueAndAbortCommitQueueVersion(p, *cq, t, caller); err != nil {
 		return err
 	}
-
+	grip.Info(message.Fields{
+		"source":       "commit queue",
+		"version":      t.Version,
+		"project_id":   cq.ProjectID,
+		"queue_length": len(cq.Queue),
+		"message":      "commit queue item failed, dequeueing and restarting later versions",
+	})
 	err = SendCommitQueueResult(p, githubState, reason)
 	grip.Error(message.WrapError(err, message.Fields{
 		"message": "unable to send github status",
@@ -1862,6 +1868,8 @@ func ClearAndResetStrandedHostTask(settings *evergreen.Settings, h *host.Host) e
 		"task":               t.Id,
 		"execution":          t.Execution,
 		"execution_platform": t.ExecutionPlatform,
+		"version":            t.Version,
+		"failure_desc":       t.Details.Description,
 	})
 
 	return nil

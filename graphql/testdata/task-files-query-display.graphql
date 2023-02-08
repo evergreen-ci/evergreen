@@ -1,12 +1,14 @@
 query {
-  taskFiles(taskId: "wuzzup-activated") {
-    fileCount
-    groupedFiles {
-      taskName
-      files {
-        name
-        link
-        visibility
+  task(taskId: "wuzzup-activated") {
+    taskFiles {
+      fileCount
+      groupedFiles {
+        taskName
+        files {
+          name
+          link
+          visibility
+        }
       }
     }
   }
