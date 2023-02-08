@@ -525,7 +525,10 @@ func (r *queryResolver) MyVolumes(ctx context.Context) ([]*restModel.APIVolume, 
 
 // GetLogkeeperBuildMetadata is the resolver for the getLogkeeperBuildMetadata field.
 func (r *queryResolver) GetLogkeeperBuildMetadata(ctx context.Context, buildID string) (*plank.Build, error) {
-	build, err := data.GetLogkeeperBuildMetadata(ctx, buildID)
+	client := plank.NewLogkeeperClient(plank.NewLogkeeperClientOptions{
+		BaseURL: evergreen.GetEnvironment().Settings().LoggerConfig.LogkeeperURL,
+	})
+	build, err := client.GetBuildMetadata(ctx, buildID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
