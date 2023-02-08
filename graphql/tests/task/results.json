@@ -461,6 +461,29 @@
           }
         }
       }
+    },
+    {
+      "query_file": "taskFiles.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "some_task",
+            "execution": 1,
+            "taskFiles": {
+              "fileCount": 2,
+              "groupedFiles": [
+                {
+                  "taskName": "test-thirdparty-docker",
+                  "files": [
+                    { "name": "File 1" },
+                    { "name": "File 2" }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
     }
   ]
 }
