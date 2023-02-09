@@ -716,7 +716,7 @@ func (g *GeneratedProject) validateNoRedefine(cachedProject projectMaps) error {
 
 func isNonZeroBV(bv parserBV) bool {
 	if bv.DisplayName != "" || len(bv.Expansions) > 0 || len(bv.Modules) > 0 ||
-		bv.Disabled || len(bv.Tags) > 0 || bv.Push ||
+		bv.Disable || len(bv.Tags) > 0 || bv.Push ||
 		bv.BatchTime != nil || bv.Stepback != nil || len(bv.RunOn) > 0 {
 		return true
 	}
