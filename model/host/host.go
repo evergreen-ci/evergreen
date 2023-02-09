@@ -1478,10 +1478,6 @@ func (h *Host) UpdateRunningTaskWithContext(ctx context.Context, env evergreen.E
 		return errors.New("task has empty task ID, cannot update")
 	}
 
-	doUpdate := func(query, update bson.M) error {
-		_, err := env.DB().Collection(Collection).UpdateOne(ctx, query, update)
-		return err
-	}
 	statuses := []string{evergreen.HostRunning}
 	// User data can start anytime after the instance is created, so the app
 	// server may not have marked it as running yet.
@@ -1506,7 +1502,7 @@ func (h *Host) UpdateRunningTaskWithContext(ctx context.Context, env evergreen.E
 		},
 	}
 
-	if err := doUpdate(query, update); err != nil {
+	if _, err := env.DB().Collection(Collection).UpdateOne(ctx, query, update); err != nil {
 		grip.DebugWhen(db.IsDuplicateKey(err), message.WrapError(err, message.Fields{
 			"message": "found duplicate running task",
 			"task":    t.Id,
