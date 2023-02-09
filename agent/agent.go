@@ -413,16 +413,16 @@ func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) error {
 			break
 		}
 	}
+	expAndVars.Expansions.Update(expAndVars.Vars)
 	for _, param := range project.Parameters {
 		// If the key doesn't exist, the value will default to "" anyway; this
-		// prevents an un-specified parameter from overwriting lower-priority
-		// expansions.
+		// prevents an un-specified project parameter from overwriting
+		// lower-priority expansions.
 		if param.Value != "" {
-			expAndVars.Vars[param.Key] = param.Value
+			expAndVars.Expansions.Put(param.Key, param.Value)
 		}
 	}
 
-	expAndVars.Expansions.Update(expAndVars.Vars)
 	tc.taskModel = taskModel
 	tc.project = project
 	tc.expansions = expAndVars.Expansions

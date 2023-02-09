@@ -285,8 +285,6 @@ func boolPtr(b bool) *bool {
 }
 
 func TestPopulateExpansions(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(VersionCollection, patch.Collection, ProjectRefCollection,
 		task.Collection, ParserProjectCollection))
