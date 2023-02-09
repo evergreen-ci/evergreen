@@ -167,7 +167,9 @@ func (g *GeneratedProject) Save(ctx context.Context, settings *evergreen.Setting
 		return mongo.ErrNoDocuments
 	}
 
-	if err := updateParserProject(ctx, settings, v, pp, t.Id); err != nil {
+	ppCtx, ppCancel := context.WithTimeout(ctx, DefaultParserProjectAccessTimeout)
+	defer ppCancel()
+	if err := updateParserProject(ppCtx, settings, v, pp, t.Id); err != nil {
 		if db.IsDocumentLimit(err) {
 			// The parser project has reached the DB document size limit, so put
 			// it in S3.
