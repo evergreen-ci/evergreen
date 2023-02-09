@@ -53,6 +53,11 @@ func (r *projectResolver) Patches(ctx context.Context, obj *restModel.APIProject
 	return &Patches{Patches: apiPatches, FilteredPatchCount: count}, nil
 }
 
+// Private is the resolver for the private field.
+func (r *projectResolver) Private(ctx context.Context, obj *restModel.APIProjectRef) (*bool, error) {
+	panic(fmt.Errorf("not implemented: Private - private"))
+}
+
 // Project returns ProjectResolver implementation.
 func (r *Resolver) Project() ProjectResolver { return &projectResolver{r} }
 

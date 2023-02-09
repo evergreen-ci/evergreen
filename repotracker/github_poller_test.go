@@ -73,7 +73,6 @@ func resetProjectRefs() {
 		Branch:      "master",
 		RemotePath:  "mci",
 		Enabled:     utility.TruePtr(),
-		Private:     utility.FalsePtr(),
 		BatchTime:   60,
 		Hidden:      utility.FalsePtr(),
 	}
@@ -219,7 +218,6 @@ func TestGetRemoteConfig(t *testing.T) {
 				Branch:      "master",
 				RemotePath:  "random.txt",
 				Enabled:     utility.TruePtr(),
-				Private:     utility.FalsePtr(),
 				BatchTime:   60,
 				Hidden:      utility.FalsePtr(),
 			}

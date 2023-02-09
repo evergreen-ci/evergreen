@@ -36,7 +36,16 @@ func (r *projectSettingsResolver) Vars(ctx context.Context, obj *restModel.APIPr
 	return getRedactedAPIVarsForProject(ctx, utility.FromStringPtr(obj.ProjectRef.Id))
 }
 
+// Private is the resolver for the private field.
+func (r *projectInputResolver) Private(ctx context.Context, obj *restModel.APIProjectRef, data *bool) error {
+	panic(fmt.Errorf("not implemented: Private - private"))
+}
+
 // ProjectSettings returns ProjectSettingsResolver implementation.
 func (r *Resolver) ProjectSettings() ProjectSettingsResolver { return &projectSettingsResolver{r} }
 
+// ProjectInput returns ProjectInputResolver implementation.
+func (r *Resolver) ProjectInput() ProjectInputResolver { return &projectInputResolver{r} }
+
 type projectSettingsResolver struct{ *Resolver }
+type projectInputResolver struct{ *Resolver }

@@ -291,6 +291,9 @@ const (
 	// Valid types of performing git clone
 	CloneMethodLegacySSH = "legacy-ssh"
 	CloneMethodOAuth     = "oauth"
+
+	// PrivateRepoName is the repo name for which a project ref is considered private.
+	PrivateRepoName = "wiredtiger"
 )
 
 var TaskStatuses = []string{

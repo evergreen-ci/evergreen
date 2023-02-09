@@ -402,7 +402,18 @@ Admin Settings
 												<td>Partial auth for routes</td>
 												<td colspan="2">
 													<md-radio-group
-															data-ng-model="Settings.service_flags.partial_route_auth_disabled"
+															data-ng-model="Settings.service_flags.rest_route_require_auth_disabled"
+															layout="row">
+														<md-radio-button data-ng-value="false"></md-radio-button>
+														<md-radio-button data-ng-value="true"></md-radio-button>
+													</md-radio-group>
+												</td>
+											</tr>
+											<tr>
+												<td>Partial auth for UI pages</td>
+												<td colspan="2">
+													<md-radio-group
+															data-ng-model="Settings.service_flags.ui_require_auth_disabled"
 															layout="row">
 														<md-radio-button data-ng-value="false"></md-radio-button>
 														<md-radio-button data-ng-value="true"></md-radio-button>

@@ -88,7 +88,7 @@ func MustHaveProject(r *http.Request) *model.Project {
 }
 
 // requireUserToggleable wraps gimlet.NewRequireAuthHandler and checks that
-// a user is generally authenticated if the PartialRouteAuthDisabled flag is set.
+// a user is generally authenticated if the RestRouteRequireAuthDisabled flag is set.
 func (as *APIServer) requireUserToggleable(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		flags, err := evergreen.GetServiceFlags()
@@ -96,7 +96,7 @@ func (as *APIServer) requireUserToggleable(next http.HandlerFunc) http.HandlerFu
 			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving admin settings")))
 		}
 
-		if flags.PartialRouteAuthDisabled {
+		if flags.RestRouteRequireAuthDisabled {
 			gimlet.NewRequireAuthHandler().ServeHTTP(w, r, next)
 			return
 		}

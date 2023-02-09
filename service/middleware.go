@@ -119,7 +119,7 @@ func (uis *UIServer) GetSettings() evergreen.Settings {
 // requireUser takes a request handler and returns a wrapped version which verifies that requests
 // request are authenticated before proceeding. For a request which is not authenticated, it will
 // execute the onFail handler. If onFail is nil, a simple "unauthorized" error will be sent.
-// skipWithToggle indicates that we will skip the authentication if PartialRouteAuthDisabled flag
+// skipWithToggle indicates that we will skip the authentication if UIRequireAuthDisabled flag
 // is set. This is a temporary parameter that is in place while we determine if adding auth to all
 // routes will affect users.
 func requireUser(skipWithToggle bool, onSuccess, onFail http.HandlerFunc) http.HandlerFunc {
@@ -129,7 +129,7 @@ func requireUser(skipWithToggle bool, onSuccess, onFail http.HandlerFunc) http.H
 			if err != nil {
 				gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving admin settings")))
 			}
-			if !flags.PartialRouteAuthDisabled {
+			if !flags.UIRequireAuthDisabled {
 				onSuccess(w, r)
 				return
 			}
