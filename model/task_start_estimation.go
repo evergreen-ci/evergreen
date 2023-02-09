@@ -138,7 +138,7 @@ func createSimulatorModel(taskQueue TaskQueue, hosts []host.Host) *estimatedTime
 			if h.RunningTask == "" {
 				estimator.hosts = append(estimator.hosts, estimatedHost{timeToCompletion: 0})
 			} else {
-				t, err := task.FindOneId(h.RunningTask)
+				t, err := task.FindOneIdAndExecution(h.RunningTask, h.RunningTaskExecution)
 				if err != nil {
 					grip.Error(message.WrapError(err, message.Fields{
 						"message": "retrieving tasks for task start estimation simulator",
@@ -147,8 +147,9 @@ func createSimulatorModel(taskQueue TaskQueue, hosts []host.Host) *estimatedTime
 				}
 				if t == nil {
 					grip.Error(message.Fields{
-						"message": "task does not exist, can't estimate its duration",
-						"task_id": h.RunningTask,
+						"message":        "task does not exist, can't estimate its duration",
+						"task_id":        h.RunningTask,
+						"task_execution": h.RunningTaskExecution,
 					})
 					continue
 				}

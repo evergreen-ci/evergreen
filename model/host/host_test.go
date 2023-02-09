@@ -829,9 +829,12 @@ func TestHostClearRunningAndSetLastTask(t *testing.T) {
 }
 
 func TestUpdateHostRunningTask(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
 	Convey("With a host", t, func() {
 		require.NoError(t, db.Clear(Collection))
-		oldTaskId := "oldId"
 		newTaskId := "newId"
 		h := Host{
 			Id:     "test1",
@@ -849,7 +852,7 @@ func TestUpdateHostRunningTask(t *testing.T) {
 		So(h.Insert(), ShouldBeNil)
 		So(h2.Insert(), ShouldBeNil)
 		Convey("updating the running task id should set proper fields", func() {
-			So(h.UpdateRunningTask(&task.Task{Id: newTaskId}), ShouldBeNil)
+			So(h.UpdateRunningTaskWithContext(ctx, env, &task.Task{Id: newTaskId}), ShouldBeNil)
 			found, err := FindOne(ById(h.Id))
 			So(err, ShouldBeNil)
 			So(found.RunningTask, ShouldEqual, newTaskId)
@@ -858,14 +861,10 @@ func TestUpdateHostRunningTask(t *testing.T) {
 			So(len(runningTaskHosts), ShouldEqual, 1)
 		})
 		Convey("updating the running task to an empty string should error out", func() {
-			So(h.UpdateRunningTask(&task.Task{}), ShouldNotBeNil)
-		})
-		Convey("updating the running task when a task is already running should error", func() {
-			So(h.UpdateRunningTask(&task.Task{Id: oldTaskId}), ShouldBeNil)
-			So(h.UpdateRunningTask(&task.Task{Id: newTaskId}), ShouldNotBeNil)
+			So(h.UpdateRunningTaskWithContext(ctx, env, &task.Task{}), ShouldNotBeNil)
 		})
 		Convey("updating the running task on a starting user data host should succeed", func() {
-			So(h2.UpdateRunningTask(&task.Task{Id: newTaskId}), ShouldBeNil)
+			So(h2.UpdateRunningTaskWithContext(ctx, env, &task.Task{Id: newTaskId}), ShouldBeNil)
 			found, err := FindOne(ById(h2.Id))
 			So(err, ShouldBeNil)
 			So(found.RunningTask, ShouldEqual, newTaskId)

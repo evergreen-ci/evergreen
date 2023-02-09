@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -115,16 +114,6 @@ var (
 	HostsByDistroDistroIDKey          = bsonutil.MustHaveTag(IdleHostsByDistroID{}, "DistroID")
 	HostsByDistroIdleHostsKey         = bsonutil.MustHaveTag(IdleHostsByDistroID{}, "IdleHosts")
 	HostsByDistroRunningHostsCountKey = bsonutil.MustHaveTag(IdleHostsByDistroID{}, "RunningHostsCount")
-)
-
-// Constants for bson struct tags.
-var (
-	CertUserIDKey            = bsonutil.MustHaveTag(certdepot.User{}, "ID")
-	CertUserCertKey          = bsonutil.MustHaveTag(certdepot.User{}, "Cert")
-	CertUserPrivateKeyKey    = bsonutil.MustHaveTag(certdepot.User{}, "PrivateKey")
-	CertUserCertReqKey       = bsonutil.MustHaveTag(certdepot.User{}, "CertReq")
-	CertUserCertRevocListKey = bsonutil.MustHaveTag(certdepot.User{}, "CertRevocList")
-	CertUserTTLKey           = bsonutil.MustHaveTag(certdepot.User{}, "TTL")
 )
 
 // === Queries ===
@@ -405,21 +394,6 @@ func allHostsSpawnedByFinishedBuilds() ([]Host, error) {
 	return hosts, nil
 }
 
-// ByUnprovisionedSince produces a query that returns all hosts
-// Evergreen never finished setting up that were created before
-// the given time.
-func ByUnprovisionedSince(threshold time.Time) db.Q {
-	return db.Query(bson.M{
-		"$or": []bson.M{
-			bson.M{ProvisionedKey: false},
-			bson.M{StatusKey: evergreen.HostProvisioning},
-		},
-		CreateTimeKey: bson.M{"$lte": threshold},
-		StatusKey:     bson.M{"$ne": evergreen.HostTerminated},
-		StartedByKey:  evergreen.User,
-	})
-}
-
 // ByTaskSpec returns a query that finds all running hosts that are running a
 // task with the given group, buildvariant, project, and version.
 func ByTaskSpec(group, buildVariant, project, version string) db.Q {
@@ -488,17 +462,6 @@ var IsUninitialized = db.Query(
 	bson.M{StatusKey: evergreen.HostUninitialized},
 )
 
-// Starting returns a query that finds hosts that we do not yet know to be running.
-func Starting() db.Q {
-	return db.Query(bson.M{StatusKey: evergreen.HostStarting})
-}
-
-// Provisioning returns a query used by the hostinit process to determine hosts that are
-// started according to the cloud provider, but have not yet been provisioned by Evergreen.
-func Provisioning() db.Q {
-	return db.Query(bson.M{StatusKey: evergreen.HostProvisioning})
-}
-
 // FindByProvisioning finds all hosts that are not yet provisioned by the app
 // server.
 func FindByProvisioning() ([]Host, error) {
@@ -546,15 +509,6 @@ func FindByNeedsToRestartJasper() ([]Host, error) {
 		},
 	}))
 }
-
-// IsRunningAndSpawned is a query that returns all running hosts
-// spawned by an Evergreen user.
-var IsRunningAndSpawned = db.Query(
-	bson.M{
-		StartedByKey: bson.M{"$ne": evergreen.User},
-		StatusKey:    bson.M{"$ne": evergreen.HostTerminated},
-	},
-)
 
 // IsRunningTask is a query that returns all running hosts with a running task
 var IsRunningTask = db.Query(
@@ -638,16 +592,6 @@ func FindOneByJasperCredentialsID(id string) (*Host, error) {
 	}
 	return h, nil
 }
-
-// ByRunningTaskId returns a host running the task with the given id.
-func ByRunningTaskId(taskId string) db.Q {
-	return db.Query(bson.D{{Key: RunningTaskKey, Value: taskId}})
-}
-
-var AllStatic = db.Query(
-	bson.M{
-		ProviderKey: evergreen.HostTypeStatic,
-	})
 
 // IsIdle is a query that returns all running Evergreen hosts with no task.
 var IsIdle = db.Query(
@@ -897,6 +841,20 @@ func FindOne(query db.Q) (*Host, error) {
 
 func FindOneId(id string) (*Host, error) {
 	return FindOne(ById(id))
+}
+
+// FindOneByTaskIdAndExecution returns a single host with the given running task ID and execution.
+func FindOneByTaskIdAndExecution(id string, execution int) (*Host, error) {
+	h := &Host{}
+	query := db.Query(bson.M{
+		RunningTaskKey:          id,
+		RunningTaskExecutionKey: execution,
+	})
+	err := db.FindOneQ(Collection, query, h)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	return h, err
 }
 
 // FindOneByIdOrTag finds a host where the given id is stored in either the _id or tag field.

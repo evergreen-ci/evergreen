@@ -979,7 +979,7 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 
 	var msg string
 	if h.hostID != "" {
-		host, err := host.FindOne(host.ByRunningTaskId(t.Id))
+		host, err := host.FindOneByTaskIdAndExecution(t.Id, t.Execution)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host running task %s", t.Id))
 		}
