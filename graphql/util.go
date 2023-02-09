@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -772,21 +771,21 @@ func groupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 	return groupsArr, nil
 }
 
-func hasProjectPermission(ctx context.Context, resource string, next graphql.Resolver, permissionLevel int) (res interface{}, err error) {
-	user := gimlet.GetUser(ctx)
-	if user == nil {
-		return nil, Forbidden.Send(ctx, "user not logged in")
+func getProjectIdFromArgs(ctx context.Context, args map[string]interface{}) (res string, err error) {
+	if id, hasId := args["id"].(string); hasId {
+		return id, nil
 	}
-	opts := gimlet.PermissionOpts{
-		Resource:      resource,
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionProjectSettings,
-		RequiredLevel: permissionLevel,
+	if projectId, hasProjectId := args["projectId"].(string); hasProjectId {
+		return projectId, nil
 	}
-	if user.HasPermission(opts) {
-		return next(ctx)
+	if identifier, hasIdentifier := args["identifier"].(string); hasIdentifier {
+		pid, err := model.GetIdForProject(identifier)
+		if err != nil {
+			return "", ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with identifier: %s", identifier))
+		}
+		return pid, nil
 	}
-	return nil, Forbidden.Send(ctx, fmt.Sprintf("user %s does not have permission to access settings for the project %s", user.Username(), resource))
+	return "", ResourceNotFound.Send(ctx, "Could not find project")
 }
 
 // getValidTaskStatusesFilter returns a slice of task statuses that are valid and are searchable.

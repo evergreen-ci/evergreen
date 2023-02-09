@@ -9,7 +9,6 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -27,10 +26,7 @@ func New(apiURL string) Config {
 		},
 	}
 	c.Directives.RequireSuperUser = func(ctx context.Context, obj interface{}, next graphql.Resolver) (interface{}, error) {
-		user := gimlet.GetUser(ctx)
-		if user == nil {
-			return nil, Forbidden.Send(ctx, "user not logged in")
-		}
+		user := mustHaveUser(ctx)
 		opts := gimlet.PermissionOpts{
 			Resource:      evergreen.SuperUserPermissionsID,
 			ResourceType:  evergreen.SuperUserResourceType,
@@ -43,6 +39,8 @@ func New(apiURL string) Config {
 		return nil, Forbidden.Send(ctx, fmt.Sprintf("user %s does not have permission to access this resolver", user.Username()))
 	}
 	c.Directives.RequireProjectAccess = func(ctx context.Context, obj interface{}, next graphql.Resolver, access ProjectSettingsAccess) (res interface{}, err error) {
+		user := mustHaveUser(ctx)
+
 		var permissionLevel int
 		if access == ProjectSettingsAccessEdit {
 			permissionLevel = evergreen.ProjectSettingsEdit.Value
@@ -57,24 +55,24 @@ func New(apiURL string) Config {
 			return nil, ResourceNotFound.Send(ctx, "Project not specified")
 		}
 
-		if id, hasId := args["id"].(string); hasId {
-			return hasProjectPermission(ctx, id, next, permissionLevel)
-		} else if projectId, hasProjectId := args["projectId"].(string); hasProjectId {
-			return hasProjectPermission(ctx, projectId, next, permissionLevel)
-		} else if identifier, hasIdentifier := args["identifier"].(string); hasIdentifier {
-			pid, err := model.GetIdForProject(identifier)
-			if err != nil {
-				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with identifier: %s", identifier))
-			}
-			return hasProjectPermission(ctx, pid, next, permissionLevel)
+		projectId, err := getProjectIdFromArgs(ctx, args)
+		if err != nil {
+			return nil, err
 		}
-		return nil, ResourceNotFound.Send(ctx, "Could not find project")
+
+		opts := gimlet.PermissionOpts{
+			Resource:      projectId,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionProjectSettings,
+			RequiredLevel: permissionLevel,
+		}
+		if user.HasPermission(opts) {
+			return next(ctx)
+		}
+		return nil, Forbidden.Send(ctx, fmt.Sprintf("user %s does not have permission to access settings for the project %s", user.Username(), projectId))
 	}
 	c.Directives.RestrictProjectAccess = func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error) {
-		user := gimlet.GetUser(ctx)
-		if user == nil {
-			return nil, Forbidden.Send(ctx, "user not logged in")
-		}
+		user := mustHaveUser(ctx)
 
 		projectRef, isProjectRef := obj.(*restModel.APIProjectRef)
 		if !isProjectRef {
