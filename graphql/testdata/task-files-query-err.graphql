@@ -1,5 +1,5 @@
 query {
-  task(taskId: "task-without-legit-exec-tasks") {
+  task(taskId: "task-does-not-exist") {
     taskFiles {
       fileCount
       groupedFiles {

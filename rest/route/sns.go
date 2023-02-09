@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
@@ -146,6 +147,7 @@ func (sns *ec2SNS) Run(ctx context.Context) gimlet.Responder {
 }
 
 type ec2EventBridgeNotification struct {
+	EventTime  string         `json:"time"`
 	DetailType string         `json:"detail-type"`
 	Detail     ec2EventDetail `json:"detail"`
 }
@@ -174,6 +176,13 @@ func (sns *ec2SNS) handleNotification(ctx context.Context) error {
 		}
 	case instanceStateChangeType:
 		switch notification.Detail.State {
+		case ec2.InstanceStateNameRunning:
+			if err := sns.handleInstanceRunning(ctx, notification.Detail.InstanceID, notification.EventTime); err != nil {
+				return gimlet.ErrorResponse{
+					StatusCode: http.StatusInternalServerError,
+					Message:    errors.Wrap(err, "processing running instance").Error(),
+				}
+			}
 		case ec2.InstanceStateNameTerminated:
 			if err := sns.handleInstanceTerminated(ctx, notification.Detail.InstanceID); err != nil {
 				return gimlet.ErrorResponse{
@@ -265,6 +274,30 @@ func (sns *ec2SNS) handleInstanceTerminated(ctx context.Context, instanceID stri
 	}
 
 	return nil
+}
+
+func (sns *ec2SNS) handleInstanceRunning(ctx context.Context, instanceID, eventTimestamp string) error {
+	h, err := host.FindOneId(instanceID)
+	if err != nil {
+		return err
+	}
+	if h == nil {
+		return nil
+	}
+
+	runningTime, err := time.Parse(time.RFC3339, eventTimestamp)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":   "got malformed timestamp",
+			"timestamp": eventTimestamp,
+			"operation": "handleInstanceRunning",
+			"host_id":   h.Id,
+			"distro":    h.Distro.Id,
+		}))
+		runningTime = time.Now()
+	}
+
+	return errors.Wrap(h.SetBillingStartTime(runningTime), "setting billing start time")
 }
 
 // handleInstanceStopped handles an agent host when AWS reports that it is

@@ -227,8 +227,8 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			LastCommunicationTime: time.Now(),
 			Status:                evergreen.HostRunning,
 			StartedBy:             evergreen.User,
-			CreationTime:          time.Now().Add(-10 * time.Minute), // created before the cutoff
-			ProvisionTime:         time.Now().Add(-2 * time.Minute),  // provisioned after the cutoff
+			StartTime:             time.Now().Add(-10 * time.Minute), // started before the cutoff
+			BillingStartTime:      time.Now().Add(-2 * time.Minute),  // billing started after the cutoff
 		}
 		require.NoError(t, h5.Insert())
 

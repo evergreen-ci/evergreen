@@ -1,12 +1,14 @@
 query {
-  taskFiles(taskId: "exec1") {
-    fileCount
-    groupedFiles {
-      taskName
-      files {
-        name
-        link
-        visibility
+  task(taskId: "exec1") {
+    taskFiles {
+      fileCount
+      groupedFiles {
+        taskName
+        files {
+          name
+          link
+          visibility
+        }
       }
     }
   }

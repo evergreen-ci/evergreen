@@ -1282,6 +1282,7 @@ type APIProjectCreationConfig struct {
 	TotalProjectLimit int            `json:"total_project_limit"`
 	RepoProjectLimit  int            `json:"repo_project_limit"`
 	RepoExceptions    []APIOwnerRepo `json:"repo_exceptions"`
+	JiraProject       string         `json:"jira_project"`
 }
 
 func (a *APIProjectCreationConfig) BuildFromService(h interface{}) error {
@@ -1296,6 +1297,7 @@ func (a *APIProjectCreationConfig) BuildFromService(h interface{}) error {
 		}
 		a.TotalProjectLimit = v.TotalProjectLimit
 		a.RepoProjectLimit = v.RepoProjectLimit
+		a.JiraProject = v.JiraProject
 	default:
 		return errors.Errorf("programmatic error: expected Project Creation config but got type %T", h)
 	}
@@ -1311,6 +1313,7 @@ func (a *APIProjectCreationConfig) ToService() (interface{}, error) {
 	config := evergreen.ProjectCreationConfig{
 		TotalProjectLimit: a.TotalProjectLimit,
 		RepoProjectLimit:  a.RepoProjectLimit,
+		JiraProject:       a.JiraProject,
 	}
 
 	for _, r := range a.RepoExceptions {

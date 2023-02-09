@@ -195,16 +195,14 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 
 	start = time.Now()
 
-	// Don't use the job's context, because it's better to finish than to exit early after a
-	// SIGTERM from a deploy. This should maybe be a context with timeout.
-	err = g.Save(context.Background(), j.env.Settings(), p, pp, v)
+	// Don't use the job's context, because it's better to try finishing than to
+	// exit early after a SIGTERM from app server shutdown.
+	ctx, cancel := context.WithTimeout(context.Background(), model.DefaultParserProjectAccessTimeout)
+	defer cancel()
+	err = g.Save(ctx, j.env.Settings(), p, pp, v)
 
 	// If the version or parser project has changed there was a race. Another generator will try again.
 	if adb.ResultsNotFound(err) || db.IsDuplicateKey(err) {
-		return err
-	}
-	// If the document hit the size limit, retrying won't help.
-	if db.IsDocumentLimit(err) {
 		return err
 	}
 	if err != nil {
