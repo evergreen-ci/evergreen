@@ -7,10 +7,8 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -90,32 +88,14 @@ func parserProjectUpsertOne(query interface{}, update interface{}) error {
 	return err
 }
 
+// TODO (EVG-18820): remove this once the agent version has rolled over and the
+// REST route has been removed.
 func FindParametersForVersion(ctx context.Context, settings *evergreen.Settings, v *Version) ([]patch.Parameter, error) {
 	pp, err := ParserProjectFindOneByIDWithFields(ctx, settings, v.ProjectStorageMethod, v.Id, ParserProjectParametersKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding parser project")
 	}
 	return pp.GetParameters(), nil
-}
-
-func FindExpansionsForVariant(ctx context.Context, settings *evergreen.Settings, v *Version, variant string) (util.Expansions, error) {
-	pp, err := ParserProjectFindOneByIDWithFields(ctx, settings, v.ProjectStorageMethod, v.Id, ParserProjectBuildVariantsKey, ParserProjectAxesKey)
-	if err != nil {
-		return nil, errors.Wrap(err, "finding parser project")
-	}
-
-	bvs, errs := GetVariantsWithMatrices(nil, pp.Axes, pp.BuildVariants)
-	if len(errs) > 0 {
-		catcher := grip.NewBasicCatcher()
-		catcher.Extend(errs)
-		return nil, catcher.Resolve()
-	}
-	for _, bv := range bvs {
-		if bv.Name == variant {
-			return bv.Expansions, nil
-		}
-	}
-	return nil, errors.New("could not find variant")
 }
 
 // ParserProjectDBStorage implements the ParserProjectStorage interface to

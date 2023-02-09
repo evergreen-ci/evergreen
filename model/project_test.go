@@ -312,13 +312,6 @@ func TestPopulateExpansions(t *testing.T) {
 			},
 		},
 	}
-	config := `
-buildvariants:
-- name: magic
-  expansions:
-    cake: lie
-    github_org: wut?
-`
 	projectRef := &ProjectRef{
 		Id:         "mci",
 		Identifier: "mci-favorite",
@@ -336,11 +329,6 @@ buildvariants:
 		},
 	}
 	assert.NoError(v.Insert())
-	pp := &ParserProject{}
-	err := util.UnmarshalYAMLWithFallback([]byte(config), &pp)
-	assert.NoError(err)
-	pp.Id = "v1"
-	assert.NoError(pp.Insert())
 	taskDoc := &task.Task{
 		Id:           "t1",
 		DisplayName:  "magical task",
@@ -357,7 +345,7 @@ buildvariants:
 	}
 	oauthToken, err := settings.GetGithubOauthToken()
 	assert.NoError(err)
-	expansions, err := PopulateExpansions(ctx, settings, taskDoc, &h, oauthToken)
+	expansions, err := PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 24)
 	assert.Equal("0", expansions.Get("execution"))
@@ -385,7 +373,6 @@ buildvariants:
 	assert.False(expansions.Exists("github_repo"))
 	assert.False(expansions.Exists("github_author"))
 	assert.False(expansions.Exists("github_pr_number"))
-	assert.Equal("lie", expansions.Get("cake"))
 
 	assert.NoError(VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
 		"$set": bson.M{VersionRequesterKey: evergreen.PatchVersionRequester},
@@ -395,7 +382,7 @@ buildvariants:
 	}
 	require.NoError(t, p.Insert())
 
-	expansions, err = PopulateExpansions(ctx, settings, taskDoc, &h, oauthToken)
+	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 24)
 	assert.Equal("true", expansions.Get("is_patch"))
@@ -419,7 +406,7 @@ buildvariants:
 		},
 	}
 	require.NoError(t, p.Insert())
-	expansions, err = PopulateExpansions(ctx, settings, taskDoc, &h, oauthToken)
+	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 27)
 	assert.Equal("true", expansions.Get("is_patch"))
@@ -435,7 +422,7 @@ buildvariants:
 		Version: v.Id,
 	}
 	require.NoError(t, p.Insert())
-	expansions, err = PopulateExpansions(ctx, settings, taskDoc, &h, oauthToken)
+	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 27)
 	assert.Equal("true", expansions.Get("is_patch"))
@@ -460,7 +447,7 @@ buildvariants:
 	}
 	assert.NoError(patchDoc.Insert())
 
-	expansions, err = PopulateExpansions(ctx, settings, taskDoc, &h, oauthToken)
+	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 27)
 	assert.Equal("github_pr", expansions.Get("requester"))
@@ -485,7 +472,7 @@ buildvariants:
 	assert.NoError(upstreamProject.Insert())
 	taskDoc.TriggerID = "upstreamTask"
 	taskDoc.TriggerType = ProjectTriggerLevelTask
-	expansions, err = PopulateExpansions(ctx, settings, taskDoc, &h, oauthToken)
+	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 35)
 	assert.Equal(taskDoc.TriggerID, expansions.Get("trigger_event_identifier"))

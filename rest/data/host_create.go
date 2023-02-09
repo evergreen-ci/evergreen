@@ -170,8 +170,6 @@ func makeProjectAndExpansionsFromTask(ctx context.Context, settings *evergreen.S
 	if v == nil {
 		return nil, nil, errors.Errorf("version '%s' not found", t.Version)
 	}
-	// kim: TODO: store parser project variable and pass to PopulateExpansions
-	// below, reducing number of unnecessary parser project loads
 	project, _, err := model.FindAndTranslateProjectForVersion(ctx, settings, v)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "loading project")
@@ -185,18 +183,18 @@ func makeProjectAndExpansionsFromTask(ctx context.Context, settings *evergreen.S
 		return nil, nil, errors.Wrap(err, "getting GitHub OAuth token from admin settings")
 	}
 
-	expansions, err := model.PopulateExpansions(ctx, settings, t, h, oauthToken)
+	expansions, err := model.PopulateExpansions(t, h, oauthToken)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "populating expansions")
 	}
 
 	// PopulateExpansions doesn't include build variant expansions, so include
-	// htem here.
-	bvExpansions, err := model.FindExpansionsForVariant(ctx, settings, v, t.BuildVariant)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "getting expansions for variant")
+	// them here.
+	for _, bv := range project.BuildVariants {
+		if bv.Name == t.BuildVariant {
+			expansions.Update(bv.Expansions)
+		}
 	}
-	expansions.Update(bvExpansions)
 
 	if project == nil {
 		project = &model.Project{}

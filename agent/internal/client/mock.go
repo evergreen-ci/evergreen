@@ -69,6 +69,7 @@ type Mock struct {
 	keyVal           map[string]*serviceModel.KeyVal
 	LastMessageSent  time.Time
 	DownstreamParams []patchmodel.Parameter
+	Project          *serviceModel.Project
 
 	mu sync.RWMutex
 }
@@ -175,6 +176,9 @@ func (c *Mock) GetDistroAMI(context.Context, string, string, TaskData) (string, 
 }
 
 func (c *Mock) GetProject(ctx context.Context, td TaskData) (*serviceModel.Project, error) {
+	if c.Project != nil {
+		return c.Project, nil
+	}
 	var err error
 	var data []byte
 	_, file, _, _ := runtime.Caller(0)
@@ -203,6 +207,9 @@ func (c *Mock) GetExpansionsAndVars(ctx context.Context, taskData TaskData) (*ap
 			"shellexec_fn":   c.ShellExecFilename,
 			"timeout_fn":     c.TimeoutFilename,
 			"my_new_timeout": "2",
+		},
+		PrivateVars: map[string]bool{
+			"some_private_var": true,
 		},
 	}, nil
 }

@@ -354,7 +354,7 @@ func (h *getExpansionsHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting GitHub OAuth token"))
 	}
 
-	e, err := model.PopulateExpansions(ctx, h.settings, t, foundHost, oauthToken)
+	e, err := model.PopulateExpansions(t, foundHost, oauthToken)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(err)
 	}
@@ -370,13 +370,13 @@ type getExpansionsAndVarsHandler struct {
 }
 
 func makeGetExpansionsAndVars(settings *evergreen.Settings) gimlet.RouteHandler {
-	return &getExpansionsHandler{
+	return &getExpansionsAndVarsHandler{
 		settings: settings,
 	}
 }
 
 func (h *getExpansionsAndVarsHandler) Factory() gimlet.RouteHandler {
-	return &getExpansionsHandler{
+	return &getExpansionsAndVarsHandler{
 		settings: h.settings,
 	}
 }
@@ -408,7 +408,7 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 	if h.hostID != "" {
 		foundHost, err = host.FindOneId(h.hostID)
 		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting host"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting host '%s'", h.hostID))
 		}
 		if foundHost == nil {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
@@ -423,7 +423,7 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting GitHub OAuth token"))
 	}
 
-	e, err := model.PopulateExpansions(ctx, h.settings, t, foundHost, oauthToken)
+	e, err := model.PopulateExpansions(t, foundHost, oauthToken)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "populating expansions"))
 	}
@@ -898,7 +898,6 @@ func (h *fetchExpansionsForTaskHandler) Run(ctx context.Context) gimlet.Responde
 			Message:    fmt.Sprintf("version '%s' not found", t.Version),
 		})
 	}
-	// kim: TODO: move logic for appending project parameters to the agent side.
 	projParams, err := model.FindParametersForVersion(ctx, h.env.Settings(), v)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)

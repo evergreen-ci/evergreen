@@ -76,10 +76,8 @@ const (
 )
 
 type taskContext struct {
-	currentCommand command.Command
-	expansions     util.Expansions
-	// kim: TODO: remove since we only use private vars
-	// expVars                *apimodels.ExpansionVars
+	currentCommand         command.Command
+	expansions             util.Expansions
 	privateVars            map[string]bool
 	logger                 client.LoggerProducer
 	jasper                 jasper.Manager
@@ -407,29 +405,14 @@ func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) error {
 		return errors.Wrap(err, "getting expansions and variables")
 	}
 
-	// kim: TODO: remove
-	// exp, err := a.comm.GetExpansions(ctx, tc.task)
-	// if err != nil {
-	//     return errors.Wrap(err, "getting expansions")
-	// }
-
-	// GetExpansionsAndVars does not include build variant expansions, so load
-	// them from the project.
+	// GetExpansionsAndVars does not include build variant expansions or project
+	// parameters, so load them from the project.
 	for _, bv := range project.BuildVariants {
 		if bv.Name == taskModel.BuildVariant {
 			expAndVars.Expansions.Update(bv.Expansions)
 			break
 		}
 	}
-
-	// kim: TODO: remove
-	// expVars, err := a.comm.FetchExpansionVars(ctx, tc.task)
-	// if err != nil {
-	//     return errors.Wrap(err, "getting task-specific expansions")
-	// }
-
-	// GetExpansionsAndVars does not include project parameters, so load them
-	// from the project.
 	for _, param := range project.Parameters {
 		// If the key doesn't exist, the value will default to "" anyway; this
 		// prevents an un-specified parameter from overwriting lower-priority
@@ -444,8 +427,6 @@ func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) error {
 	tc.project = project
 	tc.expansions = expAndVars.Expansions
 	tc.privateVars = expAndVars.PrivateVars
-	// kim: TODO: remove
-	// tc.expVars = expVars
 	return nil
 }
 
