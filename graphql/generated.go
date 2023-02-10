@@ -732,7 +732,6 @@ type ComplexityRoot struct {
 		SubnetAvailabilityZones  func(childComplexity int) int
 		Task                     func(childComplexity int, taskID string, execution *int) int
 		TaskAllExecutions        func(childComplexity int, taskID string) int
-		TaskFiles                func(childComplexity int, taskID string, execution *int) int
 		TaskLogs                 func(childComplexity int, taskID string, execution *int) int
 		TaskNamesForBuildVariant func(childComplexity int, projectIdentifier string, buildVariant string) int
 		TaskQueueDistros         func(childComplexity int) int
@@ -1373,7 +1372,6 @@ type QueryResolver interface {
 	LogkeeperBuildMetadata(ctx context.Context, buildID string) (*plank.Build, error)
 	Task(ctx context.Context, taskID string, execution *int) (*model.APITask, error)
 	TaskAllExecutions(ctx context.Context, taskID string) ([]*model.APITask, error)
-	TaskFiles(ctx context.Context, taskID string, execution *int) (*TaskFiles, error)
 	TaskLogs(ctx context.Context, taskID string, execution *int) (*TaskLogs, error)
 	TaskTests(ctx context.Context, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string, groupID *string) (*TaskTestResult, error)
 	TaskTestSample(ctx context.Context, tasks []string, filters []*TestFilter) ([]*TaskTestResultSample, error)
@@ -4964,18 +4962,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.TaskAllExecutions(childComplexity, args["taskId"].(string)), true
-
-	case "Query.taskFiles":
-		if e.complexity.Query.TaskFiles == nil {
-			break
-		}
-
-		args, err := ec.field_Query_taskFiles_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.TaskFiles(childComplexity, args["taskId"].(string), args["execution"].(*int)), true
 
 	case "Query.taskLogs":
 		if e.complexity.Query.TaskLogs == nil {
@@ -9381,30 +9367,6 @@ func (ec *executionContext) field_Query_taskAllExecutions_args(ctx context.Conte
 		}
 	}
 	args["taskId"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Query_taskFiles_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 string
-	if tmp, ok := rawArgs["taskId"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["taskId"] = arg0
-	var arg1 *int
-	if tmp, ok := rawArgs["execution"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("execution"))
-		arg1, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["execution"] = arg1
 	return args, nil
 }
 
@@ -33594,67 +33556,6 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_taskAllExecutions_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Query_taskFiles(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_taskFiles(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().TaskFiles(rctx, fc.Args["taskId"].(string), fc.Args["execution"].(*int))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*TaskFiles)
-	fc.Result = res
-	return ec.marshalNTaskFiles2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskFiles(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Query_taskFiles(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "fileCount":
-				return ec.fieldContext_TaskFiles_fileCount(ctx, field)
-			case "groupedFiles":
-				return ec.fieldContext_TaskFiles_groupedFiles(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type TaskFiles", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_taskFiles_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -61482,29 +61383,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_taskAllExecutions(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
-			}
-
-			out.Concurrently(i, func() graphql.Marshaler {
-				return rrm(innerCtx)
-			})
-		case "taskFiles":
-			field := field
-
-			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_taskFiles(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
