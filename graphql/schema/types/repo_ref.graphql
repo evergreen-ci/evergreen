@@ -23,7 +23,6 @@ input RepoRefInput {
   patchTriggerAliases: [PatchTriggerAliasInput!]
   perfEnabled: Boolean
   periodicBuilds: [PeriodicBuildInput!]
-  private: Boolean
   prTestingEnabled: Boolean
   remotePath: String
   repo: String
@@ -70,7 +69,6 @@ type RepoRef {
   patchTriggerAliases: [PatchTriggerAlias!]
   perfEnabled: Boolean!
   periodicBuilds: [PeriodicBuild!]
-  private: Boolean!
   prTestingEnabled: Boolean!
   remotePath: String!
   repo: String!

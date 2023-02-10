@@ -1,10 +1,10 @@
 package model
 
 import (
-	"github.com/evergreen-ci/evergreen"
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"

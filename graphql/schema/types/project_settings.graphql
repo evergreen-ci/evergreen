@@ -56,7 +56,6 @@ input ProjectInput {
   patchTriggerAliases: [PatchTriggerAliasInput!]
   perfEnabled: Boolean
   periodicBuilds: [PeriodicBuildInput!]
-  private: Boolean
   prTestingEnabled: Boolean
   remotePath: String
   repo: String
