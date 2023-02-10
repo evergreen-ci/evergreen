@@ -110,11 +110,10 @@ func (v ValidationErrors) HasError() bool {
 }
 
 type ValidationInput struct {
-	ProjectYaml     []byte `json:"project_yaml" yaml:"project_yaml"`
-	Quiet           bool   `json:"quiet" yaml:"quiet"`
-	IncludeLong     bool   `json:"include_long" yaml:"include_long"`
-	UseUpgradedYAML bool   `json:"use_upgraded_yaml" yaml:"use_upgraded_yaml"`
-	ProjectID       string `json:"project_id" yaml:"project_id"`
+	ProjectYaml []byte `json:"project_yaml" yaml:"project_yaml"`
+	Quiet       bool   `json:"quiet" yaml:"quiet"`
+	IncludeLong bool   `json:"include_long" yaml:"include_long"`
+	ProjectID   string `json:"project_id" yaml:"project_id"`
 }
 
 // Functions used to validate the syntax of a project configuration file.

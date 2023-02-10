@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
-	"gopkg.in/20210107192922/yaml.v3"
+	"gopkg.in/yaml.v3"
 )
 
 func init() {
@@ -1277,7 +1277,7 @@ tasks:
   depends_on:
     - name: dist-test
 `
-	intermediate, err := createIntermediateProject([]byte(projYml), false, false)
+	intermediate, err := createIntermediateProject([]byte(projYml), false)
 	s.NoError(err)
 	marshaled, err := yaml.Marshal(intermediate)
 	s.NoError(err)

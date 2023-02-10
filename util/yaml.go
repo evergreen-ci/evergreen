@@ -4,9 +4,8 @@ import (
 	"bytes"
 
 	"github.com/pkg/errors"
-	yaml "gopkg.in/20210107192922/yaml.v3"
 	yaml2 "gopkg.in/yaml.v2"
-	upgradedYAML "gopkg.in/yaml.v3"
+	"gopkg.in/yaml.v3"
 )
 
 const UnmarshalStrictError = "error unmarshalling yaml strict"
@@ -33,36 +32,6 @@ func UnmarshalYAMLStrictWithFallback(in []byte, out interface{}) error {
 	d.KnownFields(true)
 	if err := d.Decode(out); err != nil {
 		if err2 := yaml2.UnmarshalStrict(in, out); err2 != nil {
-			return errors.Wrap(err, UnmarshalStrictError)
-		}
-	}
-	return nil
-}
-
-// UnmarshalUpgradedYAMLWithFallback is identical to UnmarshalYAMLWithFallback but uses the upgraded YAML version
-// (v3.0.1) instead of the current YAML version.
-// This should only be used for user validation to see if their project's YAML hypothetically produces a valid config
-// should the YAML version be upgraded.
-func UnmarshalUpgradedYAMLWithFallback(in []byte, out interface{}) error {
-	if err := upgradedYAML.Unmarshal(in, out); err != nil {
-		// try the older version of yaml before erroring, in case it's just an outdated yaml
-		if err2 := yaml2.Unmarshal(in, out); err2 != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// UnmarshalUpgradedYAMLStrictWithFallback is identical to UnmarshalYAMLStrictWithFallback but uses the upgraded YAML
-// version (v3.0.1) instead of the current YAML version.
-// This should only be used for user validation to see if their project's YAML hypothetically produces a valid config
-// should the YAML version be upgraded.
-func UnmarshalUpgradedYAMLStrictWithFallback(in []byte, out interface{}) error {
-	d := upgradedYAML.NewDecoder(bytes.NewReader(in))
-	d.KnownFields(true)
-	if err := d.Decode(out); err != nil {
-		// try the older version of yaml before erroring, in case it's just an outdated yaml
-		if err2 := yaml2.Unmarshal(in, out); err2 != nil {
 			return errors.Wrap(err, UnmarshalStrictError)
 		}
 	}
