@@ -638,8 +638,8 @@ func (s *projectSuite) SetupTest() {
 				},
 			},
 			{
-				Name:     "bv_3",
-				Disabled: true,
+				Name:    "bv_3",
+				Disable: true,
 				Tasks: []BuildVariantTaskUnit{
 					{
 						Name: "disabled_task",

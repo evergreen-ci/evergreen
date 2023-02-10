@@ -293,7 +293,7 @@ type BuildVariant struct {
 	DisplayName string            `yaml:"display_name,omitempty" bson:"display_name"`
 	Expansions  map[string]string `yaml:"expansions,omitempty" bson:"expansions"`
 	Modules     []string          `yaml:"modules,omitempty" bson:"modules"`
-	Disabled    bool              `yaml:"disabled,omitempty" bson:"disabled"`
+	Disable     bool              `yaml:"disable,omitempty" bson:"disable"`
 	Tags        []string          `yaml:"tags,omitempty" bson:"tags"`
 	Push        bool              `yaml:"push,omitempty" bson:"push"`
 
@@ -1616,7 +1616,7 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 	if len(bvs) == 1 && bvs[0] == "all" {
 		bvs = []string{}
 		for _, bv := range p.BuildVariants {
-			if bv.Disabled {
+			if bv.Disable {
 				continue
 			}
 			bvs = append(bvs, bv.Name)

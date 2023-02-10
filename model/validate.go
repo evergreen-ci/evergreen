@@ -100,11 +100,12 @@ func badHostTaskRelationship(h *host.Host, t *task.Task) bool {
 		if h.RunningTask == "" {
 			return false
 		}
-		nextTask, err := task.FindOneId(h.RunningTask)
+		nextTask, err := task.FindOneIdAndExecution(h.RunningTask, h.RunningTaskExecution)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"message": "problem finding task",
-				"task":    h.RunningTask,
+				"message":        "problem finding task",
+				"task":           h.RunningTask,
+				"task_execution": h.RunningTaskExecution,
 			}))
 		}
 		// If the next task has not been marked started, allow logs to be posted for post group.

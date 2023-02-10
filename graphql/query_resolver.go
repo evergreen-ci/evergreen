@@ -25,6 +25,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/plank"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -520,6 +521,18 @@ func (r *queryResolver) MyVolumes(ctx context.Context) ([]*restModel.APIVolume, 
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 	return getAPIVolumeList(volumes)
+}
+
+// LogkeeperBuildMetadata is the resolver for the logkeeperBuildMetadata field.
+func (r *queryResolver) LogkeeperBuildMetadata(ctx context.Context, buildID string) (*plank.Build, error) {
+	client := plank.NewLogkeeperClient(plank.NewLogkeeperClientOptions{
+		BaseURL: evergreen.GetEnvironment().Settings().LoggerConfig.LogkeeperURL,
+	})
+	build, err := client.GetBuildMetadata(ctx, buildID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+	return &build, nil
 }
 
 // Task is the resolver for the task field.

@@ -167,7 +167,9 @@ func (g *GeneratedProject) Save(ctx context.Context, settings *evergreen.Setting
 		return mongo.ErrNoDocuments
 	}
 
-	if err := updateParserProject(ctx, settings, v, pp, t.Id); err != nil {
+	ppCtx, ppCancel := context.WithTimeout(ctx, DefaultParserProjectAccessTimeout)
+	defer ppCancel()
+	if err := updateParserProject(ppCtx, settings, v, pp, t.Id); err != nil {
 		if db.IsDocumentLimit(err) {
 			// The parser project has reached the DB document size limit, so put
 			// it in S3.
@@ -716,7 +718,7 @@ func (g *GeneratedProject) validateNoRedefine(cachedProject projectMaps) error {
 
 func isNonZeroBV(bv parserBV) bool {
 	if bv.DisplayName != "" || len(bv.Expansions) > 0 || len(bv.Modules) > 0 ||
-		bv.Disabled || len(bv.Tags) > 0 || bv.Push ||
+		bv.Disable || len(bv.Tags) > 0 || bv.Push ||
 		bv.BatchTime != nil || bv.Stepback != nil || len(bv.RunOn) > 0 {
 		return true
 	}
