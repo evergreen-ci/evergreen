@@ -165,12 +165,16 @@ type TaskTestResultsFailedSample struct {
 	TotalFailedNames        int      `json:"total_failed_names"`
 }
 
+// GetMergedTaskTestResults returns the merged test results filtered, sorted,
+// and paginated as specified by the optional filter options for the given
+// tasks. This function requires that all specified tasks have persisted their
+// results using the same test results service.
 func GetMergedTaskTestResults(ctx context.Context, env evergreen.Environment, taskOpts []TaskOptions, filterOpts *FilterOptions) (TaskTestResults, error) {
 	if len(taskOpts) == 0 {
 		return TaskTestResults{}, errors.New("must specify task options")
 	}
 
-	svc, err := getService(env, taskOpts[0].ResultsService)
+	svc, err := getServiceImpl(env, taskOpts[0].ResultsService)
 	if err != nil {
 		return TaskTestResults{}, err
 	}
@@ -178,25 +182,67 @@ func GetMergedTaskTestResults(ctx context.Context, env evergreen.Environment, ta
 	return svc.GetMergedTaskTestResults(ctx, taskOpts, filterOpts)
 }
 
+// GetMergedTaskTestResultsStats returns the aggregated statistics of the test
+// results for the given tasks.
 func GetMergedTaskTestResultsStats(ctx context.Context, env evergreen.Environment, taskOpts []TaskOptions) (TaskTestResultsStats, error) {
 	if len(taskOpts) == 0 {
 		return TaskTestResultsStats{}, errors.New("must specify task options")
 	}
 
-	svc, err := getService(env, taskOpts[0].ResultsService)
-	if err != nil {
-		return TaskTestResultsStats{}, err
+	var allStats TaskTestResultsStats
+	for service, tasks := range groupTasksByService(taskOpts) {
+		svc, err := getServiceImpl(env, service)
+		if err != nil {
+			return TaskTestResultsStats{}, err
+		}
+
+		stats, err := svc.GetMergedTaskTestResultsStats(ctx, tasks)
+		if err != nil {
+			return TaskTestResultsStats{}, err
+		}
+
+		allStats.TotalCount += stats.TotalCount
+		allStats.FailedCount += stats.FailedCount
 	}
 
-	return svc.GetMergedTaskTestResultsStats(ctx, taskOpts)
+	return allStats, nil
 }
 
-func GetFailedTestSamples(ctx context.Context, env evergreen.Environment, taskOpts []TaskOptions, regexFilters []string) ([]TaskTestResultsFailedSample, error) {
-	servicesToTasks := groupTasksByService(taskOpts)
+// GetMergedFailedTestSample returns a sample of test names (up to 10) that
+// failed in the given tasks.
+func GetMergedFailedTestSample(ctx context.Context, env evergreen.Environment, taskOpts []TaskOptions) ([]string, error) {
+	if len(taskOpts) == 0 {
+		return nil, errors.New("must specify task options")
+	}
 
+	var allSamples []string
+	for service, tasks := range groupTasksByService(taskOpts) {
+		svc, err := getServiceImpl(env, service)
+		if err != nil {
+			return nil, err
+		}
+
+		samples, err := svc.GetMergedFailedTestSample(ctx, tasks)
+		if err != nil {
+			return nil, err
+		}
+
+		allSamples = append(allSamples, samples...)
+		if len(allSamples) >= 10 {
+			allSamples = allSamples[0:10]
+			break
+		}
+	}
+
+	return allSamples, nil
+}
+
+// GetFailedTestSamples returns failed test samples filtered as specified by
+// the optional regex filters for each task specified.
+func GetFailedTestSamples(ctx context.Context, env evergreen.Environment, taskOpts []TaskOptions, regexFilters []string) ([]TaskTestResultsFailedSample, error) {
 	var allSamples []TaskTestResultsFailedSample
-	for service, tasks := range servicesToTasks {
-		svc, err := getService(env, service)
+	for service, tasks := range groupTasksByService(taskOpts) {
+		svc, err := getServiceImpl(env, service)
 		if err != nil {
 			return nil, err
 		}
@@ -205,6 +251,7 @@ func GetFailedTestSamples(ctx context.Context, env evergreen.Environment, taskOp
 		if err != nil {
 			return nil, err
 		}
+
 		allSamples = append(allSamples, samples...)
 	}
 
@@ -239,9 +286,9 @@ type FilterOptions struct {
 	GroupID      string
 	SortBy       string
 	SortOrderDSC bool
-	BaseTaskID   string
 	Limit        int
 	Page         int
+	BaseTasks    []TaskOptions
 }
 
 // Valid sort by keys.

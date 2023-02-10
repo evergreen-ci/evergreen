@@ -2463,9 +2463,9 @@ func (t *Task) makeArchivedTask() *Task {
 
 // Aggregation
 
-// PopulateTestResults returns populates the task's LocalTestResults field with
-// any test results the task may have. If the results are already populated,
-// this task noops.
+// PopulateTestResults populates the task's LocalTestResults field with any
+// test results the task may have. If the results are already populated, this
+// function noops.
 func (t *Task) PopulateTestResults() error {
 	if len(t.LocalTestResults) > 0 {
 		return nil
@@ -2485,8 +2485,10 @@ func (t *Task) PopulateTestResults() error {
 	return nil
 }
 
+// GetTestResults returns the task's test results filtered, sorted, and
+// paginated as specified by the optional filter options.
 func (t *Task) GetTestResults(ctx context.Context, env evergreen.Environment, filterOpts *testresult.FilterOptions) (testresult.TaskTestResults, error) {
-	taskOpts, err := t.createTestResultsTaskOptions()
+	taskOpts, err := t.CreateTestResultsTaskOptions()
 	if err != nil {
 		return testresult.TaskTestResults{}, errors.Wrap(err, "creating test results task options")
 	}
@@ -2497,8 +2499,9 @@ func (t *Task) GetTestResults(ctx context.Context, env evergreen.Environment, fi
 	return testresult.GetMergedTaskTestResults(ctx, env, taskOpts, filterOpts)
 }
 
+// GetTestResultsStats returns basic statistics of the task's test results.
 func (t *Task) GetTestResultsStats(ctx context.Context, env evergreen.Environment) (testresult.TaskTestResultsStats, error) {
-	taskOpts, err := t.createTestResultsTaskOptions()
+	taskOpts, err := t.CreateTestResultsTaskOptions()
 	if err != nil {
 		return testresult.TaskTestResultsStats{}, errors.Wrap(err, "creating test results task options")
 	}
@@ -2509,7 +2512,22 @@ func (t *Task) GetTestResultsStats(ctx context.Context, env evergreen.Environmen
 	return testresult.GetMergedTaskTestResultsStats(ctx, env, taskOpts)
 }
 
-func (t *Task) createTestResultsTaskOptions() ([]testresult.TaskOptions, error) {
+// GetTestResultsStats returns a sample of test names (up to 10) that failed in
+// the task. If the task does not have any results or does not have any failing
+// tests, a nil slice is returned.
+func (t *Task) GetFailedTestSample(ctx context.Context, env evergreen.Environment) ([]string, error) {
+	taskOpts, err := t.CreateTestResultsTaskOptions()
+	if err != nil {
+		return nil, errors.Wrap(err, "creating test results task options")
+	}
+	if len(taskOpts) == 0 {
+		return nil, nil
+	}
+
+	return testresult.GetMergedFailedTestSample(ctx, env, taskOpts)
+}
+
+func (t *Task) CreateTestResultsTaskOptions() ([]testresult.TaskOptions, error) {
 	var taskOpts []testresult.TaskOptions
 	if t.DisplayOnly {
 		query := ByIds(t.ExecutionTasks)

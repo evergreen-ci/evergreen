@@ -13,13 +13,15 @@ import (
 	"github.com/pkg/errors"
 )
 
+// cedarService implements the test results service interface for test results
+// stored in Cedar.
 type cedarService struct {
 	baseURL string
 }
 
-// NewCedarTestResultsService returns a Cedar backed test results service
+// newCedarTestResultsService returns a Cedar backed test results service
 // implementation.
-func NewCedarTestResultsService(env evergreen.Environment) testResultsService {
+func newCedarTestResultsService(env evergreen.Environment) testResultsService {
 	cedarSettings := env.Settings().Cedar
 	httpScheme := "https"
 	if cedarSettings.Insecure {
@@ -33,9 +35,6 @@ func (s *cedarService) GetMergedTaskTestResults(ctx context.Context, taskOpts []
 	data, status, err := testresults.Get(ctx, s.convertFilterOpts(taskOpts[0], filterOpts))
 	if err != nil {
 		return TaskTestResults{}, errors.Wrap(err, "getting test results from Cedar")
-	}
-	if status == http.StatusNotFound {
-		return TaskTestResults{}, nil
 	}
 	if status != http.StatusOK {
 		return TaskTestResults{}, errors.Errorf("getting test results from Cedar returned HTTP status '%d'", status)
@@ -56,9 +55,6 @@ func (s *cedarService) GetMergedTaskTestResultsStats(ctx context.Context, taskOp
 	if err != nil {
 		return TaskTestResultsStats{}, errors.Wrap(err, "getting test results stats from Cedar")
 	}
-	if status == http.StatusNotFound {
-		return TaskTestResultsStats{}, nil
-	}
 	if status != http.StatusOK {
 		return TaskTestResultsStats{}, errors.Errorf("getting test results stats from Cedar returned HTTP status '%d'", status)
 	}
@@ -69,6 +65,25 @@ func (s *cedarService) GetMergedTaskTestResultsStats(ctx context.Context, taskOp
 	}
 
 	return stats, nil
+}
+
+func (s *cedarService) GetMergedFailedTestSample(ctx context.Context, taskOpts []TaskOptions) ([]string, error) {
+	opts := s.convertFilterOpts(taskOpts[0], nil)
+	opts.FailedSample = true
+	data, status, err := testresults.Get(ctx, opts)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting failed test sample from Cedar")
+	}
+	if status != http.StatusOK {
+		return nil, errors.Errorf("getting failed test sample from Cedar returned HTTP status '%d'", status)
+	}
+
+	var sample []string
+	if err := json.Unmarshal(data, &sample); err != nil {
+		return nil, errors.Wrap(err, "unmarshalling failed test sample from Cedar")
+	}
+
+	return sample, nil
 }
 
 func (s *cedarService) GetFailedTestSamples(ctx context.Context, taskOpts []TaskOptions, regexFilters []string) ([]TaskTestResultsFailedSample, error) {
@@ -116,8 +131,8 @@ func (s *cedarService) convertFilterOpts(taskOpts TaskOptions, filterOpts *Filte
 		GroupID:      filterOpts.GroupID,
 		SortBy:       filterOpts.SortBy,
 		SortOrderDSC: filterOpts.SortOrderDSC,
-		BaseTaskID:   filterOpts.BaseTaskID,
-		Limit:        filterOpts.Limit,
-		Page:         filterOpts.Page,
+		//BaseTaskID:   filterOpts.BaseTaskID,
+		Limit: filterOpts.Limit,
+		Page:  filterOpts.Page,
 	}
 }
