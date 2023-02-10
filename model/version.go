@@ -518,6 +518,8 @@ type GetVersionsOptions struct {
 	Priority       *int64 `json:"priority"`
 	StartAfter     int    `json:"start"`
 	EndAt          int    `json:"end"`
+	StartTime      string `json:"start_time"`
+	EndTime        string `json:"end_time"`
 	Requester      string `json:"requester"`
 	Limit          int    `json:"limit"`
 	Skip           int    `json:"skip"`
@@ -546,10 +548,21 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 		match[bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusVariantKey)] = opts.ByBuildVariant
 	}
 
-	if opts.EndAt > 0 && opts.StartAfter > 0 {
-		match[VersionRevisionOrderNumberKey] = bson.M{"$lt": opts.StartAfter, "$gt": opts.EndAt}
-	} else if opts.StartAfter > 0 {
-		match[VersionRevisionOrderNumberKey] = bson.M{"$lt": opts.StartAfter}
+	if opts.StartTime != "" {
+		startTime, endTime, err := getStartAndEndTime(opts.StartTime, opts.EndTime)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting start and end time")
+		}
+		match[VersionCreateTimeKey] = bson.M{
+			"$gte": startTime,
+			"$lte": endTime,
+		}
+	} else {
+		if opts.EndAt > 0 && opts.StartAfter > 0 {
+			match[VersionRevisionOrderNumberKey] = bson.M{"$lte": opts.StartAfter, "$gte": opts.EndAt}
+		} else if opts.StartAfter > 0 {
+			match[VersionRevisionOrderNumberKey] = bson.M{"$lte": opts.StartAfter}
+		}
 	}
 	pipeline := []bson.M{{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
@@ -637,6 +650,24 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 		return nil, errors.Wrap(err, "aggregating versions and builds")
 	}
 	return res, nil
+}
+
+func getStartAndEndTime(startTimeStr, endTimeStr string) (start time.Time, end time.Time, err error) {
+	startTime, err := ParseTime(startTimeStr)
+	if err != nil {
+		return time.Time{}, time.Time{}, errors.Wrapf(err, "parsing start time '%s'", startTimeStr)
+	}
+	endTime := time.Now()
+	if endTimeStr != "" {
+		endTime, err = ParseTime(endTimeStr)
+		if err != nil {
+			return time.Time{}, time.Time{}, errors.Wrapf(err, "parsing end time '%s'", endTimeStr)
+		}
+		if startTime.After(endTime) {
+			return time.Time{}, time.Time{}, errors.New("start time must be before end time")
+		}
+	}
+	return startTime, endTime, nil
 }
 
 // constructManifest will construct a manifest from the given project and version.

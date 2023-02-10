@@ -925,22 +925,22 @@ func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
 
 // POST /rest/v2/projects/{project_id}/versions
 
-// versionsSetPriorityHandler is a RequestHandler for setting the priority of versions.
-type versionsSetPriorityHandler struct {
+// modifyProjectVersionsHandler is a RequestHandler for setting the priority of versions.
+type modifyProjectVersionsHandler struct {
 	projectId string
 	url       string
 	opts      dbModel.SetVersionsPriorityOptions
 }
 
-func makeSetPriorityProjectVersionsHandler(url string) gimlet.RouteHandler {
-	return &versionsSetPriorityHandler{url: url}
+func makeModifyProjectVersionsHandler(url string) gimlet.RouteHandler {
+	return &modifyProjectVersionsHandler{url: url}
 }
 
-func (h *versionsSetPriorityHandler) Factory() gimlet.RouteHandler {
-	return &versionsSetPriorityHandler{url: h.url}
+func (h *modifyProjectVersionsHandler) Factory() gimlet.RouteHandler {
+	return &modifyProjectVersionsHandler{url: h.url}
 }
 
-func (h *versionsSetPriorityHandler) Parse(ctx context.Context, r *http.Request) error {
+func (h *modifyProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.projectId = gimlet.GetVars(r)["project_id"]
 	params := r.URL.Query()
 
@@ -959,7 +959,7 @@ func (h *versionsSetPriorityHandler) Parse(ctx context.Context, r *http.Request)
 	return nil
 }
 
-func (h *versionsSetPriorityHandler) Run(ctx context.Context) gimlet.Responder {
+func (h *modifyProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
 	priority := utility.FromInt64Ptr(h.opts.Priority)
 	versions, err := data.GetProjectVersionsWithOptions(h.projectId, h.opts.GetVersionsOptions)
@@ -1052,6 +1052,13 @@ func parseGetVersionsOptions(body []byte, params url.Values) (*dbModel.SetVersio
 	}
 	if opts.EndAt > opts.StartAfter {
 		return nil, errors.New("end must be less than or equal to start")
+	}
+
+	if opts.StartTime == "" && opts.StartAfter == 0 {
+		return nil, errors.New("must specify either timestamps or order numbers")
+	}
+	if opts.StartTime != "" && opts.StartAfter != 0 {
+		return nil, errors.New("cannot specify both timestamps and order numbers")
 	}
 
 	requester := params.Get("requester")
@@ -1154,14 +1161,14 @@ func (h *getProjectTaskExecutionsHandler) Parse(ctx context.Context, r *http.Req
 	if h.opts.BuildVariant == "" || h.opts.TaskName == "" {
 		return errors.New("'build_variant' and 'task_name' are required")
 	}
-	h.startTime, err = model.ParseTime(h.opts.StartTime)
+	h.startTime, err = dbModel.ParseTime(h.opts.StartTime)
 	if err != nil {
 		return errors.Wrapf(err, "parsing 'start_time' %s", h.opts.StartTime)
 	}
 
 	// End time isn't required, since we default to getting up to the current moment.
 	if h.opts.EndTime != "" {
-		h.endTime, err = model.ParseTime(h.opts.EndTime)
+		h.endTime, err = dbModel.ParseTime(h.opts.EndTime)
 		if err != nil {
 			return errors.Wrapf(err, "parsing 'end_time' %s", h.opts.EndTime)
 		}

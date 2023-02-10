@@ -1480,8 +1480,8 @@ func TestModifyProjectVersions(t *testing.T) {
 		Id: projectId,
 	}
 	assert.NoError(project.Insert())
-	for testName, test := range map[string]func(*testing.T, *versionsSetPriorityHandler){
-		"parseSuccess": func(t *testing.T, rm *versionsSetPriorityHandler) {
+	for testName, test := range map[string]func(*testing.T, *modifyProjectVersionsHandler){
+		"parseSuccess": func(t *testing.T, rm *modifyProjectVersionsHandler) {
 			body := []byte(`
 {
 	"priority": -1,
@@ -1497,7 +1497,23 @@ func TestModifyProjectVersions(t *testing.T) {
 			assert.Equal(rm.opts.StartAfter, 4)
 			assert.Equal(rm.opts.EndAt, 1)
 		},
-		"parseFaiWithNoPriority": func(t *testing.T, rm *versionsSetPriorityHandler) {
+		"parseSuccessTimestamp": func(t *testing.T, rm *modifyProjectVersionsHandler) {
+			body := []byte(`
+{
+	"priority": -1,
+	"start_time": "2022-11-02T00:00:00.000Z",
+	"end_time": "2022-11-03T00:00:00.000Z"
+}
+			`)
+			req, _ := http.NewRequest(http.MethodPost, "https://example.com/rest/v2/projects/something-else/versions", bytes.NewBuffer(body))
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": projectId})
+			err := rm.Parse(ctx, req)
+			assert.NoError(err)
+			assert.Equal(utility.FromInt64Ptr(rm.opts.Priority), evergreen.DisabledTaskPriority)
+			assert.Equal(rm.opts.StartTime, "2022-11-02T00:00:00.000Z")
+			assert.Equal(rm.opts.EndTime, "2022-11-03T00:00:00.000Z")
+		},
+		"parseFaiWithNoPriority": func(t *testing.T, rm *modifyProjectVersionsHandler) {
 			body := []byte(`
 {
 	"start": 4,
@@ -1509,7 +1525,7 @@ func TestModifyProjectVersions(t *testing.T) {
 			err := rm.Parse(ctx, req)
 			assert.Error(err)
 		},
-		"parseFaiWithInvalidStartAndEnd": func(t *testing.T, rm *versionsSetPriorityHandler) {
+		"parseFaiWithInvalidStartAndEnd": func(t *testing.T, rm *modifyProjectVersionsHandler) {
 			body := []byte(`
 {
 	"priority": -1,
@@ -1522,7 +1538,48 @@ func TestModifyProjectVersions(t *testing.T) {
 			err := rm.Parse(ctx, req)
 			assert.Error(err)
 		},
-		"runSucceeds": func(t *testing.T, rm *versionsSetPriorityHandler) {
+		"parseFaiWithTimeStampAndOrder": func(t *testing.T, rm *modifyProjectVersionsHandler) {
+			body := []byte(`
+{
+	"priority": -1,
+	"start": 1,
+	"end": 4
+	"start_time": "2022-11-02T00:00:00.000Z",
+	"end_time": "2022-11-03T00:00:00.000Z"
+}
+			`)
+			req, _ := http.NewRequest(http.MethodPost, "https://example.com/rest/v2/projects/something-else/versions", bytes.NewBuffer(body))
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": projectId})
+			err := rm.Parse(ctx, req)
+			assert.Error(err)
+		},
+		"parseFaiWithInvalidTimeStamp": func(t *testing.T, rm *modifyProjectVersionsHandler) {
+			body := []byte(`
+{
+	"priority": -1,
+	"start": 1,
+	"end": 4
+	"start_time": "2022-11-03T00:00:00.000Z",
+	"end_time": "2022-11-02T00:00:00.000Z"
+}
+			`)
+			req, _ := http.NewRequest(http.MethodPost, "https://example.com/rest/v2/projects/something-else/versions", bytes.NewBuffer(body))
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": projectId})
+			err := rm.Parse(ctx, req)
+			assert.Error(err)
+		},
+		"parseFaiWithNoTimestampOrOrder": func(t *testing.T, rm *modifyProjectVersionsHandler) {
+			body := []byte(`
+{
+	"priority": -1,
+}
+			`)
+			req, _ := http.NewRequest(http.MethodPost, "https://example.com/rest/v2/projects/something-else/versions", bytes.NewBuffer(body))
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": projectId})
+			err := rm.Parse(ctx, req)
+			assert.Error(err)
+		},
+		"runSucceeds": func(t *testing.T, rm *modifyProjectVersionsHandler) {
 			rm.projectId = projectId
 			rm.opts = serviceModel.SetVersionsPriorityOptions{
 				Priority: utility.ToInt64Ptr(evergreen.DisabledTaskPriority),
@@ -1531,6 +1588,34 @@ func TestModifyProjectVersions(t *testing.T) {
 					EndAt:      1,
 					Requester:  evergreen.RepotrackerVersionRequester,
 					Limit:      20,
+				},
+			}
+			resp := rm.Run(ctx)
+			assert.NotNil(resp)
+			assert.NotNil(resp.Data())
+			respModel := resp.Data().([]model.APIVersion)
+			assert.Len(respModel, 4)
+			var versionIds []string
+			for _, v := range respModel {
+				versionIds = append(versionIds, utility.FromStringPtr(v.Id))
+			}
+			foundTasks, err := task.FindWithFields(task.ByVersions(versionIds), task.IdKey, task.PriorityKey, task.ActivatedKey)
+			assert.NoError(err)
+			assert.Len(foundTasks, 4)
+			for _, tsk := range foundTasks {
+				assert.Equal(evergreen.DisabledTaskPriority, tsk.Priority)
+				assert.False(tsk.Activated)
+			}
+		},
+		"runSucceedsTimeStamp": func(t *testing.T, rm *modifyProjectVersionsHandler) {
+			rm.projectId = projectId
+			rm.opts = serviceModel.SetVersionsPriorityOptions{
+				Priority: utility.ToInt64Ptr(evergreen.DisabledTaskPriority),
+				GetVersionsOptions: serviceModel.GetVersionsOptions{
+					StartTime: "2022-11-02T00:00:00.000Z",
+					EndTime:   "2022-11-03T00:00:00.000Z",
+					Requester: evergreen.RepotrackerVersionRequester,
+					Limit:     20,
 				},
 			}
 			resp := rm.Run(ctx)
@@ -1558,6 +1643,7 @@ func TestModifyProjectVersions(t *testing.T) {
 				Identifier:          projectId,
 				Requester:           evergreen.RepotrackerVersionRequester,
 				RevisionOrderNumber: 1,
+				CreateTime:          time.Date(2022, time.November, 1, 0, 0, 0, 0, time.UTC),
 			}
 			assert.NoError(v1.Insert())
 			v2 := serviceModel.Version{
@@ -1565,6 +1651,7 @@ func TestModifyProjectVersions(t *testing.T) {
 				Identifier:          projectId,
 				Requester:           evergreen.RepotrackerVersionRequester,
 				RevisionOrderNumber: 2,
+				CreateTime:          time.Date(2022, time.November, 2, 0, 0, 0, 0, time.UTC),
 			}
 			assert.NoError(v2.Insert())
 			v3 := serviceModel.Version{
@@ -1572,6 +1659,7 @@ func TestModifyProjectVersions(t *testing.T) {
 				Identifier:          projectId,
 				Requester:           evergreen.RepotrackerVersionRequester,
 				RevisionOrderNumber: 3,
+				CreateTime:          time.Date(2022, time.November, 3, 0, 0, 0, 0, time.UTC),
 			}
 			assert.NoError(v3.Insert())
 			v4 := serviceModel.Version{
@@ -1579,6 +1667,7 @@ func TestModifyProjectVersions(t *testing.T) {
 				Identifier:          projectId,
 				Requester:           evergreen.RepotrackerVersionRequester,
 				RevisionOrderNumber: 4,
+				CreateTime:          time.Date(2022, time.November, 4, 0, 0, 0, 0, time.UTC),
 			}
 			assert.NoError(v4.Insert())
 			tasks := []task.Task{
@@ -1631,7 +1720,7 @@ func TestModifyProjectVersions(t *testing.T) {
 			for _, b := range builds {
 				assert.NoError(b.Insert())
 			}
-			rm := makeSetPriorityProjectVersionsHandler("").(*versionsSetPriorityHandler)
+			rm := makeModifyProjectVersionsHandler("").(*modifyProjectVersionsHandler)
 			test(t, rm)
 		})
 	}

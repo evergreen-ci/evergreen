@@ -1808,3 +1808,12 @@ func getTaskIdTables(creationInfo TaskCreationInfo) (TaskIdConfig, error) {
 
 	return taskIdTable, nil
 }
+
+func ParseTime(tval string) (time.Time, error) {
+	if !strings.HasPrefix(tval, "\"") {
+		tval = "\"" + tval + "\""
+	}
+
+	t, err := time.ParseInLocation(evergreen.APITimeFormat, tval, time.UTC)
+	return t, errors.WithStack(err)
+}

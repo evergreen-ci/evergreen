@@ -203,7 +203,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/projects/{project_id}/task_reliability").Version(2).Get().Wrap(requireUser).RouteHandler(makeGetProjectTaskReliability(opts.URL))
 	app.AddRoute("/projects/{project_id}/task_stats").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetProjectTaskStats(opts.URL))
 	app.AddRoute("/projects/{project_id}/versions").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetProjectVersionsHandler(opts.URL))
-	app.AddRoute("/projects/{project_id}/versions").Version(2).Post().Wrap(requireUser, submitPatches).RouteHandler(makeSetPriorityProjectVersionsHandler(opts.URL))
+	app.AddRoute("/projects/{project_id}/versions").Version(2).Post().Wrap(requireUser, requireProjectAdmin).RouteHandler(makeModifyProjectVersionsHandler(opts.URL))
 	app.AddRoute("/projects/{project_id}/tasks/{task_name}").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetProjectTasksHandler(opts.URL))
 	app.AddRoute("/projects/{project_id}/task_executions").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetProjectTaskExecutionsHandler())
 	app.AddRoute("/projects/{project_id}/patch_trigger_aliases").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeFetchPatchTriggerAliases())
