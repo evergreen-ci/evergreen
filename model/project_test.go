@@ -454,7 +454,7 @@ func TestPopulateExpansions(t *testing.T) {
 	assert.Equal("octocat", expansions.Get("github_author"))
 	assert.Equal("42", expansions.Get("github_pr_number"))
 	assert.Equal("abc123", expansions.Get("github_commit"))
-	assert.Equal("wut?", expansions.Get("github_org"))
+	assert.Equal("evergreen-ci", expansions.Get("github_org"))
 
 	upstreamTask := task.Task{
 		Id:       "upstreamTask",
