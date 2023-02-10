@@ -2527,6 +2527,13 @@ func (t *Task) GetFailedTestSample(ctx context.Context, env evergreen.Environmen
 	return testresult.GetMergedFailedTestSample(ctx, env, taskOpts)
 }
 
+// CreateTestResultsTaskOptions returns the options required for fetching test
+// results for the task.
+//
+// Calling this function explicitly is typically not necessary. In cases where
+// additional tasks are required for fetching test results, such as when
+// sorting results by some base status, using this function to populate those
+// task options is useful.
 func (t *Task) CreateTestResultsTaskOptions() ([]testresult.TaskOptions, error) {
 	var taskOpts []testresult.TaskOptions
 	if t.DisplayOnly {

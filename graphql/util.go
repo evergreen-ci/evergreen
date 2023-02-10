@@ -937,6 +937,7 @@ func convertTestFilterOptions(ctx context.Context, dbTask *task.Task, opts *Test
 		BaseTasks:    baseTaskOpts,
 	}, nil
 }
+
 func convertTestSortOptions(ctx context.Context, dbTask *task.Task, opts []*TestSortOptions) (string, bool, []testresult.TaskOptions, error) {
 	// TODO (EVG-14306): Enable multi-sort parameters once it is supported
 	// by the test results interface.
@@ -972,6 +973,7 @@ func convertTestSortOptions(ctx context.Context, dbTask *task.Task, opts []*Test
 
 	return sortBy, opts[0].Direction == SortDirectionDesc, baseTaskOpts, nil
 }
+
 func getBaseTaskTestResultsOptions(ctx context.Context, dbTask *task.Task) ([]testresult.TaskOptions, error) {
 	var (
 		baseTask *task.Task
