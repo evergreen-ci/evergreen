@@ -27,6 +27,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/plank"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	werrors "github.com/pkg/errors"
@@ -220,7 +221,7 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 		case HostSortByCurrentTask:
 			sorter = host.RunningTaskKey
 		case HostSortByDistro:
-			sorter = host.DistroKey
+			sorter = bsonutil.GetDottedKeyName(host.DistroKey, distro.IdKey)
 		case HostSortByElapsed:
 			sorter = "task_full.start_time"
 		case HostSortByID:
