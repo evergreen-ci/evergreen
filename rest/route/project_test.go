@@ -808,7 +808,7 @@ func getTestAliases() []serviceModel.ProjectAlias {
 func getTestProjectRef() *serviceModel.ProjectRef {
 	return &serviceModel.ProjectRef{
 		Owner:              "dimoxinil",
-		Repo:               evergreen.PrivateRepoName,
+		Repo:               "dimoxinil-enterprise-repo",
 		Branch:             "main",
 		Enabled:            utility.FalsePtr(),
 		BatchTime:          0,
@@ -957,7 +957,7 @@ func TestDeleteProject(t *testing.T) {
 		project := serviceModel.ProjectRef{
 			Id:                   fmt.Sprintf("id_%d", i),
 			Owner:                "mongodb",
-			Repo:                 evergreen.PrivateRepoName,
+			Repo:                 "test_repo",
 			Branch:               fmt.Sprintf("branch_%d", i),
 			Enabled:              utility.TruePtr(),
 			DisplayName:          fmt.Sprintf("display_%d", i),

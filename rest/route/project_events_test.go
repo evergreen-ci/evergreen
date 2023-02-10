@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -31,7 +30,6 @@ func getTestProjectSettings(projectId string) model.ProjectSettings {
 		ProjectRef: model.ProjectRef{
 			Owner:      "admin",
 			Enabled:    utility.TruePtr(),
-			Repo:       evergreen.PrivateRepoName,
 			Identifier: projectId,
 			Admins:     []string{},
 		},

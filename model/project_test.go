@@ -1401,7 +1401,7 @@ func TestFindProjectsSuite(t *testing.T) {
 				Enabled:     utility.TruePtr(),
 				CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "evergreen-ci",
-				Repo:        "gimlet",
+				Repo:        evergreen.PublicRepoName,
 				Branch:      "main",
 			},
 			{
@@ -1409,7 +1409,7 @@ func TestFindProjectsSuite(t *testing.T) {
 				Enabled:     utility.TruePtr(),
 				CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "evergreen-ci",
-				Repo:        evergreen.PrivateRepoName,
+				Repo:        "evergreen",
 				Branch:      "main",
 			},
 			{
@@ -1417,12 +1417,12 @@ func TestFindProjectsSuite(t *testing.T) {
 				Enabled:     utility.TruePtr(),
 				CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "mongodb",
-				Repo:        evergreen.PrivateRepoName,
+				Repo:        "mongo",
 				Branch:      "main",
 			},
-			{Id: "projectD"},
-			{Id: "projectE"},
-			{Id: "projectF", Repo: evergreen.PrivateRepoName},
+			{Id: "projectD", Repo: evergreen.PublicRepoName},
+			{Id: "projectE", Repo: evergreen.PublicRepoName},
+			{Id: "projectF"},
 			{Id: projectId},
 		}
 
@@ -1565,7 +1565,7 @@ func (s *FindProjectsSuite) TestGetProjectSettings() {
 		Enabled: utility.TruePtr(),
 		Id:      projectId,
 		Admins:  []string{},
-		Repo:    evergreen.PrivateRepoName,
+		Repo:    "SomeRepo",
 	}
 	projectSettingsEvent, err := GetProjectSettings(projRef)
 	s.NoError(err)
@@ -1576,7 +1576,6 @@ func (s *FindProjectsSuite) TestGetProjectSettingsNoRepo() {
 	projRef := &ProjectRef{
 		Owner:   "admin",
 		Enabled: utility.TruePtr(),
-		Repo:    evergreen.PrivateRepoName,
 		Id:      projectId,
 		Admins:  []string{},
 	}

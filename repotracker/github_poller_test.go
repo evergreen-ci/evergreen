@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -69,7 +70,7 @@ func resetProjectRefs() {
 		Id:          "mci-test",
 		DisplayName: "MCI Test",
 		Owner:       "deafgoat",
-		Repo:        "mci-test",
+		Repo:        evergreen.PublicRepoName,
 		Branch:      "master",
 		RemotePath:  "mci",
 		Enabled:     utility.TruePtr(),
@@ -214,7 +215,7 @@ func TestGetRemoteConfig(t *testing.T) {
 				Id:          "mci-test",
 				DisplayName: "MCI Test",
 				Owner:       "deafgoat",
-				Repo:        "config",
+				Repo:        evergreen.PublicRepoName,
 				Branch:      "master",
 				RemotePath:  "random.txt",
 				Enabled:     utility.TruePtr(),

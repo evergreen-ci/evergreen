@@ -3,7 +3,6 @@ package model
 import (
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -34,7 +33,6 @@ func getMockProjectSettings() ProjectSettings {
 		ProjectRef: ProjectRef{
 			Owner:          "admin",
 			Enabled:        utility.TruePtr(),
-			Repo:           evergreen.PrivateRepoName,
 			Id:             projectId,
 			Admins:         []string{},
 			PeriodicBuilds: nil,

@@ -316,7 +316,7 @@ func (p *ProjectRef) IsEnabled() bool {
 // IsPrivate checks if the project ref is not a wiredtiger project.
 // All projects are private by default except wiredtiger projects.
 func (p *ProjectRef) IsPrivate() bool {
-	return p.Repo != evergreen.PrivateRepoName
+	return p.Repo != evergreen.PublicRepoName
 }
 
 func (p *ProjectRef) IsRestricted() bool {

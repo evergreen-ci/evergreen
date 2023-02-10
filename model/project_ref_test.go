@@ -974,12 +974,12 @@ func TestDefaultRepoBySection(t *testing.T) {
 				Id:                    "my_project",
 				Identifier:            "my_identifier",
 				Owner:                 "candy",
+				Repo:                  "land",
 				BatchTime:             10,
 				RepotrackerDisabled:   utility.TruePtr(),
 				DeactivatePrevious:    utility.FalsePtr(),
 				RemotePath:            "path.yml",
 				TaskSync:              TaskSyncOptions{ConfigEnabled: utility.TruePtr()},
-				Repo:                  evergreen.PrivateRepoName,
 				Restricted:            utility.FalsePtr(),
 				Admins:                []string{"annie"},
 				PRTestingEnabled:      utility.TruePtr(),
@@ -2645,6 +2645,7 @@ func TestFindFirstProjectRef(t *testing.T) {
 	projectRef := ProjectRef{
 		Id:        "p1",
 		RepoRefId: "my_repo",
+		Enabled:   utility.TruePtr(),
 	}
 
 	assert.NoError(t, projectRef.Insert())

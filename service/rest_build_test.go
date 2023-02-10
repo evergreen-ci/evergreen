@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/gimlet"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
@@ -33,7 +35,7 @@ func TestGetBuildInfo(t *testing.T) {
 	require.NoError(t, err, "error setting up router")
 
 	Convey("When finding info on a particular build", t, func() {
-		require.NoError(t, db.Clear(build.Collection),
+		require.NoError(t, db.ClearCollections(build.Collection, task.Collection),
 			"Error clearing '%v' collection", build.Collection)
 
 		buildId := "my-build"
@@ -80,8 +82,8 @@ func TestGetBuildInfo(t *testing.T) {
 		url := "/rest/v1/builds/" + buildId
 
 		request, err := http.NewRequest("GET", url, nil)
+		request = request.WithContext(gimlet.AttachUser(request.Context(), &user.DBUser{Id: "user"}))
 		So(err, ShouldBeNil)
-
 		response := httptest.NewRecorder()
 		// Need match variables to be set so can call mux.Vars(request)
 		// in the actual handler function

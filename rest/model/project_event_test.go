@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -22,7 +21,6 @@ func getMockProjectSettings() model.ProjectSettings {
 		ProjectRef: model.ProjectRef{
 			Owner:   "admin",
 			Enabled: utility.TruePtr(),
-			Repo:    evergreen.PrivateRepoName,
 			Id:      projectId,
 			Admins:  []string{},
 		},

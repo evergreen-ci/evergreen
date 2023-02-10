@@ -292,8 +292,8 @@ const (
 	CloneMethodLegacySSH = "legacy-ssh"
 	CloneMethodOAuth     = "oauth"
 
-	// PrivateRepoName is the repo name for which a project ref is considered private.
-	PrivateRepoName = "wiredtiger"
+	// PublicRepoName is the repo name for which a project ref is considered public.
+	PublicRepoName = "wiredtiger"
 )
 
 var TaskStatuses = []string{

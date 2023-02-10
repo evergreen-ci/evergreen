@@ -33,7 +33,7 @@ func TestProjectRoutes(t *testing.T) {
 		public := &model.ProjectRef{
 			Id:      publicId,
 			Enabled: utility.TruePtr(),
-			Repo:    "repo1",
+			Repo:    evergreen.PublicRepoName,
 			Admins:  []string{},
 		}
 		So(public.Insert(), ShouldBeNil)
@@ -84,7 +84,7 @@ func TestProjectRoutes(t *testing.T) {
 		private := &model.ProjectRef{
 			Id:      privateId,
 			Enabled: utility.TruePtr(),
-			Repo:    evergreen.PrivateRepoName,
+			Repo:    "repo1",
 			Admins:  []string{"testuser"},
 		}
 		So(private.Insert(), ShouldBeNil)
