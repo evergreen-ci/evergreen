@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/timber"
 	"github.com/evergreen-ci/timber/testresults"
-	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -32,7 +31,7 @@ func newCedarTestResultsService(env evergreen.Environment) testResultsService {
 }
 
 func (s *cedarService) GetMergedTaskTestResults(ctx context.Context, taskOpts []TaskOptions, filterOpts *FilterOptions) (TaskTestResults, error) {
-	data, status, err := testresults.Get(ctx, s.convertFilterOpts(taskOpts[0], filterOpts))
+	data, status, err := testresults.Get(ctx, s.convertOpts(taskOpts, filterOpts))
 	if err != nil {
 		return TaskTestResults{}, errors.Wrap(err, "getting test results from Cedar")
 	}
@@ -49,7 +48,7 @@ func (s *cedarService) GetMergedTaskTestResults(ctx context.Context, taskOpts []
 }
 
 func (s *cedarService) GetMergedTaskTestResultsStats(ctx context.Context, taskOpts []TaskOptions) (TaskTestResultsStats, error) {
-	opts := s.convertFilterOpts(taskOpts[0], nil)
+	opts := s.convertOpts(taskOpts, nil)
 	opts.Stats = true
 	data, status, err := testresults.Get(ctx, opts)
 	if err != nil {
@@ -68,7 +67,7 @@ func (s *cedarService) GetMergedTaskTestResultsStats(ctx context.Context, taskOp
 }
 
 func (s *cedarService) GetMergedFailedTestSample(ctx context.Context, taskOpts []TaskOptions) ([]string, error) {
-	opts := s.convertFilterOpts(taskOpts[0], nil)
+	opts := s.convertOpts(taskOpts, nil)
 	opts.FailedSample = true
 	data, status, err := testresults.Get(ctx, opts)
 	if err != nil {
@@ -115,24 +114,40 @@ func (s *cedarService) GetFailedTestSamples(ctx context.Context, taskOpts []Task
 	return samples, nil
 }
 
-func (s *cedarService) convertFilterOpts(taskOpts TaskOptions, filterOpts *FilterOptions) testresults.GetOptions {
-	if filterOpts == nil {
-		filterOpts = &FilterOptions{}
+func (s *cedarService) convertOpts(taskOpts []TaskOptions, filterOpts *FilterOptions) testresults.GetOptions {
+	cedarTaskOpts := make([]testresults.TaskOptions, len(taskOpts))
+	for i, task := range taskOpts {
+		cedarTaskOpts[i].TaskID = task.TaskID
+		cedarTaskOpts[i].Execution = task.Execution
+	}
+
+	var cedarFilterOpts *testresults.FilterOptions
+	if filterOpts != nil {
+		var baseTasks []testresults.TaskOptions
+		for _, task := range filterOpts.BaseTasks {
+			baseTasks = append(baseTasks, testresults.TaskOptions{
+				TaskID:    task.TaskID,
+				Execution: task.Execution,
+			})
+		}
+
+		cedarFilterOpts = &testresults.FilterOptions{
+			TestName:     filterOpts.TestName,
+			Statuses:     filterOpts.Statuses,
+			GroupID:      filterOpts.GroupID,
+			SortBy:       filterOpts.SortBy,
+			SortOrderDSC: filterOpts.SortOrderDSC,
+			Limit:        filterOpts.Limit,
+			Page:         filterOpts.Page,
+			BaseTasks:    baseTasks,
+		}
 	}
 
 	return testresults.GetOptions{
 		Cedar: timber.GetOptions{
 			BaseURL: s.baseURL,
 		},
-		TaskID:       taskOpts.TaskID,
-		Execution:    utility.ToIntPtr(taskOpts.Execution),
-		TestName:     filterOpts.TestName,
-		Statuses:     filterOpts.Statuses,
-		GroupID:      filterOpts.GroupID,
-		SortBy:       filterOpts.SortBy,
-		SortOrderDSC: filterOpts.SortOrderDSC,
-		//BaseTaskID:   filterOpts.BaseTaskID,
-		Limit: filterOpts.Limit,
-		Page:  filterOpts.Page,
+		Tasks:  cedarTaskOpts,
+		Filter: cedarFilterOpts,
 	}
 }

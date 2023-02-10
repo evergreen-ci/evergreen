@@ -34,35 +34,3 @@ func getServiceImpl(env evergreen.Environment, service string) (testResultsServi
 		return nil, errors.Errorf("unsupported test results service '%s'", service)
 	}
 }
-
-/*
-func ValidateService(service string) error {
-	switch service {
-	case TestResultsServiceInMem, TestResultsServiceCedar:
-		return nil
-	default:
-		return errors.Errorf("unsupported test results service '%s'", service)
-	}
-}
-
-var serviceRegistry = map[string]testResultsServiceFactory{
-	TestResultsServiceCedar: NewCedarTestResultsService,
-}
-
-type testResultsServiceFactory func(evergreen.Environment) testResultsService
-
-
-
-func getService(env evergreen.Environment, service string) (testResultsService, error) {
-	if service == "" {
-		service = defaultService
-	}
-
-	svcFactory, ok := serviceRegistry[service]
-	if !ok {
-		return nil, errors.Errorf("unrecognized test results service '%s'", service)
-	}
-
-	return svcFactory(env), nil
-}
-*/
