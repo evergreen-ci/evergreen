@@ -502,8 +502,40 @@ func (r *taskResolver) Status(ctx context.Context, obj *restModel.APITask) (stri
 }
 
 // Tests is the resolver for the tests field.
-func (r *taskResolver) Tests(ctx context.Context, obj *restModel.APITask, options *TestFilterOptions) (*TaskTestResult, error) {
-	panic(fmt.Errorf("not implemented: Tests - tests"))
+func (r *taskResolver) Tests(ctx context.Context, obj *restModel.APITask, opts *TestFilterOptions) (*TaskTestResult, error) {
+	dbTask, err := obj.ToService()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *obj.Id, err.Error()))
+	}
+
+	filterOpts, err := convertTestFilterOptions(ctx, dbTask, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	taskResults, err := dbTask.GetTestResults(ctx, evergreen.GetEnvironment(), filterOpts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting test results for APITask %s: %s", dbTask.Id, err.Error()))
+	}
+
+	apiResults := make([]*restModel.APITest, len(taskResults.Results))
+	for i, t := range taskResults.Results {
+		apiTest := &restModel.APITest{}
+		if err = apiTest.BuildFromService(t.TaskID); err != nil {
+			return nil, InternalServerError.Send(ctx, err.Error())
+		}
+		if err = apiTest.BuildFromService(&t); err != nil {
+			return nil, InternalServerError.Send(ctx, err.Error())
+		}
+
+		apiResults[i] = apiTest
+	}
+
+	return &TaskTestResult{
+		TestResults:       apiResults,
+		TotalTestCount:    taskResults.Stats.TotalCount,
+		FilteredTestCount: utility.FromIntPtr(taskResults.Stats.FilteredCount),
+	}, nil
 }
 
 // TotalTestCount is the resolver for the totalTestCount field.
@@ -515,7 +547,7 @@ func (r *taskResolver) TotalTestCount(ctx context.Context, obj *restModel.APITas
 
 	stats, err := dbTask.GetTestResultsStats(ctx, evergreen.GetEnvironment())
 	if err != nil {
-		return 0, InternalServerError.Send(ctx, fmt.Sprintf("getting test count: %s", err))
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error getting test count: %s", err))
 	}
 
 	return stats.TotalCount, nil

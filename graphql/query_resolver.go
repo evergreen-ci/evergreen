@@ -648,18 +648,10 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding task with id '%s' and execution %d", taskID, utility.FromIntPtr(execution)))
 	}
 
-	var baseTask *task.Task
-	if dbTask.Requester == evergreen.RepotrackerVersionRequester {
-		baseTask, err = dbTask.FindTaskOnPreviousCommit()
-	} else {
-		baseTask, err = dbTask.FindTaskOnBaseCommit()
-	}
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base task for task '%s': %s", taskID, err))
-	}
-
-	limitNum := utility.FromIntPtr(limit)
-	var sortBy string
+	var (
+		sortBy       string
+		baseTaskOpts []testresult.TaskOptions
+	)
 	if sortCategory != nil {
 		switch *sortCategory {
 		case TestSortCategoryStatus:
@@ -671,15 +663,19 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		case TestSortCategoryStartTime:
 			sortBy = testresult.SortByStart
 		case TestSortCategoryBaseStatus:
-			sortBy = testresult.SortByBaseStatus
+			baseTaskOpts, err = getBaseTaskTestResultsOptions(ctx, dbTask)
+			if err != nil {
+				return nil, err
+			}
+			if len(baseTaskOpts) == 0 {
+				// Only sort by base status if we know there
+				// are base task options we can send to the
+				// results service.
+				sortBy = testresult.SortByBaseStatus
+			}
 		}
 	}
 
-	// TODO: Fix base task sorting.
-	var baseTaskID string
-	if baseTask != nil && baseTask.HasResults && baseTask.ResultsService == dbTask.ResultsService {
-		baseTaskID = baseTask.Id
-	}
 	taskResults, err := dbTask.GetTestResults(
 		ctx,
 		evergreen.GetEnvironment(),
@@ -689,9 +685,9 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 			GroupID:      utility.FromStringPtr(groupID),
 			SortBy:       sortBy,
 			SortOrderDSC: sortDirection != nil && *sortDirection == SortDirectionDesc,
-			BaseTaskID:   baseTaskID,
-			Limit:        limitNum,
+			Limit:        utility.FromIntPtr(limit),
 			Page:         utility.FromIntPtr(page),
+			BaseTasks:    baseTaskOpts,
 		},
 	)
 	if err != nil {

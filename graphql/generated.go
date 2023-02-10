@@ -908,7 +908,7 @@ type ComplexityRoot struct {
 		Status                  func(childComplexity int) int
 		TaskGroup               func(childComplexity int) int
 		TaskGroupMaxHosts       func(childComplexity int) int
-		Tests                   func(childComplexity int, options *TestFilterOptions) int
+		Tests                   func(childComplexity int, opts *TestFilterOptions) int
 		TimeTaken               func(childComplexity int) int
 		TotalTestCount          func(childComplexity int) int
 		VersionMetadata         func(childComplexity int) int
@@ -1418,7 +1418,7 @@ type TaskResolver interface {
 
 	Status(ctx context.Context, obj *model.APITask) (string, error)
 
-	Tests(ctx context.Context, obj *model.APITask, options *TestFilterOptions) (*TaskTestResult, error)
+	Tests(ctx context.Context, obj *model.APITask, opts *TestFilterOptions) (*TaskTestResult, error)
 
 	TotalTestCount(ctx context.Context, obj *model.APITask) (int, error)
 	VersionMetadata(ctx context.Context, obj *model.APITask) (*model.APIVersion, error)
@@ -5969,7 +5969,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Task.Tests(childComplexity, args["options"].(*TestFilterOptions)), true
+		return e.complexity.Task.Tests(childComplexity, args["opts"].(*TestFilterOptions)), true
 
 	case "Task.timeTaken":
 		if e.complexity.Task.TimeTaken == nil {
@@ -9458,14 +9458,14 @@ func (ec *executionContext) field_Task_tests_args(ctx context.Context, rawArgs m
 	var err error
 	args := map[string]interface{}{}
 	var arg0 *TestFilterOptions
-	if tmp, ok := rawArgs["options"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("options"))
+	if tmp, ok := rawArgs["opts"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("opts"))
 		arg0, err = ec.unmarshalOTestFilterOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTestFilterOptions(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["options"] = arg0
+	args["opts"] = arg0
 	return args, nil
 }
 
@@ -32921,12 +32921,12 @@ func (ec *executionContext) fieldContext_Query_taskTests(ctx context.Context, fi
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "filteredTestCount":
-				return ec.fieldContext_TaskTestResult_filteredTestCount(ctx, field)
 			case "testResults":
 				return ec.fieldContext_TaskTestResult_testResults(ctx, field)
 			case "totalTestCount":
 				return ec.fieldContext_TaskTestResult_totalTestCount(ctx, field)
+			case "filteredTestCount":
+				return ec.fieldContext_TaskTestResult_filteredTestCount(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TaskTestResult", field.Name)
 		},
@@ -40913,7 +40913,7 @@ func (ec *executionContext) _Task_tests(ctx context.Context, field graphql.Colle
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Task().Tests(rctx, obj, fc.Args["options"].(*TestFilterOptions))
+		return ec.resolvers.Task().Tests(rctx, obj, fc.Args["opts"].(*TestFilterOptions))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -40938,12 +40938,12 @@ func (ec *executionContext) fieldContext_Task_tests(ctx context.Context, field g
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "filteredTestCount":
-				return ec.fieldContext_TaskTestResult_filteredTestCount(ctx, field)
 			case "testResults":
 				return ec.fieldContext_TaskTestResult_testResults(ctx, field)
 			case "totalTestCount":
 				return ec.fieldContext_TaskTestResult_totalTestCount(ctx, field)
+			case "filteredTestCount":
+				return ec.fieldContext_TaskTestResult_filteredTestCount(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TaskTestResult", field.Name)
 		},
@@ -43747,50 +43747,6 @@ func (ec *executionContext) fieldContext_TaskSyncOptions_patchEnabled(ctx contex
 	return fc, nil
 }
 
-func (ec *executionContext) _TaskTestResult_filteredTestCount(ctx context.Context, field graphql.CollectedField, obj *TaskTestResult) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_TaskTestResult_filteredTestCount(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.FilteredTestCount, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_TaskTestResult_filteredTestCount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "TaskTestResult",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _TaskTestResult_testResults(ctx context.Context, field graphql.CollectedField, obj *TaskTestResult) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_TaskTestResult_testResults(ctx, field)
 	if err != nil {
@@ -43893,6 +43849,50 @@ func (ec *executionContext) _TaskTestResult_totalTestCount(ctx context.Context, 
 }
 
 func (ec *executionContext) fieldContext_TaskTestResult_totalTestCount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskTestResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskTestResult_filteredTestCount(ctx context.Context, field graphql.CollectedField, obj *TaskTestResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TaskTestResult_filteredTestCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FilteredTestCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TaskTestResult_filteredTestCount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "TaskTestResult",
 		Field:      field,
@@ -63203,13 +63203,6 @@ func (ec *executionContext) _TaskTestResult(ctx context.Context, sel ast.Selecti
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("TaskTestResult")
-		case "filteredTestCount":
-
-			out.Values[i] = ec._TaskTestResult_filteredTestCount(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		case "testResults":
 
 			out.Values[i] = ec._TaskTestResult_testResults(ctx, field, obj)
@@ -63220,6 +63213,13 @@ func (ec *executionContext) _TaskTestResult(ctx context.Context, sel ast.Selecti
 		case "totalTestCount":
 
 			out.Values[i] = ec._TaskTestResult_totalTestCount(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "filteredTestCount":
+
+			out.Values[i] = ec._TaskTestResult_filteredTestCount(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++

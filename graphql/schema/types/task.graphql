@@ -107,7 +107,7 @@ type Task {
   status: String!
   taskGroup: String
   taskGroupMaxHosts: Int
-  tests(options: TestFilterOptions): TaskTestResult!
+  tests(opts: TestFilterOptions): TaskTestResult!
   timeTaken: Duration
   totalTestCount: Int!
   versionMetadata: Version!
@@ -191,9 +191,9 @@ It contains the test results for a task. For example, if there is a task to run 
 could be the result of each individual unit test.
 """
 type TaskTestResult {
-  filteredTestCount: Int!
   testResults: [TestResult!]!
   totalTestCount: Int!
+  filteredTestCount: Int!
 }
 
 type TestResult {

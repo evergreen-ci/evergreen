@@ -307,9 +307,9 @@ type TaskQueueDistro struct {
 // It contains the test results for a task. For example, if there is a task to run all unit tests, then the test results
 // could be the result of each individual unit test.
 type TaskTestResult struct {
-	FilteredTestCount int              `json:"filteredTestCount"`
 	TestResults       []*model.APITest `json:"testResults"`
 	TotalTestCount    int              `json:"totalTestCount"`
+	FilteredTestCount int              `json:"filteredTestCount"`
 }
 
 // TaskTestResultSample is the return value for the taskTestSample query.
