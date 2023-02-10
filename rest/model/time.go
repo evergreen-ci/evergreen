@@ -3,14 +3,19 @@ package model
 import (
 	"io"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/99designs/gqlgen/graphql"
-	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+)
+
+const (
+	// APITimeFormat defines ISO-8601 UTC with 3 fractional seconds behind a dot
+	// specified by the API spec document.
+	APITimeFormat = "\"2006-01-02T15:04:05.000Z\""
 )
 
 // Represents duration in milliseconds
@@ -52,5 +57,14 @@ func FromTimePtr(t *time.Time) (time.Time, error) {
 		return time.Time{}, nil
 	}
 
-	return model.ParseTime(t.Format(evergreen.APITimeFormat))
+	return ParseTime(t.Format(APITimeFormat))
+}
+
+func ParseTime(tval string) (time.Time, error) {
+	if !strings.HasPrefix(tval, "\"") {
+		tval = "\"" + tval + "\""
+	}
+
+	t, err := time.ParseInLocation(APITimeFormat, tval, time.UTC)
+	return t, errors.WithStack(err)
 }

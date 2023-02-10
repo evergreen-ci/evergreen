@@ -185,7 +185,7 @@ func (s *PatchesByProjectSuite) TestPaginatorShouldReturnResultsIfDataExists() {
 	s.Nil(pages.Prev)
 	s.NotNil(pages.Next)
 
-	nextTime := s.now.Format(evergreen.APITimeFormat)
+	nextTime := s.now.Format(model.APITimeFormat)
 	s.Equal(nextTime, pages.Next.Key)
 }
 
@@ -531,7 +531,7 @@ func (s *PatchesByUserSuite) TestPaginatorShouldReturnResultsIfDataExists() {
 	s.Nil(pageData.Prev)
 	s.NotNil(pageData.Next)
 
-	nextTime := s.now.Format(evergreen.APITimeFormat)
+	nextTime := s.now.Format(model.APITimeFormat)
 	s.Equal(nextTime, pageData.Next.Key)
 }
 

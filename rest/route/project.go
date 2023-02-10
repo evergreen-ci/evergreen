@@ -929,7 +929,7 @@ func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
 type modifyProjectVersionsHandler struct {
 	projectId string
 	url       string
-	opts      dbModel.SetVersionsPriorityOptions
+	opts      dbModel.ModifyVersionsOptions
 }
 
 func makeModifyProjectVersionsHandler(url string) gimlet.RouteHandler {
@@ -982,25 +982,13 @@ func (h *modifyProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder
 	if err = dbModel.SetVersionsPriority(versionIds, priority, user.Id); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting version priorities"))
 	}
-
-	// Construct the response.
-	foundVersions, err := dbModel.VersionFind(dbModel.VersionByIds(versionIds))
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting versions"))
-	}
-	apiVersions := []model.APIVersion{}
-	for _, v := range foundVersions {
-		apiVersion := model.APIVersion{}
-		apiVersion.BuildFromService(v)
-		apiVersions = append(apiVersions, apiVersion)
-	}
-	return gimlet.NewJSONResponse(apiVersions)
+	return gimlet.NewJSONResponse(struct{}{})
 }
 
 // parseGetVersionsOptions parses the request body and query parameters and returns a GetVersionsOptions struct.
 // If both are specified, the values set in the query parameters take precedence.
-func parseGetVersionsOptions(body []byte, params url.Values) (*dbModel.SetVersionsPriorityOptions, error) {
-	opts := &dbModel.SetVersionsPriorityOptions{}
+func parseGetVersionsOptions(body []byte, params url.Values) (*dbModel.ModifyVersionsOptions, error) {
+	opts := &dbModel.ModifyVersionsOptions{}
 	if len(body) > 0 {
 		if err := json.Unmarshal(body, opts); err != nil {
 			return nil, errors.Wrap(err, "unmarshalling JSON request body into version options")
@@ -1054,11 +1042,19 @@ func parseGetVersionsOptions(body []byte, params url.Values) (*dbModel.SetVersio
 		return nil, errors.New("end must be less than or equal to start")
 	}
 
-	if opts.StartTime == "" && opts.StartAfter == 0 {
+	if opts.StartTimeStr == "" && opts.StartAfter == 0 {
 		return nil, errors.New("must specify either timestamps or order numbers")
 	}
-	if opts.StartTime != "" && opts.StartAfter != 0 {
+	if opts.StartTimeStr != "" && opts.StartAfter != 0 {
 		return nil, errors.New("cannot specify both timestamps and order numbers")
+	}
+
+	var err error
+	if opts.StartTimeStr != "" {
+		opts.StartTime, opts.EndTime, err = getStartAndEndTime(opts.StartTimeStr, opts.EndTimeStr)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting start and end time")
+		}
 	}
 
 	requester := params.Get("requester")
@@ -1069,6 +1065,24 @@ func parseGetVersionsOptions(body []byte, params url.Values) (*dbModel.SetVersio
 		opts.Requester = evergreen.RepotrackerVersionRequester
 	}
 	return opts, nil
+}
+
+func getStartAndEndTime(startTimeStr, endTimeStr string) (start time.Time, end time.Time, err error) {
+	startTime, err := model.ParseTime(startTimeStr)
+	if err != nil {
+		return time.Time{}, time.Time{}, errors.Wrapf(err, "parsing start time '%s'", startTimeStr)
+	}
+	endTime := time.Now()
+	if endTimeStr != "" {
+		endTime, err = model.ParseTime(endTimeStr)
+		if err != nil {
+			return time.Time{}, time.Time{}, errors.Wrapf(err, "parsing end time '%s'", endTimeStr)
+		}
+		if startTime.After(endTime) {
+			return time.Time{}, time.Time{}, errors.New("start time must be before end time")
+		}
+	}
+	return startTime, endTime, nil
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -1161,14 +1175,14 @@ func (h *getProjectTaskExecutionsHandler) Parse(ctx context.Context, r *http.Req
 	if h.opts.BuildVariant == "" || h.opts.TaskName == "" {
 		return errors.New("'build_variant' and 'task_name' are required")
 	}
-	h.startTime, err = dbModel.ParseTime(h.opts.StartTime)
+	h.startTime, err = model.ParseTime(h.opts.StartTime)
 	if err != nil {
 		return errors.Wrapf(err, "parsing 'start_time' %s", h.opts.StartTime)
 	}
 
 	// End time isn't required, since we default to getting up to the current moment.
 	if h.opts.EndTime != "" {
-		h.endTime, err = dbModel.ParseTime(h.opts.EndTime)
+		h.endTime, err = model.ParseTime(h.opts.EndTime)
 		if err != nil {
 			return errors.Wrapf(err, "parsing 'end_time' %s", h.opts.EndTime)
 		}

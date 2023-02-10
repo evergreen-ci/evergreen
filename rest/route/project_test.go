@@ -1489,7 +1489,7 @@ func TestModifyProjectVersions(t *testing.T) {
 	"end": 1
 }
 			`)
-			req, _ := http.NewRequest(http.MethodPost, "https://example.com/rest/v2/projects/something-else/versions", bytes.NewBuffer(body))
+			req, _ := http.NewRequest(http.MethodPatch, "https://example.com/rest/v2/projects/something-else/versions", bytes.NewBuffer(body))
 			req = gimlet.SetURLVars(req, map[string]string{"project_id": projectId})
 			err := rm.Parse(ctx, req)
 			assert.NoError(err)
@@ -1505,13 +1505,13 @@ func TestModifyProjectVersions(t *testing.T) {
 	"end_time": "2022-11-03T00:00:00.000Z"
 }
 			`)
-			req, _ := http.NewRequest(http.MethodPost, "https://example.com/rest/v2/projects/something-else/versions", bytes.NewBuffer(body))
+			req, _ := http.NewRequest(http.MethodPatch, "https://example.com/rest/v2/projects/something-else/versions", bytes.NewBuffer(body))
 			req = gimlet.SetURLVars(req, map[string]string{"project_id": projectId})
 			err := rm.Parse(ctx, req)
 			assert.NoError(err)
 			assert.Equal(utility.FromInt64Ptr(rm.opts.Priority), evergreen.DisabledTaskPriority)
-			assert.Equal(rm.opts.StartTime, "2022-11-02T00:00:00.000Z")
-			assert.Equal(rm.opts.EndTime, "2022-11-03T00:00:00.000Z")
+			assert.Equal(rm.opts.StartTime, time.Date(2022, 11, 2, 0, 0, 0, 0, time.UTC))
+			assert.Equal(rm.opts.EndTime, time.Date(2022, 11, 3, 0, 0, 0, 0, time.UTC))
 		},
 		"parseFaiWithNoPriority": func(t *testing.T, rm *modifyProjectVersionsHandler) {
 			body := []byte(`
@@ -1520,7 +1520,7 @@ func TestModifyProjectVersions(t *testing.T) {
 	"end": 1
 }
 			`)
-			req, _ := http.NewRequest(http.MethodPost, "https://example.com/rest/v2/projects/something-else/versions", bytes.NewBuffer(body))
+			req, _ := http.NewRequest(http.MethodPatch, "https://example.com/rest/v2/projects/something-else/versions", bytes.NewBuffer(body))
 			req = gimlet.SetURLVars(req, map[string]string{"project_id": projectId})
 			err := rm.Parse(ctx, req)
 			assert.Error(err)
@@ -1533,7 +1533,7 @@ func TestModifyProjectVersions(t *testing.T) {
 	"end": 4
 }
 			`)
-			req, _ := http.NewRequest(http.MethodPost, "https://example.com/rest/v2/projects/something-else/versions", bytes.NewBuffer(body))
+			req, _ := http.NewRequest(http.MethodPatch, "https://example.com/rest/v2/projects/something-else/versions", bytes.NewBuffer(body))
 			req = gimlet.SetURLVars(req, map[string]string{"project_id": projectId})
 			err := rm.Parse(ctx, req)
 			assert.Error(err)
@@ -1548,7 +1548,7 @@ func TestModifyProjectVersions(t *testing.T) {
 	"end_time": "2022-11-03T00:00:00.000Z"
 }
 			`)
-			req, _ := http.NewRequest(http.MethodPost, "https://example.com/rest/v2/projects/something-else/versions", bytes.NewBuffer(body))
+			req, _ := http.NewRequest(http.MethodPatch, "https://example.com/rest/v2/projects/something-else/versions", bytes.NewBuffer(body))
 			req = gimlet.SetURLVars(req, map[string]string{"project_id": projectId})
 			err := rm.Parse(ctx, req)
 			assert.Error(err)
@@ -1563,7 +1563,7 @@ func TestModifyProjectVersions(t *testing.T) {
 	"end_time": "2022-11-02T00:00:00.000Z"
 }
 			`)
-			req, _ := http.NewRequest(http.MethodPost, "https://example.com/rest/v2/projects/something-else/versions", bytes.NewBuffer(body))
+			req, _ := http.NewRequest(http.MethodPatch, "https://example.com/rest/v2/projects/something-else/versions", bytes.NewBuffer(body))
 			req = gimlet.SetURLVars(req, map[string]string{"project_id": projectId})
 			err := rm.Parse(ctx, req)
 			assert.Error(err)
@@ -1581,7 +1581,7 @@ func TestModifyProjectVersions(t *testing.T) {
 		},
 		"runSucceeds": func(t *testing.T, rm *modifyProjectVersionsHandler) {
 			rm.projectId = projectId
-			rm.opts = serviceModel.SetVersionsPriorityOptions{
+			rm.opts = serviceModel.ModifyVersionsOptions{
 				Priority: utility.ToInt64Ptr(evergreen.DisabledTaskPriority),
 				GetVersionsOptions: serviceModel.GetVersionsOptions{
 					StartAfter: 4,
@@ -1592,48 +1592,42 @@ func TestModifyProjectVersions(t *testing.T) {
 			}
 			resp := rm.Run(ctx)
 			assert.NotNil(resp)
-			assert.NotNil(resp.Data())
-			respModel := resp.Data().([]model.APIVersion)
-			assert.Len(respModel, 4)
-			var versionIds []string
-			for _, v := range respModel {
-				versionIds = append(versionIds, utility.FromStringPtr(v.Id))
-			}
-			foundTasks, err := task.FindWithFields(task.ByVersions(versionIds), task.IdKey, task.PriorityKey, task.ActivatedKey)
+			assert.Equal(http.StatusOK, resp.Status())
+			foundTasks, err := task.FindWithFields(task.ByVersions([]string{"v1", "v2", "v3", "v4"}), task.IdKey, task.PriorityKey, task.ActivatedKey)
 			assert.NoError(err)
 			assert.Len(foundTasks, 4)
+			var count int
 			for _, tsk := range foundTasks {
-				assert.Equal(evergreen.DisabledTaskPriority, tsk.Priority)
-				assert.False(tsk.Activated)
+				if tsk.Priority == evergreen.DisabledTaskPriority && !tsk.Activated {
+					count++
+				}
 			}
+			assert.Equal(4, count)
 		},
 		"runSucceedsTimeStamp": func(t *testing.T, rm *modifyProjectVersionsHandler) {
 			rm.projectId = projectId
-			rm.opts = serviceModel.SetVersionsPriorityOptions{
+			rm.opts = serviceModel.ModifyVersionsOptions{
 				Priority: utility.ToInt64Ptr(evergreen.DisabledTaskPriority),
 				GetVersionsOptions: serviceModel.GetVersionsOptions{
-					StartTime: "2022-11-02T00:00:00.000Z",
-					EndTime:   "2022-11-03T00:00:00.000Z",
+					StartTime: time.Date(2022, 11, 2, 0, 0, 0, 0, time.UTC),
+					EndTime:   time.Date(2022, 11, 3, 0, 0, 0, 0, time.UTC),
 					Requester: evergreen.RepotrackerVersionRequester,
 					Limit:     20,
 				},
 			}
 			resp := rm.Run(ctx)
 			assert.NotNil(resp)
-			assert.NotNil(resp.Data())
-			respModel := resp.Data().([]model.APIVersion)
-			assert.Len(respModel, 2)
-			var versionIds []string
-			for _, v := range respModel {
-				versionIds = append(versionIds, utility.FromStringPtr(v.Id))
-			}
-			foundTasks, err := task.FindWithFields(task.ByVersions(versionIds), task.IdKey, task.PriorityKey, task.ActivatedKey)
+			assert.Equal(http.StatusOK, resp.Status())
+			foundTasks, err := task.FindWithFields(task.ByVersions([]string{"v1", "v2", "v3", "v4"}), task.IdKey, task.PriorityKey, task.ActivatedKey)
 			assert.NoError(err)
-			assert.Len(foundTasks, 2)
+			assert.Len(foundTasks, 4)
+			var count int
 			for _, tsk := range foundTasks {
-				assert.Equal(evergreen.DisabledTaskPriority, tsk.Priority)
-				assert.False(tsk.Activated)
+				if tsk.Priority == evergreen.DisabledTaskPriority && !tsk.Activated {
+					count++
+				}
 			}
+			assert.Equal(2, count)
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {

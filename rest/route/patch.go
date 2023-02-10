@@ -177,7 +177,7 @@ func (p *patchesByUserHandler) Parse(ctx context.Context, r *http.Request) error
 	if vals.Get("start_at") == "" {
 		p.key = time.Now()
 	} else {
-		p.key, err = dbModel.ParseTime(vals.Get("start_at"))
+		p.key, err = model.ParseTime(vals.Get("start_at"))
 		if err != nil {
 			return errors.Wrapf(err, "parsing 'start at' time %s", p.key)
 		}
@@ -206,7 +206,7 @@ func (p *patchesByUserHandler) Run(ctx context.Context) gimlet.Responder {
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
 				BaseURL:         p.url,
-				Key:             patches[p.limit].CreateTime.Format(evergreen.APITimeFormat),
+				Key:             patches[p.limit].CreateTime.Format(model.APITimeFormat),
 				Limit:           p.limit,
 			},
 		})
@@ -255,7 +255,7 @@ func (p *patchesByProjectHandler) Parse(ctx context.Context, r *http.Request) er
 	if vals.Get("start_at") == "" {
 		p.key = time.Now()
 	} else {
-		p.key, err = time.ParseInLocation(evergreen.APITimeFormat, vals.Get("start_at"), time.FixedZone("", 0))
+		p.key, err = time.ParseInLocation(model.APITimeFormat, vals.Get("start_at"), time.FixedZone("", 0))
 		if err != nil {
 			return errors.Wrapf(err, "parsing 'start at' time %s", p.key)
 		}
@@ -283,7 +283,7 @@ func (p *patchesByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
 				BaseURL:         p.url,
-				Key:             patches[p.limit].CreateTime.Format(evergreen.APITimeFormat),
+				Key:             patches[p.limit].CreateTime.Format(model.APITimeFormat),
 				Limit:           p.limit,
 			},
 		})

@@ -506,27 +506,29 @@ func GetMainlineCommitVersionsWithOptions(projectId string, opts MainlineCommitV
 	return res, nil
 }
 
-// SetVersionsPriorityOptions is a struct for setting the priority of versions.
+// ModifyVersionsOptions is a struct for setting the priority of versions.
 // It uses all the options in the GetVersionsOptions struct, as well as a priority field.
-type SetVersionsPriorityOptions struct {
-	Priority *int64 `json:"priority"`
+type ModifyVersionsOptions struct {
+	Priority     *int64 `json:"priority"`
+	StartTimeStr string `json:"start_time"`
+	EndTimeStr   string `json:"end_time"`
 	GetVersionsOptions
 }
 
 // GetVersionsOptions is a struct that holds the options for retrieving a list of versions
 type GetVersionsOptions struct {
-	Priority       *int64 `json:"priority"`
-	StartAfter     int    `json:"start"`
-	EndAt          int    `json:"end"`
-	StartTime      string `json:"start_time"`
-	EndTime        string `json:"end_time"`
-	Requester      string `json:"requester"`
-	Limit          int    `json:"limit"`
-	Skip           int    `json:"skip"`
-	IncludeBuilds  bool   `json:"include_builds"`
-	IncludeTasks   bool   `json:"include_tasks"`
-	ByBuildVariant string `json:"by_build_variant"`
-	ByTask         string `json:"by_task"`
+	Priority       *int64    `json:"priority"`
+	StartAfter     int       `json:"start"`
+	EndAt          int       `json:"end"`
+	StartTime      time.Time `json:"start_time"`
+	EndTime        time.Time `json:"end_time"`
+	Requester      string    `json:"requester"`
+	Limit          int       `json:"limit"`
+	Skip           int       `json:"skip"`
+	IncludeBuilds  bool      `json:"include_builds"`
+	IncludeTasks   bool      `json:"include_tasks"`
+	ByBuildVariant string    `json:"by_build_variant"`
+	ByTask         string    `json:"by_task"`
 }
 
 // GetVersionsWithOptions returns versions for a project, that satisfy a set of query parameters defined by
@@ -548,14 +550,10 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 		match[bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusVariantKey)] = opts.ByBuildVariant
 	}
 
-	if opts.StartTime != "" {
-		startTime, endTime, err := getStartAndEndTime(opts.StartTime, opts.EndTime)
-		if err != nil {
-			return nil, errors.Wrap(err, "getting start and end time")
-		}
+	if !opts.StartTime.IsZero() {
 		match[VersionCreateTimeKey] = bson.M{
-			"$gte": startTime,
-			"$lte": endTime,
+			"$gte": opts.StartTime,
+			"$lte": opts.EndTime,
 		}
 	} else {
 		if opts.EndAt > 0 && opts.StartAfter > 0 {
@@ -650,24 +648,6 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 		return nil, errors.Wrap(err, "aggregating versions and builds")
 	}
 	return res, nil
-}
-
-func getStartAndEndTime(startTimeStr, endTimeStr string) (start time.Time, end time.Time, err error) {
-	startTime, err := ParseTime(startTimeStr)
-	if err != nil {
-		return time.Time{}, time.Time{}, errors.Wrapf(err, "parsing start time '%s'", startTimeStr)
-	}
-	endTime := time.Now()
-	if endTimeStr != "" {
-		endTime, err = ParseTime(endTimeStr)
-		if err != nil {
-			return time.Time{}, time.Time{}, errors.Wrapf(err, "parsing end time '%s'", endTimeStr)
-		}
-		if startTime.After(endTime) {
-			return time.Time{}, time.Time{}, errors.New("start time must be before end time")
-		}
-	}
-	return startTime, endTime, nil
 }
 
 // constructManifest will construct a manifest from the given project and version.

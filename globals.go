@@ -1250,9 +1250,3 @@ func ValidateCloneMethod(method string) error {
 	}
 	return nil
 }
-
-const (
-	// APITimeFormat defines ISO-8601 UTC with 3 fractional seconds behind a dot
-	// specified by the API spec document.
-	APITimeFormat = "\"2006-01-02T15:04:05.000Z\""
-)
