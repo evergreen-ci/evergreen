@@ -182,10 +182,20 @@ func makeProjectAndExpansionsFromTask(ctx context.Context, settings *evergreen.S
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "getting GitHub OAuth token from admin settings")
 	}
-	expansions, err := model.PopulateExpansions(ctx, settings, t, h, oauthToken)
+
+	expansions, err := model.PopulateExpansions(t, h, oauthToken)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "populating expansions")
 	}
+
+	// PopulateExpansions doesn't include build variant expansions, so include
+	// them here.
+	for _, bv := range project.BuildVariants {
+		if bv.Name == t.BuildVariant {
+			expansions.Update(bv.Expansions)
+		}
+	}
+
 	if project == nil {
 		project = &model.Project{}
 	}

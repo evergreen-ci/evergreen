@@ -90,6 +90,8 @@ func parserProjectUpsertOne(query interface{}, update interface{}) error {
 	return err
 }
 
+// TODO (EVG-18820): remove this once the agent version has rolled over and the
+// REST route has been removed.
 func FindParametersForVersion(ctx context.Context, settings *evergreen.Settings, v *Version) ([]patch.Parameter, error) {
 	pp, err := ParserProjectFindOneByIDWithFields(ctx, settings, v.ProjectStorageMethod, v.Id, ParserProjectParametersKey)
 	if err != nil {
@@ -98,6 +100,8 @@ func FindParametersForVersion(ctx context.Context, settings *evergreen.Settings,
 	return pp.GetParameters(), nil
 }
 
+// TODO (EVG-18820): remove this once the agent version has rolled over and the
+// REST route has been removed.
 func FindExpansionsForVariant(ctx context.Context, settings *evergreen.Settings, v *Version, variant string) (util.Expansions, error) {
 	pp, err := ParserProjectFindOneByIDWithFields(ctx, settings, v.ProjectStorageMethod, v.Id, ParserProjectBuildVariantsKey, ParserProjectAxesKey)
 	if err != nil {

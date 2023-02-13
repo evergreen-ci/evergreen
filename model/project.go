@@ -984,7 +984,9 @@ var (
 	ProjectTasksKey         = bsonutil.MustHaveTag(Project{}, "Tasks")
 )
 
-func PopulateExpansions(ctx context.Context, settings *evergreen.Settings, t *task.Task, h *host.Host, oauthToken string) (util.Expansions, error) {
+// PopulateExpansions returns expansions for a task, excluding build variant
+// expansions, project variables, and project/version parameters.
+func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Expansions, error) {
 	if t == nil {
 		return nil, errors.New("task cannot be nil")
 	}
@@ -1061,7 +1063,7 @@ func PopulateExpansions(ctx context.Context, settings *evergreen.Settings, t *ta
 		return nil, errors.Wrap(err, "finding version")
 	}
 	if v == nil {
-		return nil, errors.Wrapf(err, "version '%s' doesn't exist", v.Id)
+		return nil, errors.Errorf("version '%s' not found", t.Version)
 	}
 
 	expansions.Put("branch_name", v.Branch)
@@ -1130,11 +1132,6 @@ func PopulateExpansions(ctx context.Context, settings *evergreen.Settings, t *ta
 		}
 	}
 
-	bvExpansions, err := FindExpansionsForVariant(ctx, settings, v, t.BuildVariant)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting expansions for variant")
-	}
-	expansions.Update(bvExpansions)
 	return expansions, nil
 }
 
