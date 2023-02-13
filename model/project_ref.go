@@ -49,6 +49,7 @@ type ProjectRef struct {
 
 	DisplayName            string              `bson:"display_name" json:"display_name,omitempty" yaml:"display_name"`
 	Enabled                *bool               `bson:"enabled,omitempty" json:"enabled,omitempty" yaml:"enabled"`
+	Private                *bool               `bson:"private,omitempty" json:"private,omitempty" yaml:"private"`
 	Restricted             *bool               `bson:"restricted,omitempty" json:"restricted,omitempty" yaml:"restricted"`
 	Owner                  string              `bson:"owner_name" json:"owner_name" yaml:"owner"`
 	Repo                   string              `bson:"repo_name" json:"repo_name" yaml:"repo"`
@@ -265,6 +266,7 @@ var (
 	ProjectRefRepoKey                     = bsonutil.MustHaveTag(ProjectRef{}, "Repo")
 	ProjectRefBranchKey                   = bsonutil.MustHaveTag(ProjectRef{}, "Branch")
 	ProjectRefEnabledKey                  = bsonutil.MustHaveTag(ProjectRef{}, "Enabled")
+	ProjectRefPrivateKey                  = bsonutil.MustHaveTag(ProjectRef{}, "Private")
 	ProjectRefRestrictedKey               = bsonutil.MustHaveTag(ProjectRef{}, "Restricted")
 	ProjectRefBatchTimeKey                = bsonutil.MustHaveTag(ProjectRef{}, "BatchTime")
 	ProjectRefIdentifierKey               = bsonutil.MustHaveTag(ProjectRef{}, "Identifier")
@@ -313,10 +315,15 @@ func (p *ProjectRef) IsEnabled() bool {
 	return utility.FromBoolPtr(p.Enabled)
 }
 
-// IsPrivate checks if the project ref is not a wiredtiger project.
-// All projects are private by default except wiredtiger projects.
+// IsPrivate checks if the project ref should be accessed by non-logged in users.
+// If RestRouteRequireAuthDisabled is set, all project routes require users to be logged in
+// so this function will return false.
 func (p *ProjectRef) IsPrivate() bool {
-	return p.Repo != evergreen.PublicRepoName
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		return utility.FromBoolPtr(p.Private)
+	}
+	return !flags.RestRouteRequireAuthDisabled && utility.FromBoolPtr(p.Private)
 }
 
 func (p *ProjectRef) IsRestricted() bool {
@@ -1242,7 +1249,7 @@ func GetTasksWithOptions(projectName string, taskName string, opts GetProjectTas
 
 func FindFirstProjectRef() (*ProjectRef, error) {
 	projectRefSlice := []ProjectRef{}
-	pipeline := projectRefPipelineForValueIsBool(ProjectRefEnabledKey, RepoRefEnabledKey, true)
+	pipeline := projectRefPipelineForValueIsBool(ProjectRefPrivateKey, RepoRefPrivateKey, false)
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{ProjectRefDisplayNameKey: -1}}, bson.M{"$limit": 1})
 	err := db.Aggregate(
 		ProjectRefCollection,
@@ -1936,6 +1943,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
+					ProjectRefPrivateKey:    p.Private,
 					ProjectRefRestrictedKey: p.Restricted,
 					ProjectRefAdminsKey:     p.Admins,
 				},

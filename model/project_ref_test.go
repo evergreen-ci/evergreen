@@ -875,6 +875,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 			pRefFromDb, err := FindBranchProjectRef(id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
+			assert.Nil(t, pRefFromDb.Private)
 			assert.Nil(t, pRefFromDb.Restricted)
 			assert.Nil(t, pRefFromDb.Admins)
 		},
@@ -980,6 +981,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 				DeactivatePrevious:    utility.FalsePtr(),
 				RemotePath:            "path.yml",
 				TaskSync:              TaskSyncOptions{ConfigEnabled: utility.TruePtr()},
+				Private:               utility.TruePtr(),
 				Restricted:            utility.FalsePtr(),
 				Admins:                []string{"annie"},
 				PRTestingEnabled:      utility.TruePtr(),
@@ -2645,7 +2647,7 @@ func TestFindFirstProjectRef(t *testing.T) {
 	projectRef := ProjectRef{
 		Id:        "p1",
 		RepoRefId: "my_repo",
-		Enabled:   utility.TruePtr(),
+		Private:   utility.FalsePtr(),
 	}
 
 	assert.NoError(t, projectRef.Insert())

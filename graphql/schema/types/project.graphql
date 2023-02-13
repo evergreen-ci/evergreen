@@ -182,6 +182,7 @@ type Project {
   patchTriggerAliases: [PatchTriggerAlias!]
   perfEnabled: Boolean
   periodicBuilds: [PeriodicBuild!]
+  private: Boolean
   prTestingEnabled: Boolean
   remotePath: String!
   repo: String!

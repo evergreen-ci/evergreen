@@ -446,6 +446,7 @@ type APIProjectRef struct {
 	Repo                        *string                   `json:"repo_name"`
 	Branch                      *string                   `json:"branch_name"`
 	Enabled                     *bool                     `json:"enabled"`
+	Private                     *bool                     `json:"private"`
 	BatchTime                   int                       `json:"batch_time"`
 	RemotePath                  *string                   `json:"remote_path"`
 	SpawnHostScriptPath         *string                   `json:"spawn_host_script_path"`
@@ -503,6 +504,7 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		Repo:                   utility.FromStringPtr(p.Repo),
 		Branch:                 utility.FromStringPtr(p.Branch),
 		Enabled:                utility.BoolPtrCopy(p.Enabled),
+		Private:                utility.BoolPtrCopy(p.Private),
 		Restricted:             utility.BoolPtrCopy(p.Restricted),
 		BatchTime:              p.BatchTime,
 		RemotePath:             utility.FromStringPtr(p.RemotePath),
@@ -587,6 +589,7 @@ func (p *APIProjectRef) BuildFromService(projectRef model.ProjectRef) error {
 	p.Repo = utility.ToStringPtr(projectRef.Repo)
 	p.Branch = utility.ToStringPtr(projectRef.Branch)
 	p.Enabled = utility.BoolPtrCopy(projectRef.Enabled)
+	p.Private = utility.BoolPtrCopy(projectRef.Private)
 	p.Restricted = utility.BoolPtrCopy(projectRef.Restricted)
 	p.BatchTime = projectRef.BatchTime
 	p.RemotePath = utility.ToStringPtr(projectRef.RemotePath)

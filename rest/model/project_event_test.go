@@ -21,6 +21,7 @@ func getMockProjectSettings() model.ProjectSettings {
 		ProjectRef: model.ProjectRef{
 			Owner:   "admin",
 			Enabled: utility.TruePtr(),
+			Private: utility.TruePtr(),
 			Id:      projectId,
 			Admins:  []string{},
 		},
@@ -132,6 +133,7 @@ func checkProjRef(suite *ProjectEventSuite, in model.ProjectRef, out APIProjectR
 	suite.Equal(in.Repo, utility.FromStringPtr(out.Repo))
 	suite.Equal(in.Branch, utility.FromStringPtr(out.Branch))
 	suite.Equal(in.Enabled, out.Enabled)
+	suite.Equal(in.Private, out.Private)
 	suite.Equal(in.BatchTime, out.BatchTime)
 	suite.Equal(in.RemotePath, utility.FromStringPtr(out.RemotePath))
 	suite.Equal(in.Id, utility.FromStringPtr(out.Id))

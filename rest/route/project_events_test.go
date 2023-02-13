@@ -30,6 +30,7 @@ func getTestProjectSettings(projectId string) model.ProjectSettings {
 		ProjectRef: model.ProjectRef{
 			Owner:      "admin",
 			Enabled:    utility.TruePtr(),
+			Private:    utility.TruePtr(),
 			Identifier: projectId,
 			Admins:     []string{},
 		},

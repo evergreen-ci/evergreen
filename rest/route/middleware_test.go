@@ -52,7 +52,8 @@ func PrefetchProjectContext(ctx context.Context, r *http.Request, input map[stri
 func TestPrefetchProject(t *testing.T) {
 	require.NoError(t, db.ClearCollections(model.ProjectRefCollection, patch.Collection, user.Collection))
 	doc := &model.ProjectRef{
-		Id: "mci",
+		Id:      "mci",
+		Private: utility.TruePtr(),
 	}
 	require.NoError(t, doc.Insert())
 	patchDoc := &patch.Patch{
@@ -91,7 +92,8 @@ func TestPrefetchProject(t *testing.T) {
 			Convey("should succeed if project ref exists and user is set", func() {
 				opCtx := model.Context{}
 				opCtx.ProjectRef = &model.ProjectRef{
-					Id: "mci",
+					Private: utility.TruePtr(),
+					Id:      "mci",
 				}
 				ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "test_user"})
 				ctx, err = PrefetchProjectContext(ctx, req, map[string]string{"project_id": "mci"})
@@ -113,11 +115,12 @@ func TestNewProjectAdminMiddleware(t *testing.T) {
 
 	opCtx := model.Context{}
 	opCtx.ProjectRef = &model.ProjectRef{
-		Id:     "orchard",
-		Owner:  "evergreen-ci",
-		Repo:   "evergreen",
-		Branch: "main",
-		Admins: []string{"johnny.appleseed"},
+		Private: utility.TruePtr(),
+		Id:      "orchard",
+		Owner:   "evergreen-ci",
+		Repo:    "evergreen",
+		Branch:  "main",
+		Admins:  []string{"johnny.appleseed"},
 	}
 	adminRole := gimlet.Role{
 		ID:          "r1",
@@ -156,10 +159,11 @@ func TestCommitQueueItemOwnerMiddlewarePROwner(t *testing.T) {
 	ctx := context.Background()
 	opCtx := model.Context{}
 	opCtx.ProjectRef = &model.ProjectRef{
-		Id:     "mci",
-		Owner:  "evergreen-ci",
-		Repo:   "evergreen",
-		Branch: "main",
+		Private: utility.TruePtr(),
+		Id:      "mci",
+		Owner:   "evergreen-ci",
+		Repo:    "evergreen",
+		Branch:  "main",
 		CommitQueue: model.CommitQueueParams{
 			Enabled: utility.TruePtr(),
 		},
@@ -209,10 +213,11 @@ func TestCommitQueueItemOwnerMiddlewareUnauthorizedUserGitHub(t *testing.T) {
 	ctx := context.Background()
 	opCtx := model.Context{}
 	opCtx.ProjectRef = &model.ProjectRef{
-		Id:     "mci",
-		Owner:  "evergreen-ci",
-		Repo:   evergreen.PublicRepoName,
-		Branch: "main",
+		Private: utility.TruePtr(),
+		Id:      "mci",
+		Owner:   "evergreen-ci",
+		Repo:    "evergreen",
+		Branch:  "main",
 		CommitQueue: model.CommitQueueParams{
 			Enabled: utility.TruePtr(),
 		},
@@ -258,10 +263,11 @@ func TestCommitQueueItemOwnerMiddlewareUserPatch(t *testing.T) {
 	ctx := context.Background()
 	opCtx := model.Context{}
 	opCtx.ProjectRef = &model.ProjectRef{
-		Id:     "mci",
-		Owner:  "evergreen-ci",
-		Repo:   "evergreen",
-		Branch: "main",
+		Private: utility.TruePtr(),
+		Id:      "mci",
+		Owner:   "evergreen-ci",
+		Repo:    "evergreen",
+		Branch:  "main",
 		CommitQueue: model.CommitQueueParams{
 			Enabled: utility.TruePtr(),
 		},
@@ -323,10 +329,11 @@ func TestCommitQueueItemOwnerMiddlewarePatchAdmin(t *testing.T) {
 	ctx := context.Background()
 	opCtx := model.Context{}
 	opCtx.ProjectRef = &model.ProjectRef{
-		Id:     "mci",
-		Owner:  "evergreen-ci",
-		Repo:   "evergreen",
-		Branch: "main",
+		Private: utility.TruePtr(),
+		Id:      "mci",
+		Owner:   "evergreen-ci",
+		Repo:    "evergreen",
+		Branch:  "main",
 		CommitQueue: model.CommitQueueParams{
 			Enabled: utility.TruePtr(),
 		},
@@ -752,7 +759,8 @@ func TestProjectViewPermission(t *testing.T) {
 	}
 	assert.NoError(env.RoleManager().AddScope(scopeAll))
 	proj1 := model.ProjectRef{
-		Id: "proj1",
+		Id:      "proj1",
+		Private: utility.TruePtr(),
 	}
 	proj2 := model.ProjectRef{
 		Id: "proj2",
@@ -865,7 +873,8 @@ func TestEventLogPermission(t *testing.T) {
 	}
 	assert.NoError(env.RoleManager().AddScope(scope3))
 	proj1 := model.ProjectRef{
-		Id: "proj1",
+		Id:      "proj1",
+		Private: utility.TruePtr(),
 	}
 	assert.NoError(proj1.Insert())
 	distro1 := distro.Distro{
