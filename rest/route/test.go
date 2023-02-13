@@ -44,7 +44,8 @@ func makeFetchTestsForTask(env evergreen.Environment, sc data.Connector) gimlet.
 
 func (hgh *testGetHandler) Factory() gimlet.RouteHandler {
 	return &testGetHandler{
-		sc: hgh.sc,
+		env: hgh.env,
+		sc:  hgh.sc,
 	}
 }
 
