@@ -236,9 +236,9 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/tasks/{task_id}/restart").Version(2).Post().Wrap(addProject, requireUser, editTasks).RouteHandler(makeTaskRestartHandler())
 	app.AddRoute("/tasks/{task_id}/tests").Version(2).Get().Wrap(addProject, viewTasks).RouteHandler(makeFetchTestsForTask(env, sc))
 	app.AddRoute("/tasks/{task_id}/sync_path").Version(2).Get().Wrap(requireUser).RouteHandler(makeTaskSyncPathGetHandler())
-	app.AddRoute("/tasks/{task_id}/set_has_results").Version(2).Post().Wrap(requireTask).RouteHandler(makeTaskSetHasResultsHandler())
+	app.AddRoute("/tasks/{task_id}/set_results_info").Version(2).Post().Wrap(requireTask).RouteHandler(makeTaskSetResultsInfoHandler())
 	// TODO: Temporarily keep for backwards compatibility?
-	app.AddRoute("/tasks/{task_id}/set_has_cedar_results").Version(2).Post().Wrap(requireTask).RouteHandler(makeTaskSetHasResultsHandler())
+	app.AddRoute("/tasks/{task_id}/set_has_cedar_results").Version(2).Post().Wrap(requireTask).RouteHandler(makeTaskSetResultsInfoHandler())
 	app.AddRoute("/task/sync_read_credentials").Version(2).Get().Wrap(requireUser).RouteHandler(makeTaskSyncReadCredentialsGetHandler())
 	app.AddRoute("/user/settings").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchUserConfig())
 	app.AddRoute("/user/settings").Version(2).Post().Wrap(requireUser).RouteHandler(makeSetUserConfig())

@@ -289,22 +289,22 @@ func (rh *taskSyncPathGetHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewTextResponse(t.S3Path(t.BuildVariant, t.DisplayName))
 }
 
-// POST /tasks/{task_id}/set_has_results
+// POST /tasks/{task_id}/set_results_info
 
-type taskSetHasResultsHandler struct {
+type taskSetResultsInfoHandler struct {
 	taskID string
 	info   apimodels.TaskTestResultsInfo
 }
 
-func makeTaskSetHasResultsHandler() gimlet.RouteHandler {
-	return &taskSetHasResultsHandler{}
+func makeTaskSetResultsInfoHandler() gimlet.RouteHandler {
+	return &taskSetResultsInfoHandler{}
 }
 
-func (rh *taskSetHasResultsHandler) Factory() gimlet.RouteHandler {
-	return &taskSetHasResultsHandler{}
+func (rh *taskSetResultsInfoHandler) Factory() gimlet.RouteHandler {
+	return &taskSetResultsInfoHandler{}
 }
 
-func (rh *taskSetHasResultsHandler) Parse(ctx context.Context, r *http.Request) error {
+func (rh *taskSetResultsInfoHandler) Parse(ctx context.Context, r *http.Request) error {
 	rh.taskID = gimlet.GetVars(r)["task_id"]
 
 	if err := gimlet.GetJSON(r.Body, &rh.info); err != nil {
@@ -314,7 +314,7 @@ func (rh *taskSetHasResultsHandler) Parse(ctx context.Context, r *http.Request) 
 	return nil
 }
 
-func (rh *taskSetHasResultsHandler) Run(ctx context.Context) gimlet.Responder {
+func (rh *taskSetResultsInfoHandler) Run(ctx context.Context) gimlet.Responder {
 	t, err := task.FindOneId(rh.taskID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", rh.taskID))
@@ -326,10 +326,11 @@ func (rh *taskSetHasResultsHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	if err = t.SetHasResults(rh.info.Failed); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting HasResults flag for task '%s'", rh.taskID))
+	if err = t.SetResultsInfo(rh.info.Service, rh.info.Failed); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting results info for task '%s'", rh.taskID))
 	}
-	return gimlet.NewTextResponse("HasResults flag set in task")
+
+	return gimlet.NewTextResponse("Results info set in task")
 }
 
 // GET /task/sync_read_credentials

@@ -33,12 +33,6 @@ func sendTestResults(ctx context.Context, comm client.Communicator, logger clien
 		return errors.Wrap(err, "sending test results to Cedar")
 	}
 
-	/*
-		if err := comm.SetHasResults(ctx, td, failed); err != nil {
-			return errors.Wrap(err, "setting HasResults flag in task")
-		}
-	*/
-
 	logger.Task().Info("Successfully attached results.")
 
 	return nil
@@ -103,8 +97,8 @@ func sendTestResultsToCedar(ctx context.Context, conf *internal.TaskConfig, td c
 		return errors.Wrap(err, "closing test results record")
 	}
 
-	if err := comm.SetHasResults(ctx, td, failed); err != nil {
-		return errors.Wrap(err, "setting HasResults flag in task")
+	if err := comm.SetResultsInfo(ctx, td, testresult.TestResultsServiceCedar, failed); err != nil {
+		return errors.Wrap(err, "setting results info in the task")
 	}
 
 	return nil

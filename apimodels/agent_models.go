@@ -49,7 +49,8 @@ type PullRequestInfo struct {
 // TaskTestResultsInfo contains metadata related to test results persisted for
 // a given task.
 type TaskTestResultsInfo struct {
-	Failed bool `json:"failed"`
+	Service string `json:"service"`
+	Failed  bool   `json:"failed"`
 }
 
 // TaskEndDetail contains data sent from the agent to the API server after each task run.

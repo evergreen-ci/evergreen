@@ -88,10 +88,10 @@ type Task struct {
 	TaskGroupMaxHosts int                 `bson:"task_group_max_hosts,omitempty" json:"task_group_max_hosts,omitempty"`
 	TaskGroupOrder    int                 `bson:"task_group_order,omitempty" json:"task_group_order,omitempty"`
 	Logs              *apimodels.TaskLogs `bson:"logs,omitempty" json:"logs,omitempty"`
-	MustHaveResults   bool                `bson:"must_have_results,omitempty" json:"must_have_results,omitempty"`
-	HasResults        bool                `bson:"has_results" json:"has_results"`
-	ResultsFailed     bool                `bson:"results_failed" json:"results_failed"`
 	ResultsService    string              `bson:"results_service,omitempty" json:"results_service,omitempty"`
+	HasCedarResults   bool                `bson:"has_cedar_results,omitempty" json:"has_cedar_results,omitempty"`
+	ResultsFailed     bool                `bson:"results_failed,omitempty" json:"results_failed,omitempty"`
+	MustHaveResults   bool                `bson:"must_have_results,omitempty" json:"must_have_results,omitempty"`
 	// only relevant if the task is running.  the time of the last heartbeat
 	// sent back by the agent
 	LastHeartbeat time.Time `bson:"last_heartbeat" json:"last_heartbeat"`
@@ -1415,43 +1415,51 @@ func (t *Task) SetStepbackDepth(stepbackDepth int) error {
 		})
 }
 
-func (t *Task) SetResultsService(env evergreen.Environment) error {
-	return nil
-}
-
-// SetHasResults sets the HasResults field of the task to true and, if
-// failedResults is true, sets the ResultsFailed to true. If the task is a
-// display task, this noops. Note that if failedResults is false, ResultsFailed
-// is not set. This is because in cases where multiple calls to attach test
-// results are made for a task, only one call needs to have a test failure for
-// the ResultsFailed field to be set to true.
-func (t *Task) SetHasResults(failedResults bool) error {
-	// TODO: Should this error instead of noop?
+// SetResultsInfo sets the task's test results info.
+//
+// Note that if failedResults is false, ResultsFailed is not set. This is
+// because in cases where multiple calls to attach test results are made for a
+// task, only one call needs to have a test failure for the ResultsFailed field
+// to be set to true.
+func (t *Task) SetResultsInfo(service string, failedResults bool) error {
 	if t.DisplayOnly {
-		return nil
+		return errors.New("cannot set results info on a display task")
+	}
+	if t.ResultsService != "" {
+		if t.ResultsService != service {
+			return errors.New("cannot use more than one test results service for a task")
+		}
+		if !failedResults {
+			return nil
+		}
 	}
 
-	t.HasResults = true
-	set := bson.M{
-		HasResultsKey: true,
-	}
+	t.ResultsService = service
+	set := bson.M{ResultsServiceKey: service}
 	if failedResults {
 		t.ResultsFailed = true
 		set[ResultsFailedKey] = true
 	}
 
-	if err := UpdateOne(
-		bson.M{
-			IdKey: t.Id,
-		},
-		bson.M{
-			"$set": set,
-		},
-	); err != nil {
-		return err
+	return errors.WithStack(UpdateOne(bson.M{IdKey: t.Id}, bson.M{"$set": set}))
+}
+
+func (t *Task) HasResults() bool {
+	if t.DisplayOnly {
+		query := ByIds(t.ExecutionTasks)
+		query["$or"] = []bson.M{{ResultsServiceKey: bson.M{"$exists": true}}, {HasCedarResultsKey: true}}
+		execTasksWithResults, err := Count(db.Query(query))
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "getting count of execution tasks with results for display task",
+			}))
+			return false
+		}
+
+		return execTasksWithResults > 0
 	}
 
-	return nil
+	return t.ResultsService != "" || t.HasCedarResults
 }
 
 // ActivateTask will set the ActivatedBy field to the caller and set the active state to be true.
@@ -1941,9 +1949,8 @@ func resetTaskUpdate(t *Task) bson.M {
 		t.TimeTaken = 0
 		t.LastHeartbeat = utility.ZeroTime
 		t.Details = apimodels.TaskEndDetail{}
-		t.HasResults = false
-		t.ResultsFailed = false
 		t.ResultsService = ""
+		t.ResultsFailed = false
 		t.ResetWhenFinished = false
 		t.ResetFailedWhenFinished = false
 		t.AgentVersion = ""
@@ -1969,9 +1976,8 @@ func resetTaskUpdate(t *Task) bson.M {
 		},
 		"$unset": bson.M{
 			DetailsKey:                 "",
-			HasResultsKey:              "",
-			ResultsFailedKey:           "",
 			ResultsServiceKey:          "",
+			ResultsFailedKey:           "",
 			ResetWhenFinishedKey:       "",
 			ResetFailedWhenFinishedKey: "",
 			AgentVersionKey:            "",
@@ -2538,7 +2544,7 @@ func (t *Task) CreateTestResultsTaskOptions() ([]testresult.TaskOptions, error) 
 	var taskOpts []testresult.TaskOptions
 	if t.DisplayOnly {
 		query := ByIds(t.ExecutionTasks)
-		query[HasResultsKey] = true
+		query["$or"] = []bson.M{{ResultsServiceKey: bson.M{"$exists": true}}, {HasCedarResultsKey: true}}
 		execTasksWithResults, err := FindWithFields(query, ExecutionKey, ResultsServiceKey)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting execution tasks for display task")
@@ -2550,7 +2556,7 @@ func (t *Task) CreateTestResultsTaskOptions() ([]testresult.TaskOptions, error) 
 			taskOpts[i].Execution = execTask.Execution
 			taskOpts[i].ResultsService = execTask.ResultsService
 		}
-	} else if t.HasResults {
+	} else if t.HasResults() {
 		taskOpts = append(taskOpts, testresult.TaskOptions{
 			TaskID:         t.Id,
 			Execution:      t.Execution,

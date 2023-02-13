@@ -736,17 +736,15 @@ func (c *baseCommunicator) SendTestLog(ctx context.Context, taskData TaskData, l
 	return logID, nil
 }
 
-// SetHasResults sets the HasResults flag to true in the given task in the
-// database.
-func (c *baseCommunicator) SetHasResults(ctx context.Context, taskData TaskData, failed bool) error {
+func (c *baseCommunicator) SetResultsInfo(ctx context.Context, taskData TaskData, service string, failed bool) error {
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
 	}
-	info.path = fmt.Sprintf("tasks/%s/set_has_results", taskData.ID)
-	resp, err := c.retryRequest(ctx, info, &apimodels.TaskTestResultsInfo{Failed: failed})
+	info.path = fmt.Sprintf("tasks/%s/set_results_info", taskData.ID)
+	resp, err := c.retryRequest(ctx, info, &apimodels.TaskTestResultsInfo{Service: service, Failed: failed})
 	if err != nil {
-		return utility.RespErrorf(resp, errors.Wrap(err, "setting HasResults").Error())
+		return utility.RespErrorf(resp, errors.Wrap(err, "setting results info").Error())
 	}
 	defer resp.Body.Close()
 	return nil

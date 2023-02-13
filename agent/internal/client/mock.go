@@ -59,7 +59,7 @@ type Mock struct {
 	AttachedFiles    map[string][]*artifact.File
 	LogID            string
 	LocalTestResults []testresult.TestResult
-	HasResults       bool
+	ResultsService   string
 	ResultsFailed    bool
 	TestLogs         []*serviceModel.TestLog
 	TestLogCount     int
@@ -383,9 +383,8 @@ func (*Mock) CreateSpawnHost(ctx context.Context, spawnRequest *model.HostReques
 	return mockHost, nil
 }
 
-// SetHasResults sets the HasResults flag in the task.
-func (c *Mock) SetHasResults(ctx context.Context, td TaskData, failed bool) error {
-	c.HasResults = true
+func (c *Mock) SetResultsInfo(ctx context.Context, td TaskData, service string, failed bool) error {
+	c.ResultsService = service
 	if failed {
 		c.ResultsFailed = true
 	}

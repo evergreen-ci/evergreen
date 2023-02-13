@@ -85,7 +85,6 @@ type APITask struct {
 	// via Evergreen's user-facing API.
 	OverrideDependencies bool   `json:"-"`
 	Archived             bool   `json:"archived"`
-	HasResults           bool   `json:"-"`
 	ResultsFailed        bool   `json:"-"`
 	ResultsService       string `json:"-"`
 }
@@ -229,7 +228,6 @@ func (at *APITask) buildTask(t *task.Task) error {
 		Requester:                   utility.ToStringPtr(t.Requester),
 		Aborted:                     t.Aborted,
 		CanSync:                     t.CanSync,
-		HasResults:                  t.HasResults,
 		ResultsFailed:               t.ResultsFailed,
 		ResultsService:              t.ResultsService,
 		MustHaveResults:             t.MustHaveResults,
@@ -407,7 +405,6 @@ func (at *APITask) ToService() (*task.Task, error) {
 		DisplayOnly:                 at.DisplayOnly,
 		Requester:                   utility.FromStringPtr(at.Requester),
 		CanSync:                     at.CanSync,
-		HasResults:                  at.HasResults,
 		ResultsFailed:               at.ResultsFailed,
 		ResultsService:              at.ResultsService,
 		MustHaveResults:             at.MustHaveResults,
