@@ -358,6 +358,18 @@ func (h *getExpansionsHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(err)
 	}
+	v, err := model.VersionFindOneId(t.Version)
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "finding version"))
+	}
+	if v == nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Errorf("version '%s' not found", t.Version))
+	}
+	bvExpansions, err := model.FindExpansionsForVariant(ctx, h.settings, v, t.BuildVariant)
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "loading build variant expansions"))
+	}
+	e.Update(bvExpansions)
 
 	return gimlet.NewJSONResponse(e)
 }

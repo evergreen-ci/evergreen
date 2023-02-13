@@ -1063,7 +1063,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 		return nil, errors.Wrap(err, "finding version")
 	}
 	if v == nil {
-		return nil, errors.Wrapf(err, "version '%s' doesn't exist", v.Id)
+		return nil, errors.Errorf("version '%s' not found", t.Version)
 	}
 
 	expansions.Put("branch_name", v.Branch)
