@@ -316,14 +316,14 @@ func (p *ProjectRef) IsEnabled() bool {
 }
 
 // IsPrivate checks if the project ref should be accessed by non-logged in users.
-// If RestRouteRequireAuthDisabled is set, all project routes require users to be logged in
+// If RestRoutePartialAuthDisabled is set, all project routes require users to be logged in
 // so this function will return false.
 func (p *ProjectRef) IsPrivate() bool {
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		return utility.FromBoolPtr(p.Private)
 	}
-	return !flags.RestRouteRequireAuthDisabled && utility.FromBoolPtr(p.Private)
+	return !flags.RestRoutePartialAuthDisabled && utility.FromBoolPtr(p.Private)
 }
 
 func (p *ProjectRef) IsRestricted() bool {

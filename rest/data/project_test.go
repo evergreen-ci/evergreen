@@ -46,9 +46,9 @@ func getMockProjectSettings() model.ProjectSettings {
 		ProjectRef: model.ProjectRef{
 			Owner:          "admin",
 			Enabled:        utility.TruePtr(),
+			Private:        utility.TruePtr(),
 			Id:             projectId,
 			Admins:         []string{},
-			Repo:           evergreen.PublicRepoName,
 			PeriodicBuilds: nil,
 			WorkstationConfig: model.WorkstationConfig{
 				SetupCommands: nil,
@@ -90,30 +90,34 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 		projects := []*model.ProjectRef{
 			{
 				Id:          "projectA",
+				Private:     utility.FalsePtr(),
 				Enabled:     utility.TruePtr(),
 				CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "evergreen-ci",
-				Repo:        evergreen.PublicRepoName,
+				Repo:        "gimlet",
 				Branch:      "main",
 			},
 			{
 				Id:          "projectB",
+				Private:     utility.TruePtr(),
 				Enabled:     utility.TruePtr(),
 				CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "evergreen-ci",
+				Repo:        "evergreen",
 				Branch:      "main",
 			},
 			{
 				Id:          "projectC",
+				Private:     utility.TruePtr(),
 				Enabled:     utility.TruePtr(),
 				CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "mongodb",
 				Repo:        "mongo",
 				Branch:      "main",
 			},
-			{Id: "projectD", Repo: evergreen.PublicRepoName},
-			{Id: "projectE", Repo: evergreen.PublicRepoName},
-			{Id: "projectF"},
+			{Id: "projectD", Private: utility.FalsePtr()},
+			{Id: "projectE", Private: utility.FalsePtr()},
+			{Id: "projectF", Private: utility.TruePtr()},
 			{Id: projectId},
 		}
 

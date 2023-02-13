@@ -34,8 +34,8 @@ type ServiceFlags struct {
 	BackgroundCleanupDisabled       bool `bson:"background_cleanup_disabled" json:"background_cleanup_disabled"`
 	CloudCleanupDisabled            bool `bson:"cloud_cleanup_disabled" json:"cloud_cleanup_disabled"`
 	ContainerConfigurationsDisabled bool `bson:"container_configurations_disabled" json:"container_configurations_disabled"`
-	RestRouteRequireAuthDisabled    bool `bson:"rest_route_require_auth_disabled" json:"rest_route_require_auth_disabled"`
-	UIRequireAuthDisabled           bool `bson:"ui_require_auth_disabled" json:"ui_require_auth_disabled"`
+	RestRoutePartialAuthDisabled    bool `bson:"rest_route_partial_auth_disabled" json:"rest_route_partial_auth_disabled"`
+	UIPartialAuthDisabled           bool `bson:"ui_partial_auth_disabled" json:"ui_partial_auth_disabled"`
 	ParserProjectS3StorageDisabled  bool `bson:"parser_project_s3_storage_disabled" json:"parser_project_s3_storage_disabled"`
 
 	// Notification Flags
@@ -107,8 +107,8 @@ func (c *ServiceFlags) Set() error {
 			backgroundReauthDisabledKey:        c.BackgroundReauthDisabled,
 			cloudCleanupDisabledKey:            c.CloudCleanupDisabled,
 			containerConfigurationsDisabledKey: c.ContainerConfigurationsDisabled,
-			restRouteRequireAuthDisabledKey:    c.RestRouteRequireAuthDisabled,
-			uiRequireAuthDisabledKey:           c.UIRequireAuthDisabled,
+			restRouteRequireAuthDisabledKey:    c.RestRoutePartialAuthDisabled,
+			uiRequireAuthDisabledKey:           c.UIPartialAuthDisabled,
 			unrecognizedPodCleanupDisabledKey:  c.UnrecognizedPodCleanupDisabled,
 			parserProjectS3StorageDisabledKey:  c.ParserProjectS3StorageDisabled,
 		},
