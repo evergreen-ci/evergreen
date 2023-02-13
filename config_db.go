@@ -94,8 +94,8 @@ var (
 	backgroundCleanupDisabledKey       = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundCleanupDisabled")
 	cloudCleanupDisabledKey            = bsonutil.MustHaveTag(ServiceFlags{}, "CloudCleanupDisabled")
 	containerConfigurationsDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "ContainerConfigurationsDisabled")
-	restRouteRequireAuthDisabledKey    = bsonutil.MustHaveTag(ServiceFlags{}, "RestRoutePartialAuthDisabled")
-	uiRequireAuthDisabledKey           = bsonutil.MustHaveTag(ServiceFlags{}, "UIPartialAuthDisabled")
+	restRoutePartialAuthDisabledKey    = bsonutil.MustHaveTag(ServiceFlags{}, "RestRoutePartialAuthDisabled")
+	uiPartialAuthDisabledKey           = bsonutil.MustHaveTag(ServiceFlags{}, "UIPartialAuthDisabled")
 	unrecognizedPodCleanupDisabledKey  = bsonutil.MustHaveTag(ServiceFlags{}, "UnrecognizedPodCleanupDisabled")
 	parserProjectS3StorageDisabledKey  = bsonutil.MustHaveTag(ServiceFlags{}, "ParserProjectS3StorageDisabled")
 
