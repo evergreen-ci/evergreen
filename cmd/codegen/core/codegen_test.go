@@ -10,7 +10,7 @@ import (
 	"github.com/99designs/gqlgen/codegen/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	yaml "gopkg.in/20210107192922/yaml.v3"
+	"gopkg.in/yaml.v3"
 )
 
 func TestCodegen(t *testing.T) {

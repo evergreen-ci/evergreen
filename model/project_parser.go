@@ -597,12 +597,10 @@ func GetProjectFromBSON(data []byte) (*Project, error) {
 // opts is used to look up files on github if the main parser project has an Include.
 func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, identifier string, project *Project) (*ParserProject, error) {
 	unmarshalStrict := false
-	useUpgradedYAML := false
 	if opts != nil {
 		unmarshalStrict = opts.UnmarshalStrict
-		useUpgradedYAML = opts.UseUpgradedYAML
 	}
-	intermediateProject, err := createIntermediateProject(data, unmarshalStrict, useUpgradedYAML)
+	intermediateProject, err := createIntermediateProject(data, unmarshalStrict)
 	if err != nil {
 		return nil, errors.Wrapf(err, LoadProjectError)
 	}
@@ -632,7 +630,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 		if err != nil {
 			return intermediateProject, errors.Wrapf(err, "%s: retrieving file '%s'", LoadProjectError, path.FileName)
 		}
-		add, err := createIntermediateProject(yaml, opts.UnmarshalStrict, opts.UseUpgradedYAML)
+		add, err := createIntermediateProject(yaml, opts.UnmarshalStrict)
 		if err != nil {
 			return intermediateProject, errors.Wrapf(err, "%s: loading file '%s'", LoadProjectError, path.FileName)
 		}
@@ -669,7 +667,6 @@ type GetProjectOpts struct {
 	ReadFileFrom    string
 	Identifier      string
 	UnmarshalStrict bool
-	UseUpgradedYAML bool
 }
 
 type PatchOpts struct {
@@ -829,9 +826,9 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (ProjectInfo, 
 // intermediate project representation (i.e. before selectors or
 // matrix logic has been evaluated).
 // If unmarshalStrict is true, use the strict version of unmarshalling.
-func createIntermediateProject(yml []byte, unmarshalStrict, useUpgradedYAML bool) (*ParserProject, error) {
+func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject, error) {
 	p := ParserProject{}
-	if useUpgradedYAML && unmarshalStrict {
+	if unmarshalStrict {
 		strictProjectWithVariables := struct {
 			ParserProject       `yaml:"pp,inline"`
 			ProjectConfigFields `yaml:"pc,inline"`
@@ -839,28 +836,10 @@ func createIntermediateProject(yml []byte, unmarshalStrict, useUpgradedYAML bool
 			// to a non-existent variables field.
 			Variables interface{} `yaml:"variables,omitempty" bson:"-"`
 		}{}
-		if err := util.UnmarshalUpgradedYAMLStrictWithFallback(yml, &strictProjectWithVariables); err != nil {
-			return nil, err
-		}
-		p = strictProjectWithVariables.ParserProject
-	} else if unmarshalStrict {
-		strictProjectWithVariables := struct {
-			ParserProject       `yaml:"pp,inline"`
-			ProjectConfigFields `yaml:"pc,inline"`
-			// Variables is only used to suppress yaml unmarshalling errors related
-			// to a non-existent variables field.
-			Variables interface{} `yaml:"variables,omitempty" bson:"-"`
-		}{}
-
 		if err := util.UnmarshalYAMLStrictWithFallback(yml, &strictProjectWithVariables); err != nil {
 			return nil, err
 		}
 		p = strictProjectWithVariables.ParserProject
-	} else if useUpgradedYAML {
-		if err := util.UnmarshalUpgradedYAMLWithFallback(yml, &p); err != nil {
-			yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
-			return nil, errors.Wrap(yamlErr, "unmarshalling parser project from YAML")
-		}
 	} else {
 		if err := util.UnmarshalYAMLWithFallback(yml, &p); err != nil {
 			yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}

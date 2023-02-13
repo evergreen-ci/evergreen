@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
-	"gopkg.in/20210107192922/yaml.v3"
+	"gopkg.in/yaml.v3"
 )
 
 func init() {
@@ -368,9 +368,9 @@ func TestPopulateExpansions(t *testing.T) {
 	assert.Equal("", expansions.Get("is_patch"))
 	assert.False(expansions.Exists("is_commit_queue"))
 	assert.Equal("github_tag", expansions.Get("requester"))
+	assert.False(expansions.Exists("github_pr_number"))
 	assert.False(expansions.Exists("github_repo"))
 	assert.False(expansions.Exists("github_author"))
-	assert.False(expansions.Exists("github_pr_number"))
 
 	assert.NoError(VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
 		"$set": bson.M{VersionRequesterKey: evergreen.PatchVersionRequester},
@@ -386,9 +386,9 @@ func TestPopulateExpansions(t *testing.T) {
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("patch", expansions.Get("requester"))
 	assert.False(expansions.Exists("is_commit_queue"))
+	assert.False(expansions.Exists("github_pr_number"))
 	assert.False(expansions.Exists("github_repo"))
 	assert.False(expansions.Exists("github_author"))
-	assert.False(expansions.Exists("github_pr_number"))
 	assert.False(expansions.Exists("triggered_by_git_tag"))
 	require.NoError(t, db.ClearCollections(patch.Collection))
 
@@ -400,16 +400,24 @@ func TestPopulateExpansions(t *testing.T) {
 		Description: "commit queue message",
 		GithubPatchData: thirdparty.GithubPatch{
 			PRNumber:       12,
+			BaseOwner:      "potato",
+			BaseRepo:       "tomato",
+			Author:         "hemingway",
+			HeadHash:       "7d2fe4649f50f87cb60c2f80ac2ceda1e5b88522",
 			MergeCommitSHA: "21",
 		},
 	}
 	require.NoError(t, p.Insert())
 	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 26)
+	assert.Len(map[string]string(expansions), 29)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("true", expansions.Get("is_commit_queue"))
 	assert.Equal("12", expansions.Get("github_pr_number"))
+	assert.Equal("potato", expansions.Get("github_org"))
+	assert.Equal(p.GithubPatchData.BaseRepo, expansions.Get("github_repo"))
+	assert.Equal(p.GithubPatchData.Author, expansions.Get("github_author"))
+	assert.Equal(p.GithubPatchData.HeadHash, expansions.Get("github_commit"))
 	assert.Equal("commit queue message", expansions.Get("commit_message"))
 	require.NoError(t, db.ClearCollections(patch.Collection))
 
@@ -1262,7 +1270,7 @@ tasks:
   depends_on:
     - name: dist-test
 `
-	intermediate, err := createIntermediateProject([]byte(projYml), false, false)
+	intermediate, err := createIntermediateProject([]byte(projYml), false)
 	s.NoError(err)
 	marshaled, err := yaml.Marshal(intermediate)
 	s.NoError(err)

@@ -25,7 +25,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	ignore "github.com/sabhiram/go-gitignore"
-	"gopkg.in/20210107192922/yaml.v3"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -1112,12 +1112,9 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 		if v.Requester == evergreen.MergeTestRequester {
 			expansions.Put("is_commit_queue", "true")
 			expansions.Put("commit_message", p.Description)
-			if p.IsPRMergePatch() {
-				expansions.Put("github_pr_number", fmt.Sprintf("%d", p.GithubPatchData.PRNumber))
-			}
 		}
 
-		if v.Requester == evergreen.GithubPRRequester {
+		if p.IsPRMergePatch() || v.Requester == evergreen.GithubPRRequester {
 			expansions.Put("github_pr_number", fmt.Sprintf("%d", p.GithubPatchData.PRNumber))
 			expansions.Put("github_org", p.GithubPatchData.BaseOwner)
 			expansions.Put("github_repo", p.GithubPatchData.BaseRepo)
