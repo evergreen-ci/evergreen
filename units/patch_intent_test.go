@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip/send"
@@ -51,7 +52,6 @@ type PatchIntentUnitsSuite struct {
 }
 
 func TestPatchIntentUnitsSuite(t *testing.T) {
-
 	suite.Run(t, new(PatchIntentUnitsSuite))
 }
 
@@ -62,10 +62,10 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.Require().NoError(s.env.Configure(s.ctx))
 
-	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings(), "TestPatchIntentUnitsSuite")
+	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings(), s.T().Name())
 	s.NotNil(s.env.Settings())
 
-	s.NoError(db.ClearCollections(evergreen.ConfigCollection, task.Collection, model.ProjectVarsCollection, model.VersionCollection, user.Collection, model.ProjectRefCollection, patch.Collection, patch.IntentCollection, event.SubscriptionsCollection, distro.Collection))
+	s.NoError(db.ClearCollections(evergreen.ConfigCollection, task.Collection, model.ProjectVarsCollection, model.ParserProjectCollection, model.VersionCollection, user.Collection, model.ProjectRefCollection, patch.Collection, patch.IntentCollection, event.SubscriptionsCollection, distro.Collection))
 	s.NoError(db.ClearGridCollections(patch.GridFSPrefix))
 
 	s.NoError((&model.ProjectRef{
@@ -81,12 +81,17 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 			Enabled: utility.TruePtr(),
 		},
 		PatchTriggerAliases: []patch.PatchTriggerDefinition{
-			{Alias: "patch-alias", ChildProject: "childProj"},
+			{
+				Alias:          "patch-alias",
+				ChildProject:   "childProj",
+				TaskSpecifiers: []patch.TaskSpecifier{{PatchAlias: "childProj-patch-alias"}},
+			},
 		},
 	}).Insert())
 
 	s.NoError((&model.ProjectRef{
 		Id:         "childProj",
+		Identifier: "childProj",
 		Owner:      "evergreen-ci",
 		Repo:       "evergreen",
 		Branch:     "main",
@@ -175,22 +180,6 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 }
 func (s *PatchIntentUnitsSuite) TearDownTest() {
 	s.cancel()
-}
-
-func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent, patchedParserProject string) *patchIntentProcessor {
-	j := NewPatchIntentProcessor(mgobson.NewObjectId(), intent).(*patchIntentProcessor)
-	j.env = s.env
-
-	patchDoc := intent.NewPatch()
-	if patchedParserProject != "" {
-		patchDoc.PatchedParserProject = patchedParserProject
-		patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{ModuleName: "sandbox"})
-	}
-	s.NoError(j.finishPatch(s.ctx, patchDoc))
-	s.NoError(j.Error())
-	s.False(j.HasErrors())
-
-	return j
 }
 
 func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithNoTasksAndVariants() {
@@ -547,9 +536,6 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 }
 
 func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithRepeatFailed() {
-	s.Require().NoError(db.ClearCollections(task.Collection))
-	s.Require().NoError(db.ClearCollections(patch.Collection))
-
 	patchId := "aaaaaaaaaaff001122334455"
 	tasks := []task.Task{
 		{
@@ -656,9 +642,6 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithRepeatFailed() {
 }
 
 func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReuse() {
-	s.Require().NoError(db.ClearCollections(task.Collection))
-	s.Require().NoError(db.ClearCollections(patch.Collection))
-
 	patchId := "aaaaaaaaaaff001122334455"
 	tasks := []task.Task{
 		{
@@ -767,9 +750,6 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReuse() {
 }
 
 func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReusePatchId() {
-	s.Require().NoError(db.ClearCollections(task.Collection))
-	s.Require().NoError(db.ClearCollections(patch.Collection))
-
 	earlierPatchId := mgobson.NewObjectId().Hex()
 	prevPatchId := mgobson.NewObjectId().Hex()
 	tasks := []task.Task{
@@ -948,20 +928,34 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	s.NoError(err)
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert())
-	j := s.makeJobAndPatch(intent, "")
 
-	patchDoc, err := patch.FindOne(patch.ById(j.PatchID))
+	j := NewPatchIntentProcessor(mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+	j.env = s.env
+
+	patchDoc := intent.NewPatch()
+	s.NoError(j.finishPatch(s.ctx, patchDoc))
+
+	s.NoError(j.Error())
+	s.False(j.HasErrors())
+
+	dbPatch, err := patch.FindOne(patch.ById(j.PatchID))
 	s.NoError(err)
-	s.Require().NotNil(patchDoc)
+	s.Require().NotNil(dbPatch)
 
-	s.verifyPatchDoc(patchDoc, j.PatchID)
+	s.verifyPatchDoc(dbPatch, j.PatchID)
 	s.projectExists(j.PatchID.Hex())
-	s.NotZero(patchDoc.CreateTime)
-	s.Zero(patchDoc.GithubPatchData)
+	s.NotZero(dbPatch.CreateTime)
+	s.Zero(dbPatch.GithubPatchData)
 
-	s.verifyVersionDoc(patchDoc, evergreen.PatchVersionRequester)
+	s.Equal(evergreen.ProjectStorageMethodDB, dbPatch.ProjectStorageMethod)
+	dbParserProject, err := model.ParserProjectFindOneByID(s.ctx, s.env.Settings(), patchDoc.ProjectStorageMethod, patchDoc.Id.Hex())
+	s.Require().NoError(err)
+	s.Require().NotZero(dbParserProject)
+	s.Len(dbParserProject.BuildVariants, 8)
 
-	s.gridFSFileExists(patchDoc.Patches[0].PatchSet.PatchFileId)
+	s.verifyVersionDoc(dbPatch, evergreen.PatchVersionRequester)
+
+	s.gridFSFileExists(dbPatch.Patches[0].PatchSet.PatchFileId)
 
 	out := []event.Subscription{}
 	s.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Query(bson.M{}), &out))
@@ -1208,18 +1202,52 @@ func (s *PatchIntentUnitsSuite) TestCliBackport() {
 	s.Equal(sourcePatch.Patches[0].PatchSet.Patch, backportPatch.Patches[0].PatchSet.Patch)
 }
 
-const PatchId = "58d156352cfeb61064cf08b3"
-
 func (s *PatchIntentUnitsSuite) TestProcessTriggerAliases() {
+	// TODO (EVG-18700): this can be removed if the env can be passed into
+	// NewPatchIntentProcessor rather than having the trigger job call
+	// GetEnvironment and rely on the global testing environment.
 	evergreen.GetEnvironment().Settings().Credentials = s.env.Settings().Credentials
 
+	latestVersion := model.Version{
+		Id:         "childProj-some-version",
+		Identifier: "childProj",
+		Requester:  evergreen.RepotrackerVersionRequester,
+	}
+	s.Require().NoError(latestVersion.Insert())
+
+	latestVersionParserProject := &model.ParserProject{}
+	s.Require().NoError(util.UnmarshalYAMLWithFallback([]byte(`
+buildvariants:
+- name: my-build-variant
+  display_name: my-build-variant
+  run_on:
+    - some-distro
+  tasks:
+    - my-task
+tasks:
+- name: my-task`), latestVersionParserProject))
+	latestVersionParserProject.Id = latestVersion.Id
+	s.Require().NoError(latestVersionParserProject.Insert())
+
+	childPatchAlias := model.ProjectAlias{
+		ProjectID: "childProj",
+		Alias:     "childProj-patch-alias",
+		Task:      "my-task",
+		Variant:   "my-build-variant",
+	}
+	s.Require().NoError(childPatchAlias.Upsert())
+
 	p := &patch.Patch{
-		Id:      patch.NewId(PatchId),
+		Id:      mgobson.NewObjectId(),
 		Project: s.project,
 		Author:  evergreen.GithubPatchUser,
 		Githash: s.hash,
 	}
 	s.NoError(p.Insert())
+	pp := &model.ParserProject{
+		Id: p.Id.Hex(),
+	}
+	s.NoError(pp.Insert())
 
 	u := &user.DBUser{
 		Id: evergreen.ParentPatchUser,
@@ -1232,6 +1260,48 @@ func (s *PatchIntentUnitsSuite) TestProcessTriggerAliases() {
 
 	s.Len(p.Triggers.ChildPatches, 0)
 	s.NoError(ProcessTriggerAliases(s.ctx, p, projectRef, s.env, []string{"patch-alias"}))
+
+	dbPatch, err := patch.FindOneId(p.Id.Hex())
+	s.NoError(err)
+	s.Require().NotZero(dbPatch)
+	s.Equal(p.Triggers.ChildPatches, dbPatch.Triggers.ChildPatches)
+
+	s.Require().NotEmpty(dbPatch.Triggers.ChildPatches)
+	dbChildPatch, err := patch.FindOneId(dbPatch.Triggers.ChildPatches[0])
+	s.NoError(err)
+	s.Require().NotZero(dbChildPatch)
+	s.Require().Len(dbChildPatch.VariantsTasks, 1, "child patch with valid trigger alias in the child project must have the expected variants and tasks")
+	s.Equal("my-build-variant", dbChildPatch.VariantsTasks[0].Variant)
+	s.Require().Len(dbChildPatch.VariantsTasks[0].Tasks, 1, "child patch with valid trigger alias in the child project must have the expected variants and tasks")
+	s.Equal("my-task", dbChildPatch.VariantsTasks[0].Tasks[0])
+}
+
+func (s *PatchIntentUnitsSuite) TestProcessTriggerAliasesWithAliasThatDoesNotMatchAnyVariantTasks() {
+	evergreen.GetEnvironment().Settings().Credentials = s.env.Settings().Credentials
+
+	p := &patch.Patch{
+		Id:      mgobson.NewObjectId(),
+		Project: s.project,
+		Author:  evergreen.GithubPatchUser,
+		Githash: s.hash,
+	}
+	s.NoError(p.Insert())
+	pp := &model.ParserProject{
+		Id: p.Id.Hex(),
+	}
+	s.NoError(pp.Insert())
+
+	u := &user.DBUser{
+		Id: evergreen.ParentPatchUser,
+	}
+	s.NoError(u.Insert())
+
+	projectRef, err := model.FindBranchProjectRef(s.project)
+	s.NotNil(projectRef)
+	s.NoError(err)
+
+	s.Len(p.Triggers.ChildPatches, 0)
+	s.NoError(ProcessTriggerAliases(s.ctx, p, projectRef, s.env, []string{"patch-alias"}), "should succeed even with patch alias that doesn't match any defined aliases")
 	s.Len(p.Triggers.ChildPatches, 1)
 
 	dbPatch, err := patch.FindOneId(p.Id.Hex())

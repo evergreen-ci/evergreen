@@ -41,6 +41,7 @@ type APIPatch struct {
 	GithubPatchData         githubPatch          `json:"github_patch_data,omitempty"`
 	ModuleCodeChanges       []APIModulePatch     `json:"module_code_changes"`
 	Parameters              []APIParameter       `json:"parameters"`
+	ProjectStorageMethod    *string              `json:"project_storage_method,omitempty"`
 	PatchedParserProject    *string              `json:"patched_config"`
 	CanEnqueueToCommitQueue bool                 `json:"can_enqueue_to_commit_queue"`
 	ChildPatches            []APIPatch           `json:"child_patches"`
@@ -221,6 +222,7 @@ func (apiPatch *APIPatch) buildBasePatch(p patch.Patch) {
 	}
 
 	apiPatch.PatchedParserProject = utility.ToStringPtr(p.PatchedParserProject)
+	apiPatch.ProjectStorageMethod = utility.ToStringPtr(string(p.ProjectStorageMethod))
 	apiPatch.CanEnqueueToCommitQueue = p.HasValidGitInfo() || p.IsGithubPRPatch()
 	apiPatch.GithubPatchData.BuildFromService(p.GithubPatchData)
 }
@@ -381,6 +383,7 @@ func (apiPatch *APIPatch) ToService() (patch.Patch, error) {
 	}
 
 	res.GithubPatchData = apiPatch.GithubPatchData.ToService()
+	res.ProjectStorageMethod = evergreen.ParserProjectStorageMethod(utility.FromStringPtr(apiPatch.ProjectStorageMethod))
 	res.PatchedParserProject = utility.FromStringPtr(apiPatch.PatchedParserProject)
 	return res, catcher.Resolve()
 }
