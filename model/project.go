@@ -295,7 +295,6 @@ type BuildVariant struct {
 	Modules     []string          `yaml:"modules,omitempty" bson:"modules"`
 	Disable     bool              `yaml:"disable,omitempty" bson:"disable"`
 	Tags        []string          `yaml:"tags,omitempty" bson:"tags"`
-	Push        bool              `yaml:"push,omitempty" bson:"push"`
 
 	// Use a *int for 2 possible states
 	// nil - not overriding the project setting
