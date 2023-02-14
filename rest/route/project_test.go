@@ -1485,8 +1485,8 @@ func TestModifyProjectVersions(t *testing.T) {
 			body := []byte(`
 {
 	"priority": -1,
-	"start": 4,
-	"end": 1
+	"revision_start": 4,
+	"revision_end": 1
 }
 			`)
 			req, _ := http.NewRequest(http.MethodPatch, "https://example.com/rest/v2/projects/something-else/versions", bytes.NewBuffer(body))
@@ -1501,8 +1501,8 @@ func TestModifyProjectVersions(t *testing.T) {
 			body := []byte(`
 {
 	"priority": -1,
-	"start_time": "2022-11-02T00:00:00.000Z",
-	"end_time": "2022-11-03T00:00:00.000Z"
+	"start_time_str": "2022-11-02T00:00:00.000Z",
+	"end_time_str": "2022-11-03T00:00:00.000Z"
 }
 			`)
 			req, _ := http.NewRequest(http.MethodPatch, "https://example.com/rest/v2/projects/something-else/versions", bytes.NewBuffer(body))
@@ -1516,8 +1516,8 @@ func TestModifyProjectVersions(t *testing.T) {
 		"parseFaiWithNoPriority": func(t *testing.T, rm *modifyProjectVersionsHandler) {
 			body := []byte(`
 {
-	"start": 4,
-	"end": 1
+	"revision_start": 4,
+	"revision_end": 1
 }
 			`)
 			req, _ := http.NewRequest(http.MethodPatch, "https://example.com/rest/v2/projects/something-else/versions", bytes.NewBuffer(body))
@@ -1529,8 +1529,8 @@ func TestModifyProjectVersions(t *testing.T) {
 			body := []byte(`
 {
 	"priority": -1,
-	"start": 1,
-	"end": 4
+	"revision_start": 1,
+	"revision_end": 4
 }
 			`)
 			req, _ := http.NewRequest(http.MethodPatch, "https://example.com/rest/v2/projects/something-else/versions", bytes.NewBuffer(body))
@@ -1542,10 +1542,10 @@ func TestModifyProjectVersions(t *testing.T) {
 			body := []byte(`
 {
 	"priority": -1,
-	"start": 1,
-	"end": 4
-	"start_time": "2022-11-02T00:00:00.000Z",
-	"end_time": "2022-11-03T00:00:00.000Z"
+	"revision_start": 1,
+	"revision_end": 4
+	"start_time_str": "2022-11-02T00:00:00.000Z",
+	"end_time_str": "2022-11-03T00:00:00.000Z"
 }
 			`)
 			req, _ := http.NewRequest(http.MethodPatch, "https://example.com/rest/v2/projects/something-else/versions", bytes.NewBuffer(body))
@@ -1557,10 +1557,10 @@ func TestModifyProjectVersions(t *testing.T) {
 			body := []byte(`
 {
 	"priority": -1,
-	"start": 1,
-	"end": 4
-	"start_time": "2022-11-03T00:00:00.000Z",
-	"end_time": "2022-11-02T00:00:00.000Z"
+	"revision_start": 1,
+	"revision_end": 4
+	"start_time_str": "2022-11-03T00:00:00.000Z",
+	"end_time_str": "2022-11-02T00:00:00.000Z"
 }
 			`)
 			req, _ := http.NewRequest(http.MethodPatch, "https://example.com/rest/v2/projects/something-else/versions", bytes.NewBuffer(body))
