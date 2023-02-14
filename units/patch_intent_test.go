@@ -1010,6 +1010,8 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntentWithoutFinalizing() {
 
 	s.verifyPatchDoc(dbPatch, j.PatchID)
 	s.projectExists(j.PatchID.Hex())
+	s.NotZero(dbPatch.CreateTime)
+	s.Zero(dbPatch.GithubPatchData)
 
 	s.Equal(evergreen.ProjectStorageMethodDB, dbPatch.ProjectStorageMethod, "unfinalized patch should have project storage method set")
 	s.verifyParserProjectDoc(dbPatch)
@@ -1017,6 +1019,17 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntentWithoutFinalizing() {
 	dbVersion, err := model.VersionFindOne(model.VersionById(patchDoc.Id.Hex()))
 	s.NoError(err)
 	s.Zero(dbVersion, "should not create version for unfinalized patch")
+
+	s.verifyPatchDoc(dbPatch, j.PatchID)
+	s.projectExists(j.PatchID.Hex())
+
+	s.Equal(evergreen.ProjectStorageMethodDB, dbPatch.ProjectStorageMethod)
+	dbParserProject, err := model.ParserProjectFindOneByID(s.ctx, s.env.Settings(), patchDoc.ProjectStorageMethod, patchDoc.Id.Hex())
+	s.Require().NoError(err)
+	s.Require().NotZero(dbParserProject)
+	s.Len(dbParserProject.BuildVariants, 8)
+
+	s.verifyVersionDoc(dbPatch, evergreen.PatchVersionRequester)
 
 	s.gridFSFileExists(dbPatch.Patches[0].PatchSet.PatchFileId)
 
