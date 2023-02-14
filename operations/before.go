@@ -62,6 +62,16 @@ var (
 		return c.Set(hostFlagName, host)
 	}
 
+	checkCommitMessageFlagFlag = func(c *cli.Context) error {
+		message := c.String(commitMessageFlag)
+		if message != "" {
+			if c.NArg() > 1 {
+				return errors.New("multiple arguments passed in for commit message, please consider using quotations")
+			}
+		}
+		return nil
+	}
+
 	requireProjectFlag = func(c *cli.Context) error {
 		if c.String(projectFlagName) == "" {
 			return errors.New("must specify a project")
