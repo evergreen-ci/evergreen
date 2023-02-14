@@ -1904,14 +1904,14 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 		if p.TracksPushEvents != nil {
 			setUpdate[ProjectRefTracksPushEventsKey] = p.TracksPushEvents
 		}
-		config, err := evergreen.GetConfig()
+		config, error := evergreen.GetConfig()
 		if !isRepo && !p.UseRepoSettings() && !defaultToRepo {
 			if err != nil {
-				return false, errors.Wrap(err, "getting evergreen config")
+				return false, errors.Wrap(error, "getting evergreen config")
 			}
 			// Allow a user to modify owner and repo only if they are editing an unattached project
-			if err := p.ValidateOwnerAndRepo(config.GithubOrgs); err != nil {
-				return false, errors.Wrap(err, "validating new owner/repo")
+			if error = p.ValidateOwnerAndRepo(config.GithubOrgs); error != nil {
+				return false, errors.Wrap(error, "validating new owner/repo")
 			}
 
 			setUpdate[ProjectRefOwnerKey] = p.Owner
@@ -1919,9 +1919,9 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 
 		}
 		// Cannot enable projects if the project creation limits have been reached.
-		_, err = ValidateProjectCreation(projectId, config, p)
-		if err != nil {
-			return false, errors.Wrap(err, "validating project creation")
+		_, error = ValidateProjectCreation(projectId, config, p)
+		if error != nil {
+			return false, errors.Wrap(error, "validating project creation")
 		}
 		// some fields shouldn't be set to nil when defaulting to the repo
 		if !defaultToRepo {
