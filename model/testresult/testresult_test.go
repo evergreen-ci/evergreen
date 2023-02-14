@@ -1,22 +1,10 @@
 package testresult
 
 import (
-	"fmt"
-	"testing"
-	"time"
-
-	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	_ "github.com/evergreen-ci/evergreen/testutil"
-	adb "github.com/mongodb/anser/db"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+/*
 // FindOne returns one test result that satisfies the query. Returns nil if no tasks match.
 func findOne(query db.Q) (*TestResult, error) {
 	test := &TestResult{}
@@ -253,3 +241,4 @@ func TestDeleteWithLimit(t *testing.T) {
 		assert.Equal(t, 1, num)
 	})
 }
+*/

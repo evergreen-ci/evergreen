@@ -66,6 +66,10 @@ func (tr TestResult) GetDisplayTestName() string {
 	return tr.TestName
 }
 
+func (tr TestResult) getDuration() time.Duration {
+	return tr.End.Sub(tr.Start)
+}
+
 // GetLogURL returns the external or internal log URL for this test result.
 //
 // It is not advisable to set URL or URLRaw with the output of this function as
