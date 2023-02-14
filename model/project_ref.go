@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -923,31 +924,38 @@ func FindMergedProjectRef(identifier string, version string, includeProjectConfi
 }
 
 // GetEnabledProjects returns the current number of enabled projects on evergreen.
-func GetEnabledProjects() ([]ProjectRef, error) {
+func GetNumberOfEnabledProjects() (int, error) {
 	// Empty owner and repo will return all enabled project count.
-	return getEnabledProjects("", "")
+	return getNumberOfEnabledProjects("", "")
 }
 
 // GetEnabledProjectsForOwnerRepo returns the number of enabled projects for a given owner/repo.
-func GetEnabledProjectsForOwnerRepo(owner, repo string) ([]ProjectRef, error) {
+func GetNumberOfEnabledProjectsForOwnerRepo(owner, repo string) (int, error) {
 	if owner == "" || repo == "" {
-		return nil, errors.New("owner and repo must be specified")
+		return 0, errors.New("owner and repo must be specified")
 	}
-	return getEnabledProjects(owner, repo)
+	return getNumberOfEnabledProjects(owner, repo)
 }
 
-func getEnabledProjects(owner, repo string) ([]ProjectRef, error) {
+func getNumberOfEnabledProjects(owner, repo string) (int, error) {
 	pipeline := projectRefPipelineForValueIsBool(ProjectRefEnabledKey, RepoRefEnabledKey, true)
 	if owner != "" && repo != "" {
 		// Check owner and repos in project ref or repo ref.
 		pipeline = append(pipeline, bson.M{"$match": byOwnerAndRepo(owner, repo)})
 	}
-	projectRefSlice := []ProjectRef{}
-	err := db.Aggregate(ProjectRefCollection, pipeline, &projectRefSlice)
-	if err != nil {
-		return nil, err
+	pipeline = append(pipeline, bson.M{"$count": "count"})
+	type Count struct {
+		Count int `bson:"count"`
 	}
-	return projectRefSlice, nil
+	count := []Count{}
+	err := db.Aggregate(ProjectRefCollection, pipeline, &count)
+	if err != nil {
+		return 0, err
+	}
+	if len(count) == 0 {
+		return 0, nil
+	}
+	return count[0].Count, nil
 }
 
 // GetProjectRefMergedWithRepo merges the project with the repo, if one exists.
@@ -1896,8 +1904,8 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 		if p.TracksPushEvents != nil {
 			setUpdate[ProjectRefTracksPushEventsKey] = p.TracksPushEvents
 		}
+		config, err := evergreen.GetConfig()
 		if !isRepo && !p.UseRepoSettings() && !defaultToRepo {
-			config, err := evergreen.GetConfig()
 			if err != nil {
 				return false, errors.Wrap(err, "getting evergreen config")
 			}
@@ -1909,14 +1917,11 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			setUpdate[ProjectRefOwnerKey] = p.Owner
 			setUpdate[ProjectRefRepoKey] = p.Repo
 
-			// Cannot enable projects if the project creation limits have been reached.
-			shouldError, err := ValidateProjectCreation(projectId, config, p)
-			if err != nil {
-				if shouldError {
-					return false, errors.Wrap(err, "validating project creation")
-				}
-				// TODO EVG-18784: Return graphql warning
-			}
+		}
+		// Cannot enable projects if the project creation limits have been reached.
+		_, err = ValidateProjectCreation(projectId, config, p)
+		if err != nil {
+			return false, errors.Wrap(err, "validating project creation")
 		}
 		// some fields shouldn't be set to nil when defaulting to the repo
 		if !defaultToRepo {
@@ -2245,54 +2250,78 @@ func (p *ProjectRef) GetGithubProjectConflicts() (GithubProjectConflicts, error)
 }
 
 // ValidateProjectCreation returns a boolean if you should surface the error or not.
-func ValidateProjectCreation(projectId string, config *evergreen.Settings, projectRef *ProjectRef) (bool, error) {
+func ValidateProjectCreation(projectId string, config *evergreen.Settings, projectRef *ProjectRef) (int, error) {
 	if config.ProjectCreation.TotalProjectLimit == 0 || config.ProjectCreation.RepoProjectLimit == 0 {
-		return false, nil
+		return 0, nil
 	}
-	catcher := grip.NewBasicCatcher()
-	allEnabledProjects, err := GetEnabledProjects()
+	originalRef, err := findOneProjectRefQ(byId(projectId))
 	if err != nil {
-		return true, errors.Wrap(err, "getting number of projects")
+		return http.StatusInternalServerError, errors.Wrapf(err, "getting project '%s'", projectId)
 	}
-	allEnabledProjectsId := []string{}
-	for _, p := range allEnabledProjects {
-		allEnabledProjectsId = append(allEnabledProjectsId, p.Id)
+	if originalRef != nil {
+		if projectRef == nil {
+			// Should be unreachable
+			return http.StatusInternalServerError, errors.New("cannot create project while defaulting to repo")
+		}
+		originalRef, err = GetProjectRefMergedWithRepo(*originalRef)
+		if err != nil {
+			return http.StatusInternalServerError, errors.Wrapf(err, "getting merged project for '%s'", originalRef.Id)
+		}
 	}
-	// No need to validate if project was enabled to begin with.
-	if utility.StringSliceContains(allEnabledProjectsId, projectId) {
-		return false, nil
+	var newRef *ProjectRef
+	if projectRef == nil {
+		// Default to repo case
+		repoRef, err := FindOneRepoRef(originalRef.Id)
+		if err != nil {
+			return http.StatusInternalServerError, errors.Wrapf(err, "getting repo ref for '%s'", originalRef.Id)
+		}
+		if repoRef == nil {
+			return http.StatusInternalServerError, errors.Errorf("no repo ref for '%s'", originalRef.Id)
+		}
+		newRef.Enabled = repoRef.Enabled
+		newRef.Owner = repoRef.Owner
+		newRef.Repo = repoRef.Repo
+	} else {
+		mergedRef, err := GetProjectRefMergedWithRepo(*projectRef)
+		if err != nil {
+			return http.StatusInternalServerError, errors.Wrapf(err, "getting merged project for '%s'", projectId)
+		}
+		newRef = mergedRef
 	}
 
-	// Only error if we are enabling a previously disabled project.
-	shouldError := false
-	pRef, err := findOneProjectRefQ(byId(projectId))
-	if err != nil {
-		return true, errors.Wrapf(err, "getting project '%s", projectId)
-	}
-	if pRef != nil {
-		// Defaulting to repo
-		if projectRef == nil {
-			projectRef, err = GetProjectRefMergedWithRepo(*pRef)
+	catcher := grip.NewBasicCatcher()
+	if originalRef == nil || newRef.IsEnabled() {
+		if originalRef == nil || !originalRef.IsEnabled() {
+			allEnabledProjects, err := GetNumberOfEnabledProjects()
 			if err != nil {
-				return true, errors.Wrapf(err, "getting merged project for '%s'", projectId)
+				return http.StatusInternalServerError, errors.Wrap(err, "getting number of projects")
+			}
+			if originalRef == nil {
+				allEnabledProjects++
+			}
+			if allEnabledProjects >= config.ProjectCreation.TotalProjectLimit {
+				catcher.Errorf("total project limit of %d reached", config.ProjectCreation.TotalProjectLimit)
 			}
 		}
-		shouldError = !pRef.IsEnabled() && projectRef.IsEnabled()
-	}
-
-	if len(allEnabledProjects) >= config.ProjectCreation.TotalProjectLimit {
-		catcher.Errorf("total project limit of %d reached", config.ProjectCreation.TotalProjectLimit)
-	}
-	if !config.ProjectCreation.IsExceptionToRepoLimit(projectRef.Owner, projectRef.Repo) {
-		enabledOwnerRepoProjects, err := GetEnabledProjectsForOwnerRepo(projectRef.Owner, projectRef.Repo)
-		if err != nil {
-			return true, errors.Wrapf(err, "getting number of projects for '%s/%s'", projectRef.Owner, projectRef.Repo)
+		if originalRef == nil || !originalRef.IsEnabled() || (originalRef.IsEnabled() && originalRef.Owner != newRef.Owner || originalRef.Repo != newRef.Repo) {
+			if !config.ProjectCreation.IsExceptionToRepoLimit(newRef.Owner, newRef.Repo) {
+				enabledOwnerRepoProjects, err := GetNumberOfEnabledProjectsForOwnerRepo(newRef.Owner, newRef.Repo)
+				if err != nil {
+					return http.StatusInternalServerError, errors.Wrapf(err, "getting number of projects for '%s/%s'", projectRef.Owner, projectRef.Repo)
+				}
+				if originalRef == nil {
+					enabledOwnerRepoProjects++
+				}
+				if enabledOwnerRepoProjects >= config.ProjectCreation.RepoProjectLimit {
+					catcher.Errorf("owner repo limit of %d reached for '%s/%s'", config.ProjectCreation.RepoProjectLimit, projectRef.Owner, projectRef.Repo)
+				}
+			}
 		}
-		if len(enabledOwnerRepoProjects) >= config.ProjectCreation.RepoProjectLimit {
-			catcher.Errorf("owner repo limit of %d reached for '%s/%s'", config.ProjectCreation.RepoProjectLimit, projectRef.Owner, projectRef.Repo)
-		}
 	}
-	return shouldError, catcher.Resolve()
+	if catcher.HasErrors() {
+		return http.StatusBadRequest, catcher.Resolve()
+	}
+	return 0, nil
 }
 
 func (p *ProjectRef) ValidateOwnerAndRepo(validOrgs []string) error {

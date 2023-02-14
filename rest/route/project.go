@@ -687,7 +687,7 @@ func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	u := gimlet.GetUser(ctx).(*user.DBUser)
 
-	if err = data.CreateProject(ctx, h.env, &dbProjectRef, u); err != nil {
+	if _, err = data.CreateProject(ctx, h.env, &dbProjectRef, u); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating project '%s'", h.projectName))
 	}
 

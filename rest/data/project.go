@@ -96,10 +96,11 @@ func RequestS3Creds(projectIdentifier string) error {
 // initial setup for new projects such as populating initial project variables
 // and creating new webhooks. If the given project ref already has container
 // secrets, the new project ref receives copies of the existing ones.
-func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *model.ProjectRef, u *user.DBUser) error {
+// Returns true if the project was successfully created.
+func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *model.ProjectRef, u *user.DBUser) (bool, error) {
 	if projectRef.Identifier != "" {
 		if err := VerifyUniqueProject(projectRef.Identifier); err != nil {
-			return err
+			return false, err
 		}
 	}
 	if projectRef.Id == "" {
@@ -108,12 +109,19 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 		}
 	}
 	if err := VerifyUniqueProject(projectRef.Id); err != nil {
-		return err
+		return false, err
 	}
 	// Always warn because created projects are never enabled.
-	_, err := model.ValidateProjectCreation(projectRef.Id, env.Settings(), projectRef)
+	catcher := grip.NewBasicCatcher()
+	statusCode, err := model.ValidateProjectCreation(projectRef.Id, env.Settings(), projectRef)
 	if err != nil {
-		// TODO EVG-18784: Return graphql warning
+		if statusCode != http.StatusBadRequest {
+			return false, gimlet.ErrorResponse{
+				StatusCode: statusCode,
+				Message:    errors.Wrapf(err, "inserting project '%s'", projectRef.Identifier).Error(),
+			}
+		}
+		catcher.Add(err)
 	}
 
 	existingContainerSecrets := projectRef.ContainerSecrets
@@ -131,7 +139,7 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 	}
 	err = projectRef.Add(u)
 	if err != nil {
-		return gimlet.ErrorResponse{
+		return false, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrapf(err, "inserting project '%s'", projectRef.Identifier).Error(),
 		}
@@ -150,7 +158,7 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 
 	err = newProjectVars.Insert()
 	if err != nil {
-		return gimlet.ErrorResponse{
+		return false, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrapf(err, "initializing project variables for project '%s'", projectRef.Identifier).Error(),
 		}
@@ -162,7 +170,7 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 		"project_identifier": projectRef.Identifier,
 		"user":               u.DisplayName(),
 	}))
-	return nil
+	return true, catcher.Resolve()
 }
 
 func tryCopyingContainerSecrets(ctx context.Context, settings *evergreen.Settings, existingSecrets []model.ContainerSecret, pRef *model.ProjectRef) error {
