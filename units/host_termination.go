@@ -298,6 +298,8 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		"total_uptime_secs":  j.host.TerminationTime.Sub(j.host.CreationTime).Seconds(),
 		"termination_time":   j.host.TerminationTime,
 		"creation_time":      j.host.CreationTime,
+		"started_by":         j.host.StartedBy,
+		"user_host":          j.host.UserHost,
 	}
 	if !utility.IsZeroTime(j.host.BillingStartTime) {
 		terminationMessage["total_billable_secs"] = j.host.TerminationTime.Sub(j.host.BillingStartTime).Seconds()
