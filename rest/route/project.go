@@ -929,7 +929,7 @@ func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
 type modifyProjectVersionsHandler struct {
 	projectId string
 	url       string
-	opts      dbModel.ModifyVersionsOptions
+	opts      dbModel.VersionsOptions
 }
 
 func makeModifyProjectVersionsHandler(url string) gimlet.RouteHandler {
@@ -962,15 +962,6 @@ func (h *modifyProjectVersionsHandler) Parse(ctx context.Context, r *http.Reques
 func (h *modifyProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
 	priority := utility.FromInt64Ptr(h.opts.Priority)
-	versions, err := data.GetProjectVersionsWithOptions(h.projectId, h.opts.GetVersionsOptions)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting versions for project '%s'", h.projectId))
-	}
-	var versionIds []string
-	for _, v := range versions {
-		versionIds = append(versionIds, utility.FromStringPtr(v.Id))
-	}
-
 	// Check for a valid priority and perform the update.
 	if ok := validPriority(priority, h.projectId, user); !ok {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
@@ -979,16 +970,24 @@ func (h *modifyProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder
 			StatusCode: http.StatusForbidden,
 		})
 	}
+	versions, err := data.GetProjectVersionsWithOptions(h.projectId, h.opts.GetVersionsOptions)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting versions for project '%s'", h.projectId))
+	}
+	var versionIds []string
+	for _, v := range versions {
+		versionIds = append(versionIds, utility.FromStringPtr(v.Id))
+	}
 	if err = dbModel.SetVersionsPriority(versionIds, priority, user.Id); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting version priorities"))
 	}
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
-// parseGetVersionsOptions parses the request body and query parameters and returns a GetVersionsOptions struct.
+// parseGetVersionsOptions parses the request body and query parameters and returns a VersionsOptions struct.
 // If both are specified, the values set in the query parameters take precedence.
-func parseGetVersionsOptions(body []byte, params url.Values) (*dbModel.ModifyVersionsOptions, error) {
-	opts := &dbModel.ModifyVersionsOptions{}
+func parseGetVersionsOptions(body []byte, params url.Values) (*dbModel.VersionsOptions, error) {
+	opts := &dbModel.VersionsOptions{}
 	if len(body) > 0 {
 		if err := json.Unmarshal(body, opts); err != nil {
 			return nil, errors.Wrap(err, "unmarshalling JSON request body into version options")
@@ -1021,9 +1020,9 @@ func parseGetVersionsOptions(body []byte, params url.Values) (*dbModel.ModifyVer
 		if err != nil {
 			return nil, errors.Wrap(err, "invalid start query parameter")
 		}
-		opts.StartAfter = startOrder
+		opts.RevisionStart = startOrder
 	}
-	if opts.StartAfter < 0 {
+	if opts.RevisionStart < 0 {
 		return nil, errors.New("start must be a non-negative integer")
 	}
 
@@ -1033,19 +1032,19 @@ func parseGetVersionsOptions(body []byte, params url.Values) (*dbModel.ModifyVer
 		if err != nil {
 			return nil, errors.Wrap(err, "invalid end query parameter")
 		}
-		opts.EndAt = endOrder
+		opts.RevisionEnd = endOrder
 	}
-	if opts.EndAt < 0 {
+	if opts.RevisionEnd < 0 {
 		return nil, errors.New("end must be a non-negative integer")
 	}
-	if opts.EndAt > opts.StartAfter {
+	if opts.RevisionEnd > opts.RevisionStart {
 		return nil, errors.New("end must be less than or equal to start")
 	}
 
-	if opts.StartTimeStr == "" && opts.StartAfter == 0 {
+	if opts.StartTimeStr == "" && opts.RevisionStart == 0 {
 		return nil, errors.New("must specify either timestamps or order numbers")
 	}
-	if opts.StartTimeStr != "" && opts.StartAfter != 0 {
+	if opts.StartTimeStr != "" && opts.RevisionStart != 0 {
 		return nil, errors.New("cannot specify both timestamps and order numbers")
 	}
 
@@ -1067,7 +1066,7 @@ func parseGetVersionsOptions(body []byte, params url.Values) (*dbModel.ModifyVer
 	return opts, nil
 }
 
-func getStartAndEndTime(startTimeStr, endTimeStr string) (start time.Time, end time.Time, err error) {
+func getStartAndEndTime(startTimeStr, endTimeStr string) (time.Time, time.Time, error) {
 	startTime, err := model.ParseTime(startTimeStr)
 	if err != nil {
 		return time.Time{}, time.Time{}, errors.Wrapf(err, "parsing start time '%s'", startTimeStr)

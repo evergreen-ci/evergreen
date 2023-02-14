@@ -506,20 +506,20 @@ func GetMainlineCommitVersionsWithOptions(projectId string, opts MainlineCommitV
 	return res, nil
 }
 
-// ModifyVersionsOptions is a struct for setting the priority of versions.
-// It uses all the options in the GetVersionsOptions struct, as well as a priority field.
-type ModifyVersionsOptions struct {
+// VersionsOptions is a struct containing options necessary to get and modify versions.
+// It uses a superset of the options in the GetVersionsOptions struct.
+type VersionsOptions struct {
 	Priority     *int64 `json:"priority"`
-	StartTimeStr string `json:"start_time"`
-	EndTimeStr   string `json:"end_time"`
+	StartTimeStr string `json:"start_time_str"`
+	EndTimeStr   string `json:"end_time_str"`
 	GetVersionsOptions
 }
 
 // GetVersionsOptions is a struct that holds the options for retrieving a list of versions
 type GetVersionsOptions struct {
 	Priority       *int64    `json:"priority"`
-	StartAfter     int       `json:"start"`
-	EndAt          int       `json:"end"`
+	RevisionStart  int       `json:"revision_start"`
+	RevisionEnd    int       `json:"revision_end"`
 	StartTime      time.Time `json:"start_time"`
 	EndTime        time.Time `json:"end_time"`
 	Requester      string    `json:"requester"`
@@ -556,10 +556,10 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 			"$lte": opts.EndTime,
 		}
 	} else {
-		if opts.EndAt > 0 && opts.StartAfter > 0 {
-			match[VersionRevisionOrderNumberKey] = bson.M{"$lte": opts.StartAfter, "$gte": opts.EndAt}
-		} else if opts.StartAfter > 0 {
-			match[VersionRevisionOrderNumberKey] = bson.M{"$lte": opts.StartAfter}
+		if opts.RevisionEnd > 0 && opts.RevisionStart > 0 {
+			match[VersionRevisionOrderNumberKey] = bson.M{"$lte": opts.RevisionStart, "$gte": opts.RevisionEnd}
+		} else if opts.RevisionStart > 0 {
+			match[VersionRevisionOrderNumberKey] = bson.M{"$lte": opts.RevisionStart}
 		}
 	}
 	pipeline := []bson.M{{"$match": match}}

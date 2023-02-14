@@ -1494,8 +1494,8 @@ func TestModifyProjectVersions(t *testing.T) {
 			err := rm.Parse(ctx, req)
 			assert.NoError(err)
 			assert.Equal(utility.FromInt64Ptr(rm.opts.Priority), evergreen.DisabledTaskPriority)
-			assert.Equal(rm.opts.StartAfter, 4)
-			assert.Equal(rm.opts.EndAt, 1)
+			assert.Equal(rm.opts.RevisionStart, 4)
+			assert.Equal(rm.opts.RevisionEnd, 1)
 		},
 		"parseSuccessTimestamp": func(t *testing.T, rm *modifyProjectVersionsHandler) {
 			body := []byte(`
@@ -1581,13 +1581,13 @@ func TestModifyProjectVersions(t *testing.T) {
 		},
 		"runSucceeds": func(t *testing.T, rm *modifyProjectVersionsHandler) {
 			rm.projectId = projectId
-			rm.opts = serviceModel.ModifyVersionsOptions{
+			rm.opts = serviceModel.VersionsOptions{
 				Priority: utility.ToInt64Ptr(evergreen.DisabledTaskPriority),
 				GetVersionsOptions: serviceModel.GetVersionsOptions{
-					StartAfter: 4,
-					EndAt:      1,
-					Requester:  evergreen.RepotrackerVersionRequester,
-					Limit:      20,
+					RevisionStart: 4,
+					RevisionEnd:   1,
+					Requester:     evergreen.RepotrackerVersionRequester,
+					Limit:         20,
 				},
 			}
 			resp := rm.Run(ctx)
@@ -1606,7 +1606,7 @@ func TestModifyProjectVersions(t *testing.T) {
 		},
 		"runSucceedsTimeStamp": func(t *testing.T, rm *modifyProjectVersionsHandler) {
 			rm.projectId = projectId
-			rm.opts = serviceModel.ModifyVersionsOptions{
+			rm.opts = serviceModel.VersionsOptions{
 				Priority: utility.ToInt64Ptr(evergreen.DisabledTaskPriority),
 				GetVersionsOptions: serviceModel.GetVersionsOptions{
 					StartTime: time.Date(2022, 11, 2, 0, 0, 0, 0, time.UTC),
