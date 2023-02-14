@@ -808,25 +808,17 @@ func TestViewableProjectSettings(t *testing.T) {
 	assert.NotContains(t, projects, "other")
 }
 
-func (s *UserTestSuite) TestClearUserSettings() {
+func (s *UserTestSuite) TestClearUser() {
 	// Error on non-existent user
 	s.Error(ClearUser("asdf"))
-
-	emptySettings := UserSettings{
-		Timezone: "", Region: "", GithubUser: GithubUser{UID: 0, LastKnownAs: ""},
-		SlackUsername: "", SlackMemberId: "", Notifications: NotificationPreferences{BuildBreak: "",
-			BuildBreakID: "", PatchFinish: "", PatchFinishID: "", PatchFirstFailure: "",
-			PatchFirstFailureID: "", SpawnHostExpiration: "", SpawnHostExpirationID: "",
-			SpawnHostOutcome: "", SpawnHostOutcomeID: "", CommitQueue: "", CommitQueueID: ""},
-		UseSpruceOptions: UseSpruceOptions{PatchPage: false, SpruceV1: false, HasUsedSpruceBefore: false, HasUsedMainlineCommitsBefore: false},
-	}
 
 	u, err := FindOneById(s.users[0].Id)
 	s.NoError(err)
 	s.NotNil(u)
-	s.NotEqual(u.Settings, emptySettings)
+	s.NotEmpty(u.Settings)
 	s.Equal("Test1", u.Id)
 	s.NoError(u.AddRole("r1p1"))
+	s.NotEmpty(u.SystemRoles)
 
 	s.NoError(ClearUser(u.Id))
 
@@ -835,7 +827,7 @@ func (s *UserTestSuite) TestClearUserSettings() {
 	s.NoError(err)
 	s.NotNil(u)
 
-	s.Equal(u.Settings, emptySettings)
 	s.Empty(u.Settings)
 	s.Empty(u.Roles())
+	s.Empty(u.LoginCache)
 }
