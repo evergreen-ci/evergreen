@@ -405,8 +405,8 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 			"context": "user offboarding",
 			"user":    ch.user,
 		}))
-		err = user.ClearUserSettings(ch.user)
-		catcher.Wrapf(err, "clearing user settings for user '%s'", ch.user)
+		err = user.ClearUser(ch.user)
+		catcher.Wrapf(err, "clearing user '%s'", ch.user)
 	}
 
 	if catcher.HasErrors() {
