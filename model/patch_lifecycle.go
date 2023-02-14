@@ -204,33 +204,8 @@ func addDisplayTasksToPatchReq(req *PatchUpdate, p Project) {
 	}
 }
 
-// GetPatchedProject creates and validates a project created by fetching latest commit information from GitHub
-// and applying the patch to the latest remote configuration. Also returns the condensed yaml string for storage.
-// The error returned can be a validation error.
-func GetPatchedProject(ctx context.Context, settings *evergreen.Settings, p *patch.Patch, githubOauthToken string) (*Project, *PatchConfig, error) {
-	if p.Version != "" {
-		return nil, nil, errors.Errorf("patch '%s' already finalized", p.Version)
-	}
-
-	projectRef, opts, err := getLoadProjectOptsForPatch(p, githubOauthToken)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "fetching project options for patch")
-	}
-	// if the patched config exists, use that as the project file bytes.
-	if p.PatchedParserProject != "" {
-		project, _, err := FindAndTranslateProjectForPatch(ctx, settings, p)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "finding and translating project")
-		}
-		patchConfig := &PatchConfig{
-			PatchedParserProject: p.PatchedParserProject,
-			PatchedProjectConfig: p.PatchedProjectConfig,
-		}
-		return project, patchConfig, nil
-	}
-
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithTimeout(ctx, 10*time.Second)
+func getPatchedProjectYAML(ctx context.Context, projectRef *ProjectRef, opts *GetProjectOpts, p *patch.Patch) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(ctx, time.Minute)
 	defer cancel()
 	env := evergreen.GetEnvironment()
 
@@ -251,9 +226,9 @@ func GetPatchedProject(ctx context.Context, settings *evergreen.Settings, p *pat
 	}
 	opts.RemotePath = path
 	opts.PatchOpts.env = env
-	projectFileBytes, err = getFileForPatchDiff(ctx, *opts)
+	projectFileBytes, err := getFileForPatchDiff(ctx, *opts)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "fetching remote configuration file")
+		return nil, errors.Wrap(err, "fetching remote configuration file")
 	}
 
 	// apply remote configuration patch if needed
@@ -261,41 +236,144 @@ func GetPatchedProject(ctx context.Context, settings *evergreen.Settings, p *pat
 		opts.ReadFileFrom = ReadFromPatchDiff
 		projectFileBytes, err = MakePatchedConfig(ctx, env, p, path, string(projectFileBytes))
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "patching remote configuration file")
+			return nil, errors.Wrap(err, "patching remote configuration file")
 		}
 	}
+
+	return projectFileBytes, nil
+}
+
+// GetPatchedProject creates and validates a project by fetching latest commit
+// information from GitHub and applying the patch to the latest remote
+// configuration. Also returns the condensed yaml string for storage. The error
+// returned can be a validation error.
+func GetPatchedProject(ctx context.Context, settings *evergreen.Settings, p *patch.Patch, githubOauthToken string) (*Project, *PatchConfig, error) {
+	if p.Version != "" {
+		return nil, nil, errors.Errorf("patch '%s' already finalized", p.Version)
+	}
+
+	if p.ProjectStorageMethod != "" || p.PatchedParserProject != "" {
+		// If the patch has already been created but has not been finalized, it
+		// has either already stored the parser project document or stored the
+		// parser project as a string (which is the fallback case for old
+		// patches).
+		project, pp, err := FindAndTranslateProjectForPatch(ctx, settings, p)
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "finding and translating project")
+		}
+
+		patchedParserProjectYAML := p.PatchedParserProject
+		if patchedParserProjectYAML == "" {
+			ppOut, err := yaml.Marshal(pp)
+			if err != nil {
+				return nil, nil, errors.Wrap(err, "marshalling parser project into YAML")
+			}
+			patchedParserProjectYAML = string(ppOut)
+		}
+		patchConfig := &PatchConfig{
+			PatchedParserProjectYAML: patchedParserProjectYAML,
+			PatchedParserProject:     pp,
+			PatchedProjectConfig:     p.PatchedProjectConfig,
+		}
+		return project, patchConfig, nil
+	}
+
+	projectRef, opts, err := getLoadProjectOptsForPatch(p, githubOauthToken)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "fetching project options for patch")
+	}
+
+	projectFileBytes, err := getPatchedProjectYAML(ctx, projectRef, opts, p)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "getting patched project file as YAML")
+	}
+
+	var pc string
+	if projectRef.IsVersionControlEnabled() {
+		pc, err = getProjectConfigYAML(p, projectFileBytes)
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "getting patched project config")
+		}
+	}
+
 	project := &Project{}
 	pp, err := LoadProjectInto(ctx, projectFileBytes, opts, p.Project, project)
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
 	}
-	var pc *ProjectConfig
-	if projectRef.IsVersionControlEnabled() {
-		pc, err = CreateProjectConfig(projectFileBytes, p.Project)
-		if err != nil {
-			return nil, nil, errors.WithStack(err)
-		}
-	}
+	// LoadProjectInto does not set the parser project's identifier, so set it
+	// here.
+	pp.Identifier = utility.ToStringPtr(p.Project)
 	ppOut, err := yaml.Marshal(pp)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "marshalling parser project into YAML")
 	}
+
 	patchConfig := &PatchConfig{
-		PatchedParserProject: string(ppOut),
-	}
-	if pc != nil {
-		pcOut, err := yaml.Marshal(pc)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "marshalling project config into YAML")
-		}
-		patchConfig.PatchedProjectConfig = string(pcOut)
+		PatchedParserProjectYAML: string(ppOut),
+		PatchedParserProject:     pp,
+		PatchedProjectConfig:     pc,
 	}
 	return project, patchConfig, nil
 }
 
-// MakePatchedConfig takes in the path to a remote configuration a stringified version
-// of the current project and returns an unmarshalled version of the project
-// with the patch applied
+// GetPatchedProjectConfig returns the project configuration by fetching the
+// latest commit information from GitHub and applying the patch to the latest
+// remote configuration. The error returned can be a validation error.
+func GetPatchedProjectConfig(ctx context.Context, settings *evergreen.Settings, p *patch.Patch, githubOauthToken string) (string, error) {
+	if p.Version != "" {
+		return "", errors.Errorf("patch '%s' already finalized", p.Version)
+	}
+
+	if p.ProjectStorageMethod != "" || p.PatchedParserProject != "" {
+		// If the patch has been created but not finalized, it has either
+		// already saved the project config as a string (if any), the parser
+		// project document, or has the entire patched parser project as a
+		// string (which is the fallback for old patches that don't store the
+		// parser project). Since the project config is optional, the patch may
+		// be created and have already evaluated the patched project config, but
+		// there simply was none. Therefore, this is a valid way to check and
+		// get the PatchedProjectConfig after the patch is already created.
+		return p.PatchedProjectConfig, nil
+	}
+
+	projectRef, opts, err := getLoadProjectOptsForPatch(p, githubOauthToken)
+	if err != nil {
+		return "", errors.Wrap(err, "fetching project options for patch")
+	}
+
+	projectFileBytes, err := getPatchedProjectYAML(ctx, projectRef, opts, p)
+	if err != nil {
+		return "", errors.Wrap(err, "getting patched project file as YAML")
+	}
+
+	if !projectRef.IsVersionControlEnabled() {
+		return "", nil
+	}
+
+	return getProjectConfigYAML(p, projectFileBytes)
+}
+
+// getProjectConfigYAML creates a project config from the project YAML string
+// and returns the project configuration as a string.
+func getProjectConfigYAML(p *patch.Patch, projectFileBytes []byte) (string, error) {
+	pc, err := CreateProjectConfig(projectFileBytes, p.Project)
+	if err != nil {
+		return "", errors.Wrap(err, "creating project config")
+	}
+
+	yamlProjectConfig, err := yaml.Marshal(pc)
+	if err != nil {
+		return "", errors.Wrap(err, "marshalling project config into YAML")
+	}
+
+	return string(yamlProjectConfig), nil
+}
+
+// MakePatchedConfig takes in the project's remote file path containing the
+// project YAML configuration and a stringified version of the project YAML
+// configuration, and returns an unmarshalled version of the project with the
+// patch applied.
 func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.Patch, remoteConfigPath, projectConfig string) ([]byte, error) {
 	for _, patchPart := range p.Patches {
 		// we only need to patch the main project and not any other modules
@@ -492,7 +570,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		Parameters:           params,
 		Activated:            utility.TruePtr(),
 		AuthorEmail:          authorEmail,
-		ProjectStorageMethod: ProjectStorageMethodDB,
+		ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
 	}
 	intermediateProject.CreateTime = patchVersion.CreateTime
 

@@ -707,7 +707,7 @@ func updatePatch(ctx context.Context, settings *evergreen.Settings, githubToken 
 	if err != nil {
 		return nil, errors.Wrap(err, "getting updated project config")
 	}
-	patchDoc.PatchedParserProject = patchConfig.PatchedParserProject
+	patchDoc.PatchedParserProject = patchConfig.PatchedParserProjectYAML
 	patchDoc.PatchedProjectConfig = patchConfig.PatchedProjectConfig
 
 	// Update module githashes

@@ -514,25 +514,43 @@ func (bvt *parserBV) hasSpecificActivation() bool {
 		!utility.FromBoolTPtr(bvt.Activate) || bvt.Disable
 }
 
-// FindAndTranslateProjectForPatch translates a parser project for a patch into a project.
-// This assumes that the version may not exist yet; otherwise FindAndTranslateProjectForVersion is equivalent.
+// FindAndTranslateProjectForPatch translates a parser project for a patch into
+// a project. This assumes that the version may not exist yet (i.e. the patch is
+// unfinalized); otherwise FindAndTranslateProjectForVersion is equivalent.
 func FindAndTranslateProjectForPatch(ctx context.Context, settings *evergreen.Settings, p *patch.Patch) (*Project, *ParserProject, error) {
-	if p.PatchedParserProject == "" {
-		v, err := VersionFindOneId(p.Version)
+	if p.ProjectStorageMethod != "" {
+		pp, err := ParserProjectFindOneByID(ctx, settings, p.ProjectStorageMethod, p.Id.Hex())
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "finding version '%s' for patch '%s'", p.Version, p.Id.Hex())
+			return nil, nil, errors.Wrapf(err, "finding parser project '%s' in storage", p.Id.Hex())
 		}
-		if v == nil {
-			return nil, nil, errors.Errorf("version '%s' not found for patch '%s'", p.Version, p.Id.Hex())
+		if pp == nil {
+			return nil, nil, errors.Errorf("parser project '%s' not found in storage", p.Id.Hex())
 		}
-		return FindAndTranslateProjectForVersion(ctx, settings, v)
+		project, err := TranslateProject(pp)
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "translating project '%s'", pp.Id)
+		}
+		return project, pp, nil
 	}
-	project := &Project{}
-	pp, err := LoadProjectInto(ctx, []byte(p.PatchedParserProject), nil, p.Project, project)
+
+	if p.PatchedParserProject != "" {
+		project := &Project{}
+		pp, err := LoadProjectInto(ctx, []byte(p.PatchedParserProject), nil, p.Project, project)
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "unmarshalling project config from patched parser project")
+		}
+		return project, pp, nil
+	}
+
+	// This fallback handles the case where the patch is already finalized.
+	v, err := VersionFindOneId(p.Version)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "unmarshalling project config")
+		return nil, nil, errors.Wrapf(err, "finding version '%s' for patch '%s'", p.Version, p.Id.Hex())
 	}
-	return project, pp, nil
+	if v == nil {
+		return nil, nil, errors.Errorf("version '%s' not found for patch '%s'", p.Version, p.Id.Hex())
+	}
+	return FindAndTranslateProjectForVersion(ctx, settings, v)
 }
 
 // FindAndTranslateProjectForVersion translates a parser project for a version into a Project.
@@ -545,6 +563,9 @@ func FindAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.
 	if pp == nil {
 		return nil, nil, errors.Errorf("parser project not found for version '%s'", v.Id)
 	}
+	// Setting the translated project's identifier is necessary here because the
+	// version always has an identifier, but some old parser projects used to
+	// not be stored with the identifier.
 	pp.Identifier = utility.ToStringPtr(v.Identifier)
 	var p *Project
 	p, err = TranslateProject(pp)

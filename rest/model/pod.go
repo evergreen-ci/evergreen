@@ -207,7 +207,7 @@ func (s APIPodStatus) ToService() (*pod.Status, error) {
 // container when creating a pod.
 type APIPodTaskContainerCreationOptions struct {
 	Image               *string                 `json:"image,omitempty"`
-	RepoCredsExternalID *string                 `json:"repo_credss_external_id,omitempty"`
+	RepoCredsExternalID *string                 `json:"repo_creds_external_id,omitempty"`
 	MemoryMB            *int                    `json:"memory_mb,omitempty"`
 	CPU                 *int                    `json:"cpu,omitempty"`
 	OS                  APIPodOS                `json:"os,omitempty"`

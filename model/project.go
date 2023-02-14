@@ -78,8 +78,9 @@ type ProjectInfo struct {
 }
 
 type PatchConfig struct {
-	PatchedParserProject string
-	PatchedProjectConfig string
+	PatchedParserProjectYAML string
+	PatchedParserProject     *ParserProject
+	PatchedProjectConfig     string
 }
 
 func (p *ProjectInfo) NotPopulated() bool {
@@ -1263,13 +1264,20 @@ func (p *Project) FindDistroNameForTask(t *task.Task) (string, error) {
 	return distro, nil
 }
 
-func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, error) {
+// FindLatestVersionWithValidProject returns the latest mainline version that
+// has a valid project configuration. It also returns the intermediate and final
+// project configurations.
+func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, *ParserProject, error) {
 	const retryCount = 5
 	if projectId == "" {
-		return nil, nil, errors.WithStack(errors.New("cannot pass empty projectId to FindLatestVersionWithValidProject"))
+		return nil, nil, nil, errors.New("cannot pass empty projectId to FindLatestVersionWithValidParserProject")
 	}
+
 	project := &Project{
 		Identifier: projectId,
+	}
+	pp := &ParserProject{
+		Identifier: utility.ToStringPtr(projectId),
 	}
 
 	revisionOrderNum := -1 // only specify in the event of failure
@@ -1285,7 +1293,7 @@ func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, er
 			ctx, cancel := context.WithTimeout(context.Background(), DefaultParserProjectAccessTimeout)
 			defer cancel()
 			env := evergreen.GetEnvironment()
-			project, _, err = FindAndTranslateProjectForVersion(ctx, env.Settings(), lastGoodVersion)
+			project, pp, err = FindAndTranslateProjectForVersion(ctx, env.Settings(), lastGoodVersion)
 			if err != nil {
 				grip.Critical(message.WrapError(err, message.Fields{
 					"message": "last known good version has malformed config",
@@ -1296,14 +1304,14 @@ func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, er
 				continue
 			}
 		}
-		return lastGoodVersion, project, nil
+		return lastGoodVersion, project, pp, nil
 	}
 
 	if lastGoodVersion == nil {
-		return nil, nil, errors.Wrapf(err, "finding a valid version for project '%s'", projectId)
+		return nil, nil, nil, errors.Wrapf(err, "finding a valid version for project '%s'", projectId)
 	}
 
-	return nil, nil, errors.Wrapf(err, "loading project from "+
+	return nil, nil, nil, errors.Wrapf(err, "loading project from "+
 		"last good version for project '%s'", lastGoodVersion.Identifier)
 }
 

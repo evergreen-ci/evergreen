@@ -159,9 +159,23 @@ type Patch struct {
 	Patches            []ModulePatch    `bson:"patches"`
 	Parameters         []Parameter      `bson:"parameters,omitempty"`
 	Activated          bool             `bson:"activated"`
-	// PatchedParserProject is mismatched with its BSON tag since the tag already exists in the DB.
-	// Struct property has been renamed to convey that only parser project configs are stored in it.
-	PatchedParserProject string                 `bson:"patched_config"`
+	// ProjectStorageMethod describes how the parser project is stored for this
+	// patch before it's finalized. This field is only set while the patch is
+	// unfinalized and is cleared once the patch has been finalized. It may also
+	// be empty for old, unfinalized patch documents before this field was
+	// introduced (see PatchedParserProject).
+	ProjectStorageMethod evergreen.ParserProjectStorageMethod `bson:"project_storage_method,omitempty"`
+	// PatchedParserProject is a deprecated field to temporarily store the
+	// project configuration before the patch is finalized. It is either 1. the
+	// patch's ParserProject or 2. another version's finalized Project. The
+	// string stores the BSON representation of one of these two for the patch
+	// until the patch is finalized. Once the patch is finalized, this field is
+	// cleared.
+	// Newly-created patches do not use this field at all and instead use the
+	// ProjectStorageMethod to decide where the parser project is persistently
+	// stored. This field is kept solely for backward compatibility with
+	// existing, unfinalized patches.
+	PatchedParserProject string                 `bson:"patched_config,omitempty"`
 	PatchedProjectConfig string                 `bson:"patched_project_config"`
 	Alias                string                 `bson:"alias"`
 	Triggers             TriggerInfo            `bson:"triggers"`
@@ -582,11 +596,10 @@ func (p *Patch) FilesChanged() []string {
 	return filenames
 }
 
-// SetActivated sets the patch to activated in the db
+// SetActivated sets the patch to activated in the DB, which effectively
+// finalizes the patch.
 func (p *Patch) SetActivated(ctx context.Context, versionId string) error {
-	p.Version = versionId
-	p.Activated = true
-	_, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateOne(ctx,
+	if _, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateOne(ctx,
 		bson.M{IdKey: p.Id},
 		bson.M{
 			"$set": bson.M{
@@ -594,12 +607,22 @@ func (p *Patch) SetActivated(ctx context.Context, versionId string) error {
 				VersionKey:   versionId,
 			},
 			"$unset": bson.M{
+				ProjectStorageMethodKey: 1,
 				PatchedParserProjectKey: 1,
 				PatchedProjectConfigKey: 1,
 			},
 		},
-	)
-	return err
+	); err != nil {
+		return err
+	}
+
+	p.Version = versionId
+	p.Activated = true
+	p.ProjectStorageMethod = ""
+	p.PatchedParserProject = ""
+	p.PatchedProjectConfig = ""
+
+	return nil
 }
 
 // SetTriggerAliases appends the names of invoked trigger aliases to the DB

@@ -1655,7 +1655,7 @@ func TestTryMovingLargeParserProjectToS3(t *testing.T) {
 			require.NoError(t, err)
 			assert.True(t, didPutInS3)
 
-			ppFromS3, err := ParserProjectFindOneByID(ctx, env.Settings(), ProjectStorageMethodS3, pp.Id)
+			ppFromS3, err := ParserProjectFindOneByID(ctx, env.Settings(), evergreen.ProjectStorageMethodS3, pp.Id)
 			require.NoError(t, err)
 			require.NotZero(t, ppFromS3, "parser project should be stored in S3")
 			assert.Equal(t, pp.Id, ppFromS3.Id, "parser project should the expected one")
@@ -1663,16 +1663,16 @@ func TestTryMovingLargeParserProjectToS3(t *testing.T) {
 			dbVersion, err := VersionFindOneId(v.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbVersion)
-			assert.Equal(t, ProjectStorageMethodS3, dbVersion.ProjectStorageMethod, "parser project should be stored in S3")
+			assert.Equal(t, evergreen.ProjectStorageMethodS3, dbVersion.ProjectStorageMethod, "parser project should be stored in S3")
 		},
 		"NoopsWhenVersionIndicatesParserProjectIsAlreadyStoredInS3": func(t *testing.T, v *Version, pp *ParserProject) {
-			v.ProjectStorageMethod = ProjectStorageMethodS3
+			v.ProjectStorageMethod = evergreen.ProjectStorageMethodS3
 
 			didPutInS3, err := putParserProjectInS3(ctx, env.Settings(), v, pp)
 			require.NoError(t, err)
 			assert.False(t, didPutInS3)
 
-			ppFromS3, err := ParserProjectFindOneByID(ctx, env.Settings(), ProjectStorageMethodS3, pp.Id)
+			ppFromS3, err := ParserProjectFindOneByID(ctx, env.Settings(), evergreen.ProjectStorageMethodS3, pp.Id)
 			assert.NoError(t, err)
 			assert.Zero(t, ppFromS3, "parser project should not be stored in S3")
 		},
@@ -1687,7 +1687,7 @@ func TestTryMovingLargeParserProjectToS3(t *testing.T) {
 
 			v := Version{
 				Id:                   "version_id",
-				ProjectStorageMethod: ProjectStorageMethodDB,
+				ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
 			}
 			require.NoError(t, v.Insert())
 
