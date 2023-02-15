@@ -263,7 +263,6 @@ func TestRequireProjectFieldAccess(t *testing.T) {
 	require.NotNil(t, ctx)
 
 	apiProjectRef := &restModel.APIProjectRef{
-		Id:         utility.ToStringPtr("project_id"),
 		Identifier: utility.ToStringPtr("project_identifier"),
 		Admins:     utility.ToStringPtrSlice([]string{"admin_1", "admin_2", "admin_3"}),
 	}
@@ -281,6 +280,13 @@ func TestRequireProjectFieldAccess(t *testing.T) {
 	require.EqualError(t, err, "input: project not valid")
 	require.Nil(t, res)
 	require.Equal(t, 0, callCount)
+
+	res, err = config.Directives.RequireProjectFieldAccess(ctx, apiProjectRef, next)
+	require.EqualError(t, err, "input: project not specified")
+	require.Nil(t, res)
+	require.Equal(t, 0, callCount)
+
+	apiProjectRef.Id = utility.ToStringPtr("project_id")
 
 	res, err = config.Directives.RequireProjectFieldAccess(ctx, apiProjectRef, next)
 	require.EqualError(t, err, "input: user does not have permission to access the field 'admins' for project with ID 'project_id'")
