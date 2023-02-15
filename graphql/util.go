@@ -306,8 +306,7 @@ func generateBuildVariants(versionId string, buildVariantOpts BuildVariantOption
 		if err != nil {
 			return nil, errors.Wrapf(err, fmt.Sprintf("Error building apiTask from task : %s", t.Id))
 		}
-		r.sc.
-			variantDisplayName[t.BuildVariant] = t.BuildVariantDisplayName
+		variantDisplayName[t.BuildVariant] = t.BuildVariantDisplayName
 		tasksByVariant[t.BuildVariant] = append(tasksByVariant[t.BuildVariant], &apiTask)
 
 	}
