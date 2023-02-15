@@ -923,7 +923,7 @@ func FindMergedProjectRef(identifier string, version string, includeProjectConfi
 	return pRef, nil
 }
 
-// GetEnabledProjects returns the current number of enabled projects on evergreen.
+// GetNumberOfEnabledProjects returns the current number of enabled projects on evergreen.
 func GetNumberOfEnabledProjects() (int, error) {
 	// Empty owner and repo will return all enabled project count.
 	return getNumberOfEnabledProjects("", "")
