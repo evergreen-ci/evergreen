@@ -76,7 +76,7 @@ type RepoRef {
   remotePath: String! @requireProjectFieldAccess
   repo: String!
   repotrackerDisabled: Boolean! @requireProjectFieldAccess
-  restricted: Boolean! @requireProjectFieldAccess
+  restricted: Boolean!
   spawnHostScriptPath: String!
   stepbackDisabled: Boolean! @requireProjectFieldAccess
   taskAnnotationSettings: TaskAnnotationSettings! @requireProjectFieldAccess
