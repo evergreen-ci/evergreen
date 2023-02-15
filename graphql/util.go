@@ -271,7 +271,7 @@ func getAPITaskFromTask(ctx context.Context, url string, task task.Task) (*restM
 }
 
 // Takes a version id and some filter criteria and returns the matching associated tasks grouped together by their build variant.
-func generateBuildVariants(versionId string, buildVariantOpts BuildVariantOptions, requester string) ([]*GroupedBuildVariant, error) {
+func generateBuildVariants(versionId string, buildVariantOpts BuildVariantOptions, requester string, logURL string) ([]*GroupedBuildVariant, error) {
 	var variantDisplayName = map[string]string{}
 	var tasksByVariant = map[string][]*restModel.APITask{}
 	defaultSort := []task.TasksSortOrder{
@@ -301,11 +301,14 @@ func generateBuildVariants(versionId string, buildVariantOpts BuildVariantOption
 	buildTaskStartTime := time.Now()
 	for _, t := range tasks {
 		apiTask := restModel.APITask{}
-		err := apiTask.BuildFromService(&t, nil)
+		err := apiTask.BuildFromService(&t, &restModel.APITaskArgs{
+			LogURL: logURL,
+		})
 		if err != nil {
 			return nil, errors.Wrapf(err, fmt.Sprintf("Error building apiTask from task : %s", t.Id))
 		}
-		variantDisplayName[t.BuildVariant] = t.BuildVariantDisplayName
+		r.sc.
+			variantDisplayName[t.BuildVariant] = t.BuildVariantDisplayName
 		tasksByVariant[t.BuildVariant] = append(tasksByVariant[t.BuildVariant], &apiTask)
 
 	}
