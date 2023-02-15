@@ -929,7 +929,7 @@ func GetNumberOfEnabledProjects() (int, error) {
 	return getNumberOfEnabledProjects("", "")
 }
 
-// GetEnabledProjectsForOwnerRepo returns the number of enabled projects for a given owner/repo.
+// GetNumberOfEnabledProjectsForOwnerRepo returns the number of enabled projects for a given owner/repo.
 func GetNumberOfEnabledProjectsForOwnerRepo(owner, repo string) (int, error) {
 	if owner == "" || repo == "" {
 		return 0, errors.New("owner and repo must be specified")
