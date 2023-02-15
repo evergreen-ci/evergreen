@@ -17,7 +17,7 @@ func MakeTaskConfigFromModelData(ctx context.Context, settings *evergreen.Settin
 	if err != nil {
 		return nil, errors.Wrap(err, "getting global GitHub OAuth token")
 	}
-	exp, err := model.PopulateExpansions(ctx, settings, data.Task, data.Host, oauthToken)
+	exp, err := model.PopulateExpansions(data.Task, data.Host, oauthToken)
 	if err != nil {
 		return nil, errors.Wrap(err, "populating expansions")
 	}

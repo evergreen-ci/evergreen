@@ -279,6 +279,7 @@ func (c *baseCommunicator) GetProject(ctx context.Context, taskData TaskData) (*
 	if err != nil {
 		return nil, errors.Wrap(err, "reading parser project from response")
 	}
+
 	return model.GetProjectFromBSON(respBytes)
 }
 
@@ -300,6 +301,25 @@ func (c *baseCommunicator) GetExpansions(ctx context.Context, taskData TaskData)
 		return nil, errors.Wrap(err, "reading expansions from response")
 	}
 	return e, nil
+}
+
+func (c *baseCommunicator) GetExpansionsAndVars(ctx context.Context, taskData TaskData) (*apimodels.ExpansionsAndVars, error) {
+	info := requestInfo{
+		method:   http.MethodGet,
+		taskData: &taskData,
+	}
+	info.setTaskPathSuffix("expansions_and_vars")
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return nil, utility.RespErrorf(resp, errors.Wrap(err, "getting expansions and vars").Error())
+	}
+	defer resp.Body.Close()
+
+	var expAndVars apimodels.ExpansionsAndVars
+	if err = utility.ReadJSON(resp.Body, &expAndVars); err != nil {
+		return nil, errors.Wrap(err, "reading expansions and vars from response")
+	}
+	return &expAndVars, nil
 }
 
 func (c *baseCommunicator) Heartbeat(ctx context.Context, taskData TaskData) (string, error) {

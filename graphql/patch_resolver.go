@@ -162,6 +162,12 @@ func (r *patchResolver) ProjectIdentifier(ctx context.Context, obj *restModel.AP
 	return utility.FromStringPtr(obj.ProjectIdentifier), nil
 }
 
+// ProjectMetadata is the resolver for the projectMetadata field.
+func (r *patchResolver) ProjectMetadata(ctx context.Context, obj *restModel.APIPatch) (*restModel.APIProjectRef, error) {
+	apiProjectRef, err := getProjectMetadata(ctx, obj.ProjectId, obj.Id)
+	return apiProjectRef, err
+}
+
 // TaskCount is the resolver for the taskCount field.
 func (r *patchResolver) TaskCount(ctx context.Context, obj *restModel.APIPatch) (*int, error) {
 	taskCount, err := task.Count(db.Query(task.DisplayTasksByVersion(*obj.Id, false)))

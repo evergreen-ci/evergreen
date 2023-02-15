@@ -407,6 +407,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 		grip.Error(message.Fields{
 			"message":      "tried to assign task to a host already running task",
 			"running_task": currentHost.RunningTask,
+			"execution":    currentHost.RunningTaskExecution,
 		})
 		return nil, false, errors.New("cannot assign a task to a host with a running task")
 	}
@@ -822,7 +823,7 @@ func undoHostTaskDispatchAtomically(ctx context.Context, env evergreen.Environme
 func undoHostTaskDispatch(env evergreen.Environment, h *host.Host, t *task.Task) func(mongo.SessionContext) (interface{}, error) {
 	return func(sessCtx mongo.SessionContext) (interface{}, error) {
 		if err := h.ClearRunningTaskWithContext(sessCtx, env); err != nil {
-			return nil, errors.Wrapf(err, "clearing running task '%s' from host '%s'", h.RunningTask, h.Id)
+			return nil, errors.Wrapf(err, "clearing running task '%s' execution '%d' from host '%s'", h.RunningTask, h.RunningTaskExecution, h.Id)
 		}
 		if err := t.MarkAsHostUndispatchedWithContext(sessCtx, env); err != nil {
 			return nil, errors.Wrapf(err, "marking task '%s' as no longer dispatched", t.Id)
@@ -1070,9 +1071,9 @@ func sendBackRunningTask(ctx context.Context, env evergreen.Environment, h *host
 
 	var err error
 	var t *task.Task
-	t, err = task.FindOneId(h.RunningTask)
+	t, err = task.FindOneIdAndExecution(h.RunningTask, h.RunningTaskExecution)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting running task '%s'", h.RunningTask))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting running task '%s' execution '%d'", h.RunningTask, h.RunningTaskExecution))
 	}
 	if t == nil {
 		grip.Notice(getMessage("clearing host's running task because it does not exist"))
@@ -1080,7 +1081,7 @@ func sendBackRunningTask(ctx context.Context, env evergreen.Environment, h *host
 			grip.Error(message.WrapError(err, getMessage("could not clear host's nonexistent running task")))
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
-		err := errors.Errorf("host's running task '%s' not found", h.RunningTask)
+		err := errors.Errorf("host's running task '%s' execution '%d' not found", h.RunningTask, h.RunningTaskExecution)
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 

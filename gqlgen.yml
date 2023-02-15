@@ -98,6 +98,10 @@ models:
     model: github.com/evergreen-ci/evergreen/thirdparty.JiraStatus
   JiraTicket:
     model: github.com/evergreen-ci/evergreen/thirdparty.JiraTicket
+  LogkeeperBuild:
+    model: github.com/evergreen-ci/plank.Build
+  LogkeeperTest:
+    model: github.com/evergreen-ci/plank.Test
   LogMessage:
     model: github.com/evergreen-ci/evergreen/apimodels.LogMessage
   Module:

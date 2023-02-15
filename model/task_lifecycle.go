@@ -1843,9 +1843,9 @@ func ClearAndResetStrandedHostTask(settings *evergreen.Settings, h *host.Host) e
 		return nil
 	}
 
-	t, err := task.FindOneId(h.RunningTask)
+	t, err := task.FindOneIdAndExecution(h.RunningTask, h.RunningTaskExecution)
 	if err != nil {
-		return errors.Wrapf(err, "finding running task '%s' from host '%s'", h.RunningTask, h.Id)
+		return errors.Wrapf(err, "finding running task '%s' execution '%d' from host '%s'", h.RunningTask, h.RunningTaskExecution, h.Id)
 	} else if t == nil {
 		return nil
 	}

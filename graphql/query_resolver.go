@@ -25,7 +25,9 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/plank"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	werrors "github.com/pkg/errors"
@@ -219,7 +221,7 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 		case HostSortByCurrentTask:
 			sorter = host.RunningTaskKey
 		case HostSortByDistro:
-			sorter = host.DistroKey
+			sorter = bsonutil.GetDottedKeyName(host.DistroKey, distro.IdKey)
 		case HostSortByElapsed:
 			sorter = "task_full.start_time"
 		case HostSortByID:
@@ -522,6 +524,18 @@ func (r *queryResolver) MyVolumes(ctx context.Context) ([]*restModel.APIVolume, 
 	return getAPIVolumeList(volumes)
 }
 
+// LogkeeperBuildMetadata is the resolver for the logkeeperBuildMetadata field.
+func (r *queryResolver) LogkeeperBuildMetadata(ctx context.Context, buildID string) (*plank.Build, error) {
+	client := plank.NewLogkeeperClient(plank.NewLogkeeperClientOptions{
+		BaseURL: evergreen.GetEnvironment().Settings().LoggerConfig.LogkeeperURL,
+	})
+	build, err := client.GetBuildMetadata(ctx, buildID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+	return &build, nil
+}
+
 // Task is the resolver for the task field.
 func (r *queryResolver) Task(ctx context.Context, taskID string, execution *int) (*restModel.APITask, error) {
 	dbTask, err := task.FindOneIdAndExecutionWithDisplayStatus(taskID, execution)
@@ -570,49 +584,6 @@ func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([
 	}
 	allTasks = append(allTasks, apiTask)
 	return allTasks, nil
-}
-
-// TaskFiles is the resolver for the taskFiles field.
-func (r *queryResolver) TaskFiles(ctx context.Context, taskID string, execution *int) (*TaskFiles, error) {
-	emptyTaskFiles := TaskFiles{
-		FileCount:    0,
-		GroupedFiles: []*GroupedFiles{},
-	}
-	t, err := task.FindByIdExecution(taskID, execution)
-	if t == nil {
-		return &emptyTaskFiles, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
-	}
-	if err != nil {
-		return &emptyTaskFiles, ResourceNotFound.Send(ctx, err.Error())
-	}
-	groupedFilesList := []*GroupedFiles{}
-	fileCount := 0
-	if t.DisplayOnly {
-		execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
-		if err != nil {
-			return &emptyTaskFiles, ResourceNotFound.Send(ctx, err.Error())
-		}
-		for _, execTask := range execTasks {
-			groupedFiles, err := getGroupedFiles(ctx, execTask.DisplayName, execTask.Id, t.Execution)
-			if err != nil {
-				return &emptyTaskFiles, err
-			}
-			fileCount += len(groupedFiles.Files)
-			groupedFilesList = append(groupedFilesList, groupedFiles)
-		}
-	} else {
-		groupedFiles, err := getGroupedFiles(ctx, t.DisplayName, taskID, t.Execution)
-		if err != nil {
-			return &emptyTaskFiles, err
-		}
-		fileCount += len(groupedFiles.Files)
-		groupedFilesList = append(groupedFilesList, groupedFiles)
-	}
-	taskFiles := TaskFiles{
-		FileCount:    fileCount,
-		GroupedFiles: groupedFilesList,
-	}
-	return &taskFiles, nil
 }
 
 // TaskLogs is the resolver for the taskLogs field.

@@ -383,7 +383,7 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 	if err != nil {
 		return nil, err
 	}
-	taskConfig.Redacted = tc.expVars.PrivateVars
+	taskConfig.Redacted = tc.privateVars
 	taskConfig.TaskSync = a.opts.SetupData.TaskSync
 	taskConfig.EC2Keys = a.opts.SetupData.EC2Keys
 

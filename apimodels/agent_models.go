@@ -99,6 +99,7 @@ type GetNextTaskDetails struct {
 }
 
 // ExpansionVars is a map of expansion variables for a project.
+// TODO (EVG-18820): remove this after agent version has rolled over.
 type ExpansionVars struct {
 	Vars        map[string]string `json:"vars"`
 	PrivateVars map[string]bool   `json:"private_vars"`
@@ -333,4 +334,15 @@ type GeneratePollResponse struct {
 type DistroView struct {
 	CloneMethod         string `json:"clone_method"`
 	DisableShallowClone bool   `json:"disable_shallow_clone"`
+}
+
+// ExpansionsAndVars represents expansions, project variables, and parameters
+// used when running a task.
+type ExpansionsAndVars struct {
+	// Expansions contain the expansions for a task.
+	Expansions util.Expansions `json:"expansions"`
+	// Vars contain the project variables and parameters.
+	Vars map[string]string `json:"vars"`
+	// PrivateVars contain the project private variables.
+	PrivateVars map[string]bool `json:"private_vars"`
 }

@@ -153,6 +153,7 @@ func TestStartLogging(t *testing.T) {
 
 	ctx := context.Background()
 	assert.NoError(agt.fetchProjectConfig(ctx, tc))
+	require.NotNil(t, tc.project)
 	assert.EqualValues(model.EvergreenLogSender, tc.project.Loggers.Agent[0].Type)
 	assert.EqualValues(model.SplunkLogSender, tc.project.Loggers.System[0].Type)
 	assert.EqualValues(model.FileLogSender, tc.project.Loggers.Task[0].Type)

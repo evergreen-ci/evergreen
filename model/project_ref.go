@@ -2144,7 +2144,7 @@ func GetActivationTimeWithCron(curTime time.Time, cronBatchTime string) (time.Ti
 func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant) (time.Time, error) {
 	defaultRes := time.Now()
 	// if we don't want to activate the build, set batchtime to the zero time
-	if !utility.FromBoolTPtr(variant.Activate) || variant.Disabled {
+	if !utility.FromBoolTPtr(variant.Activate) || variant.Disable {
 		return utility.ZeroTime, nil
 	}
 	if variant.CronBatchTime != "" {

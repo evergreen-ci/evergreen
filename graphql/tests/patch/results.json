@@ -86,7 +86,10 @@
         "data": {
           "patch": {
             "childPatchAliases": [
-              { "alias": "evergreen_alias", "patchId": "5e4ff3abe3c3317e352062e4"}
+              {
+                "alias": "evergreen_alias",
+                "patchId": "5e4ff3abe3c3317e352062e4"
+              }
             ]
           }
         }
@@ -257,9 +260,7 @@
                 "variantsTasks": [
                   {
                     "name": "ubuntu1804",
-                    "tasks": [
-                      "compile"
-                    ]
+                    "tasks": ["compile"]
                   }
                 ]
               }
@@ -303,7 +304,7 @@
         }
       }
     },
-    { 
+    {
       "query_file": "version-null.graphql",
       "result": {
         "data": {
@@ -320,6 +321,21 @@
           "patch": {
             "versionFull": {
               "id": "5dd2e89cd1fe07048e43bb9c"
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "project-metadata.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "id": "5e4ff3abe3c3317e352062e4",
+            "projectMetadata": {
+              "owner": "evergreen-ci",
+              "repo": "evergreen",
+              "identifier": "evergreenIdentifier"
             }
           }
         }

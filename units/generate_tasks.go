@@ -196,10 +196,9 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	start = time.Now()
 
 	// Don't use the job's context, because it's better to try finishing than to
-	// exit early after a SIGTERM from app server shutdown.
-	ctx, cancel := context.WithTimeout(context.Background(), model.DefaultParserProjectAccessTimeout)
-	defer cancel()
-	err = g.Save(ctx, j.env.Settings(), p, pp, v)
+	// exit early after a SIGTERM from app server shutdown. This should probably
+	// use a timeout rather than just the background context.
+	err = g.Save(context.Background(), j.env.Settings(), p, pp, v)
 
 	// If the version or parser project has changed there was a race. Another generator will try again.
 	if adb.ResultsNotFound(err) || db.IsDuplicateKey(err) {
