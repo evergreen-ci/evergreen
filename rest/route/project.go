@@ -1066,6 +1066,8 @@ func parseGetVersionsOptions(body []byte, params url.Values) (*dbModel.VersionsO
 	return opts, nil
 }
 
+// getStartAndEndTime returns the start and end time for the given time range input strings.
+// The first returned parameter is the start time, and the second is the end time.
 func getStartAndEndTime(startTimeStr, endTimeStr string) (time.Time, time.Time, error) {
 	startTime, err := model.ParseTime(startTimeStr)
 	if err != nil {
