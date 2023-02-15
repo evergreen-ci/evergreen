@@ -48,43 +48,43 @@ exactly.
 """
 type RepoRef {
   id: String!
-  admins: [String!]! @restrictProjectAccess
-  batchTime: Int! @restrictProjectAccess
+  admins: [String!]! @requireProjectFieldAccess
+  batchTime: Int! @requireProjectFieldAccess
   branch: String!
-  buildBaronSettings: BuildBaronSettings! @restrictProjectAccess
-  commitQueue: RepoCommitQueueParams! @restrictProjectAccess
-  containerSizeDefinitions: [ContainerResources!] @restrictProjectAccess
-  deactivatePrevious: Boolean! @restrictProjectAccess
-  disabledStatsCache: Boolean! @restrictProjectAccess
-  dispatchingDisabled: Boolean! @restrictProjectAccess
+  buildBaronSettings: BuildBaronSettings! @requireProjectFieldAccess
+  commitQueue: RepoCommitQueueParams! @requireProjectFieldAccess
+  containerSizeDefinitions: [ContainerResources!] @requireProjectFieldAccess
+  deactivatePrevious: Boolean! @requireProjectFieldAccess
+  disabledStatsCache: Boolean! @requireProjectFieldAccess
+  dispatchingDisabled: Boolean! @requireProjectFieldAccess
   displayName: String!
   enabled: Boolean!
-  githubChecksEnabled: Boolean! @restrictProjectAccess
-  githubTriggerAliases: [String!] @restrictProjectAccess
-  gitTagAuthorizedTeams: [String!] @restrictProjectAccess
-  gitTagAuthorizedUsers: [String!] @restrictProjectAccess
-  gitTagVersionsEnabled: Boolean! @restrictProjectAccess
-  manualPrTestingEnabled: Boolean! @restrictProjectAccess
-  notifyOnBuildFailure: Boolean! @restrictProjectAccess
+  githubChecksEnabled: Boolean! @requireProjectFieldAccess
+  githubTriggerAliases: [String!] @requireProjectFieldAccess
+  gitTagAuthorizedTeams: [String!] @requireProjectFieldAccess
+  gitTagAuthorizedUsers: [String!] @requireProjectFieldAccess
+  gitTagVersionsEnabled: Boolean! @requireProjectFieldAccess
+  manualPrTestingEnabled: Boolean! @requireProjectFieldAccess
+  notifyOnBuildFailure: Boolean! @requireProjectFieldAccess
   owner: String!
-  patchingDisabled: Boolean! @restrictProjectAccess
-  patchTriggerAliases: [PatchTriggerAlias!] @restrictProjectAccess
-  perfEnabled: Boolean! @restrictProjectAccess
-  periodicBuilds: [PeriodicBuild!] @restrictProjectAccess
+  patchingDisabled: Boolean! @requireProjectFieldAccess
+  patchTriggerAliases: [PatchTriggerAlias!] @requireProjectFieldAccess
+  perfEnabled: Boolean! @requireProjectFieldAccess
+  periodicBuilds: [PeriodicBuild!] @requireProjectFieldAccess
   private: Boolean!
-  prTestingEnabled: Boolean! @restrictProjectAccess
-  remotePath: String! @restrictProjectAccess
+  prTestingEnabled: Boolean! @requireProjectFieldAccess
+  remotePath: String! @requireProjectFieldAccess
   repo: String!
-  repotrackerDisabled: Boolean! @restrictProjectAccess
-  restricted: Boolean! @restrictProjectAccess
-  spawnHostScriptPath: String! @restrictProjectAccess
-  stepbackDisabled: Boolean! @restrictProjectAccess
-  taskAnnotationSettings: TaskAnnotationSettings! @restrictProjectAccess
-  taskSync: RepoTaskSyncOptions! @restrictProjectAccess
-  tracksPushEvents: Boolean! @restrictProjectAccess
-  triggers: [TriggerAlias!]! @restrictProjectAccess
-  versionControlEnabled: Boolean! @restrictProjectAccess
-  workstationConfig: RepoWorkstationConfig! @restrictProjectAccess
+  repotrackerDisabled: Boolean! @requireProjectFieldAccess
+  restricted: Boolean! @requireProjectFieldAccess
+  spawnHostScriptPath: String!
+  stepbackDisabled: Boolean! @requireProjectFieldAccess
+  taskAnnotationSettings: TaskAnnotationSettings! @requireProjectFieldAccess
+  taskSync: RepoTaskSyncOptions! @requireProjectFieldAccess
+  tracksPushEvents: Boolean! @requireProjectFieldAccess
+  triggers: [TriggerAlias!]! @requireProjectFieldAccess
+  versionControlEnabled: Boolean! @requireProjectFieldAccess
+  workstationConfig: RepoWorkstationConfig! @requireProjectFieldAccess
 }
 
 type RepoCommitQueueParams {

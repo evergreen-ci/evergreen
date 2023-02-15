@@ -12,6 +12,7 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/require"
 	"github.com/vektah/gqlparser/v2/ast"
 )
@@ -240,7 +241,7 @@ func TestRequireProjectAccess(t *testing.T) {
 	require.Equal(t, 4, callCount)
 }
 
-func TestRestrictProjectAccess(t *testing.T) {
+func TestRequireProjectFieldAccess(t *testing.T) {
 	setupPermissions(t)
 	config := New("/graphql")
 	require.NotNil(t, config)
@@ -261,17 +262,11 @@ func TestRestrictProjectAccess(t *testing.T) {
 	ctx = gimlet.AttachUser(ctx, usr)
 	require.NotNil(t, ctx)
 
-	projectRef := model.ProjectRef{
-		Id:         "project_id",
-		Identifier: "project_identifier",
-		Admins:     []string{"admin_1", "admin_2", "admin_3"},
+	apiProjectRef := &restModel.APIProjectRef{
+		Id:         utility.ToStringPtr("project_id"),
+		Identifier: utility.ToStringPtr("project_identifier"),
+		Admins:     utility.ToStringPtrSlice([]string{"admin_1", "admin_2", "admin_3"}),
 	}
-	err = projectRef.Insert()
-	require.NoError(t, err)
-
-	apiProjectRef := &restModel.APIProjectRef{}
-	err = apiProjectRef.BuildFromService(projectRef)
-	require.NoError(t, err)
 
 	fieldCtx := &graphql.FieldContext{
 		Field: graphql.CollectedField{
@@ -282,15 +277,20 @@ func TestRestrictProjectAccess(t *testing.T) {
 	}
 	ctx = graphql.WithFieldContext(ctx, fieldCtx)
 
-	res, err := config.Directives.RestrictProjectAccess(ctx, apiProjectRef, next)
-	require.Error(t, err, "user does not have permission to access the field 'admins' for project with ID 'project_id")
+	res, err := config.Directives.RequireProjectFieldAccess(ctx, interface{}(nil), next)
+	require.EqualError(t, err, "input: project not valid")
+	require.Nil(t, res)
+	require.Equal(t, 0, callCount)
+
+	res, err = config.Directives.RequireProjectFieldAccess(ctx, apiProjectRef, next)
+	require.EqualError(t, err, "input: user does not have permission to access the field 'admins' for project with ID 'project_id'")
 	require.Nil(t, res)
 	require.Equal(t, 0, callCount)
 
 	err = usr.AddRole("view_project")
 	require.NoError(t, err)
 
-	res, err = config.Directives.RestrictProjectAccess(ctx, apiProjectRef, next)
+	res, err = config.Directives.RequireProjectFieldAccess(ctx, apiProjectRef, next)
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 1, callCount)

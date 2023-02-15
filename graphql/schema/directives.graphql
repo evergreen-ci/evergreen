@@ -4,11 +4,11 @@ requireSuperUser is used to restrict certain actions to superusers.
 directive @requireSuperUser on FIELD_DEFINITION
 
 """
-requireProjectAccess is used to restrict view and edit access on project settings.
+requireProjectAccess is used to restrict view and edit access for project settings.
 """
 directive @requireProjectAccess(access: ProjectSettingsAccess!) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION | FIELD_DEFINITION
 
 """
-restrictProjectAccess is used to restrict access to certain project fields.
+requireProjectFieldAccess is used to restrict view access for certain project fields.
 """
-directive @restrictProjectAccess on FIELD_DEFINITION
+directive @requireProjectFieldAccess on FIELD_DEFINITION

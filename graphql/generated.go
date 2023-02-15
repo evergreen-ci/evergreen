@@ -68,9 +68,9 @@ type ResolverRoot interface {
 }
 
 type DirectiveRoot struct {
-	RequireProjectAccess  func(ctx context.Context, obj interface{}, next graphql.Resolver, access ProjectSettingsAccess) (res interface{}, err error)
-	RequireSuperUser      func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
-	RestrictProjectAccess func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
+	RequireProjectAccess      func(ctx context.Context, obj interface{}, next graphql.Resolver, access ProjectSettingsAccess) (res interface{}, err error)
+	RequireProjectFieldAccess func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
+	RequireSuperUser          func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 }
 
 type ComplexityRoot struct {
@@ -25929,6 +25929,8 @@ func (ec *executionContext) fieldContext_Patch_projectMetadata(ctx context.Conte
 				return ec.fieldContext_Project_buildBaronSettings(ctx, field)
 			case "commitQueue":
 				return ec.fieldContext_Project_commitQueue(ctx, field)
+			case "containerSizeDefinitions":
+				return ec.fieldContext_Project_containerSizeDefinitions(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
 			case "disabledStatsCache":
@@ -26001,8 +26003,6 @@ func (ec *executionContext) fieldContext_Patch_projectMetadata(ctx context.Conte
 				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
 			case "workstationConfig":
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
-			case "containerSizeDefinitions":
-				return ec.fieldContext_Project_containerSizeDefinitions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -27621,10 +27621,10 @@ func (ec *executionContext) _Project_admins(ctx context.Context, field graphql.C
 			return obj.Admins, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -27682,10 +27682,10 @@ func (ec *executionContext) _Project_batchTime(ctx context.Context, field graphq
 			return obj.BatchTime, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -27790,10 +27790,10 @@ func (ec *executionContext) _Project_buildBaronSettings(ctx context.Context, fie
 			return obj.BuildBaronSettings, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -27870,10 +27870,10 @@ func (ec *executionContext) _Project_commitQueue(ctx context.Context, field grap
 			return obj.CommitQueue, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -27946,10 +27946,10 @@ func (ec *executionContext) _Project_containerSizeDefinitions(ctx context.Contex
 			return obj.ContainerSizeDefinitions, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -28015,10 +28015,10 @@ func (ec *executionContext) _Project_deactivatePrevious(ctx context.Context, fie
 			return obj.DeactivatePrevious, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -28076,10 +28076,10 @@ func (ec *executionContext) _Project_disabledStatsCache(ctx context.Context, fie
 			return obj.DisabledStatsCache, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -28137,10 +28137,10 @@ func (ec *executionContext) _Project_dispatchingDisabled(ctx context.Context, fi
 			return obj.DispatchingDisabled, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -28283,10 +28283,10 @@ func (ec *executionContext) _Project_githubChecksEnabled(ctx context.Context, fi
 			return obj.GithubChecksEnabled, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -28344,10 +28344,10 @@ func (ec *executionContext) _Project_githubTriggerAliases(ctx context.Context, f
 			return obj.GithubTriggerAliases, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -28405,10 +28405,10 @@ func (ec *executionContext) _Project_gitTagAuthorizedTeams(ctx context.Context, 
 			return obj.GitTagAuthorizedTeams, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -28466,10 +28466,10 @@ func (ec *executionContext) _Project_gitTagAuthorizedUsers(ctx context.Context, 
 			return obj.GitTagAuthorizedUsers, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -28527,10 +28527,10 @@ func (ec *executionContext) _Project_gitTagVersionsEnabled(ctx context.Context, 
 			return obj.GitTagVersionsEnabled, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -28717,10 +28717,10 @@ func (ec *executionContext) _Project_manualPrTestingEnabled(ctx context.Context,
 			return obj.ManualPRTestingEnabled, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -28778,10 +28778,10 @@ func (ec *executionContext) _Project_notifyOnBuildFailure(ctx context.Context, f
 			return obj.NotifyOnBuildFailure, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -28944,10 +28944,10 @@ func (ec *executionContext) _Project_patchingDisabled(ctx context.Context, field
 			return obj.PatchingDisabled, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -29005,10 +29005,10 @@ func (ec *executionContext) _Project_patchTriggerAliases(ctx context.Context, fi
 			return obj.PatchTriggerAliases, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -29082,10 +29082,10 @@ func (ec *executionContext) _Project_perfEnabled(ctx context.Context, field grap
 			return obj.PerfEnabled, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -29143,10 +29143,10 @@ func (ec *executionContext) _Project_periodicBuilds(ctx context.Context, field g
 			return obj.PeriodicBuilds, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -29259,10 +29259,10 @@ func (ec *executionContext) _Project_prTestingEnabled(ctx context.Context, field
 			return obj.PRTestingEnabled, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -29320,10 +29320,10 @@ func (ec *executionContext) _Project_remotePath(ctx context.Context, field graph
 			return obj.RemotePath, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -29472,10 +29472,10 @@ func (ec *executionContext) _Project_repotrackerDisabled(ctx context.Context, fi
 			return obj.RepotrackerDisabled, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -29569,28 +29569,8 @@ func (ec *executionContext) _Project_spawnHostScriptPath(ctx context.Context, fi
 		}
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		directive0 := func(rctx context.Context) (interface{}, error) {
-			ctx = rctx // use context from middleware stack in children
-			return obj.SpawnHostScriptPath, nil
-		}
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
-			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
-		}
-
-		tmp, err := directive1(rctx)
-		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if tmp == nil {
-			return nil, nil
-		}
-		if data, ok := tmp.(*string); ok {
-			return data, nil
-		}
-		return nil, fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+		ctx = rctx // use context from middleware stack in children
+		return obj.SpawnHostScriptPath, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -29638,10 +29618,10 @@ func (ec *executionContext) _Project_stepbackDisabled(ctx context.Context, field
 			return obj.StepbackDisabled, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -29699,10 +29679,10 @@ func (ec *executionContext) _Project_taskAnnotationSettings(ctx context.Context,
 			return obj.TaskAnnotationSettings, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -29769,10 +29749,10 @@ func (ec *executionContext) _Project_taskSync(ctx context.Context, field graphql
 			return obj.TaskSync, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -29839,10 +29819,10 @@ func (ec *executionContext) _Project_tracksPushEvents(ctx context.Context, field
 			return obj.TracksPushEvents, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -29900,10 +29880,10 @@ func (ec *executionContext) _Project_triggers(ctx context.Context, field graphql
 			return obj.Triggers, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -29979,10 +29959,10 @@ func (ec *executionContext) _Project_versionControlEnabled(ctx context.Context, 
 			return obj.VersionControlEnabled, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -30040,10 +30020,10 @@ func (ec *executionContext) _Project_workstationConfig(ctx context.Context, fiel
 			return obj.WorkstationConfig, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -35562,10 +35542,10 @@ func (ec *executionContext) _RepoRef_admins(ctx context.Context, field graphql.C
 			return obj.Admins, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -35626,10 +35606,10 @@ func (ec *executionContext) _RepoRef_batchTime(ctx context.Context, field graphq
 			return obj.BatchTime, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -35734,10 +35714,10 @@ func (ec *executionContext) _RepoRef_buildBaronSettings(ctx context.Context, fie
 			return obj.BuildBaronSettings, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -35814,10 +35794,10 @@ func (ec *executionContext) _RepoRef_commitQueue(ctx context.Context, field grap
 			return obj.CommitQueue, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -35890,10 +35870,10 @@ func (ec *executionContext) _RepoRef_containerSizeDefinitions(ctx context.Contex
 			return obj.ContainerSizeDefinitions, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -35959,10 +35939,10 @@ func (ec *executionContext) _RepoRef_deactivatePrevious(ctx context.Context, fie
 			return obj.DeactivatePrevious, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -36023,10 +36003,10 @@ func (ec *executionContext) _RepoRef_disabledStatsCache(ctx context.Context, fie
 			return obj.DisabledStatsCache, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -36087,10 +36067,10 @@ func (ec *executionContext) _RepoRef_dispatchingDisabled(ctx context.Context, fi
 			return obj.DispatchingDisabled, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -36239,10 +36219,10 @@ func (ec *executionContext) _RepoRef_githubChecksEnabled(ctx context.Context, fi
 			return obj.GithubChecksEnabled, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -36303,10 +36283,10 @@ func (ec *executionContext) _RepoRef_githubTriggerAliases(ctx context.Context, f
 			return obj.GithubTriggerAliases, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -36364,10 +36344,10 @@ func (ec *executionContext) _RepoRef_gitTagAuthorizedTeams(ctx context.Context, 
 			return obj.GitTagAuthorizedTeams, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -36425,10 +36405,10 @@ func (ec *executionContext) _RepoRef_gitTagAuthorizedUsers(ctx context.Context, 
 			return obj.GitTagAuthorizedUsers, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -36486,10 +36466,10 @@ func (ec *executionContext) _RepoRef_gitTagVersionsEnabled(ctx context.Context, 
 			return obj.GitTagVersionsEnabled, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -36550,10 +36530,10 @@ func (ec *executionContext) _RepoRef_manualPrTestingEnabled(ctx context.Context,
 			return obj.ManualPRTestingEnabled, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -36614,10 +36594,10 @@ func (ec *executionContext) _RepoRef_notifyOnBuildFailure(ctx context.Context, f
 			return obj.NotifyOnBuildFailure, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -36722,10 +36702,10 @@ func (ec *executionContext) _RepoRef_patchingDisabled(ctx context.Context, field
 			return obj.PatchingDisabled, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -36786,10 +36766,10 @@ func (ec *executionContext) _RepoRef_patchTriggerAliases(ctx context.Context, fi
 			return obj.PatchTriggerAliases, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -36863,10 +36843,10 @@ func (ec *executionContext) _RepoRef_perfEnabled(ctx context.Context, field grap
 			return obj.PerfEnabled, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -36927,10 +36907,10 @@ func (ec *executionContext) _RepoRef_periodicBuilds(ctx context.Context, field g
 			return obj.PeriodicBuilds, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -37046,10 +37026,10 @@ func (ec *executionContext) _RepoRef_prTestingEnabled(ctx context.Context, field
 			return obj.PRTestingEnabled, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -37110,10 +37090,10 @@ func (ec *executionContext) _RepoRef_remotePath(ctx context.Context, field graph
 			return obj.RemotePath, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -37218,10 +37198,10 @@ func (ec *executionContext) _RepoRef_repotrackerDisabled(ctx context.Context, fi
 			return obj.RepotrackerDisabled, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -37282,10 +37262,10 @@ func (ec *executionContext) _RepoRef_restricted(ctx context.Context, field graph
 			return obj.Restricted, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -37341,28 +37321,8 @@ func (ec *executionContext) _RepoRef_spawnHostScriptPath(ctx context.Context, fi
 		}
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		directive0 := func(rctx context.Context) (interface{}, error) {
-			ctx = rctx // use context from middleware stack in children
-			return obj.SpawnHostScriptPath, nil
-		}
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
-			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
-		}
-
-		tmp, err := directive1(rctx)
-		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if tmp == nil {
-			return nil, nil
-		}
-		if data, ok := tmp.(*string); ok {
-			return data, nil
-		}
-		return nil, fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+		ctx = rctx // use context from middleware stack in children
+		return obj.SpawnHostScriptPath, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -37410,10 +37370,10 @@ func (ec *executionContext) _RepoRef_stepbackDisabled(ctx context.Context, field
 			return obj.StepbackDisabled, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -37474,10 +37434,10 @@ func (ec *executionContext) _RepoRef_taskAnnotationSettings(ctx context.Context,
 			return obj.TaskAnnotationSettings, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -37544,10 +37504,10 @@ func (ec *executionContext) _RepoRef_taskSync(ctx context.Context, field graphql
 			return obj.TaskSync, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -37614,10 +37574,10 @@ func (ec *executionContext) _RepoRef_tracksPushEvents(ctx context.Context, field
 			return obj.TracksPushEvents, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -37678,10 +37638,10 @@ func (ec *executionContext) _RepoRef_triggers(ctx context.Context, field graphql
 			return obj.Triggers, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -37760,10 +37720,10 @@ func (ec *executionContext) _RepoRef_versionControlEnabled(ctx context.Context, 
 			return obj.VersionControlEnabled, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -37824,10 +37784,10 @@ func (ec *executionContext) _RepoRef_workstationConfig(ctx context.Context, fiel
 			return obj.WorkstationConfig, nil
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.RestrictProjectAccess == nil {
-				return nil, errors.New("directive restrictProjectAccess is not implemented")
+			if ec.directives.RequireProjectFieldAccess == nil {
+				return nil, errors.New("directive requireProjectFieldAccess is not implemented")
 			}
-			return ec.directives.RestrictProjectAccess(ctx, obj, directive0)
+			return ec.directives.RequireProjectFieldAccess(ctx, obj, directive0)
 		}
 
 		tmp, err := directive1(rctx)

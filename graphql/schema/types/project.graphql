@@ -156,48 +156,48 @@ Project models single repository on GitHub.
 """
 type Project {
   id: String!
-  admins: [String] @restrictProjectAccess
-  batchTime: Int! @restrictProjectAccess
+  admins: [String] @requireProjectFieldAccess
+  batchTime: Int! @requireProjectFieldAccess
   branch: String!
-  buildBaronSettings: BuildBaronSettings! @restrictProjectAccess
-  commitQueue: CommitQueueParams! @restrictProjectAccess
-  containerSizeDefinitions: [ContainerResources!] @restrictProjectAccess
-  deactivatePrevious: Boolean @restrictProjectAccess
-  disabledStatsCache: Boolean @restrictProjectAccess
-  dispatchingDisabled: Boolean @restrictProjectAccess
+  buildBaronSettings: BuildBaronSettings! @requireProjectFieldAccess
+  commitQueue: CommitQueueParams! @requireProjectFieldAccess
+  containerSizeDefinitions: [ContainerResources!] @requireProjectFieldAccess
+  deactivatePrevious: Boolean @requireProjectFieldAccess
+  disabledStatsCache: Boolean @requireProjectFieldAccess
+  dispatchingDisabled: Boolean @requireProjectFieldAccess
   displayName: String!
   enabled: Boolean
-  githubChecksEnabled: Boolean @restrictProjectAccess
-  githubTriggerAliases: [String!] @restrictProjectAccess
-  gitTagAuthorizedTeams: [String!] @restrictProjectAccess
-  gitTagAuthorizedUsers: [String!] @restrictProjectAccess
-  gitTagVersionsEnabled: Boolean @restrictProjectAccess
+  githubChecksEnabled: Boolean @requireProjectFieldAccess
+  githubTriggerAliases: [String!] @requireProjectFieldAccess
+  gitTagAuthorizedTeams: [String!] @requireProjectFieldAccess
+  gitTagAuthorizedUsers: [String!] @requireProjectFieldAccess
+  gitTagVersionsEnabled: Boolean @requireProjectFieldAccess
   hidden: Boolean
   identifier: String!
   isFavorite: Boolean!
-  manualPrTestingEnabled: Boolean @restrictProjectAccess
-  notifyOnBuildFailure: Boolean @restrictProjectAccess
+  manualPrTestingEnabled: Boolean @requireProjectFieldAccess
+  notifyOnBuildFailure: Boolean @requireProjectFieldAccess
   owner: String!
   patches(patchesInput: PatchesInput!): Patches! # project patches 
-  patchingDisabled: Boolean @restrictProjectAccess
-  patchTriggerAliases: [PatchTriggerAlias!] @restrictProjectAccess
-  perfEnabled: Boolean @restrictProjectAccess
-  periodicBuilds: [PeriodicBuild!] @restrictProjectAccess
+  patchingDisabled: Boolean @requireProjectFieldAccess
+  patchTriggerAliases: [PatchTriggerAlias!] @requireProjectFieldAccess
+  perfEnabled: Boolean @requireProjectFieldAccess
+  periodicBuilds: [PeriodicBuild!] @requireProjectFieldAccess
   private: Boolean
-  prTestingEnabled: Boolean @restrictProjectAccess
-  remotePath: String! @restrictProjectAccess
+  prTestingEnabled: Boolean @requireProjectFieldAccess
+  remotePath: String! @requireProjectFieldAccess
   repo: String!
   repoRefId: String!
-  repotrackerDisabled: Boolean @restrictProjectAccess
+  repotrackerDisabled: Boolean @requireProjectFieldAccess
   restricted: Boolean
-  spawnHostScriptPath: String! @restrictProjectAccess
-  stepbackDisabled: Boolean @restrictProjectAccess
-  taskAnnotationSettings: TaskAnnotationSettings! @restrictProjectAccess
-  taskSync: TaskSyncOptions! @restrictProjectAccess
-  tracksPushEvents: Boolean @restrictProjectAccess
-  triggers: [TriggerAlias!] @restrictProjectAccess
-  versionControlEnabled: Boolean @restrictProjectAccess
-  workstationConfig: WorkstationConfig! @restrictProjectAccess
+  spawnHostScriptPath: String!
+  stepbackDisabled: Boolean @requireProjectFieldAccess
+  taskAnnotationSettings: TaskAnnotationSettings! @requireProjectFieldAccess
+  taskSync: TaskSyncOptions! @requireProjectFieldAccess
+  tracksPushEvents: Boolean @requireProjectFieldAccess
+  triggers: [TriggerAlias!] @requireProjectFieldAccess
+  versionControlEnabled: Boolean @requireProjectFieldAccess
+  workstationConfig: WorkstationConfig! @requireProjectFieldAccess
 }
 
 type CommitQueueParams {
