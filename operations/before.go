@@ -62,7 +62,7 @@ var (
 		return c.Set(hostFlagName, host)
 	}
 
-	checkCommitMessageFlagFlag = func(c *cli.Context) error {
+	checkCommitMessageFlag = func(c *cli.Context) error {
 		message := c.String(commitMessageFlag)
 		if message != "" {
 			if c.NArg() > 1 {

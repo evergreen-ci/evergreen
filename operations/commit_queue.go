@@ -257,7 +257,7 @@ func enqueuePatch() cli.Command {
 		)),
 		Before: mergeBeforeFuncs(
 			autoUpdateCLI,
-			checkCommitMessageFlagFlag,
+			checkCommitMessageFlag,
 			requirePatchIDFlag,
 			setPlainLogger,
 		),
