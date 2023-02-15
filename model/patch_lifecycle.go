@@ -230,7 +230,7 @@ func GetPatchedProject(ctx context.Context, settings *evergreen.Settings, p *pat
 	}
 
 	var cancel context.CancelFunc
-	ctx, cancel = context.WithTimeout(ctx, 10*time.Second)
+	ctx, cancel = context.WithTimeout(ctx, time.Minute)
 	defer cancel()
 	env := evergreen.GetEnvironment()
 
