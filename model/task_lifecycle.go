@@ -3,7 +3,6 @@ package model
 import (
 	"fmt"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -1698,87 +1697,6 @@ func doRestartFailedTasks(tasks []string, user string, results RestartResults) R
 	results.ItemsErrored = tasksErrored
 
 	return results
-}
-
-// CheckAndBlockSingleHostTaskGroup blocks a single-host task group if the given
-// task is part of one and has finished (or is currently finishing) with a
-// failed status. This is a best-effort attempt, so if it fails, it will just
-// log the error.
-// TODO: EVG-18685 remove this function
-func CheckAndBlockSingleHostTaskGroup(t *task.Task, status string) {
-	if !t.IsPartOfSingleHostTaskGroup() || status == evergreen.TaskSucceeded {
-		return
-	}
-
-	// For a single-host task group, block and dequeue later tasks in that group.
-	if err := BlockTaskGroupTasks(t.Id); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "problem blocking task group tasks",
-			"task_id": t.Id,
-		}))
-		return
-	}
-
-	grip.Debug(message.Fields{
-		"message": "blocked task group tasks for task",
-		"task_id": t.Id,
-	})
-}
-
-// TODO: EVG-18685 remove this function
-func BlockTaskGroupTasks(taskID string) error {
-	t, err := task.FindOneId(taskID)
-	if err != nil {
-		return errors.Wrapf(err, "finding task '%s'", taskID)
-	}
-	if t == nil {
-		return errors.Errorf("task '%s' not found", taskID)
-	}
-
-	p, err := FindProjectFromVersionID(t.Version)
-	if err != nil {
-		return errors.Wrapf(err, "getting project for task '%s'", t.Id)
-	}
-	tg := p.FindTaskGroup(t.TaskGroup)
-	if tg == nil {
-		return errors.Errorf("unable to find task group '%s' for task '%s'", t.TaskGroup, taskID)
-	}
-	indexOfTask := -1
-	for i, tgTask := range tg.Tasks {
-		if t.DisplayName == tgTask {
-			indexOfTask = i
-			break
-		}
-	}
-	if indexOfTask == -1 {
-		return errors.Errorf("could not find task '%s' in task group", t.DisplayName)
-	}
-	taskNamesToBlock := []string{}
-	for i := indexOfTask + 1; i < len(tg.Tasks); i++ {
-		taskNamesToBlock = append(taskNamesToBlock, tg.Tasks[i])
-	}
-	tasksToBlock, err := task.Find(task.ByVersionsForNameAndVariant([]string{t.Version}, taskNamesToBlock, t.BuildVariant))
-	if err != nil {
-		return errors.Wrapf(err, "finding tasks '%s'", strings.Join(taskNamesToBlock, ", "))
-	}
-	if err = ValidateNewGraph(t, tasksToBlock); err != nil {
-		return errors.Wrap(err, "validating proposed dependencies")
-	}
-
-	catcher := grip.NewBasicCatcher()
-	for _, taskToBlock := range tasksToBlock {
-		catcher.Add(taskToBlock.AddDependency(task.Dependency{
-			TaskId:       taskID,
-			Status:       evergreen.TaskSucceeded,
-			Unattainable: true,
-		}))
-		err = dequeue(taskToBlock.Id, taskToBlock.DistroId)
-		catcher.AddWhen(!adb.ResultsNotFound(err), err) // it's not an error if the task already isn't on the queue
-		// this operation is recursive, maybe be refactorable
-		// to use some kind of cache.
-		catcher.Add(UpdateBlockedDependencies(&taskToBlock))
-	}
-	return catcher.Resolve()
 }
 
 // ClearAndResetStrandedContainerTask clears the container task dispatched to a

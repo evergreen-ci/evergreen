@@ -320,7 +320,6 @@ type parserBV struct {
 	Tags          parserStringSlice  `yaml:"tags,omitempty,omitempty" bson:"tags,omitempty"`
 	Modules       parserStringSlice  `yaml:"modules,omitempty" bson:"modules,omitempty"`
 	Disable       bool               `yaml:"disable,omitempty" bson:"disable,omitempty"`
-	Push          bool               `yaml:"push,omitempty" bson:"push,omitempty"`
 	BatchTime     *int               `yaml:"batchtime,omitempty" bson:"batchtime,omitempty"`
 	CronBatchTime string             `yaml:"cron,omitempty" bson:"cron,omitempty"`
 	Stepback      *bool              `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
@@ -387,7 +386,6 @@ func (pbv *parserBV) canMerge() bool {
 		pbv.Tags == nil &&
 		pbv.Modules == nil &&
 		!pbv.Disable &&
-		!pbv.Push &&
 		pbv.BatchTime == nil &&
 		pbv.CronBatchTime == "" &&
 		pbv.Stepback == nil &&
@@ -1041,7 +1039,6 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 			Expansions:    pbv.Expansions,
 			Modules:       pbv.Modules,
 			Disable:       pbv.Disable,
-			Push:          pbv.Push,
 			BatchTime:     pbv.BatchTime,
 			CronBatchTime: pbv.CronBatchTime,
 			Activate:      pbv.Activate,

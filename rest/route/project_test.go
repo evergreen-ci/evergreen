@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -1499,6 +1500,256 @@ func TestGetProjectTaskExecutions(t *testing.T) {
 	} {
 		t.Run(testName, func(t *testing.T) {
 			rm := makeGetProjectTaskExecutionsHandler().(*getProjectTaskExecutionsHandler)
+			test(t, rm)
+		})
+	}
+}
+
+func TestModifyProjectVersions(t *testing.T) {
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(serviceModel.ProjectRefCollection))
+	const projectId = "proj"
+	project := serviceModel.ProjectRef{
+		Id: projectId,
+	}
+	assert.NoError(project.Insert())
+	for testName, test := range map[string]func(*testing.T, *modifyProjectVersionsHandler){
+		"parseSuccess": func(t *testing.T, rm *modifyProjectVersionsHandler) {
+			body := []byte(`
+{
+	"priority": -1,
+	"revision_start": 4,
+	"revision_end": 1
+}
+			`)
+			req, _ := http.NewRequest(http.MethodPatch, "https://example.com/rest/v2/projects/something-else/versions", bytes.NewBuffer(body))
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": projectId})
+			err := rm.Parse(ctx, req)
+			assert.NoError(err)
+			assert.Equal(utility.FromInt64Ptr(rm.opts.Priority), evergreen.DisabledTaskPriority)
+			assert.Equal(rm.opts.RevisionStart, 4)
+			assert.Equal(rm.opts.RevisionEnd, 1)
+		},
+		"parseSuccessTimestamp": func(t *testing.T, rm *modifyProjectVersionsHandler) {
+			body := []byte(`
+{
+	"priority": -1,
+	"start_time_str": "2022-11-02T00:00:00.000Z",
+	"end_time_str": "2022-11-03T00:00:00.000Z"
+}
+			`)
+			req, _ := http.NewRequest(http.MethodPatch, "https://example.com/rest/v2/projects/something-else/versions", bytes.NewBuffer(body))
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": projectId})
+			err := rm.Parse(ctx, req)
+			assert.NoError(err)
+			assert.Equal(utility.FromInt64Ptr(rm.opts.Priority), evergreen.DisabledTaskPriority)
+			assert.Equal(rm.opts.StartTime, time.Date(2022, 11, 2, 0, 0, 0, 0, time.UTC))
+			assert.Equal(rm.opts.EndTime, time.Date(2022, 11, 3, 0, 0, 0, 0, time.UTC))
+		},
+		"parseFaiWithNoPriority": func(t *testing.T, rm *modifyProjectVersionsHandler) {
+			body := []byte(`
+{
+	"revision_start": 4,
+	"revision_end": 1
+}
+			`)
+			req, _ := http.NewRequest(http.MethodPatch, "https://example.com/rest/v2/projects/something-else/versions", bytes.NewBuffer(body))
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": projectId})
+			err := rm.Parse(ctx, req)
+			assert.Error(err)
+		},
+		"parseFaiWithInvalidStartAndEnd": func(t *testing.T, rm *modifyProjectVersionsHandler) {
+			body := []byte(`
+{
+	"priority": -1,
+	"revision_start": 1,
+	"revision_end": 4
+}
+			`)
+			req, _ := http.NewRequest(http.MethodPatch, "https://example.com/rest/v2/projects/something-else/versions", bytes.NewBuffer(body))
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": projectId})
+			err := rm.Parse(ctx, req)
+			assert.Error(err)
+		},
+		"parseFaiWithTimeStampAndOrder": func(t *testing.T, rm *modifyProjectVersionsHandler) {
+			body := []byte(`
+{
+	"priority": -1,
+	"revision_start": 1,
+	"revision_end": 4
+	"start_time_str": "2022-11-02T00:00:00.000Z",
+	"end_time_str": "2022-11-03T00:00:00.000Z"
+}
+			`)
+			req, _ := http.NewRequest(http.MethodPatch, "https://example.com/rest/v2/projects/something-else/versions", bytes.NewBuffer(body))
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": projectId})
+			err := rm.Parse(ctx, req)
+			assert.Error(err)
+		},
+		"parseFaiWithInvalidTimeStamp": func(t *testing.T, rm *modifyProjectVersionsHandler) {
+			body := []byte(`
+{
+	"priority": -1,
+	"revision_start": 1,
+	"revision_end": 4
+	"start_time_str": "2022-11-03T00:00:00.000Z",
+	"end_time_str": "2022-11-02T00:00:00.000Z"
+}
+			`)
+			req, _ := http.NewRequest(http.MethodPatch, "https://example.com/rest/v2/projects/something-else/versions", bytes.NewBuffer(body))
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": projectId})
+			err := rm.Parse(ctx, req)
+			assert.Error(err)
+		},
+		"parseFaiWithNoTimestampOrOrder": func(t *testing.T, rm *modifyProjectVersionsHandler) {
+			body := []byte(`
+{
+	"priority": -1,
+}
+			`)
+			req, _ := http.NewRequest(http.MethodPost, "https://example.com/rest/v2/projects/something-else/versions", bytes.NewBuffer(body))
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": projectId})
+			err := rm.Parse(ctx, req)
+			assert.Error(err)
+		},
+		"runSucceeds": func(t *testing.T, rm *modifyProjectVersionsHandler) {
+			rm.projectId = projectId
+			rm.opts = serviceModel.VersionsOptions{
+				Priority: utility.ToInt64Ptr(evergreen.DisabledTaskPriority),
+				GetVersionsOptions: serviceModel.GetVersionsOptions{
+					RevisionStart: 4,
+					RevisionEnd:   1,
+					Requester:     evergreen.RepotrackerVersionRequester,
+					Limit:         20,
+				},
+			}
+			resp := rm.Run(ctx)
+			assert.NotNil(resp)
+			assert.Equal(http.StatusOK, resp.Status())
+			foundTasks, err := task.FindWithFields(task.ByVersions([]string{"v1", "v2", "v3", "v4"}), task.IdKey, task.PriorityKey, task.ActivatedKey)
+			assert.NoError(err)
+			assert.Len(foundTasks, 4)
+			var count int
+			for _, tsk := range foundTasks {
+				if tsk.Priority == evergreen.DisabledTaskPriority && !tsk.Activated {
+					count++
+				}
+			}
+			assert.Equal(4, count)
+		},
+		"runSucceedsTimeStamp": func(t *testing.T, rm *modifyProjectVersionsHandler) {
+			rm.projectId = projectId
+			rm.opts = serviceModel.VersionsOptions{
+				Priority: utility.ToInt64Ptr(evergreen.DisabledTaskPriority),
+				GetVersionsOptions: serviceModel.GetVersionsOptions{
+					StartTime: time.Date(2022, 11, 2, 0, 0, 0, 0, time.UTC),
+					EndTime:   time.Date(2022, 11, 3, 0, 0, 0, 0, time.UTC),
+					Requester: evergreen.RepotrackerVersionRequester,
+					Limit:     20,
+				},
+			}
+			resp := rm.Run(ctx)
+			assert.NotNil(resp)
+			assert.Equal(http.StatusOK, resp.Status())
+			foundTasks, err := task.FindWithFields(task.ByVersions([]string{"v1", "v2", "v3", "v4"}), task.IdKey, task.PriorityKey, task.ActivatedKey)
+			assert.NoError(err)
+			assert.Len(foundTasks, 4)
+			var count int
+			for _, tsk := range foundTasks {
+				if tsk.Priority == evergreen.DisabledTaskPriority && !tsk.Activated {
+					count++
+				}
+			}
+			assert.Equal(2, count)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			assert.NoError(db.ClearCollections(serviceModel.VersionCollection, task.Collection, build.Collection))
+			v1 := serviceModel.Version{
+				Id:                  "v1",
+				Identifier:          projectId,
+				Requester:           evergreen.RepotrackerVersionRequester,
+				RevisionOrderNumber: 1,
+				CreateTime:          time.Date(2022, time.November, 1, 0, 0, 0, 0, time.UTC),
+			}
+			assert.NoError(v1.Insert())
+			v2 := serviceModel.Version{
+				Id:                  "v2",
+				Identifier:          projectId,
+				Requester:           evergreen.RepotrackerVersionRequester,
+				RevisionOrderNumber: 2,
+				CreateTime:          time.Date(2022, time.November, 2, 0, 0, 0, 0, time.UTC),
+			}
+			assert.NoError(v2.Insert())
+			v3 := serviceModel.Version{
+				Id:                  "v3",
+				Identifier:          projectId,
+				Requester:           evergreen.RepotrackerVersionRequester,
+				RevisionOrderNumber: 3,
+				CreateTime:          time.Date(2022, time.November, 3, 0, 0, 0, 0, time.UTC),
+			}
+			assert.NoError(v3.Insert())
+			v4 := serviceModel.Version{
+				Id:                  "v4",
+				Identifier:          projectId,
+				Requester:           evergreen.RepotrackerVersionRequester,
+				RevisionOrderNumber: 4,
+				CreateTime:          time.Date(2022, time.November, 4, 0, 0, 0, 0, time.UTC),
+			}
+			assert.NoError(v4.Insert())
+			tasks := []task.Task{
+				{
+					Version:   "v1",
+					BuildId:   "b1",
+					Id:        "t1",
+					Activated: true,
+				},
+				{
+					Version:   "v2",
+					BuildId:   "b2",
+					Id:        "t2",
+					Activated: true,
+				},
+				{
+					Version:   "v3",
+					BuildId:   "b3",
+					Id:        "t3",
+					Activated: true,
+				},
+				{
+					Version:   "v4",
+					BuildId:   "b4",
+					Id:        "t4",
+					Activated: true,
+				},
+			}
+			builds := []build.Build{
+				{
+					Id:      "b1",
+					Version: "v1",
+				},
+				{
+					Id:      "b2",
+					Version: "v2",
+				},
+				{
+					Id:      "b3",
+					Version: "v3",
+				},
+				{
+					Id:      "b4",
+					Version: "v4",
+				},
+			}
+			for _, tsk := range tasks {
+				assert.NoError(tsk.Insert())
+			}
+			for _, b := range builds {
+				assert.NoError(b.Insert())
+			}
+			rm := makeModifyProjectVersionsHandler("").(*modifyProjectVersionsHandler)
 			test(t, rm)
 		})
 	}

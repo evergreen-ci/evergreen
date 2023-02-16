@@ -24,7 +24,7 @@ type UserTestSuite struct {
 	users []*DBUser
 }
 
-func TestDBUser(t *testing.T) {
+func TestUserTestSuite(t *testing.T) {
 	s := &UserTestSuite{}
 	suite.Run(t, s)
 }
@@ -38,7 +38,7 @@ func (s *UserTestSuite) SetupTest() {
 	s.NoError(db.ClearCollections(Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
 	s.Require().NoError(db.CreateCollections(evergreen.ScopeCollection))
 	s.users = []*DBUser{
-		&DBUser{
+		{
 			Id:     "Test1",
 			APIKey: "12345",
 			Settings: UserSettings{
@@ -56,7 +56,7 @@ func (s *UserTestSuite) SetupTest() {
 				TTL:          time.Now(),
 			},
 		},
-		&DBUser{
+		{
 			Id: "Test2",
 			PubKeys: []PubKey{
 				{
@@ -71,7 +71,7 @@ func (s *UserTestSuite) SetupTest() {
 				TTL:   time.Now().Add(-time.Hour),
 			},
 		},
-		&DBUser{
+		{
 			Id: "Test3",
 			PubKeys: []PubKey{
 				{
@@ -82,14 +82,14 @@ func (s *UserTestSuite) SetupTest() {
 			},
 			APIKey: "67890",
 		},
-		&DBUser{
+		{
 			Id: "Test4",
 			LoginCache: LoginCache{
 				Token: "5678",
 				TTL:   time.Now(),
 			},
 		},
-		&DBUser{
+		{
 			Id:     "Test5",
 			APIKey: "api",
 			LoginCache: LoginCache{
@@ -99,7 +99,7 @@ func (s *UserTestSuite) SetupTest() {
 				TTL:          time.Now(),
 			},
 		},
-		&DBUser{
+		{
 			Id: "Test6",
 			PubKeys: []PubKey{
 				{
@@ -808,31 +808,26 @@ func TestViewableProjectSettings(t *testing.T) {
 	assert.NotContains(t, projects, "other")
 }
 
-func (s *UserTestSuite) TestClearUserSettings() {
+func (s *UserTestSuite) TestClearUser() {
 	// Error on non-existent user
-	s.Error(ClearUserSettings("asdf"))
-
-	emptySettings := UserSettings{
-		Timezone: "", Region: "", GithubUser: GithubUser{UID: 0, LastKnownAs: ""},
-		SlackUsername: "", SlackMemberId: "", Notifications: NotificationPreferences{BuildBreak: "",
-			BuildBreakID: "", PatchFinish: "", PatchFinishID: "", PatchFirstFailure: "",
-			PatchFirstFailureID: "", SpawnHostExpiration: "", SpawnHostExpirationID: "",
-			SpawnHostOutcome: "", SpawnHostOutcomeID: "", CommitQueue: "", CommitQueueID: ""},
-		UseSpruceOptions: UseSpruceOptions{PatchPage: false, SpruceV1: false, HasUsedSpruceBefore: false, HasUsedMainlineCommitsBefore: false},
-	}
+	s.Error(ClearUser("asdf"))
 
 	u, err := FindOneById(s.users[0].Id)
 	s.NoError(err)
 	s.NotNil(u)
-	s.NotEqual(u.Settings, emptySettings)
+	s.NotEmpty(u.Settings)
 	s.Equal("Test1", u.Id)
+	s.NoError(u.AddRole("r1p1"))
+	s.NotEmpty(u.SystemRoles)
 
-	s.NoError(ClearUserSettings(u.Id))
+	s.NoError(ClearUser(u.Id))
 
-	// settings should now be empty
+	// Settings and roles should now be empty
 	u, err = FindOneById(s.users[0].Id)
 	s.NoError(err)
 	s.NotNil(u)
 
-	s.Equal(u.Settings, emptySettings)
+	s.Empty(u.Settings)
+	s.Empty(u.Roles())
+	s.Empty(u.LoginCache)
 }
