@@ -122,8 +122,8 @@ func (c *attachResults) Execute(ctx context.Context,
 	}
 	defer reportFile.Close()
 
-	var nativeResults *nativeTestResults
-	if err = utility.ReadJSON(reportFile, nativeResults); err != nil {
+	var nativeResults nativeTestResults
+	if err = utility.ReadJSON(reportFile, &nativeResults); err != nil {
 		return errors.Wrapf(err, "reading report file '%s'", reportFileLoc)
 	}
 
