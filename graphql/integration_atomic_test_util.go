@@ -1,4 +1,4 @@
-package graphql
+
 
 // This test takes a specification and runs GraphQL queries, comparing the output of the query to what is expected.
 // To add a new test:
@@ -74,6 +74,7 @@ func setup(t *testing.T, state *AtomicGraphQLState) {
 	env := evergreen.GetEnvironment()
 	ctx := context.Background()
 	require.NoError(t, env.DB().Drop(ctx))
+	testresult.ClearLocal()
 
 	require.NoError(t, db.Clear(user.Collection),
 		"unable to clear user collection")
