@@ -19,11 +19,6 @@ const (
 	TaskTimeout       = "timeout"
 	TaskSystemFailure = "sysfail"
 	TaskSetupFailure  = "setup-fail"
-	testResultsKey    = "test_results"
-
-	// this regex either matches against the exact 'test' string, or
-	// against the 'test' string at the end of some kind of filepath.
-	testMatchRegex = `(\Q%s\E|.*(\\|/)\Q%s\E)$`
 
 	taskHistoryMaxTime = 90 * time.Second
 )
@@ -276,9 +271,7 @@ func (thi *taskHistoryIterator) GetFailedTests(aggregatedTasks adb.Results) (map
 		if err != nil {
 			return nil, err
 		}
-		for _, result := range failedTaskResults.Results {
-			failedTestsMap[task.Id] = append(failedTestsMap[task.Id], result)
-		}
+		failedTestsMap[task.Id] = append(failedTestsMap[task.Id], failedTaskResults.Results...)
 	}
 
 	return failedTestsMap, nil
