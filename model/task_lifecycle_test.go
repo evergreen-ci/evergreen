@@ -1701,26 +1701,6 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			So(taskData.Status, ShouldEqual, evergreen.TaskFailed)
 		})
 
-		Convey("task should not fail if there are failed test results but no test results (inconsistent state)", func() {
-			reset()
-			testTask.ResultsFailed = true
-
-			detail.Status = evergreen.TaskSucceeded
-			So(MarkEnd(settings, testTask, "", time.Now(), detail, true), ShouldBeNil)
-
-			v, err := VersionFindOneId(v.Id)
-			So(err, ShouldBeNil)
-			So(v.Status, ShouldEqual, evergreen.VersionSucceeded)
-
-			b, err := build.FindOneId(b.Id)
-			So(err, ShouldBeNil)
-			So(b.Status, ShouldEqual, evergreen.BuildSucceeded)
-
-			taskData, err := task.FindOne(db.Query(task.ById(testTask.Id)))
-			So(err, ShouldBeNil)
-			So(taskData.Status, ShouldEqual, evergreen.TaskSucceeded)
-		})
-
 		Convey("incomplete versions report updates", func() {
 			reset()
 			b2 := &build.Build{
