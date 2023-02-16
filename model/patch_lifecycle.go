@@ -361,12 +361,14 @@ func getProjectConfigYAML(p *patch.Patch, projectFileBytes []byte) (string, erro
 	if err != nil {
 		return "", errors.Wrap(err, "creating project config")
 	}
+	if pc == nil {
+		return "", nil
+	}
 
 	yamlProjectConfig, err := yaml.Marshal(pc)
 	if err != nil {
 		return "", errors.Wrap(err, "marshalling project config into YAML")
 	}
-
 	return string(yamlProjectConfig), nil
 }
 
