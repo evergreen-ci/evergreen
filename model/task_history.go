@@ -233,6 +233,10 @@ func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, i
 // GetFailedTests returns a mapping of task ID to a slice of failed tasks
 // extracted from a pipeline of aggregated tasks.
 func (thi *taskHistoryIterator) GetFailedTests(aggregatedTasks adb.Results) (map[string][]testresult.TestResult, error) {
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+
 	// Get the ids of the failed tasks.
 	var failedTaskIds []string
 	var taskHistory TaskHistory
@@ -268,13 +272,12 @@ func (thi *taskHistoryIterator) GetFailedTests(aggregatedTasks adb.Results) (map
 
 	// create the mapping of the task id to the list of failed tasks
 	for _, task := range tasks {
-		if err := task.PopulateTestResults(); err != nil {
+		failedTaskResults, err := task.GetTestResults(ctx, env, &testresult.FilterOptions{Statuses: []string{evergreen.TestFailedStatus}})
+		if err != nil {
 			return nil, err
 		}
-		for _, test := range task.LocalTestResults {
-			if test.Status == evergreen.TestFailedStatus {
-				failedTestsMap[task.Id] = append(failedTestsMap[task.Id], test)
-			}
+		for _, result := range failedTaskResults.Results {
+			failedTestsMap[task.Id] = append(failedTestsMap[task.Id], result)
 		}
 	}
 
