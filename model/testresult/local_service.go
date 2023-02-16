@@ -17,7 +17,7 @@ const maxSampleSize = 10
 var globalInMemStore = newInMemStore()
 
 // ClearLocal resets the global in-memory test results store for testing and
-// and local developement.
+// and local development.
 func ClearLocal() {
 	globalInMemStore = newInMemStore()
 }

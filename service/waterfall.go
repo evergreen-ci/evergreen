@@ -22,7 +22,6 @@ const (
 	waterfallBVFilterParam = "bv_filter"
 	waterfallSkipParam     = "skip"
 	showUpstreamParam      = "upstream"
-	maxTestResultCalls     = 500
 )
 
 // uiStatus determines task status label.

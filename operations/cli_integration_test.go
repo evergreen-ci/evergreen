@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -314,31 +315,35 @@ func TestCLITestHistory(t *testing.T) {
 			So(testVersion3.Insert(), ShouldBeNil)
 			// create tasks with three different display names that start and finish at various times
 			for i := 0; i < 10; i++ {
-				startTime := now.Add(time.Minute * time.Duration(i))
-				endTime := now.Add(time.Minute * time.Duration(i+1))
-				passingResult := task.TestResult{
-					TestFile:  "passingTest",
-					Status:    evergreen.TestSucceededStatus,
-					StartTime: float64(startTime.Unix()),
-					EndTime:   float64(endTime.Unix()),
-				}
-				failedResult := task.TestResult{
-					TestFile:  "failingTest",
-					Status:    evergreen.TestFailedStatus,
-					StartTime: float64(startTime.Unix()),
-					EndTime:   float64(endTime.Unix()),
-				}
 				t := task.Task{
-					Id:               fmt.Sprintf("task_%v", i),
-					Project:          project,
-					DisplayName:      fmt.Sprintf("testTask_%v", i%3),
-					Revision:         fmt.Sprintf("%vversion%v", revisionBeginning, i%3),
-					Version:          fmt.Sprintf("version%v", i%3),
-					BuildVariant:     "osx",
-					Status:           evergreen.TaskFailed,
-					LocalTestResults: []task.TestResult{passingResult, failedResult},
+					Id:             fmt.Sprintf("task_%v", i),
+					Project:        project,
+					DisplayName:    fmt.Sprintf("testTask_%v", i%3),
+					Revision:       fmt.Sprintf("%vversion%v", revisionBeginning, i%3),
+					Version:        fmt.Sprintf("version%v", i%3),
+					BuildVariant:   "osx",
+					Status:         evergreen.TaskFailed,
+					ResultsService: testresult.TestResultsServiceLocal,
 				}
 				So(t.Insert(), ShouldBeNil)
+
+				startTime := now.Add(time.Minute * time.Duration(i)).UTC()
+				endTime := now.Add(time.Minute * time.Duration(i+1)).UTC()
+				passingResult := testresult.TestResult{
+					TestName: "passingTest",
+					TaskID:   t.Id,
+					Status:   evergreen.TestSucceededStatus,
+					Start:    startTime,
+					End:      endTime,
+				}
+				failedResult := testresult.TestResult{
+					TestName: "failingTest",
+					TaskID:   t.Id,
+					Status:   evergreen.TestFailedStatus,
+					Start:    startTime,
+					End:      endTime,
+				}
+				testresult.InsertLocal(passingResult, failedResult)
 			}
 		})
 	})

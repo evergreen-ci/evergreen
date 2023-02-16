@@ -263,7 +263,7 @@ func GetFailedTestSamples(ctx context.Context, env evergreen.Environment, taskOp
 }
 
 func groupTasksByService(taskOpts []TaskOptions) map[string][]TaskOptions {
-	var servicesToTasks map[string][]TaskOptions
+	servicesToTasks := map[string][]TaskOptions{}
 	for _, task := range taskOpts {
 		if tasks, ok := servicesToTasks[task.ResultsService]; ok {
 			servicesToTasks[task.ResultsService] = append(tasks, task)

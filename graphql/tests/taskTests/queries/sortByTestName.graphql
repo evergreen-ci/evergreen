@@ -5,7 +5,7 @@
 
   ) {
     testResults {
-      test_file
+      testFile
     }
   }
 }

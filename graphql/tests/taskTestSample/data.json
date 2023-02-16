@@ -237,7 +237,9 @@
           "desc": "'subprocess.exec' in \"run-make\" (#1)"
         },
         "logs": { "agent": null, "system": null, "task": null }
-      }
+      },
+      "results_service": "local",
+      "failed_results": true
     },
     {
       "_id": "display_task_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
