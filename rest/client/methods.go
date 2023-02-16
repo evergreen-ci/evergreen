@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
@@ -34,10 +35,10 @@ func (c *communicatorImpl) CreateSpawnHost(ctx context.Context, spawnRequest *mo
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, utility.RespErrorf(resp, AuthError)
+		return nil, util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "creating spawn host")
+		return nil, util.RespErrorf(resp, "creating spawn host")
 	}
 
 	spawnHostResp := model.APIHost{}
@@ -61,10 +62,10 @@ func (c *communicatorImpl) GetSpawnHost(ctx context.Context, hostId string) (*mo
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, utility.RespErrorf(resp, AuthError)
+		return nil, util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "getting spawn host '%s'", hostId)
+		return nil, util.RespErrorf(resp, "getting spawn host '%s'", hostId)
 	}
 
 	spawnHostResp := model.APIHost{}
@@ -89,10 +90,10 @@ func (c *communicatorImpl) ModifySpawnHost(ctx context.Context, hostID string, c
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return utility.RespErrorf(resp, AuthError)
+		return util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return utility.RespErrorf(resp, "modifying spawn host '%s'", hostID)
+		return util.RespErrorf(resp, "modifying spawn host '%s'", hostID)
 	}
 
 	return nil
@@ -115,10 +116,10 @@ func (c *communicatorImpl) StopSpawnHost(ctx context.Context, hostID string, sub
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return utility.RespErrorf(resp, AuthError)
+		return util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return utility.RespErrorf(resp, "stopping spawn host '%s'", hostID)
+		return util.RespErrorf(resp, "stopping spawn host '%s'", hostID)
 	}
 
 	if wait {
@@ -141,10 +142,10 @@ func (c *communicatorImpl) AttachVolume(ctx context.Context, hostID string, opts
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return utility.RespErrorf(resp, AuthError)
+		return util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return utility.RespErrorf(resp, "attaching volume to host '%s'", hostID)
+		return util.RespErrorf(resp, "attaching volume to host '%s'", hostID)
 	}
 
 	return nil
@@ -166,10 +167,10 @@ func (c *communicatorImpl) DetachVolume(ctx context.Context, hostID, volumeID st
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return utility.RespErrorf(resp, AuthError)
+		return util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return utility.RespErrorf(resp, "detaching volume '%s' from host '%s'", volumeID, hostID)
+		return util.RespErrorf(resp, "detaching volume '%s' from host '%s'", volumeID, hostID)
 	}
 
 	return nil
@@ -188,10 +189,10 @@ func (c *communicatorImpl) CreateVolume(ctx context.Context, volume *host.Volume
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, utility.RespErrorf(resp, AuthError)
+		return nil, util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "creating volume")
+		return nil, util.RespErrorf(resp, "creating volume")
 	}
 
 	createVolumeResp := model.APIVolume{}
@@ -214,10 +215,10 @@ func (c *communicatorImpl) DeleteVolume(ctx context.Context, volumeID string) er
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return utility.RespErrorf(resp, AuthError)
+		return util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return utility.RespErrorf(resp, "deleting volume '%s'", volumeID)
+		return util.RespErrorf(resp, "deleting volume '%s'", volumeID)
 	}
 
 	return nil
@@ -235,10 +236,10 @@ func (c *communicatorImpl) ModifyVolume(ctx context.Context, volumeID string, op
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return utility.RespErrorf(resp, AuthError)
+		return util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return utility.RespErrorf(resp, "modifying volume '%s'", volumeID)
+		return util.RespErrorf(resp, "modifying volume '%s'", volumeID)
 	}
 
 	return nil
@@ -257,10 +258,10 @@ func (c *communicatorImpl) GetVolume(ctx context.Context, volumeID string) (*mod
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, utility.RespErrorf(resp, AuthError)
+		return nil, util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "getting volume '%s'", volumeID)
+		return nil, util.RespErrorf(resp, "getting volume '%s'", volumeID)
 	}
 
 	volumeResp := &model.APIVolume{}
@@ -284,10 +285,10 @@ func (c *communicatorImpl) GetVolumesByUser(ctx context.Context) ([]model.APIVol
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, utility.RespErrorf(resp, AuthError)
+		return nil, util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "getting volumes for user '%s'", c.apiUser)
+		return nil, util.RespErrorf(resp, "getting volumes for user '%s'", c.apiUser)
 	}
 
 	getVolumesResp := []model.APIVolume{}
@@ -315,10 +316,10 @@ func (c *communicatorImpl) StartSpawnHost(ctx context.Context, hostID string, su
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return utility.RespErrorf(resp, AuthError)
+		return util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return utility.RespErrorf(resp, "starting host '%s'", hostID)
+		return util.RespErrorf(resp, "starting host '%s'", hostID)
 	}
 
 	if wait {
@@ -353,10 +354,10 @@ func (c *communicatorImpl) waitForStatus(ctx context.Context, hostID, status str
 			}
 			defer resp.Body.Close()
 			if resp.StatusCode == http.StatusUnauthorized {
-				return utility.RespErrorf(resp, AuthError)
+				return util.RespErrorf(resp, AuthError)
 			}
 			if resp.StatusCode != http.StatusOK {
-				return utility.RespErrorf(resp, "getting host status")
+				return util.RespErrorf(resp, "getting host status")
 			}
 			hostResp := model.APIHost{}
 			if err = utility.ReadJSON(resp.Body, &hostResp); err != nil {
@@ -382,10 +383,10 @@ func (c *communicatorImpl) TerminateSpawnHost(ctx context.Context, hostID string
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return utility.RespErrorf(resp, AuthError)
+		return util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return utility.RespErrorf(resp, "terminating host '%s'", hostID)
+		return util.RespErrorf(resp, "terminating host '%s'", hostID)
 	}
 
 	return nil
@@ -406,10 +407,10 @@ func (c *communicatorImpl) ChangeSpawnHostPassword(ctx context.Context, hostID, 
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return utility.RespErrorf(resp, AuthError)
+		return util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return utility.RespErrorf(resp, "changing RDP password for host '%s'", hostID)
+		return util.RespErrorf(resp, "changing RDP password for host '%s'", hostID)
 	}
 
 	return nil
@@ -430,10 +431,10 @@ func (c *communicatorImpl) ExtendSpawnHostExpiration(ctx context.Context, hostID
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return utility.RespErrorf(resp, AuthError)
+		return util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return utility.RespErrorf(resp, "changing expiration of host '%s'", hostID)
+		return util.RespErrorf(resp, "changing expiration of host '%s'", hostID)
 	}
 	return nil
 }
@@ -452,10 +453,10 @@ func (c *communicatorImpl) GetHosts(ctx context.Context, data model.APIHostParam
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, utility.RespErrorf(resp, AuthError)
+		return nil, util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "getting hosts")
+		return nil, util.RespErrorf(resp, "getting hosts")
 	}
 
 	hosts := []*model.APIHost{}
@@ -479,7 +480,7 @@ func (c *communicatorImpl) SetBannerMessage(ctx context.Context, message string,
 		Theme:  string(theme),
 	})
 	if err != nil {
-		return utility.RespErrorf(resp, errors.Wrap(err, "sending request to set banner message").Error())
+		return util.RespErrorf(resp, errors.Wrap(err, "sending request to set banner message").Error())
 	}
 	defer resp.Body.Close()
 
@@ -534,7 +535,7 @@ func (c *communicatorImpl) SetServiceFlags(ctx context.Context, f *model.APIServ
 
 	resp, err := c.retryRequest(ctx, info, f)
 	if err != nil {
-		return utility.RespErrorf(resp, errors.Wrap(err, "sending request to set service flags").Error())
+		return util.RespErrorf(resp, errors.Wrap(err, "sending request to set service flags").Error())
 	}
 	defer resp.Body.Close()
 
@@ -665,7 +666,7 @@ func (c *communicatorImpl) RevertSettings(ctx context.Context, guid string) erro
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return utility.RespErrorf(resp, AuthError)
+		return util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return errors.Errorf("reverting event '%s'", guid)
@@ -690,10 +691,10 @@ func (c *communicatorImpl) ExecuteOnDistro(ctx context.Context, distro string, o
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, utility.RespErrorf(resp, AuthError)
+		return nil, util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "running script on hosts in distro '%s'", distro)
+		return nil, util.RespErrorf(resp, "running script on hosts in distro '%s'", distro)
 	}
 
 	if err = utility.ReadJSON(resp.Body, &result); err != nil {
@@ -715,10 +716,10 @@ func (c *communicatorImpl) GetServiceUsers(ctx context.Context) ([]model.APIDBUs
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, utility.RespErrorf(resp, AuthError)
+		return nil, util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "getting service users")
+		return nil, util.RespErrorf(resp, "getting service users")
 	}
 	var result []model.APIDBUser
 	if err = utility.ReadJSON(resp.Body, &result); err != nil {
@@ -746,10 +747,10 @@ func (c *communicatorImpl) UpdateServiceUser(ctx context.Context, username, disp
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return utility.RespErrorf(resp, AuthError)
+		return util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return utility.RespErrorf(resp, "updating service user '%s'", username)
+		return util.RespErrorf(resp, "updating service user '%s'", username)
 	}
 
 	return nil
@@ -768,10 +769,10 @@ func (c *communicatorImpl) DeleteServiceUser(ctx context.Context, username strin
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return utility.RespErrorf(resp, AuthError)
+		return util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return utility.RespErrorf(resp, "deleting service user '%s'", username)
+		return util.RespErrorf(resp, "deleting service user '%s'", username)
 	}
 
 	return nil
@@ -811,10 +812,10 @@ func (c *communicatorImpl) GetCurrentUsersKeys(ctx context.Context) ([]model.API
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, utility.RespErrorf(resp, AuthError)
+		return nil, util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "getting public keys for user '%s'", c.apiUser)
+		return nil, util.RespErrorf(resp, "getting public keys for user '%s'", c.apiUser)
 	}
 
 	keys := []model.APIPubKey{}
@@ -844,10 +845,10 @@ func (c *communicatorImpl) AddPublicKey(ctx context.Context, keyName, keyValue s
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return utility.RespErrorf(resp, AuthError)
+		return util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return utility.RespErrorf(resp, "adding public key '%s'", keyName)
+		return util.RespErrorf(resp, "adding public key '%s'", keyName)
 	}
 
 	return nil
@@ -866,10 +867,10 @@ func (c *communicatorImpl) DeletePublicKey(ctx context.Context, keyName string) 
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return utility.RespErrorf(resp, AuthError)
+		return util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return utility.RespErrorf(resp, "deleting public key '%s'", keyName)
+		return util.RespErrorf(resp, "deleting public key '%s'", keyName)
 	}
 
 	return nil
@@ -887,10 +888,10 @@ func (c *communicatorImpl) ListAliases(ctx context.Context, project string) ([]s
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, utility.RespErrorf(resp, AuthError)
+		return nil, util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "listing project aliases")
+		return nil, util.RespErrorf(resp, "listing project aliases")
 	}
 	patchAliases := []serviceModel.ProjectAlias{}
 
@@ -921,10 +922,10 @@ func (c *communicatorImpl) ListPatchTriggerAliases(ctx context.Context, project 
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, utility.RespErrorf(resp, AuthError)
+		return nil, util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "listing patch trigger aliases")
+		return nil, util.RespErrorf(resp, "listing patch trigger aliases")
 	}
 
 	triggerAliases := []string{}
@@ -947,10 +948,10 @@ func (c *communicatorImpl) GetClientConfig(ctx context.Context) (*evergreen.Clie
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, utility.RespErrorf(resp, AuthError)
+		return nil, util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "getting latest CLI version information")
+		return nil, util.RespErrorf(resp, "getting latest CLI version information")
 	}
 	update := &model.APICLIUpdate{}
 	if err = utility.ReadJSON(resp.Body, update); err != nil {
@@ -977,10 +978,10 @@ func (c *communicatorImpl) GetParameters(ctx context.Context, project string) ([
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, utility.RespErrorf(resp, AuthError)
+		return nil, util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "getting patch parameters for project '%s'", project)
+		return nil, util.RespErrorf(resp, "getting patch parameters for project '%s'", project)
 	}
 
 	params := []serviceModel.ParameterInfo{}
@@ -1002,10 +1003,10 @@ func (c *communicatorImpl) GetSubscriptions(ctx context.Context) ([]event.Subscr
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, utility.RespErrorf(resp, AuthError)
+		return nil, util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "getting subscriptions for user '%s'", c.apiUser)
+		return nil, util.RespErrorf(resp, "getting subscriptions for user '%s'", c.apiUser)
 	}
 
 	bytes, err := ioutil.ReadAll(resp.Body)
@@ -1058,10 +1059,10 @@ func (c *communicatorImpl) CreateVersionFromConfig(ctx context.Context, project,
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, utility.RespErrorf(resp, AuthError)
+		return nil, util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "creating version from config")
+		return nil, util.RespErrorf(resp, "creating version from config")
 	}
 
 	v := &serviceModel.Version{}
@@ -1084,10 +1085,10 @@ func (c *communicatorImpl) GetCommitQueue(ctx context.Context, projectID string)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, utility.RespErrorf(resp, AuthError)
+		return nil, util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "getting commit queue for project '%s'", projectID)
+		return nil, util.RespErrorf(resp, "getting commit queue for project '%s'", projectID)
 	}
 
 	cq := model.APICommitQueue{}
@@ -1109,7 +1110,7 @@ func (c *communicatorImpl) DeleteCommitQueueItem(ctx context.Context, item strin
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNoContent {
-		return utility.RespErrorf(resp, "deleting item '%s' from commit queue", item)
+		return util.RespErrorf(resp, "deleting item '%s' from commit queue", item)
 	}
 
 	return nil
@@ -1130,10 +1131,10 @@ func (c *communicatorImpl) EnqueueItem(ctx context.Context, patchID string, enqu
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusUnauthorized {
-		return 0, utility.RespErrorf(resp, AuthError)
+		return 0, util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return 0, utility.RespErrorf(resp, "enqueueing commit queue item '%s'", patchID)
+		return 0, util.RespErrorf(resp, "enqueueing commit queue item '%s'", patchID)
 	}
 
 	positionResp := model.APICommitQueuePosition{}
@@ -1160,7 +1161,7 @@ func (c *communicatorImpl) CreatePatchForMerge(ctx context.Context, patchID, com
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "creating merge patch '%s'", patchID)
+		return nil, util.RespErrorf(resp, "creating merge patch '%s'", patchID)
 	}
 
 	newPatch := &model.APIPatch{}
@@ -1184,7 +1185,7 @@ func (c *communicatorImpl) GetMessageForPatch(ctx context.Context, patchID strin
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", utility.RespErrorf(resp, "getting message for patch '%s'", patchID)
+		return "", util.RespErrorf(resp, "getting message for patch '%s'", patchID)
 	}
 
 	var message string
@@ -1208,10 +1209,10 @@ func (c *communicatorImpl) SendNotification(ctx context.Context, notificationTyp
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return utility.RespErrorf(resp, AuthError)
+		return util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return utility.RespErrorf(resp, "sending notification")
+		return util.RespErrorf(resp, "sending notification")
 	}
 
 	return nil
@@ -1230,7 +1231,7 @@ func (c *communicatorImpl) GetDockerStatus(ctx context.Context, hostID string) (
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "getting status for container '%s'", hostID)
+		return nil, util.RespErrorf(resp, "getting status for container '%s'", hostID)
 	}
 	status := cloud.ContainerStatus{}
 	if err := utility.ReadJSON(resp.Body, &status); err != nil {
@@ -1266,7 +1267,7 @@ func (c *communicatorImpl) GetDockerLogs(ctx context.Context, hostID string, sta
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "getting logs for container '%s'", hostID)
+		return nil, util.RespErrorf(resp, "getting logs for container '%s'", hostID)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
@@ -1289,10 +1290,10 @@ func (c *communicatorImpl) GetManifestByTask(ctx context.Context, taskId string)
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, utility.RespErrorf(resp, AuthError)
+		return nil, util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "getting manifest for task '%s'", taskId)
+		return nil, util.RespErrorf(resp, "getting manifest for task '%s'", taskId)
 	}
 	mfest := manifest.Manifest{}
 	if err := utility.ReadJSON(resp.Body, &mfest); err != nil {
@@ -1323,10 +1324,10 @@ func (c *communicatorImpl) StartHostProcesses(ctx context.Context, hostIDs []str
 			defer resp.Body.Close()
 
 			if resp.StatusCode == http.StatusUnauthorized {
-				return nil, utility.RespErrorf(resp, AuthError)
+				return nil, util.RespErrorf(resp, AuthError)
 			}
 			if resp.StatusCode != http.StatusOK {
-				return nil, utility.RespErrorf(resp, "running process on hosts")
+				return nil, util.RespErrorf(resp, "running process on hosts")
 			}
 
 			output := []model.APIHostProcess{}
@@ -1367,10 +1368,10 @@ func (c *communicatorImpl) GetHostProcessOutput(ctx context.Context, hostProcess
 			defer resp.Body.Close()
 
 			if resp.StatusCode == http.StatusUnauthorized {
-				return nil, utility.RespErrorf(resp, AuthError)
+				return nil, util.RespErrorf(resp, AuthError)
 			}
 			if resp.StatusCode != http.StatusOK {
-				return nil, utility.RespErrorf(resp, "getting process output from hosts")
+				return nil, util.RespErrorf(resp, "getting process output from hosts")
 			}
 
 			output := []model.APIHostProcess{}
@@ -1403,10 +1404,10 @@ func (c *communicatorImpl) GetRecentVersionsForProject(ctx context.Context, proj
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, utility.RespErrorf(resp, AuthError)
+		return nil, util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "getting versions for project '%s' and requester '%s'", projectID, requester)
+		return nil, util.RespErrorf(resp, "getting versions for project '%s' and requester '%s'", projectID, requester)
 	}
 
 	getVersionsResp := []model.APIVersion{}
@@ -1429,10 +1430,10 @@ func (c *communicatorImpl) GetTaskSyncReadCredentials(ctx context.Context) (*eve
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, utility.RespErrorf(resp, AuthError)
+		return nil, util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "getting task sync read-only credentials")
+		return nil, util.RespErrorf(resp, "getting task sync read-only credentials")
 	}
 	creds := &evergreen.S3Credentials{}
 	if err := utility.ReadJSON(resp.Body, creds); err != nil {
@@ -1454,10 +1455,10 @@ func (c *communicatorImpl) GetTaskSyncPath(ctx context.Context, taskID string) (
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusUnauthorized {
-		return "", utility.RespErrorf(resp, AuthError)
+		return "", util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return "", utility.RespErrorf(resp, "getting task sync path")
+		return "", util.RespErrorf(resp, "getting task sync path")
 	}
 	path, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -1475,7 +1476,7 @@ func (c *communicatorImpl) GetDistroByName(ctx context.Context, id string) (*res
 
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, errors.Wrapf(err, "getting distro '%s'", id).Error())
+		return nil, util.RespErrorf(resp, errors.Wrapf(err, "getting distro '%s'", id).Error())
 	}
 	defer resp.Body.Close()
 
@@ -1495,11 +1496,11 @@ func (c *communicatorImpl) GetClientURLs(ctx context.Context, distroID string) (
 	}
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, errors.Wrap(err, "getting client URLs").Error())
+		return nil, util.RespErrorf(resp, errors.Wrap(err, "getting client URLs").Error())
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "getting client URLs")
+		return nil, util.RespErrorf(resp, "getting client URLs")
 	}
 
 	var urls []string
@@ -1527,11 +1528,11 @@ func (c *communicatorImpl) GetHostProvisioningOptions(ctx context.Context, hostI
 		MaxDelay:    c.timeoutMax,
 	})
 	if err != nil {
-		return nil, utility.RespErrorf(resp, "sending request to get provisioning options for host '%s'", hostID)
+		return nil, util.RespErrorf(resp, "sending request to get provisioning options for host '%s'", hostID)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "getting host provisioning options")
+		return nil, util.RespErrorf(resp, "getting host provisioning options")
 	}
 	var opts restmodel.APIHostProvisioningOptions
 	if err = utility.ReadJSON(resp.Body, &opts); err != nil {
@@ -1559,7 +1560,7 @@ func (c *communicatorImpl) CompareTasks(ctx context.Context, tasks []string, use
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, nil, utility.RespErrorf(resp, "getting task comparison")
+		return nil, nil, util.RespErrorf(resp, "getting task comparison")
 	}
 	var results restmodel.CompareTasksResponse
 	if err = utility.ReadJSON(resp.Body, &results); err != nil {
@@ -1582,10 +1583,10 @@ func (c *communicatorImpl) FindHostByIpAddress(ctx context.Context, ip string) (
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, utility.RespErrorf(resp, AuthError)
+		return nil, util.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "getting host by IP address")
+		return nil, util.RespErrorf(resp, "getting host by IP address")
 	}
 
 	host := &model.APIHost{}
