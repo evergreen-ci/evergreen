@@ -75,10 +75,6 @@ func MustHaveRESTContext(r *http.Request) *model.Context {
 	return pc
 }
 
-func needsLogin(next http.HandlerFunc) http.HandlerFunc {
-	return requireUser(false, next, nil)
-}
-
 // GetRESTv1App attaches a router at the given root that hooks up REST endpoint URIs to be
 // handled by the given restAPIService.
 func GetRESTv1App(evgService restAPIService) *gimlet.APIApp {
