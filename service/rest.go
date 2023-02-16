@@ -5,7 +5,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
@@ -51,6 +50,18 @@ func (ra *restV1middleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 	}
 
 	r = setRestContext(r, &pctx)
+
+	if pctx.ProjectRef == nil && usr == nil {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving admin settings")))
+		}
+
+		if flags.RestRoutePartialAuthDisabled {
+			gimlet.NewRequireAuthHandler().ServeHTTP(rw, r, next)
+			return
+		}
+	}
 	next(rw, r)
 }
 
@@ -74,28 +85,26 @@ func GetRESTv1App(evgService restAPIService) *gimlet.APIApp {
 	app := gimlet.NewApp()
 	rest := &restAPI{evgService}
 	middleware := &restV1middleware{rest}
-	requireLoginToggleable := route.NewRequireAuthHandler()
-	requireLogin := gimlet.WrapperMiddleware(needsLogin)
 	app.SetPrefix(evergreen.RestRoutePrefix)
 
 	// REST routes
-	app.AddRoute("/builds/{build_id}").Version(1).Get().Handler(rest.getBuildInfo).Wrap(requireLoginToggleable, middleware)
-	app.AddRoute("/builds/{build_id}/status").Version(1).Get().Handler(rest.getBuildStatus).Wrap(requireLoginToggleable, middleware)
-	app.AddRoute("/patches/{patch_id}").Version(1).Get().Handler(rest.getPatch).Wrap(requireLoginToggleable, middleware)
-	app.AddRoute("/patches/{patch_id}/config").Version(1).Get().Handler(rest.getPatchConfig).Wrap(requireLoginToggleable, middleware)
-	app.AddRoute("/projects").Version(1).Get().Handler(rest.getProjectIds).Wrap(requireLoginToggleable, middleware)
-	app.AddRoute("/projects/{project_id}").Version(1).Get().Handler(rest.getProjectRef).Wrap(requireLoginToggleable, middleware)
-	app.AddRoute("/projects/{project_id}/last_green").Version(1).Get().Handler(rest.lastGreen).Wrap(requireLoginToggleable, middleware)
-	app.AddRoute("/projects/{project_id}/revisions/{revision}").Version(1).Get().Handler(rest.getVersionInfoViaRevision).Wrap(requireLoginToggleable, middleware)
-	app.AddRoute("/projects/{project_id}/versions").Version(1).Get().Handler(rest.getRecentVersions).Wrap(requireLoginToggleable, middleware)
-	app.AddRoute("/tasks/{task_id}").Version(1).Get().Handler(rest.getTaskInfo).Wrap(requireLoginToggleable, middleware)
-	app.AddRoute("/tasks/{task_id}/status").Version(1).Get().Handler(rest.getTaskStatus).Wrap(requireLoginToggleable, middleware)
-	app.AddRoute("/versions/{version_id}").Version(1).Get().Handler(rest.getVersionInfo).Wrap(requireLoginToggleable, middleware)
-	app.AddRoute("/versions/{version_id}").Version(1).Patch().Handler(rest.modifyVersionInfo).Wrap(requireLogin, middleware)
-	app.AddRoute("/versions/{version_id}/config").Version(1).Get().Handler(rest.getVersionConfig).Wrap(requireLoginToggleable, middleware)
-	app.AddRoute("/versions/{version_id}/parser_project").Version(1).Get().Handler(rest.getVersionProject).Wrap(requireLoginToggleable, middleware)
-	app.AddRoute("/versions/{version_id}/status").Version(1).Get().Handler(rest.getVersionStatus).Wrap(requireLoginToggleable, middleware)
-	app.AddRoute("/waterfall/{project_id}").Version(1).Get().Handler(rest.getWaterfallData).Wrap(requireLoginToggleable, middleware)
+	app.AddRoute("/builds/{build_id}").Version(1).Get().Handler(rest.getBuildInfo).Wrap(middleware)
+	app.AddRoute("/builds/{build_id}/status").Version(1).Get().Handler(rest.getBuildStatus).Wrap(middleware)
+	app.AddRoute("/patches/{patch_id}").Version(1).Get().Handler(rest.getPatch).Wrap(middleware)
+	app.AddRoute("/patches/{patch_id}/config").Version(1).Get().Handler(rest.getPatchConfig).Wrap(middleware)
+	app.AddRoute("/projects").Version(1).Get().Handler(rest.getProjectIds).Wrap(middleware)
+	app.AddRoute("/projects/{project_id}").Version(1).Get().Handler(rest.getProjectRef).Wrap(middleware)
+	app.AddRoute("/projects/{project_id}/last_green").Version(1).Get().Handler(rest.lastGreen).Wrap(middleware)
+	app.AddRoute("/projects/{project_id}/revisions/{revision}").Version(1).Get().Handler(rest.getVersionInfoViaRevision).Wrap(middleware)
+	app.AddRoute("/projects/{project_id}/versions").Version(1).Get().Handler(rest.getRecentVersions).Wrap(middleware)
+	app.AddRoute("/tasks/{task_id}").Version(1).Get().Handler(rest.getTaskInfo).Wrap(middleware)
+	app.AddRoute("/tasks/{task_id}/status").Version(1).Get().Handler(rest.getTaskStatus).Wrap(middleware)
+	app.AddRoute("/versions/{version_id}").Version(1).Get().Handler(rest.getVersionInfo).Wrap(middleware)
+	app.AddRoute("/versions/{version_id}").Version(1).Patch().Handler(rest.modifyVersionInfo).Wrap(middleware)
+	app.AddRoute("/versions/{version_id}/config").Version(1).Get().Handler(rest.getVersionConfig).Wrap(middleware)
+	app.AddRoute("/versions/{version_id}/parser_project").Version(1).Get().Handler(rest.getVersionProject).Wrap(middleware)
+	app.AddRoute("/versions/{version_id}/status").Version(1).Get().Handler(rest.getVersionStatus).Wrap(middleware)
+	app.AddRoute("/waterfall/{project_id}").Version(1).Get().Handler(rest.getWaterfallData).Wrap(middleware)
 
 	return app
 }
