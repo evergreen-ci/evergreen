@@ -925,6 +925,7 @@ func getProjectMetadata(ctx context.Context, projectId *string, patchId *string)
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIProjectRef from service for `%s`: %s", projectRef.Id, err.Error()))
 	}
 	return &apiProjectRef, nil
+}
 
 //////////////////////////////////////////
 // Helper functions for task test results.

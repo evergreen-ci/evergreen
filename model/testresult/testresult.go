@@ -134,11 +134,11 @@ func (tr TestResult) GetLogURL(env evergreen.Environment, viewer evergreen.LogVi
 		for _, url := range deprecatedLobsterURLs {
 			if strings.Contains(tr.LogURL, url) {
 				updatedResmokeParsleyURL := strings.Replace(tr.LogURL, fmt.Sprintf("%s/build", url), parsleyURL+"/resmoke", 1)
-				return fmt.Sprintf("%s?selectedLine=%d", updatedResmokeParsleyURL, tr.LineNum)
+				return fmt.Sprintf("%s?shareLine=%d", updatedResmokeParsleyURL, tr.LineNum)
 			}
 		}
 
-		return fmt.Sprintf("%s/test/%s/%d/%s?selectedLine=%d", parsleyURL, tr.TaskID, tr.Execution, tr.GetLogTestName(), tr.LineNum)
+		return fmt.Sprintf("%s/test/%s/%d/%s?shareLine=%d", parsleyURL, tr.TaskID, tr.Execution, tr.GetLogTestName(), tr.LineNum)
 	default:
 		if tr.RawLogURL != "" {
 			// Some test results may have internal URLs that are
