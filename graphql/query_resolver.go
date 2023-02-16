@@ -638,7 +638,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 			if err != nil {
 				return nil, err
 			}
-			if len(baseTaskOpts) == 0 {
+			if len(baseTaskOpts) > 0 {
 				// Only sort by base status if we know there
 				// are base task options we can send to the
 				// results service.

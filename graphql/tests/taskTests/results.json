@@ -146,8 +146,8 @@
           "taskTests": {
             "testResults": [
               {
-                "id": "TestStuckHostAuditing",
-                "status": "fail"
+                "id": "TestGenerateSuite",
+                "status": "skip"
               },
               {
                 "test_name": "TestHostTaskAuditing",
@@ -158,8 +158,8 @@
                 "status": "skip"
               },
               {
-                "id": "TestGenerateSuite",
-                "status": "skip"
+                "id": "TestStuckHostAuditing",
+                "status": "fail"
               }
             ]
           }
@@ -226,6 +226,9 @@
                 "testFile": "TestGenerateSuite/TestSaveNewTasksWithDependencies"
               },
               {
+                "testFile": "TestGenerateSuite/TestValidateNoRedefine"
+              },
+              {
                 "testFile": "TestGetActivationTimeWithCron/Interval"
               },
               { 
@@ -242,6 +245,9 @@
               },
               {
                 "testFile": "TestRetryCommitQueueItems"
+              },
+              {
+                "testFile": "TestSetVersionActivation"
               },
               {
                 "testFile": "TestSortTasks"
