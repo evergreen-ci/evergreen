@@ -1392,10 +1392,6 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 		return nil
 	}
 
-	if err = checkUpdateBuildPRStatus(taskBuild); err != nil {
-		return errors.Wrapf(err, "updating build '%s' PR status", taskBuild.Id)
-	}
-
 	taskVersion, err := VersionFindOneId(t.Version)
 	if err != nil {
 		return errors.Wrapf(err, "getting version '%s' for task '%s'", t.Version, t.Id)
@@ -1407,6 +1403,12 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 	newVersionStatus, err := updateVersionStatus(taskVersion)
 	if err != nil {
 		return errors.Wrapf(err, "updating version '%s' status", taskVersion.Id)
+	}
+
+	if newVersionStatus != taskVersion.Status {
+		if err = checkUpdateBuildPRStatus(taskBuild); err != nil {
+			return errors.Wrapf(err, "updating build '%s' PR status", taskBuild.Id)
+		}
 	}
 
 	if evergreen.IsPatchRequester(taskVersion.Requester) {

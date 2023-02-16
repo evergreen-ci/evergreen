@@ -345,7 +345,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	if len(allFinishedTasks) == 0 {
 		return nil
 	}
-	return restartTasks(allFinishedTasks, caller, versionId)
+	return restartTasks(allFinishedTasks, caller)
 }
 
 // getTasksToReset returns all finished tasks that should be reset given an initial input list of
@@ -370,7 +370,7 @@ func getTasksToReset(taskIds []string) ([]task.Task, error) {
 
 // restartTasks restarts all finished tasks in the given list that are not part of
 // a single host task group.
-func restartTasks(allFinishedTasks []task.Task, caller, versionId string) error {
+func restartTasks(allFinishedTasks []task.Task, caller string) error {
 	toArchive := []task.Task{}
 	for _, t := range allFinishedTasks {
 		if !t.IsPartOfSingleHostTaskGroup() {
@@ -467,7 +467,7 @@ func RestartBuild(build *build.Build, taskIds []string, abortInProgress bool, ca
 	if len(tasksToReset) == 0 {
 		return nil
 	}
-	return errors.Wrap(restartTasks(tasksToReset, caller, build.Version), "restarting tasks")
+	return errors.Wrap(restartTasks(tasksToReset, caller), "restarting tasks")
 }
 
 func CreateTasksCache(tasks []task.Task) []build.TaskCache {
