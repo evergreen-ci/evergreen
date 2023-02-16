@@ -448,7 +448,8 @@
           "exec1"
         ],
         "generate_task": false,
-        "generated_by": "something"
+        "generated_by": "something",
+        "results_service": "local"
       },
       {
         "_id": "exec2",
@@ -670,68 +671,48 @@
     ],
     "testresults": [
       {
-        "_id": {
-          "$oid": "19ef7a20a7798219e191d00e"
-        },
+        "test_name": "b",
+        "task_id": "exec1",
+        "execution": 0,
         "status": "a",
-        "test_file": "b",
-        "log_id": "59ef7a2097b1d3148d0004f1",
         "line_num": 126,
-        "exit_code": 0,
-        "start": 0,
-        "end": 10,
-        "task_id": "exec1",
-        "task_execution": 0,
-        "url": "https://logkeeper.mongodb.org/build/59ef7a2097b1d3148d0004f1/test/123",
-        "url_raw": "https://logkeeper.mongodb.org/build/59ef7a2097b1d3148d0004f1/test/123?raw=true"
+        "log_url": "https://logkeeper.mongodb.org/build/59ef7a2097b1d3148d0004f1/test/123",
+        "raw_log_url": "https://logkeeper.mongodb.org/build/59ef7a2097b1d3148d0004f1/test/123?raw=true",
+        "test_start_time": "2020-02-14T22:22:24Z",
+        "test_end_time": "2020-02-14T22:22:44Z"
       },
       {
-        "_id": {
-          "$oid": "29ef7a20a7798219e191d00e"
-        },
+        "test_name": "apple",
+        "task_id": "exec1",
+        "execution": 0,
         "status": "c",
-        "test_file": "apple",
-        "log_id": "",
         "line_num": 126,
-        "exit_code": 0,
-        "start": 0,
-        "end": 20,
-        "task_id": "exec1",
-        "task_execution": 0,
         "url": "",
-        "url_raw": ""
+        "url_raw": "",
+        "test_start_time": "2020-02-14T22:22:44Z",
+        "test_end_time": "2020-02-14T22:22:54Z"
       },
       {
-        "_id": {
-          "$oid": "39ef7a20a7798219e191d00e"
-        },
+        "test_name": "d",
+        "task_id": "exec1",
+        "execution": 0,
         "status": "b",
-        "test_file": "d",
-        "log_id": "59ef7a2097b1d3148d0004f1",
         "line_num": 126,
-        "exit_code": 0,
-        "start": 0,
-        "end": 40,
-        "task_id": "exec1",
-        "task_execution": 0,
         "url": "",
-        "url_raw": ""
+        "url_raw": "",
+        "test_start_time": "2020-02-14T22:22:54Z",
+        "test_end_time": "2020-02-14T22:23:34Z"
       },
       {
-        "_id": {
-          "$oid": "49ef7a20a7798219e191d00e"
-        },
-        "status": "dog",
-        "test_file": "c",
-        "log_id": "59ef7a2097b1d3148d0004f1",
-        "line_num": 126,
-        "exit_code": 0,
-        "start": 0,
-        "end": 30,
+        "test_name": "c",
         "task_id": "exec1",
-        "task_execution": 0,
+        "execution": 0,
+        "status": "dog",
+        "line_num": 126,
         "url": "/url/without/scheme/host",
-        "url_raw": "/raw/url/without/scheme/host"
+        "url_raw": "/raw/url/without/scheme/host",
+        "test_start_time": "2020-02-14T22:23:34Z",
+        "test_end_time": "2020-02-14T22:24:04Z"
       }
     ],
     "project_ref": [
@@ -2362,7 +2343,7 @@
                   "urlLobster": "https://localhost:8443/lobster/evergreen/test/exec1/0/apple/#shareLine=126",
                   "urlParsley": "https://localhost:4173/test/exec1/0/apple?selectedLine=126"
                 },
-                "id": "29ef7a20a7798219e191d00e"
+                "id": "apple"
               }
             ]
           }
@@ -2382,7 +2363,7 @@
                   "urlLobster": "https://localhost:8443/lobster/build/59ef7a2097b1d3148d0004f1/test/123",
                   "urlParsley": "https://localhost:4173/resmoke/59ef7a2097b1d3148d0004f1/test/123?selectedLine=126"
                 },
-                "id": "19ef7a20a7798219e191d00e"
+                "id": "b"
               }
             ]
           }

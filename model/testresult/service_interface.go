@@ -9,7 +9,7 @@ import (
 
 // Valid test results services.
 const (
-	TestResultsServiceInMem = "in-mem"
+	TestResultsServiceLocal = "local"
 	TestResultsServiceCedar = "cedar"
 )
 
@@ -30,7 +30,7 @@ func getServiceImpl(env evergreen.Environment, service string) (testResultsServi
 	switch service {
 	case TestResultsServiceCedar:
 		return newCedarService(env), nil
-	case TestResultsServiceInMem:
+	case TestResultsServiceLocal:
 		return newInMemService(globalInMemStore), nil
 	default:
 		return nil, errors.Errorf("unsupported test results service '%s'", service)

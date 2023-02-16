@@ -20,12 +20,10 @@ type APITest struct {
 	TestFile   *string    `json:"test_file"`
 	GroupID    *string    `json:"group_id,omitempty"`
 	Logs       TestLogs   `json:"logs"`
-	ExitCode   int        `json:"exit_code"`
 	StartTime  *time.Time `json:"start_time"`
 	EndTime    *time.Time `json:"end_time"`
 	Duration   float64    `json:"duration"`
-
-	env evergreen.Environment
+	ExitCode   int        `json:"-"`
 }
 
 // TestLogs is a struct for storing the information about logs that will be
@@ -39,9 +37,7 @@ type TestLogs struct {
 }
 
 func (at *APITest) BuildFromService(st interface{}) error {
-	if at.env == nil {
-		at.env = evergreen.GetEnvironment()
-	}
+	env := evergreen.GetEnvironment()
 
 	switch v := st.(type) {
 	case *testresult.TestResult:
@@ -60,14 +56,14 @@ func (at *APITest) BuildFromService(st interface{}) error {
 
 		at.TestFile = utility.ToStringPtr(v.GetDisplayTestName())
 		at.Logs = TestLogs{
-			URL:     utility.ToStringPtr(v.GetLogURL(at.env, evergreen.LogViewerHTML)),
-			URLRaw:  utility.ToStringPtr(v.GetLogURL(at.env, evergreen.LogViewerRaw)),
+			URL:     utility.ToStringPtr(v.GetLogURL(env, evergreen.LogViewerHTML)),
+			URLRaw:  utility.ToStringPtr(v.GetLogURL(env, evergreen.LogViewerRaw)),
 			LineNum: v.LineNum,
 		}
-		if lobsterURL := v.GetLogURL(at.env, evergreen.LogViewerLobster); lobsterURL != "" {
+		if lobsterURL := v.GetLogURL(env, evergreen.LogViewerLobster); lobsterURL != "" {
 			at.Logs.URLLobster = utility.ToStringPtr(lobsterURL)
 		}
-		if parsleyURL := v.GetLogURL(at.env, evergreen.LogViewerParsley); parsleyURL != "" {
+		if parsleyURL := v.GetLogURL(env, evergreen.LogViewerParsley); parsleyURL != "" {
 			at.Logs.URLParsley = utility.ToStringPtr(parsleyURL)
 		}
 

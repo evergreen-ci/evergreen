@@ -27,7 +27,7 @@ func TestInMemService(t *testing.T) {
 		}
 		savedResults0[i] = result
 	}
-	svc.store.appendResults(task0.TaskID, task0.Execution, savedResults0)
+	svc.store.appendResults(savedResults0...)
 
 	task1 := TaskOptions{TaskID: "task1", Execution: 0}
 	savedResults1 := make([]TestResult, 10)
@@ -37,7 +37,7 @@ func TestInMemService(t *testing.T) {
 		result.Execution = task1.Execution
 		savedResults1[i] = result
 	}
-	svc.store.appendResults(task1.TaskID, task1.Execution, savedResults1)
+	svc.store.appendResults(savedResults1...)
 
 	task2 := TaskOptions{TaskID: "task2", Execution: 1}
 	savedResults2 := make([]TestResult, 10)
@@ -47,7 +47,7 @@ func TestInMemService(t *testing.T) {
 		result.Execution = task2.Execution
 		savedResults2[i] = result
 	}
-	svc.store.appendResults(task2.TaskID, task2.Execution, savedResults2)
+	svc.store.appendResults(savedResults2...)
 
 	emptyTask := TaskOptions{TaskID: "DNE", Execution: 0}
 
@@ -99,7 +99,7 @@ func TestInMemService(t *testing.T) {
 			}
 			savedResults3[i] = result
 		}
-		svc.store.appendResults(task3.TaskID, task3.Execution, savedResults3)
+		svc.store.appendResults(savedResults3...)
 
 		task4 := TaskOptions{TaskID: "task4", Execution: 1}
 		savedResults4 := make([]TestResult, maxSampleSize)
@@ -110,7 +110,7 @@ func TestInMemService(t *testing.T) {
 			result.Status = evergreen.TestFailedStatus
 			savedResults4[i] = result
 		}
-		svc.store.appendResults(task4.TaskID, task4.Execution, savedResults4)
+		svc.store.appendResults(savedResults4...)
 
 		t.Run("FailingTests", func(t *testing.T) {
 			taskOpts := []TaskOptions{task3, task4, emptyTask}
@@ -172,24 +172,28 @@ func TestInMemFilterAndSortTestResults(t *testing.T) {
 	baseTaskID := "base_task"
 	baseResults := []TestResult{
 		{
+			TaskID:   baseTaskID,
 			TestName: "A test",
 			Status:   "Pass",
 		},
 		{
+			TaskID:          baseTaskID,
 			TestName:        "B test",
 			DisplayTestName: "Display",
 			Status:          "Fail",
 		},
 		{
+			TaskID:   baseTaskID,
 			TestName: "C test",
 			Status:   "Pass",
 		},
 		{
+			TaskID:   baseTaskID,
 			TestName: "D test",
 			Status:   "Fail",
 		},
 	}
-	svc.store.appendResults(baseTaskID, 0, baseResults)
+	svc.store.appendResults(baseResults...)
 	resultsWithBaseStatus := getResults()
 	require.Len(t, resultsWithBaseStatus, len(baseResults))
 	for i := range resultsWithBaseStatus {

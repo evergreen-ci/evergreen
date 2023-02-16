@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
@@ -1024,178 +1023,6 @@ func TestIsSystemUnresponsive(t *testing.T) {
 
 }
 
-func TestMergeTestResultsBulk(t *testing.T) {
-	require.NoError(t, db.Clear(testresult.Collection))
-	assert := assert.New(t)
-
-	tasks := []Task{
-		{
-			Id:        "task1",
-			Execution: 0,
-		},
-		{
-			Id:        "task2",
-			Execution: 0,
-		},
-		{
-			Id:        "task3",
-			Execution: 0,
-		},
-	}
-
-	assert.NoError((&testresult.TestResult{
-		TaskID:    "task1",
-		Status:    evergreen.TestFailedStatus,
-		Execution: 0,
-	}).Insert())
-	assert.NoError((&testresult.TestResult{
-		TaskID:    "task2",
-		Status:    evergreen.TestFailedStatus,
-		Execution: 0,
-	}).Insert())
-	assert.NoError((&testresult.TestResult{
-		TaskID:    "task3",
-		Status:    evergreen.TestFailedStatus,
-		Execution: 0,
-	}).Insert())
-	assert.NoError((&testresult.TestResult{
-		TaskID:    "task1",
-		Status:    evergreen.TestFailedStatus,
-		Execution: 1,
-	}).Insert())
-	assert.NoError((&testresult.TestResult{
-		TaskID:    "task4",
-		Status:    evergreen.TestFailedStatus,
-		Execution: 0,
-	}).Insert())
-	assert.NoError((&testresult.TestResult{
-		TaskID:    "task1",
-		Status:    evergreen.TestSucceededStatus,
-		Execution: 0,
-	}).Insert())
-
-	out, err := MergeTestResultsBulk(tasks, nil)
-	assert.NoError(err)
-	count := 0
-	for _, t := range out {
-		count += len(t.LocalTestResults)
-	}
-	assert.Equal(4, count)
-
-	query := db.Query(bson.M{
-		testresult.StatusKey: evergreen.TestFailedStatus,
-	})
-	out, err = MergeTestResultsBulk(tasks, &query)
-	assert.NoError(err)
-	count = 0
-	for _, t := range out {
-		count += len(t.LocalTestResults)
-		for _, result := range t.LocalTestResults {
-			assert.Equal(evergreen.TestFailedStatus, result.Status)
-		}
-	}
-	assert.Equal(3, count)
-}
-
-func TestTaskSetResultsFields(t *testing.T) {
-	taskID := "jstestfuzz_self_tests_replication_fuzzers_master_initial_sync_fuzzer_69e2630b3272211f46bf85dd2577cd9a34c7c2cc_19_09_25_17_40_35"
-	project := "jstestfuzz-self-tests"
-	distroID := "amazon2-test"
-	buildVariant := "replication_fuzzers"
-	displayName := "fuzzer"
-	requester := "gitter_request"
-
-	displayTaskID := "jstestfuzz_self_tests_replication_fuzzers_display_master_69e2630b3272211f46bf85dd2577cd9a34c7c2cc_19_09_25_17_40_35"
-	executionDisplayName := "master"
-	StartTime := 1569431862.508
-	EndTime := 1569431887.2
-
-	TestStartTime := utility.FromPythonTime(StartTime).In(time.UTC)
-	TestEndTime := utility.FromPythonTime(EndTime).In(time.UTC)
-
-	testresults := []TestResult{
-		{
-			Status:          "pass",
-			TestFile:        "job0_fixture_setup",
-			DisplayTestName: "display",
-			GroupID:         "group",
-			URL:             "https://logkeeper.mongodb.org/build/dd239a5697eedef049a753c6a40a3e7e/test/5d8ba136c2ab68304e1d741c",
-			URLRaw:          "https://logkeeper.mongodb.org/build/dd239a5697eedef049a753c6a40a3e7e/test/5d8ba136c2ab68304e1d741c?raw=1",
-			ExitCode:        0,
-			StartTime:       StartTime,
-			EndTime:         EndTime,
-		},
-	}
-
-	Convey("SetResults", t, func() {
-		So(db.ClearCollections(Collection, testresult.Collection), ShouldBeNil)
-
-		taskCreateTime, err := time.Parse(time.RFC3339, "2019-09-25T17:40:35Z")
-		So(err, ShouldBeNil)
-
-		task := Task{
-			Id:           taskID,
-			CreateTime:   taskCreateTime,
-			Project:      project,
-			DistroId:     distroID,
-			BuildVariant: buildVariant,
-			DisplayName:  displayName,
-			Execution:    0,
-			Requester:    requester,
-		}
-
-		executionDisplayTask := Task{
-			Id:             displayTaskID,
-			CreateTime:     taskCreateTime,
-			Project:        project,
-			DistroId:       distroID,
-			BuildVariant:   buildVariant,
-			DisplayName:    executionDisplayName,
-			Execution:      0,
-			Requester:      requester,
-			ExecutionTasks: []string{taskID},
-		}
-
-		So(task.Insert(), ShouldBeNil)
-		Convey("Without a display task", func() {
-
-			So(task.SetResults(testresults), ShouldBeNil)
-
-			written, err := testresult.Find(testresult.ByTaskIDs([]string{taskID}))
-			So(err, ShouldBeNil)
-			So(1, ShouldEqual, len(written))
-			So(written[0].Project, ShouldEqual, project)
-			So(written[0].BuildVariant, ShouldEqual, buildVariant)
-			So(written[0].DistroId, ShouldEqual, distroID)
-			So(written[0].Requester, ShouldEqual, requester)
-			So(written[0].DisplayName, ShouldEqual, displayName)
-			So(written[0].ExecutionDisplayName, ShouldBeBlank)
-			So(written[0].TaskCreateTime.UTC(), ShouldResemble, taskCreateTime.UTC())
-			So(written[0].TestStartTime.UTC(), ShouldResemble, TestStartTime.UTC())
-			So(written[0].TestEndTime.UTC(), ShouldResemble, TestEndTime.UTC())
-		})
-
-		Convey("With a display task", func() {
-			So(executionDisplayTask.Insert(), ShouldBeNil)
-
-			So(task.SetResults(testresults), ShouldBeNil)
-
-			written, err := testresult.Find(testresult.ByTaskIDs([]string{taskID}))
-			So(err, ShouldBeNil)
-			So(1, ShouldEqual, len(written))
-			So(written[0].Project, ShouldEqual, project)
-			So(written[0].BuildVariant, ShouldEqual, buildVariant)
-			So(written[0].DistroId, ShouldEqual, distroID)
-			So(written[0].Requester, ShouldEqual, requester)
-			So(written[0].DisplayName, ShouldEqual, displayName)
-			So(written[0].ExecutionDisplayName, ShouldEqual, executionDisplayName)
-			So(written[0].TaskCreateTime.UTC(), ShouldResemble, taskCreateTime.UTC())
-			So(written[0].TestStartTime.UTC(), ShouldResemble, TestStartTime.UTC())
-			So(written[0].TestEndTime.UTC(), ShouldResemble, TestEndTime.UTC())
-		})
-	})
-}
-
 func TestTaskStatusCount(t *testing.T) {
 	assert := assert.New(t)
 	counts := TaskStatusCount{}
@@ -1211,25 +1038,6 @@ func TestTaskStatusCount(t *testing.T) {
 	assert.Equal(1, counts.Failed)
 	assert.Equal(1, counts.Started)
 	assert.Equal(1, counts.Inactive)
-}
-
-func TestPopulateTestResultsForDisplayTask(t *testing.T) {
-	assert := assert.New(t)
-	require.NoError(t, db.ClearCollections(Collection, testresult.Collection))
-	dt := Task{
-		Id:             "dt",
-		DisplayOnly:    true,
-		ExecutionTasks: []string{"et"},
-	}
-	assert.NoError(dt.Insert())
-	test := testresult.TestResult{
-		TaskID:   "et",
-		TestFile: "myTest",
-	}
-	assert.NoError(test.Insert())
-	require.NoError(t, dt.populateTestResultsForDisplayTask())
-	require.Len(t, dt.LocalTestResults, 1)
-	assert.Equal("myTest", dt.LocalTestResults[0].TestFile)
 }
 
 func TestBlocked(t *testing.T) {
@@ -2795,22 +2603,6 @@ func getTaskThatNeedsContainerAllocation() Task {
 		Activated:         true,
 		ExecutionPlatform: ExecutionPlatformContainer,
 	}
-}
-
-func TestSetHasLegacyResults(t *testing.T) {
-	require.NoError(t, db.ClearCollections(Collection))
-
-	task := Task{Id: "t1"}
-	assert.NoError(t, task.Insert())
-	assert.NoError(t, task.SetHasLegacyResults(true))
-
-	assert.True(t, utility.FromBoolPtr(task.HasLegacyResults))
-
-	taskFromDb, err := FindOneId("t1")
-	assert.NoError(t, err)
-	assert.NotNil(t, taskFromDb)
-	assert.NotNil(t, taskFromDb.HasLegacyResults)
-	assert.True(t, utility.FromBoolPtr(taskFromDb.HasLegacyResults))
 }
 
 func TestSetGeneratedTasksToActivate(t *testing.T) {

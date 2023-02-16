@@ -57,11 +57,15 @@ func insertTaskForTesting(taskId, versionId, projectName string, testResults []t
 		ExpectedDuration: 99 * time.Millisecond,
 	}
 
-	err := task.Insert()
-	if err != nil {
+	if len(testResults) > 0 {
+		task.ResultsService = testresult.TestResultsServiceLocal
+		testresult.InsertLocal(testResults...)
+	}
+	if err := task.Insert(); err != nil {
 		return nil, err
 	}
-	return task, testresult.InsertMany(testResults)
+
+	return task, nil
 }
 
 func TestGetTaskInfo(t *testing.T) {
@@ -73,8 +77,9 @@ func TestGetTaskInfo(t *testing.T) {
 	require.NoError(t, err, "error setting up router")
 
 	Convey("When finding info on a particular task", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, testresult.Collection),
+		require.NoError(t, db.ClearCollections(task.Collection),
 			"Error clearing '%v' collection", task.Collection)
+		testresult.ClearLocal()
 
 		taskId := "my-task"
 		versionId := "my-version"
@@ -84,10 +89,10 @@ func TestGetTaskInfo(t *testing.T) {
 			Status:    "success",
 			TaskID:    taskId,
 			Execution: 0,
-			TestFile:  "some-test",
-			URL:       "some-url",
-			StartTime: float64(time.Now().Add(-9 * time.Minute).Unix()),
-			EndTime:   float64(time.Now().Add(-1 * time.Minute).Unix()),
+			TestName:  "some-test",
+			LogURL:    "some-url",
+			Start:     time.Now().Add(-9 * time.Minute),
+			End:       time.Now().Add(-1 * time.Minute),
 		}
 		testTask, err := insertTaskForTesting(taskId, versionId, projectName, []testresult.TestResult{testResult})
 		So(err, ShouldBeNil)
@@ -197,7 +202,7 @@ func TestGetTaskInfo(t *testing.T) {
 			So(ok, ShouldBeTrue)
 			So(len(jsonTestResults), ShouldEqual, 1)
 
-			_jsonTestResult, ok := jsonTestResults[testResult.TestFile]
+			_jsonTestResult, ok := jsonTestResults[testResult.TestName]
 			So(ok, ShouldBeTrue)
 			jsonTestResult, ok := _jsonTestResult.(map[string]interface{})
 			So(ok, ShouldBeTrue)
@@ -210,7 +215,7 @@ func TestGetTaskInfo(t *testing.T) {
 			jsonTestResultLogs, ok := _jsonTestResultLogs.(map[string]interface{})
 			So(ok, ShouldBeTrue)
 
-			So(jsonTestResultLogs["url"], ShouldEqual, testResult.URL)
+			So(jsonTestResultLogs["url"], ShouldEqual, testResult.LogURL)
 
 			var jsonFiles []map[string]interface{}
 			err = json.Unmarshal(*rawJSONBody["files"], &jsonFiles)
@@ -256,8 +261,9 @@ func TestGetTaskStatus(t *testing.T) {
 	require.NoError(t, err, "error setting up router")
 
 	Convey("When finding the status of a particular task", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, testresult.Collection),
+		require.NoError(t, db.ClearCollections(task.Collection),
 			"Error clearing '%v' collection", task.Collection)
+		testresult.ClearLocal()
 
 		taskId := "my-task"
 
@@ -269,18 +275,19 @@ func TestGetTaskStatus(t *testing.T) {
 				TimedOut:    false,
 				Description: "some-stage",
 			},
+			ResultsService: testresult.TestResultsServiceLocal,
 		}
 		testResult := testresult.TestResult{
 			Status:    "success",
 			TaskID:    testTask.Id,
 			Execution: testTask.Execution,
-			TestFile:  "some-test",
-			URL:       "some-url",
-			StartTime: float64(time.Now().Add(-9 * time.Minute).Unix()),
-			EndTime:   float64(time.Now().Add(-1 * time.Minute).Unix()),
+			TestName:  "some-test",
+			LogURL:    "some-url",
+			Start:     time.Now().Add(-9 * time.Minute),
+			End:       time.Now().Add(-1 * time.Minute),
 		}
 		So(testTask.Insert(), ShouldBeNil)
-		So(testresult.InsertMany([]testresult.TestResult{testResult}), ShouldBeNil)
+		testresult.InsertLocal(testResult)
 
 		url := "/rest/v1/tasks/" + taskId + "/status"
 
@@ -321,7 +328,7 @@ func TestGetTaskStatus(t *testing.T) {
 			So(ok, ShouldBeTrue)
 			So(len(jsonTestResults), ShouldEqual, 1)
 
-			_jsonTestResult, ok := jsonTestResults[testResult.TestFile]
+			_jsonTestResult, ok := jsonTestResults[testResult.TestName]
 			So(ok, ShouldBeTrue)
 			jsonTestResult, ok := _jsonTestResult.(map[string]interface{})
 			So(ok, ShouldBeTrue)
@@ -334,7 +341,7 @@ func TestGetTaskStatus(t *testing.T) {
 			jsonTestResultLogs, ok := _jsonTestResultLogs.(map[string]interface{})
 			So(ok, ShouldBeTrue)
 
-			So(jsonTestResultLogs["url"], ShouldEqual, testResult.URL)
+			So(jsonTestResultLogs["url"], ShouldEqual, testResult.LogURL)
 		})
 	})
 
@@ -372,7 +379,8 @@ func TestGetDisplayTaskInfo(t *testing.T) {
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(err, "error setting up router")
 
-	require.NoError(db.ClearCollections(task.Collection, testresult.Collection))
+	require.NoError(db.ClearCollections(task.Collection))
+	testresult.ClearLocal()
 
 	executionTaskId := "execution-task"
 	displayTaskId := "display-task"
@@ -383,10 +391,10 @@ func TestGetDisplayTaskInfo(t *testing.T) {
 		Status:    "success",
 		TaskID:    executionTaskId,
 		Execution: 0,
-		TestFile:  "some-test",
-		URL:       "some-url",
-		StartTime: float64(time.Now().Add(-9 * time.Minute).Unix()),
-		EndTime:   float64(time.Now().Add(-1 * time.Minute).Unix()),
+		TestName:  "some-test",
+		LogURL:    "some-url",
+		Start:     time.Now().Add(-9 * time.Minute),
+		End:       time.Now().Add(-1 * time.Minute),
 	}
 	_, err = insertTaskForTesting(executionTaskId, versionId, projectName, []testresult.TestResult{testResult})
 	assert.NoError(err)

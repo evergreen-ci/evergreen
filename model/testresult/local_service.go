@@ -16,18 +16,19 @@ const maxSampleSize = 10
 
 var globalInMemStore = newInMemStore()
 
-// ResetInMemTestResults resets the global in-memory test results store.
-func ResetInMemTestResults() {
+// ClearLocal resets the global in-memory test results store for testing and
+// and local developement.
+func ClearLocal() {
 	globalInMemStore = newInMemStore()
 }
 
-// AppendInMemTestResults appends test results for the given task options in
-// the global in-memory test results store.
-func AppendInMemTestResults(taskID string, execution int, results []TestResult) {
-	globalInMemStore.appendResults(taskID, execution, results)
+// InsertLocal inserts the given test results into the global in-memory test
+// results store for testing and local development.
+func InsertLocal(results ...TestResult) {
+	globalInMemStore.appendResults(results...)
 }
 
-// inMemStore is in-memory test results store for testing and local
+// inMemStore is an in-memory test results store for testing and local
 // development.
 type inMemStore struct {
 	results map[inMemKey]*TaskTestResults
@@ -43,24 +44,24 @@ func newInMemStore() *inMemStore {
 	return &inMemStore{results: map[inMemKey]*TaskTestResults{}}
 }
 
-func (s *inMemStore) appendResults(taskID string, execution int, results []TestResult) {
+func (s *inMemStore) appendResults(results ...TestResult) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	key := inMemKey{taskID: taskID, execution: execution}
-	taskResults, ok := s.results[key]
-	if !ok {
-		taskResults = &TaskTestResults{}
-		s.results[key] = taskResults
-	}
-
-	taskResults.Stats.TotalCount += len(results)
 	for _, result := range results {
+		key := inMemKey{taskID: result.TaskID, execution: result.Execution}
+		taskResults, ok := s.results[key]
+		if !ok {
+			taskResults = &TaskTestResults{}
+			s.results[key] = taskResults
+		}
+
+		taskResults.Stats.TotalCount++
 		if result.Status == evergreen.TestFailedStatus {
 			taskResults.Stats.FailedCount++
 		}
+		taskResults.Results = append(taskResults.Results, result)
 	}
-	taskResults.Results = append(taskResults.Results, results...)
 }
 
 func (s *inMemStore) get(taskID string, execution int) (*TaskTestResults, bool) {

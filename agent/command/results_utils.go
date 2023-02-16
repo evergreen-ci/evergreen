@@ -170,9 +170,10 @@ func makeCedarTestResults(id string, t *task.Task, results []testresult.TestResu
 			LogURL:          r.LogURL,
 			RawLogURL:       r.RawLogURL,
 			LineNum:         int32(r.LineNum),
-			TaskCreated:     t.CreateTime,
-			TestStarted:     r.Start,
-			TestEnded:       r.End,
+			// TODO: set timezone to UTC?
+			TaskCreated: t.CreateTime,
+			TestStarted: r.Start,
+			TestEnded:   r.End,
 		})
 
 		if r.Status == evergreen.TestFailedStatus {

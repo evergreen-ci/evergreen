@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -76,6 +77,12 @@ func (s *spec) setupData(db mongo.Database) error {
 	ctx := context.Background()
 	catcher := grip.NewBasicCatcher()
 	for coll, data := range s.Setup {
+		if coll == "testresults" {
+			var results []testresult.TestResult
+			catcher.Add(json.Unmarshal(data, &results))
+			testresult.InsertLocal(results...)
+		}
+
 		var docs []interface{}
 		// the docs to insert as part of setup need to be deserialized as extended JSON, whereas the rest of the
 		// test spec is normal JSON

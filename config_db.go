@@ -59,7 +59,6 @@ var (
 	sshKeyPairsKey        = bsonutil.MustHaveTag(Settings{}, "SSHKeyPairs")
 	spawnhostKey          = bsonutil.MustHaveTag(Settings{}, "Spawnhost")
 	shutdownWaitKey       = bsonutil.MustHaveTag(Settings{}, "ShutdownWaitSeconds")
-	testResultsServiceKey = bsonutil.MustHaveTag(Settings{}, "TestResultsService")
 
 	sshKeyPairNameKey       = bsonutil.MustHaveTag(SSHKeyPair{}, "Name")
 	sshKeyPairEC2RegionsKey = bsonutil.MustHaveTag(SSHKeyPair{}, "EC2Regions")
