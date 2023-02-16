@@ -355,7 +355,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	statusCode, err := model.ValidateProjectCreation(responseRef.Id, settings, &model.ProjectRef{
+	statusCode, err := model.ValidateEnabledProjectsLimit(responseRef.Id, settings, model.ProjectRef{
 		Enabled: utility.ToBoolPtr(responseRef.Enabled),
 		Owner:   responseRef.Owner,
 		Repo:    responseRef.Repo,

@@ -112,8 +112,8 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 		return false, err
 	}
 	// Always warn because created projects are never enabled.
-	catcher := grip.NewBasicCatcher()
-	statusCode, err := model.ValidateProjectCreation(projectRef.Id, env.Settings(), projectRef)
+	warningCatcher := grip.NewBasicCatcher()
+	statusCode, err := model.ValidateEnabledProjectsLimit(projectRef.Id, env.Settings(), *projectRef)
 	if err != nil {
 		if statusCode != http.StatusBadRequest {
 			return false, gimlet.ErrorResponse{
@@ -121,7 +121,7 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 				Message:    errors.Wrapf(err, "inserting project '%s'", projectRef.Identifier).Error(),
 			}
 		}
-		catcher.Add(err)
+		warningCatcher.Add(err)
 	}
 
 	existingContainerSecrets := projectRef.ContainerSecrets
@@ -170,7 +170,7 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 		"project_identifier": projectRef.Identifier,
 		"user":               u.DisplayName(),
 	}))
-	return true, catcher.Resolve()
+	return true, warningCatcher.Resolve()
 }
 
 func tryCopyingContainerSecrets(ctx context.Context, settings *evergreen.Settings, existingSecrets []model.ContainerSecret, pRef *model.ProjectRef) error {

@@ -260,6 +260,15 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			}
 		}
 
+		config, err := evergreen.GetConfig()
+		if err != nil {
+			return nil, errors.Wrap(err, "getting evergreen config")
+		}
+		_, err = model.ValidateEnabledProjectsLimit(projectId, config, *mergedSection)
+		if err != nil {
+			return nil, errors.Wrap(err, "validating project creation")
+		}
+
 	case model.ProjectPageAccessSection:
 		// For any admins that are only in the original settings, remove access.
 		// For any admins that are only in the updated settings, give them access.

@@ -415,8 +415,6 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 				if apiErr.StatusCode == http.StatusBadRequest {
 					return nil, InputValidationError.Send(ctx, apiErr.Message)
 				}
-				// StatusNotFound and other error codes are really internal errors bc we determine this input
-				return nil, InternalServerError.Send(ctx, apiErr.Message)
 			}
 			return nil, InternalServerError.Send(ctx, err.Error())
 		}
