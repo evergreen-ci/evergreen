@@ -1127,6 +1127,36 @@ func updateBuildGithubStatus(b *build.Build, buildTasks []task.Task) error {
 	return b.UpdateGithubCheckStatus(buildStatus.status)
 }
 
+// checkUpdateBuildPRStatus checks if the build is coming from a PR, and if so
+// sends its updated status to GitHub to reflect the status of the build.
+func checkUpdateBuildPRStatus(b *build.Build) error {
+	if !evergreen.IsGitHubPatchRequester(b.Requester) {
+		return nil
+	}
+	p, err := patch.FindOneId(b.Version)
+	if err != nil {
+		return errors.Wrapf(err, "finding patch '%s'", b.Version)
+	}
+	if p == nil {
+		return errors.Errorf("patch '%s' not found", b.Version)
+	}
+	if p.IsGithubPRPatch() && !evergreen.IsFinishedPatchStatus(p.Status) {
+		input := thirdparty.SendGithubStatusInput{
+			VersionId: p.Id.Hex(),
+			Owner:     p.GithubPatchData.BaseOwner,
+			Repo:      p.GithubPatchData.BaseRepo,
+			Ref:       p.GithubPatchData.HeadHash,
+			Desc:      "patch status change",
+			Caller:    "pr-task-reset",
+			Context:   fmt.Sprintf("evergreen/%s", b.BuildVariant),
+		}
+		if err = thirdparty.SendVersionStatusToGithub(input); err != nil {
+			return errors.Wrapf(err, "sending patch '%s' status to Github", p.Id.Hex())
+		}
+	}
+	return nil
+}
+
 // updateBuildStatus updates the status of the build based on its tasks' statuses
 // Returns true if the build's status has changed or if all of the build's tasks become blocked.
 func updateBuildStatus(b *build.Build) (bool, error) {
@@ -1301,7 +1331,9 @@ func updateVersionStatus(v *Version) (string, error) {
 	return versionStatus, nil
 }
 
-func UpdatePatchStatus(p *patch.Patch, versionStatus, buildVariant string) error {
+// UpdatePatchStatus updates the status of a patch. For PR patches, the build associated
+// with the passed in buildVariant has its GitHub status updated.
+func UpdatePatchStatus(p *patch.Patch, versionStatus string) error {
 	patchStatus, err := evergreen.VersionStatusToPatchStatus(versionStatus)
 	if err != nil {
 		return errors.Wrapf(err, "getting patch status from version status '%s'", versionStatus)
@@ -1317,24 +1349,8 @@ func UpdatePatchStatus(p *patch.Patch, versionStatus, buildVariant string) error
 		if err = p.MarkFinished(patchStatus, time.Now()); err != nil {
 			return errors.Wrapf(err, "marking patch '%s' as finished with status '%s'", p.Id.Hex(), patchStatus)
 		}
-	} else {
-		if err = p.UpdateStatus(patchStatus); err != nil {
-			return errors.Wrapf(err, "updating patch '%s' with status '%s'", p.Id.Hex(), patchStatus)
-		}
-		if p.IsGithubPRPatch() {
-			input := thirdparty.SendGithubStatusInput{
-				VersionId: p.Id.Hex(),
-				Owner:     p.GithubPatchData.BaseOwner,
-				Repo:      p.GithubPatchData.BaseRepo,
-				Ref:       p.GithubPatchData.HeadHash,
-				Desc:      "patch status change",
-				Caller:    "pr-task-reset",
-				Context:   fmt.Sprintf("evergreen/%s", buildVariant),
-			}
-			if err = thirdparty.SendVersionStatusToGithub(input); err != nil {
-				return errors.Wrapf(err, "sending patch '%s' status to Github", p.Id.Hex())
-			}
-		}
+	} else if err = p.UpdateStatus(patchStatus); err != nil {
+		return errors.Wrapf(err, "updating patch '%s' with status '%s'", p.Id.Hex(), patchStatus)
 	}
 
 	isDone, parentPatch, err := p.GetFamilyInformation()
@@ -1376,6 +1392,10 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 		return nil
 	}
 
+	if err = checkUpdateBuildPRStatus(taskBuild); err != nil {
+		return errors.Wrapf(err, "updating build '%s' PR status", taskBuild.Id)
+	}
+
 	taskVersion, err := VersionFindOneId(t.Version)
 	if err != nil {
 		return errors.Wrapf(err, "getting version '%s' for task '%s'", t.Version, t.Id)
@@ -1397,7 +1417,7 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 		if p == nil {
 			return errors.Errorf("no patch found for version '%s'", taskVersion.Id)
 		}
-		if err = UpdatePatchStatus(p, newVersionStatus, taskBuild.BuildVariant); err != nil {
+		if err = UpdatePatchStatus(p, newVersionStatus); err != nil {
 			return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
 		}
 
@@ -1427,6 +1447,8 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 	return nil
 }
 
+// UpdateVersionAndPatchStatusForBuilds updates the status of all versions, patches and
+// builds associated with the given input list of build IDs.
 func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
 	if len(buildIds) == 0 {
 		return nil
@@ -1436,8 +1458,9 @@ func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
 		return errors.Wrapf(err, "fetching builds")
 	}
 
-	versionsToUpdate := make(map[string]string)
-	bvMap := make(map[string]string)
+	// Maintain a list of builds for each version because we may
+	// be updating many builds for the same version.
+	versionSet := make(map[string]bool)
 	for _, build := range builds {
 		buildStatusChanged, err := updateBuildStatus(&build)
 		if err != nil {
@@ -1447,17 +1470,18 @@ func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
 		if !buildStatusChanged {
 			continue
 		}
-
-		versionsToUpdate[build.Version] = build.Id
-		bvMap[build.Id] = build.BuildVariant
+		if err = checkUpdateBuildPRStatus(&build); err != nil {
+			return errors.Wrapf(err, "updating build '%s' PR status", build.Id)
+		}
+		versionSet[build.Version] = true
 	}
-	for versionId, buildId := range versionsToUpdate {
+	for versionId := range versionSet {
 		buildVersion, err := VersionFindOneId(versionId)
 		if err != nil {
-			return errors.Wrapf(err, "getting version '%s' for build '%s'", versionId, buildId)
+			return errors.Wrapf(err, "getting version '%s'", versionId)
 		}
 		if buildVersion == nil {
-			return errors.Errorf("no version '%s' found for build '%s'", versionId, buildId)
+			return errors.Errorf("no version '%s' found", versionId)
 		}
 		newVersionStatus, err := updateVersionStatus(buildVersion)
 		if err != nil {
@@ -1472,7 +1496,7 @@ func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
 			if p == nil {
 				return errors.Errorf("no patch found for version '%s'", buildVersion.Id)
 			}
-			if err = UpdatePatchStatus(p, newVersionStatus, bvMap[buildId]); err != nil {
+			if err = UpdatePatchStatus(p, newVersionStatus); err != nil {
 				return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
 			}
 		}
