@@ -75,12 +75,17 @@ func MustHaveRESTContext(r *http.Request) *model.Context {
 	return pc
 }
 
+func needsLogin(next http.HandlerFunc) http.HandlerFunc {
+	return requireUser(false, next, nil)
+}
+
 // GetRESTv1App attaches a router at the given root that hooks up REST endpoint URIs to be
 // handled by the given restAPIService.
 func GetRESTv1App(evgService restAPIService) *gimlet.APIApp {
 	app := gimlet.NewApp()
 	rest := &restAPI{evgService}
 	middleware := &restV1middleware{rest}
+	requireLogin := gimlet.WrapperMiddleware(needsLogin)
 	app.SetPrefix(evergreen.RestRoutePrefix)
 
 	// REST routes
@@ -96,7 +101,7 @@ func GetRESTv1App(evgService restAPIService) *gimlet.APIApp {
 	app.AddRoute("/tasks/{task_id}").Version(1).Get().Handler(rest.getTaskInfo).Wrap(middleware)
 	app.AddRoute("/tasks/{task_id}/status").Version(1).Get().Handler(rest.getTaskStatus).Wrap(middleware)
 	app.AddRoute("/versions/{version_id}").Version(1).Get().Handler(rest.getVersionInfo).Wrap(middleware)
-	app.AddRoute("/versions/{version_id}").Version(1).Patch().Handler(rest.modifyVersionInfo).Wrap(middleware)
+	app.AddRoute("/versions/{version_id}").Version(1).Patch().Handler(rest.modifyVersionInfo).Wrap(requireLogin, middleware)
 	app.AddRoute("/versions/{version_id}/config").Version(1).Get().Handler(rest.getVersionConfig).Wrap(middleware)
 	app.AddRoute("/versions/{version_id}/parser_project").Version(1).Get().Handler(rest.getVersionProject).Wrap(middleware)
 	app.AddRoute("/versions/{version_id}/status").Version(1).Get().Handler(rest.getVersionStatus).Wrap(middleware)
