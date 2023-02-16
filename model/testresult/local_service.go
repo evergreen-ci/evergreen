@@ -150,8 +150,47 @@ Tasks:
 	return mergedSample, nil
 }
 
-func (s *inMemService) GetFailedTestSamples(_ context.Context, _ []TaskOptions, _ []string) ([]TaskTestResultsFailedSample, error) {
-	return nil, errors.New("not implemented")
+func (s *inMemService) GetFailedTestSamples(_ context.Context, taskOpts []TaskOptions, regexFilters []string) ([]TaskTestResultsFailedSample, error) {
+	regexes := make([]*regexp.Regexp, len(regexFilters))
+	for _, filter := range regexFilters {
+		testNameRegex, err := regexp.Compile(filter)
+		if err != nil {
+			return nil, errors.Wrap(err, "compiling regex")
+		}
+		regexes = append(regexes, testNameRegex)
+	}
+
+	samples := make([]TaskTestResultsFailedSample, len(taskOpts))
+	for i, task := range taskOpts {
+		samples[i].TaskID = task.TaskID
+		samples[i].Execution = task.Execution
+
+		results, ok := s.store.get(task.TaskID, task.Execution)
+		if !ok {
+			continue
+		}
+
+		if results.Stats.FailedCount == 0 {
+			continue
+		}
+		samples[i].TotalFailedNames = results.Stats.FailedCount
+
+		for _, result := range results.Results {
+			if result.Status == evergreen.TestFailedStatus {
+				match := true
+				for _, regex := range regexes {
+					if match = regex.MatchString(result.GetDisplayTestName()); match {
+						break
+					}
+				}
+				if match {
+					samples[i].MatchingFailedTestNames = append(samples[i].MatchingFailedTestNames, result.GetDisplayTestName())
+				}
+			}
+		}
+	}
+
+	return samples, nil
 }
 
 // filterAndSortTestResults takes a slice of test results and returns a
