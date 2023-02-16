@@ -867,6 +867,16 @@ func TestDetachFromRepo(t *testing.T) {
 func TestDefaultRepoBySection(t *testing.T) {
 	for name, test := range map[string]func(t *testing.T, id string){
 		ProjectPageGeneralSection: func(t *testing.T, id string) {
+			repoRef := RepoRef{
+				ProjectRef: ProjectRef{
+					Id:      "repo_ref_id",
+					Owner:   "mongodb",
+					Repo:    "mci",
+					Branch:  "main",
+					Enabled: utility.FalsePtr(),
+				},
+			}
+			assert.NoError(t, repoRef.Upsert())
 			assert.NoError(t, DefaultSectionToRepo(id, ProjectPageGeneralSection, "me"))
 
 			pRefFromDb, err := FindBranchProjectRef(id)
@@ -979,7 +989,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			assert.NoError(t, db.ClearCollections(ProjectRefCollection, ProjectVarsCollection, ProjectAliasCollection,
-				event.SubscriptionsCollection, event.EventCollection))
+				event.SubscriptionsCollection, event.EventCollection, RepoRefCollection))
 
 			pRef := ProjectRef{
 				Id:                    "my_project",
@@ -999,6 +1009,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 				GitTagAuthorizedUsers: []string{"anna"},
 				NotifyOnBuildFailure:  utility.FalsePtr(),
 				PerfEnabled:           utility.FalsePtr(),
+				RepoRefId:             "repo_ref_id",
 				Triggers: []TriggerDefinition{
 					{Project: "your_project"},
 				},

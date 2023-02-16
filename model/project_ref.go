@@ -2032,14 +2032,13 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 // to create our own project settings event  after completing the update.
 func DefaultSectionToRepo(projectId string, section ProjectPageSection, userId string) error {
 	before, err := GetProjectSettingsById(projectId, false)
-
 	if err != nil {
 		return errors.Wrap(err, "getting before project settings event")
 	}
 
 	if section == ProjectPageGeneralSection {
 		newMergedRef, err := GetProjectRefMergedWithRepo(ProjectRef{
-			RepoRefId: projectId,
+			RepoRefId: before.ProjectRef.RepoRefId,
 		})
 		if err != nil {
 			return errors.Wrap(err, "getting merged project ref for validation")
