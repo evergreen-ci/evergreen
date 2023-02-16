@@ -30,7 +30,7 @@ import (
 	"github.com/mongodb/jasper/remote"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	yaml "gopkg.in/20210107192922/yaml.v3"
+	"gopkg.in/yaml.v3"
 )
 
 const OutputBufferSize = 1000
@@ -555,7 +555,6 @@ func (h *Host) SetupServiceUserCommands() (string, error) {
 			cmd(fmt.Sprintf("net user %s %s /add", h.Distro.BootstrapSettings.ServiceUser, h.ServicePassword)),
 			// Add the user to the Administrators group.
 			cmd(fmt.Sprintf("net localgroup Administrators %s /add", h.Distro.BootstrapSettings.ServiceUser)),
-			cmd(fmt.Sprintf(`wmic useraccount where name="%s" set passwordexpires=false`, h.Distro.BootstrapSettings.ServiceUser)),
 			// Allow the user to run the service by granting the "Log on as a
 			// service" right.
 			loginServicePermCmd,

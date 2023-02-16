@@ -37,7 +37,7 @@ func (t *buildTriggers) taskStatusToDesc() string {
 		case t.Status == evergreen.TaskFailed:
 			failed++
 
-		case statusIsSystemFailure(t.Status):
+		case evergreen.IsSystemFailedTaskStatus(t.Status):
 			systemError++
 
 		case utility.StringSliceContains(evergreen.TaskUncompletedStatuses, t.Status):
@@ -68,16 +68,6 @@ func (t *buildTriggers) taskStatusToDesc() string {
 	}
 
 	return appendTime(t.build, desc)
-}
-
-func statusIsSystemFailure(status string) bool {
-	systemFailures := []string{evergreen.TaskSystemFailed,
-		evergreen.TaskTimedOut,
-		evergreen.TaskSystemUnresponse,
-		evergreen.TaskSystemTimedOut,
-		evergreen.TaskTestTimedOut,
-	}
-	return utility.StringSliceContains(systemFailures, status)
 }
 
 func taskStatusSubformat(n int, verb string) string {

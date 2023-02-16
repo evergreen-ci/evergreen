@@ -501,6 +501,43 @@ func (r *taskResolver) Status(ctx context.Context, obj *restModel.APITask) (stri
 	return *obj.DisplayStatus, nil
 }
 
+// TaskFiles is the resolver for the taskFiles field.
+func (r *taskResolver) TaskFiles(ctx context.Context, obj *restModel.APITask) (*TaskFiles, error) {
+	emptyTaskFiles := TaskFiles{
+		FileCount:    0,
+		GroupedFiles: []*GroupedFiles{},
+	}
+	groupedFilesList := []*GroupedFiles{}
+	fileCount := 0
+
+	if obj.DisplayOnly {
+		execTasks, err := task.Find(task.ByIds(utility.FromStringPtrSlice(obj.ExecutionTasks)))
+		if err != nil {
+			return &emptyTaskFiles, ResourceNotFound.Send(ctx, err.Error())
+		}
+		for _, execTask := range execTasks {
+			groupedFiles, err := getGroupedFiles(ctx, execTask.DisplayName, execTask.Id, obj.Execution)
+			if err != nil {
+				return &emptyTaskFiles, err
+			}
+			fileCount += len(groupedFiles.Files)
+			groupedFilesList = append(groupedFilesList, groupedFiles)
+		}
+	} else {
+		groupedFiles, err := getGroupedFiles(ctx, *obj.DisplayName, *obj.Id, obj.Execution)
+		if err != nil {
+			return &emptyTaskFiles, err
+		}
+		fileCount += len(groupedFiles.Files)
+		groupedFilesList = append(groupedFilesList, groupedFiles)
+	}
+	taskFiles := TaskFiles{
+		FileCount:    fileCount,
+		GroupedFiles: groupedFilesList,
+	}
+	return &taskFiles, nil
+}
+
 // Tests is the resolver for the tests field.
 func (r *taskResolver) Tests(ctx context.Context, obj *restModel.APITask, opts *TestFilterOptions) (*TaskTestResult, error) {
 	dbTask, err := obj.ToService()

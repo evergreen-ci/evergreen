@@ -2,10 +2,6 @@ module github.com/evergreen-ci/evergreen
 
 go 1.16
 
-// We need to keep this old YAML version because upgrading from this specific revision to any newer one somehow breaks
-// project validation.
-replace gopkg.in/20210107192922/yaml.v3 => gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
-
 require (
 	github.com/99designs/gqlgen v0.17.20
 	github.com/PuerkitoBio/rehttp v1.1.0
@@ -24,7 +20,7 @@ require (
 	github.com/evergreen-ci/poplar v0.0.0-20220908212406-a5e2aa799def
 	github.com/evergreen-ci/shrub v0.0.0-20211025143051-a8d91b2e29fd
 	github.com/evergreen-ci/timber v0.0.0-20230210160503-ba8cf383fac5
-	github.com/evergreen-ci/utility v0.0.0-20221202215218-c980e8dea464
+	github.com/evergreen-ci/utility v0.0.0-20230104160902-3f0e05a638bd
 	github.com/google/go-github/v34 v34.0.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/gophercloud/gophercloud v0.1.0
@@ -64,10 +60,10 @@ require (
 
 require (
 	github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57
+	github.com/evergreen-ci/plank v0.0.0-20230207190607-5f47f8a30da1
 	github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826
 	github.com/mongodb/jasper v0.0.0-20220214215554-82e5a72cff6b
 	github.com/shirou/gopsutil/v3 v3.22.9
 	google.golang.org/genproto v0.0.0-20211129164237-f09f9a12af12 // indirect
-	gopkg.in/20210107192922/yaml.v3 v3.0.0-00010101000000-000000000000
 	gopkg.in/yaml.v3 v3.0.1
 )

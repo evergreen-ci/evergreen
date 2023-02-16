@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
@@ -87,7 +86,7 @@ func setManyTasksScheduled(ctx context.Context, url string, isActive bool, taskI
 		return nil, err
 	}
 	for _, t := range tasks {
-		if t.Requester == evergreen.MergeTestRequester && isActive {
+		if evergreen.IsCommitQueueRequester(t.Requester) && isActive {
 			return nil, InputValidationError.Send(ctx, "commit queue tasks cannot be manually scheduled")
 		}
 	}
@@ -192,7 +191,7 @@ func getPatchProjectVariantsAndTasksForUI(ctx context.Context, apiPatch *restMod
 	if err != nil {
 		return nil, errors.Wrap(err, "building patch")
 	}
-	patchProjectVariantsAndTasks, err := model.GetVariantsAndTasksFromPatchProject(ctx, &p)
+	patchProjectVariantsAndTasks, err := model.GetVariantsAndTasksFromPatchProject(ctx, evergreen.GetEnvironment().Settings(), &p)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting project variants and tasks for patch %s: %s", *apiPatch.Id, err.Error()))
 	}
@@ -744,21 +743,22 @@ func groupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 	return groupsArr, nil
 }
 
-func hasProjectPermission(ctx context.Context, resource string, next graphql.Resolver, permissionLevel int) (res interface{}, err error) {
-	user := gimlet.GetUser(ctx)
-	if user == nil {
-		return nil, Forbidden.Send(ctx, "user not logged in")
+// getProjectIdFromArgs extracts a project ID from the requireProjectAccess directive args.
+func getProjectIdFromArgs(ctx context.Context, args map[string]interface{}) (res string, err error) {
+	if id, hasId := args["id"].(string); hasId {
+		return id, nil
 	}
-	opts := gimlet.PermissionOpts{
-		Resource:      resource,
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionProjectSettings,
-		RequiredLevel: permissionLevel,
+	if projectId, hasProjectId := args["projectId"].(string); hasProjectId {
+		return projectId, nil
 	}
-	if user.HasPermission(opts) {
-		return next(ctx)
+	if identifier, hasIdentifier := args["identifier"].(string); hasIdentifier {
+		pid, err := model.GetIdForProject(identifier)
+		if err != nil {
+			return "", ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with identifier: %s", identifier))
+		}
+		return pid, nil
 	}
-	return nil, Forbidden.Send(ctx, fmt.Sprintf("user %s does not have permission to access settings for the project %s", user.Username(), resource))
+	return "", ResourceNotFound.Send(ctx, "Could not find project")
 }
 
 // getValidTaskStatusesFilter returns a slice of task statuses that are valid and are searchable.
@@ -905,12 +905,26 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 		if t == nil {
 			return nil, ResourceNotFound.Send(ctx, "A valid task id must be supplied when SpawnHostsStartedByTask is set to true")
 		}
-		if err = data.CreateHostsFromTask(ctx, t, *usr, spawnHostInput.PublicKey.Key); err != nil {
+		if err = data.CreateHostsFromTask(ctx, evergreen.GetEnvironment().Settings(), t, *usr, spawnHostInput.PublicKey.Key); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("spawning hosts from task %s: %s", *spawnHostInput.TaskID, err))
 		}
 	}
 	return options, nil
 }
+
+func getProjectMetadata(ctx context.Context, projectId *string, patchId *string) (*restModel.APIProjectRef, error) {
+	projectRef, err := model.FindMergedProjectRef(*projectId, *patchId, false)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project ref for project `%s`: %s", *projectId, err.Error()))
+	}
+	if projectRef == nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project ref for project `%s`: %s", *projectId, "Project not found"))
+	}
+	apiProjectRef := restModel.APIProjectRef{}
+	if err = apiProjectRef.BuildFromService(*projectRef); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIProjectRef from service for `%s`: %s", projectRef.Id, err.Error()))
+	}
+	return &apiProjectRef, nil
 
 //////////////////////////////////////////
 // Helper functions for task test results.

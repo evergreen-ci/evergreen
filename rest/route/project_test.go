@@ -49,13 +49,18 @@ func TestProjectPatchSuite(t *testing.T) {
 
 func (s *ProjectPatchByIDSuite) SetupTest() {
 	s.NoError(db.ClearCollections(serviceModel.RepoRefCollection, user.Collection, serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection, serviceModel.RepositoriesCollection, serviceModel.ProjectAliasCollection,
-		evergreen.ScopeCollection, evergreen.RoleCollection))
+		evergreen.ScopeCollection, evergreen.RoleCollection, evergreen.ConfigCollection))
 	user := user.DBUser{
 		Id:          "langdon.alger",
 		SystemRoles: []string{"admin"},
 	}
 	s.NoError(user.Insert())
 	s.NoError(getTestProjectRef().Add(&user))
+	project2 := getTestProjectRef()
+	project2.Id = "project2"
+	project2.Identifier = "project2"
+	s.NoError(project2.Add(&user))
+
 	s.NoError(getTestVar().Insert())
 	aliases := getTestAliases()
 	for _, alias := range aliases {
@@ -71,6 +76,11 @@ func (s *ProjectPatchByIDSuite) SetupTest() {
 	env := testutil.NewEnvironment(ctx, s.T())
 	settings := env.Settings()
 	settings.GithubOrgs = []string{getTestProjectRef().Owner}
+	projectSetting := evergreen.ProjectCreationConfig{
+		TotalProjectLimit: 1,
+		RepoProjectLimit:  1,
+	}
+	s.NoError(projectSetting.Set())
 	s.rm = makePatchProjectByID(settings).(*projectIDPatchHandler)
 	projectAdminRole := gimlet.Role{
 		ID:    "dimoxinil",
@@ -133,6 +143,31 @@ func (s *ProjectPatchByIDSuite) TestRunInvalidNonExistingId() {
 	err := s.rm.Parse(ctx, req)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "finding original project")
+}
+
+func (s *ProjectPatchByIDSuite) TestRunProjectCreateValidationFail() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
+	json := []byte(`{"enabled": true}`)
+	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(json))
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
+	err := s.rm.Parse(ctx, req)
+	s.NoError(err)
+	s.NotNil(s.rm.(*projectIDPatchHandler).user)
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusOK)
+	req, _ = http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/project2", bytes.NewBuffer(json))
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "project2"})
+	err = s.rm.Parse(ctx, req)
+	s.NoError(err)
+	s.NotNil(s.rm.(*projectIDPatchHandler).user)
+	resp = s.rm.Run(ctx)
+	s.NotNil(resp)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusBadRequest)
 }
 
 func (s *ProjectPatchByIDSuite) TestRunValid() {

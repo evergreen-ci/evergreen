@@ -244,6 +244,22 @@ func (v *Version) MarkFinished(status string, finishTime time.Time) error {
 	)
 }
 
+// UpdateProjectStorageMethod updates the version's parser project storage
+// method.
+func (v *Version) UpdateProjectStorageMethod(method ParserProjectStorageMethod) error {
+	if method == v.ProjectStorageMethod {
+		return nil
+	}
+
+	if err := VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
+		"$set": bson.M{VersionProjectStorageMethodKey: method},
+	}); err != nil {
+		return err
+	}
+	v.ProjectStorageMethod = method
+	return nil
+}
+
 func GetVersionForCommitQueueItem(cq *commitqueue.CommitQueue, issue string) (*Version, error) {
 	spot := cq.FindItem(issue)
 	if spot == -1 {
@@ -276,7 +292,7 @@ func (s *ActivationStatus) ShouldActivate(now time.Time) bool {
 	return !s.Activated && now.After(s.ActivateAt) && !utility.IsZeroTime(s.ActivateAt)
 }
 
-// VersionMetadata is used to pass information about upstream versions to downstream version creation
+// VersionMetadata is used to pass information about version creation
 type VersionMetadata struct {
 	Revision            Revision
 	TriggerID           string
@@ -285,6 +301,7 @@ type VersionMetadata struct {
 	TriggerDefinitionID string
 	SourceVersion       *Version
 	IsAdHoc             bool
+	Activate            bool
 	User                *user.DBUser
 	Message             string
 	Alias               string

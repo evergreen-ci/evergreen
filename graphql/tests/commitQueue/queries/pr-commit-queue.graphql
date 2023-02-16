@@ -1,5 +1,5 @@
 {
-  commitQueue(id: "mongodb-evergreen-spruce") {
+  commitQueue(projectIdentifier: "mongodb-evergreen-spruce") {
     projectId
     owner
     repo

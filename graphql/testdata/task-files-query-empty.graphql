@@ -1,12 +1,14 @@
 query {
-  taskFiles(taskId: "task-without-legit-exec-tasks") {
-    fileCount
-    groupedFiles {
-      taskName
-      files {
-        name
-        link
-        visibility
+  task(taskId: "task-without-legit-exec-tasks") {
+    taskFiles {
+      fileCount
+      groupedFiles {
+        taskName
+        files {
+          name
+          link
+          visibility
+        }
       }
     }
   }

@@ -47,7 +47,7 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Unmarshall project and get project variants and tasks
-	variantsAndTasksFromProject, err := model.GetVariantsAndTasksFromPatchProject(r.Context(), projCtx.Patch)
+	variantsAndTasksFromProject, err := model.GetVariantsAndTasksFromPatchProject(r.Context(), uis.env.Settings(), projCtx.Patch)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -96,7 +96,7 @@ func (uis *UIServer) schedulePatchUI(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusBadRequest, err)
 	}
 
-	status, err := units.SchedulePatch(r.Context(), projCtx.Patch.Id.Hex(), projCtx.Version, patchUpdateReq)
+	status, err := units.SchedulePatch(r.Context(), uis.env, projCtx.Patch.Id.Hex(), projCtx.Version, patchUpdateReq)
 	if err != nil {
 		uis.LoggedError(w, r, status, err)
 		return

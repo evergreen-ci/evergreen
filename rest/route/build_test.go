@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -16,7 +17,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/20210107192922/yaml.v3"
+	"gopkg.in/yaml.v3"
 )
 
 ////////////////////////////////////////////////////////////////////////
@@ -28,6 +29,7 @@ type BuildByIdSuite struct {
 	rm     gimlet.RouteHandler
 	ctx    context.Context
 	cancel context.CancelFunc
+	env    evergreen.Environment
 }
 
 func TestBuildByIdSuite(t *testing.T) {
@@ -90,8 +92,11 @@ buildvariants:
 }
 
 func (s *BuildByIdSuite) SetupTest() {
-	s.rm = makeGetBuildByID()
 	s.ctx, s.cancel = context.WithCancel(context.Background())
+	env := &mock.Environment{}
+	s.Require().NoError(env.Configure(s.ctx))
+	s.env = env
+	s.rm = makeGetBuildByID(s.env)
 }
 
 func (s *BuildByIdSuite) TearDownTest() {

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -19,7 +20,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	yaml "gopkg.in/20210107192922/yaml.v3"
+	"gopkg.in/yaml.v3"
 )
 
 const NumRecentVersions = 10
@@ -289,12 +290,13 @@ func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) 
 	w.Header().Set("Content-Type", "application/x-yaml; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 
-	var config []byte
-	pp, err := model.GetParserProjectStorage(projCtx.Version.ProjectStorageMethod).FindOneByID(r.Context(), projCtx.Version.Id)
+	settings := restapi.GetSettings()
+	pp, err := model.ParserProjectFindOneByID(r.Context(), &settings, projCtx.Version.ProjectStorageMethod, projCtx.Version.Id)
 	if err != nil {
 		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem finding parser project"})
 		return
 	}
+	var config []byte
 	config, err = yaml.Marshal(pp)
 	if err != nil {
 		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem marshalling project"})
@@ -317,13 +319,15 @@ func (restapi restAPI) getVersionProject(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	pp, err := model.GetParserProjectStorage(projCtx.Version.ProjectStorageMethod).FindOneByID(r.Context(), projCtx.Version.Id)
+	env := evergreen.GetEnvironment()
+	pp, err := model.ParserProjectFindOneByID(r.Context(), env.Settings(), projCtx.Version.ProjectStorageMethod, projCtx.Version.Id)
 	if err != nil {
 		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem finding parser project"})
 		return
 	}
 	if pp == nil {
 		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{Message: fmt.Sprintf("parser project '%s' not found", projCtx.Version.Id)})
+		return
 	}
 
 	bytes, err := bson.Marshal(pp)

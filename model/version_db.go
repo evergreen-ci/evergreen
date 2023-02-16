@@ -18,37 +18,38 @@ const (
 
 var (
 	// bson fields for the version struct
-	VersionIdKey                  = bsonutil.MustHaveTag(Version{}, "Id")
-	VersionCreateTimeKey          = bsonutil.MustHaveTag(Version{}, "CreateTime")
-	VersionStartTimeKey           = bsonutil.MustHaveTag(Version{}, "StartTime")
-	VersionFinishTimeKey          = bsonutil.MustHaveTag(Version{}, "FinishTime")
-	VersionRevisionKey            = bsonutil.MustHaveTag(Version{}, "Revision")
-	VersionAuthorKey              = bsonutil.MustHaveTag(Version{}, "Author")
-	VersionAuthorEmailKey         = bsonutil.MustHaveTag(Version{}, "AuthorEmail")
-	VersionMessageKey             = bsonutil.MustHaveTag(Version{}, "Message")
-	VersionStatusKey              = bsonutil.MustHaveTag(Version{}, "Status")
-	VersionParametersKey          = bsonutil.MustHaveTag(Version{}, "Parameters")
-	VersionBuildIdsKey            = bsonutil.MustHaveTag(Version{}, "BuildIds")
-	VersionBuildVariantsKey       = bsonutil.MustHaveTag(Version{}, "BuildVariants")
-	VersionRevisionOrderNumberKey = bsonutil.MustHaveTag(Version{}, "RevisionOrderNumber")
-	VersionRequesterKey           = bsonutil.MustHaveTag(Version{}, "Requester")
-	VersionGitTagsKey             = bsonutil.MustHaveTag(Version{}, "GitTags")
-	VersionIgnoredKey             = bsonutil.MustHaveTag(Version{}, "Ignored")
-	VersionOwnerNameKey           = bsonutil.MustHaveTag(Version{}, "Owner")
-	VersionRepoKey                = bsonutil.MustHaveTag(Version{}, "Repo")
-	VersionBranchKey              = bsonutil.MustHaveTag(Version{}, "Branch")
-	VersionErrorsKey              = bsonutil.MustHaveTag(Version{}, "Errors")
-	VersionWarningsKey            = bsonutil.MustHaveTag(Version{}, "Warnings")
-	VersionIdentifierKey          = bsonutil.MustHaveTag(Version{}, "Identifier")
-	VersionRemoteKey              = bsonutil.MustHaveTag(Version{}, "Remote")
-	VersionRemoteURLKey           = bsonutil.MustHaveTag(Version{}, "RemotePath")
-	VersionTriggerIDKey           = bsonutil.MustHaveTag(Version{}, "TriggerID")
-	VersionTriggerTypeKey         = bsonutil.MustHaveTag(Version{}, "TriggerType")
-	VersionSatisfiedTriggersKey   = bsonutil.MustHaveTag(Version{}, "SatisfiedTriggers")
-	VersionPeriodicBuildIDKey     = bsonutil.MustHaveTag(Version{}, "PeriodicBuildID")
-	VersionActivatedKey           = bsonutil.MustHaveTag(Version{}, "Activated")
-	VersionAbortedKey             = bsonutil.MustHaveTag(Version{}, "Aborted")
-	VersionAuthorIDKey            = bsonutil.MustHaveTag(Version{}, "AuthorID")
+	VersionIdKey                   = bsonutil.MustHaveTag(Version{}, "Id")
+	VersionCreateTimeKey           = bsonutil.MustHaveTag(Version{}, "CreateTime")
+	VersionStartTimeKey            = bsonutil.MustHaveTag(Version{}, "StartTime")
+	VersionFinishTimeKey           = bsonutil.MustHaveTag(Version{}, "FinishTime")
+	VersionRevisionKey             = bsonutil.MustHaveTag(Version{}, "Revision")
+	VersionAuthorKey               = bsonutil.MustHaveTag(Version{}, "Author")
+	VersionAuthorEmailKey          = bsonutil.MustHaveTag(Version{}, "AuthorEmail")
+	VersionMessageKey              = bsonutil.MustHaveTag(Version{}, "Message")
+	VersionStatusKey               = bsonutil.MustHaveTag(Version{}, "Status")
+	VersionParametersKey           = bsonutil.MustHaveTag(Version{}, "Parameters")
+	VersionBuildIdsKey             = bsonutil.MustHaveTag(Version{}, "BuildIds")
+	VersionBuildVariantsKey        = bsonutil.MustHaveTag(Version{}, "BuildVariants")
+	VersionRevisionOrderNumberKey  = bsonutil.MustHaveTag(Version{}, "RevisionOrderNumber")
+	VersionRequesterKey            = bsonutil.MustHaveTag(Version{}, "Requester")
+	VersionGitTagsKey              = bsonutil.MustHaveTag(Version{}, "GitTags")
+	VersionIgnoredKey              = bsonutil.MustHaveTag(Version{}, "Ignored")
+	VersionOwnerNameKey            = bsonutil.MustHaveTag(Version{}, "Owner")
+	VersionRepoKey                 = bsonutil.MustHaveTag(Version{}, "Repo")
+	VersionBranchKey               = bsonutil.MustHaveTag(Version{}, "Branch")
+	VersionErrorsKey               = bsonutil.MustHaveTag(Version{}, "Errors")
+	VersionWarningsKey             = bsonutil.MustHaveTag(Version{}, "Warnings")
+	VersionIdentifierKey           = bsonutil.MustHaveTag(Version{}, "Identifier")
+	VersionRemoteKey               = bsonutil.MustHaveTag(Version{}, "Remote")
+	VersionRemoteURLKey            = bsonutil.MustHaveTag(Version{}, "RemotePath")
+	VersionTriggerIDKey            = bsonutil.MustHaveTag(Version{}, "TriggerID")
+	VersionTriggerTypeKey          = bsonutil.MustHaveTag(Version{}, "TriggerType")
+	VersionSatisfiedTriggersKey    = bsonutil.MustHaveTag(Version{}, "SatisfiedTriggers")
+	VersionPeriodicBuildIDKey      = bsonutil.MustHaveTag(Version{}, "PeriodicBuildID")
+	VersionActivatedKey            = bsonutil.MustHaveTag(Version{}, "Activated")
+	VersionAbortedKey              = bsonutil.MustHaveTag(Version{}, "Aborted")
+	VersionAuthorIDKey             = bsonutil.MustHaveTag(Version{}, "AuthorID")
+	VersionProjectStorageMethodKey = bsonutil.MustHaveTag(Version{}, "ProjectStorageMethod")
 )
 
 // ById returns a db.Q object which will filter on {_id : <the id param>}
@@ -274,20 +275,6 @@ func VersionBySuccessfulBeforeRevision(project string, beforeRevision int) db.Q 
 			},
 		},
 	)
-}
-
-func VersionsByRequesterOrdered(project, requester string, limit, startOrder int) db.Q {
-	q := bson.M{
-		VersionIdentifierKey: project,
-		VersionRequesterKey:  requester,
-	}
-
-	if startOrder > 0 {
-		q[VersionRevisionOrderNumberKey] = bson.M{
-			"$lt": startOrder,
-		}
-	}
-	return db.Query(q).Limit(limit).Sort([]string{"-" + VersionRevisionOrderNumberKey})
 }
 
 func VersionFindOne(query db.Q) (*Version, error) {

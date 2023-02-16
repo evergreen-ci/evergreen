@@ -281,10 +281,6 @@ func (s *EC2Suite) TestMakeDeviceMappingsTemplate() {
 	s.Equal("snapshot-1", *b[0].Ebs.SnapshotId)
 }
 
-func (s *EC2Suite) TestGetSettings() {
-	s.Equal(&EC2ProviderSettings{}, s.onDemandManager.GetSettings())
-}
-
 func (s *EC2Suite) TestConfigure() {
 	settings := &evergreen.Settings{}
 	ctx, cancel := context.WithCancel(s.ctx)

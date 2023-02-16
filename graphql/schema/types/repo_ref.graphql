@@ -48,43 +48,43 @@ exactly.
 """
 type RepoRef {
   id: String!
-  admins: [String!]!
-  batchTime: Int!
+  admins: [String!]! @requireProjectFieldAccess
+  batchTime: Int! @requireProjectFieldAccess
   branch: String!
-  buildBaronSettings: BuildBaronSettings!
-  commitQueue: RepoCommitQueueParams!
-  deactivatePrevious: Boolean!
-  disabledStatsCache: Boolean!
-  dispatchingDisabled: Boolean!
+  buildBaronSettings: BuildBaronSettings! @requireProjectFieldAccess
+  commitQueue: RepoCommitQueueParams! @requireProjectFieldAccess
+  containerSizeDefinitions: [ContainerResources!] @requireProjectFieldAccess
+  deactivatePrevious: Boolean! @requireProjectFieldAccess
+  disabledStatsCache: Boolean! @requireProjectFieldAccess
+  dispatchingDisabled: Boolean! @requireProjectFieldAccess
   displayName: String!
   enabled: Boolean!
-  githubChecksEnabled: Boolean!
-  githubTriggerAliases: [String!]
-  gitTagAuthorizedTeams: [String!]
-  gitTagAuthorizedUsers: [String!]
-  gitTagVersionsEnabled: Boolean!
-  manualPrTestingEnabled: Boolean!
-  notifyOnBuildFailure: Boolean!
+  githubChecksEnabled: Boolean! @requireProjectFieldAccess
+  githubTriggerAliases: [String!] @requireProjectFieldAccess
+  gitTagAuthorizedTeams: [String!] @requireProjectFieldAccess
+  gitTagAuthorizedUsers: [String!] @requireProjectFieldAccess
+  gitTagVersionsEnabled: Boolean! @requireProjectFieldAccess
+  manualPrTestingEnabled: Boolean! @requireProjectFieldAccess
+  notifyOnBuildFailure: Boolean! @requireProjectFieldAccess
   owner: String!
-  patchingDisabled: Boolean!
-  patchTriggerAliases: [PatchTriggerAlias!]
-  perfEnabled: Boolean!
-  periodicBuilds: [PeriodicBuild!]
+  patchingDisabled: Boolean! @requireProjectFieldAccess
+  patchTriggerAliases: [PatchTriggerAlias!] @requireProjectFieldAccess
+  perfEnabled: Boolean! @requireProjectFieldAccess
+  periodicBuilds: [PeriodicBuild!] @requireProjectFieldAccess
   private: Boolean!
-  prTestingEnabled: Boolean!
-  remotePath: String!
+  prTestingEnabled: Boolean! @requireProjectFieldAccess
+  remotePath: String! @requireProjectFieldAccess
   repo: String!
-  repotrackerDisabled: Boolean!
+  repotrackerDisabled: Boolean! @requireProjectFieldAccess
   restricted: Boolean!
   spawnHostScriptPath: String!
-  stepbackDisabled: Boolean!
-  taskAnnotationSettings: TaskAnnotationSettings!
-  taskSync: RepoTaskSyncOptions!
-  tracksPushEvents: Boolean!
-  triggers: [TriggerAlias!]!
-  versionControlEnabled: Boolean!
-  workstationConfig: RepoWorkstationConfig!
-  containerSizeDefinitions: [ContainerResources!]
+  stepbackDisabled: Boolean! @requireProjectFieldAccess
+  taskAnnotationSettings: TaskAnnotationSettings! @requireProjectFieldAccess
+  taskSync: RepoTaskSyncOptions! @requireProjectFieldAccess
+  tracksPushEvents: Boolean! @requireProjectFieldAccess
+  triggers: [TriggerAlias!]! @requireProjectFieldAccess
+  versionControlEnabled: Boolean! @requireProjectFieldAccess
+  workstationConfig: RepoWorkstationConfig! @requireProjectFieldAccess
 }
 
 type RepoCommitQueueParams {
@@ -92,6 +92,7 @@ type RepoCommitQueueParams {
   mergeMethod: String!
   message: String!
   requireSigned: Boolean!
+  requiredApprovalCount: Int!
 }
 
 type RepoTaskSyncOptions {

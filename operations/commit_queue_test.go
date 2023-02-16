@@ -22,7 +22,7 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/20210107192922/yaml.v3"
+	"gopkg.in/yaml.v3"
 )
 
 type CommitQueueSuite struct {
@@ -219,7 +219,7 @@ func (s *CommitQueueSuite) TestListContentsForPRs() {
 	}
 	s.Require().NoError(commitqueue.InsertQueue(cq))
 	cq.Queue[0].Version = "my_version"
-	s.NoError(cq.UpdateVersion(cq.Queue[0]))
+	s.NoError(cq.UpdateVersion(&cq.Queue[0]))
 	pRef := &model.ProjectRef{
 		Id:    "mci",
 		Owner: "evergreen-ci",

@@ -105,6 +105,7 @@ type Task {
   spawnHostLink: String
   startTime: Time
   status: String!
+  taskFiles: TaskFiles!
   taskGroup: String
   taskGroupMaxHosts: Int
   tests(opts: TestFilterOptions): TaskTestResult!

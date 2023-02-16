@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -262,6 +263,9 @@ func TestCreateVersionFromConfig(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ParserProjectCollection, model.VersionCollection, distro.Collection, task.Collection, build.Collection, user.Collection))
 	require.NoError(t, db.CreateCollections(model.ParserProjectCollection))
@@ -303,12 +307,13 @@ func TestCreateVersionFromConfig(t *testing.T) {
 		Ref:                 &ref,
 	}
 	metadata := model.VersionMetadata{
-		Message: "my message",
-		User:    &u,
-		IsAdHoc: true,
+		Message:  "my message",
+		User:     &u,
+		IsAdHoc:  true,
+		Activate: true,
 	}
 	dc := DBVersionConnector{}
-	newVersion, err := dc.CreateVersionFromConfig(ctx, projectInfo, metadata, true)
+	newVersion, err := dc.CreateVersionFromConfig(ctx, projectInfo, metadata)
 	assert.NoError(err)
 	assert.Equal("my message", newVersion.Message)
 	assert.Equal(evergreen.VersionCreated, newVersion.Status)
@@ -316,7 +321,11 @@ func TestCreateVersionFromConfig(t *testing.T) {
 	assert.Equal(1, newVersion.RevisionOrderNumber)
 	assert.Equal(evergreen.AdHocRequester, newVersion.Requester)
 
-	pp, err = model.GetParserProjectStorage(newVersion.ProjectStorageMethod).FindOneByID(ctx, newVersion.Id)
+	ppStorage, err := model.GetParserProjectStorage(env.Settings(), newVersion.ProjectStorageMethod)
+	require.NoError(t, err)
+	defer ppStorage.Close(ctx)
+
+	pp, err = ppStorage.FindOneByID(ctx, newVersion.Id)
 	assert.NoError(err)
 	assert.NotNil(pp)
 	assert.True(utility.FromBoolPtr(pp.Stepback))
@@ -349,11 +358,12 @@ tasks:
 	projectInfo.Project = p
 	projectInfo.IntermediateProject = pp
 	metadata = model.VersionMetadata{
-		Message: "message 2",
-		User:    &u,
-		IsAdHoc: true,
+		Message:  "message 2",
+		User:     &u,
+		IsAdHoc:  true,
+		Activate: true,
 	}
-	newVersion, err = dc.CreateVersionFromConfig(context.Background(), projectInfo, metadata, true)
+	newVersion, err = dc.CreateVersionFromConfig(context.Background(), projectInfo, metadata)
 	assert.NoError(err)
 	assert.Equal("message 2", newVersion.Message)
 	assert.Equal(evergreen.VersionCreated, newVersion.Status)
@@ -361,7 +371,7 @@ tasks:
 	assert.Equal(2, newVersion.RevisionOrderNumber)
 	assert.Equal(evergreen.AdHocRequester, newVersion.Requester)
 
-	pp, err = model.GetParserProjectStorage(newVersion.ProjectStorageMethod).FindOneByID(ctx, newVersion.Id)
+	pp, err = ppStorage.FindOneByID(ctx, newVersion.Id)
 	assert.NoError(err)
 	assert.NotNil(pp)
 	assert.True(utility.FromBoolPtr(pp.Stepback))

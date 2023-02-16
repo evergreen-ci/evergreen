@@ -39,7 +39,7 @@ type Query {
 
   # project
   githubProjectConflicts(projectId: String!): GithubProjectConflicts!
-  project(projectId: String!): Project!
+  project(projectIdentifier: String!): Project!
   projects: [GroupedProjects]!
   projectEvents(
     identifier: String!
@@ -61,10 +61,12 @@ type Query {
   myHosts: [Host!]!
   myVolumes: [Volume!]!
 
+  # logkeeper
+  logkeeperBuildMetadata(buildId: String!): LogkeeperBuild!
+
   # task
   task(taskId: String!, execution: Int): Task
   taskAllExecutions(taskId: String!): [Task!]!
-  taskFiles(taskId: String!, execution: Int): TaskFiles!
   taskLogs(taskId: String!, execution: Int): TaskLogs!
   taskTests(
     taskId: String!
@@ -89,12 +91,12 @@ type Query {
   userSettings: UserSettings
 
   # commit queue
-  commitQueue(id: String!): CommitQueue!
+  commitQueue(projectIdentifier: String!): CommitQueue!
 
   # mainline commits
-  buildVariantsForTaskName(projectId: String!, taskName: String!): [BuildVariantTuple]
+  buildVariantsForTaskName(projectIdentifier: String!, taskName: String!): [BuildVariantTuple]
   mainlineCommits(options: MainlineCommitsOptions!, buildVariantOptions: BuildVariantOptions): MainlineCommits
-  taskNamesForBuildVariant(projectId: String!, buildVariant: String!): [String!]
+  taskNamesForBuildVariant(projectIdentifier: String!, buildVariant: String!): [String!]
 
   # version
   hasVersion(id: String!): Boolean!

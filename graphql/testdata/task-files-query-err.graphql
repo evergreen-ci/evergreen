@@ -1,0 +1,15 @@
+query {
+  task(taskId: "task-does-not-exist") {
+    taskFiles {
+      fileCount
+      groupedFiles {
+        taskName
+        files {
+          name
+          link
+          visibility
+        }
+      }
+    }
+  }
+}

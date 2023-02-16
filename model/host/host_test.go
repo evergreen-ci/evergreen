@@ -682,6 +682,26 @@ func TestHostCreateSecret(t *testing.T) {
 	})
 }
 
+func TestHostSetBillingStartTime(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+	defer func() {
+		assert.NoError(t, db.Clear(Collection))
+	}()
+
+	h := &Host{
+		Id: "id",
+	}
+	require.NoError(t, h.Insert())
+
+	now := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+	require.NoError(t, h.SetBillingStartTime(now))
+	assert.True(t, now.Equal(h.BillingStartTime))
+
+	dbHost, err := FindOneId(h.Id)
+	require.NoError(t, err)
+	assert.True(t, now.Equal(dbHost.BillingStartTime))
+}
+
 func TestHostSetAgentStartTime(t *testing.T) {
 	require.NoError(t, db.Clear(Collection))
 	defer func() {
@@ -809,9 +829,12 @@ func TestHostClearRunningAndSetLastTask(t *testing.T) {
 }
 
 func TestUpdateHostRunningTask(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
 	Convey("With a host", t, func() {
 		require.NoError(t, db.Clear(Collection))
-		oldTaskId := "oldId"
 		newTaskId := "newId"
 		h := Host{
 			Id:     "test1",
@@ -829,7 +852,7 @@ func TestUpdateHostRunningTask(t *testing.T) {
 		So(h.Insert(), ShouldBeNil)
 		So(h2.Insert(), ShouldBeNil)
 		Convey("updating the running task id should set proper fields", func() {
-			So(h.UpdateRunningTask(&task.Task{Id: newTaskId}), ShouldBeNil)
+			So(h.UpdateRunningTaskWithContext(ctx, env, &task.Task{Id: newTaskId}), ShouldBeNil)
 			found, err := FindOne(ById(h.Id))
 			So(err, ShouldBeNil)
 			So(found.RunningTask, ShouldEqual, newTaskId)
@@ -838,14 +861,10 @@ func TestUpdateHostRunningTask(t *testing.T) {
 			So(len(runningTaskHosts), ShouldEqual, 1)
 		})
 		Convey("updating the running task to an empty string should error out", func() {
-			So(h.UpdateRunningTask(&task.Task{}), ShouldNotBeNil)
-		})
-		Convey("updating the running task when a task is already running should error", func() {
-			So(h.UpdateRunningTask(&task.Task{Id: oldTaskId}), ShouldBeNil)
-			So(h.UpdateRunningTask(&task.Task{Id: newTaskId}), ShouldNotBeNil)
+			So(h.UpdateRunningTaskWithContext(ctx, env, &task.Task{}), ShouldNotBeNil)
 		})
 		Convey("updating the running task on a starting user data host should succeed", func() {
-			So(h2.UpdateRunningTask(&task.Task{Id: newTaskId}), ShouldBeNil)
+			So(h2.UpdateRunningTaskWithContext(ctx, env, &task.Task{Id: newTaskId}), ShouldBeNil)
 			found, err := FindOne(ById(h2.Id))
 			So(err, ShouldBeNil)
 			So(found.RunningTask, ShouldEqual, newTaskId)
@@ -2508,31 +2527,31 @@ func TestIsIdleParent(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 
-	provisionTimeRecent := time.Now().Add(-5 * time.Minute)
-	provisionTimeOld := time.Now().Add(-1 * time.Hour)
+	billingTimeRecent := time.Now().Add(-5 * time.Minute)
+	billingTimeOld := time.Now().Add(-1 * time.Hour)
 
 	host1 := &Host{
-		Id:            "host1",
-		Status:        evergreen.HostRunning,
-		ProvisionTime: provisionTimeOld,
+		Id:               "host1",
+		Status:           evergreen.HostRunning,
+		BillingStartTime: billingTimeOld,
 	}
 	host2 := &Host{
-		Id:            "host2",
-		Status:        evergreen.HostRunning,
-		HasContainers: true,
-		ProvisionTime: provisionTimeRecent,
+		Id:               "host2",
+		Status:           evergreen.HostRunning,
+		HasContainers:    true,
+		BillingStartTime: billingTimeRecent,
 	}
 	host3 := &Host{
-		Id:            "host3",
-		Status:        evergreen.HostRunning,
-		HasContainers: true,
-		ProvisionTime: provisionTimeOld,
+		Id:               "host3",
+		Status:           evergreen.HostRunning,
+		HasContainers:    true,
+		BillingStartTime: billingTimeOld,
 	}
 	host4 := &Host{
-		Id:            "host4",
-		Status:        evergreen.HostRunning,
-		HasContainers: true,
-		ProvisionTime: provisionTimeOld,
+		Id:               "host4",
+		Status:           evergreen.HostRunning,
+		HasContainers:    true,
+		BillingStartTime: billingTimeOld,
 	}
 	host5 := &Host{
 		Id:       "host5",
@@ -2571,7 +2590,7 @@ func TestIsIdleParent(t *testing.T) {
 	assert.True(idle)
 	assert.NoError(err)
 
-	// ios a container --> false
+	// is a container --> false
 	idle, err = host5.IsIdleParent()
 	assert.False(idle)
 	assert.NoError(err)

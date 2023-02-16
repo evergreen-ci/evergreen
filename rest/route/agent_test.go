@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -26,38 +27,54 @@ var (
 	taskSecret = "tasksecret"
 )
 
-func TestAgentFetchExpansionsForTask(t *testing.T) {
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *fetchExpansionsForTaskHandler){
-		"FactorySucceeds": func(ctx context.Context, t *testing.T, rh *fetchExpansionsForTaskHandler) {
+func TestAgentGetExpansionsAndVars(t *testing.T) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler){
+		"FactorySucceeds": func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler) {
 			copied := rh.Factory()
 			assert.NotZero(t, copied)
-			_, ok := copied.(*fetchExpansionsForTaskHandler)
+			_, ok := copied.(*getExpansionsAndVarsHandler)
 			assert.True(t, ok)
 		},
-		"ParseSucceeds": func(ctx context.Context, t *testing.T, rh *fetchExpansionsForTaskHandler) {
+		"ParseSucceeds": func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler) {
 			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/agent/task/t1/fetch_vars", nil)
 			require.NoError(t, err)
 			req = gimlet.SetURLVars(req, map[string]string{"task_id": "t1"})
+			req.Header.Add(evergreen.HostHeader, "host_id")
 			assert.NoError(t, rh.Parse(ctx, req))
 			assert.Equal(t, rh.taskID, "t1")
+			assert.Equal(t, rh.hostID, "host_id")
 		},
-		"RunSucceeds": func(ctx context.Context, t *testing.T, rh *fetchExpansionsForTaskHandler) {
+		"RunSucceeds": func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler) {
 			rh.taskID = "t2"
 			resp := rh.Run(ctx)
 			require.NotZero(t, resp)
 			assert.Equal(t, http.StatusOK, resp.Status())
-			data, ok := resp.Data().(apimodels.ExpansionVars)
+			data, ok := resp.Data().(apimodels.ExpansionsAndVars)
 			require.True(t, ok)
+			assert.Equal(t, rh.taskID, data.Expansions.Get("task_id"))
 			assert.Equal(t, data.PrivateVars, map[string]bool{"b": true})
 			assert.Equal(t, data.Vars, map[string]string{"a": "1", "b": "3"})
 		},
-		"RunSucceedsWithParamsSetOnVersion": func(ctx context.Context, t *testing.T, rh *fetchExpansionsForTaskHandler) {
+		"RunSucceedsWithParamsSetOnVersion": func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler) {
 			rh.taskID = "t1"
 			resp := rh.Run(ctx)
 			require.NotZero(t, resp)
 			assert.Equal(t, http.StatusOK, resp.Status())
-			data, ok := resp.Data().(apimodels.ExpansionVars)
+			data, ok := resp.Data().(apimodels.ExpansionsAndVars)
 			require.True(t, ok)
+			assert.Equal(t, data.PrivateVars, map[string]bool{"b": true})
+			assert.Equal(t, data.Vars, map[string]string{"a": "4", "b": "3"})
+		},
+		"RunSucceedsWithHostDistroExpansions": func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler) {
+			rh.taskID = "t1"
+			rh.hostID = "host_id"
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+			data, ok := resp.Data().(apimodels.ExpansionsAndVars)
+			require.True(t, ok)
+			assert.Equal(t, rh.taskID, data.Expansions.Get("task_id"))
+			assert.Equal(t, "distro_expansion_value", data.Expansions.Get("distro_expansion_key"))
 			assert.Equal(t, data.PrivateVars, map[string]bool{"b": true})
 			assert.Equal(t, data.Vars, map[string]string{"a": "4", "b": "3"})
 		},
@@ -65,11 +82,18 @@ func TestAgentFetchExpansionsForTask(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, model.VersionCollection, model.ParserProjectCollection))
+
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(ctx))
+
+			require.NoError(t, db.ClearCollections(host.Collection, task.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, model.VersionCollection, model.ParserProjectCollection))
+
+			const hostID = "host_id"
 			t1 := task.Task{
 				Id:      "t1",
 				Project: "p1",
 				Version: "aaaaaaaaaaff001122334455",
+				HostId:  hostID,
 			}
 			t2 := task.Task{
 				Id:      "t2",
@@ -110,6 +134,19 @@ func TestAgentFetchExpansionsForTask(t *testing.T) {
 				Id:         "aaaaaaaaaaff001122334456",
 				Parameters: []model.ParameterInfo{},
 			}
+			h := host.Host{
+				Id:                   hostID,
+				RunningTask:          t1.Id,
+				RunningTaskExecution: t1.Execution,
+				Distro: distro.Distro{
+					Expansions: []distro.Expansion{
+						{
+							Key:   "distro_expansion_key",
+							Value: "distro_expansion_value",
+						},
+					},
+				},
+			}
 			require.NoError(t, t1.Insert())
 			require.NoError(t, t2.Insert())
 			require.NoError(t, pRef.Insert())
@@ -118,8 +155,9 @@ func TestAgentFetchExpansionsForTask(t *testing.T) {
 			require.NoError(t, v2.Insert())
 			require.NoError(t, pp1.Insert())
 			require.NoError(t, pp2.Insert())
+			require.NoError(t, h.Insert())
 
-			r, ok := makeFetchExpansionsForTask().(*fetchExpansionsForTaskHandler)
+			r, ok := makeGetExpansionsAndVars(env.Settings()).(*getExpansionsAndVarsHandler)
 			require.True(t, ok)
 
 			tCase(ctx, t, r)

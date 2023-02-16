@@ -1605,6 +1605,11 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 	}
 	assert.NoError(t, projRef.Insert())
 
+	settings := &evergreen.Settings{
+		CommitQueue: evergreen.CommitQueueConfig{
+			MaxSystemFailedTaskRetries: 2,
+		},
+	}
 	Convey("With a successful task one failed test should result in a task failure", t, func() {
 		displayName := "testName"
 
@@ -1659,7 +1664,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 
 		Convey("task should not fail if there are no failed test, also logs should be updated", func() {
 			reset()
-			So(MarkEnd(testTask, "", time.Now(), detail, true), ShouldBeNil)
+			So(MarkEnd(settings, testTask, "", time.Now(), detail, true), ShouldBeNil)
 
 			v, err := VersionFindOneId(v.Id)
 			So(err, ShouldBeNil)
@@ -1690,7 +1695,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 				},
 			})
 			So(err, ShouldBeNil)
-			So(MarkEnd(testTask, "", time.Now(), detail, true), ShouldBeNil)
+			So(MarkEnd(settings, testTask, "", time.Now(), detail, true), ShouldBeNil)
 
 			v, err := VersionFindOneId(v.Id)
 			So(err, ShouldBeNil)
@@ -1715,7 +1720,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 
 			So(err, ShouldBeNil)
 			detail.Status = evergreen.TaskFailed
-			So(MarkEnd(testTask, "", time.Now(), detail, true), ShouldBeNil)
+			So(MarkEnd(settings, testTask, "", time.Now(), detail, true), ShouldBeNil)
 
 			v, err := VersionFindOneId(v.Id)
 			So(err, ShouldBeNil)
@@ -1736,7 +1741,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			testTask.CedarResultsFailed = true
 
 			detail.Status = evergreen.TaskSucceeded
-			So(MarkEnd(testTask, "", time.Now(), detail, true), ShouldBeNil)
+			So(MarkEnd(settings, testTask, "", time.Now(), detail, true), ShouldBeNil)
 
 			v, err := VersionFindOneId(v.Id)
 			So(err, ShouldBeNil)
@@ -1756,7 +1761,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			testTask.HasCedarResults = true
 
 			detail.Status = evergreen.TaskSucceeded
-			So(MarkEnd(testTask, "", time.Now(), detail, true), ShouldBeNil)
+			So(MarkEnd(settings, testTask, "", time.Now(), detail, true), ShouldBeNil)
 
 			v, err := VersionFindOneId(v.Id)
 			So(err, ShouldBeNil)
@@ -1777,7 +1782,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			testTask.CedarResultsFailed = true
 
 			detail.Status = evergreen.TaskSucceeded
-			So(MarkEnd(testTask, "", time.Now(), detail, true), ShouldBeNil)
+			So(MarkEnd(settings, testTask, "", time.Now(), detail, true), ShouldBeNil)
 
 			v, err := VersionFindOneId(v.Id)
 			So(err, ShouldBeNil)
@@ -1808,7 +1813,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			})
 			So(err, ShouldBeNil)
 			detail.Status = evergreen.TaskFailed
-			So(MarkEnd(testTask, "", time.Now(), detail, true), ShouldBeNil)
+			So(MarkEnd(settings, testTask, "", time.Now(), detail, true), ShouldBeNil)
 
 			v, err := VersionFindOneId(v.Id)
 			So(err, ShouldBeNil)
@@ -1876,7 +1881,12 @@ func TestMarkEnd(t *testing.T) {
 	details := apimodels.TaskEndDetail{
 		Status: evergreen.TaskFailed,
 	}
-	assert.NoError(MarkEnd(&testTask, userName, time.Now(), &details, false))
+	settings := &evergreen.Settings{
+		CommitQueue: evergreen.CommitQueueConfig{
+			MaxSystemFailedTaskRetries: 2,
+		},
+	}
+	assert.NoError(MarkEnd(settings, &testTask, userName, time.Now(), &details, false))
 
 	b, err := build.FindOneId(b.Id)
 	assert.NoError(err)
@@ -1934,7 +1944,7 @@ func TestMarkEnd(t *testing.T) {
 			Status: evergreen.TaskSucceeded,
 		}
 		endTime := time.Now().Round(time.Second)
-		So(MarkEnd(t1, "test", endTime, detail, false), ShouldBeNil)
+		So(MarkEnd(settings, t1, "test", endTime, detail, false), ShouldBeNil)
 		t1FromDb, err := task.FindOne(db.Query(task.ById(t1.Id)))
 		So(err, ShouldBeNil)
 		So(t1FromDb.Status, ShouldEqual, evergreen.TaskSucceeded)
@@ -1944,7 +1954,7 @@ func TestMarkEnd(t *testing.T) {
 
 		// Ensure that calling MarkEnd on a non-aborted finished task returns early
 		// by checking that its finish_time hasn't changed
-		So(MarkEnd(t1, "test", time.Now().Add(time.Minute), detail, false), ShouldBeNil)
+		So(MarkEnd(settings, t1, "test", time.Now().Add(time.Minute), detail, false), ShouldBeNil)
 		t1FromDb, err = task.FindOne(db.Query(task.ById(t1.Id)))
 		So(err, ShouldBeNil)
 		So(t1FromDb.FinishTime, ShouldEqual, endTime)
@@ -1955,7 +1965,7 @@ func TestMarkEnd(t *testing.T) {
 		t2FromDb, err := task.FindOne(db.Query(task.ById(t2.Id)))
 		So(err, ShouldBeNil)
 		So(t2FromDb.FinishTime, ShouldEqual, time.Time{})
-		So(MarkEnd(t2FromDb, "test", endTime, &t2FromDb.Details, false), ShouldBeNil)
+		So(MarkEnd(settings, t2FromDb, "test", endTime, &t2FromDb.Details, false), ShouldBeNil)
 		t2FromDb, err = task.FindOne(db.Query(task.ById(t2.Id)))
 		So(err, ShouldBeNil)
 		So(t2FromDb.FinishTime, ShouldEqual, endTime)
@@ -1995,9 +2005,14 @@ func TestMarkEndWithTaskGroup(t *testing.T) {
 	detail := &apimodels.TaskEndDetail{
 		Status: evergreen.TaskFailed,
 	}
+	settings := &evergreen.Settings{
+		CommitQueue: evergreen.CommitQueueConfig{
+			MaxSystemFailedTaskRetries: 2,
+		},
+	}
 	for name, test := range map[string]func(*testing.T){
 		"NotResetWhenFinished": func(t *testing.T) {
-			assert.NoError(t, MarkEnd(runningTask, "test", time.Now(), detail, false))
+			assert.NoError(t, MarkEnd(settings, runningTask, "test", time.Now(), detail, false))
 			runningTaskDB, err := task.FindOneId(runningTask.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, runningTaskDB)
@@ -2005,7 +2020,7 @@ func TestMarkEndWithTaskGroup(t *testing.T) {
 		},
 		"ResetWhenFinished": func(t *testing.T) {
 			assert.NoError(t, runningTask.SetResetWhenFinished())
-			assert.NoError(t, MarkEnd(runningTask, "test", time.Now(), detail, false))
+			assert.NoError(t, MarkEnd(settings, runningTask, "test", time.Now(), detail, false))
 
 			runningTaskDB, err := task.FindOneId(runningTask.Id)
 			assert.NoError(t, err)
@@ -2059,9 +2074,14 @@ func TestMarkEndWithTaskGroup(t *testing.T) {
 }
 
 func TestTryResetTask(t *testing.T) {
+	settings := &evergreen.Settings{
+		CommitQueue: evergreen.CommitQueueConfig{
+			MaxSystemFailedTaskRetries: 2,
+		},
+	}
 	Convey("With a task that does not exist", t, func() {
 		require.NoError(t, db.ClearCollections(task.Collection))
-		So(TryResetTask("id", "username", "", nil), ShouldNotBeNil)
+		So(TryResetTask(settings, "id", "username", "", nil), ShouldNotBeNil)
 	})
 	Convey("With a task, a build, version and a project", t, func() {
 		Convey("resetting a task without a max number of executions", func() {
@@ -2121,7 +2141,7 @@ func TestTryResetTask(t *testing.T) {
 			So(dependentTask.Insert(), ShouldBeNil)
 			So(v.Insert(), ShouldBeNil)
 			Convey("should reset and add a task to the old tasks collection", func() {
-				So(TryResetTask(testTask.Id, userName, "", detail), ShouldBeNil)
+				So(TryResetTask(settings, testTask.Id, userName, "", detail), ShouldBeNil)
 				testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 				So(err, ShouldBeNil)
 				So(testTask.Details, ShouldResemble, apimodels.TaskEndDetail{})
@@ -2166,7 +2186,7 @@ func TestTryResetTask(t *testing.T) {
 				So(containerTask.Insert(), ShouldBeNil)
 
 				Convey("should reset task state specific to containers", func() {
-					So(TryResetTask(containerTask.Id, userName, "source", detail), ShouldBeNil)
+					So(TryResetTask(settings, containerTask.Id, userName, "source", detail), ShouldBeNil)
 
 					dbTask, err := task.FindOneId(containerTask.Id)
 					So(err, ShouldBeNil)
@@ -2228,27 +2248,48 @@ func TestTryResetTask(t *testing.T) {
 			So(v.Insert(), ShouldBeNil)
 			So(anotherTask.Insert(), ShouldBeNil)
 
+			commitQueueMax := settings.CommitQueue.MaxSystemFailedTaskRetries
+			commitQueueTask := &task.Task{
+				Id:          "commit_queue_task",
+				DisplayName: displayName,
+				Activated:   false,
+				BuildId:     b.Id,
+				Execution:   commitQueueMax,
+				Project:     "sample",
+				Status:      evergreen.TaskSystemFailed,
+				Version:     b.Version,
+				Requester:   evergreen.MergeTestRequester,
+			}
+			So(commitQueueTask.Insert(), ShouldBeNil)
+
 			var err error
 
 			Convey("should reset if ui package tries to reset", func() {
-				So(TryResetTask(testTask.Id, userName, evergreen.UIPackage, detail), ShouldBeNil)
+				So(TryResetTask(settings, testTask.Id, userName, evergreen.UIPackage, detail), ShouldBeNil)
 				testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 				So(testTask.Status, ShouldEqual, evergreen.TaskUndispatched)
 			})
 			Convey("should not reset if an origin other than the ui package tries to reset", func() {
-				So(TryResetTask(testTask.Id, userName, "", detail), ShouldBeNil)
+				So(TryResetTask(settings, testTask.Id, userName, "", detail), ShouldBeNil)
 				testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 				So(err, ShouldBeNil)
 				So(testTask.Details, ShouldNotResemble, *detail)
 				So(testTask.Status, ShouldNotEqual, detail.Status)
 			})
 			Convey("should reset and use detail information if the UI package passes in a detail ", func() {
-				So(TryResetTask(anotherTask.Id, userName, evergreen.UIPackage, detail), ShouldBeNil)
+				So(TryResetTask(settings, anotherTask.Id, userName, evergreen.UIPackage, detail), ShouldBeNil)
 				a, err := task.FindOne(db.Query(task.ById(anotherTask.Id)))
 				So(err, ShouldBeNil)
 				So(a.Details, ShouldResemble, apimodels.TaskEndDetail{})
 				So(a.Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(a.FinishTime, ShouldResemble, utility.ZeroTime)
+			})
+			Convey("merge tasks not reset if they've reached the admin setting limit", func() {
+				So(TryResetTask(settings, commitQueueTask.Id, userName, "", detail), ShouldBeNil)
+				commitQueueTask, err = task.FindOne(db.Query(task.ById(commitQueueTask.Id)))
+				So(err, ShouldBeNil)
+				So(commitQueueTask.Details, ShouldNotResemble, *detail)
+				So(commitQueueTask.Status, ShouldNotEqual, detail.Status)
 			})
 		})
 	})
@@ -2284,7 +2325,7 @@ func TestTryResetTask(t *testing.T) {
 		}
 		So(t1.Insert(), ShouldBeNil)
 
-		So(TryResetTask(dt.Id, "user", "test", nil), ShouldBeNil)
+		So(TryResetTask(settings, dt.Id, "user", "test", nil), ShouldBeNil)
 		t1FromDb, err := task.FindOne(db.Query(task.ById(t1.Id)))
 		So(err, ShouldBeNil)
 		So(t1FromDb.Status, ShouldEqual, evergreen.TaskUndispatched)
@@ -2322,16 +2363,22 @@ func TestTryResetTaskWithTaskGroup(t *testing.T) {
 	}
 	assert.NoError(d.Insert())
 
+	settings := &evergreen.Settings{
+		CommitQueue: evergreen.CommitQueueConfig{
+			MaxSystemFailedTaskRetries: 2,
+		},
+	}
+
 	for name, test := range map[string]func(*testing.T, *task.Task, string){
 		"NotFinished": func(t *testing.T, t1 *task.Task, t2Id string) {
-			assert.NoError(TryResetTask(t2Id, "user", "test", nil))
-			err := TryResetTask(t1.Id, "user", evergreen.UIPackage, nil)
+			assert.NoError(TryResetTask(settings, t2Id, "user", "test", nil))
+			err := TryResetTask(settings, t1.Id, "user", evergreen.UIPackage, nil)
 			require.Error(err)
 			assert.Contains(err.Error(), "cannot reset task in this status")
 		},
 		"CanResetTaskGroup": func(t *testing.T, t1 *task.Task, t2Id string) {
 			assert.NoError(t1.MarkFailed())
-			assert.NoError(TryResetTask(t2Id, "user", "test", nil))
+			assert.NoError(TryResetTask(settings, t2Id, "user", "test", nil))
 
 			var err error
 			t1, err = task.FindOneId(t1.Id)
@@ -2504,7 +2551,7 @@ func TestTryDequeueAndAbortBlockedCommitQueueVersion(t *testing.T) {
 	assert.NoError(t, t1.Insert())
 	assert.NoError(t, commitqueue.InsertQueue(cq))
 
-	assert.NoError(t, tryDequeueAndAbortCommitQueueVersion(p, *cq, "t1", evergreen.User))
+	assert.NoError(t, tryDequeueAndAbortCommitQueueVersion(p, *cq, t1, evergreen.User))
 	cq, err := commitqueue.FindOneId("my-project")
 	assert.NoError(t, err)
 	assert.Equal(t, cq.FindItem(patchID), -1)
@@ -2588,7 +2635,7 @@ func TestTryDequeueAndAbortCommitQueueVersion(t *testing.T) {
 	assert.NoError(t, m.Insert())
 	assert.NoError(t, commitqueue.InsertQueue(cq))
 
-	assert.NoError(t, tryDequeueAndAbortCommitQueueVersion(p, *cq, "t1", evergreen.User))
+	assert.NoError(t, tryDequeueAndAbortCommitQueueVersion(p, *cq, t1, evergreen.User))
 	cq, err := commitqueue.FindOneId("my-project")
 	assert.NoError(t, err)
 	assert.Equal(t, cq.FindItem("12"), -1)
@@ -3713,7 +3760,13 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 		Type:   evergreen.CommandTypeSystem,
 	}
 
-	assert.NoError(MarkEnd(testTask, "", time.Now(), details, false))
+	settings := &evergreen.Settings{
+		CommitQueue: evergreen.CommitQueueConfig{
+			MaxSystemFailedTaskRetries: 2,
+		},
+	}
+
+	assert.NoError(MarkEnd(settings, testTask, "", time.Now(), details, false))
 	var err error
 	v, err = VersionFindOneId(v.Id)
 	assert.NoError(err)
@@ -3723,7 +3776,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(evergreen.BuildStarted, b.Status)
 
-	assert.NoError(MarkEnd(anotherTask, "", time.Now(), details, false))
+	assert.NoError(MarkEnd(settings, anotherTask, "", time.Now(), details, false))
 	v, err = VersionFindOneId(v.Id)
 	assert.NoError(err)
 	assert.Equal(evergreen.VersionStarted, v.Status)
@@ -3732,7 +3785,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(evergreen.BuildStarted, b.Status)
 
-	assert.NoError(MarkEnd(exeTask0, "", time.Now(), details, false))
+	assert.NoError(MarkEnd(settings, exeTask0, "", time.Now(), details, false))
 	v, err = VersionFindOneId(v.Id)
 	assert.NoError(err)
 	assert.Equal(evergreen.VersionStarted, v.Status)
@@ -3743,7 +3796,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 
 	exeTask1.DisplayTask = nil
 	assert.NoError(err)
-	assert.NoError(MarkEnd(exeTask1, "", time.Now(), details, false))
+	assert.NoError(MarkEnd(settings, exeTask1, "", time.Now(), details, false))
 	v, err = VersionFindOneId(v.Id)
 	assert.NoError(err)
 	assert.Equal(evergreen.VersionFailed, v.Status)
@@ -3812,7 +3865,13 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 		Type:   "test",
 	}
 
-	assert.NoError(MarkEnd(&testTask, "", time.Now(), details, false))
+	settings := &evergreen.Settings{
+		CommitQueue: evergreen.CommitQueueConfig{
+			MaxSystemFailedTaskRetries: 2,
+		},
+	}
+
+	assert.NoError(MarkEnd(settings, &testTask, "", time.Now(), details, false))
 	var err error
 	v, err = VersionFindOneId(v.Id)
 	assert.NoError(err)
@@ -3882,7 +3941,12 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 		Status: evergreen.TaskFailed,
 		Type:   "test",
 	}
-	assert.NoError(MarkEnd(&testTask, "", time.Now(), details, false))
+	settings := &evergreen.Settings{
+		CommitQueue: evergreen.CommitQueueConfig{
+			MaxSystemFailedTaskRetries: 2,
+		},
+	}
+	assert.NoError(MarkEnd(settings, &testTask, "", time.Now(), details, false))
 
 	var err error
 	v, err = VersionFindOneId(v.Id)
@@ -3902,63 +3966,71 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 	require.NoError(t, db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection, VersionCollection))
 	assert := assert.New(t)
 
-	runningTask := &task.Task{
-		Id:            "t",
-		Status:        evergreen.TaskStarted,
-		Activated:     true,
-		ActivatedTime: time.Now(),
-		BuildId:       "b",
-		Version:       "version",
-	}
-	unschedulableTask := &task.Task{
-		Id:            "unschedulableTask",
-		Status:        evergreen.TaskStarted,
-		Activated:     true,
-		ActivatedTime: time.Now().Add(-task.UnschedulableThreshold - time.Minute),
-		BuildId:       "b2",
-		Version:       "version2",
-		Requester:     evergreen.PatchVersionRequester,
-	}
-	dependencyTask := &task.Task{
-		Id:            "dependencyTask",
-		Status:        evergreen.TaskUndispatched,
-		Activated:     true,
-		ActivatedTime: time.Now(),
-		BuildId:       "b2",
-		Version:       "version2",
-		DependsOn: []task.Dependency{
-			{
-				TaskId: unschedulableTask.Id,
-				Status: evergreen.TaskSucceeded,
+	tasks := []task.Task{
+		{
+			Id:            "t",
+			Status:        evergreen.TaskStarted,
+			Activated:     true,
+			ActivatedTime: time.Now(),
+			BuildId:       "b",
+			Version:       "version",
+		},
+		{
+			Id:            "t2",
+			Status:        evergreen.TaskSucceeded,
+			Activated:     true,
+			ActivatedTime: time.Now(),
+			BuildId:       "b2",
+			Version:       "version",
+		},
+		{
+			Id:            "unschedulableTask",
+			Status:        evergreen.TaskStarted,
+			Activated:     true,
+			ActivatedTime: time.Now().Add(-task.UnschedulableThreshold - time.Minute),
+			BuildId:       "b2",
+			Version:       "version2",
+			Requester:     evergreen.PatchVersionRequester,
+		},
+		{
+			Id:            "dependencyTask",
+			Status:        evergreen.TaskUndispatched,
+			Activated:     true,
+			ActivatedTime: time.Now(),
+			BuildId:       "b2",
+			Version:       "version2",
+			DependsOn: []task.Dependency{
+				{
+					TaskId: "unschedulableTask",
+					Status: evergreen.TaskSucceeded,
+				},
 			},
 		},
+		{
+			Id:             "displayTask",
+			DisplayName:    "displayTask",
+			BuildId:        "b2",
+			Version:        "version2",
+			Project:        "project",
+			Activated:      false,
+			DisplayOnly:    true,
+			ExecutionTasks: []string{"unschedulableTask"},
+			Status:         evergreen.TaskStarted,
+			DispatchTime:   time.Now(),
+		},
+		{
+			Id:            "t3",
+			Status:        evergreen.TaskStarted,
+			Activated:     true,
+			ActivatedTime: time.Now(),
+			BuildId:       "b3",
+			Version:       "version3",
+			Execution:     evergreen.MaxTaskExecution,
+		},
 	}
-	dt := &task.Task{
-		Id:             "displayTask",
-		DisplayName:    "displayTask",
-		BuildId:        "b2",
-		Version:        "version2",
-		Project:        "project",
-		Activated:      false,
-		DisplayOnly:    true,
-		ExecutionTasks: []string{unschedulableTask.Id},
-		Status:         evergreen.TaskStarted,
-		DispatchTime:   time.Now(),
+	for _, tsk := range tasks {
+		require.NoError(t, tsk.Insert())
 	}
-	maxExecTask := &task.Task{
-		Id:            "t3",
-		Status:        evergreen.TaskStarted,
-		Activated:     true,
-		ActivatedTime: time.Now(),
-		BuildId:       "b3",
-		Version:       "version3",
-		Execution:     evergreen.MaxTaskExecution,
-	}
-	require.NoError(t, runningTask.Insert())
-	require.NoError(t, maxExecTask.Insert())
-	require.NoError(t, dependencyTask.Insert())
-	require.NoError(t, unschedulableTask.Insert())
-	require.NoError(t, dt.Insert())
 
 	h := &host.Host{
 		Id:          "h1",
@@ -3986,7 +4058,12 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 	}
 	assert.NoError(v2.Insert())
 
-	assert.NoError(ClearAndResetStrandedHostTask(h))
+	settings := &evergreen.Settings{
+		CommitQueue: evergreen.CommitQueueConfig{
+			MaxSystemFailedTaskRetries: 2,
+		},
+	}
+	assert.NoError(ClearAndResetStrandedHostTask(settings, h))
 
 	runningTask, err := task.FindOne(db.Query(task.ById("t")))
 	require.NoError(t, err)
@@ -4001,18 +4078,18 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 	assert.Equal(evergreen.VersionCreated, foundVersion.Status)
 
 	h.RunningTask = "unschedulableTask"
-	assert.NoError(ClearAndResetStrandedHostTask(h))
+	assert.NoError(ClearAndResetStrandedHostTask(settings, h))
 
-	unschedulableTask, err = task.FindOne(db.Query(task.ById("unschedulableTask")))
+	unschedulableTask, err := task.FindOne(db.Query(task.ById("unschedulableTask")))
 	require.NoError(t, err)
 	assert.Equal(evergreen.TaskFailed, unschedulableTask.Status)
 
-	dependencyTask, err = task.FindOne(db.Query(task.ById("dependencyTask")))
+	dependencyTask, err := task.FindOne(db.Query(task.ById("dependencyTask")))
 	require.NoError(t, err)
 	assert.True(dependencyTask.DependsOn[0].Unattainable)
 	assert.True(dependencyTask.DependsOn[0].Finished)
 
-	dt, err = task.FindOne(db.Query(task.ById("displayTask")))
+	dt, err := task.FindOne(db.Query(task.ById("displayTask")))
 	require.NoError(t, err)
 	assert.Equal(dt.Status, evergreen.TaskFailed)
 	assert.Equal(dt.Details, task.GetSystemFailureDetails(evergreen.TaskDescriptionStranded))
@@ -4026,8 +4103,12 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 	assert.Equal(evergreen.VersionFailed, foundVersion.Status)
 
 	h.RunningTask = "t2"
-	assert.NoError(ClearAndResetStrandedHostTask(h))
-
+	assert.NoError(resetTask("t2", ""))
+	assert.NoError(ClearAndResetStrandedHostTask(settings, h))
+	foundTask, err := task.FindOne(db.Query(task.ById("t2")))
+	require.NoError(t, err)
+	// The task should not have been reset twice.
+	assert.Equal(foundTask.Execution, 1)
 }
 
 func TestClearAndResetStaleStrandedHostTask(t *testing.T) {
@@ -4057,7 +4138,12 @@ func TestClearAndResetStaleStrandedHostTask(t *testing.T) {
 	}
 	assert.NoError(v.Insert())
 
-	assert.NoError(ClearAndResetStrandedHostTask(h))
+	settings := &evergreen.Settings{
+		CommitQueue: evergreen.CommitQueueConfig{
+			MaxSystemFailedTaskRetries: 2,
+		},
+	}
+	assert.NoError(ClearAndResetStrandedHostTask(settings, h))
 	runningTask, err := task.FindOne(db.Query(task.ById("t")))
 	assert.NoError(err)
 	assert.Equal(evergreen.TaskFailed, runningTask.Status)
@@ -4114,8 +4200,12 @@ func TestClearAndResetStrandedHostTaskFailedOnly(t *testing.T) {
 		Id: "version",
 	}
 	assert.NoError(t, v.Insert())
-
-	assert.NoError(t, ClearAndResetStrandedHostTask(h))
+	settings := &evergreen.Settings{
+		CommitQueue: evergreen.CommitQueueConfig{
+			MaxSystemFailedTaskRetries: 2,
+		},
+	}
+	assert.NoError(t, ClearAndResetStrandedHostTask(settings, h))
 	restartedDisplayTask, err := task.FindOne(db.Query(task.ById("dt")))
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.TaskUndispatched, restartedDisplayTask.Status)
@@ -4139,13 +4229,18 @@ func TestClearAndResetStrandedHostTaskFailedOnly(t *testing.T) {
 }
 
 func TestMarkUnallocatableContainerTasksSystemFailed(t *testing.T) {
+	settings := &evergreen.Settings{
+		CommitQueue: evergreen.CommitQueueConfig{
+			MaxSystemFailedTaskRetries: 2,
+		},
+	}
 	defer func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.EventCollection))
 	}()
 	for tName, tCase := range map[string]func(t *testing.T, tsk task.Task, b build.Build, v Version){
 		"SystemFailsTaskWithNoRemainingAllocationAttempts": func(t *testing.T, tsk task.Task, b build.Build, v Version) {
 			require.NoError(t, tsk.Insert())
-			require.NoError(t, MarkUnallocatableContainerTasksSystemFailed([]string{tsk.Id}))
+			require.NoError(t, MarkUnallocatableContainerTasksSystemFailed(settings, []string{tsk.Id}))
 
 			dbTask, err := task.FindOneId(tsk.Id)
 			require.NoError(t, err)
@@ -4165,7 +4260,7 @@ func TestMarkUnallocatableContainerTasksSystemFailed(t *testing.T) {
 		"NoopsWithTaskThatHasRemainingAllocationAttempts": func(t *testing.T, tsk task.Task, b build.Build, v Version) {
 			tsk.ContainerAllocationAttempts = 0
 			require.NoError(t, tsk.Insert())
-			require.NoError(t, MarkUnallocatableContainerTasksSystemFailed([]string{tsk.Id}))
+			require.NoError(t, MarkUnallocatableContainerTasksSystemFailed(settings, []string{tsk.Id}))
 
 			dbTask, err := task.FindOneId(tsk.Id)
 			require.NoError(t, err)
@@ -4189,7 +4284,7 @@ func TestMarkUnallocatableContainerTasksSystemFailed(t *testing.T) {
 			tsk1.ContainerAllocationAttempts = 0
 			require.NoError(t, tsk1.Insert())
 
-			require.NoError(t, MarkUnallocatableContainerTasksSystemFailed([]string{tsk0.Id, tsk1.Id}))
+			require.NoError(t, MarkUnallocatableContainerTasksSystemFailed(settings, []string{tsk0.Id, tsk1.Id}))
 
 			dbTask0, err := task.FindOneId(tsk0.Id)
 			require.NoError(t, err)
@@ -4205,7 +4300,7 @@ func TestMarkUnallocatableContainerTasksSystemFailed(t *testing.T) {
 			tsk.ExecutionPlatform = task.ExecutionPlatformHost
 			require.NoError(t, tsk.Insert())
 
-			require.NoError(t, MarkUnallocatableContainerTasksSystemFailed([]string{tsk.Id}))
+			require.NoError(t, MarkUnallocatableContainerTasksSystemFailed(settings, []string{tsk.Id}))
 
 			dbTask, err := task.FindOneId(tsk.Id)
 			require.NoError(t, err)
@@ -4213,7 +4308,7 @@ func TestMarkUnallocatableContainerTasksSystemFailed(t *testing.T) {
 			assert.False(t, dbTask.IsFinished())
 		},
 		"NoopsWithNonexistentTasks": func(t *testing.T, tsk task.Task, b build.Build, v Version) {
-			require.NoError(t, MarkUnallocatableContainerTasksSystemFailed([]string{tsk.Id}))
+			require.NoError(t, MarkUnallocatableContainerTasksSystemFailed(settings, []string{tsk.Id}))
 
 			dbTask, err := task.FindOneId(tsk.Id)
 			assert.NoError(t, err)
@@ -4290,7 +4385,13 @@ func TestClearAndResetExecTask(t *testing.T) {
 	}
 	assert.NoError(t, v.Insert())
 
-	assert.NoError(t, ClearAndResetStrandedHostTask(h))
+	settings := &evergreen.Settings{
+		CommitQueue: evergreen.CommitQueueConfig{
+			MaxSystemFailedTaskRetries: 2,
+		},
+	}
+
+	assert.NoError(t, ClearAndResetStrandedHostTask(settings, h))
 	restartedDisplayTask, err := task.FindOne(db.Query(task.ById("dt")))
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.TaskUndispatched, restartedDisplayTask.Status)
@@ -4300,6 +4401,11 @@ func TestClearAndResetExecTask(t *testing.T) {
 }
 
 func TestClearAndResetStrandedContainerTask(t *testing.T) {
+	settings := &evergreen.Settings{
+		CommitQueue: evergreen.CommitQueueConfig{
+			MaxSystemFailedTaskRetries: 2,
+		},
+	}
 	defer func() {
 		assert.NoError(t, db.ClearCollections(pod.Collection, task.Collection, task.OldCollection, build.Collection, VersionCollection))
 	}()
@@ -4309,7 +4415,7 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 			require.NoError(t, p.Insert())
 			require.NoError(t, tsk.Insert())
 
-			require.NoError(t, ClearAndResetStrandedContainerTask(&p))
+			require.NoError(t, ClearAndResetStrandedContainerTask(settings, &p))
 
 			dbPod, err := pod.FindOneByID(p.ID)
 			require.NoError(t, err)
@@ -4363,7 +4469,7 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 			require.NoError(t, tsk.Insert())
 			require.NoError(t, p.Insert())
 
-			require.NoError(t, ClearAndResetStrandedContainerTask(&p))
+			require.NoError(t, ClearAndResetStrandedContainerTask(settings, &p))
 
 			dbDisplayTask, err := task.FindOneId(dt.Id)
 			require.NoError(t, err)
@@ -4394,7 +4500,7 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 			require.NoError(t, tsk.Insert())
 			require.NoError(t, p.Insert())
 
-			require.NoError(t, ClearAndResetStrandedContainerTask(&p))
+			require.NoError(t, ClearAndResetStrandedContainerTask(settings, &p))
 
 			dbPod, err := pod.FindOneByID(p.ID)
 			require.NoError(t, err)
@@ -4414,13 +4520,13 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 			p.TaskRuntimeInfo.RunningTaskID = tsk.Id
 			require.NoError(t, tsk.Insert())
 
-			assert.Error(t, ClearAndResetStrandedContainerTask(&p))
+			assert.Error(t, ClearAndResetStrandedContainerTask(settings, &p))
 		},
 		"ClearsNonexistentTaskFromPod": func(t *testing.T, p pod.Pod, tsk task.Task) {
 			p.TaskRuntimeInfo.RunningTaskID = "nonexistent_task"
 			require.NoError(t, p.Insert())
 
-			require.NoError(t, ClearAndResetStrandedContainerTask(&p))
+			require.NoError(t, ClearAndResetStrandedContainerTask(settings, &p))
 
 			dbPod, err := pod.FindOneByID(p.ID)
 			require.NoError(t, err)
@@ -4433,7 +4539,7 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 			p.TaskRuntimeInfo.RunningTaskExecution = 0
 			require.NoError(t, p.Insert())
 
-			require.NoError(t, ClearAndResetStrandedContainerTask(&p))
+			require.NoError(t, ClearAndResetStrandedContainerTask(settings, &p))
 			dbPod, err := pod.FindOneByID(p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
@@ -4445,7 +4551,7 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 			tsk.ActivatedTime = time.Now().Add(-10 * task.UnschedulableThreshold)
 			require.NoError(t, tsk.Insert())
 
-			require.NoError(t, ClearAndResetStrandedContainerTask(&p))
+			require.NoError(t, ClearAndResetStrandedContainerTask(settings, &p))
 
 			dbPod, err := pod.FindOneByID(p.ID)
 			require.NoError(t, err)
@@ -4484,7 +4590,7 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 			require.NoError(t, p.Insert())
 			require.NoError(t, tsk.Insert())
 
-			require.NoError(t, ClearAndResetStrandedContainerTask(&p))
+			require.NoError(t, ClearAndResetStrandedContainerTask(settings, &p))
 
 			dbPod, err := pod.FindOneByID(p.ID)
 			require.NoError(t, err)
@@ -4554,6 +4660,11 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 }
 
 func TestResetStaleTask(t *testing.T) {
+	settings := &evergreen.Settings{
+		CommitQueue: evergreen.CommitQueueConfig{
+			MaxSystemFailedTaskRetries: 2,
+		},
+	}
 	defer func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection))
 	}()
@@ -4562,7 +4673,7 @@ func TestResetStaleTask(t *testing.T) {
 		"SuccessfullyRestartsStaleTask": func(t *testing.T, tsk task.Task) {
 			require.NoError(t, tsk.Insert())
 
-			require.NoError(t, FixStaleTask(&tsk))
+			require.NoError(t, FixStaleTask(settings, &tsk))
 
 			dbArchivedTask, err := task.FindOneOldByIdAndExecution(tsk.Id, 1)
 			require.NoError(t, err)
@@ -4594,7 +4705,7 @@ func TestResetStaleTask(t *testing.T) {
 		"SuccessfullySystemFailsAbortedTask": func(t *testing.T, tsk task.Task) {
 			tsk.Aborted = true
 			require.NoError(t, tsk.Insert())
-			require.NoError(t, FixStaleTask(&tsk))
+			require.NoError(t, FixStaleTask(settings, &tsk))
 
 			dbArchivedTask, err := task.FindOneOldByIdAndExecution(tsk.Id, 1)
 			require.NoError(t, err)
@@ -4628,7 +4739,7 @@ func TestResetStaleTask(t *testing.T) {
 			tsk.DisplayTaskId = utility.ToStringPtr(dt.Id)
 			require.NoError(t, tsk.Insert())
 
-			require.NoError(t, FixStaleTask(&tsk))
+			require.NoError(t, FixStaleTask(settings, &tsk))
 
 			dbDisplayTask, err := task.FindOneId(dt.Id)
 			require.NoError(t, err)
@@ -4658,7 +4769,7 @@ func TestResetStaleTask(t *testing.T) {
 			tsk.ActivatedTime = time.Now().Add(-10 * task.UnschedulableThreshold)
 			require.NoError(t, tsk.Insert())
 
-			require.NoError(t, FixStaleTask(&tsk))
+			require.NoError(t, FixStaleTask(settings, &tsk))
 
 			dbTask, err := task.FindOneId(tsk.Id)
 			require.NoError(t, err)
@@ -4690,7 +4801,7 @@ func TestResetStaleTask(t *testing.T) {
 			tsk.Execution = execNum
 			require.NoError(t, tsk.Insert())
 
-			require.NoError(t, FixStaleTask(&tsk))
+			require.NoError(t, FixStaleTask(settings, &tsk))
 
 			dbTask, err := task.FindOneId(tsk.Id)
 			require.NoError(t, err)
@@ -4791,7 +4902,12 @@ func TestMarkEndWithNoResults(t *testing.T) {
 		Type:   "test",
 	}
 
-	err := MarkEnd(&testTask1, "", time.Now(), details, false)
+	settings := &evergreen.Settings{
+		CommitQueue: evergreen.CommitQueueConfig{
+			MaxSystemFailedTaskRetries: 2,
+		},
+	}
+	err := MarkEnd(settings, &testTask1, "", time.Now(), details, false)
 	assert.NoError(t, err)
 	dbTask, err := task.FindOneId(testTask1.Id)
 	assert.NoError(t, err)
@@ -4803,7 +4919,7 @@ func TestMarkEndWithNoResults(t *testing.T) {
 		TaskID: testTask2.Id,
 	}
 	assert.NoError(t, results.Insert())
-	err = MarkEnd(&testTask2, "", time.Now(), details, false)
+	err = MarkEnd(settings, &testTask2, "", time.Now(), details, false)
 	assert.NoError(t, err)
 	dbTask, err = task.FindOneId(testTask2.Id)
 	assert.NoError(t, err)
@@ -5089,6 +5205,12 @@ func TestDisplayTaskDelayedRestart(t *testing.T) {
 	}
 	assert.NoError(v.Insert())
 
+	settings := &evergreen.Settings{
+		CommitQueue: evergreen.CommitQueueConfig{
+			MaxSystemFailedTaskRetries: 2,
+		},
+	}
+
 	// request that the task restarts when it's done
 	assert.NoError(dt.SetResetWhenFinished())
 	dbTask, err := task.FindOne(db.Query(task.ById(dt.Id)))
@@ -5097,7 +5219,7 @@ func TestDisplayTaskDelayedRestart(t *testing.T) {
 	assert.Equal(evergreen.TaskStarted, dbTask.Status)
 
 	// end the final task so that it restarts
-	assert.NoError(checkResetDisplayTask(&dt))
+	assert.NoError(checkResetDisplayTask(settings, &dt))
 	dbTask, err = task.FindOne(db.Query(task.ById(dt.Id)))
 	assert.NoError(err)
 	assert.Equal(evergreen.TaskUndispatched, dbTask.Status)
@@ -5135,7 +5257,12 @@ func TestAbortedTaskDelayedRestart(t *testing.T) {
 	detail := &apimodels.TaskEndDetail{
 		Status: evergreen.TaskFailed,
 	}
-	assert.NoError(t, MarkEnd(&task1, "test", time.Now(), detail, false))
+	settings := &evergreen.Settings{
+		CommitQueue: evergreen.CommitQueueConfig{
+			MaxSystemFailedTaskRetries: 2,
+		},
+	}
+	assert.NoError(t, MarkEnd(settings, &task1, "test", time.Now(), detail, false))
 	newTask, err := task.FindOneId(task1.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.TaskUndispatched, newTask.Status)

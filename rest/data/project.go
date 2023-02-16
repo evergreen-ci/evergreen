@@ -8,11 +8,15 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -49,35 +53,67 @@ func FindProjectById(id string, includeRepo bool, includeProjectConfig bool) (*m
 	return p, nil
 }
 
+// RequestS3Creds creates a JIRA ticket that requests S3 credentials to be added for the specified project.
+// TODO PM-3212: Remove the function after project completion.
+func RequestS3Creds(projectIdentifier string) error {
+	if projectIdentifier == "" {
+		return errors.New("project identifier cannot be empty")
+	}
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return errors.Wrap(err, "getting evergreen settings")
+	}
+	if settings.ProjectCreation.JiraProject == "" {
+		return nil
+	}
+	summary := fmt.Sprintf("Create AWS key for s3 uploads for '%s' project", projectIdentifier)
+	description := fmt.Sprintf("Could you create an s3 key for the new [%s|%s/project/%s/settings/general] project?", projectIdentifier, settings.Ui.UIv2Url, projectIdentifier)
+	jiraIssue := message.JiraIssue{
+		Project:     settings.ProjectCreation.JiraProject,
+		Summary:     summary,
+		Description: description,
+		Components:  []string{"Access"},
+	}
+	sub := event.Subscriber{
+		Type: event.JIRAIssueSubscriberType,
+		Target: event.JIRAIssueSubscriber{
+			Project:   settings.ProjectCreation.JiraProject,
+			IssueType: "Task",
+		},
+	}
+	n, err := notification.New("", utility.RandomString(), &sub, jiraIssue)
+	if err != nil {
+		return err
+	}
+	err = notification.InsertMany(*n)
+	if err != nil {
+		return errors.Wrap(err, "batch inserting notifications")
+	}
+	return nil
+}
+
 // CreateProject creates a new project ref from the given one and performs other
 // initial setup for new projects such as populating initial project variables
 // and creating new webhooks. If the given project ref already has container
 // secrets, the new project ref receives copies of the existing ones.
 func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *model.ProjectRef, u *user.DBUser) error {
-	config, err := evergreen.GetConfig()
-	if err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "getting evergreen config").Error(),
-		}
-	}
-
-	if err := projectRef.ValidateOwnerAndRepo(config.GithubOrgs); err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "validating owner and repo for project: %s", projectRef.Identifier).Error(),
-		}
-	}
-
 	if projectRef.Identifier != "" {
 		if err := VerifyUniqueProject(projectRef.Identifier); err != nil {
 			return err
 		}
 	}
-	if projectRef.Id != "" {
-		if err := VerifyUniqueProject(projectRef.Id); err != nil {
-			return err
+	if projectRef.Id == "" {
+		if projectRef.Id == "" {
+			projectRef.Id = mgobson.NewObjectId().Hex()
 		}
+	}
+	if err := VerifyUniqueProject(projectRef.Id); err != nil {
+		return err
+	}
+	// Always warn because created projects are never enabled.
+	_, err := model.ValidateProjectCreation(projectRef.Id, env.Settings(), projectRef)
+	if err != nil {
+		// TODO EVG-18784: Return graphql warning
 	}
 
 	existingContainerSecrets := projectRef.ContainerSecrets
@@ -248,6 +284,12 @@ func UpdateProjectVars(projectId string, varsModel *restModel.APIProjectVars, ov
 	vars := varsModel.ToService()
 	vars.Id = projectId
 
+	// Avoid accidentally overwriting private variables, for example if the GET route is used to populate PATCH.
+	for key, val := range varsModel.Vars {
+		if val == "" {
+			delete(varsModel.Vars, key)
+		}
+	}
 	if overwrite {
 		if _, err := vars.Upsert(); err != nil {
 			return errors.Wrapf(err, "overwriting variables for project '%s'", vars.Id)

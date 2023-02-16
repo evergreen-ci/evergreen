@@ -1,7 +1,6 @@
 package util
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -66,6 +65,5 @@ pieces:
 	err = UnmarshalYAMLStrictWithFallback([]byte(smallYml), &largeStruct)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "already defined")
-	fmt.Println(err)
 
 }

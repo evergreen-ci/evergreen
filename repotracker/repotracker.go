@@ -620,7 +620,6 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 		projectInfo.Config.Id = v.Id
 	}
 	v.Ignored = ignore
-	v.Activated = utility.FalsePtr()
 
 	// validate the project
 	isConfigDefined := projectInfo.Config != nil
@@ -717,6 +716,7 @@ func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 		TriggerEvent:         metadata.EventID,
 		PeriodicBuildID:      metadata.PeriodicBuildID,
 		ProjectStorageMethod: model.ProjectStorageMethodDB,
+		Activated:            utility.ToBoolPtr(metadata.Activate),
 	}
 	if metadata.TriggerType != "" {
 		v.Id = util.CleanName(fmt.Sprintf("%s_%s_%s", ref.Identifier, metadata.SourceVersion.Revision, metadata.TriggerDefinitionID))
@@ -811,7 +811,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		if ctx.Err() != nil {
 			return errors.Wrapf(err, "aborting version creation for version %s", v.Id)
 		}
-		if buildvariant.Disabled {
+		if buildvariant.Disable {
 			continue
 		}
 		if len(aliases) > 0 {
@@ -891,7 +891,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			TaskIDs:             taskIds,
 			TaskNames:           taskNames,
 			BuildVariantName:    buildvariant.Name,
-			ActivateBuild:       false,
+			ActivateBuild:       utility.FromBoolPtr(v.Activated),
 			SourceRev:           sourceRev,
 			DefinitionID:        metadata.TriggerDefinitionID,
 			Aliases:             aliases,
@@ -924,7 +924,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 
 		activateVariantAt := time.Now()
 		taskStatuses := []model.BatchTimeTaskStatus{}
-		if metadata.TriggerID == "" && evergreen.ShouldConsiderBatchtime(v.Requester) {
+		if v.Requester == evergreen.RepotrackerVersionRequester && evergreen.ShouldConsiderBatchtime(v.Requester) {
 			activateVariantAt, err = projectInfo.Ref.GetActivationTimeForVariant(&buildvariant)
 			batchTimeCatcher.Add(errors.Wrapf(err, "unable to get activation time for variant '%s'", buildvariant.Name))
 			// add only tasks that require activation times

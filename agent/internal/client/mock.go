@@ -70,6 +70,7 @@ type Mock struct {
 	keyVal           map[string]*serviceModel.KeyVal
 	LastMessageSent  time.Time
 	DownstreamParams []patchmodel.Parameter
+	Project          *serviceModel.Project
 
 	mu sync.RWMutex
 }
@@ -176,6 +177,9 @@ func (c *Mock) GetDistroAMI(context.Context, string, string, TaskData) (string, 
 }
 
 func (c *Mock) GetProject(ctx context.Context, td TaskData) (*serviceModel.Project, error) {
+	if c.Project != nil {
+		return c.Project, nil
+	}
 	var err error
 	var data []byte
 	_, file, _, _ := runtime.Caller(0)
@@ -194,6 +198,21 @@ func (c *Mock) GetExpansions(ctx context.Context, taskData TaskData) (util.Expan
 		"foo": "bar",
 	}
 	return e, nil
+}
+
+// GetExpansionsAndVars returns a mock ExpansionsAndVars.
+func (c *Mock) GetExpansionsAndVars(ctx context.Context, taskData TaskData) (*apimodels.ExpansionsAndVars, error) {
+	return &apimodels.ExpansionsAndVars{
+		Expansions: util.Expansions{"foo": "bar"},
+		Vars: map[string]string{
+			"shellexec_fn":   c.ShellExecFilename,
+			"timeout_fn":     c.TimeoutFilename,
+			"my_new_timeout": "2",
+		},
+		PrivateVars: map[string]bool{
+			"some_private_var": true,
+		},
+	}, nil
 }
 
 func (c *Mock) Heartbeat(ctx context.Context, td TaskData) (string, error) {

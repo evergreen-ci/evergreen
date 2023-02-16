@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -324,6 +323,7 @@ func (h *getExpansionsHandler) Parse(ctx context.Context, r *http.Request) error
 	return nil
 }
 
+// TODO (EVG-18820): remove this route once agent versions have rolled over.
 func (h *getExpansionsHandler) Run(ctx context.Context) gimlet.Responder {
 	t, err := task.FindOneId(h.taskID)
 	if err != nil {
@@ -354,12 +354,126 @@ func (h *getExpansionsHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting GitHub OAuth token"))
 	}
 
-	e, err := model.PopulateExpansions(ctx, t, foundHost, oauthToken)
+	e, err := model.PopulateExpansions(t, foundHost, oauthToken)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(err)
 	}
+	v, err := model.VersionFindOneId(t.Version)
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "finding version"))
+	}
+	if v == nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Errorf("version '%s' not found", t.Version))
+	}
+	bvExpansions, err := model.FindExpansionsForVariant(ctx, h.settings, v, t.BuildVariant)
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "loading build variant expansions"))
+	}
+	e.Update(bvExpansions)
 
 	return gimlet.NewJSONResponse(e)
+}
+
+// GET /task/{task_id}/expansions_and_vars
+type getExpansionsAndVarsHandler struct {
+	settings *evergreen.Settings
+	taskID   string
+	hostID   string
+}
+
+func makeGetExpansionsAndVars(settings *evergreen.Settings) gimlet.RouteHandler {
+	return &getExpansionsAndVarsHandler{
+		settings: settings,
+	}
+}
+
+func (h *getExpansionsAndVarsHandler) Factory() gimlet.RouteHandler {
+	return &getExpansionsAndVarsHandler{
+		settings: h.settings,
+	}
+}
+
+func (h *getExpansionsAndVarsHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
+	h.hostID = r.Header.Get(evergreen.HostHeader)
+	podID := r.Header.Get(evergreen.PodHeader)
+	if h.hostID == "" && podID == "" {
+		return errors.New("missing both host and pod ID")
+	}
+	return nil
+}
+
+func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder {
+	t, err := task.FindOneId(h.taskID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
+	}
+	if t == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+		})
+	}
+	var foundHost *host.Host
+	if h.hostID != "" {
+		foundHost, err = host.FindOneId(h.hostID)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting host '%s'", h.hostID))
+		}
+		if foundHost == nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("host '%s' not found", h.hostID)},
+			)
+		}
+	}
+
+	oauthToken, err := h.settings.GetGithubOauthToken()
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting GitHub OAuth token"))
+	}
+
+	e, err := model.PopulateExpansions(t, foundHost, oauthToken)
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "populating expansions"))
+	}
+
+	res := apimodels.ExpansionsAndVars{
+		Expansions:  e,
+		Vars:        map[string]string{},
+		PrivateVars: map[string]bool{},
+	}
+
+	projectVars, err := model.FindMergedProjectVars(t.Project)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting merged project vars"))
+	}
+	if projectVars != nil {
+		res.Vars = projectVars.GetVars(t)
+		if projectVars.PrivateVars != nil {
+			res.PrivateVars = projectVars.PrivateVars
+		}
+	}
+
+	v, err := model.VersionFindOne(model.VersionById(t.Version))
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding version '%s'", t.Version))
+	}
+	if v == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("version '%s' not found", t.Version),
+		})
+	}
+	for _, param := range v.Parameters {
+		// Overwrite empty values here since these were explicitly
+		// user-specified.
+		res.Vars[param.Key] = param.Value
+	}
+
+	return gimlet.NewJSONResponse(res)
 }
 
 // GET /task/{task_id}/project_ref
@@ -418,14 +532,15 @@ func (h *getProjectRefHandler) Run(ctx context.Context) gimlet.Responder {
 // GET /task/{task_id}/parser_project
 type getParserProjectHandler struct {
 	taskID string
+	env    evergreen.Environment
 }
 
-func makeGetParserProject() gimlet.RouteHandler {
-	return &getParserProjectHandler{}
+func makeGetParserProject(env evergreen.Environment) gimlet.RouteHandler {
+	return &getParserProjectHandler{env: env}
 }
 
 func (h *getParserProjectHandler) Factory() gimlet.RouteHandler {
-	return &getParserProjectHandler{}
+	return &getParserProjectHandler{env: h.env}
 }
 
 func (h *getParserProjectHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -457,7 +572,8 @@ func (h *getParserProjectHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("version '%s' not found", t.Version),
 		})
 	}
-	pp, err := model.GetParserProjectStorage(v.ProjectStorageMethod).FindOneByID(ctx, v.Id)
+
+	pp, err := model.ParserProjectFindOneByID(ctx, h.env.Settings(), v.ProjectStorageMethod, v.Id)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding parser project '%s'", v.Id))
 	}
@@ -694,14 +810,15 @@ func (h *heartbeatHandler) Run(ctx context.Context) gimlet.Responder {
 // GET /task/{task_id}/fetch_vars
 type fetchExpansionsForTaskHandler struct {
 	taskID string
+	env    evergreen.Environment
 }
 
-func makeFetchExpansionsForTask() gimlet.RouteHandler {
-	return &fetchExpansionsForTaskHandler{}
+func makeFetchExpansionsForTask(env evergreen.Environment) gimlet.RouteHandler {
+	return &fetchExpansionsForTaskHandler{env: env}
 }
 
 func (h *fetchExpansionsForTaskHandler) Factory() gimlet.RouteHandler {
-	return &fetchExpansionsForTaskHandler{}
+	return &fetchExpansionsForTaskHandler{env: h.env}
 }
 
 func (h *fetchExpansionsForTaskHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -711,6 +828,7 @@ func (h *fetchExpansionsForTaskHandler) Parse(ctx context.Context, r *http.Reque
 	return nil
 }
 
+// TODO (EVG-18820): remove this route after agents have rolled over.
 func (h *fetchExpansionsForTaskHandler) Run(ctx context.Context) gimlet.Responder {
 	t, err := task.FindOneId(h.taskID)
 	if err != nil {
@@ -747,7 +865,7 @@ func (h *fetchExpansionsForTaskHandler) Run(ctx context.Context) gimlet.Responde
 			Message:    fmt.Sprintf("version '%s' not found", t.Version),
 		})
 	}
-	projParams, err := model.FindParametersForVersion(ctx, v)
+	projParams, err := model.FindParametersForVersion(ctx, h.env.Settings(), v)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
@@ -758,6 +876,7 @@ func (h *fetchExpansionsForTaskHandler) Run(ctx context.Context) gimlet.Responde
 			res.Vars[param.Key] = param.Value
 		}
 	}
+
 	for _, param := range v.Parameters {
 		// We will overwrite empty values here since these were explicitly user-specified.
 		res.Vars[param.Key] = param.Value
@@ -932,7 +1051,7 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 
 	var msg string
 	if h.hostID != "" {
-		host, err := host.FindOne(host.ByRunningTaskId(t.Id))
+		host, err := host.FindOneByTaskIdAndExecution(t.Id, t.Execution)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host running task %s", t.Id))
 		}
@@ -950,26 +1069,70 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 			})
 		}
 
-		idleTimeStartAt := host.LastTaskCompletedTime
-		if idleTimeStartAt.IsZero() || idleTimeStartAt == utility.ZeroTime {
-			idleTimeStartAt = host.StartTime
-		}
-
 		msg = fmt.Sprintf("task %s started on host %s", t.Id, host.Id)
 
 		if host.Distro.IsEphemeral() {
-			queue := h.env.RemoteQueue()
-			job := units.NewCollectHostIdleDataJob(host, t, idleTimeStartAt, t.StartTime)
-			if err = queue.Put(ctx, job); err != nil {
-				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "queuing host idle stats for %s", msg))
+			if err = host.IncTaskCount(); err != nil {
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "incrementing task count for task '%s' on host '%s'", t.Id, host.Id))
 			}
+			if err = host.IncIdleTime(host.SinceLastTaskCompletion()); err != nil {
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "incrementing total idle time on host '%s'", host.Id))
+			}
+			grip.Info(host.TaskStartMessage())
 		}
+
+		logTaskStartMessage(host, t)
 	} else {
 		// TODO: EVG-17647 Create job to collect data on idle pods
 		msg = fmt.Sprintf("task '%s' started on pod '%s'", t.Id, h.podID)
 	}
 
 	return gimlet.NewJSONResponse(msg)
+}
+
+func logTaskStartMessage(h *host.Host, t *task.Task) {
+	msg := message.Fields{
+		"stat":                   "task-start-stats",
+		"task_id":                t.Id,
+		"execution":              t.Execution,
+		"version":                t.Version,
+		"build":                  t.BuildId,
+		"scheduled_time":         t.ScheduledTime,
+		"activated_latency_secs": t.StartTime.Sub(t.ActivatedTime).Seconds(),
+		"scheduled_latency_secs": t.StartTime.Sub(t.ScheduledTime).Seconds(),
+		"started_latency_secs":   t.StartTime.Sub(t.DispatchTime).Seconds(),
+		"distro":                 h.Distro.Id,
+		"generator":              t.GenerateTask,
+		"group":                  t.TaskGroup,
+		"group_max_hosts":        t.TaskGroupMaxHosts,
+		"host_id":                h.Id,
+		"project":                t.Project,
+		"provider":               h.Distro.Provider,
+		"provisioning":           h.Distro.BootstrapSettings.Method,
+		"requester":              t.Requester,
+		"priority":               t.Priority,
+		"task":                   t.DisplayName,
+		"display_task":           t.DisplayOnly,
+		"variant":                t.BuildVariant,
+	}
+
+	if strings.HasPrefix(h.Distro.Provider, "ec2") {
+		msg["provider"] = "ec2"
+	}
+
+	if t.ActivatedBy != "" {
+		msg["activated_by"] = t.ActivatedBy
+	}
+
+	if h.Provider != evergreen.ProviderNameStatic {
+		msg["host_task_count"] = h.TaskCount
+
+		if h.TaskCount == 1 {
+			msg["host_provision_time"] = h.TotalIdleTime.Seconds()
+		}
+	}
+
+	grip.Info(msg)
 }
 
 // GET /task/{task_id}/git/patchfile/{patchfile_id}
@@ -1183,7 +1346,8 @@ func (h *manifestLoadHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "retrieving manifest with version id '%s'", task.Version))
 	}
 
-	project, _, err := model.FindAndTranslateProjectForVersion(v)
+	env := evergreen.GetEnvironment()
+	project, _, err := model.FindAndTranslateProjectForVersion(ctx, env.Settings(), v)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "loading project from version"))
 	}

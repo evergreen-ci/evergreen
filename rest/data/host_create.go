@@ -81,7 +81,9 @@ func ListHostsForTask(ctx context.Context, taskID string) ([]host.Host, error) {
 	return hosts, nil
 }
 
-func CreateHostsFromTask(ctx context.Context, t *task.Task, user user.DBUser, keyNameOrVal string) error {
+// CreateHostsFromTask creates intent hosts for those requested by the
+// host.create command in a task.
+func CreateHostsFromTask(ctx context.Context, settings *evergreen.Settings, t *task.Task, user user.DBUser, keyNameOrVal string) error {
 	if t == nil {
 		return errors.New("no task to create hosts from")
 	}
@@ -90,7 +92,7 @@ func CreateHostsFromTask(ctx context.Context, t *task.Task, user user.DBUser, ke
 		keyVal = keyNameOrVal
 	}
 
-	proj, expansions, err := makeProjectAndExpansionsFromTask(ctx, t)
+	proj, expansions, err := makeProjectAndExpansionsFromTask(ctx, settings, t)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -160,7 +162,7 @@ func CreateHostsFromTask(ctx context.Context, t *task.Task, user user.DBUser, ke
 	return catcher.Resolve()
 }
 
-func makeProjectAndExpansionsFromTask(ctx context.Context, t *task.Task) (*model.Project, *util.Expansions, error) {
+func makeProjectAndExpansionsFromTask(ctx context.Context, settings *evergreen.Settings, t *task.Task) (*model.Project, *util.Expansions, error) {
 	v, err := model.VersionFindOne(model.VersionById(t.Version))
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "finding version '%s'", t.Version)
@@ -168,7 +170,7 @@ func makeProjectAndExpansionsFromTask(ctx context.Context, t *task.Task) (*model
 	if v == nil {
 		return nil, nil, errors.Errorf("version '%s' not found", t.Version)
 	}
-	project, _, err := model.FindAndTranslateProjectForVersion(v)
+	project, _, err := model.FindAndTranslateProjectForVersion(ctx, settings, v)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "loading project")
 	}
@@ -176,18 +178,24 @@ func makeProjectAndExpansionsFromTask(ctx context.Context, t *task.Task) (*model
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "finding host running task")
 	}
-	settings, err := evergreen.GetConfig()
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "getting admin settings")
-	}
 	oauthToken, err := settings.GetGithubOauthToken()
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "getting GitHub OAuth token from admin settings")
 	}
-	expansions, err := model.PopulateExpansions(ctx, t, h, oauthToken)
+
+	expansions, err := model.PopulateExpansions(t, h, oauthToken)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "populating expansions")
 	}
+
+	// PopulateExpansions doesn't include build variant expansions, so include
+	// them here.
+	for _, bv := range project.BuildVariants {
+		if bv.Name == t.BuildVariant {
+			expansions.Update(bv.Expansions)
+		}
+	}
+
 	if project == nil {
 		project = &model.Project{}
 	}

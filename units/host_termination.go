@@ -179,15 +179,16 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	if j.host.RunningTask != "" {
 		if j.TerminateIfBusy {
 			grip.Warning(message.Fields{
-				"message":  "Host has running task; clearing before terminating",
-				"job":      j.ID(),
-				"job_type": j.Type().Name,
-				"host_id":  j.host.Id,
-				"provider": j.host.Distro.Provider,
-				"task":     j.host.RunningTask,
+				"message":        "Host has running task; clearing before terminating",
+				"job":            j.ID(),
+				"job_type":       j.Type().Name,
+				"host_id":        j.host.Id,
+				"provider":       j.host.Distro.Provider,
+				"task":           j.host.RunningTask,
+				"task_execution": j.host.RunningTaskExecution,
 			})
 
-			j.AddError(model.ClearAndResetStrandedHostTask(j.host))
+			j.AddError(model.ClearAndResetStrandedHostTask(j.env.Settings(), j.host))
 		} else {
 			return
 		}
@@ -212,7 +213,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 				if tasks[len(tasks)-1].Id != lastTask.Id {
 					// If we aren't looking at the last task in the group, then we should mark the whole thing for restart,
 					// because later tasks in the group need to run on the same host as the earlier ones.
-					j.AddError(errors.Wrapf(model.TryResetTask(lastTask.Id, evergreen.User, evergreen.MonitorPackage, nil), "resetting task '%s'", lastTask.Id))
+					j.AddError(errors.Wrapf(model.TryResetTask(j.env.Settings(), lastTask.Id, evergreen.User, evergreen.MonitorPackage, nil), "resetting task '%s'", lastTask.Id))
 				}
 			}
 		}
@@ -246,15 +247,16 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	if j.host.RunningTask != "" {
 		if j.TerminateIfBusy {
 			grip.Warning(message.Fields{
-				"message":  "Host has running task; clearing before terminating",
-				"job":      j.ID(),
-				"job_type": j.Type().Name,
-				"host_id":  j.host.Id,
-				"provider": j.host.Distro.Provider,
-				"task":     j.host.RunningTask,
+				"message":        "Host has running task; clearing before terminating",
+				"job":            j.ID(),
+				"job_type":       j.Type().Name,
+				"host_id":        j.host.Id,
+				"provider":       j.host.Distro.Provider,
+				"task":           j.host.RunningTask,
+				"task_execution": j.host.RunningTaskExecution,
 			})
 
-			j.AddError(errors.Wrapf(model.ClearAndResetStrandedHostTask(j.host), "fixing stranded task '%s'", j.host.RunningTask))
+			j.AddError(errors.Wrapf(model.ClearAndResetStrandedHostTask(j.env.Settings(), j.host), "fixing stranded task '%s' execution '%d'", j.host.RunningTask, j.host.RunningTaskExecution))
 		} else {
 			return
 		}
@@ -285,17 +287,24 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 
 	j.AddError(j.incrementIdleTime(ctx))
 
-	grip.Info(message.Fields{
-		"message":           "host successfully terminated",
-		"host_id":           j.host.Id,
-		"distro":            j.host.Distro.Id,
-		"job":               j.ID(),
-		"reason":            j.TerminationReason,
-		"total_idle_secs":   j.host.TotalIdleTime.Seconds(),
-		"total_uptime_secs": j.host.TerminationTime.Sub(j.host.CreationTime).Seconds(),
-		"termination_time":  j.host.TerminationTime,
-		"creation_time":     j.host.CreationTime,
-	})
+	terminationMessage := message.Fields{
+		"message":            "host successfully terminated",
+		"host_id":            j.host.Id,
+		"distro":             j.host.Distro.Id,
+		"job":                j.ID(),
+		"reason":             j.TerminationReason,
+		"total_idle_secs":    j.host.TotalIdleTime.Seconds(),
+		"total_started_secs": j.host.TerminationTime.Sub(j.host.StartTime).Seconds(),
+		"total_uptime_secs":  j.host.TerminationTime.Sub(j.host.CreationTime).Seconds(),
+		"termination_time":   j.host.TerminationTime,
+		"creation_time":      j.host.CreationTime,
+		"started_by":         j.host.StartedBy,
+		"user_host":          j.host.UserHost,
+	}
+	if !utility.IsZeroTime(j.host.BillingStartTime) {
+		terminationMessage["total_billable_secs"] = j.host.TerminationTime.Sub(j.host.BillingStartTime).Seconds()
+	}
+	grip.Info(terminationMessage)
 
 	if utility.StringSliceContains(evergreen.ProvisioningHostStatus, prevStatus) && j.host.TaskCount == 0 {
 		event.LogHostProvisionFailed(j.HostID, fmt.Sprintf("terminating host in status '%s'", prevStatus))
@@ -313,24 +322,17 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 }
 
 func (j *hostTerminationJob) incrementIdleTime(ctx context.Context) error {
+	idleTime := j.host.SinceLastTaskCompletion()
+
 	cloudHost, err := cloud.GetCloudHost(ctx, j.host, j.env)
 	if err != nil {
 		return errors.Wrapf(err, "getting cloud host for host '%s'", j.HostID)
 	}
-
-	idleTimeStartsAt := j.host.LastTaskCompletedTime
-	if utility.IsZeroTime(idleTimeStartsAt) {
-		idleTimeStartsAt = j.host.StartTime
+	if pad := cloudHost.CloudMgr.TimeTilNextPayment(j.host); pad > time.Second {
+		idleTime += pad
 	}
 
-	hostBillingEnds := j.host.TerminationTime
-	pad := cloudHost.CloudMgr.TimeTilNextPayment(j.host)
-	if pad > time.Second {
-		hostBillingEnds = hostBillingEnds.Add(pad)
-	}
-
-	idleTime := hostBillingEnds.Sub(idleTimeStartsAt)
-	return errors.Wrap(j.host.IncIdleTime(idleTime), "incrementing idle time")
+	return j.host.IncIdleTime(idleTime)
 }
 
 // checkAndTerminateCloudHost checks if the host is still up according to the

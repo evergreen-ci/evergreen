@@ -792,6 +792,9 @@ func TasksByProjectAndCommitPipeline(opts GetTasksByProjectAndCommitOptions) []b
 	if opts.VariantName != "" {
 		matchFilter[BuildVariantKey] = opts.VariantName
 	}
+	if opts.VariantRegex != "" {
+		matchFilter[BuildVariantKey] = bson.M{"$regex": opts.VariantRegex, "$options": "i"}
+	}
 	if opts.TaskName != "" {
 		matchFilter[DisplayNameKey] = opts.TaskName
 	}

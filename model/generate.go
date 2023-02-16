@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -146,7 +147,7 @@ func (g *GeneratedProject) NewVersion(p *Project, pp *ParserProject, v *Version)
 	return p, newPP, v, nil
 }
 
-func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProject, v *Version) error {
+func (g *GeneratedProject) Save(ctx context.Context, settings *evergreen.Settings, p *Project, pp *ParserProject, v *Version) error {
 	// Get task again, to exit early if another generator finished early.
 	t, err := task.FindOneId(g.Task.Id)
 	if err != nil {
@@ -166,7 +167,20 @@ func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProje
 		return mongo.ErrNoDocuments
 	}
 
-	if err := updateParserProject(ctx, v, pp, t.Id); err != nil {
+	ppCtx, ppCancel := context.WithTimeout(ctx, DefaultParserProjectAccessTimeout)
+	defer ppCancel()
+	if err := updateParserProject(ppCtx, settings, v, pp, t.Id); err != nil {
+		if db.IsDocumentLimit(err) {
+			// The parser project has reached the DB document size limit, so put
+			// it in S3.
+			didPutInS3, err := putParserProjectInS3(ctx, settings, v, pp)
+			if err != nil {
+				return errors.Wrap(err, "moving parser project from the DB into S3")
+			}
+			if didPutInS3 {
+				return nil
+			}
+		}
 		return errors.WithStack(err)
 	}
 
@@ -176,17 +190,47 @@ func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProje
 	return nil
 }
 
-// updateParserProject updates the parser project along with generated task ID and updated config number
-func updateParserProject(ctx context.Context, v *Version, pp *ParserProject, taskId string) error {
+// updateParserProject updates the parser project along with generated task ID
+// and updated config number.
+func updateParserProject(ctx context.Context, settings *evergreen.Settings, v *Version, pp *ParserProject, taskId string) error {
 	if utility.StringSliceContains(pp.UpdatedByGenerators, taskId) {
 		// This generator has already updated the parser project so continue.
 		return nil
 	}
+
 	pp.UpdatedByGenerators = append(pp.UpdatedByGenerators, taskId)
-	if err := GetParserProjectStorage(v.ProjectStorageMethod).UpsertOne(ctx, pp); err != nil {
+
+	if err := ParserProjectUpsertOne(ctx, settings, v.ProjectStorageMethod, pp); err != nil {
 		return errors.Wrapf(err, "upserting parser project '%s'", pp.Id)
 	}
 	return nil
+}
+
+// putParserProjectInS3 puts a parser project that's currently stored in
+// the DB into S3. If the parser project is already stored in S3, this is a
+// no-op.
+func putParserProjectInS3(ctx context.Context, settings *evergreen.Settings, v *Version, pp *ParserProject) (didPutInS3 bool, err error) {
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		return false, errors.Wrap(err, "getting service flags")
+	}
+	if flags.ParserProjectS3StorageDisabled {
+		return false, nil
+	}
+
+	if v.ProjectStorageMethod == ProjectStorageMethodS3 {
+		return false, nil
+	}
+
+	if err := ParserProjectUpsertOne(ctx, settings, ProjectStorageMethodS3, pp); err != nil {
+		return false, errors.Wrap(err, "upserting parser project into S3")
+	}
+
+	if err := v.UpdateProjectStorageMethod(ProjectStorageMethodS3); err != nil {
+		return false, errors.Wrap(err, "updating version's parser project storage method to S3")
+	}
+
+	return true, nil
 }
 
 func cacheProjectData(p *Project) projectMaps {
@@ -199,8 +243,8 @@ func cacheProjectData(p *Project) projectMaps {
 	for _, bv := range p.BuildVariants {
 		cachedProject.buildVariants[bv.Name] = struct{}{}
 	}
-	for _, t := range p.Tasks {
-		cachedProject.tasks[t.Name] = &t
+	for i, t := range p.Tasks {
+		cachedProject.tasks[t.Name] = &p.Tasks[i]
 	}
 	// functions is already a map, cache it anyway for convenience
 	cachedProject.functions = p.Functions
@@ -674,7 +718,7 @@ func (g *GeneratedProject) validateNoRedefine(cachedProject projectMaps) error {
 
 func isNonZeroBV(bv parserBV) bool {
 	if bv.DisplayName != "" || len(bv.Expansions) > 0 || len(bv.Modules) > 0 ||
-		bv.Disabled || len(bv.Tags) > 0 || bv.Push ||
+		bv.Disable || len(bv.Tags) > 0 ||
 		bv.BatchTime != nil || bv.Stepback != nil || len(bv.RunOn) > 0 {
 		return true
 	}

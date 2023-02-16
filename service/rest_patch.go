@@ -11,7 +11,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/20210107192922/yaml.v3"
+	"gopkg.in/yaml.v3"
 )
 
 type RestPatch struct {
@@ -82,7 +82,8 @@ func (restapi restAPI) getPatchConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pp, err := model.GetParserProjectStorage(projCtx.Version.ProjectStorageMethod).FindOneByID(r.Context(), projCtx.Version.Id)
+	settings := restapi.GetSettings()
+	pp, err := model.ParserProjectFindOneByID(r.Context(), &settings, projCtx.Version.ProjectStorageMethod, projCtx.Version.Id)
 	if err != nil {
 		gimlet.WriteJSONInternalError(w, errors.Wrapf(err, "finding parser project '%s' for patch '%s'", projCtx.Version.Id, projCtx.Patch.Id.Hex()))
 		return

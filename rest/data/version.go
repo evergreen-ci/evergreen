@@ -228,22 +228,12 @@ func addFailedAndStartedTests(rows map[string]restModel.BuildList, failedAndStar
 }
 
 func (vc *DBVersionConnector) CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo,
-	metadata model.VersionMetadata, active bool) (*model.Version, error) {
+	metadata model.VersionMetadata) (*model.Version, error) {
 	newVersion, err := repotracker.CreateVersionFromConfig(ctx, projectInfo, metadata, false, nil)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrap(err, "creating version from config").Error(),
-		}
-	}
-
-	if active {
-		err := model.ActivateBuildsAndTasks(newVersion.BuildIds, true, evergreen.DefaultTaskActivator)
-		if err != nil {
-			return nil, gimlet.ErrorResponse{
-				StatusCode: http.StatusInternalServerError,
-				Message:    errors.Wrap(err, "activating builds").Error(),
-			}
 		}
 	}
 

@@ -14,7 +14,6 @@ type OwnerRepo struct {
 }
 
 type ProjectCreationConfig struct {
-
 	// TotalProjectLimit is the total number of projects that Evergreen is willing to support
 	TotalProjectLimit int `bson:"total_project_limit" json:"total_project_limit" yaml:"total_project_limit"`
 
@@ -23,12 +22,16 @@ type ProjectCreationConfig struct {
 
 	// RepoExceptions is a list of repos that can override the default repo-project limit but not the total project limit
 	RepoExceptions []OwnerRepo `bson:"repo_exceptions,omitempty" json:"repo_exceptions" yaml:"repo_exceptions"`
+
+	// JiraProject is the project that will be used to create Jira tickets to request S3 credentials
+	JiraProject string `bson:"jira_project,omitempty" json:"jira_project" yaml:"jira_project"`
 }
 
 var (
 	ProjectCreationConfigTotalProjectLimitKey = bsonutil.MustHaveTag(ProjectCreationConfig{}, "TotalProjectLimit")
 	ProjectCreationConfigRepoProjectLimitKey  = bsonutil.MustHaveTag(ProjectCreationConfig{}, "RepoProjectLimit")
 	ProjectCreationConfigRepoExceptionsKey    = bsonutil.MustHaveTag(ProjectCreationConfig{}, "RepoExceptions")
+	ProjectCreationConfigJiraProjectKey       = bsonutil.MustHaveTag(ProjectCreationConfig{}, "JiraProject")
 )
 
 func (*ProjectCreationConfig) SectionId() string { return "project_creation" }
@@ -64,3 +67,13 @@ func (c *ProjectCreationConfig) Set() error {
 }
 
 func (c *ProjectCreationConfig) ValidateAndDefault() error { return nil }
+
+// IsExceptionToRepoLimit returns bool if the given owner repo combination has been specified as an exception in admin settings
+func (c *ProjectCreationConfig) IsExceptionToRepoLimit(owner, repo string) bool {
+	for _, exception := range c.RepoExceptions {
+		if exception.Owner == owner && exception.Repo == repo {
+			return true
+		}
+	}
+	return false
+}

@@ -738,6 +738,7 @@ task_groups:
 		},
 		Project: p,
 		WorkDir: s.tc.taskDirectory,
+		Timeout: &internal.Timeout{},
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -1003,4 +1004,22 @@ timeout:
 	then := time.Now()
 	s.True(then.Sub(now) < 4*time.Second)
 	_ = s.tc.logger.Close()
+}
+
+func (s *AgentSuite) TestFetchProjectConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s.mockCommunicator.Project = &model.Project{
+		Identifier: "some_cool_project",
+	}
+
+	s.NoError(s.a.fetchProjectConfig(ctx, s.tc))
+
+	s.Require().NotZero(s.tc.project)
+	s.Equal(s.mockCommunicator.Project.Identifier, s.tc.project.Identifier)
+	s.Require().NotZero(s.tc.expansions)
+	s.Equal("bar", s.tc.expansions["foo"], "should include mock communicator expansions")
+	s.Require().NotZero(s.tc.privateVars)
+	s.True(s.tc.privateVars["some_private_var"], "should include mock communicator private variables")
 }

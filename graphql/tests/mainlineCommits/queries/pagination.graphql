@@ -1,5 +1,5 @@
 {
-  page1: mainlineCommits(options: { projectID: "evergreen", limit: 1 }) {
+  page1: mainlineCommits(options: { projectIdentifier: "evergreen", limit: 1 }) {
     versions {
       version {
         id
@@ -25,7 +25,7 @@
     prevPageOrderNumber
   }
   page2: mainlineCommits(
-    options: { projectID: "evergreen", limit: 1, skipOrderNumber: 5 }
+    options: { projectIdentifier: "evergreen", limit: 1, skipOrderNumber: 5 }
   ) {
     versions {
       version {
@@ -52,7 +52,7 @@
   prevPageOrderNumber
   }
     prevPage: mainlineCommits(
-    options: { projectID: "evergreen", limit: 1, skipOrderNumber: 6 }
+    options: { projectIdentifier: "evergreen", limit: 1, skipOrderNumber: 6 }
   ) {
     versions {
       version {

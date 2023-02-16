@@ -4,13 +4,17 @@ import (
 	"context"
 	"testing"
 
+	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/require"
+	"github.com/vektah/gqlparser/v2/ast"
 )
 
 func init() {
@@ -21,11 +25,6 @@ func setupPermissions(t *testing.T) {
 	env := evergreen.GetEnvironment()
 	ctx := context.Background()
 	require.NoError(t, env.DB().Drop(ctx))
-
-	// TODO (EVG-15499): Create scope and role collection because the
-	// RoleManager will try inserting in a transaction, which is not allowed for
-	// FCV < 4.4.
-	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection, evergreen.RoleCollection))
 
 	roleManager := env.RoleManager()
 
@@ -240,4 +239,65 @@ func TestRequireProjectAccess(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 4, callCount)
+}
+
+func TestRequireProjectFieldAccess(t *testing.T) {
+	setupPermissions(t)
+	config := New("/graphql")
+	require.NotNil(t, config)
+	ctx := context.Background()
+
+	// callCount keeps track of how many times the function is called
+	callCount := 0
+	next := func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		callCount++
+		return nil, nil
+	}
+
+	usr, err := setupUser(t)
+	require.NoError(t, err)
+	require.NotNil(t, usr)
+
+	ctx = gimlet.AttachUser(ctx, usr)
+	require.NotNil(t, ctx)
+
+	apiProjectRef := &restModel.APIProjectRef{
+		Identifier: utility.ToStringPtr("project_identifier"),
+		Admins:     utility.ToStringPtrSlice([]string{"admin_1", "admin_2", "admin_3"}),
+	}
+
+	fieldCtx := &graphql.FieldContext{
+		Field: graphql.CollectedField{
+			Field: &ast.Field{
+				Alias: "admins",
+			},
+		},
+	}
+	ctx = graphql.WithFieldContext(ctx, fieldCtx)
+
+	res, err := config.Directives.RequireProjectFieldAccess(ctx, interface{}(nil), next)
+	require.EqualError(t, err, "input: project not valid")
+	require.Nil(t, res)
+	require.Equal(t, 0, callCount)
+
+	res, err = config.Directives.RequireProjectFieldAccess(ctx, apiProjectRef, next)
+	require.EqualError(t, err, "input: project not specified")
+	require.Nil(t, res)
+	require.Equal(t, 0, callCount)
+
+	apiProjectRef.Id = utility.ToStringPtr("project_id")
+
+	res, err = config.Directives.RequireProjectFieldAccess(ctx, apiProjectRef, next)
+	require.EqualError(t, err, "input: user does not have permission to access the field 'admins' for project with ID 'project_id'")
+	require.Nil(t, res)
+	require.Equal(t, 0, callCount)
+
+	err = usr.AddRole("view_project")
+	require.NoError(t, err)
+
+	res, err = config.Directives.RequireProjectFieldAccess(ctx, apiProjectRef, next)
+	require.NoError(t, err)
+	require.Nil(t, res)
+	require.Equal(t, 1, callCount)
 }

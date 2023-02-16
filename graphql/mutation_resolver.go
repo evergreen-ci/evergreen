@@ -180,7 +180,22 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, com
 		commitMessage = existingPatch.Description
 	}
 
-	newPatch, err := data.CreatePatchForMerge(ctx, patchID, utility.FromStringPtr(commitMessage))
+	if utility.FromStringPtr(existingPatch.Requester) == evergreen.GithubPRRequester {
+		info := commitqueue.EnqueuePRInfo{
+			PR:            existingPatch.GithubPatchData.PRNumber,
+			Repo:          utility.FromStringPtr(existingPatch.GithubPatchData.BaseRepo),
+			Owner:         utility.FromStringPtr(existingPatch.GithubPatchData.BaseOwner),
+			CommitMessage: utility.FromStringPtr(commitMessage),
+			Username:      utility.FromStringPtr(existingPatch.GithubPatchData.Author),
+		}
+		newPatch, err := data.EnqueuePRToCommitQueue(ctx, evergreen.GetEnvironment(), r.sc, info)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("enqueueing patch '%s': %s", patchID, err.Error()))
+		}
+		return newPatch, nil
+	}
+
+	newPatch, err := data.CreatePatchForMerge(ctx, evergreen.GetEnvironment().Settings(), patchID, utility.FromStringPtr(commitMessage))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating new patch: %s", err.Error()))
 	}
@@ -202,7 +217,7 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, co
 	if err != nil && !adb.ResultsNotFound(err) {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred fetching patch `%s`: %s", patchID, err.Error()))
 	}
-	statusCode, err := units.SchedulePatch(ctx, patchID, version, patchUpdateReq)
+	statusCode, err := units.SchedulePatch(ctx, evergreen.GetEnvironment(), patchID, version, patchUpdateReq)
 	if err != nil {
 		return nil, mapHTTPStatusToGqlError(ctx, statusCode, werrors.Errorf("Error scheduling patch `%s`: %s", patchID, err.Error()))
 	}
@@ -386,7 +401,7 @@ func (r *mutationResolver) AttachProjectToRepo(ctx context.Context, projectID st
 }
 
 // CreateProject is the resolver for the createProject field.
-func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.APIProjectRef) (*restModel.APIProjectRef, error) {
+func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.APIProjectRef, requestS3Creds *bool) (*restModel.APIProjectRef, error) {
 	dbProjectRef, err := project.ToService()
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error converting project ref to service model: %s", err.Error()))
@@ -417,11 +432,16 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
 	}
 
+	if utility.FromBoolPtr(requestS3Creds) {
+		if err = data.RequestS3Creds(*apiProjectRef.Identifier); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating jira ticket to request S3 credentials: %s", err.Error()))
+		}
+	}
 	return &apiProjectRef, nil
 }
 
 // CopyProject is the resolver for the copyProject field.
-func (r *mutationResolver) CopyProject(ctx context.Context, project data.CopyProjectOpts) (*restModel.APIProjectRef, error) {
+func (r *mutationResolver) CopyProject(ctx context.Context, project data.CopyProjectOpts, requestS3Creds *bool) (*restModel.APIProjectRef, error) {
 	projectRef, err := data.CopyProject(ctx, evergreen.GetEnvironment(), project)
 	if projectRef == nil && err != nil {
 		apiErr, ok := err.(gimlet.ErrorResponse) // make sure bad request errors are handled correctly; all else should be treated as internal server error
@@ -439,6 +459,11 @@ func (r *mutationResolver) CopyProject(ctx context.Context, project data.CopyPro
 		// Use AddError to bypass gqlgen restriction that data and errors cannot be returned in the same response
 		// https://github.com/99designs/gqlgen/issues/1191
 		graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
+	}
+	if utility.FromBoolPtr(requestS3Creds) {
+		if err = data.RequestS3Creds(*projectRef.Identifier); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating jira ticket to request AWS access: %s", err.Error()))
+		}
 	}
 	return projectRef, nil
 }
@@ -882,7 +907,7 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string, faile
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id '%s'", taskID))
 	}
-	if err := model.ResetTaskOrDisplayTask(t, username, evergreen.UIPackage, failedOnly, nil); err != nil {
+	if err := model.ResetTaskOrDisplayTask(evergreen.GetEnvironment().Settings(), t, username, evergreen.UIPackage, failedOnly, nil); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error restarting task '%s': %s", taskID, err.Error()))
 	}
 	t, err = task.FindOneIdAndExecutionWithDisplayStatus(taskID, nil)

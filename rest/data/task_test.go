@@ -252,6 +252,32 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindByProjectAndCommit()
 	}
 }
 
+func (s *TaskConnectorFetchByProjectAndCommitSuite) TestRegexFindByProjectAndCommit() {
+	opts := task.GetTasksByProjectAndCommitOptions{
+		Project:        "project_0",
+		CommitHash:     "commit_0",
+		StartingTaskId: "",
+		Status:         "",
+		TaskName:       "",
+		VariantName:    "",
+		VariantRegex:   "^bv",
+		Limit:          0,
+	}
+	foundTasks, err := FindTasksByProjectAndCommit(opts)
+	s.NoError(err)
+	s.Equal(16, len(foundTasks))
+
+	opts.VariantRegex = "1$"
+	foundTasks, err = FindTasksByProjectAndCommit(opts)
+	s.NoError(err)
+	s.Equal(8, len(foundTasks))
+
+	opts.VariantRegex = "2$"
+	foundTasks, err = FindTasksByProjectAndCommit(opts)
+	s.NoError(err)
+	s.Equal(8, len(foundTasks))
+}
+
 func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindByProjectFail() {
 	opts := task.GetTasksByProjectAndCommitOptions{
 		Project:        "fake_project",

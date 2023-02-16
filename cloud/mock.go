@@ -253,10 +253,6 @@ func (m *mockManager) GetDNSName(ctx context.Context, host *host.Host) (string, 
 	return instance.DNSName, nil
 }
 
-func (_ *mockManager) GetSettings() ProviderSettings {
-	return &MockProviderSettings{}
-}
-
 // terminate an instance
 func (m *mockManager) TerminateInstance(ctx context.Context, host *host.Host, user, reason string) error {
 	l := m.mutex

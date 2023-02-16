@@ -110,11 +110,6 @@ func setup(t *testing.T, state *AtomicGraphQLState) {
 
 	require.NoError(t, usr.UpdateAPIKey(apiKey))
 
-	// TODO (EVG-15499): Create scope and role collection because the
-	// RoleManager will try creating them in a transaction, which is not allowed
-	// for FCV < 4.4.
-	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection, evergreen.RoleCollection))
-
 	require.NoError(t, setupData(*env.DB(), *env.Client().Database(state.TaskLogDB), state.TestData, *state))
 	roleManager := env.RoleManager()
 

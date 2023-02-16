@@ -178,7 +178,14 @@ func (c *s3get) Execute(ctx context.Context,
 
 	errChan := make(chan error)
 	go func() {
-		errChan <- errors.WithStack(c.getWithRetry(ctx, logger))
+		err := errors.WithStack(c.getWithRetry(ctx, logger))
+		select {
+		case errChan <- err:
+			return
+		case <-ctx.Done():
+			logger.Task().Infof("Context canceled waiting for s3 get: %s.", ctx.Err())
+			return
+		}
 	}()
 
 	select {

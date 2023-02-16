@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -23,7 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
-	"gopkg.in/20210107192922/yaml.v3"
+	"gopkg.in/yaml.v3"
 )
 
 func init() {
@@ -284,12 +285,12 @@ func boolPtr(b bool) *bool {
 }
 
 func TestPopulateExpansions(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(VersionCollection, patch.Collection, ProjectRefCollection, task.Collection))
+	assert.NoError(db.ClearCollections(VersionCollection, patch.Collection, ProjectRefCollection,
+		task.Collection, ParserProjectCollection))
 	defer func() {
-		assert.NoError(db.ClearCollections(VersionCollection, patch.Collection, ProjectRefCollection, task.Collection))
+		assert.NoError(db.ClearCollections(VersionCollection, patch.Collection, ProjectRefCollection,
+			task.Collection, ParserProjectCollection))
 	}()
 
 	h := host.Host{
@@ -309,13 +310,6 @@ func TestPopulateExpansions(t *testing.T) {
 			},
 		},
 	}
-	config := `
-buildvariants:
-- name: magic
-  expansions:
-    cake: lie
-    github_org: wut?
-`
 	projectRef := &ProjectRef{
 		Id:         "mci",
 		Identifier: "mci-favorite",
@@ -333,11 +327,6 @@ buildvariants:
 		},
 	}
 	assert.NoError(v.Insert())
-	pp := &ParserProject{}
-	err := util.UnmarshalYAMLWithFallback([]byte(config), &pp)
-	assert.NoError(err)
-	pp.Id = "v1"
-	assert.NoError(pp.Insert())
 	taskDoc := &task.Task{
 		Id:           "t1",
 		DisplayName:  "magical task",
@@ -354,9 +343,9 @@ buildvariants:
 	}
 	oauthToken, err := settings.GetGithubOauthToken()
 	assert.NoError(err)
-	expansions, err := PopulateExpansions(ctx, taskDoc, &h, oauthToken)
+	expansions, err := PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 24)
+	assert.Len(map[string]string(expansions), 23)
 	assert.Equal("0", expansions.Get("execution"))
 	assert.Equal("v1", expansions.Get("version_id"))
 	assert.Equal("t1", expansions.Get("task_id"))
@@ -379,10 +368,9 @@ buildvariants:
 	assert.Equal("", expansions.Get("is_patch"))
 	assert.False(expansions.Exists("is_commit_queue"))
 	assert.Equal("github_tag", expansions.Get("requester"))
+	assert.False(expansions.Exists("github_pr_number"))
 	assert.False(expansions.Exists("github_repo"))
 	assert.False(expansions.Exists("github_author"))
-	assert.False(expansions.Exists("github_pr_number"))
-	assert.Equal("lie", expansions.Get("cake"))
 
 	assert.NoError(VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
 		"$set": bson.M{VersionRequesterKey: evergreen.PatchVersionRequester},
@@ -392,15 +380,15 @@ buildvariants:
 	}
 	require.NoError(t, p.Insert())
 
-	expansions, err = PopulateExpansions(ctx, taskDoc, &h, oauthToken)
+	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 24)
+	assert.Len(map[string]string(expansions), 23)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("patch", expansions.Get("requester"))
 	assert.False(expansions.Exists("is_commit_queue"))
+	assert.False(expansions.Exists("github_pr_number"))
 	assert.False(expansions.Exists("github_repo"))
 	assert.False(expansions.Exists("github_author"))
-	assert.False(expansions.Exists("github_pr_number"))
 	assert.False(expansions.Exists("triggered_by_git_tag"))
 	require.NoError(t, db.ClearCollections(patch.Collection))
 
@@ -410,13 +398,26 @@ buildvariants:
 	p = patch.Patch{
 		Version:     v.Id,
 		Description: "commit queue message",
+		GithubPatchData: thirdparty.GithubPatch{
+			PRNumber:       12,
+			BaseOwner:      "potato",
+			BaseRepo:       "tomato",
+			Author:         "hemingway",
+			HeadHash:       "7d2fe4649f50f87cb60c2f80ac2ceda1e5b88522",
+			MergeCommitSHA: "21",
+		},
 	}
 	require.NoError(t, p.Insert())
-	expansions, err = PopulateExpansions(ctx, taskDoc, &h, oauthToken)
+	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 26)
+	assert.Len(map[string]string(expansions), 29)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("true", expansions.Get("is_commit_queue"))
+	assert.Equal("12", expansions.Get("github_pr_number"))
+	assert.Equal("potato", expansions.Get("github_org"))
+	assert.Equal(p.GithubPatchData.BaseRepo, expansions.Get("github_repo"))
+	assert.Equal(p.GithubPatchData.Author, expansions.Get("github_author"))
+	assert.Equal(p.GithubPatchData.HeadHash, expansions.Get("github_commit"))
 	assert.Equal("commit queue message", expansions.Get("commit_message"))
 	require.NoError(t, db.ClearCollections(patch.Collection))
 
@@ -427,7 +428,7 @@ buildvariants:
 		Version: v.Id,
 	}
 	require.NoError(t, p.Insert())
-	expansions, err = PopulateExpansions(ctx, taskDoc, &h, oauthToken)
+	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 27)
 	assert.Equal("true", expansions.Get("is_patch"))
@@ -452,7 +453,7 @@ buildvariants:
 	}
 	assert.NoError(patchDoc.Insert())
 
-	expansions, err = PopulateExpansions(ctx, taskDoc, &h, oauthToken)
+	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 27)
 	assert.Equal("github_pr", expansions.Get("requester"))
@@ -461,7 +462,7 @@ buildvariants:
 	assert.Equal("octocat", expansions.Get("github_author"))
 	assert.Equal("42", expansions.Get("github_pr_number"))
 	assert.Equal("abc123", expansions.Get("github_commit"))
-	assert.Equal("wut?", expansions.Get("github_org"))
+	assert.Equal("evergreen-ci", expansions.Get("github_org"))
 
 	upstreamTask := task.Task{
 		Id:       "upstreamTask",
@@ -477,7 +478,7 @@ buildvariants:
 	assert.NoError(upstreamProject.Insert())
 	taskDoc.TriggerID = "upstreamTask"
 	taskDoc.TriggerType = ProjectTriggerLevelTask
-	expansions, err = PopulateExpansions(ctx, taskDoc, &h, oauthToken)
+	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 35)
 	assert.Equal(taskDoc.TriggerID, expansions.Get("trigger_event_identifier"))
@@ -630,8 +631,8 @@ func (s *projectSuite) SetupTest() {
 				},
 			},
 			{
-				Name:     "bv_3",
-				Disabled: true,
+				Name:    "bv_3",
+				Disable: true,
 				Tasks: []BuildVariantTaskUnit{
 					{
 						Name: "disabled_task",
@@ -1269,7 +1270,7 @@ tasks:
   depends_on:
     - name: dist-test
 `
-	intermediate, err := createIntermediateProject([]byte(projYml), false, false)
+	intermediate, err := createIntermediateProject([]byte(projYml), false)
 	s.NoError(err)
 	marshaled, err := yaml.Marshal(intermediate)
 	s.NoError(err)
@@ -2390,7 +2391,12 @@ func TestDependenciesForTaskUnit(t *testing.T) {
 
 func TestGetVariantsAndTasksFromPatchProject(t *testing.T) {
 	require.NoError(t, db.ClearCollections(VersionCollection, ParserProjectCollection))
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
 	patchedConfig := `
 buildvariants:
   - name: bv1
@@ -2417,7 +2423,7 @@ tasks:
 		Version:              versionID,
 		PatchedParserProject: patchedConfig,
 	}
-	variantsAndTasks, err := GetVariantsAndTasksFromPatchProject(ctx, p)
+	variantsAndTasks, err := GetVariantsAndTasksFromPatchProject(ctx, env.Settings(), p)
 	assert.NoError(t, err)
 	assert.Len(t, variantsAndTasks.Variants["bv1"].Tasks, 1)
 
@@ -2436,7 +2442,7 @@ tasks:
 	assert.NotNil(t, pp)
 	assert.NoError(t, pp.Insert())
 	p.PatchedParserProject = ""
-	variantsAndTasks, err = GetVariantsAndTasksFromPatchProject(ctx, p)
+	variantsAndTasks, err = GetVariantsAndTasksFromPatchProject(ctx, env.Settings(), p)
 	assert.NoError(t, err)
 	require.NotZero(t, variantsAndTasks)
 	assert.Len(t, variantsAndTasks.Variants["bv1"].Tasks, 1)

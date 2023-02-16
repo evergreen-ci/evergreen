@@ -13,9 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/data"
-	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v34/github"
@@ -30,12 +28,38 @@ const (
 	githubActionOpened      = "opened"
 	githubActionSynchronize = "synchronize"
 	githubActionReopened    = "reopened"
-	commitUnsigned          = "unsigned"
 
-	retryComment = "evergreen retry"
-	patchComment = "evergreen patch"
-	refTags      = "refs/tags/"
+	// pull request comments
+	retryComment   = "evergreen retry"
+	patchComment   = "evergreen patch"
+	triggerComment = "evergreen merge"
+
+	refTags = "refs/tags/"
 )
+
+func trimComment(comment string) string {
+	return strings.Join(strings.Fields(strings.ToLower(comment)), " ")
+}
+
+func isRetryComment(comment string) bool {
+	return trimComment(comment) == retryComment
+}
+func isPatchComment(comment string) bool {
+	return trimComment(comment) == patchComment
+}
+
+// containsTriggerComment checks if "evergreen merge" is present in the comment, as
+// it may be followed by a newline and a message.
+func containsTriggerComment(comment string) bool {
+	return strings.HasPrefix(trimComment(comment), triggerComment)
+}
+
+func triggersCommitQueue(commentAction string, comment string) bool {
+	if commentAction == "deleted" {
+		return false
+	}
+	return containsTriggerComment(comment)
+}
 
 type githubHookApi struct {
 	queue  amboy.Queue
@@ -210,7 +234,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 
 	case *github.IssueCommentEvent:
 		if event.Issue.IsPullRequest() {
-			if commitqueue.TriggersCommitQueue(*event.Action, *event.Comment.Body) {
+			if triggersCommitQueue(*event.Action, *event.Comment.Body) {
 				grip.Info(message.Fields{
 					"source":    "GitHub hook",
 					"msg_id":    gh.msgID,
@@ -220,7 +244,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 					"user":      *event.Sender.Login,
 					"message":   "commit queue triggered",
 				})
-				if err := gh.commitQueueEnqueue(ctx, event); err != nil {
+				if _, err := data.EnqueuePRToCommitQueue(ctx, evergreen.GetEnvironment(), gh.sc, createEnqueuePRInfo(event)); err != nil {
 					grip.Error(message.WrapError(err, message.Fields{
 						"source":    "GitHub hook",
 						"msg_id":    gh.msgID,
@@ -500,6 +524,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 		Revision:   revision,
 		GitTag:     tag,
 		RemotePath: remotePath,
+		Activate:   true,
 	}
 	var projectInfo model.ProjectInfo
 	if remotePath != "" {
@@ -516,14 +541,14 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 		}
 	} else {
 		// use the standard project config with the git tag alias
-		projectInfo, err = model.LoadProjectInfoForVersion(existingVersion, pRef.Id)
+		projectInfo, err = model.LoadProjectInfoForVersion(ctx, gh.settings, existingVersion, pRef.Id)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting project '%s'", pRef.Identifier)
 		}
 		metadata.Alias = evergreen.GitTagAlias
 	}
 	projectInfo.Ref = &pRef
-	return gh.sc.CreateVersionFromConfig(ctx, &projectInfo, metadata, true)
+	return gh.sc.CreateVersionFromConfig(ctx, &projectInfo, metadata)
 }
 
 func validatePushTagEvent(event *github.PushEvent) error {
@@ -545,124 +570,6 @@ func validatePushTagEvent(event *github.PushEvent) error {
 	}
 	if !event.GetCreated() {
 		return errors.New("not a tag creation event")
-	}
-	return nil
-}
-
-func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.IssueCommentEvent) error {
-	userRepo := data.UserRepoInfo{
-		Username: *event.Comment.User.Login,
-		Owner:    *event.Repo.Owner.Login,
-		Repo:     *event.Repo.Name,
-	}
-	authorized, err := gh.sc.IsAuthorizedToPatchAndMerge(ctx, gh.settings, userRepo)
-	if err != nil {
-		return errors.Wrap(err, "getting user info from GitHub API")
-	}
-	if !authorized {
-		return errors.Errorf("user '%s' is not authorized to merge", userRepo.Username)
-	}
-
-	prNum := *event.Issue.Number
-	pr, err := gh.sc.GetGitHubPR(ctx, userRepo.Owner, userRepo.Repo, prNum)
-	if err != nil {
-		return errors.Wrap(err, "getting PR from GitHub API")
-	}
-
-	if pr == nil || pr.Base == nil || pr.Base.Ref == nil {
-		return errors.New("PR contains no base branch label")
-	}
-
-	cqInfo := restModel.ParseGitHubComment(*event.Comment.Body)
-	baseBranch := *pr.Base.Ref
-	projectRef, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(userRepo.Owner, userRepo.Repo, baseBranch)
-	if err != nil {
-		return errors.Wrapf(err, "getting project for '%s:%s' tracking branch '%s'", userRepo.Owner, userRepo.Repo, baseBranch)
-	}
-	if projectRef == nil {
-		return errors.Errorf("no project with commit queue enabled for '%s:%s' tracking branch '%s'", userRepo.Owner, userRepo.Repo, baseBranch)
-	}
-
-	if utility.FromBoolPtr(projectRef.CommitQueue.RequireSigned) {
-		err = gh.requireSigned(ctx, userRepo, *pr.Head.Ref, pr, prNum)
-		if err != nil {
-			sendErr := thirdparty.SendCommitQueueGithubStatus(evergreen.GetEnvironment(), pr, message.GithubStateFailure, "can't enqueue with unsigned commits", "")
-			grip.Error(message.WrapError(sendErr, message.Fields{
-				"message": "error sending patch creation failure to github",
-				"owner":   userRepo.Owner,
-				"repo":    userRepo.Repo,
-				"pr":      prNum,
-			}))
-			return errors.Wrapf(err, "checking commit signing")
-		}
-	}
-
-	patchId, err := gh.sc.AddPatchForPr(ctx, *projectRef, prNum, cqInfo.Modules, cqInfo.MessageOverride)
-	if err != nil {
-		sendErr := thirdparty.SendCommitQueueGithubStatus(evergreen.GetEnvironment(), pr, message.GithubStateFailure, "failed to create patch", "")
-		grip.Error(message.WrapError(sendErr, message.Fields{
-			"message": "error sending patch creation failure to github",
-			"owner":   userRepo.Owner,
-			"repo":    userRepo.Repo,
-			"pr":      prNum,
-		}))
-		return errors.Wrap(err, "adding patch for PR")
-	}
-
-	item := restModel.APICommitQueueItem{
-		Issue:           utility.ToStringPtr(strconv.Itoa(prNum)),
-		MessageOverride: &cqInfo.MessageOverride,
-		Modules:         cqInfo.Modules,
-		Source:          utility.ToStringPtr(commitqueue.SourcePullRequest),
-		PatchId:         &patchId,
-	}
-	_, err = data.EnqueueItem(projectRef.Id, item, false)
-	if err != nil {
-		return errors.Wrap(err, "enqueueing commit queue item")
-	}
-
-	if pr == nil || pr.Head == nil || pr.Head.SHA == nil {
-		return errors.New("PR contains no head branch SHA")
-	}
-	pushJob := units.NewGithubStatusUpdateJobForPushToCommitQueue(userRepo.Owner, userRepo.Repo, *pr.Head.SHA, prNum, patchId)
-	q := evergreen.GetEnvironment().LocalQueue()
-	grip.Error(message.WrapError(q.Put(ctx, pushJob), message.Fields{
-		"source":  "GitHub hook",
-		"msg_id":  gh.msgID,
-		"event":   gh.eventType,
-		"action":  event.Action,
-		"owner":   userRepo.Owner,
-		"repo":    userRepo.Repo,
-		"item":    prNum,
-		"message": "failed to queue notification for commit queue push",
-	}))
-
-	return nil
-}
-
-func (gh *githubHookApi) requireSigned(ctx context.Context, userRepo data.UserRepoInfo, baseBranch string, pr *github.PullRequest, prNum int) error {
-	settings, err := evergreen.GetConfig()
-	if err != nil {
-		return errors.Wrap(err, "getting admin settings")
-	}
-
-	githubToken, err := settings.GetGithubOauthToken()
-	if err != nil {
-		return errors.Wrap(err, "getting GitHub OAuth token from settings")
-	}
-
-	commits, err := thirdparty.GetGithubPullRequestCommits(ctx, githubToken, userRepo.Owner, userRepo.Repo, prNum)
-	if err != nil {
-		return errors.Wrap(err, "getting GitHub commits")
-	}
-
-	for _, c := range commits {
-		commit := c.GetCommit()
-		if commit.Verification != nil && !utility.FromBoolPtr(commit.Verification.Verified) &&
-			utility.FromStringPtr(commit.Verification.Reason) == commitUnsigned {
-			return errors.Errorf("commit '%s' is not signed", utility.FromStringPtr(commit.SHA))
-		}
-
 	}
 	return nil
 }
@@ -696,6 +603,16 @@ func (gh *githubHookApi) tryDequeueCommitQueueItemForPR(pr *github.PullRequest) 
 	return nil
 }
 
+func createEnqueuePRInfo(event *github.IssueCommentEvent) commitqueue.EnqueuePRInfo {
+	return commitqueue.EnqueuePRInfo{
+		Username:      *event.Comment.User.Login,
+		Owner:         *event.Repo.Owner.Login,
+		Repo:          *event.Repo.Name,
+		PR:            *event.Issue.Number,
+		CommitMessage: *event.Comment.Body,
+	}
+}
+
 func isItemOnCommitQueue(id, item string) (bool, error) {
 	cq, err := commitqueue.FindOneId(id)
 	if err != nil {
@@ -718,15 +635,15 @@ func triggersPatch(action, comment string) (bool, string) {
 	if action == "deleted" {
 		return false, ""
 	}
-	comment = strings.TrimSpace(comment)
-	switch comment {
-	case patchComment:
+
+	if isPatchComment(comment) {
 		return true, patch.ManualCaller
-	case retryComment:
-		return true, patch.AllCallers
-	default:
-		return false, ""
 	}
+	if isRetryComment(comment) {
+		return true, patch.AllCallers
+	}
+
+	return false, ""
 }
 
 func isTag(ref string) bool {

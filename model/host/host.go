@@ -62,7 +62,7 @@ type Host struct {
 
 	// the task that is currently running on the host
 	RunningTask             string `bson:"running_task,omitempty" json:"running_task,omitempty"`
-	RunningTaskExecution    int    `bson:"running_task_execution,omitempty" json:"running_task_execution,omitempty"`
+	RunningTaskExecution    int    `bson:"running_task_execution" json:"running_task_execution"`
 	RunningTaskBuildVariant string `bson:"running_task_bv,omitempty" json:"running_task_bv,omitempty"`
 	RunningTaskVersion      string `bson:"running_task_version,omitempty" json:"running_task_version,omitempty"`
 	RunningTaskProject      string `bson:"running_task_project,omitempty" json:"running_task_project,omitempty"`
@@ -85,6 +85,8 @@ type Host struct {
 	// creation is when the host document was inserted to the DB, start is when it was started on the cloud provider
 	CreationTime time.Time `bson:"creation_time" json:"creation_time"`
 	StartTime    time.Time `bson:"start_time" json:"start_time"`
+	// BillingStartTime is when billing started for the host.
+	BillingStartTime time.Time `bson:"billing_start_time" json:"billing_start_time"`
 	// AgentStartTime is when the agent first initiates contact with the app
 	// server.
 	AgentStartTime  time.Time `bson:"agent_start_time" json:"agent_start_time"`
@@ -215,7 +217,9 @@ func GetPortMap(m nat.PortMap) PortMap {
 	return res
 }
 
-// DockerOptions contains options for starting a container
+// DockerOptions contains options for starting a container. This fulfills the
+// ProviderSettings interface to populate container information from the distro
+// settings.
 type DockerOptions struct {
 	// Optional parameters to define a registry name and authentication
 	RegistryName     string `mapstructure:"docker_registry_name" bson:"docker_registry_name,omitempty" json:"docker_registry_name,omitempty"`
@@ -239,6 +243,8 @@ type DockerOptions struct {
 	EnvironmentVars []string `mapstructure:"environment_vars" bson:"environment_vars,omitempty" json:"environment_vars,omitempty"`
 }
 
+// FromDistroSettings loads the Docker container options from the provider
+// settings.
 func (opts *DockerOptions) FromDistroSettings(d distro.Distro, _ string) error {
 	if len(d.ProviderSettingsList) != 0 {
 		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
@@ -383,26 +389,58 @@ func (h *Host) GetTaskGroupString() string {
 
 // IdleTime returns how long has this host been idle
 func (h *Host) IdleTime() time.Duration {
-
-	// if the host is currently running a task, it is not idle
+	// If the host is currently running a task, it is not idle.
 	if h.RunningTask != "" {
-		return time.Duration(0)
+		return 0
 	}
 
-	// if the host has run a task before, then the idle time is just the time
-	// passed since the last task finished
+	// If the host is not running a task then the idle time is the time
+	// elapsed since the last task finished.
+	return h.SinceLastTaskCompletion()
+}
+
+// SinceLastTaskCompletion returns the duration since the last task to run on the host
+// completed or, if no task has run, the host's uptime.
+func (h *Host) SinceLastTaskCompletion() time.Duration {
+	// If the host has run a task, return the time the last task finished running.
 	if h.LastTask != "" {
 		return time.Since(h.LastTaskCompletedTime)
 	}
 
-	// if the host has been provisioned, the idle time is how long it has been provisioned
-	if !utility.IsZeroTime(h.ProvisionTime) {
-		return time.Since(h.ProvisionTime)
+	// If the host has not yet run a task, return how long it has been billable.
+	if !utility.IsZeroTime(h.BillingStartTime) {
+		return time.Since(h.BillingStartTime)
 	}
 
-	// if the host has not run a task before, the idle time is just
-	// how long is has been since the host was created
-	return time.Since(h.CreationTime)
+	// If the host hasn't run a task and its billing start time is not set, return
+	// how long it has been since the host was started.
+	return time.Since(h.StartTime)
+}
+
+func (h *Host) TaskStartMessage() message.Fields {
+	msg := message.Fields{
+		"stat":                 "host-start-task",
+		"distro":               h.Distro.Id,
+		"provider":             h.Distro.Provider,
+		"provisioning":         h.Distro.BootstrapSettings.Method,
+		"host_id":              h.Id,
+		"status":               h.Status,
+		"since_last_task_secs": h.SinceLastTaskCompletion().Seconds(),
+		"spawn_host":           h.StartedBy != evergreen.User && !h.SpawnOptions.SpawnedByTask,
+		"task_spawn_host":      h.SpawnOptions.SpawnedByTask,
+		"has_containers":       h.HasContainers,
+		"task_host":            h.StartedBy == evergreen.User && !h.HasContainers,
+	}
+
+	if strings.HasPrefix(h.Distro.Provider, "ec2") {
+		msg["provider"] = "ec2"
+	}
+
+	if h.Provider != evergreen.ProviderNameStatic {
+		msg["host_task_count"] = h.TaskCount
+	}
+
+	return msg
 }
 
 func (h *Host) GetAMI() string {
@@ -700,6 +738,17 @@ func (h *Host) CreateSecret() error {
 		return err
 	}
 	h.Secret = secret
+	return nil
+}
+
+func (h *Host) SetBillingStartTime(startTime time.Time) error {
+	if err := UpdateOne(
+		bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{BillingStartTimeKey: startTime}},
+	); err != nil {
+		return errors.Wrap(err, "setting billing start time")
+	}
+	h.BillingStartTime = startTime
 	return nil
 }
 
@@ -1296,8 +1345,9 @@ func (h *Host) ClearRunningAndSetLastTask(t *task.Task) error {
 	now := time.Now()
 	err := UpdateOne(
 		bson.M{
-			IdKey:          h.Id,
-			RunningTaskKey: h.RunningTask,
+			IdKey:                   h.Id,
+			RunningTaskKey:          h.RunningTask,
+			RunningTaskExecutionKey: h.RunningTaskExecution,
 		},
 		bson.M{
 			"$set": bson.M{
@@ -1330,6 +1380,7 @@ func (h *Host) ClearRunningAndSetLastTask(t *task.Task) error {
 		"host_tag":        h.Tag,
 		"distro":          h.Distro.Id,
 		"running_task_id": h.RunningTask,
+		"task_execution":  h.RunningTaskExecution,
 		"last_task_id":    t.Id,
 	})
 
@@ -1364,11 +1415,12 @@ func (h *Host) ClearRunningTask() error {
 	if hadRunningTask {
 		event.LogHostRunningTaskCleared(h.Id, h.RunningTask, h.RunningTaskExecution)
 		grip.Info(message.Fields{
-			"message":  "cleared host running task",
-			"host_id":  h.Id,
-			"host_tag": h.Tag,
-			"distro":   h.Distro.Id,
-			"task_id":  h.RunningTask,
+			"message":        "cleared host running task",
+			"host_id":        h.Id,
+			"host_tag":       h.Tag,
+			"distro":         h.Distro.Id,
+			"task_id":        h.RunningTask,
+			"task_execution": h.RunningTaskExecution,
 		})
 	}
 
@@ -1416,40 +1468,9 @@ func (h *Host) clearRunningTaskWithFunc(doUpdate func(update bson.M) error) erro
 	return nil
 }
 
-// UpdateRunningTask updates the running task in the host document and logs an
-// event indicating that it's been assigned a task.
-func (h *Host) UpdateRunningTask(t *task.Task) error {
-	doUpdate := func(query, update bson.M) error {
-		return UpdateOne(query, update)
-	}
-	if err := h.updateRunningTaskWithFunc(doUpdate, t); err != nil {
-		return err
-	}
-
-	event.LogHostRunningTaskSet(h.Id, t.Id, t.Execution)
-
-	grip.Info(message.Fields{
-		"message":  "host running task set",
-		"host_id":  h.Id,
-		"host_tag": h.Tag,
-		"task_id":  t.Id,
-		"distro":   h.Distro.Id,
-	})
-
-	return nil
-}
-
 // UpdateRunningTaskWithContext updates the running task for the host. It does
 // not log an event for task assignment.
 func (h *Host) UpdateRunningTaskWithContext(ctx context.Context, env evergreen.Environment, t *task.Task) error {
-	doUpdate := func(query, update bson.M) error {
-		_, err := env.DB().Collection(Collection).UpdateOne(ctx, query, update)
-		return err
-	}
-	return h.updateRunningTaskWithFunc(doUpdate, t)
-}
-
-func (h *Host) updateRunningTaskWithFunc(doUpdate func(query, update bson.M) error, t *task.Task) error {
 	if t == nil {
 		return errors.New("received nil task, cannot update")
 	}
@@ -1481,7 +1502,7 @@ func (h *Host) updateRunningTaskWithFunc(doUpdate func(query, update bson.M) err
 		},
 	}
 
-	if err := doUpdate(query, update); err != nil {
+	if _, err := env.DB().Collection(Collection).UpdateOne(ctx, query, update); err != nil {
 		grip.DebugWhen(db.IsDuplicateKey(err), message.WrapError(err, message.Fields{
 			"message": "found duplicate running task",
 			"task":    t.Id,

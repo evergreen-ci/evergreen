@@ -288,11 +288,6 @@ type ec2Manager struct {
 	settings    *evergreen.Settings
 }
 
-// GetSettings returns a pointer to the manager's configuration settings struct.
-func (m *ec2Manager) GetSettings() ProviderSettings {
-	return &EC2ProviderSettings{}
-}
-
 // Configure loads credentials or other settings from the config file.
 func (m *ec2Manager) Configure(ctx context.Context, settings *evergreen.Settings) error {
 	m.settings = settings

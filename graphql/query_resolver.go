@@ -23,7 +23,9 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/plank"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	werrors "github.com/pkg/errors"
@@ -217,7 +219,7 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 		case HostSortByCurrentTask:
 			sorter = host.RunningTaskKey
 		case HostSortByDistro:
-			sorter = host.DistroKey
+			sorter = bsonutil.GetDottedKeyName(host.DistroKey, distro.IdKey)
 		case HostSortByElapsed:
 			sorter = "task_full.start_time"
 		case HostSortByID:
@@ -358,10 +360,10 @@ func (r *queryResolver) GithubProjectConflicts(ctx context.Context, projectID st
 }
 
 // Project is the resolver for the project field.
-func (r *queryResolver) Project(ctx context.Context, projectID string) (*restModel.APIProjectRef, error) {
-	project, err := data.FindProjectById(projectID, true, false)
+func (r *queryResolver) Project(ctx context.Context, projectIdentifier string) (*restModel.APIProjectRef, error) {
+	project, err := data.FindProjectById(projectIdentifier, true, false)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding project by id %s: %s", projectID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding project by id %s: %s", projectIdentifier, err.Error()))
 	}
 	apiProjectRef := restModel.APIProjectRef{}
 	err = apiProjectRef.BuildFromService(*project)
@@ -520,6 +522,18 @@ func (r *queryResolver) MyVolumes(ctx context.Context) ([]*restModel.APIVolume, 
 	return getAPIVolumeList(volumes)
 }
 
+// LogkeeperBuildMetadata is the resolver for the logkeeperBuildMetadata field.
+func (r *queryResolver) LogkeeperBuildMetadata(ctx context.Context, buildID string) (*plank.Build, error) {
+	client := plank.NewLogkeeperClient(plank.NewLogkeeperClientOptions{
+		BaseURL: evergreen.GetEnvironment().Settings().LoggerConfig.LogkeeperURL,
+	})
+	build, err := client.GetBuildMetadata(ctx, buildID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+	return &build, nil
+}
+
 // Task is the resolver for the task field.
 func (r *queryResolver) Task(ctx context.Context, taskID string, execution *int) (*restModel.APITask, error) {
 	dbTask, err := task.FindOneIdAndExecutionWithDisplayStatus(taskID, execution)
@@ -568,49 +582,6 @@ func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([
 	}
 	allTasks = append(allTasks, apiTask)
 	return allTasks, nil
-}
-
-// TaskFiles is the resolver for the taskFiles field.
-func (r *queryResolver) TaskFiles(ctx context.Context, taskID string, execution *int) (*TaskFiles, error) {
-	emptyTaskFiles := TaskFiles{
-		FileCount:    0,
-		GroupedFiles: []*GroupedFiles{},
-	}
-	t, err := task.FindByIdExecution(taskID, execution)
-	if t == nil {
-		return &emptyTaskFiles, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
-	}
-	if err != nil {
-		return &emptyTaskFiles, ResourceNotFound.Send(ctx, err.Error())
-	}
-	groupedFilesList := []*GroupedFiles{}
-	fileCount := 0
-	if t.DisplayOnly {
-		execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
-		if err != nil {
-			return &emptyTaskFiles, ResourceNotFound.Send(ctx, err.Error())
-		}
-		for _, execTask := range execTasks {
-			groupedFiles, err := getGroupedFiles(ctx, execTask.DisplayName, execTask.Id, t.Execution)
-			if err != nil {
-				return &emptyTaskFiles, err
-			}
-			fileCount += len(groupedFiles.Files)
-			groupedFilesList = append(groupedFilesList, groupedFiles)
-		}
-	} else {
-		groupedFiles, err := getGroupedFiles(ctx, t.DisplayName, taskID, t.Execution)
-		if err != nil {
-			return &emptyTaskFiles, err
-		}
-		fileCount += len(groupedFiles.Files)
-		groupedFilesList = append(groupedFilesList, groupedFiles)
-	}
-	taskFiles := TaskFiles{
-		FileCount:    fileCount,
-		GroupedFiles: groupedFilesList,
-	}
-	return &taskFiles, nil
 }
 
 // TaskLogs is the resolver for the taskLogs field.
@@ -807,17 +778,17 @@ func (r *queryResolver) UserSettings(ctx context.Context) (*restModel.APIUserSet
 }
 
 // CommitQueue is the resolver for the commitQueue field.
-func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.APICommitQueue, error) {
-	commitQueue, err := data.FindCommitQueueForProject(id)
+func (r *queryResolver) CommitQueue(ctx context.Context, projectIdentifier string) (*restModel.APICommitQueue, error) {
+	commitQueue, err := data.FindCommitQueueForProject(projectIdentifier)
 	if err != nil {
 		if werrors.Cause(err) == err {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding commit queue for %s: %s", id, err.Error()))
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding commit queue for %s: %s", projectIdentifier, err.Error()))
 		}
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding commit queue for %s: %s", id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding commit queue for %s: %s", projectIdentifier, err.Error()))
 	}
-	project, err := data.FindProjectById(id, true, true)
+	project, err := data.FindProjectById(projectIdentifier, true, true)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding project %s: %s", id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding project %s: %s", projectIdentifier, err.Error()))
 	}
 	if project.CommitQueue.Message != "" {
 		commitQueue.Message = &project.CommitQueue.Message
@@ -845,17 +816,17 @@ func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.
 }
 
 // BuildVariantsForTaskName is the resolver for the buildVariantsForTaskName field.
-func (r *queryResolver) BuildVariantsForTaskName(ctx context.Context, projectID string, taskName string) ([]*task.BuildVariantTuple, error) {
-	pid, err := model.GetIdForProject(projectID)
+func (r *queryResolver) BuildVariantsForTaskName(ctx context.Context, projectIdentifier string, taskName string) ([]*task.BuildVariantTuple, error) {
+	pid, err := model.GetIdForProject(projectIdentifier)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with id: %s", projectID))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with id: %s", projectIdentifier))
 	}
 	repo, err := model.FindRepository(pid)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting repository for '%s': %s", projectID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting repository for '%s': %s", pid, err.Error()))
 	}
 	if repo == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find repository '%s'", projectID))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find repository '%s'", pid))
 	}
 	taskBuildVariants, err := task.FindUniqueBuildVariantNamesByTask(pid, taskName, repo.RevisionOrderNumber, false)
 	if err != nil {
@@ -876,9 +847,9 @@ func (r *queryResolver) BuildVariantsForTaskName(ctx context.Context, projectID 
 
 // MainlineCommits is the resolver for the mainlineCommits field.
 func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCommitsOptions, buildVariantOptions *BuildVariantOptions) (*MainlineCommits, error) {
-	projectId, err := model.GetIdForProject(options.ProjectID)
+	projectId, err := model.GetIdForProject(options.ProjectIdentifier)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with id: %s", options.ProjectID))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with id: %s", options.ProjectIdentifier))
 	}
 	limit := model.DefaultMainlineCommitVersionLimit
 	if utility.FromIntPtr(options.Limit) != 0 {
@@ -1019,14 +990,14 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 }
 
 // TaskNamesForBuildVariant is the resolver for the taskNamesForBuildVariant field.
-func (r *queryResolver) TaskNamesForBuildVariant(ctx context.Context, projectID string, buildVariant string) ([]string, error) {
-	pid, err := model.GetIdForProject(projectID)
+func (r *queryResolver) TaskNamesForBuildVariant(ctx context.Context, projectIdentifier string, buildVariant string) ([]string, error) {
+	pid, err := model.GetIdForProject(projectIdentifier)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with id: %s", projectID))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with id: %s", projectIdentifier))
 	}
 	repo, err := model.FindRepository(pid)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting repository for '%s': %s", projectID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting repository for '%s': %s", pid, err.Error()))
 	}
 	if repo == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find repository '%s'", pid))

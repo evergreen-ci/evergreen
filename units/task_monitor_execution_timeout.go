@@ -155,7 +155,7 @@ func (j *taskExecutionTimeoutJob) cleanUpTimedOutTask(ctx context.Context) error
 			}
 		}
 
-		return errors.Wrapf(model.FixStaleTask(j.task), "resetting stale task '%s'", j.task.Id)
+		return errors.Wrapf(model.FixStaleTask(j.env.Settings(), j.task), "resetting stale task '%s'", j.task.Id)
 	}
 
 	host, err := host.FindOne(host.ById(j.task.HostId))
@@ -197,7 +197,7 @@ func (j *taskExecutionTimeoutJob) cleanUpTimedOutTask(ctx context.Context) error
 		}
 	}
 
-	if err := model.FixStaleTask(j.task); err != nil {
+	if err := model.FixStaleTask(j.env.Settings(), j.task); err != nil {
 		return errors.Wrapf(err, "resetting stale task '%s'", j.task.Id)
 	}
 
