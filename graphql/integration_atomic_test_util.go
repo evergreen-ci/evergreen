@@ -1,4 +1,4 @@
-
+package graphql
 
 // This test takes a specification and runs GraphQL queries, comparing the output of the query to what is expected.
 // To add a new test:
