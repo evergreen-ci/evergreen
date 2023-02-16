@@ -1276,12 +1276,15 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 			DisplayOnly:         true,
 		},
 		{
-			Id:          "et0_0",
-			DisplayName: "et0",
+			Id:             "et0_0",
+			DisplayName:    "et0",
+			ResultsService: testresult.TestResultsServiceLocal,
+			ResultsFailed:  true,
 		},
 		{
-			Id:          "et1_0",
-			DisplayName: "et1",
+			Id:             "et1_0",
+			DisplayName:    "et1",
+			ResultsService: testresult.TestResultsServiceLocal,
 		},
 		{
 			Id:                  "dt0_1",
@@ -1301,8 +1304,10 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 			DisplayName: "et0",
 		},
 		{
-			Id:          "et1_1",
-			DisplayName: "et1",
+			Id:             "et1_1",
+			DisplayName:    "et1",
+			ResultsService: testresult.TestResultsServiceLocal,
+			ResultsFailed:  true,
 		},
 	}
 	for _, task := range tasks {
@@ -1333,6 +1338,7 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 	// alert for the second run of the display task with the same execution task (et0) failing with a new test (f1)
 	tr.task = &tasks[3]
 	testresult.InsertLocal(testresult.TestResult{TaskID: "et0_1", TestName: "f1", Status: evergreen.TestFailedStatus})
+	require.NoError(t, tasks[4].SetResultsInfo(testresult.TestResultsServiceLocal, true))
 	notification, err = tr.taskRegressionByTest(&event.Subscription{ID: "s1", Subscriber: subscriber, Trigger: "t1"})
 	assert.NoError(t, err)
 	require.NotNil(t, notification)

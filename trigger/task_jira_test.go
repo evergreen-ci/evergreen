@@ -305,7 +305,7 @@ func TestJiraDescription(t *testing.T) {
 				So(d, ShouldContainSubstring, cleanTestName(testName1))
 				So(d, ShouldContainSubstring, "direct_link")
 				So(d, ShouldContainSubstring, cleanTestName(testName2))
-				So(d, ShouldContainSubstring, "test_log/123")
+				So(d, ShouldContainSubstring, "test_log/")
 				Convey("but passing tasks should not be present", func() {
 					So(d, ShouldNotContainSubstring, cleanTestName(testName3))
 				})
