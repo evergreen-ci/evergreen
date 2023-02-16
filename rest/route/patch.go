@@ -72,7 +72,7 @@ func (p *patchChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 				StatusCode: http.StatusForbidden,
 			})
 		}
-		if err := dbModel.SetVersionsPriority([]string{p.patchId}, priority, ""); err != nil {
+		if err := dbModel.SetVersionPriority(p.patchId, priority, ""); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting patch priority"))
 		}
 	}
@@ -377,11 +377,11 @@ func (p *patchRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(foundPatch)
 }
 
-// //////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
 //
 // Handler for creating a new merge patch from an existing patch
 //
-//	/patches/{patch_id}/merge_patch
+//    /patches/{patch_id}/merge_patch
 type mergePatchHandler struct {
 	CommitMessage string `json:"commit_message"`
 

@@ -117,6 +117,19 @@ func ByRevisionWithSystemVersionRequester(revision string) db.Q {
 	})
 }
 
+// ByRecentlyActivatedForProjectAndVariant builds a query that returns all
+// builds before a given revision that were activated for a project + variant.
+// Builds are sorted from most to least recent.
+func ByRecentlyActivatedForProjectAndVariant(revision int, project, variant, requester string) db.Q {
+	return db.Query(bson.M{
+		RevisionOrderNumberKey: bson.M{"$lt": revision},
+		ActivatedKey:           true,
+		BuildVariantKey:        variant,
+		ProjectKey:             project,
+		RequesterKey:           requester,
+	}).Sort([]string{"-" + RevisionOrderNumberKey})
+}
+
 // ByRecentlySuccessfulForProjectAndVariant builds a query that returns all
 // builds before a given revision that were successful for a project + variant.
 // Builds are sorted from most to least recent.
@@ -189,6 +202,20 @@ func ByAfterRevision(project, buildVariant string, revision int) db.Q {
 		},
 		RevisionOrderNumberKey: bson.M{"$gte": revision},
 	}).Sort([]string{RevisionOrderNumberKey})
+}
+
+// ByRecentlyFinished builds a query that returns all builds for a given project
+// that are versions (not patches), that have finished and have non-zero
+// makespans.
+func ByRecentlyFinishedWithMakespans(limit int) db.Q {
+	return db.Query(bson.M{
+		RequesterKey: bson.M{
+			"$in": evergreen.SystemVersionRequesterTypes,
+		},
+		PredictedMakespanKey: bson.M{"$gt": 0},
+		ActualMakespanKey:    bson.M{"$gt": 0},
+		StatusKey:            bson.M{"$in": evergreen.TaskCompletedStatuses},
+	}).Sort([]string{RevisionOrderNumberKey}).Limit(limit)
 }
 
 // DB Boilerplate

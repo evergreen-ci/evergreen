@@ -522,33 +522,17 @@ func GetMainlineCommitVersionsWithOptions(projectId string, opts MainlineCommitV
 	return res, nil
 }
 
-// VersionsOptions is a struct containing options necessary to get and modify versions.
-// It uses a superset of the options in the GetVersionsOptions struct.
-type VersionsOptions struct {
-	Priority     *int64 `json:"priority"`
-	StartTimeStr string `json:"start_time_str"`
-	EndTimeStr   string `json:"end_time_str"`
-	GetVersionsOptions
-}
-
-// GetVersionsOptions is a struct that holds the options for retrieving a list of versions
 type GetVersionsOptions struct {
-	Priority       *int64    `json:"priority"`
-	RevisionStart  int       `json:"revision_start"`
-	RevisionEnd    int       `json:"revision_end"`
-	StartTime      time.Time `json:"start_time"`
-	EndTime        time.Time `json:"end_time"`
-	Requester      string    `json:"requester"`
-	Limit          int       `json:"limit"`
-	Skip           int       `json:"skip"`
-	IncludeBuilds  bool      `json:"include_builds"`
-	IncludeTasks   bool      `json:"include_tasks"`
-	ByBuildVariant string    `json:"by_build_variant"`
-	ByTask         string    `json:"by_task"`
+	StartAfter     int    `json:"start"`
+	Requester      string `json:"requester"`
+	Limit          int    `json:"limit"`
+	Skip           int    `json:"skip"`
+	IncludeBuilds  bool   `json:"include_builds"`
+	IncludeTasks   bool   `json:"include_tasks"`
+	ByBuildVariant string `json:"by_build_variant"`
+	ByTask         string `json:"by_task"`
 }
 
-// GetVersionsWithOptions returns versions for a project, that satisfy a set of query parameters defined by
-// the input GetVersionsOptions.
 func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Version, error) {
 	projectId, err := GetIdForProject(projectName)
 	if err != nil {
@@ -566,17 +550,8 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 		match[bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusVariantKey)] = opts.ByBuildVariant
 	}
 
-	if !opts.StartTime.IsZero() {
-		match[VersionCreateTimeKey] = bson.M{
-			"$gte": opts.StartTime,
-			"$lte": opts.EndTime,
-		}
-	} else {
-		if opts.RevisionEnd > 0 && opts.RevisionStart > 0 {
-			match[VersionRevisionOrderNumberKey] = bson.M{"$lte": opts.RevisionStart, "$gte": opts.RevisionEnd}
-		} else if opts.RevisionStart > 0 {
-			match[VersionRevisionOrderNumberKey] = bson.M{"$lte": opts.RevisionStart}
-		}
+	if opts.StartAfter > 0 {
+		match[VersionRevisionOrderNumberKey] = bson.M{"$lt": opts.StartAfter}
 	}
 	pipeline := []bson.M{{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
