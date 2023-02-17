@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
@@ -134,7 +135,7 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 		MaxDelay:    c.timeoutMax,
 	})
 	if resp != nil && resp.StatusCode == http.StatusUnauthorized {
-		return resp, utility.RespErrorf(resp, AuthError)
+		return resp, util.RespErrorf(resp, AuthError)
 	} else if err != nil {
 		return resp, err
 	}

@@ -73,7 +73,7 @@ func (r *versionResolver) BuildVariants(ctx context.Context, obj *restModel.APIV
 	if obj.IsPatchRequester() && !utility.FromBoolPtr(obj.Activated) {
 		return nil, nil
 	}
-	groupedBuildVariants, err := generateBuildVariants(utility.FromStringPtr(obj.Id), options, utility.FromStringPtr(obj.Requester))
+	groupedBuildVariants, err := generateBuildVariants(utility.FromStringPtr(obj.Id), options, utility.FromStringPtr(obj.Requester), r.sc.GetURL())
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error generating build variants for version %s : %s", *obj.Id, err.Error()))
 	}
@@ -210,18 +210,8 @@ func (r *versionResolver) PreviousVersion(ctx context.Context, obj *restModel.AP
 
 // ProjectMetadata is the resolver for the projectMetadata field.
 func (r *versionResolver) ProjectMetadata(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIProjectRef, error) {
-	projectRef, err := model.FindMergedProjectRef(*obj.Project, *obj.Id, false)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project ref for project `%s`: %s", *obj.Project, err.Error()))
-	}
-	if projectRef == nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project ref for project `%s`: %s", *obj.Project, "Project not found"))
-	}
-	apiProjectRef := restModel.APIProjectRef{}
-	if err = apiProjectRef.BuildFromService(*projectRef); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIProjectRef from service for `%s`: %s", projectRef.Id, err.Error()))
-	}
-	return &apiProjectRef, nil
+	apiProjectRef, err := getProjectMetadata(ctx, obj.Project, obj.Id)
+	return apiProjectRef, err
 }
 
 // Status is the resolver for the status field.

@@ -390,6 +390,8 @@ github.com/evergreen-ci/pail v0.0.0-20211028170419-8efd623fd305/go.mod h1:ch0TKj
 github.com/evergreen-ci/pail v0.0.0-20220405154537-920afff49d92/go.mod h1:Vne1WBTeJaI2zRTv3forHzliSSQmr1zCogZIcpjFsUo=
 github.com/evergreen-ci/pail v0.0.0-20220908201135-8a2090a672b7 h1:XA4npSEntrWplLPkOqTiYmGTLNbNJS/9MzNWwfuC8DM=
 github.com/evergreen-ci/pail v0.0.0-20220908201135-8a2090a672b7/go.mod h1:Ten0LDyKy6zFGFtu4DwTdOa+KGpiivkwJZmXEa024mw=
+github.com/evergreen-ci/plank v0.0.0-20230207190607-5f47f8a30da1 h1:KkCHAMVyiM3/JHccjC9tAXE0KM80p19hlXJhaiggAdQ=
+github.com/evergreen-ci/plank v0.0.0-20230207190607-5f47f8a30da1/go.mod h1:v8BYoLFIhvElWTc1xtP7aHPBEwTC3dh308PgFBbROaI=
 github.com/evergreen-ci/poplar v0.0.0-20211028170046-0999224b53df/go.mod h1:xiggfkrlxlu2C2e58tvk0WAYFetgNC7U9ONqcP29xZs=
 github.com/evergreen-ci/poplar v0.0.0-20211028171636-d45516ea1ce5/go.mod h1:RHBpqOlxE28M/lUgWRpxJ+WrHqCuY8a7EcXIvzqiPys=
 github.com/evergreen-ci/poplar v0.0.0-20220119144730-b220d71c0330/go.mod h1:O5wGST4cE5G6vO0QATuDAgftApq9tow9avdjZqcSWS8=
@@ -406,8 +408,8 @@ github.com/evergreen-ci/utility v0.0.0-20211026201827-97b21fa2660a/go.mod h1:fuE
 github.com/evergreen-ci/utility v0.0.0-20220302150552-3f7a1a268ea7/go.mod h1:EXIwZ5mlP/g0UrWPWX7oRTKQ8nD/ghE3lPCKQ8JMjbk=
 github.com/evergreen-ci/utility v0.0.0-20220404192535-d16eb64796e6/go.mod h1:wSui4nRyDZzm2db7Ju7ZzBAelLyVLmcTPJEIh1IdSrc=
 github.com/evergreen-ci/utility v0.0.0-20220725171106-4730479c6118/go.mod h1:J23DaXv/35hpeeDLK1ay9KX/7zMF0HdVMAitqXQW9j0=
-github.com/evergreen-ci/utility v0.0.0-20221202215218-c980e8dea464 h1:tZQca3T3iM9IbUo368QGas+Em0VqZb4lphuNFz4xFBs=
-github.com/evergreen-ci/utility v0.0.0-20221202215218-c980e8dea464/go.mod h1:vkCEVgfCMIDajzbG/PHZURszI2Y1SuFqNWX9EUxmLLI=
+github.com/evergreen-ci/utility v0.0.0-20230104160902-3f0e05a638bd h1:++oHrS9Qp/d2Jt/nx8lsbUyUUvBLGzFzbsYYSeOpjDI=
+github.com/evergreen-ci/utility v0.0.0-20230104160902-3f0e05a638bd/go.mod h1:vkCEVgfCMIDajzbG/PHZURszI2Y1SuFqNWX9EUxmLLI=
 github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
 github.com/fatih/structs v1.1.0 h1:Q7juDM0QtcnhCpeyLGQKyg4TOIghuNXrkL32pHAUMxo=
 github.com/fatih/structs v1.1.0/go.mod h1:9NiDSp5zOcgEDl+j00MP/WkGVPOlPRLejGD8Ga6PJ7M=
@@ -1705,7 +1707,6 @@ gopkg.in/yaml.v2 v2.3.0/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=
 gopkg.in/yaml.v2 v2.4.0 h1:D8xgwECY7CYvx+Y2n4sBz93Jn9JRvxdiyyo8CTfuKaY=
 gopkg.in/yaml.v2 v2.4.0/go.mod h1:RDklbk79AGWmwhnvt/jBztapEOGDOx6ZbXqjP6csGnQ=
 gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
-gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b h1:h8qDotaEPuJATrMmW04NCwg7v22aHH28wwpauUhK9Oo=
 gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
 gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
 gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=

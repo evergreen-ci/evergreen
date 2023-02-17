@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -271,7 +270,7 @@ func getAPITaskFromTask(ctx context.Context, url string, task task.Task) (*restM
 }
 
 // Takes a version id and some filter criteria and returns the matching associated tasks grouped together by their build variant.
-func generateBuildVariants(versionId string, buildVariantOpts BuildVariantOptions, requester string) ([]*GroupedBuildVariant, error) {
+func generateBuildVariants(versionId string, buildVariantOpts BuildVariantOptions, requester string, logURL string) ([]*GroupedBuildVariant, error) {
 	var variantDisplayName = map[string]string{}
 	var tasksByVariant = map[string][]*restModel.APITask{}
 	defaultSort := []task.TasksSortOrder{
@@ -301,7 +300,9 @@ func generateBuildVariants(versionId string, buildVariantOpts BuildVariantOption
 	buildTaskStartTime := time.Now()
 	for _, t := range tasks {
 		apiTask := restModel.APITask{}
-		err := apiTask.BuildFromService(&t, nil)
+		err := apiTask.BuildFromService(&t, &restModel.APITaskArgs{
+			LogURL: logURL,
+		})
 		if err != nil {
 			return nil, errors.Wrapf(err, fmt.Sprintf("Error building apiTask from task : %s", t.Id))
 		}
@@ -772,21 +773,22 @@ func groupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 	return groupsArr, nil
 }
 
-func hasProjectPermission(ctx context.Context, resource string, next graphql.Resolver, permissionLevel int) (res interface{}, err error) {
-	user := gimlet.GetUser(ctx)
-	if user == nil {
-		return nil, Forbidden.Send(ctx, "user not logged in")
+// getProjectIdFromArgs extracts a project ID from the requireProjectAccess directive args.
+func getProjectIdFromArgs(ctx context.Context, args map[string]interface{}) (res string, err error) {
+	if id, hasId := args["id"].(string); hasId {
+		return id, nil
 	}
-	opts := gimlet.PermissionOpts{
-		Resource:      resource,
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionProjectSettings,
-		RequiredLevel: permissionLevel,
+	if projectId, hasProjectId := args["projectId"].(string); hasProjectId {
+		return projectId, nil
 	}
-	if user.HasPermission(opts) {
-		return next(ctx)
+	if identifier, hasIdentifier := args["identifier"].(string); hasIdentifier {
+		pid, err := model.GetIdForProject(identifier)
+		if err != nil {
+			return "", ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with identifier: %s", identifier))
+		}
+		return pid, nil
 	}
-	return nil, Forbidden.Send(ctx, fmt.Sprintf("user %s does not have permission to access settings for the project %s", user.Username(), resource))
+	return "", ResourceNotFound.Send(ctx, "Could not find project")
 }
 
 // getValidTaskStatusesFilter returns a slice of task statuses that are valid and are searchable.
@@ -938,4 +940,19 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 		}
 	}
 	return options, nil
+}
+
+func getProjectMetadata(ctx context.Context, projectId *string, patchId *string) (*restModel.APIProjectRef, error) {
+	projectRef, err := model.FindMergedProjectRef(*projectId, *patchId, false)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project ref for project `%s`: %s", *projectId, err.Error()))
+	}
+	if projectRef == nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project ref for project `%s`: %s", *projectId, "Project not found"))
+	}
+	apiProjectRef := restModel.APIProjectRef{}
+	if err = apiProjectRef.BuildFromService(*projectRef); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIProjectRef from service for `%s`: %s", projectRef.Id, err.Error()))
+	}
+	return &apiProjectRef, nil
 }

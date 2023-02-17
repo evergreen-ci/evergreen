@@ -133,14 +133,14 @@ func (h *hostIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 	var runningTask *task.Task
 	if foundHost.RunningTask != "" {
-		runningTask, err = task.FindOneId(foundHost.RunningTask)
+		runningTask, err = task.FindOneIdAndExecution(foundHost.RunningTask, foundHost.RunningTaskExecution)
 		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host's running task '%s'", foundHost.RunningTask))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host's running task '%s' execution '%d'", foundHost.RunningTask, foundHost.RunningTaskExecution))
 		}
 		if runningTask == nil {
 			return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusNotFound,
-				Message:    fmt.Sprintf("host's running task '%s' not found", foundHost.RunningTask),
+				Message:    fmt.Sprintf("host's running task '%s' execution '%d' not found", foundHost.RunningTask, foundHost.RunningTaskExecution),
 			})
 		}
 	}
@@ -405,8 +405,8 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 			"context": "user offboarding",
 			"user":    ch.user,
 		}))
-		err = user.ClearUserSettings(ch.user)
-		catcher.Wrapf(err, "clearing user settings for user '%s'", ch.user)
+		err = user.ClearUser(ch.user)
+		catcher.Wrapf(err, "clearing user '%s'", ch.user)
 	}
 
 	if catcher.HasErrors() {
@@ -530,7 +530,7 @@ func (rh *hostProvisioningOptionsGetHandler) Run(ctx context.Context) gimlet.Res
 	return gimlet.NewJSONResponse(apiOpts)
 }
 
-////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////
 //
 // GET /rest/v2/host/{host_id}/disable
 type disableHost struct {

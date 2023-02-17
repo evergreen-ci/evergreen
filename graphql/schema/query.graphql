@@ -61,10 +61,12 @@ type Query {
   myHosts: [Host!]!
   myVolumes: [Volume!]!
 
+  # logkeeper
+  logkeeperBuildMetadata(buildId: String!): LogkeeperBuild!
+
   # task
   task(taskId: String!, execution: Int): Task
   taskAllExecutions(taskId: String!): [Task!]!
-  taskFiles(taskId: String!, execution: Int): TaskFiles! @deprecated(reason: "taskFiles is deprecated. Use task.taskFiles instead.")
   taskLogs(taskId: String!, execution: Int): TaskLogs!
   taskTests(
     taskId: String!

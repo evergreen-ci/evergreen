@@ -1,0 +1,20 @@
+{
+  version(id: "5e4ff3abe3c3317e352062e4") {
+    id
+    taskCount
+    buildVariants(options: {
+      tasks:[]
+    }) {
+      variant
+      displayName
+      tasks {
+        id
+        execution
+        status
+        logs {
+            allLogLink
+        }
+      }
+    }
+  }
+}

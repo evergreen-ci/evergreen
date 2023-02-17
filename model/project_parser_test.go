@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
-	yaml "gopkg.in/20210107192922/yaml.v3"
+	yaml "gopkg.in/yaml.v3"
 )
 
 // ShouldContainResembling tests whether a slice contains an element that DeepEquals
@@ -63,7 +63,7 @@ tasks:
     status: "failed"
     patch_optional: true
 `
-			p, err := createIntermediateProject([]byte(simple), false, false)
+			p, err := createIntermediateProject([]byte(simple), false)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(p.Tasks[2].DependsOn[0].TaskSelector.Name, ShouldEqual, "compile")
@@ -80,7 +80,7 @@ tasks:
 - name: task1
   depends_on: task0
 `
-			p, err := createIntermediateProject([]byte(single), false, false)
+			p, err := createIntermediateProject([]byte(single), false)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(p.Tasks[2].DependsOn[0].TaskSelector.Name, ShouldEqual, "task0")
@@ -92,7 +92,7 @@ tasks:
 - name: "compile"
   depends_on: ""
 `
-				p, err := createIntermediateProject([]byte(nameless), false, false)
+				p, err := createIntermediateProject([]byte(nameless), false)
 				So(p, ShouldBeNil)
 				So(err, ShouldNotBeNil)
 			})
@@ -104,7 +104,7 @@ tasks:
   - name: "task1"
   - status: "failed" #this has no task attached
 `
-				p, err := createIntermediateProject([]byte(nameless), false, false)
+				p, err := createIntermediateProject([]byte(nameless), false)
 				So(p, ShouldBeNil)
 				So(err, ShouldNotBeNil)
 			})
@@ -113,7 +113,7 @@ tasks:
 tasks:
 - name: "compile"
 `
-				p, err := createIntermediateProject([]byte(nameless), false, false)
+				p, err := createIntermediateProject([]byte(nameless), false)
 				So(p, ShouldNotBeNil)
 				So(err, ShouldBeNil)
 			})
@@ -142,7 +142,7 @@ buildvariants:
     stepback: false
     priority: 77
 `
-			p, err := createIntermediateProject([]byte(simple), false, false)
+			p, err := createIntermediateProject([]byte(simple), false)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			bv := p.BuildVariants[0]
@@ -167,7 +167,7 @@ buildvariants:
   - name: "t2"
     depends_on: "t3"
 `
-			p, err := createIntermediateProject([]byte(simple), false, false)
+			p, err := createIntermediateProject([]byte(simple), false)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			bv := p.BuildVariants[0]
@@ -185,7 +185,7 @@ buildvariants:
   tasks:
     name: "t1"
 `
-			p, err := createIntermediateProject([]byte(simple), false, false)
+			p, err := createIntermediateProject([]byte(simple), false)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(len(p.BuildVariants), ShouldEqual, 2)
@@ -209,7 +209,7 @@ buildvariants:
   run_on: "distro1"
   tasks: "*"
 `
-			p, err := createIntermediateProject([]byte(single), false, false)
+			p, err := createIntermediateProject([]byte(single), false)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(len(p.Ignore), ShouldEqual, 1)
@@ -230,7 +230,7 @@ buildvariants:
   - name: "t1"
     run_on: "test"
 `
-			p, err := createIntermediateProject([]byte(single), false, false)
+			p, err := createIntermediateProject([]byte(single), false)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(p.BuildVariants[0].Tasks[0].RunOn[0], ShouldEqual, "test")
@@ -245,7 +245,7 @@ buildvariants:
     run_on: "test"
     distros: "asdasdasd"
 `
-			p, err := createIntermediateProject([]byte(single), false, false)
+			p, err := createIntermediateProject([]byte(single), false)
 			So(p, ShouldBeNil)
 			So(err, ShouldNotBeNil)
 		})
@@ -257,7 +257,7 @@ buildvariants:
   - name: "t1"
     commit_queue_merge: true
 `
-			p, err := createIntermediateProject([]byte(single), false, false)
+			p, err := createIntermediateProject([]byte(single), false)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			bv := p.BuildVariants[0]
@@ -281,7 +281,7 @@ buildvariants:
   - name: "t1"
     activate: true
 `
-	p, err := createIntermediateProject([]byte(yml), false, false)
+	p, err := createIntermediateProject([]byte(yml), false)
 	assert.NoError(t, err)
 	assert.NotNil(t, p)
 	bv := p.BuildVariants[0]
@@ -573,7 +573,7 @@ tasks:
 - name: execTask3
 - name: execTask4
 `
-	p, err := createIntermediateProject([]byte(yml), false, false)
+	p, err := createIntermediateProject([]byte(yml), false)
 
 	// check that display tasks in bv1 parsed correctly
 	assert.NoError(err)
@@ -602,7 +602,7 @@ parameters:
 - key: buggy
   value: driver
 `
-	p, err := createIntermediateProject([]byte(yml), false, false)
+	p, err := createIntermediateProject([]byte(yml), false)
 	assert.NoError(t, err)
 	require.Len(t, p.Parameters, 2)
 	assert.Equal(t, "iter_count", p.Parameters[0].Key)
@@ -954,7 +954,7 @@ tasks:
 - name: execTask4
   tags: [ "even" ]
 `
-	pp, err := createIntermediateProject([]byte(tagYml), false, false)
+	pp, err := createIntermediateProject([]byte(tagYml), false)
 	assert.NotNil(pp)
 	assert.NoError(err)
 	require.Len(pp.BuildVariants[0].DisplayTasks, 2)
@@ -1717,7 +1717,7 @@ buildvariants:
 }
 
 func checkProjectPersists(ctx context.Context, t *testing.T, env evergreen.Environment, yml []byte, ppStorageMethod ParserProjectStorageMethod) {
-	pp, err := createIntermediateProject(yml, false, false)
+	pp, err := createIntermediateProject(yml, false)
 	assert.NoError(t, err)
 	pp.Id = "my-project"
 	pp.Identifier = utility.ToStringPtr("old-project-identifier")
@@ -1741,7 +1741,7 @@ func checkProjectPersists(ctx context.Context, t *testing.T, env evergreen.Envir
 	assert.True(t, bytes.Equal(newYaml, yamlToCompare))
 
 	// ensure that updating with the re-parsed project doesn't error
-	pp, err = createIntermediateProject(newYaml, false, false)
+	pp, err = createIntermediateProject(newYaml, false)
 	assert.NoError(t, err)
 	pp.Id = "my-project"
 	pp.Identifier = utility.ToStringPtr("new-project-identifier")
@@ -1768,7 +1768,7 @@ func TestParserProjectRoundtrip(t *testing.T) {
 	yml, err := ioutil.ReadFile(filepath)
 	assert.NoError(t, err)
 
-	original, err := createIntermediateProject(yml, false, false)
+	original, err := createIntermediateProject(yml, false)
 	assert.NoError(t, err)
 
 	// to and from yaml
@@ -2433,10 +2433,10 @@ ignore:
   - ".github/*"
 `
 
-	p1, err := createIntermediateProject([]byte(mainYaml), false, false)
+	p1, err := createIntermediateProject([]byte(mainYaml), false)
 	assert.NoError(t, err)
 	assert.NotNil(t, p1)
-	p2, err := createIntermediateProject([]byte(smallYaml), false, false)
+	p2, err := createIntermediateProject([]byte(smallYaml), false)
 	assert.NoError(t, err)
 	assert.NotNil(t, p2)
 	err = p1.mergeMultipleParserProjects(p2)
@@ -2482,13 +2482,13 @@ buildvariants:
       - name: task3
 `
 
-	p1, err := createIntermediateProject([]byte(mainYaml), false, false)
+	p1, err := createIntermediateProject([]byte(mainYaml), false)
 	assert.NoError(t, err)
 	assert.NotNil(t, p1)
-	p2, err := createIntermediateProject([]byte(succeed), false, false)
+	p2, err := createIntermediateProject([]byte(succeed), false)
 	assert.NoError(t, err)
 	assert.NotNil(t, p2)
-	p3, err := createIntermediateProject([]byte(fail), false, false)
+	p3, err := createIntermediateProject([]byte(fail), false)
 	assert.NoError(t, err)
 	assert.NotNil(t, p3)
 	err = p1.mergeMultipleParserProjects(p2)

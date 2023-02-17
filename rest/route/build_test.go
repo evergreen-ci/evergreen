@@ -17,7 +17,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/20210107192922/yaml.v3"
+	"gopkg.in/yaml.v3"
 )
 
 ////////////////////////////////////////////////////////////////////////

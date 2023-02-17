@@ -179,12 +179,13 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	if j.host.RunningTask != "" {
 		if j.TerminateIfBusy {
 			grip.Warning(message.Fields{
-				"message":  "Host has running task; clearing before terminating",
-				"job":      j.ID(),
-				"job_type": j.Type().Name,
-				"host_id":  j.host.Id,
-				"provider": j.host.Distro.Provider,
-				"task":     j.host.RunningTask,
+				"message":        "Host has running task; clearing before terminating",
+				"job":            j.ID(),
+				"job_type":       j.Type().Name,
+				"host_id":        j.host.Id,
+				"provider":       j.host.Distro.Provider,
+				"task":           j.host.RunningTask,
+				"task_execution": j.host.RunningTaskExecution,
 			})
 
 			j.AddError(model.ClearAndResetStrandedHostTask(j.env.Settings(), j.host))
@@ -246,15 +247,16 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	if j.host.RunningTask != "" {
 		if j.TerminateIfBusy {
 			grip.Warning(message.Fields{
-				"message":  "Host has running task; clearing before terminating",
-				"job":      j.ID(),
-				"job_type": j.Type().Name,
-				"host_id":  j.host.Id,
-				"provider": j.host.Distro.Provider,
-				"task":     j.host.RunningTask,
+				"message":        "Host has running task; clearing before terminating",
+				"job":            j.ID(),
+				"job_type":       j.Type().Name,
+				"host_id":        j.host.Id,
+				"provider":       j.host.Distro.Provider,
+				"task":           j.host.RunningTask,
+				"task_execution": j.host.RunningTaskExecution,
 			})
 
-			j.AddError(errors.Wrapf(model.ClearAndResetStrandedHostTask(j.env.Settings(), j.host), "fixing stranded task '%s'", j.host.RunningTask))
+			j.AddError(errors.Wrapf(model.ClearAndResetStrandedHostTask(j.env.Settings(), j.host), "fixing stranded task '%s' execution '%d'", j.host.RunningTask, j.host.RunningTaskExecution))
 		} else {
 			return
 		}
@@ -296,6 +298,8 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		"total_uptime_secs":  j.host.TerminationTime.Sub(j.host.CreationTime).Seconds(),
 		"termination_time":   j.host.TerminationTime,
 		"creation_time":      j.host.CreationTime,
+		"started_by":         j.host.StartedBy,
+		"user_host":          j.host.UserHost,
 	}
 	if !utility.IsZeroTime(j.host.BillingStartTime) {
 		terminationMessage["total_billable_secs"] = j.host.TerminationTime.Sub(j.host.BillingStartTime).Seconds()

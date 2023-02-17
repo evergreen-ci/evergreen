@@ -25,7 +25,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	ignore "github.com/sabhiram/go-gitignore"
-	"gopkg.in/20210107192922/yaml.v3"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -293,9 +293,8 @@ type BuildVariant struct {
 	DisplayName string            `yaml:"display_name,omitempty" bson:"display_name"`
 	Expansions  map[string]string `yaml:"expansions,omitempty" bson:"expansions"`
 	Modules     []string          `yaml:"modules,omitempty" bson:"modules"`
-	Disabled    bool              `yaml:"disabled,omitempty" bson:"disabled"`
+	Disable     bool              `yaml:"disable,omitempty" bson:"disable"`
 	Tags        []string          `yaml:"tags,omitempty" bson:"tags"`
-	Push        bool              `yaml:"push,omitempty" bson:"push"`
 
 	// Use a *int for 2 possible states
 	// nil - not overriding the project setting
@@ -958,7 +957,12 @@ func generateIdsForVariant(vt TVPair, proj *Project, v *Version, tasks TVPairSet
 	return table
 }
 
+// generateId generates a unique project ID. For tasks created for untracked branches,
+// use owner, repo, and branch in lieu of a user-defined project identifier.
 func generateId(name string, projectIdentifier string, projBV *BuildVariant, rev string, v *Version) string {
+	if projectIdentifier == "" {
+		projectIdentifier = fmt.Sprintf("%s_%s_%s", v.Owner, v.Repo, v.Branch)
+	}
 	return fmt.Sprintf("%s_%s_%s_%s_%s",
 		projectIdentifier,
 		projBV.Name,
@@ -979,7 +983,9 @@ var (
 	ProjectTasksKey         = bsonutil.MustHaveTag(Project{}, "Tasks")
 )
 
-func PopulateExpansions(ctx context.Context, settings *evergreen.Settings, t *task.Task, h *host.Host, oauthToken string) (util.Expansions, error) {
+// PopulateExpansions returns expansions for a task, excluding build variant
+// expansions, project variables, and project/version parameters.
+func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Expansions, error) {
 	if t == nil {
 		return nil, errors.New("task cannot be nil")
 	}
@@ -1056,7 +1062,7 @@ func PopulateExpansions(ctx context.Context, settings *evergreen.Settings, t *ta
 		return nil, errors.Wrap(err, "finding version")
 	}
 	if v == nil {
-		return nil, errors.Wrapf(err, "version '%s' doesn't exist", v.Id)
+		return nil, errors.Errorf("version '%s' not found", t.Version)
 	}
 
 	expansions.Put("branch_name", v.Branch)
@@ -1105,12 +1111,9 @@ func PopulateExpansions(ctx context.Context, settings *evergreen.Settings, t *ta
 		if v.Requester == evergreen.MergeTestRequester {
 			expansions.Put("is_commit_queue", "true")
 			expansions.Put("commit_message", p.Description)
-			if p.IsPRMergePatch() {
-				expansions.Put("github_pr_number", fmt.Sprintf("%d", p.GithubPatchData.PRNumber))
-			}
 		}
 
-		if v.Requester == evergreen.GithubPRRequester {
+		if p.IsPRMergePatch() || v.Requester == evergreen.GithubPRRequester {
 			expansions.Put("github_pr_number", fmt.Sprintf("%d", p.GithubPatchData.PRNumber))
 			expansions.Put("github_org", p.GithubPatchData.BaseOwner)
 			expansions.Put("github_repo", p.GithubPatchData.BaseRepo)
@@ -1128,11 +1131,6 @@ func PopulateExpansions(ctx context.Context, settings *evergreen.Settings, t *ta
 		}
 	}
 
-	bvExpansions, err := FindExpansionsForVariant(ctx, settings, v, t.BuildVariant)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting expansions for variant")
-	}
-	expansions.Update(bvExpansions)
 	return expansions, nil
 }
 
@@ -1616,7 +1614,7 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 	if len(bvs) == 1 && bvs[0] == "all" {
 		bvs = []string{}
 		for _, bv := range p.BuildVariants {
-			if bv.Disabled {
+			if bv.Disable {
 				continue
 			}
 			bvs = append(bvs, bv.Name)
