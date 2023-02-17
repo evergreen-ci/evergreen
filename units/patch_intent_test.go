@@ -901,7 +901,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	}
 	s.NoError(evergreen.SetServiceFlags(flags))
 
-	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(context.Background(), githubOauthToken, s.githubPatchData)
+	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(s.ctx, githubOauthToken, s.githubPatchData)
 	s.Require().NoError(err)
 	s.Require().Len(summaries, 2)
 	s.NotEmpty(patchContent)
@@ -941,19 +941,82 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	dbPatch, err := patch.FindOne(patch.ById(j.PatchID))
 	s.NoError(err)
 	s.Require().NotNil(dbPatch)
+	s.True(patchDoc.Activated, "patch should be finalized")
 
 	s.verifyPatchDoc(dbPatch, j.PatchID)
 	s.projectExists(j.PatchID.Hex())
-	s.NotZero(dbPatch.CreateTime)
-	s.Zero(dbPatch.GithubPatchData)
 
-	s.Equal(evergreen.ProjectStorageMethodDB, dbPatch.ProjectStorageMethod)
-	dbParserProject, err := model.ParserProjectFindOneByID(s.ctx, s.env.Settings(), patchDoc.ProjectStorageMethod, patchDoc.Id.Hex())
-	s.Require().NoError(err)
-	s.Require().NotZero(dbParserProject)
-	s.Len(dbParserProject.BuildVariants, 8)
+	s.Zero(dbPatch.ProjectStorageMethod, "patch's project storage method should be unset after patch is finalized")
+	s.verifyParserProjectDoc(dbPatch)
 
 	s.verifyVersionDoc(dbPatch, evergreen.PatchVersionRequester)
+
+	s.gridFSFileExists(dbPatch.Patches[0].PatchSet.PatchFileId)
+
+	out := []event.Subscription{}
+	s.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Query(bson.M{}), &out))
+	s.Require().Empty(out)
+}
+
+func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntentWithoutFinalizing() {
+	githubOauthToken, err := s.env.Settings().GetGithubOauthToken()
+	s.Require().NoError(err)
+
+	flags := evergreen.ServiceFlags{
+		GithubPRTestingDisabled: true,
+	}
+	s.NoError(evergreen.SetServiceFlags(flags))
+
+	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(s.ctx, githubOauthToken, s.githubPatchData)
+	s.Require().NoError(err)
+	s.Require().Len(summaries, 2)
+	s.NotEmpty(patchContent)
+	s.NotEqual("{", patchContent[0])
+
+	s.Equal("cli/host.go", summaries[0].Name)
+	s.Equal(2, summaries[0].Additions)
+	s.Equal(6, summaries[0].Deletions)
+
+	s.Equal("cli/keys.go", summaries[1].Name)
+	s.Equal(1, summaries[1].Additions)
+	s.Equal(3, summaries[1].Deletions)
+
+	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
+		User:         s.user,
+		Project:      s.project,
+		BaseGitHash:  s.hash,
+		PatchContent: patchContent,
+		Description:  s.desc,
+		Variants:     s.variants,
+		Tasks:        s.tasks,
+	})
+	s.NoError(err)
+	s.Require().NotNil(intent)
+	s.NoError(intent.Insert())
+
+	j := NewPatchIntentProcessor(mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+	j.env = s.env
+
+	patchDoc := intent.NewPatch()
+	s.NoError(j.finishPatch(s.ctx, patchDoc))
+
+	s.NoError(j.Error())
+	s.False(j.HasErrors())
+
+	dbPatch, err := patch.FindOne(patch.ById(j.PatchID))
+	s.NoError(err)
+	s.Require().NotNil(dbPatch)
+	s.False(patchDoc.Activated, "patch should not be finalized")
+
+	s.verifyPatchDoc(dbPatch, j.PatchID)
+	s.projectExists(j.PatchID.Hex())
+
+	s.Equal(evergreen.ProjectStorageMethodDB, dbPatch.ProjectStorageMethod, "unfinalized patch should have project storage method set")
+	s.verifyParserProjectDoc(dbPatch)
+
+	dbVersion, err := model.VersionFindOne(model.VersionById(patchDoc.Id.Hex()))
+	s.NoError(err)
+	s.Zero(dbVersion, "should not create version for unfinalized patch")
 
 	s.gridFSFileExists(dbPatch.Patches[0].PatchSet.PatchFileId)
 
@@ -989,8 +1052,9 @@ func (s *PatchIntentUnitsSuite) verifyPatchDoc(patchDoc *patch.Patch, expectedPa
 	s.Equal(evergreen.PatchCreated, patchDoc.Status)
 	s.Equal(expectedPatchID, patchDoc.Id)
 	s.NotEmpty(patchDoc.Patches)
-	s.True(patchDoc.Activated)
 	s.Empty(patchDoc.PatchedParserProject)
+	s.NotZero(patchDoc.CreateTime)
+	s.Zero(patchDoc.GithubPatchData)
 	s.Zero(patchDoc.StartTime)
 	s.Zero(patchDoc.FinishTime)
 	s.NotEqual(0, patchDoc.PatchNumber)
@@ -1012,6 +1076,13 @@ func (s *PatchIntentUnitsSuite) verifyPatchDoc(patchDoc *patch.Patch, expectedPa
 	s.Contains(patchDoc.Tasks, "dist")
 	s.Contains(patchDoc.Tasks, "dist-test")
 	s.NotZero(patchDoc.CreateTime)
+}
+
+func (s *PatchIntentUnitsSuite) verifyParserProjectDoc(p *patch.Patch) {
+	_, dbParserProject, err := model.FindAndTranslateProjectForPatch(s.ctx, s.env.Settings(), p)
+	s.Require().NoError(err)
+	s.Require().NotZero(dbParserProject)
+	s.Len(dbParserProject.BuildVariants, 8)
 }
 
 func (s *PatchIntentUnitsSuite) projectExists(projectId string) {
@@ -1084,7 +1155,7 @@ func (s *PatchIntentUnitsSuite) TestRunInDegradedModeWithGithubIntent() {
 	j.env = s.env
 	s.True(ok)
 	s.NotNil(j)
-	j.Run(context.Background())
+	j.Run(s.ctx)
 	s.Error(j.Error())
 	s.Contains(j.Error().Error(), "not processing PR because GitHub PR testing is disabled")
 
@@ -1115,7 +1186,7 @@ func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersi
 	j.env = s.env
 	s.True(ok)
 	s.NotNil(j)
-	j.Run(context.Background())
+	j.Run(s.ctx)
 	s.Error(j.Error())
 	filter := patch.ById(patchID)
 	patchDoc, err := patch.FindOne(filter)
@@ -1192,7 +1263,7 @@ func (s *PatchIntentUnitsSuite) TestCliBackport() {
 	j.env = s.env
 	s.True(ok)
 	s.NotNil(j)
-	j.Run(context.Background())
+	j.Run(s.ctx)
 	s.NoError(j.Error())
 
 	backportPatch, err := patch.FindOneId(id.Hex())
