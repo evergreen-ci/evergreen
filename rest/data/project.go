@@ -113,12 +113,12 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 	}
 	// Always warn because created projects are never enabled.
 	warningCatcher := grip.NewBasicCatcher()
-	statusCode, err := model.ValidateEnabledProjectsLimit(projectRef.Id, env.Settings(), *projectRef)
+	statusCode, err := model.ValidateEnabledProjectsLimit(projectRef.Id, env.Settings(), nil, projectRef)
 	if err != nil {
 		if statusCode != http.StatusBadRequest {
 			return false, gimlet.ErrorResponse{
 				StatusCode: statusCode,
-				Message:    errors.Wrapf(err, "inserting project '%s'", projectRef.Identifier).Error(),
+				Message:    errors.Wrapf(err, "validating project '%s'", projectRef.Identifier).Error(),
 			}
 		}
 		warningCatcher.Add(err)

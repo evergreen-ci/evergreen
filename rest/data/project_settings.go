@@ -264,7 +264,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		if err != nil {
 			return nil, errors.Wrap(err, "getting evergreen config")
 		}
-		_, err = model.ValidateEnabledProjectsLimit(projectId, config, *mergedSection)
+		_, err = model.ValidateEnabledProjectsLimit(projectId, config, mergedBeforeRef, mergedSection)
 		if err != nil {
 			return nil, errors.Wrap(err, "validating project creation")
 		}

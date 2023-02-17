@@ -273,7 +273,9 @@ func TestValidateEnabledProjectsLimit(t *testing.T) {
 
 	// Should error when trying to enable an existing project past limits.
 	disabled1.Enabled = utility.TruePtr()
-	statusCode, err := ValidateEnabledProjectsLimit(disabled1.Id, &settings, *disabled1)
+	original, err := FindMergedProjectRef(disabled1.Id, "", false)
+	assert.NoError(t, err)
+	statusCode, err := ValidateEnabledProjectsLimit(disabled1.Id, &settings, original, disabled1)
 	assert.Error(t, err)
 	assert.Equal(t, http.StatusBadRequest, statusCode)
 
@@ -284,7 +286,9 @@ func TestValidateEnabledProjectsLimit(t *testing.T) {
 		Repo:    "repo_exception",
 		Enabled: utility.TruePtr(),
 	}
-	_, err = ValidateEnabledProjectsLimit(enabled1.Id, &settings, *exception)
+	original, err = FindMergedProjectRef(exception.Id, "", false)
+	assert.NoError(t, err)
+	_, err = ValidateEnabledProjectsLimit(enabled1.Id, &settings, original, exception)
 	assert.NoError(t, err)
 
 	// Should error if owner/repo is not part of exception.
@@ -294,7 +298,9 @@ func TestValidateEnabledProjectsLimit(t *testing.T) {
 		Repo:    "mci",
 		Enabled: utility.TruePtr(),
 	}
-	statusCode, err = ValidateEnabledProjectsLimit(notException.Id, &settings, *notException)
+	original, err = FindMergedProjectRef(notException.Id, "", false)
+	assert.NoError(t, err)
+	statusCode, err = ValidateEnabledProjectsLimit(notException.Id, &settings, original, notException)
 	assert.Error(t, err)
 	assert.Equal(t, http.StatusBadRequest, statusCode)
 
@@ -303,19 +309,25 @@ func TestValidateEnabledProjectsLimit(t *testing.T) {
 	assert.NoError(t, disableRepo.Upsert())
 	mergedRef, err := GetProjectRefMergedWithRepo(*disabledByRepo)
 	assert.NoError(t, err)
-	_, err = ValidateEnabledProjectsLimit(disabledByRepo.Id, &settings, *mergedRef)
+	original, err = FindMergedProjectRef(disabledByRepo.Id, "", false)
+	assert.NoError(t, err)
+	_, err = ValidateEnabledProjectsLimit(disabledByRepo.Id, &settings, original, mergedRef)
 	assert.NoError(t, err)
 
 	// Should error on enabled if you try to change owner/repo past limit.
 	enabled2.Owner = "mongodb"
 	enabled2.Repo = "mci"
-	statusCode, err = ValidateEnabledProjectsLimit(enabled2.Id, &settings, *enabled2)
+	original, err = FindMergedProjectRef(enabled2.Id, "", false)
+	assert.NoError(t, err)
+	statusCode, err = ValidateEnabledProjectsLimit(enabled2.Id, &settings, original, enabled2)
 	assert.Error(t, err)
 	assert.Equal(t, http.StatusBadRequest, statusCode)
 
 	// Total project limit cannot be exceeded. Even with the exception.
 	settings.ProjectCreation.TotalProjectLimit = 2
-	statusCode, err = ValidateEnabledProjectsLimit(exception.Id, &settings, *exception)
+	original, err = FindMergedProjectRef(exception.Id, "", false)
+	assert.NoError(t, err)
+	statusCode, err = ValidateEnabledProjectsLimit(exception.Id, &settings, original, exception)
 	assert.Error(t, err)
 	assert.Equal(t, http.StatusBadRequest, statusCode)
 }
