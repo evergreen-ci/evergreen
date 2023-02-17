@@ -362,14 +362,19 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "merging project ref '%s' with repo settings", h.newProjectRef.Identifier))
 	}
 
-	settings, err := evergreen.GetConfig()
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting evergreen settings"))
-	}
-	originalMergedRef, err := dbModel.GetProjectRefMergedWithRepo(*h.originalProject)
-	_, err = dbModel.ValidateEnabledProjectsLimit(h.newProjectRef.Id, settings, originalMergedRef, mergedProjectRef)
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "validating project creation for project '%s'", h.newProjectRef.Identifier))
+	if mergedProjectRef.IsEnabled() {
+		settings, err := evergreen.GetConfig()
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting evergreen settings"))
+		}
+		originalMergedRef, err := dbModel.GetProjectRefMergedWithRepo(*h.originalProject)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "merging original project ref '%s' with repo settings", h.originalProject.Identifier))
+		}
+		_, err = dbModel.ValidateEnabledProjectsLimit(h.newProjectRef.Id, settings, originalMergedRef, mergedProjectRef)
+		if err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "validating project creation for project '%s'", h.newProjectRef.Identifier))
+		}
 	}
 
 	if h.newProjectRef.IsEnabled() {

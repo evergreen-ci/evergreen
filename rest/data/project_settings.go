@@ -260,13 +260,15 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			}
 		}
 
-		config, err := evergreen.GetConfig()
-		if err != nil {
-			return nil, errors.Wrap(err, "getting evergreen config")
-		}
-		_, err = model.ValidateEnabledProjectsLimit(projectId, config, mergedBeforeRef, mergedSection)
-		if err != nil {
-			return nil, errors.Wrap(err, "validating project creation")
+		if mergedSection.IsEnabled() {
+			config, err := evergreen.GetConfig()
+			if err != nil {
+				return nil, errors.Wrap(err, "getting evergreen config")
+			}
+			_, err = model.ValidateEnabledProjectsLimit(projectId, config, mergedBeforeRef, mergedSection)
+			if err != nil {
+				return nil, errors.Wrap(err, "validating project creation")
+			}
 		}
 
 	case model.ProjectPageAccessSection:

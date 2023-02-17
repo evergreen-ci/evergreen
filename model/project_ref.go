@@ -2051,9 +2051,11 @@ func DefaultSectionToRepo(projectId string, section ProjectPageSection, userId s
 		if err != nil {
 			return errors.Wrap(err, "getting evergreen config")
 		}
-		_, err = ValidateEnabledProjectsLimit(projectId, config, originalMergedRef, newMergedRef)
-		if err != nil {
-			return errors.Wrap(err, "validating project creation")
+		if newMergedRef.IsEnabled() {
+			_, err = ValidateEnabledProjectsLimit(projectId, config, originalMergedRef, newMergedRef)
+			if err != nil {
+				return errors.Wrap(err, "validating project creation")
+			}
 		}
 	}
 
@@ -2264,42 +2266,50 @@ func (p *ProjectRef) GetGithubProjectConflicts() (GithubProjectConflicts, error)
 	return res, nil
 }
 
-func shouldValidateOwnerRepoLimit(originalMergedRef, mergedRefToValidate *ProjectRef) bool {
-	return originalMergedRef == nil || !originalMergedRef.IsEnabled() || originalMergedRef.Owner != mergedRefToValidate.Owner || originalMergedRef.Repo != mergedRefToValidate.Repo
+// shouldValidateTotalProjectLimit will return true if:
+// - we are creating a new project
+// - the original project was disabled
+func shouldValidateTotalProjectLimit(isNewProject bool, originalMergedRef *ProjectRef) bool {
+	return isNewProject || !originalMergedRef.IsEnabled()
+}
+
+// shouldValidateOwnerRepoLimit will return true if:
+// - we are creating a new project
+// - the original project was disabled
+// - the owner or repo has changed
+// - the owner/repo is part of exception
+func shouldValidateOwnerRepoLimit(isNewProject bool, config *evergreen.Settings, originalMergedRef, mergedRefToValidate *ProjectRef) bool {
+	return (shouldValidateTotalProjectLimit(isNewProject, originalMergedRef) ||
+		originalMergedRef.Owner != mergedRefToValidate.Owner || originalMergedRef.Repo != mergedRefToValidate.Repo) &&
+		!config.ProjectCreation.IsExceptionToRepoLimit(mergedRefToValidate.Owner, mergedRefToValidate.Repo)
 }
 
 // ValidateEnabledProjectsLimit takes in a merged project ref and validates if the current project is allowed to be enabled.
 // Returns a status code and error if we are already at limit with enabled projects.
 func ValidateEnabledProjectsLimit(projectId string, config *evergreen.Settings, originalMergedRef, mergedRefToValidate *ProjectRef) (int, error) {
-	if config.ProjectCreation.TotalProjectLimit == 0 || config.ProjectCreation.RepoProjectLimit == 0 || !mergedRefToValidate.IsEnabled() {
+	if config.ProjectCreation.TotalProjectLimit == 0 || config.ProjectCreation.RepoProjectLimit == 0 {
 		return http.StatusOK, nil
 	}
 
 	isNewProject := originalMergedRef == nil
 	catcher := grip.NewBasicCatcher()
-	// Only validate total project limit if it's a new project or was previously disabled.
-	if isNewProject || !originalMergedRef.IsEnabled() {
+	if shouldValidateTotalProjectLimit(isNewProject, originalMergedRef) {
 		allEnabledProjects, err := GetNumberOfEnabledProjects()
 		if err != nil {
 			return http.StatusInternalServerError, errors.Wrap(err, "getting number of projects")
 		}
-		allEnabledProjects++
 		if allEnabledProjects >= config.ProjectCreation.TotalProjectLimit {
 			catcher.Errorf("total enabled project limit of %d reached", config.ProjectCreation.TotalProjectLimit)
 		}
 	}
 
-	// Only validate owner/repo limit if it's a new project, was previously disabled, or we're updating owner/repo.
-	if isNewProject || !originalMergedRef.IsEnabled() || originalMergedRef.Owner != mergedRefToValidate.Owner || originalMergedRef.Repo != mergedRefToValidate.Repo {
-		if !config.ProjectCreation.IsExceptionToRepoLimit(mergedRefToValidate.Owner, mergedRefToValidate.Repo) {
-			enabledOwnerRepoProjects, err := GetNumberOfEnabledProjectsForOwnerRepo(mergedRefToValidate.Owner, mergedRefToValidate.Repo)
-			if err != nil {
-				return http.StatusInternalServerError, errors.Wrapf(err, "getting number of projects for '%s/%s'", mergedRefToValidate.Owner, mergedRefToValidate.Repo)
-			}
-			enabledOwnerRepoProjects++
-			if enabledOwnerRepoProjects >= config.ProjectCreation.RepoProjectLimit {
-				catcher.Errorf("owner repo limit of %d reached for '%s/%s'", config.ProjectCreation.RepoProjectLimit, mergedRefToValidate.Owner, mergedRefToValidate.Repo)
-			}
+	if shouldValidateOwnerRepoLimit(isNewProject, config, originalMergedRef, mergedRefToValidate) {
+		enabledOwnerRepoProjects, err := GetNumberOfEnabledProjectsForOwnerRepo(mergedRefToValidate.Owner, mergedRefToValidate.Repo)
+		if err != nil {
+			return http.StatusInternalServerError, errors.Wrapf(err, "getting number of projects for '%s/%s'", mergedRefToValidate.Owner, mergedRefToValidate.Repo)
+		}
+		if enabledOwnerRepoProjects >= config.ProjectCreation.RepoProjectLimit {
+			catcher.Errorf("owner repo limit of %d reached for '%s/%s'", config.ProjectCreation.RepoProjectLimit, mergedRefToValidate.Owner, mergedRefToValidate.Repo)
 		}
 	}
 
