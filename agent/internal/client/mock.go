@@ -235,17 +235,6 @@ func (c *Mock) Heartbeat(ctx context.Context, td TaskData) (string, error) {
 	return "", nil
 }
 
-// FetchExpansionVars returns a mock ExpansionVars.
-func (c *Mock) FetchExpansionVars(ctx context.Context, td TaskData) (*apimodels.ExpansionVars, error) {
-	return &apimodels.ExpansionVars{
-		Vars: map[string]string{
-			"shellexec_fn":   c.ShellExecFilename,
-			"timeout_fn":     c.TimeoutFilename,
-			"my_new_timeout": "2",
-		},
-	}, nil
-}
-
 // GetNextTask returns a mock NextTaskResponse.
 func (c *Mock) GetNextTask(ctx context.Context, details *apimodels.GetNextTaskDetails) (*apimodels.NextTaskResponse, error) {
 	if c.NextTaskIsNil {
