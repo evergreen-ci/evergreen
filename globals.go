@@ -1216,6 +1216,18 @@ func (w WindowsVersion) Validate() error {
 	}
 }
 
+// ParserProjectStorageMethod represents a means to store the parser project.
+type ParserProjectStorageMethod string
+
+const (
+	// ProjectStorageMethodDB indicates that the parser project is stored as a
+	// single document in a DB collection.
+	ProjectStorageMethodDB ParserProjectStorageMethod = "db"
+	// ProjectStorageMethodS3 indicates that the parser project is stored as a
+	// single object in S3.
+	ProjectStorageMethodS3 ParserProjectStorageMethod = "s3"
+)
+
 const (
 	// Valid public key types.
 	publicKeyRSA     = "ssh-rsa"

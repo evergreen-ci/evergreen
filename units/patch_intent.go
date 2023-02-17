@@ -280,7 +280,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		return nil
 	}
 
-	patchDoc.PatchedParserProject = patchConfig.PatchedParserProject
+	patchDoc.PatchedParserProject = patchConfig.PatchedParserProjectYAML
 	patchDoc.PatchedProjectConfig = patchConfig.PatchedProjectConfig
 
 	for _, modulePatch := range patchDoc.Patches {
@@ -874,7 +874,7 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(patchDoc *patch.Patch) error
 		return errors.Errorf("programmatic error: expected intent '%s' to be a trigger intent type but instead got '%T'", j.IntentID, j.intent)
 	}
 
-	v, project, err := model.FindLatestVersionWithValidProject(patchDoc.Project)
+	v, project, _, err := model.FindLatestVersionWithValidProject(patchDoc.Project)
 	if err != nil {
 		return errors.Wrapf(err, "getting last known project '%s'", patchDoc.Project)
 	}

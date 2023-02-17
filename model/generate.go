@@ -218,15 +218,15 @@ func putParserProjectInS3(ctx context.Context, settings *evergreen.Settings, v *
 		return false, nil
 	}
 
-	if v.ProjectStorageMethod == ProjectStorageMethodS3 {
+	if v.ProjectStorageMethod == evergreen.ProjectStorageMethodS3 {
 		return false, nil
 	}
 
-	if err := ParserProjectUpsertOne(ctx, settings, ProjectStorageMethodS3, pp); err != nil {
+	if err := ParserProjectUpsertOne(ctx, settings, evergreen.ProjectStorageMethodS3, pp); err != nil {
 		return false, errors.Wrap(err, "upserting parser project into S3")
 	}
 
-	if err := v.UpdateProjectStorageMethod(ProjectStorageMethodS3); err != nil {
+	if err := v.UpdateProjectStorageMethod(evergreen.ProjectStorageMethodS3); err != nil {
 		return false, errors.Wrap(err, "updating version's parser project storage method to S3")
 	}
 

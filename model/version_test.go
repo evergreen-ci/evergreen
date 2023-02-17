@@ -552,32 +552,32 @@ func TestUpdateProjectStorageMethod(t *testing.T) {
 
 	for tName, tCase := range map[string]func(t *testing.T, v *Version){
 		"ChangesProjectStorageMethod": func(t *testing.T, v *Version) {
-			assert.NoError(t, v.UpdateProjectStorageMethod(ProjectStorageMethodS3))
+			assert.NoError(t, v.UpdateProjectStorageMethod(evergreen.ProjectStorageMethodS3))
 
-			assert.Equal(t, ProjectStorageMethodS3, v.ProjectStorageMethod)
+			assert.Equal(t, evergreen.ProjectStorageMethodS3, v.ProjectStorageMethod)
 
 			dbVersion, err := VersionFindOneId(v.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbVersion)
-			assert.Equal(t, ProjectStorageMethodS3, dbVersion.ProjectStorageMethod)
+			assert.Equal(t, evergreen.ProjectStorageMethodS3, dbVersion.ProjectStorageMethod)
 		},
 		"NoopsWhenVersionStorageMethodIsIdentical": func(t *testing.T, v *Version) {
-			v.ProjectStorageMethod = ProjectStorageMethodS3
-			assert.NoError(t, v.UpdateProjectStorageMethod(ProjectStorageMethodS3))
+			v.ProjectStorageMethod = evergreen.ProjectStorageMethodS3
+			assert.NoError(t, v.UpdateProjectStorageMethod(evergreen.ProjectStorageMethodS3))
 
-			assert.Equal(t, ProjectStorageMethodS3, v.ProjectStorageMethod)
+			assert.Equal(t, evergreen.ProjectStorageMethodS3, v.ProjectStorageMethod)
 
 			dbVersion, err := VersionFindOneId(v.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbVersion)
-			assert.Equal(t, ProjectStorageMethodDB, dbVersion.ProjectStorageMethod)
+			assert.Equal(t, evergreen.ProjectStorageMethodDB, dbVersion.ProjectStorageMethod)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			assert.NoError(t, db.ClearCollections(VersionCollection))
 			v := Version{
 				Id:                   "id",
-				ProjectStorageMethod: ProjectStorageMethodDB,
+				ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
 			}
 			require.NoError(t, v.Insert())
 

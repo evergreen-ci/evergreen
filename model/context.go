@@ -80,7 +80,7 @@ func (ctx *Context) GetProject() (*Project, error) {
 		return nil, errors.Wrap(err, "finding project")
 	}
 
-	_, ctx.project, err = FindLatestVersionWithValidProject(pref.Id)
+	_, ctx.project, _, err = FindLatestVersionWithValidProject(pref.Id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding project from last good version for project ref '%s'", pref.Id)
 	}

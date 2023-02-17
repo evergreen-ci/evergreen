@@ -151,7 +151,7 @@ func getPatchInfo(ctx context.Context, settings *evergreen.Settings, githubToken
 		return "", nil, nil, errors.Wrap(err, "getting remote config file")
 	}
 
-	patchDoc.PatchedParserProject = patchConfig.PatchedParserProject
+	patchDoc.PatchedParserProject = patchConfig.PatchedParserProjectYAML
 	patchDoc.PatchedProjectConfig = patchConfig.PatchedProjectConfig
 	return patchContent, summaries, config, nil
 }

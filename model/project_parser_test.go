@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -1591,9 +1592,9 @@ func TestParserProjectStorage(t *testing.T) {
 		assert.NoError(t, bucket.RemovePrefix(ctx, ppConf.Prefix))
 	}()
 
-	for methodName, ppStorageMethod := range map[string]ParserProjectStorageMethod{
-		"DB": ProjectStorageMethodDB,
-		"S3": ProjectStorageMethodS3,
+	for methodName, ppStorageMethod := range map[string]evergreen.ParserProjectStorageMethod{
+		"DB": evergreen.ProjectStorageMethodDB,
+		"S3": evergreen.ProjectStorageMethodS3,
 	} {
 		t.Run("StorageMethod"+methodName, func(t *testing.T) {
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment){
@@ -1716,7 +1717,7 @@ buildvariants:
 	}
 }
 
-func checkProjectPersists(ctx context.Context, t *testing.T, env evergreen.Environment, yml []byte, ppStorageMethod ParserProjectStorageMethod) {
+func checkProjectPersists(ctx context.Context, t *testing.T, env evergreen.Environment, yml []byte, ppStorageMethod evergreen.ParserProjectStorageMethod) {
 	pp, err := createIntermediateProject(yml, false)
 	assert.NoError(t, err)
 	pp.Id = "my-project"
@@ -2540,4 +2541,83 @@ func TestUpdateForFile(t *testing.T) {
 	opts.UpdateForFile("nonexistent.yml")
 	// should be changed to patch diff because it's not a modified file
 
+}
+
+func TestFindAndTranslateProjectForPatch(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
+	defer func() {
+		assert.NoError(t, db.ClearCollections(ParserProjectCollection, patch.Collection))
+	}()
+
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, p *patch.Patch, pp *ParserProject){
+		"SucceedsWithUnfinalizedPatch": func(ctx context.Context, t *testing.T, p *patch.Patch, pp *ParserProject) {
+			p.ProjectStorageMethod = evergreen.ProjectStorageMethodDB
+			require.NoError(t, p.Insert())
+			require.NoError(t, pp.Insert())
+
+			project, ppFromDB, err := FindAndTranslateProjectForPatch(ctx, env.Settings(), p)
+			require.NoError(t, err)
+			require.NotZero(t, pp)
+			require.NotZero(t, project)
+			assert.Equal(t, utility.FromStringPtr(pp.DisplayName), utility.FromStringPtr(ppFromDB.DisplayName))
+			assert.Equal(t, utility.FromStringPtr(pp.DisplayName), project.DisplayName)
+		},
+		"SucceedsWithFinalizedPatch": func(ctx context.Context, t *testing.T, p *patch.Patch, pp *ParserProject) {
+			v := Version{
+				Id:                   p.Id.Hex(),
+				ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
+			}
+			require.NoError(t, v.Insert())
+
+			p.Activated = true
+			p.Version = v.Id
+			require.NoError(t, p.Insert())
+			require.NoError(t, pp.Insert())
+
+			project, ppFromDB, err := FindAndTranslateProjectForPatch(ctx, env.Settings(), p)
+			require.NoError(t, err)
+			require.NotZero(t, ppFromDB)
+			require.NotZero(t, project)
+			assert.Equal(t, utility.FromStringPtr(pp.DisplayName), utility.FromStringPtr(ppFromDB.DisplayName))
+			assert.Equal(t, utility.FromStringPtr(pp.DisplayName), project.DisplayName)
+		},
+		"SucceedsWithDeprecatedPatchedParserProject": func(ctx context.Context, t *testing.T, p *patch.Patch, pp *ParserProject) {
+			yamlPP, err := yaml.Marshal(pp)
+			require.NoError(t, err)
+			p.PatchedParserProject = string(yamlPP)
+			require.NoError(t, p.Insert())
+
+			project, ppFromPatch, err := FindAndTranslateProjectForPatch(ctx, env.Settings(), p)
+			require.NoError(t, err)
+			require.NotZero(t, ppFromPatch)
+			require.NotZero(t, project)
+			assert.Equal(t, utility.FromStringPtr(pp.DisplayName), utility.FromStringPtr(ppFromPatch.DisplayName))
+			assert.Equal(t, utility.FromStringPtr(pp.DisplayName), project.DisplayName)
+		},
+		"FailsWithoutStoredParserProject": func(ctx context.Context, t *testing.T, p *patch.Patch, pp *ParserProject) {
+			p.ProjectStorageMethod = evergreen.ProjectStorageMethodDB
+			require.NoError(t, p.Insert())
+
+			_, _, err := FindAndTranslateProjectForPatch(ctx, env.Settings(), p)
+			assert.Error(t, err)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(ParserProjectCollection, VersionCollection, patch.Collection))
+			p := patch.Patch{
+				Id: mgobson.NewObjectId(),
+			}
+			pp := ParserProject{
+				Id:          p.Id.Hex(),
+				DisplayName: utility.ToStringPtr("display-name"),
+			}
+
+			tCase(ctx, t, &p, &pp)
+		})
+	}
 }
