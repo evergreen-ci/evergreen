@@ -315,15 +315,8 @@ func (p *ProjectRef) IsEnabled() bool {
 	return utility.FromBoolPtr(p.Enabled)
 }
 
-// IsPrivate checks if the project ref should be accessed by non-logged in users.
-// If PartialRouteAuthDisabled is set, all project routes require users to be logged in
-// so this function will return false.
 func (p *ProjectRef) IsPrivate() bool {
-	flags, err := evergreen.GetServiceFlags()
-	if err != nil {
-		return utility.FromBoolPtr(p.Private)
-	}
-	return !flags.PartialRouteAuthDisabled && utility.FromBoolPtr(p.Private)
+	return utility.FromBoolPtr(p.Private)
 }
 
 func (p *ProjectRef) IsRestricted() bool {
@@ -2925,7 +2918,7 @@ func GetUpstreamProjectName(triggerID, triggerType string) (string, error) {
 	return upstreamProject.DisplayName, nil
 }
 
-// projectRefPipelineForMatchingTrigger is an aggregation pipeline to find projects that have the projectKey
+// projectRefPipelineForValueIsBool is an aggregation pipeline to find projects that have the projectKey
 // explicitly set to the val, OR that default to the repo, which has the repoKey explicitly set to the val
 func projectRefPipelineForValueIsBool(projectKey, repoKey string, val bool) []bson.M {
 	return []bson.M{

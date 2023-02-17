@@ -632,7 +632,6 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 	s.Equal(cachedProject.Owner, utility.FromStringPtr(projectRef.Owner))
 	s.Equal(cachedProject.Branch, utility.FromStringPtr(projectRef.Branch))
 	s.Equal(cachedProject.Enabled, projectRef.Enabled)
-	s.Equal(cachedProject.Private, projectRef.Private)
 	s.Equal(cachedProject.BatchTime, projectRef.BatchTime)
 	s.Equal(cachedProject.RemotePath, utility.FromStringPtr(projectRef.RemotePath))
 	s.Equal(cachedProject.Id, utility.FromStringPtr(projectRef.Id))
@@ -812,7 +811,6 @@ func getTestProjectRef() *serviceModel.ProjectRef {
 		Repo:               "dimoxinil-enterprise-repo",
 		Branch:             "main",
 		Enabled:            utility.FalsePtr(),
-		Private:            utility.TruePtr(),
 		BatchTime:          0,
 		RemotePath:         "evergreen.yml",
 		Id:                 "dimoxinil",
@@ -962,7 +960,6 @@ func TestDeleteProject(t *testing.T) {
 			Repo:                 "test_repo",
 			Branch:               fmt.Sprintf("branch_%d", i),
 			Enabled:              utility.TruePtr(),
-			Private:              utility.TruePtr(),
 			DisplayName:          fmt.Sprintf("display_%d", i),
 			RepoRefId:            "repo_ref",
 			TracksPushEvents:     utility.TruePtr(),
