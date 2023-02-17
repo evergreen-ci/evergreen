@@ -161,7 +161,7 @@ type Patch struct {
 	// Activated indicates whether or not the patch is finalized (i.e.
 	// tasks/variants are now scheduled to run). If true, the patch has been
 	// finalized.
-	Activated          bool             `bson:"activated"`
+	Activated bool `bson:"activated"`
 	// ProjectStorageMethod describes how the parser project is stored for this
 	// patch before it's finalized. This field is only set while the patch is
 	// unfinalized and is cleared once the patch has been finalized. It may also
