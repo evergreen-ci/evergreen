@@ -519,10 +519,10 @@ func FindAndTranslateProjectForPatch(ctx context.Context, settings *evergreen.Se
 	if p.ProjectStorageMethod != "" {
 		pp, err := ParserProjectFindOneByID(ctx, settings, p.ProjectStorageMethod, p.Id.Hex())
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "finding parser project '%s' in storage", p.Id.Hex())
+			return nil, nil, errors.Wrapf(err, "finding parser project '%s' stored using method '%s'", p.Id.Hex(), p.ProjectStorageMethod)
 		}
 		if pp == nil {
-			return nil, nil, errors.Errorf("parser project '%s' not found in storage", p.Id.Hex())
+			return nil, nil, errors.Errorf("parser project '%s' not found in storage using method '%s'", p.Id.Hex(), p.ProjectStorageMethod)
 		}
 		project, err := TranslateProject(pp)
 		if err != nil {

@@ -342,13 +342,13 @@ func GetPatchedProjectConfig(ctx context.Context, settings *evergreen.Settings, 
 		return "", errors.Wrap(err, "fetching project options for patch")
 	}
 
+	if !projectRef.IsVersionControlEnabled() {
+		return "", nil
+	}
+
 	projectFileBytes, err := getPatchedProjectYAML(ctx, projectRef, opts, p)
 	if err != nil {
 		return "", errors.Wrap(err, "getting patched project file as YAML")
-	}
-
-	if !projectRef.IsVersionControlEnabled() {
-		return "", nil
 	}
 
 	return getProjectConfigYAML(p, projectFileBytes)
@@ -705,7 +705,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		if err = tasksToInsert.InsertUnordered(sessCtx); err != nil {
 			return nil, errors.Wrapf(err, "inserting tasks for version '%s'", patchVersion.Id)
 		}
-		if err = p.SetActivated(sessCtx, patchVersion.Id); err != nil {
+		if err = p.SetFinalized(sessCtx, patchVersion.Id); err != nil {
 			return nil, errors.Wrapf(err, "activating patch '%s'", patchVersion.Id)
 		}
 		return nil, err

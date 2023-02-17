@@ -158,6 +158,9 @@ type Patch struct {
 	SyncAtEndOpts      SyncAtEndOptions `bson:"sync_at_end_opts,omitempty"`
 	Patches            []ModulePatch    `bson:"patches"`
 	Parameters         []Parameter      `bson:"parameters,omitempty"`
+	// Activated indicates whether or not the patch is finalized (i.e.
+	// tasks/variants are now scheduled to run). If true, the patch has been
+	// finalized.
 	Activated          bool             `bson:"activated"`
 	// ProjectStorageMethod describes how the parser project is stored for this
 	// patch before it's finalized. This field is only set while the patch is
@@ -596,9 +599,8 @@ func (p *Patch) FilesChanged() []string {
 	return filenames
 }
 
-// SetActivated sets the patch to activated in the DB, which effectively
-// finalizes the patch.
-func (p *Patch) SetActivated(ctx context.Context, versionId string) error {
+// SetFinalized marks the patch as finalized.
+func (p *Patch) SetFinalized(ctx context.Context, versionId string) error {
 	if _, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateOne(ctx,
 		bson.M{IdKey: p.Id},
 		bson.M{
