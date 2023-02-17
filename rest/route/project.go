@@ -1050,9 +1050,6 @@ func parseGetVersionsOptions(body []byte, params url.Values) (*dbModel.VersionsO
 		return nil, errors.New("end must be less than or equal to start")
 	}
 
-	if opts.StartTimeStr == "" && opts.RevisionStart == 0 {
-		return nil, errors.New("must specify either timestamps or order numbers")
-	}
 	if opts.StartTimeStr != "" && opts.RevisionStart != 0 {
 		return nil, errors.New("cannot specify both timestamps and order numbers")
 	}
