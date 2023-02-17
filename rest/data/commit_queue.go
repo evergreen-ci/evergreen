@@ -318,6 +318,28 @@ func EnqueuePRToCommitQueue(ctx context.Context, env evergreen.Environment, sc C
 		return nil, errors.New("PR contains no base branch label")
 	}
 
+	if !thirdparty.IsUnblockedGithubStatus(*pr.MergeableState) {
+		errMsg := fmt.Sprintf("PR is not mergeable, status: %s", *pr.MergeableState)
+		grip.Error(message.Fields{
+			"message":        errMsg,
+			"state":          *pr.MergeableState,
+			"owner":          userRepo.Owner,
+			"repo":           userRepo.Repo,
+			"pr_title":       *pr.Title,
+			"commit_message": *pr.Number,
+		})
+		sendErr := thirdparty.SendCommitQueueGithubStatus(env, pr, message.GithubStateFailure, errMsg, "")
+
+		grip.Error(message.WrapError(sendErr, message.Fields{
+			"message": "error sending patch creation failure to github",
+			"owner":   userRepo.Owner,
+			"repo":    userRepo.Repo,
+			"pr":      info.PR,
+		}))
+
+		return nil, errors.New(errMsg)
+	}
+
 	cqInfo := restModel.ParseGitHubComment(info.CommitMessage)
 	baseBranch := *pr.Base.Ref
 	projectRef, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(userRepo.Owner, userRepo.Repo, baseBranch)

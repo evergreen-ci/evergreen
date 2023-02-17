@@ -36,6 +36,32 @@ const (
 	GithubInvestigation = "Github API Limit Investigation"
 )
 
+var UnblockedGithubStatuses = []string{
+	githubPrBehind,
+	githubPrClean,
+	githubPrDirty,
+	githubPrDraft,
+	githubPrHas_Hooks,
+	githubPrUnknown,
+	githubPrUnstable,
+}
+
+const (
+	// all PR statuses except for "blocked" based on statuses listed here:
+	// https://docs.github.com/en/graphql/reference/enums#mergestatestatus
+	githubPrBehind    = "behind"
+	githubPrClean     = "clean"
+	githubPrDirty     = "dirty"
+	githubPrDraft     = "draft"
+	githubPrHas_Hooks = "has_hooks"
+	githubPrUnknown   = "unknown"
+	githubPrUnstable  = "unstable"
+)
+
+func IsUnblockedGithubStatus(status string) bool {
+	return utility.StringSliceContains(UnblockedGithubStatuses, status)
+}
+
 // GithubPatch stores patch data for patches create from GitHub pull requests
 type GithubPatch struct {
 	PRNumber       int    `bson:"pr_number"`
