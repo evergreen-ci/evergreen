@@ -1,5 +1,9 @@
 command_type: system
 
+parameters:
+  - key: overwrite-this-parameter
+    value: overwrite-this-value
+
 functions:
   "foo":
     - command: shell.exec
