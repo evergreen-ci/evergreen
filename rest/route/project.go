@@ -961,6 +961,9 @@ func (h *modifyProjectVersionsHandler) Parse(ctx context.Context, r *http.Reques
 	if err != nil {
 		return err
 	}
+	if opts.StartTimeStr == "" && opts.RevisionStart == 0 {
+		return errors.New("must specify either timestamps or order numbers")
+	}
 	if opts.Priority == nil {
 		return errors.New("must specify a priority")
 	}
