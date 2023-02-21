@@ -338,18 +338,18 @@ func TestCLITestHistory(t *testing.T) {
 				startTime := now.Add(time.Minute * time.Duration(i)).UTC()
 				endTime := now.Add(time.Minute * time.Duration(i+1)).UTC()
 				passingResult := testresult.TestResult{
-					TestName: "passingTest",
-					TaskID:   tsk.Id,
-					Status:   evergreen.TestSucceededStatus,
-					Start:    startTime,
-					End:      endTime,
+					TestName:      "passingTest",
+					TaskID:        tsk.Id,
+					Status:        evergreen.TestSucceededStatus,
+					TestStartTime: startTime,
+					TestEndTime:   endTime,
 				}
 				failedResult := testresult.TestResult{
-					TestName: "failingTest",
-					TaskID:   tsk.Id,
-					Status:   evergreen.TestFailedStatus,
-					Start:    startTime,
-					End:      endTime,
+					TestName:      "failingTest",
+					TaskID:        tsk.Id,
+					Status:        evergreen.TestFailedStatus,
+					TestStartTime: startTime,
+					TestEndTime:   endTime,
 				}
 				require.NoError(t, testresult.InsertLocal(ctx, evergreen.GetEnvironment(), passingResult, failedResult))
 			}
