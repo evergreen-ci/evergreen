@@ -93,18 +93,18 @@ func (s *localService) GetMergedFailedTestSample(ctx context.Context, taskOpts [
 }
 
 func (s *localService) GetFailedTestSamples(ctx context.Context, taskOpts []TaskOptions, regexFilters []string) ([]TaskTestResultsFailedSample, error) {
-	allTaskResults, err := s.get(ctx, taskOpts, resultsKey)
+	allTaskResults, err := s.get(ctx, taskOpts)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting local test results")
 	}
 
 	regexes := make([]*regexp.Regexp, len(regexFilters))
-	for _, filter := range regexFilters {
+	for i, filter := range regexFilters {
 		testNameRegex, err := regexp.Compile(filter)
 		if err != nil {
 			return nil, errors.Wrap(err, "compiling regex")
 		}
-		regexes = append(regexes, testNameRegex)
+		regexes[i] = testNameRegex
 	}
 
 	samples := make([]TaskTestResultsFailedSample, len(allTaskResults))

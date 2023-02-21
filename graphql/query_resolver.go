@@ -622,6 +622,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println(baseTaskOpts)
 
 	var sortBy string
 	if sortCategory != nil {
@@ -692,24 +693,31 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, filt
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding tasks %s: %s", tasks, err))
 	}
 	if len(dbTasks) == 0 {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("tasks %s not found", tasks))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Tasks %s not found", tasks))
 	}
 
 	failingTests := []string{}
 	for _, f := range filters {
 		failingTests = append(failingTests, f.TestName)
 	}
-	taskOpts := make([]testresult.TaskOptions, len(dbTasks))
-	for i, dbTask := range dbTasks {
-		taskOpts[i].TaskID = dbTask.Id
-		taskOpts[i].Execution = dbTask.Execution
-		taskOpts[i].ResultsService = dbTask.ResultsService
+
+	var allTaskOpts []testresult.TaskOptions
+	groupedTaskOpts := map[testresult.TaskOptions][]testresult.TaskOptions{}
+	for _, dbTask := range dbTasks {
+		taskOpts, err := dbTask.CreateTestResultsTaskOptions()
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error creating test results task options for task '%s': %s", dbTask.Id, err))
+		}
+
+		allTaskOpts = append(allTaskOpts, taskOpts...)
+		groupedTaskOpts[testresult.TaskOptions{TaskID: dbTask.Id, Execution: dbTask.Execution}] = taskOpts
 	}
-	samples, err := testresult.GetFailedTestSamples(ctx, evergreen.GetEnvironment(), taskOpts, failingTests)
+	samples, err := testresult.GetFailedTestSamples(ctx, evergreen.GetEnvironment(), allTaskOpts, failingTests)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting test results sample: %s", err))
 	}
 
+	samples = groupDisplayTaskFailedSamples(groupedTaskOpts, samples)
 	apiSamples := make([]*TaskTestResultSample, len(samples))
 	for i, sample := range samples {
 		apiSamples[i] = &TaskTestResultSample{

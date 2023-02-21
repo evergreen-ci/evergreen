@@ -328,6 +328,7 @@
       "gitspec": "patch-revision",
       "build_variant": "ubuntu1604",
       "status": "success",
+      "display_name": "patch-task",
       "execution": 0,
       "results_service": "local"
     },
