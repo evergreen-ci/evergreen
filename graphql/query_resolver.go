@@ -618,11 +618,12 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 	if dbTask == nil || err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding task with id '%s' and execution %d", taskID, utility.FromIntPtr(execution)))
 	}
+	baseTaskOpts, err := getBaseTaskTestResultsOptions(ctx, dbTask)
+	if err != nil {
+		return nil, err
+	}
 
-	var (
-		sortBy       string
-		baseTaskOpts []testresult.TaskOptions
-	)
+	var sortBy string
 	if sortCategory != nil {
 		switch *sortCategory {
 		case TestSortCategoryStatus:
@@ -634,10 +635,6 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		case TestSortCategoryStartTime:
 			sortBy = testresult.SortByStart
 		case TestSortCategoryBaseStatus:
-			baseTaskOpts, err = getBaseTaskTestResultsOptions(ctx, dbTask)
-			if err != nil {
-				return nil, err
-			}
 			if len(baseTaskOpts) > 0 {
 				// Only sort by base status if we know there
 				// are base task options we can send to the

@@ -960,11 +960,12 @@ func convertTestSortOptions(ctx context.Context, dbTask *task.Task, opts []*Test
 		return "", false, nil, nil
 	}
 
-	var (
-		sortBy       string
-		baseTaskOpts []testresult.TaskOptions
-		err          error
-	)
+	baseTaskOpts, err := getBaseTaskTestResultsOptions(ctx, dbTask)
+	if err != nil {
+		return "", false, nil, err
+	}
+
+	var sortBy string
 	switch opts[0].SortBy {
 	case TestSortCategoryStatus:
 		sortBy = testresult.SortByStatus
@@ -975,10 +976,6 @@ func convertTestSortOptions(ctx context.Context, dbTask *task.Task, opts []*Test
 	case TestSortCategoryStartTime:
 		sortBy = testresult.SortByStart
 	case TestSortCategoryBaseStatus:
-		baseTaskOpts, err = getBaseTaskTestResultsOptions(ctx, dbTask)
-		if err != nil {
-			return "", false, nil, err
-		}
 		if len(baseTaskOpts) > 0 {
 			// Only sort by base status if we know there are base
 			// task options we can send to the results service.
