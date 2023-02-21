@@ -2277,14 +2277,15 @@ func shouldValidateTotalProjectLimit(isNewProject bool, originalMergedRef *Proje
 // - we are creating a new project
 // - the original project was disabled
 // - the owner or repo has changed
-// - the owner/repo is part of exception
+// - the owner/repo is not part of exception
 func shouldValidateOwnerRepoLimit(isNewProject bool, config *evergreen.Settings, originalMergedRef, mergedRefToValidate *ProjectRef) bool {
 	return (shouldValidateTotalProjectLimit(isNewProject, originalMergedRef) ||
 		originalMergedRef.Owner != mergedRefToValidate.Owner || originalMergedRef.Repo != mergedRefToValidate.Repo) &&
 		!config.ProjectCreation.IsExceptionToRepoLimit(mergedRefToValidate.Owner, mergedRefToValidate.Repo)
 }
 
-// ValidateEnabledProjectsLimit takes in a merged project ref and validates if the current project is allowed to be enabled.
+// ValidateEnabledProjectsLimit takes in a the original and new merged project refs and validates project limits,
+// assuming the given project is going to be enabled.
 // Returns a status code and error if we are already at limit with enabled projects.
 func ValidateEnabledProjectsLimit(projectId string, config *evergreen.Settings, originalMergedRef, mergedRefToValidate *ProjectRef) (int, error) {
 	if config.ProjectCreation.TotalProjectLimit == 0 || config.ProjectCreation.RepoProjectLimit == 0 {
@@ -2296,7 +2297,7 @@ func ValidateEnabledProjectsLimit(projectId string, config *evergreen.Settings, 
 	if shouldValidateTotalProjectLimit(isNewProject, originalMergedRef) {
 		allEnabledProjects, err := GetNumberOfEnabledProjects()
 		if err != nil {
-			return http.StatusInternalServerError, errors.Wrap(err, "getting number of projects")
+			return http.StatusInternalServerError, errors.Wrap(err, "getting number of enabled projects")
 		}
 		if allEnabledProjects >= config.ProjectCreation.TotalProjectLimit {
 			catcher.Errorf("total enabled project limit of %d reached", config.ProjectCreation.TotalProjectLimit)
@@ -2309,7 +2310,7 @@ func ValidateEnabledProjectsLimit(projectId string, config *evergreen.Settings, 
 			return http.StatusInternalServerError, errors.Wrapf(err, "getting number of projects for '%s/%s'", mergedRefToValidate.Owner, mergedRefToValidate.Repo)
 		}
 		if enabledOwnerRepoProjects >= config.ProjectCreation.RepoProjectLimit {
-			catcher.Errorf("owner repo limit of %d reached for '%s/%s'", config.ProjectCreation.RepoProjectLimit, mergedRefToValidate.Owner, mergedRefToValidate.Repo)
+			catcher.Errorf("enabled project limit of %d reached for '%s/%s'", config.ProjectCreation.RepoProjectLimit, mergedRefToValidate.Owner, mergedRefToValidate.Repo)
 		}
 	}
 
