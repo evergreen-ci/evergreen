@@ -4,106 +4,52 @@ import (
 	"context"
 	"regexp"
 	"sort"
-	"sync"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const maxSampleSize = 10
 
-var globalInMemStore = newInMemStore()
-
-// ClearLocal resets the global in-memory test results store for testing and
-// and local development.
-func ClearLocal() {
-	globalInMemStore = newInMemStore()
+// ClearLocal clears the local test results store.
+func ClearLocal(ctx context.Context, env evergreen.Environment) error {
+	return errors.Wrap(env.DB().Collection(Collection).Drop(ctx), "clearing the local test results store")
 }
 
-// InsertLocal inserts the given test results into the global in-memory test
-// results store for testing and local development.
-func InsertLocal(results ...TestResult) {
-	globalInMemStore.appendResults(results...)
+// InsertLocal inserts the given test results into the local test results store
+// for testing and local development.
+func InsertLocal(ctx context.Context, env evergreen.Environment, results ...TestResult) error {
+	return errors.Wrap(appendDBResults(ctx, env, results), "inserting local test results")
 }
 
-// inMemStore is an in-memory test results store for testing and local
-// development.
-type inMemStore struct {
-	results map[inMemKey]*TaskTestResults
-	mu      sync.RWMutex
+// localService implements the local test results service.
+type localService struct {
+	env evergreen.Environment
 }
 
-type inMemKey struct {
-	taskID    string
-	execution int
+// newLocalService returns a local test results service implementation.
+func newLocalService(env evergreen.Environment) *localService {
+	return &localService{env: env}
 }
 
-func newInMemStore() *inMemStore {
-	return &inMemStore{results: map[inMemKey]*TaskTestResults{}}
-}
-
-func (s *inMemStore) appendResults(results ...TestResult) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	for _, result := range results {
-		key := inMemKey{taskID: result.TaskID, execution: result.Execution}
-		taskResults, ok := s.results[key]
-		if !ok {
-			taskResults = &TaskTestResults{}
-			s.results[key] = taskResults
-		}
-
-		taskResults.Stats.TotalCount++
-		if result.Status == evergreen.TestFailedStatus {
-			taskResults.Stats.FailedCount++
-		}
-		taskResults.Results = append(taskResults.Results, result)
+func (s *localService) GetMergedTaskTestResults(ctx context.Context, taskOpts []TaskOptions, filterOpts *FilterOptions) (TaskTestResults, error) {
+	allTaskResults, err := s.get(ctx, taskOpts)
+	if err != nil {
+		return TaskTestResults{}, errors.Wrap(err, "getting local test results")
 	}
-}
-
-func (s *inMemStore) get(taskID string, execution int) (*TaskTestResults, bool) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	taskResults, ok := s.results[inMemKey{taskID: taskID, execution: execution}]
-	return taskResults, ok
-}
-
-// inMemService implements the test results service for in-memory test results.
-type inMemService struct {
-	store *inMemStore
-}
-
-func newInMemService(store *inMemStore) *inMemService {
-	return &inMemService{store: store}
-}
-
-func (s *inMemService) GetMergedTaskTestResults(_ context.Context, taskOpts []TaskOptions, filterOpts *FilterOptions) (TaskTestResults, error) {
-	// Sort the tasks in order by (task ID, execution) to ensure that
-	// paginated responses return consistent results.
-	sort.SliceStable(taskOpts, func(i, j int) bool {
-		if taskOpts[i].TaskID == taskOpts[j].TaskID {
-			return taskOpts[i].Execution < taskOpts[j].Execution
-		}
-		return taskOpts[i].TaskID < taskOpts[j].TaskID
-	})
 
 	var mergedTaskResults TaskTestResults
-	for _, task := range taskOpts {
-		taskResults, ok := s.store.get(task.TaskID, task.Execution)
-		if !ok {
-			continue
-		}
-
+	for _, taskResults := range allTaskResults {
 		mergedTaskResults.Stats.TotalCount += taskResults.Stats.TotalCount
 		mergedTaskResults.Stats.FailedCount += taskResults.Stats.FailedCount
 		mergedTaskResults.Results = append(mergedTaskResults.Results, taskResults.Results...)
 	}
 
-	filteredResults, filteredCount, err := s.filterAndSortTestResults(mergedTaskResults.Results, filterOpts)
+	filteredResults, filteredCount, err := s.filterAndSortTestResults(ctx, mergedTaskResults.Results, filterOpts)
 	if err != nil {
 		return TaskTestResults{}, err
 	}
@@ -113,44 +59,45 @@ func (s *inMemService) GetMergedTaskTestResults(_ context.Context, taskOpts []Ta
 	return mergedTaskResults, nil
 }
 
-func (s *inMemService) GetMergedTaskTestResultsStats(_ context.Context, taskOpts []TaskOptions) (TaskTestResultsStats, error) {
-	var mergedStats TaskTestResultsStats
-	for _, task := range taskOpts {
-		results, ok := s.store.get(task.TaskID, task.Execution)
-		if !ok {
-			continue
-		}
+func (s *localService) GetMergedTaskTestResultsStats(ctx context.Context, taskOpts []TaskOptions) (TaskTestResultsStats, error) {
+	allTaskResults, err := s.get(ctx, taskOpts, statsKey)
+	if err != nil {
+		return TaskTestResultsStats{}, errors.Wrap(err, "getting local test results")
+	}
 
-		mergedStats.TotalCount += results.Stats.TotalCount
-		mergedStats.FailedCount += results.Stats.FailedCount
+	var mergedStats TaskTestResultsStats
+	for _, taskResults := range allTaskResults {
+		mergedStats.TotalCount += taskResults.Stats.TotalCount
+		mergedStats.FailedCount += taskResults.Stats.FailedCount
 	}
 
 	return mergedStats, nil
 }
 
-func (s *inMemService) GetMergedFailedTestSample(_ context.Context, taskOpts []TaskOptions) ([]string, error) {
-	var mergedSample []string
-Tasks:
-	for _, task := range taskOpts {
-		results, ok := s.store.get(task.TaskID, task.Execution)
-		if !ok {
-			continue
-		}
+func (s *localService) GetMergedFailedTestSample(ctx context.Context, taskOpts []TaskOptions) ([]string, error) {
+	mergedTaskResults, err := s.GetMergedTaskTestResults(ctx, taskOpts, &FilterOptions{Statuses: []string{evergreen.TestFailedStatus}})
+	if err != nil {
+		return nil, errors.Wrap(err, "getting failed test results")
+	}
 
-		for _, result := range results.Results {
-			if result.Status == evergreen.TestFailedStatus {
-				mergedSample = append(mergedSample, result.GetDisplayTestName())
-			}
-			if len(mergedSample) == maxSampleSize {
-				break Tasks
-			}
-		}
+	sampleSize := maxSampleSize
+	if len(mergedTaskResults.Results) < sampleSize {
+		sampleSize = len(mergedTaskResults.Results)
+	}
+	var mergedSample []string
+	for i := 0; i < sampleSize; i++ {
+		mergedSample = append(mergedSample, mergedTaskResults.Results[i].GetDisplayTestName())
 	}
 
 	return mergedSample, nil
 }
 
-func (s *inMemService) GetFailedTestSamples(_ context.Context, taskOpts []TaskOptions, regexFilters []string) ([]TaskTestResultsFailedSample, error) {
+func (s *localService) GetFailedTestSamples(ctx context.Context, taskOpts []TaskOptions, regexFilters []string) ([]TaskTestResultsFailedSample, error) {
+	allTaskResults, err := s.get(ctx, taskOpts, resultsKey)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting local test results")
+	}
+
 	regexes := make([]*regexp.Regexp, len(regexFilters))
 	for _, filter := range regexFilters {
 		testNameRegex, err := regexp.Compile(filter)
@@ -160,22 +107,17 @@ func (s *inMemService) GetFailedTestSamples(_ context.Context, taskOpts []TaskOp
 		regexes = append(regexes, testNameRegex)
 	}
 
-	samples := make([]TaskTestResultsFailedSample, len(taskOpts))
-	for i, task := range taskOpts {
-		samples[i].TaskID = task.TaskID
-		samples[i].Execution = task.Execution
+	samples := make([]TaskTestResultsFailedSample, len(allTaskResults))
+	for i, taskResults := range allTaskResults {
+		samples[i].TaskID = taskResults.Results[0].TaskID
+		samples[i].Execution = taskResults.Results[0].Execution
 
-		results, ok := s.store.get(task.TaskID, task.Execution)
-		if !ok {
+		if taskResults.Stats.FailedCount == 0 {
 			continue
 		}
 
-		if results.Stats.FailedCount == 0 {
-			continue
-		}
-		samples[i].TotalFailedNames = results.Stats.FailedCount
-
-		for _, result := range results.Results {
+		samples[i].TotalFailedNames = taskResults.Stats.FailedCount
+		for _, result := range taskResults.Results {
 			if result.Status == evergreen.TestFailedStatus {
 				match := true
 				for _, regex := range regexes {
@@ -193,9 +135,45 @@ func (s *inMemService) GetFailedTestSamples(_ context.Context, taskOpts []TaskOp
 	return samples, nil
 }
 
+func (s *localService) get(ctx context.Context, taskOpts []TaskOptions, fields ...string) ([]TaskTestResults, error) {
+	ids := make([]dbTaskTestResultsID, len(taskOpts))
+	for i, task := range taskOpts {
+		ids[i].TaskID = task.TaskID
+		ids[i].Execution = task.Execution
+	}
+
+	filter := bson.M{idKey: bson.M{"$in": ids}}
+	opts := options.Find()
+	opts.SetSort(bson.D{{taskIDKey, 1}, {executionKey, 1}})
+	if len(fields) > 0 {
+		projection := bson.M{}
+		for _, field := range fields {
+			projection[field] = 1
+		}
+		opts.SetProjection(projection)
+	}
+
+	var allDBTaskResults []dbTaskTestResults
+	cur, err := s.env.DB().Collection(Collection).Find(ctx, filter, opts)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding DB test results")
+	}
+	if err = cur.All(ctx, &allDBTaskResults); err != nil {
+		return nil, errors.Wrap(err, "reading DB test results")
+	}
+
+	allTaskResults := make([]TaskTestResults, len(allDBTaskResults))
+	for i, dbTaskResults := range allDBTaskResults {
+		allTaskResults[i].Stats = dbTaskResults.Stats
+		allTaskResults[i].Results = dbTaskResults.Results
+	}
+
+	return allTaskResults, nil
+}
+
 // filterAndSortTestResults takes a slice of test results and returns a
 // filtered, sorted, and paginated version of that slice.
-func (s *inMemService) filterAndSortTestResults(results []TestResult, opts *FilterOptions) ([]TestResult, int, error) {
+func (s *localService) filterAndSortTestResults(ctx context.Context, results []TestResult, opts *FilterOptions) ([]TestResult, int, error) {
 	if opts == nil {
 		return results, len(results), nil
 	}
@@ -204,7 +182,7 @@ func (s *inMemService) filterAndSortTestResults(results []TestResult, opts *Filt
 	}
 
 	baseStatusMap := map[string]string{}
-	baseResults, err := s.GetMergedTaskTestResults(nil, opts.BaseTasks, nil)
+	baseResults, err := s.GetMergedTaskTestResults(ctx, opts.BaseTasks, nil)
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "getting base test results")
 	}
@@ -238,7 +216,7 @@ func (s *inMemService) filterAndSortTestResults(results []TestResult, opts *Filt
 	return results, totalCount, nil
 }
 
-func (s *inMemService) validateFilterOptions(opts *FilterOptions) error {
+func (s *localService) validateFilterOptions(opts *FilterOptions) error {
 	catcher := grip.NewBasicCatcher()
 
 	switch opts.SortBy {
@@ -253,7 +231,7 @@ func (s *inMemService) validateFilterOptions(opts *FilterOptions) error {
 	return catcher.Resolve()
 }
 
-func (s *inMemService) filterTestResults(results []TestResult, opts *FilterOptions) ([]TestResult, error) {
+func (s *localService) filterTestResults(results []TestResult, opts *FilterOptions) ([]TestResult, error) {
 	if opts.TestName == "" && len(opts.Statuses) == 0 && opts.GroupID == "" {
 		return results, nil
 	}
@@ -285,7 +263,7 @@ func (s *inMemService) filterTestResults(results []TestResult, opts *FilterOptio
 	return filteredResults, nil
 }
 
-func (s *inMemService) sortTestResults(results []TestResult, opts *FilterOptions, baseStatusMap map[string]string) {
+func (s *localService) sortTestResults(results []TestResult, opts *FilterOptions, baseStatusMap map[string]string) {
 	switch opts.SortBy {
 	case SortByStart:
 		sort.SliceStable(results, func(i, j int) bool {

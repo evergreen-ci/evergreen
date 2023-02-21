@@ -7,14 +7,21 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestInMemService(t *testing.T) {
-	svc := newInMemService(newInMemStore())
+func TestLocalService(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	svc := newLocalService(env)
+	defer func() {
+		assert.NoError(t, ClearLocal(ctx, env))
+	}()
 
 	task0 := TaskOptions{TaskID: "task0", Execution: 0}
 	savedResults0 := make([]TestResult, 10)
@@ -27,7 +34,7 @@ func TestInMemService(t *testing.T) {
 		}
 		savedResults0[i] = result
 	}
-	svc.store.appendResults(savedResults0...)
+	require.NoError(t, InsertLocal(ctx, env, savedResults0...))
 
 	task1 := TaskOptions{TaskID: "task1", Execution: 0}
 	savedResults1 := make([]TestResult, 10)
@@ -37,7 +44,7 @@ func TestInMemService(t *testing.T) {
 		result.Execution = task1.Execution
 		savedResults1[i] = result
 	}
-	svc.store.appendResults(savedResults1...)
+	require.NoError(t, InsertLocal(ctx, env, savedResults1...))
 
 	task2 := TaskOptions{TaskID: "task2", Execution: 1}
 	savedResults2 := make([]TestResult, 10)
@@ -47,14 +54,14 @@ func TestInMemService(t *testing.T) {
 		result.Execution = task2.Execution
 		savedResults2[i] = result
 	}
-	svc.store.appendResults(savedResults2...)
+	require.NoError(t, InsertLocal(ctx, env, savedResults2...))
 
 	emptyTask := TaskOptions{TaskID: "DNE", Execution: 0}
 
 	t.Run("GetMergedTaskTestResults", func(t *testing.T) {
 		t.Run("WithoutFilterAndSortOpts", func(t *testing.T) {
 			taskOpts := []TaskOptions{task1, task2, task0, emptyTask}
-			taskResults, err := svc.GetMergedTaskTestResults(context.Background(), taskOpts, nil)
+			taskResults, err := svc.GetMergedTaskTestResults(ctx, taskOpts, nil)
 			require.NoError(t, err)
 
 			assert.Equal(t, len(taskResults.Results), taskResults.Stats.TotalCount)
@@ -66,7 +73,7 @@ func TestInMemService(t *testing.T) {
 		t.Run("WithFilterAndSortOpts", func(t *testing.T) {
 			taskOpts := []TaskOptions{task0}
 			filterOpts := &FilterOptions{Statuses: []string{evergreen.TestSucceededStatus}}
-			taskResults, err := svc.GetMergedTaskTestResults(context.Background(), taskOpts, filterOpts)
+			taskResults, err := svc.GetMergedTaskTestResults(ctx, taskOpts, filterOpts)
 			require.NoError(t, err)
 
 			assert.Equal(t, len(savedResults0), taskResults.Stats.TotalCount)
@@ -80,7 +87,7 @@ func TestInMemService(t *testing.T) {
 	})
 	t.Run("GetMergedTaskTestResultsStats", func(t *testing.T) {
 		taskOpts := []TaskOptions{task1, task2, task0, emptyTask}
-		stats, err := svc.GetMergedTaskTestResultsStats(context.Background(), taskOpts)
+		stats, err := svc.GetMergedTaskTestResultsStats(ctx, taskOpts)
 		require.NoError(t, err)
 
 		assert.Equal(t, len(savedResults0)+len(savedResults1)+len(savedResults2), stats.TotalCount)
@@ -99,7 +106,7 @@ func TestInMemService(t *testing.T) {
 			}
 			savedResults3[i] = result
 		}
-		svc.store.appendResults(savedResults3...)
+		require.NoError(t, InsertLocal(ctx, env, savedResults3...))
 
 		task4 := TaskOptions{TaskID: "task4", Execution: 1}
 		savedResults4 := make([]TestResult, maxSampleSize)
@@ -110,11 +117,11 @@ func TestInMemService(t *testing.T) {
 			result.Status = evergreen.TestFailedStatus
 			savedResults4[i] = result
 		}
-		svc.store.appendResults(savedResults4...)
+		require.NoError(t, InsertLocal(ctx, env, savedResults4...))
 
 		t.Run("FailingTests", func(t *testing.T) {
 			taskOpts := []TaskOptions{task3, task4, emptyTask}
-			sample, err := svc.GetMergedFailedTestSample(context.Background(), taskOpts)
+			sample, err := svc.GetMergedFailedTestSample(ctx, taskOpts)
 			require.NoError(t, err)
 
 			require.Len(t, sample, maxSampleSize)
@@ -127,15 +134,21 @@ func TestInMemService(t *testing.T) {
 		})
 		t.Run("NoFailingTests", func(t *testing.T) {
 			taskOpts := []TaskOptions{task1, task2}
-			sample, err := svc.GetMergedFailedTestSample(context.Background(), taskOpts)
+			sample, err := svc.GetMergedFailedTestSample(ctx, taskOpts)
 			require.NoError(t, err)
 			assert.Nil(t, sample)
 		})
 	})
 }
 
-func TestInMemFilterAndSortTestResults(t *testing.T) {
-	svc := newInMemService(newInMemStore())
+func TestLocalFilterAndSortTestResults(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	svc := newLocalService(env)
+	defer func() {
+		assert.NoError(t, ClearLocal(ctx, env))
+	}()
 
 	getResults := func() []TestResult {
 		return []TestResult{
@@ -193,7 +206,7 @@ func TestInMemFilterAndSortTestResults(t *testing.T) {
 			Status:   "Fail",
 		},
 	}
-	svc.store.appendResults(baseResults...)
+	require.NoError(t, InsertLocal(ctx, env, baseResults...))
 	resultsWithBaseStatus := getResults()
 	require.Len(t, resultsWithBaseStatus, len(baseResults))
 	for i := range resultsWithBaseStatus {
@@ -431,7 +444,7 @@ func TestInMemFilterAndSortTestResults(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			actualResults, count, err := svc.filterAndSortTestResults(getResults(), test.opts)
+			actualResults, count, err := svc.filterAndSortTestResults(ctx, getResults(), test.opts)
 			if test.hasErr {
 				assert.Nil(t, actualResults)
 				assert.Zero(t, count)

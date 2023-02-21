@@ -31,7 +31,7 @@ func getServiceImpl(env evergreen.Environment, service string) (testResultsServi
 	case TestResultsServiceCedar:
 		return newCedarService(env), nil
 	case TestResultsServiceLocal:
-		return newInMemService(globalInMemStore), nil
+		return newLocalService(env), nil
 	default:
 		return nil, errors.Errorf("unsupported test results service '%s'", service)
 	}
