@@ -182,6 +182,8 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 			return
 		}
 		// create a version with the item and subscribe to its completion
+		// kim: TODO: test that both GitHub and CLI patch commit queue items
+		// have the expected result.
 		if nextItem.Source == commitqueue.SourcePullRequest {
 			j.processGitHubPRItem(ctx, cq, &nextItem, projectRef, githubToken)
 		} else if nextItem.Source == commitqueue.SourceDiff {
@@ -395,6 +397,10 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 		j.dequeue(cq, *nextItem)
 		return
 	}
+	// kim: NOTE: for GitHub PRs, the GitHub REST data connector already sets
+	// the PatchedParserProject before inserting the patch document. This is in
+	// contrast to the CLI commit queue items, which load the
+	// PatchedParserProject on the fly right before finalizing.
 	projectConfig, _, err := model.GetPatchedProject(ctx, j.env.Settings(), patchDoc, githubToken)
 	if err != nil {
 		j.logError(err, "problem getting patched project", *nextItem)
@@ -448,6 +454,9 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 		return
 	}
 
+	// kim: NOTE: the patched parser project is set here. We can potentially
+	// remove this by ensuring the patch document gets inserted after the parser
+	// project is inserted, but I don't want to introduce more changes.
 	project, err := updatePatch(ctx, j.env.Settings(), githubToken, projectRef, patchDoc)
 	if err != nil {
 		j.logError(err, "can't update patch", *nextItem)
@@ -470,6 +479,9 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 		return
 	}
 
+	// kim: NOTE: it's assuming here that the patch is created but unfinalized.
+	// We have to ensure that before the patch is enqueued in the commit queue,
+	// it has already inserted the parser project.
 	v, err := model.FinalizePatch(ctx, patchDoc, evergreen.MergeTestRequester, githubToken)
 	if err != nil {
 		j.logError(err, "can't finalize patch", *nextItem)
@@ -700,7 +712,14 @@ func updatePatch(ctx context.Context, settings *evergreen.Settings, githubToken 
 	sha := *branch.Commit.SHA
 	patchDoc.Githash = sha
 
-	// Refresh the cached project config
+	// kim: TODO: have to remove this logic that sets the patched parser project
+	// Refresh the cached project config. Might make sense to handle the commit
+	// queue in a follow-up PR.
+	// TODO (EVG-18700): remove this temporary logic once patch documents always
+	// have ProjectStorageMethod set. We may have to still call
+	// GetPatchedProject, but we can upsert the parser project rater than set
+	// PatchedParserProject to replace the existing one just in case it's
+	// changed.
 	patchDoc.PatchedParserProject = ""
 	patchDoc.PatchedProjectConfig = ""
 	project, patchConfig, err := model.GetPatchedProject(ctx, settings, patchDoc, githubToken)

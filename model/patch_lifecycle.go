@@ -27,7 +27,6 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"gopkg.in/yaml.v2"
 )
@@ -1047,19 +1046,21 @@ func MakeMergePatchFromExisting(ctx context.Context, settings *evergreen.Setting
 		return nil, errors.Wrap(err, "loading existing project")
 	}
 
-	projBytes, err := bson.Marshal(pp)
-	if err != nil {
-		return nil, errors.Wrap(err, "marshalling project bytes to bson")
-	}
+	// kim: TODO: remove
+	// projBytes, err := bson.Marshal(pp)
+	// if err != nil {
+	//     return nil, errors.Wrap(err, "marshalling project bytes to bson")
+	// }
 
 	patchDoc := &patch.Patch{
-		Id:                   mgobson.NewObjectId(),
-		Author:               existingPatch.Author,
-		Project:              existingPatch.Project,
-		Githash:              existingPatch.Githash,
-		Status:               evergreen.PatchCreated,
-		Alias:                evergreen.CommitQueueAlias,
-		PatchedParserProject: string(projBytes),
+		Id:      mgobson.NewObjectId(),
+		Author:  existingPatch.Author,
+		Project: existingPatch.Project,
+		Githash: existingPatch.Githash,
+		Status:  evergreen.PatchCreated,
+		Alias:   evergreen.CommitQueueAlias,
+		// kim: TODO: remove
+		// PatchedParserProject: string(projBytes),
 		PatchedProjectConfig: existingPatch.PatchedProjectConfig,
 		CreateTime:           time.Now(),
 		MergedFrom:           existingPatch.Id.Hex(),
@@ -1088,6 +1089,10 @@ func MakeMergePatchFromExisting(ctx context.Context, settings *evergreen.Setting
 	if err != nil {
 		return nil, errors.Wrap(err, "computing patch num")
 	}
+
+	pp.Id = patchDoc.Id.Hex()
+	// kim: TODO: re-upsert the copied parser project (pp) here for the copied
+	// patch into the DB with S3 fallback.
 
 	if err = patchDoc.Insert(); err != nil {
 		return nil, errors.Wrap(err, "inserting patch")
@@ -1205,6 +1210,11 @@ func restartDiffItem(p patch.Patch, cq *commitqueue.CommitQueue) error {
 		PatchNumber:     patchNumber,
 	}
 
+	// kim: NOTE: admin restarts commit queue items from admin UI -> RetryCommitQueueItems -> restartDiffItem -> processCLIPatchItem
+	// kim: TODO: can either change the design to insert parser project here
+	// (with its ID) and set the patch's parser project storage method, or wait
+	// until processCLIPatchItem occurs (i.e. how it currently behaves). I'm
+	// inclined to do the latter since it's less change.
 	if err = newPatch.Insert(); err != nil {
 		return errors.Wrap(err, "inserting patch")
 	}
