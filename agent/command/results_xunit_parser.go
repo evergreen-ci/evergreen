@@ -105,8 +105,8 @@ func (tc testCase) toModelTestResultAndLog(conf *internal.TaskConfig) (testresul
 	// Replace spaces, dashes, etc. with underscores.
 	res.TestName = util.CleanForPath(res.TestName)
 
-	res.Start = time.Now()
-	res.End = res.Start.Add(time.Duration(float64(tc.Time) * float64(time.Second)))
+	res.TestStartTime = time.Now()
+	res.TestEndTime = res.TestStartTime.Add(time.Duration(float64(tc.Time) * float64(time.Second)))
 
 	// The presence of the Failure, Error, or Skipped fields is used to
 	// indicate an unsuccessful test case. Logs can only be generated in

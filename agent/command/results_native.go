@@ -49,17 +49,17 @@ type nativeTestResult struct {
 
 func (t nativeTestResult) convertToService() testresult.TestResult {
 	return testresult.TestResult{
-		TaskID:      t.TaskID,
-		Execution:   t.Execution,
-		TestName:    t.TestFile,
-		GroupID:     t.GroupID,
-		Status:      t.Status,
-		LogTestName: t.logTestName,
-		LogURL:      t.URL,
-		RawLogURL:   t.URLRaw,
-		LineNum:     t.LineNum,
-		Start:       utility.FromPythonTime(t.Start),
-		End:         utility.FromPythonTime(t.End),
+		TaskID:        t.TaskID,
+		Execution:     t.Execution,
+		TestName:      t.TestFile,
+		GroupID:       t.GroupID,
+		Status:        t.Status,
+		LogTestName:   t.logTestName,
+		LogURL:        t.URL,
+		RawLogURL:     t.URLRaw,
+		LineNum:       t.LineNum,
+		TestStartTime: utility.FromPythonTime(t.Start),
+		TestEndTime:   utility.FromPythonTime(t.End),
 	}
 }
 

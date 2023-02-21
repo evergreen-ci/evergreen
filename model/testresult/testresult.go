@@ -29,20 +29,19 @@ type TaskTestResultsStats struct {
 
 // TestResult represents a single test result from an Evergreen task run.
 type TestResult struct {
-	TaskID          string `json:"task_id" bson:"task_id"`
-	Execution       int    `json:"execution" bson:"execution"`
-	TestName        string `json:"test_name" bson:"test_name"`
-	DisplayTestName string `json:"display_test_name" bson:"display_test_name"`
-	GroupID         string `json:"group_id" bson:"group_id"`
-	Status          string `json:"status" bson:"status"`
-	BaseStatus      string `json:"base_status" bson:"base_status"`
-	LogTestName     string `json:"log_test_name" bson:"log_test_name"`
-	LogURL          string `json:"log_url" bson:"log_url"`
-	RawLogURL       string `json:"raw_log_url" bson:"raw_log_url"`
-	LineNum         int    `json:"line_num" bson:"line_num"`
-	// TODO: Keep these time.Time or convert them to floats?
-	Start time.Time `json:"test_start_time" bson:"test_start_time"`
-	End   time.Time `json:"test_end_time" bson:"test_end_time"`
+	TaskID          string    `json:"task_id" bson:"task_id"`
+	Execution       int       `json:"execution" bson:"execution"`
+	TestName        string    `json:"test_name" bson:"test_name"`
+	DisplayTestName string    `json:"display_test_name" bson:"display_test_name"`
+	GroupID         string    `json:"group_id" bson:"group_id"`
+	Status          string    `json:"status" bson:"status"`
+	BaseStatus      string    `json:"base_status" bson:"base_status"`
+	LogTestName     string    `json:"log_test_name" bson:"log_test_name"`
+	LogURL          string    `json:"log_url" bson:"log_url"`
+	RawLogURL       string    `json:"raw_log_url" bson:"raw_log_url"`
+	LineNum         int       `json:"line_num" bson:"line_num"`
+	TestStartTime   time.Time `json:"test_start_time" bson:"test_start_time"`
+	TestEndTime     time.Time `json:"test_end_time" bson:"test_end_time"`
 }
 
 // GetLogTestName returns the name of the test in the logging backend. This is
@@ -66,8 +65,8 @@ func (tr TestResult) GetDisplayTestName() string {
 	return tr.TestName
 }
 
-func (tr TestResult) getDuration() time.Duration {
-	return tr.End.Sub(tr.Start)
+func (tr TestResult) Duration() time.Duration {
+	return tr.TestEndTime.Sub(tr.TestStartTime)
 }
 
 // GetLogURL returns the external or internal log URL for this test result.

@@ -153,7 +153,7 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	for _, tr := range srcTask.LocalTestResults {
 		testResult := taskTestResult{
 			Status:    tr.Status,
-			TimeTaken: tr.End.Sub(tr.Start),
+			TimeTaken: tr.Duration(),
 			Logs:      taskTestLogURL{tr.LogURL},
 		}
 		destTask.LocalTestResults[tr.TestName] = testResult
@@ -214,7 +214,7 @@ func (restapi restAPI) getTaskStatus(w http.ResponseWriter, r *http.Request) {
 	for _, _testResult := range task.LocalTestResults {
 		testResult := taskTestResult{
 			Status:    _testResult.Status,
-			TimeTaken: _testResult.End.Sub(_testResult.Start),
+			TimeTaken: _testResult.Duration(),
 			Logs:      taskTestLogURL{_testResult.LogURL},
 		}
 		result.Tests[_testResult.TestName] = testResult

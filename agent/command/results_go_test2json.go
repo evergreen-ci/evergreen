@@ -134,12 +134,12 @@ func (c *goTest2JSONCommand) loadJSONFile(file string, logger client.LoggerProdu
 
 func goTest2JSONToTestResult(suiteName, key string, t *task.Task, test *test2json.Test) testresult.TestResult {
 	result := testresult.TestResult{
-		TestName:    key,
-		LogTestName: suiteName,
-		LineNum:     test.FirstLogLine,
-		Status:      evergreen.TestFailedStatus,
-		Start:       test.StartTime,
-		End:         test.EndTime,
+		TestName:      key,
+		LogTestName:   suiteName,
+		LineNum:       test.FirstLogLine,
+		Status:        evergreen.TestFailedStatus,
+		TestStartTime: test.StartTime,
+		TestEndTime:   test.EndTime,
 	}
 	switch test.Status {
 	case test2json.Passed:

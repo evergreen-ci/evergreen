@@ -15,15 +15,15 @@ import (
 
 const maxSampleSize = 10
 
-// ClearLocal clears the local test results store.
-func ClearLocal(ctx context.Context, env evergreen.Environment) error {
-	return errors.Wrap(env.DB().Collection(Collection).Drop(ctx), "clearing the local test results store")
-}
-
 // InsertLocal inserts the given test results into the local test results store
 // for testing and local development.
 func InsertLocal(ctx context.Context, env evergreen.Environment, results ...TestResult) error {
 	return errors.Wrap(appendDBResults(ctx, env, results), "inserting local test results")
+}
+
+// ClearLocal clears the local test results store.
+func ClearLocal(ctx context.Context, env evergreen.Environment) error {
+	return errors.Wrap(env.DB().Collection(Collection).Drop(ctx), "clearing the local test results store")
 }
 
 // localService implements the local test results service.
@@ -135,6 +135,8 @@ func (s *localService) GetFailedTestSamples(ctx context.Context, taskOpts []Task
 	return samples, nil
 }
 
+// get fetches the unmerged test results for the given tasks from the local
+// store.
 func (s *localService) get(ctx context.Context, taskOpts []TaskOptions, fields ...string) ([]TaskTestResults, error) {
 	ids := make([]dbTaskTestResultsID, len(taskOpts))
 	for i, task := range taskOpts {
@@ -144,7 +146,7 @@ func (s *localService) get(ctx context.Context, taskOpts []TaskOptions, fields .
 
 	filter := bson.M{idKey: bson.M{"$in": ids}}
 	opts := options.Find()
-	opts.SetSort(bson.D{{taskIDKey, 1}, {executionKey, 1}})
+	opts.SetSort(bson.D{{Name: taskIDKey, Value: 1}, {Name: executionKey, Value: 1}})
 	if len(fields) > 0 {
 		projection := bson.M{}
 		for _, field := range fields {
@@ -268,16 +270,16 @@ func (s *localService) sortTestResults(results []TestResult, opts *FilterOptions
 	case SortByStart:
 		sort.SliceStable(results, func(i, j int) bool {
 			if opts.SortOrderDSC {
-				return results[i].Start.After(results[j].Start)
+				return results[i].TestStartTime.After(results[j].TestStartTime)
 			}
-			return results[i].Start.Before(results[j].Start)
+			return results[i].TestStartTime.Before(results[j].TestStartTime)
 		})
 	case SortByDuration:
 		sort.SliceStable(results, func(i, j int) bool {
 			if opts.SortOrderDSC {
-				return results[i].getDuration() > results[j].getDuration()
+				return results[i].Duration() > results[j].Duration()
 			}
-			return results[i].getDuration() < results[j].getDuration()
+			return results[i].Duration() < results[j].Duration()
 		})
 	case SortByTestName:
 		sort.SliceStable(results, func(i, j int) bool {

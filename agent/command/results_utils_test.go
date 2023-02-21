@@ -34,8 +34,8 @@ func TestSendTestResults(t *testing.T) {
 			RawLogURL:       "https://rawurl.com",
 			LogTestName:     "log_test_name",
 			LineNum:         123,
-			Start:           time.Now().Add(-time.Hour).UTC(),
-			End:             time.Now().UTC(),
+			TestStartTime:   time.Now().Add(-time.Hour).UTC(),
+			TestEndTime:     time.Now().UTC(),
 		},
 	}
 	conf := &internal.TaskConfig{
@@ -98,8 +98,8 @@ func TestSendTestResults(t *testing.T) {
 				assert.Equal(t, results[0].LogURL, res[0].Results[0].LogUrl)
 				assert.Equal(t, results[0].RawLogURL, res[0].Results[0].RawLogUrl)
 				assert.EqualValues(t, results[0].LineNum, res[0].Results[0].LineNum)
-				assert.Equal(t, results[0].Start, res[0].Results[0].TestStartTime.AsTime())
-				assert.Equal(t, results[0].End, res[0].Results[0].TestEndTime.AsTime())
+				assert.Equal(t, results[0].TestStartTime, res[0].Results[0].TestStartTime.AsTime())
+				assert.Equal(t, results[0].TestEndTime, res[0].Results[0].TestEndTime.AsTime())
 			}
 		}
 

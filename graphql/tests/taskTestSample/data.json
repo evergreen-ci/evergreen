@@ -202,7 +202,7 @@
           "total_count": 1,
           "failed_count": 0
       },
-      "results":" [
+      "results": [
         {
           "test_name": "TestProjectAliasSuite/TestInsertTagsAndNoVariant",
           "task_id": "patch_task",

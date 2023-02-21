@@ -307,6 +307,7 @@
         "total_count": 1,
         "failed_count": 0
       },
+      "results": [
         {
           "test_name": "TestProjectAliasSuite/TestInsertTagsAndNoVariant",
           "task_id": "trigger_task",

@@ -74,12 +74,12 @@ func ToModelTestResults(results []*goTestResult, suiteName string) []testresult.
 			status = evergreen.TestFailedStatus
 		}
 		convertedResult := testresult.TestResult{
-			TestName:    res.Name,
-			Status:      status,
-			Start:       start,
-			End:         end,
-			LogTestName: suiteName,
-			LineNum:     res.StartLine - 1,
+			TestName:      res.Name,
+			Status:        status,
+			TestStartTime: start,
+			TestEndTime:   end,
+			LogTestName:   suiteName,
+			LineNum:       res.StartLine - 1,
 		}
 		modelResults = append(modelResults, convertedResult)
 	}

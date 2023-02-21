@@ -26,13 +26,13 @@ func TestTestBuildFromService(t *testing.T) {
 			name: "NoOptionals",
 			io: func() (interface{}, *APITest) {
 				input := &testresult.TestResult{
-					TaskID:    "task",
-					Execution: 1,
-					TestName:  "test_file",
-					Status:    "test_status",
-					LineNum:   15,
-					Start:     start,
-					End:       end,
+					TaskID:        "task",
+					Execution:     1,
+					TestName:      "test_file",
+					Status:        "test_status",
+					LineNum:       15,
+					TestStartTime: start,
+					TestEndTime:   end,
 				}
 
 				output := &APITest{
@@ -49,7 +49,7 @@ func TestTestBuildFromService(t *testing.T) {
 					},
 					StartTime: utility.ToTimePtr(start),
 					EndTime:   utility.ToTimePtr(end),
-					Duration:  input.End.Sub(input.Start).Seconds(),
+					Duration:  input.Duration().Seconds(),
 				}
 
 				return input, output
@@ -66,8 +66,8 @@ func TestTestBuildFromService(t *testing.T) {
 					GroupID:         "group",
 					Status:          "test_status",
 					LineNum:         15,
-					Start:           start,
-					End:             end,
+					TestStartTime:   start,
+					TestEndTime:     end,
 				}
 
 				output := &APITest{
@@ -85,7 +85,7 @@ func TestTestBuildFromService(t *testing.T) {
 					},
 					StartTime: utility.ToTimePtr(start),
 					EndTime:   utility.ToTimePtr(end),
-					Duration:  input.End.Sub(input.Start).Seconds(),
+					Duration:  input.Duration().Seconds(),
 				}
 
 				return input, output

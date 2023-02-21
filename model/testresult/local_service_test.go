@@ -153,30 +153,30 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 	getResults := func() []TestResult {
 		return []TestResult{
 			{
-				TestName: "A test",
-				Status:   "Pass",
-				Start:    time.Date(1996, time.August, 31, 12, 5, 10, 1, time.UTC),
-				End:      time.Date(1996, time.August, 31, 12, 5, 12, 0, time.UTC),
+				TestName:      "A test",
+				Status:        "Pass",
+				TestStartTime: time.Date(1996, time.August, 31, 12, 5, 10, 1, time.UTC),
+				TestEndTime:   time.Date(1996, time.August, 31, 12, 5, 12, 0, time.UTC),
 			},
 			{
 				TestName:        "B test",
 				DisplayTestName: "Display",
 				Status:          "Fail",
-				Start:           time.Date(1996, time.August, 31, 12, 5, 10, 3, time.UTC),
-				End:             time.Date(1996, time.August, 31, 12, 5, 16, 0, time.UTC),
+				TestStartTime:   time.Date(1996, time.August, 31, 12, 5, 10, 3, time.UTC),
+				TestEndTime:     time.Date(1996, time.August, 31, 12, 5, 16, 0, time.UTC),
 			},
 			{
-				TestName: "C test",
-				Status:   "Fail",
-				Start:    time.Date(1996, time.August, 31, 12, 5, 10, 2, time.UTC),
-				End:      time.Date(1996, time.August, 31, 12, 5, 15, 0, time.UTC),
+				TestName:      "C test",
+				Status:        "Fail",
+				TestStartTime: time.Date(1996, time.August, 31, 12, 5, 10, 2, time.UTC),
+				TestEndTime:   time.Date(1996, time.August, 31, 12, 5, 15, 0, time.UTC),
 			},
 			{
-				TestName: "D test",
-				Status:   "Pass",
-				Start:    time.Date(1996, time.August, 31, 12, 5, 10, 4, time.UTC),
-				End:      time.Date(1996, time.August, 31, 12, 5, 11, 0, time.UTC),
-				GroupID:  "llama",
+				TestName:      "D test",
+				Status:        "Pass",
+				TestStartTime: time.Date(1996, time.August, 31, 12, 5, 10, 4, time.UTC),
+				TestEndTime:   time.Date(1996, time.August, 31, 12, 5, 11, 0, time.UTC),
+				GroupID:       "llama",
 			},
 		}
 	}
@@ -460,10 +460,10 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 
 func getTestResult() TestResult {
 	result := TestResult{
-		TestName: utility.RandomString(),
-		Status:   evergreen.TestSucceededStatus,
-		Start:    time.Now().Add(-30 * time.Hour).UTC().Round(time.Millisecond),
-		End:      time.Now().UTC().Round(time.Millisecond),
+		TestName:      utility.RandomString(),
+		Status:        evergreen.TestSucceededStatus,
+		TestStartTime: time.Now().Add(-30 * time.Hour).UTC().Round(time.Millisecond),
+		TestEndTime:   time.Now().UTC().Round(time.Millisecond),
 	}
 	// Optional fields, we should test that we handle them properly when
 	// they are populated and when they do not.

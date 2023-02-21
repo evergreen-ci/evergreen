@@ -50,9 +50,9 @@ func (at *APITest) BuildFromService(st interface{}) error {
 		if v.BaseStatus != "" {
 			at.BaseStatus = utility.ToStringPtr(v.BaseStatus)
 		}
-		at.StartTime = utility.ToTimePtr(v.Start)
-		at.EndTime = utility.ToTimePtr(v.End)
-		at.Duration = v.End.Sub(v.Start).Seconds() // TODO: Do we want this in seconds or ms?
+		at.StartTime = utility.ToTimePtr(v.TestStartTime)
+		at.EndTime = utility.ToTimePtr(v.TestEndTime)
+		at.Duration = v.Duration().Seconds() // TODO: Do we want this in seconds or ms?
 
 		at.TestFile = utility.ToStringPtr(v.GetDisplayTestName())
 		at.Logs = TestLogs{

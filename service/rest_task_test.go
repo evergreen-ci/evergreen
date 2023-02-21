@@ -59,7 +59,9 @@ func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId
 
 	if len(testResults) > 0 {
 		task.ResultsService = testresult.TestResultsServiceLocal
-		testresult.InsertLocal(ctx, env, testResults...)
+		if err := testresult.InsertLocal(ctx, env, testResults...); err != nil {
+			return nil, err
+		}
 	}
 	if err := task.Insert(); err != nil {
 		return nil, err
@@ -90,13 +92,13 @@ func TestGetTaskInfo(t *testing.T) {
 		projectName := "project_test"
 
 		testResult := testresult.TestResult{
-			Status:    "success",
-			TaskID:    taskId,
-			Execution: 0,
-			TestName:  "some-test",
-			LogURL:    "some-url",
-			Start:     time.Now().Add(-9 * time.Minute),
-			End:       time.Now().Add(-1 * time.Minute),
+			Status:        "success",
+			TaskID:        taskId,
+			Execution:     0,
+			TestName:      "some-test",
+			LogURL:        "some-url",
+			TestStartTime: time.Now().Add(-9 * time.Minute),
+			TestEndTime:   time.Now().Add(-1 * time.Minute),
 		}
 		testTask, err := insertTaskForTesting(ctx, env, taskId, versionId, projectName, []testresult.TestResult{testResult})
 		So(err, ShouldBeNil)
@@ -281,16 +283,16 @@ func TestGetTaskStatus(t *testing.T) {
 			ResultsService: testresult.TestResultsServiceLocal,
 		}
 		testResult := testresult.TestResult{
-			Status:    "success",
-			TaskID:    testTask.Id,
-			Execution: testTask.Execution,
-			TestName:  "some-test",
-			LogURL:    "some-url",
-			Start:     time.Now().Add(-9 * time.Minute),
-			End:       time.Now().Add(-1 * time.Minute),
+			Status:        "success",
+			TaskID:        testTask.Id,
+			Execution:     testTask.Execution,
+			TestName:      "some-test",
+			LogURL:        "some-url",
+			TestStartTime: time.Now().Add(-9 * time.Minute),
+			TestEndTime:   time.Now().Add(-1 * time.Minute),
 		}
-		So(testTask.Insert(), ShouldBeNil)
-		testresult.InsertLocal(ctx, env, testResult)
+		require.NoError(t, testTask.Insert())
+		require.NoError(t, testresult.InsertLocal(ctx, env, testResult))
 
 		url := "/rest/v1/tasks/" + taskId + "/status"
 
@@ -393,13 +395,13 @@ func TestGetDisplayTaskInfo(t *testing.T) {
 	projectName := "project_test"
 
 	testResult := testresult.TestResult{
-		Status:    "success",
-		TaskID:    executionTaskId,
-		Execution: 0,
-		TestName:  "some-test",
-		LogURL:    "some-url",
-		Start:     time.Now().Add(-9 * time.Minute),
-		End:       time.Now().Add(-1 * time.Minute),
+		Status:        "success",
+		TaskID:        executionTaskId,
+		Execution:     0,
+		TestName:      "some-test",
+		LogURL:        "some-url",
+		TestStartTime: time.Now().Add(-9 * time.Minute),
+		TestEndTime:   time.Now().Add(-1 * time.Minute),
 	}
 	_, err = insertTaskForTesting(ctx, env, executionTaskId, versionId, projectName, []testresult.TestResult{testResult})
 	assert.NoError(err)
