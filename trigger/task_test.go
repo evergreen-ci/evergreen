@@ -1,6 +1,7 @@
 package trigger
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"testing"
@@ -131,6 +132,7 @@ func TestTaskTriggers(t *testing.T) {
 }
 
 type taskSuite struct {
+	env        evergreen.Environment
 	event      event.EventLogEntry
 	data       *event.TaskEventData
 	task       task.Task
@@ -144,10 +146,14 @@ type taskSuite struct {
 }
 
 func (s *taskSuite) SetupSuite() {
+	s.env = evergreen.GetEnvironment()
 	s.Require().Implements((*eventHandler)(nil), &taskTriggers{})
 }
 
-func (s *taskSuite) SetupTest() {
+func (s *taskSuite) TearDownSuite() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	s.NoError(db.ClearCollections(
 		event.EventCollection,
 		task.Collection,
@@ -159,6 +165,25 @@ func (s *taskSuite) SetupTest() {
 		build.Collection,
 		model.ProjectRefCollection,
 	))
+	s.NoError(testresult.ClearLocal(ctx, s.env))
+}
+
+func (s *taskSuite) SetupTest() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s.Require().NoError(db.ClearCollections(
+		event.EventCollection,
+		task.Collection,
+		task.OldCollection,
+		model.VersionCollection,
+		event.SubscriptionsCollection,
+		alertrecord.Collection,
+		event.SubscriptionsCollection,
+		build.Collection,
+		model.ProjectRefCollection,
+	))
+	s.Require().NoError(testresult.ClearLocal(ctx, s.env))
 	startTime := time.Now().Truncate(time.Millisecond).Add(-time.Hour)
 
 	s.task = task.Task{
@@ -765,12 +790,12 @@ func (s *taskSuite) makeTask(n int, taskStatus string) {
 	s.Require().NoError(s.build.Insert())
 }
 
-func (s *taskSuite) makeTest(testName, testStatus string) {
+func (s *taskSuite) makeTest(ctx context.Context, testName, testStatus string) {
 	if len(testName) == 0 {
 		testName = "test_0"
 	}
 
-	testresult.InsertLocal(testresult.TestResult{
+	testresult.InsertLocal(ctx, s.env, testresult.TestResult{
 		TestName:  testName,
 		TaskID:    s.task.Id,
 		Execution: s.task.Execution,
@@ -796,89 +821,93 @@ func (s *taskSuite) tryDoubleTrigger(shouldGenerate bool) {
 }
 
 func (s *taskSuite) TestRegressionByTestSimpleRegression() {
-	s.NoError(db.ClearCollections(task.Collection))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	// brand new test fails should generate
 	s.makeTask(1, evergreen.TaskFailed)
-	s.makeTest("", evergreen.TestFailedStatus)
+	s.makeTest(ctx, "", evergreen.TestFailedStatus)
 	s.tryDoubleTrigger(true)
 
 	// next fail with same test shouldn't generate
 	s.makeTask(2, evergreen.TaskFailed)
-	s.makeTest("", evergreen.TestFailedStatus)
+	s.makeTest(ctx, "", evergreen.TestFailedStatus)
 	s.tryDoubleTrigger(false)
 
 	// but if we add a new failed test, it should notify
 	s.makeTask(3, evergreen.TaskFailed)
-	s.makeTest("test_1", evergreen.TestFailedStatus)
-	s.makeTest("", evergreen.TestFailedStatus)
+	s.makeTest(ctx, "test_1", evergreen.TestFailedStatus)
+	s.makeTest(ctx, "", evergreen.TestFailedStatus)
 	s.tryDoubleTrigger(true)
 
 	// transition to failure
 	s.makeTask(4, evergreen.TaskSucceeded)
-	s.makeTest("", evergreen.TestSucceededStatus)
+	s.makeTest(ctx, "", evergreen.TestSucceededStatus)
 	s.tryDoubleTrigger(false)
 
 	s.makeTask(5, evergreen.TaskFailed)
-	s.makeTest("test_1", evergreen.TestFailedStatus)
+	s.makeTest(ctx, "test_1", evergreen.TestFailedStatus)
 	s.tryDoubleTrigger(true)
 }
 
 func (s *taskSuite) TestRegressionByTestWithNonAlertingStatuses() {
-	s.NoError(db.ClearCollections(task.Collection))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	// brand new task that succeeds should not generate
 	s.makeTask(10, evergreen.TaskSucceeded)
-	s.makeTest("", evergreen.TestSucceededStatus)
+	s.makeTest(ctx, "", evergreen.TestSucceededStatus)
 	s.tryDoubleTrigger(false)
 
 	// even after a failed task
 	s.makeTask(12, evergreen.TaskFailed)
-	s.makeTest("", evergreen.TestFailedStatus)
+	s.makeTest(ctx, "", evergreen.TestFailedStatus)
 
 	s.makeTask(13, evergreen.TaskSucceeded)
-	s.makeTest("", evergreen.TestSucceededStatus)
+	s.makeTest(ctx, "", evergreen.TestSucceededStatus)
 	s.tryDoubleTrigger(false)
 }
 
 func (s *taskSuite) TestRegressionByTestWithTestChanges() {
-	s.NoError(db.ClearCollections(task.Collection))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	// given a task with a failing test, and a succeeding one...
 	s.makeTask(14, evergreen.TaskFailed)
-	s.makeTest("", evergreen.TestFailedStatus)
-	s.makeTest("test_1", evergreen.TestSucceededStatus)
+	s.makeTest(ctx, "", evergreen.TestFailedStatus)
+	s.makeTest(ctx, "test_1", evergreen.TestSucceededStatus)
 	s.tryDoubleTrigger(true)
 
 	// Remove the successful test, but leave the failing one. Since we
 	// already notified, this should not generate
 	// failed test
 	s.makeTask(15, evergreen.TaskFailed)
-	s.makeTest("", evergreen.TestFailedStatus)
+	s.makeTest(ctx, "", evergreen.TestFailedStatus)
 	s.tryDoubleTrigger(false)
 
 	// add some successful tests, this should not notify
 	s.makeTask(16, evergreen.TaskFailed)
-	s.makeTest("", evergreen.TestFailedStatus)
-	s.makeTest("test_1", evergreen.TestSucceededStatus)
-	s.makeTest("test_2", evergreen.TestSucceededStatus)
+	s.makeTest(ctx, "", evergreen.TestFailedStatus)
+	s.makeTest(ctx, "test_1", evergreen.TestSucceededStatus)
+	s.makeTest(ctx, "test_2", evergreen.TestSucceededStatus)
 	s.tryDoubleTrigger(false)
 }
 
 func (s *taskSuite) TestRegressionByTestWithReruns() {
-	s.NoError(db.ClearCollections(task.Collection))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	// insert a couple of successful tasks
 	s.makeTask(17, evergreen.TaskSucceeded)
-	s.makeTest("", evergreen.TestSucceededStatus)
+	s.makeTest(ctx, "", evergreen.TestSucceededStatus)
 
 	s.makeTask(18, evergreen.TaskSucceeded)
-	s.makeTest("", evergreen.TestSucceededStatus)
+	s.makeTest(ctx, "", evergreen.TestSucceededStatus)
 
 	task18 := s.task
 
 	s.makeTask(19, evergreen.TaskSucceeded)
-	s.makeTest("", evergreen.TestSucceededStatus)
+	s.makeTest(ctx, "", evergreen.TestSucceededStatus)
 
 	// now simulate a rerun of task18 failing
 	s.task = task18
@@ -889,7 +918,7 @@ func (s *taskSuite) TestRegressionByTestWithReruns() {
 	s.data.Status = s.task.Status
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
 
-	s.makeTest("", evergreen.TestFailedStatus)
+	s.makeTest(ctx, "", evergreen.TestFailedStatus)
 	s.tryDoubleTrigger(true)
 
 	// make it fail again; it shouldn't generate
@@ -898,12 +927,13 @@ func (s *taskSuite) TestRegressionByTestWithReruns() {
 	s.task.Execution = 2
 	s.event.ResourceId = s.task.Id
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
-	s.makeTest("", evergreen.TestFailedStatus)
+	s.makeTest(ctx, "", evergreen.TestFailedStatus)
 	s.tryDoubleTrigger(false)
 }
 
 func (s *taskSuite) TestRegressionByTestWithTasksWithoutTests() {
-	s.NoError(db.ClearCollections(task.Collection))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	// TaskFailed with no tests should generate
 	s.makeTask(22, evergreen.TaskSucceeded)
@@ -916,7 +946,7 @@ func (s *taskSuite) TestRegressionByTestWithTasksWithoutTests() {
 
 	// try same error status, but now with tests
 	s.makeTask(25, evergreen.TaskFailed)
-	s.makeTest("", evergreen.TestFailedStatus)
+	s.makeTest(ctx, "", evergreen.TestFailedStatus)
 	s.tryDoubleTrigger(true)
 
 	// force fully move the time of task 25 back 48 hours
@@ -924,43 +954,46 @@ func (s *taskSuite) TestRegressionByTestWithTasksWithoutTests() {
 	s.NoError(db.Update(task.Collection, bson.M{task.IdKey: s.task.Id}, &s.task))
 
 	s.makeTask(26, evergreen.TaskFailed)
-	s.makeTest("", evergreen.TestFailedStatus)
+	s.makeTest(ctx, "", evergreen.TestFailedStatus)
 	s.tryDoubleTrigger(true)
 }
 
 func (s *taskSuite) TestRegressionByTestWithDuplicateTestNames() {
-	s.NoError(db.ClearCollections(task.Collection))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	s.makeTask(26, evergreen.TaskFailed)
-	s.makeTest("", evergreen.TestFailedStatus)
-	s.makeTest("", evergreen.TestSucceededStatus)
+	s.makeTest(ctx, "", evergreen.TestFailedStatus)
+	s.makeTest(ctx, "", evergreen.TestSucceededStatus)
 	s.tryDoubleTrigger(true)
 }
 
 func (s *taskSuite) TestRegressionByTestWithTestsWithStepback() {
-	s.NoError(db.ClearCollections(task.Collection))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	// TestFailed should generate
 	s.makeTask(22, evergreen.TaskSucceeded)
-	s.makeTest("", evergreen.TestSucceededStatus)
+	s.makeTest(ctx, "", evergreen.TestSucceededStatus)
 	s.makeTask(24, evergreen.TaskFailed)
-	s.makeTest("", evergreen.TestFailedStatus)
+	s.makeTest(ctx, "", evergreen.TestFailedStatus)
 	s.tryDoubleTrigger(true)
 
 	// but not when we run the earlier task
 	s.makeTask(23, evergreen.TaskFailed)
-	s.makeTest("", evergreen.TestFailedStatus)
+	s.makeTest(ctx, "", evergreen.TestFailedStatus)
 	s.tryDoubleTrigger(false)
 }
 
 func (s *taskSuite) TestRegressionByTestWithPassingTests() {
-	s.NoError(db.ClearCollections(task.Collection))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	// all passing tests should fall back to task regression
 	s.makeTask(27, evergreen.TaskSucceeded)
 	s.makeTask(28, evergreen.TaskFailed)
-	s.makeTest("", evergreen.TestSucceededStatus)
-	s.makeTest("", evergreen.TestSucceededStatus)
+	s.makeTest(ctx, "", evergreen.TestSucceededStatus)
+	s.makeTest(ctx, "", evergreen.TestSucceededStatus)
 	s.tryDoubleTrigger(true)
 }
 
@@ -1017,6 +1050,8 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 	}
 	s.NoError(t2.Insert())
 	testresult.InsertLocal(
+		context.Background(),
+		s.env,
 		testresult.TestResult{TaskID: "t1", TestName: "test1", Status: evergreen.TestFailedStatus},
 		testresult.TestResult{TaskID: "t1", TestName: "something", Status: evergreen.TestSucceededStatus},
 		testresult.TestResult{TaskID: "t2", TestName: "test1", Status: evergreen.TestSucceededStatus},
@@ -1251,7 +1286,15 @@ func (s *taskSuite) TestBuildBreak() {
 }
 
 func TestTaskRegressionByTestDisplayTask(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := evergreen.GetEnvironment()
 	require.NoError(t, db.ClearCollections(task.Collection, alertrecord.Collection, build.Collection, model.VersionCollection, model.ProjectRefCollection))
+	require.NoError(t, testresult.ClearLocal(ctx, env))
+	defer func() {
+		assert.NoError(t, db.ClearCollections(task.Collection, alertrecord.Collection, build.Collection, model.VersionCollection, model.ProjectRefCollection))
+		assert.NoError(t, testresult.ClearLocal(ctx, env))
+	}()
 
 	b := build.Build{Id: "b0"}
 	require.NoError(t, b.Insert())
@@ -1314,6 +1357,8 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 		require.NoError(t, task.Insert())
 	}
 	testresult.InsertLocal(
+		ctx,
+		env,
 		testresult.TestResult{TaskID: "et0_0", TestName: "f0", Status: evergreen.TestFailedStatus},
 		testresult.TestResult{TaskID: "et1_0", TestName: "f1", Status: evergreen.TestSucceededStatus},
 		testresult.TestResult{TaskID: "et1_1", TestName: "f0", Status: evergreen.TestFailedStatus},
@@ -1337,7 +1382,11 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 
 	// alert for the second run of the display task with the same execution task (et0) failing with a new test (f1)
 	tr.task = &tasks[3]
-	testresult.InsertLocal(testresult.TestResult{TaskID: "et0_1", TestName: "f1", Status: evergreen.TestFailedStatus})
+	testresult.InsertLocal(ctx, env, testresult.TestResult{
+		TaskID:   "et0_1",
+		TestName: "f1",
+		Status:   evergreen.TestFailedStatus,
+	})
 	require.NoError(t, tasks[4].SetResultsInfo(testresult.TestResultsServiceLocal, true))
 	notification, err = tr.taskRegressionByTest(&event.Subscription{ID: "s1", Subscriber: subscriber, Trigger: "t1"})
 	assert.NoError(t, err)

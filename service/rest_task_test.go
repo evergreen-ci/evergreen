@@ -23,7 +23,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-func insertTaskForTesting(taskId, versionId, projectName string, testResults []testresult.TestResult) (*task.Task, error) {
+func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId, versionId, projectName string, testResults []testresult.TestResult) (*task.Task, error) {
 	task := &task.Task{
 		Id:                  taskId,
 		CreateTime:          time.Now().Add(-20 * time.Minute),
@@ -59,7 +59,7 @@ func insertTaskForTesting(taskId, versionId, projectName string, testResults []t
 
 	if len(testResults) > 0 {
 		task.ResultsService = testresult.TestResultsServiceLocal
-		testresult.InsertLocal(testResults...)
+		testresult.InsertLocal(ctx, env, testResults...)
 	}
 	if err := task.Insert(); err != nil {
 		return nil, err
@@ -76,10 +76,14 @@ func TestGetTaskInfo(t *testing.T) {
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(t, err, "error setting up router")
 
+	defer func() {
+		assert.NoError(t, db.ClearCollections(task.Collection))
+		assert.NoError(t, testresult.ClearLocal(ctx, env))
+	}()
+
 	Convey("When finding info on a particular task", t, func() {
 		require.NoError(t, db.ClearCollections(task.Collection),
 			"Error clearing '%v' collection", task.Collection)
-		testresult.ClearLocal()
 
 		taskId := "my-task"
 		versionId := "my-version"
@@ -94,7 +98,7 @@ func TestGetTaskInfo(t *testing.T) {
 			Start:     time.Now().Add(-9 * time.Minute),
 			End:       time.Now().Add(-1 * time.Minute),
 		}
-		testTask, err := insertTaskForTesting(taskId, versionId, projectName, []testresult.TestResult{testResult})
+		testTask, err := insertTaskForTesting(ctx, env, taskId, versionId, projectName, []testresult.TestResult{testResult})
 		So(err, ShouldBeNil)
 
 		file := artifact.File{
@@ -263,7 +267,6 @@ func TestGetTaskStatus(t *testing.T) {
 	Convey("When finding the status of a particular task", t, func() {
 		require.NoError(t, db.ClearCollections(task.Collection),
 			"Error clearing '%v' collection", task.Collection)
-		testresult.ClearLocal()
 
 		taskId := "my-task"
 
@@ -287,7 +290,7 @@ func TestGetTaskStatus(t *testing.T) {
 			End:       time.Now().Add(-1 * time.Minute),
 		}
 		So(testTask.Insert(), ShouldBeNil)
-		testresult.InsertLocal(testResult)
+		testresult.InsertLocal(ctx, env, testResult)
 
 		url := "/rest/v1/tasks/" + taskId + "/status"
 
@@ -379,8 +382,10 @@ func TestGetDisplayTaskInfo(t *testing.T) {
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(err, "error setting up router")
 
-	require.NoError(db.ClearCollections(task.Collection))
-	testresult.ClearLocal()
+	defer func() {
+		assert.NoError(db.ClearCollections(task.Collection))
+		assert.NoError(testresult.ClearLocal(ctx, env))
+	}()
 
 	executionTaskId := "execution-task"
 	displayTaskId := "display-task"
@@ -396,9 +401,9 @@ func TestGetDisplayTaskInfo(t *testing.T) {
 		Start:     time.Now().Add(-9 * time.Minute),
 		End:       time.Now().Add(-1 * time.Minute),
 	}
-	_, err = insertTaskForTesting(executionTaskId, versionId, projectName, []testresult.TestResult{testResult})
+	_, err = insertTaskForTesting(ctx, env, executionTaskId, versionId, projectName, []testresult.TestResult{testResult})
 	assert.NoError(err)
-	displayTask, err := insertTaskForTesting(displayTaskId, versionId, projectName, []testresult.TestResult{})
+	displayTask, err := insertTaskForTesting(ctx, env, displayTaskId, versionId, projectName, nil)
 	assert.NoError(err)
 	displayTask.ExecutionTasks = []string{executionTaskId}
 	err = db.Update(task.Collection,

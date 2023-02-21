@@ -32,7 +32,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
@@ -74,7 +73,6 @@ func setup(t *testing.T, state *AtomicGraphQLState) {
 	env := evergreen.GetEnvironment()
 	ctx := context.Background()
 	require.NoError(t, env.DB().Drop(ctx))
-	testresult.ClearLocal()
 
 	require.NoError(t, db.Clear(user.Collection),
 		"unable to clear user collection")
@@ -277,14 +275,6 @@ func setupData(db mongo.Database, logsDb mongo.Database, data map[string]json.Ra
 	ctx := context.Background()
 	catcher := grip.NewBasicCatcher()
 	for coll, d := range data {
-		if coll == "testresults" {
-			var results []testresult.TestResult
-			catcher.Add(json.Unmarshal(d, &results))
-			testresult.InsertLocal(results...)
-
-			continue
-		}
-
 		// the docs to insert as part of setup need to be deserialized as extended JSON, whereas the rest of the
 		// test spec is normal JSON
 		var docs []interface{}

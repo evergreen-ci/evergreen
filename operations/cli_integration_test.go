@@ -25,6 +25,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
 	"gopkg.in/yaml.v3"
@@ -280,6 +281,13 @@ func TestCLIFetchArtifacts(t *testing.T) {
 }
 
 func TestCLITestHistory(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := evergreen.GetEnvironment()
+	defer func() {
+		assert.NoError(t, db.ClearCollections(task.Collection))
+		assert.NoError(t, testresult.ClearLocal(ctx, env))
+	}()
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestCLITestHistory")
 	Convey("with API test server running", t, func() {
 		testSetup := setupCLITestHarness()
@@ -315,7 +323,7 @@ func TestCLITestHistory(t *testing.T) {
 			So(testVersion3.Insert(), ShouldBeNil)
 			// create tasks with three different display names that start and finish at various times
 			for i := 0; i < 10; i++ {
-				t := task.Task{
+				tsk := task.Task{
 					Id:             fmt.Sprintf("task_%v", i),
 					Project:        project,
 					DisplayName:    fmt.Sprintf("testTask_%v", i%3),
@@ -325,29 +333,28 @@ func TestCLITestHistory(t *testing.T) {
 					Status:         evergreen.TaskFailed,
 					ResultsService: testresult.TestResultsServiceLocal,
 				}
-				So(t.Insert(), ShouldBeNil)
+				So(tsk.Insert(), ShouldBeNil)
 
 				startTime := now.Add(time.Minute * time.Duration(i)).UTC()
 				endTime := now.Add(time.Minute * time.Duration(i+1)).UTC()
 				passingResult := testresult.TestResult{
 					TestName: "passingTest",
-					TaskID:   t.Id,
+					TaskID:   tsk.Id,
 					Status:   evergreen.TestSucceededStatus,
 					Start:    startTime,
 					End:      endTime,
 				}
 				failedResult := testresult.TestResult{
 					TestName: "failingTest",
-					TaskID:   t.Id,
+					TaskID:   tsk.Id,
 					Status:   evergreen.TestFailedStatus,
 					Start:    startTime,
 					End:      endTime,
 				}
-				testresult.InsertLocal(passingResult, failedResult)
+				require.NoError(t, testresult.InsertLocal(ctx, evergreen.GetEnvironment(), passingResult, failedResult))
 			}
 		})
 	})
-
 }
 
 func TestCLIFunctions(t *testing.T) {
