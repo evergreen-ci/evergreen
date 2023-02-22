@@ -684,7 +684,7 @@ func encodeByteSlice(e *encodeState, v reflect.Value, _ encOpts) {
 		// for large buffers, avoid unnecessary extra temporary
 		// buffer space.
 		enc := base64.NewEncoder(base64.StdEncoding, e)
-		//nolint
+		//nolint:all
 		enc.Write(s)
 		enc.Close()
 	}
@@ -1063,7 +1063,7 @@ func typeFields(t reflect.Type) []field {
 	next := []field{{typ: t}}
 
 	// Count of queued names for current level and the next.
-	//nolint
+	//nolint:all
 	count := map[reflect.Type]int{}
 	nextCount := map[reflect.Type]int{}
 

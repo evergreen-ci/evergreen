@@ -924,7 +924,7 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		defer func() { //nolint: evg-lint
+		defer func() { //nolint:evg-lint
 			grip.Error(tempFile.Close())
 			grip.Error(os.Remove(tempFile.Name()))
 		}()

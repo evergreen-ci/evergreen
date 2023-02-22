@@ -898,7 +898,7 @@ func (d *decodeState) name(v reflect.Value) {
 	}
 
 	// Check for unmarshaler on func field itself.
-	//nolint
+	//nolint:all
 	u, ut, pv = d.indirect(v, false)
 	if u != nil {
 		d.off = nameStart
@@ -1061,7 +1061,7 @@ func (d *decodeState) keyed() (interface{}, bool) {
 	d.off--
 	out, err := decode(d.next())
 	if err != nil {
-		//nolint
+		//nolint:all
 		d.error(err)
 	}
 	return out, true

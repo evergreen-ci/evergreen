@@ -142,7 +142,7 @@ func (c *Mock) GetHosts(ctx context.Context, data model.APIHostParams) ([]*model
 	return []*model.APIHost{host}, nil
 }
 
-// nolint
+//nolint:all
 func (c *Mock) SetBannerMessage(ctx context.Context, m string, t evergreen.BannerTheme) error {
 	return nil
 }

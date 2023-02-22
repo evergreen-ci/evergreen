@@ -143,7 +143,7 @@ type AWSClient interface {
 }
 
 // awsClientImpl wraps ec2.EC2.
-type awsClientImpl struct { //nolint
+type awsClientImpl struct { //nolint:all
 	session    *session.Session
 	httpClient *http.Client
 	pricing    *pricing.Pricing
