@@ -1,7 +1,7 @@
 /*
 Package data provides database access for API requests to the server.
 
-Adding to the Connector
+# Adding to the Connector
 
 The Connector is an interface to define how to access methods that access the
 database and also have special mocking needs for testing (e.g. access to an

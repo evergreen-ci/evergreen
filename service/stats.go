@@ -39,7 +39,7 @@ type UIProject struct {
 	TaskNames     []string         `json:"task_names"`
 }
 
-//UITask has the fields that are necessary to send over the wire for tasks
+// UITask has the fields that are necessary to send over the wire for tasks
 type UITask struct {
 	Id                     string    `json:"id"`
 	CreateTime             time.Time `json:"create_time"`
@@ -56,7 +56,7 @@ type UITask struct {
 	IsDisplay              bool      `json:"is_display"`
 }
 
-//UIBuild has the fields that are necessary to send over the wire for builds
+// UIBuild has the fields that are necessary to send over the wire for builds
 type UIBuild struct {
 	Id         string    `json:"id"`
 	CreateTime time.Time `json:"create_time"`

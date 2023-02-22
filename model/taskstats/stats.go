@@ -1,6 +1,6 @@
 // Package taskstats provides functions to generate and query pre-computed and
 // task statistics. The statistics are aggregated per day and a combination of
-//(project, variant, distro, task, requester).
+// (project, variant, distro, task, requester).
 package taskstats
 
 import (

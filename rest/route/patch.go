@@ -377,11 +377,11 @@ func (p *patchRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(foundPatch)
 }
 
-////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////
 //
 // Handler for creating a new merge patch from an existing patch
 //
-//    /patches/{patch_id}/merge_patch
+//	/patches/{patch_id}/merge_patch
 type mergePatchHandler struct {
 	CommitMessage string `json:"commit_message"`
 

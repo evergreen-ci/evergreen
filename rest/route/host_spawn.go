@@ -1121,10 +1121,9 @@ func (h *hostExtendExpirationHandler) Run(ctx context.Context) gimlet.Responder 
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
-////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////
 //
 // POST /rest/v2/host/start_process
-//
 type hostStartProcesses struct {
 	env evergreen.Environment
 
@@ -1213,10 +1212,9 @@ func (hs *hostStartProcesses) Run(ctx context.Context) gimlet.Responder {
 	return response
 }
 
-////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////
 //
 // GET /rest/v2/host/get_process
-//
 type hostGetProcesses struct {
 	env evergreen.Environment
 

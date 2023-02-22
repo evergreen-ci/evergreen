@@ -32,7 +32,7 @@ func (m *RecentHostAgentDeploys) String() string {
 		m.HostID, m.Last, m.Failed, m.Success, m.Count)
 }
 
-////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////
 //
 // Predicates to support error checking during the agent deploy process
 func (m *RecentHostAgentDeploys) LastAttemptFailed() bool {
